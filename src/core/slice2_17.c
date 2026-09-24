@@ -1228,6 +1228,56 @@ void BrCarStateSave(void)
  * on screen match what has just been restored. One of the five saved values is
  * written by the save and never read back by anything. */
 /* @implements 0x1002F320 d3d BrCarStateRestore */
+#ifdef BR_MATCHING_BUILD
+/* Glide arm, hand-transcribed from 0x1001C890; same globals as the save.
+ * The standings block hangs off car+0xE8C: a (row, col) cursor at +4/+5 and
+ * three [6][4] tables indexed by it.  The block pointer is re-read for every
+ * statement (it is `*pp`, not a local).  The dword store takes its value
+ * through a named temp: that alone makes VC5 fetch col before row there. */
+typedef struct BrStandBlk {
+    uint8_t  pad0[4];
+    uint8_t  row;               /* +0x04 */
+    uint8_t  col;               /* +0x05 */
+    uint8_t  place[6][4];       /* +0x06 */
+    int16_t  pts[6][4];         /* +0x1E */
+    int16_t  pad4e;
+    int32_t  tot[6][4];         /* +0x50 */
+} BrStandBlk;
+extern int32_t DAT_100a9360;          /* gate: restore the table only if 0 */
+extern signed char DAT_100a9560[];    /* points per finishing position */
+int FUN_10008d60();                   /* debug printf, a bare `ret` */
+void BrCarStateRestore(void)
+{
+    int i;
+
+    if (DAT_100a9360 == 0 && DAT_105ccb60 != 0) {
+        for (i = 0; i < DAT_100b3858; ++i) {
+            BrStandBlk **pp = (BrStandBlk **)(DAT_10af1208 + i * 0x2B68 + 0xE8C);
+
+            (*pp)->pts[(*pp)->row][(*pp)->col] = DAT_100a9560[DAT_105bc770[i]];
+            (*pp)->place[(*pp)->row][(*pp)->col] = (uint8_t)DAT_105bc770[i];
+            {
+                int32_t t = DAT_105bc8d0[i];
+                (*pp)->tot[(*pp)->row][(*pp)->col] = t;
+            }
+            FUN_10008d60("points = %d\n",
+                         (uint16_t)(*pp)->pts[(*pp)->row][(*pp)->col]);
+        }
+    }
+
+    for (i = 0; i < DAT_100b3858; ++i) {
+        int k;
+
+        for (k = 0; k < DAT_100bcbe8; k++)
+            *(int32_t *)(DAT_10af1208 + i * 0x2B68 + 0xFB4 + k * 4) =
+                DAT_105ccaf8[i * 12 + k];
+        *(int32_t *)(DAT_10af1208 + i * 0x2B68 + 0xFA8) = DAT_105bc758[i];
+        *(int32_t *)(DAT_10af1208 + i * 0x2B68 + 0xFE8) = DAT_105bc8f0[i];
+        *(int32_t *)(DAT_10af1208 + i * 0x2B68 + 0xFEC) = DAT_105bc8d0[i];
+        *(int32_t *)(DAT_10af1208 + i * 0x2B68 + 0xFF8) = DAT_105bc770[i];
+    }
+}
+#else
 void BrCarStateRestore(void)
 {
     int i;
@@ -1290,6 +1340,7 @@ void BrCarStateRestore(void)
         /* pSave9C0 (0x106909C0) is written by the save and never read. */
     }
 }
+#endif
 
 /* ================================================================== */
 /* 5. small global glue                                               */
