@@ -7,8 +7,19 @@
 #ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
+/* The original takes no argument: it calls the three Win32 imports itself.
+ * The header's prototype is the port's (a BrStrResOps table). */
+#define BrStrResLoad BrStrResLoad_port
 #endif
 #include "br_strres.h"
+#ifdef BR_MATCHING_BUILD
+#undef BrStrResLoad
+__declspec(dllimport) void *__stdcall LoadLibraryA(const char *pszName);
+__declspec(dllimport) int __stdcall LoadStringA(void *hModule, unsigned id,
+                                                char *pBuf, int cchMax);
+__declspec(dllimport) int __stdcall FreeLibrary(void *hModule);
+#include <string.h>
+#endif
 
 #include "slice4_52.h"   /* g_apBrStrTable, BR_STR_TABLE_COUNT -- the table
                           * this module fills.  It is NOT redefined here. */
@@ -51,9 +62,45 @@ static int32_t br_strres_measure(const char *pszPath)
  * prompt -- out of the resource module into one block of memory, and builds
  * the table that maps a string number to its text. It clears the table
  * first, and then does nothing at all if the text has already been loaded. */
-/* @t4-pass 0x1006D1A0 1 2026-09-07 probes 76 bytes 231 insns 74 regions 3 rows 31 census yes  (tools/crank.py) */
-/* @t4-pass 0x1006D1A0 2 2026-09-07 probes 75 bytes 231 insns 74 regions 3 rows 31 census yes  (tools/crank.py) */
 /* @implements 0x1006D1A0 glide BrStrResLoad */
+#ifdef BR_MATCHING_BUILD
+/* Hand-transcribed from the asm.  The clear is a 0x12E-dword memset from
+ * &table[1] (`rep stosd`); the size comes from the CHK_ file helpers; the
+ * walk is a plain index loop that VC5 strength-reduces to the table pointer
+ * compared against &table[0x12F] (== &g_pBrStrResBlob). */
+void BrStrResLoad(void)
+{
+    FILE **pFile;
+    void  *hModule;
+    int    id;
+
+    memset(&g_apBrStrTable[1], 0, 0x12E * sizeof g_apBrStrTable[0]);
+    if (g_pBrStrResBlob != NULL)
+        return;
+
+    pFile = BrChkFReadOpen(BR_STRRES_PATH);
+    g_brStrResSize = BrChkFileSize(pFile);
+    BrChkFClose(pFile);
+
+    hModule = LoadLibraryA(BR_STRRES_PATH);
+    if (hModule == NULL)
+        return;
+
+    /* Plain malloc: no diagnostic and no exit on failure. */
+    g_pBrStrResBlob = (char *)malloc(g_brStrResSize);
+    if (g_pBrStrResBlob != NULL) {
+        for (id = 1; id < 0x12F; id++) {
+            int n = LoadStringA(hModule, id, g_pBrStrResBlob + g_brStrResUsed,
+                                g_brStrResSize - g_brStrResUsed);
+            if (n != 0) {
+                g_apBrStrTable[id] = g_pBrStrResBlob + g_brStrResUsed;
+                g_brStrResUsed = g_brStrResUsed + n + 1;
+            }
+        }
+    }
+    FreeLibrary(hModule);
+}
+#else
 void BrStrResLoad(const BrStrResOps *pOps)
 {
     void   *hModule;
@@ -140,6 +187,7 @@ void BrStrResLoad(const BrStrResOps *pOps)
 
     pOps->pfnFreeModule(hModule);                /* 0x1006D266 */
 }
+#endif
 
 /* ==========================================================================
  * 0x1006D2A0 -- release it
