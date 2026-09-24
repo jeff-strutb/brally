@@ -140,7 +140,8 @@ static int BrCfgReadProfile(FILE *pFile, BrCtrlProfile *pOut)
  * settings already in memory. It checks the file's magic word and version
  * first, and works through a temporary copy so a partly-read file cannot
  * leave the live settings half-updated. */
-/* @implements 0x10063060 glide BrCtrlCfgReadFile */
+/* port-only body; the Glide match is the C++ method in
+ * src/core/settings/BrCtrlCfgReadFile_10063060.cpp */
 int32_t BrCtrlCfgReadFile(BrCtrlCfg *pThis, const char *pszPath)
 {
     /* The stack temporary at B+0x18.  `BrCtrlCfg`, not 0x874 bytes: the
