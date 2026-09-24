@@ -1,0 +1,24 @@
+# Quick race with BossRally.ini D3DDrawCarShadow=0: the software-clipped
+# car shadow path (polygon clipping against the screen edges).
+files ini_swshadow
+sleep 240
+mark main_menu
+mouse 250 190
+click
+sleep 40
+mark race_setup
+mouse 252 233
+click
+sleep 40
+mark car_setup
+mouse 252 233
+click
+sleep 300
+mark grid
+press SPACE
+sleep 150
+mark lights
+hold UP
+sleep 900
+mark driving
+end
