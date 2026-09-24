@@ -255,6 +255,45 @@ static uint8_t br_cr_ftol_byte(float x)
 }
 
 /* ------------------------------------------------------------------ *
+ * 0x10065950 -- signed distance of a point from a contact plane.
+ *
+ * Fourteen call sites, all in the OBB walk (0x10066D70, 0x10068070,
+ * 0x100682C0), and every one of them pushes the plane record, the plane's
+ * own +0x0C field as the constant, and the address of a point:
+ * `push esi / push [esi+0xc] / push &pt / call`.  So the first argument is
+ * the plane normal at +0x00..+0x08 of that record and the second is its
+ * plane constant, passed by value because the caller already has it loaded.
+ *
+ * THE TERM ORDER IS y, z, x -- read off the two faddps, not guessed.  The
+ * x87 stack at the first `faddp st(1)` is [py*ny (ST1), pz*nz (ST0)], and
+ * `faddp st(1)` is ST(1) += ST(0), so that sum is (y + z); the second sees
+ * [that (ST1), nx*px (ST0)] and makes ((y + z) + x).  The plane constant is
+ * last, as a plain `fadd dword ptr [esp+8]`.  Float addition is not
+ * associative, so this is the source order and not a scheduling artefact --
+ * writing the conventional x, y, z sum pairs the wrong two products.
+ *
+ * ‼ NO PROTOTYPE.  This function is byte-exact ONLY when its definition is
+ * not preceded by a declaration of itself: putting the obvious prototype in
+ * br_collrespsolve.h adds one `fxch st(1)` and takes it 41 -> 43 bytes.
+ * Isolated and re-measured both ways (the bare prototype alone does it, with
+ * or without the comment above it).  A prototype in some OTHER translation
+ * unit is harmless -- it is a prior declaration in the DEFINING TU that moves
+ * the schedule.  Do not "tidy" this into the header.
+ *
+ * FILE POSITION: byte-exact only when defined before the impulse solver
+ * (position sweep 2026-09-24); after BrCrImpulseSolve the x87 schedule
+ * gains an fxch.  The spelling is not the lever -- the TU state is.
+ * ------------------------------------------------------------------ */
+/* WHAT IT DOES: says which side of a plane a point is on, and how far --
+ * positive in front of the plane, negative behind it. */
+/* @implements 0x10065950 glide BrCrPlaneDist */
+/* @n64 0x8025B704 located */
+float BrCrPlaneDist(const BrVec3 *pN, float planeD, const BrVec3 *pPoint)
+{
+    return pPoint->y * pN->y + pPoint->z * pN->z + pPoint->x * pN->x + planeD;
+}
+
+/* ------------------------------------------------------------------ *
  * 0x10065C80 -- the impulse solver.
  *
  * WHAT IT DOES: resolves ONE contact into a collision impulse and applies it to
@@ -586,40 +625,6 @@ int BrCrImpulseSolve(float mass, const BrMat3 *pInvInertia, const BrMat4 *pOrien
 }
 #endif /* BR_MATCHING_BUILD */
 
-/* ------------------------------------------------------------------ *
- * 0x10065950 -- signed distance of a point from a contact plane.
- *
- * Fourteen call sites, all in the OBB walk (0x10066D70, 0x10068070,
- * 0x100682C0), and every one of them pushes the plane record, the plane's
- * own +0x0C field as the constant, and the address of a point:
- * `push esi / push [esi+0xc] / push &pt / call`.  So the first argument is
- * the plane normal at +0x00..+0x08 of that record and the second is its
- * plane constant, passed by value because the caller already has it loaded.
- *
- * THE TERM ORDER IS y, z, x -- read off the two faddps, not guessed.  The
- * x87 stack at the first `faddp st(1)` is [py*ny (ST1), pz*nz (ST0)], and
- * `faddp st(1)` is ST(1) += ST(0), so that sum is (y + z); the second sees
- * [that (ST1), nx*px (ST0)] and makes ((y + z) + x).  The plane constant is
- * last, as a plain `fadd dword ptr [esp+8]`.  Float addition is not
- * associative, so this is the source order and not a scheduling artefact --
- * writing the conventional x, y, z sum pairs the wrong two products.
- *
- * ‼ NO PROTOTYPE.  This function is byte-exact ONLY when its definition is
- * not preceded by a declaration of itself: putting the obvious prototype in
- * br_collrespsolve.h adds one `fxch st(1)` and takes it 41 -> 43 bytes.
- * Isolated and re-measured both ways (the bare prototype alone does it, with
- * or without the comment above it).  A prototype in some OTHER translation
- * unit is harmless -- it is a prior declaration in the DEFINING TU that moves
- * the schedule.  Do not "tidy" this into the header.
- * ------------------------------------------------------------------ */
-/* WHAT IT DOES: says which side of a plane a point is on, and how far --
- * positive in front of the plane, negative behind it. */
-/* @implements 0x10065950 glide BrCrPlaneDist */
-/* @n64 0x8025B704 located */
-float BrCrPlaneDist(const BrVec3 *pN, float planeD, const BrVec3 *pPoint)
-{
-    return pPoint->y * pN->y + pPoint->z * pN->z + pPoint->x * pN->x + planeD;
-}
 
 /* ------------------------------------------------------------------ *
  * 0x10065980 -- the contact "kick" (see the header).
