@@ -585,6 +585,7 @@ glide_va,name,module,basis,file
 0x10037870,BrPairBufReset,drawing,description,src/core/drawing/br_pairbuf.c
 0x100378C0,FUN_100378c0,drawing,neighbour-1,src/core/generated/0x100378C0.c
 0x10037920,BrOptSave,menus,description,src/core/menus/br_optsave.c
+0x100379B0,BrSub1003E3A0,,description,src/core/slice6_72.c
 0x10037B20,BrSub1003E510,menus,neighbour-1,src/core/menus/br_optrefresh.c
 0x10037DC0,BrUiHook85_1003E7A0,menus,neighbour,src/core/menus/BrUiHook85_1003E7A0_10037DC0.cpp
 0x10037E60,BrItemSetLabelState_10037E60,menus,neighbour,src/core/menus/BrItemSetLabelState_10037E60.cpp
