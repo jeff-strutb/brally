@@ -136,7 +136,8 @@ see a path those captures never took, or a fault that exists only in the
 placed image (a constant, a relocation row). The whole-image run can:
 
 ```bash
-.venv/bin/python tools/brbox_diff.py S.txt                 # every frame: Glide calls + whole data area
+.venv/bin/python tools/brbox_diff.py --all                 # THE GATE: every script -> config/whole_image.csv, exit 0 only if all IDENTICAL
+.venv/bin/python tools/brbox_diff.py S.txt                 # every frame: Glide calls + whole data area + network sends
 .venv/bin/python tools/brbox_diff.py S.txt --t3calls F     # first T3 call in frame F whose writes differ
 .venv/bin/python tools/brbox_diff.py S.txt --localize --frame F   # differing data + its writers
 BRDIFF_CALLS=F .venv/bin/python tools/brbox_diff.py S.txt  # first differing Glide call in frame F
