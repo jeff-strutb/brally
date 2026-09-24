@@ -19,6 +19,7 @@
 
 #include <stddef.h>
 #include <stdio.h>
+#include <string.h>
 
 /* ------------------------------------------------------------------ *
  * Storage.
@@ -806,52 +807,54 @@ extern BrDIPollRec *DAT_10ac61e0;
  * high bit is down, lets 0x10059060 turn those into new-press flags, and
  * returns the index of the first button that flagged.  -1 when none did,
  * and also when there is no device at all. */
-/* @t4-pass 0x100705F0 1 2026-09-07 probes 84 bytes 187 insns 57 regions 2 rows 18 census yes  (tools/crank.py) */
-/* @t4-pass 0x100705F0 2 2026-09-07 probes 80 bytes 187 insns 57 regions 2 rows 18 census yes  (tools/crank.py) */
-/* @t4-pass 0x100705F0 3 2026-09-13 probes 74 bytes 183 insns 56 regions 1 rows 19 census yes  (tools/crank.py) */
 /* @implements 0x100705F0 glide BrInputPollPressed */
 int BrInputPollPressed(void)
 {
-    unsigned char abState[16];
+    /* Hand-transcribed from the asm.  The state block is a DIMOUSESTATE:
+     * the buttons are a byte array at +12, which VC5 reads as one dword and
+     * tests through al/ah.  The four-word clear is a memset (its zero stays
+     * local; four `= 0` stores make VC5 keep 0 in esi for the whole body),
+     * and the first-press scan walks an address compared SIGNED (`jl`). */
+    struct {
+        long          lX, lY, lZ;
+        unsigned char rgbButtons[4];      /* +0x0C */
+    } st;
     BrDIPollDev *pDev;
     int hr;
     int i;
+    int *p;
 
-    if (DAT_10ac61e0 == 0)
+    if (DAT_10ac61e0 == 0 || DAT_10ac61e0->pDev == 0)
         return -1;
-    if (DAT_10ac61e0->pDev == 0)
-        return -1;
 
-    ((int *)&DAT_10ac6720)[0] = 0;
-    ((int *)&DAT_10ac6720)[1] = 0;
-    ((int *)&DAT_10ac6720)[2] = 0;
-    ((int *)&DAT_10ac6720)[3] = 0;
+    memset(&DAT_10ac6720, 0, 16);
 
-    /* Re-read the device: the four stores above may alias it as far as the
-     * compiler knows, so this is a second load, not the tested one. */
+    /* Re-read the device: the clear may alias it as far as the compiler
+     * knows, so this is a second load, not the tested one. */
     pDev = DAT_10ac61e0->pDev;
-    hr = pDev->lpVtbl->GetDeviceState(pDev, 0x10, abState);
-    if (hr != 0) {
-        /* 0x8007001E only -- any other failure is left alone. */
-        if (hr == 0x8007001E) {
-            pDev = DAT_10ac61e0->pDev;
-            pDev->lpVtbl->Acquire(pDev);
-        }
+    hr = pDev->lpVtbl->GetDeviceState(pDev, 0x10, &st);
+    /* 0x8007001E only -- any other failure is left alone. */
+    if (hr != 0 && hr == 0x8007001E) {
+        pDev = DAT_10ac61e0->pDev;
+        pDev->lpVtbl->Acquire(pDev);
     }
 
-    if ((abState[12] & 0x80) != 0)
+    if (st.rgbButtons[0] & 0x80)
         ((int *)&DAT_10ac6720)[0] = 1;
-    if ((abState[13] & 0x80) != 0)
+    if (st.rgbButtons[1] & 0x80)
         ((int *)&DAT_10ac6720)[1] = 1;
-    if ((abState[14] & 0x80) != 0)
+    if (st.rgbButtons[2] & 0x80)
         ((int *)&DAT_10ac6720)[2] = 1;
-    if ((abState[15] & 0x80) != 0)
+    if (st.rgbButtons[3] & 0x80)
         ((int *)&DAT_10ac6720)[3] = 1;
 
     BrInputLatchUpdate();
 
-    for (i = 0; i < 4; i++) {
-        if (((int *)&DAT_10ac6730)[i] != 0)
+    i = 0;
+    for (p = (int *)&DAT_10ac6730;
+         (ptrdiff_t)p < (ptrdiff_t)((int *)&DAT_10ac6730 + 4);
+         p++, i++) {
+        if (*p != 0)
             return i;
     }
     return -1;
