@@ -256,23 +256,22 @@ float FUN_10034760(BrCamV3 *pA, BrCamV3 *pB);                           /* dista
 void  FUN_10034390(BrCamV3 *pV, float s);                               /* v *= s          */
 void  FUN_100345c0(BrCamV3 *pDst, BrCamV3 *pA, BrCamV3 *pB);            /* a + b           */
 
-/* T2 2026-09-24 (hand transcription from the asm; the D3D twin 0x100011F0 is
- * the byte-identical body): 977/977 B, 309/309 insns, register-blind 0+0.
- * Source facts that moved bytes: the cell lookups read x through the anchor /
- * camera-position pointer and y straight off the record (`car + 0x28E4`,
- * `cam + 0x34`); `nCells = (a != b) + 1`; the cell list is `int[3]` (the
- * original's frame has a spare dword above it); the two sweep passes are
- * written out, not shared.
- * Residue: ONLY the stack-slot order of three 12-byte locals -- the original
- * has cells at +0x28, dir at +0x40, the saved hit at +0x4C; ours puts dir at
- * +0x28, the saved hit at +0x40, cells at +0x4C (hit +0x34 and toV0 +0x58
- * agree).  Dead: declaration order, 30 renames, cells as int[2]+spare /
- * short / struct, block-scoped temps (inner and outer loop), field-wise vs
- * struct copy of the hit, a pointer walk of the cell list, split scalars per
- * pass, one struct holding all five (unscalarised: 199 lines).
- * @t4-pass 0x10001510 1 2026-09-24 probes 15 bytes 977 insns 309 regions 1 rows 0 census no  (first transcription: if order, anchor/camera y read off the record, int[3] cell list)
- * @t4-pass 0x10001510 2 2026-09-24 probes 37 bytes 977 insns 309 regions 1 rows 0 census yes  (slot-order mechanism: declaration permutations, 30-name rename sweep, cell-list types, one-struct layout; nothing moved)
- * @t4-pass 0x10001510 3 2026-09-24 probes 14 bytes 977 insns 309 regions 1 rows 0 census no  (block scope of temps, field-wise copy, pointer-walked cells, per-pass scalars; nothing moved) */
+/* Byte-exact 2026-09-24, hand-transcribed from the asm (the D3D twin
+ * 0x100011F0 is the byte-identical body).  Source facts, all measured:
+ *  - the cell lookups read x through the anchor / camera-position pointer and
+ *    y straight off the record (`car + 0x28E4`, `cam + 0x34`);
+ *    `nCells = (a != b) + 1`; the two sweep passes are written out;
+ *  - the final re-projection vector is its OWN block-scoped local: VC5 gives
+ *    block-scoped locals slots after the function-scope ones and lets them
+ *    share, which is what puts the cell list at +0x28 with the vector over it
+ *    and dir/hitOut at +0x40/+0x4C.  Reusing `dir` there, or any declaration
+ *    order / rename / cell-list type, left the three 12-byte slots permuted;
+ *  - the float constants are the ORIGINAL's pooled ones (_DAT_10077000 =
+ *    0.0f, _DAT_10077004 = -0.1f), never literals: the ray's slack is
+ *    `len - (-0.1f)`, 0.1 LONG.  A `0.1f` literal compiled to the same bytes
+ *    (the sweep masks relocation targets) but made the ray 0.1 short, and
+ *    the live oracle caught it (21_quickrace_finish frame 4486).
+ * Every relocation target checked against the original. */
 /* WHAT IT DOES: keeps the chase camera out of walls.  It casts a ray from
  * the car's camera anchor to the camera against every collision triangle in
  * the grid cells of both ends (one cell if they share it), allowing the ray
@@ -287,8 +286,11 @@ void __fastcall FUN_10001510(char *car, int _edx_unused, char *cam, BrCamV3 *pre
     BrCamV3    *pAnchor = (BrCamV3 *)(car + 0x28e0);
     BrCamV3    *pPos;
     BrCamPlane *pPlane, *pEnd, *pBest;
-    BrCamV3     dir, toV0, hit, hitOut;
-    int         cells[3];
+    BrCamV3     hitOut;
+    int         cells[2];
+    BrCamV3     dir;
+    BrCamV3     hit;
+    BrCamV3     toV0;
     int         nCells, c;
     float       len, tBest, denom, t, dist;
 
@@ -301,8 +303,8 @@ void __fastcall FUN_10001510(char *car, int _edx_unused, char *cam, BrCamV3 *pre
     FUN_10034560(&dir, pPos, pAnchor);
     pBest = 0;
     len = FUN_100347f0(&dir);
-    if (len != 0.0f)
-        tBest = (len - 0.1f) / len;
+    if (len != _DAT_10077000)
+        tBest = (len - _DAT_10077004) / len;
     else
         tBest = 1.0f;
 
@@ -310,11 +312,12 @@ void __fastcall FUN_10001510(char *car, int _edx_unused, char *cam, BrCamV3 *pre
         pPlane = DAT_11773698[cells[c]];
         pEnd = pPlane + DAT_11778800[cells[c]];
         for (; pPlane != pEnd; pPlane++) {
+
             denom = FUN_10034310(&dir, pPlane);
-            if (denom < 0.0f) {
+            if (denom < _DAT_10077000) {
                 FUN_10034560(&toV0, pPlane->pV0, pAnchor);
                 t = FUN_10034310(&toV0, pPlane) / denom;
-                if (t > 0.0f && t < tBest) {
+                if (t > _DAT_10077000 && t < tBest) {
                     FUN_10034660(&hit, pAnchor, &dir, t);
                     if (FUN_10034fc0(&hit, pPlane->pV0, pPlane->pV1, pPlane->pV2, pPlane)) {
                         tBest = t;
@@ -335,11 +338,12 @@ void __fastcall FUN_10001510(char *car, int _edx_unused, char *cam, BrCamV3 *pre
         pPlane = DAT_11773698[cells[c]];
         pEnd = pPlane + DAT_11778800[cells[c]];
         for (; pPlane != pEnd; pPlane++) {
+
             denom = FUN_10034310(&dir, pPlane);
-            if (denom < 0.0f) {
+            if (denom < _DAT_10077000) {
                 FUN_10034560(&toV0, pPlane->pV0, prev);
                 t = FUN_10034310(&toV0, pPlane) / denom;
-                if (t > 0.0f && t < tBest) {
+                if (t > _DAT_10077000 && t < tBest) {
                     FUN_10034660(&hit, prev, &dir, t);
                     if (FUN_10034fc0(&hit, pPlane->pV0, pPlane->pV1, pPlane->pV2, pPlane)) {
                         tBest = t;
@@ -355,11 +359,14 @@ void __fastcall FUN_10001510(char *car, int _edx_unused, char *cam, BrCamV3 *pre
 
     dist = FUN_10034760(pPos, pAnchor);
     FUN_10034660(pPos, &hitOut, pBest, 0.3f);
-    FUN_10034560(&dir, pPos, pAnchor);
-    len = FUN_100347f0(&dir);
-    if (dist < len && len != 0.0f) {
-        FUN_10034390(&dir, dist / len);
-        FUN_100345c0(pPos, pAnchor, &dir);
+    {
+        BrCamV3 v;
+        FUN_10034560(&v, pPos, pAnchor);
+        len = FUN_100347f0(&v);
+        if (dist < len && len != _DAT_10077000) {
+            FUN_10034390(&v, dist / len);
+            FUN_100345c0(pPos, pAnchor, &v);
+        }
     }
     DAT_100bcdcc = 1;
 }
