@@ -1041,6 +1041,7 @@ glide_va,name,module,basis,file
 0x10062CA0,BrFn10069C30,controls,description,src/core/controls/br_ctrlquery.c
 0x10062D00,BrCtrlCfgInit,controls,neighbour,src/core/slice3_42.c
 0x10062E50,BrRec874Copy_10062E50,controls,manual,src/core/controls/BrRec874Copy_10062E50.cpp
+0x10063060,BrCtrlCfgReadFile,settings,filed,src/core/settings/BrCtrlCfgReadFile_10063060.cpp
 0x100634B0,BrGlCfgSave,settings,manual,src/core/settings/br_cfgfile.c
 0x10063860,BrBaseDirInit,settings,filed,src/core/settings/br_basedir.c
 0x10063940,BrRenderStateSet,startup,filed,src/core/startup/br_objlife.c
