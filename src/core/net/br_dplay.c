@@ -20,10 +20,13 @@
 #ifdef BR_MATCHING_BUILD
 /* Header prototype is cdecl; the original is __stdcall. */
 #define BrDPlayThreadProc  BrDPlayThreadProc_cdecl_hdr
+/* The original's context is its SECOND argument (it reads [esp+0x10]). */
+#define BrDPlayStartup     BrDPlayStartup_hdr
 #endif
 #include "slice2_13.h"
 #ifdef BR_MATCHING_BUILD
 #undef BrDPlayThreadProc
+#undef BrDPlayStartup
 uint32_t __stdcall BrDPlayThreadProc(void *pvCtx);
 #endif
 #include "slice1_03.h"   /* BrAppMsg, BrAppMsgDispatch (= 0x1000BEA0) */
@@ -605,32 +608,34 @@ int32_t BrDPlayShutdown(BrDPlayCtx *pCtx)
  * creates the signals the receiving side waits on, and starts the background
  * thread that will collect incoming traffic. If any step fails it undoes the
  * lot and reports that it ran out of memory. */
-/* @t4-pass 0x10009B00 1 2026-09-07 probes 46 bytes 140 insns 56 regions 4 rows 28 census yes  (tools/crank.py) */
-/* @t4-pass 0x10009B00 2 2026-09-07 probes 46 bytes 140 insns 56 regions 4 rows 28 census yes  (tools/crank.py) */
 /* @implements 0x10009B00 glide BrDPlayStartup */
-int32_t BrDPlayStartup(BrDPlayCtx *pCtx)
+int32_t BrDPlayStartup(void *pUnused, BrDPlayCtx *pCtx)
 {
+    /* Hand-transcribed from the asm.  The context is cleared with memset
+     * (`xor eax,eax; mov ecx,esi; mov [ecx],eax ...`, the zero then reused
+     * for CreateEventA's pushes), and every failure jumps FORWARD to one
+     * shared cleanup placed after the success return -- the goto chain is
+     * what lays the blocks out fail-first; the nested/&& forms put the
+     * success exit first. */
     if (g_BrDPlay.fCritInit == 0) {
         InitializeCriticalSection(g_BrDPlayCrit);
         g_BrDPlay.fCritInit = 1;
     }
+    memset(pCtx, 0, sizeof *pCtx);
 
-    pCtx->pDP        = 0;
-    pCtx->hRecvEvent = 0;
-    pCtx->idPlayer   = 0;
-    pCtx->f0C        = 0;
-    pCtx->f10        = 0;
     pCtx->hRecvEvent = CreateEventA(0, 0, 0, 0);
-    if (pCtx->hRecvEvent != NULL) {
-        g_BrDPlay.hQuit = CreateEventA(0, 0, 0, 0);
-        if (g_BrDPlay.hQuit != NULL) {
-            g_BrDPlay.hThread = CreateThread(0, 0, BrDPlayThreadProc, pCtx,
-                                             0, &g_BrDPlay.idThread);
-            if (g_BrDPlay.hThread != NULL)
-                return 0;
-        }
-    }
+    if (pCtx->hRecvEvent == NULL)
+        goto fail;
+    g_BrDPlay.hQuit = CreateEventA(0, 0, 0, 0);
+    if (g_BrDPlay.hQuit == NULL)
+        goto fail;
+    g_BrDPlay.hThread = CreateThread(0, 0, BrDPlayThreadProc, pCtx, 0,
+                                     &g_BrDPlay.idThread);
+    if (g_BrDPlay.hThread == NULL)
+        goto fail;
+    return 0;
 
+fail:
     BrDPlayShutdown(pCtx);
     return BR_DP_E_OUTOFMEMORY;
 }
