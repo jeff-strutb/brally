@@ -495,79 +495,47 @@ int BrPtrListContains(const BrPtrList *pList, const void *pv)
 #ifdef BR_MATCHING_BUILD
 /* BrPtrListAdd and the four fixups are the file's own definitions above /
  * the header's; BrSegPtrFixup is the 1-arg segment repair BrF3DVtxFixup also
- * calls. The two words are read byte-by-byte big-endian so the swap is the
- * same on any host, then stored back before dispatch.
+ * calls. The two words are read byte-by-byte big-endian, stored back, and
+ * dispatched on the command byte through the original's jump table (fn.py
+ * reports the object's appended index+jump tables as extra bytes; the
+ * original's live outside its 182 code bytes).
  *
- * RESIDUE (T2): the body is COMPLETE and CORRECT -- register-blind msetdiff
- * MISSING is 0; both words are byte-swapped and stored, the command byte is
- * extracted with `sar eax,0x18 / and eax,0xff` (so `a` is a signed int and
- * cmd = (a>>24)&0xff), and dispatch is the original's own jump table (`add
- * eax,-4 / cmp eax,0xf9 / ja default / movzx via the 0xFA-entry index table
- * at 0x10019110 / jmp [table@0x100190f8]`), all five cases (0x04/0xb1/0xb8/
- * 0xbf/0xfd) plus default, advance esi+=8, 0xb8 returns.  (fn.py/probe.py
- * report +300 B only because the object appends the index+jump tables, which
- * the disassembler reads as data instructions; the ORIGINAL's tables live
- * outside its 182 code bytes.)
- *
- * The two and only divergence regions share ONE root cause and it is an MSVC
- * loop-optimisation choice, not a source defect: MSVC hoists `lea edi,[esi+4]`
- * (the w1 pointer) into the loop PREHEADER and strength-reduces it into a
- * SECOND induction variable, emitting `add edi,8` in every case arm; the
- * original keeps a single IV (esi) and RECOMPUTES `lea edi,[esi+4]` inside the
- * loop each iteration (its back-edge is `jmp 0x17`, ours `jmp 0x1a`, skipping
- * the hoisted lea).  This also perturbs the byte-load schedule in the swap
- * (region 1: our lea is first, orig does the xors first).  PROBED AND DEAD,
- * all zero-movement (2 regions, 53-byte lost-sync gap unchanged): w1 store via
- * `pCmd->w1` vs `*(uint32_t*)(p+4)`; w0 store via `pCmd->w0` vs `*(uint32_t*)p`;
- * a fresh in-loop `q = p + 4` local routing the w1 byte reads, store and the
- * 0xfd fixup arg (to mirror the original's in-loop edi temp).  The IVSR/LICM
- * decision is not reachable from the C here. */
+ * The loop is a `goto`: VC5 strength-reduces a for/while loop's `p + 4`
+ * (the w1 pointer) into a second induction variable (`add edi,8` in every
+ * arm), where a goto loop recomputes `lea edi,[esi+4]` each pass as the
+ * original does.  RESIDUE 2 insns: the first byte pack loads b1 before b0
+ * (`mov al` / `mov ah` swapped); every spelling of that pack probed
+ * (pairwise, nested, compound, u16-value swap, struct view, declaration and
+ * store order) gives the same order. */
 void BrF3DListFixup(BrGfxWords *pCmd)
 {
     unsigned char *p;
     uint32_t a, b;
-    unsigned short cmd;
 
     if (pCmd == NULL)
         return;
 
     BrPtrListAdd(pCmd);
-    for (;;) {
-        p = (unsigned char *)pCmd;
-        a = p[0];
-        a = (a << 8) | p[1];
-        a = (a << 8) | p[2];
-        a = (a << 8) | p[3];
-        pCmd->w0 = a;
-        b = p[4];
-        b = (b << 8) | p[5];
-        b = (b << 8) | p[6];
-        b = (b << 8) | p[7];
-        pCmd->w1 = b;
-        cmd = (unsigned short)(((uint32_t)((int32_t)a >> 24)) & 0xffu);
-        switch (cmd) {
-        case 0x04:
-            BrF3DVtxFixup(pCmd);
-            pCmd += 1;
-            break;
-        case 0xb1:
-            BrF3DTri2Fixup(pCmd);
-            pCmd += 1;
-            break;
-        case 0xb8:
-            return;
-        case 0xbf:
-            BrF3DTri1Fixup(pCmd);
-            pCmd += 1;
-            break;
-        case 0xfd:
-            BrSegPtrFixup(&pCmd->w1);
-            pCmd += 1;
-            break;
-        default:
-            pCmd += 1;
-            break;
-        }
+next:
+    p = (unsigned char *)pCmd;
+    a = p[0];
+    a = (a << 8) | p[1];
+    a = (a << 8) | p[2];
+    a = (a << 8) | p[3];
+    pCmd->w0 = a;
+    b = p[4];
+    b = (b << 8) | p[5];
+    b = (b << 8) | p[6];
+    b = (b << 8) | p[7];
+    pCmd->w1 = b;
+    switch ((unsigned short)(((uint32_t)((int32_t)a >> 24)) & 0xffu)) {
+    case 0x04: BrF3DVtxFixup(pCmd); break;
+    case 0xb1: BrF3DTri2Fixup(pCmd); break;
+    case 0xb8: return;
+    case 0xbf: BrF3DTri1Fixup(pCmd); break;
+    case 0xfd: BrSegPtrFixup(&pCmd->w1); break;
     }
+    pCmd += 1;
+    goto next;
 }
 #endif
