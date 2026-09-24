@@ -516,6 +516,13 @@ def main():
             first = (f1, 'drawn' if g1 != g2 else '', 'state' if s1 != s2 else '')
             break
     if first is None:
+        if not fo:
+            # Both sides producing nothing is NOT agreement: the original did
+            # not play (missing game data in a fresh worktree, a bad image
+            # path, ...), so there was nothing to compare.  A 0-frame run was
+            # once recorded IDENTICAL for all 25 scripts.
+            print('NO RUN: the original produced no frames (%s) -- nothing was compared' % (eo,))
+            return 1
         if len(fo) == len(ft) and eo == et:
             print('IDENTICAL: every frame drew and kept the same')
             return 0
