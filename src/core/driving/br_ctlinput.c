@@ -118,6 +118,7 @@ void BR_THISCALL1 BrCtlInputApply(unsigned char *pCar)
   int *piVar8;
   unsigned *puVar5;
   int bVar7;
+  double dX, dAcc, dM;   /* x87 registers the original never spills */
 
   fVar1 = *(float *)(*(unsigned char **)(pCar + 0x29c0) + 0x20);
   if (((DAT_10b71534[0] & 0x8000) == 0) && ((DAT_10b71534[3] & 0x8000) == 0)) {
@@ -453,14 +454,16 @@ LAB_1005b92f:
         iVar9 = iVar9 + -1;
       } while (iVar9 != 0);
     }
-    local[5] = local[5] - *(float *)(pCar + 0xff4);
-    if (local[5] < DAT_10077780) {
-      local[5] = -local[5];
+    /* from here to the store at [+0xE68] the original works in x87
+     * registers (0x1005B99C..0x1005BA72): nothing is rounded to float until
+     * that store */
+    dX = (double)local[5] - *(float *)(pCar + 0xff4);
+    if (dX < DAT_10077780) {
+      dX = -dX;
     }
-    local[5] = local[5] * DAT_10077858 - DAT_1007785c;
-    if (local[5] < DAT_10077780) goto LAB_1005b9e9;
-    local[4] = local[5];
-    if (local[5] <= DAT_10077860) goto LAB_1005b9e9;
+    dX = dX * DAT_10077858 - DAT_1007785c;
+    if (dX < DAT_10077780) goto LAB_1005b9e9;
+    if (dX <= DAT_10077860) goto LAB_have_x;
   }
   else if (((DAT_100a9360 != 6) || (*(int *)(pCar + 0xff8) == 0)) ||
           (local[4] = DAT_10077864, *(int *)(pCar + 0xff8) == 1)) {
@@ -468,21 +471,25 @@ LAB_1005b92f:
   }
   local[4] = DAT_10077860;
 LAB_1005b9e9:
-  local[4] = ((*(float *)(pCar + 0xe44) * *(float *)(pCar + 0xe24) + *(float *)(pCar + 0xe48))
-           * *(float *)(pCar + 0xe24) + *(float *)(pCar + 0xe4c)) *
-          *(float *)(pCar + 0xe24) + *(float *)(pCar + 0xe50) + local[4];
+  dX = local[4];
+LAB_have_x:
+  dAcc = (((double)*(float *)(pCar + 0xe44) * *(float *)(pCar + 0xe24) + *(float *)(pCar + 0xe48))
+          * *(float *)(pCar + 0xe24) + *(float *)(pCar + 0xe4c)) *
+         *(float *)(pCar + 0xe24) + *(float *)(pCar + 0xe50) + dX;
   if (*(int *)(pCar + 0xe60) == 0) {
-    local[4] = local[4] * DAT_10077868;
+    dAcc = dAcc * DAT_10077868;
   }
   puVar5 = *(unsigned **)(pCar + 0x29c0);
   if ((*puVar5 & 0x10000) == 0) {
-    local[4] = DAT_10077780;
+    dAcc = DAT_10077780;
   }
-  local[5] = DAT_1007786c;
+  dM = DAT_1007786c;
   if (((DAT_10b71534[6] & 0x8000) != 0) && (DAT_10077780 < ((float *)puVar5)[7])) {
-    local[5] = ((float *)puVar5)[7] * DAT_1007786c;
+    dM = (double)((float *)puVar5)[7] * DAT_1007786c;
   }
-  *(float *)(pCar + 0xe68) = local[5] * local[4];
+  local[4] = (float)dAcc;
+  local[5] = (float)dM;
+  *(float *)(pCar + 0xe68) = (float)(dM * dAcc);
   if ((*(unsigned char *)(*(unsigned char **)(pCar + 0xf00) + 0x68) & 1) == 0) {
     if (*(int *)(pCar + 0xe70) == 0) {
       *(int *)(pCar + 0xe70) = 1;
