@@ -1204,12 +1204,58 @@ def _tep(box, a):
     return 0
 
 
+MCI_OPEN, MCI_CLOSE, MCI_PLAY, MCI_STOP, MCI_PAUSE, MCI_SET, MCI_STATUS = \
+    0x803, 0x804, 0x806, 0x808, 0x809, 0x80D, 0x814
+MCI_MODE_STOP, MCI_MODE_PLAY = 525, 526
+CD_TRACKS = 9                      # a data track and eight audio tracks
+
+
 @std(W, 'mciSendCommandA', 16)
 def _mci(box, a):
-    # CD audio: every command reports MCIERR_HARDWARE (0x106), i.e. a drive
-    # that cannot play Redbook audio.  Music is output-only.
-    box.log('mciSendCommandA(dev=%d msg=%X flags=%X) -> MCIERR_HARDWARE' % (a[0], a[1], a[2]))
-    return 0x106
+    # (IDDevice, uMsg, fdwCommand, dwParam).  A CD-ROM drive with the game
+    # disc: track 1 data, the rest Redbook audio.  Play/stop change the mode
+    # the game polls; the music itself is output-only.
+    dev, msg, flags, parms = a[0], a[1], a[2], a[3]
+    st = box.hs.__dict__.setdefault('mci', {'open': False, 'mode': MCI_MODE_STOP, 'track': 0})
+    if msg == MCI_OPEN:
+        st['open'] = True
+        if parms:
+            box.wr32(parms + 4, 1)                  # wDeviceID
+        return 0
+    if not st['open']:
+        return 0x101                                # MCIERR_INVALID_DEVICE_ID
+    if msg == MCI_CLOSE:
+        st.update(open=False, mode=MCI_MODE_STOP)
+        return 0
+    if msg == MCI_PLAY:
+        st['mode'] = MCI_MODE_PLAY
+        if parms and flags & 0x4:                   # MCI_FROM
+            st['track'] = box.rd32(parms + 4) & 0xFF
+        return 0
+    if msg in (MCI_STOP, MCI_PAUSE):
+        st['mode'] = MCI_MODE_STOP
+        return 0
+    if msg == MCI_SET:
+        return 0
+    if msg == MCI_STATUS and parms:
+        # MCI_STATUS_PARMS {dwCallback, dwReturn, dwItem, dwTrack}
+        item, track = box.rd32(parms + 8), box.rd32(parms + 12)
+        val = {1: 3 * 60 * 1000,                   # MCI_STATUS_LENGTH
+               2: 0,                               # MCI_STATUS_POSITION
+               3: CD_TRACKS,                       # MCI_STATUS_NUMBER_OF_TRACKS
+               4: st['mode'],                      # MCI_STATUS_MODE
+               5: 1,                               # MCI_STATUS_MEDIA_PRESENT
+               6: 10,                              # MCI_STATUS_TIME_FORMAT (TMSF)
+               7: 1,                               # MCI_STATUS_READY
+               8: st['track'] or 1,                # MCI_STATUS_CURRENT_TRACK
+               0x4001: 1089 if track == 1 else 1088}.get(item)   # MCI_CDA_STATUS_TYPE_TRACK
+        if val is None:
+            return 0x112                            # MCIERR_UNSUPPORTED_FUNCTION
+        box.wr32(parms + 4, val)
+        return 0
+    box.log('mciSendCommandA(dev=%d msg=%X flags=%X) unmodelled -> MCIERR_UNSUPPORTED_FUNCTION'
+            % (dev, msg, flags))
+    return 0x112
 
 
 # mmio: WAV files are parsed for real (sounds are loaded and measured).
