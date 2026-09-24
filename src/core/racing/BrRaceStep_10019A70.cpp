@@ -1622,8 +1622,11 @@ Lb887:  /* 0x1001b887 */
                 t   = sub_1006E280();
             }
             if (esi == 0) goto Lc5f3;
+            /* 0x1001c637: the fresh time is both the stored and the cached
+             * frame stamp (mov ecx,eax); re-testing against the stale stamp
+             * never passes and draws forever */
             g_5CCBA0 = 0;
-            g_5CCBA4 = t;
+            g_5CCBA4 = ba4 = t;
             goto Lc5f9;
         }
 }
