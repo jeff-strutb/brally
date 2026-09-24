@@ -158,17 +158,43 @@ def lockstep_rows(va):
                     ins.operands[0].type == rp.X86_OP_IMM:
                 return ins.operands[0].imm & 0xFFFFFFFF
             return None
+        # an absolute operand of ours pairs only with an ABSOLUTE operand of
+        # the original: `mov [DAT_117aa0e0], 0` against `mov [ebx+0x558], 0`
+        # has no address to copy -- 0x558 is an offset from ebx
+        ours_abs = any(op.type == rp.X86_OP_MEM and op.mem.base == 0 and op.mem.index == 0
+                       for op in our_ins.operands)
         for op in ins.operands:
             if op.type == rp.X86_OP_IMM and ins.imm_size == 4:
-                vals.append((ins.imm_offset, op.imm & 0xFFFFFFFF))
+                vals.append(('imm', ins.imm_offset, op.imm & 0xFFFFFFFF))
             elif op.type == rp.X86_OP_MEM and ins.disp_size == 4:
-                vals.append((ins.disp_offset, op.mem.disp & 0xFFFFFFFF))
+                if ours_abs and (op.mem.base != 0 or op.mem.index != 0) and \
+                        our_ins.disp_offset == off_in_ins:
+                    continue
+                vals.append(('disp', ins.disp_offset, op.mem.disp & 0xFFFFFFFF))
         # match by the slot's position INSIDE the instruction, so an insn
         # with both a disp32 and an imm32 pairs each slot to its own field
-        for foff, fval in vals:
+        for _k, foff, fval in vals:
             if foff == off_in_ins:
                 return fval
-        return vals[0][1] if len(vals) == 1 else None
+        # otherwise only a field of the SAME kind: our `mov [DAT_x], 1`
+        # against the original's `mov [ebp+2c], 1` has no address to copy --
+        # the original's imm32 is the stored value, not DAT_x (FUN_1002f790
+        # was placed writing to [reg+1] off exactly that pairing)
+        kind = None
+        if our_ins.disp_size == 4 and our_ins.disp_offset == off_in_ins:
+            kind = 'disp'
+        elif our_ins.imm_size == 4 and our_ins.imm_offset == off_in_ins:
+            kind = 'imm'
+        same = [fval for k, _foff, fval in vals if k == kind]
+        if len(same) == 1:
+            return same[0]
+        # a different-kind field may still carry the same address (`mov eax,
+        # offset X` vs `lea eax, [X]`), but only if it IS an address
+        if len(vals) == 1:
+            v = vals[0][2]
+            if img.mapped(v) or img.is_bss(v):
+                return v
+        return None
 
     # Jump-table dispatch displacements and const slots that name this
     # function's own `$` labels are EXACT from the object symbol table
@@ -181,6 +207,9 @@ def lockstep_rows(va):
 
     rows_out, disagreements = [], []
     skipped = 0
+    if os.environ.get('LOCKSTEP_SITES'):
+        for off, sym, rt, addend, _key in sites:
+            print('# SITE %#x %s' % (off, sym))
     for off, sym, rt, addend, _key in sites:
         if off in jt_offsets:
             skipped += 1
@@ -198,11 +227,7 @@ def lockstep_rows(va):
         # placed image dereferenced null in Quick Race).  Never emit a row
         # for an address-bearing symbol; the machine resolution is addend-
         # aware and correct.
-        if address_in_name(sym) is not None:
-            skipped += 1
-            print('# ADDRESS-BEARING slot %#x %s (address_in_name is exact '
-                  'and addend-aware, no row)' % (off, sym))
-            continue
+        named = address_in_name(sym)
         our_ins = None
         for a in ours:
             if a.address <= off < a.address + a.size:
@@ -228,6 +253,34 @@ def lockstep_rows(va):
         else:
             slot = val & 0xFFFFFFFF
             implied = (val - addend) & 0xFFFFFFFF
+            # a DIR32 relocation always resolves to an address in the image;
+            # a counterpart that is not one (0x558, an offset from the
+            # original's base register) cannot be this slot's value
+            if not any(img.mapped(x) or img.is_bss(x) for x in (val, implied)):
+                skipped += 1
+                print('# NOT-AN-ADDRESS slot %#x %s (original field %#x)' % (off, sym, val))
+                continue
+        if named is not None:
+            # An address-bearing name coined from THIS binary (?g_<HEX>,
+            # sub_<HEX>) is exact, and image_build resolves it addend-aware
+            # -- a copied operand would lose our own addend (BrRaceStep's
+            # tyre loop).  But names carried over from the D3D build
+            # (BrX10069530, FUN_100378c0) embed the OTHER binary's address:
+            # there the original's operand is the only truth.  Tell them
+            # apart by whether the name lands where the original points.
+            near = (named == implied) if rt == REL_REL32 else \
+                abs(((val - named) + 0x80000000) % (1 << 32) - 0x80000000) < 0x1000
+            if near or (rt == REL_REL32 and rp._jmp_hop(img, val) == named):
+                # pin it from the NAME (exact, with our own addend) rather
+                # than leaving it to the image builder's map precedence
+                if rt == REL_REL32:
+                    val = named
+                    slot = (named - (va + len(pre) + off + 4)) & 0xFFFFFFFF
+                else:
+                    val = (named + addend) & 0xFFFFFFFF
+                    slot = val
+                rows_out.append((off, slot, sym, val, addend))
+                continue
         k = known(sym)
         if k is not None:
             want = (k + addend) & 0xFFFFFFFF if rt == REL_DIR32 else k
@@ -235,7 +288,7 @@ def lockstep_rows(va):
                      (rt == REL_REL32 and rp._jmp_hop(img, val) == k))
             if not agree:
                 disagreements.append((off, sym, k, implied))
-                if rt == REL_REL32 and img.text_lo <= k < img.text_hi:
+                if rt == REL_REL32 and img.text_lo <= k < img.text_hi and named is None:
                     # A call/jump whose callee resolves to a real function
                     # the source NAMES: the source calls that function (a
                     # wrapper where the original inlined its body, e.g.
