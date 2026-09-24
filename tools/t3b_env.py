@@ -589,7 +589,8 @@ def _mapped_zero_va(img):
     off = data.find(b'\0' * 8)
     while off >= 0:
         va = img._off_to_va(off)
-        if va is not None and img.mapped(va):
+        # outside .text: code bytes are rewritten by placed bodies
+        if va is not None and img.mapped(va) and va >= img.text_hi:
             _ZERO_VA = va
             return va
         nz = off
@@ -735,7 +736,13 @@ def const_slot_values(obj_path, name, va, size):
                         # both sides read 0 identically.
                         img_addr = _mapped_zero_va(img)
                     else:
-                        img_addr = img.find_bytes(const)
+                        # never inside .text: a match there is an instruction
+                        # immediate (0.5f == `push 3F000000`), and a placed T3
+                        # body rewrites those bytes -- BrRbQuatDerivative read
+                        # 0.5 from NOP padding at 0x1000D1AD and every car's
+                        # orientation stopped integrating (whole-image run,
+                        # 2026-09-23)
+                        img_addr = img.find_bytes(const, min_va=img.text_hi)
                     if img_addr is not None:
                         break
                 if img_addr is not None:
