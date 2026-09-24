@@ -19,6 +19,7 @@ wrote it on each side (a write hook over the final frame only).
 
   .venv/bin/python tools/brbox_diff.py tools/brbox_scripts/20_quickrace_drive.txt
   .venv/bin/python tools/brbox_diff.py S.txt --localize
+  .venv/bin/python tools/brbox_diff.py --all      # every script; config/whole_image.csv; exit 0 = gate
 """
 from __future__ import print_function
 
@@ -358,7 +359,60 @@ def _dis(box, eip):
         return '?'
 
 
+def run_all(jobs, seconds):
+    """Every script, in parallel; config/whole_image.csv is the ledger and
+    the exit status is the gate: 0 only when every script is IDENTICAL."""
+    import csv
+    import datetime
+    import glob
+    import subprocess
+    from concurrent.futures import ThreadPoolExecutor
+    scripts = sorted(glob.glob(os.path.join(ROOT, 'tools', 'brbox_scripts', '*.txt')))
+    outdir = os.path.join(ROOT, 'build', 'brbox', 'whole')
+    if not os.path.isdir(outdir):
+        os.makedirs(outdir)
+
+    def one(sp):
+        name = os.path.splitext(os.path.basename(sp))[0]
+        logp = os.path.join(outdir, name + '.log')
+        with open(logp, 'w') as f:
+            subprocess.call([sys.executable, os.path.abspath(__file__), sp,
+                             '--seconds', str(seconds)], stdout=f, stderr=subprocess.STDOUT)
+        text = open(logp).read()
+        verdict = 'IDENTICAL' if 'IDENTICAL:' in text else 'DIFFERENT'
+        first = ''
+        for line in text.splitlines():
+            if line.startswith('FIRST DIFFERENCE') or line.startswith('frames agree'):
+                first = line.strip()
+        frames = ''
+        for line in text.splitlines():
+            if line.startswith('T3 image:'):
+                frames = line.split(':', 1)[1].strip()
+        garbage = ''
+        for line in text.splitlines():
+            if 'ONLY in vertex fields' in line:
+                garbage = line.split(':')[1].split('[')[0].strip()
+        return name, verdict, frames, first, garbage
+
+    with ThreadPoolExecutor(max_workers=jobs) as ex:
+        rows = list(ex.map(one, scripts))
+    today = datetime.date.today().isoformat()
+    with open(os.path.join(ROOT, 'config', 'whole_image.csv'), 'w', newline='') as f:
+        w = csv.writer(f)
+        w.writerow(['script', 'verdict', 't3_run', 'first_difference', 'stale_stack_only_frames', 'date'])
+        for r in rows:
+            w.writerow(list(r) + [today])
+    bad = [r for r in rows if r[1] != 'IDENTICAL']
+    for r in rows:
+        print('%-24s %s  %s' % (r[0], r[1], r[3]))
+    print('%d/%d scripts IDENTICAL' % (len(rows) - len(bad), len(rows)))
+    return 1 if bad else 0
+
+
 def main():
+    if '--all' in sys.argv:
+        jobs = max(1, (os.cpu_count() or 4) - 3)
+        return run_all(jobs, 3600)
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('script')
     ap.add_argument('--image', default=T3_IMAGE)
