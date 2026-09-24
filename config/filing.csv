@@ -1059,6 +1059,7 @@ glide_va,name,module,basis,file
 0x10063E60,BrRbAccumOwnForces,driving,filed,src/core/driving/br_rbaccum.c
 0x10064120,BrRbSolveAccel,driving,filed,src/core/driving/br_rbaccum.c
 0x10064210,BrRbAccumAll,driving,description,src/core/driving/br_rbaccum.c
+0x100651A0,BrCarPhysTyre,driving,filed,src/core/driving/br_carphys.c
 0x10065950,BrCrPlaneDist,driving,filed,src/core/driving/br_collrespsolve.c
 0x10066230,BrCrListPush,driving,filed,src/core/driving/br_collresp.c
 0x10066260,BrCollRespBoxClassify,driving,filed,src/core/driving/br_collresp.c
