@@ -1,0 +1,32 @@
+# Quick Race on Coastline in SNOWY weather (race setup WEATHER clicked twice:
+# sunny -> night -> snowy).  Snow is weather type 3, the only one that sets
+# 0x106ED6B0, so this is the script that reaches the per-car snow-spray
+# emitter 0x100326A0 BrCarSub9020 (called from BrPfxTick 0x10033BB0).
+sleep 240
+mark main_menu
+mouse 250 190
+click
+sleep 40
+mark race_setup
+mouse 252 157
+click
+sleep 20
+mouse 252 157
+click
+sleep 20
+mark weather_snowy
+mouse 252 233
+click
+sleep 40
+mark car_setup
+mouse 252 233
+click
+sleep 300
+mark grid
+press SPACE
+sleep 150
+mark lights
+autopilot on
+sleep 900
+mark driving
+end
