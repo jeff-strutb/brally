@@ -1,54 +1,32 @@
-/* WHAT IT DOES: draw the ripple effect -- works out which of the eight
- * compass octants the given direction falls in, then emits the ring of
- * vertices and the display-list commands for the ripple at that orientation
- * and strength. */
+/* WHAT IT DOES: pushes a ripple through the car's display lists.  It turns
+ * the given direction into a compass bearing, picks one of eight octants and
+ * that octant's screen-space box, bumps the octant's counter (and stops if it
+ * is already at the cap), then walks thirty of the car's command lists and
+ * nudges every vertex inside the box by a small amount that depends on where
+ * the vertex sits and on the ripple strength, per axis. */
 /* @implements 0x1000C4E0 glide BrRippleApply_1000C4E0
  * @cpp_kind method
- * @cpp_symbol ?Apply@Rip0C4E0@@QAEHPBMH@Z
+ * @cpp_symbol ?Apply@Rip0C4E0@@QAEXPBMF@Z
  *
- * Thiscall, two stack args (`ret 8`), 1246 B. Pushes a ripple through
- * every vertex of the display lists hanging off +0x29C4: classify the
- * direction vector's bearing into one of eight octants, take that
- * octant's screen-space clamp box and per-axis step, then walk ten
- * command lists at each of ten table strides, and for every G_VTX block
- * displace the vertices that land inside the box.
+ * Thiscall, two stack args (`ret 8`), 1246 B, no return value (the original
+ * never sets eax).  Hand-transcribed from the bytes.  The one caller
+ * (0x10062454) passes `this + 0x350` as the direction and builds the
+ * strength with `movzx ax, al` -- a SHORT parameter.
  *
- * The bearing is `atan2 * (180/pi)` rounded with `_ftol`, so the octant
- * bounds below are DEGREES; the clamp bounds are signed 16-bit screen
- * coordinates held in int slots and compared as `(short)`.
- *
- * The phase float is computed once and stays on the x87 stack across
- * every `_ftol` call in the loop (`fadd st(1)`), which is why it is
- * written as the expression `(float)phase` inside the loop rather than a
- * named float local -- a local would get a stack slot and `fadd [slot]`.
- *
- * Shapes already recovered, and worth keeping if this is picked up again:
- * the scaled magnitude is the PARAMETER, updated in place (`shl edi,2`,
- * `neg edi`) rather than a separate local; the bearing gate is
- * `pDir[0] <= 1.25f`, not `>`; the inner loop's two early-outs are
- * `continue`, not `break`, and index 9 is skipped by one of them; and the
- * opcode byte is a named local, because writing `(w0 >> 24) == K` twice
- * makes VC5 emit two `and`+`cmp` pairs instead of one shift and two
- * compares.
- *
- * PARKED at -30 bytes, register-blind gap 12 extra / 21 missing on 1246
- * bytes. Three causes, none of them source-reachable so far:
- *  - the three step chains shift on the 16-bit register (`mov ax,di /
- *    sar ax,1`) and then store the whole `eax` into an int slot whose
- *    upper half is stale. Every spelling tried -- `(short)mag >> 1`, a
- *    `short` local shifted in place, a shared `short` temp across the
- *    arms -- gives `movsx` plus a 32-bit shift instead (782 / 796 / 782).
- *  - VC5 tail-merges the two arms of the FIRST of the three displacement
- *    blocks (the other two stay duplicated, as all three are in the
- *    original). Same emitter-level cross-jumping as the entry in
- *    docs/VC5-IDIOMS.md; the arms already carry the whole expression.
- *  - the variable homes are swapped: the original keeps the vertical step
- *    in `bp` and spills the magnitude to the argument slot, and reloads
- *    `this` from its own slot every inner iteration; ours does the
- *    reverse and hoists `this` into a register.
- * Flags are not the lever: /O2 /Oy- is 1052 diffs, /O2 /Op 794 with a
- * WORSE register-blind gap (25/28) despite matching the size to +2, and
- * /Ox and /O2 /Ob0 are identical to /O2.
+ * Shapes the bytes fix:
+ *  - the strength is the short parameter, scaled in place (`mag <<= 2`) and
+ *    kept in edi; three short steps come off it (sx in a slot, sy in bp, and
+ *    sz, which reuses the parameter's own stack slot once mag is dead).
+ *    Short locals held in registers spill as whole dwords, so the stale
+ *    upper halves in the original are not a bug.
+ *  - the thirty lists are `0x2006 + k*10 + i` for k < 3, i < 10 (i == 9
+ *    skipped): the step-10 counter is VC5's reduction of `k*10`, and the
+ *    second-order `(base + i) * 4` is left alone.  Written as a step-10 loop
+ *    variable instead, VC5 reduces the whole index to a byte offset.
+ *  - the command walk tests `op != 4` first; the vertex pointer is fetched
+ *    between two single `pCmd++` steps; the vertex count is `while (n--)`.
+ *  - byte-exact under /O2 /Gi (the lane's second variant); under plain /O2
+ *    two commutative adds come out with their operands swapped.
  */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
@@ -68,7 +46,7 @@ public:
     int            a2a70[8];        /* +0x2A70 */
     int            a2a90[8];        /* +0x2A90 */
 
-    int Apply(const float *pDir, int mag);
+    void Apply(const float *pDir, short mag);
 };
 
 typedef char chk_ac[(unsigned)&((Rip0C4E0 *)0)->b29ac == 0x29AC ? 1 : -1];
@@ -85,15 +63,14 @@ void  BrFn1005A4E0(int a, int b, int c);
 void  BrFn1006E0A0(int oct, int *pA, int *pB);
 }
 
-int Rip0C4E0::Apply(const float *pDir, int mag)
+void Rip0C4E0::Apply(const float *pDir, short mag)
 {
     int   deg;
     int   xlo, xhi, ylo, yhi;
     int   oct;
-    int   sx;
-    short sy;
+    short sx, sy;
+    short sz;
     int   phase;
-    int   t;
     int   iOuter, iInner;
     int  *pCmd;
     float *pVtx;
@@ -121,57 +98,55 @@ int Rip0C4E0::Apply(const float *pDir, int mag)
         xlo = 0xFF;   xhi = 0x3FFF;  yhi = 0x3FFF;  ylo = -16383; oct = 0;
     }
 
-    mag = mag * 4;
+    mag <<= 2;
 
     BrFn1005A4E0(b29ac, b29ad, b29ae);
     BrFn1006E0A0(oct, a2a70, a2a90);
 
     if (w29c8[oct] >= g_ABE44)
-        return 1;
+        return;
 
     w29c8[oct] = (short)(mag + w29c8[oct]);
 
     w29d8 = (short)(((((unsigned char)w29d8 - 3) & 7)) - 4);
-    phase = (short)w29d8;
+    phase = w29d8;
     if (phase < 0)
         phase = phase + 1;
 
-    if (pDir[1] > 1.0f) {
+    if (pDir[1] > 1.0f)
         sx = mag;
-    } else if (pDir[1] > 0.0f) {
-        sx = (short)mag >> 1;
-    } else if (pDir[1] < -1.0f) {
-        sx = -mag;
+    else if (pDir[1] > 0.0f)
+        sx = (short)(mag >> 1);
+    else if (pDir[1] < -1.0f)
+        sx = (short)-mag;
+    else
+        sx = (short)-(mag >> 1);
+
+    if (pDir[2] > 1.0f)
+        sy = (short)(mag >> 2);
+    else if (pDir[2] > 0.0f)
+        sy = (short)(mag >> 3);
+    else if (pDir[2] < -1.0f)
+        sy = (short)-(mag >> 2);
+    else
+        sy = (short)-(mag >> 3);
+
+    if (pDir[0] > 1.25f) {
+        sz = mag;
+    } else if (pDir[0] > 0.0f) {
+        sz = (short)(mag >> 1);
+    } else if (pDir[0] < -1.25f) {
+        sz = (short)-mag;
+        sy <<= 1;
     } else {
-        sx = -((short)mag >> 1);
+        sz = (short)-mag;
     }
 
-    if (pDir[2] > 1.0f) {
-        sy = (short)((short)mag >> 2);
-    } else if (pDir[2] > 0.0f) {
-        sy = (short)((short)mag >> 3);
-    } else if (pDir[2] < -1.0f) {
-        sy = (short)(-((short)mag >> 2));
-    } else {
-        sy = (short)(-((short)mag >> 3));
-    }
-
-    if (pDir[0] <= 1.25f) {
-        if (pDir[0] > 0.0f) {
-            mag = (short)mag >> 1;
-        } else if (pDir[0] < -1.25f) {
-            mag = -mag;
-            sy = (short)(sy * 2);
-        } else {
-            mag = -mag;
-        }
-    }
-
-    for (iOuter = 0x2006; iOuter < 0x2024; iOuter += 0xA) {
+    for (iOuter = 0; iOuter < 3; iOuter++) {
         for (iInner = 0; iInner < 0xA; iInner++) {
             if (iInner == 9)
                 continue;
-            pCmd = pp29c4[iInner + iOuter];
+            pCmd = pp29c4[0x2006 + iOuter * 10 + iInner];
             if (pCmd == 0)
                 continue;
 
@@ -179,55 +154,47 @@ int Rip0C4E0::Apply(const float *pDir, int mag)
                 unsigned int w0 = (unsigned int)pCmd[0];
                 unsigned int op = w0 >> 24;
 
-                if (op == 4) {
-                    pVtx = (float *)pCmd[1];
+                if (op != 4) {
+                    if (op == 0xB8)
+                        break;
                     pCmd += 2;
+                } else {
+                    pCmd++;
+                    pVtx = (float *)*pCmd;
                     n = (int)((w0 >> 10) & 0x3F);
-                    if (n != 0) {
-                        do {
-                            int ix = (int)(pVtx[0] + (float)phase);
+                    pCmd++;
+                    while (n--) {
+                        int ix = (int)(pVtx[0] + (float)phase);
 
-                            if ((short)ix > (short)xlo
-                                && (short)ix < (short)xhi) {
-                                int iy = (int)(pVtx[1] + (float)phase);
+                        if ((short)ix > (short)xlo && (short)ix < (short)xhi) {
+                            int iy = (int)(pVtx[1] + (float)phase);
 
-                                if ((short)iy > (short)ylo
-                                    && (short)iy < (short)yhi) {
-                                    int iz = (int)(pVtx[2] + (float)phase);
+                            if ((short)iy > (short)ylo && (short)iy < (short)yhi) {
+                                int iz = (int)(pVtx[2] + (float)phase);
 
-                                    if ((short)iz > -48 && (short)iz < 224) {
-                                        if ((iy & 0x80) != 0)
-                                            t = (4 - (iy & 0xF)) * (short)mag >> 5;
-                                        else
-                                            t = ((iy & 0xF) - 12) * (short)mag >> 5;
-                                        pVtx[0] = (float)t + pVtx[0];
+                                if ((short)iz > -48 && (short)iz < 224) {
+                                    if ((iy & 0x80) != 0)
+                                        pVtx[0] = (float)((4 - (iy & 0xF)) * sz >> 5) + pVtx[0];
+                                    else
+                                        pVtx[0] = (float)(((iy & 0xF) - 12) * sz >> 5) + pVtx[0];
 
-                                        if ((ix & 0x80) != 0)
-                                            t = (4 - (ix & 0xF)) * (short)sx >> 5;
-                                        else
-                                            t = ((ix & 0xF) - 12) * (short)sx >> 5;
-                                        pVtx[1] = (float)t + pVtx[1];
+                                    if ((ix & 0x80) != 0)
+                                        pVtx[1] = (float)((4 - (ix & 0xF)) * sx >> 5) + pVtx[1];
+                                    else
+                                        pVtx[1] = (float)(((ix & 0xF) - 12) * sx >> 5) + pVtx[1];
 
-                                        ix = ix + iy;
-                                        if ((ix & 0x80) != 0)
-                                            t = (8 - (ix & 0xF)) * (short)sy >> 6;
-                                        else
-                                            t = ((ix & 0xF) - 8) * (short)sy >> 6;
-                                        pVtx[2] = (float)t + pVtx[2];
-                                    }
+                                    ix = ix + iy;
+                                    if ((ix & 0x80) != 0)
+                                        pVtx[2] = (float)((8 - (ix & 0xF)) * sy >> 6) + pVtx[2];
+                                    else
+                                        pVtx[2] = (float)(((ix & 0xF) - 8) * sy >> 6) + pVtx[2];
                                 }
                             }
-                            pVtx += 8;
-                        } while (--n != 0);
+                        }
+                        pVtx += 8;
                     }
-                } else if (op == 0xB8) {
-                    break;
-                } else {
-                    pCmd += 2;
                 }
             }
         }
     }
-
-    return 1;
 }
