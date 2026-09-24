@@ -8464,3 +8464,18 @@ with the target's flags, diff one function against original bytes
   (`pn = &pSrc->n1;` inside the loop, no `pn += 8`) is strength-reduced
   into a second induction register set up AFTER the zero-trip test**; a
   hand-advanced pointer is set up before it.  Same function.
+- **Two x87 chains scheduled out of source order (one `fsub` pair swapped,
+  two surplus `fxch`) = the chains have different depths; move a leading
+  operation into the variable's definition so they match.**  On the Glide
+  rect drawer the y edges were `(cy - fLrt - h2) / h2 / k` against x's
+  `(fLrs - w2) / w2 / k`; writing the flip into the conversion
+  (`fLrt = cy - edge / FIXED`, then `(fLrt - h2) / h2 / k`) makes both
+  three-deep and VC5 interleaves them in statement order.  Statement order,
+  declaration order, TU pads and module placement were all inert.  Proven on
+  0x100215C0 BrGbiCall10021560 (1032 B, /O2 /Op).
+- **`fild` order of two globals follows evaluation order, not declaration
+  order**, and a masked sweep cannot see it: the height-first body scored
+  129 bytes with its two `fild` symbols swapped.  Same function.
+- **Integer copies of float locals into several struct fields are emitted in
+  the order written** (no canonicalisation): write the corner stores in the
+  original's order.  Same function.
