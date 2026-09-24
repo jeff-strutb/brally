@@ -206,6 +206,15 @@ __inline float BrCarPhysSign(float v)
  * growing with the square of the compression. A wheel that has left the
  * ground contributes nothing, and the first frame a wheel touches back down
  * sets the car's touchdown flag so other systems can react. */
+/* The spring's constants are the original's .rdata cells.  Named, so the
+ * transcription resolves at the original's addresses -- and the contact
+ * floor is the original's qword, -0.3999 ROUNDED THROUGH FLOAT
+ * (-0.39990001341...), which the double literal is not. */
+extern double DAT_10077bd0;   /* -0.3999f as a double */
+extern float  DAT_10077bd8;   /* -0.3f */
+extern float  DAT_10077a78;   /*  0.0f */
+extern float  DAT_10077a7c;   /*  1.0f */
+extern float  DAT_10077a80;   /* -1.0f */
 /* @t4-pass 0x100684F0 1 2026-09-24 probes 10 bytes 265 insns 87 regions 1 rows 0 census no  (hand, after the in-place square reached 265/265: five in-place scale spellings and five forms keeping s live past the f1B8 multiply; the dead-s pop order never moved) */
 /* @t4-pass 0x100684F0 2 2026-09-24 probes 34 bytes 265 insns 87 regions 1 rows 0 census yes  (hand, slot census: every top-level slot of br_carphys.c; residue identical in all 34) */
 /* @t3 0x100684F0 2026-09-24 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
@@ -252,27 +261,27 @@ void BrCarPhysSpring(BrRbBodyFull *pBody)
 
         /* `fcom qword` -- the compare happens in double. Runs for
          * less-equal-or-unordered. */
-        if (!((double)v > BR_CP_CONTACT_MIN)) {
-            v                        = BR_CP_SUSP_REST;
+        if (!((double)v > DAT_10077bd0)) {
+            v                        = DAT_10077bd8;
             *(int32_t *)&pWheel->f1B4 = 0;
         }
-        if (v > BR_CP_SIGN_ZERO) {
-            v = BR_CP_SIGN_ZERO;
+        if (v > DAT_10077a78) {
+            v = DAT_10077a78;
         }
-        v = v - BR_CP_SUSP_REST;
-        if (!(v >= BR_CP_SIGN_ZERO)) {
-            v = BR_CP_SIGN_ZERO;
+        v = v - DAT_10077bd8;
+        if (!(v >= DAT_10077a78)) {
+            v = DAT_10077a78;
         }
 
         /* The sign triple, inline: `test ah,0x40` for the equal arm (VC5
          * float == reads C3 alone, so NaN lands there too), then
          * `test ah,0x41` for strictly-greater. */
-        if (v == BR_CP_SIGN_ZERO) {
-            s = BR_CP_SIGN_ZERO;
-        } else if (v > BR_CP_SIGN_ZERO) {
-            s = BR_CP_SIGN_POS;
+        if (v == DAT_10077a78) {
+            s = DAT_10077a78;
+        } else if (v > DAT_10077a78) {
+            s = DAT_10077a7c;
         } else {
-            s = BR_CP_SIGN_NEG;
+            s = DAT_10077a80;
         }
 
         /* PARKED at 1 region / 5 msetdiff rows: the square. Orig duplicates
