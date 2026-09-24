@@ -8452,3 +8452,15 @@ with the target's flags, diff one function against original bytes
   `tri(&a,&b,&c); tri(&b,&d,&c)` with a, b, c, d separate locals: VC5 lays
   the frame out b, c, a, d, and the per-field store order follows the
   source.  Proven on 0x1006C990 BrImgShowFullScreen (994 B).
+- **`shl r,6; lea r2,[r + base]` (instead of `add r,base`) = a 1-BASED
+  array indexed `[top - 1]`.**  VC5 folds the `-1*64` into the displacement
+  and emits `lea` because the displacement is `sym - 0x40`; every
+  zero-based spelling (`A[top].m`, `(char*)&A + (top<<6)`, int casts,
+  inline helpers, 2-D arrays, /G3-/G6, /O1, /Ox) gives `add`.  The N64
+  matrix stack is `DAT_105ccd50[top - 1]` (0x105CCD10 is the displacement,
+  not the array).  Proven on 0x10022600 BrDlVtxGen; the same construct is
+  open in 0x10021080, 0x10021C70, 0x100221D0, 0x10022BF0, 0x10023360.
+- **A pointer re-derived from the walked pointer at the top of each pass
+  (`pn = &pSrc->n1;` inside the loop, no `pn += 8`) is strength-reduced
+  into a second induction register set up AFTER the zero-trip test**; a
+  hand-advanced pointer is set up before it.  Same function.
