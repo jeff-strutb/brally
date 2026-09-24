@@ -1153,8 +1153,11 @@ void BrWeatherStepWind(void)
 extern int    DAT_100a718c;
 extern float  DAT_104add3c;
 /* DECLARATION ORDER IS LOAD-BEARING: in a both-memory fmul, the
- * LATER-declared symbol takes the fld side. 31c first so dt gets fld. */
+ * LATER-declared symbol takes the fld side. 31c first so dt gets fld.
+ * The first declaration is what counts: BrWeatherStepParticles below also
+ * loads dt against 318 and 334, so those are declared ahead of dt here. */
 extern float  DAT_1007731c;
+extern float  DAT_10077318, DAT_10077334;
 extern float  DAT_106e9d8c;
 extern double DAT_10077320;
 extern float  DAT_104abb60, DAT_104abb64;
@@ -1225,21 +1228,22 @@ void BrWeatherStepLightning(void)
 /* @implements 0x10016C90 glide BrWeatherStepParticles */
 /* @implements 0x100196D0 d3d BrWeatherStepParticles */
 #ifdef BR_MATCHING_BUILD
-/* Hand-transcribed from the Glide bytes (1142 B, size-exact).  Source facts:
- *  - loose globals, as in BrWeatherStepLightning above;
- *  - the particle field is indexed [view][i][k], not walked by a pointer:
- *    that is what makes VC5 form the +2-biased cursor inside the count
- *    guard and restore esi only on the path that ran the loop;
+/* Byte-exact against the Glide twin (1142 B), hand-transcribed from its
+ * bytes; every relocation checked against the original's absolute.
+ * Source facts:
+ *  - loose globals, as in BrWeatherStepLightning above, constants declared
+ *    before the variables they multiply (the variable takes the fld side);
+ *  - the layer row pointer `pl` is taken FIRST in the view loop: that makes
+ *    the particle cursor VC5's first strength-reduced induction (slot 0x1c,
+ *    the +2-biased &[view][0][1]) ahead of the view table and the prev index;
  *  - the two integer copies of the wind angle and the two rounding `fst`s
- *    into one dead slot are float-parameter inline helpers (BrWxCos/Sin);
- *  - `(float)sqrt(..)` in the damping factor keeps the divisor a memory
- *    operand (`fdiv [speed]`); without it VC5 hoists a second fld.
- * RESIDUE (2026-09-24): dz is stored with fstp and reloaded where the
- * original keeps it (`fst; fmul`, two fxch), the view/particle induction
- * slots are swapped (0x1c/0x20), and pos.x/pos.z trade ecx/edx in the seed
- * copy.  Inert: sum order and parenthesisation (10), dx/dy/dz statement
- * order (6), local and extern declaration order (hill-climb, 132),
- * volatile speed, TU pads 1..16, loop-carried/struct particle cursor. */
+ *    into one dead slot are float-parameter inline helpers whose result goes
+ *    through a named local (without `r`, VC5 merges the two param copies);
+ *  - `(float)(a - b)` on each delta keeps dz on the stack for its square
+ *    (`fst; fmul`), and `(float)sqrt(..)` in the damping factor keeps the
+ *    divisor a memory operand (`fdiv [speed]`);
+ *  - the seed copy is per component, the jitter zeroes go j1 then j0, and t
+ *    is declared first (dz takes the fld side of dz + t). */
 typedef struct BrWxView { const BrCamBlock *pBlk; char pad[0x2b64]; } BrWxView;
 extern int       DAT_106ed6b4;               /* storm                        */
 extern int       DAT_106ed6b0;               /* rain                         */
@@ -1250,17 +1254,20 @@ extern short     DAT_104add50[2][522][3];
 extern BrWxView  DAT_10af393c[];
 extern BrVec3    DAT_104abe70[2];            /* last camera position         */
 extern BrVec3    DAT_104b15d0[2];            /* snow drift                   */
+/* DECLARATION ORDER IS LOAD-BEARING: in a both-memory fmul the later-
+ * declared symbol takes the fld side, and the original loads the variable
+ * and multiplies by the constant -- so the constants come first. */
+extern float     DAT_10077300, DAT_10077304, DAT_10077314, DAT_10077318;
+extern float     DAT_10077328, DAT_1007732c, DAT_10077334;
+extern double    DAT_10077338;
 extern float     DAT_104b15c8;               /* camera speed                 */
 extern float     DAT_104ad6e8;               /* speed damping                */
 extern float     DAT_104b15ec;               /* wind angle                   */
 extern float     DAT_100a7188;               /* wind gain                    */
 extern float     DAT_106e9d8c;               /* dt                           */
-extern float     DAT_10077300, DAT_10077304, DAT_10077314, DAT_10077318;
-extern float     DAT_10077328, DAT_1007732c, DAT_10077334;
-extern double    DAT_10077338;
 
-static __inline float BrWxCos(float a) { return (float)cos(a); }
-static __inline float BrWxSin(float a) { return (float)sin(a); }
+static __inline float BrWxCos(float a) { float r = (float)cos(a); return r; }
+static __inline float BrWxSin(float a) { float r = (float)sin(a); return r; }
 
 void BrWeatherStepParticles(void)
 {
@@ -1272,24 +1279,29 @@ void BrWeatherStepParticles(void)
 
     DAT_104add38 = 0x200 / DAT_100aa044;
     for (iView = 0; iView < DAT_100aa044; iView++) {
+        short (*pl)[3] = DAT_104add50[iView];
         const BrCamBlock *pBlk = DAT_10af393c[iView].pBlk;
         BrVec3 pos, d;
-        float dx, dy, dz, j0, j1, t;
+        float t, dx, dy, dz, j0, j1;
         int cx, cy, D0, D1, D2, R1, R2, i;
 
         BrVec3MulAdd(&pos, &pBlk->v30, &pBlk->v00, 3.0f);
         if (DAT_104b15f4 == 0) {
             BrWeatherRandomiseParticles();
-            DAT_104abe70[0] = pos;
-            DAT_104abe70[1] = pos;
+            DAT_104abe70[0].x = pos.x;
+            DAT_104abe70[0].y = pos.y;
+            DAT_104abe70[0].z = pos.z;
+            DAT_104abe70[1].x = pos.x;
+            DAT_104abe70[1].y = pos.y;
+            DAT_104abe70[1].z = pos.z;
             DAT_104b15f4 = 1;
         }
         if (DAT_106ed6b0 == 0 && DAT_106ed6b4 == 0)
             return;
 
-        dx = pos.x - DAT_104abe70[iView].x;
-        dy = pos.y - DAT_104abe70[iView].y;
-        dz = pos.z - DAT_104abe70[iView].z;
+        dx = (float)(pos.x - DAT_104abe70[iView].x);
+        dy = (float)(pos.y - DAT_104abe70[iView].y);
+        dz = (float)(pos.z - DAT_104abe70[iView].z);
         DAT_104b15c8 = sqrt(dx * dx + dy * dy + dz * dz) / DAT_106e9d8c;
         if (DAT_104b15c8 > DAT_10077328) {
             DAT_104ad6e8 = (float)sqrt(DAT_104b15c8 * DAT_1007732c) * DAT_10077328 / DAT_104b15c8;
@@ -1324,8 +1336,8 @@ void BrWeatherStepParticles(void)
             j1 = ((float)(BrRandom() & 0xFFFF) * DAT_10077300 - DAT_10077304)
                  * DAT_106e9d8c * DAT_10077334;
         } else {
-            j0 = 0.0f;
             j1 = 0.0f;
+            j0 = 0.0f;
         }
 
         DAT_104abe70[iView] = pos;
@@ -1339,22 +1351,22 @@ void BrWeatherStepParticles(void)
 
         for (i = 0; i < DAT_104add38; i++) {
             if (cx != 0) {
-                DAT_104add50[iView][i][0] += (short)D0;
+                pl[i][0] += (short)D0;
                 cx--;
             } else {
-                DAT_104add50[iView][i][0] += (short)(R1 + D0);
+                pl[i][0] += (short)(R1 + D0);
                 R1 = -R1;
                 cx = BrRandom() & 0xF;
             }
             if (cy != 0) {
-                DAT_104add50[iView][i][1] += (short)D1;
+                pl[i][1] += (short)D1;
                 cy--;
             } else {
-                DAT_104add50[iView][i][1] += (short)(R2 + D1);
+                pl[i][1] += (short)(R2 + D1);
                 R2 = -R2;
                 cy = BrRandom() & 0xF;
             }
-            DAT_104add50[iView][i][2] += (short)D2;
+            pl[i][2] += (short)D2;
         }
     }
 }
