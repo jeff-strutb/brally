@@ -71,6 +71,28 @@ extern void    FUN_10022AC0(const void *, void *);
 extern int32_t FUN_10022120(void *);
 extern void    FUN_10022070(void *, void *, float, float, float);
 
+/* T2 2026-09-24 (hand transcription from the asm), compiled like the rest of
+ * its original TU with /O2 /Op: 1217/1212 B, 361/362 insns, register-blind
+ * multiset 7+8.  Spellings that each moved a whole class (all measured):
+ *  - the lights are N64 Light records read as BYTES: VC5 merges col[0]/col[1]
+ *    into one dword load + `and`/`mov dl,ah`, exactly as the original;
+ *  - x87 operand roles follow VC5's operand-kind ladder, not source order:
+ *    the z/y MVP columns are absolute-address derefs (they take the fld side
+ *    over the vertex fields), the x/w columns stay extern symbols, and x is
+ *    read through the INDEXED struct pointer so it beats the x column;
+ *  - the source vertex is walked through two pointers (the struct base and
+ *    `pn = &n1`), the original's ebx / esi = ebx+0x18 pair; the output
+ *    vertex handed to the last helper is a third, separately advanced
+ *    pointer (the original spills it and adds 0x68 per vertex);
+ *  - the look-vector bytes are INLINE (float)(int) casts: under /Op each is
+ *    rounded through one scratch slot and consumed from memory, as in the
+ *    original; named float temps get reloaded instead;
+ *  - the x dot product is computed BEFORE the s store: VC5 will not hoist the
+ *    look1 byte loads above a store through the vertex pointer;
+ *  - the model-matrix pointer is taken first, then colours, then direction;
+ *    declaration order (look pointers mid-list, td last) settles the rest.
+ * Open: `lea reg,[reg+matrices]` (family-wide; every spelling gives `add`),
+ * m[0]*n0 operand role, loop-head register choice, a few fxch. */
 /* WHAT IT DOES: transforms a batch of vertices through the combined matrix,
  * generates texture coordinates by rotating each normal into world space and
  * projecting it on the two view-direction vectors (a straight linear map to
@@ -78,7 +100,6 @@ extern void    FUN_10022070(void *, void *, float, float, float);
 /* @implements 0x10022600 glide BrDlVtxGen */
 const uint8_t *BrDlVtxGen(const uint8_t *p)
 {
-    const uint8_t *look1, *look2;
     float *m;
     float dx, dy, dz;
     uint32_t w0;
@@ -87,6 +108,7 @@ const uint8_t *BrDlVtxGen(const uint8_t *p)
     int v0;
     int n;
     BrDlVtx *pV;
+    const uint8_t *look1, *look2;
     BrDlVtx *pVc;
     int i;
     float lx0, lx1, lx2, ly0, ly1, ly2;
@@ -94,6 +116,7 @@ const uint8_t *BrDlVtxGen(const uint8_t *p)
     float texDimA, texOffB, texDimC, texOffD;
     int32_t oc;
     BrVec3 td;
+
     if (!DAT_105d17d0) {
         if (DAT_105ccfd0 != 0) {
             if (DAT_100a9a50 != 0)
