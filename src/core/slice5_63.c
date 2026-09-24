@@ -494,12 +494,12 @@ void BrExt_1005FBC0(int32_t a)
     int32_t v;
 
     g_brAA28B8 = (int8_t)DAT_10ac5a4c;
-    g_br094354 = g_brAA27EC;
-    g_br094358 = g_brAA27F4;
-    g_brAA28A4 = (int32_t)DAT_10ac5a4d;     /* movzx: byte 1, zero-extended */
-    g_brB4E1D0 = g_brAA27F8;
     g_brAA28A0 = g_aBrAA26F0[0];
+    g_brAA28A4 = (int32_t)DAT_10ac5a4d;     /* movzx: byte 1, zero-extended */
+    g_br094354 = g_brAA27EC;
     g_br09435C = g_brAA27F0;
+    g_br094358 = g_brAA27F4;
+    g_brB4E1D0 = g_brAA27F8;
 
     /* `dec/je` three times: 1, 2, 3 select records 1, 2, 3 and EVERYTHING
      * else -- including 0 -- selects record 0. A SWITCH, not an if-else-if
