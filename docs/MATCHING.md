@@ -164,8 +164,22 @@ Defect classes the whole-image run found, all certified by t3live before:
   - a D3D-era name inside the "near" window;
   - crossed commutative operands where a hand row fixed only one side.
 
+More defect classes from the full-suite passes:
+- **Inverted branches:** `je` read as `!= 0`, and a dropped guard.
+- **Wrong argument:** `d` instead of the reversed `sd`.
+- **Off-by-one stores:** `inc` before the store; the next point, not the current one.
+- **An extra dereference**, and an extra normalise call.
+- **`int` vs `float` prototypes.**
+- **Ghidra `(&DAT_x)[i*K]` with `DAT_x` declared `unsigned char`:** a byte compare at a byte stride.
+
+Bytes the original reads without ever writing (stale stack) go in
+`config/ub_scrub.csv` with their evidence. Both runs get the same zeros, so
+the comparison measures the transcriptions, not the stack history.
+
 After editing a T3 function that has lockstep rows, regenerate them: remove
 its `lockstep` rows, then `tools/lockstep_rows.py <VA> --write`.
+`image_build_t3.py` fails the gate on any row with no relocation at its
+offset.
 
 ## End of session
 
