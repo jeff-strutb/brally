@@ -1,5 +1,15 @@
 /* WHAT IT DOES: the same sprite-font string drawing for the SECOND typeface,
  * which has its own glyph table. */
+/* @t4-pass 0x10054280 1 2026-09-03 probes 29 bytes 219 insns 76 regions 1 rows 0 census yes  (prior session 2026-09-03: the same twenty-one spellings and eight flag sets as its twin 0x100540D0, recorded in that file's header) */
+/* @t4-pass 0x10054280 2 2026-09-24 probes 10 bytes 219 insns 76 regions 1 rows 0 census yes  (hand 2026-09-24: ten index spellings -- loop-local pointer, int arithmetic, i[sz], &sz[0]+i, (int) index; census = the SIB mechanism entry, base is this+const) */
+/* @t3 0x10054280 2026-09-24 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 219/219 insns 76/76 rows 0+0 regions 1 oracle UNVERIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is ONE byte: the SIB base/index order of the glyph read
+ * (`[edi+eax+9]` vs our `[eax+edi+9]`), same instruction, same registers,
+ * same effective address.  Dossier: this header and docs/VC5-IDIOMS.md
+ * ("SIB base/index order on member_array[index]").
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10054280 glide BrSprFontDrawB_10054280
  * @cpp_kind method
  * @cpp_symbol ?Draw@Text54280@@QAEXXZ

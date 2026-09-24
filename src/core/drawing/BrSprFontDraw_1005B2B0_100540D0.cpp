@@ -2,6 +2,16 @@
  * turns each into a glyph index by subtracting the space character, and
  * advances the pen. Starts from either a computed or a stored pen position
  * depending on a flag. */
+/* @t4-pass 0x100540D0 1 2026-09-03 probes 29 bytes 212 insns 75 regions 1 rows 0 census yes  (prior session 2026-09-03, dossier in this header: twenty-one spellings on four axes -- address expression, loop shape, indirection, declarations -- and eight flag sets; SIB base/index never moved) */
+/* @t4-pass 0x100540D0 2 2026-09-24 probes 13 bytes 212 insns 75 regions 1 rows 0 census yes  (hand 2026-09-24: the loop-local pointer copy that fixes 0x1006CED0, two int-arithmetic addresses, and ten more index spellings; census = the VC5-IDIOMS SIB entry's mechanism: base=pointer needs a materialised pointer VALUE, this base is this+const) */
+/* @t3 0x100540D0 2026-09-24 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 212/212 insns 75/75 rows 0+0 regions 1 oracle UNVERIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is ONE byte: the SIB base/index order of the glyph read
+ * (`[edi+eax+9]` vs our `[eax+edi+9]`), same instruction, same registers,
+ * same effective address.  Dossier: this header and docs/VC5-IDIOMS.md
+ * ("SIB base/index order on member_array[index]").
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x100540D0 glide BrSprFontDraw_1005B2B0
  * @cpp_kind method
  * @cpp_symbol ?Draw@Text540D0@@QAEXXZ
