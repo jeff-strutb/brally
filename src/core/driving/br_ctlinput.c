@@ -501,15 +501,19 @@ LAB_1005b9e9:
     *(int *)(pCar + 0xe68) = 0;
   }
   else {
+    /* the product stays in an x87 register (0x1005BAC1 / 0x1005BADE) and
+     * is never rounded to a float slot; the double is that register */
+    double prod;
     if ((*puVar5 & 0x20000) == 0) {
       local[4] = *(float *)(pCar + 0x740);
-      local[5] = *(float *)(pCar + 0xe28 + iVar9 * 4) * *(float *)(pCar + 0xe54);
+      prod = (double)*(float *)(pCar + 0xe28 + iVar9 * 4) * *(float *)(pCar + 0xe54);
     }
     else {
       local[4] = *(float *)(pCar + 0x740);
-      local[5] = *(float *)(pCar + 0xe54) * *(float *)(pCar + 0xe2c);
+      prod = (double)*(float *)(pCar + 0xe54) * *(float *)(pCar + 0xe2c);
     }
-    *(float *)(pCar + 0xe24) = local[4] * DAT_10077870 * local[5] * DAT_10077874;
+    local[5] = (float)prod;
+    *(float *)(pCar + 0xe24) = (float)((double)local[4] * DAT_10077870 * prod * DAT_10077874);
   }
   if (*(float *)(pCar + 0xe24) < DAT_10077780) {
     *(float *)(pCar + 0xe24) = -*(float *)(pCar + 0xe24);
