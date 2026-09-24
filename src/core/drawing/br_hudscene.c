@@ -844,6 +844,111 @@ int BrSceneUsePlainClear(void)
  * for one frame on alternate lightning flashes, which is what makes a storm
  * flicker -- or the sky drawn through the camera's current view. */
 /* @implements 0x100180B0 d3d BrSceneSetupFrame */
+#ifdef BR_MATCHING_BUILD
+/* Byte-exact against the Glide twin 0x10015630 (1239 B), transcribed from
+ * its bytes.  Three source facts:
+ *  - the body reads loose globals, not the port's state blocks: through a
+ *    struct VC5 folds neighbouring colour bytes into one dword load, where
+ *    the original byte-loads each one (`xor r,r; mov rl,[g]`);
+ *  - every command is emitted N64-style -- take the slot (`cur++`), write
+ *    the opcode, THEN evaluate the operand.  An inline emit function
+ *    evaluates its arguments first and hoists every operand load above the
+ *    cursor bump; the pre-increment spelling `p = cur; cur = p + 1` becomes
+ *    `lea` instead of `mov/add`;
+ *  - the view pointer is formed inside each lightning arm, after the test,
+ *    and `(a ^ b) ? K1 : K2` is the `xor/neg/sbb` mask. */
+typedef struct BrSceneCam { int32_t pad[12]; int32_t f30, f34; float f38; } BrSceneCam;
+extern BrGfxCmd      *DAT_106e7710;          /* the command cursor           */
+extern int            DAT_106ed698;
+extern int            DAT_100a718c;          /* lightning counter            */
+extern int            DAT_106ec798;          /* the player's view            */
+extern unsigned char  DAT_106e7290, DAT_106e86a4, DAT_106e72f0, DAT_106b7c78;
+extern BrSceneCam    *DAT_106ed520;
+extern BrMat4         DAT_106e78f0;
+extern int            DAT_106ea360, DAT_106ed6a8, DAT_106e72e8;
+extern int            DAT_106ea3f4, DAT_106e8204, DAT_106eed28;
+
+static __inline BrGfxCmd *BrSsfAlloc(void)
+{
+    return DAT_106e7710++;
+}
+
+/* N64-style: take the slot, write the opcode, THEN evaluate the operand. */
+#define BrSsfEmit(a, b) { BrGfxCmd *g_ = BrSsfAlloc(); g_->w0 = (a); g_->w1 = (b); }
+
+void BrSceneSetupFrame(const BrHudView *aViews)
+{
+    const BrHudView *pView;
+    BrGfxCmd *p;
+    BrMat4 *pDst;
+
+    BrSsfEmit(0xBC000404u, 1);
+    BrSsfEmit(0xBC000C04u, 1);
+    BrSsfEmit(0xBC001404u, 0xFFFF);
+    BrSsfEmit(0xBC001C04u, 0xFFFF);
+
+    if (DAT_106ed698 != 0)
+        return;
+
+    if (BrSceneUsePlainClear()) {
+        if (DAT_100a718c > 0 && (DAT_100a718c & 1) != 0) {
+            pView = &aViews[DAT_106ec798];
+            BrSub_10031688(pView->x, pView->y, pView->w, pView->h,
+                           ((DAT_106e72f0 + 0x50) * 3) >> 2,
+                           (DAT_106e86a4 * 3 + 0xF8) >> 2,
+                           ((DAT_106e7290 + 0x55) * 3) >> 2);
+        } else {
+            pView = &aViews[DAT_106ec798];
+            BrSub_10031688(pView->x, pView->y, pView->w, pView->h,
+                           DAT_106e72f0, DAT_106e86a4, DAT_106e7290);
+        }
+        return;
+    }
+
+    BrSub_10031140(&DAT_106e78f0, DAT_106ed520->f30, DAT_106ed520->f34,
+                   DAT_106ed520->f38 * kF34C);
+    pDst = BrSub_10069490();
+    BrMat4Copy(&DAT_106e78f0, pDst);
+
+    BrSsfEmit(0x01030040u, DAT_106ea360);
+    BrSsfEmit(0x01040040u, (uint32_t)pDst);
+    BrSsfEmit(0xE7000000u, 0);
+    BrSsfEmit(0xBA001402u, 0);
+
+    if (DAT_106ed6a8 != 0) {
+        p = BrSsfAlloc();
+        BrSub_1002F900(p, 0, 0, 0, 0x3E9, 0, 0, 0, 0x3EC,
+                          0, 0, 0, 0x3E9, 0, 0, 0, 0x3EC);
+        BrSsfEmit(0xFB000000u,
+                    ((((DAT_106e72f0 << 8) | DAT_106e86a4) << 8) | DAT_106e7290) << 8
+                    | DAT_106b7c78);
+    } else {
+        p = BrSsfAlloc();
+        BrSub_1002F900(p, 0, 0, 0, 0x3E9, 0, 0, 0, 0x3EC,
+                          0, 0, 0, 0x3E9, 0, 0, 0, 0x3EC);
+    }
+
+    BrSsfEmit(0xB900031Du, 0x0F0A4200u);
+    BrSsfEmit(0xBA000C02u, DAT_106e72e8);
+    BrSsfEmit(0xB6000000u, 0x000F0205u);
+    if (DAT_106ed6a8 != 0)
+        BrSsfEmit(0xB7000000u, 0x00010000u);
+    BrSsfEmit(0xB7000000u, (DAT_106ea3f4 ^ DAT_106e8204) ? 0x1000 : 0x2000);
+    BrSsfEmit(0xB6000000u, (DAT_106ea3f4 ^ DAT_106e8204) ? 0x2000 : 0x1000);
+    BrSsfEmit(0xBA001001u, 0);
+    BrSsfEmit(0xBB000001u, 0xFFFFFFFFu);
+    BrSsfEmit(0xB6000000u, 0x000C0000u);
+    BrSsfEmit(0xE8000000u, 0);
+    BrSsfEmit(0xF5100000u, 0x07000000u);
+    BrSsfEmit(0xF50001F0u, 0x06000000u);
+    BrSsfEmit(0xF5000100u, 0x05000000u);
+    BrSsfEmit(0x06000000u, DAT_106eed28);
+    BrSsfEmit(0xE7000000u, 0);
+    BrSsfEmit(0xBA001402u, 0);
+    BrSsfEmit(0xB7000000u, 0x00020205u);
+    BrSsfEmit(0xBD000000u, 0);
+}
+#else
 void BrSceneSetupFrame(const BrHudView *aViews)
 {
     const BrHudView *pView;
@@ -896,43 +1001,8 @@ void BrSceneSetupFrame(const BrHudView *aViews)
     BrGfxEmit(0xE7000000u, 0u);
     BrGfxEmit(0xBA001402u, 0u);
 
-    /* THE 0x1002F900 BLOCK IS WRITTEN OUT IN BOTH ARMS, not hoisted above the
-     * if.  Behaviourally the two are the same -- which is what the old note
-     * here said, and why it was hoisted -- but the original calls the 17-arg
-     * emitter TWICE (two `add esp,0x44` sites, at +0x213 and +0x288) and a
-     * hoisted call can only ever be one of them.  Tell for this class: count
-     * `call`s and stack adjusts in the original before trusting a "both
-     * branches do X" comment -- the original has SEVEN calls and TWO
-     * `add esp,0x44`; the hoisted version had six and one.
-     *
-     * MEASURED AT THIS TU'S OWN VARIANT (/O2 /Op -- fn.py compiles /O2 only,
-     * so its numbers here are partly phantom): register-blind gap 37+40 ->
-     * 26+18 for this fix together with the shift below.  Note the raw byte
-     * diff moved the WRONG way, 819 -> 821, size went from 38 short to 7
-     * short, and the instruction count from 3 under to 8 over.  That is the
-     * documented pattern -- rank by the register-blind multiset, never by
-     * size -- but it does mean the two blocks are not yet shaped the way the
-     * original shares them.
-     *
-     * RESIDUE: recomp EXTRA is 4 dword global reads where the original
-     * byte-loads (it reads 0x106e7290 / 0x106e86a4 / 0x106e72f0 three times
-     * each and 0x106b7c78 once, always `xor r,r; mov rl,[g]`), plus a
-     * `mov R,R` / `mov B,B` / `and R,I` cluster -- the byte-slot idiom.  DEAD
-     * probes, do not re-run (all three measured at THIS TU's own /O2 /Op
-     * variant, baseline EXTRA=26 MISSING=18):
-     *  - nesting the 0xFB word's shifts so two bytes pack into one register
-     *    before the shl pair -- VC5 canonicalises the `|` chain and it
-     *    compiles byte-identical.
-     *  - separating the four colour bytes with 3-byte padding so VC5 cannot
-     *    fold two of them into one dword load (it folds c6C0200/c6C1614 and
-     *    picks the second out of `ch`).  WORSE: 39/27.  Alignment does not
-     *    buy the byte load -- at aligned offsets it dword-loads and masks.
-     *  - hoisting all four out of BrSceneEnv into standalone file-scope
-     *    `uint8_t` globals, so each is a one-byte object the compiler cannot
-     *    over-read.  ALSO WORSE: 36/24, and the missing byte loads go 6 -> 8.
-     * Both of the last two point the same way: the struct ADJACENCY is not
-     * what costs the byte loads -- the widening context is.  Whatever gets
-     * `xor r,r / mov rl,[g]` out of VC5 here, it is not the storage shape. */
+    /* The 17-argument emitter is called in BOTH arms, as the original does
+     * (two `add esp,0x44` sites); the matching arm above carries the rest. */
     if (g_scene.f6C6618 != 0) {
         p = BrGfxAlloc();
         BrSub_1002F900(p, 0, 0, 0, 0x3E9, 0, 0, 0, 0x3EC,
@@ -975,6 +1045,7 @@ void BrSceneSetupFrame(const BrHudView *aViews)
     BrGfxEmit(0xB7000000u, 0x00020205u);
     BrGfxEmit(0xBD000000u, 0u);
 }
+#endif /* BR_MATCHING_BUILD */
 
 /* =====================================================================
  * 0x10019490
