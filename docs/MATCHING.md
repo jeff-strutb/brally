@@ -88,6 +88,47 @@ If Gate A passes, certify. Do not spend a session permuting spellings
  * @t4-pass 0x........ N YYYY-MM-DD probes K bytes B insns I regions R rows G census yes
 ```
 
+## The live oracle (A5)
+
+The original DLL runs headless (`tools/brbox.py`), driven by scripts in
+`tools/brbox_scripts/`. At real calls to each T3 function, `tools/t3live.py`
+runs the original body and the placed T3 body from the same state and
+compares: memory written, import calls, esp, callee-saved registers, x87
+state, and eax/edx wherever the caller reads them. Build the image first:
+`env -u BR_TRACE .venv/bin/python tools/image_build_t3.py --out-dir build/brbox/image`.
+
+```bash
+.venv/bin/python tools/t3live.py run tools/brbox_scripts/*.txt      # ledger -> config/t3_live.csv
+.venv/bin/python tools/t3live.py run S.txt --only 0xVA --per-fn 60 --no-ledger
+T3LIVE_SKIP=n .venv/bin/python tools/t3live.py explain S.txt 0xVA --frame F  # (n+1)th call at F
+```
+
+The `explain` knobs are environment variables:
+
+- `T3LIVE_CALLS=raw`: arguments of every call the body makes.
+- `T3LIVE_ARGDATA`: argument buffers that differ between the two sides.
+- `T3LIVE_WATCH=addr,..`: who wrote those addresses, and inside which call.
+- `T3LIVE_PROBE_O` / `T3LIVE_PROBE_T=eip,..` (optionally `T3LIVE_HEX`, `T3LIVE_PROBE_MEM=reg,off,n`): registers and x87 state at an address.
+- `T3LIVE_MDIFF`: the differing ranges.
+
+Script directives:
+
+- `files NAME` starts from saved files (`tools/brbox_saves/`).
+- `peer SCRIPT` runs a second game on a virtual network.
+- `joystick ffb` attaches a force-feedback wheel.
+
+Bytes that come only from the original reading uninitialised stack are
+detected by re-running with the callee-saved registers perturbed at each
+call, and masked.
+
+Defect classes the oracle found, all fixed in source:
+- **Swapped arguments or operands**, e.g. `pow` operands, and vectors passed in place.
+- **Float rounding points.** VC5 forwards float scalars in registers: model x87 registers with `double` and force a store through the value's `int` image.
+- **Locals assumed adjacent.** `&local` used as an array: write a real array.
+- **int→float conversions** where the original copies dwords.
+- **Wrong compiler variant.** The stack frame depth is behaviour: rank frame shape first.
+- **Relocation rows** from the wrong object, a non-address field, or a D3D-era name.
+
 ## End of session
 
 ```bash
