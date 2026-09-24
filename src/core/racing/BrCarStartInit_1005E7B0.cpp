@@ -21,32 +21,39 @@
  * storage br_carphys.c and 0x1006E5C0/0x10067C30's dossiers already pin;
  * +0x140/+0x144 the lap-count pair 0x1005ACE0/0x10059A80 also read.
  *
- * T2, not yet byte-exact: 992/979 B, 246/246 instructions (/O2 /Gi, the
- * lane's variant for this file).  Hand-transcription pass 2026-09-24 fixed
- * three source facts: the start-node test is `!= 0` with the node arm first,
- * the grid position is one statement `DAT_100b2f00 - f140 - 1` written before
- * the two zero stores, and the impulse block is ordinary members.
+ * T2, not yet byte-exact: 246/246 instructions (/O2 /Gi, the lane's
+ * variant for this file); 31 instruction lines differ, measured with every
+ * relocation resolved to its address (the sweep's masked counts are blind to
+ * operand-order swaps -- see docs/VC5-IDIOMS.md).  Source facts, all fixed
+ * by the bytes:
+ *  - the start-node test is `!= 0` with the node arm first; the grid
+ *    position is one statement `DAT_100b2f00 - f140 - 1` before the two zero
+ *    stores; the impulse block is ordinary members;
+ *  - 0x10077980 / 0x100778AC..E4 / 0x10077904..88 are this TU's CONSTANT
+ *    POOL (tu_map evidence): the source wrote literals -- -pi/2, -0.1, 0.5,
+ *    3.0, -1.0, 8.0, -0.5, -8.0 -- subtracted as negatives, not extern
+ *    floats.  Literals are a different operand kind: with externs VC5
+ *    reassociated `s2 * (l10 - 0.5) * 3` into `(s2 * 3) * (l10 - 0.5)`;
+ *  - per-axis product grouping (512 combinations swept): x row
+ *    `c2 * ((l10 - 0.5) * 3)`, x column `(l14 + 1) * (c1 * 8)`, y plain.
  * RESIDUE, three regions, all scheduling:
- *  - the trig temps: the original spills sin(h) below cos(h - K) (frame
- *    0x10 / 0x14), ours the other way round, and the SetPos x87 block
- *    follows from that.  Dead: declaration order (all 24), block scoping,
- *    calls inline in the SetPos arguments (worse), every term order and
- *    grouping of the x/y arguments (25 combinations; the original IS form
- *    `(o - t*(l10-K)*K) - u*(l14-K)*K`), explicit grouping of all four
- *    products (81 combinations), the offset differences as named temps or
- *    in place, the terms as inline helpers, use counts, 1..12 preceding
- *    pads, and the REAL preceding TU (0x1005E6A0 / 0x1005E780 ported as
- *    member definitions ahead of this one -- 0x1005E6A0 itself compiles
- *    register-blind 0+0 there, so the reconstruction is faithful).
- *    /Op is worse (6+6).  Register-blind 4+4, all fxch/fsubp positions:
- *    one T3 A2 row limit is 6.2, so this is 2 rows short of certifying;
- *  - the four impulse stores: the original emits them after the three
- *    SetVel pushes and `mov ecx,esi`, ours interleaves them with the
- *    pushes.  Dead: member vs raw-offset spelling, int vs float, an inline
- *    `ClearImpulse()->SetVel(...)`;
- *  - `mov ecx,esi` for 0x1005E6A0 sits two stores later in the original.
- * Flags: only /Gi moves anything (/Zi /Z7 /Gm /Gy /Zd /G3-/G5 /GB all
- * give the plain /O2 object).
+ *  - the SetPos x87 block (23 lines): preload/slot order of the trig
+ *    temps.  Forms that give the original's slot order lose the block
+ *    start and vice versa.  Dead beyond the sweeps: declaration order,
+ *    names, scoping, volatile (per temp, all 16 masks), inline helpers,
+ *    trig through double-returning prototypes, named argument temps,
+ *    arrays, 1..64 preceding functions or declarations, the real
+ *    preceding TU (0x1005C6D0 / 0x1005C8B0 / 0x1005E6A0 / 0x1005E780);
+ *  - the four impulse stores (6 lines): the original emits them after the
+ *    SetVel pushes and `mov ecx,esi`; ours interleaves them;
+ *  - `mov ecx,esi` for 0x1005E6A0 (2 lines) sits after the 14 zero stores
+ *    in the original.  Across every byte-exact function in the project VC5
+ *    never leaves that move below a same-block store run, so the original
+ *    had a block boundary there.  Dead: volatile fields, a named `this`
+ *    copy, fastcall free-function calls, comma/inline object expressions,
+ *    duplicated if/else tails (both spellings merge before scheduling),
+ *    float field types, store order.
+ * Compilers: VC5 RTM, SP3 and VC6 all tried; RTM is closest.
  */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
@@ -140,12 +147,7 @@ extern int   DAT_100b2f00;              /* 0x100B2F00 car count (nEntA)   */
 extern int   DAT_106eed48;              /* 0x106EED48 current start node  */
 extern int   DAT_100a9360;              /* 0x100A9360 game mode           */
 extern float DAT_106eed24;              /* 0x106EED24 start-line heading  */
-extern float DAT_10077980;              /* row angle offset               */
 extern float DAT_106eed18, DAT_106eed1c, DAT_106eed20; /* start line origin */
-extern float DAT_100778cc, DAT_100778dc;     /* row offset, row scale     */
-extern float DAT_100778e4, DAT_10077984;     /* column offset, column scale */
-extern float DAT_10077904, DAT_10077988;     /* heading-field scale pair  */
-extern float DAT_100778ac;                   /* start line z offset       */
 extern char *PTR_PTR_100bcab0[];        /* per-session-setting grid table */
 float BrCosF(float x);                  /* 0x100023E0 */
 float BrSinF(float x);                  /* 0x10002560 */
@@ -179,16 +181,14 @@ void Car5E7B0::StartInit()
 
     c1 = BrCosF(DAT_106eed24);
     s1 = BrSinF(DAT_106eed24);
-    c2 = BrCosF(DAT_106eed24 - DAT_10077980);
-    s2 = BrSinF(DAT_106eed24 - DAT_10077980);
+    c2 = BrCosF(DAT_106eed24 - (-1.5707964f));
+    s2 = BrSinF(DAT_106eed24 - (-1.5707964f));
 
-    SetPos((DAT_106eed18 - c2 * (local_10 - DAT_100778cc) * DAT_100778dc) -
-               c1 * (local_14 - DAT_100778e4) * DAT_10077984,
-           (DAT_106eed1c - s2 * (local_10 - DAT_100778cc) * DAT_100778dc) -
-               s1 * (local_14 - DAT_100778e4) * DAT_10077984,
-           DAT_106eed20 - DAT_100778ac);
+    SetPos((DAT_106eed18 - c2 * ((local_10 - 0.5f) * 3.0f)) - (local_14 - (-1.0f)) * (c1 * 8.0f),
+           (DAT_106eed1c - s2 * (local_10 - 0.5f) * 3.0f) - s1 * (local_14 - (-1.0f)) * 8.0f,
+           DAT_106eed20 - (-0.1f));
 
-    fFF4 = (local_14 - DAT_10077904) * DAT_10077988;
+    fFF4 = (local_14 - (-0.5f)) * (-8.0f);
 
     SetHeading(DAT_106eed24);
 
