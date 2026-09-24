@@ -32,7 +32,14 @@
  *    follows from that.  Dead: declaration order (all 24), block scoping,
  *    calls inline in the SetPos arguments (worse), every term order and
  *    grouping of the x/y arguments (25 combinations; the original IS form
- *    `(o - t*(l10-K)*K) - u*(l14-K)*K`), use counts, 1..12 preceding pads;
+ *    `(o - t*(l10-K)*K) - u*(l14-K)*K`), explicit grouping of all four
+ *    products (81 combinations), the offset differences as named temps or
+ *    in place, the terms as inline helpers, use counts, 1..12 preceding
+ *    pads, and the REAL preceding TU (0x1005E6A0 / 0x1005E780 ported as
+ *    member definitions ahead of this one -- 0x1005E6A0 itself compiles
+ *    register-blind 0+0 there, so the reconstruction is faithful).
+ *    /Op is worse (6+6).  Register-blind 4+4, all fxch/fsubp positions:
+ *    one T3 A2 row limit is 6.2, so this is 2 rows short of certifying;
  *  - the four impulse stores: the original emits them after the three
  *    SetVel pushes and `mov ecx,esi`, ours interleaves them with the
  *    pushes.  Dead: member vs raw-offset spelling, int vs float, an inline
