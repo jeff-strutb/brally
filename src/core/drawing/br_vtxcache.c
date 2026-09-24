@@ -28,6 +28,7 @@
 #define BrVtxCacheResolve BrVtxCacheResolve_hdr
 #define BrPtrListAdd      BrPtrListAdd_hdr
 #define BrF3DVtxFixup     BrF3DVtxFixup_hdr
+#define BrVtxSwap         BrVtxSwap_hdr     /* defined on the vertex struct */
 #include "slice1_05.h"
 #include "br_gamestep.h"
 #include "slice2_16.h"    /* g_brRca67B548/54C, for 0x10018A30 */
@@ -39,6 +40,7 @@
 #undef BrVtxCacheResolve
 #undef BrPtrListAdd
 #undef BrF3DVtxFixup
+#undef BrVtxSwap
 #else
 #include "slice1_05.h"
 #include "br_gamestep.h"
@@ -68,29 +70,28 @@ static int br05_s16le(const unsigned char *p)
  * colour or normal bytes at the end need no swapping and are left alone. */
 /* @implements 0x1002BDD0 d3d BrVtxSwap */
 #ifdef BR_MATCHING_BUILD
-/* The original swaps each 16-bit field as a word store of a byte pack
- * (`xor edx,edx; mov dh/dl; mov [..],dx`), unrolled over the six fields.
- * The first two fields pack high-byte-first, the last four low-byte-first
- * -- a source operand-order fossil, preserved.
- * RESIDUE (parked): VC5 anchors the walked pointer at +2 (`add eax,2`
- * preheader, stores at -2..+8) from EVERY probed spelling -- pointer walk,
- * ((u16*)p)[k] scaled stores, short-pointer walk, indexed i*16 base,
- * do-while, statement reorder, union temp (spills), /O1 /Os /Op /Og-.
- * The original anchors at +0. One extra insn, +3 B, REGNORM 4+3; the
- * field-0 load-order flip is downstream of the same bias. */
-void BrVtxSwap(void *pVerts, int count)
+/* One 16-byte source vertex, walked as the struct-pointer PARAMETER (a local
+ * cast from void* is not enough): that is what anchors
+ * VC5's pointer at +0 (a byte pointer stepped by 16 anchors it at +2).  The
+ * first two fields are a byte pack (`xor edx,edx; mov dh; mov dl`); the last
+ * four are a byte swap of the 16-bit VALUE -- `(u8)(s >> 8) | ((u8)s << 8)`
+ * -- which VC5 turns into byte loads in the other order (dl first).  Both
+ * spellings are needed; operand order alone is canonicalised. */
+typedef struct BrVtxSrc16 { unsigned char b[16]; } BrVtxSrc16;
+
+void BrVtxSwap(BrVtxSrc16 *v, int count)
 {
-    unsigned char *p = (unsigned char *)pVerts;
     int i;
 
-    for (i = 0; i < count; ++i) {
-        ((unsigned short *)p)[0] = (unsigned short)((p[0] << 8) | p[1]);
-        ((unsigned short *)p)[1] = (unsigned short)((p[2] << 8) | p[3]);
-        ((unsigned short *)p)[2] = (unsigned short)(p[5] | (p[4] << 8));
-        ((unsigned short *)p)[3] = (unsigned short)(p[7] | (p[6] << 8));
-        ((unsigned short *)p)[4] = (unsigned short)(p[9] | (p[8] << 8));
-        ((unsigned short *)p)[5] = (unsigned short)(p[11] | (p[10] << 8));
-        p += BR_VTX_SRC_SIZE;
+    for (i = 0; i < count; ++i, ++v) {
+        unsigned short *s = (unsigned short *)v;
+
+        *(unsigned short *)&v->b[0] = (unsigned short)((v->b[0] << 8) | v->b[1]);
+        *(unsigned short *)&v->b[2] = (unsigned short)((v->b[2] << 8) | v->b[3]);
+        s[2] = (unsigned short)((unsigned char)(s[2] >> 8) | ((unsigned char)s[2] << 8));
+        s[3] = (unsigned short)((unsigned char)(s[3] >> 8) | ((unsigned char)s[3] << 8));
+        s[4] = (unsigned short)((unsigned char)(s[4] >> 8) | ((unsigned char)s[4] << 8));
+        s[5] = (unsigned short)((unsigned char)(s[5] >> 8) | ((unsigned char)s[5] << 8));
     }
 }
 #else
