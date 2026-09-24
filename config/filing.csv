@@ -327,6 +327,7 @@ glide_va,name,module,basis,file
 0x10021240,br_dl_skip,drawing,filed,src/core/drawing/br_dl.c
 0x10021250,BrGbiSet4C1694,drawing,neighbour,src/core/drawing/br_gbi.c
 0x10021270,BrGlGbiCall,drawing,filed,src/core/drawing/br_dlglide.c
+0x100215C0,BrGbiCall10021560,drawing,description,src/core/drawing/br_dltexrect.c
 0x100219D0,BrDlsTileRectE3,drawing,filed,src/core/drawing/br_dlshared.c
 0x10022120,BrDlsClipCodes,drawing,filed,src/core/drawing/br_dlshared.c
 0x100221D0,BrDlVtxLitDecal,drawing,filed,src/core/drawing/br_dlvtx_litdecal.c
