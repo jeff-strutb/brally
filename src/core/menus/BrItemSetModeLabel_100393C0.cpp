@@ -1,6 +1,14 @@
 /* WHAT IT DOES: set the mode item's caption, and on the root page also nudge
  * it up the screen -- the root layout has one line less above it, so the
  * item moves rather than the page being laid out twice. */
+/* @t4-pass 0x100393C0 1 2026-09-24 probes 16 bytes 328 insns 101 regions 1 rows 0 census no  (hand, after the shared index->string call reached 328/330: the index local as short/uchar/long/unsigned/pointer/value, split index temps, the 0x5C00 arm through k, else-if chain; the k-in-eax choice never moved) */
+/* @t4-pass 0x100393C0 2 2026-09-24 probes 10 bytes 328 insns 101 regions 1 rows 0 census yes  (hand, corpus query at +0xD1: the 12-instruction residue window is not in the corpus past 3 instructions; plus ten index-expression and declaration spellings, all identical) */
+/* @t3 0x100393C0 2026-09-24 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 328/330 insns 101/101 rows 0+0 regions 1 oracle UNVERIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is one register choice: the shared index for the 0x5BFC and 0x5D58
+ * arms lands in eax where the original has ecx (2 bytes, same instructions).
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x100393C0 glide BrItemSetModeLabel_100393C0
  * @cpp_kind free
  * @cpp_symbol ?BrItemSetModeLabel_100393C0@@YAHPAVObj393C0@@@Z
