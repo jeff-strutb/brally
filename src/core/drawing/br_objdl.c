@@ -187,6 +187,7 @@ extern float DAT_106e7930[16];   /* the sprite matrix */
 void BrObjDlBuild(int pRects, int idx, uint32_t cls, int bLit, int pScene)
 {
     uint32_t *pCmd;
+    uint32_t *pCmdStart;  /* each object walks the list from its start */
     uint32_t *pDL;
     uint32_t *pDLMark;
     uint32_t *pSave;
@@ -272,7 +273,13 @@ void BrObjDlBuild(int pRects, int idx, uint32_t cls, int bLit, int pScene)
         pObj     = (float *)(pScene + 0x2730);
         pDLMark  = 0;
         i        = 0;
+        pCmdStart = pCmd;
         do {
+            /* The original reloads the command pointer from its saved start
+             * at the top of every object iteration (1000D06C); without it
+             * the second object began at the first one's end marker and
+             * drew nothing (live oracle, benchmark flythrough). */
+            pCmd = pCmdStart;
             if ((cls & 1) != 0 &&
                 ((DAT_106ed520 != DAT_106e9d88 + 0x273c &&
                   DAT_106ed520 != DAT_106e9d88 + 0x27c4) ||
@@ -299,8 +306,13 @@ void BrObjDlBuild(int pRects, int idx, uint32_t cls, int bLit, int pScene)
                 }
                 DAT_1035fb78.z = DAT_100771f8;
                 sx = FUN_10034840(&DAT_1035fb78);
+                /* The original's clamp stores its 0.5 with the length call's
+                 * argument still pushed, so it lands four bytes off -- in
+                 * k's slot, which is recomputed below -- and the length stays
+                 * unclamped.  That is the behaviour; the benchmark flythrough
+                 * reaches it (live oracle, short sprite direction vectors). */
                 if (sx < DAT_100771fc) {
-                    sx = 0.5f;
+                    k = 0.5f;
                 }
                 len2 = FUN_10034840(&pObj[-0x9c8]);
                 if (len2 < DAT_100771fc) {
