@@ -1,0 +1,41 @@
+# Multiplayer dropout, client side (peer of 64_mp_dropout.txt): join, race
+# briefly, then vanish from the network mid-race.
+sleep 240
+mark main_menu
+mouse 250 151
+click
+sleep 40
+mouse 250 233
+click
+sleep 60
+mouse 250 138
+click
+sleep 60
+mouse 250 157
+click
+sleep 400
+shot mpc_joinhost
+mouse 250 213
+click
+sleep 90
+shot mpc_join
+mouse 252 233
+click
+sleep 90
+mark client_setup
+shot mpc_setup
+mouse 252 233
+click
+sleep 30
+mark client_ready
+shot mpc_ready
+wait 0x106E79F4 == 0x10019A70 3000
+mark client_race
+sleep 400
+shot mpc_grid
+press SPACE
+sleep 150
+autopilot on
+sleep 400
+mark client_leaves
+end
