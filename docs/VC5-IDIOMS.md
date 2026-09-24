@@ -8329,3 +8329,14 @@ with the target's flags, diff one function against original bytes
   into the else-arm's shared RMW `dec dword ptr`.  Spelling it as an
   if/else with `t = -2` folds; the clamp-then-unconditional-decrement is
   the source shape.
+- **A byte result materialised full-width (`mov eax,1` / `xor eax,eax`)
+  while the same variable elsewhere is `mov al,bl` / `or al,cl` = an
+  `__inline` helper returning `int` through `if (...) return 1; return 0;`.**
+  The inliner's int return temp survives and is narrowed on assignment;
+  the shared `xor eax,eax` exit then cross-jumps between arms.  Writing the
+  test in place (`&&`, `?:`, if/else) or as an inline with ONE `return
+  expr;` canonicalises to `mov al,1`; making the variable `int` fixes those
+  arms but widens every other write.  C and C++ front ends identical.
+  Proven byte-exact on 0x100719D0 BrInputJustPressed (1246 B).  Same
+  function: declaring the byte `r = 0` BEFORE the pointer initialiser moves
+  the `xor al,al` into the prologue and the argument from eax to ecx.
