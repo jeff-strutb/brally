@@ -394,9 +394,11 @@ def run_all(jobs, seconds):
                 garbage = line.split(':')[1].split('[')[0].strip()
         return name, verdict, frames, first, garbage
 
+    started = datetime.datetime.now().astimezone().isoformat(timespec='seconds')
     with ThreadPoolExecutor(max_workers=jobs) as ex:
         rows = list(ex.map(one, scripts))
-    today = datetime.date.today().isoformat()
+    # started, not finished: a commit made while the run was going is not covered
+    today = started
     with open(os.path.join(ROOT, 'config', 'whole_image.csv'), 'w', newline='') as f:
         w = csv.writer(f)
         w.writerow(['script', 'verdict', 't3_run', 'first_difference', 'stale_stack_only_frames', 'date'])

@@ -55,6 +55,12 @@ GATE A -- the residue test, from ONE fresh object (the last sweep's):
                                   synthetic-seed oracle that used to feed A5
                                   is retired: random seeds passed BrRaceStep
                                   with swapped call arguments.)
+  A7 whole-image                  tools/brbox_diff.py --all: the assembled T3
+                                  image and the original run every script and
+                                  agree on every frame (Glide calls, the whole
+                                  data area, network sends) -- recorded in
+                                  config/whole_image.csv, no older than the
+                                  function's source.  Never superseded.
 GATE B -- sincere attempts at T4, read from a LEDGER in the same file, never
   from the tag.  Each pass at byte-exactness writes one line (file header):
 
@@ -967,7 +973,36 @@ def gates(m):
         for i, (name, passed, det) in enumerate(g):
             if name[:2] in ('A1', 'A2', 'A3', 'A4', 'A6') and not passed:
                 g[i] = (name, True, det + '  [superseded by A5 %s]' % m['oracle'])
+    # A7 is NOT superseded by anything.  A5 runs one body at a time from a
+    # handful of captures; the whole-image run (every T3 body placed at once,
+    # every script, every frame) found ~25 real defects A5 had certified.
+    g.append(('A7 whole-image',) + whole_image_ok(m.get('file')))
     return g
+
+
+def whole_image_ok(src):
+    """(passed, detail): config/whole_image.csv says every script IDENTICAL,
+    and it is no older than the function's source file."""
+    import csv
+    import subprocess
+    p = os.path.join(ROOT, 'config', 'whole_image.csv')
+    if not os.path.exists(p):
+        return False, 'no config/whole_image.csv (tools/brbox_diff.py --all)'
+    rows = list(csv.DictReader(open(p)))
+    bad = [r['script'] for r in rows if r['verdict'] != 'IDENTICAL']
+    if not rows or bad:
+        return False, 'not identical: %s (tools/brbox_diff.py --all)' % ', '.join(bad[:5])
+    run = min(r['date'] for r in rows)
+    if src:
+        dirty = subprocess.run(['git', 'status', '--porcelain', '--', src], cwd=ROOT,
+                               capture_output=True, text=True).stdout.strip()
+        if dirty:
+            return False, '%s has uncommitted edits -- commit, then rerun --all' % src
+        last = subprocess.run(['git', 'log', '-1', '--format=%cI', '--', src], cwd=ROOT,
+                              capture_output=True, text=True).stdout.strip()
+        if last and last > run:
+            return False, 'stale: %s changed %s, whole-image run %s -- rerun --all' % (src, last, run)
+    return True, '%d/%d scripts IDENTICAL (%s)' % (len(rows), len(rows), run)
 
 
 def tag_text(m, date, eff):
