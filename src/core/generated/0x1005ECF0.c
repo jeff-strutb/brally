@@ -70,61 +70,19 @@ void BrVec3Lerp(RcVec3 *pOut, const RcVec3 *pA, const RcVec3 *pB, float t);
  * nearest now, walking forward from where it was last frame. This is what
  * keeps track of a car's progress round the lap, and it feeds both the
  * position table and the AI. */
-/* @t4-pass 0x1005ECF0 1 2026-09-07 probes 35 bytes 219 insns 75 regions 2 rows 9 census yes  (tools/crank.py) */
-/* @t4-pass 0x1005ECF0 2 2026-09-07 probes 35 bytes 219 insns 75 regions 2 rows 9 census yes  (tools/crank.py) */
 /* @implements 0x1005ECF0 glide BrRacePathAdvance */
-/* @implements 0x1005ECF0 glide BrRacePathAdvance
- *
- * PARKED at +15 bytes / +7 instructions, 2026-09-03.  Everything is the
- * original's shape -- the whole 443 -> 219 byte gap closed -- and the residue
- * is ONE optimiser decision: VC5 ROTATES the outer node loop here and the
- * original's build did not.
- *
- *   original   ecfd: test esi,esi / je end        <- loop header is the
- *              ...                                  null test; the back edge
- *              ed6b: jmp ecfd                       is an unconditional jmp
- *   ours       007:  test esi,esi / je end        <- header peeled to a guard
- *              015:  test byte [esi+0x16],bl      <- loop header is now the
- *              ...                                   flag test
- *              084:  test esi,esi / jne 015       <- back edge re-tests,
- *              088:  pop/pop/pop/ret                 needing its own epilogue
- *
- * That accounts for every extra instruction: the duplicated null test (2),
- * the duplicated flag test (2), the second epilogue (4), against the
- * original's one `jmp`.
- *
- * DEAD PROBES -- four spellings of the outer loop all produce the IDENTICAL
- * 219-byte, 75-instruction output, so the rotation is not reachable from the
- * loop's shape.  Do not re-run:
- *   - `while (pNode != 0) { ... }` with the advance at the bottom
- *   - `for (;;) { if (pNode == 0) return; ... }`
- *   - the same with every `return` replaced by `goto done;` and one shared
- *     exit label (the two epilogues still do not merge)
- *   - SELF TAIL CALL: `BrRacePathAdvance(pNode->pNext, 0, ratio, dist);` as
- *     the last statement -- MSVC turns it into the same rotated loop
- * Also dead, on the inner sibling walk: `while ((f & 1) != 0) { p = p->pSib;
- * if (p == 0) break; }` and the `for(;;)`/break form both compile to the same
- * thing as the `&&` form kept below.
- *
- * Fresh ideas only: a compile flag that disables loop inversion (the sweep's
- * four sets all land here), or a construct that makes the null test not the
- * loop's controlling condition.
- */
 void BrRacePathAdvance(RcNode *pNode, int index, float ratio, float dist)
 {
     for (;;) {
         int count;
 
-        if (pNode == 0)                 /* 0x1005ECFD */
-            return;
-
-        /* 0x1005ED05: hop SKIP nodes along the sibling link.  The `&&` is
-         * what gives the original's single flag test with the back edge
-         * jumping to it (`mov esi,[esi+4]; test esi,esi; jne`), and the
-         * empty body is what lets the NULL exit fall into the test below
-         * rather than jumping straight out. */
-        while ((pNode->flags & 1) != 0 && (pNode = pNode->pSib) != 0)
-            ;
+        /* 0x1005ECFD/0x1005ED05: hop SKIP nodes along the sibling link.
+         * The null test at the top of the node loop IS this walk's guard --
+         * VC5 threads its exit straight to the return -- so there is no
+         * separate `if (pNode == 0) return` before it; with one, VC5 rotates
+         * the node loop (+15 B, a second epilogue). */
+        while (pNode != 0 && (pNode->flags & 1) != 0)
+            pNode = pNode->pSib;
         if (pNode == 0)                 /* 0x1005ED11 */
             return;
 
