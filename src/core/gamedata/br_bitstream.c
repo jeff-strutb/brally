@@ -332,7 +332,8 @@ int BR_THISCALL1 BrBitStreamReadS32(BrBitStream *pBs)
 /* WHAT IT DOES: pull the next n bits out of a packed bit stream and return
  * them, advancing the read position. The primitive underneath every
  * compressed format the game reads. */
-/* @implements 0x10073C90 d3d BrBitStreamReadBits */
+/* port-only body; the Glide match is
+ * src/core/gamedata/BrBitStreamReadBits_1006CED0.cpp (a __thiscall method). */
 #ifdef BR_MATCHING_BUILD
 typedef struct { int n; } BrBitStreamReadArg;
 /* RESIDUE (12 regnorm, +20 bytes): the original is frameless with ONE stack

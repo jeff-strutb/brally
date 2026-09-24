@@ -234,6 +234,7 @@ glide_va,name,module,basis,file
 0x10018AF0,BrSwapVec3,geometry,filed,src/core/geometry/br_bits.c
 0x10018B40,BrRcaFixupArray,gamedata,manual,src/core/gamedata/br_rcaswap.c
 0x10018E10,BrVtxCacheResolve,drawing,neighbour-1,src/core/drawing/br_vtxcache.c
+0x10018E90,BrVtxSwap,drawing,filed,src/core/drawing/br_vtxcache.c
 0x10018FC0,BrVtxCacheInsert,drawing,description,src/core/drawing/br_vtxcache.c
 0x10019000,BrPtrListContains,drawing,neighbour-1,src/core/drawing/br_vtxcache.c
 0x10019210,BrF3DVtxFixup,drawing,description,src/core/drawing/br_vtxcache.c
@@ -257,7 +258,10 @@ glide_va,name,module,basis,file
 0x10019A10,BrRaceDriverReset,racing,filed,src/core/racing/br_racebegin.c
 0x10019A40,BrRaceClockReset,racing,filed,src/core/racing/br_racebegin.c
 0x10019A70,BrRaceStep,racing,manual,src/core/racing/BrRaceStep_10019A70.cpp
+0x1001C6A0,BrCarTableAdd,,description,src/core/slice2_17.c
 0x1001C7A0,BrCarTableRemove,racing,description,src/core/slice2_17.c
+0x1001C810,BrCarStateSave,,description,src/core/slice2_17.c
+0x1001C890,BrCarStateRestore,,description,src/core/slice2_17.c
 0x1001CC00,BrRallyMain,startup,filed,src/core/startup/br_boot.c
 0x1001CD50,BrFlagInit_1002F690,startup,filed,src/core/startup/br_objlife.c
 0x1001CD70,BrAppStateColdInit,startup,filed,src/core/startup/br_boot.c
