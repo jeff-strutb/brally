@@ -1219,7 +1219,143 @@ void BrWeatherStepLightning(void)
  * straight down while snow is pushed sideways by the wind. Very fast camera
  * movement is damped so the weather does not streak. If neither rain nor snow
  * is on it abandons the whole loop, not just the current view. */
+/* @implements 0x10016C90 glide BrWeatherStepParticles */
 /* @implements 0x100196D0 d3d BrWeatherStepParticles */
+#ifdef BR_MATCHING_BUILD
+/* Hand-transcribed from the Glide bytes (1142 B, size-exact).  Source facts:
+ *  - loose globals, as in BrWeatherStepLightning above;
+ *  - the particle field is indexed [view][i][k], not walked by a pointer:
+ *    that is what makes VC5 form the +2-biased cursor inside the count
+ *    guard and restore esi only on the path that ran the loop;
+ *  - the two integer copies of the wind angle and the two rounding `fst`s
+ *    into one dead slot are float-parameter inline helpers (BrWxCos/Sin);
+ *  - `(float)sqrt(..)` in the damping factor keeps the divisor a memory
+ *    operand (`fdiv [speed]`); without it VC5 hoists a second fld.
+ * RESIDUE (2026-09-24): dz is stored with fstp and reloaded where the
+ * original keeps it (`fst; fmul`, two fxch), the view/particle induction
+ * slots are swapped (0x1c/0x20), and pos.x/pos.z trade ecx/edx in the seed
+ * copy.  Inert: sum order and parenthesisation (10), dx/dy/dz statement
+ * order (6), local and extern declaration order (hill-climb, 132),
+ * volatile speed, TU pads 1..16, loop-carried/struct particle cursor. */
+typedef struct BrWxView { const BrCamBlock *pBlk; char pad[0x2b64]; } BrWxView;
+extern int       DAT_106ed6b4;               /* storm                        */
+extern int       DAT_106ed6b0;               /* rain                         */
+extern int       DAT_100aa044;               /* view count                   */
+extern int       DAT_104add38;               /* particles per view           */
+extern int       DAT_104b15f4;               /* particles seeded             */
+extern short     DAT_104add50[2][522][3];
+extern BrWxView  DAT_10af393c[];
+extern BrVec3    DAT_104abe70[2];            /* last camera position         */
+extern BrVec3    DAT_104b15d0[2];            /* snow drift                   */
+extern float     DAT_104b15c8;               /* camera speed                 */
+extern float     DAT_104ad6e8;               /* speed damping                */
+extern float     DAT_104b15ec;               /* wind angle                   */
+extern float     DAT_100a7188;               /* wind gain                    */
+extern float     DAT_106e9d8c;               /* dt                           */
+extern float     DAT_10077300, DAT_10077304, DAT_10077314, DAT_10077318;
+extern float     DAT_10077328, DAT_1007732c, DAT_10077334;
+extern double    DAT_10077338;
+
+static __inline float BrWxCos(float a) { return (float)cos(a); }
+static __inline float BrWxSin(float a) { return (float)sin(a); }
+
+void BrWeatherStepParticles(void)
+{
+    int iView;
+
+    BrWeatherStepWind();
+    if (DAT_106ed6b4 != 0)
+        BrWeatherStepLightning();
+
+    DAT_104add38 = 0x200 / DAT_100aa044;
+    for (iView = 0; iView < DAT_100aa044; iView++) {
+        const BrCamBlock *pBlk = DAT_10af393c[iView].pBlk;
+        BrVec3 pos, d;
+        float dx, dy, dz, j0, j1, t;
+        int cx, cy, D0, D1, D2, R1, R2, i;
+
+        BrVec3MulAdd(&pos, &pBlk->v30, &pBlk->v00, 3.0f);
+        if (DAT_104b15f4 == 0) {
+            BrWeatherRandomiseParticles();
+            DAT_104abe70[0] = pos;
+            DAT_104abe70[1] = pos;
+            DAT_104b15f4 = 1;
+        }
+        if (DAT_106ed6b0 == 0 && DAT_106ed6b4 == 0)
+            return;
+
+        dx = pos.x - DAT_104abe70[iView].x;
+        dy = pos.y - DAT_104abe70[iView].y;
+        dz = pos.z - DAT_104abe70[iView].z;
+        DAT_104b15c8 = sqrt(dx * dx + dy * dy + dz * dz) / DAT_106e9d8c;
+        if (DAT_104b15c8 > DAT_10077328) {
+            DAT_104ad6e8 = (float)sqrt(DAT_104b15c8 * DAT_1007732c) * DAT_10077328 / DAT_104b15c8;
+            DAT_104b15c8 = DAT_104ad6e8 * DAT_104b15c8;
+            dx *= DAT_104ad6e8;
+            dy *= DAT_104ad6e8;
+            dz *= DAT_104ad6e8;
+        } else {
+            DAT_104ad6e8 = 1.0f;
+        }
+
+        if (DAT_106ed6b0 != 0) {
+            dz -= DAT_106e9d8c * DAT_10077318;
+        } else {
+            d.x = dx;
+            d.y = dy;
+            d.z = dz;
+            t = DAT_106e9d8c + DAT_106e9d8c;
+            DAT_104b15d0[iView].x = BrWxCos(DAT_104b15ec) * DAT_100a7188 * DAT_106e9d8c;
+            DAT_104b15d0[iView].y = BrWxSin(DAT_104b15ec) * DAT_100a7188 * DAT_106e9d8c;
+            DAT_104b15d0[iView].z = t;
+            dx += DAT_104b15d0[iView].x;
+            dy += DAT_104b15d0[iView].y;
+            dz += t;
+            BrVec3ScaleBy(&d, DAT_104ad6e8 * DAT_10077314);
+            BrVec3AddTo(&DAT_104b15d0[iView], &d);
+        }
+
+        if (DAT_106ed6b0 != 0) {
+            j0 = ((float)(BrRandom() & 0xFFFF) * DAT_10077300 - DAT_10077304)
+                 * DAT_106e9d8c * DAT_10077334;
+            j1 = ((float)(BrRandom() & 0xFFFF) * DAT_10077300 - DAT_10077304)
+                 * DAT_106e9d8c * DAT_10077334;
+        } else {
+            j0 = 0.0f;
+            j1 = 0.0f;
+        }
+
+        DAT_104abe70[iView] = pos;
+        cx = BrRandom() & 0xF;
+        cy = BrRandom() & 0xF;
+        D0 = (int)(dx * DAT_10077338);
+        D1 = (int)(dy * DAT_10077338);
+        D2 = (int)(dz * DAT_10077338);
+        R1 = (int)(j0 * DAT_10077338);
+        R2 = (int)(j1 * DAT_10077338);
+
+        for (i = 0; i < DAT_104add38; i++) {
+            if (cx != 0) {
+                DAT_104add50[iView][i][0] += (short)D0;
+                cx--;
+            } else {
+                DAT_104add50[iView][i][0] += (short)(R1 + D0);
+                R1 = -R1;
+                cx = BrRandom() & 0xF;
+            }
+            if (cy != 0) {
+                DAT_104add50[iView][i][1] += (short)D1;
+                cy--;
+            } else {
+                DAT_104add50[iView][i][1] += (short)(R2 + D1);
+                R2 = -R2;
+                cy = BrRandom() & 0xF;
+            }
+            DAT_104add50[iView][i][2] += (short)D2;
+        }
+    }
+}
+#else
 void BrWeatherStepParticles(void)
 {
     int32_t iView;
@@ -1370,6 +1506,7 @@ void BrWeatherStepParticles(void)
         }
     }
 }
+#endif
 
 /* =====================================================================
  * 0x1001A4B0
