@@ -8445,3 +8445,10 @@ with the target's flags, diff one function against original bytes
   the FIRST declaration in the TU that counts: a global first declared by an
   earlier function's arm fixes its rank for every later function.  Same
   function (dt vs 318/334, first declared in the lightning arm).
+- **Nested call as an argument vs a separate statement.**  `f(g(), buf, n)`
+  pushes `n` and `buf` BEFORE calling `g`; the original's `call g; add esp;
+  push n; push buf; push eax` is `seed = g(); f(seed, buf, n);`.
+- **Four stack structs written in draw order.**  A quad drawn as
+  `tri(&a,&b,&c); tri(&b,&d,&c)` with a, b, c, d separate locals: VC5 lays
+  the frame out b, c, a, d, and the per-field store order follows the
+  source.  Proven on 0x1006C990 BrImgShowFullScreen (994 B).
