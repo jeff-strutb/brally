@@ -132,7 +132,23 @@ extern float DAT_105cd9fc;
  *    declares the TU's other light/clip globals: the symbol table in front
  *    of the function decides x87 operand-role ties.  Setup order, groupings
  *    and declaration order were found by a hill-climb over those choices.
- * Open: the MVP x-product issue slot, m[0]*n0 operand role, texgen store order. */
+ * Open (x87 scheduling / operand role only; every row pairs):
+ *  - the transform rows: the original issues the x product LAST (column
+ *    loads z, y, then the vertex x); ours issues it second.  Dead: all six
+ *    term orders, row/association grouping (8 forms), x as deref / cast /
+ *    indexed, x column absolute / array / extern position (65 positions);
+ *  - m[0]*n0: the original loads m[0]; ours loads n0.  Dead: struct matrix
+ *    pointer, const pointer, `*m`;
+ *  - the light setup's three extra fxch (direction fild issued before the
+ *    last colour store): dead under all 720 statement orders;
+ *  - the texgen spill slots for dotX and the t-scale cast swap (0x2c/0x30).
+ * @t4-pass 0x10022600 1 2026-09-24 probes 733 bytes 1206 insns 359 regions 10 rows 11 census no  (light setup: all 720 orders of the three direction and three colour statements; transform rows: 8 grouping/operand-kind forms of the x term; matrix/vertex pointer types: struct matrix pointer, const, `*m`, cast and indexed x; nothing moved)
+ * @t4-pass 0x10022600 2 2026-09-24 probes 272 bytes 1206 insns 359 regions 10 rows 11 census yes  (census: every row is an x87 operand-role or issue-slot pair plus the dotX/t-scale spill-slot swap, which is what declaration order decides -- moved each of the 17 locals to every other slot; nothing moved) */
+/* @t3 0x10022600 2026-09-24 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 1206/1212 insns 359/362 rows 7+4 regions 10 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue is x87 scheduling and operand role only (see the Open list above);
+ * every row pairs.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* WHAT IT DOES: transforms a batch of vertices through the combined matrix,
  * generates texture coordinates by rotating each normal into world space and
  * projecting it on the two view-direction vectors (a straight linear map to

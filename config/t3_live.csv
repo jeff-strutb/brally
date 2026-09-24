@@ -40,11 +40,11 @@ va,name,verdict,calls,captured,contexts,detail,date
 0x100183b0,BrFadeDrawBars,EQUIVALENT,18980,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x100186e0,BrFadeTick,EQUIVALENT,18980,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10018a50,BrSwapU16Array,EQUIVALENT,126,120,120,20_quickrace_drive: 6 real call(s) agree,2026-09-24
-0x10018b60,BrRcaFixupRecord,EQUIVALENT,4968,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10018b60,BrRcaFixupRecord,EQUIVALENT,4813,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10018d50,BrRcaSwapMesh,EQUIVALENT,2648,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
-0x10018ef0,BrVtxExpand,EQUIVALENT,20817,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10018ef0,BrVtxExpand,EQUIVALENT,20634,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10019930,BrRaceCueLayout,EQUIVALENT,1,1,1,25_cheats: 1 real call(s) agree,2026-09-24
-0x10019a70,BrRaceStep,EQUIVALENT,76894,120,20,20_quickrace_drive: 6 real call(s) agree [original not containable: timeout no return within 30.0s (eip 7E0100F7)],2026-09-24
+0x10019a70,BrRaceStep,EQUIVALENT,76894,120,20,20_quickrace_drive: 6 real call(s) agree [original not containable: timeout no return within 30.0s (eip 7E010102)],2026-09-24
 0x1001c9d0,BrSelLookup,EQUIVALENT,3,3,3,50_championship: 1 real call(s) agree,2026-09-24
 0x1001ca30,BrCarDamageTick,EQUIVALENT,2,2,2,50_championship: 1 real call(s) agree,2026-09-24
 0x1001d1b0,BrScenePropsDraw,EQUIVALENT,2509,119,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
@@ -55,31 +55,32 @@ va,name,verdict,calls,captured,contexts,detail,date
 0x1001fa30,BrDlCmdTri2,EQUIVALENT,1000020,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10020d70,BrDlCmdTri2NoZ,EQUIVALENT,17911,114,19,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10021570,BrDlsTileRectE4,UNCOVERED,0,0,0,,2026-09-24
+0x10022600,BrDlVtxGen,EQUIVALENT,14800,30,5,20_quickrace_drive: 6 real call(s) agree [not placed in the image; object mode],2026-09-24
 0x10022bf0,BrDlVtxGenLin,EQUIVALENT,22234,118,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10023b70,BrFramePresent,EQUIVALENT,18980,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
-0x10023d70,FUN_10023d70,EQUIVALENT,10060,125,25,10_boot: 1 real call(s) agree,2026-09-24
+0x10023d70,FUN_10023d70,EQUIVALENT,9923,125,25,10_boot: 1 real call(s) agree,2026-09-24
 0x10024680,BrTexLerpU8,UNCOVERED,0,0,0,,2026-09-24
-0x100250d0,BrTex3dExpand,EQUIVALENT,10980,125,25,10_boot: 1 real call(s) agree,2026-09-24
+0x100250d0,BrTex3dExpand,EQUIVALENT,10838,125,25,10_boot: 1 real call(s) agree,2026-09-24
 0x100271f0,BrTex3dTexel,EQUIVALENT,1000020,120,40,20_quickrace_drive: 6 real call(s) agree,2026-09-24
-0x10027290,BrGbiSizeShift,EQUIVALENT,1955,145,125,10_boot: 5 real call(s) agree,2026-09-24
-0x10027a10,br_tex3d_append,EQUIVALENT,10060,125,25,10_boot: 1 real call(s) agree,2026-09-24
-0x10027a70,FUN_10027a70,EQUIVALENT,37616,125,45,10_boot: 1 real call(s) agree,2026-09-24
-0x10027e10,BrTex3dMipChainLoad,EQUIVALENT,323,77,20,20_quickrace_drive: 4 real call(s) agree,2026-09-24
-0x10027f00,BrGbiBlit,EQUIVALENT,259,125,125,10_boot: 1 real call(s) agree,2026-09-24
-0x10028200,FUN_10028200,EQUIVALENT,10101,125,45,10_boot: 1 real call(s) agree,2026-09-24
+0x10027290,BrGbiSizeShift,EQUIVALENT,1815,145,125,10_boot: 5 real call(s) agree,2026-09-24
+0x10027a10,br_tex3d_append,EQUIVALENT,9923,125,25,10_boot: 1 real call(s) agree,2026-09-24
+0x10027a70,FUN_10027a70,EQUIVALENT,37243,125,45,10_boot: 1 real call(s) agree,2026-09-24
+0x10027e10,BrTex3dMipChainLoad,EQUIVALENT,340,77,20,20_quickrace_drive: 4 real call(s) agree,2026-09-24
+0x10027f00,BrGbiBlit,EQUIVALENT,239,125,125,10_boot: 1 real call(s) agree,2026-09-24
+0x10028200,FUN_10028200,EQUIVALENT,9964,125,45,10_boot: 1 real call(s) agree,2026-09-24
 0x10028620,BrTexSlotFetchPixels,EQUIVALENT,931,102,51,20_quickrace_drive: 6 real call(s) agree,2026-09-24
-0x10028bb0,BrTex3dRegister,EQUIVALENT,26945,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
-0x10029420,BrGbiTexScanSetImg,EQUIVALENT,31856,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
-0x10029480,BrGbiTexScanLoadTlut,EQUIVALENT,4911,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
-0x10029510,BrGbiTexScanLoadBlock,EQUIVALENT,26945,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10028bb0,BrTex3dRegister,EQUIVALENT,26694,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10029420,BrGbiTexScanSetImg,EQUIVALENT,31365,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10029480,BrGbiTexScanLoadTlut,EQUIVALENT,4671,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10029510,BrGbiTexScanLoadBlock,EQUIVALENT,26694,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10029b50,BrTexInit,EQUIVALENT,69,67,65,10_boot: 1 real call(s) agree,2026-09-24
 0x10029cd0,BrEntGfxFreeAll,EQUIVALENT,46,43,42,20_quickrace_drive: 2 real call(s) agree,2026-09-24
 0x10029ec0,BrMat4Frustum,EQUIVALENT,18980,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x1002f640,BrBitLatchTake,EQUIVALENT,15,15,14,21_quickrace_finish: 2 real call(s) agree,2026-09-24
 0x1002f790,FUN_1002f790,EQUIVALENT,2946,12,6,61_mp_race: 6 real call(s) agree,2026-09-24
 0x100302a0,BrModelSwap,EQUIVALENT,21,21,20,20_quickrace_drive: 1 real call(s) agree,2026-09-24
-0x100306d0,BrPendListAdd,EQUIVALENT,266,84,20,20_quickrace_drive: 4 real call(s) agree,2026-09-24
-0x10030770,BrRcaFixup,EQUIVALENT,41,20,19,20_quickrace_drive: 1 real call(s) agree [original not containable: timeout no return within 30.0s (eip 1005A57B)],2026-09-24
+0x100306d0,BrPendListAdd,EQUIVALENT,322,89,20,20_quickrace_drive: 5 real call(s) agree,2026-09-24
+0x10030770,BrRcaFixup,EQUIVALENT,41,25,19,20_quickrace_drive: 2 real call(s) agree,2026-09-24
 0x10030fd0,BrKeyTableFind,EQUIVALENT,227,6,1,26_lowtexmem: 6 real call(s) agree,2026-09-24
 0x100316d0,BrTrackFixupRec54,EQUIVALENT,14070,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10031b80,BrGlTrackHdrRead,EQUIVALENT,21,21,20,20_quickrace_drive: 1 real call(s) agree,2026-09-24
