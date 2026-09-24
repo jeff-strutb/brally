@@ -110,6 +110,7 @@ void BrCarPhysDriveMatch(int param_1, float param_2, float *param_3, float *para
   float svB[3];
   double q;
   int dotBits;
+  int sinBits;   /* pt[1] read back through its float slot */
   struct {
     float sideForce;
     int ran;
@@ -395,11 +396,15 @@ void BrCarPhysDriveMatch(int param_1, float param_2, float *param_3, float *para
      * from the rounded reload.  The double is the register; the int image
      * forces the float rounding VC5 would otherwise forward away.  Live
      * oracle, 1-ulp difference in vB[1]. */
-    q = (double)vB[1] * pt[1] + (double)vB[0] * pt[0];
+    /* sin is stored (0x10064D3A) and every use reloads the float; VC5
+     * would multiply by the unrounded return register (whole-image run,
+     * quick race finish frame 1069: lat[0] off, then the grip factor) */
+    sinBits = *(int *)&pt[1];
+    q = (double)vB[1] * *(float *)&sinBits + (double)vB[0] * pt[0];
     fVar7 = (float)(q * pt[0]);
     fVar1 = (float)q;
     dotBits = *(int *)&fVar1;
-    fVar1 = *(float *)&dotBits * pt[1];
+    fVar1 = *(float *)&dotBits * *(float *)&sinBits;
     /* lat[] below subtracts the STORED vB[0]/vB[1] (rounded floats). */
     dotBits = *(int *)&fVar7;
     fVar7 = *(float *)&dotBits;
