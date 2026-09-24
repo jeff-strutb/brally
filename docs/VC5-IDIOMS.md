@@ -8340,3 +8340,26 @@ with the target's flags, diff one function against original bytes
   Proven byte-exact on 0x100719D0 BrInputJustPressed (1246 B).  Same
   function: declaring the byte `r = 0` BEFORE the pointer initialiser moves
   the `xor al,al` into the prologue and the argument from eax to ecx.
+- **A float temp the original stores and RE-READS for every use (call
+  result popped to its slot, `fld slot` per product; products stored back
+  into a local vector and re-read with `fadd [v]`) = the temp is
+  `volatile`.**  VC5 otherwise forwards the unrounded register (keeps a
+  copy with `fst`, fuses `c = cs*c; c = sn*d + c` into one `faddp` chain);
+  no cast, `double` prototype, union, aggregate, pointer or statement form
+  stops the forwarding without also reordering neighbouring stores.
+  `volatile float cs;` + `c = cs*c; c = (sn*d) + c;` is byte-exact on
+  0x100651A0 BrCarPhysTyre (1355 B); the same TU's 0x100645A0 shows the same
+  sin store-and-reload.
+- **Explicit parentheses steer VC5's x87 list scheduler, not just
+  association.**  On 0x100651A0 a 4-statement block (mass*g, load, *pA,
+  dot) fell into three schedule families across all 630 legal statement
+  orders; only `load = (a.z*nz)*3.5f` + `dot = ((vx*cx)+(vy*cy))+(vz*cz)`
+  in the order a.z, load, *pA, dot matched.  Grid parenthesisation x order
+  before calling a block a scheduling wall.
+- **Integer evaluation order of a canonicalised index sum, and the
+  registers of the next call's argument `lea`s, are TU state.**  Every
+  spelling of `row*8 + b*24 + ((s+s+1)>>1)` is byte-identical; the number
+  and kind of function definitions compiled BEFORE the function flip it
+  (N dummy predecessors 20..41 exact; moving the arm below the port's drive
+  helpers exact).  Duplicating a function prototype (BrCosF/BrSinF) also
+  toggles x87 scheduling state for later functions.
