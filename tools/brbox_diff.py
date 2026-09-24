@@ -96,7 +96,7 @@ def _run(dll, script, stop_frame=None, watch_last=False, seconds=None):
     netrec = _NET[id(box)] = {'crc': 0, 'log': []}
     drv = brbox_drive.Driver(brbox_drive.parse_script(script), log=lambda m: None)
     brbox_drive.attach(box, drv)
-    peer = brbox_drive.start_peer_if_any(box, drv, script)
+    peer = brbox_drive.start_peer_if_any(box, drv, script, dll=dll, setup=_scrubs)
     frames = []
     cur = {'gl': 0, 'raw': 0}
 
@@ -210,7 +210,7 @@ def _write_seq(dll, script, frame, seconds, replaced):
     _scrubs(box)
     drv = brbox_drive.Driver(brbox_drive.parse_script(script), log=lambda m: None)
     brbox_drive.attach(box, drv)
-    peer = brbox_drive.start_peer_if_any(box, drv, script)
+    peer = brbox_drive.start_peer_if_any(box, drv, script, dll=dll, setup=_scrubs)
     seq = []
     calls = []
     hook = [None]
@@ -254,7 +254,7 @@ def _t3_calls(dll, script, frame, seconds, entries):
     _scrubs(box)
     drv = brbox_drive.Driver(brbox_drive.parse_script(script), log=lambda m: None)
     brbox_drive.attach(box, drv)
-    peer = brbox_drive.start_peer_if_any(box, drv, script)
+    peer = brbox_drive.start_peer_if_any(box, drv, script, dll=dll, setup=_scrubs)
     from unicorn import UC_HOOK_MEM_WRITE, UC_HOOK_CODE, UC_HOOK_BLOCK
     from unicorn.x86_const import UC_X86_REG_ESP, UC_X86_REG_EAX
     live = []          # [va, ret, esp, {addr: byte}]

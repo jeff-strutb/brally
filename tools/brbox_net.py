@@ -239,13 +239,15 @@ def peer_script(steps):
     return None
 
 
-def start_peer(host_box, script_path, log=lambda m: None, shots=None):
+def start_peer(host_box, script_path, log=lambda m: None, shots=None, dll=None, setup=None):
     """Build the peer box for `host_box`, link them, and run the peer on a
     thread.  Returns (thread, peer_box, net, result).  The host's run loop
     must call net.stop() when it ends so the peer does not wait on it."""
     import brbox_drive
     from brbox import GuestFault, Stop
-    peer = brbox_drive.make_box(log=log)
+    peer = brbox_drive.make_box(log=log, dll=dll) if dll else brbox_drive.make_box(log=log)
+    if setup is not None:
+        setup(peer)
     drv = brbox_drive.Driver(brbox_drive.parse_script(script_path), shots=shots, log=log)
     brbox_drive.attach(peer, drv)
     net = Net([host_box, peer])

@@ -461,14 +461,17 @@ def attach(box, driver):
     box.uc.hook_add(UC_HOOK_CODE, text_hook, begin=TEXT_EMIT, end=TEXT_EMIT)
 
 
-def start_peer_if_any(box, driver, script, log=lambda m: None):
-    """(thread, peer box, net, result) when the script names a peer."""
+def start_peer_if_any(box, driver, script, log=lambda m: None, dll=None, setup=None):
+    """(thread, peer box, net, result) when the script names a peer.  `dll`
+    runs the peer on another image (the whole-image diff runs both machines
+    on the image under test)."""
     import brbox_net
     ps = brbox_net.peer_script(driver.steps)
     if ps is None:
         return None
     path = ps if os.path.isabs(ps) else os.path.join(os.path.dirname(os.path.abspath(script)), ps)
-    return brbox_net.start_peer(box, path, log=lambda m: log('[peer] ' + m), shots=driver.shots)
+    return brbox_net.start_peer(box, path, log=lambda m: log('[peer] ' + m), shots=driver.shots,
+                                dll=dll, setup=setup)
 
 
 def run_cli(a):
