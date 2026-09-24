@@ -8377,3 +8377,19 @@ with the target's flags, diff one function against original bytes
 - **C++ lane: when the last residue is two commutative operand orders,
   try the `/O2 /Gi` variant before any source respelling.**  0x1000C4E0
   was 2 regions under /O2 and byte-exact under /O2 /Gi.
+- **Byte-wide loads inside a pack (`mov al,byte [slot] / and eax,0x1e`,
+  `mov bl,dl`) from dword-held `unsigned int` locals = the result is an
+  `unsigned short` temp.**  VC5 narrows every operand of an expression
+  whose value is truncated to 16 bits; with an `unsigned int` temp it loads
+  whole dwords.  `unsigned char` locals are wrong (frame grows, widening
+  code appears).  Proven on 0x1005EDC0 BrMakeEnemyCarColorPanels (1110 B).
+- **Byte swap `xor ebx,ebx / mov bl,ah / mov bh,al` =
+  `(unsigned short)((unsigned char)(w >> 8) | ((unsigned char)w << 8))`.**
+  The mask spellings (`(w >> 8) & 0xff | (w & 0xff) << 8`, either order)
+  give `mov bh,al / mov bl,ah`; `+` or unmasked shifts give real shifts.
+  Same function.
+- **`[i + p + disp]` with the loop index as BASE = `p` loaded into a named
+  local first** (`penm = *(char **)(pSlot + 0x29c4); ... penm + 0x8110 + i`).
+  Inline `*(int *)(pSlot + 0x29c4) + 0x8110 + i` gives `[p + i + disp]` under
+  every operand order, struct/array spelling, declaration order and pad
+  count.  Same function.
