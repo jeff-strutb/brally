@@ -358,6 +358,7 @@ int BrCrImpulseSolve(char *pBody, const BrVec3 *pNormal, const void *pPlane, int
     double cx, cy, cz, vcx, vcy, vcz; /* register-resident in the original */
     double ddrx, ttx, tty, ttz;
     BrVec3 ddr;          /* dd * relDir, as the original stores it (+0x24c/+0x254) */
+    int32_t ddrBits[2];  /* ddr.y, ddr.z read back through their float slots */
     float  invMass = 1.0f / mass;
     float  dd, add, inten, tang;
     double mult;         /* register-resident in the original: never stored */
@@ -421,6 +422,11 @@ int BrCrImpulseSolve(char *pBody, const BrVec3 *pNormal, const void *pPlane, int
     ddrx  = (double)*(float *)&ddBits * pRelDir->x;
     ddr.y = *(float *)&ddBits * pRelDir->y;
     ddr.z = *(float *)&ddBits * pRelDir->z;
+    /* the original reloads y and z from those slots every time (the damping
+     * at +0x30B, the tangent and rhs at +0x3B7/+0x408); VC5 would forward
+     * the unrounded register otherwise (live whole-image run, 1 ulp in rhs.y) */
+    ddrBits[0] = *(int32_t *)&ddr.y;
+    ddrBits[1] = *(int32_t *)&ddr.z;
 
     /* effect record (+0x25D..+0x2B4): intensity = trunc(min(|dd|, 27)),
      * colour = the shared normal bank's dwords, into body+0x1EC. */
@@ -440,7 +446,11 @@ int BrCrImpulseSolve(char *pBody, const BrVec3 *pNormal, const void *pPlane, int
         pVel->y = DAT_100b5170 * pVel->y;
         pVel->z = DAT_100b5170 * pVel->z;
         vc.x *= BR_CR_DAMP; vc.y *= BR_CR_DAMP; vc.z *= BR_CR_DAMP;
-        ddrx *= DAT_10077b38; ddr.y *= BR_CR_DAMP; ddr.z *= BR_CR_DAMP;
+        ddrx *= DAT_10077b38;
+        ddr.y = *(float *)&ddrBits[0] * BR_CR_DAMP;
+        ddr.z = *(float *)&ddrBits[1] * BR_CR_DAMP;
+        ddrBits[0] = *(int32_t *)&ddr.y;
+        ddrBits[1] = *(int32_t *)&ddr.z;
     }
 
     /* rhs = dd*relDir + tang*(vc - dd*relDir) */
@@ -450,16 +460,16 @@ int BrCrImpulseSolve(char *pBody, const BrVec3 *pNormal, const void *pPlane, int
      * rhs = -0 + -0 = -0 where the original has +0. */
     if (flag) {
         ttx  = (vc.x - ddrx) * DAT_10077b40;
-        tty  = (vc.y - ddr.y) * BR_CR_TANGENT;
-        ttz  = (vc.z - ddr.z) * BR_CR_TANGENT;
+        tty  = (vc.y - *(float *)&ddrBits[0]) * BR_CR_TANGENT;
+        ttz  = (vc.z - *(float *)&ddrBits[1]) * BR_CR_TANGENT;
     } else {
         ttx  = 0.0;
         tty  = 0.0;
         ttz  = 0.0;
     }
     rhs.x = (float)(ttx + ddrx);
-    rhs.y = (float)(tty + ddr.y);
-    rhs.z = (float)(ttz + ddr.z);
+    rhs.y = (float)(tty + *(float *)&ddrBits[0]);
+    rhs.z = (float)(ttz + *(float *)&ddrBits[1]);
 
     /* J = solve(K, rhs); apply to vel and angVel. */
     BrMat3Solve(&J, &K, &rhs);

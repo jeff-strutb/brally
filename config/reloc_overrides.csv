@@ -57,9 +57,9 @@ func_va,offset,value,comment
 0x1005D770,0x6FE,0x10B1CF04,BrCtlAiBody g_brAiBiasNeg: cell recovered at 12+ sibling sites; drift-window instance (O2y)
 0x100096A0,0x4E,0x100ABAA0,BrDPlaySysMsgLog S710+4c (O2y): the fused config object's cell, per the verified O2 hand lane (member map is variant-invariant)
 0x100096A0,0x17D,0x105BC72C,BrDPlaySysMsgLog S710+48 (O2y): the fused handler cell, per the verified O2 hand lane
-0x10065C80,0x2EE,0x100B5170,_DAT_100b5170 -- the .data velocity scale (1.0); the audit pairs it to the 0.2 constant (0x10077b40) -- live oracle 2026-09-23
-0x10065C80,0x301,0x100B5170,_DAT_100b5170 -- the .data velocity scale (1.0); the audit pairs it to the 0.2 constant (0x10077b40) -- live oracle 2026-09-23
-0x10065C80,0x31A,0x100B5170,_DAT_100b5170 -- the .data velocity scale (1.0); the audit pairs it to the 0.2 constant (0x10077b40) -- live oracle 2026-09-23
+0x10065C80,0x2FB,0x100B5170,_DAT_100b5170 -- the .data velocity scale (1.0); the audit pairs it to the 0.2 constant (0x10077b40) -- live oracle 2026-09-23
+0x10065C80,0x30E,0x100B5170,_DAT_100b5170 -- the .data velocity scale (1.0); the audit pairs it to the 0.2 constant (0x10077b40) -- live oracle 2026-09-23
+0x10065C80,0x32A,0x100B5170,_DAT_100b5170 -- the .data velocity scale (1.0); the audit pairs it to the 0.2 constant (0x10077b40) -- live oracle 2026-09-23
 0x10002460,0x5D,0x10AF2094,BrRaceSelFromMenu g_aBrRaceCarSel: orig 0x24c1 mov edx 10af2094; edx indexes [+11c]/[+0]/+2b68 both sides
 0x10002460,0x62,0x1021C66C,BrRaceSelFromMenu g_a220B20+0x1c: the two constant loads swap order (ours mov edx,10af2094 / mov eax,&g_a220B20[7]; orig eax first) -- positional pairing crossed them; live oracle 2026-09-23
 0x10002460,0x9,0x1021C650,lockstep g_a220B20 (orig operand 0x1021c650)
@@ -3255,21 +3255,6 @@ func_va,offset,value,comment
 0x1005D770,0xE73,0x10B1CBE8,lockstep g_brAiBiasPos (orig operand 0x10b1cbe8)
 0x1005D770,0xE87,0x10B1CF04,lockstep g_brAiBiasNeg (orig operand 0x10b1cf04)
 0x1005D770,0xE8C,0x10B1CBE8,lockstep g_brAiBiasPos (orig operand 0x10b1cbe8)
-0x10065C80,0x69,0x00007F83,lockstep BrMat4ToMat3Both (orig operand 0x1006dc70)
-0x10065C80,0x80,0x00007D8C,lockstep BrMat3MulVec3 (orig operand 0x1006da90)
-0x10065C80,0x13B,0x00007E71,lockstep BrMat3Skew (orig operand 0x1006dc30)
-0x10065C80,0x152,0x00007F4A,lockstep BrMat3Mul (orig operand 0x1006dd20)
-0x10065C80,0x16F,0x00007F2D,lockstep BrMat3Mul (orig operand 0x1006dd20)
-0x10065C80,0x18C,0x00007F10,lockstep BrMat3Mul (orig operand 0x1006dd20)
-0x10065C80,0x1A9,0x00007EF3,lockstep BrMat3Mul (orig operand 0x1006dd20)
-0x10065C80,0x2BC,0x10077B3C,lockstep $T1345 (orig operand 0x10077b3c)
-0x10065C80,0x30F,0x10077B38,lockstep $T1348 (orig operand 0x10077b38)
-0x10065C80,0x34C,0x10077B38,lockstep $T1348 (orig operand 0x10077b38)
-0x10065C80,0x359,0x10077B38,lockstep $T1348 (orig operand 0x10077b38)
-0x10065C80,0x385,0x10077B40,lockstep $T1349 (orig operand 0x10077b40)
-0x10065C80,0x38D,0x10077B40,lockstep $T1349 (orig operand 0x10077b40)
-0x10065C80,0x395,0x10077B40,lockstep DAT_10077b40 (orig operand 0x10077b40)
-0x10065C80,0x3F3,0x00007DF9,lockstep BrMat3Solve (orig operand 0x1006de70)
 0x100701B0,0x15,0x118F0658,lockstep imp__mmioGetInfo@12 (orig operand 0x118f0658)
 0x100701B0,0x97,0x118F0660,lockstep imp__mmioSetInfo@12 (orig operand 0x118f0660)
 0x100706D0,0x1,0x118EEEF4,lockstep g_brInputFrame (orig operand 0x118eeef4)
@@ -3603,3 +3588,15 @@ func_va,offset,value,comment
 0x100724C0,0x18F,0x118EEEEC,lockstep g_brFfb (orig operand 0x118eeeec)
 0x100724C0,0x19B,0x118EEEEC,lockstep g_brFfb (orig operand 0x118eeeec)
 0x100724C0,0x1A8,0x10B71530,lockstep g_brB4E1D0 (orig operand 0x10b71530)
+0x10065C80,0x69,0x00007F83,lockstep BrMat4ToMat3Both (orig operand 0x1006dc70)
+0x10065C80,0x80,0x00007D8C,lockstep BrMat3MulVec3 (orig operand 0x1006da90)
+0x10065C80,0x13B,0x00007E71,lockstep BrMat3Skew (orig operand 0x1006dc30)
+0x10065C80,0x152,0x00007F4A,lockstep BrMat3Mul (orig operand 0x1006dd20)
+0x10065C80,0x16F,0x00007F2D,lockstep BrMat3Mul (orig operand 0x1006dd20)
+0x10065C80,0x18C,0x00007F10,lockstep BrMat3Mul (orig operand 0x1006dd20)
+0x10065C80,0x1A9,0x00007EF3,lockstep BrMat3Mul (orig operand 0x1006dd20)
+0x10065C80,0x2C9,0x10077B3C,lockstep $T1346 (orig operand 0x10077b3c)
+0x10065C80,0x3A7,0x10077B40,lockstep $T1350 (orig operand 0x10077b40)
+0x10065C80,0x3AF,0x10077B40,lockstep $T1350 (orig operand 0x10077b40)
+0x10065C80,0x3B7,0x10077B40,lockstep DAT_10077b40 (orig operand 0x10077b40)
+0x10065C80,0x41A,0x00007DD2,lockstep BrMat3Solve (orig operand 0x1006de70)
