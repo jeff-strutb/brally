@@ -145,6 +145,8 @@ def lockstep_rows(va):
                 pairs[ours[a0 + j].address] = theirs[b0 + j]
 
     afn, agl = augment_maps(obj, name, size)
+    from relocmap import load_learned
+    learned = load_learned()
 
     def known(sym):
         v = resolve(sym, afn, agl)
@@ -292,6 +294,17 @@ def lockstep_rows(va):
             # apart by whether the name lands where the original points.
             near = (named == implied) if rt == REL_REL32 else \
                 abs(((val - named) + 0x80000000) % (1 << 32) - 0x80000000) < 0x1000
+            # The maps outrank the window: a name the maps resolve to a
+            # DIFFERENT address is foreign however close the two are --
+            # g_AC300 is BRD3D's 0x100AC300, Glide's 0x100ABAA0 (0x860
+            # apart), and pinning the name's address made BrCarDrawVehicle
+            # test the wrong flag and skip the model-DL hook (whole-image
+            # run, the texture record every fourth frame).
+            # (the LEARNED map: the global map derives g_<HEX> from the name
+            # itself and would always agree)
+            mapped = learned.get(sym.lstrip('_'))
+            if mapped is not None and mapped != named:
+                near = False
             if near or (rt == REL_REL32 and rp._jmp_hop(img, val) == named):
                 # pin it from the NAME (exact, with our own addend) rather
                 # than leaving it to the image builder's map precedence
