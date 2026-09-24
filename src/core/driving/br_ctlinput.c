@@ -118,7 +118,8 @@ void BR_THISCALL1 BrCtlInputApply(unsigned char *pCar)
   int *piVar8;
   unsigned *puVar5;
   int bVar7;
-  double dX, dAcc, dM;   /* x87 registers the original never spills */
+  double dX, dAcc, dM, dL; /* x87 registers the original never spills */
+  int l1Bits, limBits;     /* float images (32-bit int on every target) */
 
   fVar1 = *(float *)(*(unsigned char **)(pCar + 0x29c0) + 0x20);
   if (((DAT_10b71534[0] & 0x8000) == 0) && ((DAT_10b71534[3] & 0x8000) == 0)) {
@@ -197,6 +198,14 @@ LAB_keep_stick:
     local[2] = DAT_100b2e74;
     DAT_10ac67cc = 0;
     local[1] = DAT_100b2e70 - local[1] * DAT_100777e8 * DAT_100b2e78;
+    /* 0x1005B266..0x1005B349: local[1] is stored and every later use
+     * reloads it from its float slot; the steering target (dL) lives in an
+     * x87 register from here to the store into [+0xE20] -- only the two
+     * clamp limits are rounded (stored, then compared from memory).  The
+     * int images force the stores VC5 would otherwise forward away; the
+     * double is the register (whole-image run, quick race finish frame 973:
+     * 1 ulp in [+0xE20]). */
+    l1Bits = *(int *)&local[1];
     local[5] = local[0];
     if (local[0] < DAT_10077780) {
       local[5] = -local[0];
@@ -204,27 +213,31 @@ LAB_keep_stick:
     if (DAT_100777ec <= local[5]) {
       if (DAT_100777f0 <= local[0]) {
         if (local[0] <= DAT_100777f8) {
-          local[5] = -(local[4] * DAT_100777f4 * local[0]);
+          dL = -((double)local[4] * DAT_100777f4 * local[0]);
         }
         else {
-          local[5] = local[1] * DAT_100777fc;
+          dL = (double)*(float *)&l1Bits * DAT_100777fc;
         }
       }
       else {
-        local[5] = local[1] * DAT_100777f4;
+        dL = (double)*(float *)&l1Bits * DAT_100777f4;
       }
     }
     else {
-      local[5] = DAT_10077780;
+      dL = DAT_10077780;
     }
-    if (local[1] * DAT_100777f4 < local[5]) {
-      local[5] = local[1] * DAT_100777f4;
+    local[3] = *(float *)&l1Bits * DAT_100777f4;
+    limBits = *(int *)&local[3];
+    if (!(dL <= *(float *)&limBits)) {
+      dL = *(float *)&limBits;
     }
-    if (local[5] < local[1] * DAT_100777fc) {
-      local[5] = local[1] * DAT_100777fc;
+    local[3] = *(float *)&l1Bits * DAT_100777fc;
+    limBits = *(int *)&local[3];
+    if (dL < *(float *)&limBits) {
+      dL = *(float *)&limBits;
     }
     local[0] = DAT_10077780;
-    if ((local[5] != DAT_10077780) && (local[0] = DAT_10077788, DAT_10077780 < local[5])) {
+    if ((dL != DAT_10077780) && (local[0] = DAT_10077788, DAT_10077780 < dL)) {
       local[0] = DAT_10077784;
     }
     local[4] = DAT_10077780;
@@ -238,11 +251,11 @@ LAB_keep_stick:
       bVar7 = 1;
     }
     else if ((DAT_10077780 < *(float *)(pCar + 0xe20)) &&
-             (local[5] < *(float *)(pCar + 0xe20))) {
+             (dL < *(float *)(pCar + 0xe20))) {
       bVar7 = 1;
     }
     else if ((*(float *)(pCar + 0xe20) < DAT_10077780) &&
-             (*(float *)(pCar + 0xe20) < local[5])) {
+             (*(float *)(pCar + 0xe20) < dL)) {
       bVar7 = 1;
     }
     else {
@@ -252,14 +265,14 @@ LAB_keep_stick:
       bVar7 = 0;
       *(char *)(pCar + 0xe81) = 0;
     }
-    if ((local[5] < *(float *)(pCar + 0xe20)) && (*(char *)(pCar + 0xe81) < '\0')) {
+    if ((dL < *(float *)(pCar + 0xe20)) && (*(char *)(pCar + 0xe81) < '\0')) {
       bVar7 = 1;
     }
-    if ((*(float *)(pCar + 0xe20) < local[5]) && ('\0' < *(char *)(pCar + 0xe81))) {
+    if ((*(float *)(pCar + 0xe20) < dL) && ('\0' < *(char *)(pCar + 0xe81))) {
       bVar7 = 1;
     }
     if (bVar7) {
-      if (*(float *)(pCar + 0xe20) <= local[5]) {
+      if (*(float *)(pCar + 0xe20) <= dL) {
         *(char *)(pCar + 0xe81) = 1;
       }
       else {
@@ -272,24 +285,24 @@ LAB_keep_stick:
         local[0] = DAT_10077784;
       }
       local[4] = DAT_10077780;
-      if ((local[5] != DAT_10077780) && (local[4] = DAT_10077788, DAT_10077780 < local[5])) {
+      if ((dL != DAT_10077780) && (local[4] = DAT_10077788, DAT_10077780 < dL)) {
         local[4] = DAT_10077784;
       }
       if (local[0] != local[4]) {
-        local[5] = DAT_10077780;
+        dL = DAT_10077780;
       }
     }
     else {
       *(char *)(pCar + 0xe81) = 0;
     }
-    local[4] = *(float *)(pCar + 0xe20) - local[5];
-    if (local[4] < DAT_10077780) {
-      local[4] = -local[4];
+    dX = *(float *)(pCar + 0xe20) - dL;
+    if (dX < DAT_10077780) {
+      dX = -dX;
     }
-    if (local[4] < local[2]) {
-      *(float *)(pCar + 0xe20) = local[5];
+    if (dX < local[2]) {
+      *(float *)(pCar + 0xe20) = (float)dL;
     }
-    else if (local[5] < *(float *)(pCar + 0xe20)) {
+    else if (dL < *(float *)(pCar + 0xe20)) {
       *(float *)(pCar + 0xe20) = *(float *)(pCar + 0xe20) - local[2];
     }
     else {
