@@ -205,6 +205,20 @@ def lockstep_rows(va):
     jt_offsets = {o for (_v, o) in
                   rp.jump_table_slots(obj, name, va, size, plen=len(pre))}
 
+    # WIDTH GUARD.  A memory operand pinned to the original's cell must read
+    # as many bytes as the original reads there.  BrCrImpulseSolve's `< 0.0`
+    # is a qword literal where the original compares a float: pinned to the
+    # original's 0.0f at 0x10077A78, the qword took the next float (1.0f) as
+    # its high half -- 0.0078125 -- and the contact test fired on resting
+    # cars.  Different widths: no row; the machine resolves the literal by
+    # content.  (The cell itself is the original's call: a transcription's
+    # initializer that disagrees with the original's cell is a guess.)
+    def mem_width(ins):
+        for op in ins.operands:
+            if op.type == rp.X86_OP_MEM:
+                return op.size
+        return None
+
     rows_out, disagreements = [], []
     skipped = 0
     if os.environ.get('LOCKSTEP_SITES'):
@@ -259,6 +273,14 @@ def lockstep_rows(va):
             if not any(img.mapped(x) or img.is_bss(x) for x in (val, implied)):
                 skipped += 1
                 print('# NOT-AN-ADDRESS slot %#x %s (original field %#x)' % (off, sym, val))
+                continue
+        if rt == REL_DIR32 and our_ins.disp_size == 4 and \
+                our_ins.disp_offset == off - our_ins.address:
+            wo, wt = mem_width(our_ins), mem_width(their)
+            if wo and wt and wo != wt:
+                skipped += 1
+                print('# WIDTH-MISMATCH slot %#x %s: we read %d bytes, the original '
+                      'reads %d at %#x' % (off, sym, wo, wt, implied))
                 continue
         if named is not None:
             # An address-bearing name coined from THIS binary (?g_<HEX>,
