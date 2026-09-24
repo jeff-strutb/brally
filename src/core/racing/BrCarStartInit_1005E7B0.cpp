@@ -21,7 +21,7 @@
  * storage br_carphys.c and 0x1006E5C0/0x10067C30's dossiers already pin;
  * +0x140/+0x144 the lap-count pair 0x1005ACE0/0x10059A80 also read.
  *
- * T2, not yet byte-exact: 246/246 instructions (/O2 /Gi, the lane's
+ * T2, not yet byte-exact: 244/246 instructions (/O2 /Gi, the lane's
  * variant for this file); 31 instruction lines differ, measured with every
  * relocation resolved to its address (the sweep's masked counts are blind to
  * operand-order swaps -- see docs/VC5-IDIOMS.md).  Source facts, all fixed
@@ -34,8 +34,9 @@
  *    3.0, -1.0, 8.0, -0.5, -8.0 -- subtracted as negatives, not extern
  *    floats.  Literals are a different operand kind: with externs VC5
  *    reassociated `s2 * (l10 - 0.5) * 3` into `(s2 * 3) * (l10 - 0.5)`;
- *  - per-axis product grouping (512 combinations swept): x row
- *    `c2 * ((l10 - 0.5) * 3)`, x column `(l14 + 1) * (c1 * 8)`, y plain.
+ *  - every SetPos product is `(trig * diff) * scale`, both diffs formed
+ *    first -- read step by step off the original's x87 sequence.  Other
+ *    groupings score fewer differing lines but change the arithmetic.
  * RESIDUE, three regions, all scheduling:
  *  - the SetPos x87 block (23 lines): preload/slot order of the trig
  *    temps.  Forms that give the original's slot order lose the block
@@ -184,8 +185,10 @@ void Car5E7B0::StartInit()
     c2 = BrCosF(DAT_106eed24 - (-1.5707964f));
     s2 = BrSinF(DAT_106eed24 - (-1.5707964f));
 
-    SetPos((DAT_106eed18 - c2 * ((local_10 - 0.5f) * 3.0f)) - (local_14 - (-1.0f)) * (c1 * 8.0f),
-           (DAT_106eed1c - s2 * (local_10 - 0.5f) * 3.0f) - s1 * (local_14 - (-1.0f)) * 8.0f,
+    SetPos((DAT_106eed18 - c2 * (local_10 - 0.5f) * 3.0f) -
+               c1 * (local_14 - (-1.0f)) * 8.0f,
+           (DAT_106eed1c - s2 * (local_10 - 0.5f) * 3.0f) -
+               s1 * (local_14 - (-1.0f)) * 8.0f,
            DAT_106eed20 - (-0.1f));
 
     fFF4 = (local_14 - (-0.5f)) * (-8.0f);
