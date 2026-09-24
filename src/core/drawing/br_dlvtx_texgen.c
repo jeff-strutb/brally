@@ -71,20 +71,6 @@ extern void    FUN_10022AC0(const void *, void *);
 extern int32_t FUN_10022120(void *);
 extern void    FUN_10022070(void *, void *, float, float, float);
 
-/* T2 2026-09-24 (hand transcription from the asm), compiled like the rest of
- * its original TU with /O2 /Op: 1200/1212 B, register-blind multiset 14+17.
- * Spellings that each moved a whole class (all measured):
- *  - the lights are N64 Light records read as BYTES: VC5 merges col[0]/col[1]
- *    into one dword load + `and`/`mov dl,ah`, exactly as the original;
- *  - x87 operand roles follow VC5's operand-kind ladder, not source order:
- *    the z/y MVP columns are absolute-address derefs (they take the fld
- *    side over the vertex fields), the x/w columns stay extern symbols, and
- *    x is read through the INDEXED struct pointer so it beats the x column;
- *  - the source vertex is walked through two pointers (the struct base and
- *    `pn = &n1`), giving the original's ebx / esi = ebx+0x18 pair;
- *  - the model-matrix pointer is taken first, then colours, then direction.
- * Open: `lea esi,[eax+base]` vs our direct esi; m[0]*n0 operand role; the
- * texgen tail's stack layout (frame 0x1c vs 0x28). */
 /* WHAT IT DOES: transforms a batch of vertices through the combined matrix,
  * generates texture coordinates by rotating each normal into world space and
  * projecting it on the two view-direction vectors (a straight linear map to
@@ -92,6 +78,7 @@ extern void    FUN_10022070(void *, void *, float, float, float);
 /* @implements 0x10022600 glide BrDlVtxGen */
 const uint8_t *BrDlVtxGen(const uint8_t *p)
 {
+    const uint8_t *look1, *look2;
     float *m;
     float dx, dy, dz;
     uint32_t w0;
@@ -100,13 +87,13 @@ const uint8_t *BrDlVtxGen(const uint8_t *p)
     int v0;
     int n;
     BrDlVtx *pV;
+    BrDlVtx *pVc;
     int i;
-    BrVec3 td;
-    const uint8_t *look1, *look2;
     float lx0, lx1, lx2, ly0, ly1, ly2;
     float dotX_128;
     float texDimA, texOffB, texDimC, texOffD;
     int32_t oc;
+    BrVec3 td;
     if (!DAT_105d17d0) {
         if (DAT_105ccfd0 != 0) {
             if (DAT_100a9a50 != 0)
@@ -142,6 +129,7 @@ const uint8_t *BrDlVtxGen(const uint8_t *p)
     pV = &DAT_105ce318[v0];
 
     pn = &pSrc->n1;
+    pVc = pV;
     for (i = 0; i < n; i++) {
         pV[i].cx = DAT_105d1780 * pn[-4] + DAT_105d1770 * pn[-5] + pSrc[i].x * DAT_105d1760 + DAT_105d1790;
         pV[i].cy = DAT_105d1784 * pn[-4] + DAT_105d1774 * pn[-5] + pSrc[i].x * DAT_105d1764 + DAT_105d1794;
@@ -162,24 +150,10 @@ const uint8_t *BrDlVtxGen(const uint8_t *p)
         look1 = DAT_105ce2d8 + 8;
         look2 = DAT_105ce2dc + 8;
 
-        texOffB = (float)DAT_118ed198;
-        texDimA = (float)DAT_1186c958;
-
-        ly2 = (float)(int)(int8_t)look2[2];
-        ly0 = (float)(int)(int8_t)look2[0];
-        ly1 = (float)(int)(int8_t)look2[1];
-
-        lx2 = (float)(int)(int8_t)look1[2];
-        lx0 = (float)(int)(int8_t)look1[0];
-        lx1 = (float)(int)(int8_t)look1[1];
-
-        pV[i].s = (((td.x * ly0 + ly2 * td.z) + ly1 * td.y) / DAT_10077420 * texDimA
-                   - DAT_10077424 - texOffB) / DAT_118ed1a4;
-
-        dotX_128 = ((td.x * lx0 + lx2 * td.z) + lx1 * td.y) / DAT_10077420;
-        texDimC = (float)DAT_118ed1ac;
-        texOffD = (float)DAT_1186c950;
-        pV[i].t = (dotX_128 * texDimC - DAT_10077424 - texOffD) / DAT_118ed1a8;
+        dotX_128 = ((td.x * (float)(int)(int8_t)look1[0] + (float)(int)(int8_t)look1[2] * td.z) + (float)(int)(int8_t)look1[1] * td.y) / DAT_10077420;
+        pV[i].s = (((td.x * (float)(int)(int8_t)look2[0] + (float)(int)(int8_t)look2[2] * td.z) + (float)(int)(int8_t)look2[1] * td.y) / DAT_10077420
+                   * (float)DAT_1186c958 - DAT_10077424 - (float)DAT_118ed198) / DAT_118ed1a4;
+        pV[i].t = (dotX_128 * (float)DAT_118ed1ac - DAT_10077424 - (float)DAT_1186c950) / DAT_118ed1a8;
 
         FUN_10022AC0(&pSrc[i], &pV[i].f40);
 
@@ -187,9 +161,10 @@ const uint8_t *BrDlVtxGen(const uint8_t *p)
         pV[i].outcode = oc;
 
         if (oc == 0) {
-            FUN_10022070(&pV[i], &pV[i].f40, pV[i].n0, pV[i].n1, pV[i].n2);
+            FUN_10022070(pVc, &pV[i].f40, pV[i].n0, pV[i].n1, pV[i].n2);
         }
         pn += 8;
+        pVc++;
     }
     return p + 8;
 }
