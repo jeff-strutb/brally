@@ -2,8 +2,9 @@
 
 A DirectX 6 machine as the game sees it: DirectDraw (only to be probed for its
 version by BrDxDetect 0x1001D8A0), and DirectInput with a keyboard and a
-mouse, both fed from the scripted input timeline.  No joystick is attached:
-EnumDevices never calls back.
+mouse, both fed from the scripted input timeline.  By default no joystick is
+attached and EnumDevices never calls back; a script's `joystick ffb` directive
+attaches a force-feedback wheel (steered from the same scripted arrow keys).
 
 Every method is a trap with the interface's exact stdcall argument count
 (`this` included) -- a wrong count would leave the caller's esp off by the
@@ -51,6 +52,10 @@ IFACES = {
         ('CreateEffect', 5), ('EnumEffects', 4), ('GetEffectInfo', 3),
         ('GetForceFeedbackState', 2), ('SendForceFeedbackCommand', 2),
         ('EnumCreatedEffectObjects', 4), ('Escape', 2), ('Poll', 1), ('SendDeviceData', 5)],
+    'IDirectInputEffect': IUNK + [
+        ('Initialize', 4), ('GetEffectGuid', 2), ('GetParameters', 3), ('SetParameters', 3),
+        ('Start', 3), ('Stop', 1), ('GetEffectStatus', 2), ('Download', 1), ('Unload', 1),
+        ('Escape', 2)],
     'IDirectPlayLobby3A': IUNK + [
         ('Connect', 4), ('CreateAddress', 7), ('EnumAddress', 5), ('EnumAddressTypes', 5),
         ('EnumLocalApplications', 4), ('GetConnectionSettings', 4), ('ReceiveLobbyMessage', 6),
@@ -117,6 +122,12 @@ IID = {
 
 GUID_SYSKEYBOARD = '6F1D2B61-D5A0-11CF-BFC7444553540000'
 GUID_SYSMOUSE = '6F1D2B60-D5A0-11CF-BFC7444553540000'
+# the attached wheel's instance and product GUIDs (any fixed values will do)
+GUID_WHEEL = 'B0B1B2B3-0001-11D2-8000444553540000'
+GUID_WHEEL_PRODUCT = 'B0B1B2B3-0000-0000-0000504944564944'
+DIDEVTYPE_JOYSTICK = 4
+DIDEVTYPEJOYSTICK_WHEEL = 3
+DIEDFL_FORCEFEEDBACK = 0x100
 
 S_OK = 0
 E_NOINTERFACE = 0x80004002
@@ -256,6 +267,8 @@ def directinput_create(box, a):
 def _createdev(box, a):
     g = _guid(box.rd(a[1], 16))
     kind = {GUID_SYSKEYBOARD: 'keyboard', GUID_SYSMOUSE: 'mouse'}.get(g)
+    if g == GUID_WHEEL and getattr(box.hs, 'joystick', None):
+        kind = 'joystick'
     if kind is None:
         box.wr32(a[2], 0)
         return DIERR_DEVICENOTREG
@@ -265,11 +278,24 @@ def _createdev(box, a):
 
 @method('IDirectInputA', 'EnumDevices')
 def _enumdev(box, a):
-    # Keyboard and mouse are system devices the game creates by GUID; the
-    # enumeration it performs is for joysticks (DIDEVTYPE_JOYSTICK 4), and
-    # this machine has none -- the callback is never called.
-    if a[1] not in (4, 0):
-        box.log('EnumDevices(type=%d) -> none' % a[1])
+    # (this, dwDevType, lpCallback, pvRef, dwFlags).  Keyboard and mouse are
+    # system devices the game creates by GUID; the enumeration it performs is
+    # for joysticks (DIDEVTYPE_JOYSTICK 4).  Only a `joystick` machine has one.
+    joy = getattr(box.hs, 'joystick', None)
+    if a[1] not in (0, DIDEVTYPE_JOYSTICK) or not joy:
+        return S_OK
+    if a[4] & DIEDFL_FORCEFEEDBACK and joy != 'ffb':
+        return S_OK
+    # DIDEVICEINSTANCEA: dwSize, guidInstance, guidProduct, dwDevType,
+    # tszInstanceName[260], tszProductName[260], guidFFDriver, wUsagePage, wUsage
+    name = b'Force Feedback Wheel'
+    inst = struct.pack('<I', 0x244) + _guid_bytes(GUID_WHEEL) + _guid_bytes(GUID_WHEEL_PRODUCT) + \
+        struct.pack('<I', DIDEVTYPE_JOYSTICK | (DIDEVTYPEJOYSTICK_WHEEL << 8) | 0x10000) + \
+        name.ljust(260, b'\0') + name.ljust(260, b'\0') + \
+        (_guid_bytes(GUID_WHEEL_PRODUCT) if joy == 'ffb' else bytes(16)) + struct.pack('<HH', 1, 4)
+    p = box.host_alloc(len(inst), 4)
+    box.wr(p, inst)
+    yield ('call', a[2], [p, a[3]])
     return S_OK
 
 
@@ -307,7 +333,52 @@ def _unacquire(box, a):
 
 @method('IDirectInputDeviceA', 'Poll')
 def _poll(box, a):
-    return 1       # DI_NOEFFECT: keyboard/mouse need no polling
+    return 1       # DI_NOEFFECT: nothing here needs polling
+
+
+@method('IDirectInputDeviceA', 'GetCapabilities')
+def _getcaps(box, a):
+    # DIDEVCAPS: dwSize, dwFlags, dwDevType, dwAxes, dwButtons, dwPOVs,
+    # dwFFSamplePeriod, dwFFMinTimeResolution, dwFirmwareRevision,
+    # dwHardwareRevision, dwFFDriverVersion
+    st = _st(box, a[0])
+    size = box.rd32(a[1])
+    ff = st['kind'] == 'joystick' and getattr(box.hs, 'joystick', None) == 'ffb'
+    caps = struct.pack('<11I', size, 0x1 | (0x100 if ff else 0),
+                       DIDEVTYPE_JOYSTICK | (DIDEVTYPEJOYSTICK_WHEEL << 8), 2, 8, 0,
+                       1000 if ff else 0, 1000 if ff else 0, 1, 1, 1 if ff else 0)
+    box.wr(a[1], caps[:max(size, 8)])
+    return S_OK
+
+
+@method('IDirectInputDeviceA', 'CreateEffect')
+def _createeffect(box, a):
+    # (this, rguid, lpeff, ppdeff, punkOuter)
+    if getattr(box.hs, 'joystick', None) != 'ffb':
+        return 0x80040154                  # DIERR_DEVICENOTREG
+    box.wr32(a[3], new_object(box, 'IDirectInputEffect', guid=box.rd(a[1], 16)))
+    return S_OK
+
+
+@method('IDirectInputDeviceA', 'SendForceFeedbackCommand')
+def _sendffcmd(box, a):
+    return S_OK
+
+
+@method('IDirectInputDeviceA', 'GetForceFeedbackState')
+def _getffstate(box, a):
+    box.wr32(a[1], 0x40 | 0x200)           # DIGFFS_POWERON | DIGFFS_ACTUATORSON
+    return S_OK
+
+
+for _m in ('Initialize', 'SetParameters', 'Start', 'Stop', 'Download', 'Unload', 'Escape'):
+    METHODS[('IDirectInputEffect', _m)] = lambda box, a: S_OK
+
+
+@method('IDirectInputEffect', 'GetEffectStatus')
+def _effstatus(box, a):
+    box.wr32(a[1], 0)
+    return S_OK
 
 
 @method('IDirectInputDeviceA', 'GetDeviceState')
@@ -322,6 +393,17 @@ def _getstate(box, a):
             if dik < n:
                 buf[dik] = 0x80
         box.wr(a[2], bytes(buf))
+        return S_OK
+    if st['kind'] == 'joystick':
+        # DIJOYSTATE(2): lX lY lZ lRx lRy lRz rglSlider[2] rgdwPOV[4]
+        # rgbButtons[32] (+ the DIJOYSTATE2 extension, zero).  The wheel turns
+        # with the scripted arrow keys; UP/DOWN are the pedals on lY.
+        dk = box.hs.dikeys
+        x = (-128 if 0xCB in dk else 0) + (128 if 0xCD in dk else 0)
+        y = (-128 if 0xC8 in dk else 0) + (128 if 0xD0 in dk else 0)
+        js = struct.pack('<8i', x, y, 0, 0, 0, 0, 0, 0) + struct.pack('<4I', *([0xFFFFFFFF] * 4)) + \
+            bytes(0x80 if k in dk else 0 for k in (0x39, 0x1C, 0x1D, 0x2A, 0, 0, 0, 0)) + bytes(24)
+        box.wr(a[2], (js + bytes(n))[:n])
         return S_OK
     # mouse: DIMOUSESTATE -- relative motion since the last read, buttons
     hs = box.hs
