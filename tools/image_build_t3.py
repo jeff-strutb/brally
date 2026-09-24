@@ -60,6 +60,7 @@ Usage:
                                                    #   the T3 additions alone
     python3 tools/image_build_t3.py --out-dir DIR
 """
+import concurrent.futures
 import csv
 import os
 import sys
@@ -67,6 +68,8 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, 'tools'))
 import image_build as ib                                        # noqa: E402
+
+STALE_ROWS = []      # (va, name, offset, value): CSV rows at no relocation
 from reloc_fill import load_maps                                # noqa: E402
 from t3 import certified                                        # noqa: E402
 
@@ -93,7 +96,7 @@ def _annex_rva(orig_path):
     return (end + salign - 1) // salign * salign
 
 
-def collect_t3(recompile=False, progress=None):
+def collect_t3(recompile=False, progress=None, jobs=None):
     """{va: (name, code, unres, fromref, 'T3')} for every certified T3 function,
     plus the rows we could not build (`unbuildable`) or place (`unplaced`).
 
@@ -287,10 +290,37 @@ def collect_t3(recompile=False, progress=None):
     # proof serves every function naming the same global).
     records = []
     g_conf, g_corr, g_bad = {}, {}, set()
-    for i, ((rel_src, tag), wanted) in enumerate(sorted(want.items())):
-        if progress:
-            progress(i + 1, len(want), rel_src)
-        obj, err, _how = ib._compile_dll_obj(rel_src, tag, recompile, ambiguous)
+
+    # Compile every T3 TU up front, in parallel -- same rationale as the
+    # backbone in image_build.collect_dll: the wine/MSVC compile is the cost
+    # and each (file, opt) writes its own directory-keyed object, so the
+    # workers share no output.  The pairing/audit that follows reads those
+    # objects and MUTATES shared evidence (g_conf/g_corr/recovered) in claim
+    # order, so it stays serial -- only the compile fans out.
+    if jobs is None:
+        jobs = int(os.environ.get('BR_JOBS') or 0) or min(8, (os.cpu_count() or 4))
+    _items = sorted(want.items())
+    _compiled = {}
+    if jobs <= 1 or len(_items) <= 1:
+        for i, ((rel_src, tag), _w) in enumerate(_items):
+            if progress:
+                progress(i + 1, len(_items), rel_src)
+            _compiled[(rel_src, tag)] = ib._compile_dll_obj(
+                rel_src, tag, recompile, ambiguous)
+    else:
+        _done = 0
+        with concurrent.futures.ProcessPoolExecutor(max_workers=jobs) as ex:
+            futs = {ex.submit(ib._compile_dll_obj, rel_src, tag, recompile,
+                              ambiguous): (rel_src, tag)
+                    for (rel_src, tag), _w in _items}
+            for fut in concurrent.futures.as_completed(futs):
+                _compiled[futs[fut]] = fut.result()
+                _done += 1
+                if progress:
+                    progress(_done, len(_items), futs[fut][0])
+
+    for i, ((rel_src, tag), wanted) in enumerate(_items):
+        obj, err, _how = _compiled[(rel_src, tag)]
         if obj is None:
             for va, name in wanted:
                 unbuildable.append((va, name, '%s: %s' % (rel_src, err)))
@@ -366,6 +396,179 @@ def collect_t3(recompile=False, progress=None):
     annex_base_va = 0x10000000 + _annex_rva(ib.ORIG_DLL)
     annex_cursor = [annex_base_va]
     annex = []                    # (annex_va, va, name, body_bytes)
+
+    # -- BR_TRACE: comprehensive execution trace --------------------------
+    # With BR_TRACE=1 every annexable transcribed function is routed through a
+    # stub `push VA; call BrDiagTrace; jmp body` that appends its VA to
+    # brally.log.  Any crash's last log line is then the function it died in --
+    # no guessing, no re-instrumentation.  The sink is __stdcall so the stub is
+    # stack-transparent; fclose flushes each line so a crash keeps the trace
+    # (which makes a full-trace run SLOW -- the price of comprehensiveness).
+    from reloc_fill import parse as _rfp, func_symbol_matches as _fsm
+    _trace_on = os.environ.get('BR_TRACE') == '1'
+    # BR_TRACE_ONLY=<comma VAs>: stub ONLY these functions.  The crash filter
+    # installs from any traced line, so listing one early, non-hot function
+    # arms the filter at startup while leaving every hot per-texel/per-pixel
+    # loop UNtraced -- the game then runs at normal speed and a fault yields a
+    # single clean `C ...` line (no fopen-per-texel death).  Empty = trace all.
+    _trace_only = set()
+    _to_env = os.environ.get('BR_TRACE_ONLY', '').strip()
+    if _to_env:
+        for _tok in _to_env.replace(',', ' ').split():
+            try:
+                _trace_only.add(int(_tok, 16))
+            except ValueError:
+                pass
+    # BR_TRACE_EXCEPT=<comma VAs>: trace everything EXCEPT these (a denylist,
+    # the complement of BR_TRACE_ONLY).  Use it to drop the per-texel/per-vertex
+    # leaf spam (BrTex3dTexel 0x100271f0, BrMtxXfmDir3 0x10034a70) while keeping
+    # the full breadcrumb -- so a hang/crash still self-localizes at tolerable
+    # speed.  BR_TRACE_ONLY, if set, takes precedence.
+    _trace_except = set()
+    _te_env = os.environ.get('BR_TRACE_EXCEPT', '').strip()
+    if _te_env:
+        for _tok in _te_env.replace(',', ' ').split():
+            try:
+                _trace_except.add(int(_tok, 16))
+            except ValueError:
+                pass
+    # BR_GOLDEN=1: build the WORKING game with the same logging -- every traced
+    # function uses the ORIGINAL bytes (relocated into the annex) instead of our
+    # transcription, so its trace is the ground-truth reference to diff against.
+    _golden = os.environ.get('BR_GOLDEN') == '1'
+    if _golden:
+        from capstone import Cs as _Cs, CS_ARCH_X86 as _A, CS_MODE_32 as _M, \
+            x86 as _x86
+        _gmd = _Cs(_A, _M); _gmd.detail = True
+        _god = open(ib.ORIG_DLL, 'rb').read()
+        _gpe = _st.unpack_from('<I', _god, 0x3c)[0]
+        _gopt = _st.unpack_from('<H', _god, _gpe + 20)[0]; _gb = _gpe + 24 + _gopt
+        for _gi in range(_st.unpack_from('<H', _god, _gpe + 6)[0]):
+            _o = _gb + _gi * 40
+            if _god[_o:_o + 8].rstrip(b'\0') == b'.text':
+                _gtv = _st.unpack_from('<I', _god, _o + 12)[0]
+                _gtro = _st.unpack_from('<I', _god, _o + 20)[0]
+        _gvas = sorted(int(r['va'], 16) for _rp in
+                       ('build/match/report.csv', 'build/match/report_cpp.csv')
+                       if os.path.exists(os.path.join(ROOT, _rp))
+                       for r in csv.DictReader(open(os.path.join(ROOT, _rp)))
+                       if r.get('va'))
+
+        def _orig_full(va):
+            """Original bytes of the function, code + trailing jump tables,
+            bounded by the next function symbol."""
+            j = _gvas.index(va) if va in _gvas else None
+            nxt = _gvas[j + 1] if (j is not None and j + 1 < len(_gvas)) \
+                else va + 0x4000
+            off = _gtro + (va - 0x10000000 - _gtv)
+            return _god[off:off + (nxt - va)]
+
+        def _relocate_golden(va, a_va, body):
+            b = bytearray(body); delta = a_va - va; end = va + len(body)
+            for ins in _gmd.disasm(bytes(body), va):
+                off = ins.address - va
+                if ins.operands and ins.operands[0].type == _x86.X86_OP_IMM \
+                        and (ins.mnemonic in ('call', 'jmp') or
+                             ins.mnemonic[0] == 'j') and ins.size in (5, 6):
+                    tgt = ins.operands[0].imm & 0xFFFFFFFF
+                    if not (va <= tgt < end):
+                        nr = (tgt - (a_va + off + ins.size)) & 0xFFFFFFFF
+                        _st.pack_into('<I', b, off + ins.size - 4, nr)
+                for op in ins.operands:
+                    if op.type == _x86.X86_OP_MEM and op.mem.disp and \
+                            va <= (op.mem.disp & 0xFFFFFFFF) < end and \
+                            ins.mnemonic in ('jmp', 'call'):
+                        disp = op.mem.disp & 0xFFFFFFFF; toff = disp - va
+                        while toff + 4 <= len(body):
+                            e = _st.unpack_from('<I', body, toff)[0]
+                            if va <= e < end:
+                                _st.pack_into('<I', b, toff,
+                                              (e + delta) & 0xFFFFFFFF)
+                                toff += 4
+                            else:
+                                break
+                        if ins.disp_offset:
+                            _st.pack_into('<I', b, off + ins.disp_offset,
+                                          (disp + delta) & 0xFFFFFFFF)
+            return bytes(b)
+    _sink_va = [None]
+    _texsink_va = [None]     # value-logging sink for br_tex3d_append
+    if _trace_on:
+        from t3b_env import image as _timage
+        from reloc_pair import _our_sites as _t_sites
+        from relocmap import REL_DIR32 as _T_DIR32
+        _im = _timage().imports
+        _t_imports = _im() if callable(_im) else _im
+        _tobj, _terr, _ = ib._compile_dll_obj('src/core/diag/br_trace.c',
+                                              'O2', True, ())
+        if _tobj is None:
+            print('  BR_TRACE: sink compile failed (%s) -- tracing OFF' % _terr)
+            _trace_on = False
+        else:
+            _td, _ts, _tsy, _tr = _rfp(_tobj)
+
+            # intra-object symbol -> annex VA (populated as sinks are placed);
+            # lets a sink reference a sibling annexed function (the crash
+            # filter is referenced by DIR32 &BrGlCrashFilter, and, if the
+            # install helper is not inlined, by a REL32 call).
+            _known_syms = {}
+
+            def _annex_sink(symdec):
+                _tf = next((s for s in _tsy if _fsm(s['name'], symdec)
+                            and _ts.get(s['sec'], {}).get('name', '')
+                                    .startswith('.text')), None)
+                if _tf is None:
+                    return None, 'symbol not found'
+                _tsec = _ts[_tf['sec']]
+                _tnx = [s['val'] for s in _tsy if s['sec'] == _tf['sec']
+                        and s['val'] > _tf['val'] and '$' not in s['name']]
+                _tend = min(_tnx) if _tnx else _tsec['size']
+                _tbody = bytearray(_td[_tsec['praw'] + _tf['val']:
+                                       _tsec['praw'] + _tend])
+                _sva = (annex_cursor[0] + 15) & ~15
+                _tsl, _ = _t_sites(_tobj, symdec, _tend - _tf['val'])
+                for _o, _sy, _rt, _ad, _k in (_tsl or []):
+                    # a sibling annexed function wins over the import table;
+                    # then the IAT (import names carry no @N, so also try the
+                    # @-stripped form).
+                    _sl = (_known_syms.get(_sy)
+                           or _known_syms.get(_sy.split('@', 1)[0])
+                           or _t_imports.get(_sy)
+                           or _t_imports.get(_sy.split('@', 1)[0]))
+                    if _sl is None:
+                        return None, 'unresolved %s' % _sy
+                    _val = (_sl + _ad) & 0xFFFFFFFF if _rt == _T_DIR32 else \
+                           (_sl + _ad - (_sva + _o + 4)) & 0xFFFFFFFF
+                    _st.pack_into('<I', _tbody, _o, _val)
+                annex.append((_sva, 0, symdec.strip('_@').split('@')[0],
+                              bytes(_tbody)))
+                annex_cursor[0] = _sva + len(_tbody)
+                _known_syms[symdec] = _sva
+                _known_syms[symdec.split('@', 1)[0]] = _sva
+                return _sva, None
+
+            # The crash filter must be annexed FIRST so its VA is known when
+            # the sinks (which reference it) are placed.  It only calls
+            # imports, so it never depends on a sibling.
+            _cfva, _cfwhy = _annex_sink('_BrGlCrashFilter@4')
+            if _cfva is None:
+                print('  BR_TRACE: crash filter failed (%s) -- tracing OFF'
+                      % _cfwhy)
+                _trace_on = False
+            else:
+                _sva, _why = _annex_sink('_BrDiagTrace@8')
+            if _trace_on and _sva is None:
+                print('  BR_TRACE: sink failed (%s) -- tracing OFF' % _why)
+                _trace_on = False
+            elif _trace_on:
+                _sink_va[0] = _sva
+                _tvsva, _tvwhy = _annex_sink('_BrDiagTexState@8')
+                if _tvsva is not None:
+                    _texsink_va[0] = _tvsva
+                print('  BR_TRACE ON: sink 0x%08X, tex-state sink %s, crash '
+                      'filter 0x%08X (all transcribed fns traced; slow)'
+                      % (_sva, ('0x%08X' % _tvsva) if _tvsva else 'OFF',
+                         _cfva))
 
     _amaps = {}
 
@@ -480,6 +683,43 @@ def collect_t3(recompile=False, progress=None):
         rel = (a_va - (va + 5)) & 0xFFFFFFFF
         return b'\xe9' + _st.pack('<I', rel) + orig2[5:size]
 
+    def _trace_thunk_span(va, a_va, size):
+        """24-byte trace stub at the original VA:
+            pushad; pushfd; lea eax,[esp+4]; push eax; push VA;
+            call sink; popfd; popad; jmp body
+        then the original's remaining filler.  pushad/pushfd make the stub
+        fully register/flag-transparent (a bare call would corrupt a
+        thiscall/fastcall body's ECX/EDX arg -- BrGlNavPoll faulted that way).
+        `lea eax,[esp+4]` (after pushad+pushfd, [esp]=eflags) points EAX at the
+        pushad frame; it is pushed as the sink's 2nd arg so BrDiagTrace(va,
+        frame) can read the caller's ecx/edx and stack args.  eax is restored
+        by popad.  The __stdcall sink takes 2 args (ret 8).  Needs size >= 24."""
+        ob2 = os.path.join(ib.ORIG_DIR, '0x%08X.bin' % va)
+        orig2 = open(ob2, 'rb').read()
+        # br_tex3d_append gets the value-logging sink (dumps the texture-table
+        # count/cap/ptr); everything else the plain arg-logging sink.
+        sink = _sink_va[0]
+        if va == 0x10027A10 and _texsink_va[0] is not None:
+            sink = _texsink_va[0]
+        b = b'\x60\x9c'                                              # pushad;pushfd (@0)
+        b += b'\x8d\x44\x24\x04'                                     # lea eax,[esp+4] (@2)
+        b += b'\x50'                                                 # push eax (@6)
+        b += b'\x68' + _st.pack('<I', va & 0xFFFFFFFF)              # push VA (@7)
+        b += b'\xe8' + _st.pack('<I', (sink - (va + 17)) & 0xFFFFFFFF)  # call (@12)
+        b += b'\x9d\x61'                                             # popfd;popad (@17)
+        b += b'\xe9' + _st.pack('<I', (a_va - (va + 24)) & 0xFFFFFFFF)  # jmp (@19)
+        return b + orig2[24:size]
+
+    def _annex_golden(va):
+        """Golden mode: relocate the ORIGINAL function bytes (code + trailing
+        jump tables) into the annex and record them.  Returns (a_va, None)."""
+        full = _orig_full(va)
+        a_va = (annex_cursor[0] + 15) & ~15
+        body = _relocate_golden(va, a_va, full)
+        annex_cursor[0] = a_va + len(body)
+        annex.append((a_va, va, 'golden_%08x' % va, body))
+        return a_va, None
+
     # -------------------------------------------------- phase B: place ---
     for obj, rel_src, wanted, anchors, idsites, fns in records:
         byname = {n: va for va, n in wanted}
@@ -537,10 +777,40 @@ def collect_t3(recompile=False, progress=None):
             # (fill_function, where the CSV wins) said EQUIVALENT.  One
             # precedence order for both consumers: the CSV outranks machine
             # evidence, and every disagreement is printed for review.
+            jt_keys = jump_table_slots(obj, name, va, size, plen=plen)
+            reloc_offs = {o for o, _s, _r, _a, _k in (st or [])}
             for (ova, ooff), oval in _load_overrides().items():
                 if ova != va:
                     continue
                 k = (va, ooff)
+                if ooff not in reloc_offs:
+                    # STALE ROW: no relocation at that offset in THIS object
+                    # (the source moved since the row was cut).  Applying it
+                    # writes four bytes into the middle of an instruction --
+                    # BrRaceStep's tail carried 90 such rows, 2 bytes off,
+                    # after a one-statement fix.  Never applied; fails the
+                    # gate until the rows are regenerated.
+                    STALE_ROWS.append((va, name, ooff, oval))
+                    continue
+                if k in jt_keys:
+                    # A jump-table dispatch displacement is EXACT from the
+                    # object symbol table: its value is `va + label_offset`
+                    # in OUR body, so a lockstep row's copied ORIGINAL
+                    # operand points at the original table and dispatches a
+                    # byte-different T3 body mid-instruction (BrRaceStep hit
+                    # three of its four switches this way and faulted
+                    # in-game).  The CSV outranks register-blind pairing --
+                    # never the exact same-section `$L` table.  (Const slots
+                    # are NOT guarded: const_slot_values is content-matched
+                    # and can mislocate on a shared leading dword -- e.g.
+                    # BrFadeTick's float pool $T1315 matched a zero dword in
+                    # .text -- so the hand row is the sanctioned correction
+                    # there and must still win.)
+                    if oval != jt_keys[k]:
+                        print('  NOTE %s off %#x: CSV row %#x IGNORED -- '
+                              'jump-table slot is exact at %#x'
+                              % (name, ooff, oval, jt_keys[k]))
+                    continue
                 if k in sites and sites[k] != oval:
                     print('  NOTE %s off %#x: CSV row %#x overrides '
                           'machine value %#x -- if the CSV row is machine-'
@@ -583,6 +853,23 @@ def collect_t3(recompile=False, progress=None):
             size = int(rows[va]['orig_size'])
             pre = ib.PREAMBLES.get('0x%08x' % va, b'')
             slot = size - len(pre)
+            if _trace_on and _sink_va[0] is not None and size >= 24 \
+                    and (not _trace_only or va in _trace_only) \
+                    and va not in _trace_except:
+                # BR_TRACE: annex the whole body and leave a trace stub at the
+                # VA, whether or not it would have fit in-slot.  Annex failure
+                # or a too-small slot falls through to normal placement.
+                if _golden:
+                    a_va, _tw = _annex_golden(va)
+                else:
+                    a_va, _tw = _annex_fill(obj, name, name, va, len(pre),
+                                            sites, anchors)
+                if a_va is not None:
+                    byname.pop(name, None)   # keep compiled_functions off it
+                    best[va] = (name, _trace_thunk_span(va, a_va, size),
+                                0, 0, 'T3')
+                    got.add(va)
+                    continue
             if code_len <= slot:
                 continue
             over = bod[slot:code_len]
@@ -740,9 +1027,29 @@ def collect_t3(recompile=False, progress=None):
             if k in idkeys:
                 continue
             sites[k] = v
+        jt_keys = jump_table_slots(obj, raw, va, size, plen=len(pre))
+        reloc_offs = {o for o, _s, _r, _a, _k in (st or [])}
         for (ova, ooff), oval in _load_overrides().items():
-            if ova == va:
-                sites[(va, ooff)] = oval
+            if ova != va:
+                continue
+            k = (va, ooff)
+            if ooff not in reloc_offs:
+                STALE_ROWS.append((va, r['name'], ooff, oval))   # see C lane
+                continue
+            if k in jt_keys:
+                # Jump-table dispatch: exact from the object symbol table.
+                # A lockstep row's copied original operand points at the
+                # ORIGINAL table and would dispatch a byte-different T3 body
+                # mid-instruction (BrRaceStep's in-game switch crashes).
+                # Const slots are NOT guarded here: const_slot_values is
+                # content-matched and can mislocate, so the hand row is the
+                # sanctioned correction and must still win.
+                if oval != jt_keys[k]:
+                    print('  NOTE %s off %#x: CSV row %#x IGNORED (cpp) -- '
+                          'jump-table slot is exact at %#x'
+                          % (r['name'], ooff, oval, jt_keys[k]))
+                continue
+            sites[k] = oval
         # truncation guard, cpp flavour
         try:
             od2, osecs2, osyms2, orl2 = rf_parse(obj)
@@ -764,6 +1071,19 @@ def collect_t3(recompile=False, progress=None):
             while clen and bod2[clen - 1] in (0x90, 0xCC):
                 clen -= 1
             slot2 = size - len(pre)
+            if _trace_on and _sink_va[0] is not None and size >= 24 \
+                    and (not _trace_only or va in _trace_only) \
+                    and va not in _trace_except:
+                if _golden:
+                    a_va2, _tw2 = _annex_golden(va)
+                else:
+                    a_va2, _tw2 = _annex_fill(obj, raw, r['name'], va, len(pre),
+                                              sites, anchors, trust_name_addr=True)
+                if a_va2 is not None:
+                    best[va] = (r['name'], _trace_thunk_span(va, a_va2, size),
+                                0, 0, 'T3')
+                    got_it = True
+                    continue
             if clen > slot2:
                 over2 = bod2[slot2:clen]
                 keep2 = bytes(img.byte(va + len(pre) + slot2 + i) or 0
@@ -809,7 +1129,10 @@ def assemble_contract(orig_path, t4_best, t3_best, names_at, unplaced,
     byte differing inside a T3 span is the certified residue (reported), a byte
     differing anywhere else is a regression of a byte-exact claim (fatal).
     """
-    t3_vas = set(t3_best)
+    # A force-annexed MATCHED function ships a `jmp annex` thunk at its VA,
+    # which differs from the original bytes on purpose -- count it as expected
+    # residue (like a T3 body), not a byte-exact regression.
+    t3_vas = set(t3_best) | {v for _av, v, _n, _b in annex}
     best = dict(t4_best)
     best.update(t3_best)                       # T3 never shares a VA with T4
     usable = {va: v for va, v in best.items() if v[2] == 0}
@@ -960,8 +1283,14 @@ def assemble_contract(orig_path, t4_best, t3_best, names_at, unplaced,
     # A wrong claim is a decomp defect; a tree that will not compile says nothing
     # about the claims.  Both exit non-zero, but they call for opposite actions,
     # so name which.  T3 residue is in NEITHER bucket.
+    print(f"\nStale reloc_overrides rows (no relocation there): {len(STALE_ROWS)}")
+    for sva, sname, soff, sval in STALE_ROWS[:20]:
+        print(f"    {sva:#010x} {sname} off {soff:#x} -> {sval:#010x}")
+    if STALE_ROWS:
+        print("    regenerate: .venv/bin/python tools/lockstep_rows.py <VA> --write "
+              "(after removing that function's lockstep rows)")
     claims_bad = bool(regressions or overlaps or conflicting or outside
-                      or unplaced or blocked or abi_flags)
+                      or unplaced or blocked or abi_flags or STALE_ROWS)
     if claims_bad:
         verdict = 'claims'
         print("\n  -> FAILED: the contract-valid claims do not hold at image "
@@ -984,6 +1313,103 @@ def assemble_contract(orig_path, t4_best, t3_best, names_at, unplaced,
     return bytes(img), verdict
 
 
+def _force_annex(annex):
+    """Spill the byte-locked functions named in config/force_annex.csv into the
+    annex with their (grown) transcribed body, and leave a `jmp annex` thunk at
+    the original VA.  This is how a diagnostic edit to a MATCHED (T4) function --
+    which the in-slot lane would revert for overflowing its slot -- still ships:
+    the fatal-exit logger (BrLogFatalPrintf) lives here.  Returns (thunk
+    overrides for the T4 map, extended annex list)."""
+    import csv as _csv
+    import struct as _st
+    from t3b_env import image as _image
+    from reloc_fill import load_maps, parse as rf_parse, func_symbol_matches
+    from reloc_pair import _our_sites
+    from relocmap import REL_DIR32, REL_REL32
+
+    p = os.path.join(ROOT, 'config', 'force_annex.csv')
+    if not os.path.exists(p):
+        return {}, annex
+    rows = [r for r in _csv.DictReader(open(p)) if r.get('va')]
+    if not rows:
+        return {}, annex
+
+    fnmap, _gl = load_maps()
+    _im = _image().imports
+    imports = _im() if callable(_im) else _im
+    annex = list(annex)
+    cursor = max([av + len(b) for av, _v, _n, b in annex], default=None)
+    if cursor is None:
+        cursor = 0x10000000 + _annex_rva(ib.ORIG_DLL)
+
+    # orig_size per VA from report.csv (thunk filler needs the slot length)
+    sizes = {}
+    for r in _csv.DictReader(open(REPORT)):
+        if r.get('va') and r.get('orig_size'):
+            try:
+                sizes[r['va'].lower()] = int(r['orig_size'])
+            except ValueError:
+                pass
+
+    overrides = {}
+    for r in rows:
+        va = int(r['va'], 16)
+        obj, err, _how = ib._compile_dll_obj(r['file'], r['opt'], True, ())
+        if obj is None:
+            print('  FORCE-ANNEX %s: compile failed (%s)' % (r['name'], err))
+            continue
+        d, secs, syms, relocs = rf_parse(obj)
+        fn = next((s for s in syms
+                   if func_symbol_matches(s['name'], r['symbol'])
+                   and secs.get(s['sec'], {}).get('name', '').startswith('.text')),
+                  None)
+        if fn is None:
+            print('  FORCE-ANNEX %s: symbol not in obj' % r['name'])
+            continue
+        sec = secs[fn['sec']]
+        nx = [s['val'] for s in syms if s['sec'] == fn['sec']
+              and s['val'] > fn['val'] and '$' not in s['name']]
+        end = min(nx) if nx else sec['size']
+        full = end - fn['val']
+        body = bytearray(d[sec['praw'] + fn['val']:sec['praw'] + end])
+        a_va = (cursor + 15) & ~15
+        st, _b = _our_sites(obj, r['symbol'], full)
+        blocked = []
+        for off, sym, rt, addend, _k in (st or []):
+            if sym.startswith('__imp__'):
+                slot = imports.get(sym) or imports.get(sym.split('@', 1)[0])
+                if slot is None:
+                    blocked.append(sym); continue
+                val = (slot + addend) & 0xFFFFFFFF if rt == REL_DIR32 else \
+                      (slot + addend - (a_va + off + 4)) & 0xFFFFFFFF
+            else:
+                base = sym.lstrip('_@').split('@')[0]
+                # BrOperatorNew is the original's static-CRT operator new; it
+                # is not a claimed glide function so the maps don't carry it.
+                _known = {'BrOperatorNew': 0x1007DFE0}
+                tgt = fnmap.get(base) or fnmap.get(sym) or _known.get(base)
+                if tgt is None:
+                    blocked.append(sym); continue
+                val = (tgt + addend - (a_va + off + 4)) & 0xFFFFFFFF \
+                      if rt == REL_REL32 else (tgt + addend) & 0xFFFFFFFF
+            _st.pack_into('<I', body, off, val & 0xFFFFFFFF)
+        if blocked:
+            print('  FORCE-ANNEX %s BLOCKED: unresolved %s'
+                  % (r['name'], ', '.join(blocked[:4])))
+            continue
+        size = sizes.get(r['va'].lower(), 5)
+        ob2 = os.path.join(ib.ORIG_DIR, '0x%08X.bin' % va)
+        orig2 = open(ob2, 'rb').read()
+        rel = (a_va - (va + 5)) & 0xFFFFFFFF
+        thunk = b'\xe9' + _st.pack('<I', rel) + orig2[5:size]
+        overrides[va] = (r['name'], thunk, 0, 0, 'T4')
+        annex.append((a_va, va, r['name'], bytes(body)))
+        cursor = a_va + len(body)
+        print('  FORCE-ANNEXED %s: %dB body at 0x%08X, thunk at 0x%08X'
+              % (r['name'], full, a_va, va))
+    return overrides, annex
+
+
 def main():
     argv = sys.argv[1:]
 
@@ -994,6 +1420,7 @@ def main():
     no_write = '--no-write' in argv
     recompile = '--recompile' in argv
     t3_only = '--t3-only' in argv
+    jobs = int(opt('--jobs')) if '--jobs' in argv else None
 
     before = ib._source_stamp()
 
@@ -1007,25 +1434,34 @@ def main():
                              % (n, total, os.path.basename(f)))
             sys.stderr.flush()
         t4_best, names_at, t4_unplaced, t4_unbuildable = ib.collect_dll(
-            recompile, dprog)
+            recompile, dprog, jobs=jobs)
         sys.stderr.write('\r' + ' ' * 70 + '\r')
 
     def tprog(n, total, f):
         sys.stderr.write('\r  T3 functions %d/%d %-40s'
                          % (n, total, os.path.basename(f)))
         sys.stderr.flush()
-    t3_best, t3_unplaced, t3_unbuildable, annex = collect_t3(recompile, tprog)
+    t3_best, t3_unplaced, t3_unbuildable, annex = collect_t3(
+        recompile, tprog, jobs=jobs)
     sys.stderr.write('\r' + ' ' * 70 + '\r')
 
     for va, (name, *_rest) in t3_best.items():
         names_at.setdefault(va, set()).add(name)
+
+    # Force-annex diagnostic/over-slot MATCHED functions (fatal-exit logger).
+    fa_overrides, annex = _force_annex(annex)
+    for va, entry in fa_overrides.items():
+        t4_best[va] = entry
+        names_at.setdefault(va, set()).add(entry[0])
 
     img, verdict = assemble_contract(
         ib.ORIG_DLL, t4_best, t3_best, names_at,
         t4_unplaced + t3_unplaced, t4_unbuildable + t3_unbuildable,
         annex=annex)
 
-    dest = os.path.join(out_dir, 'BRGlide.T3.dll')
+    dest = os.path.join(out_dir, 'BRGlide.GOLDEN.dll'
+                        if os.environ.get('BR_GOLDEN') == '1'
+                        else 'BRGlide.T3.dll')
     ib.emit(img, verdict == 'ok', dest, no_write)
 
     raced = ib._raced(before, ib._source_stamp())
