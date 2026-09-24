@@ -524,7 +524,15 @@ class Box(object):
         t0 = time.time()
         while True:
             try:
-                uc.emu_start(eip, 0xFFFFFFFF)
+                if budget_s is None:
+                    uc.emu_start(eip, 0xFFFFFFFF)
+                else:
+                    # a guest stuck in one loop never returns to this loop on
+                    # its own; let Unicorn stop it when the budget runs out
+                    left = budget_s - (time.time() - t0)
+                    if left <= 0:
+                        raise Stop('budget')
+                    uc.emu_start(eip, 0xFFFFFFFF, timeout=max(int(left * 1e6), 1000))
             except UcError as e:
                 raise GuestFault(self.describe_fault('%s' % e))
             if self.fault is not None:

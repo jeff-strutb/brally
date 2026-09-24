@@ -57,7 +57,8 @@ sys.path.insert(0, os.path.join(ROOT, 'tools'))
 from unicorn import UC_HOOK_CODE, UC_HOOK_MEM_WRITE, UC_PROT_ALL, UcError  # noqa: E402
 from unicorn.x86_const import (UC_X86_REG_EAX, UC_X86_REG_EDX, UC_X86_REG_EBX,  # noqa: E402
                                UC_X86_REG_ESI, UC_X86_REG_EDI, UC_X86_REG_EBP,
-                               UC_X86_REG_ESP, UC_X86_REG_EIP, UC_X86_REG_ECX)
+                               UC_X86_REG_ESP, UC_X86_REG_EIP, UC_X86_REG_ECX,
+                               UC_X86_REG_FPCW)
 from capstone import Cs, CS_ARCH_X86, CS_MODE_32  # noqa: E402
 from capstone import x86_const as X  # noqa: E402
 
@@ -335,9 +336,13 @@ class Oracle(object):
                     rv = uc_.reg_read({'esp': UC_X86_REG_ESP, 'ebp': UC_X86_REG_EBP,
                                        'esi': UC_X86_REG_ESI, 'edi': UC_X86_REG_EDI}[reg])
                     base = (rv + int(off, 0)) & 0xFFFFFFFF
-                    fl = struct.unpack('<%df' % int(n, 0), bytes(uc_.mem_read(base, 4 * int(n, 0))))
+                    raw = bytes(uc_.mem_read(base, 4 * int(n, 0)))
+                    if os.environ.get('T3LIVE_HEX'):
+                        cells = ['%08X' % x for x in struct.unpack('<%dI' % int(n, 0), raw)]
+                    else:
+                        cells = ['%.6g' % x for x in struct.unpack('<%df' % int(n, 0), raw)]
                     print('  mem %s %08X: %s' % ('t3' if self._cur_side_t3 else 'orig', a,
-                                                 ' '.join('%.6g' % x for x in fl)))
+                                                 ' '.join(cells)))
                 box.log_probe.append((a, [float.hex(box.st(k)) if os.environ.get("T3LIVE_HEX") else round(box.st(k), 9) for k in range(4)],
                                       {n: uc_.reg_read(r) for n, r in (('eax', UC_X86_REG_EAX),
                                                                        ('ebx', UC_X86_REG_EBX),
@@ -346,7 +351,8 @@ class Oracle(object):
                                                                        ('esi', UC_X86_REG_ESI),
                                                                        ('edi', UC_X86_REG_EDI),
                                                                        ('ebp', UC_X86_REG_EBP),
-                                                                       ('esp', UC_X86_REG_ESP))}))
+                                                                       ('esp', UC_X86_REG_ESP),
+                                                                       ('fpcw', UC_X86_REG_FPCW))}))
             hprobe.append(uc.hook_add(UC_HOOK_CODE, on_probe, begin=pa, end=pa))
             uc.ctl_remove_cache(pa, pa + 1)
         if body is not None:
