@@ -68,9 +68,8 @@ extern void    FUN_10022070(void *, void *, float, float, float);
  *  - the back-facing test is `t >= 0.0f` with the lit arm first;
  *  - the three colour-scale globals are absolute-address derefs: that is the
  *    operand kind that takes the fld side over the vertex field;
- *  - the y/z direction bytes are `int` temps read before the colour stores
- *    (z first) and cast at the use; the x byte is an inline cast; float temps
- *    store the colours before the loads.
+ *  - the direction bytes are `int` temps read before the colour stores and
+ *    cast at the use; float temps store the colours before the loads.
  * Open (same class as 0x10022600, family-wide):
  *  - the light setup: the original fild's all five light values before the
  *    first store and reads the x direction byte late; and `lea esi,[eax+
@@ -80,7 +79,9 @@ extern void    FUN_10022070(void *, void *, float, float, float);
  *    operand order, row order x association (24 variants), declaration order
  *    (locals and externs), pad count, pSrc[0]/float-pointer/array spellings,
  *    a pointer copy of the column, per-iteration `base + i`;
- *  - `mov ecx,0` for the original's `xor ecx,ecx` before the index byte.
+ *  (`xor ecx,ecx` before the index byte and the loop tail are SOLVED: the
+ *   output vertex pointer and its copy are formed before the count, and the
+ *   source pointer advances before the copy.)
  * @t4-pass 0x100221D0 1 2026-09-24 probes 100 bytes 1055 insns 296 regions 9 rows 32 census yes  (first transcription grind: corpus queries (two misses), walked vs indexed vs displaced source pointers, 24-way row order x association grid, declaration-order and pad-count TU-state sweeps, operand-kind ladder probes on the x term and colour scale, int/float direction temps)
  * @t4-pass 0x100221D0 2 2026-09-24 probes 12 bytes 1055 insns 296 regions 9 rows 32 census no  (light setup: cache/nLights test forms, matrix pointer as const/address/absolute/pointer arithmetic, direction bytes through a pointer and as schar/short temps, colour casts via unsigned/int, literal 128.0f divide; nothing moved)
  * @t4-pass 0x100221D0 3 2026-09-24 probes 11 bytes 1055 insns 296 regions 9 rows 32 census no  (loop: unsigned/count-down/while loop forms, int w0, index-byte cast and statement order, parenthesised x term, s/t copy before the transform; nothing moved) */
@@ -138,10 +139,10 @@ const uint8_t *BrDlVtxLitDecal(const uint8_t *p)
     w0 = *(const uint32_t *)p;
     pSrc = *(const BrDlSrcVtxL **)(p + 4);
     v0 = (w0 >> 16) & 0xFF;
-    n  = (w0 >> 10) & 0x3F;
     pV = &DAT_105ce318[v0];
-
     pVc = pV;
+    n  = (w0 >> 10) & 0x3F;
+
     for (i = 0; i < n; i++) {
         pV[i].cx = DAT_105d1780 * pSrc->z + DAT_105d1770 * pSrc->y + (double)pSrc->x * DAT_105d1760 + DAT_105d1790;
         pV[i].cy = DAT_105d1784 * pSrc->z + DAT_105d1774 * pSrc->y + (double)pSrc->x * DAT_105d1764 + DAT_105d1794;
@@ -177,8 +178,8 @@ const uint8_t *BrDlVtxLitDecal(const uint8_t *p)
         pV[i].outcode = oc;
         if (oc == 0)
             FUN_10022070(pVc, &pV[i].f40, pV[i].n0, pV[i].n1, pV[i].n2);
-        pVc++;
         pSrc++;
+        pVc++;
     }
     return p + 8;
 }
