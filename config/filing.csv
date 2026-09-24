@@ -984,6 +984,7 @@ glide_va,name,module,basis,file
 0x1005A6E0,BrNodeMarkPass,drawing,description,src/core/drawing/br_nodepass.c
 0x1005A740,BrNodeClearMarkPass,drawing,neighbour-1,src/core/drawing/br_nodepass.c
 0x1005A780,BrNodeRunMarkPass,drawing,neighbour-1,src/core/drawing/br_nodepass.c
+0x1005A7A0,BrCarPhysStep,driving,filed,src/core/driving/br_carphys.c
 0x1005AC60,BrCarBuildMatrices,racing,description,src/core/racing/br_carinit.c
 0x1005C440,BrThunk5C440,racing,neighbour-1,src/core/racing/br_thunks.c
 0x1005C560,BrRaceCarReset,racing,assigned,src/core/generated/0x1005C560.c
