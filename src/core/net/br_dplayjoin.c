@@ -523,6 +523,15 @@ typedef int (__stdcall *BrComRel)(void *pThis);                      /* +0x08 */
  * appear from any spelling; the tree keeps the 455 B form. */
 /* @t4-pass 0x10032320 2 2026-09-13 probes 106 bytes 455 insns 175 regions 1 rows 1 census yes  (tools/crank.py) */
 /* @t4-pass 0x10032320 3 2026-09-13 probes 220 bytes 455 insns 175 regions 1 rows 1 census yes  (tools/crank.py) */
+/* @t4-pass 0x10032320 4 2026-09-24 probes 12 bytes 461 insns 176 regions 1 rows 0 census no  (hand, after the byte mask moved to the load and the bit after the call reached 461/461: twelve spellings of the mask and the bit -- casts, byte load, %256, <<24>>24, (x&2)>>1, !!, /2, store order; none moved the and/shr schedule) */
+/* @t4-pass 0x10032320 5 2026-09-24 probes 11 bytes 461 insns 176 regions 1 rows 0 census yes  (hand, mechanism experiment: ten permutations of the ten local declarations, i.e. the allocator's candidate order; residue identical in all) */
+/* @t3 0x10032320 2026-09-24 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 461/461 insns 176/176 rows 0+0 regions 1 oracle UNVERIFIED
+ * @t3-effort passes 4 zero-movement 4 5
+ * residue is instruction scheduling only: the `and esi,0xff` and the later
+ * `shr/and` of the flag bit are placed among the SetConnectionSettings
+ * pushes differently (same instructions, same registers, same size).
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10032320 glide BrDpLobbyConnect */
 int BrDpLobbyConnect(int *param_1)
 {
