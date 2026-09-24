@@ -1210,6 +1210,66 @@ int32_t BrExt_10041A00(void *pArg)
  * It prints the same number into both counter strings, because the value that
  * ought to have made the second one different was zeroed moments before. */
 /* @implements 0x1003E680 d3d BrSub1003E680 */
+#ifdef BR_MATCHING_BUILD
+/* Matching arm: loose Glide globals in the original's store order, the
+ * imported sprintf cached in esi, memset as rep stosd.  The three float
+ * fields (0x10AC40F8, 0x10AC40FC, 0x10AC5C20) are zeroed through a SECOND
+ * zero register (ecx) in the original; every spelling tried (0.0f, 0.0,
+ * (float)0, int 0, pointer/unsigned types, a named float local) folds them
+ * into the ebx zero or an immediate.  RESIDUE: that one `xor ecx,ecx` web
+ * (290/289 B, register-blind 1+2). */
+extern float DAT_10ac40f8, DAT_10ac40fc, DAT_10ac5c20;
+extern int DAT_100abde8, DAT_10ac5d58, DAT_10ac5d5c, DAT_10ac5d60;
+extern int DAT_100abdec, DAT_100abdf0, DAT_100abdf4, DAT_100abdf8;
+extern int DAT_10ac5d68, DAT_10ac5d6c, DAT_10ac5bf8, DAT_10ac5bfc;
+extern int DAT_10ac5c04, DAT_10ac5c08, DAT_10ac5c0c;
+extern unsigned char DAT_10ac5c10;
+extern int DAT_10ac5c14, DAT_10ac5c18, DAT_10ac5a40, DAT_10ac5c1c;
+extern int DAT_10ac5c28, DAT_10ac5bf4;
+extern char DAT_10ac5870[], DAT_10ac46a0[];
+extern int DAT_10ac5a48[0x53], DAT_10ac4c60[0x53], DAT_1021c650[0x46];
+extern unsigned short DAT_10ac5b38;
+extern int BrPairBufReset(void);            /* 0x10037870 */
+extern void BrSub10037B20(void);            /* 0x10037B20 */
+void BrSub1003E680(void)
+{
+    DAT_10ac40f8 = 0.0f;
+    DAT_100abde8 = 2;
+    DAT_10ac5d58 = 0;
+    DAT_10ac5d5c = 0;
+    DAT_10ac5d60 = 0;
+    DAT_100abdec = 1;
+    DAT_100abdf0 = 1;
+    DAT_100abdf4 = 1;
+    DAT_100abdf8 = 3;
+    DAT_10ac5d68 = 0;
+    DAT_10ac5d6c = 0;
+    DAT_10ac5bf8 = 0;
+    DAT_10ac5bfc = 0;
+    DAT_10ac5c04 = 0;
+    DAT_10ac5c08 = 0;
+    DAT_10ac5c0c = 0;
+    DAT_10ac5c10 = 0;
+    DAT_10ac5c14 = 0;
+    DAT_10ac5c18 = 0;
+    DAT_10ac5a40 = 0;
+    DAT_10ac40fc = 0.0f;
+    DAT_10ac5c1c = 0;
+    DAT_10ac5c20 = 0.0f;
+    DAT_10ac5c28 = 0;
+    DAT_10ac5bf4 = 0;
+    sprintf(DAT_10ac5870, "%d", 1);
+    sprintf(DAT_10ac46a0, "%d", DAT_10ac5bfc + 1);
+    BrPairBufReset();
+    DAT_10ac5bf4 = 0;
+    memset(DAT_10ac5a48, 0, sizeof DAT_10ac5a48);
+    memset(DAT_10ac4c60, 0, sizeof DAT_10ac4c60);
+    memset(DAT_1021c650, 0, sizeof DAT_1021c650);
+    DAT_10ac5b38 = 0x102;
+    DAT_1021c650[0] = -1;
+    BrSub10037B20();
+}
+#else
 void BrSub1003E680(void)
 {
     int i;
@@ -1305,7 +1365,7 @@ void BrSub1003E680(void)
 
     BrSub1003E510();                /* 0x1003E510 */
 }
-
+#endif
 /* slice2_26.h wants the same body under a second name.  Both are declared
  * `void (void)`, so this is a naming duplicate, not a mispairing. */
 void BrExt_1003E680(void)
