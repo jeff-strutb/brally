@@ -8410,3 +8410,10 @@ with the target's flags, diff one function against original bytes
   `lea` ahead of the first call's pushes.  Same function.
 - **An if/else whose fall-through is the constant store = the `!=` test with
   the constant arm first** (`jne copy` over `mov [x],0`).  Same function.
+- **Checked-I/O chain whose LAST test jumps forward to success (`cmp eax,1
+  / je ok`, failure falling through) = every step `if (...) goto fail;`,
+  success code first, `fail:` last.**  An `||`/`&&` condition, a `goto ok`,
+  a nested `if (pFile) { }` or a result variable all emit the failure block
+  last and merge its `return 0` with the open-failure return.  Proven on the
+  C++ method 0x10063060 BrCtrlCfgReadFile (1104 B, EH frame, 4/4 pieces);
+  the same shape as the C writer 0x100634B0.
