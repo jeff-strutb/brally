@@ -1,6 +1,7 @@
 # The six typed cheat words, typed with the main menu's CREDITS item under
 # the pointer (its per-frame hook feeds the key ring and runs the cheat
-# scanner), then a quick race with whatever they switched on.
+# scanner); a cheat unlocks the outro, played from CREDITS; then a quick
+# race with whatever they switched on.
 sleep 240
 mark main_menu
 mouse 250 227
@@ -102,6 +103,12 @@ sleep 3
 sleep 10
 mark cheat_hazel
 shot cheats_menu
+click
+sleep 900
+mark after_credits_click
+shot cheats_credits
+press ESCAPE
+sleep 200
 mouse 250 190
 click
 sleep 40
