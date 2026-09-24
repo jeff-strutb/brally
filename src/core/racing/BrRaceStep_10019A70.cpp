@@ -1147,9 +1147,9 @@ Lb365:  /* 0x1001b365 */
                                 }
                                 if (g_5BC7D0 + 1 == g_5BC7D4) {   /* 0x1001b5a8 */
                                     g_5BC804 = g_5BC7F8; g_5BC808 = g_5BC7FC; g_5BC80C = g_5BC800;
-                                } else {                    /* 0x1001b5ca */
-                                    sub_100346D0(v38, (char*)g_5BC7DC + g_5BC7D0 * 12,
-                                                      (char*)g_5BC7E0 + g_5BC7D0 * 12);
+                                } else {                    /* 0x1001b5ca: the NEXT point, wi+1 (eax from 0x1001b5a1) */
+                                    sub_100346D0(v38, (char*)g_5BC7DC + (g_5BC7D0 + 1) * 12,
+                                                      (char*)g_5BC7E0 + (g_5BC7D0 + 1) * 12);
                                     sub_10034560(&g_5BC804, v38, v20);
                                     sub_100344D0(&g_5BC804);
                                 }
@@ -1157,20 +1157,30 @@ Lb365:  /* 0x1001b365 */
                             if (ended) g_5BC7C0 = 0;         /* 0x1001b632 */
                         }
                         if (g_5BC7C0 != 0) {                /* 0x1001b64a transform+emit */
-                            float lerpT = g_5BC7E4 / g_5BC7E8;
+                            float lerpT;
+                            int   lerpBits;
+                            /* 0x1001b665: stored, and every use reads the float */
+                            lerpT = g_5BC7E4 / g_5BC7E8;
+                            lerpBits = *(int*)&lerpT;
+                            lerpT = *(float*)&lerpBits;
                             char *row   = (char*)g_6EED38 + g_5BC7C0 * 84;
-                            sub_10034620(v38, (char*)g_5BC7DC + g_5BC7D0 * 12,
+                            /* 0x1001b670: the interpolated position lands in v2c
+                             * (lea [esp+0x38] under three pushes) */
+                            sub_10034620(v2c, (char*)g_5BC7DC + g_5BC7D0 * 12,
                                               (char*)g_5BC7DC + g_5BC7D0 * 12 - 0xc, lerpT);
                             sub_10034620(v20, (char*)g_5BC7E0 + g_5BC7D0 * 12,
                                               (char*)g_5BC7E0 + g_5BC7D0 * 12 - 0xc, lerpT);
                             sub_100346D0(row + 0x30, v2c, v20);
-                            if (v20[0] > g_0773CC)          /* 0x1001b6c6 */
-                                sub_10034620(row, &g_5BC804, &g_5BC7F8, v20[0] - g_0773CC);
+                            /* 0x1001b6c6: [esp+0x20] under three pushes is the
+                             * lerpT slot, not v20 -- the heading blends on t */
+                            if (lerpT > g_0773CC)
+                                sub_10034620(row, &g_5BC804, &g_5BC7F8, lerpT - g_0773CC);
                             else                            /* 0x1001b708 */
-                                sub_10034620(row, &g_5BC7F8, &g_5BC7EC, v20[0] - g_0773D0);
+                                sub_10034620(row, &g_5BC7F8, &g_5BC7EC, lerpT - g_0773D0);
                             sub_100344D0(row);
+                            /* 0x1001b774 -> 0x1001b799: the forward difference goes
+                             * into the first cross product UNnormalised */
                             sub_10034560(row + 0x20, v2c, v20);
-                            sub_100344D0(row + 0x20);
                             sub_100342B0(row + 0x10, row, row + 0x20);
                             sub_100344D0(row + 0x10);
                             sub_100342B0(row + 0x20, row + 0x10, row);
