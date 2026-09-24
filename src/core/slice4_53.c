@@ -215,16 +215,13 @@ void BrGfx31227(void)
  * BrPoolEmit: timer accumulate + threshold, free-slot word shuffle,
  * velocity build via the vec helpers, and the slot's colour/life fields
  * from the divided distance.
- * RESIDUE (parked, REGNORM 13+13): the operand-kind wall -- orig puts the
- * e24 field on the fld side of its products (ours ranks the extern consts
- * higher; scalar/array-element/bound-pointer spellings all canonicalize
- * back), orig fcom-before-fstp on the threshold store (assignment-in-
- * condition folds to fst+fcomp), and the esi/edi this-rotation downstream
- * of both. The 0x1000EAF0 per-product kind-ladder probing is the known
- * path if this is ever revisited. */
-extern float DAT_1007752c[], DAT_10077530[], DAT_10077534[], DAT_10077538[];
-extern float DAT_1007753c[], DAT_10077540[], DAT_10077544[], DAT_10077548[];
-extern float DAT_1007754c[], DAT_10077550[], DAT_10077554[];
+ * The constants are literals (the per-function .rdata pool at 0x1007752C
+ * holds them in first-use order); the threshold store is a plain statement
+ * ahead of the test (VC5 then emits fcom before fstp); the slot free-list
+ * pop is three direct stores; the velocity copy is a BrVec3 struct copy.
+ * RESIDUE (REGNORM 1+1, same size): two x87/integer schedule spots -- the
+ * 0.1f product issues before the struct-copy loads in the original, and
+ * pop ebx lands after the c66 byte store. */
 extern float DAT_106e9d8c[];
 extern int   DAT_10ac0c38;
 extern unsigned short DAT_10ac0c40;
@@ -243,52 +240,48 @@ void __fastcall BrCarSub9020(struct BrCar *pCar)
 {
     char *p = (char *)pCar;
     float *pe24;
-    float local[3];
+    BrVec3 local;
     float acc, f2, t, g;
     unsigned int idx;
     int off;
-    unsigned short w40old, wslot;
 
     pe24 = (float *)(p + 0xE24);
-    acc = ((float)(BrRandom() & 0x1FFF) * DAT_1007752c[0]
-           - *pe24 * DAT_10077530[0]
-           - DAT_10077534[0]) * DAT_106e9d8c[0]
+    acc = ((float)(BrRandom() & 0x1FFF) * 1.52587890625e-05f
+           - *pe24 * -0.001f
+           - (-1.0f)) * DAT_106e9d8c[0]
           + *(float *)(p + 0x105C);
 
-    if ((*(float *)(p + 0x105C) = acc) > DAT_10077538[0]) {
+    *(float *)(p + 0x105C) = acc;
+    if (acc > 0.25f) {
         idx = (unsigned int)DAT_10ac0c38 & 0xFFFFu;
         if (idx != 0) {
-            f2  = *pe24 * DAT_1007753c[0];
+            f2  = *pe24 * 0.001f;
             off = (int)idx << 5;
             *(int *)(p + 0x105C) = 0;
 
-            w40old = DAT_10ac0c40;
-            wslot  = *(unsigned short *)(&DAT_10ac0c64 + off);
+            *(unsigned short *)&DAT_10ac0c38 = *(unsigned short *)(&DAT_10ac0c64 + off);
+            *(unsigned short *)(&DAT_10ac0c64 + off) = DAT_10ac0c40;
             DAT_10ac0c40 = (unsigned short)idx;
-            *(unsigned short *)&DAT_10ac0c38 = wslot;
-            *(unsigned short *)(&DAT_10ac0c64 + off) = w40old;
 
             BrVec3Scale((BrVec3 *)(void *)(&DAT_10ac0c54 + off),
                         (const BrVec3 *)(const void *)p,
-                        DAT_10077540[0] - f2);
-            BrSub10034560(local, p + 0xF0, p);
-            BrSub10034660(local, local, p + 0x20, 0.2f);
-            BrSub10034660(local, local, p + 0x10, 0.2f);
+                        -1.5f - f2);
+            BrSub10034560(&local, p + 0xF0, p);
+            BrSub10034660(&local, &local, p + 0x20, 0.2f);
+            BrSub10034660(&local, &local, p + 0x10, 0.2f);
 
-            g = (float)(BrRandom() & 0xFFFF) * DAT_10077544[0];
-            BrSub10034560(&DAT_10ac0c48 + off, p + 0x1060, local);
-            BrSub10034660(&DAT_10ac0c48 + off, local,
+            g = (float)(BrRandom() & 0xFFFF) * 1.5259021893143654e-05f;
+            BrSub10034560(&DAT_10ac0c48 + off, p + 0x1060, &local);
+            BrSub10034660(&DAT_10ac0c48 + off, &local,
                           &DAT_10ac0c48 + off, g * g);
 
-            *(int *)(p + 0x1060) = ((int *)local)[0];
-            *(int *)(p + 0x1064) = ((int *)local)[1];
-            *(int *)(p + 0x1068) = ((int *)local)[2];
+            *(BrVec3 *)(p + 0x1060) = local;
 
-            t = f2 * DAT_10077548[0] - DAT_10077534[0];
-            *(float *)(&DAT_10ac0c60 + off) = t * DAT_1007754c[0];
+            t = f2 * 0.1f - (-1.0f);
+            *(float *)(&DAT_10ac0c60 + off) = t * 0.15f;
             *(char *)(&DAT_10ac0c66 + off) =
-                (char)(int)(DAT_10077550[0] / (BrSub100347F0(p + 0x1024) + t)
-                            * DAT_10077554[0]);
+                (char)(int)(1.0f / (BrSub100347F0(p + 0x1024) + t)
+                            * 255.0f);
             *(unsigned char *)(&DAT_10ac0c67 + off) = 0xFF;
         }
     }
