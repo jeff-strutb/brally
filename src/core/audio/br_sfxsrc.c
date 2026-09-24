@@ -175,9 +175,32 @@ int BrSfxChanSetLevels(int ch, uint32_t packed)
  * channel's own record and the separate note of what the hardware has really
  * been told -- so the per-frame retune can tell whether anything has changed.
  * With sound switched off it reports success without doing anything. */
-/* @t4-pass 0x1006B880 1 2026-09-07 probes 61 bytes 188 insns 70 regions 1 rows 40 census yes  (tools/crank.py) */
-/* @t4-pass 0x1006B880 2 2026-09-07 probes 61 bytes 188 insns 70 regions 1 rows 40 census yes  (tools/crank.py) */
 /* @implements 0x1006B880 glide BrSfxChanStart */
+#ifdef BR_MATCHING_BUILD
+/* Hand-transcribed from the asm.  No channel range check and no voice-index
+ * helper: the voice is BrSndVoices[group*18 + ch] straight.  The success path
+ * is the nested block -- it falls through with the failure `return 0` after
+ * it and the sound-off `return 1` last, as the original lays them out. */
+int BrSfxChanStart(int group, int ch, int32_t loop)
+{
+    BrSndVoice *pVoice;
+
+    if (BrSndG0B5DE8 != 0 && BrSndPDS != NULL && BrSndG18290FC != NULL) {
+        pVoice = BrSndVoices[group * 18 + ch];
+        if (pVoice != NULL && BrSndVoiceSetLoopAndStart(pVoice, loop) == 0) {
+            /* f0C zero-extended to 64 bits, * 2^32, / the channel's rate */
+            g_aBrSfxChan[ch].ratio =
+                (int64_t)((double)(int64_t)(uint32_t)pVoice->f0C
+                          * 4294967296.0 / g_aBrSfxChanRate[ch]);
+            g_apBrSfxChanVoice[ch] = pVoice;
+            g_aBrSfxChanApplied[ch].ratio = g_aBrSfxChan[ch].ratio;
+            return 1;
+        }
+        return 0;
+    }
+    return 1;
+}
+#else
 int BrSfxChanStart(int group, int ch, int32_t loop)
 {
     int         idx;
@@ -236,6 +259,7 @@ int BrSfxChanStart(int group, int ch, int32_t loop)
     g_aBrSfxChanApplied[ch].ratio = g_aBrSfxChan[ch].ratio;
     return 1;
 }
+#endif
 
 void BrSfxSrcChannelsReset(void)
 {
