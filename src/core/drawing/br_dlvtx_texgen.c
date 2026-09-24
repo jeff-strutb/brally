@@ -104,8 +104,8 @@ extern float       DAT_105ccfdc;
 extern float       DAT_105cd9fc;
 extern float       DAT_105ccd48;
 extern float DAT_105cd9fc;
-/* T2 2026-09-24 (hand transcription from the asm), compiled like the rest of
- * its original TU with /O2 /Op: 50 of 362 instructions still differ
+/* Transcription notes (2026-09-24, by hand from the asm; compiled /O2 /Op
+ * like the rest of its original TU): 50 of 362 instructions still differ
  * (difflib count).  Spellings that each moved a whole class (all measured):
  *  - the lights are N64 Light records read as BYTES: VC5 merges col[0]/col[1]
  *    into one dword load + `and`/`mov dl,ah`, exactly as the original;
@@ -148,7 +148,14 @@ extern float DAT_105cd9fc;
  * @t3-measure bytes 1206/1212 insns 359/362 rows 7+4 regions 10 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 1 2
  * Residue is x87 scheduling and operand role only (see the Open list above);
- * every row pairs.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * every row pairs.  Do not reopen before the end-grind (CLAUDE.md rule 12).
+ * Oracle coverage: the 25 scripts run 253 of the 362 instructions -- never
+ * the light refresh (the cache is always valid on entry here) -- and the
+ * game's one light has equal x/y/z direction bytes.  So the refresh was also
+ * forced at entry from real game state (t3live, object mode, 8 scripts):
+ * 64/64 calls agree; with an asymmetric light direction 64/64 agree; with no
+ * lights 25/25 agree.  Planted bugs (a doubled term, a y/z swap) were caught
+ * DIVERGENT.  Only the NULL-matrix path is unrun; it faults in both. */
 /* WHAT IT DOES: transforms a batch of vertices through the combined matrix,
  * generates texture coordinates by rotating each normal into world space and
  * projecting it on the two view-direction vectors (a straight linear map to

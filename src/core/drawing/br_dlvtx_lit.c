@@ -59,13 +59,14 @@ extern int32_t FUN_10022120(void *);
 extern void    FUN_10022070(void *, void *, float, float, float);
 
 
-/* T2 2026-09-24 (hand transcription from the asm, /O2 /Op like its TU):
- * 49 of 289 instructions still differ (difflib count).  Carried over from
- * the sibling 0x10022600: the 1-based matrix stack ([top - 1], the `lea`),
- * the vertex pointer formed before the count, the mixed absolute/extern MVP
- * columns; from 0x100221D0: `(double)pSrc->x` for the x term's role.  The
- * helper's output-vertex argument is a separately advanced pointer (the
- * original's ebp), set from pV BEFORE the count is extracted.
+/* Transcription notes (2026-09-24, by hand from the asm; compiled /O2 /Op
+ * like the rest of its original TU): 49 of 289 instructions still differ
+ * (difflib count).  From the sibling 0x10022600: the 1-based matrix stack
+ * ([top - 1] gives the `lea`), the mixed absolute/extern MVP columns, the
+ * vertex pointer formed before the count.  The helper's output-vertex
+ * argument is a separately advanced pointer (the original's ebp), set from
+ * pV BEFORE the count is extracted.  `(double)pSrc->x` is 0x100221D0's
+ * spelling; here it scores the same as the plain product.
  * Open (x87 scheduling / register choice only; every row pairs):
  *  - light setup: the original loads the direction bytes y, x (edi, ebp)
  *    early and z late; ours takes them z, y early and x late, with the
@@ -77,11 +78,17 @@ extern void    FUN_10022070(void *, void *, float, float, float);
  * @t4-pass 0x10021C70 1 2026-09-24 probes 2800 bytes 1025 insns 292 regions 7 rows 11 census no  (generator climb over declaration order, light statement order and row term order, matrix form, x-term cast, dot grouping, compare and clamp forms, loop pointers; nothing moved from 49)
  * @t4-pass 0x10021C70 2 2026-09-24 probes 38 bytes 1025 insns 292 regions 7 rows 11 census yes  (census: the rows are the transform fxch and the light block's load/store order -- probed the transform rows' 8 groupings x 4 operand casts and the six loop-pointer initialisations; nothing moved) */
 /* @t3 0x10021C70 2026-09-24 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 1025/1019 insns 292/289 rows 4+7 regions 7 oracle UNVERIFIED
+ * @t3-measure bytes 1025/1019 insns 292/289 rows 4+7 regions 7 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 1 2
  * Residue is x87 scheduling and register choice only (see the Open list
  * above); every row pairs.  Do not reopen before the end-grind (CLAUDE.md
- * rule 12). */
+ * rule 12).
+ * Oracle coverage: the 25 scripts run 283 of the 289 instructions (the
+ * light refresh 287,585 times), all but the no-lights colour copy and the
+ * NULL-matrix path.  t3live, object mode, 8 scripts: 72/72 calls agree;
+ * refresh forced with an asymmetric light 72/72; no lights forced 27/27.
+ * Planted bugs (a y/z swap in the light rows, a swapped no-lights colour)
+ * were caught DIVERGENT.  The NULL-matrix path faults in both. */
 /* WHAT IT DOES: loads a batch of lit vertices.  It first refreshes the
  * cached light if anything has invalidated it (the light colour, its
  * direction pulled into model space and normalised, the ambient), then for
