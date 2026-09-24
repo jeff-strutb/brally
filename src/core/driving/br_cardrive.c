@@ -424,8 +424,13 @@ void BrCarPhysDriveMatch(int param_1, float param_2, float *param_3, float *para
       local_88 = -local_88;
     }
     local_88 = (float)(int)(local_88 > _DAT_10077a98);
+    /* The original stores the sum to its float slot (fstp at 0x10064E35)
+     * and subtracts from the stored value; the int image forces that
+     * rounding.  Whole-image run: 1 ulp in the speed, then in the grip
+     * factor and the lateral velocity. */
     fVar1 = (fVar11 * *(float *)(param_1 + 0x2c)) / param_2 + local_8c;
-    fVar1 = fVar1 - local_88 * _DAT_10077aa0;
+    dotBits = *(int *)&fVar1;
+    fVar1 = *(float *)&dotBits - local_88 * _DAT_10077aa0;
     fVar7 = _DAT_10077a90;
     if (*param_6 != '\0') {
       fVar7 = _DAT_10077ac4;
