@@ -65,18 +65,15 @@ unsigned int BrGhostPickBlend(float *param_1, int param_2)
   float *pfVar11;
   float fVar12;
   float fVar13;
-  HANDLE local_14;
-  HANDLE local_10;
-  float local_c;
-  float local_8;
-  float local_4;
+  HANDLE ahWait[2];     /* the two mutexes, waited on together */
+  float v3[3];          /* a vector on the stack, measured by BrVec3Length */
 
   iVar4 = param_2;
   pfVar3 = param_1;
-  local_14 = DAT_10226a64;
-  local_10 = (HANDLE)(&DAT_1021ce58)[param_2 * 0x25e];
+  ahWait[0] = DAT_10226a64;
+  ahWait[1] = (HANDLE)(&DAT_1021ce58)[param_2 * 0x25e];
   puVar2 = &DAT_1021ce58 + param_2 * 0x25e;
-  WaitForMultipleObjects(2, &local_14, 1, 0xffffffff);
+  WaitForMultipleObjects(2, ahWait, 1, 0xffffffff);
   if (param_2 != DAT_1007b264) {
     if ((int)((int *)puVar2)[0x156] < 2) {
       param_1[0x1f] = 400.0f;
@@ -133,14 +130,14 @@ unsigned int BrGhostPickBlend(float *param_1, int param_2)
       }
       BrCarStateLerp(pfVar3, (float)(iVar7 + iVar6) / (float)iVar6, puVar2 + iVar5 * 0x28 + 0x16,
                      puVar2 + iVar9 * 0x28 + 0x16);
-      local_c = (float)puVar2[iVar9 * 0x28 + 0x1a];
-      local_8 = (float)puVar2[iVar9 * 0x28 + 0x1b];
-      local_4 = (float)puVar2[iVar9 * 0x28 + 0x1c];
-      fVar12 = BrVec3Length_100682C0(&local_c);
-      local_c = pfVar3[4];
-      local_8 = pfVar3[5];
-      local_4 = pfVar3[6];
-      fVar13 = BrVec3Length_100682C0(&local_c);
+      v3[0] = *(float *)&puVar2[iVar9 * 0x28 + 0x1a];   /* the stored float, copied as a dword */
+      v3[1] = *(float *)&puVar2[iVar9 * 0x28 + 0x1b];   /* the stored float, copied as a dword */
+      v3[2] = *(float *)&puVar2[iVar9 * 0x28 + 0x1c];   /* the stored float, copied as a dword */
+      fVar12 = BrVec3Length_100682C0(v3);
+      v3[0] = pfVar3[4];
+      v3[1] = pfVar3[5];
+      v3[2] = pfVar3[6];
+      fVar13 = BrVec3Length_100682C0(v3);
     } else {
       ((int *)puVar2)[0x158] = iVar9;
       if ((((unsigned int)((int *)puVar2)[3 + iVar9] < (unsigned int)(((int *)puVar2)[0x159] + 1)) &&
@@ -155,14 +152,14 @@ unsigned int BrGhostPickBlend(float *param_1, int param_2)
         }
         BrCarStateLerp(pfVar3, (float)(iVar7 + iVar6) / (float)iVar6, puVar2 + iVar5 * 0x28 + 0x16,
                        puVar2 + iVar9 * 0x28 + 0x16);
-        local_c = (float)puVar2[iVar9 * 0x28 + 0x1a];
-        local_8 = (float)puVar2[iVar9 * 0x28 + 0x1b];
-        local_4 = (float)puVar2[iVar9 * 0x28 + 0x1c];
-        fVar12 = BrVec3Length_100682C0(&local_c);
-        local_c = pfVar3[4];
-        local_8 = pfVar3[5];
-        local_4 = pfVar3[6];
-        fVar13 = BrVec3Length_100682C0(&local_c);
+        v3[0] = *(float *)&puVar2[iVar9 * 0x28 + 0x1a];   /* the stored float, copied as a dword */
+        v3[1] = *(float *)&puVar2[iVar9 * 0x28 + 0x1b];   /* the stored float, copied as a dword */
+        v3[2] = *(float *)&puVar2[iVar9 * 0x28 + 0x1c];   /* the stored float, copied as a dword */
+        fVar12 = BrVec3Length_100682C0(v3);
+        v3[0] = pfVar3[4];
+        v3[1] = pfVar3[5];
+        v3[2] = pfVar3[6];
+        fVar13 = BrVec3Length_100682C0(v3);
       } else {
         ((int *)puVar2)[0x15a] = 0;
         ((int *)puVar2)[0x15b] = 0;
@@ -174,14 +171,14 @@ unsigned int BrGhostPickBlend(float *param_1, int param_2)
         }
         BrCarStateLerp(pfVar3, (float)(iVar7 + iVar6) / (float)iVar6, puVar2 + iVar5 * 0x28 + 0x16,
                        puVar2 + iVar9 * 0x28 + 0x16);
-        local_c = (float)puVar2[iVar9 * 0x28 + 0x1a];
-        local_8 = (float)puVar2[iVar9 * 0x28 + 0x1b];
-        local_4 = (float)puVar2[iVar9 * 0x28 + 0x1c];
-        fVar12 = BrVec3Length_100682C0(&local_c);
-        local_c = pfVar3[4];
-        local_8 = pfVar3[5];
-        local_4 = pfVar3[6];
-        fVar13 = BrVec3Length_100682C0(&local_c);
+        v3[0] = *(float *)&puVar2[iVar9 * 0x28 + 0x1a];   /* the stored float, copied as a dword */
+        v3[1] = *(float *)&puVar2[iVar9 * 0x28 + 0x1b];   /* the stored float, copied as a dword */
+        v3[2] = *(float *)&puVar2[iVar9 * 0x28 + 0x1c];   /* the stored float, copied as a dword */
+        fVar12 = BrVec3Length_100682C0(v3);
+        v3[0] = pfVar3[4];
+        v3[1] = pfVar3[5];
+        v3[2] = pfVar3[6];
+        fVar13 = BrVec3Length_100682C0(v3);
       }
     }
     pfVar3[6] = (fVar12 - fVar13) + pfVar3[6];
