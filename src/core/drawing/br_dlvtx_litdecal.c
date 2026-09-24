@@ -29,7 +29,7 @@ extern int DAT_105d17d0;          /* fLightCached */
 extern int DAT_105ccfd0;          /* nLights */
 extern int DAT_100a9a50;          /* iModel */
 typedef struct { float m[16]; } BrDlMtx;
-extern BrDlMtx DAT_105ccd10[];    /* model matrices, 0x40 each */
+extern BrDlMtx DAT_105ccd50[];    /* model matrices, 1-based: [i-1] = 0x105CCD10 + i*0x40 */
 
 /* The two N64 Light records at 0x105CCC78 (directional) and 0x105CCC88
  * (ambient): colour bytes, their copy, signed direction bytes. */
@@ -72,8 +72,8 @@ extern void    FUN_10022070(void *, void *, float, float, float);
  *    cast at the use; float temps store the colours before the loads.
  * Open (same class as 0x10022600, family-wide):
  *  - the light setup: the original fild's all five light values before the
- *    first store and reads the x direction byte late; and `lea esi,[eax+
- *    matrices]` where every spelling gives `add`;
+ *    first store and reads the x direction byte late.  (`lea` for the matrix
+ *    pointer is SOLVED: the stack is 1-based, `DAT_105ccd50[i - 1]`.)
  *  - the x term of each transform row: the original loads the vertex x and
  *    multiplies by the x column from memory; ours loads the column.  Dead:
  *    operand order, row order x association (24 variants), declaration order
@@ -109,7 +109,7 @@ const uint8_t *BrDlVtxLitDecal(const uint8_t *p)
     if (!DAT_105d17d0) {
         if (DAT_105ccfd0 != 0) {
             if (DAT_100a9a50 != 0)
-                m = DAT_105ccd10[DAT_100a9a50].m;
+                m = DAT_105ccd50[DAT_100a9a50 - 1].m;
             else
                 m = NULL;
 
