@@ -69,12 +69,12 @@ extern void    FUN_10022070(void *, void *, float, float, float);
  * codes, and projects it to the screen if it is inside the view. */
 /* @implements 0x10021C70 glide BrDlVtxLit */
 /* T2 2026-09-24 (hand transcription from the asm, /O2 /Op like its TU):
- * 52 of 289 instructions still differ (difflib count).  Carried over from
+ * 49 of 289 instructions still differ (difflib count).  Carried over from
  * the sibling 0x10022600: the 1-based matrix stack ([top - 1], the `lea`),
  * the vertex pointer formed before the count, the mixed absolute/extern MVP
  * columns; from 0x100221D0: `(double)pSrc->x` for the x term's role.  The
  * helper's output-vertex argument is a separately advanced pointer (the
- * original's ebp).  Open: the light setup's byte-load order and fxch, one
+ * original's ebp), set from pV BEFORE the count is extracted.  Open: the light setup's byte-load order and fxch, one
  * fxch per transform row. */
 /* WHAT IT DOES: loads a batch of lit vertices.  It first refreshes the
  * cached light if anything has invalidated it (the light colour, its
@@ -87,34 +87,31 @@ extern void    FUN_10022070(void *, void *, float, float, float);
 /* @implements 0x10021C70 glide BrDlVtxLit */
 const uint8_t *BrDlVtxLit(const uint8_t *p)
 {
-    int v0;
-    float dx, dy, dz;
-    const BrDlSrcVtxL *pSrc;
     int32_t oc;
-    int n;
-    BrDlVtx *pVc;
+    float dx, dy, dz;
     uint32_t w0;
-    float v;
+    const BrDlSrcVtxL *pSrc;
     int i;
+    int n;
     BrDlVtx *pV;
     float t;
+    int v0;
+    float v;
     float *m;
+    BrDlVtx *pVc;
 
     if (!DAT_105d17d0) {
         if (DAT_105ccfd0 != 0) {
-            if (DAT_100a9a50 != 0)
-                m = DAT_105ccd50[DAT_100a9a50 - 1].m;
-            else
-                m = NULL;
+            m = DAT_100a9a50 ? DAT_105ccd50[DAT_100a9a50 - 1].m : NULL;
             DAT_105ce210 = (float)DAT_105ccc78[0].col[0];
             DAT_105ce214 = (float)DAT_105ccc78[0].col[1];
             dz = (float)DAT_105ccc78[0].dir[2];
-            DAT_105ce218 = (float)DAT_105ccc78[0].col[2];
             dy = (float)DAT_105ccc78[0].dir[1];
             dx = (float)DAT_105ccc78[0].dir[0];
+            DAT_105ce218 = (float)DAT_105ccc78[0].col[2];
             DAT_105ce21c = ((m[1] * dy + m[2] * dz) + m[0] * dx) / DAT_10077420;
             DAT_105ce220 = ((m[4] * dx + m[5] * dy) + m[6] * dz) / DAT_10077420;
-            DAT_105ce224 = ((m[9] * dy + m[8] * dx) + m[10] * dz) / DAT_10077420;
+            DAT_105ce224 = ((m[8] * dx + m[9] * dy) + m[10] * dz) / DAT_10077420;
             FUN_100344D0(&DAT_105ce21c);
             DAT_105ce228 = (float)DAT_105ccc78[1].col[0];
             DAT_105ce22c = (float)DAT_105ccc78[1].col[1];
@@ -127,14 +124,14 @@ const uint8_t *BrDlVtxLit(const uint8_t *p)
     pSrc = *(const BrDlSrcVtxL **)(p + 4);
     v0 = (w0 >> 16) & 0xFF;
     pV = &DAT_105ce318[v0];
-    n  = (w0 >> 10) & 0x3F;
     pVc = pV;
+    n  = (w0 >> 10) & 0x3F;
 
     for (i = 0; i < n; i++) {
-        pV[i].cx = DAT_105d1780 * pSrc->z + DAT_105d1770 * pSrc->y + pSrc->x * DAT_105d1760 + DAT_105d1790;
-        pV[i].cy = DAT_105d1784 * pSrc->z + DAT_105d1774 * pSrc->y + pSrc->x * DAT_105d1764 + DAT_105d1794;
-        pV[i].cz = DAT_105d1788 * pSrc->z + DAT_105d1778 * pSrc->y + pSrc->x * DAT_105d1768 + DAT_105d1798;
-        pV[i].cw = DAT_105d178c * pSrc->z + DAT_105d177c * pSrc->y + pSrc->x * DAT_105d176c + DAT_105d179c;
+        pV[i].cx = DAT_105d1780 * pSrc->z + DAT_105d1770 * pSrc->y + (double)pSrc->x * DAT_105d1760 + DAT_105d1790;
+        pV[i].cy = DAT_105d1784 * pSrc->z + DAT_105d1774 * pSrc->y + (double)pSrc->x * DAT_105d1764 + DAT_105d1794;
+        pV[i].cz = DAT_105d1788 * pSrc->z + DAT_105d1778 * pSrc->y + (double)pSrc->x * DAT_105d1768 + DAT_105d1798;
+        pV[i].cw = DAT_105d178c * pSrc->z + DAT_105d177c * pSrc->y + (double)pSrc->x * DAT_105d176c + DAT_105d179c;
         pV[i].s = pSrc->s;
         pV[i].t = pSrc->t;
 
