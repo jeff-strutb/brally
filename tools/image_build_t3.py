@@ -201,6 +201,19 @@ def collect_t3(recompile=False, progress=None, jobs=None):
                 variant[int(vr['va'], 16)] = vr['opt']
             except (ValueError, KeyError):
                 pass
+    # config/t3_variant_c.csv: the C-row compile pin tools/t3.py grades and
+    # the live oracle runs (a TU's real options, e.g. /O2 /Op for tu_022).
+    # Placing any other compile ships code nobody verified: 0x10021C70's
+    # plain /O2 object dropped /Op's rounding points and drew a 1-ulp colour
+    # difference at frame 345 while its /Op object was EQUIVALENT
+    # (2026-09-24).  t3_variant.csv still wins where both name a VA.
+    vpc = os.path.join(ROOT, 'config', 't3_variant_c.csv')
+    if os.path.exists(vpc):
+        for vr in csv.DictReader(open(vpc)):
+            try:
+                variant.setdefault(int(vr['va'], 16), vr['opt'])
+            except (ValueError, KeyError):
+                pass
     want = {}
     for va, r in rows.items():
         opt = variant.get(va) or r.get('opt')
