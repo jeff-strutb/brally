@@ -5,7 +5,10 @@
  * the three double buffers, and folds every bound action into the flag word
  * the race step and the menus read.
  *
- * ONE FUNCTION: 0x100706D0 BrInputPoll (4,145 B; D3D twin 0x100773F0).
+ * FUNCTIONS: 0x100706D0 BrInputPoll (4,145 B; D3D twin 0x100773F0) and
+ * 0x100719D0 BrInputJustPressed (1,246 B, byte-exact; D3D twin 0x100786E0,
+ * whose port body stays in slice3_45.c).  0x10071710 BrInputIsDown, which
+ * sits between them in the original, is still in slice3_45.c.
  * Neighbours 0x10070370 BrOnActivate and 0x10070170 BrWaveSeekData live in
  * br_input.c; 0x10070490 BrDikGetDeviceState in br_dik.c.
  *
@@ -654,3 +657,106 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
     g_brInputLast = flags;
     return flags;
 }
+
+#ifdef BR_MATCHING_BUILD
+/* The rising edge of one control: up last frame, down this frame.  Written
+ * as an __inline function with an explicit `return 1; return 0;` because
+ * that is what the bytes say: the three button arms of 0x100719D0
+ * materialise the answer as a full-width `mov eax,1` / `xor eax,eax` (the
+ * inliner's int return temp) and then keep only its low byte, while the
+ * axis arms and the two keyboard tails work in the byte register.  The
+ * same test written in place -- `&&` into the byte, `?:`, if/else, or an
+ * inline body with a single `return` expression -- all compile to
+ * `mov al,1` and lose the shared `xor eax,eax` exit. */
+static __inline int BrInEdge(uint8_t prev, uint8_t cur)
+{
+    if ((prev & 0x80) == 0 && (cur & 0x80) != 0)
+        return 1;
+    return 0;
+}
+
+/* WHAT IT DOES: answers "did the player press this control on THIS frame?"
+ * by comparing this frame's reading of the bound key, button or axis with
+ * last frame's -- it is what stops a held key repeating in the menus.  The
+ * binding's primary control may be a key, a joystick or mouse button (1 on
+ * the press) or a joystick/mouse axis crossing the +-50 dead zone (0x80 on
+ * the crossing); its two alternates are keyboard keys only and are ORed in
+ * as 1.  The mouse button index is NOT masked (the D3D twin's `& 3` is a
+ * port deviation). */
+/* @implements 0x100719D0 glide BrInputJustPressed */
+uint8_t BrInputJustPressed(int32_t action)
+{
+    /* r before b: the `xor al,al` lands ahead of the binding address and
+     * pushes the argument into ecx (b first puts it in eax). */
+    uint8_t r = 0;
+    const unsigned char *b = g_BrPadModeBytes + action * 6;
+
+    switch (*(const uint16_t *)(const void *)b & 0xFF00) {
+    case 0x0000:
+        r = BrInEdge(g_brInKeys[g_brInKeyPrev][b[0]], g_brInKeys[g_brInKeyCur][b[0]]);
+        break;
+    case 0x0100:
+        r = BrInEdge(g_brInJoy[g_brInJoyPrev].rgbButtons[b[0]], g_brInJoy[g_brInJoyCur].rgbButtons[b[0]]);
+        break;
+    case 0x0300:
+        r = BrInEdge(g_brInMouse[g_brInMousePrev].buttons[b[0]], g_brInMouse[g_brInMouseCur].buttons[b[0]]);
+        break;
+    case 0x8000:
+        if (g_brInJoy[g_brInJoyPrev].lX >= -50 && g_brInJoy[g_brInJoyCur].lX < -50)
+            r = 0x80;
+        break;
+    case 0x8100:
+        if (g_brInJoy[g_brInJoyPrev].lX <= 50 && g_brInJoy[g_brInJoyCur].lX > 50)
+            r = 0x80;
+        break;
+    case 0x8200:
+        if (g_brInJoy[g_brInJoyPrev].lY >= -50 && g_brInJoy[g_brInJoyCur].lY < -50)
+            r = 0x80;
+        break;
+    case 0x8300:
+        if (g_brInJoy[g_brInJoyPrev].lY <= 50 && g_brInJoy[g_brInJoyCur].lY > 50)
+            r = 0x80;
+        break;
+    case 0x8400:
+        if (g_brInJoy[g_brInJoyPrev].lZ >= -50 && g_brInJoy[g_brInJoyCur].lZ < -50)
+            r = 0x80;
+        break;
+    case 0x8500:
+        if (g_brInJoy[g_brInJoyPrev].lZ <= 50 && g_brInJoy[g_brInJoyCur].lZ > 50)
+            r = 0x80;
+        break;
+    case 0x8600:
+        if (g_brInMouse[g_brInMousePrev].x >= -50 && g_brInMouse[g_brInMouseCur].x < -50)
+            r = 0x80;
+        break;
+    case 0x8700:
+        if (g_brInMouse[g_brInMousePrev].x <= 50 && g_brInMouse[g_brInMouseCur].x > 50)
+            r = 0x80;
+        break;
+    case 0x8800:
+        if (g_brInMouse[g_brInMousePrev].y >= -50 && g_brInMouse[g_brInMouseCur].y < -50)
+            r = 0x80;
+        break;
+    case 0x8900:
+        if (g_brInMouse[g_brInMousePrev].y <= 50 && g_brInMouse[g_brInMouseCur].y > 50)
+            r = 0x80;
+        break;
+    case 0x8A00:
+        if (g_brInMouse[g_brInMousePrev].z >= -50 && g_brInMouse[g_brInMouseCur].z < -50)
+            r = 0x80;
+        break;
+    case 0x8B00:
+        if (g_brInMouse[g_brInMousePrev].z <= 50 && g_brInMouse[g_brInMouseCur].z > 50)
+            r = 0x80;
+        break;
+    }
+
+    if ((*(const uint16_t *)(const void *)(b + 2) & 0xFF00) == 0)
+        r |= (g_brInKeys[g_brInKeyPrev][b[2]] & 0x80) == 0
+          && (g_brInKeys[g_brInKeyCur][b[2]] & 0x80) != 0;
+    if ((*(const uint16_t *)(const void *)(b + 4) & 0xFF00) == 0)
+        r |= (g_brInKeys[g_brInKeyPrev][b[4]] & 0x80) == 0
+          && (g_brInKeys[g_brInKeyCur][b[4]] & 0x80) != 0;
+    return r;
+}
+#endif /* BR_MATCHING_BUILD */

@@ -629,7 +629,7 @@ uint8_t BrInputIsDown(int32_t action)
  * It is what stops a held-down key repeating in the menus. Curiously it
  * answers a different value for a stick edge than for a key press, so the
  * caller cannot treat the two as interchangeable. */
-/* @implements 0x100786E0 d3d BrInputJustPressed */
+/* port-only body; Glide match is src/core/controls/br_inputpoll.c */
 uint8_t BrInputJustPressed(int32_t action)
 {
     const BrInputBinding *b = &g_brInput.pBindings[action];
