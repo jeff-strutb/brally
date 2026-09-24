@@ -3,6 +3,10 @@
  * RESPONSIBILITY: reading what the player is doing -- specifically, naming
  * the things that can be bound.
  */
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: sprintf is the imported one (`call edi`). */
+#define _CRTIMP __declspec(dllimport)
+#endif
 #include "br_ctlname.h"
 
 #include "slice4_52.h"   /* BrStrGet, D3D 0x10074030 == Glide 0x1006D280 */
@@ -182,6 +186,61 @@ static void ctlname_axis(BrCfgRec *pRec, uint32_t code, uint32_t base)
     /* else: the record keeps its key and whatever text the clear left. */
 }
 
+/* WHAT IT DOES: fills the mouse and joystick control-name tables used by the
+ * controls menu: the first rows of each are "BUTTON n", the rest get the
+ * axis names (left, right, up, down, ...) from the string table. */
+/* @implements 0x10058AF0 glide BrCtlNameInit */
+#ifdef BR_MATCHING_BUILD
+/* Hand-transcribed from the asm: sprintf straight on BrStrGet's format, the
+ * axis arms as a switch whose cases each make their own call (VC5 merges the
+ * calls and leaves `push id / jmp`), and the mouse code as an unsigned-char
+ * local (`mov al,bl; sub al,0x7e` through a byte stack slot). */
+void BrCtlNameInit(void)
+{
+    int32_t       i;
+    unsigned char c;
+
+    memset(g_aBrCtlNameMouse, 0, BR_CTLNAME_MOUSE_CLEAR);
+    memset(g_aBrCtlNameJoy,   0, BR_CTLNAME_JOY_CLEAR);
+
+    for (i = 0; i < BR_CTLNAME_MOUSE_COUNT; i++) {
+        if (i < BR_CTLNAME_MOUSE_BUTTONS) {
+            g_aBrCtlNameMouse[i].key = (uint32_t)i;
+            sprintf(g_aBrCtlNameMouse[i].szText,
+                    BrStrGet(BR_CTLNAME_STR_BUTTON), i);
+        } else {
+            c = (unsigned char)(i - 0x7E);
+            g_aBrCtlNameMouse[i].key = c;
+            switch (c) {
+            case 0x86: sprintf(g_aBrCtlNameMouse[i].szText, BrStrGet(0xC4)); break;
+            case 0x87: sprintf(g_aBrCtlNameMouse[i].szText, BrStrGet(0xC5)); break;
+            case 0x88: sprintf(g_aBrCtlNameMouse[i].szText, BrStrGet(0xC6)); break;
+            case 0x89: sprintf(g_aBrCtlNameMouse[i].szText, BrStrGet(0xC7)); break;
+            case 0x8A: sprintf(g_aBrCtlNameMouse[i].szText, BrStrGet(0xC8)); break;
+            case 0x8B: sprintf(g_aBrCtlNameMouse[i].szText, BrStrGet(0xC9)); break;
+            }
+        }
+    }
+
+    for (i = 0; i < BR_CTLNAME_JOY_COUNT; i++) {
+        if (i < BR_CTLNAME_JOY_BUTTONS) {
+            g_aBrCtlNameJoy[i].key = (uint32_t)i;
+            sprintf(g_aBrCtlNameJoy[i].szText,
+                    BrStrGet(BR_CTLNAME_STR_BUTTON), i);
+        } else {
+            g_aBrCtlNameJoy[i].key = (unsigned char)i;
+            switch ((unsigned char)i) {
+            case 0x80: sprintf(g_aBrCtlNameJoy[i].szText, BrStrGet(0xC4)); break;
+            case 0x81: sprintf(g_aBrCtlNameJoy[i].szText, BrStrGet(0xC5)); break;
+            case 0x82: sprintf(g_aBrCtlNameJoy[i].szText, BrStrGet(0xC6)); break;
+            case 0x83: sprintf(g_aBrCtlNameJoy[i].szText, BrStrGet(0xC7)); break;
+            case 0x84: sprintf(g_aBrCtlNameJoy[i].szText, BrStrGet(0xC8)); break;
+            case 0x85: sprintf(g_aBrCtlNameJoy[i].szText, BrStrGet(0xC9)); break;
+            }
+        }
+    }
+}
+#else
 void BrCtlNameInit(void)
 {
     int32_t i;
@@ -237,6 +296,7 @@ void BrCtlNameInit(void)
         }
     }
 }
+#endif
 
 /* ==========================================================================
  * The three tables as slice2_23.c wants them
