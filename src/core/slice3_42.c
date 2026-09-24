@@ -574,6 +574,16 @@ static BrVec3 BrS42VelAt(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pP)
  * body is travelling -- which is not the same as how fast the body is
  * travelling, because a spinning body drags its edges along faster than its
  * middle. The spot is given directly. */
+/* @t4-pass 0x100644C0 1 2026-09-24 probes 15 bytes 214 insns 68 regions 0 rows 0 census no  (hand, after the field-wise copy + block-temps retranscription reached 214/214: spill-slot probes -- declaration order, float[3] locals, parameter copy -- and the six temp/add orders; none moved the spill) */
+/* @t4-pass 0x100644C0 2 2026-09-24 probes 12 bytes 214 insns 68 regions 0 rows 0 census yes  (hand, slot census: the function moved to every top-level slot of slice3_42.c; residue identical in all 12 that compile) */
+/* @t3 0x100644C0 2026-09-24 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 214/214 insns 68/68 rows 0+0 regions 0 oracle UNVERIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is ONE spill-slot choice: the single x87 spill goes to the dead
+ * pPoint parameter slot ([esp+0x24]) where the original uses p.z's slot
+ * ([esp+0x14]); every instruction is otherwise identical.  Dossier and dead
+ * list are in the body comment below.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1006B510 d3d BrRbVelAtPoint */
 #ifdef BR_MATCHING_BUILD
 /* BrS42VelAt RETURNS A BrVec3, so MSVC will not inline it and the original
