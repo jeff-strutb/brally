@@ -22,7 +22,7 @@
  * +0x140/+0x144 the lap-count pair 0x1005ACE0/0x10059A80 also read.
  *
  * T2, not yet byte-exact: 244/246 instructions (/O2 /Gi, the lane's
- * variant for this file); 31 instruction lines differ, measured with every
+ * variant for this file); 43 instruction lines differ, measured with every
  * relocation resolved to its address (the sweep's masked counts are blind to
  * operand-order swaps -- see docs/VC5-IDIOMS.md).  Source facts, all fixed
  * by the bytes:
