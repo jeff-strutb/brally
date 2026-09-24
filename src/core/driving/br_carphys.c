@@ -33,6 +33,7 @@
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
 #define BrCarPhysTyre BrCarPhysTyre_port   /* header keeps the port signature */
+#define BrCarPhysStep BrCarPhysStep_port   /* ditto: the original is __fastcall (pCar in ecx) */
 #define BrCarPhysAdvance BrCarPhysAdvance_port /* ditto: the original is 2-arg */
 #define BrCrRespWalk BrCrRespWalk_portproto    /* ditto: the original is 2-arg */
 #define BrCollRespTipKick BrCollRespTipKick_portproto /* ditto: original is 1-arg */
@@ -178,7 +179,11 @@ static void BrCpInitInertia(BrRbBodyFull *pB)
 /* 0x100684F0 -- the suspension spring                                   */
 /* ==================================================================== */
 
-float BrCarPhysSign(float v)
+/* __inline: the original open-codes this three-way classify at every call
+ * site (it is not a standalone function in the binary), keeping the result on
+ * the x87 stack.  Marking it inline lets VC5 do the same in BrCarPhysStep's
+ * damper and every other caller, instead of a call that spills to memory. */
+__inline float BrCarPhysSign(float v)
 {
     /* `fcom` + `test ah,0x40` + `je` -- the ZERO arm is taken for EQUAL OR
      * UNORDERED, so NaN classifies as 0.0f and never reaches the second
@@ -1657,11 +1662,34 @@ void BrCarPhysAdvance(BrCarPhys *pCar)
 /* 0x1005A7A0 -- one frame                                               */
 /* ==================================================================== */
 
+/* WHAT IT DOES: advances one car's rigid-body physics by a single frame.
+ * It hangs the wheel force lists off the body, zeroes the per-wheel forces,
+ * then runs the force generators in order -- spring, the four tyre passes
+ * (gated so they run at most once per frame), drive, drag and damper -- and
+ * integrates the body's velocity and orientation, first into a scratch copy
+ * and then into the live state, applying a sign-change damper between the two.
+ * Finally it advances the car record, records the suspension height for next
+ * frame, and rebuilds every wheel's own matrix from its integrated state. */
+#ifdef BR_MATCHING_BUILD
+#undef BrCarPhysStep
+int  BrPodNop();                        /* 0x10008D60, the trace stub */
+#endif
+/* @implements 0x1005A7A0 glide BrCarPhysStep */
+#ifdef BR_MATCHING_BUILD
+void __fastcall BrCarPhysStep(BrCarPhys *pCar)
+#else
 void BrCarPhysStep(BrCarPhys *pCar)
+#endif
 {
     BrRbBodyFull *pBody  = &pCar->body;
     BrRbState    *pState = BrCarPhysBodyState(pBody);
     int           i;
+
+    /* 0x1005A7AE: a trace no-op bookend the original opens and closes the
+     * frame with (a second call sits at the very end). */
+#ifdef BR_MATCHING_BUILD
+    BrPodNop(0, 0x80, 0x80, 0, 0xFF);
+#endif
 
     /* --- step 1 ---------------------------------------------------------
      * 0x1005A7BE.  The wheel lists are assigned in the order 0xD20, 0xD60,
@@ -1762,7 +1790,32 @@ void BrCarPhysStep(BrCarPhys *pCar)
     pCar->next = *pState;
     BrCpIntegrateVelocity(&pCar->next, pBody, BR_PHYS_DT);
 
+#ifdef BR_MATCHING_BUILD
+    /* 0x1005AA5B: the sign-change damper is INLINED in the original (the port
+     * factors it out as BrCarPhysSignDamp).  ONE float pointer walks from
+     * pState->angVel.x and reaches the matching next.* fields by fixed index,
+     * so the x87 compares stay in this frame; the sign is the same three-way
+     * comma-operator classify BrCarPhysSign uses, open-coded. */
+    {
+        float *pf = &pState->angVel.x;      /* car+0x204 */
+        int    k  = 3;
+        do {
+            if (BrCarPhysSign(pf[0]) == BrCarPhysSign(pf[0x38]))
+                pf[0] = pf[0x38];
+            else
+                pf[0] = 0.0f;
+
+            if (BrCarPhysSign(pf[-7]) == BrCarPhysSign(pf[0x31]))
+                pf[-7] = pf[0x31];
+            else
+                pf[-7] = 0.0f;
+
+            pf++;
+        } while (--k != 0);
+    }
+#else
     BrCarPhysSignDamp(pState, &pCar->next);
+#endif
 
     /* --- step 10: 0x1005AB85 -------------------------------------------- */
     pCar->save = *pState;
@@ -1788,6 +1841,11 @@ void BrCarPhysStep(BrCarPhys *pCar)
         BrRbBodyFull *pWheel = pBody->child[i];
         BrRbBuildMatrix(&pWheel->m, BrCarPhysBodyState(pWheel));
     }
+
+    /* 0x1005ABF5: the closing trace no-op bookend (note the second arg is 0). */
+#ifdef BR_MATCHING_BUILD
+    BrPodNop(0, 0, 0x80, 0, 0xFF);
+#endif
 }
 
 /* ==================================================================== */
