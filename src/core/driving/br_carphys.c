@@ -1672,14 +1672,132 @@ void BrCarPhysAdvance(BrCarPhys *pCar)
  * frame, and rebuilds every wheel's own matrix from its integrated state. */
 #ifdef BR_MATCHING_BUILD
 #undef BrCarPhysStep
+#undef BrCarPhysAdvance
 int  BrPodNop();                        /* 0x10008D60, the trace stub */
+void FUN_10064210(char *pBody);         /* force accumulate (d3d BrRbAccumAll) */
+void FUN_1006d530(char *pState);        /* quaternion derivative           */
+void BrCarPhysDriveMatch(int pBody, float dt, float *pA, float *pB, char *pC, char *pD); /* 0x100645A0 */
+void BrCarPhysAdvance(char *pCar, char *pBody);    /* 0x10067C30          */
+extern float _DAT_10077780;             /* 0.0f  the sign triple          */
+extern float _DAT_10077784;             /* 1.0f                           */
+extern float _DAT_10077788;             /* -1.0f                          */
+typedef struct { int d[17]; } BrCpStateImage;      /* 0x44-byte rigid state */
+
+#define CP_CHILD(k)  (*(char **)(pCar + 0x168 + (k) * 4))
+#define CP_FORCES(p) (*(char **)((p) + 0x18))
+
+#define BrCpSign(v) ((v) == _DAT_10077780 ? _DAT_10077780 : \
+                     (v) > _DAT_10077780 ? _DAT_10077784 : _DAT_10077788)
 #endif
 /* @implements 0x1005A7A0 glide BrCarPhysStep */
 #ifdef BR_MATCHING_BUILD
-void __fastcall BrCarPhysStep(BrCarPhys *pCar)
+void __fastcall BrCarPhysStep(char *pCar)
+{
+    char  *pBody;
+    char  *pState;
+    float *pf;
+    int    k;
+
+    BrPodNop(0, 0x80, 0x80, 0, 0xFF);
+
+    *(char **)(pCar + 0x17c) = pCar + 0xba0;
+    CP_FORCES(CP_CHILD(0)) = pCar + 0xd20;
+    CP_FORCES(CP_CHILD(1)) = pCar + 0xd60;
+    CP_FORCES(CP_CHILD(2)) = pCar + 0xd40;
+    CP_FORCES(CP_CHILD(3)) = pCar + 0xd80;
+    *(float *)(CP_FORCES(CP_CHILD(0)) + 0x08) = 0.0f;
+    *(float *)(CP_FORCES(CP_CHILD(0)) + 0x0c) = 0.0f;
+    *(float *)(CP_FORCES(CP_CHILD(0)) + 0x10) = 0.0f;
+    *(float *)(CP_FORCES(CP_CHILD(1)) + 0x08) = 0.0f;
+    *(float *)(CP_FORCES(CP_CHILD(1)) + 0x0c) = 0.0f;
+    *(float *)(CP_FORCES(CP_CHILD(1)) + 0x10) = 0.0f;
+    *(float *)(CP_FORCES(CP_CHILD(2)) + 0x08) = 0.0f;
+    *(float *)(CP_FORCES(CP_CHILD(2)) + 0x0c) = 0.0f;
+    *(float *)(CP_FORCES(CP_CHILD(2)) + 0x10) = 0.0f;
+    *(float *)(CP_FORCES(CP_CHILD(3)) + 0x08) = 0.0f;
+    *(float *)(CP_FORCES(CP_CHILD(3)) + 0x0c) = 0.0f;
+    *(float *)(CP_FORCES(CP_CHILD(3)) + 0x10) = 0.0f;
+
+    pBody = pCar + 0x164;
+    BrCarPhysSpring((BrRbBodyFull *)pBody);
+
+    if (*(int *)(pCar + 0xe84) == 0) {
+        *(float *)(pCar + 0xe74) = 0.0f;
+        *(float *)(pCar + 0xe7c) = 0.0f;
+        *(unsigned char *)(pCar + 0xe80) = 0;
+        BrCarPhysTyre((BrTyreView *)pBody, (BrTyreView *)CP_CHILD(0), (float *)(pCar + 0xe7c),
+                      (unsigned char *)(pCar + 0xe80), BR_PHYS_DT);
+        BrCarPhysTyre((BrTyreView *)pBody, (BrTyreView *)CP_CHILD(1), (float *)(pCar + 0xe7c),
+                      (unsigned char *)(pCar + 0xe80), BR_PHYS_DT);
+        BrCarPhysTyre((BrTyreView *)pBody, (BrTyreView *)CP_CHILD(2), (float *)(pCar + 0xe74),
+                      (unsigned char *)(pCar + 0xe78), BR_PHYS_DT);
+        BrCarPhysTyre((BrTyreView *)pBody, (BrTyreView *)CP_CHILD(3), (float *)(pCar + 0xe74),
+                      (unsigned char *)(pCar + 0xe78), BR_PHYS_DT);
+    }
+
+    *(int *)(pCar + 0xe84) = 0;
+    *(float *)(pCar + 0x260) = 0.0f;
+    *(float *)(pCar + 0x264) = 0.0f;
+    *(float *)(pCar + 0x268) = 0.0f;
+    *(float *)(pCar + 0x26c) = 0.0f;
+    *(float *)(pCar + 0x270) = 0.0f;
+    *(float *)(pCar + 0x274) = 0.0f;
+    FUN_10064210(pBody);
+
+    pState = pCar + 0x1dc;
+    BrCpIntegrateVelocity((BrRbState *)pState, (BrRbBodyFull *)pBody, BR_PHYS_DT);
+    BrCarPhysDriveMatch((int)pBody, BR_PHYS_DT, (float *)(pCar + 0xe7c), (float *)(pCar + 0xe74), pCar + 0xe80, pCar + 0xe78);
+    FUN_1006d530(pState);
+
+    *(char **)(pCar + 0x17c) = pCar + 0xc20;
+    CP_FORCES(CP_CHILD(0)) = 0;
+    CP_FORCES(CP_CHILD(2)) = 0;
+    CP_FORCES(CP_CHILD(1)) = 0;
+    CP_FORCES(CP_CHILD(3)) = 0;
+    BrCarPhysDrag((BrRbBodyFull *)pBody, (BrRbForce *)(pCar + 0xd00));
+    BrCarPhysDamper((BrRbBodyFull *)pBody);
+
+    *(float *)(pCar + 0x260) = 0.0f;
+    *(float *)(pCar + 0x264) = 0.0f;
+    *(float *)(pCar + 0x268) = 0.0f;
+    *(float *)(pCar + 0x26c) = 0.0f;
+    *(float *)(pCar + 0x270) = 0.0f;
+    *(float *)(pCar + 0x274) = 0.0f;
+    FUN_10064210(pBody);
+
+    *(BrCpStateImage *)(pCar + 0x2bc) = *(BrCpStateImage *)pState;
+    BrCpIntegrateVelocity((BrRbState *)(pCar + 0x2bc), (BrRbBodyFull *)pBody, BR_PHYS_DT);
+
+    pf = (float *)(pCar + 0x204);
+    k = 3;
+    do {
+        if (BrCpSign(pf[0]) != BrCpSign(pf[0x38]))
+            pf[0] = 0.0f;
+        else
+            pf[0] = pf[0x38];
+        if (BrCpSign(pf[-7]) != BrCpSign(pf[0x31]))
+            pf[-7] = 0.0f;
+        else
+            pf[-7] = pf[0x31];
+        pf++;
+    } while (--k != 0);
+
+    *(BrCpStateImage *)(pCar + 0x278) = *(BrCpStateImage *)(pCar + 0x1dc);
+    FUN_1006d530(pCar + 0x278);
+    FUN_1006d530(pCar + 0x278);
+    BrCarPhysAdvance(pCar, pBody);
+    *(BrCpStateImage *)(pCar + 0x1dc) = *(BrCpStateImage *)(pCar + 0x2bc);
+    BrWheelSuspensionSetZ((BrRbBodyFull *)pBody);
+
+    BrRbBuildMatrix((BrMat4 *)(CP_CHILD(0) + 0xbc), (BrRbState *)(CP_CHILD(0) + 0x78));
+    BrRbBuildMatrix((BrMat4 *)(CP_CHILD(1) + 0xbc), (BrRbState *)(CP_CHILD(1) + 0x78));
+    BrRbBuildMatrix((BrMat4 *)(CP_CHILD(2) + 0xbc), (BrRbState *)(CP_CHILD(2) + 0x78));
+    BrRbBuildMatrix((BrMat4 *)(CP_CHILD(3) + 0xbc), (BrRbState *)(CP_CHILD(3) + 0x78));
+
+    BrPodNop(0, 0, 0x80, 0, 0xFF);
+}
 #else
 void BrCarPhysStep(BrCarPhys *pCar)
-#endif
 {
     BrRbBodyFull *pBody  = &pCar->body;
     BrRbState    *pState = BrCarPhysBodyState(pBody);
@@ -1842,11 +1960,8 @@ void BrCarPhysStep(BrCarPhys *pCar)
         BrRbBuildMatrix(&pWheel->m, BrCarPhysBodyState(pWheel));
     }
 
-    /* 0x1005ABF5: the closing trace no-op bookend (note the second arg is 0). */
-#ifdef BR_MATCHING_BUILD
-    BrPodNop(0, 0, 0x80, 0, 0xFF);
-#endif
 }
+#endif /* BR_MATCHING_BUILD */
 
 /* ==================================================================== */
 /* Construction -- D3D 0x10062C50 / 0x10063000                           */
