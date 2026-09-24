@@ -19,6 +19,7 @@ REPORT = os.path.join(ROOT, "build", "match", "report.csv")
 GREEN, AMBER, GRAY = "#3fb950", "#d29922", "#c8ccd2"
 BLUE = "#58a6ff"    # codegen-only diff (T3): same instructions, register/sched only
 FENCED = "#6e5494"  # static CRT / library: reproduced by linking, not decompiled
+EXCLUDED = "#3f6f7a"  # game code the retail game never runs (config/excluded.csv)
 
 # Per-EXE static-CRT boundary: functions at/after this VA are linked library
 # code (fenced), not a decomp target. So they never turn green — distinct from
@@ -118,6 +119,11 @@ def load():
     cpp = _match_set("cpp_matches.csv")
     t3 = _match_set("tier3.csv")   # codegen-only diffs (T3), from tools/tiers.py
     fenced_dll = _fenced_dll()
+    excl = set()
+    _ep = os.path.join(ROOT, "config", "excluded.csv")
+    if os.path.exists(_ep):
+        with open(_ep) as f:
+            excl = set(int(r["va"], 16) for r in csv.DictReader(f))
     funcs = []
     with open(FUNCS) as f:
         for r in csv.DictReader(f):
@@ -128,6 +134,8 @@ def load():
             is_cpp = va in cpp
             if is_cpp or (m and m["status"] == "match"):
                 status = "match"
+            elif va in excl:
+                status = "excluded"   # never run by the game: outside the target
             elif va in t3:
                 # T3: certified same-behaviour (register/sched-only residue).
                 # Independent of the sweep report — a function filed into its
@@ -294,13 +302,13 @@ def render_svg(funcs, out_path):
                 parts.append('<text x="%.1f" y="%.1f" font-size="10" fill="#8b949e">%s</text>'
                              % (x + 3, y + 10.5, html.escape(obj.split("/")[-1])))
         else:
-            color = {"match": GREEN, "codegen": BLUE, "diff": AMBER, "todo": GRAY, "fenced": FENCED}[obj["status"]]
+            color = {"match": GREEN, "codegen": BLUE, "diff": AMBER, "todo": GRAY, "fenced": FENCED, "excluded": EXCLUDED}[obj["status"]]
             parts.append('<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="%s">'
                          '<title>%s</title></rect>'
                          % (x, y, w, h, color, html.escape(tooltip(obj, gname))))
     parts.append('<text x="8" y="%d" font-size="13" fill="#e6edf3">'
                  'T4 byte-exact %d &#183; T3 codegen-only %d &#183; %s/%s bytes exact '
-                 '(%.1f%%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced</text></svg>'
+                 '(%.1f%%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>'
                  % (H + 20, s["n_match"], s["n_codegen"], "{:,}".format(s["match_b"]),
                     "{:,}".format(s["total_b"]), 100.0 * s["match_b"] / s["total_b"]))
     with open(out_path, "w") as f:
@@ -323,7 +331,7 @@ def render(funcs, out_path):
                 % (x, y, w, h,
                    '<span class="gl">%s</span>' % html.escape(obj.split("/")[-1]) if obj else ""))
         else:
-            color = {"match": GREEN, "codegen": BLUE, "diff": AMBER, "todo": GRAY, "fenced": FENCED}[obj["status"]]
+            color = {"match": GREEN, "codegen": BLUE, "diff": AMBER, "todo": GRAY, "fenced": FENCED, "excluded": EXCLUDED}[obj["status"]]
             cells.append(
                 '<div class="f" title="%s" style="left:%.1fpx;top:%.1fpx;width:%.1fpx;'
                 'height:%.1fpx;background:%s"></div>'
@@ -352,11 +360,11 @@ def render(funcs, out_path):
   <span>bytes exact: <b>%(mb)s / %(tb)s</b> (%(mbp).1f%%)</span>
  </div>
  <div class="bar"><i style="width:%(mbp).2f%%;background:%(green)s"></i><i style="width:%(cbp).2f%%;background:%(blue)s"></i><i style="width:%(dbp).2f%%;background:%(amber)s"></i></div>
- <div class="legend"><i style="background:%(green)s"></i>T4 byte-exact<i style="background:%(blue)s"></i>T3 codegen-only<i style="background:%(amber)s"></i>T2 diffs remain<i style="background:%(gray)s"></i>T1 still asm<i style="background:%(fenced)s"></i>linker/CRT (fenced)</div>
+ <div class="legend"><i style="background:%(green)s"></i>T4 byte-exact<i style="background:%(blue)s"></i>T3 codegen-only<i style="background:%(amber)s"></i>T2 diffs remain<i style="background:%(gray)s"></i>T1 still asm<i style="background:%(fenced)s"></i>linker/CRT (fenced)<i style="background:%(excluded)s"></i>excluded (never run)</div>
 </header>
 <div id="map">%(cells)s</div>
 """ % dict(W=W, H=H, cells="".join(cells), green=GREEN, amber=AMBER, gray=GRAY,
-           blue=BLUE, fenced=FENCED, nc=s["n_codegen"], cbp=100.0 * s["codegen_b"] / total_b,
+           blue=BLUE, fenced=FENCED, excluded=EXCLUDED, nc=s["n_codegen"], cbp=100.0 * s["codegen_b"] / total_b,
            nm=n_match, nf=len(funcs), nmp=100.0 * n_match / len(funcs),
            mb="{:,}".format(match_b), tb="{:,}".format(total_b),
            mbp=100.0 * match_b / total_b, gb="{:,}".format(tag_b),

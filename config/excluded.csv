@@ -1,0 +1,2 @@
+va,name,reason
+0x100221D0,BrDlVtxLitDecal,"unreachable in the retail game: only the DECAL combine (0xFC317E02 / 0x5FFEF3FA|0x51FEF3FA) selects it, and no PC code, EXE or asset ever emits it (N64 ROM does, at 0x2F634); proof in src/core/drawing/br_dlvtx_litdecal.c"

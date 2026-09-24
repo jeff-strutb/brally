@@ -29,6 +29,12 @@ on its own; a diff row is T2 until it carries a validated @t3 tag.
 
     python3 tools/tiers.py            # the four counts + bytes
     python3 tools/tiers.py --list T1  # dump the VAs in a tier
+    python3 tools/tiers.py --list EXCLUDED   # never run by the game, e.g. "EXCLUDED (T2)"
+
+EXCLUDED sits beside T1-T4, not between them: proven-unreachable game code
+(config/excluded.csv, evidence in the function's source header).  It is
+outside the target and every work list, and each row is labelled with the
+tier its transcription has reached.
 
 Needs fresh comparison objects for the T2/T3 split (run tools/match_sweep.py
 first). Diffing functions with no measurable object fall to T2.
@@ -52,17 +58,36 @@ def _glide_map():
     return m
 
 
+def excluded():
+    """config/excluded.csv: VA (upper) -> reason.  EXCLUDED = game code the
+    retail game can never execute (proven, with the evidence recorded in the
+    function's source header).  Such a function can never pass the live
+    oracle, so it can never be T3, and leaving it in the denominator would hold
+    completion below 100% for code nothing runs.  It is counted on its own
+    line, labelled with the tier its transcription has actually reached
+    (e.g. EXCLUDED (T2)), and is out of T1-T4, the target and the work lists."""
+    p = os.path.join(ROOT, 'config', 'excluded.csv')
+    if not os.path.exists(p):
+        return {}
+    return {r['va'].upper(): r.get('reason', '') for r in csv.DictReader(open(p))}
+
+
 def main():
     args = sys.argv[1:]
     mapped = _glide_map()
     fenced = set(r['va'].upper() for r in
                  csv.DictReader(open(os.path.join(ROOT, 'config/fenced.csv'))))
-    target = {va: s for va, s in mapped.items() if va not in fenced}
+    excl = {va: r for va, r in excluded().items() if va in mapped and va not in fenced}
+    target = {va: s for va, s in mapped.items() if va not in fenced and va not in excl}
 
     rep = os.path.join(ROOT, 'build', 'match', 'report.csv')
     match, diff = [], []
+    ex_rows = {}                      # excluded VA -> (report row, status)
     for r in csv.DictReader(open(rep)):
         if not r.get('orig_size'):
+            continue
+        if r['va'].upper() in excl:
+            ex_rows[r['va'].upper()] = r
             continue
         (match if r['status'] == 'match' else diff).append(r)
 
@@ -79,6 +104,9 @@ def main():
         seen = set(r['va'].upper() for r in match + diff)
         for r in csv.DictReader(open(cpp)):
             va = (r.get('va') or '').upper()
+            if va in excl and va not in ex_rows:
+                ex_rows[va] = r
+                continue
             if va not in target or va in seen:
                 continue
             if r.get('status') == 'match':
@@ -98,6 +126,17 @@ def main():
                    if not va.startswith('?') and i['ok'])
     except Exception:
         cert = set()
+
+    # The tier an EXCLUDED function's transcription has reached, for its label.
+    def ex_tier(va):
+        r = ex_rows.get(va)
+        if r is None:
+            return 'T1'
+        if r.get('status') == 'match' and (r.get('pieces') in (None, '', '4/4')):
+            return 'T4'
+        return 'T3' if va.lower() in cert else 'T2'
+    ex_list = sorted(((va, mapped[va], (ex_rows.get(va) or {}).get('name', ''), ex_tier(va))
+                      for va in excl), key=lambda x: -x[1])
 
     objs = _objs()
     t3, t2 = [], []
@@ -154,6 +193,10 @@ def main():
                     d = 'NO DRAFT'
                 print('%s %7d  %s' % (va, sz, d))
             return 0
+        if pick == 'EXCLUDED':
+            for va, sz, name, tier in ex_list:
+                print('%s %d %s EXCLUDED (%s)' % (va, sz, name, tier))
+            return 0
         if pick == 'T3':
             for r, m in sorted(t3, key=lambda x: int(x[0]['orig_size'])):
                 print(r['va'], r['orig_size'], r['name'],
@@ -188,6 +231,14 @@ def main():
         print(f"      of which C++ EH workstream  {len(cpp_done):5d} fns"
               f"   {sum(target[va] for va in cpp_done):8d} B"
               f"   (not carried in report.csv)")
+    if ex_list:
+        tally = {}
+        for _va, _sz, _n, tier in ex_list:
+            tally[tier] = tally.get(tier, 0) + 1
+        print(f"  EXCLUDED  never run by the game {len(ex_list):5d} fns"
+              f"   {sum(sz for _v, sz, _n, _t in ex_list):8d} B   ("
+              + ', '.join('%s %d' % (k, tally[k]) for k in sorted(tally))
+              + "; config/excluded.csv, outside the target)")
     print("  " + "-" * 56)
     print(f"      in the project (T2+T3+T4)   {n_tr:5d} fns")
     print(f"      T2 rows with reggap 0        {n_reg0:5d} fns   (identical multiset;"

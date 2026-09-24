@@ -73,6 +73,11 @@ BrTex3dExpand. The largest still-open bodies are `0x10056260` (8,349 B,
 
 ## 12. T4 is byte-exact. T3 is certified complete, not byte-exact. Nothing between.
 
+EXCLUDED sits beside the tiers, not between them: game code the retail game provably
+never runs (`config/excluded.csv`, proof in the function's source header). It is
+outside the target and every work list, and `tools/tiers.py` labels it with the tier
+its transcription reached, e.g. `EXCLUDED (T2)`.
+
 `tools/t3.py --qualify <VA>` decides. Gate 0: purpose comment, no unfinished
 markers. Gate A: residue is allocation/scheduling, every row classified, no
 lost-sync, and A5 — the LIVE oracle (`tools/t3live.py`, original game run

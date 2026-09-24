@@ -71,6 +71,8 @@ def exclusions():
         cert = set(va for va, i in certified().items() if not va.startswith('?'))
     except Exception:
         pass
+    # EXCLUDED (config/excluded.csv): never run by the game -- never a target.
+    cert |= set((r.get('va') or '').lower() for r in _csv('config/excluded.csv'))
     cpp = set((r.get('va') or '').lower() for r in _csv('build/match/report_cpp.csv'))
     claimed, parked = set(), {}
     for r in _csv('build/match/lane_claims.csv'):
