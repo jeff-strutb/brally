@@ -207,7 +207,10 @@ void BrCarCarCollide(void)
                 pb->vel.y = pb->vel.y - imp.y;
                 pb->vel.z = pb->vel.z - imp.z;
                 memcpy(&g_BrDriverSlots[j].pCar->save, &g_BrDriverSlots[j].pCar->st, sizeof(BrColState));
-                FUN_10065c80(g_BrDriverSlots[j].pCar->body, &dd, &d, 0, 0.45f);
+                /* the second car is pushed along the REVERSED normal (sd = -d):
+                 * 0x100693C3 lea edx,[esp+0x50] (whole-image run, FFB wheel
+                 * frame 1410 -- the live oracle's captures never collided) */
+                FUN_10065c80(g_BrDriverSlots[j].pCar->body, &dd, &sd, 0, 0.45f);
                 memcpy(&g_BrDriverSlots[j].pCar->st, &g_BrDriverSlots[j].pCar->save, sizeof(BrColState));
                 g_BrDriverSlots[j].pCar->save.vel.x = imp.x + g_BrDriverSlots[j].pCar->save.vel.x;
                 g_BrDriverSlots[j].pCar->save.vel.y = imp.y + g_BrDriverSlots[j].pCar->save.vel.y;
