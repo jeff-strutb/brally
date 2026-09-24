@@ -1,2 +1,3 @@
 va,name,reason
 0x100221D0,BrDlVtxLitDecal,"unreachable in the retail game: only the DECAL combine (0xFC317E02 / 0x5FFEF3FA|0x51FEF3FA) selects it, and no PC code, EXE or asset ever emits it (N64 ROM does, at 0x2F634); proof in src/core/drawing/br_dlvtx_litdecal.c"
+0x10023360,BrDlVtxNoZLit,"unreachable in the retail game: installed only for LIGHTING set with ZBUFFER clear, and nothing produces that state -- every scene-build pass sets depth+lighting before the only lighting-without-depth emit (object builder 0x1000CBA0), no asset carries geometry-mode commands, and depth is cleared alone only by text/HUD/frame setup outside the world pass; 18,528 hooked geometry-mode writes in a rainy race, 0 calls in 29 runs; proof in src/core/drawing/br_dlvtx_nozlit.c"
