@@ -31,6 +31,11 @@ def diffs():
         done.update(va for va in certified() if not va.startswith('?'))
     except Exception:
         pass
+    # EXCLUDED functions (config/excluded.csv) are never run by the game and
+    # never a target.
+    ex=os.path.join(ROOT,'config','excluded.csv')
+    if os.path.exists(ex):
+        with open(ex) as f: done.update((r.get('va') or '').lower() for r in csv.DictReader(f))
     return [r for r in rows if r['va'].lower() not in done]
 def load():
     if not os.path.exists(CLAIMS): return []

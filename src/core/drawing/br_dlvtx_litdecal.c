@@ -29,6 +29,8 @@
  *    and nothing sends the command any more.
  *  Consequence: the live oracle (A5) can never reach it, so T3 is closed to
  *  this function; only byte-exact T4 finishes it.
+ *  STATUS: EXCLUDED (T2) -- listed in config/excluded.csv, outside the
+ *  completion target (tools/tiers.py --list EXCLUDED).
  */
 #include <stdint.h>
 #include "br_dl.h"
