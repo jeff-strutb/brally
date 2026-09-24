@@ -1662,14 +1662,6 @@ void BrCarPhysAdvance(BrCarPhys *pCar)
 /* 0x1005A7A0 -- one frame                                               */
 /* ==================================================================== */
 
-/* WHAT IT DOES: advances one car's rigid-body physics by a single frame.
- * It hangs the wheel force lists off the body, zeroes the per-wheel forces,
- * then runs the force generators in order -- spring, the four tyre passes
- * (gated so they run at most once per frame), drive, drag and damper -- and
- * integrates the body's velocity and orientation, first into a scratch copy
- * and then into the live state, applying a sign-change damper between the two.
- * Finally it advances the car record, records the suspension height for next
- * frame, and rebuilds every wheel's own matrix from its integrated state. */
 #ifdef BR_MATCHING_BUILD
 #undef BrCarPhysStep
 #undef BrCarPhysAdvance
@@ -1689,6 +1681,14 @@ typedef struct { int d[17]; } BrCpStateImage;      /* 0x44-byte rigid state */
 #define BrCpSign(v) ((v) == _DAT_10077780 ? _DAT_10077780 : \
                      (v) > _DAT_10077780 ? _DAT_10077784 : _DAT_10077788)
 #endif
+/* WHAT IT DOES: advances one car's rigid-body physics by a single frame.
+ * It hangs the wheel force lists off the body, zeroes the per-wheel forces,
+ * then runs the force generators in order -- spring, the four tyre passes
+ * (gated so they run at most once per frame), drive, drag and damper -- and
+ * integrates the body's velocity and orientation, first into a scratch copy
+ * and then into the live state, applying a sign-change damper between the two.
+ * Finally it advances the car record, records the suspension height for next
+ * frame, and rebuilds every wheel's own matrix from its integrated state. */
 /* @implements 0x1005A7A0 glide BrCarPhysStep */
 #ifdef BR_MATCHING_BUILD
 void __fastcall BrCarPhysStep(char *pCar)
