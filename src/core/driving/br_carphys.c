@@ -680,35 +680,8 @@ static int BrCpWeatherRow(void)
 }
 
 #ifdef BR_MATCHING_BUILD
-#undef BrCarPhysTyre
-/* The wheel body as 0x100651A0 reads it: the hit record lives in the WHEEL at
- * +0x19C (plane pointer, surface byte, normal) and the spin state follows. */
-typedef struct BrTyreView {
-    float               f00;              /* 0x000                          */
-    struct BrTyreView  *child[4];         /* 0x004                          */
-    unsigned char       pad014[0x18 - 0x14];
-    BrRbForce          *pForces;          /* 0x018                          */
-    unsigned char       pad01C[0x2C - 0x1C];
-    float               mass;             /* 0x02C                          */
-    unsigned char       pad030[0xBC - 0x30];
-    BrMat4              m;                /* 0x0BC                          */
-    unsigned char       pad0FC[0x19C - 0xFC];
-    BrGroundHit         hit;              /* 0x19C  plane, surface, normal  */
-    int32_t             f1B4;             /* 0x1B4  contact count           */
-    unsigned char       pad1B8[0x1C0 - 0x1B8];
-    float               f1C0;             /* 0x1C0  steer angle             */
-    float               f1C4;             /* 0x1C4  spin                    */
-    float               f1C8;             /* 0x1C8  radius                  */
-    float               f1CC;             /* 0x1CC  drive torque            */
-    float               f1D0;             /* 0x1D0                          */
-    float               f1D4;             /* 0x1D4  display angle, degrees  */
-} BrTyreView;
-
-typedef char br_tyre_chk_m[offsetof(BrTyreView, m) == 0xBC ? 1 : -1];
-typedef char br_tyre_chk_h[offsetof(BrTyreView, hit) == 0x19C ? 1 : -1];
-typedef char br_tyre_chk_c[offsetof(BrTyreView, f1B4) == 0x1B4 ? 1 : -1];
-typedef char br_tyre_chk_d[offsetof(BrTyreView, f1D4) == 0x1D4 ? 1 : -1];
-
+/* Constants shared with the other matching arms; the tyre arm itself sits
+ * after the port's drive helpers (see its PLACEMENT note). */
 extern float  DAT_10077a78;   /* 0.0f   */
 extern float  DAT_10077a7c;   /* 1.0f   */
 extern float  DAT_10077a80;   /* -1.0f  */
@@ -728,168 +701,6 @@ extern double DAT_10077b20;   /* 0.0    */
 extern float  DAT_10077b28;   /* -360.0f */
 extern double BrCosF(float x);           /* 0x100023E0 */
 extern double BrSinF(float x);           /* 0x10002560 */
-
-/* `fcom 0` + `test ah,1` + a conditional `fchs`: negated for less OR
- * unordered, read twice (a store-form abs CSEs the load). */
-#define BR_TYRE_ABS(v) ((v) < 0.0f ? -(v) : (v))
-
-/* T2 2026-09-24 (hand re-transcription from the asm): 1336/1355 B, 380/384
- * insns, register-blind multiset 5+9, no lost-sync.  Levers from the
- * 2026-09-13 pass still hold (wheel body second parameter carrying its own
- * hit record; one rolling vector `c`; force lands in `a`; grouped wheel dot;
- * single-expression spin; && contact gate 0,2,1,3 with the free-spin else;
- * && wrap tail with the zero else; float -360 global; `_finite` import).
- * Levers added 2026-09-24:
- *  - the traction clamp's then-arm is an explicit temp negated in place
- *    (`r = load/q; if (r < 0) r = -r; q = r*q*0.1f`): `fmul [q]` straight off
- *    the abs, `jmp` over the skip arm's pop.  The ?: macro kept a CSE copy.
- *  - the push-back force negates q ONCE and multiplies registers
- *    (`fld q; fld c.x..z; fchs; fmul st(2)`): written `c.x * (0.0f - q)`,
- *    which VC5 folds to one CSE'd fchs.  `c.x * -q` becomes -(c.x*q) per
- *    component; a named float `-q` temp copies it and uses `fmul [c]`.  A
- *    double temp gives the same bytes as `0.0f - q`.
- *  - the display-angle product is `(f1C4 * K) * dt` (explicit grouping).
- *  - NO `pM` local: `&pBody->m` at both matrix calls.  With a `pM` local the
- *    spin's `r * X` product copies X and uses `fmul [r]`; without it r is
- *    preloaded as in the original.  The spin statement's own spelling is
- *    inert (5 forms byte-identical) -- this is a CSE-numbering tie-break.
- *  - BrCosF/BrSinF return double (br_cos.c defines BrCosF so); byte-neutral.
- * RESIDUE (four regions, all order/allocation, same multiset per region):
- * (1) cos/sin combine: the original pops sin to the arg home and reloads
- *     it per product, stores cs*c back into c and re-reads it with
- *     `fadd [c]` after ALL three stores; ours forwards cs*c in registers.
- *     Aliasing c (struct/array/pointer/inline helpers/bogus call) stops
- *     the forwarding but reorders the cross-product stores that match
- *     today; unaliased c always forwards.  Forms tried (40+): split and
- *     compound statements, cos-scale before the sin call, operand orders
- *     and parenthesisations (A6/zw: new shapes, none exact), double trig
- *     temps (frame breaks), /O2 variants (/Ox /Oa /Ow /Oy- /G3-6 worse).
- * (2) load/dot block: pure list-scheduling; all 12 legal orders of the
- *     mass*g / load / dot / *pA statements fall in three families, none
- *     exact.
- * (3) grip index: the original evaluates row*8 first in eax (`shl eax,3;
- *     movsx`), ours last via `lea eax,[ecx*8]`; 13 spellings (shift, *=,
- *     casts, inline, every association) are byte-identical.
- * (4) BrMat4MulVec3 argument registers edx/eax vs ecx/edx and push order.
- * Zero-code probes that are inert: dead stores, unused externs, renaming
- * dt, `(void)&c`.
- */
-/* WHAT IT DOES: the per-wheel tyre pass.  For a wheel on the ground it takes
- * the car's own sideways axis, projects it into the contact plane and turns
- * it by the steer angle to get the rolling direction, then -- if all four
- * wheels are touching -- turns the drive torque into a force along that
- * direction, caps it by the load the wheel carries (past the cap it falls to
- * a tenth), adds it to the wheel's force list, reports half the raw force
- * back through pA, and spins the wheel up by the reaction (a wheel in the
- * air just free-spins on its torque).  The spin is clamped to +-300 and the
- * display angle advanced and wrapped into a turn; a non-finite or runaway
- * angle is reset to zero. */
-/* @implements 0x100651A0 glide BrCarPhysTyre */
-void BrCarPhysTyre(BrTyreView *pBody, BrTyreView *pWheel, float *pA,
-                   const unsigned char *pB, float dt)
-{
-    BrVec3  c;
-    BrVec3  a;
-    BrVec3  d;
-    BrVec3  axis;
-    BrVec3  v;
-    BrVec3  fw;
-    float   cs;
-    float   sn;
-    float   tq;
-    float   q;
-    float   r;
-    float   load;
-    float   dot;
-    float   w;
-    float   s;
-    short   row;
-    int     idx;
-
-    axis.x = 0.0f;
-    axis.y = 1.0f;
-    axis.z = 0.0f;
-    if (pWheel->hit.pPlane == 0)
-        return;
-    if ((double)pWheel->hit.nz < 0.7)
-        return;
-    BrMat4MulVec3Transposed(&a, &pBody->m, &axis);
-    c.x = a.y * pWheel->hit.nz - a.z * pWheel->hit.ny;
-    c.y = a.z * pWheel->hit.nx - a.x * pWheel->hit.nz;
-    c.z = a.x * pWheel->hit.ny - a.y * pWheel->hit.nx;
-    d.x = c.z * pWheel->hit.ny - c.y * pWheel->hit.nz;
-    d.y = c.x * pWheel->hit.nz - c.z * pWheel->hit.nx;
-    d.z = c.y * pWheel->hit.nx - c.x * pWheel->hit.ny;
-    cs = BrCosF(pWheel->f1C0);
-    sn = BrSinF(pWheel->f1C0);
-    c.x = sn * d.x + cs * c.x;
-    c.y = sn * d.y + cs * c.y;
-    c.z = sn * d.z + cs * c.z;
-    if (pBody->child[0]->f1B4 != 0 && pBody->child[2]->f1B4 != 0
-     && pBody->child[1]->f1B4 != 0 && pBody->child[3]->f1B4 != 0) {
-        BrRbVelAtBodyPoint(&v, (const BrRbBodyFull *)pBody, (BrRbBodyFull *)pWheel);
-        tq = pWheel->f1CC;
-        q = tq / pWheel->f1C8;
-        a.x = 0.0f;
-        a.y = 0.0f;
-        a.z = (pBody->mass - pWheel->mass * -4.0f) * 2.943000316619873f;
-        load = a.z * pWheel->hit.nz * 3.5f;
-        dot = (v.x * c.x + v.y * c.y) + v.z * c.z;
-        *pA = *pA - q * -0.5f;
-        if (*pB != 0) {
-            row = (short)(g_brCarPhysWeather - 1);
-            if (row > 2 || row < 0)
-                row = 0;
-            row = row * 8;
-            idx = row + ((unsigned char *)pBody)[0x1FD] * 24
-                + ((pWheel->hit.surface + pWheel->hit.surface + 1) >> 1);
-            q = g_pBrCarPhysGrip[idx] * q;
-        }
-        if (BR_TYRE_ABS(q) > BR_TYRE_ABS(load)) {
-            r = load / q;
-            if (r < 0.0f)
-                r = -r;
-            q = r * q * 0.10000000149011612f;
-        }
-        fw.x = c.x * (0.0f - q);
-        fw.y = c.y * (0.0f - q);
-        fw.z = c.z * (0.0f - q);
-        BrMat4MulVec3(&a, &pBody->m, &fw);
-        pWheel->pForces->f.x = a.x + pWheel->pForces->f.x;
-        pWheel->pForces->f.y = a.y + pWheel->pForces->f.y;
-        pWheel->pForces->f.z = a.z + pWheel->pForces->f.z;
-        w = ((tq - q * pWheel->f1C8) * dt + pWheel->f1C4)
-          - (pWheel->f1C8 * ((tq - q * pWheel->f1C8) * dt + pWheel->f1C4) + dot) * 0.4000000059604645f;
-    } else {
-        w = pWheel->f1CC * dt + pWheel->f1C4;
-    }
-    pWheel->f1C4 = w;
-    if (BR_TYRE_ABS(w) > 300.0f) {
-        if (w == 0.0f)
-            s = 0.0f;
-        else if (w > 0.0f)
-            s = 1.0f;
-        else
-            s = -1.0f;
-        pWheel->f1C4 = s * 300.0f;
-    }
-    pWheel->f1D4 = pWheel->f1D4 - (pWheel->f1C4 * 57.2957763671875f) * dt;
-    if (_finite((double)pWheel->f1D4) != 0 && !((double)pWheel->f1D4 < -36000.0)
-     && (double)pWheel->f1D4 < 36000.0) {
-        while ((double)pWheel->f1D4 > 360.0)
-            pWheel->f1D4 = (float)((double)pWheel->f1D4 - 360.0);
-        if ((double)pWheel->f1D4 < 0.0) {
-            double t = (double)pWheel->f1D4;
-            do {
-                t = t - DAT_10077b28;
-            } while (t < 0.0);
-            pWheel->f1D4 = (float)t;
-        }
-    } else {
-        pWheel->f1D4 = 0.0f;
-    }
-}
-#define BrCarPhysTyre BrCarPhysTyre_port
 #endif /* BR_MATCHING_BUILD */
 
 void BrCarPhysTyre(BrCarPhys *pCar, int iWheel, float *pA,
@@ -1218,6 +1029,207 @@ static float BrCpDrvBrake(BrRbBodyFull *pBody, BrRbBodyFull *pWheel, float dt)
     }
     return b;
 }
+
+#ifdef BR_MATCHING_BUILD
+#undef BrCarPhysTyre
+/* The wheel body as 0x100651A0 reads it: the hit record lives in the WHEEL at
+ * +0x19C (plane pointer, surface byte, normal) and the spin state follows. */
+typedef struct BrTyreView {
+    float               f00;              /* 0x000                          */
+    struct BrTyreView  *child[4];         /* 0x004                          */
+    unsigned char       pad014[0x18 - 0x14];
+    BrRbForce          *pForces;          /* 0x018                          */
+    unsigned char       pad01C[0x2C - 0x1C];
+    float               mass;             /* 0x02C                          */
+    unsigned char       pad030[0xBC - 0x30];
+    BrMat4              m;                /* 0x0BC                          */
+    unsigned char       pad0FC[0x19C - 0xFC];
+    BrGroundHit         hit;              /* 0x19C  plane, surface, normal  */
+    int32_t             f1B4;             /* 0x1B4  contact count           */
+    unsigned char       pad1B8[0x1C0 - 0x1B8];
+    float               f1C0;             /* 0x1C0  steer angle             */
+    float               f1C4;             /* 0x1C4  spin                    */
+    float               f1C8;             /* 0x1C8  radius                  */
+    float               f1CC;             /* 0x1CC  drive torque            */
+    float               f1D0;             /* 0x1D0                          */
+    float               f1D4;             /* 0x1D4  display angle, degrees  */
+} BrTyreView;
+
+typedef char br_tyre_chk_m[offsetof(BrTyreView, m) == 0xBC ? 1 : -1];
+typedef char br_tyre_chk_h[offsetof(BrTyreView, hit) == 0x19C ? 1 : -1];
+typedef char br_tyre_chk_c[offsetof(BrTyreView, f1B4) == 0x1B4 ? 1 : -1];
+typedef char br_tyre_chk_d[offsetof(BrTyreView, f1D4) == 0x1D4 ? 1 : -1];
+
+
+/* `fcom 0` + `test ah,1` + a conditional `fchs`: negated for less OR
+ * unordered, read twice (a store-form abs CSEs the load). */
+#define BR_TYRE_ABS(v) ((v) < 0.0f ? -(v) : (v))
+
+/* T2 2026-09-24 (hand re-transcription from the asm): 1336/1355 B, 380/384
+ * insns, register-blind multiset 5+9, no lost-sync.  Levers from the
+ * 2026-09-13 pass still hold (wheel body second parameter carrying its own
+ * hit record; one rolling vector `c`; force lands in `a`; grouped wheel dot;
+ * single-expression spin; && contact gate 0,2,1,3 with the free-spin else;
+ * && wrap tail with the zero else; float -360 global; `_finite` import).
+ * Levers added 2026-09-24:
+ *  - the traction clamp's then-arm negates `load/q` in place, reusing `load`
+ *    (`load = load/q; if (load < 0) load = -load; q = load*q*0.1f`): `fmul [q]`
+ *    straight off the abs, `jmp` over the skip arm's pop.  The ?: macro kept
+ *    a CSE copy.
+ *  - PLACEMENT: this arm sits after the port's drive helpers, just before
+ *    BrCarPhysDrive.  The grip-index evaluation order (`shl eax,3; movsx`
+ *    first) and the BrMat4MulVec3 argument registers are VC5 TU state -- the
+ *    function definitions compiled before this one -- not source: 13+
+ *    spellings of the index are byte-identical, while N dummy predecessors
+ *    flip it (exact for N = 20..41) and so does moving this arm.  Here both
+ *    regions are byte-exact; at the old position (after BrCarPhysSelectCar)
+ *    and at end-of-file they are not.  Moving it leaves every other function
+ *    in this file byte-identical.
+ *  - the push-back force negates q ONCE and multiplies registers
+ *    (`fld q; fld c.x..z; fchs; fmul st(2)`): written `c.x * (0.0f - q)`,
+ *    which VC5 folds to one CSE'd fchs.  `c.x * -q` becomes -(c.x*q) per
+ *    component; a named float `-q` temp copies it and uses `fmul [c]`.  A
+ *    double temp gives the same bytes as `0.0f - q`.
+ *  - the display-angle product is `(f1C4 * K) * dt` (explicit grouping).
+ *  - NO `pM` local: `&pBody->m` at both matrix calls.  With a `pM` local the
+ *    spin's `r * X` product copies X and uses `fmul [r]`; without it r is
+ *    preloaded as in the original.  The spin statement's own spelling is
+ *    inert (5 forms byte-identical) -- this is a CSE-numbering tie-break.
+ *  - BrCosF/BrSinF return double (br_cos.c defines BrCosF so); byte-neutral.
+ * RESIDUE (two regions left, order/scheduling):
+ * (1) cos/sin combine: the original pops sin to the arg home and reloads
+ *     it per product, stores cs*c back into c and re-reads it with
+ *     `fadd [c]` after ALL three stores; ours forwards cs*c in registers.
+ *     Aliasing c (struct/array/pointer/inline helpers/bogus call) stops
+ *     the forwarding but reorders the cross-product stores that match
+ *     today; unaliased c always forwards.  Forms tried (40+): split and
+ *     compound statements, cos-scale before the sin call, operand orders
+ *     and parenthesisations (A6/zw: new shapes, none exact), double trig
+ *     temps (frame breaks), /O2 variants (/Ox /Oa /Ow /Oy- /G3-6 worse).
+ * (2) load/dot block: pure list-scheduling; all 12 legal orders of the
+ *     mass*g / load / dot / *pA statements fall in three families, none
+ *     exact.
+ * (3), (4) grip index and BrMat4MulVec3 argument registers: FIXED by
+ *     placement (see above).
+ * Zero-code probes that are inert: dead stores, unused externs, renaming
+ * dt, `(void)&c`.
+ */
+/* WHAT IT DOES: the per-wheel tyre pass.  For a wheel on the ground it takes
+ * the car's own sideways axis, projects it into the contact plane and turns
+ * it by the steer angle to get the rolling direction, then -- if all four
+ * wheels are touching -- turns the drive torque into a force along that
+ * direction, caps it by the load the wheel carries (past the cap it falls to
+ * a tenth), adds it to the wheel's force list, reports half the raw force
+ * back through pA, and spins the wheel up by the reaction (a wheel in the
+ * air just free-spins on its torque).  The spin is clamped to +-300 and the
+ * display angle advanced and wrapped into a turn; a non-finite or runaway
+ * angle is reset to zero. */
+/* @implements 0x100651A0 glide BrCarPhysTyre */
+void BrCarPhysTyre(BrTyreView *pBody, BrTyreView *pWheel, float *pA,
+                   const unsigned char *pB, float dt)
+{
+    BrVec3  c;
+    BrVec3  a;
+    BrVec3  d;
+    BrVec3  axis;
+    BrVec3  v;
+    BrVec3  fw;
+    float   cs;
+    float   sn;
+    float   tq;
+    float   q;
+    float   load;
+    float   dot;
+    float   w;
+    float   s;
+    short   row;
+    int     idx;
+
+    axis.x = 0.0f;
+    axis.y = 1.0f;
+    axis.z = 0.0f;
+    if (pWheel->hit.pPlane == 0)
+        return;
+    if ((double)pWheel->hit.nz < 0.7)
+        return;
+    BrMat4MulVec3Transposed(&a, &pBody->m, &axis);
+    c.x = a.y * pWheel->hit.nz - a.z * pWheel->hit.ny;
+    c.y = a.z * pWheel->hit.nx - a.x * pWheel->hit.nz;
+    c.z = a.x * pWheel->hit.ny - a.y * pWheel->hit.nx;
+    d.x = c.z * pWheel->hit.ny - c.y * pWheel->hit.nz;
+    d.y = c.x * pWheel->hit.nz - c.z * pWheel->hit.nx;
+    d.z = c.y * pWheel->hit.nx - c.x * pWheel->hit.ny;
+    cs = BrCosF(pWheel->f1C0);
+    sn = BrSinF(pWheel->f1C0);
+    c.x = sn * d.x + cs * c.x;
+    c.y = sn * d.y + cs * c.y;
+    c.z = sn * d.z + cs * c.z;
+    if (pBody->child[0]->f1B4 != 0 && pBody->child[2]->f1B4 != 0
+     && pBody->child[1]->f1B4 != 0 && pBody->child[3]->f1B4 != 0) {
+        BrRbVelAtBodyPoint(&v, (const BrRbBodyFull *)pBody, (BrRbBodyFull *)pWheel);
+        tq = pWheel->f1CC;
+        q = tq / pWheel->f1C8;
+        a.x = 0.0f;
+        a.y = 0.0f;
+        a.z = (pBody->mass - pWheel->mass * -4.0f) * 2.943000316619873f;
+        load = a.z * pWheel->hit.nz * 3.5f;
+        dot = (v.x * c.x + v.y * c.y) + v.z * c.z;
+        *pA = *pA - q * -0.5f;
+        if (*pB != 0) {
+            row = (short)(g_brCarPhysWeather - 1);
+            if (row > 2 || row < 0)
+                row = 0;
+            row = row * 8;
+            idx = row + ((unsigned char *)pBody)[0x1FD] * 24
+                + ((pWheel->hit.surface + pWheel->hit.surface + 1) >> 1);
+            q = g_pBrCarPhysGrip[idx] * q;
+        }
+        if (BR_TYRE_ABS(q) > BR_TYRE_ABS(load)) {
+            load = load / q;
+            if (load < 0.0f)
+                load = -load;
+            q = load * q * 0.10000000149011612f;
+        }
+        fw.x = c.x * (0.0f - q);
+        fw.y = c.y * (0.0f - q);
+        fw.z = c.z * (0.0f - q);
+        BrMat4MulVec3(&a, &pBody->m, &fw);
+        pWheel->pForces->f.x = a.x + pWheel->pForces->f.x;
+        pWheel->pForces->f.y = a.y + pWheel->pForces->f.y;
+        pWheel->pForces->f.z = a.z + pWheel->pForces->f.z;
+        w = ((tq - q * pWheel->f1C8) * dt + pWheel->f1C4)
+          - (pWheel->f1C8 * ((tq - q * pWheel->f1C8) * dt + pWheel->f1C4) + dot) * 0.4000000059604645f;
+    } else {
+        w = pWheel->f1CC * dt + pWheel->f1C4;
+    }
+    pWheel->f1C4 = w;
+    if (BR_TYRE_ABS(w) > 300.0f) {
+        if (w == 0.0f)
+            s = 0.0f;
+        else if (w > 0.0f)
+            s = 1.0f;
+        else
+            s = -1.0f;
+        pWheel->f1C4 = s * 300.0f;
+    }
+    pWheel->f1D4 = pWheel->f1D4 - (pWheel->f1C4 * 57.2957763671875f) * dt;
+    if (_finite((double)pWheel->f1D4) != 0 && !((double)pWheel->f1D4 < -36000.0)
+     && (double)pWheel->f1D4 < 36000.0) {
+        while ((double)pWheel->f1D4 > 360.0)
+            pWheel->f1D4 = (float)((double)pWheel->f1D4 - 360.0);
+        if ((double)pWheel->f1D4 < 0.0) {
+            double t = (double)pWheel->f1D4;
+            do {
+                t = t - DAT_10077b28;
+            } while (t < 0.0);
+            pWheel->f1D4 = (float)t;
+        }
+    } else {
+        pWheel->f1D4 = 0.0f;
+    }
+}
+#define BrCarPhysTyre BrCarPhysTyre_port
+#endif /* BR_MATCHING_BUILD */
 
 void BrCarPhysDrive(BrCarPhys *pCar, float dt)
 {
