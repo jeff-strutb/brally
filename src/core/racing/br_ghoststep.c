@@ -139,7 +139,10 @@ void BR_THISCALL1 BrGhostPlaybackStep(unsigned int *param_1)
         fVar4 = (((float)((int)param_1[0x11] + 1) * *(float *)(DAT_106eed48 + 100) - *(float *)(param_1 + 0x14)) -
                  *(float *)(iVar1 + 0x8c)) /
                 (*(float *)(iVar1 + 100) - *(float *)(iVar1 + 0x8c));
-        if ((&DAT_10af2108)[(DAT_100b3858 + param_1[0x1d]) * 0xada] == 0) {
+        /* a dword per driver record (stride 0x2B68 = 0xADA ints): 0x100622A0
+         * `cmp dword [eax+0x10AF2108]` -- read as a byte at a byte stride it
+         * tested the wrong driver (whole-image run, championship frame 861) */
+        if (((int *)&DAT_10af2108)[(DAT_100b3858 + param_1[0x1d]) * 0xada] == 0) {
           BrRacePathAdvance(param_1[10], param_1[0xb], fVar4, 2.22f);
           fVar5 = *(float *)(param_1 + 0x14) - DAT_10077a14;
         } else {
