@@ -31,4 +31,11 @@ sleep 300
 press ESCAPE
 sleep 200
 mark main_menu_again
+mouse 250 246
+click
+sleep 40
+mark quit_page
+mouse 250 138
+click
+sleep 600
 end
