@@ -1150,6 +1150,7 @@ glide_va,name,module,basis,file
 0x1006C8B0,BrFontTexCreatePair,drawing,filed,src/core/drawing/br_font.c
 0x1006C910,BrSub10073AC0,drawing,neighbour-1,src/core/drawing/br_texbaked.c
 0x1006C950,BrSub10073B00,drawing,description,src/core/drawing/br_texbaked.c
+0x1006C990,BrImgShowFullScreen,drawing,filed,src/core/drawing/br_imgshow.c
 0x1006CD80,FUN_1006cd80,gamedata,neighbour-1,src/core/generated/0x1006CD80.c
 0x1006CDC0,BrObjClear,gamedata,filed,src/core/gamedata/br_obj.c
 0x1006CDD0,BrPairReset_10073B90,drawing,filed,src/core/drawing/br_textmode.c
