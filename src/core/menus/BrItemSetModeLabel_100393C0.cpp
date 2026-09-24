@@ -112,17 +112,24 @@ int BrItemSetModeLabel_100393C0(Obj393C0 *pObj)
         return 1;
     }
 
-    if (g_brFlag0A9360 == 0) {
-        if (g_brFlag5C00 != 0)
-            s = BrStrByIndex(g_brTblABB50[
-                    g_brMap3029[(g_brIdx5C04 + g_brSel5C10 * 12) * 2]]);
-        else
-            s = BrStrByIndex(g_brTblABB50[
-                    g_brMap3029[(g_brIdx5BFC + g_brSel5C10 * 12) * 2]]);
-    } else {
-        s = BrStrByIndex(g_brTblABB50[g_brSel5D58]);
+    /* 2026-09-24: the 0x10AC5C00 arm makes its own call; the other two
+     * arms only pick an index and share one BrStrByIndex(tbl[k]) call.
+     * RESIDUE 2 bytes: k lands in eax where the original has ecx. */
+    {
+        int k;
+        if (g_brFlag0A9360 == 0) {
+            if (g_brFlag5C00 != 0) {
+                s = BrStrByIndex(g_brTblABB50[
+                        g_brMap3029[(g_brIdx5C04 + g_brSel5C10 * 12) * 2]]);
+                goto have;
+            }
+            k = g_brMap3029[(g_brIdx5BFC + g_brSel5C10 * 12) * 2];
+        } else {
+            k = g_brSel5D58;
+        }
+        s = BrStrByIndex(g_brTblABB50[k]);
     }
-
+have:
     strcpy(pObj->m2B5C.szName, s);
 
     pObj->m2B5C.s1();
