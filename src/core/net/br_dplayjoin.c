@@ -553,12 +553,16 @@ int BrDpLobbyConnect(int *param_1)
                 iVar2 = (*(BrLobGetConn *)(*local_c + 0x20))(local_c, 0, pMem,
                                                              &local_8);
                 if (iVar2 >= 0) {
-                    uVar4 = *(unsigned int *)((int)pMem + 4);
-                    flag = (uVar4 & 0xff) >> 1 & 1;
+                    /* The low byte is masked when read and kept in esi across
+                     * the call; the bit is extracted after it (461/461 B,
+                     * regnorm 0+0; residue = where VC5 schedules the and/shr
+                     * among the call's pushes). */
+                    uVar4 = *(unsigned int *)((int)pMem + 4) & 0xff;
                     *(int *)(*(int *)((int)pMem + 8) + 4) = 0x44;
                     *(int *)(*(int *)((int)pMem + 8) + 0x28) = 8;
                     iVar2 = (*(BrLobSetConn *)(*local_c + 0x30))(local_c, 0, 0,
                                                                  pMem);
+                    flag = uVar4 >> 1 & 1;
                     if (iVar2 >= 0) {
                         iVar2 = (*(BrLobConnectEx *)(*local_c + 0x3c))(
                             local_c, 0, &DAT_10078848, (void **)&local_10, 0);
