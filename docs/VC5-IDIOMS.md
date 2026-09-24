@@ -8490,3 +8490,11 @@ with the target's flags, diff one function against original bytes
   literals.**  The sweep masks relocation targets, so `len - 0.1f` and
   `len - _DAT_10077004` (which holds -0.1f) are the same bytes with opposite
   behaviour.  Check every DIR32 target against the original.
+- **Stores that sit AFTER a call's pushes and `mov ecx,esi` (not
+  interleaved with them): a sub-object cleared by its OWN inline method.**
+  0x1005E7B0's impulse block (+0xEA0: three floats and an int) as plain
+  member stores interleaves with the SetVel pushes; as `struct Imp { ...;
+  void Clear() {...} }` called `imp.Clear()` the four stores follow the
+  pushes and `mov ecx,esi`, as the original does.  A Car-level inline
+  member, a pointer, an array or reordering does nothing: the inline has to
+  run on a different `this`.
