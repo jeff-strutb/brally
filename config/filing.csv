@@ -1009,6 +1009,7 @@ glide_va,name,module,basis,file
 0x1005E6A0,BrCarInitTables,racing,description,src/core/racing/br_carinit.c
 0x1005E780,BrCarClear29C8,racing,neighbour-1,src/core/racing/br_carinit.c
 0x1005E7B0,BrCarStartInit_1005E7B0,racing,manual,src/core/racing/BrCarStartInit_1005E7B0.cpp
+0x1005EB90,BrPathWalk,,description,src/core/slice3_40.c
 0x1005ECF0,BrRacePathAdvance,,description,src/core/generated/0x1005ECF0.c
 0x1005EDC0,BrMakeEnemyCarColorPanels,drawing,filed,src/core/drawing/br_model.c
 0x1005F220,BrModelSlotApply,drawing,description,src/core/drawing/br_model.c
