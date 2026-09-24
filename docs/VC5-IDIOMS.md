@@ -8363,3 +8363,17 @@ with the target's flags, diff one function against original bytes
   (N dummy predecessors 20..41 exact; moving the arm below the port's drive
   helpers exact).  Duplicating a function prototype (BrCosF/BrSinF) also
   toggles x87 scheduling state for later functions.
+- **A list index that the original does NOT strength-reduce is a derived
+  base, not a loop variable.**  `for (k = 0; k < 3; k++) for (i ...)
+  p[0x2006 + k*10 + i]` compiles to a step-10 counter (`add eax,0xa; cmp
+  eax,0x2024`) with `lea ecx,[i+base]` and `[reg+ecx*4]`; written as
+  `for (base = 0x2006; base < 0x2024; base += 10) ... p[base + i]`, VC5
+  reduces the whole index to a byte offset.  VC5 does no second-order
+  reduction.  Proven on 0x1000C4E0 BrRippleApply (1246 B).
+- **16-bit shifts on a value later stored as a dword (`mov ax,di / sar
+  ax,1 / mov [slot],eax`) = SHORT variables held in registers**, whose
+  spills are whole dwords.  Read the caller: `movzx ax,al / push eax` means
+  the parameter is `short`.  Same function.
+- **C++ lane: when the last residue is two commutative operand orders,
+  try the `/O2 /Gi` variant before any source respelling.**  0x1000C4E0
+  was 2 regions under /O2 and byte-exact under /O2 /Gi.
