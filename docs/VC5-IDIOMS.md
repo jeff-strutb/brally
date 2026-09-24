@@ -8417,3 +8417,31 @@ with the target's flags, diff one function against original bytes
   last and merge its `return 0` with the open-failure return.  Proven on the
   C++ method 0x10063060 BrCtrlCfgReadFile (1104 B, EH frame, 4/4 pieces);
   the same shape as the C writer 0x100634B0.
+- **Outer-loop strength-reduced cursors are ordered by first reference in
+  the loop body.**  A per-view row pointer taken at the TOP of the body
+  (`short (*pl)[3] = field[iView];`) makes that cursor VC5's first induction
+  (lowest slot, first in the increment tail) even though it is only used by
+  the inner loop at the bottom; indexing `field[iView][i][k]` in place puts
+  it last.  Proven on 0x10016C90 BrWeatherStepParticles (1142 B).
+- **Two integer copies of one float global into two slots, then `fld` of
+  each and `fcos`/`fsin`, with both results `fst` into one dead slot = two
+  float-parameter `__inline` helpers returning through a named local**
+  (`{ float r = (float)cos(a); return r; }`).  Without the local, an
+  unrelated extra pointer local in the caller makes VC5 merge the two
+  parameter copies into one (frame 4 B smaller).  Same function.
+- **`fst x; fmul x` on the LAST of three deltas (instead of `fstp x ...
+  fld x; fmul x`) = `(float)(a - b)` on each delta assignment.**  Plain
+  `d = a - b` spills the third delta before its square under every sum
+  order, parenthesisation and statement order.  Same function.
+- **`fdiv [g]` against a global divisor (instead of a hoisted `fld [g]` +
+  `fdivp`) = `(float)sqrt(..)` in the dividend.**  Same function.
+- **Struct copy vs per-component copy decides the scratch registers**: two
+  `prev[k] = pos` struct copies give x->ecx, z->edx; six component stores
+  give x->edx, z->ecx.  Same function.
+- **‼ The byte sweep masks relocations, so a swapped both-memory `fld
+  [g1]; fmul [g2]` pair diffs CLEAN.**  Check every DIR32 against the
+  original's absolute before calling a row byte-exact.  Declaration order
+  decides the pair (the later-declared symbol takes the fld side), and it is
+  the FIRST declaration in the TU that counts: a global first declared by an
+  earlier function's arm fixes its rank for every later function.  Same
+  function (dt vs 318/334, first declared in the lightning arm).
