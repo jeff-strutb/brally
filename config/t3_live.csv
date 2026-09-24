@@ -132,6 +132,7 @@ va,name,verdict,calls,captured,contexts,detail,date
 0x1005c8b0,FUN_1005c8b0,EQUIVALENT,76899,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x1005d3c0,BrCarPathEval,EQUIVALENT,73923,66,11,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x1005d770,BrCtlAiBody,EQUIVALENT,80325,73,13,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x1005e7b0,BrCarStartInit_1005E7B0,EQUIVALENT,7,7,4,20_quickrace_drive/21_quickrace_finish/40_timeattack/61_mp_race: 7 real call(s) agree,2026-09-24
 0x1005f310,BrRaceGridPlace,EQUIVALENT,92,30,20,20_quickrace_drive: 1 real call(s) agree,2026-09-24
 0x1005f580,BrRankAssign,EQUIVALENT,76773,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x1005f6c0,BrLapSaveRestore,EQUIVALENT,30774,18,3,50_championship: 6 real call(s) agree,2026-09-24
