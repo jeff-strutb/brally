@@ -1,0 +1,46 @@
+# Options -> Video Options -> Game Resolution: the video-mode list, pick
+# the next mode, apply, back out, and race briefly in it.
+sleep 240
+mark main_menu
+mouse 250 208
+click
+sleep 30
+mouse 250 157
+click
+sleep 30
+mark video_options
+mouse 250 138
+click
+sleep 40
+mark resolution_list
+shot res_list
+mouse 250 141
+click
+sleep 20
+mouse 250 233
+click
+sleep 60
+mark mode_set
+shot res_set
+mouse 250 252
+click
+sleep 30
+mouse 250 252
+click
+sleep 40
+mouse 250 190
+click
+sleep 40
+mouse 252 233
+click
+sleep 40
+mouse 252 233
+click
+sleep 300
+mark grid
+press SPACE
+sleep 150
+hold UP
+sleep 400
+shot res_race
+end
