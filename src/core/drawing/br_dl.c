@@ -808,42 +808,42 @@ extern void BrDlTri2NoZFlat(void);   /* 0x10020D30 */
 
 void BrDlVtxRoutine(void)
 {
-    uint32_t geo = g_brDlGeoNew;
+    uint32_t geo;
 
-    /* 0x1001FD7B: the cull-enable bit. */
-    if (((geo ^ g_brDlGeoOld) & 0x10000u) != 0) {
-        BrGlSetCullMode((geo & 0x10000u) ? 2 : 0);
-        geo = g_brDlGeoNew;
+    /* 2026-09-24: the mode globals are re-read in every test (no cached
+     * copy until the install), the cull mode is an if/else of two calls,
+     * and the cull-side store is shared through a goto. */
+
+    if (((g_brDlGeoOld ^ g_brDlGeoNew) & 0x10000u) != 0) {
+        if ((g_brDlGeoNew & 0x10000u) != 0)
+            BrGlSetCullMode(2);
+        else
+            BrGlSetCullMode(0);
     }
-
-    /* 0x1001FDA2: `test dh,0x30`, i.e. the two cull-side bits. The zero is
-     * stored BEFORE the tests and the answer stored again after. */
-    if (((geo ^ g_brDlGeoOld) & 0x3000u) != 0) {
+    if (((g_brDlGeoOld ^ g_brDlGeoNew) & 0x3000u) != 0) {
         int32_t m = 0;
 
         g_brDlCullMode = m;
-        if ((geo & 0x1000u) != 0) {
+        if ((g_brDlGeoNew & 0x1000u) != 0)
             m = 2;
-        } else if ((geo & 0x2000u) != 0) {
+        else if ((g_brDlGeoNew & 0x2000u) != 0)
             m = 1;
-        }
-        g_brDlCullMode = m;
+        else
+            goto side;
+        g_brDlCullMode = m;      /* one store, shared by both set arms */
+side:
         BrGlSetCullSide(m);
-        geo = g_brDlGeoNew;
     }
-
-    /* 0x1001FDDE: the Z-buffer bit; the depth function goes to a global as
-     * well as to the setter. */
-    if (((geo ^ g_brDlGeoOld) & 1u) != 0) {
-        if ((geo & 1u) != 0) {
+    if (((g_brDlGeoOld ^ g_brDlGeoNew) & 1u) != 0) {
+        if ((g_brDlGeoNew & 1u) != 0) {
             g_brDlDepthFn = 1;
             BrGlSetDepthFn(1);
         } else {
             g_brDlDepthFn = 7;
             BrGlSetDepthFn(7);
         }
-        geo = g_brDlGeoNew;
     }
+    geo = g_brDlGeoNew;
 
     /* ---- 0x1001FE0D: install, do not return ------------------------- */
     if ((geo & 1u) != 0) {
