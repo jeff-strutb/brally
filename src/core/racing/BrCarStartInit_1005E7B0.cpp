@@ -21,15 +21,25 @@
  * storage br_carphys.c and 0x1006E5C0/0x10067C30's dossiers already pin;
  * +0x140/+0x144 the lap-count pair 0x1005ACE0/0x10059A80 also read.
  *
- * T2, not yet byte-exact: 992/979 B, 371 byte diffs, first divergence closed
- * from +0x40 (a flipped `DAT_10226a48 == 0` sense against +0x144/+0x140) to
- * +0xE5 -- the branch/dispatch shape and both Bind/Sub6FD90 calls now match
- * through the whole first quarter of the function.  Residue from +0xE5 on is
- * x87 stack scheduling inside the SetPos argument expression (four trig
- * results folded into x/y/z): three probes (an explicit double-precision y
- * term, reordering the cos/sin call sequence) made it worse or moved the
- * first diff earlier, so parked rather than permuted further (CLAUDE.md
- * rule 12/9). Corpus has no witness for this four-term x87 shape.
+ * T2, not yet byte-exact: 992/979 B, 246/246 instructions (/O2 /Gi, the
+ * lane's variant for this file).  Hand-transcription pass 2026-09-24 fixed
+ * three source facts: the start-node test is `!= 0` with the node arm first,
+ * the grid position is one statement `DAT_100b2f00 - f140 - 1` written before
+ * the two zero stores, and the impulse block is ordinary members.
+ * RESIDUE, three regions, all scheduling:
+ *  - the trig temps: the original spills sin(h) below cos(h - K) (frame
+ *    0x10 / 0x14), ours the other way round, and the SetPos x87 block
+ *    follows from that.  Dead: declaration order (all 24), block scoping,
+ *    calls inline in the SetPos arguments (worse), every term order and
+ *    grouping of the x/y arguments (25 combinations; the original IS form
+ *    `(o - t*(l10-K)*K) - u*(l14-K)*K`), use counts, 1..12 preceding pads;
+ *  - the four impulse stores: the original emits them after the three
+ *    SetVel pushes and `mov ecx,esi`, ours interleaves them with the
+ *    pushes.  Dead: member vs raw-offset spelling, int vs float, an inline
+ *    `ClearImpulse()->SetVel(...)`;
+ *  - `mov ecx,esi` for 0x1005E6A0 sits two stores later in the original.
+ * Flags: only /Gi moves anything (/Zi /Z7 /Gm /Gy /Zd /G3-/G5 /GB all
+ * give the plain /O2 object).
  */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
@@ -43,7 +53,10 @@ public:
     int   f144;                      /* +0x144 lap count, other net side*/
     char  pad0148[0xE64 - 0x148];
     int   fE64;                      /* +0xE64                          */
-    char  pad0E68[0xF04 - 0xE68];
+    char  pad0E68[0xEA0 - 0xE68];
+    float fEA0, fEA4, fEA8;          /* +0xEA0 impulse block            */
+    int   fEAC;
+    char  pad0EB0[0xF04 - 0xEB0];
     int   fF04;                      /* +0xF04                          */
     char  pad0F08[0xF5C - 0xF08];
     float fF5C, fF60, fF64;          /* +0xF5C position mirror          */
@@ -138,7 +151,6 @@ void Car5E7B0::StartInit()
     float local_14, local_10;
     float c1, s1, c2, s2;
     short sVar1;
-    int   iVar2;
 
     Sub6FD90();
 
@@ -184,18 +196,14 @@ void Car5E7B0::StartInit()
 
     /* impulse block, +0xEA0..EAC -- not in this TU's view; written by raw
      * offset since only this one method touches it. */
-    *(float *)((char *)this + 0xEA0) = 0.0f;
-    *(float *)((char *)this + 0xEA4) = 0.0f;
-    *(float *)((char *)this + 0xEA8) = 0.0f;
-    *(int   *)((char *)this + 0xEAC) = -180;
+    fEA0 = 0.0f;
+    fEA4 = 0.0f;
+    fEA8 = 0.0f;
+    fEAC = -180;
 
     SetVel(0.0f, 0.0f, 0.0f);
 
-    if (DAT_106eed48 == 0) {
-        fF94 = 1.0f;
-        fF98 = 0.0f;
-        fF9C = 0.0f;
-    } else {
+    if (DAT_106eed48 != 0) {
         fFB0 = 0.0f;
         fFEC = 0.0f;
         fFE4 = 0.0f;
@@ -208,12 +216,15 @@ void Car5E7B0::StartInit()
         fF90 = 0;
         BrVec3Direction(&fF94, (const float *)(DAT_106eed48 + 0x4c),
                         (const float *)(DAT_106eed48 + 0x74));
+    } else {
+        fF94 = 1.0f;
+        fF98 = 0.0f;
+        fF9C = 0.0f;
     }
 
-    iVar2 = DAT_100b2f00 - f140;
+    fFF8 = DAT_100b2f00 - f140 - 1;
     fFA8x = 0.0f;
     fFE8 = 0.0f;
-    fFF8 = iVar2 - 1;
     fFA0 = 0;
 
     if (f140 < DAT_100b3858 || DAT_100a9360 == 1 || DAT_100a9360 == 2 ||
