@@ -866,7 +866,10 @@ extern unsigned char  DAT_106e7290, DAT_106e86a4, DAT_106e72f0, DAT_106b7c78;
 extern BrSceneCam    *DAT_106ed520;
 extern BrMat4         DAT_106e78f0;
 extern int            DAT_106ea360, DAT_106ed6a8, DAT_106e72e8;
-extern int            DAT_106ea3f4, DAT_106e8204, DAT_106eed28;
+/* 8204 before ea3f4: VC5 orders the xor's operands by declaration, and the
+ * original loads 0x106EA3F4 first.  The byte sweep masks relocations and
+ * cannot see this; only the placed image (or a reloc-symbol check) can. */
+extern int            DAT_106e8204, DAT_106ea3f4, DAT_106eed28;
 
 static __inline BrGfxCmd *BrSsfAlloc(void)
 {
