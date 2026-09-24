@@ -1,0 +1,5 @@
+# BossRally.ini RunBenchmark=1: whatever the benchmark mode does from boot.
+files ini_bench
+sleep 1500
+shot bench
+end
