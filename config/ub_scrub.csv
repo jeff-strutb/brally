@@ -1,0 +1,2 @@
+va,arg,offset,length,why
+0x10059A80,1,0x1C,0x18,BrCarGhostApply_10059A80: the decoder BrFixDecodeRecord_10007AA0 writes record +0x00..+0x18 and +0x34.. only; +0x1C..+0x33 are the caller's stale stack and the original copies them into car +0x1E8..+0x1F4 (cheats frame 575: 0x1082A2A0 vs 0x26D7)

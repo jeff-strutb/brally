@@ -42,8 +42,34 @@ _calls = {}
 DATA_LO, DATA_HI = 0x10077000, 0x11900000       # .rdata tail .. end of .bss
 
 
+def _scrubs(box):
+    """config/ub_scrub.csv: bytes the ORIGINAL reads without ever writing
+    them (stale stack in an argument buffer).  Both runs get the same zeros
+    at the function's entry, so the comparison is of the transcriptions, not
+    of whatever an earlier call left on the stack.  Each row names its
+    evidence (who writes the rest of the buffer, where the garbage goes)."""
+    import csv
+    from unicorn import UC_HOOK_CODE
+    from unicorn.x86_const import UC_X86_REG_ESP
+    p = os.path.join(ROOT, 'config', 'ub_scrub.csv')
+    if not os.path.exists(p):
+        return
+    for r in csv.DictReader(open(p)):
+        va, arg = int(r['va'], 16), int(r['arg'])
+        off, n = int(r['offset'], 0), int(r['length'], 0)
+
+        def hit(uc, a, sz, ud, arg=arg, off=off, n=n):
+            ptr = box.rd32(uc.reg_read(UC_X86_REG_ESP) + 4 + 4 * arg)
+            try:
+                uc.mem_write(ptr + off, b'\0' * n)
+            except Exception:
+                pass
+        box.uc.hook_add(UC_HOOK_CODE, hit, begin=va, end=va)
+
+
 def _run(dll, script, stop_frame=None, watch_last=False, seconds=None):
     box = brbox_drive.make_box(log=lambda m: None, dll=dll)
+    _scrubs(box)
     drv = brbox_drive.Driver(brbox_drive.parse_script(script), log=lambda m: None)
     brbox_drive.attach(box, drv)
     peer = brbox_drive.start_peer_if_any(box, drv, script)
@@ -155,6 +181,7 @@ def _write_seq(dll, script, frame, seconds, replaced):
     stack are left out -- their order and scratch values are allowed to differ;
     what the shared code stores next is not."""
     box = brbox_drive.make_box(log=lambda m: None, dll=dll)
+    _scrubs(box)
     drv = brbox_drive.Driver(brbox_drive.parse_script(script), log=lambda m: None)
     brbox_drive.attach(box, drv)
     seq = []
@@ -195,6 +222,7 @@ def _t3_calls(dll, script, frame, seconds, entries):
     included), number of such bytes).  Both images run the same control
     flow up to the first real divergence, so the lists pair by index."""
     box = brbox_drive.make_box(log=lambda m: None, dll=dll)
+    _scrubs(box)
     drv = brbox_drive.Driver(brbox_drive.parse_script(script), log=lambda m: None)
     brbox_drive.attach(box, drv)
     from unicorn import UC_HOOK_MEM_WRITE, UC_HOOK_CODE, UC_HOOK_BLOCK
