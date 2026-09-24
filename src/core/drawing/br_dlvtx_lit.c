@@ -60,28 +60,31 @@ extern void    FUN_10022070(void *, void *, float, float, float);
 
 
 /* Transcription notes (2026-09-24, by hand from the asm; compiled /O2 /Op
- * like the rest of its original TU): 49 of 289 instructions still differ
+ * like the rest of its original TU): 59 of 289 instructions still differ
  * (difflib count).  From the sibling 0x10022600: the 1-based matrix stack
  * ([top - 1] gives the `lea`), the mixed absolute/extern MVP columns, the
  * vertex pointer formed before the count.  The helper's output-vertex
  * argument is a separately advanced pointer (the original's ebp), set from
- * pV BEFORE the count is extracted.  `(double)pSrc->x` is 0x100221D0's
- * spelling; here it scores the same as the plain product.
- * Open (x87 scheduling / register choice only; every row pairs):
- *  - light setup: the original loads the direction bytes y, x (edi, ebp)
- *    early and z late; ours takes them z, y early and x late, with the
- *    matching fxch/store shuffle.  Dead: all 720 statement orders (float and
- *    int temps), inline vs named for each component (1152 probes), the six
- *    declaration orders, split declarations;
- *  - one extra fxch per transform row (x product issue slot, as in
- *    0x10022600).  Dead: 8 groupings x 4 operand casts.
+ * pV BEFORE the count is extracted.  `(double)pSrc->x` (0x100221D0's
+ * spelling) makes VC5 add the transform products in the original's order.
+ * The light rows are written in the original's association,
+ * ((m1*dy + m0*dx) + m2*dz): a byte-score search once picked
+ * (m1*dy + m2*dz) + m0*dx, which rounds differently -- the whole-image run
+ * caught it as a 1-ulp colour difference (2026-09-24).
+ * Arithmetic check: every float the function stores, with its rounding
+ * points, is the same expression tree as the original's (symbolic x87
+ * evaluation of both binaries).
+ * Open (x87 scheduling and register choice only): the light setup's
+ * byte-load order and fxch/store shuffle, one fxch per transform row.
  * @t4-pass 0x10021C70 1 2026-09-24 probes 2800 bytes 1025 insns 292 regions 7 rows 11 census no  (generator climb over declaration order, light statement order and row term order, matrix form, x-term cast, dot grouping, compare and clamp forms, loop pointers; nothing moved from 49)
- * @t4-pass 0x10021C70 2 2026-09-24 probes 38 bytes 1025 insns 292 regions 7 rows 11 census yes  (census: the rows are the transform fxch and the light block's load/store order -- probed the transform rows' 8 groupings x 4 operand casts and the six loop-pointer initialisations; nothing moved) */
+ * @t4-pass 0x10021C70 2 2026-09-24 probes 38 bytes 1025 insns 292 regions 7 rows 11 census yes  (census: the rows are the transform fxch and the light block's load/store order -- probed the transform rows' 8 groupings x 4 operand casts and the six loop-pointer initialisations; nothing moved)
+ * @t4-pass 0x10021C70 3 2026-09-24 probes 132 bytes 1025 insns 292 regions 8 rows 13 census yes  (after the arithmetic fix; census: the rows are the light block's load order and x87 register choice, which declaration order decides -- moved each local to every other slot; nothing moved)
+ * @t4-pass 0x10021C70 4 2026-09-24 probes 720 bytes 1025 insns 292 regions 8 rows 13 census no  (all 720 orders of the light setup's direction and colour statements; nothing moved) */
 /* @t3 0x10021C70 2026-09-24 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 1025/1019 insns 292/289 rows 4+7 regions 7 oracle EQUIVALENT
- * @t3-effort passes 2 zero-movement 1 2
+ * @t3-measure bytes 1025/1019 insns 292/289 rows 5+8 regions 8 oracle EQUIVALENT
+ * @t3-effort passes 4 zero-movement 3 4
  * Residue is x87 scheduling and register choice only (see the Open list
- * above); every row pairs.  Do not reopen before the end-grind (CLAUDE.md
+ * above); the arithmetic is the original's, rounding points included.  Do not reopen before the end-grind (CLAUDE.md
  * rule 12).
  * Oracle coverage: the 25 scripts run 283 of the 289 instructions (the
  * light refresh 287,585 times), all but the no-lights colour copy and the
@@ -119,10 +122,10 @@ const uint8_t *BrDlVtxLit(const uint8_t *p)
             DAT_105ce210 = (float)DAT_105ccc78[0].col[0];
             DAT_105ce214 = (float)DAT_105ccc78[0].col[1];
             dz = (float)DAT_105ccc78[0].dir[2];
-            dy = (float)DAT_105ccc78[0].dir[1];
             dx = (float)DAT_105ccc78[0].dir[0];
+            dy = (float)DAT_105ccc78[0].dir[1];
             DAT_105ce218 = (float)DAT_105ccc78[0].col[2];
-            DAT_105ce21c = ((m[1] * dy + m[2] * dz) + m[0] * dx) / DAT_10077420;
+            DAT_105ce21c = ((m[1] * dy + m[0] * dx) + m[2] * dz) / DAT_10077420;
             DAT_105ce220 = ((m[4] * dx + m[5] * dy) + m[6] * dz) / DAT_10077420;
             DAT_105ce224 = ((m[8] * dx + m[9] * dy) + m[10] * dz) / DAT_10077420;
             FUN_100344D0(&DAT_105ce21c);
