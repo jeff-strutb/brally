@@ -79,7 +79,10 @@ extern void    FUN_10022070(void *, void *, float, float, float);
  *    operand order, row order x association (24 variants), declaration order
  *    (locals and externs), pad count, pSrc[0]/float-pointer/array spellings,
  *    a pointer copy of the column, per-iteration `base + i`;
- *  - `mov ecx,0` for the original's `xor ecx,ecx` before the index byte. */
+ *  - `mov ecx,0` for the original's `xor ecx,ecx` before the index byte.
+ * @t4-pass 0x100221D0 1 2026-09-24 probes 100 bytes 1055 insns 296 regions 9 rows 32 census yes  (first transcription grind: corpus queries (two misses), walked vs indexed vs displaced source pointers, 24-way row order x association grid, declaration-order and pad-count TU-state sweeps, operand-kind ladder probes on the x term and colour scale, int/float direction temps)
+ * @t4-pass 0x100221D0 2 2026-09-24 probes 12 bytes 1055 insns 296 regions 9 rows 32 census no  (light setup: cache/nLights test forms, matrix pointer as const/address/absolute/pointer arithmetic, direction bytes through a pointer and as schar/short temps, colour casts via unsigned/int, literal 128.0f divide; nothing moved)
+ * @t4-pass 0x100221D0 3 2026-09-24 probes 11 bytes 1055 insns 296 regions 9 rows 32 census no  (loop: unsigned/count-down/while loop forms, int w0, index-byte cast and statement order, parenthesised x term, s/t copy before the transform; nothing moved) */
 /* WHAT IT DOES: loads a batch of vertices for a decal-lit surface.  It first
  * refreshes the cached light (colour, direction pulled into model space and
  * normalised, ambient) if anything has invalidated it, then for each vertex:
