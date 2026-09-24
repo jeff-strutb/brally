@@ -41,6 +41,64 @@ const int32_t g_aBr72RsId[BR72_RS_COUNT] = {
  * reads. One setting cannot hold the value 1 and is quietly promoted to 2 on
  * the way through. */
 /* @implements 0x1003E3A0 d3d BrSub1003E3A0 */
+#ifdef BR_MATCHING_BUILD
+/* Glide arm, hand-transcribed from 0x100379B0: loose globals throughout; the
+ * record pointer is a switch on the selector (default first, as the original
+ * lays the `dec/je` chain out); the final OR goes through a named temp, which
+ * is what puts the global's load in eax and the setting in ecx. */
+extern int DAT_10ac5d64, DAT_100abcc0[], DAT_10b71530;
+extern void *DAT_10b71534;
+extern unsigned char DAT_10b71290[];
+extern int DAT_10b71540, DAT_10b71538, DAT_10b7153c, DAT_10b71b00;
+extern int DAT_10ac5d74, DAT_10ac5d78, DAT_10ac5d7c, DAT_10ac5d80;
+extern char DAT_10ac3e80[], DAT_10b71544[];
+int FUN_10008d60();
+extern int DAT_10b71a70, DAT_10b71a74, DAT_10b71a78, DAT_10b71a7c, DAT_10b71a80, DAT_10b71a84, DAT_10b71a88;
+extern int DAT_10b71a8c, DAT_10b71a90, DAT_10b71a94, DAT_10b71a98, DAT_10b71a9c;
+extern int DAT_100abde8, DAT_10ac5d58, DAT_10ac5d60, DAT_100abdec, DAT_100abdf0, DAT_100abdf4;
+extern int DAT_100abdf8, DAT_100abdfc, DAT_10ac5d68, DAT_10ac5d6c, DAT_10ac5d70, DAT_100aab8c;
+extern unsigned short DAT_100aab84;
+void BrSub1003E3A0(void)
+{
+    int v;
+
+    v = DAT_100abcc0[DAT_10ac5d64];
+    DAT_10b71530 = v;
+    switch (v) {
+    case 1:  DAT_10b71534 = DAT_10b71290 + 0xa8; break;
+    case 2:  DAT_10b71534 = DAT_10b71290 + 0x150; break;
+    case 3:  DAT_10b71534 = DAT_10b71290 + 0x1f8; break;
+    default: DAT_10b71534 = DAT_10b71290; break;
+    }
+    DAT_10ac5d74 = DAT_10b71540 == 0;
+    DAT_10ac5d78 = DAT_10b71538 == 0;
+    DAT_10ac5d7c = DAT_10b7153c == 0;
+    DAT_10ac5d80 = DAT_10b71b00 == 0;
+    strcpy(DAT_10ac3e80, DAT_10b71544);
+    FUN_10008d60();
+    DAT_100abde8 = DAT_10b71a70;
+    DAT_10ac5d58 = DAT_10b71a74;
+    DAT_10ac5d60 = DAT_10b71a78;
+    DAT_100abdec = DAT_10b71a7c;
+    DAT_100abdf0 = DAT_10b71a80;
+    DAT_100abdf4 = DAT_10b71a84;
+    DAT_10ac5d64 = DAT_10b71a88;
+    if (DAT_10b71a88 == 1)
+        DAT_10ac5d64 = 2;
+    /* statement order decides which of edx/ecx each setting lands in */
+    DAT_100abdf8 = DAT_10b71a8c;
+    DAT_100aab84 |= (unsigned short)DAT_10b71a90;
+    DAT_10ac5d6c = DAT_10b71a94;
+    DAT_100abdfc = DAT_10b71a98;
+    DAT_10ac5d70 = DAT_10b71a9c;
+    DAT_10ac5d68 = DAT_10b71a90;
+    {
+        int t = DAT_100aab8c;
+        t |= DAT_10b71a94;
+        DAT_100aab8c = t;
+    }
+}
+#else
 void BrSub1003E3A0(void)
 {
     Br72Env *pE = g_pBr72Env;
@@ -113,6 +171,7 @@ void BrSub1003E3A0(void)
     pE->nAA2A14 = pE->cfgB4E710.nB4E734;
     pE->nAA2A18 = pE->cfgB4E710.nB4E73C;
 }
+#endif
 
 /* ==========================================================================
  * 0x10035FC0 -- thiscall, two dwords
