@@ -1162,6 +1162,41 @@ void BrCarTableRemove(const void *pOwner)
  * the other per-car running totals -- and notes that a copy now exists, so the
  * results can be put back after whatever is about to happen. */
 /* @implements 0x1002F2A0 d3d BrCarStateSave */
+#ifdef BR_MATCHING_BUILD
+/* Glide arm, hand-transcribed from 0x1001C810: loose globals, and the car
+ * record addressed INLINE in every statement (`DAT_10af1208 + i*0x2B68 + off`).
+ * A `car` pointer local reorders the three induction-variable bumps; the
+ * dword loop is what VC5 turns into the bare `rep movsd` (a memcpy of n*4
+ * keeps the count in ecx the same way). */
+extern int32_t DAT_100b3858;          /* car count */
+extern int32_t DAT_100bcbe8;          /* dwords in the saved vector */
+extern int32_t DAT_105ccb60;          /* "a saved copy exists" */
+extern int32_t DAT_105bc770[];
+extern int32_t DAT_105bc8d0[];
+extern int32_t DAT_105ccb68[];
+extern int32_t DAT_105bc8f0[];
+extern int32_t DAT_105bc758[];
+extern int32_t DAT_105ccaf8[];        /* 12 dwords per car */
+void BrCarStateSave(void)
+{
+    int i;
+
+    for (i = 0; i < DAT_100b3858; ++i) {
+        int k;
+
+        DAT_105bc770[i] = *(int32_t *)(DAT_10af1208 + i * 0x2B68 + 0xFF8);
+        DAT_105bc8d0[i] = *(int32_t *)(DAT_10af1208 + i * 0x2B68 + 0xFEC);
+        DAT_105ccb68[i] = *(int32_t *)(DAT_10af1208 + i * 0x2B68 + 0xFE4);
+        DAT_105bc8f0[i] = *(int32_t *)(DAT_10af1208 + i * 0x2B68 + 0xFE8);
+        DAT_105bc758[i] = *(int32_t *)(DAT_10af1208 + i * 0x2B68 + 0xFA8);
+        for (k = 0; k < DAT_100bcbe8; k++)
+            DAT_105ccaf8[i * 12 + k] =
+                *(int32_t *)(DAT_10af1208 + i * 0x2B68 + 0xFB4 + k * 4);
+    }
+
+    DAT_105ccb60 = 1;
+}
+#else
 void BrCarStateSave(void)
 {
     int i;
@@ -1184,6 +1219,7 @@ void BrCarStateSave(void)
 
     g_s17.f6909B8 = 1;
 }
+#endif
 
 /* 0x1002F320 */
 /* WHAT IT DOES: puts each car's saved championship figures back. When the game
