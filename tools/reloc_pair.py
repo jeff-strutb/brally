@@ -36,6 +36,7 @@ Usage:
     .venv/bin/python tools/reloc_pair.py --selftest   # prove the pairing rules
 """
 import os
+import re
 import struct
 import sys
 
@@ -432,6 +433,18 @@ def audit_function(obj_path, fname, va, size, orig_body, img, resolve_fn,
             else:
                 want = (t + addend - (va + plen + off + 4)) & 0xFFFFFFFF
             if out[(va, off)] != want:
+                # A Ghidra data label spells its own address exactly, so a
+                # disagreement is the pairing's artefact, never a stale name:
+                # the transcription reaches the same bytes through a different
+                # displacement/offset split.  BrEnvEmit 0x10017110 walks
+                # `&DAT_104add54[k] ... [-2]` where the original encodes
+                # `lea [..+0x104add50]` then `+4`; overriding the symbol to
+                # 0x104add50 shifted every particle read by 4 bytes and broke
+                # the snow path (2026-09-24).  Hand-coined names keep the
+                # override: those can carry stale D3D-space addresses.
+                if re.fullmatch(r'_?DAT_([0-9a-fA-F]{8})', sym) \
+                        and int(sym.split('_')[-1], 16) == t:
+                    continue
                 corrections[(va, off)] = out[(va, off)]
                 reports.append((sym, asg.get(sym), t))
                 disagreed += 1
