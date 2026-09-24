@@ -554,16 +554,10 @@ static void br_dl_normalise(BrVec3 *pV)
 /* --- 0x10021C70's prologue (0x10021C70..0x10021E0F) -------------------
  * Rebuild the derived light state.  Guarded by 0x105D17D0, which G_MTX
  * (modelview only), G_MOVEMEM light and G_MOVEWORD LIGHTCOL all clear. */
-/* WHAT IT DOES: works out the light the next batch of vertices will be
- * shaded by: the light's colour, its direction pulled back into the space
- * the model's surface normals live in, and the ambient colour. It caches the
- * answer and only redoes the work when something that could change it -- a
- * new matrix, a new light, a new light colour -- has cleared the cache. Note
- * it also latches the cache when there are no lights at all, having computed
- * nothing. */
-/* @t4-pass 0x10021C70 1 2026-09-07 probes 150 bytes 500 insns 135 regions 2 rows 202 census yes  (tools/crank.py) */
-/* @t4-pass 0x10021C70 2 2026-09-07 probes 150 bytes 515 insns 144 regions 2 rows 201 census yes  (tools/crank.py) */
-/* @implements 0x10021C70 glide br_dl_light_setup */
+/* Port helper: works out the light the next batch of vertices will be
+ * shaded by (colour, direction pulled into model space, ambient) and caches
+ * it.  In the original this is the prologue of 0x10021C70's single body,
+ * which is transcribed whole in br_dlvtx_lit.c (BrDlVtxLit). */
 static void br_dl_light_setup(BrDl *pDl)
 {
     const uint8_t *pL = pDl->aLight[BR_DL_LIGHT_DIFFUSE];   /* 0x105CCC78 */
