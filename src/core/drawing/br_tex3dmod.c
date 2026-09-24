@@ -39,30 +39,30 @@ extern unsigned short DAT_105e1828[];   /* the resampler's scratch image */
 
 void BrTex3dMipModulate(int param_1, unsigned short *param_2)
 {
-    int local_4;
-    int local_8;
-    unsigned short *local_c;
-    unsigned short uVar1;
-    unsigned int uVar2;
-    unsigned int uVar4;
+    int y, x;
+    unsigned short *pSrc;
 
     FUN_10024490(DAT_105e1828, *(int *)(param_1 + 0x2a0),
                  *(int *)(param_1 + 0x2a4),
                  param_2 + *(int *)(param_1 + 0x2a0) * *(int *)(param_1 + 0x2a4),
                  *(int *)(param_1 + 0x2a0) / 2, *(int *)(param_1 + 0x2a4) / 2,
                  11);
-    local_c = DAT_105e1828;
-    for (local_4 = 0; local_4 < *(int *)(param_1 + 0x2a4); local_4++) {
-        for (local_8 = 0; local_8 < *(int *)(param_1 + 0x2a0); local_8++) {
-            uVar1 = *param_2;
-            uVar4 = *local_c;
-            local_c = local_c + 1;
-            uVar2 = uVar1 >> 0xf;
-            uVar2 = uVar2 * 32 | ((uVar1 >> 10 & 0x1f) * uVar4) / 0xf;
-            uVar2 = uVar2 * 32 | ((uVar1 >> 5 & 0x1f) * uVar4) / 0xf;
-            uVar2 = uVar2 * 32 | ((uVar1 & 0x1f) * uVar4) / 0xf;
-            *param_2 = (unsigned short)uVar2;
-            param_2 = param_2 + 1;
+    pSrc = DAT_105e1828;
+    for (y = 0; y < *(int *)(param_1 + 0x2a4); y++) {
+        for (x = 0; x < *(int *)(param_1 + 0x2a0); x++) {
+            /* 2026-09-24: the three channels into named temps, then packed
+             * (the original holds r/g/b in ebx/ebp/edx and ORs them in).
+             * Residue: the original keeps (px>>15)<<5 unfolded and loads
+             * px/m as `mov si; and esi,0xffff`, and its frame is 3 dwords. */
+            unsigned int px = *param_2;
+            unsigned int m  = *pSrc;
+            unsigned int r  = ((px >> 10) & 0x1f) * m / 15;
+            unsigned int g  = ((px >> 5) & 0x1f) * m / 15;
+            unsigned int b  = (px & 0x1f) * m / 15;
+
+            *param_2 = (unsigned short)(((((px >> 15) << 5 | r) << 5) | g) << 5 | b);
+            pSrc++;
+            param_2++;
         }
     }
 }
