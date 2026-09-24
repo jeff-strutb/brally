@@ -67,9 +67,33 @@ def _scrubs(box):
         box.uc.hook_add(UC_HOOK_CODE, hit, begin=va, end=va)
 
 
+_NET = {}          # id(box) -> per-frame network record (the host's sends)
+
+
+def _hook_net():
+    """Every DirectPlay message a box sends is part of what it does: the
+    payload is built in stack buffers the data-area hash never sees."""
+    import brbox_com
+    if getattr(brbox_com, '_brdiff_wrapped', False):
+        return
+    real = brbox_com._dp_send
+
+    def send(b, kind, payload):
+        rec = _NET.get(id(b))
+        if rec is not None:
+            rec['crc'] = zlib.crc32(repr((kind, payload)).encode(), rec['crc'])
+            if b.hs.frame + 1 == _CALLS_FRAME:
+                rec['log'].append((kind, payload))
+        return real(b, kind, payload)
+    brbox_com._dp_send = send
+    brbox_com._brdiff_wrapped = True
+
+
 def _run(dll, script, stop_frame=None, watch_last=False, seconds=None):
     box = brbox_drive.make_box(log=lambda m: None, dll=dll)
     _scrubs(box)
+    _hook_net()
+    netrec = _NET[id(box)] = {'crc': 0, 'log': []}
     drv = brbox_drive.Driver(brbox_drive.parse_script(script), log=lambda m: None)
     brbox_drive.attach(box, drv)
     peer = brbox_drive.start_peer_if_any(box, drv, script)
@@ -124,8 +148,10 @@ def _run(dll, script, stop_frame=None, watch_last=False, seconds=None):
         # the whole data area (.rdata tail .. end of .bss): game state, the
         # texture cache, display lists -- everything the DLL keeps
         st = zlib.crc32(bytes(b.uc.mem_read(DATA_LO, DATA_HI - DATA_LO)))
-        frames.append((f, cur['gl'], st, cur['raw']))
+        # what the box sent this frame counts as drawn: it is output
+        frames.append((f, zlib.crc32(struct.pack('<I', netrec['crc']), cur['gl']), st, cur['raw']))
         cur['gl'] = cur['raw'] = 0
+        netrec['crc'] = 0
         if stop_frame is not None:
             if watch_last and f == stop_frame - 1 and hook[0] is None:
                 from unicorn import UC_HOOK_MEM_WRITE
@@ -184,6 +210,7 @@ def _write_seq(dll, script, frame, seconds, replaced):
     _scrubs(box)
     drv = brbox_drive.Driver(brbox_drive.parse_script(script), log=lambda m: None)
     brbox_drive.attach(box, drv)
+    peer = brbox_drive.start_peer_if_any(box, drv, script)
     seq = []
     calls = []
     hook = [None]
@@ -213,6 +240,8 @@ def _write_seq(dll, script, frame, seconds, replaced):
         box.rally_main(budget_s=seconds)
     except (Stop, GuestFault):
         pass
+    finally:
+        _stop_peer(peer)
     return seq, calls
 
 
@@ -225,6 +254,7 @@ def _t3_calls(dll, script, frame, seconds, entries):
     _scrubs(box)
     drv = brbox_drive.Driver(brbox_drive.parse_script(script), log=lambda m: None)
     brbox_drive.attach(box, drv)
+    peer = brbox_drive.start_peer_if_any(box, drv, script)
     from unicorn import UC_HOOK_MEM_WRITE, UC_HOOK_CODE, UC_HOOK_BLOCK
     from unicorn.x86_const import UC_X86_REG_ESP, UC_X86_REG_EAX
     live = []          # [va, ret, esp, {addr: byte}]
@@ -271,7 +301,15 @@ def _t3_calls(dll, script, frame, seconds, entries):
         box.rally_main(budget_s=seconds)
     except (Stop, GuestFault):
         pass
+    finally:
+        _stop_peer(peer)
     return done
+
+
+def _stop_peer(peer):
+    if peer is not None:
+        peer[2].stop()
+        peer[0].join(30)
 
 
 def _in(ranges, a):
@@ -348,6 +386,10 @@ def main():
                     i, ent.get(x[0], '?'), x[0], x[1], y[1], x[2], y[2], x[3], y[3]))
                 if x[0] != y[0]:
                     print('  (call order parted: t3 ran %s 0x%08X)' % (ent.get(y[0], '?'), y[0]))
+                nth = sum(1 for z in co[:i] if z[0] == x[0])
+                print('  it is call %d of %s in this frame (completion order): '
+                      'T3LIVE_SKIP=%d t3live.py explain S.txt 0x%08X --frame %d'
+                      % (nth, ent.get(x[0], '?'), nth, x[0], a.t3calls))
                 return 1
         print('every T3 call agrees')
         return 0
@@ -382,9 +424,12 @@ def main():
             return 0
         return 1
 
-    fo, eo, _s, _w, _b = _run(ORIG, a.script, seconds=a.seconds)
-    ft, et, _s, _w, _b = _run(a.image, a.script, seconds=a.seconds)
+    fo, eo, _s, _w, _b_o = _run(ORIG, a.script, seconds=a.seconds)
+    ft, et, _s, _w, _b_t = _run(a.image, a.script, seconds=a.seconds)
     if _CALLS_FRAME:
+        for nm, bx in (('orig', _b_o), ('t3', _b_t)):
+            for kind, payload in _NET.get(id(bx), {}).get('log', []):
+                print('  %s sent %s %s' % (nm, kind, repr(payload)[:200]))
         co, ct = _calls.get(ORIG, []), _calls.get(a.image, [])
         print('frame %d Glide calls: %d vs %d' % (_CALLS_FRAME, len(co), len(ct)))
         for i, (x, y) in enumerate(zip(co, ct)):
