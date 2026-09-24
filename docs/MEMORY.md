@@ -5,6 +5,19 @@ a number in prose. Procedure: `docs/MATCHING.md`. Idioms: `tools/corpus.py`.
 
 ## Open leads
 
+### T3 verification: A5 + A7 (2026-09-24)
+
+The T3 image (`BRGlide.T3.dll`) behaves identically to the original on all 25
+brbox scripts (`tools/brbox_diff.py --all`, `config/whole_image.csv`) and runs
+the retail game in the Win98/86Box VM. The whole-image run found ~25 bugs the
+per-function oracle had certified; `t3.py --qualify` now requires both (A5 and
+A7). Still open: 6 T3 functions no script reaches (UNCOVERED in
+`config/t3_live.csv`), and the port's `#else` arms of the fixed functions may
+carry the same semantic bugs. The six T3 bodies rewritten on 2026-09-24
+(BrRaceStep, BrCtlInputApply, BrCarPhysDriveMatch, BrCrImpulseSolve,
+BrCarCarCollide, BrGhostPlaybackStep) need fresh `@t4-pass` lines for Gate B;
+BrGhostPlaybackStep (regnorm 6+8) and BrCarCarCollide (same size) are close to T4.
+
 ### Port build is broken (drift, 2026-09-21)
 
 `./build.sh` stops with one compile error: `src/core/controls/br_inputpoll.c:203`
