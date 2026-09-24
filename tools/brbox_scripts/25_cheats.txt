@@ -1,0 +1,120 @@
+# The six typed cheat words, typed with the main menu's CREDITS item under
+# the pointer (its per-frame hook feeds the key ring and runs the cheat
+# scanner), then a quick race with whatever they switched on.
+sleep 240
+mark main_menu
+mouse 250 227
+sleep 10
+press M
+sleep 3
+press A
+sleep 3
+press D
+sleep 3
+press E
+sleep 3
+press L
+sleep 3
+press E
+sleep 3
+press I
+sleep 3
+press N
+sleep 3
+press E
+sleep 3
+sleep 10
+mark cheat_madeleine
+press B
+sleep 3
+press E
+sleep 3
+press N
+sleep 3
+press J
+sleep 3
+press A
+sleep 3
+press M
+sleep 3
+press I
+sleep 3
+press N
+sleep 3
+sleep 10
+mark cheat_benjamin
+press B
+sleep 3
+press R
+sleep 3
+press I
+sleep 3
+press E
+sleep 3
+press L
+sleep 3
+press L
+sleep 3
+press E
+sleep 3
+sleep 10
+mark cheat_brielle
+press L
+sleep 3
+press Y
+sleep 3
+press N
+sleep 3
+press E
+sleep 3
+press T
+sleep 3
+press T
+sleep 3
+press E
+sleep 3
+sleep 10
+mark cheat_lynette
+press S
+sleep 3
+press O
+sleep 3
+press P
+sleep 3
+press H
+sleep 3
+press I
+sleep 3
+press A
+sleep 3
+sleep 10
+mark cheat_sophia
+press H
+sleep 3
+press A
+sleep 3
+press Z
+sleep 3
+press E
+sleep 3
+press L
+sleep 3
+sleep 10
+mark cheat_hazel
+shot cheats_menu
+mouse 250 190
+click
+sleep 40
+mouse 252 233
+click
+sleep 40
+mouse 252 233
+click
+sleep 300
+mark grid
+press SPACE
+sleep 150
+hold UP
+sleep 600
+shot cheats_race
+end
