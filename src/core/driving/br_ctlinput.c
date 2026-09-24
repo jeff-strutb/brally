@@ -231,7 +231,9 @@ LAB_keep_stick:
        (local[4] = DAT_10077788, DAT_10077780 < *(float *)(pCar + 0xe20))) {
       local[4] = DAT_10077784;
     }
-    if (local[0] == local[4]) {
+    /* the target and the current value point different ways: a change of
+     * direction (0x1005B390: `je` on C3 clear -- NOT equal -- sets it) */
+    if (local[0] != local[4]) {
       bVar7 = 1;
     }
     else if ((DAT_10077780 < *(float *)(pCar + 0xe20)) &&
