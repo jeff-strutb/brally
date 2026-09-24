@@ -1,0 +1,24 @@
+# Quick race on a Voodoo with 2 MB of texture memory: the track's textures
+# do not fit, so the game downsamples them (key table, texel resampling).
+tmu 2
+sleep 240
+mark main_menu
+mouse 250 190
+click
+sleep 40
+mark race_setup
+mouse 252 233
+click
+sleep 40
+mark car_setup
+mouse 252 233
+click
+sleep 300
+mark grid
+press SPACE
+sleep 150
+mark lights
+hold UP
+sleep 900
+mark driving
+end

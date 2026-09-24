@@ -1409,10 +1409,16 @@ def _glide(name, pop, ret=None):
     MODELS['%s!%s' % (GL, name)] = (pop, fn, pop // 4)
 
 
+def _tmu_mb(box):
+    # texture memory per TMU; a script's `tmu N` models a smaller board
+    return getattr(box.hs, 'tmu_mb', 4)
+
+
 def _gr_query(box, a):
-    # one Voodoo Graphics board: 4 MB frame buffer, one TMU with 4 MB
+    # one Voodoo Graphics board: 4 MB frame buffer, one TMU (4 MB unless the
+    # script says otherwise)
     hw = struct.pack('<i', 1) + struct.pack('<i', 0) + \
-        struct.pack('<iiii', 4, 2, 1, 0) + struct.pack('<ii', 1, 4) * 3
+        struct.pack('<iiii', 4, 2, 1, 0) + struct.pack('<ii', 1, _tmu_mb(box)) * 3
     box.wr(a[0], hw)
     return 1
 
@@ -1466,7 +1472,7 @@ for _n, _p, _r in [
         ('_grGlideInit@0', 0, None), ('_grGlideShutdown@0', 0, None),
         ('_grSstQueryHardware@4', 4, _gr_query), ('_grSstSelect@4', 4, None),
         ('_grSstWinOpen@28', 28, 1), ('_grSstWinClose@0', 0, None),
-        ('_grTexMinAddress@4', 4, 0), ('_grTexMaxAddress@4', 4, 0x400000 - 0x20000),
+        ('_grTexMinAddress@4', 4, 0), ('_grTexMaxAddress@4', 4, lambda box, a: _tmu_mb(box) * 0x100000 - 0x20000),
         ('_grTexCalcMemRequired@16', 16, _gr_calcmem),
         ('_grTexTextureMemRequired@8', 8, _gr_texmemreq),
         ('_grTexSource@16', 16, None), ('_grTexClampMode@12', 12, None),
