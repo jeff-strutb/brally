@@ -1,26 +1,26 @@
 script,verdict,t3_run,first_difference,stale_stack_only_frames,date
-10_boot,IDENTICAL,"300 frames, stopped: script end",,0/300,2026-09-24T07:25:11-06:00
-20_quickrace_drive,IDENTICAL,"1691 frames, stopped: script end",,136/1691,2026-09-24T07:25:11-06:00
-21_quickrace_finish,IDENTICAL,"6673 frames, stopped: script end",,987/6673,2026-09-24T07:25:11-06:00
-22_ini_cdmusic,IDENTICAL,"6725 frames, stopped: exit(0)",,987/6725,2026-09-24T07:25:11-06:00
-23_ini_swshadow,IDENTICAL,"1691 frames, stopped: script end",,168/1691,2026-09-24T07:25:11-06:00
-24_ini_benchmark,IDENTICAL,"445 frames, stopped: exit(1)",,11/445,2026-09-24T07:25:11-06:00
-25_cheats,IDENTICAL,"2822 frames, stopped: script end",,212/2822,2026-09-24T07:25:11-06:00
-26_lowtexmem,IDENTICAL,"1691 frames, stopped: script end",,136/1691,2026-09-24T07:25:11-06:00
-30_options,IDENTICAL,"2560 frames, stopped: script end",,139/2560,2026-09-24T07:25:11-06:00
-31_ffb_wheel,IDENTICAL,"2184 frames, stopped: script end",,155/2184,2026-09-24T07:25:11-06:00
-32_video_modes,IDENTICAL,"1483 frames, stopped: script end",,36/1483,2026-09-24T07:25:11-06:00
-40_timeattack,IDENTICAL,"7643 frames, stopped: script end",,951/7643,2026-09-24T07:25:11-06:00
-45_timeattack_save,IDENTICAL,"7656 frames, stopped: script end",,951/7656,2026-09-24T07:25:11-06:00
-46_timeattack_load,IDENTICAL,"1805 frames, stopped: script end",,19/1805,2026-09-24T07:25:11-06:00
-50_championship,IDENTICAL,"15550 frames, stopped: script end",,2731/15550,2026-09-24T07:25:11-06:00
-55_season_save,IDENTICAL,"15791 frames, stopped: script end",,2731/15791,2026-09-24T07:25:11-06:00
-56_season_load,IDENTICAL,"1927 frames, stopped: script end",,275/1927,2026-09-24T07:25:11-06:00
-60_multiplayer,IDENTICAL,"1132 frames, stopped: script end",,0/1132,2026-09-24T07:25:11-06:00
-61_mp_race,IDENTICAL,"3523 frames, stopped: script end",,222/3523,2026-09-24T07:25:11-06:00
-62_mp_client,IDENTICAL,"4053 frames, FAULT: FAULT: script line 32 timed out: 0x106E79F4 == 0x10019A70 3000",,0/4053,2026-09-24T07:25:11-06:00
-63_mp_join,IDENTICAL,"3562 frames, stopped: script end",,270/3562,2026-09-24T07:25:11-06:00
-64_mp_dropout,IDENTICAL,"4123 frames, stopped: script end",,321/4123,2026-09-24T07:25:11-06:00
-65_mp_dropout_client,IDENTICAL,"4053 frames, FAULT: FAULT: script line 32 timed out: 0x106E79F4 == 0x10019A70 3000",,0/4053,2026-09-24T07:25:11-06:00
-70_credits,IDENTICAL,"1949 frames, stopped: script end",,304/1949,2026-09-24T07:25:11-06:00
-80_quit,IDENTICAL,"292 frames, stopped: exit(0)",,0/292,2026-09-24T07:25:11-06:00
+10_boot,IDENTICAL,"300 frames, stopped: script end",,0/300,2026-09-24T10:04:25-06:00
+20_quickrace_drive,IDENTICAL,"1691 frames, stopped: script end",,136/1691,2026-09-24T10:04:25-06:00
+21_quickrace_finish,IDENTICAL,"6673 frames, stopped: script end",,987/6673,2026-09-24T10:04:25-06:00
+22_ini_cdmusic,IDENTICAL,"6725 frames, stopped: exit(0)",,987/6725,2026-09-24T10:04:25-06:00
+23_ini_swshadow,IDENTICAL,"1691 frames, stopped: script end",,168/1691,2026-09-24T10:04:25-06:00
+24_ini_benchmark,IDENTICAL,"445 frames, stopped: exit(1)",,11/445,2026-09-24T10:04:25-06:00
+25_cheats,IDENTICAL,"2822 frames, stopped: script end",,212/2822,2026-09-24T10:04:25-06:00
+26_lowtexmem,IDENTICAL,"1691 frames, stopped: script end",,136/1691,2026-09-24T10:04:25-06:00
+30_options,IDENTICAL,"2560 frames, stopped: script end",,139/2560,2026-09-24T10:04:25-06:00
+31_ffb_wheel,IDENTICAL,"2184 frames, stopped: script end",,155/2184,2026-09-24T10:04:25-06:00
+32_video_modes,IDENTICAL,"1483 frames, stopped: script end",,36/1483,2026-09-24T10:04:25-06:00
+40_timeattack,IDENTICAL,"7643 frames, stopped: script end",,951/7643,2026-09-24T10:04:25-06:00
+45_timeattack_save,IDENTICAL,"7656 frames, stopped: script end",,951/7656,2026-09-24T10:04:25-06:00
+46_timeattack_load,IDENTICAL,"1805 frames, stopped: script end",,19/1805,2026-09-24T10:04:25-06:00
+50_championship,IDENTICAL,"15550 frames, stopped: script end",,2731/15550,2026-09-24T10:04:25-06:00
+55_season_save,IDENTICAL,"15791 frames, stopped: script end",,2731/15791,2026-09-24T10:04:25-06:00
+56_season_load,IDENTICAL,"1927 frames, stopped: script end",,275/1927,2026-09-24T10:04:25-06:00
+60_multiplayer,IDENTICAL,"1132 frames, stopped: script end",,0/1132,2026-09-24T10:04:25-06:00
+61_mp_race,IDENTICAL,"3523 frames, stopped: script end",,222/3523,2026-09-24T10:04:25-06:00
+62_mp_client,IDENTICAL,"4053 frames, FAULT: FAULT: script line 32 timed out: 0x106E79F4 == 0x10019A70 3000",,0/4053,2026-09-24T10:04:25-06:00
+63_mp_join,IDENTICAL,"3562 frames, stopped: script end",,270/3562,2026-09-24T10:04:25-06:00
+64_mp_dropout,IDENTICAL,"4123 frames, stopped: script end",,321/4123,2026-09-24T10:04:25-06:00
+65_mp_dropout_client,IDENTICAL,"4053 frames, FAULT: FAULT: script line 32 timed out: 0x106E79F4 == 0x10019A70 3000",,0/4053,2026-09-24T10:04:25-06:00
+70_credits,IDENTICAL,"1949 frames, stopped: script end",,304/1949,2026-09-24T10:04:25-06:00
+80_quit,IDENTICAL,"292 frames, stopped: exit(0)",,0/292,2026-09-24T10:04:25-06:00
