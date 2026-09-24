@@ -3,12 +3,9 @@
  * Pop a clip/vertex record off the free list at 0x102E16B4 and fill its
  * 8 floats by interpolating two source vertices.
  *
- * @t4-pass 0x1000E060 1 2026-09-08 probes 2 bytes 231 insns 79 regions 1 rows 0 census no
- *
- * PARKED T2. Instruction multiset matches (REGNORM 0+0, 79/79). Residue is
- * epilogue schedule: orig pops edi in the middle of channel 6 and fstp
- * before reloading ecx/edx for channel 7; we pop esi at +0xc8 where orig
- * fstps. Same ops, pop/fstp order. Do not permute (colouring).
+ * BYTE-EXACT 2026-09-23.  The "epilogue schedule" residue was a missing
+ * return: the original keeps the node in eax to the end because the clipper
+ * (BrPolyClipPlane) uses it.  Returning it reproduces the interleave.
  */
 
 #ifdef BR_MATCHING_BUILD
@@ -19,19 +16,10 @@ extern void *DAT_102e16b4;
 
 /* WHAT IT DOES: take one vertex record from the display-list free list and
  * fill it with the 8-float blend of two source vertices (position, tex, and
- * extra channels) at fraction t. The free-list pop is skipped when the list
- * is empty; the writes still go through that pointer. */
-/* @t4-pass 0x1000E060 2 2026-09-09 probes 10 bytes 231 insns 79 regions 1 rows 0 census no  (hand, fn.py variants: channel shapes, load orders, sum orders, head-store forms, all inert) */
-/* @t4-pass 0x1000E060 3 2026-09-09 probes 10 bytes 231 insns 79 regions 1 rows 0 census yes  (hand, fn.py variants: declaration orders, reload placement, difference temp, all inert; corpus MISS at +0xc8 len 12 -- the pop/fstp epilogue interleave is proven nowhere) */
-/* @t3 0x1000E060 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 231/231 insns 79/79 rows 0+0 regions 1 oracle EQUIVALENT
- * @t3-effort passes 2 zero-movement 2 3
- * residue is epilogue scheduling only: orig interleaves the callee-saved
- * pops with the last channel's fstp, ours pops after (identical multiset,
- * REGNORM 0+0, size-exact); see the PARKED T2 note in the file header.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * extra channels) at fraction t, and return the record. The free-list pop is
+ * skipped when the list is empty; the writes still go through that pointer. */
 /* @implements 0x1000E060 glide BrVertLerp8 */
-void BrVertLerp8(void *pA, void *pB, float t)
+void *BrVertLerp8(void *pA, void *pB, float t)
 {
   float *pNode;
   float *pDst;
@@ -82,4 +70,7 @@ void BrVertLerp8(void *pA, void *pB, float t)
   pA = *(void **)((char *)pA + 4);
   pDst = *(float **)((char *)pNode + 4);
   pDst[7] = (((float *)pB)[7] - ((float *)pA)[7]) * t + ((float *)pA)[7];
+  /* the node stays in eax to the end and the clipper uses it (live
+   * oracle, software-clipped shadows) */
+  return pNode;
 }
