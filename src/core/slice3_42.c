@@ -614,31 +614,40 @@ static BrVec3 BrS42VelAt(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pP)
  * DO NOT PROBE TERM ORDER ON THIS FUNCTION AGAIN. */
 void BrRbVelAtPoint(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pPoint)
 {
-    BrVec3 p = *pPoint;
+    /* 2026-09-24 re-transcription.  Two source facts took this from
+     * 5+22 regnorm to 0+0 (1 byte):
+     *   - the point is copied FIELD-WISE (all three loads, then all three
+     *     stores); `p = *pPoint` interleaves them;
+     *   - the cross terms are three block-scoped float temps x, y, z in that
+     *     order.  That alone gives the original's six hoisted `fld`s in its
+     *     r.x, r.z, r.y order and its fxch ladder -- the "stack-cleanup hoist"
+     *     notes above were chasing the spelling of `p`, not the arithmetic.
+     * RESIDUE 1 byte: the one x87 spill goes to the dead pPoint parameter
+     * slot ([esp+0x24]); the original puts it in p.z's slot ([esp+0x14]).
+     * Declaration order, array locals and a parameter copy do not move it. */
+    BrVec3 p;
     BrVec3 r;
-    float cx, cy, cz;
 
+    p.x = pPoint->x;
+    p.y = pPoint->y;
+    p.z = pPoint->z;
     BrMat4MulVec3Transposed(&r, &pB->m, &p);
 
-    /* FIELD-WISE, not `*pOut = pB->vel`: the struct assignment copies through
-     * a `lea` base pointer and costs edi, where the original loads each
-     * component at its own displacement off the body. */
+    /* FIELD-WISE, not `*pOut = pB->vel` (a `lea` base pointer costs edi). */
     pOut->x = pB->vel.x;
     pOut->y = pB->vel.y;
     pOut->z = pB->vel.z;
 
-    /* r FIRST, angVel as the memory operand: the original's products are
-     * `fmul dword ptr [esi+0xA0..A8]` against an r component already on the
-     * x87 stack. Written the other way round it loads both and uses fmulp.
-     * And FLOAT, not double -- double temps spill as `fstp qword [esp]`,
-     * and the original never spills a qword. */
-    cx = r.z * pB->angVel.y - r.y * pB->angVel.z;
-    cy = r.x * pB->angVel.z - r.z * pB->angVel.x;
-    cz = r.y * pB->angVel.x - r.x * pB->angVel.y;
+    /* v + w x r, r first with angVel as the memory operand */
+    {
+        float x = r.z * pB->angVel.y - r.y * pB->angVel.z;
+        float y = r.x * pB->angVel.z - r.z * pB->angVel.x;
+        float z = r.y * pB->angVel.x - r.x * pB->angVel.y;
 
-    pOut->x = cx + pOut->x;
-    pOut->y = cy + pOut->y;
-    pOut->z = cz + pOut->z;
+        pOut->x = x + pOut->x;
+        pOut->y = y + pOut->y;
+        pOut->z = z + pOut->z;
+    }
 }
 #else
 void BrRbVelAtPoint(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pPoint)
