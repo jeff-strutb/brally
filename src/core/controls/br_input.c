@@ -522,6 +522,11 @@ BrWndResult __stdcall BrWndProc(void *hWnd, uint32_t uMsg, BrWParam wParam, BrLP
         }
     }
 
+    /* 2026-09-24: case order and exits as the original lays them out --
+     * WM_ACTIVATE returns through its OWN DefWindowProcA call, WM_DESTROY
+     * and a non-EAR 0x3B9 break to the shared one.  RESIDUE 1 byte: VC5
+     * pushes the known constant 6 for uMsg in the WM_ACTIVATE call where
+     * the original pushes the register (esi). */
     switch (uMsg) {
     case 1:
         g_brhWnd = hWnd;
@@ -529,15 +534,7 @@ BrWndResult __stdcall BrWndProc(void *hWnd, uint32_t uMsg, BrWParam wParam, BrLP
     case 2:
         BrSub100325B0(0);
         PostQuitMessage(0);
-        goto defwnd;
-    case 6:
-        /* `goto defwnd`, NOT its own `return DefWindowProcA(...)`. VC5
-         * tail-duplicates the shared block here either way, but written
-         * inline the front end has already folded uMsg to the constant and
-         * emits `push 6`; reached by the goto it copies the generic block
-         * and emits `push esi`, which is what the original has. */
-        BrOnActivate(wParam);
-        goto defwnd;
+        break;
     case 0x1C:
         return BrOnActivateApp(hWnd, wParam, lParam);
     case 0x20:
@@ -546,15 +543,17 @@ BrWndResult __stdcall BrWndProc(void *hWnd, uint32_t uMsg, BrWParam wParam, BrLP
     case 0x112:
         return BrOnSysCommand(hWnd, wParam, lParam);
     case 0x3B9:
-        if (iMode != 1)
-            goto defwnd;
-        if (lParam == (BrLParam)g_br1021C770 &&
-            wParam == 1 &&
-            g_br105CCB5C == 0)
-            BrSub10002830();
-        return 0;
-    default:
-        goto defwnd;
+        if (iMode == 1) {
+            if (lParam == (BrLParam)g_br1021C770 &&
+                wParam == 1 &&
+                g_br105CCB5C == 0)
+                BrSub10002830();
+            return 0;
+        }
+        break;
+    case 6:
+        BrOnActivate(wParam);
+        return DefWindowProcA(hWnd, uMsg, (uint32_t)wParam, (int32_t)lParam);
     }
 defwnd:
     return DefWindowProcA(hWnd, uMsg, (uint32_t)wParam, (int32_t)lParam);
