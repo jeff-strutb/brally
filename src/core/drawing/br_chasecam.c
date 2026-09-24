@@ -235,4 +235,133 @@ void __fastcall BrCamChaseZoomStep(char *pCam)
     BrVec3MulAddTo(pCam + 0x28e0, pCam, *(float *)(pCam + 0x28dc));
 }
 
+typedef struct { float x, y, z; } BrCamV3;
+typedef struct {
+    BrCamV3  n;                 /* +0x00 plane normal     */
+    int      f0c;
+    BrCamV3 *pV0, *pV1, *pV2;   /* +0x10 the triangle     */
+    int      f1c;
+} BrCamPlane;                   /* 0x20 bytes             */
+extern BrCamPlane     DAT_11773698[][150];   /* collision grid planes, 4800 B per cell */
+extern unsigned short DAT_11778800[];        /* planes per cell                        */
+extern int            DAT_100bcdcc;          /* the camera was pushed out this frame  */
+short FUN_100686d0(float x, float y);                                   /* cell of a point */
+void  FUN_10034560(BrCamV3 *pDst, BrCamV3 *pA, BrCamV3 *pB);            /* a - b           */
+float FUN_100347f0(BrCamV3 *pV);                                        /* length          */
+float FUN_10034310(BrCamV3 *pA, void *pB);                              /* dot             */
+void  FUN_10034660(BrCamV3 *pDst, BrCamV3 *pA, void *pDir, float t);    /* a + dir * t     */
+int   FUN_10034fc0(BrCamV3 *pP, BrCamV3 *pV0, BrCamV3 *pV1, BrCamV3 *pV2,
+                   BrCamPlane *pN);                                     /* point in tri    */
+float FUN_10034760(BrCamV3 *pA, BrCamV3 *pB);                           /* distance        */
+void  FUN_10034390(BrCamV3 *pV, float s);                               /* v *= s          */
+void  FUN_100345c0(BrCamV3 *pDst, BrCamV3 *pA, BrCamV3 *pB);            /* a + b           */
+
+/* T2 2026-09-24 (hand transcription from the asm; the D3D twin 0x100011F0 is
+ * the byte-identical body): 977/977 B, 309/309 insns, register-blind 0+0.
+ * Source facts that moved bytes: the cell lookups read x through the anchor /
+ * camera-position pointer and y straight off the record (`car + 0x28E4`,
+ * `cam + 0x34`); `nCells = (a != b) + 1`; the cell list is `int[3]` (the
+ * original's frame has a spare dword above it); the two sweep passes are
+ * written out, not shared.
+ * Residue: ONLY the stack-slot order of three 12-byte locals -- the original
+ * has cells at +0x28, dir at +0x40, the saved hit at +0x4C; ours puts dir at
+ * +0x28, the saved hit at +0x40, cells at +0x4C (hit +0x34 and toV0 +0x58
+ * agree).  Dead: declaration order, 30 renames, cells as int[2]+spare /
+ * short / struct, block-scoped temps (inner and outer loop), field-wise vs
+ * struct copy of the hit, a pointer walk of the cell list, split scalars per
+ * pass, one struct holding all five (unscalarised: 199 lines).
+ * @t4-pass 0x10001510 1 2026-09-24 probes 15 bytes 977 insns 309 regions 1 rows 0 census no  (first transcription: if order, anchor/camera y read off the record, int[3] cell list)
+ * @t4-pass 0x10001510 2 2026-09-24 probes 37 bytes 977 insns 309 regions 1 rows 0 census yes  (slot-order mechanism: declaration permutations, 30-name rename sweep, cell-list types, one-struct layout; nothing moved)
+ * @t4-pass 0x10001510 3 2026-09-24 probes 14 bytes 977 insns 309 regions 1 rows 0 census no  (block scope of temps, field-wise copy, pointer-walked cells, per-pass scalars; nothing moved) */
+/* WHAT IT DOES: keeps the chase camera out of walls.  It casts a ray from
+ * the car's camera anchor to the camera against every collision triangle in
+ * the grid cells of both ends (one cell if they share it), allowing the ray
+ * 0.1 units of slack.  If that hits, a second ray from the camera's previous
+ * position to the camera finds the wall it came through; the camera is put
+ * 0.3 units in front of that wall along its normal and, if that brought it
+ * nearer the anchor than it was, pushed back out to its old distance along
+ * the new line.  A flag records that the camera was moved. */
+/* @implements 0x10001510 glide FUN_10001510 */
+void __fastcall FUN_10001510(char *car, int _edx_unused, char *cam, BrCamV3 *prev)
+{
+    BrCamV3    *pAnchor = (BrCamV3 *)(car + 0x28e0);
+    BrCamV3    *pPos;
+    BrCamPlane *pPlane, *pEnd, *pBest;
+    BrCamV3     dir, toV0, hit, hitOut;
+    int         cells[3];
+    int         nCells, c;
+    float       len, tBest, denom, t, dist;
+
+    DAT_100bcdcc = 0;
+    cells[0] = FUN_100686d0(*(float *)(car + 0x28e0), *(float *)(car + 0x28e4));
+    pPos = (BrCamV3 *)(cam + 0x30);
+    cells[1] = FUN_100686d0(pPos->x, *(float *)(cam + 0x34));
+    nCells = (cells[0] != cells[1]) + 1;
+
+    FUN_10034560(&dir, pPos, pAnchor);
+    pBest = 0;
+    len = FUN_100347f0(&dir);
+    if (len != 0.0f)
+        tBest = (len - 0.1f) / len;
+    else
+        tBest = 1.0f;
+
+    for (c = 0; c < nCells; c++) {
+        pPlane = DAT_11773698[cells[c]];
+        pEnd = pPlane + DAT_11778800[cells[c]];
+        for (; pPlane != pEnd; pPlane++) {
+            denom = FUN_10034310(&dir, pPlane);
+            if (denom < 0.0f) {
+                FUN_10034560(&toV0, pPlane->pV0, pAnchor);
+                t = FUN_10034310(&toV0, pPlane) / denom;
+                if (t > 0.0f && t < tBest) {
+                    FUN_10034660(&hit, pAnchor, &dir, t);
+                    if (FUN_10034fc0(&hit, pPlane->pV0, pPlane->pV1, pPlane->pV2, pPlane)) {
+                        tBest = t;
+                        pBest = pPlane;
+                        hitOut = hit;
+                    }
+                }
+            }
+        }
+    }
+    if (pBest == 0)
+        return;
+
+    FUN_10034560(&dir, pPos, prev);
+    pBest = 0;
+    tBest = 1.0f;
+    for (c = 0; c < nCells; c++) {
+        pPlane = DAT_11773698[cells[c]];
+        pEnd = pPlane + DAT_11778800[cells[c]];
+        for (; pPlane != pEnd; pPlane++) {
+            denom = FUN_10034310(&dir, pPlane);
+            if (denom < 0.0f) {
+                FUN_10034560(&toV0, pPlane->pV0, prev);
+                t = FUN_10034310(&toV0, pPlane) / denom;
+                if (t > 0.0f && t < tBest) {
+                    FUN_10034660(&hit, prev, &dir, t);
+                    if (FUN_10034fc0(&hit, pPlane->pV0, pPlane->pV1, pPlane->pV2, pPlane)) {
+                        tBest = t;
+                        pBest = pPlane;
+                        hitOut = hit;
+                    }
+                }
+            }
+        }
+    }
+    if (pBest == 0)
+        return;
+
+    dist = FUN_10034760(pPos, pAnchor);
+    FUN_10034660(pPos, &hitOut, pBest, 0.3f);
+    FUN_10034560(&dir, pPos, pAnchor);
+    len = FUN_100347f0(&dir);
+    if (dist < len && len != 0.0f) {
+        FUN_10034390(&dir, dist / len);
+        FUN_100345c0(pPos, pAnchor, &dir);
+    }
+    DAT_100bcdcc = 1;
+}
+
 #endif /* BR_MATCHING_BUILD */
