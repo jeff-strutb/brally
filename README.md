@@ -105,14 +105,14 @@ _Snapshot 2026-09-24._
 
 ```
 M1  Contract-valid — compiles & ports (T3 + T4)
-    ██████████████████████████████████░░░░░░  86.2%   414,257 / 480,853 B   1,428 / 1,500 fns
+    ██████████████████████████████████░░░░░░  85.8%   412,518 / 480,853 B   1,423 / 1,500 fns
 M2  Byte-exact (T4)
     ████████████████████░░░░░░░░░░░░░░░░░░░░  49.7%   238,748 / 480,853 B   1,247 / 1,500 fns
 ```
 
-The bars sit close by design: matching is byte-exact-first, so only 181
-certified-but-not-yet-exact functions (175,509 B) separate M1 from M2. Byte
-percentages trail function percentages (95.2% / 83.1% of functions) because the
+The bars sit close by design: matching is byte-exact-first, so only 176
+certified-but-not-yet-exact functions (173,770 B) separate M1 from M2. Byte
+percentages trail function percentages (94.9% / 83.1% of functions) because the
 functions still open are several times larger than the matched ones.
 
 By binary — the three EXEs are complete at both milestones (their game code is fully
@@ -124,7 +124,7 @@ decompiled, and is out of scope). All remaining work is in BRGlide.dll.
 | **BossRally.exe** | `████████████████████` 100% — 35/35 fns, 2,482 B | `████████████████████` 100% — 35/35 fns, 2,482 B |
 | **BRally.exe** | `████████████████████` 100% — 28/28 fns, 2,860 B | `████████████████████` 100% — 28/28 fns, 2,860 B |
 | **SetVideo.exe** | `████████████████████` 100% — 42/42 fns, 7,251 B | `████████████████████` 100% — 42/42 fns, 7,251 B |
-| **BRGlide.dll** | `█████████████████░░░` 86.2% — 414,257 B, 1,428 fns | `██████████░░░░░░░░░░` 49.7% — 238,748 B, 1,247 fns |
+| **BRGlide.dll** | `█████████████████░░░` 85.8% — 412,518 B, 1,423 fns | `██████████░░░░░░░░░░` 49.7% — 238,748 B, 1,247 fns |
 <!-- PROGRESS:END -->
 
 Query the tree. Do not trust a number in this file.
