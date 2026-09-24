@@ -73,7 +73,12 @@ class Net(object):
         self.cv = threading.Condition()
         self.published = [0.0] * len(boxes)
         self.done = [False] * len(boxes)
-        self.log = [[] for _ in boxes]          # per destination: (arrival, kind, payload)
+        # per destination, kept SORTED by (arrival, source box, sequence): the
+        # order two threads happen to publish in must not decide the order a
+        # box hears them (a box's own echo and its peer's message could land
+        # in either order, and the original ran differently against itself)
+        self.log = [[] for _ in boxes]          # (arrival, src, seq, kind, payload)
+        self.seq = 0
         for i, b in enumerate(boxes):
             b.net = self
             b.net_index = i
@@ -150,19 +155,33 @@ class Net(object):
     def _publish(self, box, d):
         """Move the box's outbox into the logs (caller holds cv)."""
         i = box.net_index
+        import bisect
         out, d['outbox'] = d['outbox'], []
         for ts, kind, payload in out:
+            self.seq += 1
+            e = (ts + LATENCY_MS, i, self.seq, kind, payload)
             for j in range(len(self.boxes)):
                 if j != i:
-                    self.log[j].append((ts + LATENCY_MS, kind, payload))
+                    self._insert(j, e)
             if kind == 'msg':
                 # this box's OTHER local players hear it too (DirectPlay does)
-                self.log[i].append((ts + LATENCY_MS, kind, payload))
+                self._insert(i, e)
+
+    def _insert(self, j, e):
+        log = self.log[j]
+        k = len(log)
+        while k > 0 and log[k - 1][:3] > e[:3]:
+            k -= 1
+        cur = dp_state(self.boxes[j])['cursor']
+        if k < cur:
+            raise RuntimeError('brbox_net: a message would arrive in box %d\'s past '
+                               '(%.2f < delivered)' % (j, e[0]))
+        log.insert(k, e)
 
     def _deliver(self, box, d, upto):
         log = self.log[box.net_index]
         while d['cursor'] < len(log) and log[d['cursor']][0] <= upto:
-            _t, kind, payload = log[d['cursor']]
+            _t, _src, _seq, kind, payload = log[d['cursor']]
             d['cursor'] += 1
             _apply(box, d, kind, payload)
 
