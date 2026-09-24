@@ -315,6 +315,7 @@ glide_va,name,module,basis,file
 0x1001F8F0,BrClipPlaneWMinusF0C,drawing,filed,src/core/drawing/br_dlclip.c
 0x1001FCF0,BrDlVtxFinishTex,drawing,filed,src/core/drawing/br_dlcmd.c
 0x1001FD40,BrGbiClearGeometryMode,drawing,neighbour,src/core/drawing/br_gbi.c
+0x1001FD70,BrDlVtxRoutine,drawing,filed,src/core/drawing/br_dl.c
 0x1001FEF0,BrDlCmdTri1FlatZ,drawing,neighbour,src/core/ghidra_batch.c
 0x1001FF60,BrDlTriFlatZ,drawing,filed,src/core/drawing/br_dlcmd.c
 0x10020190,BrDlClipTriFlatZ,drawing,filed,src/core/drawing/br_dltrim.c
