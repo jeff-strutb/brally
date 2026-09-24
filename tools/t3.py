@@ -326,6 +326,12 @@ def canon(row):
         d = re.fullmatch(r'R, \[R \+ (0x[0-9a-f]+|\d+|A)\]', ops)
         if d and d.group(1) not in ('1', '0x1'):
             return 'add R, ' + d.group(1)
+        # A reloc'd displacement with a negative addend prints `[R - A]`:
+        # the sign belongs to the addend, the field is still the symbol
+        # (2026-09-24, 0x10022600: `DAT_105ccd50[top - 1]` = sym - 0x40,
+        # the original's `lea esi,[eax+0x105ccd10]`).
+        if ops == 'R, [R - A]':
+            return 'add R, A'
         # lea R,[R*K] against shl R,2: the same scaled value; whether the
         # index survives in its own register is allocation.  A spilled web
         # reloads and shifts where a register web lea-scales (2026-09-09,
