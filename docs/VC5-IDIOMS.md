@@ -8400,3 +8400,13 @@ with the target's flags, diff one function against original bytes
   evaluates its arguments first and hoists every operand load above the
   bump; `p = cur; cur = p + 1` gives `lea` instead of `mov/add`.  Proven
   on 0x10015630 BrSceneSetupFrame (1239 B, ~40 emits).
+- **x87 classify that reloads its operand before each compare (`fld [x] /
+  fcomp [0]` ... `fld [x] / fcomp [0]`) = a MACRO, not an `__inline`
+  function.**  The inline function loads once and emits `fcom` + `fstp`.
+  Proven on 0x1005A7A0 BrCarPhysStep (1206 B).
+- **A pointer local whose `lea` lands late in the schedule (after several
+  stores through the base) = assigned just before its first use, not at
+  its declaration.**  The initialised declaration pulls `mov ebp,ecx` and the
+  `lea` ahead of the first call's pushes.  Same function.
+- **An if/else whose fall-through is the constant store = the `!=` test with
+  the constant arm first** (`jne copy` over `mov [x],0`).  Same function.
