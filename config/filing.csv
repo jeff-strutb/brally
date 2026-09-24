@@ -1008,6 +1008,7 @@ glide_va,name,module,basis,file
 0x1005E6A0,BrCarInitTables,racing,description,src/core/racing/br_carinit.c
 0x1005E780,BrCarClear29C8,racing,neighbour-1,src/core/racing/br_carinit.c
 0x1005E7B0,BrCarStartInit_1005E7B0,racing,manual,src/core/racing/BrCarStartInit_1005E7B0.cpp
+0x1005ECF0,BrRacePathAdvance,,description,src/core/generated/0x1005ECF0.c
 0x1005EDC0,BrMakeEnemyCarColorPanels,drawing,filed,src/core/drawing/br_model.c
 0x1005F220,BrModelSlotApply,drawing,description,src/core/drawing/br_model.c
 0x1005F530,BrDriverAssetsFree,racing,neighbour-1,src/core/racing/br_driver.c
@@ -1127,6 +1128,7 @@ glide_va,name,module,basis,file
 0x1006B6E0,FUN_1006b6e0,audio,description,src/core/audio/br_sndslot.c
 0x1006B730,BrSndVoiceSetFreq,audio,filed,src/core/audio/br_sfxsrc.c
 0x1006B790,BrSndVoiceSetLR,audio,manual,src/core/audio/br_sndvoicestereo.c
+0x1006B880,BrSfxChanStart,audio,filed,src/core/audio/br_sfxsrc.c
 0x1006B950,BrSndBufSetPan,audio,filed,src/core/audio/br_musiccmd.c
 0x1006B970,BrSndVoiceBufStart,audio,neighbour,src/core/audio/br_sndvoice.c
 0x1006B9E0,BrWrap_10072A70,audio,filed,src/core/audio/br_musiccmd.c
@@ -1175,6 +1177,7 @@ glide_va,name,module,basis,file
 0x1006D160,BrBitStreamAlignWrite,gamedata,manual,src/core/gamedata/br_bitstream.c
 0x1006D180,BrCountedTotal,settings,filed,src/core/settings/br_state.c
 0x1006D190,BrStateGetField10,settings,filed,src/core/settings/br_state.c
+0x1006D1A0,BrStrResLoad,gamedata,filed,src/core/gamedata/br_strres.c
 0x1006D280,BrStrGet,menus,description,src/core/menus/br_strget.c
 0x1006D2A0,BrStrResFree,gamedata,filed,src/core/gamedata/br_strres.c
 0x1006D410,BrVec4Normalise,geometry,filed,src/core/geometry/br_vecnorm.c
@@ -1238,6 +1241,7 @@ glide_va,name,module,basis,file
 0x100703D0,FUN_100703d0,controls,neighbour-1,src/core/generated/0x100703D0.c
 0x10070490,BrDikGetDeviceState,controls,description,src/core/controls/br_dik.c
 0x100704E0,BrJoyScanAny,controls,filed,src/core/controls/br_dik.c
+0x100705F0,BrInputPollPressed,controls,filed,src/core/controls/br_input.c
 0x100706B0,BrDiAcquire,controls,neighbour-1,src/core/generated/0x100706B0.c
 0x100719D0,BrInputJustPressed,controls,filed,src/core/controls/br_inputpoll.c
 0x10071EB0,BrDiKeyboardShutdown,racing,neighbour-1,src/core/generated/0x10071EB0.c
