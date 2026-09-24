@@ -562,16 +562,17 @@ BrGfxWords *BrGbiMoveMemMatrix(BrGbiState *pSt, BrGfxWords *pCmd,
  * lights, or the combined transform matrix, chosen by an index byte. Indexes
  * outside the known set are ignored. The port clamps a light copy to the
  * light array, which the original did not. */
-/* @t4-pass 0x10023810 1 2026-09-07 probes 54 bytes 243 insns 100 regions 5 rows 59 census yes  (tools/crank.py) */
-/* @t4-pass 0x10023810 2 2026-09-07 probes 54 bytes 243 insns 100 regions 5 rows 59 census yes  (tools/crank.py) */
 /* @implements 0x10023810 glide BrGbiMoveMem */
 #ifdef BR_MATCHING_BUILD
 BrGfxWords *BrGbiMoveMem(BrGfxWords *pCmd)
 {
+    /* Hand-transcribed from the asm.  The index is a CAST to unsigned char:
+     * that keeps w0 in esi and extracts with `shr eax,0x10; and eax,0xff`,
+     * where `& 0xFF` makes VC5 spill w0 and re-read one byte of it.  Case
+     * blocks follow source order, so the matrix case sits before the light
+     * copies, as in the original. */
     unsigned w0  = pCmd->w0;
-    unsigned idx = (w0 >> 16) & 0xFFu;
-    unsigned len;
-    unsigned slot;
+    unsigned idx = (unsigned char)(w0 >> 16);
 
     switch (idx) {
     case 0x80:
@@ -582,6 +583,8 @@ BrGfxWords *BrGbiMoveMem(BrGfxWords *pCmd)
     case 0x84:
         DAT_105ce2dc = (int)pCmd->w1;
         return pCmd + 1;
+    case 0x9E:
+        return BrGbiMoveMemMatrix(pCmd);
     case 0x86:
     case 0x88:
     case 0x8A:
@@ -590,19 +593,13 @@ BrGfxWords *BrGbiMoveMem(BrGfxWords *pCmd)
     case 0x90:
     case 0x92:
     case 0x94:
-        /* idx extract is shr/and on a copy of w0 (esi stays w0 until
-         * memcpy reuses it as the source pointer).  Length is w0's low
-         * 16; dest is 0x105CCC78 + ((idx-0x86)>>1)*16. */
-        len  = w0 & 0xFFFFu;
-        slot = ((idx - 0x86u) >> 1) << 4;
-        memcpy(DAT_105ccc78 + slot, (void *)(uintptr_t)pCmd->w1, len);
+        /* dest is 0x105CCC78 + ((idx-0x86)>>1)*16, length w0's low 16 */
+        memcpy(DAT_105ccc78 + ((idx - 0x86) >> 1) * 16,
+               (void *)(uintptr_t)pCmd->w1, w0 & 0xFFFF);
         DAT_105d17d0 = 0;
-        return pCmd + 1;
-    case 0x9E:
-        return BrGbiMoveMemMatrix(pCmd);
-    default:
-        return pCmd + 1;
+        break;
     }
+    return pCmd + 1;
 }
 #else
 BrGfxWords *BrGbiMoveMem(BrGbiState *pSt, BrGfxWords *pCmd, const void *pSrc)
