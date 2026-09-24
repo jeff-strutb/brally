@@ -329,9 +329,19 @@ class Oracle(object):
         for pa in probes:
             def on_probe(uc_, a, sz, ud):
                 top = box.fpu_top()
+                pm = os.environ.get('T3LIVE_PROBE_MEM')
+                if pm:
+                    reg, off, n = pm.split(',')
+                    rv = uc_.reg_read({'esp': UC_X86_REG_ESP, 'ebp': UC_X86_REG_EBP,
+                                       'esi': UC_X86_REG_ESI, 'edi': UC_X86_REG_EDI}[reg])
+                    base = (rv + int(off, 0)) & 0xFFFFFFFF
+                    fl = struct.unpack('<%df' % int(n, 0), bytes(uc_.mem_read(base, 4 * int(n, 0))))
+                    print('  mem %s %08X: %s' % ('t3' if self._cur_side_t3 else 'orig', a,
+                                                 ' '.join('%.6g' % x for x in fl)))
                 box.log_probe.append((a, [float.hex(box.st(k)) if os.environ.get("T3LIVE_HEX") else round(box.st(k), 9) for k in range(4)],
                                       {n: uc_.reg_read(r) for n, r in (('eax', UC_X86_REG_EAX),
                                                                        ('ebx', UC_X86_REG_EBX),
+                                                                       ('edx', UC_X86_REG_EDX),
                                                                        ('ecx', UC_X86_REG_ECX),
                                                                        ('esi', UC_X86_REG_ESI),
                                                                        ('edi', UC_X86_REG_EDI),
@@ -1048,11 +1058,16 @@ def explain_cli(a):
     orc = Oracle(box, targets, per_fn=cap_idx + 1, log=print, image=a.image)
     orc.explain = (va, cap_idx)
     orc.explain_frame = a.frame
+    peer = brbox_drive.start_peer_if_any(box, drv, a.script)
     try:
         box.boot()
         box.rally_main()
     except (Stop, GuestFault) as e:
         pass
+    finally:
+        if peer is not None:
+            peer[2].stop()
+            peer[0].join(60)
     t = orc.t[va]
     if cap_idx >= len(t.captures):
         print('capture %d was not reached' % cap_idx)
