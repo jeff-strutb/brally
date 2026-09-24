@@ -123,7 +123,7 @@ extern "C" {
     int sub_1001C810();
     int sub_1005C450();
     int sub_10018310();
-    int sub_100023F0(void*, int);
+    int sub_100023F0(void*, float);   /* (buffer, seconds): the time is a float */
     int sub_1005F580();
     int sub_10033BB0();
     int sub_10016C90();
@@ -968,7 +968,9 @@ extern "C" void BrRaceStep(void)
                                                      clx, g_0B3014, (clx != g_0B3014),
                                                      e8, 8, (e8 <= 8));
                                         g_5BC8D8 = 0x10;
-                                        q = *(int**)PI(*(int**)&g_AF3BC8, 0x2c);
+                                        /* 0x1001afad: q IS the pointer at driver0+0x2c
+                                         * (mov eax,[edx+0x2c]; mov ecx,[eax]) */
+                                        q = (int*)PI(*(int**)&g_AF3BC8, 0x2c);
                                         g_5BC8E0 = q[0];
                                         g_5BC8E4 = q[1];
                                         g_5BC8E8 = 0; g_5BC8EC = 0;
