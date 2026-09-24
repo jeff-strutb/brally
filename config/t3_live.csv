@@ -161,7 +161,6 @@ va,name,verdict,calls,captured,contexts,detail,date
 0x1006ce50,BrBitStreamReadU24,EQUIVALENT,3402,12,6,61_mp_race: 6 real call(s) agree,2026-09-23
 0x1006ce80,BrBitStreamReadS32,EQUIVALENT,22,9,3,61_mp_race: 6 real call(s) agree,2026-09-23
 0x1006d0b0,BrBitStreamWriteBits_1006D0B0,EQUIVALENT,31918,12,12,61_mp_race: 6 real call(s) agree,2026-09-23
-0x1006d530,BrRbQuatDerivative,EQUIVALENT,302387,114,56,20_quickrace_drive: 6 real call(s) agree,2026-09-23
 0x1006e360,BrTimeUpdate,EQUIVALENT,5900,114,62,10_boot: 1 real call(s) agree,2026-09-23
 0x1006e5c0,BrCarTrackLocate,EQUIVALENT,159060,114,19,20_quickrace_drive: 6 real call(s) agree,2026-09-23
 0x1006ec30,FUN_1006ec30,EQUIVALENT,176914,114,38,20_quickrace_drive: 6 real call(s) agree,2026-09-23
