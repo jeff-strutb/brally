@@ -23,6 +23,8 @@ is one entry to BrAppFrame 0x1001CF80, the main loop's per-frame call):
     text                  log every string the last frame drew, with its pen
     shot NAME             write the framebuffer to <shots>/NAME.png
     mark NAME             coverage checkpoint: record frame + state
+    joystick plain|ffb    (applied before boot) attach a wheel, with or without
+                          force feedback; the arrow keys steer it
     peer SCRIPT           (applied before boot) run a second game on a virtual
                           network with this one, driven by SCRIPT (a path
                           relative to this script); the two meet every frame
@@ -205,7 +207,7 @@ class Driver(object):
                     '%s@%d,%d' % (t, x, y) for x, y, t in self.text_last)))
             elif op == 'shot':
                 self.shot(box, args[0])
-            elif op in ('files', 'peer'):
+            elif op in ('files', 'peer', 'joystick'):
                 pass                                    # applied before boot
             elif op == 'savefiles':
                 save_files(box, os.path.join(brbox.ROOT, 'build', 'brbox', 'saves', args[0]))
@@ -409,6 +411,8 @@ def attach(box, driver):
     for op, args, _line in driver.steps:
         if op == 'files':
             load_files(box, args[0])
+        elif op == 'joystick':
+            box.hs.joystick = args[0]             # 'plain' or 'ffb'
     box.on_lfb = driver.on_lfb
     if driver.shots:
         import brbox_glraster

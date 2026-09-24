@@ -1,0 +1,42 @@
+# A force-feedback wheel attached: options -> input device cycled to the
+# joystick, then a quick race steered with it (FFB device setup, effects).
+joystick ffb
+sleep 240
+mark main_menu
+mouse 250 208
+click
+sleep 30
+mouse 250 138
+click
+sleep 30
+mouse 250 138
+click
+sleep 20
+click
+sleep 20
+mark joystick_selected
+shot ffb_input
+mouse 250 252
+click
+sleep 30
+mouse 250 252
+click
+sleep 30
+mark main_menu_again
+mouse 250 190
+click
+sleep 40
+mouse 252 233
+click
+sleep 40
+mouse 252 233
+click
+sleep 300
+mark grid
+press SPACE
+sleep 150
+autopilot on
+sleep 1200
+shot ffb_racing
+autopilot off
+end
