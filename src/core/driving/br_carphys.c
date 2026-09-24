@@ -726,47 +726,53 @@ extern double DAT_10077b10;   /* 36000.0 */
 extern double DAT_10077b18;   /* 360.0  */
 extern double DAT_10077b20;   /* 0.0    */
 extern float  DAT_10077b28;   /* -360.0f */
-extern float BrCosF(float x);            /* 0x100023E0 */
-extern float BrSinF(float x);            /* 0x10002560 */
+extern double BrCosF(float x);           /* 0x100023E0 */
+extern double BrSinF(float x);           /* 0x10002560 */
 
 /* `fcom 0` + `test ah,1` + a conditional `fchs`: negated for less OR
  * unordered, read twice (a store-form abs CSEs the load). */
 #define BR_TYRE_ABS(v) ((v) < 0.0f ? -(v) : (v))
 
-/* T2 2026-09-13 (first matching transcription, from the port's shape): 1340/1355 B,
- * 380/384 insns, register-blind multiset 9+13, four masked regions, no
- * lost-sync.  Levers that landed: the wheel body is the SECOND parameter and
- * carries its own hit record (plane pointer, surface byte, normal at +0x1A4);
- * the rolling direction is ONE vector `c` (a x n, then n x c into `d`, then
- * scaled in place by cos and combined `sn*d + c`), the body-frame force
- * lands in `a` (its .x/.y are zeroed dead before the mass load and its .z
- * carries the mass*g intermediate); the wheel dot must be grouped
- * `(vx*cx + vy*cy) + vz*cz`; the spin is ONE expression with the relaxed
- * term reading the un-named spin twice (a named `w` in two statements
- * reorders `r * w`); the contact gate is one && chain in the order 0,2,1,3
- * with the free-spin arm as its else; the wrap tail is an && chain with the
- * zero store as its else (goto-to-a-shared-zero puts the block mid-function);
- * the fold-up subtracts the FLOAT global DAT_10077b28 (a literal folds to a
- * double); `_finite` through the import table.
- * RESIDUE (scheduler, four regions): (1) after cos/sin the original pops
- * sin to the wheel's argument home and reloads it per product, ours keeps a
- * copy; (2) in the load/dot block the original loads v.z before the mass*g
- * multiply and spills q after it; (3) the traction clamp's then-arm ends
- * with an empty x87 stack (`fmul [q]` destructive, `jmp` over the skip
- * arm's pop), ours keeps the abs temp and shares the pop; (4) the display
- * angle product loads f1C4 first (f1C4, K, dt) where ours loads dt first --
- * a symbol-index tie-break: the same statement in a standalone TU compiles
- * f1C4-first, and including the repo headers flips it.
- * DEAD (byte-identical or worse): sn/cs product order and grouping (6),
- * trig in-place forms (5); load/dot statement orders (7), dot groupings
- * (3), q before/after load, parenthesised load; clamp as `q *= ...`,
- * `q * abs`, `(abs*q)*k`, `abs*(q*k)`, named temps with and without the
- * if-form (5); display angle with parens, a temp, `-=`, double, dt copy,
- * K as a global (9); the constants as DAT_ globals (worse); every single
- * declaration move of the 17 locals (272 compiles: only sn-before-d
- * differs, and it swaps region 1 for a d-preload shape); corpus MISS on
- * all four regions.  Mechanism notes: VC5 honours explicit parentheses in
- * float products (`(a*K)*dt` vs `a*K*dt` differ); literals sort last.
+/* T2 2026-09-24 (hand re-transcription from the asm): 1336/1355 B, 380/384
+ * insns, register-blind multiset 5+9, no lost-sync.  Levers from the
+ * 2026-09-13 pass still hold (wheel body second parameter carrying its own
+ * hit record; one rolling vector `c`; force lands in `a`; grouped wheel dot;
+ * single-expression spin; && contact gate 0,2,1,3 with the free-spin else;
+ * && wrap tail with the zero else; float -360 global; `_finite` import).
+ * Levers added 2026-09-24:
+ *  - the traction clamp's then-arm is an explicit temp negated in place
+ *    (`r = load/q; if (r < 0) r = -r; q = r*q*0.1f`): `fmul [q]` straight off
+ *    the abs, `jmp` over the skip arm's pop.  The ?: macro kept a CSE copy.
+ *  - the push-back force negates q ONCE and multiplies registers
+ *    (`fld q; fld c.x..z; fchs; fmul st(2)`): written `c.x * (0.0f - q)`,
+ *    which VC5 folds to one CSE'd fchs.  `c.x * -q` becomes -(c.x*q) per
+ *    component; a named float `-q` temp copies it and uses `fmul [c]`.  A
+ *    double temp gives the same bytes as `0.0f - q`.
+ *  - the display-angle product is `(f1C4 * K) * dt` (explicit grouping).
+ *  - NO `pM` local: `&pBody->m` at both matrix calls.  With a `pM` local the
+ *    spin's `r * X` product copies X and uses `fmul [r]`; without it r is
+ *    preloaded as in the original.  The spin statement's own spelling is
+ *    inert (5 forms byte-identical) -- this is a CSE-numbering tie-break.
+ *  - BrCosF/BrSinF return double (br_cos.c defines BrCosF so); byte-neutral.
+ * RESIDUE (four regions, all order/allocation, same multiset per region):
+ * (1) cos/sin combine: the original pops sin to the arg home and reloads
+ *     it per product, stores cs*c back into c and re-reads it with
+ *     `fadd [c]` after ALL three stores; ours forwards cs*c in registers.
+ *     Aliasing c (struct/array/pointer/inline helpers/bogus call) stops
+ *     the forwarding but reorders the cross-product stores that match
+ *     today; unaliased c always forwards.  Forms tried (40+): split and
+ *     compound statements, cos-scale before the sin call, operand orders
+ *     and parenthesisations (A6/zw: new shapes, none exact), double trig
+ *     temps (frame breaks), /O2 variants (/Ox /Oa /Ow /Oy- /G3-6 worse).
+ * (2) load/dot block: pure list-scheduling; all 12 legal orders of the
+ *     mass*g / load / dot / *pA statements fall in three families, none
+ *     exact.
+ * (3) grip index: the original evaluates row*8 first in eax (`shl eax,3;
+ *     movsx`), ours last via `lea eax,[ecx*8]`; 13 spellings (shift, *=,
+ *     casts, inline, every association) are byte-identical.
+ * (4) BrMat4MulVec3 argument registers edx/eax vs ecx/edx and push order.
+ * Zero-code probes that are inert: dead stores, unused externs, renaming
+ * dt, `(void)&c`.
  */
 /* WHAT IT DOES: the per-wheel tyre pass.  For a wheel on the ground it takes
  * the car's own sideways axis, projects it into the contact plane and turns
@@ -782,7 +788,6 @@ extern float BrSinF(float x);            /* 0x10002560 */
 void BrCarPhysTyre(BrTyreView *pBody, BrTyreView *pWheel, float *pA,
                    const unsigned char *pB, float dt)
 {
-    BrMat4 *pM;
     BrVec3  c;
     BrVec3  a;
     BrVec3  d;
@@ -793,6 +798,7 @@ void BrCarPhysTyre(BrTyreView *pBody, BrTyreView *pWheel, float *pA,
     float   sn;
     float   tq;
     float   q;
+    float   r;
     float   load;
     float   dot;
     float   w;
@@ -807,8 +813,7 @@ void BrCarPhysTyre(BrTyreView *pBody, BrTyreView *pWheel, float *pA,
         return;
     if ((double)pWheel->hit.nz < 0.7)
         return;
-    pM = &pBody->m;
-    BrMat4MulVec3Transposed(&a, pM, &axis);
+    BrMat4MulVec3Transposed(&a, &pBody->m, &axis);
     c.x = a.y * pWheel->hit.nz - a.z * pWheel->hit.ny;
     c.y = a.z * pWheel->hit.nx - a.x * pWheel->hit.nz;
     c.z = a.x * pWheel->hit.ny - a.y * pWheel->hit.nx;
@@ -840,12 +845,16 @@ void BrCarPhysTyre(BrTyreView *pBody, BrTyreView *pWheel, float *pA,
                 + ((pWheel->hit.surface + pWheel->hit.surface + 1) >> 1);
             q = g_pBrCarPhysGrip[idx] * q;
         }
-        if (BR_TYRE_ABS(q) > BR_TYRE_ABS(load))
-            q = BR_TYRE_ABS(load / q) * q * 0.10000000149011612f;
-        fw.x = c.x * -q;
-        fw.y = c.y * -q;
-        fw.z = c.z * -q;
-        BrMat4MulVec3(&a, pM, &fw);
+        if (BR_TYRE_ABS(q) > BR_TYRE_ABS(load)) {
+            r = load / q;
+            if (r < 0.0f)
+                r = -r;
+            q = r * q * 0.10000000149011612f;
+        }
+        fw.x = c.x * (0.0f - q);
+        fw.y = c.y * (0.0f - q);
+        fw.z = c.z * (0.0f - q);
+        BrMat4MulVec3(&a, &pBody->m, &fw);
         pWheel->pForces->f.x = a.x + pWheel->pForces->f.x;
         pWheel->pForces->f.y = a.y + pWheel->pForces->f.y;
         pWheel->pForces->f.z = a.z + pWheel->pForces->f.z;
@@ -864,7 +873,7 @@ void BrCarPhysTyre(BrTyreView *pBody, BrTyreView *pWheel, float *pA,
             s = -1.0f;
         pWheel->f1C4 = s * 300.0f;
     }
-    pWheel->f1D4 = pWheel->f1D4 - pWheel->f1C4 * 57.2957763671875f * dt;
+    pWheel->f1D4 = pWheel->f1D4 - (pWheel->f1C4 * 57.2957763671875f) * dt;
     if (_finite((double)pWheel->f1D4) != 0 && !((double)pWheel->f1D4 < -36000.0)
      && (double)pWheel->f1D4 < 36000.0) {
         while ((double)pWheel->f1D4 > 360.0)
