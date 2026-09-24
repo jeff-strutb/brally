@@ -1504,9 +1504,10 @@ Lb887:  /* 0x1001b887 */
                         int   k  = 0;
                         do {
                             int *d = *(int**)s;
+                            /* 0x1001c2dc: `inc ecx` before the stores -- slots 1..n */
+                            k++; s += 0x2b68;
                             *(int*)((char*)&g_5BC814 + k * 4) = PI(d, ea);
                             *(int*)((char*)&g_5BC88C + k * 4) = PI(d, eb);
-                            k++; s += 0x2b68;
                         } while (k < n);
                     }
                     if (g_0B3858 > 0) {           /* 0x1001c305 report + clear */
