@@ -23,6 +23,8 @@ is one entry to BrAppFrame 0x1001CF80, the main loop's per-frame call):
     text                  log every string the last frame drew, with its pen
     shot NAME             write the framebuffer to <shots>/NAME.png
     mark NAME             coverage checkpoint: record frame + state
+    tmu N                 (applied before boot) a Voodoo with N MB of texture
+                          memory (default 4) -- less makes the game downsample
     joystick plain|ffb    (applied before boot) attach a wheel, with or without
                           force feedback; the arrow keys steer it
     peer SCRIPT           (applied before boot) run a second game on a virtual
@@ -207,7 +209,7 @@ class Driver(object):
                     '%s@%d,%d' % (t, x, y) for x, y, t in self.text_last)))
             elif op == 'shot':
                 self.shot(box, args[0])
-            elif op in ('files', 'peer', 'joystick'):
+            elif op in ('files', 'peer', 'joystick', 'tmu'):
                 pass                                    # applied before boot
             elif op == 'savefiles':
                 save_files(box, os.path.join(brbox.ROOT, 'build', 'brbox', 'saves', args[0]))
@@ -413,6 +415,8 @@ def attach(box, driver):
             load_files(box, args[0])
         elif op == 'joystick':
             box.hs.joystick = args[0]             # 'plain' or 'ffb'
+        elif op == 'tmu':
+            box.hs.tmu_mb = int(args[0])          # texture memory per TMU, MB
     box.on_lfb = driver.on_lfb
     if driver.shots:
         import brbox_glraster
