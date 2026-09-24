@@ -9,6 +9,46 @@
  * Filed on its own, like the rest of the family: br_dl.c's TU context
  * carries byte-exact functions whose x87 scheduling moves when a body is
  * added there.  Matching arm only; the port runs br_dl.c's portable path.
+ *
+ * WHAT IT IS FOR: lighting a model drawn with the depth buffer OFF -- an
+ * N64 idiom for lit geometry layered over the scene without depth tests.
+ * The handler selector 0x1001FD70 installs it (0x1001FE9E, its only install
+ * site) whenever the geometry mode has LIGHTING (0x20000) set and ZBUFFER
+ * (0x1) clear.  The PC game never produces that state.
+ *
+ * DEAD CODE IN THE PC RELEASE -- settled 2026-09-24, do not re-litigate:
+ *  - The geometry mode 0x105D17C8 has exactly two writers, the display-list
+ *    handlers G_CLEARGEOMETRYMODE 0x1001FD40 and G_SETGEOMETRYMODE
+ *    0x100211E0; BRally.exe and BossRally.exe never reference it.  Its
+ *    initial value is 0.  So the state comes only from 0xB6/0xB7 commands.
+ *  - No asset emits those: a census of all 1577 files under the CD (363 of
+ *    them with >20 aligned combiner commands, i.e. readable display lists)
+ *    finds no geometry-mode command with valid bits.  Every one is built in
+ *    BRGlide.dll code: 59 emit sites, each traced to its operand.
+ *  - Lighting is set without depth in ONE place, the object builder
+ *    0x1000CBA0 (0x1000CEDE / 0x1000CEF6: 0x30004 / 0x20004), called only
+ *    from the scene builder 0x1000EAF0.  Every scene-build pass first emits
+ *    SET (cull | fog-if-0x106ED6A8 | 0xA0005) at 0x1000F083 / 0x1000F289 -- depth,
+ *    lighting and shade -- with no return before it (br_scenedl.c).
+ *  - Depth is cleared on its own only by the text drawer 0x100168C0
+ *    (0x100168D7), the HUD dial 0x100140B0 (0x10014210, restored at
+ *    0x10014729) and frame setup 0x10015630 (0x10015910, CLR 0xF0205, then
+ *    SET 0x20205 at 0x10015ADE).  None is reachable from the scene builder:
+ *    text runs after each view's world pass (HUD, FPS readout, captions,
+ *    frame present); the object builder's one log call (0x1000D9DF, "BAD
+ *    VTX DL", a fatal-data path) draws into its own stack display list at
+ *    0x10008EF0 and never reaches the frame's.  Frame setup's early returns
+ *    (rain/storm/no-sky plain clear; the never-written 0x106ED698) skip its
+ *    reset, but the scene builder's own SET re-enables depth regardless.
+ *  - Measured: with a code hook on both geometry-mode writers, a rainy
+ *    quick race performs 18,528 writes and none leaves LIGHTING set with
+ *    ZBUFFER clear; sunny, rainy, snowy and night races and all 25 brbox
+ *    scripts call this function 0 times (0x10023110, its unlit twin, 337+).
+ *  - BRD3D.dll: same executables, same data, same geometry-mode sources.
+ *    The N64 original was not checked for this mode.
+ *  Consequence: the live oracle (A5) can never reach it, so T3 is closed to
+ *  this function; only byte-exact T4 finishes it.
+ * STATUS: EXCLUDED (T2)
  */
 #include <stdint.h>
 #include <stddef.h>
