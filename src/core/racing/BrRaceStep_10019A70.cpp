@@ -1466,7 +1466,8 @@ Lb887:  /* 0x1001b887 */
             }
             g_6ED6D8 = 0;                         /* 0x1001c236 finalize dispatch */
             if (g_5CCB98 != 0) {
-                if (g_5CCB8C != 0) goto Lc372;
+                /* 0x1001c249: `je` -- the race-end path runs when the flag is CLEAR */
+                if (g_5CCB8C == 0) goto Lc372;
                 if (g_5CCB88 != 0) goto Lc368;
                 {                                 /* 0x1001c261 leader min-search */
                     int  n   = g_0B3858;
@@ -1537,8 +1538,10 @@ Lb887:  /* 0x1001b887 */
                     sub_1002E317((void*)&sub_10002460);
                     goto Lc45c_0;
                 }
-                if (st == 4 && c == 1) goto Lc44d;
-                if (c == 0 && g_5BCAE0 == 0) goto Lc44d;
+                if (st == 4) {                    /* 0x1001c3f4: both tests under st == 4 */
+                    if (c == 1) goto Lc44d;
+                    if (c == 0 && g_5BCAE0 == 0) goto Lc44d;
+                }
                 if (g_5CCB98 != 2) goto Lc44d;
                 if (!(g_6EC760 == g_B71A68 && g_6E9A34 == g_B71A6C))   /* 0x1001c417 */
                     ((Obj*)&g_B71290)->m_100634B0((int)&g_B72F48);
