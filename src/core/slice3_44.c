@@ -444,10 +444,10 @@ void BrRbQuatDerivative(BrRbState *pS)
      * whole and restores `sub esp, 0xc` with the slots in declaration order.
      * BrVec3 and float[3] compile identically here; BrVec3 reads better.
      *
-     * ROW 3 SUBTRACTS SECOND, NOT LAST.  `h.z*f04 - h.x*f0C + h.y*f00`, not
-     * `h.z*f04 + h.y*f00 - h.x*f0C`.  Only row 3 takes this form; rows 2 and
-     * 4 keep the plus-then-minus shape, and their own alternatives change
-     * nothing (measured, all give the same score).
+     * ‼ WITHDRAWN 2026-09-23: "ROW 3 SUBTRACTS SECOND" (`h.z*f04 - h.x*f0C +
+     * h.y*f00`) removed one `fxch` but computes a different sum -- the
+     * original's x87 DAG is (hz*q1 + hy*q0) - hx*q3.  Float addition does
+     * not reassociate; a spelling that changes the DAG is never a lever.
      *
      * ‼ CORRECTION.  An earlier version of this note claimed 23 bytes of
      * residue with "instruction stream, count and size exact (RAW and REGNORM
@@ -488,7 +488,10 @@ void BrRbQuatDerivative(BrRbState *pS)
      * `-hx*x - hy*y - hz*z`, evaluated left to right. */
     pS->qDot.f00 = -h.x * pS->quat.f04 - h.y * pS->quat.f08 - h.z * pS->quat.f0C;
     pS->qDot.f04 = h.y * pS->quat.f0C + h.x * pS->quat.f00 - h.z * pS->quat.f08;
-    pS->qDot.f08 = h.z * pS->quat.f04 - h.x * pS->quat.f0C + h.y * pS->quat.f00;
+    /* row 3 is plus-then-minus like rows 2 and 4 (the original's x87
+     * DAG: (hz*q1 + hy*q0) - hx*q3); a subtract-second spelling moved
+     * bytes and changed the rounding -- the whole-image run caught it */
+    pS->qDot.f08 = h.z * pS->quat.f04 + h.y * pS->quat.f00 - h.x * pS->quat.f0C;
     pS->qDot.f0C = h.x * pS->quat.f08 + h.z * pS->quat.f00 - h.y * pS->quat.f04;
 }
 
