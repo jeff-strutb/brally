@@ -11,8 +11,23 @@
  * is added there.
  */
 #include <stdint.h>
-#include "br_dl.h"
+#include <stddef.h>
 #include "br_vec.h"
+typedef struct BrDlVtx {
+    float   x, y, z;
+    float   r, g, b;
+    float   ooz;
+    float   a;
+    float   oow;
+    float   tmu0[3];
+    float   tmu1[3];
+    int32_t outcode;
+    float   f40;
+    float   cx, cy, cz;
+    float   s, t;
+    float   cw;
+    float   n0, n1, n2;
+} BrDlVtx;
 
 #ifdef BR_MATCHING_BUILD
 
@@ -71,8 +86,23 @@ extern void    FUN_10022AC0(const void *, void *);
 extern int32_t FUN_10022120(void *);
 extern void    FUN_10022070(void *, void *, float, float, float);
 
+extern float DAT_105cd9f8;
+extern int32_t     DAT_105ce310;
+extern float DAT_10077404;
+extern float       DAT_105cd9fc;
+extern float DAT_10077408;
+extern float DAT_10077428;
+extern float DAT_1007742c;
+extern float       DAT_105cd9f8;
+extern float DAT_105ccd48;
+extern uint8_t DAT_105ccc8a;
+extern uint32_t DAT_105ccc88;
+extern int DAT_118ec988;
+extern float       DAT_105ccfdc;
+extern int DAT_1186c954;
+extern uint8_t DAT_105ccc7a;
 /* T2 2026-09-24 (hand transcription from the asm), compiled like the rest of
- * its original TU with /O2 /Op: 1213/1212 B; 86 of 362 instructions still differ
+ * its original TU with /O2 /Op: 1211/1212 B; 75 of 362 instructions still differ
  * (difflib count).  Spellings that each moved a whole class (all measured):
  *  - the lights are N64 Light records read as BYTES: VC5 merges col[0]/col[1]
  *    into one dword load + `and`/`mov dl,ah`, exactly as the original;
@@ -92,7 +122,10 @@ extern void    FUN_10022070(void *, void *, float, float, float);
  *  - the source pointer is walked (`pSrc->x`, `pSrc++`), which gives it ebx;
  *  - the light-direction bytes are inline casts at their use; the setup
  *    order, groupings and declaration order were found by a hill-climb over
- *    those choices (scratchpad generator, score = mismatched instructions).
+ *    those choices (scratchpad generator, score = mismatched instructions);
+ *  - the file carries its own minimal BrDlVtx typedef instead of br_dl.h and
+ *    declares the TU's other light/clip globals: the symbol table in front
+ *    of the function decides x87 operand-role ties (x vs the x column).
  * Open: `lea reg,[reg+matrices]` (family-wide; every spelling gives `add`),
  * m[0]*n0 operand role, loop-head register choice, a few fxch. */
 /* WHAT IT DOES: transforms a batch of vertices through the combined matrix,
@@ -102,34 +135,38 @@ extern void    FUN_10022070(void *, void *, float, float, float);
 /* @implements 0x10022600 glide BrDlVtxGen */
 const uint8_t *BrDlVtxGen(const uint8_t *p)
 {
-    int32_t oc;
     int v0;
-    float lx0, lx1, lx2, ly0, ly1, ly2;
-    const float *pn;
-    float dotX_128;
-    float texDimA, texOffB, texDimC, texOffD;
-    const BrDlSrcVtxT *pSrc;
-    BrVec3 td;
-    int i;
-    int n;
-    float *m;
-    uint32_t w0;
     const uint8_t *look1, *look2;
+    const float *pn;
+    BrVec3 td;
     BrDlVtx *pVc;
+    int n;
+    int off;
+    int i;
+    const BrDlSrcVtxT *pSrc;
+    float dx, dy, dz;
+    float dotX_128;
+    uint32_t w0;
     BrDlVtx *pV;
+    float *m;
+    int32_t oc;
 
     if (!DAT_105d17d0) {
         if (DAT_105ccfd0 != 0) {
-            if (DAT_100a9a50 != 0)
-                m = DAT_105ccd10[DAT_100a9a50].m;
-            else
+            if (DAT_100a9a50 != 0) {
+                off = DAT_100a9a50 << 6;
+                m = (float *)((char *)DAT_105ccd10 + off);
+            } else
                 m = NULL;
+            dy = (float)DAT_105ccc78[0].dir[1];
+            dx = (float)DAT_105ccc78[0].dir[0];
             DAT_105ce210 = (float)DAT_105ccc78[0].col[0];
             DAT_105ce214 = (float)DAT_105ccc78[0].col[1];
             DAT_105ce218 = (float)DAT_105ccc78[0].col[2];
-            DAT_105ce21c = ((m[1] * (float)DAT_105ccc78[0].dir[1] + m[2] * (float)DAT_105ccc78[0].dir[2]) + m[0] * (float)DAT_105ccc78[0].dir[0]) / DAT_10077420;
-            DAT_105ce220 = ((m[4] * (float)DAT_105ccc78[0].dir[0] + m[6] * (float)DAT_105ccc78[0].dir[2]) + m[5] * (float)DAT_105ccc78[0].dir[1]) / DAT_10077420;
-            DAT_105ce224 = ((m[8] * (float)DAT_105ccc78[0].dir[0] + m[10] * (float)DAT_105ccc78[0].dir[2]) + m[9] * (float)DAT_105ccc78[0].dir[1]) / DAT_10077420;
+            dz = (float)DAT_105ccc78[0].dir[2];
+            DAT_105ce21c = ((m[1] * dy + m[2] * dz) + m[0] * dx) / DAT_10077420;
+            DAT_105ce220 = ((m[4] * dx + m[6] * dz) + m[5] * dy) / DAT_10077420;
+            DAT_105ce224 = ((m[8] * dx + m[10] * dz) + m[9] * dy) / DAT_10077420;
             FUN_100344D0(&DAT_105ce21c);
             DAT_105ce228 = (float)DAT_105ccc78[1].col[0];
             DAT_105ce22c = (float)DAT_105ccc78[1].col[1];
@@ -147,15 +184,12 @@ const uint8_t *BrDlVtxGen(const uint8_t *p)
     pn = &pSrc->n1;
     pVc = pV;
     for (i = 0; i < n; i++) {
-        pV[i].cx = (DAT_105d1780 * pn[-4]) + (DAT_105d1770 * pn[-5]) + (pSrc->x * DAT_105d1760) + DAT_105d1790;
-        pV[i].cy = (DAT_105d1784 * pn[-4]) + (DAT_105d1774 * pn[-5]) + (pSrc->x * DAT_105d1764) + DAT_105d1794;
-        pV[i].cz = (DAT_105d1788 * pn[-4]) + (DAT_105d1778 * pn[-5]) + (pSrc->x * DAT_105d1768) + DAT_105d1798;
-        pV[i].cw = (DAT_105d178c * pn[-4]) + (DAT_105d177c * pn[-5]) + (pSrc->x * DAT_105d176c) + DAT_105d179c;
+        pV[i].cx = DAT_105d1780 * pn[-4] + DAT_105d1770 * pn[-5] + pSrc->x * DAT_105d1760 + DAT_105d1790;
+        pV[i].cy = DAT_105d1784 * pn[-4] + DAT_105d1774 * pn[-5] + pSrc->x * DAT_105d1764 + DAT_105d1794;
+        pV[i].cz = DAT_105d1788 * pn[-4] + DAT_105d1778 * pn[-5] + pSrc->x * DAT_105d1768 + DAT_105d1798;
+        pV[i].cw = DAT_105d178c * pn[-4] + DAT_105d177c * pn[-5] + pSrc->x * DAT_105d176c + DAT_105d179c;
 
-        if (DAT_100a9a50 != 0)
-            m = DAT_105ccd10[DAT_100a9a50].m;
-        else
-            m = NULL;
+        m = DAT_100a9a50 ? DAT_105ccd10[DAT_100a9a50].m : NULL;
 
         td.x = m[0] * pn[-1] + m[4] * pn[0] + m[8] * pn[1];
         td.y = m[1] * pn[-1] + m[5] * pn[0] + m[9] * pn[1];
@@ -166,8 +200,8 @@ const uint8_t *BrDlVtxGen(const uint8_t *p)
         look1 = DAT_105ce2d8 + 8;
         look2 = DAT_105ce2dc + 8;
 
-        dotX_128 = ((td.x * (float)(signed char)look1[0] + (float)(signed char)look1[2] * td.z) + (float)(signed char)look1[1] * td.y) / DAT_10077420;
-        pV[i].s = (((td.x * (float)(signed char)look2[0] + (float)(signed char)look2[2] * td.z) + (float)(signed char)look2[1] * td.y) / DAT_10077420
+        dotX_128 = ((td.x * (float)(int8_t)look1[0] + (float)(int8_t)look1[2] * td.z) + (float)(int8_t)look1[1] * td.y) / DAT_10077420;
+        pV[i].s = (((td.x * (float)(int8_t)look2[0] + (float)(int8_t)look2[2] * td.z) + (float)(int8_t)look2[1] * td.y) / DAT_10077420
                    * (float)DAT_1186c958 - DAT_10077424 - (float)DAT_118ed198) / DAT_118ed1a4;
         pV[i].t = (dotX_128 * (float)DAT_118ed1ac - DAT_10077424 - (float)DAT_1186c950) / DAT_118ed1a8;
 
