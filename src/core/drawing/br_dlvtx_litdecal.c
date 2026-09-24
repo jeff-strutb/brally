@@ -68,17 +68,15 @@ extern void    FUN_10022070(void *, void *, float, float, float);
  *  - the back-facing test is `t >= 0.0f` with the lit arm first;
  *  - the three colour-scale globals are absolute-address derefs: that is the
  *    operand kind that takes the fld side over the vertex field;
- *  - the direction bytes are `int` temps read before the colour stores and
- *    cast at the use; float temps store the colours before the loads.
+ *  - the y/z direction bytes are `int` temps read before the colour stores
+ *    (z first) and cast at the use; the x byte is an inline cast; float temps
+ *    store the colours before the loads.
  * Open (same class as 0x10022600, family-wide):
  *  - the light setup: the original fild's all five light values before the
  *    first store and reads the x direction byte late; and `lea esi,[eax+
  *    matrices]` where every spelling gives `add`;
- *  - the x term of each transform row: the operand ROLE is solved by
- *    `(double)pSrc->x` (x takes the fld side, the extern x column the memory
- *    side, as in the original); one fxch per row remains -- ours hoists the x
- *    load two products ahead, the original one.  Dead for the role before the
- *    double lever:
+ *  - the x term of each transform row: the original loads the vertex x and
+ *    multiplies by the x column from memory; ours loads the column.  Dead:
  *    operand order, row order x association (24 variants), declaration order
  *    (locals and externs), pad count, pSrc[0]/float-pointer/array spellings,
  *    a pointer copy of the column, per-iteration `base + i`;
@@ -98,7 +96,7 @@ extern void    FUN_10022070(void *, void *, float, float, float);
 const uint8_t *BrDlVtxLitDecal(const uint8_t *p)
 {
     float *m;
-    int dx, dy, dz;
+    int dy, dz;
     uint32_t w0;
     const BrDlSrcVtxL *pSrc;
     int v0;
@@ -116,7 +114,6 @@ const uint8_t *BrDlVtxLitDecal(const uint8_t *p)
             else
                 m = NULL;
 
-            dx = DAT_105ccc78[0].dir[0];
             dz = DAT_105ccc78[0].dir[2];
             dy = DAT_105ccc78[0].dir[1];
 
@@ -125,9 +122,9 @@ const uint8_t *BrDlVtxLitDecal(const uint8_t *p)
             DAT_105ce218 = (float)DAT_105ccc78[0].col[2];
 
 
-            DAT_105ce21c = ((m[1] * (float)dy + m[2] * (float)dz) + m[0] * (float)dx) / DAT_10077420;
-            DAT_105ce220 = ((m[4] * (float)dx + m[6] * (float)dz) + m[5] * (float)dy) / DAT_10077420;
-            DAT_105ce224 = ((m[8] * (float)dx + m[10] * (float)dz) + m[9] * (float)dy) / DAT_10077420;
+            DAT_105ce21c = ((m[1] * (float)dy + m[2] * (float)dz) + m[0] * (float)DAT_105ccc78[0].dir[0]) / DAT_10077420;
+            DAT_105ce220 = ((m[4] * (float)DAT_105ccc78[0].dir[0] + m[6] * (float)dz) + m[5] * (float)dy) / DAT_10077420;
+            DAT_105ce224 = ((m[8] * (float)DAT_105ccc78[0].dir[0] + m[10] * (float)dz) + m[9] * (float)dy) / DAT_10077420;
 
             FUN_100344D0(&DAT_105ce21c);
 
