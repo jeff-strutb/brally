@@ -278,7 +278,13 @@ void BrCarPhysSpring(BrRbBodyFull *pBody)
         /* DEAD 2026-09-13: `v *= v` and `v = v * v` before the product,
          * with s first or v first, and the pair scoped in an inner block
          * with the store outside -- all byte-identical (v stays live). */
-        pNode->f.z = s * (v * v) * pBody->f1B8;
+        /* 2026-09-24: squared IN PLACE, then scaled in place -- the
+         * original's `fld st(1); fmulp st(2)` is `v *= v` on v's own
+         * register.  Residue: the dead `s` is popped before the f1B8
+         * multiply instead of after (same size, regnorm 0+0). */
+        v *= v;
+        v *= s;
+        pNode->f.z = v * pBody->f1B8;
 
         /* Touchdown edge: f1B4 is RE-READ (a wheel just reset above does not
          * trip it), the node advances between the read and the test, and the
