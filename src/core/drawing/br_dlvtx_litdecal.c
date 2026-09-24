@@ -72,10 +72,13 @@ extern void    FUN_10022070(void *, void *, float, float, float);
  *    cast at the use; float temps store the colours before the loads.
  * Open (same class as 0x10022600, family-wide):
  *  - the light setup: the original fild's all five light values before the
- *    first store and reads the x direction byte late.  (`lea` for the matrix
- *    pointer is SOLVED: the stack is 1-based, `DAT_105ccd50[i - 1]`.)
- *  - the x term of each transform row: the original loads the vertex x and
- *    multiplies by the x column from memory; ours loads the column.  Dead:
+ *    first store and reads the x direction byte late; and `lea esi,[eax+
+ *    matrices]` where every spelling gives `add`;
+ *  - the x term of each transform row: the operand ROLE is solved by
+ *    `(double)pSrc->x` (x takes the fld side, the extern x column the memory
+ *    side, as in the original); one fxch per row remains -- ours hoists the x
+ *    load two products ahead, the original one.  Dead for the role before the
+ *    double lever:
  *    operand order, row order x association (24 variants), declaration order
  *    (locals and externs), pad count, pSrc[0]/float-pointer/array spellings,
  *    a pointer copy of the column, per-iteration `base + i`;
@@ -143,10 +146,10 @@ const uint8_t *BrDlVtxLitDecal(const uint8_t *p)
 
     pVc = pV;
     for (i = 0; i < n; i++) {
-        pV[i].cx = DAT_105d1780 * pSrc->z + DAT_105d1770 * pSrc->y + pSrc->x * DAT_105d1760 + DAT_105d1790;
-        pV[i].cy = DAT_105d1784 * pSrc->z + DAT_105d1774 * pSrc->y + pSrc->x * DAT_105d1764 + DAT_105d1794;
-        pV[i].cz = DAT_105d1788 * pSrc->z + DAT_105d1778 * pSrc->y + pSrc->x * DAT_105d1768 + DAT_105d1798;
-        pV[i].cw = DAT_105d178c * pSrc->z + DAT_105d177c * pSrc->y + pSrc->x * DAT_105d176c + DAT_105d179c;
+        pV[i].cx = DAT_105d1780 * pSrc->z + DAT_105d1770 * pSrc->y + (double)pSrc->x * DAT_105d1760 + DAT_105d1790;
+        pV[i].cy = DAT_105d1784 * pSrc->z + DAT_105d1774 * pSrc->y + (double)pSrc->x * DAT_105d1764 + DAT_105d1794;
+        pV[i].cz = DAT_105d1788 * pSrc->z + DAT_105d1778 * pSrc->y + (double)pSrc->x * DAT_105d1768 + DAT_105d1798;
+        pV[i].cw = DAT_105d178c * pSrc->z + DAT_105d177c * pSrc->y + (double)pSrc->x * DAT_105d176c + DAT_105d179c;
         pV[i].s = pSrc->s;
         pV[i].t = pSrc->t;
 
