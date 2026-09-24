@@ -8393,3 +8393,10 @@ with the target's flags, diff one function against original bytes
   Inline `*(int *)(pSlot + 0x29c4) + 0x8110 + i` gives `[p + i + disp]` under
   every operand order, struct/array spelling, declaration order and pad
   count.  Same function.
+- **Display-list emits: take the slot, write the opcode, THEN evaluate the
+  operand** (`mov ecx,[cur]; mov eax,ecx; add ecx,8; mov [cur],ecx; mov
+  [eax],w0; <operand load>; mov [eax+4],r`).  That is an N64-style macro,
+  `{ Gfx *g = cur++; g->w0 = A; g->w1 = B; }`.  An inline emit FUNCTION
+  evaluates its arguments first and hoists every operand load above the
+  bump; `p = cur; cur = p + 1` gives `lea` instead of `mov/add`.  Proven
+  on 0x10015630 BrSceneSetupFrame (1239 B, ~40 emits).
