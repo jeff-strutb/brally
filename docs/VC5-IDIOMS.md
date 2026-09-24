@@ -8479,3 +8479,14 @@ with the target's flags, diff one function against original bytes
 - **Integer copies of float locals into several struct fields are emitted in
   the order written** (no canonicalisation): write the corner stores in the
   original's order.  Same function.
+- **Equal-size local aggregates in the wrong slot order: look for a value the
+  original keeps in a BLOCK-SCOPED local that SHARES a slot.**  0x10001510's
+  final vector reuses the cell list's slot (+0x28) in the original; spelled
+  as a reuse of `dir` it pinned the three 12-byte locals in another order.
+  A `{ BrCamV3 v; ... }` block for that last step gives the original's
+  layout.  Declaration order, 30 renames, types and struct-grouping were all
+  inert -- read which slots the original REUSES before permuting anything.
+- **Pooled float constants: use the original's `_DAT_1007xxxx` externs, not
+  literals.**  The sweep masks relocation targets, so `len - 0.1f` and
+  `len - _DAT_10077004` (which holds -0.1f) are the same bytes with opposite
+  behaviour.  Check every DIR32 target against the original.
