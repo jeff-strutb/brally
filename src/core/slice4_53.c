@@ -211,6 +211,13 @@ void BrGfx31227(void)
  * how the car is moving. If the pool is empty nothing is spawned. */
 /* @t4-pass 0x100326A0 1 2026-09-24 probes 13 bytes 469 insns 124 regions 2 rows 0 census no  (hand: t placement/split, f2 reuse, copy spellings, byte-store casts and order) */
 /* @t4-pass 0x100326A0 2 2026-09-24 probes 19 bytes 469 insns 124 regions 2 rows 0 census yes  (TU position sweep, every top-level slot) */
+/* @t3 0x100326A0 2026-09-24 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 469/469 insns 124/124 rows 0+0 regions 2 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is x87/integer scheduling only (rows 0+0, same size): the 0.1f
+ * product issues before the struct-copy loads in the original, and pop ebx
+ * lands after the c66 byte store.  Dead probes: the two @t4-pass ledger
+ * lines above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10039020 d3d BrCarSub9020 */
 #ifdef BR_MATCHING_BUILD
 /* The original is the full particle-spawn body the port folded into

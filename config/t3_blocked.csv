@@ -1,1 +1,4 @@
 va,evidence
+0x10017110,"BrEnvEmit: whole-image run with it placed differs on 27_quickrace_snow at frame 397 (drawn+state); A5 DIVERGENT 27_quickrace_snow frame 416, 301 bytes differ at 0x106D2928; all 26 scripts IDENTICAL with it blocked (2026-09-24)"
+0x10021C70,"BrDlVtxLit: whole-image run with it placed differs on 20_quickrace_drive frame 345, 24_ini_benchmark frame 10, 27_quickrace_snow frame 397; first bad dword 0x105CE5FC 4377F2E5 vs 4377F2E4 written by br_dl_project; all 26 scripts IDENTICAL with it blocked (2026-09-24, HEAD 27ccfc52)"
+0x10022600,"BrDlVtxGen: whole-image run with it placed differs on 20_quickrace_drive at frame 1213 (state); all 26 scripts IDENTICAL with it blocked (2026-09-24, HEAD 27ccfc52)"

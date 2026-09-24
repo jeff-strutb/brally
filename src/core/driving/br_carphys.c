@@ -217,6 +217,13 @@ extern float  DAT_10077a7c;   /*  1.0f */
 extern float  DAT_10077a80;   /* -1.0f */
 /* @t4-pass 0x100684F0 1 2026-09-24 probes 10 bytes 265 insns 87 regions 1 rows 0 census no  (hand, after the in-place square reached 265/265: five in-place scale spellings and five forms keeping s live past the f1B8 multiply; the dead-s pop order never moved) */
 /* @t4-pass 0x100684F0 2 2026-09-24 probes 34 bytes 265 insns 87 regions 1 rows 0 census yes  (hand, slot census: every top-level slot of br_carphys.c; residue identical in all 34) */
+/* @t3 0x100684F0 2026-09-24 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 265/265 insns 87/87 rows 0+0 regions 1 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is one x87 pop order: the dead sign `s` is popped before the
+ * f1B8 multiply instead of after it (same instructions, same size).  Dead
+ * list in the body comment.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x100684F0 glide BrCarPhysSpring */
 void BrCarPhysSpring(BrRbBodyFull *pBody)
 {
