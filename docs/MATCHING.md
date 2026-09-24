@@ -129,6 +129,44 @@ Defect classes the oracle found, all fixed in source:
 - **Wrong compiler variant.** The stack frame depth is behaviour: rank frame shape first.
 - **Relocation rows** from the wrong object, a non-address field, or a D3D-era name.
 
+## The whole-image run
+
+The live oracle certifies one body at a time from a few captures. It cannot
+see a path those captures never took, or a fault that exists only in the
+placed image (a constant, a relocation row). The whole-image run can:
+
+```bash
+.venv/bin/python tools/brbox_diff.py S.txt                 # every frame: Glide calls + whole data area
+.venv/bin/python tools/brbox_diff.py S.txt --t3calls F     # first T3 call in frame F whose writes differ
+.venv/bin/python tools/brbox_diff.py S.txt --localize --frame F   # differing data + its writers
+BRDIFF_CALLS=F .venv/bin/python tools/brbox_diff.py S.txt  # first differing Glide call in frame F
+```
+
+The loop for one divergence:
+
+1. Find the first frame F whose state differs.
+2. Run `--t3calls F-1`.
+3. Run `t3live.py explain` on the named function at that frame.
+4. Read the original's x87 code against the placed body. An annexed body sits at `0x1190xxxx` behind a `jmp` thunk.
+
+Vertex fields the original never writes (stale stack) are reported
+separately and are not failures.
+
+Defect classes the whole-image run found, all certified by t3live before:
+- **Rounding points.** The original keeps a value in a register where the transcription stores it to a float slot, or the reverse.
+- **Reassociated sums**, spelled that way to chase bytes.
+- **An inverted comparison.**
+- **A stale cached value** in a loop.
+- **`$T` constants content-located inside `.text`.**
+- **Relocation rows:**
+  - operand-width mismatch;
+  - stale offsets, which fail the gate;
+  - a D3D-era name inside the "near" window;
+  - crossed commutative operands where a hand row fixed only one side.
+
+After editing a T3 function that has lockstep rows, regenerate them: remove
+its `lockstep` rows, then `tools/lockstep_rows.py <VA> --write`.
+
 ## End of session
 
 ```bash
