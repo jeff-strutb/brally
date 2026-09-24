@@ -944,9 +944,7 @@ static int32_t br_dl_outcode(const BrDlVtx *pV)
  * through by depth to get perspective, applies the viewport scale and
  * offset, stores the vertex's colour, and snaps the result to the nearest
  * quarter of a pixel -- the resolution the hardware rasteriser works at. */
-/* @t4-pass 0x10022070 1 2026-09-07 probes 62 bytes 187 insns 53 regions 1 rows 62 census yes  (tools/crank.py) */
-/* @t4-pass 0x10022070 2 2026-09-07 probes 62 bytes 187 insns 53 regions 1 rows 62 census yes  (tools/crank.py) */
-/* @implements 0x10022070 glide br_dl_project */
+/* port-only body; the Glide match is src/core/drawing/br_dlproject.c */
 static void br_dl_project(BrDl *pDl, BrDlVtx *pV, float r, float g, float b)
 {
     float invW, sx, sy;
