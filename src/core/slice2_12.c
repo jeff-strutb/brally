@@ -304,7 +304,7 @@ static __inline int32_t BrCarStateDeltaCode(uint32_t cur, uint32_t ref,
  * deliberately coarse: a jump of three or more steps cannot be
  * reconstructed, which is a limitation of the original format, not of this
  * transcription. */
-/* @implements 0x10006830 d3d BrCarStateEncodeDelta */
+/* port-only body; Glide match is src/core/net/BrCarStateEncodeDelta_10006BA0.cpp */
 void BrCarStateEncodeDelta(BrBitStream *pBs, const BrCarState *pCur,
                            const BrCarState *pRef)
 {
