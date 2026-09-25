@@ -463,8 +463,14 @@ typedef struct BrGbiTexScan {
 
 /* 0x100290E0  Walk a display list, recognising texture-load runs. Stops at
  * G_ENDDL (0xB8) or immediately if pCmd is NULL. Clears five state globals
- * first. */
+ * first. Glide 0x10028820 takes ONE stack argument (`mov esi,[esp+0x10]`
+ * after three pushes) and keeps the scan state in globals; its only caller
+ * pushes one argument through the hook at 0x118ED1DC. */
+#ifdef BR_MATCHING_BUILD
+void BrGbiTexScanRun(BrGfxWords *pCmd);
+#else
 void BrGbiTexScanRun(BrGbiTexScan *pSt, BrGfxWords *pCmd);
+#endif
 
 /* Resolve `addr` the way BrGbiTexScanRun does; exposed so callers can stage
  * the same sources when they drive the leaves themselves. */
