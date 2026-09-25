@@ -1398,7 +1398,8 @@ void BrSub_10031140(BrMat4 *pM, int32_t a, int32_t b, float c)
  * least recently used slot when the cache is full. The grid is a fixed set
  * of slots rather than one cell per square, so a car driving across the map
  * recycles them as it goes. */
-/* @implements 0x1006F720 d3d BrCollGridCellAcquire */
+#ifndef BR_MATCHING_BUILD
+/* @d3donly 0x1006F720 BrCollGridCellAcquire -- glide twin 0x100686D0 is the Glide arm in scene/br_collgrid.c */
 /* RESIDUE 613 vs 551 bytes, 193 vs 178 instructions, register-blind 28+13
  * (from 699 / 222 / 61+17 -- see the git log for the four causes that closed).
  * What is LEFT is register allocation plus a handful of extra global reloads,
@@ -1571,9 +1572,8 @@ short BrCollGridCellAcquire(float x, float y)
     }
     return (short)iVictim;
 }
-#ifdef BR_MATCHING_BUILD
-#undef BrFtolTrunc
-#endif
+#endif /* !BR_MATCHING_BUILD */
+/* The Glide arm, 0x100686D0, is in scene/br_collgrid.c. */
 
 /* 0x10055A40 FUN_10055a40 and 0x10055AF0 FUN_10055af0, the season-
  * description writer and reader, are filed in
