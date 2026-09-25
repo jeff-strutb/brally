@@ -38,24 +38,47 @@ extern char *PTR_s_First__100aa3e8[];
  * window (freeing it when there is no window). Once the host has started,
  * messages go to the in-race handler instead, or to the race-message parser
  * when the connection is not yet marked live. */
-/* T2 2026-09-13 (fresh, 16 fn.py probes): 896/913 B of code (the 36-byte
- * jump table follows both), 269/270 insns, register-blind residue about
- * 13 rows.  What the bytes taught: the case bodies sit in SOURCE order
- * 0,1,2,5,3,4,6,7,8 (the weather arms come before HOSTSTARTED); the four
- * weather arms are kept separate only with the literal 4..7 in the call;
- * the host-ready scan is a `while (p < end)` (a do-while with the -1 test
- * first gets its first iteration peeled; an index form hoists the -1 into
- * a register); the net-record tests are on POINTER fields; the text handle
- * is an LPARAM, not a pointer.
- * RESIDUE: one zero web.  The original stores `pText = 0` as an immediate,
- * tests the started flag and both net fields with `test`, pushes the two
- * literal zeros, and zeroes the scan counter inside case 2; VC5 gives us
- * one `xor ecx,ecx` at the entry that serves the store, the pushes, the
- * three compares (`cmp x,ecx`) and the counter.  Setting the counter to a
- * non-zero value removes the web (diagnostic only); moving `pText = 0`
- * inside or before the if, typing it as a pointer, `!x` compares, a
- * `started` temp, the counter block-scoped, initialised first or last, or
- * changing either literal zero push all leave it. */
+/* T2 2026-09-25 (hand, ~170 fn.py/micro-TU compiles): 883/913 B of code
+ * (the 36-byte jump table follows), 264/270 insns.  The compiler is plain C
+ * (/O2, frameless; /TP and /TP /GX change nothing).  What the bytes taught:
+ * the case bodies sit in SOURCE order 0,1,2,5,3,4,6,7,8; the four weather
+ * arms stay separate only with the literal 4..7 in the call; the host-ready
+ * scan is a pointer walk with a side counter; the net-record tests are on
+ * POINTER fields; the text handle is an LPARAM.  2026-09-25: `pText = 0`
+ * sits ABOVE the started test (the original stores it before the `jne`),
+ * and the tail posts first (`if (hwnd) { PostMessage; return; } free`) --
+ * the entry and the whole tail now match.
+ * RESIDUE 1, the chat-call tail merge (4 `call` rows).  The original gives
+ * each of the five FUN_10036a30 calls its own `call` and shares only the
+ * `add esp,0x14` (cases 0,1,6,7 `jmp` to it, case 8 falls into it); our cl
+ * also merges the `call` into case 8's.  Only case 8 needs to differ: a
+ * distinct callee SYMBOL on case 8 alone reproduces every call row
+ * (diagnostic only -- the original's five calls all reach 0x10036A30).  Not
+ * ICF: LINK 5.0 has /OPT:ICF but the original keeps identical /O2 COMDAT
+ * bodies apart (BrCdPause/BrCdResume, 0x1003BFF0/C020/C050, ...).  Dead:
+ * casts of the designator, (*f), void/int result, result assigned or
+ * tested, block-scope and implicit declarations, inline wrapper (all,
+ * some, case 8 only), static const function pointer (stays indirect),
+ * #line, empty-if / if(0) / const-false dead code around the call, label +
+ * goto into case 8, one shared call via temps, case-8 argument changes,
+ * early-break and nested forms of case 8, default: placement, /G3-/G6,
+ * /GB, /Zi, /Z7, /Oa, /Ow, SP3 C2 (VC6 does NOT merge but is the wrong
+ * compiler).  The construct is unique in the DLL (scan of every report
+ * row); no matched original keeps same-callee call tails apart at /O2.
+ * RESIDUE 2, one zero web: our `xor ecx,ecx` at the entry serves the
+ * pText store, the started test, the case-0 push, both net-field tests,
+ * `v >= 0` and the scan counter; the original zeroes the counter alone,
+ * inside case 2.  Minimal trigger (bisected): the entry store + `i = 0` +
+ * `&pText` passed in case 0 or 1 + a call inside the player-ready loop;
+ * drop any one and the web goes.  Any counter-CONTROLLED loop (`i < 8`,
+ * `i != 8`, `++i < 8`) also kills it but tests the counter, not the
+ * pointer; index forms strength-reduce to an OFFSET walk (`xor eax,eax;
+ * cmp eax,0x60`), not the original's absolute one.  Dead: counter width
+ * (char works only by going 8-bit), register/static/block scope, sharing
+ * `v`, BrSlot struct walk, comma-init orders, pointer-difference index,
+ * pText as a void or char pointer, array, struct, volatile, initialiser
+ * or memset, the
+ * store in both arms, header and neighbour-function context. */
 /* @t4-pass 0x10009010 1 2026-09-13 probes 16 bytes 896 insns 269 regions 1 rows 13 census no  (hand, fn.py variants: case order, literal arms, scan loop forms, pText typing/placement, compare spellings, counter placement) */
 /* @implements 0x10009010 glide BrDpAppMsgHandle */
 void BrDpAppMsgHandle(int *pNet, int *pMsg, int a3, int idFrom, int a5)
@@ -67,8 +90,8 @@ void BrDpAppMsgHandle(int *pNet, int *pMsg, int a3, int idFrom, int a5)
     int    *p;
     int     v;
 
+    pText = 0;
     if (DAT_10ac5be4 == 0) {
-        pText = 0;
         switch (*pMsg) {
         case 0x60000000:
             FUN_10036a30(*pNet, idFrom, (LPCSTR)(pMsg + 1), (LPCVOID *)&pText, 0);
@@ -152,12 +175,12 @@ void BrDpAppMsgHandle(int *pNet, int *pMsg, int a3, int idFrom, int a5)
             break;
         }
         if (pText != 0) {
-            if (DAT_105bc72c == (HWND)0) {
-                GlobalUnlock(GlobalHandle((LPCVOID)pText));
-                GlobalFree(GlobalHandle((LPCVOID)pText));
+            if (DAT_105bc72c != (HWND)0) {
+                PostMessageA(DAT_105bc72c, 0x501, 0, pText);
                 return;
             }
-            PostMessageA(DAT_105bc72c, 0x501, 0, pText);
+            GlobalUnlock(GlobalHandle((LPCVOID)pText));
+            GlobalFree(GlobalHandle((LPCVOID)pText));
             return;
         }
     } else if (((void **)pNet)[4] == 0) {
