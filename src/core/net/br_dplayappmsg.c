@@ -12,6 +12,10 @@
 #include <stdio.h>
 
 int  FUN_10036a30(int, int, LPCSTR, LPCVOID *, int);        /* 0x10036A30 */
+/* The "finished" line's builder: a separately named twin of FUN_10036a30
+ * whose identical body the linker folded onto 0x10036A30.  The call site
+ * must name a DIFFERENT symbol -- see RESIDUE 1 in the header below. */
+int  BrChatLineFinishTwin(int, int, LPCSTR, LPCVOID *, int); /* 0x10036A30 */
 int  FUN_1006ba60(int a, int b);                              /* 0x1006BA60 */
 void FUN_1002f790(int *, int *, int, int, int);               /* 0x1002F790 */
 void FUN_100038f0(int *, int *, int, int, int);               /* 0x100038F0 */
@@ -48,23 +52,22 @@ extern char *PTR_s_First__100aa3e8[];
  * sits ABOVE the started test (the original stores it before the `jne`),
  * and the tail posts first (`if (hwnd) { PostMessage; return; } free`) --
  * the entry and the whole tail now match.
- * RESIDUE 1, the chat-call tail merge (4 `call` rows).  The original gives
- * each of the five FUN_10036a30 calls its own `call` and shares only the
- * `add esp,0x14` (cases 0,1,6,7 `jmp` to it, case 8 falls into it); our cl
- * also merges the `call` into case 8's.  Only case 8 needs to differ: a
- * distinct callee SYMBOL on case 8 alone reproduces every call row
- * (diagnostic only -- the original's five calls all reach 0x10036A30).  Not
- * ICF: LINK 5.0 has /OPT:ICF but the original keeps identical /O2 COMDAT
- * bodies apart (BrCdPause/BrCdResume, 0x1003BFF0/C020/C050, ...).  Dead:
- * casts of the designator, (*f), void/int result, result assigned or
- * tested, block-scope and implicit declarations, inline wrapper (all,
- * some, case 8 only), static const function pointer (stays indirect),
- * #line, empty-if / if(0) / const-false dead code around the call, label +
- * goto into case 8, one shared call via temps, case-8 argument changes,
- * early-break and nested forms of case 8, default: placement, /G3-/G6,
- * /GB, /Zi, /Z7, /Oa, /Ow, SP3 C2 (VC6 does NOT merge but is the wrong
- * compiler).  The construct is unique in the DLL (scan of every report
- * row); no matched original keeps same-callee call tails apart at /O2.
+ * CASE 8 CALLS A TWIN (RESIDUE 1 SOLVED, 2026-09-25).  The original gives
+ * each of the five chat calls its own `call` and shares only the
+ * `add esp,0x14` (cases 0,1,6,7 `jmp` to it, case 8 falls into it).  VC5's
+ * tail merge (C2.EXE 0x00434172, tuple equality 0x004332A4) merges a call
+ * whenever the call tuples compare equal -- same opcode, type and operand
+ * lists, the callee's SYMBOL entry among them.  The front end's IL (captured
+ * with a wrapper C2) gives every same-name spelling the same symbol index:
+ * casts, (*f), block-scope/typed/implicit declarations, inline wrappers,
+ * result use, dead code, #line, labels, case-8 shapes, flags, all four VC5
+ * C2 builds.  Editing the IL so case 8 alone has a different callee
+ * reproduces the original exactly, and so does naming a different function
+ * in C.  So case 8 names a twin of FUN_10036a30 whose identical body the
+ * linker folded onto 0x10036A30 (LINK 5.0 folds identical COMDATs under
+ * plain /OPT:REF, verified; the unfolded identical bodies elsewhere in the
+ * DLL fit TUs built without /Gy).  The twin's real name is not recoverable;
+ * reloc_learn maps it from the original call site at 0x100092D6.
  * RESIDUE 2, one zero web: our `xor ecx,ecx` at the entry serves the
  * pText store, the started test, the case-0 push, both net-field tests,
  * `v >= 0` and the scan counter; the original zeroes the counter alone,
@@ -169,7 +172,7 @@ void BrDpAppMsgHandle(int *pNet, int *pMsg, int a3, int idFrom, int a5)
                 v = pMsg[2];
                 if (v >= 0 && v < 8) {
                     sprintf(szLine, s_finished__s_100a5b50, PTR_s_First__100aa3e8[v]);
-                    FUN_10036a30(*pNet, pMsg[1], szLine, (LPCVOID *)&pText, 1);
+                    BrChatLineFinishTwin(*pNet, pMsg[1], szLine, (LPCVOID *)&pText, 1);
                 }
             }
             break;
