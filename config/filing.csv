@@ -128,6 +128,7 @@ glide_va,name,module,basis,file
 0x10007710,BrFixUnpackS16Q8,net,filed,src/core/net/br_fix.c
 0x10007730,BrFixUnpackS8Q3,net,filed,src/core/net/br_fix.c
 0x10007750,BrCarStateDecodeDelta,net,manual,src/core/net/BrCarStateDecodeDelta_10007750.cpp
+0x10007D50,BrCarStateLerp,net,manual,src/core/net/br_carstatelerp.c
 0x10007E80,BrAppCheckPreviousApp,startup,filed,src/core/startup/br_appstart.c
 0x10007F10,BrMemoryQuery,startup,filed,src/core/startup/br_appstart.c
 0x10007F40,FUN_10007f40,startup,neighbour-1,src/core/generated/0x10007F40.c
@@ -225,6 +226,7 @@ glide_va,name,module,basis,file
 0x100181A0,BrFadeSetTarget,drawing,description,src/core/drawing/br_fade.c
 0x10018230,BrFadeSetTargetA,drawing,description,src/core/drawing/br_fade.c
 0x10018290,BrFadeSetTargetB,drawing,neighbour-1,src/core/drawing/br_fade.c
+0x100182F0,BrCursorPairSet,drawing,manual,src/core/drawing/br_cursorpair.c
 0x10018310,BrFadeIsClosing,drawing,description,src/core/drawing/br_fade.c
 0x10018340,BrFadeIsSettled,drawing,description,src/core/drawing/br_fade.c
 0x10018370,BrFadeIsShut,drawing,manual,src/core/drawing/br_fade.c
@@ -269,6 +271,7 @@ glide_va,name,module,basis,file
 0x1001C7A0,BrCarTableRemove,racing,description,src/core/slice2_17.c
 0x1001C810,BrCarStateSave,,description,src/core/slice2_17.c
 0x1001C890,BrCarStateRestore,,description,src/core/slice2_17.c
+0x1001C9D0,BrSelLookup,gamedata,manual,src/core/gamedata/br_sellookup.c
 0x1001CC00,BrRallyMain,startup,filed,src/core/startup/br_boot.c
 0x1001CD50,BrFlagInit_1002F690,startup,filed,src/core/startup/br_objlife.c
 0x1001CD70,BrAppStateColdInit,startup,filed,src/core/startup/br_boot.c
@@ -481,13 +484,15 @@ glide_va,name,module,basis,file
 0x1002F660,BrBitEdgeSplit,controls,manual,src/core/controls/br_bitedge.c
 0x1002F680,BrEntInit,scene,description,src/core/scene/br_entity.c
 0x1002F6C0,BrRaceSub1002F6C0,racing,filed,src/core/racing/br_racestart.c
-0x1002F6D0,BrPeerFind,,,src/core/slice1_05.c
+0x1002F6D0,BrPeerFind,net,manual,src/core/net/br_peerfind.c
 0x1002F790,FUN_1002f790,net,manual,src/core/net/FUN_1002f790.cpp
 0x10030270,BrModelLoad,drawing,description,src/core/drawing/br_model.c
+0x100306D0,BrPendListAdd,gamedata,manual,src/core/gamedata/br_pendlist.c
 0x10030710,BrDevRecMatch,controls,manual,src/core/controls/br_devrec.c
 0x10030DE0,BrSub10037740,gamedata,description,src/core/gamedata/br_carload.c
 0x10030F40,BrArm_100378A0,startup,filed,src/core/startup/br_objlife.c
 0x10030F50,BrFileReadInto,startup,neighbour,src/core/generated/0x10030F50.c
+0x10030FD0,BrKeyTableFind,gamedata,manual,src/core/gamedata/br_keytable.c
 0x10031030,FUN_10031030,drawing,filed,src/core/drawing/br_texlevels.c
 0x10031140,BrTrackLoadHandling,startup,neighbour,src/core/generated/0x10031140.c
 0x100314D0,BrGlTrackFixupAll,startup,filed,src/core/startup/br_track.c
@@ -569,6 +574,7 @@ glide_va,name,module,basis,file
 0x10036700,BrSub1003D070,net,neighbour-1,src/core/net/br_sessionlist.c
 0x10036740,FUN_10036740,net,neighbour-1,src/core/generated/0x10036740.c
 0x100367C0,FUN_100367c0,net,description,src/core/net/br_dplaymsg.c
+0x10036810,BrComGetAlloc,net,manual,src/core/net/br_comgetalloc.c
 0x100368A0,FUN_100368a0,net,description,src/core/net/br_dplaymsg.c
 0x10036E50,BrDpCreateIface,net,filed,src/core/net/br_dplay.c
 0x10036EF0,BrSub1003D850,net,description,src/core/net/br_dplaylobby.c
@@ -629,6 +635,7 @@ glide_va,name,module,basis,file
 0x10038750,BrUiFn1003F210,menus,neighbour,src/core/generated/0x10038750.c
 0x100387C0,BrUiFn1003F280,menus,neighbour,src/core/generated/0x100387C0.c
 0x100387F0,BrInputBitHeld,menus,neighbour,src/core/ghidra_batch.c
+0x10038860,BrOptAvailB,menus,manual,src/core/menus/br_optavail.c
 0x10038980,BrRacePosIconSet,menus,filed,src/core/menus/br_race.c
 0x10038A80,BrMenuSetTrackLetter,menus,filed,src/core/menus/br_trackletter.c
 0x10038B20,BrUiHook87_1003F5E0,menus,neighbour,src/core/menus/br_uicapcode.c
@@ -1250,6 +1257,7 @@ glide_va,name,module,basis,file
 0x1006FC70,BrEntRefreshColour,drawing,description,src/core/drawing/br_entcolour.c
 0x1006FCB0,BrEntSetRecord,drawing,neighbour-1,src/core/drawing/br_entcolour.c
 0x1006FCE0,BrCarSlotSetup_1006FCE0,racing,manual,src/core/racing/BrCarSlotSetup_1006FCE0.cpp
+0x1006FD50,BrEntitySetIndex,scene,manual,src/core/scene/br_entityindex.c
 0x1006FD90,BrEntReset,scene,manual,src/core/scene/BrEntReset_1006FD90.cpp
 0x1006FF00,BrEntityBindAux,scene,description,src/core/scene/br_entity.c
 0x1006FF50,FUN_1006ff50,drawing,manual,src/core/drawing/br_log.c
