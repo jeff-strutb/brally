@@ -86,15 +86,14 @@ typedef struct BrVisView {
 /* Transcribed from the Glide bytes: the viewport is pView[g_brIView]; the
  * half-extents are w >> 1 and h >> 1 (sar, not a division); the mirror test is
  * 0x106EA3F4 ^ 0x106E8204 with an fchs; __ftol for all four corners.
- * T2, 302/308 B, same 99 instructions, REGNORM 4+4 (2026-09-25). The
- * half-extents convert IN PLACE (int stored to the float's own slot, fild,
- * fstp back), which only the *(int *)& spelling reproduces and which gives
- * the original's 0x14 frame; x1/y1 volatile reproduce its store-and-reload
- * of the max corner. Residue: the original also homes sx in memory (packed
- * into v[0]) and x1/y1 into v[0]/v[1]; here sx stays in a register and x1/y1
- * pack into the dead argument slots. Dead: statement order, operand order,
- * declaration order (60 perms), named/unnamed temps, explicit v[] writes,
- * volatile v / volatile sx, pointer-aliased writes. */
+ * T2, 310/308 B, REGNORM 1+1 (2026-09-25). Load-bearing: the rectangle is
+ * read into locals first and cx is formed before each half-extent converts;
+ * the output vector is reached through a pointer, and the mirrored x is
+ * stored in both arms of an if/else (one store at the join, reloaded for both
+ * corners), as the original has it. Residue: x0 gets a memory home here
+ * (one extra fst) where the original keeps it on the x87 stack. Dead:
+ * all 5040 float declaration orders, statement orders, inline x0/sy/rad,
+ * volatile anything (inert through the pointer), /Op, pad count 1..40. */
 /* @implements 0x1000C9E0 glide FUN_1000c9e0 */
 void FUN_1000c9e0(BrVisView *pView, const void *pPt, int n, short *pMin,
                   short *pMax)
@@ -106,31 +105,35 @@ void FUN_1000c9e0(BrVisView *pView, const void *pPt, int n, short *pMin,
     extern void  BrMat4TransformPoint4(float *pOut, const void *pV,
                                        const float *pM);
     float v[4];
-    int cx, cy;
-    float fhw, fhh, r, sy, rad, x0, sx;
-    volatile float x1, y1;
+    int cx, cy, vx, vy, vw, vh;
+    float fhw, rad, fhh, r, sy, x0, sx;
+    float *pv = v;
 
-    *(int *)&fhw = pView[g_brIView].w >> 1;
-    cx = pView[g_brIView].x + *(int *)&fhw;
-    fhw = (float)*(int *)&fhw;
-    *(int *)&fhh = pView[g_brIView].h >> 1;
-    cy = pView[g_brIView].y + *(int *)&fhh;
-    fhh = (float)*(int *)&fhh;
+    vx = pView[g_brIView].x;
+    vy = pView[g_brIView].y;
+    vw = pView[g_brIView].w;
+    vh = pView[g_brIView].h;
+    cx = vx + (vw >> 1);
+    fhw = (float)(vw >> 1);
+    cy = vy + (vh >> 1);
+    fhh = (float)(vh >> 1);
     BrMat4TransformPoint4(v, pPt, DAT_106e9a38);
-    if (v[3] > 0.001f || v[3] < -0.001f) {
-        r = 1.0f / v[3];
-        sx = r * v[0];
+    if (pv[3] > 0.001f || pv[3] < -0.001f) {
+        r = 1.0f / pv[3];
+        sx = r * pv[0];
         if (DAT_106ea3f4 ^ DAT_106e8204)
-            sx = -sx;
+            pv[0] = -sx;
+        else
+            pv[0] = sx;
         rad = (float)n * r;
-        sy = r * v[1];
-        x0 = sx - rad;
-        x1 = sx + rad;
-        y1 = sy + rad;
+        sy = r * pv[1];
+        x0 = pv[0] - rad;
+        pv[0] = pv[0] + rad;
+        pv[1] = sy + rad;
         pMin[0] = (short)(cx + (int)(x0 * fhw));
         pMin[1] = (short)(cy - (int)((sy - rad) * fhh));
-        pMax[0] = (short)(cx + (int)(fhw * x1));
-        pMax[1] = (short)(cy - (int)(fhh * y1));
+        pMax[0] = (short)(cx + (int)(fhw * pv[0]));
+        pMax[1] = (short)(cy - (int)(fhh * pv[1]));
     }
 }
 #endif /* BR_MATCHING_BUILD */
