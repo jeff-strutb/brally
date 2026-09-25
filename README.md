@@ -166,7 +166,7 @@ wheel, CD music, and two-machine DirectPlay races with join and dropout):
   `config/whole_image.csv`): the assembled `BRGlide.T3.dll` and the original run
   every script side by side and must agree on **every frame** — every Glide call
   and its arguments, the whole data area, and every network packet (both
-  machines of a network session run the image under test). Currently 25/25
+  machines of a network session run the image under test). Currently 26/26
   scripts identical.
 
 A7 exists because A5 alone was not enough: the whole-image run found some 25
@@ -183,6 +183,19 @@ In-scope EXE game code (BRally.exe, BossRally.exe, SetVideo.exe) is complete;
 what remains in those images is statically-linked CRT, reproduced by linking.
 The macOS/Metal port is a separate build (`./build.sh`); if it does not compile,
 see `docs/MEMORY.md`. C++ EH functions are a separate lane (`tools/cpp_sweep.py`).
+
+**macOS full-boot port (interim 32-bit lane, 2026-09-25).**
+`ports/macos/wasm/build_wasm.sh` compiles the verified build's sources to
+wasm32, translates them to C and links a native arm64 `build/wasm/brally`. The
+original image's data sits at its original addresses, rendering goes through
+Metal, and the game data is extracted from the retail bin/cue
+(`tools/extract_disc.py`). No decomp source is edited for it. Current build:
+666 objects, 2,785 functions (1,497 of BRGlide's 2,148 at their original
+addresses), 291 host imports, 0 missing game functions. A run boots, draws the
+copyright screen, and reaches the first track load. There it stops: a
+colour-indexed texture reaches `BrTex3dExpand` with no palette, because two
+scan globals get no port address (details in `ports/macos/wasm/FINDINGS.csv`).
+The native 64-bit port comes later.
 
 A byte-exact session picks targets with `python3 tools/t4lane.py --claim`
 (Pool B). Procedure: `docs/MATCHING.md`.
