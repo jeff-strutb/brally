@@ -55,6 +55,7 @@ va,name,verdict,calls,captured,contexts,detail,date
 0x1001fa30,BrDlCmdTri2,EQUIVALENT,1000020,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10020d70,BrDlCmdTri2NoZ,EQUIVALENT,17911,114,19,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10021570,BrDlsTileRectE4,UNCOVERED,0,0,0,,2026-09-24
+0x10021c70,BrDlVtxLit,EQUIVALENT,101870,18,3,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10022600,BrDlVtxGen,EQUIVALENT,14800,30,5,20_quickrace_drive: 6 real call(s) agree [not placed in the image; object mode],2026-09-24
 0x10022bf0,BrDlVtxGenLin,EQUIVALENT,22234,118,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10023b70,BrFramePresent,EQUIVALENT,18980,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
