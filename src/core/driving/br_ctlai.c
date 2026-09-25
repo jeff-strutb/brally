@@ -327,7 +327,9 @@ void BR_THISCALL1 BrCtlAiRespawn(BrAiCar *pCar);           /* 0x1005C6D0 */
  * arrives in a float slot only so that thiscall's edx stays free and the
  * callee clears its own three arguments -- its bits are an int, read back as
  * one here (see BR_AI_SCAN and the arg struct notes above). */
-/* 0x1005D060 glide BrAiScanCorridor -- TRANSCRIBED, NOT YET BYTE-EXACT (T2).
+/* port-only body; Glide match is src/core/driving/BrAiCorridor_1005D060.cpp
+ * (byte-exact as a C++ thiscall member under /O2 /Gi).  History below.
+ * 0x1005D060 glide BrAiScanCorridor -- TRANSCRIBED, NOT YET BYTE-EXACT (T2).
  * Fills the corridor-scan "binding gap" named in br_ai.h rule 8.  First-pass
  * sweep 848/856 B (-8), INSNS +12, RAW 82+70, REGNORM 29+17; structure is
  * faithful (prologue, NULL/depth==0 guards, the two 0.2 edge lerps + centre
