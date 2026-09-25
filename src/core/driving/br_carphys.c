@@ -1060,6 +1060,87 @@ static float BrCpDrvBrake(BrRbBodyFull *pBody, BrRbBodyFull *pWheel, float dt)
 }
 
 #ifdef BR_MATCHING_BUILD
+/* 0x10068070 */
+/* WHAT IT DOES: finds how far one wheel can drop before it meets the ground.
+ * The wheel's mount point (its x and y offset, height ignored) is taken into
+ * the world by the car body's matrix and the car's own down axis is rotated
+ * the same way; then the collision-grid cell under that point is searched
+ * exactly as BrGroundProbeZ searches it, along that axis instead of straight
+ * down. On a hit the wheel records the plane, its surface byte and the
+ * plane's normal and constant. Returns the shortest accepted drop, or 100. */
+/* Transcribed from the Glide bytes: the body matrix is pBody+0xBC; the
+ * contact is cleared (wheel+0x19C = 0) before the search and set to the
+ * plane pointer on a hit; the hit point reuses the mount's slots; the drop
+ * h is kept in memory (stored once, reloaded for every use).
+ * Byte-exact only in this TU and at this position (after the drive
+ * helpers, ahead of the tyre model): in its own file the product operand
+ * roles of both dot products came out reversed, and the pad-count probe
+ * could not reach the state. The vectors are declared ahead of the rest. */
+/* @implements 0x10068070 glide BrWheelGroundProbe */
+float BrWheelGroundProbe(int pBody, int pWheel)
+{
+    extern unsigned char  DAT_11773698[];
+    extern unsigned short DAT_11778800[];
+    extern short BrCollGridCellAcquire(float x, float y);
+    extern float BrCrPlaneDist(const float *pN, float planeD,
+                               const float *pPoint);
+    extern short FUN_100656F0(const float *pTri, const float *pP);
+    extern void BrMat4TransformPoint(float *pOut, const void *pM,
+                                     const float *pV);
+    extern void BrMat4MulVec3Transposed(float *pOut, const void *pM,
+                                        const float *pV);
+    float world[3], dir[3], mount[3], down[3];
+    const float *pPl;
+    float best, t, h;
+    int n;
+    short cell;
+
+    best = 100.0f;
+    mount[0] = *(float *)(pWheel + 0x78);
+    mount[1] = *(float *)(pWheel + 0x7c);
+    down[0] = 0.0f;
+    down[1] = 0.0f;
+    down[2] = -1.0f;
+    mount[2] = 0.0f;
+    BrMat4TransformPoint(world, (const void *)(pBody + 0xbc), mount);
+    BrMat4MulVec3Transposed(dir, (const void *)(pBody + 0xbc), down);
+    *(int *)(pWheel + 0x19c) = 0;
+    cell = BrCollGridCellAcquire(world[0], world[1]);
+    pPl = (const float *)(DAT_11773698 + cell * 0x12C0);
+    for (n = DAT_11778800[cell]; n > 0; n--, pPl += 8) {
+        float d = BrCrPlaneDist(pPl, pPl[3], world);
+
+        if (!(d > -2.0) || !(d < 2.0))
+            continue;
+        t = (dir[1] * pPl[1] + dir[2] * pPl[2]) + dir[0] * pPl[0];
+        if (!((t < 0.0f ? -t : t) > 0.001))
+            continue;
+        h = -(((world[1] * pPl[1] + world[2] * pPl[2]) + world[0] * pPl[0]
+               + pPl[3]) / t);
+        mount[0] = dir[0] * h;
+        mount[1] = dir[1] * h;
+        mount[2] = dir[2] * h;
+        mount[0] += world[0];
+        mount[1] += world[1];
+        mount[2] += world[2];
+        if (h > -2.0 && h < 2.0 && h < best && pPl[2] > 0.2
+            && FUN_100656F0(pPl, mount)) {
+            best = h;
+            *(const float **)(pWheel + 0x19c) = pPl;
+            *(unsigned char *)(pWheel + 0x1a0) =
+                *((const unsigned char *)pPl + 0x1e);
+            *(float *)(pWheel + 0x1a4) = pPl[0];
+            *(float *)(pWheel + 0x1a8) = pPl[1];
+            *(float *)(pWheel + 0x1ac) = pPl[2];
+            *(float *)(pWheel + 0x1b0) = pPl[3];
+        }
+    }
+    return best;
+}
+
+#endif /* BR_MATCHING_BUILD */
+
+#ifdef BR_MATCHING_BUILD
 #undef BrCarPhysTyre
 /* The wheel body as 0x100651A0 reads it: the hit record lives in the WHEEL at
  * +0x19C (plane pointer, surface byte, normal) and the spin state follows. */
@@ -1244,6 +1325,70 @@ void BrCarPhysTyre(BrTyreView *pBody, BrTyreView *pWheel, float *pA,
         pWheel->f1D4 = 0.0f;
     }
 }
+
+#ifdef BR_MATCHING_BUILD
+/* 0x100682C0 */
+/* WHAT IT DOES: finds the height of the ground straight below a point. It
+ * takes the collision-grid cell under the point and tries each of that
+ * cell's surface planes that the point is within two units of and that is
+ * not nearly vertical: the drop from the point to the plane along -z is
+ * accepted if it is under two units, lower than the best so far, the plane
+ * faces up (normal z above 0.2) and the point directly below lies inside
+ * the plane's triangle. Returns the smallest accepted drop, or 100 when
+ * nothing below qualifies. */
+/* Transcribed from the Glide bytes: 150 planes of 0x20 bytes per cell at
+ * 0x11773698 with the counts as words at 0x11778800; the direction (0,0,-1)
+ * is folded (n.z * -1.0f, 0.0f added to x and y); the four windows are
+ * double constants.
+ * The direction is a local vector VC5 propagates (a literal 0.0f + x
+ * folds away; the original keeps it), the hit point is scaled then added,
+ * and like BrWheelGroundProbe it is byte-exact only in this TU and at this
+ * position (after the tyre model). */
+/* @implements 0x100682C0 glide BrGroundProbeZ */
+float BrGroundProbeZ(const float *pPoint)
+{
+    extern unsigned char  DAT_11773698[];
+    extern unsigned short DAT_11778800[];
+    extern short BrCollGridCellAcquire(float x, float y);
+    extern float BrCrPlaneDist(const float *pN, float planeD,
+                               const float *pPoint);
+    extern short FUN_100656F0(const float *pTri, const float *pP);
+    const float *pPl;
+    float best, t, h, q[3];
+    float dir[3];
+    int n;
+    short cell;
+
+    best = 100.0f;
+    dir[0] = 0.0f;
+    dir[1] = 0.0f;
+    dir[2] = -1.0f;
+    cell = BrCollGridCellAcquire(pPoint[0], pPoint[1]);
+    pPl = (const float *)(DAT_11773698 + cell * 0x12C0);
+    for (n = DAT_11778800[cell]; n > 0; n--, pPl += 8) {
+        float d = BrCrPlaneDist(pPl, pPl[3], pPoint);
+
+        if (!(d > -2.0) || !(d < 2.0))
+            continue;
+        t = pPl[2] * dir[2];
+        if (!((t < 0.0f ? -t : t) > 0.001))
+            continue;
+        h = -(((pPl[1] * pPoint[1] + pPl[2] * pPoint[2]) + pPl[0] * pPoint[0]
+               + pPl[3]) / t);
+        q[0] = dir[0] * h;
+        q[1] = dir[1] * h;
+        q[2] = dir[2] * h;
+        q[0] += pPoint[0];
+        q[1] += pPoint[1];
+        q[2] += pPoint[2];
+        if (h > -2.0 && h < 2.0 && h < best && pPl[2] > 0.2
+            && FUN_100656F0(pPl, q))
+            best = h;
+    }
+    return best;
+}
+
+#endif /* BR_MATCHING_BUILD */
 #define BrCarPhysTyre BrCarPhysTyre_port
 #endif /* BR_MATCHING_BUILD */
 
