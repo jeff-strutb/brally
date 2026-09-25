@@ -661,7 +661,8 @@ static const unsigned aWheelOff[4] = { 0x994u, 0x57Cu, 0x370u, 0x788u };
  * with the two front wheels also thrown sideways. New particles are nudged part
  * of the way toward where that wheel emitted last time, so a spray follows the
  * wheel's path instead of appearing in a line of separate puffs. */
-/* @implements 0x10039F20 d3d BrCarPfxSpawn */
+/* @d3donly 0x10039F20 BrCarPfxSpawn -- glide twin 0x100335A0 is the Glide arm in gamedata/br_pfx.c */
+#ifndef BR_MATCHING_BUILD
 void BrCarPfxSpawn(struct BrCar *pCar, BrPfxPool *pPool, const BrPfxEnv *pEnv,
                    uint32_t *pSeed)
 {
@@ -747,6 +748,7 @@ void BrCarPfxSpawn(struct BrCar *pCar, BrPfxPool *pPool, const BrPfxEnv *pEnv,
         p->f1F = (uint8_t)BrFtolTrunc(16.0f - t * -167.3000030517578f);
     }
 }
+#endif /* !BR_MATCHING_BUILD */
 
 /* 0x10039200 */
 /* WHAT IT DOES: works out, once a frame and for each of a car's four wheels,
@@ -1222,3 +1224,4 @@ extern int DAT_10ac2c60;
 extern int DAT_10ac2d60;
 
 #endif /* BR_MATCHING_BUILD */
+
