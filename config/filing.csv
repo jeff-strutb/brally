@@ -1039,6 +1039,7 @@ glide_va,name,module,basis,file
 0x1005C6D0,BrCarRespawn_1005C6D0,racing,manual,src/core/racing/BrCarRespawn_1005C6D0.cpp
 0x1005C8B0,FUN_1005c8b0,driving,manual,src/core/driving/FUN_1005c8b0.cpp
 0x1005D050,BrCtlHuman,driving,manual,src/core/driving/br_ctlstep.c
+0x1005D060,BrAiScanCorridor,driving,manual,src/core/driving/BrAiCorridor_1005D060.cpp
 0x1005E690,BrCtlAi,driving,manual,src/core/driving/br_ctlstep.c
 0x1005E6A0,BrCarInitTables,racing,description,src/core/racing/br_carinit.c
 0x1005E780,BrCarClear29C8,racing,neighbour-1,src/core/racing/br_carinit.c
