@@ -197,6 +197,7 @@ glide_va,name,module,basis,file
 0x100140B0,BrHudDrawDial,drawing,filed,src/core/drawing/br_hudscene.c
 0x10014760,BrHudDrawTimeEntry,drawing,neighbour,src/core/drawing/br_text.c
 0x10014800,BrSub_10017290,drawing,neighbour,src/core/drawing/br_hudtimes.c
+0x10014960,BrSub_100173F0,drawing,manual,src/core/drawing/br_hudlappos.c
 0x10014C00,BrHudDrawViewCentreText,drawing,neighbour,src/core/drawing/br_hudscene.c
 0x10014CB0,FUN_10014cb0,drawing,neighbour,src/core/drawing/br_fade.c
 0x10014D00,BrHudDrawViewMessage,drawing,neighbour,src/core/drawing/br_hudscene.c
@@ -394,7 +395,7 @@ glide_va,name,module,basis,file
 0x10029C70,BrGbiSolidTexBuild,drawing,neighbour,src/core/drawing/br_gbitexscan.c
 0x10029E50,BrGuMtxStore,drawing,filed,src/core/drawing/br_drawcar.c
 0x10029E80,BrMat4IdentityLocal,scene,manual,src/core/scene/br_entity.c
-0x10029FE0,BrMat4Perspective7,,,src/core/slice4_50.c
+0x10029FE0,BrMat4Perspective7,geometry,manual,src/core/geometry/br_mat4persp7.c
 0x1002A490,FUN_1002a490,drawing,neighbour-1,src/core/drawing/br_light.c
 0x1002A4D0,BrLightDirsFromLookAt,drawing,description,src/core/drawing/br_light.c
 0x1002A7A0,BrMat4Scale,geometry,filed,src/core/geometry/br_mat.c
@@ -599,7 +600,7 @@ glide_va,name,module,basis,file
 0x10037870,BrPairBufReset,drawing,description,src/core/drawing/br_pairbuf.c
 0x100378C0,FUN_100378c0,drawing,neighbour-1,src/core/generated/0x100378C0.c
 0x10037920,BrOptSave,menus,description,src/core/menus/br_optsave.c
-0x100379B0,BrSub1003E3A0,,description,src/core/slice6_72.c
+0x100379B0,BrSub1003E3A0,settings,manual,src/core/settings/br_optrestore.c
 0x10037B20,BrSub1003E510,menus,neighbour-1,src/core/menus/br_optrefresh.c
 0x10037DC0,BrUiHook85_1003E7A0,menus,neighbour,src/core/menus/BrUiHook85_1003E7A0_10037DC0.cpp
 0x10037E60,BrItemSetLabelState_10037E60,menus,neighbour,src/core/menus/BrItemSetLabelState_10037E60.cpp
@@ -908,10 +909,10 @@ glide_va,name,module,basis,file
 0x100498A0,FUN_100498a0,menus,neighbour,src/core/menus/FUN_100498a0.cpp
 0x1004A840,BrUi51990ScreenNew,menus,neighbour,src/core/menus/BrUi51990ScreenNew_1004A840.cpp
 0x1004ABE0,FUN_1004abe0,menus,neighbour,src/core/menus/FUN_1004abe0.cpp
-0x1004AEE0,BrExt_10052030,menus,prefix,src/core/menus/BrExt_10052030_1004AEE0.cpp
+0x1004AEE0,BrExt_10052030,menus,manual,src/core/menus/br_seasonscreen.c
 0x1004BE00,FUN_1004be00,menus,neighbour,src/core/menus/FUN_1004be00.cpp
 0x1004CBA0,FUN_1004cba0,menus,neighbour,src/core/menus/FUN_1004cba0.cpp
-0x1004DA00,BrExt_10054B50,menus,prefix,src/core/menus/BrExt_10054B50_1004DA00.cpp
+0x1004DA00,BrExt_10054B50,menus,manual,src/core/menus/br_boxscreen.c
 0x1004E750,BrOptFn100558A0,menus,prefix,src/core/menus/BrOptFn100558A0_1004E750.cpp
 0x1004F290,BrUiMultiEnter_1004F290,menus,prefix,src/core/menus/BrUiMultiEnter_1004F290.cpp
 0x1004F8C0,BrOptFn10056A10,menus,prefix,src/core/menus/BrOptFn10056A10_1004F8C0.cpp
@@ -969,7 +970,7 @@ glide_va,name,module,basis,file
 0x10058380,BrSprFontDraw,drawing,neighbour-1,src/core/ghidra_batch.c
 0x10058540,BrSprFontRectInit_1005F800,drawing,filed,src/core/drawing/br_sprfont.c
 0x10058680,BrSeasonApply,settings,manual,src/core/settings/BrSeasonApply_10058680.cpp
-0x10058900,BrExt_1005FBC0,,undecided,src/core/slice5_63.c
+0x10058900,BrExt_1005FBC0,settings,manual,src/core/settings/br_setupcommit.c
 0x10058A30,BrRaceSettingsCommit,menus,manual,src/core/generated/0x10058A30.c
 0x10058AF0,BrCtlNameInit,controls,filed,src/core/controls/br_ctlname.c
 0x10058C70,FUN_10058c70,menus,neighbour-1,src/core/generated/0x10058C70.c
@@ -1143,6 +1144,7 @@ glide_va,name,module,basis,file
 0x1006B3C0,BrSndListAppend,audio,neighbour-1,src/core/audio/br_sndvoice.c
 0x1006B400,BrSndVoiceApplyPan,audio,description,src/core/audio/br_sndvoice.c
 0x1006B420,BrSndVoiceApplyFreq,audio,description,src/core/audio/br_sndvoice.c
+0x1006B440,BrSndVoiceApplyVolume,audio,manual,src/core/audio/br_sndvolume.c
 0x1006B490,BrSndVoiceBufRelease,audio,description,src/core/audio/br_sndvoice.c
 0x1006B4C0,BrSndVoiceBufStop,audio,description,src/core/audio/br_sndvoice.c
 0x1006B4F0,BrX10072580,audio,description,src/core/audio/br_sndvoice.c

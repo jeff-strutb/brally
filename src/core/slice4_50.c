@@ -151,55 +151,6 @@ int BrHookIsCurrent(const void *pfn)
 }
 
 /* ==========================================================================
- * 4. Projection
- * ========================================================================== */
-
-/* 0x10030930 */
-/* WHAT IT DOES: sets up the camera lens -- how wide a view the player sees
- * and how near and far things can be before they are cut off. One of the
- * seven values it is handed, a scale, is passed along and then never looked
- * at by anything. */
-/* @implements 0x10030930 d3d BrMat4Perspective7 */
-/* @n64 0x80260E30 located */
-int BrMat4Perspective7(BrMat4 *pM, uint16_t *pPerspNorm,
-                       float fovyDegrees, float aspect,
-                       float n, float f, float scale)
-{
-#ifdef BR_MATCHING_BUILD
-    /* pi/360 as a double so the half-angle multiply is `fmul qword`. fptan,
-     * two fchs, eight-arg call (scale is pushed and unused by Frustum).
-     * Return is the perspNorm pointer, not Frustum's status.
-     *
-     * `nh` is a NAMED local (2026-09-04): with `-h` inline in the call the
-     * function is 8 B and four `fxch` short -- VC5 pops fptan's 1.0 before
-     * the multiply and homes h in fovy's dead slot, where the original
-     * multiplies first, pops after, and homes h in n's slot.  Naming -h
-     * gives size- and instruction-exact output; naming -w as well is
-     * inert, naming -w alone is worse (15).
-     * The last region (w's store/load ordered before `push eax`) fell to
-     * the explicit `(float)` cast on the w product, 2026-09-09: the cast
-     * pins the rounding store next to the multiply, so w's bits are in ecx
-     * before h is pushed.  (Dead first: every order of the nh/nw statements
-     * and declarations, `aspect * h`, inline spellings, a double ty,
-     * copied scalars, per-part casts on h/ty, 0.0f-h, arg tweaks, every
-     * slot in the TU.) */
-    float ty, h, w, nh;
-    ty = (float)tan((double)fovyDegrees * 0.0087266462599716477);
-    h = n * ty;
-    w = (float)(h * aspect);
-    nh = -h;
-    ((int (*)(BrMat4 *, float, float, float, float, float, float, float))BrMat4Frustum)
-        (pM, -w, w, nh, h, n, f, scale);
-    *pPerspNorm = 1;
-    return (int)pPerspNorm;
-#else
-    (void)scale;
-    return BrMat4Perspective(pM, (unsigned short *)pPerspNorm,
-                             fovyDegrees, aspect, n, f);
-#endif
-}
-
-/* ==========================================================================
  * 5. Screen-object installers
  * ========================================================================== */
 
