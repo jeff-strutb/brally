@@ -8498,3 +8498,20 @@ with the target's flags, diff one function against original bytes
   pushes and `mov ecx,esi`, as the original does.  A Car-level inline
   member, a pointer, an array or reordering does nothing: the inline has to
   run on a different `this`.
+- **`sar ax,N; movsx` with the constant arg pushed FIRST: convert the promoted
+  `short >> N` to an `unsigned int` parameter or local.**  0x10006BA0: with
+  `WriteBits(unsigned int, ...)` the argument `Pack(x) >> 8` narrows to
+  `sar ax,8; movsx` as a pure expression, so `push 8` precedes the pack call.
+  An `int` parameter widens (`movsx; sar r32`); a `short` parameter drops the
+  movsx; every `(short)` cast folds away; any short store (`q = ...`, an
+  inline's short parameter) is a side effect and pushes the constant late.
+  `uint32_t cur = Pack(x) >> 1` narrows the same way.
+- **`f != 0.0f` as a call argument gives `fcomp [pool]; fnstsw; test ah,0x40;
+  jne; mov 1; jmp; xor`**, and before a return VC5 tail-duplicates the call
+  and epilogue itself (`mov eax,1; push eax; push eax`).  No helper needed.
+- **Commutative `|` operand roles that no source order moves are VC5's
+  heap-layout tie-break: the amount declared before the function flips them.**
+  0x10006BA0 matched only with the TU preamble in a window (200-248 or
+  328-376 dummy prototypes; `stdio.h`+`string.h`+`math.h` lands in it), and
+  path length is inert.  Sweep a preamble size before calling it a wall, then
+  replace the padding with the TU's real headers.
