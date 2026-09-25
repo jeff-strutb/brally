@@ -132,3 +132,98 @@ int BrCollGridLoaded(int *pCells, int *pPlanes)
     if (pPlanes != NULL) *pPlanes = planes;
     return (g_pBrCollGrid != NULL);
 }
+
+#ifdef BR_MATCHING_BUILD
+/* 0x100686D0 (D3D twin 0x1006F720, port body in slice6_73.c) */
+/* WHAT IT DOES: get the collision-grid cell covering a point, reusing the
+ * least recently used of the four cache slots when it is not already
+ * loaded. A freshly loaded slot is filled with one plane record per triangle
+ * of that grid square: the triangle's three vertex pointers, its index and
+ * surface bits, its unit normal (V1-V0) x (V2-V0) and its plane constant. */
+/* Transcribed from the Glide bytes: four slots, keys (u16) at 0x11778838,
+ * stamps at 0x11778828, the clock at 0x11778840 bumped in place, 150 plane
+ * records of 0x20 per slot at 0x11773698 and the plane counts at
+ * 0x11778800. The stored key is compared zero-extended against the new key
+ * sign-extended, so a negative key never hits (the original's defect). The
+ * victim is uninitialised if no stamp is below 0x40000000, as in the
+ * original. BrGrid64Sample and BrU16CursorNext take (x, y) and (&cursor);
+ * the triangle table, vertex array and flag bytes are behind the pointers
+ * at 0x106EECE4, 0x106EECEC and 0x106EED6C.
+ * T2, 544/551 B, same 178 instructions, REGNORM 4+4 (2026-09-25; the old
+ * port-shaped body was 613 B, 28+13). Residue is frame layout: the original
+ * gives the cross product's bx/by real locals (sub esp,0x10) and packs the
+ * cursor into y's argument slot; here the cursor gets the local and bx/by
+ * pack into dead argument slots (push ecx), and y's ftol is evaluated before
+ * x's. Dead: key spellings, declaration orders, record-field access forms,
+ * block scoping and struct typing of the cursor. */
+/* @implements 0x100686D0 glide BrCollGridCellAcquire */
+short BrCollGridCellAcquire(float x, float y)
+{
+    extern unsigned short DAT_11778838[4];
+    extern unsigned int   DAT_11778828[4];
+    extern unsigned int   DAT_11778840;
+    extern unsigned short DAT_11778800[4];
+    extern unsigned char  DAT_11773698[];
+    extern unsigned short *DAT_106eece4;
+    extern unsigned char  *DAT_106eecec;
+    extern unsigned char  *DAT_106eed6c;
+    typedef unsigned int  (*BrGridSampleG)(float, float);
+    typedef unsigned short (*BrCursorNextG)(unsigned short *);
+    float *p;
+    unsigned int best, packed;
+    unsigned short cur[2], tri, n;
+    int key, i, victim;
+
+    ++DAT_11778840;
+    key = (int)x / 32 + ((int)y / 32 << 6);
+    best = 0x40000000u;
+    for (i = 0; i < 4; i++) {
+        if (DAT_11778838[i] == (short)key) {
+            DAT_11778828[i] = DAT_11778840;
+            return (short)i;
+        }
+        if (DAT_11778828[i] < best) {
+            victim = i;
+            best = DAT_11778828[i];
+        }
+    }
+    DAT_11778838[victim] = (unsigned short)key;
+    DAT_11778828[victim] = DAT_11778840;
+    n = 0;
+    p = (float *)(DAT_11773698 + victim * 0x12C0);
+    packed = ((BrGridSampleG)BrGrid64Sample)(x, y);
+    cur[0] = (unsigned short)packed;
+    cur[1] = (unsigned short)(packed >> 16);
+    if (packed != 0) {
+        while ((tri = ((BrCursorNextG)BrU16CursorNext)(cur)) != 0) {
+            float ax, ay, az, bx, by, bz;
+            float *v0, *v1, *v2;
+
+            *(float **)(p + 4) = (float *)(DAT_106eecec + DAT_106eece4[tri * 4] * 12);
+            *(float **)(p + 5) = (float *)(DAT_106eecec + DAT_106eece4[tri * 4 + 1] * 12);
+            *(float **)(p + 6) = (float *)(DAT_106eecec + DAT_106eece4[tri * 4 + 2] * 12);
+            *(unsigned short *)(p + 7) = tri;
+            *((unsigned char *)(p + 7) + 2) = (unsigned char)(DAT_106eed6c[tri] & 7);
+            v0 = *(float **)(p + 4);
+            v1 = *(float **)(p + 5);
+            v2 = *(float **)(p + 6);
+            ax = v1[0] - v0[0];
+            ay = v1[1] - v0[1];
+            az = v1[2] - v0[2];
+            bx = v2[0] - v0[0];
+            by = v2[1] - v0[1];
+            bz = v2[2] - v0[2];
+            p[0] = ay * bz - az * by;
+            p[1] = az * bx - ax * bz;
+            p[2] = ax * by - ay * bx;
+            BrVec3Normalise((BrVec3 *)(void *)p);
+            v0 = *(float **)(p + 4);
+            p[3] = -((p[0] * v0[0] + v0[1] * p[1]) + v0[2] * p[2]);
+            ++n;
+            p += 8;
+        }
+    }
+    DAT_11778800[victim] = n;
+    return (short)victim;
+}
+#endif /* BR_MATCHING_BUILD */
