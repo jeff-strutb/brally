@@ -25,7 +25,6 @@
 extern float DAT_10077770;    /* the "unset" sentinel both float tests use */
 extern float DAT_10077778;    /* the "last seen" clock's forward tolerance */
 
-int  ftol(void);                                        /* real cdecl     */
 void FUN_10062640(int pDst, const float *pRec);          /* 0x10062640     */
 void FUN_1006d530(void *pForces);                         /* 0x1006D530     */
 
@@ -40,19 +39,14 @@ void FUN_1006d530(void *pForces);                         /* 0x1006D530     */
  * "last seen" clock when the new value is not behind it by more than a
  * tolerance, and the whole applied block is then mirrored into two shadow
  * copies before the wheel-force list is reset. */
-/* T2, not yet byte-exact: 593/673 B (80 B short), REGNORM 5+23. Switching
- * the two tail block-copies from a hand loop to memcpy() closed most of the
- * gap (40 -> 28 register-blind, FIRSTDIV +0x1 -> +0xD2 -- CLAUDE.md's own
- * "manual copy loops are memcpy" idiom, docs/VC5-IDIOMS.md ~line 7197).
- * Residue: 17 `fld [R+I]` the original has that this recomp does not, past
- * +0xD2 -- one of the twenty scattered field copies is likely staying on
- * the stack ([esp+S]) here instead of through a kept base register; not
- * isolated further this session. */
+/* Transcribed from the Glide bytes: every truncation is a plain (int) cast
+ * (fld [esi+off]; call __ftol), the flag bit is read-modified-written in each
+ * arm (VC5 hoists the load past the compare and sinks the store), and the
+ * "last seen" test is a ?: whose two 1-arms stay separate. */
 /* @implements 0x10059A80 glide BrCarGhostApply_10059A80 */
 void BrCarGhostApply_10059A80(int pCar, const float *pRec)
 {
     int  block = pCar + 0x1dc;
-    unsigned uVal;
 
     CF(pCar, 500) = pRec[0];
     CF(pCar, 0x1f8) = pRec[1];
@@ -78,54 +72,44 @@ void BrCarGhostApply_10059A80(int pCar, const float *pRec)
     CF(pCar, 0x750) = pRec[0x11];
     CF(pCar, 0xb68) = pRec[0x12];
 
-    CI(pCar, 0x524) = ftol();
-    CI(pCar, 0x93c) = ftol();
-    CI(pCar, 0x730) = ftol();
-    CI(pCar, 0xb48) = ftol();
+    CI(pCar, 0x524) = (int)pRec[0x13];
+    CI(pCar, 0x93c) = (int)pRec[0x14];
+    CI(pCar, 0x730) = (int)pRec[0x15];
+    CI(pCar, 0xb48) = (int)pRec[0x16];
 
-    CB(pCar, 0x510) = (unsigned char)ftol();
-    CB(pCar, 0x928) = (unsigned char)ftol();
-    CB(pCar, 0x71c) = (unsigned char)ftol();
-    CB(pCar, 0xb34) = (unsigned char)ftol();
-    CB(pCar, 0x36d) = (unsigned char)ftol();
+    CB(pCar, 0x510) = (unsigned char)(int)pRec[0x17];
+    CB(pCar, 0x928) = (unsigned char)(int)pRec[0x18];
+    CB(pCar, 0x71c) = (unsigned char)(int)pRec[0x19];
+    CB(pCar, 0xb34) = (unsigned char)(int)pRec[0x1a];
+    CB(pCar, 0x36d) = (unsigned char)(int)pRec[0x1b];
 
-    uVal = *(unsigned *)CI(pCar, 0x29c0);
-    if (pRec[0x1c] == DAT_10077770)
-        uVal &= 0xfffbffffu;
+    if (pRec[0x1c] != DAT_10077770)
+        *(unsigned *)CI(pCar, 0x29c0) |= 0x40000u;
     else
-        uVal |= 0x40000u;
-    *(unsigned *)CI(pCar, 0x29c0) = uVal;
+        *(unsigned *)CI(pCar, 0x29c0) &= 0xfffbffffu;
 
-    if (pRec[0x1d] == DAT_10077770)
-        CI(pCar, 0xe68) = 0x3f800000;
+    if (pRec[0x1d] != DAT_10077770)
+        CF(pCar, 0xe68) = -1.0f;
     else
-        CI(pCar, 0xe68) = (int)0xbf800000;
+        CF(pCar, 0xe68) = 1.0f;
 
     {
-        int advance;
+        int advance = (CF(pCar, 0xff4) <= DAT_10077770) ? 1 : (CF(pCar, 0xff4) - DAT_10077778 > pRec[0x1e]);
 
-        if (DAT_10077770 < CF(pCar, 0xff4)) {
-            if (CF(pCar, 0xff4) - DAT_10077778 <= pRec[0x1e])
-                advance = 0;
-            else
-                advance = 1;
-        } else {
-            advance = 1;
-        }
         if (advance)
             CF(pCar, 0xff4) = pRec[0x1e];
     }
 
     CF(pCar, 0xe24) = pRec[0x1f];
 
-    CB(pCar, 0x362) = (unsigned char)ftol();
-    CB(pCar, 0x363) = (unsigned char)ftol();
-    CB(pCar, 0x36c) = (unsigned char)ftol();
-    CB(pCar, 0x366) = (unsigned char)ftol();
-    CB(pCar, 0x367) = (unsigned char)ftol();
-    CB(pCar, 0x368) = (unsigned char)ftol();
-    CB(pCar, 0x369) = (unsigned char)ftol();
-    CB(pCar, 0x36a) = (unsigned char)ftol();
+    CB(pCar, 0x362) = (unsigned char)(int)pRec[0x20];
+    CB(pCar, 0x363) = (unsigned char)(int)pRec[0x21];
+    CB(pCar, 0x36c) = (unsigned char)(int)pRec[0x22];
+    CB(pCar, 0x366) = (unsigned char)(int)pRec[0x23];
+    CB(pCar, 0x367) = (unsigned char)(int)pRec[0x24];
+    CB(pCar, 0x368) = (unsigned char)(int)pRec[0x25];
+    CB(pCar, 0x369) = (unsigned char)(int)pRec[0x26];
+    CB(pCar, 0x36a) = (unsigned char)(int)pRec[0x27];
 
     FUN_1006d530((void *)block);
 
