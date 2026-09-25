@@ -8531,3 +8531,24 @@ with the target's flags, diff one function against original bytes
   `pt[]` give `fld halfW; fmul scale` and `fld halfW; fmul pt[0]`; declared
   before it, all three products load the other factor first.  Writing the
   product the other way round is inert.
+- **A 12-byte struct copy that reads `[reg+disp]` directly (no `lea` to a
+  temp pointer, no `mov eax,edi`): the vector type has an inline member
+  `operator=` copying x, y, z.**  0x1005D060: plain struct assignment
+  lowers to a block copy through two address temporaries; componentwise
+  assignment reloads the source base after the first store (aliasing); the
+  inline operator= through a reference reproduces the original's
+  load/store interleave exactly.
+- **A register rotation across a block that ends in inline `memcpy`s: move the
+  scalar store that follows them.**  0x1005D060's depth store written before
+  the three `rep movs` copies kept depth live across `ecx` and rotated
+  eax/ecx/edx through the whole block; written after them it is scheduled
+  back inside the first copy, as the original has it, with no rotation.
+- **Under `/Gi` the order of independent reloads at a join follows the
+  compiler's heap layout: the lengths of the source path and the `/Fo` object
+  path, and the idb's contents.**  Names, declarations and preamble size
+  are inert there.  Measure it the way the image is built: the "O2 Gi" rows
+  compiled serially in (file, va) order through ONE fresh private idb, with
+  sweep-named objects (`<base>_sweep_<VA>_1.obj`, a same-length private obj
+  dir for the predecessors), then sweep the file name's length.  Never
+  compile against the shared root `vc50.idb` (parallel /Gi runs corrupt it:
+  C1073).
