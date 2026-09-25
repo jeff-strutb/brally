@@ -1240,7 +1240,7 @@ def main():
             def one(s):
                 logp = os.path.join(logdir, os.path.splitext(os.path.basename(s))[0] + '.log')
                 with open(logp, 'w') as f:
-                    rc = subprocess.call(base + [s], stdout=f, stderr=subprocess.STDOUT)
+                    rc = subprocess.call(base + ['--', s], stdout=f, stderr=subprocess.STDOUT)
                 lines = [l for l in open(logp).read().splitlines() if ' pass ' in l]
                 return rc, lines, logp
 
