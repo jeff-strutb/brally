@@ -70,6 +70,72 @@ void BrNodeChainReset_1000F460(void)
 }
 
 #ifdef BR_MATCHING_BUILD
+/* One camera's viewport record, 0x58 bytes; only the rectangle is read. */
+typedef struct BrVisView {
+    int x, y, w, h;
+    unsigned char pad[0x48];
+} BrVisView;
+
+/* WHAT IT DOES: works out the screen box a sphere covers. The centre is run
+ * through the view matrix; if it is not (nearly) in the camera plane it is
+ * divided through by depth, its x mirrored when exactly one of the two mirror
+ * flags is set, and a square of half-size n (scaled by the same 1/depth) is
+ * drawn round it. The corners are mapped onto the current viewport, x right
+ * and y up from its centre, and written as shorts: min corner to pMin, max
+ * corner to pMax. Nothing is written when the depth is within 0.001 of 0. */
+/* Transcribed from the Glide bytes: the viewport is pView[g_brIView]; the
+ * half-extents are w >> 1 and h >> 1 (sar, not a division); the mirror test is
+ * 0x106EA3F4 ^ 0x106E8204 with an fchs; __ftol for all four corners.
+ * T2, 302/308 B, same 99 instructions, REGNORM 4+4 (2026-09-25). The
+ * half-extents convert IN PLACE (int stored to the float's own slot, fild,
+ * fstp back), which only the *(int *)& spelling reproduces and which gives
+ * the original's 0x14 frame; x1/y1 volatile reproduce its store-and-reload
+ * of the max corner. Residue: the original also homes sx in memory (packed
+ * into v[0]) and x1/y1 into v[0]/v[1]; here sx stays in a register and x1/y1
+ * pack into the dead argument slots. Dead: statement order, operand order,
+ * declaration order (60 perms), named/unnamed temps, explicit v[] writes,
+ * volatile v / volatile sx, pointer-aliased writes. */
+/* @implements 0x1000C9E0 glide FUN_1000c9e0 */
+void FUN_1000c9e0(BrVisView *pView, const void *pPt, int n, short *pMin,
+                  short *pMax)
+{
+    extern int   g_brIView;              /* 0x106EC798 */
+    extern float DAT_106e9a38[16];       /* the view matrix */
+    extern int   DAT_106ea3f4;
+    extern int   DAT_106e8204;
+    extern void  BrMat4TransformPoint4(float *pOut, const void *pV,
+                                       const float *pM);
+    float v[4];
+    int cx, cy;
+    float fhw, fhh, r, sy, rad, x0, sx;
+    volatile float x1, y1;
+
+    *(int *)&fhw = pView[g_brIView].w >> 1;
+    cx = pView[g_brIView].x + *(int *)&fhw;
+    fhw = (float)*(int *)&fhw;
+    *(int *)&fhh = pView[g_brIView].h >> 1;
+    cy = pView[g_brIView].y + *(int *)&fhh;
+    fhh = (float)*(int *)&fhh;
+    BrMat4TransformPoint4(v, pPt, DAT_106e9a38);
+    if (v[3] > 0.001f || v[3] < -0.001f) {
+        r = 1.0f / v[3];
+        sx = r * v[0];
+        if (DAT_106ea3f4 ^ DAT_106e8204)
+            sx = -sx;
+        rad = (float)n * r;
+        sy = r * v[1];
+        x0 = sx - rad;
+        x1 = sx + rad;
+        y1 = sy + rad;
+        pMin[0] = (short)(cx + (int)(x0 * fhw));
+        pMin[1] = (short)(cy - (int)((sy - rad) * fhh));
+        pMax[0] = (short)(cx + (int)(fhw * x1));
+        pMax[1] = (short)(cy - (int)(fhh * y1));
+    }
+}
+#endif /* BR_MATCHING_BUILD */
+
+#ifdef BR_MATCHING_BUILD
 extern int DAT_102e16ac;
 extern int DAT_102e16b0;
 extern char DAT_102e1710;
