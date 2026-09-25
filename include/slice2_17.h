@@ -146,6 +146,11 @@ typedef struct BrS17State {
     int f6C33B8, f6C06A4, f6C069C;
 } BrS17State;
 
+/* Defined in slice2_17.c. External (not file-static) so the functions filed
+ * out of that address batch into their modules reach the same block; a
+ * DIR32 reference to it compiles identically either way. */
+extern BrS17State g_s17;
+
 BrS17State *BrS17GetState(void);
 
 /* ===================================================================== */

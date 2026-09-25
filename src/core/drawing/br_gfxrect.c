@@ -7,11 +7,10 @@
  * 0x1002AD39 (fill a rectangle) -- and of the two empty functions that sit
  * between them in the original at 0x1002AB8F and 0x1002AB94.
  *
- * ONLY THE TWO EMPTY ONES ARE HERE YET.  The clear and the fill both write
- * through slice2_17.c's file-static g_s17 state block, which some thirty
- * other functions in that file still share, so moving them would mean two
- * copies of one state block and a silently broken port.  They belong here
- * and follow when that state has one owner.
+ * Only the two empty ones are here.  The clear and the fill, with their
+ * neighbour 0x1002AB32 (texture command), are in drawing/br_gfxfill.c: they
+ * write through slice2_17.c's g_s17 state block and carry that batch's
+ * whole helper set, which this file's preamble does not.
  */
 #ifdef BR_MATCHING_BUILD
 /* slice2_17.h prototypes a list pointer the original never takes. */

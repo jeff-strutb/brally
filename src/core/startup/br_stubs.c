@@ -126,14 +126,13 @@ FUN_10074ae6(void)
  * translation unit by every sign (the addresses are contiguous and the
  * whole run matches at /Od while the rest of the batch matches at /O2).
  *
- * Only these two came across.  Their four neighbours in the same run --
- * 0x1002A840 BrScratchRingAlloc, 0x1002A894 BrScratchRingDrain,
- * 0x1002A8D7 BrRenderCountersReset and 0x1002A93C BrScreenSizeApply --
- * all reach slice2_17.c's file-static g_s17, which is a decomp-invented
- * aggregate with 136 references across 72 functions in that batch and so
- * cannot travel.  These two touch no file-static in either build arm:
- * BrScratchRingNull reads only its own parameters, and BrScreenSizeInit
- * only calls its neighbour through slice2_17.h's declaration.
+ * Their four neighbours in the same run are filed separately:
+ * 0x1002A840 BrScratchRingAlloc and 0x1002A894 BrScratchRingDrain in
+ * drawing/br_scratchring.c, 0x1002A8D7 BrRenderCountersReset and
+ * 0x1002A93C BrScreenSizeApply in startup/br_renderreset.c.  These two
+ * touch no shared state in either build arm: BrScratchRingNull reads only
+ * its own parameters, and BrScreenSizeInit only calls its neighbour
+ * through slice2_17.h's declaration.
  *
  * The batch's preamble is carried verbatim, per this file's convention.
  * --------------------------------------------------------------------- */
