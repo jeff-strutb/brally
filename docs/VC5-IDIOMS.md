@@ -8515,3 +8515,19 @@ with the target's flags, diff one function against original bytes
   328-376 dummy prototypes; `stdio.h`+`string.h`+`math.h` lands in it), and
   path length is inert.  Sweep a preamble size before calling it a wall, then
   replace the padding with the TU's real headers.
+- **`[list + off + disp]` with the freshly loaded pointer as SIB BASE and a
+  loop-carried `n*sizeof` as the index (`mov eax,[g]; add eax,ebp` before the
+  call pushes): a C++ translation unit.**  0x10011300: the C front end puts
+  the offset first (`lea ecx,[ebp+eax]`, a byte longer) for every spelling
+  (`g[n]`, `n[g]`, char/int arithmetic, a named offset, an int global), under
+  every preamble size and every local order.  The C++ front end gives the
+  original's order once the preamble tie-break is in range (dummy-prototype
+  sweep: 108+ yes, 0-96 no; `<stdio.h>` alone lands in it).  `/Gi` is inert.
+- **`xor r,r; mov bl,dh` for the high byte of a product: `(unsigned)(a*b) >> 8
+  & 0xff`.**  `(unsigned char)((a*b) >> 8)` gives `sar; and 0xff`; an
+  `unsigned short` product gives `movzx`/`and 0xffff; shr`.
+- **x87 product of two named float locals: the LATER-declared one is the
+  loaded (`fld`) operand.**  0x10011300: `halfW`/`halfH` declared after
+  `pt[]` give `fld halfW; fmul scale` and `fld halfW; fmul pt[0]`; declared
+  before it, all three products load the other factor first.  Writing the
+  product the other way round is inert.
