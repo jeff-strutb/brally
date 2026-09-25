@@ -482,16 +482,8 @@ typedef int (__stdcall *BrDpOpenX)(void *pThis, DWORD *pOut, void *pDesc,
                                    DWORD dwFlags);                   /* +0x18 */
 typedef int (__stdcall *BrComRel)(void *pThis);                      /* +0x08 */
 
-/* WHAT IT DOES: connects a lobby-launched game.  Creates the DirectPlay
- * lobby object, sizes and fetches the connection settings the lobby staged
- * (a too-small probe first, then a GlobalAlloc'd fetch), stamps the session
- * description with the game's flag word (0x44) and eight players, writes
- * the settings back and connects.  The obtained DirectPlay interface is
- * opened on the session description with 0x100 or'd in when the lobby said
- * host; on success the record gets the interface, the open result and the
- * host bit, and the lobby's player short name and session name are copied
- * into the game's globals.  Whatever was created but not handed over is
- * released and freed on every path; returns the failing HRESULT.
+/* History of the byte-exact attempts (the 455 B era, before the byte mask
+ * moved to the load and the body reached 461/461):
  *
  * RESIDUE (RAW 0+1, 455 vs 461 B, one instruction): the original computes
  * the host bit as `mov esi,[pMem+4]; AND ESI,0xFF; shr esi,1; and esi,1`
@@ -525,6 +517,16 @@ typedef int (__stdcall *BrComRel)(void *pThis);                      /* +0x08 */
 /* @t4-pass 0x10032320 3 2026-09-13 probes 220 bytes 455 insns 175 regions 1 rows 1 census yes  (tools/crank.py) */
 /* @t4-pass 0x10032320 4 2026-09-24 probes 12 bytes 461 insns 176 regions 1 rows 0 census no  (hand, after the byte mask moved to the load and the bit after the call reached 461/461: twelve spellings of the mask and the bit -- casts, byte load, %256, <<24>>24, (x&2)>>1, !!, /2, store order; none moved the and/shr schedule) */
 /* @t4-pass 0x10032320 5 2026-09-24 probes 11 bytes 461 insns 176 regions 1 rows 0 census yes  (hand, mechanism experiment: ten permutations of the ten local declarations, i.e. the allocator's candidate order; residue identical in all) */
+/* WHAT IT DOES: connects a lobby-launched game.  Creates the DirectPlay
+ * lobby object, sizes and fetches the connection settings the lobby staged
+ * (a too-small probe first, then a GlobalAlloc'd fetch), stamps the session
+ * description with the game's flag word (0x44) and eight players, writes
+ * the settings back and connects.  The obtained DirectPlay interface is
+ * opened on the session description with 0x100 or'd in when the lobby said
+ * host; on success the record gets the interface, the open result and the
+ * host bit, and the lobby's player short name and session name are copied
+ * into the game's globals.  Whatever was created but not handed over is
+ * released and freed on every path; returns the failing HRESULT. */
 /* @t3 0x10032320 2026-09-24 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 461/461 insns 176/176 rows 0+0 regions 1 oracle EQUIVALENT
  * @t3-effort passes 4 zero-movement 4 5
