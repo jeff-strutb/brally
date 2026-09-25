@@ -190,12 +190,29 @@ const char BrDxMsgCreateSurfaceFailed[] = "Couldn't CreateSurface\r\n";
  * and with a decorative rule line first it reported this very function as
  * unported -- which is precisely the false negative that tool exists to
  * prevent. Validated by running it after writing this. */
+/* @t4-pass 0x1001D8A0 1 2026-09-07 probes 104 bytes 898 insns 302 regions 16 rows 26 census yes  (tools/crank.py) */
+/* @t4-pass 0x1001D8A0 2 2026-09-07 probes 104 bytes 898 insns 302 regions 16 rows 26 census yes  (tools/crank.py) */
+/* @t4-pass 0x1001D8A0 3 2026-09-24 probes 51 bytes 898 insns 302 regions 16 rows 56 census no  (handle/proc local declaration orders, locals before or after the five COM pointers, reusing one variable for both GetProcAddress results; nothing moved) */
+/* @t4-pass 0x1001D8A0 4 2026-09-24 probes 245 bytes 898 insns 302 regions 16 rows 56 census yes  (census: the rows are the constant-0 register (edi in the original, live only until the DirectDraw probe, then reused to cache GetProcAddress/LoadLibraryA; ours holds 0 in ebx throughout and caches no imports) -- probed NULL-initialiser forms: in declarations, as statements before/after GetVersionEx, chained, literal 0, all 120 orders of the five pointers both ways; nothing moved) */
+/* @t3 0x1001D8A0 2026-09-24 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 898/924 insns 302/314 rows 34+22 regions 16 oracle EQUIVALENT
+ * @t3-effort passes 4 zero-movement 3 4
+ * Residue is register choice only: the original parks constant 0 in edi
+ * until the DirectDraw probe and then caches GetProcAddress/LoadLibraryA in
+ * edi/ebp (12 extra instructions); ours keeps 0 in ebx and calls the imports
+ * through memory.  Do not reopen before the end-grind (CLAUDE.md rule 12).
+ * Oracle coverage: the game only ever runs the Windows 98 / DirectX 6 path
+ * (134 of 314 instructions).  Every other branch was forced from the real
+ * boot state by swapping the emulator's import models: GetVersionEx
+ * failure, NT 3, NT 4 with and without DINPUT / DirectInputCreateA, NT 5,
+ * an unknown platform, and each DirectDraw failure point (DDRAW.DLL, its
+ * proc, DirectDrawCreate, QI DDraw2, DINPUT load/proc, SetCooperativeLevel,
+ * CreateSurface, surface QI 3 and 4).  18/18 agree; planted bugs in the
+ * NT 4 and DirectX 6 arms were caught DIVERGENT. */
 /* WHAT IT DOES: works out which version of DirectX is installed and which
  * family of Windows this is, by trying progressively newer interfaces and
  * seeing how far it gets. This is what the startup code consults before
  * refusing to run on a machine without DirectX 6. */
-/* @t4-pass 0x1001D8A0 1 2026-09-07 probes 104 bytes 898 insns 302 regions 16 rows 26 census yes  (tools/crank.py) */
-/* @t4-pass 0x1001D8A0 2 2026-09-07 probes 104 bytes 898 insns 302 regions 16 rows 26 census yes  (tools/crank.py) */
 /* @implements 0x1001D8A0 glide BrDxDetect */
 #ifdef BR_MATCHING_BUILD
 /* The BrDxHost seam is the port's, and it is the whole shape gap: every one of

@@ -48,6 +48,7 @@ va,name,verdict,calls,captured,contexts,detail,date
 0x1001c9d0,BrSelLookup,EQUIVALENT,3,3,3,50_championship: 1 real call(s) agree,2026-09-24
 0x1001ca30,BrCarDamageTick,EQUIVALENT,2,2,2,50_championship: 1 real call(s) agree,2026-09-24
 0x1001d1b0,BrScenePropsDraw,EQUIVALENT,2509,119,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x1001d8a0,BrDxDetect,EQUIVALENT,18,18,18,"10_boot object mode: the real call plus 17 forced environments (GetVersionEx fail / NT3 / NT4 +- DInput / NT5 / other platform; DDraw load, proc, create, QI DDraw2, DInput load/proc, SetCooperativeLevel, CreateSurface, surface QI 3/4 failures) -- all agree; planted bugs caught",2026-09-24
 0x1001dd00,BrVec3dCross,EQUIVALENT,762458,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x1001e080,BrGlInstall,EQUIVALENT,25,25,25,10_boot: 1 real call(s) agree,2026-09-24
 0x1001ec30,BrDlsTileSizeDecode,EQUIVALENT,688715,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24

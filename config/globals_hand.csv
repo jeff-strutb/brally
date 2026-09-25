@@ -25,3 +25,17 @@ g_brAC5BAC,0x10AC5BAC,1,1,"transcription header: slot-scroll input-consumed flag
 g_pBrAC5DD8,0x10AC5DD8,1,1,"transcription header: slot-scroll timing/anchor struct pointer (src/core/menus/BrSlotScrollStep_100553B0.cpp)",0x100553B0
 g_brAC5DBC,0x10AC5DBC,1,1,"transcription header: slot-scroll horizontal anchor origin (src/core/menus/BrSlotScrollStep_100553B0.cpp)",0x100553B0
 g_brAC5DC0,0x10AC5DC0,1,1,"transcription header: slot-scroll vertical anchor origin (src/core/menus/BrSlotScrollStep_100553B0.cpp)",0x100553B0
+BrDxNameDInputDll,0x100A9A44,1,1,"BrDxDetect string/GUID; original bytes at the address verified equal to the source literal (src/core/startup/br_dxver.c)",0x1001D8A0
+BrDxMsgLoadDInputFailed,0x100A9A24,1,1,"BrDxDetect string/GUID; original bytes at the address verified equal to the source literal (src/core/startup/br_dxver.c)",0x1001D8A0
+BrDxNameDInputCreate,0x100A9A10,1,1,"BrDxDetect string/GUID; original bytes at the address verified equal to the source literal (src/core/startup/br_dxver.c)",0x1001D8A0
+BrDxMsgProcDInputFailed,0x100A99E8,1,1,"BrDxDetect string/GUID; original bytes at the address verified equal to the source literal (src/core/startup/br_dxver.c)",0x1001D8A0
+BrDxNameDDrawDll,0x100A99DC,1,1,"BrDxDetect string/GUID; original bytes at the address verified equal to the source literal (src/core/startup/br_dxver.c)",0x1001D8A0
+BrDxNameDDrawCreate,0x100A99C8,1,1,"BrDxDetect string/GUID; original bytes at the address verified equal to the source literal (src/core/startup/br_dxver.c)",0x1001D8A0
+BrDxMsgLoadDDrawFailed,0x100A99A8,1,1,"BrDxDetect string/GUID; original bytes at the address verified equal to the source literal (src/core/startup/br_dxver.c)",0x1001D8A0
+BrDxMsgCreateDDrawFailed,0x100A9990,1,1,"BrDxDetect string/GUID; original bytes at the address verified equal to the source literal (src/core/startup/br_dxver.c)",0x1001D8A0
+BrDxMsgQiDDraw2Failed,0x100A9978,1,1,"BrDxDetect string/GUID; original bytes at the address verified equal to the source literal (src/core/startup/br_dxver.c)",0x1001D8A0
+BrDxMsgCoopLevelFailed,0x100A995C,1,1,"BrDxDetect string/GUID; original bytes at the address verified equal to the source literal (src/core/startup/br_dxver.c)",0x1001D8A0
+BrDxMsgCreateSurfaceFailed,0x100A9940,1,1,"BrDxDetect string/GUID; original bytes at the address verified equal to the source literal (src/core/startup/br_dxver.c)",0x1001D8A0
+BrIidIDirectDraw2,0x10077CB8,1,1,"BrDxDetect string/GUID; original bytes at the address verified equal to the source literal (src/core/startup/br_dxver.c)",0x1001D8A0
+BrIidIDirectDrawSurface3,0x10077CF8,1,1,"BrDxDetect string/GUID; original bytes at the address verified equal to the source literal (src/core/startup/br_dxver.c)",0x1001D8A0
+BrIidIDirectDrawSurface4,0x10077D08,1,1,"BrDxDetect string/GUID; original bytes at the address verified equal to the source literal (src/core/startup/br_dxver.c)",0x1001D8A0
