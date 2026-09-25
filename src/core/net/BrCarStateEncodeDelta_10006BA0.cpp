@@ -7,131 +7,52 @@
 /* @implements 0x10006BA0 glide BrCarStateEncodeDelta
  * @cpp_symbol _BrCarStateEncodeDelta
  *
- * The C transcription (slice2_12.c, tagged at the D3D twin 0x10006830) is
- * shape-exact except for the writer's thiscall: 0x1006D0B0 is `this` in ecx
- * with BOTH arguments on the stack and callee-cleaned (`ret 8`) -- a C++
- * member function, so the calling TU was C++.  Under C the __fastcall shim
- * that fakes it emits a dead `xor edx,edx` at every one of the ~18 write
- * sites (the whole size gap).  This file is that TU's shape: the writer is a
- * declared-not-defined native-thiscall class method, the quantisers stay
- * extern "C" cdecl, and the body is the slice2_12.c transcription verbatim.
- * Result under VC5 /O2 /GX /MD: 714 -> 84 reloc-masked diff bytes; the shim
- * is gone and every write site's `mov ecx,pBs; push n; push v; call` matches.
+ * BYTE-EXACT under VC5 /O2 /GX /MD (2026-09-25).  Hand-transcribed from the
+ * Glide bytes; C++ because the writer 0x1006D0B0 is a thiscall member (`this`
+ * in ecx, `ret 8`).  The earlier verdict that this family is a VC4.2 object
+ * is REFUTED: the whole TU (tu_006: Encode, the ten packers, this) is VC5,
+ * like its byte-exact decode siblings.  Three source facts carry it:
  *
- * STATE 2026-09-10: NOT A MATCH.  The whole 84-byte residue is ONE thing --
- * the original pushes `nBits` BEFORE the inner quantiser call (in-place
- * right-to-left argument construction), while VC5 evaluates the value first
- * and pushes the constant late.  The consequent [esp+0x1c]-vs-[esp+0x18]
- * pBs-load offset is a downstream effect of the same push, not independent.
- * This is EXACTLY the push-early-vs-narrow-shift mutual exclusion the sibling
- * 0x10006510 documents: the `int16_t q` assignment is what gives the narrow
- * `sar ax,8`, and any form that makes the value a pure argument expression
- * (which is what pushes nBits early) widens the shift to `movsx; sar r32`
- * instead -- MEASURED here: the pure-expression form is 729 diffs under VC5.
- * The two are not simultaneously reachable under VC5/SP3/VC6.
- *
- * ‼ VC4.2 (tools/msvc42, cl 10.20.6166) REPRODUCES THE ANOMALY on this second
- * family member: with pure-expression arguments it emits `push 8` before the
- * pack call AND the narrow `sar ax,8` + `movsx` TOGETHER -- the VC5-impossible
- * combination.  This is independent confirmation of the sibling's finding
- * that the bitstream net family is a VC4.2-compiled C++ object linked into an
- * otherwise-VC5 DLL ([[vc42-is-the-real-compiler]]).  It is still NOT a
- * byte-match under VC4.2 at /O2 /Ox /O1 /O2y: register-blind it is 292 insns
- * against the original's 303 (an ~11-insn structural gap) plus prologue
- * register-save order (ebp) and edx/ecx allocation.  Matching this function
- * needs the VC4.2 toolchain wired into the image build for this TU (an
- * architecture decision, not a spelling), plus the `!= 0.0f` global-zero
- * compare idiom for the six tail bit-writes.  Do NOT re-grind VC5 spellings;
- * the wall is the compiler, proven twice.
- *
- * STATE 2026-09-12b -- THE LAST FOUR INSTRUCTIONS, measured to a bound.
- * Best state (this file, cl 10.20.6166 /O2): 298/302 insns, 913/925 B,
- * 6 regions.  The whole residue is now TWO canonicalisations:
- *   (1) the bool diamond at the five non-final tail writes -- orig
- *       `jne; mov eax,1; jmp; xor`, ours the folded set-then-clear
- *       `mov eax,1; je; xor` (one jmp short x5).  DEAD, do not re-run:
- *       `!=` in-arg, ternary both polarities, if/else-assign both arm
- *       orders, named assignment, the sibling's two-return inline helper
- *       (also loses site 6's duplication, 292), C++ arg contexts; and the
- *       flags /Op (adds `wait` x6, 304) and /O2y (builds an ebp frame the
- *       orig lacks) and /Ox (301/928) and /O1 (279, wrong family).
- *   (2) the step=0x80 guard -- orig `lea edx,[ebx+0x80]; cmp edx,ecx`,
- *       ours `mov; sub; cmp -0x80` (one insn long).  The 0x1000-step
- *       instantiations of the SAME inlined guard match; only the imm8-
- *       foldable step diverges.  Named `next` sum: inert.
- * Both are peepholes cl 10.20 provably applies and the original's compiler
- * did not.  NEXT: a 4.x point release below 4.2 (cl 10.00/10.10, VC4.0/4.1)
- * -- a toolchain acquisition, the user's call (CLAUDE.md rule 5).  The
- * named-assignment form is what places `push 1` after the bool (in-arg
- * forms push it early); keep it.
- *
- * STATE 2026-09-12 (this file now carries the VC4.2-optimal spellings):
- * extern pool-zero (BR_FZERO, 0x100770C8) for the six tail writes, pure-expression
- * args at the four Q15 sites and both Q7 sites, a named `next` sum in the
- * delta-code guard, code-first `|` at the f78 site, and the LAST tail write
- * as a statement if/else (VC4.2 tail-duplicates its call+epilogue exactly as
- * the original does, 0x379/0x38c).  Under VC4.2 /O2: 298/302 insns, 913/925
- * bytes, 6 divergence regions -- residue is the prologue push order, three
- * 1-2-insn scheduling transpositions (push 2/8 vs the field load, lea+cmp vs
- * sub+cmp in the inlined guard, or-destination) and sites 1-5's bool diamond
- * layout (ours set-then-clear `mov 1; je; xor`, orig `jne; mov 1; jmp; xor`;
- * the ==-inverted ternary and the if/else-assign forms are DEAD -- both
- * canonicalise back, and the inverted form costs +15 B).  ‼ The VC5 score of
- * THIS file regressed 84 -> ~140 by these spellings; that is expected and
- * irrelevant -- the VC5 form is proven impossible, this file's target
- * compiler is VC4.2.  Attribution is NOT yet proven to the byte-exact
- * standard; it rests on the idiom pair plus this 298/302 convergence.
- *
- * STATE 2026-09-21 -- THE VERSION HYPOTHESIS IS REFUTED.  The user supplied
- * the actual 4.x media, so all of them were tested directly (staged under
- * tools/msvc40, tools/msvc41 beside tools/msvc42):
- *   VC4.0 Pro   cl 10.00.5270   /O2 -> 913 B, prologue push ebx,esi,edi,ebp
- *   VC4.0 Std   cl 10.00.6002   /O2 -> 1091 B, builds an ebp frame (worse)
- *   VC4.1       cl 10.10.6038   /O2 -> 913 B, IDENTICAL to 4.0 Pro
- *   VC4.2       cl 10.20.6166   /O2 -> 913 B, IDENTICAL to 4.0 Pro
- * The three professional optimisers emit the SAME bytes; none reproduces the
- * original's prologue.  Tried across /O2 /Ox /O1 /O2y /Oxs /Oz /Og/Os and the
- * /G-series (/Gy /Gs /Gd /Gz /Gf /Gr /Ob0 /Ob1 /G3 /G4 /Gi) -- none yields the
- * original's push order.  So the 12-byte residue is NOT a compiler-version
- * gap: the original saves ebx,ebp,esi,edi EAGERLY in register-number order at
- * entry, while every available 4.x saves them lazily (push esi; mov esi,arg;
- * ...; push ebp) -- an eager-vs-lazy callee-save SCHEDULING choice that drives
- * a whole-function ebx<->ebp rotation (register-rotation-is-a-symptom).  This
- * is a register-colouring wall present identically in every 4.x we have, not a
- * "get an older cl" problem.  Do NOT chase further 4.x point releases for THIS
- * residue.  The reachable disposition is T3 via the A5 oracle (functionally
- * exact; the rotation is behaviour-neutral), unless a source lever is found
- * that flips the eager/lazy save decision (declaration order is DEAD).
+ *   - The writer's value parameter is `unsigned int` (ReadBits 0x1006CED0
+ *     returns unsigned int too).  Converting a promoted `short >> 8` to an
+ *     unsigned parameter is what makes VC5 shift in AX (`sar ax,8`) and then
+ *     `movsx` -- WITHOUT a named 16-bit temporary, so the argument stays a
+ *     pure expression and `push 8` goes out before the pack call.  An int
+ *     parameter widens the shift; a `short` parameter drops the movsx; any
+ *     short assignment (`q = ...`) is a side effect and pushes nBits late.
+ *     ref/cur are `uint32_t` for the same reason (f18's `sar ax,1; movsx`).
+ *   - `ref` is declared before `cur`: that is what makes the f10/f14 xor copy
+ *     cur and xor ref in, as the original does.
+ *   - The `|` operand roles (which of code/cur is the or's destination) are
+ *     NOT set by source order -- VC5 canonicalises them, and the tie-break
+ *     depends on the compiler's heap layout, i.e. on how much the TU declared
+ *     before this function.  With the four headers below (math.h is certain:
+ *     the packers in this TU call floor) f10/f14 are code-first and f18/f78
+ *     cur-first, as in the original.  Measured with N dummy prototypes in
+ *     their place: N=200..248 and 328..376 match, 0..192 leave f18's
+ *     cur/code colouring swapped.  ‼ Adding or removing declarations above
+ *     the function can flip this; re-score after any preamble edit.
+ * The six tail bits are plain `!= 0.0f` arguments: VC5 emits the original's
+ * `fcomp [pool 0.0]; fnstsw; test ah,0x40; jne; mov 1; jmp; xor` diamond at
+ * each, and tail-duplicates the last call and epilogue itself.
  */
 #include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+#include <math.h>
 
 class BrBitStream {
 public:
-    void m_1006D0B0(int value, int nBits);   /* WriteBits */   /* 0x1006D0B0, declared only */
+    void WriteBits(unsigned int value, unsigned int nBits);   /* 0x1006D0B0, declared only */
 };
-
-/* VC4.2 folds `!= 0.0f` to test [mem],0x7fffffff; a compare against a float
- * it cannot constant-fold forces the original's x87 fld/fcomp/fnstsw form
- * (vc42 idiom #2).  The original compares the pool zero at 0x100770C8. */
-extern "C" float BR_FZERO;         /* 0x100770C8, the pool 0.0f */
-
-/* the sibling's helper (0x10006510.cpp BrIsNonZero): a bool built from two
- * RETURN paths, which is what materialises the original's branch diamond
- * (`jne; mov eax,1; jmp; xor`) instead of the folded set-then-clear. */
-static __inline int BrIsNonZero(float v)
-{
-    if (v != BR_FZERO)
-        return 1;
-    return 0;
-}
 
 extern "C" {
 short BrFixPackS16Q15Neg(float);   /* 0x10006950 */
-int   BrFixPackU24Q13(float);
-short BrFixPackS16Q7(float);
-int   BrFixPackS24Q1(float);
-int   BrFixPackU8Range(float);
-int   BrFixPackLevel(float);
+int   BrFixPackU24Q13(float);      /* 0x10006A50 */
+short BrFixPackS16Q7(float);       /* 0x10006AE0 */
+int   BrFixPackS24Q1(float);       /* 0x10006AA0 */
+int   BrFixPackU8Range(float);     /* 0x100069D0 */
+int   BrFixPackLevel(float);       /* 0x10006A10 */
 }
 
 struct BrCarState {
@@ -146,11 +67,9 @@ struct BrCarState {
     float f88, f8C, f90, f94, f98, f9C;
 };
 
-/* `q` is the 16-bit lvalue that makes VC5 shift in AX: only an assignment to
- * a `short` narrows a promoted `>>` to `sar ax,N`.  A (short) cast, a short
- * parameter or a compound `q >>= N` all widen first (`movsx; sar r32`).
- * Plain `>>` on a signed value is arithmetic on every compiler this tree
- * targets. */
+/* The two-bit movement hint for the masked high part: 0 = unchanged, one
+ * step = exactly one step up, two steps = further up, three steps = at or
+ * below the reference.  Returned pre-shifted into the field's code bits. */
 static __inline int32_t BrCarStateDeltaCode(uint32_t cur, uint32_t ref,
                                             uint32_t hiMask, uint32_t step)
 {
@@ -162,84 +81,52 @@ static __inline int32_t BrCarStateDeltaCode(uint32_t cur, uint32_t ref,
     } else {
         hiRef = ref & hiMask;
         hiCur = cur & hiMask;
-
-        {
-            uint32_t next = hiRef + step;
-            if (next == hiCur)
-                code = step;                /* exactly one step up */
-            else
-                code = (hiRef < hiCur) ? 2 * step   /* more than one step up */
-                                       : 3 * step;  /* at or below the reference */
-        }
+        if (hiRef + step == hiCur)
+            code = step;
+        else
+            code = (hiRef < hiCur) ? 2 * step : 3 * step;
     }
-
     return (int32_t)(code & (3 * step));
 }
 
 extern "C"
 void BrCarStateEncodeDelta(BrBitStream *pBs, const BrCarState *pCur, const BrCarState *pRef)
 {
-    int32_t cur, ref;
-    int16_t q;
+    uint32_t ref, cur;
 
-    pBs->m_1006D0B0(BrFixPackS16Q15Neg(pCur->f00) >> 8, 8);
-    pBs->m_1006D0B0(BrFixPackS16Q15Neg(pCur->f04) >> 8, 8);
-    pBs->m_1006D0B0(BrFixPackS16Q15Neg(pCur->f08) >> 8, 8);
-    pBs->m_1006D0B0(BrFixPackS16Q15Neg(pCur->f0C) >> 8, 8);
+    pBs->WriteBits(BrFixPackS16Q15Neg(pCur->f00) >> 8, 8);
+    pBs->WriteBits(BrFixPackS16Q15Neg(pCur->f04) >> 8, 8);
+    pBs->WriteBits(BrFixPackS16Q15Neg(pCur->f08) >> 8, 8);
+    pBs->WriteBits(BrFixPackS16Q15Neg(pCur->f0C) >> 8, 8);
 
-    /* f10: 17-bit quantity, 12 bits sent plus a 2-bit code on 0x1F000. */
-    ref = (int32_t)((uint32_t)BrFixPackU24Q13(pRef->f10) >> 7);
-    cur = (int32_t)((uint32_t)BrFixPackU24Q13(pCur->f10) >> 7);
-    pBs->m_1006D0B0(BrCarStateDeltaCode(cur, ref, 0x1F000, 0x1000) | (cur & 0xFFF), 14);
+    /* f10, f14: 17-bit quantities, 12 bits sent plus a code on 0x1F000. */
+    ref = ((uint32_t)BrFixPackU24Q13(pRef->f10) >> 7);
+    cur = ((uint32_t)BrFixPackU24Q13(pCur->f10) >> 7);
+    pBs->WriteBits(BrCarStateDeltaCode(cur, ref, 0x1F000, 0x1000) | (cur & 0xFFF), 14);
+    ref = ((uint32_t)BrFixPackU24Q13(pRef->f14) >> 7);
+    cur = ((uint32_t)BrFixPackU24Q13(pCur->f14) >> 7);
+    pBs->WriteBits(BrCarStateDeltaCode(cur, ref, 0x1F000, 0x1000) | (cur & 0xFFF), 14);
 
-    ref = (int32_t)((uint32_t)BrFixPackU24Q13(pRef->f14) >> 7);
-    cur = (int32_t)((uint32_t)BrFixPackU24Q13(pCur->f14) >> 7);
-    pBs->m_1006D0B0(BrCarStateDeltaCode(cur, ref, 0x1F000, 0x1000) | (cur & 0xFFF), 14);
-
-    /* f18: 15-bit SIGNED quantity, 9 bits sent plus a code on 0x7E00. */
+    /* f18: 15-bit signed quantity, 9 bits sent plus a code on 0x7E00. */
     ref = BrFixPackS16Q7(pRef->f18) >> 1;
     cur = BrFixPackS16Q7(pCur->f18) >> 1;
-    pBs->m_1006D0B0((cur & 0x1FF) | BrCarStateDeltaCode(cur, ref, 0x7E00, 0x200), 11);
+    pBs->WriteBits((cur & 0x1FF) | BrCarStateDeltaCode(cur, ref, 0x7E00, 0x200), 11);
 
     /* f78: 24-bit signed quantity, 7 bits sent plus a code on 0xFFFF80. */
     ref = BrFixPackS24Q1(pRef->f78);
     cur = BrFixPackS24Q1(pCur->f78);
-    pBs->m_1006D0B0(BrCarStateDeltaCode(cur, ref, 0xFFFF80, 0x80) | (cur & 0x7F), 9);
+    pBs->WriteBits((cur & 0x7F) | BrCarStateDeltaCode(cur, ref, 0xFFFF80, 0x80), 9);
 
-    pBs->m_1006D0B0((int32_t)((uint32_t)BrFixPackU8Range(pCur->f7C) & 0xFFu), 6);
-    pBs->m_1006D0B0((int32_t)((uint32_t)BrFixPackLevel(pCur->f80) & 0xFFu), 2);
-    pBs->m_1006D0B0((int32_t)((uint32_t)BrFixPackLevel(pCur->f84) & 0xFFu), 2);
+    pBs->WriteBits((uint8_t)BrFixPackU8Range(pCur->f7C), 6);
+    pBs->WriteBits((uint8_t)BrFixPackLevel(pCur->f80), 2);
+    pBs->WriteBits((uint8_t)BrFixPackLevel(pCur->f84), 2);
 
-    /* Open-coded in the original (`fld; fcomp; fnstsw; test ah,0x40; jne`).
-     * VC5 gives 0 for a NaN here, which is what the original does; a strict
-     * IEEE compiler would give 1, so this is a byte-fidelity choice. */
-    if (pCur->f88 != BR_FZERO)
-        cur = 1;
-    else
-        cur = 0;
-    pBs->m_1006D0B0(cur, 1);
-    if (pCur->f8C != BR_FZERO)
-        cur = 1;
-    else
-        cur = 0;
-    pBs->m_1006D0B0(cur, 1);
-    if (pCur->f90 != BR_FZERO)
-        cur = 1;
-    else
-        cur = 0;
-    pBs->m_1006D0B0(cur, 1);
-    if (pCur->f94 != BR_FZERO)
-        cur = 1;
-    else
-        cur = 0;
-    pBs->m_1006D0B0(cur, 1);
-    if (pCur->f98 != BR_FZERO)
-        cur = 1;
-    else
-        cur = 0;
-    pBs->m_1006D0B0(cur, 1);
-    if (pCur->f9C != BR_FZERO)
-        pBs->m_1006D0B0(1, 1);
-    else
-        pBs->m_1006D0B0(0, 1);
+    /* NaN compares equal to zero here (C3 covers unordered), as in the
+     * original. */
+    pBs->WriteBits(pCur->f88 != 0.0f, 1);
+    pBs->WriteBits(pCur->f8C != 0.0f, 1);
+    pBs->WriteBits(pCur->f90 != 0.0f, 1);
+    pBs->WriteBits(pCur->f94 != 0.0f, 1);
+    pBs->WriteBits(pCur->f98 != 0.0f, 1);
+    pBs->WriteBits(pCur->f9C != 0.0f, 1);
 }
