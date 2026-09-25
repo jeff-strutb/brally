@@ -143,14 +143,6 @@ void BrImgMulByTexture(int32_t iTex, uint8_t *pPix, int32_t w, int32_t h)
 
 #ifdef BR_MATCHING_BUILD
 /* 0x1005A500 (D3D twin 0x10061480, port body BrImgTintBlit in slice1_07.c) */
-/* WHAT IT DOES: copies a rectangle of RGBA pixels into a bottom-up
- * destination image, tinting the colour-keyed ones on the way. The source
- * is packed at the rectangle's own width; source row y lands on destination
- * row dstH - top - y - 1 starting at column left. Every pixel is copied
- * whole first; a keyed pixel (red 0, green equal to blue) then has its red,
- * green and blue replaced by that grey level times the current tint scale
- * over 255, keeping its alpha. A null source does nothing. Always returns 1.
- */
 /* Transcribed from the Glide bytes: the pixel is copied as a dword before
  * the key test re-reads byte 0; the three channels share one grey value and
  * divide signed by 255 (the 0x80808081 sequence); scales are the tint
@@ -160,6 +152,14 @@ void BrImgMulByTexture(int32_t iTex, uint8_t *pPix, int32_t w, int32_t h)
  * induction pointer with a hoisted stride, which is the original's shape. A
  * hand-advanced row pointer instead becomes a register variable and rotates
  * the whole allocation. */
+/* WHAT IT DOES: copies a rectangle of RGBA pixels into a bottom-up
+ * destination image, tinting the colour-keyed ones on the way. The source
+ * is packed at the rectangle's own width; source row y lands on destination
+ * row dstH - top - y - 1 starting at column left. Every pixel is copied
+ * whole first; a keyed pixel (red 0, green equal to blue) then has its red,
+ * green and blue replaced by that grey level times the current tint scale
+ * over 255, keeping its alpha. A null source does nothing. Always returns 1.
+ */
 /* @implements 0x1005A500 glide FUN_1005a500 */
 int FUN_1005a500(const uint8_t *pSrc, int32_t left, int32_t right,
                  int32_t top, int32_t bottom, uint8_t *pDst, int32_t dstW,

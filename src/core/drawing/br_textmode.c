@@ -76,13 +76,6 @@ typedef struct BrVisView {
     unsigned char pad[0x48];
 } BrVisView;
 
-/* WHAT IT DOES: works out the screen box a sphere covers. The centre is run
- * through the view matrix; if it is not (nearly) in the camera plane it is
- * divided through by depth, its x mirrored when exactly one of the two mirror
- * flags is set, and a square of half-size n (scaled by the same 1/depth) is
- * drawn round it. The corners are mapped onto the current viewport, x right
- * and y up from its centre, and written as shorts: min corner to pMin, max
- * corner to pMax. Nothing is written when the depth is within 0.001 of 0. */
 /* Transcribed from the Glide bytes: the viewport is pView[g_brIView]; the
  * half-extents are w >> 1 and h >> 1 (sar, not a division); the mirror test is
  * 0x106EA3F4 ^ 0x106E8204 with an fchs; __ftol for all four corners.
@@ -94,6 +87,13 @@ typedef struct BrVisView {
  * (one extra fst) where the original keeps it on the x87 stack. Dead:
  * all 5040 float declaration orders, statement orders, inline x0/sy/rad,
  * volatile anything (inert through the pointer), /Op, pad count 1..40. */
+/* WHAT IT DOES: works out the screen box a sphere covers. The centre is run
+ * through the view matrix; if it is not (nearly) in the camera plane it is
+ * divided through by depth, its x mirrored when exactly one of the two mirror
+ * flags is set, and a square of half-size n (scaled by the same 1/depth) is
+ * drawn round it. The corners are mapped onto the current viewport, x right
+ * and y up from its centre, and written as shorts: min corner to pMin, max
+ * corner to pMax. Nothing is written when the depth is within 0.001 of 0. */
 /* @implements 0x1000C9E0 glide FUN_1000c9e0 */
 void FUN_1000c9e0(BrVisView *pView, const void *pPt, int n, short *pMin,
                   short *pMax)

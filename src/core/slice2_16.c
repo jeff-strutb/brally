@@ -978,10 +978,7 @@ void BrGbiTexScanOtherModeL(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
  * texture so they can be collapsed into a single command for the PC
  * renderer. Along the way it also picks up the colours, texture slots and
  * render modes in force. It stops at the end-of-list command. */
-/* @implements 0x100290E0 d3d BrGbiTexScanRun */
-/* @t4-pass 0x10028820 1 2026-09-07 probes 36 bytes 818 insns 323 regions 1 rows 225 census yes  (tools/crank.py) */
-/* @t4-pass 0x10028820 2 2026-09-07 probes 36 bytes 818 insns 323 regions 1 rows 225 census yes  (tools/crank.py) */
-/* @implements 0x10028820 glide BrGbiTexScanRun */
+/* @d3donly 0x100290E0 BrGbiTexScanRun -- glide twin 0x10028820 is the Glide arm in drawing/br_gbitexscan.c */
 /* (the Glide arm is at the END of this file -- see the note there) */
 #ifndef BR_MATCHING_BUILD
 void BrGbiTexScanRun(BrGbiTexScan *pSt, BrGfxWords *pCmd)
@@ -2071,112 +2068,4 @@ void BrRcaFixupRecord(void *pRec)
     BrGbiCall10075330(*(void **)(void *)(r + 4));
 }
 
-/* 0x10028820 BrGbiTexScanRun, Glide arm (its @implements tag is at the port
- * arm above). It sits LAST in the TU on purpose: compiled ahead of
- * BrFadeDrawSprite it shifts that function's register roles (2 diff bytes);
- * compiled after, both are byte-exact. */
-#ifdef BR_MATCHING_BUILD
-/* Transcribed from the Glide bytes. One stack argument; the five scan
- * globals are cleared up front (ebx = 0), edi = 1 and ebp = 0x3FFDF3F8 stay
- * live across the loop. The opcode dispatch is a byte table at 0x10028A48
- * into a jump table at 0x100289FC; every handler is `push esi; call;
- * add esp,4; add esi,8; jmp top`, in the address order of the cases below.
- * The three sync handlers are pushed the command too, although their bodies
- * take none -- hence the unprototyped calls. */
-typedef void (*BrGbiScanLeafK)();
-
-void BrGbiTexScanRun(BrGfxWords *pCmd)
-{
-    /* Block scope, not file scope: file-scope declarations here shift the
-     * register tie-break of BrFadeDrawSprite further down this TU. */
-    extern int32_t DAT_106b7ab0, DAT_106b7a94, DAT_106b7aac;
-    extern int32_t DAT_105e17fc, DAT_106b7a9c;
-    extern int32_t DAT_106b7aa8, DAT_106b7aa4;
-    extern uint8_t DAT_10697a68, DAT_106b7a78, DAT_10697a40, DAT_10661828;
-    extern uint8_t DAT_105e1800, DAT_1066182c, DAT_105e17f8, DAT_105d17e8;
-    extern void BrTexTileUnpack(BrGfxWords *pCmd);   /* 0x100293F0 */
-    extern void br_tex3d_end(BrGfxWords *pCmd);      /* 0x100293D0 */
-    extern void br_tex3d_seam(BrGfxWords *pCmd);     /* 0x10028B50 */
-
-    if (pCmd == NULL)
-        return;
-
-    DAT_106b7ab0 = 0;
-    DAT_106b7a94 = 0;
-    DAT_106b7aac = 0;
-    DAT_105e17fc = 0;
-    DAT_106b7a9c = 0;
-
-    for (;;) {
-        uint32_t w0 = pCmd->w0;         /* eax, reused by the 0xFC arm */
-
-        /* `mov ecx,eax; sar ecx,0x18; and ecx,0xff`: the byte cast is what
-         * keeps VC5 from reading the opcode back as a byte of a spill. */
-        switch ((uint8_t)((int32_t)w0 >> 24)) {
-        case 0xBB:
-            BrTexTileUnpack(pCmd);
-            break;
-        case 0xFD:
-            BrGbiTexScanSetImg(pCmd);
-            break;
-        case 0xE6:
-            ((BrGbiScanLeafK)BrGbiTexScanLoadSync)(pCmd);
-            break;
-        case 0xF0:
-            BrGbiTexScanLoadTlut(pCmd);
-            break;
-        case 0xB9:
-            BrGbiTexScanOtherModeL(pCmd);
-            br_tex3d_end(pCmd);
-            break;
-        case 0xBA:
-            BrGbiTexScanOtherModeH(pCmd);
-            break;
-        case 0xF3:
-            BrGbiTexScanLoadBlock(pCmd);
-            break;
-        case 0xE7:
-            ((BrGbiScanLeafK)BrGbiTexScanPipeSync)(pCmd);
-            break;
-        case 0xE8:
-            ((BrGbiScanLeafK)BrGbiTexScanTileSync)(pCmd);
-            break;
-        case 0xF5:
-            BrGbiTexScanSetTile(pCmd);
-            break;
-        case 0xF2:
-            BrGbiTexScanSetTileSize(pCmd);
-            break;
-        case 0xFA:                       /* G_SETPRIMCOLOR, 0x1002893A */
-            DAT_10697a68 = (uint8_t)(pCmd->w1 >> 24);
-            DAT_106b7a78 = (uint8_t)(pCmd->w1 >> 16);
-            DAT_10697a40 = (uint8_t)(pCmd->w1 >> 8);
-            DAT_10661828 = (uint8_t)pCmd->w1;
-            DAT_106b7aa8 = 1;
-            break;
-        case 0xFB:                       /* G_SETENVCOLOR, 0x10028973 */
-            DAT_105e1800 = (uint8_t)(pCmd->w1 >> 24);
-            DAT_1066182c = (uint8_t)(pCmd->w1 >> 16);
-            DAT_105e17f8 = (uint8_t)(pCmd->w1 >> 8);
-            DAT_105d17e8 = (uint8_t)pCmd->w1;
-            DAT_106b7aa4 = 1;
-            break;
-        case 0xFC:                       /* G_SETCOMBINE, 0x100289AD */
-            if (w0 == 0xFC50FE04u && pCmd->w1 == 0x3FFDF3F8u)
-                DAT_106b7aac = 1;
-            else
-                DAT_106b7aac = 0;
-            break;
-        case 0x04: case 0xB1: case 0xBF: /* G_VTX, G_TRI2, G_TRI1 */
-            br_tex3d_seam(pCmd);
-            break;
-        case 0xB8:                       /* G_ENDDL */
-            return;
-        default:
-            br_tex3d_end(pCmd);
-            break;
-        }
-        pCmd += 1;
-    }
-}
-#endif /* BR_MATCHING_BUILD */
+/* 0x10028820 BrGbiTexScanRun's Glide arm is in drawing/br_gbitexscan.c. */

@@ -135,11 +135,6 @@ int BrCollGridLoaded(int *pCells, int *pPlanes)
 
 #ifdef BR_MATCHING_BUILD
 /* 0x100686D0 (D3D twin 0x1006F720, port body in slice6_73.c) */
-/* WHAT IT DOES: get the collision-grid cell covering a point, reusing the
- * least recently used of the four cache slots when it is not already
- * loaded. A freshly loaded slot is filled with one plane record per triangle
- * of that grid square: the triangle's three vertex pointers, its index and
- * surface bits, its unit normal (V1-V0) x (V2-V0) and its plane constant. */
 /* Transcribed from the Glide bytes: four slots, keys (u16) at 0x11778838,
  * stamps at 0x11778828, the clock at 0x11778840 bumped in place, 150 plane
  * records of 0x20 per slot at 0x11773698 and the plane counts at
@@ -153,6 +148,11 @@ int BrCollGridLoaded(int *pCells, int *pPlanes)
  * 0x10 frame is the victim plus one of them; the other lives in registers),
  * the vertices are read back through the record fields rather than copied
  * to locals, and the surface bits are stored before the triangle index. */
+/* WHAT IT DOES: get the collision-grid cell covering a point, reusing the
+ * least recently used of the four cache slots when it is not already
+ * loaded. A freshly loaded slot is filled with one plane record per triangle
+ * of that grid square: the triangle's three vertex pointers, its index and
+ * surface bits, its unit normal (V1-V0) x (V2-V0) and its plane constant. */
 /* @implements 0x100686D0 glide BrCollGridCellAcquire */
 short BrCollGridCellAcquire(float x, float y)
 {

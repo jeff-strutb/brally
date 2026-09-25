@@ -32,6 +32,10 @@ void FUN_1006d530(void *pForces);                         /* 0x1006D530     */
 #define CF(p, off)  (*(float *)((char *)(p) + (off)))
 #define CB(p, off)  (*(unsigned char *)((char *)(p) + (off)))
 
+/* Transcribed from the Glide bytes: every truncation is a plain (int) cast
+ * (fld [esi+off]; call __ftol), the flag bit is read-modified-written in each
+ * arm (VC5 hoists the load past the compare and sinks the store), and the
+ * "last seen" test is a ?: whose two 1-arms stay separate. */
 /* WHAT IT DOES: scatters a decoded ghost/replay record across a live car
  * record.  Most of the 40 floats copy straight across; five are truncated
  * to integers/bytes for HUD counters, two drive on/off fields (a view-
@@ -39,10 +43,6 @@ void FUN_1006d530(void *pForces);                         /* 0x1006D530     */
  * "last seen" clock when the new value is not behind it by more than a
  * tolerance, and the whole applied block is then mirrored into two shadow
  * copies before the wheel-force list is reset. */
-/* Transcribed from the Glide bytes: every truncation is a plain (int) cast
- * (fld [esi+off]; call __ftol), the flag bit is read-modified-written in each
- * arm (VC5 hoists the load past the compare and sinks the store), and the
- * "last seen" test is a ?: whose two 1-arms stay separate. */
 /* @implements 0x10059A80 glide BrCarGhostApply_10059A80 */
 void BrCarGhostApply_10059A80(int pCar, const float *pRec)
 {
