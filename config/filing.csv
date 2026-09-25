@@ -184,6 +184,7 @@ glide_va,name,module,basis,file
 0x1000E270,BrPointProjectXY,drawing,manual,src/core/generated/0x1000E270.c
 0x1000E2F0,BrQsortCmpS2,drawing,neighbour,src/core/drawing/br_sortcmp.c
 0x10010F80,BrRecHdrLatch_10010F80,drawing,filed,src/core/drawing/br_rec.c
+0x10011300,BrPaceNoteEmit_10011300,drawing,filed,src/core/drawing/BrPaceNoteEmit_10011300.cpp
 0x10011650,FUN_10011650,drawing,neighbour,src/core/generated/0x10011650.c
 0x100119C0,FUN_100119c0,drawing,neighbour,src/core/drawing/br_rdpmode.c
 0x10011D10,BrThunk11D10,drawing,neighbour,src/core/drawing/br_fps.c
