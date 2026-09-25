@@ -8,10 +8,12 @@
  */
 #ifdef BR_MATCHING_BUILD
 #define BrPfxReset      BrPfxReset_port
+#define BrCarPfxSpawn   BrCarPfxSpawn_port
 #endif
 #include "slice2_21.h"
 #ifdef BR_MATCHING_BUILD
 #undef BrPfxReset
+#undef BrCarPfxSpawn
 void BrPfxReset(void);
 #endif
 
