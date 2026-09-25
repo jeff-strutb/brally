@@ -53,6 +53,7 @@ glide_va,name,module,basis,file
 0x10003280,BrU16QueuePop,gamedata,description,src/core/gamedata/br_u16cursor.c
 0x100032D0,BrChkFileSize,gamedata,description,src/core/gamedata/br_chkfile.c
 0x10003320,BrChkFReadOpen,gamedata,description,src/core/gamedata/br_chkfile.c
+0x10003430,BrFChkFRead,gamedata,manual,src/core/gamedata/br_fchkread.c
 0x100034C0,BrChkFRead,gamedata,neighbour-1,src/core/generated/0x100034C0.c
 0x10003530,BrChkFReadLine,startup,filed,src/core/startup/br_appstart.c
 0x100035E0,BrChkFClose,startup,neighbour-1,src/core/generated/0x100035E0.c
