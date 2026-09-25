@@ -149,13 +149,10 @@ int BrCollGridLoaded(int *pCells, int *pPlanes)
  * original. BrGrid64Sample and BrU16CursorNext take (x, y) and (&cursor);
  * the triangle table, vertex array and flag bytes are behind the pointers
  * at 0x106EECE4, 0x106EECEC and 0x106EED6C.
- * T2, 544/551 B, same 178 instructions, REGNORM 4+4 (2026-09-25; the old
- * port-shaped body was 613 B, 28+13). Residue is frame layout: the original
- * gives the cross product's bx/by real locals (sub esp,0x10) and packs the
- * cursor into y's argument slot; here the cursor gets the local and bx/by
- * pack into dead argument slots (push ecx), and y's ftol is evaluated before
- * x's. Dead: key spellings, declaration orders, record-field access forms,
- * block scoping and struct typing of the cursor. */
+ * The cross product's operands are two BrVec3 locals (the original's
+ * 0x10 frame is the victim plus one of them; the other lives in registers),
+ * the vertices are read back through the record fields rather than copied
+ * to locals, and the surface bits are stored before the triangle index. */
 /* @implements 0x100686D0 glide BrCollGridCellAcquire */
 short BrCollGridCellAcquire(float x, float y)
 {
@@ -196,29 +193,24 @@ short BrCollGridCellAcquire(float x, float y)
     cur[1] = (unsigned short)(packed >> 16);
     if (packed != 0) {
         while ((tri = ((BrCursorNextG)BrU16CursorNext)(cur)) != 0) {
-            float ax, ay, az, bx, by, bz;
-            float *v0, *v1, *v2;
+            BrVec3 a, b;
 
             *(float **)(p + 4) = (float *)(DAT_106eecec + DAT_106eece4[tri * 4] * 12);
             *(float **)(p + 5) = (float *)(DAT_106eecec + DAT_106eece4[tri * 4 + 1] * 12);
             *(float **)(p + 6) = (float *)(DAT_106eecec + DAT_106eece4[tri * 4 + 2] * 12);
-            *(unsigned short *)(p + 7) = tri;
             *((unsigned char *)(p + 7) + 2) = (unsigned char)(DAT_106eed6c[tri] & 7);
-            v0 = *(float **)(p + 4);
-            v1 = *(float **)(p + 5);
-            v2 = *(float **)(p + 6);
-            ax = v1[0] - v0[0];
-            ay = v1[1] - v0[1];
-            az = v1[2] - v0[2];
-            bx = v2[0] - v0[0];
-            by = v2[1] - v0[1];
-            bz = v2[2] - v0[2];
-            p[0] = ay * bz - az * by;
-            p[1] = az * bx - ax * bz;
-            p[2] = ax * by - ay * bx;
+            *(unsigned short *)(p + 7) = tri;
+            a.x = (*(float **)(p + 5))[0] - (*(float **)(p + 4))[0];
+            a.y = (*(float **)(p + 5))[1] - (*(float **)(p + 4))[1];
+            a.z = (*(float **)(p + 5))[2] - (*(float **)(p + 4))[2];
+            b.x = (*(float **)(p + 6))[0] - (*(float **)(p + 4))[0];
+            b.y = (*(float **)(p + 6))[1] - (*(float **)(p + 4))[1];
+            b.z = (*(float **)(p + 6))[2] - (*(float **)(p + 4))[2];
+            p[0] = a.y * b.z - a.z * b.y;
+            p[1] = a.z * b.x - a.x * b.z;
+            p[2] = a.x * b.y - a.y * b.x;
             BrVec3Normalise((BrVec3 *)(void *)p);
-            v0 = *(float **)(p + 4);
-            p[3] = -((p[0] * v0[0] + v0[1] * p[1]) + v0[2] * p[2]);
+            p[3] = -((p[0] * (*(float **)(p + 4))[0] + (*(float **)(p + 4))[1] * p[1]) + (*(float **)(p + 4))[2] * p[2]);
             ++n;
             p += 8;
         }
