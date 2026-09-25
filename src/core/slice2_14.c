@@ -72,6 +72,8 @@ BrLerpNode *BrLerpNodeAlloc(const BrLerpNode *pFrom, const BrLerpNode *pTo,
 /* 0x10010BF0 -- conditional transform-and-store                       */
 /* ================================================================== */
 
+#ifndef BR_MATCHING_BUILD
+/* port body; the Glide arm 0x1000E150 is in drawing/br_vertlerp.c */
 void BrScrPtKeepNearest(const BrMat4 *pM, BrScrPt *aOut, int *aFlags, int idx,
                         const BrScrPt *pIn, float cx, float cy,
                         const BrDepthRef *pRef)
@@ -131,6 +133,7 @@ void BrScrPtKeepNearest(const BrMat4 *pM, BrScrPt *aOut, int *aFlags, int idx,
 
     aFlags[idx] = 1;
 }
+#endif
 
 /* ================================================================== */
 /* 0x10010D10 -- project position into the 2D key fields               */
