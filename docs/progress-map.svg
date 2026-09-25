@@ -762,7 +762,7 @@
 <rect x="390.7" y="627.8" width="74.8" height="66.5" fill="#58a6ff"><title>(unnamed)  0x1005F6C0  2104B  [unfiled 0x1005xxxx]</title></rect>
 <rect x="390.7" y="694.9" width="74.8" height="61.6" fill="#58a6ff"><title>(unnamed)  0x1005C8B0  1951B  [unfiled 0x1005xxxx]</title></rect>
 <rect x="466.1" y="627.8" width="74.6" height="45.9" fill="#58a6ff"><title>(unnamed)  0x100553B0  1453B  [unfiled 0x1005xxxx]</title></rect>
-<rect x="541.3" y="627.8" width="50.1" height="45.9" fill="#c8ccd2"><title>(unnamed)  0x1005E7B0  979B  [unfiled 0x1005xxxx]</title></rect>
+<rect x="541.3" y="627.8" width="50.1" height="45.9" fill="#58a6ff"><title>(unnamed)  0x1005E7B0  979B  [unfiled 0x1005xxxx]</title></rect>
 <rect x="466.1" y="674.2" width="47.4" height="42.3" fill="#c8ccd2"><title>(unnamed)  0x1005D060  856B  [unfiled 0x1005xxxx]</title></rect>
 <rect x="466.1" y="717.1" width="47.4" height="39.4" fill="#c8ccd2"><title>(unnamed)  0x10055F40  799B  [unfiled 0x1005xxxx]</title></rect>
 <rect x="514.1" y="674.2" width="39.9" height="36.8" fill="#58a6ff"><title>(unnamed)  0x10058680  629B  [unfiled 0x1005xxxx]</title></rect>
@@ -1520,7 +1520,7 @@
 <rect x="1325.5" y="15.5" width="48.5" height="34.8" fill="#d29922"><title>BrCarPhysAdvance  0x10067C30  762B  150 diff bytes  [core/driving/br_carphys]</title></rect>
 <rect x="1325.5" y="50.9" width="25.6" height="29.7" fill="#3fb950"><title>BrRbInitInertia  0x1006DAD0  349B  [core/driving/br_carphys]</title></rect>
 <rect x="1351.8" y="50.9" width="22.3" height="29.7" fill="#d29922"><title>BrCarPhysDrag  0x10067F30  305B  106 diff bytes  [core/driving/br_carphys]</title></rect>
-<rect x="1325.5" y="81.2" width="19.9" height="28.8" fill="#d29922"><title>BrCarPhysSpring  0x100684F0  265B  10 diff bytes  [core/driving/br_carphys]</title></rect>
+<rect x="1325.5" y="81.2" width="19.9" height="28.8" fill="#58a6ff"><title>BrCarPhysSpring  0x100684F0  265B  [core/driving/br_carphys]</title></rect>
 <rect x="1346.1" y="81.2" width="28.0" height="15.3" fill="#3fb950"><title>BrCarPhysDamper  0x10068600  200B  [core/driving/br_carphys]</title></rect>
 <rect x="1346.1" y="97.2" width="28.0" height="12.9" fill="#3fb950"><title>BrCpIntegrateVelocity  0x1006D600  169B  [core/driving/br_carphys]</title></rect>
 <text x="1379.2" y="10.5" font-size="10" fill="#8b949e">br_collresp</text>
@@ -1769,7 +1769,7 @@
 <rect x="1006.9" y="228.0" width="38.2" height="29.6" fill="#58a6ff"><title>(unnamed)  0x10038F40  567B  [unfiled 0x1003xxxx]</title></rect>
 <rect x="1006.9" y="258.3" width="38.2" height="28.2" fill="#c8ccd2"><title>(unnamed)  0x10039990  540B  [unfiled 0x1003xxxx]</title></rect>
 <rect x="1045.6" y="228.0" width="21.0" height="31.9" fill="#c8ccd2"><title>(unnamed)  0x1003D7D0  340B  [unfiled 0x1003xxxx]</title></rect>
-<rect x="1067.2" y="228.0" width="20.4" height="31.9" fill="#c8ccd2"><title>(unnamed)  0x100393C0  330B  [unfiled 0x1003xxxx]</title></rect>
+<rect x="1067.2" y="228.0" width="20.4" height="31.9" fill="#58a6ff"><title>(unnamed)  0x100393C0  330B  [unfiled 0x1003xxxx]</title></rect>
 <rect x="1045.6" y="260.5" width="17.9" height="26.0" fill="#58a6ff"><title>(unnamed)  0x1003AA10  238B  [unfiled 0x1003xxxx]</title></rect>
 <rect x="1064.1" y="260.5" width="23.5" height="14.3" fill="#c8ccd2"><title>(unnamed)  0x10035533  174B  [unfiled 0x1003xxxx]</title></rect>
 <rect x="1064.1" y="275.4" width="23.5" height="11.1" fill="#58a6ff"><title>(unnamed)  0x10038CA0  136B  [unfiled 0x1003xxxx]</title></rect>
@@ -1864,7 +1864,7 @@
 <rect x="990.6" y="304.1" width="67.5" height="43.3" fill="#58a6ff"><title>BrCamChaseStep  0x10001CF0  1567B  [core/drawing/br_chasestep]</title></rect>
 <text x="1063.2" y="299.1" font-size="10" fill="#8b949e">br_dplayjoin</text>
 <rect x="1061.7" y="304.1" width="26.1" height="43.3" fill="#58a6ff"><title>BrDpSessionJoin  0x10035DD0  615B  [core/net/br_dplayjoin]</title></rect>
-<rect x="1088.4" y="304.1" width="40.0" height="21.0" fill="#d29922"><title>BrDpLobbyConnect  0x10032320  461B  32 diff bytes  [core/net/br_dplayjoin]</title></rect>
+<rect x="1088.4" y="304.1" width="40.0" height="21.0" fill="#58a6ff"><title>BrDpLobbyConnect  0x10032320  461B  [core/net/br_dplayjoin]</title></rect>
 <rect x="1088.4" y="325.7" width="26.8" height="21.6" fill="#3fb950"><title>BrSub1003C260  0x100358F0  320B  [core/net/br_dplayjoin]</title></rect>
 <rect x="1115.8" y="325.7" width="12.6" height="15.0" fill="#3fb950"><title>BrDpShutdown  0x10035BE0  108B  [core/net/br_dplayjoin]</title></rect>
 <rect x="1115.8" y="341.3" width="12.6" height="6.0" fill="#3fb950"><title>BrComCreateInstance  0x10035BB0  46B  [core/net/br_dplayjoin]</title></rect>
@@ -1874,7 +1874,7 @@
 <rect x="1201.2" y="320.4" width="29.5" height="27.0" fill="#3fb950"><title>BrCtrlCfgInit  0x10062D00  330B  [core/slice3_42]</title></rect>
 <rect x="1231.2" y="290.1" width="17.8" height="30.5" fill="#d29922"><title>BrRbVelAtBodyPointXY  0x100642F0  228B  146 diff bytes  [core/slice3_42]</title></rect>
 <rect x="1249.6" y="290.1" width="17.0" height="30.5" fill="#58a6ff"><title>BrRbVelAtBodyPoint  0x100643E0  218B  [core/slice3_42]</title></rect>
-<rect x="1231.2" y="321.2" width="19.5" height="26.1" fill="#d29922"><title>BrRbVelAtPoint  0x100644C0  214B  1 diff bytes  [core/slice3_42]</title></rect>
+<rect x="1231.2" y="321.2" width="19.5" height="26.1" fill="#58a6ff"><title>BrRbVelAtPoint  0x100644C0  214B  [core/slice3_42]</title></rect>
 <rect x="1251.3" y="321.2" width="15.3" height="26.1" fill="#58a6ff"><title>BrCtrlCfgAssign  0x10062B80  169B  [core/slice3_42]</title></rect>
 <rect x="1270.2" y="290.1" width="22.9" height="34.7" fill="#d29922"><title>BrOptCycleTrack  0x1003C080  331B  199 diff bytes  [core/menus/br_optcycle]</title></rect>
 <rect x="1270.2" y="325.4" width="22.9" height="21.9" fill="#3fb950"><title>BrOptCycleAA2A00  0x1003C6D0  211B  [core/menus/br_optcycle]</title></rect>
@@ -2305,7 +2305,7 @@
 <rect x="1259.2" y="747.5" width="7.1" height="4.6" fill="#3fb950"><title>BrAppStateRun  0x1001CDB0  17B  [core/startup/br_boot]</title></rect>
 <rect x="1259.2" y="752.7" width="7.1" height="4.3" fill="#3fb950"><title>BrAppStateEnterRun  0x1001CDA0  16B  [core/startup/br_boot]</title></rect>
 <rect x="1266.9" y="747.5" width="2.2" height="9.4" fill="#3fb950"><title>BrAppFrame  0x1001CF80  12B  [core/startup/br_boot]</title></rect>
-<rect x="1236.4" y="760.6" width="32.7" height="32.1" fill="#d29922"><title>BrCarSub9020  0x100326A0  469B  23 diff bytes  [core/slice4_53]</title></rect>
+<rect x="1236.4" y="760.6" width="32.7" height="32.1" fill="#58a6ff"><title>BrCarSub9020  0x100326A0  469B  [core/slice4_53]</title></rect>
 <rect x="1236.4" y="796.3" width="32.7" height="31.9" fill="#3fb950"><title>BrCamFrustumBuild  0x1002D362  466B  [core/scene/br_camera]</title></rect>
 <rect x="1236.4" y="831.7" width="22.8" height="31.3" fill="#3fb950"><title>BrCtlNameInit  0x10058AF0  323B  [core/controls/br_ctlname]</title></rect>
 <rect x="1259.8" y="831.7" width="9.3" height="31.3" fill="#3fb950"><title>BrCtlNameFind  0x10039580  136B  [core/controls/br_ctlname]</title></rect>
@@ -2784,4 +2784,4 @@
 <rect x="1591.4" y="897.5" width="2.6" height="0.4" fill="#3fb950"><title>BrFtolArg  0x10018990  9B  [core/geometry/br_ftol]</title></rect>
 <rect x="1597.6" y="893.0" width="0.4" height="1.4" fill="#3fb950"><title>BrCosF  0x100023E0  7B  [core/geometry/br_cos]</title></rect>
 <rect x="1597.6" y="898.0" width="0.4" height="0.4" fill="#3fb950"><title>BrThunk5C440  0x1005C440  5B  [core/racing/br_thunks]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1346 &#183; T3 codegen-only 176 &#183; 248,301/521,681 bytes exact (47.6%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1346 &#183; T3 codegen-only 182 &#183; 248,301/521,681 bytes exact (47.6%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
