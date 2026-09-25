@@ -180,6 +180,7 @@ glide_va,name,module,basis,file
 0x1000DED0,BrGetFieldFloatSubC,drawing,neighbour,src/core/drawing/br_polydist.c
 0x1000DEE0,BrGetFieldFloat,drawing,neighbour,src/core/drawing/br_polydist.c
 0x1000DEF0,BrGetFieldFloatSub10,drawing,neighbour,src/core/drawing/br_polydist.c
+0x1000DF00,BrPolyClipPlane,drawing,manual,src/core/drawing/br_polyclip.c
 0x1000E060,BrVertLerp8,drawing,filed,src/core/drawing/br_vertlerp.c
 0x1000E150,BrScrPtKeepNearest,drawing,neighbour,src/core/drawing/br_vertlerp.c
 0x1000E270,BrPointProjectXY,drawing,manual,src/core/generated/0x1000E270.c
@@ -223,7 +224,7 @@ glide_va,name,module,basis,file
 0x10017F10,BrFadeRelease,drawing,neighbour-1,src/core/generated/0x10017F10.c
 0x10017F30,BrFadeLatch,drawing,neighbour-1,src/core/generated/0x10017F30.c
 0x10017F60,BrSceneAccumReset,drawing,neighbour-1,src/core/drawing/br_clear.c
-0x10017F80,BrFadeDrawSprite,drawing,neighbour,src/core/slice2_16.c
+0x10017F80,BrFadeDrawSprite,drawing,manual,src/core/drawing/br_gbihandlers.c
 0x100181A0,BrFadeSetTarget,drawing,description,src/core/drawing/br_fade.c
 0x10018230,BrFadeSetTargetA,drawing,description,src/core/drawing/br_fade.c
 0x10018290,BrFadeSetTargetB,drawing,neighbour-1,src/core/drawing/br_fade.c
@@ -231,6 +232,8 @@ glide_va,name,module,basis,file
 0x10018310,BrFadeIsClosing,drawing,description,src/core/drawing/br_fade.c
 0x10018340,BrFadeIsSettled,drawing,description,src/core/drawing/br_fade.c
 0x10018370,BrFadeIsShut,drawing,manual,src/core/drawing/br_fade.c
+0x100183B0,BrFadeDrawBars,drawing,manual,src/core/drawing/br_fadewipe.c
+0x100186E0,BrFadeTick,drawing,manual,src/core/drawing/br_fadewipe.c
 0x10018990,BrFtolArg,geometry,description,src/core/geometry/br_ftol.c
 0x100189A0,BrCopy8Words,gamedata,description,src/core/gamedata/br_copy8.c
 0x100189C0,BrFlagInit_1002B950,startup,filed,src/core/startup/br_objlife.c
@@ -243,6 +246,8 @@ glide_va,name,module,basis,file
 0x10018AD0,BrSwapVec3Array,gamedata,description,src/core/gamedata/br_rcaswap.c
 0x10018AF0,BrSwapVec3,geometry,filed,src/core/geometry/br_bits.c
 0x10018B40,BrRcaFixupArray,gamedata,manual,src/core/gamedata/br_rcaswap.c
+0x10018B60,BrRcaFixupRecord,drawing,manual,src/core/drawing/br_fadewipe.c
+0x10018D50,BrRcaSwapMesh,drawing,manual,src/core/drawing/br_fadewipe.c
 0x10018E10,BrVtxCacheResolve,drawing,neighbour-1,src/core/drawing/br_vtxcache.c
 0x10018E90,BrVtxSwap,drawing,filed,src/core/drawing/br_vtxcache.c
 0x10018FC0,BrVtxCacheInsert,drawing,description,src/core/drawing/br_vtxcache.c
@@ -337,6 +342,7 @@ glide_va,name,module,basis,file
 0x10020D30,BrDlCmdTri2Flat,drawing,neighbour,src/core/ghidra_batch.c
 0x10021020,BrGbiDList,drawing,neighbour,src/core/drawing/br_gbi.c
 0x10021060,BrGbiEndDList,drawing,neighbour,src/core/drawing/br_gbi.c
+0x10021080,BrGbiMatrix,drawing,manual,src/core/drawing/br_gbihandlers.c
 0x100211B0,BrGbiPopMatrix,drawing,neighbour,src/core/drawing/br_gbi.c
 0x100211E0,BrGbiSetGeometryMode,drawing,neighbour,src/core/drawing/br_gbi.c
 0x10021210,BrGbiDispatch10020F50,drawing,neighbour,src/core/drawing/br_gbi.c
@@ -350,7 +356,7 @@ glide_va,name,module,basis,file
 0x100221D0,BrDlVtxLitDecal,drawing,filed,src/core/drawing/br_dlvtx_litdecal.c
 0x10023360,BrDlVtxNoZLit,drawing,filed,src/core/drawing/br_dlvtx_nozlit.c
 0x10023760,BrDlProjectNoZ,drawing,filed,src/core/drawing/br_dlproj.c
-0x10023810,BrGbiMoveMem,,description,src/core/slice2_16.c
+0x10023810,BrGbiMoveMem,drawing,manual,src/core/drawing/br_gbihandlers.c
 0x10023900,BrGbiMoveMemMatrix,drawing,neighbour,src/core/generated/0x10023900.c
 0x10023920,BrGbiCall10024260,drawing,neighbour,src/core/drawing/br_gbi.c
 0x100239C0,BrGbiMoveWord,drawing,neighbour,src/core/drawing/br_gbi.c
@@ -364,11 +370,13 @@ glide_va,name,module,basis,file
 0x10024E30,BrTex3dRecSet278,drawing,filed,src/core/drawing/br_tex3d.c
 0x10024E60,BrTex3dExpandInto,drawing,filed,src/core/drawing/br_tex3d.c
 0x10027220,BrTexFormatCode,drawing,neighbour,src/core/drawing/br_texfmt.c
+0x10027290,BrGbiSizeShift,drawing,manual,src/core/drawing/br_gbihandlers.c
 0x100272F0,BrTex3dCreate,drawing,filed,src/core/drawing/br_tex3d.c
 0x100275C0,FUN_100275c0,drawing,neighbour,src/core/drawing/br_texfmt.c
 0x10027710,FUN_10027710,drawing,filed,src/core/drawing/br_tex3d.c
 0x10027850,BrTex3dRecInstall,drawing,filed,src/core/drawing/br_tex3d.c
 0x10027B60,FUN_10027b60,drawing,filed,src/core/drawing/br_tex3dselect.c
+0x10027F00,BrGbiBlit,drawing,manual,src/core/drawing/br_gbihandlers.c
 0x10027F80,BrGbiTexelsPerWord,drawing,neighbour,src/core/drawing/br_gbitexscan.c
 0x10027FB0,BrTex3dCreateBlank,drawing,filed,src/core/drawing/br_tex3d.c
 0x100281C0,FUN_100281c0,drawing,neighbour,src/core/drawing/br_glidestate.c
@@ -382,11 +390,15 @@ glide_va,name,module,basis,file
 0x10029290,BrTexSizeFromShiftAspect,drawing,filed,src/core/drawing/br_tex3d.c
 0x100293D0,br_tex3d_end,drawing,filed,src/core/drawing/br_tex3d.c
 0x100293F0,BrTexTileUnpack,drawing,filed,src/core/drawing/br_tex3d.c
+0x10029420,BrGbiTexScanSetImg,drawing,manual,src/core/drawing/br_gbihandlers.c
+0x10029480,BrGbiTexScanLoadTlut,drawing,manual,src/core/drawing/br_gbihandlers.c
 0x100294F0,BrGbiTexScanLoadSync,drawing,filed,src/core/drawing/br_gbitexscan.c
+0x10029510,BrGbiTexScanLoadBlock,drawing,manual,src/core/drawing/br_gbihandlers.c
 0x10029570,BrGbiTexScanPipeSync,drawing,filed,src/core/drawing/br_gbitexscan.c
 0x10029590,BrGbiTexScanTileSync,drawing,filed,src/core/drawing/br_gbitexscan.c
 0x100295B0,BrGbiTexScanSetTile,drawing,neighbour,src/core/drawing/br_gbitexscan.c
 0x100296B0,BrGbiTexScanSetTileSize,drawing,neighbour,src/core/drawing/br_gbitexscan.c
+0x10029710,BrGbiTexScanOtherModeL,drawing,manual,src/core/drawing/br_gbihandlers.c
 0x10029780,BrGbiTexScanOtherModeH,drawing,filed,src/core/drawing/br_gbitexscan.c
 0x100297C0,BrGbiTexScanOtherModeH0E,drawing,filed,src/core/drawing/br_gbitexscan.c
 0x100297F0,BrGbiTexCreate,drawing,neighbour,src/core/drawing/br_gbitexscan.c
