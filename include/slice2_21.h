@@ -402,8 +402,14 @@ void BrCarWheelFx(struct BrCar *pCar, const BrCarFxEnv *pEnv,
  * that passes 0.75. Surface id 3 goes on list B4, 1 and 2 on list AC.
  *
  * pSeed is the generator state 0x1003BD50 advances (0x10A9BFD0). */
+#ifdef BR_MATCHING_BUILD
+/* Glide 0x100335A0: __fastcall, the car in ecx and nothing on the stack; dt,
+ * the pool and the list heads are globals. */
+void __fastcall BrCarPfxSpawn(struct BrCar *pCar);
+#else
 void BrCarPfxSpawn(struct BrCar *pCar, BrPfxPool *pPool, const BrPfxEnv *pEnv,
                    uint32_t *pSeed);
+#endif
 
 /* 0x10039020 -- thiscall, called on each car before BrCarWheelFx in one of
  * the three dispatch modes. Not in this packet. */

@@ -502,6 +502,7 @@ glide_va,name,module,basis,file
 0x10032530,BrBootColdInitRun,startup,filed,src/core/startup/br_bootinit.c
 0x100325B0,BrExt_10038F30,startup,neighbour,src/core/startup/BrExt_10038F30_100325B0.cpp
 0x10032680,BrInit220B20,startup,neighbour-1,src/core/startup/br_track.c
+0x100335A0,BrCarPfxSpawn,gamedata,manual,src/core/gamedata/br_pfx.c
 0x10033880,BrPfxUpdateB0,gamedata,neighbour-1,src/core/generated/0x10033880.c
 0x10033B50,BrPfxReset,gamedata,description,src/core/gamedata/br_pfx.c
 0x10033BB0,BrPfxTick,gamedata,neighbour-1,src/core/generated/0x10033BB0.c
