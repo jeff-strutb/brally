@@ -35,15 +35,9 @@ extern char  s_returned_to_race_lobby__1007b2bc[];
 extern char  s_finished__s_100a5b50[];
 extern char *PTR_s_First__100aa3e8[];
 
-/* WHAT IT DOES: handles one application-level DirectPlay message before the
- * race has started -- chat lines, a player marking ready, the host starting
- * or booting someone, a weather pick, a player leaving or returning, a
- * finishing position -- and posts any chat text it produced to the lobby
- * window (freeing it when there is no window). Once the host has started,
- * messages go to the in-race handler instead, or to the race-message parser
- * when the connection is not yet marked live. */
-/* T2 2026-09-25 (hand, ~170 fn.py/micro-TU compiles): 883/913 B of code
- * (the 36-byte jump table follows), 264/270 insns.  The compiler is plain C
+/* T2 2026-09-25 (hand, several thousand fn.py/micro-TU/IL-surgery compiles):
+ * 908/913 B of code (the 36-byte jump table follows), 268/270 insns; the
+ * only residue is the zero web (RESIDUE 2).  The compiler is plain C
  * (/O2, frameless; /TP and /TP /GX change nothing).  What the bytes taught:
  * the case bodies sit in SOURCE order 0,1,2,5,3,4,6,7,8; the four weather
  * arms stay separate only with the literal 4..7 in the call; the host-ready
@@ -82,6 +76,13 @@ extern char *PTR_s_First__100aa3e8[];
  * pText as a void or char pointer, array, struct, volatile, initialiser
  * or memset, the
  * store in both arms, header and neighbour-function context. */
+/* WHAT IT DOES: handles one application-level DirectPlay message before the
+ * race has started -- chat lines, a player marking ready, the host starting
+ * or booting someone, a weather pick, a player leaving or returning, a
+ * finishing position -- and posts any chat text it produced to the lobby
+ * window (freeing it when there is no window). Once the host has started,
+ * messages go to the in-race handler instead, or to the race-message parser
+ * when the connection is not yet marked live. */
 /* @t4-pass 0x10009010 1 2026-09-13 probes 16 bytes 896 insns 269 regions 1 rows 13 census no  (hand, fn.py variants: case order, literal arms, scan loop forms, pText typing/placement, compare spellings, counter placement) */
 /* @implements 0x10009010 glide BrDpAppMsgHandle */
 void BrDpAppMsgHandle(int *pNet, int *pMsg, int a3, int idFrom, int a5)
