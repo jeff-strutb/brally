@@ -1000,6 +1000,7 @@ glide_va,name,module,basis,file
 0x10058E20,BrVidModeListFill,menus,neighbour,src/core/menus/BrVidModeListFill_10058E20.cpp
 0x10058F90,BrExt_1007AC00,menus,neighbour-1,src/core/menus/br_uibounds.c
 0x10058FA0,BrMenuSub1005FF30,menus,prefix,src/core/menus/br_keyclear.c
+0x10058FD0,BrMenuSub1005FF60,controls,manual,src/core/controls/br_dikedge.c
 0x10059020,BrDikPollAndEdge,controls,description,src/core/controls/br_dik.c
 0x10059040,BrFn1005FFD0,controls,neighbour-1,src/core/controls/br_dik.c
 0x10059060,BrInputLatchUpdate,controls,description,src/core/controls/br_input.c
@@ -1042,6 +1043,7 @@ glide_va,name,module,basis,file
 0x1005A7A0,BrCarPhysStep,driving,filed,src/core/driving/br_carphys.c
 0x1005AC60,BrCarBuildMatrices,racing,description,src/core/racing/br_carinit.c
 0x1005C440,BrThunk5C440,racing,neighbour-1,src/core/racing/br_thunks.c
+0x1005C450,BrZeroRegions,gamedata,manual,src/core/gamedata/br_zeroregions.c
 0x1005C560,BrRaceCarReset,racing,assigned,src/core/generated/0x1005C560.c
 0x1005C6D0,BrCarRespawn_1005C6D0,racing,manual,src/core/racing/BrCarRespawn_1005C6D0.cpp
 0x1005C8B0,FUN_1005c8b0,driving,manual,src/core/driving/FUN_1005c8b0.cpp
@@ -1051,7 +1053,7 @@ glide_va,name,module,basis,file
 0x1005E6A0,BrCarInitTables,racing,description,src/core/racing/br_carinit.c
 0x1005E780,BrCarClear29C8,racing,neighbour-1,src/core/racing/br_carinit.c
 0x1005E7B0,BrCarStartInit_1005E7B0,racing,manual,src/core/racing/BrCarStartInit_1005E7B0.cpp
-0x1005EB90,BrPathWalk,,description,src/core/slice3_40.c
+0x1005EB90,BrPathWalk,racing,manual,src/core/racing/br_pathwalk.c
 0x1005ECF0,BrRacePathAdvance,,description,src/core/generated/0x1005ECF0.c
 0x1005EDC0,BrMakeEnemyCarColorPanels,drawing,filed,src/core/drawing/br_model.c
 0x1005F220,BrModelSlotApply,drawing,description,src/core/drawing/br_model.c
@@ -1059,6 +1061,8 @@ glide_va,name,module,basis,file
 0x1005F690,BrRankCmpKey,racing,description,src/core/racing/br_rank.c
 0x1005F6C0,BrLapSaveRestore,racing,filed,src/core/racing/BrLapSaveRestore_1005F6C0.cpp
 0x1005FF00,BrRaceGateStep,racing,filed,src/core/racing/br_race.c
+0x100608F0,BrVarSave,gamedata,manual,src/core/gamedata/br_varblock.c
+0x10060970,BrVarLoad,gamedata,manual,src/core/gamedata/br_varblock.c
 0x100609B0,BrWrap_10067940,startup,filed,src/core/startup/br_objlife.c
 0x100609D0,BrWrap_10067960,startup,filed,src/core/startup/br_objlife.c
 0x100609F0,BrWrap_10067980,startup,filed,src/core/startup/br_objlife.c
@@ -1097,7 +1101,7 @@ glide_va,name,module,basis,file
 0x10062B80,BrCtrlCfgAssign,controls,manual,src/core/controls/BrCtrlCfgAssign_10062B80.cpp
 0x10062C30,BrFn10069BC0,controls,description,src/core/controls/br_ctrlquery.c
 0x10062CA0,BrFn10069C30,controls,description,src/core/controls/br_ctrlquery.c
-0x10062D00,BrCtrlCfgInit,controls,neighbour,src/core/slice3_42.c
+0x10062D00,BrCtrlCfgInit,controls,manual,src/core/controls/br_ctrlcfgobj.c
 0x10062E50,BrRec874Copy_10062E50,controls,manual,src/core/controls/BrRec874Copy_10062E50.cpp
 0x10063060,BrCtrlCfgReadFile,settings,filed,src/core/settings/BrCtrlCfgReadFile_10063060.cpp
 0x100634B0,BrGlCfgSave,settings,manual,src/core/settings/br_cfgfile.c
@@ -1120,6 +1124,8 @@ glide_va,name,module,basis,file
 0x10063E60,BrRbAccumOwnForces,driving,filed,src/core/driving/br_rbaccum.c
 0x10064120,BrRbSolveAccel,driving,filed,src/core/driving/br_rbaccum.c
 0x10064210,BrRbAccumAll,driving,description,src/core/driving/br_rbaccum.c
+0x100643E0,BrRbVelAtBodyPoint,driving,manual,src/core/driving/br_rbvel.c
+0x100644C0,BrRbVelAtPoint,driving,manual,src/core/driving/br_rbvel.c
 0x100651A0,BrCarPhysTyre,driving,filed,src/core/driving/br_carphys.c
 0x10065950,BrCrPlaneDist,driving,filed,src/core/driving/br_collrespsolve.c
 0x10066230,BrCrListPush,driving,filed,src/core/driving/br_collresp.c
@@ -1230,7 +1236,7 @@ glide_va,name,module,basis,file
 0x1006D2A0,BrStrResFree,gamedata,filed,src/core/gamedata/br_strres.c
 0x1006D410,BrVec4Normalise,geometry,filed,src/core/geometry/br_vecnorm.c
 0x1006D4B0,BrVec3Normalise,geometry,filed,src/core/geometry/br_vecnorm.c
-0x1006D530,BrRbQuatDerivative,,,src/core/slice3_44.c
+0x1006D530,BrRbQuatDerivative,driving,manual,src/core/driving/br_rbinteg.c
 0x1006D600,BrCpIntegrateVelocity,driving,manual,src/core/driving/br_carphys.c
 0x1006D940,BrX100746E0,geometry,filed,src/core/geometry/br_x100746.c
 0x1006D980,BrMat4MulVec3,geometry,filed,src/core/geometry/br_mat.c
@@ -1271,6 +1277,7 @@ glide_va,name,module,basis,file
 0x1006EB00,FUN_1006eb00,racing,description,src/core/racing/br_wrongway.c
 0x1006EBC0,BrCarTickGridCell,racing,manual,src/core/racing/br_cartick.c
 0x1006F680,BrEntSetPos,scene,description,src/core/scene/br_entpos.c
+0x1006F720,BrEntSetHeading,driving,manual,src/core/driving/br_entheading.c
 0x1006F840,BrQuatFromMatrix,geometry,manual,src/core/geometry/br_quat.c
 0x1006F970,BrEntSetMatrix,driving,neighbour-1,src/core/driving/br_entstate.c
 0x1006FA10,BrEntSetVel,driving,neighbour-1,src/core/driving/br_entstate.c
@@ -1303,7 +1310,10 @@ glide_va,name,module,basis,file
 0x10072140,BrFfbSetDurationLong,controls,description,src/core/controls/br_ffb.c
 0x10072180,BrFfbSetDurationShort,controls,neighbour-1,src/core/controls/br_ffb.c
 0x100721C0,BrFfbCommitDuration,controls,neighbour-1,src/core/controls/br_dicmd.c
+0x10072210,BrFfbUpdateSpring,controls,manual,src/core/controls/br_ffbdev.c
 0x100723A0,BrFfbSetSpringCoeff,controls,description,src/core/controls/br_dicmd.c
+0x100723D0,BrFfbEnumDevice,controls,manual,src/core/controls/br_ffbdev.c
+0x100724C0,BrFfbInit,controls,manual,src/core/controls/br_ffbdev.c
 0x10072840,BrExt_10079550,controls,neighbour-1,src/core/generated/0x10072840.c
 0x100728C0,BrFfbReprobe,controls,description,src/core/controls/br_ffb.c
 0x10073714,BrNop73714,startup,description,src/core/startup/br_dllentry.c
