@@ -140,3 +140,66 @@ void BrImgMulByTexture(int32_t iTex, uint8_t *pPix, int32_t w, int32_t h)
         } while (--rows != 0);
     }
 }
+
+#ifdef BR_MATCHING_BUILD
+/* 0x1005A500 (D3D twin 0x10061480, port body BrImgTintBlit in slice1_07.c) */
+/* WHAT IT DOES: copies a rectangle of RGBA pixels into a bottom-up
+ * destination image, tinting the colour-keyed ones on the way. The source
+ * is packed at the rectangle's own width; source row y lands on destination
+ * row dstH - top - y - 1 starting at column left. Every pixel is copied
+ * whole first; a keyed pixel (red 0, green equal to blue) then has its red,
+ * green and blue replaced by that grey level times the current tint scale
+ * over 255, keeping its alpha. A null source does nothing. Always returns 1.
+ */
+/* Transcribed from the Glide bytes: the pixel is copied as a dword before
+ * the key test re-reads byte 0; the three channels share one grey value and
+ * divide signed by 255 (the 0x80808081 sequence); scales are the tint
+ * state's +0x00/+0x08/+0x1C words.
+ * T2, 304/297 B, REGNORM 2+1 (2026-09-25). Load-bearing, each proven by the
+ * diff: the row loop is a while with y++ before the pointer advance (a for
+ * loop lets VC5 strength-reduce the destination row, +46 B); the row pointer
+ * is its own local (so y packs into pSrc's slot); the key test compares two
+ * int temporaries. Residue: the original forms the destination offset as
+ * (pDst + row*4) - s where this build gets (row*4 - s) + pDst (one extra
+ * instruction), and it pushes edi only after the row-count guard. Dead:
+ * five destination spellings, dword-typed pointers, inline-indexed
+ * destination, 86 declaration orders, pad-count 1..40 (two states only). */
+/* @implements 0x1005A500 glide FUN_1005a500 */
+int FUN_1005a500(const uint8_t *pSrc, int32_t left, int32_t right,
+                 int32_t top, int32_t bottom, uint8_t *pDst, int32_t dstW,
+                 int32_t dstH)
+{
+    const uint8_t *s, *p;
+    uint8_t *d;
+    int32_t rb, w, h, x, y, g, b;
+
+    if (pSrc != NULL) {
+        w = right - left;
+        h = bottom - top;
+        p = pSrc;
+        y = 0;
+        while (y < h) {
+            rb = w * 4;
+            s = p;
+            d = pDst + ((dstH - top - y - 1) * dstW + left) * 4;
+            for (x = 0; x < w; x++) {
+                *(uint32_t *)d = *(const uint32_t *)s;
+                if (s[0] == 0) {
+                    g = s[1];
+                    b = s[2];
+                    if (g == b) {
+                        d[0] = (uint8_t)(g * BrImgTintState.scaleR / 255);
+                        d[1] = (uint8_t)(g * BrImgTintState.scaleG / 255);
+                        d[2] = (uint8_t)(g * BrImgTintState.scaleB / 255);
+                    }
+                }
+                s += 4;
+                d += 4;
+            }
+            y++;
+            p += rb;
+        }
+    }
+    return 1;
+}
+#endif /* BR_MATCHING_BUILD */

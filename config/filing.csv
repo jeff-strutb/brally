@@ -1003,6 +1003,7 @@ glide_va,name,module,basis,file
 0x1005A420,FUN_1005a420,drawing,description,src/core/drawing/br_livery.c
 0x1005A480,BrLiveryLoadDamage,drawing,filed,src/core/drawing/br_livery.c
 0x1005A4E0,BrImgTintSetScale,drawing,description,src/core/drawing/br_imgtint.c
+0x1005A500,FUN_1005a500,drawing,neighbour,src/core/drawing/br_imgtint.c
 0x1005A630,BrImgRegionHasKey,drawing,manual,src/core/generated/0x1005A630.c
 0x1005A6A0,FUN_1005a6a0,drawing,description,src/core/drawing/br_livery.c
 0x1005A6B0,FUN_1005a6b0,drawing,description,src/core/drawing/br_livery.c
