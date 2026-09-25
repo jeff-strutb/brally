@@ -134,7 +134,7 @@ void __fastcall FUN_10001510(BrCamCar *car, BrPtrArg cam, BrPtrArg prev);/* 0x10
  * back along the car's forward axis from twenty units behind.  Finally it
  * refreshes the eye/look/right/up basis, the lens factor from the distance
  * to the eye, and the negated axis rows the renderer reads. */
-/* Residue (see the @t3 tag below): seven regions, ALL x87 scheduling -- the
+/* Residue (see the T3 certification below): seven regions, ALL x87 scheduling -- the
  * speed/spin blends' operand side, the lift then-arm pop/push, the height
  * updates (fcom;fstp vs fst;fcomp), the second frame-row product order, the
  * prologue prev copy, and the final axis-negation DAG (the 357 B "never

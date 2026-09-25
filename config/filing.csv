@@ -208,6 +208,7 @@ glide_va,name,module,basis,file
 0x100154A0,BrHudDrawSplitTimes,drawing,filed,src/core/drawing/br_hudscene.c
 0x10015550,BrHudDrawSplitLine,drawing,filed,src/core/drawing/br_hudscene.c
 0x100155F0,BrSceneUsePlainClear,drawing,neighbour,src/core/drawing/br_hudscene.c
+0x10015630,BrSceneSetupFrame,drawing,manual,src/core/drawing/br_hudscene.c
 0x10016800,BrSub_10019240,drawing,neighbour,src/core/drawing/br_text.c
 0x10016810,BrClear_10019250,drawing,filed,src/core/drawing/br_textmode.c
 0x10016820,BrTextFlag358Clear,drawing,filed,src/core/drawing/br_textmode.c

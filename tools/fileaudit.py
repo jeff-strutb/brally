@@ -54,7 +54,7 @@ from filing import (FILING, is_slice, load_report, module_of,  # noqa: E402
 # into menus/, and slice2_15.c into drawing/br_hudscene.c. Each was entirely
 # one module's code held together by file-statics that a split would have
 # duplicated, so the file moved intact rather than being taken apart.
-BASELINE = 58
+BASELINE = 56
 # Functions without a WHAT IT DOES: comment. 0 = every tagged function in
 # every lane must carry one; the next match without a description FAILS.
 DESC_BASELINE = 0
@@ -73,7 +73,7 @@ DESC_BASELINE = 0
 # byte-exact only inside slice2_16.c's translation unit. Both files carry a
 # header note saying what was tried and what it cost. Lower this as they
 # drain; if it will not go lower, the note in the file is the reason.
-STRANDED_BASELINE = 11
+STRANDED_BASELINE = 0
 
 # Every lane that holds decompiled functions. The description check ran over
 # report.csv's status=match rows ONLY until 2026-09-03, which reported "0
@@ -235,6 +235,15 @@ def main():
                      if not i['ok'] or st.get(va) == 'match')
         print('T3-certified (parked)      : %d  (bad/stale tags: %d)'
               % (sum(1 for v in cert if not v.startswith('?')), t3_bad))
+        # A certified T3 is finished work too: it must not sit in an address
+        # batch any more than a byte-exact match may.  The stranded check
+        # above reads report.csv's status=match rows only, so until
+        # 2026-09-25 it never saw the 41 T3 functions left in slice files.
+        t3_slice = sorted((va, i['file']) for va, i in cert.items()
+                          if not va.startswith('?') and is_slice(i['file']))
+        for va, f in t3_slice:
+            print('   T3 IN BATCH %s  %s' % (va, f))
+        t3_bad += len(t3_slice)
     except Exception as e:
         print('T3-certified (parked)      : unavailable (%s)' % e)
 
