@@ -247,8 +247,8 @@ glide_va,name,module,basis,file
 0x10018AD0,BrSwapVec3Array,gamedata,description,src/core/gamedata/br_rcaswap.c
 0x10018AF0,BrSwapVec3,geometry,filed,src/core/geometry/br_bits.c
 0x10018B40,BrRcaFixupArray,gamedata,manual,src/core/gamedata/br_rcaswap.c
-0x10018B60,BrRcaFixupRecord,drawing,manual,src/core/drawing/br_fadewipe.c
-0x10018D50,BrRcaSwapMesh,drawing,manual,src/core/drawing/br_fadewipe.c
+0x10018B60,BrRcaFixupRecord,gamedata,manual,src/core/gamedata/br_carload.c
+0x10018D50,BrRcaSwapMesh,gamedata,manual,src/core/gamedata/br_carload.c
 0x10018E10,BrVtxCacheResolve,drawing,neighbour-1,src/core/drawing/br_vtxcache.c
 0x10018E90,BrVtxSwap,drawing,filed,src/core/drawing/br_vtxcache.c
 0x10018FC0,BrVtxCacheInsert,drawing,description,src/core/drawing/br_vtxcache.c
