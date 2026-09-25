@@ -84,6 +84,9 @@ typedef struct BrScrSlot {
   float pad[3];
 } BrScrSlot;
 
+/* Transcribed from the Glide bytes: 32-byte slots, the distance comparison
+ * is fcompp/test ah,0x41 (a tie keeps the incumbent, NaN rejects), the depth
+ * guard fcomp/test ah,1 against pRef+0x38 minus -1.0 (0x10077210). */
 /* WHAT IT DOES: offers a candidate point for one corner slot of a screen-space
  * quad. The candidate replaces the point already in slot idx only if its 2D
  * key (+0x0C/+0x10) is strictly nearer to (cx, cy) than the incumbent's, and
@@ -91,9 +94,6 @@ typedef struct BrScrSlot {
  * one; the stored point is the candidate's position run through the 4x4
  * (row-vector convention), its 2D key is copied across, and the slot is
  * flagged as filled. */
-/* Transcribed from the Glide bytes: 32-byte slots, the distance comparison
- * is fcompp/test ah,0x41 (a tie keeps the incumbent, NaN rejects), the depth
- * guard fcomp/test ah,1 against pRef+0x38 minus -1.0 (0x10077210). */
 /* @implements 0x1000E150 glide BrScrPtKeepNearest */
 void BrScrPtKeepNearest(const float *pM, BrScrSlot *aOut, int *aFlags, int idx,
                         const BrScrSlot *pIn, float cx, float cy,

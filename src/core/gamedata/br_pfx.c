@@ -90,6 +90,11 @@ extern uint16_t g_iPfxFree;      /* 0x10AC0C38 */
 #define CAR_V(p, o)   ((BrVec3 *)   CAR_B(p, o))
 
 /* 0x100335A0 */
+/* Transcribed from the Glide bytes: __fastcall with the car in ecx (`mov
+ * esi,ecx`), no stack arguments; dt (0x106E9D8C), the record array
+ * (0x10AC0C48, 32-byte records, 1-based), the free head (0x10AC0C38, read as
+ * a dword and masked) and the two list heads (0x10AC0C3C for surfaces 1-2,
+ * 0x10AC0C44 for surface 3, moved as words) are globals. */
 /* WHAT IT DOES: throws dust and spray up from a car's wheels. It only does
  * anything above about forty units of speed, and then only for wheels actually
  * touching a loose surface; the faster the car goes the more often each wheel
@@ -97,11 +102,6 @@ extern uint16_t g_iPfxFree;      /* 0x10AC0C38 */
  * with the two front wheels also thrown sideways. New particles are nudged part
  * of the way toward where that wheel emitted last time, so a spray follows the
  * wheel's path instead of appearing in a line of separate puffs. */
-/* Transcribed from the Glide bytes: __fastcall with the car in ecx (`mov
- * esi,ecx`), no stack arguments; dt (0x106E9D8C), the record array
- * (0x10AC0C48, 32-byte records, 1-based), the free head (0x10AC0C38, read as
- * a dword and masked) and the two list heads (0x10AC0C3C for surfaces 1-2,
- * 0x10AC0C44 for surface 3, moved as words) are globals. */
 /* @implements 0x100335A0 glide BrCarPfxSpawn */
 void __fastcall BrCarPfxSpawn(struct BrCar *pCar)
 {

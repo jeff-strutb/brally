@@ -1061,13 +1061,6 @@ static float BrCpDrvBrake(BrRbBodyFull *pBody, BrRbBodyFull *pWheel, float dt)
 
 #ifdef BR_MATCHING_BUILD
 /* 0x10068070 */
-/* WHAT IT DOES: finds how far one wheel can drop before it meets the ground.
- * The wheel's mount point (its x and y offset, height ignored) is taken into
- * the world by the car body's matrix and the car's own down axis is rotated
- * the same way; then the collision-grid cell under that point is searched
- * exactly as BrGroundProbeZ searches it, along that axis instead of straight
- * down. On a hit the wheel records the plane, its surface byte and the
- * plane's normal and constant. Returns the shortest accepted drop, or 100. */
 /* Transcribed from the Glide bytes: the body matrix is pBody+0xBC; the
  * contact is cleared (wheel+0x19C = 0) before the search and set to the
  * plane pointer on a hit; the hit point reuses the mount's slots; the drop
@@ -1076,6 +1069,13 @@ static float BrCpDrvBrake(BrRbBodyFull *pBody, BrRbBodyFull *pWheel, float dt)
  * helpers, ahead of the tyre model): in its own file the product operand
  * roles of both dot products came out reversed, and the pad-count probe
  * could not reach the state. The vectors are declared ahead of the rest. */
+/* WHAT IT DOES: finds how far one wheel can drop before it meets the ground.
+ * The wheel's mount point (its x and y offset, height ignored) is taken into
+ * the world by the car body's matrix and the car's own down axis is rotated
+ * the same way; then the collision-grid cell under that point is searched
+ * exactly as BrGroundProbeZ searches it, along that axis instead of straight
+ * down. On a hit the wheel records the plane, its surface byte and the
+ * plane's normal and constant. Returns the shortest accepted drop, or 100. */
 /* @implements 0x10068070 glide BrWheelGroundProbe */
 float BrWheelGroundProbe(int pBody, int pWheel)
 {
@@ -1328,14 +1328,6 @@ void BrCarPhysTyre(BrTyreView *pBody, BrTyreView *pWheel, float *pA,
 
 #ifdef BR_MATCHING_BUILD
 /* 0x100682C0 */
-/* WHAT IT DOES: finds the height of the ground straight below a point. It
- * takes the collision-grid cell under the point and tries each of that
- * cell's surface planes that the point is within two units of and that is
- * not nearly vertical: the drop from the point to the plane along -z is
- * accepted if it is under two units, lower than the best so far, the plane
- * faces up (normal z above 0.2) and the point directly below lies inside
- * the plane's triangle. Returns the smallest accepted drop, or 100 when
- * nothing below qualifies. */
 /* Transcribed from the Glide bytes: 150 planes of 0x20 bytes per cell at
  * 0x11773698 with the counts as words at 0x11778800; the direction (0,0,-1)
  * is folded (n.z * -1.0f, 0.0f added to x and y); the four windows are
@@ -1344,6 +1336,14 @@ void BrCarPhysTyre(BrTyreView *pBody, BrTyreView *pWheel, float *pA,
  * folds away; the original keeps it), the hit point is scaled then added,
  * and like BrWheelGroundProbe it is byte-exact only in this TU and at this
  * position (after the tyre model). */
+/* WHAT IT DOES: finds the height of the ground straight below a point. It
+ * takes the collision-grid cell under the point and tries each of that
+ * cell's surface planes that the point is within two units of and that is
+ * not nearly vertical: the drop from the point to the plane along -z is
+ * accepted if it is under two units, lower than the best so far, the plane
+ * faces up (normal z above 0.2) and the point directly below lies inside
+ * the plane's triangle. Returns the smallest accepted drop, or 100 when
+ * nothing below qualifies. */
 /* @implements 0x100682C0 glide BrGroundProbeZ */
 float BrGroundProbeZ(const float *pPoint)
 {
