@@ -1,0 +1,918 @@
+/* br_cartrackload.c -- gamedata: loading car (.rca) and track files.
+ *
+ * The endian helpers and the load environment, then the loaders proper:
+ * BrRcaFixup byte-reverses a freshly read car file and rebases every pointer
+ * in it; BrFileReadInto / BrRcaLoadCar / BrTrackLoadHandling read car and
+ * handling files; BrTrackHdrRead (port body) and BrGlTrackHdrRead (the Glide
+ * transcription) read a track file's header and rebase its section pointers.
+ *
+ * Filed out of the address batch slice2_20.c as one group: BrGlTrackHdrRead's
+ * /O2 scheduling depends on every function ahead of it in the TU (measured:
+ * dropping any one of them, BrRcaFixup included, reorders its byte loads),
+ * so the whole head of the file moved together, preamble carried whole.
+ * That file's header note:
+ *
+ * All field access here goes through memcpy-based helpers rather than casting
+ * the file image to a struct pointer.  That is not defensive style, it is
+ * required: the images are N64 data whose alignment the host cannot rely on,
+ * and reading them by overlay would also make the byte order depend on the
+ * host, which is exactly the bug this whole range exists to avoid.
+ */
+
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#endif
+#include <string.h>
+
+/* The original takes ONE argument: `mov esi,[esp+0x10]` after three
+ * pushes is arg1, and `mov [esp+0x14],3` later homes a LOCAL in the
+ * arg-1 slot -- there is no second parameter.  The port added cbFile
+ * for a bounds check the original does not have.  Rename the header
+ * prototype out of the way for this probe; the real fix is to drop
+ * cbFile from slice2_20.h. */
+#define BrRcaFixup BrRcaFixup_hdrdecl
+#include "slice2_20.h"
+#undef BrRcaFixup
+#include "br_seg.h"
+#include "br_bits.h"
+#include "br_vec.h"
+
+/* ==========================================================================
+ * Cross-slice dependencies
+ * ========================================================================== */
+
+/* XSLICE 0x1002B9D0 */
+/* Stores its argument to the global at 0x10675540.  Purpose unknown; called
+ * once at the head of each fixup pass (0 for cars, 1 for tracks). */
+extern void BrSegSetFlag(uint32_t v);
+
+/* XSLICE 0x1002B9E0 */
+/* Byte-swap n u16s in place.  n <= 0 is a no-op. */
+extern void BrSwapU16Array(void *pv, int n);
+
+/* XSLICE 0x1002BA00 */
+/* Byte-swap n 8-byte records (four u16s each). */
+extern void BrSwapRec8Array(void *pv, int n);
+
+/* XSLICE 0x1002BA60 */
+/* Byte-swap n Vec3s (stride 0x0C), i.e. n calls to BrSwapVec3. */
+extern void BrSwapVec3Array(void *pv, int n);
+
+/* XSLICE 0x1002BA80 */
+/* Byte-swap and rebase n records of stride 0x24 (body at 0x1002BAA0). */
+extern void BrSwapRec24Array(void *pv, int n);
+
+/* XSLICE 0x1002BF40 */
+/* Non-zero if pv is NULL or already in the registered display-list table at
+ * 0x1067B550.  Callers use `== 0` to mean "not seen yet". */
+extern int BrDlIsRegistered(const void *pv);
+
+/* XSLICE 0x1002BF80 */
+/* Register and byte-swap a display list. */
+extern void BrDlRegister(void *pv);
+extern void BrSegPtrFixup(uint32_t *p);
+
+/* XSLICE 0x10074DC0 */
+extern void BrSub10074DC0(int n);
+/* XSLICE 0x10074E00 */
+extern void BrSub10074E00(void);
+/* XSLICE 0x1003445A */
+extern void BrSub1003445A(void *pv);
+/* XSLICE 0x10035BD1 */
+extern void BrSub10035BD1(void);
+/* XSLICE 0x10061010 */
+extern void BrSub10061010(int iCar, int fPreview);
+/* XSLICE 0x10037990 */
+extern void BrSub10037990(const char *pszPath);
+
+/* XSLICE 0x1003B170 */
+/* One vector in, one float out.  Used here and at 0x10037B10 as `if (f != 0)
+ * r = 1/f`, so almost certainly a length -- not verified in this packet. */
+extern float BrVec3Len(const BrVec3 *pV);
+
+/* XSLICE 0x1003BD50 */
+extern int BrRand(void);
+
+/* Checked stdio wrappers -- names and signatures as already declared by
+ * slice1_01.h.  NOTE the FILE ** (not FILE *): the originals dereference it. */
+/* XSLICE 0x10003170 */
+extern void *BrChkFRead(void *pDst, size_t size, size_t count, FILE **ppFile);
+/* XSLICE 0x10003320 */
+extern int BrChkFileExists(const char *pPath);
+/* XSLICE 0x10002FE0 */
+extern FILE **BrChkFReadOpen(const char *pPath);
+/* XSLICE 0x10002F90 */
+extern int BrChkFileSize(FILE **ppFile);
+/* XSLICE 0x10003290 */
+extern void BrChkFClose(FILE **ppFile);
+/* XSLICE 0x1007C830 */
+extern int BrSprintf(char *pDst, const char *pszFmt, ...);
+/* XSLICE 0x10008CF0 */
+extern void BrFatal(const char *pszMsg);
+
+/* Backend dispatch, three function pointers in the DLL's data segment.  All
+ * cdecl.  Handles are kept as uint32_t because the originals are 32-bit
+ * values living inside the file image. */
+/* XSLICE 0x118AA084 */
+extern uint32_t (*g_pfn18AA084)(uint32_t hCtx, uint32_t hSrc, void *pDesc);
+/* XSLICE 0x118AA0C4 */
+extern void (*g_pfn18AA0C4)(void *pv);
+/* XSLICE 0x118AA0C8 */
+extern void (*g_pfn18AA0C8)(void *pRec, int flag);
+/* XSLICE 0x118AA0CC */
+extern void (*g_pfn18AA0CC)(void *pTable, int cRecords);
+
+/* Plain globals. */
+/* XSLICE 0x106C7C3C */ extern void    *g_p6C7C3C;
+/* XSLICE 0x106C661C */ extern int      g_i6C661C;
+/* XSLICE 0x106C6624 */ extern int      g_i6C6624;
+/* XSLICE 0x100AC300 */ extern int      g_i0AC300;
+/* XSLICE 0x104BBE08 */ extern int      g_i4BBE08;
+/* XSLICE 0x100B8C90 */ extern int      g_i0B8C90;
+/* XSLICE 0x10AA3444 */ extern int      g_i10AA3444;
+/* XSLICE 0x10AA3460 */ extern int      g_i10AA3460;
+/* XSLICE 0x100C12A0 */ extern uint8_t  g_ab0C12A0[];
+/* XSLICE 0x100B84F8 */ extern const char *const g_apszCarFiles[];
+/* XSLICE 0x100B80B8 */ extern const char *const g_apszTrackFiles[];
+/* XSLICE 0x10220B20 */ extern uint32_t g_a220B20[0x46];
+
+/* Particle-style pool, see slice2_20.h. */
+/* XSLICE 0x10A99BB8 */ extern BrPoolNode g_aPoolNodes[];
+/* XSLICE 0x10A99BA8 */ extern uint16_t   g_uPoolFree;
+/* XSLICE 0x10A99BB0 */ extern uint16_t   g_uPoolHead;
+/* XSLICE 0x106C2CFC */ extern float      g_f6C2CFC;
+
+/* ==========================================================================
+ * Endian / unaligned helpers
+ * ========================================================================== */
+
+void BrSwap4(void *pv)
+{
+    uint8_t *p = (uint8_t *)pv;
+    uint8_t t;
+    t = p[0]; p[0] = p[3]; p[3] = t;
+    t = p[1]; p[1] = p[2]; p[2] = t;
+}
+
+/* @n64 0x80252F50 located */
+void BrSwap2(void *pv)
+{
+    uint8_t *p = (uint8_t *)pv;
+    uint8_t t = p[0]; p[0] = p[1]; p[1] = t;
+}
+
+uint32_t BrRead32BE(const void *pv)
+{
+    const uint8_t *p = (const uint8_t *)pv;
+    return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16)
+         | ((uint32_t)p[2] <<  8) |  (uint32_t)p[3];
+}
+
+static uint32_t BrRd32(const void *pv)
+{
+    uint32_t v;
+    memcpy(&v, pv, sizeof v);
+    return v;
+}
+
+static void BrWr32(void *pv, uint32_t v)
+{
+    memcpy(pv, &v, sizeof v);
+}
+
+static uint16_t BrRd16(const void *pv)
+{
+    uint16_t v;
+    memcpy(&v, pv, sizeof v);
+    return v;
+}
+
+static void BrWr16(void *pv, uint16_t v)
+{
+    memcpy(pv, &v, sizeof v);
+}
+
+/* Big-endian u32 at pv, written back as a host dword.  This is the second of
+ * the two swap idioms in the original; numerically identical to BrSwap4. */
+static void BrLoad32BE(void *pv)
+{
+    BrWr32(pv, BrRead32BE(pv));
+}
+
+/* Big-endian u16 at pv, written back as a host word. */
+static void BrLoad16BE(void *pv)
+{
+    const uint8_t *p = (const uint8_t *)pv;
+    BrWr16(pv, (uint16_t)(((uint16_t)p[0] << 8) | p[1]));
+}
+
+/* ==========================================================================
+ * Load environment
+ * ========================================================================== */
+
+BrLoadEnv g_BrLoad;
+
+/* The segment map the original kept at 0x1057553C / 0x10575538. */
+BrSegMap s_seg;   /* not static: slice2_20.c's remaining track fixups share it */
+
+void *BrLoadResolve(uint32_t uFixedUp)
+{
+    uint32_t off;
+
+    if (uFixedUp == 0 || g_BrLoad.pImage == NULL)
+        return NULL;
+    if (uFixedUp < g_BrLoad.uBase32)
+        return NULL;
+    off = uFixedUp - g_BrLoad.uBase32;
+    /* DEVIATION: the original dereferences whatever BrSegFixup produced. The
+     * port refuses anything outside the image so that a truncated or hostile
+     * file cannot walk off the end.  BrSegFixup already turns unresolvable
+     * values into 0, so a NULL here reaches the caller's existing null path. */
+    if (off >= g_BrLoad.cbImage)
+        return NULL;
+    return g_BrLoad.pImage + off;
+}
+
+/* Rebase the dword at pv in place, matching `push pv / call 0x1002B970`. */
+static void BrFixupAt(void *pv)
+{
+    uint32_t v = BrRd32(pv);
+    BrSegFixup(&s_seg, &v);
+    BrWr32(pv, v);
+}
+
+/* The dword at pv, already rebased, as a host pointer. */
+static void *BrPtrAt(const void *pv)
+{
+    return BrLoadResolve(BrRd32(pv));
+}
+
+/* ==========================================================================
+ * 0x100370D0  BrRcaFixup
+ * ========================================================================== */
+
+/* WHAT IT DOES: makes a freshly loaded car file usable. Boss Rally's PC
+ * version reads the N64's data files exactly as they are, so every number in
+ * them is stored the wrong way round and every internal reference points at
+ * an N64 address. This walks the whole car -- geometry, textures,
+ * descriptors, transforms -- turning each field around and rewriting each
+ * reference to point at where the data actually sits in memory now. */
+/* The original inlines both endian idioms at every site -- there is no call
+ * to a swap helper anywhere in this function -- so they are macros, not the
+ * out-of-line BrSwap4/BrLoad32BE the port used.  Store order is load-bearing:
+ * the original writes p[3] before p[0], i.e. `t = p[3]; p[3] = p[0]; p[0] = t`. */
+#define BR_SWAP4(pb) do {                                                     \
+        uint8_t a_, b_;                                                       \
+        a_ = ((uint8_t *)(pb))[0];  b_ = ((uint8_t *)(pb))[3];                \
+        ((uint8_t *)(pb))[3] = a_;  ((uint8_t *)(pb))[0] = b_;                \
+        a_ = ((uint8_t *)(pb))[1];  b_ = ((uint8_t *)(pb))[2];                \
+        ((uint8_t *)(pb))[2] = a_;  ((uint8_t *)(pb))[1] = b_;                \
+    } while (0)
+
+#define BR_LD32BE(pb) do {                                                    \
+        uint32_t v_;                                                          \
+        v_ = ((uint32_t)((uint8_t *)(pb))[0] << 8) | ((uint8_t *)(pb))[1];    \
+        v_ = (v_ << 8) | ((uint8_t *)(pb))[2];                                \
+        v_ = (v_ << 8) | ((uint8_t *)(pb))[3];                                \
+        *(uint32_t *)(pb) = v_;                                               \
+    } while (0)
+
+/* 0x1002B9A0.  Two arguments in the original: (n64Base, hostBase).  The port
+ * threads an explicit BrSegMap * through as a first argument; the original
+ * writes the module globals directly. */
+extern void BrSegSetBasesG(uint32_t n64Base, void *pHost);
+
+/* STATE 2026-09-09: 1647/1641 B (+6), 414/414 insns, register-blind 0+0,
+ * 10 masked regions / 1116 raw.  ONE residue, seen ten times: the original
+ * holds the `pFile + 0x8014` address CSE in ebx (2-byte `[ebx]` reads) and
+ * the inner swap-loop count-down in ebp; ours exchanges them, and every
+ * `[ebp]` read costs one disp8 byte (the whole +6).  The in-swap read
+ * interleave differences are the same allocation seen through the
+ * scheduler.
+ *
+ * DEAD (2026-09-09, 22 hand compiles + 241 crank candidates over two runs):
+ * declaration orders (j,i / p last / p first / ints first / i alone last /
+ * n first); the +0x8014 CSE as a NAMED pointer local pp14 at all its uses;
+ * the table pointer named at the call; the count named before or after the
+ * +0x8014 swap (sound placements; both cost reg 1+1 or nothing); inner and
+ * outer loops as count-downs; shared function-scope swap temps; the swap
+ * macro's store order flipped (worse); pFile as a parameter macro; the
+ * +0x8098/0x809C pair order; a q alias in the DL loop; the +0x8090 swap
+ * after the +0x8094 rebase; the descriptor index widened; crank's full
+ * mut/stmt/decl/comm/samebase list (filepos cannot compile this TU's
+ * dependencies).  ‼ crank's parked endpoint (build/ghidra_work/
+ * 0x10030770.crank.c, "regions 8 bytes -2") is UNSOUND -- it reads the
+ * record count at +0x8010 BEFORE the BR_LD32BE that byte-swaps it, so its
+ * gain is not a transcription; do not land it.  Corpus: MISS at +0x19.
+ * Which of ebx/ebp a CSE and a counter take is not source-reachable here. */
+/* @t4-pass 0x10030770 1 2026-09-09 probes 12 bytes 1647 insns 414 regions 10 rows 0 census yes  (hand: decl orders, named CSE, loop shapes -- zero movement) */
+/* @t4-pass 0x10030770 2 2026-09-09 probes 10 bytes 1647 insns 414 regions 10 rows 0 census yes  (hand: count/table temps, macro forms, statement swaps -- zero movement; crank 241 candidates, sound endpoint unchanged) */
+/* WHAT IT DOES: rewrite every pointer inside a freshly loaded track file so
+ * it points into memory rather than at the N64 addresses stored on disc.
+ * Nothing in the file is usable until this has walked it. */
+/* @t3 0x10030770 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 1647/1641 insns 414/414 rows 0+0 regions 10 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue: one register exchange (the +0x8014 address CSE vs the inner
+ * loop counter, ebx/ebp swapped; +6 B of [ebp] disp8 encodings) seen
+ * through ten regions.  Multiset and count exact.  Dossier, dead lists and
+ * the crank-endpoint UNSOUND warning: the STATE block above; ledger lines
+ * above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
+/* @implements 0x100370D0 d3d BrRcaFixup */
+void BrRcaFixup(void *pvFile)
+{
+    uint8_t *pFile = (uint8_t *)pvFile;
+    uint8_t *p;
+    int i, j;
+
+    BrSegSetBasesG(0x803C8000u, pFile + 0x8000);
+    BrSegSetFlag(0);
+
+    g_p6C7C3C = pFile;
+    *(uint32_t *)(pFile + 0x7C) = 0;
+
+    BR_LD32BE(pFile + 0x8000);
+    BR_SWAP4(pFile + 0x8004);  BrSegPtrFixup((uint32_t *)(pFile + 0x8004));
+    BR_LD32BE(pFile + 0x8008);
+    BR_SWAP4(pFile + 0x800C);  BrSegPtrFixup((uint32_t *)(pFile + 0x800C));
+    BR_LD32BE(pFile + 0x8010);
+    BR_SWAP4(pFile + 0x8014);  BrSegPtrFixup((uint32_t *)(pFile + 0x8014));
+
+    /* [+0x14] is a table of [+0x10] records, stride 0x24. */
+    BrSwapRec24Array(*(void **)(pFile + 0x8014), *(int *)(pFile + 0x8010));
+
+    {
+        /* Patch four u16s in the record selected by the byte at +0x11A. */
+        uint8_t *pDesc = *(uint8_t **)(*(uint8_t **)(pFile + 0x8014)
+                                       + pFile[0x811A] * 0x24 + 4);
+
+        if (pDesc != NULL) {
+            uint8_t *q = pDesc + 0x18;
+            for (i = 0; i < 4; ++i) {
+                if (g_i6C661C == 0 && g_i6C6624 == 0)
+                    q[1] |= 1;
+                else
+                    *(uint16_t *)q &= 0xFEFF;
+                q += 2;
+            }
+        }
+    }
+
+    BrSub10074E00();
+
+    /* Thirty display-list pointers at +0x18, walked as 3 x 10. */
+    p = pFile + 0x8018;
+    for (j = 0; j < 3; ++j) {
+        for (i = 0; i < 10; ++i) {
+            BR_SWAP4(p);
+            BrSegPtrFixup((uint32_t *)p);
+            if (BrDlIsRegistered(*(void **)p) == 0) {
+                BrDlRegister(*(void **)p);
+                BrSub10074DC0(2);
+                g_pfn18AA0C4(*(void **)p);
+            }
+            p += 4;
+        }
+    }
+
+    /* GOTCHA (see the header): the swap is on +0x90, the rebase on +0x94. */
+    BR_SWAP4(pFile + 0x8090);
+    BrSegPtrFixup((uint32_t *)(pFile + 0x8094));
+
+    /* +0x98..+0xAF: six separate fields, straight-line in the original. */
+    BR_SWAP4(pFile + 0x8098);
+    BR_SWAP4(pFile + 0x809C);
+    BR_SWAP4(pFile + 0x80A0);
+    BR_SWAP4(pFile + 0x80A4);
+    BR_SWAP4(pFile + 0x80A8);
+    BR_SWAP4(pFile + 0x80AC);
+
+    /* +0xB0..+0xBB: a three-element loop in the original. */
+    p = pFile + 0x80B0;
+    for (i = 0; i < 3; ++i) {
+        BR_SWAP4(p);
+        p += 4;
+    }
+
+    /* Nine more display-list pointers at +0xBC, walked as 3 x 3. */
+    p = pFile + 0x80BC;
+    for (j = 0; j < 3; ++j) {
+        for (i = 0; i < 3; ++i) {
+            BR_SWAP4(p);
+            BrSegPtrFixup((uint32_t *)p);
+            if (BrDlIsRegistered(*(void **)p) == 0) {
+                BrDlRegister(*(void **)p);
+                BrSub10074DC0(2);
+                g_pfn18AA0C4(*(void **)p);
+            }
+            p += 4;
+        }
+    }
+
+    BrSub10074DC0(2);
+
+    {
+        uint8_t *pRec;
+        uint8_t *pDesc;
+
+        /* Records 6, 3 and 5 of the same table, by byte offset.  The table
+         * pointer is re-read from the image each time: the calls in between
+         * are allowed to move it. */
+        g_pfn18AA0C8(*(uint8_t **)(pFile + 0x8014) + 0xD8, 0);
+        g_pfn18AA0C8(*(uint8_t **)(pFile + 0x8014) + 0x6C, 0);
+        g_pfn18AA0C8(*(uint8_t **)(pFile + 0x8014) + 0xB4, 0);
+
+        pRec  = *(uint8_t **)(pFile + 0x8014) + pFile[0x811B] * 0x24;
+        pDesc = *(uint8_t **)(pRec + 4);
+
+        if (pDesc != NULL && g_i0AC300 == 0) {
+            /* The handle is read BEFORE the call and re-read after: the
+             * callee is allowed to replace it, and both values are used. */
+            uint32_t hOld = *(uint32_t *)pRec;
+
+            g_pfn18AA0C8(pRec, 1);
+            *(uint32_t *)(pFile + 0x80) = *(uint32_t *)pRec;
+
+            if (g_i6C661C == 0 && g_i6C6624 == 0) {
+                *(uint16_t *)(pDesc + 0x1E) = 0x0190;
+                *(uint16_t *)(pDesc + 0x14) = 0x01A0;
+            } else {
+                *(uint16_t *)(pDesc + 0x1E) = 0x0070;
+                *(uint16_t *)(pDesc + 0x14) = 0x8290;
+            }
+
+            *(uint16_t *)(pDesc + 0x1C) = 0x0190;
+            *(uint16_t *)(pDesc + 0x1A) = *(uint16_t *)(pDesc + 0x1E);
+            *(uint16_t *)(pDesc + 0x12) = 0x01A0;
+            *(uint16_t *)(pDesc + 0x10) = *(uint16_t *)(pDesc + 0x14);
+            *(uint16_t *)(pDesc + 0x18) = 0x8179;
+            *(uint16_t *)(pDesc + 0x0E) = 0x4192;
+            *(uint16_t *)(pDesc + 0x16) = 0x6BAD;
+            *(uint16_t *)(pDesc + 0x0C) = 0x31C6;
+            *(uint32_t *)(pFile + 0x84) =
+                g_pfn18AA084(*(uint32_t *)(pFile + 0x80), hOld, pDesc);
+
+            *(uint16_t *)(pDesc + 0x1C) = 0x00C0;
+            *(uint16_t *)(pDesc + 0x1A) = 0x00C0;
+            *(uint16_t *)(pDesc + 0x12) = 0x04F9;
+            *(uint16_t *)(pDesc + 0x10) = 0x04F9;
+            *(uint16_t *)(pDesc + 0x16) = 0x6BAD;
+            *(uint16_t *)(pDesc + 0x0C) = 0x31C6;
+            *(uint32_t *)(pFile + 0x88) =
+                g_pfn18AA084(*(uint32_t *)(pFile + 0x80), hOld, pDesc);
+
+            *(uint16_t *)(pDesc + 0x1C) = 0x0190;
+            *(uint16_t *)(pDesc + 0x1A) = *(uint16_t *)(pDesc + 0x1E);
+            *(uint16_t *)(pDesc + 0x12) = 0x01A0;
+            *(uint16_t *)(pDesc + 0x10) = *(uint16_t *)(pDesc + 0x14);
+            *(uint16_t *)(pDesc + 0x16) = 0x38E7;
+            *(uint16_t *)(pDesc + 0x0C) = 0xFEFF;
+            *(uint32_t *)(pFile + 0x8C) =
+                g_pfn18AA084(*(uint32_t *)(pFile + 0x80), hOld, pDesc);
+
+            *(uint16_t *)(pDesc + 0x12) = 0x04F9;
+            *(uint16_t *)(pDesc + 0x1C) = 0x00C0;
+            *(uint16_t *)(pDesc + 0x1A) = 0x00C0;
+            *(uint16_t *)(pDesc + 0x10) = 0x04F9;
+            *(uint16_t *)(pDesc + 0x16) = 0x38E7;
+            *(uint16_t *)(pDesc + 0x0C) = 0xFEFF;
+            *(uint32_t *)(pFile + 0x90) =
+                g_pfn18AA084(*(uint32_t *)(pFile + 0x80), hOld, pDesc);
+        } else {
+            *(uint32_t *)(pFile + 0x90) = 0;
+            *(uint32_t *)(pFile + 0x8C) = 0;
+            *(uint32_t *)(pFile + 0x88) = 0;
+            *(uint32_t *)(pFile + 0x84) = 0;
+            *(uint32_t *)(pFile + 0x80) = 0;
+        }
+    }
+
+    /* Twelve dwords at +0xE0: FOUR records of THREE.  The original's loop
+     * pointer is biased (`lea eax,[esi+0x80e2]`, displacements -2..+1), which
+     * is what MSVC's strength reduction does to `p + i * 4` in a nested loop.
+     * The flat `BR_SWAP4(p); p += 4;` spelling does not reproduce it. */
+    p = pFile + 0x80E0;
+    for (j = 0; j < 4; ++j) {
+        for (i = 0; i < 3; ++i)
+            BR_SWAP4(p + i * 4);
+        p += 12;
+    }
+
+    BR_SWAP4(pFile + 0x811C);
+    BrSegPtrFixup((uint32_t *)(pFile + 0x811C));
+}
+
+/* ==========================================================================
+ * 0x100378B0  BrFileReadInto
+ * ========================================================================== */
+
+/* WHAT IT DOES: reads a whole file into a buffer. Asking for a negative size
+ * means "however long the file is". A positive size is used as given, with
+ * no check against either the file's real length or the buffer's, and a
+ * missing file is complained about and then read from anyway. */
+/* port-only body; Glide match is src/core/generated/0x10030F50.c */
+void BrFileReadInto(void *pvDest, const char *pszPath, int cbMax)
+{
+    char szMsg[0x200];
+    FILE **ppFile;
+    int cb = cbMax;
+
+    if (BrChkFileExists(pszPath) == 0) {
+        BrSprintf(szMsg, "File %s missing", pszPath);
+        BrFatal(szMsg);
+    }
+
+    ppFile = BrChkFReadOpen(pszPath);
+    /* Negative means "however long the file is".  Non-negative is used as-is,
+     * with no clamp against either the file or the destination. */
+    if (cb < 0)
+        cb = BrChkFileSize(ppFile);
+
+    BrChkFRead(pvDest, 1, (size_t)cb, ppFile);
+    BrChkFClose(ppFile);
+}
+
+/* ==========================================================================
+ * 0x10037740  BrRcaLoadCar
+ * ========================================================================== */
+
+void BrRcaLoadCar(void *pvDest, size_t cbDest, int iCar)
+{
+    char szMsg[0x100];
+    char szPath[0x400];
+    int  fSaved = 0;
+    int  fPreview;
+
+    g_i10AA3444 = iCar;
+
+    /* Identity test against the static scratch buffer, not a content test. */
+    fPreview = ((uint8_t *)pvDest == g_ab0C12A0);
+    if (!fPreview) {
+        fSaved = g_i0B8C90;
+        if (fSaved == 0)
+            g_i0B8C90 = 1;
+    }
+    BrSub10061010(iCar, fPreview ? 1 : 0);
+
+    g_i10AA3460 = 0;
+
+    /* DEVIATION: the original builds this with inline strlen/movsd into a
+     * 0x400-byte frame slot and cannot overflow it for any shipped name.
+     * strcpy/strcat is the same operation; the length is not checked here
+     * either, matching the original. */
+    strcpy(szPath, "cars/");
+    strcat(szPath, g_apszCarFiles[iCar]);
+    strcat(szPath, ".rca");
+
+    BrFileReadInto(pvDest, szPath, -1);
+
+    if (memcmp(pvDest, "RCar", 4) != 0) {
+        /* DEVIATION: the original passes the destination buffer as its own
+         * %s argument -- both `lea`s produce esp+0x14 -- and that buffer is
+         * uninitialised at this point.  That is undefined behaviour with no
+         * portable equivalent; the port formats an empty string, which is
+         * what the original prints whenever the first stack byte is 0. */
+        BrSprintf(szMsg, "not a car file: %s", "");
+        BrFatal(szMsg);
+    }
+
+    /* DEVIATION: cbDest is a port addition (the original is two-argument);
+     * it exists only to give BrRcaFixup a bound for pointer resolution. */
+    BrRcaFixup(pvDest);
+
+    if (!fPreview)
+        g_i0B8C90 = fSaved;
+}
+
+/* ==========================================================================
+ * 0x10031140 (Glide) / 0x10037A90 (D3D)  BrTrackLoadHandling
+ * ========================================================================== */
+
+/* BUILD DIVERGENCE -- THE EXTENSION, and the port had the wrong one.
+ *
+ * The two builds are the same routine (config/shared.csv pairs them, matched
+ * by callsite) with ONE string changed, and each string exists in only one
+ * image:
+ *
+ *     Glide  0x1003117B  mov edi, 0x100AA338   -> ".hnt"
+ *     D3D    0x10037AC9  mov edi, 0x100AABA8   -> ".hnd"
+ *
+ * Searching each image for the OTHER literal finds nothing, so this is a real
+ * edit between the builds and not one shared constant read twice.
+ *
+ * WHICH ONE IS RIGHT IS NOT A COIN FLIP -- THE DISC SETTLES IT.  The extracted
+ * assets under testdata/tracks/ are `desert.hnt` and `coast.hnt`, and there is
+ * no `.hnd` anywhere on the disc.  So the shipped data is what the Glide build
+ * asks for, and a D3D build run against this disc would open a file that does
+ * not exist.  Glide is this project's declared reference (CONVENTIONS.md,
+ * "Source precedence"), the asset evidence agrees with it independently, and
+ * this body therefore transcribes Glide and carries the Glide claim.
+ *
+ * THE CLAIM MOVED WITH THE STRING.  While this said ".hnd" it was an honest
+ * transcription of D3D 0x10037A90 and was labelled as one; the defect was
+ * which build the port had chosen, not a mislabelled body.  Saying ".hnt"
+ * under a `d3d` tag would be a body that matches neither image. */
+/* WHAT IT DOES: loads a track's handling file -- the physics settings for
+ * driving on it. It builds the track's path, swaps the extension for the
+ * handling one, and hands it on to be read. */
+/* port-only body; Glide match is src/core/generated/0x10031140.c */
+void BrTrackLoadHandling(int iTrack)
+{
+    char szPath[0x400];
+    char *pExt;
+
+    BrSprintf(szPath, "%s%s", "tracks/", g_apszTrackFiles[iTrack]);
+
+    pExt = strrchr(szPath, '.');
+    /* DEVIATION: the original does not test for NULL and would write through
+     * it.  Every shipped name has an extension, so the guard is unreachable
+     * in practice. */
+    if (pExt != NULL)
+        strcpy(pExt, BR_TRACK_HANDLING_EXT);
+
+    BrSub10037990(szPath);
+}
+
+/* ==========================================================================
+ * 0x10038510  BrTrackHdrRead
+ * ========================================================================== */
+
+/* WHAT IT DOES: reads a track's header and turns it the right way round: the
+ * counts and sizes get their bytes reversed, and every reference in it is
+ * rebased onto real memory. One word in the middle is skipped entirely,
+ * which is the only gap in the whole header and is in the original. */
+/* NOT TAGGED -- port-only body. config/shared.csv maps d3d 0x10038510 to
+ * Glide 0x10031B80, and BrGlTrackHdrRead below is the real transcription of
+ * that address (1552 bytes against 1549, instruction multiset exact). This
+ * body is the port's: helpers out of line and the swaps written as range
+ * loops, 384 bytes. Tagged @implements until 2026-09-03, which put two names
+ * on one address and made the factored-helper screen report a phantom
+ * "-1165 bytes short" for a function that is actually size-exact. */
+void BrTrackHdrRead(void *pvHdr, FILE **ppFile)
+{
+    static const uint16_t s_aFixup[] = {
+        0x0C, 0x14, 0x1C, 0x20, 0x24, 0x50, 0x54, 0x58, 0x5C, 0x60,
+        0x68, 0x6C, 0x70, 0x74, 0x78, 0x84, 0x8C, 0x90, 0x94
+    };
+    uint8_t *h = (uint8_t *)pvHdr;
+    size_t   i;
+    int      k;
+
+    BrChkFRead(h, 1, 0x230, ppFile);
+
+    BrLoad32BE(h + 0x00);
+    BrLoad32BE(h + 0x04);
+    BrLoad32BE(h + 0x08);
+    BrSwap4   (h + 0x0C);
+    BrLoad32BE(h + 0x10);
+    BrSwap4   (h + 0x14);
+    BrLoad32BE(h + 0x18);
+    BrSwap4   (h + 0x1C);
+
+    for (k = 0x20; k < 0x50; k += 4)     /* +0x20 .. +0x4C */
+        BrSwap4(h + k);
+
+    for (k = 0x50; k < 0x64; k += 4)     /* +0x50 .. +0x60 */
+        BrSwap4(h + k);
+
+    BrLoad32BE(h + 0x64);
+
+    for (k = 0x68; k < 0x7C; k += 4)     /* +0x68 .. +0x78 */
+        BrSwap4(h + k);
+
+    BrLoad32BE(h + 0x7C);
+    /* GOTCHA: +0x80 is skipped -- the original jumps straight from +0x7C to
+     * +0x84.  It is the one untouched dword in +0x00..+0x164. */
+    BrSwap4   (h + 0x84);
+    BrLoad32BE(h + 0x88);
+    BrSwap4   (h + 0x8C);
+    BrSwap4   (h + 0x90);
+    BrSwap4   (h + 0x94);
+
+    /* Ten rows of five dwords: +0x98 .. +0x15F. */
+    for (k = 0; k < 10; ++k) {
+        int c;
+        for (c = 0; c < 5; ++c)
+            BrSwap4(h + 0x98 + k * 0x14 + c * 4);
+    }
+
+    BrLoad32BE(h + 0x160);
+
+    for (i = 0; i < sizeof s_aFixup / sizeof s_aFixup[0]; ++i)
+        BrFixupAt(h + s_aFixup[i]);
+}
+
+
+#ifdef BR_MATCHING_BUILD
+/* 0x10018D20-region helper the original calls 19 times at the tail --
+ * the pointer fixup the port names BrFixupAt. */
+extern void BrGlFixupAt(uint8_t *p);
+
+/* 0x10031B80 -- the GLIDE build of the track-header reader.  Same
+ * semantic map as the port body above, but the original's shape: the
+ * scalar swaps UNROLLED with two byte temps, +0x40..+0x4F and the ten
+ * 0x14-stride rows as real loops, and NINETEEN pointer locals (one per
+ * fixup site) handed to the fixup helper at the tail in list order.
+ *
+ * STATE 2026-09-09: 1549/1549 B, 495/495 insns, register-blind 0+0,
+ * 4 masked regions / 16 raw diff bytes (was 13 / 231 at the start of the
+ * day).  Everything left is ONE shape at four big-endian dword loads
+ * (+0x64, +0x7C, +0x88, +0x160): the original loads the low half of the
+ * pair before the high half (`mov dl,[esi+0x65]` then `mov dh,[esi+0x64]`),
+ * ours the reverse.  The other five sites match with the SAME spelling,
+ * so it is the scheduler's slot filling, not the expression.
+ *
+ * THREE LEVERS PAID (2026-09-09), each a source fact, none a spelling:
+ *   1. 13 -> 10 regions: the fixup pointer is assigned AFTER its dword's
+ *      swap and the swap reads/writes through h[].  With `pXX = h + 0xXX`
+ *      before the swap and `*pXX` as the first byte, VC5 materialises the
+ *      `lea` first and hoists the far byte's load above the previous
+ *      site's stores; the original loads the far byte, forms the pointer,
+ *      reads through it.
+ *   2. 10 -> 8 regions: the two swap loops (+0x40 x4, +0x98 x10) are
+ *      COUNTER EXPRESSIONS, `h[0x40 + i * 4]`, not a stepped `q` pointer
+ *      -- the br_track.c idiom (a named pointer is a distinct symbol the
+ *      scheduler reasons about; a counter expression keeps program order).
+ *      VC5 still strength-reduces to the original's induction pointer and
+ *      count-down.
+ *   3. 8 -> 4 regions: NO `uint8_t *h` local at all -- `h` is a macro
+ *      over the parameter, `((uint8_t *)pvHdr)`.  Same mechanism one level
+ *      up: the pointer local was a symbol; the parameter expression is not.
+ *
+ * DEAD (2026-09-03 + 2026-09-09, 55 compiles), all at the numbers of the
+ * day unless said -- VC5 canonicalises the compose before scheduling:
+ *   BE loads: `|` operand order; dropping or doubling the casts; the
+ *   four-statement accumulator (high-first AND low-first); a halfword
+ *   intermediate inline and as a local; a flat OR of four shifted bytes;
+ *   the low byte through `t`; both pair bytes through `t`/`u` in either
+ *   order; the compose into a `uint32_t` local then stored; the store
+ *   through a `uint32_t *` local (186); `*(uint32_t *)&h[X]`;
+ *   `+`/`*256` (WORSE: +62 B, +24 insns); the +0x160 site re-spelled
+ *   like the rest.
+ *   Pointer sites: far byte first with the lea before or between the
+ *   loads (219 / 231); stores swapped (455, RAW 56+56); first byte via
+ *   h[] with the pointer still first (+4 B); pointer after the SECOND pair
+ *   (= 126); the p78 site re-spelled like the other eighteen (inert).
+ *   Loops: far byte first alone (inert, VC5 swaps it back); stores
+ *   swapped (109, RAW 4+4 -- temps' registers exchanged); + declaration
+ *   order `u, t`, + block-scoped fresh temps (same); count-up with the
+ *   pointer bump (126); far byte via a second pointer (122).
+ *   Declarations: pointer list after `i`; `register` on h; `unsigned` i;
+ *   `q` dropped (all inert).  `int` temps: +236 B, +124 insns. */
+/* WHAT IT DOES: read a track file's header and fill in the pointers to each
+ * of its sections. The map of what is where in the file, built once at load. */
+/* @t4-pass 0x10031B80 1 2026-09-07 probes 150 bytes 1549 insns 495 regions 12 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10031B80 2 2026-09-07 probes 150 bytes 1549 insns 495 regions 12 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10031B80 3 2026-09-09 probes 29 bytes 1549 insns 495 regions 10 rows 0 census yes  (hand: corpus MISS at +0x464/+0x4f0/+0x2e4/+0x319; pointer-site, BE-pair and loop mechanism sweep -- lever 1 landed) */
+/* @t4-pass 0x10031B80 4 2026-09-09 probes 18 bytes 1549 insns 495 regions 4 rows 0 census yes  (hand: counter-expression loops + parameter-expression h -- levers 2 and 3 landed) */
+/* @t4-pass 0x10031B80 5 2026-09-09 probes 17 bytes 1549 insns 495 regions 4 rows 0 census yes  (hand: the four BE-pair sites, casts/temps/accumulators/store forms/declaration order -- zero movement) */
+/* @t4-pass 0x10031B80 6 2026-09-09 probes 10 bytes 1549 insns 495 regions 4 rows 0 census yes  (hand: parameter typing, fresh temps, statement moves around the four sites, k-loop -- zero movement) */
+/* @t3 0x10031B80 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 1549/1549 insns 495/495 rows 0+0 regions 4 oracle UNCLASSIFIED
+ * @t3-effort passes 6 zero-movement 5 6
+ * Residue: ONE scheduling shape at four of the nine big-endian dword loads
+ * (+0x64, +0x7C, +0x88, +0x160) -- the original loads the pair's low byte
+ * before its high byte, ours the reverse; the other five sites match with
+ * the same spelling, so the expression is not the lever.  Size, count,
+ * multiset and the corpus (no witness for the construct) all agree.
+ * Dossier, three landed levers and the 55-compile dead list: the comment
+ * block above; ledger lines 3-6 above.  Do not reopen before the end-grind
+ * (CLAUDE.md rule 12). */
+/* @implements 0x10031B80 glide BrGlTrackHdrRead */
+void BrGlTrackHdrRead(void *pvHdr, FILE **ppFile)
+{
+#define h ((uint8_t *)pvHdr)
+    uint8_t *p0C, *p14, *p1C, *p20, *p24, *p50, *p54, *p58, *p5C, *p60, *p68, *p6C, *p70, *p74, *p78, *p84, *p8C, *p90, *p94;
+    uint8_t *q;
+    uint8_t  t, u;
+    int      i;
+
+    BrChkFRead(h, 1, 0x230, ppFile);
+
+    *(uint32_t *)(h + 0x00) =
+        (((h[0x01] | (uint32_t)h[0] << 8) << 8 | h[0x02]) << 8) | h[0x03];
+    *(uint32_t *)(h + 0x04) =
+        (((h[0x05] | (uint32_t)h[0x04] << 8) << 8 | h[0x06]) << 8) | h[0x07];
+    *(uint32_t *)(h + 0x08) =
+        (((h[0x09] | (uint32_t)h[0x08] << 8) << 8 | h[0x0A]) << 8) | h[0x0B];
+    t = h[0x0C]; u = h[0x0F]; h[0x0F] = t; h[0x0C] = u;
+    p0C = h + 0x0C;
+    t = h[0x0D]; u = h[0x0E]; h[0x0E] = t; h[0x0D] = u;
+    *(uint32_t *)(h + 0x10) =
+        (((h[0x11] | (uint32_t)h[0x10] << 8) << 8 | h[0x12]) << 8) | h[0x13];
+    t = h[0x14]; u = h[0x17]; h[0x17] = t; h[0x14] = u;
+    p14 = h + 0x14;
+    t = h[0x15]; u = h[0x16]; h[0x16] = t; h[0x15] = u;
+    *(uint32_t *)(h + 0x18) =
+        (((h[0x19] | (uint32_t)h[0x18] << 8) << 8 | h[0x1A]) << 8) | h[0x1B];
+    t = h[0x1C]; u = h[0x1F]; h[0x1F] = t; h[0x1C] = u;
+    p1C = h + 0x1C;
+    t = h[0x1D]; u = h[0x1E]; h[0x1E] = t; h[0x1D] = u;
+    t = h[0x20]; u = h[0x23]; h[0x23] = t; h[0x20] = u;
+    p20 = h + 0x20;
+    t = h[0x21]; u = h[0x22]; h[0x22] = t; h[0x21] = u;
+    t = h[0x24]; u = h[0x27]; h[0x27] = t; h[0x24] = u;
+    p24 = h + 0x24;
+    t = h[0x25]; u = h[0x26]; h[0x26] = t; h[0x25] = u;
+    t = h[0x28]; u = h[0x2B]; h[0x2B] = t; h[0x28] = u;
+    t = h[0x29]; u = h[0x2A]; h[0x2A] = t; h[0x29] = u;
+    t = h[0x2C]; u = h[0x2F]; h[0x2F] = t; h[0x2C] = u;
+    t = h[0x2D]; u = h[0x2E]; h[0x2E] = t; h[0x2D] = u;
+    t = h[0x30]; u = h[0x33]; h[0x33] = t; h[0x30] = u;
+    t = h[0x31]; u = h[0x32]; h[0x32] = t; h[0x31] = u;
+    t = h[0x34]; u = h[0x37]; h[0x37] = t; h[0x34] = u;
+    t = h[0x35]; u = h[0x36]; h[0x36] = t; h[0x35] = u;
+    t = h[0x38]; u = h[0x3B]; h[0x3B] = t; h[0x38] = u;
+    t = h[0x39]; u = h[0x3A]; h[0x3A] = t; h[0x39] = u;
+    t = h[0x3C]; u = h[0x3F]; h[0x3F] = t; h[0x3C] = u;
+    t = h[0x3D]; u = h[0x3E]; h[0x3E] = t; h[0x3D] = u;
+    for (i = 0; i < 4; ++i) {
+        t = h[0x40 + i * 4]; u = h[0x43 + i * 4]; h[0x43 + i * 4] = t; h[0x40 + i * 4] = u;
+        t = h[0x41 + i * 4]; u = h[0x42 + i * 4]; h[0x42 + i * 4] = t; h[0x41 + i * 4] = u;
+    }
+    t = h[0x50]; u = h[0x53]; h[0x53] = t; h[0x50] = u;
+    p50 = h + 0x50;
+    t = h[0x51]; u = h[0x52]; h[0x52] = t; h[0x51] = u;
+    t = h[0x54]; u = h[0x57]; h[0x57] = t; h[0x54] = u;
+    p54 = h + 0x54;
+    t = h[0x55]; u = h[0x56]; h[0x56] = t; h[0x55] = u;
+    t = h[0x58]; u = h[0x5B]; h[0x5B] = t; h[0x58] = u;
+    p58 = h + 0x58;
+    t = h[0x59]; u = h[0x5A]; h[0x5A] = t; h[0x59] = u;
+    t = h[0x5C]; u = h[0x5F]; h[0x5F] = t; h[0x5C] = u;
+    p5C = h + 0x5C;
+    t = h[0x5D]; u = h[0x5E]; h[0x5E] = t; h[0x5D] = u;
+    t = h[0x60]; u = h[0x63]; h[0x63] = t; h[0x60] = u;
+    p60 = h + 0x60;
+    t = h[0x61]; u = h[0x62]; h[0x62] = t; h[0x61] = u;
+    *(uint32_t *)(h + 0x64) =
+        (((h[0x65] | (uint32_t)h[0x64] << 8) << 8 | h[0x66]) << 8) | h[0x67];
+    t = h[0x68]; u = h[0x6B]; h[0x6B] = t; h[0x68] = u;
+    p68 = h + 0x68;
+    t = h[0x69]; u = h[0x6A]; h[0x6A] = t; h[0x69] = u;
+    t = h[0x6C]; u = h[0x6F]; h[0x6F] = t; h[0x6C] = u;
+    p6C = h + 0x6C;
+    t = h[0x6D]; u = h[0x6E]; h[0x6E] = t; h[0x6D] = u;
+    t = h[0x70]; u = h[0x73]; h[0x73] = t; h[0x70] = u;
+    p70 = h + 0x70;
+    t = h[0x71]; u = h[0x72]; h[0x72] = t; h[0x71] = u;
+    t = h[0x74]; u = h[0x77]; h[0x77] = t; h[0x74] = u;
+    p74 = h + 0x74;
+    t = h[0x75]; u = h[0x76]; h[0x76] = t; h[0x75] = u;
+    p78 = h + 0x78;
+    t = h[0x78]; u = h[0x7B]; h[0x7B] = t; *p78 = u;
+    t = h[0x79]; u = h[0x7A]; h[0x7A] = t; h[0x79] = u;
+    *(uint32_t *)(h + 0x7C) =
+        (((h[0x7D] | (uint32_t)h[0x7C] << 8) << 8 | h[0x7E]) << 8) | h[0x7F];
+    /* +0x80 untouched -- the one skipped dword. */
+    t = h[0x84]; u = h[0x87]; h[0x87] = t; h[0x84] = u;
+    p84 = h + 0x84;
+    t = h[0x85]; u = h[0x86]; h[0x86] = t; h[0x85] = u;
+    *(uint32_t *)(h + 0x88) =
+        (((h[0x89] | (uint32_t)h[0x88] << 8) << 8 | h[0x8A]) << 8) | h[0x8B];
+    t = h[0x8C]; u = h[0x8F]; h[0x8F] = t; h[0x8C] = u;
+    p8C = h + 0x8C;
+    t = h[0x8D]; u = h[0x8E]; h[0x8E] = t; h[0x8D] = u;
+    t = h[0x90]; u = h[0x93]; h[0x93] = t; h[0x90] = u;
+    p90 = h + 0x90;
+    t = h[0x91]; u = h[0x92]; h[0x92] = t; h[0x91] = u;
+    t = h[0x94]; u = h[0x97]; h[0x97] = t; h[0x94] = u;
+    p94 = h + 0x94;
+    t = h[0x95]; u = h[0x96]; h[0x96] = t; h[0x95] = u;
+    for (i = 0; i < 10; ++i) {
+        t = h[0x98 + i * 0x14]; u = h[0x9B + i * 0x14]; h[0x9B + i * 0x14] = t; h[0x98 + i * 0x14] = u;
+        t = h[0x99 + i * 0x14]; u = h[0x9A + i * 0x14]; h[0x9A + i * 0x14] = t; h[0x99 + i * 0x14] = u;
+        t = h[0x9C + i * 0x14]; u = h[0x9F + i * 0x14]; h[0x9F + i * 0x14] = t; h[0x9C + i * 0x14] = u;
+        t = h[0x9D + i * 0x14]; u = h[0x9E + i * 0x14]; h[0x9E + i * 0x14] = t; h[0x9D + i * 0x14] = u;
+        t = h[0xA0 + i * 0x14]; u = h[0xA3 + i * 0x14]; h[0xA3 + i * 0x14] = t; h[0xA0 + i * 0x14] = u;
+        t = h[0xA1 + i * 0x14]; u = h[0xA2 + i * 0x14]; h[0xA2 + i * 0x14] = t; h[0xA1 + i * 0x14] = u;
+        t = h[0xA4 + i * 0x14]; u = h[0xA7 + i * 0x14]; h[0xA7 + i * 0x14] = t; h[0xA4 + i * 0x14] = u;
+        t = h[0xA5 + i * 0x14]; u = h[0xA6 + i * 0x14]; h[0xA6 + i * 0x14] = t; h[0xA5 + i * 0x14] = u;
+        t = h[0xA8 + i * 0x14]; u = h[0xAB + i * 0x14]; h[0xAB + i * 0x14] = t; h[0xA8 + i * 0x14] = u;
+        t = h[0xA9 + i * 0x14]; u = h[0xAA + i * 0x14]; h[0xAA + i * 0x14] = t; h[0xA9 + i * 0x14] = u;
+    }
+    *(uint32_t *)(h + 0x160) =
+        ((((uint32_t)h[0x160] << 8 | h[0x161]) << 8 | h[0x162]) << 8) | h[0x163];
+    BrGlFixupAt(p0C);
+    BrGlFixupAt(p14);
+    BrGlFixupAt(p1C);
+    BrGlFixupAt(p20);
+    BrGlFixupAt(p24);
+    BrGlFixupAt(p50);
+    BrGlFixupAt(p54);
+    BrGlFixupAt(p58);
+    BrGlFixupAt(p5C);
+    BrGlFixupAt(p60);
+    BrGlFixupAt(p68);
+    BrGlFixupAt(p6C);
+    BrGlFixupAt(p70);
+    BrGlFixupAt(p74);
+    BrGlFixupAt(p78);
+    BrGlFixupAt(p84);
+    BrGlFixupAt(p8C);
+    BrGlFixupAt(p90);
+    BrGlFixupAt(p94);
+}
+#undef h
+#endif /* BR_MATCHING_BUILD */

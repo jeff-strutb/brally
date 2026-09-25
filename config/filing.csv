@@ -486,6 +486,7 @@ glide_va,name,module,basis,file
 0x1002ECAC,BrAnimSetOnce,drawing,neighbour-1,src/core/drawing/br_anim.c
 0x1002ECC1,BrAnimSetLoop,drawing,neighbour-1,src/core/drawing/br_anim.c
 0x1002ECD6,BrAnimSetPingPong,drawing,neighbour-1,src/core/drawing/br_anim.c
+0x1002ECEB,BrAnimUpdate,scene,manual,src/core/scene/br_animupdate.c
 0x1002F238,BrRet1_1002F238,controls,neighbour-1,src/core/controls/br_pad.c
 0x1002F242,BrSub_1002F242,controls,neighbour-1,src/core/controls/br_pad.c
 0x1002F258,BrLogEmit,drawing,manual,src/core/drawing/br_log.c
@@ -500,8 +501,10 @@ glide_va,name,module,basis,file
 0x1002F6D0,BrPeerFind,net,manual,src/core/net/br_peerfind.c
 0x1002F790,FUN_1002f790,net,manual,src/core/net/FUN_1002f790.cpp
 0x10030270,BrModelLoad,drawing,description,src/core/drawing/br_model.c
+0x100302A0,BrModelSwap,gamedata,manual,src/core/gamedata/br_modelswap.c
 0x100306D0,BrPendListAdd,gamedata,manual,src/core/gamedata/br_pendlist.c
 0x10030710,BrDevRecMatch,controls,manual,src/core/controls/br_devrec.c
+0x10030770,BrRcaFixup,gamedata,manual,src/core/gamedata/br_cartrackload.c
 0x10030DE0,BrSub10037740,gamedata,description,src/core/gamedata/br_carload.c
 0x10030F40,BrArm_100378A0,startup,filed,src/core/startup/br_objlife.c
 0x10030F50,BrFileReadInto,startup,neighbour,src/core/generated/0x10030F50.c
@@ -511,11 +514,13 @@ glide_va,name,module,basis,file
 0x100314D0,BrGlTrackFixupAll,startup,filed,src/core/startup/br_track.c
 0x10031660,BrTrackSetF08FromMax,startup,neighbour,src/core/startup/br_track.c
 0x100316A0,BrTrackFixupAllRec54,startup,neighbour,src/core/startup/br_track.c
+0x100316D0,BrTrackFixupRec54,gamedata,manual,src/core/gamedata/br_trackrec54.c
 0x10031910,BrTrackFixupSegList,startup,filed,src/core/startup/br_track.c
 0x10031960,BrTrackFixupSegRec,startup,filed,src/core/startup/br_track.c
 0x10031A40,BrTrackSwapRec28,startup,filed,src/core/startup/br_track.c
 0x10031A80,BrTrackSwapAllVec3,startup,filed,src/core/startup/br_track.c
 0x10031AC0,BrTexCopyRecords,startup,neighbour,src/core/startup/br_track.c
+0x10031B80,BrGlTrackHdrRead,gamedata,manual,src/core/gamedata/br_cartrackload.c
 0x10032190,BrGlTrackFixupCmds,startup,filed,src/core/startup/br_track.c
 0x100324F0,BrObjLifeInit,startup,filed,src/core/startup/br_objlife.c
 0x10032500,BrSub10032500,startup,neighbour,src/core/tiny_stubs.c
@@ -524,6 +529,8 @@ glide_va,name,module,basis,file
 0x10032530,BrBootColdInitRun,startup,filed,src/core/startup/br_bootinit.c
 0x100325B0,BrExt_10038F30,startup,neighbour,src/core/startup/BrExt_10038F30_100325B0.cpp
 0x10032680,BrInit220B20,startup,neighbour-1,src/core/startup/br_track.c
+0x100326A0,BrCarSub9020,drawing,manual,src/core/drawing/br_carpfxemit.c
+0x10032880,BrCarWheelFx,drawing,manual,src/core/drawing/br_carwheelfx.c
 0x100335A0,BrCarPfxSpawn,gamedata,manual,src/core/gamedata/br_pfx.c
 0x10033880,BrPfxUpdateB0,gamedata,neighbour-1,src/core/generated/0x10033880.c
 0x10033B50,BrPfxReset,gamedata,description,src/core/gamedata/br_pfx.c
@@ -557,8 +564,8 @@ glide_va,name,module,basis,file
 0x10034AF0,BrMtxMul,geometry,description,src/core/geometry/br_mat.c
 0x10034E30,BrAtan2,geometry,manual,src/core/geometry/br_atan2.c
 0x10034FC0,BrTriContainsPoint,geometry,manual,src/core/geometry/br_tri.c
-0x100350F0,BrSeg2Intersect,,,src/core/slice2_21.c
-0x10035310,BrSeg2SideTest,,,src/core/slice2_21.c
+0x100350F0,BrSeg2Intersect,geometry,manual,src/core/geometry/br_seg2.c
+0x10035310,BrSeg2SideTest,geometry,manual,src/core/geometry/br_seg2.c
 0x100353C0,BrStore_1003BD40,racing,filed,src/core/racing/br_replayon.c
 0x100353D0,BrRandom,startup,description,src/core/startup/br_random.c
 0x10035400,FUN_10035400,startup,neighbour-1,src/core/generated/0x10035400.c
