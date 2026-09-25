@@ -45,7 +45,8 @@ DATA_LO, DATA_HI = 0x10077000, 0x11900000       # .rdata tail .. end of .bss
 
 def _scrubs(box):
     """config/ub_scrub.csv: bytes the ORIGINAL reads without ever writing
-    them (stale stack in an argument buffer).  Both runs get the same zeros
+    them (stale stack in an argument buffer, or with arg -1 in the function's
+    own locals).  Both runs get the same zeros
     at the function's entry, so the comparison is of the transcriptions, not
     of whatever an earlier call left on the stack.  Each row names its
     evidence (who writes the rest of the buffer, where the garbage goes)."""
@@ -60,7 +61,13 @@ def _scrubs(box):
         off, n = int(r['offset'], 0), int(r['length'], 0)
 
         def hit(uc, a, sz, ud, arg=arg, off=off, n=n):
-            ptr = box.rd32(uc.reg_read(UC_X86_REG_ESP) + 4 + 4 * arg)
+            # arg -1: the function's OWN frame -- `off` is relative to esp at
+            # entry (negative: the locals it is about to allocate), for
+            # locals the original reads before ever writing them.
+            if arg < 0:
+                ptr = uc.reg_read(UC_X86_REG_ESP)
+            else:
+                ptr = box.rd32(uc.reg_read(UC_X86_REG_ESP) + 4 + 4 * arg)
             try:
                 uc.mem_write(ptr + off, b'\0' * n)
             except Exception:
