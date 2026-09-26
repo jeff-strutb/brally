@@ -500,110 +500,6 @@ void BrCarPhysDamper(BrRbBodyFull *pBody)
 #endif /* BR_MATCHING_BUILD */
 
 /* ==================================================================== */
-/* 0x10067F30 -- aerodynamic drag                                        */
-/* ==================================================================== */
-
-#ifdef BR_MATCHING_BUILD
-extern float BrSqrtF(float x);   /* 0x10002570 -- fld [esp+4]; fsqrt; ret */
-/* WHAT IT DOES: slows the car down with air resistance -- a push opposite
- * the velocity that grows with speed. Above walking pace, and only when a
- * wheel is on the special surface (4) and the weather is not mode 3, a
- * second, stronger term is stacked on top. */
-/* PARKED at 2 regions / 106 diffs (O2), 289/305 B.  What landed: the
- * `volatile BrVec3 t` + assignment-expression `(t.z = ...)` reproduces the
- * `sub esp,0xc` dead trio AND the lone `fst [esp+0x18]` home (a plain
- * aggregate or named temp is deleted; the volatile survives, exactly the
- * 0x100183B0 dead-store class).  The two residues, both compiler forks:
- *  1. +0x6b: the four child/surface loads interleave WITH the sq x87 ops in
- *     the original; ours batches x87 first (same instructions, same load
- *     order 1,2,3,0 -- pure schedule).
- *  2. +0xdf: `vy*(-220)+f.y` folds to `fsubr` with a literal -220; a
- *     static-const or extern float stops the fold but then VC5 flds the
- *     NAMED operand first (orig: fld field, fmul [pool]).  /O2 /Op fixes
- *     BOTH tail artifacts but hoists the surface loads above the sq spills
- *     and drops the volatile trio.  Dead: operand swap (canonicalised),
- *     extern float / extern struct / volatile globals (fld the global,
- *     183 diffs), static const float (fld the const), compound `+=`.
- * The fold-free multiply with a pooled literal is proven nowhere reachable
- * from this shape; next lever would be from outside (schedule pinning). */
-/* @implements 0x10067F30 glide BrCarPhysDrag */
-void BrCarPhysDrag(BrRbBodyFull *pBody, BrRbForce *pNode)
-{
-    float   sq;
-    volatile BrVec3 t;
-    int32_t s0, s1, s2, s3;
-
-    pNode->f.x = pBody->vel.x * BR_CP_DRAG_K;
-    pNode->f.y = pBody->vel.y * BR_CP_DRAG_K;
-    pNode->f.z = pBody->vel.z * BR_CP_DRAG_K;
-
-    sq = (pBody->vel.x * pBody->vel.x + pBody->vel.y * pBody->vel.y)
-         + pBody->vel.z * pBody->vel.z;
-
-    /* All four surface bytes are read BEFORE the speed test -- signed. */
-    s0 = *(signed char *)&pBody->child[0]->pad1A0[0];
-    s1 = *(signed char *)&pBody->child[1]->pad1A0[0];
-    s2 = *(signed char *)&pBody->child[2]->pad1A0[0];
-    s3 = *(signed char *)&pBody->child[3]->pad1A0[0];
-
-    if (BrSqrtF(sq) > BR_CP_DRAG_SPEED && g_brCarPhysWeather != 3
-        && (s0 == BR_CP_DRAG_SURFACE || s1 == BR_CP_DRAG_SURFACE
-            || s2 == BR_CP_DRAG_SURFACE || s3 == BR_CP_DRAG_SURFACE)) {
-        /* The z product lands in a THREE-SLOT aggregate (`sub esp,0xc`)
-         * whose x and y are never touched -- the `fst [esp+0x18]` home is
-         * t.z, written and never read back. */
-        pNode->f.y = pBody->vel.y * BR_CP_DRAG_K2 + pNode->f.y;
-        pNode->f.z = (t.z = pBody->vel.z * BR_CP_DRAG_K2) + pNode->f.z;
-        pNode->f.x = pBody->vel.x * BR_CP_DRAG_K2 + pNode->f.x;
-    }
-}
-#else
-void BrCarPhysDrag(const BrRbBodyFull *pBody, const BrGroundHit aHit[4],
-                   BrRbForce *pNode, int32_t mode)
-{
-    float speed, sq;
-    int   i, onSurface = 0;
-
-    pNode->f.x = pBody->vel.x * BR_CP_DRAG_K;
-    pNode->f.y = pBody->vel.y * BR_CP_DRAG_K;
-    pNode->f.z = pBody->vel.z * BR_CP_DRAG_K;
-
-    /* The sum order is the original's: (vx*vx + vy*vy) + vz*vz, formed by
-     * `faddp st(2)` then `faddp st(1)`. */
-    sq = (pBody->vel.x * pBody->vel.x + pBody->vel.y * pBody->vel.y)
-         + pBody->vel.z * pBody->vel.z;
-    speed = (float)sqrt((double)sq);   /* 0x10002570 is `fld; fsqrt; ret` */
-
-    /* `fcomp` + `test ah,0x41` + `jne` LEAVES on less-equal-or-unordered, so
-     * the second term needs a strictly greater speed. */
-    if (!(speed > BR_CP_DRAG_SPEED)) {
-        return;
-    }
-    if (mode == 3) {
-        return;
-    }
-
-    /* The four surface bytes are read with `movsx` -- SIGNED -- and compared
-     * against 4 in the order wheel0, wheel1, wheel2, wheel3. */
-    for (i = 0; i < 4; ++i) {
-        if ((int)(signed char)aHit[i].surface == BR_CP_DRAG_SURFACE) {
-            onSurface = 1;
-            break;
-        }
-    }
-    if (!onSurface) {
-        return;
-    }
-
-    /* `fst [esp+0x18]` of the Z term is dead -- nothing reads that slot --
-     * and is not reproduced because it has no observable effect. */
-    pNode->f.y = pBody->vel.y * BR_CP_DRAG_K2 + pNode->f.y;
-    pNode->f.z = pBody->vel.z * BR_CP_DRAG_K2 + pNode->f.z;
-    pNode->f.x = pBody->vel.x * BR_CP_DRAG_K2 + pNode->f.x;
-}
-#endif /* BR_MATCHING_BUILD */
-
-/* ==================================================================== */
 /* 0x100651A0 -- the per-wheel tyre pass                                 */
 /*                                                                       */
 /* See br_carphys.h for what this is and, more importantly, for what it   */
@@ -1058,6 +954,17 @@ static float BrCpDrvBrake(BrRbBodyFull *pBody, BrRbBodyFull *pWheel, float dt)
     }
     return b;
 }
+
+/* Declared here, ahead of the ground probe: the probe and the tyre pass are
+ * scheduled against the TU's symbol table, and these five names (with the
+ * drag pass's literals, now at the end of the file in address order) are
+ * what they were matched against. */
+#ifdef BR_MATCHING_BUILD
+extern float BrSqrtF(float x);   /* 0x10002570 -- fld [esp+4]; fsqrt; ret */
+extern float _DAT_10077780;             /* 0.0f  the sign triple          */
+extern float _DAT_10077784;             /* 1.0f                           */
+extern float _DAT_10077788;             /* -1.0f                          */
+#endif
 
 #ifdef BR_MATCHING_BUILD
 /* 0x10068070 */
@@ -1839,9 +1746,6 @@ void FUN_10064210(char *pBody);         /* force accumulate (d3d BrRbAccumAll) *
 void FUN_1006d530(char *pState);        /* quaternion derivative           */
 void BrCarPhysDriveMatch(int pBody, float dt, float *pA, float *pB, char *pC, char *pD); /* 0x100645A0 */
 void BrCarPhysAdvance(char *pCar, char *pBody);    /* 0x10067C30          */
-extern float _DAT_10077780;             /* 0.0f  the sign triple          */
-extern float _DAT_10077784;             /* 1.0f                           */
-extern float _DAT_10077788;             /* -1.0f                          */
 typedef struct { int d[17]; } BrCpStateImage;      /* 0x44-byte rigid state */
 
 #define CP_CHILD(k)  (*(char **)(pCar + 0x168 + (k) * 4))
@@ -2597,5 +2501,101 @@ void BrCarPhysAdvance(char *pCar, char *pBody)
     *(int *)(pCar + 0x2AB0) = *(int *)(pBody + 0xEC);
     *(int *)(pCar + 0x2AB4) = *(int *)(pBody + 0xF0);
     *(int *)(pCar + 0x2AB8) = *(int *)(pBody + 0xF4);
+}
+#endif /* BR_MATCHING_BUILD */
+
+/* ==================================================================== */
+/* 0x10067F30 -- aerodynamic drag                                        */
+/* ==================================================================== */
+
+#ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: slows the car down with air resistance -- a push opposite
+ * the velocity that grows with speed. Above walking pace, and only when a
+ * wheel is on the special surface (4) and the weather is not mode 3, a
+ * second, stronger term is stacked on top. */
+/* vx and vy are float locals that VC5 homes in the dead argument slots
+ * (copied through integer registers); vz stays on the x87 stack and is
+ * popped unused after the sum.  The sum goes straight into BrSqrtF -- a
+ * named `sq` local moves the argument store behind all four surface loads.
+ * The four surface bytes are read before the speed test.  The second term
+ * goes through a BrVec3 local: its frame is the `sub esp,0xc`, and the z
+ * product's home store (`fst [esp+0x18]`) is the one VC5 keeps. */
+/* @implements 0x10067F30 glide BrCarPhysDrag */
+void BrCarPhysDrag(BrRbBodyFull *pBody, BrRbForce *pNode)
+{
+    float   vx;
+    BrVec3  d;
+    float   vy;
+    float   vz;
+    int32_t s0, s1, s2, s3;
+
+    pNode->f.x = pBody->vel.x * BR_CP_DRAG_K;
+    pNode->f.y = pBody->vel.y * BR_CP_DRAG_K;
+    pNode->f.z = pBody->vel.z * BR_CP_DRAG_K;
+
+    vx = pBody->vel.x;
+    vy = pBody->vel.y;
+    vz = pBody->vel.z;
+
+    s0 = *(signed char *)&pBody->child[0]->pad1A0[0];
+    s1 = *(signed char *)&pBody->child[1]->pad1A0[0];
+    s2 = *(signed char *)&pBody->child[2]->pad1A0[0];
+    s3 = *(signed char *)&pBody->child[3]->pad1A0[0];
+
+    if (BrSqrtF(vx * vx + vy * vy + vz * vz) > BR_CP_DRAG_SPEED
+        && g_brCarPhysWeather != 3
+        && (s0 == BR_CP_DRAG_SURFACE || s1 == BR_CP_DRAG_SURFACE
+            || s2 == BR_CP_DRAG_SURFACE || s3 == BR_CP_DRAG_SURFACE)) {
+        d.x = pBody->vel.x * BR_CP_DRAG_K2;
+        d.y = pBody->vel.y * BR_CP_DRAG_K2;
+        d.z = pBody->vel.z * BR_CP_DRAG_K2;
+        pNode->f.x = d.x + pNode->f.x;
+        pNode->f.y = d.y + pNode->f.y;
+        pNode->f.z = d.z + pNode->f.z;
+    }
+}
+#else
+void BrCarPhysDrag(const BrRbBodyFull *pBody, const BrGroundHit aHit[4],
+                   BrRbForce *pNode, int32_t mode)
+{
+    float speed, sq;
+    int   i, onSurface = 0;
+
+    pNode->f.x = pBody->vel.x * BR_CP_DRAG_K;
+    pNode->f.y = pBody->vel.y * BR_CP_DRAG_K;
+    pNode->f.z = pBody->vel.z * BR_CP_DRAG_K;
+
+    /* The sum order is the original's: (vx*vx + vy*vy) + vz*vz, formed by
+     * `faddp st(2)` then `faddp st(1)`. */
+    sq = (pBody->vel.x * pBody->vel.x + pBody->vel.y * pBody->vel.y)
+         + pBody->vel.z * pBody->vel.z;
+    speed = (float)sqrt((double)sq);   /* 0x10002570 is `fld; fsqrt; ret` */
+
+    /* `fcomp` + `test ah,0x41` + `jne` LEAVES on less-equal-or-unordered, so
+     * the second term needs a strictly greater speed. */
+    if (!(speed > BR_CP_DRAG_SPEED)) {
+        return;
+    }
+    if (mode == 3) {
+        return;
+    }
+
+    /* The four surface bytes are read with `movsx` -- SIGNED -- and compared
+     * against 4 in the order wheel0, wheel1, wheel2, wheel3. */
+    for (i = 0; i < 4; ++i) {
+        if ((int)(signed char)aHit[i].surface == BR_CP_DRAG_SURFACE) {
+            onSurface = 1;
+            break;
+        }
+    }
+    if (!onSurface) {
+        return;
+    }
+
+    /* `fst [esp+0x18]` of the Z term is dead -- nothing reads that slot --
+     * and is not reproduced because it has no observable effect. */
+    pNode->f.y = pBody->vel.y * BR_CP_DRAG_K2 + pNode->f.y;
+    pNode->f.z = pBody->vel.z * BR_CP_DRAG_K2 + pNode->f.z;
+    pNode->f.x = pBody->vel.x * BR_CP_DRAG_K2 + pNode->f.x;
 }
 #endif /* BR_MATCHING_BUILD */
