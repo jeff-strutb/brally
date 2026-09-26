@@ -4,9 +4,9 @@
 
 /* -- declarations -- */
 void func_8021E2C8(int param_1);
-int func_80265670();
-void func_802657C0(int param_1);
-void func_80265D90(void);
+int osCreateThread();
+void osStartThread(int param_1);
+void osInitialize(void);
 extern int D_80272680;
 extern int D_80316CD0;
 void func_8021E1EC();
@@ -19,9 +19,9 @@ extern int D_8028A88C;
 /* @implements 0x8021E5C4 tgr BrBoot */
 void BrBoot(void)
 {
-  func_80265D90();
-  func_80265670(&D_80272680,1,func_8021E2C8,0,&D_80316CD0,10);
-  func_802657C0(&D_80272680);
+  osInitialize();
+  osCreateThread(&D_80272680,1,func_8021E2C8,0,&D_80316CD0,10);
+  osStartThread(&D_80272680);
 }
 
 /* WHAT IT DOES: Stop the game with an error message: store the message for

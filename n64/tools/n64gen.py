@@ -157,11 +157,35 @@ def c_string(va):
                          for c in out) + '"'
 
 
-def candidate(va, dtypes, name=None, noproto=(), ptrs=()):
+SYMLO, SYMHI = B.BASE, B.BSS_E          # addresses that are link-time symbols
+
+
+def toggle(body, word):
+    """Flip the signedness of every `word` (short/char) in body."""
+    body = re.sub(r'\bunsigned %s\b' % word, '@@U@@', body)
+    body = re.sub(r'(?<!signed )\b%s\b' % word, 'unsigned ' + word, body)
+    return body.replace('@@U@@', word)
+
+
+def candidate(va, dtypes, name=None, noproto=(), ptrs=(), opts=()):
     t = draft(va)
     if t is None:
         return None
     body = retype(t)
+    # A bare number inside the image is a symbol the linker filled in; one
+    # outside it is a fixed address the source wrote as a number.
+    body = re.sub(r'\b0x(80[0-9a-fA-F]{6})\b',
+                  lambda m: ('(&D_%s)' % m.group(1).upper()
+                             if SYMLO <= int(m.group(1), 16) < SYMHI else m.group(0)), body)
+    if 'short' in opts:
+        body = toggle(body, 'short')
+    if 'char' in opts:
+        body = toggle(body, 'char')
+    for k in range(1, 5):
+        if 'params%d' % k in opts:
+            body = re.sub(r'^(\w[\w \*]*\b%s\s*)\(void\)' % ('func_%08X' % va),
+                          lambda m: m.group(1) + '(' + ','.join('int arg%d' % i for i in range(k)) + ')',
+                          body, count=1, flags=re.M)
     body = re.sub(r'\bs_\w*?_([0-9a-fA-F]{8})\b',
                   lambda m: c_string(int(m.group(1), 16)), body)
     body = re.sub(r'^/\*.*?\*/\s*', '', body, flags=re.S)
@@ -176,6 +200,10 @@ def candidate(va, dtypes, name=None, noproto=(), ptrs=()):
             decls.append(prototype(c))
     for d in sorted(set(int(x, 16) for x in re.findall(r'\bD_([0-9A-F]{8})\b', body))):
         ty = 'char *' if d in ptrs else dtypes.get(d, 'int')
+        if not (SYMLO <= d < SYMHI):
+            body = re.sub(r'&D_%08X\b' % d, '((%s *)0x%08X)' % (ty, d), body)
+            body = re.sub(r'\bD_%08X\b' % d, '(*(%s *)0x%08X)' % (ty, d), body)
+            continue
         decls.append('extern %s D_%08X;' % (ty, d))
     for d in sorted(set(int(x, 16) for x in re.findall(r'\bP_([0-9A-F]{8})\b', body))):
         decls.append('extern char *P_%08X;' % d)
@@ -246,6 +274,35 @@ def main():
             if not changed:
                 break
             src = candidate(va, dtypes, noproto=noproto, ptrs=ptrs)
+        if st == 'DIFF':
+            # try the known near-miss classes and keep whatever helps
+            best = (nd, src, st, note, ())
+            rw = B.rom_body(rom, va, fmap[va])
+            homes = {(w >> 16) & 31 for w in rw
+                     if w >> 26 == 0x2B and (w >> 21) & 31 == 29 and 4 <= (w >> 16) & 31 <= 7}
+            base_opts = []
+            if any((w >> 26) in (0x21, 0x25) for w in rw):
+                base_opts.append('short')
+            if any((w >> 26) in (0x20, 0x24) for w in rw):
+                base_opts.append('char')
+            if homes:
+                base_opts.append('params%d' % (max(homes) - 3))
+            for _ in range(2):
+                improved = False
+                for o in base_opts:
+                    cur = best[4]
+                    trial = tuple(sorted(set(cur) ^ {o}))
+                    src2 = candidate(va, dtypes, noproto=noproto, ptrs=ptrs, opts=trial)
+                    st2, nd2, note2 = grade_candidate(va, src2, rom, fmap, syms)
+                    if st2 in ('EXACT', 'DIFF') and (st2 == 'EXACT' or nd2 < best[0]):
+                        best = (0 if st2 == 'EXACT' else nd2, src2, st2, note2, trial)
+                        improved = True
+                        if st2 == 'EXACT':
+                            break
+                if not improved or best[2] == 'EXACT':
+                    break
+            nd, src, st, note = best[0], best[1], best[2], best[3]
+            grade_candidate(va, src, rom, fmap, syms)      # leave the best on disk
         rows.append((va, fmap[va], st, nd, note))
         if len(vas) == 1:
             print(src)

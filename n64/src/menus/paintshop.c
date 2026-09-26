@@ -3,7 +3,7 @@
 #include "tgr/common.h"
 
 /* -- declarations -- */
-char * func_80260B20(char *param_1,char *param_2,int param_3);
+char * memcpy(char *param_1,char *param_2,int param_3);
 extern unsigned char D_8028DB68;
 extern unsigned char D_8028DB74;
 extern int D_8028DB78;
@@ -18,7 +18,7 @@ extern unsigned char D_8028DBDC;
 /* @implements 0x80244CA8 tgr BrPaintDecalCommit */
 void BrPaintDecalCommit(void)
 {
-  func_80260B20(D_8028DB80,D_8028DB78,0x800);
+  memcpy(D_8028DB80,D_8028DB78,0x800);
   D_8028DB74 = D_8028DB68;
   D_8028DBB4 = D_8028DBB4 + '\x01';
   D_8028DBDC = 1;
