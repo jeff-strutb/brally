@@ -2,9 +2,9 @@
  *
  * Filed out of the address batches (slice3_42.c, section 5).  BrRbSolveAccel
  * followed on 2026-09-07 and must stay LAST in this file (its byte-exact
- * spelling depends on end-of-TU placement).  BrRbAccumOwnForces and
- * BrRbAccumChildForces are still in that batch and are reached through
- * slice3_42.h, which declares all four.
+ * spelling depends on end-of-TU placement).  The matching arms of
+ * BrRbAccumOwnForces and BrRbAccumChildForces are here; their port forms
+ * are still in slice3_42.c, and slice3_42.h declares all four.
  */
 
 #include "slice3_42.h"
@@ -93,6 +93,51 @@ void BrRbAccumOwnForces(BrRbBodyFull *pB)
                 pB->angAccel.x += x;
                 pB->angAccel.y += y;
                 pB->angAccel.z += z;
+            }
+        }
+    }
+}
+/* WHAT IT DOES: adds up the pushes on one of the four attached bodies. Each
+ * force lands in the child's acceleration (turned into the parent's frame
+ * when the node says so); when the child's torque leg is enabled, its
+ * position crossed with the flattened force (height dropped) is added to the
+ * PARENT's spin.  GOTCHA, kept: a node of any other kind reuses the previous
+ * node's force -- uninitialised stack on the first.  The torque switch is
+ * tested as an integer (a -0.0f counts as on). */
+/* @implements 0x10063FA0 glide BrRbAccumChildForces */
+void BrRbAccumChildForces(BrRbBodyFull *pParent, BrRbBodyFull *pChild)
+{
+    const BrRbForce *pN;
+    BrVec3 v;
+    BrVec3 flat, b, lever, a;
+
+    for (pN = pChild->pForces; pN != NULL; pN = pN->pNext) {
+        if (pN->kind == 0)
+            BrMat4MulVec3(&v, &pParent->m, &pN->f);
+        if (pN->kind == 1) {
+            v.x = pN->f.x;
+            v.y = pN->f.y;
+            v.z = pN->f.z;
+        }
+        flat.x = v.x;
+        flat.y = v.y;
+        flat.z = 0.0f;
+        BrMat4MulVec3Transposed(&b, &pParent->m, &flat);
+        pChild->accel.x += v.x;
+        pChild->accel.y += v.y;
+        pChild->accel.z += v.z;
+        if (*(const int32_t *)&pChild->f1B4 != 0) {
+            lever.x = pChild->m.m[3][0];
+            lever.y = pChild->m.m[3][1];
+            lever.z = pChild->m.m[3][2];
+            BrMat4MulVec3Transposed(&a, &pParent->m, &lever);
+            {
+            float x = a.y * b.z - a.z * b.y;
+            float y = a.z * b.x - a.x * b.z;
+            float z = a.x * b.y - a.y * b.x;
+            pParent->angAccel.x += x;
+            pParent->angAccel.y += y;
+            pParent->angAccel.z += z;
             }
         }
     }

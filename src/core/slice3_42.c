@@ -233,7 +233,8 @@ void BrRbAccumOwnForces(BrRbBodyFull *pB)
 }
 #endif /* !BR_MATCHING_BUILD */
 
-/* 0x1006AFF0 */
+/* 0x1006AFF0 -- port form; the matching arm is in src/core/driving/br_rbaccum.c. */
+#ifndef BR_MATCHING_BUILD
 void BrRbAccumChildForces(BrRbBodyFull *pParent, BrRbBodyFull *pChild)
 {
     const BrRbForce *pN;
@@ -276,6 +277,8 @@ void BrRbAccumChildForces(BrRbBodyFull *pParent, BrRbBodyFull *pChild)
         }
     }
 }
+
+#endif /* !BR_MATCHING_BUILD */
 
 /* 0x1006B260 BrRbAccumAll now lives in src/core/driving/br_rbaccum.c. */
 
