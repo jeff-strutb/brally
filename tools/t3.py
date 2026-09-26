@@ -665,6 +665,27 @@ def classify(miss, extra, obag=None, rbag=None):
                     side[row] -= n
                     opp_single['xor R, R'] -= n
     um += collections.Counter(); ue += collections.Counter()
+    # Fused integer multiply: `fimul m32` against `fild m32; fmulp st(1)`.
+    # fild converts the dword to extended EXACTLY, and the one multiply then
+    # rounds once to the precision-control width -- the same value, the same
+    # rounding, the same flags as fimul.  Which form VC5 emits is decided by
+    # whether the converted int is a CSE'd leaf already homed in memory
+    # (fimul) or an expression it stores and reloads itself (fild + fmulp):
+    # instruction selection, not source arithmetic.  (2026-09-26, 0x1002A200
+    # BrLightDirsAndAngles: the original fuses `fimul` for t1's n*4 factor
+    # while re-forming n*4 for the integer part; the (double)(n * 4) spelling
+    # that fuses also CSEs n*4 into esi, and every non-CSE spelling -- n << 2,
+    # an int temp, unsigned and 4*n forms, int-part respellings, 8 TU pad
+    # counts -- gives fild + fmulp.)  Cancel the COMPLETE GROUP only: one
+    # unpaired `fimul R` against BOTH an unpaired `fild R` and an unpaired
+    # `fmulp st` on the other side.
+    for side, other in ((um, ue), (ue, um)):
+        n = min(side['fimul R'], other['fild R'], other['fmulp st'])
+        if n:
+            side['fimul R'] -= n
+            other['fild R'] -= n
+            other['fmulp st'] -= n
+    um += collections.Counter(); ue += collections.Counter()
     # Staged-constant push: `push K` against `mov R, K; push R` -- the same
     # value reaches the same stack slot; the register is a staging post.  The
     # mirror of the fork above, and forced here rather than chosen: a struct

@@ -347,7 +347,9 @@ static int32_t s17_ftol(double v)
  * factor, so VC5 keeps n in a callee-saved register and forms n*4 twice.
  * RESIDUE (22 B): t1's factor is `fild; fmulp` where the original fuses
  * `fimul`; the (double)(n * 4) spelling fuses but CSEs n*4 with the
- * integer and keeps the product, not n, in esi. */
+ * integer and keeps the product, not n, in esi.
+ * @t4-pass 0x1002A200 1 2026-09-26 probes 117 bytes 647 insns 203 regions 1 rows 3 census no  (t1 factor spellings: (double) of n*4 / n<<2 / 4*n / unsigned forms, int temp m in three placements, factor-first and paren orders)
+ * @t4-pass 0x1002A200 2 2026-09-26 probes 85 bytes 647 insns 203 regions 1 rows 3 census yes  (int-part respellings x factor forms; mechanism: int/double pad functions 1..80, extern counts 20..3000, four CRT headers -- all inert, the fimul fork is instruction selection) */
 #define L_ZYX(c, v) ((double)pM->m[2][c] * (v).z + (double)pM->m[1][c] * (v).y + (double)pM->m[0][c] * (v).x)
 #define L_ZXY(c, v) ((double)pM->m[2][c] * (v).z + (double)pM->m[0][c] * (v).x + (double)pM->m[1][c] * (v).y)
 #define L_YZX(c, v) ((double)pM->m[1][c] * (v).y + (double)pM->m[2][c] * (v).z + (double)pM->m[0][c] * (v).x)
