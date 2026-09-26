@@ -39,30 +39,32 @@ extern unsigned short DAT_105e1828[];   /* the resampler's scratch image */
 
 void BrTex3dMipModulate(int param_1, unsigned short *param_2)
 {
+    /* Pixels are loaded into 16-bit locals (the original's `mov si,[..];
+     * and esi,0xffff` widening) and the channel math is unsigned (`mul`).
+     * The destination walks through a copy homed in the dead argument
+     * slot.  RESIDUE: VC5 folds the top bit's (px >> 15) << 5 through the
+     * pack into `px & 0x8000`; the original keeps shr/shl. */
     int y, x;
     unsigned short *pSrc;
-
+    unsigned short *pDst;
     FUN_10024490(DAT_105e1828, *(int *)(param_1 + 0x2a0),
                  *(int *)(param_1 + 0x2a4),
                  param_2 + *(int *)(param_1 + 0x2a0) * *(int *)(param_1 + 0x2a4),
                  *(int *)(param_1 + 0x2a0) / 2, *(int *)(param_1 + 0x2a4) / 2,
                  11);
+    pDst = param_2;
     pSrc = DAT_105e1828;
     for (y = 0; y < *(int *)(param_1 + 0x2a4); y++) {
         for (x = 0; x < *(int *)(param_1 + 0x2a0); x++) {
-            /* 2026-09-24: the three channels into named temps, then packed
-             * (the original holds r/g/b in ebx/ebp/edx and ORs them in).
-             * Residue: the original keeps (px>>15)<<5 unfolded and loads
-             * px/m as `mov si; and esi,0xffff`, and its frame is 3 dwords. */
-            unsigned int px = *param_2;
-            unsigned int m  = *pSrc;
-            unsigned int r  = ((px >> 10) & 0x1f) * m / 15;
-            unsigned int g  = ((px >> 5) & 0x1f) * m / 15;
-            unsigned int b  = (px & 0x1f) * m / 15;
-
-            *param_2 = (unsigned short)(((((px >> 15) << 5 | r) << 5) | g) << 5 | b);
+            unsigned short px = *pDst;
+            unsigned short m  = *pSrc;
+            unsigned int r  = (unsigned)((px >> 10) & 0x1f) * m / 15;
+            unsigned int g  = (unsigned)((px >> 5) & 0x1f) * m / 15;
+            unsigned int b  = (unsigned)(px & 0x1f) * m / 15;
+            
+            *pDst = (unsigned short)((((px >> 15) << 5 | r) << 5 | g) << 5 | b);
             pSrc++;
-            param_2++;
+            pDst++;
         }
     }
 }
