@@ -134,14 +134,14 @@ _Snapshot 2026-09-26._
 
 ```
 M1  Contract-valid - compiles & ports (T3 + T4)
-    ████████████████████████████████████░░░░  90.6%   435,500 / 480,853 B   1,477 / 1,499 fns
+    ████████████████████████████████████░░░░  90.9%   436,942 / 480,853 B   1,480 / 1,499 fns
 M2  Byte-exact (T4)
-    █████████████████████░░░░░░░░░░░░░░░░░░░  53.2%   255,798 / 480,853 B   1,290 / 1,499 fns
+    █████████████████████░░░░░░░░░░░░░░░░░░░  53.5%   257,240 / 480,853 B   1,293 / 1,499 fns
 ```
 
 The bars sit close by design: matching is byte-exact-first, so only 187
 certified-but-not-yet-exact functions (179,702 B) separate M1 from M2. Byte
-percentages trail function percentages (98.5% / 86.1% of functions) because the
+percentages trail function percentages (98.7% / 86.3% of functions) because the
 functions still open are several times larger than the matched ones.
 
 By binary - the three EXEs are complete at both milestones (their game code is fully
@@ -153,7 +153,7 @@ decompiled, and is out of scope). All remaining work is in BRGlide.dll.
 | **BossRally.exe** | `████████████████████` 100% - 35/35 fns, 2,482 B | `████████████████████` 100% - 35/35 fns, 2,482 B |
 | **BRally.exe** | `████████████████████` 100% - 28/28 fns, 2,860 B | `████████████████████` 100% - 28/28 fns, 2,860 B |
 | **SetVideo.exe** | `████████████████████` 100% - 42/42 fns, 7,251 B | `████████████████████` 100% - 42/42 fns, 7,251 B |
-| **BRGlide.dll** | `██████████████████░░` 90.6% - 435,500 B, 1,477 fns | `███████████░░░░░░░░░` 53.2% - 255,798 B, 1,290 fns |
+| **BRGlide.dll** | `██████████████████░░` 90.9% - 436,942 B, 1,480 fns | `███████████░░░░░░░░░` 53.5% - 257,240 B, 1,293 fns |
 <!-- PROGRESS:END -->
 
 Query the tree. Do not trust a number in this file.
@@ -328,9 +328,9 @@ _Snapshot 2026-09-26._
 
 ```
 M1  Contract-valid (T3 + T4)
-    █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  2.2%   8,200 / 379,932 B   121 / 572 fns
+    █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  2.2%   8,356 / 379,932 B   124 / 572 fns
 M2  Byte-exact (T4)
-    █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  2.2%   8,200 / 379,932 B   121 / 572 fns
+    █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  2.2%   8,356 / 379,932 B   124 / 572 fns
 ```
 <!-- N64-PROGRESS:END -->
 
