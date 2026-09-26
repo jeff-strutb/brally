@@ -19,6 +19,8 @@
  * Probed and inert: an inline helper (4 shapes), named e/k locals, 2-D
  * array and struct views of the table, extern order (all 120), 50..4000
  * extra symbols, <windows.h>.
+ * @t4-pass 0x1003A2B0 1 2026-09-26 probes 12 bytes 360 insns 120 regions 1 rows 0 census no  (inline-helper shapes, named e/k locals, 2-D/struct table views)
+ * @t4-pass 0x1003A2B0 2 2026-09-26 probes 127 bytes 360 insns 120 regions 1 rows 0 census yes  (mechanism: all 120 extern orders, 50..4000 extra symbols, <windows.h>)
  */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
@@ -45,11 +47,11 @@ public:
 };
 
 extern "C" {
-int           g_brTimesAvail5BF4;   /* 0x10AC5BF4 */
-signed char   g_brStage5C10;        /* 0x10AC5C10 */
-int           g_brStageBias5C04;    /* 0x10AC5C04 */
-unsigned char g_brStageByte3028[];  /* 0x100B3028 */
-float g_brFTbl5AF8[];               /* 0x10AC5AF8 */
+int           DAT_10ac5bf4;   /* 0x10AC5BF4 */
+signed char   DAT_10ac5c10;        /* 0x10AC5C10 */
+int           DAT_10ac5c04;    /* 0x10AC5C04 */
+unsigned char DAT_100b3028[];  /* 0x100B3028 */
+float DAT_10ac5af8[];               /* 0x10AC5AF8 */
 float g_f077624;
 float g_f077630;
 float g_f077634;
@@ -68,8 +70,8 @@ int BrMenuTime0D70_1003A2B0(Obj3A2B0 *pObj)
 
     memset(szTime, 0, sizeof(szTime));
 
-    if (g_brTimesAvail5BF4 == 0) goto dash;
-    t = g_brFTbl5AF8[g_brStageByte3028[(g_brStageBias5C04 + 12 * g_brStage5C10) * 2]];
+    if (DAT_10ac5bf4 == 0) goto dash;
+    t = DAT_10ac5af8[DAT_100b3028[(DAT_10ac5c04 + 12 * DAT_10ac5c10) * 2]];
     if (t <= g_f077624) {
  dash:
         strcpy(szTime, g_szBrDashes);
