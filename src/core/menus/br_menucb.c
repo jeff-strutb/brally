@@ -1031,7 +1031,7 @@ int32_t BrMenuTime0C00(BrMenuItem *pItem)
 
 /* WHAT IT DOES: the same lap-time readout as 0x10040C00, from a second
  * stored table. */
-/* @implements 0x10040D70 d3d BrMenuTime0D70 */
+/* port-only body; Glide match is src/core/menus/BrMenuTime0D70_1003A2B0.cpp */
 int32_t BrMenuTime0D70(BrMenuItem *pItem)
 {
     BrMenuState *pSt = &g_menu;
