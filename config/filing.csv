@@ -261,6 +261,7 @@ glide_va,name,module,basis,file
 0x100192D0,BrS17BankFlip,drawing,manual,src/core/drawing/br_bankflip.c
 0x10019350,BrOnActivateApp,controls,filed,src/core/controls/br_input.c
 0x10019480,BrOnSysCommand,controls,filed,src/core/controls/br_input.c
+0x100194C0,BrWndProc,controls,filed,src/core/controls/br_input.c
 0x10019670,BrWindowCreate,startup,filed,src/core/startup/br_window.c
 0x10019730,BrMainLoopRun,startup,filed,src/core/startup/br_mainloop.c
 0x10019800,BrS17Init,startup,description,src/core/startup/br_s17life.c
