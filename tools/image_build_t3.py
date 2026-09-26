@@ -1367,7 +1367,19 @@ def _force_annex(annex):
     overrides = {}
     for r in rows:
         va = int(r['va'], 16)
-        obj, err, _how = ib._compile_dll_obj(r['file'], r['opt'], True, ())
+        if (r.get('mode') or '').strip() == 'log':
+            # The diagnostic is compiled out of the byte-exact build (the T4
+            # gate grades the function against the original); only this
+            # annexed copy turns it on.
+            import match_sweep
+            src = os.path.join(ROOT, r['file'])
+            flags = ib._dll_opt_flags(r['opt'])
+            obj, errs = match_sweep.compile_variant(
+                src, ib._own_tag(r['opt'], r['file']) + '_log',
+                (flags or '/O2') + ' /DBR_FATAL_LOG')
+            err = '; '.join(errs or []) if obj is None else None
+        else:
+            obj, err, _how = ib._compile_dll_obj(r['file'], r['opt'], True, ())
         if obj is None:
             print('  FORCE-ANNEX %s: compile failed (%s)' % (r['name'], err))
             continue

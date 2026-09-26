@@ -29,6 +29,10 @@ void BrLogFatalPrintf(const char *pFmt, ...)
     pBuf = (char *)BrOperatorNew(0x400);
     va_start(ap, pFmt);
     vsprintf(pBuf, pFmt, ap);
+#if !defined(BR_MATCHING_BUILD) || defined(BR_FATAL_LOG)
+    /* Compiled out of the byte-exact build (the T4 image gate grades this
+     * function against the original); the T3 play image's force-annex
+     * compile defines BR_FATAL_LOG (tools/image_build_t3.py, mode 'log'). */
     {   /* DIAGNOSTIC (permanent): the original formats this fatal message
          * and discards it, so a clean exit(1) leaves no trace of WHY.  Append
          * it to a log.  Strings are built on the stack (no new .rdata, which
@@ -51,6 +55,7 @@ void BrLogFatalPrintf(const char *pFmt, ...)
             fclose(fp);
         }
     }
+#endif
     exit(1);
 }
 
