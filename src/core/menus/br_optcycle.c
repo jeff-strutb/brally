@@ -344,39 +344,41 @@ int BrOptToggle2F7C_C(BrGameObj *pGame) { return BrOptToggle2F7C(pGame); }
  * candidate, rather than back where the user left it.
  * ========================================================================== */
 
+/* The track-number step, written as the original's inline pre-increment on
+ * the global.  As helpers, VC5 materialises 0 and 0x1F at every use site
+ * the way the original does; written out in the caller it keeps them in
+ * callee-saved registers. */
+static __inline int32_t BrOptTrackStepUp(void)
+{
+    if (++g_br0AC654 > BR_OPT_TRACK_MAX)
+        g_br0AC654 = 0;
+    return g_br0AC654;
+}
+
+static __inline int32_t BrOptTrackStepDown(void)
+{
+    if (--g_br0AC654 < 0)
+        g_br0AC654 = BR_OPT_TRACK_MAX;
+    return g_br0AC654;
+}
+
 /* WHAT IT DOES: moves the track selection on to the next track the player
  * is allowed to pick, skipping any that are still locked, and announces the
  * new choice to the other players in a network game. If every track is
  * rejected the selection still ends up moved by one rather than back where
  * the player left it, because the search compares against the already-
  * stepped value. */
-/* @t4-pass 0x1003C080 1 2026-09-13 probes 91 bytes 340 insns 111 regions 6 rows 18 census yes  (tools/crank.py) */
 /* @implements 0x10042B30 d3d BrOptCycleTrack */
 int BrOptCycleTrack(void)
 {
-    int32_t v, vStart, iName;
+    int32_t v, vStart;
 
     if (g_brAA33D4 != 0) {
-        v = g_br0AC654;
-        ++v;
-        g_br0AC654 = v;
-        if (v > BR_OPT_TRACK_MAX) {
-            v = 0;
-            g_br0AC654 = v;
-        }
+        v = BrOptTrackStepUp();
         vStart = v;
-        /* Exit asymmetry: the full-circle exit USES v as it stands (no
-         * reload); only the found exits re-read the global.  The two
-         * reload statements cross-jump to one block at 1003C136. */
         if (BrSub1003F320(v) == 0) {
             for (;;) {
-                v = g_br0AC654;
-                ++v;
-                g_br0AC654 = v;
-                if (v > BR_OPT_TRACK_MAX) {
-                    v = 0;
-                    g_br0AC654 = v;
-                }
+                v = BrOptTrackStepUp();
                 /* Unlike 0x10042EE0's loop, the wrap path here still runs
                  * the full-circle test. */
                 if (v == vStart)
@@ -390,23 +392,11 @@ int BrOptCycleTrack(void)
             v = g_br0AC654;
         }
     } else if (g_brAA33D0 != 0) {
-        v = g_br0AC654;
-        --v;
-        g_br0AC654 = v;
-        if (v < 0) {
-            v = BR_OPT_TRACK_MAX;
-            g_br0AC654 = v;
-        }
+        v = BrOptTrackStepDown();
         vStart = v;
         if (BrSub1003F320(v) == 0) {
             for (;;) {
-                v = g_br0AC654;
-                --v;
-                g_br0AC654 = v;
-                if (v < 0) {
-                    v = BR_OPT_TRACK_MAX;
-                    g_br0AC654 = v;
-                }
+                v = BrOptTrackStepDown();
                 if (v == vStart)
                     break;
                 if (BrSub1003F320(v) != 0) {
@@ -425,23 +415,14 @@ int BrOptCycleTrack(void)
 
     if (g_brP277B40 != NULL) {
         /* 32 tracks, 16 names: indices 0x10..0x1F reuse the first sixteen
-         * name strings.
-         * RESIDUE (13+10 regnorm, T3a): the original materialises 0 and
-         * 0x1F per use site (xor eax,eax / mov eax,0x1f); this build CSEs
-         * them into ebx/edi (adding push ebx), turns gate tests into
-         * cmp-vs-ebx and emits add eax,-0x10 for the `-= 0x10` where the
-         * original has sub.  Probed and failed: store-through-v wrap
-         * spellings, bare `if (g)` gates, `>= MAX+1` compares, found-exit
-         * reload restructure (cross-jumped back).  The add/sub choice is
-         * proven context-dependent (BrHudDraw's original picks the OTHER
-         * encoding for the same construct). */
-        iName = v;
-        if (iName > 0xF)
-            iName -= 0x10;
+         * name strings.  v itself is reduced (a separate index local turns
+         * the `sub` into `add -0x10`). */
+        if (v > 0xF)
+            v -= 0x10;
         /* sprintf itself through the /MD import, not the BrSprintf
          * wrapper -- the original's `call dword ptr [sprintf]`. */
         sprintf(g_aBrA9DD28, BrStrGet(BR_OPT_STR_TRACK),
-                BrStrGet((int)g_aBrAC368[iName]));
+                BrStrGet((int)g_aBrAC368[v]));
         BrOptFlushMessage();
     }
     return 1;
