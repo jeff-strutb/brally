@@ -110,8 +110,8 @@ void FUN_1000c9e0(BrVisView *pView, const void *pPt, int n, short *pMin,
      * name sets).  RESIDUE: the sign-flipped v[0] stays on the x87 stack
      * where the original stores and reloads it, which shifts the stack
      * indices of the rad/x0 chain.
-     * @t4-pass 0x1000C9E0 1 2026-09-26 probes 2400 bytes 308 insns 101 regions 2 rows 14 census yes  (declaration-order random search + name search)
-     * @t4-pass 0x1000C9E0 2 2026-09-26 probes 289 bytes 308 insns 101 regions 2 rows 14 census no  (hill-climb from the best order: no neighbour improves) */
+     * @t4-pass 0x1000C9E0 1 2026-09-26 probes 2400 bytes 308 insns 101 regions 1 rows 14 census yes  (declaration-order random search + name search)
+     * @t4-pass 0x1000C9E0 2 2026-09-26 probes 289 bytes 308 insns 101 regions 1 rows 14 census no  (hill-climb from the best order: no neighbour improves) */
     float sy;
     float rad;
     float v[4];
