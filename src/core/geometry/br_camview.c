@@ -130,7 +130,6 @@ extern int   BrXAtExit(void (*pfn)(void));
  * produces the matrix that turns world positions into positions relative to
  * that camera. This is what a view through the windscreen or from the trackside
  * is set up with. */
-/* @t4-pass 0x1002A050 1 2026-09-13 probes 83 bytes 427 insns 140 regions 3 rows 20 census yes  (tools/crank.py) */
 /* @implements 0x100309A0 d3d BrMat4LookAt */
 void BrMat4LookAt(BrMat4 *pM,
                   float xEye, float yEye, float zEye,
@@ -174,43 +173,27 @@ void BrMat4LookAt(BrMat4 *pM,
     BrVec3dCross(&y, &z, &x);
 
 
-    /* Translation row: -dot(eye, axis), summed left to right with the
-     * first term negated, exactly as the fchs/fsubp chain does it. The eye
-     * components are read from the PARAMETERS here, not from double locals
-     * hoisted at the top: naming them costs three extra `fld dword` /
-     * `fstp qword` pairs and eighteen bytes of frame.
+    /* The nine basis stores first (column by column), then the translation
+     * row -dot(eye, axis) for each axis, then the last column. The eye
+     * components are read from the PARAMETERS, not from double locals.
      *
-     * TWO SOURCE FACTS, found 2026-09-05, that took this from 4+6 and four
-     * bytes short to SIZE- AND INSTRUCTION-EXACT at register-blind 0+0:
-     *  1. the block is written PER AXIS -- each column's translation, then
-     *     that column's three matrix stores -- not as nine stores followed
-     *     by three translations.  Pure address order over the whole block
-     *     is byte-identical to the old column-major form (202 diffs); it is
-     *     the interleave that matters, and the translation must come FIRST
-     *     within each axis (stores-first is 121, translation-first 141 but
-     *     at 0+0 and size-exact).
-     *  2. the leading negation is spelled `0.0 - a*b`, not `-(a*b)`.  The
-     *     subtract-from-zero keeps the negation as part of the sum chain;
-     *     `-(...)` emits the `fchs` early and costs two `fxch` and 4 bytes.
-     *     (`0.0 -` and `-(...)` differ only in the sign of a zero result,
-     *     which no consumer of a view matrix can observe.)
-     * RESIDUE, 141 diff bytes, register-blind 0+0, size-exact, TWO regions:
-     * the original interleaves the THREE columns' translation chains with
-     * each other -- `fmul` of the next column's term is emitted before the
-     * `fchs` of the previous column's first product -- where ours finishes
-     * one chain's negation first.  Same instructions, same count, different
-     * pipelining depth.  Dead: all three translations hoisted above the
-     * stores (0+5 / 0+3), nine named product temps (0+4), a named double
-     * temp per translation (0+2), negating the eye operand instead of the
-     * product (3+4), negating the whole dot (12+8), and reversing the
-     * m[k][3] zero stores (inert). */
-    pM->m[3][0] = (float)(((0.0 - xEye * x.x) - yEye * x.y) - zEye * x.z);
+     * The translation's leading zero is a FLOAT literal: `0.0f - a*b - ...`.
+     * VC5 folds the float zero minus a double product into a plain `fchs`
+     * that it schedules like a unary op, which lets the three chains
+     * interleave exactly as the original does; the double `0.0 -` and
+     * `-(a*b)` spellings pin the negation early and cost 125..141 bytes of
+     * scheduling residue.  (The zero-minus form differs from -(dot) only in
+     * the sign of a zero result, which no consumer of a view matrix sees.)
+     * The m[k][3] zeros are stored from the bottom row up. */
     pM->m[0][0] = (float)x.x; pM->m[1][0] = (float)x.y; pM->m[2][0] = (float)x.z;
-    pM->m[3][1] = (float)(((0.0 - xEye * y.x) - yEye * y.y) - zEye * y.z);
     pM->m[0][1] = (float)y.x; pM->m[1][1] = (float)y.y; pM->m[2][1] = (float)y.z;
-    pM->m[3][2] = (float)(((0.0 - xEye * z.x) - yEye * z.y) - zEye * z.z);
     pM->m[0][2] = (float)z.x; pM->m[1][2] = (float)z.y; pM->m[2][2] = (float)z.z;
-    pM->m[0][3] = 0.0f;       pM->m[1][3] = 0.0f;       pM->m[2][3] = 0.0f;
+    pM->m[3][0] = (float)(0.0f - xEye * x.x - yEye * x.y - zEye * x.z);
+    pM->m[3][1] = (float)(0.0f - xEye * y.x - yEye * y.y - zEye * y.z);
+    pM->m[3][2] = (float)(0.0f - xEye * z.x - yEye * z.y - zEye * z.z);
+    pM->m[2][3] = 0.0f;
+    pM->m[1][3] = 0.0f;
+    pM->m[0][3] = 0.0f;
     pM->m[3][3] = 1.0f;
 }
 
