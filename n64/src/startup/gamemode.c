@@ -67,3 +67,11 @@ void BrStub8021C740(void)
 
 {
 }
+
+/* WHAT IT DOES: Always returns 0. A placeholder the retail build kept;
+ * nothing in the ROM calls it directly. */
+/* @implements 0x802173B8 tgr BrStub802173B8 */
+int BrStub802173B8(int arg0,int arg1)
+{
+  return 0;
+}

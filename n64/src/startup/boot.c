@@ -11,6 +11,8 @@ extern int D_80272680;
 extern int D_80316CD0;
 void func_8021E1EC();
 extern int D_8028A88C;
+int func_802642E0(int param_1,int *param_2,int param_3);
+extern int D_8031A390;
 /* -- end declarations -- */
 
 /* WHAT IT DOES: The game's entry point after the boot stub clears memory:
@@ -32,4 +34,20 @@ void BrFatal(int param_1)
 {
   D_8028A88C = param_1;
   func_8021E1EC(0);
+}
+
+/* WHAT IT DOES: Wait for the next vertical retrace: block until the video
+ * interrupt posts its message. */
+/* @implements 0x8021E1C0 tgr BrWaitRetrace */
+void BrWaitRetrace(void)
+{
+  func_802642E0((&D_8031A390),0,1);
+}
+
+/* WHAT IT DOES: The end of the line after a fatal error: takes the error
+ * code and returns straight away in the retail build (its body was compiled
+ * out). */
+/* @implements 0x8021E1EC tgr BrHaltLoop */
+void BrHaltLoop(int arg0)
+{
 }

@@ -23,3 +23,10 @@ void BrCarCamClearCut(int param_1)
 {
   *(int *)(param_1 + 0xf48) = 0;
 }
+
+/* WHAT IT DOES: Does nothing with its argument. The race still calls it
+ * once per car when a race starts; its body was compiled out. */
+/* @implements 0x8022BA98 tgr BrStub8022BA98 */
+void BrStub8022BA98(int arg0)
+{
+}

@@ -13,3 +13,10 @@ void BrCtlAi(int ctl)
 {
     func_8022762C(ctl);
 }
+
+/* WHAT IT DOES: Does nothing with its argument. An empty function the
+ * retail build kept among the AI driver code. */
+/* @implements 0x80228E44 tgr BrStub80228E44 */
+void BrStub80228E44(int arg0)
+{
+}
