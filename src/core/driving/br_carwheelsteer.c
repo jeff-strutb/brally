@@ -23,7 +23,6 @@
 extern int   DAT_105ccb88;      /* 0x105CCB88 replay-mode flag       */
 extern int   DAT_100a9360;      /* 0x100A9360 game mode              */
 extern float DAT_1007778c;      /* body-roll decay, first pass       */
-extern float DAT_10077794;      /* body-roll decay, second pass      */
 extern float DAT_10077790;      /* the wheel steer-angle scale        */
 
 typedef struct BrMat4_ { float m[16]; } BrMat4_;
@@ -57,11 +56,10 @@ void BrMat4TransformPoint(BrVec3_ *pOut, const BrMat4_ *pM, const BrVec3_ *pV); 
  * temp; BrMat4Mul takes its output last; three matrix locals (0xC0 frame);
  * the replay flag is tested first; float fields read through a float
  * pointer (a char-offset cast moves them through the x87 instead of
- * integer registers).
- * RESIDUE (58 B, 768/776): only the closing decay -- the original loads
- * all four roll fields before the four subtracts; ours sinks the first.
- * Temps, struct members, a wheel-record array, pads (1..64 int / float /
- * branchy), externs (20..3000) and CRT headers are all inert or worse. */
+ * integer registers).  The closing decay subtracts a LITERAL 0.254f (the
+ * original's 0x10077794): an extern could alias the car fields, so VC5 kept
+ * each subtract behind the previous store; a literal lets all four loads
+ * and subtracts run ahead of the stores, as the original does. */
 /* @implements 0x1005ACE0 glide BrCarWheelSteerStep_1005ACE0 */
 void __fastcall BrCarWheelSteerStep_1005ACE0(int pCar)
 {
@@ -110,10 +108,10 @@ void __fastcall BrCarWheelSteerStep_1005ACE0(int pCar)
     FUN_10029d70(&rot, (const BrMat4_ *)(pCar + 0x220), (BrMat4_ *)(pCar + 0x40));
     BrMat4TransformPoint((BrVec3_ *)(pCar + 0x70), (const BrMat4_ *)(pCar + 0x220), (const BrVec3_ *)(pCar + 0xa80));
 
-    pf[0x464 / 4] = pf[0x464 / 4] - DAT_10077794;
-    pf[0x670 / 4] = pf[0x670 / 4] - DAT_10077794;
-    pf[0x87c / 4] = pf[0x87c / 4] - DAT_10077794;
-    pf[0xa88 / 4] = pf[0xa88 / 4] - DAT_10077794;
+    pf[0x464 / 4] = pf[0x464 / 4] - 0.254f;
+    pf[0x670 / 4] = pf[0x670 / 4] - 0.254f;
+    pf[0x87c / 4] = pf[0x87c / 4] - 0.254f;
+    pf[0xa88 / 4] = pf[0xa88 / 4] - 0.254f;
 }
 
 #endif /* BR_MATCHING_BUILD */
