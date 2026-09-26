@@ -128,6 +128,7 @@ glide_va,name,module,basis,file
 0x10007710,BrFixUnpackS16Q8,net,filed,src/core/net/br_fix.c
 0x10007730,BrFixUnpackS8Q3,net,filed,src/core/net/br_fix.c
 0x10007750,BrCarStateDecodeDelta,net,manual,src/core/net/BrCarStateDecodeDelta_10007750.cpp
+0x10007AA0,BrFixDecodeRecord_10007AA0,net,filed,src/core/net/br_fix.c
 0x10007D50,BrCarStateLerp,net,manual,src/core/net/br_carstatelerp.c
 0x10007E80,BrAppCheckPreviousApp,startup,filed,src/core/startup/br_appstart.c
 0x10007F10,BrMemoryQuery,startup,filed,src/core/startup/br_appstart.c
