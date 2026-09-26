@@ -376,74 +376,7 @@ BrInJoy   g_brInJoy[2];                   /* 0x118EEBF8, stride 0x110 */
 BrInMouse g_brInMouse[2];                 /* 0x118EEE50, stride 0x1C  */
 #endif
 
-/* WHAT IT DOES: answers "is the player holding down the control for this
- * action right now?" -- checking whichever key, button, stick direction or
- * mouse movement the action is bound to, plus up to two keyboard alternatives
- * that always apply. Stick and mouse directions only count once they are
- * pushed past a dead zone, so a resting stick reads as nothing.
- *
- * The original indexes the key/button tables with UNCHECKED bytes (no & 1 /
- * & 3 masks). A plain switch on the u16 binding word masked to its high
- * byte (VC5 lowers it to the cmp/jg/je tree); the alternates test the whole
- * u16 word & 0xFF00, which VC5 folds to `test byte [b+3], 0xff`. */
-/* @implements 0x10071710 glide BrInputIsDown */
-uint8_t BrInputIsDown(int32_t action)
-{
-    uint8_t r = 0;
-    const uint8_t *b = g_BrPadModeBytes + 6 * action;
-    switch (*(const uint16_t *)(const void *)b & 0xFF00) {
-    case 0x0000:
-        r = (uint8_t)(g_brInKeys[g_brInKeyCur][b[0]] & 0x80u);
-        break;
-    case 0x0100:
-        r = (uint8_t)(g_brInJoy[g_brInJoyCur].rgbButtons[b[0]] & 0x80u);
-        break;
-    case 0x0300:
-        r = (uint8_t)(g_brInMouse[g_brInMouseCur].buttons[b[0]] & 0x80u);
-        break;
-    case 0x8000:
-        if (g_brInJoy[g_brInJoyCur].lX < -50) r = 0x80;
-        break;
-    case 0x8100:
-        if (g_brInJoy[g_brInJoyCur].lX > 50) r = 0x80;
-        break;
-    case 0x8200:
-        if (g_brInJoy[g_brInJoyCur].lY < -50) r = 0x80;
-        break;
-    case 0x8300:
-        if (g_brInJoy[g_brInJoyCur].lY > 50) r = 0x80;
-        break;
-    case 0x8400:
-        if (g_brInJoy[g_brInJoyCur].lZ < -50) r = 0x80;
-        break;
-    case 0x8500:
-        if (g_brInJoy[g_brInJoyCur].lZ > 50) r = 0x80;
-        break;
-    case 0x8600:
-        if (g_brInMouse[g_brInMouseCur].x < -50) r = 0x80;
-        break;
-    case 0x8700:
-        if (g_brInMouse[g_brInMouseCur].x > 50) r = 0x80;
-        break;
-    case 0x8800:
-        if (g_brInMouse[g_brInMouseCur].y < -50) r = 0x80;
-        break;
-    case 0x8900:
-        if (g_brInMouse[g_brInMouseCur].y > 50) r = 0x80;
-        break;
-    case 0x8A00:
-        if (g_brInMouse[g_brInMouseCur].z < -50) r = 0x80;
-        break;
-    case 0x8B00:
-        if (g_brInMouse[g_brInMouseCur].z > 50) r = 0x80;
-        break;
-    }
-    if ((*(const uint16_t *)(const void *)(b + 2) & 0xFF00) == 0)
-        r |= (uint8_t)(g_brInKeys[g_brInKeyCur][b[2]] & 0x80u);
-    if ((*(const uint16_t *)(const void *)(b + 4) & 0xFF00) == 0)
-        r |= (uint8_t)(g_brInKeys[g_brInKeyCur][b[4]] & 0x80u);
-    return r;
-}
+/* 0x10071710 BrInputIsDown now lives in controls/br_inputpoll.c. */
 
 /* DEVIATION (same as above): the mouse button index is masked with & 3. The
  * original indexes a four-byte field with an unchecked byte. */
