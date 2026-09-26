@@ -39,3 +39,4 @@ BrDxMsgCreateSurfaceFailed,0x100A9940,1,1,"BrDxDetect string/GUID; original byte
 BrIidIDirectDraw2,0x10077CB8,1,1,"BrDxDetect string/GUID; original bytes at the address verified equal to the source literal (src/core/startup/br_dxver.c)",0x1001D8A0
 BrIidIDirectDrawSurface3,0x10077CF8,1,1,"BrDxDetect string/GUID; original bytes at the address verified equal to the source literal (src/core/startup/br_dxver.c)",0x1001D8A0
 BrIidIDirectDrawSurface4,0x10077D08,1,1,"BrDxDetect string/GUID; original bytes at the address verified equal to the source literal (src/core/startup/br_dxver.c)",0x1001D8A0
+g_brCrPlaneOut,0x117781A0,1,1,"transcription header: plane-distance vector (0x117781A0/A4/A8), src/core/driving/br_carphys.c",0x10067C30
