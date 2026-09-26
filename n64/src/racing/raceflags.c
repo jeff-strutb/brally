@@ -23,6 +23,9 @@ extern int D_8026FF08;
  * the three option flags, sets the main flag for kinds 1-4 and the one
  * option flag that kind uses, then refreshes the track objects that depend
  * on them. */
+/* @t4-pass 0x80200050 1 2026-09-26 compiles 58 best 4 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80200050 2 2026-09-26 compiles 17 best 4 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80200050 3 2026-09-26 compiles 15 best 4 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80200050 tgr BrRaceSetKind */
 void BrRaceSetKind(int param_1)
 {
@@ -54,6 +57,9 @@ void BrRaceSetKind(int param_1)
 /* WHAT IT DOES: Re-evaluate everything that depends on the race-kind flags:
  * marks each track object whose condition list now holds, and does the same
  * for every car's model parts. */
+/* @t4-pass 0x8021B97C 1 2026-09-26 compiles 17 best 137 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021B97C 2 2026-09-26 compiles 17 best 137 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021B97C 3 2026-09-26 compiles 17 best 137 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8021B97C tgr BrRaceFlagsApply */
 void BrRaceFlagsApply(void)
 {
@@ -139,6 +145,9 @@ void BrRaceFlagsApply(void)
 
 /* WHAT IT DOES: Tell whether the race is shown split: any of the split
  * options is set, or two players are racing. */
+/* @t4-pass 0x8022F900 1 2026-09-26 compiles 17 best 23 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8022F900 2 2026-09-26 compiles 16 best 23 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8022F900 3 2026-09-26 compiles 13 best 23 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8022F900 tgr BrRaceSplitScreen */
 int BrRaceSplitScreen(void)
 {

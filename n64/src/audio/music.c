@@ -14,6 +14,9 @@ extern int D_802A4920;
 
 /* WHAT IT DOES: Start a piece of music: builds its instrument entries,
  * starts the module player and sets every channel to its starting volume. */
+/* @t4-pass 0x80257964 1 2026-09-26 compiles 16 best 15 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80257964 2 2026-09-26 compiles 17 best 15 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80257964 3 2026-09-26 compiles 16 best 15 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80257964 tgr BrMusicStart */
 void BrMusicStart(int param_1,int param_2)
 {
@@ -40,6 +43,9 @@ void BrMusicStart(int param_1,int param_2)
 /* WHAT IT DOES: Keep the music channels' samples looping: when a channel
  * runs past its sample's end it jumps back by the loop length, or stops if
  * the sample does not loop. */
+/* @t4-pass 0x80257C44 1 2026-09-26 compiles 17 best 73 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80257C44 2 2026-09-26 compiles 17 best 73 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80257C44 3 2026-09-26 compiles 17 best 73 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80257C44 tgr BrMusicLoopSamples */
 void BrMusicLoopSamples(void)
 {

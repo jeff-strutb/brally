@@ -26,6 +26,9 @@ void BrFramePoolsReset(void)
 
 /* WHAT IT DOES: Point the vertex pools for this frame buffer back at their
  * start. */
+/* @t4-pass 0x80233FDC 1 2026-09-26 compiles 17 best 21 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80233FDC 2 2026-09-26 compiles 16 best 21 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80233FDC 3 2026-09-26 compiles 15 best 21 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80233FDC tgr BrVtxPoolsReset */
 void BrVtxPoolsReset(void)
 {
@@ -37,6 +40,9 @@ void BrVtxPoolsReset(void)
 
 /* WHAT IT DOES: Hand out the next matrix slot of this frame's pool (256
  * slots); past the end it keeps returning the last one. */
+/* @t4-pass 0x80255CD0 1 2026-09-26 compiles 17 best 24 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80255CD0 2 2026-09-26 compiles 16 best 24 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80255CD0 3 2026-09-26 compiles 16 best 24 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80255CD0 tgr BrMtxAlloc */
 int BrMtxAlloc(void)
 {
@@ -53,6 +59,9 @@ int BrMtxAlloc(void)
 
 /* WHAT IT DOES: Hand out the next light slot of this frame's pool (20
  * slots); past the end it keeps returning the last one. */
+/* @t4-pass 0x80255D4C 1 2026-09-26 compiles 17 best 28 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80255D4C 2 2026-09-26 compiles 16 best 28 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80255D4C 3 2026-09-26 compiles 16 best 28 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80255D4C tgr BrLightAlloc */
 int BrLightAlloc(void)
 {
@@ -69,6 +78,9 @@ int BrLightAlloc(void)
 
 /* WHAT IT DOES: Hand out the next viewport slot of this frame's pool (20
  * slots); past the end it keeps returning the last one. */
+/* @t4-pass 0x80255DD8 1 2026-09-26 compiles 17 best 28 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80255DD8 2 2026-09-26 compiles 16 best 28 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80255DD8 3 2026-09-26 compiles 16 best 28 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80255DD8 tgr BrVpAlloc */
 int BrVpAlloc(void)
 {

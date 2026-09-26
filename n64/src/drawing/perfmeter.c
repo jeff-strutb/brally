@@ -10,6 +10,9 @@ extern int D_8028BDAC;
 
 /* WHAT IT DOES: Record a timing mark for the performance meter: the colour
  * for this bar segment and the CPU count since the frame began. */
+/* @t4-pass 0x8022D7E0 1 2026-09-26 compiles 16 best 45 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8022D7E0 2 2026-09-26 compiles 16 best 45 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8022D7E0 3 2026-09-26 compiles 17 best 45 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8022D7E0 tgr BrPerfMark */
 void BrPerfMark(int param_1,unsigned int param_2,unsigned int param_3,int param_4,int param_5)
 {

@@ -14,6 +14,9 @@ extern int D_8028AE24;
 /* WHAT IT DOES: Tell whether car n may be picked on the car-select screen:
  * it must be unlocked in the season record, the bonus cars (9 and up) only
  * when bonus cars are on, and its model must be present. */
+/* @t4-pass 0x8020C66C 1 2026-09-26 compiles 17 best 18 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8020C66C 2 2026-09-26 compiles 17 best 18 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8020C66C 3 2026-09-26 compiles 15 best 18 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8020C66C tgr BrCarSelectable */
 int BrCarSelectable(unsigned int param_1)
 {
@@ -30,6 +33,9 @@ int BrCarSelectable(unsigned int param_1)
 
 /* WHAT IT DOES: Tell whether car n has a model record loaded (its entry in
  * the car model table is non-zero). */
+/* @t4-pass 0x8021D6B8 1 2026-09-26 compiles 14 best 4 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021D6B8 2 2026-09-26 compiles 13 best 4 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021D6B8 3 2026-09-26 compiles 9 best 4 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8021D6B8 tgr BrCarModelPresent */
 int BrCarModelPresent(int param_1)
 {

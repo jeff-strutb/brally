@@ -16,6 +16,9 @@ void BrMat4Copy(int param_1,int param_2)
 
 /* WHAT IT DOES: Transform a point by a 4x4 matrix and divide by w: the
  * projected position. */
+/* @t4-pass 0x80224D00 1 2026-09-26 compiles 17 best 54 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80224D00 2 2026-09-26 compiles 17 best 54 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80224D00 3 2026-09-26 compiles 16 best 54 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80224D00 tgr BrMat4ProjectPoint */
 void BrMat4ProjectPoint(float *param_1,float *param_2,float *param_3)
 {
@@ -37,6 +40,9 @@ void BrMat4ProjectPoint(float *param_1,float *param_2,float *param_3)
 
 /* WHAT IT DOES: Transform a direction by the 3x3 rotation part of a 4x4
  * matrix (no translation). */
+/* @t4-pass 0x802250FC 1 2026-09-26 compiles 16 best 21 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802250FC 2 2026-09-26 compiles 17 best 18 moved 3  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802250FC 3 2026-09-26 compiles 16 best 18 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x802250FC tgr BrMat4RotateDir */
 void BrMat4RotateDir(float *param_1,float *param_2,float *param_3)
 {
@@ -44,16 +50,19 @@ void BrMat4RotateDir(float *param_1,float *param_2,float *param_3)
   float fVar2;
   float fVar3;
   
-  fVar1 = *param_2;
   fVar2 = param_2[1];
+  fVar1 = *param_2;
   fVar3 = param_2[2];
   *param_1 = param_3[8] * fVar3 + fVar1 * *param_3 + fVar2 * param_3[4];
   param_1[1] = param_3[9] * fVar3 + fVar1 * param_3[1] + fVar2 * param_3[5];
-  param_1[2] = param_3[10] * fVar3 + fVar1 * param_3[2] + fVar2 * param_3[6];
+  param_1[2] = fVar3 * param_3[10] + fVar1 * param_3[2] + fVar2 * param_3[6];
 }
 
 /* WHAT IT DOES: Multiply two 4x4 matrices into a third, through a temporary
  * so the output may be one of the inputs. */
+/* @t4-pass 0x80225180 1 2026-09-26 compiles 17 best 91 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80225180 2 2026-09-26 compiles 17 best 91 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80225180 3 2026-09-26 compiles 17 best 91 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80225180 tgr BrMat4Mul */
 void BrMat4Mul(float *param_1,float *param_2,float *param_3)
 {

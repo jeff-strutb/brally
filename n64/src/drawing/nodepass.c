@@ -22,6 +22,9 @@ void BrScenePassRun(void)
 /* WHAT IT DOES: Walk the scene tree, stamping each node not yet visited
  * before descending into it; in the modes that need it the pass also clears
  * one per-node byte. */
+/* @t4-pass 0x80255BA0 1 2026-09-26 compiles 17 best 36 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80255BA0 2 2026-09-26 compiles 16 best 36 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80255BA0 3 2026-09-26 compiles 15 best 36 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80255BA0 tgr BrNodeMarkPass */
 void BrNodeMarkPass(int *param_1)
 {
@@ -61,6 +64,9 @@ LAB_80255c24:
 
 /* WHAT IT DOES: Walk the scene tree taking off every visit stamp the
  * marking pass left, ready for the next walk. */
+/* @t4-pass 0x80255C50 1 2026-09-26 compiles 17 best 10 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80255C50 2 2026-09-26 compiles 16 best 10 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80255C50 3 2026-09-26 compiles 16 best 10 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80255C50 tgr BrNodeClearMarkPass */
 void BrNodeClearMarkPass(int *param_1)
 {

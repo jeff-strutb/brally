@@ -29,6 +29,9 @@ extern int D_8025CDBC;
 /* WHAT IT DOES: Find the face of a box most facing a direction and clip it
  * against the other box: picks the axis with the largest component, then
  * walks that face's corners. */
+/* @t4-pass 0x8025C8DC 1 2026-09-26 compiles 17 best 196 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8025C8DC 2 2026-09-26 compiles 17 best 196 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8025C8DC 3 2026-09-26 compiles 16 best 196 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8025C8DC tgr BrObbFaceClip */
 int BrObbFaceClip(int param_1,float *param_2,int param_3)
 {
@@ -130,6 +133,9 @@ int BrObbFaceClip(int param_1,float *param_2,int param_3)
 /* WHAT IT DOES: Tell whether a segment crosses a unit box: rejects it when
  * both ends lie beyond the same face, then tests the crossings on each
  * axis. */
+/* @t4-pass 0x8025CBF8 1 2026-09-26 compiles 17 best 127 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8025CBF8 2 2026-09-26 compiles 16 best 127 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8025CBF8 3 2026-09-26 compiles 17 best 127 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8025CBF8 tgr BrObbSegmentHits */
 int BrObbSegmentHits(float *param_1,float *param_2)
 {

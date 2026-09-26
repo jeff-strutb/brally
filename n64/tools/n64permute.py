@@ -8,15 +8,15 @@ Each iteration applies one or two random, meaning-preserving respellings to
 the function's body, recompiles its file with IDO and grades the function
 with the T4 gate.  The best spelling is kept as the next starting point.
 
-Respellings: swap the operands of a commutative operator; x op= y <-> x = x op y;
-swap two adjacent declarations; swap the two sides of == / !=; write an if
-with its branches the other way round.  None of them changes what the
+Respellings: swap the operands of a commutative operator (+ * == != & | ^);
+x op= y <-> x = x op y; swap two adjacent declarations; swap two adjacent
+assignments to plain variables that do not read or write each other's names.  None of them changes what the
 function does, so a spelling that grades EXACT is a match.
 
 --apply     write the best spelling back when it is EXACT
---ledger    append a counted `@t4-pass` line above the function (Gate B of
-            n64t3.py --qualify): the attempt count, the best diff count and
-            how far this pass moved it
+--ledger    keep the closest spelling found and append a counted `@t4-pass`
+            line above the function (Gate B of n64t3.py --qualify): the
+            attempt count, the best diff count and how far this pass moved it
 """
 import argparse
 import datetime
@@ -41,6 +41,13 @@ def mutate(body, rng):
     for m in re.finditer(r'(?<![\w\)\]])(%s)\s*(%s)\s*(%s)(?![\w\(\[])' % (OPERAND, COMM, OPERAND), body):
         if m.group(2) in ('&', '|') and (m.group(1).startswith('&') or m.group(3).startswith('&')):
             continue
+        # only a whole operation: with another arithmetic operator on either
+        # side, swapping would re-associate (a + b + c -> a + c + b), which
+        # changes float rounding
+        before = body[:m.start()].rstrip()[-1:]
+        after = body[m.end():].lstrip()[:1]
+        if before in '+-*/%&|^<>' and before or after in '+-*/%&|^<>' and after:
+            continue
         ops.append(('swap', m))
     for m in re.finditer(r'(\b[\w\.\->\[\]]+)\s*([+*&|^-])=\s*([^;]+);', body):
         ops.append(('expand', m))
@@ -52,6 +59,18 @@ def mutate(body, rng):
     for i in decl:
         if i + 1 in decl:
             ops.append(('decl', i))
+    # adjacent simple assignments that do not touch each other's names
+    simple = re.compile(r'^\s+([^;{}()=]+?)\s*=\s*([^;{}=]+);\s*$')
+    for i in range(len(lines) - 1):
+        m1, m2 = simple.match(lines[i]), simple.match(lines[i + 1])
+        if not (m1 and m2):
+            continue
+        n1 = set(re.findall(r'\w+', m1.group(1) + ' ' + m1.group(2)))
+        n2 = set(re.findall(r'\w+', m2.group(1) + ' ' + m2.group(2)))
+        w1, w2 = set(re.findall(r'\w+', m1.group(1))), set(re.findall(r'\w+', m2.group(1)))
+        if not (w1 & n2) and not (w2 & n1) and '*' not in m1.group(1) + m2.group(1) \
+                and '[' not in m1.group(1) + m2.group(1) and '->' not in m1.group(1) + m2.group(1):
+            ops.append(('stmt', i))
     if not ops:
         return None
     kind, m = rng.choice(ops)
@@ -61,7 +80,7 @@ def mutate(body, rng):
         return body[:m.start()] + '%s = %s %s %s;' % (m.group(1), m.group(1), m.group(2), m.group(3)) + body[m.end():]
     if kind == 'contract':
         return body[:m.start()] + '%s %s= %s;' % (m.group(1), m.group(2), m.group(3)) + body[m.end():]
-    if kind == 'decl':
+    if kind in ('decl', 'stmt'):
         lines[m], lines[m + 1] = lines[m + 1], lines[m]
         return '\n'.join(lines)
     return None
@@ -130,9 +149,11 @@ def main():
                 break
     print('%08X %s: start %s, best %s after %d compiles' % (va, name, start, best, compiles))
     out = src
-    if a.apply and best == 0 and best_body != body:
+    if best_body != body and (best == 0 and a.apply or a.ledger and best < start):
+        # every respelling preserves meaning, so a closer one is kept; the
+        # live oracle is re-run on the result before anything is certified
         out = out.replace(body, best_body)
-        print('  applied the byte-exact spelling')
+        print('  kept the %s spelling' % ('byte-exact' if best == 0 else 'closer'))
     if a.ledger:
         n = len(re.findall(r'@t4-pass\s+0x%08X' % va, out)) + 1
         line = '/* @t4-pass 0x%08X %d %s compiles %d best %d moved %d  (n64/tools/n64permute.py) */\n' % (

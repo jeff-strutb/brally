@@ -57,12 +57,15 @@ void BrPadRead(void)
 /* @implements 0x80255910 tgr BrPadConsume */
 void BrPadConsume(unsigned int *param_1,unsigned int param_2)
 {
-  param_1[1] = param_1[1] | *param_1 & param_2;
+  param_1[1] |= *param_1 & param_2;
   *param_1 = *param_1 & ~param_2;
 }
 
 /* WHAT IT DOES: Turn the raw button word into presses: a button counts as
  * pressed only on the frame it goes down. */
+/* @t4-pass 0x80255934 1 2026-09-26 compiles 14 best 8 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80255934 2 2026-09-26 compiles 12 best 8 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80255934 3 2026-09-26 compiles 12 best 8 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80255934 tgr BrPadEdges */
 void BrPadEdges(unsigned int *param_1)
 {
@@ -74,6 +77,9 @@ void BrPadEdges(unsigned int *param_1)
 }
 
 /* WHAT IT DOES: Reset a pad record and point it at its own controller data. */
+/* @t4-pass 0x80255B54 1 2026-09-26 compiles 16 best 12 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80255B54 2 2026-09-26 compiles 17 best 12 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80255B54 3 2026-09-26 compiles 15 best 12 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80255B54 tgr BrPadInit */
 void BrPadInit(int param_1)
 {

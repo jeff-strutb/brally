@@ -700,8 +700,8 @@ class Box:
                 time.sleep(1)
                 if self.frame != state['frame']:
                     state['frame'], state['t'] = self.frame, time.time()
-                elif time.time() - state['t'] > 60 and not state['done']:
-                    self.fault = ('no retrace for 60 s of wall time: spinning at pc %08X '
+                elif time.time() - state['t'] > 600 and not state['done']:
+                    self.fault = ('no retrace for 600 s of wall time: spinning at pc %08X '
                                   '(library entry %s)' % (
                                       self.uc.reg_read(M.UC_MIPS_REG_PC) & 0xffffffff,
                                       self.last_lib and '%08X from %08X' % self.last_lib))

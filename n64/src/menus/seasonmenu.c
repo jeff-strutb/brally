@@ -62,6 +62,9 @@ void BrLapsFewer(void)
 /* WHAT IT DOES: Move the season record on to its next round: past the last
  * race of a season it starts the next season from round one, and the points
  * for the new round start at zero. */
+/* @t4-pass 0x802089D0 1 2026-09-26 compiles 17 best 36 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802089D0 2 2026-09-26 compiles 17 best 36 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802089D0 3 2026-09-26 compiles 15 best 36 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x802089D0 tgr BrSeasonAdvanceRound */
 void BrSeasonAdvanceRound(void)
 {
@@ -92,6 +95,9 @@ LAB_802089f0:
 
 /* WHAT IT DOES: Set the number of laps and the difficulty from the current
  * lap-count and difficulty table entries. */
+/* @t4-pass 0x802118B4 1 2026-09-26 compiles 14 best 11 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802118B4 2 2026-09-26 compiles 14 best 11 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802118B4 3 2026-09-26 compiles 12 best 11 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x802118B4 tgr BrLapsApply */
 void BrLapsApply(void)
 {
@@ -103,6 +109,9 @@ void BrLapsApply(void)
  * lap-count hint in Arcade, and in a Championship how many points are still
  * needed to advance (or that the player already has enough), with the
  * points table. */
+/* @t4-pass 0x80208A58 1 2026-09-26 compiles 17 best 84 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80208A58 2 2026-09-26 compiles 17 best 84 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80208A58 3 2026-09-26 compiles 17 best 84 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80208A58 tgr BrSeasonDrawHelp */
 void BrSeasonDrawHelp(int param_1)
 {

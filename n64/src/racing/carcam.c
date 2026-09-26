@@ -33,6 +33,9 @@ void BrStub8022BA98(int arg0)
 
 /* WHAT IT DOES: Add to the camera shake for view n: at most 2.5 per call,
  * and the total never goes above 5. */
+/* @t4-pass 0x8021BE28 1 2026-09-26 compiles 17 best 35 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021BE28 2 2026-09-26 compiles 17 best 35 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021BE28 3 2026-09-26 compiles 15 best 35 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8021BE28 tgr BrCamShakeAdd */
 void BrCamShakeAdd(int param_1,float param_2)
 {

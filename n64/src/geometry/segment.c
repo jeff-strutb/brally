@@ -9,6 +9,10 @@
 /* WHAT IT DOES: Tell whether two line segments overlap on the ground plane:
  * a bounding-box rejection on x and y, then a side-of-line test of each
  * segment's ends against the other. */
+/* @t4-pass 0x80225B64 1 2026-09-26 compiles 16 best 174 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80225B64 2 2026-09-26 compiles 17 best 174 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80225B64 3 2026-09-26 compiles 17 best 173 moved 1  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80225B64 4 2026-09-26 compiles 41 best 173 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80225B64 tgr BrSegmentsOverlapXY */
 int BrSegmentsOverlapXY(float *param_1,float *param_2,float *param_3,float *param_4)
 {
@@ -58,8 +62,8 @@ int BrSegmentsOverlapXY(float *param_1,float *param_2,float *param_3,float *para
       if (fVar10 <= fVar11) {
         fVar5 = fVar11;
       }
-      fVar8 = param_4[1];
       fVar9 = param_3[1];
+      fVar8 = param_4[1];
       fVar7 = fVar9;
       if (fVar8 <= fVar9) {
         fVar7 = fVar8;

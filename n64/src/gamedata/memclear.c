@@ -12,6 +12,9 @@ extern int D_8028B838;
 /* WHAT IT DOES: Zero every memory block in the game's clear list (a
  * null-terminated list of address and length pairs), used when a race
  * starts. */
+/* @t4-pass 0x80225F30 1 2026-09-26 compiles 17 best 23 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80225F30 2 2026-09-26 compiles 17 best 23 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80225F30 3 2026-09-26 compiles 17 best 23 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80225F30 tgr BrClearList */
 void BrClearList(void)
 {
