@@ -1063,6 +1063,7 @@ glide_va,name,module,basis,file
 0x1005A780,BrNodeRunMarkPass,drawing,neighbour-1,src/core/drawing/br_nodepass.c
 0x1005A7A0,BrCarPhysStep,driving,filed,src/core/driving/br_carphys.c
 0x1005AC60,BrCarBuildMatrices,racing,description,src/core/racing/br_carinit.c
+0x1005ACE0,BrCarWheelSteerStep_1005ACE0,driving,filed,src/core/driving/br_carwheelsteer.c
 0x1005C440,BrThunk5C440,racing,neighbour-1,src/core/racing/br_thunks.c
 0x1005C450,BrZeroRegions,gamedata,manual,src/core/gamedata/br_zeroregions.c
 0x1005C560,BrRaceCarReset,racing,assigned,src/core/generated/0x1005C560.c
@@ -1264,6 +1265,7 @@ glide_va,name,module,basis,file
 0x1006D4B0,BrVec3Normalise,geometry,filed,src/core/geometry/br_vecnorm.c
 0x1006D530,BrRbQuatDerivative,driving,manual,src/core/driving/br_rbinteg.c
 0x1006D600,BrCpIntegrateVelocity,driving,manual,src/core/driving/br_carphys.c
+0x1006D850,BrRbIntegrateState,driving,manual,src/core/driving/BrRbIntegrateState_1006D850.cpp
 0x1006D940,BrX100746E0,geometry,filed,src/core/geometry/br_x100746.c
 0x1006D980,BrMat4MulVec3,geometry,filed,src/core/geometry/br_mat.c
 0x1006D9D0,BrMat4MulVec3Transposed,geometry,filed,src/core/geometry/br_mat.c
