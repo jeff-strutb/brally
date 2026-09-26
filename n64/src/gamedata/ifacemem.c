@@ -4,6 +4,13 @@
 
 /* -- declarations -- */
 extern int D_80369B70;
+unsigned int func_8024296C(int param_1);
+void func_80242B10(int *param_1);
+void func_802607DC();
+extern int D_80272500;
+extern int D_8028D0B0;
+extern int D_8028D0E0;
+extern int D_8028DB80;
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Empty the interface memory pool: the next allocation starts
@@ -28,4 +35,27 @@ int BrIfaceMemMark(void)
 void BrIfaceMemRelease(int param_1)
 {
   D_80369B70 = param_1;
+}
+
+/* WHAT IT DOES: Set aside memory for the paint shop: its two car-texture
+ * buffers and a 14,848-byte data buffer, all from the interface memory
+ * pool. */
+/* @implements 0x80214A3C tgr BrPaintShopMemInit */
+void BrPaintShopMemInit(void)
+{
+  func_80242B10(&D_8028D0B0);
+  func_80242B10(&D_8028D0E0);
+  func_802607DC("Allocating %d bytes for data_buf...\n",0x3a00);
+  D_80272500 = func_8024296C(0x3a00);
+}
+
+/* WHAT IT DOES: Set aside the 2 KB decal buffer from the interface memory
+ * pool, then the paint shop's two car-texture buffers. */
+/* @implements 0x80248F38 tgr BrDecalMemInit */
+void BrDecalMemInit(void)
+{
+  func_802607DC("\nAllocating %d bytes for decal buffer...\n\n",0x800);
+  D_8028DB80 = func_8024296C(0x800);
+  func_80242B10(&D_8028D0B0);
+  func_80242B10(&D_8028D0E0);
 }
