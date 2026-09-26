@@ -16,24 +16,14 @@
  * through the vtable with the interface as the first stack argument --
  * which is why only the outer function is a thiscall method.
  *
- * PARKED at 103 diffs, ALL displacement shift from ONE cross-jump. The
- * first two error blocks are byte-identical instruction sequences (they
- * differ only in the pushed line number and the call displacement), and
- * our cl tail-merges them: `jge +7 / push 0xAC / jmp` into the second
- * block's `call BrDInputErrLine`, saving 21 bytes. The original keeps
- * three separate copies. Everything else -- all three COM calls, the
- * argument orders, the hWnd reloads from [esp+0x10] in blocks 1 and 2 and
- * the cached edi in block 3, both returns -- is byte-identical.
- * DO NOT RE-PROBE -- unchanged by: three separate `hr` locals, and flags
- * /O2 /Gy, /Gf, /Op, /Oy, /Ox /Ob0 /Gy, /Ot, /Ob0, /Og /Oi /Ot /Oy /Ob1
- * (all 103). The nested `if (hr >= 0) { ... }` form un-merges but moves
- * the success return inline and reorders the error blocks (192 B, 118) --
- * the original's layout is the flat early-return one kept here.
- *
- * Third emitter-level residue of this session (with the SIB and memset
- * entries in docs/VC5-IDIOMS.md). Unlike those two this one is a whole
- * optimisation our cl performs and the original's did not, so it is the
- * strongest of the three as evidence for the compiler patch-level lead.
+ * The second error block calls BrDInputReportTwin, a separately named twin
+ * of BrDInputReport that the linker folded onto 0x100590A0.  The first two
+ * error blocks are the same instructions apart from the pushed line number.
+ * VC5's tail merge compares call targets by symbol, so with one name for
+ * both it cross-jumps block 1 into block 2 (153 B).  The original keeps
+ * three separate copies (181 B), which needs a second callee symbol.  The
+ * same lever is used at 0x10009010.  The twin's real name cannot be
+ * recovered.
  */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
@@ -81,6 +71,9 @@ char g_DeviceGuid[16];          /* 0x10078708 */
 char g_DataFormat[24];          /* 0x10072AC0 */
 char *BrDInputErrLine(int line);                    /* 0x1006D280 */
 void  BrDInputReport(void *hWnd, int hr, char *s);  /* 0x100590A0 */
+/* A separately named twin of BrDInputReport whose identical body the linker
+ * folded onto 0x100590A0 (see the header note). */
+void  BrDInputReportTwin(void *hWnd, int hr, char *s); /* 0x100590A0 */
 }
 
 int Input59350::CreateDevice(void *hWnd)
@@ -95,7 +88,7 @@ int Input59350::CreateDevice(void *hWnd)
 
     hr = pDev->lpVtbl->SetDataFormat(pDev, g_DataFormat);
     if (hr < 0) {
-        BrDInputReport(hWnd, hr, BrDInputErrLine(0xAD));
+        BrDInputReportTwin(hWnd, hr, BrDInputErrLine(0xAD));
         return 0;
     }
 
