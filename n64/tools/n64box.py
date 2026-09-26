@@ -84,7 +84,7 @@ class Thread:
 
 
 class Box:
-    def __init__(self, rom_path=ROM_PATH, script=None, image=None, quiet=True):
+    def __init__(self, rom_path=ROM_PATH, script=None, image=None, quiet=True, extra=()):
         self.rom = open(rom_path, 'rb').read()
         # The VR4300 is an R4000-family 64-bit CPU: the game's own assembly
         # uses 64-bit loads and stores, and libultra's long-long helpers use
@@ -96,6 +96,9 @@ class Box:
         # IPL3 copies the first megabyte after the header to the entry point
         body = image if image is not None else self.rom[0x1000:0x101000]
         self.uc.mem_write(ENTRY & 0x1FFFFFFF, body)
+        for va, blob in extra:                  # bodies placed in the annex
+            self.uc.mem_write(va & 0x1FFFFFFF, blob)
+
         self.w32(0x80000300, 1)                 # osTvType: NTSC
         self.w32(0x80000318, 0x400000)          # osMemSize: 4 MB, no Expansion Pak
         self.quiet = quiet
@@ -294,12 +297,33 @@ class Box:
         self.post_event(EV_VI)
         return True
 
+    # Thread stacks: top (the sp osCreateThread gets) -> bottom.  Below a
+    # thread's current sp is dead space; a body that keeps its temporaries in
+    # registers instead of the stack leaves different garbage there without
+    # behaving differently, so the digest does not look at it.  Bottoms are
+    # from the idle thread's stack-fill loops where it has them (main, SP and
+    # DP event threads), otherwise the end of the thread's own OSThread.
+    STACKS = {0x80316CD0: 0x803168D0,       # idle (boot stack top below it)
+              0x80318CD0: 0x80316CD0,       # main game thread, filled 8 KB
+              0x803196D0: 0x80318ED0,       # SP event thread, filled 2 KB
+              0x80319ED0: 0x803196D0,       # DP event thread, filled 2 KB
+              0x8031B1B0: 0x8031ADB0,       # fault thread
+              0x80379568: 0x80379168}       # audio thread
+
     def ram_digest(self):
-        # game data and bss, not the thread stacks' dead space
-        h = hashlib.sha1()
-        h.update(self.read(0x8026FAB0, 0x802AC400 - 0x8026FAB0))
-        h.update(self.read(0x802AC400, 0xD67B0))
-        return h.hexdigest()[:16]
+        lo, hi = 0x8026FAB0, 0x802AC400 + 0xD67B0
+        ram = bytearray(self.read(lo, hi - lo))
+        cur_sp = {}
+        for t in self.threads.values():
+            sp = (self.reg('sp') if t is self.cur else t.regs['gpr'][REG['sp']]) & 0xffffffff
+            cur_sp[t] = sp
+        for t, sp in cur_sp.items():
+            for top, bottom in self.STACKS.items():
+                if bottom <= sp <= top:
+                    a, b = max(bottom, lo) - lo, min(sp, hi) - lo
+                    if a < b:
+                        ram[a:b] = bytes(b - a)
+        return hashlib.sha1(bytes(ram)).hexdigest()[:16]
 
     # ---------------------------------------------------------------- HLE
     def install_hle(self):
@@ -658,27 +682,46 @@ class Box:
         self.uc.reg_write(GPR[REG['sp']], sx(0x803168D0))
 
     def run(self, frames, max_insns=0):
+        """Run until `frames` retraces.  The CPU is only ever stopped from
+        inside a model (a known-safe point).  A stop at an arbitrary
+        instruction -- Unicorn's own timeout -- can land in a branch delay
+        slot, and resuming from there corrupts the branch, so a watchdog
+        thread ends a stuck run for good instead of pausing it."""
+        import threading
+        import time
         self.frames_wanted = frames
         pc = self.uc.reg_read(M.UC_MIPS_REG_PC)
         if pc == 0:
             self.boot()
-            pc = ENTRY
-        while not self.stop_reason and not self.fault:
-            frame0 = self.frame
-            try:
-                # a slice of wall time; a slice in which no retrace happens
-                # means some code is spinning on something the box never does
-                self.uc.emu_start(self.uc.reg_read(M.UC_MIPS_REG_PC), sx(0xFFFFFFFC),
-                                  timeout=0 if max_insns else 30 * 1000000, count=max_insns)
-            except UcError as e:
-                if not self.fault and not self.stop_reason:
-                    self.fault = 'unicorn: %s at pc %08X' % (e, self.uc.reg_read(M.UC_MIPS_REG_PC) & 0xffffffff)
-            if max_insns:
-                break
-            if not self.fault and not self.stop_reason and self.frame == frame0:
-                self.fault = 'no progress for 30 s of wall time: spinning at pc %08X (library entry %s)' % (
-                    self.uc.reg_read(M.UC_MIPS_REG_PC) & 0xffffffff,
-                    self.last_lib and '%08X from %08X' % self.last_lib)
+        state = dict(frame=self.frame, t=time.time(), done=False)
+
+        def watchdog():
+            while not state['done']:
+                time.sleep(1)
+                if self.frame != state['frame']:
+                    state['frame'], state['t'] = self.frame, time.time()
+                elif time.time() - state['t'] > 60 and not state['done']:
+                    self.fault = ('no retrace for 60 s of wall time: spinning at pc %08X '
+                                  '(library entry %s)' % (
+                                      self.uc.reg_read(M.UC_MIPS_REG_PC) & 0xffffffff,
+                                      self.last_lib and '%08X from %08X' % self.last_lib))
+                    self.uc.emu_stop()
+                    return
+        if not max_insns:
+            threading.Thread(target=watchdog, daemon=True).start()
+        try:
+            while not self.stop_reason and not self.fault:
+                try:
+                    self.uc.emu_start(self.uc.reg_read(M.UC_MIPS_REG_PC), sx(0xFFFFFFFC),
+                                      count=max_insns)
+                except UcError as e:
+                    if not self.fault and not self.stop_reason:
+                        self.fault = 'unicorn: %s at pc %08X' % (
+                            e, self.uc.reg_read(M.UC_MIPS_REG_PC) & 0xffffffff)
+                if max_insns:
+                    break
+        finally:
+            state['done'] = True
         return self.fault or self.stop_reason
 
 

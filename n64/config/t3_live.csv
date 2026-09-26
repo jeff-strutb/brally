@@ -1,0 +1,5 @@
+va,verdict,compared,divergent,blocked,src,date,scripts,first
+8022439C,EQUIVALENT,600,0,0,9d3294817c7a,2026-09-26,attract.txt:600,
+802245F0,EQUIVALENT,151,0,0,5219933d6ddf,2026-09-26,attract.txt:151,
+802246BC,UNCOVERED,0,0,0,57802bd95ee9,2026-09-26,attract.txt:0,
+80224760,EQUIVALENT,177,0,0,c191a83feecb,2026-09-26,attract.txt:177,
