@@ -706,6 +706,29 @@ def classify(miss, extra, obag=None, rbag=None):
             while side[row] and other['push R'] and opp_single['mov R, ' + k]:
                 side[row] -= 1; other['push R'] -= 1; opp_single['mov R, ' + k] -= 1
     um += collections.Counter(); ue += collections.Counter()
+    # Promoted-zero store: `mov [m], R` with R zeroed by its own `xor R, R`
+    # against `mov [m], 0` -- the same zero reaches the same memory; whether
+    # VC5 promotes the constant into a register (and into which web) is
+    # allocation.  (2026-09-26, 0x10037C90 BrSub1003E680: the original holds
+    # the three float zeros in a SECOND zero register, `xor ecx, ecx`, beside
+    # the ebx zero web; micro-tests put every 4-byte zero spelling -- 23
+    # constant forms, 14 source shapes -- into ONE web, so no spelling
+    # reaches the second xor.)  Symmetric evidence, or it does not fire: the
+    # register side must carry an unpaired `xor R, R` singleton for the web
+    # (consumed once), and the other side the matching immediate-zero store
+    # of the same width and address form.
+    for side, other, own_single in ((um, ue, sm), (ue, um, se)):
+        if not own_single['xor R, R']:
+            continue
+        fired = False
+        for row in [r for r in side if re.fullmatch(r'mov (dword|word|byte) ptr \[[^\]]+\], [RB]', r)]:
+            imm = row[:row.rindex(', ')] + ', 0'
+            n = min(side[row], other[imm])
+            if n:
+                side[row] -= n; other[imm] -= n; fired = True
+        if fired:
+            own_single['xor R, R'] -= 1
+    um += collections.Counter(); ue += collections.Counter()
     # Callee-save fork: a BALANCED extra `push R` / `pop R` on one side and
     # nothing opposite is one more register saved across the body -- the
     # definition of an allocation difference, and the prologue/epilogue half of
