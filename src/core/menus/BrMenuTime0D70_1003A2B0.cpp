@@ -2,9 +2,11 @@
  * row (minutes:seconds.hundredths), or dashes when times are not available
  * yet or the time is not above zero. */
 /* @t3 0x1003A2B0 2026-09-26 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 360/360 insns 120/120 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-measure bytes 360/360 insns 120/120 rows 0+0 regions 1 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 1 2
- * Residue: stage-lookup register rotation only (see below). */
+ * Residue: register colouring of the stage-byte lookup only (bias, stage*3
+ * and index rotate across eax/ecx/edx); dossier and dead list in the header
+ * below.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1003A2B0 glide BrMenuTime0D70_1003A2B0
  * @cpp_kind free
  * @cpp_symbol ?BrMenuTime0D70_1003A2B0@@YAHPAVObj3A2B0@@@Z
