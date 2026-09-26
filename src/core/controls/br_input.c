@@ -486,8 +486,6 @@ extern void BrSub10002830(void);
  * sends the game arrives here and is routed: input, focus changes, painting,
  * close. Gives a registered hook first refusal on each message before
  * handling it. */
-/* @t4-pass 0x100194C0 1 2026-09-07 probes 73 bytes 440 insns 174 regions 2 rows 12 census yes  (tools/crank.py) */
-/* @t4-pass 0x100194C0 2 2026-09-07 probes 73 bytes 440 insns 174 regions 2 rows 12 census yes  (tools/crank.py) */
 /* @implements 0x100194C0 glide BrWndProc */
 BrWndResult __stdcall BrWndProc(void *hWnd, uint32_t uMsg, BrWParam wParam, BrLParam lParam)
 {
@@ -522,11 +520,11 @@ BrWndResult __stdcall BrWndProc(void *hWnd, uint32_t uMsg, BrWParam wParam, BrLP
         }
     }
 
-    /* 2026-09-24: case order and exits as the original lays them out --
-     * WM_ACTIVATE returns through its OWN DefWindowProcA call, WM_DESTROY
-     * and a non-EAR 0x3B9 break to the shared one.  RESIDUE 1 byte: VC5
-     * pushes the known constant 6 for uMsg in the WM_ACTIVATE call where
-     * the original pushes the register (esi). */
+    /* Case order and exits as the original lays them out.  WM_ACTIVATE
+     * BREAKS to the shared DefWindowProcA call like WM_DESTROY and a
+     * non-EAR 0x3B9: VC5 tail-duplicates that call for it AFTER constant
+     * propagation, so the copy pushes uMsg's register, as the original's
+     * does.  Returning DefWindowProcA from the case pushes the constant 6. */
     switch (uMsg) {
     case 1:
         g_brhWnd = hWnd;
@@ -553,7 +551,7 @@ BrWndResult __stdcall BrWndProc(void *hWnd, uint32_t uMsg, BrWParam wParam, BrLP
         break;
     case 6:
         BrOnActivate(wParam);
-        return DefWindowProcA(hWnd, uMsg, (uint32_t)wParam, (int32_t)lParam);
+        break;
     }
 defwnd:
     return DefWindowProcA(hWnd, uMsg, (uint32_t)wParam, (int32_t)lParam);
