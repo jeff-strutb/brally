@@ -702,6 +702,7 @@ glide_va,name,module,basis,file
 0x1003A000,BrMenuText0AC0,menus,neighbour,src/core/menus/br_menucb.c
 0x1003A070,BrMenuText0B30,menus,neighbour,src/core/menus/br_menucb.c
 0x1003A140,BrItemSetSplitTime_1003A140,menus,neighbour,src/core/menus/BrItemSetSplitTime_1003A140.cpp
+0x1003A2B0,BrMenuTime0D70_1003A2B0,menus,filed,src/core/menus/BrMenuTime0D70_1003A2B0.cpp
 0x1003A420,BrItemSetSelTime_1003A420,menus,neighbour,src/core/menus/BrItemSetSelTime_1003A420.cpp
 0x1003A580,BrItemSetLapTime_1003A580,menus,neighbour,src/core/menus/BrItemSetLapTime_1003A580.cpp
 0x1003A6D0,BrItemSetBestTime_1003A6D0,menus,neighbour,src/core/menus/BrItemSetBestTime_1003A6D0.cpp
