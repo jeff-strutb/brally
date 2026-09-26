@@ -983,7 +983,14 @@ int32_t BrExt_10041A00(void *pArg)
  * compiler, TU headers/padding.  Micro-measured VC5 rule: 0 is promoted to a
  * caller-saved reg at >=2 zero STORES in a call-free region, to a
  * callee-saved one at >=4 spanning a call; compares do not count and float
- * 0.0f stores never promote.  No 4-byte store type makes a second web. */
+ * 0.0f stores never promote.  No 4-byte store type makes a second web.
+ * DEAD 2026-09-26 (26 more + micro-tests): volatile float/int/unsigned/long
+ * globals, copies from the first float (fb = fa), chained fa = fb = fc,
+ * static const float/int zeros, pointer stores.  Micro-tests: 23 constant
+ * spellings and 14 source shapes all join ONE zero web; only a union or a
+ * static const array yields extra registers, and those are copies/loads, not
+ * an xor.  A3 now pairs the reg-zero stores with the immediate (t3.py
+ * promoted-zero rule), so this is a T3 candidate once refiled. */
 extern float DAT_10ac40f8, DAT_10ac40fc, DAT_10ac5c20;
 extern int DAT_100abde8, DAT_10ac5d58, DAT_10ac5d5c, DAT_10ac5d60;
 extern int DAT_100abdec, DAT_100abdf0, DAT_100abdf4, DAT_100abdf8;
