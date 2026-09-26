@@ -355,6 +355,129 @@ float BrFloat12MaxAbs(const float *pv)
     return high;
 }
 
+/* Defined in slice2_17.c; BrMat4RotateAxis builds its frame with it. */
+void BrMat4LookAt(BrMat4 *pM,
+                  float xEye, float yEye, float zEye,
+                  float xAt,  float yAt,  float zAt,
+                  float xUp,  float yUp,  float zUp);
+#ifndef BR_DEG_TO_RAD
+#define BR_DEG_TO_RAD      0.017453292519943295
+#endif
+
+/* The three degenerate tests are `fcomp v, 0.0` reading C3 only, so an
+ * unordered compare (NaN) also counts as "equal to zero". */
+static int s17_is_zero_or_nan(float v)
+{
+    return !(v < 0.0f) && !(v > 0.0f);
+}
+
+static void s17_identity(BrMat4 *pM)
+{
+    int i, j;
+
+    for (i = 0; i < 4; ++i)
+        for (j = 0; j < 4; ++j)
+            pM->m[i][j] = (i == j) ? 1.0f : 0.0f;
+}
+
+/* 0x10030EE0 */
+/* WHAT IT DOES: builds the transform that turns things a given number of
+ * degrees about any axis you name. It does it by building a frame of reference
+ * around the axis, spinning flat inside that frame, and then undoing the frame.
+ * An axis of zero length -- or one containing a not-a-number -- yields the
+ * do-nothing transform instead. */
+/* @implements 0x10030EE0 d3d BrMat4RotateAxis */
+#ifdef BR_MATCHING_BUILD
+/* The original inlines both port helpers: the zero test is `x == 0.0`
+ * against a DOUBLE zero (fcomp qword + test ah,0x40 -- C3, which an
+ * unordered compare also sets, so a NaN component counts as zero exactly as
+ * s17_is_zero_or_nan says), and the identity is sixteen explicit stores. */
+void BrMat4RotateAxis(BrMat4 *pM, float degrees, float x, float y, float z)
+{
+    BrMat4 basis, basisT, rot;
+    double ang;
+    float c, s;
+    int i, j;
+
+    if (x == 0.0 && y == 0.0 && z == 0.0) {
+        pM->m[0][0] = 1.0f; pM->m[0][1] = 0.0f; pM->m[0][2] = 0.0f; pM->m[0][3] = 0.0f;
+        pM->m[1][0] = 0.0f; pM->m[1][1] = 1.0f; pM->m[1][2] = 0.0f; pM->m[1][3] = 0.0f;
+        pM->m[2][0] = 0.0f; pM->m[2][1] = 0.0f; pM->m[2][2] = 1.0f; pM->m[2][3] = 0.0f;
+        pM->m[3][0] = 0.0f; pM->m[3][1] = 0.0f; pM->m[3][2] = 0.0f; pM->m[3][3] = 1.0f;
+        return;
+    }
+
+    /* up = (y, z, x): a cyclic shift of the axis, not a fixed world up. */
+    BrMat4LookAt(&basis, x, y, z, 0.0f, 0.0f, 0.0f, y, z, x);
+
+    basis.m[0][3] = 0.0f;
+    basis.m[1][3] = 0.0f;
+    basis.m[2][3] = 0.0f;
+    basis.m[3][0] = 0.0f;
+    basis.m[3][1] = 0.0f;
+    basis.m[3][2] = 0.0f;
+    basis.m[3][3] = 1.0f;
+
+    for (i = 0; i < 4; ++i)
+        for (j = 0; j < 4; ++j)
+            basisT.m[i][j] = basis.m[j][i];
+
+    ang = (double)degrees * BR_DEG_TO_RAD;
+    s = (float)sin(ang);
+    c = (float)cos(ang);
+
+    rot.m[0][0] =  c;    rot.m[0][1] = s;    rot.m[0][2] = 0.0f; rot.m[0][3] = 0.0f;
+    rot.m[1][0] = -s;    rot.m[1][1] = c;    rot.m[1][2] = 0.0f; rot.m[1][3] = 0.0f;
+    rot.m[2][0] = 0.0f;  rot.m[2][1] = 0.0f; rot.m[2][2] = 1.0f; rot.m[2][3] = 0.0f;
+    rot.m[3][0] = 0.0f;  rot.m[3][1] = 0.0f; rot.m[3][2] = 0.0f; rot.m[3][3] = 1.0f;
+
+    BrMat4Mul(&basis, &rot, pM);
+    BrMat4Mul(pM, &basisT, pM);     /* aliased -- BrMat4Mul handles it */
+}
+#else
+void BrMat4RotateAxis(BrMat4 *pM, float degrees, float x, float y, float z)
+{
+    BrMat4 basis, basisT, rot;
+    double ang;
+    float c, s;
+    int i, j;
+
+    if (s17_is_zero_or_nan(x) && s17_is_zero_or_nan(y) && s17_is_zero_or_nan(z)) {
+        s17_identity(pM);
+        return;
+    }
+
+    /* up = (y, z, x): a cyclic shift of the axis, not a fixed world up. */
+    BrMat4LookAt(&basis, x, y, z, 0.0f, 0.0f, 0.0f, y, z, x);
+
+    /* Drop the translation row and the fourth column that BrMat4LookAt
+     * filled in, leaving a pure rotation. */
+    basis.m[0][3] = 0.0f;
+    basis.m[1][3] = 0.0f;
+    basis.m[2][3] = 0.0f;
+    basis.m[3][0] = 0.0f;
+    basis.m[3][1] = 0.0f;
+    basis.m[3][2] = 0.0f;
+    basis.m[3][3] = 1.0f;
+
+    for (i = 0; i < 4; ++i)
+        for (j = 0; j < 4; ++j)
+            basisT.m[i][j] = basis.m[j][i];
+
+    ang = (double)degrees * BR_DEG_TO_RAD;
+    s = (float)sin(ang);
+    c = (float)cos(ang);
+
+    rot.m[0][0] =  c;    rot.m[0][1] = s;    rot.m[0][2] = 0.0f; rot.m[0][3] = 0.0f;
+    rot.m[1][0] = -s;    rot.m[1][1] = c;    rot.m[1][2] = 0.0f; rot.m[1][3] = 0.0f;
+    rot.m[2][0] = 0.0f;  rot.m[2][1] = 0.0f; rot.m[2][2] = 1.0f; rot.m[2][3] = 0.0f;
+    rot.m[3][0] = 0.0f;  rot.m[3][1] = 0.0f; rot.m[3][2] = 0.0f; rot.m[3][3] = 1.0f;
+
+    BrMat4Mul(&basis, &rot, pM);
+    BrMat4Mul(pM, &basisT, pM);     /* aliased -- BrMat4Mul handles it */
+}
+#endif
+
 /* 0x100310F0 -- the original moves sy and sz as integers (plain `mov`, since
  * copying a float bit pattern needs no FPU) and only sx goes through
  * fld/fstp. Semantically identical. */
