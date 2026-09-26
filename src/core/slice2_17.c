@@ -335,6 +335,53 @@ static int32_t s17_ftol(double v)
  * camera. The first pair is measured against a fixed scale and the second
  * against one the caller supplies. */
 /* @implements 0x10030B50 d3d BrLightDirsAndAngles */
+#ifdef BR_MATCHING_BUILD
+/* The original inlines every port helper: the packs, the three column dots
+ * (as macros, in the original's term orders), atan2 as fpatan and __ftol as
+ * a cast.  ONE vector local serves both directions -- the second direction
+ * reloads the same frame slots.
+ * RESIDUE (259 B, 621/645): the frame.  The original's is 0x30 with the
+ * vector at +0 and the t spill at +0x20; ours is 0x20 with t at +0.
+ * Declaration order, names (400 sets), block scope, a second t and unused
+ * extra locals are all inert. */
+#define L_ZYX(c, v) ((double)pM->m[2][c] * (v).z + (double)pM->m[1][c] * (v).y + (double)pM->m[0][c] * (v).x)
+#define L_ZXY(c, v) ((double)pM->m[2][c] * (v).z + (double)pM->m[0][c] * (v).x + (double)pM->m[1][c] * (v).y)
+#define L_YZX(c, v) ((double)pM->m[1][c] * (v).y + (double)pM->m[2][c] * (v).z + (double)pM->m[0][c] * (v).x)
+void BrLightDirsAndAngles(BrMat4 *pM, BrLightPair *pLights,
+                          BrSkyAngles *pAngles,
+                          float xEye, float yEye, float zEye,
+                          float xAt,  float yAt,  float zAt,
+                          float xUp,  float yUp,  float zUp,
+                          float xA, float yA, float zA,
+                          float xB, float yB, float zB,
+                          int nS1, int nT1)
+{
+    BrVec3d v;
+    double t;
+
+    BrMat4LookAt(pM, xEye, yEye, zEye, xAt, yAt, zAt, xUp, yUp, zUp);
+    pLights->dir0[0] = BrPackNormalByte((double)pM->m[0][0]);
+    pLights->dir0[1] = BrPackNormalByte((double)pM->m[1][0]);
+    pLights->dir0[2] = BrPackNormalByte((double)pM->m[2][0]);
+    pLights->dir1[0] = BrPackNormalByte((double)pM->m[0][1]);
+    pLights->dir1[1] = BrPackNormalByte((double)pM->m[1][1]);
+    pLights->dir1[2] = BrPackNormalByte((double)pM->m[2][1]);
+
+    v.x = (double)xA; v.y = (double)yA; v.z = (double)zA;
+    BrVec3dNormalise(&v);
+    t = L_ZXY(1, v);
+    pAngles->s0 = 0x100 - (int32_t)(atan2(L_ZYX(0, v), L_YZX(2, v)) * BR_ANG_K256);
+    pAngles->t0 = 0x100 - (int32_t)(asin(t) * BR_ANG_K256);
+
+    v.x = (double)xB; v.y = (double)yB; v.z = (double)zB;
+    BrVec3dNormalise(&v);
+    t = L_ZXY(1, v);
+    pAngles->s1 = nS1 * 4
+        - (int32_t)(atan2(L_ZYX(0, v), L_YZX(2, v)) * (double)(nS1 * 4) * BR_ANG_K1);
+    pAngles->t1 = nT1 * 4
+        - (int32_t)(asin(t) * (double)(nT1 * 4) * BR_ANG_K1);
+}
+#else
 void BrLightDirsAndAngles(BrMat4 *pM, BrLightPair *pLights,
                           BrSkyAngles *pAngles,
                           float xEye, float yEye, float zEye,
@@ -375,6 +422,7 @@ void BrLightDirsAndAngles(BrMat4 *pM, BrLightPair *pLights,
     pAngles->t1 = nT1 * 4
         - s17_ftol(asin(t) * (double)(nT1 * 4) * BR_ANG_K1);
 }
+#endif
 
 /* BrMat4RotateAxis (0x1002A590) is in src/core/geometry/br_mat.c. */
 
