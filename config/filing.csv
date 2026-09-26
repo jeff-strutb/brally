@@ -1245,6 +1245,7 @@ glide_va,name,module,basis,file
 0x1006D1A0,BrStrResLoad,gamedata,filed,src/core/gamedata/br_strres.c
 0x1006D280,BrStrGet,menus,description,src/core/menus/br_strget.c
 0x1006D2A0,BrStrResFree,gamedata,filed,src/core/gamedata/br_strres.c
+0x1006D2E0,BrQuatMul,geometry,filed,src/core/geometry/br_vecnorm.c
 0x1006D410,BrVec4Normalise,geometry,filed,src/core/geometry/br_vecnorm.c
 0x1006D4B0,BrVec3Normalise,geometry,filed,src/core/geometry/br_vecnorm.c
 0x1006D530,BrRbQuatDerivative,driving,manual,src/core/driving/br_rbinteg.c
