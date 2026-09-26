@@ -858,8 +858,6 @@ void BrGbiTexScanLoadBlock(BrGbiTexScan *pSt, const BrGfxWords *pCmd,
  * needs special handling. A handful of specific blend settings, and anything
  * without two particular bits set, turn the flag off. */
 /* @implements 0x1002A1A0 d3d BrGbiTexScanOtherModeL */
-/* @t4-pass 0x10029710 1 2026-09-07 probes 53 bytes 76 insns 22 regions 2 rows 15 census yes  (tools/crank.py) */
-/* @t4-pass 0x10029710 2 2026-09-07 probes 53 bytes 76 insns 22 regions 2 rows 15 census yes  (tools/crank.py) */
 /* @implements 0x10029710 glide BrGbiTexScanOtherModeL */
 #ifdef BR_MATCHING_BUILD
 void BrGbiTexScanOtherModeL(const BrGfxWords *pCmd)
@@ -871,43 +869,6 @@ void BrGbiTexScanOtherModeL(const BrGfxWords *pCmd)
         return;
 
     v = pCmd->w1;
-    /* PARKED 2026-09-03, and the residue is ONE compiler decision, not a
-     * source shape. Recomp 76 B / 22 insns against 107 / 29. The original
-     * emits the three `mov [g],0; ret` blocks IN FULL, each with its own
-     * `jne` skipping eleven bytes; VC5 cross-jumps ours into a single shared
-     * block. That accounts for 33 of the 31 missing bytes on its own, and the
-     * `xor ecx,ecx; cmp eax,ecx` / `mov [g],ecx` at the tail is a CONSEQUENCE
-     * of the non-merge (with four zero stores alive VC5 puts the zero in a
-     * register; with one it uses an immediate and `test`), not a second clue.
-     *
-     * DEAD PROBES, byte-identical output, do not re-run:
-     *   - early-return per arm (below) and the nested single-exit
-     *     if/else-if/else chain -- VC5 canonicalises the two.
-     *   - a named zero local shared by the last compare and its store; VC5
-     *     folds it to an immediate as long as the merge stands.
-     * Nothing written in C stops the merge, because the three blocks really
-     * are byte-identical -- that is exactly what cross-jumping looks for.
-     * NARROWED 2026-09-03, second pass. The merge is NOT a flag: a standalone
-     * harness of this exact shape gives 2 exits / 80 B under /O2, /O1, /Ox,
-     * /O2 /Op, /O2 /Oy-, an explicit /Ot /Og /Oi /Oy /Ob1 /Gs and /Os /Og
-     * alike. Four source shapes were probed in that harness and ALL give the
-     * same 2 exits / 80 B: early-return per arm; the negated tail
-     * (`v == 0 || no bits`) instead of the positive one; the fully nested
-     * `if (v != K) { … }` chain; and a `switch` over the three constants.
-     *
-     * ‼ AND THE LEVER THAT SOLVES THE SAME SYMPTOM ELSEWHERE DOES NOT WORK
-     * HERE. 0x10060CC0 BrCarPredictRemote had exactly this defect -- VC5
-     * merging identical exits -- and writing its LAST test in positive form
-     * (`if (ok) { work; return 1; }` then `return 0;`) split all four exits
-     * apart and made it byte-exact. Applying the same flip here moves
-     * nothing. The difference is what the merged blocks produce: there they
-     * set a RETURN VALUE, here they STORE TO A GLOBAL and the function is
-     * void. Treat the polarity lever as value-return-specific until a second
-     * void case says otherwise.
-     *
-     * So the next idea has to be a mechanism outside these axes -- a compiler
-     * patch level, or evidence that these handlers came from an original TU
-     * built differently. Not another permutation. */
     if (v == 0x504F50u) {
         g_brTexScan575414 = 0;
         return;
@@ -920,12 +881,21 @@ void BrGbiTexScanOtherModeL(const BrGfxWords *pCmd)
         g_brTexScan575414 = 0;
         return;
     }
+    /* The zero lives in a local and the bit test is written in POSITIVE
+     * form with the zero store last.  That puts `xor ecx,ecx` in a register
+     * shared by the compare and the final store, so the final exit block
+     * (`mov [g],ecx`) differs from the three immediate-zero exits above and
+     * VC5 does not cross-jump them into one. */
     z = 0;
-    if (v == z || (v & 0x1800u) == 0) {
+    if (v == z) {
         g_brTexScan575414 = (int32_t)z;
         return;
     }
-    g_brTexScan575414 = (int32_t)((v >> 16) & 1u);
+    if (v & 0x1800u) {
+        g_brTexScan575414 = (int32_t)((v >> 16) & 1u);
+        return;
+    }
+    g_brTexScan575414 = (int32_t)z;
 }
 #else
 void BrGbiTexScanOtherModeL(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
