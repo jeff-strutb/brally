@@ -1444,7 +1444,7 @@
 <rect x="704.7" y="535.0" width="37.5" height="31.6" fill="#3fb950"><title>BrTex3dCreateBlank  0x10027FB0  522B  [core/drawing/br_tex3d]</title></rect>
 <rect x="659.6" y="567.2" width="35.0" height="28.5" fill="#3fb950"><title>BrTex3dRecInstall  0x10027850  441B  [core/drawing/br_tex3d]</title></rect>
 <rect x="659.6" y="596.3" width="35.0" height="28.4" fill="#58a6ff"><title>BrTexSlotFetchPixels  0x10028620  440B  [core/drawing/br_tex3d]</title></rect>
-<rect x="659.6" y="625.3" width="35.0" height="23.2" fill="#d29922"><title>BrTexInstallRecords  0x100299A0  361B  277 diff bytes  [core/drawing/br_tex3d]</title></rect>
+<rect x="659.6" y="625.3" width="35.0" height="23.2" fill="#d29922"><title>BrTexInstallRecords  0x100299A0  361B  172 diff bytes  [core/drawing/br_tex3d]</title></rect>
 <rect x="695.2" y="567.2" width="25.9" height="27.6" fill="#3fb950"><title>FUN_10027710  0x10027710  319B  [core/drawing/br_tex3d]</title></rect>
 <rect x="721.8" y="567.2" width="20.4" height="27.6" fill="#3fb950"><title>BrTexSizeFromShiftAspect  0x10029290  253B  [core/drawing/br_tex3d]</title></rect>
 <rect x="695.2" y="595.4" width="23.8" height="21.3" fill="#58a6ff"><title>BrTex3dMipChainLoad  0x10027E10  227B  [core/drawing/br_tex3d]</title></rect>
@@ -1798,7 +1798,7 @@
 <rect x="1452.7" y="263.1" width="8.4" height="14.5" fill="#3fb950"><title>BrWaveSeekData  0x10070170  54B  [core/controls/br_input]</title></rect>
 <rect x="1461.7" y="263.1" width="6.9" height="14.5" fill="#3fb950"><title>BrOnActivate  0x10070370  45B  [core/controls/br_input]</title></rect>
 <rect x="1472.2" y="211.8" width="62.1" height="65.9" fill="#58a6ff"><title>BrObbOverlap  0x10068900  1653B  [core/driving/br_obb]</title></rect>
-<rect x="1537.9" y="211.8" width="60.0" height="27.6" fill="#d29922"><title>BrFixDecodeRecord_10007AA0  0x10007AA0  680B  501 diff bytes  [core/net/br_fix]</title></rect>
+<rect x="1537.9" y="211.8" width="60.0" height="27.6" fill="#3fb950"><title>BrFixDecodeRecord_10007AA0  0x10007AA0  680B  [core/net/br_fix]</title></rect>
 <rect x="1537.9" y="240.0" width="12.6" height="14.3" fill="#3fb950"><title>BrFixPackU24Q13  0x10006A50  78B  [core/net/br_fix]</title></rect>
 <rect x="1537.9" y="254.9" width="12.6" height="11.2" fill="#3fb950"><title>BrFixPackLevel  0x10006A10  62B  [core/net/br_fix]</title></rect>
 <rect x="1537.9" y="266.7" width="12.6" height="11.0" fill="#3fb950"><title>BrFixPackS16Q15Neg  0x10006950  61B  [core/net/br_fix]</title></rect>
@@ -2007,8 +2007,8 @@
 <rect x="1128.6" y="377.4" width="16.2" height="14.5" fill="#3fb950"><title>FUN_10023aa0  0x10023AA0  103B  [core/drawing/br_glidestate]</title></rect>
 <rect x="1145.4" y="377.4" width="9.8" height="14.5" fill="#3fb950"><title>FUN_100281c0  0x100281C0  64B  [core/drawing/br_glidestate]</title></rect>
 <rect x="1158.9" y="342.9" width="52.7" height="49.0" fill="#58a6ff"><title>BrGhostPlaybackStep  0x10061F60  1073B  [core/racing/br_ghoststep]</title></rect>
-<rect x="1215.2" y="342.9" width="31.4" height="49.0" fill="#d29922"><title>BrLightDirsAndAngles  0x1002A200  645B  22 diff bytes  [core/slice2_17]</title></rect>
-<rect x="1247.2" y="342.9" width="20.6" height="49.0" fill="#d29922"><title>BrMat4LookAt  0x1002A050  427B  141 diff bytes  [core/slice2_17]</title></rect>
+<rect x="1215.2" y="342.9" width="31.4" height="49.0" fill="#58a6ff"><title>BrLightDirsAndAngles  0x1002A200  645B  [core/geometry/br_camview]</title></rect>
+<rect x="1247.2" y="342.9" width="20.6" height="49.0" fill="#d29922"><title>BrMat4LookAt  0x1002A050  427B  141 diff bytes  [core/geometry/br_camview]</title></rect>
 <rect x="1271.4" y="342.9" width="52.5" height="49.0" fill="#58a6ff"><title>BrGhostPickBlend  0x10005810  1070B  [core/net/br_ghostpick]</title></rect>
 <rect x="1327.6" y="342.9" width="52.1" height="49.0" fill="#58a6ff"><title>BrModelSwap  0x100302A0  1062B  [core/gamedata/br_modelswap]</title></rect>
 <rect x="1383.3" y="342.9" width="52.0" height="49.0" fill="#3f6f7a"><title>BrDlVtxLitDecal  0x100221D0  1059B  [core/drawing/br_dlvtx_litdecal]</title></rect>
@@ -2093,7 +2093,7 @@
 <rect x="1097.7" y="678.2" width="32.3" height="25.3" fill="#3fb950"><title>BrSndVoiceLoad  0x1006BC10  352B  [core/audio/br_sndload]</title></rect>
 <rect x="1097.7" y="704.1" width="32.3" height="16.2" fill="#58a6ff"><title>BrWavLoad  0x10070280  229B  [core/audio/br_sndload]</title></rect>
 <rect x="1130.6" y="678.2" width="11.0" height="42.1" fill="#58a6ff"><title>BrWavReadData  0x100701B0  205B  [core/audio/br_sndload]</title></rect>
-<rect x="1097.7" y="723.9" width="43.9" height="41.5" fill="#d29922"><title>BrCarWheelSteerStep_1005ACE0  0x1005ACE0  776B  603 diff bytes  [core/driving/br_carwheelsteer]</title></rect>
+<rect x="1097.7" y="723.9" width="43.9" height="41.5" fill="#d29922"><title>BrCarWheelSteerStep_1005ACE0  0x1005ACE0  776B  50 diff bytes  [core/driving/br_carwheelsteer]</title></rect>
 <rect x="1097.7" y="769.1" width="21.6" height="41.0" fill="#58a6ff"><title>BrNetSessionHost  0x10035C50  383B  [core/net/br_dplaysession]</title></rect>
 <rect x="1119.9" y="769.1" width="21.7" height="24.4" fill="#3fb950"><title>BrNetSessionStore  0x10035AC0  231B  [core/net/br_dplaysession]</title></rect>
 <rect x="1119.9" y="794.1" width="9.3" height="16.0" fill="#3fb950"><title>BrGlobalFreeAll  0x10036670  68B  [core/net/br_dplaysession]</title></rect>
@@ -2783,4 +2783,4 @@
 <rect x="1593.2" y="894.5" width="0.4" height="3.4" fill="#3fb950"><title>BrFtolArg  0x10018990  9B  [core/geometry/br_ftol]</title></rect>
 <rect x="1596.8" y="894.5" width="1.1" height="0.5" fill="#3fb950"><title>BrCosF  0x100023E0  7B  [core/geometry/br_cos]</title></rect>
 <rect x="1596.8" y="898.6" width="1.1" height="0.4" fill="#3fb950"><title>BrThunk5C440  0x1005C440  5B  [core/racing/br_thunks]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1385 &#183; T3 codegen-only 186 &#183; 266,243/521,753 bytes exact (51.0%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1386 &#183; T3 codegen-only 187 &#183; 266,923/521,753 bytes exact (51.2%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
