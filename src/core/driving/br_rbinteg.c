@@ -258,7 +258,8 @@ void BrRbIntegrateVelocity(BrRbState *pS, const BrRbBody *pBody, float dt)
  * orientation afterwards so accumulated rounding does not slowly distort the
  * body. Speed and spin are carried across unchanged, since the previous step
  * already updated them. */
-/* @implements 0x100745F0 d3d BrRbIntegrateState */
+/* port-only body; Glide match is src/core/driving/BrRbIntegrateState_1006D850.cpp
+ * (the original is C++: see that file). */
 #ifdef BR_MATCHING_BUILD
 /* FLOAT, not double. The double model here was written for the D3D twin's
  * codegen -- BrRbBuildMatrix below records the same correction -- and the
