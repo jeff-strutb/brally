@@ -6,8 +6,7 @@
  * function in the packet reaches the same two file-static context pointers
  * (g_pBase / g_pExt, DEVIATION 1 below) that BrPhase31SetCtx installs, so
  * splitting it would have meant two copies of that state and two definitions
- * of the setter. One of the 19, BrSub10047360, does not match yet; it is the
- * menu row pulse and belongs here too.
+ * of the setter. BrSub10047360, the menu row pulse, belongs here too.
  *
  * Original banner follows.
  *
@@ -1258,34 +1257,21 @@ int BrSub10047360(BrGoM47360 *p)
     }
     if ((flags & 0x100) == 0)
         return 1;
+    /* The arms only pick the next step and break to one shared tail; VC5
+     * duplicates that tail (clear 0x100, store the flags, return 1) into
+     * every arm.  Written as five self-contained arms instead, the switch
+     * value is kept alive past the dispatch and every register rotates. */
     p->count++;
     switch (p->count) {
-    case 2:
-        flags &= ~0x100u;
-        p->state = 0;
-        p->flags = flags;
-        return 1;
-    case 3:
-        flags &= ~0x100u;
-        p->state = 1;
-        p->flags = flags;
-        return 1;
-    case 4:
-        flags &= ~0x100u;
-        p->state = 2;
-        p->flags = flags;
-        return 1;
-    case 52:
-        flags &= ~0x100u;
-        p->state = 4;
-        p->flags = flags;
-        return 1;
-    default:
-        flags &= ~0x100u;
-        p->count = 2;
-        p->flags = flags;
-        return 1;
+    case 2:  p->state = 0; break;
+    case 3:  p->state = 1; break;
+    case 4:  p->state = 2; break;
+    case 52: p->state = 4; break;
+    default: p->count = 2; break;
     }
+    flags &= ~0x100u;
+    p->flags = flags;
+    return 1;
 }
 #else
 void BrSub10047360(BrGameObj *p)

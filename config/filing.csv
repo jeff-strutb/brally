@@ -880,6 +880,7 @@ glide_va,name,module,basis,file
 0x100406A0,BrPhaseEdit_10047250,menus,neighbour,src/core/menus/br_phasenav.c
 0x100406E0,BrPhaseLeave_10047290,menus,neighbour,src/core/menus/br_phasenav.c
 0x10040790,BrPhaseNameClear_10047340,menus,neighbour,src/core/menus/br_phasenav.c
+0x100407B0,BrSub10047360,menus,filed,src/core/menus/br_phasenav.c
 0x10040900,BrPhaseMode_100474D0,menus,neighbour,src/core/menus/br_phasenav.c
 0x10040930,BrMenuOpt40930,menus,filed,src/core/menus/br_menuact.c
 0x10040960,BrMenuOpt40960,menus,filed,src/core/menus/br_menuact.c
