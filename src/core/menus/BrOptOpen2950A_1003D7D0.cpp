@@ -25,7 +25,13 @@
  * the else-arm as `goto open; return 1` (404), all four sites as
  * goto/return pairs (404), the mode block nested under `g_brAA2878 == 0`
  * with returns (396) and with gotos (399), /O1, /Os and /Og- shapes
- * (257-408 B).  The C twin in br_optcycle.c cannot spell the EH frame at
+ * (257-408 B).
+ * 2026-09-26 (~60 compiles): the original is `jne open; jmp done` at every
+ * early exit, i.e. the shared `return 1` epilogue is NOT tail-duplicated.
+ * Micro-measured: VC5 /O2 duplicates a shared return at every goto in all
+ * shapes tried (gotos, do/while(0) breaks, switch on the mode, free function
+ * or thiscall method); only /Os or dropping /Og stops it, and both change the
+ * rest of the body.  The C twin in br_optcycle.c cannot spell the EH frame at
  * all (192/340), so this file is the lane for the row.
  */
 #ifdef BR_MATCHING_BUILD

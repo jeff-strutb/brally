@@ -974,7 +974,16 @@ int32_t BrExt_10041A00(void *pArg)
  * zero register (ecx) in the original; every spelling tried (0.0f, 0.0,
  * (float)0, int 0, pointer/unsigned types, a named float local) folds them
  * into the ebx zero or an immediate.  RESIDUE: that one `xor ecx,ecx` web
- * (290/289 B, register-blind 1+2). */
+ * (290/289 B, register-blind 1+2).  Note 0x10AC40F8 is a short[4] elsewhere
+ * (BrSeasonApply, BrItemSetNumWord), stored here as two dwords.
+ * DEAD 2026-09-26 (~300 compiles): double/int64/short/char/pointer/enum-like
+ * types, NULL, memset(4) and memset(8) (8 gives its own zero reg but pins
+ * both stores together at the top), `*(int *)&` puns, inline helpers taking
+ * or returning the zero, named zero locals of every type, C++ lane, SP3
+ * compiler, TU headers/padding.  Micro-measured VC5 rule: 0 is promoted to a
+ * caller-saved reg at >=2 zero STORES in a call-free region, to a
+ * callee-saved one at >=4 spanning a call; compares do not count and float
+ * 0.0f stores never promote.  No 4-byte store type makes a second web. */
 extern float DAT_10ac40f8, DAT_10ac40fc, DAT_10ac5c20;
 extern int DAT_100abde8, DAT_10ac5d58, DAT_10ac5d5c, DAT_10ac5d60;
 extern int DAT_100abdec, DAT_100abdf0, DAT_100abdf4, DAT_100abdf8;
