@@ -15,20 +15,11 @@
  * GLOBAL config object at 0x10B71290 (`mov ecx, imm`), which the C lane
  * cannot spell without an edx write.
  *
- * PARKED at 592 vs 540 B (289 positional diffs), structure complete: the
- * whole gap is that the original keeps BOTH constants in callee-saved
- * registers (esi=0, edi=1: flag stores, the mode-1 call args, and every
- * `return 1` are `mov eax,edi`) while ours caches only the zero (in edi)
- * and spells every 1 as an immediate.  DEAD: `int ok = 1` (declared first
- * or last, plain or `register`, used for returns only or for every 1-site
- * including the two mode-1 arguments) constant-folds away entirely; the
- * mode-3 axis scan as an explicit do/while pointer walk gets its first
- * iteration peeled, as an indexed for loop it compiles offset-based
- * (xor eax,eax / cmp eax,0x10) where the original walks absolute
- * addresses -- the for-pointer spelling keeps addresses and no peel and
- * is the closest.  The 0-cache reproduces on its own; no spelling found
- * that seats the second (1) cache -- same family as the BrSfxBankLoad
- * constant-cache levers but in the opposite direction.
+ * The constant 1 lives in edi because every case BREAKS to the one
+ * `return 1` at the bottom (VC5 then duplicates the return into each
+ * case, as `mov eax,edi`); a `return 1` per case spells each 1 as an
+ * immediate and nothing caches it.  The mode-3 axis scan walks absolute
+ * addresses, compared as SIGNED ints (`jl`, not the pointer `jb`).
  * @t4-pass 2026-09-09 probes=7 result=diff289/missing-1-cache census no
  */
 #ifdef BR_MATCHING_BUILD
@@ -66,12 +57,12 @@ extern "C" int BrCtrlBindPoll_10039990(void)
     int  v;
     char buf[256];
     int  r;
-    int *p;
+    int  i;
 
     if (DAT_10ac5b9c != 0) {
         r = BrDikScan_10059040(buf);
         DAT_100abe40 = r;
-        if ((r == -1) && (DAT_10ac5d90 != 0)) {
+        if (r == -1 && DAT_10ac5d90 != 0) {
             DAT_10ac6744 = 0;
             DAT_10ac5c30 = 0;
             DAT_10ac5b9c = 0;
@@ -83,37 +74,34 @@ extern "C" int BrCtrlBindPoll_10039990(void)
             if (r >= 0) {
                 DAT_10ac5d90 = 1;
                 v = g_Cfg_10B71290.Query(0, DAT_100aaad4[DAT_10ac5b98 * 2]);
-                g_Cfg_10B71290.Assign(0, DAT_100aaad4[DAT_10ac5b98 * 2], v,
-                                      DAT_100abe40);
+                g_Cfg_10B71290.Assign(0, DAT_100aaad4[DAT_10ac5b98 * 2], v, DAT_100abe40);
             }
             DAT_10ac5ba8 = BrCtrlConflicts_10039870(0);
-            return 1;
+            break;
         case 1:
-            if (r == -1) {
+            if (r == -1)
                 r = BrInputPollButton_100704E0(&v);
-            } else {
+            else
                 v = 0;
-            }
             if (r >= 0) {
                 DAT_10ac5d90 = 1;
                 DAT_100abe40 = r;
                 g_Cfg_10B71290.Assign(1, DAT_100aaad4[DAT_10ac5b98 * 2], v, r);
             }
             DAT_10ac5ba8 = BrCtrlConflicts_10039870(1);
-            return 1;
+            break;
         case 2:
-            if (r == -1) {
+            if (r == -1)
                 r = BrInputPollButton_100704E0(&v);
-            } else {
+            else
                 v = 0;
-            }
             if (r >= 0) {
                 DAT_10ac5d90 = 1;
                 DAT_100abe40 = r;
                 g_Cfg_10B71290.Assign(2, DAT_100aaad4[DAT_10ac5b98 * 2], v, r);
             }
             DAT_10ac5ba8 = BrCtrlConflicts_10039870(2);
-            return 1;
+            break;
         case 3:
             if (r == -1) {
                 r = BrInputPollPressed_100705F0();
@@ -129,14 +117,17 @@ extern "C" int BrCtrlBindPoll_10039990(void)
             DAT_10ac5ba8 = BrCtrlConflicts_10039870(3);
             if (DAT_10ac5d94 != 0) {
                 BrInputPollPressed_100705F0();
-                for (p = &DAT_10ac6720; (int)p < 0x10ac6730; p++) {
-                    if (*p != 0) {
-                        return 1;
+                {
+                    int *p;
+                    for (p = &DAT_10ac6720; (int)p < (int)(&DAT_10ac6720 + 4); p++) {
+                        if (*p != 0)
+                            return 1;
                     }
                 }
                 DAT_10ac5d94 = 0;
                 DAT_10ac5d90 = 1;
             }
+            break;
         }
     }
     return 1;
