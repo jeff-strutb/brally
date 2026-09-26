@@ -29,6 +29,7 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 README = os.path.join(ROOT, 'README.md')
 SVG = os.path.join(ROOT, 'docs', 'progress-map.svg')
+N64_SVG = os.path.join(ROOT, 'docs', 'progress-map-n64.svg')
 PY = os.path.join(ROOT, '.venv', 'bin', 'python')
 if not os.path.exists(PY):
     PY = sys.executable
@@ -40,6 +41,8 @@ BRGLIDE_TEXT = 480853
 BAR_W = 40
 BEGIN = '<!-- PROGRESS:BEGIN'
 END = '<!-- PROGRESS:END -->'
+N64_BEGIN = '<!-- N64-PROGRESS:BEGIN'
+N64_END = '<!-- N64-PROGRESS:END -->'
 
 
 def tier_counts():
@@ -62,6 +65,53 @@ def tier_counts():
     t4 = grab(r'T4\s+done \(byte-exact\)\s+(\d+)\s+fns\s+(\d+)\s+B')
     return (int(t3.group(1)), int(t3.group(2)),
             int(t4.group(1)), int(t4.group(2)), target)
+
+
+def n64_counts():
+    """(t3_fns, t3_b, t4_fns, t4_b, target_fns, target_bytes) from
+    n64/tools/n64tiers.py -- the Top Gear Rally lane. Same parse-the-stdout
+    approach as tier_counts(); the numbers carry commas here, so strip them."""
+    out = subprocess.run([PY, os.path.join(ROOT, 'n64', 'tools', 'n64tiers.py')],
+                         capture_output=True, text=True, cwd=ROOT).stdout
+
+    def grab(pat):
+        m = re.search(pat, out)
+        if not m:
+            sys.exit('progressbar: could not parse n64tiers.py for /%s/\n\n%s'
+                     % (pat, out))
+        return m
+
+    def num(s):
+        return int(s.replace(',', ''))
+    tgt = grab(r'game code:\s+([\d,]+)\s+functions\s+\(([\d,]+)\s+B')
+    t3 = grab(r'T3\s+certified, not byte-exact\s+([\d,]+)\s+fns\s+([\d,]+)\s+B')
+    t4 = grab(r'T4\s+done \(byte-exact\)\s+([\d,]+)\s+fns\s+([\d,]+)\s+B')
+    return (num(t3.group(1)), num(t3.group(2)),
+            num(t4.group(1)), num(t4.group(2)),
+            num(tgt.group(1)), num(tgt.group(2)))
+
+
+def n64_block(t3_fns, t3_b, t4_fns, t4_b, target_fns, target_b):
+    """The N64 (Top Gear Rally) M1/M2 bars, same rendering as the PC block so
+    the two read as one system. Denominator is the ROM's whole game-code
+    .text (fenced library not yet separated); both bars quote against it."""
+    m1_b, m1_fns = t3_b + t4_b, t3_fns + t4_fns
+    m1_pct = 100 * m1_b / target_b if target_b else 0
+    m2_pct = 100 * t4_b / target_b if target_b else 0
+    today = datetime.date.today().isoformat()
+    return (
+        '_Snapshot %s._\n\n'
+        '```\n'
+        'M1  Contract-valid (T3 + T4)\n'
+        '    %s  %.1f%%   %s / %s B   %s / %s fns\n'
+        'M2  Byte-exact (T4)\n'
+        '    %s  %.1f%%   %s / %s B   %s / %s fns\n'
+        '```\n'
+        % (today,
+           bar(m1_pct), m1_pct, f'{m1_b:,}', f'{target_b:,}',
+           f'{m1_fns:,}', f'{target_fns:,}',
+           bar(m2_pct), m2_pct, f'{t4_b:,}', f'{target_b:,}',
+           f'{t4_fns:,}', f'{target_fns:,}'))
 
 
 # report_exe.csv's `exe` column -> the shipped filename, in the order the
@@ -159,11 +209,11 @@ def block(t3_fns, t3_b, t4_fns, t4_b, target, exes):
            _table(t3_fns, t3_b, t4_fns, t4_b, exes)))
 
 
-def splice(text, new_block):
-    i = text.find(BEGIN)
-    j = text.find(END)
+def splice(text, new_block, begin=BEGIN, end=END):
+    i = text.find(begin)
+    j = text.find(end)
     if i < 0 or j < 0:
-        sys.exit('progressbar: %s markers not found in README.md' % BEGIN)
+        sys.exit('progressbar: %s markers not found in README.md' % begin)
     head_end = text.find('\n', i) + 1          # keep the BEGIN marker line
     return text[:head_end] + new_block + text[j:]
 
@@ -171,9 +221,13 @@ def splice(text, new_block):
 def main():
     argv = sys.argv[1:]
     t3_fns, t3_b, t4_fns, t4_b, target = tier_counts()
-    new = block(t3_fns, t3_b, t4_fns, t4_b, target, exe_counts())
     old = open(README, encoding='utf-8').read()
-    updated = splice(old, new)
+    updated = splice(old, block(t3_fns, t3_b, t4_fns, t4_b, target, exe_counts()))
+
+    # N64 (Top Gear Rally) lane -- its own markers, same rendering.
+    n3f, n3b, n4f, n4b, ntf, ntb = n64_counts()
+    updated = splice(updated, n64_block(n3f, n3b, n4f, n4b, ntf, ntb),
+                     N64_BEGIN, N64_END)
 
     if '--check' in argv:
         if updated != old:
@@ -191,11 +245,17 @@ def main():
     else:
         print('README progress block already current (M1 %.1f%% / M2 %.1f%%).'
               % (m1_pct, m2_pct))
+    n_m1 = 100 * (n3b + n4b) / ntb if ntb else 0
+    n_m2 = 100 * n4b / ntb if ntb else 0
+    print('  N64 (Top Gear Rally): M1 %.1f%% / M2 %.1f%%  (T3 %d, T4 %d of %d fns)'
+          % (n_m1, n_m2, n3f, n4f, ntf))
 
     if '--no-svg' not in argv:
-        subprocess.run([sys.executable if not os.path.exists(PY) else 'python3',
-                        os.path.join(ROOT, 'tools', 'progressmap.py'),
+        py = 'python3' if not os.path.exists(PY) else PY
+        subprocess.run([py, os.path.join(ROOT, 'tools', 'progressmap.py'),
                         '--svg', SVG], cwd=ROOT, check=True)
+        subprocess.run([py, os.path.join(ROOT, 'n64', 'tools', 'n64map.py'),
+                        '--svg', N64_SVG], cwd=ROOT, check=True)
     return 0
 
 
