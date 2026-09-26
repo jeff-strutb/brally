@@ -550,6 +550,7 @@ glide_va,name,module,basis,file
 0x10033CE0,BrSpanExtend,audio,description,src/core/audio/br_span.c
 0x10033F90,BrSpanContains,audio,description,src/core/audio/br_span.c
 0x10033FD0,BrSpanTestPoint,scene,description,src/core/scene/br_spangrid.c
+0x10034010,BrSpanBuildHull,scene,filed,src/core/scene/br_spangrid.c
 0x100342B0,BrVec3Cross,geometry,filed,src/core/geometry/br_vec.c
 0x10034310,BrVec3Dot,geometry,filed,src/core/geometry/br_vec.c
 0x10034340,BrVec3Negate,geometry,filed,src/core/geometry/br_vec.c
