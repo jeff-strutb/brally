@@ -33,17 +33,17 @@ extern unsigned short DAT_105e1828[];   /* the resampler's scratch image */
  * after the base level in the staging buffer into the base level itself --
  * scale the map up to full size, then scale each texel's red, green and blue
  * by the map value over 15, leaving the alpha bit alone. */
-/* @t4-pass 0x10027CD0 1 2026-09-07 probes 135 bytes 304 insns 100 regions 2 rows 13 census yes  (tools/crank.py) */
-/* @t4-pass 0x10027CD0 2 2026-09-07 probes 135 bytes 304 insns 100 regions 2 rows 13 census yes  (tools/crank.py) */
 /* @implements 0x10027CD0 glide BrTex3dMipModulate */
 
 void BrTex3dMipModulate(int param_1, unsigned short *param_2)
 {
     /* Pixels are loaded into 16-bit locals (the original's `mov si,[..];
      * and esi,0xffff` widening) and the channel math is unsigned (`mul`).
-     * The destination walks through a copy homed in the dead argument
-     * slot.  RESIDUE: VC5 folds the top bit's (px >> 15) << 5 through the
-     * pack into `px & 0x8000`; the original keeps shr/shl. */
+     * The alpha bit is its own local: packed straight from `px >> 15`, VC5
+     * folds its three 5-bit shifts into `px & 0x8000`, where the original
+     * keeps shr 15 / shl 5.  The map texel is read before the pixel, and
+     * the destination steps before the source -- that order is what homes
+     * the destination cursor in param_2's dead argument slot. */
     int y, x;
     unsigned short *pSrc;
     unsigned short *pDst;
@@ -56,15 +56,16 @@ void BrTex3dMipModulate(int param_1, unsigned short *param_2)
     pSrc = DAT_105e1828;
     for (y = 0; y < *(int *)(param_1 + 0x2a4); y++) {
         for (x = 0; x < *(int *)(param_1 + 0x2a0); x++) {
-            unsigned short px = *pDst;
             unsigned short m  = *pSrc;
+            unsigned short px = *pDst;
+            unsigned int a = px >> 15;
             unsigned int r  = (unsigned)((px >> 10) & 0x1f) * m / 15;
             unsigned int g  = (unsigned)((px >> 5) & 0x1f) * m / 15;
             unsigned int b  = (unsigned)(px & 0x1f) * m / 15;
-            
-            *pDst = (unsigned short)((((px >> 15) << 5 | r) << 5 | g) << 5 | b);
-            pSrc++;
+
+            *pDst = (unsigned short)((((a << 5) | r) << 5 | g) << 5 | b);
             pDst++;
+            pSrc++;
         }
     }
 }
