@@ -358,15 +358,15 @@ static uint32_t g_brFfbAxes[2];
  *      call for each vtable cast (an extra call + `add esp,4` per use);
  *   4. the COM vtable pointers are BR_STDCALL -- callee-cleaned, so no
  *      `add esp,0x14` after each CreateEffect.
- * The residue is SIX unmapped d3d globals: fn.py cannot substitute their
- * addresses, so it reads the reloc slots as immediates.  Every slot is a real
- * relocation (coff_relocs.py), so this is byte-exact once the globals carry
- * their d3d addresses -- g_brDiSpringDir 0x118EEF08, g_brDiSpringCond
- * 0x118EEE20, g_brDiSquarePeriod 0x118EEBD8, kBrGuidSpring 0x100787A8,
- * kBrGuidSquare 0x10078758 (g_br0BD430 0x100BCC38 already mapped).  They
- * cannot be learned from this function (reloc_learn only trusts a
- * masked-match, which needs them mapped) -- seed them from a matched sibling
- * or hand-map, then this row and the other three BrFfb diffs close together. */
+ * RESIDUE (2026-09-26, register-blind rows 0+0, 4 masked regions): the
+ * original hoists each CreateEffect's argument pushes (and the pDevice load)
+ * above the effect-structure fills; ours pushes them just before the call.
+ * Pure scheduling -- every instruction is the same.  (The older note here
+ * blamed unmapped d3d globals; the image gate resolves those through
+ * reloc_overrides, and the classifier's `push 4` phantom was a msetdiff
+ * masking bug, fixed 15e794ac.)
+ * @t4-pass 0x10072680 1 2026-09-26 probes 12 bytes 440 insns 80 regions 4 rows 0 census no  (hand: pDevice local early/late, hr int/init/!hr, call as the if condition, axes/direction/condition store order, void* effect pointer, GUID cast -- none moves the push hoist)
+ * @t4-pass 0x10072680 2 2026-09-26 probes 67 bytes 440 insns 80 regions 4 rows 0 census yes  (mechanism: TU symbol count 5..4600 externs and nine system-header combinations, all 151 diffs) */
 /* @implements 0x10079390 d3d BrFfbSetup */
 void BrFfbSetup(int32_t springCoeff, int32_t springCoeff2)
 {
