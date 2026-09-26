@@ -444,76 +444,46 @@ void BrMat4RotateAxis(BrMat4 *pM, float degrees, float x, float y, float z)
 /* 0x1002A957 */
 /* WHAT IT DOES: finds the largest magnitude among twelve numbers, ignoring
  * sign, and never returns less than zero. */
-/* @t4-pass 0x1002A957 1 2026-09-07 probes 149 bytes 115 insns 38 regions 1 rows 55 census yes  (tools/crank.py) */
-/* @t4-pass 0x1002A957 2 2026-09-07 probes 150 bytes 115 insns 38 regions 1 rows 55 census yes  (tools/crank.py) */
 /* @implements 0x1002A957 glide BrFloat12MaxAbs */
 /* @implements 0x100312A7 d3d BrFloat12MaxAbs */
 /* @n64 0x80217420 located */
 float BrFloat12MaxAbs(const float *pv)
 {
-    /* This TU compiles /Od /Op, so fn.py's /O2 numbers are phantom here -- use
-     * a direct /Od /Op compile to score it.
-     *
-     * The INSTRUCTION STREAM is now exact: same 55 instructions in the same
-     * order, frame 0x18, six slots. Two source shapes got it there from 48
-     * differing bytes to 23, and both are reusable /Od facts:
-     *
-     *  1. The cursor step is `(v = *p++)` INSIDE the condition, not `v = *p;
-     *     p++;` as two statements. MSVC /Od defers the postfix increment until
-     *     after the comparison's operand is consumed, so the original's
-     *     `p += 4` sits BETWEEN the `fcomp/fnstsw` and the `test ah,1`. Two
-     *     separate statements put it before the `fld` and cost six bytes.
-     *  2. The tail is `if (lo > hi) return lo; return hi;`, not a ternary. The
-     *     ternary allocates a seventh slot for the result (frame 0x1C) and
-     *     the original has six.
-     *
-     * PARKED at 23 bytes, and every one of them is a STACK SLOT NUMBER -- the
-     * six locals are permuted against the original:
-     *     orig  -4 hi   -8 end   -0xC p    -0x10 zero  -0x14 v   -0x18 lo
-     *     ours  -4 ?    -8 ?     -0xC lo   -0x10 zero  -0x14 hi  -0x18 v
-     *
-     * ‼ DECLARATION ORDER IS INERT UNDER /Od. Seven different orders of these
-     * six locals were compiled and every one produced byte-identical output;
-     * do not probe another. SCOPE IS NOT INERT: moving `v` into the while body
-     * (as below) moved three slots and is what put `zero` on -0x10. That is
-     * the only knob found so far and it is worth one more session -- the
-     * remaining question is what puts a FLOAT on -4 ahead of the two pointers,
-     * which no arrangement tried so far does.
-     * 2026-09-12: the knob is the NAMES.  28 name sets measured (/Od /Op,
-     * slots decoded from the init stores): renaming hi/lo/p/end permutes the
-     * slots, renaming zero/v never does; `pp` for p puts end on -4 and p on
-     * -0xC, `stop`/`pend` for end puts lo on -8, `h` for hi puts hi on -0x10.
-     * No set tried gives the original's order, and the order is NOT a simple
-     * hash of the name (sum/first/last/length/polynomial over 2..127 buckets
-     * with either tie-break all fail the 28 observations).  The same knob
-     * landed 0x1002CEE9 (16 sets) and 0x1002AF17 (38 sets) in br_framebegin.c
-     * -- brute force works when the function has 4-5 locals. */
-    float hi;
-    float lo;
+    /* This TU compiles /Od /Op.  Under /Od the frame slot each local gets
+     * follows its NAME (the symbol-table hash), not its declaration order,
+     * and a local declared in an inner block always gets the deepest slot.
+     * The original's frame -- -4 high, -8 pLim, -0xC pVal, -0x10 zero,
+     * -0x14 fCur, -0x18 bottom -- needs fCur at function scope and these
+     * names; they were found by compiling ~300k name sets.  The other two
+     * /Od facts: the cursor step is `(fCur = *pVal++)` inside the condition
+     * (the postfix add lands between fnstsw and test), and the tail is two
+     * returns, not a ternary (which would add a seventh slot). */
+    float high;
+    float bottom;
     float zero;
-    const float *p;
-    const float *end;
+    const float *pVal;
+    const float *pLim;
+    float fCur;
 
-    hi = 0.0f;
-    lo = 0.0f;
+    high = 0.0f;
+    bottom = 0.0f;
     zero = 0.0f;
-    p = pv;
-    end = pv + 12;
+    pVal = pv;
+    pLim = pv + 12;
 
-    while (p < end) {
-        float v;
-        if ((v = *p++) < zero) {
-            if (lo > v)
-                lo = v;
+    while (pVal < pLim) {
+        if ((fCur = *pVal++) < zero) {
+            if (bottom > fCur)
+                bottom = fCur;
         } else {
-            if (hi < v)
-                hi = v;
+            if (high < fCur)
+                high = fCur;
         }
     }
-    lo = -lo;
-    if (lo > hi)
-        return lo;
-    return hi;
+    bottom = -bottom;
+    if (bottom > high)
+        return bottom;
+    return high;
 }
 
 /* ================================================================== */
