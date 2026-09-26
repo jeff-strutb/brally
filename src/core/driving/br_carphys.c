@@ -2491,6 +2491,10 @@ extern char  DAT_100b5288[];            /* the tip-kick trace string      */
 extern BrCollRespNode  DAT_117781b0[];  /* 0x117781B0 -- the node pool    */
 extern BrCollRespNode *g_pBrCrCursor;   /* 0x11778844 -- its bump cursor  */
 extern const BrCollPlane *g_pBrCrCurPlane;  /* 0x1177819C                 */
+/* The plane-distance vector is its own global in the original (0x117781A0,
+ * next to the current-plane pointer), not the tail of the 0x117787F0 bank
+ * the port gathers into BrCrPlaneState. */
+extern BrVec3 g_brCrPlaneOut;           /* 0x117781A0                     */
 int  BrPodNop();                        /* 0x10008D60, the trace stub     */
 void BrCarCarCollide(void);             /* 0x10068F80                     */
 int  BrCtlAi();                         /* 0x1005E690, compared by address */
@@ -2507,46 +2511,33 @@ int  BrCollRespTipKick(void *pBody);    /* 0x10066D70, the original 1-arg  */
  * Afterwards a stuck-detection timer counts down: an AI car resets it
  * whenever it stands upright, a player car also has to have moved a metre
  * since last frame, and the last position is remembered for that test. */
-/* T2 RESIDUE (762 orig / 762+6 recomp B, raw 10+12, regnorm 10+12): the
- * whole reset/gather preamble, the entire substep loop, and the stuck-timer
- * state machine are byte-exact (first divergence +0x154 and the rest is a
- * 2-6 byte positional echo of it).  What remains is the proven x87
- * operand-role TU-state class, three sites: the matBox z drop (orig
- * `fld [body+0x1E8]; fsubr [matslot]` -- field on the fld side; ours the
- * stack slot), the substep-loop head's three reciprocal-extent divides
- * (orig `fld [ext]; fdivr [1.0f]`; ours `fld [1.0f]; fdiv [ext]` -- the
- * byte-exact 0x1006DAD0 in this same tree proves `1.0f / x` compiles to
- * OUR shape, so the original's is predecessor state, not spelling), and
- * the spill discipline inside the distance-squared product (one shared
- * slot vs two).  Plus one 2-insn scheduling echo in the save=next copy
- * setup (lea edi / mov ecx order).  x87-wall-mechanism 2026-09-13: do not
- * respell these.
- * Source facts that DID move bytes: literal 1.0f (pooled) not an extern
- * read in the compare, field-first `>=` spellings, the upright test read
- * directly in BOTH arms (VC5 PREs it to one fcomp with the fnstsw deferred
- * past the fn-pointer cmp -- an int bool local materializes eax instead),
- * not-upright arm first, the -1 clamp as its own if followed by an
- * unconditional decrement (the original's `-1 then -2` pair is VC5
- * cross-jumping that shape, not source), z/y/x store order for the 0.1f
- * scale trio (sunk below the arg pushes as-is), and dx*dx+dy*dy+dz*dz in
- * that order.
- * @t4-pass 0x10067C30 1 2026-09-13 probes 10 bytes 762 insns 194 regions 3 rows 22 census no  (sweep+fn.py: extern-vs-literal divides, upright bool local vs direct, arm order, folded vs split -1 path, sum order d1 (kept, -4 B), operand-role respells refused per x87-wall-mechanism) */
+/* Source facts that moved bytes: the three reciprocal extents and the
+ * matBox z drop each read their field into a float temp first (VC5 then
+ * loads the field and divides/subtracts the other side from it: `fld
+ * [ext]; fdivr [1.0f]`, `fld [h]; fsubr [mat]`); the upright threshold is
+ * the literal 0.5f, not the extern (the extern defers the fcomp past the
+ * state copy); the stuck distance is written inline as three repeated
+ * differences -- named dx/dy/dz locals spill to two slots where the
+ * original's CSE temps share one.  Also: literal 1.0f, the upright test
+ * read directly in BOTH arms, not-upright arm first, the -1 clamp as its
+ * own if followed by an unconditional decrement, z/y/x store order for the
+ * 0.1f scale trio. */
 /* @implements 0x10067C30 glide BrCarPhysAdvance */
 void BrCarPhysAdvance(char *pCar, char *pBody)
 {
     BrMat4  mat;
     BrVec3  scale;
     float   t;
-    float   dx, dy, dz;
+    float   h;
 
     g_pBrCollRespList = NULL;
     g_pBrCrCursor = DAT_117781b0;
     g_brCrPlane.normal.x = 0.0f;
     g_brCrPlane.normal.y = 0.0f;
     g_brCrPlane.normal.z = 0.0f;
-    g_brCrPlane.out.x = 0.0f;
-    g_brCrPlane.out.y = 0.0f;
-    g_brCrPlane.out.z = 0.0f;
+    g_brCrPlaneOut.x = 0.0f;
+    g_brCrPlaneOut.y = 0.0f;
+    g_brCrPlaneOut.z = 0.0f;
     g_brCrPlane.modeFC = 0;
     g_pBrCrCurPlane = NULL;
     BrPodNop(0, 0x80, 0x80, 0x80, 0xFF);
@@ -2556,10 +2547,13 @@ void BrCarPhysAdvance(char *pCar, char *pBody)
     BrMat4BuildScaledTransposed((BrMat4 *)(pBody + 0xBC), &mat, &scale);
     BrCollRespBroadPhase((const BrRbBodyFull *)pBody, &mat);
     BrPodNop(0, 0x80, 0x80, 0, 0xFF);
-    scale.x = 1.0f / *(float *)(pBody + 0x1DC);
+    h = *(float *)(pBody + 0x1DC);
+    scale.x = 1.0f / h;
     t = 0.033333335f;
-    scale.y = 1.0f / *(float *)(pBody + 0x1E0);
-    scale.z = 1.0f / *(float *)(pBody + 0x1E4);
+    h = *(float *)(pBody + 0x1E0);
+    scale.y = 1.0f / h;
+    h = *(float *)(pBody + 0x1E4);
+    scale.z = 1.0f / h;
     do {
         if (BrCollRespTipKick(pBody) != 0) {
             BrPodNop(DAT_100b5288);
@@ -2569,7 +2563,8 @@ void BrCarPhysAdvance(char *pCar, char *pBody)
                            (BrRbState *)(pBody + 0x114), 0.008333334f);
         BrRbBuildMatrix((BrMat4 *)(pBody + 0xBC), (BrRbState *)(pBody + 0x158));
         BrMat4BuildScaledTransposed((BrMat4 *)(pBody + 0xBC), &mat, &scale);
-        mat.m[3][2] -= *(float *)(pBody + 0x1E8);
+        h = *(float *)(pBody + 0x1E8);
+        mat.m[3][2] -= h;
         if (BrCrRespWalk(pBody, &mat) != 0) {
             BrRbQuatDerivative((BrRbState *)(pBody + 0x158));
             BrRbBuildMatrix((BrMat4 *)(pBody + 0xBC), (BrRbState *)(pBody + 0x158));
@@ -2581,7 +2576,7 @@ void BrCarPhysAdvance(char *pCar, char *pBody)
     BrPodNop(0, 0x80, 0x80, 0, 0xFF);
     *(BrRbState *)(pBody + 0x114) = *(BrRbState *)(pBody + 0x158);
     if (*(void **)(pCar + 0xF08) == (void *)BrCtlAi) {
-        if (!(*(float *)(pBody + 0xE4) >= _DAT_10077ac8)) {
+        if (!(*(float *)(pBody + 0xE4) >= 0.5f)) {
             if (*(int *)(pBody + 0x1F8) < 0) {
                 *(int *)(pBody + 0x1F8) = -1;
             }
@@ -2589,14 +2584,11 @@ void BrCarPhysAdvance(char *pCar, char *pBody)
         } else {
             *(int *)(pBody + 0x1F8) = 0x23;
         }
-    } else if (!(*(float *)(pBody + 0xE4) >= _DAT_10077ac8)) {
+    } else if (!(*(float *)(pBody + 0xE4) >= 0.5f)) {
         if (*(int *)(pBody + 0x1F8) < 0) {
             *(int *)(pBody + 0x1F8) = -1;
         }
-        dx = *(float *)(pBody + 0xEC) - *(float *)(pCar + 0x2AB0);
-        dy = *(float *)(pBody + 0xF0) - *(float *)(pCar + 0x2AB4);
-        dz = *(float *)(pBody + 0xF4) - *(float *)(pCar + 0x2AB8);
-        if (!(dx * dx + dy * dy + dz * dz >= DAT_10077a7c)) {
+        if (!((*(float *)(pBody + 0xEC) - *(float *)(pCar + 0x2AB0)) * (*(float *)(pBody + 0xEC) - *(float *)(pCar + 0x2AB0)) + (*(float *)(pBody + 0xF0) - *(float *)(pCar + 0x2AB4)) * (*(float *)(pBody + 0xF0) - *(float *)(pCar + 0x2AB4)) + (*(float *)(pBody + 0xF4) - *(float *)(pCar + 0x2AB8)) * (*(float *)(pBody + 0xF4) - *(float *)(pCar + 0x2AB8)) >= DAT_10077a7c)) {
             *(int *)(pBody + 0x1F8) = *(int *)(pBody + 0x1F8) - 1;
         }
     } else {
