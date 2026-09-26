@@ -11,6 +11,29 @@
 extern float BrSqrtF(float x);   /* 0x10002570 -- fld [esp+4]; fsqrt; ret */
 #endif
 
+/* WHAT IT DOES: combines two orientation quaternions (w, x, y, z order)
+ * into their product, one quaternion for both rotations together. */
+/* @implements 0x1006D2E0 glide BrQuatMul */
+/* The four results are formed in the original's evaluation order (read off
+ * the x87 stack): out[3] = ((a3*b0 - a2*b1) + a1*b2) + a0*b3, then out[2],
+ * out[1], out[0].  RESIDUE: which component each x87 slot and dead argument
+ * slot holds; declaration order moves it (158 -> 148) but does not settle it. */
+void BrQuatMul(float *pOut, const float *pA, const float *pB)
+{
+    float b0 = pB[0];
+    float b1 = pB[1];
+    float b3 = pB[3];
+    float a3 = pA[3];
+    float a0 = pA[0];
+    float b2 = pB[2];
+    float a1 = pA[1];
+    float a2 = pA[2];
+    pOut[3] = a3 * b0 - a2 * b1 + a1 * b2 + a0 * b3;
+    pOut[2] = a2 * b0 + a3 * b1 + a0 * b2 - a1 * b3;
+    pOut[1] = a1 * b0 + a0 * b1 - a3 * b2 + a2 * b3;
+    pOut[0] = a0 * b0 - a1 * b1 - a2 * b2 - a3 * b3;
+}
+
 /* WHAT IT DOES: shrink or stretch a vector IN PLACE so it is exactly one unit
  * long, keeping the direction. That is what turns an arbitrary difference
  * between two points into a pure "which way", which is what the lighting,
