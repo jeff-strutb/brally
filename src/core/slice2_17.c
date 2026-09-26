@@ -441,51 +441,6 @@ void BrMat4RotateAxis(BrMat4 *pM, float degrees, float x, float y, float z)
     BrMat4Mul(pM, &basisT, pM);     /* aliased -- BrMat4Mul handles it */
 }
 
-/* 0x1002A957 */
-/* WHAT IT DOES: finds the largest magnitude among twelve numbers, ignoring
- * sign, and never returns less than zero. */
-/* @implements 0x1002A957 glide BrFloat12MaxAbs */
-/* @implements 0x100312A7 d3d BrFloat12MaxAbs */
-/* @n64 0x80217420 located */
-float BrFloat12MaxAbs(const float *pv)
-{
-    /* This TU compiles /Od /Op.  Under /Od the frame slot each local gets
-     * follows its NAME (the symbol-table hash), not its declaration order,
-     * and a local declared in an inner block always gets the deepest slot.
-     * The original's frame -- -4 high, -8 pLim, -0xC pVal, -0x10 zero,
-     * -0x14 fCur, -0x18 bottom -- needs fCur at function scope and these
-     * names; they were found by compiling ~300k name sets.  The other two
-     * /Od facts: the cursor step is `(fCur = *pVal++)` inside the condition
-     * (the postfix add lands between fnstsw and test), and the tail is two
-     * returns, not a ternary (which would add a seventh slot). */
-    float high;
-    float bottom;
-    float zero;
-    const float *pVal;
-    const float *pLim;
-    float fCur;
-
-    high = 0.0f;
-    bottom = 0.0f;
-    zero = 0.0f;
-    pVal = pv;
-    pLim = pv + 12;
-
-    while (pVal < pLim) {
-        if ((fCur = *pVal++) < zero) {
-            if (bottom > fCur)
-                bottom = fCur;
-        } else {
-            if (high < fCur)
-                high = fCur;
-        }
-    }
-    bottom = -bottom;
-    if (bottom > high)
-        return bottom;
-    return high;
-}
-
 /* ================================================================== */
 /* 2-4. filed out                                                     */
 /* ================================================================== */

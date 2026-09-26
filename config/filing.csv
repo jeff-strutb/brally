@@ -421,6 +421,7 @@ glide_va,name,module,basis,file
 0x1002A8D7,BrRenderCountersReset,startup,manual,src/core/startup/br_renderreset.c
 0x1002A932,BrScreenSizeInit,startup,description,src/core/startup/br_stubs.c
 0x1002A93C,BrScreenSizeApply,startup,manual,src/core/startup/br_renderreset.c
+0x1002A957,BrFloat12MaxAbs,geometry,filed,src/core/geometry/br_mat.c
 0x1002A9F2,BrGuMtxHookNop,drawing,filed,src/core/drawing/br_drawcar.c
 0x1002A9F7,BrTexSizeShift,drawing,neighbour,src/core/drawing/br_texfmt.c
 0x1002AB32,BrGfxEmitTexCmd,drawing,manual,src/core/drawing/br_gfxfill.c
