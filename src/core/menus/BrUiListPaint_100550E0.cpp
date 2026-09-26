@@ -13,12 +13,16 @@
  * is a displacement from it.  The row's y is `y1a940 + i*0x13`, which VC5
  * strength-reduces into the dead `sel` argument slot, and the running y
  * survives into the mark icon even when the row has no text.
- * RESIDUE: the visible-row index `i + w1a92e` comes out with the member in
- * eax (`movsx eax; add eax,ebx`) where the original copies i and adds the
- * member (`movsx ecx; mov eax,ebx; add eax,ecx`) -- one byte, and every
- * later byte shifts.  Declaration order, an explicit n, and a short i are
- * inert.
+ * Two source facts: the TU is big enough to include a CRT header (the
+ * symbol-table size decides which of i and w1a92e the visible-row add
+ * lands on -- with an empty TU VC5 adds i into the member's register), and
+ * the first arrow is an if/else of two Draw calls like the second (VC5
+ * merges the two calls back into one with the `push 0x2f; jmp` argument
+ * select; a `?:` argument instead hoists `mov eax,0x2f` above the loads).
  */
+#ifdef BR_MATCHING_BUILD
+#include <string.h>
+#endif
 extern "C" int FUN_10051580(int v);
 
 class Item550E0 {
@@ -115,8 +119,12 @@ int Ctl550E0::Paint(int sel)
     }
     if ((i18 & 0x200000) == 0) {
         short s = w1a932;
-        if (s > 0)
-            Draw(f1a99c != 0 ? (short)0x2f : s, (float)x1a94c, (float)y1a950);
+        if (s > 0) {
+            if (f1a99c != 0)
+                Draw(0x2f, (float)x1a94c, (float)y1a950);
+            else
+                Draw(s, (float)x1a94c, (float)y1a950);
+        }
         s = w1a934;
         if (s > 0) {
             if (f1a9a0 != 0)
