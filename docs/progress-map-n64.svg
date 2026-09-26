@@ -19,8 +19,8 @@
 <rect x="435.4" y="330.2" width="34.1" height="32.7" fill="#c8ccd2"><title>(unnamed)  0x8020A524  384B  [unfiled 0x8020xxxx]</title></rect>
 <rect x="360.5" y="363.5" width="34.8" height="31.8" fill="#c8ccd2"><title>(unnamed)  0x8020A6A4  380B  [unfiled 0x8020xxxx]</title></rect>
 <rect x="360.5" y="395.9" width="34.8" height="30.4" fill="#c8ccd2"><title>(unnamed)  0x802001B4  364B  [unfiled 0x8020xxxx]</title></rect>
-<rect x="360.5" y="426.8" width="34.8" height="26.0" fill="#c8ccd2"><title>(unnamed)  0x8020AAE0  312B  [unfiled 0x8020xxxx]</title></rect>
-<rect x="395.9" y="363.5" width="27.0" height="33.5" fill="#c8ccd2"><title>(unnamed)  0x8020AC18  312B  [unfiled 0x8020xxxx]</title></rect>
+<rect x="360.5" y="426.8" width="34.8" height="26.0" fill="#3fb950"><title>(unnamed)  0x8020AAE0  312B  [unfiled 0x8020xxxx]</title></rect>
+<rect x="395.9" y="363.5" width="27.0" height="33.5" fill="#3fb950"><title>(unnamed)  0x8020AC18  312B  [unfiled 0x8020xxxx]</title></rect>
 <rect x="423.5" y="363.5" width="23.4" height="33.5" fill="#c8ccd2"><title>(unnamed)  0x8020A9D0  272B  [unfiled 0x8020xxxx]</title></rect>
 <rect x="447.5" y="363.5" width="22.0" height="33.5" fill="#c8ccd2"><title>(unnamed)  0x80205FDC  256B  [unfiled 0x8020xxxx]</title></rect>
 <rect x="395.9" y="397.6" width="21.4" height="27.9" fill="#c8ccd2"><title>(unnamed)  0x80208900  208B  [unfiled 0x8020xxxx]</title></rect>
@@ -82,8 +82,8 @@
 <rect x="377.6" y="847.5" width="24.2" height="25.6" fill="#6e5494"><title>(unnamed)  0x80240810  216B  [unfiled 0x8024xxxx]</title></rect>
 <rect x="377.6" y="873.7" width="24.2" height="24.2" fill="#c8ccd2"><title>(unnamed)  0x80242B10  204B  [unfiled 0x8024xxxx]</title></rect>
 <rect x="402.4" y="817.4" width="24.9" height="20.2" fill="#6e5494"><title>(unnamed)  0x80242890  176B  [unfiled 0x8024xxxx]</title></rect>
-<rect x="427.9" y="817.4" width="20.8" height="20.2" fill="#c8ccd2"><title>(unnamed)  0x80242A7C  148B  [unfiled 0x8024xxxx]</title></rect>
-<rect x="449.3" y="817.4" width="20.2" height="20.2" fill="#c8ccd2"><title>(unnamed)  0x802429EC  144B  [unfiled 0x8024xxxx]</title></rect>
+<rect x="427.9" y="817.4" width="20.8" height="20.2" fill="#3fb950"><title>(unnamed)  0x80242A7C  148B  [unfiled 0x8024xxxx]</title></rect>
+<rect x="449.3" y="817.4" width="20.2" height="20.2" fill="#3fb950"><title>(unnamed)  0x802429EC  144B  [unfiled 0x8024xxxx]</title></rect>
 <rect x="402.4" y="838.2" width="18.8" height="19.9" fill="#6e5494"><title>(unnamed)  0x8024150C  132B  [unfiled 0x8024xxxx]</title></rect>
 <rect x="402.4" y="858.7" width="18.8" height="19.3" fill="#c8ccd2"><title>(unnamed)  0x8024296C  128B  [unfiled 0x8024xxxx]</title></rect>
 <rect x="402.4" y="878.6" width="18.8" height="19.3" fill="#c8ccd2"><title>(unnamed)  0x80244D04  128B  [unfiled 0x8024xxxx]</title></rect>
@@ -94,9 +94,9 @@
 <rect x="421.8" y="879.3" width="16.3" height="18.6" fill="#c8ccd2"><title>(unnamed)  0x8024D45C  108B  [unfiled 0x8024xxxx]</title></rect>
 <rect x="438.7" y="860.1" width="15.7" height="19.3" fill="#c8ccd2"><title>(unnamed)  0x8024D7D8  108B  [unfiled 0x8024xxxx]</title></rect>
 <rect x="455.0" y="860.1" width="14.5" height="19.3" fill="#6e5494"><title>(unnamed)  0x8024281C  100B  [unfiled 0x8024xxxx]</title></rect>
-<rect x="438.7" y="880.1" width="14.4" height="17.8" fill="#c8ccd2"><title>(unnamed)  0x80244CA8  92B  [unfiled 0x8024xxxx]</title></rect>
+<rect x="438.7" y="880.1" width="14.4" height="17.8" fill="#3fb950"><title>(unnamed)  0x80244CA8  92B  [unfiled 0x8024xxxx]</title></rect>
 <rect x="453.8" y="880.1" width="15.7" height="15.6" fill="#c8ccd2"><title>(unnamed)  0x8024D844  88B  [unfiled 0x8024xxxx]</title></rect>
-<rect x="453.8" y="896.3" width="15.7" height="1.6" fill="#c8ccd2"><title>(unnamed)  0x80242960  12B  [unfiled 0x8024xxxx]</title></rect>
+<rect x="453.8" y="896.3" width="15.7" height="1.6" fill="#3fb950"><title>(unnamed)  0x80242960  12B  [unfiled 0x8024xxxx]</title></rect>
 <text x="474.6" y="10.5" font-size="10" fill="#8b949e">unfiled 0x8023xxxx</text>
 <rect x="473.1" y="15.5" width="152.2" height="208.7" fill="#c8ccd2"><title>(unnamed)  0x80230554  10624B  [unfiled 0x8023xxxx]</title></rect>
 <rect x="473.1" y="224.8" width="152.2" height="149.8" fill="#c8ccd2"><title>(unnamed)  0x80235BAC  7636B  [unfiled 0x8023xxxx]</title></rect>
@@ -142,8 +142,8 @@
 <rect x="880.1" y="429.8" width="13.6" height="23.2" fill="#6e5494"><title>(unnamed)  0x8023FF80  112B  [unfiled 0x8023xxxx]</title></rect>
 <rect x="894.3" y="429.8" width="17.6" height="11.3" fill="#c8ccd2"><title>(unnamed)  0x8023B130  72B  [unfiled 0x8023xxxx]</title></rect>
 <rect x="894.3" y="441.7" width="13.6" height="11.3" fill="#c8ccd2"><title>(unnamed)  0x80234FC0  56B  [unfiled 0x8023xxxx]</title></rect>
-<rect x="908.5" y="441.7" width="3.4" height="5.4" fill="#c8ccd2"><title>(unnamed)  0x8023870C  8B  [unfiled 0x8023xxxx]</title></rect>
-<rect x="908.5" y="447.6" width="3.4" height="5.4" fill="#c8ccd2"><title>(unnamed)  0x8023A1C0  8B  [unfiled 0x8023xxxx]</title></rect>
+<rect x="908.5" y="441.7" width="3.4" height="5.4" fill="#3fb950"><title>(unnamed)  0x8023870C  8B  [unfiled 0x8023xxxx]</title></rect>
+<rect x="908.5" y="447.6" width="3.4" height="5.4" fill="#3fb950"><title>(unnamed)  0x8023A1C0  8B  [unfiled 0x8023xxxx]</title></rect>
 <text x="474.6" y="465.6" font-size="10" fill="#8b949e">unfiled 0x8025xxxx</text>
 <rect x="473.1" y="470.6" width="91.2" height="144.2" fill="#c8ccd2"><title>(unnamed)  0x802534DC  4420B  [unfiled 0x8025xxxx]</title></rect>
 <rect x="473.1" y="615.4" width="91.2" height="129.6" fill="#c8ccd2"><title>(unnamed)  0x80259D14  3976B  [unfiled 0x8025xxxx]</title></rect>
@@ -228,7 +228,7 @@
 <rect x="873.9" y="816.6" width="19.8" height="20.0" fill="#c8ccd2"><title>(unnamed)  0x80255DD8  140B  [unfiled 0x8025xxxx]</title></rect>
 <rect x="894.4" y="816.6" width="17.5" height="20.0" fill="#c8ccd2"><title>(unnamed)  0x80253460  124B  [unfiled 0x8025xxxx]</title></rect>
 <rect x="832.4" y="837.2" width="17.1" height="20.5" fill="#c8ccd2"><title>(unnamed)  0x80255CD0  124B  [unfiled 0x8025xxxx]</title></rect>
-<rect x="832.4" y="858.3" width="17.1" height="19.8" fill="#c8ccd2"><title>(unnamed)  0x80255ADC  120B  [unfiled 0x8025xxxx]</title></rect>
+<rect x="832.4" y="858.3" width="17.1" height="19.8" fill="#3fb950"><title>(unnamed)  0x80255ADC  120B  [unfiled 0x8025xxxx]</title></rect>
 <rect x="832.4" y="878.7" width="17.1" height="19.2" fill="#c8ccd2"><title>(unnamed)  0x80257B04  116B  [unfiled 0x8025xxxx]</title></rect>
 <rect x="850.1" y="837.2" width="15.7" height="20.1" fill="#c8ccd2"><title>(unnamed)  0x802571AC  112B  [unfiled 0x8025xxxx]</title></rect>
 <rect x="850.1" y="857.9" width="15.7" height="20.1" fill="#c8ccd2"><title>(unnamed)  0x802578F4  112B  [unfiled 0x8025xxxx]</title></rect>
@@ -250,12 +250,12 @@
 <rect x="890.3" y="879.0" width="6.8" height="9.1" fill="#c8ccd2"><title>(unnamed)  0x80254FD0  24B  [unfiled 0x8025xxxx]</title></rect>
 <rect x="890.3" y="888.8" width="6.8" height="9.1" fill="#c8ccd2"><title>(unnamed)  0x80254FE8  24B  [unfiled 0x8025xxxx]</title></rect>
 <rect x="897.7" y="879.0" width="7.5" height="8.3" fill="#c8ccd2"><title>(unnamed)  0x80255000  24B  [unfiled 0x8025xxxx]</title></rect>
-<rect x="905.8" y="879.0" width="6.1" height="8.3" fill="#c8ccd2"><title>(unnamed)  0x80254F2C  20B  [unfiled 0x8025xxxx]</title></rect>
+<rect x="905.8" y="879.0" width="6.1" height="8.3" fill="#3fb950"><title>(unnamed)  0x80254F2C  20B  [unfiled 0x8025xxxx]</title></rect>
 <rect x="897.7" y="887.9" width="7.4" height="5.4" fill="#c8ccd2"><title>(unnamed)  0x802562E0  16B  [unfiled 0x8025xxxx]</title></rect>
-<rect x="897.7" y="894.0" width="7.4" height="3.9" fill="#c8ccd2"><title>(unnamed)  0x8025D35C  12B  [unfiled 0x8025xxxx]</title></rect>
-<rect x="905.7" y="887.9" width="6.2" height="2.9" fill="#c8ccd2"><title>(unnamed)  0x80254870  8B  [unfiled 0x8025xxxx]</title></rect>
-<rect x="905.7" y="891.5" width="6.2" height="2.9" fill="#c8ccd2"><title>(unnamed)  0x80258070  8B  [unfiled 0x8025xxxx]</title></rect>
-<rect x="905.7" y="895.0" width="6.2" height="2.9" fill="#c8ccd2"><title>(unnamed)  0x80258078  8B  [unfiled 0x8025xxxx]</title></rect>
+<rect x="897.7" y="894.0" width="7.4" height="3.9" fill="#3fb950"><title>(unnamed)  0x8025D35C  12B  [unfiled 0x8025xxxx]</title></rect>
+<rect x="905.7" y="887.9" width="6.2" height="2.9" fill="#3fb950"><title>(unnamed)  0x80254870  8B  [unfiled 0x8025xxxx]</title></rect>
+<rect x="905.7" y="891.5" width="6.2" height="2.9" fill="#3fb950"><title>(unnamed)  0x80258070  8B  [unfiled 0x8025xxxx]</title></rect>
+<rect x="905.7" y="895.0" width="6.2" height="2.9" fill="#3fb950"><title>(unnamed)  0x80258078  8B  [unfiled 0x8025xxxx]</title></rect>
 <text x="917.0" y="10.5" font-size="10" fill="#8b949e">unfiled 0x8022xxxx</text>
 <rect x="915.5" y="15.5" width="133.1" height="106.8" fill="#c8ccd2"><title>(unnamed)  0x8022762C  4744B  [unfiled 0x8022xxxx]</title></rect>
 <rect x="1049.2" y="15.5" width="114.3" height="106.8" fill="#c8ccd2"><title>(unnamed)  0x8022E4E0  4076B  [unfiled 0x8022xxxx]</title></rect>
@@ -338,7 +338,7 @@
 <rect x="1241.3" y="501.1" width="18.1" height="14.9" fill="#c8ccd2"><title>(unnamed)  0x802260A0  96B  [unfiled 0x8022xxxx]</title></rect>
 <rect x="1201.5" y="516.7" width="18.4" height="14.7" fill="#c8ccd2"><title>(unnamed)  0x8022D43C  96B  [unfiled 0x8022xxxx]</title></rect>
 <rect x="1201.5" y="531.9" width="18.4" height="13.4" fill="#c8ccd2"><title>(unnamed)  0x80225F30  88B  [unfiled 0x8022xxxx]</title></rect>
-<rect x="1201.5" y="545.9" width="18.4" height="13.4" fill="#c8ccd2"><title>(unnamed)  0x8022F578  88B  [unfiled 0x8022xxxx]</title></rect>
+<rect x="1201.5" y="545.9" width="18.4" height="13.4" fill="#3fb950"><title>(unnamed)  0x8022F578  88B  [unfiled 0x8022xxxx]</title></rect>
 <rect x="1220.5" y="516.7" width="13.0" height="15.4" fill="#c8ccd2"><title>(unnamed)  0x80223940  72B  [unfiled 0x8022xxxx]</title></rect>
 <rect x="1234.2" y="516.7" width="12.3" height="15.4" fill="#c8ccd2"><title>(unnamed)  0x802238B8  68B  [unfiled 0x8022xxxx]</title></rect>
 <rect x="1247.1" y="516.7" width="12.3" height="15.4" fill="#c8ccd2"><title>(unnamed)  0x802238FC  68B  [unfiled 0x8022xxxx]</title></rect>
@@ -350,10 +350,10 @@
 <rect x="1233.4" y="551.6" width="11.0" height="7.8" fill="#3fb950"><title>(unnamed)  0x802244A8  32B  [unfiled 0x8022xxxx]</title></rect>
 <rect x="1245.0" y="542.2" width="6.9" height="10.7" fill="#c8ccd2"><title>(unnamed)  0x80223880  28B  [unfiled 0x8022xxxx]</title></rect>
 <rect x="1252.5" y="542.2" width="6.9" height="10.7" fill="#c8ccd2"><title>(unnamed)  0x8022389C  28B  [unfiled 0x8022xxxx]</title></rect>
-<rect x="1245.0" y="553.5" width="3.1" height="5.9" fill="#c8ccd2"><title>(unnamed)  0x80223A68  8B  [unfiled 0x8022xxxx]</title></rect>
-<rect x="1248.7" y="553.5" width="3.1" height="5.9" fill="#c8ccd2"><title>(unnamed)  0x80228E44  8B  [unfiled 0x8022xxxx]</title></rect>
-<rect x="1252.5" y="553.5" width="3.1" height="5.9" fill="#c8ccd2"><title>(unnamed)  0x8022BA98  8B  [unfiled 0x8022xxxx]</title></rect>
-<rect x="1256.2" y="553.5" width="3.1" height="5.9" fill="#c8ccd2"><title>(unnamed)  0x8022BCAC  8B  [unfiled 0x8022xxxx]</title></rect>
+<rect x="1245.0" y="553.5" width="3.1" height="5.9" fill="#3fb950"><title>(unnamed)  0x80223A68  8B  [unfiled 0x8022xxxx]</title></rect>
+<rect x="1248.7" y="553.5" width="3.1" height="5.9" fill="#3fb950"><title>(unnamed)  0x80228E44  8B  [unfiled 0x8022xxxx]</title></rect>
+<rect x="1252.5" y="553.5" width="3.1" height="5.9" fill="#3fb950"><title>(unnamed)  0x8022BA98  8B  [unfiled 0x8022xxxx]</title></rect>
+<rect x="1256.2" y="553.5" width="3.1" height="5.9" fill="#3fb950"><title>(unnamed)  0x8022BCAC  8B  [unfiled 0x8022xxxx]</title></rect>
 <text x="1264.5" y="10.5" font-size="10" fill="#8b949e">unfiled 0x8026xxxx</text>
 <rect x="1263.0" y="15.5" width="146.0" height="84.8" fill="#6e5494"><title>(unnamed)  0x8026EA00  4136B  [unfiled 0x8026xxxx]</title></rect>
 <rect x="1409.5" y="15.5" width="66.7" height="84.8" fill="#6e5494"><title>(unnamed)  0x80266BE0  1900B  [unfiled 0x8026xxxx]</title></rect>
@@ -522,7 +522,7 @@
 <rect x="915.5" y="577.0" width="166.6" height="203.4" fill="#c8ccd2"><title>(unnamed)  0x80211D70  11468B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="915.5" y="780.9" width="166.6" height="117.0" fill="#c8ccd2"><title>(unnamed)  0x80214E0C  6612B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1082.7" y="577.0" width="76.6" height="96.9" fill="#c8ccd2"><title>(unnamed)  0x802182A8  2532B  [unfiled 0x8021xxxx]</title></rect>
-<rect x="1082.7" y="674.5" width="76.6" height="87.2" fill="#c8ccd2"><title>(unnamed)  0x802167E0  2280B  [unfiled 0x8021xxxx]</title></rect>
+<rect x="1082.7" y="674.5" width="76.6" height="87.2" fill="#3fb950"><title>(unnamed)  0x802167E0  2280B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1082.7" y="762.3" width="76.6" height="69.2" fill="#c8ccd2"><title>(unnamed)  0x80218D5C  1812B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1082.7" y="832.1" width="76.6" height="65.8" fill="#c8ccd2"><title>(unnamed)  0x8021AA08  1724B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1159.9" y="577.0" width="79.1" height="57.6" fill="#c8ccd2"><title>(unnamed)  0x8021F380  1560B  [unfiled 0x8021xxxx]</title></rect>
@@ -575,7 +575,7 @@
 <rect x="1383.2" y="794.5" width="23.0" height="25.6" fill="#c8ccd2"><title>(unnamed)  0x8021196C  208B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1406.8" y="794.5" width="23.0" height="25.6" fill="#c8ccd2"><title>(unnamed)  0x80218C8C  208B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1430.4" y="794.5" width="22.6" height="25.6" fill="#c8ccd2"><title>(unnamed)  0x8021BBDC  204B  [unfiled 0x8021xxxx]</title></rect>
-<rect x="1359.1" y="820.7" width="22.0" height="26.2" fill="#c8ccd2"><title>(unnamed)  0x8021C748  204B  [unfiled 0x8021xxxx]</title></rect>
+<rect x="1359.1" y="820.7" width="22.0" height="26.2" fill="#3fb950"><title>(unnamed)  0x8021C748  204B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1359.1" y="847.5" width="22.0" height="25.2" fill="#c8ccd2"><title>(unnamed)  0x80214BEC  196B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1359.1" y="873.3" width="22.0" height="24.6" fill="#c8ccd2"><title>(unnamed)  0x8021BCA8  192B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1381.7" y="820.7" width="24.8" height="21.9" fill="#c8ccd2"><title>(unnamed)  0x8021BD68  192B  [unfiled 0x8021xxxx]</title></rect>
@@ -585,32 +585,32 @@
 <rect x="1381.7" y="871.2" width="17.7" height="26.7" fill="#c8ccd2"><title>(unnamed)  0x8021F2D8  168B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1400.0" y="843.2" width="19.2" height="22.3" fill="#c8ccd2"><title>(unnamed)  0x8021F158  152B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1419.8" y="843.2" width="17.6" height="22.3" fill="#c8ccd2"><title>(unnamed)  0x802172D0  140B  [unfiled 0x8021xxxx]</title></rect>
-<rect x="1438.0" y="843.2" width="15.0" height="22.3" fill="#c8ccd2"><title>(unnamed)  0x8021A4C8  120B  [unfiled 0x8021xxxx]</title></rect>
-<rect x="1400.0" y="866.1" width="18.1" height="18.5" fill="#c8ccd2"><title>(unnamed)  0x8021A540  120B  [unfiled 0x8021xxxx]</title></rect>
+<rect x="1438.0" y="843.2" width="15.0" height="22.3" fill="#3fb950"><title>(unnamed)  0x8021A4C8  120B  [unfiled 0x8021xxxx]</title></rect>
+<rect x="1400.0" y="866.1" width="18.1" height="18.5" fill="#3fb950"><title>(unnamed)  0x8021A540  120B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1400.0" y="885.2" width="18.1" height="12.7" fill="#c8ccd2"><title>(unnamed)  0x8021EADC  84B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1418.7" y="866.1" width="12.2" height="16.1" fill="#c8ccd2"><title>(unnamed)  0x80210F80  72B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1418.7" y="882.8" width="12.2" height="15.1" fill="#c8ccd2"><title>(unnamed)  0x802118B4  68B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1431.6" y="866.1" width="10.8" height="16.1" fill="#c8ccd2"><title>(unnamed)  0x8021E180  64B  [unfiled 0x8021xxxx]</title></rect>
-<rect x="1442.9" y="866.1" width="10.1" height="16.1" fill="#c8ccd2"><title>(unnamed)  0x80211840  60B  [unfiled 0x8021xxxx]</title></rect>
+<rect x="1442.9" y="866.1" width="10.1" height="16.1" fill="#3fb950"><title>(unnamed)  0x80211840  60B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1431.6" y="882.8" width="10.8" height="15.1" fill="#c8ccd2"><title>(unnamed)  0x802118F8  60B  [unfiled 0x8021xxxx]</title></rect>
-<rect x="1442.9" y="882.8" width="4.7" height="3.9" fill="#c8ccd2"><title>(unnamed)  0x80217C8C  8B  [unfiled 0x8021xxxx]</title></rect>
-<rect x="1448.3" y="882.8" width="4.7" height="3.9" fill="#c8ccd2"><title>(unnamed)  0x8021C6A8  8B  [unfiled 0x8021xxxx]</title></rect>
-<rect x="1442.9" y="887.3" width="4.7" height="3.9" fill="#c8ccd2"><title>(unnamed)  0x8021C6B0  8B  [unfiled 0x8021xxxx]</title></rect>
-<rect x="1448.3" y="887.3" width="4.7" height="3.9" fill="#c8ccd2"><title>(unnamed)  0x8021C740  8B  [unfiled 0x8021xxxx]</title></rect>
-<rect x="1442.9" y="891.8" width="2.9" height="6.1" fill="#c8ccd2"><title>(unnamed)  0x8021E1EC  8B  [unfiled 0x8021xxxx]</title></rect>
-<rect x="1446.5" y="891.8" width="2.9" height="6.1" fill="#c8ccd2"><title>(unnamed)  0x8021EA80  8B  [unfiled 0x8021xxxx]</title></rect>
-<rect x="1450.0" y="891.8" width="2.9" height="6.1" fill="#c8ccd2"><title>(unnamed)  0x8021EA88  8B  [unfiled 0x8021xxxx]</title></rect>
+<rect x="1442.9" y="882.8" width="4.7" height="3.9" fill="#3fb950"><title>(unnamed)  0x80217C8C  8B  [unfiled 0x8021xxxx]</title></rect>
+<rect x="1448.3" y="882.8" width="4.7" height="3.9" fill="#3fb950"><title>(unnamed)  0x8021C6A8  8B  [unfiled 0x8021xxxx]</title></rect>
+<rect x="1442.9" y="887.3" width="4.7" height="3.9" fill="#3fb950"><title>(unnamed)  0x8021C6B0  8B  [unfiled 0x8021xxxx]</title></rect>
+<rect x="1448.3" y="887.3" width="4.7" height="3.9" fill="#3fb950"><title>(unnamed)  0x8021C740  8B  [unfiled 0x8021xxxx]</title></rect>
+<rect x="1442.9" y="891.8" width="2.9" height="6.1" fill="#3fb950"><title>(unnamed)  0x8021E1EC  8B  [unfiled 0x8021xxxx]</title></rect>
+<rect x="1446.5" y="891.8" width="2.9" height="6.1" fill="#3fb950"><title>(unnamed)  0x8021EA80  8B  [unfiled 0x8021xxxx]</title></rect>
+<rect x="1450.0" y="891.8" width="2.9" height="6.1" fill="#3fb950"><title>(unnamed)  0x8021EA88  8B  [unfiled 0x8021xxxx]</title></rect>
 <text x="1458.1" y="572.0" font-size="10" fill="#8b949e">slice2_19</text>
 <rect x="1456.6" y="577.0" width="18.9" height="37.1" fill="#c8ccd2"><title>BrCamMatrixSetup  0x8021B2F8  352B  [core/slice2_19]</title></rect>
 <rect x="1476.0" y="577.0" width="17.7" height="37.1" fill="#c8ccd2"><title>BrCamMatrixSetupFixed  0x8021B458  332B  [core/slice2_19]</title></rect>
 <rect x="1494.4" y="577.0" width="19.1" height="17.2" fill="#c8ccd2"><title>BrDlRebase  0x8021D098  168B  [core/slice2_19]</title></rect>
 <rect x="1514.0" y="577.0" width="15.8" height="17.2" fill="#c8ccd2"><title>BrCarGfxReadColour  0x8021D2A0  140B  [core/slice2_19]</title></rect>
 <rect x="1494.4" y="594.8" width="9.5" height="19.3" fill="#c8ccd2"><title>BrAccumAddClamp  0x8021BE28  96B  [core/slice2_19]</title></rect>
-<rect x="1504.4" y="594.8" width="7.8" height="9.4" fill="#c8ccd2"><title>BrDlRebaseWord  0x8021D070  40B  [core/slice2_19]</title></rect>
-<rect x="1504.4" y="604.7" width="7.8" height="9.4" fill="#c8ccd2"><title>BrLogSet  0x8021E1F4  40B  [core/slice2_19]</title></rect>
-<rect x="1512.8" y="594.8" width="8.2" height="7.9" fill="#c8ccd2"><title>BrAnimSetOnce  0x8021D7E0  36B  [core/slice2_19]</title></rect>
-<rect x="1521.6" y="594.8" width="8.2" height="7.9" fill="#c8ccd2"><title>BrAnimSetLoop  0x8021D804  36B  [core/slice2_19]</title></rect>
-<rect x="1512.8" y="603.3" width="6.0" height="10.8" fill="#c8ccd2"><title>BrAnimSetPingPong  0x8021D828  36B  [core/slice2_19]</title></rect>
+<rect x="1504.4" y="594.8" width="7.8" height="9.4" fill="#3fb950"><title>BrDlRebaseWord  0x8021D070  40B  [core/slice2_19]</title></rect>
+<rect x="1504.4" y="604.7" width="7.8" height="9.4" fill="#3fb950"><title>BrLogSet  0x8021E1F4  40B  [core/slice2_19]</title></rect>
+<rect x="1512.8" y="594.8" width="8.2" height="7.9" fill="#3fb950"><title>BrAnimSetOnce  0x8021D7E0  36B  [core/slice2_19]</title></rect>
+<rect x="1521.6" y="594.8" width="8.2" height="7.9" fill="#3fb950"><title>BrAnimSetLoop  0x8021D804  36B  [core/slice2_19]</title></rect>
+<rect x="1512.8" y="603.3" width="6.0" height="10.8" fill="#3fb950"><title>BrAnimSetPingPong  0x8021D828  36B  [core/slice2_19]</title></rect>
 <rect x="1519.4" y="603.3" width="10.4" height="5.5" fill="#c8ccd2"><title>BrBitEdgeSplit  0x80255934  32B  [core/slice2_19]</title></rect>
 <rect x="1519.4" y="609.4" width="10.4" height="4.7" fill="#3fb950"><title>BrVec3Copy  0x802245D4  28B  [core/slice2_19]</title></rect>
 <rect x="1533.4" y="563.0" width="14.1" height="19.5" fill="#d29922"><title>BrVec3Cross  0x8022439C  104B  0 diff bytes  [core/geometry/br_vec]</title></rect>
@@ -637,9 +637,9 @@
 <rect x="1456.6" y="647.8" width="24.6" height="11.8" fill="#6e5494"><title>BrSub10046400  0x80264A60  112B  [core/slice3_31]</title></rect>
 <rect x="1481.7" y="617.7" width="14.9" height="19.5" fill="#6e5494"><title>BrExt_10046DC0  0x80265600  112B  [core/slice3_31]</title></rect>
 <rect x="1497.2" y="617.7" width="12.7" height="19.5" fill="#6e5494"><title>BrPhaseLeave_10046D20  0x8026E6D0  96B  [core/slice3_31]</title></rect>
-<rect x="1481.7" y="637.8" width="17.3" height="11.9" fill="#c8ccd2"><title>BrPhaseActivate_10046170  0x80248F38  80B  [core/slice3_31]</title></rect>
+<rect x="1481.7" y="637.8" width="17.3" height="11.9" fill="#3fb950"><title>BrPhaseActivate_10046170  0x80248F38  80B  [core/slice3_31]</title></rect>
 <rect x="1481.7" y="650.3" width="17.3" height="9.4" fill="#6e5494"><title>BrPhaseLeave_10046560  0x80264B20  64B  [core/slice3_31]</title></rect>
-<rect x="1499.6" y="637.8" width="10.3" height="12.7" fill="#c8ccd2"><title>BrPhaseActivate_10045AF0  0x8021C814  52B  [core/slice3_31]</title></rect>
+<rect x="1499.6" y="637.8" width="10.3" height="12.7" fill="#3fb950"><title>BrPhaseActivate_10045AF0  0x8021C814  52B  [core/slice3_31]</title></rect>
 <rect x="1499.6" y="651.1" width="10.3" height="8.6" fill="#6e5494"><title>BrPodLoadInto  0x80260DB0  36B  [core/slice3_31]</title></rect>
 <rect x="1513.6" y="617.7" width="33.3" height="24.1" fill="#c8ccd2"><title>BrRbSolveAccel  0x8025980C  304B  [core/slice3_42]</title></rect>
 <rect x="1513.6" y="642.4" width="33.3" height="17.3" fill="#c8ccd2"><title>BrRbAccumAll  0x8025993C  220B  [core/slice3_42]</title></rect>
@@ -649,18 +649,18 @@
 <rect x="1580.8" y="617.7" width="17.1" height="20.4" fill="#c8ccd2"><title>BrSndNearestOfferDefault  0x8022BA10  136B  [core/slice3_41]</title></rect>
 <rect x="1559.5" y="638.7" width="13.1" height="20.9" fill="#c8ccd2"><title>BrSndNearestReset  0x8022B428  108B  [core/slice3_41]</title></rect>
 <rect x="1573.2" y="638.7" width="12.6" height="20.9" fill="#c8ccd2"><title>BrVarLoad  0x8022AE70  104B  [core/slice3_41]</title></rect>
-<rect x="1586.3" y="638.7" width="11.6" height="12.9" fill="#c8ccd2"><title>BrSfxCarBankInit  0x80206830  60B  [core/slice3_41]</title></rect>
+<rect x="1586.3" y="638.7" width="11.6" height="12.9" fill="#3fb950"><title>BrSfxCarBankInit  0x80206830  60B  [core/slice3_41]</title></rect>
 <rect x="1586.3" y="652.2" width="11.6" height="7.5" fill="#c8ccd2"><title>BrSndNearestInvalidate  0x8022B404  36B  [core/slice3_41]</title></rect>
 <rect x="1456.6" y="663.2" width="18.9" height="15.0" fill="#6e5494"><title>BrPhaseLeave_10044AE0  0x80265440  112B  [core/slice2_26]</title></rect>
 <rect x="1476.1" y="663.2" width="15.4" height="15.0" fill="#6e5494"><title>BrPhaseLeave_10044F00  0x80260DD4  92B  [core/slice2_26]</title></rect>
 <rect x="1456.6" y="678.8" width="15.3" height="13.0" fill="#6e5494"><title>BrPhaseLeave_10044B40  0x8026E7D0  80B  [core/slice2_26]</title></rect>
-<rect x="1456.6" y="692.4" width="15.3" height="12.3" fill="#c8ccd2"><title>BrPhaseHook_10045050  0x80211194  76B  [core/slice2_26]</title></rect>
+<rect x="1456.6" y="692.4" width="15.3" height="12.3" fill="#3fb950"><title>BrPhaseHook_10045050  0x80211194  76B  [core/slice2_26]</title></rect>
 <rect x="1472.5" y="678.8" width="9.2" height="18.2" fill="#6e5494"><title>BrPhaseActivate_10045460  0x80269460  68B  [core/slice2_26]</title></rect>
 <rect x="1482.3" y="678.8" width="9.2" height="18.2" fill="#6e5494"><title>BrPhaseActivate_10045520  0x8026C610  68B  [core/slice2_26]</title></rect>
 <rect x="1472.5" y="697.6" width="19.0" height="7.1" fill="#6e5494"><title>BrPhaseDispatch_100450F0  0x80241F88  56B  [core/slice2_26]</title></rect>
 <rect x="1495.1" y="663.2" width="17.5" height="18.0" fill="#c8ccd2"><title>BrEntSetPos  0x8021FE04  124B  [core/slice3_45]</title></rect>
 <rect x="1513.2" y="663.2" width="16.9" height="18.0" fill="#c8ccd2"><title>BrEntSetMatrix  0x80220150  120B  [core/slice3_45]</title></rect>
-<rect x="1495.1" y="681.8" width="19.2" height="11.4" fill="#c8ccd2"><title>BrEntRefreshColour  0x80220398  88B  [core/slice3_45]</title></rect>
+<rect x="1495.1" y="681.8" width="19.2" height="11.4" fill="#3fb950"><title>BrEntRefreshColour  0x80220398  88B  [core/slice3_45]</title></rect>
 <rect x="1495.1" y="693.9" width="19.2" height="10.9" fill="#c8ccd2"><title>BrEntSetVel  0x802201C8  84B  [core/slice3_45]</title></rect>
 <rect x="1515.0" y="681.8" width="15.1" height="11.8" fill="#c8ccd2"><title>BrEntSetRecord  0x802203F0  72B  [core/slice3_45]</title></rect>
 <rect x="1515.0" y="694.3" width="15.1" height="10.5" fill="#c8ccd2"><title>BrEntSetAngVel  0x80220358  64B  [core/slice3_45]</title></rect>
@@ -676,49 +676,49 @@
 <rect x="1586.5" y="698.2" width="11.4" height="6.5" fill="#c8ccd2"><title>BrMat4SetLastColumn  0x8021EB30  32B  [core/slice3_44]</title></rect>
 <rect x="1456.6" y="708.3" width="22.3" height="32.9" fill="#c8ccd2"><title>BrTexSizeShift  0x80217614  288B  [core/slice2_17]</title></rect>
 <rect x="1479.5" y="708.3" width="12.5" height="29.6" fill="#c8ccd2"><title>BrFloat12MaxAbs  0x80217420  148B  [core/slice2_17]</title></rect>
-<rect x="1479.5" y="738.6" width="12.5" height="2.7" fill="#c8ccd2"><title>BrScratchRingNull  0x802173B8  16B  [core/slice2_17]</title></rect>
-<rect x="1495.6" y="708.3" width="18.2" height="18.7" fill="#c8ccd2"><title>BrRaceHudFrame  0x802003E4  136B  [core/racing/br_racebegin]</title></rect>
+<rect x="1479.5" y="738.6" width="12.5" height="2.7" fill="#3fb950"><title>BrScratchRingNull  0x802173B8  16B  [core/slice2_17]</title></rect>
+<rect x="1495.6" y="708.3" width="18.2" height="18.7" fill="#3fb950"><title>BrRaceHudFrame  0x802003E4  136B  [core/racing/br_racebegin]</title></rect>
 <rect x="1495.6" y="727.6" width="18.2" height="13.6" fill="#c8ccd2"><title>BrRaceCueLayout  0x802006C8  100B  [core/racing/br_racebegin]</title></rect>
-<rect x="1514.3" y="708.3" width="15.9" height="14.2" fill="#c8ccd2"><title>BrRaceDriverReset  0x8021735C  92B  [core/racing/br_racebegin]</title></rect>
-<rect x="1514.3" y="723.1" width="15.9" height="9.1" fill="#c8ccd2"><title>BrRaceEnterOutro  0x8020068C  60B  [core/racing/br_racebegin]</title></rect>
+<rect x="1514.3" y="708.3" width="15.9" height="14.2" fill="#3fb950"><title>BrRaceDriverReset  0x8021735C  92B  [core/racing/br_racebegin]</title></rect>
+<rect x="1514.3" y="723.1" width="15.9" height="9.1" fill="#3fb950"><title>BrRaceEnterOutro  0x8020068C  60B  [core/racing/br_racebegin]</title></rect>
 <rect x="1514.3" y="732.8" width="15.9" height="8.4" fill="#c8ccd2"><title>BrRaceCueRewind  0x8020072C  56B  [core/racing/br_racebegin]</title></rect>
 <rect x="1533.9" y="708.3" width="31.1" height="32.9" fill="#c8ccd2"><title>BrModelLightsDraw  0x8020046C  400B  [core/slice2_14]</title></rect>
-<rect x="1565.6" y="708.3" width="1.9" height="32.9" fill="#c8ccd2"><title>BrThunk11D10  0x802288B4  32B  [core/slice2_14]</title></rect>
+<rect x="1565.6" y="708.3" width="1.9" height="32.9" fill="#3fb950"><title>BrThunk11D10  0x802288B4  32B  [core/slice2_14]</title></rect>
 <rect x="1571.1" y="708.3" width="26.8" height="16.1" fill="#c8ccd2"><title>BrNodeMarkPass  0x80255BA0  176B  [core/slice3_40]</title></rect>
 <rect x="1571.1" y="725.1" width="11.8" height="16.1" fill="#c8ccd2"><title>BrNodeClearMarkPass  0x80255C50  80B  [core/slice3_40]</title></rect>
-<rect x="1583.6" y="725.1" width="14.3" height="7.8" fill="#c8ccd2"><title>BrNodeRunMarkPass  0x80255CA0  48B  [core/slice3_40]</title></rect>
+<rect x="1583.6" y="725.1" width="14.3" height="7.8" fill="#3fb950"><title>BrNodeRunMarkPass  0x80255CA0  48B  [core/slice3_40]</title></rect>
 <rect x="1583.6" y="733.5" width="14.3" height="7.8" fill="#6e5494"><title>BrCarNetSendState  0x80261058  48B  [core/slice3_40]</title></rect>
 <rect x="1456.6" y="744.8" width="16.9" height="28.4" fill="#c8ccd2"><title>BrVec3Project  0x80225038  196B  [core/geometry/br_mat]</title></rect>
 <rect x="1474.1" y="744.8" width="11.6" height="28.4" fill="#6e5494"><title>BrMat4Identity  0x80260FD0  136B  [core/geometry/br_mat]</title></rect>
 <rect x="1489.3" y="744.8" width="27.9" height="21.9" fill="#c8ccd2"><title>BrHudDrawTimeEntry  0x80238714  248B  [core/slice1_03]</title></rect>
-<rect x="1489.3" y="767.3" width="27.9" height="5.9" fill="#c8ccd2"><title>BrTextSetColors  0x8022F530  72B  [core/slice1_03]</title></rect>
+<rect x="1489.3" y="767.3" width="27.9" height="5.9" fill="#3fb950"><title>BrTextSetColors  0x8022F530  72B  [core/slice1_03]</title></rect>
 <rect x="1520.8" y="744.8" width="25.1" height="28.4" fill="#c8ccd2"><title>BrTriContainsPoint  0x8022591C  292B  [core/slice1_06]</title></rect>
 <rect x="1549.5" y="744.8" width="22.8" height="15.0" fill="#c8ccd2"><title>BrVec4Normalise  0x8025813C  144B  [core/geometry/br_vecnorm]</title></rect>
 <rect x="1549.5" y="760.4" width="22.8" height="12.8" fill="#c8ccd2"><title>BrVec3Normalise  0x802581CC  124B  [core/geometry/br_vecnorm]</title></rect>
 <rect x="1575.9" y="744.8" width="11.0" height="17.7" fill="#c8ccd2"><title>BrFileOpenWrite  0x8021A9B4  84B  [core/slice2_13]</title></rect>
 <rect x="1587.5" y="744.8" width="10.4" height="17.7" fill="#6e5494"><title>BrGfxClearCounters  0x80269410  80B  [core/slice2_13]</title></rect>
 <rect x="1575.9" y="763.1" width="18.2" height="10.1" fill="#6e5494"><title>BrPolyPoolFree  0x8026BA70  80B  [core/slice2_13]</title></rect>
-<rect x="1594.7" y="763.1" width="3.2" height="10.1" fill="#c8ccd2"><title>BrPolyDistMaxX  0x80223470  16B  [core/slice2_13]</title></rect>
+<rect x="1594.7" y="763.1" width="3.2" height="10.1" fill="#3fb950"><title>BrPolyDistMaxX  0x80223470  16B  [core/slice2_13]</title></rect>
 <rect x="1456.6" y="776.8" width="13.2" height="18.4" fill="#c8ccd2"><title>BrViewportReEmit  0x80219F04  104B  [core/slice2_18]</title></rect>
-<rect x="1470.4" y="776.8" width="10.0" height="18.4" fill="#c8ccd2"><title>BrHudTextEnd  0x8021A964  80B  [core/slice2_18]</title></rect>
-<rect x="1456.6" y="795.8" width="23.8" height="6.4" fill="#c8ccd2"><title>BrHudTextBegin  0x8021A920  68B  [core/slice2_18]</title></rect>
+<rect x="1470.4" y="776.8" width="10.0" height="18.4" fill="#3fb950"><title>BrHudTextEnd  0x8021A964  80B  [core/slice2_18]</title></rect>
+<rect x="1456.6" y="795.8" width="23.8" height="6.4" fill="#3fb950"><title>BrHudTextBegin  0x8021A920  68B  [core/slice2_18]</title></rect>
 <rect x="1456.6" y="805.8" width="15.2" height="22.6" fill="#c8ccd2"><title>BrWeatherRandomiseParticles  0x80239CF0  148B  [core/slice2_15]</title></rect>
 <rect x="1472.4" y="805.8" width="8.0" height="22.6" fill="#6e5494"><title>BrCmdSetColorA  0x8026C5C0  80B  [core/slice2_15]</title></rect>
 <rect x="1456.6" y="832.0" width="16.5" height="11.5" fill="#c8ccd2"><title>BrSfxSrcTrigger  0x8022B370  84B  [core/audio/br_sfxsrc]</title></rect>
 <rect x="1456.6" y="844.1" width="16.5" height="9.2" fill="#6e5494"><title>BrSfxSrcRaceCountdown  0x80264E0C  68B  [core/audio/br_sfxsrc]</title></rect>
-<rect x="1473.7" y="832.0" width="6.6" height="10.3" fill="#c8ccd2"><title>BrSfxSrcBeep  0x8022B3C4  32B  [core/audio/br_sfxsrc]</title></rect>
-<rect x="1473.7" y="842.9" width="6.6" height="10.3" fill="#c8ccd2"><title>BrSfxSrcBeep2  0x8022B3E4  32B  [core/audio/br_sfxsrc]</title></rect>
+<rect x="1473.7" y="832.0" width="6.6" height="10.3" fill="#3fb950"><title>BrSfxSrcBeep  0x8022B3C4  32B  [core/audio/br_sfxsrc]</title></rect>
+<rect x="1473.7" y="842.9" width="6.6" height="10.3" fill="#3fb950"><title>BrSfxSrcBeep2  0x8022B3E4  32B  [core/audio/br_sfxsrc]</title></rect>
 <rect x="1456.6" y="856.9" width="18.0" height="9.9" fill="#c8ccd2"><title>BrInstall_1001BAE0  0x80200000  80B  [core/startup/br_objlife]</title></rect>
-<rect x="1456.6" y="867.4" width="18.0" height="9.4" fill="#c8ccd2"><title>BrWrap_100715E0  0x80214A3C  76B  [core/startup/br_objlife]</title></rect>
-<rect x="1475.2" y="856.9" width="5.1" height="19.9" fill="#c8ccd2"><title>BrWrap_10067940  0x8022AED8  48B  [core/startup/br_objlife]</title></rect>
+<rect x="1456.6" y="867.4" width="18.0" height="9.4" fill="#3fb950"><title>BrWrap_100715E0  0x80214A3C  76B  [core/startup/br_objlife]</title></rect>
+<rect x="1475.2" y="856.9" width="5.1" height="19.9" fill="#3fb950"><title>BrWrap_10067940  0x8022AED8  48B  [core/startup/br_objlife]</title></rect>
 <rect x="1456.6" y="880.3" width="13.7" height="17.6" fill="#c8ccd2"><title>BrEntityBindAux  0x802207A4  108B  [core/slice1_09]</title></rect>
 <rect x="1470.9" y="880.3" width="9.5" height="17.6" fill="#6e5494"><title>BrBitStreamSkipBytes  0x8023FF34  76B  [core/slice1_09]</title></rect>
 <rect x="1483.9" y="776.8" width="10.3" height="18.8" fill="#c8ccd2"><title>BrUiHook81Install  0x802173C8  88B  [core/slice7_81]</title></rect>
 <rect x="1494.9" y="776.8" width="10.8" height="9.5" fill="#c8ccd2"><title>BrUiHook81Activate_10045BC0  0x8022AF34  48B  [core/slice7_81]</title></rect>
-<rect x="1494.9" y="786.9" width="10.8" height="8.7" fill="#c8ccd2"><title>BrUiHook81Reset  0x8021E1C0  44B  [core/slice7_81]</title></rect>
+<rect x="1494.9" y="786.9" width="10.8" height="8.7" fill="#3fb950"><title>BrUiHook81Reset  0x8021E1C0  44B  [core/slice7_81]</title></rect>
 <rect x="1509.3" y="776.8" width="11.2" height="18.8" fill="#c8ccd2"><title>BrEntSlotsReset  0x80200154  96B  [core/racing/br_racestart]</title></rect>
-<rect x="1521.0" y="776.8" width="8.2" height="13.4" fill="#c8ccd2"><title>BrRaceEntrantCountSet  0x80210F4C  52B  [core/racing/br_racestart]</title></rect>
-<rect x="1521.0" y="790.8" width="8.2" height="4.8" fill="#c8ccd2"><title>BrRaceSub1002F6C0  0x80242940  20B  [core/racing/br_racestart]</title></rect>
+<rect x="1521.0" y="776.8" width="8.2" height="13.4" fill="#3fb950"><title>BrRaceEntrantCountSet  0x80210F4C  52B  [core/racing/br_racestart]</title></rect>
+<rect x="1521.0" y="790.8" width="8.2" height="4.8" fill="#3fb950"><title>BrRaceSub1002F6C0  0x80242940  20B  [core/racing/br_racestart]</title></rect>
 <rect x="1532.9" y="776.8" width="13.6" height="18.8" fill="#c8ccd2"><title>BrWndShadowSet  0x8021E998  116B  [core/controls/br_input]</title></rect>
 <rect x="1547.1" y="776.8" width="5.3" height="18.8" fill="#6e5494"><title>BrWndFrontierName  0x8026CE20  48B  [core/controls/br_input]</title></rect>
 <rect x="1555.9" y="776.8" width="13.6" height="18.8" fill="#c8ccd2"><title>BrImgBlitSkipped  0x8021EA0C  116B  [core/drawing/br_imgblit]</title></rect>
@@ -731,32 +731,32 @@
 <rect x="1495.1" y="821.8" width="7.5" height="17.9" fill="#6e5494"><title>BrStringById  0x8026AC80  64B  [core/slice4_53]</title></rect>
 <rect x="1483.9" y="843.3" width="10.6" height="17.9" fill="#6e5494"><title>BrAiHeading  0x80260E78  88B  [core/racing/br_ai]</title></rect>
 <rect x="1495.1" y="843.3" width="7.5" height="12.1" fill="#6e5494"><title>BrAiAimSmooth  0x802694A4  44B  [core/racing/br_ai]</title></rect>
-<rect x="1495.1" y="856.0" width="7.5" height="5.2" fill="#c8ccd2"><title>BrAiRecoveryReset  0x8025BBA4  20B  [core/racing/br_ai]</title></rect>
-<rect x="1483.9" y="864.8" width="12.3" height="15.1" fill="#c8ccd2"><title>BrUiHook84_10046710  0x8020C408  88B  [core/slice8_84]</title></rect>
-<rect x="1496.8" y="864.8" width="5.8" height="15.1" fill="#c8ccd2"><title>BrUiHook84Reset  0x8022AF08  44B  [core/slice8_84]</title></rect>
+<rect x="1495.1" y="856.0" width="7.5" height="5.2" fill="#3fb950"><title>BrAiRecoveryReset  0x8025BBA4  20B  [core/racing/br_ai]</title></rect>
+<rect x="1483.9" y="864.8" width="12.3" height="15.1" fill="#3fb950"><title>BrUiHook84_10046710  0x8020C408  88B  [core/slice8_84]</title></rect>
+<rect x="1496.8" y="864.8" width="5.8" height="15.1" fill="#3fb950"><title>BrUiHook84Reset  0x8022AF08  44B  [core/slice8_84]</title></rect>
 <rect x="1483.9" y="883.4" width="11.4" height="14.5" fill="#6e5494"><title>BrUiHook87_1003FC40  0x8026E820  80B  [core/slice8_87]</title></rect>
-<rect x="1496.0" y="883.4" width="6.6" height="14.5" fill="#c8ccd2"><title>BrUiHook87_1003F280  0x8021C848  48B  [core/slice8_87]</title></rect>
+<rect x="1496.0" y="883.4" width="6.6" height="14.5" fill="#3fb950"><title>BrUiHook87_1003F280  0x8021C848  48B  [core/slice8_87]</title></rect>
 <rect x="1506.2" y="799.2" width="9.7" height="15.2" fill="#c8ccd2"><title>BrCollRespCountersReset  0x8021C46C  72B  [core/driving/br_collresp]</title></rect>
 <rect x="1516.5" y="799.2" width="6.3" height="15.2" fill="#c8ccd2"><title>BrCrListPush  0x8025C24C  48B  [core/driving/br_collresp]</title></rect>
 <rect x="1526.4" y="799.2" width="10.2" height="15.2" fill="#c8ccd2"><title>BrEntInit  0x80255B54  76B  [core/slice1_05]</title></rect>
 <rect x="1537.1" y="799.2" width="5.1" height="15.2" fill="#c8ccd2"><title>BrHookCallC  0x8021C718  40B  [core/slice1_05]</title></rect>
 <rect x="1545.8" y="799.2" width="10.7" height="15.2" fill="#6e5494"><title>BrUiImgSavePathsInit  0x80264AD0  80B  [core/drawing/br_uiimg]</title></rect>
-<rect x="1557.1" y="799.2" width="3.9" height="15.2" fill="#c8ccd2"><title>BrUiImgResetForTest  0x80200108  32B  [core/drawing/br_uiimg]</title></rect>
+<rect x="1557.1" y="799.2" width="3.9" height="15.2" fill="#3fb950"><title>BrUiImgResetForTest  0x80200108  32B  [core/drawing/br_uiimg]</title></rect>
 <rect x="1564.6" y="799.2" width="12.9" height="7.3" fill="#6e5494"><title>BrAudioGetPan  0x8026B930  48B  [core/audio/br_audio]</title></rect>
 <rect x="1564.6" y="807.1" width="12.9" height="7.3" fill="#6e5494"><title>BrAudioIsEnabled  0x8026DBB0  48B  [core/audio/br_audio]</title></rect>
-<rect x="1578.1" y="799.2" width="1.7" height="15.2" fill="#c8ccd2"><title>BrAudioTrackCount  0x80220534  16B  [core/audio/br_audio]</title></rect>
+<rect x="1578.1" y="799.2" width="1.7" height="15.2" fill="#3fb950"><title>BrAudioTrackCount  0x80220534  16B  [core/audio/br_audio]</title></rect>
 <rect x="1583.4" y="799.2" width="7.6" height="12.2" fill="#6e5494"><title>BrGameStepIsAddr  0x8026B720  48B  [core/startup/br_gamestep]</title></rect>
 <rect x="1591.6" y="799.2" width="6.3" height="12.2" fill="#c8ccd2"><title>BrGameStepInvoke  0x8021C6F0  40B  [core/startup/br_gamestep]</title></rect>
-<rect x="1583.4" y="812.0" width="14.5" height="2.3" fill="#c8ccd2"><title>BrGameStepIs  0x8021C6D0  20B  [core/startup/br_gamestep]</title></rect>
+<rect x="1583.4" y="812.0" width="14.5" height="2.3" fill="#3fb950"><title>BrGameStepIs  0x8021C6D0  20B  [core/startup/br_gamestep]</title></rect>
 <rect x="1506.2" y="818.0" width="11.0" height="7.8" fill="#6e5494"><title>BrWrap_10072A70  0x80240240  44B  [core/audio/br_musiccmd]</title></rect>
 <rect x="1506.2" y="826.3" width="11.0" height="6.2" fill="#6e5494"><title>BrExt_10072A90  0x802607DC  36B  [core/audio/br_musiccmd]</title></rect>
 <rect x="1517.9" y="818.0" width="3.5" height="8.1" fill="#6e5494"><title>BrWrap_10072B80  0x80242880  16B  [core/audio/br_musiccmd]</title></rect>
-<rect x="1517.9" y="826.6" width="3.5" height="5.9" fill="#c8ccd2"><title>BrExt_10072B30  0x8021CD24  12B  [core/audio/br_musiccmd]</title></rect>
+<rect x="1517.9" y="826.6" width="3.5" height="5.9" fill="#3fb950"><title>BrExt_10072B30  0x8021CD24  12B  [core/audio/br_musiccmd]</title></rect>
 <rect x="1506.2" y="836.2" width="15.1" height="13.9" fill="#c8ccd2"><title>BrVec3Predict  0x80221108  104B  [core/drawing/br_surf]</title></rect>
 <rect x="1506.2" y="853.7" width="15.1" height="12.6" fill="#6e5494"><title>SetPlayerTitle  0x80267470  96B  [exe/bossrally/0x00401700]</title></rect>
 <rect x="1506.2" y="869.8" width="9.9" height="12.6" fill="#6e5494"><title>BrGbiTexScanTileSync  0x8026B860  64B  [core/drawing/br_gbitexscan]</title></rect>
 <rect x="1516.7" y="869.8" width="4.6" height="12.6" fill="#6e5494"><title>BrGbiTexScanMark  0x8026C040  32B  [core/drawing/br_gbitexscan]</title></rect>
-<rect x="1506.2" y="886.0" width="15.1" height="11.9" fill="#c8ccd2"><title>BrMenuSub1005FF30  0x8021E5C4  92B  [core/slice4_52]</title></rect>
+<rect x="1506.2" y="886.0" width="15.1" height="11.9" fill="#3fb950"><title>BrMenuSub1005FF30  0x8021E5C4  92B  [core/slice4_52]</title></rect>
 <rect x="1524.9" y="818.0" width="13.8" height="13.0" fill="#6e5494"><title>BrDevSlotReleaseIface  0x8023FED8  92B  [core/slice3_39]</title></rect>
 <rect x="1542.4" y="818.0" width="11.6" height="13.0" fill="#c8ccd2"><title>BrBrfChecksum  0x8023DF4C  80B  [core/settings/br_save]</title></rect>
 <rect x="1557.5" y="818.0" width="11.6" height="13.0" fill="#6e5494"><title>BrUiOptAddress  0x8026BA20  80B  [core/slice7_80]</title></rect>
@@ -767,49 +767,49 @@
 <rect x="1530.3" y="852.0" width="4.8" height="8.4" fill="#c8ccd2"><title>BrBootFrontier_10032530  0x80255018  24B  [core/startup/br_bootfrontier]</title></rect>
 <rect x="1524.9" y="861.0" width="10.1" height="3.9" fill="#c8ccd2"><title>BrBootFrontier_10056260  0x80255030  24B  [core/startup/br_bootfrontier]</title></rect>
 <rect x="1524.9" y="868.5" width="10.1" height="12.9" fill="#c8ccd2"><title>BrMixCreate  0x80256228  72B  [core/audio/br_mix]</title></rect>
-<rect x="1524.9" y="885.0" width="10.1" height="12.9" fill="#c8ccd2"><title>BrSndVoiceStop  0x80258BDC  72B  [core/slice1_08]</title></rect>
+<rect x="1524.9" y="885.0" width="10.1" height="12.9" fill="#3fb950"><title>BrSndVoiceStop  0x80258BDC  72B  [core/slice1_08]</title></rect>
 <rect x="1538.7" y="834.6" width="12.8" height="10.2" fill="#c8ccd2"><title>BrTex3dFree  0x8025D018  72B  [core/drawing/br_tex3d]</title></rect>
 <rect x="1555.0" y="834.6" width="12.8" height="10.2" fill="#6e5494"><title>BrMat4Perspective7  0x80260E30  72B  [core/slice4_50]</title></rect>
-<rect x="1571.4" y="834.6" width="11.9" height="10.2" fill="#c8ccd2"><title>BrUiHook89_10044D00  0x80211150  68B  [core/slice8_89]</title></rect>
-<rect x="1586.9" y="834.6" width="5.2" height="10.2" fill="#c8ccd2"><title>BrDlGlScissorInt  0x80219A1C  32B  [core/drawing/br_dlglide]</title></rect>
-<rect x="1592.7" y="834.6" width="5.2" height="10.2" fill="#c8ccd2"><title>BrDlGlScissorFrac  0x80219A3C  32B  [core/drawing/br_dlglide]</title></rect>
-<rect x="1538.7" y="848.4" width="9.9" height="10.4" fill="#c8ccd2"><title>BrUiItemVtblOf  0x80220438  60B  [core/slice2_23]</title></rect>
-<rect x="1538.7" y="862.4" width="9.9" height="9.4" fill="#c8ccd2"><title>BrBaseDirResetForTest  0x802005FC  56B  [core/settings/br_basedir]</title></rect>
-<rect x="1538.7" y="875.4" width="9.9" height="9.4" fill="#c8ccd2"><title>PopInclude  0x8021187C  56B  [exe/brally/0x00401690]</title></rect>
+<rect x="1571.4" y="834.6" width="11.9" height="10.2" fill="#3fb950"><title>BrUiHook89_10044D00  0x80211150  68B  [core/slice8_89]</title></rect>
+<rect x="1586.9" y="834.6" width="5.2" height="10.2" fill="#3fb950"><title>BrDlGlScissorInt  0x80219A1C  32B  [core/drawing/br_dlglide]</title></rect>
+<rect x="1592.7" y="834.6" width="5.2" height="10.2" fill="#3fb950"><title>BrDlGlScissorFrac  0x80219A3C  32B  [core/drawing/br_dlglide]</title></rect>
+<rect x="1538.7" y="848.4" width="9.9" height="10.4" fill="#3fb950"><title>BrUiItemVtblOf  0x80220438  60B  [core/slice2_23]</title></rect>
+<rect x="1538.7" y="862.4" width="9.9" height="9.4" fill="#3fb950"><title>BrBaseDirResetForTest  0x802005FC  56B  [core/settings/br_basedir]</title></rect>
+<rect x="1538.7" y="875.4" width="9.9" height="9.4" fill="#3fb950"><title>PopInclude  0x8021187C  56B  [exe/brally/0x00401690]</title></rect>
 <rect x="1538.7" y="888.5" width="9.9" height="9.4" fill="#c8ccd2"><title>PopInclude  0x80211934  56B  [exe/setvideo/0x00401AF0]</title></rect>
 <rect x="1552.2" y="848.4" width="9.9" height="9.4" fill="#c8ccd2"><title>BrCrPlaneDist  0x8025B704  56B  [core/driving/br_collrespsolve]</title></rect>
 <rect x="1565.7" y="848.4" width="9.0" height="7.1" fill="#3fb950"><title>BrUiTweenReset_10047D10  0x8022445C  40B  [core/slice3_32]</title></rect>
-<rect x="1565.7" y="856.1" width="9.0" height="1.7" fill="#c8ccd2"><title>BrVtInit41930  0x8021C6E4  12B  [core/slice3_32]</title></rect>
-<rect x="1578.3" y="848.4" width="8.0" height="9.4" fill="#c8ccd2"><title>FreeINI  0x8021DDFC  48B  [exe/brally/0x004012A0]</title></rect>
-<rect x="1589.9" y="848.4" width="8.0" height="9.4" fill="#c8ccd2"><title>BrImgFree  0x8021DE2C  48B  [core/drawing/br_img]</title></rect>
+<rect x="1565.7" y="856.1" width="9.0" height="1.7" fill="#3fb950"><title>BrVtInit41930  0x8021C6E4  12B  [core/slice3_32]</title></rect>
+<rect x="1578.3" y="848.4" width="8.0" height="9.4" fill="#3fb950"><title>FreeINI  0x8021DDFC  48B  [exe/brally/0x004012A0]</title></rect>
+<rect x="1589.9" y="848.4" width="8.0" height="9.4" fill="#3fb950"><title>BrImgFree  0x8021DE2C  48B  [core/drawing/br_img]</title></rect>
 <rect x="1552.2" y="861.4" width="9.3" height="8.1" fill="#6e5494"><title>BrUiHook85_1003E950  0x802649C0  48B  [core/slice8_85]</title></rect>
-<rect x="1552.2" y="873.1" width="9.3" height="7.2" fill="#c8ccd2"><title>BrHook_10044010  0x80200128  44B  [core/menus/br_menuact]</title></rect>
+<rect x="1552.2" y="873.1" width="9.3" height="7.2" fill="#3fb950"><title>BrHook_10044010  0x80200128  44B  [core/menus/br_menuact]</title></rect>
 <rect x="1552.2" y="883.9" width="9.3" height="5.2" fill="#c8ccd2"><title>BrRec24TotalBytes  0x8021D6B8  36B  [core/slice1_07]</title></rect>
 <rect x="1552.2" y="892.7" width="9.3" height="5.2" fill="#c8ccd2"><title>BrBitLatchTake  0x80255910  36B  [core/geometry/br_bits]</title></rect>
-<rect x="1565.1" y="861.4" width="5.8" height="7.1" fill="#c8ccd2"><title>BrTrackFaceCount  0x80225350  32B  [core/gamedata/br_track]</title></rect>
-<rect x="1574.5" y="861.4" width="5.8" height="7.1" fill="#c8ccd2"><title>BrOperatorDelete  0x80226D7C  32B  [core/gamedata/br_crt]</title></rect>
+<rect x="1565.1" y="861.4" width="5.8" height="7.1" fill="#3fb950"><title>BrTrackFaceCount  0x80225350  32B  [core/gamedata/br_track]</title></rect>
+<rect x="1574.5" y="861.4" width="5.8" height="7.1" fill="#3fb950"><title>BrOperatorDelete  0x80226D7C  32B  [core/gamedata/br_crt]</title></rect>
 <rect x="1583.9" y="861.4" width="5.8" height="7.1" fill="#6e5494"><title>BrPodIdentity  0x80268560  32B  [core/gamedata/br_pod]</title></rect>
 <rect x="1593.3" y="861.4" width="4.6" height="3.8" fill="#6e5494"><title>BrUiNavSelection  0x8026B9F0  16B  [core/menus/br_uinav]</title></rect>
-<rect x="1593.3" y="865.8" width="4.6" height="2.7" fill="#c8ccd2"><title>BrUiNavInstallPageVtbl  0x8020AD50  12B  [core/menus/br_uinav]</title></rect>
+<rect x="1593.3" y="865.8" width="4.6" height="2.7" fill="#3fb950"><title>BrUiNavInstallPageVtbl  0x8020AD50  12B  [core/menus/br_uinav]</title></rect>
 <rect x="1565.1" y="872.1" width="5.4" height="6.2" fill="#c8ccd2"><title>BrStub10008B80  0x80219A5C  28B  [core/slice6_74]</title></rect>
-<rect x="1565.1" y="881.9" width="5.4" height="3.3" fill="#c8ccd2"><title>BrMenuClearAA28A8  0x8022F4DC  16B  [core/slice2_24]</title></rect>
-<rect x="1565.1" y="885.8" width="5.4" height="2.3" fill="#c8ccd2"><title>BrMenuSetAA28D0_0  0x8021C6C4  12B  [core/slice2_24]</title></rect>
-<rect x="1565.1" y="891.7" width="5.4" height="3.3" fill="#c8ccd2"><title>BrSet_10019270  0x8022F4CC  16B  [core/drawing/br_textmode]</title></rect>
-<rect x="1565.1" y="895.6" width="5.4" height="2.3" fill="#c8ccd2"><title>BrClear_10019250  0x8022F4F8  12B  [core/drawing/br_textmode]</title></rect>
+<rect x="1565.1" y="881.9" width="5.4" height="3.3" fill="#3fb950"><title>BrMenuClearAA28A8  0x8022F4DC  16B  [core/slice2_24]</title></rect>
+<rect x="1565.1" y="885.8" width="5.4" height="2.3" fill="#3fb950"><title>BrMenuSetAA28D0_0  0x8021C6C4  12B  [core/slice2_24]</title></rect>
+<rect x="1565.1" y="891.7" width="5.4" height="3.3" fill="#3fb950"><title>BrSet_10019270  0x8022F4CC  16B  [core/drawing/br_textmode]</title></rect>
+<rect x="1565.1" y="895.6" width="5.4" height="2.3" fill="#3fb950"><title>BrClear_10019250  0x8022F4F8  12B  [core/drawing/br_textmode]</title></rect>
 <rect x="1574.1" y="872.1" width="5.5" height="3.2" fill="#6e5494"><title>BrFadeLatch  0x8026B434  16B  [core/slice2_16]</title></rect>
 <rect x="1574.1" y="875.9" width="5.5" height="2.2" fill="#6e5494"><title>BrGbiMtxSlot  0x80242810  12B  [core/slice2_16]</title></rect>
-<rect x="1583.2" y="872.1" width="5.5" height="6.0" fill="#c8ccd2"><title>BrStrResResetForTest  0x80255E64  28B  [core/gamedata/br_strres]</title></rect>
+<rect x="1583.2" y="872.1" width="5.5" height="6.0" fill="#3fb950"><title>BrStrResResetForTest  0x80255E64  28B  [core/gamedata/br_strres]</title></rect>
 <rect x="1592.4" y="872.1" width="5.5" height="6.0" fill="#6e5494"><title>BrObjInitInline  0x802607C0  28B  [core/gamedata/br_obj]</title></rect>
-<rect x="1574.1" y="881.8" width="3.4" height="3.3" fill="#c8ccd2"><title>BrSet_1006AA90  0x8021C6B8  12B  [core/racing/br_replayon]</title></rect>
-<rect x="1574.1" y="885.6" width="3.4" height="3.3" fill="#c8ccd2"><title>BrDelta_100713A0  0x80242954  12B  [core/racing/br_replayon]</title></rect>
-<rect x="1574.1" y="892.5" width="3.4" height="5.4" fill="#c8ccd2"><title>BrSwap2  0x80252F50  20B  [core/slice2_20]</title></rect>
-<rect x="1581.1" y="881.8" width="4.1" height="3.0" fill="#c8ccd2"><title>BrSub_10019290  0x8022F504  16B  [core/slice5_61]</title></rect>
-<rect x="1581.1" y="888.3" width="4.1" height="3.0" fill="#c8ccd2"><title>BrSub_10019240  0x8022F520  16B  [core/slice6_78]</title></rect>
+<rect x="1574.1" y="881.8" width="3.4" height="3.3" fill="#3fb950"><title>BrSet_1006AA90  0x8021C6B8  12B  [core/racing/br_replayon]</title></rect>
+<rect x="1574.1" y="885.6" width="3.4" height="3.3" fill="#3fb950"><title>BrDelta_100713A0  0x80242954  12B  [core/racing/br_replayon]</title></rect>
+<rect x="1574.1" y="892.5" width="3.4" height="5.4" fill="#3fb950"><title>BrSwap2  0x80252F50  20B  [core/slice2_20]</title></rect>
+<rect x="1581.1" y="881.8" width="4.1" height="3.0" fill="#3fb950"><title>BrSub_10019290  0x8022F504  16B  [core/slice5_61]</title></rect>
+<rect x="1581.1" y="888.3" width="4.1" height="3.0" fill="#3fb950"><title>BrSub_10019240  0x8022F520  16B  [core/slice6_78]</title></rect>
 <rect x="1581.1" y="894.9" width="4.1" height="3.0" fill="#6e5494"><title>HasGraph  0x80266390  16B  [exe/bossrally/0x00401460]</title></rect>
 <rect x="1588.7" y="881.8" width="2.8" height="4.3" fill="#6e5494"><title>IncludeStackEmpty  0x80268520  16B  [exe/brally/0x00401660]</title></rect>
 <rect x="1595.1" y="881.8" width="2.8" height="4.3" fill="#6e5494"><title>IncludeStackEmpty  0x80268530  16B  [exe/setvideo/0x00401AC0]</title></rect>
-<rect x="1588.7" y="889.7" width="2.8" height="2.3" fill="#c8ccd2"><title>BrTextBoxDtor  0x80225ED8  12B  [core/slice6_72]</title></rect>
-<rect x="1588.7" y="895.6" width="2.8" height="2.3" fill="#c8ccd2"><title>SetCommentChar  0x8022F4EC  12B  [exe/brally/0x004016C0]</title></rect>
-<rect x="1595.1" y="889.7" width="2.8" height="2.3" fill="#c8ccd2"><title>BrSub_10019260  0x8022F514  12B  [core/slice5_63]</title></rect>
-<rect x="1595.1" y="895.6" width="2.8" height="2.3" fill="#c8ccd2"><title>BrMainLoopSetSuspended  0x8022F5D0  12B  [core/startup/br_mainloop]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 26 &#183; T3 codegen-only 0 &#183; 1,376/457,392 bytes exact (0.3%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
+<rect x="1588.7" y="889.7" width="2.8" height="2.3" fill="#3fb950"><title>BrTextBoxDtor  0x80225ED8  12B  [core/slice6_72]</title></rect>
+<rect x="1588.7" y="895.6" width="2.8" height="2.3" fill="#3fb950"><title>SetCommentChar  0x8022F4EC  12B  [exe/brally/0x004016C0]</title></rect>
+<rect x="1595.1" y="889.7" width="2.8" height="2.3" fill="#3fb950"><title>BrSub_10019260  0x8022F514  12B  [core/slice5_63]</title></rect>
+<rect x="1595.1" y="895.6" width="2.8" height="2.3" fill="#3fb950"><title>BrMainLoopSetSuspended  0x8022F5D0  12B  [core/startup/br_mainloop]</title></rect>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 121 &#183; T3 codegen-only 0 &#183; 8,200/457,392 bytes exact (1.8%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
