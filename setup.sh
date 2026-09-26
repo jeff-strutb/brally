@@ -286,6 +286,9 @@ if [ -n "$BRALLY_BIN" ]; then
     else
         echo "[ok] testdata/ already present"
     fi
+    # The whole data track, as the CD root a Mac build runs against (the
+    # game expects a physical drive). Idempotent: present files are skipped.
+    python3 tools/extract_disc.py "$BRALLY_BIN" testdata/disc
 fi
 
 echo ""

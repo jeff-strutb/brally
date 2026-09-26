@@ -1,0 +1,2 @@
+va,file,opt,symbol,name,mode
+0x10008EC0,src/core/startup/br_fatal.c,O2,_BrLogFatalPrintf,BrLogFatalPrintf,log

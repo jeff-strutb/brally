@@ -130,10 +130,9 @@ void BrSub10072AF0(int a, int b)
 /* 2. Not-yet-ported functions -- stubs so the boot path links            */
 /* ====================================================================== */
 
-/* Car control bodies (0x1005C8B0 human, 0x1005D770 AI).  Until ported, cars
- * receive no control input -- they will sit inert rather than crash. */
+/* Car control body 0x1005C8B0 (human).  Until ported, the player car receives
+ * no control input.  The AI body 0x1005D770 is real: driving/br_ctlai.c. */
 void BrCtlHumanBody(void *pCar) { (void)pCar; }
-void BrCtlAiBody(void *pCar)    { (void)pCar; }
 
 /* Segment-base setter for the N64 address map (0x100...).  Track data that
  * relies on this resolving will read from the wrong base until ported. */

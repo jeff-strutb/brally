@@ -1,0 +1,11 @@
+kind,va,name,finding
+defect,0x10028820,BrGbiTexScanRun,"certified body takes (pSt, pCmd) and reads state through pSt; the original takes one stack arg (pCmd) and keeps the state in globals (0x106B7AB0 ...); its only caller, byte-exact BrGlTrackFixupAll, pushes one arg through the hook at 0x118ED1DC"
+defect,0x100335A0,BrCarPfxSpawn,"placed body is the D3D-tagged transcription (@implements 0x10039F20 d3d) taking (pCar, pPool, pEnv, pSeed); the Glide original at 0x100335A0 is __fastcall(pCar) with the pool in globals; its Glide caller 0x10033BB0 passes pCar in ecx"
+defect,0x10059A80,BrCarGhostApply_10059A80,"T2 source calls ftol() with no operand (Ghidra's implicit x87 stack); the original truncates fld [esi+0x4C..0x9C] at each of 17 _ftol calls"
+missing,0x1000C9E0,FUN_1000c9e0,"called by the game; no body in the T3 build (the certified image runs the original bytes); the port traps here"
+missing,0x1000E150,BrScrPtKeepNearest,"called by the game; no body in the T3 build (the certified image runs the original bytes); the port traps here"
+missing,0x1005A500,FUN_1005a500,"called by the game; no body in the T3 build (the certified image runs the original bytes); the port traps here"
+missing,0x10068070,BrWheelGroundProbe,"called by the game; no body in the T3 build (the certified image runs the original bytes); the port traps here"
+missing,0x100682C0,BrGroundProbeZ,"called by the game; no body in the T3 build (the certified image runs the original bytes); the port traps here"
+missing,0x100686D0,FUN_100686d0,"called by the game; no body in the T3 build (the certified image runs the original bytes); the port traps here"
+port,0x10028BB0,BrTex3dRegister,"2026-09-25 run: all nine former traps pass; crashes at first track load in BrTex3dExpand (CI palette pointer rec+0x4C = 0). The palette global g_brTexScanSrcSeen (0x106B7A98) and g_brTexScanTimgAddr (0x105E180C) written by slice2_16.c's T3 scan handlers get no port address: t3manifest records each such site with two values, the real one and a one-byte-shifted copy (0x6B7A9815), so it drops them as ambiguous and w2c gives them orphan storage. The image resolves them via config/reloc_overrides.csv. Unfixed."
