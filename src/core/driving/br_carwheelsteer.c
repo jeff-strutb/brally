@@ -37,9 +37,9 @@ void FUN_10063a60(int pCar);
 /* Axis-angle rotation matrix builder: (pOut, angle, axisX, axisY, axisZ).
  * Always called with a one-hot axis in this function (X, Y or Z). */
 void FUN_1002a590(BrMat4_ *pOut, float angle, float ax, float ay, float az);
-/* 4x4 matrix multiply, dst = a * b (VC5 argument order TBD -- not yet
- * cross-checked against a matched sibling). */
-void FUN_10029d70(BrMat4_ *pDst, const BrMat4_ *pA, const BrMat4_ *pB);
+/* 0x10029D70 BrMat4Mul (geometry/br_mat.c, byte-exact): out = a * b, the
+ * OUTPUT LAST. */
+void FUN_10029d70(const BrMat4_ *pA, const BrMat4_ *pB, BrMat4_ *pOut);
 void BrMat4TransformPoint(BrVec3_ *pOut, const BrMat4_ *pM, const BrVec3_ *pV); /* 0x1006DA20 */
 
 #define CF(p, off)  (*(float *)((char *)(p) + (off)))
@@ -52,75 +52,68 @@ void BrMat4TransformPoint(BrVec3_ *pOut, const BrMat4_ *pM, const BrVec3_ *pV); 
  * through the result -- the front pair additionally folding in the steer
  * angle (scaled) before the roll.  Two body-roll fields decay by a fixed
  * amount either side of the wheel work. */
-/* T2, not yet byte-exact: 786/776 B, REGNORM 21+15 -- close for a function
- * whose two callees, FUN_1002a590 (axis-angle rotation build) and
- * FUN_10029d70 (matrix multiply), are themselves still unmatched leaves
- * (declared here, not implemented).  Residue includes a `mov [R+I]` /
- * `fld [R+I]` swap around the call sites, most likely the BrMat4_* output
- * argument's exact passing convention -- not resolvable with confidence
- * before those two callees are matched themselves. Transcribed field-for-
- * field from the Ghidra draft. */
+/* Retranscribed from the bytes once both callees were matched: the anchor
+ * transforms read the CAR's combined matrix (+0x220), not the rotation
+ * temp; BrMat4Mul takes its output last; three matrix locals (0xC0 frame);
+ * the replay flag is tested first; float fields read through a float
+ * pointer (a char-offset cast moves them through the x87 instead of
+ * integer registers).
+ * RESIDUE (58 B, 768/776): only the closing decay -- the original loads
+ * all four roll fields before the four subtracts; ours sinks the first.
+ * Temps, struct members, a wheel-record array, pads (1..64 int / float /
+ * branchy), externs (20..3000) and CRT headers are all inert or worse. */
 /* @implements 0x1005ACE0 glide BrCarWheelSteerStep_1005ACE0 */
 void __fastcall BrCarWheelSteerStep_1005ACE0(int pCar)
 {
-    BrMat4_ rot, rot2;
-    int     combined = pCar + 0x220;
+    BrMat4_ rot, rot2, rot3;
+    float  *pf = (float *)pCar;
 
-    if (DAT_105ccb88 == 0) {
-        if (DAT_100a9360 == 2 && CI(pCar, 0x140) == 1 &&
-            CI(CI(pCar, 0x29c0), 0x44) != 0) {
-            FUN_10063ca0(pCar);
-            FUN_1005ac60(pCar);
-        } else if (DAT_100a9360 == 4 && CI(pCar, 0x140) == 0 &&
-                   CI(CI(pCar, 0x29c0), 0x44) != 0) {
-            FUN_10063b80(pCar, 1);
-            FUN_1005ac60(pCar);
-        } else {
-            FUN_10063a60(pCar);
-        }
-    } else {
+    if (DAT_105ccb88 != 0) {
         FUN_10063ca0(pCar);
         FUN_1005ac60(pCar);
+    } else if (DAT_100a9360 == 2 && CI(pCar, 0x140) == 1 &&
+               CI(CI(pCar, 0x29c0), 0x44) != 0) {
+        FUN_10063ca0(pCar);
+        FUN_1005ac60(pCar);
+    } else if (DAT_100a9360 == 4 && CI(pCar, 0x140) == 0 &&
+               CI(CI(pCar, 0x29c0), 0x44) != 0) {
+        FUN_10063b80(pCar, 1);
+        FUN_1005ac60(pCar);
+    } else {
+        FUN_10063a60(pCar);
     }
 
-    FUN_1002a590(&rot, CF(pCar, 0x338), 1.0f, 0.0f, 0.0f);
-    FUN_10029d70(&rot, (const BrMat4_ *)combined, (const BrMat4_ *)pCar);
+    FUN_1002a590(&rot, pf[0x338 / 4], 1.0f, 0.0f, 0.0f);
+    FUN_10029d70(&rot, (const BrMat4_ *)(pCar + 0x220), (BrMat4_ *)pCar);
+    pf[0x464 / 4] = pf[0x464 / 4] - DAT_1007778c;
+    pf[0x670 / 4] = pf[0x670 / 4] - DAT_1007778c;
+    pf[0x87c / 4] = pf[0x87c / 4] - DAT_1007778c;
+    pf[0xa88 / 4] = pf[0xa88 / 4] - DAT_1007778c;
 
-    CF(pCar, 0x464) = CF(pCar, 0x464) - DAT_1007778c;
-    CF(pCar, 0x670) = CF(pCar, 0x670) - DAT_1007778c;
-    CF(pCar, 0x87c) = CF(pCar, 0x87c) - DAT_1007778c;
-    CF(pCar, 0xa88) = CF(pCar, 0xa88) - DAT_1007778c;
+    FUN_1002a590(&rot, pf[0x544 / 4], 0.0f, 1.0f, 0.0f);
+    FUN_10029d70(&rot, (const BrMat4_ *)(pCar + 0x220), (BrMat4_ *)(pCar + 0xc0));
+    BrMat4TransformPoint((BrVec3_ *)(pCar + 0xf0), (const BrMat4_ *)(pCar + 0x220), (const BrVec3_ *)(pCar + 0x45c));
 
-    FUN_1002a590(&rot, CF(pCar, 0x544), 0.0f, 1.0f, 0.0f);
-    FUN_10029d70(&rot, (const BrMat4_ *)combined, (const BrMat4_ *)(pCar + 0xc0));
-    BrMat4TransformPoint((BrVec3_ *)(pCar + 0xf0), &rot, (const BrVec3_ *)(pCar + 0x45c));
+    FUN_1002a590(&rot, pf[0x95c / 4], 0.0f, 1.0f, 0.0f);
+    FUN_10029d70(&rot, (const BrMat4_ *)(pCar + 0x220), (BrMat4_ *)(pCar + 0x100));
+    BrMat4TransformPoint((BrVec3_ *)(pCar + 0x130), (const BrMat4_ *)(pCar + 0x220), (const BrVec3_ *)(pCar + 0x874));
 
-    FUN_1002a590(&rot, CF(pCar, 0x95c), 0.0f, 1.0f, 0.0f);
-    FUN_10029d70(&rot, (const BrMat4_ *)combined, (const BrMat4_ *)(pCar + 0x100));
-    BrMat4TransformPoint((BrVec3_ *)(pCar + 0x130), &rot, (const BrVec3_ *)(pCar + 0x874));
+    FUN_1002a590(&rot3, pf[0x750 / 4], 0.0f, 1.0f, 0.0f);
+    FUN_1002a590(&rot2, pf[0x73c / 4] * DAT_10077790, 0.0f, 0.0f, 1.0f);
+    FUN_10029d70(&rot3, &rot2, &rot);
+    FUN_10029d70(&rot, (const BrMat4_ *)(pCar + 0x220), (BrMat4_ *)(pCar + 0x80));
+    BrMat4TransformPoint((BrVec3_ *)(pCar + 0xb0), (const BrMat4_ *)(pCar + 0x220), (const BrVec3_ *)(pCar + 0x668));
 
-    FUN_1002a590(&rot2, CF(pCar, 0x750), 0.0f, 1.0f, 0.0f);
-    FUN_1002a590(&rot, CF(pCar, 0x73c) * DAT_10077790, 0.0f, 0.0f, 1.0f);
-    FUN_10029d70(&rot2, &rot2, &rot);
-    FUN_10029d70(&rot2, (const BrMat4_ *)combined, (const BrMat4_ *)(pCar + 0x80));
-    BrMat4TransformPoint((BrVec3_ *)(pCar + 0xb0), &rot2, (const BrVec3_ *)(pCar + 0x668));
+    FUN_1002a590(&rot3, pf[0xb68 / 4], 0.0f, 1.0f, 0.0f);
+    FUN_1002a590(&rot2, pf[0xb54 / 4] * DAT_10077790, 0.0f, 0.0f, 1.0f);
+    FUN_10029d70(&rot3, &rot2, &rot);
+    FUN_10029d70(&rot, (const BrMat4_ *)(pCar + 0x220), (BrMat4_ *)(pCar + 0x40));
+    BrMat4TransformPoint((BrVec3_ *)(pCar + 0x70), (const BrMat4_ *)(pCar + 0x220), (const BrVec3_ *)(pCar + 0xa80));
 
-    FUN_1002a590(&rot2, CF(pCar, 0xb68), 0.0f, 1.0f, 0.0f);
-    FUN_1002a590(&rot, CF(pCar, 0xb54) * DAT_10077790, 0.0f, 0.0f, 1.0f);
-    FUN_10029d70(&rot2, &rot2, &rot);
-    FUN_10029d70(&rot2, (const BrMat4_ *)combined, (const BrMat4_ *)(pCar + 0x40));
-    BrMat4TransformPoint((BrVec3_ *)(pCar + 0x70), &rot2, (const BrVec3_ *)(pCar + 0xa80));
-
-    {
-        float f670 = CF(pCar, 0x670) - DAT_10077794;
-        float f87c = CF(pCar, 0x87c) - DAT_10077794;
-        float fa88 = CF(pCar, 0xa88) - DAT_10077794;
-
-        CF(pCar, 0x464) = CF(pCar, 0x464) - DAT_10077794;
-        CF(pCar, 0x670) = f670;
-        CF(pCar, 0x87c) = f87c;
-        CF(pCar, 0xa88) = fa88;
-    }
+    pf[0x464 / 4] = pf[0x464 / 4] - DAT_10077794;
+    pf[0x670 / 4] = pf[0x670 / 4] - DAT_10077794;
+    pf[0x87c / 4] = pf[0x87c / 4] - DAT_10077794;
+    pf[0xa88 / 4] = pf[0xa88 / 4] - DAT_10077794;
 }
 
 #endif /* BR_MATCHING_BUILD */
