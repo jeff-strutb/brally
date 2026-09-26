@@ -17,6 +17,13 @@
  * /O2 /Oy-).  br_rdpmode.c carries the same warning for the same reason.
  */
 #ifdef BR_MATCHING_BUILD
+/* The original TU included <windows.h>.  Nothing here uses it, but the
+ * symbol-table size it brings sets a VC5 tie-break: without it
+ * BrF3DListFixup (0x10019040) loads the first word's two top bytes in the
+ * wrong order (7 differing bytes). */
+#include <windows.h>
+#endif
+#ifdef BR_MATCHING_BUILD
 /* The originals of the vtx-cache cluster take no BrVtxCache parameter --
  * state is loose globals -- and BrVtxExpand/Insert/Resolve have different
  * arities. Hide the header's port prototypes behind renames so the
@@ -489,8 +496,6 @@ int BrPtrListContains(const BrPtrList *pList, const void *pv)
  * byte (the top byte of w0), and fix up vertex-load, one-triangle,
  * two-triangle and segment-pointer instructions; the end instruction (0xb8)
  * stops the walk. A null list does nothing. */
-/* @t4-pass 0x10019040 1 2026-09-07 probes 54 bytes 482 insns 138 regions 5 rows 74 census yes  (tools/crank.py) */
-/* @t4-pass 0x10019040 2 2026-09-07 probes 54 bytes 482 insns 138 regions 5 rows 74 census yes  (tools/crank.py) */
 /* @implements 0x10019040 glide BrF3DListFixup */
 #ifdef BR_MATCHING_BUILD
 /* BrPtrListAdd and the four fixups are the file's own definitions above /
@@ -503,10 +508,9 @@ int BrPtrListContains(const BrPtrList *pList, const void *pv)
  * The loop is a `goto`: VC5 strength-reduces a for/while loop's `p + 4`
  * (the w1 pointer) into a second induction variable (`add edi,8` in every
  * arm), where a goto loop recomputes `lea edi,[esi+4]` each pass as the
- * original does.  RESIDUE 2 insns: the first byte pack loads b1 before b0
- * (`mov al` / `mov ah` swapped); every spelling of that pack probed
- * (pairwise, nested, compound, u16-value swap, struct view, declaration and
- * store order) gives the same order. */
+ * original does.  The order of the byte loads in the two packs is a VC5
+ * tie-break set by the TU's symbol-table size -- see the <windows.h> note
+ * at the top of the file. */
 void BrF3DListFixup(BrGfxWords *pCmd)
 {
     unsigned char *p;
