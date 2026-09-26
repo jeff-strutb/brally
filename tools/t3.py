@@ -341,6 +341,13 @@ def canon(row):
         # false-pair, and 2 is the only scale proven at a real site.
         if ops == 'R, [R*K]':
             return 'shl R, 2'
+    # shl R,1 against lea R,[R'+R'] (canon'd below to add R,R): x<<1 == x+x,
+    # the same value; whether the source survives in its own register is
+    # allocation (2026-09-26, 0x10007750: the original doubles a merged
+    # 16-bit field into eax with `lea eax,[esi+esi]` while ours shifts it in
+    # place).  Only the shift-by-one form -- nothing else is x+x.
+    if mn == 'shl' and ops == 'R, 1':
+        return 'add R, R'
     # add R,-X against sub R,X: MSVC5 canonicalises straight-line constant
     # subtraction to add-negative (0x1006FD50 dossier: every spelling and
     # flag probed, VC4.2 cross-check); the value is identical, the fork is
