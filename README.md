@@ -27,11 +27,16 @@ links Microsoft's CRT, so it's reference-only, out of scope).
 
 *Boss Rally* was long believed to have **no cheat codes at all** - none are printed
 in the manual, and none have ever circulated online. The decompilation turned up a
-working cheat system hiding in plain sight: the game quietly watches the last 32
-keys you type on the front-end menus, and the instant the tail of what you've typed
-spells one of six code words, it fires. There's no cheat menu and no prompt - you
-just type the word while sitting in the menus (it also works while typing into an
-on-screen name box, since that feeds the same buffer). A little chime confirms it.
+working cheat system hiding in plain sight: the game quietly keeps the last 32
+keys you type, and the instant the tail of what you've typed spells one of six
+code words, it fires. There's no cheat menu and no prompt, and there's a catch:
+**keys only count while the mouse pointer is resting on the main menu's
+"Credits" item.** The key-recording hook belongs to that one menu row and runs only
+while the cursor is over it. Typing anywhere else in the menus does nothing, and
+neither does moving to Credits with the keyboard or typing into a name box (the
+name box reads each key and clears it). Case doesn't matter. A chime confirms the
+code. Nothing changes on screen right away: each code just sets a flag, which
+shows up later in the car and track selection screens, or when you click Credits.
 
 Each code is a person's first name:
 
@@ -41,7 +46,7 @@ Each code is a person's first name:
 | `brielle` | Unlocks the **three bonus cars** (takes the roster from 11 up to 14) |
 | `benjamin` | Unlocks **all tracks** |
 | `lynette` | Unlocks a **hidden second set of tracks** the menus normally won't show |
-| `sophia` | Plays the game's **ending / credits sequence** without having to finish the championship |
+| `sophia` | Unlocks the game's **ending sequence** without finishing the championship; clicking Credits then plays it |
 | `madeleine` | Cranks a **visual effect** (the "ripple" effect) up to maximum - a novelty toggle, not a gameplay advantage |
 
 The five unlock codes are certain from the code. `madeleine` is the odd one out:
