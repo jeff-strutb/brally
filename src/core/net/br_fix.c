@@ -186,92 +186,77 @@ extern float DAT_10077118;                  /* the "set" value of the pair below
  * signed fractions, an angle pair (one wrapped copy alongside the raw
  * value), eight 3-bit/1-bit flags read out of two packed bytes, and a run
  * of on/off pairs that each become 0 or 128. */
-/* T2, not yet byte-exact: 697/680 B, FIRSTDIV +0x7, REGNORM 33+23 (best of
- * two probes: if/else beats the ternary form for the eight bitfield/tri-
- * state stores, 56 vs 66 register-blind). Early divergence -- the prologue's
- * own register-save count differs, so the residue is likely which of
- * pOut/pSrc the original keeps resident across the ~20 BrFixUnpack* calls
- * versus reloaded from the stack; not chased further this session. */
+/* The callees take their packed fields as short / char in the original
+ * (the halfwords and bytes are pushed without widening), so the calls go
+ * through those function types; the bit extracts are byte arithmetic; the
+ * angle pair and its wrapped copy are chained stores; the last pair store is
+ * a ?: (an if/else moves the constant through an integer register). */
 /* @implements 0x10007AA0 glide BrFixDecodeRecord_10007AA0 */
 void BrFixDecodeRecord_10007AA0(float *pOut, const unsigned char *pSrc)
 {
     float angle;
 
-    pOut[0x00] = BrFixUnpackS16Q15Neg(*(const uint16_t *)(pSrc + 0x00));
-    pOut[0x01] = BrFixUnpackS16Q15Neg(*(const uint16_t *)(pSrc + 0x02));
-    pOut[0x02] = BrFixUnpackS16Q15Neg(*(const uint16_t *)(pSrc + 0x04));
-    pOut[0x03] = BrFixUnpackS16Q15Neg(*(const uint16_t *)(pSrc + 0x06));
+    pOut[0x00] = ((float (*)(short))BrFixUnpackS16Q15Neg)(*(const short *)(pSrc + 0x00));
+    pOut[0x01] = ((float (*)(short))BrFixUnpackS16Q15Neg)(*(const short *)(pSrc + 0x02));
+    pOut[0x02] = ((float (*)(short))BrFixUnpackS16Q15Neg)(*(const short *)(pSrc + 0x04));
+    pOut[0x03] = ((float (*)(short))BrFixUnpackS16Q15Neg)(*(const short *)(pSrc + 0x06));
 
     pOut[0x04] = BrFixUnpackU32Q13(*(const uint32_t *)(pSrc + 0x08) & 0xFFFFFFu);
     pOut[0x05] = BrFixUnpackU32Q13(*(const uint32_t *)(pSrc + 0x0C) & 0xFFFFFFu);
 
-    pOut[0x06] = BrFixUnpackS16Q7(*(const uint16_t *)(pSrc + 0x10));
+    pOut[0x06] = ((float (*)(short))BrFixUnpackS16Q7)(*(const short *)(pSrc + 0x10));
 
-    pOut[0x0D] = BrFixUnpackS8Q3(pSrc[0x12]);
-    pOut[0x0E] = BrFixUnpackS6Q7Neg(pSrc[0x13]);
-    pOut[0x20] = BrFixUnpackLevel(pSrc[0x13] >> 6);
+    pOut[0x0D] = ((float (*)(char))BrFixUnpackS8Q3)(pSrc[0x12]);
+    pOut[0x0E] = ((float (*)(char))BrFixUnpackS6Q7Neg)(pSrc[0x13] & 0x3F);
+    pOut[0x20] = ((float (*)(char))BrFixUnpackLevel)(((signed char)pSrc[0x13] >> 6) & 3);
 
-    angle = BrFixUnpackU8Angle(pSrc[0x0B]);
-    pOut[0x0F] = angle;
-    pOut[0x10] = angle;
-
+    pOut[0x0F] = pOut[0x10] = angle = ((float (*)(char))BrFixUnpackU8Angle)(pSrc[0x0B]);
     angle = angle - DAT_10077110;
     if (angle >= DAT_10077114)
         angle = angle - DAT_10077114;
-    pOut[0x11] = angle;
-    pOut[0x12] = angle;
+    pOut[0x11] = pOut[0x12] = angle;
 
-    pOut[0x13] = (float)(pSrc[0x14] >> 7);
-    pOut[0x17] = (float)((pSrc[0x14] >> 4) & 7);
-    pOut[0x14] = (float)((pSrc[0x14] >> 3) & 1);
-    pOut[0x18] = (float)(pSrc[0x14] & 7);
-    pOut[0x15] = (float)(pSrc[0x15] >> 7);
-    pOut[0x19] = (float)((pSrc[0x15] >> 4) & 7);
-    pOut[0x16] = (float)((pSrc[0x15] >> 3) & 1);
-    pOut[0x1A] = (float)(pSrc[0x15] & 7);
+    pOut[0x13] = (float)(unsigned char)(pSrc[0x14] >> 7);
+    pOut[0x17] = (float)(unsigned char)((pSrc[0x14] >> 4) & 7);
+    pOut[0x14] = (float)(unsigned char)((pSrc[0x14] >> 3) & 1);
+    pOut[0x18] = (float)(unsigned char)(pSrc[0x14] & 7);
+    pOut[0x15] = (float)(unsigned char)(pSrc[0x15] >> 7);
+    pOut[0x19] = (float)(unsigned char)((pSrc[0x15] >> 4) & 7);
+    pOut[0x16] = (float)(unsigned char)((pSrc[0x15] >> 3) & 1);
+    pOut[0x1A] = (float)(unsigned char)(pSrc[0x15] & 7);
 
-    if ((pSrc[0x08] & 1) == 0)
-        pOut[0x1B] = 0.0f;
-    else
+    if (pSrc[0x08] & 1)
         pOut[0x1B] = 128.0f;
-
-    if ((pSrc[0x0C] & 2) != 0)
-        pOut[0x1C] = DAT_10077118;
     else
-        pOut[0x1C] = DAT_100770c8;
-    if ((pSrc[0x0C] & 1) != 0)
-        pOut[0x1D] = DAT_10077118;
-    else
-        pOut[0x1D] = DAT_100770c8;
+        pOut[0x1B] = 0.0f;
+    pOut[0x1C] = (pSrc[0x0C] & 2) ? DAT_10077118 : DAT_100770c8;
+    pOut[0x1D] = (pSrc[0x0C] & 1) ? DAT_10077118 : DAT_100770c8;
 
-    pOut[0x1F] = BrFixUnpackU8Range(pSrc[0x0F] & 0x3F);
-    pOut[0x21] = BrFixUnpackLevel(pSrc[0x0F] >> 6);
+    pOut[0x1F] = ((float (*)(char))BrFixUnpackU8Range)(pSrc[0x0F] & 0x3F);
+    pOut[0x21] = ((float (*)(char))BrFixUnpackLevel)(pSrc[0x0F] >> 6);
 
-    if ((pSrc[0x08] & 2) == 0)
-        pOut[0x22] = 0.0f;
-    else
+    if (pSrc[0x08] & 2)
         pOut[0x22] = 128.0f;
-    if ((pSrc[0x00] & 1) == 0)
-        pOut[0x23] = 0.0f;
     else
+        pOut[0x22] = 0.0f;
+    if (pSrc[0x00] & 1)
         pOut[0x23] = 128.0f;
-    if ((pSrc[0x02] & 1) == 0)
-        pOut[0x24] = 0.0f;
     else
+        pOut[0x23] = 0.0f;
+    if (pSrc[0x02] & 1)
         pOut[0x24] = 128.0f;
-    if ((pSrc[0x04] & 1) == 0)
-        pOut[0x25] = 0.0f;
     else
+        pOut[0x24] = 0.0f;
+    if (pSrc[0x04] & 1)
         pOut[0x25] = 128.0f;
-    if ((pSrc[0x06] & 1) == 0)
-        pOut[0x26] = 0.0f;
     else
+        pOut[0x25] = 0.0f;
+    if (pSrc[0x06] & 1)
         pOut[0x26] = 128.0f;
-
-    if ((pSrc[0x08] & 4) == 0)
-        pOut[0x27] = DAT_100770c8;
     else
-        pOut[0x27] = DAT_100770cc;
+        pOut[0x26] = 0.0f;
+
+    pOut[0x27] = (pSrc[0x08] & 4) ? DAT_100770cc : DAT_100770c8;
 }
 
 #endif /* BR_MATCHING_BUILD */
