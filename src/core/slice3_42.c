@@ -64,15 +64,16 @@ typedef struct { uint32_t v; } BrCtrlKeyArg;
 /* @implements 0x100695D0 d3d BrMat4FromCarState */
 void BrMat4FromCarState(BrMat4 *pOut, const BrCarState *pSrc)
 {
-    const float w = pSrc->f00;      /* the SCALAR -- see the header */
-    const float x = pSrc->f04;
-    const float y = pSrc->f08;
-    const float z = pSrc->f0C;
-
-    const float xx = x * x;
-    const float yy = y * y;
-    const float zz = z * z;
-    const float ww = w * w;
+    /* The quaternion components are read from *pSrc at every use, never
+     * held in locals: the original reloads them after its stores to *pOut
+     * (which may alias), and its first-half slot copies are VC5 CSE temps.
+     * RESIDUE (237 B, 373/363): the original keeps xx/yy/zz/yz2/norm all
+     * on the x87 stack and homes s in the dead pSrc slot; ours spills two
+     * squares.  Square declaration order and the if polarity are inert. */
+    const float xx = pSrc->f04 * pSrc->f04;
+    const float yy = pSrc->f08 * pSrc->f08;
+    const float zz = pSrc->f0C * pSrc->f0C;
+    const float ww = pSrc->f00 * pSrc->f00;
 
     const float yz2 = zz + yy;      /* the two sums the original keeps live */
     const float norm = ((ww + yz2) + xx);
@@ -97,24 +98,24 @@ void BrMat4FromCarState(BrMat4 *pOut, const BrCarState *pSrc)
         /* Each cross term is computed once and then spilled to a float slot
          * in the original before the add and the subtract, so both signs see
          * the SAME rounded product.  Reproduced with the temporaries. */
-        const float sx = s * x;
-        const float sy = s * y;
-        const float sz = s * z;
+        const float sx = s * pSrc->f04;
+        const float sy = s * pSrc->f08;
+        const float sz = s * pSrc->f0C;
 
-        const float xy = y * sx;    /* s*x*y */
-        const float zw = sz * w;    /* s*z*w */
+        const float xy = pSrc->f08 * sx;    /* s*pSrc->f04*pSrc->f08 */
+        const float zw = sz * pSrc->f00;    /* s*pSrc->f0C*pSrc->f00 */
         pOut->m[1][0] = xy - zw;
         pOut->m[0][1] = xy + zw;
 
         {
-            const float xz = z * sx;   /* s*x*z */
-            const float yw = w * sy;   /* s*y*w */
+            const float xz = pSrc->f0C * sx;   /* s*pSrc->f04*pSrc->f0C */
+            const float yw = pSrc->f00 * sy;   /* s*pSrc->f08*pSrc->f00 */
             pOut->m[2][0] = xz + yw;
             pOut->m[0][2] = xz - yw;
         }
         {
-            const float yz = z * sy;   /* s*y*z */
-            const float xw = w * sx;   /* s*x*w */
+            const float yz = pSrc->f0C * sy;   /* s*pSrc->f08*pSrc->f0C */
+            const float xw = pSrc->f00 * sx;   /* s*pSrc->f04*pSrc->f00 */
             pOut->m[2][1] = yz - xw;
             pOut->m[1][2] = yz + xw;
         }
