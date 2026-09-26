@@ -217,7 +217,14 @@ int BrSet_1006AA90(void);     /* 0x10063A40 */
  * local for `&DAT - idx*K`, `&DAT - (idx*K - off)`, `&DAT + (off - idx*K)`,
  * an explicit (char *) cast, `(unsigned)off` -- every one 287 B at 2+2,
  * the base folded into the trailing `add ebp, imm`.  End-of-TU placement
- * inert. */
+ * inert.
+ * DEAD 2026-09-26 (~80 compiles): C++ __thiscall member form, struct-array
+ * forms (g_lap[-idx].frame[n], [e][4] rows), pointer-local compound steps
+ * (p = base; p -= X; p += off), signed/unsigned/int casts on every term,
+ * inline helpers taking the base as a PARAMETER, macros, TU padding.  A
+ * micro-test shows VC5 emits `sub; add imm` (constant last) for EVERY
+ * spelling of base - x*K + y, so the original's `mov ebp,base; sub; add`
+ * needs the base not to be a link-time constant at reassociation time. */
 /* @t4-pass 0x10060A30 1 2026-09-24 probes 18 bytes 287 insns 80 regions 2 rows 4 census no  (hand: loop shapes -- do/while pointer walk, indexed for, inline car-array index -- x five spellings of base - idx*0x15F88 + off, pointer and int arithmetic; VC5 always reassociates to off - idx*K + base) */
 /* @t4-pass 0x10060A30 2 2026-09-24 probes 19 bytes 287 insns 80 regions 2 rows 4 census yes  (hand, slot census: every top-level slot of br_objlife.c; residue identical in all 19) */
 /* @implements 0x10060A30 glide BrRaceSaveLastLapInfo */

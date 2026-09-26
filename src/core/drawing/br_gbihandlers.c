@@ -312,6 +312,16 @@ static BrMat4 *br16_mtx_current(BrGbiMtxState *pSt)
  * can be restored later. It always finishes by recomputing the single
  * combined matrix the renderer actually uses. */
 /* @t4-pass 0x10021080 1 2026-09-07 probes 57 bytes 261 insns 79 regions 4 rows 31 census yes  (tools/crank.py) */
+/* RESIDUE (2026-09-26 hand pass, ~250 compiles): the original holds 0 in
+ * ebp (`cmp eax,ebp` at both current-matrix tests, `mov [f5180],ebp`), so
+ * its NULL arms need an explicit `xor eax,eax`; and it reloads the matrix
+ * top after each 64-byte copy and computes each copy destination per path
+ * (`lea edi,[eax+base]` twice).  VC5 promotes 0 to a register only with
+ * enough zero STORES (two extra redundant stores do it -- proven -- but VC5
+ * keeps them, and consecutive duplicates are folded first).  Dead: named
+ * zero locals of every type, C++, inline/macro push and current helpers,
+ * struct-assignment copies, provenance-losing int casts, volatile top,
+ * placement in the original TU br_gbi.c (between EndDList and PopMatrix). */
 /* @t4-pass 0x10021080 2 2026-09-07 probes 57 bytes 261 insns 79 regions 4 rows 31 census yes  (tools/crank.py) */
 /* @implements 0x10021080 glide BrGbiMatrix */
 #ifdef BR_MATCHING_BUILD
