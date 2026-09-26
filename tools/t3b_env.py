@@ -417,7 +417,8 @@ def address_in_name(sym):
 # truncation) is emitted by every float->int conversion; the x87 interpreter
 # already models it at this same address (x87emu FTOL).  Keyed by the
 # underscore-stripped symbol name (`__ftol` -> `ftol`).
-_CRT_HELPER_VA = {'ftol': 0x10074560, 'CIpow': 0x100748A0}
+_CRT_HELPER_VA = {'ftol': 0x10074560, 'CIpow': 0x100748A0,
+                  'CIasin': 0x10074606}   # BrLightDirsAndAngles' asin calls (0x1002A35E / 0x1002A44C)
 
 
 def augment_maps(obj_path, name, size):
