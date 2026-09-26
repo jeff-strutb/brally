@@ -2009,7 +2009,7 @@
 <rect x="1187.9" y="377.8" width="16.0" height="14.7" fill="#3fb950"><title>FUN_10023aa0  0x10023AA0  103B  [core/drawing/br_glidestate]</title></rect>
 <rect x="1204.5" y="377.8" width="9.7" height="14.7" fill="#3fb950"><title>FUN_100281c0  0x100281C0  64B  [core/drawing/br_glidestate]</title></rect>
 <rect x="1217.7" y="342.9" width="52.0" height="49.7" fill="#58a6ff"><title>BrGhostPlaybackStep  0x10061F60  1073B  [core/racing/br_ghoststep]</title></rect>
-<rect x="1273.3" y="342.9" width="31.0" height="49.7" fill="#d29922"><title>BrLightDirsAndAngles  0x1002A200  645B  238 diff bytes  [core/slice2_17]</title></rect>
+<rect x="1273.3" y="342.9" width="31.0" height="49.7" fill="#d29922"><title>BrLightDirsAndAngles  0x1002A200  645B  22 diff bytes  [core/slice2_17]</title></rect>
 <rect x="1304.9" y="342.9" width="20.3" height="49.7" fill="#d29922"><title>BrMat4LookAt  0x1002A050  427B  141 diff bytes  [core/slice2_17]</title></rect>
 <rect x="1328.8" y="342.9" width="51.8" height="49.7" fill="#58a6ff"><title>BrGhostPickBlend  0x10005810  1070B  [core/net/br_ghostpick]</title></rect>
 <rect x="1384.2" y="342.9" width="51.4" height="49.7" fill="#58a6ff"><title>BrModelSwap  0x100302A0  1062B  [core/gamedata/br_modelswap]</title></rect>
