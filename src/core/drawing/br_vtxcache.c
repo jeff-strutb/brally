@@ -533,10 +533,15 @@ next:
     b = (b << 8) | p[7];
     pCmd->w1 = b;
     switch ((unsigned short)(((uint32_t)((int32_t)a >> 24)) & 0xffu)) {
+    /* Case order is ARM order: the original's jump table (0x100190F8,
+     * outside the placed body) sends 0xBF to the arm at +0x83 and 0xB1 to
+     * +0x91, so 0xBF's arm is written first.  The bytes are the same either
+     * way; only the calls swap, which the sweep masks and the image gate
+     * does not. */
     case 0x04: BrF3DVtxFixup(pCmd); break;
+    case 0xbf: BrF3DTri1Fixup(pCmd); break;
     case 0xb1: BrF3DTri2Fixup(pCmd); break;
     case 0xb8: return;
-    case 0xbf: BrF3DTri1Fixup(pCmd); break;
     case 0xfd: BrSegPtrFixup(&pCmd->w1); break;
     }
     pCmd += 1;
