@@ -85,8 +85,11 @@ def norm(i, relocd, tail_reloc=None):
         def _abs(m):
             inner = re.sub(r'\s*\+\s*(0x[0-9a-f]+|\d+)$', '', m.group(1))
             return '[' + inner + ' + A]'
-        if relocd and tail_reloc and re.search(r'(^|, )0$', s):
-            s = re.sub(r'(^|, )0$', r'\1A', s)
+        # The addend need not be 0: `push &g + 4` prints `push 4` in the
+        # recompile (2026-09-26, 0x10072680: `&g_brFfb.pEffectSpring`, a
+        # struct member of a d3d-era global gathering, paired with nothing).
+        if relocd and tail_reloc and re.search(r'(^|, )(\d+)$', s):
+            s = re.sub(r'(^|, )(\d+)$', r'\1A', s)
         elif (relocd and tail_reloc is False and '[' in s
               and not re.search(r'\[[^\]]*\bA\b[^\]]*\]', s)):
             # The reloc is the displacement and the memory operand does not
