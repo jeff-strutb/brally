@@ -367,6 +367,12 @@ static uint32_t g_brFfbAxes[2];
  * masking bug, fixed 15e794ac.)
  * @t4-pass 0x10072680 1 2026-09-26 probes 12 bytes 440 insns 80 regions 4 rows 0 census no  (hand: pDevice local early/late, hr int/init/!hr, call as the if condition, axes/direction/condition store order, void* effect pointer, GUID cast -- none moves the push hoist)
  * @t4-pass 0x10072680 2 2026-09-26 probes 67 bytes 440 insns 80 regions 4 rows 0 census yes  (mechanism: TU symbol count 5..4600 externs and nine system-header combinations, all 151 diffs) */
+/* @t3 0x10072680 2026-09-26 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 440/440 insns 80/80 rows 0+0 regions 4 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue: the CreateEffect argument pushes are hoisted above the effect
+ * structure fills in the original (pure scheduling, rows 0+0); see the
+ * header above.  Do not reopen before the end-grind (project rule 12). */
 /* @implements 0x10079390 d3d BrFfbSetup */
 void BrFfbSetup(int32_t springCoeff, int32_t springCoeff2)
 {

@@ -4,6 +4,18 @@
  * step, up two, or down one. Everything the packet does not mention is left
  * as the caller had it, so the caller must seed the record from the
  * reference first. */
+/* RESIDUE (2026-09-26): register-blind 1+1 -- the f18 field's doubling is
+ * `lea eax,[esi+esi]` in the original (the merged value survives in esi)
+ * and an in-place `shl eax,1` here, with the esi/edi roles rotated around
+ * it.  Pure allocation.
+ * @t4-pass 0x10007750 1 2026-09-26 probes 12 bytes 844 insns 258 regions 15 rows 2 census no  (hand: *2, <<1, int/uint/register temps, +=, merge inlined into the argument, bits as the carrier, q-based merge -- the doubling stays in place)
+ * @t4-pass 0x10007750 2 2026-09-26 probes 34 bytes 844 insns 258 regions 15 rows 2 census yes  (mechanism: TU symbol count 5..4600 externs and five system headers, all identical) */
+/* @t3 0x10007750 2026-09-26 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 844/845 insns 258/258 rows 1+1 regions 15 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue: allocation only -- the f18 doubling as lea from the surviving
+ * register vs an in-place shl, esi/edi rotated around it (RESIDUE note
+ * above).  Do not reopen before the end-grind (project rule 12). */
 /* @implements 0x10007750 glide BrCarStateDecodeDelta
  * @cpp_symbol _BrCarStateDecodeDelta
  *
