@@ -1,6 +1,10 @@
 /* WHAT IT DOES: put the stage's stored lap time from a second table onto this
  * row (minutes:seconds.hundredths), or dashes when times are not available
  * yet or the time is not above zero. */
+/* @t3 0x1003A2B0 2026-09-26 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 360/360 insns 120/120 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue: stage-lookup register rotation only (see below). */
 /* @implements 0x1003A2B0 glide BrMenuTime0D70_1003A2B0
  * @cpp_kind free
  * @cpp_symbol ?BrMenuTime0D70_1003A2B0@@YAHPAVObj3A2B0@@@Z
