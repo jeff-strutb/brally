@@ -981,6 +981,7 @@ glide_va,name,module,basis,file
 0x10054E20,BrSaveSlotDelete_10054E20,menus,neighbour,src/core/menus/BrSaveSlotDelete_10054E20.cpp
 0x10055020,BrTextListSetBlob,menus,manual,src/core/menus/br_textlist.c
 0x10055090,BrUiSprDrawAt,menus,neighbour-1,src/core/generated/0x10055090.c
+0x100550E0,BrUiListPaint_100550E0,menus,filed,src/core/menus/BrUiListPaint_100550E0.cpp
 0x10055330,BrUiHitTest_10055330,menus,prefix,src/core/menus/BrUiHitTest_10055330.cpp
 0x100553B0,BrSlotScrollStep_100553B0,menus,manual,src/core/menus/BrSlotScrollStep_100553B0.cpp
 0x10055960,BrSub1005CB40,drawing,neighbour,src/core/drawing/br_namelist.c
