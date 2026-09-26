@@ -17,11 +17,35 @@ Do keep the port buildable.
 Boss Game Studios built *Top Gear Rally* for the N64 (1997), then shipped *Boss
 Rally* for Windows (1999) on the same engine. The PC build still emits N64 F3DEX
 display lists, ships N64-format textures and big-endian geometry off the disc,
-and carries the ROM's diagnostic strings - so the N64 ROM is read here as a
-second witness to the same logic, never transcribed. The PC game ships two
+and carries the ROM's diagnostic strings. The PC game ships two
 renderer DLLs over one shared core: **`BRGlide.dll`** (3dfx Glide - the mature
 target and the reference for all matching) and `BRD3D.dll` (Direct3D - statically
 links Microsoft's CRT, so it's reference-only, out of scope).
+
+## Two games, two decompilations
+
+It's tempting to assume the N64 game is the PC game compiled for another
+machine. It isn't. When the PC source is compiled for the N64 and compared
+against the ROM, only about a fifth of the ROM's code has a clear match. At
+most around half could turn out to share code with the PC game.
+
+- **Boss Rally is the bigger game.** It has roughly twice as many game
+  functions as Top Gear Rally. It's a later game built on the same engine, not
+  a straight port.
+- **Shared code still changed.** Where a function exists in both games, the
+  two usually differ by a few percent of their instructions. Two years of
+  edits sit between the 1997 and 1999 releases, so PC source is a strong
+  starting point for an N64 function, not a finished answer.
+- **Much of the ROM has no PC counterpart.** Around 40% is N64-only code:
+  graphics and audio drivers, the front end and other console-specific
+  systems. It has to be decompiled from scratch. Another sixth is Nintendo's
+  system library and a compression library, which are linked in rather than
+  decompiled.
+
+So the N64 game gets its own decompilation, kept apart from the PC tree (see
+the Top Gear Rally section at the end). The two still help each other. The
+N64 compiler records operand order that the PC compiler throws away. A
+matched function on either side is a head start on its twin.
 
 ## Cheats
 
@@ -289,3 +313,35 @@ builds and the suites that need retail data skip with a reason.
 - **`./build.sh`** - builds the macOS port with clang (core + tests + a runnable
   `build/brally`). Modules and tests are auto-discovered. `./tools/regress.sh`
   runs every suite.
+
+## Top Gear Rally (N64)
+
+A second, separate decompilation lives in `n64/`: *Top Gear Rally* (N64,
+1997), matched byte for byte against the retail ROM under SGI's IDO 5.3
+compiler. It keeps its own sources, headers, symbols and tools, so nothing in
+it touches the PC work. It follows the same T1 - T4 tiers and the same two
+milestones. M1 counts functions certified as behaving exactly like the
+original (T3) plus byte-exact ones (T4). M2 counts byte-exact functions only.
+
+_Snapshot 2026-09-26: work has just started._
+
+```
+M1  Contract-valid (T3 + T4)
+    ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░   0.3%   1,376 / 457,392 B   26 / 883 fns
+M2  Byte-exact (T4)
+    ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░   0.3%   1,376 / 457,392 B   26 / 883 fns
+```
+
+The denominator is all 883 functions for now. Nintendo's system library and
+the compression library will be fenced out of it once each function in them
+is identified, as the PC lane does with Microsoft's C runtime.
+
+```bash
+.venv/bin/python n64/tools/n64tiers.py     # tiers and milestones, rebuilt fresh
+.venv/bin/python n64/tools/n64build.py     # compile n64/src and grade every function
+n64/tools/n64ghidra.sh                     # machine drafts (T1) for every ROM function
+```
+
+A byte-exact grade is strict: every instruction must match, and every address
+a function uses must point where the ROM's does. Strings, float constants and
+jump tables are checked by their contents in the ROM.
