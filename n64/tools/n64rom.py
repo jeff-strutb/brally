@@ -47,6 +47,30 @@ for e in ends:
 funcs |= starts
 funcs.add(BASE)
 funcs={f for f in funcs if BASE<=f<r2v(TEXT_E)}
+
+# IDO can emit a second `jr ra` inside one function (an early return in a
+# leaf), which the rule above mistakes for a new function.  A piece that no
+# jal calls is merged back into its predecessor when the predecessor branches
+# into it or it branches back before its own start.
+def _branch_targets(s,e):
+    out=set()
+    for va in range(s,e,4):
+        w=W(v2r(va)); op=w>>26
+        if (op in (4,5,6,7,0x14,0x15,0x16,0x17)
+                or (op==1 and ((w>>16)&0x1f) in (0,1,2,3,16,17,18,19))
+                or (op==0x11 and ((w>>21)&0x1f)==8)):
+            off=w&0xffff; off=off-0x10000 if off&0x8000 else off
+            out.add(va+4+off*4)
+    return out
+while True:
+    F=sorted(funcs); end_=r2v(TEXT_E); drop=None
+    for i in range(1,len(F)):
+        s=F[i]; e=F[i+1] if i+1<len(F) else end_
+        if s in calls: continue
+        if any(t>=s for t in _branch_targets(F[i-1],s)) or any(t<s for t in _branch_targets(s,e)):
+            drop=s; break
+    if drop is None: break
+    funcs.discard(drop)
 F=sorted(funcs)
 
 def fstart(v):
