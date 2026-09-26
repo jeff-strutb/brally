@@ -6,7 +6,7 @@
 extern int D_80369B70;
 unsigned int func_8024296C(int param_1);
 void func_80242B10(int *param_1);
-void func_802607DC();
+void osSyncPrintf();
 extern int D_80272500;
 extern int D_8028D0B0;
 extern int D_8028D0E0;
@@ -45,7 +45,7 @@ void BrPaintShopMemInit(void)
 {
   func_80242B10(&D_8028D0B0);
   func_80242B10(&D_8028D0E0);
-  func_802607DC("Allocating %d bytes for data_buf...\n",0x3a00);
+  osSyncPrintf("Allocating %d bytes for data_buf...\n",0x3a00);
   D_80272500 = func_8024296C(0x3a00);
 }
 
@@ -54,7 +54,7 @@ void BrPaintShopMemInit(void)
 /* @implements 0x80248F38 tgr BrDecalMemInit */
 void BrDecalMemInit(void)
 {
-  func_802607DC("\nAllocating %d bytes for decal buffer...\n\n",0x800);
+  osSyncPrintf("\nAllocating %d bytes for decal buffer...\n\n",0x800);
   D_8028DB80 = func_8024296C(0x800);
   func_80242B10(&D_8028D0B0);
   func_80242B10(&D_8028D0E0);

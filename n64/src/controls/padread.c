@@ -3,7 +3,7 @@
 #include "tgr/common.h"
 
 /* -- declarations -- */
-int func_80264760(int param_1);
+int osContStartReadData(int param_1);
 extern int D_80272D48;
 extern int D_8028AB6C;
 extern short D_802A4BE8;
@@ -19,7 +19,7 @@ void BrPadStartRead(void)
   if (D_8028AB6C == 0) {
     D_8028AB6C = 1;
     D_802A4BE8 = 0;
-    func_80264760(&D_80272D48);
+    osContStartReadData(&D_80272D48);
   }
 }
 

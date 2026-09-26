@@ -5,7 +5,7 @@
 /* -- declarations -- */
 void func_802111E0(void);
 int func_80209434();
-void func_8021C6E4(int param_1);
+void BrModeSet(int param_1);
 extern int D_8026FF08;
 int func_8020082C();
 extern int D_8026FF18;
@@ -16,7 +16,7 @@ extern int D_8028C800;
 int func_8020D004();
 extern int D_80272074;
 void func_8020C27C(int *param_1,int *param_2);
-void func_80242940(void);
+void BrIfaceMemReset(void);
 extern float D_80271FC4;
 extern int D_80271FC8;
 extern int D_80271FCC;
@@ -36,7 +36,7 @@ void BrFrontReturnToTitle(void)
 void BrTrackSelectOpen(int param_1)
 {
   D_8026FF08 = param_1;
-  func_8021C6E4(func_80209434);
+  BrModeSet(func_80209434);
 }
 
 /* WHAT IT DOES: Start the attract-mode demo race that replays the first of
@@ -47,7 +47,7 @@ void BrDemoRaceStartA(void)
 {
   D_8026FF18 = 4;
   D_8026FF1C = 0;
-  func_8021C6E4(func_8020082C);
+  BrModeSet(func_8020082C);
 }
 
 /* WHAT IT DOES: Start the attract-mode demo race that replays the third
@@ -57,7 +57,7 @@ void BrDemoRaceStartC(void)
 {
   D_8026FF18 = 4;
   D_8026FF1C = 2;
-  func_8021C6E4(func_8020082C);
+  BrModeSet(func_8020082C);
 }
 
 /* WHAT IT DOES: Begin a one-player Championship: set the race type, go to
@@ -69,7 +69,7 @@ void BrChampionshipStart(void)
   D_8026FF18 = 0;
   func_80206304();
   D_8026FF08 = 1;
-  func_8021C6E4(func_80209434);
+  BrModeSet(func_80209434);
   D_80272380 = 1;
 }
 
@@ -82,7 +82,7 @@ void BrTimeAttackStart(void)
   D_8026FF18 = 2;
   D_8026FF08 = 1;
   D_8028C800 = 1;
-  func_8021C6E4(func_80209434);
+  BrModeSet(func_80209434);
   D_80272380 = 2;
 }
 
@@ -101,7 +101,7 @@ void BrResultsRun(void)
 /* @implements 0x8020C408 tgr BrFrontMenuEnter */
 void BrFrontMenuEnter(int param_1,int param_2)
 {
-  func_80242940();
+  BrIfaceMemReset();
   D_80271FC4 = 0;
   D_80271FC8 = 0;
   D_80271FCC = 0;
