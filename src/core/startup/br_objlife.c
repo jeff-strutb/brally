@@ -224,7 +224,13 @@ int BrSet_1006AA90(void);     /* 0x10063A40 */
  * inline helpers taking the base as a PARAMETER, macros, TU padding.  A
  * micro-test shows VC5 emits `sub; add imm` (constant last) for EVERY
  * spelling of base - x*K + y, so the original's `mov ebp,base; sub; add`
- * needs the base not to be a link-time constant at reassociation time. */
+ * needs the base not to be a link-time constant at reassociation time.
+ * DEAD 2026-09-26 (~110 more): char/char[]/char[][0x15F88]/struct-array
+ * declarations with every -idx subscript form; a named base local (char *,
+ * int, unsigned, const; top or pre-loop); (T *)(base - idx*K) + n frame-
+ * pointer arithmetic with and without the off induction; 31 compiler flag
+ * sets.  All emit the same `add ebp, imm` tail.  Corpus MISS (game, crt,
+ * ext, ext2) on `mov R,A; sub R,R; ...; add R,R`. */
 /* @t4-pass 0x10060A30 1 2026-09-24 probes 18 bytes 287 insns 80 regions 2 rows 4 census no  (hand: loop shapes -- do/while pointer walk, indexed for, inline car-array index -- x five spellings of base - idx*0x15F88 + off, pointer and int arithmetic; VC5 always reassociates to off - idx*K + base) */
 /* @t4-pass 0x10060A30 2 2026-09-24 probes 19 bytes 287 insns 80 regions 2 rows 4 census yes  (hand, slot census: every top-level slot of br_objlife.c; residue identical in all 19) */
 /* @implements 0x10060A30 glide BrRaceSaveLastLapInfo */
