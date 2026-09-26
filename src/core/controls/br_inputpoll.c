@@ -7,8 +7,8 @@
  *
  * FUNCTIONS: 0x100706D0 BrInputPoll (4,145 B; D3D twin 0x100773F0) and
  * 0x100719D0 BrInputJustPressed (1,246 B, byte-exact; D3D twin 0x100786E0,
- * whose port body stays in slice3_45.c).  0x10071710 BrInputIsDown, which
- * sits between them in the original, is still in slice3_45.c.
+ * whose port body stays in slice3_45.c).  0x10071710 BrInputIsDown
+ * (695 B, byte-exact) sits between them, as in the original.
  * Neighbours 0x10070370 BrOnActivate and 0x10070170 BrWaveSeekData live in
  * br_input.c; 0x10070490 BrDikGetDeviceState in br_dik.c.
  *
@@ -656,6 +656,75 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
     }
     g_brInputLast = flags;
     return flags;
+}
+
+/* WHAT IT DOES: answers "is the player holding down the control for this
+ * action right now?" -- checking whichever key, button, stick direction or
+ * mouse movement the action is bound to, plus up to two keyboard alternatives
+ * that always apply. Stick and mouse directions only count once they are
+ * pushed past a dead zone, so a resting stick reads as nothing.
+ *
+ * The original indexes the key/button tables with UNCHECKED bytes (no & 1 /
+ * & 3 masks). A plain switch on the u16 binding word masked to its high
+ * byte (VC5 lowers it to the cmp/jg/je tree); the alternates test the whole
+ * u16 word & 0xFF00, which VC5 folds to `test byte [b+3], 0xff`. */
+/* @implements 0x10071710 glide BrInputIsDown */
+uint8_t BrInputIsDown(int32_t action)
+{
+    uint8_t r = 0;
+    const uint8_t *b = g_BrPadModeBytes + 6 * action;
+    switch (*(const uint16_t *)(const void *)b & 0xFF00) {
+    case 0x0000:
+        r = (uint8_t)(g_brInKeys[g_brInKeyCur][b[0]] & 0x80u);
+        break;
+    case 0x0100:
+        r = (uint8_t)(g_brInJoy[g_brInJoyCur].rgbButtons[b[0]] & 0x80u);
+        break;
+    case 0x0300:
+        r = (uint8_t)(g_brInMouse[g_brInMouseCur].buttons[b[0]] & 0x80u);
+        break;
+    case 0x8000:
+        if (g_brInJoy[g_brInJoyCur].lX < -50) r = 0x80;
+        break;
+    case 0x8100:
+        if (g_brInJoy[g_brInJoyCur].lX > 50) r = 0x80;
+        break;
+    case 0x8200:
+        if (g_brInJoy[g_brInJoyCur].lY < -50) r = 0x80;
+        break;
+    case 0x8300:
+        if (g_brInJoy[g_brInJoyCur].lY > 50) r = 0x80;
+        break;
+    case 0x8400:
+        if (g_brInJoy[g_brInJoyCur].lZ < -50) r = 0x80;
+        break;
+    case 0x8500:
+        if (g_brInJoy[g_brInJoyCur].lZ > 50) r = 0x80;
+        break;
+    case 0x8600:
+        if (g_brInMouse[g_brInMouseCur].x < -50) r = 0x80;
+        break;
+    case 0x8700:
+        if (g_brInMouse[g_brInMouseCur].x > 50) r = 0x80;
+        break;
+    case 0x8800:
+        if (g_brInMouse[g_brInMouseCur].y < -50) r = 0x80;
+        break;
+    case 0x8900:
+        if (g_brInMouse[g_brInMouseCur].y > 50) r = 0x80;
+        break;
+    case 0x8A00:
+        if (g_brInMouse[g_brInMouseCur].z < -50) r = 0x80;
+        break;
+    case 0x8B00:
+        if (g_brInMouse[g_brInMouseCur].z > 50) r = 0x80;
+        break;
+    }
+    if ((*(const uint16_t *)(const void *)(b + 2) & 0xFF00) == 0)
+        r |= (uint8_t)(g_brInKeys[g_brInKeyCur][b[2]] & 0x80u);
+    if ((*(const uint16_t *)(const void *)(b + 4) & 0xFF00) == 0)
+        r |= (uint8_t)(g_brInKeys[g_brInKeyCur][b[4]] & 0x80u);
+    return r;
 }
 
 #ifdef BR_MATCHING_BUILD
