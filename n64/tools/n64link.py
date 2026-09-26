@@ -72,12 +72,14 @@ def link_function(obj, name, place_va, data_va, fnvas, syms, self_va=None):
         if s['type'] == 3:
             return ('sec', obj.secs[s['shndx']]['name'])
         if s['shndx'] == ti:
+            # IDO relocates against the symbol itself (the field holds only
+            # the addend), so the target is the symbol's own address
             if s['name'] == name:
-                return ('abs', self_va - s['value'])
+                return ('abs', self_va)
             v = fnvas.get(s['name'], B.resolve(s['name'], syms))
             if v is None:
                 raise LinkError('unresolved %s' % s['name'])
-            return ('abs', v - s['value'])
+            return ('abs', v)
         v = B.resolve(s['name'], syms)
         if v is None:
             raise LinkError('unresolved %s' % s['name'])

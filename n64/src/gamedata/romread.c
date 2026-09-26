@@ -15,6 +15,11 @@ void func_802662E0(unsigned int param_1,unsigned int param_2);
 extern int D_80319F88;
 int func_802642E0(int param_1,int *param_2,int param_3);
 extern int D_80272D44;
+extern int D_80272D40;
+void func_8021D070(unsigned int *param_1,unsigned int param_2,unsigned int param_3,int param_4);
+void func_8021D098(unsigned int *param_1,int param_2,int param_3,int param_4);
+extern int D_8021DC94;
+extern int D_8021DC98;
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Read the unpacked size of a packed asset in ROM: the second
@@ -111,4 +116,120 @@ void BrStreamInit(int param_1,int param_2)
 {
   *(int *)(param_1 + 4) = 0;
   *(int *)(param_1 + 8) = param_2;
+}
+
+/* WHAT IT DOES: Take the next of the 32 ROM transfer slots: if all are in
+ * use, wait for one transfer to finish first; returns the slot's I/O
+ * message block. */
+/* @implements 0x802172D0 tgr BrRomDmaSlot */
+int BrRomDmaSlot(void)
+{
+  unsigned int uVar1;
+  
+  if (D_80272D44 == 0x20) {
+    func_802642E0((&D_80319F88),0,1);
+  }
+  else {
+    D_80272D44 = D_80272D44 + 1;
+  }
+  uVar1 = D_80272D40 + 1 & 0x1f;
+  if (((int)(D_80272D40 + 1) < 0) && (uVar1 != 0)) {
+    uVar1 = uVar1 - 0x20;
+  }
+  D_80272D40 = uVar1;
+  return uVar1 * 0x18 + -0x7fce5fe0;
+}
+
+/* WHAT IT DOES: Walk a display list loaded from ROM and correct every
+ * address in it that pointed into the old block (vertex and texture-image
+ * commands) so it points at the new copy; stops at the end of the list. */
+/* @implements 0x8021D098 tgr BrDlRebase */
+void BrDlRebase(unsigned int *param_1,int param_2,int param_3,int param_4)
+{
+  unsigned int uVar1;
+  
+  if (param_1 == (unsigned int *)0x0) {
+    return;
+  }
+  do {
+    uVar1 = *param_1 >> 0x18;
+    if (uVar1 == 4) {
+LAB_8021d108:
+      func_8021D070(param_1 + 1,param_2,param_3,param_4);
+    }
+    else {
+      if (uVar1 == 0xb8) {
+        return;
+      }
+      if (uVar1 == 0xfd) goto LAB_8021d108;
+    }
+    param_1 = param_1 + 2;
+  } while( 1 );
+}
+
+/* WHAT IT DOES: Turn the offsets stored in a model just loaded from ROM
+ * into real addresses: its part table, each part's geometry and each part's
+ * display list. */
+/* @implements 0x8021DC34 tgr BrModelRebase */
+void BrModelRebase(unsigned int *param_1)
+{
+  int iVar1;
+  int *piVar2;
+  int iVar3;
+  unsigned int *puVar4;
+  int iVar5;
+  unsigned int *puVar6;
+  int iVar7;
+  int iVar8;
+  int iVar9;
+  unsigned int uVar10;
+  
+  if (param_1[1] != 0) {
+    func_8021D070(param_1 + 1,0,0x7fffffff,param_1);
+    iVar9 = 0;
+    iVar8 = 0;
+    piVar2 = (int *)param_1[1] + 1;
+    if (0 < *(int *)param_1[1]) {
+      while( 1 ) {
+        iVar7 = 0;
+        func_8021D070(piVar2,0,0x7fffffff,param_1);
+        func_8021D070(*(int *)(param_1[1] + iVar8 + 4) + 4,0,0x7fffffff,param_1);
+        func_8021D070(*(int *)(param_1[1] + iVar8 + 4) + 8,0,0x7fffffff,param_1);
+        piVar2 = (int *)param_1[1];
+        iVar5 = 0;
+        iVar1 = (int)piVar2 + iVar8;
+        iVar3 = *(int *)(iVar1 + 4);
+        if (0 < *(int *)(iVar3 + 0xc)) {
+          while( 1 ) {
+            func_8021D070(iVar3 + 0x20,0,0x7fffffff,param_1);
+            piVar2 = (int *)param_1[1];
+            iVar7 = iVar7 + 1;
+            iVar5 = iVar5 + 4;
+            iVar1 = (int)piVar2 + iVar8;
+            if (*(int *)(*(int *)(iVar1 + 4) + 0xc) <= iVar7) break;
+            iVar3 = *(int *)(iVar1 + 4) + iVar5;
+          }
+        }
+        iVar9 = iVar9 + 1;
+        iVar8 = iVar8 + 4;
+        if (*piVar2 <= iVar9) break;
+        piVar2 = (int *)(iVar1 + 8);
+      }
+    }
+  }
+  uVar10 = 0;
+  if (*param_1 != 0) {
+    puVar6 = param_1 + 2;
+    puVar4 = param_1;
+    do {
+      func_8021D070(puVar6,0,0x7fffffff,param_1);
+      if (puVar4[2] != 0) {
+        func_8021D070(puVar6,0,0x7fffffff,param_1);
+        func_8021D098(puVar4[2],0,0x7fffffff,param_1);
+      }
+      uVar10 = uVar10 + 1;
+      puVar4 = puVar4 + 5;
+      puVar6 = puVar6 + 5;
+    } while (uVar10 < *param_1);
+  }
 }

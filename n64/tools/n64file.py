@@ -80,6 +80,9 @@ def main():
     ap.add_argument('what')
     ap.add_argument('--module-doc', default='')
     ap.add_argument('--src', help='candidate file (default build/n64/cand/<VA>.c)')
+    ap.add_argument('--allow-diff', action='store_true',
+                    help='file a body that is not byte-exact (a T2, on its way to T3); '
+                         'every other function in the file must stay as it was')
     a = ap.parse_args()
     va = int(a.va, 16)
     cand = a.src or os.path.join(B.OUT, 'cand', '0x%08X.c' % va)
@@ -101,12 +104,34 @@ def main():
     pre, _, rest = base.partition(DB)
     have, _, post = rest.partition(DE)
     lines = [l for l in have.split('\n') if l.strip()]
+    ext = re.compile(r'^extern\s+(.+?)\s*\b(D_[0-9A-F]{8}|\w+)\s*;$')
+    known = {}
+    for l in lines:
+        m = ext.match(l.strip())
+        if m:
+            known[m.group(2)] = m.group(1).strip()
     for d in decls:
+        m = ext.match(d.strip())
+        if m and m.group(2) in known and known[m.group(2)] != m.group(1).strip():
+            # same variable, declared with another type in this file: keep the
+            # file's declaration and cast this body's uses (a cast between
+            # 4-byte integer and pointer types costs no code)
+            sym, want, old = m.group(2), m.group(1).strip(), known[m.group(2)]
+            four = lambda t: t.endswith('*') or t in ('int', 'unsigned int', 'u32', 's32')
+            if not (four(want) and four(old)):
+                print('REFUSED: %s is declared %s here and %s in this body' % (sym, old, want))
+                return 1
+            body = re.sub(r'(?<![\w&])\b%s\b(?!\s*=[^=])' % sym, '((%s)%s)' % (want, sym), body)
+            continue
         if d not in lines:
             lines.append(d)
     new = (pre + DB + '\n' + '\n'.join(lines) + '\n' + DE + post.rstrip('\n') + '\n\n'
            + comment(a.what) + '\n' + '/* @implements 0x%08X tgr %s */\n' % (va, a.name)
            + body.strip('\n') + '\n')
+    exact_before = set()
+    vpath = os.path.join(B.OUT, 'verify.csv')
+    if os.path.exists(vpath):
+        exact_before = {r['va'] for r in csv.DictReader(open(vpath)) if r['status'] == 'EXACT'}
     os.makedirs(os.path.dirname(dest), exist_ok=True)
     open(dest, 'w').write(new)
     syms_before = open(B.SYMS).read() if os.path.exists(B.SYMS) else None
@@ -114,7 +139,14 @@ def main():
     p = subprocess.run([sys.executable, os.path.join(N64, 'tools/n64build.py'), dest],
                        cwd=ROOT, capture_output=True, text=True)
     rows = [l.split() for l in p.stdout.split('\n') if re.match(r'^[0-9A-F]{8} ', l) or l.startswith(' ')]
-    bad = [r for r in rows if len(r) > 1 and r[1] != 'EXACT']
+    bad = [r for r in rows if len(r) > 1 and r[1] != 'EXACT'
+           and not (a.allow_diff and r[0] == '%08X' % va and r[1] == 'DIFF')]
+    if a.allow_diff:
+        # the new body may differ; a neighbour that was exact may not drop
+        bad = [r for r in rows if len(r) > 1 and r[0] != '%08X' % va and r[1] != 'EXACT'
+               and r[0] in exact_before]
+        if not any(r[0] == '%08X' % va and r[1] in ('EXACT', 'DIFF') for r in rows):
+            bad.append(['%08X' % va, 'MISSING'])
     if p.returncode or bad or not rows:
         if existed:
             open(dest, 'w').write(old)

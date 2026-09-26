@@ -179,28 +179,23 @@ def words(b):
 
 
 def carve(obj):
-    """-> [(name|None, start, end)] over .text.  Starts are FUNC symbols plus
-    the first non-nop word after each `jr ra` + delay slot (the same rule the
-    ROM map uses), so a static function shows up as an unnamed piece."""
+    """-> [(name, start, end)] over .text, one per FUNC symbol.
+
+    Every function in n64/src is global (IDO writes no symbol for a static
+    one; build_file refuses `static` definitions), so the symbol table is the
+    whole truth.  A function with an early return has two `jr ra`, so the
+    ROM map's jr-ra rule cannot be used here."""
     ti, text = obj.sec('.text')
     if ti is None:
         return []
-    ws = words(text)
-    named = {s['value']: s['name'] for s in obj.syms
-             if s['shndx'] == ti and s['type'] == 2}
-    starts = set(named)
-    for i, w in enumerate(ws):
-        if w == 0x03E00008:
-            j = i + 2
-            while j < len(ws) and ws[j] == 0:
-                j += 1
-            if j < len(ws):
-                starts.add(j * 4)
-    starts = sorted(starts)
+    named = sorted((s['value'], s['name']) for s in obj.syms
+                   if s['shndx'] == ti and s['type'] == 2)
     out = []
-    for k, s in enumerate(starts):
-        e = starts[k + 1] if k + 1 < len(starts) else len(text)
-        out.append((named.get(s), s, e))
+    for k, (v, n) in enumerate(named):
+        e = named[k + 1][0] if k + 1 < len(named) else len(text)
+        out.append((n, v, e))
+    if named and named[0][0] != 0:
+        out.insert(0, (None, 0, named[0][0]))
     return out
 
 
@@ -234,7 +229,7 @@ def grade(obj, rom, name, start, end, va, rom_size, syms, fnvas):
                 v = resolve(s['name'], syms)
             if v is None:
                 return ('unresolved', s['name'])
-            return ('addr', v - s['value'])                 # base of .text-relative
+            return ('addr', v)          # relocated against the symbol itself
         v = resolve(s['name'], syms)
         if v is None:
             return ('unresolved', s['name'])
@@ -407,6 +402,9 @@ def build_file(path, rom, fmap, syms, want_diff=None):
                              ndiff='', size=fmap.get(va, 0), note=err.strip().split('\n')[0][:160]))
         return rows
     pieces = carve(obj)
+    for m in re.finditer(r'^static\s+[^;=]*?\b(\w+)\s*\([^;]*?\)\s*\{', src, re.M):
+        rows.append(dict(va='', name=m.group(1), file=rel, status='ERROR', ndiff='', size=0,
+                         note='static function %s: write it global (IDO leaves no symbol)' % m.group(1)))
     fnvas = {name: va for va, name, ln in tags}
     have = {p[0]: p for p in pieces if p[0]}
     for p in pieces:

@@ -9,9 +9,9 @@ extern int D_8028AB6C;
 extern short D_802A4BE8;
 void func_80255954(unsigned int *param_1,int *param_2,float *param_3,unsigned int param_4);
 void func_80255A18(unsigned int *param_1,int *param_2,float *param_3,unsigned int param_4);
-void func_8021A920(void);
-int func_802642E0(int param_1,int *param_2,int param_3);
-void func_80264824(short *param_1);
+void BrPadStartRead(void);
+int osRecvMesg(int param_1,int *param_2,int param_3);
+void osContGetReadData(short *param_1);
 extern int D_8031A3E0;
 /* -- end declarations -- */
 
@@ -45,9 +45,44 @@ void BrPadStickToButtons(int param_1)
 /* @implements 0x8021A964 tgr BrPadRead */
 void BrPadRead(void)
 {
-  func_8021A920();
-  func_802642E0(&D_80272D48,0,1);
-  func_80264824((&D_8031A3E0));
+  BrPadStartRead();
+  osRecvMesg(&D_80272D48,0,1);
+  osContGetReadData((&D_8031A3E0));
   D_802A4BE8 = 1;
   D_8028AB6C = 0;
+}
+
+/* WHAT IT DOES: Mark buttons as handled: moves the given bits from the
+ * pad's pressed word to its held word, so one press is acted on once. */
+/* @implements 0x80255910 tgr BrPadConsume */
+void BrPadConsume(unsigned int *param_1,unsigned int param_2)
+{
+  param_1[1] = param_1[1] | *param_1 & param_2;
+  *param_1 = *param_1 & ~param_2;
+}
+
+/* WHAT IT DOES: Turn the raw button word into presses: a button counts as
+ * pressed only on the frame it goes down. */
+/* @implements 0x80255934 tgr BrPadEdges */
+void BrPadEdges(unsigned int *param_1)
+{
+  unsigned int uVar1;
+  
+  uVar1 = *param_1;
+  *param_1 = uVar1 ^ uVar1 & param_1[1];
+  param_1[1] = param_1[1] & uVar1;
+}
+
+/* WHAT IT DOES: Reset a pad record and point it at its own controller data. */
+/* @implements 0x80255B54 tgr BrPadInit */
+void BrPadInit(int param_1)
+{
+  int iVar1;
+  
+  iVar1 = (param_1 + 0x7fc95720) / 0x15c;
+  *(int *)(param_1 + 0x30) = 0;
+  *(int *)(param_1 + 0x2c) = 0;
+  *(int *)(param_1 + 0x44) = 0;
+  *(int *)(param_1 + 0x154) = iVar1;
+  *(int *)(param_1 + 0x158) = iVar1 * 6 + -0x7fce5c20;
 }
