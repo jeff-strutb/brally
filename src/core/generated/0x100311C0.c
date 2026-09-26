@@ -79,6 +79,10 @@ extern float _DAT_10077528;
  * forms), with and without the pb assignment kept -- all four byte-identical
  * to the tree (200). VC5 will not RMW through a global-base SIB here. */
 /* @implements 0x100311C0 glide BrTrackLoad */
+/* The node flag word at +0x4C is a 16-bit bitfield: setting bit 13 is what
+ * makes VC5 emit `or byte [..+0x4D],0x20` with the field's `lea [..+0x4C]`
+ * left behind (a byte pointer gives load/or/store instead). */
+typedef struct { unsigned short lo : 13; unsigned short f20 : 1; unsigned short hi : 2; } BrTrkBits;
 void BrTrackLoad(int param_1)
 
 {
@@ -134,8 +138,7 @@ void BrTrackLoad(int param_1)
             (*(float *)(DAT_106eed38 + 0x14 + iVar8) * fVar11 == _DAT_10077524))
            && (*(float *)(DAT_106eed38 + 0x28 + iVar8) * fVar11 == _DAT_10077524))
         {
-          pbVar1 = (unsigned char *)(DAT_106eed38 + 0x4c + iVar8);
-          pbVar1[1] |= 0x20;
+          ((BrTrkBits *)(DAT_106eed38 + 0x4c + iVar8))->f20 = 1;
         }
         *(float *)(DAT_106eed38 + 0x40 + iVar8) = fVar11;
       }
