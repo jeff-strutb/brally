@@ -644,3 +644,147 @@ void BrGlTrackFixupAll(int param_1)
 }
 
 #endif /* BR_MATCHING_BUILD */
+
+#ifdef BR_MATCHING_BUILD
+
+/* 0x100311C0 BrTrackLoad and what it needs.  _CRTIMP is already the
+ * dllimport form above. */
+#include <stdlib.h>
+#include <stdio.h>
+
+/* Forward declarations for unknown functions/globals */
+void FUN_10031140(int);
+void FUN_10018a10(unsigned int, unsigned int);
+void FUN_10018a40(int);
+int FUN_10003320(char *);
+int FUN_100032d0(int);
+void FUN_10031b80(int *, int);
+void FUN_100034c0(int *, int, int, int);
+void FUN_100035e0(int);
+void FUN_10032190(int *);
+void FUN_10030f50(int *, char *, int);
+void FUN_1006c910(void);
+void FUN_1006c950(void);
+void FUN_100314d0(int *);
+void FUN_10034a70(int *, int *, int);
+float FUN_100347f0(int *);
+void FUN_1005a780(void);
+void FUN_10069530(int);
+
+extern char s_tracks__100b74c0[];
+extern char *PTR_s_desert_trk_100b78c0;
+extern char *PTR_s_cargfx_skytexdesert_lut4_100bb30c;
+extern char *PTR_s_cargfx_skytexdesertn_lut4_100bb314;
+extern char DAT_100aa348[];
+extern char DAT_100aa378[];
+extern char DAT_100aa3a4[];
+extern int DAT_10ac080c;
+extern unsigned char DAT_106eff08[];
+extern int DAT_106eecd8;
+extern int DAT_106eecdc;
+extern int _DAT_106ec77c;
+extern unsigned char *DAT_106b7c7c;
+extern int DAT_106f0138;
+extern int _DAT_100aa02c;
+extern int DAT_100aa030;
+extern int DAT_106eed38;
+extern int DAT_106eed3c;
+extern int DAT_118ed1f0;
+extern int DAT_118eda10;
+extern int DAT_118ee210;
+extern int DAT_118ed210;
+extern float _DAT_10077524;
+extern float _DAT_10077528;
+
+/* The instance records are a typed 0x54-byte array indexed by the loop
+ * counter in a plain for loop: that is what schedules the unit-vector
+ * stores below the argument pushes, forms arg3 with `add edx,esi`, and
+ * gives `fld st(0); fmul [rec]` on the first scale test (a byte-offset
+ * do/while gives the lea form and loads the field first).  The flag word
+ * at +0x4C is a 16-bit bitfield: setting bit 13 emits `or byte
+ * [..+0x4D],0x20` with the field's `lea [..+0x4C]` left behind. */
+typedef struct BrTrkInst {
+    float m[16];                  /* +0x00 */
+    float fInvScale;              /* +0x40 */
+    int   f44, f48;
+    unsigned short lo : 13;       /* +0x4C */
+    unsigned short f20 : 1;
+    unsigned short hi : 2;
+    unsigned short w4e;
+    int   f50;
+} BrTrkInst;
+/* WHAT IT DOES: load one track: reset the handling data, set the segment
+ * bases for the track heap, build "tracks/<name>.trk", read the 0x230-byte
+ * header and the rest of the blob (capped at 4,000,000 bytes), run the
+ * command fixup, read the four sky-texture files for the track, compute the
+ * heap window globals, run the full endian/pointer fixup, then for every
+ * 0x54-byte instance record derive the inverse scale of its matrix (marking
+ * pure uniform scales with flag 0x20), and finish with the node mark pass
+ * and the per-track surface table. Aborts with printf+exit(1) on a too-big
+ * file, too many instances, or a header-size mismatch. */
+/* @implements 0x100311C0 glide BrTrackLoad */
+void BrTrackLoad(int param_1)
+
+{
+  unsigned char *pbVar1;
+  int uVar3;
+  int iVar6;
+  int iVar8;
+  float fVar11;
+  struct { float x; float y; float z; } local_40c;
+  char local_400 [1024];
+
+  FUN_10031140(param_1);
+  DAT_10ac080c = 0x80025c00 - (int)DAT_106eff08;
+  FUN_10018a10(0x80025c00, (unsigned int)DAT_106eff08);
+  FUN_10018a40(1);
+  strcpy(local_400, s_tracks__100b74c0);
+  strcat(local_400, (&PTR_s_desert_trk_100b78c0)[param_1]);
+  uVar3 = FUN_10003320(local_400);
+  iVar6 = FUN_100032d0(uVar3);
+  FUN_10031b80(&DAT_106eecd8, uVar3);
+  if (4000000 < iVar6) {
+    printf(DAT_100aa3a4, param_1, iVar6, 4000000);
+    exit(1);
+  }
+  FUN_100034c0(&DAT_106f0138, 1, iVar6 + -0x230, uVar3);
+  FUN_100035e0(uVar3);
+  FUN_10032190(&DAT_106eecd8);
+  FUN_10030f50(&DAT_118ed1f0, (&PTR_s_cargfx_skytexdesert_lut4_100bb30c)[param_1 * 0x5f], 0x20);
+  FUN_10030f50(&DAT_118eda10, (&PTR_s_cargfx_skytexdesert_lut4_100bb30c)[param_1 * 0x5f] + 0x20,
+               -1);
+  FUN_10030f50(&DAT_118ee210, (&PTR_s_cargfx_skytexdesertn_lut4_100bb314)[param_1 * 0x5f], 0x20);
+  FUN_10030f50(&DAT_118ed210, (&PTR_s_cargfx_skytexdesertn_lut4_100bb314)[param_1 * 0x5f] + 0x20,
+               -1);
+  FUN_1006c910();
+  FUN_1006c950();
+  _DAT_106ec77c = (int)DAT_106eff08 - DAT_106eecdc;
+  DAT_106b7c7c = DAT_106eff08 + DAT_106eecd8;
+  FUN_100314d0(&DAT_106eecd8);
+  _DAT_100aa02c = -1;
+  DAT_100aa030 = -1;
+  for (iVar6 = 0; iVar6 < DAT_106eed3c; iVar6++) {
+      local_40c.x = 1.0f;
+      local_40c.y = 0.0f;
+      local_40c.z = 0.0f;
+      FUN_10034a70((int *)&local_40c, (int *)&local_40c, (int)&((BrTrkInst *)DAT_106eed38)[iVar6]);
+      fVar11 = FUN_100347f0((int *)&local_40c);
+      if (fVar11 != _DAT_10077528) {
+        fVar11 = _DAT_10077524 / fVar11;
+        if (fVar11 * ((BrTrkInst *)DAT_106eed38)[iVar6].m[0] == _DAT_10077524 && ((BrTrkInst *)DAT_106eed38)[iVar6].m[5] * fVar11 == _DAT_10077524 && ((BrTrkInst *)DAT_106eed38)[iVar6].m[10] * fVar11 == _DAT_10077524)
+          ((BrTrkInst *)DAT_106eed38)[iVar6].f20 = 1;
+        ((BrTrkInst *)DAT_106eed38)[iVar6].fInvScale = fVar11;
+      }
+  }
+  if (0x800 < DAT_106eed3c) {
+    printf(DAT_100aa378, DAT_106eed3c, 0x800);
+    exit(1);
+  }
+  if (DAT_106eecdc != 0x230) {
+    printf(DAT_100aa348, DAT_106eecdc, 0x230);
+    exit(1);
+  }
+  FUN_1005a780();
+  FUN_10069530(param_1);
+}
+#endif /* BR_MATCHING_BUILD */
