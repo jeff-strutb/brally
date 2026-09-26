@@ -30,3 +30,25 @@ void BrCarCamClearCut(int param_1)
 void BrStub8022BA98(int arg0)
 {
 }
+
+/* WHAT IT DOES: Add to the camera shake for view n: at most 2.5 per call,
+ * and the total never goes above 5. */
+/* @implements 0x8021BE28 tgr BrCamShakeAdd */
+void BrCamShakeAdd(int param_1,float param_2)
+{
+  float *pfVar1;
+  float fVar2;
+  
+  pfVar1 = (float *)(param_1 * 4 + -0x7fce4e28);
+  if (2.5 < param_2) {
+    param_2 = 2.5;
+    fVar2 = *pfVar1;
+  }
+  else {
+    fVar2 = *pfVar1;
+  }
+  *pfVar1 = fVar2 + param_2;
+  if (5.0 < *pfVar1) {
+    *pfVar1 = 5.0;
+  }
+}

@@ -54,8 +54,8 @@ from unicorn import mips_const as M  # noqa: E402
 SCRIPTS = os.path.join(N64, 'tools/n64box_scripts')
 LIVE = os.path.join(N64, 'config/t3_live.csv')
 WHOLE = os.path.join(N64, 'config/whole_image.csv')
-FRAMES = {'attract.txt': 2400}
-TEST_CODE, TEST_DATA = 0x80700000, 0x80780000
+FRAMES = {}                      # per script; default 3600 frames (a minute)
+TEST_CODE, TEST_DATA = 0x80600000, 0x80780000
 CODE_LO, CODE_HI = 0x80200000, 0x8026FAB0
 DEAD_STACK = 0x4000
 MAX_CALLS = 150
@@ -92,7 +92,11 @@ def function_text(src, name):
 
 
 def return_kind(va):
-    f, name, sha = source_of(va)
+    if CAND_DIR:
+        f = os.path.join(CAND_DIR, '0x%08X.c' % va)
+        name = re.search(r'@implements 0x[0-9A-F]{8} tgr (\w+)', open(f).read()).group(1)
+    else:
+        f, name, sha = source_of(va)
     text = function_text(open(f).read(), name)
     head = text.split('(')[0]
     if re.search(r'\bvoid\s+\w+\s*$', head) and '*' not in head:
@@ -106,7 +110,19 @@ def return_kind(va):
     return 'int'
 
 
+CAND_DIR = None                 # --cand: test build/n64/cand drafts, not n64/src
+
+
 def link_candidate(va, code_va, data_va):
+    if CAND_DIR:
+        f = os.path.join(CAND_DIR, '0x%08X.c' % va)
+        src = open(f).read()
+        name = re.search(r'@implements 0x[0-9A-F]{8} tgr (\w+)', src).group(1)
+        obj, err = B.compile_c(f)
+        if obj is None:
+            raise L.LinkError('compile error')
+        code, data = L.link_function(obj, name, code_va, data_va, {name: va}, B.load_symbols())
+        return code, data, hashlib.sha1(src.encode()).hexdigest()[:12]
     f, name, sha = source_of(va)
     if f is None:
         raise L.LinkError('no source tags %08X' % va)
@@ -125,28 +141,25 @@ DEAD_LO = 0x80000400
 
 
 class Sandbox:
-    """A second CPU that runs one call from a copy of the live machine.
+    """A CPU that runs one call from a copy of the live machine.
 
     The live run is only ever READ: at each call under test its memory and
-    registers are copied into two sandboxes, the original body runs in one
-    and the candidate in the other, each to a sentinel return address, and the
-    two end states are compared.  Library code runs for real in the sandbox;
-    the few OS services a game function may touch without blocking are
-    modelled; anything else makes the call uncomparable (counted apart)."""
+    registers are copied out to a worker process, where the original body
+    runs in one sandbox and the candidate in another, each to a sentinel
+    return address, and the two end states are compared.  (Driving one
+    Unicorn from inside another's hook crashes; a separate process cannot.)
+    Library code runs for real in the sandbox; the few OS services a game
+    function may touch without blocking are modelled; anything else makes the
+    call uncomparable (counted apart)."""
 
-    def __init__(self):
+    def __init__(self, hle_names):
         from unicorn import Uc, UC_ARCH_MIPS, UC_MODE_MIPS64, UC_MODE_BIG_ENDIAN
         self.uc = Uc(UC_ARCH_MIPS, UC_MODE_MIPS64 | UC_MODE_BIG_ENDIAN)
         self.uc.ctl_set_cpu_model(M.UC_CPU_MIPS64_R4000)
         self.uc.mem_map(0, NB.RDRAM)
         self.stop = None
         self.count = 0
-        for va, (name, fn) in NB.Box.__dict__.get('_hle_names', {}).items():
-            pass
-
-    def hle(self, box):
-        """Hook every modelled library entry the live box knows."""
-        for va, (name, fn) in box.hle.items():
+        for va, name in hle_names.items():
             self.uc.hook_add(UC_HOOK_CODE, self.on_os, begin=NB.sx(va), end=NB.sx(va),
                              user_data=name)
 
@@ -261,19 +274,42 @@ def compare(a, b, sp, kind='int'):
     return None
 
 
+def _sandbox_worker(conn, hle_names):
+    a, b = Sandbox(hle_names), Sandbox(hle_names)
+    while True:
+        job = conn.recv()
+        if job is None:
+            return
+        va, code_va, kind, sp, regs, count, ram = job
+        ra_ = a.run(ram, regs, va, count)
+        if ra_ != 'returned':
+            conn.send((va, 'blocked', ra_))
+            continue
+        sa = a.state()
+        rb_ = b.run(ram, regs, code_va, count)
+        if rb_ != 'returned':
+            conn.send((va, 'divergent', 'candidate %s' % rb_))
+            continue
+        why = compare(sa, b.state(), sp, kind)
+        conn.send((va, 'divergent' if why else 'equal', why))
+
+
 class Lockstep:
     """Compares candidates with the original at every real call of a live run."""
 
-    def __init__(self, box, targets):
+    def __init__(self, box, targets, cap=None):
+        import multiprocessing as mp
         self.box = box
+        self.cap = cap or MAX_CALLS
         self.t = {}
-        self.a, self.b = Sandbox(), Sandbox()
-        self.a.hle(box)
-        self.b.hle(box)
+        self.hle_names = {va: name for va, (name, fn) in box.hle.items()}
+        self.ctx = mp.get_context('spawn')
+        self.spawn()
+        self.inflight = []
         code = TEST_CODE
         for va, (cblob, dblocks, sha) in targets.items():
             self.t[va] = dict(code=code, sha=sha, compared=0, divergent=0, blocked=0,
-                              first=None, calls=0, kind=return_kind(va))
+                              first=None, calls=0, kind=return_kind(va), sent=0)
             box.uc.mem_write(code & 0x1FFFFFFF, cblob)
             for dva, blob in dblocks:
                 box.uc.mem_write(dva & 0x1FFFFFFF, blob)
@@ -281,31 +317,72 @@ class Lockstep:
                             user_data=va)
             code += (len(cblob) + 15) & ~15
 
+    def spawn(self):
+        self.conn, child = self.ctx.Pipe()
+        self.proc = self.ctx.Process(target=_sandbox_worker, args=(child, self.hle_names),
+                                     daemon=True)
+        self.proc.start()
+
     def on_entry(self, uc, addr, size, va):
         t = self.t[va]
         t['calls'] += 1
-        if t['compared'] + t['blocked'] >= MAX_CALLS and t['calls'] % 97:
+        if t['sent'] >= self.cap and t['calls'] % 97:
             return
-        if t['compared'] >= MAX_CALLS * 4:
+        if t['sent'] >= self.cap * 4:
             return
-        ram = bytes(uc.mem_read(0, NB.RDRAM))          # reads only
-        regs = regs_of(uc)
-        sp = uc.reg_read(NB.GPR[29]) & 0xffffffff
-        ra_ = self.a.run(ram, regs, va, self.box.count)
-        if ra_ != 'returned':
-            t['blocked'] += 1                          # the original cannot be compared
+        t['sent'] += 1
+        frame = self.box.frame
+        job = (va, t['code'], t['kind'], uc.reg_read(NB.GPR[29]) & 0xffffffff, regs_of(uc),
+               self.box.count, bytes(uc.mem_read(0, NB.RDRAM)))
+        self.send(job, frame)
+
+    def send(self, job, frame):
+        try:
+            self.conn.send(job)
+            self.inflight.append((job[0], frame))
+        except (BrokenPipeError, EOFError, OSError):
+            self.crashed()
             return
-        sa = self.a.state()
-        rb_ = self.b.run(ram, regs, t['code'], self.box.count)
-        t['compared'] += 1
-        if rb_ != 'returned':
+        while len(self.inflight) > 4:
+            self.collect(block=True)
+        self.collect(block=False)
+
+    def collect(self, block):
+        while self.inflight and (block or self.conn.poll()):
+            try:
+                va, what, why = self.conn.recv()
+            except (EOFError, OSError):
+                self.crashed()
+                return
+            _, frame = self.inflight.pop(0)
+            t = self.t[va]
+            if what == 'blocked':
+                t['blocked'] += 1
+            else:
+                t['compared'] += 1
+                if what == 'divergent':
+                    t['divergent'] += 1
+                    t['first'] = t['first'] or 'frame %d: %s' % (frame, why)
+            block = False
+
+    def crashed(self):
+        # the sandbox process died on the oldest job in flight: that call's
+        # candidate (or original) took Unicorn down -- never a pass
+        if self.inflight:
+            va, frame = self.inflight.pop(0)
+            t = self.t[va]
+            t['compared'] += 1
             t['divergent'] += 1
-            t['first'] = t['first'] or 'frame %d: candidate %s' % (self.box.frame, rb_)
-            return
-        why = compare(sa, self.b.state(), sp, t['kind'])
-        if why:
-            t['divergent'] += 1
-            t['first'] = t['first'] or 'frame %d: %s' % (self.box.frame, why)
+            t['first'] = t['first'] or 'frame %d: the sandbox crashed on this call' % frame
+        self.inflight = []
+        self.spawn()
+
+    def close(self):
+        self.collect(block=True)
+        try:
+            self.conn.send(None)
+        except Exception:
+            pass
 
 
 _calls = None
@@ -327,28 +404,52 @@ def verdict(t):
     return 'EQUIVALENT'
 
 
-def run_live(vas):
-    targets = {}
-    for i, va in enumerate(vas):
-        code, data, sha = link_candidate(va, TEST_CODE + 0x4000 * i, TEST_DATA + 0x1000 * i)
+CAP = None
+
+
+def _live_worker(job):
+    global CAND_DIR, CAP
+    sc, vas, cand, cap = job
+    CAND_DIR, CAP = cand, cap
+    targets, code_va, data_va = {}, TEST_CODE, TEST_DATA
+    for va in vas:
+        try:
+            code, data, sha = link_candidate(va, code_va, data_va)
+        except L.LinkError:
+            continue
         targets[va] = (code, data, sha)
-    agg = {va: dict(compared=0, divergent=0, blocked=0, first=None, sha=targets[va][2],
-                    scripts=[]) for va in vas}
-    for sc in scripts():
-        box = NB.Box(script=os.path.join(SCRIPTS, sc))
-        ls = Lockstep(box, targets)
-        r = box.run(FRAMES.get(sc, 2400))
-        if r not in ('frames',):
-            print('  %s: run ended early: %s' % (sc, r))
-        for va in vas:
-            t, g = ls.t[va], agg[va]
-            for k in ('compared', 'divergent', 'blocked'):
-                g[k] += t[k]
-            g['first'] = g['first'] or t['first']
-            g['scripts'].append('%s:%d' % (sc, t['compared']))
+        code_va += (len(code) + 15) & ~15
+        data_va += sum((len(b) + 15) & ~15 for _, b in data) + 16
+    vas = list(targets)
+    box = NB.Box(script=os.path.join(SCRIPTS, sc))
+    ls = Lockstep(box, targets, cap=CAP)
+    r = box.run(FRAMES.get(sc, 3600))
+    ls.close()
+    return sc, r, {va: dict((k, ls.t[va][k]) for k in ('compared', 'divergent', 'blocked', 'first', 'sha'))
+                   for va in vas}
+
+
+def run_live(vas):
+    from concurrent.futures import ProcessPoolExecutor
+    agg = {va: dict(compared=0, divergent=0, blocked=0, first=None, sha=None, scripts=[])
+           for va in vas}
+    with ProcessPoolExecutor(min(14, len(scripts()))) as ex:
+        for sc, r, res in ex.map(_live_worker, [(sc, vas, CAND_DIR, CAP) for sc in scripts()]):
+            if r != 'frames':
+                print('  %s: run ended early: %s' % (sc, r))
+            for va in vas:
+                if va not in res:
+                    continue
+                t, g = res[va], agg[va]
+                for k in ('compared', 'divergent', 'blocked'):
+                    g[k] += t[k]
+                g['first'] = g['first'] or (t['first'] and '%s %s' % (sc, t['first']))
+                g['sha'] = t['sha']
+                g['scripts'].append('%s:%d' % (sc[:-4], t['compared']))
+    out = LIVE if not CAND_DIR else os.path.join(B.OUT, 'cand_live.csv')
     rows = {}
-    if os.path.exists(LIVE):
-        rows = {r['va']: r for r in csv.DictReader(open(LIVE))}
+    if os.path.exists(out):
+        rows = {r['va']: r for r in csv.DictReader(open(out))}
     today = datetime.date.today().isoformat()
     for va, g in agg.items():
         v = verdict(g)
@@ -358,50 +459,51 @@ def run_live(vas):
                                  first=g['first'] or '')
         print('%08X %-10s compared %d, divergent %d, blocked %d  %s'
               % (va, v, g['compared'], g['divergent'], g['blocked'], g['first'] or ''))
-    with open(LIVE, 'w', newline='') as f:
+    with open(out, 'w', newline='') as f:
         w = csv.DictWriter(f, ['va', 'verdict', 'compared', 'divergent', 'blocked', 'src',
                                'date', 'scripts', 'first'], lineterminator='\n')
         w.writeheader()
         w.writerows(sorted(rows.values(), key=lambda r: r['va']))
 
 
+def _image_worker(job):
+    sc, img, extra = job
+    a = NB.Box(script=os.path.join(SCRIPTS, sc))
+    ra = a.run(FRAMES.get(sc, 3600))
+    b = NB.Box(script=os.path.join(SCRIPTS, sc), image=img, extra=extra)
+    rb = b.run(FRAMES.get(sc, 3600))
+    first = None
+    for x, y in zip(a.log, b.log):
+        if x != y:
+            first = 'frame %d %s' % (x[0], x[1])
+            break
+    if first is None and (len(a.log) != len(b.log) or ra != rb):
+        first = 'run ended differently (%s / %s)' % (ra, rb)
+    return sc, first, a.frame, ra
+
+
 def run_image(with_vas=()):
-    only_extra = set(with_vas)
-    cert = IMG.t3_certified() | only_extra
-    img, extra, rep = IMG.build(t3=True)
-    if only_extra:
-        # place the bodies being qualified as well
-        img, extra, rep = build_with(cert)
-    placed = sorted(cert)
+    from concurrent.futures import ProcessPoolExecutor
+    cert = IMG.t3_certified() | set(with_vas)
+    img, extra, rep = _build_only(cert)
     results = []
-    for sc in scripts():
-        a = NB.Box(script=os.path.join(SCRIPTS, sc))
-        ra = a.run(FRAMES.get(sc, 2400))
-        b = NB.Box(script=os.path.join(SCRIPTS, sc), image=img, extra=extra)
-        rb = b.run(FRAMES.get(sc, 2400))
-        first = None
-        for x, y in zip(a.log, b.log):
-            if x != y:
-                first = 'frame %d %s' % (x[0], x[1])
-                break
-        if first is None and (len(a.log) != len(b.log) or ra != rb):
-            first = 'run ended differently (%s / %s)' % (ra, rb)
-        results.append((sc, first, a.frame))
-        print('%s: %s over %d frames' % (sc, 'IDENTICAL' if first is None else 'DIFFERS at ' + first, a.frame))
+    with ProcessPoolExecutor(min(14, len(scripts()))) as ex:
+        for sc, first, frames, ra in ex.map(_image_worker, [(sc, img, extra) for sc in scripts()]):
+            results.append((sc, first, frames))
+            print('%s: %s over %d frames%s' % (sc, 'IDENTICAL' if first is None else 'DIFFERS at ' + first,
+                                               frames, '' if ra == 'frames' else ' (original: %s)' % ra))
     verdict_ = 'IDENTICAL' if all(r[1] is None for r in results) else 'DIFFERENT'
-    shas = {}
-    for va in placed:
-        shas['%08X' % va] = source_of(va)[2]
+    shas = {'%08X' % va: source_of(va)[2] for va in sorted(cert)}
     rows = list(csv.DictReader(open(WHOLE))) if os.path.exists(WHOLE) else []
     rows.append(dict(date=datetime.datetime.now().isoformat(timespec='seconds'),
                      verdict=verdict_, bodies=' '.join('%s:%s' % kv for kv in sorted(shas.items())),
-                     scripts=' '.join('%s:%d' % (r[0], r[2]) for r in results),
+                     scripts=' '.join('%s:%d' % (r[0][:-4], r[2]) for r in results),
                      first='; '.join('%s %s' % (r[0], r[1]) for r in results if r[1])))
     with open(WHOLE, 'w', newline='') as f:
         w = csv.DictWriter(f, ['date', 'verdict', 'bodies', 'scripts', 'first'], lineterminator='\n')
         w.writeheader()
         w.writerows(rows)
-    print('A7:', verdict_, '(%d T3 bodies placed)' % len(placed))
+    print('A7:', verdict_, '(%d T3 bodies placed)' % len(cert))
     return verdict_
 
 
@@ -479,7 +581,14 @@ def main():
     ap.add_argument('--image', action='store_true')
     ap.add_argument('--with', dest='with_', nargs='*', default=[])
     ap.add_argument('--qualify', nargs='+')
+    ap.add_argument('--cand', action='store_true',
+                    help='--live on build/n64/cand drafts (a survey; writes build/n64/cand_live.csv)')
     a = ap.parse_args()
+    global CAND_DIR
+    global CAP
+    if a.cand:
+        CAND_DIR = os.path.join(B.OUT, 'cand')
+        CAP = 12                        # a survey: a dozen calls per script
     if a.live:
         run_live([int(v, 16) for v in a.live])
     if a.image:

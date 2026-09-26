@@ -9,9 +9,9 @@ void osStartThread(int param_1);
 void osInitialize(void);
 extern int D_80272680;
 extern int D_80316CD0;
-void func_8021E1EC();
+void BrHaltLoop();
 extern int D_8028A88C;
-int func_802642E0(int param_1,int *param_2,int param_3);
+int osRecvMesg(int param_1,int *param_2,int param_3);
 extern int D_8031A390;
 /* -- end declarations -- */
 
@@ -33,7 +33,7 @@ void BrBoot(void)
 void BrFatal(int param_1)
 {
   D_8028A88C = param_1;
-  func_8021E1EC(0);
+  BrHaltLoop(0);
 }
 
 /* WHAT IT DOES: Wait for the next vertical retrace: block until the video
@@ -41,7 +41,7 @@ void BrFatal(int param_1)
 /* @implements 0x8021E1C0 tgr BrWaitRetrace */
 void BrWaitRetrace(void)
 {
-  func_802642E0((&D_8031A390),0,1);
+  osRecvMesg((&D_8031A390),0,1);
 }
 
 /* WHAT IT DOES: The end of the line after a fatal error: takes the error

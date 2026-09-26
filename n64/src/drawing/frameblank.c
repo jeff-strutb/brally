@@ -5,11 +5,19 @@
 /* -- declarations -- */
 void func_80219470(unsigned int param_1);
 void func_80217FB8(unsigned int param_1,unsigned int param_2,int param_3);
-void func_80219A3C(void);
+void BrFrameBeginLayout1(void);
 int func_8021AA08();
-void func_80260AB0(char param_1);
+void osViBlack(char param_1);
 extern int D_8028A884;
-void func_80219A1C(void);
+void BrFrameBeginLayout0(void);
+extern int D_8028AA08;
+extern int D_8028AA0C;
+extern int D_8028AA10;
+extern int D_8028AA2C;
+extern int D_8028AA30;
+extern int D_8028AA34;
+extern int D_8028AA38;
+extern int D_8028AA3C;
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Start building a new frame using the first of the two
@@ -35,12 +43,12 @@ void BrFrameBeginLayout1(void)
 void BrScreenFlush2Layout1(void)
 {
   D_8028A884 = 1;
-  func_80260AB0(1);
-  func_80219A3C();
+  osViBlack(1);
+  BrFrameBeginLayout1();
   func_80217FB8(0,0,0);
   func_8021AA08();
-  func_80260AB0(1);
-  func_80219A3C();
+  osViBlack(1);
+  BrFrameBeginLayout1();
   func_80217FB8(0,0,0);
   func_8021AA08();
   D_8028A884 = 0;
@@ -53,12 +61,12 @@ void BrScreenFlush2Layout1(void)
 void BrScreenFlush2Layout0(void)
 {
   D_8028A884 = 1;
-  func_80260AB0(1);
-  func_80219A1C();
+  osViBlack(1);
+  BrFrameBeginLayout0();
   func_80217FB8(0,0,0);
   func_8021AA08();
-  func_80260AB0(1);
-  func_80219A1C();
+  osViBlack(1);
+  BrFrameBeginLayout0();
   func_80217FB8(0,0,0);
   func_8021AA08();
   D_8028A884 = 0;
@@ -71,16 +79,16 @@ void BrScreenFlush2Layout0(void)
 void BrScreenFlush3Layout1(void)
 {
   D_8028A884 = 1;
-  func_80260AB0(1);
-  func_80219A3C();
+  osViBlack(1);
+  BrFrameBeginLayout1();
   func_80217FB8(0,0,0);
   func_8021AA08();
-  func_80260AB0(1);
-  func_80219A3C();
+  osViBlack(1);
+  BrFrameBeginLayout1();
   func_80217FB8(0,0,0);
   func_8021AA08();
-  func_80260AB0(1);
-  func_80219A3C();
+  osViBlack(1);
+  BrFrameBeginLayout1();
   func_8021AA08();
   D_8028A884 = 0;
 }
@@ -92,16 +100,31 @@ void BrScreenFlush3Layout1(void)
 void BrScreenFlush3Layout0(void)
 {
   D_8028A884 = 1;
-  func_80260AB0(1);
-  func_80219A1C();
+  osViBlack(1);
+  BrFrameBeginLayout0();
   func_80217FB8(0,0,0);
   func_8021AA08();
-  func_80260AB0(1);
-  func_80219A1C();
+  osViBlack(1);
+  BrFrameBeginLayout0();
   func_80217FB8(0,0,0);
   func_8021AA08();
-  func_80260AB0(1);
-  func_80219A1C();
+  osViBlack(1);
+  BrFrameBeginLayout0();
   func_8021AA08();
   D_8028A884 = 0;
+}
+
+/* WHAT IT DOES: Zero the frame builder's per-frame counters at the start of
+ * a frame. */
+/* @implements 0x802173C8 tgr BrFrameStatsReset */
+void BrFrameStatsReset(void)
+{
+  D_8028AA34 = 0;
+  D_8028AA30 = 0;
+  D_8028AA2C = 0;
+  D_8028AA3C = 0;
+  D_8028AA38 = 0;
+  D_8028AA0C = 0;
+  D_8028AA08 = 0;
+  D_8028AA10 = 0;
 }

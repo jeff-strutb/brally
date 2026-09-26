@@ -14,6 +14,10 @@ extern int D_8028BDDC;
 extern int D_8028BDE0;
 extern int D_8028BDE4;
 extern int D_803519D8;
+void func_8022E4E0(unsigned char *param_1);
+int func_8022F720(unsigned char *param_1,int param_2);
+extern int D_803519D0;
+extern int D_803519D4;
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Draw the following text in the highlight colours (orange
@@ -108,4 +112,30 @@ void BrTextSetColoursRGB(unsigned char *param_1,unsigned char *param_2)
 void BrTextSetFont(int param_1)
 {
   D_803519D8 = param_1;
+}
+
+/* WHAT IT DOES: Print a string at (x, y) in the current font, honouring the
+ * alignment: left as given, right-aligned so it ends at x, or centred on x. */
+/* @implements 0x8022F5DC tgr BrTextPrint */
+void BrTextPrint(int param_1,int param_2,int param_3)
+{
+  int iVar1;
+  
+  iVar1 = param_2;
+  if (D_8028BDC4 != '\0') {
+    if (D_8028BDC4 == '\x01') {
+      iVar1 = func_8022F720(param_1,D_803519D8);
+      iVar1 = param_2 - iVar1;
+    }
+    else {
+      iVar1 = D_803519D0;
+      if (D_8028BDC4 == '\x02') {
+        iVar1 = func_8022F720(param_1,D_803519D8);
+        iVar1 = param_2 - (iVar1 >> 1);
+      }
+    }
+  }
+  D_803519D0 = iVar1;
+  D_803519D4 = param_3;
+  func_8022E4E0(param_1);
 }

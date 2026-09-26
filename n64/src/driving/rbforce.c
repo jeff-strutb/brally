@@ -4,6 +4,9 @@
 
 /* -- declarations -- */
 void func_802589F4(int param_1,int param_2);
+void func_802594BC();
+void func_80259634(int param_1,int param_2);
+void func_8025980C(int param_1);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Apply every force attached to a rigid body for this step:
@@ -46,4 +49,35 @@ int BrStub8025BBA4(int arg0,int arg1,int arg2)
 int BrStub8025D35C(int arg0)
 {
   return 0;
+}
+
+/* WHAT IT DOES: Clear the force and torque accumulators of a car body and
+ * of each of its four wheel bodies before the forces are summed again. */
+/* @implements 0x8025993C tgr BrRbForcesClear */
+void BrRbForcesClear(int param_1)
+{
+  *(int *)(param_1 + 0x104) = 0;
+  *(int *)(param_1 + 0x100) = 0;
+  *(int *)(param_1 + 0xfc) = 0;
+  *(int *)(param_1 + 0x110) = 0;
+  *(int *)(param_1 + 0x10c) = 0;
+  *(int *)(param_1 + 0x108) = 0;
+  *(int *)(*(int *)(param_1 + 4) + 0xfc) = 0;
+  *(int *)(*(int *)(param_1 + 4) + 0x100) = 0;
+  *(int *)(*(int *)(param_1 + 4) + 0x104) = 0;
+  *(int *)(*(int *)(param_1 + 8) + 0xfc) = 0;
+  *(int *)(*(int *)(param_1 + 8) + 0x100) = 0;
+  *(int *)(*(int *)(param_1 + 8) + 0x104) = 0;
+  *(int *)(*(int *)(param_1 + 0xc) + 0xfc) = 0;
+  *(int *)(*(int *)(param_1 + 0xc) + 0x100) = 0;
+  *(int *)(*(int *)(param_1 + 0xc) + 0x104) = 0;
+  *(int *)(*(int *)(param_1 + 0x10) + 0xfc) = 0;
+  *(int *)(*(int *)(param_1 + 0x10) + 0x100) = 0;
+  *(int *)(*(int *)(param_1 + 0x10) + 0x104) = 0;
+  func_802594BC();
+  func_80259634(param_1,*(int *)(param_1 + 4));
+  func_80259634(param_1,*(int *)(param_1 + 8));
+  func_80259634(param_1,*(int *)(param_1 + 0xc));
+  func_80259634(param_1,*(int *)(param_1 + 0x10));
+  func_8025980C(param_1);
 }

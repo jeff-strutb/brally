@@ -6,7 +6,7 @@
 void BrTextHighlightOff(void);
 void BrTextAlignLeft(void);
 void BrTextSetFont(int param_1);
-void func_8022F5DC(int param_1,int param_2,int param_3);
+void BrTextPrint(int param_1,int param_2,int param_3);
 int func_8023DF9C();
 extern int D_80271D70;
 extern int D_80271D84;
@@ -24,8 +24,8 @@ void BrFrontPromptSelect(void)
   func_8023DF9C(&D_80271D70,100,0xd8,0xc,0xc,0,0,0,0xff,0,0,0,0xff,0);
   func_8023DF9C(&D_80271D84,0xa0,0xd8,0xc,0xc,0,0,0,0xff,0,0,0,0xff,0);
   BrTextSetFont(0xb);
-  func_8022F5DC("%wwSelect",0x73,(D_8028AAB4 * 0x13) / 0x14 + -3);
-  func_8022F5DC("%wwGo Back",0xaf,(D_8028AAB4 * 0x13) / 0x14 + -3);
+  BrTextPrint("%wwSelect",0x73,(D_8028AAB4 * 0x13) / 0x14 + -3);
+  BrTextPrint("%wwGo Back",0xaf,(D_8028AAB4 * 0x13) / 0x14 + -3);
 }
 
 /* WHAT IT DOES: Draw the A and B button icons at the foot of the screen
@@ -38,8 +38,8 @@ void BrFrontPromptContinue(void)
   func_8023DF9C(&D_80271D70,0x66,0xd8,0xc,0xc,0,0,0,0xff,0,0,0,0xff,0);
   func_8023DF9C(&D_80271D84,0xb2,0xd8,0xc,0xc,0,0,0,0xff,0,0,0,0xff,0);
   BrTextSetFont(0xb);
-  func_8022F5DC("%wwContinue",0x76,(D_8028AAB4 * 0x13) / 0x14 + -3);
-  func_8022F5DC("%wwExit",0xc1,(D_8028AAB4 * 0x13) / 0x14 + -3);
+  BrTextPrint("%wwContinue",0x76,(D_8028AAB4 * 0x13) / 0x14 + -3);
+  BrTextPrint("%wwExit",0xc1,(D_8028AAB4 * 0x13) / 0x14 + -3);
 }
 
 /* WHAT IT DOES: Set the front-end flag that the season and track-select

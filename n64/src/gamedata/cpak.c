@@ -1,0 +1,586 @@
+/* cpak.c -- the Controller Pak save data
+ */
+#include "tgr/common.h"
+
+/* -- declarations -- */
+void BrLapsApply(void);
+int func_80214A88(int param_1);
+int func_8021CB4C();
+void func_80223750(float param_1,float param_2);
+void func_802237D0(float param_1,float param_2);
+int BrFadeDone(void);
+void BrTextHighlightOff(void);
+void BrTextAlignCentre(void);
+void BrTextAlignLeft(void);
+int BrTextSetColours();
+void BrTextSetFont(int param_1);
+void BrTextPrint();
+void func_80245604(int *param_1,int param_2,int param_3);
+int func_80246F90();
+void BrPadConsume(unsigned int *param_1,unsigned int param_2);
+void osSyncPrintf();
+char * memcpy(char *param_1,char *param_2,int param_3);
+int func_80261940(int param_1,unsigned char *param_2);
+int func_80261CB0(unsigned int param_1,unsigned int *param_2,unsigned int param_3);
+int func_80261F20(int param_1);
+int func_80262370(int param_1,int *param_2,int param_3);
+int func_80262540();
+int func_80262660(int param_1);
+int func_802628C0(int param_1,short param_2,int param_3,int param_4,int param_5,int *param_6);
+int func_80262A80(unsigned int *param_1);
+int func_802635DC(unsigned int *param_1,int param_2,char param_3,unsigned int param_4,unsigned int param_5,int param_6);
+int func_802639E0(unsigned int *param_1,int *param_2);
+int func_80263B30();
+extern int D_80216398;
+extern int D_80270784;
+extern int D_80271FA8;
+extern int D_802723D0;
+extern int D_802724F0;
+extern unsigned char D_802724F4;
+extern unsigned char D_802724F8;
+extern unsigned char D_802724FC;
+extern int D_80272500;
+extern int D_80272558;
+extern int D_8027255C;
+extern int D_80272560;
+extern int D_80272564;
+extern int D_80272568;
+extern int D_8027256C;
+extern int D_80272570;
+extern int D_80272574;
+extern int D_80272578;
+extern int D_8027257C;
+extern int D_80272580;
+extern int D_80272584;
+extern int D_80272588;
+extern int D_80272D48;
+extern int D_8028D0B0;
+extern int D_8028D0C0;
+extern int D_8028D0E0;
+extern int D_8028D0F0;
+extern short D_802A4BE8;
+extern float D_802A8FE4;
+extern float D_802A8FE8;
+extern float D_802A9018;
+extern float D_802A901C;
+extern unsigned char D_80307F00;
+extern int D_80307F01;
+extern char D_80316420;
+extern int D_8031642C;
+extern unsigned char D_80316430;
+extern unsigned char D_80316431;
+extern char D_8031B1E8;
+extern int D_8031C5BC;
+extern int D_8031E64C;
+extern int D_8036A8E0;
+/* -- end declarations -- */
+
+/* WHAT IT DOES: Check the Controller Pak for the save screens: initialise
+ * it, and report when a different pak has been inserted, asking the player
+ * to confirm before carrying on. */
+/* @implements 0x80214E0C tgr BrCpakCheck */
+int BrCpakCheck(int param_1,char param_2)
+{
+  int bVar1;
+  unsigned int uVar2;
+  unsigned int *puVar3;
+  int iVar4;
+  char cVar5;
+  int local_7c;
+  int local_78;
+  int local_74;
+  int local_70;
+  int local_6c;
+  int local_68;
+  int local_64;
+  int local_60;
+  int local_5c;
+  int local_58;
+  int local_54;
+  int local_50;
+  int local_4c;
+  int local_48;
+  int local_44;
+  int local_40;
+  int local_3c;
+  int local_38;
+  int local_34;
+  unsigned char local_2e;
+  unsigned char local_2d;
+  int local_2c;
+  int *local_28;
+  int local_20;
+  int local_8;
+  
+  local_58 = D_80272558;
+  local_54 = D_8027255C;
+  local_50 = D_80272560;
+  local_4c = D_80272564;
+  local_68 = D_80272568;
+  local_64 = D_8027256C;
+  local_60 = D_80272570;
+  local_5c = D_80272574;
+  local_78 = D_80272578;
+  local_74 = D_8027257C;
+  local_70 = D_80272580;
+  local_6c = D_80272584;
+  D_802A4BE8 = 0;
+  local_7c = D_80272588;
+  if (D_802724F8 == '\0') {
+    D_802724F8 = '\x01';
+    D_802724F0 = 0;
+    D_80316430 = '\0';
+    D_80316431 = '\0';
+  }
+  if (param_1 == 0) {
+    local_34 = 0x200;
+    local_28 = &local_58;
+  }
+  else if (param_1 == 1) {
+    local_34 = 0x3a00;
+    local_28 = &local_68;
+  }
+  else if ((param_1 == 2) || (param_1 == 3)) {
+    local_34 = 0x100;
+    local_28 = &local_78;
+  }
+  switch(D_80316430) {
+  case '\0':
+    if (param_2 == '\0') {
+      func_80223750(0,D_802A8FE4);
+      func_802237D0(0,D_802A8FE8);
+      D_80316430 = '\x01';
+    }
+    else {
+      D_80316430 = '\x02';
+    }
+    break;
+  case '\x01':
+    iVar4 = BrFadeDone();
+    if ((iVar4 != 0) &&
+       (cVar5 = D_80316431 + '\x01', bVar1 = D_80316431 == '\x03', D_80316431 = cVar5, bVar1))
+    {
+      D_80316430 = '\x02';
+    }
+    break;
+  case '\x02':
+    func_80261940(&D_80272D48,&local_2d);
+    if (((unsigned int)local_2d & 1 << (D_80271FA8 & 0x1f)) == 0) {
+      D_802724F0 = 1;
+      D_80316430 = '\t';
+    }
+    else {
+      osSyncPrintf("\nInitializing controller pak...\n");
+      D_802724F0 = func_80261CB0(&D_80272D48,D_80271FA8 * 0x68 + -0x7fc96140,D_80271FA8);
+      uVar2 = D_80271FA8;
+      if (D_802724F0 == 0) {
+        (&D_8031B1E8)[D_80271FA8] = 0;
+        if ((&D_80316420)[uVar2] == '\0') {
+          (&D_80316420)[uVar2] = '\x01';
+          memcpy(uVar2 * 0x20 + -0x7fce9c20,uVar2 * 0x68 + -0x7fc96134,0x20);
+          D_80316430 = '\x05';
+        }
+        else {
+          iVar4 = func_80262540(uVar2 * 0x20 + -0x7fce9c20,uVar2 * 0x68 + -0x7fc96134,0x20);
+          if (iVar4 == 0) {
+            D_80316430 = '\x05';
+          }
+          else {
+            memcpy(D_80271FA8 * 0x20 + -0x7fce9c20,D_80271FA8 * 0x68 + -0x7fc96134,0x20);
+            D_80316430 = '\x04';
+          }
+        }
+      }
+      else if (D_802724F0 == 10) {
+        iVar4 = func_80262370(&D_80272D48,D_80271FA8 * 0x68 + -0x7fce5c08,D_80271FA8);
+        if (iVar4 == 0) {
+          func_80261F20(D_80271FA8 * 0x68 + -0x7fce5c08);
+          D_802724F0 = 9999;
+          D_802724FC = '\x01';
+          D_80316430 = '\t';
+        }
+        else {
+          D_802724F0 = 0;
+          D_80316430 = '\x03';
+        }
+      }
+      else {
+        (&D_8031B1E8)[D_80271FA8] = 0;
+        D_80316430 = '\t';
+      }
+    }
+    break;
+  case '\x03':
+    D_802724F0 = func_80262660(D_80271FA8 * 0x68 + -0x7fc96140);
+    if (D_802724F0 == 0) {
+      D_80316430 = '\x02';
+    }
+    else {
+      D_80316430 = '\t';
+    }
+    break;
+  case '\x04':
+    if (param_2 == '\0') {
+      BrTextHighlightOff();
+      BrTextAlignLeft();
+      BrTextSetFont(0xc);
+      BrTextSetColours(0xff,0xff,0xff,0xff,0xf5,0);
+      func_80246F90(0xaf,0xc3,0x122,0x89,3,0,0,0x80,0x80,0x80);
+      BrTextPrint("A NEW CONTROLLER PAK",0x5f,0x71);
+      BrTextPrint("WAS INSERTED.",0x5f,0x7e);
+      BrTextPrint("THIS CONTROLLER PAK",0x5f,0x91);
+      BrTextPrint("WILL BE USED.",0x5f,0x9e);
+      if ((*(unsigned int *)(&D_8036A8E0 + D_80271FA8 * 0x15c) & 0x8030) != 0) {
+        BrPadConsume(&D_8036A8E0 + D_80271FA8 * 0x15c,0x8030);
+        D_80316430 = '\x05';
+      }
+    }
+    else {
+      D_80316430 = '\x05';
+    }
+    break;
+  case '\x05':
+    osSyncPrintf("Finding file...\n");
+    D_802724F0 = func_802628C0(D_80271FA8 * 0x68 + -0x7fc96140,0x3544,0x4e475245,local_28,
+                                &local_7c,&D_8031642C);
+    if (D_802724F0 == 3) {
+      func_80262A80(D_80271FA8 * 0x68 + -0x7fc96140);
+      D_802724F0 = func_802628C0(D_80271FA8 * 0x68 + -0x7fc96140,0x3544,0x4e475245,local_28,
+                                  &local_7c,&D_8031642C);
+    }
+    if (D_802724F0 == 0) {
+      if (param_1 == 3) {
+        D_80316430 = '\b';
+      }
+      else {
+        D_80316430 = '\x06';
+      }
+    }
+    else if (param_1 == 3) {
+      D_80316430 = '\a';
+    }
+    else if (param_2 == '\0') {
+      D_80316430 = '\t';
+    }
+    else {
+      D_80316430 = '\f';
+    }
+    break;
+  case '\x06':
+    if (param_1 == 0) {
+      osSyncPrintf("Loading season data...\n");
+    }
+    else if (param_1 == 1) {
+      osSyncPrintf("Loading ghost data...\n");
+    }
+    else if (param_1 == 2) {
+      osSyncPrintf("Loading configuration...\n");
+    }
+    if (param_1 == 2) {
+      D_802724F0 = func_802635DC(D_80271FA8 * 0x68 + -0x7fc96140,D_8031642C,0,0,0x80,
+                                  D_80272500);
+    }
+    else {
+      D_802724F0 = func_802635DC(D_80271FA8 * 0x68 + -0x7fc96140,D_8031642C,0,0,local_34,
+                                  D_80272500);
+    }
+    if (D_802724F0 == 0) {
+      if (param_1 == 0) {
+        iVar4 = *(int *)(&D_8031C5BC + (D_80271FA8 ^ 1) * 0x2090);
+        local_48 = *(int *)(iVar4 + 0xd4);
+        local_44 = *(int *)(iVar4 + 0xd8);
+        local_40 = *(int *)(iVar4 + 0xdc);
+        local_3c = *(int *)(iVar4 + 0xe0);
+        local_38 = *(int *)(iVar4 + 0xe4);
+        memcpy(D_8031C5BC,D_80272500,0x128);
+        memcpy(D_8031E64C,D_80272500,0x128);
+        *(int *)(*(int *)(&D_8031C5BC + (D_80271FA8 ^ 1) * 0x2090) + 0xd4) = local_48;
+        *(int *)(*(int *)(&D_8031C5BC + (D_80271FA8 ^ 1) * 0x2090) + 0xd8) = local_44;
+        *(int *)(*(int *)(&D_8031C5BC + (D_80271FA8 ^ 1) * 0x2090) + 0xdc) = local_40;
+        *(int *)(*(int *)(&D_8031C5BC + (D_80271FA8 ^ 1) * 0x2090) + 0xe0) = local_3c;
+        *(int *)(*(int *)(&D_8031C5BC + (D_80271FA8 ^ 1) * 0x2090) + 0xe4) = local_38;
+        osSyncPrintf("Done!\n");
+      }
+      else if (param_1 == 1) {
+        osSyncPrintf("Extracting ghost data...\n");
+        D_80270784 = func_8021CB4C(&D_80307F00,0xde5c,D_80272500,2);
+        *(short *)(D_8031C5BC + 0xce) =
+             *(short *)(D_8031C5BC + 0xce) | (short)(1 << (D_80307F00 & 0x1f));
+        *(short *)(D_8031C5BC + 0xcc) =
+             *(short *)(D_8031C5BC + 0xcc) | (short)(1 << (D_80307F01 & 0x1f));
+        osSyncPrintf("Done!\n");
+      }
+      else if (param_1 == 2) {
+        memcpy(&D_802723D0,D_80272500,0xc);
+        osSyncPrintf("Loading car equipment settings...\n");
+        D_802724F0 = func_802635DC(D_80271FA8 * 0x68 + -0x7fc96140,D_8031642C,0,0x80,0x80,
+                                    D_80272500);
+        if (D_802724F0 == 0) {
+          memcpy(&local_48,D_80272500,0x14);
+          *(int *)(*(int *)(&D_8031C5BC + D_80271FA8 * 0x2090) + 0xd4) = local_48;
+          *(int *)(*(int *)(&D_8031C5BC + D_80271FA8 * 0x2090) + 0xd8) = local_44;
+          *(int *)(*(int *)(&D_8031C5BC + D_80271FA8 * 0x2090) + 0xdc) = local_40;
+          *(int *)(*(int *)(&D_8031C5BC + D_80271FA8 * 0x2090) + 0xe0) = local_3c;
+          *(int *)(*(int *)(&D_8031C5BC + D_80271FA8 * 0x2090) + 0xe4) = local_38;
+          osSyncPrintf("Done!\n");
+        }
+        else {
+          D_80316430 = '\t';
+        }
+      }
+      if (D_80316430 != '\t') {
+        if (param_1 == 2) {
+          D_80316430 = '\v';
+        }
+        else if (D_802724FC == '\0') {
+          D_80316430 = '\f';
+        }
+        else {
+          D_80316430 = '\v';
+        }
+      }
+    }
+    else {
+      D_80316430 = '\t';
+    }
+    break;
+  case '\a':
+    D_802724F0 = func_802639E0(D_80271FA8 * 0x68 + -0x7fc96140,&local_2c);
+    if (D_802724F0 == 0) {
+      if (local_2c < 0x100) {
+        D_802724F0 = 7;
+        D_80316430 = '\t';
+      }
+      else {
+        osSyncPrintf("Allocating %d bytes for configuration...\n",0x100);
+        D_802724F0 = func_80263B30(D_80271FA8 * 0x68 + -0x7fc96140,0x3544,0x4e475245,local_28,
+                                    &local_7c,0x100,&D_8031642C);
+        if (D_802724F0 == 3) {
+          func_80262A80(D_80271FA8 * 0x68 + -0x7fc96140);
+          D_802724F0 = func_80263B30(D_80271FA8 * 0x68 + -0x7fc96140,0x3544,0x4e475245,local_28,
+                                      &local_7c,0x100,&D_8031642C);
+        }
+        if (D_802724F0 == 0) {
+          D_80316430 = '\b';
+        }
+        else {
+          D_80316430 = '\t';
+        }
+      }
+    }
+    else {
+      D_80316430 = '\t';
+    }
+    break;
+  case '\b':
+    osSyncPrintf("Saving configuration...\n");
+    memcpy(D_80272500,&D_802723D0,0xc);
+    D_802724F0 = func_802635DC(D_80271FA8 * 0x68 + -0x7fc96140,D_8031642C,1,0,0x80,
+                                D_80272500);
+    if (D_802724F0 == 0) {
+      iVar4 = *(int *)(&D_8031C5BC + D_80271FA8 * 0x2090);
+      local_48 = *(int *)(iVar4 + 0xd4);
+      local_44 = *(int *)(iVar4 + 0xd8);
+      local_40 = *(int *)(iVar4 + 0xdc);
+      local_3c = *(int *)(iVar4 + 0xe0);
+      local_38 = *(int *)(iVar4 + 0xe4);
+      memcpy(D_80272500,&local_48,0x14);
+      D_802724F0 = func_802635DC(D_80271FA8 * 0x68 + -0x7fc96140,D_8031642C,1,0x80,0x80,
+                                  D_80272500);
+      if (D_802724F0 == 0) {
+        osSyncPrintf("Done!\n");
+        D_80316430 = '\v';
+      }
+      else {
+        D_80316430 = '\t';
+      }
+    }
+    else {
+      D_80316430 = '\t';
+    }
+    break;
+  case '\t':
+    if (param_2 != '\0') {
+      D_802A4BE8 = 1;
+      D_80316430 = 0xc;
+      return 0;
+    }
+    BrTextHighlightOff();
+    BrTextAlignLeft();
+    BrTextSetFont(0xc);
+    BrTextSetColours(0xff,0xff,0xff,0xff,0xf5,0);
+    if (D_802724F0 < 0xc) {
+      switch(D_802724F0) {
+      case 1:
+      case 0xb:
+        func_80246F90(0x94,0xd8,0x158,0x4c,3,0,0,0x80,0x80,0x80);
+        BrTextPrint("CONTROLLER PAK NOT FOUND.",0x52,0x7c);
+        if (param_1 == 3) {
+          BrTextPrint("DATA CANNOT BE SAVED.",0x52,0x8a);
+        }
+        else {
+          BrTextPrint("DATA CANNOT BE LOADED.",0x52,0x8a);
+        }
+        break;
+      case 2:
+        func_80246F90(0xaf,0xb9,0x122,0x89,3,0,0,0x80,0x80,0x80);
+        BrTextPrint("A NEW CONTROLLER PAK",0x5f,0x6c);
+        BrTextPrint("WAS INSERTED.",0x5f,0x79);
+        BrTextPrint("THIS CONTROLLER PAK",0x5f,0x8c);
+        BrTextPrint("WILL BE USED.",0x5f,0x99);
+        break;
+      default:
+        goto LAB_802162c8;
+      case 4:
+        func_80246F90(0xbf,0xd9,0x102,0x4a,3,0,0,0x80,0x80,0x80);
+        BrTextPrint("CONTROLLER ERROR",0x67,0x7c);
+        BrTextPrint("HAS BEEN DETECTED!",0x67,0x8a);
+        break;
+      case 5:
+        func_80246F90(0xaf,0xd9,0x122,0x4a,3,0,0,0x80,0x80,0x80);
+        if (param_1 == 3) {
+          BrTextPrint("CONTROLLER PAK ERROR",0x5f,0x7c);
+          BrTextPrint("HAS BEEN DETECTED!",0x5f,0x8a);
+        }
+        else {
+          BrTextPrint("SAVED DATA NOT FOUND",0x5f,0x7c);
+          BrTextPrint("IN CONTROLLER PAK.",0x5f,0x8a);
+        }
+        break;
+      case 7:
+      case 8:
+        func_80246F90(0xa5,0xa5,0x136,0xbd,3,0,0,0x80,0x80,0x80);
+        BrTextPrint("INSUFFICIENT FREE PAGES",0x5a,0x62);
+        BrTextPrint("OR FREE NOTES IN THE",0x5a,0x6f);
+        BrTextPrint("CONTROLLER PAK.",0x5a,0x7c);
+        BrTextPrint("ONE PAGE AND ONE NOTE",0x5a,0x8f);
+        BrTextPrint("ARE NEEDED TO SAVE THE",0x5a,0x9c);
+        BrTextPrint("OPTIONS.",0x5a,0xa9);
+        break;
+      case 10:
+        func_80246F90(0xbd,0xd9,0x106,0x4a,3,0,0,0x80,0x80,0x80);
+        BrTextPrint("THE CONTROLLER PAK",0x66,0x7c);
+        BrTextPrint("IS NONFUNCTIONAL!",0x66,0x8a);
+      }
+    }
+    else if (D_802724F0 == 9999) {
+      local_20 = 0x148 - D_8028D0C0;
+      func_80246F90(0x79,0xb0,0x18d,0xa0,3,0,0,0x80,0x80,0x80);
+      BrTextPrint("PLEASE REMOVE THE RUMBLE PAK",0x44,0x68);
+      BrTextPrint("AND INSERT THE CONTROLLER PAK",0x44,0x75);
+      BrTextPrint("INTO THE CONTROLLER.  PRESS",0x44,0x82);
+      BrTextPrint("THE A BUTTON WHEN READY.",0x44,0x8f);
+      BrTextAlignLeft();
+      BrTextSetFont(10);
+      iVar4 = local_20 + 0x12 >> 1;
+      BrTextPrint("%wwOK",D_8028D0C0 + 0xe3U >> 1,iVar4);
+      BrTextPrint("%wwCANCEL",D_8028D0F0 + 0x144U >> 1,iVar4);
+      func_80245604(&D_8028D0B0,0xdd,local_20);
+      func_80245604(&D_8028D0E0,0x13e,local_20);
+    }
+    else {
+LAB_802162c8:
+      func_80246F90(0xaf,0xd9,0x122,0x4a,3,0,0,0x80,0x80,0x80);
+      BrTextPrint("CONTROLLER PAK ERROR",0x5f,0x7c);
+      BrTextPrint("HAS BEEN DETECTED.",0x5f,0x8a);
+    }
+    if (D_802724F0 == 9999) {
+      puVar3 = (unsigned int *)(&D_8036A8E0 + D_80271FA8 * 0x15c);
+      if ((*puVar3 & 0x10) == 0) {
+        if ((*puVar3 & 0x20) != 0) {
+          BrPadConsume(puVar3,0x20);
+          D_80316430 = '\f';
+        }
+      }
+      else {
+        BrPadConsume(puVar3,0x10);
+        D_802724F0 = 0;
+        D_80316430 = '\x02';
+      }
+    }
+    else if ((*(unsigned int *)(&D_8036A8E0 + D_80271FA8 * 0x15c) & 0x8030) != 0) {
+      BrPadConsume(&D_8036A8E0 + D_80271FA8 * 0x15c,0x8030);
+      D_802724F0 = 0;
+      D_80316430 = '\f';
+    }
+    break;
+  case '\n':
+    iVar4 = func_80214A88(0);
+    if (iVar4 != 0) {
+      D_802724FC = '\0';
+      iVar4 = func_80262370(&D_80272D48,D_80271FA8 * 0x68 + -0x7fce5c08,D_80271FA8);
+      if (iVar4 == 0) {
+        (&D_8031B1E8)[D_80271FA8] = 1;
+      }
+      D_80316430 = '\f';
+    }
+    break;
+  case '\v':
+    if (param_2 == '\0') {
+      BrTextAlignCentre();
+      BrTextHighlightOff();
+      BrTextSetFont(0xc);
+      if (param_1 == 0) {
+        if (D_802724F4 == '\0') {
+          local_8 = local_2e + 0xcb;
+        }
+        else {
+          local_8 = 0xce;
+        }
+        func_80246F90(0xe2,local_8,0xbc,0x4a,3,0,0,0x80,0x80,0x80);
+        iVar4 = local_8 + 0x20 >> 1;
+        BrTextPrint("%ywSEASON DATA",0x9f,iVar4,iVar4);
+        BrTextPrint("%ywLOADED OK!",0x9f,iVar4 + 0xe);
+      }
+      else if (param_1 == 1) {
+        if (D_802724F4 == '\0') {
+          local_8 = local_2e + 0xcb;
+        }
+        else {
+          local_8 = 0xce;
+        }
+        func_80246F90(0xe2,local_8,0xbc,0x4a,3,0,0,0x80,0x80,0x80);
+        iVar4 = local_8 + 0x20 >> 1;
+        BrTextPrint("%ywGHOST DATA",0x9f,iVar4,iVar4);
+        BrTextPrint("%ywLOADED OK!",0x9f,iVar4 + 0xe);
+      }
+      else if ((param_1 == 2) || (param_1 == 3)) {
+        func_80246F90(0xd8,0xd9,0xd0,0x4a,3,0,0,0x80,0x80,0x80);
+        BrTextPrint("%ywCONFIGURATION",0x9f,0x7c);
+        if (param_1 == 2) {
+          BrTextPrint("%ywLOADED OK!",0x9f,0x8a);
+        }
+        else {
+          BrTextPrint("%ywSAVED OK!",0x9f,0x8a);
+        }
+      }
+      if ((*(unsigned int *)(&D_8036A8E0 + D_80271FA8 * 0x15c) & 0x8030) != 0) {
+        BrPadConsume(&D_8036A8E0 + D_80271FA8 * 0x15c,0x8030);
+        if (param_1 == 2) {
+          BrLapsApply();
+        }
+        if (D_802724FC == '\0') {
+          D_80316430 = '\f';
+        }
+        else {
+          D_80316430 = '\n';
+        }
+      }
+    }
+    else {
+      D_80316430 = '\f';
+    }
+    break;
+  case '\f':
+    D_802724F0 = 0;
+    D_802724F8 = 0;
+    if (param_2 == '\0') {
+      func_80223750(0x3f800000,D_802A9018);
+      func_802237D0(0x3f800000,D_802A901C);
+    }
+    D_802A4BE8 = 1;
+    return 1;
+  }
+  D_802A4BE8 = 1;
+  return 0;
+}
