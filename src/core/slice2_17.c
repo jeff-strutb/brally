@@ -334,6 +334,13 @@ static int32_t s17_ftol(double v)
  * vertical angles each, which is how the sky texture is scrolled to follow the
  * camera. The first pair is measured against a fixed scale and the second
  * against one the caller supplies. */
+/* @t3 0x1002A200 2026-09-26 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 647/645 insns 203/202 rows 1+2 regions 1 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue: t1's (double)(n * 4) factor is `fild; fmulp` where the original
+ * fuses `fimul` (same value, same rounding); the spellings that fuse also
+ * CSE n*4 into esi.  Dossier and dead list in the matching arm below.  Do
+ * not reopen before the end-grind (project rule 12). */
 /* @implements 0x10030B50 d3d BrLightDirsAndAngles */
 #ifdef BR_MATCHING_BUILD
 /* The original inlines every port helper: the packs, the three column dots

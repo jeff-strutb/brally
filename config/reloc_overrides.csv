@@ -3655,3 +3655,7 @@ func_va,offset,value,comment
 0x10072680,0x11D,0x118EEF14,hand BrFfbSetup &g_brFfb.pEffectSquare (hoisted CreateEffect push)
 0x10072680,0x1A4,0x118EEEA0,hand BrFfbSetup &g_brDiEffSquare (hoisted CreateEffect push)
 0x10072680,0x1A9,0x10078758,hand BrFfbSetup kBrGuidSquare (hoisted CreateEffect push)
+0x1002A200,0x144,0x10077478,hand BrLightDirsAndAngles $T double constant K256 (a pooled .rdata literal the oracle cannot name; paired by value site with the original operand)
+0x1002A200,0x165,0x10077478,hand BrLightDirsAndAngles $T double constant K256 (a pooled .rdata literal the oracle cannot name; paired by value site with the original operand)
+0x1002A200,0x22D,0x10077480,hand BrLightDirsAndAngles $T double constant K1 (a pooled .rdata literal the oracle cannot name; paired by value site with the original operand)
+0x1002A200,0x26B,0x10077480,hand BrLightDirsAndAngles $T double constant K1 (a pooled .rdata literal the oracle cannot name; paired by value site with the original operand)

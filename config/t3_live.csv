@@ -79,6 +79,7 @@ va,name,verdict,calls,captured,contexts,detail,date
 0x10029b50,BrTexInit,EQUIVALENT,69,67,65,10_boot: 1 real call(s) agree,2026-09-24
 0x10029cd0,BrEntGfxFreeAll,EQUIVALENT,46,43,42,20_quickrace_drive: 2 real call(s) agree,2026-09-24
 0x10029ec0,BrMat4Frustum,EQUIVALENT,18980,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x1002a200,BrLightDirsAndAngles,EQUIVALENT,207,6,1,20_quickrace_drive: 6 real call(s) agree [not placed in the image; object mode],2026-09-26
 0x1002f640,BrBitLatchTake,EQUIVALENT,15,15,14,21_quickrace_finish: 2 real call(s) agree,2026-09-24
 0x1002f790,FUN_1002f790,EQUIVALENT,2946,12,6,61_mp_race: 6 real call(s) agree,2026-09-24
 0x100302a0,BrModelSwap,EQUIVALENT,21,21,20,20_quickrace_drive: 1 real call(s) agree,2026-09-24
