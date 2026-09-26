@@ -26,6 +26,9 @@ void BrStub80228E44(int arg0)
 
 /* WHAT IT DOES: Set up a computer driver's racing lanes: the lane offsets
  * follow from its starting slot, and its lane targets are reset. */
+/* @t4-pass 0x802288D4 1 2026-09-26 compiles 17 best 144 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802288D4 2 2026-09-26 compiles 17 best 144 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802288D4 3 2026-09-26 compiles 16 best 144 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x802288D4 tgr BrAiLaneSetup */
 void BrAiLaneSetup(int param_1)
 {
@@ -101,6 +104,9 @@ void BrAiLaneSetup(int param_1)
 }
 
 /* WHAT IT DOES: Clear a computer driver's steering and pedal outputs. */
+/* @t4-pass 0x80228A3C 1 2026-09-26 compiles 17 best 2 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80228A3C 2 2026-09-26 compiles 16 best 2 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80228A3C 3 2026-09-26 compiles 17 best 2 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80228A3C tgr BrAiInputClear */
 void BrAiInputClear(int param_1)
 {

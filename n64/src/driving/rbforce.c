@@ -53,6 +53,9 @@ int BrStub8025D35C(int arg0)
 
 /* WHAT IT DOES: Clear the force and torque accumulators of a car body and
  * of each of its four wheel bodies before the forces are summed again. */
+/* @t4-pass 0x8025993C 1 2026-09-26 compiles 17 best 53 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8025993C 2 2026-09-26 compiles 17 best 53 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8025993C 3 2026-09-26 compiles 17 best 53 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8025993C tgr BrRbForcesClear */
 void BrRbForcesClear(int param_1)
 {

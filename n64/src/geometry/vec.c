@@ -8,6 +8,9 @@
 
 /* WHAT IT DOES: cross product -- out = a x b.  Two components are copied to
  * the stack first, so out may alias a or b. */
+/* @t4-pass 0x8022439C 1 2026-09-26 compiles 17 best 24 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8022439C 2 2026-09-26 compiles 17 best 24 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8022439C 3 2026-09-26 compiles 17 best 24 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8022439C tgr BrVec3Cross */
 void BrVec3Cross(BrVec3 *pOut, BrVec3 *pA, BrVec3 *pB)
 {
@@ -120,6 +123,9 @@ void BrVec3Copy(BrVec3 *pDst, BrVec3 *pSrc)
 /* WHAT IT DOES: unit vector pointing from `from` to `to`.  When the two
  * points coincide it writes straight up the z axis (0,0,1) instead of
  * dividing by zero. */
+/* @t4-pass 0x802245F0 1 2026-09-26 compiles 14 best 4 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802245F0 2 2026-09-26 compiles 12 best 4 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802245F0 3 2026-09-26 compiles 15 best 4 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x802245F0 tgr BrVec3Direction */
 void BrVec3Direction(BrVec3 *pOut, BrVec3 *pFrom, BrVec3 *pTo)
 {
@@ -143,6 +149,9 @@ void BrVec3Direction(BrVec3 *pOut, BrVec3 *pFrom, BrVec3 *pTo)
 
 /* WHAT IT DOES: out = v normalised to unit length; a zero vector becomes
  * (0,0,1). */
+/* @t4-pass 0x802246BC 1 2026-09-26 compiles 16 best 4 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802246BC 2 2026-09-26 compiles 14 best 4 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802246BC 3 2026-09-26 compiles 13 best 4 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x802246BC tgr BrVec3Normal */
 void BrVec3Normal(BrVec3 *pOut, BrVec3 *pV)
 {
@@ -162,6 +171,9 @@ void BrVec3Normal(BrVec3 *pOut, BrVec3 *pV)
 }
 
 /* WHAT IT DOES: normalise a vector in place; a zero vector becomes (0,0,1). */
+/* @t4-pass 0x80224760 1 2026-09-26 compiles 11 best 4 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80224760 2 2026-09-26 compiles 11 best 4 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80224760 3 2026-09-26 compiles 13 best 4 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80224760 tgr BrVec3Normalise */
 void BrVec3Normalise(BrVec3 *pV)
 {

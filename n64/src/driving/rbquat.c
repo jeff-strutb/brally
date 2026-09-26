@@ -9,6 +9,10 @@ void BrStub80258078(void);
 /* WHAT IT DOES: Compute a rigid body's orientation rate: the quaternion
  * derivative from its angular velocity (half the product of the spin and
  * the orientation). */
+/* @t4-pass 0x80258248 1 2026-09-26 compiles 16 best 58 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80258248 2 2026-09-26 compiles 17 best 58 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80258248 3 2026-09-26 compiles 17 best 57 moved 1  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80258248 4 2026-09-26 compiles 41 best 57 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80258248 tgr BrRbQuatDerivative */
 void BrRbQuatDerivative(int param_1)
 {
@@ -25,8 +29,8 @@ void BrRbQuatDerivative(int param_1)
   fVar3 = *(float *)(param_1 + 0x30) * 0.5;
   fVar1 = *(float *)(param_1 + 0x1c);
   fVar2 = *(float *)(param_1 + 0x20);
-  fVar6 = *(float *)(param_1 + 0x24);
   fVar7 = *(float *)(param_1 + 0x18);
+  fVar6 = *(float *)(param_1 + 0x24);
   *(float *)(param_1 + 0x34) = (-fVar4 * fVar1 - fVar5 * fVar2) - fVar6 * fVar3;
   *(float *)(param_1 + 0x38) = (fVar7 * fVar4 + fVar5 * fVar6) - fVar2 * fVar3;
   *(float *)(param_1 + 0x3c) = (fVar7 * fVar5 + fVar3 * fVar1) - fVar6 * fVar4;
@@ -35,6 +39,9 @@ void BrRbQuatDerivative(int param_1)
 
 /* WHAT IT DOES: Advance a rigid body by one time step: position by velocity
  * and orientation by its rate, both scaled by dt. */
+/* @t4-pass 0x80258324 1 2026-09-26 compiles 16 best 46 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80258324 2 2026-09-26 compiles 17 best 46 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80258324 3 2026-09-26 compiles 17 best 46 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80258324 tgr BrRbIntegrate */
 void BrRbIntegrate(int param_1,int param_2,float param_3)
 {
@@ -58,6 +65,8 @@ void BrRbIntegrate(int param_1,int param_2,float param_3)
 }
 
 /* WHAT IT DOES: Build the 3x3 rotation matrix of a unit quaternion. */
+/* @t4-pass 0x802583DC 1 2026-09-26 compiles 19 best 87 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802583DC 2 2026-09-26 compiles 20 best 87 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x802583DC tgr BrQuatToMat */
 void BrQuatToMat(float *param_1,float *param_2)
 {

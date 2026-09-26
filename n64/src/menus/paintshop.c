@@ -49,6 +49,9 @@ void BrSwapBytes(char *param_1,char *param_2)
 
 /* WHAT IT DOES: Move the paint shop cursor from the stick once it is pushed
  * past the dead zone, unless the cursor is locked. */
+/* @t4-pass 0x8024BE78 1 2026-09-26 compiles 17 best 219 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8024BE78 2 2026-09-26 compiles 17 best 219 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8024BE78 3 2026-09-26 compiles 16 best 219 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8024BE78 tgr BrPaintStickMove */
 void BrPaintStickMove(void)
 {

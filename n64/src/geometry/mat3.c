@@ -9,6 +9,9 @@ extern int D_802588F4;
 
 /* WHAT IT DOES: Multiply a 3x3 matrix by a vector, each output the dot
  * product of a matrix row with the vector. */
+/* @t4-pass 0x802587E8 1 2026-09-26 compiles 16 best 49 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802587E8 2 2026-09-26 compiles 17 best 49 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802587E8 3 2026-09-26 compiles 17 best 49 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x802587E8 tgr BrMat3MulVecRows */
 void BrMat3MulVecRows(float *param_1,int param_2,float *param_3)
 {
@@ -45,6 +48,9 @@ void BrMat3MulVecRows(float *param_1,int param_2,float *param_3)
 }
 
 /* WHAT IT DOES: Multiply a 3x3 matrix by a vector. */
+/* @t4-pass 0x802588B8 1 2026-09-26 compiles 17 best 37 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802588B8 2 2026-09-26 compiles 17 best 37 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802588B8 3 2026-09-26 compiles 16 best 37 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x802588B8 tgr BrMat3MulVec */
 void BrMat3MulVec(float *param_1,float *param_2,float *param_3)
 {
@@ -77,6 +83,9 @@ void BrMat3MulVec(float *param_1,float *param_2,float *param_3)
 }
 
 /* WHAT IT DOES: Write the transpose of a 3x3 matrix. */
+/* @t4-pass 0x80258E04 1 2026-09-26 compiles 16 best 27 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80258E04 2 2026-09-26 compiles 17 best 27 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80258E04 3 2026-09-26 compiles 16 best 27 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80258E04 tgr BrMat3Transpose */
 void BrMat3Transpose(int param_1,int *param_2,int *param_3)
 {
@@ -109,12 +118,16 @@ void BrMat3Transpose(int param_1,int *param_2,int *param_3)
 }
 
 /* WHAT IT DOES: Multiply two 3x3 matrices into a third. */
+/* @t4-pass 0x80258F70 1 2026-09-26 compiles 16 best 30 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80258F70 2 2026-09-26 compiles 17 best 27 moved 3  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80258F70 3 2026-09-26 compiles 17 best 26 moved 1  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80258F70 4 2026-09-26 compiles 41 best 26 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80258F70 tgr BrMat3Mul */
 void BrMat3Mul(float *param_1,float *param_2,float *param_3)
 {
   int iVar1;
-  int iVar2;
   float *pfVar3;
+  int iVar2;
   float *pfVar4;
   float *pfVar5;
   float fVar6;
@@ -122,10 +135,10 @@ void BrMat3Mul(float *param_1,float *param_2,float *param_3)
   
   iVar1 = 0;
   do {
-    iVar2 = 0;
     pfVar3 = param_1;
-    pfVar4 = param_2;
+    iVar2 = 0;
     pfVar5 = param_3;
+    pfVar4 = param_2;
     do {
       fVar6 = *pfVar4;
       fVar7 = *pfVar5;
@@ -135,8 +148,8 @@ void BrMat3Mul(float *param_1,float *param_2,float *param_3)
       *pfVar3 = fVar6 - fVar7;
       pfVar3 = pfVar3 + 1;
     } while (iVar2 != 3);
-    iVar1 = iVar1 + 1;
     param_1 = param_1 + 3;
+    iVar1 = iVar1 + 1;
     param_2 = param_2 + 3;
     param_3 = param_3 + 3;
   } while (iVar1 != 3);

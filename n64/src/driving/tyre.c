@@ -12,6 +12,9 @@ extern int D_8028C800;
 /* WHAT IT DOES: Decide whether the car's tyres are skidding: from the
  * body's sideways speed and each wheel's surface, and start or stop the
  * skid sound and marks. */
+/* @t4-pass 0x8025E820 1 2026-09-26 compiles 17 best 93 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8025E820 2 2026-09-26 compiles 17 best 93 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8025E820 3 2026-09-26 compiles 17 best 93 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8025E820 tgr BrTyreSkidCheck */
 void BrTyreSkidCheck(int param_1,int param_2)
 {

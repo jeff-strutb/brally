@@ -121,6 +121,9 @@ void BrStreamInit(int param_1,int param_2)
 /* WHAT IT DOES: Take the next of the 32 ROM transfer slots: if all are in
  * use, wait for one transfer to finish first; returns the slot's I/O
  * message block. */
+/* @t4-pass 0x802172D0 1 2026-09-26 compiles 17 best 17 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802172D0 2 2026-09-26 compiles 16 best 17 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802172D0 3 2026-09-26 compiles 15 best 17 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x802172D0 tgr BrRomDmaSlot */
 int BrRomDmaSlot(void)
 {
@@ -143,6 +146,9 @@ int BrRomDmaSlot(void)
 /* WHAT IT DOES: Walk a display list loaded from ROM and correct every
  * address in it that pointed into the old block (vertex and texture-image
  * commands) so it points at the new copy; stops at the end of the list. */
+/* @t4-pass 0x8021D098 1 2026-09-26 compiles 17 best 23 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021D098 2 2026-09-26 compiles 17 best 23 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021D098 3 2026-09-26 compiles 15 best 23 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8021D098 tgr BrDlRebase */
 void BrDlRebase(unsigned int *param_1,int param_2,int param_3,int param_4)
 {
@@ -170,6 +176,9 @@ LAB_8021d108:
 /* WHAT IT DOES: Turn the offsets stored in a model just loaded from ROM
  * into real addresses: its part table, each part's geometry and each part's
  * display list. */
+/* @t4-pass 0x8021DC34 1 2026-09-26 compiles 17 best 116 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021DC34 2 2026-09-26 compiles 17 best 116 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021DC34 3 2026-09-26 compiles 17 best 116 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8021DC34 tgr BrModelRebase */
 void BrModelRebase(unsigned int *param_1)
 {

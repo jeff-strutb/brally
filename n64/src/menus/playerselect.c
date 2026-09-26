@@ -18,6 +18,9 @@ extern char *D_802723B8;
 /* WHAT IT DOES: Draw one row of the 1P/2P select screen; when the row needs
  * a second controller that is not present it also draws the notice asking
  * for two controllers to be plugged in. */
+/* @t4-pass 0x802114E0 1 2026-09-26 compiles 17 best 115 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802114E0 2 2026-09-26 compiles 17 best 115 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802114E0 3 2026-09-26 compiles 17 best 115 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x802114E0 tgr BrPlayerSelectDrawRow */
 void BrPlayerSelectDrawRow(int param_1)
 {

@@ -29,6 +29,9 @@ void BrSfxSrcBeep2(void)
 
 /* WHAT IT DOES: Play sound effect n from the effect table (its sample,
  * volume and pitch) and remember it as the last one played. */
+/* @t4-pass 0x8022B370 1 2026-09-26 compiles 17 best 21 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8022B370 2 2026-09-26 compiles 16 best 21 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8022B370 3 2026-09-26 compiles 15 best 21 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8022B370 tgr BrSfxSrcTrigger */
 void BrSfxSrcTrigger(int param_1)
 {

@@ -47,6 +47,9 @@ int BrEntIsFree(int param_1)
 /* WHAT IT DOES: Paint a car's colourable texture in the given colour: every
  * texel of the paint layer gets the 5-bit red, green and blue, keeping its
  * own alpha bit. */
+/* @t4-pass 0x8021D140 1 2026-09-26 compiles 17 best 74 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021D140 2 2026-09-26 compiles 17 best 74 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021D140 3 2026-09-26 compiles 16 best 74 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8021D140 tgr BrEntPaintTexture */
 void BrEntPaintTexture(int param_1,unsigned int param_2,unsigned int param_3,int param_4)
 {
@@ -93,6 +96,9 @@ void BrEntPaintTexture(int param_1,unsigned int param_2,unsigned int param_3,int
 /* WHAT IT DOES: Fix up a car model just loaded into its slot: every part's
  * address and display list is moved from the loading area to the slot's own
  * copy. */
+/* @t4-pass 0x8021D32C 1 2026-09-26 compiles 17 best 149 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021D32C 2 2026-09-26 compiles 17 best 149 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021D32C 3 2026-09-26 compiles 17 best 149 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8021D32C tgr BrEntRebaseModel */
 void BrEntRebaseModel(int param_1)
 {
@@ -160,6 +166,9 @@ void BrEntRebaseModel(int param_1)
 
 /* WHAT IT DOES: Attach one of the car artwork records to a car and repaint
  * it in its own colour. */
+/* @t4-pass 0x802203F0 1 2026-09-26 compiles 17 best 4 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802203F0 2 2026-09-26 compiles 14 best 4 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802203F0 3 2026-09-26 compiles 12 best 4 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x802203F0 tgr BrEntSetRecord */
 void BrEntSetRecord(int param_1,int param_2)
 {
@@ -169,6 +178,9 @@ void BrEntSetRecord(int param_1,int param_2)
 
 /* WHAT IT DOES: Load a car's model into its slot when the slot has an
  * owner, remember which model is there, and fix up the model's addresses. */
+/* @t4-pass 0x80220544 1 2026-09-26 compiles 17 best 41 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80220544 2 2026-09-26 compiles 16 best 41 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80220544 3 2026-09-26 compiles 17 best 41 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80220544 tgr BrEntLoadModel */
 int BrEntLoadModel(int param_1)
 {

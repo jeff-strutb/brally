@@ -78,6 +78,10 @@ extern int D_8036A8E0;
 /* WHAT IT DOES: Check the Controller Pak for the save screens: initialise
  * it, and report when a different pak has been inserted, asking the player
  * to confirm before carrying on. */
+/* @t4-pass 0x80214E0C 1 2026-09-26 compiles 17 best 1632 moved 7  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80214E0C 2 2026-09-26 compiles 17 best 1639 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80214E0C 3 2026-09-26 compiles 17 best 1637 moved 2  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80214E0C 4 2026-09-26 compiles 41 best 1637 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80214E0C tgr BrCpakCheck */
 int BrCpakCheck(int param_1,char param_2)
 {
@@ -88,8 +92,8 @@ int BrCpakCheck(int param_1,char param_2)
   char cVar5;
   int local_7c;
   int local_78;
-  int local_74;
   int local_70;
+  int local_74;
   int local_6c;
   int local_68;
   int local_64;
@@ -106,8 +110,8 @@ int BrCpakCheck(int param_1,char param_2)
   int local_38;
   int local_34;
   unsigned char local_2e;
-  unsigned char local_2d;
   int local_2c;
+  unsigned char local_2d;
   int *local_28;
   int local_20;
   int local_8;
@@ -270,7 +274,7 @@ int BrCpakCheck(int param_1,char param_2)
     if (param_1 == 0) {
       osSyncPrintf("Loading season data...\n");
     }
-    else if (param_1 == 1) {
+    else if (1 == param_1) {
       osSyncPrintf("Loading ghost data...\n");
     }
     else if (param_1 == 2) {
@@ -498,7 +502,7 @@ LAB_802162c8:
         D_80316430 = '\x02';
       }
     }
-    else if ((*(unsigned int *)(&D_8036A8E0 + D_80271FA8 * 0x15c) & 0x8030) != 0) {
+    else if ((*(unsigned int *)(&D_80271FA8 + D_8036A8E0 * 0x15c) & 0x8030) != 0) {
       BrPadConsume(&D_8036A8E0 + D_80271FA8 * 0x15c,0x8030);
       D_802724F0 = 0;
       D_80316430 = '\f';

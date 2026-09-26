@@ -84,6 +84,9 @@ void BrStub8023870C(void)
 /* WHAT IT DOES: Watch whether a car is driving the wrong way: after half a
  * second of facing backwards the WRONG WAY message starts flashing on that
  * player's screen, and it is taken down as soon as the car turns round. */
+/* @t4-pass 0x8021F1F0 1 2026-09-26 compiles 17 best 62 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021F1F0 2 2026-09-26 compiles 17 best 62 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021F1F0 3 2026-09-26 compiles 17 best 62 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8021F1F0 tgr BrWrongWayCheck */
 void BrWrongWayCheck(int param_1)
 {
@@ -135,6 +138,9 @@ void BrWrongWayCheck(int param_1)
 /* WHAT IT DOES: Draw the direction arrow for the next turn: picks one of
  * the arrow shapes from the angle of the upcoming bend and draws it tinted
  * for that player. */
+/* @t4-pass 0x80233880 1 2026-09-26 compiles 17 best 348 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80233880 2 2026-09-26 compiles 17 best 348 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80233880 3 2026-09-26 compiles 17 best 348 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80233880 tgr BrHudArrowDraw */
 void BrHudArrowDraw(int param_1,float *param_2,short param_3)
 {
@@ -344,6 +350,9 @@ LAB_80233c10:
 
 /* WHAT IT DOES: Draw a race time as minutes, seconds and hundredths under
  * its label. */
+/* @t4-pass 0x80238714 1 2026-09-26 compiles 17 best 70 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80238714 2 2026-09-26 compiles 16 best 70 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80238714 3 2026-09-26 compiles 13 best 70 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80238714 tgr BrHudTimeDraw */
 void BrHudTimeDraw(int param_1,int param_2,float param_3,int param_4,int param_5
                  )
@@ -360,6 +369,9 @@ void BrHudTimeDraw(int param_1,int param_2,float param_3,int param_4,int param_5
 
 /* WHAT IT DOES: Draw the race times panel: the total time and, per lap, the
  * lap times, placed for one or two players. */
+/* @t4-pass 0x8023880C 1 2026-09-26 compiles 16 best 143 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8023880C 2 2026-09-26 compiles 17 best 143 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8023880C 3 2026-09-26 compiles 17 best 143 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8023880C tgr BrHudTimesDraw */
 void BrHudTimesDraw(void)
 {
@@ -425,6 +437,9 @@ void BrHudTimesDraw(void)
 
 /* WHAT IT DOES: Draw the lap counter (LAP n/m) for the player being shown,
  * while the race is on. */
+/* @t4-pass 0x80238AB8 1 2026-09-26 compiles 17 best 194 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80238AB8 2 2026-09-26 compiles 17 best 194 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80238AB8 3 2026-09-26 compiles 17 best 194 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80238AB8 tgr BrHudLapDraw */
 void BrHudLapDraw(void)
 {
@@ -506,12 +521,15 @@ void BrHudLapDraw(void)
 
 /* WHAT IT DOES: Draw the player's race position unless the display is
  * switched off, placed for one or two players. */
+/* @t4-pass 0x80238DD4 1 2026-09-26 compiles 17 best 75 moved 2  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80238DD4 2 2026-09-26 compiles 17 best 76 moved 1  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80238DD4 3 2026-09-26 compiles 17 best 76 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80238DD4 tgr BrHudPositionDraw */
 void BrHudPositionDraw(void)
 {
   int uVar1;
-  int iVar2;
   int iVar3;
+  int iVar2;
   int iVar4;
   
   if (D_8026FF10 == 0) {
@@ -539,7 +557,7 @@ void BrHudPositionDraw(void)
     }
     else {
       func_8022F5D0(iVar2);
-      func_8022F5DC(*(int *)(D_8028AAF0 + 0xfb0),iVar3,(iVar2 >> 2) + iVar4);
+      func_8022F5DC(*(int *)(0xfb0 + D_8028AAF0),iVar3,(iVar2 >> 2) + iVar4);
     }
   }
 }

@@ -17,6 +17,9 @@ extern int D_8036A8F8;
 /* WHAT IT DOES: Draw the options screen's help line and keep the Controller
  * Pak state current: when the pak state has to be re-read it re-initialises
  * the pak and clears the save flags if none is found. */
+/* @t4-pass 0x8021196C 1 2026-09-26 compiles 17 best 33 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021196C 2 2026-09-26 compiles 16 best 33 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021196C 3 2026-09-26 compiles 15 best 33 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8021196C tgr BrOptionsDrawHelp */
 void BrOptionsDrawHelp(int param_1)
 {

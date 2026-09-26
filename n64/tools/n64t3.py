@@ -58,6 +58,7 @@ FRAMES = {}                      # per script; default 3600 frames (a minute)
 TEST_CODE, TEST_DATA = 0x80600000, 0x80780000
 CODE_LO, CODE_HI = 0x80200000, 0x8026FAB0
 DEAD_STACK = 0x4000
+ARG_HOME = 0x20
 MAX_CALLS = 150
 
 
@@ -251,7 +252,10 @@ def compare(a, b, sp, kind='int'):
     ram_a, regs_a = a
     ram_b, regs_b = b
     if ram_a != ram_b:
-        dlo, dhi = (sp - DEAD_STACK) & 0x1FFFFFFF, sp & 0x1FFFFFFF
+        # dead stack below the caller's sp, plus the caller's argument home
+        # area at sp..sp+0x20, which the O32 convention gives the callee as
+        # scratch (IDO spills incoming arguments there)
+        dlo, dhi = (sp - DEAD_STACK) & 0x1FFFFFFF, (sp + ARG_HOME) & 0x1FFFFFFF
         # compare page by page, skipping the dead stack below the caller
         for off in range(0, len(ram_a), 0x1000):
             x, y = ram_a[off:off + 0x1000], ram_b[off:off + 0x1000]

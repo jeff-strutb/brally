@@ -29,6 +29,9 @@ extern int D_8031D7D4;
 /* WHAT IT DOES: Run the Rumble Paks: re-detect them outside a race, and in
  * a race pulse each player's motor on and off at the rates the current
  * effect asks for, stopping it when the effect ends. */
+/* @t4-pass 0x80260490 1 2026-09-26 compiles 17 best 173 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80260490 2 2026-09-26 compiles 17 best 173 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80260490 3 2026-09-26 compiles 17 best 173 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80260490 tgr BrRumbleUpdate */
 void BrRumbleUpdate(int arg0)
 {

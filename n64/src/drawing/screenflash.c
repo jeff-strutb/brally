@@ -56,6 +56,10 @@ void BrStub80223A68(void)
 
 /* WHAT IT DOES: Draw the white screen flash over the current view, its
  * opacity set by the flash strength (clamped to its maximum). */
+/* @t4-pass 0x80223480 1 2026-09-26 compiles 17 best 137 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80223480 2 2026-09-26 compiles 17 best 137 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80223480 3 2026-09-26 compiles 17 best 135 moved 2  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80223480 4 2026-09-26 compiles 41 best 135 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80223480 tgr BrScreenFlashDraw */
 void BrScreenFlashDraw(void)
 {
@@ -68,7 +72,7 @@ void BrScreenFlashDraw(void)
     if (D_802A9624 < D_8028B750) {
       D_8028B750 = D_802A9624;
     }
-    puVar2 = D_8028A858 + 1;
+    puVar2 = 1 + D_8028A858;
     D_8028A858 = D_8028A858 + 2;
     *puVar2 = 0;
     *puVar1 = 0xe7000000;
@@ -101,8 +105,7 @@ void BrScreenFlashDraw(void)
     iVar3 = D_8028AAEC * 0x14;
     puVar2 = D_8028A858 + 2;
     *D_8028A858 =
-         (*(int *)(&D_8031B2D4 + iVar3) + *(int *)(&D_8031B2CC + iVar3) & 0x3ffU) << 2 |
-         0xf6000000 |
+         (*(int *)(&D_8031B2D4 + iVar3) + *(int *)(&D_8031B2CC + iVar3) & 0x3ffU) << 0xf6000000 | 2 |
          (*(int *)(&D_8031B2C8 + iVar3) + *(int *)(&D_8031B2D0 + iVar3) & 0x3ffU) << 0xe;
     D_8028A858 = puVar2;
     puVar1[1] = (*(unsigned int *)(&D_8031B2CC + D_8028AAEC * 0x14) & 0x3ff) << 2 |
@@ -125,11 +128,14 @@ void BrScreenFlashDraw(void)
 /* @implements 0x80223850 tgr BrFadeDone */
 int BrFadeDone(void)
 {
-  return D_8028B76C == D_8028B774;
+  return D_8028B774 == D_8028B76C;
 }
 
 /* WHAT IT DOES: Tell whether the screen is fading in and not about to
  * reverse. */
+/* @t4-pass 0x802238B8 1 2026-09-26 compiles 14 best 15 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802238B8 2 2026-09-26 compiles 13 best 15 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802238B8 3 2026-09-26 compiles 9 best 15 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x802238B8 tgr BrFadeIsIn */
 int BrFadeIsIn(void)
 {
@@ -138,6 +144,9 @@ int BrFadeIsIn(void)
 
 /* WHAT IT DOES: Tell whether the screen is fading out, or a reversal is
  * pending. */
+/* @t4-pass 0x802238FC 1 2026-09-26 compiles 14 best 15 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802238FC 2 2026-09-26 compiles 13 best 15 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802238FC 3 2026-09-26 compiles 9 best 15 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x802238FC tgr BrFadeIsOut */
 int BrFadeIsOut(void)
 {
@@ -149,12 +158,14 @@ int BrFadeIsOut(void)
 /* @implements 0x80223940 tgr BrFadeAtTarget */
 int BrFadeAtTarget(void)
 {
-  return D_8028B754 == D_8028B75C && D_8028B784 == 0;
+  return D_8028B75C == D_8028B754 && D_8028B784 == 0;
 }
 
 /* WHAT IT DOES: Advance the screen fade by one frame: moves the level
  * towards the target at the fade speed, and when a fade-in-then-out is
  * pending turns it round at the top. */
+/* @t4-pass 0x80223F54 1 2026-09-26 compiles 21 best 228 moved 2  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80223F54 2 2026-09-26 compiles 21 best 228 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80223F54 tgr BrFadeStep */
 void BrFadeStep(void)
 {
@@ -189,8 +200,8 @@ LAB_80224010:
   D_8028B748 = 0;
   D_8028B74C = D_8028AAB4;
   if (0.0 < fVar1) {
-    D_8028B740 = 0;
     D_8028B744 = (int)((float)(int)D_8028AAB0 * D_8028B75C) + 3U & 0xfffffffc;
+    D_8028B740 = 0;
   }
   else if (fVar1 < 0.0) {
     uVar3 = ((D_8028AAB0 - (int)((float)(int)D_8028AAB0 * D_8028B75C)) - D_8028B740) + 3 &
@@ -202,8 +213,8 @@ LAB_80224010:
     }
   }
   else {
-    D_8028B740 = 0;
     D_8028B744 = D_8028AAB0;
+    D_8028B740 = 0;
   }
   if (D_8028B780 == 0) {
     if (D_8028B76C != D_8028B774) {
