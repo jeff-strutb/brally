@@ -8,6 +8,7 @@
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #endif
+#include <stdio.h>
 #include <math.h>
 
 #ifdef BR_MATCHING_BUILD
@@ -83,7 +84,8 @@ typedef void (*BrTexLerpFn)(char *pOut, char *p00, char *p10,
  * loy-then-hiy in the outer body but hix-init / lox / hix-clamp-if split
  * in the inner, sfrac as its own local statement, tx = tx0 above the inner
  * for, and the inner loop as `for (cx = dw; cx > 0; cx--)`.
- * @t4-pass 0x10024490 1 2026-09-13 probes 6 bytes 468 insns 145 regions 1 rows 7 census no  (fn.py variants: addend swap in all four index exprs, += statement swap, int-typed pointer args, branchy low clamp, outer for-loop, explicit rowlo/rowhi locals -- first three byte-identical to tree (VC5 canonicalises), branchy clamp and row locals strictly worse) */
+ * The destination step comes before the sample step, and the TU includes
+ * <stdio.h> (the symbol-table size sets VC5's scheduling tie-breaks here). */
 /* @implements 0x10024490 glide BrTexResample */
 void BrTexResample(char *pDst, int dw, int dh, char *pSrc, int sw, int sh,
                    int mode)
@@ -144,8 +146,8 @@ void BrTexResample(char *pDst, int dw, int dh, char *pSrc, int sw, int sh,
                            pSrc + (lox + hiy * sw) * size,
                            pSrc + (hix + hiy * sw) * size,
                            sfrac, tfrac);
-                    tx += txstep;
                     pDst += size;
+                    tx += txstep;
             }
             ty += tystep;
             cy--;
