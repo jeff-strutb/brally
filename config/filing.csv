@@ -253,6 +253,7 @@ glide_va,name,module,basis,file
 0x10018E90,BrVtxSwap,drawing,filed,src/core/drawing/br_vtxcache.c
 0x10018FC0,BrVtxCacheInsert,drawing,description,src/core/drawing/br_vtxcache.c
 0x10019000,BrPtrListContains,drawing,neighbour-1,src/core/drawing/br_vtxcache.c
+0x10019040,BrF3DListFixup,drawing,filed,src/core/drawing/br_vtxcache.c
 0x10019210,BrF3DVtxFixup,drawing,description,src/core/drawing/br_vtxcache.c
 0x10019250,BrF3DTri1Fixup,drawing,description,src/core/drawing/br_vtxcache.c
 0x10019270,BrF3DTri2Fixup,drawing,neighbour-1,src/core/drawing/br_vtxcache.c
@@ -368,6 +369,7 @@ glide_va,name,module,basis,file
 0x10023CB0,BrTexRgbaToArgb1555,drawing,filed,src/core/drawing/br_tex3d.c
 0x10023D20,BrTex3dRecCopyHead,drawing,filed,src/core/drawing/br_tex3d.c
 0x100242E0,BrTexShiftFromSize,drawing,neighbour,src/core/drawing/br_texfmt.c
+0x10024490,BrTexResample,drawing,filed,src/core/drawing/br_texlerp.c
 0x10024DF0,FUN_10024df0,drawing,neighbour,src/core/drawing/br_texfmt.c
 0x10024E30,BrTex3dRecSet278,drawing,filed,src/core/drawing/br_tex3d.c
 0x10024E60,BrTex3dExpandInto,drawing,filed,src/core/drawing/br_tex3d.c
@@ -1128,6 +1130,7 @@ glide_va,name,module,basis,file
 0x10063E60,BrRbAccumOwnForces,driving,filed,src/core/driving/br_rbaccum.c
 0x10064120,BrRbSolveAccel,driving,filed,src/core/driving/br_rbaccum.c
 0x10064210,BrRbAccumAll,driving,description,src/core/driving/br_rbaccum.c
+0x100642F0,BrRbVelAtBodyPointXY,driving,filed,src/core/driving/br_rbvel.c
 0x100643E0,BrRbVelAtBodyPoint,driving,manual,src/core/driving/br_rbvel.c
 0x100644C0,BrRbVelAtPoint,driving,manual,src/core/driving/br_rbvel.c
 0x100651A0,BrCarPhysTyre,driving,filed,src/core/driving/br_carphys.c
