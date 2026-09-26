@@ -509,53 +509,33 @@ int32_t BrMenuCap07A0(BrMenuItem *pItem)
 }
 
 /* WHAT IT DOES: the same kind of caption as 0x10040730, but from the
- * other byte of the stage word, and it sits idle (returns "leave this
- * row alone") while the menus are not being used. */
-/* @t4-pass 0x10039D20 1 2026-09-13 probes 57 bytes 129 insns 33 regions 1 rows 0 census yes  (tools/crank.py) */
+ * other byte of the stage word (the high byte of stage[e].f10[k]), and it
+ * sits idle (returns "leave this row alone") while the menus are not being
+ * used.  Outside the stage path it indexes the caption table with 0x10AA2A00
+ * directly. */
 /* @implements 0x100407E0 d3d BrMenuCap07E0 */
 int32_t BrMenuCap07E0(BrMenuItem *pItem)
 {
-    uint32_t i;
-
     if (g_menu.gAA2904 == g_menu.gAA2964 && g_menu.gAA28E8 == 0)
         return -2;
 
+    /* Three separate store-and-return exits.  VC5 cross-jumps them into the
+     * one shared `movsx dx, [ecx + tab]` tail, and because the index is not
+     * a join-carried local it lands in ecx (the byte is zero-extended with
+     * xor ecx,ecx / mov cl) while the stage address stays in eax.  The
+     * [e][k] row form keeps the shared e*3 as its own node, so the movsx and
+     * the lea are both hoisted between the selector test and its je. */
     if (g_menu.g0AA010 == 0) {
-        /* Unlike 0x10039C70, the original HOISTS the *3 above the branch
-         * (one movsx+lea shared by both arms); only the loads duplicate.
-         * RESIDUE (glide 0x10039D20, 41 masked diffs, T3a): size and
-         * instruction shape are exact; the whole tail rotates eax<->ecx
-         * behind one head fork (orig reads the selector byte into al
-         * BEFORE the movsx, we movsx first into eax).  Probed and dead:
-         * per-arm duplicated e3 (+2 insns, arms allocate differently),
-         * shared movsx with per-arm *3 (+4B), a selector byte temp.
-         * Pure allocation; parked.
-         * DEAD 2026-09-13 (fn.py, 7 probes, thin): e3 as one `* 3`
-         * statement, a byte selector local, per-arm `e3 * 12`, a
-         * base-select ternary (112 B, drops the arms), the arms swapped
-         * under `== 0` (jne for je), a pre-scaled index local, a row
-         * pointer -- the selector load never precedes the movsx.
-         * End-of-TU placement inert.
-         * DEAD 2026-09-13 (fn.py, 2 more): a byte `cond` temp read before
-         * e3 with a fresh `k = e3*3` (byte-identical -- VC5 sinks the
-         * load to the test), and the full expression inline per arm
-         * hoping PRE hoists into the test..je window (+3 B, +2 insns,
-         * regnorm 2+0).  The condition-vs-selector LOAD ORDER is
-         * scheduler-internal; regnorm is 0+0 so this is rotation plus
-         * one order swap, correctly parked. */
-        int32_t e3 = (int32_t)(int8_t)g_menu.gAA28B8;
-        e3 = e3 + e3 * 2;
         if (g_menu.gAA28A8 != 0) {
-            i = *((const uint8_t *)g_brStages
-                  + 0x11 + 2 * (g_menu.gAA28AC + (uint32_t)e3 * 4u));
-        } else {
-            i = *((const uint8_t *)g_brStages
-                  + 0x11 + 2 * (g_menu.gAA28A4 + (uint32_t)e3 * 4u));
+            pItem->f1E20C = k_AC590[((const uint8_t *)&g_brStages
+                [(int8_t)g_menu.gAA28B8].f10[g_menu.gAA28AC])[1]];
+            return 1;
         }
-    } else {
-        i = g_menu.gAA2A00;
+        pItem->f1E20C = k_AC590[((const uint8_t *)&g_brStages
+            [(int8_t)g_menu.gAA28B8].f10[g_menu.gAA28A4])[1]];
+        return 1;
     }
-    pItem->f1E20C = k_AC590[i];
+    pItem->f1E20C = k_AC590[g_menu.gAA2A00];
     return 1;
 }
 
