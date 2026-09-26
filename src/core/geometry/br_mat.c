@@ -263,6 +263,53 @@ int BrMat4Perspective(BrMat4 *pM, unsigned short *pPerspNorm,
     return rc;
 }
 
+/* 0x100306C0 */
+/* WHAT IT DOES: multiplies two 4x4 transforms together, which is how the game
+ * combines a rotation with a position, or an object's placing with the camera.
+ * If the answer is being written back over one of the inputs it works through a
+ * scratch copy.  (The compiler schedules the two paths' sums in different
+ * orders, so the two routes can disagree in the last bit or two.) */
+/* @implements 0x100306C0 d3d BrMat4Mul */
+void BrMat4Mul(const BrMat4 *pA, const BrMat4 *pB, BrMat4 *pOut)
+{
+    /* The counters are declared BEFORE tmp.  VC5 orders the terms of each
+     * sum from its symbol table, so this declaration order is what fixes
+     * the strength-reduction anchor (row 2) and the operand-load order in
+     * both nests; with tmp first, both come out on row 3. */
+    int i, j;
+    BrMat4 tmp;
+
+    if (pA == NULL || pB == NULL)
+        return;
+    /* pOut is deliberately NOT checked -- see the header. */
+
+    /* TWO separate loop nests, not one nest with a flag: the original
+     * branches once (both compares jump into the scratch path, the direct
+     * path is the fallthrough) and each path carries its own rolled 4x4
+     * loop. */
+    if (pA != pOut && pB != pOut) {
+        for (i = 0; i < 4; ++i) {
+            for (j = 0; j < 4; ++j) {
+                pOut->m[i][j] = pA->m[i][0] * pB->m[0][j]
+                              + pA->m[i][1] * pB->m[1][j]
+                              + pA->m[i][2] * pB->m[2][j]
+                              + pA->m[i][3] * pB->m[3][j];
+            }
+        }
+        return;
+    }
+
+    for (i = 0; i < 4; ++i) {
+        for (j = 0; j < 4; ++j) {
+            tmp.m[i][j] = pA->m[i][0] * pB->m[0][j]
+                        + pA->m[i][1] * pB->m[1][j]
+                        + pA->m[i][2] * pB->m[2][j]
+                        + pA->m[i][3] * pB->m[3][j];
+        }
+    }
+    *pOut = tmp;                /* `rep movsd` of 16 dwords in the original */
+}
+
 /* 0x100310F0 -- the original moves sy and sz as integers (plain `mov`, since
  * copying a float bit pattern needs no FPU) and only sx goes through
  * fld/fstp. Semantically identical. */

@@ -407,6 +407,7 @@ glide_va,name,module,basis,file
 0x100298C0,FUN_100298c0,drawing,filed,src/core/drawing/br_tex3d.c
 0x10029B10,BrTexChooseLevel,drawing,filed,src/core/drawing/br_texinit.c
 0x10029C70,BrGbiSolidTexBuild,drawing,neighbour,src/core/drawing/br_gbitexscan.c
+0x10029D70,BrMat4Mul,geometry,filed,src/core/geometry/br_mat.c
 0x10029E50,BrGuMtxStore,drawing,filed,src/core/drawing/br_drawcar.c
 0x10029E80,BrMat4IdentityLocal,scene,manual,src/core/scene/br_entity.c
 0x10029FE0,BrMat4Perspective7,geometry,manual,src/core/geometry/br_mat4persp7.c
@@ -1250,6 +1251,7 @@ glide_va,name,module,basis,file
 0x1006DC70,BrMat4ToMat3Both,geometry,prefix,src/core/geometry/br_mat3.c
 0x1006DCB0,BrMat4ToMat3Transposed,geometry,prefix,src/core/geometry/br_mat3.c
 0x1006DCF0,BrMat4ToMat3,geometry,prefix,src/core/geometry/br_mat3.c
+0x1006DD20,BrMat3Mul,driving,filed,src/core/driving/br_rbinteg.c
 0x1006DD80,BrMat3Sub,geometry,description,src/core/geometry/br_mat3.c
 0x1006DDD0,BrMat4BuildScaledTransposed,geometry,description,src/core/geometry/br_mat3.c
 0x1006E020,BrFontSetRenderDst,drawing,filed,src/core/drawing/br_font.c

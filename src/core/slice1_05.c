@@ -33,63 +33,6 @@
 /* 4. 4x4 matrix helpers                                              */
 /* ================================================================== */
 
-/* 0x100306C0 */
-/* WHAT IT DOES: multiplies two 4x4 transforms together, which is how the game
- * combines a rotation with a position, or an object's placing with the camera.
- * If the answer is being written back over one of the inputs it works through a
- * scratch copy -- and, oddly, adds the four products up in a different order on
- * that path, so the two routes can disagree in the last bit or two. */
-/* @implements 0x100306C0 d3d BrMat4Mul */
-void BrMat4Mul(const BrMat4 *pA, const BrMat4 *pB, BrMat4 *pOut)
-{
-    BrMat4 tmp;
-    int i, j;
-
-    if (pA == NULL || pB == NULL)
-        return;
-    /* pOut is deliberately NOT checked -- see the header. */
-
-    /* TWO separate loop nests, not one nest with a flag: the original
-     * branches once (both compares jump into the scratch path, the direct
-     * path is the fallthrough) and each path carries its own rolled 4x4
-     * loops with a different summation order. */
-    /* Each element is ONE expression (a named `s` accumulator costs
-     * fadd-without-pop + a discard at the loop tail).  The written pair
-     * order is REVERSED from the evaluated one, and the two nests' pair
-     * spellings are COUPLED through the optimizer -- all four combinations
-     * measured; this one is the minimum.
-     * RESIDUE (2+2 regnorm, 24 masked B, T3a): hoisted-operand-load order
-     * inside the aliased nest (which b-row load is hoisted first) --
-     * identical op counts, operand-source only; the playbook's documented
-     * scheduling wall class. */
-    if (pA != pOut && pB != pOut) {
-        for (i = 0; i < 4; ++i) {
-            for (j = 0; j < 4; ++j) {
-                /* 0x100306FD evaluates ((a2*b2 + a3*b3) + a0*b0) + a1*b1 */
-                pOut->m[i][j] = (pA->m[i][3] * pB->m[3][j]
-                                 + pA->m[i][2] * pB->m[2][j]
-                                 + pA->m[i][0] * pB->m[0][j])
-                                + pA->m[i][1] * pB->m[1][j];
-            }
-        }
-        return;
-    }
-
-    for (i = 0; i < 4; ++i) {
-        for (j = 0; j < 4; ++j) {
-            /* 0x10030753 evaluates ((a3*b3 + a1*b1) + a0*b0) + a2*b2 */
-            /* DEAD 2026-09-13: `a2b2 + (a1b1 + a3b3 + a0b0)` and
-             * `(a0b0 + (a1b1 + a3b3)) + a2b2` (both value-identical) --
-             * 24 and 33 diffs, the aliased nest keeps its row-3 anchor. */
-            tmp.m[i][j] = (pA->m[i][1] * pB->m[1][j]
-                           + pA->m[i][3] * pB->m[3][j]
-                           + pA->m[i][0] * pB->m[0][j])
-                          + pA->m[i][2] * pB->m[2][j];
-        }
-    }
-    *pOut = tmp;                /* `rep movsd` of 16 dwords in the original */
-}
-
 /* 0x10031140 */
 void BrMat4Translate(BrMat4 *pM, float tx, float ty, float tz)
 {
