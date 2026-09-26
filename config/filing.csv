@@ -739,6 +739,7 @@ glide_va,name,module,basis,file
 0x1003BFF0,BrToggleOnce_BFF0,menus,filed,src/core/menus/br_toggle.c
 0x1003C020,BrUiHook85_10042AC0,menus,neighbour,src/core/menus/br_uictlhook.c
 0x1003C050,BrToggleOnce_C050,menus,filed,src/core/menus/br_toggle.c
+0x1003C080,BrOptCycleTrack,menus,filed,src/core/menus/br_optcycle.c
 0x1003C1D0,BrOptCycleAC65C,menus,neighbour,src/core/menus/br_optcycle.c
 0x1003C240,FUN_1003c240,menus,neighbour,src/core/menus/br_uictlhook.c
 0x1003C2B0,FUN_1003c2b0,menus,neighbour,src/core/menus/br_uictlhook.c
