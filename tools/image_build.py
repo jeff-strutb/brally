@@ -81,6 +81,7 @@ Usage:
     python3 tools/image_build.py --recompile         # ignore every cached obj
     python3 tools/image_build.py --out build/x.dll   # legacy: DLL to one path
 """
+import concurrent.futures
 import csv
 import os
 import shutil
@@ -481,7 +482,7 @@ def _compile_dll_obj(rel_src, tag, recompile=False, ambiguous=()):
     return got, None, 'gate'
 
 
-def collect_dll(recompile=False, progress=None):
+def collect_dll(recompile=False, progress=None, jobs=None):
     """{va: (name, code, unres, fromref, lane)} plus the bookkeeping the gate
     needs: the names claiming each address, and the rows we FAILED to build."""
     fnmap, glmap = load_maps()
@@ -517,10 +518,42 @@ def collect_dll(recompile=False, progress=None):
         print('  %d basename(s) claimed by more than one source file '
               '(%s) -- built separately'
               % (len(ambiguous), ', '.join(sorted(ambiguous))))
-    for i, ((rel_src, tag), wanted) in enumerate(sorted(want.items())):
-        if progress:
-            progress(i + 1, len(want), rel_src)
-        obj, err, how = _compile_dll_obj(rel_src, tag, recompile, ambiguous)
+
+    # Phase 1 -- COMPILE, in parallel.  The wine/MSVC compile of the ~350 TUs
+    # is the gate's whole cost, and it is embarrassingly parallel: every
+    # (file, opt) writes to its own directory-keyed object path (_own_tag), so
+    # the workers share no output.  cl.exe runs under one wineserver that
+    # multiplexes concurrent clients (some lock contention, not a serial
+    # bottleneck), exactly as cpp_sweep already fans its TUs out.  _fresh
+    # objects short-circuit inside the worker, so a warm tree stays fast.
+    if jobs is None:
+        jobs = int(os.environ.get('BR_JOBS') or 0) or min(8, (os.cpu_count() or 4))
+    items = sorted(want.items())
+    compiled = {}
+    if jobs <= 1 or len(items) <= 1:
+        for i, ((rel_src, tag), _w) in enumerate(items):
+            if progress:
+                progress(i + 1, len(items), rel_src)
+            compiled[(rel_src, tag)] = _compile_dll_obj(
+                rel_src, tag, recompile, ambiguous)
+    else:
+        done = 0
+        with concurrent.futures.ProcessPoolExecutor(max_workers=jobs) as ex:
+            futs = {ex.submit(_compile_dll_obj, rel_src, tag, recompile,
+                              ambiguous): (rel_src, tag)
+                    for (rel_src, tag), _w in items}
+            for fut in concurrent.futures.as_completed(futs):
+                key = futs[fut]
+                compiled[key] = fut.result()
+                done += 1
+                if progress:
+                    progress(done, len(items), key[0])
+
+    # Phase 2 -- PLACE, serial and in claim order, so a double-claimed address
+    # resolves to exactly the same winner the serial gate produced.  Reading a
+    # freshly-written object back is cheap; only the compile above was slow.
+    for (rel_src, tag), wanted in items:
+        obj, err, how = compiled[(rel_src, tag)]
         if obj is None:
             for va, name in wanted:
                 unbuildable.append((va, name, '%s: %s' % (rel_src, err)))

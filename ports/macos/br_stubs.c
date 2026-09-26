@@ -70,6 +70,10 @@ static long br_stub(const char *name)
     return 0;
 }
 
+/* br_unresolved.c's stubs report through the same table. */
+long br_stub_hit(const char *name);
+long br_stub_hit(const char *name) { return br_stub(name); }
+
 /* Called at exit: the boot path's actual demand, most-wanted first.
  *
  * BR_STUB_GATE=1 turns this from a report into a GATE: the process exits 1 if

@@ -29,6 +29,28 @@ void BrLogFatalPrintf(const char *pFmt, ...)
     pBuf = (char *)BrOperatorNew(0x400);
     va_start(ap, pFmt);
     vsprintf(pBuf, pFmt, ap);
+    {   /* DIAGNOSTIC (permanent): the original formats this fatal message
+         * and discards it, so a clean exit(1) leaves no trace of WHY.  Append
+         * it to a log.  Strings are built on the stack (no new .rdata, which
+         * the fixed image has no room for) and only already-imported CRT
+         * calls are used.  The body is spilled into the annex by the image
+         * builder (config/force_annex.csv) so growing it past its slot is
+         * fine. */
+        char  nm[12];
+        char  md[2];
+        void *fp;
+        int   n;
+        nm[0]='b'; nm[1]='r'; nm[2]='a'; nm[3]='l'; nm[4]='l'; nm[5]='y';
+        nm[6]='.'; nm[7]='l'; nm[8]='o'; nm[9]='g'; nm[10]=0;
+        md[0]='a'; md[1]=0;
+        fp = fopen(nm, md);
+        if (fp != (void *)0) {
+            for (n = 0; pBuf[n] != 0; n++) { }
+            pBuf[n] = '\n';
+            fwrite(pBuf, 1, (size_t)(n + 1), fp);
+            fclose(fp);
+        }
+    }
     exit(1);
 }
 
