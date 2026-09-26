@@ -644,51 +644,54 @@ static void br_dl_light_setup(BrDl *pDl)
  * light; surfaces facing away get plain ambient, and the rest get ambient
  * plus a share of the light's colour, capped at full brightness. Colours
  * here run 0 to 255, not 0 to 1. */
-/* @t4-pass 0x10022AC0 1 2026-09-07 probes 84 bytes 234 insns 69 regions 1 rows 69 census yes  (tools/crank.py) */
-/* @t4-pass 0x10022AC0 2 2026-09-07 probes 84 bytes 234 insns 69 regions 1 rows 69 census yes  (tools/crank.py) */
 /* @implements 0x10022AC0 glide br_dl_light_vertex */
-/* DOSSIER, read before touching this (transcribed instruction by instruction
- * from 0x10022AC0; -79 bytes / REGNORM 31+45 as it stands).  Everything below
- * is READ OFF THE ORIGINAL, not inferred:
- *
- *  - IT TAKES TWO ARGUMENTS, NOT THREE.  The frame is a bare `push ecx` (one
- *    4-byte local, `t`, at [esp]); the args land at [esp+8] and [esp+0xC].
- *    There is no pDl parameter -- `nLights` is the ABSOLUTE global
- *    0x105CCFD0, tested straight out of memory in the first three
- *    instructions.  This is the accessor sub-case of the factored-helper
- *    screen, in its strongest form: the whole BrDl pointer is a port
- *    invention here.
- *  - ALL LIGHT DATA IS ABSOLUTE GLOBALS, three runs of three:
- *      lightScale  0x105CE210 / 0x105CE214 / 0x105CE218
- *      lightDir    0x105CE21C / 0x105CE220 / 0x105CE224
- *      lightAmb    0x105CE228 / 0x105CE22C / 0x105CE230
- *      the nLights==0 triple  0x105D17A4 / 0x105D17B4 / 0x105CE2D0
- *    (note that last one is NOT a contiguous run -- it is the three
- *    destinations of the 0xFA command, as the note below already says).
- *  - THE THREE-COMPONENT LOOP IS FULLY UNROLLED.  Our `for (i = 0; i < 3;)`
- *    is worth 2 `inc`/2 `jne` of EXTRA and costs the 3 `je` the original has.
- *  - THE TWO EARLY ARMS COPY AS INTEGERS, not floats: `mov ecx,[global];
- *    mov [eax+0x1C],ecx`.  Use the dword-pun macro (see the PUN entry in
- *    docs/VC5-IDIOMS.md), not float assignment, or VC5 emits fld/fstp.
- *  - THE CLAMP IS A PUNNED CONSTANT: `mov eax,0x437F0000` (255.0f as bits),
- *    conditionally overwritten by `mov eax,[esp+8]`, then stored with an
- *    integer `mov`.  The scratch v lives in the FIRST PARAMETER'S HOME SLOT
- *    [esp+8] -- the dead-parameter-slot idiom.
- *  - THE TWO COUNTERS (cVtxLitOff, cVtxLitAmbient) DO NOT EXIST in the
- *    original.  Port additions; strip them in the matching arm.
- *
- * WHY THIS IS NOT DONE HERE: the argument TYPES are a scene-model question,
- * not a local one.  arg1 is dereferenced at +0x14/+0x18/+0x1C and arg2 at
- * +0x1C/+0x20/+0x24, so neither is the `float[3]` this port passes -- arg2 is
- * `&pV->f40` (0x40 + 0x1C = 0x5C = n0, which the header's "nine floats from
- * f40+4" note already describes), and arg1 is a record whose normal sits at
- * +0x14 and is loaded with a plain `fld`, i.e. ALREADY FLOAT and not the
- * byte-swapped display-list source our caller reads.  Fixing that means
- * fixing the caller, and the caller here (br_dl_project, 0x10022070) is a
- * mega-function: 170 bytes in the original against 8,022 in this tree, so it
- * does not correspond 1:1 and cannot be adjusted in passing.  Settle the
- * source-vertex record first (see the scene-entity model note), then this
- * function is a transcription with no unknowns left. */
+#ifdef BR_MATCHING_BUILD
+/* The original takes TWO arguments -- the source vertex record (normal at
+ * +0x14/+0x18/+0x1C, already float) and the output vertex (colour at
+ * +0x1C/+0x20/+0x24) -- and reads every light value from absolute globals;
+ * the port's BrDl pointer is a port invention.  Graded /O2 /Op: t and each
+ * v round through memory.  Layout facts: the two early arms are ELSE arms
+ * (lights off, then facing away), so both land after the lit path; they
+ * copy as dwords; the clamp is a float ?: that VC5 lowers to a punned
+ * 0x437F0000 select. */
+extern int   DAT_105ccfd0;                                  /* nLights      */
+extern float DAT_105ce210, DAT_105ce214, DAT_105ce218;      /* lightScale   */
+extern float DAT_105ce21c, DAT_105ce220, DAT_105ce224;      /* lightDir     */
+extern float DAT_105ce228, DAT_105ce22c, DAT_105ce230;      /* lightAmb     */
+extern float DAT_105d17a4, DAT_105d17b4, DAT_105ce2d0;      /* unlit colour */
+#define BR_DL_LV_PUN(d, s) (*(int *)&(d) = *(const int *)&(s))
+typedef struct { char pad[0x14]; float n[3]; } BrDlLvIn;
+typedef struct { char pad[0x1c]; float c[3]; } BrDlLvOut;
+
+void br_dl_light_vertex(const BrDlLvIn *pIn, BrDlLvOut *pOut)
+{
+    float t, v;
+
+    if (DAT_105ccfd0 != 0) {
+        t = (pIn->n[1] * DAT_105ce220 + pIn->n[2] * DAT_105ce224)
+            + pIn->n[0] * DAT_105ce21c;
+        if (t >= 0.0f) {
+            v = t * DAT_105ce210 + DAT_105ce228;
+            pOut->c[0] = (v > 255.0f) ? 255.0f : v;
+            v = t * DAT_105ce214 + DAT_105ce22c;
+            pOut->c[1] = (v > 255.0f) ? 255.0f : v;
+            v = t * DAT_105ce218 + DAT_105ce230;
+            pOut->c[2] = (v > 255.0f) ? 255.0f : v;
+        } else {
+            BR_DL_LV_PUN(pOut->c[0], DAT_105ce228);
+            BR_DL_LV_PUN(pOut->c[1], DAT_105ce22c);
+            BR_DL_LV_PUN(pOut->c[2], DAT_105ce230);
+        }
+    } else {
+        BR_DL_LV_PUN(pOut->c[0], DAT_105d17a4);
+        BR_DL_LV_PUN(pOut->c[1], DAT_105d17b4);
+        BR_DL_LV_PUN(pOut->c[2], DAT_105ce2d0);
+    }
+}
+/* The port helper below keeps its BrDl signature under another name. */
+#define br_dl_light_vertex br_dl_light_vertex_port
+#endif
+/* Port form (BrDl state, 3-component loop, the two port-only counters). */
 static void br_dl_light_vertex(BrDl *pDl, const float *pN, float *pOut)
 {
     float t;

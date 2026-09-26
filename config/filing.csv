@@ -357,6 +357,7 @@ glide_va,name,module,basis,file
 0x10022070,br_dl_project,drawing,filed,src/core/drawing/br_dlproject.c
 0x10022120,BrDlsClipCodes,drawing,filed,src/core/drawing/br_dlshared.c
 0x100221D0,BrDlVtxLitDecal,drawing,filed,src/core/drawing/br_dlvtx_litdecal.c
+0x10022AC0,br_dl_light_vertex,drawing,filed,src/core/drawing/br_dl.c
 0x10023360,BrDlVtxNoZLit,drawing,filed,src/core/drawing/br_dlvtx_nozlit.c
 0x10023760,BrDlProjectNoZ,drawing,filed,src/core/drawing/br_dlproj.c
 0x10023810,BrGbiMoveMem,drawing,manual,src/core/drawing/br_gbihandlers.c
