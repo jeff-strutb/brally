@@ -548,6 +548,7 @@ glide_va,name,module,basis,file
 0x10033BB0,BrPfxTick,gamedata,neighbour-1,src/core/generated/0x10033BB0.c
 0x10033C90,BrPfxSaveState,audio,neighbour-1,src/core/generated/0x10033C90.c
 0x10033CE0,BrSpanExtend,audio,description,src/core/audio/br_span.c
+0x10033D30,BrSpanAddLineG,audio,filed,src/core/audio/br_span.c
 0x10033F90,BrSpanContains,audio,description,src/core/audio/br_span.c
 0x10033FD0,BrSpanTestPoint,scene,description,src/core/scene/br_spangrid.c
 0x10034010,BrSpanBuildHull,scene,filed,src/core/scene/br_spangrid.c

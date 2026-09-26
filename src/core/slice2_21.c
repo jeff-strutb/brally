@@ -159,7 +159,8 @@ int BrMtxInvert(BrMat4 *pOut, const BrMat4 *pM)
  * through as it climbs from one row to the next, including the cells either
  * side when it runs close to a boundary. This is how a shape's outline becomes
  * a set of covered cells. */
-/* @implements 0x1003A6B0 d3d BrSpanAddLine */
+/* port-only body; the Glide match (four floats, absolute globals) is
+ * BrSpanAddLineG in src/core/audio/br_span.c. */
 void BrSpanAddLine(BrSpanVolume *pVol, float x0, float y0, float x1, float y1)
 {
     int nx0, nx1, lo, hi, row, rowEnd;
