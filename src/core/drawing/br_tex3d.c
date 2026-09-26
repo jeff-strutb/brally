@@ -2122,87 +2122,61 @@ extern unsigned int DAT_10697a58;
  * pixels (and copies the level's 512-byte palette into the palette buffer
  * when it has one), registers it and stores the handle, tagged with the slot
  * index in the high half, back over the level's pixel offset. */
-/* PARKED T2, size-exact 361/361, 108/108 insns, REGNORM 7+7 (2026-09-09).
- * ONE cause: across the inner loop the original keeps the record cursor in
- * ebp and spills the inner counter to [esp+0x10]; ours keeps the counter in
- * ebp and spills the cursor. Everything else follows from that: the zero
- * register (edx, `xor edx,edx` above `sub esp`, re-zeroed on the back edge
- * and after the loop) exists because `i = 0` is a STORE in the original,
- * and `kind` lands in si because edx is then busy through the search loop.
- * What DID land (each measured): a named `nTex = DAT_10697a58` local
- * assigned before the outer loop and again after the inner one (hoists the
- * global into edi and reloads it after the calls -- a bare global reloads
- * per outer iteration); the slot search as `for (idx = 0; idx < nTex;
- * idx++) { if (hit) break; ... }` (the do-while-with-break rotates into a
- * duplicated compare); the `z = 0` local as in FUN_100298c0.
- * DEAD (24 compiles): pointer-local vs parameter-as-cursor (worse, +4 B);
- * `off` as `i*0xc+0xc` expressions (359 B, 6+7); declaration order of i /
- * pRec / nLeft (three permutations, inert); `kind` as a CSE'd memory
- * expression instead of a local (RAW 46->41, REGNORM 7+7, kind goes to dx);
- * for-loop vs do-while for the inner loop; while-&& search; nTex as int;
- * idx as int; a `pDesc = *pRec` local per use site; a `key` local;
- * end-of-TU placement. */
+/* T2 (2026-09-26 re-transcription from the asm with real record types, raw
+ * 277 -> 172).  What the typed form fixed: a local record cursor (the
+ * parameter stepped in place kept its own stack home updated), which puts
+ * the cursor in ebp at &rec->pDesc and spills the level counter, and brings
+ * the zero register (edx) and the frame (0x2B8) in line.  RESIDUE: nTex and
+ * kind take edi/esi the other way round; the level offset starts at 0 with a
+ * +0xC displacement where the original starts ebx at 0xC; the descriptor is
+ * loaded after the request copy instead of before it; `xor edx,edx` lands
+ * after `sub esp`.  Dead: (lv+1)*0xC / header-as-element-0 / byte-offset
+ * spellings (all canonicalised), a byte `off` variable (+5 B, CSEs the level
+ * address), struct-assignment copy, a named zero, loop shapes, declaration
+ * order of every local. */
 /* @t4-pass 0x100299A0 1 2026-09-09 probes 24 bytes 361 insns 108 regions 7 rows 7 census no  (hand) */
 /* @implements 0x100299A0 glide BrTexInstallRecords */
 
-void BrTexInstallRecords(int param_1,int param_2)
-
+/* A texture record (0x24 bytes), its descriptor and the descriptor's
+ * 0xC-byte mip levels, as this routine reads them. */
+typedef struct { int pix, pal, f08; } BrTexLv;
+typedef struct { short f00; unsigned short n; int f04; int f08; BrTexLv lv[1]; } BrTexDesc;
+typedef struct { int key; int f04; BrTexDesc *pDesc; int pad0c[5]; unsigned flags; } BrTexRec;
+void BrTexInstallRecords(BrTexRec *pRecs, int n)
 {
-  unsigned short kind;
-  unsigned int idx;
-  unsigned int nTex;
-  int *pSlot;
-  int v;
-  int t;
-  int off;
-  int i;
-  int z;
-  int *pRec;
-  int nLeft;
-  BrTexReq272 r;
-
-  z = 0;
-  if (z < param_2) {
-    pRec = (int *)(param_1 + 8);
-    nLeft = param_2;
+    BrTexRec *pRec;
+    unsigned int idx;
+    unsigned short kind;
+    int i;
+    int lv;
+    unsigned int nTex;
+    BrTexReq272 r;
+    int *pSlot;
+    int v;
+    int off;
     nTex = DAT_10697a58;
-    do {
-      if ((pRec[-2] != z) && ((pRec[6] & 0x100000U) != 0)) {
-        kind = *(unsigned short *)(*pRec + 2);
-        if ((kind != 2) || (*(int *)(*pRec + 8) != -1)) {
-          pSlot = (int *)(DAT_106b7aa0 + 0x4c);
-          for (idx = 0; idx < nTex; idx++) {
-            if (*pSlot == pRec[-2]) break;
-            pSlot = pSlot + 0xad;
-          }
-          i = z;
-          if (z < kind) {
-            off = 0xc;
-            do {
-              memcpy(&r, (void *)(DAT_106b7aa0 + 4 + idx * 0x2b4), 0xaa * 4);
-              r.p1 = *(int *)(*pRec + off) + DAT_106b7c7c;
-              t = *(int *)(*pRec + 4 + off);
-              if (z < t) {
-                r.p2 = t + DAT_106b7c7c;
-                memcpy(PTR_DAT_100a9e58, (void *)r.p2, 0x80 * 4);
-              }
-              _DAT_106b7aa8 = z;
-              _DAT_106b7aa4 = z;
-              v = FUN_10027b60(&r);
-              v = FUN_10027710(&r, v);
-              *(unsigned int *)(off + *pRec) = v | idx << 0x10;
-              i = i + 1;
-              off = off + 0xc;
-            } while (i < (int)(unsigned int)*(unsigned short *)(*pRec + 2));
-            nTex = DAT_10697a58;
-          }
+    for (i = 0, pRec = pRecs; i < n; i++, pRec++) {
+        if (pRec->key != 0 && (pRec->flags & 0x100000) != 0) {
+            if (pRec->pDesc->n != 2 || pRec->pDesc->f08 != -1) {
+                for (idx = 0; idx < nTex; idx++)
+                    if (*(int *)(DAT_106b7aa0 + 0x4c + idx * 0x2b4) == pRec->key) break;
+                for (lv = 0; lv < pRec->pDesc->n; lv++) {
+                    memcpy(&r, (void *)(DAT_106b7aa0 + 4 + idx * 0x2b4), 0x2a8);
+                    r.p1 = pRec->pDesc->lv[lv].pix + DAT_106b7c7c;
+                    if (pRec->pDesc->lv[lv].pal > 0) {
+                        r.p2 = pRec->pDesc->lv[lv].pal + DAT_106b7c7c;
+                        memcpy(PTR_DAT_100a9e58, (void *)r.p2, 0x200);
+                    }
+                    _DAT_106b7aa8 = 0;
+                    _DAT_106b7aa4 = 0;
+                    v = FUN_10027b60(&r);
+                    pRec->pDesc->lv[lv].pix = FUN_10027710(&r, v) | idx << 16;
+                }
+                nTex = DAT_10697a58;
+            }
         }
-      }
-      pRec = pRec + 9;
-      nLeft = nLeft + -1;
-    } while (nLeft != 0);
-  }
-  return;
+    }
 }
+
 
 #endif /* BR_MATCHING_BUILD */
