@@ -279,40 +279,20 @@ void BrRbVelAtBodyPoint(BrVec3 *pOut, const BrRbBodyFull *pB,
  * storage in twice, because the answer slot is used as scratch on the way. */
 /* @implements 0x1006B340 d3d BrRbVelAtBodyPointXY */
 #ifdef BR_MATCHING_BUILD
-/* Same inlining and the same three float facts, except the sum goes to a
- * stack BrVec3 rather than into *pOut, because the closing matrix multiply
- * reads it. BrS42VelAt's banner records that this one has no `fst` at all. */
+/* Same inlining and the same cross product as the two above.  The sums go
+ * back into p, the transform's INPUT (the original's closing fstp triple
+ * and the pointer passed to BrMat4MulVec3 are both at p's slot), and vel.z
+ * is held in a float local: VC5 then copies it to pOut->z through the x87
+ * stack and reuses that register for the z sum, where x and y are plain
+ * dword moves read back from *pOut.  Graded /O2: with /Op every one of
+ * those register values would be spilled. */
 void BrRbVelAtBodyPointXY(BrVec3 *pOut, const BrRbBodyFull *pB,
                           const BrRbBodyFull *pAt)
 {
-    /* TWO stack vectors, `sub esp,0x18`, not three: the sums go back into
-     * `r` -- the original's closing `fstp` triple targets the very slot the
-     * transform wrote -- and there is no separate sum variable.
-     *
-     * RESIDUE (6 regnorm, +10 bytes): the two vectors are SWAPPED in the
-     * frame. The original puts the transform's INPUT at the deeper slot
-     * (E-0x18) and its output at E-0xC; ours does the reverse, and every
-     * displacement follows. Every instruction is otherwise in place, 72
-     * against 73. Probed and dead: swapping the declarations, and renaming
-     * both locals twice -- the /Od name-hash homing recorded in
-     * BrCarGfxReadColour does not apply at /O2.
-     *
-     * MORE DEAD, 2026-09-05, all scored with an /O2 /Op compile (fn.py's
-     * /O2-only diff is phantom on this TU): four declaration orders
-     * including the floats first and between the vectors (all byte-
-     * identical, 146); reading BOTH vectors out of ONE `BrVec3 v[2]` or an
-     * anonymous struct, which is what the original's 12-byte slot spacing
-     * looks like -- v[0] as the transform input gets 141, v[1] as the input
-     * gets 146, so the array DOES reach the layout question but does not
-     * settle it; and re-reading `pB->vel.z` (142) or all three vel
-     * components (143) at the sum instead of reading `*pOut` back, which is
-     * what the original's `fadd st(3)` against a duplicated `fld st(1)`
-     * hints at.  Nothing has beaten 141 and everything is still 4 bytes
-     * short.  The next idea has to explain the ONE duplicated x87 copy of
-     * vel.z, not the slot order. */
     BrVec3 p;
     BrVec3 r;
     float cx, cy, cz;
+    float vz;
 
     p.x = pAt->f78.x;
     p.y = pAt->f78.y;
@@ -322,17 +302,18 @@ void BrRbVelAtBodyPointXY(BrVec3 *pOut, const BrRbBodyFull *pB,
 
     pOut->x = pB->vel.x;
     pOut->y = pB->vel.y;
-    pOut->z = pB->vel.z;
+    vz = pB->vel.z;
+    pOut->z = vz;
 
     cx = r.z * pB->angVel.y - r.y * pB->angVel.z;
     cy = r.x * pB->angVel.z - r.z * pB->angVel.x;
     cz = r.y * pB->angVel.x - r.x * pB->angVel.y;
 
-    r.x = cx + pOut->x;
-    r.y = cy + pOut->y;
-    r.z = cz + pOut->z;
+    p.x = cx + pOut->x;
+    p.y = cy + pOut->y;
+    p.z = cz + vz;
 
-    BrMat4MulVec3(pOut, &pB->m, &r);
+    BrMat4MulVec3(pOut, &pB->m, &p);
 }
 #else
 void BrRbVelAtBodyPointXY(BrVec3 *pOut, const BrRbBodyFull *pB,
