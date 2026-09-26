@@ -7,8 +7,7 @@
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Return the unsigned 16-bit field at offset 2 of a record.
- * Nothing in the ROM calls it directly; it is reached through a table of
- * accessors. */
+ * Nothing in the ROM calls it directly. */
 /* @implements 0x8021EA80 tgr BrRecHalf1 */
 unsigned short BrRecHalf1(int param_1)
 {
