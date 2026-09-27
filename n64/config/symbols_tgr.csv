@@ -327,3 +327,4 @@ va,name,kind
 80261CB0,osPfsInitPak,func
 8021C188,BrBootCheck,func
 80254620,BrPakCheckFiles,func
+80256D3C,BrMusicLoopSamples,func
