@@ -61,6 +61,7 @@ typedef struct { uint32_t v; } BrCtrlKeyArg;
 
 /* WHAT IT DOES: turn a car's stored orientation quaternion into the 4x4
  * matrix the renderer draws with. Called once per car per frame. */
+/* @t4-pass 0x10062640 1 2026-09-27 probes 45 bytes 373 insns 127 regions 2 rows 64 census yes  (hand: see MECHANISM/DEAD above; the cross-term-deletion experiment is the census) */
 /* @implements 0x100695D0 d3d BrMat4FromCarState */
 void BrMat4FromCarState(BrMat4 *pOut, const BrCarState *pSrc)
 {
@@ -69,7 +70,17 @@ void BrMat4FromCarState(BrMat4 *pOut, const BrCarState *pSrc)
      * (which may alias), and its first-half slot copies are VC5 CSE temps.
      * RESIDUE (237 B, 373/363): the original keeps xx/yy/zz/yz2/norm all
      * on the x87 stack and homes s in the dead pSrc slot; ours spills two
-     * squares.  Square declaration order and the if polarity are inert. */
+     * squares.  Square declaration order is inert; the if polarity
+     * (norm != 0 first, 2026-09-27) is one row closer.
+     * MECHANISM (2026-09-27): delete the cross-term block and ours keeps the
+     * squares on the x87 stack exactly like the original through +0x4e --
+     * VC5 ranks x87 candidates over the WHOLE body, and s's six uses win it
+     * the register, so two squares are homed instead.  The original homes s.
+     * DEAD 2026-09-27 (~45 compiles): squares as locals, inline BrSq(),
+     * CSE'd expressions over local copies, sum/norm as expressions or double;
+     * ternary and both if polarities; s as volatile, address-taken, via a
+     * pointer, *(int *)& zero, float[1]/[2]; an s copy for the cross terms,
+     * an inlined cross-term helper taking s by value, operand order; /TP. */
     const float xx = pSrc->f04 * pSrc->f04;
     const float yy = pSrc->f08 * pSrc->f08;
     const float zz = pSrc->f0C * pSrc->f0C;
@@ -80,14 +91,15 @@ void BrMat4FromCarState(BrMat4 *pOut, const BrCarState *pSrc)
 
     float s;
 
-    /* The original's test is `fcom 0.0` + `test ah,0x40`, i.e. it takes the
-     * zero branch ONLY on the equal flag.  An unordered compare sets C3 as
+    /* The original's test is `fcom 0.0` + `test ah,0x40` + `jne` to the zero
+     * arm, the divide falling through, i.e. it takes the zero branch ONLY on
+     * the equal flag.  An unordered compare sets C3 as
      * well, so a NaN norm would take it too -- but a NaN norm can only come
      * from a NaN component, and then every product below is NaN anyway. */
-    if (norm == BR_K_0008FA54) {
-        s = 0.0f;
-    } else {
+    if (norm != BR_K_0008FA54) {
         s = BR_K_0008FA58 / norm;
+    } else {
+        s = 0.0f;
     }
 
     pOut->m[0][0] = BR_K_0008FA5C - s * yz2;
