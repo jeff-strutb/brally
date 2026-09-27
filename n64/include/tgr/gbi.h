@@ -48,6 +48,8 @@ typedef union {
 #define G_SETPRIMCOLOR      0xfa
 #define G_SETFILLCOLOR      0xf7
 #define G_SETCOMBINE        0xfc
+#define G_SETSCISSOR        0xed
+#define G_SC_NON_INTERLACE  0
 #define G_DL                0x06
 #define G_MOVEWORD          0xbc
 
@@ -152,6 +154,18 @@ typedef union {
     _g->words.w0 = (_SHIFTL(G_FILLRECT, 24, 8) | _SHIFTL((lrx), 14, 10) | \
                     _SHIFTL((lry), 2, 10));                             \
     _g->words.w1 = (_SHIFTL((ulx), 14, 10) | _SHIFTL((uly), 2, 10));    \
+}
+
+#define gDPSetScissor(pkt, mode, ulx, uly, lrx, lry)                   \
+{                                                                       \
+    Gfx *_g = (Gfx *)(pkt);                                             \
+                                                                        \
+    _g->words.w0 = _SHIFTL(G_SETSCISSOR, 24, 8) |                       \
+                   _SHIFTL((int)((float)(ulx) * 4.0f), 12, 12) |        \
+                   _SHIFTL((int)((float)(uly) * 4.0f), 0, 12);          \
+    _g->words.w1 = _SHIFTL(mode, 24, 2) |                               \
+                   _SHIFTL((int)((float)(lrx) * 4.0f), 12, 12) |        \
+                   _SHIFTL((int)((float)(lry) * 4.0f), 0, 12);          \
 }
 
 #define gDPPipeSync(pkt)            gDPNoParam(pkt, G_RDPPIPESYNC)
