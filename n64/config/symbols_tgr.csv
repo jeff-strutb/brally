@@ -320,3 +320,4 @@ va,name,kind
 80220620,BrCarResetFrames,func
 80258C24,BrRbBodyInit,func
 80233494,BrMenuBackdropBegin,func
+8025159C,BrPaintDisc,func
