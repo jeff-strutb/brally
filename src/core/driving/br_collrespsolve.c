@@ -12,10 +12,12 @@
  * two-argument original can be defined here without touching include/. */
 #ifdef BR_MATCHING_BUILD
 #define BrCrRespWalk BrCrRespWalk_portproto
+#define BrCrContactKick BrCrContactKick_portproto
 #endif
 #include "br_collrespsolve.h"
 #ifdef BR_MATCHING_BUILD
 #undef BrCrRespWalk
+#undef BrCrContactKick
 #endif
 #include "br_collresp.h"   /* BrCrTest, BrCollRespNode/Plane, g_pBrCollRespList */
 #include "slice1_09.h"     /* BrMat4TransformPoint, BrVec3Normalise             */
@@ -652,6 +654,99 @@ int BrCrImpulseSolve(float mass, const BrMat3 *pInvInertia, const BrMat4 *pOrien
  * touching anything when the body is already moving AWAY from the surface,
  * which is what stops a resting car being kicked every frame. */
 /* @implements 0x10065980 glide BrCrContactKick */
+#ifdef BR_MATCHING_BUILD
+/* Matching arm, transcribed from the bytes 2026-09-27.  The original takes
+ * FOUR arguments -- the body record (velocity at +0x164, angular velocity at
+ * +0x180, the effect bytes/floats at +0x1EC..+0x200), the contact normal and
+ * the two flags -- which is what the solver's BR_CR_KICK cast already passes;
+ * the port arm's six-argument form is a gathering of those fields.  Facts the
+ * bytes force: the approach dot is vel.N (VC5 C loads the second operand
+ * first); d is a homed float; the 1.05*d*N correction goes through a temp
+ * vector; the effect colour is three FLOAT assignments from the shared plane
+ * normal (two via the FPU, the third as a dword); the peak is a select then
+ * an unconditional store; the spin fold's frame is row0 = N, row1 =
+ * N x (N.y, N.z, N.x), row2 = N x row1, pushed through BrMat4MulVec3Transposed
+ * twice and BrMat4MulVec3 once.
+ * NOT MATCHING: 758/760 B, register-blind 9+11, all in the two cross
+ * products: the original loads the rotated copies and multiplies by pN->
+ * in memory; VC5 here value-numbers the copies to pN->'s loads and picks the
+ * other side.  Inert: operand order (VC5 canonicalises), scalar vs struct vs
+ * block-scope copies in every declaration order, a block-local copy of pN,
+ * inline cross helpers (by pointer, by value, returning a struct), C vs C++. */
+#define BR_KB_F(off) (*(float *)(pBody + (off)))
+#define BR_KB_B(off) (*(unsigned char *)(pBody + (off)))
+int BrCrContactKick(char *pBody, const BrVec3 *pN, int dampFlag, int spinFlag)
+{
+    float  d;
+    BrVec3 t;
+    BrVec3 b;
+    BrMat4 M;
+
+    d = BR_KB_F(0x164) * pN->x + BR_KB_F(0x168) * pN->y + BR_KB_F(0x16C) * pN->z;
+    if (!(d < 0.0f))
+        return 0;
+
+    {
+        float s = d * 1.05f;
+
+        t.x = pN->x * s;
+        t.y = pN->y * s;
+        t.z = pN->z * s;
+        BR_KB_F(0x164) = BR_KB_F(0x164) - t.x;
+        BR_KB_F(0x168) = BR_KB_F(0x168) - t.y;
+        BR_KB_F(0x16C) = BR_KB_F(0x16C) - t.z;
+    }
+
+    if (BR_KB_B(0x200) >= 10) {
+        float         inten = -d;
+        unsigned char v;
+
+        if (inten > 27.0f)
+            inten = 27.0f;
+        BR_KB_B(0x1FC) = (unsigned char)inten;
+        BR_KB_F(0x1EC) = g_brCrPlane.normal.x;
+        BR_KB_F(0x1F0) = g_brCrPlane.normal.y;
+        BR_KB_F(0x1F4) = g_brCrPlane.normal.z;
+        v = (unsigned char)(128.0f - inten * -4.703703880310059f);
+        if (v <= BR_KB_B(0x1FF))
+            v = BR_KB_B(0x1FF);
+        BR_KB_F(0x164) = BR_KB_F(0x164) * 0.9f;
+        BR_KB_F(0x168) = BR_KB_F(0x168) * 0.9f;
+        BR_KB_B(0x1FF) = v;
+        BR_KB_F(0x16C) = BR_KB_F(0x16C) * 0.9f;
+    }
+
+    if (dampFlag) {
+        BR_KB_F(0x164) = BR_KB_F(0x164) * 0.9f;
+        BR_KB_F(0x168) = BR_KB_F(0x168) * 0.9f;
+        BR_KB_F(0x16C) = BR_KB_F(0x16C) * 0.9f;
+    }
+
+    if (spinFlag) {
+        t.x = pN->y;
+        t.y = pN->z;
+        t.z = pN->x;
+        M.m[1][0] = pN->y * t.z - pN->z * t.y;
+        M.m[1][1] = pN->z * t.x - pN->x * t.z;
+        M.m[1][2] = pN->x * t.y - pN->y * t.x;
+        M.m[2][0] = pN->y * M.m[1][2] - pN->z * M.m[1][1];
+        M.m[2][1] = pN->z * M.m[1][0] - pN->x * M.m[1][2];
+        M.m[2][2] = pN->x * M.m[1][1] - pN->y * M.m[1][0];
+        M.m[0][0] = pN->x;
+        M.m[0][1] = pN->y;
+        M.m[0][2] = pN->z;
+        BrMat4MulVec3Transposed(&t, &M, pN);
+        BrMat4MulVec3Transposed(&b, &M, (BrVec3 *)(pBody + 0x180));
+        b.x = b.x * t.x;
+        b.y = b.y * t.y;
+        b.z = b.z * t.z;
+        BrMat4MulVec3((BrVec3 *)(pBody + 0x180), &M, &b);
+    }
+    return 1;
+}
+#undef BR_KB_F
+#undef BR_KB_B
+#else
 int BrCrContactKick(BrVec3 *pVel, BrVec3 *pAngVel, const BrVec3 *pNormal,
                     int dampFlag, int spinFlag, BrCrEffect *pEffect)
 {
@@ -717,6 +812,7 @@ int BrCrContactKick(BrVec3 *pVel, BrVec3 *pAngVel, const BrVec3 *pNormal,
 
     return 1;
 }
+#endif /* BR_MATCHING_BUILD */
 
 /* 0x10077B8C -- 1.1, the penetration push-out gain in the walker's position fix. */
 #define BR_CR_PUSHOUT 1.1f
