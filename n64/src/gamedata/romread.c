@@ -139,32 +139,25 @@ BrIoMesg *BrRomDmaSlot(void)
 /* WHAT IT DOES: Walk a display list loaded from ROM and correct every
  * address in it that pointed into the old block (vertex and texture-image
  * commands) so it points at the new copy; stops at the end of the list. */
-/* @t4-pass 0x8021D098 1 2026-09-26 compiles 17 best 23 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8021D098 2 2026-09-26 compiles 17 best 23 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8021D098 3 2026-09-26 compiles 15 best 23 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8021D098 tgr BrDlRebase */
-void BrDlRebase(unsigned int *param_1,int param_2,int param_3,int param_4)
+void BrDlRebase(unsigned int *dl, int oldBase, int newBase, int size)
 {
-  unsigned int uVar1;
-  
-  if (param_1 == (unsigned int *)0x0) {
+  if (dl == 0) {
     return;
   }
-  do {
-    uVar1 = *param_1 >> 0x18;
-    if (uVar1 == 4) {
-LAB_8021d108:
-      func_8021D070(param_1 + 1,param_2,param_3,param_4);
+  for (;;) {
+    switch ((unsigned char)(dl[0] >> 24)) {
+    case 0x04:
+    case 0xfd:
+      func_8021D070(dl + 1, oldBase, newBase, size);
+      break;
+    case 0xb8:
+      return;
     }
-    else {
-      if (uVar1 == 0xb8) {
-        return;
-      }
-      if (uVar1 == 0xfd) goto LAB_8021d108;
-    }
-    param_1 = param_1 + 2;
-  } while( 1 );
+    dl += 2;
+  }
 }
+
 
 /* WHAT IT DOES: Turn the offsets stored in a model just loaded from ROM
  * into real addresses: its part table, each part's geometry and each part's
