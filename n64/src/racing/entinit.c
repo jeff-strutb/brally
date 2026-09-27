@@ -3,11 +3,10 @@
 #include "tgr/common.h"
 
 /* -- declarations -- */
-void func_80226100(int param_1);
-void BrPadInit(int param_1);
-extern int D_8031B760;
-extern int D_8036A8E0;
-extern int D_8036AE50;
+void func_80226100(int *param_1);
+void BrPadInit(unsigned int *param_1);
+extern int D_8031B760[4][0x824];
+extern unsigned int D_8036A8E0[4][0x57];
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Reset every car slot for a new session: runs the per-car
@@ -19,15 +18,10 @@ extern int D_8036AE50;
 /* @implements 0x80200154 tgr BrEntAllReset */
 void BrEntAllReset(void)
 {
-  char *puVar1;
-  char *puVar2;
-  
-  puVar1 = &D_8036A8E0;
-  puVar2 = &D_8031B760;
-  do {
-    func_80226100(puVar2);
-    BrPadInit(puVar1);
-    puVar2 = puVar2 + 0x2090;
-    puVar1 = puVar1 + 0x15c;
-  } while (puVar1 != (char *)(&D_8036AE50));
+  int i;
+
+  for (i = 0; i < 4; i++) {
+    func_80226100(D_8031B760[i]);
+    BrPadInit(D_8036A8E0[i]);
+  }
 }

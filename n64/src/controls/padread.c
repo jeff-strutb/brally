@@ -13,6 +13,9 @@ void BrPadStartRead(void);
 int osRecvMesg(int param_1,int *param_2,int param_3);
 void osContGetReadData(short *param_1);
 extern int D_8031A3E0;
+void func_80255120(unsigned int *param_1);
+void BrPadEdges(unsigned int *param_1);
+extern unsigned int D_8036A8E0[4][0x57];
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Start the next controller read, unless one is already in
@@ -50,6 +53,21 @@ void BrPadRead(void)
   osContGetReadData((&D_8031A3E0));
   D_802A4BE8 = 1;
   D_8028AB6C = 0;
+}
+
+/* WHAT IT DOES: Poll all four controllers: wait for the pending read, then
+ * update each pad record (0x15C bytes apiece) and derive this frame's fresh
+ * presses from its raw buttons. */
+/* @implements 0x8021A9B4 tgr BrPadPollAll */
+void BrPadPollAll(void)
+{
+  int i;
+
+  BrPadRead();
+  for (i = 0; i < 4; i++) {
+    func_80255120(D_8036A8E0[i]);
+    BrPadEdges(D_8036A8E0[i]);
+  }
 }
 
 /* WHAT IT DOES: Mark buttons as handled: moves the given bits from the
