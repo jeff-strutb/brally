@@ -3,10 +3,17 @@
 #include "tgr/common.h"
 
 /* -- declarations -- */
+typedef struct BrRbBody {       /* a rigid body with up to four attached */
+  int x0;
+  struct BrRbBody *sub[4];      /* 0x04 */
+  char pad14[0xfc - 0x14];
+  float force[3];               /* 0xFC  accumulated this step */
+  float torque[3];              /* 0x108 */
+} BrRbBody;
 void func_802589F4(int param_1,int param_2);
-void func_802594BC();
-void func_80259634(int param_1,int param_2);
-void func_8025980C(int param_1);
+void func_802594BC(void);
+void func_80259634(BrRbBody *b, BrRbBody *sub);
+void func_8025980C(BrRbBody *b);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Apply every force attached to a rigid body for this step:
@@ -53,34 +60,28 @@ int BrStub8025D35C(int arg0)
 
 /* WHAT IT DOES: Clear the force and torque accumulators of a car body and
  * of each of its four wheel bodies before the forces are summed again. */
-/* @t4-pass 0x8025993C 1 2026-09-26 compiles 17 best 53 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8025993C 2 2026-09-26 compiles 17 best 53 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8025993C 3 2026-09-26 compiles 17 best 53 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8025993C tgr BrRbForcesClear */
-void BrRbForcesClear(int param_1)
+void BrRbForcesClear(BrRbBody *b)
 {
-  *(int *)(param_1 + 0x104) = 0;
-  *(int *)(param_1 + 0x100) = 0;
-  *(int *)(param_1 + 0xfc) = 0;
-  *(int *)(param_1 + 0x110) = 0;
-  *(int *)(param_1 + 0x10c) = 0;
-  *(int *)(param_1 + 0x108) = 0;
-  *(int *)(*(int *)(param_1 + 4) + 0xfc) = 0;
-  *(int *)(*(int *)(param_1 + 4) + 0x100) = 0;
-  *(int *)(*(int *)(param_1 + 4) + 0x104) = 0;
-  *(int *)(*(int *)(param_1 + 8) + 0xfc) = 0;
-  *(int *)(*(int *)(param_1 + 8) + 0x100) = 0;
-  *(int *)(*(int *)(param_1 + 8) + 0x104) = 0;
-  *(int *)(*(int *)(param_1 + 0xc) + 0xfc) = 0;
-  *(int *)(*(int *)(param_1 + 0xc) + 0x100) = 0;
-  *(int *)(*(int *)(param_1 + 0xc) + 0x104) = 0;
-  *(int *)(*(int *)(param_1 + 0x10) + 0xfc) = 0;
-  *(int *)(*(int *)(param_1 + 0x10) + 0x100) = 0;
-  *(int *)(*(int *)(param_1 + 0x10) + 0x104) = 0;
+  b->force[2] = b->force[1] = b->force[0] = 0.0f;
+  b->torque[2] = b->torque[1] = b->torque[0] = 0.0f;
+  b->sub[0]->force[0] = 0.0f;
+  b->sub[0]->force[1] = 0.0f;
+  b->sub[0]->force[2] = 0.0f;
+  b->sub[1]->force[0] = 0.0f;
+  b->sub[1]->force[1] = 0.0f;
+  b->sub[1]->force[2] = 0.0f;
+  b->sub[2]->force[0] = 0.0f;
+  b->sub[2]->force[1] = 0.0f;
+  b->sub[2]->force[2] = 0.0f;
+  b->sub[3]->force[0] = 0.0f;
+  b->sub[3]->force[1] = 0.0f;
+  b->sub[3]->force[2] = 0.0f;
   func_802594BC();
-  func_80259634(param_1,*(int *)(param_1 + 4));
-  func_80259634(param_1,*(int *)(param_1 + 8));
-  func_80259634(param_1,*(int *)(param_1 + 0xc));
-  func_80259634(param_1,*(int *)(param_1 + 0x10));
-  func_8025980C(param_1);
+  func_80259634(b, b->sub[0]);
+  func_80259634(b, b->sub[1]);
+  func_80259634(b, b->sub[2]);
+  func_80259634(b, b->sub[3]);
+  func_8025980C(b);
 }
+
