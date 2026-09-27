@@ -1,4 +1,5 @@
-/* screenflash.c -- the white screen flash drawn over the 3-D view
+/* screenflash.c -- the white screen flash drawn over the 3-D view, and the
+ * three fades stepped each frame: screen, effects volume, music volume
  */
 #include "tgr/common.h"
 
