@@ -82,6 +82,7 @@ va,name,kind
 80220438,BrEntLoadRecord,func
 80220534,BrEntIsFree,func
 80220544,BrEntLoadModel,func
+802207A4,BrCarBindPad,func
 80223470,BrScreenFlashClear,func
 80223480,BrScreenFlashDraw,func
 80223850,BrFadeDone,func
@@ -183,6 +184,9 @@ va,name,kind
 80260B4C,strlen,func
 80260B74,strchr,func
 80260DD4,sprintf,func
+80260ED0,guMtxF2L,func
+80260FD0,guMtxIdentF,func
+80261058,guMtxIdent,func
 80261140,sqrtf,func
 802642E0,osRecvMesg,func
 80264650,osPiStartDma,func
