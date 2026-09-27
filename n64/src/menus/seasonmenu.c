@@ -1,15 +1,11 @@
-/* seasonmenu.c -- the season screen's lap-count setting
+/* seasonmenu.c -- the season screen: round progression and its help line
  */
 #include "tgr/common.h"
 
 /* -- declarations -- */
 extern int D_802723D0;
-extern unsigned char D_802A49C4;
 extern int D_8028B94C;
 extern char * D_8031C5BC;
-extern int D_802723D4;
-extern int D_802724B4;
-extern unsigned char D_802A49CC;
 void BrSeasonAdvanceRound(void);
 void BrFrontSetMenuFlag(int param_1);
 void BrChampionshipStart(void);
@@ -36,28 +32,6 @@ extern int D_80315EE8;
 extern int D_8036A8E0;
 extern int D_8036A8F8;
 /* -- end declarations -- */
-
-/* WHAT IT DOES: Raise the race length one step (to at most the eleventh
- * entry of the lap-count table) and set the number of laps from the table. */
-/* @implements 0x80211840 tgr BrLapsMore */
-void BrLapsMore(void)
-{
-  if (D_802723D0 < 10) {
-    D_802723D0 = D_802723D0 + 1;
-  }
-  D_802A49C4 = (char)*(int *)(D_802723D0 * 4 + -0x7fd8db78);
-}
-
-/* WHAT IT DOES: Lower the race length one step (to at least the first entry
- * of the lap-count table) and set the number of laps from the table. */
-/* @implements 0x8021187C tgr BrLapsFewer */
-void BrLapsFewer(void)
-{
-  if (0 < D_802723D0) {
-    D_802723D0 = D_802723D0 + -1;
-  }
-  D_802A49C4 = (char)*(int *)(D_802723D0 * 4 + -0x7fd8db78);
-}
 
 /* WHAT IT DOES: Move the season record on to its next round: past the last
  * race of a season it starts the next season from round one, and the points
@@ -91,18 +65,6 @@ LAB_802089f0:
     *(short *)((int)D_8031C5BC + (unsigned int)*(unsigned char *)(D_8031C5BC + 1) * 2 + 0x1e) = 0;
     bVar1 = *(unsigned char *)(D_8031C5BC + 1);
   } while( 1 );
-}
-
-/* WHAT IT DOES: Set the number of laps and the difficulty from the current
- * lap-count and difficulty table entries. */
-/* @t4-pass 0x802118B4 1 2026-09-26 compiles 14 best 11 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x802118B4 2 2026-09-26 compiles 14 best 11 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x802118B4 3 2026-09-26 compiles 12 best 11 moved 0  (n64/tools/n64permute.py) */
-/* @implements 0x802118B4 tgr BrLapsApply */
-void BrLapsApply(void)
-{
-  D_802A49C4 = (char)*(int *)(D_802723D0 * 4 + -0x7fd8db78);
-  D_802A49CC = (char)(&D_802724B4)[D_802723D4];
 }
 
 /* WHAT IT DOES: Draw the help line at the foot of the season screen: the
