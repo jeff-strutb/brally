@@ -289,3 +289,5 @@ va,name,kind
 8021BE88,BrSchedInit,func
 8023DF00,BrRomFileLoad,func
 8023DF4C,BrRomFileUnpack,func
+80239CF0,BrParticlesInit,func
+80239D84,BrWindUpdate,func
