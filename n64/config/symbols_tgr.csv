@@ -142,6 +142,7 @@ va,name,kind
 80242940,BrIfaceMemReset,func
 80242954,BrIfaceMemMark,func
 80242960,BrIfaceMemRelease,func
+8024296C,BrIfaceMemAlloc,func
 802429EC,BrScreenFlush3Layout1,func
 80242A7C,BrScreenFlush3Layout0,func
 80244CA8,BrPaintDecalCommit,func
