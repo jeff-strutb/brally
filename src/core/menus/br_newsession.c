@@ -25,6 +25,14 @@
  * ought to have made the second one different was zeroed moments before. */
 /* @t4-pass 0x10037C90 1 2026-09-26 probes 300 bytes 290 insns 62 regions 2 rows 3 census yes  (hand, slice6_73.c: the DEAD 2026-09-26 campaign above -- every constant type/spelling, puns, helpers, C++ lane, SP3, TU position; micro-measured the VC5 zero-promotion rule) */
 /* @t4-pass 0x10037C90 2 2026-09-27 probes 16 bytes 290 insns 62 regions 2 rows 3 census yes  (hand, br_newsession.c after the refile: struct/array/short[4] views of the floats, TU-defined and static definitions, (x&0), 0/1, x*0, inline returning 0, and constants that round to 0.0f without being 0 (1e-50, 1e-50f, 1e-46f, -0.0f, 0.0L) -- all one zero web.  Census: a whole-binary scan for overlapping pure zero-store webs finds the same class in 0x10063DD0 BrCollRespReset (floats in edx, ints in ecx; certified T3), so the original compiler saw float 0 and int 0 as distinct constants and no C spelling found yet reproduces that) */
+/* @t3 0x10037C90 2026-09-27 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 290/289 insns 62/63 rows 2+1 regions 2 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * RESIDUE: one register-allocation fork -- the original zeroes the three
+ * float fields through a second zero register (xor ecx,ecx) beside the ebx
+ * zero web; every spelling joins one web (DEAD lists above; the same class
+ * is certified in 0x10063DD0).  A3 pairs it by the promoted-zero rule.
+ * Do not reopen before the end-grind (project rule 12). */
 /* @implements 0x1003E680 d3d BrSub1003E680 */
 #ifdef BR_MATCHING_BUILD
 /* Matching arm: loose Glide globals in the original's store order, the

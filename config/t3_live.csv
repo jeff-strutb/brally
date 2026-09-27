@@ -104,6 +104,7 @@ va,name,verdict,calls,captured,contexts,detail,date
 0x10036810,BrComGetAlloc,EQUIVALENT,9,9,5,21_quickrace_finish: 2 real call(s) agree,2026-09-24
 0x10036a30,FUN_10036a30,EQUIVALENT,9,9,5,21_quickrace_finish: 2 real call(s) agree,2026-09-24
 0x10036b20,BrDpAddressBuild,EQUIVALENT,8,7,6,60_multiplayer: 2 real call(s) agree,2026-09-24
+0x10037c90,BrSub1003E680,EQUIVALENT,17,17,17,"targeted runs (t3live --only --objects, build/brbox/live/only): 20_quickrace_drive 21_quickrace_finish 22_ini_cdmusic 23_ini_swshadow 25_cheats 26_lowtexmem 27_quickrace_snow 30_options 31_ffb_wheel 32_video_modes 40_timeattack 45_timeattack_save 46_timeattack_load 50_championship 55_season_save 56_season_load; original body 100% instruction-covered; negative control (planted live store 0x10AC5C28=1) DIVERGENT",2026-09-27
 0x10037f70,BrUiHook85_1003E950,EQUIVALENT,155,6,1,30_options: 6 real call(s) agree,2026-09-24
 0x10038860,BrOptAvailB,EQUIVALENT,56,43,22,20_quickrace_drive: 2 real call(s) agree,2026-09-24
 0x10038ca0,BrUiText1003F760,EQUIVALENT,2208,100,19,20_quickrace_drive: 5 real call(s) agree,2026-09-24
@@ -146,6 +147,7 @@ va,name,verdict,calls,captured,contexts,detail,date
 0x1005f6c0,BrLapSaveRestore,EQUIVALENT,30774,18,3,50_championship: 6 real call(s) agree,2026-09-24
 0x100608f0,BrVarSave,EQUIVALENT,6,6,6,21_quickrace_finish: 1 real call(s) agree,2026-09-24
 0x10060970,BrVarLoad,EQUIVALENT,5,5,5,21_quickrace_finish: 1 real call(s) agree,2026-09-24
+0x10060a30,BrRaceSaveLastLapInfo,EQUIVALENT,66233,157,20,"targeted runs (t3live --only --objects, build/brbox/live/only): 20_quickrace_drive 21_quickrace_finish 22_ini_cdmusic 23_ini_swshadow 25_cheats 26_lowtexmem 27_quickrace_snow 30_options 31_ffb_wheel 32_video_modes 40_timeattack 45_timeattack_save 46_timeattack_load 50_championship 55_season_save 56_season_load 61_mp_race 63_mp_join 64_mp_dropout 70_credits; original body 100% instruction-covered; forced loop-path captures (guards evaluated at entry) 21_quickrace_finish 9/9 + 50_championship 1/1 SAME; negative control (planted 0x3841) DIVERGENT",2026-09-27
 0x10060f40,BrSndNearestCommit,EQUIVALENT,76773,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10061470,BrSndCarStep,EQUIVALENT,168960,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10061f60,BrGhostPlaybackStep,EQUIVALENT,203560,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
