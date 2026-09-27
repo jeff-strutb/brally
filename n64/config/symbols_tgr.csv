@@ -291,3 +291,7 @@ va,name,kind
 8023DF4C,BrRomFileUnpack,func
 80239CF0,BrParticlesInit,func
 80239D84,BrWindUpdate,func
+802A6140,osClockRate,data
+80266188,__ll_mul,func
+80266088,__ull_div,func
+8021C4B4,BrClockTick,func
