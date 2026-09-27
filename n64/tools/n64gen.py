@@ -216,8 +216,18 @@ def candidate(va, dtypes, name=None, noproto=(), ptrs=(), opts=()):
             decls.append(prototype(c).split('(')[0] + '();')
         else:
             decls.append(prototype(c))
+    # Ghidra leaves a global it only ever takes the address of as a one-byte
+    # `undefined`, so `&DAT_x + n*K` in a draft is BYTE arithmetic; typed by
+    # its widest load it would scale by 4.
+    bytewise = set()
+    if 'bytes' in opts:
+        bytewise = set(int(x, 16) for x in re.findall(r'&D_([0-9A-F]{8})\s*[-+]', body))
     for d in sorted(set(int(x, 16) for x in re.findall(r'\bD_([0-9A-F]{8})\b', body))):
         ty = 'char *' if d in ptrs else dtypes.get(d, 'int')
+        if d in bytewise and SYMLO <= d < SYMHI:
+            body = re.sub(r'(?<!&)\bD_%08X\b' % d, '(*(%s *)&D_%08X)' % (ty, d), body)
+            decls.append('extern char D_%08X;' % d)
+            continue
         if not (SYMLO <= d < SYMHI):
             body = re.sub(r'&D_%08X\b' % d, '((%s *)0x%08X)' % (ty, d), body)
             body = re.sub(r'\bD_%08X\b' % d, '(*(%s *)0x%08X)' % (ty, d), body)
@@ -307,6 +317,8 @@ def main():
                 base_opts.append('params%d' % (max(homes) - 3))
             if any(w >> 26 == 0x11 and (w >> 21) & 31 == 0x10 for w in rw) and FLOAT_LIT.search(src):
                 base_opts.append('fsuf')
+            if re.search(r'&D_[0-9A-F]{8}\s*[-+]', src):
+                base_opts.append('bytes')
             for _ in range(2):
                 improved = False
                 for o in base_opts:

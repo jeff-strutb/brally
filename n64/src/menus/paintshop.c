@@ -19,8 +19,8 @@ extern unsigned char D_8028DBC4;
 extern unsigned char D_8028DBE8;
 extern float D_802AB20C;
 extern float D_802AB210;
-extern int D_8036A8E0;
-extern int D_8036A8F8;
+extern char D_8036A8E0;
+extern char D_8036A8F8;
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Store the paint shop's working decal (2 KB) into the decal

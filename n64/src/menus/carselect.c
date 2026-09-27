@@ -8,7 +8,7 @@ extern int D_8020C688;
 extern int D_8020C68C;
 extern int D_80272070;
 extern int D_8031C5BC;
-extern int D_8028AE24;
+extern char D_8028AE24;
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Tell whether car n may be picked on the car-select screen:

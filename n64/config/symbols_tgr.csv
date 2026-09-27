@@ -111,6 +111,8 @@ va,name,kind
 8022B3E4,BrSfxSrcBeep2,func
 8022BA98,BrStub8022BA98,func
 8022BCAC,BrCarCamClearCut,func
+8022D090,BrGridSpanExtend,func
+8022D3D4,BrGridSpanHas,func
 8022D43C,BrTexScrollSet,func
 8022D7E0,BrPerfMark,func
 8022F4CC,BrTextHighlightOn,func

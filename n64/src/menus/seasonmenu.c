@@ -22,7 +22,7 @@ extern int D_8026FF18;
 extern int D_80271D58;
 extern int D_8028AE04;
 extern int D_8028B940;
-extern int D_8028B950;
+extern char D_8028B950;
 extern unsigned char D_8028B954;
 extern int D_802A7784;
 extern int D_802A7788;
