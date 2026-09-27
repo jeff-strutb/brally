@@ -10,7 +10,26 @@ extern int D_8028DB78;
 extern int D_8028DB80;
 extern unsigned char D_8028DBB4;
 extern unsigned char D_8028DBDC;
-int func_8024D3F0(int *param_1);
+typedef struct BrPaintState {   /* 0x8028D110 */
+  char pad00[0x1c];
+  int x;                        /* 0x1C  cursor */
+  int y;                        /* 0x20 */
+} BrPaintState;
+typedef struct BrPaintBrush {   /* 0x8028D290 */
+  char pad00[0x24];
+  int w;                        /* 0x24 */
+  int h;                        /* 0x28 */
+} BrPaintBrush;
+typedef struct BrPaintBox {
+  int pad[7];
+  int x;                        /* 0x1C */
+  int y;                        /* 0x20 */
+  int w;                        /* 0x24  may be negative (mirrored) */
+  int h;                        /* 0x28 */
+} BrPaintBox;
+extern BrPaintState D_8028D110;
+extern BrPaintBrush D_8028D290;
+int BrPaintCursorInRect(int *r);
 extern int D_8028D12C;
 extern int D_8028D130;
 extern int D_8028DB94;
@@ -66,7 +85,7 @@ void BrPaintStickMove(void)
       fVar3 = -fVar3;
     }
     if (D_802AB20C <= fVar3) {
-      iVar1 = func_8024D3F0(&D_8028DB94);
+      iVar1 = BrPaintCursorInRect(&D_8028DB94);
       if ((iVar1 == 0) || (D_8028DBC4 != '\0')) {
         puVar2 = (unsigned int *)(&D_8036A8E0 + (unsigned int)D_8028DBBC * 0x15c);
         D_8028D12C = D_8028D12C +
@@ -91,7 +110,7 @@ void BrPaintStickMove(void)
       fVar3 = -fVar3;
     }
     if (D_802AB210 <= fVar3) {
-      iVar1 = func_8024D3F0(&D_8028DB94);
+      iVar1 = BrPaintCursorInRect(&D_8028DB94);
       if ((iVar1 == 0) || (D_8028DBC4 != '\0')) {
         D_8028D130 = D_8028D130 -
                        (int)(*(float *)((unsigned int)D_8028DBBC * 0x15c + -0x7fc95704) * 12.0f);
@@ -124,4 +143,49 @@ void BrPaintStickMove(void)
       D_8028D130 = 0x1ca;
     }
   }
+}
+
+/* WHAT IT DOES: Tell whether the paint-shop cursor is inside a box whose
+ * width may be negative (a mirrored decal): x from its left edge to left +
+ * |width|, y from its top to top + height. */
+/* @implements 0x8024D374 tgr BrPaintCursorInBox */
+int BrPaintCursorInBox(BrPaintBox *b)
+{
+  if (b->x <= D_8028D110.x && D_8028D110.x <= b->x + (b->w > 0 ? b->w : -b->w) && b->y <= D_8028D110.y && D_8028D110.y <= b->y + b->h) {
+    return 1;
+  }
+  return 0;
+}
+
+/* WHAT IT DOES: Tell whether the paint-shop cursor is inside the rectangle
+ * {x, y, w, h}, edges included. */
+/* @implements 0x8024D3F0 tgr BrPaintCursorInRect */
+int BrPaintCursorInRect(int *r)
+{
+  if (r[0] <= D_8028D110.x && D_8028D110.x <= r[2] + r[0] && r[1] <= D_8028D110.y && D_8028D110.y <= r[3] + r[1]) {
+    return 1;
+  }
+  return 0;
+}
+
+/* WHAT IT DOES: The same rectangle test as BrPaintCursorInRect (a separate
+ * copy in the ROM). */
+/* @implements 0x8024D45C tgr BrPaintCursorInRect2 */
+int BrPaintCursorInRect2(int *r)
+{
+  if (r[0] <= D_8028D110.x && D_8028D110.x <= r[2] + r[0] && r[1] <= D_8028D110.y && D_8028D110.y <= r[3] + r[1]) {
+    return 1;
+  }
+  return 0;
+}
+
+/* WHAT IT DOES: Tell whether the paint-shop cursor is inside a rectangle at
+ * {x, y} the size of the current brush. */
+/* @implements 0x8024D4C8 tgr BrPaintCursorInBrush */
+int BrPaintCursorInBrush(int *r)
+{
+  if (r[0] <= D_8028D110.x && D_8028D110.x <= r[0] + D_8028D290.w && r[1] <= D_8028D110.y && D_8028D110.y <= r[1] + D_8028D290.h) {
+    return 1;
+  }
+  return 0;
 }
