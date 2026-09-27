@@ -285,3 +285,4 @@ va,name,kind
 80246BCC,BrFillFrame,func
 80246E10,BrFillRect,func
 80219A78,BrScissorSet,func
+80219BF0,BrViewportSet,func
