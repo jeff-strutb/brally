@@ -116,18 +116,11 @@ void BrScreenFlush3Layout0(void)
 
 /* WHAT IT DOES: Zero the frame builder's per-frame counters at the start of
  * a frame. */
-/* @t4-pass 0x802173C8 1 2026-09-26 compiles 59 best 21 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x802173C8 2 2026-09-26 compiles 17 best 21 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x802173C8 3 2026-09-26 compiles 15 best 21 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x802173C8 tgr BrFrameStatsReset */
 void BrFrameStatsReset(void)
 {
-  D_8028AA34 = 0;
-  D_8028AA30 = 0;
-  D_8028AA2C = 0;
-  D_8028AA3C = 0;
-  D_8028AA38 = 0;
-  D_8028AA0C = 0;
-  D_8028AA08 = 0;
-  D_8028AA10 = 0;
+  D_8028AA2C = D_8028AA30 = D_8028AA34 = 0;
+  D_8028AA38 = D_8028AA3C = 0;
+  D_8028AA10 = D_8028AA08 = D_8028AA0C = 0;
 }
+
