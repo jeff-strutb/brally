@@ -1,6 +1,7 @@
 /* frameblank.c -- starting a frame, and flushing the screen to black between modes
  */
 #include "tgr/common.h"
+#include "tgr/gbi.h"
 
 /* -- declarations -- */
 void func_80219470(unsigned int param_1);
@@ -18,6 +19,12 @@ extern int D_8028AA30;
 extern int D_8028AA34;
 extern int D_8028AA38;
 extern int D_8028AA3C;
+extern Gfx *D_8028A858;
+extern int D_8028A850;
+extern int D_8028B740;
+extern int D_8028B744;
+extern int D_8028B748;
+extern int D_8028B74C;
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Start building a new frame using the first of the two
@@ -34,6 +41,42 @@ void BrFrameBeginLayout0(void)
 void BrFrameBeginLayout1(void)
 {
   func_80219470(1);
+}
+
+/* WHAT IT DOES: Set the RDP scissor to a w by h box at (x, y), clipped to
+ * the current clip rectangle, in 320-wide coordinates doubled on a hi-res
+ * screen. */
+/* @implements 0x80219A78 tgr BrScissorSet */
+void BrScissorSet(int x, int y, int w, int h)
+{
+  if (x < D_8028B740) {
+    w = w - D_8028B740 + x;
+    x = D_8028B740;
+  }
+  if (x + w > D_8028B744) {
+    w = D_8028B744 - x;
+  }
+  if (w < 0) {
+    w = 0;
+  }
+  if (y < D_8028B748) {
+    h = h - D_8028B748 + y;
+    y = D_8028B748;
+  }
+  if (y + h > D_8028B74C) {
+    h = D_8028B74C - y;
+  }
+  if (h < 0) {
+    h = 0;
+  }
+  if (D_8028A850 != 0) {
+    x *= 2;
+    y *= 2;
+    w *= 2;
+    h *= 2;
+  }
+  gDPPipeSync(D_8028A858++);
+  gDPSetScissor(D_8028A858++, G_SC_NON_INTERLACE, x, y, x + w, y + h);
 }
 
 /* WHAT IT DOES: Push two empty black frames through the second screen

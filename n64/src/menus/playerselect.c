@@ -5,7 +5,7 @@
 #include "tgr/pad.h"
 
 /* -- declarations -- */
-void func_80219A78(int param_1,int param_2,int param_3,int param_4);
+void BrScissorSet(int param_1,int param_2,int param_3,int param_4);
 void BrScreenDim(float param_1);
 void BrTextHighlightOff(void);
 void BrTextAlignCentre(void);
@@ -30,9 +30,9 @@ void func_80209434(void);
 void BrPlayerSelectDrawRow(int row)
 {
   if (D_802723B8[row]->flags & 8) {
-    func_80219A78(D_8028AAB0 * 9 / 32, D_8028AAB4 * 27 / 64, D_8028AAB0 * 14 / 32, D_8028AAB4 * 4 / 16);
+    BrScissorSet(D_8028AAB0 * 9 / 32, D_8028AAB4 * 27 / 64, D_8028AAB0 * 14 / 32, D_8028AAB4 * 4 / 16);
     BrScreenDim(0.4f);
-    func_80219A78(0, 0, D_8028AAB0, D_8028AAB4);
+    BrScissorSet(0, 0, D_8028AAB0, D_8028AAB4);
     BrTextHighlightOff();
     BrTextAlignCentre();
     BrTextSetFont(15);
