@@ -1,8 +1,18 @@
 /* n64-cflags: -O2 -mips3 -32 */
 /* mixer.s -- the software audio mixer's inner loops, hand-written MIPS III
- * (64-bit 32.32 sample-position accumulators), and the float-to-int helper
- * assembled with them
+ * (64-bit 32.32 sample-position accumulators), and the doubleword copy,
+ * fill and float-to-int helpers assembled with them (one object, starting at
+ * 0x80256270 after the preceding object's padding)
  */
+
+/* WHAT IT DOES: Copy 16 bytes as two doublewords (both addresses 8-byte
+ * aligned). */
+/* @implements 0x80256270 tgr BrCopy16 */
+
+/* WHAT IT DOES: Fill memory with a 32-bit value, 64 bytes at a time: the
+ * length is rounded up to 64 (lengths under 64 KB), the value doubled into
+ * a doubleword. */
+/* @implements 0x80256290 tgr BrFill64 */
 
 /* WHAT IT DOES: Convert a float to an int by truncation (trunc.w.s), without
  * the rounding-mode save and restore a C cast compiles to. */
@@ -28,6 +38,42 @@
 .set noat
 
 .text
+
+.globl BrCopy16
+.ent BrCopy16
+BrCopy16:
+    ld      $12, 0($5)
+    ld      $14, 8($5)
+    sd      $12, 0($4)
+    sd      $14, 8($4)
+    jr      $31
+    nop
+.end BrCopy16
+
+.globl BrFill64
+.ent BrFill64
+BrFill64:
+    addiu   $5, $5, 0x3f
+    andi    $5, $5, 0xffc0
+    addu    $5, $5, $4
+    dsll    $7, $6, 0x10
+    dsll    $7, $7, 0x10
+    or      $6, $6, $7
+    sd      $6, 0($4)
+.L802562AC:
+    sd      $6, 8($4)
+    sd      $6, 0x10($4)
+    sd      $6, 0x18($4)
+    addiu   $4, $4, 0x40
+    sd      $6, -0x20($4)
+    sd      $6, -0x18($4)
+    sd      $6, -0x10($4)
+    sd      $6, -8($4)
+    bnel    $5, $4, .L802562AC
+    sd      $6, 0($4)
+    jr      $31
+    nop
+.end BrFill64
 
 .globl BrFloatToInt
 .ent BrFloatToInt
