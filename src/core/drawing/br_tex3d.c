@@ -2122,27 +2122,12 @@ extern unsigned int DAT_10697a58;
  * pixels (and copies the level's 512-byte palette into the palette buffer
  * when it has one), registers it and stores the handle, tagged with the slot
  * index in the high half, back over the level's pixel offset. */
-/* T2 (2026-09-26 re-transcription from the asm with real record types, raw
- * 277 -> 172 -> 144).  What the typed form fixed: a local record cursor (the
- * parameter stepped in place kept its own stack home updated), which puts
- * the cursor in ebp at &rec->pDesc and spills the level counter, and brings
- * the zero register (edx) and the frame (0x2B8) in line.  The slot search
- * reads the texture count global DAT_10697a58 straight in its bound (no
- * nTex local): VC5 then keeps it in edi, loaded after the n > 0 test and
- * reloaded after the level loop's calls, exactly as the original does, and
- * the nTex/kind register swap goes away.
- * RESIDUE (144 B raw, from 0x86): the original's level-offset induction
- * starts at 0xC (`mov ebx,0xc`, [pDesc+ebx]) where ours starts at 0 with a
- * +0xC displacement.  A second index k starting at 1 (lv = 0, k = 1; ...;
- * lv++, k++) reproduces the 0xC start, but then VC5 CSEs the level address
- * (lea eax,[ebx+ecx]) and loads pDesc after the request copy (164 B); pix,
- * pal and the store written through independent k- or lv-based trees
- * (every mix of struct, int-array and byte-offset forms, 335 variants) get
- * no closer than 143.  Dead: (lv+1)*0xC / header-as-element-0 / byte-offset
- * spellings (all canonicalised), 1-based lv loops, a byte `off` variable
- * (+5 B, CSEs the level address), struct-assignment copy, a named zero,
- * loop shapes, declaration order of every local. */
-/* @t4-pass 0x100299A0 1 2026-09-09 probes 24 bytes 361 insns 108 regions 7 rows 7 census no  (hand) */
+/* Byte-exact (2026-09-27): the levels are read as words of the descriptor,
+ * w = 3, 6, 9, ... (pix at w, palette offset at w + 1), beside a separate
+ * 0-based level counter.  VC5 strength-reduces w*4 to an offset that starts
+ * at 0xC, as the original does; lv[lv].pix folds the 0xC into the
+ * displacement instead.  The palette offset is read once into a local, so
+ * it lands in the register that held the descriptor pointer. */
 /* @implements 0x100299A0 glide BrTexInstallRecords */
 
 /* A texture record (0x24 bytes), its descriptor and the descriptor's
@@ -2156,26 +2141,27 @@ void BrTexInstallRecords(BrTexRec *pRecs, int n)
     unsigned int idx;
     int i;
     int lv;
-    unsigned int nTex;
     BrTexReq272 r;
     int v;
-    int off;
+    int pal;
+    int w;
     for (i = 0, pRec = pRecs; i < n; i++, pRec++) {
         if (pRec->key != 0 && (pRec->flags & 0x100000) != 0) {
             if (pRec->pDesc->n != 2 || pRec->pDesc->f08 != -1) {
                 for (idx = 0; idx < DAT_10697a58; idx++)
                     if (*(int *)(DAT_106b7aa0 + 0x4c + idx * 0x2b4) == pRec->key) break;
-                for (lv = 0; lv < pRec->pDesc->n; lv++) {
+                for (lv = 0, w = 3; lv < pRec->pDesc->n; lv++, w += 3) {
                     memcpy(&r, (void *)(DAT_106b7aa0 + 4 + idx * 0x2b4), 0x2a8);
-                    r.p1 = pRec->pDesc->lv[lv].pix + DAT_106b7c7c;
-                    if (pRec->pDesc->lv[lv].pal > 0) {
-                        r.p2 = pRec->pDesc->lv[lv].pal + DAT_106b7c7c;
+                    r.p1 = ((int *)pRec->pDesc)[w] + DAT_106b7c7c;
+                    pal = ((int *)pRec->pDesc)[w + 1];
+                    if (pal > 0) {
+                        r.p2 = pal + DAT_106b7c7c;
                         memcpy(PTR_DAT_100a9e58, (void *)r.p2, 0x200);
                     }
                     _DAT_106b7aa8 = 0;
                     _DAT_106b7aa4 = 0;
                     v = FUN_10027b60(&r);
-                    pRec->pDesc->lv[lv].pix = FUN_10027710(&r, v) | idx << 16;
+                    ((int *)pRec->pDesc)[w] = FUN_10027710(&r, v) | idx << 16;
                 }
             }
         }
