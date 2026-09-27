@@ -194,12 +194,6 @@ extern char s_SAVING_LAST_LAP_INFO_100b382c[];  /* 0x100B382C */
 int BrReplayIsOn(void);       /* 0x10063A50 */
 int BrSet_1006AA90(void);     /* 0x10063A40 */
 
-/* WHAT IT DOES: at the end of a lap, snapshot every entrant's last-lap
- * record into the save area -- but only during an ordinary recorded race
- * (not a replay, not the two excluded modes, and only once the leader is on
- * the final counted lap). For each entrant it clears the record's running
- * fields, stamps the fixed frame budget (0x3840), points the record at its
- * slot in the save area, and hands the finished area to the writer. */
 /* T2 (EQUIVALENT, not byte-exact): insn-exact (80/80), oracle EQUIVALENT,
  * gates 0/A1/A2/A4/A5 pass.  Residue is two unpaired rows in the record loop:
  * the original materialises the save-area base 0x102066C8 into a register
@@ -233,6 +227,20 @@ int BrSet_1006AA90(void);     /* 0x10063A40 */
  * ext, ext2) on `mov R,A; sub R,R; ...; add R,R`. */
 /* @t4-pass 0x10060A30 1 2026-09-24 probes 18 bytes 287 insns 80 regions 2 rows 4 census no  (hand: loop shapes -- do/while pointer walk, indexed for, inline car-array index -- x five spellings of base - idx*0x15F88 + off, pointer and int arithmetic; VC5 always reassociates to off - idx*K + base) */
 /* @t4-pass 0x10060A30 2 2026-09-24 probes 19 bytes 287 insns 80 regions 2 rows 4 census yes  (hand, slot census: every top-level slot of br_objlife.c; residue identical in all 19) */
+/* WHAT IT DOES: at the end of a lap, snapshot every entrant's last-lap
+ * record into the save area -- but only during an ordinary recorded race
+ * (not a replay, not the two excluded modes, and only once the leader is on
+ * the final counted lap). For each entrant it clears the record's running
+ * fields, stamps the fixed frame budget (0x3840), points the record at its
+ * slot in the save area, and hands the finished area to the writer. */
+/* @t3 0x10060A30 2026-09-27 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 287/286 insns 80/80 rows 2+2 regions 2 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * RESIDUE: the save-area address is summed base-first in the original
+ * (mov ebp,base; sub; add ebp,off) and constant-last by VC5 for every
+ * spelling (DEAD lists above) -- the same integer sum; A3 pairs it by the
+ * integer commutative-add rule.  Do not reopen before the end-grind
+ * (CLAUDE.md rule 12). */
 /* @implements 0x10060A30 glide BrRaceSaveLastLapInfo */
 void __fastcall BrRaceSaveLastLapInfo(int param_1)
 {
