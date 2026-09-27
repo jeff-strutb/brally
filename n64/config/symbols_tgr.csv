@@ -176,8 +176,9 @@ va,name,kind
 80255DD8,BrVpAlloc,func
 80255E64,BrFramePoolsReset,func
 802562E0,BrFloatToInt,func
+802571AC,BrModReset,func
 80257964,BrMusicStart,func
-80257C44,BrMusicLoopSamples,func
+80257C44,BrSfxLoopSamples,func
 80258070,BrStub80258070,func
 80258078,BrStub80258078,func
 80258248,BrRbQuatDerivative,func
