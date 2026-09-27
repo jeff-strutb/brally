@@ -1,9 +1,18 @@
 /* rbquat.c -- rigid-body orientation
  */
 #include "tgr/common.h"
+#include "tgr/vec.h"
 
 /* -- declarations -- */
 void BrStub80258078(void);
+typedef struct BrRbQuat { float w, x, y, z; } BrRbQuat;
+typedef struct BrRb {           /* a rigid body's integrated state */
+  char pad00[0xc];
+  BrVec3 pos;                   /* 0x0C */
+  BrRbQuat q;                   /* 0x18  orientation */
+  BrVec3 omega;                 /* 0x28  angular velocity */
+  BrRbQuat qdot;                /* 0x34  orientation rate */
+} BrRb;
 typedef struct BrRbParams {     /* set together by BrRbSetParams */
   int x0;
   int kind;                     /* 0x04 */
@@ -19,33 +28,20 @@ typedef struct BrRbParams {     /* set together by BrRbSetParams */
 /* WHAT IT DOES: Compute a rigid body's orientation rate: the quaternion
  * derivative from its angular velocity (half the product of the spin and
  * the orientation). */
-/* @t4-pass 0x80258248 1 2026-09-26 compiles 16 best 58 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80258248 2 2026-09-26 compiles 17 best 58 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80258248 3 2026-09-26 compiles 17 best 57 moved 1  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80258248 4 2026-09-26 compiles 41 best 57 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80258248 tgr BrRbQuatDerivative */
-void BrRbQuatDerivative(int param_1)
+void BrRbQuatDerivative(BrRb *b)
 {
-  float fVar1;
-  float fVar2;
-  float fVar3;
-  float fVar4;
-  float fVar5;
-  float fVar6;
-  float fVar7;
-  
-  fVar4 = *(float *)(param_1 + 0x28) * 0.5f;
-  fVar5 = *(float *)(param_1 + 0x2c) * 0.5f;
-  fVar3 = *(float *)(param_1 + 0x30) * 0.5f;
-  fVar1 = *(float *)(param_1 + 0x1c);
-  fVar2 = *(float *)(param_1 + 0x20);
-  fVar7 = *(float *)(param_1 + 0x18);
-  fVar6 = *(float *)(param_1 + 0x24);
-  *(float *)(param_1 + 0x34) = (-fVar4 * fVar1 - fVar5 * fVar2) - fVar6 * fVar3;
-  *(float *)(param_1 + 0x38) = (fVar7 * fVar4 + fVar5 * fVar6) - fVar2 * fVar3;
-  *(float *)(param_1 + 0x3c) = (fVar7 * fVar5 + fVar3 * fVar1) - fVar6 * fVar4;
-  *(float *)(param_1 + 0x40) = (fVar7 * fVar3 + fVar4 * fVar2) - fVar1 * fVar5;
+  float h[3];
+
+  h[0] = b->omega.x * 0.5f;
+  h[1] = b->omega.y * 0.5f;
+  h[2] = b->omega.z * 0.5f;
+  b->qdot.w = -h[0] * b->q.x - h[1] * b->q.y - h[2] * b->q.z;
+  b->qdot.x = b->q.w * h[0] + h[1] * b->q.z - h[2] * b->q.y;
+  b->qdot.y = b->q.w * h[1] + h[2] * b->q.x - h[0] * b->q.z;
+  b->qdot.z = b->q.w * h[2] + h[0] * b->q.y - h[1] * b->q.x;
 }
+
 
 /* WHAT IT DOES: Advance a rigid body by one time step: position by velocity
  * and orientation by its rate, both scaled by dt. */
