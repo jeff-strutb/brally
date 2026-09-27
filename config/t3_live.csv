@@ -157,6 +157,7 @@ va,name,verdict,calls,captured,contexts,detail,date
 0x100645a0,BrCarPhysDriveMatch,EQUIVALENT,150575,109,19,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x100656f0,FUN_100656F0,EQUIVALENT,901491,120,23,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10065c80,BrCrImpulseSolve,EQUIVALENT,34072,101,21,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10066610,BrCollRespPointInTri,EQUIVALENT,55270,49,6,"targeted runs (t3live --only, build/brbox/live/only): 20_quickrace_drive 21_quickrace_finish 27_quickrace_snow 40_timeattack 50_championship 61_mp_race",2026-09-27
 0x10066d70,BrCollRespTipKick,EQUIVALENT,366462,111,19,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10067710,BrCrRespWalk,EQUIVALENT,366462,111,19,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x100684f0,BrCarPhysSpring,EQUIVALENT,152831,115,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24

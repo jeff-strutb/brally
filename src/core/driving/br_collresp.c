@@ -886,6 +886,15 @@ int BrCollRespSegBox(const BrVec3 *pA, const BrVec3 *pB)
  * structures; the whole file vs a standalone TU. */
 /* @t4-pass 0x10066610 1 2026-09-07 probes 150 bytes 485 insns 174 regions 5 rows 14 census yes  (tools/crank.py) */
 /* @t4-pass 0x10066610 2 2026-09-07 probes 131 bytes 485 insns 174 regions 5 rows 14 census yes  (tools/crank.py) */
+/* @t4-pass 0x10066610 3 2026-09-27 probes 1404 bytes 486 insns 176 regions 3 rows 2 census yes  (hand, after the (double) compares: 4th-compare forms and casts x !(>=) (1024), cross-local orders x arm structures (300+80); mechanism micro-test: fld/fld/fcompp only for (double) or named-float operands) */
+/* @t4-pass 0x10066610 4 2026-09-27 probes 1030 bytes 486 insns 176 regions 3 rows 2 census no  (hand: inlined Lt/Gt helpers, float and double params, x4 forms (1024); function order in the TU; standalone TU vs whole file) */
+/* @t3 0x10066610 2026-09-27 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 486/492 insns 176/178 rows 2+0 regions 3 oracle EQUIVALENT
+ * @t3-effort passes 4 zero-movement 3 4
+ * Residue is x87 scheduling only: the fourth crossing test loads p[v]
+ * before A[v] (plus one fxch), and v is re-read in each arm where VC5 here
+ * hoists one read above the branch.  Dossier and dead list in the header
+ * above.  Do not reopen before the end-grind (project rule 12). */
 /* @implements 0x10066610 glide BrCollRespPointInTri */
 int BrCollRespPointInTri(const float aV[9], const BrVec3 *pN,
                          const BrVec3 *pP)
