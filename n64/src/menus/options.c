@@ -1,6 +1,7 @@
 /* options.c -- the options screen
  */
 #include "tgr/common.h"
+#include "tgr/pad.h"
 
 /* -- declarations -- */
 int BrCpakCheck(int param_1,char param_2);
@@ -10,8 +11,6 @@ void BrTextSetFont(int param_1);
 void BrTextPrint(int param_1,int param_2,int param_3);
 extern int D_803163A0;
 extern int D_803163A4;
-extern int D_8036A8E0;
-extern int D_8036A8F8;
 extern int D_802723D0[3];
 extern int D_80272488[11];
 extern int D_802724B4[11];
@@ -74,43 +73,33 @@ void BrSfxVolumeDown(void)
   D_802A49CC = D_802724B4[D_802723D0[1]];
 }
 
-/* WHAT IT DOES: Draw the options screen's help line and keep the Controller
- * Pak state current: when the pak state has to be re-read it re-initialises
- * the pak and clears the save flags if none is found. */
-/* @t4-pass 0x8021196C 1 2026-09-26 compiles 17 best 33 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8021196C 2 2026-09-26 compiles 16 best 33 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8021196C 3 2026-09-26 compiles 15 best 33 moved 0  (n64/tools/n64permute.py) */
+/* WHAT IT DOES: Draw the options screen's help line (for the two volume
+ * rows) and run a pending Controller Pak check (0x803163A0, else
+ * 0x803163A4): once the check succeeds its flag is cleared; until then
+ * player 1's fresh presses and first stick axis are swallowed each frame. */
 /* @implements 0x8021196C tgr BrOptionsDrawHelp */
-void BrOptionsDrawHelp(int param_1)
+void BrOptionsDrawHelp(int row)
 {
-  int iVar1;
-  
-  if (param_1 < 2) {
+  if (row < 2) {
     BrTextSetFont(10);
     BrTextHighlightOff();
     BrTextAlignCentre();
-    BrTextPrint("%wwPush up or down to adjust",0xa0,0x5a);
+    BrTextPrint("%wwPush up or down to adjust", 160, 90);
   }
-  if (D_803163A0 == 0) {
-    if (D_803163A4 != 0) {
-      iVar1 = BrCpakCheck(3,0);
-      if (iVar1 == 0) {
-        D_8036A8E0 = 0;
-        D_8036A8F8 = 0;
-      }
-      else {
-        D_803163A4 = 0;
-      }
-    }
-  }
-  else {
-    iVar1 = BrCpakCheck(2,0);
-    if (iVar1 == 0) {
-      D_8036A8E0 = 0;
-      D_8036A8F8 = 0;
-    }
-    else {
+  if (D_803163A0 != 0) {
+    if (BrCpakCheck(2, 0) != 0) {
       D_803163A0 = 0;
+    } else {
+      D_8036A8E0[0].pressed = 0;
+      D_8036A8E0[0].axis[0] = 0.0f;
+    }
+  } else if (D_803163A4 != 0) {
+    if (BrCpakCheck(3, 0) != 0) {
+      D_803163A4 = 0;
+    } else {
+      D_8036A8E0[0].pressed = 0;
+      D_8036A8E0[0].axis[0] = 0.0f;
     }
   }
 }
+
