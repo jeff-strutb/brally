@@ -42,6 +42,9 @@ va,name,kind
 8021A964,BrPadRead,func
 8021A9B4,BrPadPollAll,func
 8021B97C,BrRaceFlagsApply,func
+8021BBDC,BrSpEventThread,func
+8021BCA8,BrDpEventThread,func
+8021BD68,BrRetraceThread,func
 8021BE28,BrCamShakeAdd,func
 8021C46C,BrRaceClockReset,func
 8021C6A8,BrStub8021C6A8,func
@@ -203,6 +206,7 @@ va,name,kind
 80264B20,osViGetCurrentFramebuffer,func
 80265410,osCreateMesgQueue,func
 80265440,osSetEventMesg,func
+802654B0,osSendMesg,func
 80265600,osViSetEvent,func
 80265670,osCreateThread,func
 802657C0,osStartThread,func
