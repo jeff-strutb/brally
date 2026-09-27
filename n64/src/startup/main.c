@@ -7,7 +7,7 @@ void BrSchedInit(void);
 void BrStub8021C740(void);
 void BrStub8021C6B0(void);
 void BrEntAllReset(void);
-void func_8021C188(void);
+void BrBootCheck(void);
 void BrFadeSet(float level);
 void BrModeSet(void (*fn)(void));
 void func_8020686C(void);
@@ -39,7 +39,7 @@ void BrMainThread(void)
   BrStub8021C740();
   BrStub8021C6B0();
   BrEntAllReset();
-  func_8021C188();
+  BrBootCheck();
   BrFadeSet(0.0f);
   BrModeSet(func_8020686C);
   D_80270784 = BrRomReadSize((int)D_000AD400);
