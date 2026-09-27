@@ -18,6 +18,18 @@ typedef union {
 typedef struct { int m[16]; } Mtx;
 
 typedef struct {
+    short ob[3];
+    unsigned short flag;
+    short tc[2];
+    unsigned char cn[4];
+} Vtx_t;
+
+typedef union {
+    Vtx_t v;
+    long long force_structure_alignment;
+} Vtx;
+
+typedef struct {
     short vscale[4];
     short vtrans[4];
 } Vp_t;
