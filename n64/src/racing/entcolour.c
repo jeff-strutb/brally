@@ -30,7 +30,7 @@ typedef struct { char raw[0xdf88]; } BrCarModelBuf;
 extern BrCarModelBuf D_803C8000[];
 extern int D_8031B238[];
 extern unsigned char D_8028B904[][3];
-void func_80220620(BrCar *car);
+void BrCarResetFrames(BrCar *car);
 extern char D_803D5F88[];
 /* -- end declarations -- */
 
@@ -249,7 +249,7 @@ void BrCarDefaultColour(BrCar *car)
   unsigned char g;
   unsigned char b;
 
-  func_80220620(car);
+  BrCarResetFrames(car);
   r = D_8028B904[car->slot][0];
   g = D_8028B904[car->slot][1];
   b = D_8028B904[car->slot][2];
