@@ -259,3 +259,5 @@ va,name,kind
 802662E0,osInvalDCache,func
 80266400,osCreateViManager,func
 80266760,osCreatePiManager,func
+8021C6F0,BrModeRun,func
+8021C718,BrMainLoop,func

@@ -23,3 +23,11 @@ void BrRaceClockReset(void)
   D_8028AAD8 = 0.0f;
 }
 
+
+/* WHAT IT DOES: Does nothing. An empty function at the end of the race-clock
+ * object: the game-mode object after it starts on the next 16-byte line, and
+ * its main loop's padding places that start at 0x8021C6B0. */
+/* @implements 0x8021C6A8 tgr BrStub8021C6A8 */
+void BrStub8021C6A8(void)
+{
+}
