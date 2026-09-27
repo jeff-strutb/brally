@@ -12,9 +12,6 @@ extern unsigned int D_8036A8E0[4][0x57];
 /* WHAT IT DOES: Reset every car slot for a new session: runs the per-car
  * reset on each car record (0x2090 bytes apiece) and clears its matching
  * input record. */
-/* @t4-pass 0x80200154 1 2026-09-26 compiles 16 best 5 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80200154 2 2026-09-26 compiles 16 best 2 moved 3  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80200154 3 2026-09-26 compiles 16 best 2 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80200154 tgr BrEntAllReset */
 void BrEntAllReset(void)
 {
