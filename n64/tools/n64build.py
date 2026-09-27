@@ -247,8 +247,14 @@ def grade(obj, rom, name, start, end, va, rom_size, syms, fnvas):
         lo = theirs[lo_i] & 0xffff if lo_i < len(theirs) else 0
         return ((hi << 16) + sext16(lo)) & 0xffffffff
 
-    def check_section_bytes(secname, addend, rom_va):
-        """A section-local literal: the ROM bytes at rom_va must equal ours."""
+    LOAD_WIDTH = {0x20: 1, 0x24: 1, 0x28: 1, 0x21: 2, 0x25: 2, 0x29: 2, 0x23: 4, 0x2B: 4,
+                  0x31: 4, 0x39: 4, 0x35: 8, 0x3D: 8}
+
+    def check_section_bytes(secname, addend, rom_va, width=None):
+        """A section-local literal: the ROM bytes at rom_va must equal ours.
+        A literal reached by a load or store is compared at that access's
+        width, so the section's own alignment padding after the last literal
+        is not mistaken for data."""
         si, blob = obj.sec(secname)
         if secname == '.bss' or secname.startswith('.sbss'):
             return 'file-static .bss at %s+0x%X: declare it extern by its ROM name' % (secname, addend)
@@ -262,6 +268,8 @@ def grade(obj, rom, name, start, end, va, rom_size, syms, fnvas):
                 a = sext16(words(text[o:o + 4])[0] & 0xffff)
                 if addend < a < cut:
                     cut = a
+        if width:
+            cut = min(cut, addend + width)
         seg = blob[addend:cut]
         # jump tables: R_MIPS_32 relocs inside [addend, cut) against .text
         jt = {o: sj for (o, t, sj) in obj.rels.get(si, []) if t == 2 and addend <= o < cut}
@@ -336,7 +344,9 @@ def grade(obj, rom, name, start, end, va, rom_size, syms, fnvas):
                     if rom_va is None:
                         notes.append('LO16 without HI16')
                         continue
-                    bad = check_section_bytes(val, addend, rom_va)
+                    lo_w = words(text[(start + 4 * (lo_i if typ == 5 else i)):(start + 4 * (lo_i if typ == 5 else i)) + 4])[0] \
+                        if (lo_i if typ == 5 else i) is not None else 0
+                    bad = check_section_bytes(val, addend, rom_va, LOAD_WIDTH.get(lo_w >> 26))
                     if bad:
                         notes.append(bad)
                         continue
