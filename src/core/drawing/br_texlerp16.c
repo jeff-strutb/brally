@@ -17,14 +17,16 @@ extern float DAT_10077440;   /*  1.0f  -- 1-bit alpha */
 extern float DAT_10077444;   /* 31.0f  -- 5-bit RGB */
 extern float DAT_10077448;   /* 15.0f  -- 4-bit ARGB4444 */
 
-/* One channel: lerp along s on both rows, then along t, round to nearest
- * (floor of x + 0.5, the constant is -0.5 subtracted), clamp, truncate.
- * Written as ONE expression: the row lerps are compiler temporaries, which
- * VC5 keeps on the x87 stack (named u/v locals get memory homes). */
+/* One channel: lerp along s on both rows (u, v), then along t, round to
+ * nearest (floor of x + 0.5: the constant is -0.5, subtracted), clamp,
+ * truncate.  u and v are named locals: VC5 keeps them on the x87 stack and
+ * pops each dead corner value right after its last use, as the original
+ * does (as one expression the row lerps are temporaries and the dead
+ * corner lingers to the end of the statement). */
 #define BR_TEX_LERP(dst, x00, x10, x01, x11, hi)                              \
-    f = (float)floor((double)(((((x11) - (x01)) * s + (x01)) -                \
-                               (((x10) - (x00)) * s + (x00))) * t +           \
-                              (((x10) - (x00)) * s + (x00)) - DAT_10077434)); \
+    u = ((x10) - (x00)) * s + (x00);                                          \
+    v = ((x11) - (x01)) * s + (x01);                                          \
+    f = (float)floor((double)((v - u) * t + u - DAT_10077434));              \
     if (f < DAT_10077438)                                                     \
         f = DAT_10077438;                                                     \
     if (f > (hi))                                                             \
@@ -34,19 +36,18 @@ extern float DAT_10077448;   /* 15.0f  -- 4-bit ARGB4444 */
 /* WHAT IT DOES: bilinear-interpolate one ARGB1555 texel from four corners
  * at (s, t).  Each channel is rounded to nearest and clamped -- alpha to
  * 0..1, RGB to 0..31 -- then packed back into 16 bits. */
-/* T2 (2026-09-27 re-transcription, raw 701 -> 390 B, size 853/843).  The
- * original unpacks all sixteen channel values to floats first, corner by
- * corner (one reused 16-bit `c`), then lerps channel by channel; the four
- * alpha floats stay on the x87 stack, the other twelve get homes (the dead
- * pointer-argument slots among them).  Identical to the original through
- * +0x144.  RESIDUE: in the alpha lerp the original pops the dead a01 right
- * after its last use (`fxch st(1); fstp st(0)`), ours keeps it to the end
- * of the statement (a second `fstp st(0)` before the floor call), and the
- * r11/g11/b11 conversions interleave differently from there on.  Inert:
- * every source order of the lerp terms, named u/v/f in both orders,
- * statement splits, `register`, declaration order (alpha floats, all
- * locals), alpha as inline (float)(c >> 15) with four c locals, /TP,
- * TU pads (functions, externs, system headers). */
+/* T2 (2026-09-27 re-transcription, raw 701 -> 373 B, size 847/843, REGNORM
+ * 2+0).  The original unpacks all sixteen channel values to floats first,
+ * corner by corner (one reused 16-bit `c`), then lerps channel by channel;
+ * the four alpha floats stay on the x87 stack, the other twelve get homes
+ * (the dead pointer-argument slots among them).  Identical to the original
+ * through +0x152.  RESIDUE: two extra fxch where the alpha tail's `fmul t`
+ * and the fild of r11 are scheduled the other way round; the r/g/b lerps
+ * are identical, shifted 4 bytes.  Inert: every order and spelling of the
+ * lerp terms, the c11 conversion spellings and placement, declaration
+ * order, `register`, /TP, TU pads and headers, the predecessor TU
+ * (br_texlerp.c) in front.  Unpacking c11 as a, b, g, r gives size-exact
+ * 114 B but mis-orders the integer unpack. */
 /* @implements 0x10024750 glide BrTexLerp1555 */
 void BrTexLerp1555(unsigned short *pOut,
                    unsigned short *p00, unsigned short *p10,
@@ -56,7 +57,7 @@ void BrTexLerp1555(unsigned short *pOut,
     unsigned short c;
     float a00, r00, g00, b00, a10, r10, g10, b10, a01, r01, g01, b01, a11, r11, g11, b11;
     int a, r, g, b;
-    float f;
+    float f, u, v;
 
     c = *p00;
     a00 = c >> 15;
@@ -88,8 +89,8 @@ void BrTexLerp1555(unsigned short *pOut,
 /* WHAT IT DOES: bilinear-interpolate one ARGB4444 texel from four corners
  * at (s, t).  Each 4-bit channel is rounded to nearest and clamped to
  * 0..15, then packed back into 16 bits. */
-/* T2 (2026-09-27 re-transcription, raw 718 -> 390 B, size 849/839): the
- * same shape and the same residue as BrTexLerp1555 above. */
+/* T2 (2026-09-27 re-transcription, raw 718 -> 373 B, size 843/839, REGNORM
+ * 2+0): the same shape and the same residue as BrTexLerp1555 above. */
 /* @implements 0x10024AA0 glide BrTexLerp4444 */
 void BrTexLerp4444(unsigned short *pOut,
                    unsigned short *p00, unsigned short *p10,
@@ -98,7 +99,7 @@ void BrTexLerp4444(unsigned short *pOut,
 {
     unsigned short c;
     float a00, r00, g00, b00, a10, r10, g10, b10, a01, r01, g01, b01, a11, r11, g11, b11;
-    float f;
+    float f, u, v;
     int a, r, g, b;
 
     c = *p00;
