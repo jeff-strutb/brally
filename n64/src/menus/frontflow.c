@@ -2,6 +2,7 @@
  */
 #include "tgr/common.h"
 #include "tgr/menu.h"
+#include "tgr/car.h"
 
 /* -- declarations -- */
 void BrMainMenu(void);
@@ -11,7 +12,7 @@ extern int D_8026FF08;
 int func_8020082C();
 extern int D_8026FF18;
 extern int D_8026FF1C;
-void func_80206304(void);
+void BrSeasonPickRace(void);
 extern int D_80272380;
 extern int D_8028C800;
 int func_8020D004();
@@ -30,6 +31,7 @@ void BrIfaceMemReset(void);
 extern float D_80271FC4;
 extern int D_80271FC8;
 extern int D_80271FCC;
+extern int D_8028B940;
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Go back to the title screen's main menu (used by the paint
@@ -78,6 +80,23 @@ void BrResultsRun(void)
   D_80272074 = 1;
   func_8020D004();
   D_80272074 = 0;
+}
+
+/* WHAT IT DOES: Set up the next Championship race from player 1's season:
+ * the track and weather of this race of this round (in a mirrored season
+ * the track is swapped for its mirror, five rows away). */
+/* @implements 0x80206304 tgr BrSeasonPickRace */
+void BrSeasonPickRace(void)
+{
+  D_8028B940 = D_8028B944[D_8031B760[0].season->round].races[D_8031B760[0].season->race][0];
+  if (D_8031B760[0].season->state & 1) {
+    if (D_8028B940 < 5) {
+      D_8028B940 += 5;
+    } else {
+      D_8028B940 -= 5;
+    }
+  }
+  D_8028C800 = D_8028B944[D_8031B760[0].season->round].races[D_8031B760[0].season->race][1];
 }
 
 /* WHAT IT DOES: Load a menu screen's items: blank the screen for two frames

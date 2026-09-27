@@ -11,7 +11,7 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int, int, int, int, i
 void BrMusicStart(int mod, int dest);
 unsigned int func_8021CD30(unsigned int dst, int rom, unsigned int *size);
 void func_802578F4(void);
-void func_80206304(void);
+void BrSeasonPickRace(void);
 int func_80209434();
 void func_802116E0(void);
 void func_8020D004(void);
@@ -50,7 +50,7 @@ extern char D_802AC400[];
 void BrChampionshipStart(void)
 {
   D_8026FF18 = 0;
-  func_80206304();
+  BrSeasonPickRace();
   D_8026FF08 = 1;
   BrModeSet(func_80209434);
   D_80272380 = 1;

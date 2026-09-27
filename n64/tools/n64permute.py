@@ -10,7 +10,8 @@ with the T4 gate.  The best spelling is kept as the next starting point.
 
 Respellings: swap the operands of a commutative operator (+ * == != & | ^);
 x op= y <-> x = x op y; swap two adjacent declarations; swap two adjacent
-assignments to plain variables that do not read or write each other's names.  None of them changes what the
+assignments to plain variables that do not read or write each other's names,
+or to two different fields of the same pointer.  None of them changes what the
 function does, so a spelling that grades EXACT is a match.
 
 --apply     write the best spelling back when it is EXACT
@@ -70,6 +71,14 @@ def mutate(body, rng):
         w1, w2 = set(re.findall(r'\w+', m1.group(1))), set(re.findall(r'\w+', m2.group(1)))
         if not (w1 & n2) and not (w2 & n1) and '*' not in m1.group(1) + m2.group(1) \
                 and '[' not in m1.group(1) + m2.group(1) and '->' not in m1.group(1) + m2.group(1):
+            ops.append(('stmt', i))
+            continue
+        # two stores to different fields of the same pointer, neither side
+        # reading what the other writes, cannot alias each other
+        f1 = re.match(r'^\s*(\w+)->(\w+)\s*$', m1.group(1))
+        f2 = re.match(r'^\s*(\w+)->(\w+)\s*$', m2.group(1))
+        if f1 and f2 and f1.group(1) == f2.group(1) and f1.group(2) != f2.group(2) \
+                and f1.group(2) not in m2.group(2) and f2.group(2) not in m1.group(2):
             ops.append(('stmt', i))
     if not ops:
         return None
