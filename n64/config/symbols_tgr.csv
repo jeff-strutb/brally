@@ -145,6 +145,7 @@ va,name,kind
 8024296C,BrIfaceMemAlloc,func
 802429EC,BrScreenFlush3Layout1,func
 80242A7C,BrScreenFlush3Layout0,func
+80242B10,BrAllocPaintShopGfxMem,func
 80244CA8,BrPaintDecalCommit,func
 80248F38,BrDecalMemInit,func
 8024BE78,BrPaintStickMove,func
