@@ -206,12 +206,29 @@ static int BrNavPtInStyle(const BrTextStyle *pRc, int32_t x, int32_t y)
 /* WHAT IT DOES: test whether the mouse cursor is inside one menu control's
  * hot rectangle and, if so, make that control the active one. The hit test
  * behind mouse navigation of the front end. */
+/* @t4-pass 0x10040EB0 1 2026-09-27 probes 26 bytes 568 insns 184 regions 3 rows 11 census yes  (hand: retranscribed from the listing 24+28 -> 2+9; then tail/nesting shapes, C++ member function, flag sets -- census = the C++ and flag mechanism runs) */
 /* @implements 0x10047A60 d3d BrUiNavCtlHit_10047A60 */
 #ifdef BR_MATCHING_BUILD
 /* Orig is thiscall (this = pCtl in ecx, `mov esi, ecx`) and reads the
  * cursor / hot-rects / ordinal / activity flags as standalone globals,
  * not through a BrUiNav *. BrIsAnyActive is 0-arg cdecl; page-select is
- * thiscall on pOwner->pCur. */
+ * thiscall on pOwner->pCur.
+ * Retranscribed from the listing 2026-09-27 (was 24+28 register-blind): the
+ * "is this the selected row" test compares hot0.top + 19*sel against
+ * hot0.top + 19*ord -- two row Y positions, the top term NOT cancelled --
+ * and every flag update is a plain read-modify-write of flags1C (VC5 emits
+ * the `or al,K` / `and al,K` forms itself; the old `*(unsigned char *)&a`
+ * puns homed `a` and cost six byte spills).  The early `flags & 8` return
+ * shares the rect-miss path's `return 0` tail, as in the original.
+ * RESIDUE (2+9 register-blind, 568/587 B): the original keeps a separate
+ * `mov eax,1` epilogue after the fourth activity test (the first three jump
+ * to the final return-1 tail) and re-tests fCurrent after the rect miss
+ * instead of threading the jump.  DEAD 2026-09-27: the inside/current test
+ * nested or combined, the activity chain as one || or four ifs, nested
+ * under if (fCurrent) or &&-combined, the flag block skipped to a common
+ * return 1 (negated condition, goto) -- all compile identically; so do a
+ * real C++ member function (this->) and extern "C" /TP, and flag sets
+ * /Oy- /Ob0 /Ob2 /Gy /Og-alone. */
 typedef struct BrHitRect { int32_t l, t, r, b; } BrHitRect;
 typedef struct BrObj2C { int32_t _[11]; int32_t f2C; int32_t f30; } BrObj2C;
 extern int32_t   *g_navCursor;     /* 0x10AC5DD8 */
@@ -235,140 +252,75 @@ int BR_THISCALL1 BrUiNavPageSelectGlide(BrUiPage_ *pPage);
 
 int BR_THISCALL1 BrUiNavCtlHit_10047A60(BrUiCtl_ *pCtl)
 {
-    int fZero = 0;
-    int32_t f = pCtl->flags1C;
-    int32_t *pCurXY;
+    int32_t *pCur;
     int fHot;
-    int fCurrent;
-    int32_t a;
+    int fCurrent = 0;
 
-    if (f & 8)
-        return 0;
+    if (pCtl->flags1C & 8)
+        goto ret0;
 
-    if (f & 0x10) {
+    if (pCtl->flags1C & 0x10) {
         if (g_wAA286C == g_wAA2870) {
-            g_wAA286C = (uint16_t)(g_wAA286C + g_w0AB3DC);
+            g_wAA286C += g_w0AB3DC;
             BrUiNavPageSelectGlide(pCtl->pOwner->pCur);
         }
         ++g_wAA2870;
         return 0;
     }
 
-    if (f & 0x80000) {
-        if (BrIsAnyActiveGlide() == 0) {
-            pCtl->flags1C &= 0xFFF7FFFD;
-            goto hit_test;
-        }
-    }
-    if (pCtl->flags1C & 0x80000) {
-        if (BrIsAnyActiveGlide() != 0) {
-            a = pCtl->flags1C;
-            *(unsigned char *)&a |= 0x22;
-            pCtl->flags1C = a;
-            return 1;
-        }
+    if ((pCtl->flags1C & 0x80000) && BrIsAnyActiveGlide() == 0) {
+        pCtl->flags1C &= 0xFFF7FFFD;
+    } else if ((pCtl->flags1C & 0x80000) && BrIsAnyActiveGlide() != 0) {
+        pCtl->flags1C |= 0x22;
+        return 1;
     }
 
-hit_test:
-    pCurXY = g_navCursor;
-
-    if (g_hot0.l > pCurXY[0])
-        goto miss0;
-    if (g_hot0.r < pCurXY[0])
-        goto miss0;
-    if (g_hot0.t > pCurXY[1])
-        goto miss0;
-    if (g_hot0.b < pCurXY[1])
-        goto miss0;
-    fHot = 1;
-    fCurrent = 0;
-    goto after_hot;
-miss0:
-    if (g_hot1.l > pCurXY[0])
-        goto miss1;
-    if (g_hot1.r < pCurXY[0])
-        goto miss1;
-    if (g_hot1.t > pCurXY[1])
-        goto miss1;
-    if (g_hot1.b < pCurXY[1])
-        goto miss1;
-    fHot = 1;
-    fCurrent = 0;
-    goto after_hot;
-miss1:
-    if (g_hot2.l > pCurXY[0])
-        goto miss2;
-    if (g_hot2.r < pCurXY[0])
-        goto miss2;
-    if (g_hot2.t > pCurXY[1])
-        goto miss2;
-    if (g_hot2.b < pCurXY[1])
-        goto miss2;
-    fHot = 1;
-    fCurrent = 0;
-    goto after_hot;
-miss2:
-    {
-        int32_t ord = (int32_t)(int16_t)g_wAA2870;
-        int32_t sel = (int32_t)(int16_t)g_wAA286C;
+    pCur = g_navCursor;
+    if (g_hot0.l <= pCur[0] && g_hot0.r >= pCur[0] &&
+        g_hot0.t <= pCur[1] && g_hot0.b >= pCur[1]) {
+        fHot = 1;
+        fCurrent = 0;
+    } else if (g_hot1.l <= pCur[0] && g_hot1.r >= pCur[0] &&
+               g_hot1.t <= pCur[1] && g_hot1.b >= pCur[1]) {
+        fHot = 1;
+        fCurrent = 0;
+    } else if (g_hot2.l <= pCur[0] && g_hot2.r >= pCur[0] &&
+               g_hot2.t <= pCur[1] && g_hot2.b >= pCur[1]) {
+        fHot = 1;
+        fCurrent = 0;
+    } else {
         fHot = 0;
-        fCurrent = (sel * 19 == ord * 19) ? 1 : fZero;
+        if (g_hot0.t + (int16_t)g_wAA286C * 19 == g_hot0.t + (int16_t)g_wAA2870 * 19)
+            fCurrent = 1;
     }
-after_hot:
     ++g_wAA2870;
     g_nAA284C = fHot;
 
-    if (pCtl->rcLeft > pCurXY[0])
-        goto not_inside;
-    if (pCtl->rcRight < pCurXY[0])
-        goto not_inside;
-    if (pCtl->rcTop > pCurXY[1])
-        goto not_inside;
-    if (pCtl->rcBottom < pCurXY[1])
-        goto not_inside;
-    goto inside;
-not_inside:
-    if (fCurrent == 0) {
-        a = pCtl->flags1C;
-        *(unsigned char *)&a &= 0xdd;
-        pCtl->flags1C = a;
-        return 0;
-    }
-inside:
-    if (fCurrent) {
-        if (g_act0 != 0 || g_act1 != 0 || g_act2 != 0 || g_act3 != 0)
-            return 1;
-    }
+    if (!(pCtl->rcLeft <= pCur[0] && pCtl->rcRight >= pCur[0] &&
+          pCtl->rcTop <= pCur[1] && pCtl->rcBottom >= pCur[1]) && fCurrent == 0)
+        goto miss;
 
-    a = pCtl->flags1C;
-    if (a & 0x40000) {
+    if (fCurrent && (g_act0 != 0 || g_act1 != 0 || g_act2 != 0 || g_act3 != 0))
+        return 1;
+
+    if (pCtl->flags1C & 0x40000) {
         if (g_pAA2E80->f2C != 0 || g_pAA2E80->f30 != 0)
-            a |= 0x80002;
+            pCtl->flags1C |= 0x80002;
         else
-            *(unsigned char *)&a &= 0xfd;
+            pCtl->flags1C &= ~2;
+    } else if ((g_actOverride == 0 && (g_act5 != 0 || g_act6 != 0)) ||
+               BrIsAnyActiveGlide() != 0) {
+        pCtl->flags1C |= 2;
     } else {
-        if (g_actOverride != 0)
-            goto do_pred;
-        if (g_act5 != 0)
-            goto set_bit;
-        if (g_act6 != 0)
-            goto set_bit;
-    do_pred:
-        if (BrIsAnyActiveGlide() == 0)
-            goto clear_bit;
-    set_bit:
-        a = pCtl->flags1C;
-        *(unsigned char *)&a |= 2;
-        goto store_f;
-    clear_bit:
-        a = pCtl->flags1C;
-        *(unsigned char *)&a &= 0xfd;
+        pCtl->flags1C &= ~2;
     }
-store_f:
-    pCtl->flags1C = a;
-    *(unsigned char *)&a |= 0x20;
-    pCtl->flags1C = a;
+    pCtl->flags1C |= 0x20;
     return 1;
+
+miss:
+    pCtl->flags1C &= ~0x22;
+ret0:
+    return 0;
 }
 #else
 int BrUiNavCtlHit_10047A60(BrUiNav *pNav, BrUiCtl_ *pCtl)
