@@ -7,14 +7,8 @@
 
 /* -- declarations -- */
 typedef struct { char raw[0xdf88]; } BrCarModelBuf;
-typedef struct BrCarArt {       /* 0x60 bytes, a table at 0x8028AE0C */
-  char pad00[0x58];
-  float len;                    /* 0x58 */
-  float wid;                    /* 0x5C */
-} BrCarArt;
 extern BrCarModelBuf D_803C8000[];
 extern int D_8031B238[];
-extern BrCarArt D_8028AE0C[];
 extern Gfx *D_8028A858;
 extern Mtx *D_8028A878;
 extern unsigned short D_8028A874;

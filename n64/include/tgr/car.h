@@ -39,4 +39,17 @@ typedef struct BrCar {
 
 extern BrCar D_8031B760[4];
 
+/* A car's model file (0x60 bytes each), a table at 0x8028AE0C. */
+typedef struct BrCarModelRec {
+    char pad00[0x14];
+    int rom;                    /* 0x14  ROM address of the model file */
+    int present;                /* 0x18  non-zero when the car is in this build */
+    unsigned int size;          /* 0x1C  bytes, set when it is loaded */
+    char pad20[0x58 - 0x20];
+    float len;                  /* 0x58  body length, 1/256 units */
+    float wid;                  /* 0x5C  body half-width */
+} BrCarModelRec;
+
+extern BrCarModelRec D_8028AE0C[];
+
 #endif
