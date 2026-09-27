@@ -116,30 +116,21 @@ void BrTextSetFont(int param_1)
 
 /* WHAT IT DOES: Print a string at (x, y) in the current font, honouring the
  * alignment: left as given, right-aligned so it ends at x, or centred on x. */
-/* @t4-pass 0x8022F5DC 1 2026-09-26 compiles 43 best 38 moved 1  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8022F5DC 2 2026-09-26 compiles 13 best 38 moved 1  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8022F5DC 3 2026-09-26 compiles 9 best 38 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8022F5DC 4 2026-09-26 compiles 27 best 38 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8022F5DC tgr BrTextPrint */
-void BrTextPrint(int param_1,int param_2,int param_3)
+void BrTextPrint(unsigned char *s, int x, int y)
 {
-  int iVar1;
-  
-  iVar1 = param_2;
-  if (D_8028BDC4 != '\0') {
-    if (D_8028BDC4 == '\x01') {
-      iVar1 = func_8022F720(param_1,D_803519D8);
-      iVar1 = param_2 - iVar1;
-    }
-    else {
-      iVar1 = D_803519D0;
-      if (D_8028BDC4 == '\x02') {
-        iVar1 = func_8022F720(param_1,D_803519D8);
-        iVar1 = param_2 - (iVar1 >> 1);
-      }
-    }
+  switch (D_8028BDC4) {
+  case 0:
+    D_803519D0 = x;
+    break;
+  case 2:
+    D_803519D0 = x - (func_8022F720(s, D_803519D8) >> 1);
+    break;
+  case 1:
+    D_803519D0 = x - func_8022F720(s, D_803519D8);
+    break;
   }
-  D_803519D4 = param_3;
-  D_803519D0 = iVar1;
-  func_8022E4E0(param_1);
+  D_803519D4 = y;
+  func_8022E4E0(s);
 }
+
