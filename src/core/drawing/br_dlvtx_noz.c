@@ -25,10 +25,11 @@
  * table size flips it.  The residue note sits above the function.
  */
 #ifdef BR_MATCHING_BUILD
-/* TU state only (symbol-table size): with the DirectSound declarations in
- * front, VC5 gives the matrix products and the viewport scale the operand
- * roles the original has.  Nothing here uses them. */
+/* TU state only (symbol-table size): with these declarations in front,
+ * VC5 gives the matrix products the operand roles the original has.
+ * Nothing here uses them. */
 #include <dsound.h>
+#include <stdio.h>
 #endif
 #include <stdint.h>
 #include "br_dl.h"
@@ -46,7 +47,6 @@ extern float DAT_10077408;   /* 4.0f  */
 extern float DAT_1007740c;   /* 0.25f */
 extern float DAT_10077410;   /* 0.0f  -- clip threshold */
 
-extern float DAT_105ccd48;   /* viewport scale  X */
 extern float DAT_105cd9f8;   /* viewport translate X */
 extern float DAT_105ccfdc;   /* viewport scale  Y */
 extern float DAT_105cd9fc;   /* viewport translate Y */
@@ -56,7 +56,7 @@ extern BrDlVtx DAT_105ce318[];   /* vertex array, stride 0x68 */
 typedef struct { float x, y, z, s, t, n0, n1, n2; } BrDlSrcVtx;
 
 /* The quarter-pixel snap: round to nearest through the x87. */
-#define SNAP(f_) do { t = (f_) * 4.0f; __asm { fld t } __asm { fistp l } __asm { fild l } __asm { fstp t } (f_) = t * 0.25f; } while (0)
+#define SNAP(f_, t) do { t = (f_) * 4.0f; __asm { fld t } __asm { fistp l } __asm { fild l } __asm { fstp t } (f_) = t * 0.25f; } while (0)
 
 /* WHAT IT DOES: loads a batch of model vertices, moves each one from model
  * space into clip space through the combined matrix, works out which edges
@@ -65,24 +65,27 @@ typedef struct { float x, y, z, s, t, n0, n1, n2; } BrDlSrcVtx;
  * source normals are copied straight into the colour fields because there is
  * no lighting, and 1/w is forced to a constant so the card skips perspective-
  * correct texturing. */
-/* T2 (2026-09-27 re-transcription from the asm, raw 423 -> 33 B, size exact,
- * /O2 /Op like its siblings).  Source facts that took it there:
- * - The snap is four asm instructions (fld, fistp, fild, fstp) on one float
- *   scratch `t` and one int `l`; C then scales t by 0.25.
+/* T2 (2026-09-27 re-transcription from the asm, raw 423 -> 10 B, size exact,
+ * instruction multiset identical; /O2 /Op like its siblings).  Source facts:
+ * - The snap is four asm instructions (fld, fistp, fild, fstp) on a float
+ *   scratch and one int `l`; C then scales the scratch by 0.25.  1/w, the x
+ *   snap and the y snap each have their own float (invW, tx, ty): VC5 packs
+ *   them into one slot below l, as the original has it; a single shared
+ *   float swaps the two slots.
  * - The colours are copied through a float local, so they go fld/fstp.
  * - The vertex fields are addressed as pFirst[i] (VC5 strength-reduces them
  *   to a pointer biased to &cw, ecx) while x goes through a separate pointer
  *   pV that is stepped each pass (edi); the original has both registers.
- * RESIDUE (33 B): (1) the float scratch and the int scratch swap stack
- * slots (orig t at -8, l at -4); (2) the viewport X product loads t first
- * where the original loads the scale; (3) the 1/65535 store is scheduled
- * after the y store.  Inert: declaration order, names, types, block scope,
- * a separate invW, statement order of l = 0, product spellings. */
+ * RESIDUE (10 B): the 1/65535 store to oow is emitted after the y store;
+ * the original emits it before.  Reached only through two stepped pointers
+ * (pW-> for every field), which flips the outcode adds' fld sides instead
+ * (29 B).  Inert: statement position of the store, int/literal spellings,
+ * a y temp, declaration order and names, TU headers/pads. */
 /* @implements 0x10023110 glide BrDlVtxNoZ */
 const uint32_t *BrDlVtxNoZ(const uint32_t *p)
 {
     uint32_t w0;
-    float t;
+    float invW, tx, ty;
     int l;
     const BrDlSrcVtx *pSrc;
     BrDlVtx *pV;
@@ -92,6 +95,9 @@ const uint32_t *BrDlVtxNoZ(const uint32_t *p)
     int v0;
     BrDlVtx *pFirst;
     float c;
+    /* Declared here, after the locals, so the scale takes the fld side
+     * of scale * invW (the later symbol does). */
+    extern float DAT_105ccd48;   /* viewport scale X */
 
     w0 = p[0];
     pSrc = (const BrDlSrcVtx *)p[1];
@@ -119,17 +125,17 @@ const uint32_t *BrDlVtxNoZ(const uint32_t *p)
             if (pFirst[i].cw - pFirst[i].cy < DAT_10077410)      oc |= 0x40;
             pFirst[i].outcode = oc;
             if (oc == 0) {
-                t = DAT_10077404 / pFirst[i].cw;
+                invW = DAT_10077404 / pFirst[i].cw;
                 l = 0;
-                *(uint32_t *)&pFirst[i].oow = *(uint32_t *)&t;
-                pV->x = DAT_105ccd48 * t * pFirst[i].cx + DAT_105cd9f8;
+                *(uint32_t *)&pFirst[i].oow = *(uint32_t *)&invW;
+                pV->x = DAT_105ccd48 * invW * pFirst[i].cx + DAT_105cd9f8;
                 pFirst[i].y = DAT_105ccfdc * pFirst[i].oow * pFirst[i].cy + DAT_105cd9fc;
                 pFirst[i].oow = 1.0f / 65535.0f;
                 c = pFirst[i].n0; pFirst[i].r = c;
                 c = pFirst[i].n1; pFirst[i].g = c;
                 c = pFirst[i].n2; pFirst[i].b = c;
-                SNAP(pV->x);
-                SNAP(pFirst[i].y);
+                SNAP(pV->x, tx);
+                SNAP(pFirst[i].y, ty);
             }
             pSrc++;
             pV++;
