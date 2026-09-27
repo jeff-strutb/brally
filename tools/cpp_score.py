@@ -344,18 +344,30 @@ def parse_implements_name(src_path, va):
     impl = re.compile(r'@implements\s+0x([0-9A-Fa-f]+)\s+\w+\s+(\S+)')
     sym = re.compile(r'@cpp_symbol\s+(\S+)')
     kind = re.compile(r'@cpp_kind\s+(dtor|ctor|method|scalar_deleting)')
+    # A .cpp may hold several functions (one TU of the original): the
+    # @cpp_symbol / @cpp_kind tags after an @implements belong to THAT VA,
+    # up to the next @implements.  The last tag in the file is the fallback
+    # for files that do not follow that layout.
+    own_sym = own_kind = None
+    in_own = False
     with open(src_path) as f:
         for line in f:
             m = impl.search(line)
-            if m and int(m.group(1), 16) == va:
-                name = m.group(2)
+            if m:
+                in_own = int(m.group(1), 16) == va
+                if in_own:
+                    name = m.group(2)
             m = sym.search(line)
             if m:
                 cpp_symbol = m.group(1)
+                if in_own:
+                    own_sym = m.group(1)
             m = kind.search(line)
             if m:
                 prefer = m.group(1)
-    return name, cpp_symbol, prefer
+                if in_own:
+                    own_kind = m.group(1)
+    return name, own_sym or cpp_symbol, own_kind or prefer
 
 
 # ---------------------------------------------------------------------------

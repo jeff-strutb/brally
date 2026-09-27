@@ -692,7 +692,7 @@ glide_va,name,module,basis,file
 0x10039350,BrUiText1003FE10,menus,prefix,src/core/menus/BrUiText1003FE10_10039350.cpp
 0x100393C0,BrItemSetModeLabel_100393C0,menus,neighbour,src/core/menus/BrItemSetModeLabel_100393C0.cpp
 0x10039510,BrUiText1003FFD0,menus,prefix,src/core/menus/BrUiText1003FFD0_10039510.cpp
-0x10039580,BrCtlNameFind,controls,manual,src/core/controls/br_ctlname.c
+0x10039580,BrCtlNameFind,controls,manual,src/core/controls/BrCtlBindingToItem_10039620.cpp
 0x10039620,BrCtlBindingToItem,controls,manual,src/core/controls/BrCtlBindingToItem_10039620.cpp
 0x10039870,BrCfgFindConflicts,controls,manual,src/core/controls/BrCfgFindConflicts_10039870.cpp
 0x10039990,BrCtrlBindPoll_10039990,controls,manual,src/core/controls/BrCtrlBindPoll_10039990.cpp
@@ -1187,9 +1187,11 @@ glide_va,name,module,basis,file
 0x1006A5A0,BrSecondTickStart,startup,neighbour-1,src/core/startup/br_secondtick.c
 0x1006A5F0,BrSecondTickLoop,racing,description,src/core/racing/br_secondtickloop.c
 0x1006A650,FUN_1006a650,net,description,src/core/net/br_peer.c
+0x1006A7E0,BrNetPeerRank,net,manual,src/core/net/br_peerrank.c
 0x1006AAD0,BrSub10071B60,geometry,filed,src/core/geometry/br_vec.c
 0x1006AAF0,BrNetPeerMsgReset,net,filed,src/core/net/br_peer.c
 0x1006AB60,BrObjResetMsgHdr,gamedata,description,src/core/gamedata/br_bitstream.c
+0x1006AB80,BrNetPeerPump,net,manual,src/core/net/br_peerpump.c
 0x1006AEB0,BrNetWritePlayerRec,net,prefix,src/core/net/BrNetWritePlayerRec_1006AEB0.cpp
 0x1006AFA0,BrNetWriteTagC0,net,prefix,src/core/net/BrNetWriteTagC0_1006AFA0.cpp
 0x1006AFF0,BrNetWriteRaceOpts,net,prefix,src/core/net/BrNetWriteRaceOpts_1006AFF0.cpp

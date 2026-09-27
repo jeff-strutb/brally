@@ -1,63 +1,6 @@
-/* WHAT IT DOES: put the name of the key or button currently bound to the
- * selected control action into the owner's item label, then relayout and
- * apply.  With the "no binding" flag set the label reads catalogue string
- * 0xB2; otherwise the control kind picks the table -- keyboard names for
- * kind 0, the two device name tables for kinds 1-3 -- and a device kind whose
- * lookup fails falls back to the keyboard name of the raw code, or to string
- * 0xB1 when there is no code at all.  An out-of-range kind writes no label.
- * Returns 1. */
-/* @implements 0x10039620 glide BrCtlBindingToItem
- * @cpp_kind free
- * @cpp_symbol ?BrCtlBindingToItem@@YAHPAVObj39620@@@Z
- *
- * cdecl, one arg, `ret`, 563 B.  The two lookups are thiscall members of the
- * global input object at 0x10B71290 called with a CONSTANT kind
- * (`push k / mov ecx,offset / call`), which is why this is a C++ TU: from C
- * the __fastcall-plus-wrapper spelling materialises the constant in a
- * register first (VC5-IDIOMS "thiscall with 3+ arguments", boundary).
- * Same item record and the same relayout-then-apply tail as 0x10038E10.
- *
- * Shape notes from the bytes:
- *  - the binding key is RE-READ from the global table for the second lookup
- *    (two `mov eax,[g_brSel5B98]`), as 0x10039870 warns -- do not cache it;
- *  - the byte answer of the first lookup lives across the second call, so
- *    VC5 homes it in a slot and reloads it with `and edx,0xff` for the
- *    name lookup -- one `unsigned char` local;
- *  - cases 1-3 carry the same fallback arm; VC5 cross-jumps the copies
- *    (case 1 keeps its own `test bl,bl`, cases 2/3 jump to a shared one);
- *  - the kind switch is a 4-entry jump table with `ja` past the strcpy for
- *    anything above 3.
- *
- * ‼ PARKED 2026-09-05 at 572/563 B, ONE block-layout residue.  Everything
- * else is instruction-exact: prologue, all four case arms, the shared
- * fallback block, the two merged BrStrByIndex pushes, the strcpy body and
- * the tail.  The residue: the original keeps case 1's OWN fallback test
- * inline (`test bl,bl / je <push 0xB1> / jmp <shared Find(0,c) arm>`, 13 B)
- * and only cases 2 and 3 share the block after case 3; ours cross-jumps all
- * three into that block (case 1's lookup test `je`s straight to it).  This
- * is VC5's single-pass cross-jump order, so the original's case 1 must
- * differ in IR from cases 2/3 while compiling to the same instructions.
- *
- * DEAD, do not re-run (each scored with tools/cpp_score.py):
- *   - case 0 spellings: nested `Find(0, (uchar)GetB(..))` gives the
- *     original's `and eax,0xff / push eax` but FLIPS THE WHOLE FUNCTION TO
- *     AN EBP FRAME (+13 B, 287 diffs); a byte local (shared or its own) goes
- *     through the slot (`mov [esp+14h],al / mov edx,[esp+14h] / and`);
- *     an INT local assigned the widened byte (`i = (uchar)GetB(); i =
- *     Find(0, i)`) is the one that is exact and frameless.
- *   - `if (flag != 0) STR else SWITCH` lays the string arm inline (`je`);
- *     the original's `jne` to a deferred string arm needs `if (flag == 0)
- *     SWITCH else STR` (lone if/else is failure-first).
- *   - one strcpy after the if/else via a `p` variable: 640 B, the label
- *     address is not set per arm.  strcpy in every arm is right.
- *   - fallback polarity `c == 0` first in case 1 only (592), in cases 2/3
- *     only (624); case 1's lookup test reversed (`== 0` then-arm, 624);
- *     Ghidra's literal `goto` from cases 2/3 INTO case 1's else-arm (544 --
- *     VC5 lays the single block once); `goto` from case 2 into a label in
- *     case 3's else-arm (identical to the plain copy); block-scoped `c`
- *     per case (640, three slots); `char c` with `(uchar)` casts;
- *     `default: break;`; `c = 0` initialiser.
- */
+/* BrCtlBindingToItem_10039620.cpp -- controls, one C++ TU: 0x10039580
+ * BrCtlNameFind (the name-table reader) and, after it, 0x10039620
+ * BrCtlBindingToItem (writes the bound key's name into a menu label). */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #include <string.h>
@@ -119,6 +62,132 @@ int   BrCtlNameFind(int kind, int key);         /* 0x10039580 */
 void  BrItemApply_10038380(void *pObj, int a);  /* 0x10038380 */
 }
 
+/* ==========================================================================
+ * 0x10039580 -- the reader (D3D 0x10040040, BrCfgLookupIndex in slice2_23.c)
+ *
+ * The original hardcodes the three table addresses and their end addresses
+ * and carries FOUR copies of the same walk, one per `kind` arm; the compare
+ * against the end address is signed (`jl`).  In BRGlide.dll kind 1 is the
+ * MOUSE table (0x10B71B08) and kinds 2 and 3 are both the JOYSTICK table
+ * (0x10B71C70) -- read straight off the jump table.
+ *
+ * Filed here, ahead of 0x10039620, because that is where it sits in the
+ * original's TU: with no function before it, BrCtlBindingToItem cross-jumps
+ * case 1's fallback test into the shared block (572 B); with this one
+ * compiled first it is byte-exact.  It is byte-exact here too.
+ * ========================================================================== */
+
+struct BrCfgRec39580 {
+    unsigned int key;           /* +0x00 */
+    char         szText[0x20];  /* +0x04 */
+};
+
+extern "C" {
+extern const BrCfgRec39580 g_aBrCtlNameKey[120];    /* 0x100B3B40 */
+extern BrCfgRec39580       g_aBrCtlNameMouse[10];   /* 0x10B71B08 */
+extern BrCfgRec39580       g_aBrCtlNameJoy[134];    /* 0x10B71C70 */
+}
+
+/* WHAT IT DOES: finds the row whose key matches in the keyboard (0), mouse
+ * (1) or joystick (2 and 3) name table and returns its index; 0 when the key
+ * is not there or the kind is out of range. */
+/* @implements 0x10039580 glide BrCtlNameFind
+ * @cpp_kind free
+ * @cpp_symbol _BrCtlNameFind */
+extern "C" int BrCtlNameFind(int kind, int key)
+{
+    int i;
+    const BrCfgRec39580 *p;
+
+    switch (kind) {
+    case 0:
+        i = 0;
+        for (p = g_aBrCtlNameKey; (int)p < (int)&g_aBrCtlNameKey[120]; p++, i++) {
+            if (p->key == key)
+                return i;
+        }
+        return 0;
+    case 1:
+        i = 0;
+        for (p = g_aBrCtlNameMouse; (int)p < (int)&g_aBrCtlNameMouse[10]; p++, i++) {
+            if (p->key == key)
+                return i;
+        }
+        return 0;
+    case 2:
+        i = 0;
+        for (p = g_aBrCtlNameJoy; (int)p < (int)&g_aBrCtlNameJoy[134]; p++, i++) {
+            if (p->key == key)
+                return i;
+        }
+        return 0;
+    case 3:
+        i = 0;
+        for (p = g_aBrCtlNameJoy; (int)p < (int)&g_aBrCtlNameJoy[134]; p++, i++) {
+            if (p->key == key)
+                return i;
+        }
+        return 0;
+    }
+    return 0;
+}
+
+/* WHAT IT DOES: put the name of the key or button currently bound to the
+ * selected control action into the owner's item label, then relayout and
+ * apply.  With the "no binding" flag set the label reads catalogue string
+ * 0xB2; otherwise the control kind picks the table -- keyboard names for
+ * kind 0, the two device name tables for kinds 1-3 -- and a device kind whose
+ * lookup fails falls back to the keyboard name of the raw code, or to string
+ * 0xB1 when there is no code at all.  An out-of-range kind writes no label.
+ * Returns 1. */
+/* @implements 0x10039620 glide BrCtlBindingToItem
+ * @cpp_kind free
+ * @cpp_symbol ?BrCtlBindingToItem@@YAHPAVObj39620@@@Z
+ *
+ * cdecl, one arg, `ret`, 563 B.  The two lookups are thiscall members of the
+ * global input object at 0x10B71290 called with a CONSTANT kind
+ * (`push k / mov ecx,offset / call`), which is why this is a C++ TU: from C
+ * the __fastcall-plus-wrapper spelling materialises the constant in a
+ * register first (VC5-IDIOMS "thiscall with 3+ arguments", boundary).
+ * Same item record and the same relayout-then-apply tail as 0x10038E10.
+ *
+ * Shape notes from the bytes:
+ *  - the binding key is RE-READ from the global table for the second lookup
+ *    (two `mov eax,[g_brSel5B98]`), as 0x10039870 warns -- do not cache it;
+ *  - the byte answer of the first lookup lives across the second call, so
+ *    VC5 homes it in a slot and reloads it with `and edx,0xff` for the
+ *    name lookup -- one `unsigned char` local;
+ *  - cases 1-3 carry the same fallback arm; VC5 cross-jumps the copies
+ *    (case 1 keeps its own `test bl,bl`, cases 2/3 jump to a shared one);
+ *  - the kind switch is a 4-entry jump table with `ja` past the strcpy for
+ *    anything above 3.
+ *
+ * Byte-exact 2026-09-27.  The one block-layout residue this was parked on
+ * (case 1's fallback test cross-jumped into the shared block, 572 B) was TU
+ * state, not spelling: with any function compiled ahead of it in the TU the
+ * original's layout comes out.  The original's neighbour there is
+ * 0x10039580 BrCtlNameFind, now filed above it in this file.
+ *
+ * DEAD, do not re-run (each scored with tools/cpp_score.py):
+ *   - case 0 spellings: nested `Find(0, (uchar)GetB(..))` gives the
+ *     original's `and eax,0xff / push eax` but FLIPS THE WHOLE FUNCTION TO
+ *     AN EBP FRAME (+13 B, 287 diffs); a byte local (shared or its own) goes
+ *     through the slot (`mov [esp+14h],al / mov edx,[esp+14h] / and`);
+ *     an INT local assigned the widened byte (`i = (uchar)GetB(); i =
+ *     Find(0, i)`) is the one that is exact and frameless.
+ *   - `if (flag != 0) STR else SWITCH` lays the string arm inline (`je`);
+ *     the original's `jne` to a deferred string arm needs `if (flag == 0)
+ *     SWITCH else STR` (lone if/else is failure-first).
+ *   - one strcpy after the if/else via a `p` variable: 640 B, the label
+ *     address is not set per arm.  strcpy in every arm is right.
+ *   - fallback polarity `c == 0` first in case 1 only (592), in cases 2/3
+ *     only (624); case 1's lookup test reversed (`== 0` then-arm, 624);
+ *     Ghidra's literal `goto` from cases 2/3 INTO case 1's else-arm (544 --
+ *     VC5 lays the single block once); `goto` from case 2 into a label in
+ *     case 3's else-arm (identical to the plain copy); block-scoped `c`
+ *     per case (640, three slots); `char c` with `(uchar)` casts;
+ *     `default: break;`; `c = 0` initialiser.
+ */
 int BrCtlBindingToItem(Obj39620 *pObj)
 {
     unsigned char c;
