@@ -502,7 +502,7 @@ def print_diff(va, ours, theirs):
 def all_sources():
     out = []
     for dp, dn, fn in os.walk(os.path.join(N64, 'src')):
-        out += [os.path.join(dp, f) for f in fn if f.endswith('.c')]
+        out += [os.path.join(dp, f) for f in fn if f.endswith(('.c', '.s'))]
     return sorted(out)
 
 
