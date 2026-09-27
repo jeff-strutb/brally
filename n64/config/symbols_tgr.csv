@@ -138,6 +138,7 @@ va,name,kind
 8022F578,BrTextSetColoursRGB,func
 8022F5D0,BrTextSetFont,func
 8022F5DC,BrTextPrint,func
+8022F720,BrTextWidth,func
 8022F900,BrRaceSplitScreen,func
 80233880,BrHudArrowDraw,func
 80233FDC,BrVtxPoolsReset,func
