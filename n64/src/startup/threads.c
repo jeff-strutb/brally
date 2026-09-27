@@ -1,11 +1,12 @@
 /* threads.c -- the event threads: RSP done, RDP done and vertical retrace,
  * each forwarding its event to the queue the game waits on.
  *
- * TU POSITION: an infinite loop's dead epilogue is aligned to 16 bytes from
+ * TU POSITION: IDO pads an infinite loop's dead epilogue to 32 bytes from
  * the start of the object's .text, so the nops after each loop depend on
- * where the function sits in its original file (0x8021BBDC and 0x8021BCA8
- * grade byte-exact at an offset of 0xC mod 16, as in the ROM, and not at 0).
- * These stay T2 until their true predecessors share this file.
+ * where the function sits in its original file.  This object starts at
+ * 0x8021B72C (its .data has 0x8028ADE8, the display-list patchers' flag,
+ * directly before the retrace counter), so 0x8021BBDC stays T2 until
+ * 0x8021B72C and 0x8021B97C precede it here.
  */
 #include "tgr/common.h"
 
@@ -26,7 +27,6 @@ extern int D_8031A390[6];
 extern int D_8031A3B0[6];
 extern int D_8031A3C8[1];
 extern int D_8031A3CC;
-extern int D_8028ADEC;
 /* -- end declarations -- */
 
 /* WHAT IT DOES: The RSP event thread: every time the RSP finishes a task,
@@ -65,11 +65,13 @@ void BrDpEventThread(void *arg)
 /* @implements 0x8021BD68 tgr BrRetraceThread */
 void BrRetraceThread(void *arg)
 {
+  static int retraceCount = 0;    /* 0x8028ADEC */
+
   osCreateMesgQueue(D_8031A3B0, D_8031A3C8, 1);
   osViSetEvent(D_8031A3B0, D_8031A3CC, 1);
   for (;;) {
     osRecvMesg(D_8031A3B0, 0, 1);
     osSendMesg(D_8031A390, D_8031A3CC, 1);
-    D_8028ADEC = (D_8028ADEC + 1) & 0xf;
+    retraceCount = (retraceCount + 1) & 0xf;
   }
 }
