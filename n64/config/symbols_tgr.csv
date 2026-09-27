@@ -295,3 +295,5 @@ va,name,kind
 80266188,__ll_mul,func
 80266088,__ull_div,func
 8021C4B4,BrClockTick,func
+80266A08,__d_to_ull,func
+80256C2C,BrNoteRatesInit,func
