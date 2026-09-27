@@ -6,14 +6,18 @@
 /* -- declarations -- */
 void func_8021D140(int param_1,unsigned int param_2,unsigned int param_3,int param_4);
 void func_80222D54(int param_1);
-void func_8021D5E4(int param_1,int param_2,int param_3);
+void BrCarModelInstall(int slot, int car, void *src);
+unsigned int BrRomReadSize(int rom);
+void osSyncPrintf(char *fmt, ...);
+int sprintf(char *buf, char *fmt, ...);
+void BrFatal(char *msg);
+void *memcpy(void *dst, void *src, unsigned int n);
 void func_802203F0(int param_1,int param_2);
 void func_8021D070(unsigned int *param_1,unsigned int param_2,unsigned int param_3,int param_4);
 void func_8021D098(unsigned int *param_1,unsigned int param_2,unsigned int param_3,int param_4);
 void func_80220398();
 unsigned int func_8021CD30();
 void func_8021D32C(int param_1);
-extern int D_8028AE20;
 typedef struct { char raw[0xdf88]; } BrCarModelBuf;
 extern BrCarModelBuf D_803C8000[];
 extern int D_8031B238[];
@@ -41,7 +45,7 @@ void BrEntRefreshColour(int param_1)
 /* @implements 0x80220438 tgr BrEntLoadRecord */
 void BrEntLoadRecord(int param_1,int param_2,int param_3)
 {
-  func_8021D5E4(param_2,param_3,0);
+  BrCarModelInstall(param_2,param_3,0);
   func_802203F0(param_1,param_2);
 }
 
@@ -137,6 +141,45 @@ void BrEntRebaseModel(BrCarModel *m)
 }
 
 
+/* WHAT IT DOES: Load car n's model file from ROM into a model buffer,
+ * recording its size; a file bigger than a buffer is a fatal error. */
+/* @implements 0x8021D534 tgr BrCarModelLoad */
+void BrCarModelLoad(void *buf, int car)
+{
+  char msg[80];
+
+  if ((D_8028AE0C[car].size = BrRomReadSize(D_8028AE0C[car].rom)) > sizeof(BrCarModelBuf)) {
+    sprintf(msg, "Car %d too big (%d vs. %d)", car, D_8028AE0C[car].size, sizeof(BrCarModelBuf));
+    BrFatal(msg);
+  } else {
+    osSyncPrintf("Loading car %d (%d / %d)\n", car, D_8028AE0C[car].size, sizeof(BrCarModelBuf));
+  }
+  func_8021CD30(buf, D_8028AE0C[car].rom, 0);
+}
+
+/* WHAT IT DOES: Put car n's model into a slot's model buffer -- loaded
+ * from ROM, or copied from a model already in memory -- rebase its
+ * pointers there and record which car the slot holds.
+ * RESIDUE (4 words): the buffer address is spilled across the calls at
+ * sp+0x18, the ROM's at sp+0x1C -- a named local reserves 0x1C for its own
+ * home; spelling the two branches' addresses differently frees the temp
+ * into 0x1C but makes it memory-resident (one reload at the join). */
+/* @implements 0x8021D5E4 tgr BrCarModelInstall */
+void BrCarModelInstall(int slot, int car, void *src)
+{
+  BrCarModelBuf *buf;
+
+  if (src == 0) {
+    buf = &D_803C8000[slot];
+    BrCarModelLoad(buf, car);
+  } else {
+    buf = &D_803C8000[slot];
+    memcpy(buf, src, D_8028AE0C[car].size);
+  }
+  func_8021D32C((int)buf);
+  D_8031B238[slot] = car;
+}
+
 /* WHAT IT DOES: Attach one of the car artwork records to a car and repaint
  * it in its own colour. */
 /* @implements 0x802203F0 tgr BrEntSetRecord */
@@ -152,7 +195,7 @@ void BrEntSetRecord(int param_1,int param_2)
 int BrEntLoadModel(int *p)
 {
   if (p[6] != 0) {
-    func_8021CD30((int)&D_803C8000[p[8]], *(int *)((char *)&D_8028AE20 + p[9] * 0x60));
+    func_8021CD30((int)&D_803C8000[p[8]], D_8028AE0C[p[9]].rom);
     if (p[6] == 0) {
       D_8031B238[p[8]] = p[9];
       func_8021D32C((int)&D_803C8000[p[8]]);
