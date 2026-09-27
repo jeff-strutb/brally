@@ -17,6 +17,7 @@ extern int D_8028B7F4;
 extern int D_8028B940;
 extern int D_8031B760;
 extern int D_8026FF08;
+extern int D_80025C50;
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Set the race-kind flags from a kind number (0-4): clears
@@ -145,18 +146,10 @@ void BrRaceFlagsApply(void)
 
 /* WHAT IT DOES: Tell whether the race is shown split: any of the split
  * options is set, or two players are racing. */
-/* @t4-pass 0x8022F900 1 2026-09-26 compiles 17 best 23 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8022F900 2 2026-09-26 compiles 16 best 23 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8022F900 3 2026-09-26 compiles 13 best 23 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8022F900 tgr BrRaceSplitScreen */
 int BrRaceSplitScreen(void)
 {
-  int bVar1;
-  
-  bVar1 = D_8028AA80 != 0;
-  if ((((!bVar1) && (bVar1 = D_8028AA84 != 0, !bVar1)) && (bVar1 = D_8028AA8C != 0, !bVar1)) &&
-     (bVar1 = (*(int *)0x80025C50) == 0, !bVar1)) {
-    bVar1 = D_8026FF08 == 2;
-  }
-  return bVar1;
+  return D_8028AA80 != 0 || D_8028AA84 != 0 || D_8028AA8C != 0 || D_80025C50 == 0 ||
+         D_8026FF08 == 2;
 }
+
