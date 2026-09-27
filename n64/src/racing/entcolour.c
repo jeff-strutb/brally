@@ -1,6 +1,7 @@
 /* entcolour.c -- car artwork records and their paint colours
  */
 #include "tgr/common.h"
+#include "tgr/car.h"
 
 /* -- declarations -- */
 void func_8021D140(int param_1,unsigned int param_2,unsigned int param_3,int param_4);
@@ -16,6 +17,8 @@ extern int D_8028AE20;
 typedef struct { char raw[0xdf88]; } BrCarModelBuf;
 extern BrCarModelBuf D_803C8000[];
 extern int D_8031B238[];
+extern unsigned char D_8028B904[][3];
+void func_80220620(BrCar *car);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Repaint a car's artwork record in the car's own colour (its
@@ -189,5 +192,28 @@ int BrEntLoadModel(int *p)
     }
   }
   return p[6];
+}
+
+
+/* WHAT IT DOES: Give a car its slot's default body colour from the
+ * three-byte colour table (0x8028B904) after resetting its model, and clear
+ * the colour's fourth byte and two related fields. */
+/* @implements 0x802260A0 tgr BrCarDefaultColour */
+void BrCarDefaultColour(BrCar *car)
+{
+  unsigned char r;
+  unsigned char g;
+  unsigned char b;
+
+  func_80220620(car);
+  r = D_8028B904[car->slot][0];
+  g = D_8028B904[car->slot][1];
+  b = D_8028B904[car->slot][2];
+  car->colour[3] = 0;
+  car->x2068 = 0;
+  car->xed8 = 0;
+  car->colour[0] = r;
+  car->colour[1] = g;
+  car->colour[2] = b;
 }
 
