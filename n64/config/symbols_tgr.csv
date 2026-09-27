@@ -200,7 +200,7 @@ va,name,kind
 802588B8,BrMat3MulVec,func
 80258BDC,BrRbApplyForces,func
 80258E04,BrMat3Transpose,func
-80258F70,BrMat3Mul,func
+80258F70,BrMat3Sub,func
 8025993C,BrRbForcesClear,func
 8025BBA4,BrStub8025BBA4,func
 8025C8DC,BrObbFaceClip,func
