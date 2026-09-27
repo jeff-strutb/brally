@@ -7,8 +7,13 @@ int osContStartReadData(int param_1);
 extern int D_80272D48;
 extern int D_8028AB6C;
 extern short D_802A4BE8;
-void func_80255954(unsigned int *param_1,int *param_2,float *param_3,unsigned int param_4);
-void func_80255A18(unsigned int *param_1,int *param_2,float *param_3,unsigned int param_4);
+void BrPadStickRepeatPos(unsigned int *pressed, int *timer, float *axis, unsigned int bit);
+void BrPadStickRepeatNeg(unsigned int *pressed, int *timer, float *axis, unsigned int bit);
+extern float D_802AB414;
+extern float D_802AB418;
+extern float D_802AB41C;
+extern float D_802AB420;
+extern int D_8028AADC;
 void BrPadStartRead(void);
 int osRecvMesg(int param_1,int *param_2,int param_3);
 typedef struct OSContPad {
@@ -36,16 +41,83 @@ void BrPadStartRead(void)
   }
 }
 
+/* WHAT IT DOES: One stick direction's menu auto-repeat, for the positive
+ * side of an axis: pushing past the threshold presses the bit and starts a
+ * 500 ms delay; held, it presses again each time the timer runs out (then
+ * every 200 ms); letting go below the release threshold resets it. */
+/* @implements 0x80255954 tgr BrPadStickRepeatPos */
+void BrPadStickRepeatPos(unsigned int *pressed, int *timer, float *axis, unsigned int bit)
+{
+  int t;
+
+  t = *timer;
+  if (t != 0) {
+    if (*axis < D_802AB414) {
+      *timer = 0;
+      return;
+    }
+    if (t > 0) {
+      *timer = t - D_8028AADC;
+      if (*timer <= 0) {
+        *pressed |= bit;
+        *timer = -200;
+      }
+    } else {
+      *timer = t + D_8028AADC;
+      if (*timer >= 0) {
+        *pressed |= bit;
+        *timer = -200;
+      }
+    }
+  } else if (*axis > D_802AB418) {
+    *pressed |= bit;
+    *timer = 500;
+  }
+}
+
+
+/* WHAT IT DOES: The same auto-repeat for the negative side of an axis. */
+/* @implements 0x80255A18 tgr BrPadStickRepeatNeg */
+void BrPadStickRepeatNeg(unsigned int *pressed, int *timer, float *axis, unsigned int bit)
+{
+  int t;
+
+  t = *timer;
+  if (t != 0) {
+    if (*axis > D_802AB41C) {
+      *timer = 0;
+      return;
+    }
+    if (t > 0) {
+      *timer = t - D_8028AADC;
+      if (*timer <= 0) {
+        *pressed |= bit;
+        *timer = -200;
+      }
+    } else {
+      *timer = t + D_8028AADC;
+      if (*timer >= 0) {
+        *pressed |= bit;
+        *timer = -200;
+      }
+    }
+  } else if (*axis < D_802AB420) {
+    *pressed |= bit;
+    *timer = 500;
+  }
+}
+
+
 /* WHAT IT DOES: Turn the analogue stick into menu presses: pushing past the
  * threshold on either axis sets the matching up, down, left or right bit,
  * with a delay before it starts repeating. */
 /* @implements 0x80255ADC tgr BrPadStickToButtons */
 void BrPadStickToButtons(int param_1)
 {
-  func_80255954(param_1,param_1 + 8,param_1 + 0x1c,8);
-  func_80255A18(param_1,param_1 + 0xc,param_1 + 0x1c,2);
-  func_80255A18(param_1,param_1 + 0x10,param_1 + 0x18,4);
-  func_80255954(param_1,param_1 + 0x14,param_1 + 0x18,1);
+  BrPadStickRepeatPos(param_1,param_1 + 8,param_1 + 0x1c,8);
+  BrPadStickRepeatNeg(param_1,param_1 + 0xc,param_1 + 0x1c,2);
+  BrPadStickRepeatNeg(param_1,param_1 + 0x10,param_1 + 0x18,4);
+  BrPadStickRepeatPos(param_1,param_1 + 0x14,param_1 + 0x18,1);
 }
 
 /* WHAT IT DOES: Finish a controller read: start one if none is in flight,
