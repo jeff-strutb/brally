@@ -56,7 +56,7 @@ extern BrDlVtx DAT_105ce318[];   /* vertex array, stride 0x68 */
 typedef struct { float x, y, z, s, t, n0, n1, n2; } BrDlSrcVtx;
 
 /* The quarter-pixel snap: round to nearest through the x87. */
-#define SNAP(f_, t) do { t = (f_) * 4.0f; __asm { fld t } __asm { fistp l } __asm { fild l } __asm { fstp t } (f_) = t * 0.25f; } while (0)
+#define SNAP(f_, t) do { t = (f_) * DAT_10077408; __asm { fld t } __asm { fistp l } __asm { fild l } __asm { fstp t } (f_) = t * DAT_1007740c; } while (0)
 
 /* WHAT IT DOES: loads a batch of model vertices, moves each one from model
  * space into clip space through the combined matrix, works out which edges

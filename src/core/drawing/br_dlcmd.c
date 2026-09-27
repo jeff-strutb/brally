@@ -82,21 +82,8 @@ static int32_t br_dlcmd_fistp(double v)
  * the view it falls outside so later triangles can be thrown away or trimmed.
  * This is the plain version used when the model is not being lit; a lit
  * version takes over the same slot once lighting is switched on. */
-/* MATCHING STATUS (2026-08-22): NOT MATCHABLE FROM C ALONE.  The original
- * snaps screen coordinates with a bare `fistp [0x105CE310]; fild` pair -- no
- * fnstcw/fldcw around it, so ROUND-TO-NEAREST -- which no VC5 C construct
- * produces: float->int casts emit __ftol calls (truncating), and /QIfist
- * does not exist in VC5 (warning D4002).  The original source used inline
- * __asm (or a hand-asm module) for the snap.  Matching this function needs
- * an __asm-hybrid mechanism (SM64 GLOBAL_ASM-style) plus: /Oy- (the
- * original keeps an EBP frame), a ONE-argument signature (arg at [ebp+8] is
- * p; w1 is used directly as the source pointer), the 0x68-stride vertex
- * array as a GLOBAL at 0x105CE318, and the combined matrix as float[16] at
- * 0x105D1760.  The port body below is deliberately armored (resolver hook,
- * clamps, counters) and is NOT the matching shape. */
-/* @t4-pass 0x10021A20 1 2026-09-07 probes 150 bytes 1085 insns 364 regions 1 rows 314 census yes  (tools/crank.py) */
-/* @t4-pass 0x10021A20 2 2026-09-07 probes 144 bytes 1085 insns 364 regions 1 rows 314 census yes  (tools/crank.py) */
-/* @implements 0x10021A20 glide BrDlCmdVtx */
+/* The matching arm (byte-exact) is BrDlCmdVtx in br_dlvtx_cmd.c: the snap
+ * is inline asm there, as the original has it.  This is the port body. */
 const uint8_t *BrDlCmdVtx(BrDlCmd *pS, const uint8_t *p)
 {
     uint32_t w0 = br_dlcmd_w(p);
