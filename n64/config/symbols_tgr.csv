@@ -11,6 +11,8 @@ va,name,kind
 80208900,BrTrackSelectable,func
 802089D0,BrSeasonValidate,func
 80208A58,BrSeasonDrawHelp,func
+8020A524,BrMenuIconDraw,func
+8020A9D0,BrMenuBackdropDraw,func
 8020AAE0,BrFrontPromptSelect,func
 8020AC18,BrFrontPromptContinue,func
 8020AD50,BrFrontSetMenuFlag,func
@@ -227,7 +229,9 @@ va,name,kind
 80260B20,memcpy,func
 80260B4C,strlen,func
 80260B74,strchr,func
+80260BC0,guRotateF,func
 80260DD4,sprintf,func
+80260E30,guTranslateF,func
 80260ED0,guMtxF2L,func
 80260FD0,guMtxIdentF,func
 80261058,guMtxIdent,func
