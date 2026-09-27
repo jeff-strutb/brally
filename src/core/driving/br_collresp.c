@@ -873,19 +873,17 @@ int BrCollRespSegBox(const BrVec3 *pA, const BrVec3 *pB)
  * two so the winding survives), and the three edges are crossing-counted
  * against P; the signed count comes back as-is, non-zero meaning inside.
  *
- * PARKED 2026-09-05 at 482/492 B, 2 regions (+0xe5, +0x125): the two
- * compares against the B row are `fld B[u]; fld p[u]; fcompp; test ah,1`
- * in the original and `fld B[u]; fcomp p[u]; test ah,0x41` here, while the
- * two against the A row (the strength-reduced pointer) match.  Everything
- * else -- prologue, |n| loop, dom ternaries, u/v, `acc = 0` placement, the
- * if/else arm order, the cross-product chain, the `<=` arm -- is exact.
- * DEAD (all measured on this TU): `p < B` / `B > p` / `? 1 : 0` / `!(>=)`
- * / `(int)` on either or both B compares; su as two statements; per-side
- * named ints; su/sv at function scope; a named `s` for the fild; B's
- * address computed inside the first compare (`(B = ...)[u]`); B as an
- * int row index; `continue` vs if/else structure in four combinations.
- * Which occurrence of the twice-read p[u] gets its own `fld` moves with
- * the arm structure, so this is a scheduling residue, not a spelling. */
+ * NOT MATCHING 2026-09-27: 486/492 B, register-blind 0+2.  The four
+ * crossing tests are `fld X; fld p; fcompp; test ah,1` in the original: both
+ * operands loaded, which VC5 does for (double) operands or named float
+ * locals, never for a bare `B[u] > p[u]` (that folds one into `fcomp m32`).
+ * The (double) casts took this from 7+12 to 0+2.  Left: the fourth test
+ * loads p[v] before A[v] and fxch's them, and `v` is re-read in each arm
+ * where VC5 here hoists one read above the branch.  Inert on top of the
+ * casts: (double)/(float) mixes and !(>=) forms of each test (1024);
+ * inlined Lt/Gt helpers with float or double params (1024); the four cross
+ * locals in all 24 orders or inline; if/else, else-if and continue arm
+ * structures; the whole file vs a standalone TU. */
 /* @t4-pass 0x10066610 1 2026-09-07 probes 150 bytes 485 insns 174 regions 5 rows 14 census yes  (tools/crank.py) */
 /* @t4-pass 0x10066610 2 2026-09-07 probes 131 bytes 485 insns 174 regions 5 rows 14 census yes  (tools/crank.py) */
 /* @implements 0x10066610 glide BrCollRespPointInTri */
@@ -938,13 +936,11 @@ int BrCollRespPointInTri(const float aV[9], const BrVec3 *pN,
         int          su, sv;
 
         /* Each of these four is `fcompp` + `test ah,1`, i.e. 1 on
-         * strictly-less-or-unordered.  Spelled `B > p` so that both
-         * operands are loaded and p lands in st(0); the fourth one is
-         * `p < A` -- the original's `fxch st(1)` at 0x10066754 says its
-         * operands were loaded the other way round. */
-        su = (B[u] > p[u]) - (A[u] > p[u]);
+         * strictly-less-or-unordered, with both operands loaded -- the
+         * (double) casts are what make VC5 load both. */
+        su = ((double)B[u] > (double)p[u]) - ((double)A[u] > (double)p[u]);
         if (su != 0) {
-            sv = (B[v] > p[v]) - (p[v] < A[v]);
+            sv = ((double)B[v] > (double)p[v]) - ((double)A[v] > (double)p[v]);
             if (sv != 0) {
                 float eu = B[u] - A[u];
                 float ev = B[v] - A[v];
