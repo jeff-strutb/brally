@@ -22,10 +22,12 @@ extern float DAT_10077448;   /* 15.0f  -- 4-bit ARGB4444 */
  * truncate.  u and v are named locals: VC5 keeps them on the x87 stack and
  * pops each dead corner value right after its last use, as the original
  * does (as one expression the row lerps are temporaries and the dead
- * corner lingers to the end of the statement). */
+ * corner lingers to the end of the statement).  The outer parentheses on
+ * each row lerp are load-bearing: without them the same code is 98 B
+ * further from the original. */
 #define BR_TEX_LERP(dst, x00, x10, x01, x11, hi)                              \
-    u = ((x10) - (x00)) * s + (x00);                                          \
-    v = ((x11) - (x01)) * s + (x01);                                          \
+    u = (((x10) - (x00)) * s + (x00));                                        \
+    v = (((x11) - (x01)) * s + (x01));                                        \
     f = (float)floor((double)((v - u) * t + u - DAT_10077434));              \
     if (f < DAT_10077438)                                                     \
         f = DAT_10077438;                                                     \
