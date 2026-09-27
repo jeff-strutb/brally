@@ -33,6 +33,15 @@
  * or thiscall method); only /Os or dropping /Og stops it, and both change the
  * rest of the body.  The C twin in br_optcycle.c cannot spell the EH frame at
  * all (192/340), so this file is the lane for the row.
+ * 2026-09-27 (~120 compiles): a success FLAG tested once before the open
+ * block gets the single shared epilogue and 340/340 B (bool) or 334 (int),
+ * but VC5 keeps the flag (`test eax,eax / je`) where the original branches
+ * straight from each call's `test / jne open`; `||`/`?:` conditions and an
+ * inlined bool predicate materialise it too (`neg/sbb`, 339-356).  Forward
+ * `goto done` with the open block inline: 383, epilogue duplicated at each
+ * unconditional jump.  Inert on the goto forms: /Ob0 /Ob2 /Ox /Oa /Ow /Os
+ * /O1 /Gy /Gf /GF /G3-5 /Gr /Zi and the /O2 components one by one.  /Gi
+ * through the faithful serial idb chain (every O2-Gi row, fresh idb): 400.
  */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
