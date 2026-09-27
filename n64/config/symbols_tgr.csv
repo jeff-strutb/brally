@@ -268,3 +268,4 @@ va,name,kind
 8022FEF0,BrCarPlaceWheels,func
 802579F4,BrSfxFreeVoice,func
 80200000,BrEntry,func
+80257B04,BrSfxVoiceStart,func

@@ -94,6 +94,23 @@ short BrSfxFreeVoice(void)
 }
 
 
+/* WHAT IT DOES: Start a sample on a sound-effect voice: record the
+ * sample's start, length and loop length, and set the voice playing from the
+ * start at rate 1.0 (32.32 fixed point), volume 0, both pans 0x20. */
+/* @implements 0x80257B04 tgr BrSfxVoiceStart */
+void BrSfxVoiceStart(short v, unsigned int start, unsigned int len, unsigned int loop)
+{
+  D_80378F50[v].x0 = start;
+  D_80378F50[v].x4 = len;
+  D_80378F50[v].loop = loop;
+  D_802A4920[v].vol = 0;
+  D_802A4920[v].pos = start;
+  D_802A4920[v].x4 = 0;
+  D_802A4920[v].baseVol = 0x200020;
+  D_802A4920[v].rate = 0x100000000LL;
+}
+
+
 /* WHAT IT DOES: Keep the six sound-effect voices' samples looping, a
  * stereo pair at a time: a playing voice that has run past its sample's end
  * jumps back by the loop length, or stops if the sample does not loop. */
