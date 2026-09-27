@@ -91,7 +91,18 @@ void BrVec3NormaliseGuard(BrVec3 *pV)
  * groupings, both sign placements) loads m10 first (96-compile joint
  * search).  The two CSE'd minors (m11*m22, m12*m21) are spilled with fstp
  * and multiplied from memory in the original, kept by fst in ours; the
- * original's |ratio| test is `fld st; fcomp`, ours `fcom`. */
+ * original's |ratio| test is `fld st; fcomp`, ours `fcom`.
+ * TU STATE (2026-09-27): the term-order coupling is TU state.  Compiled
+ * after its seven original tu_039 predecessors in link order (0x100343C0
+ * BrVec3Div, 0x100343F0 BrVec3DivBy, 0x10034420 BrVec3Direction,
+ * 0x100344D0 br_dl_normalise, 0x100346D0 BrVec3Midpoint, 0x10034870
+ * BrVec3TransformDivW, 0x100349C0 BrVec3Project -- today in br_vec.c,
+ * br_dl.c, generated/0x10034870.c, br_mat.c), T3 as m10*(m02*m21) puts ALL
+ * SIX terms in the original's operand order (7+11); dummy int pads reach
+ * 7+11 at >= 8.  What is left then is the two minors' store-keep (`fst`,
+ * ours; `fstp` + memory fmul, original) and the ABS dup.  Co-filing the
+ * real TU is the next lever; it moves seven T4 functions, so it is a
+ * refile to do with both files swept, not a probe. */
 /* @t4-pass 0x10034B70 1 2026-09-27 probes 190 bytes 684 insns 240 regions 7 rows 48 census yes  (hand: per-term and joint factor-order searches, operand-sequence scorer; census = the leaf-ranking coupling experiment) */
 /* @implements 0x1003B4F0 d3d BrMtxInvert */
 int BrMtxInvert(BrMat4 *pOut, const BrMat4 *pM)
