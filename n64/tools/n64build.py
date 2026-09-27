@@ -200,6 +200,29 @@ def carve(obj):
 
 
 # -------------------------------------------------------------------- grading
+_REFS = None
+
+
+def rom_refs():
+    """ROM address -> {function VAs that reach it by a %hi/%lo pair}."""
+    global _REFS
+    if _REFS is None:
+        _REFS = {}
+        rom = Rom()
+        for va, size in function_map().items():
+            hi = {}
+            for a in range(va, va + size, 4):
+                w = rom.word(a)
+                op, rs, rt = w >> 26, (w >> 21) & 31, (w >> 16) & 31
+                if op == 0x0F:
+                    hi[rt] = (w & 0xffff) << 16
+                    continue
+                if rs in hi and op in (0x09, 0x20, 0x21, 0x23, 0x24, 0x25, 0x28, 0x29, 0x2B,
+                                       0x31, 0x35, 0x39, 0x3D):
+                    _REFS.setdefault((hi[rs] + sext16(w & 0xffff)) & 0xffffffff, set()).add(va)
+    return _REFS
+
+
 def sext16(x):
     return x - 0x10000 if x & 0x8000 else x
 
@@ -255,9 +278,23 @@ def grade(obj, rom, name, start, end, va, rom_size, syms, fnvas):
         A literal reached by a load or store is compared at that access's
         width, so the section's own alignment padding after the last literal
         is not mistaken for data."""
-        si, blob = obj.sec(secname)
+        si, blob = obj.sec(secname) if secname in obj.byname else (None, b'')
         if secname == '.bss' or secname.startswith('.sbss'):
-            return 'file-static .bss at %s+0x%X: declare it extern by its ROM name' % (secname, addend)
+            # a static with no initialiser: nothing to compare, so prove it
+            # is private to this file instead -- it lands in the ROM's .bss,
+            # every .bss static of this object lands at one base, and no
+            # function outside this file touches that address
+            if not BSS_S <= rom_va < BSS_E:
+                return 'file-static %s+0x%X -> %08X is not in the ROM .bss' % (secname, addend, rom_va)
+            base = obj.__dict__.setdefault('bss_base', {}).setdefault(secname, rom_va - addend)
+            if rom_va - addend != base:
+                return 'file-static %s+0x%X -> %08X: this object\'s other .bss statics sit at base %08X' % (
+                    secname, addend, rom_va, base)
+            outside = sorted(rom_refs().get(rom_va, set()) - set(fnvas.values()))
+            if outside:
+                return 'file-static %s+0x%X -> %08X is also used by %s, outside this file' % (
+                    secname, addend, rom_va, ', '.join('%08X' % v for v in outside[:3]))
+            return None
         if not rom.in_image(rom_va):
             return '%s+0x%X -> %08X is outside the ROM image' % (secname, addend, rom_va)
         # extent: up to the next referenced offset in that section, else end
