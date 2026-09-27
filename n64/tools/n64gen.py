@@ -213,6 +213,11 @@ def retype(s):
     # the divide checks IDO emits for / and % (break 7, break 6) are not source
     s = re.sub(r'if \(\w+ == 0\) \{\s*trap\(0x1c00\);\s*\}\s*', '', s)
     s = re.sub(r'if \(\(\w+ == -1\) && \([^;{}]+? == -0x80000000\)\) \{\s*trap\(0x1800\);\s*\}\s*', '', s)
+    # Ghidra's `code *` locals and `(**(void **)(p + K))(...)` calls are
+    # function pointers
+    s = re.sub(r'\bcode \*(\w+);', r'int (*\1)();', s)
+    s = re.sub(r'\(code \*\)', '(int (*)())', s)
+    s = re.sub(r'\(\*\*\((?:void|code) \*\*\)', '(**(int (**)())', s)
     # a parameter the draft calls through is a function pointer
     for p in set(re.findall(r'\(\*(param_\d+)\)\(', s)):
         s = re.sub(r'\b(?:void|char|int|unsigned int) \*%s\b' % p, 'int (*%s)()' % p, s)
@@ -363,10 +368,13 @@ def candidate(va, dtypes, name=None, noproto=(), ptrs=(), opts=()):
     decls = ['#include "tgr/common.h"', '#include "tgr/gbi.h"', '']
     callees = sorted(set(int(x, 16) for x in re.findall(r'\bfunc_([0-9A-F]{8})\b', body)) - {va})
     for c in callees:
+        pr = prototype(c)
+        if pr.startswith('void ') and re.search(r'(?:=|return)\s*(?:\([^()]*\)\s*)?func_%08X\(' % c, body):
+            pr = 'int ' + pr[5:]                 # the caller uses its value
         if c in noproto:
-            decls.append(prototype(c).split('(')[0] + '();')
+            decls.append(pr.split('(')[0] + '();')
         else:
-            decls.append(prototype(c))
+            decls.append(pr)
     # Ghidra leaves a global it only ever takes the address of as a one-byte
     # `undefined`, so `&DAT_x + n*K` in a draft is BYTE arithmetic; typed by
     # its widest load it would scale by 4.
