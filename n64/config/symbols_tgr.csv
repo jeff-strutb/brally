@@ -281,3 +281,6 @@ va,name,kind
 80245604,BrImageDrawAt,func
 80245798,BrImageDrawTinted,func
 8024594C,BrImageDrawRect,func
+80246A80,BrFillPoint,func
+80246BCC,BrFillFrame,func
+80246E10,BrFillRect,func

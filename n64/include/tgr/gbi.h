@@ -75,6 +75,11 @@ typedef union {
 /* render modes used so far, as libultra composes them */
 #define G_RM_CLD_SURF       0x00404340
 #define G_RM_CLD_SURF2      0x00104340
+#define G_RM_OPA_SURF       0x0c084000
+#define G_RM_OPA_SURF2      0x03024000
+
+#define GPACK_RGBA5551(r, g, b, a) ((((r) << 8) & 0xf800) | (((g) << 3) & 0x7c0) | \
+                                    (((b) >> 2) & 0x3e) | ((a) & 0x1))
 
 #define _SHIFTL(v, s, w) \
     ((unsigned int)(((unsigned int)(v) & ((0x01 << (w)) - 1)) << (s)))
