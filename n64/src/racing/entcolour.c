@@ -24,7 +24,7 @@ void func_802203F0(int param_1,int param_2);
 void func_8021D070(unsigned int *param_1,unsigned int param_2,unsigned int param_3,int param_4);
 void func_8021D098(unsigned int *param_1,unsigned int param_2,unsigned int param_3,int param_4);
 void func_80220398();
-unsigned int func_8021CD30();
+unsigned int BrRomUnpack();
 void func_8021D32C(int param_1);
 typedef struct { char raw[0xdf88]; } BrCarModelBuf;
 extern BrCarModelBuf D_803C8000[];
@@ -63,7 +63,7 @@ void BrCarModelStream(BrStream *s, int slot, int car, int bufIdx)
 {
   D_8028AE0C[car].size = BrRomReadSize(D_8028AE0C[car].rom);
   BrStreamInit(s, D_802F7F00[bufIdx]);
-  func_8021CD30(&D_803C8000[slot], D_8028AE0C[car].rom, s);
+  BrRomUnpack(&D_803C8000[slot], D_8028AE0C[car].rom, s);
   s->slot = slot;
   s->car = car;
 }
@@ -173,7 +173,7 @@ void BrCarModelLoad(void *buf, int car)
   } else {
     osSyncPrintf("Loading car %d (%d / %d)\n", car, D_8028AE0C[car].size, sizeof(BrCarModelBuf));
   }
-  func_8021CD30(buf, D_8028AE0C[car].rom, 0);
+  BrRomUnpack(buf, D_8028AE0C[car].rom, 0);
 }
 
 /* WHAT IT DOES: Put car n's model into a slot's model buffer -- loaded
@@ -206,7 +206,7 @@ void BrEntSetRecord(int param_1,int param_2)
 int BrEntLoadModel(int *p)
 {
   if (p[6] != 0) {
-    func_8021CD30((int)&D_803C8000[p[8]], D_8028AE0C[p[9]].rom);
+    BrRomUnpack((int)&D_803C8000[p[8]], D_8028AE0C[p[9]].rom);
     if (p[6] == 0) {
       D_8031B238[p[8]] = p[9];
       func_8021D32C((int)&D_803C8000[p[8]]);

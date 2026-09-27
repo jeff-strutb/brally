@@ -314,3 +314,5 @@ va,name,kind
 802668F0,osSetThreadPri,func
 80000300,osTvType,data
 8021E2C8,BrIdleThread,func
+80242890,BrInflate,func
+8021CD30,BrRomUnpack,func

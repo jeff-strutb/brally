@@ -9,7 +9,7 @@ void BrModeSet(void (*fn)(void));
 void BrFrontMenuEnter(MenuItem **items, int *count);
 int BrMenu(char *title, int n, MenuItem **items, int *sel, int, int, int, int, int, int, int);
 void BrMusicStart(int mod, int dest);
-unsigned int func_8021CD30(unsigned int dst, int rom, unsigned int *size);
+unsigned int BrRomUnpack(unsigned int dst, int rom, unsigned int *size);
 void func_802578F4(void);
 void BrSeasonPickRace(void);
 int func_80209434();
@@ -85,7 +85,7 @@ void BrMainMenu(void)
     BrFrontMenuEnter(D_80272360, &D_80316380);
     if (D_802A49C0 < 8) {
       func_802578F4();
-      func_8021CD30(0x80025C00, (int)D_000EBC00, 0);
+      BrRomUnpack(0x80025C00, (int)D_000EBC00, 0);
       BrMusicStart(0x80025C00, (int)D_802AC400);
     }
     D_80271FB0 = &D_802722C0;
