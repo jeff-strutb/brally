@@ -10,7 +10,7 @@ typedef struct BrPerfEntry {
 } BrPerfEntry;
 unsigned int osGetCount(void);
 extern int D_8028BDA0;
-extern unsigned long long D_8028BDA8;
+unsigned long long D_8028BDA8 = 0;
 extern int D_803519B0[2][3];
 extern BrPerfEntry D_8034E9B0[2][3][256];
 /* -- end declarations -- */
