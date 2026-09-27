@@ -104,31 +104,23 @@ void FUN_1000c9e0(BrVisView *pView, const void *pPt, int n, short *pMin,
     extern int   DAT_106e8204;
     extern void  BrMat4TransformPoint4(float *pOut, const void *pV,
                                        const float *pM);
-    /* Declaration order is a VC5 x87-scheduling input here: this order
-     * (found by a 2000-order random search + hill-climb) takes the residue
-     * from 96 to 41 bytes, size-exact.  Local NAMES are inert at /O2 (2000
-     * name sets).  RESIDUE: the sign-flipped v[0] stays on the x87 stack
-     * where the original stores and reloads it, which shifts the stack
-     * indices of the rad/x0 chain.
+    /* Declaration shape and the parenthesised rad product keep the original's
+     * store of the mirrored v[0] and both reloads of it (the 2026-09-26
+     * 41-byte declaration order forwarded it on the x87 stack instead).
+     * RESIDUE (T2, 84 B raw, 312/308, REGNORM 2+3): x0 gets a dead `fst`
+     * home in the pPt slot, and sy + rad copies sy where the original copies
+     * rad (fadd st(4) vs st(3)).  Inert on this base: every float
+     * declaration order (2371 of 5040), statement orders of all nine body
+     * statements, parens on every operand/statement, mirror spellings,
+     * `register`, double locals, r as a CSE, block scope, TU headers/pads,
+     * /TP.
      * @t4-pass 0x1000C9E0 1 2026-09-26 probes 2400 bytes 308 insns 101 regions 1 rows 14 census yes  (declaration-order random search + name search)
      * @t4-pass 0x1000C9E0 2 2026-09-26 probes 289 bytes 308 insns 101 regions 1 rows 14 census no  (hill-climb from the best order: no neighbour improves) */
-    float sy;
-    float rad;
     float v[4];
-    int cx;
-    int cy;
-    int vx;
-    int vy;
-    int vw;
-    int vh;
-    float fhh;
-    float *pv;
-    float sx;
-    float fhw;
-    float x0;
-    float r;
+    int cx, cy, vx, vy, vw, vh;
+    float fhw, rad, fhh, r, sy, x0, sx;
+    float *pv = v;
 
-    pv = v;
     vx = pView[g_brIView].x;
     vy = pView[g_brIView].y;
     vw = pView[g_brIView].w;
@@ -145,7 +137,7 @@ void FUN_1000c9e0(BrVisView *pView, const void *pPt, int n, short *pMin,
             pv[0] = -sx;
         else
             pv[0] = sx;
-        rad = (float)n * r;
+        rad = ((float)n * r);
         sy = r * pv[1];
         x0 = pv[0] - rad;
         pv[0] = pv[0] + rad;
