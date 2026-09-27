@@ -10,7 +10,6 @@ extern int D_8026FF10;
 float func_80224404();
 extern int D_8028B304;
 float func_8022576C(float param_1,float param_2);
-extern float D_802A9EF4;
 void func_8022F5DC(int param_1,int param_2,int param_3);
 int func_80260DD4();
 extern int D_8023876C;
@@ -171,7 +170,7 @@ void BrHudArrowDraw(int param_1,float *param_2,short param_3)
   iVar11 = 0x3fff;
   iVar12 = -0x3fff;
   iVar14 = 0;
-  iVar19 = (int)((fVar18 * 180.0f) / D_802A9EF4);
+  iVar19 = (int)((fVar18 * 180.0f) / 3.1415927f);
   if ((iVar19 < 0x14) || (0x153 < iVar19)) {
     iVar19 = 0;
   }
