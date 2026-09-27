@@ -102,7 +102,16 @@ void BrVec3NormaliseGuard(BrVec3 *pV)
  * 7+11 at >= 8.  What is left then is the two minors' store-keep (`fst`,
  * ours; `fstp` + memory fmul, original) and the ABS dup.  Co-filing the
  * real TU is the next lever; it moves seven T4 functions, so it is a
- * refile to do with both files swept, not a probe. */
+ * refile to do with both files swept, not a probe.
+ * In that real-TU context the VERBATIM Graphics Gems spellings (flat
+ * `in00*in11*in22`, ... `-in00*in12*in21`, which VC5 canonicalises) also
+ * give all six terms in the original's order -- the source is Gems as
+ * written; only TU state differed.  Best real-TU variant 7+11: what is left
+ * is two x87 keep-peepholes the original does not take (the minors stored
+ * `fst` and reused from the register, where the original `fstp`s and
+ * multiplies from memory; |ratio| compared by `fcom`, where the original
+ * dups with `fld st` and `fcomp`).  Inert on those: named/volatile minors,
+ * ABS as macro / if / ternary / via temp, inline in the condition (worse). */
 /* @t4-pass 0x10034B70 1 2026-09-27 probes 190 bytes 684 insns 240 regions 7 rows 48 census yes  (hand: per-term and joint factor-order searches, operand-sequence scorer; census = the leaf-ranking coupling experiment) */
 /* @implements 0x1003B4F0 d3d BrMtxInvert */
 int BrMtxInvert(BrMat4 *pOut, const BrMat4 *pM)
