@@ -4,7 +4,7 @@
  * when geometry mode has neither ZBUFFER nor LIGHTING.  The dispatch table
  * patches described in br_dl.c install it via BrDlVtxRoutine.
  *
- * IT IS THE noZ HALF OF A PAIR.  0x10021A20 (BrDlVtxPlain) is the same body
+ * IT IS THE noZ HALF OF A PAIR.  0x10021A20 (BrDlCmdVtx) is the same body
  * with the depth buffer ON; the two differ in exactly two things:
  *   - the snap rounds through a stack `int` here and through the global
  *     0x105CE310 there, and
@@ -20,22 +20,16 @@
  * Source pointer (w1) is used directly -- no resolver hook, no bounds check.
  * The clip threshold at 0x10077410 is 0.0f, matching BrDlsClipCodes's test.
  *
- * T2 RESIDUE (592 vs 584 B, 135 divergent lines):
- *   1. x87 product evaluation order -- original evaluates z,y,x per matrix row;
- *      VC5 reorders struct-member accesses to sequential offset (x,y,z).  This
- *      is the TU-state mechanism (see x87-wall-mechanism-2026-09-13.md); the
- *      lever is co-filing with the original-TU predecessor definitions.
- *   2. Register allocation -- original uses a two-pointer scheme (edi=pV base,
- *      ecx=&pV->cw at offset 0x58) giving small signed offsets; our recomp uses
- *      one pointer.  Cascades into: register roles (ebx vs edi counter),
- *      outcode test (test esi,esi vs cmp esi,ebx), colour copies (fld/fstp vs
- *      integer mov), local slot assignment (invW/l swapped), and projection
- *      operand order.
- *   3. byte-slot widening: mov ecx,0 vs xor ecx,ecx (3 B).
- *
- * Walls #1 and #2 are both compiler-decision classes with no known source lever.
- * Co-filing (for #1) and TU-membership audit (for #2) are the next steps.
+ * The matrix rows' term order (z,y,x here, y,z,x in the twin) is TU state,
+ * not source: every source order compiles the same, and the TU's symbol
+ * table size flips it.  The residue note sits above the function.
  */
+#ifdef BR_MATCHING_BUILD
+/* TU state only (symbol-table size): with the DirectSound declarations in
+ * front, VC5 gives the matrix products and the viewport scale the operand
+ * roles the original has.  Nothing here uses them. */
+#include <dsound.h>
+#endif
 #include <stdint.h>
 #include "br_dl.h"
 
@@ -61,14 +55,8 @@ extern BrDlVtx DAT_105ce318[];   /* vertex array, stride 0x68 */
 
 typedef struct { float x, y, z, s, t, n0, n1, n2; } BrDlSrcVtx;
 
-#define BR_VTX_SNAP(fld_, dst_, pre_, back_)                            \
-    do {                                                                \
-        (pre_) = (fld_) * 4.0f;                                         \
-        __asm { fld pre_ }                                              \
-        __asm { fistp dst_ }                                            \
-        (back_) = (float)(dst_);                                        \
-        (fld_) = (back_) * 0.25f;                                       \
-    } while (0)
+/* The quarter-pixel snap: round to nearest through the x87. */
+#define SNAP(f_) do { t = (f_) * 4.0f; __asm { fld t } __asm { fistp l } __asm { fild l } __asm { fstp t } (f_) = t * 0.25f; } while (0)
 
 /* WHAT IT DOES: loads a batch of model vertices, moves each one from model
  * space into clip space through the combined matrix, works out which edges
@@ -77,61 +65,74 @@ typedef struct { float x, y, z, s, t, n0, n1, n2; } BrDlSrcVtx;
  * source normals are copied straight into the colour fields because there is
  * no lighting, and 1/w is forced to a constant so the card skips perspective-
  * correct texturing. */
+/* T2 (2026-09-27 re-transcription from the asm, raw 423 -> 33 B, size exact,
+ * /O2 /Op like its siblings).  Source facts that took it there:
+ * - The snap is four asm instructions (fld, fistp, fild, fstp) on one float
+ *   scratch `t` and one int `l`; C then scales t by 0.25.
+ * - The colours are copied through a float local, so they go fld/fstp.
+ * - The vertex fields are addressed as pFirst[i] (VC5 strength-reduces them
+ *   to a pointer biased to &cw, ecx) while x goes through a separate pointer
+ *   pV that is stepped each pass (edi); the original has both registers.
+ * RESIDUE (33 B): (1) the float scratch and the int scratch swap stack
+ * slots (orig t at -8, l at -4); (2) the viewport X product loads t first
+ * where the original loads the scale; (3) the 1/65535 store is scheduled
+ * after the y store.  Inert: declaration order, names, types, block scope,
+ * a separate invW, statement order of l = 0, product spellings. */
 /* @implements 0x10023110 glide BrDlVtxNoZ */
 const uint32_t *BrDlVtxNoZ(const uint32_t *p)
 {
-    float   invW;
-    int     l;
-    uint32_t w0 = p[0];
-    const BrDlSrcVtx *pSrc = (const BrDlSrcVtx *)p[1];
-    int v0 = (w0 >> 16) & 0xFF;
-    int n  = (w0 >> 10) & 0x3F;
-    BrDlVtx *pV = &DAT_105ce318[v0];
+    uint32_t w0;
+    float t;
+    int l;
+    const BrDlSrcVtx *pSrc;
+    BrDlVtx *pV;
+    int n;
+    int oc;
+    int i;
+    int v0;
+    BrDlVtx *pFirst;
+    float c;
 
-    if (n > 0) {
-        int i;
-
-        for (i = n; i != 0; i--) {
-            int oc = 0;
-
-            pV->cx = DAT_105d1780 * pSrc->z + DAT_105d1770 * pSrc->y + pSrc->x * DAT_105d1760 + DAT_105d1790;
-            pV->cy = DAT_105d1784 * pSrc->z + DAT_105d1774 * pSrc->y + pSrc->x * DAT_105d1764 + DAT_105d1794;
-            pV->cz = DAT_105d1788 * pSrc->z + DAT_105d1778 * pSrc->y + pSrc->x * DAT_105d1768 + DAT_105d1798;
-            pV->cw = DAT_105d178c * pSrc->z + DAT_105d177c * pSrc->y + pSrc->x * DAT_105d176c + DAT_105d179c;
-
-            *(uint32_t *)&pV->s  = *(const uint32_t *)&pSrc->s;
-            *(uint32_t *)&pV->t  = *(const uint32_t *)&pSrc->t;
-            *(uint32_t *)&pV->n0 = *(const uint32_t *)&pSrc->n0;
-            *(uint32_t *)&pV->n1 = *(const uint32_t *)&pSrc->n1;
-            *(uint32_t *)&pV->n2 = *(const uint32_t *)&pSrc->n2;
-
-            if (!(pV->cw >= DAT_10077410))               oc  = 0x01;
-            if (!(pV->cz + pV->cw >= DAT_10077410))      oc |= 0x02;
-            if (!(pV->cw - pV->cz >= DAT_10077410))      oc |= 0x04;
-            if (!(pV->cx + pV->cw >= DAT_10077410))      oc |= 0x08;
-            if (!(pV->cw - pV->cx >= DAT_10077410))      oc |= 0x10;
-            if (!(pV->cy + pV->cw >= DAT_10077410))      oc |= 0x20;
-            if (!(pV->cw - pV->cy >= DAT_10077410))      oc |= 0x40;
-
-            pV->outcode = oc;
-
+    w0 = p[0];
+    pSrc = (const BrDlSrcVtx *)p[1];
+    v0 = (w0 >> 16) & 0xFF;
+    pV = &DAT_105ce318[v0];
+    pFirst = pV;
+    n = (w0 >> 10) & 0x3F;
+    for (i = 0; i < n; i++) {
+            oc = 0;
+            pFirst[i].cx = DAT_105d1780 * pSrc->z + DAT_105d1770 * pSrc->y + pSrc->x * DAT_105d1760 + DAT_105d1790;
+            pFirst[i].cy = DAT_105d1784 * pSrc->z + DAT_105d1774 * pSrc->y + pSrc->x * DAT_105d1764 + DAT_105d1794;
+            pFirst[i].cz = DAT_105d1788 * pSrc->z + DAT_105d1778 * pSrc->y + pSrc->x * DAT_105d1768 + DAT_105d1798;
+            pFirst[i].cw = DAT_105d178c * pSrc->z + DAT_105d177c * pSrc->y + pSrc->x * DAT_105d176c + DAT_105d179c;
+            *(uint32_t *)&pFirst[i].s  = *(const uint32_t *)&pSrc->s;
+            *(uint32_t *)&pFirst[i].t  = *(const uint32_t *)&pSrc->t;
+            *(uint32_t *)&pFirst[i].n0 = *(const uint32_t *)&pSrc->n0;
+            *(uint32_t *)&pFirst[i].n1 = *(const uint32_t *)&pSrc->n1;
+            *(uint32_t *)&pFirst[i].n2 = *(const uint32_t *)&pSrc->n2;
+            if (pFirst[i].cw < DAT_10077410)               oc  = 0x01;
+            if (pFirst[i].cz + pFirst[i].cw < DAT_10077410)      oc |= 0x02;
+            if (pFirst[i].cw - pFirst[i].cz < DAT_10077410)      oc |= 0x04;
+            if (pFirst[i].cx + pFirst[i].cw < DAT_10077410)      oc |= 0x08;
+            if (pFirst[i].cw - pFirst[i].cx < DAT_10077410)      oc |= 0x10;
+            if (pFirst[i].cy + pFirst[i].cw < DAT_10077410)      oc |= 0x20;
+            if (pFirst[i].cw - pFirst[i].cy < DAT_10077410)      oc |= 0x40;
+            pFirst[i].outcode = oc;
             if (oc == 0) {
-                invW = DAT_10077404 / pV->cw;
+                t = DAT_10077404 / pFirst[i].cw;
                 l = 0;
-                *(uint32_t *)&pV->oow = *(uint32_t *)&invW;
-                pV->x = DAT_105ccd48 * invW * pV->cx + DAT_105cd9f8;
-                pV->y = DAT_105ccfdc * pV->oow * pV->cy + DAT_105cd9fc;
-                pV->oow = 1.0f / 65535.0f;
-                pV->r = pV->n0;
-                pV->g = pV->n1;
-                pV->b = pV->n2;
-                BR_VTX_SNAP(pV->x, l, invW, invW);
-                BR_VTX_SNAP(pV->y, l, invW, invW);
+                *(uint32_t *)&pFirst[i].oow = *(uint32_t *)&t;
+                pV->x = DAT_105ccd48 * t * pFirst[i].cx + DAT_105cd9f8;
+                pFirst[i].y = DAT_105ccfdc * pFirst[i].oow * pFirst[i].cy + DAT_105cd9fc;
+                pFirst[i].oow = 1.0f / 65535.0f;
+                c = pFirst[i].n0; pFirst[i].r = c;
+                c = pFirst[i].n1; pFirst[i].g = c;
+                c = pFirst[i].n2; pFirst[i].b = c;
+                SNAP(pV->x);
+                SNAP(pFirst[i].y);
             }
-
             pSrc++;
             pV++;
-        }
     }
     return p + 2;
 }
