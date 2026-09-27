@@ -163,6 +163,8 @@ va,name,kind
 80254F2C,BrStub80254F2C,func
 80255910,BrPadConsume,func
 80255934,BrPadEdges,func
+80255954,BrPadStickRepeatPos,func
+80255A18,BrPadStickRepeatNeg,func
 80255ADC,BrPadStickToButtons,func
 80255B54,BrPadInit,func
 80255BA0,BrNodeMarkPass,func
