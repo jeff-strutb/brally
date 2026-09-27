@@ -220,15 +220,17 @@ static int BrNavPtInStyle(const BrTextStyle *pRc, int32_t x, int32_t y)
  * the `or al,K` / `and al,K` forms itself; the old `*(unsigned char *)&a`
  * puns homed `a` and cost six byte spills).  The early `flags & 8` return
  * shares the rect-miss path's `return 0` tail, as in the original.
- * RESIDUE (2+9 register-blind, 568/587 B): the original keeps a separate
- * `mov eax,1` epilogue after the fourth activity test (the first three jump
- * to the final return-1 tail) and re-tests fCurrent after the rect miss
- * instead of threading the jump.  DEAD 2026-09-27: the inside/current test
- * nested or combined, the activity chain as one || or four ifs, nested
- * under if (fCurrent) or &&-combined, the flag block skipped to a common
- * return 1 (negated condition, goto) -- all compile identically; so do a
- * real C++ member function (this->) and extern "C" /TP, and flag sets
- * /Oy- /Ob0 /Ob2 /Gy /Og-alone. */
+ * Block layout (2026-09-27): the body is nested under `if (!(flags & 8))`
+ * so that exit and the rect-miss path (placed last, `flags &= ~0x22`) share
+ * the final `return 0`; the in-rect-or-current arm returns 1 explicitly for
+ * the activity test (the original's `mov eax,1` before the pops) and by a
+ * shared, tail-duplicated `return 1` after the flag block.  The same
+ * one-shared-return idiom is the predecessor's (0x10040E60).
+ * RESIDUE (587/587 B, register-blind 0+0, 4 bytes): the y read of the
+ * control-rect test lands in edi (the dying cursor pointer) where the
+ * original uses eax.  DEAD: declaration orders (6), a statement-level
+ * fCurrent init, the rect test negated or with *pCur, a function ahead in
+ * the TU; the operand-flipped rect test is worse (4+4). */
 typedef struct BrHitRect { int32_t l, t, r, b; } BrHitRect;
 typedef struct BrObj2C { int32_t _[11]; int32_t f2C; int32_t f30; } BrObj2C;
 extern int32_t   *g_navCursor;     /* 0x10AC5DD8 */
@@ -256,8 +258,7 @@ int BR_THISCALL1 BrUiNavCtlHit_10047A60(BrUiCtl_ *pCtl)
     int fHot;
     int fCurrent = 0;
 
-    if (pCtl->flags1C & 8)
-        goto ret0;
+    if (!(pCtl->flags1C & 8)) {
 
     if (pCtl->flags1C & 0x10) {
         if (g_wAA286C == g_wAA2870) {
@@ -296,12 +297,12 @@ int BR_THISCALL1 BrUiNavCtlHit_10047A60(BrUiCtl_ *pCtl)
     ++g_wAA2870;
     g_nAA284C = fHot;
 
-    if (!(pCtl->rcLeft <= pCur[0] && pCtl->rcRight >= pCur[0] &&
-          pCtl->rcTop <= pCur[1] && pCtl->rcBottom >= pCur[1]) && fCurrent == 0)
-        goto miss;
+    if ((pCtl->rcLeft <= pCur[0] && pCtl->rcRight >= pCur[0] &&
+         pCtl->rcTop <= pCur[1] && pCtl->rcBottom >= pCur[1]) || fCurrent != 0) {
 
     if (fCurrent && (g_act0 != 0 || g_act1 != 0 || g_act2 != 0 || g_act3 != 0))
         return 1;
+    {
 
     if (pCtl->flags1C & 0x40000) {
         if (g_pAA2E80->f2C != 0 || g_pAA2E80->f30 != 0)
@@ -315,11 +316,11 @@ int BR_THISCALL1 BrUiNavCtlHit_10047A60(BrUiCtl_ *pCtl)
         pCtl->flags1C &= ~2;
     }
     pCtl->flags1C |= 0x20;
+    }
     return 1;
-
-miss:
+    }
     pCtl->flags1C &= ~0x22;
-ret0:
+    }
     return 0;
 }
 #else
