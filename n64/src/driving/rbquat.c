@@ -13,6 +13,11 @@ typedef struct BrRb {           /* a rigid body's integrated state */
   BrVec3 omega;                 /* 0x28  angular velocity */
   BrRbQuat qdot;                /* 0x34  orientation rate */
 } BrRb;
+typedef struct BrPose {         /* position and orientation */
+  BrVec3 pos;                   /* 0x00 */
+  char pad0c[0xc];
+  BrRbQuat q;                   /* 0x18 */
+} BrPose;
 typedef struct BrRbRates {      /* what a rigid body integrates from */
   char pad00[0xfc];
   float vel[3];                 /* 0xFC  linear */
@@ -72,53 +77,49 @@ void BrRbIntegrate(BrRb *b, BrRbRates *r, float dt)
 
 
 /* WHAT IT DOES: Build the 3x3 rotation matrix of a unit quaternion. */
-/* @t4-pass 0x802583DC 1 2026-09-26 compiles 19 best 87 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x802583DC 2 2026-09-26 compiles 20 best 87 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x802583DC tgr BrQuatToMat */
-void BrQuatToMat(float *param_1,float *param_2)
+void BrQuatToMat(float m[4][4], BrPose *p)
 {
-  float fVar1;
-  float fVar2;
-  float fVar3;
-  float fVar4;
-  float fVar5;
-  float fVar6;
-  float fVar7;
-  float fVar8;
-  float fVar9;
-  float fVar10;
-  float fVar11;
-  
-  fVar10 = param_2[6];
-  fVar11 = fVar10 + fVar10;
-  fVar3 = param_2[7];
-  fVar1 = param_2[8];
-  fVar6 = fVar1 * fVar1;
-  fVar9 = param_2[9];
-  fVar8 = fVar9 * fVar9;
-  fVar4 = fVar1 * (fVar3 + fVar3);
-  fVar7 = fVar9 * (fVar3 + fVar3);
-  fVar5 = fVar9 * (fVar1 + fVar1);
-  fVar2 = fVar10 * fVar10 - fVar3 * fVar3;
-  *param_1 = ((fVar10 * fVar10 + fVar3 * fVar3) - fVar6) - fVar8;
-  param_1[1] = fVar4 + fVar9 * fVar11;
-  param_1[3] = 0.0;
-  param_1[2] = fVar7 - fVar1 * fVar11;
-  param_1[4] = fVar4 - fVar9 * fVar11;
-  param_1[5] = (fVar2 + fVar6) - fVar8;
-  param_1[7] = 0.0;
-  param_1[6] = fVar5 + fVar3 * fVar11;
-  param_1[0xb] = 0.0;
-  param_1[9] = fVar5 - fVar3 * fVar11;
-  param_1[8] = fVar7 + fVar1 * fVar11;
-  param_1[10] = (fVar2 - fVar6) + fVar8;
-  param_1[0xc] = *param_2;
-  param_1[0xd] = param_2[1];
-  fVar1 = param_2[2];
-  param_1[0xf] = 1.0;
-  param_1[0xe] = fVar1;
+  float ww;
+  float xx;
+  float yy;
+  float zz;
+  float xy2;
+  float wz2;
+  float xz2;
+  float wy2;
+  float yz2;
+  float wx2;
+
+  ww = p->q.w * p->q.w;
+  xx = p->q.x * p->q.x;
+  yy = p->q.y * p->q.y;
+  zz = p->q.z * p->q.z;
+  xy2 = p->q.y * (p->q.x * 2.0f);
+  wz2 = p->q.z * (p->q.w * 2.0f);
+  xz2 = p->q.z * (p->q.x * 2.0f);
+  wy2 = p->q.y * (p->q.w * 2.0f);
+  yz2 = p->q.z * (p->q.y * 2.0f);
+  wx2 = p->q.x * (p->q.w * 2.0f);
+  m[0][0] = ww + xx - yy - zz;
+  m[0][1] = xy2 + wz2;
+  m[0][2] = xz2 - wy2;
+  m[0][3] = 0.0f;
+  m[1][0] = xy2 - wz2;
+  m[1][1] = ww - xx + yy - zz;
+  m[1][2] = yz2 + wx2;
+  m[1][3] = 0.0f;
+  m[2][0] = xz2 + wy2;
+  m[2][1] = yz2 - wx2;
+  m[2][2] = ww - xx - yy + zz;
+  m[2][3] = 0.0f;
+  m[3][0] = p->pos.x;
+  m[3][1] = p->pos.y;
+  m[3][2] = p->pos.z;
+  m[3][3] = 1.0f;
   BrStub80258078();
 }
+
 
 /* WHAT IT DOES: Fill in a block of seven rigid-body parameters: six floats
  * and an int. */
