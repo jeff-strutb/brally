@@ -98,7 +98,7 @@ void BrWrongWayCheck(int param_1)
     if (*(int *)(param_1 + 0xf78) < D_8028B304) {
       if (*(int *)(param_1 + 0xf4c) == 0) {
         fVar3 = (float)func_80224404(param_1 + 0xf64);
-        if (fVar3 < 0.0) {
+        if (fVar3 < 0.0f) {
           uVar1 = *(int *)(param_1 + 0x206c) + 1;
           *(unsigned int *)(param_1 + 0x206c) = uVar1;
           if ((int)uVar1 < 0x20) {
@@ -170,7 +170,7 @@ void BrHudArrowDraw(int param_1,float *param_2,short param_3)
   iVar11 = 0x3fff;
   iVar12 = -0x3fff;
   iVar14 = 0;
-  iVar19 = (int)((fVar18 * 180.0) / D_802A9EF4);
+  iVar19 = (int)((fVar18 * 180.0f) / D_802A9EF4);
   if ((iVar19 < 0x14) || (0x153 < iVar19)) {
     iVar19 = 0;
   }
@@ -248,39 +248,39 @@ void BrHudArrowDraw(int param_1,float *param_2,short param_3)
     }
     fVar18 = param_2[1];
     sVar7 = sVar1 >> 1;
-    if (fVar18 <= 1.0) {
-      if (0.0 < fVar18) {
+    if (fVar18 <= 1.0f) {
+      if (0.0f < fVar18) {
         iVar17 = (int)sVar7;
       }
       else {
         iVar17 = (int)-sVar7;
-        if (fVar18 < -1.0) {
+        if (fVar18 < -1.0f) {
           iVar17 = (int)-sVar1;
         }
       }
     }
     fVar18 = param_2[2];
-    if (1.0 < fVar18) {
+    if (1.0f < fVar18) {
       iVar4 = (int)(sVar1 >> 2);
     }
-    else if (0.0 < fVar18) {
+    else if (0.0f < fVar18) {
       iVar4 = (int)(sVar1 >> 3);
     }
     else {
       iVar4 = (int)(short)-(sVar1 >> 3);
-      if (fVar18 < -1.0) {
+      if (fVar18 < -1.0f) {
         iVar4 = (int)(short)-(sVar1 >> 2);
       }
     }
     fVar18 = *param_2;
     iVar15 = (int)sVar1;
-    if (fVar18 <= 1.25) {
-      if (0.0 < fVar18) {
+    if (fVar18 <= 1.25f) {
+      if (0.0f < fVar18) {
         iVar15 = (int)sVar7;
       }
       else {
         iVar15 = (int)-sVar1;
-        if (fVar18 < -1.25) {
+        if (fVar18 < -1.25f) {
           iVar15 = (int)-sVar1;
           iVar4 = (iVar4 << 0x11) >> 0x10;
         }
@@ -360,9 +360,9 @@ void BrHudTimeDraw(int param_1,int param_2,float param_3,int param_4,int param_5
   int iVar1;
   char auStack_2c [44];
   
-  iVar1 = (int)(param_3 * 100.0) / 100;
+  iVar1 = (int)(param_3 * 100.0f) / 100;
   func_80260DD4(auStack_2c,"%s%d'%02d\"%02d",param_2,iVar1 / 0x3c,iVar1 % 0x3c,
-               (int)(param_3 * 100.0) % 100);
+               (int)(param_3 * 100.0f) % 100);
   func_8022F5DC(auStack_2c,param_4,param_5 + 0xf);
   func_8022F5DC(param_1,param_4,param_5);
 }

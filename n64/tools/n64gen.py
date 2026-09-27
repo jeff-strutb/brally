@@ -167,6 +167,22 @@ def toggle(body, word):
     return body.replace('@@U@@', word)
 
 
+FLOAT_LIT = re.compile(r'(?<![\w.])(\d+\.\d*(?:[eE][-+]?\d+)?|\d+[eE][-+]?\d+)(?![\w.])')
+STRING = re.compile(r'"(?:\\.|[^"\\])*"')
+
+
+def fsuffix(body):
+    """Ghidra prints every float constant as a double literal (`0.0`); the
+    ROM decides which it was -- a single compare needs `0.0f`."""
+    out, pos = [], 0
+    for m in STRING.finditer(body):
+        out.append(FLOAT_LIT.sub(r'\1f', body[pos:m.start()]))
+        out.append(m.group(0))
+        pos = m.end()
+    out.append(FLOAT_LIT.sub(r'\1f', body[pos:]))
+    return ''.join(out)
+
+
 def candidate(va, dtypes, name=None, noproto=(), ptrs=(), opts=()):
     t = draft(va)
     if t is None:
@@ -181,6 +197,8 @@ def candidate(va, dtypes, name=None, noproto=(), ptrs=(), opts=()):
         body = toggle(body, 'short')
     if 'char' in opts:
         body = toggle(body, 'char')
+    if 'fsuf' in opts:
+        body = fsuffix(body)
     for k in range(1, 5):
         if 'params%d' % k in opts:
             body = re.sub(r'^(\w[\w \*]*\b%s\s*)\(void\)' % ('func_%08X' % va),
@@ -235,7 +253,7 @@ def main():
     ap.add_argument('vas', nargs='*')
     ap.add_argument('--all', action='store_true')
     ap.add_argument('--max-size', type=int, default=10 ** 9)
-    ap.add_argument('--report', default=os.path.join(B.OUT, 'gen.csv'))
+    ap.add_argument('--report', help='default build/n64/gen.csv for --all; a single-VA run writes none')
     a = ap.parse_args()
     global _rom
     rom, fmap, syms = B.Rom(), B.function_map(), B.load_symbols()
@@ -287,6 +305,8 @@ def main():
                 base_opts.append('char')
             if homes:
                 base_opts.append('params%d' % (max(homes) - 3))
+            if any(w >> 26 == 0x11 and (w >> 21) & 31 == 0x10 for w in rw) and FLOAT_LIT.search(src):
+                base_opts.append('fsuf')
             for _ in range(2):
                 improved = False
                 for o in base_opts:
@@ -306,7 +326,8 @@ def main():
         rows.append((va, fmap[va], st, nd, note))
         if len(vas) == 1:
             print(src)
-    with open(a.report, 'w', newline='') as f:
+    report = a.report or (os.path.join(B.OUT, 'gen.csv') if a.all else None)
+    with open(report or os.devnull, 'w', newline='') as f:
         w = csv.writer(f)
         w.writerow(['va', 'size', 'status', 'ndiff', 'note'])
         for r in rows:

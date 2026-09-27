@@ -30,7 +30,7 @@ void BrMat4ProjectPoint(float *param_1,float *param_2,float *param_3)
   fVar1 = *param_2;
   fVar2 = param_2[1];
   fVar3 = param_2[2];
-  fVar4 = 1.0 / (param_3[0xf] + fVar1 * param_3[3] + fVar2 * param_3[7] + fVar3 * param_3[0xb]);
+  fVar4 = 1.0f / (param_3[0xf] + fVar1 * param_3[3] + fVar2 * param_3[7] + fVar3 * param_3[0xb]);
   *param_1 = (param_3[0xc] + fVar1 * *param_3 + fVar2 * param_3[4] + fVar3 * param_3[8]) * fVar4;
   param_1[1] = (param_3[0xd] + fVar1 * param_3[1] + fVar2 * param_3[5] + fVar3 * param_3[9]) * fVar4
   ;

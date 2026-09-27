@@ -24,9 +24,9 @@ void BrRbQuatDerivative(int param_1)
   float fVar6;
   float fVar7;
   
-  fVar4 = *(float *)(param_1 + 0x28) * 0.5;
-  fVar5 = *(float *)(param_1 + 0x2c) * 0.5;
-  fVar3 = *(float *)(param_1 + 0x30) * 0.5;
+  fVar4 = *(float *)(param_1 + 0x28) * 0.5f;
+  fVar5 = *(float *)(param_1 + 0x2c) * 0.5f;
+  fVar3 = *(float *)(param_1 + 0x30) * 0.5f;
   fVar1 = *(float *)(param_1 + 0x1c);
   fVar2 = *(float *)(param_1 + 0x20);
   fVar7 = *(float *)(param_1 + 0x18);

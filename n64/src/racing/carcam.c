@@ -43,15 +43,15 @@ void BrCamShakeAdd(int param_1,float param_2)
   float fVar2;
   
   pfVar1 = (float *)(param_1 * 4 + -0x7fce4e28);
-  if (2.5 < param_2) {
-    param_2 = 2.5;
+  if (2.5f < param_2) {
+    param_2 = 2.5f;
     fVar2 = *pfVar1;
   }
   else {
     fVar2 = *pfVar1;
   }
   *pfVar1 = fVar2 + param_2;
-  if (5.0 < *pfVar1) {
-    *pfVar1 = 5.0;
+  if (5.0f < *pfVar1) {
+    *pfVar1 = 5.0f;
   }
 }

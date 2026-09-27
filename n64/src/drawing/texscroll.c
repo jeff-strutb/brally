@@ -17,7 +17,7 @@ void BrTexScrollSet(float param_1,float param_2)
   int uVar1;
   int uVar2;
   
-  uVar2 = BrFloatToInt(param_2 * 0.03125);
-  uVar1 = BrFloatToInt(0.03125 * param_1);
+  uVar2 = BrFloatToInt(param_2 * 0.03125f);
+  uVar1 = BrFloatToInt(0.03125f * param_1);
   func_8022D3D4(uVar1,uVar2);
 }
