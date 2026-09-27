@@ -78,6 +78,22 @@ void BrMusicStart(int param_1,int param_2)
 }
 
 
+/* WHAT IT DOES: Find a free sound-effect voice: the first of the six that
+ * is silent, or -1 when all are playing. */
+/* @implements 0x802579F4 tgr BrSfxFreeVoice */
+short BrSfxFreeVoice(void)
+{
+  int i;
+
+  for (i = 0; i < 6; i++) {
+    if (D_802A4920[i].rate == 0) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+
 /* WHAT IT DOES: Keep the six sound-effect voices' samples looping, a
  * stereo pair at a time: a playing voice that has run past its sample's end
  * jumps back by the loop length, or stops if the sample does not loop. */
