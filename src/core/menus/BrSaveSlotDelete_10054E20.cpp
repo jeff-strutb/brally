@@ -21,12 +21,13 @@
  * across the loop -- that was the whole of the old 480-diff residue.
  * The two clear blocks differ by one field (the tail copy leaves f434).
  *
- * NOT MATCHING: 508/510 B, register-blind 1+1.  At the loop header the
- * original forms i = idx + 1 with `lea ecx,[eax+1]` (idx kept in eax)
- * where VC5 here does `inc eax`.  Inert: every spelling of the two header
- * tests (i/next locals, !=/</<= forms, casts, pre-increment), record
- * pointer vs index in either clear block, a function ahead in the TU,
- * extern pads and five headers.
+ * Byte-exact 2026-09-27, as an O2 /Gi TU (verified through the serial
+ * /Gi chain, every O2-Gi row unchanged).  Under plain /O2 it stops at
+ * register-blind 1+1 (`inc eax` for the `lea ecx,[eax+1]` at the loop
+ * header); /Gi gets that.  The last two source facts: the header test is
+ * `idx + 1 != wCount` (operand order of the cmp), and the tail block reuses
+ * the PARAMETER -- `idx = wCount - 1` -- which is why the original keeps
+ * that index in idx's argument slot.
  */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
@@ -102,7 +103,7 @@ int Slots54E20::Delete(int idx)
         memset(&ents[idx], 0, sizeof(ents[idx]));
     }
 
-    if (wCount != idx + 1) {
+    if (idx + 1 != wCount) {
         for (i = idx + 1; i <= wCount - 1; i++) {
             recs[i - 1] = recs[i];
             if (ents[i].b != 0 && ents[i].a > 0)
@@ -110,19 +111,19 @@ int Slots54E20::Delete(int idx)
         }
     }
 
-    i = wCount - 1;
-    if (i > 0) {
-        strcpy(recs[i].szName, g_szBr396F08);
-        recs[i].bUsed = 0;
-        recs[i].w41C = 0;
-        recs[i].w40C = 0;
-        recs[i].w40A = 0;
-        memset(recs[i].a424, 0, sizeof(recs[i].a424));
-        recs[i].f410 = 0;
-        recs[i].f414 = 0;
-        recs[i].f418 = 0;
-        recs[i].f420 = 0;
-        memset(&ents[i], 0, sizeof(ents[i]));
+    idx = wCount - 1;
+    if (idx > 0) {
+        strcpy(recs[idx].szName, g_szBr396F08);
+        recs[idx].bUsed = 0;
+        recs[idx].w41C = 0;
+        recs[idx].w40C = 0;
+        recs[idx].w40A = 0;
+        memset(recs[idx].a424, 0, sizeof(recs[idx].a424));
+        recs[idx].f410 = 0;
+        recs[idx].f414 = 0;
+        recs[idx].f418 = 0;
+        recs[idx].f420 = 0;
+        memset(&ents[idx], 0, sizeof(ents[idx]));
     }
 
     wCount--;
