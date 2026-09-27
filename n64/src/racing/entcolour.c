@@ -23,8 +23,6 @@ extern BrCarModelBuf D_803C8000[];
 extern int D_8031B238[];
 extern unsigned char D_8028B904[][3];
 void func_80220620(BrCar *car);
-typedef struct BrCarModelPart { void *a; void *b; char pad08[0x1c]; } BrCarModelPart;
-typedef struct BrCarModel { char pad00[0x10]; int nParts; BrCarModelPart *parts; unsigned int *dl[3][10]; void *x90; void *x94; char pad98[0xbc - 0x98]; unsigned int *dl2[3][3]; char pade0[0x11c - 0xe0]; void **x11c; } BrCarModel;
 extern char D_803D5F88[];
 /* -- end declarations -- */
 
