@@ -117,6 +117,11 @@ def retype(s):
     s = re.sub(r'\b_DAT_([0-9a-fA-F]{8})\b', lambda m: 'D_' + m.group(1).upper(), s)
     s = re.sub(r'\b[a-z]*Ram([0-9a-fA-F]{8})\b', lambda m: 'D_' + m.group(1).upper(), s)
     s = re.sub(r'\bPTR_\w*?_([0-9a-fA-F]{8})\b', lambda m: 'P_' + m.group(1).upper(), s)
+    # a data address Ghidra mistook for code
+    s = re.sub(r'\bLAB_([0-9a-fA-F]{8})\b', lambda m: 'D_' + m.group(1).upper(), s)
+    # the divide checks IDO emits for / and % (break 7, break 6) are not source
+    s = re.sub(r'if \(\w+ == 0\) \{\s*trap\(0x1c00\);\s*\}\s*', '', s)
+    s = re.sub(r'if \(\(\w+ == -1\) && \([^;{}]+? == -0x80000000\)\) \{\s*trap\(0x1800\);\s*\}\s*', '', s)
     return s
 
 
