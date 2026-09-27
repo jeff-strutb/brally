@@ -18,6 +18,7 @@ va,name,kind
 8020C66C,BrCarSelectable,func
 80210F4C,BrResultsRun,func
 80210F80,BrWeatherSelectable,func
+80210FC8,BrWeatherScreen,func
 80211150,BrChampionshipStart,func
 80211194,BrTimeAttackStart,func
 802111E0,BrMainMenu,func
