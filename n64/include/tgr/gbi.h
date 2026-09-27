@@ -18,6 +18,12 @@ typedef union {
 typedef struct { int m[16]; } Mtx;
 
 #define G_MTX               0x01
+#define G_SETOTHERMODE_L    0xb9
+#define G_SETOTHERMODE_H    0xba
+#define G_RDPPIPESYNC       0xe7
+#define G_FILLRECT          0xf6
+#define G_SETPRIMCOLOR      0xfa
+#define G_SETCOMBINE        0xfc
 #define G_DL                0x06
 #define G_MOVEWORD          0xbc
 
@@ -32,6 +38,17 @@ typedef struct { int m[16]; } Mtx;
 #define G_DL_NOPUSH         0x01
 
 #define G_MW_PERSPNORM      0x0e
+
+#define G_MDSFT_RENDERMODE  3
+#define G_MDSFT_RGBDITHER   6
+#define G_MDSFT_CYCLETYPE   20
+
+#define G_CYC_1CYCLE        (0 << G_MDSFT_CYCLETYPE)
+#define G_CD_DISABLE        (3 << G_MDSFT_RGBDITHER)
+
+/* render modes used so far, as libultra composes them */
+#define G_RM_CLD_SURF       0x00404340
+#define G_RM_CLD_SURF2      0x00104340
 
 #define _SHIFTL(v, s, w) \
     ((unsigned int)(((unsigned int)(v) & ((0x01 << (w)) - 1)) << (s)))
@@ -53,6 +70,66 @@ typedef struct { int m[16]; } Mtx;
                     _SHIFTL((index), 0, 8));                            \
     _g->words.w1 = (unsigned int)(data);                                \
 }
+
+#define gDPNoParam(pkt, cmd)                                            \
+{                                                                       \
+    Gfx *_g = (Gfx *)(pkt);                                             \
+                                                                        \
+    _g->words.w0 = _SHIFTL(cmd, 24, 8);                                 \
+    _g->words.w1 = 0;                                                   \
+}
+
+#define gSPSetOtherMode(pkt, cmd, sft, len, data)                       \
+{                                                                       \
+    Gfx *_g = (Gfx *)(pkt);                                             \
+                                                                        \
+    _g->words.w0 = (_SHIFTL(cmd, 24, 8) | _SHIFTL(sft, 8, 8) |          \
+                    _SHIFTL(len, 0, 8));                                \
+    _g->words.w1 = (unsigned int)(data);                                \
+}
+
+#define gDPSetCombine(pkt, muxs0, muxs1)                                \
+{                                                                       \
+    Gfx *_g = (Gfx *)(pkt);                                             \
+                                                                        \
+    _g->words.w0 = _SHIFTL(G_SETCOMBINE, 24, 8) | _SHIFTL(muxs0, 0, 24); \
+    _g->words.w1 = (unsigned int)(muxs1);                               \
+}
+
+#define gDPSetColor(pkt, c, d)                                          \
+{                                                                       \
+    Gfx *_g = (Gfx *)(pkt);                                             \
+                                                                        \
+    _g->words.w0 = _SHIFTL(c, 24, 8);                                   \
+    _g->words.w1 = (unsigned int)(d);                                   \
+}
+
+#define gDPSetPrimColor(pkt, m, l, r, g, b, a)                          \
+{                                                                       \
+    Gfx *_g = (Gfx *)(pkt);                                             \
+                                                                        \
+    _g->words.w0 = (_SHIFTL(G_SETPRIMCOLOR, 24, 8) | _SHIFTL(m, 8, 8) | \
+                    _SHIFTL(l, 0, 8));                                  \
+    _g->words.w1 = (_SHIFTL(r, 24, 8) | _SHIFTL(g, 16, 8) |             \
+                    _SHIFTL(b, 8, 8) | _SHIFTL(a, 0, 8));               \
+}
+
+#define gDPFillRectangle(pkt, ulx, uly, lrx, lry)                       \
+{                                                                       \
+    Gfx *_g = (Gfx *)(pkt);                                             \
+                                                                        \
+    _g->words.w0 = (_SHIFTL(G_FILLRECT, 24, 8) | _SHIFTL((lrx), 14, 10) | \
+                    _SHIFTL((lry), 2, 10));                             \
+    _g->words.w1 = (_SHIFTL((ulx), 14, 10) | _SHIFTL((uly), 2, 10));    \
+}
+
+#define gDPPipeSync(pkt)            gDPNoParam(pkt, G_RDPPIPESYNC)
+#define gDPSetCycleType(pkt, type)  \
+    gSPSetOtherMode(pkt, G_SETOTHERMODE_H, G_MDSFT_CYCLETYPE, 2, type)
+#define gDPSetColorDither(pkt, mode) \
+    gSPSetOtherMode(pkt, G_SETOTHERMODE_H, G_MDSFT_RGBDITHER, 2, mode)
+#define gDPSetRenderMode(pkt, c0, c1) \
+    gSPSetOtherMode(pkt, G_SETOTHERMODE_L, G_MDSFT_RENDERMODE, 29, (c0) | (c1))
 
 #define gSPMatrix(pkt, m, p)        gDma1p(pkt, G_MTX, m, sizeof(Mtx), p)
 #define gSPDisplayList(pkt, dl)     gDma1p(pkt, G_DL, dl, 0, G_DL_PUSH)
