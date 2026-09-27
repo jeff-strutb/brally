@@ -306,3 +306,5 @@ va,name,kind
 80256270,BrCopy16,func
 80256290,BrFill64,func
 8021D6DC,BrAnimSetFlags,func
+8024D6B8,BrPaintPaletteDraw,func
+8024F25C,BrPaintPlot,func

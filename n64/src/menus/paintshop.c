@@ -6,8 +6,11 @@
 char * memcpy(char *param_1,char *param_2,int param_3);
 extern unsigned char D_8028DB68;
 extern unsigned char D_8028DB74;
-extern int D_8028DB78;
-extern int D_8028DB80;
+extern unsigned char *D_8028DB78;          /* the decal texture being painted (CI4) */
+extern unsigned char *D_8028DB7C;          /* its paint mask, 1 bit a texel, or 0 */
+extern unsigned char D_8028DB88;           /* texture width */
+extern unsigned char D_8028DB8C;           /* texture height */
+extern unsigned char *D_8028DB80;
 extern unsigned char D_8028DBB4;
 extern unsigned char D_8028DBDC;
 typedef struct BrPaintState {   /* 0x8028D110 */
@@ -40,6 +43,17 @@ extern float D_802AB20C;
 extern float D_802AB210;
 extern char D_8036A8E0;
 extern char D_8036A8F8;
+typedef struct BrPaintRect { int x, y, w, h; } BrPaintRect;
+typedef struct BrPaintSwatch {  /* 0x14 bytes */
+  int x, y, w, h;
+  unsigned char r, g, b;
+} BrPaintSwatch;
+void BrFillRect(int x, int y, int w, int h, unsigned char r, unsigned char g, unsigned char b);
+void BrFillFrame(int x, int y, int w, int h, int t, unsigned char r, unsigned char g, unsigned char b);
+extern BrPaintRect D_8028D480;
+extern BrPaintRect D_8028D490;
+extern BrPaintSwatch D_80369B98[16];
+extern unsigned char D_8028DB58;
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Store the paint shop's working decal (2 KB) into the decal
@@ -48,7 +62,7 @@ extern char D_8036A8F8;
 /* @implements 0x80244CA8 tgr BrPaintDecalCommit */
 void BrPaintDecalCommit(void)
 {
-  memcpy(D_8028DB80,D_8028DB78,0x800);
+  memcpy((char *)D_8028DB80,(char *)D_8028DB78,0x800);
   D_8028DB74 = D_8028DB68;
   D_8028DBB4 = D_8028DBB4 + '\x01';
   D_8028DBDC = 1;
@@ -188,4 +202,49 @@ int BrPaintCursorInBrush(int *r)
     return 1;
   }
   return 0;
+}
+
+/* WHAT IT DOES: Draw the paint shop's palette: its two black panels, the
+ * sixteen colour swatches, and a light blue frame round the chosen one. */
+/* @implements 0x8024D6B8 tgr BrPaintPaletteDraw */
+void BrPaintPaletteDraw(void)
+{
+  int i;
+
+  BrFillRect(D_8028D480.x, D_8028D480.y, D_8028D480.w, D_8028D480.h, 0, 0, 0);
+  BrFillRect(D_8028D490.x, D_8028D490.y, D_8028D490.w, D_8028D490.h, 0, 0, 0);
+  for (i = 0; i < 16; i++) {
+    BrFillRect(D_80369B98[i].x, D_80369B98[i].y, D_80369B98[i].w, D_80369B98[i].h, D_80369B98[i].r,
+               D_80369B98[i].g, D_80369B98[i].b);
+  }
+  BrFillFrame(D_80369B98[D_8028DB58].x - 2, D_80369B98[D_8028DB58].y - 2, D_80369B98[D_8028DB58].w + 4,
+              D_80369B98[D_8028DB58].h + 4, 2, 0x20, 200, 0xff);
+}
+
+/* WHAT IT DOES: Plot one texel of colour c into the 4-bit decal texture at
+ * (x, y) -- inside the texture and not masked off -- with the odd rows'
+ * 8-texel words swapped as the RDP's TMEM layout wants them.
+ * RESIDUE (51): temporaries are numbered one register later than the ROM's
+ * from the row-width shift on; the instructions and their order match. */
+/* @implements 0x8024F25C tgr BrPaintPlot */
+void BrPaintPlot(int x, int y, unsigned char c)
+{
+  int o;
+
+  if (x >= 0 && x < D_8028DB88 && y >= 0 && y < D_8028DB8C) {
+    o = ((x ^ ((y & 1) << 3)) >> 1) + y * (D_8028DB88 >> 1);
+    if (D_8028DB7C == 0) {
+      if (x & 1) {
+        D_8028DB78[o] = (D_8028DB78[o] & 0xf0) | c;
+      } else {
+        D_8028DB78[o] = (D_8028DB78[o] & 0xf) | (c << 4);
+      }
+    } else if (!(D_8028DB7C[(x >> 3) + y * ((D_8028DB88 + 7) >> 3)] & (1 << ((x ^ 7) & 7)))) {
+      if (x & 1) {
+        D_8028DB78[o] = (D_8028DB78[o] & 0xf0) | c;
+      } else {
+        D_8028DB78[o] = (D_8028DB78[o] & 0xf) | (c << 4);
+      }
+    }
+  }
 }
