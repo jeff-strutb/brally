@@ -40,6 +40,14 @@ void osSyncPrintf();
 extern int D_802A49C0;
 extern int D_80378F98;
 extern float D_802A49D4[12];
+typedef struct BrSample {       /* a module instrument's sample header; 8-bit data follows at +0x28 */
+  unsigned int len;             /* 0x00 */
+  int x4;
+  unsigned int loopLen;         /* 0x08 */
+  char pad0c[2];
+  unsigned char loops;          /* 0x0E */
+} BrSample;
+extern BrSample *D_803787D0[];  /* by instrument number - 1 */
 extern unsigned long long D_80379568[10][12];
 /* -- end declarations -- */
 
@@ -129,6 +137,34 @@ void BrSfxVoiceStart(short v, unsigned int start, unsigned int len, unsigned int
   D_802A4920[v].x4 = 0;
   D_802A4920[v].baseVol = 0x200020;
   D_802A4920[v].rate = 0x100000000LL;
+}
+
+
+/* WHAT IT DOES: Keep the music voices' samples looping: a channel with an
+ * instrument whose voice has run past the end of the sample jumps back by
+ * the loop length, or falls silent if the sample does not loop.
+ * RESIDUE (26): temporaries one register later than the ROM's, and the
+ * loop/stop arms laid the other way round. */
+/* @implements 0x80256D3C tgr BrMusicLoopSamples */
+void BrMusicLoopSamples(void)
+{
+  int i;
+  unsigned char n;
+  BrSample *smp;
+
+  for (i = 0; i < D_802A49C0; i++) {
+    n = D_80378DD0[i].xd;
+    if (n != 0) {
+      smp = D_803787D0[n - 1];
+      if (smp->len + (unsigned int)smp + 0x28 < D_802A4798[i].pos) {
+        if (smp->loops != 0) {
+          D_802A4798[i].pos -= smp->loopLen;
+        } else {
+          D_802A4798[i].rate = 0;
+        }
+      }
+    }
+  }
 }
 
 
