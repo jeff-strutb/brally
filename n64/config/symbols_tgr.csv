@@ -131,7 +131,7 @@ va,name,kind
 8022BCAC,BrCarCamClearCut,func
 8022D090,BrGridSpanExtend,func
 8022D3D4,BrGridSpanHas,func
-8022D43C,BrTexScrollSet,func
+8022D43C,BrGridSpanHasPoint,func
 8022D7E0,BrPerfMark,func
 8022D8AC,BrPerfFrameStart,func
 8022F4CC,BrTextHighlightOn,func

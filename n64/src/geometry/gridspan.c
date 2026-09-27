@@ -8,6 +8,8 @@ extern int D_8028BD94;
 extern int D_8028BD9C;
 extern int D_8034E5B0[64];
 extern int D_8034E6B0[64];
+int BrFloatToInt(float f);
+int BrGridSpanHas(int x, int y);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Widen row y of the 64x64 grid region to take in column x:
@@ -42,4 +44,12 @@ void BrGridSpanExtend(int x, int y)
 int BrGridSpanHas(int x, int y)
 {
   return y >= D_8028BD94 && y <= D_8028BD9C && x >= D_8034E5B0[y] && x <= D_8034E6B0[y];
+}
+
+/* WHAT IT DOES: Tell whether a world point (x, z) falls in the grid region:
+ * the coordinates are turned into cells (32 units each) and tested. */
+/* @implements 0x8022D43C tgr BrGridSpanHasPoint */
+int BrGridSpanHasPoint(float x, float z)
+{
+  return BrGridSpanHas(BrFloatToInt(x * 0.03125f), BrFloatToInt(z * 0.03125f));
 }
