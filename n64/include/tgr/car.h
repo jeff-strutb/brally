@@ -6,16 +6,25 @@
 #define TGR_CAR_H
 
 #include "tgr/season.h"
+#include "tgr/vec.h"
 
 typedef struct BrCar {
     char pad000[0x140];
     int slot;                   /* 0x140  index in the car array */
-    char pad144[0xE58 - 0x144];
+    char pad144[0x1CC - 0x144];
+    BrVec3 pos1cc;              /* 0x1CC  position (four copies set together) */
+    char pad1d8[0x268 - 0x1D8];
+    BrVec3 pos268;              /* 0x268 */
+    char pad274[0x2AC - 0x274];
+    BrVec3 pos2ac;              /* 0x2AC */
+    char pad2b8[0xE58 - 0x2B8];
     int xe58;                   /* 0xE58 */
     BrSeason *season;           /* 0xE5C  the player's season, 0 for others */
     char pade60[0xED8 - 0xE60];
     int xed8;                   /* 0xED8 */
-    char padedc[0x1D88 - 0xEDC];
+    char padedc[0xFD8 - 0xEDC];
+    BrVec3 posfd8;              /* 0xFD8 */
+    char padfe4[0x1D88 - 0xFE4];
     int mtx[16];                /* 0x1D88 */
     char pad1dc8[0x205C - 0x1DC8];
     int kind;                   /* 0x205C */

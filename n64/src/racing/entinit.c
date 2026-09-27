@@ -116,3 +116,25 @@ void BrCarReset(BrCar *car)
   BrCarPickKind(car);
   car->xe58 = 0;
 }
+
+/* WHAT IT DOES: Put a car at (x, y, z): the four position vectors it keeps
+ * are all set to the same point. */
+/* @implements 0x802201C8 tgr BrCarSetPos */
+void BrCarSetPos(BrCar *car, float x, float y, float z)
+{
+  BrVec3 *v;
+
+  car->pos1cc.x = x;
+  car->pos1cc.y = y;
+  car->pos1cc.z = z;
+  car->pos2ac.x = x;
+  car->pos2ac.y = y;
+  car->pos2ac.z = z;
+  car->pos268.x = x;
+  car->pos268.y = y;
+  car->pos268.z = z;
+  v = &car->posfd8;
+  v->x = x;
+  v->y = y;
+  v->z = z;
+}
