@@ -33,6 +33,28 @@ typedef struct BrRbParams {     /* set together by BrRbSetParams */
   float x18;
   float x1c;
 } BrRbParams;
+typedef struct BrRbBody {       /* a rigid body's shape and mass properties */
+  int x0[6];
+  int x18;
+  int shape;                    /* 0x1C  0, 1: box; 2: fixed (no inverse inertia) */
+  float w, h, d;                /* 0x20  box size */
+  float mass;                   /* 0x2C */
+  float I[3][3];                /* 0x30  inertia tensor */
+  float Iinv[3][3];             /* 0x54  its inverse (diagonal) */
+  char pad78[0x19C - 0x78];
+  int x19c;                     /* 0x19C */
+  char pad1a0[0x1B4 - 0x1A0];
+  int x1b4;                     /* 0x1B4 */
+  char pad1b8[0x1C0 - 0x1B8];
+  float x1c0;                   /* 0x1C0 */
+  float x1c4;                   /* 0x1C4 */
+  float x1c8;                   /* 0x1C8 */
+  float x1cc;
+  float x1d0;
+  int x1d4;
+  int x1d8;
+} BrRbBody;
+void BrStub80258070(float m[3][3]);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Compute a rigid body's orientation rate: the quaternion
@@ -135,3 +157,66 @@ void BrRbSetParams(BrRbParams *p, float a, float b, float c, float d, float e, f
   p->x1c = f;
 }
 
+
+/* WHAT IT DOES: Set up a rigid body at rest: state cleared, damping-like
+ * constants 0.174 and 0.5, and for a box the inertia tensor of a solid
+ * cuboid (mass / 12 * the sum of the other two sides squared) and, unless
+ * the body is fixed, its diagonal inverse.
+ * RESIDUE (75): the ROM keeps the squared sides in stack homes (h*h at
+ * sp+0x2C, w then w*w at sp+0x24) and loads the side into f14 in each case
+ * arm; ours keeps them in registers. */
+/* @implements 0x80258C24 tgr BrRbBodyInit */
+void BrRbBodyInit(BrRbBody *b)
+{
+  int i;
+  int j;
+  float d;
+  float hh;
+  float ww;
+  float k;
+
+  b->x0[0] = 0;
+  b->x0[1] = 0;
+  b->x0[2] = 0;
+  b->x0[3] = 0;
+  b->x0[4] = 0;
+  b->x0[5] = 0;
+  b->x1b4 = 0;
+  b->x19c = 0;
+  b->x1c4 = 0.0f;
+  b->x1cc = 0.0f;
+  b->x1d0 = 0.0f;
+  b->x1c0 = 0.174f;
+  b->x1c8 = 0.5f;
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; j++) {
+      if (i == j) {
+        b->I[i][j] = 1.0f;
+      } else {
+        b->I[i][j] = 0.0f;
+      }
+    }
+  }
+  switch (b->shape) {
+  case 0:
+  case 1:
+    d = b->d;
+    hh = b->h * b->h;
+    k = 0.083333336f * b->mass;
+    b->I[0][0] = (d * d + hh) * k;
+    ww = b->w * b->w;
+    b->I[1][1] = (d * d + ww) * k;
+    b->I[2][2] = (hh + ww) * k;
+    BrStub80258070(b->I);
+    break;
+  }
+  if (b->shape == 2) {
+    b->x1d4 = 0;
+  } else {
+    b->Iinv[0][0] = 1.0 / b->I[0][0];
+    b->Iinv[1][1] = 1.0 / b->I[1][1];
+    b->Iinv[2][2] = 1.0 / b->I[2][2];
+    b->x1d4 = 0;
+  }
+  b->x1d8 = 0;
+}

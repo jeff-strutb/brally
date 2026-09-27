@@ -318,3 +318,4 @@ va,name,kind
 8021CD30,BrRomUnpack,func
 8021D2A0,BrCarColourFromModel,func
 80220620,BrCarResetFrames,func
+80258C24,BrRbBodyInit,func
