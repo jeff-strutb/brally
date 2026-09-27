@@ -39,7 +39,28 @@ void BrModReset(void);
 void osSyncPrintf();
 extern int D_802A49C0;
 extern int D_80378F98;
+extern float D_802A49D4[12];
+extern unsigned long long D_80379568[10][12];
 /* -- end declarations -- */
+
+/* WHAT IT DOES: Build the mixer's note-rate table: for ten octaves of the
+ * twelve note frequencies, the 32.32 fixed-point sample step relative to
+ * the mixer's base rate. */
+/* @implements 0x80256C2C tgr BrNoteRatesInit */
+void BrNoteRatesInit(void)
+{
+  int oct;
+  int n;
+  double r;
+
+  for (oct = 0; oct < 10; oct++) {
+    for (n = 0; n < 12; n++) {
+      r = D_802A49D4[n] * (1 << oct) * 0.0625;
+      D_80379568[oct][n] = r / 261.7 * 0.3801709246295118 * 4294967296.0;
+    }
+  }
+}
+
 
 /* WHAT IT DOES: Reset the module player: playback state flags, and every
  * channel's position, two per-channel bytes (0 and 64, a centred pan or
