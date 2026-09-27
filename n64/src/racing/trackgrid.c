@@ -4,6 +4,7 @@
 
 /* -- declarations -- */
 
+extern unsigned short *D_80025C6C;
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Reset a track-cell search record: no position yet and a
@@ -23,20 +24,17 @@ void BrTrackCellReset(int param_1)
 /* WHAT IT DOES: Look up the track's 64x64 grid cell (x, y): returns the
  * cell's first entry index in the low half and its entry count in the high
  * half, or 0 outside the grid. */
-/* @t4-pass 0x8021EA0C 1 2026-09-26 compiles 17 best 25 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8021EA0C 2 2026-09-26 compiles 17 best 25 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8021EA0C 3 2026-09-26 compiles 15 best 25 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8021EA0C tgr BrTrackGridCell */
-unsigned int BrTrackGridCell(unsigned int param_1,unsigned int param_2)
+unsigned int BrTrackGridCell(int x, int y)
 {
-  unsigned int uVar1;
-  int iVar2;
-  
-  if ((((-1 < (int)param_1) && ((int)param_1 < 0x40)) && (-1 < (int)param_2)) &&
-     ((int)param_2 < 0x40)) {
-    iVar2 = (param_1 & 0xff) + (param_2 & 0xff) * 0x40;
-    uVar1 = (unsigned int)*(unsigned short *)((*(int *)0x80025C6C) + iVar2 * 2);
-    return (*(unsigned short *)((*(int *)0x80025C6C) + (iVar2 + 1) * 2) - uVar1) * 0x10000 | uVar1;
+  unsigned short i;
+  unsigned int first;
+
+  if (x < 0 || x >= 64 || y < 0 || y >= 64) {
+    return 0;
   }
-  return 0;
+  i = (x & 0xff) + (y & 0xff) * 64;
+  first = D_80025C6C[i];
+  return (D_80025C6C[(unsigned short)(i + 1)] - first) << 16 | first;
 }
+
