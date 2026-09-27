@@ -18,10 +18,31 @@ int osRecvMesg(int param_1,int *param_2,int param_3);
 extern int D_80272D44;
 extern int D_80272D40;
 void func_8021D070(unsigned int *param_1,unsigned int param_2,unsigned int param_3,int param_4);
-void func_8021D098(unsigned int *param_1,int param_2,int param_3,int param_4);
+void BrDlRebase(unsigned int *dl, unsigned int lo, unsigned int hi, int base);
 extern int D_8021DC94;
 extern int D_8021DC98;
 extern BrIoMesg D_8031A020[32];
+typedef struct BrModelPart {
+  int x0;
+  void *a;                      /* 0x04 */
+  void *b;                      /* 0x08 */
+  int n;                        /* 0x0C */
+  char pad10[0x10];
+  void *v[1];                   /* 0x20  n of them */
+} BrModelPart;
+typedef struct BrModelParts {
+  int count;
+  BrModelPart *part[1];         /* count of them */
+} BrModelParts;
+typedef struct BrModelDl {      /* 0x14 bytes */
+  unsigned int *dl;
+  int pad[4];
+} BrModelDl;
+typedef struct BrModel {
+  unsigned int nDl;             /* 0x00 */
+  BrModelParts *parts;          /* 0x04 */
+  BrModelDl dls[1];             /* 0x08  nDl of them */
+} BrModel;
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Read the unpacked size of a packed asset in ROM: the second
@@ -140,7 +161,7 @@ BrIoMesg *BrRomDmaSlot(void)
  * address in it that pointed into the old block (vertex and texture-image
  * commands) so it points at the new copy; stops at the end of the list. */
 /* @implements 0x8021D098 tgr BrDlRebase */
-void BrDlRebase(unsigned int *dl, int oldBase, int newBase, int size)
+void BrDlRebase(unsigned int *dl, unsigned int lo, unsigned int hi, int base)
 {
   if (dl == 0) {
     return;
@@ -149,7 +170,7 @@ void BrDlRebase(unsigned int *dl, int oldBase, int newBase, int size)
     switch ((unsigned char)(dl[0] >> 24)) {
     case 0x04:
     case 0xfd:
-      func_8021D070(dl + 1, oldBase, newBase, size);
+      func_8021D070(dl + 1, lo, hi, base);
       break;
     case 0xb8:
       return;
@@ -162,69 +183,29 @@ void BrDlRebase(unsigned int *dl, int oldBase, int newBase, int size)
 /* WHAT IT DOES: Turn the offsets stored in a model just loaded from ROM
  * into real addresses: its part table, each part's geometry and each part's
  * display list. */
-/* @t4-pass 0x8021DC34 1 2026-09-26 compiles 17 best 116 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8021DC34 2 2026-09-26 compiles 17 best 116 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8021DC34 3 2026-09-26 compiles 17 best 116 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8021DC34 tgr BrModelRebase */
-void BrModelRebase(unsigned int *param_1)
+void BrModelRebase(BrModel *m)
 {
-  int iVar1;
-  int *piVar2;
-  int iVar3;
-  unsigned int *puVar4;
-  int iVar5;
-  unsigned int *puVar6;
-  int iVar7;
-  int iVar8;
-  int iVar9;
-  unsigned int uVar10;
-  
-  if (param_1[1] != 0) {
-    func_8021D070(param_1 + 1,0,0x7fffffff,param_1);
-    iVar9 = 0;
-    iVar8 = 0;
-    piVar2 = (int *)param_1[1] + 1;
-    if (0 < *(int *)param_1[1]) {
-      while( 1 ) {
-        iVar7 = 0;
-        func_8021D070(piVar2,0,0x7fffffff,param_1);
-        func_8021D070(*(int *)(param_1[1] + iVar8 + 4) + 4,0,0x7fffffff,param_1);
-        func_8021D070(*(int *)(param_1[1] + iVar8 + 4) + 8,0,0x7fffffff,param_1);
-        piVar2 = (int *)param_1[1];
-        iVar5 = 0;
-        iVar1 = (int)piVar2 + iVar8;
-        iVar3 = *(int *)(iVar1 + 4);
-        if (0 < *(int *)(iVar3 + 0xc)) {
-          while( 1 ) {
-            func_8021D070(iVar3 + 0x20,0,0x7fffffff,param_1);
-            piVar2 = (int *)param_1[1];
-            iVar7 = iVar7 + 1;
-            iVar5 = iVar5 + 4;
-            iVar1 = (int)piVar2 + iVar8;
-            if (*(int *)(*(int *)(iVar1 + 4) + 0xc) <= iVar7) break;
-            iVar3 = *(int *)(iVar1 + 4) + iVar5;
-          }
-        }
-        iVar9 = iVar9 + 1;
-        iVar8 = iVar8 + 4;
-        if (*piVar2 <= iVar9) break;
-        piVar2 = (int *)(iVar1 + 8);
+  int i;
+  int j;
+
+  if (m->parts != 0) {
+    func_8021D070((unsigned int *)&m->parts, 0, 0x7fffffff, (int)m);
+    for (i = 0; i < m->parts->count; i++) {
+      func_8021D070((unsigned int *)&m->parts->part[i], 0, 0x7fffffff, (int)m);
+      func_8021D070((unsigned int *)&m->parts->part[i]->a, 0, 0x7fffffff, (int)m);
+      func_8021D070((unsigned int *)&m->parts->part[i]->b, 0, 0x7fffffff, (int)m);
+      for (j = 0; j < m->parts->part[i]->n; j++) {
+        func_8021D070((unsigned int *)&m->parts->part[i]->v[j], 0, 0x7fffffff, (int)m);
       }
     }
   }
-  uVar10 = 0;
-  if (*param_1 != 0) {
-    puVar6 = param_1 + 2;
-    puVar4 = param_1;
-    do {
-      func_8021D070(puVar6,0,0x7fffffff,param_1);
-      if (puVar4[2] != 0) {
-        func_8021D070(puVar6,0,0x7fffffff,param_1);
-        func_8021D098(puVar4[2],0,0x7fffffff,param_1);
-      }
-      uVar10 = uVar10 + 1;
-      puVar4 = puVar4 + 5;
-      puVar6 = puVar6 + 5;
-    } while (uVar10 < *param_1);
+  for (i = 0; i < m->nDl; i++) {
+    func_8021D070((unsigned int *)&m->dls[i].dl, 0, 0x7fffffff, (int)m);
+    if (m->dls[i].dl != 0) {
+      func_8021D070((unsigned int *)&m->dls[i].dl, 0, 0x7fffffff, (int)m);
+      BrDlRebase(m->dls[i].dl, 0, 0x7fffffff, (int)m);
+    }
   }
 }
+
