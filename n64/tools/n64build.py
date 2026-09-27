@@ -417,7 +417,9 @@ def cflags_for(src_text):
 def compile_c(path, extra=()):
     src = open(path, encoding='utf-8', errors='replace').read()
     o = tempfile.NamedTemporaryFile(suffix='.o', delete=False).name
-    cmd = [CC] + BASE_FLAGS + cflags_for(src) + list(extra) + ['-o', o, path]
+    flags = cflags_for(src)
+    base = [f for f in BASE_FLAGS if f != '-mips2'] if '-mips3' in flags else BASE_FLAGS
+    cmd = [CC] + base + flags + list(extra) + ['-o', o, path]
     p = subprocess.run(cmd, capture_output=True, text=True)
     if p.returncode:
         os.unlink(o)
