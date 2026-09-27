@@ -13,6 +13,11 @@ typedef struct BrRb {           /* a rigid body's integrated state */
   BrVec3 omega;                 /* 0x28  angular velocity */
   BrRbQuat qdot;                /* 0x34  orientation rate */
 } BrRb;
+typedef struct BrRbRates {      /* what a rigid body integrates from */
+  char pad00[0xfc];
+  float vel[3];                 /* 0xFC  linear */
+  float spin[3];                /* 0x108 angular */
+} BrRbRates;
 typedef struct BrRbParams {     /* set together by BrRbSetParams */
   int x0;
   int kind;                     /* 0x04 */
@@ -45,30 +50,26 @@ void BrRbQuatDerivative(BrRb *b)
 
 /* WHAT IT DOES: Advance a rigid body by one time step: position by velocity
  * and orientation by its rate, both scaled by dt. */
-/* @t4-pass 0x80258324 1 2026-09-26 compiles 16 best 46 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80258324 2 2026-09-26 compiles 17 best 46 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80258324 3 2026-09-26 compiles 17 best 46 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80258324 tgr BrRbIntegrate */
-void BrRbIntegrate(int param_1,int param_2,float param_3)
+void BrRbIntegrate(BrRb *b, BrRbRates *r, float dt)
 {
-  float fVar1;
-  float fVar2;
-  float fVar3;
-  float fVar4;
-  float fVar5;
-  
-  fVar2 = *(float *)(param_2 + 0x100);
-  fVar4 = *(float *)(param_2 + 0x104);
-  fVar1 = *(float *)(param_2 + 0x108);
-  fVar3 = *(float *)(param_2 + 0x10c);
-  fVar5 = *(float *)(param_2 + 0x110);
-  *(float *)(param_1 + 0xc) = *(float *)(param_2 + 0xfc) * param_3 + *(float *)(param_1 + 0xc);
-  *(float *)(param_1 + 0x10) = fVar2 * param_3 + *(float *)(param_1 + 0x10);
-  *(float *)(param_1 + 0x14) = fVar4 * param_3 + *(float *)(param_1 + 0x14);
-  *(float *)(param_1 + 0x28) = fVar1 * param_3 + *(float *)(param_1 + 0x28);
-  *(float *)(param_1 + 0x2c) = fVar3 * param_3 + *(float *)(param_1 + 0x2c);
-  *(float *)(param_1 + 0x30) = fVar5 * param_3 + *(float *)(param_1 + 0x30);
+  float dv[3];
+  float dw[3];
+
+  dv[0] = r->vel[0] * dt;
+  dv[1] = r->vel[1] * dt;
+  dv[2] = r->vel[2] * dt;
+  dw[0] = r->spin[0] * dt;
+  dw[1] = r->spin[1] * dt;
+  dw[2] = r->spin[2] * dt;
+  b->pos.x = dv[0] + b->pos.x;
+  b->pos.y = dv[1] + b->pos.y;
+  b->pos.z = dv[2] + b->pos.z;
+  b->omega.x = dw[0] + b->omega.x;
+  b->omega.y = dw[1] + b->omega.y;
+  b->omega.z = dw[2] + b->omega.z;
 }
+
 
 /* WHAT IT DOES: Build the 3x3 rotation matrix of a unit quaternion. */
 /* @t4-pass 0x802583DC 1 2026-09-26 compiles 19 best 87 moved 0  (n64/tools/n64permute.py) */
