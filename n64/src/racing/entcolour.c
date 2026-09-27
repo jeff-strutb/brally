@@ -9,7 +9,7 @@ void func_80222D54(int param_1);
 void func_8021D5E4(int param_1,int param_2,int param_3);
 void func_802203F0(int param_1,int param_2);
 void func_8021D070(unsigned int *param_1,unsigned int param_2,unsigned int param_3,int param_4);
-void func_8021D098(unsigned int *param_1,int param_2,int param_3,int param_4);
+void func_8021D098(unsigned int *param_1,unsigned int param_2,unsigned int param_3,int param_4);
 void func_80220398();
 unsigned int func_8021CD30();
 void func_8021D32C(int param_1);
@@ -19,6 +19,9 @@ extern BrCarModelBuf D_803C8000[];
 extern int D_8031B238[];
 extern unsigned char D_8028B904[][3];
 void func_80220620(BrCar *car);
+typedef struct BrCarModelPart { void *a; void *b; char pad08[0x1c]; } BrCarModelPart;
+typedef struct BrCarModel { char pad00[0x10]; int nParts; BrCarModelPart *parts; unsigned int *dl[3][10]; void *x90; void *x94; char pad98[0xbc - 0x98]; unsigned int *dl2[3][3]; char pade0[0x11c - 0xe0]; void **x11c; } BrCarModel;
+extern char D_803D5F88[];
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Repaint a car's artwork record in the car's own colour (its
@@ -102,73 +105,37 @@ void BrEntPaintTexture(int param_1,unsigned int param_2,unsigned int param_3,int
 /* WHAT IT DOES: Fix up a car model just loaded into its slot: every part's
  * address and display list is moved from the loading area to the slot's own
  * copy. */
-/* @t4-pass 0x8021D32C 1 2026-09-26 compiles 17 best 149 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8021D32C 2 2026-09-26 compiles 17 best 149 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8021D32C 3 2026-09-26 compiles 17 best 149 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8021D32C tgr BrEntRebaseModel */
-void BrEntRebaseModel(int param_1)
+void BrEntRebaseModel(BrCarModel *m)
 {
-  int iVar1;
-  int iVar2;
-  int iVar3;
-  int iVar4;
-  int iVar5;
-  int local_1c;
-  
-  iVar4 = 0;
-  iVar5 = param_1;
-  local_1c = param_1;
-  do {
-    iVar2 = 0;
-    iVar3 = iVar5 + 0x18;
-    iVar1 = iVar5;
-    do {
-      func_8021D070(iVar3,0x803c8000,0x803d5f88,param_1);
-      func_8021D098(*(int *)(iVar1 + 0x18),0x803c8000,0x803d5f88,param_1);
-      iVar2 = iVar2 + 4;
-      iVar1 = iVar1 + 4;
-      iVar3 = iVar3 + 4;
-    } while (iVar2 < 0x28);
-    iVar2 = 0;
-    iVar1 = local_1c;
-    do {
-      if (*(int *)(iVar1 + 0xbc) != 0) {
-        func_8021D070(iVar1 + 0xbc,0x803c8000,0x803d5f88,param_1);
-        func_8021D098(*(int *)(iVar1 + 0xbc),0x803c8000,0x803d5f88,param_1);
+  int i;
+  int j;
+
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < 10; j++) {
+      func_8021D070((unsigned int *)&m->dl[i][j], (unsigned int)D_803C8000, (unsigned int)D_803D5F88, (int)m);
+      func_8021D098(m->dl[i][j], (unsigned int)D_803C8000, (unsigned int)D_803D5F88, (int)m);
+    }
+    for (j = 0; j < 3; j++) {
+      if (m->dl2[i][j] != 0) {
+        func_8021D070((unsigned int *)&m->dl2[i][j], (unsigned int)D_803C8000, (unsigned int)D_803D5F88, (int)m);
+        func_8021D098(m->dl2[i][j], (unsigned int)D_803C8000, (unsigned int)D_803D5F88, (int)m);
       }
-      iVar2 = iVar2 + 4;
-      iVar1 = iVar1 + 4;
-    } while (iVar2 != 0xc);
-    iVar4 = iVar4 + 1;
-    local_1c = local_1c + 0xc;
-    iVar5 = iVar5 + 0x28;
-  } while (iVar4 < 3);
-  func_8021D070(param_1 + 0x14,0x803c8000,0x803d5f88,param_1);
-  func_8021D070(param_1 + 0x90,0x803c8000,0x803d5f88,param_1);
-  func_8021D070(param_1 + 0x94,0x803c8000,0x803d5f88,param_1);
-  iVar4 = 0;
-  iVar5 = 0;
-  if (0 < *(int *)(param_1 + 0x10)) {
-    iVar1 = *(int *)(param_1 + 0x14);
-    while( 1 ) {
-      func_8021D070(iVar1 + iVar5,0x803c8000,0x803d5f88,param_1);
-      func_8021D070(*(int *)(param_1 + 0x14) + iVar5 + 4,0x803c8000,0x803d5f88,param_1);
-      iVar4 = iVar4 + 1;
-      iVar5 = iVar5 + 0x24;
-      if (*(int *)(param_1 + 0x10) <= iVar4) break;
-      iVar1 = *(int *)(param_1 + 0x14);
     }
   }
-  iVar4 = 0;
-  func_8021D070(param_1 + 0x11c,0x803c8000,0x803d5f88,param_1);
-  iVar5 = *(int *)(param_1 + 0x11c);
-  while( 1 ) {
-    func_8021D070(iVar5 + iVar4 * 4,0x803c8000,0x803d5f88,param_1);
-    iVar4 = iVar4 + 1;
-    if (iVar4 == 0xc) break;
-    iVar5 = *(int *)(param_1 + 0x11c);
+  func_8021D070((unsigned int *)&m->parts, (unsigned int)D_803C8000, (unsigned int)D_803D5F88, (int)m);
+  func_8021D070((unsigned int *)&m->x90, (unsigned int)D_803C8000, (unsigned int)D_803D5F88, (int)m);
+  func_8021D070((unsigned int *)&m->x94, (unsigned int)D_803C8000, (unsigned int)D_803D5F88, (int)m);
+  for (i = 0; i < m->nParts; i++) {
+    func_8021D070((unsigned int *)&m->parts[i].a, (unsigned int)D_803C8000, (unsigned int)D_803D5F88, (int)m);
+    func_8021D070((unsigned int *)&m->parts[i].b, (unsigned int)D_803C8000, (unsigned int)D_803D5F88, (int)m);
+  }
+  func_8021D070((unsigned int *)&m->x11c, (unsigned int)D_803C8000, (unsigned int)D_803D5F88, (int)m);
+  for (i = 0; i < 12; i++) {
+    func_8021D070((unsigned int *)&m->x11c[i], (unsigned int)D_803C8000, (unsigned int)D_803D5F88, (int)m);
   }
 }
+
 
 /* WHAT IT DOES: Attach one of the car artwork records to a car and repaint
  * it in its own colour. */
