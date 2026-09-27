@@ -729,6 +729,26 @@ def classify(miss, extra, obag=None, rbag=None):
         if fired:
             own_single['xor R, R'] -= 1
     um += collections.Counter(); ue += collections.Counter()
+    # Commutative integer add, constant operand: `mov D, A; <add/sub on D>;
+    # add D, R` against `mov D, R; <same>; add D, A` -- base - x + off and
+    # off - x + base, the same sum mod 2^32 (integer add is exactly
+    # commutative; no rounding, and the carry of the last add is the same).
+    # VC5 reassociates a link-time constant to the END of an integer sum for
+    # every spelling (0x10060A30 BrRaceSaveLastLapInfo: ~250 probes -- sum
+    # orders, casts, locals, inline helpers taking the computed pointer,
+    # end-relative arrays, C++ member form, 31 flag sets -- all emit the
+    # constant last; the original materialises it first).  The integer twin
+    # of the x87 commutative quad above.  Cancel the crossed QUAD only: the
+    # unpaired `add R, R` and the `mov R, A` singleton on one side against the
+    # unpaired `add R, A` and the `mov R, R` singleton on the other.
+    for side, other, own_single, opp_single in ((um, ue, sm, se), (ue, um, se, sm)):
+        n = min(side['add R, R'], own_single['mov R, A'],
+                other['add R, A'], opp_single['mov R, R'])
+        if n:
+            side['add R, R'] -= n; own_single['mov R, A'] -= n
+            other['add R, A'] -= n; opp_single['mov R, R'] -= n
+    um += collections.Counter(); ue += collections.Counter()
+    sm += collections.Counter(); se += collections.Counter()
     # Callee-save fork: a BALANCED extra `push R` / `pop R` on one side and
     # nothing opposite is one more register saved across the body -- the
     # definition of an allocation difference, and the prologue/epilogue half of
