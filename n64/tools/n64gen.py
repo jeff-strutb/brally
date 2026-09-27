@@ -142,6 +142,26 @@ def rodata_literals(rom):
     return out
 
 
+SCALARS = ('int', 'unsigned int', 'short', 'unsigned short', 'char', 'unsigned char', 'float')
+
+
+def static_local(addr, va, ty):
+    """A scalar only this ROM function reaches, and not a read-only literal,
+    is a function-local static: IDO never CSEs or hoists its address."""
+    return (ty in SCALARS and not B.rom_refs().get(addr, set()) - {va}
+            and addr not in rodata_literals(_rom))
+
+
+def static_init(addr, ty):
+    if addr >= B.BSS_S:
+        return ''
+    width = {'char': 1, 'unsigned char': 1, 'short': 2, 'unsigned short': 2}.get(ty, 4)
+    raw = _rom.bytes(addr, width)
+    if ty == 'float':
+        return ' = %rf' % struct.unpack('>f', raw)[0]
+    return ' = %d' % int.from_bytes(raw, 'big', signed=not ty.startswith('unsigned'))
+
+
 def draft(va):
     p = os.path.join(DRAFTS, '0x%08X.c' % va)
     if not os.path.exists(p):
@@ -327,6 +347,7 @@ def candidate(va, dtypes, name=None, noproto=(), ptrs=(), opts=()):
     # `undefined`, so `&DAT_x + n*K` in a draft is BYTE arithmetic; typed by
     # its widest load it would scale by 4.
     bytewise = set()
+    lstatics = []
     if 'bytes' in opts:
         bytewise = set(int(x, 16) for x in re.findall(r'&D_([0-9A-F]{8})\s*[-+]', body))
     for d in sorted(set(int(x, 16) for x in re.findall(r'\bD_([0-9A-F]{8})\b', body))):
@@ -342,7 +363,13 @@ def candidate(va, dtypes, name=None, noproto=(), ptrs=(), opts=()):
             body = re.sub(r'&D_%08X\b' % d, '((%s *)0x%08X)' % (ty, d), body)
             body = re.sub(r'\bD_%08X\b' % d, '(*(%s *)0x%08X)' % (ty, d), body)
             continue
+        if 'lstatic' in opts and _rom is not None and static_local(d, va, ty):
+            lstatics.append('  static %s D_%08X%s;' % (ty, d, static_init(d, ty)))
+            continue
         decls.append('extern %s D_%08X;' % (ty, d))
+    if lstatics:
+        i = body.index('{\n') + 2
+        body = body[:i] + '\n'.join(lstatics) + '\n' + body[i:]
     for d in sorted(set(int(x, 16) for x in re.findall(r'\bP_([0-9A-F]{8})\b', body))):
         decls.append('extern char *P_%08X;' % d)
         body = body.replace('P_%08X' % d, 'D_%08X' % d)
@@ -438,6 +465,9 @@ def main():
             if any(int(x, 16) in rodata_literals(rom)
                    for x in re.findall(r'\bD_([0-9A-F]{8})\b', src)):
                 base_opts.append('rolit')
+            if any(static_local(int(x, 16), va, dtypes.get(int(x, 16), 'int'))
+                   for x in re.findall(r'\bD_([0-9A-F]{8})\b', src)):
+                base_opts.append('lstatic')
             for _ in range(2):
                 improved = False
                 for o in base_opts:
