@@ -300,3 +300,6 @@ va,name,kind
 80217FB8,BrScreenClear,func
 802174B4,BrMat4FitRange,func
 80217614,BrTexSizeBits,func
+802562F0,BrMixMusic,func
+8025649C,BrMixMusicVoice,func
+8025658C,BrMixSfx,func
