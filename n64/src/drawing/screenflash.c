@@ -34,7 +34,6 @@ extern int D_8028B77C;
 extern int D_8028B780;
 extern unsigned char D_802A49C8;
 extern unsigned char D_802A49D0;
-extern double D_802A9628;
 typedef struct BrViewRect { int x; int y; int w; int h; int x10; } BrViewRect;
 extern BrViewRect D_8031B2C8[];
 /* -- end declarations -- */
@@ -259,7 +258,7 @@ LAB_80224010:
   else {
     D_8028B780 = 0;
   }
-  D_802A49D0 = (char)(int)((double)D_8028B774 * D_802A9628);
+  D_802A49D0 = (char)(int)((double)D_8028B774 * 255.0);
   if (D_8028B77C == 0) {
     if (D_8028B760 == D_8028B768) {
       dVar4 = (double)D_8028B768;
@@ -286,5 +285,5 @@ LAB_80224010:
   }
   dVar4 = (double)D_8028B768;
 LAB_802242c4:
-  D_802A49C8 = (char)(int)(dVar4 * D_802A9628);
+  D_802A49C8 = (char)(int)(dVar4 * 255.0);
 }

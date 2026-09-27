@@ -19,6 +19,12 @@ Levers:
   bytes  a global the function offsets (`&D_x + n*K`) is declared `char`, as
          Ghidra meant it (byte arithmetic); the file's other uses keep their
          width through a cast
+  rolit  a float/double the ROM only ever loads (never stores) is a literal in
+         the source; IDO rebuilds the literal pool from them in source order
+  lstatic a scalar global no other ROM function touches is a function-local
+         `static` (IDO never CSEs or hoists a local static's address, and
+         does for every extern); its ROM .data word is the initialiser, and
+         a .bss one has none
 """
 import argparse
 import csv
@@ -84,7 +90,64 @@ def lever_gbi(src, body):
     return src
 
 
-LEVERS = {'fsuf': lever_fsuf, 'bytes': lever_bytes, 'lowsym': lever_lowsym, 'gbi': lever_gbi}
+CUR = {}
+
+
+def lever_rolit(src, body):
+    lits = G.rodata_literals(B.Rom())
+
+    def lit(m):
+        v = lits.get(int(m.group(1), 16))
+        if v is None:
+            return m.group(0)
+        return '(%s)' % v if v.startswith('-') else v
+    nbody = re.sub(r'\bD_([0-9A-F]{8})\b', lit, body)
+    if nbody == body:
+        return src
+    src = src.replace(body, nbody, 1)
+    for d in set(re.findall(r'\bD_[0-9A-F]{8}\b', body)) - set(re.findall(r'\bD_[0-9A-F]{8}\b', nbody)):
+        if len(re.findall(r'\b%s\b' % d, src)) == 1:           # only its extern is left
+            src = re.sub(r'^extern [\w ]+\b%s;\n' % d, '', src, flags=re.M)
+    return src
+
+
+def lever_lstatic(src, body):
+    va = CUR.get('va')
+    refs = B.rom_refs()
+    rom = B.Rom()
+    head, sep, rest = src.partition('/* -- end declarations -- */')
+    if not sep:
+        return src
+    decls = []
+    for d in sorted(set(re.findall(r'\b(D_([0-9A-F]{8}))\b', body))):
+        name, addr = d[0], int(d[1], 16)
+        m = re.search(r'^extern ([\w ]+?)\s*\b%s;\n' % name, head, re.M)
+        if not m or refs.get(addr, set()) - {va} or addr in G.rodata_literals(rom):
+            continue                                # shared, or a read-only literal
+        if re.search(r'\b%s\b' % name, rest.replace(body, '')):
+            continue                                # the file uses it elsewhere
+        ty = m.group(1).strip()
+        width = {'char': 1, 'unsigned char': 1, 'short': 2, 'unsigned short': 2}.get(ty, 4)
+        if ty in ('double', 'long long', 'unsigned long long'):
+            continue
+        init = ''
+        if addr < B.BSS_S:
+            raw = rom.bytes(addr, width)
+            if ty == 'float':
+                import struct
+                init = ' = %rf' % struct.unpack('>f', raw)[0]
+            else:
+                init = ' = %d' % int.from_bytes(raw, 'big', signed=not ty.startswith('unsigned'))
+        head = head.replace(m.group(0), '', 1)
+        decls.append('  static %s %s%s;\n' % (ty, name, init))
+    if not decls:
+        return src
+    i = body.index('{\n') + 2
+    nbody = body[:i] + ''.join(decls) + body[i:]
+    return head + sep + rest.replace(body, nbody, 1)
+
+
+LEVERS = {'lstatic': lever_lstatic, 'rolit': lever_rolit, 'fsuf': lever_fsuf, 'bytes': lever_bytes, 'lowsym': lever_lowsym, 'gbi': lever_gbi}
 
 
 def grade_file(path):
@@ -122,6 +185,7 @@ def main():
         for lv in levers:
             src = open(path).read()
             body = T.function_text(src, name)
+            CUR['va'] = va
             new = LEVERS[lv](src, body)
             if new == src:
                 continue
