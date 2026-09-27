@@ -262,3 +262,4 @@ va,name,kind
 8021C6F0,BrModeRun,func
 8021C718,BrMainLoop,func
 802116E0,BrPlayerSelectScreen,func
+80218C8C,BrFogAmount,func
