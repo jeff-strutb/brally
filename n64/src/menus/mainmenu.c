@@ -13,7 +13,7 @@ unsigned int func_8021CD30(unsigned int dst, int rom, unsigned int *size);
 void func_802578F4(void);
 void BrSeasonPickRace(void);
 int func_80209434();
-void func_802116E0(void);
+void BrPlayerSelectScreen(void);
 void func_8020D004(void);
 void func_80211D70(void);
 void func_8020686C(void);
@@ -118,7 +118,7 @@ void BrMainMenu(void)
     case 1:
       D_8026FF08 = 2;
       D_8026FF18 = 1;
-      BrModeSet(func_802116E0);
+      BrModeSet(BrPlayerSelectScreen);
       break;
     case 2:
       BrTimeAttackStart();
@@ -126,7 +126,7 @@ void BrMainMenu(void)
     case 3:
       D_8026FF08 = 2;
       D_8026FF18 = 3;
-      BrModeSet(func_802116E0);
+      BrModeSet(BrPlayerSelectScreen);
       break;
     case 4:
       D_80272070 = 1;
