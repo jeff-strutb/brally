@@ -305,3 +305,4 @@ va,name,kind
 8025658C,BrMixSfx,func
 80256270,BrCopy16,func
 80256290,BrFill64,func
+8021D6DC,BrAnimSetFlags,func
