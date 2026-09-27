@@ -194,10 +194,14 @@ def candidate(va, dtypes, name=None, noproto=(), ptrs=(), opts=()):
                   lambda m: ('(&D_%s)' % m.group(1).upper()
                              if SYMLO <= int(m.group(1), 16) < SYMHI else m.group(0)), body)
     linked = set()
+    if 'lowsym' in opts:
+        # a global below the image (the low-RAM data at 0x80025C00..) is
+        # a linked variable, not a fixed address: the ROM schedules its
+        # lui like any other symbol's
+        linked |= set(int(x, 16) for x in re.findall(r'\bD_(80[01][0-9A-F]{5})\b', body))
     if 'negsym' in opts:
-        linked = set(0x100000000 - int(x, 16)
-                     for x in re.findall(r'(?<![\w.])-\s*0x(7f[0-9a-fA-F]{6})\b', body))
-    if 'negsym' in opts:
+        linked |= set(0x100000000 - int(x, 16)
+                       for x in re.findall(r'(?<![\w.])-\s*0x(7f[0-9a-fA-F]{6})\b', body))
         # Ghidra prints a RAM address it could not tie to a symbol as a
         # negative int (-0x7fc38000 == 0x803C8000); the ROM's lui/addiu pair
         # says it was a linked address
@@ -331,6 +335,8 @@ def main():
                 base_opts.append('bytes')
             if re.search(r'-\s*0x7f[0-9a-fA-F]{6}\b', src):
                 base_opts.append('negsym')
+            if re.search(r'0x80[01][0-9a-fA-F]{5}\b', src):
+                base_opts.append('lowsym')
             for _ in range(2):
                 improved = False
                 for o in base_opts:

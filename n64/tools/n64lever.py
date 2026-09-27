@@ -14,6 +14,7 @@ stays current.
 
 Levers:
   fsuf   float literals get an `f` (Ghidra prints single constants as double)
+  lowsym a dereferenced low-RAM constant (0x800xxxxx) is a linked global
   bytes  a global the function offsets (`&D_x + n*K`) is declared `char`, as
          Ghidra meant it (byte arithmetic); the file's other uses keep their
          width through a cast
@@ -52,7 +53,24 @@ def lever_bytes(src, body):
     return src
 
 
-LEVERS = {'fsuf': lever_fsuf, 'bytes': lever_bytes}
+def lever_lowsym(src, body):
+    """`(*(T *)0x800xxxxx)` -> a linked global D_800xxxxx of type T."""
+    pat = re.compile(r'\(\*\(([\w ]+?) \*\)0x(80[01][0-9A-Fa-f]{5})\)')
+    found = {}
+    for m in pat.finditer(body):
+        found['D_%08X' % int(m.group(2), 16)] = m.group(1).strip()
+    if not found:
+        return src
+    new = pat.sub(lambda m: 'D_%08X' % int(m.group(2), 16), body)
+    new = re.sub(r'\(\(([\w ]+?) \*\)0x(80[01][0-9A-Fa-f]{5})\)',
+                 lambda m: '((%s *)&D_%08X)' % (m.group(1), int(m.group(2), 16)), new)
+    src = src.replace(body, new)
+    decl = ''.join('extern %s %s;\n' % (t, n) for n, t in sorted(found.items())
+                   if not re.search(r'\b%s;' % n, src))
+    return src.replace('/* -- end declarations -- */', decl + '/* -- end declarations -- */', 1)
+
+
+LEVERS = {'fsuf': lever_fsuf, 'bytes': lever_bytes, 'lowsym': lever_lowsym}
 
 
 def grade_file(path):
