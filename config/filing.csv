@@ -411,6 +411,7 @@ glide_va,name,module,basis,file
 0x100297C0,BrGbiTexScanOtherModeH0E,drawing,filed,src/core/drawing/br_gbitexscan.c
 0x100297F0,BrGbiTexCreate,drawing,neighbour,src/core/drawing/br_gbitexscan.c
 0x100298C0,FUN_100298c0,drawing,filed,src/core/drawing/br_tex3d.c
+0x100299A0,BrTexInstallRecords,drawing,filed,src/core/drawing/br_tex3d.c
 0x10029B10,BrTexChooseLevel,drawing,filed,src/core/drawing/br_texinit.c
 0x10029C70,BrGbiSolidTexBuild,drawing,neighbour,src/core/drawing/br_gbitexscan.c
 0x10029D70,BrMat4Mul,geometry,filed,src/core/geometry/br_mat.c
