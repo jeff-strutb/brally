@@ -2,18 +2,15 @@
  * three fades stepped each frame: screen, effects volume, music volume
  */
 #include "tgr/common.h"
+#include "tgr/gbi.h"
 
 /* -- declarations -- */
 extern float D_8028B750;
-extern char * D_8028A858;
+extern Gfx *D_8028A858;
 extern int D_8028A8A0;
 extern int D_8028AAEC;
 extern float D_802A9620;
 extern float D_802A9624;
-extern char D_8031B2C8;
-extern char D_8031B2CC;
-extern char D_8031B2D0;
-extern char D_8031B2D4;
 extern float D_8028B76C;
 extern float D_8028B774;
 extern float D_8028B758;
@@ -38,6 +35,8 @@ extern int D_8028B780;
 extern unsigned char D_802A49C8;
 extern unsigned char D_802A49D0;
 extern double D_802A9628;
+typedef struct BrViewRect { int x; int y; int w; int h; int x10; } BrViewRect;
+extern BrViewRect D_8031B2C8[];
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Cancel the white screen flash: its strength goes back to
@@ -57,72 +56,27 @@ void BrStub80223A68(void)
 
 /* WHAT IT DOES: Draw the white screen flash over the current view, its
  * opacity set by the flash strength (clamped to its maximum). */
-/* @t4-pass 0x80223480 1 2026-09-26 compiles 17 best 137 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80223480 2 2026-09-26 compiles 17 best 137 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80223480 3 2026-09-26 compiles 17 best 135 moved 2  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80223480 4 2026-09-26 compiles 41 best 135 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80223480 tgr BrScreenFlashDraw */
 void BrScreenFlashDraw(void)
 {
-  unsigned int *puVar1;
-  unsigned int *puVar2;
-  int iVar3;
-  
-  puVar1 = D_8028A858;
-  if (D_802A9620 <= D_8028B750) {
-    if (D_802A9624 < D_8028B750) {
+  if (!(D_8028B750 < D_802A9620)) {
+    if (D_8028B750 > D_802A9624) {
       D_8028B750 = D_802A9624;
     }
-    puVar2 = 1 + D_8028A858;
-    D_8028A858 = D_8028A858 + 2;
-    *puVar2 = 0;
-    *puVar1 = 0xe7000000;
-    puVar2 = D_8028A858;
-    puVar1 = D_8028A858 + 1;
-    D_8028A858 = D_8028A858 + 2;
-    *puVar1 = 0;
-    *puVar2 = 0xba001402;
-    puVar2 = D_8028A858;
-    puVar1 = D_8028A858 + 1;
-    D_8028A858 = D_8028A858 + 2;
-    *puVar1 = 0x504340;
-    *puVar2 = 0xb900031d;
-    puVar2 = D_8028A858;
-    puVar1 = D_8028A858 + 1;
-    D_8028A858 = D_8028A858 + 2;
-    *puVar1 = 0xfffdf6fb;
-    *puVar2 = 0xfcffffff;
-    puVar1 = D_8028A858;
-    puVar2 = D_8028A858 + 2;
-    *D_8028A858 = 0xfa000000;
-    D_8028A858 = puVar2;
-    puVar1[1] = (int)(D_8028B750 * 255.0f) & 0xffU | 0xffffff00;
-    puVar2 = D_8028A858;
-    puVar1 = D_8028A858 + 1;
-    D_8028A858 = D_8028A858 + 2;
-    *puVar1 = 0xc0;
-    *puVar2 = 0xba000602;
-    puVar1 = D_8028A858;
-    iVar3 = D_8028AAEC * 0x14;
-    puVar2 = D_8028A858 + 2;
-    *D_8028A858 =
-         (*(int *)(&D_8031B2D4 + iVar3) + *(int *)(&D_8031B2CC + iVar3) & 0x3ffU) << 0xf6000000 | 2 |
-         (*(int *)(&D_8031B2C8 + iVar3) + *(int *)(&D_8031B2D0 + iVar3) & 0x3ffU) << 0xe;
-    D_8028A858 = puVar2;
-    puVar1[1] = (*(unsigned int *)(&D_8031B2CC + D_8028AAEC * 0x14) & 0x3ff) << 2 |
-                (*(unsigned int *)(&D_8031B2C8 + D_8028AAEC * 0x14) & 0x3ff) << 0xe;
-    puVar2 = D_8028A858;
-    puVar1 = D_8028A858 + 1;
-    D_8028A858 = D_8028A858 + 2;
-    *puVar1 = 0;
-    *puVar2 = 0xe7000000;
-    puVar1 = D_8028A858;
-    puVar2 = D_8028A858 + 2;
-    *D_8028A858 = 0xba000602;
-    D_8028A858 = puVar2;
-    puVar1[1] = D_8028A8A0;
+    gDPPipeSync(D_8028A858++);
+    gDPSetCycleType(D_8028A858++, G_CYC_1CYCLE);
+    gDPSetRenderMode(D_8028A858++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
+    gDPSetCombine(D_8028A858++, 0xffffff, 0xfffdf6fb);   /* G_CC_PRIMITIVE, G_CC_PRIMITIVE */
+    gDPSetPrimColor(D_8028A858++, 0, 0, 255, 255, 255, (int)(255.0f * D_8028B750));
+    gDPSetColorDither(D_8028A858++, G_CD_DISABLE);
+    gDPFillRectangle(D_8028A858++, D_8031B2C8[D_8028AAEC].x, D_8031B2C8[D_8028AAEC].y,
+                     D_8031B2C8[D_8028AAEC].x + D_8031B2C8[D_8028AAEC].w,
+                     D_8031B2C8[D_8028AAEC].y + D_8031B2C8[D_8028AAEC].h);
+    gDPPipeSync(D_8028A858++);
+    gDPSetColorDither(D_8028A858++, D_8028A8A0);
   }
 }
+
 
 /* WHAT IT DOES: Start a screen fade towards level (0 black .. 1 clear) over
  * the given seconds. Fading up starts at once; fading down while a fade-up
