@@ -12,6 +12,14 @@ void osSyncPrintf(char *fmt, ...);
 int sprintf(char *buf, char *fmt, ...);
 void BrFatal(char *msg);
 void *memcpy(void *dst, void *src, unsigned int n);
+void BrEntRebaseModel(BrCarModel *m);
+typedef struct BrStream {       /* a streamed ROM read in flight */
+  char pad00[0x20];
+  int slot;                     /* 0x20  model slot it fills */
+  int car;                      /* 0x24  car it loads */
+} BrStream;
+void BrStreamInit(BrStream *s, char *buf);
+extern char D_802F7F00[][0x8000];
 void func_802203F0(int param_1,int param_2);
 void func_8021D070(unsigned int *param_1,unsigned int param_2,unsigned int param_3,int param_4);
 void func_8021D098(unsigned int *param_1,unsigned int param_2,unsigned int param_3,int param_4);
@@ -45,6 +53,19 @@ void BrEntLoadRecord(int param_1,int param_2,int param_3)
 {
   BrCarModelInstall(param_2,param_3,0);
   func_802203F0(param_1,param_2);
+}
+
+/* WHAT IT DOES: Start streaming car n's model file from ROM into a slot's
+ * model buffer through one of the 32 KB stream buffers, recording its size
+ * and, in the stream, which slot and car it is for. */
+/* @implements 0x80220474 tgr BrCarModelStream */
+void BrCarModelStream(BrStream *s, int slot, int car, int bufIdx)
+{
+  D_8028AE0C[car].size = BrRomReadSize(D_8028AE0C[car].rom);
+  BrStreamInit(s, D_802F7F00[bufIdx]);
+  func_8021CD30(&D_803C8000[slot], D_8028AE0C[car].rom, s);
+  s->slot = slot;
+  s->car = car;
 }
 
 /* WHAT IT DOES: Tell whether an entity slot is unused (it has no owner
@@ -157,24 +178,16 @@ void BrCarModelLoad(void *buf, int car)
 
 /* WHAT IT DOES: Put car n's model into a slot's model buffer -- loaded
  * from ROM, or copied from a model already in memory -- rebase its
- * pointers there and record which car the slot holds.
- * RESIDUE (4 words): the buffer address is spilled across the calls at
- * sp+0x18, the ROM's at sp+0x1C -- a named local reserves 0x1C for its own
- * home; spelling the two branches' addresses differently frees the temp
- * into 0x1C but makes it memory-resident (one reload at the join). */
+ * pointers there and record which car the slot holds. */
 /* @implements 0x8021D5E4 tgr BrCarModelInstall */
 void BrCarModelInstall(int slot, int car, void *src)
 {
-  BrCarModelBuf *buf;
-
   if (src == 0) {
-    buf = &D_803C8000[slot];
-    BrCarModelLoad(buf, car);
+    BrCarModelLoad(&D_803C8000[slot], car);
   } else {
-    buf = &D_803C8000[slot];
-    memcpy(buf, src, D_8028AE0C[car].size);
+    memcpy(&D_803C8000[slot], src, D_8028AE0C[car].size);
   }
-  func_8021D32C((int)buf);
+  BrEntRebaseModel((BrCarModel *)&D_803C8000[slot]);
   D_8031B238[slot] = car;
 }
 

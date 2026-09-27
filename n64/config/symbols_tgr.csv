@@ -269,3 +269,4 @@ va,name,kind
 802579F4,BrSfxFreeVoice,func
 80200000,BrEntry,func
 80257B04,BrSfxVoiceStart,func
+80220474,BrCarModelStream,func

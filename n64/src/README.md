@@ -22,4 +22,4 @@ One folder per area; a file per responsibility.  Every function carries a
 | [`racing/`](racing/README.md) | race state, the race display, car artwork, the camera |
 | [`startup/`](startup/README.md) | boot, the main loop's game modes, fatal errors |
 
-Tagged functions: T2 28, T4 235.
+Tagged functions: T2 27, T4 237.
