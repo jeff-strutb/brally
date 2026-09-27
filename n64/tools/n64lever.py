@@ -122,7 +122,7 @@ def lever_lstatic(src, body):
     for d in sorted(set(re.findall(r'\b(D_([0-9A-F]{8}))\b', body))):
         name, addr = d[0], int(d[1], 16)
         m = re.search(r'^extern ([\w ]+?)\s*\b%s;\n' % name, head, re.M)
-        if not m or refs.get(addr, set()) - {va} or addr in G.rodata_literals(rom):
+        if not m or refs.get(addr, set()) != {va} or addr in G.rodata_literals(rom):
             continue                                # shared, or a read-only literal
         if re.search(r'\b%s\b' % name, rest.replace(body, '')):
             continue                                # the file uses it elsewhere

@@ -148,8 +148,8 @@ SCALARS = ('int', 'unsigned int', 'short', 'unsigned short', 'char', 'unsigned c
 def static_local(addr, va, ty):
     """A scalar only this ROM function reaches, and not a read-only literal,
     is a function-local static: IDO never CSEs or hoists its address."""
-    return (ty in SCALARS and not B.rom_refs().get(addr, set()) - {va}
-            and addr not in rodata_literals(_rom))
+    refs = B.rom_refs().get(addr, set())
+    return (ty in SCALARS and refs == {va} and addr not in rodata_literals(_rom))
 
 
 def static_init(addr, ty):
