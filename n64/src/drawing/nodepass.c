@@ -3,9 +3,17 @@
 #include "tgr/common.h"
 
 /* -- declarations -- */
-void BrNodeMarkPass(int *param_1);
-void BrNodeClearMarkPass(int *param_1);
-extern int D_80025C70;
+typedef struct BrNode {        /* a scene-tree node */
+  struct BrNode *child;         /* 0x00 */
+  struct BrNode *next;          /* 0x04  next sibling */
+  char pad08[9];
+  unsigned char kind;           /* 0x11 */
+  char pad12[4];
+  unsigned short flags;         /* 0x16  bit 15: visited this pass, bit 0: skip */
+} BrNode;
+void BrNodeMarkPass(BrNode *n);
+void BrNodeClearMarkPass(BrNode *n);
+extern BrNode *D_80025C70;
 extern int D_8028B940;
 /* -- end declarations -- */
 
@@ -20,68 +28,35 @@ void BrScenePassRun(void)
 }
 
 /* WHAT IT DOES: Walk the scene tree, stamping each node not yet visited
- * before descending into it; in the modes that need it the pass also clears
- * one per-node byte. */
-/* @t4-pass 0x80255BA0 1 2026-09-26 compiles 17 best 36 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80255BA0 2 2026-09-26 compiles 16 best 36 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80255BA0 3 2026-09-26 compiles 15 best 36 moved 0  (n64/tools/n64permute.py) */
+ * (and not marked skip) before descending into its children; on tracks 3
+ * and 8 nodes of kind 2 are turned into kind 0 on the way. */
 /* @implements 0x80255BA0 tgr BrNodeMarkPass */
-void BrNodeMarkPass(int *param_1)
+void BrNodeMarkPass(BrNode *n)
 {
-  short uVar1;
-  
-  if (param_1 == (int *)0x0) {
-    return;
-  }
-  uVar1 = *(short *)((int)param_1 + 0x16);
-  do {
-    if ((uVar1 & 0x8000) == 0) {
-      if ((uVar1 & 1) == 0) {
-        *(short *)((int)param_1 + 0x16) = uVar1 | 0x8000;
-        if (*(char *)((int)param_1 + 0x11) == '\x02') {
-          if (D_8028B940 == 3) {
-            *(char *)((int)param_1 + 0x11) = 0;
-          }
-          else if (D_8028B940 == 8) {
-            *(char *)((int)param_1 + 0x11) = 0;
-          }
-        }
-        BrNodeMarkPass(*param_1);
-        goto LAB_80255c24;
+  while (n != 0) {
+    if (!(n->flags & 0x8000) && !(n->flags & 1)) {
+      n->flags |= 0x8000;
+      if (n->kind == 2 && (D_8028B940 == 3 || D_8028B940 == 8)) {
+        n->kind = 0;
       }
-      param_1 = (int *)param_1[1];
+      BrNodeMarkPass(n->child);
     }
-    else {
-LAB_80255c24:
-      param_1 = (int *)param_1[1];
-    }
-    if (param_1 == (int *)0x0) {
-      return;
-    }
-    uVar1 = *(short *)((int)param_1 + 0x16);
-  } while( 1 );
+    n = n->next;
+  }
 }
+
 
 /* WHAT IT DOES: Walk the scene tree taking off every visit stamp the
  * marking pass left, ready for the next walk. */
-/* @t4-pass 0x80255C50 1 2026-09-26 compiles 17 best 10 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80255C50 2 2026-09-26 compiles 16 best 10 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80255C50 3 2026-09-26 compiles 16 best 10 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80255C50 tgr BrNodeClearMarkPass */
-void BrNodeClearMarkPass(int *param_1)
+void BrNodeClearMarkPass(BrNode *n)
 {
-  short uVar1;
-  
-  if (param_1 != (int *)0x0) {
-    uVar1 = *(short *)((int)param_1 + 0x16);
-    while( 1 ) {
-      if ((uVar1 & 0x8000) != 0) {
-        *(short *)((int)param_1 + 0x16) = uVar1 & 0x7fff;
-        BrNodeClearMarkPass(*param_1);
-      }
-      param_1 = (int *)param_1[1];
-      if (param_1 == (int *)0x0) break;
-      uVar1 = *(short *)((int)param_1 + 0x16);
+  while (n != 0) {
+    if (n->flags & 0x8000) {
+      n->flags &= 0x7fff;
+      BrNodeClearMarkPass(n->child);
     }
+    n = n->next;
   }
 }
+
