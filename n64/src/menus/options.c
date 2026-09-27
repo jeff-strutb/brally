@@ -25,7 +25,6 @@ void BrCtrlConfigScreen(void);
 void BrMainMenu(void);
 void func_80200634(void);
 int sprintf(char *buf, const char *fmt, ...);
-extern int D_802724E0;
 extern int D_80271FA0;
 extern int D_80271FA4;
 extern int D_80271FA8;
@@ -38,7 +37,6 @@ extern int D_80271FC0;
 extern int D_8027205C;
 extern MenuItem *D_80272468[];
 extern int D_803163A8;
-extern int D_803163AC;
 extern char D_803163B0[24];
 extern char D_803163C8[24];
 extern MenuItem D_802723DC[];
@@ -139,7 +137,10 @@ void BrOptionsDrawHelp(int row)
 /* @implements 0x80211A3C tgr BrOptionsScreen */
 void BrOptionsScreen(void)
 {
-  if (D_802724E0 <= 0) {
+  static int entered = 0;         /* 0x802724E0: 1 once set up, -1 = returning from a sub-screen */
+  static int sel;                 /* 0x803163AC: the highlighted item */
+
+  if (entered <= 0) {
     D_80271FA4 = -1;
     D_80271FA0 = -1;
     BrFrontMenuEnter(D_80272468, &D_803163A8);
@@ -150,10 +151,10 @@ void BrOptionsScreen(void)
     D_80271FB8 = 9;
     D_80271FBC = 280;
     D_80271FC0 = 42;
-    if (D_802724E0 == 0) {
-      D_803163AC = 0;
+    if (entered == 0) {
+      sel = 0;
     }
-    D_802724E0 = 1;
+    entered = 1;
   }
   sprintf(D_803163B0, "BGM Volume: %d", D_802723D0[0]);
   sprintf(D_803163C8, "SFX Volume: %d", D_802723D0[1]);
@@ -164,9 +165,9 @@ void BrOptionsScreen(void)
   } else {
     D_802723DC[2].label = "Units: kph";
   }
-  switch (BrMenu("OPTIONS", D_803163A8, D_80272468, &D_803163AC, 0, 0, 0, 0, 0x80, 0x40, 0x20)) {
+  switch (BrMenu("OPTIONS", D_803163A8, D_80272468, &sel, 0, 0, 0, 0, 0x80, 0x40, 0x20)) {
   case 4:
-    switch (D_803163AC) {
+    switch (sel) {
     case 0:
       BrMusicVolumeDown();
       break;
@@ -179,7 +180,7 @@ void BrOptionsScreen(void)
     }
     break;
   case 3:
-    switch (D_803163AC) {
+    switch (sel) {
     case 0:
       BrMusicVolumeUp();
       break;
@@ -192,14 +193,14 @@ void BrOptionsScreen(void)
     }
     break;
   case 1:
-    switch (D_803163AC) {
+    switch (sel) {
     case 2:
       D_802723D0[2] = !D_802723D0[2];
       break;
     case 3:
-      D_802724E0 = -1;
+      entered = -1;
       D_80271FA0 = D_80271FA8;
-      D_80271FA4 = 1 << D_80271FA8;
+      D_80271FA4 = 1 << D_80271FA0;
       BrModeSet(BrCtrlConfigScreen);
       break;
     case 4:
@@ -209,14 +210,14 @@ void BrOptionsScreen(void)
       D_803163A0 = 1;
       break;
     case 6:
-      D_802724E0 = -1;
+      entered = -1;
       func_80200634();
       break;
     }
     break;
   case 2:
     BrModeSet(BrMainMenu);
-    D_802724E0 = 0;
+    entered = 0;
     break;
   }
 }
