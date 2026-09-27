@@ -123,9 +123,6 @@ void BrVec3Copy(BrVec3 *pDst, BrVec3 *pSrc)
 /* WHAT IT DOES: unit vector pointing from `from` to `to`.  When the two
  * points coincide it writes straight up the z axis (0,0,1) instead of
  * dividing by zero. */
-/* @t4-pass 0x802245F0 1 2026-09-26 compiles 14 best 4 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x802245F0 2 2026-09-26 compiles 12 best 4 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x802245F0 3 2026-09-26 compiles 15 best 4 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x802245F0 tgr BrVec3Direction */
 void BrVec3Direction(BrVec3 *pOut, BrVec3 *pFrom, BrVec3 *pTo)
 {
@@ -133,13 +130,12 @@ void BrVec3Direction(BrVec3 *pOut, BrVec3 *pFrom, BrVec3 *pTo)
     float dy = pTo->y - pFrom->y;
     float dz = pTo->z - pFrom->z;
     float len = sqrtf(dx * dx + dy * dy + dz * dz);
-    float r;
 
     if (len != 0.0f) {
-        r = 1.0f / len;
-        pOut->x = dx * r;
-        pOut->y = dy * r;
-        pOut->z = dz * r;
+        len = 1.0f / len;
+        pOut->x = dx * len;
+        pOut->y = dy * len;
+        pOut->z = dz * len;
     } else {
         pOut->x = 0.0f;
         pOut->y = 0.0f;
@@ -149,20 +145,16 @@ void BrVec3Direction(BrVec3 *pOut, BrVec3 *pFrom, BrVec3 *pTo)
 
 /* WHAT IT DOES: out = v normalised to unit length; a zero vector becomes
  * (0,0,1). */
-/* @t4-pass 0x802246BC 1 2026-09-26 compiles 16 best 4 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x802246BC 2 2026-09-26 compiles 14 best 4 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x802246BC 3 2026-09-26 compiles 13 best 4 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x802246BC tgr BrVec3Normal */
 void BrVec3Normal(BrVec3 *pOut, BrVec3 *pV)
 {
     float len = sqrtf(pV->z * pV->z + (pV->x * pV->x + pV->y * pV->y));
-    float r;
 
     if (len != 0.0f) {
-        r = 1.0f / len;
-        pOut->x = pV->x * r;
-        pOut->y = pV->y * r;
-        pOut->z = pV->z * r;
+        len = 1.0f / len;
+        pOut->x = pV->x * len;
+        pOut->y = pV->y * len;
+        pOut->z = pV->z * len;
     } else {
         pOut->x = 0.0f;
         pOut->y = 0.0f;
@@ -171,26 +163,23 @@ void BrVec3Normal(BrVec3 *pOut, BrVec3 *pV)
 }
 
 /* WHAT IT DOES: normalise a vector in place; a zero vector becomes (0,0,1). */
-/* @t4-pass 0x80224760 1 2026-09-26 compiles 11 best 4 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80224760 2 2026-09-26 compiles 11 best 4 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80224760 3 2026-09-26 compiles 13 best 4 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80224760 tgr BrVec3Normalise */
 void BrVec3Normalise(BrVec3 *pV)
 {
     float len = sqrtf(pV->z * pV->z + (pV->x * pV->x + pV->y * pV->y));
-    float r;
 
     if (len != 0.0f) {
-        r = 1.0f / len;
-        pV->x *= r;
-        pV->y *= r;
-        pV->z *= r;
+        len = 1.0f / len;
+        pV->x *= len;
+        pV->y *= len;
+        pV->z *= len;
     } else {
         pV->x = 0.0f;
         pV->y = 0.0f;
         pV->z = 1.0f;
     }
 }
+
 
 /* WHAT IT DOES: out = a - b. */
 /* @implements 0x80224808 tgr BrVec3Sub */
