@@ -13,9 +13,7 @@ void BrModeSet(void (*fn)(void));
 void func_8020D004(void);
 void func_80209434(void);
 extern MenuItem *D_802722A4[];
-extern int D_802722BC;
 extern int D_80316370;
-extern int D_80316374;
 extern int D_8028C800;
 extern int D_8028AE04;
 /* -- end declarations -- */
@@ -36,26 +34,28 @@ int BrWeatherSelectable(int always)
 /* @implements 0x80210FC8 tgr BrWeatherScreen */
 void BrWeatherScreen(void)
 {
-  int r;
+  static int entered = 0;     /* 0x802722BC: 1 once set up, -1 = returning from a sub-screen */
+  static int sel;             /* 0x80316374: the highlighted weather */
 
-  if (D_802722BC <= 0) {
+  if (entered <= 0) {
     BrFrontMenuEnter(D_802722A4, &D_80316370);
-    if (D_802722BC == 0) {
-      D_80316374 = D_8028C800;
+    if (entered == 0) {
+      sel = D_8028C800;
     }
-    while (!BrWeatherSelectable(D_80316374)) {
-      D_80316374 = (D_80316374 + 1) % D_8028AE04;
+    while (!BrWeatherSelectable(sel)) {
+      sel = (sel + 1) % D_8028AE04;
     }
-    D_802722BC = 1;
+    entered = 1;
   }
-  r = BrMenu("WEATHER SELECT", D_80316370, D_802722A4, &D_80316374, BrWeatherSelectable, 0, 0, 0, 0x20, 0, 0xa0);
-  if (r == 1) {
-    D_8028C800 = D_80316374;
+  switch (BrMenu("WEATHER SELECT", D_80316370, D_802722A4, &sel, BrWeatherSelectable, 0, 0, 0, 0x20, 0, 0xa0)) {
+  case 1:
+    D_8028C800 = sel;
     BrModeSet(func_8020D004);
-  } else if (r == 2) {
+    entered = -1;
+    break;
+  case 2:
     BrModeSet(func_80209434);
-  } else {
-    return;
+    entered = -1;
+    break;
   }
-  D_802722BC = -1;
 }
