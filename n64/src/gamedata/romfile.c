@@ -10,7 +10,7 @@ typedef struct BrRomFile {
 } BrRomFile;
 void BrRomRead(void *dst, int rom, int len);
 unsigned int BrRomReadSize(int rom);
-void func_8021CD30(void *dst, int rom, void *stream);
+void BrRomUnpack(void *dst, int rom, void *stream);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Load a ROM file as it is: allocate its length with the
@@ -28,5 +28,5 @@ void BrRomFileLoad(BrRomFile *f, void *(*alloc)(int size))
 void BrRomFileUnpack(BrRomFile *f, void *(*alloc)(int size))
 {
   f->data = alloc(BrRomReadSize(f->start));
-  func_8021CD30(f->data, f->start, 0);
+  BrRomUnpack(f->data, f->start, 0);
 }

@@ -8,11 +8,29 @@ void func_8021C748(int param_1,int param_2,int param_3);
 extern int D_8031B328;
 extern int D_8031B330;
 int func_8021DC34();
-unsigned int func_8021CD30(unsigned int param_1,int param_2,unsigned int *param_3);
+typedef struct BrUnpack {      /* a streamed unpack in flight (BrStreamInit starts one) */
+  unsigned int pos;             /* 0x00  ROM position of the next chunk */
+  unsigned char *dst;           /* 0x04  0 until the first call */
+  unsigned char *buf;           /* 0x08  2 x 16000-byte chunk buffer */
+  unsigned int half;            /* 0x0C  which half the next chunk goes to */
+  unsigned int total;           /* 0x10  packed length */
+  unsigned int size;            /* 0x14  unpacked length */
+  unsigned int left;            /* 0x18  packed bytes still to inflate */
+  unsigned int len;             /* 0x1C  length of the chunk in flight */
+} BrUnpack;
+unsigned int BrRomUnpack(unsigned char *dst, unsigned int rom, BrUnpack *s);
+int BrInflate(unsigned char *dst, int *dstLen, unsigned char *src, unsigned int srcLen);
+unsigned int osGetCount(void);
+extern unsigned long long osClockRate;
+extern unsigned char D_802F7F00[];
+extern void *D_80368AC0;
+extern void *D_80368AC4;
+extern char D_80324550[];
+extern char D_8033CBF0[];
 BrIoMesg *BrRomDmaSlot(void);
 void func_8021735C(void);
-int func_80264650();
-void func_802662E0(unsigned int param_1,unsigned int param_2);
+int osPiStartDma(void *mb, int pri, int dir, unsigned int devAddr, void *vAddr, unsigned int n, void *mq);
+void osInvalDCache(void *p, int n);
 extern int D_80319F88;
 int osRecvMesg(int param_1,int *param_2,int param_3);
 extern int D_80272D44;
@@ -97,7 +115,7 @@ int BrModelReadRaw(int param_1,int param_2,int param_3)
 int BrModelLoad(int param_1,int param_2)
 
 {
-  func_8021CD30(param_1,param_2,0);
+  BrRomUnpack(param_1,param_2,0);
   func_8021DC34(param_1);
   return param_1;
 }
@@ -110,15 +128,15 @@ void BrRomRead(int param_1,int param_2,int param_3)
 {
   int uVar1;
   
-  func_802662E0(param_1,param_3);
+  osInvalDCache(param_1,param_3);
   for (; 0x1000 < param_3; param_3 = param_3 + -0x1000) {
     uVar1 = BrRomDmaSlot();
-    func_80264650(uVar1,0,0,param_2,param_1,0x1000,(&D_80319F88));
+    osPiStartDma(uVar1,0,0,param_2,param_1,0x1000,(&D_80319F88));
     param_2 = param_2 + 0x1000;
     param_1 = param_1 + 0x1000;
   }
   uVar1 = BrRomDmaSlot();
-  func_80264650(uVar1,0,0,param_2,param_1,param_3,(&D_80319F88));
+  osPiStartDma(uVar1,0,0,param_2,param_1,param_3,(&D_80319F88));
   func_8021735C();
 }
 
@@ -139,6 +157,105 @@ void BrStreamInit(int param_1,int param_2)
 {
   *(int *)(param_1 + 4) = 0;
   *(int *)(param_1 + 8) = param_2;
+}
+
+/* WHAT IT DOES: Unpack a compressed ROM file (packed length, unpacked
+ * length, then 2-aligned chunks each led by its length) into dst: the next
+ * chunk is DMA'd into one half of a 32000-byte buffer while the previous is
+ * inflated from the other.  Without a stream it runs to the end; with one
+ * it does one chunk per call, keeping its place in the stream.  Returns the
+ * unpacked length. */
+/* @implements 0x8021CD30 tgr BrRomUnpack */
+unsigned int BrRomUnpack(unsigned char *dst, unsigned int rom, BrUnpack *s)
+{
+  static unsigned int len;
+  unsigned int total;
+  unsigned int size;
+  unsigned int left;
+  unsigned char *buf;
+  unsigned int half;
+  int first;
+  unsigned int prev;
+  unsigned char *chunk;
+  int out;
+  unsigned int t0;
+  unsigned long long us;
+
+  if (s != 0 && (dst = s->dst) != 0) {
+    rom = s->pos;
+    total = s->total;
+    left = s->left;
+    size = s->size;
+    buf = s->buf;
+    len = s->len;
+    half = s->half;
+    first = 0;
+  } else {
+    BrRomRead(&len, rom, 4);
+    total = len;
+    rom += 4;
+    BrRomRead(&len, rom, 4);
+    size = len;
+    rom += 4;
+    left = total - 8;
+    if (s != 0) {
+      buf = s->buf;
+    } else {
+      buf = D_802F7F00;
+    }
+    half = 0;
+    first = 1;
+    len = 0;
+  }
+  t0 = osGetCount();
+  do {
+    prev = len;
+    chunk = buf + half;
+    if (((len + 5) & ~1) < left) {
+      if (rom & 1) {
+        rom++;
+      }
+      BrRomRead(&len, rom, 4);
+      osInvalDCache(chunk, 16000);
+      osPiStartDma(BrRomDmaSlot(), 0, 0, rom + 4, chunk, (len + 1) & ~1, &D_80319F88);
+      rom += 4 + ((len + 1) & ~1);
+    } else {
+      BrRomWaitAll();
+    }
+    osInvalDCache(chunk, 16000);
+    half ^= 16000;
+    if (first) {
+      first = 0;
+    } else {
+      out = 16000;
+      if (s != 0) {
+        D_80368AC0 = D_80324550;
+        D_80368AC4 = D_8033CBF0;
+      }
+      BrInflate(dst, &out, buf + half, prev);
+      if (s != 0) {
+        D_80368AC4 = 0;
+        D_80368AC0 = 0;
+      }
+      left -= (prev + 5) & ~1;
+      dst += out;
+      if (left == 0) {
+        break;
+      }
+    }
+  } while (s == 0);
+  us = (unsigned long long)(osGetCount() - t0) * 1000000 / osClockRate;
+  if (s != 0) {
+    s->pos = rom;
+    s->left = left;
+    s->dst = dst;
+    s->total = total;
+    s->half = half;
+    s->size = size;
+    s->buf = buf;
+    s->len = len;
+  }
+  return size;
 }
 
 /* WHAT IT DOES: Take the next of the 32 ROM transfer slots: if all are in

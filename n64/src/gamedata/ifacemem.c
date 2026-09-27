@@ -18,7 +18,7 @@ typedef struct BrIfaceImage {
 } BrIfaceImage;
 void BrAllocPaintShopGfxMem(BrIfaceImage *img);
 int BrRomReadSize(int rom);
-unsigned int func_8021CD30(unsigned int dst, int rom, unsigned int *size);
+unsigned int BrRomUnpack(unsigned int dst, int rom, unsigned int *size);
 void osSyncPrintf();
 extern int D_80272500;
 extern BrIfaceImage D_8028D0B0;
@@ -82,7 +82,7 @@ void BrAllocPaintShopGfxMem(BrIfaceImage *img)
     for (;;) {
     }
   }
-  func_8021CD30(img->data, img->rom, 0);
+  BrRomUnpack(img->data, img->rom, 0);
 }
 
 /* WHAT IT DOES: Set aside memory for the paint shop: its two car-texture
