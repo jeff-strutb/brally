@@ -261,3 +261,4 @@ va,name,kind
 80266760,osCreatePiManager,func
 8021C6F0,BrModeRun,func
 8021C718,BrMainLoop,func
+802116E0,BrPlayerSelectScreen,func
