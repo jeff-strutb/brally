@@ -13,11 +13,16 @@ typedef struct BrCar {
     char pad144[0xE58 - 0x144];
     int xe58;                   /* 0xE58 */
     BrSeason *season;           /* 0xE5C  the player's season, 0 for others */
-    char pade60[0x1D88 - 0xE60];
+    char pade60[0xED8 - 0xE60];
+    int xed8;                   /* 0xED8 */
+    char padedc[0x1D88 - 0xEDC];
     int mtx[16];                /* 0x1D88 */
     char pad1dc8[0x205C - 0x1DC8];
     int kind;                   /* 0x205C */
-    char pad2060[0x2074 - 0x2060];
+    unsigned char colour[4];    /* 0x2060  body colour r, g, b and a fourth byte */
+    char pad2064[4];
+    int x2068;                  /* 0x2068 */
+    char pad206c[0x2074 - 0x206C];
     unsigned int *pad;          /* 0x2074  the slot's pad record */
     char *model;                /* 0x2078  the slot's model buffer */
     char pad207c[0x2090 - 0x207C];
