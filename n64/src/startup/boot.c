@@ -11,30 +11,13 @@ extern int D_80272680;
 extern int D_80316CD0;
 void BrHaltLoop();
 extern int D_8028A88C;
-int osRecvMesg(int param_1,int *param_2,int param_3);
+int osRecvMesg(int *mq, int *msg, int flag);
 extern int D_8031A390;
+void osSetEventMesg(int event, int *mq, int msg);
+void osSyncPrintf(char *fmt, ...);
+int __osGetCurrFaultedThread(void);
+extern int D_8031B1B0[6];
 /* -- end declarations -- */
-
-/* WHAT IT DOES: The game's entry point after the boot stub clears memory:
- * initialise the N64 operating system, then create and start the idle
- * thread that brings everything else up. */
-/* @implements 0x8021E5C4 tgr BrBoot */
-void BrBoot(void)
-{
-  osInitialize();
-  osCreateThread(&D_80272680,1,func_8021E2C8,0,&D_80316CD0,10);
-  osStartThread(&D_80272680);
-}
-
-/* WHAT IT DOES: Stop the game with an error message: store the message for
- * the error screen and hand over to the halt loop. Used for out-of-memory
- * and overflow checks. */
-/* @implements 0x8021E1F4 tgr BrFatal */
-void BrFatal(int param_1)
-{
-  D_8028A88C = param_1;
-  BrHaltLoop(0);
-}
 
 /* WHAT IT DOES: Wait for the next vertical retrace: block until the video
  * interrupt posts its message. */
@@ -50,4 +33,50 @@ void BrWaitRetrace(void)
 /* @implements 0x8021E1EC tgr BrHaltLoop */
 void BrHaltLoop(int arg0)
 {
+}
+
+/* WHAT IT DOES: Stop the game with an error message: store the message for
+ * the error screen and hand over to the halt loop. Used for out-of-memory
+ * and overflow checks. */
+/* @implements 0x8021E1F4 tgr BrFatal */
+void BrFatal(int param_1)
+{
+  D_8028A88C = param_1;
+  BrHaltLoop(0);
+}
+
+/* WHAT IT DOES: The fault thread: wait for the CPU-fault event, report it
+ * on the debug output, and hand the faulted thread to the halt loop.
+ * Never returns.
+ * RESIDUE (4 nops): every infinite-loop epilogue in the ROM sits at 16 mod
+ * 32; ours is aligned to 32 from this object's start (0x8021E1C0), so the
+ * dead epilogue lands 16 bytes early. */
+/* @implements 0x8021E21C tgr BrFaultThread */
+void BrFaultThread(void *arg)
+{
+  static int faulted;         /* 0x8031B1CC: the faulted thread */
+  static int x8031B1D0;
+  int msg;
+
+  osSetEventMesg(12, D_8031B1B0, 16);
+  x8031B1D0 = 0;
+  for (;;) {
+    do {
+      osRecvMesg(D_8031B1B0, &msg, 1);
+      osSyncPrintf("\n=> faultproc - got a fault message...\n");
+      faulted = __osGetCurrFaultedThread();
+    } while (faulted == 0);
+    BrHaltLoop(faulted);
+  }
+}
+
+/* WHAT IT DOES: The game's entry point after the boot stub clears memory:
+ * initialise the N64 operating system, then create and start the idle
+ * thread that brings everything else up. */
+/* @implements 0x8021E5C4 tgr BrBoot */
+void BrBoot(void)
+{
+  osInitialize();
+  osCreateThread(&D_80272680,1,func_8021E2C8,0,&D_80316CD0,10);
+  osStartThread(&D_80272680);
 }

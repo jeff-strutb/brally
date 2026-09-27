@@ -308,3 +308,5 @@ va,name,kind
 8021D6DC,BrAnimSetFlags,func
 8024D6B8,BrPaintPaletteDraw,func
 8024F25C,BrPaintPlot,func
+80266390,__osGetCurrFaultedThread,func
+8021E21C,BrFaultThread,func
