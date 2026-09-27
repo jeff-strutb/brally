@@ -65,7 +65,7 @@ void BrPadPollAll(void);
 void BrModeSet(void (*fn)(void));
 void func_80208570(void);
 void func_802534DC(void);
-int func_80254620(void);
+int BrPakCheckFiles(void);
 int osPfsIsPlug(int *mq, unsigned char *pattern);
 int osPfsInitPak(int *mq, BrPfs *pfs, int channel);
 void osSyncPrintf(char *fmt, ...);
@@ -249,7 +249,7 @@ void BrBootCheck(void)
       func_802534DC();
     }
   }
-  if (func_80254620() == 0) {
+  if (BrPakCheckFiles() == 0) {
     BrModeSet(func_80208570);
     D_80270840 = 2;
     while (D_8031B318 == func_80208570) {
