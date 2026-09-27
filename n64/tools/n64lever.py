@@ -14,10 +14,14 @@ stays current.
 
 Levers:
   fsuf   float literals get an `f` (Ghidra prints single constants as double)
+  bytes  a global the function offsets (`&D_x + n*K`) is declared `char`, as
+         Ghidra meant it (byte arithmetic); the file's other uses keep their
+         width through a cast
 """
 import argparse
 import csv
 import os
+import re
 import subprocess
 import sys
 
@@ -28,7 +32,27 @@ import n64build as B  # noqa: E402
 import n64gen as G  # noqa: E402
 import n64t3 as T  # noqa: E402
 
-LEVERS = {'fsuf': G.fsuffix}
+
+def lever_fsuf(src, body):
+    return src.replace(body, G.fsuffix(body))
+
+
+def lever_bytes(src, body):
+    for d in sorted(set(re.findall(r'&(D_[0-9A-F]{8})\s*[-+]', body))):
+        m = re.search(r'^extern ([\w ]+?)\s*\b%s;$' % d, src, re.M)
+        if not m or m.group(1).strip() == 'char':
+            continue
+        ty = m.group(1).strip()
+        head, sep, rest = src.partition('/* -- end declarations -- */')
+        if not sep:
+            continue
+        rest = re.sub(r'(?<!&)\b%s\b' % d, '(*(%s *)&%s)' % (ty, d), rest)
+        head = head.replace(m.group(0), 'extern char %s;' % d)
+        src = head + sep + rest
+    return src
+
+
+LEVERS = {'fsuf': lever_fsuf, 'bytes': lever_bytes}
 
 
 def grade_file(path):
@@ -66,11 +90,11 @@ def main():
         for lv in levers:
             src = open(path).read()
             body = T.function_text(src, name)
-            new = LEVERS[lv](body)
-            if new == body:
+            new = LEVERS[lv](src, body)
+            if new == src:
                 continue
             before = grade_file(path)
-            open(path, 'w').write(src.replace(body, new))
+            open(path, 'w').write(new)
             after = grade_file(path)
             worse = [v for v in before if after.get(v, 10 ** 6) > before[v]]
             if after.get(va, 10 ** 6) < before.get(va, 10 ** 6) and not worse:
