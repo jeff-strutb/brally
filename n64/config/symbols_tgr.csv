@@ -317,3 +317,4 @@ va,name,kind
 80242890,BrInflate,func
 8021CD30,BrRomUnpack,func
 8021D2A0,BrCarColourFromModel,func
+80220620,BrCarResetFrames,func

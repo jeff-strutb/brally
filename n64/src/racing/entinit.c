@@ -12,6 +12,9 @@ extern int D_8026FF18;
 void BrPadInit(unsigned int *param_1);
 extern unsigned int D_8036A8E0[4][0x57];
 void guMtxIdent(int *m);
+void BrMat4ResetW(float m[4][4]);
+void BrCarSetPos(BrCar *car, float x, float y, float z);
+void *memcpy(void *dst, void *src, unsigned int n);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Reset every car slot for a new session: runs the per-car
@@ -26,6 +29,53 @@ void BrEntAllReset(void)
     BrCarReset(&D_8031B760[i]);
     BrPadInit(D_8036A8E0[i]);
   }
+}
+
+/* WHAT IT DOES: Reset a car before a race: the w column of its body, its
+ * cameras' (each back to a 30 degree view) and its wheels' matrices; no
+ * model; the first camera in use; placed at the origin; and its kind's
+ * handling numbers copied in. */
+/* @implements 0x80220620 tgr BrCarResetFrames */
+void BrCarResetFrames(BrCar *car)
+{
+  int kind;
+
+  BrMat4ResetW(car->mtx0);
+  BrMat4ResetW(car->cams[0].mtx);
+  car->cams[0].fov = 0.5235988f;
+  BrMat4ResetW(car->cams[1].mtx);
+  car->cams[1].fov = 0.5235988f;
+  BrMat4ResetW(car->cams[2].mtx);
+  car->cams[2].fov = 0.5235988f;
+  BrMat4ResetW(car->cams[3].mtx);
+  car->cams[3].fov = 0.5235988f;
+  BrMat4ResetW(car->cam4.mtx);
+  car->cam4.fov = 0.5235988f;
+  car->cam = &car->cams[0];
+  car->model = 0;
+  BrMat4ResetW(car->wheelMtx[0]);
+  BrMat4ResetW(car->wheelMtx[1]);
+  BrMat4ResetW(car->wheelMtx[2]);
+  BrMat4ResetW(car->wheelMtx[3]);
+  BrCarSetPos(car, 0.0f, 0.0f, 0.0f);
+  car->xf5c = 0;
+  car->xf60 = 0;
+  car->x1dec = 0;
+  kind = car->kind;
+  memcpy(car->xdf8, D_8028B330[kind].x00, 0x1c);
+  car->xe14[0] = D_8028B330[kind].x1c[0];
+  car->xe14[1] = D_8028B330[kind].x1c[1];
+  car->xe14[2] = D_8028B330[kind].x1c[2];
+  car->xe14[3] = D_8028B330[kind].x1c[3];
+  car->xe14[4] = D_8028B330[kind].x1c[4];
+  car->xe28[0] = D_8028B330[kind].x30[0];
+  car->xe30 = car->xe6c;
+  car->xe28[1] = D_8028B330[kind].x30[1];
+  car->x324[0] = D_8028B330[kind].x38[0];
+  car->x324[1] = D_8028B330[kind].x38[1];
+  car->x324[2] = D_8028B330[kind].x38[2];
+  car->x324[3] = D_8028B330[kind].x38[3];
+  car->xe34 = D_8028B330[kind].x48;
 }
 
 /* WHAT IT DOES: Point a car record (0x2090 bytes) at the pad record of the
