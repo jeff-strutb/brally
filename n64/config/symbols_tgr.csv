@@ -100,6 +100,7 @@ va,name,kind
 80225ED8,BrRandSeed,func
 80225EE4,BrRandStep,func
 80225F30,BrClearList,func
+80225F88,BrCarPickKind,func
 80226100,BrCarReset,func
 80226D7C,BrCarCamStep,func
 802288B4,BrCtlAi,func
