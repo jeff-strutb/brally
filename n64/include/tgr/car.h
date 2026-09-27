@@ -9,7 +9,8 @@
 #include "tgr/vec.h"
 
 typedef struct BrCar {
-    char pad000[0x140];
+    float mtx0[4][4];           /* 0x000  body matrix */
+    float wheelMtx[4][4][4];    /* 0x040  one per wheel: the body's rotation, the wheel's position */
     int slot;                   /* 0x140  index in the car array */
     char pad144[0x1CC - 0x144];
     BrVec3 pos1cc;              /* 0x1CC  position (four copies set together) */
@@ -38,6 +39,22 @@ typedef struct BrCar {
 } BrCar;
 
 extern BrCar D_8031B760[4];
+
+/* A car's loaded model (the head of its model buffer). */
+typedef struct BrCarModelPart { void *a; void *b; char pad08[0x1c]; } BrCarModelPart;
+typedef struct BrCarModel {
+    char pad00[0x10];
+    int nParts;                 /* 0x10 */
+    BrCarModelPart *parts;      /* 0x14 */
+    unsigned int *dl[3][10];    /* 0x18 */
+    void *x90;
+    void *x94;
+    char pad98[0xbc - 0x98];
+    unsigned int *dl2[3][3];    /* 0xBC  wheel display lists (0 when the model has none) */
+    float wheel[4][3];          /* 0xE0  wheel positions in the body's frame */
+    char pad110[0x11c - 0x110];
+    void **x11c;                /* 0x11C */
+} BrCarModel;
 
 /* A car's model file (0x60 bytes each), a table at 0x8028AE0C. */
 typedef struct BrCarModelRec {
