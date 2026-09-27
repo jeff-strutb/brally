@@ -35,10 +35,8 @@ extern int D_80272070;
 extern int D_802722C0;
 extern MenuItem *D_80272360[];
 extern int D_80272380;
-extern int D_80272384;
 extern unsigned char D_802724F4;
 extern int D_80316380;
-extern int D_80316384;
 extern char D_000EBC00[];
 extern char D_802AC400[];
 /* -- end declarations -- */
@@ -77,7 +75,10 @@ void BrTimeAttackStart(void)
 /* @implements 0x802111E0 tgr BrMainMenu */
 void BrMainMenu(void)
 {
-  if (D_80272384 <= 0) {
+  static int entered = 0;         /* 0x80272384: 1 once set up, -1 = returning from a sub-screen */
+  static int sel;                 /* 0x80316384: the highlighted item */
+
+  if (entered <= 0) {
     D_80271FA4 = -1;
     D_80271FA0 = -1;
     D_8026FF08 = 2;
@@ -95,22 +96,22 @@ void BrMainMenu(void)
     D_80271FC4 = 20.0f;
     switch (D_80272380) {
     case 1:
-      D_80316384 = 0;
+      sel = 0;
       break;
     case 2:
-      D_80316384 = 2;
+      sel = 2;
       break;
     }
     D_80272380 = 0;
-    if (D_80272384 == 0) {
-      D_80316384 = D_80272384;   /* i.e. 0 */
+    if (entered == 0) {
+      sel = 0;
     }
-    D_80272384 = 1;
+    entered = 1;
   }
-  switch (BrMenu("TOP GEAR RALLY", D_80316380, D_80272360, &D_80316384, 0, 0, 0, 0, 0x40, 0x40, 0x40)) {
+  switch (BrMenu("TOP GEAR RALLY", D_80316380, D_80272360, &sel, 0, 0, 0, 0, 0x40, 0x40, 0x40)) {
   case 1:
     D_80272070 = 0;
-    switch (D_80316384) {
+    switch (sel) {
     case 0:
       BrChampionshipStart();
       break;
@@ -131,7 +132,7 @@ void BrMainMenu(void)
       D_80272070 = 1;
       D_8026FF08 = 1;
       D_80271FA0 = D_80271FA8;
-      D_80271FA4 = 1 << D_80271FA8;
+      D_80271FA4 = 1 << D_80271FA0;
       BrModeSet(func_8020D004);
       break;
     case 5:
@@ -142,12 +143,12 @@ void BrMainMenu(void)
       BrModeSet(BrOptionsScreen);
       break;
     }
-    D_80272384 = -1;
+    entered = -1;
     break;
   case 2:
   case 5:
     BrModeSet(func_8020686C);
-    D_80272384 = 0;
+    entered = 0;
     break;
   }
 }
