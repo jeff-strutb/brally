@@ -226,11 +226,9 @@ static int BrNavPtInStyle(const BrTextStyle *pRc, int32_t x, int32_t y)
  * the activity test (the original's `mov eax,1` before the pops) and by a
  * shared, tail-duplicated `return 1` after the flag block.  The same
  * one-shared-return idiom is the predecessor's (0x10040E60).
- * RESIDUE (587/587 B, register-blind 0+0, 4 bytes): the y read of the
- * control-rect test lands in edi (the dying cursor pointer) where the
- * original uses eax.  DEAD: declaration orders (6), a statement-level
- * fCurrent init, the rect test negated or with *pCur, a function ahead in
- * the TU; the operand-flipped rect test is worse (4+4). */
+ * The last register choice fell to reading the control-rect y through
+ * g_navCursor itself (VC5 then loads y into eax instead of reusing the
+ * dying pointer register); byte-exact 2026-09-27. */
 typedef struct BrHitRect { int32_t l, t, r, b; } BrHitRect;
 typedef struct BrObj2C { int32_t _[11]; int32_t f2C; int32_t f30; } BrObj2C;
 extern int32_t   *g_navCursor;     /* 0x10AC5DD8 */
@@ -259,67 +257,65 @@ int BR_THISCALL1 BrUiNavCtlHit_10047A60(BrUiCtl_ *pCtl)
     int fCurrent = 0;
 
     if (!(pCtl->flags1C & 8)) {
+        if (pCtl->flags1C & 0x10) {
+            if (g_wAA286C == g_wAA2870) {
+                g_wAA286C += g_w0AB3DC;
+                BrUiNavPageSelectGlide(pCtl->pOwner->pCur);
+            }
+            ++g_wAA2870;
+            return 0;
+        }
 
-    if (pCtl->flags1C & 0x10) {
-        if (g_wAA286C == g_wAA2870) {
-            g_wAA286C += g_w0AB3DC;
-            BrUiNavPageSelectGlide(pCtl->pOwner->pCur);
+        if ((pCtl->flags1C & 0x80000) && BrIsAnyActiveGlide() == 0) {
+            pCtl->flags1C &= 0xFFF7FFFD;
+        } else if ((pCtl->flags1C & 0x80000) && BrIsAnyActiveGlide() != 0) {
+            pCtl->flags1C |= 0x22;
+            return 1;
+        }
+
+        pCur = g_navCursor;
+        if (g_hot0.l <= pCur[0] && g_hot0.r >= pCur[0] &&
+            g_hot0.t <= pCur[1] && g_hot0.b >= pCur[1]) {
+            fHot = 1;
+            fCurrent = 0;
+        } else if (g_hot1.l <= pCur[0] && g_hot1.r >= pCur[0] &&
+                   g_hot1.t <= pCur[1] && g_hot1.b >= pCur[1]) {
+            fHot = 1;
+            fCurrent = 0;
+        } else if (g_hot2.l <= pCur[0] && g_hot2.r >= pCur[0] &&
+                   g_hot2.t <= pCur[1] && g_hot2.b >= pCur[1]) {
+            fHot = 1;
+            fCurrent = 0;
+        } else {
+            fHot = 0;
+            if (g_hot0.t + (int16_t)g_wAA286C * 19 == g_hot0.t + (int16_t)g_wAA2870 * 19)
+                fCurrent = 1;
         }
         ++g_wAA2870;
-        return 0;
-    }
+        g_nAA284C = fHot;
 
-    if ((pCtl->flags1C & 0x80000) && BrIsAnyActiveGlide() == 0) {
-        pCtl->flags1C &= 0xFFF7FFFD;
-    } else if ((pCtl->flags1C & 0x80000) && BrIsAnyActiveGlide() != 0) {
-        pCtl->flags1C |= 0x22;
-        return 1;
-    }
+        /* y through the cursor global, not the local (see above). */
+        if ((pCtl->rcLeft <= pCur[0] && pCtl->rcRight >= pCur[0] &&
+             pCtl->rcTop <= g_navCursor[1] && pCtl->rcBottom >= g_navCursor[1]) ||
+            fCurrent != 0) {
+            if (fCurrent && (g_act0 != 0 || g_act1 != 0 || g_act2 != 0 || g_act3 != 0))
+                return 1;
 
-    pCur = g_navCursor;
-    if (g_hot0.l <= pCur[0] && g_hot0.r >= pCur[0] &&
-        g_hot0.t <= pCur[1] && g_hot0.b >= pCur[1]) {
-        fHot = 1;
-        fCurrent = 0;
-    } else if (g_hot1.l <= pCur[0] && g_hot1.r >= pCur[0] &&
-               g_hot1.t <= pCur[1] && g_hot1.b >= pCur[1]) {
-        fHot = 1;
-        fCurrent = 0;
-    } else if (g_hot2.l <= pCur[0] && g_hot2.r >= pCur[0] &&
-               g_hot2.t <= pCur[1] && g_hot2.b >= pCur[1]) {
-        fHot = 1;
-        fCurrent = 0;
-    } else {
-        fHot = 0;
-        if (g_hot0.t + (int16_t)g_wAA286C * 19 == g_hot0.t + (int16_t)g_wAA2870 * 19)
-            fCurrent = 1;
-    }
-    ++g_wAA2870;
-    g_nAA284C = fHot;
-
-    if ((pCtl->rcLeft <= pCur[0] && pCtl->rcRight >= pCur[0] &&
-         pCtl->rcTop <= pCur[1] && pCtl->rcBottom >= pCur[1]) || fCurrent != 0) {
-
-    if (fCurrent && (g_act0 != 0 || g_act1 != 0 || g_act2 != 0 || g_act3 != 0))
-        return 1;
-    {
-
-    if (pCtl->flags1C & 0x40000) {
-        if (g_pAA2E80->f2C != 0 || g_pAA2E80->f30 != 0)
-            pCtl->flags1C |= 0x80002;
-        else
-            pCtl->flags1C &= ~2;
-    } else if ((g_actOverride == 0 && (g_act5 != 0 || g_act6 != 0)) ||
-               BrIsAnyActiveGlide() != 0) {
-        pCtl->flags1C |= 2;
-    } else {
-        pCtl->flags1C &= ~2;
-    }
-    pCtl->flags1C |= 0x20;
-    }
-    return 1;
-    }
-    pCtl->flags1C &= ~0x22;
+            if (pCtl->flags1C & 0x40000) {
+                if (g_pAA2E80->f2C != 0 || g_pAA2E80->f30 != 0)
+                    pCtl->flags1C |= 0x80002;
+                else
+                    pCtl->flags1C &= ~2;
+            } else if ((g_actOverride == 0 && (g_act5 != 0 || g_act6 != 0)) ||
+                       BrIsAnyActiveGlide() != 0) {
+                pCtl->flags1C |= 2;
+            } else {
+                pCtl->flags1C &= ~2;
+            }
+            pCtl->flags1C |= 0x20;
+            return 1;
+        }
+        pCtl->flags1C &= ~0x22;
     }
     return 0;
 }
