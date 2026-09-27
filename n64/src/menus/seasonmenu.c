@@ -1,12 +1,13 @@
 /* seasonmenu.c -- the season screen: round progression and its help line
  */
 #include "tgr/common.h"
+#include "tgr/car.h"
 
 /* -- declarations -- */
 extern int D_802723D0;
 extern int D_8028B94C;
 extern char * D_8031C5BC;
-void BrSeasonAdvanceRound(void);
+void BrSeasonValidate(void);
 void BrFrontSetMenuFlag(int param_1);
 void BrChampionshipStart(void);
 void BrTimeAttackStart(void);
@@ -33,39 +34,31 @@ extern int D_8036A8E0;
 extern int D_8036A8F8;
 /* -- end declarations -- */
 
-/* WHAT IT DOES: Move the season record on to its next round: past the last
- * race of a season it starts the next season from round one, and the points
- * for the new round start at zero. */
-/* @t4-pass 0x802089D0 1 2026-09-26 compiles 17 best 36 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x802089D0 2 2026-09-26 compiles 17 best 36 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x802089D0 3 2026-09-26 compiles 15 best 36 moved 0  (n64/tools/n64permute.py) */
-/* @implements 0x802089D0 tgr BrSeasonAdvanceRound */
-void BrSeasonAdvanceRound(void)
+/* WHAT IT DOES: Make player 1's season record consistent: a negative state
+ * starts it over; a round outside 0..5 goes back to round 0; a race outside
+ * the round's race count goes back to race 0 and clears that round's
+ * points. */
+/* @implements 0x802089D0 tgr BrSeasonValidate */
+void BrSeasonValidate(void)
 {
-  unsigned char bVar1;
-  
-  if (*D_8031C5BC < 0) {
-    *D_8031C5BC = 0;
-    goto LAB_802089f0;
+  if (D_8031B760[0].season->state >= 0) {
+    goto check;
   }
-  bVar1 = *(unsigned char *)(D_8031C5BC + 1);
-  do {
-    if (bVar1 < 6) {
-      if ((int)(unsigned int)*(unsigned char *)((int)D_8031C5BC + 5) <
-          *(int *)(&D_8028B94C + (unsigned int)bVar1 * 0x1c)) {
-        return;
-      }
-      *(char *)((int)D_8031C5BC + 5) = 0;
-    }
-    else {
-LAB_802089f0:
-      *(char *)(D_8031C5BC + 1) = 0;
-      *(char *)((int)D_8031C5BC + 5) = 0;
-    }
-    *(short *)((int)D_8031C5BC + (unsigned int)*(unsigned char *)(D_8031C5BC + 1) * 2 + 0x1e) = 0;
-    bVar1 = *(unsigned char *)(D_8031C5BC + 1);
-  } while( 1 );
+  D_8031B760[0].season->state = 0;
+bad_round:
+  D_8031B760[0].season->round = 0;
+bad_race:
+  D_8031B760[0].season->race = 0;
+  D_8031B760[0].season->points[D_8031B760[0].season->round] = 0;
+check:
+  if (D_8031B760[0].season->round < 0 || D_8031B760[0].season->round >= 6) {
+    goto bad_round;
+  }
+  if (D_8031B760[0].season->race < 0 || D_8031B760[0].season->race >= D_8028B944[D_8031B760[0].season->round].x8) {
+    goto bad_race;
+  }
 }
+
 
 /* WHAT IT DOES: Draw the help line at the foot of the season screen: the
  * lap-count hint in Arcade, and in a Championship how many points are still
@@ -118,7 +111,7 @@ void BrSeasonDrawHelp(int param_1)
     else {
       D_80271D58 = 0;
       if (D_8026FF18 == 0) {
-        BrSeasonAdvanceRound();
+        BrSeasonValidate();
         BrChampionshipStart();
         iVar3 = -0x7fce4c90;
         iVar4 = 0;

@@ -9,7 +9,7 @@ va,name,kind
 80206304,BrSeasonPickRace,func
 80206830,BrCreditsDrawCars,func
 80208900,BrTrackSelectable,func
-802089D0,BrSeasonAdvanceRound,func
+802089D0,BrSeasonValidate,func
 80208A58,BrSeasonDrawHelp,func
 8020AAE0,BrFrontPromptSelect,func
 8020AC18,BrFrontPromptContinue,func
