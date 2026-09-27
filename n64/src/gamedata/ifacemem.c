@@ -3,8 +3,10 @@
 #include "tgr/common.h"
 
 /* -- declarations -- */
-extern int D_80369B70;
-unsigned int func_8024296C(int param_1);
+extern unsigned int D_80369B70;
+unsigned int BrIfaceMemAlloc(int size);
+int sprintf(char *buf, const char *fmt, ...);
+void BrFatal(char *msg);
 void func_80242B10(int *param_1);
 void osSyncPrintf();
 extern int D_80272500;
@@ -37,6 +39,24 @@ void BrIfaceMemRelease(int param_1)
   D_80369B70 = param_1;
 }
 
+/* WHAT IT DOES: Take size bytes from the interface memory pool, 8-byte
+ * aligned; running past the pool's end (0x800D4000) is fatal, with the
+ * sizes in the message. */
+/* @implements 0x8024296C tgr BrIfaceMemAlloc */
+unsigned int BrIfaceMemAlloc(int size)
+{
+  unsigned int p;
+  char msg[120];
+
+  p = (D_80369B70 + 7) & ~7;
+  D_80369B70 = p + size;
+  if (D_80369B70 > 0x800D4000) {
+    sprintf(msg, "Insufficient interface memory (need %d, have %d)", size, 0x800D4000 - p);
+    BrFatal(msg);
+  }
+  return p;
+}
+
 /* WHAT IT DOES: Set aside memory for the paint shop: its two car-texture
  * buffers and a 14,848-byte data buffer, all from the interface memory
  * pool. */
@@ -46,7 +66,7 @@ void BrPaintShopMemInit(void)
   func_80242B10(&D_8028D0B0);
   func_80242B10(&D_8028D0E0);
   osSyncPrintf("Allocating %d bytes for data_buf...\n",0x3a00);
-  D_80272500 = func_8024296C(0x3a00);
+  D_80272500 = BrIfaceMemAlloc(0x3a00);
 }
 
 /* WHAT IT DOES: Set aside the 2 KB decal buffer from the interface memory
@@ -55,7 +75,7 @@ void BrPaintShopMemInit(void)
 void BrDecalMemInit(void)
 {
   osSyncPrintf("\nAllocating %d bytes for decal buffer...\n\n",0x800);
-  D_8028DB80 = func_8024296C(0x800);
+  D_8028DB80 = BrIfaceMemAlloc(0x800);
   func_80242B10(&D_8028D0B0);
   func_80242B10(&D_8028D0E0);
 }
