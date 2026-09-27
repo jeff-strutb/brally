@@ -41,6 +41,7 @@ va,name,kind
 80217C8C,BrStub80217C8C,func
 80219A1C,BrFrameBeginLayout0,func
 80219A3C,BrFrameBeginLayout1,func
+80219F04,BrViewportApply,func
 8021A4C8,BrScreenFlush2Layout1,func
 8021A540,BrScreenFlush2Layout0,func
 8021A920,BrPadStartRead,func
@@ -163,6 +164,7 @@ va,name,kind
 80238AB8,BrHudLapDraw,func
 80238DD4,BrHudPositionDraw,func
 8023A1C0,BrStub8023A1C0,func
+8023B130,BrViewportDepthZ,func
 80242940,BrIfaceMemReset,func
 80242954,BrIfaceMemMark,func
 80242960,BrIfaceMemRelease,func
