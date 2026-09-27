@@ -87,6 +87,61 @@ def data_types(rom):
     return out
 
 
+_ROLIT = None
+
+
+def rodata_literals(rom):
+    """addr -> C literal for every float/double the code only ever loads
+    (lwc1/ldc1, never stored) from the data segment: IDO's literal pool,
+    which the source wrote as a constant."""
+    global _ROLIT
+    if _ROLIT is not None:
+        return _ROLIT
+    loads, stores = {}, set()
+    starts = set(B.function_map())
+    lui = {}
+    for va in range(B.BASE, B.BASE + (B.TEXT_E - B.ROMOFF), 4):
+        if va in starts:
+            lui = {}
+        w = rom.word(va)
+        op, rs, rt = w >> 26, (w >> 21) & 31, (w >> 16) & 31
+        if op == 0x0F:
+            lui[rt] = (w & 0xffff) << 16
+            continue
+        if rs in lui:
+            t = (lui[rs] + B.sext16(w & 0xffff)) & 0xffffffff
+            if op in (0x31, 0x35):
+                loads.setdefault(t, set()).add(op)
+            elif op in (0x2B, 0x39, 0x3D, 0x28, 0x29, 0x09):
+                stores.add(t)
+        if op in (0x23, 0x24, 0x09) and rt in lui:
+            lui.pop(rt, None)
+    out = {}
+    for t, ops in loads.items():
+        if t in stores or not (0x8026FAB0 <= t < B.BSS_S) or len(ops) != 1:
+            continue
+        import struct as _s
+        if ops == {0x31}:
+            f = _s.unpack('>f', rom.bytes(t, 4))[0]
+            lit = repr(f)
+            for digits in range(6, 18):
+                cand = '%.*g' % (digits, f)
+                if _s.unpack('>f', _s.pack('>f', float(cand)))[0] == f:
+                    lit = cand
+                    break
+            if 'e' not in lit and '.' not in lit:
+                lit += '.0'
+            out[t] = lit + 'f'
+        else:
+            d = _s.unpack('>d', rom.bytes(t, 8))[0]
+            lit = repr(d)
+            if 'e' not in lit and '.' not in lit:
+                lit += '.0'
+            out[t] = lit
+    _ROLIT = out
+    return out
+
+
 def draft(va):
     p = os.path.join(DRAFTS, '0x%08X.c' % va)
     if not os.path.exists(p):
@@ -243,6 +298,11 @@ def candidate(va, dtypes, name=None, noproto=(), ptrs=(), opts=()):
         body = toggle(body, 'char')
     if 'fsuf' in opts:
         body = fsuffix(body)
+    if 'rolit' in opts and _rom is not None:
+        lits = rodata_literals(_rom)
+        body = re.sub(r'\bD_([0-9A-F]{8})\b',
+                      lambda m: ('(' + lits[int(m.group(1), 16)] + ')') if int(m.group(1), 16) in lits
+                      else m.group(0), body)
     dlheads = set()
     if 'gbi' in opts:
         body, dlheads = gbi(body)
@@ -375,6 +435,9 @@ def main():
                 base_opts.append('lowsym')
             if gbi(src)[1]:
                 base_opts.append('gbi')
+            if any(int(x, 16) in rodata_literals(rom)
+                   for x in re.findall(r'\bD_([0-9A-F]{8})\b', src)):
+                base_opts.append('rolit')
             for _ in range(2):
                 improved = False
                 for o in base_opts:
