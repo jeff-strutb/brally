@@ -1,32 +1,51 @@
-/* perfmeter.c -- the performance meter
+/* perfmeter.c -- the performance meter: per-frame timing marks for three
+ * bars, double-buffered so one frame is drawn while the next is recorded
  */
 #include "tgr/common.h"
 
 /* -- declarations -- */
-int func_802649F0(void);
+typedef struct BrPerfEntry {
+  unsigned int colour;          /* fill colour of the segment ending here */
+  int time;                     /* CPU count since the frame began */
+} BrPerfEntry;
+unsigned int osGetCount(void);
 extern int D_8028BDA0;
-extern int D_8028BDAC;
+extern unsigned long long D_8028BDA8;
+extern int D_803519B0[2][3];
+extern BrPerfEntry D_8034E9B0[2][3][256];
 /* -- end declarations -- */
 
-/* WHAT IT DOES: Record a timing mark for the performance meter: the colour
- * for this bar segment and the CPU count since the frame began. */
-/* @t4-pass 0x8022D7E0 1 2026-09-26 compiles 16 best 45 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8022D7E0 2 2026-09-26 compiles 16 best 45 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8022D7E0 3 2026-09-26 compiles 17 best 45 moved 0  (n64/tools/n64permute.py) */
+/* WHAT IT DOES: Record a timing mark on one of the performance meter's
+ * three bars: the time since the frame began, and the RGBA5551 colour (in
+ * both halves of the word, as a fill colour) of the segment it ends. */
 /* @implements 0x8022D7E0 tgr BrPerfMark */
-void BrPerfMark(int param_1,unsigned int param_2,unsigned int param_3,int param_4,int param_5)
+void BrPerfMark(int bar, int r, int g, int b, int a)
 {
-  int *piVar1;
-  int iVar2;
-  unsigned int uVar3;
-  int iVar4;
-  
-  piVar1 = (int *)(D_8028BDA0 * 0xc + param_1 * 4 + -0x7fcae650);
-  iVar2 = *piVar1;
-  iVar4 = D_8028BDA0 * 0x1800 + param_1 * 0x800 + iVar2 * 8;
-  *piVar1 = iVar2 + 1;
-  uVar3 = (param_2 & 0xf8) << 8 | (param_3 & 0xf8) << 3 | param_4 >> 2 & 0x3eU | param_5 >> 7 & 1U;
-  *(unsigned int *)(iVar4 + -0x7fcb1648) = uVar3 | uVar3 << 0x10;
-  iVar2 = func_802649F0();
-  *(int *)(iVar4 + -0x7fcb164c) = iVar2 - D_8028BDAC;
+  BrPerfEntry *e;
+  unsigned int colour;
+
+  e = &D_8034E9B0[D_8028BDA0][bar][D_803519B0[D_8028BDA0][bar]++];
+  colour = (r << 8) & 0xf800 | (g << 3) & 0x7c0 | (b >> 2) & 0x3e | (a >> 7) & 1;
+  colour |= colour << 16;
+  e[1].colour = colour;
+  e->time = osGetCount() - D_8028BDA8;
+}
+
+/* WHAT IT DOES: Start a new frame on the performance meter: close each bar
+ * with a magenta mark, swap to the other buffer, note the CPU count as the
+ * frame's start, and empty the three bars. */
+/* @implements 0x8022D8AC tgr BrPerfFrameStart */
+void BrPerfFrameStart(void)
+{
+  int i;
+
+  for (i = 0; i < 3; i++) {
+    BrPerfMark(i, 0xff, 0, 0xff, 0x7f);
+  }
+  D_8028BDA0 ^= 1;
+  D_8028BDA8 = osGetCount();
+  for (i = 0; i < 3; i++) {
+    D_803519B0[D_8028BDA0][i] = 0;
+    D_8034E9B0[D_8028BDA0][i][0].time = 0;
+  }
 }

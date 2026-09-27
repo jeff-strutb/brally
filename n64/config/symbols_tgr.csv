@@ -118,6 +118,7 @@ va,name,kind
 8022D3D4,BrGridSpanHas,func
 8022D43C,BrTexScrollSet,func
 8022D7E0,BrPerfMark,func
+8022D8AC,BrPerfFrameStart,func
 8022F4CC,BrTextHighlightOn,func
 8022F4DC,BrTextAltBlendOn,func
 8022F4EC,BrTextAltBlendOff,func
@@ -194,6 +195,7 @@ va,name,kind
 80264650,osPiStartDma,func
 80264760,osContStartReadData,func
 80264824,osContGetReadData,func
+802649F0,osGetCount,func
 80264A60,osViSetMode,func
 80264AD0,osViSwapBuffer,func
 80264B20,osViGetCurrentFramebuffer,func
