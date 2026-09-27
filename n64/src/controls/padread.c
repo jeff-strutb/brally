@@ -11,8 +11,14 @@ void func_80255954(unsigned int *param_1,int *param_2,float *param_3,unsigned in
 void func_80255A18(unsigned int *param_1,int *param_2,float *param_3,unsigned int param_4);
 void BrPadStartRead(void);
 int osRecvMesg(int param_1,int *param_2,int param_3);
-void osContGetReadData(short *param_1);
-extern int D_8031A3E0;
+typedef struct OSContPad {
+  unsigned short button;
+  signed char stick_x;
+  signed char stick_y;
+  unsigned char errnum;
+} OSContPad;
+void osContGetReadData(OSContPad *data);
+extern OSContPad D_8031A3E0[4];
 void func_80255120(unsigned int *param_1);
 void BrPadEdges(unsigned int *param_1);
 extern unsigned int D_8036A8E0[4][0x57];
@@ -50,7 +56,7 @@ void BrPadRead(void)
 {
   BrPadStartRead();
   osRecvMesg(&D_80272D48,0,1);
-  osContGetReadData((&D_8031A3E0));
+  osContGetReadData(D_8031A3E0);
   D_802A4BE8 = 1;
   D_8028AB6C = 0;
 }
@@ -81,32 +87,26 @@ void BrPadConsume(unsigned int *param_1,unsigned int param_2)
 
 /* WHAT IT DOES: Turn the raw button word into presses: a button counts as
  * pressed only on the frame it goes down. */
-/* @t4-pass 0x80255934 1 2026-09-26 compiles 14 best 8 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80255934 2 2026-09-26 compiles 12 best 8 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80255934 3 2026-09-26 compiles 12 best 8 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80255934 tgr BrPadEdges */
-void BrPadEdges(unsigned int *param_1)
+void BrPadEdges(unsigned int *pad)
 {
-  unsigned int uVar1;
-  
-  uVar1 = *param_1;
-  *param_1 = uVar1 ^ uVar1 & param_1[1];
-  param_1[1] = param_1[1] & uVar1;
+  unsigned int cur = pad[0];
+
+  pad[0] ^= cur & pad[1];
+  pad[1] &= cur;
 }
 
+
 /* WHAT IT DOES: Reset a pad record and point it at its own controller data. */
-/* @t4-pass 0x80255B54 1 2026-09-26 compiles 16 best 12 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80255B54 2 2026-09-26 compiles 17 best 12 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80255B54 3 2026-09-26 compiles 15 best 12 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80255B54 tgr BrPadInit */
-void BrPadInit(int param_1)
+void BrPadInit(unsigned int *pad)
 {
-  int iVar1;
-  
-  iVar1 = (param_1 + 0x7fc95720) / 0x15c;
-  *(int *)(param_1 + 0x30) = 0;
-  *(int *)(param_1 + 0x2c) = 0;
-  *(int *)(param_1 + 0x44) = 0;
-  *(int *)(param_1 + 0x154) = iVar1;
-  *(int *)(param_1 + 0x158) = iVar1 * 6 + -0x7fce5c20;
+  int i;
+
+  i = (unsigned int (*)[0x57])pad - D_8036A8E0;
+  pad[12] = 0;
+  pad[11] = 0;
+  pad[17] = 0;
+  pad[0x55] = i;
+  ((OSContPad **)pad)[0x56] = &D_8031A3E0[i];
 }
