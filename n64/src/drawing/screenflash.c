@@ -20,6 +20,7 @@ extern float D_8028B75C;
 extern int D_8028A85C;
 extern int D_8028AAB0;
 extern int D_8028AAB4;
+extern int D_8028A850;
 extern float D_8028AAD8;
 extern int D_8028B740;
 extern int D_8028B744;
@@ -186,6 +187,23 @@ int BrFadeInDone(void)
   return 0.0f < D_8028B758 && D_8028B75C == 1.0f && D_8028B784 == 0;
 }
 
+
+/* WHAT IT DOES: Dim the whole screen: a black rectangle over it with
+ * alpha 255 * (1 - level), so level 1 leaves the picture as it is and 0
+ * blacks it out. */
+/* @implements 0x80223DE0 tgr BrScreenDim */
+void BrScreenDim(float level)
+{
+  gDPPipeSync(D_8028A858++);
+  gDPSetCycleType(D_8028A858++, 0x100000);                 /* G_CYC_2CYCLE */
+  gDPSetRenderMode(D_8028A858++, 0x0c080000, G_RM_CLD_SURF2); /* G_RM_PASS */
+  gDPSetCombine(D_8028A858++, 0xffffff, 0xfffdf638);
+  gDPSetPrimColor(D_8028A858++, 255, 255, 0, 0, 0, 255 - (int)(255.0f * level));
+  gDPSetColorDither(D_8028A858++, G_CD_DISABLE);
+  gDPFillRectangle(D_8028A858++, 0, 0, D_8028AAB0 << D_8028A850, D_8028AAB4 << D_8028A850);
+  gDPPipeSync(D_8028A858++);
+  gDPSetColorDither(D_8028A858++, D_8028A8A0);
+}
 
 /* WHAT IT DOES: Advance the screen fade by one frame: moves the level
  * towards the target at the fade speed, and when a fade-in-then-out is

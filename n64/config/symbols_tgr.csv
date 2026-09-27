@@ -270,3 +270,4 @@ va,name,kind
 80200000,BrEntry,func
 80257B04,BrSfxVoiceStart,func
 80220474,BrCarModelStream,func
+80223DE0,BrScreenDim,func
