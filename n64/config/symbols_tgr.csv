@@ -20,9 +20,11 @@ va,name,kind
 80211150,BrChampionshipStart,func
 80211194,BrTimeAttackStart,func
 802114E0,BrPlayerSelectDrawRow,func
-80211840,BrLapsMore,func
-8021187C,BrLapsFewer,func
-802118B4,BrLapsApply,func
+80211840,BrMusicVolumeUp,func
+8021187C,BrMusicVolumeDown,func
+802118B4,BrVolumesApply,func
+802118F8,BrSfxVolumeUp,func
+80211934,BrSfxVolumeDown,func
 8021196C,BrOptionsDrawHelp,func
 80214A3C,BrPaintShopMemInit,func
 80214E0C,BrCpakCheck,func

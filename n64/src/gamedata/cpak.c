@@ -3,7 +3,7 @@
 #include "tgr/common.h"
 
 /* -- declarations -- */
-void BrLapsApply(void);
+void BrVolumesApply(void);
 int func_80214A88(int param_1);
 int func_8021CB4C();
 void func_80223750(float param_1,float param_2);
@@ -561,7 +561,7 @@ LAB_802162c8:
       if ((*(unsigned int *)(&D_8036A8E0 + D_80271FA8 * 0x15c) & 0x8030) != 0) {
         BrPadConsume(&D_8036A8E0 + D_80271FA8 * 0x15c,0x8030);
         if (param_1 == 2) {
-          BrLapsApply();
+          BrVolumesApply();
         }
         if (D_802724FC == '\0') {
           D_80316430 = '\f';
