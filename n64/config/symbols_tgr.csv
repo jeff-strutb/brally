@@ -164,6 +164,10 @@ va,name,kind
 80244CA8,BrPaintDecalCommit,func
 80248F38,BrDecalMemInit,func
 8024BE78,BrPaintStickMove,func
+8024D374,BrPaintCursorInBox,func
+8024D3F0,BrPaintCursorInRect,func
+8024D45C,BrPaintCursorInRect2,func
+8024D4C8,BrPaintCursorInBrush,func
 80252F50,BrSwapBytes,func
 80254870,BrStub80254870,func
 80254F2C,BrStub80254F2C,func
