@@ -213,6 +213,10 @@ def retype(s):
     # the divide checks IDO emits for / and % (break 7, break 6) are not source
     s = re.sub(r'if \(\w+ == 0\) \{\s*trap\(0x1c00\);\s*\}\s*', '', s)
     s = re.sub(r'if \(\(\w+ == -1\) && \([^;{}]+? == -0x80000000\)\) \{\s*trap\(0x1800\);\s*\}\s*', '', s)
+    # a parameter the draft calls through is a function pointer
+    for p in set(re.findall(r'\(\*(param_\d+)\)\(', s)):
+        s = re.sub(r'\b(?:void|char|int|unsigned int) \*%s\b' % p, 'int (*%s)()' % p, s)
+        s = re.sub(r'\b(?:int|unsigned int) %s\b' % p, 'int (*%s)()' % p, s)
     return s
 
 
@@ -372,6 +376,9 @@ def candidate(va, dtypes, name=None, noproto=(), ptrs=(), opts=()):
         bytewise = set(int(x, 16) for x in re.findall(r'&D_([0-9A-F]{8})\s*[-+]', body))
     for d in sorted(set(int(x, 16) for x in re.findall(r'\bD_([0-9A-F]{8})\b', body))):
         ty = 'char *' if d in ptrs else dtypes.get(d, 'int')
+        if re.search(r'\(\*D_%08X\)\(' % d, body) and SYMLO <= d < SYMHI:
+            decls.append('extern int (*D_%08X)();' % d)       # called through
+            continue
         if 'D_%08X' % d in dlheads:
             decls.append('extern Gfx *D_%08X;' % d)
             continue
