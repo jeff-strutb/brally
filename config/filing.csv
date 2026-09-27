@@ -375,6 +375,8 @@ glide_va,name,module,basis,file
 0x10023D20,BrTex3dRecCopyHead,drawing,filed,src/core/drawing/br_tex3d.c
 0x100242E0,BrTexShiftFromSize,drawing,neighbour,src/core/drawing/br_texfmt.c
 0x10024490,BrTexResample,drawing,filed,src/core/drawing/br_texlerp.c
+0x10024750,BrTexLerp1555,drawing,filed,src/core/drawing/br_texlerp16.c
+0x10024AA0,BrTexLerp4444,drawing,filed,src/core/drawing/br_texlerp16.c
 0x10024DF0,FUN_10024df0,drawing,neighbour,src/core/drawing/br_texfmt.c
 0x10024E30,BrTex3dRecSet278,drawing,filed,src/core/drawing/br_tex3d.c
 0x10024E60,BrTex3dExpandInto,drawing,filed,src/core/drawing/br_tex3d.c

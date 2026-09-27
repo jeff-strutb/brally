@@ -22,12 +22,13 @@ extern float DAT_10077448;   /* 15.0f  -- 4-bit ARGB4444 */
  * truncate.  u and v are named locals: VC5 keeps them on the x87 stack and
  * pops each dead corner value right after its last use, as the original
  * does (as one expression the row lerps are temporaries and the dead
- * corner lingers to the end of the statement).  The outer parentheses on
- * each row lerp are load-bearing: without them the same code is 98 B
- * further from the original. */
+ * corner lingers to the end of the statement).  The parentheses are
+ * load-bearing: VC5 keeps paren nodes in the tree, and only this nesting
+ * -- each product parenthesised, then the whole row lerp -- schedules the
+ * alpha tail as the original does. */
 #define BR_TEX_LERP(dst, x00, x10, x01, x11, hi)                              \
-    u = (((x10) - (x00)) * s + (x00));                                        \
-    v = (((x11) - (x01)) * s + (x01));                                        \
+    u = ((((x10) - (x00)) * s) + (x00));                                      \
+    v = ((((x11) - (x01)) * s) + (x01));                                      \
     f = (float)floor((double)((v - u) * t + u - DAT_10077434));              \
     if (f < DAT_10077438)                                                     \
         f = DAT_10077438;                                                     \
@@ -38,18 +39,11 @@ extern float DAT_10077448;   /* 15.0f  -- 4-bit ARGB4444 */
 /* WHAT IT DOES: bilinear-interpolate one ARGB1555 texel from four corners
  * at (s, t).  Each channel is rounded to nearest and clamped -- alpha to
  * 0..1, RGB to 0..31 -- then packed back into 16 bits. */
-/* T2 (2026-09-27 re-transcription, raw 701 -> 373 B, size 847/843, REGNORM
- * 2+0).  The original unpacks all sixteen channel values to floats first,
- * corner by corner (one reused 16-bit `c`), then lerps channel by channel;
- * the four alpha floats stay on the x87 stack, the other twelve get homes
- * (the dead pointer-argument slots among them).  Identical to the original
- * through +0x152.  RESIDUE: two extra fxch where the alpha tail's `fmul t`
- * and the fild of r11 are scheduled the other way round; the r/g/b lerps
- * are identical, shifted 4 bytes.  Inert: every order and spelling of the
- * lerp terms, the c11 conversion spellings and placement, declaration
- * order, `register`, /TP, TU pads and headers, the predecessor TU
- * (br_texlerp.c) in front.  Unpacking c11 as a, b, g, r gives size-exact
- * 114 B but mis-orders the integer unpack. */
+/* Byte-exact (2026-09-27, re-transcribed from the asm).  The original
+ * unpacks all sixteen channel values to floats first, corner by corner (one
+ * reused 16-bit `c`), then lerps channel by channel with named row lerps u
+ * and v; see BR_TEX_LERP for the parenthesisation that fixes the alpha
+ * tail's schedule. */
 /* @implements 0x10024750 glide BrTexLerp1555 */
 void BrTexLerp1555(unsigned short *pOut,
                    unsigned short *p00, unsigned short *p10,
@@ -91,8 +85,7 @@ void BrTexLerp1555(unsigned short *pOut,
 /* WHAT IT DOES: bilinear-interpolate one ARGB4444 texel from four corners
  * at (s, t).  Each 4-bit channel is rounded to nearest and clamped to
  * 0..15, then packed back into 16 bits. */
-/* T2 (2026-09-27 re-transcription, raw 718 -> 373 B, size 843/839, REGNORM
- * 2+0): the same shape and the same residue as BrTexLerp1555 above. */
+/* Byte-exact (2026-09-27): the same shape as BrTexLerp1555 above. */
 /* @implements 0x10024AA0 glide BrTexLerp4444 */
 void BrTexLerp4444(unsigned short *pOut,
                    unsigned short *p00, unsigned short *p10,
