@@ -276,3 +276,8 @@ va,name,kind
 8021B2F8,BrCameraSet,func
 8021B458,BrMenuCameraSet,func
 8021B5A4,BrScreenCameraSet,func
+80245B00,BrImageStrip,func
+80245470,BrImageDraw,func
+80245604,BrImageDrawAt,func
+80245798,BrImageDrawTinted,func
+8024594C,BrImageDrawRect,func

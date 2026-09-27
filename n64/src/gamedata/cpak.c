@@ -15,7 +15,7 @@ void BrTextAlignLeft(void);
 int BrTextSetColours();
 void BrTextSetFont(int param_1);
 void BrTextPrint();
-void func_80245604(int *param_1,int param_2,int param_3);
+void BrImageDrawAt(int *param_1,int param_2,int param_3);
 int func_80246F90();
 void BrPadConsume(unsigned int *param_1,unsigned int param_2);
 void osSyncPrintf();
@@ -479,8 +479,8 @@ int BrCpakCheck(int param_1,char param_2)
       iVar4 = local_20 + 0x12 >> 1;
       BrTextPrint("%wwOK",D_8028D0C0 + 0xe3U >> 1,iVar4);
       BrTextPrint("%wwCANCEL",D_8028D0F0 + 0x144U >> 1,iVar4);
-      func_80245604(&D_8028D0B0,0xdd,local_20);
-      func_80245604(&D_8028D0E0,0x13e,local_20);
+      BrImageDrawAt(&D_8028D0B0,0xdd,local_20);
+      BrImageDrawAt(&D_8028D0E0,0x13e,local_20);
     }
     else {
 LAB_802162c8:
