@@ -38,6 +38,7 @@ va,name,kind
 8021A540,BrScreenFlush2Layout0,func
 8021A920,BrPadStartRead,func
 8021A964,BrPadRead,func
+8021A9B4,BrPadPollAll,func
 8021B97C,BrRaceFlagsApply,func
 8021BE28,BrCamShakeAdd,func
 8021C46C,BrRaceClockReset,func
