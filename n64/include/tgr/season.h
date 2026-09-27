@@ -26,4 +26,18 @@ typedef struct BrSeason {
 
 extern BrSeason D_80324300[2];
 
+/* One championship round's rules (0x1C bytes), a table at 0x8028B944. */
+typedef struct BrRound {
+    int x0;                     /* 0x00 */
+    int x4;                     /* 0x04 */
+    int x8;                     /* 0x08 */
+    int xc;                     /* 0x0C */
+    unsigned char kinds[2];     /* 0x10  car kind for the first cars */
+    short kindMask;             /* 0x12  bit n: kind n allowed */
+    int x14;                    /* 0x14 */
+    int x18;                    /* 0x18 */
+} BrRound;
+
+extern BrRound D_8028B944[];
+
 #endif
