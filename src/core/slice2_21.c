@@ -22,6 +22,8 @@ int  BrSpanContains(int param_1, int param_2);
 
 #include <string.h>
 
+#define BR_ABS(a) (((a) < K_0) ? -(a) : (a))
+
 /* --------------------------------------------------------------------------
  * Constants, all read straight out of .rdata rather than guessed.
  * -------------------------------------------------------------------------- */
@@ -73,67 +75,85 @@ void BrVec3NormaliseGuard(BrVec3 *pV)
  * that cannot be undone, because it squashes everything flat, yields the
  * identity instead. It reports success either way, so the caller cannot tell
  * the two apart. */
+/* Retranscribed from the Glide listing 2026-09-27 (was 48+55 register-blind,
+ * a loop over a six-term array): this is the Graphics Gems II affine inverse
+ * in float -- six determinant terms, each accumulated inline by an
+ * ACCUMULATE-style `if (temp >= 0) pos += temp; else neg += temp;` (the five
+ * fcom/jne/faddp st(1)|st(2) blocks), pos = neg = 0, |det/(pos-neg)| taken
+ * BEFORE the det == 0 test, the adjugate times 1/det, then -C*inv(A).  The
+ * singular path writes the identity with a nested i/j loop and still
+ * returns 1.
+ * RESIDUE (11+15 register-blind, 684/696 B): operand order inside the
+ * three-factor products.  VC5 ranks commutative float leaves across the
+ * whole body, so each term's grouping moves the others: a per-term search
+ * fixes T2 with m01*(m12*m20), T3 with m10*(m02*m21) (which also fixes T6's
+ * minor) -- but with T3 right, none of the 24 T5 forms (all orders, both
+ * groupings, both sign placements) loads m10 first (96-compile joint
+ * search).  The two CSE'd minors (m11*m22, m12*m21) are spilled with fstp
+ * and multiplied from memory in the original, kept by fst in ours; the
+ * original's |ratio| test is `fld st; fcomp`, ours `fcom`. */
+/* @t4-pass 0x10034B70 1 2026-09-27 probes 190 bytes 684 insns 240 regions 7 rows 48 census yes  (hand: per-term and joint factor-order searches, operand-sequence scorer; census = the leaf-ranking coupling experiment) */
 /* @implements 0x1003B4F0 d3d BrMtxInvert */
 int BrMtxInvert(BrMat4 *pOut, const BrMat4 *pM)
 {
-    const float (*m)[4] = pM->m;
-    float pos = 0.0f, neg = 0.0f;   /* the original's two accumulators */
-    float aTerm[6];
-    float det, spread, ratio, id;
-    int i;
+    float det_1;
+    float pos, neg, temp, ratio;
+    int i, j;
 
-    aTerm[0] =  m[0][0] * (m[1][1] * m[2][2]);
-    aTerm[1] =  (m[1][2] * m[2][0]) * m[0][1];
-    aTerm[2] =  (m[1][0] * m[0][2]) * m[2][1];
-    aTerm[3] = -((m[0][2] * m[2][0]) * m[1][1]);
-    aTerm[4] = -((m[1][0] * m[0][1]) * m[2][2]);
-    aTerm[5] = -(m[0][0] * (m[2][1] * m[1][2]));
+#define BR_ACCUMULATE     \
+    if (temp >= K_0)      \
+        pos += temp;      \
+    else                  \
+        neg += temp;
 
-    for (i = 0; i < 6; i++) {
-        if (aTerm[i] < K_0)
-            neg = neg + aTerm[i];
-        else
-            pos = pos + aTerm[i];
+    pos = neg = K_0;
+    temp = pM->m[0][0] * (pM->m[1][1] * pM->m[2][2]);
+    BR_ACCUMULATE
+    temp = (pM->m[1][2] * pM->m[2][0]) * pM->m[0][1];
+    BR_ACCUMULATE
+    temp = (pM->m[1][0] * pM->m[0][2]) * pM->m[2][1];
+    BR_ACCUMULATE
+    temp = -((pM->m[0][2] * pM->m[2][0]) * pM->m[1][1]);
+    BR_ACCUMULATE
+    temp = -((pM->m[1][0] * pM->m[0][1]) * pM->m[2][2]);
+    BR_ACCUMULATE
+    temp = -(pM->m[0][0] * (pM->m[2][1] * pM->m[1][2]));
+    BR_ACCUMULATE
+    det_1 = pos + neg;
+    ratio = BR_ABS(det_1 / (pos - neg));
+
+    if (det_1 == K_0 || ratio < K_EPS_REL) {
+        for (i = 0; i < 4; i++)
+            for (j = 0; j < 4; j++)
+                if (i == j)
+                    pOut->m[i][j] = 1.0f;
+                else
+                    pOut->m[i][j] = 0.0f;
+        return 1;   /* see the header: the singular path returns 1 as well */
     }
 
-    det    = neg + pos;
-    spread = pos - neg;
-    ratio  = det / spread;
-    if (ratio < K_0)
-        ratio = -ratio;
+    det_1 = K_1 / det_1;
+    pOut->m[0][0] =   (pM->m[1][1] * pM->m[2][2] - pM->m[1][2] * pM->m[2][1]) * det_1;
+    pOut->m[1][0] = - (pM->m[1][0] * pM->m[2][2] - pM->m[1][2] * pM->m[2][0]) * det_1;
+    pOut->m[2][0] =   (pM->m[1][0] * pM->m[2][1] - pM->m[1][1] * pM->m[2][0]) * det_1;
+    pOut->m[0][1] = - (pM->m[0][1] * pM->m[2][2] - pM->m[0][2] * pM->m[2][1]) * det_1;
+    pOut->m[1][1] =   (pM->m[0][0] * pM->m[2][2] - pM->m[0][2] * pM->m[2][0]) * det_1;
+    pOut->m[2][1] = - (pM->m[0][0] * pM->m[2][1] - pM->m[0][1] * pM->m[2][0]) * det_1;
+    pOut->m[0][2] =   (pM->m[0][1] * pM->m[1][2] - pM->m[0][2] * pM->m[1][1]) * det_1;
+    pOut->m[1][2] = - (pM->m[0][0] * pM->m[1][2] - pM->m[0][2] * pM->m[1][0]) * det_1;
+    pOut->m[2][2] =   (pM->m[0][0] * pM->m[1][1] - pM->m[0][1] * pM->m[1][0]) * det_1;
 
-    if (det == K_0 || ratio < K_EPS_REL) {
-        int r, c;
-        for (r = 0; r < 4; r++)
-            for (c = 0; c < 4; c++)
-                pOut->m[r][c] = (r == c) ? 1.0f : 0.0f;
-        return 1;   /* see the header: the success path returns 1 as well */
-    }
+    pOut->m[3][0] = - (pM->m[3][0] * pOut->m[0][0] + pM->m[3][1] * pOut->m[1][0]
+                       + pM->m[3][2] * pOut->m[2][0]);
+    pOut->m[3][1] = - (pM->m[3][0] * pOut->m[0][1] + pM->m[3][1] * pOut->m[1][1]
+                       + pM->m[3][2] * pOut->m[2][1]);
+    pOut->m[3][2] = - (pM->m[3][0] * pOut->m[0][2] + pM->m[3][1] * pOut->m[1][2]
+                       + pM->m[3][2] * pOut->m[2][2]);
 
-    id = K_1 / det;
-
-    pOut->m[0][0] =  (m[1][1] * m[2][2] - m[2][1] * m[1][2]) * id;
-    pOut->m[1][0] = -(m[1][0] * m[2][2] - m[1][2] * m[2][0]) * id;
-    pOut->m[2][0] =  (m[1][0] * m[2][1] - m[2][0] * m[1][1]) * id;
-    pOut->m[0][1] = -(m[0][1] * m[2][2] - m[0][2] * m[2][1]) * id;
-    pOut->m[1][1] =  (m[0][0] * m[2][2] - m[0][2] * m[2][0]) * id;
-    pOut->m[2][1] = -(m[0][0] * m[2][1] - m[2][0] * m[0][1]) * id;
-    pOut->m[0][2] =  (m[1][2] * m[0][1] - m[0][2] * m[1][1]) * id;
-    pOut->m[1][2] = -(m[0][0] * m[1][2] - m[1][0] * m[0][2]) * id;
-    pOut->m[2][2] =  (m[0][0] * m[1][1] - m[1][0] * m[0][1]) * id;
-
-    pOut->m[3][0] = -(pOut->m[0][0] * m[3][0] + pOut->m[1][0] * m[3][1]
-                    + pOut->m[2][0] * m[3][2]);
-    pOut->m[3][1] = -(pOut->m[0][1] * m[3][0] + pOut->m[1][1] * m[3][1]
-                    + pOut->m[2][1] * m[3][2]);
-    pOut->m[3][2] = -(m[3][0] * pOut->m[0][2] + m[3][1] * pOut->m[1][2]
-                    + m[3][2] * pOut->m[2][2]);
-
-    pOut->m[0][3] = 0.0f;
-    pOut->m[1][3] = 0.0f;
-    pOut->m[2][3] = 0.0f;
+    pOut->m[0][3] = pOut->m[1][3] = pOut->m[2][3] = 0.0f;
     pOut->m[3][3] = 1.0f;
     return 1;
+#undef BR_ACCUMULATE
 }
 
 /* --------------------------------------------------------------------------
