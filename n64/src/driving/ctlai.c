@@ -104,24 +104,17 @@ void BrAiLaneSetup(int param_1)
 }
 
 /* WHAT IT DOES: Clear a computer driver's steering and pedal outputs. */
-/* @t4-pass 0x80228A3C 1 2026-09-26 compiles 17 best 2 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80228A3C 2 2026-09-26 compiles 16 best 2 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80228A3C 3 2026-09-26 compiles 17 best 2 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80228A3C tgr BrAiInputClear */
-void BrAiInputClear(int param_1)
+void BrAiInputClear(short *car)
 {
-  int iVar1;
-  int iVar2;
-  
-  iVar1 = 0;
-  iVar2 = param_1;
-  do {
-    iVar1 = iVar1 + 4;
-    *(short *)(iVar2 + 0x207e) = 0;
-    *(short *)(iVar2 + 0x2080) = 0;
-    *(short *)(iVar2 + 0x2082) = 0;
-    *(short *)(iVar2 + 0x207c) = 0;
-    iVar2 = iVar2 + 8;
-  } while (iVar1 != 8);
-  *(short *)(param_1 + 0x208c) = 0;
+  int i;
+
+  for (i = 0; i < 8; i += 4) {
+    car[0x103f + i] = 0;
+    car[0x1040 + i] = 0;
+    car[0x1041 + i] = 0;
+    car[0x103e + i] = 0;
+  }
+  car[0x1046] = 0;
 }
+

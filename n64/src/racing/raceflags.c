@@ -24,16 +24,11 @@ extern int D_80025C50;
  * the three option flags, sets the main flag for kinds 1-4 and the one
  * option flag that kind uses, then refreshes the track objects that depend
  * on them. */
-/* @t4-pass 0x80200050 1 2026-09-26 compiles 58 best 4 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80200050 2 2026-09-26 compiles 17 best 4 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80200050 3 2026-09-26 compiles 15 best 4 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80200050 tgr BrRaceSetKind */
-void BrRaceSetKind(int param_1)
+void BrRaceSetKind(int kind)
 {
-  D_8028AA84 = 0;
-  D_8028AA8C = 0;
-  D_8028AA80 = 0;
-  switch(param_1) {
+  D_8028AA80 = D_8028AA8C = D_8028AA84 = 0;
+  switch (kind) {
   case 0:
     D_8028AA78 = 0;
     break;
@@ -51,9 +46,11 @@ void BrRaceSetKind(int param_1)
   case 4:
     D_8028AA78 = 1;
     D_8028AA80 = 1;
+    break;
   }
   BrRaceFlagsApply();
 }
+
 
 /* WHAT IT DOES: Re-evaluate everything that depends on the race-kind flags:
  * marks each track object whose condition list now holds, and does the same
