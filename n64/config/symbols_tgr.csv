@@ -14,6 +14,7 @@ va,name,kind
 8020AC18,BrFrontPromptContinue,func
 8020AD50,BrFrontSetMenuFlag,func
 8020AD5C,BrMenu,func
+8020C27C,BrMenuLoadItems,func
 8020C408,BrFrontMenuEnter,func
 8020C66C,BrCarSelectable,func
 80210F4C,BrResultsRun,func

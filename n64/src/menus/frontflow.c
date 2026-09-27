@@ -1,6 +1,7 @@
 /* frontflow.c -- moving between front-end screens and into races
  */
 #include "tgr/common.h"
+#include "tgr/menu.h"
 
 /* -- declarations -- */
 void BrMainMenu(void);
@@ -15,7 +16,16 @@ extern int D_80272380;
 extern int D_8028C800;
 int func_8020D004();
 extern int D_80272074;
-void func_8020C27C(int *param_1,int *param_2);
+void BrMenuLoadItems(MenuItem **items, int *count);
+void osViBlack(int black);
+void BrFrameBeginLayout0(void);
+void BrFrameBeginLayout1(void);
+void func_8021AA08(void);
+int BrRomReadSize(int rom);
+unsigned int BrIfaceMemAlloc(int size);
+void BrModelLoad(void *dst, int rom);
+extern int D_8028A850;
+extern int D_8028A884;
 void BrIfaceMemReset(void);
 extern float D_80271FC4;
 extern int D_80271FC8;
@@ -70,14 +80,56 @@ void BrResultsRun(void)
   D_80272074 = 0;
 }
 
+/* WHAT IT DOES: Load a menu screen's items: blank the screen for two frames
+ * (in the current resolution's layout), then count the NULL-terminated item
+ * list and give every item with an icon its decompressed icon, sharing the
+ * copy of an earlier item that uses the same ROM image. */
+/* @implements 0x8020C27C tgr BrMenuLoadItems */
+void BrMenuLoadItems(MenuItem **items, int *count)
+{
+  int i;
+
+  D_8028A884 = 1;
+  if (D_8028A850) {
+    osViBlack(1);
+    BrFrameBeginLayout1();
+    func_8021AA08();
+    osViBlack(1);
+    BrFrameBeginLayout1();
+    func_8021AA08();
+  } else {
+    osViBlack(1);
+    BrFrameBeginLayout0();
+    func_8021AA08();
+    osViBlack(1);
+    BrFrameBeginLayout0();
+    func_8021AA08();
+  }
+  D_8028A884 = 0;
+  for (*count = 0; items[*count] != 0; (*count)++) {
+    if (items[*count]->iconRomStart != 0) {
+      for (i = 0; i < *count; i++) {
+        if (items[*count]->iconRomStart == items[i]->iconRomStart) {
+          items[*count]->icon = items[i]->icon;
+          break;
+        }
+      }
+      if (i == *count) {
+        items[*count]->icon = (void *)BrIfaceMemAlloc(BrRomReadSize(items[*count]->iconRomStart));
+        BrModelLoad(items[*count]->icon, items[*count]->iconRomStart);
+      }
+    }
+  }
+}
+
 /* WHAT IT DOES: Enter a front-end menu screen: empty the interface memory
  * pool, clear the menu's scroll state, and lay out the menu table given. */
 /* @implements 0x8020C408 tgr BrFrontMenuEnter */
-void BrFrontMenuEnter(int param_1,int param_2)
+void BrFrontMenuEnter(MenuItem **items, int *count)
 {
   BrIfaceMemReset();
   D_80271FC4 = 0;
   D_80271FC8 = 0;
   D_80271FCC = 0;
-  func_8020C27C(param_1,param_2);
+  BrMenuLoadItems(items, count);
 }
