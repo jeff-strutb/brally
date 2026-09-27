@@ -117,3 +117,14 @@ void BrMat4Mul(float *param_1,float *param_2,float *param_3)
     pfVar1 = pfVar3;
   } while (pfVar3 != afStackX_0);
 }
+
+/* WHAT IT DOES: Reset a 4x4 float matrix's w column: m[0..2][3] become 0
+ * and m[3][3] becomes 1, leaving the rest alone. */
+/* @implements 0x8021EB30 tgr BrMat4ResetW */
+void BrMat4ResetW(float m[4][4])
+{
+  m[2][3] = 0.0f;
+  m[1][3] = 0.0f;
+  m[0][3] = 0.0f;
+  m[3][3] = 1.0f;
+}

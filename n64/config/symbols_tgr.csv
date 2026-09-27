@@ -77,7 +77,7 @@ va,name,kind
 8021EA0C,BrTrackGridCell,func
 8021EA80,BrRecHalf1,func
 8021EA88,BrRecHalf1Dup,func
-8021EB30,BrTrackCellReset,func
+8021EB30,BrMat4ResetW,func
 8021F1F0,BrWrongWayCheck,func
 80220150,BrCarPlaceAt,func
 80220398,BrEntRefreshColour,func
