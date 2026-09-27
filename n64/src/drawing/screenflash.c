@@ -131,26 +131,29 @@ int BrFadeDone(void)
   return D_8028B774 == D_8028B76C;
 }
 
+/* WHAT IT DOES: Put the screen fade straight at a level: target and current
+ * level both become it, so nothing is left to fade. */
+/* @implements 0x8022389C tgr BrFadeSet */
+void BrFadeSet(float level)
+{
+  D_8028B754 = level;
+  D_8028B75C = D_8028B754;
+}
+
 /* WHAT IT DOES: Tell whether the screen is fading in and not about to
  * reverse. */
-/* @t4-pass 0x802238B8 1 2026-09-26 compiles 14 best 15 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x802238B8 2 2026-09-26 compiles 13 best 15 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x802238B8 3 2026-09-26 compiles 9 best 15 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x802238B8 tgr BrFadeIsIn */
 int BrFadeIsIn(void)
 {
-  return 0.0 < D_8028B758 && D_8028B784 == 0;
+  return 0.0f < D_8028B758 && D_8028B784 == 0;
 }
 
 /* WHAT IT DOES: Tell whether the screen is fading out, or a reversal is
  * pending. */
-/* @t4-pass 0x802238FC 1 2026-09-26 compiles 14 best 15 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x802238FC 2 2026-09-26 compiles 13 best 15 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x802238FC 3 2026-09-26 compiles 9 best 15 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x802238FC tgr BrFadeIsOut */
 int BrFadeIsOut(void)
 {
-  return D_8028B758 < 0.0 || D_8028B784 != 0;
+  return D_8028B758 < 0.0f || D_8028B784 != 0;
 }
 
 /* WHAT IT DOES: Tell whether the screen fade has reached its target level

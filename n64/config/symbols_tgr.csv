@@ -85,6 +85,7 @@ va,name,kind
 80223470,BrScreenFlashClear,func
 80223480,BrScreenFlashDraw,func
 80223850,BrFadeDone,func
+8022389C,BrFadeSet,func
 802238B8,BrFadeIsIn,func
 802238FC,BrFadeIsOut,func
 80223940,BrFadeAtTarget,func
