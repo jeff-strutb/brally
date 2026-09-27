@@ -49,7 +49,7 @@ Functions: T2 11, T4 35.
 | `8022D7E0` | `BrPerfMark` | T4 |
 | `8022D8AC` | `BrPerfFrameStart` | T4 |
 
-## `screenflash.c` — the white screen flash drawn over the 3-D view
+## `screenflash.c` — the white screen flash drawn over the 3-D view, and the
 
 | address | function | tier |
 |---|---|---|
