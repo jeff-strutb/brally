@@ -57,6 +57,7 @@ void func_8022F504(void);
 extern int D_80238EBC;
 extern int D_80238F10;
 extern int D_8031B2D0;
+extern int D_80025C70;
 /* -- end declarations -- */
 
 /* WHAT IT DOES: The race's frame hook: unless the race has switched the
@@ -94,7 +95,7 @@ void BrWrongWayCheck(int param_1)
   char *pcVar2;
   float fVar3;
   
-  if ((*(int *)0x80025C70) != 0) {
+  if (D_80025C70 != 0) {
     if (*(int *)(param_1 + 0xf78) < D_8028B304) {
       if (*(int *)(param_1 + 0xf4c) == 0) {
         fVar3 = (float)func_80224404(param_1 + 0xf64);
