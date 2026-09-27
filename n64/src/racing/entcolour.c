@@ -125,6 +125,29 @@ void BrEntPaintTexture(int param_1,unsigned int param_2,unsigned int param_3,int
   } while (iVar1 != 0xc);
 }
 
+/* WHAT IT DOES: Take a car's body colour from its model: the first
+ * palette entry of the paint part (when that part is paletted), widened
+ * from RGBA5551 to 8 bits a channel. */
+/* @implements 0x8021D2A0 tgr BrCarColourFromModel */
+void BrCarColourFromModel(BrCar *car, BrCarModel *m)
+{
+  BrCarModelPart *p = &m->parts[m->paintPart];
+  unsigned short c;
+  unsigned char r;
+  unsigned char g;
+  unsigned char b;
+
+  if (p->b != 0 && (p->fmt & 0xf) == 1) {
+    c = p->b[0];
+    r = ((c >> 13) & 7) | ((c >> 8) & 0xf8);
+    g = ((c >> 8) & 7) | ((c >> 3) & 0xf8);
+    b = ((c >> 3) & 7) | ((c << 2) & 0xf8);
+    car->colour[2] = b;
+    car->colour[1] = g;
+    car->colour[0] = r;
+  }
+}
+
 /* WHAT IT DOES: Fix up a car model just loaded into its slot: every part's
  * address and display list is moved from the loading area to the slot's own
  * copy. */

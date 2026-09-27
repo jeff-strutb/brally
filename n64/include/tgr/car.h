@@ -41,7 +41,13 @@ typedef struct BrCar {
 extern BrCar D_8031B760[4];
 
 /* A car's loaded model (the head of its model buffer). */
-typedef struct BrCarModelPart { void *a; void *b; char pad08[0x1c]; } BrCarModelPart;
+typedef struct BrCarModelPart {
+    void *a;
+    unsigned short *b;          /* 0x04  palette (RGBA5551) for a paletted texture */
+    char pad08[0x18];
+    unsigned char fmt;          /* 0x20  low nibble 1: paletted */
+    char pad21[3];
+} BrCarModelPart;
 typedef struct BrCarModel {
     char pad00[0x10];
     int nParts;                 /* 0x10 */
@@ -52,7 +58,9 @@ typedef struct BrCarModel {
     char pad98[0xbc - 0x98];
     unsigned int *dl2[3][3];    /* 0xBC  wheel display lists (0 when the model has none) */
     float wheel[4][3];          /* 0xE0  wheel positions in the body's frame */
-    char pad110[0x11c - 0x110];
+    char pad110[2];
+    unsigned char paintPart;    /* 0x112  the part carrying the paint texture */
+    char pad113[0x11c - 0x113];
     void **x11c;                /* 0x11C */
 } BrCarModel;
 
