@@ -1,9 +1,9 @@
-/* n64-cflags: -O2 -mips3 -32 */
 /* mixer.s -- the software audio mixer's inner loops, hand-written MIPS III
  * (64-bit 32.32 sample-position accumulators), and the doubleword copy,
  * fill and float-to-int helpers assembled with them (one object, starting at
  * 0x80256270 after the preceding object's padding)
  */
+/* n64-cflags: -O2 -mips3 -32 */
 
 /* WHAT IT DOES: Copy 16 bytes as two doublewords (both addresses 8-byte
  * aligned). */

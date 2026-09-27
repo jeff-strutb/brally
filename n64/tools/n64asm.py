@@ -108,7 +108,7 @@ def emit(va, name, rom, fmap, syms, lines):
 def main():
     args = sys.argv[1:]
     rom, fmap, syms = B.Rom(), B.function_map(), B.load_symbols()
-    lines = ['/* n64-cflags: -O2 -mips3 -32 */', '.set noreorder', '.set noat', '', '.text']
+    lines = ['/* <file>.s -- <what the object is>\n */', '/* n64-cflags: -O2 -mips3 -32 */', '.set noreorder', '.set noat', '', '.text']
     for k in range(0, len(args), 2):
         emit(int(args[k], 16), args[k + 1], rom, fmap, syms, lines)
     print('\n'.join(lines))
