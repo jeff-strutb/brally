@@ -23,7 +23,7 @@ void osViBlack(int active);
 void osCreatePiManager(int pri, int *mq, int *msgs, int count);
 void osCreateMesgQueue(int *mq, int *msgs, int count);
 void osSetThreadPri(void *t, int pri);
-void func_802001B4(void *arg);
+void BrMainThread(void *arg);
 typedef struct BrArgs { int argc; char **argv; } BrArgs;
 extern char *D_80316450[];           /* argv */
 extern BrArgs *D_8026FF00;
@@ -155,7 +155,7 @@ void BrIdleThread(void *arg)
   for (s = D_803196D0; s != D_803196D0 + 0x100; s++) {
     *s = 0x5015A1DBFED15C00ULL;
   }
-  osCreateThread(D_80272830, 3, func_802001B4, arg, D_80318CD0, 10);
+  osCreateThread(D_80272830, 3, BrMainThread, arg, D_80318CD0, 10);
   osStartThread(D_80272830);
   osSetThreadPri(0, 0);
   for (;;) {
