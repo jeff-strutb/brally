@@ -298,3 +298,5 @@ va,name,kind
 80266A08,__d_to_ull,func
 80256C2C,BrNoteRatesInit,func
 80217FB8,BrScreenClear,func
+802174B4,BrMat4FitRange,func
+80217614,BrTexSizeBits,func
