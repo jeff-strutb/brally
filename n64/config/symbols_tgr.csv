@@ -266,3 +266,4 @@ va,name,kind
 8021D534,BrCarModelLoad,func
 8021D5E4,BrCarModelInstall,func
 8022FEF0,BrCarPlaceWheels,func
+802579F4,BrSfxFreeVoice,func
