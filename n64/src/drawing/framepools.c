@@ -11,6 +11,14 @@ extern int D_8028C75C;
 extern int D_8028C760;
 extern int D_8028C764;
 extern int D_8028C768;
+typedef struct BrMtx { int m[16]; } BrMtx;           /* an Mtx */
+typedef struct BrLight { int w[4]; } BrLight;         /* a Light */
+typedef struct BrVp { short v[16]; } BrVp;            /* 32 bytes */
+extern BrMtx D_8036AE50[2][257];
+extern BrLight D_80372ED0[2][21];
+extern BrVp D_80373170[2][21];
+extern char D_80353580[2][4000];
+extern char D_803554C0[2][16000];
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Empty the three per-frame pools at the start of a frame:
@@ -26,71 +34,51 @@ void BrFramePoolsReset(void)
 
 /* WHAT IT DOES: Point the vertex pools for this frame buffer back at their
  * start. */
-/* @t4-pass 0x80233FDC 1 2026-09-26 compiles 17 best 21 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80233FDC 2 2026-09-26 compiles 16 best 21 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80233FDC 3 2026-09-26 compiles 15 best 21 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80233FDC tgr BrVtxPoolsReset */
 void BrVtxPoolsReset(void)
 {
-  D_8028C75C = D_8028A85C * 4000 + -0x7fcaca80;
+  D_8028C75C = (int)D_80353580[D_8028A85C];
   D_8028C760 = D_8028C75C;
-  D_8028C764 = D_8028A85C * 16000 + -0x7fcaab40;
+  D_8028C764 = (int)D_803554C0[D_8028A85C];
   D_8028C768 = D_8028C764;
 }
 
+
 /* WHAT IT DOES: Hand out the next matrix slot of this frame's pool (256
  * slots); past the end it keeps returning the last one. */
-/* @t4-pass 0x80255CD0 1 2026-09-26 compiles 17 best 24 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80255CD0 2 2026-09-26 compiles 16 best 24 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80255CD0 3 2026-09-26 compiles 16 best 24 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80255CD0 tgr BrMtxAlloc */
-int BrMtxAlloc(void)
+BrMtx *BrMtxAlloc(void)
 {
-  int iVar1;
-  
-  if (D_8028DFB0 < 0x100) {
-    iVar1 = D_8028DFB0 * 0x40;
-    D_8028DFB0 = D_8028DFB0 + 1;
-    return D_8028A85C * 0x4040 + iVar1 + -0x7fc951b0;
+  if (D_8028DFB0 < 256) {
+    return &D_8036AE50[D_8028A85C][D_8028DFB0++];
   }
-  D_8028DFB0 = D_8028DFB0 + 1;
-  return D_8028A85C * 0x4040 + -0x7fc911b0;
+  D_8028DFB0++;
+  return &D_8036AE50[D_8028A85C][256];
 }
+
 
 /* WHAT IT DOES: Hand out the next light slot of this frame's pool (20
  * slots); past the end it keeps returning the last one. */
-/* @t4-pass 0x80255D4C 1 2026-09-26 compiles 17 best 28 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80255D4C 2 2026-09-26 compiles 16 best 28 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80255D4C 3 2026-09-26 compiles 16 best 28 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80255D4C tgr BrLightAlloc */
-int BrLightAlloc(void)
+BrLight *BrLightAlloc(void)
 {
-  int iVar1;
-  
-  if (D_8028DFB4 < 0x14) {
-    iVar1 = D_8028DFB4 * 0x10;
-    D_8028DFB4 = D_8028DFB4 + 1;
-    return D_8028A85C * 0x150 + iVar1 + -0x7fc8d130;
+  if (D_8028DFB4 < 20) {
+    return &D_80372ED0[D_8028A85C][D_8028DFB4++];
   }
-  D_8028DFB4 = D_8028DFB4 + 1;
-  return D_8028A85C * 0x150 + -0x7fc8cff0;
+  D_8028DFB4++;
+  return &D_80372ED0[D_8028A85C][20];
 }
+
 
 /* WHAT IT DOES: Hand out the next viewport slot of this frame's pool (20
  * slots); past the end it keeps returning the last one. */
-/* @t4-pass 0x80255DD8 1 2026-09-26 compiles 17 best 28 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80255DD8 2 2026-09-26 compiles 16 best 28 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80255DD8 3 2026-09-26 compiles 16 best 28 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80255DD8 tgr BrVpAlloc */
-int BrVpAlloc(void)
+BrVp *BrVpAlloc(void)
 {
-  int iVar1;
-  
-  if (D_8028DFB8 < 0x14) {
-    iVar1 = D_8028DFB8 * 0x20;
-    D_8028DFB8 = D_8028DFB8 + 1;
-    return D_8028A85C * 0x2a0 + iVar1 + -0x7fc8ce90;
+  if (D_8028DFB8 < 20) {
+    return &D_80373170[D_8028A85C][D_8028DFB8++];
   }
-  D_8028DFB8 = D_8028DFB8 + 1;
-  return D_8028A85C * 0x2a0 + -0x7fc8cc10;
+  D_8028DFB8++;
+  return &D_80373170[D_8028A85C][20];
 }
+
