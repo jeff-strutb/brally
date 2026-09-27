@@ -1,6 +1,7 @@
 /* carselect.c -- the car-select screen
  */
 #include "tgr/common.h"
+#include "tgr/gbi.h"
 
 /* -- declarations -- */
 int BrCarModelPresent(int param_1);
@@ -9,7 +10,29 @@ extern int D_8020C68C;
 extern int D_80272070;
 extern char *D_8031C5BC;
 extern char D_8028AE24;
+extern Gfx *D_8028A858;
 /* -- end declarations -- */
+
+/* WHAT IT DOES: Draw one of the car-select screen's stat bars at (x, y),
+ * w by h, in fill mode: a dark frame, the empty bar inset by 3 pixels, and
+ * the filled part as the given fraction of its width. */
+/* @implements 0x8020C460 tgr BrCarStatBarDraw */
+void BrCarStatBarDraw(int x, int y, int w, int h, float frac)
+{
+  gDPPipeSync(D_8028A858++);
+  gDPSetCycleType(D_8028A858++, G_CYC_FILL);
+  gDPSetRenderMode(D_8028A858++, 0, 0);
+  gDPSetCombine(D_8028A858++, 0xffffff, 0xfffdf6fb);
+  gDPSetFillColor(D_8028A858++, 1);
+  gDPFillRectangle(D_8028A858++, x, y, x + w, y + h);
+  x += 3;
+  gDPPipeSync(D_8028A858++);
+  gDPSetFillColor(D_8028A858++, 0x1c1);
+  gDPFillRectangle(D_8028A858++, x, y + 3, x + w - 6, y + h - 3);
+  gDPPipeSync(D_8028A858++);
+  gDPSetFillColor(D_8028A858++, 0x781);
+  gDPFillRectangle(D_8028A858++, x, y + 3, x + (int)((w - 6) * frac), y + h - 3);
+}
 
 /* WHAT IT DOES: Tell whether car n may be picked on the car-select screen:
  * cars 9 and up only while the flag at 0x80272070 is clear, the car's bit

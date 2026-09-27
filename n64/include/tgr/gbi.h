@@ -34,6 +34,7 @@ typedef union {
 #define G_RDPPIPESYNC       0xe7
 #define G_FILLRECT          0xf6
 #define G_SETPRIMCOLOR      0xfa
+#define G_SETFILLCOLOR      0xf7
 #define G_SETCOMBINE        0xfc
 #define G_DL                0x06
 #define G_MOVEWORD          0xbc
@@ -56,6 +57,7 @@ typedef union {
 #define G_MDSFT_CYCLETYPE   20
 
 #define G_CYC_1CYCLE        (0 << G_MDSFT_CYCLETYPE)
+#define G_CYC_FILL          (3 << G_MDSFT_CYCLETYPE)
 #define G_CD_DISABLE        (3 << G_MDSFT_RGBDITHER)
 
 /* render modes used so far, as libultra composes them */
@@ -136,6 +138,7 @@ typedef union {
 }
 
 #define gDPPipeSync(pkt)            gDPNoParam(pkt, G_RDPPIPESYNC)
+#define gDPSetFillColor(pkt, d)     gDPSetColor(pkt, G_SETFILLCOLOR, (d))
 #define gDPSetCycleType(pkt, type)  \
     gSPSetOtherMode(pkt, G_SETOTHERMODE_H, G_MDSFT_CYCLETYPE, 2, type)
 #define gDPSetColorDither(pkt, mode) \
