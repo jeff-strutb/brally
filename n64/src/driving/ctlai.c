@@ -57,9 +57,9 @@ void BrAiLaneSetup(int param_1)
   *(int *)(param_1 + 0x1094) = 0;
   *(int *)(param_1 + 0x1074) = 2;
   *(int *)(param_1 + 0x1070) = 2;
-  *(float *)(param_1 + 0x1020) = fVar1 * 0.0;
+  *(float *)(param_1 + 0x1020) = fVar1 * 0.0f;
   *(int *)(param_1 + 0x1090) = 0;
-  *(float *)(param_1 + 0x1024) = fVar1 * 1.0;
+  *(float *)(param_1 + 0x1024) = fVar1 * 1.0f;
   *(int *)(param_1 + 0x108c) = 0;
   *(int *)(param_1 + 0x106c) = 0;
   *(int *)(param_1 + 0x1088) = 0;
@@ -68,8 +68,8 @@ void BrAiLaneSetup(int param_1)
   *(int *)(param_1 + 0x1064) = 0;
   *(int *)(param_1 + 0x1060) = 0;
   *(int *)(param_1 + 0x1080) = 0;
-  *(float *)(param_1 + 0x1028) = fVar1 * 2.0;
-  *(float *)(param_1 + 0x102c) = fVar1 * 3.0;
+  *(float *)(param_1 + 0x1028) = fVar1 * 2.0f;
+  *(float *)(param_1 + 0x102c) = fVar1 * 3.0f;
   puVar2 = (short *)(param_1 + 0x19d0);
   puVar3 = (short *)(param_1 + 0x10d0);
   do {

@@ -95,7 +95,7 @@ void BrScreenFlashDraw(void)
     puVar2 = D_8028A858 + 2;
     *D_8028A858 = 0xfa000000;
     D_8028A858 = puVar2;
-    puVar1[1] = (int)(D_8028B750 * 255.0) & 0xffU | 0xffffff00;
+    puVar1[1] = (int)(D_8028B750 * 255.0f) & 0xffU | 0xffffff00;
     puVar2 = D_8028A858;
     puVar1 = D_8028A858 + 1;
     D_8028A858 = D_8028A858 + 2;
@@ -181,12 +181,12 @@ void BrFadeStep(void)
   if (D_8028B778 == 0) {
     if (D_8028B754 != D_8028B75C) {
       D_8028B75C = D_8028B75C + D_8028B758 * D_8028AAD8;
-      if (D_8028B758 < 0.0) {
+      if (D_8028B758 < 0.0f) {
         if (D_8028B75C < D_8028B754) goto LAB_80224010;
       }
       else if ((D_8028B754 <= D_8028B75C) && (D_8028B75C = D_8028B754, D_8028B784 != 0)) {
         D_8028B758 = -D_8028B758;
-        D_8028B754 = 0.0;
+        D_8028B754 = 0.0f;
         D_8028B784 = 0;
 LAB_80224010:
         D_8028B75C = fVar1;
@@ -202,11 +202,11 @@ LAB_80224010:
   *(unsigned int *)(iVar2 + -0x7fce4be8) = D_8028B744;
   D_8028B748 = 0;
   D_8028B74C = D_8028AAB4;
-  if (0.0 < fVar1) {
+  if (0.0f < fVar1) {
     D_8028B744 = (int)((float)(int)D_8028AAB0 * D_8028B75C) + 3U & 0xfffffffc;
     D_8028B740 = 0;
   }
-  else if (fVar1 < 0.0) {
+  else if (fVar1 < 0.0f) {
     uVar3 = ((D_8028AAB0 - (int)((float)(int)D_8028AAB0 * D_8028B75C)) - D_8028B740) + 3 &
             0xfffffffc;
     D_8028B744 = D_8028B744 + uVar3;
@@ -222,7 +222,7 @@ LAB_80224010:
   if (D_8028B780 == 0) {
     if (D_8028B76C != D_8028B774) {
       D_8028B774 = D_8028B774 + D_8028B770 * D_8028AAD8;
-      if (D_8028B770 < 0.0) {
+      if (D_8028B770 < 0.0f) {
         if (D_8028B774 < D_8028B76C) {
           D_8028B774 = D_8028B76C;
         }
@@ -242,7 +242,7 @@ LAB_80224010:
       goto LAB_802242c4;
     }
     D_8028B768 = D_8028B768 + D_8028B764 * D_8028AAD8;
-    if (D_8028B764 < 0.0) {
+    if (D_8028B764 < 0.0f) {
       if (D_8028B760 <= D_8028B768) {
         dVar4 = (double)D_8028B768;
         goto LAB_802242c4;

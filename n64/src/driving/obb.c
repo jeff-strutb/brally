@@ -59,7 +59,7 @@ int BrObbFaceClip(int param_1,float *param_2,int param_3)
   pfVar3 = param_2;
   do {
     fVar12 = *pfVar3;
-    if (fVar12 < 0.0) {
+    if (fVar12 < 0.0f) {
       *pfVar7 = -fVar12;
     }
     else {
@@ -79,7 +79,7 @@ int BrObbFaceClip(int param_1,float *param_2,int param_3)
     iVar4 = (local_c[1] <= local_c[2]) + 1;
   }
   iVar1 = 0;
-  if (param_2[iVar4] < 0.0) {
+  if (param_2[iVar4] < 0.0f) {
     uVar10 = iVar4 + 2;
     uVar11 = iVar4 + 1;
   }
