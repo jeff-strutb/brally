@@ -106,6 +106,7 @@ va,name,kind
 80223A68,BrStub80223A68,func
 80223F54,BrFadeStep,func
 80224D00,BrMat4ProjectPoint,func
+80224DDC,BrMat4TransformPoint4,func
 802250FC,BrMat4RotateDir,func
 80225180,BrMat4Mul,func
 80225350,BrMat4Copy,func

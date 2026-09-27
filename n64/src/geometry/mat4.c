@@ -20,22 +20,32 @@ void BrMat4Copy(int param_1,int param_2)
 /* @t4-pass 0x80224D00 2 2026-09-26 compiles 17 best 54 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80224D00 3 2026-09-26 compiles 16 best 54 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80224D00 tgr BrMat4ProjectPoint */
-void BrMat4ProjectPoint(float *param_1,float *param_2,float *param_3)
+void BrMat4ProjectPoint(float out[3], float v[3], float m[4][4])
 {
-  float fVar1;
-  float fVar2;
-  float fVar3;
-  float fVar4;
-  
-  fVar1 = *param_2;
-  fVar2 = param_2[1];
-  fVar3 = param_2[2];
-  fVar4 = 1.0f / (param_3[0xf] + fVar1 * param_3[3] + fVar2 * param_3[7] + fVar3 * param_3[0xb]);
-  *param_1 = (param_3[0xc] + fVar1 * *param_3 + fVar2 * param_3[4] + fVar3 * param_3[8]) * fVar4;
-  param_1[1] = (param_3[0xd] + fVar1 * param_3[1] + fVar2 * param_3[5] + fVar3 * param_3[9]) * fVar4
-  ;
-  param_1[2] = (param_3[0xe] + fVar1 * param_3[2] + fVar2 * param_3[6] + fVar3 * param_3[10]) *
-               fVar4;
+  float x = v[0];
+  float y = v[1];
+  float z = v[2];
+  float w = 1.0f / ((x * m[0][3] + y * m[1][3] + z * m[2][3]) + m[3][3]);
+
+  out[0] = ((x * m[0][0] + y * m[1][0] + z * m[2][0]) + m[3][0]) * w;
+  out[1] = ((x * m[0][1] + y * m[1][1] + z * m[2][1]) + m[3][1]) * w;
+  out[2] = ((x * m[0][2] + y * m[1][2] + z * m[2][2]) + m[3][2]) * w;
+}
+
+
+/* WHAT IT DOES: Transform a point by a 4x4 matrix into all four
+ * homogeneous components (x, y, z and w), without the divide. */
+/* @implements 0x80224DDC tgr BrMat4TransformPoint4 */
+void BrMat4TransformPoint4(float out[4], float v[3], float m[4][4])
+{
+  float x = v[0];
+  float y = v[1];
+  float z = v[2];
+
+  out[0] = (x * m[0][0] + y * m[1][0] + z * m[2][0]) + m[3][0];
+  out[1] = (x * m[0][1] + y * m[1][1] + z * m[2][1]) + m[3][1];
+  out[2] = (x * m[0][2] + y * m[1][2] + z * m[2][2]) + m[3][2];
+  out[3] = (x * m[0][3] + y * m[1][3] + z * m[2][3]) + m[3][3];
 }
 
 /* WHAT IT DOES: Transform a direction by the 3x3 rotation part of a 4x4
