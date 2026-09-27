@@ -65,8 +65,8 @@ typedef struct { float x, y, z, s, t, n0, n1, n2; } BrDlSrcVtx;
  * source normals are copied straight into the colour fields because there is
  * no lighting, and 1/w is forced to a constant so the card skips perspective-
  * correct texturing. */
-/* T2 (2026-09-27 re-transcription from the asm, raw 423 -> 10 B, size exact,
- * instruction multiset identical; /O2 /Op like its siblings).  Source facts:
+/* Byte-exact (2026-09-27, re-transcribed from the asm; /O2 /Op like its
+ * siblings).  Source facts:
  * - The snap is four asm instructions (fld, fistp, fild, fstp) on a float
  *   scratch and one int `l`; C then scales the scratch by 0.25.  1/w, the x
  *   snap and the y snap each have their own float (invW, tx, ty): VC5 packs
@@ -76,11 +76,12 @@ typedef struct { float x, y, z, s, t, n0, n1, n2; } BrDlSrcVtx;
  * - The vertex fields are addressed as pFirst[i] (VC5 strength-reduces them
  *   to a pointer biased to &cw, ecx) while x goes through a separate pointer
  *   pV that is stepped each pass (edi); the original has both registers.
- * RESIDUE (10 B): the 1/65535 store to oow is emitted after the y store;
- * the original emits it before.  Reached only through two stepped pointers
- * (pW-> for every field), which flips the outcode adds' fld sides instead
- * (29 B).  Inert: statement position of the store, int/literal spellings,
- * a y temp, declaration order and names, TU headers/pads. */
+ * - The y projection and the 1/65535 store go through pW = &pFirst[i]: as
+ *   pointer stores VC5 may reorder them, and it puts the 1/65535 store
+ *   ahead of the y store as the original does.  Every other site by index.
+ * - The viewport scale is declared after the locals (it takes the fld side
+ *   of scale * invW), and <dsound.h> + <stdio.h> set the TU state for the
+ *   matrix terms' order. */
 /* @implements 0x10023110 glide BrDlVtxNoZ */
 const uint32_t *BrDlVtxNoZ(const uint32_t *p)
 {
@@ -94,6 +95,7 @@ const uint32_t *BrDlVtxNoZ(const uint32_t *p)
     int i;
     int v0;
     BrDlVtx *pFirst;
+    BrDlVtx *pW;
     float c;
     /* Declared here, after the locals, so the scale takes the fld side
      * of scale * invW (the later symbol does). */
@@ -125,12 +127,13 @@ const uint32_t *BrDlVtxNoZ(const uint32_t *p)
             if (pFirst[i].cw - pFirst[i].cy < DAT_10077410)      oc |= 0x40;
             pFirst[i].outcode = oc;
             if (oc == 0) {
+                pW = &pFirst[i];
                 invW = DAT_10077404 / pFirst[i].cw;
                 l = 0;
                 *(uint32_t *)&pFirst[i].oow = *(uint32_t *)&invW;
                 pV->x = DAT_105ccd48 * invW * pFirst[i].cx + DAT_105cd9f8;
-                pFirst[i].y = DAT_105ccfdc * pFirst[i].oow * pFirst[i].cy + DAT_105cd9fc;
-                pFirst[i].oow = 1.0f / 65535.0f;
+                pW->y = DAT_105ccfdc * pW->oow * pW->cy + DAT_105cd9fc;
+                pW->oow = 1.0f / 65535.0f;
                 c = pFirst[i].n0; pFirst[i].r = c;
                 c = pFirst[i].n1; pFirst[i].g = c;
                 c = pFirst[i].n2; pFirst[i].b = c;
