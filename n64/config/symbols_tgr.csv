@@ -6,6 +6,7 @@ va,name,kind
 802003E4,BrRaceDrawLayers,func
 802005FC,BrDemoRaceStartA,func
 8020068C,BrDemoRaceStartC,func
+80206304,BrSeasonPickRace,func
 80206830,BrCreditsDrawCars,func
 80208900,BrTrackSelectable,func
 802089D0,BrSeasonAdvanceRound,func
@@ -206,6 +207,7 @@ va,name,kind
 80258248,BrRbQuatDerivative,func
 80258324,BrRbIntegrate,func
 802583DC,BrQuatToMat,func
+80258680,BrRbSetParams,func
 802587E8,BrMat3MulVecRows,func
 802588B8,BrMat3MulVec,func
 80258BDC,BrRbApplyForces,func

@@ -4,6 +4,16 @@
 
 /* -- declarations -- */
 void BrStub80258078(void);
+typedef struct BrRbParams {     /* set together by BrRbSetParams */
+  int x0;
+  int kind;                     /* 0x04 */
+  float x8;
+  float xc;
+  float x10;
+  float x14;
+  float x18;
+  float x1c;
+} BrRbParams;
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Compute a rigid body's orientation rate: the quaternion
@@ -112,3 +122,18 @@ void BrQuatToMat(float *param_1,float *param_2)
   param_1[0xe] = fVar1;
   BrStub80258078();
 }
+
+/* WHAT IT DOES: Fill in a block of seven rigid-body parameters: six floats
+ * and an int. */
+/* @implements 0x80258680 tgr BrRbSetParams */
+void BrRbSetParams(BrRbParams *p, float a, float b, float c, float d, float e, float f, int kind)
+{
+  p->kind = kind;
+  p->x8 = a;
+  p->xc = b;
+  p->x10 = c;
+  p->x14 = d;
+  p->x18 = e;
+  p->x1c = f;
+}
+
