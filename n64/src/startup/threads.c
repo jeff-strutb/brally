@@ -61,6 +61,27 @@ extern int D_80272D60[1];
 extern BrContStatus D_8031A3D0[4];
 extern BrPfs D_8031A3F8[4];
 extern unsigned char D_8031B1E8[4];
+void BrPadPollAll(void);
+void BrModeSet(void (*fn)(void));
+void func_80208570(void);
+void func_802534DC(void);
+int func_80254620(void);
+int osPfsIsPlug(int *mq, unsigned char *pattern);
+int osPfsInitPak(int *mq, BrPfs *pfs, int channel);
+void osSyncPrintf(char *fmt, ...);
+void *memcpy(void *dst, void *src, unsigned int n);
+void BrPadConsume(void *pad, int button);
+extern short D_802A4BE8;
+extern void (*D_8031B318)(void);
+extern char D_80270840;
+extern int D_802724F0;
+extern char D_803163E0[];
+extern char D_80316400[];
+extern unsigned char D_80316420;
+extern unsigned char D_80316421;
+extern unsigned int D_8036A8E0;          /* pad 1's pressed buttons (the head of its record) */
+extern int D_8036A908;
+extern BrPfs D_80369EC0[2];
 /* -- end declarations -- */
 
 /* WHAT IT DOES: The RSP event thread: every time the RSP finishes a task,
@@ -157,4 +178,83 @@ void BrSchedInit(void)
       }
     }
   }
+}
+
+/* WHAT IT DOES: The boot-time controller check: with no first controller,
+ * or no controller pak in port 1, or a pak that will not initialise (one
+ * reporting "no pak file system" is set up as a rumble pak), or no valid
+ * save, run the message screen until it is dismissed (its reason in
+ * 0x80270840); a pak in port 2 is initialised too; holding B at boot runs
+ * the debug screen first.
+ * RESIDUE (47): ours computes pad 1's address once for the B test and the
+ * consume call; the ROM loads the word through lui/lw and builds the
+ * address again in the branch. */
+/* @implements 0x8021C188 tgr BrBootCheck */
+void BrBootCheck(void)
+{
+  static unsigned char pakInit = 0;   /* 0x8028ADF0 */
+  unsigned char plugged;
+
+  BrPadPollAll();
+  D_802A4BE8 = 0;
+  if (D_8036A908 != 0) {
+    BrModeSet(func_80208570);
+    D_80270840 = 0;
+    while (D_8031B318 == func_80208570) {
+      func_80208570();
+    }
+  }
+  osPfsIsPlug(D_80272D48, &plugged);
+  if (!(plugged & 1)) {
+    BrModeSet(func_80208570);
+    D_80270840 = 1;
+    while (D_8031B318 == func_80208570) {
+      func_80208570();
+    }
+  } else {
+    if (pakInit == 0) {
+      pakInit = 1;
+      osSyncPrintf("\nInitializing controller pak...\n");
+      D_802724F0 = osPfsInitPak(D_80272D48, &D_80369EC0[0], 0);
+    }
+    if (D_802724F0 != 0) {
+      if (D_802724F0 == 10) {
+        func_80262370(D_80272D48, &D_8031A3F8[0], 0);
+      }
+      BrModeSet(func_80208570);
+      D_80270840 = 1;
+      while (D_8031B318 == func_80208570) {
+        func_80208570();
+      }
+    } else {
+      memcpy(D_803163E0, D_80369EC0[0].raw + 0xc, 0x20);
+      D_80316420 = 1;
+    }
+  }
+  if (plugged & 2) {
+    D_802724F0 = osPfsInitPak(D_80272D48, &D_80369EC0[1], 1);
+    if (D_802724F0 != 0) {
+      if (D_802724F0 == 10) {
+        func_80262370(D_80272D48, &D_8031A3F8[1], 1);
+      }
+    } else {
+      memcpy(D_80316400, D_80369EC0[1].raw + 0xc, 0x20);
+      D_80316421 = 1;
+    }
+  }
+  if (D_8036A8E0 & 0x4000) {
+    BrPadConsume(&D_8036A8E0, 0x4000);
+    BrModeSet(func_802534DC);
+    while (D_8031B318 == func_802534DC) {
+      func_802534DC();
+    }
+  }
+  if (func_80254620() == 0) {
+    BrModeSet(func_80208570);
+    D_80270840 = 2;
+    while (D_8031B318 == func_80208570) {
+      func_80208570();
+    }
+  }
+  D_802A4BE8 = 1;
 }
