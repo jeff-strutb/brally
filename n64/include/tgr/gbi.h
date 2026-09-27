@@ -17,7 +17,18 @@ typedef union {
 
 typedef struct { int m[16]; } Mtx;
 
+typedef struct {
+    short vscale[4];
+    short vtrans[4];
+} Vp_t;
+
+typedef union {
+    Vp_t vp;
+    long long force_structure_alignment;
+} Vp;
+
 #define G_MTX               0x01
+#define G_MOVEMEM           0x03
 #define G_SETOTHERMODE_L    0xb9
 #define G_SETOTHERMODE_H    0xba
 #define G_RDPPIPESYNC       0xe7
@@ -38,6 +49,7 @@ typedef struct { int m[16]; } Mtx;
 #define G_DL_NOPUSH         0x01
 
 #define G_MW_PERSPNORM      0x0e
+#define G_MV_VIEWPORT       0x80
 
 #define G_MDSFT_RENDERMODE  3
 #define G_MDSFT_RGBDITHER   6
@@ -142,6 +154,7 @@ typedef struct { int m[16]; } Mtx;
 }
 
 #define gSPMatrix(pkt, m, p)        gDma1p(pkt, G_MTX, m, sizeof(Mtx), p)
+#define gSPViewport(pkt, v)         gDma1p((pkt), G_MOVEMEM, (v), sizeof(Vp), G_MV_VIEWPORT)
 #define gSPDisplayList(pkt, dl)     gDma1p(pkt, G_DL, dl, 0, G_DL_PUSH)
 #define gSPPerspNormalize(pkt, s)   gMoveWd(pkt, G_MW_PERSPNORM, 0, (s))
 
