@@ -15,9 +15,13 @@ extern int D_8028BDE0;
 extern int D_8028BDE4;
 extern int D_803519D8;
 void func_8022E4E0(unsigned char *param_1);
-int func_8022F720(unsigned char *param_1,int param_2);
+int BrTextWidth(unsigned char *s, int size);
 extern int D_803519D0;
 extern int D_803519D4;
+extern int D_8028A850;
+extern int D_802A187C[];
+extern int D_802A17A0[];
+extern unsigned char D_802A1740[];
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Draw the following text in the highlight colours (orange
@@ -124,13 +128,70 @@ void BrTextPrint(unsigned char *s, int x, int y)
     D_803519D0 = x;
     break;
   case 2:
-    D_803519D0 = x - (func_8022F720(s, D_803519D8) >> 1);
+    D_803519D0 = x - (BrTextWidth(s, D_803519D8) >> 1);
     break;
   case 1:
-    D_803519D0 = x - func_8022F720(s, D_803519D8);
+    D_803519D0 = x - BrTextWidth(s, D_803519D8);
     break;
   }
   D_803519D4 = y;
   func_8022E4E0(s);
+}
+
+/* WHAT IT DOES: Measure how wide a string prints at the given size: each
+ * glyph's width from the small or large font's table, spaces and other
+ * unprintables as 12/40 of the size, %% as a percent sign, and the %i, %n and
+ * two-letter colour codes as nothing. Halved back when the hi-res flag doubled
+ * the size. */
+/* @implements 0x8022F720 tgr BrTextWidth */
+int BrTextWidth(unsigned char *s, int size)
+{
+  int w;
+  int div;
+  int pad;
+  int *tbl;
+  int c;
+  unsigned char g;
+  unsigned char n;
+
+  w = 0;
+  if (D_8028A850 != 0) {
+    size <<= 1;
+  }
+  div = 40;
+  if (size < 25) {
+    div = 20;
+    pad = 4;
+    tbl = D_802A187C;
+  } else {
+    pad = 7;
+    tbl = D_802A17A0;
+  }
+  while (*s != 0) {
+    c = *s;
+    if (c < 0x21 || c >= 0x80) {
+      w += size * 12 / 40;
+    } else {
+      if (c == '%' && (n = s[1])) {
+        if (n == '%') {
+          s++;
+        } else if (n == 'i' || n == 'n') {
+          s++;
+          goto next;
+        } else if (s[2] != 0) {
+          s += 2;
+          goto next;
+        }
+      }
+      g = D_802A1740[c - 0x21];
+      w += (tbl[g + 1] - tbl[g] - pad + 1) * size / div;
+    }
+next:
+    s++;
+  }
+  if (D_8028A850 != 0) {
+    w >>= 1;
+  }
+  return w;
 }
 
