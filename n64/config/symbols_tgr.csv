@@ -146,6 +146,8 @@ va,name,kind
 8022F5DC,BrTextPrint,func
 8022F720,BrTextWidth,func
 8022F900,BrRaceSplitScreen,func
+80233668,BrMenu3DBegin,func
+802336E0,BrMenuCarDraw,func
 80233880,BrHudArrowDraw,func
 80233FDC,BrVtxPoolsReset,func
 8023870C,BrStub8023870C,func
@@ -206,6 +208,8 @@ va,name,kind
 8025E820,BrTyreSkidCheck,func
 80260490,BrRumbleUpdate,func
 802607DC,osSyncPrintf,func
+80260800,guScaleF,func
+80260940,guMtxCatF,func
 80260AB0,osViBlack,func
 80260B20,memcpy,func
 80260B4C,strlen,func
