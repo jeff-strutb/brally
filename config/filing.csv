@@ -909,6 +909,7 @@ glide_va,name,module,basis,file
 0x10040DD0,BrUiDrawCodeRect_10047980,menus,neighbour,src/core/menus/BrUiDrawCodeRect_10047980_10040DD0.cpp
 0x10040E20,BrUiDrawIndex_100479D0,menus,description,src/core/menus/br_uiscreen.c
 0x10040E60,BrUiStepCode_10047A10,menus,neighbour,src/core/menus/BrUiStepCode_10047A10_10040E60.cpp
+0x10040EB0,BrUiNavCtlHit_10047A60,menus,filed,src/core/menus/br_uinav.c
 0x10041100,BrUiTweenBegin_10047CB0,menus,neighbour,src/core/menus/BrUiTweenBegin_10047CB0_10041100.cpp
 0x10041130,BrUiTweenCurve_10047CE0,menus,neighbour-1,src/core/menus/br_uiscreen.c
 0x10041160,BrUiTweenReset_10047D10,menus,neighbour,src/core/menus/BrUiTweenReset_10047D10_10041160.cpp
