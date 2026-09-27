@@ -8,15 +8,7 @@ extern int D_8031B320;
 extern int D_8031B318;
 /* -- end declarations -- */
 
-/* WHAT IT DOES: Does nothing. An empty function the retail build kept
- * beside the game-mode switch. */
-/* @implements 0x8021C6A8 tgr BrStub8021C6A8 */
-void BrStub8021C6A8(void)
-
-{
-}
-
-/* WHAT IT DOES: Does nothing. A second empty function beside the game-mode
+/* WHAT IT DOES: Does nothing. The first function of the game-mode object: empty, beside the game-mode
  * switch. */
 /* @implements 0x8021C6B0 tgr BrStub8021C6B0 */
 void BrStub8021C6B0(void)
@@ -58,6 +50,26 @@ void BrModeSet(int param_1)
 
 {
   D_8031B318 = param_1;
+}
+
+/* WHAT IT DOES: Run one frame of the current game mode: call the function
+ * BrModeSet installed. */
+/* @implements 0x8021C6F0 tgr BrModeRun */
+void BrModeRun(void)
+
+{
+  ((void (*)(void))D_8031B318)();
+}
+
+/* WHAT IT DOES: The main game loop: run the current game mode, one frame at
+ * a time, forever. */
+/* @implements 0x8021C718 tgr BrMainLoop */
+void BrMainLoop(void)
+
+{
+  for (;;) {
+    BrModeRun();
+  }
 }
 
 /* WHAT IT DOES: Does nothing. An empty function the retail build kept after
