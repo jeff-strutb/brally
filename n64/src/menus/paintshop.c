@@ -35,7 +35,6 @@ extern BrPaintBrush D_8028D290;
 int BrPaintCursorInRect(int *r);
 extern int D_8028D12C;
 extern int D_8028D130;
-extern int D_8028DB94;
 extern unsigned char D_8028DBBC;
 extern unsigned char D_8028DBC4;
 extern unsigned char D_8028DBE8;
@@ -53,7 +52,10 @@ void BrFillFrame(int x, int y, int w, int h, int t, unsigned char r, unsigned ch
 extern BrPaintRect D_8028D480;
 extern BrPaintRect D_8028D490;
 extern BrPaintSwatch D_80369B98[16];
-extern unsigned char D_8028DB58;
+extern unsigned char D_8028DB58;       /* the chosen palette colour */
+typedef struct BrPaintArea { int x, y, w, h; } BrPaintArea;
+extern BrPaintArea D_8028DB94;         /* the paint area on screen */
+void BrPaintPlot(int x, int y, unsigned char c);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Store the paint shop's working decal (2 KB) into the decal
@@ -99,7 +101,7 @@ void BrPaintStickMove(void)
       fVar3 = -fVar3;
     }
     if (D_802AB20C <= fVar3) {
-      iVar1 = BrPaintCursorInRect(&D_8028DB94);
+      iVar1 = BrPaintCursorInRect((int *)&D_8028DB94);
       if ((iVar1 == 0) || (D_8028DBC4 != '\0')) {
         puVar2 = (unsigned int *)(&D_8036A8E0 + (unsigned int)D_8028DBBC * 0x15c);
         D_8028D12C = D_8028D12C +
@@ -124,7 +126,7 @@ void BrPaintStickMove(void)
       fVar3 = -fVar3;
     }
     if (D_802AB210 <= fVar3) {
-      iVar1 = BrPaintCursorInRect(&D_8028DB94);
+      iVar1 = BrPaintCursorInRect((int *)&D_8028DB94);
       if ((iVar1 == 0) || (D_8028DBC4 != '\0')) {
         D_8028D130 = D_8028D130 -
                        (int)(*(float *)((unsigned int)D_8028DBBC * 0x15c + -0x7fc95704) * 12.0f);
@@ -245,6 +247,54 @@ void BrPaintPlot(int x, int y, unsigned char c)
       } else {
         D_8028DB78[o] = (D_8028DB78[o] & 0xf) | (c << 4);
       }
+    }
+  }
+}
+
+/* WHAT IT DOES: Paint a filled disc of radius r in the chosen colour
+ * centred on (x, y) -- in texels, or in screen pixels over the paint area
+ * when asked (a quarter scale, y flipped) -- as horizontal spans from a
+ * midpoint circle walk.
+ * RESIDUE (131): the ROM keeps x and the walk state in stack homes and
+ * reuses the span bounds; ours holds x in a saved register. */
+/* @implements 0x8025159C tgr BrPaintDisc */
+void BrPaintDisc(int x, int y, int r, unsigned char screen)
+{
+  int i;
+  int ha;
+  int hb;
+  int j;
+  int a;
+  int b;
+  int err;
+
+  if (screen) {
+    x = (x - D_8028DB94.x) >> 2;
+    y = (D_8028DB94.y + D_8028DB94.h - y) >> 2;
+  }
+  b = r * 2;
+  err = -b;
+  for (a = 0; a <= b; a++) {
+    if (!(a & 1)) {
+      ha = a >> 1;
+      hb = b >> 1;
+      for (i = x - ha; i <= x + ha; i++) {
+        BrPaintPlot(i, y + hb, D_8028DB58);
+      }
+      for (i = x - hb; i <= x + hb; i++) {
+        BrPaintPlot(i, y + ha, D_8028DB58);
+      }
+      for (i = x - ha; i <= x + ha; i++) {
+        BrPaintPlot(i, y - hb, D_8028DB58);
+      }
+      for (i = x - hb; i <= x + hb; i++) {
+        BrPaintPlot(i, y - ha, D_8028DB58);
+      }
+    }
+    err += a;
+    if (err >= 0) {
+      err -= b;
+      b--;
     }
   }
 }
