@@ -321,3 +321,5 @@ va,name,kind
 80258C24,BrRbBodyInit,func
 80233494,BrMenuBackdropBegin,func
 8025159C,BrPaintDisc,func
+802575C4,BrMusicInit,func
+802001B4,BrMainThread,func
