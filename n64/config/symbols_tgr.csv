@@ -297,3 +297,4 @@ va,name,kind
 8021C4B4,BrClockTick,func
 80266A08,__d_to_ull,func
 80256C2C,BrNoteRatesInit,func
+80217FB8,BrScreenClear,func

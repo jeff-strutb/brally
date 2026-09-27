@@ -5,7 +5,7 @@
 
 /* -- declarations -- */
 void func_80219470(unsigned int param_1);
-void func_80217FB8(unsigned int param_1,unsigned int param_2,int param_3);
+void BrScreenClear(int r, int g, int b);
 void BrFrameBeginLayout1(void);
 int func_8021AA08();
 void osViBlack(char param_1);
@@ -25,6 +25,8 @@ extern int D_8028B740;
 extern int D_8028B744;
 extern int D_8028B748;
 extern int D_8028B74C;
+extern int D_8028AAB0;
+extern int D_8028AAB4;
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Start building a new frame using the first of the two
@@ -41,6 +43,25 @@ void BrFrameBeginLayout0(void)
 void BrFrameBeginLayout1(void)
 {
   func_80219470(1);
+}
+
+/* WHAT IT DOES: Clear the whole screen to one colour (fill mode,
+ * RGBA5551).
+ * RESIDUE (4): both gDPSetCycleType commands store w1 before w0; the ROM
+ * stores w0 first. */
+/* @implements 0x80217FB8 tgr BrScreenClear */
+void BrScreenClear(int r, int g, int b)
+{
+  unsigned short c;
+
+  gDPPipeSync(D_8028A858++);
+  gDPSetRenderMode(D_8028A858++, G_RM_OPA_SURF, G_RM_OPA_SURF2);
+  gDPSetCycleType(D_8028A858++, G_CYC_FILL);
+  c = GPACK_RGBA5551(r, g, b, 1);
+  gDPSetFillColor(D_8028A858++, c | c << 16);
+  gDPFillRectangle(D_8028A858++, 0, 0, (D_8028AAB0 << D_8028A850) - 1, (D_8028AAB4 << D_8028A850) - 1);
+  gDPPipeSync(D_8028A858++);
+  gDPSetCycleType(D_8028A858++, G_CYC_1CYCLE);
 }
 
 /* WHAT IT DOES: Set the RDP scissor to a w by h box at (x, y), clipped to
@@ -88,11 +109,11 @@ void BrScreenFlush2Layout1(void)
   D_8028A884 = 1;
   osViBlack(1);
   BrFrameBeginLayout1();
-  func_80217FB8(0,0,0);
+  BrScreenClear(0,0,0);
   func_8021AA08();
   osViBlack(1);
   BrFrameBeginLayout1();
-  func_80217FB8(0,0,0);
+  BrScreenClear(0,0,0);
   func_8021AA08();
   D_8028A884 = 0;
 }
@@ -106,11 +127,11 @@ void BrScreenFlush2Layout0(void)
   D_8028A884 = 1;
   osViBlack(1);
   BrFrameBeginLayout0();
-  func_80217FB8(0,0,0);
+  BrScreenClear(0,0,0);
   func_8021AA08();
   osViBlack(1);
   BrFrameBeginLayout0();
-  func_80217FB8(0,0,0);
+  BrScreenClear(0,0,0);
   func_8021AA08();
   D_8028A884 = 0;
 }
@@ -124,11 +145,11 @@ void BrScreenFlush3Layout1(void)
   D_8028A884 = 1;
   osViBlack(1);
   BrFrameBeginLayout1();
-  func_80217FB8(0,0,0);
+  BrScreenClear(0,0,0);
   func_8021AA08();
   osViBlack(1);
   BrFrameBeginLayout1();
-  func_80217FB8(0,0,0);
+  BrScreenClear(0,0,0);
   func_8021AA08();
   osViBlack(1);
   BrFrameBeginLayout1();
@@ -145,11 +166,11 @@ void BrScreenFlush3Layout0(void)
   D_8028A884 = 1;
   osViBlack(1);
   BrFrameBeginLayout0();
-  func_80217FB8(0,0,0);
+  BrScreenClear(0,0,0);
   func_8021AA08();
   osViBlack(1);
   BrFrameBeginLayout0();
-  func_80217FB8(0,0,0);
+  BrScreenClear(0,0,0);
   func_8021AA08();
   osViBlack(1);
   BrFrameBeginLayout0();
