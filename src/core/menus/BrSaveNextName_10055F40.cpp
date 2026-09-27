@@ -16,6 +16,15 @@
  * real /MD imports.  The four masked _itoa calls into digits+0..+3 are the
  * original's, not a slip -- each writes the decimal of one masked byte and
  * the next overwrites all but its first char.
+ *
+ * Byte-exact 2026-09-27, re-transcribed from the asm.  The previous body
+ * had two behaviour bugs, not just codegen: it never cleared `stripped`
+ * (the original memsets all four buffers), and it copied the extension one
+ * byte short -- the original copies strlen(cand) - (p - cand) bytes from
+ * the '.', i.e. the dot and the whole extension.  Source shape: unsigned
+ * `i < strlen()` loops (no pre-test `if`), a `short` copy of the kept
+ * length, and a plain 0..99 walk of the table that VC5 turns into the
+ * pointer and down-counter.
  */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
@@ -33,79 +42,61 @@ public:
 
 void Save55F40::NextName(unsigned char *pIn, char **ppOut)
 {
-    unsigned char cand[0x104];
-    char          digits[0x104];
-    unsigned char suffix[0x104];
-    unsigned char stripped[0x104];
-    int           i;
-    int           n;
-    int           flag;
-    int           count;
-    char         *pEntry;
-    unsigned char *p;
-    int           num;
+    char         cand[0x104];
+    char         digits[0x104];
+    char         suffix[0x104];
+    char         stripped[0x104];
+    unsigned int i;
+    int          flag;
+    int          n;
+    int          k;
+    short        len;
+    char        *p;
+    int          num;
 
     memset(cand, 0, sizeof(cand));
     memset(digits, 0, sizeof(digits));
+    memset(stripped, 0, sizeof(stripped));
     flag = 0;
     memset(suffix, 0, sizeof(suffix));
 
-    strcpy((char *)cand, (char *)pIn);
+    strcpy(cand, (char *)pIn);
 
     n = 0;
-    if (strlen((char *)pIn) != 0) {
-        n = 0;
-        for (i = 0; i < (int)strlen((char *)pIn); i++) {
-            unsigned char b = pIn[i];
-            if (b == 'X' || b == 'x') {
-                pIn[i] = '0';
+    for (i = 0; i < strlen((char *)pIn); i++) {
+        if (pIn[i] == 'X' || pIn[i] == 'x') {
+            pIn[i] = '0';
+            flag = 1;
+        } else if (flag == 0) {
+            if (pIn[i] == '.') {
                 flag = 1;
-            } else if (!flag) {
-                if (b == '.') {
-                    flag = 1;
-                } else {
-                    stripped[i] = b;
-                    n++;
-                }
+            } else {
+                stripped[i] = pIn[i];
+                n++;
             }
         }
     }
 
-    n = (short)n;
-    pEntry = table[0];
-    count = 100;
-    do {
-        if (strncmp((char *)pIn, pEntry, n) == 0) {
-            if (strcmp((char *)pIn, pEntry) < 0)
-                strcpy((char *)cand, pEntry);
-        }
-        pEntry += 0x104;
-        count--;
-    } while (count != 0);
-
-    p = cand + (strlen((char *)cand) - 1);
-    if (p != cand) {
-        do {
-            if (*p == '.')
-                break;
-            p--;
-        } while (p != cand);
-    }
-    if (p != cand) {
-        int len2 = (int)(strlen((char *)cand) - (p - cand) - 1);
-        memcpy(suffix, p, len2);
-        suffix[len2] = 0;
+    len = (short)n;
+    for (k = 0; k < 100; k++) {
+        if (strncmp((char *)pIn, table[k], len) == 0
+            && strcmp((char *)pIn, table[k]) < 0)
+            strcpy(cand, table[k]);
     }
 
-    if (n < (int)strlen((char *)cand)) {
-        i = n;
-        while (i < (int)strlen((char *)cand)) {
-            unsigned char b = cand[i];
-            if (b < '0' || b > '9')
-                break;
-            digits[i - n] = b;
-            i++;
-        }
+    p = cand + strlen(cand) - 1;
+    while (p != cand && *p != '.')
+        p--;
+    if (p != cand) {
+        k = strlen(cand) - (p - cand);
+        memcpy(suffix, p, k);
+        suffix[k] = 0;
+    }
+
+    for (i = len; i < strlen(cand); i++) {
+        if (cand[i] < '0' || cand[i] > '9')
+            break;
+        digits[i - len] = cand[i];
     }
 
     num = atoi(digits) + 1;
@@ -115,7 +106,7 @@ void Save55F40::NextName(unsigned char *pIn, char **ppOut)
     _itoa(num & 0xff00, digits + 2, 10);
     _itoa(num & 0xff, digits + 3, 10);
 
-    strcpy(*ppOut, (char *)stripped);
+    strcpy(*ppOut, stripped);
     strcat(*ppOut, digits);
-    strcat(*ppOut, (char *)suffix);
+    strcat(*ppOut, suffix);
 }
