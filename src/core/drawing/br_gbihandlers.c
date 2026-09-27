@@ -121,6 +121,7 @@ extern int DAT_105ce2e8[]; /* DL stack     */
 extern int DAT_100a9a50;   /* mtx top      */
 extern int DAT_105ccd00;   /* projection   */
 extern int DAT_105ccd10;   /* modelview[0] */
+extern BrMat4 DAT_105ccd50[];  /* model stack, 1-based: [top - 1] */
 extern int DAT_105d17d0;   /* mtx.f5180    */
 extern int DAT_105d1760;   /* combined     */
 extern int DAT_105ce2d8;   /* lookat 0x82  */
@@ -311,70 +312,64 @@ static BrMat4 *br16_mtx_current(BrGbiMtxState *pSt)
  * current matrix or combine with it, and optionally save the old one so it
  * can be restored later. It always finishes by recomputing the single
  * combined matrix the renderer actually uses. */
-/* @t4-pass 0x10021080 1 2026-09-07 probes 57 bytes 261 insns 79 regions 4 rows 31 census yes  (tools/crank.py) */
-/* RESIDUE (2026-09-26 hand pass, ~250 compiles): the original holds 0 in
- * ebp (`cmp eax,ebp` at both current-matrix tests, `mov [f5180],ebp`), so
- * its NULL arms need an explicit `xor eax,eax`; and it reloads the matrix
- * top after each 64-byte copy and computes each copy destination per path
- * (`lea edi,[eax+base]` twice).  VC5 promotes 0 to a register only with
- * enough zero STORES (two extra redundant stores do it -- proven -- but VC5
- * keeps them, and consecutive duplicates are folded first).  Dead: named
- * zero locals of every type, C++, inline/macro push and current helpers,
- * struct-assignment copies, provenance-losing int casts, volatile top,
- * placement in the original TU br_gbi.c (between EndDList and PopMatrix). */
-/* @t4-pass 0x10021080 2 2026-09-07 probes 57 bytes 261 insns 79 regions 4 rows 31 census yes  (tools/crank.py) */
+/* Byte-exact (2026-09-27).  Three source facts:
+ * - Each push/no-push arm ends with its own copy and `DAT_105d17d0 = 0`
+ *   (VC5 tail-merges the four into the shared `rep movsd; mov [..],ebp`).
+ *   Four zero stores are what make VC5 hold 0 in ebp for the whole body.
+ * - The copy goes through a `dst` pointer, so VC5 cannot prove the copy
+ *   misses the stack top and re-reads it after every copy.
+ * - The stack is indexed as the 1-based array DAT_105ccd50[top - 1], like
+ *   the vertex routines: an element address is `lea edi,[eax+sym-0x40]`.
+ * The unread w0 local is TU state, not code: without a sixth local symbol
+ * here BrFadeDrawSprite, later in this file, swaps esi/edi (2 B). */
 /* @implements 0x10021080 glide BrGbiMatrix */
 #ifdef BR_MATCHING_BUILD
 BrGfxWords *BrGbiMatrix(BrGfxWords *pCmd)
 {
-    unsigned  w0 = pCmd->w0;
-    void     *pIn = (void *)(uintptr_t)pCmd->w1;
-    int       top;
-    int       z = 0;
-    void     *cur;
-    BrMat4    tmp;
+    unsigned w0 = pCmd->w0;     /* unread; see below */
+    void *pIn = (void *)(uintptr_t)pCmd->w1;
+    int top;
+    BrMat4 *cur;
+    BrMat4 *dst;
+    BrMat4 tmp;
 
-    if ((w0 & 0x10000u) != 0) {
-        if ((w0 & 0x20000u) != 0)
+    if ((pCmd->w0 & 0x10000u) != 0) {
+        if ((pCmd->w0 & 0x20000u) != 0)
             memcpy(&DAT_105ccd00, pIn, 64);
         else
             BrMat4Mul(pIn, &DAT_105ccd00, &DAT_105ccd00);
-    } else if ((w0 & 0x20000u) != 0) {
-        top = DAT_100a9a50;
-        if ((w0 & 0x40000u) != 0) {
-            if (top == 10)
-                top = z;
-            top += 1;
-            DAT_100a9a50 = top;
-        }
-        memcpy((char *)&DAT_105ccd10 + (top << 6), pIn, 64);
-        DAT_105d17d0 = z;
-    } else {
-        top = DAT_100a9a50;
-        if (top == z)
-            cur = (void *)z;
-        else
-            cur = (char *)&DAT_105ccd10 + (top << 6);
-        BrMat4Mul(pIn, cur, &tmp);
-        w0 = pCmd->w0;
-        if ((w0 & 0x40000u) != 0) {
+    } else if ((pCmd->w0 & 0x20000u) != 0) {
+        if ((pCmd->w0 & 0x40000u) != 0) {
             top = DAT_100a9a50;
             if (top == 10)
-                top = z;
-            top += 1;
-            DAT_100a9a50 = top;
+                top = 0;
+            DAT_100a9a50 = ++top;
+            dst = &DAT_105ccd50[top - 1];
+            memcpy(dst, pIn, 64);
+            DAT_105d17d0 = 0;
         } else {
-            top = DAT_100a9a50;
+            dst = &DAT_105ccd50[DAT_100a9a50 - 1];
+            memcpy(dst, pIn, 64);
+            DAT_105d17d0 = 0;
         }
-        memcpy((char *)&DAT_105ccd10 + (top << 6), &tmp, 64);
-        DAT_105d17d0 = z;
+    } else {
+        cur = DAT_100a9a50 != 0 ? &DAT_105ccd50[DAT_100a9a50 - 1] : NULL;
+        BrMat4Mul(pIn, cur, &tmp);
+        if ((pCmd->w0 & 0x40000u) != 0) {
+            top = DAT_100a9a50;
+            if (top == 10)
+                top = 0;
+            DAT_100a9a50 = ++top;
+            dst = &DAT_105ccd50[top - 1];
+            memcpy(dst, &tmp, 64);
+            DAT_105d17d0 = 0;
+        } else {
+            dst = &DAT_105ccd50[DAT_100a9a50 - 1];
+            memcpy(dst, &tmp, 64);
+            DAT_105d17d0 = 0;
+        }
     }
-
-    top = DAT_100a9a50;
-    if (top == z)
-        cur = (void *)z;
-    else
-        cur = (char *)&DAT_105ccd10 + (top << 6);
+    cur = DAT_100a9a50 != 0 ? &DAT_105ccd50[DAT_100a9a50 - 1] : NULL;
     BrMat4Mul(cur, &DAT_105ccd00, &DAT_105d1760);
     return pCmd + 1;
 }
