@@ -308,13 +308,23 @@ def grade(obj, rom, name, start, end, va, rom_size, syms, fnvas):
         if width:
             cut = min(cut, addend + width)
         seg = blob[addend:cut]
-        # jump tables: R_MIPS_32 relocs inside [addend, cut) against .text
+        # R_MIPS_32 relocs inside [addend, cut): jump tables (against .text)
+        # and pointer initialisers (against a symbol)
         jt = {o: sj for (o, t, sj) in obj.rels.get(si, []) if t == 2 and addend <= o < cut}
         mism = 0
         for k in range(0, len(seg) - 3 if jt else 0, 4):
             if addend + k in jt:
                 tgt = struct.unpack_from('>I', seg, k)[0]
-                want = text_off_to_va(tgt)
+                ss = obj.syms[jt[addend + k]]
+                if ss['type'] == 3 and obj.secs[ss['shndx']]['name'] == '.text':
+                    want = text_off_to_va(tgt)
+                elif ss['type'] != 3 and ss['name']:
+                    # a pointer initialiser: the symbol's address plus the
+                    # addend stored in place
+                    v = fnvas.get(ss['name'], resolve(ss['name'], syms))
+                    want = None if v is None else (v + tgt) & 0xffffffff
+                else:
+                    want = None
                 got = struct.unpack_from('>I', rom.bytes(rom_va + k, 4), 0)[0]
                 if want is None or want != got:
                     mism += 1
