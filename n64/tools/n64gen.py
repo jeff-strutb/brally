@@ -152,6 +152,22 @@ def static_local(addr, va, ty):
     return (ty in SCALARS and refs == {va} and addr not in rodata_literals(_rom))
 
 
+def narrowed_return(rw):
+    """The ROM narrows v0 just before a return: the function returns a
+    short/char.  -> C type or None."""
+    for k, w in enumerate(rw):
+        if w != 0x03E00008:                          # jr ra
+            continue
+        for x in rw[max(0, k - 2):k + 2]:
+            op, fn = x >> 26, x & 63
+            rd, sa = (x >> 11) & 31, (x >> 6) & 31
+            if op == 0 and fn == 3 and rd == 2 and sa in (16, 24):       # sra v0
+                return 'short' if sa == 16 else 'char'
+            if op == 0x0C and (x >> 16) & 31 == 2 and x & 0xffff in (0xff, 0xffff):  # andi v0
+                return 'unsigned char' if x & 0xffff == 0xff else 'unsigned short'
+    return None
+
+
 def static_init(addr, ty):
     if addr >= B.BSS_S:
         return ''
@@ -323,6 +339,10 @@ def candidate(va, dtypes, name=None, noproto=(), ptrs=(), opts=()):
         body = re.sub(r'\bD_([0-9A-F]{8})\b',
                       lambda m: ('(' + lits[int(m.group(1), 16)] + ')') if int(m.group(1), 16) in lits
                       else m.group(0), body)
+    for rt in ('short', 'char', 'unsigned short', 'unsigned char'):
+        if 'ret_' + rt.replace(' ', '_') in opts:
+            body = re.sub(r'^(?:unsigned )?\w+(\s+\**\s*func_%08X\s*\()' % va,
+                          lambda m: rt + m.group(1), body, count=1, flags=re.M)
     dlheads = set()
     if 'gbi' in opts:
         body, dlheads = gbi(body)
@@ -465,6 +485,9 @@ def main():
             if any(int(x, 16) in rodata_literals(rom)
                    for x in re.findall(r'\bD_([0-9A-F]{8})\b', src)):
                 base_opts.append('rolit')
+            rt = narrowed_return(rw)
+            if rt:
+                base_opts.append('ret_' + rt.replace(' ', '_'))
             if any(static_local(int(x, 16), va, dtypes.get(int(x, 16), 'int'))
                    for x in re.findall(r'\bD_([0-9A-F]{8})\b', src)):
                 base_opts.append('lstatic')
