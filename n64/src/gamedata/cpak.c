@@ -8,7 +8,7 @@ int func_80214A88(int param_1);
 int func_8021CB4C();
 void func_80223750(float param_1,float param_2);
 void func_802237D0(float param_1,float param_2);
-int BrFadeDone(void);
+int BrSfxFadeDone(void);
 void BrTextHighlightOff(void);
 void BrTextAlignCentre(void);
 void BrTextAlignLeft(void);
@@ -160,7 +160,7 @@ int BrCpakCheck(int param_1,char param_2)
     }
     break;
   case '\x01':
-    iVar4 = BrFadeDone();
+    iVar4 = BrSfxFadeDone();
     if ((iVar4 != 0) &&
        (cVar5 = D_80316431 + '\x01', bVar1 = D_80316431 == '\x03', D_80316431 = cVar5, bVar1))
     {

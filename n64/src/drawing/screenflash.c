@@ -123,10 +123,61 @@ void BrScreenFlashDraw(void)
   }
 }
 
-/* WHAT IT DOES: Tell whether the screen fade has finished (its current step
- * has reached its target). */
-/* @implements 0x80223850 tgr BrFadeDone */
-int BrFadeDone(void)
+/* WHAT IT DOES: Start a screen fade towards level (0 black .. 1 clear) over
+ * the given seconds. Fading up starts at once; fading down while a fade-up
+ * is still running only marks a reversal, which happens at the top. */
+/* @implements 0x80223688 tgr BrFadeTo */
+void BrFadeTo(float level, float seconds)
+{
+  D_8028B778 = 1;
+  if (level < D_8028B75C || level == 0.0f) {
+    if (D_8028B75C == 1.0f || D_8028B758 <= 0.0) {
+      D_8028B758 = -1.0f / seconds;
+      D_8028B754 = level;
+    } else {
+      D_8028B784 = 1;
+    }
+  } else {
+    D_8028B754 = level;
+    D_8028B758 = 1.0f / seconds;
+  }
+}
+
+
+/* WHAT IT DOES: Start the sound-effects volume fading towards level (0..1)
+ * over the given seconds. */
+/* @implements 0x80223750 tgr BrSfxFadeTo */
+void BrSfxFadeTo(float level, float seconds)
+{
+  D_8028B780 = 1;
+  D_8028B76C = level;
+  if (D_8028B76C < D_8028B774 || D_8028B76C == 0.0f) {
+    D_8028B770 = -1.0f / seconds;
+  } else {
+    D_8028B770 = 1.0f / seconds;
+  }
+}
+
+
+/* WHAT IT DOES: Start the music volume fading towards level (0..1) over the
+ * given seconds. */
+/* @implements 0x802237D0 tgr BrMusicFadeTo */
+void BrMusicFadeTo(float level, float seconds)
+{
+  D_8028B77C = 1;
+  D_8028B760 = level;
+  if (D_8028B760 < D_8028B768 || D_8028B760 == 0.0f) {
+    D_8028B764 = -1.0f / seconds;
+  } else {
+    D_8028B764 = 1.0f / seconds;
+  }
+}
+
+
+/* WHAT IT DOES: Tell whether the sound-effects volume fade has finished
+ * (its level has reached its target). */
+/* @implements 0x80223850 tgr BrSfxFadeDone */
+int BrSfxFadeDone(void)
 {
   return D_8028B774 == D_8028B76C;
 }
@@ -163,6 +214,24 @@ int BrFadeAtTarget(void)
 {
   return D_8028B75C == D_8028B754 && D_8028B784 == 0;
 }
+
+/* WHAT IT DOES: Tell whether a screen fade-out has finished: fading down,
+ * fully dark, and no reversal pending. */
+/* @implements 0x80223988 tgr BrFadeOutDone */
+int BrFadeOutDone(void)
+{
+  return D_8028B758 < 0.0f && D_8028B75C == 0.0f && D_8028B784 == 0;
+}
+
+
+/* WHAT IT DOES: Tell whether a screen fade-in has finished: fading up,
+ * fully clear, and no reversal pending. */
+/* @implements 0x802239F4 tgr BrFadeInDone */
+int BrFadeInDone(void)
+{
+  return 0.0f < D_8028B758 && D_8028B75C == 1.0f && D_8028B784 == 0;
+}
+
 
 /* WHAT IT DOES: Advance the screen fade by one frame: moves the level
  * towards the target at the fade speed, and when a fade-in-then-out is

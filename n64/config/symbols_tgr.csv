@@ -88,11 +88,16 @@ va,name,kind
 802207A4,BrCarBindPad,func
 80223470,BrScreenFlashClear,func
 80223480,BrScreenFlashDraw,func
-80223850,BrFadeDone,func
+80223688,BrFadeTo,func
+80223750,BrSfxFadeTo,func
+802237D0,BrMusicFadeTo,func
+80223850,BrSfxFadeDone,func
 8022389C,BrFadeSet,func
 802238B8,BrFadeIsIn,func
 802238FC,BrFadeIsOut,func
 80223940,BrFadeAtTarget,func
+80223988,BrFadeOutDone,func
+802239F4,BrFadeInDone,func
 80223A68,BrStub80223A68,func
 80223F54,BrFadeStep,func
 80224D00,BrMat4ProjectPoint,func
