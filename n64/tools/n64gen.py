@@ -183,6 +183,31 @@ def fsuffix(body):
     return ''.join(out)
 
 
+_DL_A = re.compile(r'(\w+) = (D_[0-9A-F]{8});\s*(\w+) = \2 \+ 2;\s*\*\2 = ([^;]+);\s*\2 = \3;\s*\1\[1\] = ([^;]+);', re.S)
+_DL_B = re.compile(r'(\w+) = (D_[0-9A-F]{8});\s*(\w+) = (?:\2 \+ 1|1 \+ \2);\s*\2 = \2 \+ 2;\s*\*\3 = ([^;]+);\s*\*\1 = ([^;]+);', re.S)
+
+
+def gbi(body):
+    """Ghidra's view of a display-list macro -- the head pointer copied,
+    bumped by one command, the two words stored -- becomes gRaw(head++, w0,
+    w1), the shape every libultra gDP/gSP macro expands to."""
+    heads = set()
+
+    def a(m):
+        heads.add(m.group(2))
+        return 'gRaw(%s++, %s, %s);' % (m.group(2), m.group(4).strip(), m.group(5).strip())
+
+    def b(m):
+        heads.add(m.group(2))
+        return 'gRaw(%s++, %s, %s);' % (m.group(2), m.group(5).strip(), m.group(4).strip())
+    prev = None
+    while prev != body:
+        prev = body
+        body = _DL_A.sub(a, body)
+        body = _DL_B.sub(b, body)
+    return body, heads
+
+
 def candidate(va, dtypes, name=None, noproto=(), ptrs=(), opts=()):
     t = draft(va)
     if t is None:
@@ -213,6 +238,9 @@ def candidate(va, dtypes, name=None, noproto=(), ptrs=(), opts=()):
         body = toggle(body, 'char')
     if 'fsuf' in opts:
         body = fsuffix(body)
+    dlheads = set()
+    if 'gbi' in opts:
+        body, dlheads = gbi(body)
     for k in range(1, 5):
         if 'params%d' % k in opts:
             body = re.sub(r'^(\w[\w \*]*\b%s\s*)\(void\)' % ('func_%08X' % va),
@@ -223,7 +251,7 @@ def candidate(va, dtypes, name=None, noproto=(), ptrs=(), opts=()):
     body = re.sub(r'^/\*.*?\*/\s*', '', body, flags=re.S)
     fname = name or ('func_%08X' % va)
     body = re.sub(r'\bfunc_%08X\b' % va, fname, body, count=1)
-    decls = ['#include "tgr/common.h"', '']
+    decls = ['#include "tgr/common.h"', '#include "tgr/gbi.h"', '']
     callees = sorted(set(int(x, 16) for x in re.findall(r'\bfunc_([0-9A-F]{8})\b', body)) - {va})
     for c in callees:
         if c in noproto:
@@ -238,6 +266,9 @@ def candidate(va, dtypes, name=None, noproto=(), ptrs=(), opts=()):
         bytewise = set(int(x, 16) for x in re.findall(r'&D_([0-9A-F]{8})\s*[-+]', body))
     for d in sorted(set(int(x, 16) for x in re.findall(r'\bD_([0-9A-F]{8})\b', body))):
         ty = 'char *' if d in ptrs else dtypes.get(d, 'int')
+        if 'D_%08X' % d in dlheads:
+            decls.append('extern Gfx *D_%08X;' % d)
+            continue
         if d in bytewise and SYMLO <= d < SYMHI:
             body = re.sub(r'(?<!&)\bD_%08X\b' % d, '(*(%s *)&D_%08X)' % (ty, d), body)
             decls.append('extern char D_%08X;' % d)
@@ -337,6 +368,8 @@ def main():
                 base_opts.append('negsym')
             if re.search(r'0x80[01][0-9a-fA-F]{5}\b', src):
                 base_opts.append('lowsym')
+            if gbi(src)[1]:
+                base_opts.append('gbi')
             for _ in range(2):
                 improved = False
                 for o in base_opts:

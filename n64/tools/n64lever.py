@@ -14,6 +14,7 @@ stays current.
 
 Levers:
   fsuf   float literals get an `f` (Ghidra prints single constants as double)
+  gbi    Ghidra's display-list stores become gRaw(head++, w0, w1)
   lowsym a dereferenced low-RAM constant (0x800xxxxx) is a linked global
   bytes  a global the function offsets (`&D_x + n*K`) is declared `char`, as
          Ghidra meant it (byte arithmetic); the file's other uses keep their
@@ -70,7 +71,20 @@ def lever_lowsym(src, body):
     return src.replace('/* -- end declarations -- */', decl + '/* -- end declarations -- */', 1)
 
 
-LEVERS = {'fsuf': lever_fsuf, 'bytes': lever_bytes, 'lowsym': lever_lowsym}
+def lever_gbi(src, body):
+    """Ghidra's display-list stores -> gRaw(head++, w0, w1)."""
+    new, heads = G.gbi(body)
+    if not heads:
+        return src
+    src = src.replace(body, new)
+    for h in heads:
+        src = re.sub(r'^extern [\w ]+\*?\s*%s;$' % h, 'extern Gfx *%s;' % h, src, flags=re.M)
+    if 'tgr/gbi.h' not in src:
+        src = src.replace('#include "tgr/common.h"', '#include "tgr/common.h"\n#include "tgr/gbi.h"', 1)
+    return src
+
+
+LEVERS = {'fsuf': lever_fsuf, 'bytes': lever_bytes, 'lowsym': lever_lowsym, 'gbi': lever_gbi}
 
 
 def grade_file(path):

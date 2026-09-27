@@ -131,6 +131,16 @@ typedef struct { int m[16]; } Mtx;
 #define gDPSetRenderMode(pkt, c0, c1) \
     gSPSetOtherMode(pkt, G_SETOTHERMODE_L, G_MDSFT_RENDERMODE, 29, (c0) | (c1))
 
+/* one command given as its two words (a machine-converted draft; named
+ * macros replace these as each command is identified) */
+#define gRaw(pkt, a, b)                                                 \
+{                                                                       \
+    Gfx *_g = (Gfx *)(pkt);                                             \
+                                                                        \
+    _g->words.w0 = (unsigned int)(a);                                   \
+    _g->words.w1 = (unsigned int)(b);                                   \
+}
+
 #define gSPMatrix(pkt, m, p)        gDma1p(pkt, G_MTX, m, sizeof(Mtx), p)
 #define gSPDisplayList(pkt, dl)     gDma1p(pkt, G_DL, dl, 0, G_DL_PUSH)
 #define gSPPerspNormalize(pkt, s)   gMoveWd(pkt, G_MW_PERSPNORM, 0, (s))
