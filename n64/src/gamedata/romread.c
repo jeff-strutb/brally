@@ -3,23 +3,25 @@
 #include "tgr/common.h"
 
 /* -- declarations -- */
+typedef struct BrIoMesg { int words[6]; } BrIoMesg;   /* an OSIoMesg */
 void func_8021C748(int param_1,int param_2,int param_3);
 extern int D_8031B328;
 extern int D_8031B330;
 int func_8021DC34();
 unsigned int func_8021CD30(unsigned int param_1,int param_2,unsigned int *param_3);
-int func_802172D0(void);
+BrIoMesg *BrRomDmaSlot(void);
 void func_8021735C(void);
 int func_80264650();
 void func_802662E0(unsigned int param_1,unsigned int param_2);
 extern int D_80319F88;
-int func_802642E0(int param_1,int *param_2,int param_3);
+int osRecvMesg(int param_1,int *param_2,int param_3);
 extern int D_80272D44;
 extern int D_80272D40;
 void func_8021D070(unsigned int *param_1,unsigned int param_2,unsigned int param_3,int param_4);
 void func_8021D098(unsigned int *param_1,int param_2,int param_3,int param_4);
 extern int D_8021DC94;
 extern int D_8021DC98;
+extern BrIoMesg D_8031A020[32];
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Read the unpacked size of a packed asset in ROM: the second
@@ -89,12 +91,12 @@ void BrRomRead(int param_1,int param_2,int param_3)
   
   func_802662E0(param_1,param_3);
   for (; 0x1000 < param_3; param_3 = param_3 + -0x1000) {
-    uVar1 = func_802172D0();
+    uVar1 = BrRomDmaSlot();
     func_80264650(uVar1,0,0,param_2,param_1,0x1000,(&D_80319F88));
     param_2 = param_2 + 0x1000;
     param_1 = param_1 + 0x1000;
   }
-  uVar1 = func_802172D0();
+  uVar1 = BrRomDmaSlot();
   func_80264650(uVar1,0,0,param_2,param_1,param_3,(&D_80319F88));
   func_8021735C();
 }
@@ -105,7 +107,7 @@ void BrRomRead(int param_1,int param_2,int param_3)
 void BrRomWaitAll(void)
 {
   for (; D_80272D44 != 0; D_80272D44 = D_80272D44 + -1) {
-    func_802642E0((&D_80319F88),0,1);
+    osRecvMesg((&D_80319F88),0,1);
   }
 }
 
@@ -121,27 +123,18 @@ void BrStreamInit(int param_1,int param_2)
 /* WHAT IT DOES: Take the next of the 32 ROM transfer slots: if all are in
  * use, wait for one transfer to finish first; returns the slot's I/O
  * message block. */
-/* @t4-pass 0x802172D0 1 2026-09-26 compiles 17 best 17 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x802172D0 2 2026-09-26 compiles 16 best 17 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x802172D0 3 2026-09-26 compiles 15 best 17 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x802172D0 tgr BrRomDmaSlot */
-int BrRomDmaSlot(void)
+BrIoMesg *BrRomDmaSlot(void)
 {
-  unsigned int uVar1;
-  
-  if (D_80272D44 == 0x20) {
-    func_802642E0((&D_80319F88),0,1);
+  if (D_80272D44 == 32) {
+    osRecvMesg(&D_80319F88, 0, 1);
+  } else {
+    D_80272D44++;
   }
-  else {
-    D_80272D44 = D_80272D44 + 1;
-  }
-  uVar1 = D_80272D40 + 1 & 0x1f;
-  if (((int)(D_80272D40 + 1) < 0) && (uVar1 != 0)) {
-    uVar1 = uVar1 - 0x20;
-  }
-  D_80272D40 = uVar1;
-  return uVar1 * 0x18 + -0x7fce5fe0;
+  D_80272D40 = (D_80272D40 + 1) % 32;
+  return &D_8031A020[D_80272D40];
 }
+
 
 /* WHAT IT DOES: Walk a display list loaded from ROM and correct every
  * address in it that pointed into the old block (vertex and texture-image
