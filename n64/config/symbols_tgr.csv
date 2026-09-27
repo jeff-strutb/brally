@@ -316,3 +316,4 @@ va,name,kind
 8021E2C8,BrIdleThread,func
 80242890,BrInflate,func
 8021CD30,BrRomUnpack,func
+8021D2A0,BrCarColourFromModel,func
