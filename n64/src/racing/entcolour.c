@@ -13,6 +13,9 @@ void func_80220398();
 unsigned int func_8021CD30();
 void func_8021D32C(int param_1);
 extern int D_8028AE20;
+typedef struct { char raw[0xdf88]; } BrCarModelBuf;
+extern BrCarModelBuf D_803C8000[];
+extern int D_8031B238[];
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Repaint a car's artwork record in the car's own colour (its
@@ -166,36 +169,25 @@ void BrEntRebaseModel(int param_1)
 
 /* WHAT IT DOES: Attach one of the car artwork records to a car and repaint
  * it in its own colour. */
-/* @t4-pass 0x802203F0 1 2026-09-26 compiles 17 best 4 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x802203F0 2 2026-09-26 compiles 14 best 4 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x802203F0 3 2026-09-26 compiles 12 best 4 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x802203F0 tgr BrEntSetRecord */
 void BrEntSetRecord(int param_1,int param_2)
 {
-  *(int *)(param_1 + 0x2078) = param_2 * 0xdf88 + -0x7fc38000;
+  *(int *)(param_1 + 0x2078) = (int)&D_803C8000[param_2];
   func_80220398();
 }
 
 /* WHAT IT DOES: Load a car's model into its slot when the slot has an
  * owner, remember which model is there, and fix up the model's addresses. */
-/* @t4-pass 0x80220544 1 2026-09-26 compiles 17 best 41 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80220544 2 2026-09-26 compiles 16 best 41 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80220544 3 2026-09-26 compiles 17 best 41 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80220544 tgr BrEntLoadModel */
-int BrEntLoadModel(int param_1)
+int BrEntLoadModel(int *p)
 {
-  int iVar1;
-  
-  iVar1 = 0;
-  if (*(int *)(param_1 + 0x18) != 0) {
-    func_8021CD30(*(int *)(param_1 + 0x20) * 0xdf88 + -0x7fc38000,
-                 *(int *)(&D_8028AE20 + *(int *)(param_1 + 0x24) * 0x60));
-    iVar1 = *(int *)(param_1 + 0x18);
-    if (iVar1 == 0) {
-      *(int *)(*(int *)(param_1 + 0x20) * 4 + -0x7fce4dc8) = *(int *)(param_1 + 0x24);
-      func_8021D32C(*(int *)(param_1 + 0x20) * 0xdf88 + -0x7fc38000);
-      iVar1 = *(int *)(param_1 + 0x18);
+  if (p[6] != 0) {
+    func_8021CD30((int)&D_803C8000[p[8]], *(int *)((char *)&D_8028AE20 + p[9] * 0x60));
+    if (p[6] == 0) {
+      D_8031B238[p[8]] = p[9];
+      func_8021D32C((int)&D_803C8000[p[8]]);
     }
   }
-  return iVar1;
+  return p[6];
 }
+
