@@ -460,10 +460,10 @@ void BrRbBuildMatrix(BrMat4 *pM, const BrRbState *pS)
     float a = pS->quat.f00;   /* w */
     float b = pS->quat.f04;   /* x */
     float aa = a * a;
-    float bb = b * b;
     float c = pS->quat.f08;   /* y */
     float d = pS->quat.f0C;   /* z */
     float cc = c * c;
+    float bb = b * b;
     float cb = pS->quat.f08 * pS->quat.f04;
     float da = pS->quat.f0C * pS->quat.f00;
     float db = pS->quat.f0C * pS->quat.f04;
@@ -472,10 +472,10 @@ void BrRbBuildMatrix(BrMat4 *pM, const BrRbState *pS)
     float dc = pS->quat.f0C * pS->quat.f08;
     float ba = pS->quat.f04 * pS->quat.f00;
     float t2cb = cb + cb;
+    float t2ca = ca + ca;
     float x = bb + aa - cc;
     float t2da = da + da;
     float t2db = db + db;
-    float t2ca = ca + ca;
     float t2dc = dc + dc;
     float t2ba = ba + ba;
     float y = cc + ab;
