@@ -57,16 +57,17 @@ int BrSub1006AFA0(void *pStream, int iPeer, int v, short w);   /* 0x1006AFA0 */
  * every other active peer, stopping early if one refuses.  Every wait also
  * watches the quit event and ends the thread when it fires.  If no peer was
  * active at all, a global retry flag is cleared on the way out. */
-/* @t4-pass 0x1006AB80 1 2026-09-12 probes 8 bytes 802 insns 248 regions 8 rows 12 census no  (hand: index-form rewrite from a raw-pointer draft took REGNORM 27+23 -> 8+8 and won the prologue; tail-block record pointer fixed the induction-slot init order.  Dead: dword-and locals in every scoping (function, loop-block, nested-if) -- each one evicts the cached ReleaseMutex import (`call edi` -> `call [imp]`), the same mutual-exclusion shape as the encode family's push/narrow pair; (unsigned char) value cast turns the k-loop compare unsigned (jb vs jl).) */
-/* PARKED T2 2026-09-12 at 802/803 B, 248/248 insns, register-blind 8+8.
- * Residue: (1) the outer walker biased +0x95C where the original anchors
- * +0x2C (the STATUS word) -- the same open bias question br_peerrank.c
- * documents on its third loop; (2) `(char)(x & 0x3f)` compares narrow the
- * and to byte width where the original ands the dword and compares the low
- * byte, and every spelling that widens it costs the ReleaseMutex caching.
- * Both classes are allocation-coupled; do not grind spellings past this
- * ledger without new family evidence. */
-/* @t4-pass 0x1006AB80 2 2026-09-13 probes 116 bytes 802 insns 248 regions 8 rows 34 census yes  (tools/crank.py) */
+/* Byte-exact 2026-09-27.  Source facts that carry it:
+ *   - the status tests are plain int `(x & 0x3f) == K`; VC5 keeps the dword
+ *     `and` and narrows only the compare (`cmp cl,2`).  A (char) cast narrows
+ *     the `and` too.
+ *   - st2 is read BEFORE the inlined strcpy, so it lives across it in a stack
+ *     slot (frame 0x448) and edi stays free for the cached ReleaseMutex.
+ *   - the j body reaches its record through `pj`, read in the order st2, id,
+ *     b4, b5, b6: that anchors the walker at +0x30 and inits the view-row
+ *     walker before it.
+ *   - the tail tests and passes g_aBrPeer71[i] by index and stores through p,
+ *     which keeps the outer walker anchored on the +0x2C status word. */
 /* @implements 0x1006AB80 glide BrNetPeerPump */
 void BrNetPeerPump(void)
 {
@@ -103,8 +104,9 @@ void BrNetPeerPump(void)
             }
             else {
                 for (j = 0; j < BR_PEERS; j++) {
+                    BrPeerRec *pj = &g_aBrPeer71[j];
                     h2[0] = (HANDLE)DAT_11849e60;
-                    h2[1] = g_aBrPeer71[j].hMutex;
+                    h2[1] = pj->hMutex;
                     wr = WaitForMultipleObjects(2, h2, 0, 0xffffffff);
                     if (wr == 0) {
                         ExitThread(0);
@@ -116,14 +118,14 @@ void BrNetPeerPump(void)
                     if (wr == 0) {
                         ExitThread(0);
                     }
-                    id = g_aBrPeer71[j].f030;
-                    b4 = g_aBrPeer71[j].f034;
-                    b5 = g_aBrPeer71[j].f035;
-                    b6 = g_aBrPeer71[j].f036;
-                    strcpy(name, g_aBrPeer71[j].szName);
-                    st2 = g_aBrPeer71[j].f02C;
+                    st2 = pj->f02C;
+                    id = pj->f030;
+                    b4 = pj->f034;
+                    b5 = pj->f035;
+                    b6 = pj->f036;
+                    strcpy(name, pj->szName);
                     changed = (g_aBr178FEF8[i][j].f02C != st2);
-                    if (changed && (char)(st2 & 0x3f) == 2 && i == j) {
+                    if (changed && (st2 & 0x3f) == 2 && i == j) {
                         g_aBr178FEF8[i][j].f02C = st2;
                         changed = 0;
                     }
@@ -131,21 +133,20 @@ void BrNetPeerPump(void)
                     if (changed) {
                         BrNetWritePlayerRec(g_1826BD0[i], j, st2, id,
                                             b4, b5, b6, name,
-                                            g_aBrPeer71[j].f004);
+                                            pj->f004);
                     }
-                    ReleaseMutex(g_aBrPeer71[j].hMutex);
+                    ReleaseMutex(pj->hMutex);
                 }
             }
             BrNetWriteTag20(g_1826BD0[i], i);
             {
-            /* The tail block reaches the record through a POINTER, like
-             * br_peerrank's sorted loop -- it moves the induction bias and
-             * the [esp+0x20]/[esp+0x24] init order onto the original's. */
+            /* Tested and passed by index, stored through p: all-pointer
+             * moves the outer walker's anchor to +0x95C, all-index to +0x964. */
             BrPeerRec *p = &g_aBrPeer71[i];
             if ((unsigned int)DAT_1184c070 >
-                    (unsigned int)(p->f95C + 1000) &&
+                    (unsigned int)(g_aBrPeer71[i].f95C + 1000) &&
                 DAT_117b3250 == 0 &&
-                BrSub1006AFA0(g_1826BD0[i], i, p->f960, p->f964) != 0) {
+                BrSub1006AFA0(g_1826BD0[i], i, g_aBrPeer71[i].f960, g_aBrPeer71[i].f964) != 0) {
                 p->f95C = DAT_1184c070;
                 for (k = 0; k < BR_PEERS; k++) {
                     if (i != k) {
@@ -155,7 +156,7 @@ void BrNetPeerPump(void)
                         if (wr == 0) {
                             ExitThread(0);
                         }
-                        if ((char)(g_aBrPeer71[k].f02C & 0x3f) >= 1 &&
+                        if ((g_aBrPeer71[k].f02C & 0x3f) >= 1 &&
                             BrSub1006AFA0(g_1826BD0[i], k,
                                           g_aBrPeer71[k].f960,
                                           g_aBrPeer71[k].f964) == 0) {
