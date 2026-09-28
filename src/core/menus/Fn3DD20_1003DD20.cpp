@@ -64,7 +64,11 @@ int ActivateD3C0(int);
 int ActivateD620(int);
 int ActivateD930(int);
 int ActivateD7D0(int);
-void EnterFn(Phase *);
+/* EnterFn was a stand-in; the original calls FUN_10051600 (?FUN_10051600@@YAHPAVGameUi@@@Z).  Declared under
+ * its real symbol so the relocation resolves by name. */
+class GameUi;
+int FUN_10051600(GameUi *);
+#define EnterFn ((void (*)(Phase *))FUN_10051600)
 void HostFirst(void);
 void HostAgain(void);
 void ObjHook(Obj *, int);

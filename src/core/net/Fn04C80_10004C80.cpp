@@ -27,8 +27,14 @@ typedef char chk_sz[sizeof(Buf) == 0x214 ? 1 : -1];
 
 volatile int g_id;
 
-void InitFn(Buf *);
-int FinishFn(void *, Buf *);
+/* InitFn was a stand-in; the original calls C function BrNetPktStamp.  Declared under
+ * its real symbol so the relocation resolves by name. */
+extern "C" void BrNetPktStamp(void);
+#define InitFn ((void (*)(Buf *))BrNetPktStamp)
+/* FinishFn was a stand-in; the original calls C function BrCountedNetSend.  Declared under
+ * its real symbol so the relocation resolves by name. */
+extern "C" void BrCountedNetSend(void);
+#define FinishFn ((int (*)(void *, Buf *))BrCountedNetSend)
 
 int Fn04C80(void *a, void *b)
 {

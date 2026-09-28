@@ -35,7 +35,11 @@ Phase *g_slot;
 Phase *g_cur;
 char g_buf;
 
-void EnterFn(Phase *);
+/* EnterFn was a stand-in; the original calls BrPhaseEnterPlaceholder_1004BDC0 (?BrPhaseEnterPlaceholder_1004BDC0@@YAHPAVGameUi@@@Z).  Declared under
+ * its real symbol so the relocation resolves by name. */
+class GameUi;
+int BrPhaseEnterPlaceholder_1004BDC0(GameUi *);
+#define EnterFn ((void (*)(Phase *))BrPhaseEnterPlaceholder_1004BDC0)
 void ResetBuf(void *);
 
 class Ctl3E730 {

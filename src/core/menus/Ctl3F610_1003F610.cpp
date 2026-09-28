@@ -37,9 +37,16 @@ Phase *g_cur;
 char g_buf;
 int g_track;
 
-void EnterFn(Phase *);
+/* EnterFn was a stand-in; the original calls BrUiQuitEnter_10043050 (?BrUiQuitEnter_10043050@@YAHPAVGameUi@@@Z).  Declared under
+ * its real symbol so the relocation resolves by name. */
+class GameUi;
+int BrUiQuitEnter_10043050(GameUi *);
+#define EnterFn ((void (*)(Phase *))BrUiQuitEnter_10043050)
 void ResetBuf(void *);
-void MusicFn(int, unsigned);
+/* MusicFn was a stand-in; the original calls C function BrSub10072AF0.  Declared under
+ * its real symbol so the relocation resolves by name. */
+extern "C" void BrSub10072AF0(void);
+#define MusicFn ((void (*)(int, unsigned))BrSub10072AF0)
 
 class Ctl3F610 {
 public:

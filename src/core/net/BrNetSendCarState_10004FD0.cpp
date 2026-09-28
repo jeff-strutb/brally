@@ -67,7 +67,10 @@ __declspec(dllimport) int __stdcall ReleaseMutex(void *);
 }
 
 void InitPkt(Pkt *);
-int SendPkt(void *, Pkt *);
+/* SendPkt was a stand-in; the original calls C function BrNetTrySend.  Declared under
+ * its real symbol so the relocation resolves by name. */
+extern "C" void BrNetTrySend(void);
+#define SendPkt ((int (*)(void *, Pkt *))BrNetTrySend)
 
 int BrNetSendCarState(void *pState)
 {

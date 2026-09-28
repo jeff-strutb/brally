@@ -39,10 +39,20 @@ Phase *g_cur;
 char g_buf;
 int g_mode;
 
-void EnterFn(Phase *);
+/* EnterFn was a stand-in; the original calls BrPhaseEnterPlaceholder_1004B430 (?BrPhaseEnterPlaceholder_1004B430@@YAHPAVGameUi@@@Z).  Declared under
+ * its real symbol so the relocation resolves by name. */
+class GameUi;
+int BrPhaseEnterPlaceholder_1004B430(GameUi *);
+#define EnterFn ((void (*)(Phase *))BrPhaseEnterPlaceholder_1004B430)
 void ResetBuf(void *);
-void PrepFn(void);
-void EmptyFn(void);
+/* PrepFn was a stand-in; the original calls C function BrSub1003E680.  Declared under
+ * its real symbol so the relocation resolves by name. */
+extern "C" void BrSub1003E680(void);
+#define PrepFn ((void (*)(void))BrSub1003E680)
+/* EmptyFn was a stand-in; the original calls C function BrPodNop.  Declared under
+ * its real symbol so the relocation resolves by name. */
+extern "C" void BrPodNop(void);
+#define EmptyFn ((void (*)(void))BrPodNop)
 void SetupA(void);
 void SetupB(void);
 

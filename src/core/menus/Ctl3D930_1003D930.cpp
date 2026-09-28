@@ -42,8 +42,16 @@ int g_host;
 int g_kind;
 int g_flag;
 
-void EnterFn(Phase *);
-void HookFn(Phase *);
+/* EnterFn was a stand-in; the original calls BrOptFn10057C10 (?BrOptFn10057C10@@YAHPAVGameUi@@@Z).  Declared under
+ * its real symbol so the relocation resolves by name. */
+class GameUi;
+int BrOptFn10057C10(GameUi *);
+#define EnterFn ((void (*)(Phase *))BrOptFn10057C10)
+/* HookFn was a stand-in; the original calls Opt3DF80::Leave (?Leave@Opt3DF80@@YAHPAVGameObj3DF80@@@Z).  Declared under
+ * its real symbol so the relocation resolves by name. */
+class GameObj3DF80;
+namespace Opt3DF80 { int Leave(GameObj3DF80 *); }
+#define HookFn ((void (*)(Phase *))Opt3DF80::Leave)
 
 class Ctl3D930 {
 public:

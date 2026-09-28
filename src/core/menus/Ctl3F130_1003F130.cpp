@@ -36,8 +36,16 @@ Phase *g_slot;
 Phase *g_cur;
 Phase *g_slot2;
 
-void EnterFn(Phase *);
-void Enter2Fn(Phase *);
+/* EnterFn was a stand-in; the original calls FUN_100498a0 (?FUN_100498a0@@YAHPAVGameUi@@@Z).  Declared under
+ * its real symbol so the relocation resolves by name. */
+class GameUi;
+int FUN_100498a0(GameUi *);
+#define EnterFn ((void (*)(Phase *))FUN_100498a0)
+/* Enter2Fn was a stand-in; the original calls BrExt_10049F40 (?BrExt_10049F40@@YAHPAVGameUi@@@Z).  Declared under
+ * its real symbol so the relocation resolves by name. */
+class GameUi;
+int BrExt_10049F40(GameUi *);
+#define Enter2Fn ((void (*)(Phase *))BrExt_10049F40)
 
 class Ctl3F130 {
 public:
