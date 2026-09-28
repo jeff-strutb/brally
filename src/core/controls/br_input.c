@@ -197,6 +197,73 @@ void BrOnActivate(BrWParam wParam)
 }
 #endif
 
+#ifdef BR_MATCHING_BUILD
+extern int DAT_10073ae0;
+extern int DAT_10078718;
+extern int DAT_118ee9cc;
+extern int DAT_118ee9d0;
+extern int DAT_118eebd0;
+extern int DAT_118eebf0;
+extern int DAT_118eebf8;
+extern int *DAT_118eee88;
+extern int DAT_118eee94;
+extern int DAT_118eeef0;
+extern int g_brP680584;
+extern int *g_pBrDik18ABDD0;
+int BrSub100770C0();
+typedef int (__stdcall *CC_std_4)();   /* COM method: this + arguments */
+typedef int (__stdcall *CC_std_2)();   /* COM method: this + arguments */
+typedef int (__stdcall *CC_std_3)();   /* COM method: this + arguments */
+typedef int (__stdcall *CC_std_1)();   /* COM method: this + arguments */
+
+/* WHAT IT DOES: bring the keyboard input system up, but only on the FIRST
+ * caller -- later callers just increment the count. Clears the key-state and
+ * key-mapping tables on that first call. BrDiKeyboardShutdown is the
+ * matching release. */
+/* @implements 0x100703D0 glide FUN_100703d0 */
+int FUN_100703d0(void)
+
+{
+  int iVar1;
+  int *puVar2;
+  
+  DAT_118eeef0 = DAT_118eeef0 + 1;
+  if (DAT_118eeef0 == 1) {
+    DAT_118eebf0 = 1;
+    DAT_118ee9cc = 0;
+    puVar2 = &DAT_118ee9d0;
+    for (iVar1 = 0x80; iVar1 != 0; iVar1 = iVar1 + -1) {
+      *puVar2 = 0;
+      puVar2 = puVar2 + 1;
+    }
+    puVar2 = &DAT_118eebf8;
+    for (iVar1 = 0x88; iVar1 != 0; iVar1 = iVar1 + -1) {
+      *puVar2 = 0;
+      puVar2 = puVar2 + 1;
+    }
+    DAT_118eee94 = 0;
+    DAT_118eebd0 = 1;
+    BrSub100770C0();
+    iVar1 = (*(CC_std_4 *)(*(int *)(DAT_118eee88) + 12))(DAT_118eee88,&DAT_10078718,&g_pBrDik18ABDD0,0);
+    if (iVar1 < 0) {
+      return 0;
+    }
+    iVar1 = (*(CC_std_2 *)(*(int *)(g_pBrDik18ABDD0) + 44))(g_pBrDik18ABDD0,&DAT_10073ae0);
+    if (iVar1 < 0) {
+      return 0;
+    }
+    iVar1 = (*(CC_std_3 *)(*(int *)(g_pBrDik18ABDD0) + 52))(g_pBrDik18ABDD0,g_brP680584,6);
+    if (iVar1 < 0) {
+      return 0;
+    }
+    if (g_pBrDik18ABDD0 != (int *)0x0) {
+      (*(CC_std_1 *)(*(int *)(g_pBrDik18ABDD0) + 28))(g_pBrDik18ABDD0);
+    }
+  }
+  return 1;
+}
+#endif /* BR_MATCHING_BUILD */
+
 /* ================================================================== *
  * 0x10019350 -- WM_ACTIVATEAPP. 294 bytes, __cdecl, three arguments.
  *
@@ -992,4 +1059,25 @@ int32_t __stdcall BrSub100590D0(int32_t iArg, void *hWnd, uint32_t uMsg,
     return r;
 }
 
+#endif /* BR_MATCHING_BUILD */
+
+#ifdef BR_MATCHING_BUILD
+extern int *DAT_118eeeec;
+
+/* WHAT IT DOES: take exclusive control of the input device back from Windows
+ * -- what has to happen after the game regains focus before it can read the
+ * device again. Reports whether it succeeded, and false if there is no
+ * device. */
+/* @implements 0x100706B0 glide BrDiAcquire */
+int BrDiAcquire(void)
+
+{
+  int iVar1;
+  
+  if (DAT_118eeeec != (int *)0x0) {
+    iVar1 = (*(CC_std_1 *)(*(int *)(DAT_118eeeec) + 28))(DAT_118eeeec);
+    return (iVar1 >= 0);
+  }
+  return 0;
+}
 #endif /* BR_MATCHING_BUILD */
