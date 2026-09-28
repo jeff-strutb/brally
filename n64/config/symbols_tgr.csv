@@ -173,6 +173,7 @@ va,name,kind
 80220FF4,BrCarCamLookAt,func
 80221108,BrCarCamPlaceChase,func
 80221864,BrCarCamInit,func
+80221E0C,BrCarBuildMatrices,func
 80223470,BrScreenFlashClear,func
 80223480,BrScreenFlashDraw,func
 80223688,BrFadeTo,func
