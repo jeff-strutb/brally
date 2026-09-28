@@ -638,6 +638,8 @@ int BrCrContactKick(BrVec3 *pVel, BrVec3 *pAngVel, const BrVec3 *pNormal,
  * ------------------------------------------------------------------ */
 /* @t4-pass 0x10067470 1 2026-09-07 probes 88 bytes 616 insns 163 regions 2 rows 25 census yes  (tools/crank.py) */
 /* @t4-pass 0x10067470 2 2026-09-07 probes 88 bytes 616 insns 163 regions 2 rows 25 census yes  (tools/crank.py) */
+/* @t4-pass 0x10067470 3 2026-09-27 probes 1536 bytes 658 insns 179 regions 3 rows 9 census yes  (hand: 6 arm-2 forms x 256 symbol-table states) */
+/* @t4-pass 0x10067470 4 2026-09-27 probes 900 bytes 658 insns 179 regions 3 rows 9 census no  (hand: copy position x statement order x decl order, named d/ext/normal copies, shared-tail structures) */
 /* @implements 0x10067470 glide BrCrPlaneResolve */
 #ifdef BR_MATCHING_BUILD
 /* Matching arm, re-transcribed 2026-09-27 in natural form (the earlier arm
