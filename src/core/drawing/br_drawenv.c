@@ -260,3 +260,20 @@ void BrEnvEmit(void)
     env_put(0xBA001301u, 0x00080000u);
 }
 #endif /* !BR_MATCHING_BUILD */
+
+#ifdef BR_MATCHING_BUILD
+/* Hand-matched from disassembly - 0x100597F0
+ * Inlined memset: fills `count` bytes at `dst` with byte `c`
+ * (broadcast to a dword, rep stosd for count/4, rep stosb for count&3). */
+
+#pragma intrinsic(memset)
+
+/* WHAT IT DOES: fill a block of memory with a repeated byte (the matching
+ * body of the port's BrMemFill).  Argument ORDER is destination, count,
+ * value -- not the C library's -- which is the trap at every call site. */
+/* @implements 0x100597F0 glide FUN_100597f0 */
+void FUN_100597f0(void *dst, unsigned count, int c)
+{
+  memset(dst, c, count);
+}
+#endif /* BR_MATCHING_BUILD */

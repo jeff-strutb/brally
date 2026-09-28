@@ -33,3 +33,23 @@ void __fastcall BrChainFreeRec_10058C90(int param_1)
 }
 
 #endif /* BR_MATCHING_BUILD */
+
+#ifdef BR_MATCHING_BUILD
+/* Hand-matched from disassembly - 0x10058C70
+ * fastcall: pointer arrives in ecx, five consecutive dwords zeroed, ret. */
+
+/* WHAT IT DOES: the constructor of the bounds-tree Node (0x14 bytes) that
+ * Ctl58D40::Rebuild (0x10058D40) news once per table row: all five fields
+ * zeroed, among them the child link at +0x10 that BrChainFreeRec_10058C90
+ * above walks.  A C++ constructor, written as __fastcall (this in ecx). */
+/* @implements 0x10058C70 glide FUN_10058c70 */
+int *__fastcall FUN_10058c70(int *p)
+{
+  p[0] = 0;
+  p[1] = 0;
+  p[2] = 0;
+  p[3] = 0;
+  p[4] = 0;
+  return p;
+}
+#endif /* BR_MATCHING_BUILD */
