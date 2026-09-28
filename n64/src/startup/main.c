@@ -25,6 +25,14 @@ extern char D_80307F00[];
 extern char D_000AD400[];
 extern char D_000EBC00[];
 extern char D_802AC400[];
+void BrMusicStop(void);
+void BrMusicStart(void *data, char *heap);
+extern char *D_8026FF24[];              /* each track's music in ROM */
+extern int D_8028B940;                  /* the track */
+extern int D_8026FF58;                  /* animate the scene: 0 no, -1 frozen, else run */
+extern void *D_8026FF54;                /* the scene's animations */
+extern float D_8028AAD8;                /* seconds this frame */
+void BrAnimUpdate(void *set);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: The main game thread: bring up the scheduler, reset the
@@ -60,4 +68,33 @@ void BrMainThread(void)
   osSyncPrintf("sizeof(Vehicle)=%d\n", 0x2090);
   osSyncPrintf("sizeof(Enemy)=%d\n", 0x78);
   BrMainLoop();
+}
+
+/* WHAT IT DOES: Switch to the current track's music: stop the player,
+ * unpack the track's module into the music buffer and start it. */
+/* @implements 0x80200320 tgr BrMusicLoadTrack */
+void BrMusicLoadTrack(void)
+{
+  BrMusicStop();
+  BrRomUnpack((void *)0x80025C00, D_8026FF24[D_8028B940], 0);
+  BrMusicStart((void *)0x80025C00, D_802AC400);
+}
+
+/* WHAT IT DOES: Step the scene's animations, if it has any; when they are
+ * frozen, step them by zero time (so they are posed but do not move). */
+/* @implements 0x8020037C tgr BrSceneAnimate */
+void BrSceneAnimate(void)
+{
+  float dt;
+
+  if (D_8026FF58 != 0) {
+    if (D_8026FF58 == -1) {
+      dt = D_8028AAD8;
+      D_8028AAD8 = 0.0f;
+    }
+    BrAnimUpdate(D_8026FF54);
+    if (D_8026FF58 == -1) {
+      D_8028AAD8 = dt;
+    }
+  }
 }
