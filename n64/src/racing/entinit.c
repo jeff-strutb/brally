@@ -18,6 +18,8 @@ void *memcpy(void *dst, void *src, unsigned int n);
 void BrQuatToMat(float m[4][4], BrRbState *st);
 float sinf(float x);
 float cosf(float x);
+void BrQuatMul(float out[4], float a[4], float b[4]);
+void BrVec4Normalise(float v[4]);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Reset every car slot for a new session: runs the per-car
@@ -253,6 +255,49 @@ void BrCarSetVel(BrCar *car, float x, float y, float z)
   v->x = x;
   v->y = y;
   v->z = z;
+}
+
+/* WHAT IT DOES: Turn a car by angles about z, y and x in that order (each
+ * as a half-angle quaternion multiplied onto its orientation), renormalise,
+ * and copy the orientation into the two spare states.
+ * RESIDUE (26): the frame is 8 bytes larger than the ROM's (the named sine
+ * takes a padded slot), so the argument homes shift; the final copy loads
+ * into f18..f12 where the ROM uses f0..f14, and the epilogue restores in
+ * the opposite order.  Declaration orders and -O2 flag variants swept. */
+/* @implements 0x8022021C tgr BrCarRotate */
+void BrCarRotate(BrCar *car, float az, float ay, float ax)
+{
+  float zero;
+  float s;
+  float q[4];
+
+  az *= 0.5f;
+  ay *= 0.5f;
+  ax *= 0.5f;
+  s = sinf(az);
+  zero = 0.0f;
+  q[0] = cosf(az);
+  q[1] = zero;
+  q[2] = zero;
+  q[3] = s;
+  BrQuatMul(car->st.q, car->st.q, q);
+  s = sinf(ay);
+  q[0] = cosf(ay);
+  q[1] = zero;
+  q[2] = s;
+  q[3] = zero;
+  BrQuatMul(car->st.q, car->st.q, q);
+  s = sinf(ax);
+  q[0] = cosf(ax);
+  q[1] = s;
+  q[2] = zero;
+  q[3] = zero;
+  BrQuatMul(car->st.q, car->st.q, q);
+  BrVec4Normalise(car->st.q);
+  car->stA.q[0] = car->stB.q[0] = car->st.q[0];
+  car->stA.q[1] = car->stB.q[1] = car->st.q[1];
+  car->stA.q[2] = car->stB.q[2] = car->st.q[2];
+  car->stA.q[3] = car->stB.q[3] = car->st.q[3];
 }
 
 /* WHAT IT DOES: Set a car's angular velocity in all three rigid-body

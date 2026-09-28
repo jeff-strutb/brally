@@ -491,3 +491,4 @@ va,name,kind
 80219DF0,BrViewportFull,func
 80220FF4,BrCarCamLookAt,func
 80225A40,BrTriContainsPointEps,func
+8022021C,BrCarRotate,func
