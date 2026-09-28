@@ -97,6 +97,16 @@ extern char *PTR_s_First__100aa3e8[];
  * messages go to the in-race handler instead, or to the race-message parser
  * when the connection is not yet marked live. */
 /* @t4-pass 0x10009010 1 2026-09-13 probes 16 bytes 896 insns 269 regions 1 rows 13 census no  (hand, fn.py variants: case order, literal arms, scan loop forms, pText typing/placement, compare spellings, counter placement) */
+/* @t3 0x10009010 2026-09-27 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 952/913 insns 289/270 rows 0+19 regions 12 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue: colouring only -- pMsg and the 1 web take esi/edi the other way
+ * round, and the tail loads pText into eax, not ecx.  (The 18+1 extra rows
+ * are our inline jump table and pad, which t3.py decodes as code because
+ * the original's table sits just past its 913-byte span.)  Dossier above.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+/* @t4-pass 0x10009010 2 2026-09-27 probes 720 bytes 952 insns 289 regions 12 rows 19 census yes  (hand: every declaration order of the six locals with the float-zero entry store) */
+/* @t4-pass 0x10009010 3 2026-09-27 probes 28 bytes 952 insns 289 regions 12 rows 19 census no  (hand: pMsg copy, idFrom for the literal 1s, tail test spellings, /TP /Gi /Ox /Ob2) */
 /* @implements 0x10009010 glide BrDpAppMsgHandle */
 void BrDpAppMsgHandle(int *pNet, int *pMsg, int a3, int idFrom, int a5)
 {

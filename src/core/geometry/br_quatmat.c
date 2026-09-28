@@ -57,6 +57,14 @@ static __inline float BrSq(float a)
  *    <stdio.h>/<string.h>/<stdlib.h>; /TP.  Writing y*xs into t
  *    with s = w*zs gets the whole store/reload sequence right but homes zs
  *    (w at offset 0 outranks it), 7 instructions. */
+/* @t3 0x10062640 2026-09-27 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 365/363 insns 126/125 rows 0+1 regions 1 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue: one fxch -- which copy of y*xs (register or reloaded) feeds
+ * m[1][0] and which feeds m[0][1].  Dossier and dead list above.  Do not
+ * reopen before the end-grind (CLAUDE.md rule 12). */
+/* @t4-pass 0x10062640 1 2026-09-27 probes 45 bytes 365 insns 126 regions 1 rows 1 census yes  (hand: preamble census -- int pads 0-76, 5 system headers, C and /TP) */
+/* @t4-pass 0x10062640 2 2026-09-27 probes 82 bytes 365 insns 126 regions 1 rows 1 census no  (hand: operand orders, sign forms, copy variables, statement placement of the y*xs / w*zs pair) */
 /* @implements 0x100695D0 d3d BrMat4FromCarState */
 void BrMat4FromCarState(BrMat4 *pOut, const BrCarState *pSrc)
 {
