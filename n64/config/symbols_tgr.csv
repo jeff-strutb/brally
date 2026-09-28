@@ -362,3 +362,4 @@ va,name,kind
 802248C8,BrVec3AddTo,func
 80221108,BrCarCamPlaceChase,func
 8025980C,BrRbSolveAccel,func
+80254D90,BrObjSelCycle,func
