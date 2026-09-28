@@ -64,12 +64,14 @@ typedef struct BrCar {
     char pade38[0xE58 - 0xE38];
     int xe58;                   /* 0xE58 */
     BrSeason *season;           /* 0xE5C  the player's season, 0 for others */
-    char pade60[0xE6C - 0xE60];
+    int xe60;                   /* 0xE60  from the season (or the ghost's header) */
+    int xe64;                   /* 0xE64 */
+    int xe68;                   /* 0xE68 */
     int xe6c;                   /* 0xE6C */
     char pade70[0xED0 - 0xE70];
     struct BrCarLink *link;     /* 0xED0 */
     int xed4;                   /* 0xED4  a countdown, one per frame */
-    int xed8;                   /* 0xED8 */
+    int xed8;                   /* 0xED8  the car's control function (camera step, AI) */
     char padedc[0xF48 - 0xEDC];
     int xf48;                   /* 0xF48  camera mode */
     int xf4c;                   /* 0xF4C  the camera keeps the car's up axis */
@@ -91,7 +93,7 @@ typedef struct BrCar {
     float msgATime;             /* 0xFB4 */
     int msgB;                   /* 0xFB8  second message and its timer */
     float msgBTime;             /* 0xFBC */
-    char padfc0[0xFD8 - 0xFC0];
+    char xfc0[0x18];            /* 0xFC0  text for msgB (a formatted time) */
     BrVec3 velfd8;              /* 0xFD8  another velocity copy */
     char padfe4[0x1010 - 0xFE4];
     float x1010;                /* 0x1010  zeroed when the particle pool is reset */
@@ -115,10 +117,13 @@ typedef struct BrCar {
     float x1fac;                /* 0x1FAC */
     char pad1fb0[0x1FB4 - 0x1FB0];
     BrVec3 camPosB;             /* 0x1FB4 */
-    char pad1fc0[0x205C - 0x1FC0];
+    unsigned short x1fc0[32];   /* 0x1FC0  trigger ids the car has passed */
+    int x2000;                  /* 0x2000  entries in x1fc0 */
+    char pad2004[0x2058 - 0x2004];
+    int x2058;                  /* 0x2058  the kind it was given (copied to kind) */
     int kind;                   /* 0x205C */
     unsigned char colour[4];    /* 0x2060  body colour r, g, b and a fourth byte */
-    char pad2064[4];
+    float x2064;                /* 0x2064 */
     int x2068;                  /* 0x2068 */
     char pad206c[0x2070 - 0x206C];
     unsigned char cellX;        /* 0x2070  the 32-unit track grid cell it is in (0..63) */

@@ -9,9 +9,17 @@ typedef struct BrPadRec {
     unsigned int held;          /* 0x04  buttons already acted on */
     int repeat[4];              /* 0x08  stick auto-repeat timers */
     float axis[2];              /* 0x18  stick axes */
-    char pad20[8];
+    char pad20[5];
+    unsigned char x25;          /* 0x25  from the season (or the ghost's header) */
+    char pad26[2];
     int absent;                 /* 0x28  non-zero while no controller answers on this port */
-    char pad2c[0x154 - 0x2C];
+    unsigned char *rec[2];      /* 0x2C  the lap being recorded, per player */
+    int recLen[2];              /* 0x34  bytes recorded so far */
+    int recKeep[2];             /* 0x3C  recLen kept when a replay starts */
+    unsigned char *ghost;       /* 0x44  the recording being played back, 0 for none */
+    int ghostPos;               /* 0x48  bytes played */
+    int ghostLen;               /* 0x4C  bytes in it */
+    char pad50[0x154 - 0x50];
     int index;                  /* 0x154 */
     void *cont;                 /* 0x158  its OSContPad */
 } BrPadRec;

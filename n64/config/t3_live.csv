@@ -1,6 +1,7 @@
 va,verdict,compared,divergent,blocked,src,date,scripts,first
 80200050,EQUIVALENT,6,0,0,95ab22c53538,2026-09-26,arcade_2p:0 attract:1 champ_race:1 loadsave:1 options:1 paintshop:0 practice:1 timeattack:1,
 80200154,EQUIVALENT,8,0,0,6c5f7c4a199e,2026-09-26,arcade_2p:1 attract:1 champ_race:1 loadsave:1 options:1 paintshop:1 practice:1 timeattack:1,
+8020082C,EQUIVALENT,8679,0,0,d7bdb909bd27,2026-09-28,arcade_2p:0 arcade_timeup:1707 attract:1021 champ_race:1364 loadsave:514 options:234 paintshop:0 practice:1284 race_pause:1161 timeattack:1394,
 80208900,EQUIVALENT,745,0,0,1494e35d4241,2026-09-26,arcade_2p:325 attract:0 champ_race:112 loadsave:0 options:0 paintshop:0 practice:158 timeattack:150,
 802089D0,EQUIVALENT,4,0,0,14d2ae151000,2026-09-26,arcade_2p:1 attract:0 champ_race:1 loadsave:0 options:0 paintshop:0 practice:1 timeattack:1,
 80208A58,EQUIVALENT,308,0,0,4525ceef3f15,2026-09-26,arcade_2p:161 attract:0 champ_race:37 loadsave:0 options:0 paintshop:0 practice:65 timeattack:45,
