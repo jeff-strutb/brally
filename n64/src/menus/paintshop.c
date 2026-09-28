@@ -300,6 +300,23 @@ void BrPaintPaletteDraw(void)
               D_80369B98[D_8028DB58].h + 4, 2, 0x20, 200, 0xff);
 }
 
+/* WHAT IT DOES: Read the colour index of texel (x, y) of a 4-bit texture
+ * laid out as the decal is (odd rows' 8-texel words swapped). */
+/* @implements 0x8024D844 tgr BrPaintPeek */
+unsigned char BrPaintPeek(unsigned char *tex, int x, int y)
+{
+  int o;
+  unsigned char c;
+
+  o = (((y & 1) << 3 ^ x) >> 1) + y * (D_8028DB88 >> 1);
+  if (x & 1) {
+    c = tex[o] & 0xf;
+  } else {
+    c = tex[o] >> 4;
+  }
+  return c;
+}
+
 /* WHAT IT DOES: Plot one texel of colour c into the 4-bit decal texture at
  * (x, y) -- inside the texture and not masked off -- with the odd rows'
  * 8-texel words swapped as the RDP's TMEM layout wants them.
