@@ -1437,6 +1437,11 @@ def _force_annex(annex):
 
 def main():
     argv = sys.argv[1:]
+    # `--help` used to fall through to a full build into the DEFAULT out dir
+    # (build/image/) -- it bit two sessions on 2026-09-27.
+    if '-h' in argv or '--help' in argv:
+        print(__doc__)
+        return 0
 
     def opt(flag, default=None):
         return argv[argv.index(flag) + 1] if flag in argv else default
