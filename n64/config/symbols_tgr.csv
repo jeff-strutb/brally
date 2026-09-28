@@ -506,3 +506,4 @@ va,name,kind
 80217E20,BrZBufferClearRect,func
 8022BAA0,BrCarSfxLoad,func
 8025CE28,BrPolyIntersectsCube,func
+8025D368,BrCollRespTipKick,func
