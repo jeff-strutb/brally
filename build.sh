@@ -81,13 +81,18 @@ rm -rf build/core && mkdir -p build/core
 # what nothing else does; per-file pre-includes live beside it. Neither edits
 # decomp source.
 PORTINC="-Iports/macos/include"
-for src in $(find src/core -name '*.c' | sort); do
-    pre=""
+# Every compile below is independent; run them JOBS at a time.
+JOBS=${JOBS:-$(sysctl -n hw.ncpu 2>/dev/null || echo 8)}
+export CFLAGS PORTINC
+# A leading '_' is a scratch file (a permuter's candidate, a TU experiment):
+# never part of the game, and it can vanish mid-build.
+find src/core -name '*.c' ! -name '_*' | sort | xargs -P "$JOBS" -n 1 sh -c '
+    src=$1; pre=""
     case "$src" in
         src/core/geometry/br_mat3.c) pre="-include ports/macos/include/br_mat3_port.h";;
     esac
-    clang $CFLAGS $PORTINC $pre -c "$src" -o "build/core/$(objname "$src").o"
-done
+    obj=$(printf "%s" "$src" | sed "s#^src/core/##; s#\.c\$##; s#/#_#g")
+    clang $CFLAGS $PORTINC $pre -c "$src" -o "build/core/$obj.o"' _
 clang $MFLAGS -c ports/macos/metal/br_gfx_metal.m -o build/br_gfx_metal.o
 
 # --- port-only: de-duplicate globals defined in two TUs --------------------
@@ -106,13 +111,13 @@ clang $MFLAGS -c ports/macos/metal/br_gfx_metal.m -o build/br_gfx_metal.o
 sh ports/macos/dedup_globals.sh build/core
 
 # --- tests -----------------------------------------------------------------
-for t in tests/test_*.c; do
+build_test() {
+    t=$1
     tname=$(basename "$t" .c)
     mod=${tname#test_}
-    if [ "$tname" = "test_host_wiring" ] || [ "$tname" = "test_br_track" ]; then continue; fi
     if ! clang $CFLAGS -c "$t" -o "build/$tname.o" 2>/dev/null; then
         echo "WARN: $tname compile failed (skipping)"
-        continue
+        return
     fi
 
     objs="build/$tname.o"
@@ -132,7 +137,16 @@ for t in tests/test_*.c; do
     else
         clang $objs -lm -o "build/$tname" 2>/dev/null || echo "WARN: $tname link failed (skipping)"
     fi
+}
+# Each test is its own subshell; JOBS in flight, then wait for the batch.
+n=0
+for t in tests/test_*.c; do
+    case "$(basename "$t" .c)" in test_host_wiring|test_br_track) continue;; esac
+    build_test "$t" &
+    n=$((n+1))
+    [ $((n % JOBS)) -eq 0 ] && wait
 done
+wait
 
 # brview
 clang $CFLAGS -c tools/brview.c -o build/brview.o

@@ -138,9 +138,14 @@ void BrCtlHumanBody(void *pCar) { (void)pCar; }
  * relies on this resolving will read from the wrong base until ported. */
 void BrSegSetBasesG(uint32_t n64Base, void *pHost) { (void)n64Base; (void)pHost; }
 
-/* thiscall helper targets referenced by tiny_stubs.c. */
+/* thiscall helper targets of the global-object lifetime thunks
+ * (startup/br_objlife.c).  BrObj87Dtor 0x100087C0 is matched in
+ * gamedata/br_obj87.c, whose whole body is matching-build only; the port's
+ * g_AC0810 object has no sub-object to destroy, so the destructor, like the
+ * constructor and sub-object destructor beside it, does nothing. */
 void   BrSub10008760(void *self) { (void)self; }
 void   BrSub10008D60(void *self) { (void)self; }
+void   BrObj87Dtor(void *self)   { (void)self; }
 double BrSub1001DC40(int x)      { (void)x; return 0.0; }
 
 /* uipoll helper (0x1003FAC0), returns an int status. */
