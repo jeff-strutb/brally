@@ -21,6 +21,52 @@
 #define _CRTIMP __declspec(dllimport)
 #endif
 #include "slice2_17.h"
+
+/* g_s17 is the port's gathering of scattered originals.  The matching build
+ * reads the fields used here as the separate globals they are, by their
+ * DAT_ names -- which the image gate resolves from the address they spell. */
+#ifdef BR_MATCHING_BUILD
+extern uint32_t *DAT_106e7710;
+#define S17_PGFX DAT_106e7710
+extern int DAT_106e7714;
+#define S17_SCREENW DAT_106e7714
+extern int DAT_106e9a2c;
+#define S17_SCREENH DAT_106e9a2c
+extern int DAT_100a7514;
+#define S17_DEFAULTW DAT_100a7514
+extern int DAT_100a7518;
+#define S17_DEFAULTH DAT_100a7518
+extern int DAT_106ea35c;
+#define S17_F6C32CC DAT_106ea35c
+extern int DAT_106ec76c;
+#define S17_F6C56DC DAT_106ec76c
+extern int DAT_106e8208;
+#define S17_F6C1178 DAT_106e8208
+extern int DAT_106e86ac;
+#define S17_F6C161C DAT_106e86ac
+extern int DAT_106e86a0;
+#define S17_F6C1610 DAT_106e86a0
+extern int DAT_106ea448;
+#define S17_F6C33B8 DAT_106ea448
+extern int DAT_106e7734;
+#define S17_F6C06A4 DAT_106e7734
+extern int DAT_106e772c;
+#define S17_F6C069C DAT_106e772c
+#else
+#define S17_PGFX g_s17.pGfx
+#define S17_SCREENW g_s17.screenW
+#define S17_SCREENH g_s17.screenH
+#define S17_DEFAULTW g_s17.defaultW
+#define S17_DEFAULTH g_s17.defaultH
+#define S17_F6C32CC g_s17.f6C32CC
+#define S17_F6C56DC g_s17.f6C56DC
+#define S17_F6C1178 g_s17.f6C1178
+#define S17_F6C161C g_s17.f6C161C
+#define S17_F6C1610 g_s17.f6C1610
+#define S17_F6C33B8 g_s17.f6C33B8
+#define S17_F6C06A4 g_s17.f6C06A4
+#define S17_F6C069C g_s17.f6C069C
+#endif
 #ifdef BR_MATCHING_BUILD
 #undef BrPtrListContains
 #endif
@@ -140,9 +186,9 @@ static void s17_stf(unsigned char *p, float v)
  * the original reads the cursor, bumps the global, and only then stores. */
 #define s17_emit(w0_, w1_)                                              \
     do {                                                                \
-        uint32_t *p_ = g_s17.pGfx;                                      \
+        uint32_t *p_ = S17_PGFX;                                      \
                                                                         \
-        g_s17.pGfx = p_ + 2;                                            \
+        S17_PGFX = p_ + 2;                                            \
         p_[0] = (w0_);                                                  \
         p_[1] = (w1_);                                                  \
     } while (0)
@@ -160,16 +206,16 @@ static void s17_stf(unsigned char *p, float v)
 /* @implements 0x10031227 d3d BrRenderCountersReset */
 void BrRenderCountersReset(void)
 {
-    g_s17.f6C32CC = 0;
-    g_s17.f6C56DC = g_s17.f6C32CC;
-    g_s17.f6C1178 = g_s17.f6C56DC;
+    S17_F6C32CC = 0;
+    S17_F6C56DC = S17_F6C32CC;
+    S17_F6C1178 = S17_F6C56DC;
 
-    g_s17.f6C161C = 0;
-    g_s17.f6C1610 = g_s17.f6C161C;
+    S17_F6C161C = 0;
+    S17_F6C1610 = S17_F6C161C;
 
-    g_s17.f6C33B8 = 0;
-    g_s17.f6C06A4 = g_s17.f6C33B8;
-    g_s17.f6C069C = g_s17.f6C06A4;
+    S17_F6C33B8 = 0;
+    S17_F6C06A4 = S17_F6C33B8;
+    S17_F6C069C = S17_F6C06A4;
 }
 
 /* 0x1003128C */
@@ -178,6 +224,6 @@ void BrRenderCountersReset(void)
 /* @implements 0x1003128C d3d BrScreenSizeApply */
 void BrScreenSizeApply(void)
 {
-    g_s17.screenW = g_s17.defaultW;     /* 0x100A81C0 = 640 in this build */
-    g_s17.screenH = g_s17.defaultH;     /* 0x100A81C4 = 480               */
+    S17_SCREENW = S17_DEFAULTW;     /* 0x100A81C0 = 640 in this build */
+    S17_SCREENH = S17_DEFAULTH;     /* 0x100A81C4 = 480               */
 }

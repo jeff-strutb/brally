@@ -23,6 +23,22 @@
 #define _CRTIMP __declspec(dllimport)
 #endif
 #include "slice2_17.h"
+
+/* g_s17 is the port's gathering of scattered originals.  The matching build
+ * reads the fields used here as the separate globals they are, by their
+ * DAT_ names -- which the image gate resolves from the address they spell. */
+#ifdef BR_MATCHING_BUILD
+extern uint32_t *DAT_106e7710;
+#define S17_PGFX DAT_106e7710
+extern int DAT_106e7714;
+#define S17_SCREENW DAT_106e7714
+extern int DAT_106e9a2c;
+#define S17_SCREENH DAT_106e9a2c
+#else
+#define S17_PGFX g_s17.pGfx
+#define S17_SCREENW g_s17.screenW
+#define S17_SCREENH g_s17.screenH
+#endif
 #ifdef BR_MATCHING_BUILD
 #undef BrPtrListContains
 #endif
@@ -142,9 +158,9 @@ static void s17_stf(unsigned char *p, float v)
  * the original reads the cursor, bumps the global, and only then stores. */
 #define s17_emit(w0_, w1_)                                              \
     do {                                                                \
-        uint32_t *p_ = g_s17.pGfx;                                      \
+        uint32_t *p_ = S17_PGFX;                                      \
                                                                         \
-        g_s17.pGfx = p_ + 2;                                            \
+        S17_PGFX = p_ + 2;                                            \
         p_[0] = (w0_);                                                  \
         p_[1] = (w1_);                                                  \
     } while (0)
@@ -190,40 +206,40 @@ void BrGfxClearScreen(int r, int g, int b)
                        | ((b >> 2) & 0x3E)
                        | 1);
 
-    p1 = (unsigned int *)g_s17.pGfx;
-    g_s17.pGfx = g_s17.pGfx + 2;
+    p1 = (unsigned int *)S17_PGFX;
+    S17_PGFX = S17_PGFX + 2;
     p1[0] = 0xE7000000u;
     p1[1] = 0;
 
-    p2 = (unsigned int *)g_s17.pGfx;
-    g_s17.pGfx = g_s17.pGfx + 2;
+    p2 = (unsigned int *)S17_PGFX;
+    S17_PGFX = S17_PGFX + 2;
     p2[0] = 0xB900031Du;
     p2[1] = 0x0F0A4000u;
 
-    p3 = (unsigned int *)g_s17.pGfx;
-    g_s17.pGfx = g_s17.pGfx + 2;
+    p3 = (unsigned int *)S17_PGFX;
+    S17_PGFX = S17_PGFX + 2;
     p3[0] = 0xBA001402u;
     p3[1] = 0x00300000u;
 
-    p4 = (unsigned int *)g_s17.pGfx;
-    g_s17.pGfx = g_s17.pGfx + 2;
+    p4 = (unsigned int *)S17_PGFX;
+    S17_PGFX = S17_PGFX + 2;
     p4[0] = 0xF7000000u;
     p4[1] = (unsigned)c | ((unsigned)c << 16);
 
-    p5 = (unsigned int *)g_s17.pGfx;
-    g_s17.pGfx = g_s17.pGfx + 2;
+    p5 = (unsigned int *)S17_PGFX;
+    S17_PGFX = S17_PGFX + 2;
     p5[0] = 0xE1000000u
           | ((((DAT_106e7714 << DAT_106ed674) - 1) & 0xFFF) << 12)
           | (((DAT_106e9a2c << DAT_106ed674) - 1) & 0xFFF);
     p5[1] = 0;
 
-    p6 = (unsigned int *)g_s17.pGfx;
-    g_s17.pGfx = g_s17.pGfx + 2;
+    p6 = (unsigned int *)S17_PGFX;
+    S17_PGFX = S17_PGFX + 2;
     p6[0] = 0xE7000000u;
     p6[1] = 0;
 
-    p7 = (unsigned int *)g_s17.pGfx;
-    g_s17.pGfx = g_s17.pGfx + 2;
+    p7 = (unsigned int *)S17_PGFX;
+    S17_PGFX = S17_PGFX + 2;
     p7[0] = 0xBA001402u;
     p7[1] = 0;
 }
@@ -241,8 +257,8 @@ void BrGfxClearScreen(int r, int g, int b)
     s17_emit(0xF7000000u, (c << 16) | c);           /* fill colour          */
 
     lr  = BR_GFX_FILLRECT;
-    lr |= ((((uint32_t)g_s17.screenW << sh) - 1u) & 0xFFFu) << 12;
-    lr |=  (((uint32_t)g_s17.screenH << sh) - 1u) & 0xFFFu;
+    lr |= ((((uint32_t)S17_SCREENW << sh) - 1u) & 0xFFFu) << 12;
+    lr |=  (((uint32_t)S17_SCREENH << sh) - 1u) & 0xFFFu;
     s17_emit(lr, 0);
 
     s17_emit(0xE7000000u, 0);
@@ -277,40 +293,40 @@ void BrGfxFillRect(int ulx, int uly, int w, int h, int r, int g, int b)
                        | ((b >> 2) & 0x3E)
                        | 1);
 
-    p1 = (unsigned int *)g_s17.pGfx;
-    g_s17.pGfx = g_s17.pGfx + 2;
+    p1 = (unsigned int *)S17_PGFX;
+    S17_PGFX = S17_PGFX + 2;
     p1[0] = 0xE7000000u;
     p1[1] = 0;
 
-    p2 = (unsigned int *)g_s17.pGfx;
-    g_s17.pGfx = g_s17.pGfx + 2;
+    p2 = (unsigned int *)S17_PGFX;
+    S17_PGFX = S17_PGFX + 2;
     p2[0] = 0xB900031Du;
     p2[1] = 0x0F0A4000u;
 
-    p3 = (unsigned int *)g_s17.pGfx;
-    g_s17.pGfx = g_s17.pGfx + 2;
+    p3 = (unsigned int *)S17_PGFX;
+    S17_PGFX = S17_PGFX + 2;
     p3[0] = 0xBA001402u;
     p3[1] = 0x00300000u;
 
-    p4 = (unsigned int *)g_s17.pGfx;
-    g_s17.pGfx = g_s17.pGfx + 2;
+    p4 = (unsigned int *)S17_PGFX;
+    S17_PGFX = S17_PGFX + 2;
     p4[0] = 0xF7000000u;
     p4[1] = (unsigned)c | ((unsigned)c << 16);
 
-    p5 = (unsigned int *)g_s17.pGfx;
-    g_s17.pGfx = g_s17.pGfx + 2;
+    p5 = (unsigned int *)S17_PGFX;
+    S17_PGFX = S17_PGFX + 2;
     p5[0] = 0xE1000000u
           | (((((ulx + w) << DAT_106ed674) - 1) & 0xFFF) << 12)
           | ((((uly + h) << DAT_106ed674) - 1) & 0xFFF);
     p5[1] = ((ulx & 0xFFF) << 12) | (uly & 0xFFF);
 
-    p6 = (unsigned int *)g_s17.pGfx;
-    g_s17.pGfx = g_s17.pGfx + 2;
+    p6 = (unsigned int *)S17_PGFX;
+    S17_PGFX = S17_PGFX + 2;
     p6[0] = 0xE7000000u;
     p6[1] = 0;
 
-    p7 = (unsigned int *)g_s17.pGfx;
-    g_s17.pGfx = g_s17.pGfx + 2;
+    p7 = (unsigned int *)S17_PGFX;
+    S17_PGFX = S17_PGFX + 2;
     p7[0] = 0xBA001402u;
     p7[1] = 0;
 }
@@ -364,8 +380,8 @@ void BrGfxEmitTexCmd(int i, const void *pRecords)
      * second pGfx load. */
     if (((*(unsigned int *)((char *)pRecords + i * BR_TEXREC_STRIDE + 0x20)
           >> 20) & 1) == 0) {
-        unsigned int *p = (unsigned int *)g_s17.pGfx;
-        g_s17.pGfx = g_s17.pGfx + 2;
+        unsigned int *p = (unsigned int *)S17_PGFX;
+        S17_PGFX = S17_PGFX + 2;
         p[0] = (*(unsigned int *)((char *)pRecords + i * BR_TEXREC_STRIDE)
                 & 0x00FFFFFFu) | 0xDC000000u;
         p[1] = 1;
