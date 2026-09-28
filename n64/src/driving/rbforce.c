@@ -6,7 +6,9 @@
 typedef struct BrRbBody {       /* a rigid body with up to four attached */
   int x0;
   struct BrRbBody *sub[4];      /* 0x04 */
-  char pad14[0x2c - 0x14];
+  char pad14[0x1c - 0x14];
+  int kind;                     /* 0x1C  2: does not rotate */
+  char pad20[0x2c - 0x20];
   float mass;                   /* 0x2C */
   char pad30[0x54 - 0x30];
   float Iinv[3][3];             /* 0x54  inverse inertia */
@@ -23,6 +25,26 @@ void func_802586C0(float out[3], float m[4][4], float v[3]);   /* v into the bod
 void func_80258758(float out[3], float m[4][4], float v[3]);   /* and back out */
 void BrMat3MulVec(float out[3], float m[3][3], float v[3]);
 /* -- end declarations -- */
+
+/* WHAT IT DOES: Turn a body's accumulated force and torque into
+ * accelerations: force over mass, and (unless the body does not rotate)
+ * torque taken into the body frame, through the inverse inertia and back
+ * out. */
+/* @implements 0x80258950 tgr BrRbAccel */
+void BrRbAccel(BrRbBody *b)
+{
+  float bodyT[3];
+  float acc[3];
+
+  b->force[0] *= 1.0f / b->mass;
+  b->force[1] *= 1.0f / b->mass;
+  b->force[2] *= 1.0f / b->mass;
+  if (b->kind != 2) {
+    func_802586C0(bodyT, b->m, b->torque);
+    BrMat3MulVec(acc, (float (*)[3])b->Iinv, bodyT);
+    func_80258758(b->torque, b->m, acc);
+  }
+}
 
 /* WHAT IT DOES: Apply every force attached to a rigid body for this step:
  * walks the body's list of force records and adds each one in turn. */

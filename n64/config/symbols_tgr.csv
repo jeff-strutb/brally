@@ -432,3 +432,4 @@ va,name,kind
 80253460,BrPaintCharset,func
 802586C0,BrMat4RotateVec,func
 80258758,BrMat4RotateVecT,func
+80258950,BrRbAccel,func
