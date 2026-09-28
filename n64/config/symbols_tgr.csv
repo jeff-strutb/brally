@@ -56,6 +56,7 @@ va,name,kind
 80214A3C,BrPaintShopMemInit,func
 80214A88,BrRumbleInsertPrompt,func
 80214BEC,BrRumbleProbe,func
+80214CB0,BrRumbleInitAll,func
 80214E0C,BrCpakCheck,func
 802167E0,BrCtlConfigDrawLayout,func
 802170C8,BrCtrlConfigScreen,func
