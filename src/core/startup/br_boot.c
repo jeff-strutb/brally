@@ -347,7 +347,7 @@ extern void        BrBaseDirInit(void);                  /* 0x10063860 */
 extern void        BrStrResLoad(void);                   /* 0x1006D1A0 */
 extern void        BrCmdLineParse(const char *psz);      /* 0x10007F40 */
 extern int32_t     BrWindowCreate(void);                 /* 0x10019670 */
-extern void        BrDesktopSetup(void);                 /* 0x10009C00 */
+extern void        BrDPlayBootInit(void);                /* 0x10009C00 */
 extern int32_t     BrUiBootPreLoopGate(void);            /* 0x10056260 */
 extern void        BrMainLoopRun(void);                  /* 0x10019730 */
 
@@ -427,7 +427,7 @@ int32_t BrRallyMain(void *hInstance, void *hPrevInstance,
         BrCfgReadFileT(DAT_10b71290, path);    /* 0x1001CD12 */
 
         if (BrWindowCreate() != 0) {           /* 0x1001CD17 */
-            BrDesktopSetup();                  /* 0x1001CD20 */
+            BrDPlayBootInit();                 /* 0x1001CD20 */
             if (BrUiBootPreLoopGate() != 0) {  /* 0x1001CD25 */
                 BrMainLoopRun();               /* 0x1001CD2E */
             }

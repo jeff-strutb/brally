@@ -2169,4 +2169,70 @@ void BrTexInstallRecords(BrTexRec *pRecs, int n)
 }
 
 
+/* ------------------------------------------------------------------ */
+/* 0x10029CD0                                                         */
+/* ------------------------------------------------------------------ */
+
+void FUN_1006e1a0(void);
+extern unsigned int DAT_10697a58;
+extern int DAT_10697a5c;
+extern int DAT_106b7aa0;
+
+/* WHAT IT DOES: frees the 3D-texture record table: for every record in use
+ * (+0x26C set) it frees the four per-record buffers at +0x280..+0x28C, then
+ * frees the table itself and zeros its counts.  BrTexInit installs it in the
+ * texture hook table (slot 0x118ED1E8). */
+/* @t4-pass 0x10029CD0 1 2026-09-07 probes 86 bytes 153 insns 50 regions 5 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10029CD0 2 2026-09-07 probes 86 bytes 153 insns 50 regions 5 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10029CD0 3 2026-09-09 probes 10 bytes 153 insns 50 regions 4 rows 0 census no  (hand, fn.py variants: dead-init removal, loop shape rewrites, pre/post increments, cast and order spellings, all inert) */
+/* @t4-pass 0x10029CD0 4 2026-09-09 probes 10 bytes 153 insns 50 regions 4 rows 0 census yes  (hand, fn.py variants: inline slot load, goto-loop, unsigned off, store/free respellings, all inert or worse; corpus query at +0x0) */
+/* @t3 0x10029CD0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 153/153 insns 50/50 rows 0+0 regions 4 oracle UNCLASSIFIED
+ * @t3-effort passes 4 zero-movement 3 4
+ * residue is register colouring only: identical register-blind multiset
+ * (rows 0+0), 4 masked regions, 6 B uncompared at key 6 within tolerance.
+ * Two crank census passes (86 probes each) plus two hand passes at the
+ * current numbers.  Do not reopen before the end-grind (project rule 12). */
+/* @implements 0x10029CD0 glide BrTex3dFreeAll */
+void BrTex3dFreeAll(void)
+{
+    unsigned int i;
+    int off;
+    char *base;
+    int slot;
+    int k;
+    void *p;
+
+    k = 4;
+    FUN_1006e1a0();
+    i = 0;
+    off = 0;
+    base = (char *)DAT_106b7aa0;
+    if (DAT_10697a58 > 0) {
+        do {
+            if (*(int *)(base + off + 0x26c) != 0) {
+                slot = off + 0x280;
+                k = 4;
+                do {
+                    p = *(void **)(base + slot);
+                    if (p != 0) {
+                        free(p);
+                        *(int *)(DAT_106b7aa0 + slot) = 0;
+                        base = (char *)DAT_106b7aa0;
+                    }
+                    slot += 4;
+                    k--;
+                } while (k != 0);
+            }
+            i++;
+            off += 0x2b4;
+        } while (i < DAT_10697a58);
+    }
+    DAT_10697a58 = 0;
+    DAT_10697a5c = 0;
+    free(base);
+    DAT_106b7aa0 = 0;
+}
+
+
 #endif /* BR_MATCHING_BUILD */

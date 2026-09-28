@@ -676,6 +676,24 @@ int32_t BrDPlayStartup(BrDPlayCtx *pCtx)
 }
 #endif
 
+/* -- 0x10009C00 ---------------------------------------------------------- */
+
+#ifdef BR_MATCHING_BUILD
+__declspec(dllimport) void * __stdcall GetDesktopWindow(void);
+int BrDPlayCreate(void);            /* 0x10035400: creates the DirectPlay object */
+
+/* WHAT IT DOES: the boot-time entry into multiplayer: touches the desktop
+ * window, then tail-calls the DirectPlay object creation (0x10035400).
+ * RallyMain calls it once and ignores the result, so a game without network
+ * support still reaches the main loop. */
+/* @implements 0x10009C00 glide BrDPlayBootInit */
+void BrDPlayBootInit(void)
+{
+    GetDesktopWindow();
+    BrDPlayCreate();
+}
+#endif
+
 /* -- 0x1000C670 ---------------------------------------------------------- */
 
 /* WHAT IT DOES: asks how many players are in the multiplayer session at this

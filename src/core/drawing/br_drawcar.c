@@ -2256,4 +2256,4 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
 #endif
 }
 
-/* BrDesktopSetup (0x10009C00) stays in ghidra_batch.c - context-sensitive codegen. */
+/* 0x10009C00 BrDPlayBootInit is in net/br_dplay.c. */

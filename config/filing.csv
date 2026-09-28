@@ -64,7 +64,7 @@ glide_va,name,module,basis,file
 0x100038A0,FUN_100038a0,net,description,src/core/net/br_netmsgpost.c
 0x100038F0,FUN_100038f0,net,neighbour,src/core/net/FUN_100038f0.cpp
 0x10004900,BrNetSend4900,net,neighbour,src/core/net/BrNetSend4900_10004900.cpp
-0x10004A40,BrCountedNetSend,net,neighbour-1,src/core/ghidra_batch.c
+0x10004A40,BrCountedNetSend,net,filed,src/core/net/br_dplaysend.c
 0x10004AD0,BrNetSend4AD0,net,neighbour,src/core/net/BrNetSend4AD0_10004AD0.cpp
 0x10004C40,BrNetPktStamp,net,manual,src/core/net/br_netpkt.c
 0x10004C80,Fn04C80,net,manual,src/core/net/Fn04C80_10004C80.cpp
@@ -76,10 +76,10 @@ glide_va,name,module,basis,file
 0x10004F50,BrNetLockSetIfZero22AAF4,net,description,src/core/net/br_netstate.c
 0x10004F90,BrNetLockSetIfZero221314,net,description,src/core/net/br_netlock.c
 0x10004FD0,BrNetSendCarState,net,neighbour,src/core/net/BrNetSendCarState_10004FD0.cpp
-0x10005140,BrNetTrySend,net,neighbour-1,src/core/ghidra_batch.c
+0x10005140,BrNetTrySend,net,filed,src/core/net/br_dplaysend.c
 0x100051C0,BrNetSendCarStateDelta,net,neighbour,src/core/net/BrNetSendCarStateDelta_100051C0.cpp
-0x10005400,BrCdAudioTick,net,neighbour,src/core/ghidra_batch.c
-0x10005400,BrCdAudioTick,net,neighbour,src/core/ghidra_batch.c
+0x10005330,BrNetBeaconTick,net,filed,src/core/net/br_netstate.c
+0x10005400,BrNetSlotBroadcastTick,net,filed,src/core/net/br_netstate.c
 0x100054A0,FUN_100054a0,net,neighbour-1,src/core/net/br_netstate.c
 0x10005760,BrNetSendFlush,net,description,src/core/net/br_netflush.c
 0x100057E0,BrEntityCountActive,scene,manual,src/core/scene/br_entity.c
@@ -170,7 +170,7 @@ glide_va,name,module,basis,file
 0x10009A40,BrDPlayShutdown,net,description,src/core/net/br_dplay.c
 0x10009B00,BrDPlayStartup,net,filed,src/core/net/br_dplay.c
 0x10009BA0,BrDPlayGetCurrentPlayers,net,description,src/core/net/br_dplay.c
-0x10009C00,BrDesktopSetup,drawing,neighbour-1,src/core/ghidra_batch.c
+0x10009C00,BrDPlayBootInit,net,filed,src/core/net/br_dplay.c
 0x10009C10,BrCarDrawWheels,drawing,filed,src/core/drawing/br_drawcar.c
 0x10009FC0,BrCarVisibilityUpdate,drawing,filed,src/core/drawing/br_drawcar.c
 0x1000BEB0,BrCarDrawBody,drawing,filed,src/core/drawing/br_drawcar.c
@@ -194,7 +194,9 @@ glide_va,name,module,basis,file
 0x10011D20,FUN_10011d20,drawing,neighbour,src/core/generated/0x10011D20.c
 0x10011EA0,BrFpsReadout,drawing,neighbour,src/core/drawing/br_fps.c
 0x10013140,BrHudTextListDraw,drawing,filed,src/core/drawing/br_hud.c
+0x10013E80,BrRaceBeginResetOnce,drawing,filed,src/core/drawing/br_snapinterp.c
 0x10013F00,BrClearFlag_AB504,drawing,filed,src/core/drawing/br_clear.c
+0x10013F20,BrSnapPickSlot,drawing,filed,src/core/drawing/br_snapinterp.c
 0x10013FC0,BrGetFlag_AB4F0,drawing,neighbour,src/core/drawing/br_clear.c
 0x100140B0,BrHudDrawDial,drawing,filed,src/core/drawing/br_hudscene.c
 0x10014760,BrHudDrawTimeEntry,drawing,neighbour,src/core/drawing/br_text.c
@@ -346,8 +348,8 @@ glide_va,name,module,basis,file
 0x10021240,br_dl_skip,drawing,filed,src/core/drawing/br_dl.c
 0x10021250,BrGbiSet4C1694,drawing,neighbour,src/core/drawing/br_gbi.c
 0x10021270,BrGlGbiCall,drawing,filed,src/core/drawing/br_dlglide.c
-0x100215C0,BrGbiCall10021560,drawing,description,src/core/drawing/br_dltexrect.c
 0x10021570,BrDlsTileRectE4,drawing,filed,src/core/drawing/br_dlshared.c
+0x100215C0,BrGbiCall10021560,drawing,description,src/core/drawing/br_dltexrect.c
 0x100219D0,BrDlsTileRectE3,drawing,filed,src/core/drawing/br_dlshared.c
 0x10021A20,BrDlCmdVtx,drawing,filed,src/core/drawing/br_dlvtx_cmd.c
 0x10022070,br_dl_project,drawing,filed,src/core/drawing/br_dlproject.c
@@ -405,6 +407,7 @@ glide_va,name,module,basis,file
 0x100299A0,BrTexInstallRecords,drawing,filed,src/core/drawing/br_tex3d.c
 0x10029B10,BrTexChooseLevel,drawing,filed,src/core/drawing/br_texinit.c
 0x10029C70,BrGbiSolidTexBuild,drawing,neighbour,src/core/drawing/br_gbitexscan.c
+0x10029CD0,BrTex3dFreeAll,drawing,filed,src/core/drawing/br_tex3d.c
 0x10029D70,BrMat4Mul,geometry,filed,src/core/geometry/br_mat.c
 0x10029E50,BrGuMtxStore,drawing,filed,src/core/drawing/br_drawcar.c
 0x10029E80,BrMat4IdentityLocal,scene,manual,src/core/scene/br_entity.c
@@ -568,7 +571,7 @@ glide_va,name,module,basis,file
 0x10035310,BrSeg2SideTest,geometry,manual,src/core/geometry/br_seg2.c
 0x100353C0,BrStore_1003BD40,racing,filed,src/core/racing/br_replayon.c
 0x100353D0,BrRandom,startup,description,src/core/startup/br_random.c
-0x10035400,FUN_10035400,startup,neighbour-1,src/core/generated/0x10035400.c
+0x10035400,BrDPlayCreate,net,filed,src/core/generated/0x10035400.c
 0x100355F0,BrExt_1003BF60,startup,neighbour-1,src/core/generated/0x100355F0.c
 0x10035660,FUN_10035660,startup,neighbour-1,src/core/generated/0x10035660.c
 0x100356B0,FUN_100356b0,startup,neighbour-1,src/core/generated/0x100356B0.c
@@ -653,7 +656,7 @@ glide_va,name,module,basis,file
 0x100386B0,BrUiFn1003F170,menus,neighbour,src/core/generated/0x100386B0.c
 0x10038750,BrUiFn1003F210,menus,neighbour,src/core/generated/0x10038750.c
 0x100387C0,BrUiFn1003F280,menus,neighbour,src/core/generated/0x100387C0.c
-0x100387F0,BrInputBitHeld,menus,neighbour,src/core/ghidra_batch.c
+0x100387F0,BrInputBitHeld,menus,filed,src/core/menus/br_uictlhook.c
 0x10038980,BrRacePosIconSet,menus,filed,src/core/menus/br_race.c
 0x10038A80,BrMenuSetTrackLetter,menus,filed,src/core/menus/br_trackletter.c
 0x10038B20,BrUiHook87_1003F5E0,menus,neighbour,src/core/menus/br_uicapcode.c
@@ -715,8 +718,8 @@ glide_va,name,module,basis,file
 0x1003AE50,BrMenuFlags18F0,menus,neighbour,src/core/menus/br_menucb.c
 0x1003AE90,BrMenuLeaveTo2,menus,neighbour,src/core/menus/br_menucb.c
 0x1003AED0,BrUiCreditsAction_1003AED0,menus,neighbour,src/core/menus/BrUiCreditsAction_1003AED0.cpp
-0x1003AF30,BrExt_100419D0,menus,neighbour,src/core/ghidra_batch.c
-0x1003AF60,BrExt_10041A00,menus,neighbour,src/core/generated/0x1003AF60.c
+0x1003AF30,BrExt_100419D0,menus,filed,src/core/menus/br_menuact.c
+0x1003AF60,BrExt_10041A00,menus,filed,src/core/menus/br_menuact.c
 0x1003B020,BrMenuCopyTrackName,menus,filed,src/core/menus/br_menuact.c
 0x1003B0B0,BrMenuAutoSaveName,menus,neighbour,src/core/menus/br_menucb.c
 0x1003B350,BrSaveNameCommitRallySeason,menus,filed,src/core/menus/br_savename.c
@@ -988,7 +991,7 @@ glide_va,name,module,basis,file
 0x10056260,BrUiBootPreLoopGate,menus,prefix,src/core/menus/BrUiBootPreLoopGate_10056260.cpp
 0x10058300,BrFontTexFreeAll,drawing,filed,src/core/drawing/br_font.c
 0x10058360,BrFontFreeAndExit,drawing,filed,src/core/drawing/br_font.c
-0x10058380,BrSprFontDraw,drawing,neighbour-1,src/core/ghidra_batch.c
+0x10058380,BrSprFontDraw,drawing,filed,src/core/drawing/br_font.c
 0x10058540,BrSprFontRectInit_1005F800,drawing,filed,src/core/drawing/br_sprfont.c
 0x10058680,BrSeasonApply,settings,manual,src/core/settings/BrSeasonApply_10058680.cpp
 0x10058900,BrExt_1005FBC0,settings,manual,src/core/settings/br_setupcommit.c

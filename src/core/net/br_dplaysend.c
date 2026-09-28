@@ -156,3 +156,69 @@ int BrDPlaySendTag8(const BrDPlayLink *pLink, uint32_t a, uint32_t b)
                           (uint32_t)sizeof aPayload);
 #endif
 }
+
+/* ==========================================================================
+ * 5. 0x10004A40 / 0x10005140 -- the counted-state senders
+ *
+ * Both send a counted state object's payload (BrStateGetField10 / BrCounted-
+ * Total, settings/br_state.c) to the other players.  When the link has its
+ * local-echo flag (+0x0C) set the payload is also handed to the local message
+ * path (0x1002F790) first.
+ * ========================================================================== */
+#ifdef BR_MATCHING_BUILD
+extern int DAT_10ac5bec;                               /* 0x10AC5BEC: net lock */
+int __fastcall BrCountedTotal(void *pObj);             /* 0x1006D180 */
+int __fastcall BrStateGetField10(void *pObj);          /* 0x1006D190 */
+int FUN_1002f790(int *p, int a, int b, int c, int d);  /* 0x1002F790 */
+
+/* WHAT IT DOES: if the net-lock flag is set, just return the counted total;
+ * otherwise echo the payload locally when the link asks for it and return,
+ * or send it with DirectPlay (flags 1, guaranteed) and return the total on
+ * success, -1 on failure. */
+/* @implements 0x10004A40 glide BrCountedNetSend */
+int BrCountedNetSend(int *param_1, void *param_2)
+{
+    int iVar2;
+
+    if (DAT_10ac5bec != 0) {
+        return BrCountedTotal(param_2);
+    }
+    if (param_1[3] != 0) {
+        FUN_1002f790(param_1,
+                     BrStateGetField10(param_2),
+                     BrCountedTotal(param_2),
+                     1, 1);
+        return BrCountedTotal(param_2);
+    }
+    iVar2 = BrDPlayRawSend((void *)param_1[0], param_1[2], 1, 0,
+                           (void *)BrStateGetField10(param_2),
+                           BrCountedTotal(param_2));
+    if (iVar2 == 0) {
+        return BrCountedTotal(param_2);
+    }
+    return -1;
+}
+
+/* WHAT IT DOES: the same send with flags 0 (not guaranteed): returns the
+ * counted total when the net lock is set or the send succeeds, -1 when it
+ * fails; the local echo does not short-circuit here. */
+/* @implements 0x10005140 glide BrNetTrySend */
+int BrNetTrySend(int *param_1, void *param_2)
+{
+    int n;
+
+    if (DAT_10ac5bec != 0)
+        return BrCountedTotal(param_2);
+    if (param_1[3] != 0)
+        FUN_1002f790(param_1,
+                     BrStateGetField10(param_2),
+                     BrCountedTotal(param_2),
+                     1, 1);
+    n = BrDPlayRawSend((void *)param_1[0], param_1[2], 0, 0,
+                       (void *)BrStateGetField10(param_2),
+                       BrCountedTotal(param_2));
+    if (n == 0)
+        return BrCountedTotal(param_2);
+    return -1;
+}
+#endif
