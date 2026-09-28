@@ -414,6 +414,32 @@ void BrZBufferClear(void)
   gDPSetColorImage(D_8028A858++, G_IM_FMT_RGBA, G_IM_SIZ_16b, D_8028AAB0 << D_8028A850, D_8031AA28[D_8028A85C] + 0x80000000);
 }
 
+/* WHAT IT DOES: BrZBufferClear for a rectangle: the Z-buffer is filled with
+ * the far depth over (x, y) .. (x + w - 1, ...), then the colour image goes
+ * back to the frame buffer being drawn.  The bottom edge is x + h - 1, not
+ * y + h - 1: the ROM computes it from x (the race tick passes each view's
+ * x, y, w, h). */
+/* @implements 0x80217E20 tgr BrZBufferClearRect */
+void BrZBufferClearRect(int x, int y, int w, int h)
+{
+  gDPPipeSync(D_8028A858++);
+  gDPSetCycleType(D_8028A858++, G_CYC_FILL);
+  gDPSetRenderMode(D_8028A858++, G_RM_OPA_SURF, G_RM_OPA_SURF2);
+  {
+    unsigned int *p = (unsigned int *)D_8028A858++;
+    p[0] = 0xff100000 | (((D_8028AAB0 << D_8028A850) - 1) & 0xfff);
+    p[1] = (unsigned int)D_00000400;
+  }
+  {
+    unsigned int *p = (unsigned int *)D_8028A858++;
+    p[0] = 0xf7000000;
+    p[1] = GPACK_ZDZ(G_MAXFBZ, 0) << 16 | GPACK_ZDZ(G_MAXFBZ, 0);
+  }
+  gDPFillRectangle(D_8028A858++, x, y, x + w - 1, x + h - 1);
+  gDPPipeSync(D_8028A858++);
+  gDPSetColorImage(D_8028A858++, G_IM_FMT_RGBA, G_IM_SIZ_16b, D_8028AAB0 << D_8028A850, D_8031AA28[D_8028A85C] + 0x80000000);
+}
+
 /* WHAT IT DOES: Clear the whole screen to one colour (fill mode,
  * RGBA5551).  Both cycle-type commands are raw words; the last one through
  * a block-scope pointer with each store on its own line (the block gives
