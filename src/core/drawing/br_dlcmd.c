@@ -1123,6 +1123,31 @@ const uint8_t *BrDlCmdFogColour(BrDlCmd *pS, const uint8_t *p)
 }
 #endif
 
+#ifdef BR_MATCHING_BUILD
+/* Forward declarations for unknown functions/globals */
+extern float DAT_105ce2d0;
+extern float DAT_105d17a4;
+extern float DAT_105d17b4;
+extern float _DAT_105cd9f0;
+void __stdcall grConstantColorValue(int);
+
+/* WHAT IT DOES: handle the display-list command that sets the primitive
+ * colour. Unpacks the packed 32-bit value into four separate float channels
+ * the renderer keeps, and hands the packed form straight to the 3dfx
+ * constant-colour register. Returns the pointer to the next command. */
+/* @implements 0x1001EA80 glide br_dl_prim */
+int br_dl_prim(int param_1)
+
+{
+  DAT_105d17a4 = (float)(*(unsigned int *)(param_1 + 4) >> 0x18);
+  DAT_105d17b4 = (float)(*(unsigned int *)(param_1 + 4) >> 0x10 & 0xff);
+  DAT_105ce2d0 = (float)(*(unsigned int *)(param_1 + 4) >> 8 & 0xff);
+  _DAT_105cd9f0 = (float)(*(unsigned int *)(param_1 + 4) & 0xff);
+  grConstantColorValue(*(int *)(param_1 + 4));
+  return param_1 + 8;
+}
+#endif /* BR_MATCHING_BUILD */
+
 /* ====================================================================
  * 0x1001EA80 -- G_SETPRIMCOLOR, opcode 0xFA.  138 bytes, Glide-only.
  *

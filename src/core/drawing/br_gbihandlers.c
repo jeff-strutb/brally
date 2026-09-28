@@ -119,11 +119,11 @@ extern int DAT_105d17cc;   /* geo.prev     */
 extern int DAT_105ccfe8;   /* DL stack n   */
 extern int DAT_105ce2e8[]; /* DL stack     */
 extern int DAT_100a9a50;   /* mtx top      */
-extern int DAT_105ccd00;   /* projection   */
+extern BrMat4 DAT_105ccd00;   /* projection   */
 extern int DAT_105ccd10;   /* modelview[0] */
 extern BrMat4 DAT_105ccd50[];  /* model stack, 1-based: [top - 1] */
 extern int DAT_105d17d0;   /* mtx.f5180    */
-extern int DAT_105d1760;   /* combined     */
+extern BrMat4 DAT_105d1760;   /* combined     */
 extern int DAT_105ce2d8;   /* lookat 0x82  */
 extern int DAT_105ce2dc;   /* lookat 0x84  */
 extern char DAT_105ccc78[]; /* lights      */
@@ -639,6 +639,18 @@ BrGfxWords *BrGbiMoveMem(BrGbiState *pSt, BrGfxWords *pCmd, const void *pSrc)
     }
 }
 #endif
+
+#ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: handle the display-list command that loads a matrix, by
+ * copying its 64 bytes from wherever the list points into the renderer's
+ * current-matrix slot. Returns the pointer to the next command. */
+/* @implements 0x10023900 glide BrGbiMoveMemMatrix */
+BrGfxWords *BrGbiMoveMemMatrix(BrGfxWords *pCmd)
+{
+    memcpy(&DAT_105d1760, (const void *)pCmd->w1, 64);
+    return pCmd + 1;
+}
+#endif /* BR_MATCHING_BUILD */
 
 /* ================================================================== */
 /* 2. Texture-load scanning pass                                      */
@@ -1181,8 +1193,8 @@ static void br16_combine(BrGfxWords *pOut, int t13, int t9, int t5, int t1)
 void BrFadeDrawSprite(const uint32_t *pRecs, float alpha)
 {
     BrGfxWords     *p;
-    const uint32_t *pRec;
-    uint32_t        lo, hi;
+    uint32_t        lo, hi;     /* unused, but load-bearing: removing them
+                                 * changes this body's codegen (verified) */
     int             idx;
 
     if (!(alpha >= 0.1f))

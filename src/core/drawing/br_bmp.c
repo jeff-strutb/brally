@@ -23,8 +23,15 @@
 #ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
+/* The header's BrBmpLoadRgba is the port's (path, &cx, &cy) form; the
+ * original takes the path alone (every call site pushes one argument). */
+#define BrBmpLoadRgba BrBmpLoadRgba_port
 #endif
 #include "br_bmp.h"
+#ifdef BR_MATCHING_BUILD
+#undef BrBmpLoadRgba
+uint8_t *BrBmpLoadRgba(const char *pszPath);
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -210,17 +217,15 @@ void *BrBmpToRgba32(int param_1);
 
 /* WHAT IT DOES: load a .BMP from disc and hand back raw 32-bit RGBA pixels
  * rather than a renderer surface -- the form the texture uploader wants.
- * Only 24-bit bitmaps are accepted; anything else is rejected. The width and
- * height out-parameters are accepted and IGNORED, exactly as in the original. */
+ * Only 24-bit bitmaps are accepted; anything else is rejected.  The original
+ * takes the path alone; the port's (path, &cx, &cy) form is below. */
 /* @implements 0x1005A210 glide BrBmpLoadRgba */
-uint8_t *BrBmpLoadRgba(const char *pszPath, int32_t *pcx, int32_t *pcy)
+uint8_t *BrBmpLoadRgba(const char *pszPath)
 {
     BrGdiBitmap bm;
     void       *hbm;
     void       *pOut;
 
-    (void)pcx;
-    (void)pcy;
     hbm = LoadImageA(0, pszPath, 0, 0, 0, 0x2010);
     if (hbm == 0)
         return 0;
@@ -402,4 +407,106 @@ void BrBmpRect4Get(int param_1,int param_2,int *param_3,int *param_4,
   return;
 }
 
+#endif /* BR_MATCHING_BUILD */
+
+#ifdef BR_MATCHING_BUILD
+/* Forward declarations for unknown functions/globals */
+int BrChkFileExists(const char *pPath);   /* 0x10003680 */
+int FUN_1005a280(int, int, int, void *);
+int FUN_1005a300(int, int, int, int);
+extern int DAT_100ad7d0;
+extern int DAT_100ad7d8[];
+extern int DAT_10ac67c4;
+extern int DAT_10ac67c8;
+extern char s_Paint__s_100b2e4c[];
+
+/* WHAT IT DOES: load the paint-scheme bitmaps for one car -- walks that
+ * car's thirty livery entries and, for any that names a file it has not
+ * loaded yet, reads the bitmap in as raw pixels. Skips entries whose file is
+ * missing. */
+/* @implements 0x1005A080 glide FUN_1005a080 */
+void FUN_1005a080(int param_1, int param_2)
+{
+  int nLeft;
+  int nCopy;
+  char buf[0x400];
+  int *p;
+  void *pMem;
+  int *pSlot;
+
+  nLeft = 0x1e;
+  p = DAT_100ad7d8 + param_1 * 300;
+  do {
+    if (*p == 0 && p[9] != 0) {
+      sprintf(buf, s_Paint__s_100b2e4c, p[9]);
+      if (BrChkFileExists(buf) != 0) {
+        *p = (int)BrBmpLoadRgba(buf);
+        buf[8] = 100;
+        if (BrChkFileExists(buf) != 0) {
+          pMem = (void *)BrBmpLoadRgba(buf);
+          if (*p != 0 && pMem != 0) {
+            FUN_1005a280(*p, DAT_10ac67c4, DAT_10ac67c8, pMem);
+            free(pMem);
+          }
+        }
+        if (*p != 0 && p[4] >= 0 && param_2 != 0 && DAT_100ad7d0 != 0) {
+          nCopy = 1;
+          pSlot = p + 1;
+          do {
+            pMem = malloc(DAT_10ac67c8 * DAT_10ac67c4 * 4);
+            *pSlot = (int)pMem;
+            if (pMem != 0) {
+              memcpy(pMem, (void *)*p, DAT_10ac67c8 * DAT_10ac67c4 * 4);
+              FUN_1005a300(nCopy, *pSlot, DAT_10ac67c4, DAT_10ac67c8);
+            }
+            pSlot = pSlot + 1;
+            nCopy = nCopy + 1;
+          } while (nCopy < 4);
+        }
+      }
+    }
+    p = p + 10;
+    nLeft = nLeft - 1;
+  } while (nLeft != 0);
+}
+#endif /* BR_MATCHING_BUILD */
+
+#ifdef BR_MATCHING_BUILD
+/* WHAT IT DOES: convert a bottom-up 24-bit BGR bitmap into a top-down
+ * 32-bit RGBA image: walks the source rows from the last one upward and,
+ * per pixel, reads B, G, R and writes R, G, B, 0xFF. The same walk as
+ * BrSurfBlt24, widening instead of packing to 565. Called by the RGBA
+ * bitmap loader (0x1005A210, br_bmp.c). The row pointer is the pBits
+ * parameter advanced in place, and the column count is copied to x only
+ * inside the `if (cx)` -- both decide which register each value takes. */
+/* @implements 0x10059F70 glide BrBmpWiden24ToRgba */
+void BrBmpWiden24ToRgba(unsigned char *pDst, const unsigned char *pBits,
+                        int cx, int cy, int cbWidthBytes)
+{
+  int y;
+
+  pBits += (cy - 1) * cbWidthBytes;
+  if (cy == 0) return;
+  y = cy;
+  do {
+    const unsigned char *pSrc = pBits;
+    int x;
+
+    if (cx != 0) {
+      x = cx;
+      do {
+        unsigned char b, g, r;
+
+        b = *pSrc++;
+        g = *pSrc++;
+        r = *pSrc++;
+        *pDst++ = r;
+        *pDst++ = g;
+        *pDst++ = b;
+        *pDst++ = 0xFF;
+      } while (--x);
+    }
+    pBits -= cbWidthBytes;
+  } while (--y);
+}
 #endif /* BR_MATCHING_BUILD */
