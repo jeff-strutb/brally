@@ -93,6 +93,23 @@ def parse(path):
 _LEARNED = None
 
 
+def _addr_in_name(s):
+    """DAT_/_DAT_ names spell the Glide address they stand for (Ghidra's
+    convention, kept through the tree).  Reading it from the name makes every
+    such relocation CHECKED by the image gate instead of learned from, or
+    copied out of, the original -- a DAT_ name holding a wrong address then
+    shows up as differing bytes."""
+    s = s.lstrip('_')
+    if s.startswith('DAT_') and len(s) == 12:
+        try:
+            a = int(s[4:], 16)
+        except ValueError:
+            return None
+        if 0x10001000 <= a < 0x12000000:
+            return a
+    return None
+
+
 def resolve(sym, fnmap, glmap, learned=True):
     """Address for a symbol, preferring maps the tree surveyed over addresses
     read back out of the image.
@@ -129,6 +146,9 @@ def resolve(sym, fnmap, glmap, learned=True):
     n = normalize(s)
     if n in glmap:
         return glmap[n]
+    a = _addr_in_name(s)
+    if a is not None:
+        return a
     if not learned:
         return None
     if _LEARNED is None:
