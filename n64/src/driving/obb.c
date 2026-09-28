@@ -24,6 +24,8 @@ extern int D_8025CD80;
 extern int D_8025CDA4;
 extern int D_8025CDB4;
 extern int D_8025CDBC;
+int func_8025C2C8(float *tri);
+int func_8025CE28(float *tri, float *norm);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Find the face of a box most facing a direction and clip it
@@ -195,4 +197,19 @@ int BrObbSegmentHits(float *param_1,float *param_2)
     }
   }
   return 0;
+}
+
+/* WHAT IT DOES: Triangle-against-unit-cube test: the vertex outcode pass
+ * decides most cases; when it cannot (-1), fall back to the edge and plane
+ * test with the triangle's normal. */
+/* @implements 0x8025D018 tgr BrTriCubeTest */
+int BrTriCubeTest(float *tri, float *norm)
+{
+  int r;
+
+  r = func_8025C2C8(tri);
+  if (r == -1) {
+    return func_8025CE28(tri, norm);
+  }
+  return r;
 }
