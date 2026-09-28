@@ -90,6 +90,21 @@ void BrGridSpanExtend(int a, int b);
 void BrCarPlaceWheels(int n);
 void BrCarVisibility(BrCar *car);
 void func_80230554(BrCar *car, int);
+extern int D_8028DB08;
+extern unsigned char D_8028DB54;
+extern unsigned char D_8028DB64;
+extern unsigned char D_8028DB60;
+extern unsigned char D_8028CF5C;
+extern unsigned char D_8028CF8C;
+extern unsigned char D_8028DBC0;
+extern unsigned char D_8028DBC8;
+extern unsigned char D_8028DBCC;
+extern unsigned char D_8028DBD4;
+extern unsigned char D_8028DBD8;
+extern unsigned char D_8028DBE0;
+extern unsigned char D_8028DBE4;
+extern unsigned char D_8028DBEC;
+extern int D_8028DB0C[];               /* per decal slot */
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Take the chosen preset's rectangle, and make every view
@@ -145,6 +160,40 @@ char BrPaintCharset(unsigned char i)
     return set[i];
   }
   return ' ';
+}
+
+/* WHAT IT DOES: Reset the paint shop for a new session: cursor to the
+ * centre, decal slot 2 selected everywhere, the default colour and brush,
+ * and every mode and changed flag cleared. */
+/* @implements 0x80244BA8 tgr BrPaintReset */
+void BrPaintReset(void)
+{
+  D_8028D110.x = 0xf4;
+  D_8028D110.y = 0x110;
+  D_8028DB68 = 2;
+  D_8028DB6C = D_8028DB68;
+  D_8028DB74 = D_8028DB68;
+  D_8028DB08 = D_8028DB0C[D_8028DB68];
+  D_8028DAC0 = 2;
+  D_8028DB54 = 0;
+  D_8028DB58 = 3;
+  D_8028DB64 = 1;
+  D_8028DB60 = 1;
+  D_8028DBB0 = 0;
+  D_8028CF5C = 0;
+  D_8028CF8C = 0;
+  D_8028DBB4 = 0;
+  D_8028DBC0 = 0;
+  D_8028DBC4 = 0;
+  D_8028DBC8 = 1;
+  D_8028DBCC = 1;
+  D_8028DBD0 = 0;
+  D_8028DBD4 = 0;
+  D_8028DBD8 = 1;
+  D_8028DBDC = 0;
+  D_8028DBE0 = 0;
+  D_8028DBE4 = 0;
+  D_8028DBEC = 0;
 }
 
 /* WHAT IT DOES: Store the paint shop's working decal (2 KB) into the decal
