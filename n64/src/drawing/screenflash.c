@@ -37,6 +37,8 @@ extern unsigned char D_802A49C8;
 extern unsigned char D_802A49D0;
 typedef struct BrViewRect { int x; int y; int w; int h; int x10; } BrViewRect;
 extern BrViewRect D_8031B2C8[];
+extern int D_8031B410[2];               /* per frame buffer: the left bar last drawn there */
+int BrFadeOutDone(void);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Cancel the white screen flash: its strength goes back to
@@ -185,6 +187,64 @@ int BrFadeOutDone(void)
 int BrFadeInDone(void)
 {
   return 0.0f < D_8028B758 && D_8028B75C == 1.0f && D_8028B784 == 0;
+}
+
+
+/* WHAT IT DOES: While a fade is under way, black out what lies outside
+ * the clip window's left and right edges: the left bar from where the
+ * other frame buffer's bar ended, the right bar only for a few frames (and
+ * the whole screen once the fade reaches black); a finished fade-out
+ * restarts that count.  The prim colour is a multi-line block (its w0 store
+ * first), and each bar's edges are assigned where the ROM copies them. */
+/* @implements 0x80223A70 tgr BrFadeBarsDraw */
+void BrFadeBarsDraw(void)
+{
+  static int frames = 2;        /* 0x8028B788 */
+  int l;
+  int r;
+
+  if (D_8028B75C != 1.0f) {
+    gDPPipeSync(D_8028A858++);
+    gDPSetCycleType(D_8028A858++, G_CYC_1CYCLE);
+    gDPSetRenderMode(D_8028A858++, G_RM_OPA_SURF, G_RM_OPA_SURF2);
+    gDPSetCombine(D_8028A858++, 0xffffff, 0xfffdf6fb);   /* G_CC_PRIMITIVE, G_CC_PRIMITIVE */
+    gDPSetScissor(D_8028A858++, G_SC_NON_INTERLACE, 0, 0, D_8028AAB0 << D_8028A850, D_8028AAB4 << D_8028A850);
+    {
+      Gfx *_g = (Gfx *)(D_8028A858++);
+
+      _g->words.w0 = 0xfa00ffff;
+      _g->words.w1 = 0;
+    }
+    if (D_8028B740 != 0) {
+      l = D_8031B410[D_8028A85C ^ 1];
+      if (D_8028B740 < l) {
+        l = 0;
+      }
+      r = D_8028B740;
+      if (l != 0) {
+        l--;
+      }
+      if (BrFadeOutDone()) {
+        frames = 3;
+      }
+      gDPFillRectangle(D_8028A858++, l << D_8028A850, 0, (r << D_8028A850) - 1, (D_8028AAB4 << D_8028A850) - 1);
+    }
+    if (D_8028B744 < D_8028AAB0) {
+      l = D_8028B744;
+      r = D_8028AAB0;
+      if (frames != 0) {
+        frames--;
+        gDPFillRectangle(D_8028A858++, l << D_8028A850, 0, (r << D_8028A850) - 1, (D_8028AAB4 << D_8028A850) - 1);
+      }
+    } else if (D_8028B75C == 0.0f) {
+      r = D_8028AAB0;
+      if (frames != 0) {
+        frames--;
+        gDPFillRectangle(D_8028A858++, 0 << D_8028A850, 0, (r << D_8028A850) - 1, (D_8028AAB4 << D_8028A850) - 1);
+      }
+    }
+    gDPPipeSync(D_8028A858++);
+  }
 }
 
 
