@@ -171,6 +171,22 @@ void BrMusicInit(int param_1, char *param_2)
   osStartThread(D_80378FB8);
 }
 
+/* WHAT IT DOES: Stop the music: halt the module player and silence every
+ * music voice and channel. */
+/* @implements 0x802578F4 tgr BrMusicStop */
+void BrMusicStop(void)
+{
+  int i;
+
+  D_80378F98 = 0;
+  for (i = 0; i < D_802A49C0; i++) {
+    D_802A4798[i].pos = (unsigned int)D_802A4A08;
+    D_802A4798[i].rate = 0;
+    D_802A4798[i].baseVol = 0;
+    D_80378DD0[i].xd = 0;
+  }
+}
+
 /* WHAT IT DOES: Start a piece of music: builds its instrument entries,
  * starts the module player and sets every channel to its starting volume. */
 /* @implements 0x80257964 tgr BrMusicStart */
@@ -349,4 +365,35 @@ void BrMusicThread(void *arg)
     }
     BrRumbleUpdate(0);
   }
+}
+
+/* WHAT IT DOES: Start a sound voice on a sample: record the sample's
+ * start, end and loop, point the voice at the start, silent, at the normal
+ * rate (1.0 in 32.32). */
+/* @implements 0x80257B78 tgr BrSfxVoicePlay */
+void BrSfxVoicePlay(short v, unsigned int start, unsigned int end, unsigned int loop)
+{
+  D_80378F50[v].x0 = start;
+  D_80378F50[v].x4 = end;
+  D_80378F50[v].loop = loop;
+  D_802A4920[v].baseVol = 0;
+  D_802A4920[v].vol = 0;
+  D_802A4920[v].pos = start;
+  D_802A4920[v].x4 = 0;
+  D_802A4920[v].rate = 0x100000000ULL;
+}
+
+/* WHAT IT DOES: Set a sound voice's volume: two 16-bit channel levels,
+ * a level over 32 is masked with 32 (bug preserved: the ROM ANDs, keeping
+ * only that bit, rather than clamping). */
+/* @implements 0x80257BE4 tgr BrSfxVoiceVolume */
+void BrSfxVoiceVolume(short v, unsigned int vol)
+{
+  if ((vol & 0xffff) > 0x20) {
+    vol &= 0xffff0020;
+  }
+  if ((vol >> 16) > 0x20) {
+    vol &= 0x20ffff;
+  }
+  D_802A4920[v].baseVol = vol;
 }

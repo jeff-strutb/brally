@@ -424,3 +424,6 @@ va,name,kind
 802252EC,BrMat4Transpose,func
 802533F4,BrPaintPresetApply,func
 8024D7D8,BrPaintGet,func
+802578F4,BrMusicStop,func
+80257B78,BrSfxVoicePlay,func
+80257BE4,BrSfxVoiceVolume,func
