@@ -3730,4 +3730,3 @@ func_va,offset,value,comment
 0x1000C9E0,0xF4,0x00067A88,lockstep ftol (orig operand 0x10074560)
 0x1000C9E0,0x10D,0x00067A6F,lockstep ftol (orig operand 0x10074560)
 0x1000C9E0,0x123,0x00067A59,lockstep ftol (orig operand 0x10074560)
-0x1006D6B0,0x186,0xFFF9B526,lockstep BrStub8B80_1p (orig operand 0x10008d60)
