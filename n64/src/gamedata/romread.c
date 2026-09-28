@@ -83,6 +83,109 @@ int BrRomReadWord(int param_1)
   return D_8031B330;
 }
 
+/* WHAT IT DOES: Run-length encode stride interleaved byte planes of src
+ * (len bytes) into dst, the format BrRlePlanesUnpack reads: per plane a
+ * 4-byte length then packets, a negative count c followed by c literal
+ * bytes, or a count c >= 0 followed by one byte repeated c + 3 times; runs
+ * of three or more become repeats, and runs and literal stretches are
+ * capped so their counts fit a byte.  Answers the length written, or -1
+ * when dst (max bytes) would overflow.  The PC twin's BrRleEncode
+ * (br_texblit.c) is the same goto-shaped source; here the chars are signed,
+ * the header check is against sizeof (an unsigned compare), and the locals
+ * are declared so that cur, the plane counter and the length word land in
+ * the ROM's frame slots. */
+/* @implements 0x8021C878 tgr BrRleEncode */
+int BrRleEncode(char *dst, int dstMax, signed char *src, int srcLen, int stride)
+{
+  int b;
+  int c;
+  int d;
+  int e;
+  int h;
+  int i;
+  int j;
+  int a;
+  int k;
+  int g;
+  int l;
+  int f;
+
+  b = stride * 3;
+  l = stride * 0x84;
+  c = stride << 7;
+  k = 0;
+  i = 0;
+  e = 0;
+  d = 0;
+  h = 0xffffff00;
+  g = 0;
+  j = 0;
+  f = 0;
+  if (1) goto again;
+scan:
+  a = src[e];
+  if (!((a == h) && (e - i <= l) && (e - k <= c) && (e < srcLen))) {
+    if (e - i >= b) {
+      if (k != i) {
+flush:
+        if (d + 1 + (i - k) / stride > dstMax) {
+          return -1;
+        }
+        dst[d] = (char)(-(i - k) / stride);
+        d = d + 1;
+        while (k < i) {
+          dst[d] = src[k];
+          d = d + 1;
+          k = k + stride;
+        }
+      }
+      if (i != e) {
+        if (d + 2 > dstMax) {
+          return -1;
+        }
+        dst[d] = (char)((e - i - b) / stride);
+        d = d + 1;
+        dst[d] = (char)h;
+        d = d + 1;
+      }
+      k = e;
+      i = e;
+      if (e >= srcLen) {
+        f = d - (j + 4);
+        memcpy(dst + j, &f, sizeof(f));
+        g = g + 1;
+        src = src + 1;
+        if (g >= stride) {
+          return d;
+        }
+newchan:
+        if (d + sizeof(f) > dstMax) {
+          return -1;
+        }
+        j = d;
+        d = d + 4;
+        e = 0;
+        k = 0;
+        i = 0;
+        h = 0xffffff00;
+      }
+    } else {
+      i = e;
+      if (e >= srcLen) goto flush;
+    }
+  } else {
+    if (e - k > c) {
+      i = e;
+      goto flush;
+    }
+  }
+  h = a;
+  e = e + stride;
+  goto scan;
+again:
+  goto newchan;
+}
+
 /* WHAT IT DOES: Unpack n run-length-coded byte planes into dst, plane k
  * going to every n-th byte from dst + k.  Each plane is a 4-byte length and
  * then runs: a negative count -c copies the next c bytes, a count c >= 0
