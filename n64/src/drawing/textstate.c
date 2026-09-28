@@ -22,6 +22,9 @@ extern int D_8028A850;
 extern int D_802A187C[];
 extern int D_802A17A0[];
 extern unsigned char D_802A1740[];
+extern int D_8028AAB0;
+extern int D_8028AAB4;
+void BrTextPrint(char *s, int x, int y);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Draw the following text in the highlight colours (orange
@@ -116,6 +119,18 @@ void BrTextSetColoursRGB(unsigned char *param_1,unsigned char *param_2)
 void BrTextSetFont(int param_1)
 {
   D_803519D8 = param_1;
+}
+
+/* WHAT IT DOES: Print a string at a position given in fractions of the
+ * screen (y measured up from the bottom), nudged in from the edges.
+ * RESIDUE (1): the ROM multiplies y * height with y as the first operand;
+ * every spelling here (operand order, casts, locals, 80 permuter compiles)
+ * puts the converted height first. */
+/* @implements 0x8022F694 tgr BrTextPrintAt */
+void BrTextPrintAt(char *str, float x, float y, float unused)
+{
+  BrTextPrint(str, (int)(D_8028AAB0 * x * 0.0009267578134313226f) + 8,
+              D_8028AAB4 - (int)(D_8028AAB4 * y * 0.0012148438254371285f) - 9);
 }
 
 /* WHAT IT DOES: Print a string at (x, y) in the current font, honouring the
