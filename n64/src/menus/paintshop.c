@@ -454,6 +454,44 @@ void BrPaintPlot(int x, int y, unsigned char c)
   }
 }
 
+/* WHAT IT DOES: Fill the decal texels under a screen rectangle (either
+ * corner order) with the chosen colour: screen to texel is a quarter, with
+ * y turned upside down.
+ * RESIDUE (10): the ROM computes the x differences straight into the
+ * saved registers that later hold the ordered corners, so s3/s4 are saved
+ * before the y sum; ours uses temporaries.  Same instructions otherwise. */
+/* @implements 0x8024F7D4 tgr BrPaintFillRect */
+void BrPaintFillRect(int sx0, int sy0, int sx1, int sy1)
+{
+  int x1;
+  int x0;
+  int y1;
+  int x;
+  int t;
+  int y;
+
+  sx0 = (sx0 - D_8028DB94.x) >> 2;
+  sy0 = (D_8028DB94.y + D_8028DB94.h - sy0) >> 2;
+  sx1 = (sx1 - D_8028DB94.x) >> 2;
+  x0 = sx0;
+  y1 = (D_8028DB94.y + D_8028DB94.h - sy1) >> 2;
+  x1 = sx1;
+  if (sx1 < sx0) {
+    x0 = sx1;
+    x1 = sx0;
+  }
+  if (y1 < sy0) {
+    t = sy0;
+    sy0 = y1;
+    y1 = t;
+  }
+  for (y = sy0; y < y1; y++) {
+    for (x = x0; x < x1; x++) {
+      BrPaintPlot(x, y, D_8028DB58);
+    }
+  }
+}
+
 /* WHAT IT DOES: Paint a filled disc of radius r in the chosen colour
  * centred on (x, y) -- in texels, or in screen pixels over the paint area
  * when asked (a quarter scale, y flipped) -- as horizontal spans from a
