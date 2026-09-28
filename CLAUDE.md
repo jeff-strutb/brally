@@ -48,7 +48,7 @@ carry the whole preamble.
 
 ```bash
 python3 tools/install_hooks.py    # once per clone
-python3 tools/fileaudit.py        # ratchets: undescribed 0, batches 58, stranded 11
+python3 tools/fileaudit.py        # ratchets: undescribed 0, batches 0, stranded 0
 ```
 
 The pre-commit hook refuses a new `@implements` without `WHAT IT DOES:`, a new

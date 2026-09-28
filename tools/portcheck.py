@@ -257,11 +257,23 @@ def materialise_baseline(ref, rels, mapping):
 # ----------------------------------------------------------------- main -----
 
 def default_sources():
+    """What build.sh compiles: every src/core module, except that a port TU
+    under ports/macos/core/ replaces its src counterpart, plus the port's own
+    ports/macos/core/ and ports/macos/legacy/ files."""
     out = []
+    port_core = os.path.join(ROOT, 'ports', 'macos', 'core')
     for dirpath, _dirs, files in os.walk(os.path.join(ROOT, 'src', 'core')):
         for f in files:
-            if f.endswith('.c'):
+            if not f.endswith('.c') or f.startswith('_'):
+                continue
+            rel = os.path.relpath(os.path.join(dirpath, f), os.path.join(ROOT, 'src', 'core'))
+            if not os.path.exists(os.path.join(port_core, rel)):
                 out.append(os.path.relpath(os.path.join(dirpath, f), ROOT))
+    for sub in ('core', 'legacy'):
+        for dirpath, _dirs, files in os.walk(os.path.join(ROOT, 'ports', 'macos', sub)):
+            for f in files:
+                if f.endswith('.c'):
+                    out.append(os.path.relpath(os.path.join(dirpath, f), ROOT))
     return sorted(out)
 
 

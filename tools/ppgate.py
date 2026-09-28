@@ -100,6 +100,12 @@ def main():
         if r not in snap:
             print('  NEW     %s' % r)
             continue
+        # cl under Wine very occasionally returns a short /EP stream when the
+        # machine is loaded; a mismatch is re-run twice before it counts.
+        for _ in range(2):
+            if snap[r] == now.get(r):
+                break
+            now[r] = pp(r)[1]
         if snap[r] != now.get(r):
             print('  CHANGED %s' % r)
             bad += 1
