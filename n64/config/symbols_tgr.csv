@@ -376,3 +376,7 @@ va,name,kind
 8021F158,BrCarTickMessages,func
 80200634,BrDemoRaceStartB,func
 8025C27C,BrCrListPrintCount,func
+802560DC,BrQsortSelect,func
+802561A8,BrQsortSwap8,func
+802561E4,BrQsortSwap16,func
+80256228,BrQsortSwap32,func
