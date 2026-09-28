@@ -4,7 +4,7 @@
 
 /* -- declarations -- */
 void BrVolumesApply(void);
-int func_80214A88(int param_1);
+int BrRumbleInsertPrompt(int anyPad);
 int func_8021CB4C();
 void func_80223750(float param_1,float param_2);
 void func_802237D0(float param_1,float param_2);
@@ -88,6 +88,35 @@ extern BrPfs D_8031A3F8[4];
 extern char D_803163E0[];
 extern int D_8026FF08;
 /* -- end declarations -- */
+
+/* WHAT IT DOES: Ask the player to swap the Controller Pak for the Rumble
+ * Pak: draw the message box and its five lines, then answer 1 (and consume
+ * the press) once a confirm button (mask 0x8030) is down on the player's
+ * pad -- or on either of the first two pads when anyPad is set -- else 0. */
+/* @implements 0x80214A88 tgr BrRumbleInsertPrompt */
+int BrRumbleInsertPrompt(int anyPad)
+{
+  int i;
+
+  BrTextHighlightOff();
+  BrTextAlignLeft();
+  BrTextSetFont(12);
+  BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
+  func_80246F90(0x73, 0xb4, 0x19a, 0x98, 3, 0, 0, 0x80, 0x80, 0x80);
+  BrTextPrint("IF THE RUMBLE PAK IS TO BE USED,", 0x41, 0x6a);
+  BrTextPrint("REMOVE THE CONTROLLER PAK AND", 0x41, 0x77);
+  BrTextPrint("INSERT THE RUMBLE PAK INTO THE", 0x41, 0x84);
+  BrTextPrint("CONTROLLER.  PRESS THE A BUTTON", 0x41, 0x91);
+  BrTextPrint("TO CONTINUE.", 0x41, 0x9e);
+  for (i = 0; i < 2; i++) {
+    if (anyPad == 0 && i != D_80271FA8) continue;
+    if (*(unsigned int *)((char *)&D_8036A8E0 + i * 0x15c) & 0x8030) {
+      BrPadConsume((unsigned int *)((char *)&D_8036A8E0 + i * 0x15c), 0x8030);
+      return 1;
+    }
+  }
+  return 0;
+}
 
 /* WHAT IT DOES: Probe every connected controller for a Rumble Pak: each one
  * that answers is marked present and its motor stopped.  Pak access is
@@ -544,7 +573,7 @@ LAB_802162c8:
     }
     break;
   case '\n':
-    iVar4 = func_80214A88(0);
+    iVar4 = BrRumbleInsertPrompt(0);
     if (iVar4 != 0) {
       D_802724FC = '\0';
       iVar4 = func_80262370(&D_80272D48,D_80271FA8 * 0x68 + -0x7fce5c08,D_80271FA8);
