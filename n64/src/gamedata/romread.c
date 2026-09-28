@@ -61,6 +61,7 @@ typedef struct BrModel {
   BrModelParts *parts;          /* 0x04 */
   BrModelDl dls[1];             /* 0x08  nDl of them */
 } BrModel;
+void *memcpy(void *d, const void *s, int n);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Read the unpacked size of a packed asset in ROM: the second
@@ -80,6 +81,64 @@ int BrRomReadWord(int param_1)
 {
   func_8021C748(&D_8031B330,param_1,4);
   return D_8031B330;
+}
+
+/* WHAT IT DOES: Unpack n run-length-coded byte planes into dst, plane k
+ * going to every n-th byte from dst + k.  Each plane is a 4-byte length and
+ * then runs: a negative count -c copies the next c bytes, a count c >= 0
+ * repeats the next byte c + 3 times.  Answers the last plane's output
+ * offset; max is not checked. */
+/* @implements 0x8021CB4C tgr BrRlePlanesUnpack */
+int BrRlePlanesUnpack(unsigned char *dst, int max, signed char *data, int n)
+{
+  int out;
+  int in;
+  int i;
+  int end;
+  int c;
+  int count;
+  int v;
+  int len;
+  signed char *src;
+
+  out = 0;
+  in = 0;
+  i = 0;
+  if (n > 0) {
+    src = data;
+    do {
+      out = 0;
+      memcpy(&len, src, 4);
+      in += 4;
+      i++;
+      src += 4;
+      end = in + len;
+      while (in < end) {
+        c = *src;
+        in++;
+        src++;
+        if (c < 0) {
+          for (count = -c; count != 0; count--) {
+            dst[out] = *src;
+            out += n;
+            in++;
+            src++;
+          }
+        } else {
+          count = c + 3;
+          c = *src;
+          in++;
+          src++;
+          for (; count != 0; count--) {
+            dst[out] = c;
+            out += n;
+          }
+        }
+      }
+      dst++;
+    } while (i != n);
+  }
+  return out;
 }
 
 /* WHAT IT DOES: Correct one address inside data just loaded from ROM: if it
