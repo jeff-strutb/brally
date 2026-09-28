@@ -86,7 +86,29 @@ int func_80267930(BrPfs *pfs, int file, BrPfsState *state);
 extern BrPfs D_80369EC0[2];
 extern BrPfs D_8031A3F8[4];
 extern char D_803163E0[];
+extern int D_8026FF08;
 /* -- end declarations -- */
+
+/* WHAT IT DOES: Probe every connected controller for a Rumble Pak: each one
+ * that answers is marked present and its motor stopped.  Pak access is
+ * flagged busy meanwhile.
+ * RESIDUE (51): ours hoists the rumble-flag table's address into a saved
+ * register; the ROM rebuilds it inside the loop (one fewer saved
+ * register). */
+/* @implements 0x80214BEC tgr BrRumbleProbe */
+void BrRumbleProbe(void)
+{
+  int i;
+
+  D_802A4BE8 = 0;
+  for (i = 0; i < D_8026FF08; i++) {
+    if (func_80262370(&D_80272D48, (int)&D_8031A3F8[i], i) == 0) {
+      func_80261F20((int)&D_8031A3F8[i]);
+      (&D_8031B1E8)[i] = 1;
+    }
+  }
+  D_802A4BE8 = 1;
+}
 
 /* WHAT IT DOES: Check the Controller Pak for the save screens: initialise
  * it, and report when a different pak has been inserted, asking the player
