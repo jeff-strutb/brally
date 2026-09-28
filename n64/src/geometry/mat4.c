@@ -65,6 +65,21 @@ void BrMat4TransformPoint4(float out[4], float v[3], float m[4][4])
   out[3] = (x * m[0][3] + y * m[1][3] + z * m[2][3]) + m[3][3];
 }
 
+/* WHAT IT DOES: Transform a point given as three shorts by a 4x4 matrix,
+ * keeping w: out = (x y z 1) M. */
+/* @implements 0x80224EA8 tgr BrMat4TransformShort */
+void BrMat4TransformShort(float out[4], short v[3], float m[4][4])
+{
+  float x = v[0];
+  float y = v[1];
+  float z = v[2];
+
+  out[0] = (x * m[0][0] + y * m[1][0] + z * m[2][0]) + m[3][0];
+  out[1] = (x * m[0][1] + y * m[1][1] + z * m[2][1]) + m[3][1];
+  out[2] = (x * m[0][2] + y * m[1][2] + z * m[2][2]) + m[3][2];
+  out[3] = (x * m[0][3] + y * m[1][3] + z * m[2][3]) + m[3][3];
+}
+
 /* WHAT IT DOES: Project a point through a 4x4 matrix (row vectors,
  * translation in row 3): transform and divide by w.  The PC twin is
  * BrVec3Project (br_mat.c). */
