@@ -1053,6 +1053,22 @@ void BrSceneSetupFrame(const BrHudView *aViews)
 /* =====================================================================
  * 0x10019490
  * ===================================================================== */
+/* g_weather is the port's gathering of scattered originals.  The particle
+ * randomiser below reads its two fields as the separate globals they are, by
+ * their DAT_ names: the count at 0x104ADD38 and the particle array at
+ * 0x104ADD50, whose end (&a[2][0][2] = 0x104AF5CC) is the loop bound.  In the
+ * struct that end fell on windGain's offset, so one relocation named two
+ * different original variables. */
+#ifdef BR_MATCHING_BUILD
+extern int32_t DAT_104add38;                                              /* cParticles */
+extern int16_t DAT_104add50[BR_PARTICLE_LAYERS][BR_PARTICLE_STRIDE][3];   /* aParticles */
+#define WX_cParticles DAT_104add38
+#define WX_aParticles DAT_104add50
+#else
+#define WX_cParticles g_weather.cParticles
+#define WX_aParticles g_weather.aParticles
+#endif
+
 /* WHAT IT DOES: scatters the rain or snow to random positions, which is what
  * gets the weather started and what resets it when the view jumps. Each layer
  * is filled with 512 particles; the handful of spare slots past that are left
@@ -1063,12 +1079,12 @@ void BrWeatherRandomiseParticles(void)
 {
     int layer, i;
 
-    g_weather.cParticles = 0x200;
+    WX_cParticles = 0x200;
 
     for (layer = 0; layer < BR_PARTICLE_LAYERS; ++layer) {
         /* Init p to [layer][0][2]: orig uses [p-4],[p-2],[p+0] writes,
          * generating the store sequence 0xFC,0xFE,0x06 that the binary has. */
-        int16_t *p = &g_weather.aParticles[layer][0][2];
+        int16_t *p = &WX_aParticles[layer][0][2];
         for (i = 0; i < BR_PARTICLES_PER_LAYER; ++i) {
             p[-2] = (int16_t)BrRandom();
             p[-1] = (int16_t)BrRandom();
