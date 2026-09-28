@@ -23,7 +23,8 @@ public:
 };
 
 extern "C" {
-char s_err[1];
+extern "C" char DAT_1007b52c[1];   /* the original global; was a per-file stand-in definition */
+#define s_err DAT_1007b52c
 void BrLogFatalPrintf(char *, ...);
 }
 

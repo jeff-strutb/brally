@@ -128,4 +128,15 @@ def check(refslots, yielded, best, orig_path, origdir, rel32):
             bad.append((key[-1], 'one symbol reaches %d original addresses: %s' % (
                 len(m), ' | '.join('%08X<-%s' % (b, ','.join(w.split()[0] for w in ws[:3]))
                                    for b, ws in sorted(m.items())))))
+    if os.environ.get('BR_REFSLOT_DUMP'):
+        import json
+        json.dump([[k[0], k[-1], ['%08X' % b for b in m], sum(len(w) for w in m.values()), os.path.basename(k[1]) if k[0] == 'static' else '']
+                   for k, m in bases.items()], open(os.environ['BR_REFSLOT_DUMP'], 'w'))
+    if os.environ.get('BR_REFSLOT_LIST'):
+        cnt = collections.Counter()
+        for (path, sy, t, off, rt, va, plen, a4, secs, syms, d) in refslots:
+            if (va, off) in seen and path in chosen.get(va, ()):
+                cnt[t['name'] if t else '?'] += 1
+        for n, k in cnt.most_common(int(os.environ['BR_REFSLOT_LIST'])):
+            print('    refslot %5d %s' % (k, n))
     return len(seen), bad

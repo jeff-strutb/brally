@@ -47,12 +47,15 @@ typedef char chk_sz[sizeof(Phase) == 0xC8 ? 1 : -1];
 typedef char chk_c[(unsigned)&((Phase *)0)->f0C == 0xC ? 1 : -1];
 typedef char chk_68[(unsigned)&((Phase *)0)->f68 == 0x68 ? 1 : -1];
 
-Phase *g_slot;
+extern "C" Phase *DAT_10ac5cac;   /* the original global; was a per-file stand-in definition */
+#define g_slot DAT_10ac5cac
 Phase *g_cur;
-int g_flag;
+extern "C" int DAT_10ac408c;   /* the original global; was a per-file stand-in definition */
+#define g_flag DAT_10ac408c
 int g_host;
 void *g_pHost;
-int g_mode;
+extern "C" int DAT_100a9360;   /* the original global; was a per-file stand-in definition */
+#define g_mode DAT_100a9360
 int g_inited;
 Obj *g_obj;
 

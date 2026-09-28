@@ -38,7 +38,8 @@ public:
 
 typedef char chk_sub[(unsigned)&((GameObj *)0)->pSub == 0x2AE8 ? 1 : -1];
 
-int g_mode;
+extern "C" int DAT_10ac5bd4;   /* the original global; was a per-file stand-in definition */
+#define g_mode DAT_10ac5bd4
 Phase *g_cur;
 Phase *g_2948;
 Phase *g_298C;

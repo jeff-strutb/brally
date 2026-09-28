@@ -42,7 +42,8 @@ typedef char chk_sub[(unsigned)&((GameObj *)0)->pSub == 0x2AE8 ? 1 : -1];
 Phase *g_5CC0;
 Phase *g_5CB4;
 Phase *g_cur;
-int g_mode;
+extern "C" int DAT_100a9360;   /* the original global; was a per-file stand-in definition */
+#define g_mode DAT_100a9360
 
 int BrOpt4F00(GameObj *pGame)
 {

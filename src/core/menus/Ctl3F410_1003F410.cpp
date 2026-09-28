@@ -38,9 +38,11 @@ public:
 
 typedef char chk_sz[sizeof(Phase) == 0xC8 ? 1 : -1];
 
-Phase *g_slot;
+extern "C" Phase *DAT_10ac5c90;   /* the original global; was a per-file stand-in definition */
+#define g_slot DAT_10ac5c90
 Phase *g_cur;
-Phase *g_slot2;
+extern "C" Phase *DAT_10ac5cd0;   /* the original global; was a per-file stand-in definition */
+#define g_slot2 DAT_10ac5cd0
 
 /* EnterFn was a stand-in; the original calls FUN_1004cba0 (?FUN_1004cba0@@YAHPAVGameUi@@@Z).  Declared under
  * its real symbol so the relocation resolves by name. */

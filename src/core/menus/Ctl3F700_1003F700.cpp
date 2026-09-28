@@ -40,9 +40,11 @@ typedef char chk_ent[(unsigned)&((Phase *)0)->pfnEnter == 4 ? 1 : -1];
 typedef char chk_c[(unsigned)&((Phase *)0)->f0C == 0xC ? 1 : -1];
 typedef char chk_68[(unsigned)&((Phase *)0)->f68 == 0x68 ? 1 : -1];
 
-Phase *g_slot;
+extern "C" Phase *DAT_10ac5c64;   /* the original global; was a per-file stand-in definition */
+#define g_slot DAT_10ac5c64
 Phase *g_cur;
-int g_mode;
+extern "C" int DAT_100a9360;   /* the original global; was a per-file stand-in definition */
+#define g_mode DAT_100a9360
 int g_AF2094;
 int g_AF3CE4;
 int g_0ABAA4;

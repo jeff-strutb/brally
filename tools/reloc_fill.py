@@ -22,6 +22,7 @@ Usage:
 import csv
 import glob
 import os
+import re
 import struct
 import sys
 
@@ -149,6 +150,13 @@ def resolve(sym, fnmap, glmap, learned=True):
     a = _addr_in_name(s)
     if a is not None:
         return a
+    # A file static carries a per-compile `$S<n>` suffix; the map keys it by
+    # its source name (config/globals_glide.csv lists only names unique in the
+    # tree, so the object is implied).
+    if '$S' in s:
+        st = re.sub(r'\$S\d+$', '', s)
+        if st in glmap:
+            return glmap[st]
     if not learned:
         return None
     if _LEARNED is None:

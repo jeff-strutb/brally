@@ -35,12 +35,15 @@ public:
 typedef char chk_sz[sizeof(Phase) == 0xC8 ? 1 : -1];
 typedef char chk_hk[(unsigned)&((Phase *)0)->pfnHook == 8 ? 1 : -1];
 
-Phase *g_slot;
+extern "C" Phase *DAT_10ac5ca8;   /* the original global; was a per-file stand-in definition */
+#define g_slot DAT_10ac5ca8
 Phase *g_cur;
 Phase *g_hookOwner;
 int g_host;
-int g_kind;
-int g_flag;
+extern "C" int DAT_10226a48;   /* the original global; was a per-file stand-in definition */
+#define g_kind DAT_10226a48
+extern "C" int DAT_10ac5bf0;   /* the original global; was a per-file stand-in definition */
+#define g_flag DAT_10ac5bf0
 
 /* EnterFn was a stand-in; the original calls BrOptFn10057C10 (?BrOptFn10057C10@@YAHPAVGameUi@@@Z).  Declared under
  * its real symbol so the relocation resolves by name. */
