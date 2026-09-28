@@ -409,3 +409,4 @@ va,name,kind
 8026EAD0,gspF3DEX_fifoTextStart,data
 802ABC00,gspF3DEX_fifoDataStart,data
 8021D84C,BrAnimUpdate,func
+8022FFB4,BrCarDrawWheels,func
