@@ -70,27 +70,9 @@ static void BrPutU32(uint8_t *p, uint32_t v)
  * header it can only fill in at the end, and clears the directory it will
  * build up as members are added. */
 #ifdef BR_MATCHING_BUILD
-/* RESIDUE 6 masked bytes, RAW 0+0 / REGNORM 0+0 -- every instruction the
- * original has, one of them in a different PLACE.  The original sinks
- * `mov [g_BrPodFile],eax` past the three fseek argument pushes, into the
- * gap between the last push and the `call`; we emit it before the pushes.
- * DEAD 2026-09-03, do not re-run: assigning the global AFTER the fseek
- * (VC5 then parks the handle in esi across the call -- 33 diffs, an extra
- * push/pop pair) and dropping the local so the global is both the
- * assignment target and the fseek argument (identical 6).  Store
- * placement inside a call sequence is not source-reachable here. */
-/* @t4-pass 0x10008BA0 1 2026-09-07 probes 29 bytes 56 insns 18 regions 2 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10008BA0 2 2026-09-07 probes 29 bytes 56 insns 18 regions 2 rows 0 census yes  (tools/crank.py) */
-/* @t3 0x10008BA0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 56/56 insns 18/18 rows 0+0 regions 2 oracle UNCLASSIFIED
- * @t3-effort passes 2 zero-movement 1 2
- * residue is register colouring only: identical register-blind instruction
- * multiset (rows 0+0), 2 masked regions;
- * every row pairs under t3.py's canonical classes.  Effort: 2 counted
- * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
- * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind (project rule 12). */
-/* @implements 0x10008BA0 glide BrPodWriteOpen */
+/* Not tagged: the Glide match is the C++ member in
+ * src/core/gamedata/BrPodWriteOpen_10008BA0.cpp.  This __fastcall copy stays
+ * compiled so BrPodWriteAdd below keeps the TU state it matched with. */
 int __fastcall BrPodWriteOpen(void *pThis, int _edx, const char *pszPath)
 {
     FILE *pFile = BrPodStreamOpen((char *)pThis + 4, _edx, pszPath);
@@ -106,7 +88,7 @@ int __fastcall BrPodWriteOpen(void *pThis, int _edx, const char *pszPath)
  * file, skip past the space its header will occupy, and start with an empty
  * directory. Unlike the original it reports a failed open instead of
  * carrying on with a null file. */
-/* @implements 0x10008BA0 glide BrPodWriteOpen */
+/* port-only body; Glide match is src/core/gamedata/BrPodWriteOpen_10008BA0.cpp */
 int BrPodWriteOpen(BrPodWriter *pW, const char *pszPath)
 {
     /* DEVIATION: the original opens through the stream object at +4
@@ -228,18 +210,8 @@ void BrPodWriteAdd(BrPodWriter *pW, const char *pszName,
  * end, rewinds to the front to fill in the header with the magic word,
  * member count and directory position, and closes the file. */
 #ifdef BR_MATCHING_BUILD
-/* @t4-pass 0x10008C80 1 2026-09-07 probes 101 bytes 160 insns 48 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10008C80 2 2026-09-07 probes 101 bytes 160 insns 48 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t3 0x10008C80 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 160/160 insns 48/48 rows 0+0 regions 1 oracle EQUIVALENT
- * @t3-effort passes 2 zero-movement 1 2
- * residue is register colouring only: identical register-blind instruction
- * multiset (rows 0+0), 1 masked region;
- * every row pairs under t3.py's canonical classes.  Effort: 2 counted
- * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
- * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind (project rule 12). */
-/* @implements 0x10008C80 glide BrPodWriteClose */
+/* Not tagged: the Glide match is the C++ member in
+ * src/core/gamedata/BrPodWriteClose_10008C80.cpp. */
 void __fastcall BrPodWriteClose(void *pThis)
 {
     uint32_t offDir;
@@ -267,7 +239,7 @@ void __fastcall BrPodWriteClose(void *pThis)
  * out record by record, rewind and fill in the header with the magic word,
  * member count and directory position, then close the file. Serialised field
  * by field rather than blitted, so the file is the same on any host. */
-/* @implements 0x10008C80 glide BrPodWriteClose */
+/* port-only body; Glide match is src/core/gamedata/BrPodWriteClose_10008C80.cpp */
 void BrPodWriteClose(BrPodWriter *pW)
 {
     uint8_t  aRec[BR_POD_DIR_STRIDE];
