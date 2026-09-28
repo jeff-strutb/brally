@@ -38,8 +38,15 @@ int g_guardA;
 int g_guardB;
 int g_mode;
 
-void EnterFn(Phase *);
-void NetFn(void);
+/* EnterFn was a stand-in; the original calls FUN_1004fea0 (?FUN_1004fea0@@YAHPAVGameUi@@@Z).  Declared under
+ * its real symbol so the relocation resolves by name. */
+class GameUi;
+int FUN_1004fea0(GameUi *);
+#define EnterFn ((void (*)(Phase *))FUN_1004fea0)
+/* NetFn was a stand-in; the original calls C function FUN_100356b0.  Declared under
+ * its real symbol so the relocation resolves by name. */
+extern "C" void FUN_100356b0(void);
+#define NetFn ((void (*)(void))FUN_100356b0)
 
 class Ctl3D3C0 {
 public:

@@ -37,7 +37,11 @@ Phase *g_cur;
 int g_c20;
 int g_c24;
 
-void EnterFn(Phase *);
+/* EnterFn was a stand-in; the original calls FUN_10052a60 (?FUN_10052a60@@YAHPAVGameUi@@@Z).  Declared under
+ * its real symbol so the relocation resolves by name. */
+class GameUi;
+int FUN_10052a60(GameUi *);
+#define EnterFn ((void (*)(Phase *))FUN_10052a60)
 
 class Ctl3E250 {
 public:

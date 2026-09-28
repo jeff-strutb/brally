@@ -35,9 +35,16 @@ Phase *g_slot;
 Phase *g_cur;
 char g_buf;
 
-void EnterFn(Phase *);
+/* EnterFn was a stand-in; the original calls BrUiMultiEnter_1004F290 (?BrUiMultiEnter_1004F290@@YAHPAVGameUi@@@Z).  Declared under
+ * its real symbol so the relocation resolves by name. */
+class GameUi;
+int BrUiMultiEnter_1004F290(GameUi *);
+#define EnterFn ((void (*)(Phase *))BrUiMultiEnter_1004F290)
 void ResetBuf(void *);
-void PrepFn(void);
+/* PrepFn was a stand-in; the original calls C function BrSub1003E510.  Declared under
+ * its real symbol so the relocation resolves by name. */
+extern "C" void BrSub1003E510(void);
+#define PrepFn ((void (*)(void))BrSub1003E510)
 
 class Ctl3D140 {
 public:

@@ -31,7 +31,10 @@ volatile int g_id;
 int g_226A2C;
 
 void InitPkt(Pkt *);
-int SendPkt(void *, Pkt *);
+/* SendPkt was a stand-in; the original calls C function BrCountedNetSend.  Declared under
+ * its real symbol so the relocation resolves by name. */
+extern "C" void BrCountedNetSend(void);
+#define SendPkt ((int (*)(void *, Pkt *))BrCountedNetSend)
 
 int BrNetSend4AD0(void *dest, int a1, int a2, unsigned char r,
                   unsigned char g, unsigned char b, int a6,

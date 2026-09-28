@@ -49,8 +49,16 @@ int g_0ABAA4;
 char g_5BC8E0;
 Phase *g_hookObj;
 
-void EnterFn(Phase *);
-int HookFn(void *);
+/* EnterFn was a stand-in; the original calls BrPhaseEnterPlaceholder_1004B430 (?BrPhaseEnterPlaceholder_1004B430@@YAHPAVGameUi@@@Z).  Declared under
+ * its real symbol so the relocation resolves by name. */
+class GameUi;
+int BrPhaseEnterPlaceholder_1004B430(GameUi *);
+#define EnterFn ((void (*)(Phase *))BrPhaseEnterPlaceholder_1004B430)
+/* HookFn was a stand-in; the original calls BrOpt4CB0 (?BrOpt4CB0@@YAHPAVGameObj@@@Z).  Declared under
+ * its real symbol so the relocation resolves by name. */
+class GameObj;
+int BrOpt4CB0(GameObj *);
+#define HookFn ((int (*)(void *))BrOpt4CB0)
 void ResetBuf(void);
 void Fn08D60(void);
 void Fn37660(void);

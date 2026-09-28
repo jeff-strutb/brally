@@ -39,7 +39,11 @@ Phase *g_slot;
 Phase *g_cur;
 char g_buf;
 
-void EnterFn(Phase *);
+/* EnterFn was a stand-in; the original calls BrExt_1004F2B0 (?BrExt_1004F2B0@@YAHPAVGameUi@@@Z).  Declared under
+ * its real symbol so the relocation resolves by name. */
+class GameUi;
+int BrExt_1004F2B0(GameUi *);
+#define EnterFn ((void (*)(Phase *))BrExt_1004F2B0)
 int CdCheck(void);
 char *GetStr(int);
 void ResetBuf(void *);

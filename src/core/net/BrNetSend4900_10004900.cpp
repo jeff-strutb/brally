@@ -30,7 +30,10 @@ typedef char chk_pkt[sizeof(Pkt) == 0x214 ? 1 : -1];
 volatile int g_id;
 unsigned char g_226E7C;
 
-int SendPkt(void *, Pkt *);
+/* SendPkt was a stand-in; the original calls C function BrCountedNetSend.  Declared under
+ * its real symbol so the relocation resolves by name. */
+extern "C" void BrCountedNetSend(void);
+#define SendPkt ((int (*)(void *, Pkt *))BrCountedNetSend)
 
 int BrNetSend4900(void *dest, int a1, int a2, int a3, int a4,
                   char *name, unsigned char flags)

@@ -40,7 +40,11 @@ typedef char chk_68[(unsigned)&((Phase *)0)->f68 == 0x68 ? 1 : -1];
 Phase *g_slot;
 Phase *g_cur;
 
-void EnterFn(Phase *);
+/* EnterFn was a stand-in; the original calls BrExt_1004F700 (?BrExt_1004F700@@YAHPAVGameUi@@@Z).  Declared under
+ * its real symbol so the relocation resolves by name. */
+class GameUi;
+int BrExt_1004F700(GameUi *);
+#define EnterFn ((void (*)(Phase *))BrExt_1004F700)
 
 class CtlEF90 {
 public:

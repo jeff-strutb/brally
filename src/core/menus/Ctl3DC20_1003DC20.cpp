@@ -40,7 +40,11 @@ int g_host;
 int g_inited;
 int g_kind;
 
-void EnterFn(Phase *);
+/* EnterFn was a stand-in; the original calls FUN_10051600 (?FUN_10051600@@YAHPAVGameUi@@@Z).  Declared under
+ * its real symbol so the relocation resolves by name. */
+class GameUi;
+int FUN_10051600(GameUi *);
+#define EnterFn ((void (*)(Phase *))FUN_10051600)
 void HostStart(void);
 void HostInit(void);
 void HostGo(void);

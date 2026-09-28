@@ -35,8 +35,14 @@ typedef char chk_sz[sizeof(Phase) == 0xC8 ? 1 : -1];
 Phase *g_slot;
 Phase *g_cur;
 
-void EnterFn(Phase *);
-void TailFn(void);
+/* EnterFn / TailFn were stand-ins; the original calls FUN_100469b0
+ * (?FUN_100469b0@@YAHPAVGameUi@@@Z) and the C function BrExt_1007AC00.
+ * Declared under their real symbols so the relocations resolve by name. */
+class GameUi;
+int FUN_100469b0(GameUi *);
+#define EnterFn ((void (*)(Phase *))FUN_100469b0)
+extern "C" void BrExt_1007AC00(void);
+#define TailFn BrExt_1007AC00
 
 class Ctl3E9B0 {
 public:

@@ -44,7 +44,11 @@ Phase *g_cur;
 int g_src;
 int g_dst;
 
-void EnterFn(Phase *);
+/* EnterFn was a stand-in; the original calls BrExt_10052030 (?BrExt_10052030@@YAHPAVGameUi@@@Z).  Declared under
+ * its real symbol so the relocation resolves by name. */
+class GameUi;
+int BrExt_10052030(GameUi *);
+#define EnterFn ((void (*)(Phase *))BrExt_10052030)
 
 class Ctl3F260 {
 public:
