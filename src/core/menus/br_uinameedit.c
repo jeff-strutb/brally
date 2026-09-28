@@ -34,6 +34,16 @@
 
 #include "slice6_73.h"
 
+/* g_br73 is the port's gathering of separate originals.  The matching build
+ * names the ones used here as the globals they are (config/globals_glide.csv),
+ * so each relocation resolves to its own variable. */
+#ifdef BR_MATCHING_BUILD
+extern int32_t g_brUinAA28EC;   /* 0x10AC5C44 */
+#define BR73_NAA28EC g_brUinAA28EC
+#else
+#define BR73_NAA28EC g_br73.nAA28EC
+#endif
+
 /* --- DUPLICATE OWNERSHIP (host link only) -------------------------------
  * slice6_73 and slice6_70 each independently ported 0x1003E680. Both bodies
  * are faithful; the duplication is a coordination artefact of parallel
@@ -81,7 +91,7 @@ int32_t BrExt_100424D0(void *pArg)
     /* Orig pushes esi/edi only on the strcpy path (after the two early
      * returns), so do not keep named locals that force a prologue save. */
     *(int32_t *)(*(char **)((char *)pArg + 0x2ae8) + 0x70) = 0;
-    g_br73.nAA28EC = 0;
+    BR73_NAA28EC = 0;
     if (g_brAA28D8 != 0 && g_aBrA9D078 != 0) {
         strcpy((char *)g_brPAA29D0 + g_br0AB3F4 * (int32_t)BR61_REC29D0_STRIDE
                + (int32_t)BR61_REC29D0_OFF_NAME, g_aBrA9D078);
@@ -96,7 +106,7 @@ int32_t BrExt_100424D0(void *pArg)
         g_br73.pfnClearSub70(pArg);
     }
 
-    g_br73.nAA28EC = 0;
+    BR73_NAA28EC = 0;
 
     if (g_brAA28D8 == 0) {
         return 1;
