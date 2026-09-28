@@ -115,8 +115,17 @@ def checks_abc(sect):
     try:
         lines = saved.splitlines(True)
         vi, vn = None, -1
+        # Only a name that the image build actually resolves THROUGH the
+        # learned map can prove anything: DAT_ names carry their address and
+        # config/globals_glide.csv names are surveyed, so both are resolved
+        # before the learned map is consulted (tools/reloc_fill.py).
+        from reloc_fill import _addr_in_name
+        gl = os.path.join(ROOT, 'config', 'globals_glide.csv')
+        surveyed = set(r['symbol'] for r in csv.DictReader(open(gl))) if os.path.exists(gl) else set()
         for i, line in enumerate(lines[1:], 1):
             p = line.split(',')
+            if p and (_addr_in_name(p[0]) is not None or p[0].lstrip('_') in surveyed):
+                continue
             if len(p) > 2 and p[2].isdigit() and int(p[2]) > vn:
                 vn, vi = int(p[2]), i
         if vi is None:
@@ -136,6 +145,31 @@ def checks_abc(sect):
               caught, line.strip())
     finally:
         open(LEARNED, 'w').write(saved)
+
+
+def check_c2():
+    """C2. The same mutation on the SURVEYED map, config/globals_glide.csv:
+    poison its first row; the assembled image must differ.  Proves the names
+    written there are checked by the image gate, not decorative."""
+    gl = os.path.join(ROOT, 'config', 'globals_glide.csv')
+    if not os.path.exists(gl):
+        skip('C2. image diff detects a poisoned surveyed address', 'no globals_glide.csv')
+        return
+    saved = open(gl).read()
+    try:
+        lines = saved.splitlines(True)
+        p = lines[1].split(',')
+        victim = p[0]
+        p[1] = '0x%08X' % ((int(p[1], 16) ^ 0x40) & 0xFFFFFFFF)
+        lines[1] = ','.join(p)
+        open(gl, 'w').write(''.join(lines))
+        out = subprocess.run([sys.executable, 'tools/image_build.py'],
+                             cwd=ROOT, capture_output=True, text=True).stdout
+        line = next((l for l in out.splitlines() if 'ASSEMBLED IMAGE' in l), '')
+        check(f'C2. image diff detects a poisoned surveyed address ({victim})',
+              bool(line) and 'ORIGINAL: 0 ' not in line, line.strip())
+    finally:
+        open(gl, 'w').write(saved)
 
 
 def build_glide_corpus(limit=400):
@@ -293,6 +327,7 @@ def main():
     recover_stale()
     sect = section_lookup(os.path.join(ROOT, 'orig', 'BRGlide.dll'))
     checks_abc(sect)
+    check_c2()
     check_d()
     check_e()
 
