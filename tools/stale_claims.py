@@ -4,8 +4,8 @@ C++ lane (or in another C file).
 
 Why this exists: the port bodies in the slice files are tagged by their D3D
 VA. When the Glide match for that same function is split out into its own
-TU -- `src/core/cpp/<VA>.cpp` or `src/core/generated/<VA>.c`, the
-convention the slice files already use -- the slice's tag keeps claiming
+TU -- a C++ `<Name>_<VA>.cpp` or a module .c file under src/core/<area>/
+(generated/ is retired: every body there was refiled) -- the slice's tag keeps claiming
 the VA, so the residue carries a `diff` row for a function that is in fact
 byte-exact. Those phantom rows make the remaining work look bigger than it
 is, and they hide the real targets when you sort by diff count. Fifteen of
