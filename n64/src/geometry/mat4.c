@@ -82,6 +82,21 @@ void BrVec3Project(float out[3], float v[3], float m[4][4])
   out[2] = (x * m[0][2] + y * m[1][2] + z * m[2][2]) * w;
 }
 
+/* WHAT IT DOES: Project a point through a 4x4 matrix onto the screen plane:
+ * x and y divided by w. */
+/* @implements 0x80224F90 tgr BrVec3Project2 */
+void BrVec3Project2(float out[2], float v[3], float m[4][4])
+{
+  float x = v[0];
+  float y = v[1];
+  float z = v[2];
+  float w;
+
+  w = 1.0f / ((x * m[0][3] + y * m[1][3] + z * m[2][3]) + m[3][3]);
+  out[0] = ((x * m[0][0] + y * m[1][0] + z * m[2][0]) + m[3][0]) * w;
+  out[1] = ((x * m[0][1] + y * m[1][1] + z * m[2][1]) + m[3][1]) * w;
+}
+
 /* WHAT IT DOES: Transform a direction by the 3x3 rotation part of a 4x4
  * matrix (no translation). */
 /* @implements 0x802250FC tgr BrMat4RotateDir */
