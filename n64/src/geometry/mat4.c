@@ -48,6 +48,23 @@ void BrMat4TransformPoint4(float out[4], float v[3], float m[4][4])
   out[3] = (x * m[0][3] + y * m[1][3] + z * m[2][3]) + m[3][3];
 }
 
+/* WHAT IT DOES: Project a point through a 4x4 matrix (row vectors,
+ * translation in row 3): transform and divide by w.  The PC twin is
+ * BrVec3Project (br_mat.c). */
+/* @implements 0x80225038 tgr BrVec3Project */
+void BrVec3Project(float out[3], float v[3], float m[4][4])
+{
+  float x = v[0];
+  float y = v[1];
+  float z = v[2];
+  float w;
+
+  w = 1.0f / (x * m[0][3] + y * m[1][3] + z * m[2][3] + m[3][3]);
+  out[0] = (x * m[0][0] + y * m[1][0] + z * m[2][0]) * w;
+  out[1] = (x * m[0][1] + y * m[1][1] + z * m[2][1]) * w;
+  out[2] = (x * m[0][2] + y * m[1][2] + z * m[2][2]) * w;
+}
+
 /* WHAT IT DOES: Transform a direction by the 3x3 rotation part of a 4x4
  * matrix (no translation). */
 /* @implements 0x802250FC tgr BrMat4RotateDir */

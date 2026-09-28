@@ -356,3 +356,4 @@ va,name,kind
 80220358,BrCarSetAngVel,func
 8020CF44,BrTimeFormat,func
 80258EF8,BrMat3Mul,func
+80225038,BrVec3Project,func
