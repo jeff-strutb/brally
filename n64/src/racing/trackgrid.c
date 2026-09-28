@@ -7,6 +7,23 @@
 extern unsigned short *D_80025C6C;
 /* -- end declarations -- */
 
+/* WHAT IT DOES: BrTrackGridCell for a world position: the track grid cell
+ * under (x, y) -- 32 units a cell, 0 to 2048 on each axis -- as its first
+ * entry (low half) and entry count (high half); outside the grid, 0. */
+/* @implements 0x8021E7DC tgr BrTrackGridCellAt */
+unsigned int BrTrackGridCellAt(float x, float y)
+{
+  unsigned short i;
+  int first;
+
+  if (x < 0.0f || x >= 2048.0f || y < 0.0f || y >= 2048.0f) {
+    return 0;
+  }
+  i = (unsigned char)(x / 32.0f) + (unsigned char)(y / 32.0f) * 64;
+  first = D_80025C6C[i];
+  return (D_80025C6C[(unsigned short)(i + 1)] - first) << 16 | first;
+}
+
 /* WHAT IT DOES: Look up the track's 64x64 grid cell (x, y): returns the
  * cell's first entry index in the low half and its entry count in the high
  * half, or 0 outside the grid. */
