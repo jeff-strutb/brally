@@ -251,6 +251,7 @@ va,name,kind
 80228E44,BrStub80228E44,func
 80228E4C,BrPathGates,func
 802290C4,BrPathWalk,func
+802291F8,BrCarEntInit,func
 80229510,BrRankCmpKey,func
 80229550,BrRankUpdate,func
 8022ADCC,BrVarListSave,func
