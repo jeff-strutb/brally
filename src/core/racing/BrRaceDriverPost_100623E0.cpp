@@ -71,7 +71,9 @@ void Driver_623E0::m_100623E0()
         return;
 
     if (pCar->skidLen != 0) {
-        if ((int)(BrAtan2(pCar->skid[0], pCar->skid[1]) * 57.29578f) <= 180)
+        /* radians -> degrees with the original's own float, 0x42652EE0 --
+         * one ULP under what 57.29578f rounds to (0x42652EE1). */
+        if ((int)(BrAtan2(pCar->skid[0], pCar->skid[1]) * 57.2957763671875f) <= 180)
             BrFfbSetDirection(-1);
         else
             BrFfbSetDirection(1);
