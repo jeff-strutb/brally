@@ -1,9 +1,15 @@
 /* br_dllentry.c -- startup: the DLL entry point and the CRT exit glue.
  *
  * Filed out of the address batch slice6_77.c.  This is the module's own
- * bring-up and take-down machinery -- DllMain, the per-DLL atexit list, and
- * the CRT-region stubs and traps that sit beside them -- rather than game
- * code, but it is in the image and it matches, so it lives here.
+ * bring-up and take-down machinery -- DllMain, the per-DLL atexit list and
+ * the array ctor/dtor helpers -- rather than game code, but it is in the
+ * image and it matches, so it lives here.
+ *
+ * Four "functions" that used to be tagged here (0x10073714, 0x10073719,
+ * 0x10073974, 0x10073979) were bytes of the 256-record data table at
+ * 0x10072AE0..0x10073AE0 that happen to decode as `ret` / `call rel32`.  They
+ * matched only because the image gate filled the call's displacement from
+ * the original; they are fenced as data_table in config/fenced.csv now.
  */
 #ifdef BR_MATCHING_BUILD
 #include <excpt.h>   /* GetExceptionInformation, for the array unwinders */
@@ -11,29 +17,6 @@
 extern int DAT_118ef178;
 __declspec(dllimport) int __stdcall DisableThreadLibraryCalls(void *hModule);
 int func_0x10074aec();
-void halt_baddata(void);
-/* WHAT IT DOES: no-op stub (CRT-region placeholder). */
-/* @implements 0x10073714 glide BrNop73714 */
-void BrNop73714(void)
-{
-}
-
-/* WHAT IT DOES: halt on bad data (CRT-region trap). */
-/* @implements 0x10073974 glide BrHalt73974 */
-
-void BrHalt73974(void)
-{
-  halt_baddata();
-}
-
-/* WHAT IT DOES: halt on bad data (CRT-region trap, second entry point). */
-/* @implements 0x10073979 glide BrHalt73979 */
-
-void BrHalt73979(void)
-{
-  halt_baddata();
-}
-
 /* WHAT IT DOES: the exception filter the array unwinder runs if a destructor
  * throws while an exception is already unwinding: a C++ exception (code
  * 0xE06D7363, "msc") there means terminate() (0x10074AEC); anything else
@@ -57,12 +40,6 @@ int __stdcall BrDllMain(void *param_1,int param_2,int _pad_2)
     DisableThreadLibraryCalls(param_1);
   }
   return 1;
-}
-
-/* WHAT IT DOES: no-op stub (CRT-region placeholder). */
-/* @implements 0x10073719 glide BrNop73719 */
-void BrNop73719(void)
-{
 }
 
 /* The per-DLL CRT exit-handler glue every /MD DLL carries: an _onexit that
