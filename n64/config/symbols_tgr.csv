@@ -437,3 +437,4 @@ va,name,kind
 80224F90,BrVec3Project2,func
 802242E0,BrPowf,func
 80200764,BrRaceCueDraw,func
+8021F2D8,BrCarGridCell,func
