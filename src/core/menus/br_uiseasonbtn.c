@@ -35,6 +35,19 @@
 #include <stddef.h>
 #include <string.h>
 
+/* g_br73 is the port's gathering of separate originals.  The matching build
+ * names the ones used here as the globals they are (config/globals_glide.csv),
+ * so each relocation resolves to its own variable. */
+#ifdef BR_MATCHING_BUILD
+extern BrUiCtl_ *g_brUipAA29F4;   /* 0x10AC5D4C */
+#define BR73_PAA29F4 g_brUipAA29F4
+extern BrUiCtl_ *g_brUipAA29C8;   /* 0x10AC5D20 */
+#define BR73_PAA29C8 g_brUipAA29C8
+#else
+#define BR73_PAA29F4 g_br73.pAA29F4
+#define BR73_PAA29C8 g_br73.pAA29C8
+#endif
+
 /* WHAT IT DOES: the Options button on the season-progress screen -- one of the
  * three picture buttons down its right-hand side. It opens the options screen
  * and wires that screen's Back row so the player comes back here when done. */
@@ -44,7 +57,7 @@ int32_t BrUiHook84_100457C0(BrUiCtl_ *pCtl)
 #ifdef BR_MATCHING_BUILD
     /* Orig pushes the unused pCtl, then stores +0x08 unguarded. */
     ((int32_t (*)(BrUiCtl_ *))BrUiHook81Activate_100451E0)(pCtl);
-    g_br73.pAA29C8->pfn08 = BrUiHook84_10046830;
+    BR73_PAA29C8->pfn08 = BrUiHook84_10046830;
     return 1;
 #else
     BrUiCtl_ *pBack;
@@ -52,7 +65,7 @@ int32_t BrUiHook84_100457C0(BrUiCtl_ *pCtl)
     (void)pCtl;                         /* pushed, ignored by the callee */
     (void)BrUiHook81Activate_100451E0();
 
-    pBack = g_br73.pAA29C8;             /* 0x10AA29C8 -- a CONTROL */
+    pBack = BR73_PAA29C8;             /* 0x10AA29C8 -- a CONTROL */
     if (pBack != NULL)                  /* DEVIATION: guarded */
         pBack->pfn08 = BrUiHook84_10046830;
     return 1;
@@ -70,7 +83,7 @@ int32_t BrUiHook84_100457E0(BrUiCtl_ *pCtl)
     /* Orig pushes the unused pCtl, then stores +0x08 unguarded -- the same
      * pair of defects as 0x100457C0 above. */
     ((int32_t (*)(BrUiCtl_ *))BrUiHook81Activate_10045BC0)(pCtl);
-    g_br73.pAA29F4->pfn08 = BrUiHook84_10046870;
+    BR73_PAA29F4->pfn08 = BrUiHook84_10046870;
     return 1;
 #else
     BrUiCtl_ *pBack;
@@ -78,7 +91,7 @@ int32_t BrUiHook84_100457E0(BrUiCtl_ *pCtl)
     (void)pCtl;
     (void)BrUiHook81Activate_10045BC0();
 
-    pBack = g_br73.pAA29F4;             /* 0x10AA29F4 -- a CONTROL */
+    pBack = BR73_PAA29F4;             /* 0x10AA29F4 -- a CONTROL */
     if (pBack != NULL)                  /* DEVIATION: guarded */
         pBack->pfn08 = BrUiHook84_10046870;
     return 1;

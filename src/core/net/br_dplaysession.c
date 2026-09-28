@@ -16,6 +16,18 @@
 #include <string.h>
 
 #include "slice6_73.h"
+/* g_br73 is the port's gathering of separate originals.  The matching build
+ * names the ones used here as the globals they are (config/globals_glide.csv),
+ * so each relocation resolves to its own variable. */
+#ifdef BR_MATCHING_BUILD
+extern int32_t g_brUinAA2880;   /* 0x10AC5BD8 */
+#define BR73_NAA2880 g_brUinAA2880
+extern void *const *g_brUiapJoinBlob;   /* 0x10AC5D2C */
+#define BR73_APJOINBLOB g_brUiapJoinBlob
+#else
+#define BR73_NAA2880 g_br73.nAA2880
+#define BR73_APJOINBLOB g_br73.apJoinBlob
+#endif
 
 /* ==========================================================================
  * 0x1003D030 -- the 16-byte join blob
@@ -30,16 +42,16 @@ int32_t BrSub1003D030(void *pBlob)
 {
     const void *pSrc;
 
-    if (g_br73.apJoinBlob == NULL) {
+    if (BR73_APJOINBLOB == NULL) {
         return 0;
     }
 #ifdef BR_MATCHING_BUILD
     /* Orig `mov eax,[eax+ecx*8+0x1de48]`: the pointer at 0x10AA29D4 is a
      * base, not a pointer-to-pointer table.  Each slot is 8 bytes. */
-    pSrc = *(void *const *)((const char *)g_br73.apJoinBlob
-                            + 0x1DE48 + (size_t)g_br73.nAA2880 * 8);
+    pSrc = *(void *const *)((const char *)BR73_APJOINBLOB
+                            + 0x1DE48 + (size_t)BR73_NAA2880 * 8);
 #else
-    pSrc = g_br73.apJoinBlob[g_br73.nAA2880];
+    pSrc = BR73_APJOINBLOB[BR73_NAA2880];
 #endif
     if (pSrc == NULL) {
         return 0;
@@ -67,6 +79,7 @@ int32_t BrSub1003CFC0(uint8_t **ppGuid)
 
 #ifdef BR_MATCHING_BUILD
 #include <windows.h>
+
 extern int DAT_10ac315c;
 
 /* WHAT IT DOES: walk a table of GlobalAlloc pointers and free each one. */
