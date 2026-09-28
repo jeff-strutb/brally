@@ -446,3 +446,4 @@ va,name,kind
 80221864,BrCarCamInit,func
 80259B1C,BrRbVelAtBodyPoint,func
 80259C18,BrRbVelAtPoint,func
+80244BA8,BrPaintReset,func
