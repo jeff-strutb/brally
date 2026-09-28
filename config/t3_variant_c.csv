@@ -3,3 +3,6 @@ va,opt,reason
 0x100221D0,O2p,"original TU tu_022 is /O2 /Op; the sweep's raw-diff winner O2 is not the TU's options"
 0x10023360,O2p,"original TU tu_022 is /O2 /Op; the sweep's raw-diff winner O2 is not the TU's options"
 0x10021C70,O2p,"original TU tu_022 is /O2 /Op (same TU as 0x10022600)"
+0x10062640,O2,"original TU tu_047 is /O2; the rounding-point body must be placed as the /O2 compile (the sweep raw-diff winner Odp is not the TU options)"
+0x1006D6B0,O2,"original TU is /O2; rounding-point body verified bit-identical under /O2 by differential emulation"
+0x1006DE70,O2,"original TU tu_055 is /O2; rounding-point body verified bit-identical under /O2 by differential emulation"
