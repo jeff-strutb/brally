@@ -18,7 +18,9 @@ extern float D_8028C80C;
 extern float D_803634D0[3];
 extern int D_8028C818;                  /* lightning: flash frames left, -1 = none */
 extern float D_8028C820;                /* how far the thunder has travelled */
-extern float D_803634F8[3];             /* where the lightning struck */
+typedef struct BrBoltPt { float x, y, z; } BrBoltPt;
+extern BrBoltPt D_803634F8[];           /* the lightning bolt's points; [0] is where it struck */
+extern int D_8028C81C;                  /* the bolt's subdivision depth, 4 per level */
 extern float D_80025C38;                /* the track's sky height */
 /* -- end declarations -- */
 
@@ -63,6 +65,34 @@ void BrWindUpdate(void)
   D_803634D0[2] = 0.0f;
 }
 
+/* WHAT IT DOES: Build the lightning bolt by midpoint displacement: point
+ * i becomes the average of points i - n and i + n, x and y each jittered by
+ * a random amount within +-4n; then the two halves are split the same way
+ * down to single steps (the depth counter up 4 per level meanwhile).
+ * RESIDUE (22, same 101 instructions): the ROM's frame has a slot between
+ * mask (0x3C) and half (0x34) that no declaration reproduces (an unused
+ * local grows the frame instead), and it builds [i - n] from the first
+ * i * 12 chain where ours uses the second; the rest is register naming. */
+/* @implements 0x80239F28 tgr BrBoltSplit */
+void BrBoltSplit(int i, int n)
+{
+  int mask;
+  float half;
+
+  mask = n * 8 - 1;
+  half = mask * 0.5f;
+  D_803634F8[i].x = (BrRandStep() & mask) + (D_803634F8[i - n].x + D_803634F8[i + n].x) * 0.5f - half;
+  D_803634F8[i].y = (BrRandStep() & mask) + (D_803634F8[i - n].y + D_803634F8[i + n].y) * 0.5f - half;
+  D_803634F8[i].z = (D_803634F8[i + n].z + D_803634F8[i - n].z) * 0.5f;
+  n >>= 1;
+  if (n != 0) {
+    D_8028C81C += 4;
+    BrBoltSplit(i - n, n);
+    BrBoltSplit(i + n, n);
+    D_8028C81C -= 4;
+  }
+}
+
 /* WHAT IT DOES: Lightning: with none active, a 1-in-512 chance per frame
  * of a strike at a random point (x, y below 2048, at the sky height),
  * flashing for three frames; then the thunder front travels outward at
@@ -81,8 +111,8 @@ void BrLightningStep(void)
   } else if ((unsigned short)BrRandStep() < 0x80) {
     D_8028C818 = 3;
     D_8028C820 = 0.0f;
-    D_803634F8[0] = BrRandStep() & 0x7ff;
-    D_803634F8[1] = BrRandStep() & 0x7ff;
-    D_803634F8[2] = D_80025C38;
+    D_803634F8[0].x = BrRandStep() & 0x7ff;
+    D_803634F8[0].y = BrRandStep() & 0x7ff;
+    D_803634F8[0].z = D_80025C38;
   }
 }

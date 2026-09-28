@@ -312,6 +312,7 @@ va,name,kind
 80238DD4,BrHudPositionDraw,func
 80239CF0,BrParticlesInit,func
 80239D84,BrWindUpdate,func
+80239F28,BrBoltSplit,func
 8023A0BC,BrLightningStep,func
 8023A1C0,BrStub8023A1C0,func
 8023B130,BrViewportDepthZ,func
