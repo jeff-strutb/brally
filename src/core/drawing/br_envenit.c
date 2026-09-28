@@ -93,9 +93,18 @@ extern int DAT_100a7518;
  * stamped along the section light, and one tile command per track segment. */
 /* @t4-pass 0x10017110 3 2026-09-20 probes 12 bytes 2038 insns 505 regions 15 rows 109 census no  (fn.py: cursor-advance spellings (+=, &x[2], char+8), flag hoist, extra decl, write-then-advance, O2/O2y/O2p/Od/O1.  Best -1 byte/+7 insns at O2; none reached 0.  Residue is the constant-8 register cache + x87 scheduling.) */
 /* @t4-pass 0x10017110 4 2026-09-20 probes 12 bytes 2038 insns 505 regions 15 rows 109 census yes  (census of unpaired multiset: 15 add R,R (EXTRA) pair with 15 add R,8 (MISSING) = the cursor-bump constant cached in ebx vs immediate, a register-allocation choice; fst/fld/fstp/fxch/fcomp-st (EXTRA) vs fst-mem/fcomp-mem (MISSING) = x87 stack scheduling of the projection; shl 0xa+and 0xfff000+or (EXTRA) vs shl 0xc (MISSING) = same tile-pack value, different encoding.  Every divergent row is register allocation or instruction scheduling of identical logic.  A5 oracle EQUIVALENT on 48 seeds.) */
-/* @t3 0x10017110 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 2038/2039 insns 505/498 rows 51+58 regions 15 oracle EQUIVALENT
+/* @t3 0x10017110 2026-09-28 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 2064/2039 insns +13 rows 39+52 regions 17 oracle EQUIVALENT
  * @t3-effort passes 4 zero-movement 3 4
+ * RECERTIFIED 2026-09-28.  The 2026-09-20 certificate read the missing
+ * `fst dword [esp+..]` rows as x87 scheduling; they were ROUNDING POINTS.
+ * The body kept w, x, y, 1/w and the two projected coordinates at 80 bits,
+ * so a sprite whose projected x landed on an integer boundary came out one
+ * quarter pixel off -- seen by the whole-image run on 12 cars and on snow and
+ * storm tracks, never by the original 26 scripts.  The projection loop now
+ * rounds exactly the six values the original stores (volatile floats, sums in
+ * the original's z-first order); A5 EQUIVALENT and A7 IDENTICAL on the
+ * sessions that exposed it (34_desert_snow_car9, 36_amazon_fog_car11).
  */
 /* @implements 0x10017110 glide BrEnvEmit */
 void BrEnvEmit(void)
@@ -279,27 +288,37 @@ void BrEnvEmit(void)
     iVar15 = 0;
     if (0 < DAT_104add38) {
       do {
+        /* Precision is behaviour here.  The original rounds exactly these
+         * six values to float (each is stored to a stack slot and reloaded):
+         * the three transformed coordinates, the reciprocal of w and the two
+         * projected screen coordinates.  Everything else stays on the x87
+         * stack at 80 bits, and each dot product is summed z-term first.
+         * `volatile` pins those store/reload points; without it a projected
+         * coordinate that lands on an integer boundary truncates one quarter
+         * pixel differently (found by the whole-image run, 2026-09-28). */
+        volatile float vW, vX, vY, vR, vSx, vSy;
         fVar4 = (float)(int)psVar16[-2];
         fVar1 = (float)(int)psVar16[-1];
         fVar2 = (float)(int)*psVar16;
-        fVar3 = fVar4 * DAT_106e78f0.m[0][3] +
-                (float)(int)psVar16[-1] * DAT_106e78f0.m[1][3] + (float)(int)*psVar16 * DAT_106e78f0.m[2][3] +
-                DAT_106e78f0.m[3][3];
-        if (DAT_10077364 <= fVar3) {
-          fVar3 = DAT_10077314 / fVar3;
-          fVar5 = fVar3 * (fVar4 * DAT_106e78f0.m[0][1] + fVar1 * DAT_106e78f0.m[1][1] + fVar2 * DAT_106e78f0.m[2][1] +
-                           DAT_106e78f0.m[3][1]);
-          if ((DAT_10077368 <= fVar5) && (fVar5 <= DAT_10077304)) {
-            fVar1 = fVar3 * (fVar4 * DAT_106e78f0.m[0][0] + fVar1 * DAT_106e78f0.m[1][0] + fVar2 * DAT_106e78f0.m[2][0] +
-                             DAT_106e78f0.m[3][0]);
-            if ((DAT_10077368 <= fVar1) && (fVar1 <= DAT_10077304)) {
-              iVar11 = (int)(fVar3 * scaleA);
+        vW = ((fVar2 * DAT_106e78f0.m[2][3] + fVar1 * DAT_106e78f0.m[1][3])
+              + fVar4 * DAT_106e78f0.m[0][3]) + DAT_106e78f0.m[3][3];
+        vX = ((fVar2 * DAT_106e78f0.m[2][0] + fVar1 * DAT_106e78f0.m[1][0])
+              + fVar4 * DAT_106e78f0.m[0][0]) + DAT_106e78f0.m[3][0];
+        vY = ((fVar2 * DAT_106e78f0.m[2][1] + fVar1 * DAT_106e78f0.m[1][1])
+              + fVar4 * DAT_106e78f0.m[0][1]) + DAT_106e78f0.m[3][1];
+        if (DAT_10077364 <= vW) {
+          vR = DAT_10077314 / vW;
+          vSy = vR * vY;
+          if ((DAT_10077368 <= vSy) && (vSy <= DAT_10077304)) {
+            vSx = vR * vX;
+            if ((DAT_10077368 <= vSx) && (vSx <= DAT_10077304)) {
+              iVar11 = (int)(vR * scaleA);
               if (iVar11 >= 2) {
-                iVar12 = (int)(fVar3 * scaleB);
+                iVar12 = (int)(vR * scaleB);
                 if (iVar12 >= 2) {
-                  iVar8 = (int)(fVar1 * viewW);
+                  iVar8 = (int)(vSx * viewW);
                   iVar8 = iVar8 + (DAT_100a7514 / 2) * 4;
-                  iVar9 = (int)(fVar5 * viewH);
+                  iVar9 = (int)(vSy * viewH);
                   iVar9 = iVar9 + (DAT_100a7518 / 2) * 4;
                   puVar7 = DAT_106e7710;
                   DAT_106e7710 = DAT_106e7710 + 2;

@@ -1,0 +1,10 @@
+# Attract demo: idle on the main menu past the 90-second window
+# (0x15F90 ticks, BrAppStateSetMode 0x1001CE20) -- game mode 4, cinematic 0,
+# a computer-driven race on Amazon.  No other script idles long enough.
+sleep 240
+mark main_menu
+sleep 3000
+mark demo
+sleep 3000
+mark demo_late
+end

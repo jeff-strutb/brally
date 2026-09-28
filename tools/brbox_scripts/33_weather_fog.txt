@@ -1,0 +1,36 @@
+# Quick Race on Coastline in FOG (weather 1: WEATHER clicked four times).
+# Fog draws the sky with the fog branch of BrSceneSetupFrame (env colour,
+# the 0x51FEF3FA decal combine) and fogged cars.
+sleep 240
+mark main_menu
+mouse 250 190
+click
+sleep 40
+mark race_setup
+mouse 252 157
+click
+sleep 20
+mouse 252 157
+click
+sleep 20
+mouse 252 157
+click
+sleep 20
+mouse 252 157
+click
+sleep 20
+mouse 252 233
+click
+sleep 40
+mark car_setup
+mouse 252 233
+click
+sleep 300
+mark grid
+press SPACE
+sleep 150
+mark lights
+autopilot on
+sleep 1800
+mark driving
+end

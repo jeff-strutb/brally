@@ -1,0 +1,160 @@
+# Camera views on race.trk (track 5, 11 TRACK clicks, cheats on): END and
+# PGDN are the view keys (actions 9 and 10 of the default binding table);
+# F1-F4 are taunts, DEL the horn, RSHIFT resets the car, ESC opens the race menu.
+sleep 240
+mark main_menu
+mouse 250 227
+sleep 10
+press M
+sleep 3
+press A
+sleep 3
+press D
+sleep 3
+press E
+sleep 3
+press L
+sleep 3
+press E
+sleep 3
+press I
+sleep 3
+press N
+sleep 3
+press E
+sleep 3
+sleep 10
+press B
+sleep 3
+press E
+sleep 3
+press N
+sleep 3
+press J
+sleep 3
+press A
+sleep 3
+press M
+sleep 3
+press I
+sleep 3
+press N
+sleep 3
+sleep 10
+press B
+sleep 3
+press R
+sleep 3
+press I
+sleep 3
+press E
+sleep 3
+press L
+sleep 3
+press L
+sleep 3
+press E
+sleep 3
+sleep 10
+press L
+sleep 3
+press Y
+sleep 3
+press N
+sleep 3
+press E
+sleep 3
+press T
+sleep 3
+press T
+sleep 3
+press E
+sleep 3
+sleep 10
+press H
+sleep 3
+press A
+sleep 3
+press Z
+sleep 3
+press E
+sleep 3
+press L
+sleep 3
+sleep 10
+mouse 250 190
+click
+sleep 40
+mark race_setup
+mouse 252 138
+click
+sleep 20
+mouse 252 138
+click
+sleep 20
+mouse 252 138
+click
+sleep 20
+mouse 252 138
+click
+sleep 20
+mouse 252 138
+click
+sleep 20
+mouse 252 138
+click
+sleep 20
+mouse 252 138
+click
+sleep 20
+mouse 252 138
+click
+sleep 20
+mouse 252 138
+click
+sleep 20
+mouse 252 138
+click
+sleep 20
+mouse 252 138
+click
+sleep 20
+mouse 252 233
+click
+sleep 40
+mark car_setup
+mouse 252 233
+click
+sleep 300
+mark grid
+press SPACE
+sleep 150
+mark lights
+autopilot on
+sleep 300
+mark view_end
+press END
+sleep 400
+mark view_pgdn
+press PGDN
+sleep 400
+mark view_back
+press INSERT
+sleep 200
+mark taunts
+press F1
+sleep 30
+press F2
+sleep 30
+hold DELETE
+sleep 30
+release DELETE
+sleep 30
+press RSHIFT
+sleep 200
+mark race_menu
+press ESCAPE
+sleep 120
+press ESCAPE
+sleep 300
+end

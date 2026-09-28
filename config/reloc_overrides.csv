@@ -1,6 +1,6 @@
 func_va,offset,value,comment
 0x1000A110,0x2B3,0x106ED64C,BrCarDrawVehicle scramble-if: saved cl is bits8 of the packed word; orig packs [106ed64c] there
-0x1000A110,0x2B9,0x106E8610,BrCarDrawVehicle scramble-if: dl feeds fild#1; orig fild#1 divides [106e8610]
+0x1000A110,0x2B9,0x106EA3EC,BrCarDrawVehicle scramble-if: site loads BrG_6C335C (G, bits16) = [106ea3ec]; was 106e8610 (role-swapped: rain colour bytes swapped, found by A7 2026-09-28)
 0x1000A110,0x31E,0x106B7C80,BrCarDrawVehicle scramble-if: al->ch is bits24; orig bits24 = [106b7c80]
 0x1000A110,0x32D,0x106E79F0,BrCarDrawVehicle scramble-if: cl is bits16; orig bits16 = [106e79f0]
 0x1000A110,0x3BD,0x106E79F8,BrCarDrawVehicle scramble-else: X1 -> low byte of UPPER word; orig upper = 8610|a3ec|79f8
@@ -316,7 +316,7 @@ func_va,offset,value,comment
 0x1000A110,0x29C,0x100771A4,lockstep $T3471 (orig operand 0x100771a4)
 0x1000A110,0x2AB,0x100771A4,lockstep $T3471 (orig operand 0x100771a4)
 0x1000A110,0x2CC,0x0006A180,lockstep ftol (orig operand 0x10074560)
-0x1000A110,0x2D7,0x106EA3EC,lockstep BrG_6C1580 (orig operand 0x106ea3ec)
+0x1000A110,0x2D7,0x106E8610,BrCarDrawVehicle scramble-if: site loads BrG_6C1580 (R, bits24) = [106e8610]; was 106ea3ec (role-swapped with 0x2B9)
 0x1000A110,0x2EA,0x0006A162,lockstep ftol (orig operand 0x10074560)
 0x1000A110,0x2F6,0x106E79F8,lockstep BrG_6C0968 (orig operand 0x106e79f8)
 0x1000A110,0x30E,0x0006A13E,lockstep ftol (orig operand 0x10074560)

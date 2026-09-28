@@ -1,0 +1,28 @@
+# Quick Race on Coastline in RAIN (weather 4: race setup WEATHER clicked once;
+# the cycle is sunny -> rain -> snow -> storm -> fog).  Rain takes the car light
+# colour arm of BrCarDrawVehicle 0x1000A110 that divides by distance -- the arm
+# whose two colour bytes were role-swapped until 2026-09-28.
+sleep 240
+mark main_menu
+mouse 250 190
+click
+sleep 40
+mark race_setup
+mouse 252 157
+click
+sleep 20
+mouse 252 233
+click
+sleep 40
+mark car_setup
+mouse 252 233
+click
+sleep 300
+mark grid
+press SPACE
+sleep 150
+mark lights
+autopilot on
+sleep 1800
+mark driving
+end
