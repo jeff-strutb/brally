@@ -17,6 +17,7 @@ va,name,verdict,calls,captured,contexts,detail,date
 0x10007d50,BrCarStateLerp,EQUIVALENT,10398,18,11,61_mp_race: 6 real call(s) agree,2026-09-24
 0x10008ba0,BrPodWriteOpen,UNCOVERED,0,0,0,,2026-09-24
 0x10008c80,BrPodWriteClose,UNCOVERED,0,0,0,,2026-09-24
+0x10009010,BrDpAppMsgHandle,EQUIVALENT,2056,21,3,"21 real call(s) agree (61_mp_race: 7, 63_mp_join: 7, 64_mp_dropout: 7; --objects)",2026-09-27
 0x100096a0,BrDPlaySysMsgLog,EQUIVALENT,2,2,2,61_mp_race: 1 real call(s) agree,2026-09-24
 0x1000a110,BrCarDrawVehicle,EQUIVALENT,41409,120,21,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x1000cb20,BrViewBuffersRebase,EQUIVALENT,18980,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
@@ -98,6 +99,7 @@ va,name,verdict,calls,captured,contexts,detail,date
 0x10034660,BrVec3MulAdd,EQUIVALENT,868175,120,64,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x100346a0,BrVec3MulAddTo,EQUIVALENT,478307,120,46,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10034a70,BrMtxXfmDir3,EQUIVALENT,14070,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10034b70,BrMtxInvert,EQUIVALENT,3890,36,5,"36 real call(s) agree (20_quickrace_drive: 7, 40_timeattack: 8, 61_mp_race: 7, 63_mp_join: 7, 64_mp_dropout: 7; --objects)",2026-09-27
 0x10035c50,BrNetSessionHost,EQUIVALENT,3,3,3,60_multiplayer: 1 real call(s) agree,2026-09-24
 0x10035dd0,BrDpSessionJoin,EQUIVALENT,1,1,1,63_mp_join: 1 real call(s) agree,2026-09-24
 0x10036300,BrNetEnumSessionsStart,EQUIVALENT,393,32,12,60_multiplayer: 5 real call(s) agree,2026-09-24
@@ -151,6 +153,7 @@ va,name,verdict,calls,captured,contexts,detail,date
 0x10060f40,BrSndNearestCommit,EQUIVALENT,76773,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10061470,BrSndCarStep,EQUIVALENT,168960,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10061f60,BrGhostPlaybackStep,EQUIVALENT,203560,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10062640,BrMat4FromCarState,EQUIVALENT,7637,24,3,"24 real call(s) agree (61_mp_race: 8, 63_mp_join: 8, 64_mp_dropout: 8; --objects)",2026-09-27
 0x10062b80,BrCtrlCfgAssign,EQUIVALENT,2,2,1,30_options: 2 real call(s) agree,2026-09-24
 0x10063a60,BrReplayRecord,EQUIVALENT,158283,109,19,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10063dd0,BrCollRespReset,EQUIVALENT,25,25,20,20_quickrace_drive: 1 real call(s) agree,2026-09-24
