@@ -225,8 +225,10 @@ void BrSndNearestReset(void)
     g_BrSndNearest.f90 = -1;
 
     g_BrSndNearest.metric = BR_SND_NEAREST_FAR;
-    g_BrSndNearest.f9C    = 0;
+    /* fA0 before f9C: the original's two stores are in this order (its
+     * +0x84 slot is 0x10B1CF00, +0x8A is 0x10B1CEFC). */
     g_BrSndNearest.fA0    = 0;
+    g_BrSndNearest.f9C    = 0;
     /* f98 is NOT cleared by the original. */
 }
 
