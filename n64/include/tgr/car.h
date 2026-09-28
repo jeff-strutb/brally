@@ -34,6 +34,12 @@ typedef struct BrCarKindParams {
 } BrCarKindParams;
 extern BrCarKindParams D_8028B330[];
 
+/* The record a car's +0xED0 points at; only its flags are known. */
+typedef struct BrCarLink {
+    char pad00[0x68];
+    unsigned int flags;         /* 0x68  bits 0-1: the car is out of the race */
+} BrCarLink;
+
 typedef struct BrCar {
     float mtx0[4][4];           /* 0x000  body matrix */
     float wheelMtx[4][4][4];    /* 0x040  one per wheel: the body's rotation, the wheel's position */
@@ -57,14 +63,26 @@ typedef struct BrCar {
     BrSeason *season;           /* 0xE5C  the player's season, 0 for others */
     char pade60[0xE6C - 0xE60];
     int xe6c;                   /* 0xE6C */
-    char pade70[0xED8 - 0xE70];
+    char pade70[0xED0 - 0xE70];
+    struct BrCarLink *link;     /* 0xED0 */
+    char paded4[0xED8 - 0xED4];
     int xed8;                   /* 0xED8 */
     char padedc[0xF48 - 0xEDC];
     int xf48;                   /* 0xF48  camera mode */
     char padf4c[0xF5C - 0xF4C];
     int xf5c;                   /* 0xF5C */
     int xf60;                   /* 0xF60 */
-    char padf64[0xFD8 - 0xF64];
+    char padf64[0xF80 - 0xF64];
+    float raceTime;             /* 0xF80  race clock, seconds */
+    char padf84[0xFA0 - 0xF84];
+    float lapTime;              /* 0xFA0  current lap clock */
+    float xfa4;                 /* 0xFA4  a countdown (mode 1 only) */
+    char padfa8[0xFB0 - 0xFA8];
+    int msgA;                   /* 0xFB0  first message and its timer */
+    float msgATime;             /* 0xFB4 */
+    int msgB;                   /* 0xFB8  second message and its timer */
+    float msgBTime;             /* 0xFBC */
+    char padfc0[0xFD8 - 0xFC0];
     BrVec3 velfd8;              /* 0xFD8  another velocity copy */
     char padfe4[0x1D78 - 0xFE4];
     BrVec3 pos1d78;             /* 0x1D78  another position copy */
