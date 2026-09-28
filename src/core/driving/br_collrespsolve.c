@@ -616,8 +616,8 @@ int BrCrContactKick(BrVec3 *pVel, BrVec3 *pAngVel, const BrVec3 *pNormal,
 /* ------------------------------------------------------------------ *
  * 0x10067470 -- contact-plane resolver.
  *
- * WHAT IT DOES: turns one candidate contact into a plane and writes the plane
- * normal scaled by how far the point is from it.  There are two ways in.  The
+ * Turns one candidate contact into a plane and writes the plane normal
+ * scaled by how far the point is from it.  There are two ways in.  The
  * common one (mode != 2) is handed the plane normal outright.  The box-face
  * one (mode == 2) has to CHOOSE the face: it averages the three box-space
  * triangle vertices and picks the axis on which that centroid is SMALLEST --
@@ -636,95 +636,94 @@ int BrCrContactKick(BrVec3 *pVel, BrVec3 *pAngVel, const BrVec3 *pNormal,
  *  - The argmin is the original's exact >= tournament, so ties resolve the way
  *    its `fcom`/`jae`-shaped branches do (a tie keeps the earlier axis).
  * ------------------------------------------------------------------ */
-/* @t4-pass 0x10067470 1 2026-09-07 probes 88 bytes 616 insns 163 regions 2 rows 25 census yes  (tools/crank.py) */
-/* @t4-pass 0x10067470 2 2026-09-07 probes 88 bytes 616 insns 163 regions 2 rows 25 census yes  (tools/crank.py) */
-/* @t4-pass 0x10067470 3 2026-09-27 probes 1536 bytes 658 insns 179 regions 3 rows 9 census yes  (hand: 6 arm-2 forms x 256 symbol-table states) */
-/* @t4-pass 0x10067470 4 2026-09-27 probes 900 bytes 658 insns 179 regions 3 rows 9 census no  (hand: copy position x statement order x decl order, named d/ext/normal copies, shared-tail structures) */
+/* WHAT IT DOES: turns one candidate contact into a plane and writes the plane
+ * normal scaled by how far the point is from it -- either with the plane
+ * handed in (mode != 2) or, for the box-face case, by first picking the box
+ * face the triangle lies most flush against. */
 /* @implements 0x10067470 glide BrCrPlaneResolve */
 #ifdef BR_MATCHING_BUILD
-/* Matching arm, re-transcribed 2026-09-27 in natural form (the earlier arm
- * was Ghidra-shaped: gotos, walking pointers, param_N).  Facts the bytes
- * force: the centroid is ((v0 + v2) + v1) * 1/3 per component; |c| is the
- * `c < 0 ? -c : c` compare-and-fchs; the argmin tests |c0| < |c1| then the
- * survivor against |c2|, the z arm shared (goto face); every arm takes its
- * SIGN from c[0]; the sign is an int -1/+1 converted and scaled by 0.5; the
- * dot reads the normal back from the globals BEFORE the in-place scaling of
- * normal.x (twice) and of modeFC as a float; s = -(dot - planeD).
- * NOT MATCHING 2026-09-27: 658/668 B, register-blind 3+4.  Filed ahead of
- * the walker as in the original unit (earlier in the file it flips
- * BrCrPlaneDist).  The original HOMES s in pA's dead argument slot in both
- * arms (`fstp [esp+14h]; fmul [esp+14h]; fld; fld`).  Arm 1 now does: a
- * named copy `a = pA->x` taken before s competes for an x87 register and
- * VC5 homes s -- that also reproduces the odd `fxch st(1); fxch st(1)`.
- * Arm 2 still keeps s on the x87 stack.  Inert for arm 2 (2026-09-27, ~2,500
- * compiles): the copy at every statement position, every order of the
- * normal/modeFC scaling statements, a named dot `d`, named ext/normal
- * copies, goto/if-else shared tails (joint s web), an __inline scale helper
- * with a by-value float, volatile/address-taken s, `#pragma optimize("p")`,
- * and symbol-table size (256 dummy-declaration states x 6 forms); also
- * named output temporaries in every compute/store order, every addressing
- * form of out.x's pA->x, all 120 local declaration orders.  No N64 twin:
- * TGR's collision code has no mode-2 face path (peer 548e17 searched). */
+/* Matching arm, byte-exact 2026-09-28, hand-transcribed from the bytes.
+ * Source facts the bytes force:
+ *  - the centroid is ((v0 + v2) + v1) * 1/3 per component; |c| is the
+ *    `c < 0 ? -c : c` compare-and-fchs; the argmin tests |c0| < |c1| then
+ *    the survivor against |c2|, the z face shared (goto face); every arm
+ *    takes its SIGN from c[0], as an int -1/+1 converted and scaled by 0.5;
+ *  - each arm computes its distance as ONE named local, (dot) - planeD, and
+ *    scales by the unnamed common subexpression (0.0f - d).  VC5 homes that
+ *    CSE in pA's dead argument slot (`fstp [esp+14h]; fmul; fld; fld`) and
+ *    cross-jumps the two arms at the out.x store, as the original does.  A
+ *    named negated s is kept on the x87 stack instead; one variable shared
+ *    by both arms makes the tails identical, so VC5 merges them early; the
+ *    parentheses around the dot are load-bearing;
+ *  - in mode 2 the dot reads the normal back from the globals BEFORE the
+ *    in-place scaling of normal.x (twice) and of modeFC as a float.
+ * 1/3 is a literal (BR_CR_THIRD): 0x10077B84 is referenced by this function
+ * alone.  That is also TU state -- every declaration ahead of the function
+ * moves VC5's commutative x87 operand roles in steps of 3 (mod 8), and with
+ * an extern for 1/3 the arm-1 dot takes the other roles (6 B off).  So do
+ * not add or remove declarations between BrCrContactKick and here without
+ * re-measuring.  The result is written to g_brCrPlaneOut (0x117781A0), a
+ * separate global in the original; the port gathers it into g_brCrPlane.out. */
 extern float BrCrK_Zero;     /* 0x10077A78 */
-extern float BrCrK_Third;    /* 0x10077B84 */
 extern float BrCrK_Half;     /* 0x10077AC8 */
 #define BR_CR_EXT(off) (*(const float *)((const char *)pExt + (off)))
 void BrCrPlaneResolve(const BrVec3 *pExt, const BrVec3 *pA, float planeD,
                       const BrVec3 *pEdgeN, const BrVec3 aVerts[3])
 {
+    /* 0x117781A0 -- the result vector.  A global of its own in the original,
+     * not part of g_brCrPlane; declared here so no file-scope declaration
+     * is added ahead of the function (see the TU-state note above). */
+    extern BrVec3 g_brCrPlaneOut;
     float c[3];
     float s;
-    float a;
+    float d;
     int   sgn;
     int   k;
 
     if (g_brCrPlane.modeFC != 2u) {
-        a = pA->x;
-        s = -((pA->z * pEdgeN->z + pA->y * pEdgeN->y + pEdgeN->x * pA->x) - planeD);
-        g_brCrPlane.out.x = a * s;
-        g_brCrPlane.out.y = s * pA->y;
-        g_brCrPlane.out.z = s * pA->z;
-        return;
+        d = (pA->y * pEdgeN->y + pA->z * pEdgeN->z + pA->x * pEdgeN->x) - planeD;
+        g_brCrPlaneOut.x = pA->x * (0.0f - d);
+        g_brCrPlaneOut.y = (0.0f - d) * pA->y;
+        g_brCrPlaneOut.z = (0.0f - d) * pA->z;
+    } else {
+        for (k = 0; k < 3; k++)
+            c[k] = ((&aVerts[0].x)[k] + (&aVerts[2].x)[k] + (&aVerts[1].x)[k]) * BR_CR_THIRD;
+        if ((c[0] < BrCrK_Zero ? -c[0] : c[0]) < (c[1] < BrCrK_Zero ? -c[1] : c[1])) {
+            if ((c[0] < BrCrK_Zero ? -c[0] : c[0]) < (c[2] < BrCrK_Zero ? -c[2] : c[2])) {
+                g_brCrPlane.normal.z = 0.0f;
+                g_brCrPlane.normal.y = 0.0f;
+                sgn = -1;
+                if (!(c[0] < BrCrK_Zero))
+                    sgn = 1;
+                g_brCrPlane.normal.x = (float)sgn * BrCrK_Half;
+                goto face;
+            }
+        } else {
+            if ((c[1] < BrCrK_Zero ? -c[1] : c[1]) < (c[2] < BrCrK_Zero ? -c[2] : c[2])) {
+                g_brCrPlane.normal.z = 0.0f;
+                g_brCrPlane.normal.x = 0.0f;
+                sgn = -1;
+                if (!(c[0] < BrCrK_Zero))
+                    sgn = 1;
+                g_brCrPlane.normal.y = (float)sgn * BrCrK_Half;
+                goto face;
+            }
+        }
+        g_brCrPlane.normal.y = 0.0f;
+        g_brCrPlane.normal.x = 0.0f;
+        sgn = -1;
+        if (!(c[0] < BrCrK_Zero))
+            sgn = 1;
+        g_brCrPlane.normal.z = (float)sgn * BrCrK_Half;
+    face:
+        s = (g_brCrPlane.normal.z * pA->z + g_brCrPlane.normal.y * pA->y + pA->x * g_brCrPlane.normal.x) - planeD;
+        g_brCrPlane.normal.x = BR_CR_EXT(0x1dc) * g_brCrPlane.normal.x;
+        g_brCrPlane.normal.x = BR_CR_EXT(0x1e0) * g_brCrPlane.normal.x;
+        *(float *)&g_brCrPlane.modeFC = BR_CR_EXT(0x1e4) * *(float *)&g_brCrPlane.modeFC;
+        g_brCrPlaneOut.x = pA->x * (0.0f - s);
+        g_brCrPlaneOut.y = (0.0f - s) * pA->y;
+        g_brCrPlaneOut.z = (0.0f - s) * pA->z;
     }
-    for (k = 0; k < 3; k++)
-        c[k] = ((&aVerts[0].x)[k] + (&aVerts[2].x)[k] + (&aVerts[1].x)[k]) * BrCrK_Third;
-    if ((c[0] < BrCrK_Zero ? -c[0] : c[0]) < (c[1] < BrCrK_Zero ? -c[1] : c[1])) {
-        if ((c[0] < BrCrK_Zero ? -c[0] : c[0]) < (c[2] < BrCrK_Zero ? -c[2] : c[2])) {
- g_brCrPlane.normal.z = 0.0f;
- g_brCrPlane.normal.y = 0.0f;
- sgn = -1;
- if (!(c[0] < BrCrK_Zero))
- sgn = 1;
- g_brCrPlane.normal.x = (float)sgn * BrCrK_Half;
- goto face;
- }
- } else {
- if ((c[1] < BrCrK_Zero ? -c[1] : c[1]) < (c[2] < BrCrK_Zero ? -c[2] : c[2])) {
- g_brCrPlane.normal.z = 0.0f;
- g_brCrPlane.normal.x = 0.0f;
- sgn = -1;
- if (!(c[0] < BrCrK_Zero))
- sgn = 1;
- g_brCrPlane.normal.y = (float)sgn * BrCrK_Half;
- goto face;
- }
- }
- g_brCrPlane.normal.y = 0.0f;
- g_brCrPlane.normal.x = 0.0f;
- sgn = -1;
- if (!(c[0] < BrCrK_Zero))
- sgn = 1;
- g_brCrPlane.normal.z = (float)sgn * BrCrK_Half;
- face:
-    s = g_brCrPlane.normal.z * pA->z + g_brCrPlane.normal.y * pA->y + pA->x * g_brCrPlane.normal.x;
-    g_brCrPlane.normal.x = BR_CR_EXT(0x1dc) * g_brCrPlane.normal.x;
-    g_brCrPlane.normal.x = BR_CR_EXT(0x1e0) * g_brCrPlane.normal.x;
-    *(float *)&g_brCrPlane.modeFC = BR_CR_EXT(0x1e4) * *(float *)&g_brCrPlane.modeFC;
-    s = -(s - planeD);
-    a = pA->x;
-    g_brCrPlane.out.x = a * s;
-    g_brCrPlane.out.y = s * pA->y;
-    g_brCrPlane.out.z = s * pA->z;
 }
 #else
 void BrCrPlaneResolve(const BrVec3 *pExt, const BrVec3 *pA, float planeD,

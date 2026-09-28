@@ -8552,3 +8552,18 @@ with the target's flags, diff one function against original bytes
   dir for the predecessors), then sweep the file name's length.  Never
   compile against the shared root `vc50.idb` (parallel /Gi runs corrupt it:
   C1073).
+- **A negated scale homed in a dead argument slot (`fstp [esp+X]; fmul
+  [esp+X]; fld [esp+X]; fld [esp+X]`): a named local `d = (dot) - k` and the
+  unnamed common subexpression `(0.0f - d)` at each use.**  0x10067470: a
+  named `s = -(...)` stays on the x87 stack; `-d` is not homed; the same
+  local in two arms makes the tails identical IL and VC5 merges them before
+  the homing.  One local per arm, `(0.0f - d)` in both.
+- **Commutative x87 operand roles in straight-line code move with the number
+  of DECLARATIONS ahead of the function: each file-scope symbol (extern,
+  prototype-with-body parameter, function) shifts the state by 3, and the
+  roles repeat with period 8.**  Measured on 0x10067470 with pads: a
+  no-argument function = -2, each parameter/extern/local-of-an-earlier-
+  function = +3; blank lines, labels and the function's OWN locals are inert.
+  A block-scope `extern` inside the function does not count.  Lever: turn an
+  extern constant used by this function alone into a literal (-3), or move a
+  new extern into block scope (0).

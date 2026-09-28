@@ -1168,6 +1168,7 @@ glide_va,name,module,basis,file
 0x10066950,BrCrExact,driving,filed,src/core/driving/br_collresp.c
 0x10066AA0,BrCrTest,driving,filed,src/core/driving/br_collresp.c
 0x10066AD0,BrCollRespBroadPhase,driving,filed,src/core/driving/br_collresp.c
+0x10067470,BrCrPlaneResolve,driving,filed,src/core/driving/br_collrespsolve.c
 0x10067C30,BrCarPhysAdvance,driving,filed,src/core/driving/br_carphys.c
 0x10067F30,BrCarPhysDrag,driving,filed,src/core/driving/br_carphys.c
 0x10068070,BrWheelGroundProbe,driving,neighbour,src/core/driving/br_carphys.c
