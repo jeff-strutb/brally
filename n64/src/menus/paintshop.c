@@ -108,6 +108,7 @@ extern int D_8028DB0C[];               /* per decal slot */
 void BrPaintDecalCommit(void);
 unsigned char BrPaintPeek(unsigned char *tex, int x, int y);
 extern unsigned char D_8028CFBC;         /* pending flip: 1 left-right, 2 top-bottom */
+extern unsigned char D_80369DAB;        /* the mirrored view */
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Take the chosen preset's rectangle, and make every view
@@ -683,5 +684,61 @@ void BrPaintFlipApply(void)
     }
   }
   D_8028CFBC = 0;
+  D_8028DB60 = D_8028DB64;
+}
+
+/* WHAT IT DOES: Copy the decal to the car's other side: when the mirror
+ * is asked for (0x8028DBCC), switch the paint view to its opposite (0<->1,
+ * 2<->3, 6<->7), load that side's decal, texture and mask, store the working
+ * decal, then redraw it from the old side's texture mirrored left-right and
+ * start the view turning.  The saved dirty flag is copied back either way. */
+/* @implements 0x80248B80 tgr BrPaintMirrorSide */
+void BrPaintMirrorSide(void)
+{
+  static unsigned char *D_8028DCA4 = 0; /* the side being mirrored from */
+  int x;
+  int y;
+
+  if (D_8028DBCC == 0) {
+    D_8028DB60 = D_8028DB64;
+    return;
+  }
+  {
+    switch (D_8028DB68) {
+    case 0:
+      D_80369DAB = 1;
+      break;
+    case 1:
+      D_80369DAB = 0;
+      break;
+    case 2:
+      D_80369DAB = 3;
+      break;
+    case 3:
+      D_80369DAB = 2;
+      break;
+    case 6:
+      D_80369DAB = 7;
+      break;
+    case 7:
+      D_80369DAB = 6;
+      break;
+    }
+    D_8028DB6C = D_8028DB68;
+    D_8028DCA4 = D_8028AB08->parts[D_8028AB08->decalPart[D_8028DB6C]].a;
+    D_8028DB68 = D_80369DAB;
+    D_8028DB78 = D_8028AB08->parts[D_8028AB08->decalPart[D_8028DB68]].a;
+    D_8028DB7C = D_8028AB08->x11c[D_8028DB68];
+    D_8028DB08 = D_8028DB0C[D_8028DB68];
+    BrPaintDecalCommit();
+    for (y = 0; y < D_8028DB8C; y++) {
+      for (x = 0; x < D_8028DB88; x++) {
+        BrPaintPlot(D_8028DB88 - x - 1, y, BrPaintPeek(D_8028DCA4, x, y));
+      }
+    }
+    D_8028DBD0 = 1;
+    D_8028DBB0 = 0;
+    D_8028DCA4 = 0;
+  }
   D_8028DB60 = D_8028DB64;
 }

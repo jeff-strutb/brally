@@ -509,3 +509,4 @@ va,name,kind
 8025D368,BrCollRespTipKick,func
 8025C2C8,BrTriCubeTrivial,func
 80220C58,BrCarCamPlaceBehind,func
+80248B80,BrPaintMirrorSide,func
