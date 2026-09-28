@@ -59,7 +59,9 @@ typedef struct BrCar {
     int xe6c;                   /* 0xE6C */
     char pade70[0xED8 - 0xE70];
     int xed8;                   /* 0xED8 */
-    char padedc[0xF5C - 0xEDC];
+    char padedc[0xF48 - 0xEDC];
+    int xf48;                   /* 0xF48  camera mode */
+    char padf4c[0xF5C - 0xF4C];
     int xf5c;                   /* 0xF5C */
     int xf60;                   /* 0xF60 */
     char padf64[0xFD8 - 0xF64];
