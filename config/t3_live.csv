@@ -154,7 +154,7 @@ va,name,verdict,calls,captured,contexts,detail,date
 0x10060f40,BrSndNearestCommit,EQUIVALENT,76773,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10061470,BrSndCarStep,EQUIVALENT,168960,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10061f60,BrGhostPlaybackStep,EQUIVALENT,203560,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
-0x10062640,BrMat4FromCarState,EQUIVALENT,7637,24,3,"24 real call(s) agree (61_mp_race: 8, 63_mp_join: 8, 64_mp_dropout: 8; --objects)",2026-09-27
+0x10062640,BrMat4FromCarState,EQUIVALENT,7637,24,3,"24 real call(s) agree (61_mp_race: 8, 63_mp_join: 8, 64_mp_dropout: 8; --objects; rounding-point body)",2026-09-27
 0x10062b80,BrCtrlCfgAssign,EQUIVALENT,2,2,1,30_options: 2 real call(s) agree,2026-09-24
 0x10063a60,BrReplayRecord,EQUIVALENT,158283,109,19,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10063dd0,BrCollRespReset,EQUIVALENT,25,25,20,20_quickrace_drive: 1 real call(s) agree,2026-09-24

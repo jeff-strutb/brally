@@ -22,6 +22,11 @@ void BrMat4FromCarState(BrMat4 *pOut, const BrCarState *pSrc);
 #define BR_K_2  2.0f    /* 0x10077A20 */
 #define BR_K_1  1.0f    /* 0x10077A24 */
 
+/* A float rounding point VC5 cannot see through: the value goes to memory
+ * as a float and comes back through its int image. */
+#define BR_QM_ROUND(dst, expr) \
+    { float r_ = (expr); int i_ = *(int *)&r_; dst = *(float *)&i_; }
+
 /* By value: the inlined parameter is a fresh temp, which VC5 homes (a dword
  * copy through eax/edx, then `fld [slot]; fmul [slot]`) or keeps on the x87
  * stack (`fld st(0); fmulp`) exactly as the original does for the four
@@ -42,29 +47,32 @@ static __inline float BrSq(float a)
  *    x into the dead pSrc slot and z squared on the stack.
  *  - the zero test takes the zero arm only on the equal flag (`test
  *    ah,0x40; jne`), so `norm != 0` guards the divide.
- *  - s lives in the dead pSrc slot, and the first cross pair reuses s for
- *    y*xs.  That makes the original's `fst [s]; fld [s]; fstp [s]` sequence:
- *    y*xs stored, reloaded, and its slot taken by w*zs.
- *  - the other two pairs name the w product first (`q`), which is the one
- *    the original homes; the other stays on the x87 stack.
- * RESIDUE, 365/363 B, one `fxch st(1)`: the original subtracts on the
- *    register copy of y*xs and adds on the reloaded one; ours does the
- *    reverse, so m[1][0] and m[0][1] each see the other copy of xy.
- *    Inert: which statement holds the assignment (`- t` first gives t its
- *    own slot, 4 instructions); both operand orders of every product and sum;
- *    `-t + s`, `s + -t`, `-(t - s)`; t declared with or without a spare;
- *    copy variables (u = s ...); int pads 0-80; <windows.h>/<math.h>/
- *    <stdio.h>/<string.h>/<stdlib.h>; /TP.  Writing y*xs into t
- *    with s = w*zs gets the whole store/reload sequence right but homes zs
- *    (w at offset 0 outranks it), 7 instructions. */
+ *  - s lives in the dead pSrc slot (a float: the original stores 2/norm).
+ *  - the cross terms follow the original's rounding points: w*zs, w*ys and
+ *    w*xs are stored to a float slot and read back; y*xs is used once from
+ *    the stack (m[1][0]) and once reloaded from its float copy (m[0][1]);
+ *    xs/ys/zs, xz and yz stay on the stack.  BR_QM_ROUND forces each store.
+ * HISTORY: the byte-closest body (365/363 B, one fxch) paired the two copies
+ *    of y*xs the other way round -- m[1][0] got the rounded one -- and was
+ *    1 ulp off on 566 of 2000 random inputs.  Its dead list: which statement
+ *    holds the assignment; operand orders of every product and sum; `-t + s`,
+ *    `s + -t`, `-(t - s)`; copy variables; int pads 0-80; five system
+ *    headers; /TP. */
 /* @t3 0x10062640 2026-09-27 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 365/363 insns 126/125 rows 0+1 regions 1 oracle EQUIVALENT
- * @t3-effort passes 2 zero-movement 1 2
- * Residue: one fxch -- which copy of y*xs (register or reloaded) feeds
- * m[1][0] and which feeds m[0][1].  Dossier and dead list above.  Do not
- * reopen before the end-grind (project rule 12). */
+ * @t3-measure bytes 433/363 insns 147/125 rows 19+41 regions 3 oracle EQUIVALENT
+ * @t3-effort passes 4 zero-movement 3 4
+ * Residue: the cross terms are written for the original's ROUNDING POINTS
+ * (w*zs, w*ys, w*xs and the reloaded copy of y*xs are float stores; the
+ * rest stays on the 53-bit x87 stack), not for its bytes.  The 365/363 B
+ * body it replaced paired the rounded and unrounded copies of y*xs the other
+ * way round and was 1 ulp off on 566 of 2000 random inputs; this one is
+ * bit-identical on all 2000 (differential emulation against 0x10062640).
+ * Placed as the /O2 compile (config/t3_variant_c.csv).  Do not reopen
+ * before the end-grind (project rule 12). */
 /* @t4-pass 0x10062640 1 2026-09-27 probes 45 bytes 365 insns 126 regions 1 rows 1 census yes  (hand: preamble census -- int pads 0-76, 5 system headers, C and /TP) */
 /* @t4-pass 0x10062640 2 2026-09-27 probes 82 bytes 365 insns 126 regions 1 rows 1 census no  (hand: operand orders, sign forms, copy variables, statement placement of the y*xs / w*zs pair) */
+/* @t4-pass 0x10062640 3 2026-09-27 probes 12 bytes 433 insns 147 regions 3 rows 60 census no  (hand: 12 compiler option sets on the rounding-exact body) */
+/* @t4-pass 0x10062640 4 2026-09-27 probes 32 bytes 433 insns 147 regions 3 rows 60 census yes  (hand: symbol-table band sweep 0-992 on the rounding-exact body) */
 /* @implements 0x100695D0 d3d BrMat4FromCarState */
 void BrMat4FromCarState(BrMat4 *pOut, const BrCarState *pSrc)
 {
@@ -84,21 +92,26 @@ void BrMat4FromCarState(BrMat4 *pOut, const BrCarState *pSrc)
     pOut->m[2][2] = BR_K_1 - s * (yy + xx);
 
     {
-        float xs = pSrc->f04 * s, ys = pSrc->f08 * s, zs = pSrc->f0C * s;
-        float t;
+        const double xs = pSrc->f04 * s, ys = pSrc->f08 * s, zs = pSrc->f0C * s;
+        float wz, xy_r, yw, xw;
+        double xy;
 
-        t = pSrc->f00 * zs;
-        pOut->m[0][1] = (s = pSrc->f08 * xs) + t;
-        pOut->m[1][0] = s - t;
+        BR_QM_ROUND(wz, pSrc->f00 * zs)
+        xy = pSrc->f08 * xs;
+        BR_QM_ROUND(xy_r, xy)
+        pOut->m[1][0] = (float)(xy - wz);
+        pOut->m[0][1] = (float)(xy_r + wz);
         {
-            float q = pSrc->f00 * ys, p = pSrc->f0C * xs;
-            pOut->m[2][0] = p + q;
-            pOut->m[0][2] = p - q;
+            const double xz = pSrc->f0C * xs;
+            BR_QM_ROUND(yw, pSrc->f00 * ys)
+            pOut->m[2][0] = (float)(xz + yw);
+            pOut->m[0][2] = (float)(xz - yw);
         }
         {
-            float q = pSrc->f00 * xs, p = pSrc->f0C * ys;
-            pOut->m[2][1] = p - q;
-            pOut->m[1][2] = p + q;
+            const double yz = pSrc->f0C * ys;
+            BR_QM_ROUND(xw, pSrc->f00 * xs)
+            pOut->m[2][1] = (float)(yz - xw);
+            pOut->m[1][2] = (float)(yz + xw);
         }
     }
 
