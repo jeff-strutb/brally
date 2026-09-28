@@ -16,6 +16,8 @@ void BrMat4ResetW(float m[4][4]);
 void BrCarSetVel(BrCar *car, float x, float y, float z);
 void *memcpy(void *dst, void *src, unsigned int n);
 void BrQuatToMat(float m[4][4], BrRbState *st);
+float sinf(float x);
+float cosf(float x);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Reset every car slot for a new session: runs the per-car
@@ -190,6 +192,44 @@ void BrCarSetPos(BrCar *car, float x, float y, float z)
   car->stA.pos.x = x;
   car->stA.pos.y = y;
   car->stA.pos.z = z;
+  BrQuatToMat(car->stMtx, &car->st);
+}
+
+/* WHAT IT DOES: Turn a car to face heading a (radians, about z): the body
+ * matrix gets the z rotation, and all three rigid-body states get the
+ * matching half-angle quaternion.  m only holds the ROM's frame size.
+ * RESIDUE (46): scheduling only -- the ROM loads the saved sin/cos just
+ * before each store and the quaternion copies use f18/f16; same
+ * instructions and store order. */
+/* @implements 0x8021FE80 tgr BrCarSetHeading */
+void BrCarSetHeading(BrCar *car, float a)
+{
+  float c;
+  float s;
+  float c2;
+  float s2;
+  float m[10];                   /* unused: holds the frame size */
+
+  c = cosf(a);
+  s = sinf(a);
+  c2 = cosf(a + 1.5707964f);
+  s2 = sinf(a + 1.5707964f);
+  car->mtx0[0][0] = c;
+  car->mtx0[0][2] = 0.0f;
+  car->mtx0[0][1] = s;
+  car->mtx0[1][1] = s2;
+  car->mtx0[1][2] = 0.0f;
+  car->mtx0[2][1] = 0.0f;
+  car->mtx0[2][0] = 0.0f;
+  car->mtx0[2][2] = 1.0f;
+  car->mtx0[1][0] = c2;
+  car->st.q[0] = cosf(a * 0.5f);
+  car->st.q[2] = 0.0f;
+  car->st.q[1] = 0.0f;
+  car->stA.q[3] = car->stB.q[3] = car->st.q[3] = sinf(a * 0.5f);
+  car->stA.q[0] = car->stB.q[0] = car->st.q[0];
+  car->stA.q[1] = car->stB.q[1] = car->st.q[1];
+  car->stA.q[2] = car->stB.q[2] = car->st.q[2];
   BrQuatToMat(car->stMtx, &car->st);
 }
 
