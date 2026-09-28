@@ -348,6 +348,14 @@ void BrTrackSurfaceSet(int param_1)
  * the loaded track image and into the places the texture records point at,
  * for those records that ask for it. Records that fail any of half a dozen
  * checks are quietly skipped. */
+#ifdef BR_MATCHING_BUILD
+/* The two globals the original reads here (g_BrLoad gathers them for the
+ * port, see slice2_20.h): the texture/TLUT byte base and the parallel flag
+ * array.  Named separately so each relocation resolves to its own variable
+ * (config/globals_glide.csv). */
+extern uint8_t *g_brLoadTexBase;    /* 0x106B7C7C */
+extern uint8_t *g_brLoadTexFlags;   /* 0x106EECF4 */
+#endif
 /* @implements 0x10038450 d3d BrTexCopyRecords */
 void BrTexCopyRecords(void *pvTable, int cRecords)
 {
@@ -391,7 +399,7 @@ void BrTexCopyRecords(void *pvTable, int cRecords)
         if (cb == 0)
             goto next;
 
-        memcpy(pDst, g_BrLoad.pTexBase + *(uint32_t *)(void *)(pDesc + 0x0C),
+        memcpy(pDst, g_brLoadTexBase + *(uint32_t *)(void *)(pDesc + 0x0C),
                cb);
 
         pDst = *(uint8_t **)(void *)(pWalk - 4);
@@ -404,14 +412,14 @@ void BrTexCopyRecords(void *pvTable, int cRecords)
             uint32_t cbPal;
 
             pDesc  = *(uint8_t **)(void *)pWalk;
-            pFlags = (char *)g_BrLoad.pTexFlags;
+            pFlags = (char *)g_brLoadTexFlags;
             pFlags += adj;
             uSel    = *(uint32_t *)(void *)(pFlags + (int32_t)(uint32_t)pWalk
                                             + 0x20);
             uSel   &= 0x0F000000u;
             cbPal   = (uSel == 0x01000000u) ? 0x20u : 0x200u;
             memcpy(pDst,
-                   g_BrLoad.pTexBase + *(uint32_t *)(void *)(pDesc + 0x10),
+                   g_brLoadTexBase + *(uint32_t *)(void *)(pDesc + 0x10),
                    cbPal);
         }
     next:
