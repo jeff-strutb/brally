@@ -47,7 +47,83 @@ extern BrVec3 D_8031B750;               /* the point found by BrPathWalk */
 extern BrPathSeg *D_8028B824;           /* and its segment */
 extern int D_8028B828;                  /* and its point */
 void BrVec3Lerp(BrVec3 *pOut, BrVec3 *pA, BrVec3 *pB, float t);
+typedef struct BrGate {         /* a lap gate across the track (0x14 bytes) */
+  float a[2];                   /* 0x00  its ends, x and y */
+  float b[2];                   /* 0x08 */
+  int x10;
+} BrGate;
+typedef struct BrTrackGates {   /* the gates in the loaded track's header */
+  char pad00[0x98];
+  BrGate gate[10];              /* 0x98 */
+  int nGates;                   /* 0x160 */
+} BrTrackGates;
+extern BrTrackGates D_80025C00;
+extern BrGate D_80025C98[];             /* the same gates, as their own symbol */
+extern int D_8028B82C;                  /* gates crossed by BrPathGates */
+extern int D_8028B830;                  /* times it crossed gate 0 */
+int BrSegmentsOverlapXY(float *a, float *b, BrVec3 *c, BrVec3 *d);
 /* -- end declarations -- */
+
+/* WHAT IT DOES: Walk d along a path from the start of a segment (closed
+ * segments bypassed through their alternates), counting the lap gates each
+ * span crosses (and how many times gate 0); where d runs out, interpolate
+ * the point into D_8031B750, count the part-span's gate too, and keep the
+ * segment and point.
+ * RESIDUE (74, 156/158 instructions): register allocation in the final
+ * span.  The ROM keeps gate 0's address in s7 and 0x14 in fp through the
+ * loop, then re-materialises gate 0 and holds the point and D_8031B750 in
+ * s1/s7 across the interpolation; ours swaps s7/fp and spills the point.
+ * Landed: gate 0 as its own symbol (D_80025C98), the gate by index k. */
+/* @implements 0x80228E4C tgr BrPathGates */
+void BrPathGates(BrPathSeg *seg, float d)
+{
+  int i;
+  float len;
+  int k;
+
+  D_8028B82C = 0;
+  D_8028B830 = 0;
+  for (;;) {
+    if (seg != 0 && (seg->flags & 1)) {
+      do {
+        seg = seg->alt;
+      } while (seg != 0 && (seg->flags & 1));
+    }
+    if (seg == 0) {
+      return;
+    }
+    for (i = 0; i < seg->count; i++) {
+      len = seg->pt[i].dist - seg->pt[i + 1].dist;
+      if (len < d) {
+        d -= len;
+        if (D_80025C00.nGates != 0) {
+          k = (D_8028B82C + 1) % D_80025C00.nGates;
+          if (BrSegmentsOverlapXY(D_80025C00.gate[k].b, D_80025C00.gate[k].a, &seg->pt[i].pos, &seg->pt[i + 1].pos)) {
+            D_8028B82C++;
+            if (&D_80025C00.gate[k] == D_80025C98) {
+              D_8028B830++;
+            }
+          }
+        }
+      } else {
+        BrVec3Lerp(&D_8031B750, &seg->pt[i + 1].pos, &seg->pt[i].pos, d / len);
+        if (D_80025C00.nGates != 0) {
+          k = (D_8028B82C + 1) % D_80025C00.nGates;
+          if (BrSegmentsOverlapXY(D_80025C00.gate[k].b, D_80025C00.gate[k].a, &seg->pt[i].pos, &D_8031B750)) {
+            D_8028B82C++;
+            if (&D_80025C00.gate[k] == D_80025C98) {
+              D_8028B830++;
+            }
+          }
+        }
+        D_8028B824 = seg;
+        D_8028B828 = i;
+        return;
+      }
+    }
+    seg = seg->next;
+  }
+}
 
 /* WHAT IT DOES: Drive one computer-controlled car for this frame: the
  * out-of-line entry to the AI driver's main body. */
