@@ -48,6 +48,18 @@ typedef union {
 #define G_SETPRIMCOLOR      0xfa
 #define G_SETFILLCOLOR      0xf7
 #define G_SETCIMG           0xff
+#define G_SETTIMG           0xfd
+#define G_SETTILE           0xf5
+#define G_LOADBLOCK         0xf3
+#define G_LOADTLUT          0xf0
+#define G_SETTILESIZE       0xf2
+#define G_TEXTURE           0xbb
+#define G_RDPLOADSYNC       0xe6
+#define G_RDPTILESYNC       0xe8
+#define G_TX_LDBLK_MAX_TXL  2047
+#ifndef MIN
+#define MIN(a, b)           ((a) < (b) ? (a) : (b))
+#endif
 #define G_TEXRECT           0xe4
 #define G_RDPHALF_1         0xb4
 #define G_RDPHALF_2         0xb3
@@ -187,6 +199,57 @@ typedef union {
     _g->words.w1 = (unsigned int)(i);                                   \
 }
 #define gDPSetColorImage(pkt, f, s, w, i)   gSetImage(pkt, G_SETCIMG, f, s, w, i)
+#define gDPSetTextureImage(pkt, f, s, w, i) gSetImage(pkt, G_SETTIMG, f, s, w, i)
+#define gDPLoadSync(pkt)    gDPNoParam(pkt, G_RDPLOADSYNC)
+#define gDPTileSync(pkt)    gDPNoParam(pkt, G_RDPTILESYNC)
+#define gDPSetTile(pkt, fmt, siz, line, tmem, tile, palette, cmt, maskt, shiftt, cms, masks, shifts) \
+{                                                                       \
+    Gfx *_g = (Gfx *)(pkt);                                             \
+                                                                        \
+    _g->words.w0 = _SHIFTL(G_SETTILE, 24, 8) | _SHIFTL(fmt, 21, 3) |    \
+                   _SHIFTL(siz, 19, 2) | _SHIFTL(line, 9, 9) |          \
+                   _SHIFTL(tmem, 0, 9);                                 \
+    _g->words.w1 = _SHIFTL(tile, 24, 3) | _SHIFTL(palette, 20, 4) |     \
+                   _SHIFTL(cmt, 18, 2) | _SHIFTL(maskt, 14, 4) |        \
+                   _SHIFTL(shiftt, 10, 4) | _SHIFTL(cms, 8, 2) |        \
+                   _SHIFTL(masks, 4, 4) | _SHIFTL(shifts, 0, 4);        \
+}
+#define gDPLoadBlock(pkt, tile, uls, ult, lrs, dxt)                     \
+{                                                                       \
+    Gfx *_g = (Gfx *)(pkt);                                             \
+                                                                        \
+    _g->words.w0 = (_SHIFTL(G_LOADBLOCK, 24, 8) | _SHIFTL(uls, 12, 12) | \
+                    _SHIFTL(ult, 0, 12));                               \
+    _g->words.w1 = (_SHIFTL(tile, 24, 3) |                              \
+                    _SHIFTL((MIN(lrs, G_TX_LDBLK_MAX_TXL)), 12, 12) |   \
+                    _SHIFTL(dxt, 0, 12));                               \
+}
+#define gDPLoadTLUTCmd(pkt, tile, count)                                \
+{                                                                       \
+    Gfx *_g = (Gfx *)pkt;                                               \
+                                                                        \
+    _g->words.w0 = _SHIFTL(G_LOADTLUT, 24, 8);                          \
+    _g->words.w1 = _SHIFTL((tile), 24, 3) | _SHIFTL((count), 14, 10);   \
+}
+#define gDPLoadTileGeneric(pkt, c, tile, uls, ult, lrs, lrt)            \
+{                                                                       \
+    Gfx *_g = (Gfx *)(pkt);                                             \
+                                                                        \
+    _g->words.w0 = _SHIFTL(c, 24, 8) | _SHIFTL(uls, 12, 12) |           \
+                   _SHIFTL(ult, 0, 12);                                 \
+    _g->words.w1 = _SHIFTL(tile, 24, 3) | _SHIFTL(lrs, 12, 12) |        \
+                   _SHIFTL(lrt, 0, 12);                                 \
+}
+#define gDPSetTileSize(pkt, t, uls, ult, lrs, lrt)                      \
+    gDPLoadTileGeneric(pkt, G_SETTILESIZE, t, uls, ult, lrs, lrt)
+#define gSPTexture(pkt, s, t, level, tile, on)                          \
+{                                                                       \
+    Gfx *_g = (Gfx *)(pkt);                                             \
+                                                                        \
+    _g->words.w0 = (_SHIFTL(G_TEXTURE, 24, 8) | _SHIFTL((level), 11, 3) | \
+                    _SHIFTL((tile), 8, 3) | _SHIFTL((on), 0, 8));       \
+    _g->words.w1 = (_SHIFTL((s), 16, 16) | _SHIFTL((t), 0, 16));        \
+}
 #define gImmp1(pkt, c, p0)                                              \
 {                                                                       \
     Gfx *_g = (Gfx *)(pkt);                                             \

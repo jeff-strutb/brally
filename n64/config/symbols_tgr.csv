@@ -411,3 +411,4 @@ va,name,kind
 8021D84C,BrAnimUpdate,func
 8022FFB4,BrCarDrawWheels,func
 802465F0,BrImageDrawPart,func
+80217734,BrTexLoad,func
