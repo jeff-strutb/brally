@@ -391,3 +391,7 @@ va,name,kind
 80252F64,BrTexRectFlipDraw,func
 80208570,BrPakWarnScreen,func
 80223A70,BrFadeBarsDraw,func
+80268230,osAiSetFrequency,func
+80268390,osSetTimer,func
+80268470,osAiSetNextBuffer,func
+802575C4,BrMusicInit,func

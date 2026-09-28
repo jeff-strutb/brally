@@ -49,6 +49,26 @@ typedef struct BrSample {       /* a module instrument's sample header; 8-bit da
 } BrSample;
 extern BrSample *D_803787D0[];  /* by instrument number - 1 */
 extern unsigned long long D_80379568[10][12];
+extern int D_802A4918;
+extern int D_802A491C;
+extern char D_803746F0[];               /* the music timer's message queue */
+extern char D_80374708[];               /* its two messages */
+extern char D_80374710[];               /* the music timer */
+extern short D_803747D0[];              /* the music output buffer (0x4000 bytes) */
+extern short D_802A4A08[];              /* silence: where idle sound voices point */
+extern char D_80378FB8[];               /* the mixer thread */
+extern short D_802A4790;
+extern unsigned long long osClockRate;
+int osAiSetFrequency(unsigned int freq);
+void osCreateMesgQueue(void *mq, void *msgs, int count);
+int osSetTimer(void *t, unsigned long long countdown, unsigned long long interval, void *mq, void *msg);
+unsigned int osGetCount(void);
+void BrMixMusic(short *buf, int bytes);
+void BrNoteRatesInit(void);
+int osAiSetNextBuffer(void *buf, unsigned int size);
+void osCreateThread(void *t, int id, void (*entry)(void *), void *arg, void *sp, int pri);
+void osStartThread(void *t);
+void func_80257D3C(void *arg);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Build the mixer's note-rate table: for ten octaves of the
@@ -88,6 +108,55 @@ void BrModReset(void)
   }
 }
 
+
+/* WHAT IT DOES: Bring up the music player: set the audio interface to
+ * 21998 Hz, start a 10 ms timer on the music queue, silence every music and
+ * sound voice, time one test mix, build the instrument and note-rate
+ * tables, reset the module player, queue the first buffer and start the
+ * mixer thread.
+ * RESIDUE (39): IDO unrolls the six-voice loop with its stores in another
+ * order and one temp register later, and keeps 0xFFFEFFFE in v0 where the
+ * ROM uses t6.  Loop tests, store order in the body and the constant's
+ * spelling (chained, comma, one line) do not reach it. */
+/* @implements 0x802575C4 tgr BrMusicInit */
+void BrMusicInit(int param_1, char *param_2)
+{
+  int i;
+  int j;
+  unsigned int t;
+
+  D_802A4918 = 0xfffefffe;
+  D_802A491C = 0xfffefffe;
+  osSyncPrintf("Real Frequency is = %d\n", osAiSetFrequency(21998));
+  osCreateMesgQueue(D_803746F0, D_80374708, 2);
+  osSetTimer(D_80374710, (unsigned long long)10000 * osClockRate / 1000000,
+             (unsigned long long)10000 * osClockRate / 1000000, D_803746F0, 0);
+  for (i = 0; i < D_802A49C0; i++) {
+    D_802A4798[i].pos = (unsigned int)D_803747D0;
+    D_802A4798[i].rate = 0;
+    D_802A4798[i].baseVol = 0x20;
+  }
+  for (j = 0; j < 6; j++) {
+    D_802A4920[j].pos = (unsigned int)D_802A4A08;
+    D_802A4920[j].rate = 0;
+    D_802A4920[j].baseVol = 0x20;
+  }
+  D_802A4790 = 0;
+  t = -osGetCount();
+  BrMixMusic(D_803747D0, 0x4000);
+  t += osGetCount();
+  osSyncPrintf("%1.7f", (double)t / 46875500.0);
+  osSyncPrintf("Creating I entries\n");
+  func_80256720(param_1, param_2);
+  osSyncPrintf("Creating Note Frequency entries\n");
+  BrNoteRatesInit();
+  osSyncPrintf("Starting Mod\n");
+  BrModReset();
+  D_80378F98 = 1;
+  osAiSetNextBuffer(D_803747D0, 0x4000);
+  osCreateThread(D_80378FB8, 7, func_80257D3C, 0, D_80379568, 0x7f);
+  osStartThread(D_80378FB8);
+}
 
 /* WHAT IT DOES: Start a piece of music: builds its instrument entries,
  * starts the module player and sets every channel to its starting volume. */
