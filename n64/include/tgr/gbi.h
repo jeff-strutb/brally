@@ -47,6 +47,11 @@ typedef union {
 #define G_FILLRECT          0xf6
 #define G_SETPRIMCOLOR      0xfa
 #define G_SETFILLCOLOR      0xf7
+#define G_SETCIMG           0xff
+#define G_IM_FMT_RGBA       0
+#define G_IM_SIZ_16b        2
+#define G_MAXFBZ            0x3fff
+#define GPACK_ZDZ(z, dz)    ((z) << 2 | (dz))
 #define G_SETCOMBINE        0xfc
 #define G_SETSCISSOR        0xed
 #define G_SC_NON_INTERLACE  0
@@ -170,6 +175,15 @@ typedef union {
 
 #define gDPPipeSync(pkt)            gDPNoParam(pkt, G_RDPPIPESYNC)
 #define gDPSetFillColor(pkt, d)     gDPSetColor(pkt, G_SETFILLCOLOR, (d))
+#define gSetImage(pkt, cmd, fmt, siz, width, i)                         \
+{                                                                       \
+    Gfx *_g = (Gfx *)(pkt);                                             \
+                                                                        \
+    _g->words.w0 = _SHIFTL(cmd, 24, 8) | _SHIFTL(fmt, 21, 3) |          \
+                   _SHIFTL(siz, 19, 2) | _SHIFTL((width)-1, 0, 12);     \
+    _g->words.w1 = (unsigned int)(i);                                   \
+}
+#define gDPSetColorImage(pkt, f, s, w, i)   gSetImage(pkt, G_SETCIMG, f, s, w, i)
 #define gDPSetCycleType(pkt, type)  \
     gSPSetOtherMode(pkt, G_SETOTHERMODE_H, G_MDSFT_CYCLETYPE, 2, type)
 #define gDPSetColorDither(pkt, mode) \

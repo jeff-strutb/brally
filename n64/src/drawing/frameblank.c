@@ -27,6 +27,9 @@ extern int D_8028B748;
 extern int D_8028B74C;
 extern int D_8028AAB0;
 extern int D_8028AAB4;
+extern int D_8028A85C;                 /* the frame buffer being drawn */
+extern unsigned int D_8031AA28[];      /* the frame buffers */
+extern char D_00000400[];              /* the Z-buffer (a link-time address) */
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Start building a new frame using the first of the two
@@ -43,6 +46,32 @@ void BrFrameBeginLayout0(void)
 void BrFrameBeginLayout1(void)
 {
   func_80219470(1);
+}
+
+/* WHAT IT DOES: Clear the Z-buffer: point the colour image at it, fill it
+ * with the far depth, and point the colour image back at the frame buffer
+ * being drawn.  The first colour image and the fill colour are written as
+ * raw words through block-scope pointers (the macros schedule their two
+ * words the other way round). */
+/* @implements 0x80217C94 tgr BrZBufferClear */
+void BrZBufferClear(void)
+{
+  gDPPipeSync(D_8028A858++);
+  gDPSetCycleType(D_8028A858++, G_CYC_FILL);
+  gDPSetRenderMode(D_8028A858++, G_RM_OPA_SURF, G_RM_OPA_SURF2);
+  {
+    unsigned int *p = (unsigned int *)D_8028A858++;
+    p[0] = 0xff100000 | (((D_8028AAB0 << D_8028A850) - 1) & 0xfff);
+    p[1] = (unsigned int)D_00000400;
+  }
+  {
+    unsigned int *p = (unsigned int *)D_8028A858++;
+    p[0] = 0xf7000000;
+    p[1] = GPACK_ZDZ(G_MAXFBZ, 0) << 16 | GPACK_ZDZ(G_MAXFBZ, 0);
+  }
+  gDPFillRectangle(D_8028A858++, 0, 0, (D_8028AAB0 << D_8028A850) - 1, (D_8028AAB4 << D_8028A850) - 1);
+  gDPPipeSync(D_8028A858++);
+  gDPSetColorImage(D_8028A858++, G_IM_FMT_RGBA, G_IM_SIZ_16b, D_8028AAB0 << D_8028A850, D_8031AA28[D_8028A85C] + 0x80000000);
 }
 
 /* WHAT IT DOES: Clear the whole screen to one colour (fill mode,
