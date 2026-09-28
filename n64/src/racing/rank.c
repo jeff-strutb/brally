@@ -41,9 +41,9 @@ int BrRankCmpKey(void *pA, void *pB)
 /* WHAT IT DOES: Work out the race positions: every entity not yet finished
  * is keyed by its progress (the car's at 0xFA8, or the entity's own at 0x50
  * for one that is not a car), the keys are sorted ascending with
- * BrRankCmpKey, and each gets position count-1-k in its car's
- * 0xFAC or its own 0x54 (more progress, lower number).  The locals are declared tab, i, n: IDO gives them
- * their stack slots top-down in that order. */
+ * BrRankCmpKey, and each gets position count-1-k in its car's 0xFAC or its
+ * own 0x54 (more progress, lower number).  The locals are declared tab, i,
+ * n: IDO gives them their stack slots top-down in that order. */
 /* @implements 0x80229550 tgr BrRankUpdate */
 void BrRankUpdate(void)
 {
