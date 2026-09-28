@@ -128,38 +128,37 @@ void FUN_100215c0(int, int, int, int, int);
  * to the rectangle drawer. It consumes 0x18 bytes, not 8, because the
  * texture coordinates follow the command. The whole-pixel twin is
  * BrDlsTileRectE3. */
-/* RESIDUE (75/79 B, 29/32 insns, register-blind 4+1): the original keeps
- * FIVE argument values live at once and copies the loaded words before
- * masking (`mov ecx,eax; and eax,0xfff; mov ebx,eax` on the first word,
- * `mov edx,eax; mov edi,eax` on the second, the low field masked IN PLACE
- * last), where ours masks the shifted field in place and the low field from
- * a copy.  DEAD 2026-09-12 (fn.py, do not re-run): lrx before lry; all
- * five fields as named locals in the original's evaluation order; `>> 24 &
- * 7` unparenthesised; two named words (v0/v1) with lrx inline in the call,
- * with both first-word fields inline, and with both named -- the split
- * word forms are 26 insns, strictly worse. */
-/* @t4-pass 0x10021570 1 2026-09-07 probes 33 bytes 75 insns 29 regions 2 rows 7 census yes  (tools/crank.py) */
-/* @t4-pass 0x10021570 2 2026-09-07 probes 33 bytes 75 insns 29 regions 2 rows 7 census yes  (tools/crank.py) */
-/* @t4-pass 0x10021570 3 2026-09-20 probes 33 bytes 75 insns 29 regions 2 rows 5 census yes  (tools/crank.py) */
-/* @t4-pass 0x10021570 4 2026-09-20 probes 33 bytes 75 insns 29 regions 2 rows 5 census yes  (tools/crank.py) */
-/* @t3 0x10021570 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 75/79 insns 29/32 rows 4+1 regions 2 oracle EQUIVALENT
- * @t3-effort passes 4 zero-movement 3 4
- * RESIDUE: register colouring and minor scheduling -- one surplus register
- * move; recompile is a few bytes shorter (crank 33+ compiles, no byte-exact,
- * census yes). Do not reopen before the end-grind (project rule 12). */
+/* Byte-exact 2026-09-28, hand-transcribed.  The original computes every
+ * field before the first push (five values live at once, hence ebx), and
+ * the source that reproduces that is a few scratch words reused: VC5 sinks a
+ * field into the argument list unless the word it was computed from is
+ * overwritten before the call.  So w0 is copied to t before its low field is
+ * masked and v is reloaded with w1; lrx is taken from t before t is reused
+ * for w1; ulx is taken before v is masked in place; the masked v is parked
+ * in u and v then carries tile.  The pointer steps are separate statements
+ * (+0x10 up front, +4 +4 after the call) -- a single `return p + 8` folds to
+ * `lea` where the original adds in place. */
 /* @implements 0x10021570 glide BrDlsTileRectE4 */
 unsigned char *BrDlsTileRectE4(unsigned char *p)
 {
-    unsigned v, lry, lrx;
+    unsigned v, t, u, lry, lrx, ulx, tile;
 
     v = *(unsigned *)p;
     p += 0x10;
+    t = v;
     lry = v & 0xFFF;
-    lrx = (v >> 12) & 0xFFF;
     v = *(unsigned *)(p - 0xc);
-    FUN_100215c0((v >> 12) & 0xFFF, v & 0xFFF, lrx, lry, (v >> 24) & 7);
-    return p + 8;
+    lrx = (t >> 12) & 0xFFF;
+    t = v;
+    tile = (t >> 24) & 7;
+    ulx = (v >> 12) & 0xFFF;
+    v &= 0xFFF;
+    u = v;
+    v = tile;
+    FUN_100215c0(ulx, u, lrx, lry, v);
+    p += 4;
+    p += 4;
+    return p;
 }
 
 /* 0xE3 -- integer corners scaled <<2, 8-byte command. */
