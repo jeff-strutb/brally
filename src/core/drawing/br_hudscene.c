@@ -95,6 +95,65 @@ static BrRdpRegs    g_regs;
 BrGfxOut     *BrGfxGetOut(void)   { return &g_out; }
 BrScreenInfo *BrScreenGet(void)   { return &g_screen; }
 BrHudEnv     *BrHudGetEnv(void)   { return &g_hud; }
+
+/* g_hud and g_screen are the port's gatherings of scattered originals.  The
+ * byte-exact functions of this file read the fields as the separate globals
+ * they are, by their DAT_ names; the two T3 bodies keep the structs and
+ * their pinned relocation rows. */
+#ifdef BR_MATCHING_BUILD
+extern int32_t DAT_100bcbfc;
+#define HUD_f0BD3F4 DAT_100bcbfc
+extern int32_t DAT_10226a4c;
+#define HUD_f22AF1C DAT_10226a4c
+extern int32_t DAT_105ccb5c;
+#define HUD_f6909B4 DAT_105ccb5c
+extern int32_t DAT_106e7714;
+#define HUD_f6C0684 DAT_106e7714
+extern int32_t DAT_106e9a2c;
+#define HUD_f6C299C DAT_106e9a2c
+extern int32_t DAT_106ed67c;
+#define HUD_f6C65EC DAT_106ed67c
+extern int32_t DAT_100b2f04;
+#define HUD_cCars DAT_100b2f04
+extern unsigned char *DAT_106e9d88;   /* declared as the split list below does */
+#define HUD_pRace (*(BrRace **)&DAT_106e9d88)
+extern BrHudQuad DAT_104ab508[BR_HUD_QUADS];
+#define HUD_aQuads DAT_104ab508
+extern int32_t DAT_100a6b68[BR_HUD_VIEWS];
+#define HUD_aLastSeq DAT_100a6b68
+extern const char *DAT_104abb20;
+#define HUD_pszCentre DAT_104abb20
+extern char DAT_104ab708[32];
+#define HUD_szGap DAT_104ab708
+#else
+#define HUD_f0BD3F4 g_hud.f0BD3F4
+#define HUD_f22AF1C g_hud.f22AF1C
+#define HUD_f6909B4 g_hud.f6909B4
+#define HUD_f6C0684 g_hud.f6C0684
+#define HUD_f6C299C g_hud.f6C299C
+#define HUD_f6C65EC g_hud.f6C65EC
+#define HUD_cCars g_hud.cCars
+#define HUD_pRace g_hud.pRace
+#define HUD_aQuads g_hud.aQuads
+#define HUD_aLastSeq g_hud.aLastSeq
+#define HUD_pszCentre g_hud.pszCentre
+#define HUD_szGap g_hud.szGap
+#endif
+#ifdef BR_MATCHING_BUILD
+extern int32_t DAT_100a7514;
+#define SCR_cx DAT_100a7514
+extern int32_t DAT_100a7518;
+#define SCR_cy DAT_100a7518
+extern int32_t DAT_100aa044;
+#define SCR_cViews DAT_100aa044
+extern int32_t DAT_106ec798;
+#define SCR_iView DAT_106ec798
+#else
+#define SCR_cx g_screen.cx
+#define SCR_cy g_screen.cy
+#define SCR_cViews g_screen.cViews
+#define SCR_iView g_screen.iView
+#endif
 BrSceneEnv   *BrSceneGetEnv(void) { return &g_scene; }
 BrWeather    *BrWeatherGet(void)  { return &g_weather; }
 BrRdpRegs    *BrRdpGetRegs(void)  { return &g_regs; }
@@ -240,31 +299,31 @@ void BrHudDrawDial(BrHudView *aViews)
     float tip, base;
     float t;
 
-    if (g_hud.f0BD3F4 == 0)              /* 10016B4D */
+    if (HUD_f0BD3F4 == 0)              /* 10016B4D */
         return;
-    if (g_hud.f22AF1C != 0)              /* 10016B56 */
+    if (HUD_f22AF1C != 0)              /* 10016B56 */
         return;
 
     /* The sprite record is resolved BEFORE the call: the original loads
-     * g_screen.iView, aViews[iView].iSprite and the sprite address at
+     * SCR_iView, aViews[iView].iSprite and the sprite address at
      * 100140D2-10014109, all ahead of the call at 10014110. */
-    pSpr = BrHudSpriteAt(BrHudViewAt(aViews, g_screen.iView)->iSprite);
+    pSpr = BrHudSpriteAt(BrHudViewAt(aViews, SCR_iView)->iSprite);
 
     /* 10016B68-10016BA0: the two globals are converted to float and handed to
      * 0x1003407D, whose result is discarded -- it is called for effect. */
-    BrSub_1003407D((float)g_hud.f6C0684, (float)g_hud.f6C299C);
+    BrSub_1003407D((float)HUD_f6C0684, (float)HUD_f6C299C);
 
-    x = g_screen.cx - pSpr->e4 - 0x10;               /* 10016BB1 */
-    y = BrHudViewAt(aViews, g_screen.iView)->y
-      + BrHudViewAt(aViews, g_screen.iView)->h - pSpr->e5 - 4;  /* 10016BC6 */
+    x = SCR_cx - pSpr->e4 - 0x10;               /* 10016BB1 */
+    y = BrHudViewAt(aViews, SCR_iView)->y
+      + BrHudViewAt(aViews, SCR_iView)->h - pSpr->e5 - 4;  /* 10016BC6 */
 
     /* 10016BE9: NaN takes the zero path (C0 is set for unordered). */
-    if (g_hud.pRace->f0E68 >= kF300)
-        iSeq = g_hud.pRace->f0E70 + 1;
+    if (HUD_pRace->f0E68 >= kF300)
+        iSeq = HUD_pRace->f0E70 + 1;
     else
         iSeq = 0;
 
-    if (g_screen.cViews == 1) {                      /* 10016C0D */
+    if (SCR_cViews == 1) {                      /* 10016C0D */
         int32_t v, iFrame;
 
         p = BrGfxAlloc();
@@ -288,7 +347,7 @@ void BrHudDrawDial(BrHudView *aViews)
                              pSpr->e4, pSpr->e5);
         } else {
             /* 10016D14: with f6909B4 set the jitter is pinned to 0x40. */
-            if (g_hud.f6909B4 != 0)
+            if (HUD_f6909B4 != 0)
                 v = 0x40;
             else
                 v = BrRandom() & 0x7F;
@@ -301,7 +360,7 @@ void BrHudDrawDial(BrHudView *aViews)
              * first, loading it before the kF304 subtract (38 diff bytes,
              * size-exact).  A named temp for the first product is the same
              * bytes; naming (ea + 1) instead is inert. */
-            iFrame = (int32_t)((((float)v + g_hud.pRace->f0E24 - kF304)
+            iFrame = (int32_t)((((float)v + HUD_pRace->f0E24 - kF304)
                                * kF308) * (float)(pSpr->ea + 1) - kF30C);
 
             if (iFrame < 0)         iFrame = 0;
@@ -313,13 +372,13 @@ void BrHudDrawDial(BrHudView *aViews)
         }
 
         /* 10016DB4: one cached sequence id per view. */
-        if (iSeq != g_hud.aLastSeq[g_screen.iView]) {
+        if (iSeq != HUD_aLastSeq[SCR_iView]) {
             p = BrGfxAlloc();
             p->w0 = 0xDD000000u | (aViews[0].dlOverlay & 0x00FFFFFFu);
             /* DEVIATION: 32-bit truncation of a host pointer. */
             p->w1 = BrGfxAddr((const uint8_t *)pSpr + BR_HUDSPRITE_DATAOFF)
                   + (uint32_t)pSpr->fFC * (uint32_t)iSeq;
-            g_hud.aLastSeq[g_screen.iView] = iSeq;
+            HUD_aLastSeq[SCR_iView] = iSeq;
         }
 
         BrGfxDrawTexRect(aViews[0].dlOverlay,
@@ -330,20 +389,20 @@ void BrHudDrawDial(BrHudView *aViews)
     /* ---- 10016E3C: reached for every cViews ---- */
     {
         int32_t v;
-        if (g_hud.f6909B4 != 0)
+        if (HUD_f6909B4 != 0)
             v = 0x40;
         else
             v = BrRandom() & 0x7F;
         /* Stored through a 32-bit slot, so the float32 rounding is real. */
-        t = (float)v + g_hud.pRace->f0E24;
+        t = (float)v + HUD_pRace->f0E24;
     }
 
     if (pSpr->mode != 0)                             /* 10016E7C */
         return;
 
-    pQuad = &g_hud.aQuads[g_screen.iView + 2 * g_hud.f6C65EC];
+    pQuad = &HUD_aQuads[SCR_iView + 2 * HUD_f6C65EC];
 
-    if (g_screen.cViews == 2) {                      /* 10016E98 */
+    if (SCR_cViews == 2) {                      /* 10016E98 */
         base = kF314;          /* 5.0f  */
         tip  = 15.0f;          /* the immediate 0x41700000 */
         x += (pSpr->ea * 3) / 4;
@@ -360,7 +419,7 @@ void BrHudDrawDial(BrHudView *aViews)
         float  ang;
         float fx;
         int16_t iy;
-        int32_t dy = g_screen.cy - y;
+        int32_t dy = SCR_cy - y;
 
         /* 10016F22: NaN takes the "no interpolation" path. */
         if (t > kF300) {
@@ -484,23 +543,23 @@ void BrHudDrawViewCentreText(const BrHudView *aViews)
     if (BrSub_1002B2A0() != 0)
         return;
 
-    if (g_screen.cViews == 1) { big = 0x1E; small_ = 0x14; }
+    if (SCR_cViews == 1) { big = 0x1E; small_ = 0x14; }
     else                      { big = 0x14; small_ = 0x0F; }
 
-    pView = &aViews[g_screen.iView];
+    pView = &aViews[SCR_iView];
 
     x  = pView->x + pView->w / 2;       /* cdq/sub/sar 1: truncates toward 0 */
     yy = pView->y + pView->h / 3 + 0x18;/* magic 0x55555556: signed /3       */
 
     BrSub_10019270();
 
-    if (g_hud.pszCentre == NULL)
+    if (HUD_pszCentre == NULL)
         return;
 
     BrSub_100192F0(small_);
 
     /* (big*3)/16, signed, truncating -- 5 for 0x1E, 3 for 0x14. */
-    BrTextDraw(g_hud.pszCentre, x, yy + (big * 3) / 16);
+    BrTextDraw(HUD_pszCentre, x, yy + (big * 3) / 16);
 }
 
 /* =====================================================================
@@ -517,33 +576,33 @@ void BrHudDrawViewMessage(const BrHudView *aViews)
     const BrHudView *pView;
     int32_t big, small_, x, yy;
 
-    if (g_hud.f6909B4 != 0)
+    if (HUD_f6909B4 != 0)
         return;
     if (BrSub_1002B2A0() != 0)
         return;
 
-    if (g_screen.cViews == 1) { big = 0x1E; small_ = 0x14; }
+    if (SCR_cViews == 1) { big = 0x1E; small_ = 0x14; }
     else                      { big = 0x14; small_ = 0x0F; }
 
-    pView = &aViews[g_screen.iView];
+    pView = &aViews[SCR_iView];
 
     x  = pView->x + pView->w / 2;
     yy = pView->y + pView->h / 3;
 
     BrSub_10019270();
 
-    if (g_hud.pRace->psz0FFC != NULL) {
+    if (HUD_pRace->psz0FFC != NULL) {
         /* GOTCHA: this branch sizes the text with `big`, the other with
          * `small_`; they are not the same number. */
         BrSub_100192F0(big);
-        BrTextDraw(g_hud.pRace->psz0FFC, x, yy + big / 4);
+        BrTextDraw(HUD_pRace->psz0FFC, x, yy + big / 4);
         return;
     }
-    if (g_hud.pRace->psz1004 == NULL)
+    if (HUD_pRace->psz1004 == NULL)
         return;
 
     BrSub_100192F0(small_);
-    BrTextDraw(g_hud.pRace->psz1004, x, yy + (big * 3) / 16);
+    BrTextDraw(HUD_pRace->psz1004, x, yy + (big * 3) / 16);
 }
 
 /* =====================================================================
@@ -562,7 +621,7 @@ float BrHudGapSeconds(const BrCar *aCars, int iCar)
     float   v;
     int     i;
 
-    for (i = 0; i < g_hud.cCars; ++i) {
+    for (i = 0; i < HUD_cCars; ++i) {
         if (best > aCars[i].f0FF8) {
             best = aCars[i].f0FF8;
             f = aCars[i].f0FF4 - aCars[iCar].f0FF4;
@@ -603,12 +662,12 @@ const char *BrHudFormatGapString(const BrCar *aCars, int iCar)
 
     /* 10017C9E: C0|C3 -- f <= 0 or unordered -> the empty string. */
     if (f > kF300) {
-        g_hud.szGap[0] = '+';
-        BrSub_100020D0(&g_hud.szGap[1], f);
+        HUD_szGap[0] = '+';
+        BrSub_100020D0(&HUD_szGap[1], f);
     } else {
-        g_hud.szGap[0] = '\0';
+        HUD_szGap[0] = '\0';
     }
-    return g_hud.szGap;
+    return HUD_szGap;
 }
 
 /* =====================================================================
@@ -663,12 +722,12 @@ void BrHudDrawSplitList(const BrHudView *aViews)
     if (g_hud.f0BD3F0 == 0)
         return;
 
-    x = g_screen.cx - 0x10;
+    x = SCR_cx - 0x10;
 
     /* 10017F4B: dec/neg/sbb/and 0xFFFFFFE2/add 0x1E collapses to this. */
-    bias = (g_screen.cViews == 1) ? 0x1E : 0;
+    bias = (SCR_cViews == 1) ? 0x1E : 0;
 
-    pView = &aViews[g_screen.iView];
+    pView = &aViews[SCR_iView];
     y = bias + (pView->y + 0x14) + 0x25;
 
     BrSub_10019260();
@@ -676,9 +735,9 @@ void BrHudDrawSplitList(const BrHudView *aViews)
     BrSub_100192F0(0x0F);
 
     /* The count is re-read from the race block on every iteration. */
-    for (i = 0; i < g_hud.pRace->cSplits; ++i) {
+    for (i = 0; i < HUD_pRace->cSplits; ++i) {
         BrHudDrawSplitLine(g_hud.pszSplitPrefix, i + 1,
-                           g_hud.pRace->aSplits[i], x, y);
+                           HUD_pRace->aSplits[i], x, y);
         y += 0x0F;
     }
 }
@@ -970,7 +1029,7 @@ void BrSceneSetupFrame(const BrHudView *aViews)
     if (BrSceneUsePlainClear()) {
         int32_t c0, c1, c2;
 
-        pView = &aViews[g_screen.iView];
+        pView = &aViews[SCR_iView];
 
         /* SHIFT, NOT DIVIDE.  The original ends each of the three brightened
          * components with a bare `sar reg,2`; a signed `/ 4` makes MSVC emit
@@ -1100,10 +1159,19 @@ void BrWeatherRandomiseParticles(void)
 /* BrWeatherStepWind reads the wind state as the separate globals it is in the
  * original, by DAT_ name, rather than as fields of the port's g_weather. */
 #ifdef BR_MATCHING_BUILD
-extern float DAT_104add40, DAT_104add44, DAT_104add48;   /* windX Y Z */
+/* DECLARATION ORDER IS LOAD-BEARING (see BrWeatherStepLightning and
+ * BrWeatherStepParticles below): the FIRST declaration of a symbol fixes its
+ * place, and in a both-memory fmul the later-declared symbol takes the fld
+ * side.  Those two functions need their constants declared ahead of dt and
+ * the wind gain, so the constants are declared here first, in their order. */
+extern float DAT_1007731c;
+extern float DAT_10077318, DAT_10077334;
+extern float DAT_106e9d8c;   /* dt */
+extern float DAT_10077300, DAT_10077304, DAT_10077314;
+extern float DAT_10077328, DAT_1007732c;
 extern float DAT_104b15ec;   /* windAngle */
 extern float DAT_100a7188;   /* windGain */
-extern float DAT_106e9d8c;   /* dt */
+extern float DAT_104add40, DAT_104add44, DAT_104add48;   /* windX Y Z */
 #define WS_windX DAT_104add40
 #define WS_windY DAT_104add44
 #define WS_windZ DAT_104add48
@@ -1416,13 +1484,13 @@ void BrWeatherStepParticles(void)
     /* 0x200 split between the views.
      * DEVIATION: the original divides BEFORE testing cViews, so cViews == 0
      * faults on the idiv. Guarded here. */
-    g_weather.cParticles = (g_screen.cViews != 0)
-                         ? (int32_t)(0x200 / g_screen.cViews)
+    g_weather.cParticles = (SCR_cViews != 0)
+                         ? (int32_t)(0x200 / SCR_cViews)
                          : 0;
-    if (g_screen.cViews <= 0)
+    if (SCR_cViews <= 0)
         return;
 
-    for (iView = 0; iView < g_screen.cViews; ++iView) {
+    for (iView = 0; iView < SCR_cViews; ++iView) {
         const BrCamBlock *pBlk = g_weather.pfnGetBlock(iView);
         BrVec3 pos;
         BrVec3 d;
@@ -1572,11 +1640,11 @@ void BrForward1001A4B0(int i)
 /* =====================================================================
  * 0x1001BB80 .. 0x1001BC50
  * ===================================================================== */
-void BrRdpCacheScreenWidth(void)  { g_regs.f4C5164 = g_screen.cx; }
-void BrRdpCacheScreenHeight(void) { g_regs.f4C01A0 = g_screen.cy; }
-void BrRdpCacheHalfWidthA(void)   { g_regs.f4BBF08 = (float)(g_screen.cx / 2); }
-void BrRdpCacheHalfWidthB(void)   { g_regs.f4C0BB0 = (float)(g_screen.cx / 2); }
-void BrRdpCacheHalfHeight(void)   { g_regs.f4C0BB8 = (float)(g_screen.cy / 2); }
+void BrRdpCacheScreenWidth(void)  { g_regs.f4C5164 = SCR_cx; }
+void BrRdpCacheScreenHeight(void) { g_regs.f4C01A0 = SCR_cy; }
+void BrRdpCacheHalfWidthA(void)   { g_regs.f4BBF08 = (float)(SCR_cx / 2); }
+void BrRdpCacheHalfWidthB(void)   { g_regs.f4C0BB0 = (float)(SCR_cx / 2); }
+void BrRdpCacheHalfHeight(void)   { g_regs.f4C0BB8 = (float)(SCR_cy / 2); }
 
 /* =====================================================================
  * Command handlers
@@ -1603,7 +1671,7 @@ const BrGfxCmd *BrCmdRectFixed(const BrGfxCmd *pCmd)
     int32_t y2 = (BrSext(pCmd->w0, 12)       >> 2) & 0x3FF;
     int32_t x2 = (BrSext(pCmd->w0 >> 12, 12) >> 2) & 0x3FF;
 
-    BrSub_1001BE90(x1, g_screen.cy - y2 - 1, x2 + 1, g_screen.cy - y1);
+    BrSub_1001BE90(x1, SCR_cy - y2 - 1, x2 + 1, SCR_cy - y1);
     return pCmd + 1;
 }
 
@@ -1615,7 +1683,7 @@ const BrGfxCmd *BrCmdRectInt(const BrGfxCmd *pCmd)
     int32_t y2 = BrSext(pCmd->w0, 12);
     int32_t x2 = BrSext(pCmd->w0 >> 12, 12);
 
-    BrSub_1001BE90(x1, g_screen.cy - y2 - 1, x2 + 1, g_screen.cy - y1);
+    BrSub_1001BE90(x1, SCR_cy - y2 - 1, x2 + 1, SCR_cy - y1);
     return pCmd + 1;
 }
 

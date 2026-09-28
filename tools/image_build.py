@@ -110,6 +110,12 @@ EXE_FILES = {
 }
 
 
+# Set to lists by main() for the DLL: every slot filled from the original's
+# own dword, and every placed body, for tools/refslot_check.py.
+REFSLOTS = None
+YIELDED = None
+
+
 def compiled_functions(objs, fnmap, glmap, only=None, origdir=ORIG_DIR,
                        learned=True, pad_short=False, ref_fill=True,
                        extra_resolve=None, extra_sites=None):
@@ -231,6 +237,9 @@ def compiled_functions(objs, fnmap, glmap, only=None, origdir=ORIG_DIR,
                                   % (name, va, off,
                                      t['name'] if t else '?'))
                         continue
+                    if REFSLOTS is not None:
+                        REFSLOTS.append((path, sy, t, off, rt, va, plen,
+                                         bytes(code[off:off + 4]), secs, syms, d))
                     code[off:off + 4] = body_orig[off:off + 4]
                     fromref += 1
                     continue
@@ -249,6 +258,8 @@ def compiled_functions(objs, fnmap, glmap, only=None, origdir=ORIG_DIR,
                     fromref += 1
                     continue
                 struct.pack_into('<I', code, off, val & 0xFFFFFFFF)
+            if REFSLOTS is not None:
+                YIELDED.append((path, va, pre + bytes(code)))
             yield va, name, pre + bytes(code), unres, fromref
 
 
@@ -903,10 +914,16 @@ def main():
                 sys.stderr.write('\r  building BRGlide %d/%d %-40s'
                                  % (n, total, os.path.basename(f)))
                 sys.stderr.flush()
+            global REFSLOTS, YIELDED
+            REFSLOTS, YIELDED = [], []
             best, names_at, unplaced, unbuildable = collect_dll(recompile,
                                                                 dprog)
             sys.stderr.write('\r' + ' ' * 70 + '\r')
             orig_path = ORIG_DLL
+            import refslot_check
+            nslots, slotbad = refslot_check.check(REFSLOTS, YIELDED, best, orig_path,
+                                                  ORIG_DIR, REL_REL32)
+            REFSLOTS = YIELDED = None
         else:
             exe = [k for k, v in EXE_FILES.items() if v == tgt][0]
 
@@ -920,6 +937,15 @@ def main():
             orig_path = os.path.join(ROOT, 'orig', tgt)
         img, verdict = assemble(orig_path, best, names_at, unplaced, tgt,
                                 unbuildable)
+        if tgt == 'BRGlide.dll':
+            # A slot filled from the original is only "0 differing bytes" by
+            # construction; tools/refslot_check.py is what makes it count.
+            print('reference-filled slots checked  : %d, findings %d'
+                  % (nslots, len(slotbad)))
+            for where, why in slotbad[:40]:
+                print('    %s: %s' % (where, why))
+            if slotbad and verdict == 'ok':
+                verdict = 'claims'
         dest = legacy_out if (legacy_out and tgt == 'BRGlide.dll') \
             else os.path.join(out_dir, tgt)
         emit(img, verdict == 'ok', dest, no_write)
