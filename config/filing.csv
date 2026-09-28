@@ -1060,7 +1060,7 @@ glide_va,name,module,basis,file
 0x1005E780,BrCarClear29C8,racing,neighbour-1,src/core/racing/br_carinit.c
 0x1005E7B0,BrCarStartInit_1005E7B0,racing,manual,src/core/racing/BrCarStartInit_1005E7B0.cpp
 0x1005EB90,BrPathWalk,racing,manual,src/core/racing/br_pathwalk.c
-0x1005ECF0,BrRacePathAdvance,,,src/core/generated/0x1005ECF0.c
+0x1005ECF0,BrRacePathAdvance,racing,filed,src/core/racing/br_pathwalk.c
 0x1005EDC0,BrMakeEnemyCarColorPanels,drawing,filed,src/core/drawing/br_model.c
 0x1005F220,BrModelSlotApply,drawing,description,src/core/drawing/br_model.c
 0x1005F530,BrDriverAssetsFree,racing,neighbour-1,src/core/racing/br_driver.c
@@ -1126,6 +1126,7 @@ glide_va,name,module,basis,file
 0x10063CC0,BrReplaySeek,racing,neighbour,src/core/racing/br_replay.c
 0x10063DA0,BrReplayGetBuf2,racing,description,src/core/racing/br_replayon.c
 0x10063DB0,BrReplayCountFromBytes,racing,description,src/core/racing/br_replayon.c
+0x10063DD0,BrCollRespReset,driving,filed,src/core/driving/br_collrespreset.c
 0x10063E60,BrRbAccumOwnForces,driving,filed,src/core/driving/br_rbaccum.c
 0x10063FA0,BrRbAccumChildForces,driving,filed,src/core/driving/br_rbaccum.c
 0x10064120,BrRbSolveAccel,driving,filed,src/core/driving/br_rbaccum.c
@@ -1215,7 +1216,7 @@ glide_va,name,module,basis,file
 0x1006C010,BrSfxCarBankLoad,audio,filed,src/core/audio/br_sfx.c
 0x1006C460,BrSndBankFree,audio,neighbour,src/core/audio/br_sndvoice.c
 0x1006C4D0,BrSndDevOpen,audio,filed,src/core/audio/br_snddev.c
-0x1006C6A0,FUN_1006c6a0,drawing,neighbour-1,src/core/generated/0x1006C6A0.c
+0x1006C6A0,FUN_1006c6a0,audio,filed,src/core/audio/br_snddev.c
 0x1006C750,BrFontTexCreate,drawing,filed,src/core/drawing/br_font.c
 0x1006C790,BrFontRegisterPages,drawing,filed,src/core/drawing/br_font.c
 0x1006C800,BrFontTexCreateAlt,drawing,filed,src/core/drawing/br_font.c
@@ -1304,7 +1305,7 @@ glide_va,name,module,basis,file
 0x1006FD90,BrEntReset,scene,manual,src/core/scene/BrEntReset_1006FD90.cpp
 0x1006FF00,BrEntityBindAux,scene,description,src/core/scene/br_entity.c
 0x1006FF50,FUN_1006ff50,drawing,manual,src/core/drawing/br_log.c
-0x1006FFC0,FUN_1006ffc0,scene,neighbour-1,src/core/generated/0x1006FFC0.c
+0x1006FFC0,FUN_1006ffc0,audio,filed,src/core/audio/br_sndload.c
 0x10070170,BrWaveSeekData,controls,filed,src/core/controls/br_input.c
 0x10070370,BrOnActivate,controls,filed,src/core/controls/br_input.c
 0x100703A0,BrSub100770C0,controls,neighbour-1,src/core/controls/br_dik.c

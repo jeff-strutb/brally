@@ -204,3 +204,80 @@ void BrPathWalk(BrNode *pNode, float t)
     }
 }
 #endif
+
+#ifdef BR_MATCHING_BUILD
+typedef struct RcPoint {            /* 0x28 */
+    BrVec3 left;                    /* +0x00 */
+    BrVec3 centre;                  /* +0x0C */
+    BrVec3 right;                   /* +0x18 */
+    float  arc;                     /* +0x24 */
+} RcPoint;
+
+typedef struct RcNode {
+    struct RcNode *pNext;           /* +0x00 */
+    struct RcNode *pSib;            /* +0x04 */
+    char           pad08[0x0C];     /* +0x08 */
+    unsigned short count;           /* +0x14 */
+    unsigned short flags;           /* +0x16 */
+    char           pad18[0x28];     /* +0x18 */
+    RcPoint        pts[1];          /* +0x40 */
+} RcNode;
+
+typedef char chk_pts[sizeof(RcPoint) == 0x28 && sizeof(RcNode) == 0x68
+                     ? 1 : -1];
+
+extern BrVec3  g_brRacePathPos;     /* 0x10B1CE98 */
+extern RcNode *g_brRacePathNode;    /* 0x10B1CBEC */
+extern int     g_brRacePathIndex;   /* 0x10AF07F0 */
+
+/* WHAT IT DOES: move a car's marker along the racing line to the node it is
+ * nearest now, walking forward from where it was last frame. This is what
+ * keeps track of a car's progress round the lap, and it feeds both the
+ * position table and the AI. */
+/* @implements 0x1005ECF0 glide BrRacePathAdvance */
+void BrRacePathAdvance(RcNode *pNode, int index, float ratio, float dist)
+{
+    for (;;) {
+        int count;
+
+        /* 0x1005ECFD/0x1005ED05: hop SKIP nodes along the sibling link.
+         * The null test at the top of the node loop IS this walk's guard --
+         * VC5 threads its exit straight to the return -- so there is no
+         * separate `if (pNode == 0) return` before it; with one, VC5 rotates
+         * the node loop (+15 B, a second epilogue). */
+        while (pNode != 0 && (pNode->flags & 1) != 0)
+            pNode = pNode->pSib;
+        if (pNode == 0)                 /* 0x1005ED11 */
+            return;
+
+        count = pNode->count;           /* 0x1005ED1B, u16 -> int */
+        while (index < count) {         /* 0x1005ED1F signed, 0x1005ED57 */
+            float avail = (pNode->pts[index].arc - pNode->pts[index + 1].arc)
+                        * ratio;        /* 0x1005ED2D..0x1005ED3C */
+
+            /* 0x1005ED40 `fcomp` + `test ah,0x41` + `jne`: C0 is set for
+             * LESS and C3 for EQUAL, both for UNORDERED, so the walk stops
+             * on less, on equal and on a NaN distance. */
+            if (!(dist > avail)) {
+                /* BrVec3Lerp is (a - b) * t + b, so t == 1 gives pts[i]. */
+                BrVec3Lerp(&g_brRacePathPos,
+                           &pNode->pts[index].centre,
+                           &pNode->pts[index + 1].centre, ratio);
+                BrVec3Lerp(&g_brRacePathPos,
+                           &pNode->pts[index + 1].centre,
+                           &g_brRacePathPos, dist / avail);
+                g_brRacePathNode  = pNode;      /* 0x10B1CBEC */
+                g_brRacePathIndex = index;      /* 0x10AF07F0 */
+                return;
+            }
+
+            dist -= avail;              /* 0x1005ED4F */
+            index++;                    /* 0x1005ED53 */
+            ratio = 1.0f;               /* 0x1005ED59 */
+        }
+
+        pNode = pNode->pNext;           /* 0x1005ED67 */
+        index = 0;
+    }
+}
+#endif /* BR_MATCHING_BUILD */

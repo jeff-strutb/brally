@@ -1,4 +1,10 @@
-/* Auto-generated from Ghidra decompilation - 0x10063DD0 */
+/* br_collrespreset.c -- driving: clearing the collision-response state.
+ *
+ * 0x10063DD0, the race-start wipe of the collision grid, the contact pool and
+ * the accumulators beside them (the structures br_collresp.c fills and the
+ * response walker in br_collrespsolve.c reads).  Its own TU: the certified
+ * bytes depend on this exact preamble (see the residue note below).
+ */
 #ifdef BR_MATCHING_BUILD
 
 /* The original binary is /MD: CRT calls resolve through the import table. */
