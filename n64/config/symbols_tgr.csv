@@ -388,3 +388,4 @@ va,name,kind
 802303D4,BrCarVisibility,func
 80217C94,BrZBufferClear,func
 8022576C,BrAtan2,func
+80252F64,BrTexRectFlipDraw,func

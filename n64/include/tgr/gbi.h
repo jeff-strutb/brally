@@ -48,6 +48,9 @@ typedef union {
 #define G_SETPRIMCOLOR      0xfa
 #define G_SETFILLCOLOR      0xf7
 #define G_SETCIMG           0xff
+#define G_TEXRECT           0xe4
+#define G_RDPHALF_1         0xb4
+#define G_RDPHALF_2         0xb3
 #define G_IM_FMT_RGBA       0
 #define G_IM_SIZ_16b        2
 #define G_MAXFBZ            0x3fff
@@ -184,6 +187,13 @@ typedef union {
     _g->words.w1 = (unsigned int)(i);                                   \
 }
 #define gDPSetColorImage(pkt, f, s, w, i)   gSetImage(pkt, G_SETCIMG, f, s, w, i)
+#define gImmp1(pkt, c, p0)                                              \
+{                                                                       \
+    Gfx *_g = (Gfx *)(pkt);                                             \
+                                                                        \
+    _g->words.w0 = _SHIFTL(c, 24, 8);                                   \
+    _g->words.w1 = (unsigned int)(p0);                                  \
+}
 #define gDPSetCycleType(pkt, type)  \
     gSPSetOtherMode(pkt, G_SETOTHERMODE_H, G_MDSFT_CYCLETYPE, 2, type)
 #define gDPSetColorDither(pkt, mode) \
