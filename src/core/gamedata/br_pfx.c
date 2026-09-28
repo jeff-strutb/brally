@@ -245,7 +245,6 @@ extern BrPfxRec   g_aPfxRec[];    /* 0x10AC0C48 */
 extern int32_t  g_iPfxHeadB0;   /* 0x10AC0C40 -- dword read, low word is
                                  * the head */
 extern uint16_t g_iPfxFree;     /* 0x10AC0C38 */
-extern const float kPfx0_3;     /* 0x1007758C  0.3     */
 extern const float kPfxRecip;   /* 0x100775C4  1/65280 */
 extern const float kPfxNeg0_8;  /* 0x100775C8  -0.8    */
 extern const float kPfx5_7375;  /* 0x100775CC  5.7375  */
@@ -258,7 +257,11 @@ extern const float kPfxCell;    /* 0x100775D0  0.03125 */
 /* @implements 0x10033880 glide BrPfxUpdateB0 */
 void BrPfxUpdateB0(void)
 {
-    float k = g_fPfxDt * kPfx0_3;
+    /* A literal, not an extern const: VC5 orders `fld var; fmul const` only
+     * for a literal (the original's 0.3f sits at 0x1007758C).  With an extern
+     * it swapped the two operand addresses -- the product is the same, but the
+     * relocations named the wrong object at each site. */
+    float k = g_fPfxDt * 0.3f;
     uint16_t *piLink;
     unsigned iRec;
     int iNext;
