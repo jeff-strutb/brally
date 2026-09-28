@@ -694,7 +694,7 @@ glide_va,name,module,basis,file
 0x10039EF0,BrMenuCap09B0,menus,neighbour,src/core/menus/br_menucb.c
 0x10039F10,BrMenuCap09D0,menus,neighbour,src/core/menus/br_menucb.c
 0x10039F30,BrMenuLatchPending,menus,filed,src/core/menus/br_menuact.c
-0x10039F60,FUN_10039f60,menus,neighbour,src/core/generated/0x10039F60.c
+0x10039F60,FUN_10039f60,menus,filed,src/core/menus/br_menuact.c
 0x10039F90,BrMenuText0A50,menus,neighbour,src/core/menus/br_menucb.c
 0x1003A000,BrMenuText0AC0,menus,neighbour,src/core/menus/br_menucb.c
 0x1003A070,BrMenuText0B30,menus,neighbour,src/core/menus/br_menucb.c
@@ -726,7 +726,7 @@ glide_va,name,module,basis,file
 0x1003B0B0,BrMenuAutoSaveName,menus,neighbour,src/core/menus/br_menucb.c
 0x1003B350,BrSaveNameCommitRallySeason,menus,filed,src/core/menus/br_savename.c
 0x1003B580,BrSaveProbeRallySeason,menus,filed,src/core/menus/br_saveprobe.c
-0x1003B970,BrExt_10042410,menus,neighbour,src/core/generated/0x1003B970.c
+0x1003B970,BrExt_10042410,menus,filed,src/core/menus/br_menuact.c
 0x1003BA30,BrExt_100424D0,menus,neighbour,src/core/menus/br_uinameedit.c
 0x1003BAC0,BrSaveNameCommitTimeAttack,menus,filed,src/core/menus/br_savename.c
 0x1003BCA0,BrSaveProbeTimeAttack,menus,filed,src/core/menus/br_saveprobe.c
@@ -740,7 +740,7 @@ glide_va,name,module,basis,file
 0x1003C310,BrOptCycleAC64C,menus,neighbour,src/core/menus/br_optcycle.c
 0x1003C370,BrOptCycleAC650,menus,neighbour,src/core/menus/br_optcycle.c
 0x1003C3D0,BrOptCycleAA2A08,menus,neighbour,src/core/menus/br_optcycle.c
-0x1003C430,FUN_1003c430,menus,neighbour,src/core/generated/0x1003C430.c
+0x1003C430,FUN_1003c430,menus,filed,src/core/menus/br_uictlhook.c
 0x1003C600,BrOptCycleBD3E0,menus,neighbour,src/core/menus/br_optcycle.c
 0x1003C6D0,BrOptCycleAA2A00,menus,manual,src/core/menus/br_optcycle.c
 0x1003C7B0,CtlC7B0,menus,neighbour,src/core/menus/CtlC7B0_1003C7B0.cpp
@@ -900,7 +900,7 @@ glide_va,name,module,basis,file
 0x100414B0,BrUiCheckOther_10048060,menus,neighbour,src/core/menus/BrUiCheckOther_10048060_100414B0.cpp
 0x100414F0,BrUiTickSteps_100480A0,menus,neighbour,src/core/menus/BrUiTickSteps_100480A0_100414F0.cpp
 0x100415D0,BrUiFrame_10048180,menus,neighbour,src/core/menus/BrUiFrame_10048180_100415D0.cpp
-0x100418C0,BrUiPageCtor_10048470,menus,neighbour-1,src/core/generated/0x100418C0.c
+0x100418C0,BrUiPageCtor_10048470,menus,filed,src/core/menus/br_uipagector.c
 0x10041910,BrUiPageDelete_100484C0,menus,description,src/core/menus/br_uiscreen.c
 0x10041930,BrVtInit41930,menus,neighbour-1,src/core/menus/br_uiscreen.c
 0x10041940,BrUiPageSelect_100484F0,menus,neighbour,src/core/menus/BrUiPageSelect_100484F0_10041940.cpp

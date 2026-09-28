@@ -1,4 +1,11 @@
-/* Auto-generated from Ghidra decompilation — 0x100418C0 */
+/* br_uipagector.c -- menus: the menu page constructor.
+ *
+ * 0x100418C0, the compiler-emitted constructor for the front-end page class:
+ * installs the method table (0x100776C0) and clears every field including
+ * the 800-byte entry array.  Its own TU: br_uiscreen.c renames this symbol
+ * to the port copy's name (see br_uinav.h), so the matching body cannot
+ * live there.
+ */
 #ifdef BR_MATCHING_BUILD
 
 /* The original binary is /MD: CRT calls resolve through the import table. */
@@ -34,14 +41,12 @@ extern funcptr PTR_FUN_100776c0;
 int * __fastcall BrUiPageCtor_10048470(int *param_1)
 
 {
-  int iVar1;
-  int *puVar2;
   
   param_1[4] = 0;
   *(short *)(param_1 + 5) = 0;
   param_1[0xce] = 0;
   param_1[0xcf] = 0;
-  *param_1 = &PTR_FUN_100776c0;
+  *param_1 = (int)&PTR_FUN_100776c0;   /* the page vtable */
   param_1[1] = 0;
   param_1[2] = 0;
   param_1[3] = 0;
