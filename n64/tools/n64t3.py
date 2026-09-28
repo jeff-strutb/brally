@@ -15,7 +15,9 @@ the annex) runs from the identical state to the same return.  Memory (all of
 it except the dead stack below the caller), the return and callee-saved
 registers and every side effect the box records must agree.  The original's
 result is kept and the run goes on, so every later call sees real game state.
-A call that blocks on a message queue is not compared (counted apart).
+OS calls the tested call makes (message waits, pads, DMA, video) are
+recorded in the live run and replayed in both sandboxes; the candidate must
+make the same ones in the same order (see RecBox).
 Verdicts: EQUIVALENT (compared >= 1, no divergence), DIVERGENT, UNCOVERED.
 They land in n64/config/t3_live.csv with the source's hash.
 
@@ -39,6 +41,7 @@ import datetime
 import hashlib
 import os
 import re
+import struct
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -135,9 +138,150 @@ def link_candidate(va, code_va, data_va):
     return code, data, sha
 
 
+# ------------------------------------------------------- record / replay
+# A call under test may make OS calls that block (a message wait), switch
+# threads or talk to hardware (pads, DMA, video).  The sandboxes cannot model
+# those, so the live run RECORDS each one the call makes -- its arguments,
+# what came back (v0/v1/f0/f1), every byte of RAM that changed from the call
+# until the thread resumed (other threads ran meanwhile), and what landed in
+# out-parameters in the caller's own frame -- and both sandboxes REPLAY that
+# recording in order.  The candidate must make the same OS calls, in the same
+# order, with the same arguments; a pointer into its own stack frame is only
+# required to be in its stack frame (frame layout is not behaviour), and an
+# out-parameter there is written at the candidate's pointer.
+NATIVE_OS = ('osSyncPrintf', 'osInvalDCache', 'osWritebackDCacheAll')
+NARGS = {'osRecvMesg': 3, 'osSendMesg': 3, 'osContStartReadData': 1, 'osContGetReadData': 1,
+         'osPiStartDma': 7, 'osViSwapBuffer': 1, 'osSpTaskLoad': 1, 'osSpTaskStartGo': 1,
+         'osViBlack': 1, 'osAiSetNextBuffer': 2, 'osAiSetFrequency': 1, 'osAiGetStatus': 0,
+         'osAiGetLength': 0, 'osViGetCurrentFramebuffer': 0, 'osSetEventMesg': 3,
+         'osCreateMesgQueue': 3, 'osContInit': 3, 'osPfsIsPlug': 2, 'osPiReadIo': 2,
+         'osMotorStop': 1, 'osMotorStart': 1, 'osMotorInit': 3, 'osViSetMode': 1,
+         'osStartThread': 1, 'osSetThreadPri': 2, 'osCreateThread': 6, 'osViSetEvent': 3,
+         'osSetTimer': 8}
+# out-parameters: arg index -> bytes written there
+OUTS = {'osRecvMesg': {1: 4}, 'osContGetReadData': {0: 24}, 'osContInit': {1: 1, 2: 16},
+        'osPfsIsPlug': {1: 1}, 'osPiReadIo': {1: 4}}
+FRAME_WINDOW = 0x4000           # a call's own frames: this far below its entry sp
+
+
+def call_args(reg, r32, sp, name):
+    n = NARGS.get(name, 4)
+    return tuple(reg(i) if i < 4 else r32(sp + 4 * i) for i in range(n))
+
+
+def in_frame(a, sp):
+    return sp - FRAME_WINDOW <= a < sp
+
+
+def same_args(rec, made, cand_sp):
+    """rec = (value, in_frame) per argument, from the live run."""
+    if len(rec) != len(made):
+        return False
+    for (v, fr), m in zip(rec, made):
+        if fr:
+            if not in_frame(m, cand_sp):
+                return False
+        elif v != m:
+            return False
+    return True
+
+
+def fmt_args(args):
+    return '(%s)' % ', '.join(('frame' if isinstance(a, tuple) and a[1] else
+                               '%X' % (a[0] if isinstance(a, tuple) else a)) for a in args)
+
+
+def ram_patch(before, after, skip_lo, skip_hi):
+    """Runs of bytes that differ, as (physical offset, bytes), outside the
+    skipped physical range."""
+    out = []
+    for off in range(0, len(before), 0x1000):
+        x, y = before[off:off + 0x1000], after[off:off + 0x1000]
+        if x == y:
+            continue
+        i = 0
+        while i < len(x):
+            if x[i] == y[i] or skip_lo <= off + i < skip_hi:
+                i += 1
+                continue
+            j = i
+            while j < len(x) and x[j] != y[j] and not (skip_lo <= off + j < skip_hi):
+                j += 1
+            out.append((off + i, bytes(y[i:j])))
+            i = j
+    return out
+
+
+class RecBox(NB.Box):
+    """The live box, recording the OS calls made by calls under test."""
+
+    def __init__(self, *a, **k):
+        self.recs = []                  # active recordings
+        self.pend = {}                  # thread -> the OS call in progress
+        super().__init__(*a, **k)
+
+    def snap(self):
+        return bytes(self.uc.mem_read(0, NB.RDRAM))
+
+    def on_hle(self, uc, addr, size, data):
+        name, fn = self.hle[addr & 0xffffffff]
+        t = self.cur
+        mine = [r for r in self.recs if r['thread'] is t]
+        if mine and name not in NATIVE_OS and name != 'osGetCount' \
+                and not (name.startswith('__') and '_to_' in name):
+            sp = self.reg('sp')
+            args = call_args(self.arg, self.r32, sp, name)
+            p = self.pend.get(t)
+            if p is None or p['addr'] != addr or p['args'] != args:
+                self.pend[t] = dict(name=name, addr=addr, args=args, ra=self.reg('ra'), sp=sp,
+                                    ram=self.snap(), recs=mine)
+        super().on_hle(uc, addr, size, data)
+        self.finish()
+
+    def load(self, t):
+        super().load(t)
+        self.finish()
+
+    def finish(self):
+        t = self.cur
+        p = self.pend.get(t)
+        if p is None:
+            return
+        uc = self.uc
+        if uc.reg_read(M.UC_MIPS_REG_PC) & 0xffffffff != p['ra'] or self.reg('sp') != p['sp']:
+            return
+        del self.pend[t]
+        after = self.snap()
+        for r in p['recs']:
+            if r not in self.recs:
+                continue
+            lo = (r['sp'] - FRAME_WINDOW) & 0x1FFFFFFF
+            hi = r['sp'] & 0x1FFFFFFF
+            ev = dict(name=p['name'],
+                      args=tuple((v, in_frame(v, r['sp'])) for v in p['args']),
+                      patch=ram_patch(p['ram'], after, lo, hi), out=[],
+                      v0=uc.reg_read(NB.GPR[2]), v1=uc.reg_read(NB.GPR[3]),
+                      f0=uc.reg_read(NB.FPR[0]), f1=uc.reg_read(NB.FPR[1]), count=self.count)
+            ok = True
+            outs = OUTS.get(p['name'], {})
+            for off, blob in ram_patch(p['ram'], after, 0, 1 << 30):
+                if not (lo <= off < hi):
+                    continue
+                # a change inside the call's frames must be a known out-parameter
+                hit = [i for i, n in outs.items() if p['args'][i] and
+                       (p['args'][i] & 0x1FFFFFFF) <= off < (p['args'][i] & 0x1FFFFFFF) + n]
+                if not hit:
+                    ok = False
+            for i, n in outs.items():
+                a = p['args'][i]
+                if a and in_frame(a, r['sp']):
+                    ev['out'].append((i, after[a & 0x1FFFFFFF:(a & 0x1FFFFFFF) + n]))
+            r['events'].append(ev if ok else None)
+
+
 # ---------------------------------------------------------------- sandbox
 SENTINEL = 0x80000400          # return address the sandboxes stop at
-BUDGET = 20000000              # instructions one call may take
+BUDGET = int(os.environ.get("N64T3_BUDGET", 200000000))   # instructions one call may take
 DEAD_LO = 0x80000400
 
 
@@ -175,15 +319,48 @@ class Sandbox:
         self.uc.reg_write(M.UC_MIPS_REG_PC, NB.sx(self.reg(31)))
 
     def on_os(self, uc, addr, size, name):
-        if name in ('osSyncPrintf', 'osInvalDCache', 'osWritebackDCacheAll'):
+        if name in NATIVE_OS:
             self.ret()
         elif name == 'osGetCount':
             self.ret(self.count & 0xffffffff)
         elif name.startswith('__') and ('_to_' in name):
             self.convert(name)
         else:
-            self.stop = 'calls %s' % name
+            self.replay(name)
+
+    def replay(self, name):
+        """An OS call the live run recorded: check it is the same call, then
+        give it the same outcome (see Recorder)."""
+        uc = self.uc
+        if self.ev >= len(self.events):
+            self.stop = 'calls %s (not in the recording)' % name
             uc.emu_stop()
+            return
+        e = self.events[self.ev]
+        if e is None:
+            self.stop = 'calls %s (recording not replayable)' % name
+            uc.emu_stop()
+            return
+        sp = self.reg(29)
+        args = call_args(lambda i: self.reg(4 + i),
+                         lambda a: struct.unpack('>I', bytes(uc.mem_read(a & 0x1FFFFFFF, 4)))[0],
+                         sp, e['name'])
+        if e['name'] != name or not same_args(e['args'], args, self.entry_sp):
+            self.stop = 'OS call %d differs: recorded %s%s, made %s%s' % (
+                self.ev, e['name'], fmt_args(e['args']), name, fmt_args(args))
+            uc.emu_stop()
+            return
+        self.ev += 1
+        for off, blob in e['patch']:
+            uc.mem_write(off, blob)
+        for i, blob in e['out']:                     # out-parameters in the caller's frame
+            uc.mem_write(args[i] & 0x1FFFFFFF, blob)
+        uc.reg_write(NB.GPR[2], e['v0'])
+        uc.reg_write(NB.GPR[3], e['v1'])
+        uc.reg_write(NB.FPR[0], e['f0'])
+        uc.reg_write(NB.FPR[1], e['f1'])
+        self.count = e['count']
+        uc.reg_write(M.UC_MIPS_REG_PC, NB.sx(self.reg(31)))
 
     def convert(self, name):
         import struct
@@ -213,8 +390,10 @@ class Sandbox:
         self.stop = 'returned'
         uc.emu_stop()
 
-    def run(self, ram, regs, pc, count):
+    def run(self, ram, regs, pc, count, events=()):
         uc = self.uc
+        self.events, self.ev = events, 0
+        self.entry_sp = regs['gpr'][29] & 0xffffffff
         uc.mem_write(0, ram)
         for r, v in zip(NB.GPR[1:], regs['gpr'][1:]):
             uc.reg_write(r, v)
@@ -278,19 +457,32 @@ def compare(a, b, sp, kind='int'):
     return None
 
 
+def returns_of(va):
+    """Every `jr $ra` in the original body at va."""
+    size = B.function_map()[va]
+    rom = open(NB.ROM_PATH, 'rb').read()
+    off = va - NB.ENTRY + 0x1000
+    return [va + i for i in range(0, size, 4)
+            if rom[off + i:off + i + 4] == b'\x03\xe0\x00\x08']
+
+
 def _sandbox_worker(conn, hle_names):
     a, b = Sandbox(hle_names), Sandbox(hle_names)
     while True:
         job = conn.recv()
         if job is None:
             return
-        va, code_va, kind, sp, regs, count, ram = job
-        ra_ = a.run(ram, regs, va, count)
+        va, code_va, kind, sp, regs, count, ram, events = job
+        ra_ = a.run(ram, regs, va, count, events)
+        if ra_ == 'returned' and a.ev != len(events):
+            ra_ = 'replayed %d of %d recorded OS calls' % (a.ev, len(events))
         if ra_ != 'returned':
             conn.send((va, 'blocked', ra_))
             continue
         sa = a.state()
-        rb_ = b.run(ram, regs, code_va, count)
+        rb_ = b.run(ram, regs, code_va, count, events)
+        if rb_ == 'returned' and b.ev != len(events):
+            rb_ = 'made %d of the %d OS calls' % (b.ev, len(events))
         if rb_ != 'returned':
             conn.send((va, 'divergent', 'candidate %s' % rb_))
             continue
@@ -319,6 +511,10 @@ class Lockstep:
                 box.uc.mem_write(dva & 0x1FFFFFFF, blob)
             box.uc.hook_add(UC_HOOK_CODE, self.on_entry, begin=NB.sx(va), end=NB.sx(va),
                             user_data=va)
+            # the call is sent when it returns, with the OS calls it made
+            for pc in returns_of(va):
+                box.uc.hook_add(UC_HOOK_CODE, self.on_return, begin=NB.sx(pc), end=NB.sx(pc),
+                                user_data=va)
             code += (len(cblob) + 15) & ~15
 
     def spawn(self):
@@ -334,11 +530,25 @@ class Lockstep:
             return
         if t['sent'] >= self.cap * 4:
             return
+        box = self.box
+        if any(r['va'] == va and r['thread'] is box.cur for r in box.recs):
+            return                          # recursion: the outer call covers it
         t['sent'] += 1
-        frame = self.box.frame
-        job = (va, t['code'], t['kind'], uc.reg_read(NB.GPR[29]) & 0xffffffff, regs_of(uc),
-               self.box.count, bytes(uc.mem_read(0, NB.RDRAM)))
-        self.send(job, frame)
+        sp = uc.reg_read(NB.GPR[29]) & 0xffffffff
+        job = [va, t['code'], t['kind'], sp, regs_of(uc), box.count,
+               bytes(uc.mem_read(0, NB.RDRAM))]
+        box.recs.append(dict(va=va, thread=box.cur, sp=sp,
+                             ra=uc.reg_read(NB.GPR[31]) & 0xffffffff, events=[], job=job,
+                             frame=box.frame))
+
+    def on_return(self, uc, addr, size, va):
+        box = self.box
+        ra = uc.reg_read(NB.GPR[31]) & 0xffffffff
+        for r in box.recs:
+            if r['va'] == va and r['thread'] is box.cur and r['ra'] == ra:
+                box.recs.remove(r)
+                self.send(tuple(r['job']) + (r['events'],), r['frame'])
+                return
 
     def send(self, job, frame):
         try:
@@ -425,7 +635,7 @@ def _live_worker(job):
         code_va += (len(code) + 15) & ~15
         data_va += sum((len(b) + 15) & ~15 for _, b in data) + 16
     vas = list(targets)
-    box = NB.Box(script=os.path.join(SCRIPTS, sc))
+    box = RecBox(script=os.path.join(SCRIPTS, sc))
     ls = Lockstep(box, targets, cap=CAP)
     r = box.run(FRAMES.get(sc, 3600))
     ls.close()

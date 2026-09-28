@@ -360,7 +360,7 @@ def candidate(va, dtypes, name=None, noproto=(), ptrs=(), opts=()):
             body = re.sub(r'^(\w[\w \*]*\b%s\s*)\(void\)' % ('func_%08X' % va),
                           lambda m: m.group(1) + '(' + ','.join('int arg%d' % i for i in range(k)) + ')',
                           body, count=1, flags=re.M)
-    body = re.sub(r'\bs_\w*?_([0-9a-fA-F]{8})\b',
+    body = re.sub(r'\bs_[^\s,();]*?_([0-9a-fA-F]{8})\b',
                   lambda m: c_string(int(m.group(1), 16)), body)
     body = re.sub(r'^/\*.*?\*/\s*', '', body, flags=re.S)
     fname = name or ('func_%08X' % va)
