@@ -35,6 +35,8 @@
 #define BrFadeIsSettled          BrFadeIsSettled_port
 #define BrFadeIsShut             BrFadeIsShut_port
 #define BrRcaFixupArray          BrRcaFixupArray_port
+#define BrFadeRelease            BrFadeRelease_port
+#define BrFadeLatch              BrFadeLatch_port
 /* GBI handlers: orig is `Gfx *(*)(Gfx *)` against standalone globals, not a
  * state pointer.  Same rename so the matching bodies can use that shape. */
 #define BrGbiClearGeometryMode  BrGbiClearGeometryMode_port
@@ -70,6 +72,8 @@
 #undef BrFadeIsSettled
 #undef BrFadeIsShut
 #undef BrRcaFixupArray
+#undef BrFadeRelease
+#undef BrFadeLatch
 #undef BrGbiClearGeometryMode
 #undef BrGbiSetGeometryMode
 #undef BrGbiDList
@@ -235,12 +239,27 @@ static BrGfxWords *br16_fade_alloc(BrFadeState *pSt)
 /* 3. Screen wipe / fade                                              */
 /* ================================================================== */
 
-/* 0x1002AEA0 */
+/* 0x10017F10 (d3d 0x1002AEA0) */
+#ifdef BR_MATCHING_BUILD
+/* The original takes no argument and addresses its globals absolutely; the
+ * port's BrFadeState view is the #else arm. */
+extern void (*DAT_104b161c)(void);   /* the registered teardown callback */
+extern int DAT_104b1688;             /* hold count */
+
 /* WHAT IT DOES: releases one hold on the screen-transition effect and, when
  * the last hold goes, runs the teardown. Beware that the check is for
  * exactly zero after the decrement, so releasing one time too many drops the
  * count below zero and the teardown can never fire again. */
-/* port-only body; Glide match is src/core/generated/0x10017F10.c */
+/* @implements 0x10017F10 glide BrFadeRelease */
+int BrFadeRelease(void)
+{
+  DAT_104b1688 = DAT_104b1688 + -1;
+  if (DAT_104b1688 == 0) {
+    (*DAT_104b161c)();
+  }
+  return 1;
+}
+#else
 int BrFadeRelease(BrFadeState *pSt)
 {
     pSt->refCount -= 1;
@@ -248,19 +267,38 @@ int BrFadeRelease(BrFadeState *pSt)
         pSt->pfnRelease();
     return 1;
 }
+#endif
 
-/* 0x1002AEC0 */
-/* WHAT IT DOES: resets the screen-transition wipe to its starting position
- * by copying two stored values into the live ones. */
-/* port-only body; Glide match is src/core/generated/0x10017F30.c -- the
- * original takes no argument and addresses all four values absolutely, so the
- * BrFadeState view below cannot reproduce it.  Same split as BrFadeRelease. */
+/* 0x10017F30 (d3d 0x1002AEC0) */
 /* @n64 0x8026B434 located */
+#ifdef BR_MATCHING_BUILD
+/* The original takes no argument and addresses all four values absolutely:
+ * 0x100A7514 / 0x100A7518 are the grSstWinOpen screen width and height (d3d
+ * 0x100A81C0 / 0x100A81C4), the destinations d3d 0x105754FC / 0x10575500.
+ * Note the crossed order -- the WIDTH goes to the HIGHER destination.  The
+ * 16-byte `jmp +0x0b` / 11-nop link-stage preamble in front of the body is in
+ * config/preambles.csv and is never spelled here. */
+extern int DAT_100a7514;
+extern int DAT_100a7518;
+extern int DAT_104b16a4;
+extern int DAT_104b16a8;
+
+/* WHAT IT DOES: resets the screen-transition wipe to its starting position
+ * by copying two stored values -- the screen width and height -- into the
+ * live ones, so a fade in progress keeps the size it started with. */
+/* @implements 0x10017F30 glide BrFadeLatch */
+void BrFadeLatch(void)
+{
+  DAT_104b16a8 = DAT_100a7514;
+  DAT_104b16a4 = DAT_100a7518;
+}
+#else
 void BrFadeLatch(BrFadeState *pSt)
 {
     pSt->pos      = pSt->srcC0;
     pSt->f5754FC  = pSt->srcC4;
 }
+#endif
 
 /* The 0x3EB / 0x3E8 / 0 token soup both emit paths hand to
  * BrRdpSetCombineLERP; spelled out once so the two call sites stay readable
@@ -285,6 +323,7 @@ static uint32_t br16_bar_w0(int32_t top, int32_t width, int32_t shift)
     b = (b - 1u) & 0xFFFu;
     return 0xE1000000u | a | b;
 }
+
 
 /* 0x1002B340 */
 /* WHAT IT DOES: draws the wipe bars -- the solid blocks that sweep across
