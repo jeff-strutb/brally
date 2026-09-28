@@ -3,7 +3,7 @@
 #include "tgr/common.h"
 
 /* -- declarations -- */
-void func_8021FF90(float *param_1,float *param_2);
+void BrMatToQuat(float *param_1,float *param_2);
 void BrQuatToMat(float *param_1,float *param_2);
 char * memcpy(char *param_1,char *param_2,int param_3);
 /* -- end declarations -- */
@@ -21,7 +21,7 @@ void BrCarPlaceAt(char *car, float *mtx)
   float w;
 
   memcpy(car, mtx, 0x40);
-  func_8021FF90(mtx, car + 0x1d8);
+  BrMatToQuat(mtx, car + 0x1d8);
   q = (float *)(car + 0x1d8);
   x = q[0];
   y = q[1];
