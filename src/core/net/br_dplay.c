@@ -499,6 +499,31 @@ uint32_t BrDPlayThreadProc(void *pvCtx)
 }
 #endif
 
+#ifdef BR_MATCHING_BUILD
+extern int *g_brPA9D008;
+typedef int (__stdcall *CC_std_2)(int *, int);
+
+/* WHAT IT DOES: destroy this machine's DirectPlay player, if the session
+ * record at 0x10A9D008 has both an interface (+0) and a player id (+8):
+ * vtable slot 9 (+0x24) of IDirectPlay is DestroyPlayer.  The id is then
+ * forgotten.  Returns the call's HRESULT, or 0 if there was nothing to do. */
+/* @implements 0x100099D0 glide BrComHolderRelease */
+int BrComHolderRelease(void)
+
+{
+  int *piVar1;
+  int uVar2;
+  
+  uVar2 = 0;
+  if (((g_brPA9D008 != (int *)0x0) && (piVar1 = (int *)*g_brPA9D008, piVar1 != (int *)0x0)) &&
+     (g_brPA9D008[2] != 0)) {
+    uVar2 = (*(CC_std_2 *)(*(int *)(piVar1) + 36))(piVar1,g_brPA9D008[2]);
+    g_brPA9D008[2] = 0;
+  }
+  return uVar2;
+}
+#endif /* BR_MATCHING_BUILD */
+
 /* -- 0x1000C510 ---------------------------------------------------------- */
 
 #ifdef BR_MATCHING_BUILD

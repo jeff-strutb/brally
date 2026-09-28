@@ -49,7 +49,7 @@ glide_va,name,module,basis,file
 0x10002FD0,BrCdMciStop,audio,filed,src/core/audio/br_cd.c
 0x10003030,BrCdStopRelease,audio,filed,src/core/audio/br_cd.c
 0x10003120,BrGrid64Sample,scene,manual,src/core/scene/br_grid64.c
-0x100031D0,BrGrid16Pair,gamedata,manual,src/core/generated/0x100031D0.c
+0x100031D0,BrGrid16Pair,scene,filed,src/core/scene/br_grid64.c
 0x10003230,BrU16CursorNext,gamedata,description,src/core/gamedata/br_u16cursor.c
 0x10003280,BrU16QueuePop,gamedata,description,src/core/gamedata/br_u16cursor.c
 0x100032D0,BrChkFileSize,gamedata,description,src/core/gamedata/br_chkfile.c
@@ -166,7 +166,7 @@ glide_va,name,module,basis,file
 0x10009530,BrDPlaySysMsgDispatch,net,description,src/core/net/br_dplay.c
 0x10009880,BrDPlayPump,net,description,src/core/net/br_dplay.c
 0x10009970,BrDPlayThreadProc,net,description,src/core/net/br_dplay.c
-0x100099D0,BrComHolderRelease,net,neighbour-1,src/core/generated/0x100099D0.c
+0x100099D0,BrComHolderRelease,net,filed,src/core/net/br_dplay.c
 0x10009A00,BrDPlayRawSend,net,description,src/core/net/br_dplaysend.c
 0x10009A40,BrDPlayShutdown,net,description,src/core/net/br_dplay.c
 0x10009B00,BrDPlayStartup,net,filed,src/core/net/br_dplay.c
@@ -1000,7 +1000,7 @@ glide_va,name,module,basis,file
 0x10058900,BrExt_1005FBC0,settings,manual,src/core/settings/br_setupcommit.c
 0x10058A30,BrRaceSettingsCommit,menus,manual,src/core/generated/0x10058A30.c
 0x10058AF0,BrCtlNameInit,controls,filed,src/core/controls/br_ctlname.c
-0x10058C70,FUN_10058c70,menus,neighbour-1,src/core/generated/0x10058C70.c
+0x10058C70,FUN_10058c70,menus,filed,src/core/menus/br_chain.c
 0x10058C90,BrChainFreeRec_10058C90,menus,neighbour-1,src/core/menus/br_chain.c
 0x10058CC0,BrBoundsFits_10058CC0,menus,neighbour-1,src/core/menus/br_uibounds.c
 0x10058D00,BrBoundsInsert_10058D00,menus,neighbour,src/core/menus/BrBoundsInsert_10058D00.cpp
@@ -1014,11 +1014,11 @@ glide_va,name,module,basis,file
 0x100590A0,BrMsgBoxAA,startup,manual,src/core/startup/br_fatal.c
 0x10059280,BrFn10060210,drawing,manual,src/core/drawing/br_screensize.c
 0x100592D0,BrSub10060260,menus,manual,src/core/menus/br_uiwindow.c
-0x100592F0,FUN_100592f0,controls,neighbour-1,src/core/generated/0x100592F0.c
+0x100592F0,FUN_100592f0,controls,filed,src/core/controls/br_input.c
 0x10059320,BrNavRelease_10059320,menus,manual,src/core/menus/BrNavRelease_10059320.cpp
 0x10059350,BrDInputDeviceCreate_10059350,controls,manual,src/core/controls/BrDInputDeviceCreate_10059350.cpp
 0x100597C0,BrSub10060750,controls,manual,src/core/controls/br_dik.c
-0x100597F0,FUN_100597f0,net,neighbour-1,src/core/generated/0x100597F0.c
+0x100597F0,FUN_100597f0,drawing,filed,src/core/drawing/br_drawenv.c
 0x10059820,BrCarRecordToState,net,filed,src/core/net/br_carnet.c
 0x10059A50,BrCarNetSendState,net,description,src/core/net/br_carnet.c
 0x10059A80,BrCarGhostApply_10059A80,driving,filed,src/core/driving/br_carghostapply.c
@@ -1228,7 +1228,7 @@ glide_va,name,module,basis,file
 0x1006C910,BrSub10073AC0,drawing,neighbour-1,src/core/drawing/br_texbaked.c
 0x1006C950,BrSub10073B00,drawing,description,src/core/drawing/br_texbaked.c
 0x1006C990,BrImgShowFullScreen,drawing,filed,src/core/drawing/br_imgshow.c
-0x1006CD80,FUN_1006cd80,gamedata,neighbour-1,src/core/generated/0x1006CD80.c
+0x1006CD80,FUN_1006cd80,net,filed,src/core/net/br_netpkt.c
 0x1006CDC0,BrObjClear,gamedata,filed,src/core/gamedata/br_obj.c
 0x1006CDD0,BrPairReset_10073B90,drawing,filed,src/core/drawing/br_textmode.c
 0x1006CDE0,BrBitStreamSkipBytes,gamedata,description,src/core/gamedata/br_bitstream.c
