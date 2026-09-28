@@ -3,6 +3,16 @@
  * Transcribed from orig/BRGlide.dll and pinned to tools/x87emu.py golden
  * vectors.  Each function carries the address of what it is.
  */
+#ifdef BR_MATCHING_BUILD
+/* <windows.h> is TU state, not an API dependency: the original unit's symbol
+ * table was large, and VC5 breaks commutative x87 operand ties by it.  With
+ * only this file's own declarations BrCrContactKick (0x10065980) loads pN on
+ * the fld side of its cross products; with the header it loads the rotated
+ * copy, as the original does.  Measured 2026-09-27 with dummy-declaration
+ * pads: the tie flips in 256-declaration bands, so any header of the right
+ * size would do -- this one is the plausible one for the original unit. */
+#include <windows.h>
+#endif
 #include <math.h>
 #include <string.h>
 
@@ -608,26 +618,23 @@ int BrCrImpulseSolve(float mass, const BrMat3 *pInvInertia, const BrMat4 *pOrien
  * which is what stops a resting car being kicked every frame. */
 /* @implements 0x10065980 glide BrCrContactKick */
 #ifdef BR_MATCHING_BUILD
-/* Matching arm, transcribed from the bytes 2026-09-27.  The original takes
- * FOUR arguments -- the body record (velocity at +0x164, angular velocity at
- * +0x180, the effect bytes/floats at +0x1EC..+0x200), the contact normal and
- * the two flags -- which is what the solver's BR_CR_KICK cast already passes;
- * the port arm's six-argument form is a gathering of those fields.  Facts the
- * bytes force: the approach dot is vel.N (VC5 C loads the second operand
- * first); d is a homed float; the 1.05*d*N correction goes through a temp
- * vector; the effect colour is three FLOAT assignments from the shared plane
- * normal (two via the FPU, the third as a dword); the peak is a select then
- * an unconditional store; the spin fold's frame is row0 = N, row1 =
- * N x (N.y, N.z, N.x), row2 = N x row1, pushed through BrMat4MulVec3Transposed
- * twice and BrMat4MulVec3 once.
- * NOT MATCHING: 758/760 B, register-blind 9+11, all in the two cross
- * products: the original loads the rotated copies and multiplies by pN->
- * in memory; VC5 here value-numbers the copies to pN->'s loads and picks the
- * other side.  Inert: operand order (VC5 canonicalises), scalar vs struct vs
- * block-scope copies in every declaration order, a block-local copy of pN,
- * inline cross helpers (by pointer, by value, returning a struct), C vs C++. */
+/* Matching arm, byte-exact 2026-09-27.  The original takes FOUR arguments --
+ * the body record (velocity at +0x164, angular velocity at +0x180, the effect
+ * bytes/floats at +0x1EC..+0x200), the contact normal and the two flags --
+ * which is what the solver's BR_CR_KICK cast already passes; the port arm's
+ * six-argument form is a gathering of those fields.  Source facts the bytes
+ * force: the velocity is read as a BrVec3 at +0x164 (BR_KB_VEL), which puts
+ * pN on the fld side of the approach dot; d is homed; the 1.05 scale is an
+ * unnamed `(d * 1.05f)` common subexpression, not a named local (a named s
+ * flips the first product's operand roles); the effect colour is three FLOAT
+ * assignments from the shared plane normal; the peak is a select then an
+ * unconditional store; the spin fold's frame is row0 = N, row1 =
+ * N x (N.y, N.z, N.x), row2 = N x row1, pushed through
+ * BrMat4MulVec3Transposed twice and BrMat4MulVec3 once.  The cross products'
+ * operand roles are TU state -- see the <windows.h> note at the top. */
 #define BR_KB_F(off) (*(float *)(pBody + (off)))
 #define BR_KB_B(off) (*(unsigned char *)(pBody + (off)))
+#define BR_KB_VEL    ((BrVec3 *)(pBody + 0x164))
 int BrCrContactKick(char *pBody, const BrVec3 *pN, int dampFlag, int spinFlag)
 {
     float  d;
@@ -635,20 +642,16 @@ int BrCrContactKick(char *pBody, const BrVec3 *pN, int dampFlag, int spinFlag)
     BrVec3 b;
     BrMat4 M;
 
-    d = BR_KB_F(0x164) * pN->x + BR_KB_F(0x168) * pN->y + BR_KB_F(0x16C) * pN->z;
+    d = BR_KB_VEL->x * pN->x + BR_KB_VEL->y * pN->y + BR_KB_VEL->z * pN->z;
     if (!(d < 0.0f))
         return 0;
 
-    {
-        float s = d * 1.05f;
-
-        t.x = pN->x * s;
-        t.y = pN->y * s;
-        t.z = pN->z * s;
-        BR_KB_F(0x164) = BR_KB_F(0x164) - t.x;
-        BR_KB_F(0x168) = BR_KB_F(0x168) - t.y;
-        BR_KB_F(0x16C) = BR_KB_F(0x16C) - t.z;
-    }
+    t.x = pN->x * (d * 1.05f);
+    t.y = pN->y * (d * 1.05f);
+    t.z = pN->z * (d * 1.05f);
+    BR_KB_VEL->x = BR_KB_VEL->x - t.x;
+    BR_KB_VEL->y = BR_KB_VEL->y - t.y;
+    BR_KB_VEL->z = BR_KB_VEL->z - t.z;
 
     if (BR_KB_B(0x200) >= 10) {
         float         inten = -d;
@@ -663,16 +666,16 @@ int BrCrContactKick(char *pBody, const BrVec3 *pN, int dampFlag, int spinFlag)
         v = (unsigned char)(128.0f - inten * -4.703703880310059f);
         if (v <= BR_KB_B(0x1FF))
             v = BR_KB_B(0x1FF);
-        BR_KB_F(0x164) = BR_KB_F(0x164) * 0.9f;
-        BR_KB_F(0x168) = BR_KB_F(0x168) * 0.9f;
+        BR_KB_VEL->x = BR_KB_VEL->x * 0.9f;
+        BR_KB_VEL->y = BR_KB_VEL->y * 0.9f;
         BR_KB_B(0x1FF) = v;
-        BR_KB_F(0x16C) = BR_KB_F(0x16C) * 0.9f;
+        BR_KB_VEL->z = BR_KB_VEL->z * 0.9f;
     }
 
     if (dampFlag) {
-        BR_KB_F(0x164) = BR_KB_F(0x164) * 0.9f;
-        BR_KB_F(0x168) = BR_KB_F(0x168) * 0.9f;
-        BR_KB_F(0x16C) = BR_KB_F(0x16C) * 0.9f;
+        BR_KB_VEL->x = BR_KB_VEL->x * 0.9f;
+        BR_KB_VEL->y = BR_KB_VEL->y * 0.9f;
+        BR_KB_VEL->z = BR_KB_VEL->z * 0.9f;
     }
 
     if (spinFlag) {
@@ -698,6 +701,7 @@ int BrCrContactKick(char *pBody, const BrVec3 *pN, int dampFlag, int spinFlag)
     return 1;
 }
 #undef BR_KB_F
+#undef BR_KB_VEL
 #undef BR_KB_B
 #else
 int BrCrContactKick(BrVec3 *pVel, BrVec3 *pAngVel, const BrVec3 *pNormal,
