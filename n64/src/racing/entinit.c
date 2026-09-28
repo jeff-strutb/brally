@@ -20,6 +20,28 @@ float sinf(float x);
 float cosf(float x);
 void BrQuatMul(float out[4], float a[4], float b[4]);
 void BrVec4Normalise(float v[4]);
+extern float D_80025C38;                /* the track's sky height */
+void func_80222D54(BrCar *car);
+void BrCarSetPos(BrCar *car, float x, float y, float z);
+void BrCarSetHeading(BrCar *car, float h);
+void BrCarSetAngVel(BrCar *car, float x, float y, float z);
+float BrAtan2(float y, float x);
+void BrCarCamPlaceBehind(BrCar *car, BrCarCam *cam, float t);
+typedef struct BrCarWheel {     /* a wheel's rigid body (rbquat.c's BrRbBody) */
+  char pad000[0x19C];
+  int x19c;                     /* 0x19C */
+  unsigned char x1a0;           /* 0x1A0 */
+  char pad1a1[0x1B4 - 0x1A1];
+  int x1b4;                     /* 0x1B4 */
+} BrCarWheel;
+typedef struct BrRestart {      /* a restart point on the car's route, 0x28 bytes */
+  float pos[3];
+  char pad0c[0x28 - 0x0C];
+} BrRestart;
+typedef struct BrRoute {
+  char pad00[0x4C];
+  BrRestart pt[1];              /* 0x4C */
+} BrRoute;
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Reset every car slot for a new session: runs the per-car
@@ -170,6 +192,54 @@ void BrCarReset(BrCar *car)
   }
   BrCarPickKind(car);
   car->xe58 = 0;
+}
+
+/* WHAT IT DOES: Put a car that has left the track (flagged, or fallen 10
+ * below the sky height) back on it: at its current restart point, 2 above
+ * the road (0.01 sideways per slot outside mode 2), facing along the
+ * route, stopped, wheels reset, and the chase camera moved in behind. */
+/* @implements 0x80226248 tgr BrCarRespawn */
+void BrCarRespawn(BrCar *car)
+{
+  if (car->x340 < 0 || car->mtx0[3][2] < D_80025C38 - 10.0f) {
+    func_80222D54(car);
+    if (D_8026FF18 == 2) {
+      BrCarSetPos(car, ((BrRoute *)car->xf5c)->pt[car->xf60].pos[0],
+                  ((BrRoute *)car->xf5c)->pt[car->xf60].pos[1],
+                  ((BrRoute *)car->xf5c)->pt[car->xf60].pos[2] + 2.0);
+    } else {
+      BrCarSetPos(car, ((BrRoute *)car->xf5c)->pt[car->xf60].pos[0] + car->slot * 0.01f,
+                  ((BrRoute *)car->xf5c)->pt[car->xf60].pos[1],
+                  ((BrRoute *)car->xf5c)->pt[car->xf60].pos[2] + 2.0);
+    }
+    BrCarSetHeading(car, BrAtan2(car->xf64, car->xf68));
+    BrCarSetVel(car, 0.0f, 0.0f, 0.0f);
+    BrCarSetAngVel(car, 0.0f, 0.0f, 0.0f);
+    car->wheel[0]->x19c = 0;
+    car->wheel[0]->x1b4 = 0;
+    car->wheel[0]->x1a0 = 2;
+    car->wheel[1]->x19c = 0;
+    car->wheel[1]->x1b4 = 0;
+    car->wheel[1]->x1a0 = 2;
+    car->wheel[3]->x19c = 0;
+    car->wheel[3]->x1b4 = 0;
+    car->wheel[3]->x1a0 = 2;
+    car->wheel[2]->x19c = 0;
+    car->wheel[2]->x1b4 = 0;
+    car->wheel[2]->x1a0 = 2;
+    car->xe70[0] = 0;
+    car->xe70[1] = 0;
+    car->xe70[2] = 0;
+    car->xe70[3] = -180;
+    car->x340 = 0;
+    car->colour[3] = 2;
+    car->x2064 = 0.1f;
+    BrCarCamPlaceBehind(car, &car->cams[1], 1.0f);
+    car->xf48 = 1;
+    car->camPosA.x = car->cams[1].mtx[3][0];
+    car->camPosA.y = car->cams[1].mtx[3][1];
+    car->camPosA.z = car->cams[1].mtx[3][2];
+  }
 }
 
 /* WHAT IT DOES: Put a car at (x, y, z): the body matrix's translation, the

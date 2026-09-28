@@ -44,7 +44,9 @@ typedef struct BrCar {
     float mtx0[4][4];           /* 0x000  body matrix */
     float wheelMtx[4][4][4];    /* 0x040  one per wheel: the body's rotation, the wheel's position */
     int slot;                   /* 0x140  index in the car array */
-    char pad144[0x1C0 - 0x144];
+    char pad144[0x14C - 0x144];
+    struct BrCarWheel *wheel[4];  /* 0x14C  the wheels' rigid bodies */
+    char pad15c[0x1C0 - 0x15C];
     BrRbState st;               /* 0x1C0  the body's state */
     float stMtx[4][4];          /* 0x204  st's orientation as a matrix */
     char pad244[0x25C - 0x244];
@@ -53,7 +55,7 @@ typedef struct BrCar {
     char pad2e4[0x324 - 0x2E4];
     float x324[4];              /* 0x324  from the kind table */
     BrVec3 x334;                /* 0x334  where the HUD arrow points */
-    char pad340[0x344 - 0x340];
+    int x340;                   /* 0x340  negative: the car is off the track */
     unsigned char x344;         /* 0x344  a pending HUD arrow (0 = none) */
     char pad345[0xDF8 - 0x345];
     char xdf8[0x1c];            /* 0xDF8  from the kind table */
@@ -68,7 +70,8 @@ typedef struct BrCar {
     int xe64;                   /* 0xE64 */
     int xe68;                   /* 0xE68 */
     int xe6c;                   /* 0xE6C */
-    char pade70[0xED0 - 0xE70];
+    int xe70[4];                /* 0xE70 */
+    char pade80[0xED0 - 0xE80];
     struct BrCarLink *link;     /* 0xED0 */
     int xed4;                   /* 0xED4  a countdown, one per frame */
     int xed8;                   /* 0xED8  the car's control function (camera step, AI) */
@@ -78,7 +81,9 @@ typedef struct BrCar {
     BrVec3 posPrev;             /* 0xF50  last frame's position */
     int xf5c;                   /* 0xF5C */
     int xf60;                   /* 0xF60 */
-    char padf64[0xF78 - 0xF64];
+    float xf64;                 /* 0xF64  the heading's atan2 arguments at the restart point */
+    float xf68;                 /* 0xF68 */
+    char padf6c[0xF78 - 0xF6C];
     int laps;                   /* 0xF78  laps completed */
     char padf7c[0xF80 - 0xF7C];
     float raceTime;             /* 0xF80  race clock, seconds */
