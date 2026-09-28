@@ -18,6 +18,7 @@ Usage:
 import csv
 import glob
 import os
+import re
 import struct
 import sys
 
@@ -93,6 +94,22 @@ def load_learned_full():
     return lr
 
 
+_CPP_TAG = re.compile(r'@implements (0x[0-9A-Fa-f]{8}) glide \S+(?:[^\n]*\n){1,4}?[^\n]*@cpp_symbol (\S+)')
+
+
+def cpp_symbols():
+    """{mangled or decorated symbol, as tagged: VA} for every C++ body."""
+    out = {}
+    for dp, _dn, fs in os.walk(os.path.join(ROOT, 'src', 'core')):
+        for f in fs:
+            if not f.endswith('.cpp'):
+                continue
+            t = open(os.path.join(dp, f), errors='replace').read()
+            for m in _CPP_TAG.finditer(t):
+                out[m.group(2).lstrip('_')] = int(m.group(1), 16)
+    return out
+
+
 def load_maps():
     """name -> VA, from every source the tree actually has."""
     fn, gl = {}, {}
@@ -113,6 +130,11 @@ def load_maps():
     # rebuilds it by reading the addresses back out of the Glide image, which
     # is what that tool was written for. globals.csv stays on disk untouched
     # for the six other tools that still consume it in D3D terms.
+    # C++ bodies: every source tag records the exact symbol the function is
+    # compiled under (`@implements 0x... glide NAME` then `@cpp_symbol SYM`),
+    # so a call written with the callee's real mangled name resolves by name
+    # -- surveyed from the tree, not learned from the image.
+    fn.update(cpp_symbols())
     g = os.path.join(ROOT, 'config', 'globals_glide.csv')
     if os.path.exists(g):
         for r in csv.DictReader(open(g)):
