@@ -498,3 +498,4 @@ va,name,kind
 8026EAD0,gspF3DEX_fifoTextStart,data
 802A6140,osClockRate,data
 802ABC00,gspF3DEX_fifoDataStart,data
+8020046C,BrSceneModelDraw,func
