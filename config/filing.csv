@@ -312,7 +312,7 @@ glide_va,name,module,basis,file
 0x1001E930,br_dl_env,drawing,filed,src/core/drawing/br_dl.c
 0x1001E9F0,br_dl_fillcolour,drawing,filed,src/core/drawing/br_dl.c
 0x1001EA60,BrDlCmdFogColour,drawing,filed,src/core/drawing/br_dlcmd.c
-0x1001EA80,br_dl_prim,drawing,neighbour,src/core/generated/0x1001EA80.c
+0x1001EA80,br_dl_prim,drawing,filed,src/core/drawing/br_dlcmd.c
 0x1001EB10,BrGbiSet0A79E8,drawing,neighbour,src/core/drawing/br_gbi.c
 0x1001EB30,BrGbiSet4C5174,drawing,neighbour,src/core/drawing/br_gbi.c
 0x1001EB50,br_dl_scissorED,drawing,filed,src/core/drawing/br_dl.c
@@ -358,7 +358,7 @@ glide_va,name,module,basis,file
 0x10023110,BrDlVtxNoZ,drawing,filed,src/core/drawing/br_dlvtx_noz.c
 0x10023760,BrDlProjectNoZ,drawing,filed,src/core/drawing/br_dlproj.c
 0x10023810,BrGbiMoveMem,drawing,manual,src/core/drawing/br_gbihandlers.c
-0x10023900,BrGbiMoveMemMatrix,drawing,neighbour,src/core/generated/0x10023900.c
+0x10023900,BrGbiMoveMemMatrix,drawing,filed,src/core/drawing/br_gbihandlers.c
 0x10023920,BrGbiCall10024260,drawing,neighbour,src/core/drawing/br_gbi.c
 0x100239C0,BrGbiMoveWord,drawing,neighbour,src/core/drawing/br_gbi.c
 0x10023AA0,FUN_10023aa0,drawing,neighbour,src/core/drawing/br_glidestate.c
@@ -1029,11 +1029,11 @@ glide_va,name,module,basis,file
 0x10059E50,BrUiSelBDec,menus,description,src/core/menus/br_uislider.c
 0x10059E70,BrPadPackButtons,controls,filed,src/core/controls/br_input.c
 0x10059F10,BrBmpToRgba32,drawing,filed,src/core/drawing/br_bmp.c
-0x10059F70,BrBmpWiden24ToRgba,drawing,manual,src/core/generated/0x10059F70.c
+0x10059F70,BrBmpWiden24ToRgba,drawing,filed,src/core/drawing/br_bmp.c
 0x10059FE0,FUN_10059fe0,drawing,neighbour,src/core/drawing/br_livery.c
 0x1005A020,BrBmpRect4Get,drawing,filed,src/core/drawing/br_bmp.c
 0x1005A070,BrBmpGetHandle,drawing,filed,src/core/drawing/br_bmp.c
-0x1005A080,FUN_1005a080,drawing,neighbour,src/core/generated/0x1005A080.c
+0x1005A080,FUN_1005a080,drawing,filed,src/core/drawing/br_bmp.c
 0x1005A210,BrBmpLoadRgba,drawing,filed,src/core/drawing/br_bmp.c
 0x1005A280,BrImgMulByMask,drawing,filed,src/core/drawing/br_imgtint.c
 0x1005A420,FUN_1005a420,drawing,description,src/core/drawing/br_livery.c
