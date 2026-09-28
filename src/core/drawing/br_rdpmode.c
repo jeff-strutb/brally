@@ -143,7 +143,7 @@ void FUN_100119c0(int param_1, int param_2)
   { p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xba000c02; p_[1] = DAT_106e72e8; }
   p_ = DAT_106e7710;
   DAT_106e7710 = DAT_106e7710 + 2;
-  BrRdpSetCombineLERP(p_, 0, 0, 0, 0x3eb, 0x3e9, 0, 0x3eb, 0, 0, 0, 0, 0x3eb, 0x3e9, 0, 0x3eb, 0);
+  BrRdpSetCombineLERP((BrGfxWords *)p_, 0, 0, 0, 0x3eb, 0x3e9, 0, 0x3eb, 0, 0, 0, 0, 0x3eb, 0x3e9, 0, 0x3eb, 0);
   { p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = DAT_1184c478 & 0xffffff | 0xdc000000; p_[1] = 1; }
   { p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xfd900000; p_[1] = (int)&DAT_100ba2d0; }
   { p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xf5900000; p_[1] = 0x7018060; }
@@ -170,4 +170,95 @@ void FUN_100119c0(int param_1, int param_2)
   FUN_10010fb0(param_2);
 }
 
+#endif /* BR_MATCHING_BUILD */
+
+#ifdef BR_MATCHING_BUILD
+
+
+/* 0x106ED520 holds a pointer to the camera matrix, kept as an int here. */
+extern int DAT_1184c484;
+extern int DAT_106ed520;
+extern BrMat4 DAT_106e78f0;
+extern BrMat4 DAT_106e7930;
+extern BrMat4 DAT_106e72a8;
+extern BrMat4 DAT_10396eb8;
+extern int DAT_106ed6ac;
+extern int DAT_100b3014;
+extern unsigned DAT_10396ef8;
+extern unsigned DAT_10396f00;
+
+void BrMtxMul(BrMat4 *pOut, const BrMat4 *pA, const BrMat4 *pB);   /* 0x10034AF0 */
+int BrMtxInvert(BrMat4 *pOut, const BrMat4 *pM);                    /* 0x10034B70 */
+
+/* One two-word display-list command at the cursor, cursor advanced. */
+#define BR_EMIT(c, a)                                                          \
+  {                                                                            \
+    int *p_ = DAT_106e7710;                                                    \
+    DAT_106e7710 = DAT_106e7710 + 2;                                           \
+    p_[0] = (c);                                                               \
+    p_[1] = (a);                                                               \
+  }
+
+/* WHAT IT DOES: set up the fixed rendering state for one scene: emits the
+ * display-list preamble, installs the standard viewport, and loads a hard-
+ * coded axis-swapping matrix that converts the game's coordinate convention
+ * into the renderer's. */
+/* @implements 0x10011650 glide FUN_10011650 */
+void FUN_10011650(int param_1)
+{
+  int *p_;
+
+  BR_EMIT(0xb900031d, 0x504240)
+  p_ = DAT_106e7710;
+  DAT_106e7710 = DAT_106e7710 + 2;
+  BrRdpSetCombineLERP((BrGfxWords *)p_, 0, 0, 0, 0x3eb, 0x3e9, 0, 0x3eb, 0, 0, 0, 0,
+               0x3eb, 0x3e9, 0, 0x3eb, 0);
+  BR_EMIT(DAT_1184c484 & 0xffffff | 0xdc000000, 1)
+  BrMtxInvert(&DAT_106e78f0, (const BrMat4 *)DAT_106ed520);
+  DAT_106e7930.m[0][0] = 0.0f;
+  DAT_106e7930.m[0][1] = 0.0f;
+  DAT_106e7930.m[0][2] = -1.0f;
+  DAT_106e7930.m[0][3] = 0.0f;
+  DAT_106e7930.m[1][0] = -1.0f;
+  DAT_106e7930.m[1][1] = 0.0f;
+  DAT_106e7930.m[1][2] = 0.0f;
+  DAT_106e7930.m[1][3] = 0.0f;
+  DAT_106e7930.m[2][0] = 0.0f;
+  DAT_106e7930.m[2][1] = -1.0f;
+  DAT_106e7930.m[2][2] = 0.0f;
+  DAT_106e7930.m[2][3] = 0.0f;
+  DAT_106e7930.m[3][0] = 0.0f;
+  DAT_106e7930.m[3][1] = 0.0f;
+  DAT_106e7930.m[3][2] = 0.0f;
+  DAT_106e7930.m[3][3] = 1.0f;
+  BrMtxMul(&DAT_106e78f0, &DAT_106e78f0, &DAT_106e7930);
+  memcpy(&DAT_106e7930, &DAT_106e78f0, 0x40);
+  BrMtxMul(&DAT_10396eb8, &DAT_106e78f0, &DAT_106e72a8);
+  BR_EMIT(0xb9000201, 4)
+  BR_EMIT(0xba000602, 0xc0)
+  if (DAT_106ed6ac == 0) {
+    switch (DAT_100b3014) {
+    case 4:
+    case 10:
+      FUN_10011300(param_1, DAT_10396ef8 & 0xffff, 0x70, 0x58, 0x38);
+      FUN_10011300(param_1, DAT_10396f00 & 0xffff, 0x70, 0x68, 0x58);
+      break;
+    case 1:
+    case 7:
+      FUN_10011300(param_1, DAT_10396ef8 & 0xffff, 0x60, 0x54, 0x38);
+      FUN_10011300(param_1, DAT_10396f00 & 0xffff, 0x60, 0x5c, 0x50);
+      break;
+    default:
+      FUN_10011300(param_1, DAT_10396ef8 & 0xffff, 0xa0, 0x88, 0x60);
+      FUN_10011300(param_1, DAT_10396f00 & 0xffff, 0x70, 0x68, 0x58);
+      break;
+    }
+  }
+  BR_EMIT(0xe7000000, 0)
+  BR_EMIT(0xba001301, 0x80000)
+  BR_EMIT(0xb9000201, 0)
+  BR_EMIT(0xba000602, DAT_106e7718)
+  BR_EMIT(0xba000402, DAT_106e79b0)
+  BR_EMIT(0xb9000002, 1)
+}
 #endif /* BR_MATCHING_BUILD */
