@@ -386,3 +386,4 @@ va,name,kind
 8024D53C,BrPaintPaletteLoad,func
 80224A78,BrVec3Dist,func
 802303D4,BrCarVisibility,func
+80217C94,BrZBufferClear,func
