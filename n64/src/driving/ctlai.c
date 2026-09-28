@@ -109,10 +109,7 @@ void BrAiInputClear(short *car)
 {
   int i;
 
-  for (i = 0; i < 8; i += 4) {
-    car[0x103f + i] = 0;
-    car[0x1040 + i] = 0;
-    car[0x1041 + i] = 0;
+  for (i = 0; i < 8; i++) {
     car[0x103e + i] = 0;
   }
   car[0x1046] = 0;
