@@ -505,3 +505,4 @@ va,name,kind
 8021E7DC,BrTrackGridCellAt,func
 80217E20,BrZBufferClearRect,func
 8022BAA0,BrCarSfxLoad,func
+8025CE28,BrPolyIntersectsCube,func

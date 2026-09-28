@@ -25,7 +25,13 @@ extern int D_8025CDA4;
 extern int D_8025CDB4;
 extern int D_8025CDBC;
 int func_8025C2C8(float *tri);
-int func_8025CE28(float *tri, float *norm);
+int BrPolyIntersectsCube(float verts[3][3], float polynormal[3]);
+int BrObbFaceClip();
+int BrObbSegmentHits();
+#define DOT3(a, b) ((a)[0] * (b)[0] + (a)[1] * (b)[1] + (a)[2] * (b)[2])
+#define SIGN_NONZERO(x) ((x) < 0 ? -1 : 1)
+#define IN_CLOSED_INTERVAL(a, x, b) (((x) - (a)) * ((x) - (b)) <= 0)
+#define SXV3(result, s, v) ((result)[0] = (s) * (v)[0], (result)[1] = (s) * (v)[1], (result)[2] = (s) * (v)[2])
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Find the face of a box most facing a direction and clip it
@@ -199,6 +205,30 @@ int BrObbSegmentHits(float *param_1,float *param_2)
   return 0;
 }
 
+/* WHAT IT DOES: Graphics Gems III (Voorhies) polygon_intersects_cube for a
+ * triangle against the unit cube at the origin: any edge through the cube
+ * (0x8025CBF8) is a hit; otherwise pick the cube diagonal nearest the
+ * normal, find where it meets the triangle's plane, and if that is inside
+ * the cube ask 0x8025C8DC whether the point is inside the triangle. */
+/* @implements 0x8025CE28 tgr BrPolyIntersectsCube */
+int BrPolyIntersectsCube(float verts[3][3], float polynormal[3])
+{
+  int i, best_diagonal[3];
+  float p[3], t;
+
+  for (i = 0; i < 3; ++i)
+    if (BrObbSegmentHits(verts[i], verts[(i + 1) % 3]))
+      return 1;
+
+  for (i = 0; i < 3; i++) best_diagonal[i] = SIGN_NONZERO(polynormal[i]);
+
+  t = DOT3(polynormal, verts[0]) / DOT3(polynormal, best_diagonal);
+  if (!IN_CLOSED_INTERVAL(-.5, t, .5))
+    return 0;
+  SXV3(p, t, best_diagonal);
+  return BrObbFaceClip(verts, polynormal, p);
+}
+
 /* WHAT IT DOES: Triangle-against-unit-cube test: the vertex outcode pass
  * decides most cases; when it cannot (-1), fall back to the edge and plane
  * test with the triangle's normal. */
@@ -209,7 +239,7 @@ int BrTriCubeTest(float *tri, float *norm)
 
   r = func_8025C2C8(tri);
   if (r == -1) {
-    return func_8025CE28(tri, norm);
+    return BrPolyIntersectsCube((float (*)[3])tri, norm);
   }
   return r;
 }
