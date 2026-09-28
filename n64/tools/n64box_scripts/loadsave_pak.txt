@@ -1,0 +1,68 @@
+# Load/Save with an empty Controller Pak in port 1: save the season (a new
+# note), save it again (overwrite: cancel, then OK), save and load the
+# options, save the ghost, then load the season, which starts it.
+pak
+0 -
+100 START
+106 -
+300 - 80 0
+308 -
+340 - 80 0
+348 -
+380 - 80 0
+388 -
+420 - 80 0
+428 -
+460 - 80 0
+468 -
+500 A
+506 -
+620 DD
+626 -
+700 A
+706 -
+780 A
+786 -
+860 A
+866 -
+940 B
+946 -
+1020 A
+1026 -
+1100 A
+1106 -
+1180 A
+1186 -
+1260 DD
+1266 -
+1340 DD
+1346 -
+1420 DD
+1426 -
+1500 DD
+1506 -
+1580 A
+1586 -
+1660 A
+1666 -
+1740 DU
+1746 -
+1820 A
+1826 -
+1900 A
+1906 -
+1980 DU
+1986 -
+2060 A
+2066 -
+2140 A
+2146 -
+2220 DU
+2226 -
+2300 DU
+2306 -
+2380 DU
+2386 -
+2460 A
+2466 -
+2940 -

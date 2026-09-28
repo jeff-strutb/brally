@@ -123,7 +123,7 @@ items share an `iconRomStart` it reuses the already-decompressed texture instead
 of loading it twice.
 
 Screens: main menu `0x802111E0`, 1P/2P `0x80210FC8`, options `0x80211A3C`,
-pad config `0x802170C8`, season/load `0x80209434`, track select `0x80211D70`,
+pad config `0x802170C8`, season/load `0x80209434`, Controller Pak load/save `0x80211D70`,
 car select `0x8020D004`. Car select is the odd one out, it draws real 3D car
 models (`0x802260A0`, `0x80220438`, `0x802244FC`) behind the same item list.
 
