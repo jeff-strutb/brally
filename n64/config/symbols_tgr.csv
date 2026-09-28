@@ -500,3 +500,4 @@ va,name,kind
 802ABC00,gspF3DEX_fifoDataStart,data
 8020046C,BrSceneModelDraw,func
 80229550,BrRankUpdate,func
+8025EC7C,BrTyreDepthAll,func
