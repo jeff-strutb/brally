@@ -503,8 +503,11 @@ def main():
             rt = narrowed_return(rw)
             if rt:
                 base_opts.append('ret_' + rt.replace(' ', '_'))
-            if any(static_local(int(x, 16), va, dtypes.get(int(x, 16), 'int'))
-                   for x in re.findall(r'\bD_([0-9A-F]{8})\b', src)):
+            # (N64GEN_NO_LSTATIC: a candidate for the live oracle must use the
+            # game's own variables, so no function-local statics)
+            if not os.environ.get('N64GEN_NO_LSTATIC') and any(
+                    static_local(int(x, 16), va, dtypes.get(int(x, 16), 'int'))
+                    for x in re.findall(r'\bD_([0-9A-F]{8})\b', src)):
                 base_opts.append('lstatic')
             for _ in range(2):
                 improved = False
