@@ -6,6 +6,37 @@
  */
 #include "tgr/vec.h"
 
+/* WHAT IT DOES: a to the power b for b >= 0: a multiplied in for each
+ * whole unit of b, then the binomial series (30 terms) for the fraction. */
+/* @implements 0x802242E0 tgr BrPowf */
+float BrPowf(float a, float b)
+{
+  float r;
+  float n;
+  float sum;
+  float term;
+
+  r = 1.0f;
+  while (b >= 1.0f) {
+    r *= a;
+    b -= 1.0f;
+  }
+  if (b == 0.0f) {
+    return r;
+  }
+  a -= 1.0f;
+  term = b * a;
+  sum = 1.0f + term;
+  n = 1.0f;
+  while (n < 30.0f) {
+    term *= ((b - n) * a);
+    n += 1.0f;
+    term /= n;
+    sum += term;
+  }
+  return r * sum;
+}
+
 /* WHAT IT DOES: cross product -- out = a x b.  Two components are copied to
  * the stack first, so out may alias a or b. */
 /* @t4-pass 0x8022439C 1 2026-09-26 compiles 17 best 24 moved 0  (n64/tools/n64permute.py) */
