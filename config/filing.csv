@@ -224,8 +224,8 @@ glide_va,name,module,basis,file
 0x10016AA0,BrWeatherStepWind,drawing,filed,src/core/drawing/br_hudscene.c
 0x10016BE0,BrWeatherStepLightning,drawing,description,src/core/drawing/br_hudscene.c
 0x10016C90,BrWeatherStepParticles,drawing,description,src/core/drawing/br_hudscene.c
-0x10017F10,BrFadeRelease,drawing,neighbour-1,src/core/generated/0x10017F10.c
-0x10017F30,BrFadeLatch,drawing,neighbour-1,src/core/generated/0x10017F30.c
+0x10017F10,BrFadeRelease,drawing,filed,src/core/drawing/br_fadewipe.c
+0x10017F30,BrFadeLatch,drawing,filed,src/core/drawing/br_fadewipe.c
 0x10017F60,BrSceneAccumReset,drawing,neighbour-1,src/core/drawing/br_clear.c
 0x10017F80,BrFadeDrawSprite,drawing,manual,src/core/drawing/br_gbihandlers.c
 0x100181A0,BrFadeSetTarget,drawing,description,src/core/drawing/br_fade.c
