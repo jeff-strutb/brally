@@ -1,0 +1,32 @@
+# Arcade, one player, the car left idle on the grid: the checkpoint clock
+# runs out (TIME UP), the race ends and fades out to the next screen.
+0 -
+40 A
+46 -
+200 START
+206 -
+360 - 80 0
+368 -
+400 A
+406 -
+540 A
+546 -
+580 A
+586 -
+620 A
+626 -
+660 A
+666 -
+700 A
+706 -
+740 A
+746 -
+780 A
+786 -
+820 A
+826 -
+860 A
+866 -
+900 A
+906 -
+940 -

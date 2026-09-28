@@ -1,0 +1,110 @@
+# Practice race with the pause menu (START pauses and picks a row, D-pad
+# up/down walks the rows, left/right sets a volume, B resumes): walk every
+# row and change both volumes, continue; pause and resume with B; pause and
+# restart the race; pause and exit to the main menu.
+0 -
+40 A
+46 -
+200 START
+206 -
+360 - 80 0
+368 -
+400 - 80 0
+408 -
+440 - 80 0
+448 -
+480 A
+486 -
+580 A
+586 -
+720 A
+726 -
+760 A
+766 -
+800 A
+806 -
+840 A
+846 -
+880 A
+886 -
+920 A
+926 -
+960 A
+966 -
+1000 A
+1006 -
+1100 A 0 0
+1145 A -60 0
+1190 A 0 0
+1235 A -20 0
+1280 A 0 0
+1325 A 20 0
+1370 A 0 0
+1415 A 60 0
+1440 START
+1446 -
+1480 DD
+1486 -
+1510 DD
+1516 -
+1540 DR
+1546 -
+1570 DL
+1576 -
+1600 DD
+1606 -
+1630 DR
+1636 -
+1660 DL
+1666 -
+1690 DU
+1696 -
+1720 DU
+1726 -
+1750 DU
+1756 -
+1780 START
+1786 -
+1820 A 0 0
+1865 A -60 0
+1910 A 0 0
+1955 A -20 0
+2000 A 0 0
+2045 A 20 0
+2090 A 0 0
+2120 START
+2126 -
+2160 B
+2166 -
+2200 A 0 0
+2245 A -60 0
+2290 A 0 0
+2335 A -20 0
+2380 A 0 0
+2425 A 20 0
+2470 A 0 0
+2500 START
+2506 -
+2540 DD
+2546 -
+2570 START
+2576 -
+2770 A 0 0
+2815 A -60 0
+2860 A 0 0
+2905 A -20 0
+2950 A 0 0
+2995 A 20 0
+3040 A 0 0
+3085 A 60 0
+3130 A 0 0
+3175 A -60 0
+3220 A 0 0
+3265 A -20 0
+3270 START
+3276 -
+3310 DU
+3316 -
+3340 START
+3346 -
+3640 -
