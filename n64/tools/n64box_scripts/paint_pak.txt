@@ -1,0 +1,45 @@
+# The paint shop with an empty Controller Pak: save the decals (a new note),
+# load them back, save again (overwrite: OK), then load once more.
+pak
+0 -
+100 START
+106 -
+300 - 80 0
+308 -
+340 - 80 0
+348 -
+380 - 80 0
+388 -
+420 - 80 0
+428 -
+460 A
+466 -
+600 A
+606 -
+800 - 80 -80
+828 -
+860 A
+866 -
+900 A
+906 -
+1100 - -80 0
+1112 -
+1150 A
+1156 -
+1200 A
+1206 -
+1400 - 80 0
+1412 -
+1450 A
+1456 -
+1500 A
+1506 -
+1560 A
+1566 -
+1800 - -80 0
+1812 -
+1850 A
+1856 -
+1900 A
+1906 -
+2200 -
