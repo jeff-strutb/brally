@@ -476,3 +476,4 @@ va,name,kind
 8022B0F8,BrSndDoppler,func
 80266BA8,__ull_to_f,func
 80254E3C,BrObjViewFrame,func
+80205FDC,BrRaceResultSave,func
