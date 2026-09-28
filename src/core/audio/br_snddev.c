@@ -1,9 +1,9 @@
-/* br_snddev.c -- bringing the DirectSound device up.  The teardown twin is
- * 0x1006C6A0 (src/core/generated/0x1006C6A0.c); the bank tables it clears
- * are br_sfx.c / br_sndvoice.c.
+/* br_snddev.c -- bringing the DirectSound device up and taking it down.  The
+ * bank tables they clear are br_sfx.c / br_sndvoice.c.
  *
  * Reference: BRGlide.dll.  The D3D build shares the body at 0x10073560.
  *
+ *   0x1006C6A0               close it again: the reference-counted teardown.
  *   0x1006C4D0 (0x10073560)  open the device: reference count, ACM format
  *                            size, the 22 kHz stereo 16-bit WAVEFORMATEX,
  *                            CoCreateInstance(CLSID_DirectSound), Initialize,
@@ -105,4 +105,44 @@ int BrSndDevOpen(void)
     return hr >= 0;
 }
 
+#endif /* BR_MATCHING_BUILD */
+
+#ifdef BR_MATCHING_BUILD
+extern LPVOID DAT_1184c2a8;             /* the ACM scratch format        */
+int BrSndBankFree(void);                /* 0x1006C460, br_sndvoice.c      */
+
+/* WHAT IT DOES: drop one user of the sound system and, when the last one
+ * goes, actually shut DirectSound down -- frees the banks, stops and
+ * releases the primary buffer, releases the device, and frees the two
+ * format blocks.  Reference counted so one subsystem releasing sound does
+ * not silence another that still wants it.  Always reports success. */
+/* @implements 0x1006C6A0 glide FUN_1006c6a0 */
+int FUN_1006c6a0(void)
+{
+  BrSndG18290FC = BrSndG18290FC + -1;
+  if (BrSndG18290FC != 0) {
+    return 1;
+  }
+  BrSndBankFree();
+  if (DAT_1184c344 != NULL) {
+    IDirectSoundBuffer_Stop(DAT_1184c344);
+    IDirectSoundBuffer_Release(DAT_1184c344);
+    DAT_1184c344 = NULL;
+  }
+  if (BrSndPDS != NULL) {
+    IDirectSound_Release(BrSndPDS);
+    BrSndPDS = NULL;
+  }
+  if (DAT_1184c2b0 != NULL) {
+    GlobalUnlock(GlobalHandle(DAT_1184c2b0));
+    GlobalFree(GlobalHandle(DAT_1184c2b0));
+    DAT_1184c2b0 = NULL;
+  }
+  if (DAT_1184c2a8 != NULL) {
+    GlobalUnlock(GlobalHandle(DAT_1184c2a8));
+    GlobalFree(GlobalHandle(DAT_1184c2a8));
+    DAT_1184c2a8 = NULL;
+  }
+  return 1;
+}
 #endif /* BR_MATCHING_BUILD */
