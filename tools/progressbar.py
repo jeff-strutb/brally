@@ -12,9 +12,12 @@ and regenerates docs/progress-map.svg.  Nothing outside the markers is touched.
     M1  contract-valid  = T3 (certified, not byte-exact) + T4 (byte-exact)
     M2  byte-exact       = T4
 
-Both are quoted against BRGlide `.text` (480,853 B, the primary target), the
-denominator the README documents -- NOT the smaller hand-C target tiers.py
-prints its own percentages against.
+Both are quoted against the HAND-WRITTEN target tiers.py reports (the game's
+own functions), not the whole BRGlide `.text`.  The rest of `.text` -- padding
+and jump tables between functions, linker/EH code, and functions the retail
+game never runs -- is produced by the build or deliberately out of scope, so
+dividing by all of `.text` capped the bars near 93% even with nothing left to
+write.  The block itemises that rest so the two numbers reconcile.
 
     python3 tools/progressbar.py            # rewrite README + regenerate SVG
     python3 tools/progressbar.py --check     # exit 1 if README is stale, write nothing
@@ -35,8 +38,8 @@ if not os.path.exists(PY):
     PY = sys.executable
 
 # BRGlide .text, the whole primary binary. A fixed fact of the image (the project rules
-# scope table / README), not something tiers.py reports -- it prints the smaller
-# 452,733 B hand-C target. Both bars use this so they are comparable.
+# scope table / README).  The bars divide by the hand-written target instead;
+# this is only used to itemise what the rest of .text is.
 BRGLIDE_TEXT = 480853
 BAR_W = 40
 BEGIN = '<!-- PROGRESS:BEGIN'
@@ -46,7 +49,8 @@ N64_END = '<!-- N64-PROGRESS:END -->'
 
 
 def tier_counts():
-    """(t3_fns, t3_bytes, t4_fns, t4_bytes, target_fns) from tiers.py's output.
+    """(t3_fns, t3_bytes, t4_fns, t4_bytes, target_fns, target_bytes, t2_fns,
+    t2_bytes, excluded_fns, excluded_bytes) from tiers.py's output.
 
     Parsed from stdout rather than imported: tiers.main() computes these inside
     itself and prints them; the lines it prints are stable and carry their own
@@ -60,11 +64,29 @@ def tier_counts():
             sys.exit('progressbar: could not parse tiers.py output for /%s/\n\n%s'
                      % (pat, out))
         return m
-    target = int(grab(r'hand-C target:\s+(\d+)\s+functions').group(1))
+    tgt = grab(r'hand-C target:\s+(\d+)\s+functions\s+\((\d+)\s+B')
+    t2 = grab(r'T2\s+in progress \(not done\)\s+(\d+)\s+fns\s+(\d+)\s+B')
     t3 = grab(r'T3\s+certified, not byte-exact\s+(\d+)\s+fns\s+(\d+)\s+B')
     t4 = grab(r'T4\s+done \(byte-exact\)\s+(\d+)\s+fns\s+(\d+)\s+B')
+    ex = grab(r'EXCLUDED\s+never run by the game\s+(\d+)\s+fns\s+(\d+)\s+B')
     return (int(t3.group(1)), int(t3.group(2)),
-            int(t4.group(1)), int(t4.group(2)), target)
+            int(t4.group(1)), int(t4.group(2)),
+            int(tgt.group(1)), int(tgt.group(2)),
+            int(t2.group(1)), int(t2.group(2)),
+            int(ex.group(1)), int(ex.group(2)))
+
+
+def text_breakdown():
+    """(fenced_bytes, mapped_function_bytes) of BRGlide .text: the linker/EH
+    code in config/fenced.csv, and every function in the glide map (the rest of
+    .text is padding and in-line data between functions)."""
+    import csv
+    fenced = sum(int(r['size']) for r in
+                 csv.DictReader(open(os.path.join(ROOT, 'config', 'fenced.csv'))))
+    mapped = sum(int(r['size']) for r in
+                 csv.DictReader(open(os.path.join(ROOT, 'config', 'functions_glide.csv')))
+                 if r.get('size'))
+    return fenced, mapped
 
 
 def n64_counts():
@@ -154,7 +176,7 @@ def bar(pct, w=BAR_W):
     return '█' * filled + '░' * (w - filled)
 
 
-def _table(t3_fns, t3_b, t4_fns, t4_b, exes):
+def _table(t3_fns, t3_b, t4_fns, t4_b, exes, target_b):
     """The per-binary M1/M2 table, mini-bars 20 wide."""
     rows = ['| Area | M1 - contract-valid | M2 - byte-exact |',
             '|---|---|---|']
@@ -165,9 +187,9 @@ def _table(t3_fns, t3_b, t4_fns, t4_b, exes):
         cell = '`%s` %.0f%% - %d/%d fns, %s B' % (
             bar(pct, 20), pct, mf, mf + df, f'{mb:,}')
         rows.append('| **%s** | %s | %s |' % (name, cell, cell))
-    # BRGlide.dll: M1 = T3+T4, M2 = T4, both vs full .text.
+    # BRGlide.dll: M1 = T3+T4, M2 = T4, both vs the hand-written target.
     m1_b, m1_fns = t3_b + t4_b, t3_fns + t4_fns
-    m1p, m2p = 100 * m1_b / BRGLIDE_TEXT, 100 * t4_b / BRGLIDE_TEXT
+    m1p, m2p = 100 * m1_b / target_b, 100 * t4_b / target_b
     rows.append('| **BRGlide.dll** | `%s` %.1f%% - %s B, %s fns | '
                 '`%s` %.1f%% - %s B, %s fns |'
                 % (bar(m1p, 20), m1p, f'{m1_b:,}', f'{m1_fns:,}',
@@ -175,12 +197,17 @@ def _table(t3_fns, t3_b, t4_fns, t4_b, exes):
     return '\n'.join(rows)
 
 
-def block(t3_fns, t3_b, t4_fns, t4_b, target, exes):
+def block(t3_fns, t3_b, t4_fns, t4_b, target, target_b, t2_fns, t2_b,
+          ex_fns, ex_b, fenced_b, mapped_b, exes):
     m1_b, m1_fns = t3_b + t4_b, t3_fns + t4_fns
     m2_b, m2_fns = t4_b, t4_fns
-    m1_pct, m2_pct = 100 * m1_b / BRGLIDE_TEXT, 100 * m2_b / BRGLIDE_TEXT
-    m1_fpct, m2_fpct = 100 * m1_fns / target, 100 * m2_fns / target
+    m1_pct, m2_pct = 100 * m1_b / target_b, 100 * m2_b / target_b
+    left_b = target_b - m1_b
+    pad_b = BRGLIDE_TEXT - mapped_b
     today = datetime.date.today().isoformat()
+    open_fns = target - m1_fns
+    left = ('%d function%s still open' % (open_fns, '' if open_fns == 1 else 's')
+            if open_fns else 'complete')
     return (
         '_Snapshot %s._\n\n'
         '```\n'
@@ -189,11 +216,18 @@ def block(t3_fns, t3_b, t4_fns, t4_b, target, exes):
         'M2  Byte-exact (T4)\n'
         '    %s  %.1f%%   %s / %s B   %s / %s fns\n'
         '```\n\n'
-        'The bars sit close by design: matching is byte-exact-first, so only %d\n'
-        'certified-but-not-yet-exact functions (%s B) separate M1 from M2. Byte\n'
-        'percentages trail function percentages (%.1f%% / %.1f%% of functions) '
-        'because the\n'
-        'functions still open are several times larger than the matched ones.\n\n'
+        '**What the bars measure.** Both bars count the game\'s own functions in\n'
+        'BRGlide.dll - the code that has to be written by hand. M1 has %s.\n'
+        'M2 trails it by %d functions (%s B) that are certified to behave exactly like\n'
+        'the original but do not yet compile to identical bytes.\n\n'
+        '**The rest of the DLL.** Its code section is %s B; the bars leave out %s B\n'
+        'of it, all of which the finished DLL still contains but none of which is\n'
+        'hand-written:\n\n'
+        '| Bytes | What it is | Where it comes from |\n'
+        '|---:|---|---|\n'
+        '| %s | padding and jump tables between functions | emitted by the compiler with the functions |\n'
+        '| %s | import stubs and C++ exception-handling glue | generated by the compiler and linker |\n'
+        '| %s | %d functions the retail game never runs | written, but left out of the count (config/excluded.csv) |\n\n'
         'By binary - the three EXEs are complete at both milestones (their game '
         'code is fully\n'
         'byte-exact; the static CRT filling out each image is reproduced by '
@@ -201,12 +235,14 @@ def block(t3_fns, t3_b, t4_fns, t4_b, target, exes):
         'decompiled, and is out of scope). All remaining work is in BRGlide.dll.\n\n'
         '%s\n'
         % (today,
-           bar(m1_pct), m1_pct, f'{m1_b:,}', f'{BRGLIDE_TEXT:,}',
+           bar(m1_pct), m1_pct, f'{m1_b:,}', f'{target_b:,}',
            f'{m1_fns:,}', f'{target:,}',
-           bar(m2_pct), m2_pct, f'{m2_b:,}', f'{BRGLIDE_TEXT:,}',
+           bar(m2_pct), m2_pct, f'{m2_b:,}', f'{target_b:,}',
            f'{m2_fns:,}', f'{target:,}',
-           t3_fns, f'{t3_b:,}', m1_fpct, m2_fpct,
-           _table(t3_fns, t3_b, t4_fns, t4_b, exes)))
+           left, t3_fns, f'{t3_b:,}',
+           f'{BRGLIDE_TEXT:,}', f'{BRGLIDE_TEXT - target_b:,}',
+           f'{pad_b:,}', f'{fenced_b:,}', f'{ex_b:,}', ex_fns,
+           _table(t3_fns, t3_b, t4_fns, t4_b, exes, target_b)))
 
 
 def splice(text, new_block, begin=BEGIN, end=END):
@@ -220,9 +256,13 @@ def splice(text, new_block, begin=BEGIN, end=END):
 
 def main():
     argv = sys.argv[1:]
-    t3_fns, t3_b, t4_fns, t4_b, target = tier_counts()
+    (t3_fns, t3_b, t4_fns, t4_b, target, target_b,
+     t2_fns, t2_b, ex_fns, ex_b) = tier_counts()
+    fenced_b, mapped_b = text_breakdown()
     old = open(README, encoding='utf-8').read()
-    updated = splice(old, block(t3_fns, t3_b, t4_fns, t4_b, target, exe_counts()))
+    updated = splice(old, block(t3_fns, t3_b, t4_fns, t4_b, target, target_b,
+                                t2_fns, t2_b, ex_fns, ex_b, fenced_b, mapped_b,
+                                exe_counts()))
 
     # N64 (Top Gear Rally) lane -- its own markers, same rendering.
     n3f, n3b, n4f, n4b, ntf, ntb = n64_counts()
@@ -236,8 +276,8 @@ def main():
         print('README progress block is current.')
         return 0
 
-    m1_pct = 100 * (t3_b + t4_b) / BRGLIDE_TEXT
-    m2_pct = 100 * t4_b / BRGLIDE_TEXT
+    m1_pct = 100 * (t3_b + t4_b) / target_b
+    m2_pct = 100 * t4_b / target_b
     if updated != old:
         open(README, 'w', encoding='utf-8').write(updated)
         print('README: M1 %.1f%% / M2 %.1f%%  (T3 %d fns/%s B, T4 %d fns/%s B)'
