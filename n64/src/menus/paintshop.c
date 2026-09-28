@@ -105,6 +105,9 @@ extern unsigned char D_8028DBE0;
 extern unsigned char D_8028DBE4;
 extern unsigned char D_8028DBEC;
 extern int D_8028DB0C[];               /* per decal slot */
+void BrPaintDecalCommit(void);
+unsigned char BrPaintPeek(unsigned char *tex, int x, int y);
+extern unsigned char D_8028CFBC;         /* pending flip: 1 left-right, 2 top-bottom */
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Take the chosen preset's rectangle, and make every view
@@ -653,4 +656,32 @@ void BrPaintCarView(void)
   D_8028C334 = 1;
   BrCarVisibility(D_8028AAF0);
   func_80230554(D_8028AAF0, 0);
+}
+
+/* WHAT IT DOES: Apply the pending decal flip: store the working decal into
+ * the decal buffer, then redraw every texel of the working decal from that
+ * stored copy mirrored left-right (flip 1) or top-bottom (flip 2); clear
+ * the pending flip and copy the saved dirty flag back. */
+/* @implements 0x80248DB4 tgr BrPaintFlipApply */
+void BrPaintFlipApply(void)
+{
+  int x;
+  int y;
+
+  BrPaintDecalCommit();
+  if (D_8028CFBC == 1) {
+    for (y = 0; y < D_8028DB8C; y++) {
+      for (x = 0; x < D_8028DB88; x++) {
+        BrPaintPlot(D_8028DB88 - x - 1, y, BrPaintPeek(D_8028DB80, x, y));
+      }
+    }
+  } else if (D_8028CFBC == 2) {
+    for (y = 0; y < D_8028DB8C; y++) {
+      for (x = 0; x < D_8028DB88; x++) {
+        BrPaintPlot(x, D_8028DB8C - y - 1, BrPaintPeek(D_8028DB80, x, y));
+      }
+    }
+  }
+  D_8028CFBC = 0;
+  D_8028DB60 = D_8028DB64;
 }
