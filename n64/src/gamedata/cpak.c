@@ -20,7 +20,7 @@ int func_80246F90();
 void BrPadConsume(unsigned int *param_1,unsigned int param_2);
 void osSyncPrintf();
 char * memcpy(char *param_1,char *param_2,int param_3);
-int func_80261940(int param_1,unsigned char *param_2);
+int func_80261940(void *param_1,unsigned char *param_2);
 int func_80261CB0();
 int func_80261F20(int param_1);
 int func_80262370();
@@ -142,6 +142,40 @@ void BrRumbleProbe(void)
     }
   }
   D_802A4BE8 = 1;
+}
+
+/* WHAT IT DOES: Initialise a Rumble Pak on every connected controller:
+ * answer 1 as soon as a controller has nothing plugged in, holds a
+ * Controller Pak (the pak initialises) or fails to start its motor, and 0
+ * when every one carries a working Rumble Pak (motor stopped).  Nothing in
+ * the ROM calls it. */
+/* @implements 0x80214CB0 tgr BrRumbleInitAll */
+int BrRumbleInitAll(void)
+{
+  unsigned char bits;
+  int i;
+
+  D_802A4BE8 = 0;
+  for (i = 0; i < D_8026FF08; i++) {
+    func_80261940(&D_80272D48, &bits);
+    if ((bits & (1 << i)) == 0)
+      goto fail;
+    D_802724F0 = func_80261CB0(&D_80272D48, &D_80369EC0[i], i);
+    if (D_802724F0 != 0) {
+      if (D_802724F0 != 10)
+        goto fail;
+      if (func_80262370(&D_80272D48, i * 0x68 + (int)D_8031A3F8, i) != 0)
+        goto fail;
+      func_80261F20(i * 0x68 + (int)D_8031A3F8);
+    }
+    if (D_802724F0 == 0)
+      goto fail;
+  }
+  D_802A4BE8 = 1;
+  return 0;
+fail:
+  D_802A4BE8 = 1;
+  return 1;
 }
 
 /* WHAT IT DOES: Check the Controller Pak for the save screens: initialise
