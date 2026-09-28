@@ -114,6 +114,7 @@ va,name,kind
 8021C748,BrRomRead,func
 8021C814,BrRomReadSize,func
 8021C848,BrRomReadWord,func
+8021C878,BrRleEncode,func
 8021CB4C,BrRlePlanesUnpack,func
 8021CD24,BrStreamInit,func
 8021CD30,BrRomUnpack,func
