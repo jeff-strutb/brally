@@ -70,9 +70,10 @@ typedef struct BrTask {         /* an OSTask (0x40 bytes) */
   unsigned int yield_data_size;
 } BrTask;
 extern BrTask D_8031A9A8[2];            /* one graphics task per display list */
-extern char D_8026EA00[];               /* rspboot */
-extern char D_8026EAD0[];               /* the F3DEX (FIFO) microcode text */
-extern char D_802ABC00[];               /* its data */
+extern char rspbootTextStart[];
+extern char rspbootTextEnd[];
+extern char gspF3DEX_fifoTextStart[];
+extern char gspF3DEX_fifoDataStart[];
 extern char D_8031A598[];               /* the RSP's DRAM stack */
 extern long long *D_8028A860[2];        /* the RDP FIFO: start and end */
 extern int D_8028AB84;                  /* FIFO words kept back */
@@ -242,10 +243,12 @@ void BrFrameBegin(int hires)
  * callback), optionally copy the debug frame, set the VI mode once after a
  * resolution change, swap to the finished frame buffer and wait for it,
  * lift the screen blanking; then start the task and flip buffers.
- * RESIDUE: same size class, not aligned -- the ROM builds the list size as
- * (list - base) + -(frame * 48000) - 0x200 (a negu), CSEs 48000 into a
- * register, and computes the microcode address twice; the task pointer
- * lives on the stack as here.  Not yet matched. */
+ * The list size is (list - (buffer + 0x200)) in bytes (the ROM's negu);
+ * the count is stored and then tested; boot size uses rspbootTextEnd, a
+ * second symbol at the F3DEX text start.
+ * RESIDUE (~210): instruction scheduling -- the task's stores, the counter
+ * loads and the debug copy's multiply are ordered differently; the
+ * instruction multiset matches except about 30 moved ops. */
 /* @implements 0x8021AA08 tgr BrFrameEnd */
 void BrFrameEnd(void)
 {
@@ -264,8 +267,8 @@ void BrFrameEnd(void)
   gRaw(D_8028A858++, 0xb8000000, 0);
   t = &D_8031A9A8[D_8028A85C];
   t->type = 1;
-  t->ucode = D_8026EAD0;
-  t->ucode_data = D_802ABC00;
+  t->ucode = gspF3DEX_fifoTextStart;
+  t->ucode_data = gspF3DEX_fifoDataStart;
   t->flags = 6;
   t->output_buff = D_8028A860[0];
   t->ucode_size = 0x1000;
@@ -273,11 +276,11 @@ void BrFrameEnd(void)
   t->ucode_data_size = 0x800;
   t->dram_stack = (void *)(((unsigned int)D_8031A598 + 0xf) & ~0xf);
   t->dram_stack_size = 0x400;
-  t->ucode_boot = D_8026EA00;
-  t->ucode_boot_size = (unsigned int)D_8026EAD0 - (unsigned int)D_8026EA00;
+  t->ucode_boot = rspbootTextStart;
+  t->ucode_boot_size = (unsigned int)rspbootTextEnd - (unsigned int)rspbootTextStart;
   t->data_ptr = &D_8028A848[D_8028A85C][0x40];
-  t->data_size = (D_8028A858 - &D_8028A848[D_8028A85C][0x40]) * sizeof(Gfx);
-  n = D_8028A858 - &D_8028A848[D_8028A85C][0x40];
+  t->data_size = (((char *)D_8028A858 - ((char *)D_8028A848[D_8028A85C] + 0x200)) >> 3) << 3;
+  n = ((char *)D_8028A858 - ((char *)D_8028A848[D_8028A85C] + 0x200)) >> 3;
   if (D_8028AB7C < n) {
     D_8028AB7C = n;
   }
@@ -289,8 +292,7 @@ void BrFrameEnd(void)
   if (D_8028AB78 < v) {
     D_8028AB78 = v;
   }
-  D_8028AB70 = n;
-  if (n > 6000) {
+  if ((D_8028AB70 = n) > 6000) {
     BrFatal("HUGE GLIST ERROR");
   }
   osWritebackDCacheAll();
@@ -305,13 +307,10 @@ void BrFrameEnd(void)
     BrPerfMark(0, 0, 0, 0, 0xff);
     osRecvMesg(D_8031A358, 0, 1);
     if (D_8028AA94 != 0) {
-      mul = 1;
-      if (D_8028A850 != 0) {
-        mul = 4;
-      }
+      mul = D_8028A850 != 0 ? 4 : 1;
+      n = mul * D_8028AAB0 * D_8028AAB4 >> 1;
       src = D_80000400;
       dst = (int *)D_8031AA28[D_8028A85C ^ 1];
-      n = mul * D_8028AAB0 * D_8028AAB4 >> 1;
       for (i = 0; i < n; i++) {
         dst[i] = src[i];
       }
