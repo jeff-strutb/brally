@@ -7,7 +7,7 @@
  *   0x10066260   644 B   BrCollRespBoxClassify   byte-exact 2026-09-05
  *   0x10066800   332 B   BrCollRespSegBox        byte-exact 2026-09-05
  *   0x10066610   492 B   BrCollRespPointInTri    PARKED, 2 regions (see it)
- *   0x10066950   322 B   BrCrExact               PARKED, 1 x87 chain (see it)
+ *   0x10066950   322 B   BrCrExact               byte-exact 2026-09-27
  *   0x10066AD0   669 B   BrCollRespBroadPhase    byte-exact 2026-09-05
  *
  * ‼ THE FOUR ABOVE SHARE ONE TIE-BREAK.  Re-spelling any of them renumbers
@@ -861,6 +861,57 @@ int BrCollRespSegBox(const BrVec3 *pA, const BrVec3 *pB)
 }
 
 /* ==================================================================== */
+/* 0x10066950 -- the exact test, for the classify's -1                   */
+/* ==================================================================== */
+/* WHAT IT DOES: the expensive answer when the cheap classify said -1: the
+ * triangle meets the unit cube if any edge passes through it, or else if
+ * the cube's diagonal that points along the normal pierces the triangle.
+ * The diagonal is s = sign(n) per axis (+-1 INTS, `fild`ed where used);
+ * t = dot(n, v0) / dot(n, s) places the hit on it, |t| <= 0.5 keeps it
+ * inside the cube (a NaN keeps going too: `test ah,0x41` + `jne`), and the
+ * point t*s is handed to the point-in-triangle test.  A zero denominator
+ * gives an infinity the window test rejects -- no guard, none needed.
+ *
+ * Byte-exact 2026-09-27.  Four source facts decide the x87 schedule:
+ * the normal is read through the struct (`pN->x`) in the denominator and
+ * through `n[]` in the numerator; v0 is its own BrVec3 pointer local; both
+ * dot products are written flat (`a + b + c`, no inner parentheses); and
+ * the function sits here, after SegBox and ahead of PointInTri, as in the
+ * original.  Without them (float)s[1] stays in a register instead of
+ * being spilled to pN's arg slot, the frame is 0x18 not 0x1c, and the
+ * y/z and n0/v0 load roles swap. */
+/* @implements 0x10066950 glide BrCrExact */
+static int BrCrExact(const float aV[9], const BrVec3 *pN)
+{
+    const float *n = &pN->x;
+    const BrVec3 *v0 = (const BrVec3 *)(const void *)aV;
+    int          s[3];
+    BrVec3       P;
+    float        t;
+    int          i;
+
+    for (i = 0; i < 3; ++i) {
+        if (BrCollRespSegBox((const BrVec3 *)(const void *)(aV + i * 3),
+                             (const BrVec3 *)(const void *)
+                             (aV + ((i + 1) % 3) * 3)) != 0) {
+            return 1;
+        }
+    }
+    for (i = 0; i < 3; ++i) {
+        s[i] = !((&pN->x)[i] >= BR_CR_ZERO_F) ? -1 : 1;
+    }
+    t = (n[0] * v0->x + n[1] * v0->y + n[2] * v0->z)
+      / (pN->x * s[0] + pN->y * s[1] + pN->z * s[2]);
+    if (!((t - BR_CR_FACE_LO) * (t - BR_CR_FACE_HI) <= BR_CR_ZERO_D)) {
+        return 0;
+    }
+    P.x = t * s[0];
+    P.y = t * s[1];
+    P.z = t * s[2];
+    return BrCollRespPointInTri(aV, pN, &P);
+}
+
+/* ==================================================================== */
 /* 0x10066610 -- point in triangle, by 2D crossing count                 */
 /*                                                                       */
 /* The projection drops the axis of the largest |n|, and WHICH of the     */
@@ -976,74 +1027,6 @@ int BrCollRespPointInTri(const float aV[9], const BrVec3 *pN,
         }
     }
     return acc;
-}
-
-/* ==================================================================== */
-/* 0x10066950 -- the exact test, for the classify's -1                   */
-/* ==================================================================== */
-/* WHAT IT DOES: the expensive answer when the cheap classify said -1: the
- * triangle meets the unit cube if any edge passes through it, or else if
- * the cube's diagonal that points along the normal pierces the triangle.
- *
- * PARKED 2026-09-05 at 326/322 B.  The residue is one x87 chain: the
- * original spills BOTH (float)s[1] (into pN's dead arg slot) and
- * (float)s[2] (a fourth frame dword, hence `sub esp,0x1c`) and keeps
- * (float)s[0] on the stack to the end, loading s0, s1, v1, v2, n0, n1
- * before the first multiply; ours loads s1, s0, v1, v2, n0, dups s0, and
- * spills once (`sub esp,0x18`).  DEAD: num/den named (either, both, either
- * order); every factor order of the three products; `(float)` casts on the
- * quotient; named float sx/sy/sz for the conversions (324 B, closest) in
- * all six declaration orders and with t before/after them; den or num
- * named on top of that; P = s*t order.  The SegBox/PointInTri arms and the
- * window test are exact. */
-/* @t4-pass 0x10066950 1 2026-09-07 probes 132 bytes 335 insns 123 regions 3 rows 14 census yes  (tools/crank.py) */
-/* @t4-pass 0x10066950 2 2026-09-07 probes 123 bytes 335 insns 123 regions 3 rows 14 census yes  (tools/crank.py) */
-/* @implements 0x10066950 glide BrCrExact */
-static int BrCrExact(const float aV[9], const BrVec3 *pN)
-{
-    const float *n = &pN->x;
-    int          s[3];
-    BrVec3       P;
-    float        t;
-    int          i;
-
-    /* 0x1006695E: the three edges, each against the cube. */
-    for (i = 0; i < 3; ++i) {
-        if (BrCollRespSegBox((const BrVec3 *)(const void *)(aV + i * 3),
-                             (const BrVec3 *)(const void *)
-                             (aV + ((i + 1) % 3) * 3)) != 0) {
-            return 1;
-        }
-    }
-
-    /* 0x1006699E: sign(n) per component, as +-1 INTS (`mov [ecx],eax`)
-     * that are then `fild`ed back where they are used.  `test ah,1` + `je`
-     * gives +1 for not-less-not-unordered. */
-    for (i = 0; i < 3; ++i) {
-        s[i] = !(n[i] >= BR_CR_ZERO_F) ? -1 : 1;
-    }
-
-    /* 0x100669C0..0x10066A0E: t = dot(n, v0) / dot(n, s), with the
-     * numerator associated ((v0.y*n.y + v0.z*n.z) + n.x*v0.x) and the
-     * denominator ((n.x*s.x + n.y*s.y) + n.z*s.z).  Division by a zero
-     * denominator yields an infinity, which the window test below then
-     * rejects -- the original has no guard and needs none. */
-    t = ((aV[1] * n[1] + aV[2] * n[2]) + n[0] * aV[0])
-      / ((n[0] * s[0] + n[1] * s[1]) + n[2] * s[2]);
-
-    /* 0x10066A1A..0x10066A35: (t + 0.5) * (t - 0.5), both subtractions
-     * against the DOUBLE +-0.5 (`fsub qword`), against a DOUBLE zero,
-     * `test ah,0x41` + `jne <continue>` -- so it continues on
-     * less-or-equal-or-unordered, i.e. |t| <= 0.5 keeps going and a NaN
-     * keeps going too. */
-    if (!((t - BR_CR_FACE_LO) * (t - BR_CR_FACE_HI) <= BR_CR_ZERO_D)) {
-        return 0;
-    }
-
-    P.x = t * s[0];
-    P.y = t * s[1];
-    P.z = t * s[2];
-    return BrCollRespPointInTri(aV, pN, &P);
 }
 
 /* 0x10066AA0 -- classify, and resolve the inconclusive answer. */
