@@ -65,6 +65,31 @@ BrDPlayState *BrDPlayGetState(void)
     return &g_BrDPlay;
 }
 
+/* g_BrDPlay is the port's gathering of scattered originals; pSt is always
+ * &g_BrDPlay.  The matching build reads these fields as the separate globals
+ * they are, by their DAT_ names (resolved from the address they spell). */
+#ifdef BR_MATCHING_BUILD
+extern int32_t DAT_10273348;
+#define DPS_fCritInit DAT_10273348
+extern void *DAT_1027333c;
+#define DPS_hThread DAT_1027333c
+extern uint32_t DAT_10273340;
+#define DPS_idThread DAT_10273340
+extern void *DAT_10273344;
+#define DPS_hQuit DAT_10273344
+extern BrDPlay4Obj *DAT_10273328;
+#define DPS_pDPGlobal DAT_10273328
+extern int32_t DAT_100abaa0;
+#define DPS_fLog DAT_100abaa0
+#else
+#define DPS_fCritInit g_BrDPlay.fCritInit
+#define DPS_hThread g_BrDPlay.hThread
+#define DPS_idThread g_BrDPlay.idThread
+#define DPS_hQuit g_BrDPlay.hQuit
+#define DPS_pDPGlobal g_BrDPlay.pDPGlobal
+#define DPS_fLog g_BrDPlay.fLog
+#endif
+
 #ifdef BR_MATCHING_BUILD
 /* DirectPlay's Win32 imports are stdcall IAT calls (FF 15). The portable
  * BrDPlayOs function-pointer table is cdecl and cannot emit that sequence. */
@@ -130,7 +155,7 @@ void BrDPlaySysMsgDispatch(void *pv1, const BrDPlaySysMsg *pMsg,
     case 3:                         /* DPSYS_CREATEPLAYERORGROUP */
         return;
     case 5:                         /* DPSYS_DESTROYPLAYERORGROUP */
-        if (g_BrDPlay.fLog == 0) {
+        if (DPS_fLog == 0) {
             BrSub10071480(pMsg->f08);
             BrSub10005FE0(pMsg->f08);
         }
@@ -215,7 +240,7 @@ void BrDPlaySysMsgLog(BrDPlayCtx *pCtx, const BrDPlaySysMsg *pMsg,
         BrAppMsgDispatch(pCtx, (const BrAppMsg *)pMsg,
                          (void *)cbData, (void *)idFrom, (void *)idTo);
 
-    if (g_BrDPlay.fLog != 0) {
+    if (DPS_fLog != 0) {
         pszB = NULL;
         switch (pMsg->dwType) {
         case 3:
@@ -296,7 +321,7 @@ void BrDPlaySysMsgLog(BrDPlayCtx *pCtx, const BrDPlaySysMsg *pMsg,
                          (void *)(uintptr_t)idFrom,
                          (void *)(uintptr_t)idTo);
 
-    if (pSt->fLog == 0)
+    if (DPS_fLog == 0)
         return;
 
     if (pMsg->dwType == 3u) {
@@ -461,6 +486,8 @@ int32_t BrDPlayPump(BrDPlayCtx *pCtx)
 uint32_t __stdcall BrDPlayThreadProc(void *pvCtx)
 {
     BrDPlayCtx *pCtx  = (BrDPlayCtx *)pvCtx;
+    /* Read through the port's struct, not DAT_10273344: as a separate global
+     * the load schedules differently and the function stops matching. */
     void       *hQuit = g_BrDPlay.hQuit;
     void       *ah[2];
 
@@ -486,7 +513,7 @@ uint32_t BrDPlayThreadProc(void *pvCtx)
     void       *ah[2];
 
     ah[0] = pCtx->hRecvEvent;
-    ah[1] = g_BrDPlay.hQuit;
+    ah[1] = DPS_hQuit;
 
     if (g_BrDPlay.os.pfnWaitMultiple(2u, ah) == 0u) {
         do {
@@ -536,21 +563,21 @@ int BrComHolderRelease(void)
 int32_t BrDPlayShutdown(BrDPlayCtx *pCtx)
 {
     /* The critical section really does go first -- see the GOTCHA. */
-    if (g_BrDPlay.fCritInit != 0) {
+    if (DPS_fCritInit != 0) {
         DeleteCriticalSection(g_BrDPlayCrit);
-        g_BrDPlay.fCritInit = 0;
+        DPS_fCritInit = 0;
     }
 
-    if (g_BrDPlay.hThread != NULL) {
-        SetEvent(g_BrDPlay.hQuit);
-        WaitForSingleObject(g_BrDPlay.hThread, 0xffffffffu);
-        CloseHandle(g_BrDPlay.hThread);
-        g_BrDPlay.hThread = NULL;
+    if (DPS_hThread != NULL) {
+        SetEvent(DPS_hQuit);
+        WaitForSingleObject(DPS_hThread, 0xffffffffu);
+        CloseHandle(DPS_hThread);
+        DPS_hThread = NULL;
     }
 
-    if (g_BrDPlay.hQuit != NULL) {
-        CloseHandle(g_BrDPlay.hQuit);
-        g_BrDPlay.hQuit = NULL;
+    if (DPS_hQuit != NULL) {
+        CloseHandle(DPS_hQuit);
+        DPS_hQuit = NULL;
     }
 
     if (pCtx != NULL) {
@@ -586,21 +613,21 @@ int32_t BrDPlayShutdown(BrDPlayCtx *pCtx)
     BrDPlayState *pSt = &g_BrDPlay;
 
     /* The critical section really does go first -- see the GOTCHA. */
-    if (pSt->fCritInit != 0) {
+    if (DPS_fCritInit != 0) {
         pSt->os.pfnDeleteCrit();
-        pSt->fCritInit = 0;
+        DPS_fCritInit = 0;
     }
 
-    if (pSt->hThread != NULL) {
-        pSt->os.pfnSetEvent(pSt->hQuit);
-        pSt->os.pfnWaitSingle(pSt->hThread);
-        pSt->os.pfnCloseHandle(pSt->hThread);
-        pSt->hThread = NULL;
+    if (DPS_hThread != NULL) {
+        pSt->os.pfnSetEvent(DPS_hQuit);
+        pSt->os.pfnWaitSingle(DPS_hThread);
+        pSt->os.pfnCloseHandle(DPS_hThread);
+        DPS_hThread = NULL;
     }
 
-    if (pSt->hQuit != NULL) {
-        pSt->os.pfnCloseHandle(pSt->hQuit);
-        pSt->hQuit = NULL;
+    if (DPS_hQuit != NULL) {
+        pSt->os.pfnCloseHandle(DPS_hQuit);
+        DPS_hQuit = NULL;
     }
 
     if (pCtx != NULL) {
@@ -642,21 +669,21 @@ int32_t BrDPlayStartup(void *pUnused, BrDPlayCtx *pCtx)
      * shared cleanup placed after the success return -- the goto chain is
      * what lays the blocks out fail-first; the nested/&& forms put the
      * success exit first. */
-    if (g_BrDPlay.fCritInit == 0) {
+    if (DPS_fCritInit == 0) {
         InitializeCriticalSection(g_BrDPlayCrit);
-        g_BrDPlay.fCritInit = 1;
+        DPS_fCritInit = 1;
     }
     memset(pCtx, 0, sizeof *pCtx);
 
     pCtx->hRecvEvent = CreateEventA(0, 0, 0, 0);
     if (pCtx->hRecvEvent == NULL)
         goto fail;
-    g_BrDPlay.hQuit = CreateEventA(0, 0, 0, 0);
-    if (g_BrDPlay.hQuit == NULL)
+    DPS_hQuit = CreateEventA(0, 0, 0, 0);
+    if (DPS_hQuit == NULL)
         goto fail;
-    g_BrDPlay.hThread = CreateThread(0, 0, BrDPlayThreadProc, pCtx, 0,
-                                     &g_BrDPlay.idThread);
-    if (g_BrDPlay.hThread == NULL)
+    DPS_hThread = CreateThread(0, 0, BrDPlayThreadProc, pCtx, 0,
+                                     &DPS_idThread);
+    if (DPS_hThread == NULL)
         goto fail;
     return 0;
 
@@ -674,9 +701,9 @@ int32_t BrDPlayStartup(BrDPlayCtx *pCtx)
 {
     BrDPlayState *pSt = &g_BrDPlay;
 
-    if (pSt->fCritInit == 0) {
+    if (DPS_fCritInit == 0) {
         pSt->os.pfnInitCrit();
-        pSt->fCritInit = 1;
+        DPS_fCritInit = 1;
     }
 
     pCtx->pDP        = NULL;
@@ -687,11 +714,11 @@ int32_t BrDPlayStartup(BrDPlayCtx *pCtx)
 
     pCtx->hRecvEvent = pSt->os.pfnCreateEvent();
     if (pCtx->hRecvEvent != NULL) {
-        pSt->hQuit = pSt->os.pfnCreateEvent();
-        if (pSt->hQuit != NULL) {
-            pSt->hThread = pSt->os.pfnCreateThread(BrDPlayThreadProc, pCtx,
-                                                   &pSt->idThread);
-            if (pSt->hThread != NULL)
+        DPS_hQuit = pSt->os.pfnCreateEvent();
+        if (DPS_hQuit != NULL) {
+            DPS_hThread = pSt->os.pfnCreateThread(BrDPlayThreadProc, pCtx,
+                                                   &DPS_idThread);
+            if (DPS_hThread != NULL)
                 return 0;
         }
     }
@@ -740,7 +767,7 @@ uint32_t BrDPlayGetCurrentPlayers(void)
     void    *pv = NULL;
     uint32_t n;
 
-    if (BrSub1003D0B0(g_BrDPlay.pDPGlobal, &pv) < 0)
+    if (BrSub1003D0B0(DPS_pDPGlobal, &pv) < 0)
         return 0xFFFFu;
 
     n = *(uint32_t *)((char *)pv + 0x2C);
@@ -757,7 +784,7 @@ uint32_t BrDPlayGetCurrentPlayers(void)
     void    *pv = NULL;
     uint32_t n;
 
-    if (BrSub1003D0B0(g_BrDPlay.pDPGlobal, &pv) < 0)
+    if (BrSub1003D0B0(DPS_pDPGlobal, &pv) < 0)
         return 0xFFFFu;
 
     /* DEVIATION: the original reads *(uint32_t *)((char *)pv + 0x2C) by
