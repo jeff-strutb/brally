@@ -384,3 +384,5 @@ va,name,kind
 8025D018,BrTriCubeTest,func
 80255048,BrCheatInput,func
 8024D53C,BrPaintPaletteLoad,func
+80224A78,BrVec3Dist,func
+802303D4,BrCarVisibility,func

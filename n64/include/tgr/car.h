@@ -88,7 +88,8 @@ typedef struct BrCar {
     BrVec3 pos1d78;             /* 0x1D78  another position copy */
     char pad1d84[0x1D88 - 0x1D84];
     int mtx[16];                /* 0x1D88 */
-    char pad1dc8[0x1DE8 - 0x1DC8];
+    char pad1dc8[0x1DE4 - 0x1DC8];
+    float fog;                  /* 0x1DE4  fog amount at the car */
     BrCarCam *cam;              /* 0x1DE8  the camera in use */
     int x1dec;                  /* 0x1DEC */
     BrCarCam cams[4];           /* 0x1DF0 */
