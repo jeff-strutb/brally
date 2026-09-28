@@ -69,6 +69,19 @@ int osAiSetNextBuffer(void *buf, unsigned int size);
 void osCreateThread(void *t, int id, void (*entry)(void *), void *arg, void *sp, int pri);
 void osStartThread(void *t);
 void func_80257D3C(void *arg);
+extern unsigned char D_802A49C4;        /* music volume */
+extern unsigned char D_802A49C8;        /* music fade */
+extern unsigned char D_802A49CC;        /* effects volume */
+extern unsigned char D_802A49D0;        /* effects fade */
+void osRecvMesg(void *mq, void *msg, int flag);
+int osAiGetStatus(void);
+int osAiGetLength(void);
+void BrMusicLoopSamples(void);
+void func_8025721C(void);
+void BrMixMusicVoice(short *buf, int bytes, int voice);
+void BrMixSfx(short *buf, unsigned int bytes);
+void BrSfxLoopSamples(void);
+void BrRumbleUpdate(int);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Build the mixer's note-rate table: for ten octaves of the
@@ -263,3 +276,77 @@ void BrSfxLoopSamples(void)
   }
 }
 
+
+/* WHAT IT DOES: The mixer thread, woken by the music timer: scale every
+ * music voice's volume by the music level and fade, and every effect
+ * voice's two channel volumes by the effects level and fade; queue the
+ * output buffer if the AI can take it; work out how far the AI has read
+ * and mix that much music (stepping the module on alternate wake-ups),
+ * the remaining voices in pairs, and the effects; then update rumble.
+ * The six counters/positions only this thread uses are function-local
+ * statics (the ROM re-materialises their addresses).
+ * RESIDUE: ours hoists more loop-invariant addresses and constants into
+ * saved registers (frame 0x40 vs 0x30); the volume loop keeps a counter
+ * and a pointer in the ROM.  Not yet matched. */
+/* @implements 0x80257D3C tgr BrMusicThread */
+void BrMusicThread(void *arg)
+{
+  static int odd = 0;            /* 0x802A4A0C: the module steps on alternate wake-ups */
+  static int readPos = 0;        /* 0x802A4A10: where the AI was reading last time */
+  static unsigned int sfxPos = 0; /* 0x802A4A14: the effects write position */
+  static int bytes;             /* 0x80379930: bytes to mix this time */
+  static int aiPos;             /* 0x80379934: where the AI will be reading */
+  static int v;                 /* 0x80379938: voice counter */
+  int i;
+  int len;
+  unsigned short save;
+  unsigned int n;
+
+  for (;;) {
+    odd ^= 1;
+    osRecvMesg(D_803746F0, 0, 1);
+    for (i = 0; i < D_802A49C0; i++) {
+      D_802A4798[i].vol = (unsigned int)(D_802A4798[i].baseVol * D_802A49C4 * D_802A49C8) >> 16;
+    }
+    for (v = 0; v < 6; v++) {
+      D_802A4920[v].vol =
+          ((D_802A49CC * ((unsigned int)D_802A4920[v].baseVol >> 16) * D_802A49D0 >> 16) << 16) +
+          (D_802A49CC * (D_802A4920[v].baseVol & 0xffff) * D_802A49D0 >> 16);
+    }
+    bytes = osAiGetStatus();
+    if (bytes >= 0) {
+      bytes = osAiSetNextBuffer(D_803747D0, 0x4000);
+    }
+    len = osAiGetLength();
+    aiPos = len - 0x1000;
+    if (aiPos < 0) {
+      aiPos += 0x4000;
+    }
+    bytes = readPos - aiPos;
+    if (bytes < 0) {
+      bytes += 0x4000;
+    }
+    readPos = aiPos;
+    BrMusicLoopSamples();
+    if (odd != 0 && D_80378F98 != 0) {
+      func_8025721C();
+    }
+    save = D_802A4790;
+    BrMixMusic(D_803747D0, bytes);
+    for (v = 6; v < D_802A49C0; v += 2) {
+      D_802A4790 = save;
+      BrMixMusicVoice(D_803747D0, bytes, v * sizeof(BrMixVoice) - 0x90);
+    }
+    n = ((0x5000 - len) & ~7) - sfxPos;
+    if (n > 0x4000) {
+      n -= 0x4000;
+    }
+    BrMixSfx(D_803747D0, n);
+    BrSfxLoopSamples();
+    sfxPos += n;
+    if (sfxPos > 0x4000) {
+      sfxPos -= 0x4000;
+    }
+    BrRumbleUpdate(0);
+  }
+}
