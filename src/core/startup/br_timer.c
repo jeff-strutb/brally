@@ -215,32 +215,13 @@ extern unsigned int DAT_118ee24c;
  * reusing the quotient the `div` already produced; the second magic multiply
  * by 0x3E0F83E1 is the `/ 33`.
  *
- * RESIDUE 45 bytes.  Size, instruction count and the register-blind
- * instruction multiset are all exact (68/68, REGNORM gap 0+0): the original
- * schedules the `div` and the `/ 33` FIRST and the `* 3` second, and holds
- * the divisor 100 in the callee-saved esi; the recompile emits the `* 3`
- * first and puts 100 in ecx.  Probed and ruled out, do not re-run -- all
- * BYTE-IDENTICAL to what is here: every order of the two summands
- * (`(ms/100)*3` first, `3 * (ms/100)` either way), naming the remainder
- * and/or the quotient as locals, naming the whole `/33` term, storing ms
- * before the zero and after the tick, dropping the `ms` local and re-reading
- * the global at all three uses, and /Oy- /Op /Ox /Og-/Ot (all 68/45) plus
- * /Od (84/54) and /O1 (61/43).  T3a. */
+ * Byte-exact since the 2026-09-28 refile out of its generated/ TU: at the
+ * end of this file the sweep's /O2 /Op variant reproduces the original's
+ * schedule (the `div` and `/ 33` first, 100 held in esi), which no spelling
+ * reached in the old single-function TU. */
 /* WHAT IT DOES: sample the clock and update the frame timing -- how long the
  * last frame took and the running total. Called once per frame, and
  * everything time-based reads what it leaves behind. */
-/* @t4-pass 0x1006E360 1 2026-09-07 probes 24 bytes 68 insns 20 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x1006E360 2 2026-09-07 probes 24 bytes 68 insns 20 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t3 0x1006E360 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 68/68 insns 20/20 rows 0+0 regions 1 oracle EQUIVALENT
- * @t3-effort passes 2 zero-movement 1 2
- * residue is scheduling and register colouring only: the original orders the
- * div/`\/33` before the `*3` and holds 100 in esi, the recompile the reverse
- * with 100 in ecx; identical register-blind multiset (rows 0+0 after the
- * bare-decimal branch-target normaliser fix, 2d5a93d), 1 masked region.
- * Dossier and dead-probe list in the block above (T3a note); two counted
- * zero-movement @t4-pass lines from the crank ledger.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1006E360 glide BrTimeUpdate */
 void BrTimeUpdate(void)
 

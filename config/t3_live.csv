@@ -175,7 +175,6 @@ va,name,verdict,calls,captured,contexts,detail,date
 0x1006d0b0,BrBitStreamWriteBits_1006D0B0,EQUIVALENT,52027,18,18,61_mp_race: 6 real call(s) agree,2026-09-24
 0x1006d6b0,BrRbBuildMatrix,EQUIVALENT,1058331,197,149,"197 real call(s) agree (20_quickrace_drive: 22, 21_quickrace_finish: 26, 27_quickrace_snow: 22, 40_timeattack: 22, 50_championship: 27, 61_mp_race: 26, 63_mp_join: 26, 64_mp_dropout: 26; --objects)",2026-09-27
 0x1006de70,BrMat3Solve,EQUIVALENT,5409,53,8,"53 real call(s) agree (20_quickrace_drive: 6, 21_quickrace_finish: 7, 27_quickrace_snow: 7, 40_timeattack: 7, 50_championship: 8, 61_mp_race: 6, 63_mp_join: 6, 64_mp_dropout: 6; --objects)",2026-09-27
-0x1006e360,BrTimeUpdate,EQUIVALENT,6429,122,68,10_boot: 1 real call(s) agree,2026-09-24
 0x1006e5c0,BrCarTrackLocate,EQUIVALENT,164952,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x1006ec30,FUN_1006ec30,EQUIVALENT,183514,120,40,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x1006f170,BrCarStep,EQUIVALENT,164654,120,35,20_quickrace_drive: 6 real call(s) agree,2026-09-24
