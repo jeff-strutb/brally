@@ -447,3 +447,4 @@ va,name,kind
 80259B1C,BrRbVelAtBodyPoint,func
 80259C18,BrRbVelAtPoint,func
 80244BA8,BrPaintReset,func
+8024F7D4,BrPaintFillRect,func
