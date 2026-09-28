@@ -109,6 +109,9 @@ void BrPaintDecalCommit(void);
 unsigned char BrPaintPeek(unsigned char *tex, int x, int y);
 extern unsigned char D_8028CFBC;         /* pending flip: 1 left-right, 2 top-bottom */
 extern unsigned char D_80369DAB;        /* the mirrored view */
+void BrFillPoint(int x, int y, unsigned char c);
+extern unsigned char D_8028DAB8;        /* the two dash colours */
+extern unsigned char D_8028DABC;
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Take the chosen preset's rectangle, and make every view
@@ -741,4 +744,80 @@ void BrPaintMirrorSide(void)
     D_8028DCA4 = 0;
   }
   D_8028DB60 = D_8028DB64;
+}
+
+/* WHAT IT DOES: Draw a dashed line between two screen points for the paint
+ * shop's selection (Bresenham along the longer axis, drawn from the lower
+ * end): the dash runs 4 pixels in one colour and 4 in the other, and every
+ * 8th call the two colours swap, so the dashes crawl; only every other pixel
+ * along the main axis is plotted (BrFillPoint). */
+/* @implements 0x80251A54 tgr BrPaintDashLine */
+void BrPaintDashLine(int x0, int y0, int x1, int y1)
+{
+  int dx;
+  int dy;
+  int err;
+  int n;
+  int x;
+  int y;
+  int sx;
+  int ex;
+  int sy;
+  int ey;
+  int xstep;
+  int ystep;
+  int unused;                   /* holds its frame slot */
+  unsigned char c;
+
+  n = 0;
+  sx = x0;
+  sy = y0;
+  ex = x1;
+  ey = y1;
+  dx = x1 - x0 > 0 ? x1 - x0 : -(x1 - x0);
+  dy = y1 - y0 > 0 ? y1 - y0 : -(y1 - y0);
+  if ((++D_8028DBB0 & 7) == 0) {
+    BrSwapBytes((char *)&D_8028DAB8, (char *)&D_8028DABC);
+  }
+  if ((dx >= dy && x1 < x0) || (dx < dy && y1 < y0)) {
+    sx = x1;
+    ex = x0;
+    sy = y1;
+    ey = y0;
+  }
+  ystep = ey - sy < 0 ? -1 : 1;
+  xstep = ex - sx < 0 ? -1 : 1;
+  if (dx >= dy) {
+    x = sx;
+    y = sy;
+    err = 0;
+    for (; x <= ex; x++) {
+      if (err >= dx) {
+        err -= dx;
+        y += ystep;
+      }
+      n = (n + 1) % 8;
+      c = n < 4 ? D_8028DAB8 : D_8028DABC;
+      if (x & 1) {
+        BrFillPoint(x, y, c);
+      }
+      err += dy;
+    }
+  } else {
+    x = sx;
+    y = sy;
+    err = 0;
+    for (; y <= ey; y++) {
+      if (err >= dy) {
+        err -= dy;
+        x += xstep;
+      }
+      n = (n + 1) % 8;
+      c = n < 4 ? D_8028DAB8 : D_8028DABC;
+      if (y & 1) {
+        BrFillPoint(x, y, c);
+      }
+      err += dx;
+    }
+  }
 }
