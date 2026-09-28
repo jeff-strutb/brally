@@ -395,3 +395,6 @@ va,name,kind
 80268390,osSetTimer,func
 80268470,osAiSetNextBuffer,func
 802575C4,BrMusicInit,func
+80268520,osAiGetStatus,func
+80268530,osAiGetLength,func
+80257D3C,BrMusicThread,func
