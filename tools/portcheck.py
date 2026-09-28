@@ -184,7 +184,7 @@ def compile_port(rel_src, objdir, tag):
     if os.path.exists(obj):
         os.unlink(obj)
     cmd = ['sh', ms.WINE, ms.CL, '/nologo', '/O2', '/W3',
-           '/I', 'include', '/I', 'tools/msvc5-compat',
+           '/I', 'include', '/I', 'ports/macos/include', '/I', 'tools/msvc5-compat',
            '/I', os.path.join(os.path.relpath(ms.MSVC_DIR, ROOT), 'include'),
            '/c', rel_src,
            '/Fo' + os.path.relpath(obj, ROOT).replace('/', '\\')]

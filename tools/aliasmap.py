@@ -673,7 +673,7 @@ CAL = [
                  "extern BrSfxChan g_aBrSfxChanApplied[BR_SFX_CHANNELS];",
                  "/* deleted by aliasmap --selftest */")),
     dict(label="3 0x106C0964 three names", addr=0x106C0964,
-         mutate=("include/slice8_83.h",
+         mutate=("ports/macos/include/slice8_83.h",
                  "/* 0x106C0964 and friends",
                  "extern void *g_brHook6C0964;   /* 0x106C0964 */\n"
                  "/* 0x106C0964 and friends")),
