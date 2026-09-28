@@ -400,3 +400,7 @@ va,name,kind
 80257D3C,BrMusicThread,func
 80264490,osViSetSpecialFeatures,func
 80219470,BrFrameBegin,func
+802649C0,osWritebackDCacheAll,func
+80264C7C,osSpTaskLoad,func
+80264E0C,osSpTaskStartGo,func
+8021AA08,BrFrameEnd,func

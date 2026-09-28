@@ -9,7 +9,7 @@ void BrScissorSet(int x, int y, int w, int h);
 void BrFrameStatsReset(void);
 void BrScreenClear(int r, int g, int b);
 void BrFrameBeginLayout1(void);
-int func_8021AA08();
+void BrFrameEnd(void);
 void osViBlack(char param_1);
 extern int D_8028A884;
 void BrFrameBeginLayout0(void);
@@ -39,7 +39,7 @@ typedef struct BrViewRect { int x; int y; int w; int h; int x10; } BrViewRect;
 extern BrViewRect D_8031B2C8[2];        /* the players' views */
 extern int D_8028AB0C;                  /* number of players */
 extern int D_8028A84C;                  /* resolution changed */
-extern int D_8028A848;                  /* the two display-list buffers (48000 bytes each) */
+extern Gfx (*D_8028A848)[6000];         /* the two display-list buffers */
 extern int D_8028AA68;                  /* texture filtering on */
 extern int D_8028A898;                  /* the texture filter mode */
 extern int D_8028A8A0;                  /* the colour dither mode */
@@ -51,6 +51,69 @@ extern char D_8028A900[];               /* the viewports (0x28 bytes each) */
 extern char D_801B5000[];               /* the low-res frame buffers */
 extern char D_801DA800[];
 extern char D_0028A8C0[];               /* the identity matrix, as a physical address */
+typedef struct BrTask {         /* an OSTask (0x40 bytes) */
+  unsigned int type;
+  unsigned int flags;
+  void *ucode_boot;
+  unsigned int ucode_boot_size;
+  void *ucode;
+  unsigned int ucode_size;
+  void *ucode_data;
+  unsigned int ucode_data_size;
+  void *dram_stack;
+  unsigned int dram_stack_size;
+  void *output_buff;
+  void *output_buff_size;
+  void *data_ptr;
+  unsigned int data_size;
+  void *yield_data_ptr;
+  unsigned int yield_data_size;
+} BrTask;
+extern BrTask D_8031A9A8[2];            /* one graphics task per display list */
+extern char D_8026EA00[];               /* rspboot */
+extern char D_8026EAD0[];               /* the F3DEX (FIFO) microcode text */
+extern char D_802ABC00[];               /* its data */
+extern char D_8031A598[];               /* the RSP's DRAM stack */
+extern long long *D_8028A860[2];        /* the RDP FIFO: start and end */
+extern int D_8028AB84;                  /* FIFO words kept back */
+extern int D_8028AB70;                  /* display-list commands this frame */
+extern int D_8028AB7C;                  /* the most commands in one frame */
+extern int *D_8028C75C;                 /* matrix pool: next and start */
+extern int *D_8028C760;
+extern int D_8028AB74;                  /* the most matrices in one frame */
+typedef struct { char x[16]; } BrVtx16;
+extern BrVtx16 *D_8028C764;             /* vertex pool: next and start */
+extern BrVtx16 *D_8028C768;
+extern int D_8028AB78;                  /* the most vertices in one frame */
+extern char D_8031A320[];               /* RSP done queue */
+extern char D_8031A358[];               /* RDP done queue */
+extern char D_8031A390[];               /* retrace queue */
+extern void (*D_8031B31C)(void);        /* run once the RSP has finished */
+extern int D_8031B320;
+extern int D_8028AA94;                  /* debug: copy the low-memory frame into the display */
+extern int D_80000400[];
+extern int D_8028AAE0;                  /* CPU time of the last frame */
+extern int D_8028AAE4;
+extern int D_8028AAE8;
+extern int D_8028A854;                  /* resolution the VI is set to */
+extern int osTvType;
+extern char D_802A5D70[];               /* VI modes: low res MPAL, NTSC; high res MPAL, NTSC */
+extern char D_802A54B0[];
+extern char D_802A6040[];
+extern char D_802A5780[];
+extern int D_8028A888;                  /* frames the screen stays blank */
+extern int D_8028AA20;
+extern int D_8028AA24;
+void BrFatal(char *msg);
+void osWritebackDCacheAll(void);
+void osRecvMesg(void *mq, void *msg, int flag);
+void osViSetMode(void *mode);
+void osViSwapBuffer(void *fb);
+void *osViGetCurrentFramebuffer(void);
+void BrPerfFrameStart(void);
+unsigned int osGetCount(void);
+void osSpTaskLoad(BrTask *t);
+void osSpTaskStartGo(BrTask *t);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Start a frame at the given resolution (0 low, 1 high):
@@ -114,7 +177,7 @@ void BrFrameBegin(int hires)
       }
     }
   }
-  D_8028A858 = (Gfx *)(D_8028A848 + D_8028A85C * 48000 + 0x200);
+  D_8028A858 = &D_8028A848[D_8028A85C][0x40];
   if (D_8028AA68 != 0) {
     D_8028A898 = 0x2000;
   } else {
@@ -169,6 +232,145 @@ void BrFrameBegin(int hires)
   osViSetSpecialFeatures(0x40);
   osViSetSpecialFeatures(0x10);
   osViSetSpecialFeatures(D_8028AA4C != 0 ? 1 : 2);
+}
+
+/* WHAT IT DOES: Finish the frame and hand it to the RSP: close the display
+ * list, fill in this buffer's graphics task (F3DEX FIFO microcode, the
+ * list, the RDP FIFO), record the frame's list, matrix and vertex counts
+ * (a list over 6000 commands is fatal); unless this is the first frame,
+ * wait for the previous task's RSP and RDP to finish (running the pending
+ * callback), optionally copy the debug frame, set the VI mode once after a
+ * resolution change, swap to the finished frame buffer and wait for it,
+ * lift the screen blanking; then start the task and flip buffers.
+ * RESIDUE: same size class, not aligned -- the ROM builds the list size as
+ * (list - base) + -(frame * 48000) - 0x200 (a negu), CSEs 48000 into a
+ * register, and computes the microcode address twice; the task pointer
+ * lives on the stack as here.  Not yet matched. */
+/* @implements 0x8021AA08 tgr BrFrameEnd */
+void BrFrameEnd(void)
+{
+  static int started = 0;         /* 0x8028AB80: a frame has been started before */
+  BrTask *t;
+  int n;
+  int m;
+  int v;
+  int mul;
+  int *src;
+  int *dst;
+  int i;
+  void *fb;
+
+  gRaw(D_8028A858++, 0xe9000000, 0);
+  gRaw(D_8028A858++, 0xb8000000, 0);
+  t = &D_8031A9A8[D_8028A85C];
+  t->type = 1;
+  t->ucode = D_8026EAD0;
+  t->ucode_data = D_802ABC00;
+  t->flags = 6;
+  t->output_buff = D_8028A860[0];
+  t->ucode_size = 0x1000;
+  t->output_buff_size = D_8028A860[1] - D_8028AB84;
+  t->ucode_data_size = 0x800;
+  t->dram_stack = (void *)(((unsigned int)D_8031A598 + 0xf) & ~0xf);
+  t->dram_stack_size = 0x400;
+  t->ucode_boot = D_8026EA00;
+  t->ucode_boot_size = (unsigned int)D_8026EAD0 - (unsigned int)D_8026EA00;
+  t->data_ptr = &D_8028A848[D_8028A85C][0x40];
+  t->data_size = (D_8028A858 - &D_8028A848[D_8028A85C][0x40]) * sizeof(Gfx);
+  n = D_8028A858 - &D_8028A848[D_8028A85C][0x40];
+  if (D_8028AB7C < n) {
+    D_8028AB7C = n;
+  }
+  m = (D_8028C75C - D_8028C760) >> 1;
+  if (D_8028AB74 < m) {
+    D_8028AB74 = m;
+  }
+  v = D_8028C764 - D_8028C768;
+  if (D_8028AB78 < v) {
+    D_8028AB78 = v;
+  }
+  D_8028AB70 = n;
+  if (n > 6000) {
+    BrFatal("HUGE GLIST ERROR");
+  }
+  osWritebackDCacheAll();
+  if (started != 0) {
+    BrPerfMark(0, 0, 0, 0, 0xff);
+    osRecvMesg(D_8031A320, 0, 1);
+    BrPerfMark(0, 0xff, 0xff, 0, 0xff);
+    if (D_8031B31C != 0) {
+      D_8031B31C();
+      D_8031B31C = 0;
+    }
+    BrPerfMark(0, 0, 0, 0, 0xff);
+    osRecvMesg(D_8031A358, 0, 1);
+    if (D_8028AA94 != 0) {
+      mul = 1;
+      if (D_8028A850 != 0) {
+        mul = 4;
+      }
+      src = D_80000400;
+      dst = (int *)D_8031AA28[D_8028A85C ^ 1];
+      n = mul * D_8028AAB0 * D_8028AAB4 >> 1;
+      for (i = 0; i < n; i++) {
+        dst[i] = src[i];
+      }
+    }
+    if (D_8031B320 != 0) {
+      D_8031B31C();
+      D_8031B31C = 0;
+    }
+    osWritebackDCacheAll();
+    D_8028AAE8 = osGetCount();
+    D_8028AAE0 = D_8028AAE8 - D_8028AAE4;
+    if (D_8028A84C != 0) {
+      if (--D_8028A84C == 0) {
+        if (D_8028A850 != 0) {
+          if (osTvType == 2) {
+            osViSetMode(D_802A6040);
+          } else {
+            osViSetMode(D_802A5780);
+          }
+        } else {
+          if (osTvType == 2) {
+            osViSetMode(D_802A5D70);
+          } else {
+            osViSetMode(D_802A54B0);
+          }
+        }
+        osViBlack(1);
+        D_8028A854 = D_8028A850;
+      }
+    }
+    BrPerfMark(1, 0x20, 0x20, 0x20, 0xff);
+    BrPerfMark(2, 0x20, 0x20, 0x20, 0xff);
+    BrPerfMark(0, 0x20, 0x20, 0x20, 0xff);
+    fb = (void *)D_8031AA28[D_8028A85C ^ 1];
+    osRecvMesg(D_8031A390, 0, 1);
+    osViSwapBuffer(fb);
+    osRecvMesg(D_8031A390, 0, 1);
+    if (osViGetCurrentFramebuffer() != fb) {
+      osRecvMesg(D_8031A390, 0, 1);
+    }
+    if (D_8028A884 == 0 && D_8028A888 == 0) {
+      osViBlack(0);
+    }
+    if (D_8028A888 != 0) {
+      D_8028A888--;
+    }
+    BrPerfFrameStart();
+    D_8028AAE4 = osGetCount();
+    D_8028AAE8 = osGetCount() - D_8028AAE8;
+  } else {
+    started++;
+  }
+  BrPerfMark(0, 200, 0, 200, 0xff);
+  D_8028AA24 = D_8028AA20;
+  BrPerfMark(2, 200, 0, 0, 0xff);
+  BrPerfMark(1, 200, 100, 0, 0xff);
+  osSpTaskLoad(t);
+  osSpTaskStartGo(t);
+  D_8028A85C ^= 1;
 }
 
 /* WHAT IT DOES: Start building a new frame using the first of the two
@@ -323,11 +525,11 @@ void BrScreenFlush2Layout1(void)
   osViBlack(1);
   BrFrameBeginLayout1();
   BrScreenClear(0,0,0);
-  func_8021AA08();
+  BrFrameEnd();
   osViBlack(1);
   BrFrameBeginLayout1();
   BrScreenClear(0,0,0);
-  func_8021AA08();
+  BrFrameEnd();
   D_8028A884 = 0;
 }
 
@@ -341,11 +543,11 @@ void BrScreenFlush2Layout0(void)
   osViBlack(1);
   BrFrameBeginLayout0();
   BrScreenClear(0,0,0);
-  func_8021AA08();
+  BrFrameEnd();
   osViBlack(1);
   BrFrameBeginLayout0();
   BrScreenClear(0,0,0);
-  func_8021AA08();
+  BrFrameEnd();
   D_8028A884 = 0;
 }
 
@@ -359,14 +561,14 @@ void BrScreenFlush3Layout1(void)
   osViBlack(1);
   BrFrameBeginLayout1();
   BrScreenClear(0,0,0);
-  func_8021AA08();
+  BrFrameEnd();
   osViBlack(1);
   BrFrameBeginLayout1();
   BrScreenClear(0,0,0);
-  func_8021AA08();
+  BrFrameEnd();
   osViBlack(1);
   BrFrameBeginLayout1();
-  func_8021AA08();
+  BrFrameEnd();
   D_8028A884 = 0;
 }
 
@@ -380,14 +582,14 @@ void BrScreenFlush3Layout0(void)
   osViBlack(1);
   BrFrameBeginLayout0();
   BrScreenClear(0,0,0);
-  func_8021AA08();
+  BrFrameEnd();
   osViBlack(1);
   BrFrameBeginLayout0();
   BrScreenClear(0,0,0);
-  func_8021AA08();
+  BrFrameEnd();
   osViBlack(1);
   BrFrameBeginLayout0();
-  func_8021AA08();
+  BrFrameEnd();
   D_8028A884 = 0;
 }
 
