@@ -387,3 +387,4 @@ va,name,kind
 80224A78,BrVec3Dist,func
 802303D4,BrCarVisibility,func
 80217C94,BrZBufferClear,func
+8022576C,BrAtan2,func
