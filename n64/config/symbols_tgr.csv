@@ -374,3 +374,4 @@ va,name,kind
 8022591C,BrTriContainsPoint,func
 8021F0A8,BrCarTickClocks,func
 8021F158,BrCarTickMessages,func
+80200634,BrDemoRaceStartB,func

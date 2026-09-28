@@ -12,6 +12,7 @@ extern int D_8026FF08;
 int func_8020082C();
 extern int D_8026FF18;
 extern int D_8026FF1C;
+extern int D_8026FF20;
 void BrSeasonPickRace(void);
 extern int D_80272380;
 extern int D_8028C800;
@@ -59,6 +60,21 @@ void BrDemoRaceStartA(void)
 {
   D_8026FF18 = 4;
   D_8026FF1C = 0;
+  BrModeSet(func_8020082C);
+}
+
+/* WHAT IT DOES: Start the attract-mode demo race that replays the second
+ * recorded race stored in ROM -- or the third when D_8026FF20 is set.
+ * The ROM tests the flag set first. */
+/* @implements 0x80200634 tgr BrDemoRaceStartB */
+void BrDemoRaceStartB(void)
+{
+  D_8026FF18 = 4;
+  if (D_8026FF20 != 0) {
+    D_8026FF1C = 2;
+  } else {
+    D_8026FF1C = 1;
+  }
   BrModeSet(func_8020082C);
 }
 
