@@ -53,6 +53,7 @@ extern BrPaintRect D_8028D480;
 extern BrPaintRect D_8028D490;
 extern BrPaintSwatch D_80369B98[16];
 extern unsigned char D_8028DB58;       /* the chosen palette colour */
+extern unsigned short *D_8028DB90;     /* the decal palette, RGBA5551 */
 typedef struct BrPaintArea { int x, y, w, h; } BrPaintArea;
 extern BrPaintArea D_8028DB94;         /* the paint area on screen */
 void BrPaintPlot(int x, int y, unsigned char c);
@@ -204,6 +205,21 @@ int BrPaintCursorInBrush(int *r)
     return 1;
   }
   return 0;
+}
+
+/* WHAT IT DOES: Copy the 16 decal palette colours (RGBA5551) into the
+ * palette swatches as 8-bit r, g, b, each 5-bit channel widened by
+ * repeating its top bits. */
+/* @implements 0x8024D53C tgr BrPaintPaletteLoad */
+void BrPaintPaletteLoad(void)
+{
+  int i;
+
+  for (i = 0; i < 16; i++) {
+    D_80369B98[i].r = ((D_8028DB90[i] >> 8) & 0xf8) | ((D_8028DB90[i] >> 13) & 7);
+    D_80369B98[i].g = ((D_8028DB90[i] >> 3) & 0xf8) | ((D_8028DB90[i] >> 8) & 7);
+    D_80369B98[i].b = ((D_8028DB90[i] << 2) & 0xf8) | ((D_8028DB90[i] >> 3) & 7);
+  }
 }
 
 /* WHAT IT DOES: Draw the paint shop's palette: its two black panels, the
