@@ -507,3 +507,4 @@ va,name,kind
 8022BAA0,BrCarSfxLoad,func
 8025CE28,BrPolyIntersectsCube,func
 8025D368,BrCollRespTipKick,func
+8025C2C8,BrTriCubeTrivial,func

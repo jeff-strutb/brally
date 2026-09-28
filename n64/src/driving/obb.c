@@ -1,30 +1,16 @@
-/* obb.c -- box-against-box collision
+/* obb.c -- triangle against the unit cube: Voorhies' "Triangle-Cube
+ * Intersection" (Graphics Gems III), in Don Hatch's revision
  */
 #include "tgr/common.h"
 
 /* -- declarations -- */
-extern int D_8025C9E8;
-extern int D_8025C9F8;
-extern int D_8025CA00;
-extern int D_8025CA14;
-extern int D_8025CA24;
-extern int D_8025CA2C;
-extern int D_8025CA50;
-extern int D_8025CA60;
-extern int D_8025CA68;
-extern int D_8025CA7C;
-extern int D_8025CA8C;
-extern int D_8025CA94;
-extern int D_8025CAC0;
-extern int D_8025CAD0;
-extern int D_8025CAD8;
-extern int D_8025CD68;
-extern int D_8025CD78;
-extern int D_8025CD80;
-extern int D_8025CDA4;
-extern int D_8025CDB4;
-extern int D_8025CDBC;
-int func_8025C2C8(float *tri);
+int BrTriCubeTrivial(float verts[3][3]);
+#define PAIR(cum, out, expr, bp, bn, lim) \
+  if ((cum) & ((bp) | (bn))) { \
+    s = (expr); \
+    if (((cum) & (bp)) && s > (lim)) (out) |= (bp); \
+    else if (((cum) & (bn)) && s < -(lim)) (out) |= (bn); \
+  }
 int BrPolyIntersectsCube(float verts[3][3], float polynormal[3]);
 #define DOT3(a, b) ((a)[0] * (b)[0] + (a)[1] * (b)[1] + (a)[2] * (b)[2])
 #define SIGN_NONZERO(x) ((x) < 0 ? -1 : 1)
@@ -37,6 +23,68 @@ int BrPolyIntersectsCube(float verts[3][3], float polynormal[3]);
 #define SQR(x) ((x) * (x))
 #define SXV3(result, s, v) ((result)[0] = (s) * (v)[0], (result)[1] = (s) * (v)[1], (result)[2] = (s) * (v)[2])
 /* -- end declarations -- */
+
+/* WHAT IT DOES: Graphics Gems III (Voorhies, Hatch's revision)
+ * trivial_vertex_tests for a triangle against the unit cube: 1 when a vertex
+ * lies inside the cube, 0 when all three lie outside one face plane, one of
+ * the twelve edge planes or one of the eight corner planes (the edge and
+ * corner passes test only the planes every vertex so far is outside of), and
+ * -1 when neither can be decided this way. */
+/* @implements 0x8025C2C8 tgr BrTriCubeTrivial */
+int BrTriCubeTrivial(float verts[3][3])
+{
+  int cum_and;
+  int i;
+  int bits;
+  float s;
+
+  cum_and = ~0;
+  for (i = 0; i < 3; i++) {
+    int face_bits;
+    float *p = verts[i];
+
+    face_bits = 0;
+    PAIR(~0, face_bits, p[0], 0x01, 0x02, .5)
+    PAIR(~0, face_bits, p[1], 0x04, 0x08, .5)
+    PAIR(~0, face_bits, p[2], 0x10, 0x20, .5)
+    if (face_bits == 0)
+      return 1;
+    cum_and &= face_bits;
+  }
+  if (cum_and != 0)
+    return 0;
+
+  cum_and = ~0;
+  for (i = 0; i < 3; i++) {
+    bits = 0;
+    PAIR(cum_and, bits, verts[i][0] + verts[i][1], 0x001, 0x002, 1.0)
+    PAIR(cum_and, bits, verts[i][0] - verts[i][1], 0x004, 0x008, 1.0)
+    PAIR(cum_and, bits, verts[i][0] + verts[i][2], 0x010, 0x020, 1.0)
+    PAIR(cum_and, bits, verts[i][0] - verts[i][2], 0x040, 0x080, 1.0)
+    PAIR(cum_and, bits, verts[i][1] + verts[i][2], 0x100, 0x200, 1.0)
+    PAIR(cum_and, bits, verts[i][1] - verts[i][2], 0x400, 0x800, 1.0)
+    cum_and = bits;
+    if (cum_and == 0)
+      break;
+  }
+  if (cum_and != 0)
+    return 0;
+
+  cum_and = ~0;
+  for (i = 0; i < 3; i++) {
+    bits = 0;
+    PAIR(cum_and, bits, verts[i][0] + verts[i][1] + verts[i][2], 0x01, 0x02, 1.5)
+    PAIR(cum_and, bits, verts[i][0] + verts[i][1] - verts[i][2], 0x04, 0x08, 1.5)
+    PAIR(cum_and, bits, verts[i][0] - verts[i][1] + verts[i][2], 0x10, 0x20, 1.5)
+    PAIR(cum_and, bits, verts[i][0] - verts[i][1] - verts[i][2], 0x40, 0x80, 1.5)
+    cum_and = bits;
+    if (cum_and == 0)
+      break;
+  }
+  if (cum_and != 0)
+    return 0;
+  return -1;
+}
 
 /* WHAT IT DOES: Graphics Gems III (Voorhies) polygon_contains_point_3d
  * for a triangle: drop the axis the normal is largest along, then count the
@@ -152,7 +200,7 @@ int BrTriCubeTest(float *tri, float *norm)
 {
   int r;
 
-  r = func_8025C2C8(tri);
+  r = BrTriCubeTrivial((float (*)[3])tri);
   if (r == -1) {
     return BrPolyIntersectsCube((float (*)[3])tri, norm);
   }
