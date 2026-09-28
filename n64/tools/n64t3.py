@@ -57,7 +57,7 @@ from unicorn import mips_const as M  # noqa: E402
 SCRIPTS = os.path.join(N64, 'tools/n64box_scripts')
 LIVE = os.path.join(N64, 'config/t3_live.csv')
 WHOLE = os.path.join(N64, 'config/whole_image.csv')
-FRAMES = {'race_pause.txt': 4000, 'arcade_timeup.txt': 6000}   # per script; default 3600 frames (a minute)
+FRAMES = {'race_pause.txt': 4000, 'arcade_timeup.txt': 6000, 'loadsave_pak.txt': 3000}   # per script; default 3600 frames (a minute)
 TEST_CODE, TEST_DATA = 0x80600000, 0x80780000
 CODE_LO, CODE_HI = 0x80200000, 0x8026FAB0
 DEAD_STACK = 0x4000
@@ -157,10 +157,14 @@ NARGS = {'osRecvMesg': 3, 'osSendMesg': 3, 'osContStartReadData': 1, 'osContGetR
          'osCreateMesgQueue': 3, 'osContInit': 3, 'osPfsIsPlug': 2, 'osPiReadIo': 2,
          'osMotorStop': 1, 'osMotorStart': 1, 'osMotorInit': 3, 'osViSetMode': 1,
          'osStartThread': 1, 'osSetThreadPri': 2, 'osCreateThread': 6, 'osViSetEvent': 3,
-         'osSetTimer': 8}
+         'osSetTimer': 8, 'osPfsInitPak': 3, 'osPfsInit': 3, 'osPfsRepairId': 1,
+         'osPfsFindFile': 6, 'osPfsChecker': 1, 'osPfsReadWriteFile': 6, 'osPfsFreeBlocks': 2,
+         'osPfsAllocateFile': 7, 'osPfsNumFiles': 3, 'osPfsFileState': 3, 'osPfsDeleteFile': 5}
 # out-parameters: arg index -> bytes written there
 OUTS = {'osRecvMesg': {1: 4}, 'osContGetReadData': {0: 24}, 'osContInit': {1: 1, 2: 16},
-        'osPfsIsPlug': {1: 1}, 'osPiReadIo': {1: 4}}
+        'osPfsIsPlug': {1: 1}, 'osPiReadIo': {1: 4}, 'osPfsFreeBlocks': {1: 4},
+        'osPfsFindFile': {5: 4}, 'osPfsAllocateFile': {6: 4}, 'osPfsNumFiles': {1: 4, 2: 4},
+        'osPfsFileState': {2: 32}}
 FRAME_WINDOW = 0x4000           # a call's own frames: this far below its entry sp
 
 
