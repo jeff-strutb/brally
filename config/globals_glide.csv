@@ -2,3 +2,4 @@ symbol,addr,note
 g_BrSndNearest,0x10B1CEB8,"BrSndNearest tracker; every field of every T4 reference resolves from this base (refslot audit 2026-09-28)"
 g_fPfxDt,0x106E9D8C,"particle frame dt (br_pfx.c)"
 _DAT_10077c1c,0x10077C1C,"float 1.0 of tu_055 shared by BrMat3Solve and BrRbInitInertia"
+g_BrCharMapImage,0x100AC5F8,"the character-map region BrCharMapLookup scans (784 records)"

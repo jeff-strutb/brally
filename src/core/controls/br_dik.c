@@ -126,18 +126,34 @@ int32_t BrDikGetDeviceState(uint8_t *pState)
  * that are not in the table produce nothing -- and a handful of keys, Tab
  * among them, produce something only because the walk runs off the end of the
  * real table and keeps going through the data that happens to follow it. */
+/* The matching build scans the image's own region: 784 eight-byte records
+ * from 0x100AC5F8 to 0x100ADE78, the bound the original compares against.
+ * The port's g_BrCharMap holds the 113 codes that region can actually match
+ * (see slice3_39.h); ending the matching loop at ITS end named an address
+ * 904 bytes in, and the function read as byte-exact only because the image
+ * gate copied the original's bound. */
+#ifdef BR_MATCHING_BUILD
+#define BR_CHARMAP_SCAN 784
+extern BrCharMapEntry g_BrCharMapImage[BR_CHARMAP_SCAN];   /* 0x100AC5F8 */
+#define g_BrCharMap g_BrCharMapImage
+#else
+#define BR_CHARMAP_SCAN BR_CHARMAP_COUNT
+#endif
 /* @implements 0x1005B540 d3d BrCharMapLookup */
 uint8_t BrCharMapLookup(int32_t code)
 {
     uint32_t i;
 
-    for (i = 0; i < BR_CHARMAP_COUNT; ++i) {
+    for (i = 0; i < BR_CHARMAP_SCAN; ++i) {
         if (g_BrCharMap[i].code == (uint32_t)code) {
             return (uint8_t)g_BrCharMap[i].ch;
         }
     }
     return 0;
 }
+#ifdef BR_MATCHING_BUILD
+#undef g_BrCharMap
+#endif
 
 /* Storage in the same 0x118ABxxx input-globals block as the DirectInput
  * keyboard device pointer, reset by the routine below. */
