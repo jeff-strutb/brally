@@ -8598,3 +8598,20 @@ with the target's flags, diff one function against original bytes
   twin schedules the global store / `mov ecx,esi` differently: the unit is
   C++.**  0x10008BA0 / 0x10008C80 (POD writer members) went byte-exact on the
   first C++ compile.
+- **Redundant inner parentheses change x87 scheduling under /Op: write
+  `(a*x + b*y + c*z) / k`, not `((a*x + b*y) + c*z) / k`.**  The parenthesised
+  sub-sum becomes a 0x138 precision node in c2 (zero latency, but one more DAG
+  level), so the list scheduler's heights (priority = height<<13, +0x8000 for
+  x87 ops, +1 for a float store) shift by one on that path.  In the BrDlVtx
+  light setup (0x100221D0) this is what places the last direction `fild`
+  before the third lightScale store.  Proven in tools/c2emu.py (priority/latency
+  forcing reproduces the original bytes) and in a padded real compile
+  (byte-exact but for link-time reloc fields); a natural-TU-state source is
+  still open.
+- **Operand order inside a commutative chain = sort by c2 node key, ascending
+  as the merge sort consumes it:** key = depth<<24 | operand-count<<16 | XOR
+  hash of the children (leaf local = its symbol index, memory load = offset ^
+  op ^ base hash, op code XORed in).  A product `m[k]*f` hashes as
+  load(k) ^ sym(f) ^ 0x143.  Hence the band structure: symbol indices shift
+  with every file-scope declaration and the XOR wraps non-monotonically.
+  Local declaration order and gaps move individual leaf hashes.
