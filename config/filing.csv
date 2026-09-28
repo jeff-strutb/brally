@@ -987,9 +987,9 @@ glide_va,name,module,basis,file
 0x10055A30,BrVtInit55A30,drawing,neighbour,src/core/drawing/br_namelist.c
 0x10055A40,FUN_10055a40,gamedata,manual,src/core/gamedata/br_seasondesc.c
 0x10055AF0,FUN_10055af0,gamedata,manual,src/core/gamedata/br_seasondesc.c
-0x10055C50,BrSaveSlotNameSet_10055C50,drawing,neighbour,src/core/generated/0x10055C50.c
+0x10055C50,BrSaveSlotNameSet_10055C50,menus,filed,src/core/menus/br_saveprobe.c
 0x10055D40,BrFileScanTrailers_10055D40,gamedata,prefix,src/core/gamedata/BrFileScanTrailers_10055D40.cpp
-0x10055ED0,BrFileCountMatching,gamedata,prefix,src/core/generated/0x10055ED0.c
+0x10055ED0,BrFileCountMatching,menus,filed,src/core/menus/br_saveprobe.c
 0x10055F40,BrSaveNextName_10055F40,menus,prefix,src/core/menus/BrSaveNextName_10055F40.cpp
 0x10056260,BrUiBootPreLoopGate,menus,prefix,src/core/menus/BrUiBootPreLoopGate_10056260.cpp
 0x10058300,BrFontTexFreeAll,drawing,filed,src/core/drawing/br_font.c
@@ -1051,7 +1051,8 @@ glide_va,name,module,basis,file
 0x1005AC60,BrCarBuildMatrices,racing,description,src/core/racing/br_carinit.c
 0x1005ACE0,BrCarWheelSteerStep_1005ACE0,driving,filed,src/core/driving/br_carwheelsteer.c
 0x1005C440,BrThunk5C440,racing,neighbour-1,src/core/racing/br_thunks.c
-0x1005C560,BrRaceCarReset,racing,assigned,src/core/generated/0x1005C560.c
+0x1005C490,BrRaceCarPickIndex,racing,filed,src/core/racing/br_racecar.c
+0x1005C560,BrRaceCarReset,racing,filed,src/core/racing/br_racecar.c
 0x1005C6D0,BrCarRespawn_1005C6D0,racing,manual,src/core/racing/BrCarRespawn_1005C6D0.cpp
 0x1005C8B0,FUN_1005c8b0,driving,manual,src/core/driving/FUN_1005c8b0.cpp
 0x1005D050,BrCtlHuman,driving,manual,src/core/driving/br_ctlstep.c
