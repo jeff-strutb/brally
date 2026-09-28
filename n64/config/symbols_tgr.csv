@@ -503,3 +503,4 @@ va,name,kind
 8025EC7C,BrTyreDepthAll,func
 8021E620,BrGridCellRangeAt,func
 8021E7DC,BrTrackGridCellAt,func
+80217E20,BrZBufferClearRect,func
