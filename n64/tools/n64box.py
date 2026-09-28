@@ -299,10 +299,8 @@ class Box:
         self.post_event(EV_VI)
         return True
 
-    # Thread stacks: top (the sp osCreateThread gets) -> bottom.  Below a
-    # thread's current sp is dead space; a body that keeps its temporaries in
-    # registers instead of the stack leaves different garbage there without
-    # behaving differently, so the digest does not look at it.  Bottoms are
+    # Thread stacks: top (the sp osCreateThread gets) -> bottom.  The digest
+    # does not look at them (see ram_digest).  Bottoms are
     # from the idle thread's stack-fill loops where it has them (main, SP and
     # DP event threads), otherwise the end of the thread's own OSThread.
     STACKS = {0x80316CD0: 0x803168D0,       # idle (boot stack top below it)
@@ -313,26 +311,18 @@ class Box:
               0x80379568: 0x80379168}       # audio thread
 
     def ram_digest(self):
+        """The game's .data and .bss, without the threads' stacks.  A stack
+        holds the running calls' scratch -- locals, spills, saved registers,
+        return addresses -- whose layout is the compiler's, and slots nobody
+        reads keep whatever the last call left there.  What a call does to
+        memory is compared call by call by the live oracle (A5); the whole-
+        image run compares the game's state."""
         lo, hi = 0x8026FAB0, 0x802AC400 + 0xD67B0
         ram = bytearray(self.read(lo, hi - lo))
-        cur_sp = {}
-        for t in self.threads.values():
-            sp = (self.reg('sp') if t is self.cur else t.regs['gpr'][REG['sp']]) & 0xffffffff
-            cur_sp[t] = sp
-        for t, sp in cur_sp.items():
-            for top, bottom in self.STACKS.items():
-                if bottom <= sp <= top:
-                    a, b = max(bottom, lo) - lo, min(sp, hi) - lo
-                    if a < b:
-                        ram[a:b] = bytes(b - a)
-                    # In the live part of a stack, a word holding a code
-                    # address (a saved return address) says where the code
-                    # sits, not what it did: a placed body that is not
-                    # byte-exact returns to different addresses.
-                    for w in range((max(sp, lo) - lo + 3) & ~3, min(top, hi) - lo, 4):
-                        v = int.from_bytes(ram[w:w + 4], 'big')
-                        if CODE_LO <= v < CODE_HI or ANNEX <= v < ANNEX + 0x100000:
-                            ram[w:w + 4] = bytes(4)
+        for top, bottom in self.STACKS.items():
+            a, b = max(bottom, lo) - lo, min(top, hi) - lo
+            if a < b:
+                ram[a:b] = bytes(b - a)
         return hashlib.sha1(bytes(ram)).hexdigest()[:16]
 
     # ---------------------------------------------------------------- HLE
@@ -626,9 +616,10 @@ class Box:
 
     def os_cont_init(self):
         mq, pattern, status = self.arg(0), self.arg(1), self.arg(2)
-        self.write(pattern, b'\x01')                   # one controller, port 1
+        n = self.pad.pads                               # port 1, or ports 1 and 2
+        self.write(pattern, bytes([(1 << n) - 1]))
         # OSContStatus[4]: type (u16), status (u8), errno (u8)
-        self.write(status, b'\x05\x00\x00\x00' + b'\x00\x00\x00\x08' * 3)
+        self.write(status, b'\x05\x00\x00\x00' * n + b'\x00\x00\x00\x08' * (4 - n))
         self.ret(0)
 
     def os_pfs_is_plug(self):
@@ -758,8 +749,11 @@ class Box:
     def os_cont_get_read(self):
         out = self.arg(0)
         # OSContPad[4]: button (u16), stick_x (s8), stick_y (s8), errno (u8), pad
-        b, x, y = self.pad.at(self.frame)
-        self.write(out, struct.pack('>HbbBx', b, x, y, 0) + b'\x00\x00\x00\x00\x08\x00' * 3)
+        rec = b''
+        for port in range(self.pad.pads):
+            b, x, y = self.pad.at(self.frame, port)
+            rec += struct.pack('>HbbBx', b, x, y, 0)
+        self.write(out, rec + b'\x00\x00\x00\x00\x08\x00' * (4 - self.pad.pads))
         self.ret()
 
     def os_sp_task(self):
@@ -865,13 +859,16 @@ class Box:
 
 class Script:
     """Scripted pad input: lines `frame buttons [stick_x stick_y]`, buttons
-    as names joined by + (A B Z START L R CU CD CL CR DU DD DL DR) or `-`."""
+    as names joined by + (A B Z START L R CU CD CL CR DU DD DL DR) or `-`.
+    A line starting `p2` is the same for a second controller in port 2; a
+    script with any such line has two controllers plugged in, otherwise one.
+    A `pak` line plugs a Controller Pak into port 1."""
     BITS = dict(A=0x8000, B=0x4000, Z=0x2000, START=0x1000, DU=0x0800, DD=0x0400,
                 DL=0x0200, DR=0x0100, L=0x0020, R=0x0010, CU=0x0008, CD=0x0004,
                 CL=0x0002, CR=0x0001)
 
     def __init__(self, path):
-        self.events = []
+        self.ports = [[], []]
         self.pak = False                        # a `pak` line: a Controller Pak in port 1
         if path:
             for line in open(path):
@@ -881,6 +878,9 @@ class Script:
                 if line[0] == 'pak':
                     self.pak = True
                     continue
+                port = 0
+                if line[0] == 'p2':
+                    port, line = 1, line[1:]
                 f = int(line[0])
                 b = 0
                 if line[1] != '-':
@@ -888,12 +888,15 @@ class Script:
                         b |= self.BITS[k]
                 x = int(line[2]) if len(line) > 2 else 0
                 y = int(line[3]) if len(line) > 3 else 0
-                self.events.append((f, b, x, y))
-        self.events.sort()
+                self.ports[port].append((f, b, x, y))
+        for ev in self.ports:
+            ev.sort()
+        self.events = self.ports[0]
+        self.pads = 2 if self.ports[1] else 1
 
-    def at(self, frame):
+    def at(self, frame, port=0):
         cur = (0, 0, 0)
-        for f, b, x, y in self.events:
+        for f, b, x, y in self.ports[port]:
             if f > frame:
                 break
             cur = (b, x, y)
