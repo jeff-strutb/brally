@@ -31,7 +31,8 @@ public:
 
 typedef char chk_sz[sizeof(Phase) == 0xC8 ? 1 : -1];
 
-Phase *g_slot;
+extern "C" Phase *DAT_10ac5cb4;   /* the original global; was a per-file stand-in definition */
+#define g_slot DAT_10ac5cb4
 Phase *g_cur;
 char g_buf;
 

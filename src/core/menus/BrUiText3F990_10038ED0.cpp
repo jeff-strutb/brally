@@ -31,8 +31,10 @@ typedef char chk_item[(unsigned)&((GameObj *)0)->item == 0x2B5C ? 1 : -1];
 typedef char chk_text[(unsigned)&((GameObj *)0)->text == 0x2B65 ? 1 : -1];
 
 extern "C" {
-int g_idx;
-char *g_tab[1];
+extern "C" int DAT_100abdf0;   /* the original global; was a per-file stand-in definition */
+#define g_idx DAT_100abdf0
+extern "C" char *DAT_100abaf8[1];   /* the original global; was a per-file stand-in definition */
+#define g_tab DAT_100abaf8
 char *BrStrGet(char *);
 int Br85ItemApply(GameObj *, int);
 }

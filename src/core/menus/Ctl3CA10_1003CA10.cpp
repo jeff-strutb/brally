@@ -33,7 +33,8 @@ typedef char chk_ent[(unsigned)&((Phase *)0)->pfnEnter == 4 ? 1 : -1];
 typedef char chk_c[(unsigned)&((Phase *)0)->f0C == 0xC ? 1 : -1];
 typedef char chk_68[(unsigned)&((Phase *)0)->f68 == 0x68 ? 1 : -1];
 
-Phase *g_slot;
+extern "C" Phase *DAT_10ac5cf0;   /* the original global; was a per-file stand-in definition */
+#define g_slot DAT_10ac5cf0
 Phase *g_cur;
 
 /* EnterFn was a stand-in; the original calls BrOptFn1004CAC0 (?BrOptFn1004CAC0@@YAHPAVGameUi@@@Z).  Declared under

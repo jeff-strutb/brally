@@ -47,7 +47,8 @@ typedef char chk_f[(unsigned)&((Tbl8900 *)0)->fFile == 0x1C ? 1 : -1];
 typedef char chk_ent[sizeof(Ent) == 76 ? 1 : -1];
 
 extern "C" {
-char s_err[1];
+extern "C" char DAT_1007b56c[1];   /* the original global; was a per-file stand-in definition */
+#define s_err DAT_1007b56c
 void BrLogFatalPrintf(char *, ...);
 }
 

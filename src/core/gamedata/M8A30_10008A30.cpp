@@ -27,7 +27,8 @@ public:
 typedef char chk_cnt[(unsigned)&((Tbl8900 *)0)->count == 0x10 ? 1 : -1];
 
 extern "C" {
-char s_err[1];
+extern "C" char DAT_1007b584[1];   /* the original global; was a per-file stand-in definition */
+#define s_err DAT_1007b584
 void BrLogFatalPrintf(char *, ...);
 }
 

@@ -46,7 +46,8 @@ public:
 typedef char chk_sub[(unsigned)&((GameObj *)0)->pSub == 0x2AE8 ? 1 : -1];
 
 Phase *g_cur;
-Phase *g_5C84;
+extern "C" Phase *DAT_10ac5c8c;   /* the original global; was a per-file stand-in definition */
+#define g_5C84 DAT_10ac5c8c
 int g_5C80;
 int g_5D18;
 int g_5D24;

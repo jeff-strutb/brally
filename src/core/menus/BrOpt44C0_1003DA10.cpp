@@ -48,7 +48,8 @@ Phase *g_2948;
 Phase *g_294C;
 Phase *g_29B8;
 FlagObj *g_29D8;
-int g_mode;
+extern "C" int DAT_10ac5bd4;   /* the original global; was a per-file stand-in definition */
+#define g_mode DAT_10ac5bd4
 int g_A9D000;
 int g_AA2898;
 
