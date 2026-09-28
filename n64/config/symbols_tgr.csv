@@ -383,3 +383,4 @@ va,name,kind
 80255E80,BrQsort,func
 8025D018,BrTriCubeTest,func
 80255048,BrCheatInput,func
+8024D53C,BrPaintPaletteLoad,func
