@@ -439,3 +439,5 @@ va,name,kind
 80200764,BrRaceCueDraw,func
 8021F2D8,BrCarGridCell,func
 80214BEC,BrRumbleProbe,func
+80200320,BrMusicLoadTrack,func
+8020037C,BrSceneAnimate,func
