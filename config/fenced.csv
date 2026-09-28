@@ -646,3 +646,7 @@ va,size,class,reason
 0x10074960,205,crt_helper,_CRT_INIT@12 from MSVCRT.LIB dllcrt0.obj (member /4351; same obj as the fenced 0x10074A30 _DllMainCRTStartup); lib .text byte-identical to the original -- 0 non-reloc diffs over all 205 B with 18 reloc sites the linker fills; sole callers are 3 sites inside 0x10074A30; reproduced at link
 0x10073994,357,data_table,"NOT CODE. Same 16-byte record table class as 0x10073704 -- records {cN, 8000cN0c, 0, ptr 0x100786D8} with cN stepping 0xEB..; the map read record bytes as an eb-relative jmp + add [R],B chains; ghidra emits halt_baddata"
 0x10035533,174,split_tail,"NOT A FUNCTION. The map split FUN_10035400 at its internal join; src/core/generated/0x10035400.c compiles to 481 B that equal 0x10035400+0x10035533 byte-for-byte (relocs masked, verified 2026-09-26), so these bytes are placed by the 0x10035400 T4 compile"
+0x10073714,1,data_table,"NOT CODE. Byte 0xC3 of a record of the 0x10072AE0 table (see 0x10073704); was tagged BrNop73714 and matched as a 1-byte ret by coincidence"
+0x10073719,1,data_table,"NOT CODE. Byte 0xC3 of the same record as 0x10073714; was tagged BrNop73719"
+0x10073974,5,data_table,"NOT CODE. Record bytes E8 00 00 00 0C of the 0x10072AE0 table read as call rel32; was tagged BrHalt73974 and matched only because the image gate filled the displacement from the original (refslot audit 2026-09-28)"
+0x10073979,5,data_table,"NOT CODE. Record bytes E8 00 80 00 00 of the same table; was tagged BrHalt73979 (same masking)"

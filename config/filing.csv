@@ -1331,10 +1331,6 @@ glide_va,name,module,basis,file
 0x100723A0,BrFfbSetSpringCoeff,controls,description,src/core/controls/br_dicmd.c
 0x10072840,BrExt_10079550,controls,filed,src/core/controls/br_dishutdown.c
 0x100728C0,BrFfbReprobe,controls,description,src/core/controls/br_ffb.c
-0x10073714,BrNop73714,startup,description,src/core/startup/br_dllentry.c
-0x10073719,BrNop73719,startup,description,src/core/startup/br_dllentry.c
-0x10073974,BrHalt73974,startup,description,src/core/startup/br_dllentry.c
-0x10073979,BrHalt73979,startup,description,src/core/startup/br_dllentry.c
 0x100745B0,BrCrtOnExit,startup,description,src/core/startup/br_dllentry.c
 0x100745E0,BrCrtAtExit,startup,description,src/core/startup/br_dllentry.c
 0x100746C0,BrEhVecDtor,startup,filed,src/core/startup/br_dllentry.c

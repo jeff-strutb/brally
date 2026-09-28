@@ -10,8 +10,9 @@
 
 /* ── Ghidra-matched functions ─────────────────────────── */
 #ifdef BR_MATCHING_BUILD
-/* The DLL entry point, the two CRT-region nops and traps, the matrix magic
- * check and the CRT exit-handler glue (0x10073714, 0x10073719, 0x10073974,
- * 0x10073979, 0x100745B0, 0x100745E0, 0x100747E0, 0x10074B00) now live in
- * src/core/startup/br_dllentry.c. */
+/* The DLL entry point, the array-unwind filter and the CRT exit-handler glue
+ * (0x100745B0, 0x100745E0, 0x100747E0, 0x10074B00) now live in
+ * src/core/startup/br_dllentry.c.  0x10073714/0x10073719/0x10073974/
+ * 0x10073979, once listed here as nops and traps, are data-table bytes and
+ * are fenced (config/fenced.csv). */
 #endif /* BR_MATCHING_BUILD */

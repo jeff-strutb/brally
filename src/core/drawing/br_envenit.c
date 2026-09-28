@@ -94,7 +94,7 @@ extern int DAT_100a7518;
 /* @t4-pass 0x10017110 3 2026-09-20 probes 12 bytes 2038 insns 505 regions 15 rows 109 census no  (fn.py: cursor-advance spellings (+=, &x[2], char+8), flag hoist, extra decl, write-then-advance, O2/O2y/O2p/Od/O1.  Best -1 byte/+7 insns at O2; none reached 0.  Residue is the constant-8 register cache + x87 scheduling.) */
 /* @t4-pass 0x10017110 4 2026-09-20 probes 12 bytes 2038 insns 505 regions 15 rows 109 census yes  (census of unpaired multiset: 15 add R,R (EXTRA) pair with 15 add R,8 (MISSING) = the cursor-bump constant cached in ebx vs immediate, a register-allocation choice; fst/fld/fstp/fxch/fcomp-st (EXTRA) vs fst-mem/fcomp-mem (MISSING) = x87 stack scheduling of the projection; shl 0xa+and 0xfff000+or (EXTRA) vs shl 0xc (MISSING) = same tile-pack value, different encoding.  Every divergent row is register allocation or instruction scheduling of identical logic.  A5 oracle EQUIVALENT on 48 seeds.) */
 /* @t3 0x10017110 2026-09-28 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 2064/2039 insns +13 rows 39+52 regions 17 oracle EQUIVALENT
+ * @t3-measure bytes 2064/2039 insns 511/498 rows 39+52 regions 17 oracle EQUIVALENT
  * @t3-effort passes 4 zero-movement 3 4
  * RECERTIFIED 2026-09-28.  The 2026-09-20 certificate read the missing
  * `fst dword [esp+..]` rows as x87 scheduling; they were ROUNDING POINTS.
