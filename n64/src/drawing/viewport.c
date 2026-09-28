@@ -66,6 +66,32 @@ void BrViewportSet(int x, int y, int w, int h, int scissor)
   D_8028AB68 = D_80318CD0[D_8028AB60].vp.vtrans[2];
 }
 
+/* WHAT IT DOES: Take the next viewport in the ring and set it to the
+ * whole 320x240 screen (optionally syncing and scissoring to x, y, w, h
+ * first); load it, clear the mirror flag and keep its depth scale and
+ * offset. */
+/* @implements 0x80219DF0 tgr BrViewportFull */
+void BrViewportFull(int x, int y, int w, int h, int scissor)
+{
+  D_8028AB60 = (D_8028AB60 + 1) & 0x1f;
+  if (scissor != 0) {
+    gDPPipeSync(D_8028A858++);
+    BrScissorSet(x, y, w < 0 ? -w : w, h);
+  }
+  D_8028A8A8 = 0;
+  D_80318CD0[D_8028AB60].vp.vscale[0] = 0x280;
+  D_80318CD0[D_8028AB60].vp.vscale[1] = 0x1e0;
+  D_80318CD0[D_8028AB60].vp.vscale[2] = 0x1ff;
+  D_80318CD0[D_8028AB60].vp.vscale[3] = 0;
+  D_80318CD0[D_8028AB60].vp.vtrans[0] = 0x280;
+  D_80318CD0[D_8028AB60].vp.vtrans[1] = 0x1e0;
+  D_80318CD0[D_8028AB60].vp.vtrans[2] = 0x1ff;
+  D_80318CD0[D_8028AB60].vp.vtrans[3] = 0;
+  gSPViewport(D_8028A858++, &D_80318CD0[D_8028AB60]);
+  D_8028AB64 = D_80318CD0[D_8028AB60].vp.vscale[2];
+  D_8028AB68 = D_80318CD0[D_8028AB60].vp.vtrans[2];
+}
+
 /* WHAT IT DOES: Load the current viewport into the display list and keep
  * its depth scale and offset for turning depths into z-buffer values. */
 /* @implements 0x80219F04 tgr BrViewportApply */
