@@ -35,26 +35,16 @@
  * inlines the first arm as the fall-through instead (worth 1 diff here but
  * the wrong shape, and it is the same lever that mattered on 0x1003A910).
  *
- * PARKED at 243 diffs / 37 bytes SHORT. The remaining cause is one thing:
- * the original RE-READS `f382C` from memory as the argument of each easing
- * vcall, where ours forwards the value it just stored there (`mov ecx,edx`
- * and no reload). Four reloads at 6 bytes each is most of the gap. This is
- * the "do not cache what the original re-reads" idiom in its hard
- * direction -- here the caching is VC5's store-to-load forwarding, not a
- * source local, so writing the member access out again does not undo it.
- * DO NOT RE-PROBE the arm forms; the switch above is already the right
- * shape. A fresh idea is needed for the reload.
+ * BYTE-EXACT 2026-09-28.  Two source facts closed the old 243-diff gap:
+ *  - the elapsed update is `f382C += now - f3828;` BEFORE `f3828 = now;`.
+ *    Written as `delta = now - f3828; f3828 = now; f382C = f382C + delta;`
+ *    VC5 forwards the stored sum into the X axis's easing calls; the
+ *    compound form makes it re-read the member there, as the original does;
+ *  - each clamp arm sets its done flag BEFORE the clamp store.  With the
+ *    flag last, VC5 merges every arm's `done = 1` into one tail shared with
+ *    case 0 / the disabled axis; the original keeps each arm whole and
+ *    shares only case 0 with the disabled path.
  */
-/* @t4-pass 0x10041180 1 2026-09-20 probes 12 bytes 330 insns 105 regions 6 rows 11 census yes  (forced member reload via volatile at the four easing-call args moved nothing) */
-/* @t4-pass 0x10041180 2 2026-09-20 probes 10 bytes 330 insns 105 regions 6 rows 11 census no   (baseline reconfirm; VC5 store-to-load-forwards f382C where the original re-reads it) */
-/* @t3 0x10041180 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 330/373 insns 105/114 rows 10+1 regions 6 oracle EQUIVALENT
- * @t3-effort passes 2 zero-movement 1 2
- * Residue is codegen only: the original re-reads the elapsed member from
- * memory before each of the four easing vcalls (four 6-byte reloads), where
- * VC5 store-to-load-forwards the value it just wrote -- so this build is
- * tighter than the original, same behaviour.  A5 oracle EQUIVALENT is the
- * completeness proof (rule 12).  Do not reopen before the end-grind. */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #endif
@@ -108,7 +98,6 @@ int Tween41180::Step()
     int doneX = 0;
     int doneY = 0;
     int now;
-    int delta;
 
     if (f3818 == 0)
         return 1;
@@ -118,9 +107,8 @@ int Tween41180::Step()
     if (f3828 <= 0)
         f3828 = now;
 
-    delta = now - f3828;
+    f382C += now - f3828;
     f3828 = now;
-    f382C = f382C + delta;
 
     if (f3804 != 0) {
         switch (b380C) {
@@ -129,8 +117,8 @@ int Tween41180::Step()
 
             f03C = v;
             if (v <= f3810) {
-                f03C = f3810;
                 doneX = 1;
+                f03C = f3810;
             }
             break;
         }
@@ -142,8 +130,8 @@ int Tween41180::Step()
 
             f03C = v;
             if (v >= f3810) {
-                f03C = f3810;
                 doneX = 1;
+                f03C = f3810;
             }
             break;
         }
@@ -159,8 +147,8 @@ int Tween41180::Step()
 
             f040 = v;
             if (v <= f3814) {
-                f040 = f3814;
                 doneY = 1;
+                f040 = f3814;
             }
             break;
         }
@@ -172,8 +160,8 @@ int Tween41180::Step()
 
             f040 = v;
             if (v >= f3814) {
-                f040 = f3814;
                 doneY = 1;
+                f040 = f3814;
             }
             break;
         }
