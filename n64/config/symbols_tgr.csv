@@ -483,3 +483,4 @@ va,name,kind
 8023CFC4,BrParticleFrame,func
 8023CD60,BrParticleFallStep,func
 8025EF70,BrTyreLoads,func
+8022CF88,BrCarEntTick,func

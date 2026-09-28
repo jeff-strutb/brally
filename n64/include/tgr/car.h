@@ -52,7 +52,10 @@ typedef struct BrCar {
     BrRbState stB;              /* 0x2A0 */
     char pad2e4[0x324 - 0x2E4];
     float x324[4];              /* 0x324  from the kind table */
-    char pad334[0xDF8 - 0x334];
+    BrVec3 x334;                /* 0x334  where the HUD arrow points */
+    char pad340[0x344 - 0x340];
+    unsigned char x344;         /* 0x344  a pending HUD arrow (0 = none) */
+    char pad345[0xDF8 - 0x345];
     char xdf8[0x1c];            /* 0xDF8  from the kind table */
     float xe14[5];              /* 0xE14  from the kind table */
     int xe28[2];                /* 0xE28  from the kind table */
@@ -65,11 +68,12 @@ typedef struct BrCar {
     int xe6c;                   /* 0xE6C */
     char pade70[0xED0 - 0xE70];
     struct BrCarLink *link;     /* 0xED0 */
-    char paded4[0xED8 - 0xED4];
+    int xed4;                   /* 0xED4  a countdown, one per frame */
     int xed8;                   /* 0xED8 */
     char padedc[0xF48 - 0xEDC];
     int xf48;                   /* 0xF48  camera mode */
-    char padf4c[0xF5C - 0xF4C];
+    char padf4c[0xF50 - 0xF4C];
+    BrVec3 posPrev;             /* 0xF50  last frame's position */
     int xf5c;                   /* 0xF5C */
     int xf60;                   /* 0xF60 */
     char padf64[0xF78 - 0xF64];
