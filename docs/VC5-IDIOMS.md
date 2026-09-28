@@ -8567,3 +8567,34 @@ with the target's flags, diff one function against original bytes
   A block-scope `extern` inside the function does not count.  Lever: turn an
   extern constant used by this function alone into a literal (-3), or move a
   new extern into block scope (0).
+- **Every call argument computed before the first push (extra callee-saved
+  register, ALU ops scheduled between pushes): the source word each field
+  comes from is OVERWRITTEN before the call.**  0x10021570: VC5 sinks a
+  single-use named field into the argument list; it cannot once its operand
+  variable is reassigned (copy w0 to t before masking, reuse t for w1, mask v
+  in place after ulx is taken, park it in u and reuse v for tile).  Named
+  locals, statement order, declaration order, inline wrappers, prototypes and
+  TU pads are all inert against the sinking.
+- **`add esi,8; mov eax,esi` return instead of `lea eax,[esi+8]`: the final
+  pointer step as two statements (`p += 4; p += 4; return p;`).**  A single
+  `p += 8` / `return p + 8` folds to lea (0x10021570).
+- **A member re-read after the member was just stored (no store-to-load
+  forwarding into later calls): the update as a compound assignment,
+  `f += now - last;` before `last = now;`.**  0x10041180: `delta = now - last;
+  last = now; f = f + delta;` forwards the stored sum into the next vcall
+  arguments; `f +=` re-reads it at each call, as the original does.
+- **Per-arm clamp bodies NOT tail-merged: set the done flag BEFORE the clamp
+  store** (`done = 1; pos = limit;`).  With the flag last VC5 merges every
+  arm's `done = 1` into one tail shared with the no-op case (0x10041180).
+- **A named float kept on the stack plus an `fst`/`fstp` pair into a dead
+  parameter slot: write the second lerp back into the dead float parameter.**
+  0x10024680: corners read into four named floats in memory order, `v` for
+  the bottom row, `s = (b - a) * s + a` for the top row.
+- **A counter web in eax copied to esi once at the join (`mov esi,eax`): tick
+  the global itself and read it into the local AFTER the wrap.**  0x10005400;
+  and a call inside another call's argument list pushes the outer call's
+  trailing constant arguments first.
+- **thiscall helper calls through a `+4` subobject where the C `__fastcall`
+  twin schedules the global store / `mov ecx,esi` differently: the unit is
+  C++.**  0x10008BA0 / 0x10008C80 (POD writer members) went byte-exact on the
+  first C++ compile.
