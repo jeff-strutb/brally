@@ -61,7 +61,7 @@ glide_va,name,module,basis,file
 0x100036F0,BrChkAlloc,gamedata,filed,src/core/gamedata/br_chkfile.c
 0x10003760,BrChkRealloc,gamedata,filed,src/core/gamedata/br_chkfile.c
 0x100037D0,BrTicks30FromMs,startup,description,src/core/startup/br_ticks30.c
-0x10003810,BrNetPingSync,net,manual,src/core/generated/0x10003810.c
+0x10003810,BrNetPingSync,net,filed,src/core/net/br_netstate.c
 0x100038A0,FUN_100038a0,net,description,src/core/net/br_netmsgpost.c
 0x100038F0,FUN_100038f0,net,neighbour,src/core/net/FUN_100038f0.cpp
 0x10004900,BrNetSend4900,net,neighbour,src/core/net/BrNetSend4900_10004900.cpp
@@ -133,7 +133,7 @@ glide_va,name,module,basis,file
 0x10007AA0,BrFixDecodeRecord_10007AA0,net,filed,src/core/net/br_fix.c
 0x10007E80,BrAppCheckPreviousApp,startup,filed,src/core/startup/br_appstart.c
 0x10007F10,BrMemoryQuery,startup,filed,src/core/startup/br_appstart.c
-0x10007F40,FUN_10007f40,startup,neighbour-1,src/core/generated/0x10007F40.c
+0x10007F40,FUN_10007f40,settings,filed,src/core/settings/br_basedir.c
 0x10008760,BrObj87Ctor,gamedata,filed,src/core/gamedata/br_obj87.c
 0x100087A0,BrObj87A0DeleteDtor,gamedata,neighbour-1,src/core/gamedata/br_obj87.c
 0x100087C0,BrObj87Dtor,gamedata,filed,src/core/gamedata/br_obj87.c
@@ -512,9 +512,9 @@ glide_va,name,module,basis,file
 0x10030710,BrDevRecMatch,controls,manual,src/core/controls/br_devrec.c
 0x10030DE0,BrSub10037740,gamedata,description,src/core/gamedata/br_carload.c
 0x10030F40,BrArm_100378A0,startup,filed,src/core/startup/br_objlife.c
-0x10030F50,BrFileReadInto,startup,neighbour,src/core/generated/0x10030F50.c
+0x10030F50,BrFileReadInto,gamedata,filed,src/core/gamedata/br_chkfile.c
 0x10031030,FUN_10031030,drawing,filed,src/core/drawing/br_texlevels.c
-0x10031140,BrTrackLoadHandling,startup,neighbour,src/core/generated/0x10031140.c
+0x10031140,BrTrackLoadHandling,startup,filed,src/core/startup/br_track.c
 0x100311C0,BrTrackLoad,startup,filed,src/core/startup/br_track.c
 0x100314D0,BrGlTrackFixupAll,startup,filed,src/core/startup/br_track.c
 0x10031660,BrTrackSetF08FromMax,startup,neighbour,src/core/startup/br_track.c
@@ -622,7 +622,7 @@ glide_va,name,module,basis,file
 0x10037780,BrInputOrPlaybackActive,audio,neighbour-1,src/core/audio/br_input.c
 0x100377A0,FUN_100377a0,settings,manual,src/core/settings/br_cdcheck.c
 0x10037870,BrPairBufReset,drawing,description,src/core/drawing/br_pairbuf.c
-0x100378C0,FUN_100378c0,drawing,neighbour-1,src/core/generated/0x100378C0.c
+0x100378C0,FUN_100378c0,startup,filed,src/core/startup/br_fatal.c
 0x10037920,BrOptSave,menus,description,src/core/menus/br_optsave.c
 0x100379B0,BrSub1003E3A0,settings,manual,src/core/settings/br_optrestore.c
 0x10037B20,BrSub1003E510,menus,neighbour-1,src/core/menus/br_optrefresh.c
@@ -965,7 +965,7 @@ glide_va,name,module,basis,file
 0x100541B0,BrSprFontDrawAt_100541B0,drawing,prefix,src/core/drawing/BrSprFontDrawAt_100541B0.cpp
 0x10054280,BrSprFontDrawB_10054280,drawing,prefix,src/core/drawing/BrSprFontDrawB_10054280.cpp
 0x10054360,BrCharMapLookup,controls,description,src/core/controls/br_dik.c
-0x10054390,FUN_10054390,controls,neighbour-1,src/core/generated/0x10054390.c
+0x10054390,FUN_10054390,drawing,filed,src/core/drawing/br_sprfont.c
 0x10054550,BrSprFontGlyphA_1005B730,drawing,filed,src/core/drawing/br_sprfont.c
 0x100545C0,BrSprFontGlyphB_1005B7A0,drawing,filed,src/core/drawing/br_sprfont.c
 0x10054600,BrRet0Std3_10054600,menus,manual,src/core/menus/br_textlist.c
@@ -998,7 +998,7 @@ glide_va,name,module,basis,file
 0x10058540,BrSprFontRectInit_1005F800,drawing,filed,src/core/drawing/br_sprfont.c
 0x10058680,BrSeasonApply,settings,manual,src/core/settings/BrSeasonApply_10058680.cpp
 0x10058900,BrExt_1005FBC0,settings,manual,src/core/settings/br_setupcommit.c
-0x10058A30,BrRaceSettingsCommit,menus,manual,src/core/generated/0x10058A30.c
+0x10058A30,BrRaceSettingsCommit,settings,filed,src/core/settings/br_setupcommit.c
 0x10058AF0,BrCtlNameInit,controls,filed,src/core/controls/br_ctlname.c
 0x10058C70,FUN_10058c70,menus,filed,src/core/menus/br_chain.c
 0x10058C90,BrChainFreeRec_10058C90,menus,neighbour-1,src/core/menus/br_chain.c
@@ -1152,7 +1152,7 @@ glide_va,name,module,basis,file
 0x10068600,BrCarPhysDamper,driving,filed,src/core/driving/br_carphys.c
 0x100686D0,BrCollGridCellAcquire,scene,manual,src/core/scene/br_collgrid.c
 0x10069530,BrTrackSurfaceSet,startup,filed,src/core/startup/br_track.c
-0x10069930,BrMenuSub100709A0,menus,prefix,src/core/generated/0x10069930.c
+0x10069930,BrMenuSub100709A0,settings,filed,src/core/settings/br_save.c
 0x10069A80,BrGhostLoad,racing,manual,src/core/racing/BrGhostLoad_10069A80.cpp
 0x10069DC0,BrSub69DC0,racing,neighbour-1,src/core/racing/br_sub69.c
 0x10069DE0,BrGhostSave,settings,filed,src/core/settings/br_ghostsave.c

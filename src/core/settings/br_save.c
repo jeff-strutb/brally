@@ -11,12 +11,22 @@
  * is nobody's business but this host's.
  */
 
+#ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+/* slice4_52.h declares the port's void copy of the writer under the same
+ * name; the matching definition at the end of this file returns char. */
+#define BrMenuSub100709A0 BrMenuSub100709A0_port
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "br_save.h"
 #include "slice1_01.h"   /* BrAdler32 -- 0x10001000, zlib adler32 verbatim */
+#ifdef BR_MATCHING_BUILD
+#undef BrMenuSub100709A0
+#endif
 
 /* Compile-time check that the layout constants still compose to the file the
  * two functions describe.  C99 has no _Static_assert here; the tree uses the
@@ -369,3 +379,58 @@ int BrBrfFileName(char *pszOut, size_t cbOut, const char *pszPrefix, int slot)
     n = snprintf(pszOut, cbOut, "%s%d%s", pszPrefix, slot, BR_BRF_EXT);
     return n;
 }
+
+#ifdef BR_MATCHING_BUILD
+extern char DAT_117a6030[];            /* the .BRF path */
+extern char DAT_1007b600[];            /* "wb" */
+extern int DAT_100b559c;               /* the file magic */
+extern int DAT_10ac5d60;
+extern int DAT_100abdec;
+extern int DAT_100abdf0;
+extern int DAT_100abdf4;
+extern int DAT_100abdfc;
+extern unsigned char DAT_10af3cf0[];   /* the 0x80-byte tail */
+extern unsigned char *g_pBrMenuACED34; /* the 0x200-byte season block */
+
+/* WHAT IT DOES: write the championship-season save file (the layout
+ * BrBrfEncode above describes): the magic, an adler32 over the season block,
+ * the block, five option dwords and the 0x80-byte tail.  Returns 0 without
+ * finishing if the file cannot be opened or a checked write comes up short;
+ * the five option dwords are written unchecked, as in the original. */
+/* @implements 0x10069930 glide BrMenuSub100709A0 */
+char BrMenuSub100709A0(void)
+{
+  FILE *fp;
+  unsigned long sum;
+
+  sum = BrAdler32(0, 0, 0);
+  sum = BrAdler32(sum, g_pBrMenuACED34, 0x200);
+  fp = fopen(DAT_117a6030, DAT_1007b600);
+  if (fp == NULL) {
+    return 0;
+  }
+  if (fwrite(&DAT_100b559c, 1, 4, fp) != 4) {
+    fclose(fp);
+    return 0;
+  }
+  if (fwrite(&sum, 1, 4, fp) != 4) {
+    fclose(fp);
+    return 0;
+  }
+  if (fwrite(g_pBrMenuACED34, 1, 0x200, fp) != 0x200) {
+    fclose(fp);
+    return 0;
+  }
+  fwrite(&DAT_10ac5d60, 4, 1, fp);
+  fwrite(&DAT_100abdec, 4, 1, fp);
+  fwrite(&DAT_100abdf0, 4, 1, fp);
+  fwrite(&DAT_100abdf4, 4, 1, fp);
+  fwrite(&DAT_100abdfc, 4, 1, fp);
+  if (fwrite(DAT_10af3cf0, 1, 0x80, fp) != 0x80) {
+    fclose(fp);
+    return 0;
+  }
+  fclose(fp);
+  return 1;
+}
+#endif /* BR_MATCHING_BUILD */
