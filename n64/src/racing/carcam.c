@@ -106,6 +106,47 @@ void BrCarCamInit(BrCar *car)
   car->x1f90 = 2.0f;
 }
 
+/* WHAT IT DOES: Move a car's camera target: with the car's up axis kept,
+ * 1.1 up that axis from the car; otherwise 0.66 above the car, pushed
+ * ahead along its forward axis by a lead that eases (0.1 a frame) toward
+ * 2 when the car turns slowly, down to 0 as it spins faster (none in
+ * mode 5). */
+/* @implements 0x80220E84 tgr BrCarCamTargetStep */
+void BrCarCamTargetStep(BrCar *car)
+{
+  float spin;
+  float want;
+
+  if (car->xf4c != 0) {
+    BrVec3MulAdd(&car->camTarget, (BrVec3 *)car->mtx0[3], (BrVec3 *)car->mtx0[2], 1.1f);
+  } else {
+    car->camTarget.x = car->mtx0[3][0];
+    car->camTarget.y = car->mtx0[3][1];
+    car->camTarget.z = car->mtx0[3][2] + 0.66f;
+    spin = BrVec3Length(&car->st.angVel);
+    if (D_8026FF18 != 5) {
+      want = 0.0f;
+      if (spin < 3.5f) {
+        want = 2.0f;
+      } else if (spin < 7.0f) {
+        want = 4.0f - spin * 0.5714286f;
+      }
+      if (car->x1f90 < want) {
+        car->x1f90 += 0.1f;
+        if (car->x1f90 > want) {
+          car->x1f90 = want;
+        }
+      } else if (car->x1f90 > want) {
+        car->x1f90 -= 0.1f;
+        if (car->x1f90 < want) {
+          car->x1f90 = want;
+        }
+      }
+      BrVec3MulAddTo(&car->camTarget, (BrVec3 *)car->mtx0[0], car->x1f90);
+    }
+  }
+}
+
 /* WHAT IT DOES: Aim a car's camera at its target: the forward row points
  * from the camera to the target (kept, or taken from the car's forward
  * axis if it is zero, when they coincide); the up row is the car's up axis
