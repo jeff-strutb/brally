@@ -139,6 +139,15 @@ int BrSfxFadeDone(void)
   return D_8028B774 == D_8028B76C;
 }
 
+/* WHAT IT DOES: Put the effects-volume fade straight at a level: target and
+ * current level both become it. */
+/* @implements 0x80223880 tgr BrSfxFadeSet */
+void BrSfxFadeSet(float level)
+{
+  D_8028B76C = level;
+  D_8028B774 = D_8028B76C;
+}
+
 /* WHAT IT DOES: Put the screen fade straight at a level: target and current
  * level both become it, so nothing is left to fade. */
 /* @implements 0x8022389C tgr BrFadeSet */

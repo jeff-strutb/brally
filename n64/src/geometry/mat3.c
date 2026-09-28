@@ -74,6 +74,35 @@ void BrMat3FromMat4T(float t[3][3], float m[4][4])
 }
 
 
+/* WHAT IT DOES: The cross-product matrix of a vector: out * u = v x u. */
+/* @implements 0x80258DB0 tgr BrMat3Skew */
+void BrMat3Skew(float out[3][3], float v[3])
+{
+  out[2][2] = 0.0f;
+  out[1][1] = 0.0f;
+  out[0][0] = 0.0f;
+  out[0][1] = -v[2];
+  out[0][2] = v[1];
+  out[1][0] = v[2];
+  out[1][2] = -v[0];
+  out[2][0] = -v[1];
+  out[2][1] = v[0];
+}
+
+/* WHAT IT DOES: Take the 3x3 rotation out of a 4x4 matrix as it is. */
+/* @implements 0x80258EAC tgr BrMat3FromMat4 */
+void BrMat3FromMat4(float out[3][3], float m[4][4])
+{
+  int i;
+  int j;
+
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; j++) {
+      out[i][j] = m[i][j];
+    }
+  }
+}
+
 /* WHAT IT DOES: Multiply two 3x3 matrices: out = a * b.  (The PC twin in
  * br_rbinteg.c needs a float local for VC5; IDO matches without it.) */
 /* @implements 0x80258EF8 tgr BrMat3Mul */

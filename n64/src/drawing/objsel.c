@@ -8,7 +8,24 @@ extern int D_8028C744;                 /* number of excluded objects */
 extern int D_8028C754;                 /* the selected object */
 extern int D_8028DDE0;                 /* pending step (+1 / -1) */
 extern unsigned short D_80352580[];    /* the excluded objects */
+extern int D_8028A850;                 /* high resolution */
+extern unsigned short D_8028DDDC;
+extern int D_8028DDD0;
+extern int D_8028DDD4;
+extern int D_8028DDD8;
 /* -- end declarations -- */
+
+/* WHAT IT DOES: Reset the object viewer's display state: all objects
+ * shown, and its step sizes set for the screen resolution (16 texels,
+ * scaled up on a high-res screen). */
+/* @implements 0x80254D4C tgr BrObjViewReset */
+void BrObjViewReset(void)
+{
+  D_8028DDDC = 0xffff;
+  D_8028DDD0 = 16 << (D_8028A850 * 2);
+  D_8028DDD4 = 16 << D_8028A850;
+  D_8028DDD8 = 0;
+}
 
 /* WHAT IT DOES: Apply a pending step to the selected object, wrapping round
  * and skipping the excluded ones (object 0 always stops the walk), then
