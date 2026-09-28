@@ -40,6 +40,18 @@ typedef struct BrCarLink {
     unsigned int flags;         /* 0x68  bits 0-1: the car is out of the race */
 } BrCarLink;
 
+/* A body of the car (0x208 bytes): the car itself is one, at 0x1C0 (its
+ * fields named on BrCar), and each wheel another. */
+typedef struct BrCarBody {
+    char pad000[0x74];
+    float pos[3];               /* 0x74  where it hangs off the car body */
+    char pad080[0x148 - 0x80];
+    float steer;                /* 0x148  radians */
+    char pad14c[0x15C - 0x14C];
+    float spin;                 /* 0x15C  degrees */
+    char pad160[0x208 - 0x160];
+} BrCarBody;
+
 typedef struct BrCar {
     float mtx0[4][4];           /* 0x000  body matrix */
     float wheelMtx[4][4][4];    /* 0x040  one per wheel: the body's rotation, the wheel's position */
@@ -52,12 +64,16 @@ typedef struct BrCar {
     char pad244[0x25C - 0x244];
     BrRbState stA;              /* 0x25C */
     BrRbState stB;              /* 0x2A0 */
-    char pad2e4[0x324 - 0x2E4];
+    char pad2e4[0x31C - 0x2E4];
+    float spin;                 /* 0x31C  the body's roll angle, degrees */
+    char pad320[0x324 - 0x320];
     float x324[4];              /* 0x324  from the kind table */
     BrVec3 x334;                /* 0x334  where the HUD arrow points */
     int x340;                   /* 0x340  negative: the car is off the track */
     unsigned char x344;         /* 0x344  a pending HUD arrow (0 = none) */
-    char pad345[0xDF8 - 0x345];
+    char pad345[0x3C8 - 0x345];
+    BrCarBody wheels[4];        /* 0x3C8  the wheels' bodies (wheel[] points at them) */
+    char padbe8[0xDF8 - 0xBE8];
     char xdf8[0x1c];            /* 0xDF8  from the kind table */
     float xe14[5];              /* 0xE14  from the kind table */
     int xe28[2];                /* 0xE28  from the kind table */
