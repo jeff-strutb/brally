@@ -12,7 +12,11 @@ typedef struct BrRbBody {       /* a rigid body with up to four attached */
   float mass;                   /* 0x2C */
   char pad30[0x54 - 0x30];
   float Iinv[3][3];             /* 0x54  inverse inertia */
-  char pad78[0xbc - 0x78];
+  float f78[3];                 /* 0x78  (an attachment point, on attached bodies) */
+  float vel[3];                 /* 0x84 */
+  char pad90[0xa0 - 0x90];
+  float angVel[3];              /* 0xA0 */
+  float padac[4];
   float m[4][4];                /* 0xBC  orientation */
   float force[3];               /* 0xFC  accumulated this step */
   float torque[3];              /* 0x108 */
@@ -24,6 +28,7 @@ void BrRbSolveAccel(BrRbBody *b);
 void func_802586C0(float out[3], float m[4][4], float v[3]);   /* v into the body frame */
 void func_80258758(float out[3], float m[4][4], float v[3]);   /* and back out */
 void BrMat3MulVec(float out[3], float m[3][3], float v[3]);
+typedef struct { float v[3]; } BrRbVec;
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Turn a body's accumulated force and torque into
@@ -86,6 +91,58 @@ int BrStub8025BBA4(int arg0,int arg1,int arg2)
 int BrStub8025D35C(int arg0)
 {
   return 0;
+}
+
+/* WHAT IT DOES: The velocity of a body at an attached body's attachment
+ * point: the point taken into world axes, then the body's velocity plus
+ * its angular velocity crossed with that offset.  The PC twin is
+ * BrRbVelAtBodyPoint.
+ * RESIDUE (23): float temporaries numbered differently in the cross
+ * product; the instruction sequence matches register-blind. */
+/* @implements 0x80259B1C tgr BrRbVelAtBodyPoint */
+void BrRbVelAtBodyPoint(float out[3], BrRbBody *b, BrRbBody *at)
+{
+  float p[3];
+  float c[3];
+  float r[3];
+
+  p[0] = at->f78[0];
+  p[1] = at->f78[1];
+  p[2] = at->f78[2];
+  func_80258758(r, b->m, p);
+  out[0] = b->vel[0];
+  out[1] = b->vel[1];
+  out[2] = b->vel[2];
+  c[0] = b->angVel[1] * r[2] - r[1] * b->angVel[2];
+  c[1] = b->angVel[2] * r[0] - r[2] * b->angVel[0];
+  c[2] = b->angVel[0] * r[1] - r[0] * b->angVel[1];
+  out[0] = c[0] + out[0];
+  out[1] = c[1] + out[1];
+  out[2] = c[2] + out[2];
+}
+
+/* WHAT IT DOES: The velocity of a body at a point given in its own axes.
+ * RESIDUE (23): as BrRbVelAtBodyPoint. */
+/* @implements 0x80259C18 tgr BrRbVelAtPoint */
+void BrRbVelAtPoint(float out[3], BrRbBody *b, float *pt)
+{
+  float p[3];
+  float c[3];
+  float r[3];
+
+  p[0] = pt[0];
+  p[1] = pt[1];
+  p[2] = pt[2];
+  func_80258758(r, b->m, p);
+  out[0] = b->vel[0];
+  out[1] = b->vel[1];
+  out[2] = b->vel[2];
+  c[0] = b->angVel[1] * r[2] - r[1] * b->angVel[2];
+  c[1] = b->angVel[2] * r[0] - r[2] * b->angVel[0];
+  c[2] = b->angVel[0] * r[1] - r[0] * b->angVel[1];
+  out[0] = c[0] + out[0];
+  out[1] = c[1] + out[1];
+  out[2] = c[2] + out[2];
 }
 
 /* WHAT IT DOES: Turn a car body's summed force and torque into
