@@ -161,7 +161,8 @@ void BrCarStateDecode(BrCarState *pDst, BrBitReader *pReader)
  * step, up two, or down one. Everything the packet does not mention is left
  * as the caller had it, so the caller must seed the record from the
  * reference first. */
-/* @implements 0x100073E0 d3d BrCarStateDecodeDelta */
+/* port-only body; Glide match is src/core/net/BrCarStateDecodeDelta_10007750.cpp
+ * (the original is C++: see that file). */
 void BrCarStateDecodeDelta(BrCarState *pDst, const BrCarState *pRef,
                            BrBitReader *pReader)
 {
