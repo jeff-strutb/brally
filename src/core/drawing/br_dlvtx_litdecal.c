@@ -8,25 +8,29 @@
  * Filed on its own, like its siblings: br_dl.c's TU context carries
  * byte-exact functions whose x87 scheduling moves when a body is added there.
  *
- * DEAD CODE IN THE PC RELEASE -- settled 2026-09-24, do not re-litigate:
- *  - The only writer of the selector 0x105CDA04 = 1 is 0x1001E8C0, in the
- *    G_SETCOMBINE handler 0x1001E7A0, taken only for w0 == 0xFC317E02 and
- *    w1 in {0x5FFEF3FA, 0x51FEF3FA}.  Its sole caller is the display-list
- *    reader 0x1001E770, so the words must arrive in a display list.
- *  - Those words exist nowhere in BRGlide.dll, BRally.exe or BossRally.exe
- *    except the handler's own compare (no split or big-endian form either).
- *  - A census of every car/track/POD/cutscene asset (38 files, ~17.7k
- *    combiner commands, a dozen-plus distinct modes, all readable) has no
- *    DECAL mode.  All 25 brbox scripts: UNCOVERED.
- *  - BRD3D.dll handles the same mode differently (0x1001C941: picks a draw
- *    routine 0x1001C690/0x1001BC90 and sets 0x104C0DC0) and is equally
- *    never sent it -- same executables, same data.
- *  - The N64 original (Top Gear Rally, retail and prototype ROMs) DOES emit
- *    it: game code at ROM 0x2F634 builds pipesync, 2-cycle othermode,
- *    combine 0xFC317E02 with w1 0x51FEF3FA / 0x5FFEF3FA on a flag byte at
- *    RAM 0x8028BDC8, then a render mode.  The PC port rewrote that frame
- *    setup (likely Glide fog in place of the N64 2-cycle path -- unverified)
- *    and nothing sends the command any more.
+ * NEVER RUN IN THE PC RELEASE -- re-derived 2026-09-28 (the 2026-09-24
+ * proof's premise was wrong; its conclusion holds):
+ *  - The DECAL combine IS sent, every frame the sky is drawn: BrSceneSetupFrame
+ *    0x10015630 builds it through BrRdpSetCombineLERP (0x1001CF90), which packs
+ *    the words from 16 small fields at run time -- why a search for the
+ *    constants 0xFC317E02 / 0x5FFEF3FA found nothing.  w1 is 0x5FFEF3FA, or
+ *    0x51FEF3FA in fog.  Measured: ~7,200 per race on every track and weather,
+ *    39,810 in the championship script.  The old "no PC code emits it, all
+ *    scripts UNCOVERED" was false.
+ *  - The handler is installed only when the decal flag 0x105CDA04 is set AND
+ *    the geometry mode has Z + LIGHTING without TEXGEN (0x1001FE1C, and the
+ *    swap at 0x1001E909 when the lit handler 0x10021C70 is current).  The flag
+ *    is cleared by every combine.  The sky pass sends the decal combine, clears
+ *    Z and lighting (B6 0x000F0205), draws the track's sky display list, then
+ *    re-sets Z + lighting (B7 0x00020205) -- so the flag would reach lit
+ *    geometry only if a sky display list carried no combine of its own.
+ *  - Measured over 154 sessions (all 14 selectable tracks x 5 weathers, 32
+ *    cars, camera views, the attract demo, credits, championship,
+ *    multiplayer): the next combine always closes the window before any
+ *    Z+lit vertex load; 0 calls.  gamewin.trk (the only track not raced) is
+ *    reachable only in game mode 5, which no front-end path keeps.
+ *  - BRD3D.dll handles the same mode differently (0x1001C941).  The N64
+ *    original (ROM 0x2F634) emits it in its 2-cycle frame setup.
  *  Consequence: the live oracle (A5) can never reach it, so T3 is closed to
  *  this function; only byte-exact T4 finishes it.
  *  STATUS: EXCLUDED (T2) -- listed in config/excluded.csv, outside the
