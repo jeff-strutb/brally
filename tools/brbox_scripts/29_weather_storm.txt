@@ -1,0 +1,32 @@
+# Quick Race on Coastline in STORM (weather 2: WEATHER clicked three times).
+# Storm is a plain-clear frame (no sky, BrSceneUsePlainClear) with lightning.
+sleep 240
+mark main_menu
+mouse 250 190
+click
+sleep 40
+mark race_setup
+mouse 252 157
+click
+sleep 20
+mouse 252 157
+click
+sleep 20
+mouse 252 157
+click
+sleep 20
+mouse 252 233
+click
+sleep 40
+mark car_setup
+mouse 252 233
+click
+sleep 300
+mark grid
+press SPACE
+sleep 150
+mark lights
+autopilot on
+sleep 1800
+mark driving
+end

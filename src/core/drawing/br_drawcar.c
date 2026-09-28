@@ -1401,6 +1401,15 @@ static void wheel_call(unsigned char *car)
  * (regions 6-24, change 0).  The pCam re-read landed 2026-09-09 (66f0f31);
  * the float commute quad and the x87 schedule classify.  Everything else in
  * 29 masked regions is allocation echo at delta 0.
+ * RECERTIFIED 2026-09-28.  The body was right; its placement was not.  The
+ * rain arm (BrG_6C661C set) loads G before R, and the two hand rows in
+ * config/reloc_overrides.csv for +0x2B9 / +0x2D7 bound those sites in the
+ * ORIGINAL's load order -- R's address to G's site and vice versa -- so in
+ * rain the car light colour went out with its top two bytes swapped
+ * (EEDDFF00 for DDEEFF00).  Sunny runs never show it: there the bytes are
+ * equal.  Rows now bind by the symbol each site loads (R 0x106E8610,
+ * G 0x106EA3EC, B 0x106E79F8, matching the else arm's rows); A5 EQUIVALENT and
+ * A7 IDENTICAL on 28_weather_rain and 37_bonus_rain.
  * ‼ 2026-09-09 post-tag: the session-18 second-read diagnostic scored under
  * the CURRENT gates -- four inert-read spellings (|x&0, idempotent |x|x,
  * post-statement re-reads; at arm 1, the join, and both) are ALL

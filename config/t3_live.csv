@@ -15,7 +15,7 @@ va,name,verdict,calls,captured,contexts,detail,date
 0x10007d50,BrCarStateLerp,EQUIVALENT,10398,18,11,61_mp_race: 6 real call(s) agree,2026-09-24
 0x10009010,BrDpAppMsgHandle,EQUIVALENT,2056,21,3,"21 real call(s) agree (61_mp_race: 7, 63_mp_join: 7, 64_mp_dropout: 7; --objects)",2026-09-27
 0x100096a0,BrDPlaySysMsgLog,EQUIVALENT,2,2,2,61_mp_race: 1 real call(s) agree,2026-09-24
-0x1000a110,BrCarDrawVehicle,EQUIVALENT,41409,120,21,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x1000a110,BrCarDrawVehicle,EQUIVALENT,41409,120,21,"28_weather_rain 37_bonus_rain 20_quickrace_drive: all real calls agree after the rain-arm reloc override fix (2026-09-28; the rain colour bytes were role-swapped)",2026-09-28
 0x1000c9e0,FUN_1000c9e0,EQUIVALENT,20702,63,8,"63 real call(s) agree (20_quickrace_drive: 7, 21_quickrace_finish: 8, 27_quickrace_snow: 7, 40_timeattack: 8, 50_championship: 9, 61_mp_race: 8, 63_mp_join: 8, 64_mp_dropout: 8; --objects)",2026-09-27
 0x1000cb20,BrViewBuffersRebase,EQUIVALENT,18980,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x1000cba0,BrObjDlBuild,EQUIVALENT,447137,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
@@ -32,7 +32,7 @@ va,name,verdict,calls,captured,contexts,detail,date
 0x10015300,BrHudDraw,EQUIVALENT,18019,114,19,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10015b10,BrTextEmitString,EQUIVALENT,202926,120,56,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10016980,BrFontMeasure,EQUIVALENT,141645,120,39,20_quickrace_drive: 6 real call(s) agree,2026-09-24
-0x10017110,BrEnvEmit,EQUIVALENT,18980,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10017110,BrEnvEmit,EQUIVALENT,18980,120,20,"36_amazon_fog_car11 34_desert_snow_car9 20_quickrace_drive: all real calls agree after pinning the float rounding points (2026-09-28; was a quarter-pixel off)",2026-09-28
 0x10017910,BrEarLoad,EQUIVALENT,24,24,24,10_boot: 1 real call(s) agree,2026-09-24
 0x10017e30,BrWindowEarStartup,EQUIVALENT,48,48,48,10_boot: 2 real call(s) agree,2026-09-24
 0x100182f0,BrCursorPairSet,EQUIVALENT,21,21,20,20_quickrace_drive: 1 real call(s) agree,2026-09-24

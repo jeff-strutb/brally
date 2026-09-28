@@ -69,6 +69,12 @@ KEYS = {
     'F1': (0x70, 0x3B), 'F2': (0x71, 0x3C), 'F3': (0x72, 0x3D), 'F4': (0x73, 0x3E),
     'F5': (0x74, 0x3F), 'F6': (0x75, 0x40), 'F7': (0x76, 0x41), 'F8': (0x77, 0x42),
     'F9': (0x78, 0x43), 'F10': (0x79, 0x44),
+    # the in-race bindings the default key table (Glide .data 0x100B38A0)
+    # puts on the navigation block: END/PGDN/INS pick camera views, DEL horn,
+    # RSHIFT reset car, RCTRL brake
+    'END': (0x23, 0xCF), 'PGDN': (0x22, 0xD1), 'INSERT': (0x2D, 0xD2),
+    'HOME': (0x24, 0xC7), 'PGUP': (0x21, 0xC9), 'DELETE': (0x2E, 0xD3),
+    'RSHIFT': (0xA1, 0x36), 'RCTRL': (0xA3, 0x9D),
 }
 _DIK_ROW = {'QWERTYUIOP': 0x10, 'ASDFGHJKL': 0x1E, 'ZXCVBNM': 0x2C}
 for _row, _base in _DIK_ROW.items():
@@ -249,12 +255,18 @@ class Driver(object):
                     t -= a0 - a1
                     k += 1
                     if k >= cnt:
-                        n = box.rd32(n)
+                        # Some tracks (the Mine layouts) end the node list
+                        # without looping back: a null next means stop at the
+                        # last point of this node rather than read through 0.
+                        nxt = box.rd32(n)
                         guard = 0
-                        while box.rd16(n + 0x16) & 1 and guard < 16:
-                            n = box.rd32(n + 4)
+                        while nxt and box.rd16(nxt + 0x16) & 1 and guard < 16:
+                            nxt = box.rd32(nxt + 4)
                             guard += 1
-                        k = 0
+                        if not nxt:
+                            k = cnt - 1
+                            break
+                        n, k = nxt, 0
                     if t < 0:
                         break
                 c = n + 0x40 + 0x28 * k + 0x0C
