@@ -511,3 +511,4 @@ va,name,kind
 80220C58,BrCarCamPlaceBehind,func
 80248B80,BrPaintMirrorSide,func
 80251A54,BrPaintDashLine,func
+80252C9C,BrPaintTextDraw,func
