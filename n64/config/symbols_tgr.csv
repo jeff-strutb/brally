@@ -434,3 +434,4 @@ va,name,kind
 80258758,BrMat4RotateVecT,func
 80258950,BrRbAccel,func
 8022F694,BrTextPrintAt,func
+80224F90,BrVec3Project2,func
