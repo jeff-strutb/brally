@@ -9,6 +9,17 @@ extern float D_8028AAD8;
 extern void *D_80025C70;                /* the track grid (0 before a track loads) */
 int BrFloatToInt(float f);
 void func_8021EB50(BrCar *car);
+extern int D_8026FF10;
+typedef struct BrCarEnt {       /* a car's entity record (0x78 bytes) */
+  char pad00[0x60];
+  BrCar *car;                   /* 0x60 */
+} BrCarEnt;
+void BrHudArrowDraw(BrCar *car, BrVec3 *at, short kind);
+void BrWrongWayCheck(BrCar *car);
+void func_8022A0E0(BrCarEnt *e);
+void BrVec3Sub(BrVec3 *out, BrVec3 *a, BrVec3 *b);
+void BrVec3ScaleBy(BrVec3 *v, float s);
+float BrAtan2(float x, float y);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Advance a car's clocks by one frame while it is still in
@@ -75,5 +86,31 @@ void BrCarGridCell(BrCar *car)
       car->cellY = 0x3f;
     }
     func_8021EB50(car);
+  }
+}
+
+/* WHAT IT DOES: A car entity's per-frame housekeeping (not in replay): show
+ * a pending HUD arrow, run the clocks, messages, wrong-way check, 0x8022A0E0
+ * and grid cell, take the velocity from this frame's movement, the heading
+ * from the camera's first row, and count 0xED4 down. */
+/* @implements 0x8022CF88 tgr BrCarEntTick */
+void BrCarEntTick(BrCarEnt *e)
+{
+  if (D_8026FF10 == 0 && e->car != 0) {
+    if (e->car->x344 != 0) {
+      BrHudArrowDraw(e->car, &e->car->x334, e->car->x344);
+      e->car->x344 = 0;
+    }
+    BrCarTickClocks(e->car);
+    BrCarTickMessages(e->car);
+    BrWrongWayCheck(e->car);
+    func_8022A0E0(e);
+    BrCarGridCell(e->car);
+    BrVec3Sub(&e->car->velfd8, (BrVec3 *)e->car->mtx0[3], &e->car->posPrev);
+    BrVec3ScaleBy(&e->car->velfd8, 1.0f / D_8028AAD8);
+    e->car->heading = BrAtan2(e->car->cam->mtx[0][0], e->car->cam->mtx[0][1]);
+    if (e->car->xed4 != 0) {
+      e->car->xed4--;
+    }
   }
 }
