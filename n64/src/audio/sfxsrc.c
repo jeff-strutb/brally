@@ -75,6 +75,47 @@ float BrSndDoppler(float l[3], float lPrev[3], float s[3], float sPrev[3])
   return (vl / 343.0f + 1.0f) / (1.0f - vs / 343.0f);
 }
 
+/* WHAT IT DOES: Stereo placement of a sound at pos for a listener whose
+ * matrix is m: the source's offset along the listener's side axis, clamped
+ * to +-10 (and scaled by 0.4 when narrow), gives the left and right levels
+ * (the quieter side boosted by 1.7, the louder pulled 60% of the way to
+ * full); the volume is 1024 over the distance, taken as at least 32. */
+/* @implements 0x8022B1D4 tgr BrSndPan */
+void BrSndPan(float pos[3], float m[4][4], float *left, float *right, int *vol, int narrow)
+{
+  float d[3];
+  float l;
+  float r;
+  float dist;
+
+  BrVec3Sub(d, pos, m[3]);
+  l = d[0] * m[1][0] + d[1] * m[1][1] + d[2] * m[1][2];
+  if (10.0f < l) {
+    l = 10.0f;
+  } else if (l < -10.0f) {
+    l = -10.0f;
+  }
+  if (narrow != 0) {
+    l *= 0.4f;
+  }
+  l = (l + 10.0f) / 20.0f;
+  r = 1.0f - l;
+  if (l < r) {
+    l *= 1.7f;
+    r += 0.6f * (1.0f - r);
+  } else {
+    r *= 1.7f;
+    l += 0.6f * (1.0f - l);
+  }
+  *left = l;
+  *right = r;
+  dist = BrVec3Length(d);
+  if (dist < 32.0) {
+    dist = 32.0f;
+  }
+  *vol = 1024.0f / dist;
+}
+
 /* WHAT IT DOES: Offer a positional sound: if its source is nearer the
  * listener than the best offer so far this frame, it becomes the nearest
  * sound (position, listener, ids, rate and volume). */

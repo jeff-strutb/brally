@@ -255,6 +255,7 @@ va,name,kind
 8022AF64,BrVarLoadSmall,func
 8022AF90,BrLastLapSave,func
 8022B0F8,BrSndDoppler,func
+8022B1D4,BrSndPan,func
 8022B370,BrSfxSrcTrigger,func
 8022B3C4,BrSfxSrcBeep,func
 8022B3E4,BrSfxSrcBeep2,func
