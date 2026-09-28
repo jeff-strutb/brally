@@ -89,6 +89,7 @@ va,name,kind
 8021A964,BrPadRead,func
 8021A9B4,BrPadPollAll,func
 8021AA08,BrFrameEnd,func
+8021B0C4,BrFrustumSet,func
 8021B2F8,BrCameraSet,func
 8021B458,BrMenuCameraSet,func
 8021B5A4,BrScreenCameraSet,func

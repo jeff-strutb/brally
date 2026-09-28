@@ -21,9 +21,70 @@ extern float D_8031AA50[4][4];
 extern float D_8031AA90[4][4];
 extern float D_8031AAD0[4][4];
 extern float D_8031AB50[4][4];
+float sinf(float x);
+void BrVec3MulAdd(float out[3], float a[3], float b[3], float s);
+void BrVec3Scale(float out[3], float v[3], float s);
+void BrVec3Add(float out[3], float a[3], float b[3]);
+void BrVec3AddTo(float v[3], float d[3]);
+void BrVec3Sub(float out[3], float a[3], float b[3]);
+void BrVec3SubFrom(float v[3], float d[3]);
+void BrVec3Lerp(float out[3], float a[3], float b[3], float t);
+extern int D_8028AB0C;                  /* number of players */
+extern float D_8028AAC4;                /* the view frustum's field of view */
+extern float D_8028AACC;                /* and its depth */
+typedef struct BrFrustum {
+  float eye[3];                         /* 0x00 */
+  float corner[4][3];                   /* 0x0C  pulled three quarters of the way to the eye */
+  float centre[3];                      /* 0x3C  the far plane's centre */
+} BrFrustum;
+extern BrFrustum D_8031B1F0;
+extern float D_8031ABD0[3];             /* half the far plane's width, along the side axis */
+extern float D_8031ABE0[3];             /* half its height, along the up axis */
+extern float D_8031ABF0[3];             /* its centre */
 /* -- end declarations -- */
 
 #define OS_K0_TO_PHYSICAL(x) ((unsigned int)((char *)(x) - 0x80000000))
+
+/* WHAT IT DOES: Work out the race camera's view frustum for culling: the
+ * far plane's centre (far along the camera's first axis) and its four
+ * corners (sin(fov) * far across the side axis, scaled by h / w up the
+ * third, halved for a split screen), each corner then moved three quarters
+ * of the way back toward the eye; the field of view and depth are kept. */
+/* @implements 0x8021B0C4 tgr BrFrustumSet */
+void BrFrustumSet(float m[4][4], float fov, float far, float w, float h)
+{
+  float halfW;
+  float halfH;
+
+  halfW = sinf(fov) * far;
+  halfH = halfW * h / w;
+  if (D_8028AB0C == 2) {
+    halfH *= 0.5f;
+  }
+  D_8031B1F0.eye[0] = m[3][0];
+  D_8031B1F0.eye[1] = m[3][1];
+  D_8031B1F0.eye[2] = m[3][2];
+  BrVec3MulAdd(D_8031ABF0, D_8031B1F0.eye, m[0], far);
+  BrVec3Scale(D_8031ABD0, m[1], halfW);
+  BrVec3Scale(D_8031ABE0, m[2], halfH);
+  D_8031B1F0.centre[0] = D_8031ABF0[0];
+  D_8031B1F0.centre[1] = D_8031ABF0[1];
+  D_8031B1F0.centre[2] = D_8031ABF0[2];
+  BrVec3Add(D_8031B1F0.corner[0], D_8031ABF0, D_8031ABD0);
+  BrVec3AddTo(D_8031B1F0.corner[0], D_8031ABE0);
+  BrVec3Add(D_8031B1F0.corner[3], D_8031ABF0, D_8031ABD0);
+  BrVec3SubFrom(D_8031B1F0.corner[3], D_8031ABE0);
+  BrVec3Sub(D_8031B1F0.corner[1], D_8031ABF0, D_8031ABD0);
+  BrVec3AddTo(D_8031B1F0.corner[1], D_8031ABE0);
+  BrVec3Sub(D_8031B1F0.corner[2], D_8031ABF0, D_8031ABD0);
+  BrVec3SubFrom(D_8031B1F0.corner[2], D_8031ABE0);
+  BrVec3Lerp(D_8031B1F0.corner[1], D_8031B1F0.corner[1], D_8031B1F0.eye, 0.75f);
+  BrVec3Lerp(D_8031B1F0.corner[2], D_8031B1F0.corner[2], D_8031B1F0.eye, 0.75f);
+  BrVec3Lerp(D_8031B1F0.corner[0], D_8031B1F0.corner[0], D_8031B1F0.eye, 0.75f);
+  BrVec3Lerp(D_8031B1F0.corner[3], D_8031B1F0.corner[3], D_8031B1F0.eye, 0.75f);
+  D_8028AACC = far;
+  D_8028AAC4 = fov;
+}
 
 /* WHAT IT DOES: Set the race camera from a camera matrix: look from its
  * position along its first axis with its third as up, and project with the
