@@ -112,6 +112,39 @@ extern unsigned char D_80369DAB;        /* the mirrored view */
 void BrFillPoint(int x, int y, unsigned char c);
 extern unsigned char D_8028DAB8;        /* the two dash colours */
 extern unsigned char D_8028DABC;
+typedef struct BrImage {
+  unsigned char *data;
+  int x4;
+  int x8;
+  unsigned char siz;
+  char pad0d[3];
+  int w;
+  unsigned int h;
+  unsigned int stripH;
+  int x;
+  int y;
+  int drawW;
+  int drawH;
+} BrImage;
+typedef struct BrGlyph {
+  int x0;
+  int x4;
+  unsigned char c;
+  char pad9[3];
+  int off;
+  int w;
+  int kernL;
+  int kernR;
+} BrGlyph;
+void BrImageDrawPart(BrImage *img, int s, int t, int sw, int th, int x, int y, int w, int h,
+                     unsigned char r, unsigned char g, unsigned char b);
+extern unsigned char D_8028CF2C;
+extern BrImage D_8028D2C0;
+extern BrGlyph D_8028D540[50];
+extern unsigned char D_8028DB5C;
+extern unsigned char D_8028DBA8;
+extern unsigned char D_8028DBAC;
+extern BrGlyph *D_80369E68[];
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Take the chosen preset's rectangle, and make every view
@@ -818,6 +851,52 @@ void BrPaintDashLine(int x0, int y0, int x1, int y1)
         BrFillPoint(x, y, c);
       }
       err += dx;
+    }
+  }
+}
+
+/* WHAT IT DOES: Draw the paint shop's text line at (x, y), moved left by
+ * half of 0x8028DBAC and up by the font's height (both in texels, 4 screen
+ * pixels each): each character's glyph (found by code in the 50-glyph table) is drawn 16x16
+ * from the font image scaled to 64x64 in the chosen swatch colour -- with a
+ * drop shadow offset (4, 4) in the shadow colour when shadows are on --
+ * when it overlaps the paint area; glyphs advance by width minus the
+ * smaller of the two facing kerns, plus 2. */
+/* @implements 0x80252C9C tgr BrPaintTextDraw */
+void BrPaintTextDraw(int x, int y)
+{
+  int i;
+  int k;
+  int g;
+  int kern;
+  int adv;
+  int left;
+
+  x -= (D_8028DBAC >> 1) * 4;
+  y -= D_8028D2C0.h * 4;
+  for (i = 0; i < D_8028DBA8; i++) {
+    for (k = 0; k < 50; k++) {
+      if (D_80369E68[i]->c == D_8028D540[k].c) {
+        g = k;
+        break;
+      }
+    }
+    left = D_80369E68[i]->off * 4 + x;
+    if (D_8028DB94.x < D_80369E68[i]->w * 4 + left
+        && left < D_8028DB94.x + D_8028DB94.w
+        && D_8028DB94.y < y + D_8028D2C0.h * 4
+        && y < D_8028DB94.y + D_8028DB94.h) {
+      if (D_8028CF2C != 0) {
+        BrImageDrawPart(&D_8028D2C0, g << 4, 0, 16, 16, x - D_80369E68[i]->off * 4 + 4, y + 4, 64, 64,
+                        D_80369B98[D_8028DB5C].r, D_80369B98[D_8028DB5C].g, D_80369B98[D_8028DB5C].b);
+      }
+      BrImageDrawPart(&D_8028D2C0, g << 4, 0, 16, 16, x - D_80369E68[i]->off * 4, y, 64, 64,
+                      D_80369B98[D_8028DB58].r, D_80369B98[D_8028DB58].g, D_80369B98[D_8028DB58].b);
+    }
+    if (i < D_8028DBA8 - 1) {
+      kern = D_80369E68[i]->kernR < D_80369E68[i + 1]->kernL ? D_80369E68[i]->kernR : D_80369E68[i + 1]->kernL;
+      adv = D_80369E68[i]->w - kern + 2;
+      x += adv * 4;
     }
   }
 }
