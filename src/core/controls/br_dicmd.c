@@ -86,7 +86,18 @@ typedef long (__stdcall *BrDiSetPropFn)(BrDiObj *, uint32_t, const void *);
     ((BrDiSetParamsFn)(((const BrDiEffVtbl *)(const void *)(p)->pVtbl)->pfnSetParameters))((p), (eff), (flags))
 #define BR_DI_SETPROP(p, prop, pdiph) \
     ((BrDiSetPropFn)(((const BrDiDevVtbl *)(const void *)(p)->pVtbl)->pfnSetProperty))((p), (prop), (pdiph))
+/* g_brFfb is the port's gathering of four scattered originals.  The matching
+ * build names the two effect pointers as the separate globals they are
+ * (Glide 0x118EEF04 and 0x118EEF14, config/globals_glide.csv) so each
+ * relocation resolves to its own variable instead of an offset into a struct
+ * the original never had. */
+extern BrDiObj *g_brFfbEffectSpring;   /* 0x118EEF04 */
+extern BrDiObj *g_brFfbEffectSquare;   /* 0x118EEF14 */
+#define BR_FFB_SPRING g_brFfbEffectSpring
+#define BR_FFB_SQUARE g_brFfbEffectSquare
 #else
+#define BR_FFB_SPRING g_brFfb.pEffectSpring
+#define BR_FFB_SQUARE g_brFfb.pEffectSquare
 #define BR_DI_SETPARAMS(p, eff, flags) \
     (BrDiEff(p)->pfnSetParameters((p), (eff), (flags)))
 #define BR_DI_SETPROP(p, prop, pdiph) \
@@ -158,7 +169,7 @@ void BrFfbCommitDuration(void)
     }
     g_brDiEffSquare.dwDuration = (uint32_t)g_br0BD438;
 
-    pEff = g_brFfb.pEffectSquare;
+    pEff = BR_FFB_SQUARE;
     if (pEff == NULL) {
         return;
     }
@@ -179,7 +190,7 @@ void BrFfbSetSpringCoeff(int32_t coeff)
     g_brDiSpringCond[0].lPositiveCoefficient = coeff;
     g_brDiSpringCond[0].lNegativeCoefficient = coeff;
 
-    pEff = g_brFfb.pEffectSpring;
+    pEff = BR_FFB_SPRING;
     if (pEff == NULL) {
         return;
     }
