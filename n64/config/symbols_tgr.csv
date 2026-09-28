@@ -496,3 +496,4 @@ va,name,kind
 80224B7C,BrVec3RotateAxis,func
 8021FF90,BrMatToQuat,func
 80214A88,BrRumbleInsertPrompt,func
+8023DBC0,BrParticleDraw,func

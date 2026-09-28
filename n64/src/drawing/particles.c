@@ -3,6 +3,7 @@
  */
 #include "tgr/common.h"
 #include "tgr/car.h"
+#include "tgr/gbi.h"
 
 /* -- declarations -- */
 /* A particle (0x20 bytes). */
@@ -37,6 +38,13 @@ void func_8023B178(int e);
 void func_8023B418(int e);
 void func_8023C800(int e);
 void func_8023CD60(void);
+int func_8023BB50();
+void func_8023D134(unsigned int param_1,int param_2,unsigned int param_3,unsigned int param_4);
+extern Gfx *D_8028A858;
+extern int D_8028A898;
+extern int D_8028A89C;
+extern int D_8028A8A0;
+extern int D_802A3790;
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Step every live particle one frame: it grows, drifts with
@@ -189,4 +197,75 @@ void BrParticleFrame(void)
       }
     }
   }
+}
+
+/* WHAT IT DOES: Draw the particles: one-cycle mode with the 64x64 I8
+ * particle sprite (0x802A3790) loaded as a texture block, texture filter from
+ * its setting, no LUT or perspective, primitive depth, no dither; for the
+ * race kind that steps the particle pool the live list is drawn in pale blue
+ * (0xE0, 0xE0, 0xFF) through 0x8023D134.  Then perspective, pixel depth, the
+ * two dither settings and the alpha-compare threshold are restored and
+ * 0x8023BB50 runs.  The texture-load commands are written as multi-line
+ * blocks: on one line IDO schedules their two words the other way round. */
+/* @implements 0x8023DBC0 tgr BrParticleDraw */
+void BrParticleDraw(void)
+{
+  gDPPipeSync(D_8028A858++);
+  gDPSetCycleType(D_8028A858++, 0);
+  {
+    Gfx *_g = D_8028A858++;
+
+    _g->words.w0 = 0xbb000001;
+    _g->words.w1 = 0xffffffff;
+  }
+  gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 12, 2, D_8028A898);
+  gDPSetCombine(D_8028A858++, 0xff97ff, 0xff2dfeff);
+  {
+    Gfx *_g = D_8028A858++;
+
+    _g->words.w0 = 0xfd900000;
+    _g->words.w1 = (unsigned int)&D_802A3790;
+  }
+  {
+    Gfx *_g = D_8028A858++;
+
+    _g->words.w0 = 0xf5900000;
+    _g->words.w1 = 0x07018060;
+  }
+  gDPLoadSync(D_8028A858++);
+  {
+    Gfx *_g = D_8028A858++;
+
+    _g->words.w0 = 0xf3000000;
+    _g->words.w1 = 0x077ff100;
+  }
+  gDPPipeSync(D_8028A858++);
+  {
+    Gfx *_g = D_8028A858++;
+
+    _g->words.w0 = 0xf5881000;
+    _g->words.w1 = 0x00018060;
+  }
+  {
+    Gfx *_g = D_8028A858++;
+
+    _g->words.w0 = 0xf2000000;
+    _g->words.w1 = 0x000fc0fc;
+  }
+  gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 14, 2, 0);
+  gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 19, 1, 0);
+  gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_L, 2, 1, 4);
+  gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 6, 2, 0xc0);
+  if (D_8028AA84 != 0) {
+    gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 4, 2, 0x80);
+    gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_L, 3, 29, 0x504b50);
+    func_8023D134(D_8028C834, 0xe0, 0xe0, 0xff);
+  }
+  gDPPipeSync(D_8028A858++);
+  gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 19, 1, 0x80000);
+  gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_L, 2, 1, 0);
+  gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 6, 2, D_8028A8A0);
+  gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 4, 2, D_8028A89C);
+  gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_L, 0, 2, 1);
+  func_8023BB50();
 }
