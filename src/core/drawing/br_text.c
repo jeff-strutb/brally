@@ -38,8 +38,23 @@ BrTextState *BrTextGetState(void)
  * with, and raises the flag that says a colour has been chosen. */
 /* @implements 0x100192A0 d3d BrTextSetColors */
 /* @n64 0x8022F530 located */
+#ifdef BR_MATCHING_BUILD
+/* The two colour triples and the chosen flag are separate globals in the
+ * original (0x100A6C68.. and 0x104ABB4C..), not fields of the port's g_text. */
+extern int DAT_100a6c68, DAT_100a6c6c, DAT_100a6c70;
+extern int DAT_104abb4c, DAT_104abb50, DAT_104abb54, DAT_104abb58;
+#endif
 void BrTextSetColors(int a1, int a2, int a3, int a4, int a5, int a6)
 {
+#ifdef BR_MATCHING_BUILD
+    DAT_100a6c68 = a1;
+    DAT_100a6c6c = a2;
+    DAT_100a6c70 = a3;
+    DAT_104abb4c = 1;
+    DAT_104abb50 = a4;
+    DAT_104abb54 = a5;
+    DAT_104abb58 = a6;
+#else
     g_text.f0A74A8 = a1;
     g_text.f0A74AC = a2;
     g_text.f0A74B0 = a3;
@@ -47,6 +62,7 @@ void BrTextSetColors(int a1, int a2, int a3, int a4, int a5, int a6)
     g_text.f4B0368 = a4;
     g_text.f4B036C = a5;
     g_text.f4B0370 = a6;
+#endif
 }
 
 /* 0x10019300 */
