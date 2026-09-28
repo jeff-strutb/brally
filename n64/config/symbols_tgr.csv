@@ -441,3 +441,4 @@ va,name,kind
 80214BEC,BrRumbleProbe,func
 80200320,BrMusicLoadTrack,func
 8020037C,BrSceneAnimate,func
+80224EA8,BrMat4TransformShort,func
