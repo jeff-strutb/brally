@@ -456,10 +456,8 @@ void BrPaintPlot(int x, int y, unsigned char c)
 
 /* WHAT IT DOES: Fill the decal texels under a screen rectangle (either
  * corner order) with the chosen colour: screen to texel is a quarter, with
- * y turned upside down.
- * RESIDUE (10): the ROM computes the x differences straight into the
- * saved registers that later hold the ordered corners, so s3/s4 are saved
- * before the y sum; ours uses temporaries.  Same instructions otherwise. */
+ * y turned upside down.  Each corner's two conversions share a source line
+ * (IDO orders the copies into the corner registers by line). */
 /* @implements 0x8024F7D4 tgr BrPaintFillRect */
 void BrPaintFillRect(int sx0, int sy0, int sx1, int sy1)
 {
@@ -470,15 +468,12 @@ void BrPaintFillRect(int sx0, int sy0, int sx1, int sy1)
   int t;
   int y;
 
-  sx0 = (sx0 - D_8028DB94.x) >> 2;
-  sy0 = (D_8028DB94.y + D_8028DB94.h - sy0) >> 2;
-  sx1 = (sx1 - D_8028DB94.x) >> 2;
-  x0 = sx0;
-  y1 = (D_8028DB94.y + D_8028DB94.h - sy1) >> 2;
-  x1 = sx1;
-  if (sx1 < sx0) {
-    x0 = sx1;
-    x1 = sx0;
+  x0 = (sx0 - D_8028DB94.x) >> 2; sy0 = (D_8028DB94.y + D_8028DB94.h - sy0) >> 2;
+  x1 = (sx1 - D_8028DB94.x) >> 2; y1 = (D_8028DB94.y + D_8028DB94.h - sy1) >> 2;
+  if (x1 < x0) {
+    t = x0;
+    x0 = x1;
+    x1 = t;
   }
   if (y1 < sy0) {
     t = sy0;
