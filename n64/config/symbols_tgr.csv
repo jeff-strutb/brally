@@ -381,3 +381,4 @@ va,name,kind
 802561E4,BrQsortSwap16,func
 80256228,BrQsortSwap32,func
 80255E80,BrQsort,func
+8025D018,BrTriCubeTest,func
