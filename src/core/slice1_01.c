@@ -28,7 +28,7 @@ int BrChkVerbose = 0;   /* 0x10220CE0 */
  * ending -- hitting the end of the file kills the game rather than being
  * reported back. Used where the data being read is required for the game to
  * carry on at all. */
-/* port-only body; Glide match is src/core/generated/0x100034C0.c */
+/* port-only body; Glide match is src/core/gamedata/br_chkfile.c */
 void *BrChkFRead(void *pDst, size_t size, size_t count, FILE **ppFile)
 {
     if (BrFChkFRead(pDst, size, count, ppFile) == 0) {
@@ -64,7 +64,7 @@ int BrChkFileExists(const char *pPath)
 /* WHAT IT DOES: asks for memory and gives up on the whole game if there is
  * none, naming what it was trying to make room for so the player sees which
  * part of the loading failed. Asking for nothing quietly gets nothing back. */
-/* port-only body; Glide match is src/core/generated/0x100036F0.c */
+/* port-only body; Glide match is src/core/gamedata/br_chkfile.c */
 /* @n64 0x8021A9B4 located */
 void *BrChkAlloc(size_t size, const char *pWhat)
 {
@@ -91,7 +91,7 @@ void *BrChkAlloc(size_t size, const char *pWhat)
  * whole game if that cannot be done. Asking for a size of nothing loses the
  * block that was just handed back, which is a leak in the original and is
  * preserved. */
-/* port-only body; Glide match is src/core/generated/0x10003760.c */
+/* port-only body; Glide match is src/core/gamedata/br_chkfile.c */
 void *BrChkRealloc(void *pMem, size_t size, const char *pWhat)
 {
     void *pNew;
