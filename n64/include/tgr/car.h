@@ -93,11 +93,18 @@ typedef struct BrCar {
     char pad1dd0[0x1DE4 - 0x1DD0];
     float fog;                  /* 0x1DE4  fog amount at the car */
     BrCarCam *cam;              /* 0x1DE8  the camera in use */
-    int x1dec;                  /* 0x1DEC */
+    BrCarCam *cam2;             /* 0x1DEC  the camera it switches back to */
     BrCarCam cams[4];           /* 0x1DF0 */
     char pad1f00[0x1F44 - 0x1F00];
     BrCarCam cam4;              /* 0x1F44 */
-    char pad1f88[0x205C - 0x1F88];
+    char pad1f88[0x1F90 - 0x1F88];
+    float x1f90;                /* 0x1F90 */
+    char pad1f94[0x1FA0 - 0x1F94];
+    BrVec3 camPosA;             /* 0x1FA0  copies of the chase camera's start position */
+    float x1fac;                /* 0x1FAC */
+    char pad1fb0[0x1FB4 - 0x1FB0];
+    BrVec3 camPosB;             /* 0x1FB4 */
+    char pad1fc0[0x205C - 0x1FC0];
     int kind;                   /* 0x205C */
     unsigned char colour[4];    /* 0x2060  body colour r, g, b and a fourth byte */
     char pad2064[4];

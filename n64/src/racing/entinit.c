@@ -61,7 +61,7 @@ void BrCarResetFrames(BrCar *car)
   BrCarSetVel(car, 0.0f, 0.0f, 0.0f);
   car->xf5c = 0;
   car->xf60 = 0;
-  car->x1dec = 0;
+  car->cam2 = 0;
   kind = car->kind;
   memcpy(car->xdf8, D_8028B330[kind].x00, 0x1c);
   car->xe14[0] = D_8028B330[kind].x1c[0];

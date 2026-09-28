@@ -9,6 +9,9 @@ extern float D_8031B1D8[];
 void BrVec3MulAdd(BrVec3 *pOut, BrVec3 *pA, BrVec3 *pB, float s);
 void BrVec3MulAddTo(BrVec3 *pA, BrVec3 *pB, float s);
 void BrVec3AddTo(BrVec3 *pA, BrVec3 *pB);
+void BrVec3SubFrom(BrVec3 *pA, BrVec3 *pB);
+extern int D_8026FF18;                  /* the game mode */
+extern int D_80270788;
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Update the camera placement for one car: an out-of-line
@@ -62,4 +65,39 @@ void BrCarCamPlaceChase(BrCar *car)
   BrVec3MulAddTo((BrVec3 *)car->cams[3].mtx[3], (BrVec3 *)car->mtx0[1], 2.0f);
   BrVec3AddTo((BrVec3 *)car->cams[3].mtx[3], (BrVec3 *)car->mtx0[2]);
   car->xf48 = 2;
+}
+
+/* WHAT IT DOES: Set a car's cameras up for a new race: the chase camera
+ * (the second one in mode 5) is the one in use and the one to return to;
+ * its position starts 4 units up the car's up axis (and, when asked, 10
+ * along its facing), relative to the car; the in-car camera and two saved
+ * copies start there too. */
+/* @implements 0x80221864 tgr BrCarCamInit */
+void BrCarCamInit(BrCar *car)
+{
+  BrVec3 v;
+  float x;
+  float y;
+  float z;
+
+  if (D_8026FF18 == 5) {
+    car->cam = &car->cams[1];
+    car->cam2 = &car->cams[1];
+  } else {
+    car->cam = &car->cams[0];
+    car->cam2 = &car->cams[0];
+  }
+  BrVec3MulAdd((BrVec3 *)car->cams[1].mtx[3], (BrVec3 *)car->mtx0[3], (BrVec3 *)car->mtx0[2], 4.0f);
+  if (D_80270788 != 0) {
+    BrVec3MulAddTo((BrVec3 *)car->cams[1].mtx[3], (BrVec3 *)car->mtx0[0], 10.0f);
+  }
+  BrVec3SubFrom((BrVec3 *)car->cams[1].mtx[3], (BrVec3 *)car->mtx0[0]);
+  x = car->cams[1].mtx[3][0];
+  y = car->cams[1].mtx[3][1];
+  z = car->cams[1].mtx[3][2];
+  car->camPosB.x = car->camPosA.x = car->cams[3].mtx[3][0] = x;
+  car->camPosB.y = car->camPosA.y = car->cams[3].mtx[3][1] = y;
+  car->camPosB.z = car->camPosA.z = car->cams[3].mtx[3][2] = z;
+  car->x1fac = 0.0f;
+  car->x1f90 = 2.0f;
 }
