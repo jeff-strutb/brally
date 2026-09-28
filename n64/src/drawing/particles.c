@@ -23,6 +23,20 @@ extern unsigned short D_8028C83C;
 extern int D_8028B7F4;                  /* cars in the race */
 extern float D_8028AAD8;                /* seconds this frame */
 extern float D_803634D0[3];             /* the wind: every particle drifts with it */
+extern int D_8028AA80;                  /* race-kind flags (BrRaceSetKind) */
+extern int D_8028AA84;
+extern int D_8028AA8C;
+typedef struct BrWeatherObj {           /* 0x78 bytes */
+    char pad00[0x60];
+    int x60;                            /* 0x60  its emitter, 0 for none */
+    char pad64[0x78 - 0x64];
+} BrWeatherObj;
+extern BrWeatherObj D_803239A0[];
+extern int D_8028B7F0;                  /* entries in D_803239A0 */
+void func_8023B178(int e);
+void func_8023B418(int e);
+void func_8023C800(int e);
+void func_8023CD60(void);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Step every live particle one frame: it grows, drifts with
@@ -85,4 +99,45 @@ void BrParticleReset(void)
   D_8028C834 = 0;
   D_8028C838 = 0;
   D_8028C83C = 0;
+}
+
+/* WHAT IT DOES: The particle frame: the pool is emptied on the first call;
+ * then, by race kind, either the live particles are stepped and every
+ * object's emitter runs (0x8023B178), or the other effect steps (0x8023CD60)
+ * and each emitter runs 0x8023C800 -- in both cases followed by 0x8023B418
+ * -- or, for the remaining kinds, only 0x8023B418 runs. */
+/* @implements 0x8023CFC4 tgr BrParticleFrame */
+void BrParticleFrame(void)
+{
+  static int D_8028C840 = 0;
+  int i;
+  BrWeatherObj *o;
+
+  if (D_8028C840 == 0) {
+    BrParticleReset();
+    D_8028C840 = 1;
+  }
+  if (D_8028AA84 != 0) {
+    BrParticleStep();
+    for (i = 0, o = D_803239A0; i < D_8028B7F0; i++, o++) {
+      if (o->x60 != 0) {
+        func_8023B178(o->x60);
+        func_8023B418(o->x60);
+      }
+    }
+  } else if (D_8028AA80 == 0 && D_8028AA8C == 0) {
+    func_8023CD60();
+    for (i = 0, o = D_803239A0; i < D_8028B7F0; i++, o++) {
+      if (o->x60 != 0) {
+        func_8023C800(o->x60);
+        func_8023B418(o->x60);
+      }
+    }
+  } else {
+    for (i = 0, o = D_803239A0; i < D_8028B7F0; i++, o++) {
+      if (o->x60 != 0) {
+        func_8023B418(o->x60);
+      }
+    }
+  }
 }
