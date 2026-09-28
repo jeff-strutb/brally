@@ -117,6 +117,7 @@ class Box:
         self.log = []                           # (frame, kind, digest)
         self.prints = []
         self.pad = Script(script)
+        self.pak_files = []                     # the Controller Pak's notes
         self.stop_reason = None
         self.fault = None
         self.hle = {}
@@ -364,10 +365,22 @@ class Box:
         H[0x80262370] = ('osMotorInit', lambda: self.ret(1))      # PFS_ERR_NOPACK
         H[0x80261F20] = ('osMotorStop', lambda: self.ret(0))
         H[0x80262088] = ('osMotorStart', lambda: self.ret(0))
-        # No Controller Pak is plugged in: every pak call reports PFS_ERR_NOPACK
-        for va in (0x80261CB0, 0x80265CD0, 0x80262540, 0x80262660, 0x802628C0, 0x80262A80,
-                   0x802635DC, 0x802639E0, 0x80263B30, 0x802677E0, 0x80267930, 0x80267C20):
-            H[va] = ('osPfs* (no pak)', lambda: self.ret(1))
+        # The Controller Pak.  By default none is plugged in and every pak call
+        # reports PFS_ERR_NOPACK; a script with a `pak` line gets an empty pak
+        # in port 1, modelled as a note table (0x80262540 is bcmp: it runs for
+        # real).
+        for va, name, fn in ((0x80261CB0, 'osPfsInitPak', self.pfs_init),
+                             (0x80265CD0, 'osPfsInit', self.pfs_init),
+                             (0x80262660, 'osPfsRepairId', self.pfs_ok),
+                             (0x802628C0, 'osPfsFindFile', self.pfs_find),
+                             (0x80262A80, 'osPfsChecker', self.pfs_ok),
+                             (0x802635DC, 'osPfsReadWriteFile', self.pfs_rw),
+                             (0x802639E0, 'osPfsFreeBlocks', self.pfs_free),
+                             (0x80263B30, 'osPfsAllocateFile', self.pfs_alloc),
+                             (0x802677E0, 'osPfsNumFiles', self.pfs_num),
+                             (0x80267930, 'osPfsFileState', self.pfs_state),
+                             (0x80267C20, 'osPfsDeleteFile', self.pfs_delete)):
+            H[va] = (name, fn)
         H[0x80268390] = ('osSetTimer', self.os_set_timer)
         # libultra's float <-> long long helpers.  The VR4300 runs cvt.l/trunc.l
         # with FR=0; QEMU only allows them with FR=1, so these are modelled
@@ -619,8 +632,124 @@ class Box:
         self.ret(0)
 
     def os_pfs_is_plug(self):
-        self.write(self.arg(1), b'\x00')               # no Controller Pak
+        self.write(self.arg(1), b'\x01' if self.pad.pak else b'\x00')
         self.ret(0)
+
+    # ------------------------------------------------ Controller Pak model
+    PAK_BYTES = 123 * 256               # a pak's pages
+    PAK_NOTES = 16
+    PAK_ID = bytes(range(0x40, 0x60))   # the pak's id block (32 bytes)
+
+    def pfs_init(self):
+        if not self.pad.pak:
+            self.ret(1)                                 # PFS_ERR_NOPACK
+            return
+        pfs = self.arg(1)
+        self.w32(pfs, 0)                                # status
+        self.w32(pfs + 4, self.arg(0))                  # queue
+        self.w32(pfs + 8, self.arg(2))                  # channel
+        self.write(pfs + 0x0C, self.PAK_ID)
+        self.ret(0)
+
+    def pfs_ok(self):
+        self.ret(0 if self.pad.pak else 1)
+
+    def pfs_key(self, company, game, name, ext):
+        return (company & 0xffff, game, bytes(self.read(name, 16)), bytes(self.read(ext, 4)))
+
+    def pfs_find(self):
+        if not self.pad.pak:
+            self.ret(1)
+            return
+        sp = self.reg('sp')
+        key = self.pfs_key(self.arg(1), self.arg(2), self.arg(3), self.r32(sp + 0x10))
+        for n, f in enumerate(self.pak_files):
+            if f and f['key'] == key:
+                self.w32(self.r32(sp + 0x14), n)
+                self.ret(0)
+                return
+        self.ret(5)                                     # PFS_ERR_INVALID
+
+    def pfs_free(self):
+        if not self.pad.pak:
+            self.ret(1)
+            return
+        used = sum(len(f['data']) for f in self.pak_files if f)
+        self.w32(self.arg(1), self.PAK_BYTES - used)
+        self.ret(0)
+
+    def pfs_alloc(self):
+        if not self.pad.pak:
+            self.ret(1)
+            return
+        sp = self.reg('sp')
+        key = self.pfs_key(self.arg(1), self.arg(2), self.arg(3), self.r32(sp + 0x10))
+        size = self.r32(sp + 0x14)
+        used = sum(len(f['data']) for f in self.pak_files if f)
+        free = [n for n, f in enumerate(self.pak_files) if f is None]
+        if used + size > self.PAK_BYTES or (not free and len(self.pak_files) >= self.PAK_NOTES):
+            self.ret(8)                                 # PFS_DATA_FULL
+            return
+        n = free[0] if free else len(self.pak_files)
+        f = dict(key=key, data=bytearray((size + 255) & ~255))
+        if free:
+            self.pak_files[n] = f
+        else:
+            self.pak_files.append(f)
+        self.w32(self.r32(sp + 0x18), n)
+        self.ret(0)
+
+    def pfs_rw(self):
+        if not self.pad.pak:
+            self.ret(1)
+            return
+        sp = self.reg('sp')
+        n, flag, off = self.arg(1), self.arg(2) & 0xff, self.arg(3)
+        size, buf = self.r32(sp + 0x10), self.r32(sp + 0x14)
+        f = self.pak_files[n] if n < len(self.pak_files) else None
+        if f is None or off + size > len(f['data']):
+            self.ret(5)
+            return
+        if flag == 0:
+            self.write(buf, bytes(f['data'][off:off + size]))
+        else:
+            f['data'][off:off + size] = self.read(buf, size)
+        self.ret(0)
+
+    def pfs_num(self):
+        if not self.pad.pak:
+            self.ret(1)
+            return
+        self.w32(self.arg(1), self.PAK_NOTES)
+        self.w32(self.arg(2), sum(1 for f in self.pak_files if f))
+        self.ret(0)
+
+    def pfs_state(self):
+        if not self.pad.pak:
+            self.ret(1)
+            return
+        n, out = self.arg(1), self.arg(2)
+        f = self.pak_files[n] if n < len(self.pak_files) else None
+        if f is None:
+            self.ret(5)
+            return
+        company, game, name, ext = f['key']
+        # OSPfsState: file_size, game_code, company_code, ext_name[4], game_name[16]
+        self.write(out, struct.pack('>IIH', len(f['data']), game, company) + ext + name + b'\0\0')
+        self.ret(0)
+
+    def pfs_delete(self):
+        if not self.pad.pak:
+            self.ret(1)
+            return
+        sp = self.reg('sp')
+        key = self.pfs_key(self.arg(1), self.arg(2), self.arg(3), self.r32(sp + 0x10))
+        for n, f in enumerate(self.pak_files):
+            if f and f['key'] == key:
+                self.pak_files[n] = None
+                self.ret(0)
+                return
+        self.ret(5)
 
     def os_cont_start_read(self):
         self.pending.append((self.count, 'event', EV_SI, None))
@@ -743,10 +872,14 @@ class Script:
 
     def __init__(self, path):
         self.events = []
+        self.pak = False                        # a `pak` line: a Controller Pak in port 1
         if path:
             for line in open(path):
                 line = line.split('#')[0].split()
                 if not line:
+                    continue
+                if line[0] == 'pak':
+                    self.pak = True
                     continue
                 f = int(line[0])
                 b = 0
