@@ -26,7 +26,6 @@ extern int D_8025CDB4;
 extern int D_8025CDBC;
 int func_8025C2C8(float *tri);
 int BrPolyIntersectsCube(float verts[3][3], float polynormal[3]);
-int BrObbSegmentHits();
 #define DOT3(a, b) ((a)[0] * (b)[0] + (a)[1] * (b)[1] + (a)[2] * (b)[2])
 #define SIGN_NONZERO(x) ((x) < 0 ? -1 : 1)
 #define IN_CLOSED_INTERVAL(a, x, b) (((x) - (a)) * ((x) - (b)) <= 0)
@@ -34,6 +33,8 @@ int BrObbSegmentHits();
 #define MAXINDEX2(a) ((a)[0] > (a)[1] ? 0 : 1)
 #define MAXINDEX3(a) ((a)[0] > (a)[2] ? MAXINDEX2(a) : 1 + MAXINDEX2((a) + 1))
 #define seg_contains_point(a, b, x) (((b) > (x)) - ((a) > (x)))
+#define VMV3(r, a, b) ((r)[0] = (a)[0] - (b)[0], (r)[1] = (a)[1] - (b)[1], (r)[2] = (a)[2] - (b)[2])
+#define SQR(x) ((x) * (x))
 #define SXV3(result, s, v) ((result)[0] = (s) * (v)[0], (result)[1] = (s) * (v)[1], (result)[2] = (s) * (v)[2])
 /* -- end declarations -- */
 
@@ -79,71 +80,44 @@ int BrPolyContainsPoint3d(float verts[][3], float polynormal[3], float point[3])
   return count;
 }
 
-/* WHAT IT DOES: Tell whether a segment crosses a unit box: rejects it when
- * both ends lie beyond the same face, then tests the crossings on each
- * axis. */
-/* @t4-pass 0x8025CBF8 1 2026-09-26 compiles 17 best 127 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8025CBF8 2 2026-09-26 compiles 16 best 127 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8025CBF8 3 2026-09-26 compiles 17 best 127 moved 0  (n64/tools/n64permute.py) */
-/* @implements 0x8025CBF8 tgr BrObbSegmentHits */
-int BrObbSegmentHits(float *param_1,float *param_2)
+/* WHAT IT DOES: Graphics Gems III (Voorhies) segment_intersects_cube: does
+ * the segment v0-v1 pass through the unit cube at the origin?  Reject it
+ * when it lies wholly beyond a face pair along any axis, then require it to
+ * cross each of the three rhombus-shaped shadows the cube casts along the
+ * segment's direction. */
+/* @implements 0x8025CBF8 tgr BrSegIntersectsCube */
+int BrSegIntersectsCube(float v0[3], float v1[3])
 {
-  float fVar1;
-  float *pfVar2;
-  int iVar3;
-  int *piVar4;
-  int iVar5;
-  float *pfVar6;
-  float fVar7;
-  int iVar8;
-  float local_24 [3];
-  int local_18 [6];
-  
-  pfVar2 = local_24;
-  local_24[0] = *param_2 - *param_1;
-  piVar4 = local_18;
-  local_24[1] = param_2[1] - param_1[1];
-  local_24[2] = param_2[2] - param_1[2];
-  do {
-    if (*pfVar2 < 0.0) {
-      *piVar4 = -1;
-    }
-    else {
-      *piVar4 = 1;
-    }
-    piVar4 = piVar4 + 1;
-    pfVar2 = pfVar2 + 1;
-  } while (piVar4 < local_18 + 3);
-  iVar3 = 0;
-  piVar4 = local_18;
-  pfVar2 = param_1;
-  while( 1 ) {
-    iVar5 = *piVar4;
-    piVar4 = piVar4 + 1;
-    pfVar6 = (float *)((int)param_2 + iVar3);
-    iVar3 = iVar3 + 4;
-    if (0.5 < (float)iVar5 * *pfVar2) {
-      return 0;
-    }
-    if ((float)iVar5 * *pfVar6 < -0.5) break;
-    pfVar2 = pfVar2 + 1;
-    if (local_18 + 3 <= piVar4) {
-      iVar3 = 0;
-      do {
-        iVar5 = (iVar3 + 2) % 3;
-        iVar3 = iVar3 + 1;
-        iVar8 = iVar3 % 3;
-        fVar7 = local_24[iVar5] * param_1[iVar8] - param_1[iVar5] * local_24[iVar8];
-        fVar1 = ((float)local_18[iVar5] * local_24[iVar8] + local_24[iVar5] * (float)local_18[iVar8]
-                ) * 0.5;
-        if (fVar1 * fVar1 < fVar7 * fVar7) {
-          return 0;
-        }
-      } while (iVar3 != 3);
-      return 1;
-    }
+  int i, iplus1, iplus2, edgevec_signs[3];
+  float edgevec[3];
+
+  VMV3(edgevec, v1, v0);
+
+  for (i = 0; i < 3; i++)
+    edgevec_signs[i] = SIGN_NONZERO(edgevec[i]);
+
+  for (i = 0; i < 3; i++) {
+    if (v0[i] * edgevec_signs[i] > .5) return 0;
+    if (v1[i] * edgevec_signs[i] < -.5) return 0;
   }
-  return 0;
+
+  for (i = 0; i < 3; i++) {
+    float rhomb_normal_dot_v0, rhomb_normal_dot_cubedge;
+
+    iplus1 = (i + 1) % 3;
+    iplus2 = (i + 2) % 3;
+
+    rhomb_normal_dot_v0 = edgevec[iplus2] * v0[iplus1]
+                        - edgevec[iplus1] * v0[iplus2];
+
+    rhomb_normal_dot_cubedge = .5 *
+                            (edgevec[iplus2] * edgevec_signs[iplus1] +
+                             edgevec[iplus1] * edgevec_signs[iplus2]);
+
+    if (SQR(rhomb_normal_dot_v0) > SQR(rhomb_normal_dot_cubedge))
+      return 0;
+  }
+  return 1;
 }
 
 /* WHAT IT DOES: Graphics Gems III (Voorhies) polygon_intersects_cube for a
@@ -158,7 +132,7 @@ int BrPolyIntersectsCube(float verts[3][3], float polynormal[3])
   float p[3], t;
 
   for (i = 0; i < 3; ++i)
-    if (BrObbSegmentHits(verts[i], verts[(i + 1) % 3]))
+    if (BrSegIntersectsCube(verts[i], verts[(i + 1) % 3]))
       return 1;
 
   for (i = 0; i < 3; i++) best_diagonal[i] = SIGN_NONZERO(polynormal[i]);
