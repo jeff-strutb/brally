@@ -262,6 +262,7 @@ va,name,kind
 8022B404,BrSndNearestInvalidate,func
 8022B428,BrSndNearestReset,func
 8022B494,BrSndNearestOffer,func
+8022B534,BrSndNearestCommit,func
 8022B954,BrSndNearestOfferTrack,func
 8022BA10,BrSndNearestOfferDefault,func
 8022BA98,BrStub8022BA98,func
