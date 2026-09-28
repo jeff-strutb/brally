@@ -430,7 +430,7 @@ va,name,kind
 8025BBA4,BrStub8025BBA4,func
 8025C24C,BrCrListPush,func
 8025C27C,BrCrListPrintCount,func
-8025C8DC,BrObbFaceClip,func
+8025C8DC,BrPolyContainsPoint3d,func
 8025CBF8,BrObbSegmentHits,func
 8025D018,BrTriCubeTest,func
 8025D35C,BrStub8025D35C,func
