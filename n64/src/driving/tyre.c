@@ -19,11 +19,16 @@ typedef struct BrRbBody {       /* a rigid body with four attached wheels */
   struct BrRbBody *sub[4];      /* 0x04 */
   char pad14[0x18 - 0x14];
   BrTyreLoad *loads;            /* 0x18  one per wheel, linked */
-  char pad1c[0x1b4 - 0x1c];
+  char pad1c[0x80 - 0x1c];
+  float x80;                    /* 0x80  on a wheel: x1d8 held to [-0.4, 0] */
+  char pad84[0x1b4 - 0x84];
   int x1b4;                     /* 0x1B4  on a wheel: it is on the ground */
   char pad1b8[0x1bc - 0x1b8];
   float x1bc;                   /* 0x1BC  load per unit of upward speed */
+  char pad1c0[0x1d8 - 0x1c0];
+  float x1d8;                   /* 0x1D8  on a wheel: minus 0x8025E96C's answer */
 } BrRbBody;
+float func_8025E96C(BrRbBody *b, BrRbBody *w);
 void BrRbVelAtFlatPoint(float out[3], BrRbBody *b, BrRbBody *at);
 /* -- end declarations -- */
 
@@ -106,5 +111,48 @@ void BrTyreLoads(BrRbBody *b)
     }
     w->load = load;
     w = w->next;
+  }
+}
+
+/* WHAT IT DOES: For each of the body's four wheels, take the negated
+ * result of 0x8025E96C (asked with the body and that wheel), keep it at the
+ * wheel's 0x1D8, and keep it held to [-0.4, 0] at the wheel's 0x80.  The
+ * limits are double locals, set once before the loop. */
+/* @implements 0x8025EC7C tgr BrTyreDepthAll */
+void BrTyreDepthAll(BrRbBody *b)
+{
+  int i;
+  double hi;
+  BrRbBody *w;
+  double lo;
+  float f;
+
+  hi = 0.0;
+  lo = -0.4;
+  for (i = 0; i < 4; i++) {
+    switch (i) {
+    case 0:
+      w = b->sub[0];
+      break;
+    case 1:
+      w = b->sub[1];
+      break;
+    case 2:
+      w = b->sub[2];
+      break;
+    case 3:
+      w = b->sub[3];
+      break;
+    }
+    f = -func_8025E96C(b, w);
+    w->x1d8 = f;
+    if (f > hi) {
+      f = 0.0f;
+    }
+    if (f < lo) {
+      w->x80 = -0.4f;
+    } else {
+      w->x80 = f;
+    }
   }
 }
