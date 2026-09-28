@@ -2254,7 +2254,7 @@
 <rect x="1206.6" y="880.1" width="13.6" height="9.1" fill="#3fb950"><title>BrMat3Skew  0x1006DC30  59B  [core/geometry/br_mat3]</title></rect>
 <rect x="1206.6" y="889.8" width="13.6" height="8.1" fill="#3fb950"><title>BrMat4ToMat3Transposed  0x1006DCB0  53B  [core/geometry/br_mat3]</title></rect>
 <rect x="1220.8" y="880.1" width="5.2" height="17.8" fill="#3fb950"><title>BrMat4ToMat3  0x1006DCF0  46B  [core/geometry/br_mat3]</title></rect>
-<rect x="1229.7" y="529.0" width="21.3" height="32.2" fill="#d29922"><title>FUN_1000c9e0  0x1000C9E0  308B  84 diff bytes  [core/drawing/br_textmode]</title></rect>
+<rect x="1229.7" y="529.0" width="21.3" height="32.2" fill="#d29922"><title>FUN_1000c9e0  0x1000C9E0  308B  12 diff bytes  [core/drawing/br_textmode]</title></rect>
 <rect x="1251.6" y="529.0" width="13.0" height="15.9" fill="#58a6ff"><title>BrViewBuffersRebase  0x1000CB20  96B  [core/drawing/br_textmode]</title></rect>
 <rect x="1251.6" y="545.5" width="6.3" height="9.2" fill="#3fb950"><title>BrClearTables_1000F620  0x1000CB80  29B  [core/drawing/br_textmode]</title></rect>
 <rect x="1258.5" y="545.5" width="6.1" height="9.2" fill="#3fb950"><title>BrNodeChainReset_1000F460  0x1000C9C0  28B  [core/drawing/br_textmode]</title></rect>
