@@ -3,14 +3,6 @@
  * Glide 0x1006D410 / 0x1006D4B0 sit together, away from the 0x100343xx
  * vector cluster.  A TU that also contains Cross/Dot/Scale schedules the
  * scale-out as three fld-st copies; this file alone reproduces orig. */
-#include "br_vec.h"
-
-#include <math.h>
-
-#ifdef BR_MATCHING_BUILD
-extern float BrSqrtF(float x);   /* 0x10002570 -- fld [esp+4]; fsqrt; ret */
-#endif
-
 /* WHAT IT DOES: combines two orientation quaternions (w, x, y, z order)
  * into their product, one quaternion for both rotations together. */
 /* @implements 0x1006D2E0 glide BrQuatMul */
@@ -18,10 +10,14 @@ extern float BrSqrtF(float x);   /* 0x10002570 -- fld [esp+4]; fsqrt; ret */
  * each in index order; the rows are written out[2], out[1], out[0], out[3],
  * and out[3] goes through its own pointer -- that pointer store is what gives
  * the original's accumulator stack layout and exact size.
- * RESIDUE (T2, 14 B, 290/290): two accumulators trade x87 slots (faddp
- * st(2)/st(7)) and the four stores leave in statement order where the
- * original stores out[3] first.  Inert: 500 declaration orders, all 24 row
- * orders x 16 pointer/index store masks, the pointer's spelling/position. */
+ * FILE POSITION (2026-09-27): above the file's #includes.  Below them the
+ * header declarations shift VC5's accumulator slots (faddp st(2)/st(7),
+ * 290 B); with nothing ahead of it the whole body matches the original but
+ * the stores.
+ * RESIDUE (288/290): the four stores leave in statement order where the
+ * original stores out[3] first.  Inert (in this position): all 24 row
+ * orders x 16 pointer/index store masks, extern-int pads 64..1024 as C and
+ * C++, /TP; <windows.h> ahead of it is worse. */
 void BrQuatMul(float *pOut, const float *pA, const float *pB)
 {
     float *pO3 = pOut + 3;
@@ -38,6 +34,15 @@ void BrQuatMul(float *pOut, const float *pA, const float *pB)
     pOut[0] = a0 * b0 - a1 * b1 - a2 * b2 - a3 * b3;
     pO3[0] = a3 * b0 - a2 * b1 + a1 * b2 + a0 * b3;
 }
+
+#include "br_vec.h"
+
+#include <math.h>
+
+#ifdef BR_MATCHING_BUILD
+extern float BrSqrtF(float x);   /* 0x10002570 -- fld [esp+4]; fsqrt; ret */
+#endif
+
 
 /* WHAT IT DOES: shrink or stretch a vector IN PLACE so it is exactly one unit
  * long, keeping the direction. That is what turns an arbitrary difference
