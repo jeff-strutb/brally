@@ -1,6 +1,7 @@
 /* ctlai.c -- the computer drivers
  */
 #include "tgr/common.h"
+#include "tgr/vec.h"
 
 /* -- declarations -- */
 void func_8022762C(int ctl);
@@ -27,6 +28,25 @@ typedef struct BrAiCar {        /* the AI's view of a car record */
   short x19d0[0x90][3];         /* 0x19D0 */
   short x1d30[36];              /* 0x1D30 */
 } BrAiCar;
+typedef struct BrPathPt {       /* a point on a path segment (0x28 bytes) */
+  BrVec3 pos;                   /* 0x00 */
+  char pad0c[0x18 - 0xc];
+  float dist;                   /* 0x18  distance along the track */
+  char pad1c[0x28 - 0x1c];
+} BrPathPt;
+typedef struct BrPathSeg {      /* a path segment */
+  struct BrPathSeg *next;       /* 0x00 */
+  struct BrPathSeg *alt;        /* 0x04  taken when this one is closed */
+  char pad08[0x14 - 0x8];
+  unsigned short count;         /* 0x14  points */
+  unsigned short flags;         /* 0x16  bit 0: closed */
+  char pad18[0x4c - 0x18];
+  BrPathPt pt[1];               /* 0x4C */
+} BrPathSeg;
+extern BrVec3 D_8031B750;               /* the point found by BrPathWalk */
+extern BrPathSeg *D_8028B824;           /* and its segment */
+extern int D_8028B828;                  /* and its point */
+void BrVec3Lerp(BrVec3 *pOut, BrVec3 *pA, BrVec3 *pB, float t);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Drive one computer-controlled car for this frame: the
@@ -114,3 +134,46 @@ void BrAiInputClear(short *car)
   car[0x1046] = 0;
 }
 
+
+/* WHAT IT DOES: Walk a distance d along the track path from point i of a
+ * segment, part-way (frac) through its first span: closed segments are
+ * bypassed through their alternates, and where the distance runs out the
+ * position is interpolated into D_8031B750, with the segment and point
+ * kept.
+ * RESIDUE (77): the same instructions, but our IDO hoists the 1.0 for frac
+ * to the entry (lui/mtc1 once, mov.s in the loop) where the ROM builds it
+ * inside the loop; everything after shifts by one slot.  Literal
+ * spellings and goto/while loop shapes leave it. */
+/* @implements 0x802290C4 tgr BrPathWalk */
+void BrPathWalk(BrPathSeg *seg, int i, float frac, float d)
+{
+  float len;
+  BrPathPt *p;                    /* unused: with spare, the ROM's frame */
+  float spare[2];
+
+  for (;;) {
+    if (seg != 0 && (seg->flags & 1)) {
+      do {
+        seg = seg->alt;
+      } while (seg != 0 && (seg->flags & 1));
+    }
+    if (seg == 0) {
+      return;
+    }
+    for (; i < seg->count; i++) {
+      len = (seg->pt[i].dist - seg->pt[i + 1].dist) * frac;
+      if (len < d) {
+        frac = 1.0f;
+        d -= len;
+      } else {
+        BrVec3Lerp(&D_8031B750, &seg->pt[i].pos, &seg->pt[i + 1].pos, frac);
+        BrVec3Lerp(&D_8031B750, &seg->pt[i + 1].pos, &D_8031B750, d / len);
+        D_8028B824 = seg;
+        D_8028B828 = i;
+        return;
+      }
+    }
+    seg = seg->next;
+    i = 0;
+  }
+}

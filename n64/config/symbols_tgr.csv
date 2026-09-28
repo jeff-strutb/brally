@@ -493,3 +493,4 @@ va,name,kind
 80225A40,BrTriContainsPointEps,func
 8022021C,BrCarRotate,func
 80220E84,BrCarCamTargetStep,func
+802290C4,BrPathWalk,func
