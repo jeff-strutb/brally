@@ -8,6 +8,23 @@ extern unsigned short *D_80025C24;     /* per 64x64 grid cell: first entry (the 
 extern unsigned short *D_80025C68;     /* the second queue table */
 /* -- end declarations -- */
 
+/* WHAT IT DOES: BrGridCellRange for a world position: the grid cell under
+ * (x, y) -- 32 units a cell, 0 to 2048 on each axis -- and the range of
+ * entries it owns (count high, first entry low); outside the grid, 0. */
+/* @implements 0x8021E620 tgr BrGridCellRangeAt */
+unsigned int BrGridCellRangeAt(float x, float y)
+{
+  unsigned short i;
+  int first;
+
+  if (x < 0.0f || x >= 2048.0f || y < 0.0f || y >= 2048.0f) {
+    return 0;
+  }
+  i = (unsigned char)(x / 32.0f) + (unsigned char)(y / 32.0f) * 64;
+  first = D_80025C24[i];
+  return (D_80025C24[(unsigned short)(i + 1)] - first) << 16 | first;
+}
+
 /* WHAT IT DOES: For a cell of the 64 by 64 grid, the range of entries it
  * owns: the count in the high half and the first entry in the low half;
  * outside the grid, 0. */
