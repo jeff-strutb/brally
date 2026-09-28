@@ -8,6 +8,16 @@
 #include "tgr/season.h"
 #include "tgr/vec.h"
 
+/* A rigid-body state (0x44 bytes): the car keeps three (current, and two
+ * copies the integrator steps between). */
+typedef struct BrRbState {
+    BrVec3 pos;                 /* 0x00 */
+    BrVec3 vel;                 /* 0x0C */
+    float q[4];                 /* 0x18  orientation */
+    BrVec3 angVel;              /* 0x28 */
+    char pad34[0x10];
+} BrRbState;
+
 /* A car's camera: its matrix and field of view (0x44 bytes). */
 typedef struct BrCarCam {
     float mtx[4][4];
@@ -28,13 +38,13 @@ typedef struct BrCar {
     float mtx0[4][4];           /* 0x000  body matrix */
     float wheelMtx[4][4][4];    /* 0x040  one per wheel: the body's rotation, the wheel's position */
     int slot;                   /* 0x140  index in the car array */
-    char pad144[0x1CC - 0x144];
-    BrVec3 pos1cc;              /* 0x1CC  position (four copies set together) */
-    char pad1d8[0x268 - 0x1D8];
-    BrVec3 pos268;              /* 0x268 */
-    char pad274[0x2AC - 0x274];
-    BrVec3 pos2ac;              /* 0x2AC */
-    char pad2b8[0x324 - 0x2B8];
+    char pad144[0x1C0 - 0x144];
+    BrRbState st;               /* 0x1C0  the body's state */
+    float stMtx[4][4];          /* 0x204  st's orientation as a matrix */
+    char pad244[0x25C - 0x244];
+    BrRbState stA;              /* 0x25C */
+    BrRbState stB;              /* 0x2A0 */
+    char pad2e4[0x324 - 0x2E4];
     float x324[4];              /* 0x324  from the kind table */
     char pad334[0xDF8 - 0x334];
     char xdf8[0x1c];            /* 0xDF8  from the kind table */
@@ -53,8 +63,10 @@ typedef struct BrCar {
     int xf5c;                   /* 0xF5C */
     int xf60;                   /* 0xF60 */
     char padf64[0xFD8 - 0xF64];
-    BrVec3 posfd8;              /* 0xFD8 */
-    char padfe4[0x1D88 - 0xFE4];
+    BrVec3 velfd8;              /* 0xFD8  another velocity copy */
+    char padfe4[0x1D78 - 0xFE4];
+    BrVec3 pos1d78;             /* 0x1D78  another position copy */
+    char pad1d84[0x1D88 - 0x1D84];
     int mtx[16];                /* 0x1D88 */
     char pad1dc8[0x1DE8 - 0x1DC8];
     BrCarCam *cam;              /* 0x1DE8  the camera in use */

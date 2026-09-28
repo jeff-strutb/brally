@@ -93,7 +93,7 @@ va,name,kind
 8021EB30,BrMat4ResetW,func
 8021F1F0,BrWrongWayCheck,func
 80220150,BrCarPlaceAt,func
-802201C8,BrCarSetPos,func
+802201C8,BrCarSetVel,func
 80220398,BrEntRefreshColour,func
 802203F0,BrEntSetRecord,func
 80220438,BrEntLoadRecord,func
@@ -352,3 +352,5 @@ va,name,kind
 8022B428,BrSndNearestReset,func
 8022B954,BrSndNearestOfferTrack,func
 8022BA10,BrSndNearestOfferDefault,func
+8021FE04,BrCarSetPos,func
+80220358,BrCarSetAngVel,func

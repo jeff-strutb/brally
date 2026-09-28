@@ -13,8 +13,9 @@ void BrPadInit(unsigned int *param_1);
 extern unsigned int D_8036A8E0[4][0x57];
 void guMtxIdent(int *m);
 void BrMat4ResetW(float m[4][4]);
-void BrCarSetPos(BrCar *car, float x, float y, float z);
+void BrCarSetVel(BrCar *car, float x, float y, float z);
 void *memcpy(void *dst, void *src, unsigned int n);
+void BrQuatToMat(float m[4][4], BrRbState *st);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Reset every car slot for a new session: runs the per-car
@@ -57,7 +58,7 @@ void BrCarResetFrames(BrCar *car)
   BrMat4ResetW(car->wheelMtx[1]);
   BrMat4ResetW(car->wheelMtx[2]);
   BrMat4ResetW(car->wheelMtx[3]);
-  BrCarSetPos(car, 0.0f, 0.0f, 0.0f);
+  BrCarSetVel(car, 0.0f, 0.0f, 0.0f);
   car->xf5c = 0;
   car->xf60 = 0;
   car->x1dec = 0;
@@ -167,24 +168,65 @@ void BrCarReset(BrCar *car)
   car->xe58 = 0;
 }
 
-/* WHAT IT DOES: Put a car at (x, y, z): the four position vectors it keeps
- * are all set to the same point. */
-/* @implements 0x802201C8 tgr BrCarSetPos */
+/* WHAT IT DOES: Put a car at (x, y, z): the body matrix's translation, the
+ * spare copy at 0x1D78 and the three rigid-body states, then rebuild the
+ * state's matrix.  Same store order as the PC twin BrEntSetPos
+ * (br_entpos.c). */
+/* @implements 0x8021FE04 tgr BrCarSetPos */
 void BrCarSetPos(BrCar *car, float x, float y, float z)
+{
+  car->mtx0[3][0] = x;
+  car->mtx0[3][1] = y;
+  car->mtx0[3][2] = z;
+  car->pos1d78.x = x;
+  car->pos1d78.y = y;
+  car->pos1d78.z = z;
+  car->st.pos.x = x;
+  car->st.pos.y = y;
+  car->st.pos.z = z;
+  car->stB.pos.x = x;
+  car->stB.pos.y = y;
+  car->stB.pos.z = z;
+  car->stA.pos.x = x;
+  car->stA.pos.y = y;
+  car->stA.pos.z = z;
+  BrQuatToMat(car->stMtx, &car->st);
+}
+
+/* WHAT IT DOES: Set a car's velocity: its three rigid-body states and the
+ * spare copy at 0xFD8 all get (x, y, z). */
+/* @implements 0x802201C8 tgr BrCarSetVel */
+void BrCarSetVel(BrCar *car, float x, float y, float z)
 {
   BrVec3 *v;
 
-  car->pos1cc.x = x;
-  car->pos1cc.y = y;
-  car->pos1cc.z = z;
-  car->pos2ac.x = x;
-  car->pos2ac.y = y;
-  car->pos2ac.z = z;
-  car->pos268.x = x;
-  car->pos268.y = y;
-  car->pos268.z = z;
-  v = &car->posfd8;
+  car->st.vel.x = x;
+  car->st.vel.y = y;
+  car->st.vel.z = z;
+  car->stB.vel.x = x;
+  car->stB.vel.y = y;
+  car->stB.vel.z = z;
+  car->stA.vel.x = x;
+  car->stA.vel.y = y;
+  car->stA.vel.z = z;
+  v = &car->velfd8;
   v->x = x;
   v->y = y;
   v->z = z;
+}
+
+/* WHAT IT DOES: Set a car's angular velocity in all three rigid-body
+ * states.  The PC twin is BrEntSetAngVel (br_entstate.c). */
+/* @implements 0x80220358 tgr BrCarSetAngVel */
+void BrCarSetAngVel(BrCar *car, float x, float y, float z)
+{
+  car->st.angVel.x = x;
+  car->st.angVel.y = y;
+  car->st.angVel.z = z;
+  car->stB.angVel.x = x;
+  car->stB.angVel.y = y;
+  car->stB.angVel.z = z;
+  car->stA.angVel.x = x;
+  car->stA.angVel.y = y;
+  car->stA.angVel.z = z;
 }
