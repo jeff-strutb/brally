@@ -527,6 +527,69 @@ void BrPaintFillRect(int sx0, int sy0, int sx1, int sy1)
   }
 }
 
+/* WHAT IT DOES: Draw a rectangle outline on the decal between two screen
+ * corners (either order), in the chosen colour: one texel wide when the
+ * brush is size 0 or 1, else a band as wide as the brush centred on each
+ * edge. */
+/* @implements 0x8024F8CC tgr BrPaintFrameRect */
+void BrPaintFrameRect(int sx0, int sy0, int sx1, int sy1)
+{
+  int x1;
+  int y1;
+  int r;
+  int x0;
+  int t;
+
+  x0 = (sx0 - D_8028DB94.x) >> 2; sy0 = (D_8028DB94.y + D_8028DB94.h - sy0) >> 2;
+  x1 = (sx1 - D_8028DB94.x) >> 2; y1 = (D_8028DB94.y + D_8028DB94.h - sy1) >> 2;
+  if (x1 < x0) {
+    t = x0;
+    x0 = x1;
+    x1 = t;
+  }
+  if (y1 < sy0) {
+    t = sy0;
+    sy0 = y1;
+    y1 = t;
+  }
+  r = D_8028D4A0[D_8028DAC0].w >> 1;
+  if (r == 0) {
+    for (sy1 = sy0; sy1 < y1; sy1++) {
+      BrPaintPlot(x0, sy1, D_8028DB58);
+    }
+    for (sx1 = x0; sx1 <= x1; sx1++) {
+      BrPaintPlot(sx1, y1, D_8028DB58);
+    }
+    for (sy1 = sy0; sy1 < y1; sy1++) {
+      BrPaintPlot(x1, sy1, D_8028DB58);
+    }
+    for (sx1 = x0; sx1 < x1; sx1++) {
+      BrPaintPlot(sx1, sy0, D_8028DB58);
+    }
+  } else {
+    for (sy1 = sy0 - r; sy1 < y1 + r; sy1++) {
+      for (sx1 = x0 - r; sx1 < x0 + r; sx1++) {
+        BrPaintPlot(sx1, sy1, D_8028DB58);
+      }
+    }
+    for (sy1 = y1 - r; sy1 < y1 + r; sy1++) {
+      for (sx1 = x0; sx1 < x1; sx1++) {
+        BrPaintPlot(sx1, sy1, D_8028DB58);
+      }
+    }
+    for (sy1 = sy0 - r; sy1 < y1 + r; sy1++) {
+      for (sx1 = x1 - r; sx1 < x1 + r; sx1++) {
+        BrPaintPlot(sx1, sy1, D_8028DB58);
+      }
+    }
+    for (sy1 = sy0 - r; sy1 < sy0 + r; sy1++) {
+      for (sx1 = x0; sx1 < x1; sx1++) {
+        BrPaintPlot(sx1, sy1, D_8028DB58);
+      }
+    }
+  }
+}
+
 /* WHAT IT DOES: Paint a filled disc of radius r in the chosen colour
  * centred on (x, y) -- in texels, or in screen pixels over the paint area
  * when asked (a quarter scale, y flipped) -- as horizontal spans from a
