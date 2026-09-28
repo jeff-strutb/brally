@@ -422,3 +422,5 @@ va,name,kind
 8024D844,BrPaintPeek,func
 802006C8,BrRaceCueLayout,func
 802252EC,BrMat4Transpose,func
+802533F4,BrPaintPresetApply,func
+8024D7D8,BrPaintGet,func

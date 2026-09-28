@@ -66,6 +66,10 @@ extern BrCar *D_8028AAF0;               /* the car shown */
 extern BrCarCam *D_8028AAF4;            /* its camera */
 extern unsigned char D_8028DBD0;        /* the view is turning */
 extern unsigned char D_8028DB6C;        /* the view it turns from */
+extern unsigned char D_8028DB70;
+extern unsigned char D_8028DAC0;        /* the chosen preset */
+extern BrPaintRect D_8028D4A0[];
+extern BrPaintRect D_8028DAC4;
 extern unsigned short D_8028DBB0;       /* frames into the turn (16 in all) */
 extern BrVec3 D_8028DC08[];             /* the preset view directions */
 extern float D_8028AAC0;
@@ -86,6 +90,34 @@ void BrCarPlaceWheels(int n);
 void BrCarVisibility(BrCar *car);
 void func_80230554(BrCar *car, int);
 /* -- end declarations -- */
+
+/* WHAT IT DOES: Take the chosen preset's rectangle, and make every view
+ * slot (previous, current, saved) the current view. */
+/* @implements 0x802533F4 tgr BrPaintPresetApply */
+void BrPaintPresetApply(void)
+{
+  D_8028DAC4 = D_8028D4A0[D_8028DAC0];
+  D_8028DB6C = D_8028DB68;
+  D_8028DB70 = D_8028DB68;
+  D_8028DB74 = D_8028DB68;
+}
+
+/* WHAT IT DOES: Read the colour index of texel (x, y) of the decal being
+ * painted. */
+/* @implements 0x8024D7D8 tgr BrPaintGet */
+unsigned char BrPaintGet(int x, int y)
+{
+  int o;
+  unsigned char c;
+
+  o = (((y & 1) << 3 ^ x) >> 1) + y * (D_8028DB88 >> 1);
+  if (x & 1) {
+    c = D_8028DB78[o] & 0xf;
+  } else {
+    c = D_8028DB78[o] >> 4;
+  }
+  return c;
+}
 
 /* WHAT IT DOES: Store the paint shop's working decal (2 KB) into the decal
  * buffer, move the edit point on, and mark the decal as changed so it is
