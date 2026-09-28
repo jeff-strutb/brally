@@ -862,7 +862,8 @@ class Script:
     as names joined by + (A B Z START L R CU CD CL CR DU DD DL DR) or `-`.
     A line starting `p2` is the same for a second controller in port 2; a
     script with any such line has two controllers plugged in, otherwise one.
-    A `pak` line plugs a Controller Pak into port 1."""
+    A `pak` line plugs a Controller Pak into port 1; `frames N` is how long
+    the script runs (the oracle's default is a minute)."""
     BITS = dict(A=0x8000, B=0x4000, Z=0x2000, START=0x1000, DU=0x0800, DD=0x0400,
                 DL=0x0200, DR=0x0100, L=0x0020, R=0x0010, CU=0x0008, CD=0x0004,
                 CL=0x0002, CR=0x0001)
@@ -870,6 +871,7 @@ class Script:
     def __init__(self, path):
         self.ports = [[], []]
         self.pak = False                        # a `pak` line: a Controller Pak in port 1
+        self.frames = None                      # a `frames N` line: the run's length
         if path:
             for line in open(path):
                 line = line.split('#')[0].split()
@@ -877,6 +879,9 @@ class Script:
                     continue
                 if line[0] == 'pak':
                     self.pak = True
+                    continue
+                if line[0] == 'frames':
+                    self.frames = int(line[1])
                     continue
                 port = 0
                 if line[0] == 'p2':

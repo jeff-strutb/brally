@@ -58,6 +58,13 @@ SCRIPTS = os.path.join(N64, 'tools/n64box_scripts')
 LIVE = os.path.join(N64, 'config/t3_live.csv')
 WHOLE = os.path.join(N64, 'config/whole_image.csv')
 FRAMES = {'race_pause.txt': 4000, 'arcade_timeup.txt': 6000, 'loadsave_pak.txt': 3000}   # per script; default 3600 frames (a minute)
+
+
+def script_frames(sc):
+    """A script's length: its own `frames N` line, else FRAMES, else a minute."""
+    path = sc if os.path.isabs(sc) else os.path.join(SCRIPTS, sc)
+    n = NB.Script(path).frames
+    return n or FRAMES.get(os.path.basename(sc), 3600)
 TEST_CODE, TEST_DATA = 0x80600000, 0x80780000
 CODE_LO, CODE_HI = 0x80200000, 0x8026FAB0
 DEAD_STACK = 0x4000
@@ -647,7 +654,7 @@ def _live_worker(job):
     vas = list(targets)
     box = RecBox(script=os.path.join(SCRIPTS, sc))
     ls = Lockstep(box, targets, cap=CAP)
-    r = box.run(FRAMES.get(sc, 3600))
+    r = box.run(script_frames(sc))
     ls.close()
     return sc, r, {va: dict((k, ls.t[va][k]) for k in ('compared', 'divergent', 'blocked', 'first', 'sha'))
                    for va in vas}
@@ -693,9 +700,9 @@ def run_live(vas):
 def _image_worker(job):
     sc, img, extra = job
     a = NB.Box(script=os.path.join(SCRIPTS, sc))
-    ra = a.run(FRAMES.get(sc, 3600))
+    ra = a.run(script_frames(sc))
     b = NB.Box(script=os.path.join(SCRIPTS, sc), image=img, extra=extra)
-    rb = b.run(FRAMES.get(sc, 3600))
+    rb = b.run(script_frames(sc))
     first = None
     for x, y in zip(a.log, b.log):
         if x != y:
