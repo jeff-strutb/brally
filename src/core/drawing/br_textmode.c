@@ -76,17 +76,21 @@ typedef struct BrVisView {
     unsigned char pad[0x48];
 } BrVisView;
 
+/* One corner of a screen box: x right and y up from the viewport centre
+ * (cx, cy), each scaled by the half-extent and truncated through __ftol. */
+static __inline void br_corner(short *p, int cx, int cy, float x, float y, float w, float h)
+{
+    p[0] = (short)(cx + (int)(x * w));
+    p[1] = (short)(cy - (int)(y * h));
+}
+
 /* Transcribed from the Glide bytes: the viewport is pView[g_brIView]; the
  * half-extents are w >> 1 and h >> 1 (sar, not a division); the mirror test is
  * 0x106EA3F4 ^ 0x106E8204 with an fchs; __ftol for all four corners.
- * T2, 310/308 B, REGNORM 1+1 (2026-09-25). Load-bearing: the rectangle is
- * read into locals first and cx is formed before each half-extent converts;
- * the output vector is reached through a pointer, and the mirrored x is
- * stored in both arms of an if/else (one store at the join, reloaded for both
- * corners), as the original has it. Residue: x0 gets a memory home here
- * (one extra fst) where the original keeps it on the x87 stack. Dead:
- * all 5040 float declaration orders, statement orders, inline x0/sy/rad,
- * volatile anything (inert through the pointer), /Op, pad count 1..40. */
+ * Load-bearing: the rectangle is read into locals first and cx is formed
+ * before each half-extent converts; the output vector is reached through a
+ * pointer, and the mirrored x is stored in both arms of an if/else (one store
+ * at the join, reloaded for both corners), as the original has it. */
 /* WHAT IT DOES: works out the screen box a sphere covers. The centre is run
  * through the view matrix; if it is not (nearly) in the camera plane it is
  * divided through by depth, its x mirrored when exactly one of the two mirror
@@ -104,21 +108,26 @@ void FUN_1000c9e0(BrVisView *pView, const void *pPt, int n, short *pMin,
     extern int   DAT_106e8204;
     extern void  BrMat4TransformPoint4(float *pOut, const void *pV,
                                        const float *pM);
-    /* Declaration shape and the parenthesised rad product keep the original's
-     * store of the mirrored v[0] and both reloads of it (the 2026-09-26
-     * 41-byte declaration order forwarded it on the x87 stack instead).
-     * RESIDUE (T2, 84 B raw, 312/308, REGNORM 2+3): x0 gets a dead `fst`
-     * home in the pPt slot, and sy + rad copies sy where the original copies
-     * rad (fadd st(4) vs st(3)).  Inert on this base: every float
-     * declaration order (2371 of 5040), statement orders of all nine body
-     * statements, parens on every operand/statement, mirror spellings,
-     * `register`, double locals, r as a CSE, block scope, TU headers/pads,
-     * /TP.
+    /* Source facts (2026-09-27): x0 is the plain reload of the mirrored
+     * v[0], and both corners go through br_corner with the min corner's
+     * arguments parenthesised -- a named x0 = v[0] - rad gets a dead `fst`
+     * home (x87 register pressure), the parenthesised helper arguments do
+     * not.  sy is declared before rad: that is what makes sy + rad copy rad
+     * (fld st(3); fadd st(3)) as the original does; the other way round
+     * copies sy.  (r * v[1]) is parenthesised.
+     * RESIDUE (T2, 12 B, 308/308, REGNORM 0+0): one load placement -- the
+     * reload of v[0] is issued before `fild n` here, after r * v[1] in the
+     * original.  x0 first is what keeps the register-variable stack order
+     * (x0, sy, rad, r); with rad or sy ahead of it VC5 reshuffles the stack
+     * (fld/fxch/fstp st(2)).  Inert: every float declaration order with sy
+     * ahead of rad (2520), x0 spelling (pv[0], v[0], *pv), block scope,
+     * `register`, A/B/helper parens, rad/sy operand order, a box helper
+     * that does the stores.
      * @t4-pass 0x1000C9E0 1 2026-09-26 probes 2400 bytes 308 insns 101 regions 1 rows 14 census yes  (declaration-order random search + name search)
      * @t4-pass 0x1000C9E0 2 2026-09-26 probes 289 bytes 308 insns 101 regions 1 rows 14 census no  (hill-climb from the best order: no neighbour improves) */
     float v[4];
     int cx, cy, vx, vy, vw, vh;
-    float fhw, rad, fhh, r, sy, x0, sx;
+    float sy, fhh, r, sx, x0, rad, fhw;
     float *pv = v;
 
     vx = pView[g_brIView].x;
@@ -137,15 +146,13 @@ void FUN_1000c9e0(BrVisView *pView, const void *pPt, int n, short *pMin,
             pv[0] = -sx;
         else
             pv[0] = sx;
+        x0 = pv[0];
         rad = ((float)n * r);
-        sy = r * pv[1];
-        x0 = pv[0] - rad;
+        sy = (r * pv[1]);
         pv[0] = pv[0] + rad;
         pv[1] = sy + rad;
-        pMin[0] = (short)(cx + (int)(x0 * fhw));
-        pMin[1] = (short)(cy - (int)((sy - rad) * fhh));
-        pMax[0] = (short)(cx + (int)(fhw * pv[0]));
-        pMax[1] = (short)(cy - (int)(fhh * pv[1]));
+        br_corner(pMin, cx, cy, (x0 - rad), (sy - rad), fhw, fhh);
+        br_corner(pMax, cx, cy, pv[0], pv[1], fhw, fhh);
     }
 }
 #endif /* BR_MATCHING_BUILD */
