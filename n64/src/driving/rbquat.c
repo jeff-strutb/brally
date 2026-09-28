@@ -104,8 +104,8 @@ void BrVec4Normalise(float v[4])
 }
 
 /* WHAT IT DOES: Scale a 3-vector to unit length. */
-/* @implements 0x802581CC tgr BrVec3Normalise */
-void BrVec3Normalise(float v[3])
+/* @implements 0x802581CC tgr BrVec3NormaliseF */
+void BrVec3NormaliseF(float v[3])
 {
   float k;
 

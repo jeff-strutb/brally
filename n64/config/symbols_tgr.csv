@@ -341,7 +341,7 @@ va,name,kind
 80255030,BrCheatToggleAA68,func
 80258080,BrQuatMul,func
 8025813C,BrVec4Normalise,func
-802581CC,BrVec3Normalise,func
+802581CC,BrVec3NormaliseF,func
 8025B704,BrCrPlaneDist,func
 8025C24C,BrCrListPush,func
 8020072C,BrRaceCueRewind,func
@@ -394,7 +394,6 @@ va,name,kind
 80268230,osAiSetFrequency,func
 80268390,osSetTimer,func
 80268470,osAiSetNextBuffer,func
-802575C4,BrMusicInit,func
 80268520,osAiGetStatus,func
 80268530,osAiGetLength,func
 80257D3C,BrMusicThread,func
