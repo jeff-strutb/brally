@@ -2,6 +2,8 @@
  * {address, size} entries copied into or out of a buffer
  */
 #include "tgr/common.h"
+#include "tgr/car.h"
+#include "tgr/pad.h"
 
 /* -- declarations -- */
 typedef struct BrVarEnt {       /* one registered variable */
@@ -14,6 +16,13 @@ void BrFatal(char *msg);
 extern BrVarEnt D_8028BB0C[];
 extern BrVarEnt D_8028BBC4[];
 extern char D_8034E570[];
+void osSyncPrintf(const char *fmt, ...);
+extern int D_80270788;                  /* a replay is running */
+extern int D_8026FF18;                  /* the game mode */
+extern int D_8026FF08;                  /* players */
+extern int D_8028B304;                  /* laps in the race */
+typedef struct { char raw[0xdf88]; } BrCarModelBuf;
+extern BrCarModelBuf D_803C8000[];      /* the four cars' model buffers */
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Copy every variable in a list into a buffer, one after the
@@ -77,4 +86,28 @@ void BrVarSaveSmall(void)
 void BrVarLoadSmall(void)
 {
   BrVarListLoad(D_8028BBC4, D_8034E570);
+}
+
+/* WHAT IT DOES: When a player starts the last lap (or the race is one lap)
+ * in a mode that keeps laps, and nothing is being recorded for them yet:
+ * borrow a spare car model buffer (the fourth for player 0, the third for
+ * player 1), give every car's pad record a 0x3840-byte recording slot for
+ * that player inside it, and save the game variables into the same buffer
+ * so the lap can be replayed from its start. */
+/* @implements 0x8022AF90 tgr BrLastLapSave */
+void BrLastLapSave(BrCar *car)
+{
+  int i;
+
+  if (D_80270788 == 0 && D_8026FF18 != 2 && D_8026FF18 != 4 && car->slot < D_8026FF08
+      && (D_8028B304 == car->laps + 1 || D_8028B304 < 2)
+      && ((BrPadRec *)car->pad)->rec[car->slot] == 0) {
+    osSyncPrintf("SAVING LAST LAP INFO\n");
+    for (i = 0; i < D_8026FF08; i++) {
+      ((BrPadRec *)D_8031B760[i].pad)->recLen[car->slot] = 0;
+      ((BrPadRec *)D_8031B760[i].pad)->recKeep[car->slot] = 0x3840;
+      ((BrPadRec *)D_8031B760[i].pad)->rec[car->slot] = (unsigned char *)D_803C8000[3 - car->slot].raw + i * 0x3840;
+    }
+    BrVarSaveAll(D_803C8000[3 - car->slot].raw);
+  }
 }
