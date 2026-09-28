@@ -16,6 +16,10 @@ extern float D_8028AAD8;
 extern float D_8028C808;
 extern float D_8028C80C;
 extern float D_803634D0[3];
+extern int D_8028C818;                  /* lightning: flash frames left, -1 = none */
+extern float D_8028C820;                /* how far the thunder has travelled */
+extern float D_803634F8[3];             /* where the lightning struck */
+extern float D_80025C38;                /* the track's sky height */
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Scatter both particle sets: 512 particles each at random
@@ -57,4 +61,28 @@ void BrWindUpdate(void)
   D_803634D0[0] = cosf(D_8028C808) * (D_8028AAD8 * D_8028C80C);
   D_803634D0[1] = sinf(D_8028C808) * (D_8028AAD8 * D_8028C80C);
   D_803634D0[2] = 0.0f;
+}
+
+/* WHAT IT DOES: Lightning: with none active, a 1-in-512 chance per frame
+ * of a strike at a random point (x, y below 2048, at the sky height),
+ * flashing for three frames; then the thunder front travels outward at
+ * 343 units a second until it has gone 2048, when lightning may strike
+ * again. */
+/* @implements 0x8023A0BC tgr BrLightningStep */
+void BrLightningStep(void)
+{
+  if (D_8028C818 >= 0) {
+    D_8028C820 += 343.0f * D_8028AAD8;
+    if (D_8028C818 > 0) {
+      D_8028C818--;
+    } else if (D_8028C820 > 2048.0) {
+      D_8028C818 = -1;
+    }
+  } else if ((unsigned short)BrRandStep() < 0x80) {
+    D_8028C818 = 3;
+    D_8028C820 = 0.0f;
+    D_803634F8[0] = BrRandStep() & 0x7ff;
+    D_803634F8[1] = BrRandStep() & 0x7ff;
+    D_803634F8[2] = D_80025C38;
+  }
 }
