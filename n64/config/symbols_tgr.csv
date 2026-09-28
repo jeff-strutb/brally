@@ -429,3 +429,4 @@ va,name,kind
 80257BE4,BrSfxVoiceVolume,func
 8021E998,BrGridCellRange,func
 80244D04,BrPaintDecalApply,func
+80253460,BrPaintCharset,func

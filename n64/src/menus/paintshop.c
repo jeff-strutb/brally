@@ -133,6 +133,20 @@ void BrPaintDecalApply(void)
   }
 }
 
+/* WHAT IT DOES: The character for index i of the name-entry character set
+ * (a NUL, blanks, digits, capitals, punctuation; 66 entries, no
+ * terminator); a space past its end. */
+/* @implements 0x80253460 tgr BrPaintCharset */
+char BrPaintCharset(unsigned char i)
+{
+  char set[0x42] = "\000               0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#'*+,-./:=?@";
+
+  if (i < 0x42) {
+    return set[i];
+  }
+  return ' ';
+}
+
 /* WHAT IT DOES: Store the paint shop's working decal (2 KB) into the decal
  * buffer, move the edit point on, and mark the decal as changed so it is
  * redrawn. */
