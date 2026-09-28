@@ -15,6 +15,7 @@
  * Filed out of the address batch slice3_44.c, with that file's preamble.
  */
 
+#include <stdlib.h>   /* a TU-size input: see BrMat3Solve's ROUNDING POINTS note */
 #include "slice3_44.h"
 
 /* ---- constants ---------------------------------------------------- */
@@ -23,7 +24,11 @@
 
 /* XSLICE 0x10008B80 */
 /* A bare `ret` in this build (see CONTRACT).  Name and prototype copied from
- * slice2_18.h so integration can wire it mechanically. */
+ * slice2_18.h so integration can wire it mechanically.  In the matching build
+ * it is the tree's BrPodNop (glide 0x10008D60), so the call relocates. */
+#ifdef BR_MATCHING_BUILD
+#define BrStub8B80_1p BrPodNop
+#endif
 extern void BrStub8B80_1p(const void *p0);
 
 /* BrVec4Normalise (0x100741B0) and BrMat4MulVec3Transposed (0x10074770) come
@@ -59,12 +64,39 @@ void BrMat3Mul(BrMat3 *pOut, const BrMat3 *pA, const BrMat3 *pB)
     }
 }
 
+/* A float rounding point VC5 cannot see through: the value goes to memory
+ * as a float and comes back through its int image. */
+#define BR_SOLVE_ROUND(dst, expr) \
+    { float r_ = (expr); int i_ = *(int *)&r_; dst = *(float *)&i_; }
+
+/* The divide reads the image's float 1.0 at 0x10077C1C: with det a double,
+ * a literal would become an 8-byte constant the original .rdata does not
+ * have. */
+#ifdef BR_MATCHING_BUILD
+extern float _DAT_10077c1c;
+#define BR_SOLVE_ONE _DAT_10077c1c
+#else
+#define BR_SOLVE_ONE 1.0f
+#endif
 /* WHAT IT DOES: solves the 3x3 system pM * x = pV for x by Cramer's rule and
  * writes x to pOut.  No singularity guard -- a singular matrix yields +-inf or
  * NaN, exactly as the original.  Confirmed equivalent to the original bytes by
  * an x87 emulation of 0x1006DE70 over random and structured inputs. */
 /* @t4-pass 0x1006DE70 1 2026-09-07 probes 86 bytes 419 insns 162 regions 1 rows 38 census yes  (tools/crank.py) */
 /* @t4-pass 0x1006DE70 2 2026-09-07 probes 86 bytes 419 insns 162 regions 1 rows 38 census yes  (tools/crank.py) */
+/* @t3 0x1006DE70 2026-09-27 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 579/417 insns 203/164 rows 48+87 regions 1 oracle EQUIVALENT
+ * @t3-effort passes 6 zero-movement 5 6
+ * Residue: the body is written for the original's ROUNDING POINTS (see
+ * the note in the body), not for its bytes; the float body it replaced was
+ * 419/417 B but 1 ulp off in y and z in every live script.  This one is
+ * bit-identical on 2000 random inputs (differential emulation against
+ * 0x1006DE70) and EQUIVALENT in all eight live scripts.  Do not reopen
+ * before the end-grind (CLAUDE.md rule 12). */
+/* @t4-pass 0x1006DE70 3 2026-09-27 probes 100 bytes 419 insns 162 regions 1 rows 94 census yes  (hand: symbol-table band sweep 0-1568, C and C++) */
+/* @t4-pass 0x1006DE70 4 2026-09-27 probes 84 bytes 419 insns 162 regions 1 rows 94 census no  (hand: y/z rows inline vs named -- 64 subsets of n/g/k/product locals, det/n0/inv naming, const) */
+/* @t4-pass 0x1006DE70 5 2026-09-27 probes 12 bytes 579 insns 203 regions 1 rows 135 census no  (hand: 12 compiler option sets on the rounding-exact body) */
+/* @t4-pass 0x1006DE70 6 2026-09-27 probes 32 bytes 579 insns 203 regions 1 rows 135 census yes  (hand: symbol-table band sweep 0-992 on the rounding-exact body) */
 /* @implements 0x1006DE70 glide BrMat3Solve */
 /* FRAME (proven 2026-09-03, do not re-derive).  `sub esp, 0x10` is FOUR float
  * slots -- d0, m2m7, m1m5, m2m4 -- in declaration order at [esp], [esp+4],
@@ -99,55 +131,46 @@ void BrMat3Mul(BrMat3 *pOut, const BrMat3 *pA, const BrMat3 *pB)
 void BrMat3Solve(BrVec3 *pOut, const BrMat3 *pM, const BrVec3 *pV)
 {
     const float *m = pM->m;
-#define v0 pV->x
-#define v1 pV->y
-#define v2 pV->z
+    const double v0 = pV->x, v1 = pV->y, v2 = pV->z;
+    float m4m8, d0, m1m5, m1m8s, m2m7s, m2m4s;
+    double m1m8, m2m7, m2m4, det, inv, n0, n1, n2;
 
-    /* --- shared sub-expressions, in the order the original spills them --- */
-    const float d0    = m[7] * m[5] - m[4] * m[8];   /* cofactor of m[0] */
-    const float m2m7  = m[2] * m[7];
-    const float m1m5  = m[1] * m[5];
-    const float m2m4  = m[2] * m[4];
+    BR_SOLVE_ROUND(m4m8, m[4] * m[8])
+    BR_SOLVE_ROUND(d0, m[7] * m[5] - m4m8)
+    m1m8 = m[1] * m[8];
+    m2m7 = m[2] * m[7];
+    BR_SOLVE_ROUND(m1m5, m[1] * m[5])
+    m2m4 = m[2] * m[4];
+    BR_SOLVE_ROUND(m1m8s, (float)m1m8)
+    BR_SOLVE_ROUND(m2m7s, (float)m2m7)
+    BR_SOLVE_ROUND(m2m4s, (float)m2m4)
 
     /* det is the NEGATED determinant -- the original expands with the signs
      * flipped and compensates by negating only pOut->y below. */
-    const float det = (((m[1] * m[8] * m[3] + m[0] * d0)
-                        - m2m7 * m[3])
-                       - m1m5 * m[6])
-                      + m2m4 * m[6];
-    const float inv = 1.0f / det;
+    det = (((m1m8 * m[3] + m[0] * d0) - m2m7 * m[3])
+           - (double)m1m5 * m[6]) + m2m4 * m[6];
+    inv = BR_SOLVE_ONE / det;
 
-    const float n0 = (((v0 * d0 + m[1] * m[8] * v1)
-                       - m2m7 * v1)
-                      - m1m5 * v2)
-                     + m2m4 * v2;
+    n0 = ((((v0 * d0 + m1m8s * v1) - m2m7s * v1) - m1m5 * v2) + m2m4s * v2);
+    {
+        /* y and z stay on the x87 stack in the original: doubles here. */
+        const double g0   = m[6] * m[5] - m[3] * m[8];
+        const double m0m8 = m[0] * m[8];
+        const double m6m2 = m[6] * m[2];
+        const double m0m5 = m[0] * m[5];
+        const double m3m2 = m[3] * m[2];
+        const double k0   = m[6] * m[4] - m[3] * m[7];
+        const double m0m7 = m[0] * m[7];
+        const double m6m1 = m[6] * m[1];
+        const double m0m4 = m[0] * m[4];
+        const double m3m1 = m[3] * m[1];
+        n1 = (((g0 * v0 + m0m8 * v1) - m6m2 * v1) - m0m5 * v2) + m3m2 * v2;
+        n2 = (((k0 * v0 + m0m7 * v1) - m6m1 * v1) - m0m4 * v2) + m3m1 * v2;
+    }
 
-    const float g0   = m[6] * m[5] - m[3] * m[8];
-    const float m0m8 = m[0] * m[8];
-    const float m6m2 = m[6] * m[2];
-    const float m0m5 = m[0] * m[5];
-    const float m3m2 = m[3] * m[2];
-    const float n1 = (((g0 * v0 + m0m8 * v1)
-                       - m6m2 * v1)
-                      - m0m5 * v2)
-                     + m3m2 * v2;
-
-    const float k0   = m[6] * m[4] - m[3] * m[7];
-    const float m0m7 = m[0] * m[7];
-    const float m6m1 = m[6] * m[1];
-    const float m0m4 = m[0] * m[4];
-    const float m3m1 = m[3] * m[1];
-    const float n2 = (((k0 * v0 + m0m7 * v1)
-                       - m6m1 * v1)
-                      - m0m4 * v2)
-                     + m3m1 * v2;
-
-    pOut->x =  n0 * inv;
-    pOut->y = -(n1 * inv);   /* the sign flip that pairs with the negated det */
-    pOut->z =  n2 * inv;
-#undef v0
-#undef v1
-#undef v2
+    pOut->x = (float)(n0 * inv);
+    pOut->y = (float)-(n1 * inv);   /* the sign flip that pairs with the negated det */
+    pOut->z = (float)(n2 * inv);
 }
 
 /* 0x10074B70 */
@@ -454,44 +477,62 @@ void BrRbQuatDerivative(BrRbState *pS)
  * land farther away. */
 /* @t4-pass 0x1006D6B0 1 2026-09-07 probes 64 bytes 397 insns 132 regions 3 rows 12 census yes  (tools/crank.py) */
 /* @t4-pass 0x1006D6B0 2 2026-09-07 probes 64 bytes 397 insns 132 regions 3 rows 12 census yes  (tools/crank.py) */
+/* @t3 0x1006D6B0 2026-09-27 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 559/405 insns 176/136 rows 41+81 regions 1 oracle EQUIVALENT
+ * @t3-effort passes 6 zero-movement 5 6
+ * Residue: the body is written for the original's ROUNDING POINTS (which
+ * values it stores to float slots and which it keeps on the 53-bit x87
+ * stack), not for its bytes; the hill-climbed float body it replaced was
+ * 399/405 B but 1 ulp off on 1215 of 2000 random inputs.  This one is
+ * bit-identical on all 2000 (differential emulation) and EQUIVALENT in all
+ * eight live scripts.  Do not reopen before the end-grind (CLAUDE.md
+ * rule 12). */
+/* @t4-pass 0x1006D6B0 3 2026-09-27 probes 61 bytes 399 insns 133 regions 3 rows 25 census yes  (hand: fresh transcription with by-value square helper BrSq, 60 random declaration orders of the 10 products -- 447..451 B, worse) */
+/* @t4-pass 0x1006D6B0 4 2026-09-27 probes 32 bytes 399 insns 133 regions 3 rows 25 census no  (hand: symbol-table band sweep, extern-int pads 0-992) */
+/* @t4-pass 0x1006D6B0 5 2026-09-27 probes 12 bytes 559 insns 176 regions 1 rows 122 census no  (hand: 12 compiler option sets on the rounding-exact body) */
+/* @t4-pass 0x1006D6B0 6 2026-09-27 probes 32 bytes 559 insns 176 regions 1 rows 122 census yes  (hand: symbol-table band sweep 0-992 on the rounding-exact body) */
 /* @implements 0x1006D6B0 glide BrRbBuildMatrix */
 void BrRbBuildMatrix(BrMat4 *pM, const BrRbState *pS)
 {
-    float a = pS->quat.f00;   /* w */
-    float b = pS->quat.f04;   /* x */
-    float aa = a * a;
-    float c = pS->quat.f08;   /* y */
-    float d = pS->quat.f0C;   /* z */
-    float cc = c * c;
-    float bb = b * b;
-    float cb = pS->quat.f08 * pS->quat.f04;
-    float da = pS->quat.f0C * pS->quat.f00;
-    float db = pS->quat.f0C * pS->quat.f04;
-    float ca = pS->quat.f08 * pS->quat.f00;
-    float ab = aa - bb;
-    float dc = pS->quat.f0C * pS->quat.f08;
-    float ba = pS->quat.f04 * pS->quat.f00;
-    float t2cb = cb + cb;
-    float t2ca = ca + ca;
-    float x = bb + aa - cc;
-    float t2da = da + da;
-    float t2db = db + db;
-    float t2dc = dc + dc;
-    float t2ba = ba + ba;
-    float y = cc + ab;
-    float dd = d * d;
+    /* ROUNDING POINTS (2026-09-27, derived from the listing and checked by
+     * differential emulation against 0x1006D6B0).  The original stores ww,
+     * xx, yy, zz, ww - xx and the doubled products 2yx, 2yw, 2zy to float
+     * slots and reads them back; 2zw, 2zx and 2xw are stored as float copies
+     * but also used once straight from the stack.  Everything the original
+     * keeps on the x87 stack is a double here. */
+    const float w = pS->quat.f00, x = pS->quat.f04, y = pS->quat.f08, z = pS->quat.f0C;
+    float ww, xx, yy, zz, ab, yx2, yw2, zy2, zw2s, zx2s, xw2s;
+    double zw2, zx2, xw2;
 
-    pM->m[0][0] = x - dd;
-    pM->m[0][1] = t2da + t2cb;
-    pM->m[0][2] = t2db - t2ca;
+    BR_SOLVE_ROUND(ww, w * w)
+    BR_SOLVE_ROUND(xx, x * x)
+    BR_SOLVE_ROUND(yy, y * y)
+    BR_SOLVE_ROUND(zz, z * z)
+    BR_SOLVE_ROUND(ab, ww - xx)
+    zw2 = z * w;  zw2 += zw2;
+    zx2 = z * x;  zx2 += zx2;
+    xw2 = x * w;  xw2 += xw2;
+    {
+        double t;
+        t = y * x;  BR_SOLVE_ROUND(yx2, t + t)
+        t = y * w;  BR_SOLVE_ROUND(yw2, t + t)
+        t = z * y;  BR_SOLVE_ROUND(zy2, t + t)
+    }
+    BR_SOLVE_ROUND(zw2s, zw2)
+    BR_SOLVE_ROUND(zx2s, zx2)
+    BR_SOLVE_ROUND(xw2s, xw2)
+
+    pM->m[0][0] = (float)((((double)xx + ww) - yy) - zz);
+    pM->m[0][1] = (float)(zw2 + yx2);
+    pM->m[0][2] = (float)(zx2 - yw2);
     pM->m[0][3] = 0.0f;
-    pM->m[1][0] = t2cb - t2da;
-    pM->m[1][1] = y - dd;
-    pM->m[1][2] = t2ba + t2dc;
+    pM->m[1][0] = (float)((double)yx2 - zw2s);
+    pM->m[1][1] = (float)(((double)yy + ab) - zz);
+    pM->m[1][2] = (float)(xw2 + zy2);
     pM->m[1][3] = 0.0f;
-    pM->m[2][0] = t2ca + t2db;
-    pM->m[2][1] = t2dc - t2ba;
-    pM->m[2][2] = ab - cc + dd;
+    pM->m[2][0] = (float)((double)yw2 + zx2s);
+    pM->m[2][1] = (float)((double)zy2 - xw2s);
+    pM->m[2][2] = (float)(((double)ab - yy) + zz);
     pM->m[2][3] = 0.0f;
     pM->m[3][0] = pS->pos.x;
     pM->m[3][1] = pS->pos.y;

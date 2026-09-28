@@ -98,6 +98,15 @@ static __inline void br_corner(short *p, int cx, int cy, float x, float y, float
  * drawn round it. The corners are mapped onto the current viewport, x right
  * and y up from its centre, and written as shorts: min corner to pMin, max
  * corner to pMax. Nothing is written when the depth is within 0.001 of 0. */
+/* @t3 0x1000C9E0 2026-09-27 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 308/308 insns 99/99 rows 2+2 regions 1 oracle EQUIVALENT
+ * @t3-effort passes 4 zero-movement 3 4
+ * Residue: one load placement -- the reload of v[0] is issued before
+ * `fild n` here, after r * v[1] in the original.  Scheduling only; the
+ * dossier and dead list are in the body comment.  Do not reopen before the
+ * end-grind (CLAUDE.md rule 12). */
+/* @t4-pass 0x1000C9E0 3 2026-09-27 probes 82 bytes 308 insns 99 regions 1 rows 4 census yes  (hand: symbol-table census, extern-int pads 0-1296 ahead of the function) */
+/* @t4-pass 0x1000C9E0 4 2026-09-27 probes 12 bytes 308 insns 99 regions 1 rows 4 census no  (hand: 12 compiler option sets incl. /Ox /Ob0 /Ob2 /G3 /G5 /Gi /TP) */
 /* @implements 0x1000C9E0 glide FUN_1000c9e0 */
 void FUN_1000c9e0(BrVisView *pView, const void *pPt, int n, short *pMin,
                   short *pMax)

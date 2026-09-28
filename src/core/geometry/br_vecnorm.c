@@ -5,6 +5,8 @@
  * scale-out as three fld-st copies; this file alone reproduces orig. */
 /* WHAT IT DOES: combines two orientation quaternions (w, x, y, z order)
  * into their product, one quaternion for both rotations together. */
+/* @t4-pass 0x1006D2E0 1 2026-09-27 probes 384 bytes 288 insns 96 regions 1 rows 5 census yes  (hand: all 24 row orders x 16 pointer/index store masks, first in the TU) */
+/* @t4-pass 0x1006D2E0 2 2026-09-27 probes 24 bytes 288 insns 96 regions 1 rows 5 census no  (hand: extern-int pads 64-1024 as C, C++ and after <windows.h>) */
 /* @implements 0x1006D2E0 glide BrQuatMul */
 /* Source facts (2026-09-27): the pB components are declared first, then pA,
  * each in index order; the rows are written out[2], out[1], out[0], out[3],
