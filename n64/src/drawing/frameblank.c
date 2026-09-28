@@ -46,8 +46,12 @@ void BrFrameBeginLayout1(void)
 }
 
 /* WHAT IT DOES: Clear the whole screen to one colour (fill mode,
- * RGBA5551).  The two cycle-type commands are written as raw words, not
- * through gDPSetCycleType: the macro's union stores schedule w1 first. */
+ * RGBA5551).  The first cycle-type command is written as raw words (the
+ * macro's union stores schedule w1 first); the last keeps the macro, whose
+ * block local gives the ROM's dead spill of the command pointer.
+ * RESIDUE (2): the last command's two stores come out w1, w0; the ROM
+ * stores w0 first.  Macro, raw-word and block spellings of the last two
+ * commands (25 combinations) leave 2 or more. */
 /* @implements 0x80217FB8 tgr BrScreenClear */
 void BrScreenClear(int r, int g, int b)
 {
@@ -63,9 +67,7 @@ void BrScreenClear(int r, int g, int b)
   gDPSetFillColor(D_8028A858++, c | c << 16);
   gDPFillRectangle(D_8028A858++, 0, 0, (D_8028AAB0 << D_8028A850) - 1, (D_8028AAB4 << D_8028A850) - 1);
   gDPPipeSync(D_8028A858++);
-  p = (unsigned int *)D_8028A858++;
-  p[0] = 0xba001402;
-  p[1] = G_CYC_1CYCLE;
+  gDPSetCycleType(D_8028A858++, G_CYC_1CYCLE);
 }
 
 /* WHAT IT DOES: Fill a w by h rectangle at (x, y) with one colour (fill
