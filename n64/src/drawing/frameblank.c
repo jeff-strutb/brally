@@ -46,22 +46,57 @@ void BrFrameBeginLayout1(void)
 }
 
 /* WHAT IT DOES: Clear the whole screen to one colour (fill mode,
- * RGBA5551).
- * RESIDUE (4): both gDPSetCycleType commands store w1 before w0; the ROM
- * stores w0 first. */
+ * RGBA5551).  The two cycle-type commands are written as raw words, not
+ * through gDPSetCycleType: the macro's union stores schedule w1 first. */
 /* @implements 0x80217FB8 tgr BrScreenClear */
 void BrScreenClear(int r, int g, int b)
 {
   unsigned short c;
+  unsigned int *p;
 
   gDPPipeSync(D_8028A858++);
   gDPSetRenderMode(D_8028A858++, G_RM_OPA_SURF, G_RM_OPA_SURF2);
-  gDPSetCycleType(D_8028A858++, G_CYC_FILL);
+  p = (unsigned int *)D_8028A858++;
+  p[0] = 0xba001402;
+  p[1] = G_CYC_FILL;
   c = GPACK_RGBA5551(r, g, b, 1);
   gDPSetFillColor(D_8028A858++, c | c << 16);
   gDPFillRectangle(D_8028A858++, 0, 0, (D_8028AAB0 << D_8028A850) - 1, (D_8028AAB4 << D_8028A850) - 1);
   gDPPipeSync(D_8028A858++);
-  gDPSetCycleType(D_8028A858++, G_CYC_1CYCLE);
+  p = (unsigned int *)D_8028A858++;
+  p[0] = 0xba001402;
+  p[1] = G_CYC_1CYCLE;
+}
+
+/* WHAT IT DOES: Fill a w by h rectangle at (x, y) with one colour (fill
+ * mode, RGBA5551); on a hi-res screen the rectangle's numbers are doubled
+ * (and its far corner shifted by the resolution again, as the ROM does).
+ * Cycle-type commands as raw words, as in BrScreenClear; the PC twin
+ * (br_gfxfill.c) writes every command that way. */
+/* @implements 0x80218104 tgr BrGfxFillRect */
+void BrGfxFillRect(int x, int y, int w, int h, int r, int g, int b)
+{
+  unsigned short c;
+  unsigned int *p;
+
+  if (D_8028A850 != 0) {
+    x <<= 1;
+    y <<= 1;
+    w <<= 1;
+    h <<= 1;
+  }
+  c = GPACK_RGBA5551(r, g, b, 1);
+  gDPPipeSync(D_8028A858++);
+  gDPSetRenderMode(D_8028A858++, G_RM_OPA_SURF, G_RM_OPA_SURF2);
+  p = (unsigned int *)D_8028A858++;
+  p[0] = 0xba001402;
+  p[1] = G_CYC_FILL;
+  gDPSetFillColor(D_8028A858++, c | c << 16);
+  gDPFillRectangle(D_8028A858++, x, y, ((x + w) << D_8028A850) - 1, ((y + h) << D_8028A850) - 1);
+  gDPPipeSync(D_8028A858++);
+  p = (unsigned int *)D_8028A858++;
+  p[0] = 0xba001402;
+  p[1] = G_CYC_1CYCLE;
 }
 
 /* WHAT IT DOES: Does nothing: a variadic debug hook compiled empty (it
