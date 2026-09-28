@@ -35,7 +35,38 @@ extern BrSndNearest D_8028B7A0;
 extern int D_8028B940;                  /* the chosen track */
 void BrSndNearestOffer(int f8C, int f84, int f9C, float hz, void *pPos, void *pListener);
 float BrVec3Dist(void *a, void *b);
+void BrVec3Sub(float out[3], float a[3], float b[3]);
+float BrVec3Dot(float a[3], float b[3]);
+float BrVec3Length(float v[3]);
+void BrVec3DivBy(float v[3], float d);
+extern float D_8028AAD8;                /* seconds this frame */
 /* -- end declarations -- */
+
+/* WHAT IT DOES: The Doppler pitch factor for a sound: with the listener
+ * moving from lPrev to l and the source from sPrev to s this frame, their
+ * speeds along the line between them give (1 + vl/c) / (1 - vs/c), c being
+ * the speed of sound, 343. */
+/* @implements 0x8022B0F8 tgr BrSndDoppler */
+float BrSndDoppler(float l[3], float lPrev[3], float s[3], float sPrev[3])
+{
+  float dir[3];
+  float len;
+  float lv[3];
+  float sv[3];
+  float vs;
+  float vl;
+
+  BrVec3Sub(dir, l, s);
+  BrVec3Sub(sv, s, sPrev);
+  BrVec3Sub(lv, l, lPrev);
+  len = BrVec3Length(dir);
+  if (len != 0.0f) {
+    BrVec3DivBy(dir, len);
+  }
+  vs = -BrVec3Dot(lv, dir) / D_8028AAD8;
+  vl = BrVec3Dot(sv, dir) / D_8028AAD8;
+  return (vl / 343.0f + 1.0f) / (1.0f - vs / 343.0f);
+}
 
 /* WHAT IT DOES: Offer a positional sound: if its source is nearer the
  * listener than the best offer so far this frame, it becomes the nearest
