@@ -420,3 +420,5 @@ va,name,kind
 80258DB0,BrMat3Skew,func
 80258EAC,BrMat3FromMat4,func
 8024D844,BrPaintPeek,func
+802006C8,BrRaceCueLayout,func
+802252EC,BrMat4Transpose,func
