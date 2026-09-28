@@ -398,3 +398,5 @@ va,name,kind
 80268520,osAiGetStatus,func
 80268530,osAiGetLength,func
 80257D3C,BrMusicThread,func
+80264490,osViSetSpecialFeatures,func
+80219470,BrFrameBegin,func

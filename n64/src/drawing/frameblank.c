@@ -4,7 +4,9 @@
 #include "tgr/gbi.h"
 
 /* -- declarations -- */
-void func_80219470(unsigned int param_1);
+void BrFrameBegin(int hires);
+void BrScissorSet(int x, int y, int w, int h);
+void BrFrameStatsReset(void);
 void BrScreenClear(int r, int g, int b);
 void BrFrameBeginLayout1(void);
 int func_8021AA08();
@@ -30,14 +32,151 @@ extern int D_8028AAB4;
 extern int D_8028A85C;                 /* the frame buffer being drawn */
 extern unsigned int D_8031AA28[];      /* the frame buffers */
 extern char D_00000400[];              /* the Z-buffer (a link-time address) */
+void BrPerfMark(int bar, int r, int g, int b, int a);
+void BrFramePoolsReset(void);
+void osViSetSpecialFeatures(unsigned int func);
+typedef struct BrViewRect { int x; int y; int w; int h; int x10; } BrViewRect;
+extern BrViewRect D_8031B2C8[2];        /* the players' views */
+extern int D_8028AB0C;                  /* number of players */
+extern int D_8028A84C;                  /* resolution changed */
+extern int D_8028A848;                  /* the two display-list buffers (48000 bytes each) */
+extern int D_8028AA68;                  /* texture filtering on */
+extern int D_8028A898;                  /* the texture filter mode */
+extern int D_8028A8A0;                  /* the colour dither mode */
+extern int D_8028A89C;                  /* the alpha dither mode */
+extern int D_8028AA50;                  /* z-buffering on */
+extern int D_8028AA4C;                  /* gamma off */
+extern int D_8028A8A4;                  /* the viewport being used */
+extern char D_8028A900[];               /* the viewports (0x28 bytes each) */
+extern char D_801B5000[];               /* the low-res frame buffers */
+extern char D_801DA800[];
+extern char D_0028A8C0[];               /* the identity matrix, as a physical address */
 /* -- end declarations -- */
+
+/* WHAT IT DOES: Start a frame at the given resolution (0 low, 1 high):
+ * lay out the players' views, reset the frame counters and pools, choose
+ * the frame buffers when the resolution has changed, and open this frame's
+ * display list with the fixed RDP and RSP state: pipe sync, full-screen
+ * scissor, the render and combine modes, texture filtering and dither,
+ * geometry flags, the viewport, texturing off, the colour image and the
+ * depth image; then set the VI's dither and gamma features.  The high-res
+ * frame buffers sit below the low-res pair, computed from the two link
+ * symbols as integers.
+ * RESIDUE (198): register naming only -- the instruction sequence is the
+ * ROM's with registers ignored; every temporary is one number later from
+ * the first block on, and the view table base lands in v1, not v0.  200
+ * permuter compiles do not move it. */
+/* @implements 0x80219470 tgr BrFrameBegin */
+void BrFrameBegin(int hires)
+{
+  int x;
+  int w;
+  int h;
+
+  if (hires != D_8028A850) {
+    D_8028A84C = 1;
+    D_8028A850 = hires;
+  }
+  BrPerfMark(0, 0, 0x82, 0, 0xff);
+  switch (D_8028AB0C) {
+  case 1:
+    x = 8;
+    D_8031B2C8[0].x = x;
+    D_8031B2C8[0].y = x;
+    D_8031B2C8[0].w = D_8028AAB0 - 16;
+    D_8031B2C8[0].h = D_8028AAB4 - 16;
+    break;
+  case 2:
+    x = 8;
+    D_8031B2C8[1].x = x;
+    D_8031B2C8[1].y = (D_8028AAB4 >> 1) + 1;
+    w = D_8028AAB0;
+    h = (D_8028AAB4 >> 1) - 8;
+    D_8031B2C8[1].h = h;
+    w -= 0x60;
+    D_8031B2C8[1].w = w;
+    D_8031B2C8[0].x = x;
+    D_8031B2C8[0].y = x;
+    D_8031B2C8[0].w = w;
+    D_8031B2C8[0].h = h;
+    break;
+  }
+  BrFrameStatsReset();
+  BrFramePoolsReset();
+  if (D_8028A84C != 0) {
+    if (!(D_8028A84C - 1)) {
+      if (D_8028A850 != 0) {
+        D_8031AA28[0] = (unsigned int)D_801B5000 - ((unsigned int)D_801DA800 - (unsigned int)D_801B5000) * 6;
+        D_8031AA28[1] = (unsigned int)D_801B5000 - ((unsigned int)D_801DA800 - (unsigned int)D_801B5000) * 2;
+      } else {
+        D_8031AA28[0] = (unsigned int)D_801B5000;
+        D_8031AA28[1] = (unsigned int)D_801DA800;
+      }
+    }
+  }
+  D_8028A858 = (Gfx *)(D_8028A848 + D_8028A85C * 48000 + 0x200);
+  if (D_8028AA68 != 0) {
+    D_8028A898 = 0x2000;
+  } else {
+    D_8028A898 = 0;
+  }
+  D_8028A8A0 = 0x40;
+  D_8028A89C = 0;
+  gRaw(D_8028A858++, 0xbc000006, 0);
+  gRaw(D_8028A858++, 0xe7000000, 0);
+  BrScissorSet(0, 0, D_8028AAB0, D_8028AAB4);
+  gRaw(D_8028A858++, 0xfcffffff, 0xfffdf638);
+  gRaw(D_8028A858++, 0xba001001, 0);
+  gRaw(D_8028A858++, 0xba000e02, 0);
+  gRaw(D_8028A858++, 0xba001102, 0);
+  gRaw(D_8028A858++, 0xba001301, 0x80000);
+  gRaw(D_8028A858++, 0xba000c02, D_8028A898);
+  gRaw(D_8028A858++, 0xba000903, 0xc00);
+  gRaw(D_8028A858++, 0xba000801, 0);
+  gRaw(D_8028A858++, 0xb9000002, 1);
+  gRaw(D_8028A858++, 0xb900031d, 0xf0a4000);
+  gRaw(D_8028A858++, 0xba000602, D_8028A8A0);
+  gRaw(D_8028A858++, 0xba000602, D_8028A89C);
+  gRaw(D_8028A858++, 0xba001402, 0);
+  gRaw(D_8028A858++, 0xf9000000, 0);
+  gRaw(D_8028A858++, 0x1020040, D_0028A8C0);
+  {
+    Gfx *_g = (Gfx *)(D_8028A858++);
+
+    _g->words.w0 = 0xb6000000;
+    _g->words.w1 = (unsigned int)(0x1f3204);
+  }
+  {
+    Gfx *_g = (Gfx *)(D_8028A858++);
+
+    _g->words.w0 = 0xb7000000;
+    _g->words.w1 = (unsigned int)(0x2000);
+  }
+  if (D_8028AA50 != 0) {
+    gRaw(D_8028A858++, 0xb7000000, 0x800000);
+  } else {
+    gRaw(D_8028A858++, 0xb6000000, 0x800000);
+  }
+  gRaw(D_8028A858++, 0x6000000, D_8028A900 + D_8028A8A4 * 0x28);
+  gRaw(D_8028A858++, 0xbb000000, 0);
+  gDPSetColorImage(D_8028A858++, G_IM_FMT_RGBA, G_IM_SIZ_16b, D_8028AAB0 << D_8028A850, D_8031AA28[D_8028A85C] + 0x80000000);
+  {
+    Gfx *_g = (Gfx *)(D_8028A858++);
+
+    _g->words.w0 = 0xfe000000;
+    _g->words.w1 = (unsigned int)(D_00000400);
+  }
+  osViSetSpecialFeatures(0x40);
+  osViSetSpecialFeatures(0x10);
+  osViSetSpecialFeatures(D_8028AA4C != 0 ? 1 : 2);
+}
 
 /* WHAT IT DOES: Start building a new frame using the first of the two
  * screen-buffer layouts. */
 /* @implements 0x80219A1C tgr BrFrameBeginLayout0 */
 void BrFrameBeginLayout0(void)
 {
-  func_80219470(0);
+  BrFrameBegin(0);
 }
 
 /* WHAT IT DOES: Start building a new frame using the second of the two
@@ -45,7 +184,7 @@ void BrFrameBeginLayout0(void)
 /* @implements 0x80219A3C tgr BrFrameBeginLayout1 */
 void BrFrameBeginLayout1(void)
 {
-  func_80219470(1);
+  BrFrameBegin(1);
 }
 
 /* WHAT IT DOES: Clear the Z-buffer: point the colour image at it, fill it
