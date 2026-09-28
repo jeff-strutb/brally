@@ -1308,14 +1308,14 @@ glide_va,name,module,basis,file
 0x10070170,BrWaveSeekData,controls,filed,src/core/controls/br_input.c
 0x10070370,BrOnActivate,controls,filed,src/core/controls/br_input.c
 0x100703A0,BrSub100770C0,controls,neighbour-1,src/core/controls/br_dik.c
-0x100703D0,FUN_100703d0,controls,neighbour-1,src/core/generated/0x100703D0.c
+0x100703D0,FUN_100703d0,controls,filed,src/core/controls/br_input.c
 0x10070490,BrDikGetDeviceState,controls,description,src/core/controls/br_dik.c
 0x100704E0,BrJoyScanAny,controls,filed,src/core/controls/br_dik.c
 0x100705F0,BrInputPollPressed,controls,filed,src/core/controls/br_input.c
-0x100706B0,BrDiAcquire,controls,neighbour-1,src/core/generated/0x100706B0.c
+0x100706B0,BrDiAcquire,controls,filed,src/core/controls/br_input.c
 0x10071710,BrInputIsDown,controls,filed,src/core/controls/br_inputpoll.c
 0x100719D0,BrInputJustPressed,controls,filed,src/core/controls/br_inputpoll.c
-0x10071EB0,BrDiKeyboardShutdown,racing,neighbour-1,src/core/generated/0x10071EB0.c
+0x10071EB0,BrDiKeyboardShutdown,controls,filed,src/core/controls/br_inputpoll.c
 0x10071F00,BrTickAdd_10078C10,racing,filed,src/core/racing/br_replayon.c
 0x10071F20,BrDiSetPropRange,controls,description,src/core/controls/br_dicmd.c
 0x10071F70,BrDiSetPropDword,controls,description,src/core/controls/br_dicmd.c
@@ -1326,7 +1326,7 @@ glide_va,name,module,basis,file
 0x10072180,BrFfbSetDurationShort,controls,neighbour-1,src/core/controls/br_ffb.c
 0x100721C0,BrFfbCommitDuration,controls,neighbour-1,src/core/controls/br_dicmd.c
 0x100723A0,BrFfbSetSpringCoeff,controls,description,src/core/controls/br_dicmd.c
-0x10072840,BrExt_10079550,controls,neighbour-1,src/core/generated/0x10072840.c
+0x10072840,BrExt_10079550,controls,filed,src/core/controls/br_dishutdown.c
 0x100728C0,BrFfbReprobe,controls,description,src/core/controls/br_ffb.c
 0x10073714,BrNop73714,startup,description,src/core/startup/br_dllentry.c
 0x10073719,BrNop73719,startup,description,src/core/startup/br_dllentry.c

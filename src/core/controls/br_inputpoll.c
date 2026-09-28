@@ -829,3 +829,29 @@ uint8_t BrInputJustPressed(int32_t action)
     return r;
 }
 #endif /* BR_MATCHING_BUILD */
+
+#ifdef BR_MATCHING_BUILD
+extern int *DAT_118eeee8;
+extern int DAT_118eeef0;
+typedef int (__stdcall *CC_std_1)();   /* COM method: this + arguments */
+
+/* WHAT IT DOES: drop one user of the keyboard system and release the
+ * DirectInput device when the last one goes. Clamps its own counter at zero,
+ * so an unmatched release is ignored rather than driving the count negative. */
+/* @implements 0x10071EB0 glide BrDiKeyboardShutdown */
+void BrDiKeyboardShutdown(void)
+
+{
+  DAT_118eeef0 = DAT_118eeef0 + -1;
+  if (DAT_118eeef0 < 0) {
+    DAT_118eeef0 = 0;
+    return;
+  }
+  if ((DAT_118eeef0 == 0) && (DAT_118eeee8 != (int *)0x0)) {
+    (*(CC_std_1 *)(*(int *)(DAT_118eeee8) + 32))(DAT_118eeee8);
+    (*(CC_std_1 *)(*(int *)(DAT_118eeee8) + 8))(DAT_118eeee8);
+    DAT_118eeee8 = (int *)0x0;
+  }
+  return;
+}
+#endif /* BR_MATCHING_BUILD */
