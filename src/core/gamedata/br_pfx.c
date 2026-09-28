@@ -7,13 +7,25 @@
  * See slice2_21.h for the field offsets and the gotchas.
  */
 #ifdef BR_MATCHING_BUILD
+/* The header declares the port's pool/env-parameter forms; the originals
+ * take no arguments (or the car alone) and reach the pool as globals. */
 #define BrPfxReset      BrPfxReset_port
 #define BrCarPfxSpawn   BrCarPfxSpawn_port
+#define BrPfxUpdateB0   BrPfxUpdateB0_port
+#define BrPfxUpdateB4AC BrPfxUpdateB4AC_port
+#define BrPfxTick       BrPfxTick_port
+#define BrPfxSaveState  BrPfxSaveState_port
+#define BrCarSub9020    BrCarSub9020_port
 #endif
 #include "slice2_21.h"
 #ifdef BR_MATCHING_BUILD
 #undef BrPfxReset
 #undef BrCarPfxSpawn
+#undef BrPfxUpdateB0
+#undef BrPfxUpdateB4AC
+#undef BrPfxTick
+#undef BrPfxSaveState
+#undef BrCarSub9020
 void BrPfxReset(void);
 #endif
 
@@ -188,5 +200,326 @@ void __fastcall BrCarPfxSpawn(struct BrCar *pCar)
         g_aPfxRec[iRec].f1E = 0x19;
         g_aPfxRec[iRec].f1F = (uint8_t)(int32_t)(16.0f - s * -167.3000030517578f);
     }
+}
+
+/* Glide match for BrPfxUpdateB0 — 0x10033880
+ *
+ * The port body lives in src/core/slice2_21.c (tagged 0x1003A200 d3d) and
+ * takes `(BrPfxPool *, const BrPfxEnv *)`.  The original takes NOTHING —
+ * its call site at 0x10033BB0 pushes no arguments at all — because dt,
+ * the ambient drift, the 32-byte record array and the list heads are
+ * globals and the free is inlined against the free head.  Same
+ * globals-struct-parameter blocker as its sibling BrPfxUpdateB4AC, whose
+ * already-converted body in slice2_21.c is the template for this one.
+ *
+ * Shape, straight off the original:
+ *  - the head is read as a DWORD and masked (`mov ebp,[0x10AC0C40]` /
+ *    `and ebp,0xFFFF`), and the link ADDRESS is planted in its stack slot
+ *    as an immediate, so head value and head address are two assignments,
+ *    not one `*piLink` read.
+ *  - `k` and `scale` ride the x87 stack across the __ftol call, which is
+ *    why the fade uses the raw `(int32_t)` cast rather than the
+ *    BrFtolTrunc helper: a real call would spill them.
+ *  - no gravity term here (the B4AC family's `vel.z -= dt*19.62` and its
+ *    second free condition are absent), and the fade divides by the
+ *    SQUARE of the age.
+ *
+ * Two levers took this from 245 diffs to byte-exact, in this order:
+ *  1. Spell `g_aPfxRec[iRec].field` in EVERY statement. Hoisting the
+ *     record pointer into a local (`PfxRec *p = &g_aPfxRec[iRec]`, which
+ *     is what the already-converted BrPfxUpdateB4AC body still does)
+ *     collapses the index chain into a base register and costs 19 bytes
+ *     and ten instructions: 48+21 regnorm -> 18+8. Same "rebuild the
+ *     index chain in every statement" rule as the slots class.
+ *  2. A REDUNDANT OUTER PAREN PAIR around the left group of the three
+ *     position sums: `(prod*dt + drift) + pos`. Without it VC5 emits
+ *     `fadd pos` before `fadd drift` on y and z (but NOT on x, which
+ *     computes `scale` inline and so meets the adds at a different x87
+ *     depth). Permuting the summands does nothing -- VC5 canonicalises
+ *     commutative float addition -- but the paren pair moves the
+ *     schedule; see docs/VC5-IDIOMS.md.
+ */
+extern float    g_fPfxDt;       /* 0x106E9D8C */
+extern BrVec3  g_vPfxDrift;    /* 0x104ADD40 */
+extern BrPfxRec   g_aPfxRec[];    /* 0x10AC0C48 */
+extern int32_t  g_iPfxHeadB0;   /* 0x10AC0C40 -- dword read, low word is
+                                 * the head */
+extern uint16_t g_iPfxFree;     /* 0x10AC0C38 */
+extern const float kPfx0_3;     /* 0x1007758C  0.3     */
+extern const float kPfxRecip;   /* 0x100775C4  1/65280 */
+extern const float kPfxNeg0_8;  /* 0x100775C8  -0.8    */
+extern const float kPfx5_7375;  /* 0x100775CC  5.7375  */
+extern const float kPfxCell;    /* 0x100775D0  0.03125 */
+
+/* WHAT IT DOES: advance one whole list of particles by a frame: ages each
+ * one, moves it by its own velocity plus the global drift, applies a
+ * downward pull, and fades its size. This is the per-frame physics for dust,
+ * smoke and spray. */
+/* @implements 0x10033880 glide BrPfxUpdateB0 */
+void BrPfxUpdateB0(void)
+{
+    float k = g_fPfxDt * kPfx0_3;
+    uint16_t *piLink;
+    unsigned iRec;
+    int iNext;
+
+    iRec   = (unsigned)g_iPfxHeadB0 & 0xFFFFu;
+    piLink = (uint16_t *)&g_iPfxHeadB0;
+
+    while (iRec != 0) {
+        float scale;
+
+        iNext = g_aPfxRec[iRec].iNext;
+        g_aPfxRec[iRec].age = k + g_aPfxRec[iRec].age;
+        scale = (float)((int)g_aPfxRec[iRec].f1F * (int)g_aPfxRec[iRec].f1E)
+              * kPfxRecip;
+
+        g_aPfxRec[iRec].pos.x = (g_aPfxRec[iRec].vel.x * scale) * g_fPfxDt
+                              + g_vPfxDrift.x + g_aPfxRec[iRec].pos.x;
+        g_aPfxRec[iRec].pos.y = ((g_aPfxRec[iRec].vel.y * scale) * g_fPfxDt
+                              + g_vPfxDrift.y) + g_aPfxRec[iRec].pos.y;
+        g_aPfxRec[iRec].pos.z = ((scale * g_aPfxRec[iRec].vel.z - kPfxNeg0_8)
+                              * g_fPfxDt + g_vPfxDrift.z) + g_aPfxRec[iRec].pos.z;
+
+        g_aPfxRec[iRec].f1E = (uint8_t)(int32_t)
+            (kPfx5_7375 / (g_aPfxRec[iRec].age * g_aPfxRec[iRec].age));
+
+        if (scale < kPfxCell) {
+            *piLink = g_aPfxRec[iRec].iNext;
+            g_aPfxRec[iRec].iNext = g_iPfxFree;
+            g_iPfxFree = (uint16_t)iRec;
+        } else {
+            piLink = &g_aPfxRec[iRec].iNext;
+        }
+
+        iRec = iNext;
+    }
+}
+
+/* Glide match for BrPfxUpdateB4AC — 0x100339C0
+ *
+ * Third member of the particle-step family, after 0x10033BB0 BrPfxTick
+ * and 0x10033880 BrPfxUpdateB0.  The port body in src/core/slice2_21.c
+ * (tagged 0x1003A340 d3d) already had the no-argument globals form; what
+ * it still lacked were the two levers that closed BrPfxUpdateB0:
+ *
+ *  1. the record index chain is RESPELLED in every statement --
+ *     `g_aPfxRec[iRec].field`, never a hoisted `PfxRec *p`;
+ *  2. a redundant outer paren pair around the left group of each
+ *     position sum, `(prod*dt + drift) + pos`, which is what puts the
+ *     drift `fadd` before the position `fadd`.  Permuting the summands
+ *     does nothing -- VC5 canonicalises commutative float addition.
+ *
+ * The rest is the family's shared shape: head read as a DWORD and masked
+ * with the link ADDRESS planted as an immediate (two assignments per
+ * arm, not one `*piLink` read), `k` and `scale` carried on the x87 stack
+ * across the __ftol call -- hence the raw `(int32_t)` cast rather than
+ * the BrFtolTrunc helper -- and the free inlined against the free head.
+ * This one walks TWO lists (B4 then AC) and adds the gravity term and
+ * the second free condition.
+ *
+ * Both levers landed here: the three position sums, the fade, the
+ * gravity term, the inlined free and the whole pass loop are
+ * instruction-for-instruction the original's.  (The `fadd [R]` /
+ * `fstp [R]` rows the regnorm multiset still reports are a SCORER
+ * ARTEFACT, not a gap: a member at record offset 0 has a zero reloc
+ * addend, so capstone prints `[esi]` where the original, whose
+ * displacement is the resolved absolute, prints `[esi+0x10AC0C48]`.)
+ *
+ * PARKED at -2 bytes / -1 instruction, register-blind 2+3.  The whole
+ * residue is ONE instruction: after `and r,0xFFFF` on the merged head the
+ * original emits a redundant `test r,r` before the loop-entry `je`; our
+ * cl fuses the two and branches on the AND's flags.  Its sibling
+ * 0x10033880 fuses them in the ORIGINAL too (there the `and` is
+ * separated from the `je` by two unrelated instructions), so this is an
+ * emitter peephole, not a source shape.
+ * DEAD PROBES -- none of these move it off 2+3:
+ *   guard shape: `while (iRec != 0)`, `if (iRec != 0) do {...} while`,
+ *     the mask hoisted out of the two arms vs applied inside each (the
+ *     latter costs a second `and`)
+ *   mask spelling: `iRec &= 0xFFFFu`, `iRec = head & 0xFFFFu` through a
+ *     separate `head` local, `iRec = (unsigned short)iRec`
+ *   index type: `int iRec` with a signed mask is WORSE (4+5)
+ *   flags: /O2 (best), /Od, /O2 /Oy-, /O2 /Op
+ */
+extern float    g_fPfxDt;       /* 0x106E9D8C */
+extern BrVec3  g_vPfxDrift;    /* 0x104ADD40 */
+extern BrPfxRec   g_aPfxRec[];    /* 0x10AC0C48 */
+extern int32_t  g_iPfxHeadB4;   /* 0x10AC0C44 -- dword read, low word is
+                                 * the head */
+extern int32_t  g_iPfxHeadAC;   /* 0x10AC0C3C */
+extern uint16_t g_iPfxFree;     /* 0x10AC0C38 */
+extern const float kPfx0_7;     /* 0x100775D4  0.7     */
+extern const float kPfxRecip;   /* 0x100775C4  1/65280 */
+extern const float kPfxNeg0_8;  /* 0x100775C8  -0.8    */
+extern const float kPfxCell;    /* 0x100775D0  0.03125 */
+extern const float kPfx19_62;   /* 0x100775D8  19.62   */
+extern const float kPfx102;     /* 0x100775DC  102.0   */
+extern const float kPfxNeg30;   /* 0x100775E0  -30.0   */
+
+/* WHAT IT DOES: advance two more particle lists by a frame, in the same way
+ * BrPfxUpdateB0 handles its own -- ages, moves and fades each particle. The
+ * two passes are two separate lists sharing one loop. */
+/* @t4-pass 0x100339C0 1 2026-09-07 probes 116 bytes 396 insns 96 regions 2 rows 1 census yes  (tools/crank.py) */
+/* @t4-pass 0x100339C0 2 2026-09-07 probes 121 bytes 396 insns 96 regions 2 rows 1 census yes  (tools/crank.py) */
+/* @t3 0x100339C0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 396/398 insns 96/97 rows 1+0 regions 2 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is allocation/scheduling: 1+0 classified rows, 2 masked regions, 2 B short;
+ * every row pairs under t3.py's canonical classes.  Effort: 2 counted
+ * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
+ * crank candidates and scores in build/match/crank.log, dead probes in the
+ * comment block above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
+/* @implements 0x100339C0 glide BrPfxUpdateB4AC */
+void BrPfxUpdateB4AC(void)
+{
+    float k = g_fPfxDt * kPfx0_7;
+    int pass;
+
+    for (pass = 0; pass < 2; pass++) {
+        uint16_t *piLink;
+        unsigned iRec;
+        int iNext;
+
+        if (pass != 0) {
+            iRec   = (unsigned)g_iPfxHeadAC;
+            piLink = (uint16_t *)&g_iPfxHeadAC;
+        } else {
+            iRec   = (unsigned)g_iPfxHeadB4;
+            piLink = (uint16_t *)&g_iPfxHeadB4;
+        }
+        iRec &= 0xFFFFu;
+
+        while (iRec != 0) {
+            float scale;
+
+            iNext = g_aPfxRec[iRec].iNext;
+            g_aPfxRec[iRec].age = k + g_aPfxRec[iRec].age;
+            scale = (float)((int)g_aPfxRec[iRec].f1F * (int)g_aPfxRec[iRec].f1E)
+                  * kPfxRecip;
+
+            g_aPfxRec[iRec].pos.x = ((g_aPfxRec[iRec].vel.x * scale) * g_fPfxDt
+                                  + g_vPfxDrift.x) + g_aPfxRec[iRec].pos.x;
+            g_aPfxRec[iRec].pos.y = ((g_aPfxRec[iRec].vel.y * scale) * g_fPfxDt
+                                  + g_vPfxDrift.y) + g_aPfxRec[iRec].pos.y;
+            g_aPfxRec[iRec].pos.z = ((scale * g_aPfxRec[iRec].vel.z - kPfxNeg0_8)
+                                  * g_fPfxDt + g_vPfxDrift.z)
+                                  + g_aPfxRec[iRec].pos.z;
+
+            g_aPfxRec[iRec].vel.z = g_aPfxRec[iRec].vel.z
+                                  - g_fPfxDt * kPfx19_62;
+
+            g_aPfxRec[iRec].f1E =
+                (uint8_t)(int32_t)(kPfx102 / g_aPfxRec[iRec].age);
+
+            if (scale < kPfxCell || g_aPfxRec[iRec].vel.z < kPfxNeg30) {
+                *piLink = g_aPfxRec[iRec].iNext;
+                g_aPfxRec[iRec].iNext = g_iPfxFree;
+                g_iPfxFree = (uint16_t)iRec;
+            } else {
+                piLink = &g_aPfxRec[iRec].iNext;
+            }
+
+            iRec = iNext;
+        }
+    }
+}
+
+/* Glide match for BrPfxTick — 0x10033BB0
+ *
+ * The port body lives in src/core/slice2_21.c (tagged 0x1003A530 d3d) and
+ * carries the aggregate parameters `(pPool, pEnv, pFxEnv, pTick, pSeed)`
+ * the port introduced.  The original takes NO arguments at all: the pool,
+ * the two mode words, the driver count and the driver-slot table are
+ * globals, and the three per-car helpers are __fastcall on the car
+ * pointer alone (`mov ecx,[esi]` / `call`).  That parameter list is the
+ * whole reason the port body could never converge — see the
+ * port-safety/globals-struct class in docs/VC5-IDIOMS.md.
+ *
+ * Shape notes, read off the original:
+ *  - the driver table at 0x10AF0858 has a 0x80-byte stride with the car
+ *    pointer at +0; VC5 strength-reduces the subscript into the `add
+ *    esi,0x80` pointer walk.
+ *  - the loop bound `DAT_100b2f00` is RE-READ at the bottom of every
+ *    iteration, which is what a plain `i < global` for-loop emits once a
+ *    call in the body can clobber it.
+ *  - the car pointer is re-loaded for the second call in the first two
+ *    loops (the call clobbers ecx), so each arm spells the slot read out
+ *    rather than caching it in a local.
+ *  - the two early `return`s give loops 1 and 2 their own
+ *    `pop edi/pop esi/ret`; all three `jle` exits share loop 3's.
+ */
+typedef struct {
+    void *pCar;                 /* +0x00 */
+    char  pad[0x7C];
+} BrPfxDriverSlot;              /* 0x80 */
+
+extern int DAT_10ac2c48;        /* pool-initialised flag */
+extern int DAT_106ed6b0;        /* mode: age the B0 family */
+extern int DAT_106ed6ac;        /* mode word */
+extern int DAT_106ed6b4;        /* mode flag */
+extern int DAT_100b2f00;        /* driver count */
+extern BrPfxDriverSlot DAT_10af0858[];
+
+void BrPfxUpdateB0(void);
+void BrPfxUpdateB4AC(void);
+void __fastcall BrCarSub9020(struct BrCar *pCar);   /* 0x10039020, thiscall */
+void __fastcall BrCarPfxSpawn(struct BrCar *pCar);
+
+/* WHAT IT DOES: run the particle system for one frame -- initialises it on
+ * the very first call, then updates whichever particle lists the current
+ * mode uses and gives every active car a chance to throw up its own wheel
+ * effects. */
+/* @implements 0x10033BB0 glide BrPfxTick */
+void BrPfxTick(void)
+{
+    int i;
+
+    if (DAT_10ac2c48 == 0) {
+        BrPfxReset();
+        DAT_10ac2c48 = 1;
+    }
+
+    if (DAT_106ed6b0 != 0) {
+        BrPfxUpdateB0();
+        for (i = 0; i < DAT_100b2f00; i++) {
+            if (DAT_10af0858[i].pCar != 0) {
+                BrCarSub9020(DAT_10af0858[i].pCar);
+                BrCarWheelFx(DAT_10af0858[i].pCar);
+            }
+        }
+        return;
+    }
+
+    if (DAT_106ed6ac == 0 && DAT_106ed6b4 == 0) {
+        BrPfxUpdateB4AC();
+        for (i = 0; i < DAT_100b2f00; i++) {
+            if (DAT_10af0858[i].pCar != 0) {
+                BrCarPfxSpawn(DAT_10af0858[i].pCar);
+                BrCarWheelFx(DAT_10af0858[i].pCar);
+            }
+        }
+        return;
+    }
+
+    for (i = 0; i < DAT_100b2f00; i++) {
+        if (DAT_10af0858[i].pCar != 0)
+            BrCarWheelFx(DAT_10af0858[i].pCar);
+    }
+}
+
+/* 0x10033C90 */
+/* WHAT IT DOES: copy the entire particle system state into a caller's buffer
+ * -- the four list heads in the order free, B0, AC, B4 (not their address
+ * order), then the whole 8 KB record pool.  Used to snapshot particles so
+ * they survive something that would otherwise reset them. */
+/* @implements 0x10033C90 glide BrPfxSaveState */
+void BrPfxSaveState(short *pOut)
+{
+    pOut[0] = (short)DAT_10ac0c38;
+    pOut[1] = DAT_10ac0c40;
+    pOut[2] = (short)DAT_10ac0c3c;
+    pOut[3] = (short)DAT_10ac0c44;
+    memcpy(pOut + 4, g_aPfxRec, 8192);
 }
 #endif
