@@ -344,3 +344,6 @@ va,name,kind
 802581CC,BrVec3Normalise,func
 8025B704,BrCrPlaneDist,func
 8025C24C,BrCrListPush,func
+8020072C,BrRaceCueRewind,func
+80219A5C,BrStub80219A5C,func
+80217420,BrMat4MaxAbs,func

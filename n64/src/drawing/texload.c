@@ -8,6 +8,32 @@ int sprintf(char *buf, char *fmt, ...);
 void BrFatal(char *msg);
 /* -- end declarations -- */
 
+/* WHAT IT DOES: The largest magnitude among a 4x4 matrix's first twelve
+ * elements (its rotation rows). */
+/* @implements 0x80217420 tgr BrMat4MaxAbs */
+float BrMat4MaxAbs(float m[16])
+{
+  float *p;
+  float max;
+  float min;
+
+  min = max = 0.0f;
+  for (p = m; p < m + 12; p++) {
+    if (*p < 0.0f) {
+      if (*p < min) {
+        min = *p;
+      }
+    } else if (max < *p) {
+      max = *p;
+    }
+  }
+  min = -min;
+  if (max < min) {
+    return min;
+  }
+  return max;
+}
+
 /* WHAT IT DOES: Scale a 4x4 matrix so the largest magnitude among its
  * rotation rows fits the RSP's fixed-point range (just under 2). */
 /* @implements 0x802174B4 tgr BrMat4FitRange */
