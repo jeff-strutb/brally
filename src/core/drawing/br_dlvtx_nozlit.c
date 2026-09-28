@@ -14,7 +14,27 @@
  * N64 idiom for lit geometry layered over the scene without depth tests.
  * The handler selector 0x1001FD70 installs it (0x1001FE9E, its only install
  * site) whenever the geometry mode has LIGHTING (0x20000) set and ZBUFFER
- * (0x1) clear.  The PC game never produces that state.
+ * (0x1) clear.  The PC game DOES enter that state (below), but never loads a
+ * vertex in it.
+ *
+ * RE-DERIVED 2026-09-28 -- the 2026-09-24 notes below said the state never
+ * occurs; it does:
+ *  - In snow, and in the END camera view, the last world pass leaves LIGHTING
+ *    set; the HUD dial BrHudDrawDial 0x100140B0 then clears ZBUFFER alone
+ *    (single view).  Measured: 487..712 selections per race.
+ *  - With the needle dial (sprite mode 0) the dial clears LIGHTING
+ *    (B6 0x00033000) before its own G_VTX quad, so the quad goes to the unlit
+ *    no-Z handler.  Cars 9, 10, 25 and 26 have a non-needle dial: the dial
+ *    returns right after clearing Z, and the state stays until the next
+ *    frame (~5,460 selections per race).
+ *  - Everything drawn after the dial in that frame (split times, view message,
+ *    text -- a 24-function call tree, three levels deep) emits no G_VTX and no
+ *    display-list call; the next frame's setup resets the mode.
+ *  - Measured over 154 sessions (all tracks, weathers, 32 cars, camera views,
+ *    race menu, attract demo): 0 calls.  Split screen (cViews 2) skips the
+ *    dial's Z clear, and is reachable only through a command-line switch no
+ *    retail launcher passes.
+ * The 2026-09-24 notes follow; their first measured claim is superseded.
  *
  * DEAD CODE IN THE PC RELEASE -- settled 2026-09-24, do not re-litigate:
  *  - The geometry mode 0x105D17C8 has exactly two writers, the display-list
