@@ -37,3 +37,31 @@ int BrTriContainsPoint(BrVec3 *pPt, BrVec3 *pA, BrVec3 *pB, BrVec3 *pC, BrVec3 *
   }
   return 1;
 }
+
+/* WHAT IT DOES: BrTriContainsPoint with a tolerance: each edge's cross
+ * product with the point's offset must face along the reference normal by
+ * at least eps. */
+/* @implements 0x80225A40 tgr BrTriContainsPointEps */
+int BrTriContainsPointEps(BrVec3 *pPt, BrVec3 *pA, BrVec3 *pB, BrVec3 *pC, BrVec3 *pRef, float eps)
+{
+  BrVec3 toPtA, toPtB, edge1, edge2, edge3, n;
+
+  BrVec3Sub(&edge1, pB, pA);
+  BrVec3Sub(&toPtB, pPt, pB);
+  BrVec3Cross(&n, &edge1, &toPtB);
+  if (BrVec3Dot(&n, pRef) < eps) {
+    return 0;
+  }
+  BrVec3Sub(&edge2, pC, pB);
+  BrVec3Cross(&n, &edge2, &toPtB);
+  if (BrVec3Dot(&n, pRef) < eps) {
+    return 0;
+  }
+  BrVec3Sub(&edge3, pA, pC);
+  BrVec3Sub(&toPtA, pPt, pA);
+  BrVec3Cross(&n, &edge3, &toPtA);
+  if (BrVec3Dot(&n, pRef) < eps) {
+    return 0;
+  }
+  return 1;
+}

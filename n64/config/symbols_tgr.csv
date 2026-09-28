@@ -490,3 +490,4 @@ va,name,kind
 8023A0BC,BrLightningStep,func
 80219DF0,BrViewportFull,func
 80220FF4,BrCarCamLookAt,func
+80225A40,BrTriContainsPointEps,func
