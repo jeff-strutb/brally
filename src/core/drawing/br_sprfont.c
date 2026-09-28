@@ -38,6 +38,8 @@
  * and therefore came through the struct frame.
  */
 #ifdef BR_MATCHING_BUILD
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
 #define BrSprFontGlyphA_1005B730 BrSprFontGlyphA_1005B730_port
 #define BrSprFontGlyphB_1005B7A0 BrSprFontGlyphB_1005B7A0_port
 #endif
@@ -49,6 +51,8 @@
 #endif
 
 #include <stddef.h>
+#include <stdio.h>
+#include <string.h>
 
 #include "br_crt.h"        /* BrFtolTrunc -- 0x1007C8A0 */
 #include "br_uispr.h"      /* g_aBrUiSprite -- the entry's +0x14 is fBlit */
@@ -565,3 +569,97 @@ int32_t BrSprFontKindHook_10047360(BrUiCtl_ *pCtl)
 
 /* BrSprFontDraw (0x10058380) lives in ghidra_batch.c - the original binary
  * calls BrUiSprClip with 6 args, but the port header declares 7. */
+
+#ifdef BR_MATCHING_BUILD
+typedef int (__fastcall *VT1)(void *this);
+
+extern char DAT_100acb44[];
+extern int DAT_10ac5bb4;
+extern int DAT_10ac5de4;
+extern int DAT_10ac5e50;
+extern int DAT_10ac5ecc;
+extern int DAT_10ac5ed0;
+extern int DAT_10ac5ed4;
+extern int DAT_10ac5ed8;
+extern int DAT_10ac6050;
+extern int g_brAA2854;
+extern int g_brAA33E4;
+extern int g_brPA9D008;
+char FUN_10054360(int key);
+int FUN_10037720(void);
+int FUN_10037040(int a, int b);
+int FUN_1006ba60(int a, int b);
+
+/* WHAT IT DOES: the text box's key handler -- vtable slot +0x14 of the
+ * BrTextBox in slice3_39.h (D3D 0x1005B570), with the box as `this`.  In a
+ * network session it first sends whichever of the four pending lobby
+ * messages (4..7) is flagged and records it.  Then it consumes the character
+ * 0x10AA33E4 holds from WM_CHAR: the flag at 0x10AC5DE4 returns -1; a
+ * non-empty box returns 0 while 0x10AC5E50 or 0x10AC6050 is set, or
+ * 0x10037720 reports true outside a session; code 8 (backspace) drops the last
+ * character; any other code goes through BrCharMapLookup and, if the box
+ * (re-measured through vtable +0x04) is still under its width limit at
+ * +0x41C, is appended to the text at +0x09.  An unmapped code returns 1 and
+ * is left pending; every other path clears it. */
+/* @implements 0x10054390 glide FUN_10054390 */
+char __fastcall FUN_10054390(int *param_1)
+
+{
+  char cVar1;
+  
+  if (DAT_10ac5bb4 != 0) {
+    if (DAT_10ac5ecc != 0) {
+      FUN_10037040(g_brPA9D008, 4);
+      FUN_1006ba60(4, 0x200020);
+      g_brAA2854 = 4;
+    }
+    else if (DAT_10ac5ed0 != 0) {
+      FUN_10037040(g_brPA9D008, 5);
+      FUN_1006ba60(5, 0x200020);
+      g_brAA2854 = 5;
+    }
+    else if (DAT_10ac5ed4 != 0) {
+      FUN_10037040(g_brPA9D008, 6);
+      FUN_1006ba60(6, 0x200020);
+      g_brAA2854 = 6;
+    }
+    else if (DAT_10ac5ed8 != 0) {
+      FUN_10037040(g_brPA9D008, 7);
+      FUN_1006ba60(7, 0x200020);
+      g_brAA2854 = 7;
+    }
+  }
+  if (DAT_10ac5de4 != 0) {
+    g_brAA33E4 = 0;
+    return (char)0xff;
+  }
+  if ((DAT_10ac5e50 != 0) || (DAT_10ac6050 != 0) ||
+      (FUN_10037720() != 0 && DAT_10ac5bb4 == 0)) {
+    if (strlen((char *)param_1 + 9) != 0) {
+      g_brAA33E4 = 0;
+      return 0;
+    }
+  }
+  if (g_brAA33E4 != 0) {
+    if (g_brAA33E4 == 8) {
+      if (strlen((char *)param_1 + 9) != 0) {
+        ((char *)param_1)[8 + strlen((char *)param_1 + 9)] = 0;
+        g_brAA33E4 = 0;
+        return 1;
+      }
+    }
+    else {
+      cVar1 = FUN_10054360(g_brAA33E4);
+      if (cVar1 == 0) {
+        return 1;
+      }
+      (*(VT1 *)(*param_1 + 4))(param_1);
+      if (*(short *)((int)param_1 + 0x40a) < *(short *)((int)param_1 + 0x41c)) {
+        sprintf((char *)param_1 + 9, DAT_100acb44, (char *)param_1 + 9, (int)cVar1);
+      }
+    }
+  }
+  g_brAA33E4 = 0;
+  return 1;
+}
+#endif /* BR_MATCHING_BUILD */

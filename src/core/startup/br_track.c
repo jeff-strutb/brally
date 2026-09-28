@@ -726,10 +726,8 @@ typedef struct BrTrkInst {
 void BrTrackLoad(int param_1)
 
 {
-  unsigned char *pbVar1;
   int uVar3;
   int iVar6;
-  int iVar8;
   float fVar11;
   struct { float x; float y; float z; } local_40c;
   char local_400 [1024];
@@ -786,5 +784,28 @@ void BrTrackLoad(int param_1)
   }
   FUN_1005a780();
   FUN_10069530(param_1);
+}
+#endif /* BR_MATCHING_BUILD */
+
+#ifdef BR_MATCHING_BUILD
+void FUN_10031030(char *pszPath);     /* 0x10031030, br_texlevels.c */
+extern char DAT_100aa338[];            /* ".hnt" */
+extern char DAT_100aa340[];            /* "%s%s" */
+extern char s_tracks__100b74c0[];      /* "tracks/" */
+
+/* WHAT IT DOES: load one track's texture-detail hint file: builds
+ * "tracks/<track file>" from the track table, swaps the extension for
+ * ".hnt" and hands the path to the threshold loader (0x10031030), which
+ * picks the texture detail level from it.  (The name is historical: this
+ * is not handling data.) */
+/* @implements 0x10031140 glide BrTrackLoadHandling */
+void BrTrackLoadHandling(int iTrack)
+{
+  char szPath[1024];
+
+  sprintf(szPath, DAT_100aa340, s_tracks__100b74c0,
+          (&PTR_s_desert_trk_100b78c0)[iTrack]);
+  strcpy(strrchr(szPath, '.'), DAT_100aa338);
+  FUN_10031030(szPath);
 }
 #endif /* BR_MATCHING_BUILD */

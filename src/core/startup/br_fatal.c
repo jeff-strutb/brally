@@ -76,3 +76,29 @@ void BrMsgBoxAA(void *hWnd, int unused, const char *pText)
 }
 
 #endif /* BR_MATCHING_BUILD */
+
+#ifdef BR_MATCHING_BUILD
+/* 0x100ABE00: the Glide copy of the nine-entry error table (BrErrEnt in
+ * slice1_06.h; the D3D twin of this function is 0x1003E260). */
+extern BrErrEnt DAT_100abe00[];
+extern int g_brP680584;             /* the main window handle */
+
+/* WHAT IT DOES: show one of the game's numbered error messages in a Windows
+ * message box, looking the text up in the string table so it appears in the
+ * player's language (its first character is skipped), and quitting the game
+ * afterwards if that error is marked fatal.  Only the upper bound is tested:
+ * a negative number reads before the table, as in the original. */
+/* @implements 0x100378C0 glide FUN_100378c0 */
+void FUN_100378c0(int iErr)
+{
+  const char *pText;
+
+  if (iErr <= 8) {
+    pText = BrStrGet(DAT_100abe00[iErr].idText);
+    MessageBoxA((void *)g_brP680584, pText + 1, BrStrGet(0xaa), 0);
+    if (DAT_100abe00[iErr].fFatal != 0) {
+      exit(1);
+    }
+  }
+}
+#endif /* BR_MATCHING_BUILD */

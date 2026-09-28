@@ -327,3 +327,31 @@ void *BrChkRealloc(void *pMem, size_t size, const char *pWhat)
     return p;
 }
 #endif
+
+#ifdef BR_MATCHING_BUILD
+extern char s_File__s_missing_100aa318[];   /* "File %s missing" */
+void BrLogPrint(const void *p);
+
+/* WHAT IT DOES: read a whole file into a caller-supplied buffer: warns to
+ * the log if it is missing, opens it, reads either the requested number of
+ * bytes or the entire file when a negative length is passed, and closes it.
+ * Every step uses the abort-on-failure file helpers above, so a real failure
+ * ends the game rather than returning. */
+/* @implements 0x10030F50 glide BrFileReadInto */
+void BrFileReadInto(void *pDst, const char *pPath, int cb)
+{
+  FILE **ppFile;
+  char szMsg[512];
+
+  if (BrChkFileExists(pPath) == 0) {
+    sprintf(szMsg, s_File__s_missing_100aa318, pPath);
+    BrLogPrint(szMsg);
+  }
+  ppFile = BrChkFReadOpen(pPath);
+  if (cb < 0) {
+    cb = BrChkFileSize(ppFile);
+  }
+  BrChkFRead(pDst, 1, cb, ppFile);
+  BrChkFClose(ppFile);
+}
+#endif /* BR_MATCHING_BUILD */
