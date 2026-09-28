@@ -466,6 +466,7 @@ va,name,kind
 8025D368,BrCollRespTipKick,func
 8025E820,BrTyreSkidCheck,func
 8025EC7C,BrTyreDepthAll,func
+8025EDBC,BrTyreSprings,func
 8025EF70,BrTyreLoads,func
 8025F0A4,BrTriCacheDrop,func
 80260490,BrRumbleUpdate,func

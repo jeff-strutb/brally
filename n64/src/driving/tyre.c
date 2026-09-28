@@ -23,11 +23,14 @@ typedef struct BrRbBody {       /* a rigid body with four attached wheels */
   float x80;                    /* 0x80  on a wheel: x1d8 held to [-0.4, 0] */
   char pad84[0x1b4 - 0x84];
   int x1b4;                     /* 0x1B4  on a wheel: it is on the ground */
-  char pad1b8[0x1bc - 0x1b8];
+  float x1b8;                   /* 0x1B8  spring load per unit of compression squared */
   float x1bc;                   /* 0x1BC  load per unit of upward speed */
   char pad1c0[0x1d8 - 0x1c0];
   float x1d8;                   /* 0x1D8  on a wheel: minus 0x8025E96C's answer */
+  char pad1dc[0x203 - 0x1dc];
+  unsigned char x203;           /* 0x203  0x80: a wheel has just landed */
 } BrRbBody;
+#define SIGN(x) ((x) == 0.0f ? 0.0 : ((x) > 0 ? 1.0 : -1.0))
 float func_8025E96C(BrRbBody *b, BrRbBody *w);
 void BrRbVelAtFlatPoint(float out[3], BrRbBody *b, BrRbBody *at);
 /* -- end declarations -- */
@@ -65,6 +68,68 @@ void BrTyreSkidCheck(int param_1,int param_2)
     *(float *)(param_2 + 8) = *(float *)(param_2 + 8) + *(float *)(param_1 + 0x84) * -220.0f;
     *(float *)(param_2 + 0xc) = *(float *)(param_2 + 0xc) + fVar6 * -220.0f;
     *(float *)(param_2 + 0x10) = *(float *)(param_2 + 0x10) + fVar5 * -220.0f;
+  }
+}
+
+/* WHAT IT DOES: The four wheels' spring loads: each wheel counts frames on
+ * the ground (to 100); pushed in past 0.3999 it is taken as bottomed out
+ * (count reset, depth -0.3); the compression past -0.3, never negative, is
+ * squared (keeping its sign) and scaled by the body's spring rate.  A wheel
+ * back on the ground after a frame off it flags a landing.  The bottom-out
+ * test is -0.4 + 0.0001 (BrTyreDepthAll's clamp; the folded double differs
+ * from a literal -0.3999 in its last bit).
+ * RESIDUE (53, same 109 instructions): the hoisted constants' FP registers
+ * (the ROM keeps 1.0/-1.0 in f26/f28 and 0.0 in f20) and literal pool order
+ * (the ROM pools -0.3 double before -0.3f). */
+/* @implements 0x8025EDBC tgr BrTyreSprings */
+void BrTyreSprings(BrRbBody *b)
+{
+  BrTyreLoad *w;
+  int i;
+  BrRbBody *s;
+  short prev;
+  float d;
+  float t;
+
+  w = b->loads;
+  for (i = 0; i < 4; i++) {
+    w->x8 = w->xc = 0.0f;
+    switch (i) {
+    case 0:
+      s = b->sub[0];
+      break;
+    case 1:
+      s = b->sub[1];
+      break;
+    case 2:
+      s = b->sub[2];
+      break;
+    default:
+      s = b->sub[3];
+      break;
+    }
+    prev = s->x1b4;
+    d = s->x1d8;
+    if (s->x1b4 < 100) {
+      s->x1b4++;
+    }
+    if (d <= -0.4 + 0.0001) {
+      s->x1b4 = 0;
+      d = -0.3;
+    }
+    if (0.0 < d) {
+      d = 0.0f;
+    }
+    t = d - -0.3;
+    if (t < 0.0f) {
+      t = 0.0f;
+    }
+    t = SIGN(t) * t * t;
+    w->load = t * b->x1b8;
+    w = w->next;
+    if (s->x1b4 != 0 && prev == 0) {
+      b->x203 = 0x80;
+    }
   }
 }
 
