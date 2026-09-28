@@ -121,19 +121,24 @@ int BrRumbleInsertPrompt(int anyPad)
 /* WHAT IT DOES: Probe every connected controller for a Rumble Pak: each one
  * that answers is marked present and its motor stopped.  Pak access is
  * flagged busy meanwhile.
- * RESIDUE (51): ours hoists the rumble-flag table's address into a saved
- * register; the ROM rebuilds it inside the loop (one fewer saved
- * register). */
+ * RESIDUE (5): the flag slot's address.  The ROM adds i to the table base
+ * before the stop call and keeps the sum in s2; ours keeps the base in s2 and
+ * adds after the call.  A named pfs pointer and an integer-cast table address
+ * (which stops IDO hoisting the base out of the loop) took it from 51. */
 /* @implements 0x80214BEC tgr BrRumbleProbe */
 void BrRumbleProbe(void)
 {
   int i;
+  BrPfs *pfs;
+  char *flag;
 
   D_802A4BE8 = 0;
   for (i = 0; i < D_8026FF08; i++) {
-    if (func_80262370(&D_80272D48, (int)&D_8031A3F8[i], i) == 0) {
-      func_80261F20((int)&D_8031A3F8[i]);
-      (&D_8031B1E8)[i] = 1;
+    pfs = &D_8031A3F8[i];
+    if (func_80262370(&D_80272D48, (int)pfs, i) == 0) {
+      flag = (char *)((int)&D_8031B1E8 + i);
+      func_80261F20((int)pfs);
+      *flag = 1;
     }
   }
   D_802A4BE8 = 1;
