@@ -302,6 +302,7 @@ va,name,kind
 80233668,BrMenu3DBegin,func
 802336E0,BrMenuCarDraw,func
 80233880,BrHudArrowDraw,func
+80233E10,BrProjectExtent,func
 80233FDC,BrVtxPoolsReset,func
 80234FC0,BrDrawSortCmp,func
 80235BAC,BrTrackDraw,func

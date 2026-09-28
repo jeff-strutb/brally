@@ -41,6 +41,12 @@ extern BrFrustum D_8031B1F0;
 extern float D_8031ABD0[3];             /* half the far plane's width, along the side axis */
 extern float D_8031ABE0[3];             /* half its height, along the up axis */
 extern float D_8031ABF0[3];             /* its centre */
+void BrMat4TransformPoint4(float out[4], float v[3], float m[4][4]);
+typedef struct BrViewRect { int x; int y; int w; int h; int car; } BrViewRect;
+extern BrViewRect D_8031B2C8[2];        /* the players' views */
+extern int D_8028AAEC;                  /* the view being drawn */
+extern int D_8028A8A8;                  /* mirror flags: they differ when the view is mirrored */
+extern int D_8028A8AC;
 /* -- end declarations -- */
 
 #define OS_K0_TO_PHYSICAL(x) ((unsigned int)((char *)(x) - 0x80000000))
@@ -138,4 +144,51 @@ void BrScreenCameraSet(float w, float h)
   D_8028A878 = BrMtxAlloc();
   guMtxF2L(D_8031AA50, D_8028A878);
   gSPMatrix(D_8028A858++, OS_K0_TO_PHYSICAL(D_8028A878), G_MTX_PROJECTION | G_MTX_LOAD | G_MTX_NOPUSH);
+}
+
+/* WHAT IT DOES: The screen rectangle a ball of radius r at pos covers in the
+ * current view: project the centre through the camera, and unless it is on
+ * the eye plane (|w| <= 0.001) put the corners r / w either side of it
+ * (x flipped for a mirrored view), in pixels from the view's centre (y up);
+ * lo gets the lower corner, hi the upper.
+ * RESIDUE (28, same 114 instructions): the ROM spills the half-sizes to
+ * 0x24/0x20, two words below where ours land (0x2C/0x28), with nothing
+ * stored in between; and its temporaries are numbered differently from the
+ * first load.  The unused float[4] reproduces the 16-byte hole above cx. */
+/* @implements 0x80233E10 tgr BrProjectExtent */
+void BrProjectExtent(float pos[3], int r, short *lo, short *hi)
+{
+  float p[4];
+  float q[4];
+  float spare[4];
+  int cx;
+  int cy;
+  int hw;
+  int hh;
+  float inv;
+  float s;
+
+  hw = D_8031B2C8[D_8028AAEC].w >> 1;
+  hh = D_8031B2C8[D_8028AAEC].h >> 1;
+  cx = D_8031B2C8[D_8028AAEC].x + hw;
+  cy = D_8031B2C8[D_8028AAEC].y + hh;
+  BrMat4TransformPoint4(p, pos, D_8031AA50);
+  if (!(p[3] <= 0.001f && -0.001f <= p[3])) {
+    inv = 1.0f / p[3];
+    if (D_8028A8A8 != D_8028A8AC) {
+      p[0] *= -inv;
+    } else {
+      p[0] *= inv;
+    }
+    p[1] *= inv;
+    s = r * inv;
+    q[0] = p[0] + s;
+    p[0] = p[0] - s;
+    q[1] = p[1] + s;
+    p[1] = p[1] - s;
+    lo[0] = (int)(p[0] * hw) + cx;
+    lo[1] = cy - (int)(p[1] * hh);
+    hi[0] = (int)(q[0] * hw) + cx;
+    hi[1] = cy - (int)(q[1] * hh);
+  }
 }
