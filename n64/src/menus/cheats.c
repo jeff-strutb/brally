@@ -1,5 +1,5 @@
-/* cheats.c -- the debug-menu toggles and unlock cheats (reached only through
- * the debug menu's table)
+/* cheats.c -- the cheat actions (toggles and unlocks) and the button-sequence
+ * matcher that runs them from the cheat table
  */
 #include "tgr/common.h"
 #include "tgr/car.h"
@@ -8,6 +8,19 @@
 extern int D_8028AA94;
 extern int D_8026FF20;
 extern int D_8028AA68;
+typedef struct BrCheat {        /* one button-sequence cheat (8 bytes) */
+  void (*fn)(void);
+  unsigned short *seq;          /* newest button first, 0xFFFF ends; 0 ends the table */
+} BrCheat;
+extern BrCheat D_8028DF48[];
+extern unsigned short *D_8028DF4C;    /* D_8028DF48[0].seq */
+typedef struct BrPadHistory {   /* a controller's button history */
+  short pad00;
+  unsigned short buttons;       /* 0x02  buttons held this frame */
+  char pad04[0x50 - 0x04];
+  unsigned short hist[128];     /* 0x50  ring of button changes */
+  unsigned int pos;             /* 0x150 newest entry */
+} BrPadHistory;
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Flip the debug flag at 0x8028AA94 on or off. */
@@ -85,4 +98,46 @@ void BrCheatToggleFF20(void)
 void BrCheatToggleAA68(void)
 {
   D_8028AA68 = !D_8028AA68;
+}
+
+/* WHAT IT DOES: Record a change of the held buttons in the controller's
+ * 128-entry history ring, and run every cheat whose button sequence
+ * matches the newest entries.
+ * RESIDUE (33): register colouring only -- the ROM keeps the sequence
+ * pointer, the loaded entry, the ring index and the ring base in four
+ * separate registers (a2, a0, v1, a1); ours folds two of them.  Loop forms
+ * (for/while, indexed table, post-increment, a loaded-entry local) and 250
+ * permuter compiles leave 33. */
+/* @implements 0x80255048 tgr BrCheatInput */
+void BrCheatInput(BrPadHistory *pad)
+{
+  BrCheat *c;
+  unsigned short *seq;
+  unsigned short *p;
+  unsigned short *h;
+  unsigned int i;
+
+  i = (pad->pos - 1) & 0x7f;
+  if (pad->buttons != pad->hist[pad->pos]) {
+    pad->pos = i;
+    pad->hist[i] = pad->buttons;
+    seq = D_8028DF4C;
+    c = D_8028DF48;
+    while (seq != 0) {
+      i = pad->pos;
+      h = pad->hist;
+      p = seq;
+      while (*p != 0xffff) {
+        if (*p++ != h[i]) {
+          goto next;
+        }
+        i++;
+        i &= 0x7f;
+      }
+      c->fn();
+    next:
+      c++;
+      seq = c->seq;
+    }
+  }
 }
