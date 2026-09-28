@@ -5,24 +5,16 @@
  * scale-out as three fld-st copies; this file alone reproduces orig. */
 /* WHAT IT DOES: combines two orientation quaternions (w, x, y, z order)
  * into their product, one quaternion for both rotations together. */
-/* @t4-pass 0x1006D2E0 1 2026-09-27 probes 384 bytes 288 insns 96 regions 1 rows 5 census yes  (hand: all 24 row orders x 16 pointer/index store masks, first in the TU) */
-/* @t4-pass 0x1006D2E0 2 2026-09-27 probes 24 bytes 288 insns 96 regions 1 rows 5 census no  (hand: extern-int pads 64-1024 as C, C++ and after <windows.h>) */
 /* @implements 0x1006D2E0 glide BrQuatMul */
-/* Source facts (2026-09-27): the pB components are declared first, then pA,
- * each in index order; the rows are written out[2], out[1], out[0], out[3],
- * and out[3] goes through its own pointer -- that pointer store is what gives
- * the original's accumulator stack layout and exact size.
- * FILE POSITION (2026-09-27): above the file's #includes.  Below them the
- * header declarations shift VC5's accumulator slots (faddp st(2)/st(7),
- * 290 B); with nothing ahead of it the whole body matches the original but
- * the stores.
- * RESIDUE (288/290): the four stores leave in statement order where the
- * original stores out[3] first.  Inert (in this position): all 24 row
- * orders x 16 pointer/index store masks, extern-int pads 64..1024 as C and
- * C++, /TP; <windows.h> ahead of it is worse. */
+/* Byte-exact 2026-09-27.  Source facts: the pB components are loaded first,
+ * then pA, each in index order; rows 0..2 are computed into named locals and
+ * row 3 is computed inline in its own store, with the stores written 3, 2,
+ * 1, 0 -- that is the original's store order, and computing the three rows
+ * ahead of the stores keeps the accumulator layout.  FILE POSITION: above
+ * the file's #includes; below them the header declarations shift VC5's
+ * accumulator slots (faddp st(2)/st(7)). */
 void BrQuatMul(float *pOut, const float *pA, const float *pB)
 {
-    float *pO3 = pOut + 3;
     float b0 = pB[0];
     float b1 = pB[1];
     float b2 = pB[2];
@@ -31,10 +23,14 @@ void BrQuatMul(float *pOut, const float *pA, const float *pB)
     float a1 = pA[1];
     float a2 = pA[2];
     float a3 = pA[3];
-    pOut[2] = a2 * b0 + a3 * b1 + a0 * b2 - a1 * b3;
-    pOut[1] = a1 * b0 + a0 * b1 - a3 * b2 + a2 * b3;
-    pOut[0] = a0 * b0 - a1 * b1 - a2 * b2 - a3 * b3;
-    pO3[0] = a3 * b0 - a2 * b1 + a1 * b2 + a0 * b3;
+    float r0, r1, r2;
+    r0 = a0 * b0 - a1 * b1 - a2 * b2 - a3 * b3;
+    r1 = a1 * b0 + a0 * b1 - a3 * b2 + a2 * b3;
+    r2 = a2 * b0 + a3 * b1 + a0 * b2 - a1 * b3;
+    pOut[3] = a3 * b0 - a2 * b1 + a1 * b2 + a0 * b3;
+    pOut[2] = r2;
+    pOut[1] = r1;
+    pOut[0] = r0;
 }
 
 #include "br_vec.h"
