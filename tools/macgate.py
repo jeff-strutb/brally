@@ -65,9 +65,10 @@ def compile_survey():
     difference between "one file is broken" and "one file is broken and here
     are the other four behind it".
     """
-    import glob
-    srcs = sorted(glob.glob(os.path.join(ROOT, "src/core/**/*.c"), recursive=True))
-    cflags = ["-std=c99", "-w", "-D_DARWIN_C_SOURCE", "-Iinclude", "-Itests"]
+    sys.path.insert(0, os.path.join(ROOT, "tools"))
+    from portcheck import default_sources   # exactly the TUs build.sh compiles
+    srcs = [os.path.join(ROOT, s) for s in default_sources()]
+    cflags = ["-std=c99", "-w", "-D_DARWIN_C_SOURCE", "-Iinclude", "-Itests", "-Iports/macos/include"]
     bad = []
     for s in srcs:
         rel = os.path.relpath(s, ROOT)

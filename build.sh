@@ -15,8 +15,8 @@ mkdir -p build build/host
 # -fdeclspec: decomp TUs spell MSVC import prototypes (`__declspec(dllimport)`)
 # for the matching build; on the Mac the attribute is parsed and ignored.
 # Pointer-qualifier mismatches on callbacks (BR_STDCALL typedefs) are benign.
-CFLAGS="-std=c99 -Wall -Wextra -Wno-unused-parameter -Wno-error=implicit-function-declaration -Wno-implicit-function-declaration -fdeclspec -Wno-ignored-attributes -Wno-error=incompatible-function-pointer-types -g -D_DARWIN_C_SOURCE -Iinclude -Itests"
-MFLAGS="-fobjc-arc -Wall -g -Iinclude"
+CFLAGS="-std=c99 -Wall -Wextra -Wno-unused-parameter -Wno-error=implicit-function-declaration -Wno-implicit-function-declaration -fdeclspec -Wno-ignored-attributes -Wno-error=incompatible-function-pointer-types -g -D_DARWIN_C_SOURCE -Iinclude -Itests -Iports/macos/include"
+MFLAGS="-fobjc-arc -Wall -g -Iinclude -Iports/macos/include"
 FW="-framework Metal -framework Foundation -framework AppKit -framework QuartzCore"
 
 # --- modules ---------------------------------------------------------------
