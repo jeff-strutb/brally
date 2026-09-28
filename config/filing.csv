@@ -4,8 +4,9 @@ glide_va,name,module,basis,file
 0x10001190,BrSurfFree,drawing,filed,src/core/drawing/br_surf.c
 0x10001240,BrSurfFromBitmap,drawing,filed,src/core/drawing/br_surf.c
 0x10001290,BrBmpLoadSurface,drawing,filed,src/core/drawing/br_bmp.c
-0x100013F0,BrUiSprBlitRows,menus,manual,src/core/generated/0x10001320.c
-0x10001440,BrUiSprBlitKeyed,menus,manual,src/core/generated/0x10001320.c
+0x10001320,BrUiSprBlit,drawing,filed,src/core/drawing/br_sprblit.c
+0x100013F0,BrUiSprBlitRows,drawing,filed,src/core/drawing/br_sprblit.c
+0x10001440,BrUiSprBlitKeyed,drawing,filed,src/core/drawing/br_sprblit.c
 0x100014E0,BrGlideLfbWrite,drawing,filed,src/core/drawing/br_surf.c
 0x10001510,FUN_10001510,drawing,filed,src/core/drawing/br_chasecam.c
 0x100018F0,FUN_100018f0,drawing,neighbour,src/core/drawing/br_chasecam.c
@@ -976,7 +977,7 @@ glide_va,name,module,basis,file
 0x10054A30,BrSlotAdd_10054A30,menus,neighbour,src/core/menus/BrSlotAdd_10054A30.cpp
 0x10054E20,BrSaveSlotDelete_10054E20,menus,neighbour,src/core/menus/BrSaveSlotDelete_10054E20.cpp
 0x10055020,BrTextListSetBlob,menus,manual,src/core/menus/br_textlist.c
-0x10055090,BrUiSprDrawAt,menus,neighbour-1,src/core/generated/0x10055090.c
+0x10055090,BrUiSprDrawAt,menus,filed,src/core/menus/br_textlist.c
 0x100550E0,BrUiListPaint_100550E0,menus,filed,src/core/menus/BrUiListPaint_100550E0.cpp
 0x10055330,BrUiHitTest_10055330,menus,prefix,src/core/menus/BrUiHitTest_10055330.cpp
 0x100553B0,BrSlotScrollStep_100553B0,menus,manual,src/core/menus/BrSlotScrollStep_100553B0.cpp

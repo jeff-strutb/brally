@@ -1,4 +1,12 @@
-/* Glide match for the sprite blit dispatcher - 0x10001320
+/* br_sprblit.c -- the 16-bit surface sprite blitters, 0x10001320..0x10001440.
+ *
+ * One connected group: the clipping dispatcher and the two row copies it
+ * calls.  It sits in the middle of br_surf.c's address range and works on the
+ * same 16-byte BrSurf header, but it keeps its own translation unit: the
+ * dispatcher is T3 and its register colouring moves with whatever precedes
+ * it (measured at every position in br_surf.c -- none reproduces it).
+ *
+ * The dispatcher, 0x10001320:
  *
  * src/core/menus/br_uispr.c carries a `BrUiSprClip()` tagged at this address,
  * but that is only the geometry HALF of the original: the port factored the
@@ -47,7 +55,7 @@
  *   declaration order of the locals (w,h,x0,y0 vs x0,y0,w,h; pitches and
  *     pointers before or after)
  *   `unsigned x, y` parameters with the clip casts dropped
- *   hoisting `dw = pDst->w` / `dh = pDst->h` into locals used by the clip,
+ *   hoisting `dw = pDst->cx` / `dh = pDst->cy` into locals used by the clip,
  *     the pitch and the offset
  * What DID matter, and is the reason this is size-exact: the two surface
  * pointers and both pitches must be computed ONCE, before the flag test.
@@ -57,12 +65,7 @@
 
 #include <string.h>
 
-typedef struct SpSurf {
-    unsigned short *p;              /* +0x00 */
-    int             w;              /* +0x04 */
-    int             h;              /* +0x08 */
-    unsigned short  key;            /* +0x0C */
-} SpSurf;
+#include "br_surf.h"
 
 void BrUiSprBlitRows(unsigned short *pDst, int dstPitch, int w, int h,
                      unsigned short *pSrc, int srcPitch);
@@ -83,7 +86,7 @@ void BrUiSprBlitKeyed(unsigned short *pDst, int dstPitch, int w, int h,
  * crank candidates and scores in build/match/crank.log, dead probes in the
  * comment block above.  Do not reopen before the end-grind (project rule 12). */
 /* @implements 0x10001320 glide BrUiSprBlit */
-void BrUiSprBlit(SpSurf *pDst, int x, int y, SpSurf *pSrc,
+void BrUiSprBlit(BrSurf *pDst, int x, int y, BrSurf *pSrc,
                  const int *pRect, int flags)
 {
     int x0, y0, w, h;
@@ -101,21 +104,21 @@ void BrUiSprBlit(SpSurf *pDst, int x, int y, SpSurf *pSrc,
     if (h < 0)
         return;
 
-    if ((unsigned)(x + w) >= (unsigned)pDst->w) {        /* 0x1000135E */
-        if ((unsigned)pDst->w < (unsigned)x)
+    if ((unsigned)(x + w) >= (unsigned)pDst->cx) {        /* 0x1000135E */
+        if ((unsigned)pDst->cx < (unsigned)x)
             return;
-        w = pDst->w - x;
+        w = pDst->cx - x;
     }
-    if ((unsigned)(y + h) >= (unsigned)pDst->h) {        /* 0x10001377 */
-        if ((unsigned)pDst->h < (unsigned)y)
+    if ((unsigned)(y + h) >= (unsigned)pDst->cy) {        /* 0x10001377 */
+        if ((unsigned)pDst->cy < (unsigned)y)
             return;
-        h = pDst->h - y;
+        h = pDst->cy - y;
     }
 
-    pd = pDst->p + (y * pDst->w + x);           /* 0x10001385 */
-    dstPitch = pDst->w * 2;
-    ps = pSrc->p + (y0 * pSrc->w + x0);
-    srcPitch = pSrc->w * 2;
+    pd = pDst->pPix + (y * pDst->cx + x);           /* 0x10001385 */
+    dstPitch = pDst->cx * 2;
+    ps = pSrc->pPix + (y0 * pSrc->cx + x0);
+    srcPitch = pSrc->cx * 2;
 
     if ((flags & 1) != 0)                                /* 0x100013AA */
         BrUiSprBlitKeyed(pd, dstPitch, w, h, ps, srcPitch, pSrc->key);
