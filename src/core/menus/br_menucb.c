@@ -195,6 +195,119 @@ BrMenuState *BrMenuGetState(void)
     return &g_menu;
 }
 
+/* g_menu is the port's gathering of the menu module's scattered originals.
+ * The matching build reads the fields below as the separate globals they are,
+ * by their DAT_ names (the image gate resolves those from the address they
+ * spell).  pSt is always &g_menu, so pSt->x and g_menu.x name the same object. */
+#ifdef BR_MATCHING_BUILD
+extern uint32_t DAT_100a9360;
+#define MENU_g0AA010 DAT_100a9360
+extern uint32_t DAT_100abde8;
+#define MENU_g0AC648 DAT_100abde8
+extern uint32_t DAT_100abdec;
+#define MENU_g0AC64C DAT_100abdec
+extern uint32_t DAT_100abdf0;
+#define MENU_g0AC650 DAT_100abdf0
+extern int32_t DAT_100bcbe8;
+#define MENU_g0BD3E0 DAT_100bcbe8
+extern char DAT_117a6030[64];
+#define MENU_g1782CD0 DAT_117a6030
+extern uint32_t DAT_118eeed4;
+#define MENU_g18ABDBC DAT_118eeed4
+extern uint32_t DAT_1021c654;
+#define MENU_g220B24 DAT_1021c654
+extern char DAT_10ac46a0[32];
+#define MENU_gA9D618 DAT_10ac46a0
+extern char DAT_10ac5870[32];
+#define MENU_gAA2518 DAT_10ac5870
+extern uint32_t DAT_10ac5b9c;
+#define MENU_gAA2844 DAT_10ac5b9c
+extern uint32_t DAT_10ac5bd4;
+#define MENU_gAA287C DAT_10ac5bd4
+extern int32_t DAT_10ac5bf4;   /* declared as the rest of the file does */
+#define MENU_gAA289C (*(uint32_t *)&DAT_10ac5bf4)
+extern int DAT_10ac5bf8;   /* declared as the rest of the file does */
+#define MENU_gAA28A0 (*(uint32_t *)&DAT_10ac5bf8)
+extern uint32_t DAT_10ac5bfc;
+#define MENU_gAA28A4 DAT_10ac5bfc
+extern uint8_t DAT_10ac5c00;
+#define MENU_gAA28A8 DAT_10ac5c00
+extern int32_t DAT_10ac5c04;   /* declared as the rest of the file does */
+#define MENU_gAA28AC (*(uint32_t *)&DAT_10ac5c04)
+extern int8_t DAT_10ac5c10;   /* declared as the rest of the file does */
+#define MENU_gAA28B8 (*(uint8_t *)&DAT_10ac5c10)
+extern int32_t DAT_10ac5c1c;
+#define MENU_gAA28C4 DAT_10ac5c1c
+extern uint32_t DAT_10ac5c28;
+#define MENU_gAA28D0 DAT_10ac5c28
+extern uint32_t DAT_10ac5c30;
+#define MENU_gAA28D8 DAT_10ac5c30
+extern uint32_t DAT_10ac5c38;
+#define MENU_gAA28E0 DAT_10ac5c38
+extern uint32_t DAT_10ac5c3c;
+#define MENU_gAA28E4 DAT_10ac5c3c
+extern uint32_t DAT_10ac5c40;
+#define MENU_gAA28E8 DAT_10ac5c40
+extern uint32_t DAT_10ac5c5c;
+#define MENU_gAA2904 DAT_10ac5c5c
+extern uint32_t DAT_10ac5cbc;
+#define MENU_gAA2964 DAT_10ac5cbc
+extern uint32_t DAT_10ac5d58;
+#define MENU_gAA2A00 DAT_10ac5d58
+extern uint32_t DAT_10ac5d60;
+#define MENU_gAA2A08 DAT_10ac5d60
+extern uint32_t DAT_10ac5d64;
+#define MENU_gAA2A0C DAT_10ac5d64
+extern uint32_t DAT_10ac5d74;
+#define MENU_gAA2A1C DAT_10ac5d74
+extern uint32_t DAT_10ac5d78;
+#define MENU_gAA2A20 DAT_10ac5d78
+extern uint32_t DAT_10ac5d7c;
+#define MENU_gAA2A24 DAT_10ac5d7c
+extern uint32_t DAT_10ac5d80;
+#define MENU_gAA2A28 DAT_10ac5d80
+extern uint32_t DAT_10ac6744;
+#define MENU_gAA33E4 DAT_10ac6744
+extern int32_t DAT_10af21b0;
+#define MENU_gACEE50 DAT_10af21b0
+#else
+#define MENU_g0AA010 g_menu.g0AA010
+#define MENU_g0AC648 g_menu.g0AC648
+#define MENU_g0AC64C g_menu.g0AC64C
+#define MENU_g0AC650 g_menu.g0AC650
+#define MENU_g0BD3E0 g_menu.g0BD3E0
+#define MENU_g1782CD0 g_menu.g1782CD0
+#define MENU_g18ABDBC g_menu.g18ABDBC
+#define MENU_g220B24 g_menu.g220B24
+#define MENU_gA9D618 g_menu.gA9D618
+#define MENU_gAA2518 g_menu.gAA2518
+#define MENU_gAA2844 g_menu.gAA2844
+#define MENU_gAA287C g_menu.gAA287C
+#define MENU_gAA289C g_menu.gAA289C
+#define MENU_gAA28A0 g_menu.gAA28A0
+#define MENU_gAA28A4 g_menu.gAA28A4
+#define MENU_gAA28A8 g_menu.gAA28A8
+#define MENU_gAA28AC g_menu.gAA28AC
+#define MENU_gAA28B8 g_menu.gAA28B8
+#define MENU_gAA28C4 g_menu.gAA28C4
+#define MENU_gAA28D0 g_menu.gAA28D0
+#define MENU_gAA28D8 g_menu.gAA28D8
+#define MENU_gAA28E0 g_menu.gAA28E0
+#define MENU_gAA28E4 g_menu.gAA28E4
+#define MENU_gAA28E8 g_menu.gAA28E8
+#define MENU_gAA2904 g_menu.gAA2904
+#define MENU_gAA2964 g_menu.gAA2964
+#define MENU_gAA2A00 g_menu.gAA2A00
+#define MENU_gAA2A08 g_menu.gAA2A08
+#define MENU_gAA2A0C g_menu.gAA2A0C
+#define MENU_gAA2A1C g_menu.gAA2A1C
+#define MENU_gAA2A20 g_menu.gAA2A20
+#define MENU_gAA2A24 g_menu.gAA2A24
+#define MENU_gAA2A28 g_menu.gAA2A28
+#define MENU_gAA33E4 g_menu.gAA33E4
+#define MENU_gACEE50 g_menu.gACEE50
+#endif
+
 /* =====================================================================
  * 2. The caption tables
  *
@@ -247,7 +360,7 @@ static uint32_t BrMenuStageByte(const BrMenuState *pSt, int32_t e, uint32_t k,
  * 0x100407E0 and 0x10040C00 all reach for it. */
 static int32_t BrMenuStageIndex(const BrMenuState *pSt)
 {
-    return BrSext8(pSt->gAA28B8);
+    return BrSext8(MENU_gAA28B8);
 }
 
 /* =====================================================================
@@ -364,10 +477,10 @@ int32_t BrMenuEnter(void)
 {
     BrMenuState *pSt = &g_menu;
 
-    if (pSt->gAA2844 == 0) {
-        pSt->gAA28D8 = 1;
-        pSt->gAA2844 = 1;
-        pSt->gAA33E4 = 0;
+    if (MENU_gAA2844 == 0) {
+        MENU_gAA28D8 = 1;
+        MENU_gAA2844 = 1;
+        MENU_gAA33E4 = 0;
         BrMenuSub1005FF30();
         BrMenuSub1005FF60();
         BrMenuSub1005FFF0();
@@ -382,11 +495,11 @@ int32_t BrMenuLeaveTo2(void)
 {
     BrMenuState *pSt = &g_menu;
 
-    if (pSt->gACEE50 >= pSt->g0BD3E0) {
+    if (MENU_gACEE50 >= MENU_g0BD3E0) {
         BrMenuSub10044B90(0);
         BrMenuSub10044E20(0);
     }
-    pSt->g0AA010 = 2;
+    MENU_g0AA010 = 2;
     return 1;
 }
 
@@ -408,7 +521,7 @@ void BrMenuAutoSaveName(void)
     if (p == NULL)
         return;
 
-    strcpy(g_menu.g1782CD0, pszName);
+    strcpy(MENU_g1782CD0, pszName);
 
     if (p[4] == 0 && p[5] == 0) {
         /* three `rep stosd` runs of 6, 0xC and 0x18 dwords.  The original
@@ -459,20 +572,20 @@ int32_t BrMenuCap0730(BrMenuItem *pItem)
      * falls into the stage path; the selector byte is tested before the
      * movsx so the flags survive lea.  Arms are duplicated so VC5 does not
      * hoist the movsx above that test. */
-    if (g_menu.g0AA010 == 0) {
-        if (g_menu.gAA28A8 != 0) {
-            int32_t e3 = (int32_t)(int8_t)g_menu.gAA28B8;
+    if (MENU_g0AA010 == 0) {
+        if (MENU_gAA28A8 != 0) {
+            int32_t e3 = (int32_t)(int8_t)MENU_gAA28B8;
             e3 = e3 + e3 * 2;
             i = *((const uint8_t *)g_brStages
-                  + 0x10 + 2 * (g_menu.gAA28AC + (uint32_t)e3 * 4u));
+                  + 0x10 + 2 * (MENU_gAA28AC + (uint32_t)e3 * 4u));
         } else {
-            int32_t e3 = (int32_t)(int8_t)g_menu.gAA28B8;
+            int32_t e3 = (int32_t)(int8_t)MENU_gAA28B8;
             e3 = e3 + e3 * 2;
             i = *((const uint8_t *)g_brStages
-                  + 0x10 + 2 * (g_menu.gAA28A4 + (uint32_t)e3 * 4u));
+                  + 0x10 + 2 * (MENU_gAA28A4 + (uint32_t)e3 * 4u));
         }
     } else {
-        i = g_menu.g0AC648;
+        i = MENU_g0AC648;
     }
     /* RESIDUE (glide 0x10039C70, 13 masked byte-diffs, T3a): the original
      * loads the word into CX with pItem in EDX and `mov eax,1` scheduled
@@ -501,10 +614,10 @@ int32_t BrMenuCap07A0(BrMenuItem *pItem)
      * every call setup the delegating form emits is a byte the original does
      * not spend.  The table read is `mov dx, word ptr [ecx*2 + tab]` -- a
      * plain 16-bit move, no extension and no bounds test. */
-    if (g_menu.gAA2904 == g_menu.gAA2964 && g_menu.gAA28E8 == 0)
+    if (MENU_gAA2904 == MENU_gAA2964 && MENU_gAA28E8 == 0)
         return -2;
 
-    pItem->f1E20C = (int16_t)k_AC570[g_menu.g0AC648];
+    pItem->f1E20C = (int16_t)k_AC570[MENU_g0AC648];
     return 1;
 }
 
@@ -516,7 +629,7 @@ int32_t BrMenuCap07A0(BrMenuItem *pItem)
 /* @implements 0x100407E0 d3d BrMenuCap07E0 */
 int32_t BrMenuCap07E0(BrMenuItem *pItem)
 {
-    if (g_menu.gAA2904 == g_menu.gAA2964 && g_menu.gAA28E8 == 0)
+    if (MENU_gAA2904 == MENU_gAA2964 && MENU_gAA28E8 == 0)
         return -2;
 
     /* Three separate store-and-return exits.  VC5 cross-jumps them into the
@@ -525,17 +638,17 @@ int32_t BrMenuCap07E0(BrMenuItem *pItem)
      * xor ecx,ecx / mov cl) while the stage address stays in eax.  The
      * [e][k] row form keeps the shared e*3 as its own node, so the movsx and
      * the lea are both hoisted between the selector test and its je. */
-    if (g_menu.g0AA010 == 0) {
-        if (g_menu.gAA28A8 != 0) {
+    if (MENU_g0AA010 == 0) {
+        if (MENU_gAA28A8 != 0) {
             pItem->f1E20C = k_AC590[((const uint8_t *)&g_brStages
-                [(int8_t)g_menu.gAA28B8].f10[g_menu.gAA28AC])[1]];
+                [(int8_t)MENU_gAA28B8].f10[MENU_gAA28AC])[1]];
             return 1;
         }
         pItem->f1E20C = k_AC590[((const uint8_t *)&g_brStages
-            [(int8_t)g_menu.gAA28B8].f10[g_menu.gAA28A4])[1]];
+            [(int8_t)MENU_gAA28B8].f10[MENU_gAA28A4])[1]];
         return 1;
     }
-    pItem->f1E20C = k_AC590[g_menu.gAA2A00];
+    pItem->f1E20C = k_AC590[MENU_gAA2A00];
     return 1;
 }
 
@@ -554,7 +667,7 @@ int32_t BrMenuCap0870(BrMenuItem *pItem)
      * out-of-range global reads past the table here exactly as it does there.
      * See the note on BrTabS8 for why the guarded helper still exists. */
 
-    pItem->f1E20C = k_AC598[g_menu.gAA2A08];
+    pItem->f1E20C = k_AC598[MENU_gAA2A08];
     return 1;
 }
 
@@ -573,7 +686,7 @@ int32_t BrMenuCap0890(BrMenuItem *pItem)
      * out-of-range global reads past the table here exactly as it does there.
      * See the note on BrTabS8 for why the guarded helper still exists. */
 
-    pItem->f1E20C = k_AC59C[g_menu.g0AC64C];
+    pItem->f1E20C = k_AC59C[MENU_g0AC64C];
     return 1;
 }
 
@@ -592,7 +705,7 @@ int32_t BrMenuCap08B0(BrMenuItem *pItem)
      * out-of-range global reads past the table here exactly as it does there.
      * See the note on BrTabS8 for why the guarded helper still exists. */
 
-    pItem->f1E20C = k_AC5A0[g_menu.g0AC650];
+    pItem->f1E20C = k_AC5A0[MENU_g0AC650];
     return 1;
 }
 
@@ -603,7 +716,7 @@ int32_t BrMenuCap0930(BrMenuItem *pItem)
 {
     /* NO BOUNDS TEST, and no delegation -- see BrMenuCap0870. */
 
-    pItem->f1E20C = k_AC62C[g_menu.gAA287C];
+    pItem->f1E20C = k_AC62C[MENU_gAA287C];
     return 1;
 }
 
@@ -616,8 +729,8 @@ int32_t BrMenuCap0950(BrMenuItem *pItem)
      * and `je`s to the hard-wired entry, so the TABLE path is the one that
      * falls through.  Writing the guard the other way round (`if (flag == 0)
      * return const;`) inverts the jump and costs the match. */
-    if (g_menu.g18ABDBC != 0) {
-        pItem->f1E20C = k_AC630[g_menu.gAA2A1C];
+    if (MENU_g18ABDBC != 0) {
+        pItem->f1E20C = k_AC630[MENU_gAA2A1C];
         return 1;
     }
     pItem->f1E20C = k_AC630[1];
@@ -632,7 +745,7 @@ int32_t BrMenuCap0990(BrMenuItem *pItem)
 {
     /* NO BOUNDS TEST, and no delegation -- see BrMenuCap0870. */
 
-    pItem->f1E20C = (int16_t)(uint16_t)k_AC640[g_menu.gAA2A28];
+    pItem->f1E20C = (int16_t)(uint16_t)k_AC640[MENU_gAA2A28];
     return 1;
 }
 
@@ -645,7 +758,7 @@ int32_t BrMenuCap09B0(BrMenuItem *pItem)
 {
     /* NO BOUNDS TEST, and no delegation -- see BrMenuCap0870. */
 
-    pItem->f1E20C = k_AC634[g_menu.gAA2A20];
+    pItem->f1E20C = k_AC634[MENU_gAA2A20];
     return 1;
 }
 
@@ -655,7 +768,7 @@ int32_t BrMenuCap09D0(BrMenuItem *pItem)
 {
     /* NO BOUNDS TEST, and no delegation -- see BrMenuCap0870. */
 
-    pItem->f1E20C = k_AC638[g_menu.gAA2A24];
+    pItem->f1E20C = k_AC638[MENU_gAA2A24];
     return 1;
 }
 
@@ -673,7 +786,7 @@ int32_t BrMenuCap1870(BrMenuItem *pItem)
      * out-of-range global reads past the table here exactly as it does there.
      * See the note on BrTabS8 for why the guarded helper still exists. */
 
-    pItem->f1E20C = k_AC628[g_menu.gAA2A0C];
+    pItem->f1E20C = k_AC628[MENU_gAA2A0C];
     return 1;
 }
 
@@ -686,9 +799,9 @@ int32_t BrMenuSeedFrom25D4(void)
 {
     BrMenuState *pSt = &g_menu;
 
-    pSt->gAA28A0 = pSt->gAA25DC;
-    pSt->gAA28B8 = pSt->gAA25D4;
-    pSt->gAA28A4 = pSt->gAA25D8;
+    MENU_gAA28A0 = pSt->gAA25DC;
+    MENU_gAA28B8 = pSt->gAA25D4;
+    MENU_gAA28A4 = pSt->gAA25D8;
     return 1;
 }
 
@@ -699,9 +812,9 @@ int32_t BrMenuSeedFrom26F0(void)
 {
     BrMenuState *pSt = &g_menu;
 
-    pSt->gAA28A0 = pSt->gAA26F0;
-    pSt->gAA28B8 = pSt->gAA26F4;
-    pSt->gAA28A4 = (uint32_t)pSt->gAA26F5;
+    MENU_gAA28A0 = pSt->gAA26F0;
+    MENU_gAA28B8 = pSt->gAA26F4;
+    MENU_gAA28A4 = (uint32_t)pSt->gAA26F5;
     return 1;
 }
 
@@ -712,7 +825,7 @@ int32_t BrMenuSeedFrom26F0(void)
 /* @n64 0x8022F4DC located */
 int32_t BrMenuClearAA28A8(void)
 {
-    g_menu.gAA28A8 = 0;
+    MENU_gAA28A8 = 0;
     return 1;
 }
 
@@ -721,7 +834,7 @@ int32_t BrMenuClearAA28A8(void)
 /* @implements 0x10037ED0 glide BrMenuSetAA28A8 */
 int32_t BrMenuSetAA28A8(void)
 {
-    g_menu.gAA28A8 = 1;
+    MENU_gAA28A8 = 1;
     return 1;
 }
 
@@ -732,7 +845,7 @@ int32_t BrMenuSetAA28A8(void)
 /* @n64 0x8021C6C4 located */
 int32_t BrMenuSetAA28D0_0(void)
 {
-    g_menu.gAA28D0 = 0;
+    MENU_gAA28D0 = 0;
     return 1;
 }
 
@@ -740,7 +853,7 @@ int32_t BrMenuSetAA28D0_0(void)
 /* @implements 0x1003A830 glide BrMenuSetAA28D0_1 */
 int32_t BrMenuSetAA28D0_1(void)
 {
-    g_menu.gAA28D0 = 1;
+    MENU_gAA28D0 = 1;
     return 1;
 }
 
@@ -748,7 +861,7 @@ int32_t BrMenuSetAA28D0_1(void)
 /* @implements 0x1003A840 glide BrMenuSetAA28D0_2 */
 int32_t BrMenuSetAA28D0_2(void)
 {
-    g_menu.gAA28D0 = 2;
+    MENU_gAA28D0 = 2;
     return 1;
 }
 
@@ -757,7 +870,7 @@ int32_t BrMenuSetAA28D0_2(void)
 /* @implements 0x1003A850 glide BrMenuSetAA28D0_3 */
 int32_t BrMenuSetAA28D0_3(void)
 {
-    g_menu.gAA28D0 = 3;
+    MENU_gAA28D0 = 3;
     return 1;
 }
 
@@ -777,11 +890,11 @@ int32_t BrMenuText08D0(BrMenuItem *pItem)
      * threads the fall-through straight into the body.  See BrMenuText0A50
      * for why pVtbl / pText are derived in an inner block rather than named
      * up here, and for the pointer test before the second poke. */
-    if (pSt->gAA2904 == pSt->gAA2964 && pSt->gAA28E8 == 0)
+    if (MENU_gAA2904 == MENU_gAA2964 && MENU_gAA28E8 == 0)
         return 1;
 
     psz = pItem->text.sz;
-    BrItoa(pSt->g0BD3E0, psz, 10);
+    BrItoa(MENU_g0BD3E0, psz, 10);
 
     {
         const BrMenuTextVtbl *pVtbl = pItem->text.pVtbl;
@@ -821,10 +934,10 @@ int32_t BrMenuText0A50(BrMenuItem *pItem)
      * sizes (a 32-byte scratch holding at most an 11-character integer, into
      * a 256-byte field), so nothing here can overrun. */
 
-    sprintf(pSt->gAA2518, "%d", (int)(pSt->gAA28A0 + 1u));
+    sprintf(MENU_gAA2518, "%d", (int)(MENU_gAA28A0 + 1u));
 
     psz = pItem->text.sz;
-    strcpy(psz, pSt->gAA2518);
+    strcpy(psz, MENU_gAA2518);
 
     {
         const BrMenuTextVtbl *pVtbl = pItem->text.pVtbl;
@@ -864,10 +977,10 @@ int32_t BrMenuText0AC0(BrMenuItem *pItem)
      * sizes (a 32-byte scratch holding at most an 11-character integer, into
      * a 256-byte field), so nothing here can overrun. */
 
-    sprintf(pSt->gA9D618, "%d", (int)(pSt->gAA28A4 + 1u));
+    sprintf(MENU_gA9D618, "%d", (int)(MENU_gAA28A4 + 1u));
 
     psz = pItem->text.sz;
-    strcpy(psz, pSt->gA9D618);
+    strcpy(psz, MENU_gA9D618);
 
     {
         const BrMenuTextVtbl *pVtbl = pItem->text.pVtbl;
@@ -893,12 +1006,12 @@ int32_t BrMenuText0B30(BrMenuItem *pItem)
      * then strcpy(StringById(0x37)) / strcat("  ") / strcat(scratch) into
      * the row text, then pfn04/pfn10.  Naming pText/pVtbl at the top of
      * the function makes VC5 compute them before sprintf (see 0A50). */
-    sprintf(g_menu.gA9D618, "%d", (int)(g_menu.gAA28A4 + 1u));
+    sprintf(MENU_gA9D618, "%d", (int)(MENU_gAA28A4 + 1u));
 
     psz = pItem->text.sz;
     strcpy(psz, BrStringById(0x37));
     strcat(psz, pszSp);
-    strcat(psz, g_menu.gA9D618);
+    strcat(psz, MENU_gA9D618);
 
     {
         const BrMenuTextVtbl *pVtbl = pItem->text.pVtbl;
@@ -917,7 +1030,7 @@ int32_t BrMenuText0B30(BrMenuItem *pItem)
 static float BrMenuStageTime(const BrMenuState *pSt, const float *pTimes)
 {
     int32_t  e = BrMenuStageIndex(pSt);
-    uint32_t i = BrMenuStageByte(pSt, e, pSt->gAA28AC, 0);
+    uint32_t i = BrMenuStageByte(pSt, e, MENU_gAA28AC, 0);
 
     if (pTimes == NULL)                /* DEVIATION: the original would fault */
         return 0.0f;
@@ -1000,7 +1113,7 @@ int32_t BrMenuTime0C00(BrMenuItem *pItem)
     char         sz[32];               /* the original's local is 0x20, zeroed */
 
     memset(sz, 0, sizeof sz);
-    if (pSt->gAA289C == 0)
+    if (MENU_gAA289C == 0)
         BrStrCopy(sz, sizeof sz, "--:--");
     else
         BrMenuFormatLapTime(sz, sizeof sz,
@@ -1018,7 +1131,7 @@ int32_t BrMenuTime0D70(BrMenuItem *pItem)
     char         sz[32];
 
     memset(sz, 0, sizeof sz);
-    if (pSt->gAA289C == 0)
+    if (MENU_gAA289C == 0)
         BrStrCopy(sz, sizeof sz, "--:--");
     else
         BrMenuFormatLapTime(sz, sizeof sz,
@@ -1036,10 +1149,10 @@ int32_t BrMenuTime0EE0(BrMenuItem *pItem)
     float        t;
 
     memset(sz, 0, sizeof sz);
-    if (pSt->gAA28D0 == 3u)
+    if (MENU_gAA28D0 == 3u)
         t = pSt->gAA28C8;
     else if (pSt->pTimes25A0 != NULL)  /* DEVIATION: NULL check */
-        t = pSt->pTimes25A0[pSt->gAA28D0];
+        t = pSt->pTimes25A0[MENU_gAA28D0];
     else
         t = 0.0f;
 
@@ -1166,8 +1279,8 @@ int32_t BrMenuText1300(BrMenuItem *pItem)
 
     /* Two BrStringById calls: orig strlen-tests the first and copies the
      * uppercased second.  Index is a movsx of gAA28B8, not BrMenuStageIndex. */
-    if (g_menu.gAA289C != 0)
-        e = (int32_t)(int8_t)g_menu.gAA28B8;
+    if (MENU_gAA289C != 0)
+        e = (int32_t)(int8_t)MENU_gAA28B8;
 
     if (strlen(BrStringById(g_brStages[e].f00)) == 0)
         return 0;
@@ -1211,12 +1324,12 @@ int32_t BrMenuText15A0(BrMenuItem *pItem)
      * so each branch has to name the field itself. */
     memset(sz, 0, sizeof sz);
 
-    if (pSt->gAA289C == 0)
+    if (MENU_gAA289C == 0)
         v = g_brStages[0].f08;
     else
-        v = g_brStages[(int32_t)(int8_t)pSt->gAA28B8].f08;
+        v = g_brStages[(int32_t)(int8_t)MENU_gAA28B8].f08;
 
-    v -= pSt->gAA28C4;
+    v -= MENU_gAA28C4;
     if (v < 0)
         v = 0;
 
@@ -1268,7 +1381,7 @@ int32_t BrMenuText1670(BrMenuItem *pItem)
      * for the inner block and the pointer test. */
 
     memset(sz, 0, sizeof sz);
-    BrItoa((int32_t)(g_menu.gAA28A4 + 1u), sz, 10);
+    BrItoa((int32_t)(MENU_gAA28A4 + 1u), sz, 10);
 
     if (strlen(sz) == 0)
         return 0;
@@ -1303,7 +1416,7 @@ int32_t BrMenuText1710(BrMenuItem *pItem)
      * for the inner block and the pointer test. */
 
     memset(sz, 0, sizeof sz);
-    BrItoa(g_menu.gAA28C4, sz, 10);
+    BrItoa(MENU_gAA28C4, sz, 10);
 
     if (strlen(sz) == 0)
         return 0;
@@ -1340,7 +1453,7 @@ int32_t BrMenuText17B0(BrMenuItem *pItem)
 
     memset(sz, 0, sizeof sz);
 
-    v = g_brStages[pSt->g220B24].f08 - pSt->gAA28C4;
+    v = g_brStages[MENU_g220B24].f08 - MENU_gAA28C4;
     if (v < 0)
         v = 0;
 
@@ -1381,7 +1494,7 @@ int32_t BrMenuText17B0(BrMenuItem *pItem)
 /* @implements 0x10041890 d3d BrMenuFlags1890 */
 int32_t BrMenuFlags1890(BrMenuItem *pItem)
 {
-    if (g_menu.gAA28E0 != 0) {
+    if (MENU_gAA28E0 != 0) {
         pItem->f1C &= 0xFFFFEFEFu;
     } else {
         pItem->f1C |= 0x1010u;
@@ -1398,7 +1511,7 @@ int32_t BrMenuFlags1890(BrMenuItem *pItem)
 /* @n64 0x80257A1C located */
 int32_t BrMenuFlags18D0(BrMenuItem *pItem)
 {
-    if (g_menu.gAA28E4 != 0)
+    if (MENU_gAA28E4 != 0)
         pItem->f1C &= 0xFFFFEFEFu;
     return 1;
 }
@@ -1409,7 +1522,7 @@ int32_t BrMenuFlags18D0(BrMenuItem *pItem)
 /* @implements 0x100418F0 d3d BrMenuFlags18F0 */
 int32_t BrMenuFlags18F0(BrMenuItem *pItem)
 {
-    if (g_menu.gAA28E8 != 0) {
+    if (MENU_gAA28E8 != 0) {
         pItem->f1C &= 0xFFFFEFEFu;
     } else {
         pItem->f1C |= 0x1010u;
