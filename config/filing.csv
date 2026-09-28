@@ -1277,8 +1277,9 @@ glide_va,name,module,basis,file
 0x1006E220,BrTexQueuePop,drawing,prefix,src/core/drawing/br_texqueue.c
 0x1006E280,BrSub10075020,startup,description,src/core/startup/br_timer.c
 0x1006E350,BrGetTimerState,startup,description,src/core/startup/br_timer.c
+0x1006E360,BrTimeUpdate,startup,filed,src/core/startup/br_timer.c
 0x1006E3B0,BrSub10075150,startup,description,src/core/startup/br_timer.c
-0x1006E3F0,br86_timer_restart,startup,neighbour-1,src/core/generated/0x1006E3F0.c
+0x1006E3F0,br86_timer_restart,startup,filed,src/core/startup/br_timer.c
 0x1006E430,BrX100751D0,startup,manual,src/core/startup/br_frametimer.c
 0x1006E4A0,br86_timer_end_period,startup,description,src/core/startup/br_frametimer.c
 0x1006E4C0,BrSfxSrcStart,audio,filed,src/core/audio/br_sfxsrc.c
