@@ -72,12 +72,17 @@ typedef struct BrCar {
     char padf4c[0xF5C - 0xF4C];
     int xf5c;                   /* 0xF5C */
     int xf60;                   /* 0xF60 */
-    char padf64[0xF80 - 0xF64];
+    char padf64[0xF78 - 0xF64];
+    int laps;                   /* 0xF78  laps completed */
+    char padf7c[0xF80 - 0xF7C];
     float raceTime;             /* 0xF80  race clock, seconds */
-    char padf84[0xFA0 - 0xF84];
+    float lapTimes[5];          /* 0xF84  each lap's time */
+    float xf98;                 /* 0xF98 */
+    int xf9c;                   /* 0xF9C */
     float lapTime;              /* 0xFA0  current lap clock */
     float xfa4;                 /* 0xFA4  a countdown (mode 1 only) */
-    char padfa8[0xFB0 - 0xFA8];
+    char padfa8[0xFAC - 0xFA8];
+    int xfac;                   /* 0xFAC */
     int msgA;                   /* 0xFB0  first message and its timer */
     float msgATime;             /* 0xFB4 */
     int msgB;                   /* 0xFB8  second message and its timer */
