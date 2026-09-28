@@ -33,9 +33,18 @@ FW="-framework Metal -framework Foundation -framework AppKit -framework QuartzCo
 #   src/core/menus/      the front end
 #   src/core/controls/   reading what the player is doing
 #   src/core/audio/      sound and music
-#   src/core/            <- still named after an ADDRESS BATCH
 #
-# The object name is the module's PATH under src/core with '/' turned into
+# src/ is the decomp and nothing else. The port's own code lives here:
+#
+#   ports/macos/core/<dir>/<file>.c  a port TU for src/core/<dir>/<file>.c --
+#       it #includes the decomp module and supplies the port bodies for what
+#       the module holds only in matching form. When one exists it is built
+#       INSTEAD of the src file. With no src counterpart it is a port-only
+#       module under the same responsibility layout.
+#   ports/macos/legacy/sliceN_MM.c   the BRD3D-era transcription the port
+#       still runs on, by address batch. Never part of the match.
+#
+# The object name is the module's PATH under its root with '/' turned into
 # '_' -- gamedata/br_track.c becomes gamedata_br_track.o.
 #
 # It used to be the bare BASENAME, and that silently broke the moment two
@@ -50,7 +59,7 @@ FW="-framework Metal -framework Foundation -framework AppKit -framework QuartzCo
 #
 # build.d/*.deps files still name modules by basename -- objname_find below
 # resolves one to its object, and REFUSES to guess when two could match.
-objname() { printf '%s' "$1" | sed 's#^src/core/##; s#\.c$##; s#/#_#g'; }
+objname() { printf '%s' "$1" | sed 's#^src/core/##; s#^ports/macos/core/##; s#^ports/macos/legacy/##; s#\.c$##; s#/#_#g'; }
 
 # Resolve a basename (as written in a .deps file) to exactly one object.
 # Prints nothing if there is no match; aborts if there is more than one,
@@ -86,12 +95,17 @@ JOBS=${JOBS:-$(sysctl -n hw.ncpu 2>/dev/null || echo 8)}
 export CFLAGS PORTINC
 # A leading '_' is a scratch file (a permuter's candidate, a TU experiment):
 # never part of the game, and it can vanish mid-build.
-find src/core -name '*.c' ! -name '_*' | sort | xargs -P "$JOBS" -n 1 sh -c '
+{
+    for src in $(find src/core -name '*.c' ! -name '_*'); do
+        [ -f "ports/macos/core/${src#src/core/}" ] || echo "$src"
+    done
+    find ports/macos/core ports/macos/legacy -name '*.c' 2>/dev/null
+} | sort | xargs -P "$JOBS" -n 1 sh -c '
     src=$1; pre=""
     case "$src" in
         src/core/geometry/br_mat3.c) pre="-include ports/macos/include/br_mat3_port.h";;
     esac
-    obj=$(printf "%s" "$src" | sed "s#^src/core/##; s#\.c\$##; s#/#_#g")
+    obj=$(printf "%s" "$src" | sed "s#^src/core/##; s#^ports/macos/core/##; s#^ports/macos/legacy/##; s#\.c\$##; s#/#_#g")
     clang $CFLAGS $PORTINC $pre -c "$src" -o "build/core/$obj.o"' _
 clang $MFLAGS -c ports/macos/metal/br_gfx_metal.m -o build/br_gfx_metal.o
 
@@ -163,9 +177,9 @@ clang $bvobjs build/br_gfx_metal.o -lm $FW -o build/brview
 # Undecomped functions are satisfied by ports/macos/br_stubs.c, so this
 # links today and reports at exit which stubs the run actually reached.
 mkdir -p build/host
-clang $CFLAGS -DBR_HOST_LINK -c src/core/slice3_32.c -o build/host/slice3_32.o
-clang $CFLAGS -DBR_HOST_LINK -c src/core/slice6_71.c -o build/host/slice6_71.o
-clang $CFLAGS -DBR_HOST_LINK -c src/core/slice6_73.c -o build/host/slice6_73.o
+clang $CFLAGS -DBR_HOST_LINK -c ports/macos/legacy/slice3_32.c -o build/host/slice3_32.o
+clang $CFLAGS -DBR_HOST_LINK -c ports/macos/legacy/slice6_71.c -o build/host/slice6_71.o
+clang $CFLAGS -DBR_HOST_LINK -c ports/macos/legacy/slice6_73.c -o build/host/slice6_73.o
 
 # port-only de-dup of globals defined in two TUs (filing drift the whole-tree
 # link exposes). Runs now that build/host/* exist, since some duplicates pair a

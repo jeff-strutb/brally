@@ -61,6 +61,16 @@ sys.path.insert(0, os.path.dirname(__file__))
 # it cannot see.
 SRC = 'src/core/**/*.c'
 HDR = 'include/**/*.h'
+# The port's own code is a port too: its module overrides and the BRD3D-era
+# slices (moved out of src/ on 2026-09-28).
+PORT_SRC = ('ports/macos/core/**/*.c', 'ports/macos/legacy/*.c')
+
+
+def _sources():
+    out = glob.glob(SRC, recursive=True)
+    for pat in PORT_SRC:
+        out += glob.glob(pat, recursive=True)
+    return out
 
 # Files that DECLARE the frontier rather than implement the game. A counted
 # no-op named after an address is not a transcription of it, and reporting one
@@ -84,7 +94,7 @@ def definitions():
             m = re.search(r'^\s*[A-Za-z_][\w \*]*[\s\*](\w+)\s*\([^;]*\)\s*;\s*/\*\s*0x([0-9A-Fa-f]{8})', ln)
             if m:
                 add(m.group(2), m.group(1), f, 'annotated declaration')
-    for f in glob.glob(SRC, recursive=True):
+    for f in _sources():
         s = open(f, errors='ignore').read()
         # NON-GREEDY TO THE COMMENT TERMINATOR, and this was wrong first time.
         # The original pattern used [^*]* to reach the closing */, which cannot
@@ -209,7 +219,7 @@ def definitions():
 def mentions(addr):
     out = []
     pat = '0x%08X' % addr
-    for f in glob.glob(SRC, recursive=True) + glob.glob(HDR, recursive=True):
+    for f in _sources() + glob.glob(HDR, recursive=True):
         for i, ln in enumerate(open(f, errors='ignore'), 1):
             if pat.lower() in ln.lower():
                 out.append((os.path.basename(f), i, ln.strip()[:88]))
@@ -330,6 +340,7 @@ def report(addr, defs):
             # or mismatched -> say so and do not claim a port.
             import glob as _g
             cand = [q for q in _g.glob('src/core/**/' + f, recursive=True)
+                    + _g.glob('ports/macos/**/' + f, recursive=True)
                     + _g.glob('include/**/' + f, recursive=True)]
             fb = file_build(cand[0]) if cand else None
             if fb is not None and fb != side:
