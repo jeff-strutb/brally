@@ -661,7 +661,10 @@ int BrCrContactKick(BrVec3 *pVel, BrVec3 *pAngVel, const BrVec3 *pNormal,
  * normal/modeFC scaling statements, a named dot `d`, named ext/normal
  * copies, goto/if-else shared tails (joint s web), an __inline scale helper
  * with a by-value float, volatile/address-taken s, `#pragma optimize("p")`,
- * and symbol-table size (256 dummy-declaration states x 6 forms). */
+ * and symbol-table size (256 dummy-declaration states x 6 forms); also
+ * named output temporaries in every compute/store order, every addressing
+ * form of out.x's pA->x, all 120 local declaration orders.  No N64 twin:
+ * TGR's collision code has no mode-2 face path (peer 548e17 searched). */
 extern float BrCrK_Zero;     /* 0x10077A78 */
 extern float BrCrK_Third;    /* 0x10077B84 */
 extern float BrCrK_Half;     /* 0x10077AC8 */
