@@ -1097,6 +1097,28 @@ void BrWeatherRandomiseParticles(void)
 /* =====================================================================
  * 0x100194E0
  * ===================================================================== */
+/* BrWeatherStepWind reads the wind state as the separate globals it is in the
+ * original, by DAT_ name, rather than as fields of the port's g_weather. */
+#ifdef BR_MATCHING_BUILD
+extern float DAT_104add40, DAT_104add44, DAT_104add48;   /* windX Y Z */
+extern float DAT_104b15ec;   /* windAngle */
+extern float DAT_100a7188;   /* windGain */
+extern float DAT_106e9d8c;   /* dt */
+#define WS_windX DAT_104add40
+#define WS_windY DAT_104add44
+#define WS_windZ DAT_104add48
+#define WS_windAngle DAT_104b15ec
+#define WS_windGain DAT_100a7188
+#define WS_dt DAT_106e9d8c
+#else
+#define WS_windX g_weather.windX
+#define WS_windY g_weather.windY
+#define WS_windZ g_weather.windZ
+#define WS_windAngle g_weather.windAngle
+#define WS_windGain g_weather.windGain
+#define WS_dt g_weather.dt
+#endif
+
 /* WHAT IT DOES: drifts the wind on by one frame. Both its direction and its
  * strength wander randomly rather than being set anywhere -- the direction
  * wraps round the compass and the strength is held between half and full -- and
@@ -1113,19 +1135,19 @@ void BrWeatherStepWind(void)
      * (0x10077300..), and the literal spelling is what gives the original's
      * fld/fmul operand roles. */
     r = (float)(BrRandom() & 0xFFFF) * 3.051804378628731e-05f - 1.0f;
-    g_weather.windAngle = r * g_weather.dt + g_weather.windAngle;
-    if (g_weather.windAngle >= 6.2831854820251465f)
-        g_weather.windAngle -= 6.2831854820251465f;
-    else if (g_weather.windAngle < 0.0f)
-        g_weather.windAngle -= -6.2831854820251465f;   /* -(-2pi) = +2pi */
+    WS_windAngle = r * WS_dt + WS_windAngle;
+    if (WS_windAngle >= 6.2831854820251465f)
+        WS_windAngle -= 6.2831854820251465f;
+    else if (WS_windAngle < 0.0f)
+        WS_windAngle -= -6.2831854820251465f;   /* -(-2pi) = +2pi */
 
     r = (float)(BrRandom() & 0xFFFF) * 3.051804378628731e-05f - 1.0f;
-    g_weather.windGain = r * g_weather.dt + g_weather.windGain;
+    WS_windGain = r * WS_dt + WS_windGain;
     /* Then-arms are integer stores of 1.0f / 0.5f (mov imm32), not x87. */
-    if (g_weather.windGain > 1.0f)
-        g_weather.windGain = 1.0f;
-    else if (g_weather.windGain < 0.5f)
-        g_weather.windGain = 0.5f;
+    if (WS_windGain > 1.0f)
+        WS_windGain = 1.0f;
+    else if (WS_windGain < 0.5f)
+        WS_windGain = 0.5f;
 
     /* Integer-home of the angle (mov eax; mov [esp], eax; fld [esp]),
      * windZ zeroed between the copy and the two flds, fcos of the global
@@ -1135,16 +1157,18 @@ void BrWeatherStepWind(void)
      * twice): each is a block-scoped volatile float, which VC5 homes in
      * the slot `a` has finished with. */
     {
-        int ia = *(int *)&g_weather.windAngle;
-        g_weather.windZ = 0.0f;
+        int ia = *(int *)&WS_windAngle;
+        WS_windZ = 0.0f;
         *(int *)&a = ia;
         {
-            volatile float c = (float)cos(g_weather.windAngle);
-            g_weather.windX = c * g_weather.windGain * g_weather.dt;
+            volatile float c = (float)cos(WS_windAngle);
+            /* (c * gain) * dt, parenthesised: with gain and dt as separate
+             * globals VC5 otherwise schedules the two products differently. */
+            WS_windX = (c * WS_windGain) * WS_dt;
         }
         {
             volatile float s = (float)sin(a);
-            g_weather.windY = s * g_weather.windGain * g_weather.dt;
+            WS_windY = (s * WS_windGain) * WS_dt;
         }
     }
 }
