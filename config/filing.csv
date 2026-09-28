@@ -1334,9 +1334,9 @@ glide_va,name,module,basis,file
 0x10073979,BrHalt73979,startup,description,src/core/startup/br_dllentry.c
 0x100745B0,BrCrtOnExit,startup,description,src/core/startup/br_dllentry.c
 0x100745E0,BrCrtAtExit,startup,description,src/core/startup/br_dllentry.c
-0x100746C0,FUN_100746c0,startup,neighbour-1,src/core/generated/0x100746C0.c
-0x10074770,FUN_10074770,startup,neighbour-1,src/core/generated/0x10074770.c
-0x100747E0,BrMat3CheckMagic,startup,neighbour-1,src/core/startup/br_dllentry.c
-0x10074800,FUN_10074800,startup,neighbour-1,src/core/generated/0x10074800.c
+0x100746C0,BrEhVecDtor,startup,filed,src/core/startup/br_dllentry.c
+0x10074770,BrEhArrayUnwind,startup,filed,src/core/startup/br_dllentry.c
+0x100747E0,BrEhArrayUnwindFilter,startup,filed,src/core/startup/br_dllentry.c
+0x10074800,BrEhVecCtor,startup,filed,src/core/startup/br_dllentry.c
 0x10074AE6,FUN_10074ae6,startup,neighbour-1,src/core/startup/br_stubs.c
 0x10074B00,BrDllMain,startup,description,src/core/startup/br_dllentry.c

@@ -6,6 +6,7 @@
  * code, but it is in the image and it matches, so it lives here.
  */
 #ifdef BR_MATCHING_BUILD
+#include <excpt.h>   /* GetExceptionInformation, for the array unwinders */
 
 extern int DAT_118ef178;
 __declspec(dllimport) int __stdcall DisableThreadLibraryCalls(void *hModule);
@@ -13,38 +14,32 @@ int func_0x10074aec();
 void halt_baddata(void);
 /* WHAT IT DOES: no-op stub (CRT-region placeholder). */
 /* @implements 0x10073714 glide BrNop73714 */
-
-int BrNop73714(void)
-
+void BrNop73714(void)
 {
-  return;
 }
 
 /* WHAT IT DOES: halt on bad data (CRT-region trap). */
 /* @implements 0x10073974 glide BrHalt73974 */
 
-int BrHalt73974(void)
-
+void BrHalt73974(void)
 {
-                    
   halt_baddata();
 }
 
 /* WHAT IT DOES: halt on bad data (CRT-region trap, second entry point). */
 /* @implements 0x10073979 glide BrHalt73979 */
 
-int BrHalt73979(void)
-
+void BrHalt73979(void)
 {
-                    
   halt_baddata();
 }
 
-/* WHAT IT DOES: validate a matrix magic number and call the rebuild path if it matches. */
-/* @implements 0x100747E0 glide BrMat3CheckMagic */
-
-int BrMat3CheckMagic(int *param_1)
-
+/* WHAT IT DOES: the exception filter the array unwinder runs if a destructor
+ * throws while an exception is already unwinding: a C++ exception (code
+ * 0xE06D7363, "msc") there means terminate() (0x10074AEC); anything else
+ * returns EXCEPTION_CONTINUE_SEARCH.  The CRT's __ArrayUnwindFilter. */
+/* @implements 0x100747E0 glide BrEhArrayUnwindFilter */
+int BrEhArrayUnwindFilter(int *param_1)
 {
   if (*(int *)*param_1 == -0x1f928c9d) {
     func_0x10074aec();
@@ -66,11 +61,8 @@ int __stdcall BrDllMain(void *param_1,int param_2,int _pad_2)
 
 /* WHAT IT DOES: no-op stub (CRT-region placeholder). */
 /* @implements 0x10073719 glide BrNop73719 */
-
-int BrNop73719(void)
-
+void BrNop73719(void)
 {
-  return;
 }
 
 /* The per-DLL CRT exit-handler glue every /MD DLL carries: an _onexit that
@@ -110,4 +102,86 @@ int BrCrtAtExit(BrOnExitFn pfn)
   return (p != 0) ? 0 : -1;
 }
 
+#endif /* BR_MATCHING_BUILD */
+
+#ifdef BR_MATCHING_BUILD
+
+typedef void (__fastcall *PDtor)(void *);
+void __stdcall BrEhArrayUnwind(void *ptr, unsigned size, int count, PDtor dtor);
+
+/* WHAT IT DOES: destroy an array of objects, BACK to front, calling each
+ * element's destructor. If one throws, the compiler's cleanup helper
+ * finishes destroying the rest. Compiler-generated array teardown, not game
+ * code. */
+/* @implements 0x100746C0 glide BrEhVecDtor */
+void __stdcall
+BrEhVecDtor(void *ptr, unsigned size, int count, PDtor dtor)
+{
+    int success = 0;
+
+    ptr = (char *)ptr + size * count;
+    __try {
+        while (--count >= 0) {
+            ptr = (char *)ptr - size;
+            dtor(ptr);
+        }
+        success = 1;
+    } __finally {
+        if (!success)
+            BrEhArrayUnwind(ptr, size, count, dtor);
+    }
+}
+#endif /* BR_MATCHING_BUILD */
+
+#ifdef BR_MATCHING_BUILD
+
+typedef void (__fastcall *PDtor)(void *);
+
+/* WHAT IT DOES: destroy the remaining elements of an array while an
+ * exception is already unwinding, swallowing any further exception --
+ * because throwing during cleanup would terminate. The partner of the array
+ * destructor above. */
+/* @implements 0x10074770 glide BrEhArrayUnwind */
+void __stdcall
+BrEhArrayUnwind(void *ptr, unsigned size, int count, PDtor dtor)
+{
+    __try {
+        for (;;) {
+            --count;
+            if (count < 0)
+                break;
+            dtor(ptr = (char *)ptr - size);
+        }
+    } __except (BrEhArrayUnwindFilter((int *)GetExceptionInformation())) {
+    }
+}
+#endif /* BR_MATCHING_BUILD */
+
+#ifdef BR_MATCHING_BUILD
+
+typedef void (__fastcall *PDtor)(void *);
+typedef void (__fastcall *PCtor)(void *);
+void __stdcall BrEhArrayUnwind(void *ptr, unsigned size, int count, PDtor dtor);
+
+/* WHAT IT DOES: construct an array of objects front to back and, if any
+ * constructor throws, destroy the ones already built before letting the
+ * exception out. Compiler-generated array construction. */
+/* @implements 0x10074800 glide BrEhVecCtor */
+void __stdcall
+BrEhVecCtor(void *ptr, unsigned size, int count, PCtor ctor, PDtor dtor)
+{
+    int success = 0;
+    int i;
+
+    __try {
+        for (i = 0; i < count; i++) {
+            ctor(ptr);
+            ptr = (char *)ptr + size;
+        }
+        success = 1;
+    } __finally {
+        if (!success)
+            BrEhArrayUnwind(ptr, size, i, dtor);
+    }
+}
 #endif /* BR_MATCHING_BUILD */

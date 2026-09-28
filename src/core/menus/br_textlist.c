@@ -55,7 +55,7 @@ int __fastcall BrObj54710Dtor(void *pThis);
 /* Lives in src/core/menus/br_textbox.c; BrObj54710Dtor still takes its
  * address as the vector destructor's element dtor. */
 int __fastcall BrVtInit53EE0(int *param_1);
-int __stdcall FUN_100746c0(int,int,int,int);
+int __stdcall BrEhVecDtor(int,int,int,int);
 typedef int (*funcptr)();
 extern funcptr PTR_FUN_10077720;
 extern int * DAT_10ac66e8;
@@ -87,7 +87,7 @@ int __fastcall BrObj54710Dtor(void *param_1)
 
 {
   *(int *)param_1 = (int)&PTR_FUN_10077720;
-  FUN_100746c0((int)param_1 + 0x2c,0x438,100,(int)BrVtInit53EE0);
+  BrEhVecDtor((int)param_1 + 0x2c,0x438,100,(int)BrVtInit53EE0);
   return;
 }
 
