@@ -1,6 +1,7 @@
 # Boss Rally - bit-exact decompilation
 
-Jeffrey Wilbur (StrutB)
+**Maintainer:** Jeffrey Wilbur, Strut B, LLC\
+**Contact:** [retro@strutb.com](mailto:retro@strutb.com)
 
 ## Project Purpose
 
@@ -340,9 +341,9 @@ _Snapshot 2026-09-28._
 
 ```
 M1  Contract-valid (T3 + T4)
-    ██████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  15.4%   58,348 / 379,932 B   372 / 572 fns
+    ██████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  24.7%   93,760 / 379,932 B   393 / 572 fns
 M2  Byte-exact (T4)
-    ██████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  15.4%   58,348 / 379,932 B   372 / 572 fns
+    ████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  18.8%   71,312 / 379,932 B   392 / 572 fns
 ```
 <!-- N64-PROGRESS:END -->
 
