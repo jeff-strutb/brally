@@ -7,6 +7,23 @@ char * memcpy(char *param_1,char *param_2,int param_3);
 extern int D_802251C4;
 /* -- end declarations -- */
 
+/* WHAT IT DOES: Transpose a 4x4 matrix: out = m transposed, swapping each
+ * pair across the diagonal (so out may be m itself; the diagonal is left as
+ * it is).  Each swap sits on one line, as a SWAP macro would put it: IDO
+ * schedules the loads and stores by line. */
+/* @implements 0x802252EC tgr BrMat4Transpose */
+void BrMat4Transpose(float out[4][4], float m[4][4])
+{
+  float t;
+
+  t = m[0][1];   out[0][1] = m[1][0];   out[1][0] = t;
+  t = m[0][2];   out[0][2] = m[2][0];   out[2][0] = t;
+  t = m[0][3];   out[0][3] = m[3][0];   out[3][0] = t;
+  t = m[1][2];   out[1][2] = m[2][1];   out[2][1] = t;
+  t = m[1][3];   out[1][3] = m[3][1];   out[3][1] = t;
+  t = m[2][3];   out[2][3] = m[3][2];   out[3][2] = t;
+}
+
 /* WHAT IT DOES: Copy a 4x4 float matrix (64 bytes). */
 /* @implements 0x80225350 tgr BrMat4Copy */
 void BrMat4Copy(int param_1,int param_2)
