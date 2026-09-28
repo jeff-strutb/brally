@@ -135,7 +135,7 @@ glide_va,name,module,basis,file
 0x10007F40,FUN_10007f40,startup,neighbour-1,src/core/generated/0x10007F40.c
 0x10008760,BrObj87Ctor,gamedata,filed,src/core/gamedata/br_obj87.c
 0x100087A0,BrObj87A0DeleteDtor,gamedata,neighbour-1,src/core/gamedata/br_obj87.c
-0x100087C0,BrSub100087C0,gamedata,neighbour-1,src/core/tiny_stubs.c
+0x100087C0,BrObj87Dtor,gamedata,filed,src/core/gamedata/br_obj87.c
 0x100087D0,BrCleanupName_100087D0,gamedata,neighbour,src/core/gamedata/BrCleanupName_100087D0.cpp
 0x10008850,BrKeyCacheFind,gamedata,neighbour-1,src/core/gamedata/br_keycache.c
 0x10008930,M8930,gamedata,neighbour,src/core/gamedata/M8930_10008930.cpp
@@ -287,7 +287,7 @@ glide_va,name,module,basis,file
 0x1001D150,BrRdpACMux,drawing,neighbour-1,src/core/drawing/br_rdpmode.c
 0x1001D180,BrRdpCCMux,drawing,description,src/core/drawing/br_rdpmode.c
 0x1001DC40,BrVec3dLenSq,geometry,filed,src/core/geometry/br_vecd.c
-0x1001DC80,BrSub1001DC80,geometry,neighbour,src/core/tiny_stubs.c
+0x1001DC80,BrVec3dLen,geometry,filed,src/core/geometry/br_vecd.c
 0x1001DC90,BrVec3dNormalise,geometry,filed,src/core/geometry/br_vecd.c
 0x1001DCD0,BrVec3dDot,geometry,filed,src/core/geometry/br_vecd.c
 0x1001DD50,BrGlideFlipWait,drawing,filed,src/core/drawing/br_dlglide.c
@@ -522,9 +522,9 @@ glide_va,name,module,basis,file
 0x10031AC0,BrTexCopyRecords,startup,neighbour,src/core/startup/br_track.c
 0x10032190,BrGlTrackFixupCmds,startup,filed,src/core/startup/br_track.c
 0x100324F0,BrObjLifeInit,startup,filed,src/core/startup/br_objlife.c
-0x10032500,BrSub10032500,startup,neighbour,src/core/tiny_stubs.c
+0x10032500,BrSub10032500,startup,filed,src/core/startup/br_objlife.c
 0x10032510,BrAtexit_10038EA0,startup,filed,src/core/startup/br_objlife.c
-0x10032520,BrSub10032520,startup,neighbour-1,src/core/tiny_stubs.c
+0x10032520,BrSub10032520,startup,filed,src/core/startup/br_objlife.c
 0x10032530,BrBootColdInitRun,startup,filed,src/core/startup/br_bootinit.c
 0x100325B0,BrExt_10038F30,startup,neighbour,src/core/startup/BrExt_10038F30_100325B0.cpp
 0x10032680,BrInit220B20,startup,neighbour-1,src/core/startup/br_track.c
@@ -1095,7 +1095,7 @@ glide_va,name,module,basis,file
 0x10062AC0,BrCtrlCfgBoot,controls,description,src/core/controls/br_ctrlboot.c
 0x10062AD0,BrCtrlCfgInitGlobal,settings,description,src/core/settings/br_ctrlcfg.c
 0x10062AE0,BrAtexit_10069A70,startup,filed,src/core/startup/br_objlife.c
-0x10062AF0,BrSub10062AF0,settings,neighbour-1,src/core/tiny_stubs.c
+0x10062AF0,BrSub10062AF0,startup,filed,src/core/startup/br_objlife.c
 0x10062B00,BrCtrlCfgCtor,settings,description,src/core/settings/br_ctrlcfg.c
 0x10062B10,BrCtrlCfgLoadDefaults,settings,manual,src/core/settings/br_ctrlcfg.c
 0x10062B80,BrCtrlCfgAssign,controls,manual,src/core/controls/BrCtrlCfgAssign_10062B80.cpp

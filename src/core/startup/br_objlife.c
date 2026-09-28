@@ -4,6 +4,7 @@
  * for the whole tree).  Matching builds define only the ones this TU calls.
  */
 #include "br_objlife.h"
+#include "br_match.h"   /* BR_THISCALL1 */
 
 #include <stddef.h>
 #include <stdint.h>
@@ -301,6 +302,20 @@ void BrAtexit_10071600(void)
     BrExt_1007E8B0(BrWrap_10071610);
 }
 
+/* The two fixed global objects the wrappers below hand to their class
+ * routines (names follow the original's operand VAs), and those routines --
+ * thiscall, passed in ecx via __fastcall on VC5 (br_match.h). */
+extern int g_AC0810, g_B71290;
+extern void BR_THISCALL1 BrSub10008760(void *self);   /* BrObj87Ctor */
+extern void BR_THISCALL1 BrSub10008D60(void *self);   /* +4 sub-object dtor */
+void BR_THISCALL1 BrObj87Dtor(void *self);             /* 0x100087C0 */
+
+/* WHAT IT DOES: constructs the global object at g_AC0810 -- the static
+ * initializer the compiler emits for a C++ global; BrObjLifeInit calls it
+ * and then registers the matching destructor (below) with atexit. */
+/* @implements 0x10032500 glide BrSub10032500 */
+void BrSub10032500(void){ BrSub10008760(&g_AC0810); }
+
 /* WHAT IT DOES: arrange for one object's destructor to run at process exit. */
 /* @implements 0x10032510 glide BrAtexit_10038EA0 */
 void BrAtexit_10038EA0(void)
@@ -308,12 +323,23 @@ void BrAtexit_10038EA0(void)
     BrExt_1007E8B0(BrExt_10038EB0);
 }
 
+/* WHAT IT DOES: destroys the g_AC0810 object at process exit -- the atexit
+ * handler BrAtexit_10038EA0 registers. Pairs with BrSub10032500 above. */
+/* @implements 0x10032520 glide BrSub10032520 */
+void BrSub10032520(void){ BrObj87Dtor(&g_AC0810); }
+
 /* WHAT IT DOES: the same atexit registration for a different object. */
 /* @implements 0x10062AE0 glide BrAtexit_10069A70 */
 void BrAtexit_10069A70(void)
 {
     BrExt_1007E8B0(BrExt_10069A80);
 }
+
+/* WHAT IT DOES: destroys the global object at g_B71290 at process exit --
+ * the atexit handler BrAtexit_10069A70 registers; that object's destructor
+ * is the +4 sub-object's (0x10008D60, an empty body). */
+/* @implements 0x10062AF0 glide BrSub10062AF0 */
+void BrSub10062AF0(void){ BrSub10008D60(&g_B71290); }
 
 void BrWrap_1003DAE0(void)
 {

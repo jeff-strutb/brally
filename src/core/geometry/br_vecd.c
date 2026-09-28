@@ -72,9 +72,15 @@ double BrVec3dLenSq(const BrVec3d *pV)
     return (zz + yy) + xx;
 }
 
+/* WHAT IT DOES: the length of a 3D vector in double precision -- the square
+ * root of BrVec3dLenSq.  The two named temporaries are what make VC5 issue
+ * the fsqrt before the caller-cleanup `add esp`, as the original does. */
+/* @implements 0x1001DC80 glide BrVec3dLen */
 double BrVec3dLen(const BrVec3d *pV)
 {
-    return sqrt(BrVec3dLenSq(pV));
+    double d = BrVec3dLenSq(pV);
+    double r = sqrt(d);
+    return r;
 }
 
 /* 0x10030600 -- note the guard is an exact compare against 0.0, not an

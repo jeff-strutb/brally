@@ -15,16 +15,16 @@
 #ifdef BR_MATCHING_BUILD
 
 int operator_delete();
-int __fastcall FUN_100087c0(void *pThis);
+void __fastcall BrObj87Dtor(void *pThis);
 
-/* WHAT IT DOES: C++ scalar deleting destructor: run the destructor body (FUN_100087c0), then
+/* WHAT IT DOES: C++ scalar deleting destructor: run the destructor body (BrObj87Dtor), then
  * operator delete if bit 0 of the flags is set. thiscall, spelled as __fastcall with an
  * unused EDX slot (BR_THISCALL1 idiom). */
 /* @implements 0x100087A0 glide BrObj87A0DeleteDtor */
 
 void * __fastcall BrObj87A0DeleteDtor(void *param_1,int _edx_unused,unsigned char param_2)
 {
-  FUN_100087c0(param_1);
+  BrObj87Dtor(param_1);
   if ((param_2 & 1) != 0) {
     operator_delete(param_1);
   }
@@ -34,6 +34,7 @@ void * __fastcall BrObj87A0DeleteDtor(void *param_1,int _edx_unused,unsigned cha
 /* The object's vtable, at 0x10077150.  Only its address is used here. */
 extern void *BrObj87Vtbl;                       /* 0x10077150 */
 extern void * __fastcall BrPodIdentity(void *pThis);   /* 0x10008D50 */
+extern void __fastcall BrSub10008D60(void *pThis);      /* 0x10008D60 */
 
 /* WHAT IT DOES: C++ constructor for the same object 0x100087A0 destroys --
  * runs the sub-object constructor at +4, installs the vtable, clears the
@@ -61,6 +62,17 @@ void * __fastcall BrObj87Ctor(void *pThis)
     memset(p + 8, 0, 0x10);
     memset(p + 0x20, 0, 0x400);
     return pThis;
+}
+
+/* WHAT IT DOES: C++ destructor body for the same object -- puts the class's
+ * own vtable back (as a destructor does before tearing down members) and
+ * destroys the sub-object at +4.  thiscall, spelled as __fastcall. */
+/* @implements 0x100087C0 glide BrObj87Dtor */
+void __fastcall BrObj87Dtor(void *pThis)
+{
+    int **p = (int **)pThis;
+    *p = (int *)&BrObj87Vtbl;
+    BrSub10008D60(p + 1);
 }
 
 #endif /* BR_MATCHING_BUILD */
