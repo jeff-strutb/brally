@@ -10,13 +10,10 @@ va,name,verdict,calls,captured,contexts,detail,date
 0x10003430,BrFChkFRead,EQUIVALENT,330,99,25,10_boot: 3 real call(s) agree,2026-09-24
 0x100038f0,FUN_100038f0,EQUIVALENT,2143,18,5,61_mp_race: 6 real call(s) agree,2026-09-24
 0x10005330,BrNetBeaconTick,EQUIVALENT,1899,18,3,61_mp_race: 6 real call(s) agree,2026-09-24
-0x10005400,BrCdAudioTick,UNCOVERED,0,0,0,,2026-09-24
 0x10005810,BrGhostPickBlend,EQUIVALENT,7638,18,3,61_mp_race: 6 real call(s) agree,2026-09-24
 0x10006510,BrCarStateEncode,EQUIVALENT,635,18,3,61_mp_race: 6 real call(s) agree,2026-09-24
 0x10007750,BrCarStateDecodeDelta,EQUIVALENT,1762,9,2,61_mp_race: 9 real call(s) agree [not placed in the image; object mode],2026-09-26
 0x10007d50,BrCarStateLerp,EQUIVALENT,10398,18,11,61_mp_race: 6 real call(s) agree,2026-09-24
-0x10008ba0,BrPodWriteOpen,UNCOVERED,0,0,0,,2026-09-24
-0x10008c80,BrPodWriteClose,UNCOVERED,0,0,0,,2026-09-24
 0x10009010,BrDpAppMsgHandle,EQUIVALENT,2056,21,3,"21 real call(s) agree (61_mp_race: 7, 63_mp_join: 7, 64_mp_dropout: 7; --objects)",2026-09-27
 0x100096a0,BrDPlaySysMsgLog,EQUIVALENT,2,2,2,61_mp_race: 1 real call(s) agree,2026-09-24
 0x1000a110,BrCarDrawVehicle,EQUIVALENT,41409,120,21,20_quickrace_drive: 6 real call(s) agree,2026-09-24
@@ -58,13 +55,11 @@ va,name,verdict,calls,captured,contexts,detail,date
 0x1001f2b0,BrClipPlaneWPlusF04,EQUIVALENT,970325,120,40,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x1001fa30,BrDlCmdTri2,EQUIVALENT,1000020,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10020d70,BrDlCmdTri2NoZ,EQUIVALENT,17911,114,19,20_quickrace_drive: 6 real call(s) agree,2026-09-24
-0x10021570,BrDlsTileRectE4,UNCOVERED,0,0,0,,2026-09-24
 0x10021c70,BrDlVtxLit,EQUIVALENT,101870,18,3,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10022600,BrDlVtxGen,EQUIVALENT,14800,30,5,20_quickrace_drive: 6 real call(s) agree [not placed in the image; object mode],2026-09-24
 0x10022bf0,BrDlVtxGenLin,EQUIVALENT,22234,118,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10023b70,BrFramePresent,EQUIVALENT,18980,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10023d70,FUN_10023d70,EQUIVALENT,9923,125,25,10_boot: 1 real call(s) agree,2026-09-24
-0x10024680,BrTexLerpU8,UNCOVERED,0,0,0,,2026-09-24
 0x100250d0,BrTex3dExpand,EQUIVALENT,10838,125,25,10_boot: 1 real call(s) agree,2026-09-24
 0x100271f0,BrTex3dTexel,EQUIVALENT,1000020,120,40,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10027290,BrGbiSizeShift,EQUIVALENT,1815,145,125,10_boot: 5 real call(s) agree,2026-09-24
@@ -122,7 +117,6 @@ va,name,verdict,calls,captured,contexts,detail,date
 0x1003b6d0,BrSaveBeginRallySeason,EQUIVALENT,1,1,1,56_season_load: 1 real call(s) agree,2026-09-24
 0x1003bde0,BrSaveBeginTimeAttack,EQUIVALENT,1,1,1,46_timeattack_load: 1 real call(s) agree,2026-09-24
 0x10040a90,BrCheatCodeScan,EQUIVALENT,42,5,1,25_cheats: 5 real call(s) agree,2026-09-24
-0x10041180,BrUiTweenStep_10047D30,UNCOVERED,0,0,0,,2026-09-24
 0x100498a0,FUN_100498a0,EQUIVALENT,3,3,3,50_championship: 1 real call(s) agree,2026-09-24
 0x1004aee0,BrExt_10052030,EQUIVALENT,3,3,3,50_championship: 1 real call(s) agree,2026-09-24
 0x1004be00,FUN_1004be00,EQUIVALENT,2,2,2,50_championship: 1 real call(s) agree,2026-09-24
