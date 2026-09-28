@@ -12,8 +12,22 @@
 #ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
+/* The header declares the port's (state, slot, ...) forms of these; the
+ * originals take the slot (or key) alone and reach the state as globals. */
+#define BrNetSlotName     BrNetSlotName_hdr
+#define BrNetSlotGetF004  BrNetSlotGetF004_hdr
+#define BrNetSlotGetF02C  BrNetSlotGetF02C_hdr
+#define BrNetSlotSetF02C  BrNetSlotSetF02C_hdr
+#define BrNetDropMatching BrNetDropMatching_hdr
 #endif
 #include "slice1_02.h"
+#ifdef BR_MATCHING_BUILD
+#undef BrNetSlotName
+#undef BrNetSlotGetF004
+#undef BrNetSlotGetF02C
+#undef BrNetSlotSetF02C
+#undef BrNetDropMatching
+#endif
 
 #include <string.h>
 
@@ -243,7 +257,8 @@ typedef struct BrNetSlot978 {
     void *hMutex;                 /* +0x000 = 0x1021ce58 */
     char  pad004[0x28];
     int   f02C;                   /* +0x02C = 0x1021ce84 */
-    char  rest[0x978 - 0x30];
+    char  pad030[0x570 - 0x30];
+    char  name[0x978 - 0x570];    /* +0x570 = 0x1021d3c8, the player name */
 } BrNetSlot978;
 
 typedef char br_assert_slot978[(sizeof(BrNetSlot978) == 0x978) ? 1 : -1];
@@ -330,6 +345,7 @@ extern int DAT_10226a64;
 extern int g_brH220DDC;
 extern int g_h1022AF30;
 int BrNetReset();
+void BrTimeUpdate(void);   /* 0x1006E360 */
 
 /* WHAT IT DOES: create Win32 mutexes for the net/multiplayer subsystem and reset the network layer. */
 /* @implements 0x10005E80 glide BrNetMutexInit */
@@ -343,22 +359,22 @@ int BrNetMutexInit(void)
   puVar2 = &DAT_1021ce58;
   do {
     pvVar1 = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
-    *puVar2 = pvVar1;
+    *puVar2 = (int)pvVar1;
     puVar2 = puVar2 + 0x25e;
   } while ((int)puVar2 < 0x102265d8);
-  DAT_10226a54 = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
-  DAT_10226a58 = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
-  DAT_10226a5c = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
-  g_h1022AF30 = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+  DAT_10226a54 = (int)CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+  DAT_10226a58 = (int)CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+  DAT_10226a5c = (int)CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+  g_h1022AF30 = (int)CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
   DAT_1021ce40 = 0;
   DAT_1021c908 = 0;
   BrTimeUpdate();
-  DAT_10226a64 = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+  DAT_10226a64 = (int)CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
   g_brH221324 = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
   g_brH22AF04 = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
-  g_brH220DDC = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
-  DAT_1021ce4c = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
-  DAT_1021c81c = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+  g_brH220DDC = (int)CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+  DAT_1021ce4c = (int)CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+  DAT_1021c81c = (int)CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
   ((int (*)())BrNetReset)();
   return 1;
 }
@@ -561,4 +577,324 @@ int FUN_100054a0(float *param_1)
   return uVar1;
 }
 
+#endif /* BR_MATCHING_BUILD */
+
+#ifdef BR_MATCHING_BUILD
+/* Forward declarations for unknown functions/globals */
+extern int DAT_1021ce58;
+extern char DAT_1021ce5c;
+
+/* WHAT IT DOES: read a different field out of a network player slot, under
+ * the same per-slot mutex. */
+/* @implements 0x10006060 glide BrNetSlotGetF004 */
+int BrNetSlotGetF004(int param_1)
+
+{
+  int uVar1;
+  
+  WaitForSingleObject((HANDLE)(&DAT_1021ce58)[param_1 * 0x25e],0xffffffff);
+  uVar1 = *(int *)(&DAT_1021ce5c + param_1 * 0x978);
+  ReleaseMutex((HANDLE)(&DAT_1021ce58)[param_1 * 0x25e]);
+  return uVar1;
+}
+#endif /* BR_MATCHING_BUILD */
+
+#ifdef BR_MATCHING_BUILD
+/* The original binary is /MD: CRT calls resolve through the import table. */
+#define _CRTIMP __declspec(dllimport)
+#include <windows.h>
+
+extern int DAT_10226a5c;    /* the stack's mutex handle */
+extern int DAT_1021c904;    /* top index; negative = empty */
+extern int DAT_1021c8c0[];  /* the stack itself */
+
+/* One shared unlock/return tail in source; VC5 duplicates it into both
+ * arms (each gets its own ReleaseMutex + ret). */
+/* WHAT IT DOES: pop the next free network slot index off a shared stack,
+ * returning -1 when none are left. Locked, because the receive thread also
+ * takes slots. */
+/* @implements 0x100060B0 glide BrNetStackPop */
+int BrNetStackPop(void)
+{
+    int v;
+    int n;
+
+    WaitForSingleObject((HANDLE)DAT_10226a5c, 0xffffffff);
+    n = DAT_1021c904;
+    if (n >= 0) {
+        v = DAT_1021c8c0[n];
+        DAT_1021c904 = n - 1;
+    } else {
+        v = -1;
+    }
+    ReleaseMutex((HANDLE)DAT_10226a5c);
+    return v;
+}
+#endif /* BR_MATCHING_BUILD */
+
+#ifdef BR_MATCHING_BUILD
+/* The original binary is /MD: CRT calls resolve through the import table. */
+#define _CRTIMP __declspec(dllimport)
+#include <windows.h>
+
+extern int DAT_1021ce58;    /* slot[0].hMutex; slot stride 0x978 (0x25E ints) */
+
+/* WHAT IT DOES: read one network slot's state word plus three of its status
+ * bytes in a single locked operation, so the caller sees a consistent
+ * snapshot rather than four separately-locked reads that could disagree. */
+/* @implements 0x10006150 glide BrNetSlotGetF030 */
+int BrNetSlotGetF030(int i, unsigned char *pb34, unsigned char *pb35,
+                     unsigned char *pb36)
+{
+    int v;
+    int off = i * 0x978;
+
+    WaitForSingleObject(*(HANDLE *)((char *)&DAT_1021ce58 + off),
+                        0xffffffff);
+    v     = *(int *)((char *)&DAT_1021ce58 + off + 0x30);
+    *pb34 = *(unsigned char *)((char *)&DAT_1021ce58 + off + 0x34);
+    *pb35 = *(unsigned char *)((char *)&DAT_1021ce58 + off + 0x35);
+    *pb36 = *(unsigned char *)((char *)&DAT_1021ce58 + off + 0x36);
+    ReleaseMutex(*(HANDLE *)((char *)&DAT_1021ce58 + off));
+    return v;
+}
+#endif /* BR_MATCHING_BUILD */
+
+#ifdef BR_MATCHING_BUILD
+/* Forward declarations for unknown functions/globals */
+extern int DAT_1021ce00;
+extern int DAT_10226a58;
+
+/* WHAT IT DOES: read one entry from a shared network table under the table's
+ * own mutex. */
+/* @implements 0x100061B0 glide BrNetGetA102212D0 */
+int BrNetGetA102212D0(int param_1)
+
+{
+  int uVar1;
+  
+  WaitForSingleObject((void *)DAT_10226a58,0xffffffff);
+  uVar1 = (&DAT_1021ce00)[param_1];
+  ReleaseMutex((void *)DAT_10226a58);
+  return uVar1;
+}
+#endif /* BR_MATCHING_BUILD */
+
+#ifdef BR_MATCHING_BUILD
+/* Forward declarations for unknown functions/globals */
+extern int DAT_1021ce58;
+extern char DAT_1021d3c8;
+extern char DAT_10226628[];
+
+/* WHAT IT DOES: copy a network player's name out of its slot into one SHARED
+ * static buffer and return that buffer. Not re-entrant and not safe to hold:
+ * the next caller overwrites it. That is the original's design. */
+/* @implements 0x100061E0 glide BrNetSlotName */
+char *BrNetSlotName(int param_1)
+
+{
+  WaitForSingleObject((HANDLE)(&DAT_1021ce58)[param_1 * 0x25e],0xffffffff);
+  strcpy(DAT_10226628, &DAT_1021d3c8 + param_1 * 0x978);
+  ReleaseMutex((HANDLE)(&DAT_1021ce58)[param_1 * 0x25e]);
+  return DAT_10226628;
+}
+#endif /* BR_MATCHING_BUILD */
+
+#ifdef BR_MATCHING_BUILD
+/* Forward declarations for unknown functions/globals */
+extern int DAT_1021ce58;
+extern char DAT_1021d3c8;
+
+/* WHAT IT DOES: write a network player's name into its slot, under that
+ * slot's mutex. The read side is BrNetSlotName. */
+/* @implements 0x10006250 glide BrNetSlotSetName */
+void BrNetSlotSetName(int param_1,char *param_2)
+
+{
+  WaitForSingleObject((HANDLE)(&DAT_1021ce58)[param_1 * 0x25e],0xffffffff);
+  strcpy(&DAT_1021d3c8 + param_1 * 0x978, param_2);
+  ReleaseMutex((HANDLE)(&DAT_1021ce58)[param_1 * 0x25e]);
+  return;
+}
+#endif /* BR_MATCHING_BUILD */
+
+#ifdef BR_MATCHING_BUILD
+/* The original binary is /MD: CRT calls resolve through the import table. */
+#define _CRTIMP __declspec(dllimport)
+#include <windows.h>
+
+extern int DAT_1021ce58;    /* slot[0].hMutex; slot stride 0x978 (0x25E ints) */
+extern int BrNetSlotGetF02C(int i);     /* 0x10004D80, re-enters the mutex */
+
+/* WHAT IT DOES: read a slot's flag word and turn it into a small non-
+ * negative number: keep the low six bits, subtract four, and clamp at zero.
+ * Used where the caller wants a count or level rather than the raw flags. */
+/* @implements 0x100062B0 glide BrNetSlotGetF02CBiased */
+int BrNetSlotGetF02CBiased(int i)
+{
+    int v;
+
+    WaitForSingleObject((HANDLE)(&DAT_1021ce58)[i * 0x25e], 0xffffffff);
+    v = (BrNetSlotGetF02C(i) & 0x3f) - 4;
+    ReleaseMutex((HANDLE)(&DAT_1021ce58)[i * 0x25e]);
+    return (v > 0) ? v : 0;
+}
+#endif /* BR_MATCHING_BUILD */
+
+#ifdef BR_MATCHING_BUILD
+/* Forward declarations for unknown functions/globals */
+extern int DAT_1021ce58;
+extern int DAT_1021d7cc;
+
+/* WHAT IT DOES: read another per-slot counter under the slot's mutex,
+ * clamped so a negative stored value reads as zero. */
+/* @implements 0x10006300 glide BrNetSlotGetF974 */
+int BrNetSlotGetF974(int param_1)
+
+{
+  int iVar1;
+  
+  WaitForSingleObject((HANDLE)(&DAT_1021ce58)[param_1 * 0x25e],0xffffffff);
+  iVar1 = (&DAT_1021d7cc)[param_1 * 0x25e];
+  ReleaseMutex((HANDLE)(&DAT_1021ce58)[param_1 * 0x25e]);
+  if (iVar1 < 0) {
+    iVar1 = 0;
+  }
+  return iVar1;
+}
+#endif /* BR_MATCHING_BUILD */
+
+#ifdef BR_MATCHING_BUILD
+/* The original binary is /MD: CRT calls resolve through the import table. */
+#define _CRTIMP __declspec(dllimport)
+#include <stdio.h>
+
+__declspec(dllimport) unsigned long __stdcall WaitForSingleObject(void *, unsigned long);
+__declspec(dllimport) int __stdcall ReleaseMutex(void *);
+
+
+
+extern BrNetSlot978 slots[16];       /* 0x1021CE58 */
+extern int          g_a10221288[];   /* 0x1021CDB8 */
+extern int          g_i10221318;     /* 0x1021CE48 */
+
+int  BrNetSlotGetF004(int slot);
+int  BrNetSlotGetF02C(int slot);
+void BrNetSlotSetF02C(int slot, int value);
+void BrNetAnnounce(const char *psz);
+
+/* WHAT IT DOES: drop every network player matching a key -- returns their
+ * slot to the free stack, clears their flags, and announces that they left
+ * the game. This is what runs when a player disconnects or is kicked. */
+/* @implements 0x10006350 glide BrNetDropMatching */
+void BrNetDropMatching(int key)
+{
+    char szMsg[0x400];
+    int  i;
+
+    for (i = 0; i < 16; ++i) {
+        if (BrNetSlotGetF004(i) != key)
+            continue;
+        /* `test al,0x3f` -- any of the low six flag bits. */
+        if ((BrNetSlotGetF02C(i) & 0x3F) == 0)
+            continue;
+
+        WaitForSingleObject((void *)g_h1022AF30, 0xffffffff);
+        g_i10221318 = g_i10221318 + 1;
+        g_a10221288[g_i10221318] = i;
+        ReleaseMutex((void *)g_h1022AF30);
+
+        BrNetSlotSetF02C(i, 0);
+
+        sprintf(szMsg, "%%15%s left the game.", slots[i].name);
+        BrNetAnnounce(szMsg);
+    }
+}
+#endif /* BR_MATCHING_BUILD */
+
+#ifdef BR_MATCHING_BUILD
+/* Forward declarations for unknown functions/globals */
+extern int DAT_1021c900;
+extern int DAT_1021ce4c;
+
+/* WHAT IT DOES: raise a shared network flag under its mutex. Paired with
+ * BrNetClearF10220DD0. */
+/* @implements 0x10006400 glide BrNetSetF10220DD0 */
+void BrNetSetF10220DD0(void)
+
+{
+  WaitForSingleObject((void *)DAT_1021ce4c,0xffffffff);
+  DAT_1021c900 = 1;
+  ReleaseMutex((void *)DAT_1021ce4c);
+  return;
+}
+#endif /* BR_MATCHING_BUILD */
+
+#ifdef BR_MATCHING_BUILD
+/* Forward declarations for unknown functions/globals */
+extern int DAT_1021c900;
+extern int DAT_1021ce4c;
+
+/* WHAT IT DOES: clear the flag BrNetSetF10220DD0 raises, under the same
+ * mutex. */
+/* @implements 0x10006430 glide BrNetClearF10220DD0 */
+void BrNetClearF10220DD0(void)
+
+{
+  WaitForSingleObject((void *)DAT_1021ce4c,0xffffffff);
+  DAT_1021c900 = 0;
+  ReleaseMutex((void *)DAT_1021ce4c);
+  return;
+}
+#endif /* BR_MATCHING_BUILD */
+
+#ifdef BR_MATCHING_BUILD
+/* Forward declarations for unknown functions/globals */
+extern int DAT_1021c81c;
+extern int DAT_10226a30;
+extern int DAT_10226a44;
+int BrTicks30FromMs();
+
+/* WHAT IT DOES: check whether a network timeout has expired and, if so, set
+ * the flag that tells the rest of the game to give up waiting. Called from
+ * the polling loop. */
+/* @implements 0x100064D0 glide BrNetCheckDeadline */
+void BrNetCheckDeadline(void)
+
+{
+  unsigned int uVar1;
+  
+  WaitForSingleObject((void *)DAT_1021c81c,0xffffffff);
+  uVar1 = BrTicks30FromMs();
+  if (uVar1 >= (unsigned int)DAT_10226a30) {
+    DAT_10226a44 = 1;
+  }
+  ReleaseMutex((void *)DAT_1021c81c);
+  return;
+}
+#endif /* BR_MATCHING_BUILD */
+
+/* ------------------------------------------------------------------ */
+/* 0x10004D80 -- slot field accessor                                  */
+/* ------------------------------------------------------------------ */
+
+#ifdef BR_MATCHING_BUILD
+/* Forward declarations for unknown functions/globals */
+extern int DAT_1021ce58;
+extern int DAT_1021ce84;
+
+/* WHAT IT DOES: read one field out of a network player slot under that
+ * slot's mutex. The slots are shared with the receive thread, so every read
+ * is locked. */
+/* @implements 0x10004D80 glide BrNetSlotGetF02C */
+int BrNetSlotGetF02C(int param_1)
+
+{
+  int uVar1;
+  
+  WaitForSingleObject((HANDLE)(&DAT_1021ce58)[param_1 * 0x25e],0xffffffff);
+  uVar1 = (&DAT_1021ce84)[param_1 * 0x25e];
+  ReleaseMutex((HANDLE)(&DAT_1021ce58)[param_1 * 0x25e]);
+  return uVar1;
+}
 #endif /* BR_MATCHING_BUILD */
