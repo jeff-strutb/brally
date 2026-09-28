@@ -410,3 +410,4 @@ va,name,kind
 802ABC00,gspF3DEX_fifoDataStart,data
 8021D84C,BrAnimUpdate,func
 8022FFB4,BrCarDrawWheels,func
+802465F0,BrImageDrawPart,func

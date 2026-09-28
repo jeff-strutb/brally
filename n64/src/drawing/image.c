@@ -22,7 +22,74 @@ void BrImageStrip(BrImage *img, unsigned char *data, int w, int h, int x, int y,
                   unsigned char r, unsigned char g, unsigned char b);
 extern Gfx *D_8028A858;
 extern int D_8028A850;
+extern int D_8028A898;                  /* the texture filter mode */
 /* -- end declarations -- */
+
+/* WHAT IT DOES: Draw the part (s, t, sw by th texels) of a 4-bit image as a
+ * w by h rectangle at (x, y), upside down, tinted r, g, b: load the texels
+ * as a 4-bit tile, then one textured rectangle stepping back up the rows.
+ * Coordinates are halved on a low-res screen.  The two tile commands, the
+ * rectangle and its first half-word are multi-line blocks: IDO schedules a
+ * command's stores by its line layout. */
+/* @implements 0x802465F0 tgr BrImageDrawPart */
+void BrImageDrawPart(BrImage *img, int s, int t, int sw, int th, int x, int y, int w, int h,
+                     unsigned char r, unsigned char g, unsigned char b)
+{
+  int lrs;
+  int lrt;
+
+  lrs = s + sw;
+  lrt = t + th;
+  gRaw(D_8028A858++, 0xe7000000, 0);
+  gRaw(D_8028A858++, 0xba001402, 0);
+  gRaw(D_8028A858++, 0xba001001, 0);
+  gRaw(D_8028A858++, 0xba000c02, D_8028A898);
+  gRaw(D_8028A858++, 0xfcffffff, 0xfffdf2f9);
+  gRaw(D_8028A858++, 0xb900031d, 0x504240);
+  gRaw(D_8028A858++, 0xfd880000 | _SHIFTL(((unsigned int)img->w >> 1) - 1, 0, 12), img->data);
+  {
+    Gfx *_g = (Gfx *)(D_8028A858++);
+
+    _g->words.w0 = 0xf5880000 | _SHIFTL((((lrs - s + 1) >> 1) + 7) >> 3, 9, 9);
+    _g->words.w1 = 0x7080200;
+  }
+  gRaw(D_8028A858++, 0xe6000000, 0);
+  gRaw(D_8028A858++, 0xf4000000 | _SHIFTL(s << 1, 12, 12) | _SHIFTL(t << 2, 0, 12),
+       0x7000000 | _SHIFTL(lrs << 1, 12, 12) | _SHIFTL(lrt << 2, 0, 12));
+  gRaw(D_8028A858++, 0xe7000000, 0);
+  {
+    Gfx *_g = (Gfx *)(D_8028A858++);
+
+    _g->words.w0 = 0xf5800000 | _SHIFTL((((lrs - s + 1) >> 1) + 7) >> 3, 9, 9);
+    _g->words.w1 = 0x80200;
+  }
+  gRaw(D_8028A858++, 0xf2000000 | _SHIFTL(s << 2, 12, 12) | _SHIFTL(t << 2, 0, 12),
+       _SHIFTL(lrs << 2, 12, 12) | _SHIFTL(lrt << 2, 0, 12));
+  gRaw(D_8028A858++, 0xba000e02, 0);
+  gRaw(D_8028A858++, 0xba001301, 0);
+  if (D_8028A850 == 0) {
+    x >>= 1;
+    y >>= 1;
+    w >>= 1;
+    h >>= 1;
+  }
+  gDPSetPrimColor(D_8028A858++, 0xff, 0xff, r, g, b, 0xff);
+  {
+    Gfx *_g = (Gfx *)(D_8028A858++);
+
+    _g->words.w0 = 0xe4000000 | _SHIFTL((x + w) << 2, 12, 12) | _SHIFTL((y + h) << 2, 0, 12);
+    _g->words.w1 = _SHIFTL(x << 2, 12, 12) | _SHIFTL(y << 2, 0, 12);
+  }
+  {
+    Gfx *_g = (Gfx *)(D_8028A858++);
+
+    _g->words.w0 = _SHIFTL(G_RDPHALF_1, 24, 8);
+    _g->words.w1 = _SHIFTL((s - 1) << 5, 16, 16) | _SHIFTL((lrt - 1) << 5, 0, 16);
+  }
+  gImmp1(D_8028A858++, G_RDPHALF_2, _SHIFTL(((sw << 10) - 0x400) / w, 16, 16) | _SHIFTL((1024 - th * 1024) / h, 0, 16));
+  gRaw(D_8028A858++, 0xe7000000, 0);
+  gRaw(D_8028A858++, 0xba001301, 0x80000);
+}
 
 /* WHAT IT DOES: Draw an image at its own position and size, strip by
  * strip from the bottom of its pixel data. */
