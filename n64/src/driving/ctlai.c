@@ -4,9 +4,29 @@
 
 /* -- declarations -- */
 void func_8022762C(int ctl);
-extern float D_802A9C7C;
-extern float D_802A9C80;
-extern float D_802A9C84;
+typedef struct BrAiNode {       /* 0x10 bytes */
+  short x0[3];
+  char pad6[6];
+  unsigned char xc;
+  unsigned char xd;
+  unsigned char xe;
+  unsigned char xf;
+} BrAiNode;
+typedef struct BrAiCar {        /* the AI's view of a car record */
+  char pad000[0x140];
+  int slot;                     /* 0x140 */
+  char pad144[0x1020 - 0x144];
+  float x1020[4];               /* 0x1020 */
+  char pad1030[0x1060 - 0x1030];
+  float lane[4];                /* 0x1060 */
+  int x1070[4];                 /* 0x1070 */
+  float x1080[4];               /* 0x1080 */
+  int x1090[4];                 /* 0x1090 */
+  char pad10a0[0x10d0 - 0x10a0];
+  BrAiNode node[0x90];          /* 0x10D0 */
+  short x19d0[0x90][3];         /* 0x19D0 */
+  short x1d30[36];              /* 0x1D30 */
+} BrAiCar;
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Drive one computer-controlled car for this frame: the
@@ -24,83 +44,62 @@ void BrStub80228E44(int arg0)
 {
 }
 
-/* WHAT IT DOES: Set up a computer driver's racing lanes: the lane offsets
- * follow from its starting slot, and its lane targets are reset. */
+/* WHAT IT DOES: Set up a computer driver's racing lanes: four lane offsets
+ * stepping 0.034 from slot * 0.137 (then cleared again with their
+ * partners), the lane kinds to 2, the targets to i * 0.15, the 144 path
+ * nodes emptied and 36 flags set to 2.
+ * RESIDUE (83): the ROM loads 0.034 before 0.137 (so its literal pool
+ * order differs too) and finishes the lane chain before the other small
+ * loops; ours interleaves them.  Each small loop needs its own counter or
+ * IDO leaves it rolled. */
 /* @t4-pass 0x802288D4 1 2026-09-26 compiles 17 best 144 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x802288D4 2 2026-09-26 compiles 17 best 144 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x802288D4 3 2026-09-26 compiles 16 best 144 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x802288D4 tgr BrAiLaneSetup */
-void BrAiLaneSetup(int param_1)
+void BrAiLaneSetup(BrAiCar *a)
 {
-  float fVar1;
-  short *puVar2;
-  short *puVar3;
-  unsigned int uVar4;
-  int iVar5;
-  float fVar6;
-  float fVar7;
-  
-  fVar1 = D_802A9C7C;
-  fVar6 = (float)*(int *)(param_1 + 0x140) * D_802A9C80;
-  *(float *)(param_1 + 0x1060) = fVar6;
-  uVar4 = 0;
-  fVar6 = fVar6 + fVar1;
-  fVar7 = fVar6 + fVar1;
-  *(float *)(param_1 + 0x1064) = fVar6;
-  *(float *)(param_1 + 0x1068) = fVar7;
-  *(float *)(param_1 + 0x106c) = fVar7 + fVar1;
-  fVar1 = D_802A9C84;
-  *(int *)(param_1 + 0x109c) = 0;
-  *(int *)(param_1 + 0x107c) = 2;
-  *(int *)(param_1 + 0x1098) = 0;
-  *(int *)(param_1 + 0x1078) = 2;
-  *(int *)(param_1 + 0x1094) = 0;
-  *(int *)(param_1 + 0x1074) = 2;
-  *(int *)(param_1 + 0x1070) = 2;
-  *(float *)(param_1 + 0x1020) = fVar1 * 0.0f;
-  *(int *)(param_1 + 0x1090) = 0;
-  *(float *)(param_1 + 0x1024) = fVar1 * 1.0f;
-  *(int *)(param_1 + 0x108c) = 0;
-  *(int *)(param_1 + 0x106c) = 0;
-  *(int *)(param_1 + 0x1088) = 0;
-  *(int *)(param_1 + 0x1068) = 0;
-  *(int *)(param_1 + 0x1084) = 0;
-  *(int *)(param_1 + 0x1064) = 0;
-  *(int *)(param_1 + 0x1060) = 0;
-  *(int *)(param_1 + 0x1080) = 0;
-  *(float *)(param_1 + 0x1028) = fVar1 * 2.0f;
-  *(float *)(param_1 + 0x102c) = fVar1 * 3.0f;
-  puVar2 = (short *)(param_1 + 0x19d0);
-  puVar3 = (short *)(param_1 + 0x10d0);
-  do {
-    puVar2[2] = 0;
-    puVar2[1] = puVar2[2];
-    *puVar2 = puVar2[2];
-    *puVar3 = 0;
-    puVar3[1] = 0;
-    puVar3[2] = 0;
-    *(char *)(puVar3 + 6) = 0;
-    if ((uVar4 & 1) == 0) {
-      *(char *)((int)puVar3 + 0xd) = 0;
+  int i;
+  int j;
+  int k;
+  int m;
+  int q;
+  float x;
+  BrAiNode *n;
+  short (*p)[3];
+
+  x = a->slot * 0.137f;
+  for (j = 0; j < 4; j++) {
+    a->lane[j] = x;
+    x += 0.034f;
+  }
+  for (k = 0; k < 4; k++) {
+    a->x1090[k] = 0;
+    a->x1070[k] = 2;
+  }
+  for (m = 0; m < 4; m++) {
+    a->x1020[m] = 0.15f * m;
+  }
+  for (q = 0; q < 4; q++) {
+    a->lane[q] = 0.0f;
+    a->x1080[q] = 0.0f;
+  }
+  for (i = 0, p = a->x19d0, n = a->node; i < 0x90; i++, p++, n++) {
+    (*p)[0] = (*p)[1] = (*p)[2] = 0;
+    n->x0[0] = 0;
+    n->x0[1] = 0;
+    n->x0[2] = 0;
+    n->xc = 0;
+    if (i & 1) {
+      n->xd = 0;
+    } else {
+      n->xd = 0;
     }
-    else {
-      *(char *)((int)puVar3 + 0xd) = 0;
-    }
-    uVar4 = uVar4 + 1;
-    *(char *)(puVar3 + 7) = 0;
-    *(char *)((int)puVar3 + 0xf) = 0xff;
-    puVar2 = puVar2 + 3;
-    puVar3 = puVar3 + 8;
-  } while ((int)uVar4 < 0x90);
-  iVar5 = 0;
-  do {
-    iVar5 = iVar5 + 4;
-    *(short *)(param_1 + 0x1d32) = 2;
-    *(short *)(param_1 + 0x1d34) = 2;
-    *(short *)(param_1 + 0x1d36) = 2;
-    *(short *)(param_1 + 0x1d30) = 2;
-    param_1 = param_1 + 8;
-  } while (iVar5 != 0x24);
+    n->xe = 0;
+    n->xf = 0xff;
+  }
+  for (i = 0; i < 36; i++) {
+    a->x1d30[i] = 2;
+  }
 }
 
 /* WHAT IT DOES: Clear a computer driver's steering and pedal outputs. */
