@@ -6,15 +6,22 @@
 void BrSfxSrcTrigger(int param_1);
 void func_80257B04(short param_1,int param_2,int param_3,int param_4);
 extern int D_8028B7EC;
-typedef struct BrSfxSrc {       /* a sound-effect source, 0x18 bytes */
-  int x0;                       /* 0x00  the three words passed to the player */
-  int x4;
+typedef struct BrSfxSrc {       /* a car sound sample, 0x18 bytes */
+  unsigned char *data;          /* 0x00  where it was unpacked */
+  int rom;                      /* 0x04  its packed file */
   int x8;
-  int xc;                       /* 0x0C */
-  int x10;                      /* 0x10 */
-  int x14;
+  unsigned int size;            /* 0x0C  unpacked size */
+  unsigned int loop;            /* 0x10  loop start (-1 in the table: the end) */
+  unsigned int loopLen;         /* 0x14  bytes copied past the end for the loop (-1: all) */
 } BrSfxSrc;
-extern BrSfxSrc D_8028BC04[];
+extern BrSfxSrc D_8028BC04[16];
+int BrRomReadSize(int rom);
+unsigned int BrRomUnpack(void *dst, int rom, unsigned int *out);
+void BrFatal(char *msg);
+void BrSfxVoicePlay(short v, unsigned int start, unsigned int end, unsigned int loop);
+void osSyncPrintf();
+extern int D_8028B7F4;                  /* player count */
+extern unsigned char D_80324550[];      /* the car sound buffer, 0x29FE0 bytes */
 typedef struct BrSndVec { float x, y, z; } BrSndVec;
 typedef struct BrSndNearest {   /* the nearest positional sound, 0x8028B7A0 */
   BrSndVec pos;                 /* 0x00 */
@@ -111,7 +118,7 @@ void BrSfxSrcBeep2(void)
 /* @implements 0x8022B370 tgr BrSfxSrcTrigger */
 void BrSfxSrcTrigger(int n)
 {
-  func_80257B04(3, D_8028BC04[n].x0, D_8028BC04[n].xc, D_8028BC04[n].x10);
+  func_80257B04(3, (int)D_8028BC04[n].data, D_8028BC04[n].size, D_8028BC04[n].loop);
   D_8028B7EC = n;
 }
 
@@ -195,5 +202,59 @@ void BrSndNearestOfferDefault(int f8C, void *pPos, void *pListener)
   }
   if (f84 != -1) {
     BrSndNearestOffer(f8C, f84, f9C, 11000.0f, pPos, pListener);
+  }
+}
+
+/* WHAT IT DOES: Load the 16 car sound samples into the car sound buffer
+ * (0x29FE0 bytes at 0x80324550): each sample's size is read from ROM, a -1
+ * loop start or loop length becomes the size, the sample is unpacked and its
+ * first loop-length bytes are copied again after its end (so a looping voice
+ * can read past it); a sample that would not fit is pointed at the buffer
+ * start and reported.  Prints the space used, is fatal on overflow, and
+ * starts sample 0 on voice 0 -- and on voices 2 and 4 with two and three
+ * players.
+ * RESIDUE (44): the three voice starts.  The ROM loads each argument through
+ * its own lui (a3, a2, a1 in that order); ours keeps the table's address in
+ * s0 across the calls. */
+/* @implements 0x8022BAA0 tgr BrCarSfxLoad */
+void BrCarSfxLoad(void)
+{
+  unsigned int base;
+  unsigned int pos;
+  int i;
+  unsigned int j;
+
+  base = (unsigned int)D_80324550;
+  pos = base;
+  for (i = 0; i < 16; i++) {
+    D_8028BC04[i].size = BrRomReadSize(D_8028BC04[i].rom);
+    if (D_8028BC04[i].loop == -1) {
+      D_8028BC04[i].loop = D_8028BC04[i].size;
+    }
+    if (D_8028BC04[i].loopLen == -1) {
+      D_8028BC04[i].loopLen = D_8028BC04[i].size;
+    }
+    if (pos + D_8028BC04[i].size + D_8028BC04[i].loopLen > base + 0x29fe0) {
+      D_8028BC04[i].data = (unsigned char *)base;
+      osSyncPrintf("ERROR: Sound buffer allocation overflow on car sound %d\n", i);
+    } else {
+      D_8028BC04[i].data = (unsigned char *)pos;
+      BrRomUnpack((void *)pos, D_8028BC04[i].rom, 0);
+      for (j = 0; j < D_8028BC04[i].loopLen; j++) {
+        D_8028BC04[i].data[j + D_8028BC04[i].size] = D_8028BC04[i].data[j];
+      }
+    }
+    pos += D_8028BC04[i].size + D_8028BC04[i].loopLen;
+  }
+  osSyncPrintf("Car sound effect space used: %d/%d\n", pos - base, 0x29fe0);
+  if (pos - base > 0x29fe0) {
+    BrFatal("Car sound effect overflow");
+  }
+  BrSfxVoicePlay(0, (unsigned int)D_8028BC04[0].data, D_8028BC04[0].size, D_8028BC04[0].loop);
+  if (D_8028B7F4 > 1) {
+    BrSfxVoicePlay(2, (unsigned int)D_8028BC04[0].data, D_8028BC04[0].size, D_8028BC04[0].loop);
+  }
+  if (D_8028B7F4 > 2) {
+    BrSfxVoicePlay(4, (unsigned int)D_8028BC04[0].data, D_8028BC04[0].size, D_8028BC04[0].loop);
   }
 }
