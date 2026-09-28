@@ -137,12 +137,12 @@ _Snapshot 2026-09-28._
 M1  Contract-valid — compiles & ports (T3 + T4)
     ████████████████████████████████████████  100.0%   450,501 / 450,661 B   1,499 / 1,499 fns
 M2  Byte-exact (T4)
-    ████████████████████████░░░░░░░░░░░░░░░░  59.4%   267,656 / 450,661 B   1,309 / 1,499 fns
+    ████████████████████████░░░░░░░░░░░░░░░░  59.5%   267,918 / 450,661 B   1,311 / 1,499 fns
 ```
 
 **What the bars measure.** Both bars count the game's own functions in
 BRGlide.dll — the code that has to be written by hand. M1 has complete.
-M2 trails it by 190 functions (182,845 B) that are certified to behave exactly like
+M2 trails it by 188 functions (182,583 B) that are certified to behave exactly like
 the original but do not yet compile to identical bytes.
 
 **The rest of the DLL.** Its code section is 480,853 B; the bars leave out 30,192 B
@@ -164,7 +164,7 @@ decompiled, and is out of scope). All remaining work is in BRGlide.dll.
 | **BossRally.exe** | `████████████████████` 100% — 35/35 fns, 2,482 B | `████████████████████` 100% — 35/35 fns, 2,482 B |
 | **BRally.exe** | `████████████████████` 100% — 28/28 fns, 2,860 B | `████████████████████` 100% — 28/28 fns, 2,860 B |
 | **SetVideo.exe** | `████████████████████` 100% — 42/42 fns, 7,251 B | `████████████████████` 100% — 42/42 fns, 7,251 B |
-| **BRGlide.dll** | `████████████████████` 100.0% — 450,501 B, 1,499 fns | `████████████░░░░░░░░` 59.4% — 267,656 B, 1,309 fns |
+| **BRGlide.dll** | `████████████████████` 100.0% — 450,501 B, 1,499 fns | `████████████░░░░░░░░` 59.5% — 267,918 B, 1,311 fns |
 <!-- PROGRESS:END -->
 
 Query the tree. Do not trust a number in this file.
@@ -340,9 +340,9 @@ _Snapshot 2026-09-28._
 
 ```
 M1  Contract-valid (T3 + T4)
-    ████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  10.0%   37,952 / 379,932 B   268 / 572 fns
+    █████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  12.5%   47,680 / 379,932 B   322 / 572 fns
 M2  Byte-exact (T4)
-    ████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  10.0%   37,952 / 379,932 B   268 / 572 fns
+    █████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  12.5%   47,680 / 379,932 B   322 / 572 fns
 ```
 <!-- N64-PROGRESS:END -->
 
