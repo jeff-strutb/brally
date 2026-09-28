@@ -944,6 +944,62 @@ const uint8_t *BrDlCmdTri2NoZ(const uint8_t *p)
     return p + 8;
 }
 
+/* WHAT IT DOES: draws one flat-shaded z-buffered triangle, permuting the
+ * three vertex bytes according to a selector in the command. */
+/* @implements 0x1001FEF0 glide BrDlCmdTri1FlatZ */
+unsigned char *BrDlCmdTri1FlatZ(unsigned char *p)
+{
+    switch (p[7]) {
+    case 0:
+        BrDlTriFlatZ(p[6], p[5], p[4]);
+        return p + 8;
+    case 1:
+        BrDlTriFlatZ(p[5], p[4], p[6]);
+        return p + 8;
+    default:
+        BrDlTriFlatZ(p[4], p[6], p[5]);
+        return p + 8;
+    }
+}
+
+/* WHAT IT DOES: draws one flat-shaded triangle with the z-buffer off,
+ * permuting the three vertex bytes according to a selector in the command. */
+/* @implements 0x100203F0 glide BrDlCmdTri1Flat */
+unsigned char *BrDlCmdTri1Flat(unsigned char *p)
+{
+    switch (p[7]) {
+    case 0:
+        BrDlTriFlatNoZ(p[6], p[5], p[4]);
+        return p + 8;
+    case 1:
+        BrDlTriFlatNoZ(p[5], p[4], p[6]);
+        return p + 8;
+    default:
+        BrDlTriFlatNoZ(p[4], p[6], p[5]);
+        return p + 8;
+    }
+}
+
+/* WHAT IT DOES: draws two flat-shaded z-buffered triangles from one
+ * command, vertex bytes 0..2 then 4..6. */
+/* @implements 0x10020CF0 glide BrDlCmdTri2FlatZ */
+unsigned char *BrDlCmdTri2FlatZ(unsigned char *p)
+{
+    BrDlTriFlatZ(p[2], p[1], p[0]);
+    BrDlTriFlatZ(p[6], p[5], p[4]);
+    return p + 8;
+}
+
+/* WHAT IT DOES: draws two flat-shaded triangles with the z-buffer off,
+ * vertex bytes 0..2 then 4..6. */
+/* @implements 0x10020D30 glide BrDlCmdTri2Flat */
+unsigned char *BrDlCmdTri2Flat(unsigned char *p)
+{
+    BrDlTriFlatNoZ(p[2], p[1], p[0]);
+    BrDlTriFlatNoZ(p[6], p[5], p[4]);
+    return p + 8;
+}
+
 #undef V
 #define V(i) (*(i))
 #endif

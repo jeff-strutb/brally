@@ -45,23 +45,6 @@ int BrSprFontDraw(int param_1,int param_2,unsigned int param_3,int param_4,
   return;
 }
 
-/* WHAT IT DOES: set the pan value on a sound voice by bank index. */
-/* NOTE: context-sensitive codegen — matches here but not in slice6_76.c. */
-/* @implements 0x1006B5B0 glide BrSndVoiceSetPan */
-
-int BrSndVoiceSetPan(int param_1,int param_2)
-
-{
-  if (((BrSndG0B5DE8 != 0) && (BrSndPDS != 0)) && (BrSndG18290FC != 0)) {
-    if ((&g_aBrSndBankVoice)[param_1] != 0) {
-      *(int *)((&g_aBrSndBankVoice)[param_1] + 0x18) = param_2;
-      return 1;
-    }
-    return 0;
-  }
-  return 1;
-}
-
 /* ==================================================================== */
 /* Near-miss WIP batch from the automated pipeline pile, hand-improved  */
 /* and audited 2026-08-24.  Nine functions below are tagged but still   */
@@ -516,89 +499,6 @@ void BrExt_100419D0(int param_1)
 /* rather than in their named modules -- same reason as the block above. */
 /* ==================================================================== */
 
-extern int DAT_1021c810;
-extern char DAT_1007b1d4;
-extern char DAT_1007b0e0;
-
-/* WHAT IT DOES: reports whether a file can be opened for reading, and when
- * the verbose-debug flag is set also prints CHK_FileExists(path) to the
- * debugger. */
-/* @implements 0x10003680 glide BrChkFileExists */
-int BrChkFileExists(char *param_1)
-{
-    FILE *_File;
-    char local_400[1024];
-
-    if (DAT_1021c810 != 0) {
-        sprintf(local_400, &DAT_1007b1d4, param_1);
-        OutputDebugStringA(local_400);
-    }
-    _File = fopen(param_1, &DAT_1007b0e0);
-    if (_File == (FILE *)0x0) {
-        return 0;
-    }
-    fclose(_File);
-    return 1;
-}
-
-void FUN_1001ff60(int, int, int);
-void FUN_10020460(int, int, int);
-
-/* WHAT IT DOES: draws one flat-shaded z-buffered triangle, permuting the
- * three vertex bytes according to a selector in the command. */
-/* @implements 0x1001FEF0 glide BrDlCmdTri1FlatZ */
-unsigned char *BrDlCmdTri1FlatZ(unsigned char *p)
-{
-    switch (p[7]) {
-    case 0:
-        FUN_1001ff60(p[6], p[5], p[4]);
-        return p + 8;
-    case 1:
-        FUN_1001ff60(p[5], p[4], p[6]);
-        return p + 8;
-    default:
-        FUN_1001ff60(p[4], p[6], p[5]);
-        return p + 8;
-    }
-}
-
-/* WHAT IT DOES: draws one flat-shaded triangle with the z-buffer off,
- * permuting the three vertex bytes according to a selector in the command. */
-/* @implements 0x100203F0 glide BrDlCmdTri1Flat */
-unsigned char *BrDlCmdTri1Flat(unsigned char *p)
-{
-    switch (p[7]) {
-    case 0:
-        FUN_10020460(p[6], p[5], p[4]);
-        return p + 8;
-    case 1:
-        FUN_10020460(p[5], p[4], p[6]);
-        return p + 8;
-    default:
-        FUN_10020460(p[4], p[6], p[5]);
-        return p + 8;
-    }
-}
-
-/* WHAT IT DOES: draws two flat-shaded z-buffered triangles from one
- * command, vertex bytes 0..2 then 4..6. */
-/* @implements 0x10020CF0 glide BrDlCmdTri2FlatZ */
-unsigned char *BrDlCmdTri2FlatZ(unsigned char *p)
-{
-    FUN_1001ff60(p[2], p[1], p[0]);
-    FUN_1001ff60(p[6], p[5], p[4]);
-    return p + 8;
-}
-
-/* WHAT IT DOES: draws two flat-shaded triangles with the z-buffer off,
- * vertex bytes 0..2 then 4..6. */
-/* @implements 0x10020D30 glide BrDlCmdTri2Flat */
-unsigned char *BrDlCmdTri2Flat(unsigned char *p)
-{
-    FUN_10020460(p[2], p[1], p[0]);
-    FUN_10020460(p[6], p[5], p[4]);
-    return p + 8;
-}
 
 extern int DAT_10ac5c50;
 extern int DAT_100a9360;

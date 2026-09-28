@@ -188,11 +188,54 @@ int BrChkFileSize(FILE **ppFile)
     return (int)size;
 }
 
-/* 0x10003290  CHK_FClose. */
+
+/* 0x100034C0  CHK_FRead. */
+/* WHAT IT DOES: read from a file and abort the whole game if the read comes
+ * up short, printing how many bytes it wanted to the debugger. The engine
+ * treats a short read as corrupt game data, so there is no recoverable case;
+ * the destination comes back unchanged for chaining. */
+#ifdef BR_MATCHING_BUILD
+int BrFChkFRead(void *pDst, size_t size, size_t count, FILE **ppFile);  /* 0x10003430 */
+
+/* @implements 0x100034C0 glide BrChkFRead */
+void *BrChkFRead(void *pDst, size_t size, size_t count, FILE **ppFile)
+{
+    char szMsg[0x400];
+
+    if (BrFChkFRead(pDst, size, count, ppFile) == 0) {
+        sprintf(szMsg, "CHK_FRead(): trying to read %u bytes, but got EOF.\n",
+                count * size);
+        OutputDebugStringA(szMsg);
+        exit(1);
+    }
+    return pDst;
+}
+#endif
+
+/* 0x100035E0  CHK_FClose (D3D 0x10003290). */
 /* WHAT IT DOES: closes a game data file and releases the handle and the copy
  * of the name that went with it. A failed close is treated as fatal and the
  * game quits. */
-/* port-only body; Glide match is src/core/generated/0x100035E0.c */
+#ifdef BR_MATCHING_BUILD
+/* @implements 0x100035E0 glide BrChkFClose */
+void BrChkFClose(FILE **ppFile)
+{
+    BrChkFile *pf = (BrChkFile *)(void *)ppFile;
+    char       szMsg[0x400];
+
+    if (BrChkVerbose != 0) {
+        sprintf(szMsg, "CHK_FClose(%s)\n", pf->pszName);
+        OutputDebugStringA(szMsg);
+    }
+    if (fclose(pf->pFile) == -1) {
+        sprintf(szMsg, "CHK_FClose(): error closing file %s.\n", pf->pszName);
+        OutputDebugStringA(szMsg);
+        exit(1);
+    }
+    free(pf->pszName);
+    free(pf);
+}
+#else
 void BrChkFClose(FILE **ppFile)
 {
     BrChkFile *pf = ChkFromPun(ppFile);
@@ -212,3 +255,75 @@ void BrChkFClose(FILE **ppFile)
     free(pf->pszName);
     free(pf);
 }
+#endif
+
+#ifdef BR_MATCHING_BUILD
+/* 0x10003680  CHK_FileExists. */
+/* WHAT IT DOES: reports whether a file can be opened for reading, and when
+ * file tracing is on also prints CHK_FileExists(path) to the debugger. */
+/* @implements 0x10003680 glide BrChkFileExists */
+int BrChkFileExists(const char *pPath)
+{
+    FILE *pFile;
+    char  szMsg[0x400];
+
+    if (BrChkVerbose != 0) {
+        sprintf(szMsg, "CHK_FileExists(%s)\n", pPath);
+        OutputDebugStringA(szMsg);
+    }
+    pFile = fopen(pPath, "rb");
+    if (pFile == NULL) {
+        return 0;
+    }
+    fclose(pFile);
+    return 1;
+}
+
+/* 0x100036F0  CHK_AllocateMemory. */
+/* WHAT IT DOES: allocate memory or abort the game, naming the allocation in
+ * the out-of-memory message. A zero-byte request returns null rather than
+ * aborting. */
+/* @implements 0x100036F0 glide BrChkAlloc */
+void *BrChkAlloc(size_t size, const char *pWhat)
+{
+    void *p;
+    char  szMsg[0x400];
+
+    if (size == 0) {
+        return NULL;
+    }
+    p = malloc(size);
+    if (p == NULL) {
+        sprintf(szMsg, "CHK_AllocateMemory(): Out of memory: couldn't allocate %s\n",
+                pWhat);
+        OutputDebugStringA(szMsg);
+        exit(1);
+    }
+    return p;
+}
+
+/* 0x10003760  CHK_ReAllocateMemory. */
+/* WHAT IT DOES: grow or shrink an allocation or abort the game, naming the
+ * allocation. GOTCHA: it calls realloc BEFORE testing for a zero size, so a
+ * zero-size request still reallocates and then returns null, leaking
+ * whatever realloc handed back. That is the original's behaviour, kept. */
+/* @implements 0x10003760 glide BrChkRealloc */
+void *BrChkRealloc(void *pMem, size_t size, const char *pWhat)
+{
+    void *p;
+    char  szMsg[0x400];
+
+    p = realloc(pMem, size);
+    if (size == 0) {
+        return NULL;
+    }
+    if (p == NULL) {
+        sprintf(szMsg,
+                "CHK_ReAllocateMemory(): Out of memory: couldn't reallocate %s\n",
+                pWhat);
+        OutputDebugStringA(szMsg);
+        exit(1);
+    }
+    return p;
+}
+#endif

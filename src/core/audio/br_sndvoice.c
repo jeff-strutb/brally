@@ -331,6 +331,25 @@ int BrSndChanBind(int iGroup, int iSlot)
   return 1;
 }
 
+/* WHAT IT DOES: set or clear the loop flag (+0x18) on the voice bound to one
+ * playback channel -- the flag BrSndVoiceBufStart reads to decide whether
+ * Play loops.  Returns 1 on success, 0 when the channel holds no voice, and a
+ * silent 1 when sound is not up.  Starts nothing. */
+/* @implements 0x1006B5B0 glide BrSfxChanSetLoop */
+
+int BrSfxChanSetLoop(int iSlot, int loop)
+
+{
+  if (((BrSndG0B5DE8 != 0) && (BrSndPDS != 0)) && (BrSndG18290FC != 0)) {
+    if (g_aBrSndBankVoice[iSlot] != 0) {
+      *(int *)((char *)g_aBrSndBankVoice[iSlot] + 0x18) = loop;
+      return 1;
+    }
+    return 0;
+  }
+  return 1;
+}
+
 typedef int (__stdcall *dsbuf_fn2i)(int, int);
 typedef int (__stdcall *dsbuf_fn4i)(int, int, int, int);
 
@@ -402,7 +421,7 @@ int BrSndBankMute(void)
   return 1;
 }
 
-int BrSndVoiceSetPan(int, int);
+int BrSfxChanSetLoop(int, int);
 int BrSndVoiceSetFreq(int, int);
 int BrSfxChanStart(int, int, int);
 int FUN_1006bf50(int);
@@ -442,7 +461,7 @@ int FUN_1006bdd0(void)
       v = DAT_100b55f8[i];
       if (v != z && v == (&DAT_1184c268)[i]) {
         BrSndChanBind(0x19, i);
-        BrSndVoiceSetPan(i, 1);
+        BrSfxChanSetLoop(i, 1);
         BrSndChanSetRatio(i, *(__int64 *)((char *)&DAT_118eef48 + off));
         BrSndVoiceSetFreq(i, *(int *)((char *)&DAT_118eef54 + off));
         BrSfxChanStart(0x19, i, 1);
@@ -451,7 +470,7 @@ int FUN_1006bdd0(void)
       v = *p;
       if (v != z && v == (&DAT_1184c268)[i]) {
         BrSndChanBind(z, i);
-        BrSndVoiceSetPan(i, 1);
+        BrSfxChanSetLoop(i, 1);
         BrSndChanSetRatio(i, *(__int64 *)((char *)&DAT_118eef48 + off));
         BrSndVoiceSetFreq(i, *(int *)((char *)&DAT_118eef54 + off));
         BrSfxChanStart(z, i, 1);
