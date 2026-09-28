@@ -436,3 +436,4 @@ va,name,kind
 8022F694,BrTextPrintAt,func
 80224F90,BrVec3Project2,func
 802242E0,BrPowf,func
+80200764,BrRaceCueDraw,func
