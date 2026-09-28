@@ -33,6 +33,7 @@ Usage:
 """
 import csv
 import os
+import struct
 import subprocess
 import sys
 
@@ -102,7 +103,11 @@ def checks_abc(sect):
         bysec[s] = bysec.get(s, 0) + 1
     print(f"learned addresses: {len(rows)}   by section: {bysec}")
 
-    outside = [r for r in rows if sect(int(r['addr'], 16)) is None]
+    # Absolute COFF symbols are not addresses in a section: `except_list` is
+    # MSVC's value-0 symbol for the fs:[0] SEH chain head the EH helpers use.
+    ABSOLUTE = {'except_list'}
+    outside = [r for r in rows if sect(int(r['addr'], 16)) is None
+               and r['symbol'].lstrip('_') not in ABSOLUTE]
     check('A. every learned address lands inside a real section', not outside,
           f'{len(outside)} outside' if outside else '')
 
@@ -170,6 +175,43 @@ def check_c2():
               bool(line) and 'ORIGINAL: 0 ' not in line, line.strip())
     finally:
         open(gl, 'w').write(saved)
+
+
+def check_c3():
+    """C3. tools/refslot_check.py must catch a wrong literal.  Collect the
+    DLL's reference-filled slots as the image gate does, corrupt one byte of
+    one string literal's object data, and require a finding (and none
+    without the corruption)."""
+    import image_build as ib
+    import refslot_check
+    ib.REFSLOTS, ib.YIELDED = [], []
+    try:
+        best, _n, _u, _b = ib.collect_dll(False)
+        slots, placed = list(ib.REFSLOTS), list(ib.YIELDED)
+    finally:
+        ib.REFSLOTS = ib.YIELDED = None
+    _n0, clean = refslot_check.check(slots, placed, best, ib.ORIG_DLL, ib.ORIG_DIR, ib.REL_REL32)
+    chosen = {(p, va) for p, va, code in placed if va in best and best[va][1] == code}
+    victim = None
+    for i, s in enumerate(slots):
+        path, sy, t, off, rt, va, plen, a4, secs, syms, d = s
+        if (path, va) in chosen and t and t['name'].startswith('$SG') and not (secs[t['sec']]['flags'] & 0x80):
+            victim = i
+            break
+    if victim is None:
+        skip('C3. refslot check catches a wrong literal', 'no literal slot to poison')
+        return
+    path, sy, t, off, rt, va, plen, a4, secs, syms, d = slots[victim]
+    add = struct.unpack_from('<i', a4, 0)[0]
+    o = secs[t['sec']]['praw'] + t['val'] + add
+    bad = bytearray(d)
+    bad[o] ^= 0x20
+    bad = bytes(bad)
+    slots = [(p, a, b, c, e, f, g, h, i, j, bad if p == path else dd)
+             for (p, a, b, c, e, f, g, h, i, j, dd) in slots]
+    _n1, found = refslot_check.check(slots, placed, best, ib.ORIG_DLL, ib.ORIG_DIR, ib.REL_REL32)
+    check('C3. refslot check catches a wrong literal (%s in %08X)' % (t['name'], va),
+          not clean and len(found) > 0, '%d clean findings, %d after poisoning' % (len(clean), len(found)))
 
 
 def build_glide_corpus(limit=400):
@@ -289,8 +331,12 @@ def check_e():
                 == ib._own_tag('O2', 'src/x/other.c'))
     check('E5. a basename claimed by two source files is detected, '
           'and their objects do not collide',
-          amb == {'br_input.c'} and tags_differ and same_dir,
-          f'ambiguous={sorted(amb)} differ={tags_differ} same_dir={same_dir}')
+          # _ambiguous_basenames deliberately scans the whole tree too (see
+          # its docstring), so the real duplicates are in the set as well:
+          # what matters is that the planted pair is caught and a unique
+          # basename is not.
+          'br_input.c' in amb and 'other.c' not in amb and tags_differ and same_dir,
+          f'planted pair caught={"br_input.c" in amb} differ={tags_differ} same_dir={same_dir}')
 
     import contextlib
     import io
@@ -328,6 +374,7 @@ def main():
     sect = section_lookup(os.path.join(ROOT, 'orig', 'BRGlide.dll'))
     checks_abc(sect)
     check_c2()
+    check_c3()
     check_d()
     check_e()
 
