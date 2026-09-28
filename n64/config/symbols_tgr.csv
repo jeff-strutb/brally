@@ -328,3 +328,14 @@ va,name,kind
 8021C188,BrBootCheck,func
 80254620,BrPakCheckFiles,func
 80256D3C,BrMusicLoopSamples,func
+80254F40,BrCheatToggleAA94,func
+80254F58,BrCheatUnlockCE1F,func
+80254F70,BrCheatUnlockCars,func
+80254F88,BrCheatUnlock0200,func
+80254FA0,BrCheatUnlock1000,func
+80254FB8,BrCheatUnlock0800,func
+80254FD0,BrCheatUnlock0400,func
+80254FE8,BrCheatUnlockCE3E0,func
+80255000,BrCheatUnlock8000,func
+80255018,BrCheatToggleFF20,func
+80255030,BrCheatToggleAA68,func
