@@ -427,3 +427,5 @@ va,name,kind
 802578F4,BrMusicStop,func
 80257B78,BrSfxVoicePlay,func
 80257BE4,BrSfxVoiceVolume,func
+8021E998,BrGridCellRange,func
+80244D04,BrPaintDecalApply,func

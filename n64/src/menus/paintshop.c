@@ -15,6 +15,7 @@ extern unsigned char D_8028DB8C;           /* texture height */
 extern unsigned char *D_8028DB80;
 extern unsigned char D_8028DBB4;
 extern unsigned char D_8028DBDC;
+extern BrCarModel *D_8028AB08;
 typedef struct BrPaintState {   /* 0x8028D110 */
   char pad00[0x1c];
   int x;                        /* 0x1C  cursor */
@@ -117,6 +118,19 @@ unsigned char BrPaintGet(int x, int y)
     c = D_8028DB78[o] >> 4;
   }
   return c;
+}
+
+/* WHAT IT DOES: If the decal has changed, copy the working decal (2 KB)
+ * into the car model's texture for the current decal slot, step the edit
+ * point back and clear the changed mark. */
+/* @implements 0x80244D04 tgr BrPaintDecalApply */
+void BrPaintDecalApply(void)
+{
+  if (D_8028DBDC != 0) {
+    memcpy(D_8028AB08->parts[D_8028AB08->decalPart[D_8028DB74]].a, (char *)D_8028DB80, 0x800);
+    D_8028DBB4--;
+    D_8028DBDC = 0;
+  }
 }
 
 /* WHAT IT DOES: Store the paint shop's working decal (2 KB) into the decal
