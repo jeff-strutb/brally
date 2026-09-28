@@ -4,7 +4,25 @@
 
 /* -- declarations -- */
 extern unsigned short *D_80025C20;
+extern unsigned short *D_80025C24;     /* per 64x64 grid cell: first entry (the next cell's is the end) */
 /* -- end declarations -- */
+
+/* WHAT IT DOES: For a cell of the 64 by 64 grid, the range of entries it
+ * owns: the count in the high half and the first entry in the low half;
+ * outside the grid, 0. */
+/* @implements 0x8021E998 tgr BrGridCellRange */
+unsigned int BrGridCellRange(int x, int y)
+{
+  unsigned short i;
+  int first;
+
+  if (x < 0 || x >= 64 || y < 0 || y >= 64) {
+    return 0;
+  }
+  i = (unsigned char)x + (unsigned char)y * 64;
+  first = D_80025C24[i];
+  return (D_80025C24[(unsigned short)(i + 1)] - first) << 16 | first;
+}
 
 /* WHAT IT DOES: Read the next entry of the queue table through a cursor
  * (position, entries left) and move it on by one; with nothing left answer
