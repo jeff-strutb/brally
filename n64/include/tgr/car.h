@@ -84,7 +84,9 @@ typedef struct BrCar {
     float msgBTime;             /* 0xFBC */
     char padfc0[0xFD8 - 0xFC0];
     BrVec3 velfd8;              /* 0xFD8  another velocity copy */
-    char padfe4[0x1D78 - 0xFE4];
+    char padfe4[0x1010 - 0xFE4];
+    float x1010;                /* 0x1010  zeroed when the particle pool is reset */
+    char pad1014[0x1D78 - 0x1014];
     BrVec3 pos1d78;             /* 0x1D78  another position copy */
     char pad1d84[0x1D88 - 0x1D84];
     int mtx[16];                /* 0x1D88 */
