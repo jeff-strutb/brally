@@ -26,116 +26,57 @@ extern int D_8025CDB4;
 extern int D_8025CDBC;
 int func_8025C2C8(float *tri);
 int BrPolyIntersectsCube(float verts[3][3], float polynormal[3]);
-int BrObbFaceClip();
 int BrObbSegmentHits();
 #define DOT3(a, b) ((a)[0] * (b)[0] + (a)[1] * (b)[1] + (a)[2] * (b)[2])
 #define SIGN_NONZERO(x) ((x) < 0 ? -1 : 1)
 #define IN_CLOSED_INTERVAL(a, x, b) (((x) - (a)) * ((x) - (b)) <= 0)
+#define ABS(x) ((x) < 0 ? -(x) : (x))
+#define MAXINDEX2(a) ((a)[0] > (a)[1] ? 0 : 1)
+#define MAXINDEX3(a) ((a)[0] > (a)[2] ? MAXINDEX2(a) : 1 + MAXINDEX2((a) + 1))
+#define seg_contains_point(a, b, x) (((b) > (x)) - ((a) > (x)))
 #define SXV3(result, s, v) ((result)[0] = (s) * (v)[0], (result)[1] = (s) * (v)[1], (result)[2] = (s) * (v)[2])
 /* -- end declarations -- */
 
-/* WHAT IT DOES: Find the face of a box most facing a direction and clip it
- * against the other box: picks the axis with the largest component, then
- * walks that face's corners. */
-/* @t4-pass 0x8025C8DC 1 2026-09-26 compiles 17 best 196 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8025C8DC 2 2026-09-26 compiles 17 best 196 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8025C8DC 3 2026-09-26 compiles 16 best 196 moved 0  (n64/tools/n64permute.py) */
-/* @implements 0x8025C8DC tgr BrObbFaceClip */
-int BrObbFaceClip(int param_1,float *param_2,int param_3)
+/* WHAT IT DOES: Graphics Gems III (Voorhies) polygon_contains_point_3d
+ * for a triangle: drop the axis the normal is largest along, then count the
+ * signed crossings of the triangle's edges by a ray from the point in the
+ * remaining plane (non-zero = inside).  BrPolyIntersectsCube's last step. */
+/* @implements 0x8025C8DC tgr BrPolyContainsPoint3d */
+int BrPolyContainsPoint3d(float verts[][3], float polynormal[3], float point[3])
 {
-  int iVar1;
-  int iVar2;
-  float *pfVar3;
-  int iVar4;
-  int iVar5;
-  int iVar6;
-  float *pfVar7;
-  int iVar8;
-  int iVar9;
-  unsigned int uVar10;
-  unsigned int uVar11;
-  float fVar12;
-  float fVar13;
-  float fVar14;
-  float fVar15;
-  float fVar16;
-  float fVar17;
-  float afStackX_0 [4];
-  float local_c [3];
-  
-  pfVar7 = local_c;
-  pfVar3 = param_2;
-  do {
-    fVar12 = *pfVar3;
-    if (fVar12 < 0.0f) {
-      *pfVar7 = -fVar12;
-    }
-    else {
-      *pfVar7 = fVar12;
-    }
-    pfVar7 = pfVar7 + 1;
-    pfVar3 = pfVar3 + 1;
-  } while (pfVar7 < afStackX_0);
-  iVar6 = 0;
-  if (local_c[2] < local_c[0]) {
-    iVar4 = 0;
-    if (local_c[0] <= local_c[1]) {
-      iVar4 = 1;
-    }
+  float abspolynormal[3];
+  int zaxis, xaxis, yaxis, i, count;
+  int xdirection;
+  float *v, *w;
+
+  for (i = 0; i < 3; i++)
+    abspolynormal[i] = ABS(polynormal[i]);
+  zaxis = MAXINDEX3(abspolynormal);
+
+  if (polynormal[zaxis] < 0) {
+    xaxis = (zaxis + 2) % 3;
+    yaxis = (zaxis + 1) % 3;
+  } else {
+    xaxis = (zaxis + 1) % 3;
+    yaxis = (zaxis + 2) % 3;
   }
-  else {
-    iVar4 = (local_c[1] <= local_c[2]) + 1;
-  }
-  iVar1 = 0;
-  if (param_2[iVar4] < 0.0f) {
-    uVar10 = iVar4 + 2;
-    uVar11 = iVar4 + 1;
-  }
-  else {
-    uVar10 = iVar4 + 1;
-    uVar11 = iVar4 + 2;
-  }
-  iVar9 = (uVar10 % 3) * 4;
-  fVar12 = *(float *)(param_3 + iVar9);
-  iVar4 = param_1;
-  pfVar3 = (float *)(param_1 + iVar9);
-  do {
-    iVar1 = iVar1 + 1;
-    fVar14 = *pfVar3;
-    iVar2 = (uVar11 % 3) * 4;
-    iVar5 = param_1 + (iVar1 % 3) * 0xc;
-    fVar13 = *(float *)(iVar5 + iVar9);
-    if (fVar12 < fVar14) {
-      iVar8 = -1;
-    }
-    else {
-      iVar8 = 0;
-    }
-    iVar8 = (unsigned int)(fVar12 < fVar13) + iVar8;
-    if (iVar8 != 0) {
-      fVar17 = *(float *)(iVar5 + iVar2);
-      fVar15 = *(float *)(param_3 + iVar2);
-      fVar16 = *(float *)(iVar4 + iVar2);
-      if (fVar15 < fVar16) {
-        iVar2 = -1;
-      }
-      else {
-        iVar2 = 0;
-      }
-      if ((unsigned int)(fVar15 < fVar17) + iVar2 == 0) {
-        if (fVar16 <= fVar15) {
-          iVar6 = iVar6 + iVar8;
-        }
-      }
-      else if ((float)iVar8 * (fVar12 - fVar14) * (fVar17 - fVar16) <=
-               (fVar13 - fVar14) * (float)iVar8 * (fVar15 - fVar16)) {
-        iVar6 = iVar6 + iVar8;
+
+  count = 0;
+  for (i = 0; i < 3; i++) {
+    v = verts[i];
+    w = verts[(i + 1) % 3];
+    if (xdirection = seg_contains_point(v[xaxis], w[xaxis], point[xaxis])) {
+      if (seg_contains_point(v[yaxis], w[yaxis], point[yaxis])) {
+        if (xdirection * (point[xaxis] - v[xaxis]) * (w[yaxis] - v[yaxis]) <=
+            xdirection * (point[yaxis] - v[yaxis]) * (w[xaxis] - v[xaxis]))
+          count += xdirection;
+      } else {
+        if (v[yaxis] <= point[yaxis])
+          count += xdirection;
       }
     }
-    iVar4 = iVar4 + 0xc;
-    pfVar3 = pfVar3 + 3;
-  } while (iVar1 != 3);
-  return iVar6;
+  }
+  return count;
 }
 
 /* WHAT IT DOES: Tell whether a segment crosses a unit box: rejects it when
@@ -226,7 +167,7 @@ int BrPolyIntersectsCube(float verts[3][3], float polynormal[3])
   if (!IN_CLOSED_INTERVAL(-.5, t, .5))
     return 0;
   SXV3(p, t, best_diagonal);
-  return BrObbFaceClip(verts, polynormal, p);
+  return BrPolyContainsPoint3d(verts, polynormal, p);
 }
 
 /* WHAT IT DOES: Triangle-against-unit-cube test: the vertex outcode pass
