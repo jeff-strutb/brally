@@ -482,3 +482,4 @@ va,name,kind
 80259350,BrTriCacheReset,func
 8023CFC4,BrParticleFrame,func
 8023CD60,BrParticleFallStep,func
+8025EF70,BrTyreLoads,func
