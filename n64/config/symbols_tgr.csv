@@ -452,3 +452,4 @@ va,name,kind
 80259A18,BrRbVelAtFlatPoint,func
 8025F0A4,BrTriCacheDrop,func
 8021EADC,BrU16QueuePopB,func
+8023CF30,BrParticleReset,func
