@@ -366,3 +366,4 @@ va,name,kind
 80218104,BrGfxFillRect,func
 8021EA90,BrU16QueuePop,func
 80229510,BrRankCmpKey,func
+80225E1C,BrSeg2SideTest,func
