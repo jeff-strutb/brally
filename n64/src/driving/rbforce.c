@@ -6,7 +6,8 @@
 typedef struct BrRbBody {       /* a rigid body with up to four attached */
   int x0;
   struct BrRbBody *sub[4];      /* 0x04 */
-  char pad14[0x1c - 0x14];
+  char pad14[0x18 - 0x14];
+  struct BrRbForce *forces;     /* 0x18  applied forces, linked */
   int kind;                     /* 0x1C  2: does not rotate */
   char pad20[0x2c - 0x20];
   float mass;                   /* 0x2C */
@@ -22,13 +23,19 @@ typedef struct BrRbBody {       /* a rigid body with up to four attached */
   float torque[3];              /* 0x108 */
 } BrRbBody;
 void func_802589F4(int param_1,int param_2);
-void func_802594BC(void);
 void func_80259634(BrRbBody *b, BrRbBody *sub);
 void BrRbSolveAccel(BrRbBody *b);
 void func_802586C0(float out[3], float m[4][4], float v[3]);   /* v into the body frame */
 void func_80258758(float out[3], float m[4][4], float v[3]);   /* and back out */
 void BrMat3MulVec(float out[3], float m[3][3], float v[3]);
 typedef struct { float v[3]; } BrRbVec;
+typedef struct BrRbForce {      /* a force applied to a body */
+  struct BrRbForce *next;       /* 0x00 */
+  int frame;                    /* 0x04  0: world axes, 1: body axes */
+  float f[3];                   /* 0x08 */
+  float at[3];                  /* 0x14  where, in body axes */
+} BrRbForce;
+void BrRbAddForces(BrRbBody *b);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Turn a body's accumulated force and torque into
@@ -198,6 +205,47 @@ void BrRbSolveAccel(BrRbBody *b)
   func_80258758(b->torque, b->m, w);
 }
 
+/* WHAT IT DOES: Add a body's applied forces into its accumulators: each
+ * force (given in world or body axes; any other kind adds a stale value)
+ * goes into the force sum and, unless the body does not rotate, its moment
+ * about the body's centre into the torque sum.
+ * RESIDUE (25): float temporaries rotate one register off from the
+ * world-axes copy on (f10 vs f16); operand orders swept, 394 permuter
+ * compiles leave it. */
+/* @implements 0x802594BC tgr BrRbAddForces */
+void BrRbAddForces(BrRbBody *b)
+{
+  BrRbForce *a;
+  float f[3];
+  float r[3];
+  float t[3];
+
+  for (a = b->forces; a != 0; a = a->next) {
+    switch (a->frame) {
+    case 0:
+      f[0] = a->f[0];
+      f[1] = a->f[1];
+      f[2] = a->f[2];
+      break;
+    case 1:
+      func_80258758(f, b->m, a->f);
+      break;
+    }
+    b->force[0] = b->force[0] + f[0];
+    b->force[1] = b->force[1] + f[1];
+    b->force[2] = f[2] + b->force[2];
+    if (b->kind != 2) {
+      func_80258758(r, b->m, a->at);
+      t[0] = r[1] * f[2] - f[1] * r[2];
+      t[1] = r[2] * f[0] - f[2] * r[0];
+      t[2] = r[0] * f[1] - f[0] * r[1];
+      b->torque[0] = t[0] + b->torque[0];
+      b->torque[1] = b->torque[1] + t[1];
+      b->torque[2] = b->torque[2] + t[2];
+    }
+  }
+}
+
 /* WHAT IT DOES: Clear the force and torque accumulators of a car body and
  * of each of its four wheel bodies before the forces are summed again. */
 /* @implements 0x8025993C tgr BrRbForcesClear */
@@ -217,7 +265,7 @@ void BrRbForcesClear(BrRbBody *b)
   b->sub[3]->force[0] = 0.0f;
   b->sub[3]->force[1] = 0.0f;
   b->sub[3]->force[2] = 0.0f;
-  func_802594BC();
+  BrRbAddForces(b);
   func_80259634(b, b->sub[0]);
   func_80259634(b, b->sub[1]);
   func_80259634(b, b->sub[2]);
