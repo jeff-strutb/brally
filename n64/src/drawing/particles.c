@@ -79,6 +79,55 @@ void BrParticleStep(void)
   }
 }
 
+/* WHAT IT DOES: Step the two falling-particle lists one frame: as
+ * BrParticleStep, but the particles also fall (z velocity loses
+ * 19.62 * dt), x1e becomes 102 / size, and a particle is freed when its
+ * strength falls below 1/32 or it falls faster than 30.
+ * RESIDUE (81): the ROM re-reads p->next for the unlink and chooses the
+ * list head per branch; ours reuses the early read (one more live register,
+ * s0 saved).  Read order, index types, alias-breaking spellings and 294
+ * permuter compiles leave it. */
+/* @implements 0x8023CD60 tgr BrParticleFallStep */
+void BrParticleFallStep(void)
+{
+  unsigned short *link;
+  int n;
+  int next;
+  int k;
+  BrParticle *p;
+  float f;
+  float grow;
+
+  grow = 0.7f * D_8028AAD8;
+  for (k = 0; k < 2; k++) {
+    if (k != 0) {
+      link = &D_8028C838;
+    } else {
+      link = &D_8028C83C;
+    }
+    n = *link;
+    while (n != 0) {
+      next = D_80366A80[n].next;
+      p = &D_80366A80[n];
+      p->size += grow;
+      f = (float)(int)(p->x1f * p->x1e) * (1.0f / 65280.0f);
+      p->pos[0] = p->pos[0] + (D_803634D0[0] + p->vel[0] * f * D_8028AAD8);
+      p->pos[1] = p->pos[1] + (D_803634D0[1] + p->vel[1] * f * D_8028AAD8);
+      p->pos[2] = p->pos[2] + (D_803634D0[2] + (p->vel[2] * f + 0.8f) * D_8028AAD8);
+      p->vel[2] = p->vel[2] - D_8028AAD8 * 19.62f;
+      p->x1e = (int)(102.0f / p->size);
+      if (f < 0.03125f || p->vel[2] < -30.0f) {
+        *link = p->next;
+        p->next = D_8028C830;
+        D_8028C830 = n;
+      } else {
+        link = &p->next;
+      }
+      n = next;
+    }
+  }
+}
+
 /* WHAT IT DOES: Empty the particle pool: chain every record onto the free
  * list (1 -> 2 -> ... -> 256), leave the live list empty, and clear each
  * racing car's 0x1010 field. */
