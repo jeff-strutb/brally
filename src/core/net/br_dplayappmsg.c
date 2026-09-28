@@ -75,7 +75,20 @@ extern char *PTR_s_First__100aa3e8[];
  * `v`, BrSlot struct walk, comma-init orders, pointer-difference index,
  * pText as a void or char pointer, array, struct, volatile, initialiser
  * or memset, the
- * store in both arms, header and neighbour-function context. */
+ * store in both arms, header and neighbour-function context.
+ * 2026-09-27, THE ZERO WEB BROKEN: an int zero is a zero-register candidate,
+ * a float zero is not (the BrGhostLoad `= 0.0f` idiom).  Storing pText's
+ * zero through a float view -- the same 32 zero bits -- leaves the entry
+ * store an immediate and the web never forms: register-blind 0+0, 914/913 B
+ * of code with the table at the original's +0x394.  Every int spelling
+ * (plain, (int *), unsigned long, void *, xor, memset, array, struct) keeps
+ * the web; a union with a float member breaks it the same way.  What is
+ * left is colouring: pMsg in edi and the 1 web in esi (the original has
+ * them the other way round), and the tail loads pText into eax where the
+ * original uses ecx (one byte: hwnd then loads into ecx, which has no short
+ * form).  Inert on those: all 720 local declaration orders, a local copy of
+ * pMsg, idFrom for the literal 1s, `if (pText)` / `if (hwnd)`, /TP, /Gi,
+ * /Ox, /Ob2. */
 /* WHAT IT DOES: handles one application-level DirectPlay message before the
  * race has started -- chat lines, a player marking ready, the host starting
  * or booting someone, a weather pick, a player leaving or returning, a
@@ -94,7 +107,7 @@ void BrDpAppMsgHandle(int *pNet, int *pMsg, int a3, int idFrom, int a5)
     int    *p;
     int     v;
 
-    pText = 0;
+    *(float *)&pText = 0.0f;    /* a float zero: see RESIDUE 2 above */
     if (DAT_10ac5be4 == 0) {
         switch (*pMsg) {
         case 0x60000000:
