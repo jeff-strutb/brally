@@ -39,167 +39,6 @@ BrCrPlaneState g_brCrPlane;
 #define BR_CR_THIRD  (1.0f / 3.0f)
 #define BR_CR_HALF   0.5f
 
-/* ------------------------------------------------------------------ *
- * 0x10067470 -- contact-plane resolver.
- *
- * WHAT IT DOES: turns one candidate contact into a plane and writes the plane
- * normal scaled by how far the point is from it.  There are two ways in.  The
- * common one (mode != 2) is handed the plane normal outright.  The box-face
- * one (mode == 2) has to CHOOSE the face: it averages the three box-space
- * triangle vertices and picks the axis on which that centroid is SMALLEST --
- * the face the triangle lies most flush against -- and uses that box face's
- * outward normal.  The N64 sibling calls these two paths "Cube Edge to
- * Triangle Face" and "Triangle Edge to CubeFace".
- *
- * Two things here are preserved quirks, both confirmed against the bytes:
- *
- *  - The sign of the chosen box normal is taken from the centroid's X
- *    component, NOT from the component on the winning axis.  The original
- *    carries cx on the FPU stack through the entire argmin tournament and
- *    signs by whatever is left in st0, which is always cx.  A NaN cx takes the
- *    negative arm (the compare's unordered result), so it maps to -0.5.
- *
- *  - The argmin is the original's exact >= tournament, so ties resolve the way
- *    its `fcom`/`jae`-shaped branches do (a tie keeps the earlier axis).
- * ------------------------------------------------------------------ */
-/* @t4-pass 0x10067470 1 2026-09-07 probes 88 bytes 616 insns 163 regions 2 rows 25 census yes  (tools/crank.py) */
-/* @t4-pass 0x10067470 2 2026-09-07 probes 88 bytes 616 insns 163 regions 2 rows 25 census yes  (tools/crank.py) */
-/* @implements 0x10067470 glide BrCrPlaneResolve */
-#ifdef BR_MATCHING_BUILD
-/* Matching arm, re-transcribed 2026-09-27 in natural form (the earlier arm
- * was Ghidra-shaped: gotos, walking pointers, param_N).  Facts the bytes
- * force: the centroid is ((v0 + v2) + v1) * 1/3 per component; |c| is the
- * `c < 0 ? -c : c` compare-and-fchs; the argmin tests |c0| < |c1| then the
- * survivor against |c2|, the z arm shared (goto face); every arm takes its
- * SIGN from c[0]; the sign is an int -1/+1 converted and scaled by 0.5; the
- * dot reads the normal back from the globals BEFORE the in-place scaling of
- * normal.x (twice) and of modeFC as a float; s = -(dot - planeD).
- * NOT MATCHING: 636/668 B, register-blind 4+12.  The original homes s in a
- * stack slot (store, then three reloads) in both arms and cross-jumps the
- * identical out-store tails; VC5 here forwards s on the x87 stack.  Inert:
- * literal vs extern constants, shared tail vs a return in the first arm,
- * goto vs duplicated z arm, the centroid and dot term orders, an inlined
- * scale helper with a by-value float, volatile s, and the function's
- * position in the file. */
-extern float BrCrK_Zero;     /* 0x10077A78 */
-extern float BrCrK_Third;    /* 0x10077B84 */
-extern float BrCrK_Half;     /* 0x10077AC8 */
-#define BR_CR_EXT(off) (*(const float *)((const char *)pExt + (off)))
-void BrCrPlaneResolve(const BrVec3 *pExt, const BrVec3 *pA, float planeD,
-                      const BrVec3 *pEdgeN, const BrVec3 aVerts[3])
-{
-    float c[3];
-    float s;
-    int   sgn;
-    int   k;
-
-    if (g_brCrPlane.modeFC != 2u) {
-        s = -((pA->z * pEdgeN->z + pA->y * pEdgeN->y + pEdgeN->x * pA->x) - planeD);
-        g_brCrPlane.out.x = pA->x * s;
-        g_brCrPlane.out.y = s * pA->y;
-        g_brCrPlane.out.z = s * pA->z;
-        return;
-    }
-    for (k = 0; k < 3; k++)
-        c[k] = ((&aVerts[0].x)[k] + (&aVerts[2].x)[k] + (&aVerts[1].x)[k]) * BrCrK_Third;
-    if ((c[0] < BrCrK_Zero ? -c[0] : c[0]) < (c[1] < BrCrK_Zero ? -c[1] : c[1])) {
-        if ((c[0] < BrCrK_Zero ? -c[0] : c[0]) < (c[2] < BrCrK_Zero ? -c[2] : c[2])) {
- g_brCrPlane.normal.z = 0.0f;
- g_brCrPlane.normal.y = 0.0f;
- sgn = -1;
- if (!(c[0] < BrCrK_Zero))
- sgn = 1;
- g_brCrPlane.normal.x = (float)sgn * BrCrK_Half;
- goto face;
- }
- } else {
- if ((c[1] < BrCrK_Zero ? -c[1] : c[1]) < (c[2] < BrCrK_Zero ? -c[2] : c[2])) {
- g_brCrPlane.normal.z = 0.0f;
- g_brCrPlane.normal.x = 0.0f;
- sgn = -1;
- if (!(c[0] < BrCrK_Zero))
- sgn = 1;
- g_brCrPlane.normal.y = (float)sgn * BrCrK_Half;
- goto face;
- }
- }
- g_brCrPlane.normal.y = 0.0f;
- g_brCrPlane.normal.x = 0.0f;
- sgn = -1;
- if (!(c[0] < BrCrK_Zero))
- sgn = 1;
- g_brCrPlane.normal.z = (float)sgn * BrCrK_Half;
- face:
-    s = g_brCrPlane.normal.z * pA->z + g_brCrPlane.normal.y * pA->y + pA->x * g_brCrPlane.normal.x;
-    g_brCrPlane.normal.x = BR_CR_EXT(0x1dc) * g_brCrPlane.normal.x;
-    g_brCrPlane.normal.x = BR_CR_EXT(0x1e0) * g_brCrPlane.normal.x;
-    *(float *)&g_brCrPlane.modeFC = BR_CR_EXT(0x1e4) * *(float *)&g_brCrPlane.modeFC;
-    s = -(s - planeD);
-    g_brCrPlane.out.x = pA->x * s;
-    g_brCrPlane.out.y = s * pA->y;
-    g_brCrPlane.out.z = s * pA->z;
-}
-#else
-void BrCrPlaneResolve(const BrVec3 *pExt, const BrVec3 *pA, float planeD,
-                      const BrVec3 *pEdgeN, const BrVec3 aVerts[3])
-{
-    float nx, ny, nz;     /* the plane normal V fed to the shared tail */
-    float d, s;
-
-    if (g_brCrPlane.modeFC == 2u) {
-        /* --- mode 2: build the box-face normal from the triangle centroid. */
-        float cx, cy, cz, sign;
-        int   k;
-
-        /* centroid, in the original's add order ((v0 + v2) + v1) * 1/3 */
-        cx = ((aVerts[0].x + aVerts[2].x) + aVerts[1].x) * BR_CR_THIRD;
-        cy = ((aVerts[0].y + aVerts[2].y) + aVerts[1].y) * BR_CR_THIRD;
-        cz = ((aVerts[0].z + aVerts[2].z) + aVerts[1].z) * BR_CR_THIRD;
-
-        /* argmin |c| via the exact >= tournament: |cx| vs |cy| first, then the
-         * survivor's partner against |cz|.  k is the axis the normal lands on. */
-        if (fabsf(cx) >= fabsf(cy))
-            k = (fabsf(cy) >= fabsf(cz)) ? 2 : 1;
-        else
-            k = (fabsf(cx) >= fabsf(cz)) ? 2 : 0;
-
-        /* sign from cx (the quirk); NaN cx -> -0.5 */
-        sign = (cx < 0.0f || isnan(cx)) ? -BR_CR_HALF : BR_CR_HALF;
-
-        nx = ny = nz = 0.0f;
-        if (k == 0)      nx = sign;
-        else if (k == 1) ny = sign;
-        else             nz = sign;
-
-        /* the tail's dot: for a one-axis normal this is exact regardless of
-         * summation order. */
-        d = (pA->y * ny + pA->z * nz) + pA->x * nx;
-
-        /* side-effect state the walker reads next.  .x is scaled by ext.x*ext.y
-         * (two stores in the original), .y/.z keep the raw +-0.5, and modeFC is
-         * multiplied by ext.z as a FLOAT (its int mode value reinterpreted). */
-        g_brCrPlane.normal.x = pExt->y * (pExt->x * nx);
-        g_brCrPlane.normal.y = ny;
-        g_brCrPlane.normal.z = nz;
-        {
-            float fc;
-            memcpy(&fc, &g_brCrPlane.modeFC, sizeof fc);
-            fc = pExt->z * fc;
-            memcpy(&g_brCrPlane.modeFC, &fc, sizeof fc);
-        }
-    } else {
-        /* --- mode != 2: the plane normal is handed in directly. */
-        nx = pEdgeN->x; ny = pEdgeN->y; nz = pEdgeN->z;
-        d = (pA->y * ny + pA->z * nz) + pA->x * nx;   /* dot(pA, pEdgeN) */
-    }
-
-    /* shared tail: out = (planeD - dot(pA, V)) * pA */
-    s = planeD - d;
-    g_brCrPlane.out.x = s * pA->x;
-    g_brCrPlane.out.y = s * pA->y;
-    g_brCrPlane.out.z = s * pA->z;
-}
-#endif /* BR_MATCHING_BUILD */
 
 /* 0x10077B44 -1.05, 0x10077B40 0.2, 0x10077B38 0.9, 0x100B5170 1.0,
  * 0x10077AB8 27, 0x10077B3C 1e-4, 0x10077B30 -4.703703880, 0x10077B34 128. */
@@ -773,6 +612,177 @@ int BrCrContactKick(BrVec3 *pVel, BrVec3 *pAngVel, const BrVec3 *pNormal,
 
 /* 0x10077B8C -- 1.1, the penetration push-out gain in the walker's position fix. */
 #define BR_CR_PUSHOUT 1.1f
+
+/* ------------------------------------------------------------------ *
+ * 0x10067470 -- contact-plane resolver.
+ *
+ * WHAT IT DOES: turns one candidate contact into a plane and writes the plane
+ * normal scaled by how far the point is from it.  There are two ways in.  The
+ * common one (mode != 2) is handed the plane normal outright.  The box-face
+ * one (mode == 2) has to CHOOSE the face: it averages the three box-space
+ * triangle vertices and picks the axis on which that centroid is SMALLEST --
+ * the face the triangle lies most flush against -- and uses that box face's
+ * outward normal.  The N64 sibling calls these two paths "Cube Edge to
+ * Triangle Face" and "Triangle Edge to CubeFace".
+ *
+ * Two things here are preserved quirks, both confirmed against the bytes:
+ *
+ *  - The sign of the chosen box normal is taken from the centroid's X
+ *    component, NOT from the component on the winning axis.  The original
+ *    carries cx on the FPU stack through the entire argmin tournament and
+ *    signs by whatever is left in st0, which is always cx.  A NaN cx takes the
+ *    negative arm (the compare's unordered result), so it maps to -0.5.
+ *
+ *  - The argmin is the original's exact >= tournament, so ties resolve the way
+ *    its `fcom`/`jae`-shaped branches do (a tie keeps the earlier axis).
+ * ------------------------------------------------------------------ */
+/* @t4-pass 0x10067470 1 2026-09-07 probes 88 bytes 616 insns 163 regions 2 rows 25 census yes  (tools/crank.py) */
+/* @t4-pass 0x10067470 2 2026-09-07 probes 88 bytes 616 insns 163 regions 2 rows 25 census yes  (tools/crank.py) */
+/* @implements 0x10067470 glide BrCrPlaneResolve */
+#ifdef BR_MATCHING_BUILD
+/* Matching arm, re-transcribed 2026-09-27 in natural form (the earlier arm
+ * was Ghidra-shaped: gotos, walking pointers, param_N).  Facts the bytes
+ * force: the centroid is ((v0 + v2) + v1) * 1/3 per component; |c| is the
+ * `c < 0 ? -c : c` compare-and-fchs; the argmin tests |c0| < |c1| then the
+ * survivor against |c2|, the z arm shared (goto face); every arm takes its
+ * SIGN from c[0]; the sign is an int -1/+1 converted and scaled by 0.5; the
+ * dot reads the normal back from the globals BEFORE the in-place scaling of
+ * normal.x (twice) and of modeFC as a float; s = -(dot - planeD).
+ * NOT MATCHING 2026-09-27: 658/668 B, register-blind 3+4.  Filed ahead of
+ * the walker as in the original unit (earlier in the file it flips
+ * BrCrPlaneDist).  The original HOMES s in pA's dead argument slot in both
+ * arms (`fstp [esp+14h]; fmul [esp+14h]; fld; fld`).  Arm 1 now does: a
+ * named copy `a = pA->x` taken before s competes for an x87 register and
+ * VC5 homes s -- that also reproduces the odd `fxch st(1); fxch st(1)`.
+ * Arm 2 still keeps s on the x87 stack.  Inert for arm 2 (2026-09-27, ~2,500
+ * compiles): the copy at every statement position, every order of the
+ * normal/modeFC scaling statements, a named dot `d`, named ext/normal
+ * copies, goto/if-else shared tails (joint s web), an __inline scale helper
+ * with a by-value float, volatile/address-taken s, `#pragma optimize("p")`,
+ * and symbol-table size (256 dummy-declaration states x 6 forms). */
+extern float BrCrK_Zero;     /* 0x10077A78 */
+extern float BrCrK_Third;    /* 0x10077B84 */
+extern float BrCrK_Half;     /* 0x10077AC8 */
+#define BR_CR_EXT(off) (*(const float *)((const char *)pExt + (off)))
+void BrCrPlaneResolve(const BrVec3 *pExt, const BrVec3 *pA, float planeD,
+                      const BrVec3 *pEdgeN, const BrVec3 aVerts[3])
+{
+    float c[3];
+    float s;
+    float a;
+    int   sgn;
+    int   k;
+
+    if (g_brCrPlane.modeFC != 2u) {
+        a = pA->x;
+        s = -((pA->z * pEdgeN->z + pA->y * pEdgeN->y + pEdgeN->x * pA->x) - planeD);
+        g_brCrPlane.out.x = a * s;
+        g_brCrPlane.out.y = s * pA->y;
+        g_brCrPlane.out.z = s * pA->z;
+        return;
+    }
+    for (k = 0; k < 3; k++)
+        c[k] = ((&aVerts[0].x)[k] + (&aVerts[2].x)[k] + (&aVerts[1].x)[k]) * BrCrK_Third;
+    if ((c[0] < BrCrK_Zero ? -c[0] : c[0]) < (c[1] < BrCrK_Zero ? -c[1] : c[1])) {
+        if ((c[0] < BrCrK_Zero ? -c[0] : c[0]) < (c[2] < BrCrK_Zero ? -c[2] : c[2])) {
+ g_brCrPlane.normal.z = 0.0f;
+ g_brCrPlane.normal.y = 0.0f;
+ sgn = -1;
+ if (!(c[0] < BrCrK_Zero))
+ sgn = 1;
+ g_brCrPlane.normal.x = (float)sgn * BrCrK_Half;
+ goto face;
+ }
+ } else {
+ if ((c[1] < BrCrK_Zero ? -c[1] : c[1]) < (c[2] < BrCrK_Zero ? -c[2] : c[2])) {
+ g_brCrPlane.normal.z = 0.0f;
+ g_brCrPlane.normal.x = 0.0f;
+ sgn = -1;
+ if (!(c[0] < BrCrK_Zero))
+ sgn = 1;
+ g_brCrPlane.normal.y = (float)sgn * BrCrK_Half;
+ goto face;
+ }
+ }
+ g_brCrPlane.normal.y = 0.0f;
+ g_brCrPlane.normal.x = 0.0f;
+ sgn = -1;
+ if (!(c[0] < BrCrK_Zero))
+ sgn = 1;
+ g_brCrPlane.normal.z = (float)sgn * BrCrK_Half;
+ face:
+    s = g_brCrPlane.normal.z * pA->z + g_brCrPlane.normal.y * pA->y + pA->x * g_brCrPlane.normal.x;
+    g_brCrPlane.normal.x = BR_CR_EXT(0x1dc) * g_brCrPlane.normal.x;
+    g_brCrPlane.normal.x = BR_CR_EXT(0x1e0) * g_brCrPlane.normal.x;
+    *(float *)&g_brCrPlane.modeFC = BR_CR_EXT(0x1e4) * *(float *)&g_brCrPlane.modeFC;
+    s = -(s - planeD);
+    a = pA->x;
+    g_brCrPlane.out.x = a * s;
+    g_brCrPlane.out.y = s * pA->y;
+    g_brCrPlane.out.z = s * pA->z;
+}
+#else
+void BrCrPlaneResolve(const BrVec3 *pExt, const BrVec3 *pA, float planeD,
+                      const BrVec3 *pEdgeN, const BrVec3 aVerts[3])
+{
+    float nx, ny, nz;     /* the plane normal V fed to the shared tail */
+    float d, s;
+
+    if (g_brCrPlane.modeFC == 2u) {
+        /* --- mode 2: build the box-face normal from the triangle centroid. */
+        float cx, cy, cz, sign;
+        int   k;
+
+        /* centroid, in the original's add order ((v0 + v2) + v1) * 1/3 */
+        cx = ((aVerts[0].x + aVerts[2].x) + aVerts[1].x) * BR_CR_THIRD;
+        cy = ((aVerts[0].y + aVerts[2].y) + aVerts[1].y) * BR_CR_THIRD;
+        cz = ((aVerts[0].z + aVerts[2].z) + aVerts[1].z) * BR_CR_THIRD;
+
+        /* argmin |c| via the exact >= tournament: |cx| vs |cy| first, then the
+         * survivor's partner against |cz|.  k is the axis the normal lands on. */
+        if (fabsf(cx) >= fabsf(cy))
+            k = (fabsf(cy) >= fabsf(cz)) ? 2 : 1;
+        else
+            k = (fabsf(cx) >= fabsf(cz)) ? 2 : 0;
+
+        /* sign from cx (the quirk); NaN cx -> -0.5 */
+        sign = (cx < 0.0f || isnan(cx)) ? -BR_CR_HALF : BR_CR_HALF;
+
+        nx = ny = nz = 0.0f;
+        if (k == 0)      nx = sign;
+        else if (k == 1) ny = sign;
+        else             nz = sign;
+
+        /* the tail's dot: for a one-axis normal this is exact regardless of
+         * summation order. */
+        d = (pA->y * ny + pA->z * nz) + pA->x * nx;
+
+        /* side-effect state the walker reads next.  .x is scaled by ext.x*ext.y
+         * (two stores in the original), .y/.z keep the raw +-0.5, and modeFC is
+         * multiplied by ext.z as a FLOAT (its int mode value reinterpreted). */
+        g_brCrPlane.normal.x = pExt->y * (pExt->x * nx);
+        g_brCrPlane.normal.y = ny;
+        g_brCrPlane.normal.z = nz;
+        {
+            float fc;
+            memcpy(&fc, &g_brCrPlane.modeFC, sizeof fc);
+            fc = pExt->z * fc;
+            memcpy(&g_brCrPlane.modeFC, &fc, sizeof fc);
+        }
+    } else {
+        /* --- mode != 2: the plane normal is handed in directly. */
+        nx = pEdgeN->x; ny = pEdgeN->y; nz = pEdgeN->z;
+        d = (pA->y * ny + pA->z * nz) + pA->x * nx;   /* dot(pA, pEdgeN) */
+    }
+
+    /* shared tail: out = (planeD - dot(pA, V)) * pA */
+    s = planeD - d;
+    g_brCrPlane.out.x = s * pA->x;
+    g_brCrPlane.out.y = s * pA->y;
+    g_brCrPlane.out.z = s * pA->z;
+}
+#endif /* BR_MATCHING_BUILD */
+
 
 /* ------------------------------------------------------------------ *
  * 0x10067710 -- the response walker: the top of the collision response.
