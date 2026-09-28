@@ -1,6 +1,7 @@
 /* paintshop.c -- the paint shop
  */
 #include "tgr/common.h"
+#include "tgr/car.h"
 #include "tgr/gbi.h"
 
 /* -- declarations -- */
@@ -61,6 +62,29 @@ void BrPaintPlot(int x, int y, unsigned char c);
 extern Gfx *D_8028A858;
 extern int D_8028A850;
 extern int D_8028A898;                 /* the texture filter mode */
+extern BrCar *D_8028AAF0;               /* the car shown */
+extern BrCarCam *D_8028AAF4;            /* its camera */
+extern unsigned char D_8028DBD0;        /* the view is turning */
+extern unsigned char D_8028DB6C;        /* the view it turns from */
+extern unsigned short D_8028DBB0;       /* frames into the turn (16 in all) */
+extern BrVec3 D_8028DC08[];             /* the preset view directions */
+extern float D_8028AAC0;
+extern float D_8028AAC8;
+extern int D_8028C334;
+extern int D_8028AAB0;
+extern int D_8028AAB4;
+void BrVec3Normalise(BrVec3 *v);
+float BrVec3Dot(BrVec3 *a, BrVec3 *b);
+void BrVec3Cross(BrVec3 *out, BrVec3 *a, BrVec3 *b);
+void BrVec3AddTo(BrVec3 *v, BrVec3 *a);
+void BrVec3Scale(BrVec3 *out, BrVec3 *v, float s);
+float BrAtan2(float x, float y);
+void BrCameraSet(BrCarCam *cam, float a, float b, float c, float d);
+void BrViewportSet(int x, int y, int w, int h, int scissor);
+void BrGridSpanExtend(int a, int b);
+void BrCarPlaceWheels(int n);
+void BrCarVisibility(BrCar *car);
+void func_80230554(BrCar *car, int);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Store the paint shop's working decal (2 KB) into the decal
@@ -350,4 +374,124 @@ void BrPaintDisc(int x, int y, int r, unsigned char screen)
       b--;
     }
   }
+}
+
+/* WHAT IT DOES: Place the paint-shop car and draw it: while a view change
+ * is under way, ease the car's facing and up vectors over 16 frames from
+ * the previous preset view to the new one (sidestepping through a
+ * perpendicular when they are nearly opposite; view 5 tilts the car),
+ * otherwise face the chosen preset; rebuild the body matrix, set the
+ * camera and a viewport placed by car kind, and draw the car.  The x1/x2/x3
+ * arrays are unused locals that reproduce the ROM's frame (0xD8); `/ 16` is
+ * an integer so IDO keeps the divide.
+ * RESIDUE (~400 raw, ~97 aligned ops): the vector copies and interpolation
+ * are scheduled differently and the three pointer stores at the top come in
+ * another order.  Not yet matched. */
+/* @implements 0x80242BDC tgr BrPaintCarView */
+void BrPaintCarView(void)
+{
+  BrVec3 from;
+  BrVec3 to;
+  float dx;
+  float dy;
+  float dz;
+  float x1[4];
+  BrVec3 side;
+  BrVec3 zAxis;
+  float x2[3];
+
+  D_8028AAF0 = &D_8031B760[D_8028DBBC];
+  D_8028AAF4 = &D_8031B760[D_8028DBBC].cams[3];
+  D_8031B760[D_8028DBBC].cam = D_8028AAF4;
+  if (D_8028DBD0 != 0) {
+    from.x = D_8028DC08[D_8028DB6C].x;
+    from.y = D_8028DC08[D_8028DB6C].y;
+    from.z = D_8028DC08[D_8028DB6C].z;
+    to.x = D_8028DC08[D_8028DB68].x;
+    to.y = D_8028DC08[D_8028DB68].y;
+    to.z = D_8028DC08[D_8028DB68].z;
+    D_8028DBB0++;
+    BrVec3Normalise(&from);
+    BrVec3Normalise(&to);
+    if (BrVec3Dot(&to, &from) < -0.9) {
+      zAxis.x = 0.0f;
+      zAxis.y = 0.0f;
+      zAxis.z = 1.0f;
+      BrVec3Cross(&side, &zAxis, &from);
+      if (D_8028DBB0 < 8) {
+        BrVec3AddTo(&to, &side);
+      } else {
+        BrVec3AddTo(&from, &side);
+      }
+    }
+    dx = (to.x - from.x) / 16;
+    dy = (to.y - from.y) / 16;
+    dz = (to.z - from.z) / 16;
+    ((BrVec3 *)D_8028AAF0->mtx0[0])->x = from.x + D_8028DBB0 * dx;
+    ((BrVec3 *)D_8028AAF0->mtx0[0])->y = from.y + D_8028DBB0 * dy;
+    ((BrVec3 *)D_8028AAF0->mtx0[0])->z = from.z + D_8028DBB0 * dz;
+    BrVec3Normalise((BrVec3 *)D_8028AAF0->mtx0[0]);
+    {
+      BrVec3 upB = {0.0f, 0.0f, 0.0f};
+      BrVec3 upA = {0.0f, 0.0f, 0.0f};
+
+      if (D_8028DB68 == 5) {
+        upA.x = 5.0f;
+        upA.y = 5.0f;
+        upA.z = 1.5f;
+      } else {
+        upA.z = 1.0f;
+        upA.x = 0.0f;
+        upA.y = 0.0f;
+      }
+      if (D_8028DB6C == 5) {
+        upB.x = 5.0f;
+        upB.y = 5.0f;
+        upB.z = 1.5f;
+      } else {
+        upB.x = 0.0f;
+        upB.y = 0.0f;
+        upB.z = 1.0f;
+      }
+      BrVec3Normalise(&upB);
+      BrVec3Normalise(&upA);
+      dx = (upA.x - upB.x) / 16;
+      dy = (upA.y - upB.y) / 16;
+      dz = (upA.z - upB.z) / 16;
+      ((BrVec3 *)D_8028AAF0->mtx0[2])->x = upB.x + D_8028DBB0 * dx;
+      ((BrVec3 *)D_8028AAF0->mtx0[2])->y = upB.y + D_8028DBB0 * dy;
+      ((BrVec3 *)D_8028AAF0->mtx0[2])->z = upB.z + D_8028DBB0 * dz;
+    }
+    BrVec3Normalise((BrVec3 *)D_8028AAF0->mtx0[2]);
+    if (D_8028DBB0 == 16) {
+      D_8028DBB0 = 0;
+      D_8028DBD0 = 0;
+    }
+  } else {
+    float x3[14];
+
+    ((BrVec3 *)D_8028AAF0->mtx0[0])->x = D_8028DC08[D_8028DB68].x;
+    ((BrVec3 *)D_8028AAF0->mtx0[0])->y = D_8028DC08[D_8028DB68].y;
+    ((BrVec3 *)D_8028AAF0->mtx0[0])->z = D_8028DC08[D_8028DB68].z;
+    BrVec3Normalise((BrVec3 *)D_8028AAF0->mtx0[0]);
+  }
+  BrVec3Cross((BrVec3 *)D_8028AAF0->mtx0[1], (BrVec3 *)D_8028AAF0->mtx0[2], (BrVec3 *)D_8028AAF0->mtx0[0]);
+  BrVec3Normalise((BrVec3 *)D_8028AAF0->mtx0[1]);
+  BrVec3Cross((BrVec3 *)D_8028AAF0->mtx0[2], (BrVec3 *)D_8028AAF0->mtx0[0], (BrVec3 *)D_8028AAF0->mtx0[1]);
+  D_8028AAF0->heading = BrAtan2(D_8028AAF4->mtx[0][0], D_8028AAF4->mtx[0][1]);
+  D_8028AAF0->heading = BrAtan2(D_8028AAF4->mtx[0][0], D_8028AAF4->mtx[0][1]);
+  BrVec3Scale((BrVec3 *)D_8028AAF0->mtx0[3], (BrVec3 *)D_8028AAF0->mtx0[2], -0.65f);
+  BrCameraSet(D_8028AAF4, D_8028AAC0, D_8028AAC8 * 0.2, 320.0f, 200.0f);
+  if (D_8031B760[D_8028DBBC].kind == 1) {
+    BrViewportSet(0, (D_8028AAB4 >> 1) - 3, (D_8028AAB0 >> 1) - 4, (D_8028AAB4 >> 1) - 3, 1);
+  } else if (D_8031B760[D_8028DBBC].kind == 10) {
+    BrViewportSet(0, (D_8028AAB4 >> 1) + 2, (D_8028AAB0 >> 1) - 4, (D_8028AAB4 >> 1) - 3, 1);
+  } else {
+    BrViewportSet(0, (D_8028AAB4 >> 1) - 6, (D_8028AAB0 >> 1) - 4, (D_8028AAB4 >> 1) - 3, 1);
+  }
+  BrGridSpanExtend(0, 0);
+  BrCarPlaceWheels(D_8028DBBC);
+  D_8028C334 = 1;
+  BrCarVisibility(D_8028AAF0);
+  func_80230554(D_8028AAF0, 0);
 }
