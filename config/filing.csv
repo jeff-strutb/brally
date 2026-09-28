@@ -185,14 +185,14 @@ glide_va,name,module,basis,file
 0x1000DEF0,BrGetFieldFloatSub10,drawing,neighbour,src/core/drawing/br_polydist.c
 0x1000E060,BrVertLerp8,drawing,filed,src/core/drawing/br_vertlerp.c
 0x1000E150,BrScrPtKeepNearest,drawing,neighbour,src/core/drawing/br_vertlerp.c
-0x1000E270,BrPointProjectXY,drawing,manual,src/core/generated/0x1000E270.c
+0x1000E270,BrPointProjectXY,drawing,filed,src/core/drawing/br_vertlerp.c
 0x1000E2F0,BrQsortCmpS2,drawing,neighbour,src/core/drawing/br_sortcmp.c
 0x10010F80,BrRecHdrLatch_10010F80,drawing,filed,src/core/drawing/br_rec.c
 0x10011300,BrPaceNoteEmit_10011300,drawing,filed,src/core/drawing/BrPaceNoteEmit_10011300.cpp
-0x10011650,FUN_10011650,drawing,neighbour,src/core/generated/0x10011650.c
+0x10011650,FUN_10011650,drawing,filed,src/core/drawing/br_rdpmode.c
 0x100119C0,FUN_100119c0,drawing,neighbour,src/core/drawing/br_rdpmode.c
 0x10011D10,BrThunk11D10,drawing,neighbour,src/core/drawing/br_fps.c
-0x10011D20,FUN_10011d20,drawing,neighbour,src/core/generated/0x10011D20.c
+0x10011D20,FUN_10011d20,geometry,filed,src/core/geometry/br_camview.c
 0x10011EA0,BrFpsReadout,drawing,neighbour,src/core/drawing/br_fps.c
 0x10013140,BrHudTextListDraw,drawing,filed,src/core/drawing/br_hud.c
 0x10013E80,BrRaceBeginResetOnce,drawing,filed,src/core/drawing/br_snapinterp.c
@@ -562,7 +562,7 @@ glide_va,name,module,basis,file
 0x100347B0,BrVec3DistSq,geometry,filed,src/core/geometry/br_vec.c
 0x100347F0,BrVec3Length,geometry,filed,src/core/geometry/br_vec.c
 0x10034840,BrVec3LenXY,geometry,description,src/core/geometry/br_vec.c
-0x10034870,BrVec3TransformDivW,geometry,manual,src/core/generated/0x10034870.c
+0x10034870,BrVec3TransformDivW,geometry,filed,src/core/geometry/br_mat4.c
 0x10034920,BrMat4TransformPoint4,geometry,filed,src/core/geometry/br_mat4.c
 0x100349C0,BrVec3Project,geometry,filed,src/core/geometry/br_mat.c
 0x10034AF0,BrMtxMul,geometry,description,src/core/geometry/br_mat.c
@@ -1041,7 +1041,7 @@ glide_va,name,module,basis,file
 0x1005A480,BrLiveryLoadDamage,drawing,filed,src/core/drawing/br_livery.c
 0x1005A4E0,BrImgTintSetScale,drawing,description,src/core/drawing/br_imgtint.c
 0x1005A500,FUN_1005a500,drawing,neighbour,src/core/drawing/br_imgtint.c
-0x1005A630,BrImgRegionHasKey,drawing,manual,src/core/generated/0x1005A630.c
+0x1005A630,BrImgRegionHasKey,drawing,filed,src/core/drawing/br_imgtint.c
 0x1005A6A0,FUN_1005a6a0,drawing,description,src/core/drawing/br_livery.c
 0x1005A6B0,FUN_1005a6b0,drawing,description,src/core/drawing/br_livery.c
 0x1005A6E0,BrNodeMarkPass,drawing,description,src/core/drawing/br_nodepass.c
