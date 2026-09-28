@@ -47,6 +47,24 @@ float BrVec3Dot(float a[3], float b[3]);
 float BrVec3Length(float v[3]);
 void BrVec3DivBy(float v[3], float d);
 extern float D_8028AAD8;                /* seconds this frame */
+typedef struct BrSndVoice {     /* a mixer voice, 0x18 bytes */
+  unsigned int pos;
+  int x4;
+  unsigned long long rate;      /* 0x08  32.32 step, 0 = silent */
+  int vol;                      /* 0x10 */
+  unsigned int baseVol;         /* 0x14  packed left << 16 | right */
+} BrSndVoice;
+extern BrSndVoice D_802A4920[6];
+extern unsigned int D_802A497C;
+typedef struct BrSndCarLink { char pad00[0x68]; unsigned int flags; } BrSndCarLink;
+extern BrSndCarLink *D_8031C630;        /* car 0's link record */
+typedef struct BrSndView { int x, y, w, h; int car; } BrSndView;
+extern BrSndView D_8031B2C8[2];         /* the players' views */
+typedef struct BrSndCar { char pad0000[0xF48]; int camMode; char padf4c[0x2090 - 0xF4C]; } BrSndCar;
+extern BrSndCar D_8031B760[4];
+extern int D_8028AB0C;                  /* number of players */
+void BrSndPan(float pos[3], float m[4][4], float *left, float *right, int *vol, int narrow);
+float BrSndDoppler(float l[3], float lPrev[3], float s[3], float sPrev[3]);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: The Doppler pitch factor for a sound: with the listener
@@ -136,6 +154,92 @@ void BrSndNearestOffer(int f8C, int f84, int f9C, float hz, void *pPos, void *pL
     D_8028B7A0.f98 = hz;
     D_8028B7A0.f9C = f9C;
   }
+}
+
+/* WHAT IT DOES: Once a frame, act on the nearest positional sound (voice
+ * 3).  Nothing happens while car 0 is out of the race, or while a one-shot
+ * effect still plays (once it ends the one-shot is forgotten).  No sound:
+ * the voice is silenced.  A different winner from last frame: its level is
+ * halved.  The same winner: Doppler against the listener (a negative base
+ * rate compares the current position with itself), pan and volume from the
+ * listener matrix, the sample started the first time, and -- when the
+ * viewed cars use camera mode 0 -- the 32.32 rate and the packed stereo
+ * level (halved on the first frame).  Then this frame's winner becomes
+ * last frame's.
+ * RESIDUE (128 words, instruction count 261/263): register colouring -- the
+ * ROM holds f8C in a0 and pObj in v1 where ours has v1/v0, and the tail
+ * reaches objPosPrev.z through pObj + 0x30 in v0 (then reloads pObj).
+ * Levers that landed: the frame (an unused int above ratio and seven unused
+ * floats below gainB), the early exit as a goto past the reset (it splits
+ * the base setup onto the skip edge), the first packed store through its
+ * own absolute symbol, the Doppler result assigned before the multiply. */
+/* @implements 0x8022B534 tgr BrSndNearestCommit */
+void BrSndNearestCommit(void)
+{
+  int unused;
+  float ratio;
+  int vol;
+  float gainA;
+  float gainB;
+  float unused2[7];
+
+  if (D_8031C630->flags & 1)
+    return;
+  if (D_8028B7EC != -1) {
+    if (D_802A4920[3].rate != 0)
+      return;
+    D_8028B7EC = -1;
+    D_8028B7A0.f90 = -1;
+    D_8028B7A0.fA0 = 0;
+    goto skip;
+  }
+skip:
+  if (D_8028B7A0.f8C == -1) {
+    D_802A4920[3].baseVol = 0;
+    D_802A4920[3].vol = 0;
+    D_802A4920[3].rate = 0;
+  } else if (D_8028B7A0.f8C == D_8028B7A0.f90 && D_8028B7A0.pObj == D_8028B7A0.pObjPrev) {
+    if (D_8028B7A0.f98 < 0.0f) {
+      ratio = BrSndDoppler(&D_8028B7A0.pos.x, &D_8028B7A0.pos.x,
+                           (float *)((char *)D_8028B7A0.pObj + 0x30),
+                           &D_8028B7A0.objPosPrev.x);
+      ratio = -D_8028B7A0.f98 * ratio;
+      BrSndPan(&D_8028B7A0.pos.x, D_8028B7A0.pObj, &gainA, &gainB, &vol, 1);
+    } else {
+      ratio = BrSndDoppler(&D_8028B7A0.pos.x, &D_8028B7A0.posPrev.x,
+                           (float *)((char *)D_8028B7A0.pObj + 0x30),
+                           &D_8028B7A0.objPosPrev.x);
+      ratio = D_8028B7A0.f98 * ratio;
+      BrSndPan(&D_8028B7A0.pos.x, D_8028B7A0.pObj, &gainA, &gainB, &vol, 0);
+    }
+    vol = vol * D_8028B7A0.f9C >> 8;
+    if (D_8028B7A0.fA0 == 0) {
+      D_8028B7A0.fA0 = 1;
+      BrSfxVoicePlay(3, (unsigned int)D_8028BC04[D_8028B7A0.f84].data, D_8028BC04[D_8028B7A0.f84].size,
+                     D_8028BC04[D_8028B7A0.f84].loop);
+    }
+    if (D_8031B760[D_8031B2C8[0].car].camMode == 0
+        && (D_8028AB0C == 1 || D_8031B760[D_8031B2C8[1].car].camMode == 0)) {
+      D_802A4920[3].rate = (double)(ratio * (1.0f / 11000.0f)) * 4294967296.0;
+      if (D_802A4920[3].baseVol == 0) {
+        D_802A497C = ((int)((float)((int)(vol * gainA) << 16) + gainB * vol) >> 1) & 0x7FFF7FFF;
+      } else {
+        D_802A4920[3].baseVol = (float)((int)(vol * gainA) << 16) + gainB * vol;
+      }
+    }
+    D_8028B7A0.posPrev.x = D_8028B7A0.pos.x;
+    D_8028B7A0.posPrev.y = D_8028B7A0.pos.y;
+    D_8028B7A0.posPrev.z = D_8028B7A0.pos.z;
+    D_8028B7A0.objPosPrev.x = ((float *)D_8028B7A0.pObj)[12];
+    D_8028B7A0.objPosPrev.y = ((float *)D_8028B7A0.pObj)[13];
+    D_8028B7A0.objPosPrev.z = ((float *)D_8028B7A0.pObj)[14];
+  } else {
+    D_8028B7A0.fA0 = 0;
+    D_802A4920[3].baseVol = (D_802A4920[3].baseVol >> 1) & 0x7FFF7FFF;
+  }
+  D_8028B7A0.f90 = D_8028B7A0.f8C;
+  D_8028B7A0.pObjPrev = D_8028B7A0.pObj;
+  D_8028B7A0.f88 = D_8028B7A0.f84;
 }
 
 /* WHAT IT DOES: Play the game's ordinary beep, the one the countdown uses
