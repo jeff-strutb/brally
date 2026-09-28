@@ -479,3 +479,4 @@ va,name,kind
 80205FDC,BrRaceResultSave,func
 8023CBFC,BrParticleStep,func
 80258FD4,BrMat4InvertScaled,func
+80259350,BrTriCacheReset,func
