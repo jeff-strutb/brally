@@ -11,6 +11,7 @@ extern int D_80272070;
 extern char *D_8031C5BC;
 extern char D_8028AE24;
 extern Gfx *D_8028A858;
+int sprintf(char *buf, char *fmt, ...);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Draw one of the car-select screen's stat bars at (x, y),
@@ -43,6 +44,21 @@ int BrCarSelectable(int n)
 {
   return (D_80272070 == 0 || n < 9) && (*(unsigned short *)(D_8031C5BC + 0xcc) & (1 << n)) &&
          BrCarModelPresent(n);
+}
+
+/* WHAT IT DOES: Format a time in seconds as minutes'seconds"hundredths.
+ * Same arithmetic as the PC twin BrTimeFormat (br_timefmt.c). */
+/* @implements 0x8020CF44 tgr BrTimeFormat */
+void BrTimeFormat(char *psz, float t)
+{
+  int total = (int)(t * 100.0f);
+  int whole = total / 100;
+  int minutes;
+
+  total -= whole * 100;
+  minutes = whole / 60;
+  whole -= minutes * 60;
+  sprintf(psz, "%d'%02d\"%02d", minutes, whole, total);
 }
 
 /* WHAT IT DOES: Tell whether car n has a model record loaded (its entry in

@@ -354,3 +354,4 @@ va,name,kind
 8022BA10,BrSndNearestOfferDefault,func
 8021FE04,BrCarSetPos,func
 80220358,BrCarSetAngVel,func
+8020CF44,BrTimeFormat,func
