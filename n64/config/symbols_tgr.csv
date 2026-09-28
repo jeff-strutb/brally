@@ -296,6 +296,7 @@ va,name,kind
 80233880,BrHudArrowDraw,func
 80233FDC,BrVtxPoolsReset,func
 80234FC0,BrDrawSortCmp,func
+80235BAC,BrTrackDraw,func
 8023870C,BrStub8023870C,func
 80238714,BrHudTimeDraw,func
 8023880C,BrHudTimesDraw,func
