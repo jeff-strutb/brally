@@ -34,7 +34,30 @@ typedef struct BrSndNearest {   /* the nearest positional sound, 0x8028B7A0 */
 extern BrSndNearest D_8028B7A0;
 extern int D_8028B940;                  /* the chosen track */
 void BrSndNearestOffer(int f8C, int f84, int f9C, float hz, void *pPos, void *pListener);
+float BrVec3Dist(void *a, void *b);
 /* -- end declarations -- */
+
+/* WHAT IT DOES: Offer a positional sound: if its source is nearer the
+ * listener than the best offer so far this frame, it becomes the nearest
+ * sound (position, listener, ids, rate and volume). */
+/* @implements 0x8022B494 tgr BrSndNearestOffer */
+void BrSndNearestOffer(int f8C, int f84, int f9C, float hz, void *pPos, void *pListener)
+{
+  float d;
+
+  d = BrVec3Dist(pPos, (char *)pListener + 0x30);
+  if (d < D_8028B7A0.metric) {
+    D_8028B7A0.pos.x = ((BrSndVec *)pPos)->x;
+    D_8028B7A0.pos.y = ((BrSndVec *)pPos)->y;
+    D_8028B7A0.pos.z = ((BrSndVec *)pPos)->z;
+    D_8028B7A0.pObj = pListener;
+    D_8028B7A0.metric = d;
+    D_8028B7A0.f84 = f84;
+    D_8028B7A0.f8C = f8C;
+    D_8028B7A0.f98 = hz;
+    D_8028B7A0.f9C = f9C;
+  }
+}
 
 /* WHAT IT DOES: Play the game's ordinary beep, the one the countdown uses
  * for three, two and one. */
