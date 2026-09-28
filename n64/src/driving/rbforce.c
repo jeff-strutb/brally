@@ -6,14 +6,22 @@
 typedef struct BrRbBody {       /* a rigid body with up to four attached */
   int x0;
   struct BrRbBody *sub[4];      /* 0x04 */
-  char pad14[0xfc - 0x14];
+  char pad14[0x2c - 0x14];
+  float mass;                   /* 0x2C */
+  char pad30[0x54 - 0x30];
+  float Iinv[3][3];             /* 0x54  inverse inertia */
+  char pad78[0xbc - 0x78];
+  float m[4][4];                /* 0xBC  orientation */
   float force[3];               /* 0xFC  accumulated this step */
   float torque[3];              /* 0x108 */
 } BrRbBody;
 void func_802589F4(int param_1,int param_2);
 void func_802594BC(void);
 void func_80259634(BrRbBody *b, BrRbBody *sub);
-void func_8025980C(BrRbBody *b);
+void BrRbSolveAccel(BrRbBody *b);
+void func_802586C0(float out[3], float m[4][4], float v[3]);   /* v into the body frame */
+void func_80258758(float out[3], float m[4][4], float v[3]);   /* and back out */
+void BrMat3MulVec(float out[3], float m[3][3], float v[3]);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Apply every force attached to a rigid body for this step:
@@ -58,6 +66,34 @@ int BrStub8025D35C(int arg0)
   return 0;
 }
 
+/* WHAT IT DOES: Turn a car body's summed force and torque into
+ * accelerations: in the body frame the force (with its four wheels' forces
+ * added on the two ground axes) is divided by the mass, the torque goes
+ * through the inverse inertia, and both come back to the world frame.  The
+ * PC twin is BrRbSolveAccel (br_rbaccum.c). */
+/* @implements 0x8025980C tgr BrRbSolveAccel */
+void BrRbSolveAccel(BrRbBody *b)
+{
+  float t[3];
+  float spare[3];                 /* declared and unused: it only holds a stack slot */
+  float u[3];
+  float w[3];
+
+  func_802586C0(t, b->m, b->force);
+  b->force[0] = t[0];
+  b->force[1] = t[1];
+  b->force[2] = t[2];
+  t[0] = (b->force[0] + b->sub[0]->force[0] + b->sub[1]->force[0] + b->sub[2]->force[0] +
+          b->sub[3]->force[0]) / b->mass;
+  t[1] = (b->force[1] + b->sub[0]->force[1] + b->sub[1]->force[1] + b->sub[2]->force[1] +
+          b->sub[3]->force[1]) / b->mass;
+  t[2] = b->force[2] / b->mass;
+  func_80258758(b->force, b->m, t);
+  func_802586C0(u, b->m, b->torque);
+  BrMat3MulVec(w, b->Iinv, u);
+  func_80258758(b->torque, b->m, w);
+}
+
 /* WHAT IT DOES: Clear the force and torque accumulators of a car body and
  * of each of its four wheel bodies before the forces are summed again. */
 /* @implements 0x8025993C tgr BrRbForcesClear */
@@ -82,6 +118,6 @@ void BrRbForcesClear(BrRbBody *b)
   func_80259634(b, b->sub[1]);
   func_80259634(b, b->sub[2]);
   func_80259634(b, b->sub[3]);
-  func_8025980C(b);
+  BrRbSolveAccel(b);
 }
 
