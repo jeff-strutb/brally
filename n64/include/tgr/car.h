@@ -102,7 +102,10 @@ typedef struct BrCar {
     unsigned char colour[4];    /* 0x2060  body colour r, g, b and a fourth byte */
     char pad2064[4];
     int x2068;                  /* 0x2068 */
-    char pad206c[0x2074 - 0x206C];
+    char pad206c[0x2070 - 0x206C];
+    unsigned char cellX;        /* 0x2070  the 32-unit track grid cell it is in (0..63) */
+    unsigned char cellY;        /* 0x2071 */
+    char pad2072[0x2074 - 0x2072];
     unsigned int *pad;          /* 0x2074  the slot's pad record */
     char *model;                /* 0x2078  the slot's model buffer */
     char pad207c[0x2090 - 0x207C];
