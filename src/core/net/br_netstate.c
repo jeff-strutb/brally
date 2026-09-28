@@ -364,6 +364,104 @@ int BrNetMutexInit(void)
 }
 
 
+
+/* ------------------------------------------------------------------ */
+/* 0x10005330 / 0x10005400 -- the two periodic slot broadcasts          */
+/* ------------------------------------------------------------------ */
+
+int BrNetSlotGetF02C(int);                       /* 0x10004D80 */
+int BrNetSend4AD0(void *dest, int a1, int a2, unsigned char r,
+                  unsigned char g, unsigned char b, int a6,
+                  char *text, unsigned char a8, unsigned char a9);  /* 0x10004AD0 */
+extern int DAT_10226a48;             /* g_brRaceNet                        */
+extern int DAT_10226a44;
+extern int DAT_105ccb88;             /* g_brFlag6909E0                     */
+extern int DAT_10af21b0;
+extern int DAT_100bcbe8;             /* g_br0BD3E0                         */
+extern int DAT_1007b264;             /* g_br094294, the local player slot  */
+extern int DAT_10226e7c;             /* g_br22B34C                         */
+extern int DAT_10273330;             /* g_br277B48                         */
+extern unsigned char DAT_10af3bb4;   /* g_brAD0854: the player colour r,g,b */
+extern unsigned char DAT_10af3bb5;
+extern unsigned char DAT_10af3bb6;
+extern char DAT_10b71648[];          /* g_brPB4E2E8, the player name       */
+extern char DAT_10273328[];          /* g_brP277B40, the send target       */
+/* An int-typed view of the sender for the two flag-byte arguments: with the
+ * real prototype's unsigned char parameter VC5 folds the masks below
+ * (`& 0x7f | 0x40` into `& 0x3f | 0x40`), which the original does not.  The
+ * cast of the function designator still compiles to a direct call. */
+typedef int (*BrNetSend4AD0Int)(void *dest, int a1, int a2, unsigned char r,
+                                unsigned char g, unsigned char b, int a6,
+                                char *text, int a8, int a9);
+
+/* WHAT IT DOES: one tick of the network "still here" beacon. Under the tick
+ * mutex, advance the counter when it is running and, every 27th tick, set
+ * the resend flag and wrap it. Then, if the counter is running, a net race
+ * is up, the deactivate flag is clear and the local frame count has not yet
+ * reached the limit, broadcast the local player's slot, colour and name with
+ * bit 7 set and bit 6 cleared in the slot's flag byte. */
+/* Byte-exact 2026-09-28.  The flag byte is `(x & ~0x40) | 0x80` passed
+ * through the int-typed view of the sender (BrNetSend4AD0Int above): with the
+ * prototype's unsigned char parameter VC5 folds the two masks into
+ * `& 0x3f | 0x80`, and with `& 0xbf` it widens the operation; the original
+ * keeps `and al,0xbf; or al,0x80` separate, which only this pair gives.
+ * (The old 1-byte residue note listed every other spelling as inert.) */
+/* @implements 0x10005330 glide BrNetBeaconTick */
+void BrNetBeaconTick(void)
+{
+  int n;
+
+  WaitForSingleObject((void *)DAT_10226a34, INFINITE);
+  if (DAT_10226624 != 0) {
+    DAT_10226624++;
+    if (DAT_10226624 >= 27) {
+      DAT_10226a50 = 1;
+      DAT_10226624 = 0;
+    }
+  }
+  n = DAT_10226624;
+  ReleaseMutex((void *)DAT_10226a34);
+  if (n != 0 && DAT_10226a48 != 0 && DAT_10226a44 != 0 && DAT_105ccb88 == 0
+      && DAT_10af21b0 < DAT_100bcbe8) {
+    ((BrNetSend4AD0Int)BrNetSend4AD0)(DAT_10273328, DAT_1007b264, DAT_10226e7c, DAT_10af3bb4,
+                  DAT_10af3bb5, DAT_10af3bb6, DAT_10273330, DAT_10b71648,
+                  (BrNetSlotGetF02C(DAT_1007b264) & ~0x40) | 0x80, 0);
+  }
+}
+
+
+/* WHAT IT DOES: the other periodic slot broadcast.  Under the slot mutex
+ * (0x1021C90C), advance its counter when it is running and, every 100th
+ * tick, raise the resend flag and wrap it; then, if the counter is running,
+ * send the local player's slot, colour and name with bit 6 set and bit 7
+ * cleared in the slot's flag byte.  Reset by BrNetReset with the beacon.
+ * Byte-exact: the counter is ticked on the global itself and read into n
+ * only after the wrap (the original's eax web copied to esi once at the
+ * join); the flag-byte call sits inside the send's argument list, so the
+ * trailing 0 is pushed before it, as the original does. */
+/* @implements 0x10005400 glide BrNetSlotBroadcastTick */
+void BrNetSlotBroadcastTick(void)
+{
+    int n;
+
+    WaitForSingleObject((void *)DAT_1021c90c, 0xffffffff);
+    if (DAT_1021ce44 != 0) {
+        DAT_1021ce44++;
+        if (DAT_1021ce44 >= 0x64) {
+            DAT_105ccb80 = 1;
+            DAT_1021ce44 = 0;
+        }
+    }
+    n = DAT_1021ce44;
+    ReleaseMutex((void *)DAT_1021c90c);
+    if (n != 0) {
+        ((BrNetSend4AD0Int)BrNetSend4AD0)(DAT_10273328, DAT_1007b264, DAT_10226e7c,
+                      DAT_10af3bb4, DAT_10af3bb5, DAT_10af3bb6,
+                      DAT_10273330, DAT_10b71648,
+                      (BrNetSlotGetF02C(DAT_1007b264) & ~0x80) | 0x40, 0);
+    }
+}
+
 extern int DAT_1007b268;
 extern float DAT_1021c820;
 extern float DAT_1021c990;

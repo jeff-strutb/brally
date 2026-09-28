@@ -1966,6 +1966,22 @@ int BrFontFreeAndExit(void)
   return 0;
 }
 
+/* The original's clipped-sprite blitter takes six arguments; the port's
+ * br_uispr.h prototype takes seven, so it is declared unprototyped here. */
+void BrUiSprClip();
+
+/* WHAT IT DOES: draw one clipped sprite glyph from the font sheet. */
+/* @implements 0x10058380 glide BrSprFontDraw */
+
+int BrSprFontDraw(int param_1,int param_2,unsigned int param_3,int param_4,
+                 int param_5)
+
+{
+  BrUiSprClip(DAT_10ac5d84,param_1,param_2,(&DAT_10ac53e8)[(param_3 & 0xffff) * 2],param_4,param_5)
+  ;
+  return;
+}
+
 extern int DAT_118ed1a0;
 
 /* WHAT IT DOES: store the render-destination pointer for the font subsystem. */

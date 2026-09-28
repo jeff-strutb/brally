@@ -9,7 +9,6 @@ va,name,verdict,calls,captured,contexts,detail,date
 0x100030b0,BrCdStopReleaseMci,EQUIVALENT,1,1,1,22_ini_cdmusic: 1 real call(s) agree,2026-09-24
 0x10003430,BrFChkFRead,EQUIVALENT,330,99,25,10_boot: 3 real call(s) agree,2026-09-24
 0x100038f0,FUN_100038f0,EQUIVALENT,2143,18,5,61_mp_race: 6 real call(s) agree,2026-09-24
-0x10005330,BrNetBeaconTick,EQUIVALENT,1899,18,3,61_mp_race: 6 real call(s) agree,2026-09-24
 0x10005810,BrGhostPickBlend,EQUIVALENT,7638,18,3,61_mp_race: 6 real call(s) agree,2026-09-24
 0x10006510,BrCarStateEncode,EQUIVALENT,635,18,3,61_mp_race: 6 real call(s) agree,2026-09-24
 0x10007750,BrCarStateDecodeDelta,EQUIVALENT,1762,9,2,61_mp_race: 9 real call(s) agree [not placed in the image; object mode],2026-09-26
@@ -27,7 +26,7 @@ va,name,verdict,calls,captured,contexts,detail,date
 0x10011fa0,BrFrameDraw,EQUIVALENT,19100,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x100131e0,BrSnapInterpDraw,EQUIVALENT,19221,120,39,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10013e80,BrRaceBeginResetOnce,EQUIVALENT,25,25,20,20_quickrace_drive: 1 real call(s) agree,2026-09-24
-0x10013f20,BrSndBankPickSlot,EQUIVALENT,76773,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10013f20,BrSnapPickSlot,EQUIVALENT,76773,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10013fd0,BrGfxDrawTexRect,EQUIVALENT,35810,114,38,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10014960,BrSub_100173F0,EQUIVALENT,17905,114,19,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10015300,BrHudDraw,EQUIVALENT,18019,114,19,20_quickrace_drive: 6 real call(s) agree,2026-09-24
@@ -74,7 +73,7 @@ va,name,verdict,calls,captured,contexts,detail,date
 0x10029480,BrGbiTexScanLoadTlut,EQUIVALENT,4671,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10029510,BrGbiTexScanLoadBlock,EQUIVALENT,26694,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x10029b50,BrTexInit,EQUIVALENT,69,67,65,10_boot: 1 real call(s) agree,2026-09-24
-0x10029cd0,BrEntGfxFreeAll,EQUIVALENT,46,43,42,20_quickrace_drive: 2 real call(s) agree,2026-09-24
+0x10029cd0,BrTex3dFreeAll,EQUIVALENT,46,43,42,20_quickrace_drive: 2 real call(s) agree,2026-09-24
 0x10029ec0,BrMat4Frustum,EQUIVALENT,18980,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
 0x1002a200,BrLightDirsAndAngles,EQUIVALENT,207,6,1,20_quickrace_drive: 6 real call(s) agree [not placed in the image; object mode],2026-09-26
 0x1002f640,BrBitLatchTake,EQUIVALENT,15,15,14,21_quickrace_finish: 2 real call(s) agree,2026-09-24

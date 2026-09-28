@@ -892,6 +892,33 @@ int BrStubTrue(void)
   return 1;
 }
 
+extern int DAT_10ac5c50;
+extern int DAT_100a9360;
+extern int DAT_10ac5bf4;
+extern unsigned short DAT_10ac5b3a;
+extern int DAT_10ac40a0;
+extern int DAT_10ac5c54;
+extern int DAT_100aab8c;
+
+/* WHAT IT DOES: reports whether a numbered input bit is set, forcing
+ * off for code 12 and on for 13/14 under a lock flag. */
+/* @implements 0x100387F0 glide BrInputBitHeld */
+int BrInputBitHeld(int code)
+{
+    if (code == 0xc)
+        return 0;
+    if (DAT_10ac5c50 != 0)
+        return 1;
+    if (DAT_100a9360 == 0) {
+        if (DAT_10ac5bf4 != 0)
+            return (1 << code) & DAT_10ac5b3a;
+        return (1 << code) & DAT_10ac40a0;
+    }
+    if ((DAT_10ac5c54 != 0) && ((code == 0xe) || (code == 0xd)))
+        return 1;
+    return (1 << code) & DAT_100aab8c;
+}
+
 
 
 #ifdef BR_MATCHING_BUILD

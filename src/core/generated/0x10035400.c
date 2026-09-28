@@ -54,8 +54,8 @@ typedef int (__stdcall *CC_std_5)(int, int, int, int, int);
  * session name and password buffers, zeroes every entry in the player table,
  * and creates the DirectPlay object. Returns zero if DirectPlay is
  * unavailable, which is how the game discovers multiplayer cannot run. */
-/* @implements 0x10035400 glide FUN_10035400 */
-int FUN_10035400(void)
+/* @implements 0x10035400 glide BrDPlayCreate */
+int BrDPlayCreate(void)
 {
   int *puVar1;
   int iVar4;
