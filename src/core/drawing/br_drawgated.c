@@ -20,6 +20,25 @@
 #define _CRTIMP __declspec(dllimport)
 #endif
 #include "slice2_17.h"
+
+/* g_s17 is the port's gathering of scattered originals.  The matching build
+ * reads the fields used here as the separate globals they are, by their
+ * DAT_ names -- which the image gate resolves from the address they spell. */
+#ifdef BR_MATCHING_BUILD
+extern uint32_t *DAT_106e7710;
+#define S17_PGFX DAT_106e7710
+extern int DAT_105ccb58;
+#define S17_F6909B0 DAT_105ccb58
+extern int DAT_106e9d8c;
+#define S17_F6C2CFC DAT_106e9d8c
+extern int DAT_105bcaec;
+#define S17_F680944 DAT_105bcaec
+#else
+#define S17_PGFX g_s17.pGfx
+#define S17_F6909B0 g_s17.f6909B0
+#define S17_F6C2CFC g_s17.f6C2CFC
+#define S17_F680944 g_s17.f680944
+#endif
 #ifdef BR_MATCHING_BUILD
 #undef BrPtrListContains
 #endif
@@ -139,9 +158,9 @@ static void s17_stf(unsigned char *p, float v)
  * the original reads the cursor, bumps the global, and only then stores. */
 #define s17_emit(w0_, w1_)                                              \
     do {                                                                \
-        uint32_t *p_ = g_s17.pGfx;                                      \
+        uint32_t *p_ = S17_PGFX;                                      \
                                                                         \
-        g_s17.pGfx = p_ + 2;                                            \
+        S17_PGFX = p_ + 2;                                            \
         p_[0] = (w0_);                                                  \
         p_[1] = (w1_);                                                  \
     } while (0)
@@ -165,31 +184,31 @@ void BrS17DrawGated(void)
      * (`mov [esp],eax` / `mov edx,[esp]`), shared ret via `je`. */
     volatile int saved;
 
-    if (g_s17.f6909B0 != 0) {
-        if (g_s17.f6909B0 == -1) {
-            saved = g_s17.f6C2CFC;
-            g_s17.f6C2CFC = 0;
+    if (S17_F6909B0 != 0) {
+        if (S17_F6909B0 == -1) {
+            saved = S17_F6C2CFC;
+            S17_F6C2CFC = 0;
         }
-        BrX1003563A(g_s17.f680944);
-        if (g_s17.f6909B0 == -1)
-            g_s17.f6C2CFC = saved;
+        BrX1003563A(S17_F680944);
+        if (S17_F6909B0 == -1)
+            S17_F6C2CFC = saved;
     }
 #else
     /* DEVIATION: seed the slot so a -1 flip by the callee is a no-op
      * rather than restoring garbage. */
-    int saved = g_s17.f6C2CFC;
+    int saved = S17_F6C2CFC;
 
-    if (g_s17.f6909B0 == 0)
+    if (S17_F6909B0 == 0)
         return;
 
-    if (g_s17.f6909B0 == -1) {
-        saved = g_s17.f6C2CFC;
-        g_s17.f6C2CFC = 0;
+    if (S17_F6909B0 == -1) {
+        saved = S17_F6C2CFC;
+        S17_F6C2CFC = 0;
     }
 
-    BrX1003563A(g_s17.f680944);
+    BrX1003563A(S17_F680944);
 
-    if (g_s17.f6909B0 == -1)
-        g_s17.f6C2CFC = saved;
+    if (S17_F6909B0 == -1)
+        S17_F6C2CFC = saved;
 #endif
 }
