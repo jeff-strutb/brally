@@ -1260,7 +1260,7 @@ glide_va,name,module,basis,file
 0x1006D9D0,BrMat4MulVec3Transposed,geometry,filed,src/core/geometry/br_mat.c
 0x1006DA20,BrMat4TransformPoint,geometry,neighbour,src/core/geometry/br_mat4.c
 0x1006DA90,BrMat3MulVec3,geometry,description,src/core/geometry/br_mat3.c
-0x1006DAD0,BrRbInitInertia,driving,description,src/core/driving/br_carphys.c
+0x1006DAD0,BrRbInitInertia,driving,filed,src/core/driving/br_rbinteg.c
 0x1006DC30,BrMat3Skew,geometry,description,src/core/geometry/br_mat3.c
 0x1006DC70,BrMat4ToMat3Both,geometry,prefix,src/core/geometry/br_mat3.c
 0x1006DCB0,BrMat4ToMat3Transposed,geometry,prefix,src/core/geometry/br_mat3.c
