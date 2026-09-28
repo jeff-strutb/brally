@@ -1,6 +1,7 @@
 /* paintshop.c -- the paint shop
  */
 #include "tgr/common.h"
+#include "tgr/gbi.h"
 
 /* -- declarations -- */
 char * memcpy(char *param_1,char *param_2,int param_3);
@@ -57,6 +58,9 @@ extern unsigned short *D_8028DB90;     /* the decal palette, RGBA5551 */
 typedef struct BrPaintArea { int x, y, w, h; } BrPaintArea;
 extern BrPaintArea D_8028DB94;         /* the paint area on screen */
 void BrPaintPlot(int x, int y, unsigned char c);
+extern Gfx *D_8028A858;
+extern int D_8028A850;
+extern int D_8028A898;                 /* the texture filter mode */
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Store the paint shop's working decal (2 KB) into the decal
@@ -81,6 +85,39 @@ void BrSwapBytes(char *param_1,char *param_2)
   uVar1 = *param_1;
   *param_1 = *param_2;
   *param_2 = uVar1;
+}
+
+/* WHAT IT DOES: Draw the loaded tw by th texture as a w by h rectangle at
+ * (x, y), upside down (t starts at the bottom row and steps back), in
+ * 320-wide coordinates halved on a low-res screen; perspective correction
+ * is off for the rectangle and back on after it.  The rectangle and its two
+ * half-words are three statements on three lines: IDO's code for them
+ * depends on the line breaks, and a one-line macro puts them out of order. */
+/* @implements 0x80252F64 tgr BrTexRectFlipDraw */
+void BrTexRectFlipDraw(int tw, int th, int x, int y, int w, int h)
+{
+  gDPPipeSync(D_8028A858++);
+  gDPSetCycleType(D_8028A858++, G_CYC_1CYCLE);
+  gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 12, 2, D_8028A898);
+  gDPSetCombine(D_8028A858++, 0xffffff, 0xfffcf87c);
+  gDPSetRenderMode(D_8028A858++, G_RM_OPA_SURF, G_RM_OPA_SURF2);
+  gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 19, 1, 0);
+  if (D_8028A850 == 0) {
+    x >>= 1;
+    y >>= 1;
+    w >>= 1;
+    h >>= 1;
+  }
+  {
+    Gfx *_g = (Gfx *)(D_8028A858++);
+
+    _g->words.w0 = (_SHIFTL(G_TEXRECT, 24, 8) | _SHIFTL((x + w) << 2, 12, 12) | _SHIFTL((y + h) << 2, 0, 12));
+    _g->words.w1 = (_SHIFTL(0, 24, 3) | _SHIFTL(x << 2, 12, 12) | _SHIFTL(y << 2, 0, 12));
+  }
+  gImmp1(D_8028A858++, G_RDPHALF_1, (_SHIFTL(0, 16, 16) | _SHIFTL(th << 5, 0, 16)));
+  gImmp1(D_8028A858++, G_RDPHALF_2, (_SHIFTL((tw << 10) / w, 16, 16) | _SHIFTL(-(th << 10) / h, 0, 16)));
+  gDPPipeSync(D_8028A858++);
+  gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 19, 1, 0x80000);
 }
 
 /* WHAT IT DOES: Move the paint shop cursor from the stick once it is pushed
