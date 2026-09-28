@@ -368,3 +368,7 @@ va,name,kind
 80229510,BrRankCmpKey,func
 80225E1C,BrSeg2SideTest,func
 80258E64,BrMat3FromMat4T,func
+80224808,BrVec3Sub,func
+8022439C,BrVec3Cross,func
+80224404,BrVec3Dot,func
+8022591C,BrTriContainsPoint,func
