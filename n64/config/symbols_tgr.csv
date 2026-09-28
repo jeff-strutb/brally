@@ -450,3 +450,4 @@ va,name,kind
 8024F7D4,BrPaintFillRect,func
 8021FE80,BrCarSetHeading,func
 80259A18,BrRbVelAtFlatPoint,func
+8025F0A4,BrTriCacheDrop,func
