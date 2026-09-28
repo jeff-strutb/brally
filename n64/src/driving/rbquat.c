@@ -55,6 +55,13 @@ typedef struct BrRbBody {       /* a rigid body's shape and mass properties */
   int x1d8;
 } BrRbBody;
 void BrStub80258070(float m[3][3]);
+typedef struct BrRbState {      /* a full rigid-body state (0x44 bytes) */
+  float pos[3];                 /* 0x00 */
+  float vel[3];                 /* 0x0C */
+  float q[4];                   /* 0x18  orientation */
+  float omega[3];               /* 0x28  angular velocity */
+  float qdot[4];                /* 0x34  orientation rate */
+} BrRbState;
 float sqrtf(float x);
 /* -- end declarations -- */
 
@@ -195,6 +202,42 @@ void BrQuatToMat(float m[4][4], BrPose *p)
   BrStub80258078();
 }
 
+
+/* WHAT IT DOES: Step a rigid-body state by dt (Euler): position by
+ * velocity, orientation by its rate (renormalised); velocity, angular
+ * velocity and orientation rate are carried over. */
+/* @implements 0x80258530 tgr BrRbStateStep */
+void BrRbStateStep(BrRbState *out, BrRbState *in, float dt)
+{
+  float dp[3];
+  float dq[4];
+
+  dp[0] = in->vel[0] * dt;
+  dp[1] = in->vel[1] * dt;
+  dp[2] = in->vel[2] * dt;
+  out->pos[0] = in->pos[0] + dp[0];
+  out->pos[1] = in->pos[1] + dp[1];
+  out->pos[2] = in->pos[2] + dp[2];
+  out->vel[0] = in->vel[0];
+  out->vel[1] = in->vel[1];
+  out->vel[2] = in->vel[2];
+  dq[0] = in->qdot[0] * dt;
+  dq[1] = in->qdot[1] * dt;
+  dq[2] = in->qdot[2] * dt;
+  dq[3] = in->qdot[3] * dt;
+  out->q[0] = in->q[0] + dq[0];
+  out->q[1] = in->q[1] + dq[1];
+  out->q[2] = in->q[2] + dq[2];
+  out->q[3] = in->q[3] + dq[3];
+  BrVec4Normalise(out->q);
+  out->omega[0] = in->omega[0];
+  out->omega[1] = in->omega[1];
+  out->omega[2] = in->omega[2];
+  out->qdot[0] = in->qdot[0];
+  out->qdot[1] = in->qdot[1];
+  out->qdot[2] = in->qdot[2];
+  out->qdot[3] = in->qdot[3];
+}
 
 /* WHAT IT DOES: Fill in a block of seven rigid-body parameters: six floats
  * and an int. */
