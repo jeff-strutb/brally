@@ -12,6 +12,10 @@ void BrVec3AddTo(BrVec3 *pA, BrVec3 *pB);
 void BrVec3SubFrom(BrVec3 *pA, BrVec3 *pB);
 extern int D_8026FF18;                  /* the game mode */
 extern int D_80270788;
+void BrVec3Sub(BrVec3 *out, BrVec3 *a, BrVec3 *b);
+float BrVec3Length(BrVec3 *v);
+void BrVec3Div(BrVec3 *out, BrVec3 *v, float d);
+void BrVec3Cross(BrVec3 *out, BrVec3 *a, BrVec3 *b);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Update the camera placement for one car: an out-of-line
@@ -100,4 +104,35 @@ void BrCarCamInit(BrCar *car)
   car->camPosB.z = car->camPosA.z = car->cams[3].mtx[3][2] = z;
   car->x1fac = 0.0f;
   car->x1f90 = 2.0f;
+}
+
+/* WHAT IT DOES: Aim a car's camera at its target: the forward row points
+ * from the camera to the target (kept, or taken from the car's forward
+ * axis if it is zero, when they coincide); the up row is the car's up axis
+ * (or world z) crossed with it, and the third row completes the frame. */
+/* @implements 0x80220FF4 tgr BrCarCamLookAt */
+void BrCarCamLookAt(BrCar *car, BrCarCam *cam)
+{
+  BrVec3 v;
+  float len;
+  float spare[2];                 /* unused: it only holds stack slots */
+
+  BrVec3Sub(&v, &car->camTarget, (BrVec3 *)cam->mtx[3]);
+  len = BrVec3Length(&v);
+  if (len != 0.0f) {
+    BrVec3Div((BrVec3 *)cam->mtx[0], &v, len);
+  } else if (BrVec3Length((BrVec3 *)cam->mtx[0]) == 0.0f) {
+    cam->mtx[0][0] = car->mtx0[0][0];
+    cam->mtx[0][1] = car->mtx0[0][1];
+    cam->mtx[0][2] = car->mtx0[0][2];
+  }
+  if (car->xf4c != 0) {
+    BrVec3Cross((BrVec3 *)cam->mtx[1], (BrVec3 *)car->mtx0[2], (BrVec3 *)cam->mtx[0]);
+  } else {
+    v.x = 0.0f;
+    v.y = 0.0f;
+    v.z = 1.0f;
+    BrVec3Cross((BrVec3 *)cam->mtx[1], &v, (BrVec3 *)cam->mtx[0]);
+  }
+  BrVec3Cross((BrVec3 *)cam->mtx[2], (BrVec3 *)cam->mtx[0], (BrVec3 *)cam->mtx[1]);
 }

@@ -72,7 +72,7 @@ typedef struct BrCar {
     int xed8;                   /* 0xED8 */
     char padedc[0xF48 - 0xEDC];
     int xf48;                   /* 0xF48  camera mode */
-    char padf4c[0xF50 - 0xF4C];
+    int xf4c;                   /* 0xF4C  the camera keeps the car's up axis */
     BrVec3 posPrev;             /* 0xF50  last frame's position */
     int xf5c;                   /* 0xF5C */
     int xf60;                   /* 0xF60 */
@@ -110,7 +110,7 @@ typedef struct BrCar {
     BrCarCam cam4;              /* 0x1F44 */
     char pad1f88[0x1F90 - 0x1F88];
     float x1f90;                /* 0x1F90 */
-    char pad1f94[0x1FA0 - 0x1F94];
+    BrVec3 camTarget;           /* 0x1F94  where the camera looks */
     BrVec3 camPosA;             /* 0x1FA0  copies of the chase camera's start position */
     float x1fac;                /* 0x1FAC */
     char pad1fb0[0x1FB4 - 0x1FB0];
