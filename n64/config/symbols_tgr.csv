@@ -114,6 +114,7 @@ va,name,kind
 8021C748,BrRomRead,func
 8021C814,BrRomReadSize,func
 8021C848,BrRomReadWord,func
+8021CB4C,BrRlePlanesUnpack,func
 8021CD24,BrStreamInit,func
 8021CD30,BrRomUnpack,func
 8021D070,BrDlRebaseWord,func
@@ -341,6 +342,7 @@ va,name,kind
 80248B80,BrPaintMirrorSide,func
 80248DB4,BrPaintFlipApply,func
 80248F38,BrDecalMemInit,func
+80248F88,BrDecalPakTransfer,func
 8024BE78,BrPaintStickMove,func
 8024D374,BrPaintCursorInBox,func
 8024D3F0,BrPaintCursorInRect,func
