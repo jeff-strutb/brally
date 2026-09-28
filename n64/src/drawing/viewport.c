@@ -98,6 +98,35 @@ void BrViewportApply(void)
   D_8028AB68 = D_80318CD0[D_8028AB60].vp.vtrans[2];
 }
 
+/* WHAT IT DOES: Draw a one-pixel outline round the w by h rectangle at
+ * (x, y): one-cycle mode, the fog colour set to 0xFF, then the top, bottom,
+ * left and right edges as fill rectangles.  The three constant commands
+ * are written out over several lines (the one-line macros store w1 first). */
+/* @implements 0x80219F6C tgr BrViewOutline */
+void BrViewOutline(int x, int y, int w, int h)
+{
+  gDPPipeSync(D_8028A858++);
+  {
+    Gfx *_g = D_8028A858++;
+    _g->words.w0 = 0xb900031d;         /* render mode */
+    _g->words.w1 = 0x55004240;
+  }
+  {
+    Gfx *_g = D_8028A858++;
+    _g->words.w0 = 0xba001402;         /* cycle type: one cycle */
+    _g->words.w1 = 0;
+  }
+  {
+    Gfx *_g = D_8028A858++;
+    _g->words.w0 = 0xf8000000;         /* fog colour */
+    _g->words.w1 = 0xff;
+  }
+  gDPFillRectangle(D_8028A858++, x, y, x + w, y + 1);
+  gDPFillRectangle(D_8028A858++, x, y + h - 1, x + w, y + h);
+  gDPFillRectangle(D_8028A858++, x, y, x + 1, y + h);
+  gDPFillRectangle(D_8028A858++, x + w - 1, y, x + w, y + h);
+}
+
 /* WHAT IT DOES: Turn a depth ratio (a / b) into the z-buffer's fixed-point
  * value through the current viewport's depth scale and offset. Nothing in
  * the ROM calls it. */

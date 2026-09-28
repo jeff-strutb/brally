@@ -82,6 +82,7 @@ va,name,kind
 80219BF0,BrViewportSet,func
 80219DF0,BrViewportFull,func
 80219F04,BrViewportApply,func
+80219F6C,BrViewOutline,func
 8021A4C8,BrScreenFlush2Layout1,func
 8021A540,BrScreenFlush2Layout0,func
 8021A920,BrPadStartRead,func
