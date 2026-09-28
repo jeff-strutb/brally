@@ -1,10 +1,13 @@
-/* vec.c -- 3-vector math, Top Gear Rally (N64) 0x8022439C-0x80224B7C.
+/* vec.c -- 3-vector math, Top Gear Rally (N64) 0x8022439C-0x80224D00.
  *
  * The PC decomp has the same routines (src/core/geometry/br_vec.c); these are
  * transcribed from the ROM, not copied.  IDO keeps commutative operands in
  * source order, so every `a * b` below is the order the original wrote.
  */
 #include "tgr/vec.h"
+
+float sinf(float x);
+float cosf(float x);
 
 /* WHAT IT DOES: a to the power b for b >= 0: a multiplied in for each
  * whole unit of b, then the binomial series (30 terms) for the fraction. */
@@ -346,4 +349,38 @@ float BrVec3LenXY(BrVec3 *pV)
     float y = pV->y;
     float x = pV->x;
     return sqrtf(y * y + x * x);
+}
+
+/* WHAT IT DOES: Rotate a vector in place by angle a about a unit axis
+ * (Rodrigues: c v + (1 - c)(k.v) k + s k x v, written out as the rotation
+ * matrix's rows).
+ * RESIDUE (63): float colouring -- the ROM holds t, kx, ky, kz in f18,
+ * f16, f12, f14 and spills its common products in a different slot order
+ * (and recomputes t * ky where ours keeps it); same operations. */
+/* @implements 0x80224B7C tgr BrVec3RotateAxis */
+void BrVec3RotateAxis(BrVec3 *pV, float a, BrVec3 *pK)
+{
+    float s;
+    float c;
+    float t;
+    float x;
+    float y;
+    float z;
+    float kx;
+    float ky;
+    float kz;
+    float spare[6];                 /* unused: the ROM's frame */
+
+    s = sinf(a);
+    c = cosf(a);
+    t = 1.0f - c;
+    x = pV->x;
+    y = pV->y;
+    z = pV->z;
+    kx = pK->x;
+    ky = pK->y;
+    kz = pK->z;
+    pV->x = (t * kx * kx + c) * x + y * (t * kx * ky + s * kz) + z * (t * kx * kz - s * ky);
+    pV->y = (t * kx * ky - s * kz) * x + y * (t * ky * ky + c) + z * (t * ky * kz + s * kx);
+    pV->z = (s * ky + t * kx * kz) * x + y * (t * ky * kz - s * kx) + z * (t * kz * kz + c);
 }
