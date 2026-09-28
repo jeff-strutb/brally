@@ -363,3 +363,4 @@ va,name,kind
 80221108,BrCarCamPlaceChase,func
 8025980C,BrRbSolveAccel,func
 80254D90,BrObjSelCycle,func
+80218104,BrGfxFillRect,func
