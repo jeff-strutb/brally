@@ -55,7 +55,60 @@ typedef struct BrRbBody {       /* a rigid body's shape and mass properties */
   int x1d8;
 } BrRbBody;
 void BrStub80258070(float m[3][3]);
+float sqrtf(float x);
 /* -- end declarations -- */
+
+/* WHAT IT DOES: Multiply two quaternions (w, x, y, z): out = a * b.  The
+ * PC twin's source (br_vecnorm.c) compiles to the same bytes. */
+/* @implements 0x80258080 tgr BrQuatMul */
+void BrQuatMul(float out[4], float a[4], float b[4])
+{
+  float b0 = b[0];
+  float b1 = b[1];
+  float b2 = b[2];
+  float b3 = b[3];
+  float a0 = a[0];
+  float a1 = a[1];
+  float a2 = a[2];
+  float a3 = a[3];
+  float r0, r1, r2;
+
+  r0 = a0 * b0 - a1 * b1 - a2 * b2 - a3 * b3;
+  r1 = a1 * b0 + a0 * b1 - a3 * b2 + a2 * b3;
+  r2 = a2 * b0 + a3 * b1 + a0 * b2 - a1 * b3;
+  out[3] = a3 * b0 - a2 * b1 + a1 * b2 + a0 * b3;
+  out[2] = r2;
+  out[1] = r1;
+  out[0] = r0;
+}
+
+/* WHAT IT DOES: Scale a 4-vector (a quaternion) to unit length. */
+/* @implements 0x8025813C tgr BrVec4Normalise */
+void BrVec4Normalise(float v[4])
+{
+  float k;
+
+  k = sqrtf(v[0] * v[0] + v[1] * v[1] + v[2] * v[2] + v[3] * v[3]);
+  k = 1.0f / k;
+  v[0] *= k;
+  v[1] *= k;
+  v[2] *= k;
+  v[3] *= k;
+}
+
+/* WHAT IT DOES: Scale a 3-vector to unit length. */
+/* @implements 0x802581CC tgr BrVec3Normalise */
+void BrVec3Normalise(float v[3])
+{
+  float k;
+
+  k = sqrtf(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+  k = 1.0f / k;
+  v[0] *= k;
+  v[1] *= k;
+  v[2] *= k;
+}
+
 
 /* WHAT IT DOES: Compute a rigid body's orientation rate: the quaternion
  * derivative from its angular velocity (half the product of the spin and

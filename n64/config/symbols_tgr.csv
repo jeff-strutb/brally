@@ -339,3 +339,6 @@ va,name,kind
 80255000,BrCheatUnlock8000,func
 80255018,BrCheatToggleFF20,func
 80255030,BrCheatToggleAA68,func
+80258080,BrQuatMul,func
+8025813C,BrVec4Normalise,func
+802581CC,BrVec3Normalise,func
