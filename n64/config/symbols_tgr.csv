@@ -357,3 +357,7 @@ va,name,kind
 8020CF44,BrTimeFormat,func
 80258EF8,BrMat3Mul,func
 80225038,BrVec3Project,func
+8022494C,BrVec3MulAdd,func
+80224990,BrVec3MulAddTo,func
+802248C8,BrVec3AddTo,func
+80221108,BrCarCamPlaceChase,func

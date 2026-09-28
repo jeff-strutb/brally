@@ -1,10 +1,14 @@
 /* carcam.c -- choosing where the camera looks from for a car
  */
 #include "tgr/common.h"
+#include "tgr/car.h"
 
 /* -- declarations -- */
 void func_80226488(int ent);
 extern float D_8031B1D8[];
+void BrVec3MulAdd(BrVec3 *pOut, BrVec3 *pA, BrVec3 *pB, float s);
+void BrVec3MulAddTo(BrVec3 *pA, BrVec3 *pB, float s);
+void BrVec3AddTo(BrVec3 *pA, BrVec3 *pB);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Update the camera placement for one car: an out-of-line
@@ -46,3 +50,16 @@ void BrCamShakeAdd(int cam, float amount)
   }
 }
 
+
+/* WHAT IT DOES: Switch a car to its fourth camera and place it 6 units along
+ * the body's first axis, 2 along its second and 1 along its third from the
+ * car's position (camera mode 2).  The PC twin is BrVec3Predict. */
+/* @implements 0x80221108 tgr BrCarCamPlaceChase */
+void BrCarCamPlaceChase(BrCar *car)
+{
+  car->cam = &car->cams[3];
+  BrVec3MulAdd((BrVec3 *)car->cams[3].mtx[3], (BrVec3 *)car->mtx0[3], (BrVec3 *)car->mtx0[0], 6.0f);
+  BrVec3MulAddTo((BrVec3 *)car->cams[3].mtx[3], (BrVec3 *)car->mtx0[1], 2.0f);
+  BrVec3AddTo((BrVec3 *)car->cams[3].mtx[3], (BrVec3 *)car->mtx0[2]);
+  car->xf48 = 2;
+}
