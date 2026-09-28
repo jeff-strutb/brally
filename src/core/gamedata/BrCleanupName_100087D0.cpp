@@ -62,7 +62,7 @@ void Name87D0::CleanupName(char *src, char *dst)
 
     if (strlen(dst) > 64)
         BrLogFatalPrintf(
-            "CleanupName: Name is greater than 64 bytes. Memory Corrupted...");
+            "CleanupName: Name is greater than 64 bytes. Memory Corrupted!");
 
     for (i = 0; i < 64; i++) {
         char c = dst[i];
