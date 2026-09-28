@@ -260,45 +260,31 @@ extern int DAT_10b71648;
 
 /* WHAT IT DOES: under the CD-audio mutex, ticks a 100-step counter and
  * refreshes the on-screen time string when the counter is live. */
-/* @t4-pass 0x10005400 1 2026-09-07 probes 61 bytes 155 insns 47 regions 4 rows 2 census yes  (tools/crank.py) */
-/* @t4-pass 0x10005400 2 2026-09-07 probes 74 bytes 155 insns 47 regions 4 rows 2 census yes  (tools/crank.py) */
-/* @t4-pass 0x10005400 3 2026-09-09 probes 10 bytes 154 insns 46 regions 2 rows 1 census no  (hand, fn.py variants at the ~0x80 spelling: counter temps, wrap/guard/mask forms, decl orders, all inert) */
-/* @t4-pass 0x10005400 4 2026-09-09 probes 10 bytes 154 insns 46 regions 2 rows 1 census yes  (hand, fn.py variants: register hint, call temp, operand orders, dead-store shapes, all inert; corpus MISS at +0x60 len 10) */
-/* @t3 0x10005400 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 154/153 insns 46/47 rows 1+0 regions 2 oracle EQUIVALENT
- * @t3-effort passes 4 zero-movement 3 4
- * residue is one allocation copy: the original computes the counter web in
- * eax and copies to esi once (`mov esi,eax`, the singleton); every probed
- * shape births the web in esi directly (-1 insn, +1 B of esi encodings).
- * The old and-0x3f fold residue was removed at source (a689ef2).
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+/* Byte-exact 2026-09-28, hand-transcribed.  The counter is ticked on the
+ * global itself and read into n only after the wrap (the original's eax web
+ * copied to esi once at the join); the flags call sits inside
+ * FUN_10004ad0's argument list, so the trailing 0 is pushed before it, as
+ * the original does. */
 /* @implements 0x10005400 glide BrCdAudioTick */
 void BrCdAudioTick(void)
 {
     int n;
-    int flags;
 
     WaitForSingleObject(DAT_1021c90c, 0xffffffff);
-    n = DAT_1021ce44;
-    if (n != 0) {
-        n++;
-        DAT_1021ce44 = n;
-        if (n >= 0x64) {
+    if (DAT_1021ce44 != 0) {
+        DAT_1021ce44++;
+        if (DAT_1021ce44 >= 0x64) {
             DAT_105ccb80 = 1;
-            n = 0;
             DAT_1021ce44 = 0;
         }
     }
+    n = DAT_1021ce44;
     ReleaseMutex(DAT_1021c90c);
     if (n != 0) {
-        /* `& ~0x80`, one expression: the two-statement &=0x7f / |=0x40
-         * spelling emitted the folded and-0x3f pair plus a wider counter
-         * rotation; this form leaves only the orig's eax->esi copy
-         * (2026-09-09). Value-identical: bit 7 cleared, bit 6 set. */
-        flags = (FUN_10004d80(DAT_1007b264) & ~0x80) | 0x40;
         FUN_10004ad0(&DAT_10273328, DAT_1007b264, DAT_10226e7c,
                      DAT_10af3bb4, DAT_10af3bb5, DAT_10af3bb6,
-                     DAT_10273330, &DAT_10b71648, flags, 0);
+                     DAT_10273330, &DAT_10b71648,
+                     (FUN_10004d80(DAT_1007b264) & ~0x80) | 0x40, 0);
     }
 }
 
