@@ -58,6 +58,19 @@ def link_function(obj, name, place_va, data_va, fnvas, syms, self_va=None):
         blocks.append([cur, bytearray(blob), si])
         cur += len(blob)
 
+    # The object's literals that already sit in the ROM: when a prefix of its
+    # .rodata (its strings, in order) is byte-for-byte the ROM's .rodata at
+    # one place, references into that prefix go to the ROM's copy, so a
+    # pointer to a literal that the body stores or passes on is the
+    # original's pointer.  The ROM's .rodata is never written, so the content
+    # at either address is the same.
+    romlit = rom_literals(obj)
+
+    def rodata_va(addend):
+        if romlit and addend < romlit[1]:
+            return romlit[0] + addend
+        return secbase['.rodata'] + addend
+
     def text_va(off):
         for n, (s, e) in pieces.items():
             if s <= off < e:
@@ -116,6 +129,8 @@ def link_function(obj, name, place_va, data_va, fnvas, syms, self_va=None):
             if kind == 'sec':
                 if val == '.text':
                     tgt = text_va(addend)
+                elif val == '.rodata' and val in secbase:
+                    tgt = rodata_va(addend)
                 elif val in secbase:
                     tgt = secbase[val] + addend
                 else:
@@ -140,6 +155,8 @@ def link_function(obj, name, place_va, data_va, fnvas, syms, self_va=None):
             if kind == 'sec':
                 if val == '.text':
                     v = text_va(add)
+                elif val == '.rodata' and val in secbase:
+                    v = rodata_va(add)
                 elif val in secbase:
                     v = secbase[val] + add
                 else:
@@ -150,3 +167,34 @@ def link_function(obj, name, place_va, data_va, fnvas, syms, self_va=None):
 
     code = b''.join(struct.pack('>I', x) for x in out)
     return code, [(b, bytes(blob)) for b, blob, _ in blocks]
+
+
+ROM_RODATA = (0x8026FAB0, 0x802AC400)      # the ROM's .data/.rodata, vram
+MIN_LITERALS = 32                          # bytes; shorter prefixes are not trusted
+_rom = None
+
+
+def rom_literals(obj):
+    """-> (ROM address, length) of the longest prefix of the object's .rodata
+    found byte-exact at exactly one place in the ROM's .rodata, stopping at
+    the first word a relocation patches; or None."""
+    global _rom
+    si, blob = obj.sec('.rodata')
+    if si is None or len(blob) < MIN_LITERALS:
+        return None
+    relocs = [o for o, t, s in obj.rels.get(si, [])]
+    limit = min(relocs + [len(blob)])
+    if limit < MIN_LITERALS:
+        return None
+    if _rom is None:
+        d = B.Rom().d
+        off = ROM_RODATA[0] - B.BASE + B.ROMOFF
+        _rom = d[off:off + ROM_RODATA[1] - ROM_RODATA[0]]
+    head = bytes(blob[:MIN_LITERALS])
+    at = _rom.find(head)
+    if at < 0 or _rom.find(head, at + 1) >= 0:
+        return None
+    n = MIN_LITERALS
+    while n < limit and _rom[at + n:at + n + 1] == blob[n:n + 1]:
+        n += 1
+    return ROM_RODATA[0] + at, n

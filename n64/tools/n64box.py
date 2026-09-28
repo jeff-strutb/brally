@@ -47,6 +47,7 @@ RDRAM = 0x800000                 # 8 MB: the game's 4 MB plus room for placed bo
 ANNEX = 0x80500000               # where bodies that outgrow their slot are placed
 MMIO_LO, MMIO_HI = 0x04000000, 0x04900000
 ENTRY = 0x80200000
+CODE_LO, CODE_HI = 0x80200000, 0x8026FAB0     # the game's .text
 TICKS_PER_FRAME = 781250         # osGetCount runs at 46.875 MHz; 1/60 s
 FAKE_RA = 0x80000180             # an exception-vector address the game never runs
 
@@ -323,6 +324,14 @@ class Box:
                     a, b = max(bottom, lo) - lo, min(sp, hi) - lo
                     if a < b:
                         ram[a:b] = bytes(b - a)
+                    # In the live part of a stack, a word holding a code
+                    # address (a saved return address) says where the code
+                    # sits, not what it did: a placed body that is not
+                    # byte-exact returns to different addresses.
+                    for w in range((max(sp, lo) - lo + 3) & ~3, min(top, hi) - lo, 4):
+                        v = int.from_bytes(ram[w:w + 4], 'big')
+                        if CODE_LO <= v < CODE_HI or ANNEX <= v < ANNEX + 0x100000:
+                            ram[w:w + 4] = bytes(4)
         return hashlib.sha1(bytes(ram)).hexdigest()[:16]
 
     # ---------------------------------------------------------------- HLE

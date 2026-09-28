@@ -57,7 +57,7 @@ from unicorn import mips_const as M  # noqa: E402
 SCRIPTS = os.path.join(N64, 'tools/n64box_scripts')
 LIVE = os.path.join(N64, 'config/t3_live.csv')
 WHOLE = os.path.join(N64, 'config/whole_image.csv')
-FRAMES = {}                      # per script; default 3600 frames (a minute)
+FRAMES = {'race_pause.txt': 4000, 'arcade_timeup.txt': 6000}   # per script; default 3600 frames (a minute)
 TEST_CODE, TEST_DATA = 0x80600000, 0x80780000
 CODE_LO, CODE_HI = 0x80200000, 0x8026FAB0
 DEAD_STACK = 0x4000
@@ -436,6 +436,12 @@ def compare(a, b, sp, kind='int'):
         # scratch (IDO spills incoming arguments there)
         dlo, dhi = (sp - DEAD_STACK) & 0x1FFFFFFF, (sp + ARG_HOME) & 0x1FFFFFFF
         # compare page by page, skipping the dead stack below the caller
+        if os.environ.get('N64T3_VERBOSE'):
+            runs = [(o, b) for o, b in ram_patch(ram_a, ram_b, dlo, dhi) if o >= (DEAD_LO & 0x1FFFFFFF)]
+            if runs:
+                return '%d runs: %s' % (len(runs), ', '.join(
+                    '%08X+%d(%s->%s)' % (0x80000000 | o, len(b), ram_a[o:o + min(len(b), 8)].hex(),
+                                         b[:8].hex()) for o, b in runs[:12]))
         for off in range(0, len(ram_a), 0x1000):
             x, y = ram_a[off:off + 0x1000], ram_b[off:off + 0x1000]
             if x == y:
@@ -696,9 +702,19 @@ def _image_worker(job):
     return sc, first, a.frame, ra
 
 
+def t3_tagged():
+    out = set()
+    for f in B.all_sources():
+        for m in re.finditer(r'@t3 (0x[0-9A-Fa-f]{8})', open(f).read()):
+            out.add(int(m.group(1), 16))
+    return out
+
+
 def run_image(with_vas=()):
     from concurrent.futures import ProcessPoolExecutor
-    cert = IMG.t3_certified() | set(with_vas)
+    # every T3 body: an @t3 tag in the source and an EQUIVALENT row (an
+    # EQUIVALENT draft that has not been certified is not part of the image)
+    cert = (IMG.t3_certified() & t3_tagged()) | set(with_vas)
     img, extra, rep = _build_only(cert)
     results = []
     with ProcessPoolExecutor(min(14, len(scripts()))) as ex:
@@ -797,9 +813,13 @@ def main():
     ap.add_argument('--qualify', nargs='+')
     ap.add_argument('--cand', action='store_true',
                     help='--live on build/n64/cand drafts (a survey; writes build/n64/cand_live.csv)')
+    ap.add_argument('--cap', type=int,
+                    help='calls compared in full per script before sampling (default %d)' % MAX_CALLS)
     a = ap.parse_args()
     global CAND_DIR
     global CAP
+    if a.cap:
+        CAP = a.cap
     if a.cand:
         CAND_DIR = os.path.join(B.OUT, 'cand')
         CAP = 12                        # a survey: a dozen calls per script
