@@ -59,6 +59,21 @@ void BrMat3Transpose(float t[3][3], float c[3][3], float m[4][4])
 }
 
 
+/* WHAT IT DOES: Take the 3x3 rotation out of a 4x4 matrix, transposed. */
+/* @implements 0x80258E64 tgr BrMat3FromMat4T */
+void BrMat3FromMat4T(float t[3][3], float m[4][4])
+{
+  int i;
+  int j;
+
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; j++) {
+      t[j][i] = m[i][j];
+    }
+  }
+}
+
+
 /* WHAT IT DOES: Multiply two 3x3 matrices: out = a * b.  (The PC twin in
  * br_rbinteg.c needs a float local for VC5; IDO matches without it.) */
 /* @implements 0x80258EF8 tgr BrMat3Mul */
