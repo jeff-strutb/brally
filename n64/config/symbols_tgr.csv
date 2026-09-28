@@ -477,3 +477,4 @@ va,name,kind
 80266BA8,__ull_to_f,func
 80254E3C,BrObjViewFrame,func
 80205FDC,BrRaceResultSave,func
+8023CBFC,BrParticleStep,func
