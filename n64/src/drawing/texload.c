@@ -2,10 +2,34 @@
  * fixed-point range, and texture loads
  */
 #include "tgr/common.h"
+#include "tgr/gbi.h"
 
 /* -- declarations -- */
 int sprintf(char *buf, char *fmt, ...);
 void BrFatal(char *msg);
+typedef struct BrTex {          /* a texture's load record (0x24 bytes) */
+  void *data;                   /* 0x00 */
+  void *tlut;                   /* 0x04  palette of a 4-bit texture */
+  char pad08[4];
+  unsigned short w;             /* 0x0C */
+  unsigned short h;             /* 0x0E */
+  short ult;                    /* 0x10 */
+  short uls;                    /* 0x12 */
+  short lrt;                    /* 0x14 */
+  short lrs;                    /* 0x16 */
+  char pad18[8];
+  unsigned int mirrorS : 1;     /* 0x20 */
+  unsigned int mirrorT : 1;
+  unsigned int clampS : 1;
+  unsigned int clampT : 1;
+  unsigned int type : 4;        /* 1: 4-bit colour index, 4: 8-bit intensity, else 16-bit RGBA */
+  unsigned int rest : 24;
+} BrTex;
+extern Gfx *D_8028A858;
+extern int D_8028AB1C;                  /* the texture's TMEM address */
+extern int D_8028AB18;                  /* the tile it is drawn with */
+void BrTexSizeBits(unsigned int v, int *mask, int *bits);
+void func_80264420(int);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: The largest magnitude among a 4x4 matrix's first twelve
@@ -120,4 +144,84 @@ void BrTexSizeBits(unsigned int v, int *mask, int *bits)
     *bits = 0;
   }
   *mask = 0xffff;
+}
+
+/* WHAT IT DOES: Load texture n of a table into TMEM and set its render tile:
+ * wrap (clamp/mirror) from its flags, a 4-bit colour-index texture with its
+ * 16-colour palette, an 8-bit intensity one (clamped), or a 16-bit RGBA
+ * one; mask sizes from the texture's width and height, and texturing on
+ * with the full scale.  Built from libultra's texture macros (their MIN and
+ * block pointers are in the ROM); the wrap flags are bitfields.
+ * RESIDUE (~230 raw, 24 aligned ops): one stack slot sits above the palette
+ * in the ROM and below it here, and the TMEM/tile globals load at other
+ * points.  Not yet matched. */
+/* @implements 0x80217734 tgr BrTexLoad */
+void BrTexLoad(int n, BrTex *tbl)
+{
+  BrTex *tx;
+  int maskS;
+  int maskT;
+  int bitsS;
+  int bitsT;
+  int cms;
+  int cmt;
+  int w;
+  int h;
+  int fmt;
+  int siz;
+  int pal;
+  int tmem;
+
+  tx = &tbl[n];
+  w = tx->w;
+  BrTexSizeBits(w, &maskS, &bitsS);
+  h = tx->h;
+  BrTexSizeBits(h, &maskT, &bitsT);
+  cms = tx->clampS ? 2 : 0;
+  if (tx->mirrorS) {
+    cms |= 1;
+  }
+  cmt = tx->clampT ? 2 : 0;
+  if (tx->mirrorT) {
+    cmt |= 1;
+  }
+  gDPTileSync(D_8028A858++);
+  gDPSetTextureImage(D_8028A858++, 0, 2, 1, tx->data);
+  tmem = D_8028AB1C & 0x1ff;
+  gDPSetTile(D_8028A858++, 0, 2, 0, tmem, 7, 0, 0, bitsT, 0, 0, bitsS, 0);
+  gDPLoadSync(D_8028A858++);
+  if (tx->type == 1) {
+    gDPLoadBlock(D_8028A858++, 7, 0, 0, ((w * h + 3) >> 2) - 1, 0);
+    pal = 15;
+    gDPLoadSync(D_8028A858++);
+    gDPSetTextureImage(D_8028A858++, 0, 2, 1, tx->tlut);
+    gDPTileSync(D_8028A858++);
+    gDPSetTile(D_8028A858++, 0, 0, 0, 0x1f0, 7, 0, 0, 0, 0, 0, 0, 0);
+    gDPLoadSync(D_8028A858++);
+    gDPLoadTLUTCmd(D_8028A858++, 7, 15);
+    gDPPipeSync(D_8028A858++);
+    gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 14, 2, 0x8000);
+    fmt = 2;
+    siz = 0;
+  } else if (tx->type == 4) {
+    cmt = cms = 2;
+    func_80264420(0);
+    gDPLoadBlock(D_8028A858++, 7, 0, 0, ((w * h + 1) >> 1) - 1, 0);
+    gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 14, 2, 0);
+    fmt = 4;
+    siz = 1;
+    tmem = D_8028AB1C & 0x1ff;
+    } else {
+    gDPLoadBlock(D_8028A858++, 7, 0, 0, w * h - 1, 0);
+    gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 14, 2, 0);
+    fmt = 0;
+    siz = 2;
+  }
+  {
+    int tile = D_8028AB18;
+
+    gDPSetTile(D_8028A858++, fmt, siz, (w * (4 << siz) + 63)  >> 6, tmem, tile, pal, cmt, bitsT, 0, cms, bitsS, 0);
+    gDPSetTileSize(D_8028A858++, tile, tx->uls * 4 + 2, tx->ult * 4 + 2, tx->lrs * 4 + 2, tx->lrt * 4 + 2);
+    gSPTexture(D_8028A858++, maskS, maskT, 0, tile, 1);
+  }
 }
