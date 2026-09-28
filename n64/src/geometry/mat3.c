@@ -7,6 +7,37 @@ extern int D_8025882C;
 extern int D_802588F4;
 /* -- end declarations -- */
 
+/* WHAT IT DOES: Rotate a vector by a 4x4 matrix's 3x3 part: out = R v. */
+/* @implements 0x802586C0 tgr BrMat4RotateVec */
+void BrMat4RotateVec(float out[3], float m[4][4], float v[3])
+{
+  int i;
+  int k;
+
+  for (i = 0; i < 3; i++) {
+    out[i] = 0.0f;
+    for (k = 0; k < 3; k++) {
+      out[i] += m[i][k] * v[k];
+    }
+  }
+}
+
+/* WHAT IT DOES: Rotate a vector by the transpose of a 4x4 matrix's 3x3
+ * part: out = R^T v. */
+/* @implements 0x80258758 tgr BrMat4RotateVecT */
+void BrMat4RotateVecT(float out[3], float m[4][4], float v[3])
+{
+  int i;
+  int k;
+
+  for (i = 0; i < 3; i++) {
+    out[i] = 0.0f;
+    for (k = 0; k < 3; k++) {
+      out[i] += m[k][i] * v[k];
+    }
+  }
+}
+
 /* WHAT IT DOES: Transform a point by a 4x4 matrix's rotation (columns) and
  * translation (row 3). */
 /* @implements 0x802587E8 tgr BrMat3MulVecRows */

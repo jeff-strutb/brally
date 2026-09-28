@@ -430,3 +430,5 @@ va,name,kind
 8021E998,BrGridCellRange,func
 80244D04,BrPaintDecalApply,func
 80253460,BrPaintCharset,func
+802586C0,BrMat4RotateVec,func
+80258758,BrMat4RotateVecT,func
