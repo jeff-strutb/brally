@@ -494,3 +494,4 @@ va,name,kind
 80220E84,BrCarCamTargetStep,func
 802290C4,BrPathWalk,func
 80224B7C,BrVec3RotateAxis,func
+8021FF90,BrMatToQuat,func

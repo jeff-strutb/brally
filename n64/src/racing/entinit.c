@@ -235,6 +235,40 @@ void BrCarSetHeading(BrCar *car, float a)
   BrQuatToMat(car->stMtx, &car->st);
 }
 
+/* WHAT IT DOES: Turn a rotation matrix into a unit quaternion (w, x, y, z)
+ * by the largest-diagonal method: pick the branch whose component is biggest
+ * (w when the trace is non-negative, else x, y or z), build the four
+ * unnormalised components from the diagonal sum and the off-diagonal sums and
+ * differences, then normalise. */
+/* @implements 0x8021FF90 tgr BrMatToQuat */
+void BrMatToQuat(float m[4][4], float q[4])
+{
+  if (m[0][0] >= 0.0f) {
+    if (m[1][1] + m[2][2] >= 0.0f) {
+      q[0] = 1.0f + m[0][0] + m[1][1] + m[2][2];
+      q[1] = m[1][2] - m[2][1];
+      q[2] = m[2][0] - m[0][2];
+      q[3] = m[0][1] - m[1][0];
+    } else {
+      q[0] = m[1][2] - m[2][1];
+      q[1] = 1.0f + m[0][0] - m[1][1] - m[2][2];
+      q[2] = m[0][1] + m[1][0];
+      q[3] = m[2][0] + m[0][2];
+    }
+  } else if (m[1][1] >= m[2][2]) {
+    q[0] = m[2][0] - m[0][2];
+    q[1] = m[0][1] + m[1][0];
+    q[2] = 1.0f - m[0][0] + m[1][1] - m[2][2];
+    q[3] = m[1][2] + m[2][1];
+  } else {
+    q[0] = m[0][1] - m[1][0];
+    q[1] = m[2][0] + m[0][2];
+    q[2] = m[1][2] + m[2][1];
+    q[3] = 1.0f - m[0][0] - m[1][1] + m[2][2];
+  }
+  BrVec4Normalise(q);
+}
+
 /* WHAT IT DOES: Set a car's velocity: its three rigid-body states and the
  * spare copy at 0xFD8 all get (x, y, z). */
 /* @implements 0x802201C8 tgr BrCarSetVel */
