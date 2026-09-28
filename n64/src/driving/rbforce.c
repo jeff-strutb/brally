@@ -21,9 +21,11 @@ typedef struct BrRbBody {       /* a rigid body with up to four attached */
   float m[4][4];                /* 0xBC  orientation */
   float force[3];               /* 0xFC  accumulated this step */
   float torque[3];              /* 0x108 */
+  char pad114[0x1b4 - 0x114];
+  int x1b4;                     /* 0x1B4  on a wheel: it is on the ground */
 } BrRbBody;
 void func_802589F4(int param_1,int param_2);
-void func_80259634(BrRbBody *b, BrRbBody *sub);
+void BrRbAddWheelForces(BrRbBody *b, BrRbBody *w);
 void BrRbSolveAccel(BrRbBody *b);
 void func_802586C0(float out[3], float m[4][4], float v[3]);   /* v into the body frame */
 void func_80258758(float out[3], float m[4][4], float v[3]);   /* and back out */
@@ -246,6 +248,55 @@ void BrRbAddForces(BrRbBody *b)
   }
 }
 
+/* WHAT IT DOES: Add a wheel body's applied forces: each force (world axes
+ * are taken into the car body's axes, body axes are used as they are) goes
+ * into the wheel's force sum, and while the wheel is on the ground the
+ * moment of its flat (x, y) part about the wheel's mounting point goes into
+ * the car body's torque.
+ * RESIDUE (42): the float-register rotation of BrRbAddForces, from the
+ * body-axes copy on; 298 permuter compiles leave it. */
+/* @implements 0x80259634 tgr BrRbAddWheelForces */
+void BrRbAddWheelForces(BrRbBody *b, BrRbBody *w)
+{
+  BrRbForce *a;
+  float g[3];
+  float flat[3];
+  float f[3];
+  float p[3];
+  float r[3];
+  float t[3];
+
+  for (a = w->forces; a != 0; a = a->next) {
+    if (a->frame == 0) {
+      func_802586C0(f, b->m, a->f);
+    }
+    if (a->frame == 1) {
+      f[0] = a->f[0];
+      f[1] = a->f[1];
+      f[2] = a->f[2];
+    }
+    flat[0] = f[0];
+    flat[1] = f[1];
+    flat[2] = 0.0f;
+    func_80258758(g, b->m, flat);
+    w->force[0] = w->force[0] + f[0];
+    w->force[1] = f[1] + w->force[1];
+    w->force[2] = w->force[2] + f[2];
+    if (0 != w->x1b4) {
+      p[0] = w->m[3][0];
+      p[1] = w->m[3][1];
+      p[2] = w->m[3][2];
+      func_80258758(r, b->m, p);
+      t[0] = r[1] * g[2] - g[1] * r[2];
+      t[1] = r[2] * g[0] - g[2] * r[0];
+      t[2] = r[0] * g[1] - g[0] * r[1];
+      b->torque[0] = t[0] + b->torque[0];
+      b->torque[1] = b->torque[1] + t[1];
+      b->torque[2] = t[2] + b->torque[2];
+    }
+  }
+}
+
 /* WHAT IT DOES: Clear the force and torque accumulators of a car body and
  * of each of its four wheel bodies before the forces are summed again. */
 /* @implements 0x8025993C tgr BrRbForcesClear */
@@ -266,10 +317,10 @@ void BrRbForcesClear(BrRbBody *b)
   b->sub[3]->force[1] = 0.0f;
   b->sub[3]->force[2] = 0.0f;
   BrRbAddForces(b);
-  func_80259634(b, b->sub[0]);
-  func_80259634(b, b->sub[1]);
-  func_80259634(b, b->sub[2]);
-  func_80259634(b, b->sub[3]);
+  BrRbAddWheelForces(b, b->sub[0]);
+  BrRbAddWheelForces(b, b->sub[1]);
+  BrRbAddWheelForces(b, b->sub[2]);
+  BrRbAddWheelForces(b, b->sub[3]);
   BrRbSolveAccel(b);
 }
 
