@@ -367,3 +367,4 @@ va,name,kind
 8021EA90,BrU16QueuePop,func
 80229510,BrRankCmpKey,func
 80225E1C,BrSeg2SideTest,func
+80258E64,BrMat3FromMat4T,func
