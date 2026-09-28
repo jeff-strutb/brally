@@ -64,6 +64,13 @@ void BrScreenClear(int r, int g, int b)
   gDPSetCycleType(D_8028A858++, G_CYC_1CYCLE);
 }
 
+/* WHAT IT DOES: Does nothing: a variadic debug hook compiled empty (it
+ * still spills its register arguments).  The PC twin is BrStub10008B80. */
+/* @implements 0x80219A5C tgr BrStub80219A5C */
+void BrStub80219A5C(int a0, ...)
+{
+}
+
 /* WHAT IT DOES: Set the RDP scissor to a w by h box at (x, y), clipped to
  * the current clip rectangle, in 320-wide coordinates doubled on a hi-res
  * screen. */
