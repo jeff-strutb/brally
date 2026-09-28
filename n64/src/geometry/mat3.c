@@ -164,3 +164,28 @@ void BrMat3Sub(float out[3][3], float a[3][3], float b[3][3])
   }
 }
 
+
+/* WHAT IT DOES: Invert a rotation-and-translation matrix whose rows carry
+ * the scales s: the rotation is transposed with each column j scaled by
+ * s[j], and the translation becomes -t taken through the new rotation's
+ * transpose. */
+/* @implements 0x80258FD4 tgr BrMat4InvertScaled */
+void BrMat4InvertScaled(float m[4][4], float out[4][4], float s[3])
+{
+  int i;
+  int j;
+  float t[3];
+
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; j++) {
+      out[i][j] = m[j][i];
+      out[i][j] *= s[j];
+    }
+    out[i][3] = 0.0f;
+  }
+  out[3][3] = 1.0f;
+  t[0] = -m[3][0];
+  t[1] = -m[3][1];
+  t[2] = -m[3][2];
+  BrMat4RotateVecT(out[3], out, t);
+}
