@@ -2,6 +2,7 @@
  */
 #include "tgr/common.h"
 #include "tgr/vec.h"
+#include "tgr/car.h"
 
 /* -- declarations -- */
 void func_8022762C(int ctl);
@@ -62,7 +63,116 @@ extern BrGate D_80025C98[];             /* the same gates, as their own symbol *
 extern int D_8028B82C;                  /* gates crossed by BrPathGates */
 extern int D_8028B830;                  /* times it crossed gate 0 */
 int BrSegmentsOverlapXY(float *a, float *b, BrVec3 *c, BrVec3 *d);
+typedef struct BrCarEnt {       /* a race entity (0x78 bytes): the cars, then the rest */
+  BrVec3 pos;                   /* 0x00 */
+  BrVec3 prev;                  /* 0x0C */
+  char pad18[0x28 - 0x18];
+  BrPathSeg *seg;               /* 0x28  where it is on the path */
+  int pt;                       /* 0x2C */
+  float x30;
+  float x34;
+  float x38;
+  float speed;                  /* 0x3C  from the track's time table */
+  int laps;                     /* 0x40  times past gate 0 */
+  int laps2;                    /* 0x44 */
+  int gates;                    /* 0x48  gates passed */
+  int gates2;                   /* 0x4C */
+  float dist;                   /* 0x50  start distance along the path */
+  int x54;
+  char pad58[0x5C - 0x58];
+  unsigned char rgb[3];         /* 0x5C */
+  BrCar *car;                   /* 0x60  0 for an entity that is not a car */
+  int index;                    /* 0x64 */
+  unsigned int flags;           /* 0x68 */
+  char pad6c[0x74 - 0x6C];
+  int x74;                      /* 0x74  1 for the entities after the thirteen others */
+} BrCarEnt;
+extern BrCarEnt D_803239A0[];
+typedef struct BrTimeLimit {    /* 0x1C bytes */
+  float secs;
+  char pad04[0x18];
+} BrTimeLimit;
+typedef struct BrTrackTimes {
+  char pad00[0x44];
+  BrTimeLimit limit[4][3];      /* 0x44  [class][difficulty] */
+} BrTrackTimes;
+extern BrTrackTimes *D_80271D1C[];
+extern unsigned char D_8028B904[][3];
+extern int D_8026FF08;
+extern int D_8026FF18;                  /* the game mode */
+extern int D_8028B7F0;                  /* entries in D_803239A0 */
+extern int D_8028B7F4;                  /* cars in the race */
+extern int D_8028B940;                  /* the chosen track */
+extern int D_8028C800;                  /* the difficulty, 1-3 */
+extern BrPathSeg *D_80025C70;           /* the track's path */
+void osSyncPrintf(const char *fmt, ...);
+void BrPathGates(BrPathSeg *seg, float d);
 /* -- end declarations -- */
+
+/* WHAT IT DOES: Set up one race entity: its index and colour; the cars
+ * in the race get their car record (and the car links back); the others are
+ * placed along the path (by index, spaced 520 or 550 depending on the
+ * track, the entities after the thirteenth from -7760 in steps of 600) with
+ * their segment, point and gates found by BrPathGates, stopped, and given
+ * the track's time for the difficulty and the lead car's class.  The mode
+ * switch is written one case per line: with each case over two lines IDO
+ * schedules the default's load out of the branch delay slot. */
+/* @implements 0x802291F8 tgr BrCarEntInit */
+void BrCarEntInit(BrCarEnt *e)
+{
+  int n;
+  short k;
+
+  switch (D_8026FF18) {
+  default: n = D_8028B7F4; break;
+  case 1: n = 2; break;
+  case 0: n = D_8026FF08; break;
+  }
+  e->index = e - D_803239A0;
+  e->rgb[0] = D_8028B904[e->index][0];
+  e->rgb[1] = D_8028B904[e->index][1];
+  e->rgb[2] = D_8028B904[e->index][2];
+  e->flags = 0;
+  if (e->index < D_8026FF08 + 13) {
+    e->x74 = 0;
+  } else {
+    e->x74 = 1;
+  }
+  if (e->index < n) {
+    e->car = &D_8031B760[e->index];
+    e->car->link = (struct BrCarLink *)e;
+  } else {
+    e->car = 0;
+    if (e->x74 == 1) {
+      e->dist = (e->index - D_8026FF08) * 600 - 7760;
+    } else if (D_8028B940 == 2 || D_8028B940 == 7) {
+      e->dist = e->index * 520;
+    } else {
+      e->dist = e->index * 550;
+    }
+    BrPathGates(D_80025C70, e->dist);
+    e->pos.x = D_8031B750.x;
+    e->pos.y = D_8031B750.y;
+    e->pos.z = D_8031B750.z;
+    e->seg = D_8028B824;
+    e->pt = D_8028B828;
+    e->gates = e->gates2 = D_8028B82C;
+    e->laps = e->laps2 = D_8028B830;
+    osSyncPrintf("Initial lap.gate for %d(%d): %d.%d (dist=%f)\n", e->index, e->x74, e->laps, e->gates, e->dist);
+    e->prev.x = e->pos.x;
+    e->x30 = 0.0f;
+    e->x38 = 0.0f;
+    e->x34 = 0.0f;
+    e->prev.y = e->pos.y;
+    e->prev.z = e->pos.z;
+    k = D_8028C800 - 1;
+    if (k > 2 || k < 0) {
+      k = 0;
+    }
+    e->speed = D_80271D1C[D_8028B940]->limit[D_8031B760[0].xe34][k].secs;
+    e->x54 = D_8028B7F0 - e->index - 1;
+  }
+}
 
 /* WHAT IT DOES: Walk d along a path from the start of a segment (closed
  * segments bypassed through their alternates), counting the lap gates each
