@@ -474,3 +474,5 @@ va,name,kind
 80224B08,BrVec3Length,func
 80224B48,BrVec3LenXY,func
 8022B0F8,BrSndDoppler,func
+80266BA8,__ull_to_f,func
+80254E3C,BrObjViewFrame,func
