@@ -16,6 +16,10 @@ void BrVec3Sub(BrVec3 *out, BrVec3 *a, BrVec3 *b);
 float BrVec3Length(BrVec3 *v);
 void BrVec3Div(BrVec3 *out, BrVec3 *v, float d);
 void BrVec3Cross(BrVec3 *out, BrVec3 *a, BrVec3 *b);
+void BrVec3Scale(BrVec3 *out, BrVec3 *v, float s);
+void BrVec3ScaleBy(BrVec3 *v, float s);
+void BrVec3Lerp(BrVec3 *out, BrVec3 *a, BrVec3 *b, float t);
+extern int D_8028AB0C;                  /* the close camera mode */
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Update the camera placement for one car: an out-of-line
@@ -104,6 +108,59 @@ void BrCarCamInit(BrCar *car)
   car->camPosB.z = car->camPosA.z = car->cams[3].mtx[3][2] = z;
   car->x1fac = 0.0f;
   car->x1f90 = 2.0f;
+}
+
+/* WHAT IT DOES: Place a car's camera behind it (the camera position is the
+ * matrix's last row).  When the camera keeps the car's up axis: 2.4 up and
+ * back along the car 11 in the close mode (0x8028AB0C == 1), else 19.8.
+ * Otherwise: the old position, lowered 2.4, as an offset from the car scaled
+ * to that distance, blended by t toward an ideal offset 11 long -- behind
+ * the car, beside it when 0x80270788 is set, or below and behind in game
+ * mode 5 -- then put back on the car and raised 2.4.  The old position is
+ * also copied into a local that is never read. */
+/* @implements 0x80220C58 tgr BrCarCamPlaceBehind */
+void BrCarCamPlaceBehind(BrCar *car, BrCarCam *cam, float t)
+{
+  BrVec3 d;
+  float old[3];
+  float len;
+  BrVec3 *pos;
+  float unused;                 /* holds its frame slot */
+
+  pos = (BrVec3 *)cam->mtx[3];
+  if (car->xf4c != 0) {
+    BrVec3MulAdd(pos, (BrVec3 *)car->mtx0[3], (BrVec3 *)car->mtx0[2], 2.4f);
+    BrVec3MulAdd(pos, pos, (BrVec3 *)car->mtx0[0], D_8028AB0C == 1 ? -11.0f : -19.8f);
+  } else {
+    old[0] = cam->mtx[3][0];
+    old[1] = cam->mtx[3][1];
+    old[2] = cam->mtx[3][2];
+    cam->mtx[3][2] -= 2.4f;
+    BrVec3Sub(&d, pos, (BrVec3 *)car->mtx0[3]);
+    len = BrVec3Length(&d);
+    if (len != 0.0f) {
+      if (D_8028AB0C == 1) {
+        BrVec3ScaleBy(&d, 11.0f / len);
+      } else {
+        BrVec3ScaleBy(&d, 19.8f / len);
+      }
+    }
+    if (D_80270788 != 0) {
+      BrVec3Scale(pos, (BrVec3 *)car->mtx0[0], 11.0f);
+    } else if (D_8026FF18 == 5) {
+      BrVec3Scale(pos, (BrVec3 *)car->mtx0[1], -11.0f);
+      BrVec3MulAddTo(pos, (BrVec3 *)car->mtx0[0], -13.0f);
+    } else {
+      BrVec3Scale(pos, (BrVec3 *)car->mtx0[0], -11.0f);
+    }
+    len = BrVec3Length(pos);
+    if (len != 0.0f) {
+      BrVec3ScaleBy(pos, 11.0f / len);
+    }
+    BrVec3Lerp(pos, pos, &d, t);
+    BrVec3AddTo(pos, (BrVec3 *)car->mtx0[3]);
+    cam->mtx[3][2] += 2.4f;
+  }
 }
 
 /* WHAT IT DOES: Move a car's camera target: with the car's up axis kept,
