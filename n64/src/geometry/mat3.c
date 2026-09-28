@@ -59,6 +59,22 @@ void BrMat3Transpose(float t[3][3], float c[3][3], float m[4][4])
 }
 
 
+/* WHAT IT DOES: Multiply two 3x3 matrices: out = a * b.  (The PC twin in
+ * br_rbinteg.c needs a float local for VC5; IDO matches without it.) */
+/* @implements 0x80258EF8 tgr BrMat3Mul */
+void BrMat3Mul(float out[3][3], float a[3][3], float b[3][3])
+{
+  int i;
+  int j;
+
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; j++) {
+      out[i][j] = a[i][0] * b[0][j] + a[i][1] * b[1][j] + a[i][2] * b[2][j];
+    }
+  }
+}
+
+
 /* WHAT IT DOES: Subtract one 3x3 matrix from another into a third. */
 /* @implements 0x80258F70 tgr BrMat3Sub */
 void BrMat3Sub(float out[3][3], float a[3][3], float b[3][3])
