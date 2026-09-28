@@ -442,3 +442,5 @@ va,name,kind
 80200320,BrMusicLoadTrack,func
 8020037C,BrSceneAnimate,func
 80224EA8,BrMat4TransformShort,func
+8022483C,BrVec3SubFrom,func
+80221864,BrCarCamInit,func
