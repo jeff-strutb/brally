@@ -25,13 +25,17 @@
 #                                               "Soundtrack"
 # With them the app plays those instead of the modules, looped where each
 # recording repeats (ost_loops.py); that step needs numpy in python3.
+# Also off unless asked for: --hq-samples DIR swaps seven of the modules'
+# samples for better copies of the same recordings (upgrade_samples.py,
+# hq_samples.json; DIR holds those WAVs, e.g. reference/tgrally/XM). By
+# default the modules are exactly the ROM's.
 # ffmpeg on PATH (FLAC encoder for the CD audio), and Homebrew's libopenmpt,
 # mpg123, libogg and libvorbis (linked statically by build_wasm.sh).
 #
 # Extraction is cached in build/app/extract, keyed on the MD5 of every source,
 # so repackaging after a code change does not re-rip ~300 MB of audio.
 #
-# Usage: ports/macos/wasm/package_app.sh [--bin X] [--rom Y] [--ost D] [--no-build]
+# Usage: ports/macos/wasm/package_app.sh [--bin X] [--rom Y] [--ost D] [--hq-samples D] [--no-build]
 set -e
 cd "$(dirname "$0")/../../.."
 PY=.venv/bin/python
@@ -40,12 +44,14 @@ PY=.venv/bin/python
 BIN=reference/brally/BossRally.BIN
 ROM="reference/tgrally/Top Gear Rally (USA).z64"
 OST=$(find reference/tgrally -maxdepth 1 -type d -name '*Soundtrack' 2>/dev/null | head -1)
+HQ=
 BUILD=1
 while [ $# -gt 0 ]; do
     case $1 in
         --bin) BIN=$2; shift 2 ;;
         --rom) ROM=$2; shift 2 ;;
         --ost) OST=$2; shift 2 ;;
+        --hq-samples) HQ=$2; shift 2 ;;
         --no-build) BUILD=0; shift ;;
         *) echo "package_app: unknown argument $1" >&2; exit 2 ;;
     esac
@@ -87,10 +93,19 @@ if [ -n "$OST" ]; then
     ls "$OST"/*.flac >/dev/null 2>&1 || { echo "package_app: no FLACs in $OST" >&2; exit 1; }
     NKEY="$NKEY $(cat "$OST"/*.flac | md5 -q)"
 fi
+if [ -n "$HQ" ]; then
+    [ -d "$HQ" ] || { echo "package_app: no sample directory at $HQ" >&2; exit 1; }
+    NKEY="$NKEY hq $(md5 -q ports/macos/wasm/upgrade_samples.py ports/macos/wasm/hq_samples.json | tr '\n' ' ')"
+    NKEY="$NKEY $(cat "$HQ"/*.wav 2>/dev/null | md5 -q)"
+fi
 if [ ! -f $N64/.complete ] || [ "$(cat $N64/.complete)" != "$NKEY" ]; then
     rm -rf $N64
     echo "extract: N64 soundtrack <- $ROM"
     $PY ports/macos/wasm/extract_modules.py "$ROM" $N64
+    if [ -n "$HQ" ]; then
+        echo "extract: N64 samples upgraded <- $HQ"
+        $PY ports/macos/wasm/upgrade_samples.py "$HQ" $N64
+    fi
     if [ -n "$OST" ]; then
         BREW=${BR_BREW:-/opt/homebrew/opt}
         python3 -c 'import numpy' 2>/dev/null ||

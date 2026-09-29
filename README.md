@@ -454,6 +454,32 @@ measured. This 32-bit lane is interim; a native 64-bit port comes later.
    ports/macos/wasm/package_app.sh
    ```
 
+   All the music stays lossless. The CD audio is copied from the disc
+   image sector for sector into FLAC, and the N64 soundtrack is the ROM's
+   own modules played live by libopenmpt, so nothing is ever encoded to a
+   lossy format.
+
+   **Optional: better N64 samples.** Top Gear Rally's modules borrow most
+   of their samples from older tracker music and the Amiga ST-XX sample
+   disks, and the ROM holds them downsampled to 8-bit. For seven of them a
+   better copy of the same recording survives (16-bit, or up to twice the
+   rate); `ports/macos/wasm/hq_samples.json` lists each one, where it was
+   published, and how the ROM's copy was made from it (the Rave Opera
+   string in the ROM keeps one source sample in every 1.414, the square
+   root of two, byte for byte). With
+   `--hq-samples DIR`, where DIR holds those sources as the WAV files the
+   list names, the package swaps them in (`upgrade_samples.py`): each at
+   the ROM copy's level, pitch and loop, so every note plays as before,
+   only cleaner. Four are in the title piece, one in the Strip Mine piece
+   and two in the Jungle piece. It is off by default, and the modules are then
+   exactly the ROM's. The sources are other people's recordings and are not
+   tracked here; a WAV that is missing or differs from the listed file
+   stops the build.
+
+   ```bash
+   ports/macos/wasm/package_app.sh --hq-samples reference/tgrally/XM
+   ```
+
 **Running.** Open `build/app/Boss Rally.app`, or run the bare build from the
 repo root (it reads the disc from `testdata/disc/` and the music from the
 app's extract in `build/app/extract/music`):
