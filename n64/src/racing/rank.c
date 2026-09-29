@@ -183,6 +183,7 @@ void BrRankUpdate(void)
  * differently. */
 /* @t4-pass 0x80229700 1 2026-09-29 compiles 198 best 447 moved 15  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80229700 2 2026-09-29 compiles 198 best 443 moved 4  (n64/tools/n64permute.py) */
+/* @t3 0x80229700 */
 /* @implements 0x80229700 tgr BrCarSlotSwap */
 void BrCarSlotSwap(BrCar *me)
 {
@@ -394,18 +395,20 @@ void BrCarSlotSwap(BrCar *me)
  * adds the checkpoint's time to each player and shows the time left or the
  * gap; re-crossing the line after backing over it grants the lap it had
  * already earned.  The PC twin is BrRaceGateStep.
- * RESIDUE (631): frame 0x70 vs 0x80 (the ROM's spill slots sit 0x10
+ * RESIDUE (622): frame 0x70 vs 0x80 (the ROM's spill slots sit 0x10
  * higher), the ROM keeps &D_8026FF08 in a register through the lap block,
  * and the iNext test branches straight to the standings where ours goes
  * through a jump. */
+/* @t4-pass 0x8022A0E0 1 2026-09-29 compiles 120 best 622 moved 9  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8022A0E0 2 2026-09-29 compiles 120 best 622 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8022A0E0 tgr BrRaceGateStep */
 void BrRaceGateStep(BrRaceEnt *drv)
 {
   BrCar *car;
   BrCar *c;
   BrRaceEnt *ent;
-  char *msg;
   float tLap;
+  char *msg;
   float ratio;
   float d;
   int iCur;
@@ -546,7 +549,7 @@ void BrRaceGateStep(BrRaceEnt *drv)
       if (d < 0.0f) {
         d = -d;
       }
-      ratio = drv->car->xfe4[1] / (drv->car->lapTime * 2.24f);
+      ratio = drv->car->xfe4[1] / (2.24f * drv->car->lapTime);
       if (ratio != 0.0f) {
         ratio = d / ratio;
       } else {
@@ -629,7 +632,7 @@ void BrRaceGateStep(BrRaceEnt *drv)
     drv->x44--;
     drv->x48 -= D_80025C00.nGates;
     drv->x4c -= D_80025C00.nGates;
-    if (D_80025C00.hdr != 0) {
+    if (0 != D_80025C00.hdr) {
       drv->progress -= D_80025C00.hdr->lapLen;
     }
   }

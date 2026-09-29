@@ -298,6 +298,7 @@ void BrCamShakeAdd(int slot, float s);
  * use. */
 /* @t4-pass 0x80226488 1 2026-09-29 compiles 185 best 546 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80226488 2 2026-09-29 compiles 185 best 546 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80226488 */
 /* @implements 0x80226488 tgr BrCarPlayerCtl */
 void BrCarPlayerCtl(BrCar *car)
 {
