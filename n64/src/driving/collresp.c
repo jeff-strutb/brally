@@ -67,7 +67,7 @@ typedef struct BrCrPlane {      /* a collision triangle's plane (0x20 bytes) */
 extern BrCrPlane D_80379F80[][150];   /* each grid cell's collision planes */
 extern unsigned short D_8037EA88[];   /* and how many */
 extern int D_802A4A30;                /* walk the cell backwards (flips every frame) */
-int func_8025F18C(float x, float y);
+short BrCollGridCellAcquire(float x, float y);
 int BrTriCubeTest(float *tri, float *norm);
 void BrCrListPush(void *plane);
 
@@ -76,6 +76,22 @@ void BrVec3NormaliseF(float v[3]);
 int func_8025B73C(BrTipBody *b, void *plane, int flag, int spin);
 int func_8025BBB8(BrTipBody *b, float *n, void *plane, int flag, float rest);
 void BrCrPlaneResolve(BrTipBody *b, float *pA, float planeD, float *pEdgeN, float *v);
+
+extern unsigned short D_8037EA80[4];   /* the grid cache: each slot's cell */
+extern unsigned int D_8037EA90[4];     /* when each slot was last used */
+extern unsigned int D_8037EAA0;        /* the use clock */
+typedef struct BrCrVtx { float x, y, z; } BrCrVtx;
+typedef struct BrTrackGeom {    /* the loaded track's header at 0x80025C00 */
+  char pad00[0xc];
+  unsigned short *tris;         /* 0x0C  4 vertex indices per triangle */
+  int x10;
+  BrCrVtx *verts;               /* 0x14 */
+  char pad18[0x94 - 0x18];
+  unsigned char *surf;          /* 0x94  per triangle: surface bits */
+} BrTrackGeom;
+extern BrTrackGeom D_80025C00;
+unsigned int BrGridCellRangeAt(float x, float y);
+unsigned short BrU16QueuePop(unsigned short *q);
 
 #define ABS(x) ((x) < 0.0f ? -(x) : (x))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
@@ -219,7 +235,7 @@ int BrCollRespBroadPhase(BrTipBody *b, float m[4][4])
   int n;
 
   n = 0;
-  cell = func_8025F18C(b->m[3][0], b->m[3][1]);
+  cell = BrCollGridCellAcquire(b->m[3][0], b->m[3][1]);
   count = D_8037EA88[cell];
   if (D_802A4A30 != 0) {
     pP = &D_80379F80[cell][count - 1];
@@ -635,4 +651,78 @@ void BrCarPhysAdvance(BrTipBody *b)
   } else {
     b->stuck = 35;
   }
+}
+
+
+/* WHAT IT DOES: The collision-grid cache slot for the 32-unit square under a
+ * point, reusing the least recently used of the four slots when the square
+ * is not already loaded; a freshly loaded slot gets one plane record per
+ * triangle of that square: its three vertex pointers, index and surface
+ * bits, unit normal (v1 - v0) x (v2 - v0) and plane constant.  The PC twin
+ * is BrCollGridCellAcquire.
+ * RESIDUE (211): ours hoists the vertex-index scale (12) into a saved
+ * register and multiplies; the ROM shifts ((i << 2) - i) << 2 in place, so
+ * every saved register after it moves.  Index types and byte/float/struct
+ * pointer spellings all hoist. */
+/* @implements 0x8025F18C tgr BrCollGridCellAcquire */
+short BrCollGridCellAcquire(float x, float y)
+{
+  int spare;                    /* spare, spare2: declared, never used; */
+  int victim;
+  unsigned int best;
+  unsigned int packed;
+  int spare2;                   /* the frame holds them */
+  unsigned short cur[2];
+  unsigned short tri;
+  unsigned short n;
+  float a[3];
+  float b[3];
+  float *p;
+  short key;
+  int i;
+
+  D_8037EAA0++;
+  key = ((int)y / 32 << 6) + (int)x / 32;
+  best = 0x40000000;
+  for (i = 0; i < 4; i++) {
+    if (key == D_8037EA80[i]) {
+      D_8037EA90[i] = D_8037EAA0;
+      return i;
+    }
+    if (D_8037EA90[i] < best) {
+      victim = i;
+      best = D_8037EA90[i];
+    }
+  }
+  D_8037EA90[victim] = D_8037EAA0;
+  D_8037EA80[victim] = key;
+  n = 0;
+  p = D_80379F80[victim][0].n;
+  packed = BrGridCellRangeAt(x, y);
+  cur[0] = packed;
+  cur[1] = packed >> 16;
+  if (packed != 0) {
+    while ((tri = BrU16QueuePop(cur)) != 0) {
+      ((BrCrVtx **)p)[4] = &D_80025C00.verts[D_80025C00.tris[tri * 4]];
+      ((BrCrVtx **)p)[5] = &D_80025C00.verts[D_80025C00.tris[tri * 4 + 1]];
+      ((BrCrVtx **)p)[6] = &D_80025C00.verts[D_80025C00.tris[tri * 4 + 2]];
+      *(unsigned short *)(p + 7) = tri;
+      ((unsigned char *)p)[0x1e] = D_80025C00.surf[tri] & 7;
+      a[0] = ((float **)p)[5][0] - ((float **)p)[4][0];
+      a[1] = ((float **)p)[5][1] - ((float **)p)[4][1];
+      a[2] = ((float **)p)[5][2] - ((float **)p)[4][2];
+      b[0] = ((float **)p)[6][0] - ((float **)p)[4][0];
+      b[1] = ((float **)p)[6][1] - ((float **)p)[4][1];
+      b[2] = ((float **)p)[6][2] - ((float **)p)[4][2];
+      p[0] = a[1] * b[2] - b[1] * a[2];
+      p[1] = a[2] * b[0] - b[2] * a[0];
+      p[2] = a[0] * b[1] - b[0] * a[1];
+      BrVec3NormaliseF(p);
+      n++;
+      p[3] = -(p[0] * ((float **)p)[4][0] + p[1] * ((float **)p)[4][1] + ((float **)p)[4][2] * p[2]);
+      p += 8;
+    }
+  }
+  D_8037EA88[victim] = n;
+  return victim;
 }
