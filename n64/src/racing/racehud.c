@@ -2,6 +2,7 @@
  */
 #include "tgr/common.h"
 #include "tgr/car.h"
+#include "tgr/gbi.h"
 
 /* -- declarations -- */
 void func_8020037C(void);
@@ -67,6 +68,10 @@ typedef struct BrHudPanel {     /* one per view, 0x14 bytes */
   char pad04[0x14 - 0x04];
 } BrHudPanel;
 extern BrHudPanel D_8028C7B4[2];
+extern Gfx *D_8028A858;
+extern int D_8028A850;
+extern int D_8028A898;                 /* the texture filter mode */
+void BrTexSizeBits(int n, int *shift, int *mask);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: The race's frame hook: unless the race has switched the
@@ -577,4 +582,67 @@ void BrHudDraw(void)
       }
     }
   }
+}
+
+/* WHAT IT DOES: Draw a tw by th 4-bit intensity texture as a w by h
+ * rectangle at (x, y), upside down (t starts at the bottom row and steps
+ * back), tinted red (primitive 255, 88, 88), in 320-wide coordinates
+ * doubled on a hi-res screen: the texture is loaded as one block with its
+ * wrap masks from BrTexSizeBits, and perspective correction is off for the
+ * rectangle and back on after it.  A negative w is taken as its size.  The
+ * tile size is written out as a block: the macro's one-line form stores
+ * its second word before taking the packet pointer, the ROM after. */
+/* @implements 0x80239220 tgr BrTex4bFlipDraw */
+void BrTex4bFlipDraw(void *img, int tw, int th, int x, int y, int w, int h)
+{
+  int ms;
+  int mt;
+  int ss;
+  int st;
+  int spare[2];                 /* declared, never used: the frame holds it */
+
+  if (w < 0) {
+    w = -w;
+  }
+  BrTexSizeBits(tw, &ss, &ms);
+  BrTexSizeBits(th, &st, &mt);
+  gDPPipeSync(D_8028A858++);
+  gDPSetCycleType(D_8028A858++, G_CYC_1CYCLE);
+  gSPTexture(D_8028A858++, ss, st, 0, 0, 1);
+  gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 12, 2, D_8028A898);
+  gDPSetCombine(D_8028A858++, 0x309861, 0x5532ff7f);
+  gDPSetRenderMode(D_8028A858++, 0xf0a4000, 0);
+  gDPSetTextureImage(D_8028A858++, 4, G_IM_SIZ_16b, 1, img);
+  gDPSetTile(D_8028A858++, 4, G_IM_SIZ_16b, 0, 0, 7, 0, 0, mt, 0, 0, ms, 0);
+  gDPLoadSync(D_8028A858++);
+  gDPLoadBlock(D_8028A858++, 7, 0, 0, ((tw * th + 3) >> 2) - 1,
+               ((1 << 11) + (tw / 16 < 1 ? 1 : tw / 16) - 1) / (tw / 16 < 1 ? 1 : tw / 16));
+  gDPPipeSync(D_8028A858++);
+  gDPSetTile(D_8028A858++, 4, 0, ((tw >> 1) + 7) >> 3, 0, 0, 0, 0, mt, 0, 0, ms, 0);
+  {
+    Gfx *_g = (Gfx *)(D_8028A858++);
+
+    _g->words.w0 = _SHIFTL(G_SETTILESIZE, 24, 8) | _SHIFTL(0, 12, 12) | _SHIFTL(0, 0, 12);
+    _g->words.w1 = _SHIFTL(0, 24, 3) | _SHIFTL((tw - 1) << 2, 12, 12) | _SHIFTL((th - 1) << 2, 0, 12);
+  }
+  gDPSetTextureLUT(D_8028A858++, 0);
+  gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 19, 1, 0);
+  if (D_8028A850 != 0) {
+    x <<= 1;
+    y <<= 1;
+    w <<= 1;
+    h <<= 1;
+  }
+  gDPSetPrimColor(D_8028A858++, 0xff, 0xff, 0xff, 0x58, 0x58, 0xff);
+  gDPSetEnvColor(D_8028A858++, 0, 0, 0, 0xff);
+  {
+    Gfx *_g = (Gfx *)(D_8028A858++);
+
+    _g->words.w0 = (_SHIFTL(G_TEXRECT, 24, 8) | _SHIFTL((x + w) << 2, 12, 12) | _SHIFTL((y + h) << 2, 0, 12));
+    _g->words.w1 = (_SHIFTL(0, 24, 3) | _SHIFTL(x << 2, 12, 12) | _SHIFTL(y << 2, 0, 12));
+  }
+  gImmp1(D_8028A858++, G_RDPHALF_1, (_SHIFTL(0, 16, 16) | _SHIFTL((th - 1) << 5, 0, 16)));
+  gImmp1(D_8028A858++, G_RDPHALF_2, (_SHIFTL(((tw << 10) - (1 << 10)) / w, 16, 16) | _SHIFTL(((1 << 10) - (th << 10)) / h, 0, 16)));
+  gDPPipeSync(D_8028A858++);
+  gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 19, 1, 0x80000);
 }
