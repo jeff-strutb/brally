@@ -312,6 +312,7 @@ va,name,kind
 8022D7E0,BrPerfMark,func
 8022D8AC,BrPerfFrameStart,func
 8022D97C,BrPerfMeterDraw,func
+8022E4E0,BrTextEmitString,func
 8022F4CC,BrTextHighlightOn,func
 8022F4DC,BrTextAltBlendOn,func
 8022F4EC,BrTextAltBlendOff,func
