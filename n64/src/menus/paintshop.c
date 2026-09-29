@@ -538,19 +538,18 @@ void BrPaintFrameRect(int sx0, int sy0, int sx1, int sy1)
   int y1;
   int r;
   int x0;
-  int t;
 
   x0 = (sx0 - D_8028DB94.x) >> 2; sy0 = (D_8028DB94.y + D_8028DB94.h - sy0) >> 2;
   x1 = (sx1 - D_8028DB94.x) >> 2; y1 = (D_8028DB94.y + D_8028DB94.h - sy1) >> 2;
   if (x1 < x0) {
-    t = x0;
+    sx1 = x0;
     x0 = x1;
-    x1 = t;
+    x1 = sx1;
   }
   if (y1 < sy0) {
-    t = sy0;
+    sy1 = sy0;
     sy0 = y1;
-    y1 = t;
+    y1 = sy1;
   }
   r = D_8028D4A0[D_8028DAC0].w >> 1;
   if (r == 0) {
