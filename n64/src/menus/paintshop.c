@@ -933,10 +933,6 @@ void BrPaintMirrorSide(void)
 /* @implements 0x80251A54 tgr BrPaintDashLine */
 void BrPaintDashLine(int x0, int y0, int x1, int y1)
 {
-  int u0;
-  int u1;
-  int u2;
-  int u3;
   int dx;
   int dy;
   int err;
