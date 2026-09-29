@@ -437,4 +437,39 @@ void bzero(void *p, int len);
 #define VI_2_10_FPART_MASK 0x3ff
 #define VI_SUBPIXEL_SH 0x10
 
+/* epi */
+typedef struct {
+	u32 errStatus;
+	void *dramAddr;
+	void *C2Addr;
+	u32 sectorSize;
+	u32 C1ErrNum;
+	u32 C1ErrSector[4];
+} __OSBlockInfo;
+typedef struct {
+	u32 cmdType;
+	u16 transferMode;
+	u16 blockNum;
+	s32 sectorNum;
+	u32 devAddr;
+	u32 bmCtlShadow;
+	u32 seqCtlShadow;
+	__OSBlockInfo block[2];
+} __OSTranxInfo;
+typedef struct OSPiHandle_s {
+	struct OSPiHandle_s *next;
+	u8 type;
+	u8 latency;
+	u8 pageSize;
+	u8 relDuration;
+	u8 pulse;
+	u8 domain;
+	u32 baseAddress;
+	u32 speed;
+	__OSTranxInfo transferInfo;
+} OSPiHandle;
+typedef u32 OSHWIntr;
+#define OS_IM_RCP 0x00000401
+extern u32 __OSGlobalIntMask;
+
 #endif
