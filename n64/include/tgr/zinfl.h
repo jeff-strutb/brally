@@ -1,0 +1,162 @@
+/* zinfl.h -- the parts of zlib 1.0.4's zlib.h, zutil.h and inflate headers
+ * the ROM's inflate uses.
+ *
+ * zlib 1.0.4, Copyright (C) 1995-1996 Jean-loup Gailly and Mark Adler.
+ * This software is provided 'as-is', without any express or implied
+ * warranty.  Permission is granted to anyone to use this software for any
+ * purpose, including commercial applications, and to alter it and
+ * redistribute it freely, subject to the zlib license: the origin must not
+ * be misrepresented, altered source versions must be plainly marked as such,
+ * and this notice may not be removed from any source distribution.
+ * This file is an altered version: the declarations are gathered from the
+ * original headers into one.
+ */
+#ifndef ZINFL_H
+#define ZINFL_H
+
+typedef unsigned char Byte;
+typedef unsigned int uInt;
+typedef unsigned long uLong;
+typedef Byte Bytef;
+typedef char charf;
+typedef int intf;
+typedef uInt uIntf;
+typedef uLong uLongf;
+typedef void *voidpf;
+typedef unsigned char uch;
+typedef unsigned short ush;
+typedef unsigned long ulg;
+
+#define Z_NULL 0
+#define Z_OK            0
+#define Z_STREAM_END    1
+#define Z_NEED_DICT     2
+#define Z_ERRNO        (-1)
+#define Z_STREAM_ERROR (-2)
+#define Z_DATA_ERROR   (-3)
+#define Z_MEM_ERROR    (-4)
+#define Z_BUF_ERROR    (-5)
+#define Z_VERSION_ERROR (-6)
+
+typedef voidpf (*alloc_func)(voidpf opaque, uInt items, uInt size);
+typedef void (*free_func)(voidpf opaque, voidpf address);
+
+struct internal_state;
+
+typedef struct z_stream_s {
+  Bytef *next_in;
+  uInt avail_in;
+  uLong total_in;
+  Bytef *next_out;
+  uInt avail_out;
+  uLong total_out;
+  char *msg;
+  struct internal_state *state;
+  alloc_func zalloc;
+  free_func zfree;
+  voidpf opaque;
+  int data_type;
+  uLong adler;
+  uLong reserved;
+} z_stream;
+typedef z_stream *z_streamp;
+
+#define ZALLOC(strm, items, size) \
+           (*((strm)->zalloc))((strm)->opaque, (items), (size))
+#define ZFREE(strm, addr)  (*((strm)->zfree))((strm)->opaque, (voidpf)(addr))
+#define TRY_FREE(s, p) {if (p) ZFREE(s, p);}
+
+void *memcpy(void *d, const void *s, uInt n);
+
+/* The game's allocator: zcalloc carves 8-aligned blocks off a range and
+ * never frees; inflateInit2_ points the stream's opaque at this. */
+typedef struct BrZHeap {
+  char *next;
+  char *end;
+} BrZHeap;
+extern BrZHeap D_80368AC8;
+#define zmemcpy memcpy
+
+typedef uLong (*check_func)(uLong check, const Bytef *buf, uInt len);
+
+/* inftrees.h */
+typedef struct inflate_huft_s inflate_huft;
+struct inflate_huft_s {
+  union {
+    struct {
+      Byte Exop;
+      Byte Bits;
+    } what;
+    Bytef *pad;
+  } word;
+  union {
+    uInt Base;
+    inflate_huft *Next;
+  } more;
+};
+
+/* infcodes.h */
+struct inflate_codes_state;
+typedef struct inflate_codes_state inflate_codes_statef;
+
+/* infutil.h */
+typedef enum {
+  TYPE,
+  LENS,
+  STORED,
+  TABLE,
+  BTREE,
+  DTREE,
+  CODES,
+  DRY,
+  DONE,
+  BAD
+} inflate_block_mode;
+
+struct inflate_blocks_state {
+  inflate_block_mode mode;
+  union {
+    uInt left;
+    struct {
+      uInt table;
+      uInt index;
+      uIntf *blens;
+      uInt bb;
+      inflate_huft *tb;
+    } trees;
+    struct {
+      inflate_huft *tl;
+      inflate_huft *td;
+      inflate_codes_statef *codes;
+    } decode;
+  } sub;
+  uInt last;
+  uInt bitk;
+  uLong bitb;
+  Bytef *window;
+  Bytef *end;
+  Bytef *read;
+  Bytef *write;
+  check_func checkfn;
+  uLong check;
+};
+typedef struct inflate_blocks_state inflate_blocks_statef;
+
+#define Z_DEFLATED 8
+#define MAX_WBITS 15
+#define DEF_WBITS MAX_WBITS
+#define PRESET_DICT 0x20
+#define ZLIB_VERSION "1.0.4"
+
+inflate_blocks_statef *inflate_blocks_new(z_streamp z, check_func c, uInt w);
+int inflate_blocks(inflate_blocks_statef *s, z_streamp z, int r);
+int inflate_blocks_free(inflate_blocks_statef *s, z_streamp z, uLongf *c);
+void inflate_set_dictionary(inflate_blocks_statef *s, const Bytef *d, uInt n);
+uLong adler32(uLong adler, const Bytef *buf, uInt len);
+voidpf zcalloc(voidpf opaque, unsigned items, unsigned size);
+void zcfree(voidpf opaque, voidpf ptr);
+void inflate_codes_free(inflate_codes_statef *c, z_streamp z);
+int inflate_trees_free(inflate_huft *t, z_streamp z);
+void inflate_blocks_reset(inflate_blocks_statef *s, z_streamp z, uLongf *c);
+
+#endif
