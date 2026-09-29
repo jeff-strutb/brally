@@ -34,6 +34,85 @@ void *BrMtxAlloc(void);
 void BrMat4FitRange(float m[4][4]);
 /* -- end declarations -- */
 
+/* -- declarations: BrSkyDraw -- */
+extern int D_8028AA5C;                  /* no sky this frame */
+extern int D_8028AA78;                  /* the weather has fog */
+extern int D_8028C818;                  /* the lightning timer */
+extern int D_8028AAEC;                  /* the view being drawn */
+extern unsigned char D_8028AB20, D_8028AB24, D_8028AB28, D_8028AB2C;   /* the fog colour */
+extern unsigned int D_8028A898;         /* the texture filter */
+extern int D_8028A8A8;
+extern int D_8028A8AC;
+extern Mtx *D_8028A878;                 /* the projection matrix */
+extern Gfx *D_80025C50;                 /* the track's sky display list */
+typedef struct BrSkyView { int x; int y; int w; int h; int car; } BrSkyView;
+extern BrSkyView D_8031B2C8[2];
+int BrRaceSplitScreen(void);
+void guTranslateF(float mf[4][4], float x, float y, float z);
+void BrGfxFillRect(int x, int y, int w, int h, int r, int g, int b);
+/* -- end declarations -- */
+
+/* WHAT IT DOES: Draw the sky: set the clip ratio, then, unless the frame
+ * has no sky, either the track's sky display list around the camera
+ * (lowered a little, fogged in fog), or in a split screen a fill of the
+ * view in the fog colour -- brightened by a lightning flash.  The unused
+ * array is the ROM frame's 0x40.
+ * RESIDUE (116): the two cull-mode ternaries -- the ROM materialises the 0x1000
+ * arm first and fills the branch's delay slot from the 0x2000 arm (4 bytes
+ * longer); everything after is shifted by that. */
+/* @implements 0x8022F968 tgr BrSkyDraw */
+void BrSkyDraw(void)
+{
+  int u[4];
+  Mtx *m;
+
+  gSPClipRatio1(D_8028A858++);
+  if (D_8028AA5C != 0) {
+    return;
+  }
+  if (BrRaceSplitScreen()) {
+    if (D_8028C818 > 0 && (D_8028C818 & 1)) {
+      BrGfxFillRect(D_8031B2C8[D_8028AAEC].x, D_8031B2C8[D_8028AAEC].y, D_8031B2C8[D_8028AAEC].w,
+                    D_8031B2C8[D_8028AAEC].h, (D_8028AB20 * 3 + 240) >> 2, (D_8028AB24 * 3 + 248) >> 2,
+                    (D_8028AB28 * 3 + 255) >> 2);
+    } else {
+      BrGfxFillRect(D_8031B2C8[D_8028AAEC].x, D_8031B2C8[D_8028AAEC].y, D_8031B2C8[D_8028AAEC].w,
+                    D_8031B2C8[D_8028AAEC].h, D_8028AB20, D_8028AB24, D_8028AB28);
+    }
+    return;
+  }
+  guTranslateF(D_8031AB10, D_8028AAF4->mtx0[3][0], D_8028AAF4->mtx0[3][1], D_8028AAF4->mtx0[3][2] * 0.99f);
+  m = BrMtxAlloc();
+  guMtxF2L(D_8031AB10, m);
+  gSPMatrix(D_8028A858++, (char *)D_8028A878 + 0x80000000, G_MTX_PROJECTION | G_MTX_LOAD | G_MTX_NOPUSH);
+  gSPMatrix(D_8028A858++, (char *)m + 0x80000000, G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
+  gDPPipeSync(D_8028A858++);
+  gDPSetCycleType(D_8028A858++, G_CYC_1CYCLE);
+  if (D_8028AA78 != 0) {
+    gDPSetCombine(D_8028A858++, 0x167E2C, 0x55FEF379);
+    gDPSetEnvColor(D_8028A858++, D_8028AB20, D_8028AB24, D_8028AB28, D_8028AB2C);
+  } else {
+    gDPSetCombine(D_8028A858++, 0xFFFFFF, 0xFFFCF87C);
+  }
+  gDPSetRenderMode(D_8028A858++, 0x0F0A4200, 0);
+  gDPSetTextureFilter(D_8028A858++, D_8028A898);
+  gSPClearGeometryMode(D_8028A858++, 0xF0205);
+  gSPSetGeometryMode(D_8028A858++, D_8028A8A8 == D_8028A8AC ? 0x2000 : 0x1000);
+  gSPClearGeometryMode(D_8028A858++, D_8028A8A8 == D_8028A8AC ? 0x1000 : 0x2000);
+  gDPSetTextureLOD(D_8028A858++, 0);
+  gSPTexture(D_8028A858++, 0xFFFF, 0xFFFF, 0, 0, 1);
+  gSPClearGeometryMode(D_8028A858++, 0xC0000);
+  gDPTileSync(D_8028A858++);
+  gRaw(D_8028A858++, 0xF5100000, 0x07000000);
+  gRaw(D_8028A858++, 0xF50001F0, 0x06000000);
+  gRaw(D_8028A858++, 0xF5000100, 0x05000000);
+  gSPDisplayList(D_8028A858++, D_80025C50);
+  gDPPipeSync(D_8028A858++);
+  gDPSetCycleType(D_8028A858++, G_CYC_1CYCLE);
+  gSPSetGeometryMode(D_8028A858++, 0x20205);
+  gSPPopMatrix(D_8028A858++, 0);
+}
+
 /* WHAT IT DOES: Place car n's four wheels: each wheel's matrix takes the
  * body's rotation and, as its translation, the model's wheel position
  * carried through the body matrix.  Makes the car's model the current one;

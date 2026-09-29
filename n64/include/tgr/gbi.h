@@ -334,4 +334,16 @@ typedef union {
 #define gDPSetFogColor(pkt, r, g, b, a) \
     gDPSetColor(pkt, G_SETFOGCOLOR, (_SHIFTL(r, 24, 8) | _SHIFTL(g, 16, 8) | _SHIFTL(b, 8, 8) | _SHIFTL(a, 0, 8)))
 
+#define G_MW_CLIP           0x04
+#define G_SETENVCOLOR       0xfb
+#define gSPClipRatio1(pkt)                                              \
+{                                                                       \
+    gMoveWd(pkt, G_MW_CLIP, 0x04, 1);                                   \
+    gMoveWd(pkt, G_MW_CLIP, 0x0c, 1);                                   \
+    gMoveWd(pkt, G_MW_CLIP, 0x14, 0xffff);                              \
+    gMoveWd(pkt, G_MW_CLIP, 0x1c, 0xffff);                              \
+}
+#define gDPSetEnvColor(pkt, r, g, b, a) \
+    gDPSetColor(pkt, G_SETENVCOLOR, (_SHIFTL(r, 24, 8) | _SHIFTL(g, 16, 8) | _SHIFTL(b, 8, 8) | _SHIFTL(a, 0, 8)))
+
 #endif
