@@ -134,9 +134,13 @@ void BrFrontSetMenuFlag(int param_1)
  * the sound banks' ROM addresses are link-time symbols; the equality tests
  * are against the integer 0 (a fresh 0.0 each, where the ordering tests
  * share f20); the turn is eased on the static itself.
- * RESIDUE: frame 0x118 against 0x100 (six more macro block slots here, so
- * every named slot sits 0x18..0x30 higher) and the register choices that
- * follow from it. */
+ * The frame must be the ROM's 0x100: the first frame's zlib unpacks read
+ * uninitialised stack at a fixed depth below this frame, so a deeper frame
+ * builds different (still valid) inflate tables and A5 sees the difference.
+ * Plain expressions for the pad word and row flags (not locals) and a
+ * 92-byte buffer give 0x100.
+ * RESIDUE: the named slots are not the ROM's (off 0xFC, result 0xF4, buf
+ * 0x84, row 0x78) and the register choices follow. */
 /* @implements 0x8020AD5C tgr BrMenu */
 int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r1, int g1, int b1, int r2,
            int g2, int b2)
@@ -151,14 +155,11 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
   static int D_8031623C;
   static float D_80316240;                /* seconds since the last button */
   static int D_80316244;                  /* the selected row */
-  char buf[100];
+  char buf[92];
   int i;
   int row;
   int result;
   float off;
-  BrCar *car;
-  unsigned int b;
-  unsigned int flags;
   short v;
 
   result = 0;
@@ -356,16 +357,14 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
       if (D_80271FA0 != -1 && ((1 << i) & D_80271FA4) == 0) {
         continue;
       }
-      car = &D_8031B760[i];
-      BrPadStickToButtons(car->pad);
-      b = *car->pad;
-      if (b != 0) {
+      BrPadStickToButtons(D_8031B760[i].pad);
+      if (*D_8031B760[i].pad != 0) {
         D_80316240 = 0.0f;
       }
       if (D_80316224 == 0) {
-        if (b & 4) {
-          BrPadConsume(car->pad, 10);
-          *car->pad &= ~10;
+        if (*D_8031B760[i].pad & 4) {
+          BrPadConsume(D_8031B760[i].pad, 10);
+          *D_8031B760[i].pad &= ~10;
           D_80316220 = D_80316244;
           do {
             D_80316244 = (D_80316244 + n - 1) % n;
@@ -375,9 +374,9 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
             goto move;
           }
         }
-        if (*car->pad & 1) {
-          BrPadConsume(car->pad, 10);
-          *car->pad &= ~10;
+        if (*D_8031B760[i].pad & 1) {
+          BrPadConsume(D_8031B760[i].pad, 10);
+          *D_8031B760[i].pad &= ~10;
           D_80316220 = D_80316244;
           do {
             D_80316244 = (D_80316244 + 1) % n;
@@ -391,32 +390,30 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
             }
           }
         }
-        b = *car->pad;
         if (items[D_80316244]->flags & 1) {
-          if (b & 8) {
+          if (*D_8031B760[i].pad & 8) {
             *sel = D_80316244;
             result = 3;
-            BrPadConsume(car->pad, 8);
+            BrPadConsume(D_8031B760[i].pad, 8);
             goto choose;
           }
-          if (b & 2) {
+          if (*D_8031B760[i].pad & 2) {
             *sel = D_80316244;
             result = 4;
-            BrPadConsume(car->pad, 2);
+            BrPadConsume(D_8031B760[i].pad, 2);
             goto choose;
           }
         }
-        if (b & 0x20) {
-          BrPadConsume(car->pad, 0x20);
+        if (*D_8031B760[i].pad & 0x20) {
+          BrPadConsume(D_8031B760[i].pad, 0x20);
           D_8031622C = 0;
           BrFadeTo(0.0f, 0.2f);
           BrSfxFadeTo(0.0f, 0.2f);
           goto choose;
         }
       }
-      flags = items[D_80316244]->flags;
-      if (!(flags & 8) && !(flags & 0x40) && (b & 0xC010)) {
-        BrPadConsume(car->pad, 0xC010);
+      if (!(items[D_80316244]->flags & 8) && !(items[D_80316244]->flags & 0x40) && (*D_8031B760[i].pad & 0xC010)) {
+        BrPadConsume(D_8031B760[i].pad, 0xC010);
         if (i == 0 || !(items[D_80316244]->flags & 0x20)) {
           D_80271FA8 = i;
           if ((items[D_80316244]->flags & 2) == 0) {
