@@ -157,6 +157,7 @@ va,name,kind
 8021EA90,BrU16QueuePop,func
 8021EADC,BrU16QueuePopB,func
 8021EB30,BrMat4ResetW,func
+8021EB50,BrCarTrackLocate,func
 8021F0A8,BrCarTickClocks,func
 8021F158,BrCarTickMessages,func
 8021F1F0,BrWrongWayCheck,func
