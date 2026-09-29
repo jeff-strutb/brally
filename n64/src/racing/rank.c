@@ -74,6 +74,36 @@ void BrCarSetPos(BrCar *car, float x, float y, float z);
 void BrEntPaintTexture(char *model, int r, int g, int b);
 void BrCarPlaceAt(BrCar *car, float m[4][4]);
 void BrCarSetVel(BrCar *car, float x, float y, float z);
+typedef struct BrGate {         /* a timing gate across the track (0x14 bytes) */
+  float postA[2];               /* its two posts, x/y */
+  float postB[2];
+  float award;                  /* seconds it would grant (printed only) */
+} BrGate;
+typedef struct BrRaceTrack {
+  char pad00[0x70];
+  BrTrackHdr *hdr;              /* 0x70 */
+  char pad74[0x98 - 0x74];
+  BrGate gates[10];             /* 0x98 */
+  int nGates;                   /* 0x160 */
+} BrRaceTrack;
+extern BrRaceTrack D_80025C00;
+typedef struct BrTrackAwards {
+  char pad00[0x2C];
+  float award[4][3][7];         /* 0x2C  [car class][difficulty][checkpoint]; [6] is the start time */
+} BrTrackAwards;
+extern BrTrackAwards *D_80271D1C[];     /* per track */
+extern int D_8028B304;                  /* laps in the race */
+extern int D_8028B300;                  /* cars finished */
+extern int D_8028B940;                  /* the track */
+extern int D_8028C800;                  /* the weather (difficulty row + 1) */
+extern int D_80270788;                  /* replay */
+extern char *D_8028BABC[];              /* the finishing-place messages */
+int BrSegmentsOverlapXY(float *pA, float *pB, BrVec3 *pC, BrVec3 *pD);
+int BrFloatToInt(float x);
+void BrSfxSrcBeep(void);
+int strlen(char *s);
+void BrTimeFormat(char *buf, float t);
+int sprintf(char *buf, char *fmt, ...);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: qsort comparator for the ranking table: entries are keyed
@@ -353,4 +383,264 @@ void BrCarSlotSwap(BrCar *me)
       ((BrRaceEnt **)me->pade80)[i] = &D_803239A0[e->ent];
     }
   } while (++group != 2);
+}
+
+/* WHAT IT DOES: One entity's gate and lap bookkeeping for a frame, with its
+ * car's state copied in and back: crossing the gate behind it goes back one
+ * (a lap back at the start line), crossing the next goes forward one; a new
+ * furthest gate at the line completes a lap (best-lap and lap-record
+ * messages, the lap clock banked, "LAP n" shown; the last lap finishes the
+ * race with its place and a course record) and in arcade mode every gate
+ * adds the checkpoint's time to each player and shows the time left or the
+ * gap; re-crossing the line after backing over it grants the lap it had
+ * already earned.  The PC twin is BrRaceGateStep.
+ * RESIDUE (631): frame 0x70 vs 0x80 (the ROM's spill slots sit 0x10
+ * higher), the ROM keeps &D_8026FF08 in a register through the lap block,
+ * and the iNext test branches straight to the standings where ours goes
+ * through a jump. */
+/* @implements 0x8022A0E0 tgr BrRaceGateStep */
+void BrRaceGateStep(BrRaceEnt *drv)
+{
+  BrCar *car;
+  BrCar *c;
+  BrRaceEnt *ent;
+  char *msg;
+  float tLap;
+  float ratio;
+  float d;
+  int iCur;
+  int iNext;
+  int i;
+  short w;
+
+  if (D_80025C00.nGates == 0) {
+    return;
+  }
+  car = drv->car;
+  if (car != 0) {
+    drv->pos.x = car->mtx0[3][0];
+    drv->pos.y = car->mtx0[3][1];
+    drv->pos.z = car->mtx0[3][2];
+    drv->posPrev.x = car->posPrev.x;
+    drv->posPrev.y = car->posPrev.y;
+    drv->posPrev.z = car->posPrev.z;
+    drv->x48 = car->xf70;
+    drv->x4c = car->xf74;
+    drv->laps = car->laps;
+    drv->x44 = car->xf7c;
+    drv->raceTime = car->raceTime;
+    drv->x34 = car->xf98;
+    drv->progress = car->xfa8;
+  }
+  if (drv->x4c < 0) {
+    iCur = (D_80025C00.nGates - (-1 - drv->x4c) % D_80025C00.nGates - 1) % D_80025C00.nGates;
+  } else {
+    iCur = drv->x4c % D_80025C00.nGates;
+  }
+  iNext = (iCur + 1) % D_80025C00.nGates;
+  tLap = BrFloatToInt(drv->raceTime * 100.0f) / 100.0f;
+  if (BrSegmentsOverlapXY(D_80025C00.gates[iCur].postB, D_80025C00.gates[iCur].postA, &drv->posPrev,
+                          &drv->pos)) {
+    osSyncPrintf("%d went backwards, from gate %d to gate %d\n", drv->x64, drv->x4c, drv->x4c - 1);
+    if (iCur == 0) {
+      drv->x44--;
+    }
+    osSyncPrintf("Hmm %d == %d %% %d && %d < 0 ? %d\n", iCur, drv->x48, D_80025C00.nGates, drv->x4c,
+                 (drv->x4c + D_80025C00.nGates * 2) % D_80025C00.nGates == drv->x48 % D_80025C00.nGates &&
+                     drv->x4c < 0);
+    if (iCur == drv->x48 % D_80025C00.nGates && drv->x4c < 0) {
+      drv->x4c += D_80025C00.nGates;
+      drv->x44++;
+      if (D_80025C00.hdr != 0) {
+        drv->progress += D_80025C00.hdr->lapLen;
+      }
+      osSyncPrintf("lapping %d forward to -1\n", drv->x64);
+    }
+    drv->x4c--;
+    goto tail;
+  }
+  if (!BrSegmentsOverlapXY(D_80025C00.gates[iNext].postB, D_80025C00.gates[iNext].postA, &drv->posPrev,
+                           &drv->pos)) {
+    goto tail;
+  }
+  osSyncPrintf("%d went forward, from gate %d to gate %d\n", drv->x64, drv->x4c, drv->x4c + 1);
+  drv->x4c++;
+  if (drv->x48 < drv->x4c) {
+    drv->x48 = drv->x4c;
+    osSyncPrintf("moved ahead one gate, getting %f seconds\n", D_80025C00.gates[iNext].award);
+    if (iNext != 0) {
+      goto positions;
+    }
+    if (drv->laps < D_8028B304) {
+      msg = 0;
+      if (drv->x34 == 0.0f || tLap < drv->x34) {
+        drv->x34 = tLap;
+        if (drv->x64 < D_8026FF08) {
+          drv->car->xf9c = drv->laps;
+          if (D_8031B760[0].season->x8c[D_8028B940] == 0.0f ||
+              drv->x34 < D_8031B760[0].season->x8c[D_8028B940]) {
+            D_8031B760[0].season->x8c[D_8028B940] = drv->x34;
+            msg = "%ryNEW LAP RECORD!";
+          } else if (drv->laps != 0) {
+            msg = "%ryBEST LAP!";
+          }
+        }
+      }
+      if (car != 0) {
+        osSyncPrintf("veh->lapTimeFinal[%d]=%f\n", drv->laps, tLap);
+        car->lapTimes[drv->laps] = tLap;
+      }
+      drv->raceTime -= tLap;
+      drv->laps++;
+      drv->x44 = drv->laps;
+      if (D_8026FF18 == 3) {
+        if (drv->laps == 1) {
+          osSyncPrintf("lapping %d back to 0 (a)\n", drv->x64);
+          drv->laps--;
+          drv->x44--;
+          drv->x48 -= D_80025C00.nGates;
+          drv->x4c -= D_80025C00.nGates;
+          if (D_80025C00.hdr != 0) {
+            drv->progress -= D_80025C00.hdr->lapLen;
+          }
+        }
+      } else if (car != 0) {
+        osSyncPrintf("******* LAP #%d ********\n", drv->laps);
+        sprintf(car->xfc0, "%%ryLAP %d", drv->laps + 1);
+        car->msgA = (int)car->xfc0;
+        car->msgATime = 1.0f;
+        if (msg != 0) {
+          car->msgB = (int)msg;
+          car->msgBTime = 1.0f;
+        }
+      }
+    }
+    if (drv->laps == D_8028B304) {
+      drv->flags |= 2;
+      if (car != 0) {
+        car->x2064 = 0.9f;
+        car->lapTime = car->lapTime - drv->raceTime;
+        drv->raceTime = 0.0f;
+        car->xfac = D_8028B300;
+        car->msgA = (int)D_8028BABC[D_8028B300];
+        car->msgATime = 5.0f;
+        if (drv->x64 < D_8026FF08 && D_8028B304 == 3) {
+          if (D_8031B760[0].season->xe8[D_8028B940] == 0.0f ||
+              car->lapTime < D_8031B760[0].season->xe8[D_8028B940]) {
+            D_8031B760[0].season->xe8[D_8028B940] = car->lapTime;
+            car->msgB = (int)"%ryNEW COURSE RECORD!";
+            car->msgATime = 1.5f;
+            car->msgBTime = 3.5f;
+          }
+        }
+      }
+      D_8028B300++;
+      goto tail;
+    }
+  positions:
+    if (D_8026FF18 == 1 && drv->x64 < D_8026FF08 && 0.0f < drv->car->xfa4) {
+      if (D_80270788 == 0) {
+        BrSfxSrcBeep();
+      }
+      d = D_8031B760[0].xfa8 - D_8031B760[1].xfa8;
+      if (d < 0.0f) {
+        d = -d;
+      }
+      ratio = drv->car->xfe4[1] / (drv->car->lapTime * 2.24f);
+      if (ratio != 0.0f) {
+        ratio = d / ratio;
+      } else {
+        ratio = 1000.0f;
+      }
+      for (i = 0, ent = D_803239A0; i < D_8026FF08; i++, ent++) {
+        c = ent->car;
+        c->msgA = (int)"%ryCheck Point!";
+        c->msgATime = 0.4f;
+        w = D_8028C800 - 1;
+        if (w >= 3 || w < 0) {
+          w = 0;
+        }
+        c->xfa4 = c->xfa4 + D_80271D1C[D_8028B940]->award[D_8031B760[0].xe34][w][iNext];
+        if (D_8026FF08 == 1) {
+          sprintf(c->xfc0, "%%ry");
+          BrTimeFormat(c->xfc0 + 3, c->xfa4);
+          sprintf(c->xfc0 + strlen(c->xfc0), " Left");
+          c->msgB = (int)c->xfc0;
+          c->msgBTime = 0.9f;
+        } else if (c->lapTime != 0.0f) {
+          sprintf(c->xfc0, "%%ry");
+          BrTimeFormat(c->xfc0 + 3, ratio);
+          if (c->xfac != 0) {
+            if (120.0f < ratio) {
+              c->msgB = (int)"%ryYou're way behind!";
+            }
+            sprintf(c->xfc0 + strlen(c->xfc0), " Behind");
+            c->msgB = (int)c->xfc0;
+          } else {
+            sprintf(c->xfc0 + strlen(c->xfc0), " Ahead");
+            c->msgB = (int)c->xfc0;
+          }
+          c->msgBTime = 0.9f;
+        }
+        c->xf70 = drv->x48;
+      }
+    }
+    goto tail;
+  }
+  if (iNext != 0) {
+    goto tail;
+  }
+  if (drv->laps < ++drv->x44) {
+    msg = 0;
+    if (drv->x34 == 0.0f || tLap < drv->x34) {
+      drv->x34 = tLap;
+      if (drv->x64 < D_8026FF08) {
+        drv->car->xf9c = drv->laps;
+        if (D_8031B760[0].season->x8c[D_8028B940] == 0.0f ||
+            drv->x34 < D_8031B760[0].season->x8c[D_8028B940]) {
+          D_8031B760[0].season->x8c[D_8028B940] = tLap;
+          msg = "%ryNEW LAP RECORD!";
+        } else if (drv->laps != 0) {
+          msg = "%ryBEST LAP!";
+        }
+      }
+    }
+    if (car != 0) {
+      osSyncPrintf("veh->lapTimeFinal[%d]=%f\n", drv->laps, tLap);
+      car->lapTimes[drv->laps] = tLap;
+    }
+    drv->raceTime -= tLap;
+    drv->laps = drv->x44;
+    if (car != 0) {
+      osSyncPrintf("******* LAP #%d ********\n", drv->laps);
+      sprintf(car->xfc0, "%%ryLAP %d", drv->laps + 1);
+      car->msgA = (int)car->xfc0;
+      car->msgATime = 1.0f;
+      if (msg != 0) {
+        car->msgB = (int)msg;
+        car->msgBTime = 1.0f;
+      }
+    }
+  }
+  osSyncPrintf("granting technically-earned lap %d/%d to %d\n", drv->x44, drv->laps, drv->x64);
+  if (D_8026FF18 == 3 && drv->laps == 1) {
+    osSyncPrintf("lapping %d back to 0 (b)\n", drv->x64);
+    drv->laps--;
+    drv->x44--;
+    drv->x48 -= D_80025C00.nGates;
+    drv->x4c -= D_80025C00.nGates;
+    if (D_80025C00.hdr != 0) {
+      drv->progress -= D_80025C00.hdr->lapLen;
+    }
+  }
+tail:
+  if (car != 0) {
+    car->xf70 = drv->x48;
+    car->xf74 = drv->x4c;
+    car->laps = drv->laps;
+    car->xf7c = drv->x44;
+    car->raceTime = drv->raceTime;
+    car->xf98 = drv->x34;
+    car->xfa8 = drv->progress;
+  }
 }
