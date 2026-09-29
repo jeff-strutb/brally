@@ -3,7 +3,7 @@
 <text x="3.0" y="10.5" font-size="10" fill="#8b949e">unfiled 0x8020xxxx</text>
 <rect x="1.5" y="15.5" width="264.4" height="254.5" fill="#58a6ff"><title>(unnamed)  0x8020082C  22448B  [unfiled 0x8020xxxx]</title></rect>
 <rect x="1.5" y="270.6" width="264.4" height="183.5" fill="#d29922"><title>(unnamed)  0x8020D004  16200B  0 diff bytes  [unfiled 0x8020xxxx]</title></rect>
-<rect x="266.5" y="15.5" width="201.0" height="110.3" fill="#c8ccd2"><title>(unnamed)  0x8020686C  7428B  [unfiled 0x8020xxxx]</title></rect>
+<rect x="266.5" y="15.5" width="201.0" height="110.3" fill="#d29922"><title>(unnamed)  0x8020686C  7428B  0 diff bytes  [unfiled 0x8020xxxx]</title></rect>
 <rect x="266.5" y="126.4" width="139.7" height="115.5" fill="#d29922"><title>(unnamed)  0x8020AD5C  5408B  0 diff bytes  [unfiled 0x8020xxxx]</title></rect>
 <rect x="406.8" y="126.4" width="60.7" height="115.5" fill="#58a6ff"><title>(unnamed)  0x80209434  2364B  [unfiled 0x8020xxxx]</title></rect>
 <rect x="266.5" y="242.5" width="72.2" height="89.0" fill="#3fb950"><title>(unnamed)  0x8020C6D0  2164B  [unfiled 0x8020xxxx]</title></rect>
@@ -143,7 +143,7 @@
 <rect x="897.7" y="449.2" width="6.0" height="3.0" fill="#3fb950"><title>(unnamed)  0x8023870C  8B  [unfiled 0x8023xxxx]</title></rect>
 <rect x="904.3" y="449.2" width="6.0" height="3.0" fill="#3fb950"><title>(unnamed)  0x8023A1C0  8B  [unfiled 0x8023xxxx]</title></rect>
 <text x="472.7" y="464.8" font-size="10" fill="#8b949e">unfiled 0x8025xxxx</text>
-<rect x="471.2" y="469.8" width="91.1" height="144.4" fill="#c8ccd2"><title>(unnamed)  0x802534DC  4420B  [unfiled 0x8025xxxx]</title></rect>
+<rect x="471.2" y="469.8" width="91.1" height="144.4" fill="#d29922"><title>(unnamed)  0x802534DC  4420B  0 diff bytes  [unfiled 0x8025xxxx]</title></rect>
 <rect x="471.2" y="614.9" width="91.1" height="129.9" fill="#c8ccd2"><title>(unnamed)  0x80259D14  3976B  [unfiled 0x8025xxxx]</title></rect>
 <rect x="471.2" y="745.3" width="91.1" height="77.6" fill="#3fb950"><title>(unnamed)  0x8025D368  2384B  [unfiled 0x8025xxxx]</title></rect>
 <rect x="471.2" y="823.6" width="91.1" height="74.3" fill="#c8ccd2"><title>(unnamed)  0x8025F4F8  2284B  [unfiled 0x8025xxxx]</title></rect>
@@ -154,7 +154,7 @@
 <rect x="849.3" y="469.8" width="61.0" height="75.4" fill="#3fb950"><title>(unnamed)  0x8025C2C8  1556B  [unfiled 0x8025xxxx]</title></rect>
 <rect x="562.8" y="545.8" width="64.3" height="68.4" fill="#d29922"><title>(unnamed)  0x80250FCC  1488B  0 diff bytes  [unfiled 0x8025xxxx]</title></rect>
 <rect x="627.7" y="545.8" width="61.5" height="68.4" fill="#58a6ff"><title>(unnamed)  0x8025DFCC  1424B  [unfiled 0x8025xxxx]</title></rect>
-<rect x="689.8" y="545.8" width="57.2" height="68.4" fill="#c8ccd2"><title>(unnamed)  0x802523CC  1324B  [unfiled 0x8025xxxx]</title></rect>
+<rect x="689.8" y="545.8" width="57.2" height="68.4" fill="#d29922"><title>(unnamed)  0x802523CC  1324B  0 diff bytes  [unfiled 0x8025xxxx]</title></rect>
 <rect x="747.6" y="545.8" width="55.8" height="68.4" fill="#c8ccd2"><title>(unnamed)  0x80256720  1292B  [unfiled 0x8025xxxx]</title></rect>
 <rect x="803.9" y="545.8" width="53.3" height="68.4" fill="#d29922"><title>(unnamed)  0x80254878  1236B  0 diff bytes  [unfiled 0x8025xxxx]</title></rect>
 <rect x="857.9" y="545.8" width="52.4" height="68.4" fill="#d29922"><title>(unnamed)  0x80250698  1216B  0 diff bytes  [unfiled 0x8025xxxx]</title></rect>
