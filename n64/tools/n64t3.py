@@ -141,7 +141,8 @@ def link_candidate(va, code_va, data_va):
     if obj is None:
         raise L.LinkError('compile error: %s' % err.strip().split('\n')[0])
     fnvas = {n: v for v, n, _ in B.tags_in(open(f).read())}
-    code, data = L.link_function(obj, name, code_va, data_va, fnvas, B.load_symbols())
+    code, data = L.link_function(obj, name, code_va, data_va, fnvas, B.load_symbols(),
+                                 static_va=B.static_bases(obj, fnvas))
     return code, data, sha
 
 

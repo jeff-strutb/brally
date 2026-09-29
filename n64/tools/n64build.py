@@ -439,6 +439,56 @@ def compile_c(path, extra=()):
     return obj, None
 
 
+def static_bases(obj, fnvas, rom=None, fmap=None):
+    """-> {section: ROM VA} for this object's .data/.bss (its file statics).
+
+    A static is referenced through its section symbol plus an addend, so its
+    ROM home is the section's base plus that addend.  Every %hi/%lo pair
+    against the section in a tagged function votes for a base: where our
+    `lui` has the same destination as the ROM's word at the same index and
+    the paired low instruction has the same opcode and base register, the
+    ROM's pair decodes the static's address.  The base with the most votes
+    wins (a T2 body whose code has shifted votes at random and is outvoted by
+    the aligned references)."""
+    rom = rom or Rom()
+    fmap = fmap or function_map()
+    ti, text = obj.sec('.text')
+    allrels = obj.rels.get(ti, [])
+    votes = {}
+    for fname, s, e in carve(obj):
+        va = fnvas.get(fname)
+        if va is None or va not in fmap:
+            continue
+        theirs = rom_body(rom, va, fmap[va])
+        for o, typ, si in allrels:
+            if not (s <= o < e) or typ != 5:
+                continue
+            sym = obj.syms[si]
+            if sym['type'] != 3:
+                continue
+            sec = obj.secs[sym['shndx']]['name']
+            if sec not in ('.data', '.bss', '.sdata', '.sbss'):
+                continue
+            lo_o = next((o2 for (o2, t2, s2) in allrels if o2 > o and t2 == 6 and s2 == si), None)
+            if lo_o is None:
+                continue
+            i, li = (o - s) // 4, (lo_o - s) // 4
+            if li >= len(theirs):
+                continue
+            hw, lw = words(text[o:o + 4])[0], words(text[lo_o:lo_o + 4])[0]
+            rh, rl = theirs[i], theirs[li]
+            if rh >> 16 != hw >> 16 or (rl >> 21) != (lw >> 21):
+                continue
+            addend = ((hw & 0xffff) << 16) + sext16(lw & 0xffff)
+            rom_va = (((rh & 0xffff) << 16) + sext16(rl & 0xffff)) & 0xffffffff
+            key = (sec, (rom_va - addend) & 0xffffffff)
+            votes[key] = votes.get(key, 0) + 1
+    out = {}
+    for (sec, base), n in sorted(votes.items(), key=lambda kv: -kv[1]):
+        out.setdefault(sec, base)
+    return out
+
+
 def tags_in(src):
     """-> [(va, name, line)] for every @implements in the file."""
     out = []

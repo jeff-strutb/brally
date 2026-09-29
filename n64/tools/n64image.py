@@ -59,6 +59,7 @@ def build(t3=False, only=None, all_tagged=False):
             continue
         pieces = {n: (s, e) for n, s, e in B.carve(obj) if n}
         fnvas = {n: v for v, n, _ in tags}
+        sbase = None
         for va, name, _ in tags:
             if only is not None and va not in only:
                 continue
@@ -75,13 +76,15 @@ def build(t3=False, only=None, all_tagged=False):
                 continue
             if not (all_tagged or (va in t3tags and va in cert)):
                 continue
+            if sbase is None:
+                sbase = B.static_bases(obj, fnvas, rom, fmap)
             try:
-                code, data = L.link_function(obj, name, va, adata, fnvas, syms)
+                code, data = L.link_function(obj, name, va, adata, fnvas, syms, static_va=sbase)
             except L.LinkError as ex:
                 rep['skipped'].append(('%08X' % va, str(ex)))
                 continue
             if len(code) > fmap[va]:
-                code, data = L.link_function(obj, name, acode, adata, fnvas, syms)
+                code, data = L.link_function(obj, name, acode, adata, fnvas, syms, static_va=sbase)
                 extra.append((acode, code))
                 j = 0x08000000 | ((acode >> 2) & 0x03FFFFFF)
                 img[off:off + 8] = struct.pack('>II', j, 0)
