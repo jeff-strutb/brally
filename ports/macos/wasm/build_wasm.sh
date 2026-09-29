@@ -70,9 +70,16 @@ for o in $OUT/nat/o*.o $OUT/nat/w2c_*.o; do
     c=$OUT/c/$(basename "$o" .o).c
     [ -f "$c" ] || rm -f "$o"
 done
-NCF="-std=gnu11 -O2 -g -w -Iports/macos/wasm/rt -I$OUT/c -Iports/macos/wasm/host"
+# libopenmpt plays the N64 soundtrack (native/music.m); linked statically,
+# with the codecs it was built against, so the app carries no library.
+BREW=${BR_BREW:-/opt/homebrew/opt}
+MPT_LIBS="$BREW/libopenmpt/lib/libopenmpt.a $BREW/mpg123/lib/libmpg123.a $BREW/libvorbis/lib/libvorbisfile.a $BREW/libvorbis/lib/libvorbis.a $BREW/libogg/lib/libogg.a -lz -lc++"
+NCF="-std=gnu11 -O2 -g -w -Iports/macos/wasm/rt -I$OUT/c -Iports/macos/wasm/host -I$BREW/libopenmpt/include"
+# the flags reach sh through the environment: BSD xargs caps an -I command
+# at 255 bytes
+export NCF
 ls $OUT/c/*.c | xargs -P $JOBS -I{} sh -c \
-  'n=$(basename {} .c); [ $OUT/nat/$n.o -nt {} ] || clang '"$NCF"' -c {} -o $OUT/nat/$n.o || echo "NATIVE FAIL $n"'
+  'n=$(basename {} .c); [ $OUT/nat/$n.o -nt {} ] || clang $NCF -c {} -o $OUT/nat/$n.o || echo "NATIVE FAIL $n"'
 for f in ports/macos/wasm/rt/w2c_rt.c ports/macos/wasm/host/*.c; do
     clang $NCF -c $f -o $OUT/nat/rt_$(basename $f .c).o
 done
@@ -86,5 +93,5 @@ for f in ports/macos/wasm/native/*.c ports/macos/wasm/native/*.m; do
     case $f in *.m) arc=-fobjc-arc ;; *) arc= ;; esac
     clang $NCF $arc -c $f -o $OUT/nat/nv_$(basename $f | tr . _).o
 done
-clang $OUT/nat/*.o -framework Cocoa -framework Metal -framework QuartzCore -framework GameController -o $OUT/brally
+clang $OUT/nat/*.o -framework Cocoa -framework Metal -framework QuartzCore -framework GameController -framework AVFoundation $MPT_LIBS -o $OUT/brally
 echo "built: $OUT/brally"
