@@ -69,6 +69,22 @@ static void set_key(u16 mac, int down)
         }
 }
 
+/* A key as the game sees it, from a script rather than the keyboard: the
+ * DirectInput state and the VK state, plus WM_KEYDOWN/UP (and WM_CHAR for a
+ * printable press) to the game's window -- what brbox_drive.py's key() does. */
+void happ_key_script(u8 dik, u8 vk, int down)
+{
+    g_dik[dik] = down ? 0x80 : 0;
+    g_vk[vk] = (u8)down;
+    if (hwin_main_hwnd()) {
+        u32 lp = ((u32)dik << 16) | 1 | (down ? 0 : 0xC0000000u);
+        hwin_post(hwin_main_hwnd(), down ? 0x100 : 0x101, vk, lp);
+        if (down && ((vk >= 'A' && vk <= 'Z') || (vk >= '0' && vk <= '9') ||
+                     vk == 0x20 || vk == 0x0D || vk == 0x08 || vk == 0x1B))
+            hwin_post(hwin_main_hwnd(), 0x102, vk >= 'A' && vk <= 'Z' ? vk + 32 : vk, lp);
+    }
+}
+
 int happ_key_down(int vk) { return vk >= 0 && vk < 256 && g_vk[vk]; }
 void happ_dik_state(u8 *out) { memcpy(out, g_dik, 256); }
 

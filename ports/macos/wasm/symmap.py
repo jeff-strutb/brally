@@ -213,13 +213,52 @@ def main():
                 for m in ann.finditer(text):
                     # `/* 0x10680598 / 0x105BC740 */` names a D3D and a
                     # Glide address: ambiguous, so not an answer
-                    if re.search(r'0x[0-9A-Fa-f]{6,8}', m.group(3)):
+                    if re.search(r'0x[0-9A-Fa-f]{6,8}', re.sub(r'^\s*\.\.\s*0x[0-9A-Fa-f]+', '', m.group(3))):
                         continue
                     a = int(m.group(2), 16)
                     if 0x10077000 <= a < 0x118F0000:
                         w.writerow([rel, m.group(1), '0x%08X' % a])
                         n_ann += 1
     print('symmap: %d annotated data declarations' % n_ann)
+    # The same annotations in include/: a global's one declaration often lives
+    # only in a header (`extern BrVec3 *g_pBrCollVerts;  /* 0x106C7C5C */`).
+    # They answer for every file, but only where the maps give no answer, and
+    # a name two headers place differently answers nothing.
+    hdr = {}
+    # the slices' cross-reference form puts the address FIRST:
+    #   /* XSLICE 0x100B84F8 */ extern const char *const g_apszCarFiles[];
+    xslice = re.compile(r'/\*\s*XSLICE\s+0x([0-9A-Fa-f]{8})\s*\*/\s*extern\b[^;(]*?\b([A-Za-z_]\w*)\s*(?:\[[^\]]*\]\s*)*;')
+    for fn in sorted(os.listdir(os.path.join(ROOT, 'include'))):
+        if not fn.endswith('.h'):
+            continue
+        text = open(os.path.join(ROOT, 'include', fn), encoding='latin-1').read()
+        for m in ann.finditer(text):
+            # `0xA..0xB` is a range starting at A, not a second address
+            if re.search(r'0x[0-9A-Fa-f]{6,8}', re.sub(r'^\s*\.\.\s*0x[0-9A-Fa-f]+', '', m.group(3))):
+                continue
+            a = int(m.group(2), 16)
+            if 0x10077000 <= a < 0x118F0000:
+                hdr.setdefault(m.group(1), set()).add(a)
+        for m in xslice.finditer(text):
+            a = int(m.group(1), 16)
+            if 0x10077000 <= a < 0x118F0000:
+                hdr.setdefault(m.group(2), set()).add(a)
+    for dp, _, fs in os.walk(os.path.join(ROOT, 'src', 'core')):
+        for fn in fs:
+            if fn.endswith(('.c', '.cpp')):
+                text = open(os.path.join(dp, fn), encoding='latin-1').read()
+                for m in xslice.finditer(text):
+                    a = int(m.group(1), 16)
+                    if 0x10077000 <= a < 0x118F0000:
+                        hdr.setdefault(m.group(2), set()).add(a)
+    n_hdr = 0
+    for n, vs in sorted(hdr.items()):
+        if len(vs) == 1 and ('*', n) not in have:
+            rows.append(('*', n, '0x%08X' % next(iter(vs)), 'header'))
+            have.add(('*', n))
+            n_hdr += 1
+    print('symmap: %d header-annotated globals (%d names placed twice, dropped)'
+          % (n_hdr, sum(1 for v in hdr.values() if len(v) > 1)))
     with open(os.path.join(ROOT, 'build', 'wasm', 'symsites.csv'), 'w',
               newline='') as f:
         w = csv.writer(f)

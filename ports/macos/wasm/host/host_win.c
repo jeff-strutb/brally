@@ -661,13 +661,91 @@ u32 h_GetAsyncKeyState(u32 vk) { return happ_key_down((int)vk) ? 0x8000u : 0; }
 
 /* gdi32 / images */
 u32 h_GetStockObject(u32 i) { return 0x00040000u + i; }
-u32 h_DeleteObject(u32 o) { (void)o; return 1; }
-u32 h_GetObjectA(u32 o, u32 n, u32 p) { (void)o; if (p) memset(W_P(p), 0, n); return 0; }
+/* ------------------------------------------------------------ bitmaps --
+ * LoadImageA(IMAGE_BITMAP, LR_LOADFROMFILE | LR_CREATEDIBSECTION) is how the
+ * menu art and loading screens arrive (BrBmpLoadSurface, 0x10001290).  A DIB
+ * section keeps the file's own pixel layout -- rows bottom-up, each padded to
+ * four bytes -- and GetObjectA hands the game a BITMAP whose bmBits points at
+ * those rows, so the bits live in game memory.  The resource form (no
+ * LR_LOADFROMFILE) fails, as it did in the original: the DLL carries no
+ * bitmap resources. */
+#define HBM_BASE 0x00060000u
+#define HBM_MAX  256
+static struct { u32 bits; s32 cx, cy, stride; u16 bpp; } g_hbm[HBM_MAX];
+
+static u32 bmp_load(const char *gp)
+{
+    char host[1024];
+    FILE *f;
+    unsigned char fh[14], ih[40];
+    u32 off, n, i;
+    s32 cx, cy;
+    u16 bpp;
+    long sz;
+    if (!vfs_resolve(gp, host, sizeof host, 0) || !(f = fopen(host, "rb"))) return 0;
+    if (fread(fh, 1, 14, f) != 14 || fh[0] != 'B' || fh[1] != 'M' ||
+        fread(ih, 1, 40, f) != 40) { fclose(f); return 0; }
+    off = fh[10] | fh[11] << 8 | fh[12] << 16 | (u32)fh[13] << 24;
+    memcpy(&cx, ih + 4, 4); memcpy(&cy, ih + 8, 4); memcpy(&bpp, ih + 14, 2);
+    if (cx <= 0 || cy == 0 || (bpp != 24 && bpp != 32 && bpp != 16 && bpp != 8)) { fclose(f); return 0; }
+    for (i = 1; i < HBM_MAX && g_hbm[i].bits; i++) ;
+    if (i == HBM_MAX) { fclose(f); return 0; }
+    g_hbm[i].cx = cx; g_hbm[i].cy = cy < 0 ? -cy : cy; g_hbm[i].bpp = bpp;
+    g_hbm[i].stride = ((cx * bpp + 31) / 32) * 4;
+    n = (u32)(g_hbm[i].stride * g_hbm[i].cy);
+    g_hbm[i].bits = hmem_alloc(n, 1);
+    fseek(f, 0, SEEK_END); sz = ftell(f);
+    if ((long)off + (long)n > sz) n = sz > (long)off ? (u32)(sz - off) : 0;
+    fseek(f, off, SEEK_SET);
+    if (fread(W_P(g_hbm[i].bits), 1, n, f) != n) { hmem_free(g_hbm[i].bits); g_hbm[i].bits = 0; fclose(f); return 0; }
+    fclose(f);
+    return HBM_BASE + i;
+}
+
+static int hbm_index(u32 h)
+{
+    u32 i = h - HBM_BASE;
+    return (h >= HBM_BASE && i < HBM_MAX && g_hbm[i].bits) ? (int)i : -1;
+}
+
 u32 h_LoadImageA(u32 inst, u32 name, u32 type, u32 cx, u32 cy, u32 fl)
 {
-    (void)inst; (void)type; (void)cx; (void)cy; (void)fl;
-    HLOG("LoadImageA(%s)\n", name >= 0x10000 ? HS(name) : "#");
+    u32 h;
+    (void)inst; (void)cx; (void)cy;
+    if (type == 0) {                                  /* IMAGE_BITMAP */
+        if (!(fl & 0x10) || name < 0x10000) return 0; /* resources: none */
+        h = bmp_load(HS(name));
+        HLOG("LoadImageA(%s) -> %08X\n", HS(name), h);
+        return h;
+    }
+    HLOG("LoadImageA(%s, type %u)\n", name >= 0x10000 ? HS(name) : "#", type);
     return 0x00050001u;
+}
+
+u32 h_GetObjectA(u32 h, u32 cb, u32 p)
+{
+    int i = hbm_index(h);
+    if (i < 0 || !p || cb < 24) {           /* not a bitmap we hold */
+        if (p) memset(W_P(p), 0, cb);
+        return 0;
+    }
+    HW32(p + 0, 0);                         /* bmType */
+    HW32(p + 4, g_hbm[i].cx);
+    HW32(p + 8, g_hbm[i].cy);
+    HW32(p + 12, g_hbm[i].stride);
+    HW16(p + 16, 1);                        /* bmPlanes */
+    HW16(p + 18, g_hbm[i].bpp);
+    HW32(p + 20, g_hbm[i].bits);
+    return 24;
+}
+
+u32 h_DeleteObject(u32 h)
+{
+    int i = hbm_index(h);
+    if (i < 0) return 1;                    /* brushes, fonts: nothing held */
+    hmem_free(g_hbm[i].bits);
+    g_hbm[i].bits = 0;
+    return 1;
 }
 
 /* ============================================================= winmm == */

@@ -29,7 +29,11 @@ DEF = re.compile(r'^define\b[^@]*@("(?:[^"\\]|\\.)*"|[\w.$]+)\(')
 def norm(n):
     n = n.strip('"')
     if n.startswith('\\01'):
-        n = n[3:].lstrip('_@')
+        n = n[3:]
+        # ONE decoration character ('_' or '@'); C++ names start _Z, so
+        # stripping every '_' lost them and no C++ call was ever marked.
+        if n[:1] in ('_', '@'):
+            n = n[1:]
         n = re.sub(r'@\d+$', '', n)
     return n
 
@@ -109,6 +113,20 @@ def main():
     for i, l in enumerate(wl):
         if l.startswith('define ') and ' noinline' not in l:
             wl[i] = re.sub(r'\)(\s*(?:#\d+\s*)?)\{\s*$', lambda q: ') noinline' + q.group(1) + '{', l)
+    # File-static data is NOT private to its file in this tree: the decomp
+    # models scattered original globals as one TU-static block (br_sceneprops.c's
+    # s17_tuState) or declares a static table with no contents that stands for
+    # the original's (s17_colAA5D0), and the linker maps each to the original
+    # address, where other code reads and writes it.  At -O2 LLVM would split
+    # such a block into scalars and fold loads of fields it never sees written.
+    # Listing every internal global in llvm.compiler.used takes its address,
+    # so every access stays a real load or store.
+    statics = [m.group(1) for m in
+               (re.match(r'^(@[\w.$"\\]+) = internal (?:unnamed_addr )?(?:global|constant)\b', l)
+                for l in wl) if m]
+    if statics and not any(l.startswith('@llvm.compiler.used') for l in wl):
+        wl.append('@llvm.compiler.used = appending global [%d x ptr] [%s], section "llvm.metadata"'
+                  % (len(statics), ', '.join('ptr ' + g for g in statics)))
     # -O0 frontend output is optnone; the port wants it optimised
     out = '\n'.join(wl)
     out = re.sub(r'\boptnone\b', '', out)
