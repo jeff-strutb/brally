@@ -86,5 +86,5 @@ for f in ports/macos/wasm/native/*.c ports/macos/wasm/native/*.m; do
     case $f in *.m) arc=-fobjc-arc ;; *) arc= ;; esac
     clang $NCF $arc -c $f -o $OUT/nat/nv_$(basename $f | tr . _).o
 done
-clang $OUT/nat/*.o -framework Cocoa -framework Metal -framework QuartzCore -o $OUT/brally
+clang $OUT/nat/*.o -framework Cocoa -framework Metal -framework QuartzCore -framework GameController -o $OUT/brally
 echo "built: $OUT/brally"

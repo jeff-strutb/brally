@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <math.h>
 
 #define S_OK 0u
 #define E_NOINTERFACE 0x80004002u
@@ -168,21 +169,59 @@ static u32 h_DirectDrawCreate(u32 guid, u32 out, u32 unk)
 }
 
 /* =========================================================== DirectInput */
-typedef struct { int kind; int acquired; } didev;   /* kind 1 keyboard, 2 mouse */
+typedef struct { int kind; int acquired; s32 rmin[3], rmax[3]; } didev;   /* kind 1 keyboard, 2 mouse, 3 joystick */
+
+/* The joystick: one, always reported, answered from the Mac's first game
+ * controller (native/input.m); with none connected it reads centred.  Its
+ * instance GUID, {E3C58B00-9A2F-4D1B-8C5E-4252414C4C59}. */
+typedef struct { float x, y, z; unsigned buttons; int pov; } hpad;
+__attribute__((weak)) int hinput_pad(hpad *o) { memset(o, 0, sizeof *o); o->pov = -1; return 0; }
+static const u8 JOY_GUID[16] = { 0x00, 0x8B, 0xC5, 0xE3, 0x2F, 0x9A, 0x1B, 0x4D,
+                                 0x8C, 0x5E, 0x42, 0x52, 0x41, 0x4C, 0x4C, 0x59 };
 static u32 di_qi(u32 t, u32 iid, u32 out);
 static u32 did_qi(u32 t, u32 iid, u32 out);
 static u32 di_create_device(u32 t, u32 guid, u32 out, u32 unk);
-static u32 di_enum(u32 t, u32 type, u32 cb, u32 ref, u32 fl) { (void)t; (void)type; (void)cb; (void)ref; (void)fl; return S_OK; }
+/* EnumDevices: the joystick, for DIDEVTYPE_JOYSTICK (4) or all devices (0),
+ * unless only force-feedback devices are wanted (DIEDFL_FORCEFEEDBACK). */
+static u32 di_enum(u32 t, u32 type, u32 cb, u32 ref, u32 fl)
+{
+    u32 inst;
+    (void)t;
+    if ((type != 0 && type != 4) || (fl & 0x100) || !cb) return S_OK;
+    inst = hmem_alloc(0x244, 1);                    /* DIDEVICEINSTANCEA */
+    HW32(inst, 0x244);
+    memcpy(W_P(inst + 4), JOY_GUID, 16);            /* guidInstance */
+    memcpy(W_P(inst + 0x14), JOY_GUID, 16);         /* guidProduct  */
+    HW32(inst + 0x24, 0x0104);                      /* DIDEVTYPE_JOYSTICK, gamepad */
+    strcpy((char *)W_P(inst + 0x28), "Game Controller");
+    strcpy((char *)W_P(inst + 0x12C), "Game Controller");
+    HLOG("DirectInput EnumDevices(type %u, flags %X): the joystick\n", type, fl);
+    w_icall_ii_i(cb, inst, ref);
+    hmem_free(inst);
+    return S_OK;
+}
 static const meth DI[] = {
     { "QueryInterface", 3, (void *)di_qi }, { "AddRef", 1, (void *)m_addref }, { "Release", 1, (void *)m_release },
     { "CreateDevice", 4, (void *)di_create_device }, { "EnumDevices", 5, (void *)di_enum },
     { "GetDeviceStatus", 2, 0 }, { "RunControlPanel", 3, 0 }, { "Initialize", 3, 0 },
 };
 static u32 did_fmt(u32 t, u32 f) { (void)t; (void)f; return S_OK; }
-static u32 did_prop(u32 t, u32 a, u32 b) { (void)t; (void)a; (void)b; return S_OK; }
+/* SetProperty: the joystick keeps DIPROP_RANGE (4) per axis, by offset. */
+static u32 did_prop(u32 t, u32 a, u32 b)
+{
+    didev *d = hdr(t)->st;
+    if (d->kind == 3 && a == 4 && b && H32(b + 12) == 1) {       /* DIPH_BYOFFSET */
+        u32 off = H32(b + 8);
+        if (off <= 8 && !(off & 3)) {
+            d->rmin[off / 4] = (s32)H32(b + 16);
+            d->rmax[off / 4] = (s32)H32(b + 20);
+        }
+    }
+    return S_OK;
+}
 static u32 did_acq(u32 t) { didev *d = hdr(t)->st; int w = d->acquired; d->acquired = 1; return w ? 1 : S_OK; }
 static u32 did_unacq(u32 t) { didev *d = hdr(t)->st; int w = d->acquired; d->acquired = 0; return w ? S_OK : 1; }
-static u32 did_poll(u32 t) { (void)t; return 1; }
+static u32 did_poll(u32 t) { didev *d = hdr(t)->st; return d->kind == 3 ? S_OK : 1; }
 static int g_mdx, g_mdy, g_mbtn;
 unsigned hdx_mouse_polls;               /* BR_GLSTAT reports it per 60 swaps */
 void hdx_mouse(int dx, int dy, int btn) { g_mdx += dx; g_mdy += dy; g_mbtn = btn; }
@@ -227,6 +266,23 @@ static u32 did_state(u32 t, u32 n, u32 p)
         memcpy(W_P(p), k, n < 256 ? n : 256);
         return S_OK;
     }
+    if (d->kind == 3) {                             /* DIJOYSTATE / DIJOYSTATE2 */
+        hpad g;
+        float ax[3];
+        int i;
+        hinput_pad(&g);
+        ax[0] = g.x; ax[1] = g.y; ax[2] = g.z;
+        memset(W_P(p), 0, n);
+        for (i = 0; i < 3 && (u32)(i * 4 + 4) <= n; i++) {
+            float v = ax[i] < -1 ? -1 : ax[i] > 1 ? 1 : ax[i];
+            HW32(p + (u32)i * 4, (u32)(s32)lroundf(d->rmin[i] + (v + 1) * 0.5f * (float)(d->rmax[i] - d->rmin[i])));
+        }
+        if (n >= 0x24) HW32(p + 0x20, g.pov < 0 ? 0xFFFFFFFFu : (u32)g.pov);
+        for (i = 1; i < 4 && (u32)(0x20 + i * 4 + 4) <= n; i++) HW32(p + 0x20 + (u32)i * 4, 0xFFFFFFFFu);
+        for (i = 0; i < 16 && (u32)(0x30 + i) < n; i++)
+            ((u8 *)W_P(p + 0x30))[i] = (g.buttons >> i) & 1 ? 0x80 : 0;
+        return S_OK;
+    }
     memset(W_P(p), 0, n);
     abs_step();
     if (n >= 12) { HW32(p, g_mdx); HW32(p + 4, g_mdy); }
@@ -246,7 +302,13 @@ static u32 did_caps(u32 t, u32 p)
     u32 sz = H32(p);
     (void)t;
     memset(W_P(p + 4), 0, sz > 4 ? sz - 4 : 0);
-    HW32(p + 4, 1);
+    HW32(p + 4, 1);                                 /* DIDC_ATTACHED */
+    if (((didev *)hdr(t)->st)->kind == 3 && sz >= 0x18) {
+        HW32(p + 8, 0x0104);                        /* joystick, gamepad */
+        HW32(p + 12, 3);                            /* axes */
+        HW32(p + 16, 16);                           /* buttons */
+        HW32(p + 20, 1);                            /* POVs */
+    }
     return S_OK;
 }
 static const meth DID[] = {
@@ -268,10 +330,13 @@ static u32 di_create_device(u32 t, u32 guid, u32 out, u32 unk)
     (void)t; (void)unk;
     if (guid_is(guid, 0x6F1D2B61, 0xD5A0, 0x11CF, "BFC7444553540000")) kind = 1;
     else if (guid_is(guid, 0x6F1D2B60, 0xD5A0, 0x11CF, "BFC7444553540000")) kind = 2;
-    HLOG("DirectInput CreateDevice(%08X-...) -> %s\n", H32(guid), kind == 1 ? "keyboard" : kind == 2 ? "mouse" : "none");
+    else if (!memcmp(W_P(guid), JOY_GUID, 16)) kind = 3;
+    HLOG("DirectInput CreateDevice(%08X-...) -> %s\n", H32(guid),
+         kind == 1 ? "keyboard" : kind == 2 ? "mouse" : kind == 3 ? "joystick" : "none");
     if (!kind) { HW32(out, 0); return 0x80040154u; }   /* DIERR_DEVICENOTREG */
     d = calloc(1, sizeof *d);
     d->kind = kind;
+    for (int i = 0; i < 3; i++) { d->rmin[i] = 0; d->rmax[i] = 65535; }   /* DirectInput's default */
     HW32(out, com_new("IDirectInputDeviceA", DID, N(DID), d));
     return S_OK;
 }
