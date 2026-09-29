@@ -47,6 +47,9 @@ extern unsigned char D_8029DA00[];      /* the small font's */
  * copy of the argument, which leaves the argument itself homed.
  * RESIDUE (549): the display-list pointer's address lives in t1 where the
  * ROM has a3, which renames the temporaries of every command after it. */
+/* @t3 0x8022E4E0 */
+/* @t4-pass 0x8022E4E0 1 2026-09-29 compiles 150 best 549 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8022E4E0 2 2026-09-29 compiles 150 best 549 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8022E4E0 tgr BrTextEmitString */
 void BrTextEmitString(unsigned char *s)
 {
