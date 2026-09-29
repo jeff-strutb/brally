@@ -52,6 +52,8 @@ float BrVec3DistXY(float *pA, float *pB);
  * The colours are converted as unsigned (the ROM's cvt checks).
  * RESIDUE (6): in the first track's washout the ROM loads both constants
  * before the camera's x; ours loads x first (300 permuter compiles). */
+/* @t4-pass 0x802182A8 1 2026-09-29 compiles 150 best 6 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802182A8 2 2026-09-29 compiles 150 best 6 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x802182A8 tgr BrFogSetup */
 void BrFogSetup(void)
 {
