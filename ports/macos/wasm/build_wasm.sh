@@ -24,7 +24,8 @@ python3 ports/macos/wasm/gen_inc.py tools/msvc5/include $OUT/inc
 export LLVM OUT
 
 # Only TUs that carry game functions: @implements (C) or the C++ lane.
-find src/core -name '*.c' -o -name '*.cpp' | sort | while read f; do
+# A leading '_' is a scratch file (a permuter's candidate), never the game.
+find src/core \( -name '*.c' -o -name '*.cpp' \) ! -name '_*' | sort | while read f; do
     grep -q '@implements' "$f" && echo "$f"
 done > $OUT/tus.txt
 rm -f $OUT/obj/*.o
@@ -32,6 +33,14 @@ xargs -P $JOBS -n 1 ports/macos/wasm/wcc.sh < $OUT/tus.txt | sort > $OUT/compile
 grep '^FAIL' $OUT/compile.txt > $OUT/fails.txt || true
 echo "wasm32: $(ls $OUT/obj/*.o | wc -l | tr -d ' ') of $(wc -l < $OUT/tus.txt | tr -d ' ') TUs compiled ($(grep -c '^LAX' $OUT/compile.txt) via msvc_lax, $(wc -l < $OUT/fails.txt | tr -d ' ') failed: $OUT/fails.txt)"
 
+# The verified T3 build's placement decides every function's address. It is
+# derived from src/ and config/, so rebuild it whenever either is newer --
+# a stale copy names files that were refiled since and silently gives their
+# functions synthetic addresses, and the original's data tables then call
+# into nothing.
+if [ ! -f $OUT/placement.csv ] || [ -n "$(find src config -newer $OUT/placement.csv -print -quit)" ]; then
+    .venv/bin/python ports/macos/wasm/t3manifest.py
+fi
 .venv/bin/python ports/macos/wasm/symmap.py
 python3 - <<'EOF'
 import csv

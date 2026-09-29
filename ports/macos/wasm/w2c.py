@@ -1779,6 +1779,19 @@ def main():
             nbad += 1
             continue
         sites.append((r['src'], norm(r['name']), int(r['addend']), va))
+        # A C++ vtable: MSVC's ??_7Class@@6B@ labels the first slot; clang's
+        # _ZTV<Class> labels a group two words earlier (offset-to-top, RTTI),
+        # and its constructors store _ZTV + 8.  Map clang's name to the
+        # original table so a port-compiled constructor installs the
+        # ORIGINAL vtable -- whose slots hold the original functions' VAs --
+        # instead of a port-made one with null slots for every virtual the
+        # file does not define.
+        vm = re.match(r'\?\?_7((?:[A-Za-z_]\w*@)+)@6B@$', r['name'])
+        if vm:
+            parts = vm.group(1).rstrip('@').split('@')[::-1]   # outer first
+            itan = ''.join('%d%s' % (len(x), x) for x in parts)
+            zname = '_ZTV' + (('N' + itan + 'E') if len(parts) > 1 else itan)
+            sites.append((r['src'], zname, int(r['addend']), va - 8))
     if nbad:
         print('w2c: %d verified sites dropped (no real target)' % nbad)
     for r in csv.DictReader(open(os.path.join(wd, 'placement.csv'))):
