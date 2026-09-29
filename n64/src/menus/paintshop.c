@@ -2282,6 +2282,111 @@ void BrPaintDashRoundRect(int x0, int y0, int x1, int y1)
   }
 }
 
+/* WHAT IT DOES: Draw a marching-ants oval inside two screen corners (either
+ * order): the midpoint ellipse walk of BrPaintFillOval at twice the
+ * resolution, and on every other step the four quadrant points at odd
+ * coordinates only, in dashes of four points of the two dash colours (swapped
+ * every 8 frames). */
+/* @implements 0x802523CC tgr BrPaintDashOval */
+void BrPaintDashOval(int x0, int y0, int x1, int y1)
+{
+  int ry;
+  int rx;
+  int t;
+  int dx;
+  int dy;
+  int x;
+  int y;
+  int err;
+  int b2b;
+  int a2b;
+  int b2;
+  int a2;
+  int n;
+  unsigned char c;
+
+  n = 0;
+  dx = x1 - x0;
+  if (dx < 0) {
+    dx = x0 - x1;
+    t = x0;
+    x0 = x1;
+    x1 = t;
+  }
+  dy = y1 - y0;
+  if (dy < 0) {
+    dy = y0 - y1;
+    t = y0;
+    y0 = y1;
+    y1 = t;
+  }
+  ry = dy >> 1 >= 2 ? dy >> 1 : 1;
+  rx = dx >> 1 >= 2 ? dx >> 1 : 1;
+  x = 0;
+  y = ry * 2;
+  b2 = b2b = ry * ry;
+  a2 = a2b = rx * rx;
+  err = -a2 * y;
+  if ((++D_8028DBB0 & 7) == 0) {
+    BrSwapBytes((char *)&D_8028DAB8, (char *)&D_8028DABC);
+  }
+  while (b2b * x <= a2b * y) {
+    if (!(x & 1)) {
+      n = (n + 1) % 8;
+      c = n < 4 ? D_8028DAB8 : D_8028DABC;
+      if (((x >> 1) + ((x0 + x1) >> 1)) & 1) {
+        BrFillPoint((x >> 1) + ((x0 + x1) >> 1), (y >> 1) + ((y0 + y1) >> 1), c);
+      }
+      if (((x >> 1) + ((x0 + x1) >> 1)) & 1) {
+        BrFillPoint((x >> 1) + ((x0 + x1) >> 1), ((y0 + y1) >> 1) - (y >> 1), c);
+      }
+      if ((((x0 + x1) >> 1) - (x >> 1)) & 1) {
+        BrFillPoint(((x0 + x1) >> 1) - (x >> 1), ((y0 + y1) >> 1) - (y >> 1), c);
+      }
+      if ((((x0 + x1) >> 1) - (x >> 1)) & 1) {
+        BrFillPoint(((x0 + x1) >> 1) - (x >> 1), (y >> 1) + ((y0 + y1) >> 1), c);
+      }
+    }
+    err += b2 * x;
+    x++;
+    err += b2 * x;
+    if (err > 0) {
+      err -= a2 * y;
+      y--;
+      err -= a2 * y;
+    }
+  }
+  x = rx * 2;
+  y = 0;
+  err = -b2 * x;
+  while (a2b * y <= b2b * x) {
+    if (!(y & 1)) {
+      n = (n + 1) % 8;
+      c = n < 4 ? D_8028DAB8 : D_8028DABC;
+      if (((y >> 1) + ((y0 + y1) >> 1)) & 1) {
+        BrFillPoint((x >> 1) + ((x0 + x1) >> 1), (y >> 1) + ((y0 + y1) >> 1), c);
+      }
+      if ((((y0 + y1) >> 1) - (y >> 1)) & 1) {
+        BrFillPoint((x >> 1) + ((x0 + x1) >> 1), ((y0 + y1) >> 1) - (y >> 1), c);
+      }
+      if ((((y0 + y1) >> 1) - (y >> 1)) & 1) {
+        BrFillPoint(((x0 + x1) >> 1) - (x >> 1), ((y0 + y1) >> 1) - (y >> 1), c);
+      }
+      if (((y >> 1) + ((y0 + y1) >> 1)) & 1) {
+        BrFillPoint(((x0 + x1) >> 1) - (x >> 1), (y >> 1) + ((y0 + y1) >> 1), c);
+      }
+    }
+    err += a2 * y;
+    y++;
+    err += a2 * y;
+    if (err > 0) {
+      err -= b2 * x;
+      x--;
+      err -= b2 * x;
+    }
+  }
+}
+
 
 /* WHAT IT DOES: Draw a dashed circle outline of radius r around a screen
  * point, clipped to the paint area: a midpoint walk at double resolution,
