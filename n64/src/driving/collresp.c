@@ -684,7 +684,8 @@ void BrCrPlaneResolve(BrTipBody *b, float *pA, float planeD, float *pEdgeN, floa
  * triangle's normal and restore its orientation.  Counts frames with no
  * contact in body+0x200 (to 40).  Returns 1 if any contact responded.  The
  * PC twin is BrCrRespWalk.
- * RESIDUE (~300): register priority -- the ROM keeps the addresses of all
+ * Both dot products group as the ROM does: a + (b + c).
+ * RESIDUE (~340): register priority -- the ROM keeps the addresses of all
  * three plane globals in saved registers and homes m in its argument slot;
  * ours keeps m and loads D_802A4A2C by address each time, which moves every
  * saved register and temp after it.  Frame, slots and control flow match. */
@@ -731,7 +732,7 @@ int BrCrRespWalk(BrTipBody *b, float m[4][4])
       flag = 1;
       D_802A4A28 = 0;
       cnt++;
-      planeD = v[2] * nrm[2] + nrm[0] * v[0] + nrm[1] * v[1];
+      planeD = v[2] * nrm[2] + (nrm[0] * v[0] + nrm[1] * v[1]);
       if (D_8026FF18 == 4) {
         if ((nrm[0] < 0.0f ? -nrm[0] : nrm[0]) <= 0.999f
             && (nrm[1] < 0.0f ? -nrm[1] : nrm[1]) <= 0.999f
@@ -790,7 +791,7 @@ int BrCrRespWalk(BrTipBody *b, float m[4][4])
         dp[0] = b->cur[0] - b->state[0];
         dp[1] = b->cur[1] - b->state[1];
         dp[2] = b->cur[2] - b->state[2];
-        d = (pP->n[2] * dp[2] + dp[0] * pP->n[0] + dp[1] * pP->n[1]) * 1.1;
+        d = (pP->n[2] * dp[2] + (dp[0] * pP->n[0] + dp[1] * pP->n[1])) * 1.1;
         dp[0] = pP->n[0] * d;
         dp[1] = pP->n[1] * d;
         dp[2] = pP->n[2] * d;
