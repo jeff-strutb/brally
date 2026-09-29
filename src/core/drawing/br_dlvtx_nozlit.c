@@ -72,6 +72,17 @@
  */
 #include <stdint.h>
 #include <stddef.h>
+/* TU state.  Traced in the VC5 backend (tools/c2emu.py, docs/VC5-IDIOMS.md
+ * tail): operand order inside each light row is c2's key sort, an XOR hash
+ * over symbol indices, so these headers (the symbol count ahead of the
+ * function), the order of the file-scope and block-scope externs and the
+ * locals below place the products.  The light rows carry no redundant
+ * inner parentheses: a parenthesised sub-sum becomes a c2 precision node,
+ * one more DAG level, which changes the setup's store/load schedule. */
+#include <stdio.h>
+#include <dsound.h>
+#include <limits.h>
+#include <windows.h>
 typedef struct BrDlVtx {
     float   x, y, z;
     float   r, g, b;
@@ -88,24 +99,11 @@ typedef struct BrDlVtx {
     float   n0, n1, n2;
 } BrDlVtx;
 
-
 /* MVP matrix, 4x4 row-major at 0x105D1760. */
-extern float DAT_105d1760, DAT_105d1764, DAT_105d1768, DAT_105d176c;
-extern float DAT_105d1790, DAT_105d1794, DAT_105d1798, DAT_105d179c;
-#define DAT_105d1770 (*(float *)0x105d1770)
-#define DAT_105d1774 (*(float *)0x105d1774)
-#define DAT_105d1778 (*(float *)0x105d1778)
-#define DAT_105d177c (*(float *)0x105d177c)
-#define DAT_105d1780 (*(float *)0x105d1780)
-#define DAT_105d1784 (*(float *)0x105d1784)
-#define DAT_105d1788 (*(float *)0x105d1788)
-#define DAT_105d178c (*(float *)0x105d178c)
+extern float DAT_105d1770, DAT_105d1774, DAT_105d1778, DAT_105d177c;  /* MVP y column */
+extern float DAT_105d1780, DAT_105d1784, DAT_105d1788, DAT_105d178c;  /* MVP z column */
 
-extern int DAT_105d17d0;          /* fLightCached */
-extern int DAT_105ccfd0;          /* nLights */
-extern int DAT_100a9a50;          /* iModel */
 typedef struct { float m[16]; } BrDlMtx;
-extern BrDlMtx DAT_105ccd50[];    /* model matrix stack, 1-based: [top - 1] */
 
 typedef struct {
     unsigned char col[4];
@@ -113,47 +111,41 @@ typedef struct {
     signed char   dir[4];
     unsigned char pad[4];
 } BrDlLight;
-extern BrDlLight DAT_105ccc78[2];
-
-extern float DAT_105ce210, DAT_105ce214, DAT_105ce218;  /* lightScale[3] */
-extern float DAT_105ce21c, DAT_105ce220, DAT_105ce224;  /* lightDir[3] */
-extern float DAT_105ce228, DAT_105ce22c, DAT_105ce230;  /* lightAmb[3] */
-
-extern float DAT_105d17a4, DAT_105d17b4, DAT_105ce2d0;  /* unlit colour */
-
-extern BrDlVtx DAT_105ce318[];
-
-extern float DAT_10077410;        /* 0.0f   */
-extern float DAT_10077418;        /* 255.0f */
-extern float DAT_10077420;        /* 128.0f */
 
 typedef struct { float x, y, z, s, t, n0, n1, n2; } BrDlSrcVtx;
 
+extern BrDlMtx DAT_105ccd50[];  /* model matrix stack, 1-based: [top - 1] */
+extern float DAT_10077418;  /* 255.0f */
+extern float DAT_105d1760, DAT_105d1764, DAT_105d1768, DAT_105d176c;  /* MVP x column */
+extern float DAT_105ce21c, DAT_105ce220, DAT_105ce224;  /* lightDir[3] */
 extern void    FUN_100344D0(void *);
 extern int32_t FUN_10022120(void *);
-extern void    FUN_10023760(void *, void *, float, float, float);
+extern BrDlVtx DAT_105ce318[];  /* vertex buffer */
+extern float DAT_10077420;  /* 128.0f */
+extern float DAT_105ce210, DAT_105ce214, DAT_105ce218;  /* lightScale[3] */
+extern float DAT_105d1790, DAT_105d1794, DAT_105d1798, DAT_105d179c;  /* MVP translation row */
 
 /* Hand-transcribed from the Glide bytes, compiled /O2 /Op like the rest of
- * its original TU (pinned in config/t3_variant_c.csv).  1017/1019 B,
- * 288/289 insns, every row paired.  Source facts carried from the family
+ * its original TU (pinned in config/t3_variant_c.csv).  1019/1019 B,
+ * 289/289 insns; 9 real diff regions, 11 rows (plus two link-time
+ * relocation fields).  Source facts carried from the family
  * (br_dlvtx_texgen.c): light records read as bytes, 1-based matrix stack,
- * z/y MVP columns as absolute derefs and x/w as externs, pSrc++ at the tail,
- * and the vertex pointer copy formed before the count.
- * Open (x87 scheduling only):
- *  - the four transform rows: the original loads the z and y columns, does
- *    the y product, then loads x; ours issues the x product second.  Dead:
- *    all six term orders x two groupings, operand order inside every term
- *    (24), the translation term in eleven positions, (double) on x or the
- *    column (5 forms; they move x to the memory side), the x column as an
- *    absolute deref, array or struct (6), a plain float[4][4] matrix (12);
- *  - the light setup's colour/direction interleave (one fxch short, the
- *    2-byte gap).  Dead: statement-order hill-climb over the six setup
- *    statements and the three ambient ones, direction bytes as int temps
- *    or inline casts (3);
- *  - the dot product's first load and the ambient byte-load schedule.
- *    Dead: all 12 term orders/groupings of the dot product.
+ * pSrc++ at the tail, and the vertex pointer copy formed before the count.
+ * 2026-09-29: the four transform rows are exact (all four MVP columns as
+ *    externs) and the setup's colour stores and direction loads are exact.
+ * Open (x87 operand order / scheduling only):
+ *  - the light rows: the original sums (m[2]*dz + m[0]*dx) + m[1]*dy with
+ *    dz, dx, dy homed at [esp+18], [esp+14], [esp+1c]; ours pairs dx with
+ *    dy first.  Written with the inner parentheses the pairing is right
+ *    but the schedule needs the direction load one DAG level higher; in
+ *    the emulated backend the load order of each pair is an equal-priority
+ *    tie broken by tuple order.  Not reached: 2,048 symbol counts x 1,200
+ *    local layouts, statement orders, comparator flips (tools/c2emu.py);
+ *  - the ambient block after the normalise call: integer issue order of
+ *    `xor edx,edx` / `add esp,4` / `mov bl,[..]`.
  * @t4-pass 0x10023360 1 2026-09-24 probes 74 bytes 1017 insns 288 regions 7 rows 7 census no  (hand, fn.py variants: transform-row term orders, groupings, operand orders, translation position, double casts, x-column kinds, float[4][4] matrix; nothing adopted moved the gate numbers)
- * @t4-pass 0x10023360 2 2026-09-24 probes 78 bytes 1017 insns 288 regions 7 rows 7 census yes  (census: every row is an x87 issue-order pair plus three singleton fxch; light-setup and ambient statement hill-climb, dot-product orders, direction int temps; nothing moved) */
+ * @t4-pass 0x10023360 2 2026-09-24 probes 78 bytes 1017 insns 288 regions 7 rows 7 census yes  (census: every row is an x87 issue-order pair plus three singleton fxch; light-setup and ambient statement hill-climb, dot-product orders, direction int temps; nothing moved)
+ * @t4-pass 0x10023360 3 2026-09-29 probes 9000 bytes 1019 insns 289 regions 9 rows 11 census yes  (c2emu-traced: inner-paren precision nodes, statement order, extern scope/order, local order, header symbol counts, column extern/macro forms; comparator flips, priority and tie-break forcing in the emulated backend) */
 /* WHAT IT DOES: transforms a batch of vertices through the combined matrix,
  * copies their texture coordinates, lights each one -- the diffuse term from
  * the one directional light, clamped to 255 per channel, or the ambient
@@ -162,17 +154,25 @@ extern void    FUN_10023760(void *, void *, float, float, float);
 /* @implements 0x10023360 glide BrDlVtxNoZLit */
 const uint8_t *BrDlVtxNoZLit(const uint8_t *p)
 {
-    int v0;
-    int n;
-    int i;
-    float *m;
-    float dx, dy, dz;
-    float t, c;
+    int32_t oc;
     uint32_t w0;
-    const BrDlSrcVtx *pSrc;
     BrDlVtx *pV, *pVc;
     float *pf;
-    int32_t oc;
+    int v0;
+    int n;
+    const BrDlSrcVtx *pSrc;
+    float *m;
+    float t, c;
+    float dx, dy, dz;
+    int i;
+    extern int DAT_105ccfd0;  /* nLights */
+    extern float DAT_10077410;  /* 0.0f */
+    extern int DAT_105d17d0;  /* fLightCached */
+    extern void    FUN_10023760(void *, void *, float, float, float);
+    extern int DAT_100a9a50;  /* iModel */
+    extern float DAT_105ce228, DAT_105ce22c, DAT_105ce230;  /* lightAmb[3] */
+    extern float DAT_105d17a4, DAT_105d17b4, DAT_105ce2d0;  /* unlit colour */
+    extern BrDlLight DAT_105ccc78[2];  /* N64 Lights: directional, ambient */
 
     if (!DAT_105d17d0) {
         if (DAT_105ccfd0 != 0) {
@@ -183,9 +183,9 @@ const uint8_t *BrDlVtxNoZLit(const uint8_t *p)
             dx = (float)DAT_105ccc78[0].dir[0];
             DAT_105ce218 = (float)DAT_105ccc78[0].col[2];
             dy = (float)DAT_105ccc78[0].dir[1];
-            DAT_105ce21c = ((m[2] * dz + m[0] * dx) + m[1] * dy) / DAT_10077420;
-            DAT_105ce220 = ((m[6] * dz + m[4] * dx) + m[5] * dy) / DAT_10077420;
-            DAT_105ce224 = ((m[10] * dz + m[8] * dx) + m[9] * dy) / DAT_10077420;
+            DAT_105ce21c = (m[2] * dz + m[0] * dx + m[1] * dy) / DAT_10077420;
+            DAT_105ce220 = (m[6] * dz + m[4] * dx + m[5] * dy) / DAT_10077420;
+            DAT_105ce224 = (m[10] * dz + m[8] * dx + m[9] * dy) / DAT_10077420;
             FUN_100344D0(&DAT_105ce21c);
             DAT_105ce228 = (float)DAT_105ccc78[1].col[0];
             DAT_105ce22c = (float)DAT_105ccc78[1].col[1];
