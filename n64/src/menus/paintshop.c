@@ -60,6 +60,7 @@ extern unsigned short *D_8028DB90;     /* the decal palette, RGBA5551 */
 typedef struct BrPaintArea { int x, y, w, h; } BrPaintArea;
 extern BrPaintArea D_8028DB94;         /* the paint area on screen */
 void BrPaintPlot(int x, int y, unsigned char c);
+void BrPaintDisc(int x, int y, int r, unsigned char screen);
 extern Gfx *D_8028A858;
 extern int D_8028A850;
 extern int D_8028A898;                 /* the texture filter mode */
@@ -466,6 +467,89 @@ unsigned char BrPaintPeek(unsigned char *tex, int x, int y)
   return c;
 }
 
+/* WHAT IT DOES: Draw a line on the decal between two screen points (a
+ * quarter scale, y flipped) by Bresenham's method, stepping along the
+ * longer axis from the lower end: each point a texel in the chosen colour,
+ * or a disc the brush's size.
+ * RESIDUE (92): register priority -- the ROM keeps both steps in s6/s7 and
+ * spills the loop end; ours spills the y step.  Hoisting x/y, loops on the
+ * parameters, loop-test spellings, declaration order and 396 permuter
+ * compiles leave it. */
+/* @implements 0x8024F000 tgr BrPaintLine */
+void BrPaintLine(int x0, int y0, int x1, int y1)
+{
+  int u0;                       /* u0-u3: declared, never used; the ROM's */
+  int u1;                       /* frame has their four slots */
+  int u2;
+  int u3;
+  int dx;
+  int dy;
+  int r;
+  int x;
+  int y;
+  int stepx;
+  int stepy;
+  int e;
+  int t;
+
+  x0 = (x0 - D_8028DB94.x) >> 2;
+  y0 = (D_8028DB94.y + D_8028DB94.h - y0) >> 2;
+  x1 = (x1 - D_8028DB94.x) >> 2;
+  y1 = (D_8028DB94.y + D_8028DB94.h - y1) >> 2;
+  r = D_8028D4A0[D_8028DAC0].w >> 1;
+  dx = x1 - x0 < 0 ? -(x1 - x0) : x1 - x0;
+  dy = y1 - y0 < 0 ? -(y1 - y0) : y1 - y0;
+  stepy = 1;
+  if ((dy < dx && x1 < x0) || (dx < dy && y1 < y0)) {
+    t = x0;
+    x0 = x1;
+    x1 = t;
+    t = y0;
+    y0 = y1;
+    y1 = t;
+  }
+  stepx = 1;
+  if (y1 < y0) {
+    stepy = -1;
+  }
+  if (x1 < x0) {
+    stepx = -1;
+  }
+  if (dy < dx) {
+    x = x0;
+    y = y0;
+    e = 0;
+    for (; x <= x1; x++) {
+      if (e >= dx) {
+        e -= dx;
+        y += stepy;
+      }
+      if (D_8028DAC0 == 0) {
+        BrPaintPlot(x, y, D_8028DB58);
+      } else {
+        BrPaintDisc(x, y, r, 0);
+      }
+      e += dy;
+    }
+  } else {
+    x = x0;
+    y = y0;
+    e = 0;
+    for (; y <= y1; y++) {
+      if (e >= dy) {
+        e -= dy;
+        x += stepx;
+      }
+      if (D_8028DAC0 == 0) {
+        BrPaintPlot(x, y, D_8028DB58);
+      } else {
+        BrPaintDisc(x, y, r, 0);
+      }
+      e += dx;
+    }
+  }
+}
+
 /* WHAT IT DOES: Plot one texel of colour c into the 4-bit decal texture at
  * (x, y) -- inside the texture and not masked off -- with the odd rows'
  * 8-texel words swapped as the RDP's TMEM layout wants them.
@@ -849,6 +933,10 @@ void BrPaintMirrorSide(void)
 /* @implements 0x80251A54 tgr BrPaintDashLine */
 void BrPaintDashLine(int x0, int y0, int x1, int y1)
 {
+  int u0;
+  int u1;
+  int u2;
+  int u3;
   int dx;
   int dy;
   int err;
