@@ -1,6 +1,21 @@
 /* raceflags.c -- per-race option flags
  */
 #include "tgr/common.h"
+#include "tgr/car.h"
+
+typedef struct BrFlagObj {      /* a track object (0x54 bytes) */
+  char pad00[0x44];
+  unsigned int *dl;             /* 0x44  its display list */
+  char pad48[0x4C - 0x48];
+  unsigned short flags;         /* 0x4C  4: keeps the colour override; 8: set when patched */
+  char pad4e[0x54 - 0x4E];
+} BrFlagObj;
+typedef struct BrFlagHdr {      /* the loaded track's header */
+  char pad00[0x60];
+  BrFlagObj *objs;              /* 0x60 */
+  int nObjs;                    /* 0x64 */
+} BrFlagHdr;
+extern BrFlagHdr D_80025C00;
 
 /* -- declarations -- */
 void BrRaceFlagsApply(void);
@@ -9,13 +24,12 @@ extern int D_8028AA80;
 extern int D_8028AA84;
 extern int D_8028AA8C;
 int BrDlRaceKindPatch();
-extern int D_8028ABA8;
-extern int D_8028AC68;
-extern int D_8028AD28;
+extern unsigned int D_8028ABA8[6][4][2];
+extern unsigned int D_8028AC68[6][4][2];
+extern unsigned int D_8028AD28[6][4][2];
 extern int D_8028ADE8;
 extern int D_8028B7F4;
 extern int D_8028B940;
-extern int D_8031B760;
 extern int D_8026FF08;
 extern int D_80025C50;
 /* -- end declarations -- */
@@ -142,89 +156,41 @@ done:
 /* WHAT IT DOES: Re-evaluate everything that depends on the race-kind flags:
  * marks each track object whose condition list now holds, and does the same
  * for every car's model parts. */
-/* @t4-pass 0x8021B97C 1 2026-09-26 compiles 17 best 137 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8021B97C 2 2026-09-26 compiles 17 best 137 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8021B97C 3 2026-09-26 compiles 17 best 137 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8021B97C tgr BrRaceFlagsApply */
 void BrRaceFlagsApply(void)
 {
-  char cVar1;
-  int iVar2;
-  int iVar3;
-  unsigned int uVar4;
-  char *puVar5;
-  int iVar6;
-  int local_c;
-  
-  uVar4 = 0;
-  if (D_8028B940 != 2) {
-    uVar4 = (unsigned int)(D_8028B940 != 7);
+  int flag;
+  int i;
+  int n;
+  int j;
+
+  flag = D_8028B940 != 2 && D_8028B940 != 7;
+  for (i = 0; i < D_80025C00.nObjs; i++) {
+    if ((D_80025C00.objs[i].flags & 4) == 0) {
+      D_8028ADE8 = flag;
+    }
+    if (BrDlRaceKindPatch(D_80025C00.objs[i].dl, D_8028ABA8)) {
+      D_80025C00.objs[i].flags |= 8;
+    }
   }
-  iVar6 = 0;
-  iVar3 = 0;
-  if (0 < (*(int *)0x80025C64)) {
-    do {
-      if ((*(unsigned short *)((*(int *)0x80025C60) + iVar3 + 0x4c) & 4) == 0) {
-        D_8028ADE8 = uVar4;
-      }
-      iVar2 = BrDlRaceKindPatch(*(int *)((*(int *)0x80025C60) + iVar3 + 0x44),&D_8028ABA8);
-      if (iVar2 != 0) {
-        *(unsigned short *)((*(int *)0x80025C60) + iVar3 + 0x4c) = *(unsigned short *)((*(int *)0x80025C60) + iVar3 + 0x4c) | 8;
-      }
-      iVar6 = iVar6 + 1;
-      iVar3 = iVar3 + 0x54;
-    } while (iVar6 < (*(int *)0x80025C64));
-  }
-  local_c = 0;
-  if (0 < D_8028B7F4) {
-    puVar5 = &D_8031B760;
-    do {
-      iVar3 = 0;
-      cVar1 = puVar5[0x2063];
-      while( 1 ) {
-        iVar6 = 0;
-        if (cVar1 == '\x02') {
-          iVar2 = 0;
-          iVar6 = *(int *)(puVar5 + 0x2078);
-          while( 1 ) {
-            BrDlRaceKindPatch(*(int *)(iVar6 + iVar3 * 0x28 + iVar2 + 0x18),&D_8028AC68);
-            iVar2 = iVar2 + 4;
-            if (0x27 < iVar2) break;
-            iVar6 = *(int *)(puVar5 + 0x2078);
-          }
-          iVar2 = 0;
-          iVar6 = *(int *)(puVar5 + 0x2078);
-          while( 1 ) {
-            BrDlRaceKindPatch(*(int *)(iVar6 + iVar3 * 0xc + iVar2 + 0xbc),&D_8028AD28);
-            iVar2 = iVar2 + 4;
-            if (iVar2 == 0xc) break;
-            iVar6 = *(int *)(puVar5 + 0x2078);
-          }
+  for (n = 0; n < D_8028B7F4; n++) {
+    for (j = 0; j < 3; j++) {
+      if (D_8031B760[n].colour[3] == 2) {
+        for (i = 0; i < 10; i++) {
+          BrDlRaceKindPatch(((BrCarModel *)D_8031B760[n].model)->dl[j][i], D_8028AC68);
         }
-        else {
-          iVar2 = *(int *)(puVar5 + 0x2078);
-          while( 1 ) {
-            BrDlRaceKindPatch(*(int *)(iVar2 + iVar3 * 0x28 + iVar6 + 0x18),&D_8028ABA8);
-            iVar6 = iVar6 + 4;
-            if (0x27 < iVar6) break;
-            iVar2 = *(int *)(puVar5 + 0x2078);
-          }
-          iVar6 = 0;
-          iVar2 = *(int *)(puVar5 + 0x2078);
-          while( 1 ) {
-            BrDlRaceKindPatch(*(int *)(iVar2 + iVar3 * 0xc + iVar6 + 0xbc),&D_8028ABA8);
-            iVar6 = iVar6 + 4;
-            if (iVar6 == 0xc) break;
-            iVar2 = *(int *)(puVar5 + 0x2078);
-          }
+        for (i = 0; i < 3; i++) {
+          BrDlRaceKindPatch(((BrCarModel *)D_8031B760[n].model)->dl2[j][i], D_8028AD28);
         }
-        iVar3 = iVar3 + 1;
-        if (iVar3 == 3) break;
-        cVar1 = puVar5[0x2063];
+      } else {
+        for (i = 0; i < 10; i++) {
+          BrDlRaceKindPatch(((BrCarModel *)D_8031B760[n].model)->dl[j][i], D_8028ABA8);
+        }
+        for (i = 0; i < 3; i++) {
+          BrDlRaceKindPatch(((BrCarModel *)D_8031B760[n].model)->dl2[j][i], D_8028ABA8);
+        }
       }
-      local_c = local_c + 1;
-      puVar5 = puVar5 + 0x2090;
-    } while (local_c < D_8028B7F4);
+    }
   }
 }
 
