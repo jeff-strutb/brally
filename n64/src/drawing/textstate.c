@@ -158,6 +158,12 @@ void BrTextPrint(unsigned char *s, int x, int y)
  * unprintables as 12/40 of the size, %% as a percent sign, and the %i, %n and
  * two-letter colour codes as nothing. Halved back when the hi-res flag doubled
  * the size. */
+/* @t4-pass 0x8022F720 1 2026-09-29 compiles 13 best 1 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8022F720 2 2026-09-29 compiles 13 best 1 moved 0  (n64/tools/n64permute.py) */
+/* RESIDUE (1): the ROM compares the percent sign with the constant register
+ * first (bnel t5, t1); IDO orders this compare itself, and every spelling of
+ * it and the byte types tried gives c first. */
+/* @t3 0x8022F720 */
 /* @implements 0x8022F720 tgr BrTextWidth */
 int BrTextWidth(unsigned char *s, int size)
 {
