@@ -112,31 +112,13 @@ void BrCrListPrintCount(void)
   }
 }
 
-#define BR_CR_GATHER_ONE(pP)                                            \
-  BrMat3MulVecRows(&v[0], m, (pP)->v0);                                 \
-  BrMat3MulVecRows(&v[3], m, (pP)->v1);                                 \
-  BrMat3MulVecRows(&v[6], m, (pP)->v2);                                 \
-  e1[0] = v[3] - v[0];                                                  \
-  e1[1] = v[4] - v[1];                                                  \
-  e1[2] = v[5] - v[2];                                                  \
-  e2[0] = v[6] - v[0];                                                  \
-  e2[1] = v[7] - v[1];                                                  \
-  e2[2] = v[8] - v[2];                                                  \
-  nrm[0] = e1[1] * e2[2] - e1[2] * e2[1];                               \
-  nrm[1] = e1[2] * e2[0] - e1[0] * e2[2];                               \
-  nrm[2] = e1[0] * e2[1] - e1[1] * e2[0];                               \
-  if (BrTriCubeTest(v, nrm) != 0) {                                     \
-    BrCrListPush(pP);                                                   \
-    n++;                                                                \
-  }
 /* WHAT IT DOES: The broad phase of car-versus-track collision: take the
  * grid cell under the body, put each of its triangles into the body's box
  * space and keep, on this frame's contact list, each one that touches the
  * box; returns how many.  The cell is walked backwards on alternate
- * frames.  The PC twin is BrCollRespBroadPhase.
- * RESIDUE (4): in each arm the ROM loads v[2] before v[8] for the edges;
- * ours the other way round (edge statement orders, array shapes and 200
- * permuter compiles leave it). */
+ * frames.  The PC twin is BrCollRespBroadPhase; its two arms are one
+ * macro, but here each arm is written out line by line (a one-line macro
+ * expansion schedules the edge loads differently). */
 /* @implements 0x8025D060 tgr BrCollRespBroadPhase */
 int BrCollRespBroadPhase(BrTipBody *b, float m[4][4])
 {
@@ -156,17 +138,46 @@ int BrCollRespBroadPhase(BrTipBody *b, float m[4][4])
   if (D_802A4A30 != 0) {
     pP = &D_80379F80[cell][count - 1];
     for (i = count - 1; i >= 0; i--, pP--) {
-      BR_CR_GATHER_ONE(pP)
+      BrMat3MulVecRows(&v[0], m, pP->v0);
+      BrMat3MulVecRows(&v[3], m, pP->v1);
+      BrMat3MulVecRows(&v[6], m, pP->v2);
+      e1[0] = v[3] - v[0];
+      e1[1] = v[4] - v[1];
+      e1[2] = v[5] - v[2];
+      e2[0] = v[6] - v[0];
+      e2[1] = v[7] - v[1];
+      e2[2] = v[8] - v[2];
+      nrm[0] = e1[1] * e2[2] - e1[2] * e2[1];
+      nrm[1] = e1[2] * e2[0] - e1[0] * e2[2];
+      nrm[2] = e1[0] * e2[1] - e1[1] * e2[0];
+      if (BrTriCubeTest(v, nrm) != 0) {
+        BrCrListPush(pP);
+        n++;
+      }
     }
   } else {
     pP = D_80379F80[cell];
     for (i = 0; i < count; i++, pP++) {
-      BR_CR_GATHER_ONE(pP)
+      BrMat3MulVecRows(&v[0], m, pP->v0);
+      BrMat3MulVecRows(&v[3], m, pP->v1);
+      BrMat3MulVecRows(&v[6], m, pP->v2);
+      e1[0] = v[3] - v[0];
+      e1[1] = v[4] - v[1];
+      e1[2] = v[5] - v[2];
+      e2[0] = v[6] - v[0];
+      e2[1] = v[7] - v[1];
+      e2[2] = v[8] - v[2];
+      nrm[0] = e1[1] * e2[2] - e1[2] * e2[1];
+      nrm[1] = e1[2] * e2[0] - e1[0] * e2[2];
+      nrm[2] = e1[0] * e2[1] - e1[1] * e2[0];
+      if (BrTriCubeTest(v, nrm) != 0) {
+        BrCrListPush(pP);
+        n++;
+      }
     }
   }
   return n;
 }
-#undef BR_CR_GATHER_ONE
 
 /* WHAT IT DOES: The PC's BrCollRespTipKick: rebuild the body matrix from its
  * saved state, then for each of the four wheels with a ground contact place
