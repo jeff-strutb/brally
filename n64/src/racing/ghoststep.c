@@ -83,9 +83,9 @@ void BrRaceGateStep(BrRaceEnt *e);
 
 /* WHAT IT DOES: Step one race entity for the frame. An AI car outside mode
  * 5 has its pad cleared first; the silence flag clears five sound
- * channels and stops. A car held at the start keeps its pad pressed and runs its control
- * function; a finished car brakes (in a race it fades out over a second),
- * saves its position and runs its control; a racing car fades back in,
+ * channels and stops. A car held at the start keeps its pad pressed and
+ * runs its control function; a finished car brakes (in a race it fades
+ * out over a second), saves its position and runs its control; a racing car fades back in,
  * saves its position, runs its control and accumulates its distance. An
  * entity with no car walks its route: the fraction along the current
  * segment where its distance falls, advanced by the watched car's speed (or
