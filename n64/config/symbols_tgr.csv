@@ -20,6 +20,7 @@ va,name,kind
 80205FDC,BrRaceResultSave,func
 802060DC,BrRaceResultRestore,func
 80206304,BrSeasonPickRace,func
+802063A4,BrSeasonRaceDone,func
 80206830,BrCreditsDrawCars,func
 80208570,BrPakWarnScreen,func
 80208900,BrTrackSelectable,func

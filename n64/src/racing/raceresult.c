@@ -18,6 +18,8 @@ extern int D_80270790;                  /* results are ready */
 extern int D_8026FF18;                  /* the game mode */
 extern unsigned char D_802707AC[];      /* season points per finishing position */
 void osSyncPrintf(char *fmt, ...);
+extern char *D_80315DB0[];              /* the results screen's message lines */
+extern int D_802707C0;                  /* and how many */
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Copy each human player's race numbers (laps done, lap
@@ -69,4 +71,117 @@ void BrRaceResultRestore(void)
     D_8031B760[i].lapTime = D_80315D68[i];
     D_8031B760[i].xfac = D_80315D60[i];
   }
+}
+
+/* WHAT IT DOES: After a season race, count it for each player: when the
+ * round's races are done, either the player lacks the round's points (try
+ * again) or the round's cars unlock and the next round begins -- after the
+ * sixth, the season is over: winning every race of the last round adds the
+ * Mine track (the mirrored one on a mirror season), and each season adds a
+ * bonus car (milk truck, helmet, Cupra, beach ball, then the mirrored cars)
+ * before the next season starts.  The round's points are cleared for the
+ * new round, and the track and weather just raced are marked seen.  The
+ * messages go to the results screen's lines, a blank line between groups.
+ * RESIDUE (38): register colouring only -- the ROM puts the message address
+ * in a0 and the last round's race count in a1; ours swaps them. */
+/* @implements 0x802063A4 tgr BrSeasonRaceDone */
+void BrSeasonRaceDone(void)
+{
+  int n;
+  int i;
+  int j;
+  int k;
+
+  n = 0;
+  if (D_8026FF18 == 0 && D_80270790 != 0) {
+    for (i = 0; i < D_8026FF08; i++) {
+      D_8031B760[i].season->race++;
+      if (D_8031B760[i].season->race == D_8028B944[D_8031B760[i].season->round].x8) {
+        D_8031B760[i].season->race = 0;
+        if (D_8031B760[i].season->points[D_8031B760[i].season->round] >= D_8028B944[D_8031B760[i].season->round].xc) {
+          D_8031B760[i].season->unlocked |= D_8028B944[D_8031B760[i].season->round].kindMask;
+          D_8031B760[i].season->round++;
+          if (D_8031B760[i].season->round == 6) {
+            D_80315DB0[n++] = "ALL SEASONS COMPLETED!";
+            for (j = 0; j < D_8028B944[5].x8; j++) {
+              if (D_8031B760[i].season->place[5][j] != 0) {
+                goto bonus;
+              }
+            }
+            if (D_8031B760[i].season->state & 1) {
+              if (!(D_8031B760[i].season->xce & 0x100)) {
+                if (n) {
+                  D_80315DB0[n++] = "";
+                }
+                D_80315DB0[n] = "You Won all races this season!";
+                D_80315DB0[n + 1] = "Bonus: Mirror Mine Track Added!";
+                n += 2;
+                D_8031B760[i].season->xce |= 0x100;
+              }
+            } else {
+              if (!(D_8031B760[i].season->xce & 8)) {
+                if (n) {
+                  D_80315DB0[n++] = "";
+                }
+                D_80315DB0[n] = "You Won all races this season!";
+                D_80315DB0[n + 1] = "Bonus: Mine Track Added!";
+                n += 2;
+                D_8031B760[i].season->xce |= 8;
+              }
+            }
+bonus:
+            if (D_8031B760[i].season->state == 0) {
+              if (n) {
+                D_80315DB0[n++] = "";
+              }
+              D_80315DB0[n++] = "Bonus: Milk Truck Added!";
+              D_8031B760[i].season->unlocked |= 0x400;
+            } else if (D_8031B760[i].season->state == 1) {
+              if (n) {
+                D_80315DB0[n++] = "";
+              }
+              D_80315DB0[n++] = "Bonus: Helmet Car Added!";
+              D_8031B760[i].season->unlocked |= 0x200;
+            } else if (D_8031B760[i].season->state == 2) {
+              if (n) {
+                D_80315DB0[n++] = "";
+              }
+              D_80315DB0[n++] = "Bonus: Cupra Car Added!";
+              D_8031B760[i].season->unlocked |= 0x800;
+            } else if (D_8031B760[i].season->state == 3) {
+              if (n) {
+                D_80315DB0[n++] = "";
+              }
+              D_80315DB0[n++] = "Bonus: Beach Ball Car Added!";
+              D_8031B760[i].season->unlocked |= 0x1000;
+            } else if (D_8031B760[i].season->state == 4) {
+              if (n) {
+                D_80315DB0[n++] = "";
+              }
+              D_80315DB0[n++] = "Bonus: Mirrored Cars Added!";
+              D_8031B760[i].season->unlocked |= 0x8000;
+            }
+            D_8031B760[i].season->round = 0;
+            D_8031B760[i].season->state++;
+          } else {
+            D_80315DB0[n++] = "SEASON COMPLETED!";
+            D_80315DB0[n++] = "";
+            D_80315DB0[n++] = "PROGRESS TO THE NEXT SEASON";
+          }
+        } else {
+          D_80315DB0[n++] = "Sorry, you don't have enough points to";
+          D_80315DB0[n++] = "pass this season.  You'll have to try again.";
+        }
+        D_8031B760[i].season->points[D_8031B760[i].season->round] = 0;
+      }
+      if (D_8031B760[i].season->state & 1) {
+        k = 5;
+      } else {
+        k = 0;
+      }
+      D_8031B760[i].season->xce |= 1 << (D_8028B944[D_8031B760[i].season->round].races[D_8031B760[i].season->race][0] + k);
+      D_8031B760[i].season->xd0 |= 1 << D_8028B944[D_8031B760[i].season->round].races[D_8031B760[i].season->race][1];
+    }
+  }
+  D_802707C0 = n;
 }
