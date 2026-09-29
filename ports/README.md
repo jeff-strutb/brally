@@ -33,6 +33,20 @@ The macOS/Metal port. `metal/br_gfx_metal.m` is the graphics backend (the peer
 of the win9x `glide`/`d3d` backends, but new code, not decomp). Built by
 `build.sh` with clang.
 
+### Boss Rally.app (the 32-bit lane, self-contained)
+
+```sh
+ports/macos/wasm/package_app.sh [--bin BossRally.BIN] [--rom "Top Gear Rally (USA).z64"]
+```
+
+builds the lane (`wasm/build_wasm.sh`) and writes `build/app/Boss Rally.app`,
+which carries everything it reads: the whole data track as its CD root, the
+PC soundtrack (CD audio off the BIN/CUE) and the N64 soundtrack (off the ROM).
+The app needs neither image nor this tree once built; saves go to
+`~/Library/Application Support/Boss Rally`. Extraction happens once per set of
+sources (cached in `build/app/extract`, keyed on their MD5s). Both soundtracks
+are bundled, but nothing plays them yet: see the music section above.
+
 ### Where the port's code lives
 
 `src/` and `include/` are exactly what MSVC 5.0 compiles for the byte-matched
