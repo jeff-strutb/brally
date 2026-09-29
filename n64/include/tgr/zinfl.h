@@ -163,6 +163,10 @@ int inflate_fast(uInt bl, uInt bd, inflate_huft *tl, inflate_huft *td,
                  inflate_blocks_statef *s, z_streamp z);
 int inflate_flush(inflate_blocks_statef *s, z_streamp z, int r);
 extern uInt inflate_mask[17];
+int inflate_trees_bits(uIntf *c, uIntf *bb, inflate_huft **tb, z_streamp z);
+int inflate_trees_dynamic(uInt nl, uInt nd, uIntf *c, uIntf *bl, uIntf *bd,
+                          inflate_huft **tl, inflate_huft **td, z_streamp z);
+int inflate_trees_fixed(uIntf *bl, uIntf *bd, inflate_huft **tl, inflate_huft **td);
 
 /* infutil.h: update pointers and return */
 #define UPDBITS {s->bitb=b;s->bitk=k;}
