@@ -64,7 +64,7 @@ Functions: T2 7, T4 33.
 | `80258080` | `BrQuatMul` | T4 |
 | `8025813C` | `BrVec4Normalise` | T4 |
 | `802581CC` | `BrVec3NormaliseF` | T4 |
-| `80258248` | `BrRbQuatDerivative` | T2 |
+| `80258248` | `BrRbQuatDerivative` | T4 |
 | `80258324` | `BrRbIntegrate` | T4 |
 | `802583DC` | `BrQuatToMat` | T4 |
 | `80258530` | `BrRbStateStep` | T4 |

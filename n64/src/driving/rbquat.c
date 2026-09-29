@@ -121,17 +121,17 @@ void BrVec3NormaliseF(float v[3])
  * derivative from its angular velocity (half the product of the spin and
  * the orientation). */
 /* @implements 0x80258248 tgr BrRbQuatDerivative */
-void BrRbQuatDerivative(BrRb *b)
+void BrRbQuatDerivative(BrRbState *b)
 {
   float h[3];
 
-  h[0] = b->omega.x * 0.5f;
-  h[1] = b->omega.y * 0.5f;
-  h[2] = b->omega.z * 0.5f;
-  b->qdot.w = -h[0] * b->q.x - h[1] * b->q.y - h[2] * b->q.z;
-  b->qdot.x = b->q.w * h[0] + h[1] * b->q.z - h[2] * b->q.y;
-  b->qdot.y = b->q.w * h[1] + h[2] * b->q.x - h[0] * b->q.z;
-  b->qdot.z = b->q.w * h[2] + h[0] * b->q.y - h[1] * b->q.x;
+  h[0] = b->omega[0] * 0.5f;
+  h[1] = b->omega[1] * 0.5f;
+  h[2] = b->omega[2] * 0.5f;
+  b->qdot[0] = -h[0] * b->q[1] - h[1] * b->q[2] - h[2] * b->q[3];
+  b->qdot[1] = b->q[0] * h[0] + h[1] * b->q[3] - h[2] * b->q[2];
+  b->qdot[2] = b->q[0] * h[1] + h[2] * b->q[1] - h[0] * b->q[3];
+  b->qdot[3] = b->q[0] * h[2] + h[0] * b->q[2] - h[1] * b->q[1];
 }
 
 
