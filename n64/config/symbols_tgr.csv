@@ -255,6 +255,7 @@ va,name,kind
 802288B4,BrCtlAi,func
 802288D4,BrAiLaneSetup,func
 80228A3C,BrAiInputClear,func
+80228A6C,BrCarGridStart,func
 80228E44,BrStub80228E44,func
 80228E4C,BrPathGates,func
 802290C4,BrPathWalk,func

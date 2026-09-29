@@ -91,7 +91,12 @@ typedef struct BrCar {
     struct BrCarLink *link;     /* 0xED0 */
     int xed4;                   /* 0xED4  a countdown, one per frame */
     int xed8;                   /* 0xED8  the car's control function (camera step, AI) */
-    char padedc[0xF48 - 0xEDC];
+    char padedc[0xF2C - 0xEDC];
+    BrVec3 posStart;            /* 0xF2C  where the race started */
+    int xf38;                   /* 0xF38 */
+    int xf3c;                   /* 0xF3C */
+    int xf40;                   /* 0xF40 */
+    float xf44;                 /* 0xF44 */
     int xf48;                   /* 0xF48  camera mode */
     int xf4c;                   /* 0xF4C  the camera keeps the car's up axis */
     BrVec3 posPrev;             /* 0xF50  last frame's position */
@@ -99,24 +104,27 @@ typedef struct BrCar {
     int xf60;                   /* 0xF60 */
     float xf64;                 /* 0xF64  the heading's atan2 arguments at the restart point */
     float xf68;                 /* 0xF68 */
-    char padf6c[0xF78 - 0xF6C];
+    float xf6c;                 /* 0xF6C */
+    int xf70;                   /* 0xF70 */
+    int xf74;                   /* 0xF74  -1 for a player's car */
     int laps;                   /* 0xF78  laps completed */
-    char padf7c[0xF80 - 0xF7C];
+    int xf7c;                   /* 0xF7C  -1 for a player's car */
     float raceTime;             /* 0xF80  race clock, seconds */
     float lapTimes[5];          /* 0xF84  each lap's time */
     float xf98;                 /* 0xF98 */
     int xf9c;                   /* 0xF9C */
     float lapTime;              /* 0xFA0  current lap clock */
     float xfa4;                 /* 0xFA4  a countdown (mode 1 only) */
-    char padfa8[0xFAC - 0xFA8];
+    float xfa8;                 /* 0xFA8  grid row distance back, the ranking key */
     int xfac;                   /* 0xFAC */
     int msgA;                   /* 0xFB0  first message and its timer */
     float msgATime;             /* 0xFB4 */
     int msgB;                   /* 0xFB8  second message and its timer */
     float msgBTime;             /* 0xFBC */
-    char xfc0[0x18];            /* 0xFC0  text for msgB (a formatted time) */
+    char xfc0[0x14];            /* 0xFC0  text for msgB (a formatted time) */
+    int xfd4;                   /* 0xFD4 */
     BrVec3 velfd8;              /* 0xFD8  another velocity copy */
-    char padfe4[0x1010 - 0xFE4];
+    float xfe4[11];             /* 0xFE4 */
     float x1010;                /* 0x1010  zeroed when the particle pool is reset */
     char pad1014[0x1D78 - 0x1014];
     BrVec3 pos1d78;             /* 0x1D78  another position copy */
@@ -140,7 +148,9 @@ typedef struct BrCar {
     BrVec3 camPosB;             /* 0x1FB4 */
     unsigned short x1fc0[32];   /* 0x1FC0  trigger ids the car has passed */
     int x2000;                  /* 0x2000  entries in x1fc0 */
-    char pad2004[0x2058 - 0x2004];
+    char pad2004[0x2044 - 0x2004];
+    int x2044;                  /* 0x2044 */
+    char pad2048[0x2058 - 0x2048];
     int x2058;                  /* 0x2058  the kind it was given (copied to kind) */
     int kind;                   /* 0x205C */
     unsigned char colour[4];    /* 0x2060  body colour r, g, b and a fourth byte */

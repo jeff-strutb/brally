@@ -56,7 +56,7 @@ void BrRankUpdate(void)
     if (!(D_803239A0[i].flags & 2)) {
       tab[n].ent = i;
       if (D_803239A0[i].car != 0) {
-        tab[n++].key = *(float *)D_803239A0[i].car->padfa8;
+        tab[n++].key = D_803239A0[i].car->xfa8;
       } else {
         tab[n++].key = D_803239A0[i].progress;
       }
