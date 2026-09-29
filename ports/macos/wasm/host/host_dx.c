@@ -185,6 +185,33 @@ static u32 did_unacq(u32 t) { didev *d = hdr(t)->st; int w = d->acquired; d->acq
 static u32 did_poll(u32 t) { (void)t; return 1; }
 static int g_mdx, g_mdy, g_mbtn;
 void hdx_mouse(int dx, int dy, int btn) { g_mdx += dx; g_mdy += dy; g_mbtn = btn; }
+
+/* The windowed host's pointer.  The game keeps its own cursor (the menu
+ * hit test reads the point 0x10AC5DD8 points at) and moves it only by the
+ * DirectInput deltas it polls, so feeding it the Mac's raw deltas lets the
+ * two drift apart.  Instead each poll hands the game exactly the step from
+ * where its cursor is to where the Mac pointer is over the 640x480 picture.
+ * Corrections run for a short while after the pointer last moved and then
+ * stop, so a still mouse gives the game still deltas (the race reads the
+ * mouse as an analogue axis). */
+#define BR_MENU_CURSOR_PP 0x10AC5DD8u
+static int g_ax, g_ay, g_aon, g_alive, g_mlatch;
+void hdx_mouse_abs(int x, int y, int btn)
+{
+    g_ax = x; g_ay = y; g_aon = 1; g_alive = 30; g_mbtn = btn; g_mlatch |= btn;
+}
+/* a press and release inside one poll still reaches the game as a press */
+void hdx_mouse_btn(int btn) { g_mbtn = btn; g_mlatch |= btn; }
+static void abs_step(void)
+{
+    u32 pt;
+    if (!g_aon || g_alive <= 0) return;
+    g_alive--;
+    pt = H32(BR_MENU_CURSOR_PP);
+    if (pt < 0x1000u) return;
+    g_mdx += g_ax - (int)H32(pt);
+    g_mdy += g_ay - (int)H32(pt + 4);
+}
 static u32 did_state(u32 t, u32 n, u32 p)
 {
     didev *d = hdr(t)->st;
@@ -196,9 +223,14 @@ static u32 did_state(u32 t, u32 n, u32 p)
         return S_OK;
     }
     memset(W_P(p), 0, n);
+    abs_step();
     if (n >= 12) { HW32(p, g_mdx); HW32(p + 4, g_mdy); }
-    if (n >= 16) { u8 *b = W_P(p + 12); b[0] = g_mbtn & 1 ? 0x80 : 0; b[1] = g_mbtn & 2 ? 0x80 : 0; }
-    g_mdx = g_mdy = 0;
+    if (n >= 16) {
+        u8 *b = W_P(p + 12);
+        int m = g_mbtn | g_mlatch;
+        b[0] = m & 1 ? 0x80 : 0; b[1] = m & 2 ? 0x80 : 0;
+    }
+    g_mdx = g_mdy = 0; g_mlatch = 0;
     return S_OK;
 }
 static u32 did_data(u32 t, u32 sz, u32 buf, u32 pn, u32 fl) { (void)t; (void)sz; (void)buf; (void)fl; if (pn) HW32(pn, 0); return S_OK; }

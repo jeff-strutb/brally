@@ -7,6 +7,7 @@
  * emits a call to happ_frame() at the top of that function.
  *
  * Supported: sleep N, press KEY [N], hold KEY, release KEY, mouse X Y,
+ * point X Y (absolute, the windowed pointer path),
  * click [N], wait/waitb ADDR OP VALUE [N], mark NAME, shot NAME, end.
  * Not yet: autopilot, waittext, text, peer, files, savefiles, tmu,
  * joystick -- a script using one stops with a message naming it.
@@ -184,6 +185,10 @@ void happ_frame(void)
             }
             hdx_mouse(atoi(s->a[0]), atoi(s->a[1]), 0);
             g_mouse_phase = 0;
+            g_sleep_until = g_frame + 2;
+        } else if (!strcmp(s->op, "point")) {
+            /* the windowed pointer path: an absolute 640x480 position */
+            hdx_mouse_abs(atoi(s->a[0]), atoi(s->a[1]), 0);
             g_sleep_until = g_frame + 2;
         } else if (!strcmp(s->op, "click")) {
             unsigned n = s->na > 0 ? (unsigned)atoi(s->a[0]) : 2;
