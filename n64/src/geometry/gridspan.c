@@ -10,8 +10,17 @@ extern int D_8028BD98;
 extern int D_8028BD9C;
 extern int D_8034E5B0[64];
 extern int D_8034E6B0[64];
+extern int D_8034E7B0[64];
+extern int D_8034E8B0[64];
+typedef struct BrFrustum {
+  float eye[3];                 /* 0x00 */
+  float corner[4][3];           /* 0x0C */
+  float centre[3];              /* 0x3C  the far plane's centre */
+} BrFrustum;
+extern BrFrustum D_8031B1F0;
 int BrFloatToInt(float f);
 int BrGridSpanHas(int x, int y);
+void BrGridSpanEdge(float x0, float z0, float x1, float z1);
 void BrGridSpanExtend(int x, int y);
 /* -- end declarations -- */
 
@@ -121,4 +130,61 @@ int BrGridSpanHas(int x, int y)
 int BrGridSpanHasPoint(float x, float z)
 {
   return BrGridSpanHas(BrFloatToInt(x * 0.03125f), BrFloatToInt(z * 0.03125f));
+}
+
+/* WHAT IT DOES: Work out the grid region the race camera sees: clear it,
+ * add the frustum's edges (eye to each far corner, far centre to each
+ * corner, and round the far rectangle), clamp the covered ranges to the
+ * grid, then for each covered column find the first and last rows that
+ * reach it. */
+/* @implements 0x8022D49C tgr BrGridSpanFrustum */
+void BrGridSpanFrustum(void)
+{
+  int i;
+  int c;
+  int r0;
+  int r1;
+
+  D_8028BD98 = 0;
+  D_8028BD9C = 0;
+  D_8028BD90 = 63;
+  D_8028BD94 = 63;
+  for (i = 0; i < 64; i++) {
+    D_8034E5B0[i] = 64;
+    D_8034E6B0[i] = 0;
+    D_8034E7B0[i] = 64;
+    D_8034E8B0[i] = 0;
+  }
+  BrGridSpanEdge(D_8031B1F0.eye[0], D_8031B1F0.eye[1], D_8031B1F0.corner[0][0], D_8031B1F0.corner[0][1]);
+  BrGridSpanEdge(D_8031B1F0.eye[0], D_8031B1F0.eye[1], D_8031B1F0.corner[1][0], D_8031B1F0.corner[1][1]);
+  BrGridSpanEdge(D_8031B1F0.eye[0], D_8031B1F0.eye[1], D_8031B1F0.corner[2][0], D_8031B1F0.corner[2][1]);
+  BrGridSpanEdge(D_8031B1F0.eye[0], D_8031B1F0.eye[1], D_8031B1F0.corner[3][0], D_8031B1F0.corner[3][1]);
+  BrGridSpanEdge(D_8031B1F0.centre[0], D_8031B1F0.centre[1], D_8031B1F0.corner[0][0], D_8031B1F0.corner[0][1]);
+  BrGridSpanEdge(D_8031B1F0.centre[0], D_8031B1F0.centre[1], D_8031B1F0.corner[1][0], D_8031B1F0.corner[1][1]);
+  BrGridSpanEdge(D_8031B1F0.centre[0], D_8031B1F0.centre[1], D_8031B1F0.corner[2][0], D_8031B1F0.corner[2][1]);
+  BrGridSpanEdge(D_8031B1F0.centre[0], D_8031B1F0.centre[1], D_8031B1F0.corner[3][0], D_8031B1F0.corner[3][1]);
+  BrGridSpanEdge(D_8031B1F0.corner[0][0], D_8031B1F0.corner[0][1], D_8031B1F0.corner[1][0], D_8031B1F0.corner[1][1]);
+  BrGridSpanEdge(D_8031B1F0.corner[1][0], D_8031B1F0.corner[1][1], D_8031B1F0.corner[2][0], D_8031B1F0.corner[2][1]);
+  BrGridSpanEdge(D_8031B1F0.corner[2][0], D_8031B1F0.corner[2][1], D_8031B1F0.corner[3][0], D_8031B1F0.corner[3][1]);
+  BrGridSpanEdge(D_8031B1F0.corner[3][0], D_8031B1F0.corner[3][1], D_8031B1F0.corner[0][0], D_8031B1F0.corner[0][1]);
+  if (D_8028BD90 < 0) {
+    D_8028BD90 = 0;
+  }
+  if (D_8028BD94 < 0) {
+    D_8028BD94 = 0;
+  }
+  if (D_8028BD98 > 63) {
+    D_8028BD98 = 63;
+  }
+  if (D_8028BD9C > 63) {
+    D_8028BD9C = 63;
+  }
+  for (c = D_8028BD90; c <= D_8028BD98; c++) {
+    for (r0 = D_8028BD94, r1 = D_8028BD9C; c < D_8034E5B0[r0] || c > D_8034E6B0[r0]; r0++) {
+    }
+    for (; c < D_8034E5B0[r1] || c > D_8034E6B0[r1]; r1--) {
+    }
+    D_8034E7B0[c] = r0;
+    D_8034E8B0[c] = r1;
+  }
 }
