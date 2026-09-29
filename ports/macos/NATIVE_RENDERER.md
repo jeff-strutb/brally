@@ -1,6 +1,6 @@
 # Spec: a Mac-native renderer and frame loop for the playable port
 
-Status: **phases 1-3 done** (spec written 2026-09-29; phases the same day,
+Status: **phases 1-4 done** (spec written 2026-09-29; phases the same day,
 see section 5). Scope: the playable Mac
 build, `build/wasm/brally` (the 32-bit lane, `ports/macos/wasm/`). The decomp
 (`src/`, `include/`) is not touched: everything here is port code.
@@ -240,6 +240,17 @@ Rules:
    turns them into pipeline and fragment state).
 4. **Renderer, 2D**: sprite blits as quads; the Glide shim and LFB emulation
    are then dead for the menus.
+   **Done 2026-09-29, differently from the plan, on the measurement.** The
+   sprite blitters (0x10001320 family) composite into the game's own 16-bit
+   640x480 surfaces; the only thing that reaches the renderer is the finished
+   surface, as one full-screen `grLfbWriteRegion` (335 of them over the first
+   1,500 main-loop frames of 20_quickrace_drive, none in a race). Since phase 3
+   that write is a textured quad drawn in order with the frame: no CPU copy
+   into the target, no GPU stall. Per-sprite quads would draw the same pixels
+   (the art is 640x480), so the blitters stay game code. What changes on
+   screen is the scaling: the quad samples sharp-bilinear (whole texels,
+   blended across one target pixel at each texel edge), identical at 1:1
+   (menus match the Glide path exactly at 640x480) and crisp at 4x.
 5. **Input**: native records and controllers.
 6. **Retire** what the overrides made dead in `host_glide.m`, keeping it
    buildable behind a switch until phase 3 has soaked.
