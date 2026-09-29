@@ -6,7 +6,7 @@ WHY THIS REPLACES tools/isported.py's DETECTOR
 isported.py answers "is this address already transcribed" by matching the shape
 of the comment above a function. That was written in a couple of minutes as a
 replacement for `grep`, and it was never rebuilt when its role changed from a
-convenience into the thing that decides what work agents are given.
+convenience into the thing that decides what work is handed out.
 
 It has now been wrong seven distinct ways, and the cost was not spread evenly:
 
@@ -22,7 +22,7 @@ It has now been wrong seven distinct ways, and the cost was not spread evenly:
                                               banner and reported an opcode
                                               handler as the entry point
   7. prefix restricted to decoration       -- SIX ported handlers read as
-                                              missing at once, and an agent
+                                              missing at once, and a worker
                                               was sent to re-transcribe them
 
 Four more attempts to fix (7) each broke something that had been correct, so

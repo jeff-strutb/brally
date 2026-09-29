@@ -156,7 +156,7 @@ void __fastcall FUN_10001510(BrCamCar *car, BrPtrArg cam, BrPtrArg prev);/* 0x10
  * RUNS the whole step on a seeded car object -- speed/spin blends, the lift and
  * placement helpers, the frame rebuild and basis refresh -- and returns
  * EQUIVALENT over 48 seeds, with a negative control on a frame term proving
- * teeth; that supersedes the byte gates (CLAUDE.md rule 12).  Do not reopen
+ * teeth; that supersedes the byte gates.  Do not reopen
  * before the end-grind. */
 /* @implements 0x10001CF0 glide BrCamChaseStep */
 void __fastcall BrCamChaseStep(BrCamCar *car)

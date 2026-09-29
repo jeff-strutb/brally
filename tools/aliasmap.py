@@ -9,8 +9,7 @@ The original has one dword at 0x10AA2904.  This tree has nine declarations
 that each claim to be it.  Three of them have real storage, and they drift
 apart after the first write: a menu row publishes a phase transition into one,
 the frame loop reads another, and the transition is invisible.  That is not a
-hypothetical -- every instance found so far has been a real bug (see
-docs/archive/CONVENTIONS.md, "Aliased storage: a link-clean bug").
+hypothetical -- every instance found so far has been a real bug.
 
 The link is always clean, because two host names for one original address are
 two distinct C symbols.  So the compiler cannot see this, and neither can a
@@ -65,7 +64,7 @@ WHAT IT CANNOT SEE
   * An object with NO address recorded anywhere near its declaration.  If a
     module models 0x10AA2904 as `BrUiNav::pCurrent` with the number only in a
     paragraph forty lines up, this tool will not connect them.  It under-reports,
-    and under-reporting is the DANGEROUS direction here (docs/archive/CONVENTIONS.md); treat
+    and under-reporting is the DANGEROUS direction here; treat
     a quiet address as unmeasured, not as clean.
 
   * Aliases that are not keyed by an address at all.  The phase-struct case --
@@ -93,8 +92,7 @@ WHAT IT CANNOT SEE
 CALIBRATION
 ===========
 
-`--selftest` runs the tool against the five known instances from
-docs/archive/CONVENTIONS.md.  Three of the five are RESOLVED in the current tree, so they
+`--selftest` runs the tool against the five known instances.  Three of the five are RESOLVED in the current tree, so they
 cannot be rediscovered by observation; the honest test is to reinstate each
 shape and confirm the tool flags it, which --selftest does with in-memory
 mutations of the source text.  It prints per-case PASS/MISS and an overall
@@ -654,7 +652,7 @@ def find_ambiguous(decls):
 
 # ---------------------------------------------------------------- selftest
 
-# The calibration set: the five instances docs/archive/CONVENTIONS.md records, each with
+# The calibration set: the five recorded instances, each with
 # the address to key on and -- where the case has since been RESOLVED -- the
 # in-memory source mutation that reinstates the historical shape.  A resolved
 # case cannot be rediscovered by observation, so reinstating it is the only
@@ -689,7 +687,7 @@ CAL = [
 def selftest():
     known = load_globals()
     files = walk(DECL_DIRS)
-    print("CALIBRATION -- the five known instances from docs/archive/CONVENTIONS.md")
+    print("CALIBRATION -- the five known instances")
     print("=" * 78)
     results = []
     for case in CAL:

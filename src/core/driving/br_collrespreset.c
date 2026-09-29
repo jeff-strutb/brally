@@ -97,7 +97,7 @@ extern int DAT_1177883c;
  * @t3-effort passes 4 zero-movement 3 4
  * RESIDUE: register colouring and one folded init -- a couple of register
  * choices and a redundant zero/small-immediate move (crank 40+58 compiles, no
- * byte-exact, census yes). Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * byte-exact, census yes). Do not reopen before the end-grind. */
 /* @implements 0x10063DD0 glide BrCollRespReset */
 void BrCollRespReset(void)
 {

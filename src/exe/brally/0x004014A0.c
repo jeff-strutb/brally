@@ -1,4 +1,4 @@
-/* Auto-generated from disassembly — 0x004014A0
+/* Auto-generated from disassembly: 0x004014A0
  * ResetIncludeStack. */
 /* WHAT IT DOES: empty the include stack, so a fresh list read starts with no
  * nesting. */

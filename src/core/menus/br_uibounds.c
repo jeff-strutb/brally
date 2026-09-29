@@ -86,7 +86,7 @@ int BrExt_1007AC00(void)
     return BrSub1007A940() != 0;
 }
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* -- Ghidra-matched functions --------------------------- */
 
 /* WHAT IT DOES: thiscall predicate: 1 if `param_2` is non-NULL, this->+0x10 is non-NULL and
  * all three words of param_2 are <= the corresponding words of this->+0x10 (a bounds-fits

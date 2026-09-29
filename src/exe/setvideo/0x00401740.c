@@ -1,4 +1,4 @@
-/* Auto-generated from disassembly — 0x00401740
+/* Auto-generated from disassembly: 0x00401740
  * ReadList: two-pass (count, then fill rgsz/rgi). Opens "rt". */
 /* WHAT IT DOES: read a list file into memory in two passes: count the lines,
  * then allocate and fill. */

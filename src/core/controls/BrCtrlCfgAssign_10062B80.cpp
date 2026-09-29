@@ -11,7 +11,7 @@
  * one register plan (base/delta/counter in edi/ebx/ebp vs the original's
  * ebp/edi/ebx; mod/key loaded through cl/eax vs dl/ecx) -- register allocation,
  * not missing/wrong code; see the @t4-pass ledger. Do not reopen before the
- * end-grind (CLAUDE.md rule 12). */
+ * end-grind. */
 /* @implements 0x10062B80 glide BrCtrlCfgAssign
  * @cpp_kind method
  * @cpp_symbol ?Assign@CtrlCfg62B80@@QAEXHHHH@Z

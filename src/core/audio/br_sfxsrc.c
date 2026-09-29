@@ -293,7 +293,7 @@ void BrSfxSrcRaceCountdown(int iStep)
         BrSfxSrcBeep();
 }
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* -- Ghidra-matched functions --------------------------- */
 extern int DAT_100b32b0;
 extern int DAT_100b32bc;
 extern int DAT_100b32c0;
@@ -334,7 +334,7 @@ int BrSndVoiceSetFreq(int param_1,int param_2)
   return 1;
 }
 
-/* WHAT IT DOES: thunk â forwards to the shared no-op at 0x1006E590. */
+/* WHAT IT DOES: thunk: forwards to the shared no-op at 0x1006E590. */
 /* @implements 0x1006E580 glide BrThunk6E580 */
 
 int BrThunk6E580(void)
@@ -345,7 +345,7 @@ int BrThunk6E580(void)
 }
 
 
-/* WHAT IT DOES: no-op â the shared target of multiple thunks. */
+/* WHAT IT DOES: no-op: the shared target of multiple thunks. */
 /* @implements 0x1006E590 glide BrNop6E590 */
 
 int BrNop6E590(void)

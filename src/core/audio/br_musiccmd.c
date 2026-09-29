@@ -51,7 +51,7 @@ void BrWrap_10072A70(void *a, int b, int c)
     BrExt_10072A90(a, 1, b, c);
 }
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* -- Ghidra-matched functions --------------------------- */
 #include <windows.h>
 extern int BrSndG0B5DE8;
 extern int BrSndG18290FC;

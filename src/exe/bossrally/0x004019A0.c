@@ -1,4 +1,4 @@
-/* 0x004019A0 OnGraphNotify — CPlay nested SUCCEEDED + EC_FULLSCREEN_LOST */
+/* 0x004019A0 OnGraphNotify: CPlay nested SUCCEEDED + EC_FULLSCREEN_LOST */
 /* WHAT IT DOES: handle a DirectShow notification -- most importantly the one
  * saying the clip has finished, which is what ends the intro. */
 /* @implements 0x004019A0 bossrally.exe OnGraphNotify */

@@ -107,7 +107,7 @@ static BrVec3 BrS42VelAt(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pP)
  * pPoint parameter slot ([esp+0x24]) where the original uses p.z's slot
  * ([esp+0x14]); every instruction is otherwise identical.  Dossier and dead
  * list are in the body comment below.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x1006B510 d3d BrRbVelAtPoint */
 /* BrS42VelAt RETURNS A BrVec3, so MSVC will not inline it and the original
  * has no call there -- the whole 137-byte gap is one factored helper. The
@@ -127,7 +127,7 @@ static BrVec3 BrS42VelAt(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pP)
  *    `fld`s pair up in -- 5+22 regnorm becomes 7+24, slightly WORSE
  *    (2026-09-03).
  *
- * â¼ AND THE REASON THE ORDER DOES NOT HELP IS NOW UNDERSTOOD. The six `fld`s
+ * !! AND THE REASON THE ORDER DOES NOT HELP IS NOW UNDERSTOOD. The six `fld`s
  * are hoisted above the `add esp,0xC` that cleans the call's three arguments:
  * once esp moves, every `[esp+N]` displacement for `r` changes, so MSVC loads
  * all six uses of r BEFORE adjusting the stack and then shuffles them with 16
@@ -136,7 +136,7 @@ static BrVec3 BrS42VelAt(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pP)
  * spelled, which is why every term ordering leaves it unchanged. A source
  * lever here would have to move the stack cleanup, not the expressions.
  *
- * â¼ CONFIRMED EXHAUSTIVELY 2026-09-05: all SIX permutations of the three
+ * !! CONFIRMED EXHAUSTIVELY 2026-09-05: all SIX permutations of the three
  * cross-term statements x each of the two add orders (x,y,z and the
  * original's completion order y,z,x) -- thirteen builds -- land between
  * 4+23 and 5+24 register-blind, none better than the 5+22 here, and none
@@ -210,7 +210,7 @@ void BrRbVelAtPoint(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pPoint)
  * `fst [esp+0x14]` in the original against `fst [esp+0x24]` here, VC5
  * placing cy in the dead incoming-argument slot instead of the frame.
  * Dead list and the byte census are in the @t4-pass 5 line above.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x1006B430 d3d BrRbVelAtBodyPoint */
 /* @n64 0x80267410 located */
 /* Same inlining and the same three float facts as BrRbVelAtPoint above --

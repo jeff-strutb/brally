@@ -119,7 +119,7 @@ int BrCdTrackGetEar(void)
     return 0;
 }
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* -- Ghidra-matched functions --------------------------- */
 extern int DAT_1021c778;
 int BrSub10075020();
 int BrWindowEarStartup();
@@ -155,7 +155,7 @@ int BrCdTrackPrev(void)
   return 1;
 }
 
-/* WHAT IT DOES: get the current track number â EAR path when CD audio is enabled, real CD otherwise. */
+/* WHAT IT DOES: get the current track number: EAR path when CD audio is enabled, real CD otherwise. */
 /* @implements 0x10002C50 glide BrCdTrackGet */
 
 int BrCdTrackGet(void)
@@ -170,7 +170,7 @@ int BrCdTrackGet(void)
 }
 
 
-/* WHAT IT DOES: set music volume â dispatches to EAR mixer or CD-audio path. */
+/* WHAT IT DOES: set music volume: dispatches to EAR mixer or CD-audio path. */
 /* @implements 0x10002D30 glide BrCdVolumeSet */
 
 int BrCdVolumeSet(int param_1)
@@ -199,7 +199,7 @@ int BrCdTrackResume(void)
   return 1;
 }
 
-/* â¼ MAP DEFECT, and it is what blocks these two.  config/functions_glide.csv
+/* !! MAP DEFECT, and it is what blocks these two.  config/functions_glide.csv
  * lists 0x10002EB0 and 0x10002F10 as 86 bytes each.  They are not: each is a
  * 14-byte DISPATCHER followed by 16-byte alignment padding and then a
  * SEPARATE function that only the dispatcher reaches, by tail jump.
@@ -221,7 +221,7 @@ int BrCdTrackResume(void)
  * The dispatcher's 32 bytes INCLUDE the 13 alignment nops, which MSVC emits
  * inside the first function, not the second.
  *
- * â¼ THE TELL, and it generalises.  Written inline instead -- one function
+ * !! THE TELL, and it generalises.  Written inline instead -- one function
  * containing both arms -- VC5 hoists the `g_brCdEnabled` load into a
  * register and turns the original's `cmp dword ptr [g],1` into
  * `mov eax,[g] / cmp eax,1`, then re-uses eax for the second test where the
@@ -358,7 +358,7 @@ int BrFadeRelease(void);     /* 0x10017F10 */
  * @t3-effort passes 7 zero-movement 7 8
  * residue after tools/crank.py: 40 compiles this pass, levers accepted: mut:split_add:g_brCdPlaying > mut:hoist_sink:-1;
  * every candidate and score is in build/match/crank.log.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x10003050 glide BrCdStopReleaseMsg */
 /* RESIDUE (2026-09-06): body complete and correct; ignoring the 11 trailing
  * alignment nops (which the sweep tolerates, as it does for BrCdStop's matched
@@ -401,7 +401,7 @@ static int BrCdStopReleaseMsg(void)
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 3 and 4);
  * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x100030B0 glide BrCdStopReleaseMci */
 /* RESIDUE (2026-09-07): body complete and correct; REGNORM 0+0, +0 bytes.
  * The boolean codegen is now byte-for-byte: the borrow trick is the TERNARY's
@@ -785,7 +785,7 @@ extern uint16_t DAT_1021c7f0, DAT_1021c7f2, DAT_1021c7f4, DAT_1021c7f6, DAT_1021
  * xor ecx,ecx for two groups of the state-block stores) where VC5 folds
  * every zero into esi.  The dossier, the dead typing list and the two
  * ledger passes are in the comment block above.  Do not reopen before the
- * end-grind (CLAUDE.md rule 12). */
+ * end-grind. */
 /* @implements 0x10002580 glide BrCdEarChannelOpen */
 int BrCdEarChannelOpen(void)
 {

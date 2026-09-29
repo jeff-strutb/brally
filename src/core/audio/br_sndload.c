@@ -148,7 +148,7 @@ fail:
  * places it after the loop, turning the exit into jae/jmp (cancelled as
  * the either-or layout triple) and rematerialising the success zero
  * (xor singleton).  Dead list in the RESIDUE block below.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x100701B0 glide BrWavReadData */
 unsigned int BrWavReadData(HMMIO hmmio, unsigned int n, char *pDst,
                            MMCKINFO *pCk, unsigned int *pnRead)
@@ -241,7 +241,7 @@ extern int BrWaveSeekData(int *, MMCKINFO *, MMCKINFO *);               /* 0x100
  * dead list is in the RESIDUE block below plus the position/name-swap
  * sweep in pass 5.  Three crank census passes at the pre-fix numbers and
  * two hand passes at the current ones.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x10070280 glide BrWavLoad */
 int32_t BrWavLoad(const char *pszPath, uint32_t *pnDataBytes,
                   int32_t *pInfo, uint32_t **ppFormat, BrSndLoadVoice *pVoice)
@@ -305,7 +305,7 @@ int32_t BrWavLoad(const char *pszPath, uint32_t *pnDataBytes,
 
 /* WaveOpenFile (DX5 wave.c, CSE'd PCM/extra alloc). Ghidra shredded
  * PCMWAVEFORMAT into 4 ints so mmioRead's HPSTR was only known to touch
- * the first dword â /O2 frame 0x18 vs orig 0x24. cbExtraBytes lives in
+ * the first dword: /O2 frame 0x18 vs orig 0x24. cbExtraBytes lives in
  * the dead pszFileName slot. Success returns the mmioAscend result, not
  * a fresh 0; cleanup nulls hmmio then stores it. */
 /* WHAT IT DOES: open a .WAV file and get it ready to read -- walks the RIFF

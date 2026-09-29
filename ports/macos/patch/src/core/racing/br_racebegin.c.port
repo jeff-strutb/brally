@@ -92,7 +92,7 @@ void BrRaceEnterOutro(void (*pfnRaceStep)(void))
  * (recomp `mov esi, <g_aBrRaceCue+4>` prints its addend bare, absorbed as
  * the two singletons); identical multiset otherwise after the mid-bump
  * lever (788b247), size- and insn-exact.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x10019930 glide BrRaceCueLayout */
 /* @n64 0x802006C8 located */
 void BrRaceCueLayout(void)

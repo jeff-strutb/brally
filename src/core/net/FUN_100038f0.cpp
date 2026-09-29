@@ -19,7 +19,7 @@
  * dispatcher on 48 valid-state seeds and returns EQUIVALENT -- return + every
  * in-image global write + side effects agree -- so nothing is missing or wrong.
  * Byte-exactness is walled on that allocation, not on logic; see the @t4-pass
- * ledger below. Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * ledger below. Do not reopen before the end-grind. */
 /* @implements 0x100038F0 glide FUN_100038f0
  * @cpp_kind free
  * @cpp_symbol _FUN_100038f0

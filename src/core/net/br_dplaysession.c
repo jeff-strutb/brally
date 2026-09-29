@@ -199,7 +199,7 @@ typedef int (__stdcall *BrDpCreatePlayerFn)(void *, int *, void *, int,
  * guid pairs fill 0,1 then 2,3 with the vt hoist between. Earlier draft
  * orders, the desc-slot read-back, memcpy pun, explicit name zeros and
  * full natural field order are all recorded dead above this line's
- * history. Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * history. Do not reopen before the end-grind. */
 /* @implements 0x10035C50 glide BrNetSessionHost */
 int BrNetSessionHost(void *pIface, char *pHost, int *pRec)
 {

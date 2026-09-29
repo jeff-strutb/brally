@@ -15,7 +15,7 @@ from capstone import Cs, CS_ARCH_X86, CS_MODE_32
 # DEFAULT REFERENCE: the GLIDE build.
 #
 # BRD3D.dll is the Direct3D build; BRGlide.dll is Glide. This tool defaulted to
-# BRD3D for most of the project's life, and the agent briefs compounded it by
+# BRD3D for most of the project's life, and the work briefs compounded it by
 # describing BRD3D as "the Glide build" -- a plain factual error, repeated many
 # times. Glide was the mature target for this game, and is the intended
 # reference.

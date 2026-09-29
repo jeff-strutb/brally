@@ -277,7 +277,7 @@ def summarise(rows):
 
 def load_report():
     if not os.path.exists(REPORT):
-        print('no %s — run tools/cpp_sweep.py first' % os.path.relpath(REPORT, ROOT))
+        print('no %s: run tools/cpp_sweep.py first' % os.path.relpath(REPORT, ROOT))
         return []
     with open(REPORT) as f:
         return list(csv.DictReader(f))

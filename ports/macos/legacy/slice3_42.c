@@ -191,4 +191,4 @@ void BrRbAccumChildForces(BrRbBodyFull *pParent, BrRbBodyFull *pChild)
 /* 0x1006B510 BrRbVelAtPoint, 0x1006B430 BrRbVelAtBodyPoint and 0x1006B340
  * BrRbVelAtBodyPointXY are filed in src/core/driving/br_rbvel.c. */
 
-/* ── Ghidra-matched functions ─────────────────────────── */
+/* -- Ghidra-matched functions --------------------------- */

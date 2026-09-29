@@ -86,7 +86,7 @@ void FUN_1005a6b0(void)
 }
 
 
-/* â¼ MAP DEFECT, fixed 2026-09-04.  config/functions_glide.csv listed
+/* !! MAP DEFECT, fixed 2026-09-04.  config/functions_glide.csv listed
  * 0x1005A480 as one 91-byte function.  It is two: a 5-byte `jmp 1005A490`
  * plus eleven alignment nops (16 bytes, MSVC emits the padding inside the
  * first function), then the 75-byte loader at the 16-aligned address that
@@ -118,7 +118,7 @@ int BrBmpLoadRgba(char *);
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
  * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x1005A490 glide BrLiveryLoadDamageBmps */
 void BrLiveryLoadDamageBmps(void)
 {

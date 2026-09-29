@@ -8,7 +8,7 @@
  *
  * Shared-return activate: `return 1` sits after the if/else so `mov eax,1`
  * stays out of the flag stores (they remain `c7` immediates). Ctor
- * DECLARED, no dtor — unwind is operator delete (maxState=1).
+ * DECLARED, no dtor: unwind is operator delete (maxState=1).
  *
  * 0xC8 Phase: +0 vtbl, +4 pfnEnter, +0xC f0C, +0x68 f68.
  */

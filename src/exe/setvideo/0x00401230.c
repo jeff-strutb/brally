@@ -1,4 +1,4 @@
-/* Auto-generated from disassembly — 0x00401230
+/* Auto-generated from disassembly: 0x00401230
  * CHK_FWriteOpen(path, mode). Same 8-byte wrapper as FReadOpen. */
 /* WHAT IT DOES: open a file for writing and abort with a message if it
  * cannot be created. */

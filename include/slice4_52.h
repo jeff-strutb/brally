@@ -2,14 +2,14 @@
  *
  * Every function here is one that an already-ported module declares `extern`
  * but nobody implements.  Names and signatures are taken verbatim from the
- * `; ===== WANTED AS:` lines of work/slice4/agent52.asm and from the modules
+ * `; ===== WANTED AS:` lines of work/slice4/packet52.asm and from the modules
  * listed there; where two modules disagree the conflict is spelled out in the
  * comment above the declaration and repeated in the report.
  *
  * ---------------------------------------------------------------------------
  * READ THIS FIRST -- the packet listing is mis-paired
  *
- * Six of the seventeen `WANTED AS` blocks in work/slice4/agent52.asm carry the
+ * Six of the seventeen `WANTED AS` blocks in work/slice4/packet52.asm carry the
  * disassembly of a DIFFERENT function than the address in the name:
  *
  *   BrSub1003CE80  <- body of 0x1003C260      BrSub1003C020  <- 0x10038F30

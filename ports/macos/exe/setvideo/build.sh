@@ -1,9 +1,9 @@
 #!/bin/sh
-# Build the macOS port of SetVideo.exe — the real Display Wizard.
+# Build the macOS port of SetVideo.exe: the real Display Wizard.
 #
 # Thirty-eight of SetVideo's 42 byte-exact functions are compiled straight out
 # of src/exe/setvideo/ with BR_MATCHING_BUILD defined and a shim <windows.h>
-# on the include path — including WinMain and all five dialog procedures. The
+# on the include path, including WinMain and all five dialog procedures. The
 # four that are not: the registry install-dir lookup and three MSVC CRT hooks.
 #
 # The wizard's dialog layouts live only inside the retail SetVideo.exe, so

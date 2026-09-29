@@ -9,7 +9,7 @@
  *   0x10021560  BrGbiCall10021560   (slice2_16)
  *
  * ---------------------------------------------------------------------
- * PACKET / NAME MISMATCH -- read this before trusting work/slice4/agent51.asm
+ * PACKET / NAME MISMATCH -- read this before trusting work/slice4/packet51.asm
  * ---------------------------------------------------------------------
  * The listing handed to this pass is mis-paired with the `WANTED AS` names:
  * the address column of work/undefined_resolved.txt is shifted by one row

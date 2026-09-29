@@ -22,7 +22,7 @@
  *  - the byte-position fix-up loop re-reads the count from the GLOBAL, not
  *    from the local that was just stored to it.
  *
- * â¼ BOTH PARKED 2026-09-05 -- instruction-identical, register-blind
+ * !! BOTH PARKED 2026-09-05 -- instruction-identical, register-blind
  * multiset 0, one-file sweep tried all four flag sets (O2 is the best).
  *
  * 0x1003B6D0 RallySeason: 11 diff bytes = ONE FRAME SLOT.  The original's
@@ -124,8 +124,8 @@ extern void BrRaceSettingsCommit(void);  /* 0x10058A30 */
  * Residue is scheduling/relocation (11 masked diffs at +0x9f, RAW/REGNORM
  * 0+0): a fold-order fork of the same shape as BrSaveResumeAutoSave below;
  * every instruction is the original's.  Passes 1-2 (crank.py, ledger above)
- * moved nothing at 671/216/1/0.  Do not reopen before the end-grind
- * (CLAUDE.md rule 12). */
+ * moved nothing at 671/216/1/0.  Do not reopen before the end-grind.
+ */
 /* @implements 0x1003B6D0 glide BrSaveBeginRallySeason */
 int BrSaveBeginRallySeason(int pList, int *pIdx)
 {
@@ -208,7 +208,7 @@ int BrSaveBeginRallySeason(int pList, int *pIdx)
  * multiset (rows 0+0), insn-exact, +4 B of encoding shadow, 1 masked
  * region.  Three crank census passes (150 probes each) at the prior
  * numbers plus two hand passes at the current ones.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x1003BDE0 glide BrSaveBeginTimeAttack */
 int BrSaveBeginTimeAttack(int pList, int *pIdx)
 {
@@ -288,7 +288,7 @@ extern char s_AutoSave_brf_100acae8[];   /* "AutoSave.brf" */
  * context (void body nested under the fopen test), not the statement; the
  * dead-probe list is in the RESIDUE comment above.  Passes 1-2 (crank.py,
  * ledger above) moved nothing at 536/162/1/0.  Do not reopen before the
- * end-grind (CLAUDE.md rule 12). */
+ * end-grind. */
 /* @implements 0x1003B130 glide BrSaveResumeAutoSave */
 void BrSaveResumeAutoSave(void)
 {

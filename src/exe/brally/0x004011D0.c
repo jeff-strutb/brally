@@ -1,4 +1,4 @@
-/* Auto-generated from disassembly — 0x004011D0
+/* Auto-generated from disassembly: 0x004011D0
  * GetObj: current rgsz of a section cursor. Two-level deref. */
 /* WHAT IT DOES: return the string list the section cursor is currently
  * pointing at. */

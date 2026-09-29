@@ -14,7 +14,7 @@
  *
  * See slice2_19.h for the recovered layouts, the DEVIATION list, the skipped
  * functions and the gotchas. Everything here was traced from
- * work/slice2/agent19.asm.
+ * work/slice2/packet19.asm.
  *
  * x87 note: every fcomp/fnstsw pair in this range was decoded through the
  * flag mapping C0 = ah bit 0, C2 = ah bit 2, C3 = ah bit 6, so

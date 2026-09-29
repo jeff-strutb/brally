@@ -1,5 +1,5 @@
 /* GetIniValue: walk section lines, split on '=', _stricmp the key.
- * Idiom: for (line = NextObj(); line; line = NextObj()) — not do-while.
+ * Idiom: for (line = NextObj(); line; line = NextObj()), not do-while.
  * do-while merges loop-exit `return 0` with the BindSection-fail xor
  * epilogue and emits `je fail; jmp loop` instead of orig `jne loop`. */
 /* WHAT IT DOES: read one named value out of a section of the settings file,

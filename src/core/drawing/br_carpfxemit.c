@@ -54,7 +54,7 @@ extern void BrGbiStackOverflow(int code);
  * residue is x87/integer scheduling only (rows 0+0, same size): the 0.1f
  * product issues before the struct-copy loads in the original, and pop ebx
  * lands after the c66 byte store.  Dead probes: the two @t4-pass ledger
- * lines above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * lines above.  Do not reopen before the end-grind. */
 /* @implements 0x10039020 d3d BrCarSub9020 */
 /* The original is the full particle-spawn body the port folded into
  * BrPoolEmit: timer accumulate + threshold, free-slot word shuffle,

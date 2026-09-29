@@ -833,7 +833,7 @@ void BrTex3dToRgba8(const uint16_t *pArgb1555, uint32_t count, uint8_t *pRgba)
     }
 }
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* -- Ghidra-matched functions --------------------------- */
 extern int DAT_105ccbd0;
 extern int _DAT_106b7aa4;
 extern int _DAT_106b7aa8;
@@ -988,7 +988,7 @@ int FUN_10024490();
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 2 and 3);
  * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x10027E10 glide BrTex3dMipChainLoad */
 
 int BrTex3dMipChainLoad(int param_1,int param_2,int param_3)
@@ -1157,7 +1157,7 @@ int BrTexRgbaToArgb1555();
  * @t3-effort passes 2 zero-movement 2 3
  * RESIDUE: none structural -- 0 divergence rows, identical instruction count,
  * one trailing byte differs positionally; A5 EQUIVALENT (crank census yes).
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x10028620 glide BrTexSlotFetchPixels */
 
 int * BrTexSlotFetchPixels(int param_1,int *param_2)
@@ -1850,7 +1850,7 @@ int FUN_10028BB0(int *);
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
  * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x10027A10 glide br_tex3d_append */
 
 int br_tex3d_append(void)
@@ -2059,7 +2059,7 @@ extern int DAT_106b7aa0;
  * residue is register colouring only: identical register-blind multiset
  * (rows 0+0), 4 masked regions, 6 B uncompared at key 6 within tolerance.
  * Two crank census passes (86 probes each) plus two hand passes at the
- * current numbers.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * current numbers.  Do not reopen before the end-grind. */
 /* @implements 0x10029CD0 glide BrTex3dFreeAll */
 void BrTex3dFreeAll(void)
 {

@@ -12,8 +12,8 @@
  * Residue: two x87 choices with the same arithmetic -- the ABS test's
  * `fcom` (original `fld st(0); fcomp`) and which of translation row 2's
  * products is formed first (a + b == b + a).  Dossier and dead list in the
- * header comment below.  Do not reopen before the end-grind (CLAUDE.md
- * rule 12). */
+ * header comment below.  Do not reopen before the end-grind.
+ */
 /* @t4-pass 0x10034B70 2 2026-09-27 probes 729 bytes 694 insns 243 regions 5 rows 11 census yes  (hand: every plain/helper/named-subset spelling of the three translation rows, 9^3, in the <windows.h> TU; none moves row 2 or the ABS dup) */
 /* @t4-pass 0x10034B70 3 2026-09-27 probes 30 bytes 694 insns 243 regions 5 rows 11 census no  (hand: 12 ABS spellings -- macro, inline fn, if/negate, both ternaries, temp, !(x >= 0), 0 - x, *-1 -- and 18 C++ flag sets) */
 /* @implements 0x10034B70 glide BrMtxInvert

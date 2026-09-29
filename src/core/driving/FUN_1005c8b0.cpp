@@ -22,7 +22,7 @@
  * stream (global load order, ext/flags eax<->edx, &f30/&fF24 ebx<->edi
  * with the rotation it seeds, one float-temp home). Dossier, levers and
  * the two ledger passes are in the block below.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x1005C8B0 glide FUN_1005c8b0
  * @cpp_kind method
  * @cpp_symbol ?Step@Car5C8B0@@QAEXXZ

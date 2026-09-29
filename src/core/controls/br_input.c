@@ -476,7 +476,7 @@ defwnd:
     return DefWindowProcA(hWnd, uMsg, (uint32_t)wParam, (int32_t)lParam);
 }
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* -- Ghidra-matched functions --------------------------- */
 #include <windows.h>
 #include <mmsystem.h>
 /* WHAT IT DOES: seek a RIFF WAVE file to the start of its "data" chunk via mmioDescend. */
@@ -717,7 +717,7 @@ __declspec(dllimport) int32_t __stdcall IsIconic(void *hWnd);
  * live ABI argument and crashed on hardware.  Fixed (thiscall via
  * BR_THISCALL1, `this` = g_pBrAC61E0).  Residue now: two swapped scratch
  * registers at the [esp+0x10] reloads (rows 0+0 register-blind), +1 B.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x100590D0 glide BrSub100590D0 */
 int32_t __stdcall BrSub100590D0(int32_t iArg, void *hWnd, uint32_t uMsg,
                                 uint32_t wParam, int32_t lParam)
@@ -807,7 +807,7 @@ int BrDiAcquire(void)
   return 0;
 }
 
-/* Hand-matched from disassembly â 0x100592F0
+/* Hand-matched from disassembly: 0x100592F0
  * fastcall: pointer in ecx, ten fields zeroed in source order, returns this. */
 
 /* WHAT IT DOES: the constructor of the 0x54-byte DirectInput object that

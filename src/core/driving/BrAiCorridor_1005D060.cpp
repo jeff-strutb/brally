@@ -40,7 +40,7 @@
  * image is built -- the "O2 Gi" rows compiled serially in (file, va) order
  * through one fresh idb, sweep-named objects -- this file's name length is
  * inside a matching window (12, 26-27 and 44 characters before `_1005D060`
- * match; the other lengths leave 4-8 bytes of reload order).  ‼ Renaming this
+ * match; the other lengths leave 4-8 bytes of reload order).  !! Renaming this
  * file, or adding an "O2 Gi" TU that sorts before it, can flip it: re-run
  * the serial chain.  The later "O2 Gi" rows (0x10054730, 0x10044860) still
  * match with this TU in the chain. */

@@ -1,24 +1,126 @@
 #!/usr/bin/env python3
-"""Fleet runner for the deterministic C permuter (tools/permute.py). No LLM.
+"""Fleet runner for the deterministic C permuter (tools/permute.py).
 
 Cranks the permuter over the near-miss frontier in PARALLEL (one process per
 worker slot, each grinding a different function), and BANKS every byte-exact
 result into the tree (permute.py only writes a result file; this files it into
-the real .c, re-verifies, and commits). Pure CPU, zero tokens. See perm.sh.
+the real .c, re-verifies, and commits). See perm.sh.
 
 The permuter's sweet spot is small-diff register/coloring near-misses -- exactly
 the functions the closer loops skip as walls -- so this targets those.
 """
-import argparse, os, queue, re, subprocess, sys, threading, time
+import argparse, csv, os, queue, re, subprocess, sys, threading, time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import ai_loop   # reuse locate_fn, brace_match, fn_score, is_eh, sh, rows, GRAVE
+from capstone import Cs, CS_ARCH_X86, CS_MODE_32
+md = Cs(CS_ARCH_X86, CS_MODE_32); md.skipdata = True
 
-ROOT = ai_loop.ROOT
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PY = os.path.join(ROOT, '.venv', 'bin', 'python')
+REPORT = os.path.join(ROOT, 'build', 'match', 'report.csv')
+ORIG = os.path.join(ROOT, 'build', 'match', 'orig')
+FN = os.path.join(ROOT, 'tools', 'fnmatch', 'fn.py')
+GRAVE = {'0x1000EAF0', '0x10019A70', '0x100250D0'}     # known graveyards
 PERMUTE = os.path.join(ROOT, 'tools', 'permute.py')
 LEDGER = os.path.join(ROOT, 'build', 'match', 'perm_attempted.csv')
 BANK_LOCK = threading.Lock()   # serialize tree edits + git
+
+
+def sh(*a):
+    return subprocess.run(a, cwd=ROOT, capture_output=True, text=True)
+
+
+def rows():
+    with open(REPORT) as f:
+        return list(csv.DictReader(f))
+
+
+def is_eh(va):
+    try:
+        d = open(os.path.join(ORIG, va + '.bin'), 'rb').read()
+    except OSError:
+        return True
+    txt = ' '.join('%s %s' % (i.mnemonic, i.op_str) for i in list(md.disasm(d, 0))[:6])
+    return 'push -1' in txt and 'fs:[0]' in txt
+
+
+
+def regnorm_gap(out):
+    """(extra, missing) register-blind multiset gap from a --detail run, or None.
+
+    This is the number the whole project ranks by: how many instruction SHAPES
+    differ after normalizing away register choice. gap 0 with diffs > 0 = a pure
+    register-allocation wall (allocation-only residue) -- no C spelling flips it, so don't grind it.
+    """
+    m = re.search(r'REGNORM (\d+)\+(\d+)', out)
+    return (int(m.group(1)), int(m.group(2))) if m else None
+
+
+def fn_score(va, detail=False):
+    # always compute --detail: the register-blind gap is how we rank progress
+    # and detect allocation-only walls; the raw DIFFS count alone is register noise.
+    args = [PY, FN, va, '--detail', 'regnorm', '40']
+    out = subprocess.run(args, cwd=ROOT, capture_output=True, text=True).stdout
+    if 'COMPILE FAILED' in out:
+        return {'ok': False, 'out': out}
+    m = re.search(r'DIFFS=(\d+)', out)
+    if not m:
+        return {'ok': False, 'out': out}
+    gap = regnorm_gap(out)
+    return {'ok': True, 'byte_exact': 'BYTE-EXACT' in out,
+            'diffs': int(m.group(1)), 'out': out,
+            'gap': gap, 'gapsum': (gap[0] + gap[1]) if gap else None}
+
+
+def brace_match(lines, start):
+    depth = 0; instr = None; incom = False
+    for idx in range(start, len(lines)):
+        line = lines[idx]; k = 0
+        while k < len(line):
+            c = line[k]; nxt = line[k + 1] if k + 1 < len(line) else ''
+            if incom:
+                if c == '*' and nxt == '/':
+                    incom = False; k += 2; continue
+                k += 1; continue
+            if instr:
+                if c == '\\':
+                    k += 2; continue
+                if c == instr:
+                    instr = None
+                k += 1; continue
+            if c == '/' and nxt == '*':
+                incom = True; k += 2; continue
+            if c == '/' and nxt == '/':
+                break
+            if c in '"\'':
+                instr = c; k += 1; continue
+            if c == '{':
+                depth += 1
+            elif c == '}':
+                depth -= 1
+                if depth == 0:
+                    return idx
+            k += 1
+    return None
+
+
+def locate_fn(path, name):
+    """Return (start_line, end_line) inclusive of the function DEFINITION, or None."""
+    lines = open(path).read().split('\n')
+    pat = re.compile(r'^[A-Za-z_].*\b' + re.escape(name) + r'\s*\(')
+    for i, l in enumerate(lines):
+        if not pat.match(l) or l.rstrip().endswith(';'):
+            continue
+        j = i
+        while j < len(lines) and '{' not in lines[j]:
+            if ';' in lines[j]:            # a prototype, not a definition
+                j = None; break
+            j += 1
+        if j is None or j >= len(lines):
+            continue
+        end = brace_match(lines, j)
+        if end is not None:
+            return i, end
+    return None
 
 
 def load_attempted():
@@ -40,7 +142,7 @@ def mark(va, outcome):
 def save_learning(va, name, before, after, mutation_seq):
     """Save the winning before/after (and the mutation sequence that cracked it)
     so the idiom-merge pass can generalize it into docs/VC5-IDIOMS.md -- turning a
-    permuter win into a reusable idiom for Grok and the local-LLM loop too."""
+    permuter win into a reusable idiom."""
     try:
         d = os.path.join(ROOT, 'build', 'match', 'idioms_new')
         os.makedirs(d, exist_ok=True)
@@ -56,28 +158,28 @@ def bank(permuted_path, va, name, rel, mutation_seq=''):
     """Extract the function from the permuter's result and file it into the tree."""
     if not os.path.exists(permuted_path):
         return False
-    ploc = ai_loop.locate_fn(permuted_path, name)
+    ploc = locate_fn(permuted_path, name)
     if not ploc:
         return False
     plines = open(permuted_path).read().split('\n')
     newfn = plines[ploc[0]:ploc[1] + 1]
     path = os.path.join(ROOT, rel)
     with BANK_LOCK:
-        if ai_loop.sh('git', 'diff', '--quiet', '--', rel).returncode != 0:
+        if sh('git', 'diff', '--quiet', '--', rel).returncode != 0:
             return False                      # tree file dirty; don't clobber
-        tloc = ai_loop.locate_fn(path, name)
+        tloc = locate_fn(path, name)
         if not tloc:
             return False
         tlines = open(path).read().split('\n')
         before = '\n'.join(tlines[tloc[0]:tloc[1] + 1])
         open(path, 'w').write('\n'.join(tlines[:tloc[0]] + newfn + tlines[tloc[1] + 1:]))
-        sc = ai_loop.fn_score(va)
+        sc = fn_score(va)
         if sc.get('ok') and sc.get('byte_exact'):
-            ai_loop.sh('git', 'add', '--', rel)
-            ai_loop.sh('git', 'commit', '-q', '-m', f'{name}: byte-exact via permuter ({va})')
+            sh('git', 'add', '--', rel)
+            sh('git', 'commit', '-q', '-m', f'{name}: byte-exact via permuter ({va})')
             save_learning(va, name, before, '\n'.join(newfn), mutation_seq)
             return True
-        ai_loop.sh('git', 'checkout', '--', rel)   # verify failed in tree context; revert
+        sh('git', 'checkout', '--', rel)   # verify failed in tree context; revert
         return False
 
 
@@ -110,13 +212,13 @@ def work(va, name, rel, slots, secs, iters):
 
 def candidates(a, attempted):
     out = []
-    for r in ai_loop.rows():
-        if r.get('status') != 'diff' or r['va'] in ai_loop.GRAVE or r['va'] in attempted:
+    for r in rows():
+        if r.get('status') != 'diff' or r['va'] in GRAVE or r['va'] in attempted:
             continue
         d = int(r['diffs'])
         if not (a.min_diffs <= d <= a.max_diffs):
             continue
-        if a.min_size <= int(r['orig_size']) <= a.max_size and not ai_loop.is_eh(r['va']):
+        if a.min_size <= int(r['orig_size']) <= a.max_size and not is_eh(r['va']):
             out.append(r)
     out.sort(key=lambda r: int(r['diffs']))     # closest register near-misses first
     return out

@@ -10,7 +10,7 @@
  *   0x10066950   322 B   BrCrExact               byte-exact 2026-09-27
  *   0x10066AD0   669 B   BrCollRespBroadPhase    byte-exact 2026-09-05
  *
- * â¼ THE FOUR ABOVE SHARE ONE TIE-BREAK.  Re-spelling any of them renumbers
+ * !! THE FOUR ABOVE SHARE ONE TIE-BREAK.  Re-spelling any of them renumbers
  * the TU's symbols and can flip a float-chain choice in another: SegBox
  * went match -> diff with no edit to its text when its neighbours changed
  * (fixed by its declaration order; note above it).  Re-sweep the whole
@@ -293,7 +293,7 @@ int BrPodNop();                           /* 0x10008D60, the trace stub     */
  * (3 rows), the p/w frame slot pair swapped, and the operand order inside
  * the two esi-based products of the chassis dot `s`.  Dossier and dead
  * list are the comment block above this one.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x10066D70 glide BrCollRespTipKick */
 int BrCollRespTipKick(BrTipView *pBody)
 {
@@ -803,7 +803,7 @@ static int BrCrExact(const float aV[9], const BrVec3 *pN)
  * Residue is x87 scheduling only: the fourth crossing test loads p[v]
  * before A[v] (plus one fxch), and v is re-read in each arm where VC5 here
  * hoists one read above the branch.  Dossier and dead list in the header
- * above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * above.  Do not reopen before the end-grind. */
 /* @implements 0x10066610 glide BrCollRespPointInTri */
 int BrCollRespPointInTri(const float aV[9], const BrVec3 *pN,
                          const BrVec3 *pP)

@@ -54,7 +54,7 @@
  *     and is kept;
  *   - local declaration order (all 24 of fp/len/checksum orders tried): inert,
  *     405 every time -- the tie is with a compiler-generated constant temp, not
- *     a declared local, so [[declaration-order-tiebreak]] has no handle here.
+ *     a declared local, so the declaration-order tie-break has no handle here.
  */
 
 /* The original is /MD: CRT calls go through the import table (FF 15). */
@@ -99,8 +99,8 @@ extern char  DAT_10af6858[];                 /* its mirror                 */
  * `push ebx` above the branch and lands on the shared fclose tail one
  * byte in; ours branches first. Same push-hoist shape as the corpus hits
  * (BrHudDrawViewMessage +0x8, BrPfxTick +0x6), reached at the strncmp site
- * but not here. Dossier below. Do not reopen before the end-grind
- * (CLAUDE.md rule 12). */
+ * but not here. Dossier below. Do not reopen before the end-grind.
+ */
 /* @implements 0x10069A80 glide BrGhostLoad
  * @cpp_kind free
  * @cpp_symbol ?BrGhostLoad@@YA_NPADH@Z

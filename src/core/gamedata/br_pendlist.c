@@ -62,7 +62,7 @@ uint32_t   g_brPendDropped; /* 0x106C7C40 */
  * @t3-effort passes 2 zero-movement 1 2
  * residue after tools/crank.py: 30 compiles this pass, levers accepted: none;
  * every candidate and score is in build/match/crank.log.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x10037030 d3d BrPendListAdd */
 void BrPendListAdd(BrPendList *pList, void *pItem, uint32_t *pcDropped)
 {

@@ -22,7 +22,7 @@ technique it uses or the layer it sits in.
     audio/      sound and music
     net/        multiplayer: sessions, peers, and the wire format a car's
                 state is squeezed into. The pack/unpack helpers live here
-                and not in geometry/ even though they read like arithmetic --
+                and not in geometry/ even though they read like arithmetic:
                 their responsibility is the PROTOCOL, and filing them by
                 their maths would scatter one wire format across three
                 folders.
@@ -49,7 +49,7 @@ ever grows unrelated helpers they belong with their consumer, not here.
 ## The address batches are gone
 
 The `sliceN_MM.c` files were a **batch of whatever occupied one address range**
-in the original -- a decompilation-process artifact, not an architecture. Every
+in the original: a decompilation-process artifact, not an architecture. Every
 matched function was filed out of them into its module. What remained was the
 port's BRD3D-era transcription plus dead copies of bodies already matched
 elsewhere, so on 2026-09-28 all 56 moved to `ports/macos/legacy/`. Their
@@ -58,7 +58,7 @@ declarations they carry are part of those modules' translation units.
 
 ## src/ is the decomp and nothing else
 
-Port code -- a body that exists only so the Mac build runs -- lives under
+Port code (a body that exists only so the Mac build runs) lives under
 `ports/macos/`, never here, and so does every difference the port needs from
 a module here: a spec in `ports/macos/patch/`, not a `BR_MATCHING_BUILD`
 conditional. See `ports/README.md`.

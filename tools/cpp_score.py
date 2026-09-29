@@ -404,7 +404,7 @@ def orig_handler_va(code):
 
 
 def orig_funcinfo(pe, func_va, code):
-    """Walk orig .text → handler thunk (`mov eax, FuncInfo; jmp`) → FuncInfo."""
+    """Walk orig .text -> handler thunk (`mov eax, FuncInfo; jmp`) -> FuncInfo."""
     handler = orig_handler_va(code)
     if handler is None:
         return None, None, None
@@ -587,7 +587,7 @@ def score_source(src_text, func_name, orig_bytes, opts, tag):
     """Compile src_text as C++ /GX; return (diffs, opt, recomp_bytes, relocs).
 
     Same tuple as ghidra_to_match._score_source. Writes a temp .cpp (never
-    .c — cl would compile C and silently drop the EH frame). `func_name` is
+    .c: cl would compile C and silently drop the EH frame). `func_name` is
     a C identifier, a mangled `?name@@...`, or a class name.
     """
     tmpdir = tempfile.mkdtemp(prefix='cpp_score_')
@@ -766,7 +766,7 @@ def score_va(va, src_path, name, opts, list_syms=False, prefer=None):
             act_va = ou['action']
             act_path = os.path.join(ORIG_DIR, '0x%08X.bin' % act_va)
             if not os.path.exists(act_path):
-                print('unwind[%d] action orig bin missing (0x%08X) — not scored'
+                print('unwind[%d] action orig bin missing (0x%08X), not scored'
                       % (i, act_va))
                 sidecar_ok = False
                 continue
@@ -805,10 +805,10 @@ def score_va(va, src_path, name, opts, list_syms=False, prefer=None):
     print('  FuncInfo (magic 0x19930520), the unwind map, and the outlined')
     print('  unwind action / handler thunk are separate (.xdata$x / .text$x,')
     print('  own map VAs). A .text match of this function does NOT imply')
-    print('  those match — they have to be checked separately.')
+    print('  those match: they have to be checked separately.')
     if nd == 0 and equal and sidecar_ok:
         print('  This run: function .text MATCH, FuncInfo structural MATCH,')
-        print('  unwind-action .text MATCH, handler thunk MATCH — all four')
+        print('  unwind-action .text MATCH, handler thunk MATCH: all four')
         print('  independently. cpp_score.py is what makes the class verifiable;')
         print('  match_sweep as it stands is not.')
     elif nd == 0:

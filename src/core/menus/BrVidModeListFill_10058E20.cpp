@@ -11,8 +11,8 @@
  * register allocation only -- the entry compare's register roles are swapped
  * and the frame slots rotate one dword (the symbol-index/declaration-order
  * bucket; no spelling reached it). Byte-shape lost-sync at key 6 is behaviour-
- * neutral T4 noise, not a T3 concern. Do not reopen before the end-grind
- * (CLAUDE.md rule 12). */
+ * neutral T4 noise, not a T3 concern. Do not reopen before the end-grind.
+ */
 /* @implements 0x10058E20 glide BrVidModeListFill
  * @cpp_kind free
  * @cpp_symbol _BrVidModeListFill

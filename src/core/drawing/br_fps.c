@@ -90,10 +90,10 @@ void BrFpsReadout(void)
     BrTextDraw(buf, g_BrFpsScreenW / 2, g_BrFpsScreenH - 10);
 }
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* -- Ghidra-matched functions --------------------------- */
 int FUN_1006e590();
 
-/* WHAT IT DOES: thunk â forwards to the shared no-op at 0x1006E590. */
+/* WHAT IT DOES: thunk: forwards to the shared no-op at 0x1006E590. */
 /* @implements 0x10011D10 glide BrThunk11D10 */
 /* @n64 0x802288B4 exact */
 

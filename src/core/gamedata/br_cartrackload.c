@@ -299,7 +299,7 @@ extern void BrSegSetBasesG(uint32_t n64Base, void *pHost);
  * +0x8098/0x809C pair order; a q alias in the DL loop; the +0x8090 swap
  * after the +0x8094 rebase; the descriptor index widened; crank's full
  * mut/stmt/decl/comm/samebase list (filepos cannot compile this TU's
- * dependencies).  â¼ crank's parked endpoint (build/ghidra_work/
+ * dependencies).  !! crank's parked endpoint (build/ghidra_work/
  * 0x10030770.crank.c, "regions 8 bytes -2") is UNSOUND -- it reads the
  * record count at +0x8010 BEFORE the BR_LD32BE that byte-swaps it, so its
  * gain is not a transcription; do not land it.  Corpus: MISS at +0x19.
@@ -316,7 +316,7 @@ extern void BrSegSetBasesG(uint32_t n64Base, void *pHost);
  * loop counter, ebx/ebp swapped; +6 B of [ebp] disp8 encodings) seen
  * through ten regions.  Multiset and count exact.  Dossier, dead lists and
  * the crank-endpoint UNSOUND warning: the STATE block above; ledger lines
- * above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * above.  Do not reopen before the end-grind. */
 /* @implements 0x100370D0 d3d BrRcaFixup */
 void BrRcaFixup(void *pvFile)
 {
@@ -774,8 +774,8 @@ extern void BrGlFixupAt(uint8_t *p);
  * the same spelling, so the expression is not the lever.  Size, count,
  * multiset and the corpus (no witness for the construct) all agree.
  * Dossier, three landed levers and the 55-compile dead list: the comment
- * block above; ledger lines 3-6 above.  Do not reopen before the end-grind
- * (CLAUDE.md rule 12). */
+ * block above; ledger lines 3-6 above.  Do not reopen before the end-grind.
+ */
 /* @implements 0x10031B80 glide BrGlTrackHdrRead */
 void BrGlTrackHdrRead(void *pvHdr, FILE **ppFile)
 {

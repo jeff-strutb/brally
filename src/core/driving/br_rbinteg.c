@@ -86,7 +86,7 @@ extern float _DAT_10077c1c;
  * 419/417 B but 1 ulp off in y and z in every live script.  This one is
  * bit-identical on 2000 random inputs (differential emulation against
  * 0x1006DE70) and EQUIVALENT in all eight live scripts.  Do not reopen
- * before the end-grind (CLAUDE.md rule 12). */
+ * before the end-grind. */
 /* @t4-pass 0x1006DE70 3 2026-09-27 probes 100 bytes 419 insns 162 regions 1 rows 94 census yes  (hand: symbol-table band sweep 0-1568, C and C++) */
 /* @t4-pass 0x1006DE70 4 2026-09-27 probes 84 bytes 419 insns 162 regions 1 rows 94 census no  (hand: y/z rows inline vs named -- 64 subsets of n/g/k/product locals, det/n0/inv naming, const) */
 /* @t4-pass 0x1006DE70 5 2026-09-27 probes 12 bytes 579 insns 203 regions 1 rows 135 census no  (hand: 12 compiler option sets on the rounding-exact body) */
@@ -422,8 +422,8 @@ void BrRbQuatDerivative(BrRbState *pS)
  * stack), not for its bytes; the hill-climbed float body it replaced was
  * 399/405 B but 1 ulp off on 1215 of 2000 random inputs.  This one is
  * bit-identical on all 2000 (differential emulation) and EQUIVALENT in all
- * eight live scripts.  Do not reopen before the end-grind (CLAUDE.md
- * rule 12). */
+ * eight live scripts.  Do not reopen before the end-grind.
+ */
 /* @t4-pass 0x1006D6B0 3 2026-09-27 probes 61 bytes 399 insns 133 regions 3 rows 25 census yes  (hand: fresh transcription with by-value square helper BrSq, 60 random declaration orders of the 10 products -- 447..451 B, worse) */
 /* @t4-pass 0x1006D6B0 4 2026-09-27 probes 32 bytes 399 insns 133 regions 3 rows 25 census no  (hand: symbol-table band sweep, extern-int pads 0-992) */
 /* @t4-pass 0x1006D6B0 5 2026-09-27 probes 12 bytes 559 insns 176 regions 1 rows 122 census no  (hand: 12 compiler option sets on the rounding-exact body) */

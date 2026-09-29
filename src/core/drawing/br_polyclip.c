@@ -156,7 +156,7 @@ float BrPolyDistMaxY(const BrScrPt *pPt)
  * the null case reuses p instead of materialising a zero.
  * 30 compiles in the last pass, levers accepted: none that survived the
  * cluster rule; every candidate and score is in build/match/crank.log.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x1000DF00 glide BrPolyClipPlane */
 void BrPolyClipPlane(BrPolyList *pList, BrPolyDistFn pfnDist)
 {

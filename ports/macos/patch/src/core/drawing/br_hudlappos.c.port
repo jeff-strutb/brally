@@ -39,7 +39,7 @@
  * x-argument sites (proven source-unreachable in the RESIDUE block above:
  * VC5 reassociates the chain unconditionally); size- and insn-exact,
  * identical register-blind multiset.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x100173F0 d3d BrSub_100173F0 */
 void BrSub_100173F0(BrHudView *aViews, int a2)
 {

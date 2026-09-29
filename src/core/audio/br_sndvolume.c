@@ -88,7 +88,7 @@ extern int g_i0B8C90;
  * OWNS the storage; this packet only reads it.  See the note in section 1. */
 extern int32_t g_br094294;
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* -- Ghidra-matched functions --------------------------- */
 extern int DAT_11849e64;
 int FUN_1006a650();
 int FUN_1006a7e0();
@@ -108,7 +108,7 @@ extern int DAT_1184c07c;
 void BrSndVoiceApplyFreq(int);
 void BrSndVoiceApplyPan(int);
 
-/* BrSndVoiceSetPan (0x1006B5B0) stays in ghidra_batch.c â context-sensitive codegen. */
+/* BrSndVoiceSetPan (0x1006B5B0) stays in ghidra_batch.c: context-sensitive codegen. */
 
 typedef void (__stdcall *dsbuf_fn2)(int, int);
 
@@ -159,7 +159,7 @@ typedef int (__stdcall *dsbuf_fn1)(int);
  * stack through a register on one side and an immediate on the other, and the
  * rest is the argument-home allocation.  Eight counted passes, the last two
  * zero-movement, corpus a MISS at the first divergence.  Do not reopen before
- * the end-grind (CLAUDE.md rule 12). */
+ * the end-grind. */
 /* @implements 0x1006B440 glide BrSndVoiceApplyVolume */
 
 void BrSndVoiceApplyVolume(int param_1)

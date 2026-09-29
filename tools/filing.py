@@ -4,8 +4,8 @@ belong to", decided ONCE and never re-derived.
 
 Rule 6 says file each function into its named module as you match it.  That was
 not happening: on 2026-09-03, 570 of 845 matched C functions still sat in
-`sliceN_MM.c` address batches, because tools/autofile.py places a new MATCH by
-ADDRESS -- it picks the slice whose VA range brackets the function.  Nothing
+`sliceN_MM.c` address batches, because the retired autofile tool placed a new MATCH by
+ADDRESS -- it picked the slice whose VA range brackets the function.  Nothing
 recorded what a function IS, so every filing attempt re-analysed it from
 scratch and most attempts never happened at all.
 

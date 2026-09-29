@@ -107,7 +107,7 @@ extern char s__EAR_DLL_UpdateEar_0_100a71b0[];
  * @t3-effort passes 2 zero-movement 1 2
  * residue is register colouring in the null-test chain (register-blind
  * multiset identical, 8+8 raw rows); dossier and dead list in the comment
- * above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * above.  Do not reopen before the end-grind. */
 /* @implements 0x10017910 glide BrEarLoad */
 int BrEarLoad(int usePds)
 {

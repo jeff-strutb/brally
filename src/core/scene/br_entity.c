@@ -119,7 +119,7 @@ uint32_t BrEntityCountActive(void)
     uint32_t c = 0;
     unsigned char *p;
 
-    /* Orig `test edx,edx; jle ret` â skip the countdown, do not early-return
+    /* Orig `test edx,edx; jle ret`: skip the countdown, do not early-return
      * (that duplicates `ret`). */
     if (n > 0) {
         p = DAT_10af2110;

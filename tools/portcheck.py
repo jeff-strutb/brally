@@ -24,8 +24,7 @@ THIS IS NOT A PORT BUILD.  It compiles ONE configuration of individual
 translation units with the staged MSVC 5.0 and inspects their symbol tables.
 It does not link, it does not run the macOS/Metal port's own toolchain, and a
 clean result here is not a statement that the port builds -- the port build
-was already out of sync before this tool existed (docs/MEMORY.md,
-[[port-build-drift]]).  Compile-and-symbols for one configuration, nothing
+was already out of sync before this tool existed.  Compile-and-symbols for one configuration, nothing
 more.
 
 WHAT COUNTS AS A FINDING, AND WHAT DOES NOT

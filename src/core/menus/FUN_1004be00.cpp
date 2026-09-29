@@ -8,7 +8,7 @@
  * Residue: photo1's ten-instruction Pentium-pairing schedule (identical
  * multiset; the 3+3 rows are the EH frame's fs:[0] reloc form). Dossier
  * below; dead list and schedule census in 0x1004AEE0.cpp.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x1004be00 glide FUN_1004be00
  * @cpp_kind free
  * @cpp_symbol ?FUN_1004be00@@YAHPAVGameUi@@@Z

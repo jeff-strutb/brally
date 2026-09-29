@@ -1,15 +1,15 @@
-/* win32_dialog.m — the eleven Win32 calls SetVideo.exe makes, on AppKit.
+/* win32_dialog.m: the eleven Win32 calls SetVideo.exe makes, on AppKit.
  *
  * This is what lets the ORIGINAL dialog procedures run. DlgProcRadio,
  * DlgProcComboA, DlgProcComboB, DlgProc and DlgProcOKCancel are compiled
  * byte-for-byte from the decompiled sources and are not touched: they still
  * receive WM_INITDIALOG and WM_COMMAND, still stash their Sel pointer with
- * SetWindowLongA(hWnd, 8, …), still drive the combo with CB_ADDSTRING /
+ * SetWindowLongA(hWnd, 8, ...), still drive the combo with CB_ADDSTRING /
  * CB_SETITEMDATA / CB_SETCURSEL, and still finish with EndDialog. Only the
  * other side of those calls is new.
  *
  * The dialog layouts are the real ones, read out of the retail binary's
- * .rsrc by tools/rsrc_dump.py — same captions, same control ids, same
+ * .rsrc by tools/rsrc_dump.py: same captions, same control ids, same
  * positions in dialog units.
  *
  * NOT byte-matched.
@@ -121,9 +121,9 @@ static void BuildControls(BrDialog *dlg, const BrDlgTemplate *t)
             b.buttonType = NSButtonTypeRadio;
             b.font       = font;
             /* AppKit groups radios by superview, which is exactly the
-             * grouping CheckRadioButton(0x3eb, 0x3ed, …) expects. */
+             * grouping CheckRadioButton(0x3eb, 0x3ed, ...) expects. */
             view = b;
-        } else {                                  /* PUSHBUTTON / DEF… */
+        } else {                                  /* PUSHBUTTON / DEF... */
             NSButton *b = [[NSButton alloc] initWithFrame:r];
             b.title       = text;
             b.bezelStyle  = NSBezelStyleRounded;
@@ -283,8 +283,8 @@ int CheckRadioButton(HWND hWnd, int first, int last, int check)
 }
 
 /* The five combo box messages FillComboA/FillComboB and ComboGetItemData
- * send. Item data is an int per row — the section's ordinal in the device
- * database — kept in a parallel array the way Win32 keeps it per item. */
+ * send. Item data is an int per row (the section's ordinal in the device
+ * database) kept in a parallel array the way Win32 keeps it per item. */
 LPARAM SendDlgItemMessageA(HWND hWnd, int id, UINT msg,
                            WPARAM wParam, LPARAM lParam)
 {

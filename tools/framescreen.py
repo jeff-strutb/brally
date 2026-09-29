@@ -73,7 +73,7 @@ def main():
             of = frame_of(open(ob, 'rb').read())
             if of is None:
                 continue
-            # ‼ Use the row's OWN flag variant.  fn.py's obj_fnbase and the
+            # !! Use the row's OWN flag variant.  fn.py's obj_fnbase and the
             # sweep's obj_O2 are /O2 only; scoring an /Od or /O2 /Oy- row
             # against them compares two different compiles and invents a
             # frame gap.  (Caught on 0x1002ECEB, an O2y row, which read as a

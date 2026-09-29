@@ -204,7 +204,7 @@ __declspec(dllimport) int  __stdcall PostMessageA(void *hWnd, unsigned uMsg,
  * length temp (+1 B of disp8, the BrSelLookup class); insn-exact,
  * identical register-blind multiset.  Dead list in the RESIDUE block
  * above plus the two ledger lines.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x100096A0 glide BrDPlaySysMsgLog */
 void BrDPlaySysMsgLog(BrDPlayCtx *pCtx, const BrDPlaySysMsg *pMsg,
                       uint32_t cbData, uint32_t idFrom, uint32_t idTo)

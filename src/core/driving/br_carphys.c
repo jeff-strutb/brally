@@ -206,7 +206,7 @@ extern float  DAT_10077a80;   /* -1.0f */
  * residue is one x87 pop order: the dead sign `s` is popped before the
  * f1B8 multiply instead of after it (same instructions, same size).  Dead
  * list in the body comment.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x100684F0 glide BrCarPhysSpring */
 void BrCarPhysSpring(BrRbBodyFull *pBody)
 {

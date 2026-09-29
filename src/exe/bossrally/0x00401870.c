@@ -1,4 +1,4 @@
-/* 0x00401870 OnMediaStop — CPlay OnMediaAbortStop + FROM_START, no MessageBox */
+/* 0x00401870 OnMediaStop: CPlay OnMediaAbortStop + FROM_START, no MessageBox */
 /* WHAT IT DOES: stop playback and rewind to the beginning. */
 /* @implements 0x00401870 bossrally.exe OnMediaStop */
 

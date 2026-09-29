@@ -37,7 +37,7 @@ def dll_c():
 def score_exe():
     """Count EXE matches from report_exe.csv (src/exe via exe_sweep).
 
-    Does not walk build/<exe>_work — wall attempts live there and must not
+    Does not walk build/<exe>_work: wall attempts live there and must not
     count. If the report is missing, run exe_sweep once to produce it.
     """
     n = b = 0
@@ -63,7 +63,7 @@ def score_exe():
 def score_cpp():
     """Count 4-piece C++ matches from report_cpp.csv (src/core/cpp via cpp_sweep).
 
-    Does not walk build/cpp_work — wall attempts live there and must not count.
+    Does not walk build/cpp_work: wall attempts live there and must not count.
     If the report is missing, run cpp_sweep once to produce it.
     """
     n = b = 0

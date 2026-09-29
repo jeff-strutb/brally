@@ -17,7 +17,7 @@
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
  * hand passes (tools/fnmatch/fn.py variants); the dead-probe list is in the
- * comment block above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x10035FA0 d3d BrBitLatchTake */
 /* @n64 0x80255910 located */
 /* Register-allocation wall, 31/31 B, 15/15 insns, RAW 2+2, REGNORM 0+0: the
@@ -109,7 +109,7 @@ void BrSwapVec3(void *pv)
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 2 and 3);
  * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x10018A50 glide BrSwapU16Array */
 void BrSwapU16Array(void *pv, int count)
 {

@@ -176,8 +176,8 @@ void FUN_1000c9e0(BrViewRect *pView, BrVisPt *pPt, int n, short *pMin, short *pM
  * values, no aliasing); region 2 reads a commutative 16-bit integer add in the
  * other operand order (same value, same flags, same two reads).  The A5
  * behavioural oracle RUNS the whole pass and returns EQUIVALENT over 48 seeds
- * with per-region negative controls, superseding the byte-distance gates
- * (CLAUDE.md rule 12).  Do not reopen before the end-grind. */
+ * with per-region negative controls, superseding the byte-distance gates.
+ *  Do not reopen before the end-grind. */
 /* @implements 0x1000E320 glide BrSceneVisPrepare */
 void BrSceneVisPrepare(BrViewRect *pView, unsigned char *pRace, unsigned char *pCars)
 {

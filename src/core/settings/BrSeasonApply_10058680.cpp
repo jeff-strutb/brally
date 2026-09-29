@@ -24,7 +24,7 @@
  * undirectable from C; see the @t4-pass ledger below. Behaviourally proven: the A5 oracle
  * returns EQUIVALENT on 64 valid-state seeds (return + globals + side effects
  * agree), and byte-shape independently shows insn gap 0 / colouring only. Do
- * not reopen before the end-grind (CLAUDE.md rule 12). */
+ * not reopen before the end-grind. */
 /* @implements 0x10058680 glide BrSeasonApply
  * @cpp_kind free
  * @cpp_symbol _BrSeasonApply

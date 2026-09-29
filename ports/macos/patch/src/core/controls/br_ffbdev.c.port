@@ -135,7 +135,7 @@ static uint32_t g_brFfbAxes[2];
  * @t3-effort passes 2 zero-movement 1 2
  * Residue: the CreateEffect argument pushes are hoisted above the effect
  * structure fills in the original (pure scheduling, rows 0+0); see the
- * header above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * header above.  Do not reopen before the end-grind. */
 /* @implements 0x10079390 d3d BrFfbSetup */
 void BrFfbSetup(int32_t springCoeff, int32_t springCoeff2)
 {

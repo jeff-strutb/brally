@@ -188,7 +188,7 @@ void BrDiKeyboardShutdown(void);
  * k local flips both but breaks the up-arm bound into an imul-from-memory
  * fold -- full dead list in the two ledger lines. Byte-exact additionally
  * gated on the unmapped d3d-global reloc regions.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* 0x10078F20 */
 /* WHAT IT DOES: eases the weight of the steering up or down a step at a time
  * rather than jumping to it, so the wheel's resistance changes smoothly as
@@ -316,7 +316,7 @@ void BrFfbUpdateSpring(int32_t up, int32_t enable, int32_t decay)
  * @t3-effort passes 2 zero-movement 1 2
  * Residue: the CreateEffect argument pushes are hoisted above the effect
  * structure fills in the original (pure scheduling, rows 0+0); see the
- * header above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * header above.  Do not reopen before the end-grind. */
 /* @implements 0x10079390 d3d BrFfbSetup */
 void BrFfbSetup(int32_t springCoeff, int32_t springCoeff2)
 {
@@ -399,7 +399,7 @@ void BrFfbSetup(int32_t springCoeff, int32_t springCoeff2)
  * original edx; 2 instructions, 4 bytes) -- the same creation-order class as
  * BrFfbInit's. Dead lists in the two ledger lines. Byte-exact additionally
  * gated on the unmapped d3d-global reloc regions.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x100790E0 d3d BrFfbEnumDevice */
 int32_t BR_STDCALL BrFfbEnumDevice(void *pDevInst, void *pvRef)
 {
@@ -472,7 +472,7 @@ int32_t BR_STDCALL BrFfbEnumDevice(void *pDevInst, void *pvRef)
  * pHdr folds away; macro and call-embedded spellings lose the sink. Dead
  * lists in the two ledger lines. Byte-exact additionally gated on the
  * unmapped d3d-global reloc regions.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x100791D0 d3d BrFfbInit */
 int32_t BrFfbInit(void)
 {

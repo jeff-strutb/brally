@@ -1,7 +1,7 @@
 /* slice4_51.c -- Boss Rally (BRD3D.dll) decompilation, a later pass.
  *
  * See slice4_51.h for what is here, what is not, and why -- in particular
- * for the packet/name mismatch that makes work/slice4/agent51.asm disagree
+ * for the packet/name mismatch that makes work/slice4/packet51.asm disagree
  * with the `WANTED AS` lines it carries.
  */
 #include "slice4_51.h"
@@ -196,7 +196,7 @@ static void BrGbiRectFlush(BrGbiRectState *pSt)
  * 0x10056FF0  BrOptFn10056FF0
  *     Skipped.  Two independent reasons:
  *
- *     (a) The listing supplied in work/slice4/agent51.asm for this name is
+ *     (a) The listing supplied in work/slice4/packet51.asm for this name is
  *         sub_100558A0, which is a DIFFERENT function and already has its
  *         own name (BrOptFn100558A0, slice2_25.h, and handed to a later pass --
  *         itself under a third address).  Implementing 0x100558A0's body

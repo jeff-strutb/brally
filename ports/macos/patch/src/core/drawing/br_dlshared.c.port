@@ -35,7 +35,7 @@
  * parameter load scheduled between the two pushes in the original and
  * after them here (identical multiset after the decimal-esp normaliser
  * fix, 8f86659).  Dead list in the RESIDUE block below.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x1001EC30 glide BrDlsTileSizeDecode */
 void BrDlsTileSizeDecode(uint32_t w0, uint32_t w1, BrDlsTileSize *pOut)
 {

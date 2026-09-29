@@ -5,7 +5,7 @@
  * @cpp_kind method
  * @cpp_symbol ?BrExt_1004E830@@YAHPAVGameUi@@@Z
  *
- * 2679 B cdecl EH-frame options-menu builder — sibling of 0x100425E0
+ * 2679 B cdecl EH-frame options-menu builder: sibling of 0x100425E0
  * (same Phase32F/BrCtl layouts, same three levers: char bool after the
  * slot store, inline (short)(w14+1) sublink, w2AB6-store-before-
  * w2AB4-inc tail). New here: the force-feedback page's flags arg is the

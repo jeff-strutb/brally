@@ -8,4 +8,4 @@
 #include "slice3_45.h"   /* BrFfbInit (0x100791D0), g_brFfb; pulls in
                           * slice1_10.h for BrFfbShutdown (0x10079550)       */
 
-/* ── Ghidra-matched functions ─────────────────────────── */
+/* -- Ghidra-matched functions --------------------------- */

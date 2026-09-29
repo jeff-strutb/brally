@@ -234,7 +234,7 @@ static int32_t s17_ftol(double v)
  * Residue: t1's (double)(n * 4) factor is `fild; fmulp` where the original
  * fuses `fimul` (same value, same rounding); the spellings that fuse also
  * CSE n*4 into esi.  Dossier and dead list in the matching arm below.  Do
- * not reopen before the end-grind (CLAUDE.md rule 12). */
+ * not reopen before the end-grind. */
 /* @implements 0x10030B50 d3d BrLightDirsAndAngles */
 /* The original inlines every port helper: the packs, the three column dots
  * (as macros, in the original's term orders), atan2 as fpatan and __ftol as

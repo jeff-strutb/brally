@@ -106,7 +106,7 @@ static uint16_t BrLd16(const void *pv)
  * serialized-model walk -- header swaps, block/item pointer fixups through
  * BrSegPtrFixup, the vertex resolve -- on a seeded well-formed model and returns
  * EQUIVALENT over 48 seeds, with a negative control on the reversed fields
- * proving teeth; that supersedes the byte gates (CLAUDE.md rule 12).  Do not
+ * proving teeth; that supersedes the byte gates.  Do not
  * reopen before the end-grind. */
 /* @implements 0x10036C00 d3d BrModelSwap */
 /* RESIDUE 1062 vs 1053 bytes, 371 vs 368 instructions, register-blind 8+11

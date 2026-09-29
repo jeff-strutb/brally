@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Standalone structural refine transforms for four recurring Ghidra→VC5 idioms.
+"""Standalone structural refine transforms for four recurring Ghidra->VC5 idioms.
 
 Ghidra explodes /Oi string ops, peels signed jl-back loops, prints a 16-bit
 field as a byte pair, and leaves callees as empty `int f();` (float args
@@ -7,7 +7,7 @@ promote to double). Each generator yields `(label, mutated_source)` in the
 `_refine_candidates` style so the hill-climb can fold them one edit at a time.
 
 This does not write ghidra_work, does not edit ghidra_to_match.py, and does
-not commit. Decision logic: docs/archive/gen-structural-notes.md.
+not commit.
 
     python3 tools/gen_structural.py --dry-run
     python3 tools/gen_structural.py --validate
@@ -44,7 +44,7 @@ _MOVSD = b'\xf3\xa5'
 # 16-bit BE reconstruct: `xor r,r; mov al; mov ah; mov word` (0x10031960).
 _XOR_EAX = b'\x33\xc0'
 _MOV_WORD = b'\x66\x89'
-# fstp dword [esp] / [esp+disp8] vs fstp qword — empty `int f();` promotes.
+# fstp dword [esp] / [esp+disp8] vs fstp qword: empty `int f();` promotes.
 _FSTP_DWORD = (b'\xd9\x1c\x24', b'\xd9\x5c\x24')
 _FSTP_QWORD = (b'\xdd\x1c\x24', b'\xdd\x5c\x24')
 
@@ -58,7 +58,7 @@ _C_KEYWORDS = frozenset([
     'struct', 'typedef', 'static', 'const', 'volatile', 'goto', 'break',
     'continue', 'else', 'true', 'false',
 ])
-# Already prototyped via windows.h / math.h / string.h — do not redeclare.
+# Already prototyped via windows.h / math.h / string.h: do not redeclare.
 _SKIP_PROTO = frozenset([
     'ftol', 'floor', 'ceil', 'sqrt', 'sin', 'cos', 'tan', 'atan2', 'fabs',
     'strcpy', 'strcat', 'strstr', 'strcmp', 'strlen', 'sprintf', 'sscanf',
@@ -99,7 +99,7 @@ def _brace_block(s, open_idx):
 
 
 # ---------------------------------------------------------------------------
-# 1. exploded repne scasb / rep movsd → strcpy/strcat + extern char s_*[]
+# 1. exploded repne scasb / rep movsd -> strcpy/strcat + extern char s_*[]
 # ---------------------------------------------------------------------------
 
 # Ghidra's inlined /Oi copy: dword loop (len>>2) then residual bytes (len&3).
@@ -145,7 +145,7 @@ _EXTERN_DAT = re.compile(
 _CHAR_CAST_AMP = re.compile(
     r'\(\s*char\s*\*\s*\)\s*&\s*((?:s_|DAT_|_DAT_)[A-Za-z0-9_]+)\b(?!\s*[+\[])')
 # DAT_ as a string address: strcpy/strcat/fopen/sprintf. sscanf's 3rd+ args
-# are out-params (0x10031030 `&DAT_1186c960`) — those stay int.
+# are out-params (0x10031030 `&DAT_1186c960`): those stay int.
 _DAT_STRFN_RE = 'strcpy|strcat|strstr|strcmp|strlen|sprintf|fopen|printf|fprintf|wsprintfA'
 
 
@@ -187,7 +187,7 @@ def _find_string_copy_sites(body):
         src_expr = _src_expr_from_scan(scan_region[:sm.start()], scan_ptr)
         mid = pre[tilde.end():]
         # Intervening statements between `U = ~U` and the copy (e.g.
-        # `iVar2 = *(int *)(p + N);` on 0x10038DA0) must be kept — they are
+        # `iVar2 = *(int *)(p + N);` on 0x10038DA0) must be kept: they are
         # not part of the inlined strcpy.
         dest_scans = list(_SCAN_DO.finditer(mid))
         kind = 'strcpy'
@@ -220,7 +220,7 @@ def _find_string_copy_sites(body):
                 keep.append(am.group(0))
             if dest_m1_re.search(dest_expr or ''):
                 kind = 'strcat'
-                # `dst = walker + -1` — dest base was assigned earlier in mid
+                # `dst = walker + -1`: dest base was assigned earlier in mid
                 # (or is the starred pointer of a dest scan we missed).
                 bases = list(re.finditer(
                     r'(\w+)\s*=\s*([^;]+);', mid))
@@ -240,7 +240,7 @@ def _find_string_copy_sites(body):
 
 
 def _retype_extern_array(head, body, name):
-    """`extern int NAME;` / `extern unsigned char NAME;` → `extern char NAME[]`.
+    """`extern int NAME;` / `extern unsigned char NAME;` -> `extern char NAME[]`.
 
     Address-push (`push offset NAME`) needs the array form; a scalar int
     loads the first dword (`mov r,[NAME]; push r`). Proven 0x10008E60.
@@ -275,7 +275,7 @@ def _dat_string_names(head, body):
         if name in _CHAR_CAST_AMP.findall(body):
             names.append(name)
             continue
-        # table slot: `&DAT + N` / `&DAT[N]` — not a string
+        # table slot: `&DAT + N` / `&DAT[N]`, not a string
         if re.search(r'&\s*%s\s*[+\[]' % re.escape(name), body):
             # still a string if a CRT call takes `&DAT` as a *whole* arg
             # (`fopen(path, &DAT_mode)`), not `&DAT +`.
@@ -292,8 +292,8 @@ def _dat_string_names(head, body):
 
 
 def gen_strarr(src):
-    """Ghidra exploded `repne scasb`/`rep movsd` → strcpy/strcat, plus
-    `extern int s_*` → `extern char s_*[]` (address push, not value).
+    """Ghidra exploded `repne scasb`/`rep movsd` -> strcpy/strcat, plus
+    `extern int s_*` -> `extern char s_*[]` (address push, not value).
 
     Distinguisher: orig `or ecx,-1; f2 ae; not ecx; shr ecx,2; f3 a5`.
     Ghidra prints a 0xffffffff scan + dword/byte copy; `_strcpy_sub` at wrap
@@ -302,7 +302,7 @@ def gen_strarr(src):
 
     Yields one edit at a time (`strarr:NAME`, `strcpy:N`, `strcat:N`) so the
     refine climb can combine with other generators. Fold recipe: one combined
-    candidate — see transform_strarr.
+    candidate: see transform_strarr.
     """
     head, body = _split(src)
     for m in _EXTERN_S.finditer(head):
@@ -558,7 +558,7 @@ def transform_loop_peel(src):
             seen_imm.add(label)
     # Then one goto per remaining while/do arm. Label numbers restart after
     # each edit (`loopgoto:0` is "the first remaining scan"), so do not key
-    # the loop on the label — stop when no goto candidate still changes src.
+    # the loop on the label: stop when no goto candidate still changes src.
     changed = True
     while changed:
         changed = False
@@ -575,7 +575,7 @@ def transform_loop_peel(src):
 
 
 # ---------------------------------------------------------------------------
-# 3. Ghidra byte-pair of a 16-bit field → xor r,r; mov al; mov ah; mov word
+# 3. Ghidra byte-pair of a 16-bit field -> xor r,r; mov al; mov ah; mov word
 # ---------------------------------------------------------------------------
 
 # CONCAT11(p[lo], p[hi]) and the wrap-time leftover `/* CONCAT */(p[lo], p[hi])`
@@ -640,7 +640,7 @@ def _index_plus_one(a, b):
 
 
 def gen_word_bswap(src):
-    """Ghidra byte-pair / CONCAT11 of a 16-bit field → xor-zero word store.
+    """Ghidra byte-pair / CONCAT11 of a 16-bit field -> xor-zero word store.
 
     Distinguisher: orig `33 c0 8a 46 15 8a 66 14 66 89 46 14` (0x10031960).
     Ghidra prints `*(ushort *)(p+N) = CONCAT11(p[N], p[N+1])` or a two-byte
@@ -656,7 +656,7 @@ def gen_word_bswap(src):
             sites.append((m.start(), m.end(), base, a, b, m.group(0)))
     # Adjacent two-byte swap is the INNER pair of a dword bswap (swaprot
     # already covers those). Only CONCAT11 / or-shift of a 16-bit store is
-    # this idiom — Ghidra's 0x10031960 spelling.
+    # this idiom: Ghidra's 0x10031960 spelling.
     sites.sort(key=lambda s: s[0])
     # drop overlapping (CONCAT and or-shift of the same store)
     filtered = []
@@ -668,7 +668,7 @@ def gen_word_bswap(src):
         used.add(span)
         filtered.append(s)
     for i, (st, en, base, a, b, _raw) in enumerate(filtered):
-        # CONCAT11(p[N], p[N+1]) → store (p[N+1] | p[N]<<8). This is the
+        # CONCAT11(p[N], p[N+1]) -> store (p[N+1] | p[N]<<8). This is the
         # BrRcaFixupRecord spelling that MATCHED 0x10018B60; the xor-zero
         # local form is a second candidate (orig 0x10031960 interleaves two).
         brrca = (
@@ -708,7 +708,7 @@ def gen_word_bswap(src):
 
 
 def transform_word_bswap(src):
-    """CONCAT11 / leftover comma → BrRca or-shift. Do not rewrite an
+    """CONCAT11 / leftover comma -> BrRca or-shift. Do not rewrite an
     already-or-shift store (that is the proven spelling; xor-zero locals
     scored worse from-decomp on 0x10031960)."""
     labels = []
@@ -734,7 +734,7 @@ def transform_word_bswap(src):
 
 
 # ---------------------------------------------------------------------------
-# 4. empty `int f();` + a float arg → `int f(float)` (fstp dword, not qword)
+# 4. empty `int f();` + a float arg -> `int f(float)` (fstp dword, not qword)
 # ---------------------------------------------------------------------------
 
 _EMPTY_PROTO = re.compile(
@@ -812,7 +812,7 @@ def _float_sig(name, body):
 
 
 def gen_float_proto(src):
-    """Empty `int f();` called with a float arg → `int f(float)`.
+    """Empty `int f();` called with a float arg -> `int f(float)`.
 
     Unprototyped calls convert float to double (`fstp qword [esp]`,
     `sub esp,8`, enough to force `and esp,-8`). A real `float` parameter
@@ -1038,7 +1038,7 @@ def run_one(va_hex, gen_name=None, from_decomp=False, verbose=True,
     before = score_src(src, fname, va_hex, tag + 'b')
     after = score_src(new_src, fname, va_hex, tag + 'a')
     if verbose:
-        print('  diffs  %s → %s   opt %s → %s' % (
+        print('  diffs  %s -> %s   opt %s -> %s' % (
             before[0], after[0], before[1], after[1]))
         if after[0] == 0:
             print('  MATCH')
@@ -1172,7 +1172,7 @@ def run_validate(from_decomp=False, gens=None, max_prey=None, workers=4):
                         mark = ' MOVE'
                     elif r.get('worse'):
                         mark = ' worse'
-                    print('  %-12s %8s → %8s  %s%s' % (
+                    print('  %-12s %8s -> %8s  %s%s' % (
                         r['va'], r.get('before'), r.get('after'),
                         ' '.join(r.get('labels') or [])[:40], mark),
                           flush=True)

@@ -112,8 +112,8 @@ void BrVec3Project(BrVec3 *pOut, const BrVec3 *pV, const BrMat4 *pM)
      * the original has, in the same count, with 23 bytes differing.
      *
      * All 23 are x87 preload ORDER.  The original issues
-     *   vx, vy, m03, m13, vz, â¦ m23   and this tree issues
-     *   vy, vz, m13, m23, vx, â¦ m03
+     *   vx, vy, m03, m13, vz, ... m23   and this tree issues
+     *   vy, vz, m13, m23, vx, ... m03
      * -- the same six loads rotated by one -- and the `fmul st(N)` / `fld
      * st(N)` indices that follow are forced by that rotation, not chosen.
      * The source cannot reach it: VC5 canonicalises the whole flat float
@@ -121,7 +121,7 @@ void BrVec3Project(BrVec3 *pOut, const BrVec3 *pV, const BrMat4 *pM)
      * Nothing left here is source-shaped.  Do not reopen without a NEW
      * mechanism (a compiler flag or patch level), not another permutation.
      *
-     * â¼ THE OLD NOTE HERE WAS STALE AND IS RETRACTED.  It claimed a 30-byte
+     * !! THE OLD NOTE HERE WAS STALE AND IS RETRACTED.  It claimed a 30-byte
      * residue confined to 0x28-0x4F with "the first 0x28 bytes and everything
      * from +0x50 byte-identical", and that swapping the x-row operand order
      * cost 121 diffs.  None of that reproduces: the function diverges at +0x8
@@ -189,7 +189,7 @@ void BrMat4Identity(BrMat4 *pM)
  * reloc-masked printf string and import slot. Nothing unexplained. The
  * instruction stream is positionally identical register-blind, all 91 rows.
  * Dead probes: the two ledger lines above.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x10030810 d3d BrMat4Frustum */
 int BrMat4Frustum(BrMat4 *pM, float l, float r, float b, float t,
                   float n, float f)

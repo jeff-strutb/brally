@@ -13,7 +13,7 @@ A candidate is a twin of a matched TU iff, after masking
   - the rel32 operand of every call/jmp that leaves the function body
     (the linker wrote different displacements for the same helper),
 the remaining bytes are identical and the same length. That is structural
-identity, not opcode coincidence — the same test tools/twinfind.py uses
+identity, not opcode coincidence: the same test tools/twinfind.py uses
 across the two DLLs, applied within BRGlide.
 
 The per-function scorer masks relocs, and tools/image_build.py backfills

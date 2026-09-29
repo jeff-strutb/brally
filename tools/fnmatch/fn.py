@@ -63,7 +63,7 @@ BRANCH = re.compile(r'^(j[a-z]+|call|loop[a-z]*)$')
 
 
 def norm(t, m, relocd=False):
-    """‼ RELOC'D OPERANDS MUST BE MASKED, and until 2026-09-03 this did not
+    """!! RELOC'D OPERANDS MUST BE MASKED, and until 2026-09-03 this did not
     do it -- only tools/msetdiff.py did, and the two disagreed by 2.5x.
 
     An unlinked .obj holds the ADDEND in the reloc'd field and the symbol in
@@ -163,7 +163,7 @@ def main():
     print('%s %s  [%s]' % (va, name, r['file']))
     print('  BYTES orig=%d recomp=%d (%+d)   INSNS orig=%d recomp=%d (%+d)'
           % (len(orig), len(rc), len(rc) - len(orig), oi, ri, ri - oi))
-    # ‼ DIFFS is a POSITIONAL compare -- byte i against byte i, relocs masked,
+    # !! DIFFS is a POSITIONAL compare -- byte i against byte i, relocs masked,
     # no alignment.  Any size difference shifts everything after it, so the
     # number is dominated by that shift and is NOT comparable across builds of
     # different sizes.  (Measured on 0x1000EAF0: a two-byte change read as a

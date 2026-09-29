@@ -62,7 +62,7 @@ with the right value.  The moment a claim is wrong, the diff catches it here
 rather than in a crash on the user's machine.
 
 The four in-scope binaries (config/binaries.csv, and the scope table in
-CLAUDE.md) are all built:
+README.md) are all built:
 
     BRGlide.dll   the game        C lane (report.csv) + C++ lane (report_cpp.csv)
     BRally.exe    the launcher    report_exe.csv
@@ -404,7 +404,7 @@ def _fresh(obj, src):
 def _ambiguous_basenames(claimed):
     """Basenames shared by more than one source file the SWEEP may compile.
 
-    ‼ This used to consider only CLAIMED files, and that missed the case that
+    !! This used to consider only CLAIMED files, and that missed the case that
     actually bites: a claimed file colliding with an UNCLAIMED one. The sweep
     compiles both into the same basename-keyed object, the unclaimed one wins
     if it sorts later, and every symbol of the claimed file then reads
@@ -424,7 +424,7 @@ def _ambiguous_basenames(claimed):
     colliding. Refiling into modules creates these (src/core/controls,
     /net and /audio all grew a br_input.c), so the set is not static.
 
-    ‼ THE SWEEP'S OBJECT DIRECTORY HAS THE SAME COLLISION, so for these files
+    !! THE SWEEP'S OBJECT DIRECTORY HAS THE SAME COLLISION, so for these files
     it cannot be trusted at all and the gate always builds its own.
     """
     seen, dup = {}, set()
@@ -460,7 +460,7 @@ def _compile_dll_obj(rel_src, tag, recompile=False, ambiguous=()):
     (obj_path, err, source) -- source is 'sweep' when match_sweep's own object
     was still fresh, 'gate' when this tool had to build it.
 
-    ‼ THIS USED TO READ THE SWEEP'S OBJECT WITH NO FRESHNESS TEST AT ALL, and
+    !! THIS USED TO READ THE SWEEP'S OBJECT WITH NO FRESHNESS TEST AT ALL, and
     that is the one way a hard gate can lie: an object left over from an older
     version of the file places bytes the current tree would not produce, while
     the run prints "0 differing bytes / every claim holds". Missing objects
@@ -961,7 +961,7 @@ def main():
     if raced:
         # Printed before the verdict line so it is read first: a racing run's
         # verdict is about no single state of the tree, in EITHER direction.
-        print('\n‼ THE TREE CHANGED WHILE THIS RUN WAS GRADING IT '
+        print('\n!! THE TREE CHANGED WHILE THIS RUN WAS GRADING IT '
               '(%d file(s)):' % len(raced))
         for p in raced[:8]:
             print('    %s' % _show(p))

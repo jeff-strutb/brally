@@ -192,7 +192,7 @@ void NAME ARGS                                                              \
 #define BR_TRIM_NO_LOCAL
 
 
-/* â¼ WHAT DECIDED THE LAYOUT, 2026-09-05 -- both instantiations byte-exact.
+/* !! WHAT DECIDED THE LAYOUT, 2026-09-05 -- both instantiations byte-exact.
  * The body was 196/196 instructions with every instruction right for a whole
  * session; the only defect was where VC5 PUT two blocks:
  *
@@ -212,7 +212,7 @@ void NAME ARGS                                                              \
  * code following versus the emit code in an `else`, and the step spelled out
  * versus wrapped in BR_TRIM_STEP.
  *
- * â¼ AND ARM ORDER IS THE WHOLE THING: `if (cVerts >= 3) { emit } else {
+ * !! AND ARM ORDER IS THE WHOLE THING: `if (cVerts >= 3) { emit } else {
  * fail: giveup }` -- same control-flow graph, same goto, label still inside
  * an arm -- reverts exactly to the 633-byte defect.  The FAILURE arm has to
  * be the one the compiler lays first.  See docs/VC5-IDIOMS.md, "a lone

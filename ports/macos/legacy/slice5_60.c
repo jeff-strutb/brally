@@ -2,7 +2,7 @@
  *
  * See port/include/slice5_60.h for what is here, what is not, why, and the
  * signature/name conflicts this packet turned up.  Addresses in comments are
- * the original's and were checked against work/slice5/agent60.asm and
+ * the original's and were checked against work/slice5/packet60.asm and
  * the asm/ banks; every table and literal was read out of orig/BRD3D.dll with
  * tools/pe.py rather than guessed.
  */

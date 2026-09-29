@@ -5,7 +5,7 @@
  * @cpp_symbol ?FUN_10038250@@YAHPAVGameObj@@@Z
  *
  * Two vcalls (slot 8 then slot 9) on the embedded +0x3838 object with the
- * vtbl CSE'd into edi across both — C++ frontend caching, plus the
+ * vtbl CSE'd into edi across both: C++ frontend caching, plus the
  * clamp-through-global pattern: negative result reloads the global,
  * non-negative writes it back. 0x10038250 is a byte-identical twin. No EH.
  */

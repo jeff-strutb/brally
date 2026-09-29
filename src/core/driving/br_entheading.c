@@ -59,7 +59,7 @@ static const float kBrHalf = 0.5f;
  * before popping the pending sin result, every spelling here pops at the
  * call return (identical multiset, 0+0).  Dead list in the RESIDUE block
  * above plus the two ledger lines.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x100764C0 d3d BrEntSetHeading */
 /* thiscall + one stack float (ret 4); sin/cos are the float-arg tree
  * wrappers, as in BrEntSetOrientation below.

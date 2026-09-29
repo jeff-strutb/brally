@@ -7,7 +7,7 @@
  *
  * Container-class method family (0x10008930..0x10008A30): thiscall
  * with stack args (`ret 4`), slot-2 vcall on self with the vtbl read
- * before the arg pushes (`mov eax,[ecx]` at +0 — C++ member-call
+ * before the arg pushes (`mov eax,[ecx]` at +0: C++ member-call
  * order), error printf through 0x10008EC0 on -1. No EH.
  */
 #define _CRTIMP __declspec(dllimport)

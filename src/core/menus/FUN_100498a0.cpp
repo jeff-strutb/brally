@@ -10,7 +10,7 @@
  * multiset; the 3+3 rows are the EH frame's fs:[0] reloc form), the wall
  * certified on 0x1004AEE0 / 0x1004BE00 / 0x1004DA00. Dossier below; dead
  * list and schedule census in 0x1004AEE0.cpp.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x100498A0 glide FUN_100498a0
  * @cpp_kind free
  * @cpp_symbol ?FUN_100498a0@@YAHPAVGameUi@@@Z

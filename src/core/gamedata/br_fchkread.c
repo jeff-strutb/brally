@@ -37,7 +37,7 @@
  * the original's; the dossier is the RESIDUE comment below.  Passes 1-2
  * (ledger above) moved nothing at 140/48/3/0 -- operand order, casts, local
  * caching and check reorder are all codegen-identical; only `wanted <= 0u`
- * went worse.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * went worse.  Do not reopen before the end-grind. */
 /* @implements 0x100030E0 d3d BrFChkFRead */
 #include <windows.h>
 /* RESIDUE (8 masked diffs, REGNORM 0+0): the original homes `size` in

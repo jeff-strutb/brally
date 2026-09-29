@@ -177,7 +177,7 @@ void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel)
  *   which 0x1000A67C then reads back as [esp+0x60].  Three displacements,
  *   two slots, one function.
  *
- * â¼ SESSION 18 (2026-09-05) -- THE DECLARATION-ORDER LEVER IS EXHAUSTED HERE,
+ * !! SESSION 18 (2026-09-05) -- THE DECLARATION-ORDER LEVER IS EXHAUSTED HERE,
  * AND THE PACK WALL IS EXPLAINED.  Four parallel probe lanes, ~300 fresh
  * compiles through a scratch harness, every one byte-identical to HEAD
  * (24 masked / 34 raw / 7,546 B / 1,835 insns / msetdiff 13+5 / sub esp,0x4c)
@@ -198,7 +198,7 @@ void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel)
  *       both pack writes -- all inert.  topB loaded above colourA is the
  *       session-15 trade re-confirmed under the honest msetdiff: one
  *       spurious EXTRA `mov B,B` gone for one real instruction lost.
- *       â¼ THE MECHANISM, settled by a DIAGNOSTIC (unfaithful) probe: reading
+ *       !! THE MECHANISM, settled by a DIAGNOSTIC (unfaithful) probe: reading
  *       each pack byte a SECOND time after the join makes VC5 home both and
  *       read both back widened -- MISSING 13 -> 10, the `and/or/mov byte`
  *       rows appear.  USE COUNT after the join is the discriminator (the
@@ -230,7 +230,7 @@ void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel)
  *   Honest state: 18 rows, two coupled defects, both needing the original's
  *   byte-slot frame layout at once, and no faithful source reaches it.
  *
- * SESSION 15 (2026-09-03) -- â¼ A WRONG ADDRESS IN THE DISPLAY LIST, found
+ * SESSION 15 (2026-09-03) -- !! A WRONG ADDRESS IN THE DISPLAY LIST, found
  * by reading which STACK SLOT each pool allocation lands in.  Two regions
  * closed and the residue is down to 17+14 multiset rows.
  *   The second specular MOVEMEM pair (0xBC3F) was spelled `specMem` like
@@ -249,10 +249,10 @@ void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel)
  * different variables the CSE has nothing to share and both `add`s appear.
  *   Scorecard: masked regions 24 -> 22, msetdiff 19+10 -> 17+14, REGNORM
  * 25+34 -> 21+32, RAW 50+59 -> 45+56, first divergence unchanged at +0x17.
- * â¼ SIZE MOVED THE WRONG WAY -- 36 short -> 42, instructions 9 short -> 11 --
+ * !! SIZE MOVED THE WRONG WAY -- 36 short -> 42, instructions 9 short -> 11 --
  * and that is the pattern session 11 already documented: removing an
  * accidental spill exposes a real deficit elsewhere.  Rank by the multiset.
- *   â¼ THE REUSABLE SCREEN, and it is cheap: for every value the original
+ *   !! THE REUSABLE SCREEN, and it is cheap: for every value the original
  * homes in a stack slot, list EVERY read of that slot and check the source
  * uses the same variable at each one.  Two puts spelled with one variable
  * where the original reads two different slots is invisible to
@@ -267,7 +267,7 @@ void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel)
  *       spec1 += 0x10; put(spec1);` and the same at the second site):
  *       BYTE-IDENTICAL.
  *   (b) a destructive `specMem += 0x10u;` at the LAST site only (safe --
- *       it is specMem's last use): BYTE-IDENTICAL.  â¼ IDIOM: VC5 value-
+ *       it is specMem's last use): BYTE-IDENTICAL.  !! IDIOM: VC5 value-
  *       numbers `x + c`, `t = x; t += c` and `x += c` to the SAME value, so
  *       a CSE cannot be broken by respelling the update.  The only thing
  *       that breaks one is the operands genuinely differing.
@@ -301,7 +301,7 @@ void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel)
  * variable we are missing, it is that orig's packer left a hole and packed
  * two bytes into an existing dword where ours packs densely and spends a
  * whole dword.
- * â¼ RETRACTED 2026-09-03 (session 7), and the retraction re-opens region 1.
+ * !! RETRACTED 2026-09-03 (session 7), and the retraction re-opens region 1.
  * The census closed with "chasing 'which value are we not homing' is the
  * wrong question; instruction counts are equal (1843 = 1843), so no value
  * is missing."  THE COUNTS WERE NEVER EQUAL.  `divergence.py` was counting
@@ -361,7 +361,7 @@ void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel)
  * original passes TEXEL0 and 0x3F4, so the emitted display list was wrong,
  * not merely differently compiled.  Four more regions: 29 -> 25 masked,
  * 33 raw, and 48 -> 40 bytes short.  All 34 call groups now agree token for
- * token.  â¼ Neither tool could see this: divergence.py wildcards imm32, and
+ * token.  !! Neither tool could see this: divergence.py wildcards imm32, and
  * a multiset comparison passes a permutation.  On any emit-heavy function,
  * run the sequence census before believing a region map.
  *
@@ -407,7 +407,7 @@ void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel)
  * cross-jumped into the shared tail.  Still one byte slot short of the
  * original's two.
  *
- * â¼â¼ SESSION 15b (2026-09-03) -- EVERY REGISTER-BLIND NUMBER IN THIS HEADER
+ * !!!! SESSION 15b (2026-09-03) -- EVERY REGISTER-BLIND NUMBER IN THIS HEADER
  * IS INFLATED, AND THIS FUNCTION IS THE ONE THAT EXPOSED IT.  `fn.py` and
  * `triage.py` did not mask reloc'd operands (only `msetdiff.py` did), so
  * every absolutely-addressed instruction was counted TWICE.  Fixed
@@ -418,7 +418,7 @@ void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel)
  *   instructions that are IDENTICAL, at IDENTICAL offsets -- the original
  *   carries the array base in the displacement, our object carries it in a
  *   relocation with the addend in the displacement.
- *   â¼ THIS FUNCTION'S HONEST RESIDUE IS 5+13 = 18 ROWS, not 20+28 = 48.
+ *   !! THIS FUNCTION'S HONEST RESIDUE IS 5+13 = 18 ROWS, not 20+28 = 48.
  *   Twenty-eight of the forty-eight were noise, and the whole map is:
  *     the pack byte-lane defect   `and R,I` x3, `or R,R` x3,
  *                                 `mov byte [esp+S],B` x3, `xor R,R`
@@ -432,12 +432,12 @@ void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel)
  *   So this function is 18 rows and two defects from shape-exact, and the
  *   SECOND ONE IS NEW AND SMALL: a float sum reading its two operands from
  *   the other sources.  That is the commutative-operand class the N64 twin
- *   is the oracle for (see CLAUDE.md); nobody has looked at it here.
+ *   is the oracle for; nobody has looked at it here.
  *
- * â¼ SESSION 17 (2026-09-03) -- THE BYTE-LANE WALL, ATTACKED WITH THE CORPUS
+ * !! SESSION 17 (2026-09-03) -- THE BYTE-LANE WALL, ATTACKED WITH THE CORPUS
  * QUERY (tools/corpus.py).  No closure, but the search space is now bounded
  * by evidence instead of by guesswork, and that is worth more than the probe.
- *   â¼ THE CONSTRUCT IS NOT PROVEN ANYWHERE IN THE TREE.  Asked over the 1,036
+ *   !! THE CONSTRUCT IS NOT PROVEN ANYWHERE IN THE TREE.  Asked over the 1,036
  *   byte-exact functions, NEITHER `mov R,[esp+S]; and R,0xff; or R,R` NOR
  *   `mov byte [esp+S],B; mov R,[esp+S]; and R,0xff` occurs even once.  Nor
  *   does `mov byte [esp+S],B; xor R,R`.  So ~10 sessions of this file's
@@ -462,7 +462,7 @@ void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel)
  * shape, and the one combination the session-7/10 probes did NOT cover
  * (they went the other way, giving arms MORE private locals).  BYTE-
  * IDENTICAL: 34 regions, 1,835 insns, 7,546 B, multiset 13/5, all unchanged.
- * â¼ IDIOM: array IDENTITY is inert when the live ranges do not overlap --
+ * !! IDIOM: array IDENTITY is inert when the live ranges do not overlap --
  * VC5 gives a private array and a shared one the same slots and the same
  * code.  The `packA[2]` note above is therefore free to revisit for
  * readability but is not a lever either way.
@@ -471,7 +471,7 @@ void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel)
  *   each.  If use COUNT rather than edge count is the discriminator, no
  *   faithful spelling of this function can add uses, and the wall is real.
  *   Test that claim before spending another session on the pack.
- * â¼ TOOL CAVEAT, learned the hard way this session: `corpus.py show` maps a
+ * !! TOOL CAVEAT, learned the hard way this session: `corpus.py show` maps a
  * hit back through /FAcs and is RELIABLE ONLY when the resolved lines are
  * checked against the actual source.  It resolved 0x1001E380 +0xc7
  * correctly (the bR/bG/bB/bA block) and gave plausible-looking NONSENSE for
@@ -479,14 +479,14 @@ void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel)
  * the rule-2 screen anyway.  READ THE SOURCE THE TOOL POINTS AT; do not
  * quote a listing line you have not opened.
  *
- * â¼ SESSION 16 (2026-09-03) -- ONE CORRECTION, NO PROBES.  The whole residue
+ * !! SESSION 16 (2026-09-03) -- ONE CORRECTION, NO PROBES.  The whole residue
  * above was re-derived from scratch (region map + windowed multiset) without
  * reading the dossier first, and it reproduces EXACTLY: 34 raw regions, the
  * 13+5 = 18 multiset rows row for row, the `fld [esp+0x4c]`/`fadd [ebx+0x30]`
  * swap at the second light call, and the `mov eax,[0x106ed520]` reload.  Both
  * of those are already dead (15b (a)/(b) and the pCam entry).  This dossier
  * is CURRENT; trust it and do not re-derive it a third time.
- *   â¼ WHAT IS STALE IS THE ONE NUMBER NOBODY RE-MEASURED: the STATE block
+ *   !! WHAT IS STALE IS THE ONE NUMBER NOBODY RE-MEASURED: the STATE block
  *   below says "1843 vs 1843 instructions (EQUAL -- no missing or extra code
  *   anywhere)".  IT IS NOT EQUAL.  Measured this session: orig 1,843 vs ours
  *   1,835 (+6 pad) -- EIGHT SHORT -- and 7,577 vs 7,546 bytes, not 7,536.
@@ -496,7 +496,7 @@ void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel)
  *   licenses calling the rest allocation; the honest statement is that the
  *   missing eight are the ten pack rows minus the three extra, i.e. all of
  *   the deficit sits in the frame-blocked arm-2/3 pack and nowhere else.
- *   (Same class as the instruction-count padding trap in docs/MEMORY.md: an
+ *   (Same class as the instruction-count padding trap: an
  *   instruction total quoted from a previous session is not a measurement.)
  *
  * SESSION 15b PROBES on that float operand swap, BOTH DEAD -- do not
@@ -510,7 +510,7 @@ void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel)
  *   (b) `pCarF[12]` reached as `ptr[0]` off its own pointer
  *       (`pCarP = (const float *)car + 12`), i.e. THE SAME LEVER THAT CLOSED
  *       0x1000EAF0's term-3 flip the same day: BYTE-IDENTICAL here.
- *       â¼ AND THAT QUALIFIES THE IDIOM, which is worth more than the probe.
+ *       !! AND THAT QUALIFIES THE IDIOM, which is worth more than the probe.
  *       On 0x1000EAF0 the pointer locals were MULTI-USE and already lived in
  *       registers, so `ptr[0]` against `ptr[2]` really was two different
  *       addressing expressions.  Here `pCarP` is single-use and VC5 forward-
@@ -522,7 +522,7 @@ void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel)
  *   So this swap is allocation at a 20-argument push stream, not spelling.
  *
  * SESSION 15 (2026-09-03) -- the session-14 fix does NOT transfer to arms
- * 2/3, and the reason is worth more than the probes: â¼ THE ARM-2/3 SHARED
+ * 2/3, and the reason is worth more than the probes: !! THE ARM-2/3 SHARED
  * TAIL HAS THE SAME DEFECT AND IT IS BLOCKED BY THE FRAME.
  *   Read at the bytes, arm 3 carries the lane defect TWICE.  Its colourA
  *   (orig 0x3fa-0x40f) and its colourB (orig 0x411-0x444) both home BOTH
@@ -530,7 +530,7 @@ void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel)
  *   ecx,[esp+0x32]; and eax,0xff; and ecx,0xff; or edx,eax; or edx,ecx`),
  *   where we home one and forward the other into a lane (`mov dl,cl`) --
  *   character for character the arm-1 defect that session 14 closed.
- *   â¼ WHY THE SAME FIX CANNOT BE USED: arm 1 could hoist its pack above
+ *   !! WHY THE SAME FIX CANNOT BE USED: arm 1 could hoist its pack above
  *   colourA because it has its OWN array.  Arms 2 and 3 share ONE array
  *   between colourA and colourB -- colourA READS pack[0]/pack[1] before
  *   colourB overwrites them -- so colourB's bytes cannot be assigned early
@@ -554,7 +554,7 @@ void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel)
  *     is already eight instructions short -- the wrong direction on a
  *     missing-code residue.  Not taken.
  *
- * SESSION 14 (2026-09-03) -- â¼ ARM 1 NO LONGER CROSS-JUMPS, and the wall
+ * SESSION 14 (2026-09-03) -- !! ARM 1 NO LONGER CROSS-JUMPS, and the wall
  * that held it for four sessions was not inside the pack at all: it was
  * WHERE THE PACK IS FILLED.  Read the original's schedule rather than its
  * arithmetic and it says so outright -- `mov cl,[6C0960]` at 0x30c and
@@ -571,7 +571,7 @@ void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel)
  *   its own `or ecx,edx; shl ecx,8; ...; mov edi,ecx` inline and jumps with
  *   the tail unmerged, which is the shape the session-7 note said was
  *   missing.
- *   â¼ AND IT COSTS SOMETHING, stated plainly: masked regions 22 -> 24 and
+ *   !! AND IT COSTS SOMETHING, stated plainly: masked regions 22 -> 24 and
  *   arm 1's first divergence moves 0x30c -> 0x2f0, which is the exact
  *   "un-merged early" signature the session-10 and session-12 notes below
  *   use as their REGRESSION TELL.  That heuristic is now RETIRED for this
@@ -597,7 +597,7 @@ void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel)
  *     back: BYTE-IDENTICAL, exactly as the regions-2/3 note predicts.
  *
  * SESSION 12 (2026-09-03) -- THE LIGHT-DIRECTION COPY IS BYTE-EXACT, and it
- * proves a rule this file should have applied a session earlier: â¼ A DEAD
+ * proves a rule this file should have applied a session earlier: !! A DEAD
  * VERDICT MEASURED AGAINST A WRONG FRAME IS STALE.  That copy carried five
  * measured-dead spellings and the note "treat this region as T3a UNTIL THE
  * FRAME IS SOLVED"; the frame was solved last session, and the SIXTH spelling
@@ -629,13 +629,13 @@ void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel)
  * no `(double)` modelling and no qword spills, so the Glide-is-float lever
  * does not apply here.
  *
- * SESSION 11 (2026-09-03) -- â¼ REGION 1, THE FRAME, IS CLOSED.  `sub esp,
+ * SESSION 11 (2026-09-03) -- !! REGION 1, THE FRAME, IS CLOSED.  `sub esp,
  * 0x4c` matches and the prologue is byte-exact instruction for instruction.
  * The fix was one declaration: the two colour-pack byte locals are an ARRAY,
  * `uint8_t pack[2]`, not two scalars.  VC5 never enregisters an array, so it
  * spends a locals-area slot on it instead of tucking two scalars into the
  * dead argument slots -- and that missing locals dword WAS the 0x48-vs-0x4c
- * gap the frame census below spends its whole length hunting.  â¼ The census's
+ * gap the frame census below spends its whole length hunting.  !! The census's
  * closing claim ("chasing which value we are not homing is the wrong
  * question") is now RETRACTED for the second time: it was the right question,
  * and the answer was a storage class, not a value.  Masked regions 25 -> 23;
@@ -650,11 +650,11 @@ void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel)
  * the put made VC5 spill the pair and the finished word to slots
  * (`mov [esp+0x38],ecx; mov ecx,[esp+0x60]; mov edx,[esp+0x38]`).  Reading
  * the fields inline in both words makes the block instruction-for-instruction
- * the original and removes its 15-byte drift.  â¼ GENERALISE: a named local
+ * the original and removes its 15-byte drift.  !! GENERALISE: a named local
  * that CACHES A STRUCT FIELD is wrong wherever the original re-reads it --
  * the same rule the frame note at the bottom of this header already states
  * for car+0x140 and BrG_6C3308.  Check every cached field against the bytes.
- * â¼ AND READ THE SIZE NUMBER CAREFULLY AFTER A FIX LIKE THAT: this one took
+ * !! AND READ THE SIZE NUMBER CAREFULLY AFTER A FIX LIKE THAT: this one took
  * the function from 38 bytes short to 53 short, because the spill it removed
  * was three instructions of accidental padding against a real deficit
  * elsewhere.  Bytes moved the wrong way while the multiset went 64+75 ->
@@ -671,7 +671,7 @@ void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel)
  * schedules them.  Reloc-masked byte diff 4,658 -> 4,539; instructions
  * 1,831 -> 1,832 (12 short -> 11); bytes 7,537 -> 7,539 (40 short -> 38);
  * region 6's change -30 -> -28; masked regions FLAT at 25, frame intact
- * (first divergence still +0x2).  â¼ GENERALISE THIS BEFORE ANYTHING ELSE
+ * (first divergence still +0x2).  !! GENERALISE THIS BEFORE ANYTHING ELSE
  * HERE: the Horner packs' TOP component wants a named byte local wherever
  * the original loads it to a byte register before the lane move -- check
  * each pack site against the bytes, one at a time.
@@ -696,7 +696,7 @@ void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel)
  *
  * SESSION 9 (2026-09-03) -- RE-RANKING, no movement (25 masked / 33 raw,
  * 1,831 vs 1,843 insns, 7,537 vs 7,577 bytes; unchanged from session 8).
- * â¼ REGION 6 IS MIS-ATTRIBUTED ABOVE.  Its -30 does NOT come from the
+ * !! REGION 6 IS MIS-ATTRIBUTED ABOVE.  Its -30 does NOT come from the
  * three-float light-direction copy that opens it at orig+0x4cf (that block
  * is 34 bytes in both builds); it accrues in the stretch BEFORE it.  Split
  * the 0x3c0..0x4cf window by block and it reads:
@@ -794,14 +794,14 @@ void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel)
  * equal.  Rows now bind by the symbol each site loads (R 0x106E8610,
  * G 0x106EA3EC, B 0x106E79F8, matching the else arm's rows); A5 EQUIVALENT and
  * A7 IDENTICAL on 28_weather_rain and 37_bonus_rain.
- * â¼ 2026-09-09 post-tag: the session-18 second-read diagnostic scored under
+ * !! 2026-09-09 post-tag: the session-18 second-read diagnostic scored under
  * the CURRENT gates -- four inert-read spellings (|x&0, idempotent |x|x,
  * post-statement re-reads; at arm 1, the join, and both) are ALL
  * byte-identical to head: VC5 value-numbers a foldable read away before it
  * creates a use, and an unfoldable read adds real instructions.  The
  * use-count catch-22 is closed formally; T4 waits on a corpus hit for a
  * straight-line homed byte-compose, or the end-grind.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x1000A110 glide BrCarDrawVehicle */
 void BrCarDrawVehicle(void *pCar, int32_t lodBias)
 {
@@ -809,7 +809,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     int32_t  lod, distNear, flag290C;
     float    dist;
     uint32_t colourA, colourB;
-    uint8_t  pack[2];  /* â¼ AN ARRAY, NOT TWO SCALARS -- THIS IS WHAT
+    uint8_t  pack[2];  /* !! AN ARRAY, NOT TWO SCALARS -- THIS IS WHAT
                              * CLOSES THE FRAME.  VC5 never enregisters an
                              * array, so `pack` gets its own slot in the
                              * LOCALS area instead of being packed into the
@@ -829,7 +829,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
                              * go back to scalars to tidy the spelling. */
     uint32_t lodOff;
     uint32_t specMem = 0;
-    /* â¼ FUNCTION-SCOPE ON PURPOSE.  The SECOND specular MOVEMEM pair (0xBC3F)
+    /* !! FUNCTION-SCOPE ON PURPOSE.  The SECOND specular MOVEMEM pair (0xBC3F)
      * points at the SECOND pool allocation, not the third -- read off the
      * original's slots: [esp+0x2c] takes 0x10062550's result (pSkyAng, read
      * once at 0x1772), [esp+0x30] the FIRST 0x100625A0 (read at 0x690 for the
@@ -942,7 +942,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         float div = dist * 0.1f;
         uint8_t packA[2]; uint8_t top1;
         if (!(div >= 1.0f)) div = 1.0f;
-        /* â¼ THE TWO PACK BYTES ARE FILLED BEFORE colourA, top1 AFTER IT.
+        /* !! THE TWO PACK BYTES ARE FILLED BEFORE colourA, top1 AFTER IT.
          * That is read straight off the bytes: the original loads
          * packA[0] at 0x30c and HOMES it at 0x317 -- both inside colourA's
          * tail, before the third ftol result is merged -- loads top1 at
@@ -968,7 +968,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
          * [esp+0x31]/[esp+0x32] byte slots and reading them back with & 0xFF
          * at the common pack.  Factor the final statement out to reproduce it. */
         uint8_t topB, topA;
-        /* â¼ THE TOP BYTE IS FOLDED INTO A DWORD PARTIAL INSIDE EACH ARM, not
+        /* !! THE TOP BYTE IS FOLDED INTO A DWORD PARTIAL INSIDE EACH ARM, not
          * at the shared statement.  Read straight off the bytes: the original
          * emits `xor edx,edx; mov dh,<top>` at 0x3c6 (arm 2, just before its
          * `jmp 0x427`) and at 0x425 (arm 3, just before it falls through) --
@@ -1018,7 +1018,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         else
             BrVec3Negate(&g_BrDrawDir0, (const BrVec3 *)BrG_6C2CF8);
     } else {
-        /* â¼ SOLVED 2026-09-03, and exactly as the old note predicted: "treat
+        /* !! SOLVED 2026-09-03, and exactly as the old note predicted: "treat
          * this region as T3a UNTIL THE FRAME IS SOLVED".  The frame is solved
          * now (see the header's session-11 entry), and the sixth copy
          * spelling lands byte-exact where five had failed against the wrong
@@ -1074,8 +1074,8 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     }
 
     /* 0xA6F6 -- four pool allocations, then look-at / angles.
-     * Orig: 0x10062500 (discarded), 0x10062550 â pSkyAng,
-     * two 0x100625A0 â pLights then specMem. */
+     * Orig: 0x10062500 (discarded), 0x10062550 -> pSkyAng,
+     * two 0x100625A0 -> pLights then specMem. */
     {
         float          eyeX, eyeY, atOffset, eyeScale;
         const float   *pCam = (const float *)BrG_6C6490;
@@ -1108,7 +1108,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
             0.0f, 0.0f, 0.0f,
             0.0f, 0.0f, 1.0f);
 
-        /* â¼ The angles call writes its direction pair into the SECOND pool
+        /* !! The angles call writes its direction pair into the SECOND pool
          * block, not pLights: the original pushes [esp+0x28] (0x1000A7FF,
          * `mov edx,[esp+0x68]` after 16 pushes) where the look-at call above
          * pushed [esp+0x30].  Passing pLights here made the angles call
@@ -1251,7 +1251,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     put(0x03820010u, specMem + 0x10);
 
     /* 0xAE72 -- underside pass (gated on suppress + i29B4). */
-    /* lea eax,[eax+eax*4]; shl eax,3  â not imul 40. */
+    /* lea eax,[eax+eax*4]; shl eax,3  - not imul 40. */
     /* lodOff is NOT computed here -- the 0x8038 and 0x8030 sites inline
      * (lod+lod*4)<<3, and only the 0x8024 site assigns lodOff
      * (orig 0x153d stores it to the dead pCar arg slot). */

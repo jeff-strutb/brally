@@ -8,7 +8,7 @@
  * UI text-refresh family: strcpy a looked-up string into the item's
  * text buffer, then a slot-1 virtual thiscall on the embedded item
  * (`lea ecx,[ebx+0x2B5C]; mov edx,[ebx+0x2B5C]; call [edx+4]` with the
- * vtbl load scheduled inside the strcpy intrinsic — C++ frontend order,
+ * vtbl load scheduled inside the strcpy intrinsic: C++ frontend order,
  * not reachable from the C fastcall spelling). No EH.
  */
 #define _CRTIMP __declspec(dllimport)

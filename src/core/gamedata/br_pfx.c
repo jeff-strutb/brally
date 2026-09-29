@@ -183,11 +183,11 @@ void __fastcall BrCarPfxSpawn(struct BrCar *pCar)
     }
 }
 
-/* Glide match for BrPfxUpdateB0 â 0x10033880
+/* Glide match for BrPfxUpdateB0: 0x10033880
  *
  * The port body lives in src/core/slice2_21.c (tagged 0x1003A200 d3d) and
- * takes `(BrPfxPool *, const BrPfxEnv *)`.  The original takes NOTHING â
- * its call site at 0x10033BB0 pushes no arguments at all â because dt,
+ * takes `(BrPfxPool *, const BrPfxEnv *)`.  The original takes NOTHING:
+ * its call site at 0x10033BB0 pushes no arguments at all, because dt,
  * the ambient drift, the 32-byte record array and the list heads are
  * globals and the free is inlined against the free head.  Same
  * globals-struct-parameter blocker as its sibling BrPfxUpdateB4AC, whose
@@ -280,7 +280,7 @@ void BrPfxUpdateB0(void)
     }
 }
 
-/* Glide match for BrPfxUpdateB4AC â 0x100339C0
+/* Glide match for BrPfxUpdateB4AC: 0x100339C0
  *
  * Third member of the particle-step family, after 0x10033BB0 BrPfxTick
  * and 0x10033880 BrPfxUpdateB0.  The port body in src/core/slice2_21.c
@@ -353,7 +353,7 @@ extern const float kPfxNeg30;   /* 0x100775E0  -30.0   */
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
  * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x100339C0 glide BrPfxUpdateB4AC */
 void BrPfxUpdateB4AC(void)
 {
@@ -409,7 +409,7 @@ void BrPfxUpdateB4AC(void)
     }
 }
 
-/* Glide match for BrPfxTick â 0x10033BB0
+/* Glide match for BrPfxTick: 0x10033BB0
  *
  * The port body lives in src/core/slice2_21.c (tagged 0x1003A530 d3d) and
  * carries the aggregate parameters `(pPool, pEnv, pFxEnv, pTick, pSeed)`
@@ -417,7 +417,7 @@ void BrPfxUpdateB4AC(void)
  * the two mode words, the driver count and the driver-slot table are
  * globals, and the three per-car helpers are __fastcall on the car
  * pointer alone (`mov ecx,[esi]` / `call`).  That parameter list is the
- * whole reason the port body could never converge â see the
+ * whole reason the port body could never converge: see the
  * port-safety/globals-struct class in docs/VC5-IDIOMS.md.
  *
  * Shape notes, read off the original:

@@ -1,6 +1,6 @@
 /* WinMain: GetInstallDir, load BossRally.vdb, parse an existing
  * BossRally.ini, run the Display Wizard dialogs, write BossRally.ini back.
- * ONE original function — the map splits at 0x402822 / 294F / 2AC0 / 2BCE
+ * ONE original function: the map splits at 0x402822 / 294F / 2AC0 / 2BCE
  * are mid-body block boundaries, not separate C functions.
  *
  * Idioms proven here (see docs/VC5-IDIOMS.md):
@@ -12,20 +12,20 @@
  *    orig reloads `card` at the continue point via `jmp +4`. do-while peels
  *    the body (+104 B).
  *  - Dialog templates: if/else on the DialogBoxParamA ASSIGNMENT, compare the
- *    result after. A ternary in the argument is neg/sbb; an `if (…==0) return`
+ *    result after. A ternary in the argument is neg/sbb; an `if (...==0) return`
  *    inside each arm duplicates the call.
  *  - THE RADIO lParam IS THE LOOP-CARRIED RESULT. `method` is seeded from
  *    gSel.method once, then reassigned by each radio DialogBoxParamA and
  *    passed back in as lParam next time round; every `goto radio` re-enters
  *    AFTER the seed. That is what puts it in ebx (`mov ebx,eax;
- *    lea eax,[ebx+1]`) — with a fresh `gSel.method` argument it is `inc eax`
+ *    lea eax,[ebx+1]`): with a fresh `gSel.method` argument it is `inc eax`
  *    and 644 bytes of register cascade follow.
  *  - The vendor/chipset arms compare `gSel.method`, NOT the just-taken
  *    `vsave.method` copy: reading the copy lets VC5 keep the member in ebx
  *    and spill the loop variable instead (all three Sel fields must go to
  *    stack slots 0x18/0x1c/0x20).
- *  - The write blocks are `if (result != 0) { …; FreeINI(gINI); return 0; }`
- *    followed by a second `FreeINI(gINI); return 0;` — NOT an early-return
+ *  - The write blocks are `if (result != 0) { ...; FreeINI(gINI); return 0; }`
+ *    followed by a second `FreeINI(gINI); return 0;`, NOT an early-return
  *    guard. The guard form makes the exit the fall-through (`jne write`);
  *    the original branches away to it (`je <outlined stub>`) and cross-jumps
  *    the exits so that case 1's block is the merge master. */

@@ -1,7 +1,7 @@
 /* DlgProcComboA: vendor combo. switch(msg)/switch(LOWORD); last command
  * case 0x3EA (Back) EndDialog(-1) falls through. IDOK keeps `ok` live
  * by merging EndDialog after if (idx >= 0) { ok=1; index=idx; } else
- * index=saved — two EndDialog sites fold ok to push-imm and drop ebp. */
+ * index=saved: two EndDialog sites fold ok to push-imm and drop ebp. */
 /* WHAT IT DOES: handle the dialog built around the first drop-down. */
 /* @implements 0x00402160 setvideo.exe DlgProcComboA */
 

@@ -271,7 +271,7 @@ const uint8_t *br_dl_skip(const uint8_t *p)
 /* Table-compatible do-nothing handler for the PORT dispatch, which calls every
  * slot as (pDl, p). The byte-exact original (br_dl_skip above) takes one arg;
  * this two-arg wrapper does the same step (p + 8) so the 256-slot table is
- * type-uniform. Called as s_aTable[op](pDl, p) â br_dl_skip's 1-arg form would
+ * type-uniform. Called as s_aTable[op](pDl, p): br_dl_skip's 1-arg form would
  * mis-read pDl as p, so the table must hold this version. */
 static const uint8_t *br_dl_skip_h(BrDl *pDl, const uint8_t *p)
 {
@@ -2234,7 +2234,7 @@ void BrDlAttachRaster(BrDl *pDl, BrDlRaster *pRas)
     pDl->sink.pfnTri = br_ras_tri;
 }
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* -- Ghidra-matched functions --------------------------- */
 typedef int (*funcptr)();
 extern funcptr DAT_118ed1cc;
 extern funcptr DAT_118ed1d0;

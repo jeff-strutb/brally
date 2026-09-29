@@ -17,7 +17,7 @@ direction: it under-counted what the tree already had.
     -- BrUiHook81_100450F0, BrMenuCap0730, BrOptToggle2F7C_C -- were invisible
     to it, so functions that had been ported for weeks were reported missing.
 
-Two agents were then briefed to port functions this tree already had. One
+Two workers were then briefed to port functions this tree already had. One
 found 8 of its 10 addresses already ported AND wired; the other found 6 of 8.
 Re-porting them would not have been merely wasteful: slice7_81.c owns the
 storage for thirteen globals, and a second leave routine would have cleared
@@ -40,7 +40,7 @@ WHICH SLOT a builder stores into matters and is reported, because it is easy
 to assume every hook is an action. It is not: +0x08 is the ACTION (0x10048180
 calls it when the ACTIVATE bit is set), while +0x04 is the per-frame caption
 and text setter. A brief that calls a pfn04 caption setter an "action hook"
-sends an agent looking for a screen transition that was never there. That
+sends a worker looking for a screen transition that was never there. That
 mistake was made here too.
 
 Usage:  hookaudit.py            # full audit

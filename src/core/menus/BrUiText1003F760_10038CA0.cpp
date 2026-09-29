@@ -5,7 +5,7 @@
  * @t3-measure bytes 136/136 insns 48/48 rows 0+0 regions 1 oracle UNCLASSIFIED
  * @t3-effort passes 2 zero-movement 1 2
  * Residue: one register choice -- the catalogue-table load feeds `push` through ecx where the original uses eax (rows 0+0 after regnorm). Dossier and dead list in this header (23 cpp probes across two passes).
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x10038CA0 glide BrUiText1003F760
  * @cpp_kind free
  * @cpp_symbol ?BrUiText1003F760@@YAHPAVObj38CA0@@@Z

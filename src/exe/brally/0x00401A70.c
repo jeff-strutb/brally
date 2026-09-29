@@ -1,4 +1,4 @@
-/* Auto-generated from disassembly — 0x00401A70
+/* Auto-generated from disassembly: 0x00401A70
  * AddSpawnArg: strcpy into gArgBuf[gArgOff], append to gArgv, NUL-terminate.
  * Idiom: dest is &gArgBuf[gArgOff] (scan s, then load gArgOff). gArgOff +=
  * strlen(s)+1 is spelled BEFORE gArgv[gArgc]=0 so the scasb-zero is hoisted

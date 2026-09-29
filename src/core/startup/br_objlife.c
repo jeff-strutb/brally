@@ -168,8 +168,8 @@ int BrSet_1006AA90(void);     /* 0x10063A40 */
  * RESIDUE: the save-area address is summed base-first in the original
  * (mov ebp,base; sub; add ebp,off) and constant-last by VC5 for every
  * spelling (DEAD lists above) -- the same integer sum; A3 pairs it by the
- * integer commutative-add rule.  Do not reopen before the end-grind
- * (CLAUDE.md rule 12). */
+ * integer commutative-add rule.  Do not reopen before the end-grind.
+ */
 /* @implements 0x10060A30 glide BrRaceSaveLastLapInfo */
 void __fastcall BrRaceSaveLastLapInfo(int param_1)
 {
@@ -315,7 +315,7 @@ void BrWrap_10035610(void *p)
     BrExt_10035585(p, 1, 2);
 }
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* -- Ghidra-matched functions --------------------------- */
 extern int DAT_100a7514;
 extern int DAT_100a7518;
 extern int DAT_106e7714;

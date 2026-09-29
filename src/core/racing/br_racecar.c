@@ -86,7 +86,7 @@ extern int DAT_10af3bb0;
  * @t3-effort passes 2 zero-movement 1 2
  * RESIDUE: one addressing-mode fold across three table-index sites (the
  * `lea;sub` vs `shl;sub;[base+idx]` layout wall in the dossier above), not
- * source-permutable. Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * source-permutable. Do not reopen before the end-grind. */
 /* @implements 0x1005C490 glide BrRaceCarPickIndex */
 void __fastcall BrRaceCarPickIndex(unsigned char *pCar)
 {

@@ -14,7 +14,7 @@
  * CSEd into esi across the two calls, and the BrOpt3760-style
  * static-nav thiscall in the save tail. pDesc packs into the dead
  * param home slot. KEY: the scan loop and the frees sit under TWO
- * SEQUENTIAL `if (pDesc != 0)` blocks — VC5 threads the first je past
+ * SEQUENTIAL `if (pDesc != 0)` blocks: VC5 threads the first je past
  * both but keeps the second test after the loop; nesting the frees
  * inside the first block folds the test (-4 B, every jump shifts).
  */

@@ -165,7 +165,7 @@ void BrFadeLatch(BrFadeState *pSt)
  * reaches the bar command from the local the test already loaded.
  * 30 compiles in the last pass, levers accepted: none; every candidate and
  * score is in build/match/crank.log.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x100183B0 glide BrFadeDrawBars */
 void BrFadeDrawBars(BrFadeState *pSt)
 {

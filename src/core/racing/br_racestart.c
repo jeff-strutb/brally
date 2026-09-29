@@ -362,7 +362,7 @@ void BrRaceStartResetForTest(void)
     s_cSpun = 0;
 }
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* -- Ghidra-matched functions --------------------------- */
 extern char DAT_10af1208;
 extern char DAT_10b1c888;
 extern char DAT_106ed708;

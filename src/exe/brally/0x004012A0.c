@@ -1,4 +1,4 @@
-/* Auto-generated from disassembly — 0x004012A0
+/* Auto-generated from disassembly: 0x004012A0
  * FreeINI: FreeObjList(p->list); free(p). */
 /* WHAT IT DOES: release a parsed settings file -- its object list and then
  * the cursor itself. */

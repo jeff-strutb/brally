@@ -823,4 +823,4 @@ void BrMemFill(void *pDst, uint32_t count, int32_t value)
  * ===================================================================== */
 
 
-/* ── Ghidra-matched functions ─────────────────────────── */
+/* -- Ghidra-matched functions --------------------------- */

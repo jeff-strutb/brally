@@ -53,7 +53,7 @@ WHAT THIS DOES.  For one function already in the tree with status=diff:
      build/ghidra_work/<VA>.crank.c, nothing committed.
      NOT EXACT: nothing in the tree changes except (unless --no-ledger) one
      `@t4-pass` line above the function's tag when >= 10 compiles ran
-     (CLAUDE.md rule 12: a counted pass), committed once at the end.
+     (a counted pass), committed once at the end.
 
 Soundness only matters for the ACCEPTED intermediate states, which steer the
 climb; the endpoint is either byte-identical to the original (correct by
@@ -556,7 +556,7 @@ def certify(va, path, hist, n, sym):
     tag = re.sub(r' \* <what the residue is.*?> \*/',
                  ' * residue after tools/crank.py: %d compiles this pass, levers accepted: %s;\n'
                  ' * every candidate and score is in build/match/crank.log.\n'
-                 ' * Do not reopen before the end-grind (CLAUDE.md rule 12). */'
+                 ' * Do not reopen before the end-grind. */'
                  % (n, ' > '.join(hist) or 'none'), m.group(1), flags=re.S)
     fp = os.path.join(ROOT, path)
     t = open(fp, encoding='utf-8', errors='surrogateescape').read()

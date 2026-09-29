@@ -60,7 +60,7 @@ void BrBaseDirInit(void)
     }
 }
 
-/* Matching TU for 0x10007F40 â settings loader (BossRally.ini + cmdline).
+/* Matching TU for 0x10007F40: settings loader (BossRally.ini + cmdline).
  * Inferred from orig bytes: /Oi strcpy+strcat, else-if strncmp ladder,
  * CHK_FileExists/FReadOpen/FReadLine/FClose, cmdline strstr+strlen(key). */
 

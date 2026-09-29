@@ -18,4 +18,4 @@
  * .. 0x1006D6B0 BrRbBuildMatrix) are filed together in
  * src/core/driving/br_rbinteg.c. */
 
-/* ── Ghidra-matched functions ─────────────────────────── */
+/* -- Ghidra-matched functions --------------------------- */

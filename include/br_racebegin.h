@@ -33,7 +33,7 @@
  *                                frame limiter)
  *
  * 4,353 + 1,776 == 6,129 of 11,223, i.e. 54.6% of the PORT.  A matching
- * claim is whole-function only and needs one C function — see the matching
+ * claim is whole-function only and needs one C function: see the matching
  * protocol in br_racestep.h.  Do not tag this address on any of these
  * split helpers.
  *

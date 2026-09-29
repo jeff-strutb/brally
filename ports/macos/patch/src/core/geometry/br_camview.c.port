@@ -120,7 +120,7 @@ void BrMat4LookAt(BrMat4 *pM,
  * Residue: t1's (double)(n * 4) factor is `fild; fmulp` where the original
  * fuses `fimul` (same value, same rounding); the spellings that fuse also
  * CSE n*4 into esi.  Dossier and dead list in the matching arm below.  Do
- * not reopen before the end-grind (CLAUDE.md rule 12). */
+ * not reopen before the end-grind. */
 /* @implements 0x10030B50 d3d BrLightDirsAndAngles */
 void BrLightDirsAndAngles(BrMat4 *pM, BrLightPair *pLights,
                           BrSkyAngles *pAngles,

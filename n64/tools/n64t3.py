@@ -4,7 +4,7 @@
     .venv/bin/python n64/tools/n64t3.py --image [--with VA ...]      # A7
     .venv/bin/python n64/tools/n64t3.py --qualify 0x8022439C          # the gate
 
-Same standard as the PC lane (CLAUDE.md rule 12).  T3 means certified
+Same standard as the PC lane.  T3 means certified
 complete and behaving exactly like the original, not byte-exact.
 
 A5 -- LIVE ORACLE.  The original ROM runs headless (n64box.py) on every script

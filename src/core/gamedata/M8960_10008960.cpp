@@ -4,7 +4,7 @@
  * @cpp_kind method
  * @cpp_symbol ?M8960@Tbl8900@@QAEHI@Z
  *
- * Tbl8900 family: bounds-checked getter — warn printf on overflow,
+ * Tbl8900 family: bounds-checked getter: warn printf on overflow,
  * then return items[i].f4 (76-byte entries, field at +4).
  */
 #define _CRTIMP __declspec(dllimport)

@@ -919,4 +919,4 @@ void BrFrameEnd(void)
     BrG_6C65EC ^= 1;
 }
 
-/* ── Ghidra-matched functions ─────────────────────────── */
+/* -- Ghidra-matched functions --------------------------- */

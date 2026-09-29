@@ -6,10 +6,10 @@
  * @cpp_symbol ?TickSteps@UiPage@@QAEHXZ
  *
  * 218 B thiscall step-timer tick. KEY SPELLING: the accumulate is
- * t-less — `f2974 += now - f2970; f2970 = now;` (scheduler emits the
+ * t-less: `f2974 += now - f2970; f2970 = now;` (scheduler emits the
  * f2970 store first). A temp form (`t = now - f2970; ... f2974 += t`)
  * makes VC5 FORWARD the stored value into the branch (mov ecx,edx)
- * where the original RE-READS f2974 — 147-diff cascade from that one
+ * where the original RE-READS f2974: 147-diff cascade from that one
  * fork. Stepped branch is early-return style (jle/jg cross-jump to the
  * final return 1, the wrap path gets its own epilogue); both arms are
  * f1C |= then f3850 |= (the stepped arm's swapped stores are

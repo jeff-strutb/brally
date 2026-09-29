@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Fail loudly if the extracted reference corpus is not keyed to BRGlide.dll.
 
-Rule 0 of CLAUDE.md is that BRGlide is the reference binary. That rule was
+Rule 0 of the project is that BRGlide is the reference binary. That rule was
 written down twice -- in README.md and in commit d98f480 -- and broken twice
 anyway, because prose cannot stop a build. This can.
 
@@ -83,7 +83,7 @@ def main():
         return 0
 
     if not quiet:
-        print(f'\nFAIL: rule 0 of CLAUDE.md requires {REFERENCE}, but the '
+        print(f'\nFAIL: rule 0 requires {REFERENCE}, but the '
               f'corpus is keyed to {best}.')
         print('  Nothing scored against these bytes means what it says it '
               'means.')

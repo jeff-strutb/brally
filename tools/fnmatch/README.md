@@ -9,7 +9,7 @@ edit -> compile -> score cycle and a metric that does not lie.
     sh tools/fnmatch/vdiff.sh <TAG> <ORIG> regnorm 30   # + multiset detail
 
 `<ORIG>` is a build/match/orig/0x*.bin.  Each tag owns its own .c and .obj, so
-N agents can probe the same function concurrently without contending.
+N processes can probe the same function concurrently without contending.
 
 ## The metric that matters: register-blind multiset diff
 
@@ -18,10 +18,10 @@ three normalisation levels:
 
   raw       registers kept       -- noisy; moves with any allocation change
   regnorm   all GP regs -> R     -- THE HONEST NUMBER: the structural gap
-  widthnorm regs and widths -> R -- ignores 8/16/32-bit differences too
+  widthnorm regs and widths -> R: ignores 8/16/32-bit differences too
 
 Why this matters: on BrTex3dExpand the raw gap read 1097 extra / 863 missing,
-which looks like a wall.  Register-normalised it was 432 / 198 -- meaning ~650
+which looks like a wall.  Register-normalised it was 432 / 198, meaning ~650
 of the "difference" was one global register rotation, and the real structural
 gap was less than half what the raw number implied.  Chasing the raw number
 sends you after register allocation; chasing the regnorm number sends you
@@ -36,7 +36,7 @@ fixed.  Rank residue by the register-blind gap, never by raw diff count.
 
     BYTES / INSNS   size and instruction count against the original
     FIRSTDIV        first differing byte offset; a sudden collapse toward +0x2
-                    means the frame changed (`sub esp, N`) -- a hard reject
+                    means the frame changed (`sub esp, N`): a hard reject
     RAW / REGNORM   extra = shapes the recomp emits that the original does not
                     miss  = shapes the original emits that the recomp does not
 

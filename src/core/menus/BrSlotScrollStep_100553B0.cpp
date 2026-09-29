@@ -9,8 +9,8 @@
  * (its own other arm uses `fsub` for the same construct); and `i1a9b4 = 1`
  * reuses the return register. The A5 oracle proves same-in/same-out. Dossier,
  * the wall-break (final-if-sense flip), and the dead list are in the header
- * comment below and the @t4-pass ledger. Do not reopen before the end-grind
- * (CLAUDE.md rule 12). */
+ * comment below and the @t4-pass ledger. Do not reopen before the end-grind.
+ */
 /* @implements 0x100553B0 glide BrSlotScrollStep_100553B0
  * @cpp_kind method
  * @cpp_symbol ?Step@Ctl553B0@@QAEHPAH@Z

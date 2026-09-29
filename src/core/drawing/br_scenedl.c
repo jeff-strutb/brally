@@ -17,7 +17,7 @@
  * ex1/ex2/ey2 of the trail-delta group.  Three wheel-pointer moves do not
  * compile (C89: iw/wb used before the moved declaration).  Do not re-run.
  */
-/* â¼â¼ THIRTY-FIRST PASS (2026-09-06) -- WALL 4 MEASURED TO ITS FLOOR, AND
+/* !!!! THIRTY-FIRST PASS (2026-09-06) -- WALL 4 MEASURED TO ITS FLOOR, AND
  * THE MECHANISM IS KNOWN; THE SOURCE CONSTRUCT IS NOT.  Baseline re-measured
  * 9,345/9,354 B, 2,325/2,328 insns, 14 masked / 24 raw, msetdiff 23+20.
  * Full census in docs/VC5-IDIOMS.md ("When VC5 keeps a scaled index in a
@@ -57,7 +57,7 @@
  *   WHAT IS LEFT for wall 4 is a per-arm `ring` plus a trigger that forms
  *   the `ring*4` tuple without leaving bytes; nothing in the census does.
  */
-/* â¼ TWENTY-EIGHTH PASS (2026-09-05) -- THREE MORE WALL-3/4 LEVERS DEAD
+/* !! TWENTY-EIGHTH PASS (2026-09-05) -- THREE MORE WALL-3/4 LEVERS DEAD
  * (parallel probe sweep, all measured against the 27th-pass baseline
  * 23+20 msetdiff rows / 17 masked / -9 B).  Do NOT re-run:
  *   - WALL 4 as a TRUE 2-D array: `#define RING2 ((int(*)[232])DAT_1035f750)`
@@ -83,7 +83,7 @@
  *     duplicated `mov edx,6` is register allocation at the param_2 join
  *     (wall 5), not a source-hoistable constant.
  */
-/* â¼ TWENTY-SEVENTH PASS (2026-09-04) -- THE GHIDRA-NAMED TEMP `ring` IS
+/* !! TWENTY-SEVENTH PASS (2026-09-04) -- THE GHIDRA-NAMED TEMP `ring` IS
  * GONE from the trail-append block: every one of its 32 uses is spelled as
  * the expression `(iWheel + iCar * 4)`.  VC5 CSEs it into ecx exactly as
  * before (wall 4's addressing is untouched, both arms byte-identical), but
@@ -95,7 +95,7 @@
  * -9, instructions 4 short -> 3, register-blind (msetdiff) 24+20 -> 23+20;
  * the only multiset row that moved is the `mov R,1` MISSING.  No control
  * flow changed -- the loop tail was checked instruction-for-instruction.
- *   â¼ IT IS A LEVER CLASS, not a one-off: Ghidra names every CSE'd value
+ *   !! IT IS A LEVER CLASS, not a one-off: Ghidra names every CSE'd value
  *   (`ring`, `h1`, `slot`, `fl`, `row`, `dring` ...) and VC5 treats a named
  *   multi-use local differently from a repeated expression.  Measured this
  *   pass on top of it, all DEAD, do not re-run:
@@ -131,7 +131,7 @@
  * Matching build only -- transcribed from build/ghidra_decomp/0x1000EAF0.c
  * against the disassembly of build/match/orig/0x1000EAF0.bin.
  *
- * â¼â¼ TWENTY-SIXTH PASS (2026-09-04) -- A LEVER FROM OUTSIDE THE ADDRESSING,
+ * !!!! TWENTY-SIXTH PASS (2026-09-04) -- A LEVER FROM OUTSIDE THE ADDRESSING,
  * AND IT IS THE ONE EVERY DOSSIER ENTRY BELOW CALLED INERT: DECLARATION
  * ORDER.  Masked regions 21 -> 18 (raw 30 -> 27), bytes/insns/multiset
  * unchanged, by declaring the row block's four pointer locals in FIELD
@@ -158,7 +158,7 @@
  *   `faddp st(1)` multiset rows.  It did NOT move under any of the 24
  *   permutations or the extern order; it may still move under a symbol-
  *   index change elsewhere (see the declsweep results in the next pass).
- *   â¼ CONSEQUENCE FOR EVERY DEAD LIST IN THIS HEADER: "declaration order is
+ *   !! CONSEQUENCE FOR EVERY DEAD LIST IN THIS HEADER: "declaration order is
  *   inert" was measured on slot packing (sixth pass) and on one
  *   enregistered temp (twenty-second pass), and it is TRUE there -- P3 in
  *   this pass moved pDst's declaration to the top of the list and the slot
@@ -191,7 +191,7 @@
  *   - pDst declared before bSolo: byte-identical.  The packer's order is
  *     not declaration order; the bSolo/pDst swap needs a different lever.
  *
- * â¼ TWENTY-FIFTH PASS (2026-09-03) -- WALL 4 IS NOW CLOSED AS A SPELLING
+ * !! TWENTY-FIFTH PASS (2026-09-03) -- WALL 4 IS NOW CLOSED AS A SPELLING
  * PROBLEM.  Measured entry state: 30 raw regions, 2,324 vs 2,328 insns,
  * 9,340 vs 9,354 bytes.  The one byte-offset shape the dossier had NOT
  * tried was a LOOP-CARRIED INDUCTION VARIABLE -- every earlier probe (passes
@@ -206,9 +206,9 @@
  *   the two-live-values shape the original has (ecx = ring, edx = ring*4).
  *   DEAD, and worse than any previous wall-4 probe: 30 -> 65 regions, insns
  *   -4 -> +11, and a LOST-SYNC GAP of 782 orig bytes (8.4%) that was never
- *   compared at all.  Bytes read -14 -> -3 -- â¼ another instance of the pass-
+ *   compared at all.  Bytes read -14 -> -3 -- !! another instance of the pass-
  *   24 trap, a byte total improving on a change that doubles the real gap.
- *   â¼ THE VERDICT THIS BUYS: wall 4 is NOT reachable by respelling the
+ *   !! THE VERDICT THIS BUYS: wall 4 is NOT reachable by respelling the
  *   offset.  Expression forms fold; an IV form makes VC5 rebuild the loop's
  *   whole induction structure (the same failure as passes 21 and 22, now
  *   four probes deep in three different shapes).  Whatever puts `lea
@@ -216,7 +216,7 @@
  *   open item 4 again without a lever from OUTSIDE the addressing, and read
  *   the pass-24 note first: the pDst spill downstream of it is closed too.
  *
- * â¼â¼ TWENTY-FOURTH PASS (2026-09-03) -- THE TWENTY-THIRD PASS IS RETRACTED.
+ * !!!! TWENTY-FOURTH PASS (2026-09-03) -- THE TWENTY-THIRD PASS IS RETRACTED.
  * ITS if/else IS NOT THE ORIGINAL'S SOURCE, AND IT SCORED BETTER ANYWAY.
  * That is the whole lesson, and it is the exact trap rule 2 exists to stop.
  *   The twenty-third pass never read the original at the site; it inferred
@@ -235,7 +235,7 @@
  *   arms -- ours emitted `mov edx,0x1f3` up front with `jl` and a fall-
  *   through, where the original emits `jge` over a `mov ebx,0x1f3` -- so it
  *   can never converge, whatever it scores.  Reverted.
- *   â¼ AND IT SCORED BETTER: instructions 4 short -> 1, bytes -14 -> -8,
+ *   !! AND IT SCORED BETTER: instructions 4 short -> 1, bytes -14 -> -8,
  *   register-blind 38 -> 37 rows, EVERY axis.  A spelling can improve every
  *   number this project measures and still be provably wrong.  **Before
  *   accepting any control-flow change, check the ARM ORDER against the
@@ -243,7 +243,7 @@
  *   ONE THING KEPT, and it is the faithful reading: the test is on pDst, not
  *   on h1.  Byte-identical (same value), but it is what the bytes test, so
  *   it is what the source said.
- *   â¼ AND THE REAL STORY AT THIS SITE IS NOW CLEAN: with the faithful
+ *   !! AND THE REAL STORY AT THIS SITE IS NOW CLEAN: with the faithful
  *   spelling our codegen matches the original's CONTROL SHAPE exactly
  *   (`jge` over `mov 0x1f3`); the only thing missing is the two
  *   `mov [esp+0x20],ebx` homes, and those are register pressure -- the
@@ -253,7 +253,7 @@
  *   direction: do not go after the pDst home either.  Wall 4's `lea
  *   edx,[ecx*4]` is the only thing here that is worth another idea.
  *
- * â¼ TWENTY-THIRD PASS (2026-09-03) -- WALL 4's DOWNSTREAM SPILL IS MOSTLY
+ * !! TWENTY-THIRD PASS (2026-09-03) -- WALL 4's DOWNSTREAM SPILL IS MOSTLY
  * CLOSED, and the lever was the ONE place nobody had looked: not the index,
  * the pDst DEFINITION.  The eleventh pass had already worked out that three
  * of the missing instructions are the original memory-homing pDst in BOTH
@@ -267,7 +267,7 @@
  *   register-blind 17+21 -> 18+19 (38 -> 37 rows), and of the four
  *   pDst-spill rows the eleventh pass catalogued, `mov R,[esp+S]` is gone
  *   and one of the two `mov [esp+S],R` with it.
- *   â¼ ITS fn.py FIRSTDIV READS +0x2b -> +0x1b AND THE FRAME IS FINE.  The
+ *   !! ITS fn.py FIRSTDIV READS +0x2b -> +0x1b AND THE FRAME IS FINE.  The
  *   prologue is instruction-for-instruction identical (`sub esp,0xdc` and
  *   all), the ALIGNED first divergence is still 0xad4, and what moved is two
  *   slot displacements (0x28/0x24 against our 0x2c/0x20) -- wall 6, which
@@ -275,7 +275,7 @@
  *   this function it reports every slot renumbering as a prologue
  *   regression.  CHECK THE PROLOGUE ITSELF, or divergence.py --mask-slots,
  *   before believing a FIRSTDIV drop here.
- *   â¼ AND IT IS SITE-SPECIFIC -- MEASURED, do not re-run either sweep.  The
+ *   !! AND IT IS SITE-SPECIFIC -- MEASURED, do not re-run either sweep.  The
  *   obvious next move was to convert every other assign-then-override in
  *   this file, and it is badly wrong: all EIGHT ring-wrap sites (`slot`,
  *   `head`, `ds` -- 0x1335/0x1374/0x1380/0x1390/0x1398/0x1404/0x1434/0x1465)
@@ -284,11 +284,11 @@
  *   `cmp X,0x1f4; jl` with no home at all.  The same sweep over the twelve
  *   doubling sites in br_tex3d_expand.c (0x100250D0) is worse still, 81 ->
  *   117 rows and +29 instructions.
- *   â¼ SO THE RULE IS: convert an assign-then-override ONLY where the bytes
+ *   !! SO THE RULE IS: convert an assign-then-override ONLY where the bytes
  *   show the ORIGINAL HOMING the value on both edges.  If the original keeps
  *   it in a register, the assign-then-override IS the right source.  Read
  *   the site before converting it; there is no sweepable class here.
- *   â¼ GENERALISE: `x = a; if (c) x = b;` and `if (c) x = b; else x = a;` are
+ *   !! GENERALISE: `x = a; if (c) x = b;` and `if (c) x = b; else x = a;` are
  *   NOT the same to VC5.  The first is one definition and a fix-up and stays
  *   in a register; the second is two definitions on two edges and gets a
  *   home.  Where the original spills a value assigned on both arms of a
@@ -298,14 +298,14 @@
  * TWENTY-SECOND PASS (2026-09-03) -- three more wall-4 negatives, and one
  * FACT ABOUT THE ORIGINAL'S DATA LAYOUT that is worth keeping whatever
  * happens to the wall.
- *   â¼ THE TWO RING ARRAYS ARE ADJACENT.  0x1035faf0 - 0x1035f750 = 0x3a0 =
+ *   !! THE TWO RING ARRAYS ARE ADJACENT.  0x1035faf0 - 0x1035f750 = 0x3a0 =
  *   232 ints exactly, so `DAT_1035faf0[ring]` IS `DAT_1035f750[232 + ring]`
  *   and the original's `[edx + 0x1035faf0]` / `[edx + 0x1035f750]` pair is
  *   ONE index register against TWO displacements into what may well be a
  *   single object in the original source (a `[2][232]` table, tails first).
  *   That is the natural explanation for the shared `lea edx,[ecx*4]` and it
  *   is the first structural account of wall 4 anyone has had.
- *   â¼ AND IT IS STILL NOT THE LEVER.  Spelling all seven head sites as
+ *   !! AND IT IS STILL NOT THE LEVER.  Spelling all seven head sites as
  *   `DAT_1035f750[232 + ring]`, which hands VC5 exactly one array and one
  *   induction value, LEAVES THE ADDRESSING FORM UNCHANGED -- the wall-4
  *   family is still `[R*K + A]` x8 against the original's `[R + A]` x8, row
@@ -331,11 +331,11 @@
  *   + offset` cast, per-arm conversion, the drain-loop IV form, a
  *   record-term-derived offset, a re-associated offset at two scopes, and
  *   the one-array form.  Every one of them either folds back or rebuilds the
- *   region.  â¼ Treat the ADDRESSING as downstream: the eleventh pass says
+ *   region.  !! Treat the ADDRESSING as downstream: the eleventh pass says
  *   the original pins edx BECAUSE it has already spent pDst to memory.  Any
  *   further attempt should go after THE pDst HOME, not the index.
  *
- * â¼â¼ TWENTY-FIRST PASS (2026-09-03) -- EVERY REGISTER-BLIND NUMBER IN THIS
+ * !!!! TWENTY-FIRST PASS (2026-09-03) -- EVERY REGISTER-BLIND NUMBER IN THIS
  * HEADER IS INFLATED.  `fn.py` and `triage.py` did not mask reloc'd operands
  * (only `msetdiff.py` did), so every absolutely-addressed instruction was
  * counted TWICE, once MISSING and once EXTRA.  Fixed 2026-09-03.
@@ -344,7 +344,7 @@
  *   ...) are inflated by the same artefact in the same way.  Read the trend
  *   in them, never the absolute value, and re-measure before comparing this
  *   function to any other.
- *   â¼ AND THE HONEST MAP RE-RANKS THE WALLS.  All 38 rows still map to walls
+ *   !! AND THE HONEST MAP RE-RANKS THE WALLS.  All 38 rows still map to walls
  *   already catalogued below, but the proportions are different:
  *     wall 4 (ring addressing)  8 rows -- EXTRA `mov R,[R*K+A]` x4,
  *                               `mov [R*K+A],R` x3, `cmp R,[R*K+A]` x1
@@ -368,12 +368,12 @@
  * rewritten `rbT * 125` (exact: ring*500 == (ring*4)*125).  The theory was
  * right that this makes the offset unfoldable and WRONG about the cost: VC5
  * rebuilds the whole region's induction structure around it.  Register-blind
- * 17+21 -> 33+45, bytes -14 -> -57, instructions -4 -> -12.  â¼ Note the trap
+ * 17+21 -> 33+45, bytes -14 -> -57, instructions -4 -> -12.  !! Note the trap
  * in its FIRSTDIV, which reads +0x2b -> +0xad5 -- a prefix 2,700 bytes
  * longer, on a change that doubles the real gap.  First-divergence is not a
  * progress measure on this function.
  *
- * â¼ TWENTIETH PASS (2026-09-03) -- WALL 1's TERM-3 FLIP IS CLOSED, and the
+ * !! TWENTIETH PASS (2026-09-03) -- WALL 1's TERM-3 FLIP IS CLOSED, and the
  * nineteenth pass's "done as a source problem" verdict is RETRACTED for it.
  * The lever was a POINTER-INDEX ASYMMETRY nobody had looked at, because
  * every pass had been probing the coefficient side.  Terms 1, 2 and 4 read
@@ -390,7 +390,7 @@
  *   whole `4 fld [I]` / `4 fmul [R+I]` / `4 fmul [I]` / `3 fld [R+I]` block
  *   the nineteenth pass had catalogued as walls 1/2), instructions 6 short
  *   -> 4 short, bytes -15 -> -14, fn.py RAW 117+123 -> 109+113.
- *   â¼ MASKED REGIONS GO 19 -> 21 AND THAT IS NOT A REGRESSION -- read the
+ *   !! MASKED REGIONS GO 19 -> 21 AND THAT IS NOT A REGRESSION -- read the
  *   eighth pass's warning above.  The two new regions are 0xe58 (the fourth
  *   row statement, now a small order-only region like its three siblings --
  *   all four sit at a flat delta +2 instead of the old +7/-3/-3 swings) and
@@ -416,7 +416,7 @@
  *     `(((T1)+T2)+T3)+T4` = 40+47 / -20 B; and a REDUNDANT OUTER PAIR
  *     `(((T1+T2)+T3)+T4)` = 43+45 / -7 B / -2 insns, with a second and third
  *     nested pair inert beyond the first.
- *     â¼ THE OUTER PAIR IS THE TRAP AND IT IS WHY IT IS NOT IN THE TREE.  It
+ *     !! THE OUTER PAIR IS THE TRAP AND IT IS WHY IT IS NOT IN THE TREE.  It
  *     is the best BYTE and INSTRUCTION result this function has ever read
  *     (-7 B, only two instructions short) and it is WORSE: it re-opens the
  *     scale block at 0xf2a as a -18-byte region with +20 straight back at
@@ -426,12 +426,12 @@
  *     break the batching HOLDS at the new allocation; do not take a paren
  *     form in this file on a byte or instruction count alone.
  *
- * â¼ NINETEENTH PASS (2026-09-03) -- MEASURED STATE, and a full residue
+ * !! NINETEENTH PASS (2026-09-03) -- MEASURED STATE, and a full residue
  * accounting that says this function is DONE as a source problem.
  *   Measured: 2,322 vs 2,328 instructions (SIX short), 9,339 vs 9,354
  *   bytes (-15), 19 regions slot-masked / 28 raw, register-blind multiset
  *   39 missing / 33 extra, fn.py REGNORM 48+54.
- *   â¼ EVERY ONE of those 39+33 multiset rows maps to a wall already
+ *   !! EVERY ONE of those 39+33 multiset rows maps to a wall already
  *   catalogued below -- this was checked row by row, not assumed:
  *     wall 4 (ring*4 CSE)  4 `mov R,[R+A]` / 3 `mov [R+A],R` / 1 `lea
  *                          R,[R*K]` / 1 `cmp R,[R*K+A]`, plus the 3
@@ -466,7 +466,7 @@
  * STATE (2026-09-03, ninth pass): 2,322 vs 2,328 instructions -- SIX
  * SHORT -- 9,338 vs 9,354 bytes, 20 divergence regions slot-masked (28
  * raw).  Region and byte counts unchanged from the eighth pass.
- * â¼ RETRACTED, and it matters: the eighth pass recorded "2,328/2,328
+ * !! RETRACTED, and it matters: the eighth pass recorded "2,328/2,328
  * instructions -- EQUAL".  That was `divergence.py` counting the COFF
  * function extent's 16-byte alignment padding -- six trailing nops the
  * extracted original does not have -- as code.  The tool is fixed
@@ -480,7 +480,7 @@
  * re-run the register-blind multiset was followed and `tools/msetdiff.py`
  * had to be fixed first (branch targets and reloc addends were compared
  * literally, so every reloc'd instruction paired as MISSING+EXTRA; 76 rows
- * of noise down to 37 real).  â¼ Two rows that looked like real defects --
+ * of noise down to 37 real).  !! Two rows that looked like real defects --
  * `push A` vs `push 0` at 0xab (BrFloat12MaxAbs(DAT_106e9a38)) and at
  * 0x12c1 (the logger's format string DAT_100a5db4) -- are ARTEFACTS: both
  * sites carry a relocation and are already correct.  Do not "fix" them.
@@ -488,7 +488,7 @@
  * mapped below: the fxch/faddp spread is walls 1 and 2, the four
  * `[R + A]` vs `[R*K + A]` pairs are wall 4, and `lea R,[R + R + 0x70]` /
  * `fld [R + R + 0x54]` are wall 3.
- * SIXTEENTH PASS (2026-09-03) â¼ WALL 2 IS CLOSED.  The scale block now emits
+ * SIXTEENTH PASS (2026-09-03) !! WALL 2 IS CLOSED.  The scale block now emits
  * the original's 8|4 batching, exactly, for the first time in nine passes.
  * The lever was the row block's COEFFICIENT SPELLING, and the fix is the one
  * the original's source must always have had: all four coefficients as
@@ -501,7 +501,7 @@
  * Masked regions 20 -> 19, bytes 18 short -> 15, instructions unchanged at 6
  * short, and `pV3`/`pV1` go away (removing them is byte-neutral; `pView`
  * must stay, the logger reads it).
- *   â¼ THE TRADE, stated honestly: the register-blind multiset goes 35/29 ->
+ *   !! THE TRADE, stated honestly: the register-blind multiset goes 35/29 ->
  *   39/33.  All eight of those rows are ONE defect at four sites -- under
  *   the symbol spelling VC5 emits term 3 object-first (`fld [esi+0x38];
  *   fmul [coef]`) where the original is coefficient-first (`fld [coef];
@@ -540,12 +540,12 @@
  *
  * FIFTEENTH PASS (2026-09-03) -- no region closed, two measurement facts
  * that change how this file must be read, and one new probe axis.
- *   â¼ THE ORIGINAL'S FOUR-TERM ROW IS LEFT-ASSOCIATED, which the source
+ *   !! THE ORIGINAL'S FOUR-TERM ROW IS LEFT-ASSOCIATED, which the source
  *   already is.  Read it off the bytes rather than guessing: at 0xda7
  *   `faddp st(2)` folds terms 1 and 2 together first (st0 holds T1, st2
  *   holds T2 at that point), so `(((T1 + T2) + T3) + T4)` is right and any
  *   right-associated variant is the WRONG SOURCE however it scores.
- *   â¼ AND ONE OF THEM SCORES SPECTACULARLY, WHICH IS THE TRAP: the fully
+ *   !! AND ONE OF THEM SCORES SPECTACULARLY, WHICH IS THE TRAP: the fully
  *   right-associated form `T1 + (T2 + (T3 + T4))` reads DIFFS 4,669 ->
  *   2,490.  That is not a 47% improvement, it is TWO BYTES.  fn.py's DIFFS
  *   is a POSITIONAL byte compare with no alignment, and those two bytes
@@ -571,7 +571,7 @@
  *   original's 8 (both enter the scale block at depth 0), which is the same
  *   fact as wall 1's missing hoist notch stated as a number.
  *
- * FOURTEENTH PASS (2026-09-03) â¼ RETRACTS THE ELEVENTH PASS'S WALL-2
+ * FOURTEENTH PASS (2026-09-03) !! RETRACTS THE ELEVENTH PASS'S WALL-2
  * VERDICT.  That pass wrote "the 5-vs-8 preload is a scheduler constant, not
  * a pressure difference we can create".  IT IS NOT A CONSTANT.  Two facts,
  * both measured this pass:
@@ -588,7 +588,7 @@
  *   still give 5), and extern-vs-defined storage for the two matrices
  *   (defining them here, output matrix first in address order as the stale
  *   comment above the declarations describes, changes nothing).
- *   â¼ WHAT IT IS: the preceding OUTM(12..15) row block -- i.e. WALL 1.  Move
+ *   !! WHAT IT IS: the preceding OUTM(12..15) row block -- i.e. WALL 1.  Move
  *   the scale statements ABOVE those four rows and the first batch goes
  *   5 -> 7.  Spell all four row terms as absolute literals (pV3[k] and
  *   pV1[k] rewritten as `*(float *)(0x106e9a68 + 4k)` / `(0x106e9a48 + 4k)`,
@@ -669,7 +669,7 @@
  *   collapses +0x2b -> +0x15 (`push edi` moves ahead of the `cmp` and the
  *   `mov edi,1` sink re-opens) and the reloc-masked byte diff explodes to
  *   6,475 / 6,639.  (f) lands at -1 byte / +1 instruction, which looks like
- *   parity and is not: the whole allocation is different.  â¼ So the entry
+ *   parity and is not: the whole allocation is different.  !! So the entry
  *   below is stronger than it reads -- it is not just that a single-use
  *   `wb` merges the four-term sum, it is that ANY spelling which makes the
  *   wheel pointer one sum rewrites the prologue.  Keep `wb` and keep it
@@ -681,7 +681,7 @@
  * ELEVENTH PASS (2026-09-03) closed no region but SETTLED both remaining
  * "shape" walls by reading the original harder, and it retires the framing
  * the tenth pass left behind:
- *   â¼ WALL 4 IS PER-ARM IN THE ORIGINAL, and that is the whole story.
+ *   !! WALL 4 IS PER-ARM IN THE ORIGINAL, and that is the whole story.
  *   Grep the original for the two ring globals and the split is flat:
  *     if-arm  0x1c96..0x1e63 -- `lea edx,[ecx*4]` materialised once, then
  *             EIGHT `[edx + 0x1035faf0]` / `[edx + 0x1035f750]` sites
@@ -695,7 +695,7 @@
  *   through `*(int *)((char *)base + rbo)`, else-arm untouched): still folds
  *   to `mov eax,[ecx*4]`, and costs 5 bytes elsewhere (-16 -> -21, 2322 ->
  *   2321 insns).  DEAD -- do not re-run either half.
- *   â¼ THREE OF THE SIX MISSING INSTRUCTIONS ARE DOWNSTREAM OF WALL 4, not
+ *   !! THREE OF THE SIX MISSING INSTRUCTIONS ARE DOWNSTREAM OF WALL 4, not
  *   independent defects.  With edx pinned to ring*4 the original is a
  *   register short across the h1 test, so it memory-homes `pDst` in BOTH
  *   arms (`mov [esp+0x20],ebx` at 0x1cba and 0x1cc5) and reloads it at
@@ -705,7 +705,7 @@
  *   NOT hunt them as a separate missing-store defect.  Region 20's -13 bytes
  *   is this same spill, not the `[edx+A]` encodings (ours are one byte
  *   LARGER per site: 7-byte SIB vs the original's 6-byte base+disp32).
- *   â¼ WALL 2 IS NOT THE HELPER BOUNDARY.  The tenth pass recorded that the
+ *   !! WALL 2 IS NOT THE HELPER BOUNDARY.  The tenth pass recorded that the
  *   original's 8|4 batching "is exactly that call boundary".  It is not:
  *   replacing BrRowScale8+BrRowScale4 with twelve flat `OUTM(k) = scale *
  *   VIEWS(k)` statements emits the IDENTICAL five-deep preload (five
@@ -745,7 +745,7 @@
  *       parenthesised one-liner.  The dossier had only ever probed a temp
  *       for the GLOBAL; both are canonicalised, so the association really
  *       is not source-selectable here.  Entry 6b stands.
- *   (d) â¼ the seventh pass's drain-loop lever does NOT generalise to the
+ *   (d) !! the seventh pass's drain-loop lever does NOT generalise to the
  *       trail-append loop.  Converting that loop's two FLAT ring arrays
  *       (7 + 10 sites, both arms together) to a byte-offset induction
  *       variable -- `rt = iCar << 4` at loop entry, `rt += 4` per wheel,
@@ -781,7 +781,7 @@
  * `cmp X,0x1f3; jle`.  Both spellings are semantically identical, so this
  * is a transcription defect in the CONSTANT, and it dropped the true byte
  * diff 3,855 -> 3,727 and brought the instruction count to exactly equal.
- * â¼ READ THIS BEFORE TRUSTING THE REGION COUNT: `divergence.py` compares
+ * !! READ THIS BEFORE TRUSTING THE REGION COUNT: `divergence.py` compares
  * "mnemonic + operand SHAPE with imm32 wildcarded" (see its `norm`), so it
  * is BLIND to immediate-operand defects -- all four of these sites scored
  * as matching for eight passes.  The region count went UP here (19 -> 20)
@@ -1035,7 +1035,7 @@ extern float DAT_106e9a68[4];    /* view matrix row 3 */
 extern float DAT_106e78f0[16];   /* the output matrix */
 typedef struct BrObjXlat { float tx, ty, tz, tw; } BrObjXlat;
 #define OUTM(k)  (DAT_106e78f0[k])
-/* â¼ The logger reads the view matrix DIRECTLY and the row block reads
+/* !! The logger reads the view matrix DIRECTLY and the row block reads
  * term 1 through pView: that split closes the two logger argument
  * regions (0x11d3/0x11eb).  A raw symbol and a pointer-local read
  * are different operands to VC5; the original uses each where this
@@ -1113,7 +1113,7 @@ extern BrTrailSeg DAT_10273690[];
  * proves same-in/same-out across 32 seeds -- return, ~148 global-write bytes,
  * and dispatch all agree, ~93% of insns executed.  So the residue is now
  * behaviourally PROVEN allocation, not merely byte-shape-classified.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* @t4-pass 0x1000EAF0 6 2026-09-07 probes 150 bytes 9349 insns 2327 regions 27 rows 31 census yes  (tools/crank.py) */
 /* @t4-pass 0x1000EAF0 7 2026-09-07 probes 150 bytes 9354 insns 2328 regions 25 rows 32 census yes  (tools/crank.py) */
 /* @implements 0x1000EAF0 glide BrSceneDlBuild */
@@ -1334,7 +1334,7 @@ void BrSceneDlBuild(int param_1, int param_2, int param_3, int param_4)
 draw:
                 if ((*((uint8_t *)pObj + 0x4d) & 0x20) != 0) {
                     float fMax, fMin, scale;
-                    /* â¼ DECLARATION ORDER IS LOAD-BEARING (26th pass): the
+                    /* !! DECLARATION ORDER IS LOAD-BEARING (26th pass): the
                      * four row pointers are declared in FIELD order, pTw
                      * LAST.  With pTw first or second the row block
                      * finishes T1 before T2 (`fmul [esi+0x30]` first);
@@ -1600,7 +1600,7 @@ no_mark:
                                 DAT_10077254;
                             if (DAT_1035faf0[(iWheel + iCar * 4)] != DAT_1035f750[(iWheel + iCar * 4)]) {
                                 int h1 = DAT_1035faf0[(iWheel + iCar * 4)] - 1;
-                                /* â¼ ASSIGN-THEN-OVERRIDE, AND THE TEST IS ON
+                                /* !! ASSIGN-THEN-OVERRIDE, AND THE TEST IS ON
                                  * pDst, NOT h1 -- read straight off the bytes
                                  * at 0x1cb2: `mov ebx,eax` (pDst = h1), then
                                  * `test ebx,ebx; jge; mov ebx,0x1f3`.  An
@@ -1712,7 +1712,7 @@ no_mark:
                 uint8_t *pA = active;
                 int rb;
                 do {
-                    /* â¼ OWN COUNTER: the active[]-init loop's index is a
+                    /* !! OWN COUNTER: the active[]-init loop's index is a
                      * block-scoped `iw2`, not the function-scope iWheel the
                      * trail loop uses.  Sharing iWheel emitted the byte store
                      * as `[edx+edi]`; the private counter lands the original's

@@ -1,4 +1,4 @@
-# Boss Rally — bit-exact decompilation
+# Boss Rally: bit-exact decompilation
 
 **Maintainer:** Jeffrey Wilbur, Strut B, LLC\
 **Contact:** [retro@strutb.com](mailto:retro@strutb.com)
@@ -19,8 +19,8 @@ Boss Game Studios built *Top Gear Rally* for the N64 (1997), then shipped *Boss
 Rally* for Windows (1999) on the same engine. The PC build still emits N64 F3DEX
 display lists, ships N64-format textures and big-endian geometry off the disc,
 and carries the ROM's diagnostic strings. The PC game ships two
-renderer DLLs over one shared core: **`BRGlide.dll`** (3dfx Glide — the mature
-target and the reference for all matching) and `BRD3D.dll` (Direct3D — statically
+renderer DLLs over one shared core: **`BRGlide.dll`** (3dfx Glide: the mature
+target and the reference for all matching) and `BRD3D.dll` (Direct3D: statically
 links Microsoft's CRT, so it's reference-only, out of scope).
 
 ## Two games, two decompilations
@@ -50,7 +50,7 @@ matched function on either side is a head start on its twin.
 
 ## Cheats
 
-*Boss Rally* was long believed to have **no cheat codes at all** — none are printed
+*Boss Rally* was long believed to have **no cheat codes at all**: none are printed
 in the manual, and none have ever circulated online. The decompilation turned up a
 working cheat system hiding in plain sight: the game quietly keeps the last 32
 keys you type, and the instant the tail of what you've typed spells one of six
@@ -72,32 +72,32 @@ Each code is a person's first name:
 | `benjamin` | Unlocks **all tracks** |
 | `lynette` | Unlocks a **hidden second set of tracks** the menus normally won't show |
 | `sophia` | Unlocks the game's **ending sequence** without finishing the championship; clicking Credits then plays it |
-| `madeleine` | Cranks a **visual effect** (the "ripple" effect) up to maximum — a novelty toggle, not a gameplay advantage |
+| `madeleine` | Cranks a **visual effect** (the "ripple" effect) up to maximum: a novelty toggle, not a gameplay advantage |
 
 The five unlock codes are certain from the code. `madeleine` is the odd one out:
 it's clearly a deliberate toggle with its own confirmation sound, and it removes the
-cap on how strong the game's ripple effect can get — but exactly how that looks on
+cap on how strong the game's ripple effect can get, but exactly how that looks on
 screen isn't recoverable from the binary alone, so treat its description as a best
 guess pending someone actually typing it in-game.
 
 ## Split screen
 
 The N64 game *Top Gear Rally* has a two-player split-screen mode. The PC version
-appears to ship with **no way to select it** — yet the decompilation shows the
+appears to ship with **no way to select it**, yet the decompilation shows the
 split-screen renderer is fully present, complete, and wired up. It was built, and
 then left one step short of playable.
 
 What's actually in the binary:
 
 - **A complete two-way split renderer.** The frame setup switches on the view
-  count with exactly two arms — one full-screen view, or **two stacked
+  count with exactly two arms: one full-screen view, or **two stacked
   half-height views** (top and bottom, each clipped to its own half). There is no
   three- or four-way path; it's strictly a two-player top/bottom split.
   (`BrFrameBeginDl`, `src/core/drawing/br_framebegin.c`)
 - **A per-view frame loop.** The frame drawer iterates `for (i = 0; i < views; i++)`,
   building each view's own camera and scene, and the camera code halves its height
-  "which is what a split screen needs." Every downstream system — HUD, lap-time
-  layout, on-screen captions, the "wait for player" prompts — already carries live
+  "which is what a split screen needs." Every downstream system (HUD, lap-time
+  layout, on-screen captions, the "wait for player" prompts) already carries live
   `views == 2` branches. (`BrFrameDraw`, `src/core/drawing/br_framedrive.c`;
   `src/core/scene/br_camera.c`)
 - **Generic multi-car control.** Cars are driven by a per-car function pointer;
@@ -114,35 +114,35 @@ The one missing piece is **input for a second local player**:
   one control layout. (`src/core/controls/br_inputpoll.c`, `br_ctrlquery.c`)
 - The routine that applies a player's controls to a car, `BrCtlInputApply`, takes
   a car pointer but reads its input from a **single global** with no device or
-  player index — hand it any car and it feeds that car the same one human's input.
+  player index: hand it any car and it feeds that car the same one human's input.
   (`src/core/driving/br_ctlinput.c`)
 
 To turn this into a working mode you would need to add a second device binding /
 control layout, give the input applier a per-player selector so entrant 0 and
 entrant 1 read different devices, assign the second entrant a human controller
-instead of the AI one, and expose the mode in a menu. Everything below that — the
-hard part, the rendering — is already done.
+instead of the AI one, and expose the mode in a menu. Everything below that (the
+hard part, the rendering) is already done.
 
 ## Status
 
 Two milestones, both measured in bytes of the game's own functions in
-BRGlide.dll — the hand-written target (in-scope EXE game code is separately
+BRGlide.dll: the hand-written target (in-scope EXE game code is separately
 complete). The rest of the DLL's code section is itemised under the bars. The block below
 is a snapshot; counts move as sessions land matches. Regenerate the bars and the
-treemap in one step with `python3 tools/progressbar.py` — do not hand-edit them.
+treemap in one step with `python3 tools/progressbar.py`: do not hand-edit them.
 
-<!-- PROGRESS:BEGIN — generated by tools/progressbar.py; do not edit by hand -->
+<!-- PROGRESS:BEGIN: generated by tools/progressbar.py; do not edit by hand -->
 _Snapshot 2026-09-29._
 
 ```
-M1  Contract-valid — compiles & ports (T3 + T4)
+M1  Contract-valid: compiles & ports (T3 + T4)
     ████████████████████████████████████████  100.0%   450,489 / 450,649 B   1,495 / 1,495 fns
 M2  Byte-exact (T4)
     ████████████████████████░░░░░░░░░░░░░░░░  59.4%   267,906 / 450,649 B   1,307 / 1,495 fns
 ```
 
 **What the bars measure.** Both bars count the game's own functions in
-BRGlide.dll — the code that has to be written by hand. M1 has complete.
+BRGlide.dll: the code that has to be written by hand. M1 has complete.
 M2 trails it by 188 functions (182,583 B) that are certified to behave exactly like
 the original but do not yet compile to identical bytes.
 
@@ -156,16 +156,16 @@ hand-written:
 | 7,975 | import stubs and C++ exception-handling glue | generated by the compiler and linker |
 | 2,078 | 2 functions the retail game never runs | written, but left out of the count (config/excluded.csv) |
 
-By binary — the three EXEs are complete at both milestones (their game code is fully
+By binary: the three EXEs are complete at both milestones (their game code is fully
 byte-exact; the static CRT filling out each image is reproduced by linking, not
 decompiled, and is out of scope). All remaining work is in BRGlide.dll.
 
-| Area | M1 — contract-valid | M2 — byte-exact |
+| Area | M1: contract-valid | M2: byte-exact |
 |---|---|---|
-| **BossRally.exe** | `████████████████████` 100% — 35/35 fns, 2,482 B | `████████████████████` 100% — 35/35 fns, 2,482 B |
-| **BRally.exe** | `████████████████████` 100% — 28/28 fns, 2,860 B | `████████████████████` 100% — 28/28 fns, 2,860 B |
-| **SetVideo.exe** | `████████████████████` 100% — 42/42 fns, 7,251 B | `████████████████████` 100% — 42/42 fns, 7,251 B |
-| **BRGlide.dll** | `████████████████████` 100.0% — 450,489 B, 1,495 fns | `████████████░░░░░░░░` 59.4% — 267,906 B, 1,307 fns |
+| **BossRally.exe** | `████████████████████` 100%: 35/35 fns, 2,482 B | `████████████████████` 100%: 35/35 fns, 2,482 B |
+| **BRally.exe** | `████████████████████` 100%: 28/28 fns, 2,860 B | `████████████████████` 100%: 28/28 fns, 2,860 B |
+| **SetVideo.exe** | `████████████████████` 100%: 42/42 fns, 7,251 B | `████████████████████` 100%: 42/42 fns, 7,251 B |
+| **BRGlide.dll** | `████████████████████` 100.0%: 450,489 B, 1,495 fns | `████████████░░░░░░░░` 59.4%: 267,906 B, 1,307 fns |
 <!-- PROGRESS:END -->
 
 Query the tree. Do not trust a number in this file.
@@ -181,7 +181,7 @@ Query the tree. Do not trust a number in this file.
 ```
 
 `image_build.py` is the Milestone-2 (byte-exact) gate; `image_build_t3.py` is
-the Milestone-1 (contract-valid) one — it compiles every T3-certified function
+the Milestone-1 (contract-valid) one: it compiles every T3-certified function
 as well and proves the whole corpus builds and places, emitting `BRGlide.T3.dll`.
 Its T3 bodies differ in bytes by design, but it is a **working drop-in**: it runs
 the retail game (tested in a Win98 VM under 86Box) and behaves identically to
@@ -194,37 +194,36 @@ byte-exact (`tools/t3.py --qualify`); T4 = bytes diff clean.
 
 "Not byte-exact" must still mean "does exactly what the original does". Two
 oracles run the **original game** headless (`tools/brbox.py`: the retail
-`BRGlide.dll` under Unicorn, driven by input scripts in `tools/brbox_scripts/` —
+`BRGlide.dll` under Unicorn, driven by input scripts in `tools/brbox_scripts/`:
 boot, menus, quick race to the finish, time attack and saves, championship and
 season save/load, options and video modes, cheats and credits, a force-feedback
 wheel, CD music, and two-machine DirectPlay races with join and dropout):
 
-- **A5 — per function** (`tools/t3live.py`, ledger `config/t3_live.csv`): at
+- **A5: per function** (`tools/t3live.py`, ledger `config/t3_live.csv`): at
   real calls in the running game, the original body and the T3 body run from the
   identical captured state; memory, imports, registers, x87 state and live
   return values must agree. Unreached functions are UNCOVERED, never passed.
-- **A7 — whole image** (`tools/brbox_diff.py --all`, ledger
+- **A7: whole image** (`tools/brbox_diff.py --all`, ledger
   `config/whole_image.csv`): the assembled `BRGlide.T3.dll` and the original run
-  every script side by side and must agree on **every frame** — every Glide call
+  every script side by side and must agree on **every frame**: every Glide call
   and its arguments, the whole data area, and every network packet (both
   machines of a network session run the image under test). Currently 26/26
   scripts identical.
 
 A7 exists because A5 alone was not enough: the whole-image run found some 25
-real transcription bugs — inverted branches, swapped or wrong arguments,
-off-by-one indexing, x87 rounding points, and image-builder relocation errors —
+real transcription bugs (inverted branches, swapped or wrong arguments,
+off-by-one indexing, x87 rounding points, and image-builder relocation errors)
 in functions A5 had certified. `t3.py --qualify` requires both, and A7 is never
 superseded. Bytes the original itself reads without ever writing (stale stack)
 are listed with their evidence in `config/ub_scrub.csv` and neutralised on both
 sides. Function counts
 overstate progress: remaining functions are several times larger than matched
 ones. Quote bytes with their denominator (the hand-written target shown in the
-bars, or BRGlide `.text` at 480,853 B — say which).
+bars, or BRGlide `.text` at 480,853 B: say which).
 
 In-scope EXE game code (BRally.exe, BossRally.exe, SetVideo.exe) is complete;
 what remains in those images is statically-linked CRT, reproduced by linking.
-The macOS/Metal port is a separate build (`./build.sh`); if it does not compile,
-see `docs/MEMORY.md`. C++ EH functions are a separate lane (`tools/cpp_sweep.py`).
+The macOS/Metal port is a separate build (`./build.sh`). C++ EH functions are a separate lane (`tools/cpp_sweep.py`).
 
 **macOS full-boot port (interim 32-bit lane, 2026-09-25).**
 `ports/macos/wasm/build_wasm.sh` compiles the verified build's sources to
@@ -261,7 +260,7 @@ A function is not done until it says what it does and lives in its module.
 a `WHAT IT DOES:` comment, creates a `sliceN_MM.c`, or adds a new VA to an
 existing address batch. `tools/fileaudit.py` is a ratchet across all three
 lanes (undescribed 0, batches 58, stranded 11) and fails on a bad `@t3` tag.
-After a refile: `python3 tools/portcheck.py --baseline main` — the sweep only
+After a refile: `python3 tools/portcheck.py --baseline main`: the sweep only
 compiles `/DBR_MATCHING_BUILD`. Moving byte-exact code can change it; sweep
 both files and keep the move only if nothing regressed.
 
@@ -276,20 +275,19 @@ The repo root is the decomp. `ports/` is derived platform code, not byte-matched
     tools/                    matching pipeline + staged MSVC 5.0
     config/                   function maps, globals, binaries.csv, fenced.csv
     build/match/              extracted reference bytes, per-function report
-    ports/macos/              macOS/Metal port — NEW code, no `@implements`
+    ports/macos/              macOS/Metal port: NEW code, no `@implements`
     n64/                      Top Gear Rally (IDO/MIPS); writes only build/n64/
 
 `@implements <addr>` is a hard claim: MSVC 5.0 emits those original bytes.
-The engine is dispatch-driven — only ~13% is reachable by following `call`
-from the entry point — so functions are taken leaves-first.
+The engine is dispatch-driven: only ~13% is reachable by following `call`
+from the entry point, so functions are taken leaves-first.
 
 Further reading: [ARCHITECTURE.md](ARCHITECTURE.md), [docs/MATCHING.md](docs/MATCHING.md),
-[docs/VC5-IDIOMS.md](docs/VC5-IDIOMS.md), `ports/README.md`. Retired starting
-docs live in `docs/archive/`.
+[docs/VC5-IDIOMS.md](docs/VC5-IDIOMS.md), `ports/README.md`.
 
 ## Building & Setup
 
-- **`./setup.sh`** — stages the matching build entirely inside the repo (nothing
+- **`./setup.sh`**: stages the matching build entirely inside the repo (nothing
   installed on the host). Downloads a pinned Wine build, copies MSVC 5.0 out of a
   VC++ 5.0 disc image, and extracts the game binaries and original function bytes
   from the retail disc. Needs (you supply; none tracked in git): `reference/msvc/VCPP-5.00.iso`,
@@ -298,7 +296,7 @@ docs live in `docs/archive/`.
 
 ### Reference data (you supply; none tracked in git)
 
-These are the exact dumps the match counts were produced against — `setup.sh`
+These are the exact dumps the match counts were produced against: `setup.sh`
 checks the MD5s and warns if a different image is in `reference/`.  Without
 them the tree still builds and the suites that need retail data skip with a
 reason, but the matching pipeline cannot run and no byte-exact claim can be
@@ -316,14 +314,14 @@ reference/tgrally/Top Gear Rally (USA).z64    Top Gear Rally ROM (optional)
 
 Rosetta 2 is required on Apple Silicon (the Wine build is x86_64). `setup.sh`
 pulls `BRD3D.dll`, `BRGlide.dll` and the other game binaries out of the BIN
-into `orig/` — do not copy them by hand. Assets are extracted from the same
+into `orig/`: do not copy them by hand. Assets are extracted from the same
 images and never committed or redistributed; without them the tree still
 builds and the suites that need retail data skip with a reason.
 
-- **`sh build_match.sh`** — compiles with the original compiler and diffs; each
+- **`sh build_match.sh`**: compiles with the original compiler and diffs; each
   function reports MATCH or DIFF with the first divergence. `tools/pe_patch.py`
   patches matches back into the DLL for drop-in testing.
-- **`./build.sh`** — builds the macOS port with clang (core + tests + a runnable
+- **`./build.sh`**: builds the macOS port with clang (core + tests + a runnable
   `build/brally`). Modules and tests are auto-discovered. `./tools/regress.sh`
   runs every suite.
 
@@ -332,11 +330,11 @@ builds and the suites that need retail data skip with a reason.
 A second, separate decompilation lives in `n64/`: *Top Gear Rally* (N64,
 1997), matched byte for byte against the retail ROM under SGI's IDO 5.3
 compiler. It keeps its own sources, headers, symbols and tools, so nothing in
-it touches the PC work. It follows the same T1–T4 tiers and the same two
+it touches the PC work. It follows the same T1-T4 tiers and the same two
 milestones. M1 counts functions certified as behaving exactly like the
 original (T3) plus byte-exact ones (T4). M2 counts byte-exact functions only.
 
-<!-- N64-PROGRESS:BEGIN — generated by tools/progressbar.py; do not edit by hand -->
+<!-- N64-PROGRESS:BEGIN: generated by tools/progressbar.py; do not edit by hand -->
 _Snapshot 2026-09-29._
 
 ```
@@ -349,7 +347,7 @@ M2  Byte-exact (T4)
 
 The denominator is the ROM's game-code functions. Nintendo's system library and
 the compression library are fenced out as each of their functions is identified,
-the way the PC lane excludes Microsoft's C runtime — so the count shrinks as more
+the way the PC lane excludes Microsoft's C runtime, so the count shrinks as more
 library code is recognised.
 
 ![Top Gear Rally decomp progress treemap](docs/progress-map-n64.svg)
@@ -377,7 +375,7 @@ system, the controllers, a Controller Pak and a Rumble Pak modelled and
 everything else executed for real. **A5** (`n64/tools/n64t3.py`, ledger
 `n64/config/t3_live.csv`) replays each T3 body against the original at real
 calls; **A7** (`n64t3.py --image`, ledger `n64/config/whole_image.csv`) runs
-the whole image with every T3 body placed and must agree on every frame —
+the whole image with every T3 body placed and must agree on every frame:
 every display list and audio task, and the game's RAM.
 
 Both are only as good as the play they see, so the 60 input scripts in
@@ -387,8 +385,8 @@ and two players, arcade, time attack, practice and championship (one race
 driven all three laps to the flag, through the instant replay and results),
 the camera views, all five controller layouts, the cheat codes, the credits
 demos, the paint shop and the Controller and Rumble Paks. Most are written by
-`n64/tools/n64drive.py`, which plays the ROM toward a plan — menu rows, cheats,
-cars, then a race on the computer drivers' own racing line — and records the
+`n64/tools/n64drive.py`, which plays the ROM toward a plan: menu rows, cheats,
+cars, then a race on the computer drivers' own racing line, and records the
 pad as a script that replays identically. `n64/tools/n64probe.py --cover`
 reports which functions the scripts reach: 343 of the 403 byte-exact
 functions, and every T3.

@@ -818,7 +818,7 @@ extern uint8_t      g_aBrFontBlockSmall[];  /* 0x1009D218 */
  * (scale/b transposed at +0x10/+0x14) and the stride-vs-vaBlock promotion in
  * the glyph window, whose downstream echo is the one classified lea~shl fork
  * in the clamp arm -- see RESIDUE and DEAD PROBES in this header.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x10015B10 glide BrTextEmitString */
 void BrTextEmitString(const char *psz)
 {
@@ -1142,7 +1142,7 @@ void BrTextEmitString(const char *psz)
  * @t3-effort passes 5 zero-movement 4 5
  * residue after tools/crank.py: 40 compiles this pass, levers accepted: none;
  * every candidate and score is in build/match/crank.log.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x10016980 glide BrFontMeasure */
 extern int DAT_106ed674;
 extern signed char DAT_100a58f7[];
@@ -1489,7 +1489,7 @@ void BrSub10073980(void)
                           0, 0, 0, 0, 0, 0, 1, 0);
 }
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* -- Ghidra-matched functions --------------------------- */
 typedef int (*funcptr)();
 extern int DAT_100b64b0;
 extern int DAT_100ba2d0;

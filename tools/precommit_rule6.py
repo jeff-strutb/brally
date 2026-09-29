@@ -112,7 +112,7 @@ def main():
             else:
                 # THE GAP THAT MADE THE BACKLOG. Refusing a NEW sliceN_MM.c
                 # never stopped anyone dropping a new match into an EXISTING
-                # one, which is exactly what tools/autofile.py did by address
+                # one, which is exactly what the retired autofile tool did by address
                 # -- 570 byte-exact functions stranded that way, and clearing
                 # them cost a whole session. A match must be BORN in its
                 # module. Compared by VA against HEAD so that re-spelling a
@@ -140,7 +140,7 @@ def main():
     if not bad and not batches and not filed_into_batch:
         return 1 if conds else 0
 
-    print('\nRULE 6 (CLAUDE.md): a decompiled function is not done until it')
+    print('\nRULE 6: a decompiled function is not done until it')
     print('says what it does and lives in its module.\n')
     for rel, ln, va in bad:
         print('  NO DESCRIPTION  %s:%d  %s' % (rel, ln, va))

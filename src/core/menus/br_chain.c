@@ -30,7 +30,7 @@ void __fastcall BrChainFreeRec_10058C90(int param_1)
 }
 
 
-/* Hand-matched from disassembly â 0x10058C70
+/* Hand-matched from disassembly: 0x10058C70
  * fastcall: pointer arrives in ecx, five consecutive dwords zeroed, ret. */
 
 /* WHAT IT DOES: the constructor of the bounds-tree Node (0x14 bytes) that

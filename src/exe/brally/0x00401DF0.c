@@ -1,4 +1,4 @@
-/* Auto-generated from disassembly — 0x00401DF0
+/* Auto-generated from disassembly: 0x00401DF0
  * IAT thunk: jmp [_except_handler3]. */
 /* WHAT IT DOES: jump to the CRT's exception handler through the import
  * table. A linker-generated thunk, not launcher code. */

@@ -181,7 +181,7 @@ extern float DAT_106e7930[16];   /* the sprite matrix */
  * `shr8;shr8` third-index vs our `shr0x10`, byte-RMW clip tests, frame 0x68
  * vs 0x60 -- all x87/integer scheduling.  A5 EQUIVALENT with teeth (see the
  * T3-RESOLVED note above and the @t4-pass ledger).  Colouring wall; do not
- * reopen before the end-grind (CLAUDE.md rule 12). */
+ * reopen before the end-grind. */
 /* @implements 0x1000CBA0 glide BrObjDlBuild */
 void BrObjDlBuild(int pRects, int idx, uint32_t cls, int bLit, int pScene)
 {

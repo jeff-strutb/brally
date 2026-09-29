@@ -97,7 +97,7 @@ int  BrSub10075020(void);            /* 0x1006E280  millisecond clock      */
  * @t3-effort passes 2 zero-movement 1 2
  * residue after tools/crank.py: 40 compiles this pass, levers accepted: none;
  * every candidate and score is in build/match/crank.log.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x10023B70 glide BrFramePresent */
 void BrFramePresent(BrGfxWords *pCmd)
 {

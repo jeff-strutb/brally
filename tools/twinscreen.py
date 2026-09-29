@@ -18,7 +18,7 @@ construction, so a real twin still shows a few dozen: the useful threshold is
     .venv/bin/python tools/twinscreen.py --max 80    # only very close pairs
     .venv/bin/python tools/twinscreen.py --families  # unsolved groups
 
-‼ THE FAMILY LANE IS DRAINED, measured 2026-09-05.  --families finds ZERO
+!! THE FAMILY LANE IS DRAINED, measured 2026-09-05.  --families finds ZERO
 unsolved same-size groups anywhere in BRGlide at a mutual distance of 150
 bytes or less, at any size from 60 bytes up; the five that appear at 300 are
 unrelated functions that happen to share a length.  The pair screen is down
@@ -52,7 +52,7 @@ if os.path.exists(fp):
     for m in re.finditer(r'0x([0-9A-Fa-f]{8})', open(fp).read()):
         fenced.add(int(m.group(1), 16))
 
-# ‼ BOTH LANES, or the screen lies.  The C++ EH lane carries ~200 finished
+# !! BOTH LANES, or the screen lies.  The C++ EH lane carries ~200 finished
 # functions that no report.csv row mentions, and reading only report.csv
 # reports every one of them as fresh work -- which is exactly how the
 # nine-member BrOpt* family cost a session in 2026-09-03.  The first version
@@ -91,7 +91,7 @@ for f in glob.glob(os.path.join(ORIG, '0x*.bin')):
     bysize.setdefault(len(b), []).append((va, b))
 
 if '--families' in sys.argv:
-    # ‼ A CAUSE GROUP NEED NOT CONTAIN A MATCHED MEMBER.  The screen above only
+    # !! A CAUSE GROUP NEED NOT CONTAIN A MATCHED MEMBER.  The screen above only
     # finds an unmatched function next to a SOLVED one; a family where nobody
     # has solved anyone yet is invisible to it, and those are the ones worth
     # the most -- solve one member by hand, instantiate the rest.  This mode

@@ -6,7 +6,7 @@
 
 int FUN_1006e590();
 
-/* WHAT IT DOES: thunk â forwards to the shared no-op at 0x1006E590. */
+/* WHAT IT DOES: thunk: forwards to the shared no-op at 0x1006E590. */
 /* @implements 0x1005C440 glide BrThunk5C440 */
 
 int BrThunk5C440(void)

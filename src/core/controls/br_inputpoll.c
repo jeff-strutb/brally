@@ -230,8 +230,8 @@ __declspec(dllimport) short __stdcall GetAsyncKeyState(int vk);
  * the mouse-accumulate site then regresses, so the two front ends are
  * mutually exclusive here.  Dossier and dead-probe list: this file's header
  * (a8 series, hand) and the two crank ledgers above; idioms at the tail of
- * docs/VC5-IDIOMS.md.  Do not reopen before the end-grind (CLAUDE.md rule
- * 12); the only live lead is a C1XX spelling for the mouse accumulate. */
+ * docs/VC5-IDIOMS.md.  Do not reopen before the end-grind;
+ * the only live lead is a C1XX spelling for the mouse accumulate. */
 /* @implements 0x100706D0 glide BrInputPoll */
 uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
 {

@@ -22,7 +22,7 @@
  *
  *     10019A70  sub  esp, 0x34          ; 52 bytes of locals, 4-byte aligned
  *     10019A73  push ebx / ebp / esi / edi
- *     …         xor  ebp, ebp           ; ebp is a GENERAL register
+ *     ...         xor  ebp, ebp           ; ebp is a GENERAL register
  *
  * `and esp,-8` means some local wants 8-byte alignment (a `double` or
  * `__int64`; Ghidra's `float10` is an x87 return, not a slot).  Retype or
@@ -30,8 +30,8 @@
  * Until instruction one matches, nothing downstream can.
  *
  * Then grow section by section and recompile; the first divergence is the
- * progress bar.  131 distinct callees — wrong signatures corrupt call
- * sites — so this is last among the big targets, not first.  No
+ * progress bar.  131 distinct callees: wrong signatures corrupt call
+ * sites, so this is last among the big targets, not first.  No
  * `@implements` until the whole 11,223 bytes diff clean.
  *
  * Its very first branch splits it in two, and the split is the shape of this

@@ -671,7 +671,7 @@ int32_t BrTextListConfig(BrTextList *pList, int32_t a1, const void *pStyle,
  * count to 99 -- so the hundredth row is overwritten again and again rather
  * than the list growing.  +0x2C is NOT ported, so that path faults.
  *
- * GOTCHA: the a5 == 0 path's strncpy(â¦, 10) does not NUL-terminate a source of
+ * GOTCHA: the a5 == 0 path's strncpy(..., 10) does not NUL-terminate a source of
  * ten or more characters, and the strcat that follows then scans past it.  In
  * practice the constructor has zeroed the whole 0x400-byte buffer, so byte 10
  * is a NUL and the append lands there.  Preserved, not fixed.

@@ -7,8 +7,7 @@ Query this book; do not read it cover to cover.
 ```
 
 Every entry was proven by a byte diff against BRGlide.dll. Add a newly proven
-construct→codegen mapping to the **tail**. Each idiom is solved once. Session
-dumps and finished-lane notes live in `docs/archive/`.
+construct->codegen mapping to the **tail**. Each idiom is solved once.
 
 Where an older entry says "T3a" it means allocation/scheduling residue; "T3b"
 means the differential oracle said EQUIVALENT. Both are inputs to T3, not tiers.
@@ -21,24 +20,24 @@ original source must have had to force those bytes.
 
 Worked example (BrCarStatePack, 738 B, matched 2026-08-22): the original did
 `mov bl,al` (byte) after a call where we emitted `mov ebx,eax` (dword). Not a
-spelling problem — the original PROTOTYPE returned a char-width type.
+spelling problem: the original PROTOTYPE returned a char-width type.
 Changing `int32_t BrFixPackS6Q7Neg/Level/U8Range(float)` to `int8_t` matched
 the caller AND flipped a helper to match for free.
 
 ## Proven idioms
 
-- **Flag-from-float:** `(f != 0.0f)` → `fld; fcomp [0.0 const]; fnstsw ax;
+- **Flag-from-float:** `(f != 0.0f)` -> `fld; fcomp [0.0 const]; fnstsw ax;
   test ah,0x40;` + jne/xor-vs-mov-1 branch pair. `(f != 0) ? 0x80 : 0` picks
   the constant into the mov.
 - **Hoist order across calls is source left-to-right.** Subexpressions that
   must survive a call (flags into ebx/ebp, spills into stack slots) are
   hoisted in left-to-right source order. To hoist A before B, A's term must
-  come first in the expression — or be a prior statement.
+  come first in the expression, or be a prior statement.
 - **Two stores, then an eax-clobbering load: mention the edx value first.**
   `r.p1 = param_2; r.p2 = param_3; flag = r.f268;` hoists param_2 into edx
   and param_3 into eax; the flag load clobbers eax, so param_3 is stored
   first even though it was assigned second. Writing the stores in byte
-  order (`r.p2 = param_3; r.p1 = param_2`) inverts the hoist — 4
+  order (`r.p2 = param_3; r.p1 = param_2`) inverts the hoist: 4
   displacement diffs, REGNORM 0. Ghidra's `unsigned short iStack_40` for
   that flag is a mis-type: orig is `mov eax, dword [slot]` /
   `mov [slot], edi`. Proven 0x100298C0 (216 B, MATCH /O2).
@@ -47,17 +46,17 @@ the caller AND flipped a helper to match for free.
 - **Accumulate stores:** `b[k] = x; b[k] |= y;` emits one store per statement
   with the value register-forwarded (no reloads). `t |= X; b[k] = t` leaves
   the or result in t's register; `b[k] = t | X` leaves it in al. The operand
-  order of `|` itself is canonicalized — swapping does nothing.
+  order of `|` itself is canonicalized: swapping does nothing.
 - **Byte ops need byte types end to end:** `and bl,0x3f` / `shl al,6` come
   from uint8_t-typed locals and char-width return types, not from masks on
   ints.
 - **Direct struct reads vs float locals:** both-memory products emit
   `fld [mem]; fmul [mem]`. A float local assigned from memory is copied via
   INTEGER mov to a stack slot and multiplied from the slot. A function mixing
-  both (squares from locals, cross terms direct — BrRbBuildMatrix) shows the
+  both (squares from locals, cross terms direct: BrRbBuildMatrix) shows the
   mix in the bytes; transcribe it, don't normalize it.
 - **`(int)float` is always a `__ftol` CALL** (truncating). A bare `fistp`
-  with no fldcw around it (round-to-nearest) CANNOT come from VC5 C —
+  with no fldcw around it (round-to-nearest) CANNOT come from VC5 C:
   `/QIfist` does not exist in VC5 (warning D4002). Such code was inline
   `__asm` in the original and needs an asm-hybrid mechanism (none in the
   tree yet). First known case: BrDlCmdVtx 0x10021A20.
@@ -65,13 +64,13 @@ the caller AND flipped a helper to match for free.
   VC5 canonicalizes the DAG, so x87 scheduling residue (operand selection:
   `fld st5; fmul [mem]` vs `fld [mem]; fmul st5`; spill-slot count; fst vs
   fstp) is allocator-internal and NOT source-reachable. Documented wall
-  class — see divergence-class triage. Do not burn time here.
+  class: see divergence-class triage. Do not burn time here.
 
 - **Re-deref, don't cache:** the original often writes `*p` repeatedly and
   lets CSE cache it; an explicit `v = *p` local changes register allocation
   (VC5 reuses the local's register where the CSE shape burns a fresh one).
   Dropping the local matched BrSegPtrFixup (43 B) outright. Same for
-  `ftell(*pp); fseek(*pp,...)` — orig `mov r,[esi]` at every CRT call,
+  `ftell(*pp); fseek(*pp,...)`: orig `mov r,[esi]` at every CRT call,
   IAT slots CSEd into edi/ebp; `FILE *f = *pp` folds those. Proven
   0x100032D0 BrChkFileSize (70 B, MATCH /O2).
 - **`(uint8_t)(x >> 20) & 1` vs `x & 0x100000`:** `mov edx,ecx; shr edx,20;
@@ -80,7 +79,7 @@ the caller AND flipped a helper to match for free.
 - **Allocator-internal residue in integer code:** which byte temp gets cl vs
   dl, and which register holds a loaded offset (eax vs esi), cascade locally
   then resync. Three different source shapes (temp decl order, reuse target)
-  compile byte-identical — same wall class as float scheduling, but rarer
+  compile byte-identical: same wall class as float scheduling, but rarer
   and smaller. Land the structural match and move on.
 
 - **Dead load:** `(void)*(volatile int32_t *)&p->field;` emits exactly one
@@ -88,22 +87,22 @@ the caller AND flipped a helper to match for free.
 - **Zero-register (ebx) trigger:** VC5 dedicates a callee-saved register to
   the constant 0 when zero feeds many small STORES through branchy code.
   Ternaries (`c ? 0x80 : 0`) that compile to setcc/materialized ints can
-  suppress it — spelling the same logic as branchy if/else stores flipped
+  suppress it: spelling the same logic as branchy if/else stores flipped
   BrPadTranslate from 625 diffs to 220.
-- **Switch operands are compared SIGNED** (`jg` not `ja`) — switch on
+- **Switch operands are compared SIGNED** (`jg` not `ja`): switch on
   int32_t, not uint32_t.
-- **BR_THISCALL1 (`__fastcall`, one arg) reproduces thiscall exactly** —
+- **BR_THISCALL1 (`__fastcall`, one arg) reproduces thiscall exactly**:
   confirmed live on BrPadTranslate.
 - **Switch vs else-if:** a 15-case sparse switch lowers to a binary compare
   tree; the equivalent else-if chain lowers to a LINEAR ladder (worse). But
   the tree's node form can still differ (compacted `cmp;jg;je` vs the
-  original's `cmp;jg;cmp;je`) — an unresolved lowering-shape wall, first
+  original's `cmp;jg;cmp;je`): an unresolved lowering-shape wall, first
   seen on BrInputIsDown.
 - **Ghidra folds default-equivalent case labels, collapsing a jump table
   to a range check.** `switch(x) { case 2: case 3: case 4: return 1;
   default: return 2; }` compiles to `cmp eax,2; jl; cmp eax,4; mov eax,1;
   jle; mov eax,2; ret` (32 B). The original also listed
-  `case 11: case 12: return 2;` (same value as default — Glide texfmt
+  `case 11: case 12: return 2;` (same value as default: Glide texfmt
   ARGB1555/4444), which keeps the dense range 2..12 and emits the
   two-level table: `add eax,-2; cmp eax,0xa; ja; xor ecx;
   mov cl,[eax+btab]; jmp [ecx*4+ptab]; mov eax,1; ret; mov eax,2; ret`
@@ -111,7 +110,7 @@ the caller AND flipped a helper to match for free.
   32 B); a two-case cluster or a run through the high bound is not.
   Distinguishing bytes: `83 c0 fe 83 f8 0a 77` vs `83 f8 02 7c`. Proven
   0x10024DF0 (texture bytes-per-texel). The byte table
-  `[0,0,0, 2,2,2,2,2,2, 1,1]` (holes 5–10 → default slot 2; 11–12 → slot 1
+  `[0,0,0, 2,2,2,2,2,2, 1,1]` (holes 5-10 -> default slot 2; 11-12 -> slot 1
   even though both code addresses are `return 2`) is how you recover that
   the high labels were a separate case-group, not a filled-in 5..12 run.
   **Void function: `return` not `break`.** Empty `case X: break;` groups
@@ -120,10 +119,10 @@ the caller AND flipped a helper to match for free.
   DPSYS_* (3, 0x21, 0x31, 0x101, 0x102, 0x103 empty; 5 and 0x107 live)
   is a 0x31..0x107 two-level table. Proven 0x10009530 BrDPlaySysMsgDispatch
   (116 B body, MATCH /O2).
-- **The residue ceiling on big int functions:** four of five 490–700 B
-  functions landed at 4–24 divergent bytes, every one an allocator choice
+- **The residue ceiling on big int functions:** four of five 490-700 B
+  functions landed at 4-24 divergent bytes, every one an allocator choice
   (byte-reg pick, esi/edi role, imm-vs-pooled constant). Getting to that
-  ceiling took 3–10 min each; crossing it needs a type/shape insight (as
+  ceiling took 3-10 min each; crossing it needs a type/shape insight (as
   byte-width returns were for BrCarStatePack) or does not happen.
 
 - **POD writer Add (0x10008BE0, 158 B, MATCH /O2):** thiscall on a
@@ -158,9 +157,9 @@ the caller AND flipped a helper to match for free.
   test byte [esp+8],1; jz; push esi; call operator delete`).
   **Call site: do not pass literal 0 for `_edx_unused`.** That emits
   `xor edx,edx` (the Ghidra `CC_fast_4(..., 0, args)` miss). Pass a value
-  already live in edx — here the first stack arg, which the original loads
+  already live in edx: here the first stack arg, which the original loads
   into edx (`mov edx,[esp+4]`) and then `push edx`. `f(this, param_1,
-  param_1, …)` keeps ecx=this, four stack args, no edx setup. Proven
+  param_1, ...)` keeps ecx=this, four stack args, no edx setup. Proven
   0x1003AF30 (42 B, MATCH /O2).
   **Vtbl call `push 1; mov ecx,this; mov edx,[ecx]; call [edx+0x18]`:** pass
   `pThis->pVtbl` as the edx slot so edx IS the vtable, and keep `pGame->pSub`
@@ -172,18 +171,18 @@ the caller AND flipped a helper to match for free.
   caller as C++: `pObj->f00(1)` on a `virtual` method. No named temp on
   the later pointer copy (`DAT_dst = DAT_src`) keeps ecx. Proven
   0x1003D4A0 / 0x1003D510 / 0x1003DA10. Non-EH C++ TUs (no `new`) have
-  no FuncInfo on either side — that is a 4/4 vacuous sidecar, not a miss.
+  no FuncInfo on either side: that is a 4/4 vacuous sidecar, not a miss.
   **Generatored 2026-09-01:** the whole phase-leave family (33 corpus
   members starting `8b442404 8b88e82a0000 8b11 ff521c`) is stamped by
-  `tools/gen_phaseleave.py` from this skeleton — 28 members matched 4/4
+  `tools/gen_phaseleave.py` from this skeleton: 28 members matched 4/4
   first try, +1 hand-filed variant (0x1003E450, its own head slot).
   Only 0x1003FB10 (thiscall helper tail) and 0x100403B0 (second vcall
   on another object) leave the grammar.
 - **C++ `/GX` `new T` (maxState=1 op-delete):** thiscall member, `if (p == 0)
-  { p = new T; … } else { cur = p; } return 1;` with the `return 1` AFTER the
+  { p = new T; ... } else { cur = p; } return 1;` with the `return 1` AFTER the
   if/else. `if (p != 0)` or `return 1` inside both arms CSE's 1 into the
   f0C/f68 stores (`89` vs orig `c7`). DECLARE ctor, no dtor (unwind is
-  `??3` only). Six activates matched: docs/archive/cpp-family2-notes.md.
+  `??3` only). Six activates matched.
   Sequential `new`s in one function: maxState = count, every toState=-1,
   every unwind action 11 B `push; call ??3; pop; ret`.
 - **C++ thiscall `PutByte(unsigned char)` not `unsigned`:** a char stack
@@ -204,17 +203,17 @@ the caller AND flipped a helper to match for free.
   eax/ecx coloring remains).
 - **ECX copy-propagation:** after `mov esi,ecx`, calling a thiscall callee
   with an explicit `this` argument (`Dtor(param_1)`, callee declared
-  `__fastcall`) emits NO `mov ecx,esi` reload — VC5 knows ECX still holds
+  `__fastcall`) emits NO `mov ecx,esi` reload: VC5 knows ECX still holds
   it. So the callee can carry its real prototype (proven BrVt55A10DeleteDtor).
-- **`ret imm16` ⇒ stdcall with imm/4 word args.** For the callee: declare it
+- **`ret imm16` => stdcall with imm/4 word args.** For the callee: declare it
   `__stdcall` with that many params (caller then emits no `add esp,N`); for
   the function itself: pad to imm/4 params (`int __stdcall f(int,int,int)
   {return 0;}` = `33 c0 c2 0c 00`). Proven BrObj54710Dtor, BrRet0Std3.
-- **Win32 imports are `__declspec(dllimport)`** — `call [__imp__X]` (FF 15),
+- **Win32 imports are `__declspec(dllimport)`**: `call [__imp__X]` (FF 15),
   never `call X` (E8). windows.h provides it; hand prototypes must carry it.
   Proven BrDllMain.
-- **A nested `if (p) { …; if (p && x) }` deletes the second null test.**
-  Sibling `if (p) { … } if (p && x)` keeps `cmp p,0; je`. Proven
+- **A nested `if (p) { ...; if (p && x) }` deletes the second null test.**
+  Sibling `if (p) { ... } if (p && x)` keeps `cmp p,0; je`. Proven
   0x10009A40 BrDPlayShutdown (178 B, MATCH /O2).
 - **Two tests of the same `hr >= 0` (one wrapping the body, one as the
   loop-exit) keep a shared `add esp; cmp; jge loop`.** A single
@@ -233,7 +232,7 @@ the caller AND flipped a helper to match for free.
   is cdecl and emits `call [DAT]; add esp,N` (+3 bytes per call). Four
   stdcall calls (4/1/2/2 args) were the 14 extra bytes on 0x10002580
   (`83 c4 10` right after the first `FF 15`, shifting every later je).
-  Distinguisher: `FF 15 … 85 c0` vs `FF 15 … 83 c4`. Also: `if (fp(...)
+  Distinguisher: `FF 15 ... 85 c0` vs `FF 15 ... 83 c4`. Also: `if (fp(...)
   != 0)` (no temp) is `test eax,eax`; `iVar1 = fp(...); if (iVar1 != 0)`
   with a live zero-register is `cmp eax, esi`. Proven 0x10002580 (CD
   redbook init, 471 B). Remaining residue after this fix is the store
@@ -241,12 +240,12 @@ the caller AND flipped a helper to match for free.
   xor ecx,ecx`) for a 7-store prefix then hoists `push 0x10000020`
   after the handle load; ours uses esi for every zero and hoists the
   push immediately. Named temps, comma-join, volatile load, and a
-  handle local all failed to force the edx/ecx pair — that burst is
+  handle local all failed to force the edx/ecx pair: that burst is
   scheduler-internal once the stdcall shape is right.
-- **The binary is /MD — CRT calls are FF 15 too.** Put
+- **The binary is /MD: CRT calls are FF 15 too.** Put
   `#ifdef BR_MATCHING_BUILD / #define _CRTIMP __declspec(dllimport) / #endif`
-  BEFORE the first include (any header pulling a CRT decl locks _CRTIMP empty
-  — the errno C2370 error means the define came too late). Applied tree-wide
+  BEFORE the first include (any header pulling a CRT decl locks _CRTIMP empty:
+  the errno C2370 error means the define came too late). Applied tree-wide
   2026-08-23: +16 matches at zero losses, including the whole BrFixPack
   family that had been misfiled as register-allocation walls. When a
   CRT-calling function sits 1-5 diffs away, check the call form FIRST.
@@ -255,8 +254,8 @@ the caller AND flipped a helper to match for free.
   bare `jmp`; `do{}while(1)` emits `mov eax,1; test eax,eax; jne`. The
   original used `for(;;)` (Ghidra prints `do{}while(true)`). Proven
   0x1002DE04.
-- **Comparison operand order survives:** `if (a > b)` → `cmp a,b; jle`;
-  `if (b < a)` → `cmp b,a; jge`. Ghidra canonicalizes to `<`; the original
+- **Comparison operand order survives:** `if (a > b)` -> `cmp a,b; jle`;
+  `if (b < a)` -> `cmp b,a; jge`. Ghidra canonicalizes to `<`; the original
   was `>` (proven BrCdTrackNext). Unsigned globals give `jb`/`ja` (proven
   BrSecondTickLoop). Byte globals need `char` externs (`mov cl,[x]`, proven
   BrMenuLatchPending). The `--refine` pass of ghidra_to_match tries all three.
@@ -264,7 +263,7 @@ the caller AND flipped a helper to match for free.
   prints `if (bound <= (int)idx)` for original `if (idx >= bound)` (it
   wraps the originally-first operand when it thinks the global might be
   unsigned). Bytes: `cmp idx, bound; jl` (3B D7 / 7C) vs `cmp bound, idx;
-  jg` (3B FA / 7F) — two diffs, ModR/M + jcc. `_CMP_RE` is
+  jg` (3B FA / 7F): two diffs, ModR/M + jcc. `_CMP_RE` is
   `[^()<>=!&|]+` so the nested parens of `(int)idx` never match and the
   existing flip refine cannot fire. Strip the cast AND flip. Proven
   0x10008F90 (114 B, MATCH /O2).
@@ -276,7 +275,7 @@ the caller AND flipped a helper to match for free.
   twins (string-as-int, below) both landed in the 137-wide `long` bucket.
   65 of those 137 extras were exactly 16-byte-align padding. Strip
   trailing 0x90/0xCC down to orig_size before classifying. Proven
-  0x10008F90 (extra = 14× `90` after `c3`).
+  0x10008F90 (extra = 14x `90` after `c3`).
 - **A string passed to a function is an array (or a literal), not
   `extern int`.** `f(s_Foo)` with `extern int s_Foo` emits
   `mov r, [s_Foo]; push r` (load the first dword as a value). Original
@@ -284,7 +283,7 @@ the caller AND flipped a helper to match for free.
   0x10008E60 / 0x10008E90 (48 B twins; Ghidra typed
   `s_File_read_failure` as int). The fread temp
   (`sVar1 = fread(...); if (sVar1 != n)`) is a no-op vs
-  `if (fread(...) != n)` — both compile identical.
+  `if (fread(...) != n)`: both compile identical.
 - **`while (p->next) p = p->next;`** keeps `p` in ECX and loads via
   `mov ecx,eax; mov eax,[ecx+N]`; Ghidra's two-temp form loads through EAX
   (proven BrSndListAppend).
@@ -316,23 +315,23 @@ the caller AND flipped a helper to match for free.
   FLD operand. Works per component; proven BrVec3Midpoint (glide order:
   x pB-first, y/z pA-first). Does NOT work for fmul-by-scalar (BrVec3Scale
   stays walled) or to force a `mov reg,reg` copy of a stored temp
-  (BrCursorPairSet stays walled — chained/cast/struct temps all fold).
+  (BrCursorPairSet stays walled: chained/cast/struct temps all fold).
 
 - **Cross-jumped identical calls:** when every branch of an if/else chain
   makes the SAME call differing only in one constant arg, VC5 merges the
   common push suffix and each branch jumps into it after pushing its own
   constant (`push 0xe; jmp common`). A single shared call through a variable
-  pushes a REGISTER instead — the source must repeat the call per branch
+  pushes a REGISTER instead: the source must repeat the call per branch
   (macro chains are fine). Proven BrGlideResOpen, 545 B first try.
   **Ghidra CSE's this into temps + one call, which is the `short` class.**
-  It prints nested `if (g == 0) { … t1=A; t2=B; } else { t1=C; t2=D; }
+  It prints nested `if (g == 0) { ... t1=A; t2=B; } else { t1=C; t2=D; }
   f(p, t1, t2);` (range-check polarity, shared call). Original is an
-  else-if `!= 0` chain with the call spelled in each arm — even when two
+  else-if `!= 0` chain with the call spelled in each arm, even when two
   arms push the SAME immediates (do NOT OR the guards: `if (b4 || b0)`
   emits one push-pair, original has two). Bytes: `test; jz next_arm;
   push imm32; push imm32; jmp common` vs a register-arg call after
   mov-imm. Distinguisher: `68 xx xx xx xx 68 yy yy yy yy eb` (push/push/jmp)
-  vs `8b … 50 51 e8` (load temps, push regs, call). The two Glide callees
+  vs `8b ... 50 51 e8` (load temps, push regs, call). The two Glide callees
   are `__stdcall` with `float` near/far (E8 to 6-byte thunks, no
   `add esp`). Proven 0x10023AA0 (103 B fog-table builder, MATCH /O2;
   Ghidra's temp form was 48 B, the 55-byte "short" was the three extra
@@ -350,7 +349,7 @@ the caller AND flipped a helper to match for free.
   counter was block-scoped inside a loop body. Proven BrEntGfxRebindAll
   (424 B). Note also the pair anomaly seen while probing: with three
   same-typed locals in loops, the two outer counters swapped slots by decl
-  order while the innermost always took the last slot — trust the byte
+  order while the innermost always took the last slot: trust the byte
   probe, not a rule, when slots misbehave.
 - **`xor cl,cl`-free unsigned byte load:** `xor ecx,ecx; mov cl,[mem]` is an
   UNSIGNED char global read widened to int (`extern unsigned char`);
@@ -364,11 +363,11 @@ the caller AND flipped a helper to match for free.
   source wrote `a*2 + b`, not `b + a*2`. Proven BrDlRectCmdEmit.
 - **Global post-increment via re-read:** `p = G; G = G + 2; *p = k;` loads G
   twice (mov, mov+add+store) then stores through the saved copy. `p = G;
-  *G = k; G = p + 2;` orders the opcode store BEFORE the advance — different
+  *G = k; G = p + 2;` orders the opcode store BEFORE the advance: different
   bytes. Match the original's order of advance vs store.
 
 - **/Od branchless ternary:** `x ? K : 0` (and `x ? 1 : 2`) compile to
-  `mov; neg; sbb; and/add` even at /Od — the neg/sbb borrow trick is the
+  `mov; neg; sbb; and/add` even at /Od: the neg/sbb borrow trick is the
   TERNARY's codegen, while `-(x != 0) & K` emits cmp/setne. Proven
   BrFrameBeginDl.
 - **Display-list emit is a struct post-increment.** The DL write pointer is
@@ -376,11 +375,11 @@ the caller AND flipped a helper to match for free.
   `{ BrDlCmd *p_ = DAT_106e7710++; p_->op = C; p_->arg = A; }` (a macro).
   The post-increment's temp lands at the BOTTOM of the /Od frame (with the
   switch-selector temp), while each block-scoped `p_` gets its own top-down
-  slot — a 23-emit function burns 0x60 bytes of frame. As a call argument,
+  slot: a 23-emit function burns 0x60 bytes of frame. As a call argument,
   `f(DAT_106e7710++, ...)` gives push-then-advance. Proven BrFrameBeginDl
   (1421 B) after BrDlRectCmdEmit/BrDlScreenRectEmit matched the same shape
   spelled longhand.
-- **`if (a ^ b)`:** `xor reg,[mem]; test` instead of cmp — the original
+- **`if (a ^ b)`:** `xor reg,[mem]; test` instead of cmp: the original
   spelled inequality as XOR (proven BrFrameBeginDl head).
 
 - **Ghidra constant-folds locals /Od never folds.** A runtime-computed
@@ -389,28 +388,28 @@ the caller AND flipped a helper to match for free.
   frame one slot bigger than the visible variable count, and slot offsets
   that look permuted (the folded var holds an early slot). Un-fold it
   (`short v = 1; ... v | v << 16`) and both the frame and every later slot
-  snap into place. Proven BrDlBorderEmit (1585 B) — this WAS the "/Od slot
+  snap into place. Proven BrDlBorderEmit (1585 B): this WAS the "/Od slot
   mystery"; the allocator is innocent: function-scope decls in decl order,
   then block-scoped temps in textual order, compiler temps at the bottom.
 
-- **Ghidra shreds stack structs into locals — /O2 then dead-stores them.**
+- **Ghidra shreds stack structs into locals: /O2 then dead-stores them.**
   A recomp far SMALLER than orig with dozens of `uStack_...` locals means a
   stack struct whose address only partly escapes: every non-escaping member
   store gets deleted. Rebuild the struct (offsets = 0xNNN minus Ghidra's
-  local suffix), and spell field assignments in the ORIGINAL's store order —
+  local suffix), and spell field assignments in the ORIGINAL's store order,
   which for parameter copies is natural parameter order (p1,p2,p8,p9), not
   Ghidra's rearrangement. Also: `1 << fn(x)` on an int-returning fn emits
-  no mask (shl masks in hardware) — Ghidra's `& 0x1f` is decoration to
+  no mask (shl masks in hardware): Ghidra's `& 0x1f` is decoration to
   delete. Proven BrTex3dCreate (715 B). The permute-and-score loop
   (itertools over statement orders, compile each) resolves store-order
-  residue in minutes — use it before declaring an allocator wall.
+  residue in minutes: use it before declaring an allocator wall.
   **At /Od the shred permutes slots, not just dead-stores.** Symptom: first
   0x100+ bytes match, then `lea [ebp-0xc]` vs `lea [ebp-8]` on a Ghidra
   `local_10` that should sit at the end of a 24-byte buffer. Decl-order
   permutation of the shredded pieces does NOT move them (first-use wins);
   only rebuilding ONE struct of the frame size does. 0x1002DEC3 (627 B,
   MATCH /Od): Ghidra printed `int iVar1; char local_28[24]; uint local_10;
-  int local_c; char local_8[4];` — original is
+  int local_c; char local_8[4];`: original is
   `struct { int result; char buf[24]; uint flags; int idx; char tmp[4]; }`
   (0x28 bytes, the whole frame). `lea [ebp-0x24]` is `&s.buf`,
   `lea [ebp-4]` is `s.tmp`, `lea [ebp-0xc]` is `&s.flags`, loop counter
@@ -428,11 +427,11 @@ the caller AND flipped a helper to match for free.
 - **char parameters push as unaligned dword windows.** With a prototype
   taking `char` params, VC5 /O2 pushes each byte argument as a full dword
   load at the byte's address (upper three bytes are neighboring memory,
-  legally garbage). Ghidra renders these as overlapping CONCAT chains —
+  legally garbage). Ghidra renders these as overlapping CONCAT chains:
   that pattern in a call means CHAR-TYPED PARAMS, not byte arithmetic.
   Proven BrTex3dExpandInto (617 B). A prototyped `unsigned char` that
   CSEs with a prior dword load of a nearby field is `mov al,[esi+N];
-  push eax` (high bits leftover — Ghidra CONCAT31). The same expression
+  push eax` (high bits leftover: Ghidra CONCAT31). The same expression
   to an unprototyped `int f()` default-promotes: `xor eax,eax; mov al;
   push eax` (+2 insns per site). Distinguisher: orig `8a 46 04 51` vs
   `33 c0 8a 46 04`. Proven 0x10027710 (319 B /O2).
@@ -444,7 +443,7 @@ the caller AND flipped a helper to match for free.
 
 - **Semantically-redundant mid-returns block shrink-wrap.** When a branch
   reads `f(x); return id;` in the BYTES (own pop-sequence + ret), and the
-  fall-through path also returns `id`, the source had NO mid-return — the
+  fall-through path also returns `id`, the source had NO mid-return: the
   second epilogue is VC5's return-duplication. Writing the redundant
   `return` in C forces the callee-saved pushes into the prologue (no
   sinking past the early-out) and rotates the whole register allocation.
@@ -457,26 +456,26 @@ the caller AND flipped a helper to match for free.
   edi/esi/ebp were pushed in the prologue instead of sinking past the
   `if (n < 0) return 0` guard (+3 pops on the 0 path, +3 B). The if/else
   with ONE `return 1` sank them and was byte-exact. Its twin 0x1003BCA0
-  has no early-out and is byte-exact under BOTH spellings — so the tell
+  has no early-out and is byte-exact under BOTH spellings, so the tell
   only shows when there is an early-out to sink past. `tools/corpus.py
   find --at 0xc` on the guard bytes named the solved BrRaceDriverReset
-  (`i = 0; if (n <= 0) return; p = …; do {…}`) as the same push-placement
+  (`i = 0; if (n <= 0) return; p = ...; do {...}`) as the same push-placement
   shape, which is what pointed here.
 - **Stack slots are per-VARIABLE; register webs are identity-blind.** /O2
   gives each user variable one stack slot for its whole life (disjoint
   lifetimes inside one variable share it; separate variables never do),
   while registers go per def-use web regardless of names. When Ghidra's
   output reuses one iVar for several unrelated roles, MERGE those locals in
-  the C — it is what shrinks the frame to the original's (BrTex3dRegister:
+  the C: it is what shrinks the frame to the original's (BrTex3dRegister:
   mirT+hCur+sum one slot; wInit+loopCopy+mirrorS one home). Conversely
   declaration ORDER and pure renames never change /O2 output (proven by a
-  60-variant permutation sweep — all byte-identical), so never permute
+  60-variant permutation sweep: all byte-identical), so never permute
   decls hoping for a different allocation.
 - **Guard-if + for-loop vs do-while+break.** `if (g) for (j = a; j <= b;
   j++) {...break;}` compiles to the entry test, a bottom `jle` backedge,
   and a `jmp` over the outlined break-block. The same loop spelled
   `do {} while` with a break gets its latch TAIL-DUPLICATED (the body's
-  first compare copied after the bottom test) — a different shape. Read
+  first compare copied after the bottom test): a different shape. Read
   which one the bytes have off the latch.
 - **Cross-jump needs branch-symmetric temps** (extends the identical-calls
   idiom): the arms merge only when their tails are identical instruction
@@ -498,7 +497,7 @@ the caller AND flipped a helper to match for free.
   plus a later `mov edx,1` that steals edx from the base CSE.  Merging
   1/h makes the compare a register-register `cmp` and copies 1 into the
   w-shift register.  Does not by itself flip orig edx vs ours esi for
-  base — that coloring is the next bullet.  Proven BrTex3dRegister.
+  base: that coloring is the next bullet.  Proven BrTex3dRegister.
 
 - **Caller-saved vs callee-saved for a no-call-crossing CSE is first-
   region coloring, not a live-across-call choice.**  On BrTex3dRegister
@@ -556,17 +555,17 @@ the caller AND flipped a helper to match for free.
   esi and encodes `[esi]`/`[esi+off]`, not `[esi+base]`. Three field
   accesses (`hMutex`, `f02C`, `hMutex` again) keep the ReleaseMutex
   handle as a reload. WaitForSingleObject must be the dllimport stdcall
-  (`push -1; FF 15`) — a cdecl wrapper is `E8` + `add esp` and was the
+  (`push -1; FF 15`): a cdecl wrapper is `E8` + `add esp` and was the
   entire 4-byte miss. Proven BrNetSlotSetF02C 0x10004DC0 (60 B).
 - **A raw-offset transcription and real struct indexing can agree on every
-  byte count and still schedule differently — the tell is a HOISTED RELOAD.**
+  byte count and still schedule differently: the tell is a HOISTED RELOAD.**
   Ghidra's `*(int *)((int)&DAT_sym + i)` form (one extern per field address,
   `i` an unknown byte offset) and the honest `arr[i].field` form both emit the
   same instructions here, but the raw form lets VC5 treat the second read of
   the mutex handle as an available expression and schedule it at the TOP of
   the post-call block: `mov ecx,[m]; store; push ecx; store; store; store;
   call ReleaseMutex`. With `arr[i].field` over a declared struct array the
-  reload stays at its use — `store x5; mov ecx,[m]; push ecx; call` — which is
+  reload stays at its use: `store x5; mov ecx,[m]; push ecx; call`, which is
   what the original does. Distinct extern symbols plus an unknown offset are
   evidently *more* freely reorderable to VC5 than named members of one
   aggregate, which is the opposite of the intuition. So when a draft is
@@ -577,7 +576,7 @@ the caller AND flipped a helper to match for free.
   the inner is `rec[16][16]` walked as `[j][i]`, which is what produces
   `lea esi,[edi+base]` / `add esi,0x96C0`. Dead probes: the raw-offset form
   (1 region, 177/177 B); the same with the handle cached in a local `HANDLE`
-  (3 regions, 178 B — VC5 spends a `push ecx` frame slot on the local).
+  (3 regions, 178 B: VC5 spends a `push ecx` frame slot on the local).
 - **`&extern_var != NULL` is not folded.** A `mov edx, offset DAT; test edx,edx;
   je` before a strcpy that uses that same address is a real source-level
   `if (p != 0)` / `if (&buf != 0)` on an extern object. VC5 /O2 does NOT
@@ -596,8 +595,8 @@ the caller AND flipped a helper to match for free.
   `undefined8` / `unkbyte10` (the pipeline rewrites those to `double` /
   `__int64` in `tools/ghidra_to_match.py`). That steals ebp as a frame
   pointer. A function whose original starts `sub esp, N; push ebx; push
-  ebp; …` with `xor ebp,ebp` is using ebp as a general register (often
-  the zero register) — it has no 8-byte local. Retype or delete the one
+  ebp; ...` with `xor ebp,ebp` is using ebp as a general register (often
+  the zero register): it has no 8-byte local. Retype or delete the one
   that does, and the compiler goes back to `sub esp, N` and frees ebp.
   Observed on 0x10019A70: orig `83 ec 34` vs a draft that declared
   `float10 fVar22` (an x87 return, not a stack slot) and compiled
@@ -609,7 +608,7 @@ the caller AND flipped a helper to match for free.
   `double`, which emits `fstp qword [esp]` and is enough to force
   `and esp,-8` on the caller's frame. Giving the callee its real
   `float` parameters removes the aligned prologue. Proven 0x10019A70:
-  after `#include "br_vec.h"` (so BrVec3Lerp/ScaleBy/… take `float`),
+  after `#include "br_vec.h"` (so BrVec3Lerp/ScaleBy/... take `float`),
   `and esp,-8` disappeared and the four-register push matched; the
   frame is still 8 bytes large (`sub esp, 0x3c` vs orig `0x34`) from
   one remaining qword-arg call.
@@ -624,8 +623,8 @@ the caller AND flipped a helper to match for free.
   port's Clock / Begin / Frame split is not a matching twin. Protocol:
   `include/br_racestep.h`.
 
-- **Two-constant ternary `c ? K1 : K2` is neg/sbb/and (K1−K2)/add K2.**
-  Ghidra decompiles it as `(c ? K1-K2 : 0) + K2` — fold the add BACK INTO the
+- **Two-constant ternary `c ? K1 : K2` is neg/sbb/and (K1-K2)/add K2.**
+  Ghidra decompiles it as `(c ? K1-K2 : 0) + K2`: fold the add BACK INTO the
   ternary or the expression scheduler treats the `+` as a separate node and
   reorders the whole or-chain around it. Proven 0x1000EAF0's four
   `b7000000` geometry-mode words: `(A ^ B ? 0x1000 : 0x2000) | ...` matched
@@ -633,21 +632,21 @@ the caller AND flipped a helper to match for free.
   in a different order.
 - **Same-width flag reads CSE into one register load.** `mov ax,[esi+0x4c];
   test eax,0x4a4; ...; test al,0x80` means the source read a USHORT field
-  once and tested it twice — spell every mask test in the group off the same
+  once and tested it twice: spell every mask test in the group off the same
   `*(uint16_t *)` read. A `uint32_t` read for one test and `uint16_t` for
   another blocks the CSE and emits a memory-direct `test word ptr` plus a
   re-read. Proven 0x1000EAF0 (post-draw flag group).
 - **An uncancelled `x + (y - x - K)` means the subtrahend was a VARIABLE.**
   `mov eax,0xffffd620; sub eax,ecx` hoisted to a slot, then
   `iw*0x40 + param + [slot] + cursor` summed at the use, is
-  `int negBase = -(param + 0x29e0);` assigned to a local before the loop —
+  `int negBase = -(param + 0x29e0);` assigned to a local before the loop:
   spelled inline, VC5 algebraically cancels the ±param and the hoist
   vanishes. The negated-base local blocks the cancellation and LICM spills
   it. Proven 0x1000EAF0 (wheel-record addressing).
 - **A `lea reg,[base+index]` materialized after `[base+index+disp]` loads**
   means the source read fields through a two-part sum before binding the
   combined pointer: `dx = *(float *)(wb + (int)pCar + 0x50);` then
-  `pW = (float *)(wb + (int)pCar);` — folding both into pW first makes the
+  `pW = (float *)(wb + (int)pCar);`: folding both into pW first makes the
   compiler pre-merge into one register. Proven 0x1000EAF0.
 - **A redundant-looking re-test of an unchanged variable is two SEPARATE
   ifs.** `if (x) {A} ... if (!x) {B}` re-loads and re-tests x when the
@@ -660,14 +659,14 @@ the caller AND flipped a helper to match for free.
   slot reused for a trail-loop float), refining the per-VARIABLE rule:
   function-scoped locals never share with each other, but block-scoped ones
   overlay dead function-scoped slots. When the original's frame is smaller
-  than the visible variable count suggests — or a Ghidra local changes type
-  mid-function — the second role was a block-scoped variable. Declaring the
+  than the visible variable count suggests, or a Ghidra local changes type
+  mid-function, the second role was a block-scoped variable. Declaring the
   right locals block-scoped (fMax/fMin/scale inside the transform arm, the
   drain loop's own counters) is how the frame converges. Proven 0x1000EAF0.
 - **The fld-side of both-memory fmuls depends on the global's DECLARATION
   FORM, not its spelling at the use.** Three forms of the same global
   compile differently: `extern float g[16]` (reloc value 0),
-  `float g[16] = {1.0f}` (defined in-TU — reloc plus a real .data offset),
+  `float g[16] = {1.0f}` (defined in-TU: reloc plus a real .data offset),
   and `(*(float *)0x106e9a38)` (absolute, no reloc). On 0x1000EAF0 the
   defined-in-TU form reproduced the original's scale block (slot preloaded
   8x on the fld side, globals on the fmul side) where extern form matched
@@ -675,7 +674,7 @@ the caller AND flipped a helper to match for free.
   side) but broke the scale block. No single form fixed both blocks, and
   within a form, operand order, sum association, term order (all 24
   permutations scored identical), array-vs-scalar and cast spellings change
-  NOTHING — the per-expression schedule is canonicalized. So the residual
+  NOTHING: the per-expression schedule is canonicalized. So the residual
   wall is narrower than "float DAG scheduling": it is the operand-RANKING
   interaction between declaration form and reuse count, and a function can
   be left with ONE block mirrored while the rest matches. Downstream: the
@@ -684,7 +683,7 @@ the caller AND flipped a helper to match for free.
   SECOND-PASS REFINEMENT (0x1000EAF0 rows, hand-simulated from the bytes):
   the MIXED spelling that reproduces both operand-role patterns is
   absolute-address derefs for the row transforms plus an extern-symbol
-  spelling for the scale products, in ONE TU — no single declaration does
+  spelling for the scale products, in ONE TU: no single declaration does
   both. The original's row schedule is tree ((f+c)+e)+d with the fadds
   DEFERRED two products behind and the next row's loads interleaved; a
   sequenced barrier (`float t = f_term;` then the rest as one expression)
@@ -695,7 +694,7 @@ the caller AND flipped a helper to match for free.
   /Ox, /Os, /O1 all fail differently. ~15 instructions of fxch/ordering
   residue in one block is the function's floor pending a genuinely new
   insight (different compiler patch level? an unprobed pragma?).
-  FOURTH-PASS (2026-08-25): the wall above is BROKEN — its floor was an
+  FOURTH-PASS (2026-08-25): the wall above is BROKEN: its floor was an
   artifact of the absolute-deref spelling.  What actually governs the two
   float blocks (all proven by A/B compiles on 0x1000EAF0):
   * **Store deferral is an ALIAS question.** VC5 moves a global LOAD above
@@ -719,13 +718,13 @@ the caller AND flipped a helper to match for free.
     get sorted (by displacement); pairs of DIFFERENT shapes keep source
     order.  The original's per-row product order (V12*tw first, then V0,
     V8, V4) is reachable only by giving the four products distinct pair
-    shapes — the landed spelling is absolute*pPos / symPtr*arithPtr /
+    shapes: the landed spelling is absolute*pPos / symPtr*arithPtr /
     absolute*pPos / symPtr*arithPtr with `pPos = pObj + 0xc` etc.
   * **Load hoisting is binary by the same kind ladder:** absolute and
     main-symbol-pointer loads hoist aggressively (2 products ahead);
     other-symbol-pointer loads do not hoist at all.  No probed kind gives
     the intermediate one-notch hoist the original's fourth product shows
-    (orig `fld V4; fxch3; faddp2` vs ours `fxch2; faddp1`) — that is the
+    (orig `fld V4; fxch3; faddp2` vs ours `fxch2; faddp1`): that is the
     current 2-insns-per-row floor of the row block.
   * **The scale block's 8+4 batch split** (8 slot-preloads, drain, 4
     more) is the inliner's region boundary: spell it as `static __inline`
@@ -745,7 +744,7 @@ the caller AND flipped a helper to match for free.
   abs/negate site here (one `fchs`, already `fld fMax; fld fMin; fchs;
   fxch; fcompp`).  The same dest-once class IS the trail distance
   check: `if (d1=a, d2=b, d1<K && d2<K)` keeps both sqlens live for
-  orig's `fst` homes + dual fcomp (REGNORM extra 66→60, miss 64→56;
+  orig's `fst` homes + dual fcomp (REGNORM extra 66->60, miss 64->56;
   that DAG is instruction-identical).  `&&` of the raw products
   short-circuits to fstp-st + recompute; statement-then-if extra-stores
   the temps and splits a region.  Still 18 slot-masked regions.  Walls
@@ -753,7 +752,7 @@ the caller AND flipped a helper to match for free.
   trail ox/oy `fst` homes (named px/py integer-home instead of x87
   preload) resisted: global-symbol helpers, nested-scope k copies,
   volatile dest barrier, counted loops, comma D-preload, /Op, volatile
-  frame pad, nTotal-hoist, pPos-shared probe arg -- none dropped a
+  frame pad, nTotal-hoist, pPos-shared probe arg: none dropped a
   region.  Extra live floats grow the frame to 0xdc but inflate the DAG.
   SIXTH-PASS (2026-09-01): trail-quad block CLOSED on the x87 side and the
   8-byte frame delta with it (prologue now exact).  Four proven levers:
@@ -764,7 +763,7 @@ the caller AND flipped a helper to match for free.
     (`fld st(1)` dup).  Swapping the def order swaps the roles.  The same
     loads written as arithmetic derefs (`*(float *)(wb + pCar + 0x50)`),
     through a 2-use pointer (substituted), or through a float* with index
-    derefs all give `fld; fst [slot]` instead -- and the extra x87 value
+    derefs all give `fld; fst [slot]` instead, and the extra x87 value
     was the whole frame delta.
   * **Repeated expressions, not named temps, for values used twice as
     both stack and memory operands.**  `x1 = p->x - (dx/len)*K; x2 =
@@ -776,7 +775,7 @@ the caller AND flipped a helper to match for free.
   * **`dx*dx + dy*dy` product order is source order** (first product is
     `fmul [slot]` on the reloaded dx, second `fmul st(3)` on the x87 dy).
   * **A global cursor read only inside a conditional arm is bound inside
-    it** (`pT = DAT_1035f7d8` inside `if (param_2)`) -- outside, the load
+    it** (`pT = DAT_1035f7d8` inside `if (param_2)`): outside, the load
     is hoisted above the test and the test becomes `mov eax,[ebp+0xc];
     cmp eax,ebx` instead of the original's `cmp [ebp+0xc],ebx`.
   Open in the same block: the wheel-pointer ADDRESS form.  Orig computes
@@ -785,26 +784,26 @@ the caller AND flipped a helper to match for free.
   single-use `wb` is forward-substituted and all four terms merge into one
   register; any second source-level use of `wb` restores the 3+1 split
   (the two-part loads through the pointer var fold to [eax+ecx+disp] even
-  before the lea) -- but no second use that is invisible in the original
+  before the lea), but no second use that is invisible in the original
   bytes has been found (arg, py, px, vy, z via the sum all show up or
   spill across the call).  Dead: add-order permutations, negCar0 renames /
   types / scopes / LICM, param_4 renames, two-step wb or pW defs,
   pointer-difference car base (cancelled), index-based `param_4 +
   iCar*0x2b68` (second IV), byte-offset `ring*4` (still folded).
-- **‼ `divergence.py`'s region count is BLIND to immediate-operand defects.
+- **!! `divergence.py`'s region count is BLIND to immediate-operand defects.
   Screen every stalled function with `tools/msetdiff.py` before grinding it
   further.** divergence.py normalises to "mnemonic + operand SHAPE with
   imm32 wildcarded" (its own `norm`), which is right for aligning streams
   but means a wrong CONSTANT scores as a match forever. Proven 2026-09-03 on
-  0x1000EAF0: the ring-wrap test is `if (head >= 500)`, not `if (499 < head)`
-  — orig emits `cmp X,0x1f4; jl`, we emitted `cmp X,0x1f3; jle`, at four
+  0x1000EAF0: the ring-wrap test is `if (head >= 500)`, not `if (499 < head)`:
+  orig emits `cmp X,0x1f4; jl`, we emitted `cmp X,0x1f3; jle`, at four
   sites, and the region count had called all four MATCHING through eight
   passes of grinding. The two spellings are semantically identical, so
   nothing behavioural could have caught it either; only the bytes say which
   constant the original source wrote. Fixing it took the reloc-masked byte
   diff 3,855 -> 3,727 and the instruction count to exactly 2,328 = 2,328.
   `tools/msetdiff.py` keeps small immediates while normalising registers,
-  esp displacements and relocs, then diffs the multisets — what survives is
+  esp displacements and relocs, then diffs the multisets, what survives is
   a real constant defect or genuinely absent code.
   **Corollary on metrics:** that fix RAISED the masked region count 19 -> 20
   (it re-opened an unrelated sink), so region count alone would have
@@ -813,7 +812,7 @@ the caller AND flipped a helper to match for free.
   The signature to watch for: a region count that will not move while the
   instruction count stays off.
 - **A spelling must be measured on EVERY site that shares the allocator
-  decision it targets — and on no more than those.** Proven 2026-09-03 by
+  decision it targets, and on no more than those.** Proven 2026-09-03 by
   moving 0x1000EAF0 20 -> 19 masked regions on a lever its own dossier had
   recorded as REJECTED. The rejection was real but partial: byte-offset
   induction variables (`c2 << 4`, `+= 4`, ring reads and writes spelled
@@ -827,13 +826,13 @@ the caller AND flipped a helper to match for free.
   until it has been re-measured across the whole sibling set.**
   The counter-case, measured the same day so this does not over-generalise:
   on 0x100250D0, converting all ten remaining `x = w*2; if (c) x = w;`
-  doubling sites to the ternary form AT ONCE is clearly worse — it breaks a
+  doubling sites to the ternary form AT ONCE is clearly worse: it breaks a
   1.7 KB byte-exact prefix and costs +25 insns. The difference is what the
   sites share. Loops sharing one induction variable: convert together.
   Independently allocated arms: one at a time. Ask which single allocator
   decision the sites share before batching them; "they look alike" is not
   the test (same trap as the symptom-vs-cause residue classes).
-- **A falling RAW region count can be an alignment artefact — never read it
+- **A falling RAW region count can be an alignment artefact: never read it
   alone.** That bad 0x100250D0 probe dropped raw regions 45 -> 25 while
   breaking the byte-exact prefix: once the streams misalign, the resync
   merges many small regions into few large ones. Always read the
@@ -846,12 +845,12 @@ the caller AND flipped a helper to match for free.
   changes a single byte:
   * swapping the operands of `&`, `|` or `+` (`(a & b)` vs `(b & a)`,
     `x << 8 | y` vs `y | x << 8`);
-  * reversing a relational test's operands (`a >= b` vs `b <= a`) — this is
+  * reversing a relational test's operands (`a >= b` vs `b <= a`): this is
     NOT the same lever as the wall-1 `iVar10 < param_10` rule, which changes
     which side is the loop INDUCTION variable, not just the operand order;
   * splitting one expression into two statements, or hoisting a subterm into
     a named temp (function-scoped or block-scoped) when the temp is
-    single-def/single-use in a pure-expression context — VC5 re-fuses it;
+    single-def/single-use in a pure-expression context: VC5 re-fuses it;
   * reordering two adjacent independent assignments (`a = p; b = q;`).
   What these spellings CANNOT reach, and what people keep mistaking them for:
   which subexpression is EVALUATED first (VC5 orders by subtree cost, so the
@@ -861,10 +860,10 @@ the caller AND flipped a helper to match for free.
   `mov dl,al`). Those are downstream of allocation. To move them you must
   change the operand-KIND ladder or the register pressure (see the
   0x1000EAF0 fourth-pass entry), not the spelling. A named temp DOES still
-  work where it changes the def/use graph — a value used twice, a float
+  work where it changes the def/use graph: a value used twice, a float
   homed to a slot, a bound reloaded from memory; those are different levers.
 - **`/FAcs` is the offset-to-source-line map AND the recomp's complete frame
-  map — use it before probing anything in a multi-KB function.** One compile:
+  map: use it before probing anything in a multi-KB function.** One compile:
 
       sh tools/wine.sh tools/msvc5/bin/cl.exe /nologo /O2 /W3 /I include \
         /I tools/msvc5-compat /I tools/msvc5/include /DBR_MATCHING_BUILD /c \
@@ -872,7 +871,7 @@ the caller AND flipped a helper to match for free.
 
   The listing's offsets are the same function-relative offsets
   `divergence.py` prints, so `grep '^  00<off>' <out>.cod` turns a divergence
-  address into the exact source line — no more guessing which of nine
+  address into the exact source line: no more guessing which of nine
   near-identical arms a region belongs to. Just above `_<Name> PROC NEAR` the
   listing prints every local's frame offset as `_name$ = <signed offset>`,
   including compiler-generated scope suffixes (`_eyeX$2612 = -60`). That
@@ -881,16 +880,16 @@ the caller AND flipped a helper to match for free.
   cannot be compared across two builds whose frame sizes differ. It also
   catches stale claims: br_drawcar.c's header asserted pack0/pack1 landed in
   "two fresh dwords (0x10/0x14)" when the equate table shows
-  `_pack0$ = 8, _pack1$ = 12` — they were already in the reused ARG slots.
+  `_pack0$ = 8, _pack1$ = 12`: they were already in the reused ARG slots.
 - **A probe is only evidence if the compile actually ran.** match_sweep
-  compiles NOTHING when the file has no `@implements` tag — it returns
+  compiles NOTHING when the file has no `@implements` tag: it returns
   before the compiler is invoked and every diff silently reuses the stale
   .obj. Five spelling probes on 0x1000EAF0 were judged this way and all
   five conclusions were wrong. Keep the tag on while iterating (a
   tagged-but-diffing row is normal working state); the tell is `0/0 tagged
   functions` in the sweep output.
 - **`float a = g[0], b = g[4]; x = a*m1 + b*m2 ...` ICEs VC5** (fatal
-  C1001) when the products feed a 4-term sum inside a deep if-else — the
+  C1001) when the products feed a 4-term sum inside a deep if-else: the
   named-temp lever cannot even be TESTED on fmul row shapes, and the
   original source cannot have been spelled that way.
 
@@ -901,7 +900,7 @@ the caller AND flipped a helper to match for free.
   (`mov cl,[esi]; and cl,0x3f`); an int local flips the web to eax/al.
   Proven BrNetPeerMsgCancel 0x1006A3F0.
 - **Returning the assignment forces the quotient copy.** `return g = x / K;`
-  emits `mov eax,edx; shr eax,N; mov [g],eax` after the magic multiply —
+  emits `mov eax,edx; shr eax,N; mov [g],eax` after the magic multiply:
   the copy into EAX exists because the value is returned.  A void function
   shifts EDX in place.  Proven BrReplayCountFromBytes 0x10063DB0.
 - **`x ? 0 : -1` vs `(x != 0) - 1`:** the ternary compiles to the branchless
@@ -922,7 +921,7 @@ the caller AND flipped a helper to match for free.
   same expression, e.g. inline `& mask`); `~-(x != 0)` and `(x ? 0 : -1)` emit
   setne and `neg; sbb; neg; dec` respectively. When both a `(x==0)` int and a
   `-(x==0)` mask feed one `&`, invert the guarding `if` so the plain `return r`
-  is the fall-through arm -- that fixes the `je`/`jne` polarity the borrow
+  is the fall-through arm: that fixes the `je`/`jne` polarity the borrow
   reorders. Proven BrCdStopReleaseMci 0x100030B0 (REGNORM 0+0; the only residue
   left is a 3-insn reload-hoist schedule the compiler owns).
 - **Byte-pair swap: one temp, temp holds HIGH.** `t = p[hi]; p[hi] = p[lo];
@@ -954,7 +953,7 @@ the caller AND flipped a helper to match for free.
   stdio keep `_CRTIMP` dllimport.  Proven BrCrtOnExit 0x100745B0,
   BrTex3dDownloadAt 0x100283C0.
 - **Ten originals carry a fused 16-byte link preamble** (`e9 0b 00 00 00` +
-  11×`90`, jmp over nops to the body at +0x10) inside their map entry —
+  11x`90`, jmp over nops to the body at +0x10) inside their map entry:
   link-stage output, unreachable from C, same category as relocs/thunks.
   They are enumerated in `config/preambles.csv`; the comparator
   (`match_sweep.load_orig`) verifies the recorded preamble VERBATIM and
@@ -966,7 +965,7 @@ the caller AND flipped a helper to match for free.
 - **`/Oi` string ops are CRT calls, not exploded scans.** Orig
   `or ecx,-1; f2 ae; not ecx; shr ecx,2; f3 a5` is strcpy/strcat;
   `or ecx,-1; f2 ae; not ecx; dec ecx; je` is `if (strlen(s) != 0)`
-  (Ghidra's signed `i = -1; … if (i != -2)`); `xor eax,eax; mov ecx,N;
+  (Ghidra's signed `i = -1; ... if (i != -2)`); `xor eax,eax; mov ecx,N;
   f3 ab` is `memset(p, 0, N*4)`; `mov ecx,N; f3 a5` with no preceding
   scasb is memcpy of a known size. `extern int s_*` loads the first
   dword (`mov r,[s]; push r`); orig `push offset s` is `extern char
@@ -979,7 +978,7 @@ the caller AND flipped a helper to match for free.
 - **Byte return is `char`, not `int`.** Orig `mov al,1; pop*; ret`
   (`b0 01 5b c3`) vs wrap `int`'s `b8 01 00 00 00 c3`. Also `xor al,al`
   / `or al,0xff` before the pops (`return (char)0xff`). Orig-gated in
-  `refine_function` (ungated `int`→`char` would rewrite every `return 1`).
+  `refine_function` (ungated `int`->`char` would rewrite every `return 1`).
   Skip fnstsw helpers whose AL is a status nibble (0x10006A10). Proven
   0x10054390 (tree) and 0x10069930.
 
@@ -992,7 +991,7 @@ the caller AND flipped a helper to match for free.
   `if ((flags & 2) == 0 || lod != 1)`.** Orig is `test byte [flags], 2;
   je CI4; cmp lod, 1; jne CI4` with IDX4 as the fall-through. Swap the
   arms. Proven 0x100250D0 at 0x10025148.
-- **LOD walk is empty-check then `do {…; lod++;} while (lod < end)`,
+- **LOD walk is empty-check then `do {...; lod++;} while (lod < end)`,
   not test-at-top `for(;;) { if (lod >= end) return; }`.** Orig
   `cmp lod, end; jge ret` then shrink-wrapped `ebp=cbOut; esi=pOut;
   ebx=aTile`, body, latch `inc lod; cmp lod, end; jl body` (jl target
@@ -1003,7 +1002,7 @@ the caller AND flipped a helper to match for free.
   FUN_100271f0 between them (CI4 palette). Ghidra's one `bVar11` for
   every arm shares a slot; orig has a slot per call-crossing loop.
   CONCAT22 at those call sites is `mov dx, word [pal]; push edx`
-  (leftover high bits) — the source passes the ushort, not a
+  (leftover high bits): the source passes the ushort, not a
   reconstructed dword. Proven 0x100250D0.
 
 - **Nested call, not address-temp + inner call.** Orig
@@ -1011,7 +1010,7 @@ the caller AND flipped a helper to match for free.
   `f(GetModuleHandleA(0), &DAT)` (args right-to-left, address already
   on the stack before the inner call). Ghidra CSEs `&DAT` into a temp
   (`ppi = &DAT; h = GetModuleHandleA(0); f(h, ppi)`), so the address
-  sits in a register and the first push is the inner call — first
+  sits in a register and the first push is the inner call: first
   divergence at that push. Same family: `msg(BrStrGet(id), hr)` is
   `push hr; push id; call BrStrGet; add esp,4; push eax; call msg;
   add esp,8`. Ghidra's `t = BrStrGet(id, hr); msg(t)` gives BrStrGet
@@ -1032,7 +1031,7 @@ the caller AND flipped a helper to match for free.
   restores the load-first order. Proven 0x10035400 (DAT_10ac4090 /
   DAT_10ac5d2c).
 
-- **Map-split join is not a function — `long+N` is the tail.** The
+- **Map-split join is not a function: `long+N` is the tail.** The
   analyzer cut 0x10035400 at the if/else join `mov [DAT_10ac4090], ebx`
   (0x10035533, 174 B, no prologue). Ghidra correctly decompiled one
   C function; wrap's recomp is 496 B vs the 307 B prefix. score()
@@ -1070,19 +1069,19 @@ the caller AND flipped a helper to match for free.
   Orig I4 loads `mov r, [esp+hi]; and r, 0xff`. maskOdd stays `int`.
   Proven 0x100250D0 / 0x10024E60.
 - **A for/while bound that is a raw parameter is hoisted into a scratch
-  reg at LOOP SETUP — before the pushes.** THE fix for the 0x100250D0
+  reg at LOOP SETUP: before the pushes.** THE fix for the 0x100250D0
   insn-3 wall (broken 2026-08-27). Orig loads `mov ecx, [esp+0x90]`
   (param_10) at orig+0x7 while eax still holds param_4. A `do-while`
   references the bound only at the bottom latch, so the top guard loads
   param_9 lazily into edx instead (the wrong insn 3). Writing the loop
-  as `for (lod = param_9; lod < param_10; lod++)` — bound is the RAW
-  parameter, no `lodEnd` local — makes VC5 hoist param_10 into ecx at
+  as `for (lod = param_9; lod < param_10; lod++)` (bound is the RAW
+  parameter, no `lodEnd` local) makes VC5 hoist param_10 into ecx at
   setup, reproducing orig+0x7 through +0x10 exactly. Use `lod < param_10`
   (emits `cmp eax, ecx`), NOT `param_10 > lod` (emits `cmp ecx, eax`).
   The lesson generalizes: an early load of a loop bound in scratch that
-  a do-while defers is a control-flow-shape fix, not a spill trick — no
+  a do-while defers is a control-flow-shape fix, not a spill trick: no
   prologue permutation reaches it (the whole merge/DCE/pragma do-not-
-  re-run family stays dead; see docs/archive/idioms-A.md). Next divergence
+  re-run family stays dead). Next divergence
   (+0x11, param_4 spill vs esi-cache) is body-driven register pressure.
   Proven 0x100250D0.
 - **Ghidra FOLDS two consecutive `count += N` into one `count += 2N` and
@@ -1091,10 +1090,10 @@ the caller AND flipped a helper to match for free.
   Ghidra prints `*p = A; if (c + 2 >= b) EXIT; c = c + 4; p[1] = B;
   p = p + 2; if (c >= b) EXIT;` for a source that reads
   `c += 2; *p = A; p += 1; if (c >= b) EXIT; c += 2; *p = B; p += 1;
-  if (c >= b) EXIT;` — counter bumped BEFORE each store, pointer advanced
+  if (c >= b) EXIT;`: counter bumped BEFORE each store, pointer advanced
   by ONE element per store, one budget check per store on its own control
   edge. Semantically identical (the counter on the first exit path is
-  dead — that path returns) but the folded form lets VC5 coalesce the
+  dead: that path returns) but the folded form lets VC5 coalesce the
   pair into a batch (`mov [r]; mov [r+2]; add r,4`), which drops the
   output pointer's register pressure, frees esi, and ROTATES THE
   ALLOCATION ACROSS THE WHOLE FUNCTION. Generator:
@@ -1106,20 +1105,20 @@ the caller AND flipped a helper to match for free.
   a coloring wall TWICE on the strength of a raw diff count; the rotation
   dissolved once the source defect was fixed. Rank residue by the
   REGISTER-BLIND multiset gap (`tools/fnmatch/`, `regnorm` mode), never by
-  raw diff count — raw read 1097/863 where the honest structural gap was
+  raw diff count: raw read 1097/863 where the honest structural gap was
   432/198.
 - **A 16-bit lvalue narrows the whole feeding expression.** `*pOut = ((((chA
   << 5 | chR) << 5 | chG) << 5) | chB)` with `unsigned char` channel locals
   and an `unsigned short *pOut` makes VC5 load each channel with a
-  16-BIT-destination `movzx ax, byte ptr [esp+S]` — only the low half is
+  16-BIT-destination `movzx ax, byte ptr [esp+S]`: only the low half is
   live, because the store is `mov word ptr [esi-2], dx`. Spelling the
   operands `(unsigned int)` instead forces `and edx,0xff` plus the
   in-register widening idiom `xor dx,dx; mov dl,al`. `(unsigned short)` and
-  `(unsigned char)` operand casts are byte-identical — it is the LVALUE
+  `(unsigned char)` operand casts are byte-identical: it is the LVALUE
   width that decides. Proven 0x100250D0.
 - **A plain `unsigned char` local with 2+ uses is homed in a byte slot and
-  read back as `mov r32, [slot]; and r32, 0xff`** — not `movzx r32, byte
-  ptr [slot]` — and VC5 CSEs that widening across every use. So a distinct
+  read back as `mov r32, [slot]; and r32, 0xff`**, not `movzx r32, byte
+  ptr [slot]`, and VC5 CSEs that widening across every use. So a distinct
   byte local per loop body vs one shared local is byte-identical. Proven
   0x100250D0.
 - **Narrow a callee prototype when orig pushes without zero-extension.**
@@ -1130,13 +1129,13 @@ the caller AND flipped a helper to match for free.
 - **Ghidra canonicalises `if (ctr >= bound) break;` to
   `if (bound <= ctr) break;`.** Byte-neutral at /O2 but it flips the
   memory-operand side (`cmp reg,[esp+S]` vs `cmp [esp+S],reg`), so it moves
-  the register-blind gap — worth restoring when reading residue. By
+  the register-blind gap: worth restoring when reading residue. By
   contrast `0 < X` vs `X > 0` and integer `imul` operand order are both
   fully byte-identical (54 and 6 sites measured). Proven 0x100250D0.
 - **Ghidra's `if ((mask & flag) == 0) { A } else { B }` inverts the source's
   arm order whenever B is the inline fall-through block in the bytes.**
   Read the jcc sense at the test to decide which arm the source wrote
-  first. Not universal — of six mask sites in 0x100250D0 three wanted the
+  first. Not universal: of six mask sites in 0x100250D0 three wanted the
   flip and three were already right, so MEASURE each one. Proven 0x100250D0.
 - **x87 argmin: Ghidra writes `if (b <= a)` (then-arm out of line) for orig
   `test ah,1; je then` whose fall-through is `a < b`.** Source wrote
@@ -1151,7 +1150,7 @@ the caller AND flipped a helper to match for free.
   `t = p[-3]; *pc = (t + p[3] + *p) * K` preserves orig addend order
   (plain `p[-3]+p[3]` canonicalizes). Proven 0x10067470.
 - **INTEGER adds of two fields of the SAME struct canonicalize their load
-  order absolutely — there is no C spelling that flips them.** Unlike the
+  order absolutely: there is no C spelling that flips them.** Unlike the
   x87 case above, sequencing through named temps does NOT preserve source
   order for a GP-register add. At 0x10017F80 (BrFadeDrawSprite) the original
   emits `mov esi,[edx+eax*8+0xc]; mov edi,[edx+eax*8+4]; ... add esi,edi`
@@ -1165,22 +1164,22 @@ the caller AND flipped a helper to match for free.
   (`x1 + x0`) matches the original exactly, and it differs only in that its
   second operand is reached base-only (`mov edi,[eax]` after a `lea`) rather
   than through the scaled `[edx+eax*8+disp]` form. When both operands share
-  the scaled form, VC5 picks the accumulator itself. T3a — park it.
+  the scaled form, VC5 picks the accumulator itself. T3a: park it.
 - **In a three-term x87 row, WHICH term is subtracted decides the `fxch`
   count.** `a + b - c` and `a - c + b` are the same value but not the same
   code: they build the operand stack in different orders, and the wrong one
   costs a surplus `fxch`, i.e. one extra instruction and two bytes. Swapping
-  the two ADDENDS changes nothing (VC5 canonicalises commutative adds — see
+  the two ADDENDS changes nothing (VC5 canonicalises commutative adds: see
   the entries above); moving the SUBTRAHEND is the lever. Rows of the same
   formula need not agree: in 0x1006D530 BrRbQuatDerivative only the third of
   four rows takes the subtract-second form, and forcing it on the others is
   neutral or worse. Sweep the associations per row rather than assuming the
-  formula is written uniformly — the 64-build sweep there took the function
+  formula is written uniformly: the 64-build sweep there took the function
   from 208 B / 74 insns to exact 206 / 73 and the residue from 26 to 21.
 - **`fild qword` with a zeroed high dword is `(float)(unsigned)`; `fild dword`
   is signed.** A one-instruction read of the source's signedness, and it is
   also why the top byte of a packed colour is extracted with a bare `>> 24`
-  and no `& 0xFF` — the mask is redundant only when the value is unsigned, so
+  and no `& 0xFF`: the mask is redundant only when the value is unsigned, so
   its absence in the original tells you the same thing twice. Proven
   0x1001E930.
 - **A `fstp dword [slot]; fld dword [slot]` round-trip straight after a
@@ -1191,30 +1190,30 @@ the caller AND flipped a helper to match for free.
   Diagnostic pair worth internalising: a MISSING `fstp [esp+S]` / `fld [esp+S]`
   pair with no EXTRA counterpart usually means you are compiling the wrong
   VARIANT, not writing the wrong source.
-- **‼ A report.csv row's `opt` column can simply be WRONG, and it will cost
+- **!! A report.csv row's `opt` column can simply be WRONG, and it will cost
   you the function.** 0x1001E930 was recorded `O2y`; at /O2 /Oy- the best
   source form is 105 diffs and at /O2 it is 85, but at **/O2 /Op it is
   byte-exact**. The sweep picks per function from what it has tried, so a row
   whose structure you believe is right but which will not close is a reason to
   compile it under all four variants by hand before concluding anything about
   the source. This is the fifth-variant problem in a different dress.
-- **‼ PROCESS: judge a change at the TU's OWN compile variant, and against
+- **!! PROCESS: judge a change at the TU's OWN compile variant, and against
   the right parent.** Two ways a before/after measurement lies, both hit in
   one session. (1) `fn.py` compiles /O2 only; on an /Od, /Oy- or /Op TU its
   numbers are partly phantom, so a gain measured there may not exist. Look up
   the row's `opt` first and re-measure with those flags before claiming
   anything. (2) When another session is committing to the same branch,
-  `HEAD~1` is NOT your commit's parent — diff against `<yourcommit>^` or you
+  `HEAD~1` is NOT your commit's parent: diff against `<yourcommit>^` or you
   will compare a version against itself and read "no change" for a change
   that worked. On 0x10015630 the honest numbers at /O2 /Op were a
   register-blind gap of 77 -> 44 while the RAW BYTE DIFF WENT THE WRONG WAY
   (819 -> 821) and size went from 38 short to 7 short: rank by the
   register-blind multiset, never by size or diff count.
-- **‼ PROCESS: a residue note's parity claim is only worth what it was
+- **!! PROCESS: a residue note's parity claim is only worth what it was
   measured at.** The note on 0x1006D530 asserted "instruction stream, count
   and size are exact (RAW and REGNORM multiset gap 0+0)"; rebuilding that
-  note's own commit showed 208/206 bytes, 74/73 instructions and REGNORM 1+0
-  — there was a surplus instruction the whole time, and the claim of parity is
+  note's own commit showed 208/206 bytes, 74/73 instructions and REGNORM 1+0:
+  there was a surplus instruction the whole time, and the claim of parity is
   precisely what would stop the next reader from looking. Before trusting any
   "exact except for allocation" note, spend the 12 seconds to re-measure it.
   Three "unreachable"/"do not grind" notes and now one false parity claim have
@@ -1227,7 +1226,7 @@ the caller AND flipped a helper to match for free.
   all emit `add`; so do `long`, `unsigned`, `short`, and BOTH pointer forms
   (`p - 16`, `p - (char *)16`); and so do /O2, /O2 /Op, /O2 /Oy-, /O1 and /Ox.
   **VC++ 4.2 emits `sub reg, K` for exactly the same source.** Do NOT use that
-  as a compiler fingerprint on its own, though — 11 of the tree's byte-exact
+  as a compiler fingerprint on its own, though: 11 of the tree's byte-exact
   MSVC5 functions contain `sub r32, imm` (0x10019480, 0x10023B10, 0x1000C9C0,
   0x1001D150, 0x1002F680, 0x1006FF00, 0x1002B997, 0x10031AC0, 0x10053EF0,
   0x10053F80, 0x1006B400), so MSVC5 clearly reaches it by another route. The
@@ -1236,8 +1235,8 @@ the caller AND flipped a helper to match for free.
   0x10053EF0 is a SIXTEEN-BIT subtraction whose result stays live as `ax`
   (`movsx ax,dl; sub eax,0x20; test ax,ax`). 0x1006FF00's is a pointer
   difference feeding a divide. So when an original shows `sub reg, imm` where
-  your C has `add reg, -imm`, the lever is the VALUE'S TYPE OR LIFETIME — a
-  loop step, a narrower type, a difference that feeds further arithmetic —
+  your C has `add reg, -imm`, the lever is the VALUE'S TYPE OR LIFETIME (a
+  loop step, a narrower type, a difference that feeds further arithmetic)
   never the spelling of the minus sign. OPEN: 0x1006FD50 BrEntitySetIndex is
   2 bytes from exact on precisely this and fits none of the three keys.
 - **Repeated constant stores are a LEADING GROUP, and the group runs
@@ -1247,17 +1246,17 @@ the caller AND flipped a helper to match for free.
   that register live across the whole body, which costs a callee-saved
   register and grows the function by a `push`/`pop` pair. Grouped, the
   constant dies before the next parameter is loaded and its register is
-  REUSED for that parameter — the same "dies early, register reused" shape as
+  REUSED for that parameter: the same "dies early, register reused" shape as
   the conditional-bump entry below. Order within the group matters and is
   DESCENDING by offset: `m[8]; m[4]; m[0]` is byte-exact where `m[0]; m[4];
-  m[8]` is 7 bytes off. Proven 0x1006DC30 BrMat3Skew (51 diffs and +2 bytes →
+  m[8]` is 7 bytes off. Proven 0x1006DC30 BrMat3Skew (51 diffs and +2 bytes ->
   byte-exact). SCREEN: recomp EXTRA of exactly `push R` + `pop R` with the
   original shorter is this class, not a frame problem.
 - **Let VC5 build the induction variables: SUBSCRIPTS, not hand-rolled
   cursors.** In a nested loop that walks two arrays at different strides,
-  writing the cursors out by hand (`col = m; v = pV;` … `col += 4; v++;`)
+  writing the cursors out by hand (`col = m; v = pV;` ... `col += 4; v++;`)
   gets the instruction stream exactly right and then binds the registers
-  wrong — VC5 gives ecx to the cursor initialised by a register copy and edx
+  wrong: VC5 gives ecx to the cursor initialised by a register copy and edx
   to the lea-derived one, and emits the lea as `[base=output, index=delta]`.
   The original has the opposite pairing and `[base=delta, index=output]`.
   Dead levers, do not re-run: swapping the two initialisations (worse),
@@ -1265,9 +1264,9 @@ the caller AND flipped a helper to match for free.
   outer loop (better, still short). What works is deleting the cursors and
   writing the plain subscripts (`pv[j] * pM->m[j][i]`): strength reduction
   then creates the two pointers in VC5's own order and the register pairing
-  falls out. Proven 0x1006DA20 BrMat4TransformPoint (7 diffs → byte-exact).
+  falls out. Proven 0x1006DA20 BrMat4TransformPoint (7 diffs -> byte-exact).
   Semantics are preserved because a subscript off the parameter re-reads the
-  live array every outer pass, exactly as re-initialising the cursor did —
+  live array every outer pass, exactly as re-initialising the cursor did,
   which matters when the output aliases the input. SUSPECTED CLASS: any
   matched-size, REGNORM-0 loop whose C uses hand-written walking pointers.
 - **The integer twin of the `fchs` rule: a conditional BUMP is an
@@ -1275,32 +1274,32 @@ the caller AND flipped a helper to match for free.
   `pos = p->b; if (p->a) pos++;` pre-loads `b` and only then tests `a`, so
   both are live at once and the tested value needs a register of its own
   (`mov edx,[ecx]; mov eax,[ecx+4]; test edx,edx`). Writing it as
-  `if (p->a) pos = p->b + 1; else pos = p->b;` — or the equivalent ternary,
-  which is byte-identical — makes `a` die at the test, so VC5 loads it into
+  `if (p->a) pos = p->b + 1; else pos = p->b;` (or the equivalent ternary,
+  which is byte-identical) makes `a` die at the test, so VC5 loads it into
   the accumulator, tests it, and REUSES that register for `b`
   (`mov eax,[ecx]; test eax,eax; mov eax,[ecx+4]`), with the `je` scheduled
   after the second load because the flags survive a `mov`. Diagnostic: the
   original loads the tested field and the used field into the SAME register.
-  Proven 0x1006CF80 BrBitStreamAtEnd (7 diffs → byte-exact, REGNORM was
-  already 0+0 — a pure RAW 2+2 residue that WAS reachable from source, so
+  Proven 0x1006CF80 BrBitStreamAtEnd (7 diffs -> byte-exact, REGNORM was
+  already 0+0: a pure RAW 2+2 residue that WAS reachable from source, so
   do not read "REGNORM 0+0" as automatically T3a).
 - **In-place x87 `fchs` is a ternary (or if/else that assigns both arms),
   not a reassignment.** `t = x; if (t < Z) t = -t` emits
-  `fstp st(0); fld; fchs` — the dest already exists so the negate is a
+  `fstp st(0); fld; fchs`: the dest already exists so the negate is a
   NEW value. `t = (x < Z) ? -x : x` makes the pre-branch load the dest,
   so the taken path is just `je; fchs`. When the RAW x must stay live
   under the abs (later leftover `fcomp [Z]` for a sign pick), the first
   of a pair is `fcom [Z]; fld st(0); je; fchs` and the second is
   `fcomp [Z]; fld [mem]; je; fchs`. This is the 0x1000EAF0-class lever
   too: a named temp that is reassigned is homed; a dest assigned once
-  stays in st(0). Proven 0x10067470 (REGNORM extra 16→4).
+  stays in st(0). Proven 0x10067470 (REGNORM extra 16->4).
   Corollary (dual compare, same class): `if (a < K && b < K)`
   short-circuits, so VC5 `fstp st`s the second pair and recomputes it
   in the taken arm. `if (d1 = a, d2 = b, d1 < K && d2 < K)` evaluates
   both assignments before either compare and emits orig's `fst` homes
   plus interleaved fmul + dual fcomp. Statement-then-if
   (`d1=a; d2=b; if (d1<K && d2<K)`) extra-stores the temps. Proven
-  0x1000EAF0 trail distance (REGNORM extra 66→60, miss 64→56).
+  0x1000EAF0 trail distance (REGNORM extra 66->60, miss 64->56).
 - **x87 spill-slot HOMES follow computation order, and the scheduler's
   drain order keys off them.** Under /Op, paired temps (w2/h2 in
   0x100215C0) round-trip through [esp+4]/[esp+0xc] in the order computed;
@@ -1318,7 +1317,7 @@ the caller AND flipped a helper to match for free.
   is `(rN = r) * mem`.  In-place `*=` / named-r temps / `s = 1.0f/s`
   all canonicalize to the load-components form.  Proven 0x100343F0
   (BrVec3DivBy, 45 B MATCH /O2).  Same shape as orig ScaleBy's 3x
-  `fld [s]` — the copies are `fld st` when r is a just-computed st
+  `fld [s]`: the copies are `fld st` when r is a just-computed st
   value rather than a memory parameter.
 - **After a call, `p * k` (k named) homes k (`fst` + `fld [slot]`);
   later products still need `(t = k) * mem`.**  All-copy-assign skips
@@ -1326,7 +1325,7 @@ the caller AND flipped a helper to match for free.
   (BrVec3Normalise, 113 B) and 0x1006D410 (BrVec4Normalise, 148 B).
 - **That scale-out is TU-sensitive.**  The same source in br_vec.c
   (with Cross/Dot/Scale) compiles `pV->x * k` as three `fld st` copies.
-  Own TU — the adjacent 0x1006D410/0x1006D4B0 pair — matches.  Do not
+  Own TU, the adjacent 0x1006D410/0x1006D4B0 pair, matches.  Do not
   merge Normalise into the 0x100343xx vector cluster.
 - **Mat4 transform-point is two counted column-walks, not unrolled
   products.** Orig 0x1006DA20 (100 B) is `mov ebp,3` / `mov esi,3`,
@@ -1351,32 +1350,32 @@ the caller AND flipped a helper to match for free.
 - **A divider-pipeline interleave means PRE-DIVIDED TEMPS in the source.**
   Orig starting two fdivs ahead of a second constant-divide pair
   (fdiv/fdiv ... fdiv/fdiv interleaved with /Op round-trips) is not
-  reachable by statement reordering of combined chains — the source
+  reachable by statement reordering of combined chains: the source
   divided the inputs into named temps first (`f = (float)(unsigned)v / K;`),
   split around the other setup, and the chains consume the temps. Made
   0x100215C0's +0x55..+0xd3 block instruction-identical. Proven 0x100215C0.
 - **C++ argument-list scheduling: VC5 pushes args in place, right-to-left,
   ONLY when no argument carries a side effect.** A later constant arg is
   pushed BEFORE a call inside an earlier arg (`push 8; push field; call
-  quantiser; ...; push result; call`). ANY side effect in an argument --
-  an assignment, or an `__inline` helper (whose expansion introduces the
-  inliner's temp) -- makes VC5 pre-evaluate that argument before beginning
+  quantiser; ...; push result; call`). ANY side effect in an argument
+  (an assignment, or an `__inline` helper whose expansion introduces the
+  inliner's temp) makes VC5 pre-evaluate that argument before beginning
   the pushes, moving the constant push after the call. Proven by controlled
   probes on 0x10006510 (build/match/sched.cpp, 2026-08-29).
 - **Narrow (16-bit) shift of a call result requires an assignment to a short
   lvalue.** `short s; s = Q(x) >> 8;` emits `sar ax,8`; the same expression
-  inline in an argument emits `movsx; sar r32` -- and a `short`-typed
+  inline in an argument emits `movsx; sar r32`, and a `short`-typed
   PARAMETER gets `sar ax` but skips the `movsx` (pushes eax raw). The
   combination sar-narrow + movsx + push-early exists in the original
   (0x10006510, ~30 sites) but no C/C++ spelling found yet produces all
   three. Same probes.
-- **A `__thiscall` callee with stack args means the CALLER'S TU was C++ --
+- **A `__thiscall` callee with stack args means the CALLER'S TU was C++:
   match it as C++, do not fake it from C.** The fastcall dummy-edx idiom
   costs one `xor edx,edx` per call site (the entire +66 B gap on
   0x10006510); a declared-not-defined class method costs zero. The
   src/core/cpp/ convention already supports this. Broke the documented
   "cxx-thiscall-wall" 2026-08-29.
-- **`/O2 /Op` is a REAL build variant — a float-heavy TU compiled with precise
+- **`/O2 /Op` is a REAL build variant: a float-heavy TU compiled with precise
   FP can never match under plain /O2.** Without `/Op`, MSVC 5.0 keeps an
   int->float conversion in the x87 register; with it, every conversion is
   followed by the round-to-float idiom `fstp dword [tmp]; fld dword [tmp]`,
@@ -1389,7 +1388,7 @@ the caller AND flipped a helper to match for free.
   `push ecx` and orig's `fsubr [esp]`. Combined with movsx-from-int16*
   payload and `/Op` fstp/fld on each i16->float, 0x10023920 (BrGbiCall10024260)
   is 156 B MATCH /O2 /Op. Direct globals, not BrScreenGet/BrRdpGetRegs.
-- **A MACRO and an `__inline` function are NOT interchangeable — the macro
+- **A MACRO and an `__inline` function are NOT interchangeable: the macro
   changes evaluation order.** A function evaluates all its arguments before
   the body, so VC5 hoists an argument's global load ahead of a preceding
   guard test and can cross-jump two call sites into one. A macro evaluates
@@ -1408,7 +1407,7 @@ the caller AND flipped a helper to match for free.
   both bytes and dwords into param_9's and param_1's incoming arg slots
   ([esp+0x9c], [esp+0x7c]) at 0x100250D0. Therefore **Ghidra's `param_N`
   scratch names are slot coincidences, not evidence about the source, and
-  renaming a local to chase orig's slot number is NOT a lever** — every
+  renaming a local to chase orig's slot number is NOT a lever**: every
   such rename measured worse (+16 B IDX4 arm, +32 B CI8 arm, +16 B I8 arm).
   This retires a whole speculative class. Proven 0x100250D0.
 
@@ -1424,28 +1423,28 @@ the caller AND flipped a helper to match for free.
   for every zero. Named temps (`z`/`four`/`z2`), a mid-burst handle
   local, comma-join, and restoring `iVar1` all compile byte-identical
   to the wrap (168 diffs). Retyping `_DAT_1021c784` / `DAT_1021c788`
-  to float drops 168→68 but is wrong (`orig_widths` are int; orig
+  to float drops 168->68 but is wrong (`orig_widths` are int; orig
   `mov [x], esi`). Do not permute further. `stackshred` is a no-op
   on this VA (no locals).
 
-- **Ghidra-shredded stack struct → one struct of the frame size
+- **Ghidra-shredded stack struct -> one struct of the frame size
   (`stackshred`).** Ghidra prints `char local_10[4]; int local_c; int
   local_8;` for a 16-byte stack object whose 4th dword is unread, and
   /O2 emits `sub esp, 0xc`. Orig `sub esp, 0x10`. Fold into one
   struct, pad holes (and up to orig's `sub esp` when given), keep
   Ghidra's field names as `_fr.local_N`. Same family as BrTex3dCreate
   / 0x1002DEC3 and BrTex3dExpand `sub esp, 0x68`. Tight: 2..8
-  `local_N`, frame ≤ 0x40, at least one address-taken, no C++ EH.
+  `local_N`, frame <= 0x40, at least one address-taken, no C++ EH.
   Only-if-better (0x10027710 CLOSE(2) would become 159). Proven MATCH
   0x100027E0 (MCI_STATUS, 80 B /O2) and 0x10002870 (MCI_PLAY 12-byte
-  parms, 109 B /O2, was short-29). Frame residue 52→51; 0x10002580
+  parms, 109 B /O2, was short-29). Frame residue 52->51; 0x10002580
   is not prey.
 
 - **Shared-tail goto, not early `return 0` (`misscode`).** DX5
   WaveOpenFile success is `goto TEMPCLEANUP` joining cleanup's
   `*phmmio = hmmio; return nError`. Ghidra prints `*out = h; return 0`
   (or `return err` inside `if (err == 0)`), so /O2 peepholes
-  `xor eax,eax` and the cleanup store goes through ecx — 7 diffs on
+  `xor eax,eax` and the cleanup store goes through ecx: 7 diffs on
   top of the esi/edi colouring wall (35 diffs) while the outer
   `if (h==0) err; else BODY` is still there. Orig duplicates
   `mov [eax], edi; mov eax, esi; pops; add esp, 0x24; ret`
@@ -1473,7 +1472,7 @@ the caller AND flipped a helper to match for free.
 - **Ghidra drops a `base + k*8 + disp32` scale.** Orig
   `mov eax,[ptr]; mov ecx,[idx]; mov eax,[eax+ecx*8+0x1de48]` is an 8-byte
   record array at offset 0x1DE48 of the pointed-to object, not
-  `ptr[idx]` (scale 4, no disp — 4 bytes short). Matching twin:
+  `ptr[idx]` (scale 4, no disp: 4 bytes short). Matching twin:
   `*(void **)((char *)ptr + 0x1DE48 + idx * 8)`. Proven 0x100366C0
   (BrSub1003D030, 55 B MATCH /O2).
 
@@ -1492,7 +1491,7 @@ the caller AND flipped a helper to match for free.
 
 - **GBI tex-scan OtherMode H/0E take pCmd only; fields are globals.**
   Orig `mov eax,[esp+4]; mov eax,[eax+4]` then `mov [0x10697a44],imm`
-  (and H's `push ecx; call 0E; add esp,4` — one arg). The port's
+  (and H's `push ecx; call 0E; add esp,4`: one arg). The port's
   `pSt->f5553DC` is `[R+disp]` plus a wasted first-arg load. Matching
   twin: 1-arg `const BrGfxWords *pCmd`, store `DAT_10697a44` /
   `DAT_106b7ab0`. Hide the 2-arg header proto in the .c (no header
@@ -1515,14 +1514,14 @@ the caller AND flipped a helper to match for free.
 - **LoadImageA is nested GetModuleHandleA; failed hbm is the live zero.**
   Orig `push flags; ...; push 0; call GetModuleHandleA; push eax; call
   LoadImageA`. On fail, `push 0x2010; push cy; push cx; push eax; push
-  name; push eax; call LoadImageA` — eax is still 0, used for both
+  name; push eax; call LoadImageA`: eax is still 0, used for both
   IMAGE_BITMAP and hInst. `LoadImageA(NULL, ..., 0, ...)` emits extra
   `push 0`. Proven 0x10001290 (136 B) and 0x1005A210 (101 B, file-only
   LoadImageA(NULL, path, 0, 0, 0, 0x2010)) MATCH /O2.
 
 - **Fill-rect handlers are 1-arg; 10.2/s12 extract is shl/sar.** Orig
   `mov esi,[esp+0xC]` (after push ebx/esi) then `mov edx,[DAT_100a7518]`.
-  `(w >> 2) & 0x3FF` is `shr` — orig is `((int)(w << 20) >> 22) & 0x3FF`
+  `(w >> 2) & 0x3FF` is `shr`: orig is `((int)(w << 20) >> 22) & 0x3FF`
   and `((int)(w << 8) >> 22) & 0x3FF` (0xF6) or `>> 20` with no mask
   (0xE1). Then cdecl `FUN_1001e380(ulx, H-lry-1, lrx+1, H-uly)`. A
   2-arg wrapper into a shared helper does not match. Proven 0x1001E320
@@ -1530,7 +1529,7 @@ the caller AND flipped a helper to match for free.
 
 - **5-bit RGB expand is `(w >> s) & 0xF8 | (w >> t) & 7`, not the
   xor-blend transcription.** Orig emits `mov r,w; mov r,w; shr; shr;
-  xor dl,cl; and dl,7; xor dl,cl` — that IS VC5's lowering of the
+  xor dl,cl; and dl,7; xor dl,cl`: that IS VC5's lowering of the
   and/or form. Spelling the xor-blend as source (`a ^ ((a ^ b) & 7)`
   with byte temps) compiles to a 2-register in-place shr (no esi, -6 B,
   REGNORM 0+4). The and/or form keeps `w` live for both shifts, forcing
@@ -1538,7 +1537,7 @@ the caller AND flipped a helper to match for free.
   channel 2's copies. Reload `w = *(unsigned *)(p+4)` per channel;
   p stays in eax (`add eax,8` return). Blue is a byte load `& 0xFE`,
   `<< 2`, plus dword `>> 3` `& 7`. Alpha is `(w & 1) ? 0xFF : 0`
-  (`and cl,1; neg cl; sbb ecx,ecx; add eax,8; and ecx,0xff`) — not
+  (`and cl,1; neg cl; sbb ecx,ecx; add eax,8; and ecx,0xff`), not
   `0 - (w & 1)` (that is `neg` with no sbb). Proven 0x1001E9F0
   br_dl_fillcolour, 110 B, MATCH /O2.
 
@@ -1549,37 +1548,37 @@ the caller AND flipped a helper to match for free.
   `cmp [eax+sym]`, 6-byte encodings). Spelling BOTH off the middle symbol
   (`(char *)&DAT_f4 + i*12 - 4` and `+ i*12`) folds base+i*12 into the IV:
   preheader `mov eax, offset f4` placed AFTER the entry test (a hand-written
-  pointer init hoists ABOVE it — keep the loop indexed so the reducer owns
+  pointer init hoists ABOVE it: keep the loop indexed so the reducer owns
   the IV), compares `[eax-4]`/`[eax]`, and the found-arm's read of the third
   column recomputes from the index (`lea; [eax*4+f8]`). Writes to such
   columns are byte-offset stores with n*12 materialised once (`lea; shl`)
-  and each column's own symbol as displacement — the `((T*)&g)[n].field`
+  and each column's own symbol as displacement: the `((T*)&g)[n].field`
   struct spelling emits scaled `[eax*4+base]` instead (+6 B). Proven
   0x10018E10 BrVtxCacheResolve + 0x10018FC0 BrVtxCacheInsert (MATCH /O2).
   **When the stride divides by a SIB scale (0x978 = 303*8), even the
-  byte-offset spelling canonicalizes back to `[r*8+disp]` — a NAMED
+  byte-offset spelling canonicalizes back to `[r*8+disp]`: a NAMED
   `int off = i * 0x978;` variable forces the one-time shl materialisation**
   (5 uses; inline arithmetic stays scaled at any use count). Proven
   0x10006150 BrNetSlotGetF030 (96 B, MATCH /O2).
 - **A record loop that reads the rest of the record at negative offsets
   advanced its pointer at the TOP.** `mov ecx,[arg]; movsx [ecx]; add
-  ecx,0x10; movsx [ecx-0xe]…` is source `v = *(short *)p; p += 0x10;` then
-  `p - 0x0E` etc. — spelling the advance at the bottom with positive
+  ecx,0x10; movsx [ecx-0xe]...` is source `v = *(short *)p; p += 0x10;` then
+  `p - 0x0E` etc.; spelling the advance at the bottom with positive
   offsets biases the IV differently. The fild int-temp lives in a DEAD ARG
   SLOT, which requires the pointer init to sit INSIDE the count guard
   (block scope) so the arg slot dies at the right time. Proven 0x10018EF0
-  BrVtxExpand (REGNORM 21→0; residue: whole-function ecx/edx rotation).
+  BrVtxExpand (REGNORM 21->0; residue: whole-function ecx/edx rotation).
 
 - **Per-arm duplicated switch tails come from ONE shared tail after the
-  switch — VC5 tail-DUPLICATES the join; per-arm copies in source get
+  switch: VC5 tail-DUPLICATES the join; per-arm copies in source get
   cross-jump MERGED instead.** Orig: three byte-identical `store y; push;
   call emitter; add esp,4; pop esi; ret` tails, one per arm, with one arm
   storing x and falling into the default-target copy. Spelling the copies
-  per arm compiles to ONE tail plus `jmp` into it (22 B short) — `return`
+  per arm compiles to ONE tail plus `jmp` into it (22 B short): `return`
   vs `break`, else-if vs switch, named temps, /O1, /Og-, /Oa, /Ow, /Gy,
   VC4.2 all fail to unmerge it. The matching source is `switch { case 2:
   g_x = x - (f() >> 1); break; case 1: g_x = x - f(); break; case 0:
-  g_x = x; break; } g_y = y; emit(s);` — the duplication is only reachable
+  g_x = x; break; } g_y = y; emit(s);`: the duplication is only reachable
   from the single-tail form. Also: a param used by every arm (`s = psz`
   homed in esi before the switch) hoists with the plain param spelling once
   the tail is shared. Proven 0x100168C0 BrTextDraw (180 B, MATCH /O2).
@@ -1590,7 +1589,7 @@ the caller AND flipped a helper to match for free.
   irrelevant (each probed on 0x10016BE0); swapping the two extern LINES
   flips the roles. `extern float K; extern float dt;` puts dt on fld for
   `dt * K`. **TRAP: reloc-masked scoring calls a role-swapped pair
-  byte-exact** — the two loads have identical shapes and the swapped
+  byte-exact**: the two loads have identical shapes and the swapped
   addresses live in masked reloc slots; only tools/image_build.py catches
   it (this happened live: a "byte-exact" claim carried 3 wrong image
   bytes). After any both-memory float product lands, check the reloc
@@ -1598,25 +1597,25 @@ the caller AND flipped a helper to match for free.
   0x10016BE0 BrWeatherStepLightning (174 B, image-clean MATCH /O2).
 
 - **Bit-stream readers: compute the value into a block temp BEFORE the
-  cursor store** (`{ v = pack; pBs->readByte = i + N; return v; }`) — the
+  cursor store** (`{ v = pack; pBs->readByte = i + N; return v; }`): the
   value-first order is what keeps the pack register live across the store.
   A big-endian s32 read seeds its Horner chain with a SIGNED char load
   (`movsx` does the sign semantics; an unsigned<<24 spelling is a
   different shape). OPEN WALL (register-byte widen): the originals widen
   later bytes in DIRTY regs (`mov dl; and edx,0xff` after register death)
   and sometimes load byte pairs high-first; VC5 zero-widens (`xor` + mov,
-  low-first) from every probed spelling — |-order, +, byte temps,
+  low-first) from every probed spelling: |-order, +, byte temps,
   |=-accumulate, u16 temps, signed-char+mask, sum-read-before-bind. The
   register analogue of the byte-slot wall; 4-15 B residue per reader.
   Proven 0x1006CE20/0x1006CE50/0x1006CE80 (structure), 2026-09-01.
 
 - **div/mod-by-constant pairs: `%` next to `/` emits ONE idiv; the magic-imul
-  shape means the source derived the remainder itself — and a compound `-=`
+  shape means the source derived the remainder itself, and a compound `-=`
   picks the neg-form.** `q = n / 100; r = n % 100;` compiles to `cdq; idiv`
   (one divide serves both). Orig magic-imul for the divide plus a mul-back for
   the remainder = source spelled the mul-back: `n -= q * 100` (compound, result
   stays in n's register) emits the NEGATED product folded into a lea-ADD
-  (`neg; shl 2; sub` = −5q, `lea` ×5, `lea esi,[esi+edx*4]`), while
+  (`neg; shl 2; sub` = -5q, `lea` x5, `lea esi,[esi+edx*4]`), while
   `r = n - q * 100` (fresh variable) emits the positive chain + `sub`. The
   second pair (`whole -= minutes * 60`) updates in place as plain `sub ecx`.
   A named quotient local forces `mov ecx,edx; sar ecx,5` (copy first);
@@ -1625,7 +1624,7 @@ the caller AND flipped a helper to match for free.
 
 - **Repeated global reads: do NOT invent a local.** Orig reloading
   `[g_cur]` at every use (even twice in three instructions for the
-  f68 store + vcall) means the source read the GLOBAL each time —
+  f68 store + vcall) means the source read the GLOBAL each time:
   VC5 CSEs adjacent reads into ecx/eax on its own, while a `p =
   g_cur;` local claims a callee-saved register (+1 push, whole-body
   rotation). Same function: an early-`return` arm places its body
@@ -1636,7 +1635,7 @@ the caller AND flipped a helper to match for free.
   bodies in source case order; if/else-if lays the first body inline.**
   Orig `cmp eax,0x113; je far-body; cmp eax,0x501; jne end; <501 body>`
   with the 0x113 body at the END is `switch (msg) { case 0x501: ...;
-  case 0x113: ...; }` — the if/else-if spelling emits `jne` and the
+  case 0x113: ...; }`: the if/else-if spelling emits `jne` and the
   0x113 body FIRST (79 diffs of pure layout). Same function: the
   five-arg Sel vcall reaches the eax-vtbl shape through a `Sel *s =
   &p->sel;` temp (direct `p->sel.s4(...)` loads the vtbl into edx
@@ -1645,17 +1644,17 @@ the caller AND flipped a helper to match for free.
   and sibling 0x10036130 (103 B), both /O2 C++ TUs.
 - **`errno` in a /MD matching TU is the CRT `_errno()` CALL (FF 15),
   never a variable load.** Spell it `*_errno()` with
-  `_CRTIMP int *__cdecl _errno(void);` — the plain errno macro (or an
+  `_CRTIMP int *__cdecl _errno(void);`: the plain errno macro (or an
   undeclared `_errno`) compiles to a variable load or an E8 near call
   and shifts every byte after it. The wrap now auto-declares it.
   Also proven on the same pair: a drifted refine draft's whole-function
   register rotation dissolved on clean retranscription (rotation is a
   symptom), and reloc-masked STRING operands must be verified against
-  the DLL data section before naming — the "rb"/"wb" twins were
+  the DLL data section before naming: the "rb"/"wb" twins were
   swapped relative to their VA order. Proven 0x10008DC0
   BrFileCreateChecked / 0x10008E10 BrFileOpenChecked (67 B, /O2).
 - **Bounds-checked container methods (`cmp reg,[this+0x10]; jb` +
-  warn printf, thiscall `ret N`) are one C++ class — write real
+  warn printf, thiscall `ret N`) are one C++ class: write real
   members, not fastcall tricks.** The Tbl8900 family
   (0x10008930..0x10008A30, five methods, all byte-exact as C++ TUs):
   vtbl read before arg pushes, vtbl CACHED in a callee-saved reg
@@ -1667,7 +1666,7 @@ the caller AND flipped a helper to match for free.
   items +0x18 (76 B entries), FILE* +0x1C.
 - **Vtbl load scheduled INSIDE a strcpy intrinsic = C++ member call,
   not reachable from C.** `lea edx,[dest]; mov eax,ecx; mov esi,edi;
-  mov edi,edx; mov edx,[obj]; shr ecx,2; rep movsd` — the object's
+  mov edi,edx; mov edx,[obj]; shr ecx,2; rep movsd`: the object's
   vtable read sits between the intrinsic's setup and its rep, where
   edx dies. The C fastcall spelling emits the load AFTER the copy
   (18 diffs, pure placement); a C temp read before strcpy hoists to a
@@ -1676,12 +1675,12 @@ the caller AND flipped a helper to match for free.
   marker: `short-4` (the missing `lea ecx` this-setup). Generatored as
   tools/gen_uitext.py (masked-skeleton corpus scan). Proven MATCH
   0x10038D30 + 7 clones (100 B, /O2, 2026-09-01).
-- **Ghidra types byte pointers SIGNED — retype `char *param` to
+- **Ghidra types byte pointers SIGNED: retype `char *param` to
   `unsigned char *` when the original widens with `xor r,r; mov r8`.**
   A byte read through `char *` compiles to `movsx`; the original's
   `xor eax,eax; mov al,[esi]` shape (default promotion at the call
-  site — see the char-window entry above) requires UNSIGNED char.
-  One-token fix, whole-function diff dissolves (47 diffs → 0 on a
+  site: see the char-window entry above) requires UNSIGNED char.
+  One-token fix, whole-function diff dissolves (47 diffs -> 0 on a
   61 B function). Ghidra emits `char *` for every byte pointer it
   cannot prove unsigned, so this recurs across the residue (61
   unmatched work files carry retypeable `char *` decls, 2026-09-01
@@ -1691,10 +1690,10 @@ the caller AND flipped a helper to match for free.
 
 ## Cost model (measured, 2026-08-22 timed test)
 
-Size is not the cost driver — code shape is. 738 B of int/call-heavy code
+Size is not the cost driver: code shape is. 738 B of int/call-heavy code
 matched in ~10 min; a 165 B float function (BrVec3Project) is permanently
 stuck at 30 diffs of scheduling residue. Int/call-heavy code sustains
-5–10 min/function at any size once the file's context is loaded. The float/
+5-10 min/function at any size once the file's context is loaded. The float/
 x87 cluster carries the walls and is a separate workstream.
 
 ## 2026-08-30 wave merge
@@ -1703,15 +1702,15 @@ Consumed `build/match/idioms_new/8bed6233.md` (one scratch file). POD writer
 family 0x10008BA0 / 0x10008BE0 / 0x10008C80 is already in Proven idioms
 (Add MATCH /O2; Open/Close REGNORM 0+0 store-vs-push schedule wall). **0 new.**
 
-`build/match/walls_log.csv` not present — no per-`<kind>` counts. No
+`build/match/walls_log.csv` not present: no per-`<kind>` counts. No
 parked-wall kind newly retryable (no new idiom landed).
 
 - **Colour packs are Horner, puts live inside arms, sites recompute
   (BrCarDrawVehicle 0x1000A110, 2026-08-31).** Four levers that took the
   function from 41 divergence regions / REGNORM 75+102 to 39 / 52+43:
-  (1) RGBA packs are `(((top<<8|b1)<<8|b2)<<8)|a` — `mov dh,al` is
+  (1) RGBA packs are `(((top<<8|b1)<<8|b2)<<8)|a` (`mov dh,al` is
   `(uint8_t)x<<8` into a zeroed reg, `& 0xFF` components get full-reg
-  and/or — never independent `<<24|<<16|<<8` terms. (2) A branch-selected
+  and/or) never independent `<<24|<<16|<<8` terms. (2) A branch-selected
   DL emit has the WHOLE `put()` inside each arm (three full pack copies at
   the FB envcolour; VC5 cross-jumps only arms whose generated bytes are
   identical). (3) `x ? K1 : K2` inline in the emit argument = xor/neg/sbb
@@ -1720,74 +1719,74 @@ parked-wall kind newly retryable (no new idiom landed).
   `(lod*5)<<3` per DL site with one late assignment into the dead ARG
   slot, bKind 5 fresh reads); every source-level cache (dst/i/lodOff/
   bKind/hoisted flags pointer) rotated the whole allocation, and removing
-  the caches snapped car=ebx / zero=ebp / load-then-cmp guard in one step
-  — the strongest confirmation yet of rotation-is-a-symptom. Residue:
+  the caches snapped car=ebx / zero=ebp / load-then-cmp guard in one step:
+  the strongest confirmation yet of rotation-is-a-symptom. Residue:
   byte-slot pack locals ([esp+0x31]/0x32) whose stores survive only as
   `*(volatile char *)&pack[n] = v` (plain uint8_t gets store-forwarded)
   while the orig's DWORD+`and 0xff` read-back still narrows to a byte
-  load (volatile-int read forces the width but steals ebp — probed, both
+  load (volatile-int read forces the width but steals ebp: probed, both
   mapped); the Dir0 else-arm fld/fld/mov/fstp/mov/fstp hybrid copy; the
   0x40-vs-0x4c frame. VC4.2 cross-check on this TU is NEGATIVE: all four
   byte-exact-under-5.0 functions shrink/restructure under tools/msvc42.
 
 - **Probes ruled out on the 0x1000A110 residue (2026-08-31, all
   byte-verified dead):** (a) VC5 does NOT fold `(w>>8)&0xFF` into a
-  byte-offset dword read — it mask-algebras (`and reg,0xff00` + shifts)
+  byte-offset dword read: it mask-algebras (`and reg,0xff00` + shifts)
   and the odd-address dword reads at [esp+0x31]/[esp+0x32] therefore ARE
   reads of packed byte-array members, not offset views of a dword local.
   (b) A `volatile const float *` read and a `(float)(double)` round-trip
-  both still compile a float field copy to integer movs — the Dir0
+  both still compile a float field copy to integer movs: the Dir0
   fld/fld/mov/fstp/mov/fstp hybrid remains unreached (also probed:
-  pointer-aliased reads, signed-char masks, volatile int puns — the last
+  pointer-aliased reads, signed-char masks, volatile int puns: the last
   forces dword width but blows a register). (c) The N64 twin
   (TGR ROM fn at 0x80232ed4, found by scanning lui/ori pairs for the DL
-  command words — G_MTX 106/103, movemem, the BC-moveword quad) is a
+  command words: G_MTX 106/103, movemem, the BC-moveword quad) is a
   LEANER ancestor: its colour movewords write constants, so the 3-arm
   colour pack, the *4/5 dim arm, and the Dir0/Dir1 block are PC-era code
-  with no MIPS oracle. It DOES re-read icar from car+0x140 per movemem —
+  with no MIPS oracle. It DOES re-read icar from car+0x140 per movemem:
   independent confirmation of the recompute-per-site idiom in the shared
   lineage.
 
 - **The byte-slot idiom, CRACKED (BrGlRectFill 0x1001E380, byte-exact,
   2026-08-31).** The `mov byte [esp+S],r ... mov R,dword [esp+S]; and
-  R,0xff` pattern is PLAIN SEPARATE uint8_t LOCALS — no array, no
+  R,0xff` pattern is PLAIN SEPARATE uint8_t LOCALS: no array, no
   volatile, no source-level `& 0xFF`: the dword-read+mask IS VC5's
   widening of a byte local whose source register died before the read
   (calls in between, or scheduler kills).  When the stored register
   survives to the read, VC5 store-forwards instead (`mov dl,al`) and
-  deletes the store — that is BrCarDrawVehicle's remaining pack residue:
+  deletes the store: that is BrCarDrawVehicle's remaining pack residue:
   spelling proven right, register-death timing not yet reproduced.
   Related, proven in the same function: (a) a fresh Glide-side
   transcription beats grinding a mispaired twin (the report row scored
-  the D3D body against Glide bytes — 824 diffs of pure phantom); (b)
+  the D3D body against Glide bytes: 824 diffs of pure phantom); (b)
   /O2 /Op serializes every fild through ONE scratch slot and was
   REQUIRED for this TU (under plain /O2 the filds batch with fxch);
-  (c) vertex fan-out is vertex-major source with inline (float) casts —
+  (c) vertex fan-out is vertex-major source with inline (float) casts:
   CSE homes each converted value in an integer register and float
   fan-out copies become integer movs; (d) an argument clamped through a
   temp (`t1 = x1; if (t1 < min) x1 = min;`) stays memory-homed, its
   register never updated.
 
 - **`shared/prefix` twins can hide a CONVENTION fork, not missing code
-  (BrCarStateEncode 0x10006510, 2026-08-31).** REGNORM 33+0 — every Glide
-  instruction present, 33 extra `xor edx,edx` — because the D3D build's
+  (BrCarStateEncode 0x10006510, 2026-08-31).** REGNORM 33+0: every Glide
+  instruction present, 33 extra `xor edx,edx`, because the D3D build's
   bit-writer consumes an edx dummy (fastcall-shim shape, and the matched
   D3D twin 0x100061A0 PROVES those xors are real on that side) while the
   Glide build calls a TRUE C++ thiscall writer (ecx + two callee-popped
   stack args), which VC5 C cannot spell (see the BrPhaseLeave EAX-pattern
   wall).  Int args cannot be struct-coerced (C2115), an 8-byte pair arg
-  pushes from memory not reg/imm — probed.  Classification: the
+  pushes from memory not reg/imm: probed.  Classification: the
   `shared/prefix` census pool (22 rows / 13.9 KB) likely contains more of
   this thiscall-fork class; triage those against the C++ workstream, not
   the coloring queue.
 
-- **Fixed-address global array folded as a displacement ≠ pointer variable.**
+- **Fixed-address global array folded as a displacement != pointer variable.**
   Orig `movsx ecx, byte [ecx + edx*2 + 0x100A5C78]` / `mov [ecx*4 + 0x100A5C58]`
-  folds the link address as the array BASE — that symbol is DATA at a pinned
+  folds the link address as the array BASE: that symbol is DATA at a pinned
   address, not a pointer var to load first (a `const T *g` decl emits an extra
   `mov reg,[addr]`). Reproduce with `((const T *)&g_sym)[i]` under
   BR_MATCHING_BUILD (the pinned var's ADDRESS is the base). Re-derive the
-  `*2`/`*4` operand from the SIB byte — the port had the scale on the wrong
+  `*2`/`*4` operand from the SIB byte: the port had the scale on the wrong
   index (a real bug). Proven BrCarDrawVehicle DC-texture lookup.
 - **Cross-TU stub getter = a spurious `call` the orig lacks.** The port routed a
   flag through `BrBootGlobal_ABAA0()` (a `return 0;` stub in another TU); at /O2
@@ -1796,23 +1795,23 @@ parked-wall kind newly retryable (no new idiom landed).
   Pairs with the port-safety null-check removal (orig calls the hook
   unconditionally; no `test/jz` guards `call [ptr]`) and reading a call arg AT
   the call site rather than a hoisted local. Proven BrCarDrawVehicle 0xB176.
-- **CORRECTION — hoisting disjoint block vectors to distinct frame locals DOES
+- **CORRECTION: hoisting disjoint block vectors to distinct frame locals DOES
   grow the frame.** Two block-scope `BrVec3 tmp` in separate `{}` merged to
   `sub esp,0x40`; hoisting them to TWO NAMED function-scope vectors grew the
   frame to the orig's `sub esp,0x4c` and made the prologue byte-exact. The
-  earlier "MSVC overlays disjoint lifetimes regardless" reading was wrong — it
+  earlier "MSVC overlays disjoint lifetimes regardless" reading was wrong: it
   depends on the hoist form (two named function-scope vars, not one shared).
   Proven BrCarDrawVehicle.
 - **Region count decouples from byte distance late in a function.** Removing a
-  branch (a port-safety null-check) RAISED the divergence region count 36→38
+  branch (a port-safety null-check) RAISED the divergence region count 36->38
   while REGNORM fell 9 (register-blind multiset is the truth). Rank residue by
-  REGNORM, never region/diff count — the count re-segments on any structural
+  REGNORM, never region/diff count: the count re-segments on any structural
   edit. Proven BrCarDrawVehicle.
 
 - **Phase-leave family: guarded/tailed vcall variants are ONE stampable
   grammar (2026-09-01).** 0x1003CD20 (guarded slot-6 vcall) and 0x1003FBE0
   (double-strcpy tail) both landed byte-exact FIRST COMPILE from the
-  0x1003D4A0-style C++ TU skeleton — GameObj +0x2AE8 pSub, natural
+  0x1003D4A0-style C++ TU skeleton: GameObj +0x2AE8 pSub, natural
   statement order. Two scheduling facts fall out for free, do not fight
   them: (1) the vcall's `push 0` hoists ABOVE a preceding member store
   (`pSub->f68 = 0; pSub->s6(0);` emits push first); (2) zero stores
@@ -1822,9 +1821,9 @@ parked-wall kind newly retryable (no new idiom landed).
   does the interleaving.
 - **Reloc-masked twin stamping (tools/gen_cpptwin.py, 2026-09-01).** UI/phase
   C++ functions ship the same machine code repeatedly, differing only in
-  DIR32 slots (the seven 158-B 0x1003FBE0 siblings differ in ONE byte —
+  DIR32 slots (the seven 158-B 0x1003FBE0 siblings differ in ONE byte:
   the phase-source global). After hand-proving one member, run
-  `python3 tools/gen_cpptwin.py` — it compares every unmatched orig bin
+  `python3 tools/gen_cpptwin.py`: it compares every unmatched orig bin
   against every matched C++ TU with base-reloc + external-rel32 masking and
   stamps renamed TUs for structural twins (+6 byte-exact on first run).
   Both gates hold: the scorer masks relocs, image_build backfills slots
@@ -1833,7 +1832,7 @@ parked-wall kind newly retryable (no new idiom landed).
   Orig `pop esi; mov eax,1; ret` = ONE source `return 1;` after the
   if/else, tail-duplicated into each path AFTER that path's register
   restore. Spelling explicit `return 1;` inside each branch emits
-  `mov eax,1; pop esi; ret` (mov first) — 4-diff miss. The dual is the
+  `mov eax,1; pop esi; ret` (mov first): 4-diff miss. The dual is the
   branch-with-own-return shape (both sites `mov eax,1; ret`, no pop
   between): there the source really has per-branch returns. Read the
   pop/mov order at each return site to pick the spelling. Proven
@@ -1843,16 +1842,16 @@ parked-wall kind newly retryable (no new idiom landed).
   `cos(ang) * r` (2026-09-01, 0x100140B0 BrHudDrawDial).** Inline trig
   products emit `fld [r]`/`fld st` + `fmulp` pairs (the multiplier gets
   loaded); the reused-temp form keeps the trig value on the stack and the
-  radius on the fmul side — `fmul [esp+S]` for a slot-homed radius,
+  radius on the fmul side: `fmul [esp+S]` for a slot-homed radius,
   non-popping `fmul st(N)` for one living deep on the x87 stack. The temp
   also yields the original's lone `fst [slot]` rounding store at the first
   use (reusing the temp's existing home). One probe took the function
-  18+13 → 1+5 regnorm. Companion facts proven in the same function:
+  18+13 -> 1+5 regnorm. Companion facts proven in the same function:
   a coordinate converted once and re-added each vertex is a STATEMENT
-  local placed just before the block (`fx = (float)x;` → fild sunk into
+  local placed just before the block (`fx = (float)x;` -> fild sunk into
   first use, fstp-homed, later adds read the slot); a second coordinate
   whose fild sits inside the SECOND vertex is an int local with a CSE'd
-  INLINE cast (`(float)dy`) — the statement form hoists its fild too
+  INLINE cast (`(float)dy`): the statement form hoists its fild too
   early. Hoisting the next-angle assignment above the previous store to
   chase the original's pipelining FAILS (live-range extension changes the
   frame); that 2-site/4-fxch pipelining depth is scheduler-internal
@@ -1861,25 +1860,25 @@ parked-wall kind newly retryable (no new idiom landed).
   (2026-09-01, 0x10013FD0 BrGfxDrawTexRect).** The F3D-style `*4` /
   `& 0x3FFC` / `| 0x38C000` / `>> 2` / `<< 12` coordinate dance is
   value-preserving for integer coords, and the port had folded it to
-  plain masks -- 25 bytes of missing code that looked like a "mixed"
+  plain masks: 25 bytes of missing code that looked like a "mixed"
   wall. VC5 emits every step, including the command byte riding through
   as `0x38C000` (`>>2 <<12` = 0xE3000000) and the redundant
   `(y<<2)>>2 & 0xFFF` (it reorders the AND first but keeps the dead
   shifts). Also proven here: `((w*4-2)&0xFFF)<<12` folds to
-  `shl 14 / sub 0x2000 / and 0xFFF000` on its own -- the literal
+  `shl 14 / sub 0x2000 / and 0xFFF000` on its own: the literal
   `w*0x4000-0x2000` spelling is not needed and changes nothing.
 - **Option-cycler family (2026-09-01, 0x1003C080..0x1003C3D0): factored
   helpers must be `static __inline`, and the down-step is
   load / `--v` / store.** The original inlines both the up/down cycle body
   and the announce tail (3-arg send + intrinsic strcpy) in every cycler;
   the port's called helpers left the whole family scored "missing code at
-  ~30%".  `v = *pv - 1` emits lea/test/jge -- the split
+  ~30%".  `v = *pv - 1` emits lea/test/jge: the split
   `v = *pv; --v; *pv = v;` gives the original's dec / store / jns (flags
   survive the store).  BrSprintf-style wrappers likewise: the original
   calls sprintf through the /MD import.  TWO residue classes proven
   context-dependent here, do not spelling-probe them again: (1) the
   cycled-global reload goes to eax (A1 short form) in the original but the
-  return-1 constant's precoloring pushes ours to ecx -- macro form,
+  return-1 constant's precoloring pushes ours to ecx: macro form,
   direct-global tails, named temps all identical; (2) `x -= K` emits
   sub-vs-add-neg by surrounding allocator state, not spelling (BrHudDraw's
   original wants add for -3, BrOptCycleTrack's wants sub for -0x10).
@@ -1887,16 +1886,16 @@ parked-wall kind newly retryable (no new idiom landed).
   original rematerialises per site (xor eax,eax / mov eax,0x1f); bare-if
   gates and shifted compare constants do not flip it.
 
-- **Ghidra's named temps are an ALLOCATION HAZARD — three proven forms
+- **Ghidra's named temps are an ALLOCATION HAZARD: three proven forms
   (2026-09-01, the 2-diff scattered class).** A temp Ghidra names gets its
   own callee-saved home; the original CSE'd the expression, so registers
   pair differently and the diff is 2 modrm/SIB bytes. (1) Single-use CALL
-  temp: `pv = GlobalHandle(p); GlobalUnlock(pv);` → spell NESTED
-  `GlobalUnlock(GlobalHandle(p))` — fixes the hoisted-import-pointer
+  temp: `pv = GlobalHandle(p); GlobalUnlock(pv);` -> spell NESTED
+  `GlobalUnlock(GlobalHandle(p))`: fixes the hoisted-import-pointer
   edi/esi pairing (proven 0x1006C6A0). (2) SCALE temp: `i4 = i * 4;
-  *(int*)(p + i4)` → repeat `p + i * 4` at each use — fixes SIB base/index
+  *(int*)(p + i4)` -> repeat `p + i * 4` at each use: fixes SIB base/index
   (`8b 04 37` vs `8b 04 3e`, proven 0x1006E130). (3) The dual from the C++
-  session: named temps are sometimes REQUIRED (retranscribe rule) — the
+  session: named temps are sometimes REQUIRED (retranscribe rule): the
   scorer decides. All three are refine transforms now: `calltemp`,
   `scaletemp` in tools/ghidra_to_match.py.
 - **`C7 05 <g> 00000000` amid `A3` zero stores = the store sits ABOVE the
@@ -1906,24 +1905,24 @@ parked-wall kind newly retryable (no new idiom landed).
   wrote it BEFORE the memsets (eax not zero there) and the scheduler SANK
   it below them. Transform `zerohoist` (k=1,2). The C7-vs-A3 split in the
   orig bytes picks the statement order. Proven 0x100703D0 (also needed
-  Ghidra's bogus `double` retyped int — watch for size-luck baselines where
+  Ghidra's bogus `double` retyped int: watch for size-luck baselines where
   a wrong type happens to give a same-length encoding).
 - **3D pinned array: the row LOAD and the row POINTER use different index
-  decompositions — transcribe both, don't unify.** 0x10059FE0: the first
+  decompositions: transcribe both, don't unify.** 0x10059FE0: the first
   read is the flat byte-offset form
   `*(int *)((char *)&BASE2 + (b + a*0x1e) * 0x28)` (lea chain ends in
   `[edx*8+disp]`), the second is a ROW-POINTER
   `((int *)((char *)&BASE + a*1200 + b*40))[c]` (`shl eax,4` + 
   `lea edx,[eax+ecx*8+disp]` + `[edx+eax*4]`). Unifying them into one
   `[a*300+b*10+c]` spelling cross-CSEs the chains and misses. Ghidra's
-  mixed spelling was RIGHT except for int-pointer scaling — add the
+  mixed spelling was RIGHT except for int-pointer scaling: add the
   `(char *)` cast, not a rewrite. MATCH /O2.
 - **2-diff scattered class: two register-pairing walls PARKED (2026-09-01).**
-  0x100283C0 (4 diffs): one arg load slides above two stores — struct-array
+  0x100283C0 (4 diffs): one arg load slides above two stores: struct-array
   and one-symbol respellings score worse; scheduler slide, multiset 0.
-  0x1005A480 (7 diffs): counter/pointer esi↔edi rotation — init order, decl
+  0x1005A480 (7 diffs): counter/pointer esi<->edi rotation: init order, decl
   order, calltemp all no-ops. 0x10054070 (4 diffs, C++ TU in tree): delta
-  scratch ecx↔edx rotation. All register-blind gap 0 — do not re-probe.
+  scratch ecx<->edx rotation. All register-blind gap 0: do not re-probe.
 - **Early-out resource protocol bodies: `do { ... break; ... } while (0)`,
   not structured nesting (2026-09-01, 0x10036810 BrComGetAlloc).** A
   call/alloc/call/cleanup function whose failure paths all funnel into one
@@ -1931,7 +1930,7 @@ parked-wall kind newly retryable (no new idiom landed).
   spelling; if-nesting and goto flattenings let the flow optimizer thread
   the jumps and move an arm past the cleanup (2 bytes short, wrong block
   order).  do-while(0) restored the exact 142-B size and the OOM arm's
-  `jmp` in one step.  Unreached from source here: which arm goes inline --
+  `jmp` in one step.  Unreached from source here: which arm goes inline:
   the original keeps the OOM arm inline jumping over the second call;
   VC5 always outlines one of the two (1+1 je/jne residue).
 - **/Od TUs (2026-09-01, slice2_19 trio).** Three rules proven on
@@ -1941,11 +1940,11 @@ parked-wall kind newly retryable (no new idiom landed).
   be COMPOUND word ops end to end (`pT->flags |= orBits;
   pT->flags &= (uint16_t)clearBits;` gives `or ax, word [ebp+S]`); the
   value-cast spelling widens through eax with masks (+2 insns).  (3) /Od
-  LOCAL HOMES ARE KEYED BY AN INTERNAL NAME HASH, not declaration order --
+  LOCAL HOMES ARE KEYED BY AN INTERNAL NAME HASH, not declaration order:
   renaming locals shuffles their [ebp-N] slots.  Probe empirically
   (compile + read the first store per slot); single-letter sets hit
   quickly (a/y/z/b matched a 5-local frame on try #11).  Also: /Od
-  recomputes every expression -- transcribe repeated subexpressions
+  recomputes every expression: transcribe repeated subexpressions
   literally, never introduce caching locals.
 - **Direct 3-stack-arg thiscall (no vcall) is one insn from C
   (2026-09-01, 0x1002EB03).** `push b; push g; push r; mov ecx,this;
@@ -1961,7 +1960,7 @@ parked-wall kind newly retryable (no new idiom landed).
   (`mov ecx,[esi+disp]`, the original's shape) and the scheduler emits
   the `last` store FIRST.  Introducing a delta temp
   (`t = now - last; last = now; accum += t;`) makes VC5 FORWARD the
-  stored value across the branch instead (`mov ecx,edx`, 2 bytes) — one
+  stored value across the branch instead (`mov ecx,edx`, 2 bytes): one
   fork, 147-diff cascade through the whole tail (register rotation +
   store-order swaps downstream).  Same family: a short local for a
   paced-counter global spills and grows an ebp frame; DIRECT GLOBAL
@@ -1988,7 +1987,7 @@ parked-wall kind newly retryable (no new idiom landed).
   return.  Parked.
 
 - **Long-class harvest (2026-09-01):** (1) `call A; jmp B` at a function
-  start = a TAIL-CALL WRAPPER (`{A(); B();}` — VC5 turns a trailing call
+  start = a TAIL-CALL WRAPPER (`{A(); B();}`: VC5 turns a trailing call
   into jmp) that the map merged with the jump target; split the map row
   (0x1005A6A0/0x1005A6B0, both MATCH after the split; corpus scanned,
   no other instance). (2) Ghidra artifacts now transforms: discarded
@@ -1996,23 +1995,23 @@ parked-wall kind newly retryable (no new idiom landed).
   explosion (`walkerstrcpy`), dead COM-failure re-zero (`deadnull`).
   (3) `extern int s_*` vs `extern char s_*[]` still the top single fix
   (0x100356B0). (4) Ghidra `iVar = X + carry` pairs = a 64-bit
-  `__int64` add (`add/adc`) — spell via an __int64 LOCAL temp
+  `__int64` add (`add/adc`): spell via an __int64 LOCAL temp
   (direct global `+=` interleaves load/add/store per half); 0x10071F00
   parked at 3 diffs (high half ecx vs edx, all spellings/flags probed).
   (5) VC5 SORTS adjacent literal global stores BY VALUE (all -1s, then
   0s); an orig that alternates -1/0 stores with a second zero register
-  is NOT literal-store source — unsolved on 0x10013E80 (52 diffs,
+  is NOT literal-store source: unsolved on 0x10013E80 (52 diffs,
   memset-expansion and named-local probes failed; do not repeat them).
 - **/GX menu-builder trio (2026-09-01, 0x100425E0 BrUiRootEnter, 2659 B
   byte-exact).** Proven on the EH-frame `new`-ladder class: (1) a
   null-check that emits `sete al / test al` is a CHAR bool computed
   AFTER the slot store (`a18[w14] = p; char bad = (p == 0); if (bad)`);
   an int bool copy-props back to a plain jne. (2) A short temp for
-  `w14 + 1` allocates to AX — the original's DX comes from spelling it
+  `w14 + 1` allocates to AX: the original's DX comes from spelling it
   INLINE at the store (`p->w2AB6[0] = (short)(cont->w14 + 1);`), which
   also keeps the 16-bit `inc dx`. (3) Emitted order load-w14 / inc-w2AB4
   / store-w2AB6 comes from SOURCE order w2AB6-store FIRST, w2AB4-inc
-  second — the scheduler sinks the store past the RMW inc (same
+  second: the scheduler sinks the store past the RMW inc (same
   store-reorder freedom as the 0x100414F0 f1C/f3850 pair). Each `new`
   is its own EH state; states/FuncInfo/unwind actions all fall out of
   plain `p = new BrCtl;` under /GX (cpp_score verifies all four pieces).
@@ -2032,17 +2031,17 @@ parked-wall kind newly retryable (no new idiom landed).
   function: three scalar `float hx, hy, hz;` let VC5 pack the third into
   the dead incoming-parameter slot (`sub esp, 8`, third local at
   [esp+0xc]) per the "PACKS ORDINARY LOCALS INTO DEAD PARAMETER SLOTS"
-  entry above. Declaring them as ONE aggregate -- `BrVec3 h;` or
-  `float h[3];`, which compile identically -- allocates the object whole
+  entry above. Declaring them as ONE aggregate (`BrVec3 h;` or
+  `float h[3];`, which compile identically) allocates the object whole
   and restores `sub esp, 0xc` with the slots in declaration order. So
   `sub esp, <exactly N locals * 4>` next to a parameter that dies at the
   first instruction is evidence the source used an aggregate.
 - **Commutative x87 addend order is SOMETIMES a no-op and sometimes the
-  whole match — always probe it, never assume.** In 0x1006D530 swapping
+  whole match: always probe it, never assume.** In 0x1006D530 swapping
   `a*b + c*d` to `c*d + a*b` in any row was byte-identical (so is
   swapping the operands of a both-memory `fmul` in 0x1006DE70). In
-  0x1006DAD0 the same kind of swap on the FIRST of three rows --
-  `(y*y + z*z)` for `(z*z + y*y)` -- was the difference between
+  0x1006DAD0 the same kind of swap on the FIRST of three rows
+  (`(y*y + z*z)` for `(z*z + y*y)`) was the difference between
   byte-exact and 113 differing bytes: it picks which square is computed
   first, and so which value the dead parameter slot gets recycled for.
   Rule of thumb: the swap matters when the two addends compete for a
@@ -2060,7 +2059,7 @@ parked-wall kind newly retryable (no new idiom landed).
   an if/else with a literal in each arm, not `(i == j) ? 1.0f : 0.0f`.
   The if/else form also lets the strength reducer fold the field's byte
   offset into the row IV (`mov ecx, 0xc` / `add ecx, 3` / `cmp ecx, 0x15`
-  for a 3x3 at struct offset 0x30) -- the ternary blocks that too.
+  for a 3x3 at struct offset 0x30): the ternary blocks that too.
 - **Declaration order of scalar float locals picks which one is packed
   into the dead parameter slot.** With N locals and fewer frame slots
   than N, the choice of which overflows into the dead incoming-parameter
@@ -2069,7 +2068,7 @@ parked-wall kind newly retryable (no new idiom landed).
   `fld [reg+disp]` + `fmul st` instead of homing it). On 0x1006DAD0 the
   three edge lengths had to be declared with `x` LAST; `x` first cost the
   `y` home, `x` in the middle reversed the squares. Only three orders
-  need trying, and the diff tells you immediately -- a MISSING
+  need trying, and the diff tells you immediately: a MISSING
   `mov R,[R+I]` + `mov [esp+S],R` pair with an EXTRA `fld [R+I]` is
   exactly this.
 - **`fld [1.0f]; fdiv dword ptr [mem]` is `1.0f / x`, not a double
@@ -2078,12 +2077,12 @@ parked-wall kind newly retryable (no new idiom landed).
   numerically on every normal float, so no test can catch the difference
   and the bytes are the only evidence.
 
-## SIB base/index order on `member_array[index]` — NOT source-reachable
+## SIB base/index order on `member_array[index]`, NOT source-reachable
 *(proven 2026-09-03 on 0x100540D0 / 0x10054280, the font-A/font-B glyph walks)*
 
 `mov al, [edi + eax + 9]` has two legal encodings. The original picks
 `8a 44 07 09` (SIB base=edi/`this`, index=eax/the index). Our staged cl
-emits `8a 44 38 09` — same instruction, same registers, same effective
+emits `8a 44 38 09`: same instruction, same registers, same effective
 address, base and index swapped. **One byte, and nothing in the source
 moves it.** Twenty-one spellings across four orthogonal axes and eight
 flag sets were probed; the full list is in the header of
@@ -2095,7 +2094,7 @@ accessor returning `char*`, hoisted `char *self`, typed `Text540D0 *p =
 this`, pointer-to-array cast), and the declarations (array extent, element
 signedness, local order).
 
-**The counter-evidence that makes this precise** — our cl DOES emit
+**The counter-evidence that makes this precise**: our cl DOES emit
 base=pointer, so it is not a blanket emitter rule. A scan of 937
 byte-exact functions found 94 scale-1 two-register memory operands, 67 of
 them with base reg# > index reg#. The ones that reproduce base=pointer all
@@ -2103,7 +2102,7 @@ share a shape: **the base is a pointer VALUE living in a register**, e.g.
 `pBs->pBuf[pBs->writeByte]` in 0x1006D000 (`mov [edi+ecx],dl`, edi=pBuf
 loaded from +0x10) and `((char*)param_1)[8 + strlen(...)]` in 0x10054390
 (base = the pointer parameter). When the base is instead `this` plus a
-constant member offset — a member array subscript — our cl always makes
+constant member offset, a member array subscript, our cl always makes
 the *index* the SIB base.
 
 So the encoding is decided by whether the address root is a materialised
@@ -2116,18 +2115,18 @@ leads are (a) a construct that forces the text base into a register as a
 genuine pointer value without changing any other byte, or (b) the
 compiler-build lead already open for 0x1000EAF0.
 
-## Inline `memset` setup order — a scheduling residue, not a fixed table
+## Inline `memset` setup order: a scheduling residue, not a fixed table
 *(2026-09-03, 0x1006FCE0 and 0x100087D0; CORRECTED same day by 0x1003AB00)*
 
 Our cl expands a constant-size zeroing `memset` as
 `mov ecx,N / xor eax,eax / lea edi,dst / rep stosd`. The original emits
-`lea edi,dst / mov ecx,N / xor eax,eax / rep stosd` — same instructions,
+`lea edi,dst / mov ecx,N / xor eax,eax / rep stosd`: same instructions,
 dest computed first. Nothing at the call site moves it: the destination
 spelling (array name, `&a[0]`, a hoisted `char *`, a pointer local
 declared at the top of the function), the destination type (`int[8]`,
 `unsigned char[32]`, a nested struct with `sizeof`), and eleven flag sets
 all leave the recomp order unchanged. If a function is otherwise exact
-and its only residue is those three instructions, it is this — park it.
+and its only residue is those three instructions, it is this: park it.
 
 **Confirmed a second time on 0x100087D0, in the VARIABLE-length expansion**
 (the shr-2 / and-3 stosd+stosb pair), which is a different expansion with
@@ -2139,9 +2138,9 @@ the same directional difference:
 In both of those the original materialised the destination pointer before
 the fill value and ours did the reverse.
 
-**CORRECTION — that is not a fixed rule.** 0x1003AB00 has the original
+**CORRECTION: that is not a fixed rule.** 0x1003AB00 has the original
 emitting `mov ecx,8 / xor eax,eax` ABOVE the register saves and the
-`lea edi` after them (edi is not free until `push edi` has run) — i.e. the
+`lea edi` after them (edi is not free until `push edi` has run), i.e. the
 count-and-value-first order, which is exactly what our cl produces there,
 and that function matches on this point. So the setup order is scheduled
 against what else is happening around the call, not fixed by the
@@ -2155,8 +2154,8 @@ with a compiler patch level slightly different from the staged one, which
 is the lead already open for 0x1000EAF0.
 - **A chained assignment is `fld` + `fst` + `fstp`; two separate
   assignments from the same expression are integer copies.**
-  `a = b = pSrc->m[i][j];` loads the source once and spends it twice --
-  `fld [src]`, `fst [b]` (stored and kept), `fstp [a]` -- which is
+  `a = b = pSrc->m[i][j];` loads the source once and spends it twice:
+  `fld [src]`, `fst [b]` (stored and kept), `fstp [a]`, which is
   exactly what orig 0x1006DC70 BrMat4ToMat3Both does. Writing it as two
   statements (`b = pSrc->m[i][j]; a = pSrc->m[i][j];`) lets VC5 CSE the
   load into an integer register and copy with `mov`, costing three extra
@@ -2172,15 +2171,15 @@ is the lead already open for 0x1000EAF0.
 Three `if (hr < 0) { Report(hWnd, hr, ErrLine(N)); return 0; }` blocks. The
 first two compile to byte-identical instruction sequences (only the pushed
 line number and the call displacement differ). The original emits three
-separate copies; our cl tail-merges the first into the second —
-`jge +7 / push 0xAC / jmp` landing on the second block's `call` — and the
+separate copies; our cl tail-merges the first into the second:
+`jge +7 / push 0xAC / jmp` landing on the second block's `call`, and the
 function comes out 21 bytes short with every other byte identical.
 
 Not reachable from the source: separate `hr` locals per step change
 nothing, and neither do /Gy, /Gf, /Op, /Oy, /Ot, /Ob0, /Ox /Ob0 /Gy, or
 /Og /Oi /Ot /Oy /Ob1. Rewriting the chain in nested `if (hr >= 0)` form
 does suppress the merge, but at the cost of moving the success return
-inline and reordering the error blocks — the original's layout is the flat
+inline and reordering the error blocks: the original's layout is the flat
 early-return one, so that is not the answer either.
 
 **How to recognise it:** recomp shorter than orig by exactly one error
@@ -2192,20 +2191,20 @@ This is the third emitter-level residue found in one session, and the
 strongest: the other two are orderings inside an expansion, this is a
 whole optimisation our cl performs and the original's did not.
 
-## Byte stores push narrowing UP the expression — dam it with locals
+## Byte stores push narrowing UP the expression: dam it with locals
 *(proven 2026-09-03 on 0x1006D0B0, the bit-stream bit writer)*
 
 When the destination of a compound expression is a single byte, VC5 pushes
 the truncation back up the tree as far as it legally can (through `|`,
 `&`, and `<<`, but not `>>`), and every mask it reaches gets built in 8-bit
-registers — `mov bl,1 / shl bl,cl / dec bl` instead of
+registers: `mov bl,1 / shl bl,cl / dec bl` instead of
 `mov ebx,1 / shl ebx,cl / dec ebx`. Which masks narrow is a source
 decision, and it moves 30+ diffs at a time.
 
 Three dams, each independently load-bearing on that function:
 
-1. **One cast, outermost.** `*p = (unsigned char)((f << sh) | (*p & keep))`
-   — an inner `(unsigned char)` on the field lets the narrowing reach the
+1. **One cast, outermost.** `*p = (unsigned char)((f << sh) | (*p & keep))`:
+   an inner `(unsigned char)` on the field lets the narrowing reach the
    field mask.
 2. **The byte pointer in its own local.** Writing `pBuf[byteIdx]` on both
    sides of the statement lets VC5 re-associate
@@ -2223,13 +2222,13 @@ the prologue.
 ## `strlen` of a literal folds; of an extern array it scans
 *(proven 2026-09-03 on 0x10055C50)*
 
-`strcpy(buf, pKey + strlen("RallySeason"))` compiles to a `lea` — VC5
+`strcpy(buf, pKey + strlen("RallySeason"))` compiles to a `lea`: VC5
 constant-folds `strlen` of a string literal outright, and the inline scan
 disappears. The original expands the scan (`or ecx,-1 / xor eax,eax /
 repne scasb / not ecx / dec ecx`) over the string itself, which means the
 prefix was NOT a literal the compiler could see through. Spelling the
-prefixes as `extern char s_Name_<va>[];` — the convention slice6_73.c
-already uses — restores the scan. Cost of getting it wrong: 37 bytes and
+prefixes as `extern char s_Name_<va>[];` (the convention slice6_73.c
+already uses) restores the scan. Cost of getting it wrong: 37 bytes and
 two whole scans, i.e. a diff that looks structural and is one declaration.
 
 **The same holds for the `strcpy`/`strcat` intrinsics** (2026-09-05,
@@ -2248,14 +2247,14 @@ Two branches each pick a table, index it, and hand the result to a common
 `strcpy`. The original computes one `lea [tbl + idx*4 + 4]` after the arms
 merge. Three source shapes, three different code shapes:
 
-- table pointer and index as two locals, indexed at the use → VC5 hoists
+- table pointer and index as two locals, indexed at the use -> VC5 hoists
   the index scaling (`mov/shl 6/add`, the `*65` for a 0x104 record) out of
   the arms; that sequence goes missing from both arms (3 insns).
-- a record POINTER in the arms, `->field` at the use → the arms end with
+- a record POINTER in the arms, `->field` at the use -> the arms end with
   `lea [tbl + n*4]` and the field's `+4` becomes its own `lea [R+4]` at
   the use (2 extra, 1 missing).
 - **each arm produces the FINAL `char *`** (`pRec = tbl[atoi(s)].szName`)
-  → both arms end with an identical `lea [tbl + n65*4 + 4]`, VC5
+  -> both arms end with an identical `lea [tbl + n65*4 + 4]`, VC5
   tail-merges that one instruction, and the `*65` stays duplicated in the
   arms exactly as the original has it. Byte-exact.
 
@@ -2267,12 +2266,12 @@ tail-merge factor it. Do not factor it yourself into shared locals.
 one of two catalogue indices and calls one string helper:
 `push 0x51 / jmp / push 0x0C / call`. Passing the choice as a ternary
 argument (`f(cond ? A : B)`) materialises the index into eax and pushes
-once — wrong. Writing it as an if/else with the CALL duplicated in both
+once: wrong. Writing it as an if/else with the CALL duplicated in both
 arms is right: VC5 tail-merges the call and each arm keeps its own
 `push imm`. Same lever, whether what merges is a `lea` or a `call`: put
 the whole expression in the arms.
 
-## A pinned zero register costs a frame dword — recognise it, don't grind it
+## A pinned zero register costs a frame dword: recognise it, don't grind it
 *(observed 2026-09-03 on 0x10054E20)*
 
 A function with two separate "clear a dozen fields to 0" blocks and a loop
@@ -2286,28 +2285,28 @@ prologue grows from `push ecx` (one dword) to `sub esp,8`.
 **Signature:** prologue is `sub esp,N+4` where the original has `push ecx`
 / `sub esp,N`; every subsequent stack displacement is off by 4; and inside
 the loop the original compares with `test r,r` where the recomp has
-`cmp r,ebx`. That last pair is the tell — it says which side is holding a
+`cmp r,ebx`. That last pair is the tell: it says which side is holding a
 constant in a register.
 
 Not reached by: a separate local for the tail block's index, scoping the
 pointers into their blocks, rewriting the loop with explicit induction
 pointers (worse), or /O2 /Op, /Ox, /O2 /Ot, /O2 /Gy, /O2 /Ob0. Treat a
 whole-body 4-byte displacement shift with this signature as an allocator
-park, not a structural miss — the diff count is large and meaningless.
-- **MSVC 5.0 REJECTS `__thiscall` in C -- `error C4234: '__thiscall'
+park, not a structural miss: the diff count is large and meaningless.
+- **MSVC 5.0 REJECTS `__thiscall` in C: `error C4234: '__thiscall'
   keyword reserved for future use`** (verified 2026-09-03 on a bare
   two-line TU). **The wall is the CALL side, not the definition side,
   and the two must not be confused.**
   - DEFINING a multi-argument thiscall callee is FINE:
     `void __fastcall F(T *pThis, int _edx_unused, <stack args>)` puts
     `this` in ecx and every remaining argument on the stack, and the
-    callee simply ignores edx -- nobody has to materialise it. That is
+    callee simply ignores edx: nobody has to materialise it. That is
     how this tree's entity setters are spelled, and 0x1006F970
     BrEntSetMatrix (`mov ebx,ecx` / `[esp+4]` / `ret 4`) fell byte-exact
     on the first compile with it. br_match.h's warning that BR_THISCALL1
     "does NOT generalise" is about call sites; do not read it as saying
     these functions cannot be matched.
-  - CALLING one is ALSO reachable -- **this entry said otherwise
+  - CALLING one is ALSO reachable: **this entry said otherwise
     earlier on 2026-09-03 and was wrong.** Declare the callee (or the
     function POINTER, which is what a vtable send needs) `__fastcall`
     with EVERY stack argument as a one-member STRUCT: structs are never
@@ -2321,7 +2320,7 @@ park, not a structural miss — the diff count is large and meaningless.
       `(pThis, struct, int, int)` hands edx to the third argument.
     - The cost: a struct argument is always materialised through a
       register, so a CONSTANT argument comes out `mov ecx,K; push ecx`
-      where a plain int would be `push K` -- two bytes each.
+      where a plain int would be `push K`: two bytes each.
       Initialising the struct in its declaration instead of by
       assignment does not help (probed). When a function's whole residue
       is that materialisation, the convention is right and the rest is
@@ -2329,7 +2328,7 @@ park, not a structural miss — the diff count is large and meaningless.
     - Diff signature of getting the convention WRONG (plain cdecl):
       EXTRA `push R` and `add esp, I` once per send, MISSING one
       `mov ecx, <this>` per send.
-- **VC5 inlines NO static helper at /O2 -- three confirmations.** Any
+- **VC5 inlines NO static helper at /O2: three confirmations.** Any
   `static` function the original had in line comes back as a real `call`
   with a full argument push sequence, whatever its size: an eight-dword
   struct-field mirror (BrEntMirrorQuat, in 0x1006F970), a five-argument
@@ -2339,7 +2338,7 @@ park, not a structural miss — the diff count is large and meaningless.
   macro-vs-inline entry). Diff signature: EXTRA `call I` + `push R` runs
   + `add esp, I`, MISSING the instructions the helper's body would have
   contributed.
-- **A static helper that wraps a vtable send is never inlined -- make it
+- **A static helper that wraps a vtable send is never inlined: make it
   a MACRO.** VC5 turned `static void Send(fn, obj, a, b, c) { if (fn)
   fn(obj, a, b, c); }` into a real `call` per send, with the object
   pushed as an extra argument and a caller-side `add esp, 0x10`, where
@@ -2347,7 +2346,7 @@ park, not a structural miss — the diff count is large and meaningless.
   and calls it in place. As a macro the fetch and the sends land exactly
   where the original has them (0x10038000: 110 -> 96 bytes against 92,
   REGNORM gap 12+6 -> 4+2). Two things have to go together: the macro
-  AND the null guards -- a port-safety `if (fn != NULL)` or
+  AND the null guards: a port-safety `if (fn != NULL)` or
   `pVtbl != NULL ? ... : NULL` is a branch the original does not have.
 - **/Od tells a ternary from an if/else by the FRAME SIZE.** At /Od a
   ternary assigned to a named local lands in a compiler temp first and
@@ -2356,14 +2355,14 @@ park, not a structural miss — the diff count is large and meaningless.
   and carries a redundant slot-to-slot copy. An if/else writes the local
   directly and needs only four bytes. So `sub esp, <4*(locals+1)>` plus a
   copy between two adjacent slots is a ternary, every time. (At /O2 the
-  same distinction shows up the other way -- see the two-constant-ternary
+  same distinction shows up the other way: see the two-constant-ternary
   entry, where the ternary is the BRANCHLESS neg/sbb form and the if/else
   branches.) Proven 0x1002DB0B BrDlOwnerFixup.
 - **A table argument passed as `push <imm address>` means the symbol is
   the OBJECT, not a pointer to it.** `push 0x100AA068` is the address of
   an array; a `const void *g_Table;` variable would emit
   `mov ecx,[g_Table]; push ecx`. Retype it as an incomplete extern array
-  (`extern const unsigned char g_Table[];`) and pass it bare -- and do
+  (`extern const unsigned char g_Table[];`) and pass it bare, and do
   NOT invent an element count the tree cannot pin. This is the
   argument-passing half of the "fixed-address global array folded as a
   displacement" entry above; the indexed half looks like
@@ -2397,10 +2396,10 @@ Measured on the same function, same everything else:
 What each naming buys, and what to look for in the original:
 
 - `fld st(0)` (duplicate) means a converted value is read by two later
-  statements — name the conversion.
+  statements: name the conversion.
 - `fst` **without** a pop into a slot means a value is read several times
-  later — name it; VC5 homes it and reloads with `fld [slot]`.
-- `fsubr st(1)` — an operation against a copy still on the stack — means
+  later: name it; VC5 homes it and reloads with `fld [slot]`.
+- `fsubr st(1)` (an operation against a copy still on the stack) means
   both operands are named values, not one named and one inline subtree.
 - Spills the original does not have, and `fld [const]; fmul st(1)` where
   the original has `fmul [const]`, are the signature of an UNNAMED
@@ -2408,7 +2407,7 @@ What each naming buys, and what to look for in the original:
 
 This does not repeal the float wall for genuinely tangled DAGs (the
 0x1000EAF0 / BrVec3Project class), but before calling a float function a
-coloring wall, write its chain out as named locals first — it is cheap and
+coloring wall, write its chain out as named locals first: it is cheap and
 it moved this one from 205 to 0.
 - **/Od loop-and-branch shapes, three levers proven together on
   0x1002E73A BrDlRebase (101 B, byte-exact).**
@@ -2419,7 +2418,7 @@ it moved this one from 205 to 0.
   the source wrapped the body.
   (2) **The step belongs in the `for`'s THIRD clause.** `for (;; p += 2)`
   puts the increment at the TOP of the loop with a `jmp` over it on the
-  first pass -- a three-instruction block the back-edge lands on -- while
+  first pass: a three-instruction block the back-edge lands on, while
   `p += 2;` as the body's last statement puts it at the bottom. The
   jump-over is the signature.
   (3) **SWITCH ON THE EXPRESSION, NOT A NAMED LOCAL.** A named switch
@@ -2427,7 +2426,7 @@ it moved this one from 205 to 0.
   switch temp and compares that (`mov eax,[ebp-4]; mov [ebp-8],eax; cmp
   [ebp-8],K`). Switching on the expression makes that temp the
   function's only local and restores a `push ecx` prologue. And read the
-  compare ORDER before choosing switch vs if/else -- a chain that runs
+  compare ORDER before choosing switch vs if/else: a chain that runs
   ASCENDING by case value, with two cases sharing a target, is a switch;
   an if/else chain tests in SOURCE order (see the sparse-switch entry).
 - **A dispatch whose arms each name a CONSTANT index is a switch, not one
@@ -2443,8 +2442,8 @@ it moved this one from 205 to 0.
   defect.
 - **`shared.csv`'s `matched_by` column is evidence, and `slot` is the
   weak grade.** A `d3d`-tagged body is scored against the GLIDE bytes
-  its address maps to. When that mapping is `slot` -- the two functions
-  merely occupy the same dispatch slot -- the two builds may share no
+  its address maps to. When that mapping is `slot` (the two functions
+  merely occupy the same dispatch slot) the two builds may share no
   code at all, and several such rows say "DIFFERENT CODE" outright. The
   symptom is a large permanent diff on a function that is often already
   byte-exact under its Glide name, sitting near the top of the lane
@@ -2452,8 +2451,8 @@ it moved this one from 205 to 0.
   `tools/screen_slotpairs.py` lists them; each needs eyes, because slot
   pairing is weak evidence and not proof of difference.
 - **A thunk must never carry the `@implements` for the body it calls.**
-  A second NAME for an address -- an adapter that forwards to the real
-  implementation elsewhere in the tree -- compiles to a ~32-byte call
+  A second NAME for an address (an adapter that forwards to the real
+  implementation elsewhere in the tree) compiles to a ~32-byte call
   that can never reproduce a body of hundreds of bytes, so tagging it
   puts one address in the measured set twice and leaves one of the pair
   permanently unmatchable. Move the tag to the body and leave the thunk
@@ -2473,8 +2472,8 @@ it moved this one from 205 to 0.
   0x1000A110 frame census had reasoned *from* the false equality that no
   value was missing and that the frame gap was a packing curiosity.
   Both tools now strip the padding. **An instruction-count equality is a
-  load-bearing claim -- it is what licenses "the residue is shape, not
-  missing code" -- so never quote one that has not been padding-corrected,
+  load-bearing claim: it is what licenses "the residue is shape, not
+  missing code", so never quote one that has not been padding-corrected,
   and re-check any older claim of the same shape before building on it.**
 - **`msetdiff.py` needs the reloc ADDEND normalised or every reloc'd
   instruction pairs as both MISSING and EXTRA.** The linked original
@@ -2492,15 +2491,15 @@ it moved this one from 205 to 0.
   gives arm 1 its own copy of the colourB pack and shares one tail
   between arms 2 and 3; our build shares one tail across all three and is
   37 bytes short in that block. The only difference is where the leftover
-  `fstp st(0)` lands -- inside arm 1's pack in the original, before the
-  jump in ours -- which makes our three tails identical and merges them.
+  `fstp st(0)` lands: inside arm 1's pack in the original, before the
+  jump in ours, which makes our three tails identical and merges them.
   Same emitter-level residue as the C++ lane's identical error tails: no
   source spelling of the arms reaches it, and giving arm 1 its own byte
   locals un-merges part of the pack but moves the first divergence 27
   bytes earlier.
 
 ## float-vs-int typing: the prologue tells you which
-*(proven 2026-09-03 on 0x10038F40 -- 425 diffs to 10 on this one change)*
+*(proven 2026-09-03 on 0x10038F40: 425 diffs to 10 on this one change)*
 
 A value parked across a call and restored afterwards, moved in and out
 with plain `mov` and set from an immediate, looks exactly like an int:
@@ -2528,8 +2527,8 @@ spelling is needed: here the pun was wrong and honest float typing was
 right, even though every instruction involved is an integer `mov`.
 
 ## The port's ops/host-hook table is a CAUSE class, worth a screen
-*(proven 2026-09-03 on 0x1001CC00 BrRallyMain -- byte-exact first compile --
-and 0x1001D8A0 BrDxDetect -- 826 diffs to 19)*
+*(proven 2026-09-03 on 0x1001CC00 BrRallyMain, byte-exact first compile,
+and 0x1001D8A0 BrDxDetect, 826 diffs to 19)*
 
 Several early modules were written with a dependency-injection seam: a
 `BrXxxOps` / `BrXxxHost` struct of function pointers plus a `pUser`/`pCtx`
@@ -2553,7 +2552,7 @@ br_texinit.c (5), slice4_52.c (32) and slice1_06.c (4) are open.
 
 1. `#ifdef BR_MATCHING_BUILD` a second definition with the ORIGINAL's
    signature; the existing one becomes the `#else`. Guard the prototype in
-   the header the same way -- that is the only header edit needed.
+   the header the same way: that is the only header edit needed.
 2. Declare the callees LOCALLY inside the matching arm rather than including
    their headers, because those headers carry the port's ops signatures too.
    Reloc-masking means the names are free; the SHAPE is what must be right.
@@ -2564,7 +2563,7 @@ br_texinit.c (5), slice4_52.c (32) and slice1_06.c (4) are open.
    the original's `call [ecx+N]` says. Only name the slots you send to; fill
    the gaps with `void *apfnXX[n]` and check the arithmetic.
 5. A `__thiscall` callee with stack arguments is spelled `__fastcall` with
-   EVERY stack argument in a one-member struct -- see the entry above.
+   EVERY stack argument in a one-member struct: see the entry above.
 
 Cost on the two done so far: about 40 minutes each, one of them byte-exact
 on the first compile.
@@ -2572,8 +2571,8 @@ on the first compile.
 ## Do not cache what the original re-reads
 *(proven 2026-09-03 on 0x10039870, 201 diffs to 0; second sighting)*
 
-An array element or global read twice in a row -- once per argument of two
-adjacent calls, or once in a test and again in a call -- is a value the
+An array element or global read twice in a row (once per argument of two
+adjacent calls, or once in a test and again in a call) is a value the
 original reads TWICE. Caching it in a local is the obvious "clean" thing to
 write and it is wrong twice over: it costs a spill slot (`sub esp,N+4`
 against the original's `sub esp,N`) and it rotates the loop's registers, so
@@ -2593,7 +2592,7 @@ the load is there twice, write it twice.** VC5 will not re-materialise a
 cached local, and it will not spill a re-read.
 
 ## `/Od /Op` is a FIFTH compile variant, and it was missing from the sweep
-*(proven 2026-09-03 on 0x1002BF50, the scissor emitter -- 242 diffs to 0)*
+*(proven 2026-09-03 on 0x1002BF50, the scissor emitter: 242 diffs to 0)*
 
 `/O2 /Op` was added in 2026-08 because MSVC 5.0 without `/Op` keeps an
 int->float conversion in the x87 register, and with it every such conversion
@@ -2608,7 +2607,7 @@ rounds through a float32 stack slot:
 **The same blind spot exists one optimisation level down and nobody had
 looked.** A DEBUG (`/Od`) translation unit that does float arithmetic needs
 `/Od /Op`, and under plain `/Od` it reads as a large gap for a source that is
-already exactly right — here four conversion groups and 16 bytes of frame,
+already exactly right: here four conversion groups and 16 bytes of frame,
 i.e. `sub esp,0x10` against the original's `sub esp,0x20`. `tools/match_sweep.py`
 now carries `Odp` in `VARIANTS`.
 
@@ -2632,14 +2631,14 @@ whose current best is `Od` and still `diff`.
   (an int subexpression stored so it can be `fild`ed) then fill the slots
   below in FIRST-USE order, interleaved with nothing else.
 - **Recover a call's argument list from the push stream instead of guessing
-  it -- and check the ORDER, because nothing else does (0x1000A110,
+  it, and check the ORDER, because nothing else does (0x1000A110,
   2026-09-03).** cdecl pushes right-to-left, so within one call the Nth push
   is argument (nargs + 1 - N) and the last push is argument 1; a push of the
   function's zero register is a literal 0 in the source. That is enough to
   read a sixteen-token combiner call straight out of the original's bytes
   with no guessing. Two of BrCarDrawVehicle's thirty-four calls had the
   right tokens in the wrong slots, passing TK_ZERO where the original passes
-  TK_TEXEL0 and 0x3F4 -- so the display list the function emitted was
+  TK_TEXEL0 and 0x3F4, so the display list the function emitted was
   WRONG, not merely differently compiled. Fixing both closed four
   divergence regions. **Neither existing comparator can see this**:
   `divergence.py` wildcards imm32 when it normalises, and a multiset
@@ -2673,7 +2672,7 @@ It is tempting to reproduce that with a temp (`p = g_root; g_pending = 0;
 g_current = p;`) and the port body did exactly that. It is wrong: VC5
 hoists the load above the unrelated store on its own, and naming the value
 takes it out of eax, losing the one-byte-shorter `a1`/`a3` accumulator
-encodings — 10 diffs on a 56-byte function. Write the two statements
+encodings: 10 diffs on a 56-byte function. Write the two statements
 plainly in either order and it matches.
 
 Pair this with "do not cache what the original re-reads": both say the same
@@ -2694,7 +2693,7 @@ address through shared.csv, and the pairing can simply be wrong. Found on
 0x1001BAE0/0x1001E080: the D3D function is 26 bytes (two pointer stores and
 `mov eax,1`), the Glide one is 173 bytes of 3dfx bring-up. Same renderer slot,
 different code. **Screen: disassemble BOTH binaries at BOTH addresses and
-compare sizes** — `BR_REF=orig/BRD3D.dll python3 tools/dumpasm.py <d3dVA>`.
+compare sizes**: `BR_REF=orig/BRD3D.dll python3 tools/dumpasm.py <d3dVA>`.
 Equal sizes means a real twin; wildly unequal means the pairing is false and
 the tag should be `@d3donly`.
 
@@ -2702,13 +2701,13 @@ the tag should be `@d3donly`.
 for one address: a short alias and the real body somewhere else. When the tag
 sits on the alias, the report scores 32 bytes against 363 and the real
 transcription is invisible to triage. Found on 0x100695D0. **Screen: any
-tagged-diff row whose recomp is under a quarter of the original —
+tagged-diff row whose recomp is under a quarter of the original:
 `awk -F, 'NR>1&&$4=="diff"&&$7>0&&$6>200&&$7/$6<0.25' build/match/report.csv`.**
 Move the tag to the body; leave the alias untagged.
 
-**3. …BUT SOMETIMES THE IMAGE REALLY DOES HOLD TWO COPIES.** Same screen, the
+**3. ...BUT SOMETIMES THE IMAGE REALLY DOES HOLD TWO COPIES.** Same screen, the
 opposite conclusion: 0x1003CDA0 is 212 bytes in BOTH binaries and the "owner"
-elsewhere in the tree is the same code again — two copies the linker did not
+elsewhere in the tree is the same code again: two copies the linker did not
 fold, not a forwarder and an owner. Writing the body out at this address, with
 the DirectPlay vtable send and the KERNEL32 imports the original uses instead
 of the port's struct of function pointers, was byte-exact on the first
@@ -2722,13 +2721,13 @@ at the address, never by the tree's own comments.
 C source emits it. The playbook has always said to check it by hand before
 accepting a target; nobody did, and **41 tagged-diff rows / 37,677 bytes were
 sitting in the ranking**, most of them reading `MISSING CODE (2% complete)`
-because the port stands them in with a forwarder — which is exactly the
+because the port stands them in with a forwarder, which is exactly the
 profile of an easy win. Twelve of them are one 201-byte family.
 
 `triage.py` now reads the first two bytes of `build/match/orig/<VA>.bin` and
 ranks any `6A FF` as `C++ EH FRAME - not reachable from C`, below the coloring
 walls, so `claim_lane.py` hands them out last. They belong to the C++ EH
-workstream ([[cxx-eh-frame-wall]]), not to the C lane.
+workstream, not to the C lane.
 
 ## Before hunting a spelling, check whether the ORIGINAL is inconsistent
 *(proven 2026-09-03 on 0x1000EAF0 wall 4; the same test applies anywhere)*
@@ -2739,19 +2738,19 @@ spelling reaches it, because both arms come from the same source text.
 
 The worked case: 0x1000EAF0 addresses two flat ring arrays by a common scaled
 index. Grep the original's own disassembly for the two globals and the split
-is flat — the if-arm materialises `lea edx,[ecx*4]` once and takes eight
+is flat: the if-arm materialises `lea edx,[ecx*4]` once and takes eight
 `[edx + 0x1035faf0]` / `[edx + 0x1035f750]` sites, while the else-arm folds
 all five of its sites as `[ecx*4 + abs]`, which is byte-identical to what the
 recompile already emits everywhere. Eight passes of dossier had this filed as
 one "`ring*4` CSE" wall to be solved by a byte-offset local, and the probe that
-was measured against it converted BOTH arms — which cannot be right at any
+was measured against it converted BOTH arms, which cannot be right at any
 spelling. **Run the grep before minting the probe:** one `grep` over a dump of
 the original for the addressing forms of the symbol in question costs nothing
 and can retire the whole lever.
 
 The corollary is about missing instructions. When the original pins a register
 this way it is a register short downstream, so it spills something the
-recompile keeps live — here it homes a variable in both arms of a test and
+recompile keeps live: here it homes a variable in both arms of a test and
 reloads it (`mov [esp+0x20],ebx` x2, `mov edi,[esp+0x20]` x1), which are
 exactly three of the six rows `msetdiff.py` reports as MISSING. **Do not open
 a spill row as an independent missing-store defect until you have accounted
@@ -2764,7 +2763,7 @@ move together or not at all.
 **The preload depth of a repeated x87 operand.** For a run of `d[i] = k *
 sr[i]`, VC5 emits N copies of `fld k` and then a fixed three-deep
 fxch/fmul/fstp pipeline. On 0x1000EAF0 the original picks 8|4 for twelve
-statements and the recompile picks 5|7 — with the SAME pipeline shape, merely
+statements and the recompile picks 5|7: with the SAME pipeline shape, merely
 offset by the depth. Ruled out as causes: the helper-call boundary (replacing
 the two `__inline` row helpers with twelve flat statements emits the identical
 five-deep preload), and an x87 stack leak (simulating depth over both streams
@@ -2782,7 +2781,7 @@ mask before it chooses the lane. Proven at 0x1000A110 arm 3.
 *(proven 2026-09-03 on 0x1002D72E and 0x1002E79F, both byte-exact after)*
 
 The compile variant is chosen PER FUNCTION, so a single `diff` sitting in a
-long run of `match ... Od` rows is not a hard target — it is a function
+long run of `match ... Od` rows is not a hard target: it is a function
 written in the `/O2` idiom inside a `/Od` translation unit. Screen for it:
 
     # diff rows whose byte-adjacent MATCHED neighbours are all /Od
@@ -2801,7 +2800,7 @@ written in the `/O2` idiom inside a `/Od` translation unit. Screen for it:
     PY
 
 As of 2026-09-03 it names four rows, all in slice2_19.c; two fell the same
-day. **Three of the remainder are PARKED as walls and should not be — the
+day. **Three of the remainder are PARKED as walls and should not be: the
 park predates this screen.**
 
 ### The four /Od source facts these two pinned
@@ -2818,23 +2817,23 @@ park predates this screen.**
 2b. **The tell for that lever on a RETURN: a materialised zero.** When the
    guard's early return is written as a fall-through (`if (n == 0) goto
    empty;` or `if (n == 0) return 0;` placed first), VC5 knows eax already
-   holds zero — it just tested it — and returns it WITHOUT emitting `xor
+   holds zero: it just tested it, and returns it WITHOUT emitting `xor
    eax,eax`, which makes the function two bytes shorter than the original.
    An original that DOES spell `xor eax,eax` before its `ret` is telling you
    the zero-return is a separate TRAILING block reached by a `je`, i.e. the
-   source is a wrapping `if (n != 0) { … return v; } return 0;`. Diagnostic,
+   source is a wrapping `if (n != 0) { ... return v; } return 0;`. Diagnostic,
    not guesswork: recomp shorter by exactly the missing `xor`, plus a `jne`
    where the original has `je`. Proven 0x10021060 BrGbiEndDList.
 3. **Two uses of one pointer variable may be two variables.** The tail of
    0x1002E79F re-derives a word pointer the loop also used; sharing one C
    local cost a frame slot and shifted every displacement in the function.
-   Count the DISTINCT `[ebp-N]` slots in the original first — that is the
+   Count the DISTINCT `[ebp-N]` slots in the original first: that is the
    local count, and it is not negotiable.
 4. **Inline the take-2/emit per block.** Each open-coded
    `p = cursor; cursor += 2;` gets its OWN frame slot and re-reads the global;
    one shared helper collapses them.
 
-**/Od homes locals by an internal NAME hash, not declaration order** — already
+**/Od homes locals by an internal NAME hash, not declaration order**: already
 recorded in slice2_19.c's BrCarGfxReadColour and re-confirmed here. When the
 slot ORDER is wrong and the count is right, rename before restructuring.
 
@@ -2846,8 +2845,8 @@ The same pack, `(((top << 8 | b0) << 8 | b1) << 8)`, compiles two ways:
 
     lane form      mov dl, cl                     (b0 forwarded from a live
                                                     byte register)
-    widened form   mov byte ptr [esp+0x31], cl    (b0 homed …)
-                   mov edx, dword ptr [esp+0x31]  (… and reloaded as a dword)
+    widened form   mov byte ptr [esp+0x31], cl    (b0 homed ...)
+                   mov edx, dword ptr [esp+0x31]  (... and reloaded as a dword)
                    and edx, 0xff
                    or  ecx, edx
 
@@ -2863,7 +2862,7 @@ merge, and that is set by WHERE IT IS ASSIGNED relative to the surrounding
 statement.** In the case above the original's schedule says it outright: it
 loads `b0` and homes it *inside the preceding statement's tail*, before that
 statement's own result is merged. Moving the two `b0`/`b1` assignments ABOVE
-the preceding statement — so their live ranges span it — makes VC5 spend the
+the preceding statement, so their live ranges span it, makes VC5 spend the
 byte slots on them and read them back widened. That one move took the function
 from 11 instructions short to 8 and 42 bytes short to 31; `top`, whose load
 the original places *after* that statement, has to stay after it (hoisting all
@@ -2873,7 +2872,7 @@ three is one multiset row better and eight raw rows worse).
 Where a byte load and its home sit inside the previous statement's
 instructions, that assignment is above that statement in the source. This is
 the same currency as the byte-slot idiom (`mov byte [slot]` + dword load +
-`and 0xff` = a widening after register death) — this entry says how to cause
+`and 0xff` = a widening after register death): this entry says how to cause
 the death.
 
 **And it retires a heuristic:** this arm's dossier had ruled that ANY change
@@ -2900,19 +2899,19 @@ in `edi` and emitted none of the three spill instructions the original has
 (`mov [esp+0x20],ebx` in each arm, `mov edi,[esp+0x20]` at the use). Written as
 a true if/else the homes appear.
 
-‼ **It is a per-site reading, NOT a sweepable class**, and the two sweeps that
+!! **It is a per-site reading, NOT a sweepable class**, and the two sweeps that
 prove it are worth more than the fix. Converting all eight sibling ring-wrap
 sites in the same function together costs 23 register-blind rows and twelve
 instructions; converting the twelve doubling sites in 0x100250D0 costs 36 rows
 and twenty-nine instructions. Those originals genuinely *do* spell an assign
-plus a fix-up — they emit the compare and branch with no home anywhere.
+plus a fix-up: they emit the compare and branch with no home anywhere.
 
-‼‼ **AND THE CASE THAT MOTIVATED THIS ENTRY WAS ITSELF WRONG — read this
+!!!! **AND THE CASE THAT MOTIVATED THIS ENTRY WAS ITSELF WRONG: read this
 before using the idiom.** The 0x1000EAF0 site above was converted to an
 if/else on the strength of the original homing the value on both edges, and it
 improved *every* number: three instructions, six bytes, one register-blind
 row. Then the original was actually disassembled at the site, and it is
-`mov ebx,eax; test ebx,ebx; jge; mov ebx,0x1f3` — **assign-then-override**. The
+`mov ebx,eax; test ebx,ebx; jge; mov ebx,0x1f3`: **assign-then-override**. The
 if/else INVERTS the arms (a fall-through constant with `jl`, against the
 original's `jge` over the constant), so it could never converge. The two homes
 were register pressure from an unrelated wall, not the source shape. Reverted.
@@ -2925,17 +2924,17 @@ branch**:
     CONST up front, `jl` to skip  ->  if (c) x = CONST; else x = a;
 
 **Check the arm order against the original's branch before accepting any
-control-flow change, and never on the totals alone** — a spelling can improve
+control-flow change, and never on the totals alone**: a spelling can improve
 every number this project measures and still be provably not the source.
 (Related: the value TESTED matters as documentation even when it is
-byte-identical — the original tests the assigned variable, not the temp it was
+byte-identical: the original tests the assigned variable, not the temp it was
 assigned from.)
 
 ## Naming a byte temp: when it helps and when it costs
 *(proven 2026-09-03 on 0x1000A110 arm 3; read together with the "do not name a
 temp to preserve an observed load order" entry, which is about a different case)*
 
-In a shift/or pack — `(((top << 8 | b0) << 8 | b1) << 8)` — how the TOP
+In a shift/or pack: `(((top << 8 | b0) << 8 | b1) << 8)`, how the TOP
 component is spelled decides its encoding:
 
     inline   `(uint32_t)(uint8_t)SOME_GLOBAL << 8`   ->  mov dh, byte ptr [mem]
@@ -2945,7 +2944,7 @@ component is spelled decides its encoding:
 
 The named form also lets the pack's byte loads issue together instead of being
 interleaved with the stores between them. Where the original shows the
-two-step (`mov al,[mem]` … `mov dh,al`), the source has a named `uint8_t`
+two-step (`mov al,[mem]` ... `mov dh,al`), the source has a named `uint8_t`
 local; where it shows the direct load into the lane, it does not. Applying it
 to one pack site on 0x1000A110 took the reloc-masked byte diff 4,658 -> 4,539
 and recovered an instruction, with the region count and the frame unchanged.
@@ -2959,12 +2958,12 @@ eax does not. Decide per site from the bytes, never by analogy.
 
 **Corollary, learned the expensive way on the same function:** apply it one
 site at a time. The identical spelling on a neighbouring pack looked better on
-size (4 bytes closer, 2 instructions) and was a regression — the reloc-masked
+size (4 bytes closer, 2 instructions) and was a regression: the reloc-masked
 byte diff rose 177 and the region's FIRST DIVERGENCE moved 27 bytes earlier,
 un-merging a cross-jumped tail. Judge a cross-jump region by its
 first-divergence address; size and region count both lie there.
 
-## A helper that RETURNS A STRUCT never inlines — spell it out
+## A helper that RETURNS A STRUCT never inlines: spell it out
 *(proven 2026-09-03 on 0x100644C0, 0x100643E0 and 0x100642F0, the rigid-body
 velocity trio: 137 / 138 / 122 bytes short, all three from one helper)*
 
@@ -2981,11 +2980,11 @@ Three float facts fell out of doing it, each worth checking on any x87 target:
 
 - **Product operand ORDER decides `fmul mem` vs `fld` + `fmulp`.** The original
   computes `fmul dword ptr [esi+0xA8]`, so the OTHER operand was already on the
-  x87 stack — i.e. the source writes that one FIRST. `angVel.y * r.z` loads
+  x87 stack, i.e. the source writes that one FIRST. `angVel.y * r.z` loads
   both and multiplies register-to-register; `r.z * angVel.y` is the original.
   Worth 12 instructions here.
 - **`double` intermediates spill as `fstp qword ptr [esp+N]`.** If the original
-  never spills a qword, the temporaries are `float`, not `double` — even where
+  never spills a qword, the temporaries are `float`, not `double`, even where
   a comment argues the intermediate "must not round". On x87 the arithmetic is
   80-bit either way until it is stored, so the C type only decides the spill
   width.
@@ -3034,16 +3033,16 @@ way round and the `i1a990` store SINKS past both of them:
 **The tell:** an `add r,r'` whose destination is a value that was live
 *before* the statement (a local, a loop bound, a saved extent) rather than
 the value the statement just produced. Then the source accumulated into
-it. Swapping the operands of the sum does NOT reproduce this — VC5
+it. Swapping the operands of the sum does NOT reproduce this: VC5
 canonicalises commutative adds, so `a + b` and `b + a` compile identically
 (checked on four sites in this function). Only the assignment form moves
 it.
 
 Corollary, same function: a `lea r,[base+index]` for a two-register sum
 picks its base by allocation, not by source operand order. Neither
-spelling, nor a read-modify-write, flips it. That one is T3a — park it.
+spelling, nor a read-modify-write, flips it. That one is T3a: park it.
 
-## `(double)` modelling is a D3D-era artefact — the Glide binary is FLOAT
+## `(double)` modelling is a D3D-era artefact: the Glide binary is FLOAT
 *(confirmed three times: BrRbBuildMatrix's own note, 0x1006D850
 BrRbIntegrateState -55 bytes to -11, and the velocity trio in slice3_42.c)*
 
@@ -3051,12 +3050,12 @@ Several float-heavy functions are written with every operand cast to `double`
 and a spill map arguing the intermediates "must not round". That model was
 read off **BRD3D.dll**, and it is wrong for the reference binary. On x87 the
 arithmetic is 80-bit either way until it is stored, so the C type only decides
-the SPILL WIDTH — and the tell is unambiguous:
+the SPILL WIDTH, and the tell is unambiguous:
 
 **If the original never emits `fstp qword ptr [esp+N]`, the temporaries are
 `float`.** A `double` model spills eight bytes at a time and cannot match.
 
-Screen for the class — diff-bearing files with heavy `(double)` modelling:
+Screen for the class: diff-bearing files with heavy `(double)` modelling:
 
     for f in $(awk -F, 'NR>1&&$4=="diff"{print $1}' build/match/report.csv | sort -u); do
       n=$(grep -c '(double)' "$f" 2>/dev/null); [ "$n" -ge 6 ] && echo "$n $f"; done | sort -rn
@@ -3068,20 +3067,20 @@ and slice2_17.c (43, 8) worst.
 
 - **A `(float)` cast on an already-float expression is a NO-OP** and will not
   produce the original's store-and-reload. Only a NAMED float local does, and
-  only when register pressure actually forces the spill — which means the
+  only when register pressure actually forces the spill, which means the
   products have to be computed BEFORE the adds that consume them. One
   statement at a time, each product is consumed immediately and nothing
   spills at all.
 - **The `fld a; fmul [b]` operand-order lever has a limit.** It works when one
   operand is a LOCAL: writing the local first is worth 12 instructions on the
-  velocity trio. It does NOT work when both operands are memory — on
+  velocity trio. It does NOT work when both operands are memory: on
   0x1006D850 `pSrc->vel.x * dt` and `dt * pSrc->vel.x` compile to
   byte-identical output, so VC5 canonicalises that case and the order is not
   source-reachable. Check which side is a local before spending probes.
 
 ## `x <<= k` fuses with a preceding right shift; `x = x * (1<<k)` does not
 
-Proven on 0x100239C0 (`BrGbiMoveWord`, 187 B, byte-exact — it was the whole
+Proven on 0x100239C0 (`BrGbiMoveWord`, 187 B, byte-exact: it was the whole
 residue, two bytes in each of two arms).
 
     slot = off >> 5;
@@ -3090,18 +3089,18 @@ residue, two bytes in each of two arms).
 
 VC5's peephole rewrites an unsigned `>> a` followed by `<< b` (a > b) into
 one `shr a-b` plus a mask, because both are shifts on the same value. Write
-the scale as a MULTIPLY and the peephole does not fire — the two operations
+the scale as a MULTIPLY and the peephole does not fire: the two operations
 stay as the original emits them. The values are identical, so no test tells
 them apart; only the bytes do.
 
 **The tell:** the original has an adjacent `shr r,a` / `shl r,b` pair
 (`C1 E8 aa C1 E0 bb`) where ours has `shr r,a-b` and an `and r,imm32`.
 Whenever a shifted index is then scaled to an element size, try the
-multiply spelling first — a scale to an element size is what the source
+multiply spelling first: a scale to an element size is what the source
 almost always said.
 
 **Not the lever:** indexing a 16-byte element type (`arr[slot].b[0]`) is
-much worse — it hoists the scale out of the if/else arms and rewrites the
+much worse: it hoists the scale out of the if/else arms and rewrites the
 prologue (75 -> 101 diffs). Nor do `(off >> 5) << 4` as one expression, or
 `off / 32u` for the shift, change anything.
 
@@ -3110,7 +3109,7 @@ prologue (75 -> 101 diffs). Nor do `(off >> 5) << 4` as one expression, or
 for eight sessions)*
 
 VC5 never enregisters an array, and it never tucks one into a dead argument
-slot either — an array always gets its own slot in the LOCALS area. Two
+slot either: an array always gets its own slot in the LOCALS area. Two
 `uint8_t` scalars, by contrast, are enregistered where possible and otherwise
 packed into whatever reused argument slots are free, costing the frame
 nothing. So a recompile whose frame is a few bytes SMALLER than the original's
@@ -3126,7 +3125,7 @@ slots and spend no locals-area dword. Changing the declaration to
 **Do not judge this change by size or by fn.py's RAW/REGNORM.** Every slot
 displacement in the function moves when the frame does, so both read worse for
 a while; the masked region count and `msetdiff.py` are the honest scores.
-The frame is worth closing first anyway — nothing downstream of it can line up
+The frame is worth closing first anyway: nothing downstream of it can line up
 until it does.
 
 ## A named local that caches a struct field is wrong if the original re-reads it
@@ -3149,8 +3148,8 @@ Read the original's loads before deciding: **a repeated field load in the
 original is evidence of source that does not cache, not of a missed CSE.**
 
 **And watch which number you rank by.** Removing that spill took the function
-from 38 bytes short to 53 short — the three wrong instructions had been
-padding a real deficit elsewhere — while the register-blind multiset went
+from 38 bytes short to 53 short: the three wrong instructions had been
+padding a real deficit elsewhere, while the register-blind multiset went
 64+75 to 52+66. Size alone would have called a correct fix a regression.
 
 ## A `static void (void)` helper with TWO call sites is not inlined either
@@ -3161,7 +3160,7 @@ as much: MSVC 5.0 also declines to inline a plain `static void f(void)` once it
 has more than one caller. Two selection sweeps factored out that way left the
 function at 47 instructions against the original's 99. Spell the body out at
 the call site that needs it under `BR_MATCHING_BUILD` and leave the helper for
-its other caller — the same split the ops-table recipe uses.
+its other caller: the same split the ops-table recipe uses.
 
 **Rule of thumb for the whole MISSING-CODE class: before hunting for source
 the port never had, grep the file for a `static` the original does not call.**
@@ -3170,11 +3169,11 @@ the port never had, grep the file for a `static` the original does not call.**
 
 - **A loop that probes a global keeps probing the GLOBAL, not the saved
   start.** `start = g_x; if (Probe(g_x) == 0)` compiles to one load into eax, a
-  push of eax, and `mov esi,eax` for the start — the copy IS the local.
+  push of eax, and `mov esi,eax` for the start: the copy IS the local.
   Writing `Probe(start)` loses that copy and the whole prologue shifts.
   Happened twice in one function.
 - **A doubled table index needs its OWN local.** Written inline as
-  `tbl[i*2]` and `tbl[i*2+1]`, VC5 folds the ×2 into the SIB scale
+  `tbl[i*2]` and `tbl[i*2+1]`, VC5 folds the x2 into the SIB scale
   (`[eax*2 + base]`); the original materialises it once with `shl eax,1` and
   then indexes `[eax+base]` and `[eax+base+1]`. Same family as the
   `x <<= k` entry above: **when the original has an explicit shift and you
@@ -3189,19 +3188,19 @@ A caption whose catalogue id depends on a flag:
     else         push 0x1E
     call BrStrGet          <- one call, the arms merge on it
 
-Writing it as a shared variable (`id = g ? 0x66 : 0x1E; s34(BrStrGet(id)…)`)
-does NOT give that. VC5 turns the select branchless -- `neg eax / sbb eax,eax`
-and an and/add -- because the only difference between the arms is a value.
+Writing it as a shared variable (`id = g ? 0x66 : 0x1E; s34(BrStrGet(id)...)`)
+does NOT give that. VC5 turns the select branchless: `neg eax / sbb eax,eax`
+and an and/add, because the only difference between the arms is a value.
 Duplicate the whole call in both arms instead and VC5 tail-merges it,
 leaving each arm its own `push imm`.
 
 This is the same lever as the `lea` in 0x10055C50 and the catalogue call in
 0x10037E60, now seen a third time and on a two-way value: **whatever the
-arms have in common, let the tail-merge factor it -- never factor it
+arms have in common, let the tail-merge factor it: never factor it
 yourself into a shared local.** Arm order still decides layout: the arm the
 original places as the fall-through is the `then`.
 
-## A 16-bit destination makes VC5 factor a shared shift — write the source factored
+## A 16-bit destination makes VC5 factor a shared shift: write the source factored
 
 Proven on 0x100014A0 (`BrSurfSetColourKey`, 46 -> 21 diffs).
 
@@ -3210,7 +3209,7 @@ A 565 pack whose terms are written in their finished positions,
     key = (r >> 3) << 11 | (g >> 2) << 5 | (b >> 3);      /* WRONG */
 
 compiles to one `shl 8` for red and a pre-shifted green mask
-(`shr 5; and 0x7E0`). The original instead emits `shl ecx,5 … shl ecx,3` —
+(`shr 5; and 0x7E0`). The original instead emits `shl ecx,5 ... shl ecx,3`:
 the two terms are combined FIRST and the common `<< 3` applied to the pair.
 That only happens when the source itself is factored, and only when the
 destination is 16 bits wide (a `uint32_t` accumulator loses it again):
@@ -3222,12 +3221,12 @@ Two sub-tells in the same function:
 
 - **A mask wider than the field is information, not noise.** The red mask is
   `0xFFFF`, not `0xFF`: the green bits it drags in land at bit 16 and up and
-  the store is 16 bits, so they never appear — but only the wide mask emits
+  the store is 16 bits, so they never appear, but only the wide mask emits
   `and ecx,0xFFF8`. Do not "correct" a mask that looks too wide.
 - **A byte-lane shift can cost more than it buys.** The original narrows the
   blue term to AL (`shr eax,0x10; shr al,3; and eax,0x1F`). Every char-typed
   spelling reproduces the `shr al,3` and then pays a `movzx ax,al` widening
-  inside the 16-bit expression — 33 diffs against 21 for the plain
+  inside the 16-bit expression: 33 diffs against 21 for the plain
   `(c >> 19) & 0x1F`. Take the shorter residue.
 
 ## Screen the whole tree for frame-size mismatches
@@ -3248,11 +3247,11 @@ frame, so nothing downstream can line up until it matches.
 
 **The screen must use each row's own compile variant** (`report.csv`'s `opt`
 column). Scoring an `/Od` or `/O2 /Oy-` row against the `/O2` object compares
-two different compiles and invents a gap — 0x1002ECEB read as 76 bytes off
+two different compiles and invents a gap: 0x1002ECEB read as 76 bytes off
 that way, and it is not a frame defect at all.
 
 ## A suspect resync poisons the regions AFTER it, not just its own line
-*(`divergence.py`, 2026-09-03 — this trap cost most of a session)*
+*(`divergence.py`, 2026-09-03: this trap cost most of a session)*
 
 `change` is a difference of two deltas, so once a resync locks onto the wrong
 copy of a repeated arm, the NEXT region's delta is wrong and the two `change`
@@ -3263,7 +3262,7 @@ function's dominant defect, and it did not exist.
 **Verify any large change before grinding it.** Pick an instruction that occurs
 once per unit of work and count it across the WHOLE function in both streams.
 On 0x100250D0 the divide-by-255 magic constant appears 33 times in each and
-the one-operand `imul` 24 times in each — every channel is present, so a
+the one-operand `imul` 24 times in each: every channel is present, so a
 21-instruction "gap" in one window cannot be real. An equal census plus an
 honest instruction total (from `fn.py`, which counts the whole function and
 not the aligner's windows) means the residue is allocation, wherever the
@@ -3271,11 +3270,11 @@ region map points.
 
 ## The FACTORED-HELPER screen: 32 rows, 13,463 bytes short
 *(the class behind 0x10037B20, 0x10014800, the velocity trio and
-BrCarGfxSetColour — four separate sessions arrived at it independently)*
+BrCarGfxSetColour: four separate sessions arrived at it independently)*
 
 MSVC 5.0 declines to inline a `static` once it has more than one caller, and
 will never inline one that returns a struct by value. Every port helper that
-factors a shared body — or wraps a group of globals behind an accessor —
+factors a shared body (or wraps a group of globals behind an accessor)
 therefore emits a `call` the original does not have, and the function reads as
 `MISSING CODE`. **This is the single largest source-level class left in the C
 lane.** Ranked list, EH rows excluded:
@@ -3306,14 +3305,14 @@ lane.** Ranked list, EH rows excluded:
 hard way: the EH test above (a `64 A1 ... 6A FF` prologue is C++, not C), and
 the C++-duplicate test in the snippet. And check the row's TWIN: 0x1003A2B0
 has no `.cpp` of its own but is instruction-for-instruction the same function
-as 0x1003A140, which does — matching one in C while the other goes to C++ is
+as 0x1003A140, which does: matching one in C while the other goes to C++ is
 work done twice and the C tag gets retired anyway.
 
 As of 2026-09-03, with the corrected EH test: **27 rows, 9,085 bytes short.**
 Worst are BrRaceGateStep (-1962), BrTextEmitString (-1162) and
 br_dl_light_setup (-587). The earlier "32 rows / 13,463 bytes" used the
 byte-0-only EH test above and therefore counted C++ EH rows it claimed to
-exclude — 0x10046E70 (-962) and 0x1004ABE0 (-280) are both `64 A1 ... 6A FF`
+exclude: 0x10046E70 (-962) and 0x1004ABE0 (-280) are both `64 A1 ... 6A FF`
 frames, unreachable from C. Two more rows have since been matched.
 
 **The recipe is always the same and it does not touch the port arm:** spell the
@@ -3332,7 +3331,7 @@ Two mechanics make the recipe safe on a file where the helper has many users:
   stack slot). Value-returning helpers become plain expression macros.
 - **`#define` immediately before the function and `#undef` immediately
   after.** The helper's other callers then keep whatever shape they already
-  match with, and — the trap — the macro must be defined AFTER the `static`
+  match with, and (the trap) the macro must be defined AFTER the `static`
   definitions, or the definition line itself gets macro-expanded into
   garbage. Scoped this way the change cannot regress a sibling; verify with
   the one-file sweep, which reports every function in the TU.
@@ -3341,7 +3340,7 @@ Two mechanics make the recipe safe on a file where the helper has many users:
   recompile against `call rel32` in the original means a port hook declared as
   a function POINTER that the original calls directly; re-declare it as an
   ordinary function in the matching arm. Count both forms in the original
-  first — it is a one-line census and it is unambiguous.
+  first: it is a one-line census and it is unambiguous.
 
 Proven together on 0x100302A0 BrModelSwap: five byte-swap helpers inlined as
 scoped macros and two hooks made direct took the register-blind gap from
@@ -3350,8 +3349,8 @@ the 49-function TU disturbed.
 
 ### A 2-byte reversal is a halfword COMPOSE, not two byte stores
 
-An in-place byte swap written the obvious way —
-`t = p[0]; p[0] = p[1]; p[1] = t;` — emits two byte stores, and MSVC5 will
+An in-place byte swap written the obvious way
+(`t = p[0]; p[0] = p[1]; p[1] = t;`) emits two byte stores, and MSVC5 will
 NOT merge them into a 16-bit store however you arrange the temps (both the
 single-temp and the load-both-bytes-first forms were measured byte-identical).
 The original loads the two bytes straight into the low and high halves of one
@@ -3361,7 +3360,7 @@ register and writes the pair once, so the source composes the halfword:
         ((uint16_t)((unsigned char *)(pv))[0] << 8) | (uint16_t)((unsigned char *)(pv))[1] ))
 
 VC5 turns the `<< 8` / `|` into `mov cl,[p+1]; mov ch,[p]` with no shift at
-all. **Tell: count `mov word ptr` stores in the original — one per swap site
+all. **Tell: count `mov word ptr` stores in the original: one per swap site
 means the compose form, and byte stores in your recompile against word stores
 in the original is this and nothing else.** Worth 22 register-blind shapes on
 0x100302A0 (35+36 -> 13+23), where the original has exactly seven such stores.
@@ -3388,7 +3387,7 @@ identical mistake hides inside a single global. Three forms, all proven on
 
 The general rule these share: **when the original reads something at a
 narrower width or a different address than your C does, the source declared it
-that way — do not reach for a shift or a cast to bridge the difference.**
+that way: do not reach for a shift or a cast to bridge the difference.**
 
 ### The accessor sub-case: a struct that is really N standalone globals
 
@@ -3405,7 +3404,7 @@ Two more facts from the same function, both cheap to check:
   `push 0x100A6B80` is `char buf[]`; a `char *` global would be
   `mov eax,[0x100A6B80]; push eax`.
 - **A float argument moved with `mov`/`push` rather than `fld`/`fstp` is a
-  DWORD PUN.** Declare the parameter `uint32_t` in the matching arm — the same
+  DWORD PUN.** Declare the parameter `uint32_t` in the matching arm: the same
   four bytes reach the callee.
 
 ## A dead verdict measured against a wrong frame is STALE
@@ -3414,8 +3413,8 @@ session after its frame was fixed)*
 
 Every "measured, do not re-run" note that turns on REGISTER ALLOCATION is
 conditional on the allocation it was measured under. Change a global input to
-that allocation — the frame size above all, but also a spill removed or a
-register freed — and the whole dead list has to be re-tested.
+that allocation: the frame size above all, but also a spill removed or a
+register freed, and the whole dead list has to be re-tested.
 
 The worked case: a three-float copy where the original puts two members
 through the x87 and one through an integer register. Five spellings had been
@@ -3433,31 +3432,31 @@ Two rules made that copy work, and both generalise:
   the neighbour on the stack.
 
 Re-testing the rest of that function's dead list under the same rule found one
-more verdict had shifted — from clearly-bad to ambiguous — while two others
+more verdict had shifted: from clearly-bad to ambiguous, while two others
 held. **Expect a minority to flip: re-test them all, and record which held so
 the next session does not repeat the sweep.**
 
-## A Ghidra-named multi-use temp is an allocation candidate; a repeated expression is not — and the polarity is per-function
+## A Ghidra-named multi-use temp is an allocation candidate; a repeated expression is not, and the polarity is per-function
 
 Proven 2026-09-04 on the two hardest functions in the tree, in OPPOSITE
 directions, which is what makes the rule usable rather than a coin-flip.
 
-Ghidra names every CSE'd value it sees (`ring`, `h1`, `lo0`, `iVar16` …). A
+Ghidra names every CSE'd value it sees (`ring`, `h1`, `lo0`, `iVar16` ...). A
 named multi-use local and the bare expression it was folded from are NOT
 equivalent to VC5's allocator: the named local is a value with a home and a
 spill priority, the repeated expression is re-derived at each use and competes
 for nothing.
 
-- **Inlining it can CLOSE a region** — `0x1000EAF0`, the trail-append block's
+- **Inlining it can CLOSE a region**: `0x1000EAF0`, the trail-append block's
   `ring`. Spelling its 32 uses `(iWheel + iCar * 4)` left wall 4's addressing
   byte-identical but moved the enclosing object loop's `mov edi,1` hoist onto
   the back-edge/exit path where the original puts it (region 0x189c closed,
   commit 49dba5b). `ring` is a PER-ITERATION CSE; naming it gave it a priority
   that perturbed a neighbouring hoist.
-- **Inlining it can DESTROY the match** — `0x100250D0`, the three I4 blend
+- **Inlining it can DESTROY the match**: `0x100250D0`, the three I4 blend
   bodies' eight channel base/delta temps. Spelling them
   `(param_N & 0xff)` / `((param_M & 0xff) - (param_N & 0xff))` went 18
-  instructions SHORT (2,408 → 2,389) and 40+41 → 47+29 rows (commit 657b904).
+  instructions SHORT (2,408 -> 2,389) and 40+41 -> 47+29 rows (commit 657b904).
   These temps are LOOP-INVARIANT; the named locals ARE the hoist the original
   has, and inlining them denies VC5 the thing to hoist.
 
@@ -3493,7 +3492,7 @@ The original says it in place:
     g_stack[g_count] = p;
     g_count = g_count + 1;
 
-Two distinct costs, both from the same cause — the local gives the loaded
+Two distinct costs, both from the same cause: the local gives the loaded
 value a lifetime the original never gave it:
 
 - **The accumulator flips.** VC5 accumulates into whichever operand dies
@@ -3504,7 +3503,7 @@ value a lifetime the original never gave it:
 - **An `inc` becomes a `lea`.** The local keeps the pre-increment value
   live across a guard, so the guard's `+1` needs its own register
   (`lea ecx,[eax+1]`) instead of destroying the load (`inc eax`). The
-  original reloads the global after the call — which the call forces
+  original reloads the global after the call, which the call forces
   anyway, so the copy buys nothing.
 
 **Screen:** `tools/screen_globalcache.py` lists diff rows whose matching
@@ -3523,12 +3522,12 @@ against one of them buries a construct that is actually fine.
 The case: a dossier entry blamed `slot = head - 1; if (slot < 0)` for a
 `dec`/`jns` against `lea`/`test`/`jge` difference, on the strength of a probe
 that had also reversed a guard and sunk an assignment. Re-measured alone, the
-two spellings are BYTE-IDENTICAL — VC5 canonicalises them — so the region cost
+two spellings are BYTE-IDENTICAL: VC5 canonicalises them, so the region cost
 belonged entirely to the other two changes, and a correct construct had been
 carrying the blame for four passes.
 
 **When a bundled probe scores badly, re-run its members singly before writing
-any of them into a dead list** — or write the entry against the bundle, named
+any of them into a dead list**, or write the entry against the bundle, named
 as a bundle, so the next session knows what was actually measured.
 
 ## Read a register wall as a "which N of M fit" question
@@ -3539,7 +3538,7 @@ looking for a spelling and count the registers. At one join the original keeps
 two loop values live across the merge and therefore has to read the loop
 counter from memory at the guard (`cmp [slot],reg`); we keep the counter in a
 register and reload the two values after the merge. Three values, two
-registers — both builds pick two, and they pick differently.
+registers: both builds pick two, and they pick differently.
 
 That framing is worth reaching for early, because it says immediately that no
 source spelling reaches it: the source names all three the same way in both.
@@ -3561,7 +3560,7 @@ the plane distance twice:
 
 The original's two sites disagreed with each other: NEAR's dCur site leads
 its x87 pair with `f0C`, its dPrev site leads with `f18`.  One `DIST`
-parameter yields one spelling, so no argument could ever satisfy both — and
+parameter yields one spelling, so no argument could ever satisfy both, and
 the honest-looking inference from that is exactly the trap:
 
 > "Our two sites disagree with the original from a SINGLE macro expansion,
@@ -3570,9 +3569,9 @@ the honest-looking inference from that is exactly the trap:
 
 **That reasoning is invalid, and it will look sound every time.** The premise
 "a single expansion cannot produce two spellings" is a property of OUR macro,
-not of the compiler. Split the parameter — `BR_CLIP_PLANE(NAME, DIST_CUR,
+not of the compiler. Split the parameter: `BR_CLIP_PLANE(NAME, DIST_CUR,
 DIST_PREV)`, textually a no-op for every instantiation that passes the same
-argument twice — and each site becomes independently spellable. NEAR went
+argument twice, and each site becomes independently spellable. NEAR went
 byte-exact on the first sweep after the split; LEFT went 4 diff bytes to 2.
 
 The screen, and it is cheap:
@@ -3589,15 +3588,15 @@ Corollary for the paren lever (`((a) + b) + c` picks the `fld` operand): it
 is not uniformly available. On this body it flips the pair at either site,
 but at the dPrev site it ALSO sinks that site's `fadd` past four unrelated
 instructions (33 diff bytes at that site alone, 31 at both). A lever with a
-site-dependent cost is only usable once the sites are separable — which is
+site-dependent cost is only usable once the sites are separable, which is
 the same fix. Dead alongside it, measured: swapping the `+` operands is
 byte-identical; swapping the two distance STATEMENTS is inert; naming the
 leading operand costs an extra float local that perturbs the shared frame and
-un-matches two sibling instantiations (6/7 -> 4/7) — "name the product" needs
+un-matches two sibling instantiations (6/7 -> 4/7): "name the product" needs
 a sum of products and does nothing on a plain two-term add.
 
 ## Inlining a helper by hand: use a MACRO, and pun the float stores
-*(proven 2026-09-03 on the two triangle handlers, 0x1001ECF0 and 0x1001FA30 —
+*(proven 2026-09-03 on the two triangle handlers, 0x1001ECF0 and 0x1001FA30:
 337 and 627 bytes short, down to 49 and 56)*
 
 When the factored-helper screen sends you to spell a body out, two mechanics
@@ -3636,7 +3635,7 @@ The original tends to keep the **scaled byte offset** in a register and
 re-form `base + offset` at each access (`lea eax,[ecx + 0x105CE318]`), where a
 pointer local keeps the pointer. Writing the body in INDEX form
 (`pool[i].field`, no pointer locals) gets the instruction count right but
-costs ~90 bytes of SIB addressing — measured, worse overall. Park it.
+costs ~90 bytes of SIB addressing: measured, worse overall. Park it.
 
 ## Two more shapes of "MISSING CODE" that are not source discovery
 *(both found 2026-09-03 while working the factored-helper screen)*
@@ -3649,7 +3648,7 @@ costs ~90 bytes of SIB addressing — measured, worse overall. Park it.
 
 compiles to a loop; the original has **twelve separate `call` sites** with the
 operands as absolute globals. A table-driven loop in the port against a much
-larger original is the tell — and it usually travels with the accessor
+larger original is the tell, and it usually travels with the accessor
 sub-case, because once the loop is gone the parameters go too. This function
 takes NO arguments at all in the original.
 
@@ -3660,7 +3659,7 @@ of a 64-entry array. That is the original's behaviour, not a port bug to fix.
 ### 2. The port DELETED the original's debug tracing
 *(0x1005FF00 BrRaceGateStep is -1962 bytes; 0x10067710 BrCrRespWalk is -549)*
 
-Screen the ORIGINAL for calls to the trace sink — a printf-style function
+Screen the ORIGINAL for calls to the trace sink: a printf-style function
 taking a format-string pointer and varargs:
 
     # short diff rows whose ORIGINAL calls 0x10008D60
@@ -3684,14 +3683,14 @@ Two rows, 2,511 bytes between them. BrRaceGateStep alone has **12 trace calls,
 10 `BrStrGet` lookups and 4 `sprintf`s**, and the port's own comments quote the
 format strings while explaining that only the branch was kept ("the original
 builds that predicate into a register purely to print it"). So the missing
-bytes are not a helper to find — they are output that was deliberately
+bytes are not a helper to find: they are output that was deliberately
 dropped, and putting them back is transcription, not discovery.
 
 ### 2a. Restoring deleted tracing: what it costs, and five rules it proves
 *(0x1005FF00 BrRaceGateStep, 2026-09-03: -1,957 bytes / regnorm 13+530 ->
 SIZE AND INSTRUCTION COUNT EXACT at 2,538 B / 720 insns, 2 differing bytes)*
 
-The screen above was right that this is transcription, not discovery -- the
+The screen above was right that this is transcription, not discovery: the
 whole 1,957 bytes went back in one sitting. Five things had to be spelled the
 original's way, and each is reusable:
 
@@ -3702,8 +3701,8 @@ original's way, and each is reusable:
    memory FOUR times inside one basic block. No base register produces that.
 
 2. **`x == 0.0f` IS the `fcomp` / `test ah,0x40` / `jne` idiom.** The long,
-   NaN-correct form `!(x < 0) && !(x > 0)` -- right for a port, and what this
-   module's port arm still uses -- costs a SECOND `fcom` + `fnstsw` + `test`
+   NaN-correct form `!(x < 0) && !(x > 0)` (right for a port, and what this
+   module's port arm still uses) costs a SECOND `fcom` + `fnstsw` + `test`
    + branch at every site. Seven sites here, 28 extra instructions. Polarity
    matters too: `x != 0.0f` puts the equal case at the branch TARGET
    (`jne <else>`), `x == 0.0f` at the fallthrough. Read which side the
@@ -3730,21 +3729,21 @@ original's way, and each is reusable:
 Where CRT calls are involved, two more: declare `sprintf` with
 `__declspec(dllimport)` (the original reaches it as
 `call dword ptr [0x118F0570]`; `<stdio.h>` without the attribute emits a
-direct `call rel32` -- four wrong call sites), and let `strcpy`/`strlen` come
+direct `call rel32`: four wrong call sites), and let `strcpy`/`strlen` come
 from `<string.h>` so /O2's intrinsics inline them into the original's
 `repne scasb` + `rep movsd` + `rep movsb`.
 
 **PARKED at 2 bytes, and the dead list is in the file header of
-`src/core/racing/br_race.c`** -- one `add ecx,eax` vs `add eax,ecx` where both
+`src/core/racing/br_race.c`**: one `add ecx,eax` vs `add eax,ecx` where both
 registers hold the same values and both die immediately. Six commutative
 spellings and both statement orders are proven dead, and all four sweep
 variants bottom out at the same 2 diffs.
 
-### 2b. The same class again, on the string emitter -- four more rules
+### 2b. The same class again, on the string emitter: four more rules
 *(0x10015B10 BrTextEmitString, 2026-09-03: -1,097 bytes / regnorm 340+494 ->
 3,027 of 3,050 code bytes and 744 of 751 instructions, 8 divergence regions)*
 
-Same two causes as BrRaceGateStep -- a struct that is really N absolute
+Same two causes as BrRaceGateStep: a struct that is really N absolute
 globals (fourteen of them, and the original takes ONE stack argument), and a
 factored helper the original inlines (the eight-byte display-list append, at
 43 sites; reuse br_drawcar.c's `put` macro and its cursor). Four rules beyond
@@ -3759,11 +3758,11 @@ those, all newly proven here:
 
 2. **Take the display-list slot as the call's FIRST ARGUMENT.** cdecl
    evaluates right to left, so the first argument is evaluated LAST and its
-   cursor advance lands *between* the pushes -- which is what stops VC5
+   cursor advance lands *between* the pushes, which is what stops VC5
    hoisting the common pushes out of the two arms and cross-jumping them down
    to one. Hoisting the slot above the `if` merged six pushes that the
    original duplicates. As an expression: `(p_ = cur, cur += 2, p_)` with a
-   named temp -- a bare `(cur += 2, cur - 2)` costs an `add eax,-8`.
+   named temp: a bare `(cur += 2, cur - 2)` costs an `add eax,-8`.
 
 3. **`x <<= 1` and `x = <the global> * 2` are different bytes.** The first
    gives `shl reg,1` on the local's register; the second gives
@@ -3777,14 +3776,14 @@ those, all newly proven here:
    two `switch` statements over the character, VC5 rebuilds both. Tell: a
    MISSING `jmp dword ptr [R*I + I]` and a MISSING `mov B, byte ptr [R + I]`.
 
-**‼ MEASUREMENT TRAP, and it is new: SWITCH TABLES LAND INSIDE THE RECOMPILED
+**!! MEASUREMENT TRAP, and it is new: SWITCH TABLES LAND INSIDE THE RECOMPILED
 SYMBOL.** Under /O2 each function is its own COMDAT section and its jump
 tables sit in it, so `parse_coff_obj` hands the scorer function + tables:
 here 254 bytes and ~110 disassembled-as-code "instructions" on top of the
 real body. The original's map size excludes them (0x10015B10 is 3050 bytes;
 its four tables live in the gap before the next entry at 0x10016800).
 `match_sweep` trims the recomp to the original's length before comparing, so
-this can never block a MATCH -- but **fn.py's BYTES and INSNS are unusable on
+this can never block a MATCH, but **fn.py's BYTES and INSNS are unusable on
 a function with a switch**. Read the size and the count off the code up to
 the `ret` instead.
 
@@ -3796,14 +3795,14 @@ probes are listed in the file header.
 ## The N64 twin as an oracle: two results, and a second way to pair
 *(2026-09-03, on the two functions above)*
 
-CLAUDE.md says the N64 does not move register-allocation walls. That held --
+The project rule is that the N64 does not move register-allocation walls. That held,
 but it settled two source questions the PC bytes could not, and it retired a
 park from "probably allocation" to "confirmed allocation".
 
 ### A second anchor: SHARED MAGIC CONSTANTS, not just shared strings
 
 The recorded pairing method is the 195 shared debug strings. It found
-0x1005FF00's twin immediately -- every one of its format strings is in the
+0x1005FF00's twin immediately: every one of its format strings is in the
 ROM byte-identical, and all four xref to ONE function, 0x8022A0E0.
 
 It does NOT find a function with no strings. For those, screen the ROM's
@@ -3823,8 +3822,8 @@ had more than four. One screen, no anchor needed:
 ### Result 1: VC5 canonicalises x87 ADD operand order, not only MULTIPLY
 
 The existing entry says VC5 canonicalises multiply. The N64 gives the true
-source for 0x1005FF00's progress fixup -- `add.s $f16, $f8, $f10` with the
-FIELD first, i.e. `pDrv->f50 += pLap->fLapLength` -- while the PC original
+source for 0x1005FF00's progress fixup: `add.s $f16, $f8, $f10` with the
+FIELD first, i.e. `pDrv->f50 += pLap->fLapLength`, while the PC original
 emits `fld [lapLength]; fadd [f50]`, the reverse. Written both ways the PC
 bytes are IDENTICAL. So operand order is not a probe axis for x87 `+` either,
 and where the two disagree the N64 is the one telling you what the source
@@ -3834,19 +3833,19 @@ said.
 
 0x10015B10's hi-res block emits `lea ecx,[esi+esi]` / `lea ebp,[edi+edi]`
 where esi/edi hold the globals' loads, which reads like
-`scale = g_scale * 2`. The N64 twin is unambiguous -- `sll $s5,1 / sll
+`scale = g_scale * 2`. The N64 twin is unambiguous: `sll $s5,1 / sll
 $t6,$fp,1 / sll $t7,$s7,1`, all three off the already-assigned LOCALS. The
 `lea` is simply what `scale <<= 1` compiles to when `scale`'s home is a stack
 SLOT and its value happens to be live in a register: load-modify-store cannot
 use `shl` in place. **Reading a `lea` as evidence about the source expression
-is backwards -- it is evidence about where the variable LIVES.**
+is backwards: it is evidence about where the variable LIVES.**
 
 ### And what it confirmed
 
-Every structural element of 0x1005FF00 -- the six globals, the gate count
+Every structural element of 0x1005FF00: the six globals, the gate count
 re-read inside the `if (pCar)` block, the field-by-field vector copies, the
 floor-modulus arm order, the "Hmm" predicate with its five printf arguments,
-`pDrv->f4C + nGates` in that operand order, the shared trailing `f4C -= 1` --
+`pDrv->f4C + nGates` in that operand order, the shared trailing `f4C -= 1`:
 appears in the N64 twin in the same order. That is what turns its two-byte
 residue from a suspected source fork into a confirmed allocation residue, and
 it is why the eight dead spellings in that file header can stop being
@@ -3855,10 +3854,10 @@ re-tried.
 Caveat worth keeping: the emitter twin is 4,076 bytes against the PC's 3,050
 and its coordinate packing genuinely differs (`(v << 2) & 0xFFF` where the PC
 has `((v & 0xFFF) << 2) >> 2`). The 1997 and 1999 bodies are the same source
-lineage, not the same revision -- **use the twin for STRUCTURE and for which
+lineage, not the same revision: **use the twin for STRUCTURE and for which
 variable an expression names, never as a byte oracle.**
 
-## The "photo" control block (menu-builder family) — SOLVED 2026-09-03
+## The "photo" control block (menu-builder family): SOLVED 2026-09-03
 
 Proven byte-exact on 0x1004ABE0 (760 B, first compile). Three parts, and
 each part's shape is source, not schedule:
@@ -3873,7 +3872,7 @@ each part's shape is source, not schedule:
 
 2. **A rect built from `__ftol` conversions, stored +0x54, +0x50, +0x58,
    +0x5C.** The y field is written FIRST. That is the source order, not a
-   schedule — transcribing it as 50/54/58/5C rotates the whole block. Where
+   schedule: transcribing it as 50/54/58/5C rotates the whole block. Where
    the same float feeds two fields, the original converts it TWICE (four
    `__ftol` calls, no int temps) unless the integer is also needed by a
    later control, in which case it is a real local (0x1004AEE0 keeps `xi`
@@ -3891,7 +3890,7 @@ and sinks the `fstp` past `f2968`, while ours interleaves and sinks the
 `+0x58` store instead. Identical multiset, T3a. Photos 2 and 3, and every
 other byte, are exact.
 
-## An x87 preload depth is not a constant — it is set by the block before it
+## An x87 preload depth is not a constant: it is set by the block before it
 *(0x1000EAF0, 2026-09-03; this RETRACTS an earlier entry of mine that called
 the same number a scheduler constant)*
 
@@ -3903,14 +3902,14 @@ do NOT conclude the compiler is unwilling. Three checks, in this order:
    original's depth, the compiler is willing and the difference is contextual.
    (Here a second scale block already emitted the original's 8.)
 2. **Vary the statement count.** If the first batch is the same number for
-   every N — measured 10 through 16, always 5 — it is not a batch-size rule,
+   every N (measured 10 through 16, always 5): it is not a batch-size rule,
    and something at that site is costing x87 slots.
 3. **Move the block earlier.** If the depth changes when the block is hoisted
    above its predecessor, the predecessor sets it.
 
 Here the predecessor was a row block whose four products mix operand KINDS:
 two spelled as absolute literals, two through pointer locals. Spelling all
-four absolutely — which is what the original does — takes the preload from 5
+four absolutely, which is what the original does, takes the preload from 5
 to the original's 8. **So two "independent walls" in that dossier were one:
 the preload is downstream of the row block's operand kinds.**
 
@@ -3927,14 +3926,14 @@ that go dead when the terms are rewritten.
 Proven on 0x10045EF0 (selector fill loop), where it was the function's ONLY
 diff. VC5 emits an UNSIGNED `jb` for a pointer/pointer comparison and a
 SIGNED `jl` when the operands are ints. So a `jl` closing a table walk means
-the source compared the cursor as an integer -- `(int)pe < (int)(tab + N)`,
-or an int cursor stepped by the element size -- even though every use of the
+the source compared the cursor as an integer: `(int)pe < (int)(tab + N)`,
+or an int cursor stepped by the element size, even though every use of the
 cursor inside the loop is a pointer dereference. One byte, and it is
 readable straight off the branch opcode: 0x72 unsigned, 0x7C signed.
 
 ## A repeated byte immediate gets pooled; write the mask at the field's real width
 
-Proven on 0x1002F380 (`BrPadTranslate`, 690 B, byte-exact — it was the
+Proven on 0x1002F380 (`BrPadTranslate`, 690 B, byte-exact: it was the
 whole residue, and the previous note there had already recorded four dead
 spellings).
 
@@ -3951,17 +3950,17 @@ Both forms test the same bits. The difference is WHEN the immediate 0x80
 exists. Written as a byte mask it is one constant in the source, and VC5's
 constant pooling hoists it into a register the moment it is used twice.
 Written as the halfword mask the field really is, each `test` is narrowed
-to `test byte …,0x80` late, per instruction, and there is no shared
+to `test byte ...,0x80` late, per instruction, and there is no shared
 constant to pool.
 
 **The tell:** `mov r8,imm` immediately before two or more `test`/`and`
 byte operations that the original writes with the immediate inline. Widen
 the source mask to the natural width of the member being tested; do not
 try to break the pooling with `&&` vs nested `if`, the `!` form, split
-statements, or duplicated arms — all four were tried on this function and
+statements, or duplicated arms: all four were tried on this function and
 all four pool.
 
-## A plain `static` helper is NOT auto-inlined under /O2 — write it out
+## A plain `static` helper is NOT auto-inlined under /O2: write it out
 
 Proven on 0x10003320 (`BrChkFReadOpen`, 260 B: byte-exact the moment the
 one-line helper was spelled out; it was the last two instructions).
@@ -3972,15 +3971,15 @@ one-line helper was spelled out; it was the last two instructions).
     return (FILE **)(void *)pf; /* RIGHT: mov eax,ebx                 */
 
 /O2 implies /Ob1, which inlines only functions marked `inline` or
-`__inline`. A plain `static` one-liner — the shape a decomp naturally
+`__inline`. A plain `static` one-liner (the shape a decomp naturally
 reaches for when the same pun, accessor or index calculation appears in
-several functions — is emitted as a real call, and the original has no call
+several functions) is emitted as a real call, and the original has no call
 there at all.
 
 **The tell:** recomp is a few bytes longer than orig with one extra
 `push`/`call`/`add esp,N` group around a value the original just moves, and
 the call target is a tiny local function. Either write the body out at the
-matching call site, or mark the helper `__inline` — but check every other
+matching call site, or mark the helper `__inline`, but check every other
 caller when you do, because that changes their code too.
 
 **Not the same thing** as the CRT intrinsics: `strcpy`, `strcat`, `strlen`
@@ -3988,19 +3987,19 @@ and `memcpy` ARE expanded inline under /O2 (that is /Oi, which /O2 implies),
 which is why the original shows `repne scasb` / `rep movs` for those and a
 real `call` for `strncpy` or `_stricmp`, which are not intrinsics.
 
-## ‼ fn.py's DIFFS is POSITIONAL — a size shift upstream inflates or halves it
+## !! fn.py's DIFFS is POSITIONAL: a size shift upstream inflates or halves it
 *(measured 2026-09-03 on 0x1000EAF0; this qualifies several earlier
 comparisons in these dossiers, mine included)*
 
 `fn.py`'s `DIFFS` compares byte *i* of the original against byte *i* of the
 recompile, with relocation slots masked and NO alignment. So any size
 difference before a stretch shifts that whole stretch and makes almost every
-byte in it mismatch — and removing the shift makes almost all of them "match"
+byte in it mismatch, and removing the shift makes almost all of them "match"
 at once, whether or not the code got closer.
 
-The case: a row-expression variant took DIFFS from 4,669 to 2,490 — a 47%
+The case: a row-expression variant took DIFFS from 4,669 to 2,490: a 47%
 drop that looks like a breakthrough. It was two bytes. The 2-byte size change
-moved a ~4,600-byte tail from delta −2 to delta 0, and ~2,200 spuriously
+moved a ~4,600-byte tail from delta -2 to delta 0, and ~2,200 spuriously
 mismatching bytes became spuriously matching ones. The variant recovered two
 bytes and one instruction, nothing more.
 
@@ -4008,7 +4007,7 @@ bytes and one instruction, nothing more.
 - Compare DIFFS only between builds whose total size is the SAME. Otherwise it
   measures alignment, not correctness.
 - When the size moves, rank by `msetdiff.py` rows, the instruction gap, and
-  the masked region map — all three are alignment-free.
+  the masked region map: all three are alignment-free.
 - A DIFFS swing much larger than the byte-count change is the signature of a
   shift, not of a fix. Check `divergence.py --deltas` for a long run of
   regions whose delta all moved by the same small amount.
@@ -4017,9 +4016,9 @@ bytes and one instruction, nothing more.
 *(isolated A/B on 0x1000EAF0, 2026-09-03)*
 
 Wrapping four already-parenthesised float expressions in one more pair of
-outer parentheses — changing nothing else, not even the association — moves
-the x87 schedule: the scale block's preload goes 5|7 → 4|8, the recompile
-grows three bytes, and the register-blind gap goes 40+46 → 41+47.
+outer parentheses (changing nothing else, not even the association) moves
+the x87 schedule: the scale block's preload goes 5|7 -> 4|8, the recompile
+grows three bytes, and the register-blind gap goes 40+46 -> 41+47.
 
 So parentheses reach VC5's scheduler, not just its parser. Two consequences:
 - **Never "tidy" redundant parentheses in a matching TU.** They are load-
@@ -4029,23 +4028,23 @@ So parentheses reach VC5's scheduler, not just its parser. Two consequences:
   outer pair before calling it a wall.
 
 Also settled on that function while measuring this: the ORIGINAL's four-term
-row is LEFT-associated — its first `faddp st(2)` adds terms 1 and 2 — so a
+row is LEFT-associated: its first `faddp st(2)` adds terms 1 and 2, so a
 right-associated variant is the wrong source no matter how it scores.
 
 **Second sighting, and this one closed a function** *(0x100199A0
 `BrRaceCarCtlOutro`, same day)*. A three-term sum of squares
 `x*x + y*y + z*z` scheduled the THIRD square second; the same expression
-written `(x*x + y*y) + z*z` — identical association, one redundant pair —
+written `(x*x + y*y) + z*z` (identical association, one redundant pair)
 scheduled it last and took the function from 22 diffs to 2, then to
 byte-exact once the two float locals were declared in the order that puts
 the right one in ecx. Both sightings share a signature worth screening for:
 **size and instruction multiset already exact (register-blind gap 0), the
 divergence purely in x87 ordering.** On a float function in that state, try
-the parenthesis axis before anything else — it is one recompile, and every
+the parenthesis axis before anything else: it is one recompile, and every
 other axis in this class costs many.
 
 ## A raw-address cast and a symbol reference are NOT the same operand to VC5
-*(0x1000EAF0, 2026-09-03 — this closed a wall that had stood nine passes)*
+*(0x1000EAF0, 2026-09-03: this closed a wall that had stood nine passes)*
 
 `*(float *)(0x106e9a38 + 4*k)` and `DAT_106e9a38[k]` name the same location and
 assemble to the same instruction, but they reach the code generator as
@@ -4056,8 +4055,8 @@ gives.
 
 The case: a four-term matrix row transcribed with two terms as raw-address
 casts and two through pointer locals. That mix held an x87 preload at 5 for
-nine passes. Written with all four as array symbols — which is what the
-original's source must have had, since real source names its variables — the
+nine passes. Written with all four as array symbols (which is what the
+original's source must have had, since real source names its variables) the
 following block emits the original's batching exactly.
 
 **So treat a raw-address cast as a transcription placeholder, not a finding.**
@@ -4068,7 +4067,7 @@ somewhere else, and the all-cast form lands somewhere else again.
 
 Related, and settled at the same time: **VC5 canonicalises x87 multiply
 operand order** just as it does the integer one. Swapping the factors of any
-term, or of several, is byte-identical every time — so when the original
+term, or of several, is byte-identical every time, so when the original
 loads the other factor first, that is allocation, not source.
 
 ## Corollary: a pointer local to an array is free
@@ -4076,34 +4075,34 @@ loads the other factor first, that is allocation, not source.
 three ways on the same rows). The pointer local is neither the problem nor the
 fix; it is the CAST that differs.
 
-## …but `ptr[0]` and `ptr[k!=0]` are NOT the same operand — it decides which side of an x87 multiply gets the `fld`
+## ...but `ptr[0]` and `ptr[k!=0]` are NOT the same operand: it decides which side of an x87 multiply gets the `fld`
 *(0x1000EAF0, 2026-09-03; this closed the term-3 operand flip that four passes
 of coefficient-side probing could not move)*
 
 When BOTH factors of a float multiply are in memory, VC5 has to `fld` one and
 `fmul` the other, and it RANKS the two operands to decide which. That ranking
-is not settled by the source's factor order — that is canonicalised (entry
-above) — and it is not settled by symbol-vs-cast alone. **A zero index off a
+is not settled by the source's factor order: that is canonicalised (entry
+above), and it is not settled by symbol-vs-cast alone. **A zero index off a
 pointer local outranks a non-zero index off a pointer local.**
 
 The case: a four-term row `C1*pPos[0] + C2*pTw[0] + C3*pPos[2] + C4*pTy[0]`.
 Terms 1, 2 and 4 read their object factor as `ptr[0]` off a dedicated pointer
 local and all three came out coefficient-first (`fld [coef]; fmul [esi+d]`),
-matching the original. Term 3 alone read `pPos[2]` — the same pointer as term
-1, at a non-zero index — and came out object-first (`fld [esi+0x38];
+matching the original. Term 3 alone read `pPos[2]`: the same pointer as term
+1, at a non-zero index, and came out object-first (`fld [esi+0x38];
 fmul [coef]`). Giving term 3 its own pointer local (`float *pTz = pObj + 0xe`)
 so it reads `pTz[0]` flipped it to coefficient-first. Sixteen register-blind
 multiset rows, two instructions and one byte, on a one-line change.
 
-‼ **IT NEEDS A MULTI-USE POINTER, and that limit was measured the same day.**
+!! **IT NEEDS A MULTI-USE POINTER, and that limit was measured the same day.**
 On 0x1000A110 a float sum read its two operands from the other sources
 (`fld [esp+S]; fadd [ebx+0x30]` in the original, the reverse in ours) and the
-struct term was `ptr[12]` — apparently the identical set-up. Giving it its own
+struct term was `ptr[12]`: apparently the identical set-up. Giving it its own
 `ptr[0]` is BYTE-IDENTICAL there, because that pointer is SINGLE-USE and VC5
 forward-substitutes the constant offset straight back into `[ebx+0x30]`; there
 is nothing left to rank. The lever only exists where the pointer already
 survives to the use, as the three row pointers on 0x1000EAF0 do. A fresh
-single-use pointer is inert — the same fact the "a pointer local to an array
+single-use pointer is inert: the same fact the "a pointer local to an array
 is free" entry states from the other side. (Also measured there: swapping the
 summands of a TWO-term float sum is canonicalised exactly like the four-term
 ones.)
@@ -4111,16 +4110,16 @@ ones.)
 **The screen, and it is cheap: when several parallel terms compile the same
 way and ONE does not, compare how the odd term SPELLS its operands, not what
 they are.** Symmetric terms want symmetric spellings; a term reached at a
-different index — or through a shared pointer where its siblings have their
-own — is the one VC5 will rank differently. The nineteenth pass of that file
+different index (or through a shared pointer where its siblings have their
+own) is the one VC5 will rank differently. The nineteenth pass of that file
 had probed the opposite direction (delete all the pointer locals, spell every
 term off the base) and it is much worse: VC5 CSEs harder and loses five more
 instructions. Add a pointer local, never remove one.
 
 Also proven on the same rows, and it qualifies the paren lever: **a redundant
 outer paren can give the best byte and instruction count a function has ever
-read and still be wrong.** `(((T1+T2)+T3)+T4)` took that function to −7 bytes
-and only two instructions short — its best ever — by breaking an x87 batching
+read and still be wrong.** `(((T1+T2)+T3)+T4)` took that function to -7 bytes
+and only two instructions short, its best ever, by breaking an x87 batching
 decision two blocks later and paying for it with loads that count as
 "recovered" instructions. Check the region map, not the totals, before taking
 a paren.
@@ -4132,12 +4131,12 @@ not by the size screens)*
 Distinct from the factored helper and from deleted tracing: here the port
 transcribed the last third of a function and changed its shape while doing so.
 The original **installs into dispatch slots and returns void**; the port made
-it **return the value** and dropped everything before the selection — three
+it **return the value** and dropped everything before the selection: three
 state blocks that XOR the new mode against the PREVIOUS one and drive a
 hardware setter off each group of changed bits.
 
 **`python3 tools/claimcheck.py` finds this class and the size screens do
-not** — it flags "the original delegates, the port calls nothing", and all
+not**: it flags "the original delegates, the port calls nothing", and all
 three missing calls showed up there. Run it at session start; it also now
 reports two names claiming one address.
 
@@ -4157,12 +4156,12 @@ Three details worth carrying:
 
 0x10031B80 and 0x10059410 each had a port body and a real transcription on the
 same Glide VA, because a `d3d` tag resolves through `config/shared.csv`. The
-short row poisons every size-based screen — 0x10031B80 ranked SECOND on the
+short row poisons every size-based screen: 0x10031B80 ranked SECOND on the
 whole factored-helper board at "-1165 bytes short" while the function it names
 is size-exact. `claimcheck.py` now flags it directly; **fragments, thunks and
 port-only bodies must not carry `@implements`.**
 
-## VC5 canonicalises commutative FLOAT addition — operand order is not source-reachable
+## VC5 canonicalises commutative FLOAT addition: operand order is not source-reachable
 
 Measured on 0x10044860, where four `fld`/`fadd` pairs are the function's only
 instruction-level divergence. For `local + member` VC5 always emits
@@ -4181,73 +4180,73 @@ member and adds the disp8 stack slot). Contrast the SUBTRACTION case, which
 is not commutative and does follow the source. Do not spend probes
 permuting a float sum.
 
-**2026-09-03 — the canonicalisation covers a WHOLE FLAT SUM-OF-PRODUCTS, not
+**2026-09-03: the canonicalisation covers a WHOLE FLAT SUM-OF-PRODUCTS, not
 just one add.** Measured on 0x100349C0 BrVec3Project (a 4x4 projection: three
 dot products plus a w row, 165 B, entirely x87). Eleven spellings of the same
-expression tree all compile to BYTE-IDENTICAL code — same 163 bytes, same 69
+expression tree all compile to BYTE-IDENTICAL code: same 163 bytes, same 69
 instructions, same single-`fxch` residue:
 
   - term order in the chain: `m03*vx + m13*vy + m23*vz + m33`,
-    `m33 + m03*vx + …`, `m10*vy + m20*vz + m00*vx`, `m00*vx + m10*vy + m20*vz`
+    `m33 + m03*vx + ...`, `m10*vy + m20*vz + m00*vx`, `m00*vx + m10*vy + m20*vz`
   - operand order inside each product: `m[0][0]*vx` vs `vx*m[0][0]`
   - the outer scale: `(...) * r` vs `r * (...)`
-  - naming one numerator in a local (`rx = …; pOut->x = rx * r;`)
+  - naming one numerator in a local (`rx = ...; pOut->x = rx * r;`)
   - inlining `w` into the reciprocal, or reordering the two declarations
   - accessing the matrix through a `const float (*m)[4]` local vs `pM->m[i][k]`
 
 Only two things moved the code at all: **GROUPING** (an explicit right-leaning
-paren pair, `a + (b + c)`, is a different tree and does change the schedule —
+paren pair, `a + (b + c)`, is a different tree and does change the schedule:
 it scored worse here), and **dropping the `vx/vy/vz` locals**, which lets VC5
 re-CSE the loads and emits 8 fewer instructions. So the rule to carry: term
 order and per-product operand order across a flat `+` chain are ONE
 canonical form to VC5; parenthesised grouping is not. Never probe the former;
 the latter is a legitimate axis.
 
-**2026-09-03 — A REDUNDANT *LEFT* GROUPING PAREN IS THE LEVER, and it is
+**2026-09-03: A REDUNDANT *LEFT* GROUPING PAREN IS THE LEVER, and it is
 worth a whole function.** Measured on 0x10033880 BrPfxUpdateB0 (315 B), where
 the three position updates are `prod*dt + drift + pos`. Written flat, VC5
 emitted `fadd drift; fadd pos` on the X axis (the original's order) but
-`fadd pos; fadd drift` on Y and Z — the SAME source form, two different
+`fadd pos; fadd drift` on Y and Z: the SAME source form, two different
 orders, so the canonical order is decided at the x87 depth the adds are met
 at, not by the source. Permuting the summands changed nothing, as the rule
-above predicts. Adding the redundant, tree-preserving left paren —
+above predicts. Adding the redundant, tree-preserving left paren:
 
     pos.y = ((vel.y * scale) * dt + drift.y) + pos.y;
 
-— put all three in the original's order and took the function from 4 diffs to
+put all three in the original's order and took the function from 4 diffs to
 BYTE-EXACT. Note this is not the right-leaning `a + (b + c)` regrouping of the
 BrVec3Project note, which is a different tree and scored worse: this pair
 encloses exactly what the default left-associative parse already groups, and
 is a pure no-op to the language. So the axis to probe, once a float sum's
 operand order is the last divergence, is **left-grouping parens around the
-already-implicit left group** — one probe, and it is free. It reproduced on
+already-implicit left group**: one probe, and it is free. It reproduced on
 the sibling 0x100339C0 for all three axes at once.
 
-**BUT THE ORDER IS RECOVERABLE — FROM THE N64 TWIN, NOT FROM THE PC BYTES.**
+**BUT THE ORDER IS RECOVERABLE: FROM THE N64 TWIN, NOT FROM THE PC BYTES.**
 "Not source-reachable" means the PC bytes cannot tell you which way it was
 written; it does NOT mean the information is lost. IDO does **not**
-canonicalise commutative operands, so Top Gear Rally (N64, 1997 — same source
+canonicalise commutative operands, so Top Gear Rally (N64, 1997: same source
 lineage) emits the two loads in the order the source names them. Where a
 function exists on both sides, the MIPS states the original spelling outright.
 
 Proven 2026-09-03 by the bulk cross-match (`n64/`, commit 1debdab): of 197
 functions located in the N64 ROM by compiling our own C with IDO, **43 sit at
-opcode-multiset distance 0** — structurally identical, diverging only in
+opcode-multiset distance 0**: structurally identical, diverging only in
 commutative operand order and register allocation. Two worked examples:
 
   - vector add: our C loads a-then-b, the ROM loads b-then-a, per component.
   - vector dot: the ROM sums the components in an order our transcription
     guessed at. That guess was the PRECISION CAVEAT written into the top of
-    the vector-math file — an admitted unknown, now answered by reading the
+    the vector-math file: an admitted unknown, now answered by reading the
     twin.
 
 **How to use it.** When a float sum's operand order is the only divergence
-left, do not permute — look the function up in `build/n64/report.csv` (build
+left, do not permute: look the function up in `build/n64/report.csv` (build
 it with `n64/tools/n64match.py --all`) and read its MIPS with
 `n64/tools/n64rom.py func <vram>`. If it is listed, the order is a lookup,
 not a probe.
 
-**Boundary — this buys SOURCE truth, never CODEGEN truth.** It resolves what
+**Boundary: this buys SOURCE truth, never CODEGEN truth.** It resolves what
 was written. It does nothing for a VC5 register-allocation wall, and a
 function absent from the N64 build (PC-only, or the Glide/D3D submission
 layer) has no twin to consult. See the `tgr-n64-viability` memory note.
@@ -4262,7 +4261,7 @@ draft is parsed rather than teaching the patterns about the casts.
 `tools/gen_menubuilder.py` does this now and its entry-point regex accepts
 any scalar spelling of the parameter.
 
-## Do not hoist a float parameter into a `double` local — read it where it is used
+## Do not hoist a float parameter into a `double` local: read it where it is used
 
 Proven twice in one session: 0x100199A0 `BrRaceCarCtlOutro` (byte-exact) and
 0x1002A050 `BrMat4LookAt` (+45 bytes and register-blind 25+13 down to -4 and
@@ -4275,21 +4274,21 @@ A port naturally writes
     pM->m[3][0] = (float)(-(ex * x.x) - ey * x.y - ez * x.z);
 
 because it wants the arithmetic pinned at double. VC5 gives each of those
-locals a home and materialises it up front — three `fld dword` / `fstp qword`
-pairs and 0x18 more frame — where the original reads the float parameter
+locals a home and materialises it up front: three `fld dword` / `fstp qword`
+pairs and 0x18 more frame, where the original reads the float parameter
 straight from its incoming slot at the point of use (`fld dword [esp+0x5c]`
 inside the multiply chain). Read the parameter where it is used.
 
 The same trap one level down: `(double)a - (double)b` on two float operands
 costs fourteen bytes and six x87 slots against plain `a - b`, which emits the
-original's `fld dword; fsub dword`. On the x87 the two are the SAME value —
-the subtraction happens in 80 bits and lands in a double either way — so if
+original's `fld dword; fsub dword`. On the x87 the two are the SAME value:
+the subtraction happens in 80 bits and lands in a double either way, so if
 the port needs the guarantee on other targets, put the casts behind
 `#else` and give the matching build the plain form.
 
 **Screen** (source-side, one grep over the residue): a `diff` row whose body
-contains `double <name> = (double)`. It is a narrow class — two rows at the
-time of writing — so read the two and move on rather than building a tool.
+contains `double <name> = (double)`. It is a narrow class: two rows at the
+time of writing, so read the two and move on rather than building a tool.
 
 ## The redundant-parenthesis axis has a boundary: redundant CASTS are inert
 *(measured 2026-09-03 on 0x1000A110, alongside the paren entries above)*
@@ -4297,7 +4296,7 @@ time of writing — so read the two and move on rather than building a tool.
 A redundant outer parenthesis changes VC5's x87 schedule. A redundant *cast*
 does not: dropping `(uint8_t)` from `(uint8_t)SOME_UINT8_GLOBAL` at six sites
 is BYTE-IDENTICAL. So the paren finding is about how the parser hands VC5 an
-expression TREE, not about redundant syntax in general — do not generalise it
+expression TREE, not about redundant syntax in general: do not generalise it
 into "add redundant casts and see".
 
 Two practical consequences:
@@ -4307,7 +4306,7 @@ Two practical consequences:
   established is worth checking first: **register-blind gap already 0, with
   the divergence purely in x87 ordering.** On a function whose register-blind
   gap is still large, the parens move the schedule around without closing
-  anything — measured six ways on 0x1000EAF0's rows, where every variant
+  anything: measured six ways on 0x1000EAF0's rows, where every variant
   either broke the batching that spelling had just won or left the gap
   unchanged.
 
@@ -4327,7 +4326,7 @@ also lets it use the short `or reg,-1` form.
 DEAD, all leaving the `mov edx, 0xffff`: an explicit `(uint16_t)-1` cast, a
 shared `int32_t step = -1;` local feeding both stores, a literal `-1` at each
 store, and wrapping the region in its own scope. **Only the destination's
-signedness moves it** -- so when a pinned negative constant comes out as the
+signedness moves it**, so when a pinned negative constant comes out as the
 zero-extended value rather than `or reg,-1`, fix the GLOBAL's declared type,
 do not permute the assignment. The same reasoning should apply to 8-bit
 destinations; untested there.
@@ -4337,11 +4336,11 @@ destinations; untested there.
 Proven on 0x10065950 BrCrPlaneDist (41 B, `n.p + d`), 2026-09-03, while
 filing it out of T1. The definition is byte-exact when the translation unit
 contains no prior declaration of the function; adding the obvious prototype
-to the module header — a bare
+to the module header: a bare
 
     float BrCrPlaneDist(const BrVec3 *pN, float planeD, const BrVec3 *pPoint);
 
-before the definition, nothing else changed — makes MSVC5 emit one extra
+before the definition, nothing else changed: makes MSVC5 emit one extra
 `fxch st(1)` and takes the body 41 -> 43 bytes, 16 -> 17 instructions
 (register-blind gap 1+0). Isolated both ways twice; the prototype alone does
 it, the comment above it is irrelevant.
@@ -4349,15 +4348,15 @@ it, the comment above it is irrelevant.
 So: **when a small float function is right in every other respect and we emit
 one `fxch` the original does NOT have, delete its prototype from the header
 and recompile before probing anything about the expression.** A prototype in
-some OTHER translation unit is harmless — only a prior declaration in the
-DEFINING TU moves the schedule — so a function matched this way can still be
+some OTHER translation unit is harmless: only a prior declaration in the
+DEFINING TU moves the schedule, so a function matched this way can still be
 called across TUs; declare it at the point of use there.
 
-**‼ THE DIRECTION IS ONE-WAY. Read it before running the screen.** Prototype
+**!! THE DIRECTION IS ONE-WAY. Read it before running the screen.** Prototype
 present = one MORE `fxch` than without. So this lever only helps a recomp
 with an EXTRA `fxch` (`fn.py --detail regnorm` prints it under
 `recomp EXTRA`). It does NOTHING for the far commoner case where the ORIGINAL
-has the extra `fxch` and we are MISSING it — there is no "second prototype"
+has the extra `fxch` and we are MISSING it: there is no "second prototype"
 to add, and 0x100349C0 BrVec3Project (1 missing), 0x10016AA0
 BrWeatherStepWind (2 missing) and 0x100140B0 BrHudDrawDial (4 missing) are
 NOT candidates however much they look like one. Screening the missing side
@@ -4392,11 +4391,11 @@ The technique that made 0x10065950 byte-exact on the first compile, and the
 one that would have saved the six term-order probes on 0x1006DD20 BrMat3Mul.
 Float addition does not reassociate, so VC5 cannot reorder a sum: whatever
 the faddp chain says, the source said. That makes the order READABLE, not
-guessable — and the natural, conventional order is frequently wrong.
+guessable, and the natural, conventional order is frequently wrong.
 
 Procedure. Walk the x87 stack by hand from the first `fld`, tracking what is
-in ST(0..n) after every `fld` / `fxch` / `fmul`. At each `faddp st(1)` —
-which is ST(1) += ST(0), then pop — write down which two terms merged. The
+in ST(0..n) after every `fld` / `fxch` / `fmul`. At each `faddp st(1)`
+(which is ST(1) += ST(0), then pop), write down which two terms merged. The
 accumulator is ST(1), i.e. the term written EARLIER. The chain of merges is
 the C expression's left-association, read directly.
 
@@ -4409,7 +4408,7 @@ obvious x, y, z sum pairs the wrong two products and cannot be recovered by
 any later probe.
 
 Two things this does NOT tell you, so do not read them off the same stream:
-the operand order WITHIN each product (VC5 canonicalises commutative FMUL —
+the operand order WITHIN each product (VC5 canonicalises commutative FMUL:
 see that entry) and which register holds what. Only the ADD structure is
 source-reachable.
 
@@ -4418,7 +4417,7 @@ replaces the six-to-N probe cycles that a term-order search costs, each of
 which needs a compile. Do it first on any leaf whose body is a dot product,
 a weighted sum, or an accumulate-then-offset.
 
-## ‼ MEASUREMENT TRAP: `divergence.py` used to STOP at a lost sync and still print a total
+## !! MEASUREMENT TRAP: `divergence.py` used to STOP at a lost sync and still print a total
 
 Proven 2026-09-03 on 0x100250D0 (BrTex3dExpand), fixed in commit b72676b.
 
@@ -4426,13 +4425,13 @@ The resync search only looked 400 instructions ahead.  When one block diverged
 harder than that the walk **stopped**, printed `... lost sync at orig+X`, and
 then printed a region total anyway.  Twelve sessions of that function's
 dossier quoted region maps that covered orig `0x0..0x15b8` and had never
-compared the remaining 2,920 bytes — 34% of the function, and the stretch that
+compared the remaining 2,920 bytes: 34% of the function, and the stretch that
 holds its largest reliable per-block drift (-50 at 0x1a4c).
 
 The tool now re-anchors with a global KEY-gram index, labels the regions after
 a re-anchor as unreliable, and prints
 
-    ‼ N lost-sync gap(s): B orig bytes (P% of the function) were NEVER COMPARED
+    !! N lost-sync gap(s): B orig bytes (P% of the function) were NEVER COMPARED
 
 **Read that line before quoting any region count.**  Real numbers for that
 function after the fix: 31 regions at `--key 10` (was 20), 52 at `--key 6`
@@ -4460,7 +4459,7 @@ reads two *different* slots there:
     [esp+0x28]  2nd 0x100625A0        read once  at 0xc78         = specMem
 
 so the second MOVEMEM pair emits **pLights**, and spelling it `specMem` put the
-wrong pointer in the display list — a behaviour bug, not a codegen one.
+wrong pointer in the display list: a behaviour bug, not a codegen one.
 
 Nothing else in the tree can see this: `divergence.py` sees `mov [eax+4],R` in
 both streams, `msetdiff.py` compares shapes and both sites share one, and the
@@ -4468,24 +4467,24 @@ push census sees no pushes.  Run the slot census on any function that
 allocates or caches more than one pointer.
 
 Side effect worth knowing: the duplicate spelling also let VC5 **CSE** the now
-shared `specMem + 0x10` into a slot (`lea R,[R+0x10]`, `mov [esp+S],R` …
+shared `specMem + 0x10` into a slot (`lea R,[R+0x10]`, `mov [esp+S],R` ...
 `mov R,[esp+S]`) where the original recomputes it destructively at each site
 (`add edx,0x10`).  Fixing the value fixed the CSE for free.
 
-## VARIABLE IDENTITY IS INERT — VC5 splits live ranges itself
+## VARIABLE IDENTITY IS INERT: VC5 splits live ranges itself
 
 Three measurements, all BYTE-IDENTICAL, all 2026-09-03.  Stop retranscribing
 Ghidra's variable recycling in the hope of moving an allocation:
 
 - **A reused parameter as a loop counter** (`param_1` cast to int and
-  incremented) against a fresh `int` local of the same width — 0x100250D0,
+  incremented) against a fresh `int` local of the same width: 0x100250D0,
   the `param_6 == 3` IA blend arm.  Unchanged REGNORM, byte count and
   instruction count; only the slot NUMBER moved.
-- **A Ghidra-recycled temp given its own name** — 0x100250D0's `iVar5` is the
+- **A Ghidra-recycled temp given its own name**: 0x100250D0's `iVar5` is the
   loop-invariant tile-record pointer *and* the scratch counter of all five
   copy-back loops.  Splitting the scratch into its own `iSpan` at all five
   sites is byte-identical: VC5 already builds separate webs.
-- **A local copy or a destructive update does not break a CSE** — 0x1000A110,
+- **A local copy or a destructive update does not break a CSE**: 0x1000A110,
   `t = x; put(t); t += 0x10; put(t)` and `x += 0x10;` at the last use both
   produce exactly the bytes of `x` and `x + 0x10`.  VC5 value-numbers
   `x + c`, `t = x; t += c` and `x += c` to the same value.
@@ -4495,7 +4494,7 @@ of one variable where the original reads two slots, the defect is the VALUE,
 not the name.**  Renaming pays nothing; emitting the right value pays.
 
 
-## Respell the index chain in every statement — never hoist the record pointer
+## Respell the index chain in every statement: never hoist the record pointer
 
 Proven on 0x10033880 BrPfxUpdateB0 / 0x100339C0 BrPfxUpdateB4AC (particle
 step, 32-byte records indexed by a 1-based link id), and the same rule the
@@ -4503,42 +4502,42 @@ slots class (0x10054A30) needed.
 
 The original reaches every field as `array_base[idx].field`, which VC5
 strength-reduces once into `esi = idx << 5` and then addresses each field as
-`[esi + &array + off]` — a disp32 that carries the array's absolute address.
-Hoisting the record into a pointer local —
+`[esi + &array + off]`: a disp32 that carries the array's absolute address.
+Hoisting the record into a pointer local:
 
-    PfxRec *p = &g_aPfxRec[iRec];   /* then p->age, p->pos.x, … */
+    PfxRec *p = &g_aPfxRec[iRec];   /* then p->age, p->pos.x, ... */
 
-— collapses that into a single base register with small displacements, which
+collapses that into a single base register with small displacements, which
 is SHORTER and structurally different: on BrPfxUpdateB0 it cost 19 bytes and
 ten instructions (register-blind 48+21 versus 18+8) even though every
 statement was otherwise correct. Spell `g_aPfxRec[iRec].field` in full in
 every statement, however repetitive it looks.
 
-**Second cause, same rule — a hoist can also move a load ACROSS A GUARD.**
+**Second cause, same rule: a hoist can also move a load ACROSS A GUARD.**
 Proven 2026-09-03 on 0x10031660 BrTrackSetF08FromMax (58 B). The array base
 lives behind a pointer field, `(*(unsigned short **)(p + 0x20))[i]`, and the
-loop that reads it is guarded by a count test. Hoisting the base —
+loop that reads it is guarded by a count test. Hoisting the base:
 
     unsigned short *puIdx = *(unsigned short **)(param_1 + 0x20);
 
-— is not just a different addressing mode: VC5 emits its load BEFORE the
+is not just a different addressing mode: VC5 emits its load BEFORE the
 guard's `cmp/jle`, where the original loads it inside the guarded block. That
 is a 3-instruction reordering at the top of the function and it was the whole
 residue once the loop shape was right. Respell the dereference in both the
 compare and the assignment; VC5 then CSEs it exactly where the original has
-it. So the rule covers two distinct symptoms — addressing-mode collapse
+it. So the rule covers two distinct symptoms: addressing-mode collapse
 (above) and load placement relative to a guard (here).
 
 **Third symptom, same day, same rule: a hoist that must survive a CALL costs
 an extra `mov` and flips an `imul`.** 0x10002C00 BrCdTrackRandom (67 B) reads
 one global four times inside a retry loop, once as `(g - 5)` multiplied by
-`rand()`. Hoisting it —
+`rand()`. Hoisting it:
 
     iVar1 = rand();
     iLast = g_brCdTrackLast;
     iVar1 = iVar1 * (iLast - 5) / 0x8000 + 3;
 
-— forces the multiply's operands into the other registers (`mov edx,eax;
+forces the multiply's operands into the other registers (`mov edx,eax;
 lea eax,[ecx-5]; imul eax,edx` against the original's `lea edx,[ecx-5];
 imul eax,edx`), because the named local has to live across `rand()`. Swapping
 the source operand order does NOT fix it; only deleting the local does.
@@ -4550,18 +4549,18 @@ functions this session, two causes apiece.
 **And the loop it sat in is the other half of the same solve:** an ordinary
 indexed `for (i = 1; i < n; ++i)` over a contiguous range is what VC5
 strength-reduces into the original's pointer walk. Writing the walk by hand
-as a `do { p = p + 1; … } while (--k)` loses the pre-loop `add ecx,2` and
-flips the compare sense — 22 diffs' worth. Same finding as the photo control
+as a `do { p = p + 1; ... } while (--k)` loses the pre-loop `add ecx,2` and
+flips the compare sense: 22 diffs' worth. Same finding as the photo control
 block's two strided loops; see that entry.
 
 **Scorer note that goes with this shape:** a member at record offset 0 has a
 zero reloc addend, so the recomp disassembles as `[esi]` while the original,
 whose displacement is already resolved, reads `[esi+0x10AC0C48]`. That shows
 up in `fn.py --detail regnorm` as a phantom `fadd [R]` EXTRA against a
-`fadd [R+I]` MISSING. It is an artefact of the unlinked object, not a gap —
+`fadd [R+I]` MISSING. It is an artefact of the unlinked object, not a gap:
 check it against `tools/divergence.py` before chasing it.
 
-## Hoist a subexpression that BOTH arms of a branch need — the one place naming pays
+## Hoist a subexpression that BOTH arms of a branch need: the one place naming pays
 
 This is the exception to "do not name a temp" (the entries above), and the
 boundary between them is sharp:
@@ -4571,7 +4570,7 @@ boundary between them is sharp:
     spill slot and rotates the loop registers.
   - a value used by BOTH arms of a branch must be computed ONCE, ABOVE the
     branch, in a named local. Spelling it inline in each arm makes VC5
-    compute it twice — it does NOT sink the common code back out.
+    compute it twice: it does NOT sink the common code back out.
 
 Proven on 0x10001320 (the sprite blit dispatcher, 206 B). The original clips
 the rectangle, then computes the destination pointer, the source pointer and
@@ -4580,7 +4579,7 @@ one of two blit routines. Written with those four expressions inline in each
 call arm the recompile is 239 B / 95 insns (reggap 18+8) with four duplicated
 `lea r,[r+r]`, two duplicated `lea r,[r+r*2]`, a duplicated `imul` and a
 duplicated pointer load. Hoisting them into four named locals above the `if`
-is 206 B / 85 insns, SIZE AND INSTRUCTION EXACT, reggap 0 — a one-edit change
+is 206 B / 85 insns, SIZE AND INSTRUCTION EXACT, reggap 0: a one-edit change
 worth 33 bytes.
 
 The tell in the original's bytes: the shared computation sits BEFORE the
@@ -4592,7 +4591,7 @@ where the flag test is and everything above it belongs to one hoisted block.
 `mov [imm32], eax` assembles as `a3 imm32` (5 bytes); the same store from any
 other register is `89 /r imm32` (6). Likewise `mov eax,[imm32]` is `a1` (5)
 against `8b 0d` (6). So when a function ends up a handful of bytes long with a
-register-blind gap of 0, count its absolute loads and stores: an eax↔ecx
+register-blind gap of 0, count its absolute loads and stores: an eax<->ecx
 rotation across a run of global accesses costs exactly one byte each and
 nothing else.
 
@@ -4601,51 +4600,51 @@ regions and all three are one rotation. The original keeps a timeout-latch
 load and a short-lived flag in ecx, which leaves eax free, so it emits a fresh
 `xor eax,eax` and stores eax into four consecutive globals in the `a3` form.
 Ours re-uses the pinned zero already sitting in edi and pays 6 bytes a store.
-**The missing `xor` is the EFFECT of the rotation, not its cause** — every one
+**The missing `xor` is the EFFECT of the rotation, not its cause**: every one
 of those stores is already a literal `0` in the source, and rewriting them
 changes nothing. Related: the 0x100400E0 entry above, where a named temp moved
 a value out of eax and lost the same encodings.
 
-## Never hoist a LOOP BOUND either — the re-read is what shapes the whole loop
+## Never hoist a LOOP BOUND either: the re-read is what shapes the whole loop
 
 The sibling of the "respell the index chain in every statement" entry above,
 and it costs more, because a hoisted bound changes four things at once rather
 than one addressing mode.
 
 0x100302A0 BrModelSwap's innermost loop reverses `3 * item->m` halfwords.
-Written with the count hoisted —
+Written with the count hoisted:
 
     nHalf = 3 * (int32_t)BrLd32(PITEM + 0x00);
     for (j = 0; j < nHalf; j++)
         BrRev2(PLEAF + 4 + 2 * (size_t)j);
 
-— VC5 has a loop-invariant bound in a register, so it strength-reduces `j`
+VC5 has a loop-invariant bound in a register, so it strength-reduces `j`
 away entirely and counts DOWN (`dec ecx` / `jne`), walks the data through a
 NEGATIVE displacement (`mov word ptr [eax+ebp-2], dx`) because the offset is
-bumped at the top instead of the bottom, and — having one register spare —
+bumped at the top instead of the bottom, and, having one register spare,
 never spills the counter, so the frame comes out `sub esp,8`.
 
 The original re-reads the bound on every pass: it reloads the item from its
 slot, loads `item->m`, `lea edx,[edx+edx*2]`, and compares. Putting the whole
-expression back in the for-condition —
+expression back in the for-condition:
 
     for (j = 0; j < 3 * (int32_t)BrLd32(PITEM + 0x00); j++)
 
-— restores all four at once: the count-UP, the positive displacement, `j` in
+restores all four at once: the count-UP, the positive displacement, `j` in
 a stack slot, and `sub esp,0xc`. It took the function from register-blind
 13+23 to 8+11 and made the inner loop instruction-for-instruction exact.
 
 **The tell is the frame, not the loop.** `sub esp` one dword short with a
 count-down loop somewhere inside means a bound the source re-reads and the C
 hoisted; the register the hoist freed is the one the original spills the
-induction variable into. Every other count in this function is re-read too —
+induction variable into. Every other count in this function is re-read too,
 when one loop in a function reads its bound fresh, assume they all do.
 
 Placement rider, same function: the original emits an induction variable's
 initialiser (`mov ebx,0x20`) in the loop PREHEADER, after the zero-trip
 guard, where a plain `off = 0x20;` statement before the `for` puts it before.
 Moving it into the for-init (`for (iLeaf = 0, off = 0x20; ...)`) does NOT
-move it — VC5 emits it where the statement sits. Unresolved; costs no
+move it: VC5 emits it where the statement sits. Unresolved; costs no
 instructions, only alignment.
 
 ## A 64-bit counter: three separable facts, one instruction each
@@ -4658,8 +4657,8 @@ The original:
     mov [g_lo],eax / mov [g_hi],edx / ret
 
 1. **One 64-bit variable, not a lo/hi pair.** `g += K` on an `int64_t` is
-   what emits `add`+`adc`. The hand-carried spelling the port had —
-   `lo += K; hi += (lo < K) ? 1 : 0;` — gives `sbb`/`setb` and a different
+   what emits `add`+`adc`. The hand-carried spelling the port had:
+   `lo += K; hi += (lo < K) ? 1 : 0;`: gives `sbb`/`setb` and a different
    instruction count. Whenever the original has `adc r,0` immediately after
    an `add r,imm` on two adjacent globals, the source variable is ONE
    64-bit object; declare it as such even when the rest of the tree names
@@ -4667,12 +4666,12 @@ The original:
    read them).
 2. **Read into a LOCAL before updating.** `g += K;` in place makes VC5
    finish the low half (load, add, store) before it touches the high half,
-   reusing the same register — and the second load then gets the 5-byte
+   reusing the same register, and the second load then gets the 5-byte
    accumulator form, so the function is 2 bytes SHORT. `int64_t t = g;
    t += K; g = t;` loads both halves before either store, which is the
    original's order and its size.
 3. **The return type pins the register PAIR.** With the above, everything
-   matched except `ecx` where the original has `edx` — regnorm 0+0, raw 3+3,
+   matched except `ecx` where the original has `edx`: regnorm 0+0, raw 3+3,
    which reads exactly like a T3a colouring residue and is not one. VC5 is
    only forced onto `edx:eax` when the function RETURNS the 64-bit value.
    Declaring it `int64_t` (the callers here take the low half as an `int`,
@@ -4681,7 +4680,7 @@ The original:
 Generalising (3): **a raw register difference on a 64-bit value is a
 RETURN-TYPE question, not a colouring wall.** `edx:eax` is the only pair a
 64-bit return can use; any other pairing means the source returned something
-narrower — or nothing — and the value is being kept live for a store only.
+narrower, or nothing, and the value is being kept live for a store only.
 Check the return type before recording a 64-bit function as T3a.
 
 - **Adjacent dword compares that reload the second high half into the
@@ -4696,28 +4695,28 @@ Check the return type before recording a 64-bit function as T3a.
   is also how BrSndChanSetRatio stores them. Proven 0x1006BDD0 (379 B,
   MATCH /O2).
 
-## Matrix builders are written ROW BY ROW — grouping by value costs registers
+## Matrix builders are written ROW BY ROW: grouping by value costs registers
 
 Two 4x4 builders, `0x1002A7A0 BrMat4Scale` and `0x1002A7F0 BrMat4Translate`,
 both went byte-exact from the same single fact: the original source assigns
 all sixteen elements **in address order**, one row after another, mixing the
-interesting values in where they fall —
+interesting values in where they fall:
 
     m[0][0] = sx;  m[0][1] = 0;  m[0][2] = 0;  m[0][3] = 0;
     m[1][0] = 0;   m[1][1] = sy; m[1][2] = 0;  m[1][3] = 0;
-    …
+    ...
 
-— not grouped by what the value is (`the diagonal first, then all the
+not grouped by what the value is (`the diagonal first, then all the
 zeros`), which is how a human writing a decompiled draft naturally spells it
 and how `BrMat4Scale` was spelled here for months.
 
-The output is NOT simply the source order — VC5 reorders the stores freely
+The output is NOT simply the source order: VC5 reorders the stores freely
 and emits the nine or twelve zero stores as a block off one `xor`ed register
 either way. What the source order fixes is **register pressure**: with the
 zero stores separating `sy` from `sz`, VC5 loads `sz` into the register it
-has just freed storing `sy` (`mov edx,[esp+0xc] … mov [eax+0x14],edx / mov
+has just freed storing `sy` (`mov edx,[esp+0xc] ... mov [eax+0x14],edx / mov
 edx,[esp+0x10]`). Grouped diagonal-first, both parameters are live at once
-and it hoists them into two registers — same 22 instructions, same 70 bytes,
+and it hoists them into two registers: same 22 instructions, same 70 bytes,
 two diff bytes, register-blind gap 0. That reads exactly like a T3a colouring
 residue and is not one.
 
@@ -4725,7 +4724,7 @@ residue and is not one.
 register a parameter lands in, with regnorm 0+0 and the instruction count
 already exact, re-spell the assignments in ADDRESS ORDER before recording it
 as a colouring wall. The same applies to any initialiser that writes a
-fixed-layout record — the original's authors wrote fields in declaration
+fixed-layout record: the original's authors wrote fields in declaration
 order.
 
 ## Two address loads in the wrong order: name the POINTER for that one store
@@ -4741,31 +4740,31 @@ statement before and used for that store only:
     pb[pBs->writeByte] = (unsigned char)(x >> 24);
 
 Proven on 0x1006D050 BrBitStreamWriteU32 (2 bytes -> byte-exact). Both loads
-are the same length, so this costs nothing in size or instruction count — the
+are the same length, so this costs nothing in size or instruction count: the
 whole residue is two displacement bytes, `[esi+0x10]` and `[esi+0xc]` trading
 places. It is invisible to the register-blind multiset (0+0) and shows only as
 a raw byte diff.
 
 **Two riders, both learned the hard way on the sibling functions.**
 
-**Rider 1 — it is per-STORE, not per-function.** In these writers only the
+**Rider 1: it is per-STORE, not per-function.** In these writers only the
 FIRST store comes out buffer-first; every later one is index-first and already
 matched from the plain subscript. Naming `pb` for all of them puts it back to
 2 diffs. Write the local for the one store that needs it and leave the rest
 alone.
 
-**Rider 2 — a narrow argument needs the INDEX named as well.** 0x1006CFC0
+**Rider 2: a narrow argument needs the INDEX named as well.** 0x1006CFC0
 BrBitStreamWriteU16 takes a `short` (`mov ax,[esp+0xc]`) and pulls its high
 byte straight out of `ah`, so there is no full-register value local competing
 for the schedule; `pb` alone leaves it at 2 diffs and `pb` plus an `int w =
 pBs->writeByte` closes it. WriteU32 already has a full-width `x` local for the
-value and needs only `pb`. **Do NOT reach for a widening local to fix this** —
+value and needs only `pb`. **Do NOT reach for a widening local to fix this**:
 `unsigned int x = v.v` on the u16 destroys the `mov ax,` word load and costs 8
 bytes.
 
 Screen for the class by looking at the siblings: 0x1006CFA0 WriteU8 and
 0x1006D000 WriteU24 were already byte-exact with the plain subscript, so the
-original itself is inconsistent between neighbours — which is the tell that the
+original itself is inconsistent between neighbours, which is the tell that the
 order is a source-spelling choice and not allocation.
 
 **It does NOT generalise to the read side.** 0x1006CE20 BrBitStreamReadU16 has
@@ -4785,7 +4784,7 @@ in the file called a coloring wall. The tell was three bytes:
 ```
 
 `grep ebx` over the whole 2,144-byte disassembly shows ebx written at `+0x3bb`
-and next written at `+0x6d3` with **no read in between** — so the copy looks
+and next written at `+0x6d3` with **no read in between**, so the copy looks
 gratuitous and the `lea` looks like a pessimisation of `inc`. It is neither.
 Two instructions earlier:
 
@@ -4797,7 +4796,7 @@ Two instructions earlier:
 
 Every `goto`-back-edge in the function (`+0x3e6`, `+0x456`, `+0x4ca`) targets
 `+0x3a2`, i.e. **after** the seed. So the value pushed as lParam on pass 2 is
-the value `+0x3bb` stored — the previous call's return. The source is one
+the value `+0x3bb` stored: the previous call's return. The source is one
 variable doing both jobs:
 
 ```c
@@ -4814,25 +4813,25 @@ Passing a fresh `gSel.method` as the argument instead collapses to `inc eax`
 and the freed callee-saved register then re-colours the remaining 600 bytes.
 
 **The screen, and it is cheap:** when a `mov <ebx|esi|edi>,eax` after a call
-has no reader, do not write it off as dead — find the labels that jump
+has no reader, do not write it off as dead: find the labels that jump
 *backwards* past it and check whether one lands between the register's seed
 and its use. If it does, the variable is loop-carried and the source reuses
 one name for the argument and the result. `divergence.py` cannot see this;
 only reading the back-edge targets can.
 
-**Rider — the SECOND-ORDER lever: read the GLOBAL, not the copy you just
+**Rider: the SECOND-ORDER lever: read the GLOBAL, not the copy you just
 took.** Once `method` owned ebx, the arms that snapshot the selection
 (`vsave = gSel;`) regressed: writing the guard as `if (vsave.method != 2)`
 lets VC5 keep that member in ebx and spill the loop variable to `[esp+0x10]`
 instead, duplicating the whole call into both template arms. Writing
-`if (gSel.method != 2)` — read the global, the copy is only a snapshot —
+`if (gSel.method != 2)` (read the global, the copy is only a snapshot)
 forces all three struct fields out to stack slots `0x18`/`0x1c`/`0x20`, which
-is what the original has. 678 → 488 diffs and the size went exact. This is the
+is what the original has. 678 -> 488 diffs and the size went exact. This is the
 mirror of "Read and update the GLOBAL; a local copy of it changes the
 allocation": whichever of the two the *comparison* names decides who wins the
 register.
 
-## An early-return guard and an `if (ok) { … }` wrapper differ in which side is the FALL-THROUGH
+## An early-return guard and an `if (ok) { ... }` wrapper differ in which side is the FALL-THROUGH
 
 Same function, the last 488 diffs. Three sites read:
 
@@ -4844,7 +4843,7 @@ versus the recompile's
 
 ```
 +04d1  750c           jne 0x4df        ; fall through into the exit
-+04d3  8b0d…          mov ecx, [gINI]
++04d3  8b0d...          mov ecx, [gINI]
 +04d9  51             push ecx
 +04da  e953030000     jmp 0x832
 ```
@@ -4853,7 +4852,7 @@ Identical semantics, opposite layout. The guard spelling
 
 ```c
     if (result == 0) { FreeINI(gINI); return 0; }
-    fp = CHK_FWriteOpen(...);  /* …writes… */
+    fp = CHK_FWriteOpen(...);  /* ...writes... */
     FreeINI(gINI);
     return 0;
 ```
@@ -4863,7 +4862,7 @@ tail written out **twice**:
 
 ```c
     if (result != 0) {
-        fp = CHK_FWriteOpen(...);  /* …writes… */
+        fp = CHK_FWriteOpen(...);  /* ...writes... */
         CHK_FClose(fp);
         FreeINI(gINI);
         return 0;
@@ -4875,14 +4874,14 @@ tail written out **twice**:
 which puts the writes on the fall-through and leaves the exit for VC5 to
 outline and cross-jump. In WinMain that let the seven `FreeINI(gINI); return 0;`
 sites merge with case 1's block at `+0x728` as the master and stubs at
-`+0x745` / `+0x832` — the exact original layout, 488 → **0**.
+`+0x745` / `+0x832`: the exact original layout, 488 -> **0**.
 
 **How to tell the two apart before editing:** look at where the conditional
 branch points. A guard's exit is a short block immediately after the branch; a
 wrapper's exit is a far target, usually near the end of the function and
 usually shared. If `je`/`jne` polarity is your last divergence and the target
 is far, you have the wrapper. Do **not** deduce "the source has one common
-tail" from this — two separate `return` statements are what produce the two
+tail" from this: two separate `return` statements are what produce the two
 separate stub blocks; a single `goto done;` label would produce only one.
 
 ## The LAST test's polarity decides whether VC5 tail-merges the earlier returns
@@ -4903,7 +4902,7 @@ success work inside it and the failure value as the fall-through:
     build(pCar);
     return 1;
 
-    /* all four exits emitted in full -- byte-exact */
+    /* all four exits emitted in full: byte-exact */
     if (predict(&state, slot)) {
         apply(pCar, &state);
         build(pCar);
@@ -4922,11 +4921,11 @@ the merged 2-exit output. Neither does `goto` to distinct per-arm labels,
 returning distinct constant expressions that fold to the same value, a struct
 local instead of a char array, an `&&`-joined guard, a flat `else if` chain, or
 any of three nesting depths. VC++ 4.2 /O2 DOES produce the four exits from the
-guard form -- and at exactly the original's size -- but it regresses fifteen
+guard form, and at exactly the original's size, but it regresses fifteen
 other functions in the same file, so it is not the answer for a whole TU. It is
 a useful oracle for the SHAPE, not a compiler choice.
 
-**Boundary — it is value-return-specific so far.** 0x1002A1A0
+**Boundary: it is value-return-specific so far.** 0x1002A1A0
 BrGbiTexScanOtherModeL has the identical symptom (three identical
 `mov [g],0; ret` blocks merged into one, 31 B short) and the flip moves
 NOTHING. The difference is what the merged blocks produce: a RETURN VALUE
@@ -4939,7 +4938,7 @@ reach for this lever when the merged arms set a return value.
 The `__fastcall`-plus-struct trick for reaching thiscall from C was recorded as
 "a struct-typed SECOND parameter is never register-eligible, so it is forced
 back onto the stack". That is true and it is not sufficient. **`__fastcall`
-SKIPS a struct when it hands out ecx and edx — it does not stop handing them
+SKIPS a struct when it hands out ecx and edx: it does not stop handing them
 out.** With three arguments, a wrapper on the second one just lets the THIRD
 take edx, and the function cleans 4 bytes where thiscall cleans 8.
 
@@ -4951,8 +4950,8 @@ Wrapping both arguments made both functions byte-exact.
 **Boundary (2026-09-05, 0x10008AB0 BrPodOpen): a CONSTANT argument cannot go
 through the wrapper.** `push 0x10` to a this-in-ecx callee is what the
 original emits; the wrapper spelling `len.n = 0x10; f(this, a, b, len)` builds
-the struct in a register first — `mov eax,0x10 / push eax`, one instruction
-and two bytes off — and leaving it a plain `int` hands it to edx. The corpus
+the struct in a register first: `mov eax,0x10 / push eax`, one instruction
+and two bytes off, and leaving it a plain `int` hands it to edx. The corpus
 has no solved C site pushing an immediate to a this-in-ecx callee (`corpus.py
 find --at 0x17` on that function: 3 of 6 explained). Route such a call site to
 the C++ lane: written as a member call (`io.Read(pFile, magic, 0x10)`) it was
@@ -4980,14 +4979,14 @@ sweep.** A lever, not a class.
 **The same two functions carry the other half of the lesson: WRITE EVERY ARM
 OUT IN FULL.** The port had factored the profile choice into a helper returning
 an index; the original writes four arms, each folding its own literal into the
-ROW index of one flat table — `(key + 28*k) * 3` — rather than indexing a
+ROW index of one flat table: `(key + 28*k) * 3`, rather than indexing a
 profile and then a row. Factoring collapses four arms into one indexed load and
 loses half the function. Note also that VC5 cross-jumps the tails of arms 2 and
 3 in 0x10069C30 by itself (arm 3 ends in a `jmp` into arm 2) while leaving arm
 1 its own copy: that is the compiler's layout, not a difference in spelling, so
 do not try to reproduce it from the source side.
 
-## /Od: declaration ORDER is inert, but SCOPE is not — and two literal shapes
+## /Od: declaration ORDER is inert, but SCOPE is not, and two literal shapes
 
 Three findings from 0x1002A957 BrFloat12MaxAbs (155 B, /Od /Op), all reusable
 on any unoptimised TU.
@@ -4997,7 +4996,7 @@ postfix increment until the comparison's operand has been consumed, so
 
     if ((v = *p++) < zero)
 
-emits `v = *p` / `fld` / `fcomp` / `fnstsw` / `p += 4` / `test` — the increment
+emits `v = *p` / `fld` / `fcomp` / `fnstsw` / `p += 4` / `test`: the increment
 lands BETWEEN the compare and the branch, which is exactly what the original
 does and looks impossible until you know it. Written as `v = *p; p++;` the
 increment moves ahead of the `fld` and costs six bytes. **Whenever an /Od
@@ -5006,12 +5005,12 @@ increment in the condition, not a reordering you have to explain away.**
 
 **2. A ternary return allocates an extra stack slot.** `return (a > b) ? a : b;`
 gives the /Od frame a result temporary; `if (a > b) return a; return b;` does
-not. Frame size is the tell — count the original's slots against `sub esp, N`
+not. Frame size is the tell: count the original's slots against `sub esp, N`
 before assuming the arithmetic is wrong.
 
 **3. Local DECLARATION ORDER IS INERT under /Od. Do not probe it.** Seven
 different orders of the same six locals were compiled and every one produced
-byte-identical output — MSVC 5.0 does not lay slots out in source order and
+byte-identical output: MSVC 5.0 does not lay slots out in source order and
 does not care what that order is. This is the /Od twin of the general rule that
 variable identity and renaming are inert.
 
@@ -5023,7 +5022,7 @@ found for /Od slot numbering so far, and it is where to start when an
 ## Seven copies of one body: the clip-plane family, and what it settled
 
 `0x1001F0D0 / F2B0 / F3F0 / F530 / F670 / F7B0 / F8F0` are seven separate
-functions in the original — six of 311 bytes and one of 303 — and diffing the
+functions in the original: six of 311 bytes and one of 303, and diffing the
 extracted originals against EACH OTHER showed they differ in 6 or 8 bytes, all
 of them either a field displacement in the plane-distance `fld`/`fadd` pair or
 a byte of the two `call rel32` displacements. That diff, not any reading of
@@ -5042,7 +5041,7 @@ Five went byte-exact from one macro. Three facts did it, each worth naming:
 
 2. **A cross-jumped store is a STATEMENT-ORDER question.** The original's
    `+1` and `-1` arms both end at one shared `mov [ebx+4],eax`, reached by a
-   `jmp` from the first. Ours emitted the store twice — one extra instruction
+   `jmp` from the first. Ours emitted the store twice: one extra instruction
    in an otherwise exact 120. The fix was to make the two arms *end with the
    same statement*: the `+1` arm had `pList->cVerts = pList->cVerts + 1;`
    followed by `pOutPrev = pCur;`, and moving the `pOutPrev` assignment ABOVE
@@ -5055,17 +5054,17 @@ Five went byte-exact from one macro. Three facts did it, each worth naming:
    pointer, the original did it the other way. Nothing but the order of the
    five initialising statements moves this. Writing them as
    `pPrev; pCur; pOutPrev; i; pDead` matched; `pPrev; i; pDead; pCur; pOutPrev`
-   and `…; pOutPrev; pCur` did not. Eight bytes, on five functions at once.
+   and `...; pOutPrev; pCur` did not. Eight bytes, on five functions at once.
 
 **And one negative result that CONFIRMS an existing entry.** The siblings
-disagree with each other about which side of the plane sum is `fld`ed —
+disagree with each other about which side of the plane sum is `fld`ed:
 BOTTOM leads with `y`, LEFT leads with `w`. That looks exactly like a record
 of inconsistent hand-written source, and it is not: swapping the operands of
 the `+` in the C is byte-inert for all three PLUS planes, and our own NEAR
 expansion emits the two orders at its two sites from ONE macro. The choice is
 per-site scheduling. A redundant paren round the first operand
-(`((v)->f18) + (v)->f04`) is the only thing that moves it — it flips the pair
-to the original's order at both sites — but it sinks the second site's `fadd`
+(`((v)->f18) + (v)->f04`) is the only thing that moves it: it flips the pair
+to the original's order at both sites, but it sinks the second site's `fadd`
 four instructions later and costs far more than it wins. Recorded as a lever
 that exists and points the wrong way, not as a spelling to keep trying.
 
@@ -5085,16 +5084,16 @@ differing bytes. The entire residue was term ORDER: the original emits the y
 term's `fmul` first (`fld m10 / fld m11 / fmul dy`), we emitted the x term's.
 The `fxch`/`faddp` dance around it was already identical.
 
-**Everything that did NOT move it** — all at the same 380 bytes / 114
+**Everything that did NOT move it**: all at the same 380 bytes / 114
 instructions, and all but two at the same 4 diffs:
 
-- all six flat permutations of the three terms (x,y,z / y,x,z / z,y,x, …)
-- `(X+Y)+Z`, `(Y+Z)+X`, `(X+Z)+Y`, `(Z+Y)+X` — every LEFT grouping
-- `X+(Y+Z)`, `Z+(X+Y)` — two right groupings; `Y+(X+Z)` and `(X+Z)+Y` were
+- all six flat permutations of the three terms (x,y,z / y,x,z / z,y,x, ...)
+- `(X+Y)+Z`, `(Y+Z)+X`, `(X+Z)+Y`, `(Z+Y)+X`: every LEFT grouping
+- `X+(Y+Z)`, `Z+(X+Y)`: two right groupings; `Y+(X+Z)` and `(X+Z)+Y` were
   WORSE at 6
 - writing the vector factor first in one product or in all three
 - a `const float *r = &m[1][0]` row pointer, in four term orders: this one
-  BREAKS the function (-8 bytes, -4 instructions) — the original recomputes
+  BREAKS the function (-8 bytes, -4 instructions): the original recomputes
   the row address per term, so a row pointer is the wrong source shape here
   even though it reads better
 
@@ -5107,7 +5106,7 @@ instructions, and all but two at the same 4 diffs:
     }
 
 **Why:** the canonicaliser works on a FLAT sum. Naming one product lifts it
-out of that sum, so it is evaluated on its own — and therefore first — while
+out of that sum, so it is evaluated on its own, and therefore first, while
 the two terms that remain canonicalise exactly as before. The temp is not
 "identity" (the `VARIABLE IDENTITY IS INERT` entry still holds for a value
 already in the sum); it changes the SHAPE of the expression tree in the one
@@ -5116,13 +5115,13 @@ a temp removes a term from it.
 
 **How to use it:** when a float sum's term order is the last divergence, read
 which product the original computes first, then name THAT product. Do not
-work through the permutations and groupings first — on this function that was
+work through the permutations and groupings first: on this function that was
 thirteen probes and none of them moved a byte.
 
 **THE BOUNDARY: it needs a SUM to lift out of.** 0x10034360 BrVec3Scale has
-the same shape of residue -- a sibling asymmetry in which operand of a float
+the same shape of residue: a sibling asymmetry in which operand of a float
 multiply gets the `fld`, with the original giving the zero-offset operand to
-the `fmul` on the x component and to the `fld` on y and z -- and the temp does
+the `fmul` on the x component and to the `fld` on y and z, and the temp does
 NOTHING there, because each component is a lone two-operand product with no
 sum around it. Six spellings, all identical at 37 bytes / 12 instructions / 5
 diffs: the x product written scalar-first, all three written scalar-first, a
@@ -5148,7 +5147,7 @@ TWO functions:
 The map merges a row like this whenever the second function is reached ONLY by
 a jump: nothing `call`s it, so the map builder never sees an entry point.
 Two C functions cannot compile to one symbol, so no source shape can ever
-match the merged row — the fix is to split the map (32 + 54 here) and
+match the merged row: the fix is to split the map (32 + 54 here) and
 re-extract `build/match/orig/`. Four byte-exact functions fell out of one
 config edit.
 
@@ -5161,7 +5160,7 @@ config edit.
    Written as one function, our C gave `mov eax,[g] / cmp eax,1` and then
    re-used `eax` for the next test; the original has `cmp dword ptr [g],1`
    and a fresh `mov eax,[g]` after the branch. That is not a "do not cache
-   what the original re-reads" case to grind at — two functions cannot share
+   what the original re-reads" case to grind at: two functions cannot share
    a register, and the failed CSE is the boundary showing through. Whenever a
    small function's only residues are (a) a hoisted global load and (b) a
    size shortfall that is close to a multiple of 16, check the map row before
@@ -5182,7 +5181,7 @@ once as a clean two-byte match, so record it as a REAL tool and not a
 curiosity.
 
 When a float sum's only residue is which operand became the `fld` and which
-the memory operand of the `fadd`, permuting the summands is inert — VC5
+the memory operand of the `fadd`, permuting the summands is inert: VC5
 canonicalises a flat float sum, and that is true of a plain two-term add of
 two struct fields as well as of a sum of products. **A redundant parenthesis
 round the FIRST operand is not inert.** It makes that operand the one loaded:
@@ -5193,7 +5192,7 @@ round the FIRST operand is not inert.** It makes that operand the one loaded:
 That single character took `0x100664F0 BrCrCorner` byte-exact.
 
 **The cost, and when not to reach for it.** On `0x1001F2B0` (a clip plane)
-the same paren flipped the pair to the original's order at both call sites —
+the same paren flipped the pair to the original's order at both call sites,
 and sank the second site's `fadd` four instructions down the schedule, taking
 the function from 4 diff bytes to 53 with the instruction multiset still
 exact. So: it reliably moves the pair, and it can move the SCHEDULE too. Use
@@ -5202,11 +5201,11 @@ lines up; measure the whole function afterwards, not just the pair.
 
 **And a warning the same function delivered:** `BrCrCorner` was carrying
 `match, 0 diffs` in `report.csv` while the assembled image differed by these
-two bytes. The row was stale — the file had not been re-swept after a change
+two bytes. The row was stale: the file had not been re-swept after a change
 elsewhere. `tools/image_build.py` is the only thing that catches that; a
 green report row is not evidence on its own.
 
-## A CHAR argument on a thiscall's stack is not reachable from C — route it to .cpp
+## A CHAR argument on a thiscall's stack is not reachable from C: route it to .cpp
 
 **Tell.** The original passes a byte argument as
 
@@ -5214,10 +5213,10 @@ green report row is not evidence on its own.
     or  al, 0xC0
     push eax                      ; upper three bytes still hold the LAST value
 
-— a dirty `push eax` with no zero-extension and no store. MSVC only leaves a
+a dirty `push eax` with no zero-extension and no store. MSVC only leaves a
 stack argument dirty when the **callee's parameter is a byte type**. But a byte
-parameter is register-eligible, so `__fastcall` — the only way C reaches
-thiscall in this tree — hands it edx instead of the stack, and the call shape
+parameter is register-eligible, so `__fastcall` (the only way C reaches
+thiscall in this tree) hands it edx instead of the stack, and the call shape
 is wrong.
 
 **Every C wrapper homes the partial write first.** Probed on 0x1006AFA0 and all
@@ -5227,21 +5226,21 @@ three emit `mov [slot],al; mov ecx,[slot]; push ecx`:
     typedef union  { unsigned char b; unsigned int u; } A;        /* 4 bytes  */
     typedef struct { unsigned char b, p1, p2, p3; } A;            /* padded   */
 
-Writing the union's **dword** member instead does avoid the homing — but then
+Writing the union's **dword** member instead does avoid the homing, but then
 the value is an `int`, so MSVC zero-extends the char and emits `mov eax` /
 `or eax,imm32` where the original has `mov al` / `or al,imm8`. There is no
 spelling that gets both.
 
 **So: a thiscall whose stack argument is a CHAR is a C++ TU, not a C one.**
-Screen for it before assigning such a function to the C lane — the tell is a
+Screen for it before assigning such a function to the C lane: the tell is a
 `push eax` immediately after an 8-bit operation on `al`, with no `movzx`,
 `and eax,0xff` or `xor eax,eax` anywhere near it. 0x1006AFA0 sits at exactly
 two instructions from exact because of one such argument, and 0x1006AFF0
 BrNetWriteRaceOpts makes eight of these calls.
 
 **The same function's two reachable halves are worth remembering:** the size
-guard is written POSITIVELY (`if (room) { …; return 1; } return 0;`) so the two
-exits land the original's way round — see the tail-merging entry above — and a
+guard is written POSITIVELY (`if (room) { ...; return 1; } return 0;`) so the two
+exits land the original's way round: see the tail-merging entry above, and a
 16-bit argument the original loads as a whole dword must be passed through the
 wrapper's dword member, because a partial write to the 16-bit member homes the
 union and costs two instructions of its own.
@@ -5250,10 +5249,10 @@ union and costs two instructions of its own.
 *(proven 2026-09-03 on 0x100250D0 BrTex3dExpand)*
 
 Four channel coefficient pairs (`lo = param & 0xff; delta = (other & 0xff) -
-lo;`) sit inside a `do { … } while` whose body they do not depend on. VC5
+lo;`) sit inside a `do { ... } while` whose body they do not depend on. VC5
 hoists all four into the loop preheader. **Where each pair is written inside
 the body therefore changes nothing**: sinking the R pair below the intensity
-statements so all four read pair-then-channel is BYTE-IDENTICAL — same region
+statements so all four read pair-then-channel is BYTE-IDENTICAL: same region
 count, same instruction and byte totals, same allocation, same loop-rotation
 `jmp`.
 
@@ -5273,31 +5272,31 @@ invariant*, not where it is written.
 The original materialises `lea edx,[ecx*4]` once and addresses two adjacent
 flat arrays as `[edx+A]` / `[edx+B]`, keeping the index in ecx as well (it
 still needs `ring * 500`). Every attempt to spell that byte offset as an
-**expression** — a parallel `rb = ring*4`, `*(int *)((char *)base + rb)`,
-`rbW = iWheel*4 + iCar*16`, `rbT = (iWheel+iCar*4)*4` with `ring = rbT>>2` —
+**expression**: a parallel `rb = ring*4`, `*(int *)((char *)base + rb)`,
+`rbW = iWheel*4 + iCar*16`, `rbT = (iWheel+iCar*4)*4` with `ring = rbT>>2`:
 either forward-substitutes back into `[ecx*4+A]` (byte-identical) or explodes.
 
 The one shape left was a genuine **induction variable** (`rb = iCar << 4`
 before the loop, `rb += 4` at the bottom), because that construct *is* what
 produced the original's shape in the same file's drain loops. It is the worst
-result of the four: 30 → 65 divergence regions, instructions 4 short → 11
+result of the four: 30 -> 65 divergence regions, instructions 4 short -> 11
 over, and a 782-byte stretch that lost sync entirely.
 
 **Rule: a second induction value in a loop that already has one makes VC5
 rebuild the whole region's induction structure.** The drain loops it worked in
 have exactly one counter and no record term; this loop has `ring` feeding
 `ring * 500` as well. Where the original CSEs a scaled index, the cause is not
-the spelling of the index — look for a lever outside the addressing.
+the spelling of the index: look for a lever outside the addressing.
 
-‼ And note the scoreboard: this probe took the byte deficit from −14 to −3 and
+!! And note the scoreboard: this probe took the byte deficit from -14 to -3 and
 the instruction count to near parity while doubling the real gap. **Bytes and
 instruction counts are not progress measures on a function with a lost-sync
 gap.**
 
 ## Which compiler built the game: the full matrix, settled
-*(measured 2026-09-03 -- VC4.2, VC5 RTM, VC5 SP3 and VC6 scored against the
+*(measured 2026-09-03: VC4.2, VC5 RTM, VC5 SP3 and VC6 scored against the
 same sources; the "compiler patch level?" lead cited at three stall sites and
-in CLAUDE.md rule 11a is CLOSED)*
+in the project rules is CLOSED)*
 
 Three unrelated notes in this file reach for "a compiler patch level slightly
 different from the staged one" to explain scheduling residue that no source
@@ -5316,36 +5315,36 @@ reproduce those is not a candidate, whatever it does on a hard function.
 | VC6 RTM `12.00.8168` | 45 / 61 | 919 |
 
 **VC5 is the compiler, and the two VC5 builds are indistinguishable.** SP3
-ships a genuinely different code generator (`C2.EXE` 630,544 → 660,240 bytes,
-`C1.DLL`/`C1XX.DLL` differ, Nov 1997 against RTM's Apr 1997) — and it makes no
+ships a genuinely different code generator (`C2.EXE` 630,544 -> 660,240 bytes,
+`C1.DLL`/`C1XX.DLL` differ, Nov 1997 against RTM's Apr 1997), and it makes no
 difference:
 
 | giant | VC5 RTM | VC5 SP3 | VC6 |
 |---|---|---|---|
 | 0x100250D0 BrTex3dExpand | 61 regions, 2,408 insns | **identical to RTM** | 50 regions, but control fails |
 | 0x1000A110 BrCarDrawVehicle | 34 regions, 1,835 insns | **identical to RTM** | 47 regions, control fails |
-| 0x1000EAF0 scene DL builder | 30 regions, −14 B | 37 regions, −71 B (WORSE) | 35 regions, control fails |
+| 0x1000EAF0 scene DL builder | 30 regions, -14 B | 37 regions, -71 B (WORSE) | 35 regions, control fails |
 
-**So the giants' residue is in the source, or genuinely unreachable — it is not
+**So the giants' residue is in the source, or genuinely unreachable: it is not
 a toolchain artefact.** Do not reach for the patch level again.
 
-‼ **AND THE OBVIOUS MISREADING OF THIS TABLE IS THE LOST-SYNC TRAP.** Run
+!! **AND THE OBVIOUS MISREADING OF THIS TABLE IS THE LOST-SYNC TRAP.** Run
 plainly, VC4.2 reports **1 divergence region** on 0x100250D0 and 4 on
-0x1000EAF0 — better-looking than any number VC5 has ever produced. It is
+0x1000EAF0: better-looking than any number VC5 has ever produced. It is
 nothing: VC4.2's output is 352 instructions short, `divergence.py` loses sync
 at offset 0 and never re-anchors, and **100.0% of the function is never
 compared**. A wrong compiler produces the prettiest region count in this
 document. Always read the `NEVER COMPARED` line, and always score a compiler
 on a control set of known-exact functions, never on a hard one.
 
-Re-run any of this with `BR_MSVC=tools/msvc5sp3 …` — `tools/match_sweep.py`
+Re-run any of this with `BR_MSVC=tools/msvc5sp3 ...`: `tools/match_sweep.py`
 takes that env var for the toolchain directory (the include path follows it).
-‼ Stage an alternate compiler in a PARALLEL directory; never overwrite
+!! Stage an alternate compiler in a PARALLEL directory; never overwrite
 `tools/msvc5` in place, or a failed experiment costs the whole tree. The media
-for VC4.0/4.1/4.2, VC5, VS97 SP3 and VC6 is already in `reference/msvc/` —
+for VC4.0/4.1/4.2, VC5, VS97 SP3 and VC6 is already in `reference/msvc/`:
 look there before sourcing anything.
 
-‼ **Scoring method**: use `match_sweep.score(orig, code, set(relocs))` with
+!! **Scoring method**: use `match_sweep.score(orig, code, set(relocs))` with
 `load_orig(path, va)`. A raw byte compare reports 0/19 on a file the sweep
 calls 19/19, because relocations are not masked.
 
@@ -5359,7 +5358,7 @@ Proven byte-exact on 0x1006BD70 `BrSndBankMute` (90 B), 2026-09-03.
 
 The function is a three-condition "is sound usable" gate followed by a loop
 over the voice bank.  Written the way every sibling in `slice6_76.c` is
-written — one `&&` chain wrapping the body —
+written: one `&&` chain wrapping the body:
 
 ```c
 if (((BrSndG0B5DE8 != 0) && (BrSndPDS != 0)) && (BrSndG18290FC != 0)) {
@@ -5372,7 +5371,7 @@ return 1;
 the whole loop lives in a nested block, and VC5 **shrink-wraps** the
 callee-saved registers into that block: `push edi / push esi` land AFTER the
 third test, and `pop esi / pop edi` before the merge.  Written as three
-sequential early returns —
+sequential early returns:
 
 ```c
 if (BrSndG0B5DE8   == 0) { return 1; }
@@ -5400,35 +5399,35 @@ pop  esi
 ret
 ```
 
-Both spellings have the SAME control-flow graph and the same `je` polarity —
+Both spellings have the SAME control-flow graph and the same `je` polarity:
 `divergence.py` and the regnorm multiset both scored the body identical.  The
 only divergence was where the two push/pop pairs sat, worth 6 bytes.
 
 **The screen:** a diff whose entire residue is `push R` / `pop R` appearing in
 the wrong basic block, on a function that begins with a multi-condition guard.
 Do not go looking at the loop; move the guard.  This is the same axis as
-"An early-return guard and an `if (ok) { … }` wrapper differ in which side is
+"An early-return guard and an `if (ok) { ... }` wrapper differ in which side is
 the FALL-THROUGH" above, but the tell is different: there the polarity moved,
 here the polarity is already right and only the save placement is wrong.
 
 **Boundary:** it only shows on a function that actually uses callee-saved
 registers inside the guard.  Every other `&&`-chained sound gate in
-`slice6_76.c` (`BrSndVoiceIsPlaying`, `BrSndBufSetVolume`, …) is byte-exact as
-an `&&` chain because it needs no saves — do not rewrite those.
+`slice6_76.c` (`BrSndVoiceIsPlaying`, `BrSndBufSetVolume`, ...) is byte-exact as
+an `&&` chain because it needs no saves: do not rewrite those.
 
-**‼ AND THE CHOICE IS DECIDED BY THE RETURN VALUES, NOT BY TASTE.** Proven the
+**!! AND THE CHOICE IS DECIDED BY THE RETURN VALUES, NOT BY TASTE.** Proven the
 same day on 0x1006B530 `BrSndChanBind`, which has the identical three-condition
 gate and went the OTHER way:
 
 | guard returns | body returns | write it as |
 |---|---|---|
-| the same constant the tail returns | same | three sequential early returns — 0x1006BD70 |
-| a constant the body does NOT return (`return 1` vs `return pVoice != 0`) | different | one `&&` chain wrapping the body — 0x1006B530 |
+| the same constant the tail returns | same | three sequential early returns: 0x1006BD70 |
+| a constant the body does NOT return (`return 1` vs `return pVoice != 0`) | different | one `&&` chain wrapping the body: 0x1006B530 |
 
 When the two agree, VC5 merges the guard exit into the tail on its own, so the
 early-return spelling costs nothing and gets the prologue saves right.  When
 they disagree the guard needs its own exit block, and the early-return
-spelling makes VC5 TAIL-DUPLICATE it — three separate `mov eax,1 / pop / pop /
+spelling makes VC5 TAIL-DUPLICATE it: three separate `mov eax,1 / pop / pop /
 ret` copies instead of the original's one shared `je` target, +32 bytes on
 0x1006B530.  The `&&` chain emits exactly one.  Check the original for a
 single shared exit before choosing.
@@ -5442,8 +5441,8 @@ lea eax, [edi + edi*8]                    ; group * 9
 mov ecx, dword ptr [eax*8 + 0x100b5638]   ; + 0x40, no shift instruction
 ```
 
-Spelled over the table's `int[]` view — `DAT_100b55f8[iGroup * 0x12 + 0x10]`,
-which is the same address — VC5 cannot fold the `*4` and the row stride into
+Spelled over the table's `int[]` view: `DAT_100b55f8[iGroup * 0x12 + 0x10]`,
+which is the same address: VC5 cannot fold the `*4` and the row stride into
 one scale, so it materialises the byte offset:
 
 ```asm
@@ -5452,18 +5451,18 @@ shl eax, 3                                ; <-- the tell
 mov ecx, dword ptr [eax + 0x40]
 ```
 
-Index the row as what it is instead — `((double *)DAT_100b55f8)[iGroup*9 + 8]`
-— and the `*8` goes back into the addressing mode.  **An explicit `shl R,3`
+Index the row as what it is instead: `((double *)DAT_100b55f8)[iGroup*9 + 8]`,
+and the `*8` goes back into the addressing mode.  **An explicit `shl R,3`
 (or `shl R,2`) next to a `lea` that already built the row index means the
 element TYPE in your C is narrower than the one the original used.**  The
 8-byte copy itself is still two dword `mov`s, so do not read the pair as
 evidence of an `int[]`: VC5 copies a `double` between memory locations with
 integer moves when nothing does arithmetic on it.
 
-## Ask the solved corpus, don't invent a spelling — `tools/corpus.py`
+## Ask the solved corpus, don't invent a spelling: `tools/corpus.py`
 *(built 2026-09-03; 1,036 byte-exact functions / 50,870 instructions indexed)*
 
-This file exists because inventing spellings does not work — the permuter went
+This file exists because inventing spellings does not work: the permuter went
 0/95 and the refine batch 0/258. What *does* work is the advice already
 written above: **before writing "the compiler will not do X", find a site in
 the same binary doing it.** That was a hand operation, one site at a time.
@@ -5477,12 +5476,12 @@ It is now a query.
 `find` takes a pattern either literally or straight out of a function's
 **original** bytes at an offset `divergence.py` gave you, and reports every
 byte-exact function containing that run. `--source N` (or `show`) resolves a
-hit back to real C through the compiler's own `/FAcs` listing — not an
+hit back to real C through the compiler's own `/FAcs` listing, not an
 inference, the compiler's own statement-to-offset mapping. Because a corpus
 member is byte-exact by definition, the original's offsets are ours.
 
 **A MISS IS A RESULT.** When `find` reports that no corpus member contains the
-run, that is not a dead end — it says the construct is not proven anywhere in
+run, that is not a dead end: it says the construct is not proven anywhere in
 1,036 solved functions, so there is no spelling to copy and the site needs
 source truth, not another permutation. When the full pattern misses, the tool
 falls back to the longest run that *does* appear and prints the boundary; the
@@ -5491,14 +5490,14 @@ instructions past that boundary are the actual open question.
 **It compounds.** Every new match anywhere in the tree makes the index better
 at the functions that are stuck. Re-run `build` after any batch.
 
-‼ It indexes ORIGINAL bytes, never recompiled ones — a diffing function would
+!! It indexes ORIGINAL bytes, never recompiled ones: a diffing function would
 poison the corpus with spellings that are wrong.
 
 ### First finding, and it is a real one
 
 The byte-lane defect that has held 0x1000A110's colour arms for ~10 sessions
 (orig homes both byte locals and reads them back widened, `mov R,[esp+S]; and
-R,0xff; or R,R`; we forward one out of a register as `mov dl,al`) —
+R,0xff; or R,R`; we forward one out of a register as `mov dl,al`):
 **that widening run does not exist anywhere in the solved corpus.** Neither
 does `mov byte [esp+S],B; mov R,[esp+S]; and R,0xff`. The closest proven
 relative is `BrGlRectFill` (0x1001E380, byte-exact), which emits the two-
@@ -5507,7 +5506,7 @@ instruction widening four times, and its source says what causes it: **four
 get memory homes and come back widened at every later use.
 
 That is the same axis as the `x = a; if (c) x = b;` versus true-if/else entry
-proved on 0x1000EAF0 the same day, arriving from the other direction — and it
+proved on 0x1000EAF0 the same day, arriving from the other direction, and it
 had never been connected to the byte-lane wall, because nobody could see the
 two sites together.
 
@@ -5535,7 +5534,7 @@ mov  eax, dword ptr [esi + 0x18]
 mov  dword ptr [esp + 8], edi        ; <-- reuses the register
 ```
 
-Written slot-first — `status = 0; bLoop = 0;` — the store is emitted before
+Written slot-first, `status = 0; bLoop = 0;`, the store is emitted before
 edi is known to be zero, and stays an immediate, which is what the original
 has:
 
@@ -5545,7 +5544,7 @@ mov  eax, dword ptr [esi + 0x18]
 mov  dword ptr [esp + 8], 0          ; c7 44 24 08 00 00 00 00
 ```
 
-Note the SCHEDULE does not move — both spellings put the store in the same
+Note the SCHEDULE does not move: both spellings put the store in the same
 slot, after the field load.  Only the operand kind changes.  So the tell is a
 `mov [esp+S], R` where the original has `mov [esp+S], I` and the register
 provably holds that same constant: **swap the two initialisers**, do not go
@@ -5558,7 +5557,7 @@ it only bites when one local is address-taken (so it is memory) and the other
 is not (so it is a register).  Two register locals, or two memory locals, show
 nothing.
 
-## A d3d-only `@implements` hides a free GLIDE match — and the class is now closed
+## A d3d-only `@implements` hides a free GLIDE match, and the class is now closed
 
 **+12 byte-exact in one pass, every one of them at 0 diffs on the FIRST sweep,
 with no C written.**  A body that BRGlide.dll and BRD3D.dll share is often
@@ -5578,8 +5577,8 @@ slice2_16.c, slice3_40.c all do this):
 **The screen** (join `config/shared.csv` on `d3d_va`):
 
 1. the glide VA has **no** `glide`-lane tag, **and**
-2. it has **no row in `report.csv`** — this filter is what makes the screen
-   honest, see the trap below — **and**
+2. it has **no row in `report.csv`**: this filter is what makes the screen
+   honest, see the trap below, **and**
 3. a `d3d`-lane tag for its `d3d_va` exists in `src/`, **and**
 4. `functions_glide.csv`'s size for the glide VA **equals** `shared.csv`'s size.
 
@@ -5587,7 +5586,7 @@ Then append the glide tag and one-file-sweep.  The sweep is the verdict, not
 the screen: a MATCH is scored against the real Glide bytes at that VA, so it is
 proof however the pairing was found, and a DIFF just means you revert the tag.
 
-**‼ Trap 1 — MATCH THE TAG'S LANE, NOT JUST THE NUMBER.**  The two binaries
+**!! Trap 1: MATCH THE TAG'S LANE, NOT JUST THE NUMBER.**  The two binaries
 overlap in address space, so one number is usually a live VA in *both*.
 `0x10017F30` is d3d's twin of glide `0x100154A0` (163 B) **and**, separately, a
 real 163-B-map / 23-B-body glide function (`BrFadeLatch`, already byte-exact in
@@ -5595,15 +5594,15 @@ real 163-B-map / 23-B-body glide function (`BrFadeLatch`, already byte-exact in
 22 candidates; requiring the tag to be in the **d3d lane** cut that to 12, and
 every one of the 12 was real.
 
-**‼ Trap 2 — `report.csv` IS ALREADY GLIDE-KEYED FOR MOST OF THESE.**  Dropping
+**!! Trap 2: `report.csv` IS ALREADY GLIDE-KEYED FOR MOST OF THESE.**  Dropping
 filter 2 gives **429** binary-wide "candidates", and the number is almost
 entirely fictitious: those functions are already scored under their glide VA
 (the sweep resolved the pairing itself) and adding the tag changes nothing.
-Tested on `slice2_16.c`: 25 tags added, `28/42 MATCH` before and `28/42` after —
+Tested on `slice2_16.c`: 25 tags added, `28/42 MATCH` before and `28/42` after:
 25 redundant comment lines and zero movement.  Reverted.  **A candidate count
 that does not exclude already-scored VAs is not a lead, it is noise.**
 
-**‼ Trap 3 — write the VA as `0x…`, never `0X…`.**  The tag parser requires the
+**!! Trap 3: write the VA as `0x...`, never `0X...`.**  The tag parser requires the
 lowercase `x`.  25 tags written `0X1001EB10` were silently ignored: the sweep
 reported the same counts as before and nothing warned.  A tag that does not
 parse looks exactly like a tag that did not help.
@@ -5618,10 +5617,10 @@ The 12: `0x10036040` (slice6_70.c), `0x10008D20` (br_pod.c), and the ten
 
 Two functions in `br_dlcmd.c` do the same work over the same global array
 (`g_aBrDlVtxPool`, 0x105CE318, stride 0x68) and want OPPOSITE spellings. The
-deciding fact is not the array and not the field access — it is whether the
+deciding fact is not the array and not the field access: it is whether the
 subscript is cheap to re-evaluate.
 
-- **`BrDlCmdTri1` (0x1001ECF0) indexes with a COMMAND BYTE** — `pool[p[6]]`.
+- **`BrDlCmdTri1` (0x1001ECF0) indexes with a COMMAND BYTE**: `pool[p[6]]`.
   The byte has to be re-read and re-scaled at every access, so index form pays
   for SIB addressing: the recorded probe lost **94 bytes**. Pointer locals win.
 - **`BrDlTriFlatZ` (0x1001FF60) indexes with an int PARAMETER.** VC5 scales it
@@ -5629,12 +5628,12 @@ subscript is cheap to re-evaluate.
   field as `[reg + 0x105CE318+off]`. Index form wins; pointer form loses the
   three `shl R,3` and 18 `mov R,[R+A]`.
 
-**‼ AND THE ANSWER CAN BE BOTH, IN ONE FUNCTION.** 0x1001FF60's best spelling
+**!! AND THE ANSWER CAN BE BOTH, IN ONE FUNCTION.** 0x1001FF60's best spelling
 is a SPLIT, and the split follows the ORIGINAL SOURCE'S FUNCTION BOUNDARY: the
 finish-texture block is an inlined helper whose first parameter is a
 `BrDlVtx *`, so its eight WRITES and the `oow` it multiplies by go through a
-`lea`d pointer (`[eax+0x38]`), while `s` and `t` — which reach that helper as
-its SECOND parameter, a clip node at vertex+0x40 — stay folded into the scaled
+`lea`d pointer (`[eax+0x38]`), while `s` and `t` (which reach that helper as
+its SECOND parameter, a clip node at vertex+0x40) stay folded into the scaled
 index (`fld [ebx+0x105CE368]`). Measured, one-file sweep, same target:
 
     all-pointer form                416 B vs 558, regnorm 47+45
@@ -5645,7 +5644,7 @@ index (`fld [ebx+0x105CE368]`). Measured, one-file sweep, same target:
 scaled index kept in a register across the body is index form; its absence
 with `lea R,[R*K + A]` instead is pointer form. A function that shows BOTH a
 live scaled index AND a `lea`d pointer with short displacements is an inlined
-helper boundary — find the helper (here the out-of-line twin
+helper boundary: find the helper (here the out-of-line twin
 `BrDlVtxFinishTex` 0x1001FCF0 is right there, already byte-exact) and let its
 parameter list tell you which accesses take the pointer.
 
@@ -5653,21 +5652,21 @@ parameter list tell you which accesses take the pointer.
 
 - **A two-store flat copy needs ONE NAMED TEMP.** Written as two stores both
   reading the source (`PUN(b.r, a.r); PUN(c.r, a.r);`) VC5 **reloads** the
-  source for the second — it cannot prove the first store did not alias it —
+  source for the second (it cannot prove the first store did not alias it)
   costing 6 `mov R,[R+A]`. The original loads once into a register and stores
   twice; one reused temp reproduces it exactly.
 - **CSE DOES NOT REACH ACROSS AN EARLY RETURN.** Three outcodes tested first
   as an AND and then as an OR, spelled as repeated `V(i).outcode`, are loaded
-  **twice** — 3 extra loads. The original keeps all three in registers across
+  **twice**: 3 extra loads. The original keeps all three in registers across
   the branch. Name them, in the original's read order.
 
-**‼ AND fn.py DISAGREED WITH THE SWEEP HERE.** On this row fn.py reported
+**!! AND fn.py DISAGREED WITH THE SWEEP HERE.** On this row fn.py reported
 597 B / 151 insns where the sweep built 592, and it did not move when the last
 two edits did. fn.py compiles `/O2` only and the sweep picked `/O2` and `/O2p`
 for this row on different runs. When the two disagree, **report.csv is the
 scoreboard** and fn.py's regnorm is qualitative only.
 
-## The SURROUNDING TU decides commutative operand order — and it is the DECLARED INTRINSICS, not position
+## The SURROUNDING TU decides commutative operand order, and it is the DECLARED INTRINSICS, not position
 
 Established 2026-09-03 during the refiling job, from three independent
 sightings in three different modules. The common shape: **a function moved
@@ -5684,7 +5683,7 @@ The three, weakest evidence to strongest:
    moving the function ABOVE the file's `#include <windows.h>` did.
 
 2. `BrRbInitInertia` moved verbatim into a fresh ONE-FUNCTION file came out
-   with **exactly one differing byte** — `lea ebx,[eax+ecx]` where the
+   with **exactly one differing byte**: `lea ebx,[eax+ecx]` where the
    original has `[ecx+eax]`, the `3*i+j` index. Same text, same includes;
    only the surrounding TU differed. Putting it in `br_carphys.c` instead
    made it byte-exact. **This is the cheapest repro of the effect: one
@@ -5699,7 +5698,7 @@ The three, weakest evidence to strongest:
 
 **(3) names the mechanism and reframes (1).** What varies is not the
 function's POSITION in the file but WHICH INTRINSICS THE COMPILER HAS BEEN
-TOLD ABOUT at that point — `windows.h` drags in a large intrinsic set, so
+TOLD ABOUT at that point: `windows.h` drags in a large intrinsic set, so
 moving a function above it changes the declared set, which is the same lever
 as adding `<stdlib.h>`. Do not record the windows.h case as a
 position effect; it is an intrinsic-declaration effect seen from the side.
@@ -5708,8 +5707,8 @@ position effect; it is an intrinsic-declaration effect seen from the side.
 
 - **Carry the source file's ENTIRE preamble verbatim when you move code. Do
   not trim an include because it looks unused.** `include/br_gamestep.h`
-  declares nothing either file calls — no includes, no pragmas, one enum
-  constant — yet dropping it from a destination un-matched 0x10019210 (12
+  declares nothing either file calls: no includes, no pragmas, one enum
+  constant, yet dropping it from a destination un-matched 0x10019210 (12
   diff bytes, best variant sliding /O2 -> /O2 /Oy-) and re-coloured
   0x1001CF90 wholesale (same 448 bytes, 142 different). Measured both
   directions, twice. The only thing it changes is the set of names in the
@@ -5725,13 +5724,13 @@ position effect; it is an intrinsic-declaration effect seen from the side.
   second batch's preamble after the first one's includes gives
   `C2370: 'errno' : redefinition`.
 
-## A GREEN SWEEP IS NOT EVIDENCE THAT A MOVE IS SAFE — check the port arm too
+## A GREEN SWEEP IS NOT EVIDENCE THAT A MOVE IS SAFE: check the port arm too
 
 `match_sweep.py` only ever compiles `/DBR_MATCHING_BUILD`. A file's `#else`
 arm is therefore compiled by nothing the matching pipeline runs. So a port
 arm that calls something whose declaration did not travel compiles to a C89
 IMPLICIT DECLARATION (warning C4013, not an error) and leaves an UNDEFINED
-EXTERNAL in the object — a link failure, with a clean `n/n match` either side
+EXTERNAL in the object: a link failure, with a clean `n/n match` either side
 of it. `tools/portcheck.py` (2026-09-03) compiles the other configuration and
 reads the COFF symbol table, which is the only way to see it.
 
@@ -5742,14 +5741,14 @@ has no baseline, so inherited noise reappears as a finding) and
 always was). Without the baseline the real finding is buried.
 
 **Method note that cost a false positive:** do not byte-search the object for
-the symbol name — a file that legitimately defines it as its own static hits.
+the symbol name: a file that legitimately defines it as its own static hits.
 Parse the symbol table and count only records with section 0, storage class
 2, value 0.
 
 It found five real defects on its first tree-wide run, all introduced by the
 refiling job and all passed by the sweep: four declarations left behind
 (`BrX10035BBA`, `BrSub1007A940`, `BrOptFlushMessage`, and
-`BrRd32`/`BrRd16`/`BrPtrAt`), and one file that **would not compile at all** —
+`BrRd32`/`BrRd16`/`BrPtrAt`), and one file that **would not compile at all**:
 `slice2_23.c`, left one `#endif` short by a merge resolution. Nothing caught
 that one either, because every tagged function had left the file and the
 sweep compiles NOTHING for a file with no `@implements` tag. The tree-wide
@@ -5777,7 +5776,7 @@ the static IS:
 - Check the destination for a TYPE conflict before assuming the module file
   is the home: `br_netstate.c` declares two globals `int` that the incoming
   block has as `void *` (C2371), and `br_sfx.c` declares two functions
-  `void`/`int` against the mover's `int` — both forced a sibling file. This
+  `void`/`int` against the mover's `int`: both forced a sibling file. This
   is now the second most common reason a group needs its own file.
 
 **And when a whole batch file is one module's code held together by a state
@@ -5791,15 +5790,15 @@ baseline for the first time, 62 -> 58.
 **The counter-case is `g_s17` in slice2_17.c, and it is genuinely blocked.**
 That batch spans several original TUs (0x10019xxx, 0x1001Cxxx, 0x1002Axxx are
 not contiguous), so `g_s17` is a decomp-invented aggregate, not an original
-file-static, and the file is not module-homogeneous — drawing, racing,
+file-static, and the file is not module-homogeneous: drawing, racing,
 startup and a set of matrix/lighting helpers. 136 references across 72
 functions. Ten functions are stranded on it: six read it in the MATCHING arm
 (3 to 24 references each), four only in the port arm. `BrS17GetState()` is
 non-static and already reaches the state from `drawing/br_drawcar.c`, so the
-port-arm four could be routed through it — but that is editing port bodies,
+port-arm four could be routed through it, but that is editing port bodies,
 not relocating them, and nothing in the pipeline validates it. Two of the
 port-arm four are plain field accesses and would go mechanically; the other
-two would not, because `s17_car` is `g_s17.pCars + i * BR_CAR_STRIDE` —
+two would not, because `s17_car` is `g_s17.pCars + i * BR_CAR_STRIDE`:
 state-bound, so it cannot be duplicated the way a stateless macro could.
 
 ## A store scheduled AFTER the next statement's x87 work is SOURCE ORDER, not the scheduler
@@ -5832,14 +5831,14 @@ held the narrowed value in an int temp and wrote the store later:
 instructions LATER, and the intervening instructions belonging to the next
 statement. Look at what is between the `movsx` and the `fild`: if it is the
 next statement's arithmetic, the source stored through a temp after that
-statement. The x→y transitions in the same function look similar but are
+statement. The x->y transitions in the same function look similar but are
 NOT this (the `fsin` there is on an angle already on the stack, and VC5
-does interleave that one on its own) — which is why the y→x ones stood out.
+does interleave that one on its own), which is why the y->x ones stood out.
 
 **Riders, all measured:** (1) It is per site. v[2].y is stored BEFORE the
 last angle in the original (which consumes `A` in place, `fsub` with no
 `fld st(0)`), and deferring it too costs a region back. (2) The int temp's
-width is inert (`int16_t` and `int32_t` give the same bytes — the movsx is
+width is inert (`int16_t` and `int32_t` give the same bytes: the movsx is
 the cast inside the expression either way). (3) What FAILED before, and
 why: hoisting `ang = A - k` above the whole y statement moves the ftol as
 well as the store (9+2). The lever is to move only the STORE. (4) Inert:
@@ -5852,7 +5851,7 @@ Same function, last region: `((float)v + f - k) * kF308 * (float)(ea + 1)`
 came out multiplied by `(ea + 1)` FIRST (the `fild` of `ea + 1` hoisted
 above the `fsub k`, then `fmulp`, then `fmul kF308`). VC5 canonicalises a
 product chain the way it canonicalises a flat sum. `(((float)v + f - k) *
-kF308) * (float)(ea + 1)` — one redundant paren round the first product —
+kF308) * (float)(ea + 1)` (one redundant paren round the first product)
 gives the original's `fsub k ; fild ; fxch ; fmul kF308 ; fxch ; fmulp`.
 A named temp for the first product is the same bytes; naming `(ea + 1)`
 (int or float), or writing `(ea + 1)` unconverted, is inert. Extends the
@@ -5865,7 +5864,7 @@ Three outcodes are loaded in the order oc2, oc1, oc0 and then tested as
 `oc2 & (oc0 & oc1)` and `oc0 | oc1 | oc2`. The original copies oc0 into
 ebp for the `&` pair and tests oc2 against it; the `|` chain accumulates in
 oc0's register. Ours copied oc2 and tested oc0, and the `|` accumulated in
-oc2's register — a whole-block register rotation, register-blind 0+0, 20
+oc2's register: a whole-block register rotation, register-blind 0+0, 20
 diff bytes. **Nothing in the expressions moves it**: `((oc0 & oc1) & oc2)`
 is byte-identical to `oc2 & (oc0 & oc1)` (VC5 canonicalises the chain).
 What moves it is the declaration: `int32_t oc0, oc1, oc2;` gives ours,
@@ -5883,14 +5882,14 @@ before any expression permutation.
 
 `call 0x100729EA` followed directly by the epilogue, where our build emits
 `add esp,0xc` after it: the callee cleans its own arguments. 0x100729EA is
-odd, and `config/fenced.csv` lists it as `ff 25 [IAT]` — the glide2x
+odd, and `config/fenced.csv` lists it as `ff 25 [IAT]`: the glide2x
 `grDrawTriangle` thunk, and Glide is `__stdcall`. Declare it so (and name
 it by its import so the image gate resolves `_grDrawTriangle@12` through
 `config/globals_learned.csv`). One `add esp` EXTRA in the multiset with
 nothing MISSING and the call target in fenced.csv is the whole diagnosis;
 it had been misread as "the clip arm's six-argument call is spelled wrong".
 
-## A pointer STORE beside an indexed READ of the same object forces a reload — load once into a temp
+## A pointer STORE beside an indexed READ of the same object forces a reload: load once into a temp
 *(proven 2026-09-04 on 0x1001FF60, +3 `mov R,[R+A]`, 592 -> 561 B)*
 
     BrDlVtx *pv_ = &pool[i];
@@ -5930,23 +5929,23 @@ callee-saved register short: no `push ebp`). Written as
 the load lands before the compare, the pointer lives across the arms in
 edi/esi, and the extra register appears. Riders from the same function:
 (1) `cmp R,0xa ; ja` is unsigned `shift <= 10` with the small arm as the
-fall-through — `shift < 0xb` gives `cmp 0xb ; jae`; (2) VC5 tail-merges the
+fall-through: `shift < 0xb` gives `cmp 0xb ; jae`; (2) VC5 tail-merges the
 S block's `fmul/fstp` into one exit but DUPLICATES the T block's because it
-ends in the epilogue — same source spelling for both blocks; (3) the
+ends in the epilogue: same source spelling for both blocks; (3) the
 `scaletemp` idiom held on all 22 table accesses at once: naming `off = idx
 * 0x2b4` swapped SIB base/index (`[edx+ecx+d]` for `[ecx+edx+d]`) at every
 site, re-spelling `idx * 0x2b4` at each use fixed every one; (4) a
 `static` helper of 64 B carrying the `@implements` tag of a 441 B original
-was the port's factored-out inline arithmetic — a `MISSING CODE (21%)`
+was the port's factored-out inline arithmetic: a `MISSING CODE (21%)`
 verdict on a tiny static is a MISFILED TAG, not a missing helper. Read the
 Ghidra draft of the VA before working the tagged body.
 
-## DECLARATION ORDER IS AN x87 SCHEDULER TIE-BREAK — the symbol INDEX, not the name
+## DECLARATION ORDER IS AN x87 SCHEDULER TIE-BREAK: the symbol INDEX, not the name
 *(proven 2026-09-04 on 0x1000EAF0's row block, which had stood 25 passes as "T3a
 completion order"; masked regions 21 -> 18, no other axis moved)*
 
-Two comparable float products in one sum — same operand-kind pair, same
-association — are scheduled in an order that VC5 picks by a tie-break, and the
+Two comparable float products in one sum (same operand-kind pair, same
+association) are scheduled in an order that VC5 picks by a tie-break, and the
 tie-break is keyed on the **symbol index** of the pointer locals they read
 through. Nothing in the expression reaches it; the DECLARATION LIST does.
 
@@ -5959,37 +5958,37 @@ first. All 24 permutations of the four pointer declarations were compiled:
 
 pPos's position is irrelevant, so it is not pairwise order. The same flip
 happens with the pointer order untouched when one FUNCTION-SCOPE local
-leaves the list (merged into another, or block-scoped) — i.e. it is the
+leaves the list (merged into another, or block-scoped), i.e. it is the
 absolute index: `(index - k) mod 4` in {2,3} flips, {0,1} does not. A
 hash-bucket or index-pair ordering inside the scheduler.
 
 Measured INERT at the same site, do not re-run: the declaration order of the
 four coefficient EXTERN arrays (24/24 byte-identical); an unused extra local
 (it never gets an index); an extra unused function-scope int; renaming the
-local (names are not hashed — the sixth-pass "names are inert" holds).
+local (names are not hashed: the sixth-pass "names are inert" holds).
 
-‼ **What this retracts.** "Declaration order is inert" was measured on /O2
-slot packing (true — moving `pDst` to the top of the list changes nothing) and
+!! **What this retracts.** "Declaration order is inert" was measured on /O2
+slot packing (true: moving `pDst` to the top of the list changes nothing) and
 on an enregistered temp at block vs function scope (true, it was never a slot
 or a tie-break candidate). It is NOT a general fact. Every "byte-identical"
 verdict in a dossier was taken at ONE symbol layout; a lever that reads as
 inert may be one index away from its flip. **When an x87 schedule is one
 notch off and every expression form is dead, permute the declaration order of
-the operands' locals — and if the operands are globals, add or remove a local
-above them — before writing T3a.** It is 24 compiles at 6 s each.
+the operands' locals (and if the operands are globals, add or remove a local
+above them) before writing T3a.** It is 24 compiles at 6 s each.
 
 The faithful spelling, once the flip is found, is whatever natural order lands
 on the right bucket; here it is the four pointers in FIELD order (`pObj +
 0xc/0xd/0xe/0xf`), which is also the reading a human would write.
 
-## With int index locals the byte READ order is not the source order — VC5 swaps the first two
+## With int index locals the byte READ order is not the source order: VC5 swaps the first two
 *(proven byte-exact 2026-09-04 on 0x1001ECF0 BrDlCmdTri1; the pointer form in the same file did NOT do this)*
 
 The original reads the three command bytes 6, 4, 5 into ecx, eax, edx
 (`xor ecx,ecx / mov cl,[esi+6] / ...`). As pointer locals
 (`BrDlVtx *a = &pool[p[6]]; *c = &pool[p[4]]; *b = &pool[p[5]];`) the
-source order IS the read order. As int locals — the form the rest of the
-function needs, so every access re-forms `[reg + 0x105CE318 + off]` —
+source order IS the read order. As int locals (the form the rest of the
+function needs, so every access re-forms `[reg + 0x105CE318 + off]`)
 `ia = p[6]; ic = p[4]; ib = p[5];` reads 4, 6, 5 and
 `ic = p[4]; ia = p[6]; ib = p[5];` reads the original's 6, 4, 5. Ten diff
 bytes, one region, register-blind 0+0, closed by swapping two lines.
@@ -5997,12 +5996,12 @@ bytes, one region, register-blind 0+0, closed by swapping two lines.
 Riders, all measured on that function: `float u` declared BEFORE the ints
 is what lands them in ecx/eax/edx (declared after: 380 B and a `mov R,R`
 copy); the declaration order of the ints is inert (only their assignment
-order moves the reads); naming the three outcodes in locals — the lever
-that closed BrDlTriFlatZ — is WORSE here (377 B, three instructions short,
+order moves the reads); naming the three outcodes in locals (the lever
+that closed BrDlTriFlatZ) is WORSE here (377 B, three instructions short,
 5+8), because here the outcodes are single-use inside one expression;
 re-associating the `&` and permuting the `|` are byte-identical.
 **Screen:** one region at the top of the function where the byte loads
-come out in a different order with identical instruction counts — swap
+come out in a different order with identical instruction counts: swap
 the first two assignments before anything else.
 
 ## Block LAYOUT: an arm that never rejoins is deferred past the epilogue; a `goto` to a label after `return` is laid inline
@@ -6019,13 +6018,13 @@ conditional, whose exits all jump back into the loop.
 
 Riders from the same function, each measured: (1) **a named temp that holds
 a callee-saved register across a block flips which long-lived variable gets
-the last callee-saved register** -- `adv = w - 1` named right after `w`
+the last callee-saved register**: `adv = w - 1` named right after `w`
 (the original's early `lea edi,[ecx-1]`) is what put the scale in ebx and
 closed a "one allocation choice" wall plus a frame one slot short; the tell
 is an early `lea R,[R-1]` the original computes at the top and we compute at
 the use. (2) **Guard sums inline**: `if (penX + drawW > right)` at every
 site; global CSE carries the sum into the pass arm only and the clamp arm
-recomputes -- a named `rightEdge` hoists it above the guard. (3) Under /O2
+recomputes: a named `rightEdge` hoists it above the guard. (3) Under /O2
 **block SCOPE, not declaration order, decides slot assignment**: a
 block-scoped local is homed after the function-scope ones, which is how one
 packs into the dead parameter slot. (4) `do { ... } while (*p != '\0')` with
@@ -6035,7 +6034,7 @@ rules. (6) **Check report.csv's `opt` column against the original's ebp
 use**: a function using ebp as a general register is plain /O2, whatever
 the sweep picked for the old port body.
 
-## The whole module's signatures can be the port's abstraction — transcribe the callee list first
+## The whole module's signatures can be the port's abstraction: transcribe the callee list first
 *(0x10067710 BrCrRespWalk, 752 -> 1296 of 1301 B, regnorm 183 -> 14, 2026-09-04)*
 
 The port had `BrCrRespWalk` taking nine arguments; the original takes
@@ -6044,7 +6043,7 @@ callees are `0x10065C80(body, pNormal, pRelDir, flag, restOffset)` and
 `0x10065980(body, pNormal, dampFlag, spinFlag)`. With a shared header you
 cannot edit in parallel, `#define` the header's prototype to a spare name
 around the include under BR_MATCHING_BUILD and call the port-signature
-callees through a cast of the function designator -- VC5 still emits a
+callees through a cast of the function designator: VC5 still emits a
 direct `call rel32` with the right push count. Riders: a push-out delta
 that is a NAMED BrVec3 gives the three homed slots and `fld st(0)` dups;
 `pos = pos - dp` is `fld pos ; fsub [slot]` where `pos -= dp` is `fsubr`; a
@@ -6068,7 +6067,7 @@ stack. The original `fld`s three copies of the reciprocal and multiplies
 each by MEMORY (`fmul [esi]`, `fmul [esi+4]`, `fmul [esi+8]`). Ours did
 that for y and z but for x it loaded the FIELD (`fld [esi]`) and multiplied
 register-to-register, leaving a fourth stack value to `fstp st(0)` at the
-end -- because `pV->x` is offset 0 and outranks the register copy, while
+end, because `pV->x` is offset 0 and outranks the register copy, while
 `pV->y`/`pV->z` do not. No spelling of the x statement moves it
 (compound assignment, operand order, keeping the earlier `x` local alive).
 
@@ -6080,7 +6079,7 @@ end -- because `pV->x` is offset 0 and outranks the register copy, while
     q[-1] = len * q[-1];
 
 VC5 folds the displacement back into `[esi]`, `[esi+4]`, `[esi+8]` and the
-function is byte-identical. Riders: (1) the pointer must be MULTI-USE --
+function is byte-identical. Riders: (1) the pointer must be MULTI-USE:
 displacing only the x read forward-substitutes and is 4 B SHORT (0+2);
 (2) `+1` and `+2` leave y or z at index 0 and are no better (46 / 52);
 (3) where the pointer is declared (with the locals, or assigned after the
@@ -6088,13 +6087,13 @@ divide) is inert. The screen: one term of a parallel set compiled as
 `fld [R]` / `fmul st(i)` while its siblings are `fld st(i)` / `fmul [R+k]`
 -- look for the operand at displacement 0.
 
-## Block LAYOUT: a lone `if (x) F else S` is failure-first with `je S`; every `||`/`&&` chain is success-first — earlier failures reach that arm by a `goto` INTO it
+## Block LAYOUT: a lone `if (x) F else S` is failure-first with `je S`; every `||`/`&&` chain is success-first: earlier failures reach that arm by a `goto` INTO it
 *(proven 2026-09-04 on 0x1006BC10 BrSndVoiceLoad, 352 B, byte-exact; nine
 shapes measured on a scratch probe TU under the sweep's own cl flags)*
 
 Tell: the cleanup block sits BEFORE the success block, the earlier failure
 tests (`je F` on the NULL check, `jne F` on each call result) jump forward
-into it, and the LAST test is `je S` -- jump on success -- with F falling
+into it, and the LAST test is `je S`, jump on success, with F falling
 through.
 
 Measured under /O2: a single-term `if (f() != 0) {F} else {S}` gives
@@ -6127,7 +6126,7 @@ nested `if (q != NULL) x = f(); else x = 0;` stores the zero as an
 IMMEDIATE only when the zero arm is the jump target; written as
 `if (q == NULL) x = 0; else ...` the zero arm is the fall-through and VC5
 stores the known-zero register instead. (3) An inlined static helper is
-inert for the init block -- plain statements between two `goto fail` tests
+inert for the init block: plain statements between two `goto fail` tests
 compile to the same bytes.
 
 ## Consecutive pointer increments are scheduled in SOURCE ORDER
@@ -6143,12 +6142,12 @@ Rider: three channel results stored together at the end are three
 temporaries (one spilled to a byte slot, `mov [esp+S],dl` / `mov al,[esp+S]`);
 storing each channel as it is computed is 9 bytes short.
 
-## Declaration order decides which of two LOCALS is `fld`ed in a sum -- and a hoist follows
+## Declaration order decides which of two LOCALS is `fld`ed in a sum, and a hoist follows
 
 `0x10034E30 BrAtan2` (393 B) ended on one region: the direct return
 `acc + ang` came out `fld ang; fadd acc` where the original has `fld acc;
 fadd ang`, and because the other arm of the same `if` also begins with
-`fld ang`, VC5 HOISTED that load above the `test edi,edi` -- 2 B short,
+`fld ang`, VC5 HOISTED that load above the `test edi,edi`: 2 B short,
 one instruction short, register-blind 1+2. Every expression-level lever
 was inert: redundant parens on either operand, `ang + acc`, `acc += ang`,
 a copy of acc, reading acc through a pointer, an inverted test, a ternary.
@@ -6160,7 +6159,7 @@ longer share a leading load, nothing is hoisted, and the function is
 byte-exact. So for a two-term sum of two stack locals the one declared
 LATER is the `fld` operand. (The existing note that declaration order is
 inert under /Od stands; this is /O2, and the effect is on operand choice,
-not on slot layout -- the frame did not change.)
+not on slot layout: the frame did not change.)
 
 **Screen:** a common `fld [esp+S]` hoisted above a branch whose two arms
 begin with the same local, where the original loads inside each arm. Look
@@ -6172,7 +6171,7 @@ Three more facts from the same function, each one region:
   (`t = x; x = y; y = -t`), not of y: with `t = y` VC5 loads y before the
   arm's other statement (the `acc` update) where the original updates acc,
   then loads y, then negates.
-- `if ((r = f(...)) == K)` -- assignment inside the test -- is what
+- `if ((r = f(...)) == K)`, assignment inside the test, is what
   produces `fld st(0); fcomp [K]` (compare a copy, keep r); a separate
   `r = f(...); if (r == K)` is a bare `fcom` and one instruction short.
 - Inside an arm that writes three things, the ORDER of the writes is
@@ -6188,10 +6187,10 @@ Proven on all three functions of `src/core/racing/br_cartick.c` (2026-09-04).
   grouping, unary-plus, cast, struct-vs-computed-address, array-global and
   struct-member-global spelling is inert (0x1006E9E0, 15 dead probes). The
   screen is exact: the byte run `d9 05 <abs> d8 8x <disp32>` (`fld [abs];
-  fadd [reg+disp32]`) occurs ONCE in all of BRGlide.dll, in 0x1006E9E0 — a
+  fadd [reg+disp32]`) occurs ONCE in all of BRGlide.dll, in 0x1006E9E0: a
   plain `+=` never produces it. When two arms of a branch both begin with
   such an add, VC5 hoists the single `fld g` above the compare
-  (`mov edx,[mode]; fld g; cmp edx,eax; jne`) — the same hoist the BrAtan2
+  (`mov edx,[mode]; fld g; cmp edx,eax; jne`): the same hoist the BrAtan2
   entry above describes for two locals. A `float dt = g;` local is NOT it:
   used twice it stays in st and is added with `fadd st(1)` + a discarding
   `fstp st(0)`; used three or more times it is homed through eax to a slot.
@@ -6204,13 +6203,13 @@ Proven on all three functions of `src/core/racing/br_cartick.c` (2026-09-04).
   `call; fld [esi+0x34]; fmul k; add esp,4; mov [esi+0x29bc],al` is
   `BrFtolTrunc(*(volatile float *)&car->y * K)`; with a plain read VC5
   slots the call cleanup and the byte store between the `fld` and the
-  `fmul` (11 diff B, regnorm 0+0, same size — reads exactly like a
+  `fmul` (11 diff B, regnorm 0+0, same size: reads exactly like a
   scheduling wall). Dead probes: `k * y`, extra parens on either side,
   `/ 32.0f` (folded to the same multiply), a named `float` constant, a
   `double` constant, a `float fy` local before or between the stores,
   `int ix` / `unsigned char cx` temps, a comma-joined pair, a byte-returning
   callee. Also: the macro form `(*(volatile float *)(p))` with an OUTER
-  paren pair is NOT the same as `*(volatile float *)(p)` — the parens put
+  paren pair is NOT the same as `*(volatile float *)(p)`: the parens put
   the 11 bytes back (a redundant outer paren is not a no-op; see above).
 
 ## `movzx si, al` is an `(unsigned char)` cast assigned to an `unsigned short` local
@@ -6220,7 +6219,7 @@ narrows each `__ftol` result to a byte and widens it into a 16-bit register
 (`movzx si, al`, `movzx ax, al`), then shifts and adds in the full 32-bit
 register with the caller's high bits still in it, and masks the index with
 `and 0xffff`. The port's `(unsigned)(long)v & 0xFF` into `unsigned int`
-locals is an `and` per value -- two instructions longer -- and never
+locals is an `and` per value: two instructions longer, and never
 produces the 16-bit `movzx`. The source is:
 
     unsigned short row, col, idx;
@@ -6231,7 +6230,7 @@ produces the 16-bit `movzx`. The source is:
 
 `idx` spelled `unsigned int` with `& 0xFFFF` is +12 B. Two companions in
 the same function: the four range guards are one `||` chain returning 0
-(four sequential early returns emit four exits, +16 B -- the merged exit
+(four sequential early returns emit four exits, +16 B: the merged exit
 here is the ORIGINAL's shape, so do not reach for the positive-form lever
 of the "LAST test's polarity" entry), and the table base is read from its
 global AT THE USE, after both `__ftol` calls; caching it in a local at
@@ -6242,7 +6241,7 @@ entry makes VC5 hold it in edi across the calls (push edi, +5 B).
 `0x1006D600 BrCpIntegrateVelocity` (169 B, byte-exact 2026-09-04). The
 original computes six products (three linear, three angular deltas) on the
 x87 stack and homes exactly three of them with `fst` (store AND keep) in
-three consecutive frame slots `[esp]`, `[esp+4]`, `[esp+8]` -- a
+three consecutive frame slots `[esp]`, `[esp+4]`, `[esp+8]`: a
 `sub esp,0xc` frame for values it never reads back. Six named float
 locals do not reproduce that: VC5 gives three of them homes too, but packs
 all three into the dead `dt` parameter slot (no frame, 6 B short) and
@@ -6257,7 +6256,7 @@ Both deltas are aggregates even though only `da` is visibly homed: with
 `da` an aggregate and dx/dy/dz named scalars the function is 2 B off, with
 `da` alone and the linear products inline it is 14 B short, and a
 `float[3]` behaves like the single aggregate. Companion to "A frame that
-is 4 bytes short: look for a scalar that should be an ARRAY" -- here the
+is 4 bytes short: look for a scalar that should be an ARRAY": here the
 tell is not the frame size alone but `fst` (not `fstp`) into slots that
 are never reloaded, at consecutive offsets, in field order.
 
@@ -6269,7 +6268,7 @@ For `a * b` with both factors NAMED locals that live in registers/slots, VC5's
 choice of which factor becomes the `imul` DESTINATION (`mov edx,a; imul edx,[b]`
 vs `mov edx,[b]; imul edx,a`) is the declaration order: the symbol declared
 LATER is the destination, the earlier one the memory operand. It is pairwise
-between the two factors -- moving either through every other position changes
+between the two factors: moving either through every other position changes
 nothing until it crosses the other.
 
 Why it costs more than a register name: MSVC's divide-by-255 is `imul <magic>`
@@ -6277,7 +6276,7 @@ followed by `add edx,<the product again>`, so the product must survive a
 one-operand `imul` that clobbers edx:eax. With the intensity as destination the
 original's alpha channel computes the product IN PLACE (`imul ecx,[delta]`,
 the intensity dying there) and needs no slot; with the delta as destination
-the product has to be homed and reloaded -- an extra temp dword that also
+the product has to be homed and reloaded: an extra temp dword that also
 changed the frame size. On 0x100250D0 the widened intensity `uVar19` had to be
 declared after all four channel deltas; the tree had it after three.
 
@@ -6290,8 +6289,8 @@ MISSING in msetdiff, where both factors are locals. Swap the two declarations.
 Three near-identical blend bodies each widened a nibble intensity through ONE
 shared `unsigned char` local. The original spends a byte slot per body
 (0x48/0x4c/0x50, each written twice and read back widened twice). Declaring a
-distinct `unsigned char` in each body -- block-scoped in the `for`, or three
-function-scope names, identical bytes -- gives the slots. Done alone it ADDS a
+distinct `unsigned char` in each body (block-scoped in the `for`, or three
+function-scope names, identical bytes) gives the slots. Done alone it ADDS a
 frame dword (0x6c); the `imul`-destination fix alone REMOVES one (0x64); together
 the frame is the original's 0x68 with the original's slot count. A frame that
 reads right can be two errors cancelling: read the /FAcs equate table, not
@@ -6310,7 +6309,7 @@ a lane (`mov dl,al`) instead of homing it and reading it back widened.
 
 The original said otherwise, and the bytes say it plainly: it emits
 `xor edx,edx; mov dh,<top>` at the END OF EACH ARM, before the join label. So
-the top byte never crosses the edge at all — only the two pack bytes do, and
+the top byte never crosses the edge at all: only the two pack bytes do, and
 they cross in MEMORY. Spelled that way:
 
 ```c
@@ -6322,39 +6321,39 @@ colourB = (((cbTop | b0) << 8 | b1) << 8);
 
 the join block becomes instruction-for-instruction the original: both bytes
 homed, both read back widened. Multiset 13+5 -> 9+5, instructions 8 short ->
-4, bytes 31 short -> 16, frame intact. (Masked regions rose 24 -> 29 — the
+4, bytes 31 short -> 16, frame intact. (Masked regions rose 24 -> 29: the
 documented artefact on this function; rank by the multiset.)
 
-‼ **IT IS A JOIN LEVER, NOT AN EXPRESSION LEVER — measured immediately after.**
+!! **IT IS A JOIN LEVER, NOT AN EXPRESSION LEVER: measured immediately after.**
 The identical partial applied to the two STRAIGHT-LINE pack sites in the same
 function (arm 1's colourB, arm 3's colourA) is BYTE-IDENTICAL, separately and
 together: with no edge to cross there is nothing for it to change, and VC5
 canonicalises `(part | b0)` straight back into the lane form. **Reach for this
 only where the value crosses a control-flow join.** The general question to ask
 at a join is not how the expression is spelled but WHICH VALUES HAVE TO BE LIVE
-ACROSS THE EDGE — fold everything you can into a partial in each arm, and the
+ACROSS THE EDGE: fold everything you can into a partial in each arm, and the
 survivors get memory homes.
 
 ## Byte-slot widening is decided by USE COUNT after the join, not by spelling
 *(settled 2026-09-05 on 0x1000A110 by a diagnostic probe; closes the question
 the "byte-slot idiom, CRACKED" entry and the corpus-miss entry left open)*
 
-The `mov byte [esp+S],B … mov R,[esp+S]; and R,0xff; or R,R` widening of a
+The `mov byte [esp+S],B ... mov R,[esp+S]; and R,0xff; or R,R` widening of a
 `uint8_t` local appears when the byte is read MORE THAN ONCE after its
 defining join. Reading each of 0x1000A110's two pack bytes a second time
 after the colour if/else (an unfaithful, diagnostic edit) made VC5 home both
-and read both back widened -- three MISSING rows appeared on the spot. With
+and read both back widened: three MISSING rows appeared on the spot. With
 one read per colour, VC5 keeps one byte live and forwards it as a lane move
 (`mov dl,cl`), and no spelling of the pack, the array, its scope, its index or
-its neighbours changes that (≈300 compiles, all byte-identical). The corpus
+its neighbours changes that (~300 compiles, all byte-identical). The corpus
 neighbour that emits the run, 0x1001E380, reads its four byte locals sixteen
 times. **So when the original widens a byte the source reads once, the
-original's source read it more than once -- look for the missing use, not for
+original's source read it more than once: look for the missing use, not for
 a spelling.**
 
 Riders from the same session: the declaration-order tie-break is EXHAUSTED on
 0x1000A110 (every function-scope index, both comma lists, block scopes: all
-inert) -- it needs comparable float products through pointer locals, or two
+inert): it needs comparable float products through pointer locals, or two
 named integer factors; and a spill can be LOAD-BEARING for a frame size (the
 pCam spill holds 0x4c where the original holds it with byte slots), so a
 frame that matches is not evidence the frame's contents match.
@@ -6382,8 +6381,8 @@ and an extra paren pair around the first product (inert).
 
 Same function. Nine axis stores followed by three translations is what the
 port had (register-blind 4+6). Rewriting the nine stores into pure address
-order — `m[0][0..3]`, `m[1][0..3]`, `m[2][0..3]`, which is literally the
-order the original's `fstp`s land in — is BYTE-IDENTICAL to the column-major
+order (`m[0][0..3]`, `m[1][0..3]`, `m[2][0..3]`, which is literally the
+order the original's `fstp`s land in) is BYTE-IDENTICAL to the column-major
 form: VC5 canonicalises the store order of a block of independent stores.
 What moved it was the INTERLEAVE: each axis's translation, then that axis's
 three matrix stores, three times over. So when a matrix builder's stores
@@ -6405,7 +6404,7 @@ the push AFTER the third `xor`:
     xor eax,eax ; push edi    ; mov al,[esi+4]
 
 Declaring the three indices `ic, ib, ia` (values 4, 5, 6) gets all three byte
-loads right but emits `push edi` one slot EARLY, ahead of the third `xor` --
+loads right but emits `push edi` one slot EARLY, ahead of the third `xor`:
 two bytes, one divergence region, everything else identical. Moving the float
 temp from the top of the declaration block to BETWEEN the first and second
 `int` fixes exactly those two bytes:
@@ -6429,7 +6428,7 @@ three indices with the float first (four give the right size, only `ic, ib,
 ia` gets every load right).
 
 Sibling fact from the same pass, and the reason the twin was cheap:
-`0x10020460 BrDlTriFlatNoZ` is `0x1001FF60` with two source changes only --
+`0x10020460 BrDlTriFlatNoZ` is `0x1001FF60` with two source changes only:
 the clip arm calls the no-Z trimmer, and the three indices are consumed
 i0, i2, i1 (declared in that order, which per the entry above picks the
 `&`/`|` accumulator). 37 differing bytes between the two originals, no other
@@ -6443,10 +6442,10 @@ consecutive dwords at +8 through a held pointer:
     lea ecx,[esi+8] ; mov [ecx],eax ; mov [ecx+4],eax ; mov [ecx+8],eax ; mov [ecx+0xc],eax
 
 Neither obvious C spelling reproduces it. Four plain stores
-(`*(int *)(p + 8) = 0;` …) fold every address back onto the object base and
-emit `mov [esi+8],eax` … (59 B against 61, 40 diffs). Naming the pointer
-(`int *q = (int *)(p + 8); q[0] = 0; …`) does NOT help either — 33 diffs, same
-folded form — because VC5 rematerialises a pointer that is only ever a
+(`*(int *)(p + 8) = 0;` ...) fold every address back onto the object base and
+emit `mov [esi+8],eax` ... (59 B against 61, 40 diffs). Naming the pointer
+(`int *q = (int *)(p + 8); q[0] = 0; ...`) does NOT help either: 33 diffs, same
+folded form, because VC5 rematerialises a pointer that is only ever a
 constant offset from a live base. **The `ptr[0]` operand-kind lever needs a
 pointer the compiler cannot re-derive; a pure offset is not one.**
 
@@ -6457,21 +6456,21 @@ clear at +0x20 in the same function is the same call, inlined as
 `mov ecx,0x100 / rep stosd`.
 
 **Read a run of consecutive same-value stores through one base as a `memset`
-before reaching for pointer spellings** — the byte count tells you which: an
+before reaching for pointer spellings**: the byte count tells you which: an
 inlined `memset` holds the base, open-coded stores do not.
 
 ## A COM vcall: capture the vtable in a LOCAL to let a neighbouring store schedule into the call setup
 *(proven 2026-09-05 on 0x100720A0 BrDInputShutdown, 87 B, /O2)*
 
-The C-style COM call `p->lpVtbl->Fn(p, …)` compiles to three pieces —
-`mov ecx,[p]` (the vtable), `push p`, `call [ecx+K]` — and VC5 treats the
+The C-style COM call `p->lpVtbl->Fn(p, ...)` compiles to three pieces:
+`mov ecx,[p]` (the vtable), `push p`, `call [ecx+K]`, and VC5 treats the
 whole expression as ONE unit that it will not let an unrelated store move
 into. So a store written BEFORE the call stays before all three pieces:
 
     g_pRec = 0;                             /* mov [g_pRec],0   */
     g_pDI->lpVtbl->Release(g_pDI);          /* mov ecx,[eax] / push eax / call */
 
-The original interleaves them — vtable load, push, **then** the store, then
+The original interleaves them: vtable load, push, **then** the store, then
 the call. **Splitting the vtable load out into a local is what reaches that
 schedule**, because the store then sits between two separate statements
 rather than in front of one expression:
@@ -6481,23 +6480,23 @@ rather than in front of one expression:
     vt->Release(g_pDI);                     /* call [ecx+8]     */
 
 Byte-exact; the one-expression form is 8 diff bytes at identical size (87/87)
-and identical instruction count (25/25) — the tell that only a slot moved.
+and identical instruction count (25/25): the tell that only a slot moved.
 Caching the interface pointer in a local as well (`pDI = g_pDI; vt = pDI->lpVtbl;`)
 is equally exact, so only the VTABLE capture is load-bearing.
 
 **Measured dead at this site, do not re-run:** the store written after the
 call, both null-outs written after the call, assigning the null through the
-record local first, and a `pRec = g_pDI` receiver temp — all 8, all at the
+record local first, and a `pRec = g_pDI` receiver temp: all 8, all at the
 same size. The lever is the vtable temp, nothing else.
 
-**Where else this applies:** every `pV->lpVtbl->Fn(pV, …)` site with a store
-or other independent statement adjacent to it — the DirectDraw, DirectInput
+**Where else this applies:** every `pV->lpVtbl->Fn(pV, ...)` site with a store
+or other independent statement adjacent to it: the DirectDraw, DirectInput
 and DirectPlay layers are full of them.
 
 ## A multi-step guard chain: the give-up arm must be the LAST test's THEN arm, with the label INSIDE it
 
 `0x10020690` / `0x10020A80` / `0x10020190` / `0x1001EE70`, the four
-clipped-triangle trimmers, 2026-09-05 -- all four byte-exact, and for a whole
+clipped-triangle trimmers, 2026-09-05: all four byte-exact, and for a whole
 session the only defect in any of them was BLOCK PLACEMENT.
 
 The shape is seven calls, each followed by "is the polygon still a polygon?",
@@ -6511,12 +6510,12 @@ all seven checks 6-byte near jumps: +24 bytes, and nothing else wrong.
 **The spelling that reproduces it:**
 
     if (!STEP(plane1)) goto fail;
-    …six of these…
+    ...six of these...
     if (!STEP(plane7)) {
     fail:
-        …give-up loop…
+        ...give-up loop...
     } else {
-        …emit…
+        ...emit...
     }
 
 The `fail:` label must be INSIDE the last test's then-arm; the earlier tests
@@ -6528,16 +6527,16 @@ and threads the six early exits into it as short jumps.
 with the emit code following at function scope versus the emit code in an
 `else`; the step spelled out versus wrapped in a comma macro.
 
-**‼ ARM ORDER IS THE WHOLE THING.** `if (c >= 3) { emit } else { fail:
+**!! ARM ORDER IS THE WHOLE THING.** `if (c >= 3) { emit } else { fail:
 giveup }` -- same control-flow graph, same `goto`, label still inside an arm
 -- reverts exactly to the deferred-block defect. The FAILURE arm has to be the
 one the compiler lays first. This is the "lone `if (x) F else S` is
 failure-first" entry holding on a seven-term chain.
 
 DEAD, do not re-run (all `/O2 /Op`, all give the deferred block):
-`(A(),n<3) || …` with `{ giveup; return; } emit`; the same with `{ giveup }
-else { emit }`; `(A(),n>=3) && …` with `{ emit } else { giveup }`; `… &&
-…) goto emit; giveup; return; emit:`; `… && …) { emit; return; } giveup`;
+`(A(),n<3) || ...` with `{ giveup; return; } emit`; the same with `{ giveup }
+else { emit }`; `(A(),n>=3) && ...` with `{ emit } else { giveup }`; `... &&
+...) goto emit; giveup; return; emit:`; `... && ...) { emit; return; } giveup`;
 per-step `goto fail` with `fail:` at FUNCTION scope instead of inside the last
 arm; seven nested `if (n >= 3) {` with the emit block innermost.
 
@@ -6551,7 +6550,7 @@ Comparing at the RETURN keeps the raw result in the callee-saved register and
 spends the epilogue on the boolean:
 
     hr = Shutdown(&g);          xor eax, eax
-    …tail…                      pop edi
+    ...tail...                      pop edi
     return hr == 0;             cmp ebp, ebx      <- boolean built at the end
                                 sete al
 
@@ -6559,9 +6558,9 @@ Comparing at the CALL SITE materialises the boolean immediately, into the same
 callee-saved register, and leaves the epilogue a bare move:
 
     ok = (Shutdown(&g) == 0);   neg  ebp          <- ebp = -hr
-    …tail…                      sbb  ebp, ebp     <- -1 if hr != 0
+    ...tail...                      sbb  ebp, ebp     <- -1 if hr != 0
     return ok;                  inc  ebp          <- ebp = (hr == 0)
-                                …tail…
+                                ...tail...
                                 mov  eax, ebp
 
 The neg/sbb/inc borrow trick is the same one the /Od ternary and `x ? 0 : -1`
@@ -6572,13 +6571,13 @@ in a callee-saved register, the source stored the comparison in a local at the
 call site.** The reverse tell is `xor eax,eax` immediately before the pops.
 
 Proven BrNetShutdown 0x10005F50 (264 B, /O2): that one lever was the entire
-diff — the rest of the transcription was byte-exact on the first compile.
+diff: the rest of the transcription was byte-exact on the first compile.
 
 DEAD, do not re-run (/O2, gives the epilogue form):
-`hr = Shutdown(&g); … return hr == 0;` -- 2 regions, the second a 7-byte
+`hr = Shutdown(&g); ... return hr == 0;`: 2 regions, the second a 7-byte
 lost-sync tail; same 264-byte size, so size is no signal here.
 
-## /O2 FRAME LAYOUT: arrays top-down by size, spilled scalars underneath — and block-scoped locals SHARE a slot
+## /O2 FRAME LAYOUT: arrays top-down by size, spilled scalars underneath, and block-scoped locals SHARE a slot
 
 *(measured 2026-09-05 on 0x1003B6D0 BrSaveBeginRallySeason, 20 probes, all
 in src/core/menus/br_savebegin.c's header)*
@@ -6593,7 +6592,7 @@ Three facts about where a local lands in a `sub esp,N` frame:
    array**, and nothing about it moves it: `int`, `int[1]`, `char[4]` read
    through `(int *)`, `short[2]`, a one-member `union`/`struct`, declared
    before/after/between the arrays, block-scoped, zero-initialised,
-   assigned earlier — twenty variants, always the bottom slot. VC5
+   assigned earlier: twenty variants, always the bottom slot. VC5
    scalarises the 1-element aggregates, so they are in the same class.
    (Two spilled scalars: the one first used LATER is lower.)
 3. **Block-scoped locals with disjoint scopes SHARE one slot.** Moving the
@@ -6604,20 +6603,20 @@ Three facts about where a local lands in a `sub esp,N` frame:
 
 **Use:** when the frame is the right SIZE but one 4-byte slot sits in the
 wrong place relative to an array, compare classes first. A slot ABOVE a
-4-byte array cannot be a spilled scalar of any spelling — the original's
+4-byte array cannot be a spilled scalar of any spelling: the original's
 object there was address-taken/aggregate and allocated before the array.
 The RallySeason function is parked on exactly that question.
 
 Related measurement: VC5 DOES common-subexpression a `static` global read
 across two extern calls (the slot disappears and one load goes away); it
-does not for an `extern`. Do not use it to fake a frame — it changes the
+does not for an `extern`. Do not use it to fake a frame: it changes the
 instruction count.
 
 ## A pointer reload that stays BELOW a strcpy tail means the copy's destination and the pointer are ONE object
 
 *(proven 2026-09-05 on 0x1003B350 BrSaveNameCommitRallySeason, 554 B)*
 
-`strcpy(g_szName, src); if (g_pHdr[4] == 0 && g_pHdr[5] == 0) …` — the
+`strcpy(g_szName, src); if (g_pHdr[4] == 0 && g_pHdr[5] == 0) ...`: the
 original finishes the intrinsic (`and ecx,3 / rep movsb`) and only THEN loads
 `g_pHdr`. With `g_szName` and `g_pHdr` as two separate externs VC5 hoists the
 pointer load into the copy's tail (`mov edx,[g_pHdr]` between `rep movsd` and
@@ -6630,11 +6629,11 @@ write to the pointer, the reload stays below the `rep movsb`, and the
 function is byte-exact. **The tell:** a MASKED region that is only a global
 load moved across an intrinsic's last two instructions, with the multiset at
 0. **The lesson:** VC5's alias analysis is per OBJECT, so where the original
-refuses to move a load past a store the two symbols lived in the same object
-— declare them that way, naming only the members used and letting the
+refuses to move a load past a store the two symbols lived in the same object:
+declare them that way, naming only the members used and letting the
 addresses set the padding.
 
-## The staged MSVCRT.LIB is a byte ORACLE for fencing — prove it, don't infer it
+## The staged MSVCRT.LIB is a byte ORACLE for fencing: prove it, don't infer it
 
 `config/fenced.csv` decides that a range is linker/CRT output rather than a
 decomp target, and until now most of those rows were arguments from shape (a
@@ -6650,7 +6649,7 @@ take the `.text` section the symbol points at, and diff it against
 `build/match/orig/<VA>.bin` with the section's own relocation table masked off.
 Every reloc is 4 bytes at the recorded offset and is a value the linker fills;
 everything else must be equal. **Zero non-reloc differences is proof, not a
-lead** — the shipped bytes are that library object, and nothing anybody writes
+lead**: the shipped bytes are that library object, and nothing anybody writes
 in `src/` will ever be compared against them.
 
 Three things fall out of the archive that are worth reading even when the diff
@@ -6687,11 +6686,11 @@ game source, and it never needed to be.
   swaps which one gets ebx.** 0x1006AAF0 BrNetPeerMsgReset hoists
   `ReleaseMutex` (ebx) and `WaitForMultipleObjects` (ebp) out of a 16-peer
   loop. Spelled `wr = WaitForMultipleObjects(...); if (wr == 0) ExitThread(0);`
-  the two come out SWAPPED -- 2 diff bytes (`call ebp`/`call ebx`), every other
+  the two come out SWAPPED: 2 diff bytes (`call ebp`/`call ebx`), every other
   byte identical, REGNORM 0+0. Spelled `if (WaitForMultipleObjects(...) == 0)`
   it is byte-exact. The named local is a register candidate even though it dies
   at the test, and it shifts the tie-break between two equal-weight invariants.
-  ‼ PER-FUNCTION: the byte-exact sibling FUN_1006a650 in the same TU KEEPS its
+  !! PER-FUNCTION: the byte-exact sibling FUN_1006a650 in the same TU KEEPS its
   `wr` local. DEAD on this function, do not re-run: swapping the two handle
   stores (+1 B), swapping the two pointer increments (inert), swapping the
   locals' declaration order (moves esi/edi instead), declaring the two imports
@@ -6699,7 +6698,7 @@ game source, and it never needed to be.
   function referencing either import first (inert), two scalar handles instead
   of `h[2]` (-10 B), a `for` loop (+10 B). Proven 2026-09-05.
 
-## An ADDRESS-TAKEN aggregate's block scope ends its slot's life — a later temp can reuse it
+## An ADDRESS-TAKEN aggregate's block scope ends its slot's life: a later temp can reuse it
 *(proven 2026-09-05 on 0x100706D0 BrInputPoll, frame 0x118 -> 0x110, first divergence +0x7 -> +0x34)*
 
 The "/O2 slot packing ignores scope" note (2026-09-03) was measured on
@@ -6708,7 +6707,7 @@ call is different: at function scope its slot is live to the end of the
 function, and a compiler temp created later (here the 8-byte zero-extension
 temp for an unsigned `fidiv` divisor) gets its own dwords. Declared inside the
 block that uses it, the aggregate's slot is free afterwards and the temp is
-packed on top of it — which is what the original does (`mov [esp+0x14],ebx`
+packed on top of it, which is what the original does (`mov [esp+0x14],ebx`
 zeroing the high half lands in the dead DIMOUSESTATE). **Screen:** a frame
 `sub esp,N` that is 4 or 8 too large, a struct/array local passed by address
 early in the function, and an x87 conversion or other compiler temp later.
@@ -6728,7 +6727,7 @@ the next two through that address as `add R,[R]` memory operands:
     g_brInMouse[cur].az = ms.lZ + *pPrevAx;
 
 Written out three times, VC5 CSEs the address and reads through it ALL three
-times, and — because the first read is no longer a direct load — hoists the
+times, and (because the first read is no longer a direct load) hoists the
 three stack-slot operands (`ms.lX/lY/lZ`) into registers ahead of the index
 arithmetic: +1 instruction, and the `add` operands swap roles. A pointer to
 the record (`pPrev->ax`) is size-exact but every read is `[eax+0xc]`. Dead on
@@ -6736,7 +6735,7 @@ this site: swapping the `+` operands (integer `+` is canonicalised too), the
 struct as an `int[4]`, the struct read through a pointer, the first read
 written out with the other two through the pointer. **Front-end rider:** the
 C++ front end (C1XX) folds the field pointer away and gives the plain-form
-bytes for every spelling tried — this construct is only reachable from C.
+bytes for every spelling tried: this construct is only reachable from C.
 
 ## The vptr load hoists over a global store under C++, never under C
 *(measured 2026-09-05 on 0x100706D0, the keyboard arm, 2 bytes: orig `mov edx,[ecx]` then `mov [g],eax`)*
@@ -6744,7 +6743,7 @@ bytes for every spelling tried — this construct is only reachable from C.
 A COM vtable read scheduled ABOVE a store to a global in the same block is
 C1XX output: the C++ front end treats the vptr load as non-aliasing and the
 list scheduler puts it at the AGI-safe slot after the device load. Compiled as
-C the same call sits after the store every time — statics, `const`, `volatile`,
+C the same call sits after the store every time: statics, `const`, `volatile`,
 an index local, the store inside the argument, and the no-alias pragmas (which
 wreck the function) are all dead, and every spelling that reads the vtable
 into a local floats the read to the top of the block instead. A whole-binary
@@ -6752,16 +6751,16 @@ census finds exactly three deref-then-global-store adjacencies, two of them
 plain source order. **Screen:** when a function's only residue is a vtable
 load one slot above a global store, build it as a `.cpp` before probing C.
 On this function the C++ build is byte-exact at that site and regresses the
-field-pointer site above — the two front ends are mutually exclusive on it.
+field-pointer site above: the two front ends are mutually exclusive on it.
 
 
-## A COMMITTED match can regress when its NEIGHBOURS are re-spelled -- and declaration order of the int index locals puts it back
+## A COMMITTED match can regress when its NEIGHBOURS are re-spelled, and declaration order of the int index locals puts it back
 *(2026-09-05, br_collresp.c: 0x10066800 BrCollRespSegBox, 332 B, byte-exact at
 6faab8c, then `diff 73` with NO edit to its own text)*
 
 Rewriting the two functions on either side of it (0x10066260 and 0x10066610,
 same TU) flipped ONE instruction in SegBox's half-sum: `fxch st(1); faddp
-st(2)` became `fxch st(2); faddp st(1)` -- which of two comparable products
+st(2)` became `fxch st(2); faddp st(1)`, which of two comparable products
 the add completes into.  That is the symbol-INDEX tie-break (the
 "DECLARATION ORDER IS AN x87 SCHEDULER TIE-BREAK" entry): the neighbours'
 new locals renumbered the TU and SegBox's own tie went the other way.
@@ -6776,7 +6775,7 @@ What moved it back, and what did not, measured on the SAME tree:
 Two rules from this:
 1. **After re-spelling any function, re-sweep the WHOLE file and read every
    row**, not just the one you touched.  The sweep printed `4/7` both before
-   and after here -- one row went match->diff while another went diff->match,
+   and after here: one row went match->diff while another went diff->match,
    and the total hid it.
 2. When a float-chain tie-break flips with no local cause, sweep the
    declaration order of the INT locals that index the arrays in that chain
@@ -6786,7 +6785,7 @@ Two rules from this:
 *(2026-09-05, 0x10066260 BrCollRespBoxClassify, 644 B, byte-exact)*
 
 The first of six edge sums, `t = p[0] + p[1]`, came out `fld p[1]; fadd p[0]`
-once the function's RETURN was re-spelled as a ternary (see below) -- the
+once the function's RETURN was re-spelled as a ternary (see below): the
 other five sums were unaffected.  The leading-operand paren `(p[0]) + p[1]`,
 the written order, and the declaration order were all INERT (declsweep, 84
 probes).  `t = p[0]; t += p[1];` is byte-exact: an accumulation is a
@@ -6799,14 +6798,14 @@ Same function, three more facts:
   compared twice** (`t = p[0]; if (t > HI) ... else if (t < LO)`).  Written
   on the array element directly, VC5 pops after the first compare and
   reloads for the second (+5 B per component, x9).
-- **A `static` helper called three times per vertex was NOT inlined** --
+- **A `static` helper called three times per vertex was NOT inlined**:
   the recomp was 3 `call`s and a double-aligned frame (`and esp,-8` from
   the double arguments).  Write it out; "a plain static helper is not
   auto-inlined under /O2" holds for this one too.
 - **`return (mask != 0u) ? 0 : -1` is `neg; sbb; neg; dec`; `(mask != 0u)
   - 1` is `xor; test; setne; dec`.**  Same as the BrCrtAtExit entry; the
   ternary is the branchless form.  Note it was THIS change that flipped the
-  sum above -- the tie-break moves with the function.
+  sum above: the tie-break moves with the function.
 
 ## Which side of an x87 compare gets the `fld`, and the two `? 0 : 1` layouts
 *(2026-09-05, 0x10066610 BrCollRespPointInTri, 492 B, PARKED at 2 regions)*
@@ -6818,7 +6817,7 @@ Same function, three more facts:
 - A bool compare `X > p[u]` came out `fld X; fld p[u]; fcompp; test ah,1`
   (two loads) when X is the loop's strength-reduced row pointer and
   `fld X; fcomp p[u]; test ah,0x41` (one load) when X is the row pointer
-  recomputed each pass -- the SAME syntax.  Which occurrence of the twice-
+  recomputed each pass: the SAME syntax.  Which occurrence of the twice-
   read `p[u]` gets the load also moved with the loop's arm structure
   (`continue` vs if/else).  Fourteen spellings dead; see the file header.
 
@@ -6829,7 +6828,7 @@ Same function, three more facts:
 only `C` a named local (it is the one the original `fst`s into the dead
 pB arg slot and re-reads), is byte-exact.  Naming S, or h = S*0.5f, or both,
 in any statement order, puts the chain in the other association and 23 B
-short -- and ALSO flips which of the two 12-byte arrays sits at [esp+0xc].
+short, and ALSO flips which of the two 12-byte arrays sits at [esp+0xc].
 The "one NAMED float local per intermediate" entry is a rule for values the
 original KEEPS; a value it recomputes from the stack must stay unnamed.
 Also: `!(h*h >= C*C)` and `h*h < C*C` both put C*C in st(0) with
@@ -6839,7 +6838,7 @@ Also: `!(h*h >= C*C)` and `h*h < C*C` both put C*C in st(0) with
   register; a named local bumped each pass is the BASE.** 0x100154A0
   BrHudDrawSplitTimes draws one line per split at `y0 + 15*i` from
   `times[i]`. The original addresses are `mov ecx,[ecx+edi]` and
-  `lea ebx,[esi+ebx+0x25]` -- the race pointer and `sel` are the base, the
+  `lea ebx,[esi+ebx+0x25]`: the race pointer and `sel` are the base, the
   two per-line values the index. Spelled as named locals (`k += 4`,
   `y += 15`) the SAME instructions come out with base and index swapped:
   two SIB bytes, REGNORM 0+0, and neither operand order in the source nor
@@ -6876,12 +6875,12 @@ Also: `!(h*h >= C*C)` and `h*h < C*C` both put C*C in st(0) with
 *(2026-09-05, 0x10066AD0 BrCollRespBroadPhase, 669 B, byte-exact; two
 byte-identical walk arms from one macro body)*
 
-`for (i = 0; i < count; ++i) { pP = &grid[cell][i]; ... push pP ... }` --
+`for (i = 0; i < count; ++i) { pP = &grid[cell][i]; ... push pP ... }`:
 VC5 strength-reduces the address, but picks the bias for the induction
 register from the field loads (`[esi-4] / [esi] / [esi+4]` for +0x10/+0x14/
 +0x18) and then needs `lea eax,[esi-0x14]; push eax` wherever the record
-pointer itself is passed.  `pP = grid[cell]; for (...; ++i, ++pP)` -- a
-source-level pointer stepped in the for clause -- keeps esi == pP
+pointer itself is passed.  `pP = grid[cell]; for (...; ++i, ++pP)` (a
+source-level pointer stepped in the for clause) keeps esi == pP
 (`[esi+0x10]`, `push esi`), which is the original.  Ten bytes and all six
 regions of that function; the trip counter (`mov ebx,count; dec ebx; jne`)
 and the entry guards (`test eax,eax; jle` forward, `dec eax; jl` backward)
@@ -6891,7 +6890,7 @@ come out of the plain `i < count` / `i >= 0` index loops unchanged.
   `(T *)(p + K)` destination (or a struct assignment) forms the address
   first.** 0x10002310 BrCamFrameInitB copies one BrVec3 into three places
   in the car: the original is `mov edx,[edi]; mov [esi+0x2838],edx` x3 per
-  vector -- each float through a GP register straight to a displacement off
+  vector: each float through a GP register straight to a displacement off
   the car. A `BrVec3` struct assignment (through a pointer local, a
   `(void *)` cast, or a member of a struct slice alike) emits `lea` of the
   destination and stores through it: +3 lea, 8 B short. Member-wise
@@ -6900,7 +6899,7 @@ come out of the plain `i < count` / `i >= 0` index loops unchanged.
   conditional (`lea edi,[esi+0x27b0]` before `cmp eax,5`, 32 shifted
   bytes); assigning it after the selector stores puts it where the
   original has it. And the selected frame is a bare conditional
-  expression -- keeping a `pB` pointer local for later reuse costs a
+  expression: keeping a `pB` pointer local for later reuse costs a
   `mov eax,ecx`. Proven 2026-09-05.
 
 - **Two byte temps in a 4-byte swap: which one takes al is fixed by WHICH
@@ -6910,7 +6909,7 @@ come out of the plain `i < count` / `i >= 0` index loops unchanged.
   ... p[3] = t` puts the p[3] temp in cl and t in al (6 diff bytes), and no
   declaration-order, naming or unsigned-char permutation moves it. The
   sibling BrTrackFixupSegList's spelling `t = p[3]; p[3] = p[0]; p[0] = t;
-  t = p[2]; p[2] = p[1]; p[1] = t;` -- save the HIGH byte -- is byte-exact:
+  t = p[2]; p[2] = p[1]; p[1] = t;`, save the HIGH byte, is byte-exact:
   VC5 schedules the `[0]` store first either way, but the saved byte is
   the one that gets eax. (The TU then matches under /O2 /Op, its two
   siblings unaffected.) Proven 2026-09-05.
@@ -6922,7 +6921,7 @@ come out of the plain `i < count` / `i >= 0` index loops unchanged.
   with REGNORM 0+0 and size-exact. Dead: declaration order, store order,
   an allocation temp. Recorded in the file header.
 
-## When VC5 keeps a scaled index in a register: `lea R,[R*4]` + `[R + sym]` -- the census
+## When VC5 keeps a scaled index in a register: `lea R,[R*4]` + `[R + sym]`: the census
 *(measured 2026-09-06 on 0x1000EAF0 wall 4, ~60 scratch-TU compiles and 25
 giant probes; every rule below is a fresh compile, none is inferred)*
 
@@ -6943,14 +6942,14 @@ defined in the TU, `__inline` helpers with pointer or index parameters (VC5
 substitutes the constant arguments before optimising), local pointer aliases
 of every kind (`int *p = sym`, chains, `?:` on a foldable condition, `+0`,
 `&sym[0]`, `register`, `const`, block-scoped initialisers), and use counts
-up to 26 sites -- ALL fold.  Use count, block count and loop depth are not
+up to 26 sites: ALL fold.  Use count, block count and loop depth are not
 the rule.
 
 **Materialises `t = idx*4` (then `[t + sym]` at every symbol site of the same
 region) in exactly these cases:**
 1. a LIVE dword-scale access with the SAME index through a REGISTER base
    (`pq[i]`, a pointer parameter or a loaded global pointer) or a LOCAL
-   ARRAY base (`cur[i]`, i.e. `[esp + t + disp]`) -- load or store -- that
+   ARRAY base (`cur[i]`, i.e. `[esp + t + disp]`), load or store, that
    DOMINATES the symbol sites.  The trigger is per REGION (an access in one
    arm of an if/else materialises that arm only; the other arm keeps
    folding); a nested conditional access does not trigger; a BYTE-array
@@ -6961,24 +6960,24 @@ region) in exactly these cases:**
    0x1006E130 (`param_3 + i*4` and `param_2 + i*4`: `lea esi,[eax*4]`,
    `[ecx+esi]`, `[edi+esi]`).
 2. a non-SIB element size (`a*7` inline -> `a*28` via `shl 2`, base-only
-   addressing) -- but a NAMED `r = a*7` folds again.
+   addressing), but a NAMED `r = a*7` folds again.
 3. the index reaches its uses through a JOIN (`if (c) off = X; else off =
    X;`, or `c ? X : X`): VC5 hoists the identical defs into one `lea` after
    the call but leaves a vestigial `test` on the condition; `volatile` also
    materialises but leaves its store/load.
 4. **on the giant only:** a `ring` variable defined in a block that
    DOMINATES BOTH ARMS (top of the wheel-loop body, or right before `if
-   (cls)`) -- and a def anywhere BEFORE the call inside the arm.  Then the
+   (cls)`), and a def anywhere BEFORE the call inside the arm.  Then the
    if-arm emits `lea edx,[ebx*4]` + `[edx + sym]` x8 AND the pDst homes on
    both edges AND the reload to form `slot`, i.e. the whole wall-4 family
-   (multiset MISSING 23 -> 15), while the else-arm still folds -- the
+   (multiset MISSING 23 -> 15), while the else-arm still folds: the
    original's asymmetry from a plain variable.  The same shape in a small
    harness folds (ring preserved in esi across the call), so the trigger
    there is the giant's context, not the construct.
 
 **And the allocation that goes with case 4 is NOT the original's.**  VC5
 keeps that `ring` in ebx across the cls block and the call (homing it at
-the loop top, evicting iWheel to edi and its slot -- the whole cls block
+the loop top, evicting iWheel to edi and its slot: the whole cls block
 renames, +11 B), where the original keeps iWheel in ebx, homes nothing but
 iWheel at the loop top, and RECOMPUTES `ring` in EACH arm (`mov eax,[esp+
 0x28]; lea ecx,[ebx+eax*4]` after the call; `mov edx,[esp+0x24]; lea
@@ -6986,7 +6985,7 @@ ecx,[ebx+edx*4]` in the else-arm).  VC5 does not rematerialise: with five
 long-lived pointers competing it homes the POINTERS and keeps `ring` in
 esi, and a `ring` clobbered mid-arm is RELOADED from its slot, never
 recomputed.  So the original's `ring` is a per-arm computation after the
-call -- and every per-arm form (inline, function-scope or block-scope
+call, and every per-arm form (inline, function-scope or block-scope
 variable, redefinition in one or both arms, element pointers, aliases)
 FOLDS on the giant, byte-identical to the tree.
 
@@ -7006,15 +7005,15 @@ re-run anything above.  Harness: `tools/probe.py` variants under
 
 BrTexRgbaToArgb1555 reads four source bytes per pixel.  The original is
 `mov [ecx]; mov [ecx+1]; inc; add esi,2; inc; shr; mov [ecx]; inc; mov
-[ecx]; inc` -- the first two bytes read by displacement off the base, then
+[ecx]; inc`: the first two bytes read by displacement off the base, then
 TWO committed `inc ecx` (the dst++ `add esi,2` sitting between them), then
 the last two bytes read BARE through the advanced pointer.
 
 * `r = *src++; g = *src++;` is what produces `mov [ecx]; mov [ecx+1]` +
-  two `inc` -- VC5 folds the first post-increment's read to a bare load and
+  two `inc`: VC5 folds the first post-increment's read to a bare load and
   the second's to `[ecx+1]`, then emits the two increments together.
 * Reading by INDEX instead (`r=src[0]; g=src[1]; b=src[2]; a=src[3];
-  src+=4;`) gives one `add ecx,4` and displacement reads for b,a -- the
+  src+=4;`) gives one `add ecx,4` and displacement reads for b,a: the
   wrong shape (+1 B, the b read at `[ecx+2]` with a deferred `add ecx,2`).
 * Put the `r>>=3` narrowing BETWEEN the g and b reads, matching where the
   original schedules `shr dl,3` (after the second inc, before the b load).
@@ -7029,12 +7028,12 @@ VC5 puts it in edx instead, which swaps the OR destinations (`or ebx,edx` ->
 `or edx,ebx`) and forces `movzx ax,al` for the final `b>>3` where ebx-pix
 uses a free `xor dx,dx; mov dl,al`.
 
-EVERY local lever is inert -- proven, not assumed:
+EVERY local lever is inert: proven, not assumed:
 
 * declaration order (six orders swept in-TU: start/rgba/pix/k in all the
-  obvious permutations, rgba split into four decls) -- all 43;
+  obvious permutations, rgba split into four decls): all 43;
 * `pix` width (`unsigned int` is WORSE, 108) ;
-* OR operand order (`r | (pix<<5)` etc., first/last/all three) -- VC5
+* OR operand order (`r | (pix<<5)` etc., first/last/all three): VC5
   canonicalises commutative OR, all 43.
 
 Only moving the whole function later in the TU moved it, and only the very
@@ -7051,7 +7050,7 @@ before concluding it is a wall.
 0x10035AC0 (BrNetSessionStore) copies a 16-byte GUID into a table slot at a
 register-held base plus a link-time constant: `base = idx*0xE0`, dest =
 `0x10AC3148 + base`.  Writing it as four scalar dword stores through a computed
-pointer --
+pointer:
 
     int *p = (int *)(DAT_10AC3148 + base);
     p[0] = ...; p[1] = ...; p[2] = ...; p[3] = ...;
@@ -7072,21 +7071,21 @@ through it with small displacements; a sequence of scalar `p[i]=` stores lets
 it re-fold the base address into each store.  So when the original shows
 `lea R,[base+off]` followed by stores at `[R]`, `[R+4]`, ... with small
 displacements, the source copied a STRUCT, not four ints.  (The size is small
-enough -- 4 dwords -- that VC5 unrolls to `mov`s rather than `rep movsd`.)
+enough, 4 dwords, that VC5 unrolls to `mov`s rather than `rep movsd`.)
 
 Two more facts from the same function, both cheap to miss:
  * `repe cmpsb` with `xor edx,edx` immediately before it is inline
    `memcmp(a, b, n) == 0`: the `xor` zeroes the (dead) result register the
    non-equal path would have signed, and the `jne`/`je` reads the flags
    directly.  A chain of these picks an index by GUID.  Not in the corpus as
-   of 2026-09-07 -- recorded here so the next one is a lookup.
+   of 2026-09-07: recorded here so the next one is a lookup.
  * `ret 0x18` on a `__stdcall` cleans 24 bytes = SIX dword args; Ghidra saw
-   only four.  The stack-clean immediate is the arg count -- always read it
+   only four.  The stack-clean immediate is the arg count: always read it
    before trusting the decompiler's signature.
 
 ---
 
-## Ghidra EXPANDS the divide-by-255 magic into C -- collapse it back to `/ 0xff`
+## Ghidra EXPANDS the divide-by-255 magic into C: collapse it back to `/ 0xff`
 
 The divide-by-255 magic (`imul 0x80808081`, `>>0x3f`, `>>0x1f`) is well known as
 CODEGEN.  What bites on intake is that Ghidra renders it back into SOURCE:
@@ -7095,7 +7094,7 @@ CODEGEN.  What bites on intake is that Ghidra renders it back into SOURCE:
               - (char)((longlong)iVar5 * 0x80808081 >> 0x3f);
 
 Compiling that literally makes VC5 emit its OWN div-255 magic FOR the `/0xff`
-sub-term AND the explicit 64-bit `imul` + shifts -- roughly double the code.
+sub-term AND the explicit 64-bit `imul` + shifts: roughly double the code.
 On 0x1005A500 it was the entire +167 B / +54-insn gap.  The original source is
 just the signed divide:
 
@@ -7103,12 +7102,12 @@ just the signed divide:
 
 That one edit took 0x1005A500 from +167 B to +23 B.  Whenever a draft shows the
 `(x/0xff) + (x>>0x1f) - ((__int64)x*0x80808081>>0x3f)` shape, it is one signed
-`/ 255` -- collapse it before doing anything else.  (MSVC5 has no `long long`;
+`/ 255`: collapse it before doing anything else.  (MSVC5 has no `long long`;
 use `__int64` in any probe that keeps a 64-bit temp.)
 
 STATE 0x1005A500 (livery recolour, 297 B, 8 args, `ret 0x20`): after the
 collapse it is a REGISTER-ALLOCATION near-match at +23 B (multiset 10 missing /
-15 extra), scattered class -- orig hoists the `*4` row stride as a loop
+15 extra), scattered class: orig hoists the `*4` row stride as a loop
 invariant (`lea edi,[esi*4]` stored once) and forms the pixel address with a
 scaled-index `lea [ecx+edx*4]`, while our C recomputes `shl esi,2; add; sub`
 and spills one extra local (`sub esp,0xc` vs orig `sub esp,8`, 2 callee-saved
@@ -7118,7 +7117,7 @@ the end-grind rather than ground here.
 
 ---
 
-## 0x1006AEB0 is another byte-push-wall net-writer -- C++ lane, not C
+## 0x1006AEB0 is another byte-push-wall net-writer: C++ lane, not C
 
 0x1006AEB0 (a net message serialiser: writes a 6-byte header, a U32, an
 optional 0x18-byte null-padded name, and an optional U24) is a sibling of
@@ -7129,10 +7128,10 @@ things:
 
  * **The name-byte write homes.**  The original loads one byte and pushes it
    with the upper three bytes dirty (`mov al,[edi+ebx]; push eax`), which MSVC
-   emits only when the thiscall callee's parameter is a BYTE type -- and C
+   emits only when the thiscall callee's parameter is a BYTE type, and C
    cannot spell a pushed byte thiscall arg (a `__fastcall` byte goes in dl, a
    struct/union byte homes: `mov dl,[..]; mov [slot],dl; mov eax,[slot]; push
-   eax`).  The SIX raw param writes are fine -- they pass full dwords through
+   eax`).  The SIX raw param writes are fine: they pass full dwords through
    the `BrU8Arg` union's `.u` and push cleanly (`mov eax,[param]; push eax`);
    only the byte LOAD through `.b` homes.  So the union wrapper is correct for
    int-valued writes and walled only for byte-valued ones.
@@ -7152,7 +7151,7 @@ transcription file for whoever takes it there.
 When both arms of an if/else begin with the SAME store (`*(int*)(p+0x10) = 400`
 in each), VC5 hoists it ABOVE the branch and emits it ONCE.  If the original
 kept it INSIDE each arm (two stores), reorder so the common store is NOT the
-first statement of each arm -- put a branch-specific store ahead of it:
+first statement of each arm: put a branch-specific store ahead of it:
 
     if (hi > lo) {
         *(int*)(p+0x14) = (hi*400)/32;   /* branch-specific, first */
@@ -7172,10 +7171,10 @@ keeping as a set:
    them to `if (g1 && g2 && g3) { body } return 1;` gives ONE shared tail the
    originals reach by `je`.
  * **`goto` a single labelled `return 0`** so an early `if (p==0) return 0;`
-   SHARES the deep applies-fail epilogue instead of inlining its own -- the
+   SHARES the deep applies-fail epilogue instead of inlining its own: the
    original reaches both by `je` to the same address.
  * **Compare operand order is the source's.** `hi > lo` emits `cmp esi,ecx; jle`,
-   `lo < hi` emits `cmp ecx,esi; jge` -- VC5 does not canonicalise `cmp`.
+   `lo < hi` emits `cmp ecx,esi; jge`: VC5 does not canonicalise `cmp`.
  * **Two-way split of one dword by `& 0xffff` / `>> 16`:** the LAST-written of
    the pair lands in the initially-loaded register.  Writing `hi = x>>16;
    lo = x&0xffff;` (hi first) matched; `lo` first swapped the load register and
@@ -7183,12 +7182,12 @@ keeping as a set:
 
 Also: a callee the tree defines `void` but that leaves a value in eax (e.g. a
 DirectSound apply whose last act is the HRESULT-returning vtable call) is read
-by its caller as int.  Declare it int-returning in the CALLER -- which forces
+by its caller as int.  Declare it int-returning in the CALLER, which forces
 the caller into its own TU when the void definition is in the same module.
 
 ---
 
-## 0x10002460 -- INSTRUCTION-EXACT near-match; residue is loop induction-variable base selection
+## 0x10002460: INSTRUCTION-EXACT near-match; residue is loop induction-variable base selection
 
 A race/menu reset routine: zero a block, copy several fixed-size arrays, and
 build a per-entrant record table in a `do`/`while` walk.  Two intake fixes took
@@ -7197,7 +7196,7 @@ the Ghidra draft from +8 insns to INSTRUCTION-EXACT (65/65), -9 B:
  * **All four manual copy loops are `memset`/`memcpy`.**  The original emits
    `rep stosd` (the 0x46-dword zero) and `rep movsd` x3 (a 0xc-dword and two
    0x53-dword copies); Ghidra rendered each as a `dec`/`jne` loop.  Replace with
-   `memset(dst,0,n)` / `memcpy(dst,src,n)` -- VC5 inlines them to the string ops.
+   `memset(dst,0,n)` / `memcpy(dst,src,n)`: VC5 inlines them to the string ops.
  * **Merge the two record pointers into one induction variable.**  The draft
    kept `puVar2 = puVar1 + 0x10; ...; puVar1 = puVar2;` (two registers, a
    `mov eax,ebp` each iteration); writing the walk as `puVar1 = puVar1 + 0x10;`
@@ -7209,7 +7208,7 @@ pointers (`add eax,0x40`, `add edx,0x2b68`) MID-loop and addresses every field
 by a NEGATIVE offset from the advanced pointer (`mov [eax-0x40],r`,
 `mov r,[edx-0x2a08]` for field 0x58 after `edx += 0x2b68`), plus a scaled
 `lea [r+r*k]`.  Our C addresses the same fields positively from the pre-advance
-pointer -- register-blind-equal (7 swaps), same instructions, shorter encodings.
+pointer: register-blind-equal (7 swaps), same instructions, shorter encodings.
 Forcing VC5's negative-offset induction scheme from source is the open lever;
 the instruction-exact transcription is build/ghidra_work/0x10002460.transcribed.c
 for the end-grind.
@@ -7241,7 +7240,7 @@ Register-blind 0+0; dead list in the file header.
 Ghidra names every field of a global record (or of an array of records) as
 its own `DAT_<addr>` and emits `*(int *)((char *)&DAT_10661914 + iVar1)`.
 The original addressed them from one symbol: `&DAT_10661844 + iVar1 + 0xd0`.
-The bytes are the same `[eax + 0x10661914]` either way -- but the SCHEDULE is
+The bytes are the same `[eax + 0x10661914]` either way, but the SCHEDULE is
 not.  VC5 will not hoist a load above a store when both are addressed from
 the same base symbol (they may alias), and it hoists freely across DISTINCT
 symbols.  On 0x100283C0 (83 B) the original emits `store, store, load-arg-3`
@@ -7250,7 +7249,7 @@ a park note had called "pure scheduling, source order dead" after probing three
 statement orders.  Re-spelling every field from the lowest symbol plus a
 constant displacement was byte-exact on the FIRST compile (2026-09-07).
 
-Mechanical: `tools/crank.py` runs this as its first lever (`samebase`) --
+Mechanical: `tools/crank.py` runs this as its first lever (`samebase`):
 group `(char *)&DAT_X + idx` by index expression; two or more symbols on one
 index are re-spelled from the lowest; both `idx + disp` and `disp + idx`
 orders are tried.  Whenever a residue is a load moved across stores to
@@ -7277,8 +7276,8 @@ over 12-byte records spelled with `p = base + i*12; p[k]` compiled to the same
 `lea esi,[ebx+0x169]` induction temp as the original, but VC5 could prove the
 byte accesses disjoint and hoisted each swap pair's loads above the previous
 pair's stores, and `pVtx = *(int *)p` above the count store (82 diff bytes,
-size exact). Spelled as `*(char *)(param + 0x164 + i*12 + k)` -- an
-expression of the counter, no pointer local -- every load stays behind the
+size exact). Spelled as `*(char *)(param + 0x164 + i*12 + k)` (an
+expression of the counter, no pointer local): every load stays behind the
 stores in program order: 4 diff bytes. Same mechanism as the `samebase`
 lever above, seen from the other side: a named pointer is a distinct symbol
 the compiler can reason about; a counter expression is not.
@@ -7318,10 +7317,10 @@ when BOTH operands are NAMED locals, VC5 makes the LATER-DECLARED one the
 two-operand destination.  `(nGates = g_brRaceNGate)` inside the modulus,
 `(gate = pDrv->f4C) < 0` in the conjunction, `pDrv->f4C = gate + nGates`,
 and `gate` declared before `nGates`: byte-exact (2026-09-09, 11 compiles).
-Measured on the same pass: the count's name declared after the field's --
-adjacent, or at the end of the list -- byte-exact; declared BEFORE it, the
+Measured on the same pass: the count's name declared after the field's
+(adjacent, or at the end of the list): byte-exact; declared BEFORE it, the
 old 2 bytes; naming only the count (direct field, count first, `+=`), the
-old 2 bytes -- one named operand does not engage the rule; both assigned as
+old 2 bytes: one named operand does not engage the rule; both assigned as
 statements before the `if`, 12 diffs (the loads move).  Operand order in the
 expression is inert (canonicalised).  Screen: a lone two-operand-destination
 swap between two CSE'd values is a declaration-order question, not a wall.
@@ -7343,7 +7342,7 @@ exact, and every one of the three levers is the br_track.c
 2. **A byte-swap loop over a stepped pointer (`q[0]`, `q += 4`) reads the
    pair in the wrong order and hoists across the previous pair's stores;
    written as counter expressions (`h[0x40 + i * 4]`, `h[0x43 + i * 4]`) the
-   loads stay in program order** -- and VC5 still strength-reduces to the
+   loads stay in program order**, and VC5 still strength-reduces to the
    original's induction pointer and count-down.  10 -> 8.
 3. **The `uint8_t *h = (uint8_t *)pvHdr` local itself is a symbol.**  With
    `h` a macro over the parameter expression, four more big-endian load
@@ -7359,7 +7358,7 @@ The four sites left are the scheduler's pick between two ready loads.
   another op.** A commutative `fadd` of two equal-cost memory operands whose
   result is stored straight out keeps SOURCE order (first operand FLD'd). When
   the sum instead feeds an `fsub`/`fsubr`, VC5 orders by subtree cost and the
-  tie breaks the OTHER way -- the second operand loads first, and neither
+  tie breaks the OTHER way: the second operand loads first, and neither
   swapping operands nor reversing the relation moves it. Naming one operand in
   a temp forces it to be the FLD operand (as BrVec3Midpoint), BUT the temp must
   be declared IMMEDIATELY before its single use: a temp at the block top spills
@@ -7374,7 +7373,7 @@ The four sites left are the scheduler's pick between two ready loads.
 
 0x10011FA0 BrFrameDraw (4,500 B, src/core/drawing/br_framedrive.c),
 2026-09-09: 4503 B / 1377 insns / 4+3 register-blind -> 4501 / 1376 / 1+1
-from ONE move -- `hMir = wMir >> 2` placed FIRST in the mirror block, straight
+from ONE move: `hMir = wMir >> 2` placed FIRST in the mirror block, straight
 after the wMir switch, instead of between the camera store and the camera
 read.  Two artefacts fell together:
 
@@ -7383,7 +7382,7 @@ read.  Two artefacts fell together:
   `lea ecx,[ebx+0x27c4]` where the original has `mov ecx,[g]` /
   `add ecx,0x27c4` and re-reads `[g]` at the store).  With hMir first, the
   `mov ebx,edi` copy is issued at the statement (thirty bytes ahead of its
-  `sar` in the original -- that split is the tell) and the CSE has no
+  `sar` in the original: that split is the tell) and the CSE has no
   register, so the global is loaded fresh, as the original does.
 - the frame slots shift with it, and the outer loop counter stops being
   spilled through a top-of-loop reload behind a `jmp`: -1 instruction.
@@ -7411,7 +7410,7 @@ callee-saved register is drafted for the temp: 528 B, 4 rows). The bare
 `while (BrSaveLoad(0, 1) == 0) {}` gives the peeled shape and `test al,al`
 (RAW 1+1). Same function, second fact: among a run of zero stores through the
 zero register, ONE `mov dword ptr [A], 0` immediate is a FLOAT zero
-(`_DAT_` in Ghidra, the underscore marking the overlapped type) -- declare it
+(`_DAT_` in Ghidra, the underscore marking the overlapped type): declare it
 `float` and store `0.0f`; the integer zero register is never used for it.
 Byte-exact on the next compile (2026-09-09).
 
@@ -7420,8 +7419,8 @@ Byte-exact on the next compile (2026-09-09).
 0x1006CDA0 BrBitStreamInit (29 B): the original copies `this` to eax first
 and does every store through eax; VC5 kept `this` in ecx and zeroed through
 eax (8 differing rows, RAW 0+0).  Named nBytes, a dummy edx, typedef order
-and casts were all inert.  `return pBs;` -- the function returns `this`, as a
-C++ constructor or an `Init` returning `*this` would -- reproduces the copy
+and casts were all inert.  `return pBs;` (the function returns `this`, as a
+C++ constructor or an `Init` returning `*this` would) reproduces the copy
 and every store exactly; the residue drops to the one hoisted stack-argument
 load (4 rows).  Screen: a thiscall/fastcall body whose first instruction is
 `mov eax,ecx` with eax live to `ret` is returning its object.  Proven
@@ -7429,9 +7428,9 @@ load (4 rows).  Screen: a thiscall/fastcall body whose first instruction is
 
 ## Which of two pointer parameters takes eax in an x87 leaf is FILE POSITION
 
-0x10034310 BrVec3Dot (39 B): every spelling axis was inert -- 12 sum
+0x10034310 BrVec3Dot (39 B): every spelling axis was inert (12 sum
 associations, 8 per-product operand orders, locals for either side, casts,
-array indexing, a double accumulator, redundant left/right parens -- all one
+array indexing, a double accumulator, redundant left/right parens): all one
 canonical form (37/39 B, RAW 2+3) in the function's original slot after
 BrVec3Cross.  Moving the SAME text through the TU: byte-exact after
 BrVec3AddTo, BrVec3DivBy or BrVec3Zero (3 of 23 slots), 37 B elsewhere; the
@@ -7449,7 +7448,7 @@ day, so it is a lever to sweep, not a rule.  Proven 2026-09-09.
 
 0x1000DC00 BrPolyClipTri's recycle loop has no calls.  `p->pNext = g_free;
 g_free = p;` on the plain global compiles to a preheader load, `mov [p],edx`,
-`mov edx,eax`, `mov [g_free],edx` -- VC5 keeps the global in edx across the
+`mov edx,eax`, `mov [g_free],edx`: VC5 keeps the global in edx across the
 iterations and writes it through from that register.  Ghidra renders the
 cached register as a separate local (`puVar3 = DAT; ... *p = puVar3; puVar3
 = p; DAT = p`) and spelling THAT produces `mov [g_free],eax` (the A3 short
@@ -7471,7 +7470,7 @@ facts, each one sweep:
   order" holds only when the names do not collide in it; single letters in
   frame order are the spelling that always works.
 - Switch arms lay out in source order under /Od too; read the order off the
-  jump table (here 0xB9, 0xFC, 0xFA, 0xFB, 0xB8 -- the end marker LAST).
+  jump table (here 0xB9, 0xFC, 0xFA, 0xFB, 0xB8: the end marker LAST).
 - The end-marker arm exits through a block placed AFTER the function's
   `return` that jumps back to the shared exit (`jmp X; ... ret-path; X: jmp
   done`). Under /Od that is exactly `case 0xB8: goto out;` with `out: goto
@@ -7484,7 +7483,7 @@ facts, each one sweep:
 
 ---
 
-## /Od trampolines are labels on gotos written after the last statement -- and this is the `if (1) goto` entry of 0x1002E376
+## /Od trampolines are labels on gotos written after the last statement, and this is the `if (1) goto` entry of 0x1002E376
 
 0x1002E376 BrRleEncode (579 B, /Od, src/core/drawing/br_texblit.c) is the
 "once more binary-wide" trampoline the BrAnimUpdate note in slice2_19.c lists
@@ -7499,12 +7498,12 @@ after the epilogue's `jmp` is a `label: goto X;` after the return. The whole
 function's control flow is nested if/else with the channel-header block
 inline inside `if (pos >= srcLen)` (the `jl` over it), each block end a jump
 to the enclosing block's end (`jmp E587` -> `jmp E59F`), and the scan restart
-a `goto scan;` -- no while loop anywhere. Twelve locals as letters a..l in
+a `goto scan;`: no while loop anywhere. Twelve locals as letters a..l in
 frame order landed on the first try (the same trick as 0x1002D864). The
 BrAnimUpdate `goto wrap_plain` wall (0x1003563A, d3d) should be re-probed
 with `wrap_plain_t: goto wrap_plain;` after its return.
 
-## An inline helper RETURNING the updated global costs the accumulator byte -- read the global back instead
+## An inline helper RETURNING the updated global costs the accumulator byte: read the global back instead
 
 Four option cyclers (0x1003C310/0x1003C370/0x1003C3D0/0x1003C1D0, 93-99 B)
 sat one byte long with REGNORM 0+0 for a whole session: through
@@ -7515,7 +7514,7 @@ the return constant AFTER the indexed read.  Naming the result, naming the
 element, `(void)`-calling the helper and re-reading the global, and a
 `return r` local were ALL inert (6 probes).  The corpus answered it
 (`find --at 0x45 --len 5`): four byte-exact twins spell the whole cycle ON
-THE GLOBAL, no helper, no locals -- `g = g + 1; if (g > max) g = 0;` ... then
+THE GLOBAL, no helper, no locals: `g = g + 1; if (g > max) g = 0;` ... then
 `dst = table[g]; return 1;`.  All four fell byte-exact on the next compile.
 The 211 B sibling 0x1003C6D0 keeps the helper: inlining it there is +1 B and
 7+5 raw (its residue is the documented eax/ecx pairing, separate wall).
@@ -7534,12 +7533,12 @@ arguments pending, and so does every flag mix tried (/Og /Ot /Os /Ob1 /Oy /Oa
 /Ow /Gy /GX /G5 /Gf /Ge /Gs /Zi /Gz /Gr, /O1, /Ox, pragma optimize g/t/s).
 The single cleanup is only possible when the inner call has nothing to
 clean: 0x1002A840 is `void *BrScratchRingAlloc(void)`, and all seven
-pushes are the stub's -- `BrStubTrue(BrScratchRingAlloc(), 0, 0, src, dst,
+pushes are the stub's: `BrStubTrue(BrScratchRingAlloc(), 0, 0, src, dst,
 size, &ring)`. Byte-exact on that edit. Read the CALLEE's prologue before
 believing the decompiler's argument split at a `push eax` between calls.
 Two more /Od facts from the same function: operand order inside an address
 matters (`DESC + 8 + k*0xc` computes DESC first, `DESC + k*0xc + 8` computes
-the product first -- copy Ghidra's textual order); and `(x != 1) ? 0x200 :
+the product first: copy Ghidra's textual order); and `(x != 1) ? 0x200 :
 0x20` IS the `sub 1; neg; sbb; and 0x1e0; add 0x20` sequence under /Od.
 
 ---
@@ -7549,7 +7548,7 @@ the product first -- copy Ghidra's textual order); and `(x != 1) ? 0x200 :
 0x100314D0 BrGlTrackFixupAll (398 B, /O2, src/core/startup/br_track.c),
 byte-exact in 3 probes. Three separate facts, each worth 2 bytes here:
 
-- `if (1 <= n)` emits `cmp eax,1; jl` -- the source literal survives.
+- `if (1 <= n)` emits `cmp eax,1; jl`: the source literal survives.
   `if (0 < n)` emits `test eax,eax; jge` instead, same truth table, different
   bytes. Same class as BrNetBeaconTick's `>= 27` (not `> 26`): spell the
   guard with the constant the original compares against.
@@ -7577,18 +7576,18 @@ byte-exact in 3 probes. Three separate facts, each worth 2 bytes here:
 - MISSING `mov R,[A]` rows against a cached local (`model`, `iCar`,
   `pCamBasis`) mean the local DOES NOT EXIST in the source: spell the
   global/field deref at every use.  Killing the `model` local here also
-  fixed the dot1 spill slot ([esp+8]) and an extra push/pop -- one cache
+  fixed the dot1 spill slot ([esp+8]) and an extra push/pop: one cache
   can own three row classes.
 - Orig calling a pure 2-arg helper in the GUARD and AGAIN in the VALUE
   (`if (Dot(&dir,g) < 0) ... val = -(Dot(&dir,g) * dot1)`) shows as
   MISSING `push/call/add esp,8` pairs.  There was no `dot2` temp.
 - `fstp [slot]; fdiv [slot]` where we emit `fdivp st(1)` is a DESTRUCTIVE
-  statement in one arm only: `len = len * len;` then `/ len` -- legal
+  statement in one arm only: `len = len * len;` then `/ len`: legal
   because the two glare arms are runtime-exclusive (dot<0 vs dot>0.95).
 - `mov [eax+4], imm32-reloc` against our load-then-store: the extern is
   declared `void *BrG_0AAxxx` but the original stores the SYMBOL ADDRESS;
   spell `&BrG_0AAxxx`.  The old value-read would have emitted the blob's
-  first WORD -- a latent port bug, not just a codegen miss.
+  first WORD: a latent port bug, not just a codegen miss.
 - Inside `a == G && X == (void *)(a + K)`: the original spells the second
   operand off the GLOBAL (`(uchar *)G + K`), reusing the register the first
   compare loaded and destroying it with `add R,K`.  A `lea` from the local
@@ -7622,8 +7621,8 @@ byte-exact in 3 probes. Three separate facts, each worth 2 bytes here:
   day's Pool B session.
 
 Same lane, walls PROVEN (do not respell): `add R,-X` is MSVC5's canonical
-form of every straight-line constant subtraction (keep-sub mechanisms --
-loop-carried, narrow-typed, pointer-difference -- all inert on 0x1006FD50
+form of every straight-line constant subtraction (keep-sub mechanisms
+(loop-carried, narrow-typed, pointer-difference): all inert on 0x1006FD50
 and 0x10038860); a lone commutative fmul's operand order is decided by
 VC5's canonicaliser (br_vec.c trio); `(x & 0xbf) | 0x80` folds to
 `(x & 0x3f) | 0x80` on the expression tree (0x10005330; on 0x10005400 the
@@ -7642,7 +7641,7 @@ tools/t3.py classify().
   grTexCombine calls is ordinary cross-jumping and needs no source trick.
 - **A scan loop that exits from inside must be a `for`, not a source
   do-while.** 0x100704E0 BrJoyScanAny: `for (i=0;i<0x80;i++) if (b[i]&0x80)
-  {...return i;}` gives the original's unrotated do-while -- head test
+  {...return i;}` gives the original's unrotated do-while: head test
   `test [esp+eax+0x30],cl` with 0x80 shared between mask and bound in ecx.
   The same body spelled `do {...} while (i<0x80)` gets ROTATED: first
   button load peeled into dl, backedge on the condition test (+4 B,
@@ -7662,7 +7661,7 @@ tools/t3.py classify().
 - **A loop cursor carries the original's BIAS, and the bias is visible in
   the field displacements.**  0x100302A0 BrModelSwap: the record walk is
   `pRec = pHdr + 0xa` with the slot read as `pRec[-2]`, not
-  `pRec = pHdr + 8` -- the original's `lea esi,[ebp+0xa]` and `[esi-2]`.
+  `pRec = pHdr + 8`: the original's `lea esi,[ebp+0xa]` and `[esi-2]`.
   Register-blind 8+11 -> 3+4.  Read the bias off the ORIGINAL's `add
   R,K` in the loop tail and off the sign of its displacements; +4 and
   +0xa were both measured and are both worse.
@@ -7672,7 +7671,7 @@ tools/t3.py classify().
   consecutive `fld [planeD-slot]` and its three homed products; the
   per-arm `planeD * nrm.c` spelling keeps them on the x87 stack.  Put
   them in a DEAD existing local (there `e2`, finished once `nrm` is
-  built) -- three fresh locals cost a fourth stack slot and take the
+  built): three fresh locals cost a fourth stack slot and take the
   frame from 0x78 to 0x7c.
 - **Naming a compare's operand only works on the side the original
   actually loads.** 0x100183B0 BrFadeDrawBars: `v = pos2; if (v != 0)`
@@ -7682,7 +7681,7 @@ tools/t3.py classify().
 
 Same lane, walls PROVEN (do not respell): the dup-vs-reload fork on a
 shared x87 multiplicand (`fld st; fmul M` against `fld M; fmul st(N)`,
-0x10067710's `dp = d * pP->n` against the dot product above it -- seven
+0x10067710's `dp = d * pP->n` against the dot product above it: seven
 spellings including re-navigating the node and the global move it or make
 it worse; now a pairing class in tools/t3.py classify()); the mode-4 cold
 arm that the original lays out AFTER the epilogue (goto-to-a-trailing-
@@ -7702,7 +7701,7 @@ label reaches neither the layout nor a better row count).
   gives the original's `fld [esp+S]; fsub [car+0x1dc]`; the BR_CAR_F32
   base-offset macro reverses every one (`fld [car]; fsubr [esp+S]`).  A
   cached `const BrVec3 *pPos` local gets the hand right but CSEs the base
-  and drops 6 instructions -- the original re-derives per component.
+  and drops 6 instructions: the original re-derives per component.
   BYTE-EXACT; this retires that function's "not source-selectable" note.
 - **A struct copy builds an address; field-wise copy does not.**
   0x100643E0 BrRbVelAtBodyPoint: `p = pAt->f78` emits `add R,0x78` and
@@ -7716,7 +7715,7 @@ label reaches neither the layout nor a better row count).
   Same function: with `const char c = *psz;` at the top of the loop body
   the percent test becomes `cmp cl,al` (register against register, not
   against 0x25) and the glyph index `movsx eax,al` instead of a re-read
-  of [esi] -- three rows at once.  The old note that caching
+  of [esi]: three rows at once.  The old note that caching
   strength-reduces psz[1]/psz[2] into walking pointers only applies when
   the neighbours are named too.
 - **Bump the pixel cursor FIRST and index back.**  0x1005A300
@@ -7732,16 +7731,16 @@ label reaches neither the layout nor a better row count).
 Same lane, PROVEN INERT (do not respell): the head fork of 0x10039D20
 BrMenuCap07E0 (the original loads and tests the selector byte before the
 movsx; duplicating the *3 into both arms costs +2 insns, a condition temp
-and a one-expression *3 are byte-identical -- 8 probes); the loop-tail
+and a one-expression *3 are byte-identical: 8 probes); the loop-tail
 schedule of 0x10058540 BrSprFontRectInit (identical instructions, `inc`
-and `cmp` interleaved differently between the four stores -- volatile
+and `cmp` interleaved differently between the four stores: volatile
 removal, increment position, temps for the right/bottom values and an
 `i++` folded into the while condition are all inert); the per-arm global
 load of 0x1003C950 BrOptCycleAA2A0C (VC5 hoists it above the first branch
 from every spelling, including re-reading after the store and an
 `else if` chain).
 
-2026-09-10 T3 lane, second half -- the LAYOUT and LOAD-ONCE classes:
+2026-09-10 T3 lane, second half: the LAYOUT and LOAD-ONCE classes:
 
 - **A cold arm goes OUT OF LINE, past the epilogue, only when it sets the
   join's value ITSELF and jumps PAST the join's assignment of it.**
@@ -7787,7 +7786,7 @@ from every spelling, including re-reading after the store and an
 - **A float compare against a computed bound wants the bound NAMED.**
   0x1005D770: `if (v < a - -1.0f)` is canonicalised to `fld <bound>; fcomp v`
   with the C0|C3 polarity; assigning the bound to a (dead) local first gives
-  the original's `fld <bound>; fld v; fcompp` plus `test ah,1` -- five rows.
+  the original's `fld <bound>; fld v; fcompp` plus `test ah,1`: five rows.
   Operand-hand swaps, the `!(v >= ...)` form and both `1.0f +` orders are
   inert, so the lever is the SLOT, not the spelling.
 - **A float ceiling test puts the CONSTANT first.**  0x1005D770's
@@ -7796,7 +7795,7 @@ from every spelling, including re-reading after the store and an
   [esp+S], 0x3ecccccd`); `if (0.4f < k)` leaves the constant in st and pairs
   the ceiling's `fld`/`fstp` (rows 28 -> 26, size unchanged).  A dedicated
   local for k, reusing five other floats, the `!(k <= 0.4f)` form, both
-  product hands and three spellings of the scale are all inert -- VC5 homes
+  product hands and three spellings of the scale are all inert: VC5 homes
   any named float here, so only the compare's operand order moves.
 
 Same lane, walls PROVEN (do not respell): the folded byte OR (0x100311C0's
@@ -7804,12 +7803,12 @@ Same lane, walls PROVEN (do not respell): the folded byte OR (0x100311C0's
 -- fourteen spellings, pointer- and index-typed, RMW written out, direct
 memory, dword width, statement order); the base+index CSE at 0x100302A0's
 leaf cursor; and the thiscall struct-wrapper's constant argument
-(0x10037FA0, `mov R,N`/`push R` where a real thiscall pushes an imm8 --
+(0x10037FA0, `mov R,N`/`push R` where a real thiscall pushes an imm8:
 route to the C++ lane, do not probe C).
 
 - **A loop-invariant deadline written IN the loop lands the add in the
   PREHEADER.**  0x10004E00 (byte-exact): the original's `add esi,0x7d0`
-  sits between the inner while's rotated entry test and the loop head --
+  sits between the inner while's rotated entry test and the loop head:
   that placement is LICM, so the source spells the bound `t0 + 2000` inside
   the loop's own condition, never as a `t0 += 2000;` statement before it
   (that spelling puts the add ABOVE the entry test and turns the direct
@@ -7822,7 +7821,7 @@ route to the C++ lane, do not probe C).
   own epilogue.  An `if (...) return` + `for(;;)` spelling inlines the
   return under an inverted branch instead.  A mid-loop `if (g != -1)
   break;` before an inner wait-loop is NOT a separate statement: it is the
-  inner while's rotated entry test, jump-threaded to the epilogue --
+  inner while's rotated entry test, jump-threaded to the epilogue:
   writing it explicitly duplicates the guard (+5 insns, one extra call).
 - **A dead float store into an untouched three-slot frame block is a
   `volatile BrVec3` written through an assignment-EXPRESSION.**
@@ -7832,7 +7831,7 @@ route to the C++ lane, do not probe C).
   temp is deleted, and a volatile write without using the assignment's
   value would re-read the slot the original never reads.
 
-## A byte pushed to a thiscall with its upper bytes dirty is a BYTE-typed method parameter -- C++ TU, class method declared-not-defined (the net-writer family)
+## A byte pushed to a thiscall with its upper bytes dirty is a BYTE-typed method parameter: C++ TU, class method declared-not-defined (the net-writer family)
 
 `mov al,[esp+N]; or al,0x20; push eax` / `mov cl,[g]; push ecx` /
 `mov al,[edi+ebx]; push eax` before `mov ecx,<this>; call <writer>` is a
@@ -7840,7 +7839,7 @@ thiscall callee whose parameter is `unsigned char`.  No C wrapper spells it
 (a __fastcall byte rides dl; a 1-byte struct, a union `.b` and a padded
 struct all home the partial write and reload).  As a C++ TU it is one
 declaration: `class BrBitStream { void WriteU8(unsigned char v); ... };`
-and `pBs->WriteU8(expr)` -- 0x1006B080, 0x1006AFA0, 0x1006AFF0 byte-exact
+and `pBs->WriteU8(expr)`: 0x1006B080, 0x1006AFA0, 0x1006AFF0 byte-exact
 on the FIRST compile (2026-09-12), 0x1006AEB0 with the two levers below.
 A narrow parameter forwarded to a narrow parameter loads the WHOLE slot
 (`mov eax,[esp+0x18]; push eax`); a 16-bit global to a `unsigned short`
@@ -7867,7 +7866,7 @@ every `y = (int)f - 12` / `+ -12` / `-= 12` spelling gives `sub ebx,0xc` AND
 swaps y/n between ebp and ebx with their spill slots: the source keeps `y`
 as the bare `(int)f` and writes `y - 12` in all three vcall arguments.  VC5
 CSEs the expression into a temp, emits the temp as an add of the negative
-immediate into y's dying register, and creates the temp's web AFTER n's --
+immediate into y's dying register, and creates the temp's web AFTER n's,
 which is what gives n ebx / the lower slot and the CSE temp ebp.  Took
 BrUiHook85_1003E7A0 (0x10037DC0.cpp) from 16 diffs to byte-exact in one
 probe.  Companion of the `x + i * K` strength-reduction colouring lever on
@@ -7884,7 +7883,7 @@ pointers to both, unions, arrays, struct-member locals, inline helpers,
 double promotion, volatile, `(y + 0.0f)`, 24 declaration orders, includes).
 The original's `fld [esp+0x10]; fadd [esi+0x33c]` at four sites is the
 OPTION `/Gi`: same source, `/O2 /Gi /GX /MD`, 0 diffs.  /Gi also flips the
-int case -- 0x10004AD0 (`or cl,al` vs `or dl,cl`) is exact ONLY without it --
+int case: 0x10004AD0 (`or cl,al` vs `or dl,cl`) is exact ONLY without it,
 so it is per translation unit in the original project, not global.
 `cpp_score.DEFAULT_OPTS` now carries `/O2 /Gi /GX /MD` as a fourth shape
 and `report_cpp.csv` records `O2 Gi`.  Before grinding a lone commutative
@@ -7899,19 +7898,19 @@ Written after `parent->w12 = 0`, the float zero is emitted as `mov [slot],
 ebx` (ebx already pinned to 0) and the variable is homed in the DEAD
 PARAMETER slot, with the operator-new temp in the `push ecx` local.  Written
 as the very first statement it is an immediate `mov [esp+0x14], 0` into the
-real local and the new-temp takes the parameter slot -- the original's
+real local and the new-temp takes the parameter slot: the original's
 layout, 1952 -> 36 diffs in one move.  Slot assignment follows first-def
 order in the IR, and a zero that precedes the pinning is not register-fed.
 
 ## A cached vtable pointer across a vcall is a NAMED LOCAL + pointer-to-member, and the slot read goes ABOVE the walker init
-*(2026-09-12, 0x10046E70 BrExt_1004DFC0, 2114 B, byte-exact 4/4 -- parked 12 days as a "-1 constant-register fork")*
+*(2026-09-12, 0x10046E70 BrExt_1004DFC0, 2114 B, byte-exact 4/4: parked 12 days as a "-1 constant-register fork")*
 
 The original keeps the selector's vptr in edi across the configure vcall
 and reads the add-item slot from it right after the call, BEFORE the
 `pfn04` store and the name-walker's `mov edi, names`.  A plain virtual
 call CSEs the vptr too, but VC5 hoists the loop-invariant slot read below
 the walker init, so the vptr temp overlaps the walker, cannot share edi,
-goes to edx and spills -- and every later `new` inherits the rotation
+goes to edx and spills, and every later `new` inherits the rotation
 (1177 diffs).  The -1 in edi was a symptom: dropping that argument to 0 as
 a diagnostic changed nothing.  The shape:
 
@@ -7937,7 +7936,7 @@ the fld because the copy `mov ebx,eax` is placed at xi's FIRST USE, so the
 fy statement is IR-first and takes the slot; the lea then waits one cycle
 after the copy (address-generation interlock) and the add/f5C overtake it.
 Any statement that uses xi before the fy update either carries a store
-(issued before the fsub too -- the "R shape", 32) or is folded (temps,
+(issued before the fsub too: the "R shape", 32) or is folded (temps,
 chains, CSE spellings, an inline helper in nine shapes).  The only shape
 that put the reload and copy ahead of the fsub was a helper with the step
 passed BY VALUE, which pays an extra `fld [step]`.  726 probes on
@@ -7952,7 +7951,7 @@ form pairs with the literal).
 Three parked cyclers in slice2_25.c went byte-exact in one session from the
 same three spellings, and two of them had hand dead-lists that only tried
 the spellings one at a time:
-- **`g = g + 1; if (g > MAX) g = 0;` on the global, no `v` temp** -- the
+- **`g = g + 1; if (g > MAX) g = 0;` on the global, no `v` temp**: the
   down arm's `mov eax,[g]; dec eax; mov [g],eax; jns` needs it (a `v`
   temp gives `lea eax,[ecx-1]; test eax,eax`), and on the skip-one cycler
   it is what stops VC5 hoisting the global's load above the first branch
@@ -7964,7 +7963,7 @@ the spellings one at a time:
   `test`); VC5 cross-jumps the two calls into one that the no-input path
   jumps past.
 - **The table index re-reads the global** (`tbl[g]`, not `tbl[v]`) and the
-  gate global is tested inline -- with the two spellings above that gives
+  gate global is tested inline: with the two spellings above that gives
   the original's eax pairing; alone ("gate inline, no local") it measured
   worse, which is why the dossier had it dead.
 `sprintf` goes through the /MD import (`call dword ptr [sprintf]`), as the
@@ -7991,7 +7990,7 @@ others (measured 16, 38 and 28 name sets on three functions in one session).
 Declaration order is inert; scope is not (a local moved into a block moves
 its slot).  Practical recipe: decode the slots from the init stores (`mov
 [ebp-X],...`), then brute-force 8-16 short name sets per batch with a direct
-`/Od` (or `/Od /Op`) compile -- four- and five-local functions land in one or
+`/Od` (or `/Od /Op`) compile: four- and five-local functions land in one or
 two batches (BrFrameEnd: rec/len/q1/q2; BrFrameFogEmit: f/i/z/q1/q2).  The
 rule is not a simple hash of the name: sum, first/last char, length and the
 usual polynomial hashes over 2..127 buckets with either tie-break all fail the
@@ -8001,7 +8000,7 @@ Other /Od facts from the same intake: `unsigned __int64` arithmetic is the
 `__allmul`/`__aulldiv` calls plus add/adc; u64 -> float is C2520, so widen a
 u32 by parts through a LARGE_INTEGER-style union (immediate-zero high dword)
 and convert the signed quad; `x * 5 / 8` is `imul; cdq; and edx,7; add; sar 3`
-(a division -- `>> 3` is a bare `sar`); the converted byte is the LEFT
+(a division: `>> 3` is a bare `sar`); the converted byte is the LEFT
 operand of a blend so its `fild`/`fstp` temp is evaluated before `fld K;
 fsub f`; a `for` loop with `i = i + 1` is the /Od loop shape.
 
@@ -8012,7 +8011,7 @@ Two option globals cleared on the fail path. As `DAT = 0` (int) the two
 stores plus the return's byte load form a zero web (`xor ecx,ecx; mov
 [g],ecx; mov [g],ecx; mov cl,[arg]`) and the FILE handle's colouring flips
 ebx/ebp. As `*(float *)&DAT = 0.0f` each is `mov [g], 0` and the return
-reads `mov al,[arg]; test al,al; setne al` -- the original. The sister of
+reads `mov al,[arg]; test al,al; setne al`: the original. The sister of
 the `fy = 0.0f`-first entry above: an int zero is a register candidate, a
 float zero is not.
 
@@ -8026,7 +8025,7 @@ tail and, where the fall-through's next instruction is also `push ebx`
 and jumps one byte INTO the tail (`push ebx; jne fclose_call`). The
 corpus shows the same shape in two byte-exact functions (BrHudDrawViewMessage
 +0x8, BrPfxTick +0x6). It fired at the strncmp site and not at the
-`len != 0` site (short-circuit `||`, split ifs, `else if` all inert) --
+`len != 0` site (short-circuit `||`, split ifs, `else if` all inert):
 the residue the function is certified on.
 
 ## Re-read a struct field at each use when the original reloads it
@@ -8063,7 +8062,7 @@ source fact is that the ORIGINAL IS NOT A MEMSET. A plain indexed loop
 is turned into the identical `rep stosd` (constant) or the shr-2 / and-3
 `rep stosd` + `rep stosb` pair (variable), but the loop path materialises
 the destination before the fill value. Same expansion, opposite setup
-order — so when a fill's three setup instructions are permuted and the
+order, so when a fill's three setup instructions are permuted and the
 call site is inert, spell it as a loop. (The 2026-09-05 note "rep-stosd
 needs an INDEXED for" was the same lever seen from the other side.)
 
@@ -8084,23 +8083,23 @@ pointers it cannot prove `d` and `s` disjoint, so every store is a
 barrier and the pairs stay in statement order. A 12-byte struct
 assignment or memcpy changes the copy shape entirely.
 
-## /Gi resolves the SIB base/index wall — re-sweep every parked C++ row when a shape is added
+## /Gi resolves the SIB base/index wall: re-sweep every parked C++ row when a shape is added
 *(2026-09-13: 0x100540D0, 0x100541B0, 0x10054280, 0x10054730 byte-exact with NO source change)*
 
-The "SIB base/index order on `member_array[index]` — NOT source-reachable"
+The "SIB base/index order on `member_array[index]`, NOT source-reachable"
 entry above is correct about the source: nothing spells it. It is a
 per-TU option. Under `/O2 /Gi /GX /MD` (the fourth C++ sweep shape,
 added 2026-09-12) the emitter picks base=`this`, index=counter, and the
 four rows that were parked on that byte diff clean; 0x10054730's second
 "allocator" site (else-arm load placement and `add` operand order) flips
 with it too. The rows had simply not been re-swept since the shape was
-added — `report_cpp.csv` keeps the old verdict until the file is swept
+added: `report_cpp.csv` keeps the old verdict until the file is swept
 again. When a sweep shape is added, re-sweep every non-matching C++ row
 before probing any of them; a stale report row looks exactly like a wall.
 (A 23-probe /O2 ledger run on the two font walks moved nothing and was
 retired the same hour.)
 
-## C++ EH constructors and `new` sites land on the first pass (proven 2026-09-13: 0x10004FD0, 0x100051C0, 0x10040B10, 0x10054610, 0x10041B60 -- five byte-exact, none past three probes)
+## C++ EH constructors and `new` sites land on the first pass (proven 2026-09-13: 0x10004FD0, 0x100051C0, 0x10040B10, 0x10054610, 0x10041B60: five byte-exact, none past three probes)
 *(cpp lane, `tools/cpp_score.py`; every one of these was a T1 draft or a C row the C lane could never reach)*
 
 - **A thiscall constructor's stores before the vector-constructor call are
@@ -8116,11 +8115,11 @@ retired the same hour.)
   a 50-byte fill is `rep stosd` + `stosw`.  Contrast the permuted `lea edi`
   -first setup, which is a for loop (entry above).
 - **`new T` is `push sizeof; call operator new; spill; test; state N; call
-  ctor / xor eax,eax; test; state -1`** -- one unwind state per new-expression,
+  ctor / xor eax,eax; test; state -1`**: one unwind state per new-expression,
   numbered in source order (0x10041B60 has states 0 and 1 for its two lists).
   `if (p == 0) return 0;` after the store re-uses eax, no fresh zero.
 - **History-slot advance `mov r,[idx]; inc r; mov r2,r; mov [idx],r; cmp r2,8`
-  is `if (++pSlot->idx >= 8) pSlot->idx = 0;`** -- a named `n = idx + 1`
+  is `if (++pSlot->idx >= 8) pSlot->idx = 0;`**: a named `n = idx + 1`
   costs a copy and 189 diffs.
 - **A result tested against -1 where the -1 is also the EH-state store
   (`or ecx,-1; cmp eax,ecx; mov [state],ecx`) is `if (r == -1) return 0;
@@ -8157,7 +8156,7 @@ br_dl_clip_reset; loop counters in BrCarInitTables).  Measured dead on
 by a later call, zero locals re-assigned on one arm of an if (VC5 propagates
 through the merge), inline helpers, arrays, structs.  So: a straight-line
 function whose original spends a fresh `xor r,r` beside a live zero register
-is a wall, not a spelling -- stop after the corpus query.
+is a wall, not a spelling: stop after the corpus query.
 
 ## The dirty-register byte widen (`mov dl,[m]; and edx,0xff`) appears in NO matched function (scan 2026-09-13)
 Only three originals in the whole DLL carry it (0x1006CE50, 0x1006CE80,
@@ -8172,7 +8171,7 @@ byte-exact against LIBC.LIB (tools/crtcorpus.py; the 'crt' retail flags
 this corpus).
 - **Dirty-register byte widen (`mov dl,[m]; ...; and edx,0xff`): PROVEN, 9
   functions, but every site carries an 8-bit anchor use.** All nine are
-  `mov r8,[m]; test r8,r8; je; and r32,0xff` from the MBCS walkers --
+  `mov r8,[m]; test r8,r8; je; and r32,0xff` from the MBCS walkers:
   mbsrev (MBSREV.C:54-56 `while (*string) { if (_ISLEADBYTE(*string++))`),
   ismbslead, ismbstrail, mbsnbcnt, mbsnccnt, mbstok (x2), mbstowcs, woutput;
   flags crt+o2.  The byte is loaded once, TESTED as a char (the 8-bit use
@@ -8182,26 +8181,26 @@ this corpus).
   bare `and r32,0xff` is VC5's spelling of an unfoldable (unsigned char)
   narrowing of a 32-bit value.  The game's three carriers (0x1006CE50,
   0x1006CE80, 0x10062B80) have NO test between load and widen and reuse the
-  BASE register for the load (`mov al,[eax+2]`, `mov cl,[ecx+3]`) -- a form
+  BASE register for the load (`mov al,[eax+2]`, `mov cl,[ecx+3]`): a form
   in none of the 690.  A signed-char read masked at use (`const char *p;
   ... p[2] & 0xff`) canonicalises straight back to xor+mov zero-widening
-  (fn.py crtmask on 0x1006CE80, 2026-09-13, multiset 3 xor for 3 and) --
+  (fn.py crtmask on 0x1006CE80, 2026-09-13, multiset 3 xor for 3 and):
   the mask route is dead alongside the cast route.  The wall stands, now
   with a proven mechanism boundary: VC5 emits the dirty widen only when an
   8-bit use anchors the byte first.
 - **`and eax,0xff` surviving before `mov dh,al` (0x100271F0): MISS, 0/690.**
   Not proven anywhere in the CRT either.  Parked stays parked.
-- **Fresh `xor r,r` beside a live zero register: PROVEN -- openfile
+- **Fresh `xor r,r` beside a live zero register: PROVEN: openfile
   (_OPEN.C:65-67 `int commodeset = 0; int scanset = 0;`), `xor edx,edx; xor
   ebp,ebp` back-to-back, flags crt+o2.**  Both locals are REASSIGNED inside
-  the mode-parsing while loop -- the same loop-carried mechanism the game
+  the mode-parsing while loop: the same loop-carried mechanism the game
   tree already proved (entry above).  0x10002580's zero webs sit in a
   straight-line store region with no loop to carry them; the CRT confirms
   the wall's mechanism and adds no spelling.  41 CRT functions carry close
   xor pairs; every one inspected is loop-carried or a byte-widen pair.
 - **strlen/strcpy intrinsics, `rep movsd` with a trailing `stosw`: MISS on
   the stosw tail (zero stosw tokens in 45,954 indexed instructions), but
-  `rep movsd; movsw` is PROVEN 3x** -- assert (ASSERT.C:152) and NMSG_WRITE
+  `rep movsd; movsw` is PROVEN 3x**: assert (ASSERT.C:152) and NMSG_WRITE
   (CRT0MSG.C:246, x2), both `strcpy(progname, "<program name unknown>")`:
   a strcpy of a string LITERAL inlines as `rep movsd` + movsw/movsb tail
   sized by the literal.  The CRT's own strcpy/strcat/memcpy are hand-asm
@@ -8219,7 +8218,7 @@ shape from given source; it does not prove our TU does.
 - **x87 3-term accumulate tail `fxch st(2); faddp st(1); fxch st(1)`:
   PROVEN, 6 sites (ext:0x004e5ce0 +0x6e..+0x1df, ext:0x004a9550 +0x6d).**
   Every site is a flat three-product dot/length macro expanded in ONE
-  expression -- `(p->v[0]*q->v[0] + p->v[1]*q->v[1] + p->v[2]*q->v[2])`
+  expression: `(p->v[0]*q->v[0] + p->v[1]*q->v[1] + p->v[2]*q->v[2])`
   through pointer element reads.  Confirms the flat-MAC spelling our matrix
   rows already use; adds no new lever for them.
 - **The matrix-multiply LEAD-IN interleaves (`fld/fmul` over two row
@@ -8228,26 +8227,26 @@ shape from given source; it does not prove our TU does.
   and apply family sit UNMATCHED on the same class with full known source:
   its 34Mul is 20/404 B off starting at the parameter-homing order (`mov
   ecx,[esp+8]` before `mov eax,[esp+0xc]` in the original, reversed in the
-  recompile, then `fld [ecx+8]` vs `fld [eax+0x18]` -- the B/C operand roles
+  recompile, then `fld [ecx+8]` vs `fld [eax+0x18]`: the B/C operand roles
   swapped), its ApplyP is 10/116 B off with PAIR-SWAPPED `fld` order
   (`fld [eax+0xc]; fld [eax+0x18]` vs ours `fld [eax+0x18]; fld [eax+0xc]`
   and the last load `[eax]` vs `[ecx]`), and its TApplyFV matches 106/107 B
   (the 1 byte is the `ret` form, a calling-convention artifact, with EVERY
   x87 byte identical).  Independent confirmation that the operand-role /
   load-order wall is a scheduling decision, not a source spelling: true
-  source reproduces everything but the roles.  ‼ ApplyP (116 B, full source
+  source reproduces everything but the roles.  !! ApplyP (116 B, full source
   in the ext staging, residue isolated to four fld operands) is the
-  designated micro-TU laboratory for this wall -- sweep levers THERE, not
+  designated micro-TU laboratory for this wall: sweep levers THERE, not
   on our 400-2000 B carriers.
 - **Byte widen from a STACK slot (`mov B,byte ptr [esp+S]; and R,0xff`):
-  PROVEN, 2 sites** -- ext:0x004b4ed0 +0x33 (`green = (g[i] >> 8) & 0xFF;
+  PROVEN, 2 sites**: ext:0x004b4ed0 +0x33 (`green = (g[i] >> 8) & 0xFF;
   blue = g[i] & 0xFF;` on int locals) and ext:0x00538060 +0x3e (a switch on
   a byte-typed match parameter).  Both carry the 8-bit anchor use the CRT
   corpus already proved is the widen's gate.  The GLOBAL-operand variant
   (`mov dl,[A]; and edx,0xff`, our 0x1006CE50/0x1006CE80/0x10062B80
   carriers): 0 hits in ext's 1588, matching CRT 0/690 on the anchorless
   form.  The wall stands unchanged.
-- **`and R,0xff` before `mov dh,al` (0x100271F0): MISS, 0/1588** -- now
+- **`and R,0xff` before `mov dh,al` (0x100271F0): MISS, 0/1588**: now
   unproven in the game tree, the CRT (0/690) and ext.  Parked stays parked.
 - **Fresh `xor r,r` beside a live zero: 29 back-to-back `xor R,R; xor R,R`
   sites; every one inspected is two independent `= 0` inits feeding a loop
@@ -8256,7 +8255,7 @@ shape from given source; it does not prove our TU does.
   above already prove; VC5 re-materialises every zero, never copies a live
   zero register.  No new spelling.
 
-## ‼ THE x87 OPERAND-ROLE WALL IS TU-STATE SCHEDULING, MEASURED AND PARTIALLY DIALED (2026-09-13, micro-TU lab at build/external/lab/lab.py)
+## !! THE x87 OPERAND-ROLE WALL IS TU-STATE SCHEDULING, MEASURED AND PARTIALLY DIALED (2026-09-13, micro-TU lab at build/external/lab/lab.py)
 The micro-TU sweep the frontier map called for.  Lab: compile one small .c
 with the target's flags, diff one function against original bytes
 (`lab.py <src> <fn> <va|orig.bin> [--game] [flags]`, ~3 s/probe).
@@ -8265,7 +8264,7 @@ with the target's flags, diff one function against original bytes
   function's own source.**  On the external corpus' 116 B ApplyP shape
   (10/116 off in its own TU, 6/116 in isolation): dummy `int f(int)`
   predecessors flip WHICH statements diverge, and at 8 or 12 predecessors
-  the function is BYTE-EXACT -- with fat-body and float-body pad variants
+  the function is BYTE-EXACT: with fat-body and float-body pad variants
   byte-identical, so there the state is the COUNT of definitions alone.
   Prototypes and file-scope globals advance nothing; only function
   definitions do.
@@ -8275,23 +8274,23 @@ with the target's flags, diff one function against original bytes
   TWO output states (212/216 B) whatever their count or size; a pad
   containing a LOOP samples by parity; three or more BRANCHES in one pad
   shift it saturating.  40+ pad states never reach the 206 B the real TU
-  emits -- the real predecessors (loops, big frames) reach state values
+  emits: the real predecessors (loops, big frames) reach state values
   synthetic pads cannot.  0x1006DD20 (BrMat3Mul, ROLLED loop): fully
-  ordinal-INSENSITIVE, 19-diff at every predecessor count -- the loop
+  ordinal-INSENSITIVE, 19-diff at every predecessor count: the loop
   strength-reduction anchor is a different decision and this lever does not
   touch it.
 - **Practice.**  (1) A stuck straight-line x87 row gets the ~15-compile
   micro-at-states diagnostic FIRST: if any predecessor state zeroes it, the
-  source is CORRECT and the row is a TU-composition/position problem --
+  source is CORRECT and the row is a TU-composition/position problem:
   stop respelling it (this is the mechanism behind "position in the TU is
   load-bearing" on 0x1006D530 and the committed-match-went-diff incident).
   (2) In a real TU the only reachable states come from reordering or
-  refiling REAL functions -- pads are not committable -- so the lever's
+  refiling REAL functions: pads are not committable, so the lever's
   in-tree form stays the position/filing sweep.  (3) Residue of this class
   is allocation/scheduling BY MEASUREMENT, which is what T3 Gate A asks a
   row to prove.
 
-## 2026-09-14 -- levers proven on the two T1 intakes (0x10024490, 0x10067C30)
+## 2026-09-14: levers proven on the two T1 intakes (0x10024490, 0x10067C30)
 
 - **Down-counting inner loop = `for (i = N; i > 0; i--)`, not if+do-while,
   when the counter INIT is sunk below the guard.**  The tell: the guard's
@@ -8302,7 +8301,7 @@ with the target's flags, diff one function against original bytes
   compiles the same from either spelling).
 - **A clamp pair can be split by an unrelated statement:** 0x10024490's
   inner body is `hix = ix + 1; lox = ((ix <= 0) - 1) & ix;
-  if (hix >= sw - 1) hix = sw - 1;` -- the min-clamp's compare lands AFTER
+  if (hix >= sw - 1) hix = sw - 1;`: the min-clamp's compare lands AFTER
   the mask's `and` only when the `if` is a separate later statement, and
   the `and` lands IN PLACE (index register) only when the hix lea has
   already consumed ix.  Also: `(x <= 0)` spells `test/setle`;
@@ -8318,7 +8317,7 @@ with the target's flags, diff one function against original bytes
   `mov eax,1/xor eax,eax` instead.  Proven on 0x10067C30's stuck-timer
   fork.  Arm order: the not-upright arm is the THEN of `if (!(a >= b))`.
 - **`K/x` loads the numerator first under EVERY spelling we can reach**
-  (extern read, pooled literal `1.0f / x` -- 0x1006DAD0 proves the literal
+  (extern read, pooled literal `1.0f / x`: 0x1006DAD0 proves the literal
   form byte-exact).  An original that loads x first and uses `fdivr [K]`
   is the x87 operand-role TU-state class, not a spelling; same for
   `fld [field]; fsubr [slot]` vs our `fld [slot]; fsub [field]`.
@@ -8438,7 +8437,7 @@ with the target's flags, diff one function against original bytes
 - **Struct copy vs per-component copy decides the scratch registers**: two
   `prev[k] = pos` struct copies give x->ecx, z->edx; six component stores
   give x->edx, z->ecx.  Same function.
-- **‼ The byte sweep masks relocations, so a swapped both-memory `fld
+- **!! The byte sweep masks relocations, so a swapped both-memory `fld
   [g1]; fmul [g2]` pair diffs CLEAN.**  Check every DIR32 against the
   original's absolute before calling a row byte-exact.  Declaration order
   decides the pair (the later-declared symbol takes the fld side), and it is
@@ -8485,7 +8484,7 @@ with the target's flags, diff one function against original bytes
   as a reuse of `dir` it pinned the three 12-byte locals in another order.
   A `{ BrCamV3 v; ... }` block for that last step gives the original's
   layout.  Declaration order, 30 renames, types and struct-grouping were all
-  inert -- read which slots the original REUSES before permuting anything.
+  inert: read which slots the original REUSES before permuting anything.
 - **Pooled float constants: use the original's `_DAT_1007xxxx` externs, not
   literals.**  The sweep masks relocation targets, so `len - 0.1f` and
   `len - _DAT_10077004` (which holds -0.1f) are the same bytes with opposite

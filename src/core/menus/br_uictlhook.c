@@ -376,7 +376,7 @@ int32_t BrUiHook85_1003E9E0(BrUiCtl_ *pCtl)
  * @t3-effort passes 2 zero-movement 1 2
  * residue after tools/crank.py: 134 compiles this pass, levers accepted: none;
  * every candidate and score is in build/match/crank.log.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x1003E950 d3d BrUiHook85_1003E950 */
 /* @n64 0x802649C0 located */
 int32_t BrUiHook85_1003E950(BrUiCtl_ *pCtl)
@@ -877,7 +877,7 @@ void BrUiHook85Install(BrUi73Hooks *pHooks)
      * and the eleven slots slice7_80.c / slice7_81.c / the host already own. */
 }
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* -- Ghidra-matched functions --------------------------- */
 extern int g_brAA28D8;
 
 /* WHAT IT DOES: stub that always returns 1. */

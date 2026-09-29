@@ -3,7 +3,7 @@
     .venv/bin/python n64/tools/n64tiers.py            # M1 / M2 and the four tiers
     .venv/bin/python n64/tools/n64tiers.py --list T2  # VAs in a tier
 
-Same standard as the PC lane (CLAUDE.md rule 12), measured against the ROM:
+Same standard as the PC lane, measured against the ROM:
 
     T1  not started   no code in n64/src yet.  Every function has a Ghidra
                       draft (n64/tools/n64ghidra.sh) and many have a PC twin;

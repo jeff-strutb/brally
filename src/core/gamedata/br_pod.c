@@ -211,8 +211,8 @@ void BR_THISCALL1 BrPodSetName(void *pThis, BrPodSetNameArg a)
         strcpy((char *)pThis + 0x20, a.psz);
 }
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
-/* WHAT IT DOES: identity function â returns its argument unchanged (fastcall). */
+/* -- Ghidra-matched functions --------------------------- */
+/* WHAT IT DOES: identity function: returns its argument unchanged (fastcall). */
 /* @implements 0x10008D50 glide BrPodIdentity */
 /* @n64 0x80268560 located */
 

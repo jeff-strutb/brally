@@ -5,7 +5,7 @@
  * @cpp_symbol ?M8990@Tbl8900@@QAEXIPAX@Z
  *
  * Tbl8900 family: bounds warn, fseek(fFile, items[i].f0, SEEK_SET),
- * then sub.Read(fFile, dst, items[i].f4) — thiscall on the member
+ * then sub.Read(fFile, dst, items[i].f4): thiscall on the member
  * object at +4 (0x10008E60).
  */
 #define _CRTIMP __declspec(dllimport)

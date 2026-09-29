@@ -1,4 +1,4 @@
-/* Auto-generated from disassembly — 0x00401130
+/* Auto-generated from disassembly: 0x00401130
  * SetSubstituteDir: alloc 8-byte section cursor, strcmp-scan for name. */
 /* WHAT IT DOES: point a section cursor at a named section of the loaded
  * settings file, by scanning the section names for a match. */

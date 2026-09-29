@@ -138,7 +138,7 @@ uint32_t __fastcall BrSub1005CB40(BrSub1005CB40Obj *pThis, BrSub1005CB40Arg arg)
     return scratch;
 }
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* -- Ghidra-matched functions --------------------------- */
 int operator_delete();
 typedef int (*funcptr)();
 #include <windows.h>

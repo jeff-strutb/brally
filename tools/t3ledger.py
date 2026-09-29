@@ -21,7 +21,7 @@ VERDICTS
                  random bytes and passed BrRaceStep while it called
                  BrCarSlotSetup with its arguments swapped.
 
-A function is T3 only when this ledger says EQUIVALENT (CLAUDE.md rule 12).
+A function is T3 only when this ledger says EQUIVALENT.
 
     .venv/bin/python tools/t3ledger.py                  # counts by verdict
     .venv/bin/python tools/t3ledger.py --list DIVERGENT

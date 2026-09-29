@@ -35,7 +35,7 @@ int BR_THISCALL1 BrCountedTotal(const BrCounted *pObj)
     return pObj->count;
 }
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* -- Ghidra-matched functions --------------------------- */
 /* WHAT IT DOES: return the int at offset +0x10 in a state object (fastcall). */
 /* @implements 0x1006D190 glide BrStateGetField10 */
 

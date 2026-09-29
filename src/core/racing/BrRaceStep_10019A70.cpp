@@ -14,7 +14,7 @@
  * prologue scheduler tie-break (idx reuses eax vs a fresh reg) colouring the
  * whole function, FIRSTDIV +0xD; the O2y measure variant inflates the rows
  * (frameless fn, sweep-variant artifact). Dossier: memory bracestep-wall.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x10019A70 glide BrRaceStep
  * @cpp_symbol _BrRaceStep
  *
@@ -29,8 +29,8 @@
  * NOT byte-exact (T4): residue is register colouring, cpp_score FIRSTDIV +0xD,
  * driven by one prologue scheduler tie-break (idx reuses eax vs a fresh reg)
  * that colours the whole function. Behaviour-neutral. See docs and the
- * bracestep dossier. Do not reopen the colouring before the end-grind
- * (CLAUDE.md rule 12).
+ * bracestep dossier. Do not reopen the colouring before the end-grind.
+ *
  *
  * @t4-pass 0x10019A70 1 2026-09-15 probes 14 bytes 10944 insns 2913 regions 65 rows 682 census no  (region-1 register grind: the idx-reuses-eax prologue scheduler tie-break; cache-removal lever -- re-reading g_0B3858 snapped zero->ebp; delta/count reorder; inf[1] single-read; #pragma intrinsic(memcpy) so copies inline as rep movsd; delta/count/idx declaration permutations. FIRSTDIV held +0xD -- colouring wall.)
  * @t4-pass 0x10019A70 2 2026-09-15 probes 11 bytes 10944 insns 2913 regions 65 rows 682 census yes  (write-slot census + 4-variant sweep confirm the residue is register allocation/scheduling, not missing/wrong code -- the A5 oracle proves same-in/same-out incl. the g_226A44 branch fix; numbers unmoved.) */

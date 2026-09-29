@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # perm.sh -- crank the deterministic C permuter over the near-miss frontier in
-# parallel, and bank every byte-exact result. No LLM, no API tokens: it mutates
+# parallel, and bank every byte-exact result. It mutates
 # semantically-equivalent C, compiles under MSVC 5.0 (Wine), and keeps only what
 # byte-matches the original. This is the free lever for register/coloring walls.
 #
@@ -11,8 +11,8 @@
 # Flags pass through to tools/perm_fleet.py (--workers, --secs, --iters,
 # --max-fns, --min-diffs, --max-diffs, --min-size, --max-size, --forever,
 # --retry). A ledger at build/match/perm_attempted.csv remembers what it tried.
-# Runs happily alongside ./ai.sh and the Grok closer loops -- they skip each
-# other's in-flight files. Ctrl-C any time; committed matches persist.
+# It skips files another loop has in flight. Ctrl-C any time; committed
+# matches persist.
 set -euo pipefail
 cd "$(dirname "$0")"
 

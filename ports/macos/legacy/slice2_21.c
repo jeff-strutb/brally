@@ -489,5 +489,5 @@ void BrPfxTick(BrPfxPool *pPool, const BrPfxEnv *pEnv,
     }
 }
 
-/* ── Ghidra-matched functions ─────────────────────────── */
+/* -- Ghidra-matched functions --------------------------- */
 

@@ -186,4 +186,4 @@ void BrDPlayAdvanceAvail(const void *pCaps, int32_t *pIdx)
     }
 }
 
-/* ── Ghidra-matched functions ─────────────────────────── */
+/* -- Ghidra-matched functions --------------------------- */

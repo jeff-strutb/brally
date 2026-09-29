@@ -14,7 +14,7 @@
  *
  * See slice3_31.h for what this module is and how it relates to slice2_25 /
  * slice2_26. Everything below is a straight transcription of the annotated
- * disassembly in work/slice3/agent31.asm.
+ * disassembly in work/slice3/packet31.asm.
  *
  * DEVIATIONS, all of them, gathered here and repeated at the line they apply
  * to:
@@ -1050,7 +1050,7 @@ void BrPhaseMode_100475C0(void)
     BR31_AA2854 = 2;
 }
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* -- Ghidra-matched functions --------------------------- */
 int FUN_10040040();
 extern int g_AA29F4;
 extern int DAT_10ac5c4c;

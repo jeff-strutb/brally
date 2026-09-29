@@ -6,8 +6,7 @@ Glide, COM, and DInput with other conventions; the wrong one emits a
 spurious `add esp,N`, promotes float args to double, or drops ecx=this.
 
 This is a STANDALONE refine transform. It does not write ghidra_work,
-does not edit ghidra_to_match.py, and does not commit. Decision logic
-is in docs/archive/gen-callconv-notes.md — fold that into _refine_candidates.
+does not edit ghidra_to_match.py, and does not commit.
 
     python3 tools/gen_callconv.py --va 0x1006C6A0
     python3 tools/gen_callconv.py --va 0x1006C6A0 --from-decomp
@@ -85,7 +84,7 @@ C_KEYWORDS = frozenset([
     'struct', 'typedef', 'static', 'const', 'volatile', 'goto', 'break',
     'continue', 'else', 'true', 'false',
 ])
-# Already stdcall via windows.h / mmsystem.h — do not redeclare.
+# Already stdcall via windows.h / mmsystem.h: do not redeclare.
 WIN32_API = frozenset([
     'CloseHandle', 'CreateEventA', 'CreateThread', 'WaitForMultipleObjects',
     'WaitForSingleObject', 'ReleaseMutex', 'ExitThread', 'Sleep',
@@ -198,7 +197,7 @@ def _cname(c):
 def _following_add_esp(insns, idx, window=6):
     """add-esp imm if cleanup appears before the next call/push/ret.
 
-    CRT `sprintf` is `FF 15; mov ecx, X; add esp, 8` — the add is delayed
+    CRT `sprintf` is `FF 15; mov ecx, X; add esp, 8`: the add is delayed
     one flag-setting/mov, not absent. Stop at push/call/ret so a later
     cdecl's cleanup is not attributed to this site.
     """
@@ -213,7 +212,7 @@ def _following_add_esp(insns, idx, window=6):
         if _is_add_esp(ins):
             n = _add_esp_imm(ins)
             # Frame teardown is `add esp, 0x110` / `0x8000`, not cdecl
-            # cleanup. Real arg pops are ≤ 16 dwords (0x40).
+            # cleanup. Real arg pops are <= 16 dwords (0x40).
             if n is not None and n <= 0x40 and n % 4 == 0:
                 return n
             return None
@@ -296,7 +295,7 @@ def analyze_orig(va, pe=None, gmap=None):
         # and even after an earlier basic-block's calls (0x10002F70
         # shrink-wrap `push esi` following a `ret` in the other arm).
         # Exception: if the register currently holds a tracked immediate
-        # (`xor esi,esi` then `push esi`), it is an argument — 0x10023B70
+        # (`xor esi,esi` then `push esi`), it is an argument: 0x10023B70
         # pushes a zeroed esi as grAlphaCombine's last stack arg before
         # any `push imm`.
         if (not seen_arg_push and ins.mnemonic == 'push'
@@ -349,7 +348,7 @@ def analyze_orig(va, pe=None, gmap=None):
 
 def classify_call(ins, insns, idx, pending, nxt, pe, text, text_va, gmap=None,
                   arg_stack=None):
-    """Byte pattern → {kind, conv, arity, name, disp, c_args, notes}."""
+    """Byte pattern -> {kind, conv, arity, name, disp, c_args, notes}."""
     gmap = gmap or {}
     arg_stack = arg_stack or []
     raw = bytes(ins.bytes)
@@ -377,7 +376,7 @@ def classify_call(ins, insns, idx, pending, nxt, pe, text, text_va, gmap=None,
         'notes': [],
     }
 
-    # FF 15 disp32  — call [imm32]  (IAT or function-pointer global)
+    # FF 15 disp32  - call [imm32]  (IAT or function-pointer global)
     if len(raw) >= 6 and raw[0] == 0xFF and raw[1] == 0x15:
         target = int.from_bytes(raw[2:6], 'little')
         imp = pe.imports.get(target)
@@ -391,7 +390,7 @@ def classify_call(ins, insns, idx, pending, nxt, pe, text, text_va, gmap=None,
             if after_is_cdecl:
                 info['conv'] = 'cdecl'
                 info['arity'] = cdecl_n
-                info['notes'].append('import followed by add esp — cdecl CRT')
+                info['notes'].append('import followed by add esp: cdecl CRT')
             else:
                 info['conv'] = 'stdcall'
                 if arity_dec is not None:
@@ -451,14 +450,14 @@ def classify_call(ins, insns, idx, pending, nxt, pe, text, text_va, gmap=None,
                 # Callee ends `ret` (c3): it popped nothing. Those
                 # pending pushes are NOT this call's stdcall args
                 # (stdcall N>0 is `ret 4N`). 0-arg cdecl and 0-arg
-                # stdcall are identical at the caller — leave cdecl.
+                # stdcall are identical at the caller: leave cdecl.
                 if _ecx_loaded_recently(insns, idx):
                     info['conv'] = 'thiscall'
                     info['thiscall'] = True
                     info['arity'] = 0
                     info['c_args'] = []
                     info['notes'].append(
-                        'E8 + mov ecx + callee ret → thiscall 0-stack; '
+                        'E8 + mov ecx + callee ret -> thiscall 0-stack; '
                         'pending pushes belong to a later call')
                 else:
                     info['conv'] = 'cdecl'
@@ -468,7 +467,7 @@ def classify_call(ins, insns, idx, pending, nxt, pe, text, text_va, gmap=None,
                             'E8 callee-ret, no add-esp: 0-arg cdecl '
                             '(pending=%d kept for later call)' % pending)
 
-    # call [reg+disp] / call [reg]  — vtable (FF /2, not FF 15 / not call r32)
+    # call [reg+disp] / call [reg]  - vtable (FF /2, not FF 15 / not call r32)
     elif (raw and raw[0] == 0xFF and len(raw) >= 2
           and (raw[1] & 0x38) == 0x10
           and not (0xD0 <= raw[1] <= 0xD7)
@@ -503,7 +502,7 @@ def classify_call(ins, insns, idx, pending, nxt, pe, text, text_va, gmap=None,
             info['notes'].append(
                 'vtable with stack args, this-push not proven; stdcall-com')
 
-    # call reg  (FF D0-D7) — typically a loaded import
+    # call reg  (FF D0-D7): typically a loaded import
     elif raw and raw[0] == 0xFF and len(raw) == 2 and 0xD0 <= raw[1] <= 0xD7:
         info['kind'] = 'callreg'
         info['conv'] = 'cdecl' if after_is_cdecl else 'stdcall'
@@ -525,7 +524,7 @@ def _ecx_loaded_recently(insns, idx, window=8):
         if ins.mnemonic == 'mov' and ins.op_str.lower().startswith('ecx,'):
             src = _norm_op(ins.op_str.split(',', 1)[1])
             # `mov ecx, 0x80` for rep stosd is NOT a this pointer.
-            # `mov ecx, 0x11849f30` (data VA) IS — 0x1006B0E0.
+            # `mov ecx, 0x11849f30` (data VA) IS: 0x1006B0E0.
             if _is_small_imm(src):
                 continue
             return True
@@ -600,7 +599,7 @@ def _vtable_shape(insns, idx, window=12):
 # ---------------------------------------------------------------------------
 
 # Ghidra/wrap form: (**(funcptr *)(*OBJ + DISP))(ARGS)
-# Note TWO adjacent stars, then the cast — not (*(*(funcptr *)...)).
+# Note TWO adjacent stars, then the cast, not (*(*(funcptr *)...)).
 _VTBL_RE = re.compile(
     r'\(\s*\*\s*\*\s*\(\s*(?:funcptr|code)\s*\*\s*\)\s*'
     r'\(\s*\*\s*(?P<obj>[^;]+?)\s*\+\s*(?P<disp>0x[0-9a-fA-F]+|\d+)\s*\)\s*'
@@ -615,7 +614,7 @@ _VTBL_INDIRECT_RE = re.compile(
     r'\(\s*(?P<args>[^;]*?)\s*\)',
     re.S)
 
-# (**(funcptr *)*OBJ)(ARGS)  — vtable +0, Ghidra drops the `+ 0`
+# (**(funcptr *)*OBJ)(ARGS)  - vtable +0, Ghidra drops the `+ 0`
 # Proven 0x1003FDA0: (**(funcptr *)*g_brPhaseAA2904)(1)
 _VTBL_STAR_RE = re.compile(
     r'\(\s*\*\s*\*\s*\(\s*(?:funcptr|code)\s*\*\s*\)\s*'
@@ -623,7 +622,7 @@ _VTBL_STAR_RE = re.compile(
     r'\)\s*\(\s*(?P<args>[^;]*?)\s*\)',
     re.S)
 
-# (**(funcptr *)(*OBJ))(ARGS)  — vtable +0 with inner parens, no disp
+# (**(funcptr *)(*OBJ))(ARGS)  - vtable +0 with inner parens, no disp
 _VTBL_NODISP_RE = re.compile(
     r'\(\s*\*\s*\*\s*\(\s*(?:funcptr|code)\s*\*\s*\)\s*'
     r'\(\s*\*\s*(?P<obj>[^;]+?)\s*\)\s*'
@@ -656,7 +655,7 @@ def _ints(n):
 
 
 def _fastcall_sig(stack_n):
-    """thiscall with stack_n stack args → __fastcall prototype args."""
+    """thiscall with stack_n stack args -> __fastcall prototype args."""
     if stack_n <= 0:
         return 'void *this'
     return 'void *this, int _edx_unused' + (
@@ -790,7 +789,7 @@ def transform(src, calls):
                     ', ' + ', '.join(stack) if stack else '')
             else:
                 new_args = obj_expr
-            report.append('vtable +0x%x → __fastcall thiscall arity=%d'
+            report.append('vtable +0x%x -> __fastcall thiscall arity=%d'
                           % (disp, arity))
             return '(*(%s *)(*(int *)(%s) + %d))(%s)' % (
                 tn, obj_expr, disp, new_args)
@@ -806,8 +805,8 @@ def transform(src, calls):
                 rec = ci.get('c_args') or []
                 new_args = _pad_args(new_args, arity, rec)
                 report.append(
-                    'vtable +0x%x stdcall-COM padded %d→%d' % (disp, n, arity))
-            report.append('vtable +0x%x → __stdcall COM arity=%d'
+                    'vtable +0x%x stdcall-COM padded %d->%d' % (disp, n, arity))
+            report.append('vtable +0x%x -> __stdcall COM arity=%d'
                           % (disp, arity))
             return '(*(%s *)(*(int *)(%s) + %d))(%s)' % (
                 tn, obj_expr, disp, new_args)
@@ -837,7 +836,7 @@ def transform(src, calls):
     # fill from orig push immediates so the stdcall prototype compiles
     # and the caller emits N pushes + no add-esp.
     # Pad only identifier-called stdcall names (glide thunks / local
-    # stdcall). Funcptr sites are `(*g_pfn)(args)` — the decl rewrite
+    # stdcall). Funcptr sites are `(*g_pfn)(args)`: the decl rewrite
     # is what matters; looking for `g_pfn(` is a false CSE FLAG.
     by_name = {}
     for c in calls:
@@ -883,7 +882,7 @@ def transform(src, calls):
             new_args = _pad_args(args, want, rec, types)
             new_body = (new_body[:start] + '%s(%s)' % (n, new_args)
                         + new_body[end:])
-            report.append('pad %s() %d→%d args' % (n, n_have, want))
+            report.append('pad %s() %d->%d args' % (n, n_have, want))
 
     # --- declarations to insert/replace in the head ---
     decl_lines = []
@@ -905,7 +904,7 @@ def transform(src, calls):
         if ret == 'void' and re.search(r'=\s*%s\s*\(' % re.escape(n), new_body):
             ret = 'int'
         decl_lines.append('%s __stdcall %s(%s);' % (ret, n, alist))
-        report.append('glide %s → __stdcall %s(%s)' % (n, ret, alist))
+        report.append('glide %s -> __stdcall %s(%s)' % (n, ret, alist))
 
     # named gr*/gu* that appear in C even if orig pairing used a thunk
     for m in re.finditer(r'\b((?:gr|gu)[A-Z]\w*)\s*\(', new_body):
@@ -931,7 +930,7 @@ def transform(src, calls):
         if ret == 'void' and re.search(r'=\s*%s\s*\(' % re.escape(n), new_body):
             ret = 'int'
         decl_lines.append('%s __stdcall %s(%s);' % (ret, n, alist))
-        report.append('glide(C-name) %s → __stdcall %s(%s)' % (n, ret, alist))
+        report.append('glide(C-name) %s -> __stdcall %s(%s)' % (n, ret, alist))
 
     # funcptr globals
     seen_fp = set()
@@ -943,23 +942,23 @@ def transform(src, calls):
         arity = c['arity'] or 0
         if c['conv'] == 'stdcall':
             # 0-arg cdecl and 0-arg stdcall are identical at the caller
-            # (`call` / `ret`, no add-esp). Do not rewrite — a stdcall
+            # (`call` / `ret`, no add-esp). Do not rewrite: a stdcall
             # decl is a no-op on FUN_ names and C2444 on wrap-renamed
             # ones when the insert lands between the signature and `{`.
             # Proven 0x10017F10 BrFadeRelease (as-is MATCH; stdcall-0
             # was a compile fail).
             if arity == 0:
                 report.append(
-                    'funcptr %s 0-arg stdcall ≡ cdecl; no rewrite' % dat)
+                    'funcptr %s 0-arg stdcall == cdecl; no rewrite' % dat)
                 continue
             decl_lines.append(
                 'extern int (__stdcall *%s)(%s);' % (dat, _ints(arity)))
-            report.append('funcptr %s → __stdcall arity=%d' % (dat, arity))
+            report.append('funcptr %s -> __stdcall arity=%d' % (dat, arity))
             head = re.sub(
                 r'^extern (?:funcptr|int|int \*) %s;\s*\n' % re.escape(dat),
                 '', head, flags=re.M)
 
-    # local FUN_ stdcall (ret imm16) — wrap_for_compile may already have
+    # local FUN_ stdcall (ret imm16): wrap_for_compile may already have
     # done this; re-assert.
     seen_fun = set()
     for c in fun_std:
@@ -975,14 +974,14 @@ def transform(src, calls):
             head = re.sub(
                 r'^int(?:\s+__stdcall)?\s+%s\s*\([^;]*\);' % nlow,
                 new_decl, head, flags=re.M)
-            report.append('local %s → __stdcall arity=%d' % (nlow, arity))
+            report.append('local %s -> __stdcall arity=%d' % (nlow, arity))
         else:
             decl_lines.append(new_decl)
-            report.append('local %s → __stdcall arity=%d (inserted)'
+            report.append('local %s -> __stdcall arity=%d (inserted)'
                           % (nlow, arity))
 
     # thiscall FUN_ (ecx=this, ret). Declaring `__fastcall(this)` does
-    # not insert `this` at `FUN_x()` — VC5 will not load ecx — and
+    # not insert `this` at `FUN_x()`: VC5 will not load ecx, and
     # Ghidra often attached a later cdecl's pushes (`FUN_x(1,1)`),
     # which then C2198 against a 1-arg prototype. Flag; leave cdecl.
     seen_tc = set()
@@ -996,7 +995,7 @@ def transform(src, calls):
         report.append(
             'FLAG: %s thiscall stack=%d: C still needs ecx=this at each '
             'call site. Decl left cdecl (empty FUN_x() will not set ecx; '
-            'extra C args are a later call\'s pushes — 0x1006B0E0).'
+            'extra C args are a later call\'s pushes: 0x1006B0E0).'
             % (nlow, c['arity'] or 0))
 
     # splice typedefs + decls into the forward-decl block
@@ -1009,7 +1008,7 @@ def transform(src, calls):
         # Insert after the last forward-declaration semicolon, BEFORE the
         # function signature. `head` is split at the body's `{`, so it
         # already contains `int Foo(void)\n`. Appending extra to head
-        # lands decls BETWEEN the signature and `{` — C2444 — whenever
+        # lands decls BETWEEN the signature and `{`: C2444, whenever
         # wrap renamed FUN_ to a report.csv name (the FUN_/THUNK_ regex
         # misses those). Proven 0x10017F10 BrFadeRelease, 0x1003D4F0
         # BrOpt3FA0, 0x100706B0 BrDiAcquire.
@@ -1112,7 +1111,7 @@ def run_one(va_hex, from_decomp=False, verbose=True, score=True):
     before = score_src(src, fname, va_hex, 'ccb' + va_hex)
     after = score_src(new_src, fname, va_hex, 'cca' + va_hex)
     if verbose:
-        print('  diffs  %s → %s   opt %s → %s' % (
+        print('  diffs  %s -> %s   opt %s -> %s' % (
             before[0], after[0], before[1], after[1]))
         if after[0] == 0:
             print('  MATCH')

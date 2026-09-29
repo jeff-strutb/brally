@@ -232,4 +232,4 @@ void   *g_br18AA0A0;
  * in src/core/startup/br_ringmutex.c; the three globals they share with the
  * ring readers below stay defined here. */
 
-/* ── Ghidra-matched functions ─────────────────────────── */
+/* -- Ghidra-matched functions --------------------------- */

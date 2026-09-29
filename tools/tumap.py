@@ -19,8 +19,7 @@ integer-only TUs -- that is a second, un-built signal, plan Phase 5 backlog).
 
 The lever is only for the straight-line x87 class the 09-13 micro-TU lab
 measured; role-insensitive functions match wherever they are filed, so an
-all-T4 group moving files proves nothing.  See docs and
-[[tu-constant-pool-oracle-2026-09-15]].
+all-T4 group moving files proves nothing.
 """
 import argparse, csv, json, os, sys
 from collections import defaultdict
@@ -81,7 +80,7 @@ def fp_consts_of(code, va, lo, hi):
     return out
 
 
-# --- tier classification (mirrors tools/tiers.py, CLAUDE.md rule 12) ---------
+# --- tier classification (mirrors tools/tiers.py) ----------------------------
 def tier_map():
     """va(int) -> ('T1'|'T2'|'T3'|'T4'|'cpp'|'fenced', size, file)."""
     glide = {int(r['va'], 16): int(r['size']) if r['size'] else 0

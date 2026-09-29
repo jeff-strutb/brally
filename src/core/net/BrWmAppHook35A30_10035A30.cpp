@@ -6,7 +6,7 @@
  * @cpp_symbol ?BrWmAppHook35A30@@YGHHHHH@Z
  *
  * Window-message hook (ret 0x10, hwnd unused). 0x501: slot-4 vcall on
- * the sel member at +0x3838 (vtbl load interleaved in the pushes — C++
+ * the sel member at +0x3838 (vtbl load interleaved in the pushes: C++
  * member-call order), then three one-arg stdcall imports with the
  * first CSEd into edi (called twice). 0x113 (WM_TIMER): two local
  * calls gated on globals. Every path returns 0.

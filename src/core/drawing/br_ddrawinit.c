@@ -60,7 +60,7 @@ typedef void (__fastcall *BrVt0)(int this);
  * residue is the either-or layout fork on the bitmap-load loop's exit
  * (jl against jge+jmp, cancelled as the branch triple) -- do-while and
  * top-test respellings probed worse 2026-09-09; two crank census passes.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x100583C0 glide FUN_100583c0 */
 int FUN_100583c0(void)
 {

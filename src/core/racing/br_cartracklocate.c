@@ -40,7 +40,7 @@ extern float DAT_10077c3c;
  * zero reg in ebp vs ebx, and one extra 4-byte frame slot (0x4c vs 0x48), plus
  * x87 fmul/faddp operand-role scheduling in the distance dot-product.  A5
  * oracle EQUIVALENT (24 inputs: return + globals + car side effects).  Do not
- * reopen before the end-grind (CLAUDE.md rule 12). */
+ * reopen before the end-grind. */
 /* @implements 0x1006E5C0 glide BrCarTrackLocate */
 unsigned int BR_THISCALL1 BrCarTrackLocate(int param_1)
 {

@@ -236,4 +236,4 @@ void BrPathWalkFrom(BrNode *pNode, int32_t index, float s, float t)
 /* 7. Image tint scale                                                  */
 /* ==================================================================== */
 
-/* ── Ghidra-matched functions ─────────────────────────── */
+/* -- Ghidra-matched functions --------------------------- */

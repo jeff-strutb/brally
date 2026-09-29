@@ -17,7 +17,7 @@ every GP register to a single name.
 
 Established 2026-08-28: 0x100250D0 read 1097+863 raw (a wall) but 432+198
 register-blind, and fixing the structural defect took it from +1152 to +512
-bytes.  See docs/archive/idioms-A.md and docs/VC5-IDIOMS.md.
+bytes.  See docs/VC5-IDIOMS.md.
 
 Ranks COMPLETE transcriptions first: a recomp far smaller than the original
 is the known missing-code class (a factored helper the original inlined), a
@@ -44,7 +44,7 @@ R16 = r'\b(ax|bx|cx|dx|si|di|bp)\b'
 R8  = r'\b(al|bl|cl|dl|ah|bh|ch|dh)\b'
 
 
-# ‼ RELOC'D OPERANDS MUST BE MASKED.  Until 2026-09-03 this file (and
+# !! RELOC'D OPERANDS MUST BE MASKED.  Until 2026-09-03 this file (and
 # tools/fnmatch/fn.py) did not, while tools/msetdiff.py did, so the reggap
 # this tool RANKS EVERY LANE BY was inflated on any function that touches a
 # global absolutely.  An unlinked .obj keeps the ADDEND in the reloc'd field

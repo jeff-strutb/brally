@@ -11,7 +11,7 @@
  * Shared-return activate with a 1-register (esi) because five stores of 1
  * sit in the prologue. Flag stores are `mov r/m, esi` not `c7`. Extra
  * just-built tail (three calls + hook) lives inside the new arm, so each
- * arm returns 1. Ctor DECLARED, no dtor — unwind is operator delete
+ * arm returns 1. Ctor DECLARED, no dtor: unwind is operator delete
  * (maxState=1).
  */
 #define _CRTIMP __declspec(dllimport)

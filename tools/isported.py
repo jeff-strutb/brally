@@ -3,7 +3,7 @@
 WHY THIS EXISTS
 
 Five times in this project, work was started on a function the tree already
-had. Three agent runs were spent re-deriving ported code; one packet found 8 of
+had. Three work sessions were spent re-deriving ported code; one packet found 8 of
 its 10 addresses already ported AND wired; another found 6 of 8. Most recently
 br_boot.c gave 0x1002E324 a "frontier" entry -- declaring the game's frame
 dispatcher missing while a correct transcription of it sat in br_gamestep.c,
@@ -129,7 +129,7 @@ def definitions():
         #          /* ----------------------------------------
         #           * 0x1001D8A0 -- what it does
         #      which is a common style here, so a finished transcription read
-        #      as NOT PORTED. Found by an agent whose own new module the tool
+        #      as NOT PORTED. Found by a worker whose own new module the tool
         #      failed to see. The prefix is bounded and must not contain an
         #      earlier 0xXXXXXXXX, which keeps rule (3)'s guarantee: the
         #      address captured is the one the banner is about.
@@ -141,7 +141,7 @@ def definitions():
         #      `void BrCtrlCfgInit` was found and `BrCtrlCfg *BrCtrlCfgCtor`
         #      three lines away was not -- and the --chain output then called
         #      0x10062B00 and 0x10062E50 "NOT PORTED ... Clean target" while
-        #      tools/whereis.py found both in slice3_42.c. An agent sent to
+        #      tools/whereis.py found both in slice3_42.c. A worker sent to
         #      port 0x10063060 was told two of its three callees were unported
         #      work. `[\s\*]` fixes all four.
         #      Validated against nine known answers, both directions:

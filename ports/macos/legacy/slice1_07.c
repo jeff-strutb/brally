@@ -1,6 +1,6 @@
 /* slice1_07.c -- Boss Rally (BRD3D.dll) slice 1, a later pass.
  * Range 0x1005F580 - 0x1006C740.  See slice1_07.h for the interfaces and
- * work/slice1/agent07.asm for the disassembly this was recovered from.
+ * work/slice1/packet07.asm for the disassembly this was recovered from.
  */
 
 #include "slice1_07.h"

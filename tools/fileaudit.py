@@ -19,7 +19,7 @@ it, until they write it down.
 Rule 6 has always said so; nothing enforced it, so by 2026-09-03 two thirds of
 the matched C code (570 of 845 functions) was sitting in `sliceN_MM.c` address
 batches, and the backlog grew with every unattended batch because
-tools/autofile.py placed new matches by address.  A rule with no gate is a
+The retired autofile tool placed new matches by address.  A rule with no gate is a
 preference.  This is the gate.
 
 It fails (exit 1) on:
@@ -227,7 +227,7 @@ def main():
             print('   WRONG %s %-26s in %s, recorded %s'
                   % (r['va'], r['name'], here, want))
 
-    # Hand-certified T3 tags (CLAUDE.md rule 12): counted with their own
+    # Hand-certified T3 tags: counted with their own
     # denominator, and a malformed or STALE tag (function now byte-exact but
     # still tagged) is a violation -- tools/t3.py does the check.
     t3_bad = 0

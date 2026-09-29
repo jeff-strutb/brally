@@ -158,7 +158,7 @@ void BrGbiTexScanSetTile(const BrGfxWords *pCmd)
 {
     int32_t tile = (int32_t)((pCmd->w1 >> 24) & 7u);
 
-    /* Re-read w0/w1 each field â orig keeps pCmd in ecx and reloads. */
+    /* Re-read w0/w1 each field: orig keeps pCmd in ecx and reloads. */
     g_brTexScanTiles[tile].fmt     = (int32_t)((pCmd->w0 >> 21) & 7u);
     g_brTexScanTiles[tile].siz     = (int32_t)((pCmd->w0 >> 19) & 3u);
     g_brTexScanTiles[tile].line    = (int32_t)(((pCmd->w0 >> 9) & 0x1FFu) << 3);

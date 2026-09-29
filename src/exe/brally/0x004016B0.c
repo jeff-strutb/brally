@@ -1,4 +1,4 @@
-/* Auto-generated from disassembly — 0x004016B0
+/* Auto-generated from disassembly: 0x004016B0
  * GetCommentChar. Default global is '#' (0x23 at 0x40308c). */
 /* WHAT IT DOES: return the character that currently starts a comment.
  * Defaults to '#'. */

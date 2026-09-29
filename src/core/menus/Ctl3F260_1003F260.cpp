@@ -12,7 +12,7 @@
  *   if ((p = g_slot) == 0) { new Phase; flags; } else { g_cur = p; }
  *   return 1;
  * `return 1` MUST sit after the if/else (duplicated epilogues, c7 stores).
- * Ctor DECLAREd, no dtor — unwind is operator delete (maxState=1).
+ * Ctor DECLAREd, no dtor: unwind is operator delete (maxState=1).
  */
 #define _CRTIMP __declspec(dllimport)
 

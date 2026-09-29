@@ -9,7 +9,7 @@
  * `tools/regress.sh` runs test BINARIES, a test binary brings its own `main`,
  * and two `main`s do not link. So no suite linked port/host at all.
  *
- * That was not a theoretical gap. An agent unified 0x10AA2904 -- six host
+ * That was not a theoretical gap. A change unified 0x10AA2904 -- six host
  * objects for the one dword the menu writes and the frame loop reads -- and
  * then mutation-tested the fix by putting the whole split back. 131 suites
  * passed and `./build/brally -all` still reported 16/16. The tree could not

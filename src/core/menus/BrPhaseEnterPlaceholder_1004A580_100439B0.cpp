@@ -7,9 +7,9 @@
  * @cpp_kind method
  * @cpp_symbol ?BrPhaseEnterPlaceholder_1004A580@@YAHPAVGameUi@@@Z
  *
- * 3746 B cdecl EH-frame race-options menu builder — 0x100425E0 family
+ * 3746 B cdecl EH-frame race-options menu builder: 0x100425E0 family
  * (same layouts and levers). Extras here: the cycle pages capture
- * DAT_10ac5d0c, then the photo trio — fx/fy floats filled from int
+ * DAT_10ac5d0c, then the photo trio: fx/fy floats filled from int
  * globals (fild), a page conditional on g_br0AA010, per-page ftol
  * coordinate stores into f50..f5C, xi shared across the two
  * unconditional pages in ebx, fy walked down by DAT_10077664, and the

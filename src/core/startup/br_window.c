@@ -179,7 +179,7 @@ int BrWindowCreate(const BrWindowOps *pOps)
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
  * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x10017E30 glide BrWindowEarStartup */
 #include <stdlib.h>
 extern int32_t DAT_100a74fc;                 /* 0x100A74FC, the DLL selector */

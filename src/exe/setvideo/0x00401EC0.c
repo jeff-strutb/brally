@@ -1,4 +1,4 @@
-/* Auto-generated from disassembly — 0x00401EC0
+/* Auto-generated from disassembly: 0x00401EC0
  * ComboGetCurText: CB_GETCURSEL then CB_GETLBTEXT on item 0x3e9. */
 /* WHAT IT DOES: read the text of whatever is currently selected in a drop-
  * down. */

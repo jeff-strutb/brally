@@ -150,7 +150,7 @@ extern float DAT_105cd9fc;
  * @t3-measure bytes 1214/1212 insns 363/362 rows 14+15 regions 10 oracle EQUIVALENT
  * @t3-effort passes 4 zero-movement 3 4
  * Residue is x87 scheduling and register choice only (see the Open list
- * above); the arithmetic is the original's, rounding points included.  Do not reopen before the end-grind (CLAUDE.md rule 12).
+ * above); the arithmetic is the original's, rounding points included.  Do not reopen before the end-grind.
  * Oracle coverage: the 25 scripts run 253 of the 362 instructions -- never
  * the light refresh (the cache is always valid on entry here) -- and the
  * game's one light has equal x/y/z direction bytes.  So the refresh was also

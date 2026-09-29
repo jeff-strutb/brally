@@ -170,7 +170,7 @@ extern int BrDPlayRawSend(void *pIface, uint32_t idFrom, uint32_t idTo,
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
  * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x1006B0E0 glide BrNetPeerSendPass */
 int32_t BrNetPeerSendPass(void **ppDp)
 {

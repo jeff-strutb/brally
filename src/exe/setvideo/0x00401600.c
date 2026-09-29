@@ -1,4 +1,4 @@
-/* Auto-generated from disassembly — 0x00401600
+/* Auto-generated from disassembly: 0x00401600
  * CHK_FreeMemory: free wrapper, cdecl add esp,4. */
 /* WHAT IT DOES: free a block obtained from this program's allocator, so
  * allocation and release stay paired. */

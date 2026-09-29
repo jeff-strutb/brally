@@ -204,7 +204,7 @@ void BrCarTableRemove(const void *pOwner)
     int i = 0;
     unsigned char *esi;
 
-    /* xor ebx,ebx is before the jle â i must be live on the early-out. */
+    /* xor ebx,ebx is before the jle: i must be live on the early-out. */
     if (DAT_100b2f04 <= 0)
         return;
 

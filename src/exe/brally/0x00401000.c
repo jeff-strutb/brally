@@ -1,4 +1,4 @@
-/* Auto-generated from disassembly — 0x00401000
+/* Auto-generated from disassembly: 0x00401000
  * FreeObjList: free each rgsz[i], then rgsz, then rgi. n==0 returns
  * without freeing the arrays. */
 /* WHAT IT DOES: free a parsed object list -- each string first, then the two

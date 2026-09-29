@@ -8,7 +8,7 @@
  *
  * READ THIS FIRST -- THE PACKET'S ASM WAS MISPAIRED
  * =================================================
- * work/slice4/agent50.asm attaches a `; ===== WANTED AS: <name>` banner to a
+ * work/slice4/packet50.asm attaches a `; ===== WANTED AS: <name>` banner to a
  * disassembly listing. For NINE of the fourteen the listing underneath the
  * banner is NOT the function the name refers to; it is a DIFFERENT, nearby
  * function that other headers already declare separately:

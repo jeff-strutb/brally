@@ -1,6 +1,6 @@
 /* DlgProcOKCancel: switch(msg) sub 0x110 / dec, inner switch(LOWORD)
  * IDOK / IDCANCEL. Last inner case (IDCANCEL) EndDialog then falls
- * through to `return 0` — an explicit `return 0` there outlines it
+ * through to `return 0`: an explicit `return 0` there outlines it
  * with `je` + a 5-byte xor-ret (53 diffs). */
 /* WHAT IT DOES: handle a simple OK/Cancel dialog's messages. */
 /* @implements 0x00401C10 setvideo.exe DlgProcOKCancel */

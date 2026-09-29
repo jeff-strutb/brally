@@ -1,4 +1,4 @@
-/* 0x100250D0 BrTex3dExpand â fresh hand transcription from the disassembly
+/* 0x100250D0 BrTex3dExpand: fresh hand transcription from the disassembly
  * (2026-09-16). Authored block-by-block off build/match/orig/0x100250D0.bin;
  * arithmetic expressions carried verbatim from the verified decomp, control
  * flow rewritten by hand, no permuter codegen tuning. Behavioural equivalence
@@ -63,8 +63,8 @@ unsigned int FUN_100271f0(unsigned short);
  * pinned small-constant family, the I4 blend body-3 byte-slot nibble-merge
  * widening (load-bearing -- dropping it regresses 73 -> 128 rows), and the
  * loop-rotation jmps. Two zero-movement probe passes (11 each) in the header;
- * the /255 fixup construct is a corpus MISS. Do not reopen before the end-grind
- * (CLAUDE.md rule 12). */
+ * the /255 fixup construct is a corpus MISS. Do not reopen before the end-grind.
+ */
 /* @implements 0x100250D0 glide BrTex3dExpand */
 void BrTex3dExpand(unsigned short *param_1, int param_2, int param_3, unsigned char *param_4, int param_5, int param_6, int param_7, int param_8, int param_9, int param_10, int param_11, unsigned char param_12, int param_13, unsigned char param_14, unsigned char param_15, unsigned char param_16, unsigned char param_17, unsigned char param_18, unsigned char param_19, unsigned char param_20, unsigned char param_21, int param_22)
 {

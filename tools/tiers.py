@@ -13,13 +13,13 @@
                         the original in real ways (missing/extra/changed
                         instructions) -- the logic is not yet a match.
     T3  certified       complete and verified, not byte-exact: decided by
-                        tools/t3.py --qualify (CLAUDE.md rule 12), never by hand.
+                        tools/t3.py --qualify, never by hand.
                         The old automatic T3a/T3b sub-tiers are retired.
     T4  byte-exact      diffs clean against the original bytes.
 
 T3 is decided by tools/t3.py --qualify: Gate 0 (functionally complete), Gate A
 (five mechanical checks on the sweep object) and Gate B (a @t4-pass ledger in
-the file: >= 3 passes, the last two moving nothing) -- CLAUDE.md rule 12.  Gate A5
+the file: >= 3 passes, the last two moving nothing).  Gate A5
 is the LIVE oracle (tools/t3live.py): the original game runs headless
 (tools/brbox.py), each T3 body is run against the original from the identical
 state at every captured real call, and config/t3_live.csv records the verdict.
@@ -116,7 +116,7 @@ def main():
                 #  a transcribed diff row -- T2, or T3 if it carries an @t3 tag.
                 #  Without this it was counted nowhere and reappeared as T1.
 
-    # T3 is decided by tools/t3.py --qualify (CLAUDE.md rule 12): certified
+    # T3 is decided by tools/t3.py --qualify: certified
     # complete, not byte-exact.  The old automatic "T3a" split (identical
     # register-blind multiset) is RETIRED as a tier -- it is now Gate A3's
     # input.  A diff row is T2 unless it carries a validated @t3 tag.

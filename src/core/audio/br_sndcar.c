@@ -115,8 +115,8 @@ extern char DAT_100b3844[];
  * (the recompile's ebp-relative locals were immune) -- a pure emulator/seeding
  * artifact, not a code diff.  Negative-controlled: a copyback-offset mutation
  * (0xf5c->0xf58) and an engine-scale mutation (110/7 -> the 100000 clamp) both
- * DIFF; correct code stays EQUIVALENT.  Do not reopen before the end-grind
- * (CLAUDE.md rule 12). */
+ * DIFF; correct code stays EQUIVALENT.  Do not reopen before the end-grind.
+ */
 /* @implements 0x10061470 glide BrSndCarStep */
 
 void BR_THISCALL1 BrSndCarStep(uint8_t *pCar)

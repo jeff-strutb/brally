@@ -119,7 +119,7 @@ int BrGameStepPump(int state)
     return BrGameStepInvoke();
 }
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* -- Ghidra-matched functions --------------------------- */
 
 /* WHAT IT DOES: empty function (/Od frame, nothing else). */
 /* @implements 0x1002E32F glide BrNop_1002E32F */

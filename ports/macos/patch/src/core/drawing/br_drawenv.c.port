@@ -109,7 +109,7 @@ void BrEnvEmit(void)
     g_BrDrawCombined.m[3][2] = 0.0f;
 
     /* The projection scale matrix (values read from the asm immediates):
-     * a permuted diagonal with s â 6.1e-5 (0x38800100 as float). */
+     * a permuted diagonal with s ~ 6.1e-5 (0x38800100 as float). */
     {
         union { uint32_t u; float f; } scale;
         scale.u = 0x38800100u;

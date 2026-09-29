@@ -546,4 +546,4 @@ void BrSub1003D130(void *pDesc)
     }
 }
 
-/* ── Ghidra-matched functions ─────────────────────────── */
+/* -- Ghidra-matched functions --------------------------- */

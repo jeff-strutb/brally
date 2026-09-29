@@ -707,13 +707,13 @@ void BrRaceStepLights(void)
  *     BrSndNearestOfferTrack when the fly-past is armed and through
  *     BrSndNearestOfferDefault for each entry of 0x105BC778 (count
  *     0x105BCAE8), then BrSndNearestCommit, BrRaceHudFrame, BrSndBankPickSlot.
- *   - â¼ HAZARD: 0x10008D60 is called with FIVE arguments at 0x1001B27A and
+ *   - !! HAZARD: 0x10008D60 is called with FIVE arguments at 0x1001B27A and
  *     0x1001B298 and with ONE at 0x1001B955 (`push edi; call; add esp,4`).
  *     It is BrPodNop, so both are harmless at runtime, but a single C
  *     prototype cannot spell both -- the matching arm needs two, and picking
  *     the wrong arity silently changes the caller's stack adjustment.
  *
- * â¼ 2026-09-10: THE CALLEE GATE IS SPENT.  All 64 distinct callees of the
+ * !! 2026-09-10: THE CALLEE GATE IS SPENT.  All 64 distinct callees of the
  * remaining block already have symbols in this tree -- 115 of its 116 call
  * sites land on a report.csv row and the last (0x100325B0) is the C++ lane's
  * WM_DESTROY teardown.  What blocks this address now is transcription volume
@@ -1196,7 +1196,7 @@ void BrRaceStepSpecials(void)
     }
 }
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* -- Ghidra-matched functions --------------------------- */
 extern int DAT_100b2f04;
 
 /* WHAT IT DOES: zero every row in the sound-command table. */

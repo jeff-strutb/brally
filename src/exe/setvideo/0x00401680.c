@@ -1,4 +1,4 @@
-/* Auto-generated from disassembly — 0x00401680
+/* Auto-generated from disassembly: 0x00401680
  * BindSection: copy section index onto the INI cursor, return the INI.
  * Re-deref p->pini for the return (do not reuse the loaded pointer). */
 /* WHAT IT DOES: attach a section index to a settings-file cursor and hand

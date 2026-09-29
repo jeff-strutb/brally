@@ -7,7 +7,7 @@
  *
  * Thiscall receiver, two stack args (`ret 8`): accumulate elapsed time
  * from the timer helper into a global, and every 120 ms fire the slot-6
- * vcall on self with (word global, arg a, arg b, char member) — the word
+ * vcall on self with (word global, arg a, arg b, char member): the word
  * global pushed via the `mov dx,[g]; push edx` short-push idiom. No EH.
  *
  * THE ACCUMULATOR IS A COMPOUND `+=` ON THE GLOBAL, and the threshold test

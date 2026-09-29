@@ -31,8 +31,8 @@ extern int DAT_106b7aa0;
  * +0x50 bias sit above the pushes and the entry test, where the original
  * has them after the test (register-blind multiset identical, 25 positional
  * bytes in one region).  Dossier and dead list are in the comment inside
- * the function; ledger lines above.  Do not reopen before the end-grind
- * (CLAUDE.md rule 12). */
+ * the function; ledger lines above.  Do not reopen before the end-grind.
+ */
 /* @implements 0x10027A70 glide FUN_10027a70 */
 int FUN_10027a70(int *pReq)
 {

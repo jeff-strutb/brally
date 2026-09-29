@@ -1,4 +1,4 @@
-/* Auto-generated from disassembly — 0x004017E0
+/* Auto-generated from disassembly: 0x004017E0
  * UnloadRallyMain: FreeLibrary + clear HMODULE; return 1 if already null. */
 /* WHAT IT DOES: unload the renderer DLL and forget the handle. Reports
  * success if there was nothing loaded. */

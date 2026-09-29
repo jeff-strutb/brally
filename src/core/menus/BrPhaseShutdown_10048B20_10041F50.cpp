@@ -8,10 +8,10 @@
  * esi, Sleep import cached in edi), the full-shutdown arm zeroes the
  * mode/phase pair, frees the font-tex pointer table (do-while walk,
  * operator delete), then ~35 identical guarded blocks:
- * `if (g) { g->v7(); delete g; g = 0; <extras>; }` — delete's implicit
+ * `if (g) { g->v7(); delete g; g = 0; <extras>; }`: delete's implicit
  * null test is the inner re-read guard (direct global rereads, EAX-form
  * Close vcall, EDX-form scalar-deleting push 1). Tail full-shutdown
- * arm: one more block, then the c58 pod (a REAL local — cached across
+ * arm: one more block, then the c58 pod (a REAL local: cached across
  * the non-virtual thiscall, plain operator delete), and the final
  * helper. Transcribed from the Ghidra draft block order.
  */

@@ -10,7 +10,7 @@
  * outside the test gate, because port/host/brally.c carried `main` and a test
  * binary brings its own.
  *
- * The measured cost: an agent unified 0x10AA2904 (six host objects for one
+ * The measured cost: a change unified 0x10AA2904 (six host objects for one
  * dword), then mutation-tested the fix by reinstating the ENTIRE split, and
  * 131 suites plus `./build/brally -all` 16/16 reported no change. "N suites
  * pass" and "16 of 16 builders run clean" were both true of a tree whose menu

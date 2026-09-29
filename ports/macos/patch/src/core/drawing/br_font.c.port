@@ -606,7 +606,7 @@ void BrTextEmitString(BrTextEmit *pSt, const char *psz)
  * @t3-effort passes 5 zero-movement 4 5
  * residue after tools/crank.py: 40 compiles this pass, levers accepted: none;
  * every candidate and score is in build/match/crank.log.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x10016980 glide BrFontMeasure */
 int32_t BrFontMeasure(const BrFont *pFont, const char *psz,
                       int32_t scale, int32_t fHiRes, int32_t detail)

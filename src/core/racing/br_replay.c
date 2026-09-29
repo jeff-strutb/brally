@@ -58,7 +58,7 @@ static int BrReplayActiveCount(void)
  * @t3-effort passes 4 zero-movement 3 4
  * residue after tools/crank.py: 48 compiles this pass, levers accepted: none;
  * every candidate and score is in build/match/crank.log.
- * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x1006AAB0 d3d BrReplayRecord */
 void BrReplayRecord(void *pCar)
 {

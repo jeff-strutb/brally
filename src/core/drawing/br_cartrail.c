@@ -104,7 +104,7 @@ typedef struct BrTrailCar {
  * 1888 vs 1881 B, and the register-blind residue is 43+27 = 70 rows dominated
  * by 26 `fxch` rows + colour-triple load/store -- pure x87 pipelined
  * SCHEDULING, exactly the dossier's description.  So this is A2-distance-walled
- * (70 vs 11.4) on scheduling, NOT a transcription target.  â¼ The sweep picks
+ * (70 vs 11.4) on scheduling, NOT a transcription target.  !! The sweep picks
  * min-raw-byte variant, so it recorded O2y; the frameless O2 is the right one
  * to reason about here (see resume-state 2026-09-15b variant-selection note).
  */
