@@ -13,7 +13,10 @@ void osSyncPrintf(char *fmt, ...);
 typedef struct BrTipBody {
   int x0;
   struct BrTipBody *child[4];   /* 0x004 */
-  char pad14[0x78 - 0x14];
+  char pad14[0x2c - 0x14];
+  float mass;                   /* 0x02C */
+  char pad30[0x54 - 0x30];
+  float Iinv[3][3];             /* 0x054  inverse inertia */
   float f78[3];                 /* 0x078  wheel point */
   char pad84[0xbc - 0x84];
   float m[4][4];                /* 0x0BC */
@@ -80,13 +83,24 @@ extern double D_802AB7E8;              /* 1.05 */
 extern float D_802AB7F0;               /* 0.9 */
 extern float D_802AB7F4;               /* 0.9 */
 void BrMat4RotateVec(float out[3], float m[4][4], float v[3]);
-int func_8025BBB8(BrTipBody *b, float *n, void *plane, int flag, float rest);
+int BrCrImpulseSolve(BrTipBody *b, float *pN, float *pDir, int flag, float rest);
+void BrMat3MulVec(float out[3], float m[3][3], float v[3]);
+void BrMat3Transpose(float t[3][3], float c[3][3], float m[4][4]);
+void BrMat3Skew(float out[3][3], float v[3]);
+void BrMat3Mul(float out[3][3], float a[3][3], float b[3][3]);
+void BrMat3Sub(float out[3][3], float a[3][3], float b[3][3]);
+void BrMat3Solve(float out[3], float m[3][3], float v[3]);
+extern float D_802AB7F8;               /* 1e-4 */
+extern float D_802AB7FC;               /* 0.9 */
+extern float D_802AB800;               /* 0.2 */
+extern float D_802AB804;               /* 1.05 */
 void BrCrPlaneResolve(BrTipBody *b, float *pA, float planeD, float *pEdgeN, float *v);
 
 extern unsigned short D_8037EA80[4];   /* the grid cache: each slot's cell */
 extern unsigned int D_8037EA90[4];     /* when each slot was last used */
 extern unsigned int D_8037EAA0;        /* the use clock */
 typedef struct BrCrVtx { float x, y, z; } BrCrVtx;
+extern BrCrVtx D_802A4B70;             /* a zero vector */
 typedef struct BrTrackGeom {    /* the loaded track's header at 0x80025C00 */
   char pad00[0xc];
   unsigned short *tris;         /* 0x0C  4 vertex indices per triangle */
@@ -262,6 +276,137 @@ int BrCrContactKick(BrTipBody *b, float *pN, int dampFlag, int spinFlag)
   v[1] *= t[1];
   v[2] *= t[2];
   BrMat4RotateVec(&b->cur[10], M, v);
+  return 1;
+}
+
+/* WHAT IT DOES: The collision impulse for one contact: the contact point's
+ * velocity (body velocity plus spin across the normal's lever), and if it
+ * approaches the surface, the impulse that removes 1.05 of it -- through the
+ * contact's effective mass matrix (1/mass I minus the lever's inertia term)
+ * -- with the tangential part scaled by 0.2 when flag is set and dropped
+ * otherwise; hard hits after 10 idle frames are recorded for the effects
+ * and damped.  Applies the impulse to velocity and spin; returns 0 when the
+ * contact is separating.  The PC twin is BrCrImpulseSolve.
+ * RESIDUE (~300): the ROM frame is 8 smaller (its loop counters have no
+ * slots) and the FP schedule of the lever cross product differs. */
+/* @implements 0x8025BBB8 tgr BrCrImpulseSolve */
+int BrCrImpulseSolve(BrTipBody *b, float *pN, float *pDir, int flag, float rest)
+{
+  int i;
+  int j;
+  float Rt[3][3];
+  float R[3][3];
+  float skew[3][3];
+  float D[3][3];
+  float K[3][3];
+  float tmp[3][3];
+  float W[3][3];
+  float vc[3];
+  float spare[3];               /* declared, never used */
+  float J[3];
+  float nb[3];
+  float dw[3];
+  float jm[3];
+  float tt[3];
+  float tn[3];
+  BrCrVtx zero;                 /* initialised, never used */
+  float dd;
+
+  zero = D_802A4B70;
+  vc[0] = pN[0];
+  vc[1] = pN[1];
+  vc[2] = pN[2];
+  BrMat3Transpose(Rt, R, b->m);
+  BrMat3MulVec(nb, Rt, vc);
+  vc[0] = b->cur[11] * nb[2] - nb[1] * b->cur[12];
+  vc[1] = b->cur[12] * nb[0] - nb[2] * b->cur[10];
+  vc[2] = b->cur[10] * nb[1] - nb[0] * b->cur[11];
+  vc[0] = b->cur[3] + vc[0];
+  vc[1] = b->cur[4] + vc[1];
+  vc[2] = b->cur[5] + vc[2];
+  if (pDir[0] * vc[0] + pDir[1] * vc[1] + vc[2] * pDir[2] >= 0.0f) {
+    return 0;
+  }
+  BrMat3Skew(skew, nb);
+  BrMat3Mul(tmp, b->Iinv, R);
+  BrMat3Mul(W, Rt, tmp);
+  BrMat3Mul(K, W, skew);
+  BrMat3Mul(tmp, skew, K);
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; j++) {
+      if (i == j) {
+        D[i][j] = 1.0f;
+      } else {
+        D[i][j] = 0.0f;
+      }
+    }
+  }
+  D[0][0] = D[1][1] = D[2][2] = 1.0f / b->mass;
+  BrMat3Sub(K, D, tmp);
+  dd = pDir[0] * vc[0] + pDir[1] * vc[1] + vc[2] * pDir[2];
+  tn[0] = pDir[0] * dd;
+  tn[1] = pDir[1] * dd;
+  tn[2] = pDir[2] * dd;
+  if (dd < 0.0f) {
+    dd = -dd;
+  }
+  if (dd > 27.0f) {
+    dd = 27.0f;
+  }
+  b->hitSize = dd;
+  if (b->hitSize < 10) {
+    b->hitSize = 0;
+  } else {
+    b->hitN[0] = D_8037EAA8[0];
+    b->hitN[1] = D_8037EAA8[1];
+    b->hitN[2] = D_8037EAA8[2];
+  }
+  if (b->idle > 10 && rest < D_802AB7F8) {
+    b->hitPeak = b->hitPeak < (unsigned char)(127.0f * dd / 27.0f + 128.0f)
+        ? (unsigned char)(127.0f * dd / 27.0f + 128.0f) : b->hitPeak;
+    tn[0] = tn[0] * D_802AB7FC;
+    tn[1] = tn[1] * D_802AB7FC;
+    tn[2] = tn[2] * D_802AB7FC;
+    vc[0] = vc[0] * D_802AB7FC;
+    vc[1] = vc[1] * D_802AB7FC;
+    vc[2] = vc[2] * D_802AB7FC;
+  }
+  tt[0] = vc[0] - tn[0];
+  tt[1] = vc[1] - tn[1];
+  tt[2] = vc[2] - tn[2];
+  if (flag) {
+    tt[0] = tt[0] * D_802AB800;
+    tt[1] = tt[1] * D_802AB800;
+    tt[2] = tt[2] * D_802AB800;
+  } else {
+    tt[0] = 0.0f;
+    tt[1] = 0.0f;
+    tt[2] = 0.0f;
+  }
+  vc[0] = tn[0] + tt[0];
+  vc[1] = tn[1] + tt[1];
+  vc[2] = tn[2] + tt[2];
+  BrMat3Solve(J, K, vc);
+  jm[0] = J[0] * (1.0f / b->mass);
+  jm[1] = J[1] * (1.0f / b->mass);
+  jm[2] = J[2] * (1.0f / b->mass);
+  vc[0] = nb[1] * J[2] - J[1] * nb[2];
+  vc[1] = nb[2] * J[0] - J[2] * nb[0];
+  vc[2] = nb[0] * J[1] - J[0] * nb[1];
+  BrMat3MulVec(dw, W, vc);
+  rest = D_802AB804 + rest;
+  jm[0] = jm[0] * rest;
+  jm[1] = jm[1] * rest;
+  jm[2] = jm[2] * rest;
+  dw[0] = dw[0] * rest;
+  dw[1] = dw[1] * rest;
+  dw[2] = dw[2] * rest;
+  b->cur[3] = b->cur[3] - jm[0];
+  b->cur[4] = b->cur[4] - jm[1];
+  b->cur[5] = b->cur[5] - jm[2];
+  b->cur[10] = b->cur[10] - dw[0];
+  b->cur[11] = b->cur[11] - dw[1];
+  b->cur[12] = b->cur[12] - dw[2];
   return 1;
 }
 
@@ -636,7 +781,7 @@ int BrCrRespWalk(BrTipBody *b, float m[4][4])
         osSyncPrintf("Resistive collision %10.3f\n", b->m[2][2]);
       }
       if (D_802A4A28 != 1) {
-        r = func_8025BBB8(b, D_8037EAA8, D_802A4A2C, flag, 0.0f);
+        r = BrCrImpulseSolve(b, D_8037EAA8, D_802A4A2C, flag, 0.0f);
       } else {
         r = BrCrContactKick(b, D_802A4A2C, flag, spin);
       }
