@@ -1103,6 +1103,60 @@ void BrPaintDashLine(int x0, int y0, int x1, int y1)
   }
 }
 
+
+/* WHAT IT DOES: Draw a marching-ants rectangle between two screen corners
+ * (either order): the edges in 4-pixel dashes alternating between the two
+ * dash colours (swapped every 8 frames), top, right, bottom then left, the
+ * right and left edges finished with a 2-pixel stub at the bottom.
+ * RESIDUE (143): the ROM's frame is 8 smaller with the dash colour byte at
+ * sp+0x59, and its saved registers go on, x, y where ours go y, x, on;
+ * swap temps and local order leave it. */
+/* @implements 0x80251CD4 tgr BrPaintDashRect */
+void BrPaintDashRect(int x0, int y0, int x1, int y1)
+{
+  int x;
+  int y;
+  int on;
+  unsigned char c;
+
+  on = 0;
+  if ((++D_8028DBB0 & 7) == 0) {
+    BrSwapBytes((char *)&D_8028DAB8, (char *)&D_8028DABC);
+  }
+  if (x1 < x0) {
+    x = x0;
+    x0 = x1;
+    x1 = x;
+  }
+  if (y1 < y0) {
+    y = y0;
+    y0 = y1;
+    y1 = y;
+  }
+  for (x = x0; x < x1 - 4; x += 4) {
+    on = (on + 1) & 1;
+    c = on ? D_8028DAB8 : D_8028DABC;
+    BrFillRect(x, y0, 4, 1, c, c, c);
+  }
+  for (y = y0; y < y1 - 4; y += 4) {
+    on = (on + 1) & 1;
+    c = on ? D_8028DAB8 : D_8028DABC;
+    BrFillRect(x1, y, 1, 4, c, c, c);
+  }
+  BrFillRect(x1, y1 - 1, 1, 2, c, c, c);
+  for (x = x0; x < x1 - 4; x += 4) {
+    on = (on + 1) & 1;
+    c = on ? D_8028DAB8 : D_8028DABC;
+    BrFillRect(x, y1, 4, 1, c, c, c);
+  }
+  for (y = y0; y < y1 - 4; y += 4) {
+    on = (on + 1) & 1;
+    c = on ? D_8028DAB8 : D_8028DABC;
+    BrFillRect(x0, y, 1, 4, c, c, c);
+  }
+  BrFillRect(x0, y1 - 1, 1, 2, c, c, c);
+}
+
 /* WHAT IT DOES: Draw the paint shop's text line at (x, y), moved left by
  * half of 0x8028DBAC and up by the font's height (both in texels, 4 screen
  * pixels each): each character's glyph (found by code in the 50-glyph table) is drawn 16x16
