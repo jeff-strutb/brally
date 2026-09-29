@@ -572,6 +572,7 @@ va,name,kind
 80260B74,strchr,func
 80260BC0,guRotateF,func
 80260D54,guRotate,func
+80260DB0,proutSprintf,func
 80260DD4,sprintf,func
 80260E30,guTranslateF,func
 80260E78,guTranslate,func
@@ -581,6 +582,7 @@ va,name,kind
 80261088,guMtxL2F,func
 80261140,sqrtf,func
 80261150,guLookAtReflectF,func
+80261590,guLookAtReflect,func
 80261610,sinf,func
 802617D0,cosf,func
 80261940,osPfsIsPlug,func
@@ -632,9 +634,11 @@ va,name,kind
 80268520,osAiGetStatus,func
 80268530,osAiGetLength,func
 802686C0,guNormalize,func
+80268DC0,_Printf,func
 8026EA00,rspbootTextStart,data
 8026EAD0,rspbootTextEnd,data
 8026EAD0,gspF3DEX_fifoTextStart,data
 8028CAC0,inflate_mask,data
 802A6140,osClockRate,data
+802ABA80,__libm_qnan_f,data
 802ABC00,gspF3DEX_fifoDataStart,data
