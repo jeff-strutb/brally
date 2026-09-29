@@ -146,7 +146,7 @@ typedef struct BrCar {
     unsigned char colour[4];    /* 0x2060  body colour r, g, b and a fourth byte */
     float x2064;                /* 0x2064 */
     int x2068;                  /* 0x2068 */
-    char pad206c[0x2070 - 0x206C];
+    int wrongWay;               /* 0x206C  frames spent facing backwards */
     unsigned char cellX;        /* 0x2070  the 32-unit track grid cell it is in (0..63) */
     unsigned char cellY;        /* 0x2071 */
     char pad2072[0x2074 - 0x2072];
