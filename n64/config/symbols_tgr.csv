@@ -277,6 +277,7 @@ va,name,kind
 802291F8,BrCarEntInit,func
 80229510,BrRankCmpKey,func
 80229550,BrRankUpdate,func
+80229700,BrCarSlotSwap,func
 8022ADCC,BrVarListSave,func
 8022AE70,BrVarListLoad,func
 8022AED8,BrVarSaveAll,func
