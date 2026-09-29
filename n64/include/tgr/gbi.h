@@ -325,4 +325,13 @@ typedef union {
 #define gSPNumLights(pkt, n) gMoveWd(pkt, G_MW_NUMLIGHT, 0, NUMLIGHTS(n))
 #define gSPLight(pkt, l, n) gDma1p(pkt, G_MOVEMEM, l, 16, ((n) - 1) * 2 + G_MV_L0)
 
+#define G_MW_FOG            0x08
+#define G_SETFOGCOLOR       0xf8
+#define gSPFogFactor(pkt, fm, fo) \
+    gMoveWd(pkt, G_MW_FOG, 0, (_SHIFTL(fm, 16, 16) | _SHIFTL(fo, 0, 16)))
+#define gSPFogPosition(pkt, min, max) \
+    gSPFogFactor(pkt, (500 * 0x100) / ((max) - (min)), (500 - (min)) * 0x100 / ((max) - (min)))
+#define gDPSetFogColor(pkt, r, g, b, a) \
+    gDPSetColor(pkt, G_SETFOGCOLOR, (_SHIFTL(r, 24, 8) | _SHIFTL(g, 16, 8) | _SHIFTL(b, 8, 8) | _SHIFTL(a, 0, 8)))
+
 #endif

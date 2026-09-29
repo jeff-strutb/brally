@@ -1,6 +1,8 @@
 /* fog.c -- the weather fog: the RDP fog range and the fog amount at a point
  */
 #include "tgr/common.h"
+#include "tgr/gbi.h"
+#include "tgr/car.h"
 
 /* -- declarations -- */
 void BrMat4TransformPoint4(float out[4], float v[3], float m[4][4]);
@@ -20,7 +22,129 @@ extern unsigned char D_8031B350[4], D_8031B354[4], D_8031B358[4];   /* the ramp,
 extern unsigned int D_8028AB58, D_8028AB5C;                /* packed tints A and B */
 extern unsigned int D_8031B360[4];                         /* packed ramp */
 extern float D_8031B338[3];
+extern int D_8028AB30;                  /* the fog's near and far RSP depths */
+extern int D_8028AB34;
+extern int D_8026FF08;                  /* players */
+extern int D_8028B940;                  /* the track */
+extern int D_8028C818;                  /* the lightning timer */
+extern BrCar *D_8028AAF0;               /* the car being drawn */
+extern BrCarCam *D_8028AAF4;            /* the camera being drawn from */
+extern float D_803634F8[3];             /* where the lightning strikes */
+typedef struct BrTrackFog {
+  char pad00[0x38];
+  float lo;                     /* 0x38  the altitude the fog starts at */
+  float hi;                     /* 0x3C  and where it is full */
+  char pad40[0x80 - 0x40];
+  unsigned char colour[3];      /* 0x80  the track's fog colour */
+} BrTrackFog;
+extern BrTrackFog D_80025C00;
+extern Gfx *D_8028A858;
+float BrVec3DistXY(float *pA, float *pB);
 /* -- end declarations -- */
+
+/* WHAT IT DOES: Set this frame's fog from the weather: night, rain and snow
+ * each have a colour and an RSP depth range (tighter with two players; in
+ * rain a lightning flash near the camera lights it), no fog when the weather
+ * has none, and otherwise the track's fog, as dense as the car is high
+ * between the track's two fog altitudes and, on the first track, washed
+ * towards white with the camera's height above 1024.  Then the fog factor
+ * and offset the RSP uses and the fog colour go into the display list.
+ * The colours are converted as unsigned (the ROM's cvt checks).
+ * RESIDUE (6): in the first track's washout the ROM loads both constants
+ * before the camera's x; ours loads x first (300 permuter compiles). */
+/* @implements 0x802182A8 tgr BrFogSetup */
+void BrFogSetup(void)
+{
+  int a;
+  float t;
+  float u;
+  float w;
+
+  if (D_8028AA80 != 0) {
+    D_8028AB20 = D_8028AB24 = D_8028AB28 = 0;
+    D_8028AB2C = 0x40;
+    if (D_8026FF08 == 2) {
+      D_8028AB30 = 0x3E0;
+      D_8028AB34 = 0x3FC;
+    } else {
+      D_8028AB30 = 0x3C8;
+      D_8028AB34 = 0x3FC;
+    }
+  } else if (D_8028AA84 != 0) {
+    D_8028AB20 = 0xB8;
+    D_8028AB24 = 0xB8;
+    D_8028AB28 = 0xD8;
+    D_8028AB2C = 0x40;
+    if (D_8026FF08 == 2) {
+      D_8028AB30 = 0x3B6;
+      D_8028AB34 = 1000;
+    } else {
+      D_8028AB30 = 800;
+      D_8028AB34 = 0x41A;
+    }
+  } else if (D_8028AA8C != 0) {
+    D_8028AB20 = 0x60;
+    D_8028AB24 = 0x68;
+    D_8028AB28 = 0x70;
+    D_8028AB2C = 0x40;
+    if (D_8028C818 > 0 && (D_8028C818 & 1)) {
+      t = 100.0f / (BrVec3DistXY(D_8028AAF4->mtx[3], D_803634F8) + 100.0f);
+      u = 1.0f - t;
+      D_8028AB20 = D_8028AB20 * u + 240.0f * t;
+      D_8028AB24 = D_8028AB24 * u + 248.0f * t;
+      D_8028AB28 = D_8028AB28 * u + 255.0f * t;
+    }
+    if (D_8026FF08 == 2) {
+      D_8028AB30 = 0x3A2;
+      D_8028AB34 = 1000;
+    } else {
+      D_8028AB30 = 0x352;
+      D_8028AB34 = 0x401;
+    }
+  } else if (D_8028AA78 != 0) {
+    a = (D_8028AAF0->mtx0[3][2] - D_80025C00.lo) / (D_80025C00.hi - D_80025C00.lo) * 255.0f;
+    if (a < 0) {
+      a = 0;
+    } else if (a > 255) {
+      a = 255;
+    }
+    if (D_8028B940 == 0) {
+      if (1024.0f < D_8028AAF4->mtx[3][1]) {
+        t = (D_8028AAF4->mtx[3][1] - 1024.0f) * 0.0008789062267169356f * (D_8028AAF4->mtx[3][0] * 0.0004394531133584678f);
+      } else {
+        t = 0.0f;
+      }
+      u = 1.0f - t;
+      w = 160.0f * t;
+      D_8028AB20 = D_80025C00.colour[0] * u + w;
+      D_8028AB24 = D_80025C00.colour[1] * u + w;
+      D_8028AB28 = D_80025C00.colour[2] * u + w;
+    } else {
+      D_8028AB20 = D_80025C00.colour[0];
+      D_8028AB24 = D_80025C00.colour[1];
+      D_8028AB28 = D_80025C00.colour[2];
+    }
+    D_8028AB2C = a;
+    if (D_8026FF08 == 2) {
+      D_8028AB30 = 0x3E3;
+      D_8028AB34 = 1000;
+    } else {
+      D_8028AB30 = 0x3D4;
+      D_8028AB34 = 1000;
+    }
+  } else {
+    D_8028AB20 = 0;
+    D_8028AB24 = 0;
+    D_8028AB28 = 0;
+    D_8028AB2C = 0xFF;
+    D_8028AB30 = 0;
+    D_8028AB34 = 1000;
+  }
+  D_8028AB3C = 128000 / (D_8028AB34 - D_8028AB30);
+  D_8028AB38 = ((500 - D_8028AB30) << 8) / (D_8028AB34 - D_8028AB30);
+  gSPFogPosition(D_8028A858++, D_8028AB30, D_8028AB34);
+  gDPSetFogColor(D_8028A858++, D_8028AB20, D_8028AB24, D_8028AB28, 0xFF);
+}
 
 /* WHAT IT DOES: How fogged a world point is, 0 to 1: its projected depth
  * through the fog multiplier and offset the RSP uses (0 when the weather has
