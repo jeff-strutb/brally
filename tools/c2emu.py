@@ -25,7 +25,12 @@ Instrumentation (all env vars, all optional):
   C2LATLOG=1       log edge latency computation (0x43B974); C2LATALL=1 for all
   C2SUCC=ins,...   dump scheduler successors/heights
   C2EMITLOG=f      pickle the final emitted instruction nodes
+  C2PRIOFIRST=1    apply C2PRIO only at a node's first ready-list entry (pass 0)
+  C2PRIODELTA=1    C2PRIO values are offsets from 0x10000 instead of absolutes
+  C2T36=ins:v      override the scheduler tie-break field (+0x36); C2T36FIRST=1
   C2HEAPSKEW/C2MALLOCPAD  perturb the CRT heap (outputs proved insensitive)
+IL capture in parallel: the wrapper honours C2CAPDIR (a Windows path) for
+where it copies each IL set; give each worker its own C2CAPDIR and TMP.
 Node addresses are deterministic for a given IL (bump allocator)."""
 import os
 import struct
@@ -259,9 +264,16 @@ class C2(object):
             pri = {}
             for pr in os.environ['C2PRIO'].split(','):
                 x_, y_ = pr.split(':'); pri[int(x_, 16)] = int(y_, 16)
+            seenp = {}
             def _pp(uc_, addr, size, ud):
                 n_ = uc_.reg_read(UC_X86_REG_ECX)
                 ins = self.rd32(n_ + 0x1c)
+                if ins in pri and os.environ.get('C2PRIOFIRST'):
+                    if seenp.setdefault(ins, n_) != n_:
+                        return
+                if ins in pri and os.environ.get('C2PRIODELTA'):
+                    self.wr32(n_ + 0x2c, (self.rd32(n_ + 0x2c) + pri[ins] - 0x10000) & 0xffffffff)
+                    return
                 lo_ = int(os.environ.get('C2PRIOMIN', '0'), 16)
                 if ins in pri and n_ >= lo_:
                     self.wr32(n_ + 0x2c, pri[ins])
@@ -289,7 +301,7 @@ class C2(object):
             def _sc(uc_, addr, size, ud):
                 n_ = uc_.reg_read(UC_X86_REG_ECX)
                 ins = self.rd32(n_ + 0x1c)
-                if ins in want_ and n_ >= 0x20060000:
+                if ins in want_ and n_ >= int(os.environ.get('C2PRIOMIN', '20060000'), 16):
                     out_ = []
                     e_ = self.rd32(n_ + 0xc)
                     while e_ and len(out_) < 20:
@@ -304,6 +316,20 @@ class C2(object):
                 pw = self.rd32(0x49c050)
                 sys.stderr.write('WEIGHTS %08x %s\n' % (pw, [struct.unpack('<i', struct.pack('<I', self.rd32(pw + 4 * k)))[0] for k in range(8)]))
             uc.hook_add(UC_HOOK_CODE, _wt, begin=0x43be83, end=0x43be83)
+        if os.environ.get('C2T36'):
+            t36 = {}
+            for pr in os.environ['C2T36'].split(','):
+                x_, y_ = pr.split(':'); t36[int(x_, 16)] = int(y_, 16)
+            seen36 = {}
+            def _t36(uc_, addr, size, ud):
+                n_ = uc_.reg_read(UC_X86_REG_ECX)
+                ins = self.rd32(n_ + 0x1c)
+                if ins in t36 and os.environ.get('C2T36FIRST'):
+                    if seen36.setdefault(ins, n_) != n_:
+                        return
+                if ins in t36 and n_ >= int(os.environ.get('C2PRIOMIN', '0'), 16):
+                    uc_.mem_write(n_ + 0x36, struct.pack('<H', t36[ins]))
+            uc.hook_add(UC_HOOK_CODE, _t36, begin=0x43ca68, end=0x43ca68)
         if os.environ.get('C2READY'):
             rdy = {}
             for pr in os.environ['C2READY'].split(','):

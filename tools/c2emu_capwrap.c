@@ -8,7 +8,7 @@ int main(int argc, char **argv)
     WIN32_FIND_DATA fd; HANDLE h; int i; char *p;
     STARTUPINFO si; PROCESS_INFORMATION pi; DWORD rc = 1;
     static int n;
-    { FILE *lf = fopen("Z:\\Users\\jeffreywilbur\\projects\\strutb\\brally\\build\\match\\t3d\\ilcap\\cmdline.txt", "a");
+    if (0) { FILE *lf = fopen("Z:\\Users\\jeffreywilbur\\projects\\strutb\\brally\\build\\match\\t3d\\ilcap\\cmdline.txt", "a");
       if (lf) { fprintf(lf, "%s\n", GetCommandLine()); for (i = 0; i < argc; i++) fprintf(lf, "[%d]=%s\n", i, argv[i]);
       p = getenv("MSC_CMD_FLAGS"); fprintf(lf, "MSC_CMD_FLAGS=%s\n", p ? p : "(null)"); fclose(lf); } }
     for (i = 1; i < argc - 1; i++) if (!strcmp(argv[i], "-il")) strcpy(base, argv[i + 1]);
@@ -21,7 +21,9 @@ int main(int argc, char **argv)
         p = strrchr(base, '\\');
         do {
             sprintf(src, "%.*s%s", (int)(p - base + 1), base, fd.cFileName);
-            sprintf(dst, "Z:\\Users\\jeffreywilbur\\projects\\strutb\\brally\\build\\match\\t3d\\ilcap\\%s", fd.cFileName);
+            { char *cd = getenv("C2CAPDIR");
+              if (cd) sprintf(dst, "%s\\%s", cd, fd.cFileName);
+              else sprintf(dst, "Z:\\Users\\jeffreywilbur\\projects\\strutb\\brally\\build\\match\\t3d\\ilcap\\%s", fd.cFileName); }
             CopyFile(src, dst, FALSE);
         } while (FindNextFile(h, &fd));
         FindClose(h);
