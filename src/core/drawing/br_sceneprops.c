@@ -65,7 +65,12 @@ static BrS17State s17_tuState;
  * and drop the three assignments in tests/test_slice2_17.c. Until then the
  * matching build models them locally and the PORT IS LEFT EXACTLY AS IT
  * WAS -- do not delete the #else arm. */
-static const uint32_t s17_colAA5D0[4];   /* 0x100AA5D0 */
+/* The four prop brightness levels (64, 128, 192, 255 grey) the lamp and
+ * lit props take as their ambient light.  Glide 0x100A9930 (the D3D copy
+ * is 0x100AA5D0); the table must carry the values, not only the address. */
+static const uint32_t s17_colAA5D0[4] = {   /* 0x100A9930 */
+    0x40404000u, 0x80808000u, 0xC0C0C000u, 0xFFFFFF00u
+};
 static BrMat4 s17_lightMtx;              /* 0x106C08A0 */
 static BrMat4 s17_transMtx;              /* 0x106C0860 */
 #define BRS17_COL       s17_colAA5D0
