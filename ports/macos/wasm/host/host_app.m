@@ -308,7 +308,17 @@ int main(int argc, char **argv)
     }
     /* Finder passes -psn_... on older systems; it is not a command line */
     if (argc > 1 && !strncmp(argv[1], "-psn_", 5)) argc = 1;
-    snprintf(save, sizeof save, "%s/Library/Application Support/Boss Rally", getenv("HOME"));
+    /* The saves and settings (bossrally.cfg: the controller choice, the
+     * bindings) are the player's. A scripted, headless or fake-controller
+     * run is a check, not the player, and keeps its own under the tree, so
+     * what a check chooses in the options never reaches the player's game.
+     * BR_SAVEDIR names the directory outright. */
+    if (getenv("BR_SAVEDIR"))
+        snprintf(save, sizeof save, "%s", getenv("BR_SAVEDIR"));
+    else if (getenv("BR_SCRIPT") || getenv("BR_HEADLESS") || getenv("BR_PADFAKE"))
+        snprintf(save, sizeof save, "%s/build/wasm/save", root);
+    else
+        snprintf(save, sizeof save, "%s/Library/Application Support/Boss Rally", getenv("HOME"));
     w_init(dll, pd);
     vfs_init(disc, save);
     w_run_inits();
