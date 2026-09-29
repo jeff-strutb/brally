@@ -175,6 +175,7 @@ va,name,kind
 80220544,BrEntLoadModel,func
 80220620,BrCarResetFrames,func
 802207A4,BrCarBindPad,func
+80220810,BrCarCamWallPush,func
 80220C58,BrCarCamPlaceBehind,func
 80220E84,BrCarCamTargetStep,func
 80220FF4,BrCarCamLookAt,func
