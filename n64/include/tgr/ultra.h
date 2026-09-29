@@ -288,4 +288,21 @@ s32 osPiRawReadIo(u32 devAddr, u32 *data);
 		stat = IO_READ(PI_STATUS_REG);
 extern u32 osRomBase;
 
+#define SP_MEM_ADDR_REG 0x04040000
+#define SP_DRAM_ADDR_REG 0x04040004
+#define SP_RD_LEN_REG 0x04040008
+#define SP_WR_LEN_REG 0x0404000C
+#define SP_STATUS_REG 0x04040010
+#define SP_PC_REG 0x04080000
+#define SP_STATUS_HALT 0x0001
+#define SP_STATUS_DMA_BUSY 0x0004
+#define SP_STATUS_DMA_FULL 0x0008
+#define SP_STATUS_IO_FULL 0x0010
+u32 osGetCount(void);
+void __osSetCompare(u32 v);
+extern OSTime __osCurrentTime;
+extern u32 __osBaseCounter;
+extern u32 __osViIntrCount;
+extern u32 __osTimerCounter;
+
 #endif
