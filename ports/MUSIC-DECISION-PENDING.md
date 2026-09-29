@@ -1,14 +1,26 @@
-# Music in a port: OPEN DECISION, ASK BEFORE BUILDING
+# Music in a port: DECIDED 2026-09-29
 
-**No port plays music yet, and this is deliberate. Nothing in `ports/` reads
-either soundtrack export.**
+**Decided, for the 32-bit lane (`macos/wasm/`).** The answers to the questions
+at the bottom:
 
-> **If you are here because music porting has come up: STOP and ask the user.**
-> The intent is a **player-facing choice between the PC and N64 soundtracks**:
-> PC plays the disc's CD audio, N64 plays the tracker modules. That intent is
-> settled. *How* to build it is not, and the user wants to decide it with the
-> findings below in front of them rather than have a design chosen for them.
-> The questions to put to them are at the bottom.
+1. The N64 soundtrack plays as its modules, live, through libopenmpt.
+2. A third-party library is acceptable: libopenmpt, linked statically together
+   with the codecs Homebrew built it against; their licences ship in the app.
+3. A soundtrack whose files are missing is disabled in the Music menu, and the
+   player falls back to the other one.
+4. No interim mapping was invented. The PC game's own cue logic drives both:
+   track 2 on the front end, a random track from 3 up in a race. The N64
+   soundtrack answers those with the N64 game's own cues, read from its code
+   and data: its title module for track 2, and for a race track one of its
+   five per-track race modules, (track - 3) mod 5.
+5. Nothing waited on the renderer's open leads: `tools/xm_render.c` is not the
+   player.
+
+Levels (the third of the "four things that will bite" below): the modules play 4.0 dB down, putting their mean
+integrated loudness within 0.6 dB of the CD tracks' and the loudest module's
+peak below full scale. The implementation and its measurements are in
+`macos/wasm/native/music.m`. The rest of this file is the record the decision
+was made on.
 
 Recorded 2026-09-03. Everything here was measured, not assumed; the working is
 in `docs/audio-xm-notes.md`.

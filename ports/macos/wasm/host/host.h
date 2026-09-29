@@ -53,6 +53,7 @@ void happ_dik_state(u8 *out256);
 void happ_key_script(u8 dik, u8 vk, int down);
 void happ_frame(void);              /* host_script.c: one BrAppFrame entry */
 void hglide_shot(const char *path); /* host_glide.m: the frame so far, as PPM */
+void nmusic_poll(void);             /* native/music.m: a track that ended */
 void hdx_mouse(int dx, int dy, int btn);
 void hdx_mouse_abs(int x, int y, int btn);
 void hdx_mouse_btn(int btn);

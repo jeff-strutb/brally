@@ -19,13 +19,16 @@ platform-abstraction seam: where the original build links Microsoft's CRT
 Mac's libc; where the original draws through Glide/Direct3D, a macOS build
 draws through Metal. Same slot in the design, different platform.
 
-## Music: an open decision, do not design around it silently
+## Music: decided 2026-09-29
 
-No port plays music yet, deliberately. The intent is a player-facing choice
-between the PC soundtrack (the disc's CD audio) and the N64 one (tracker
-modules), and the user wants to settle *how* that is built with the findings in
-front of them. **Read `MUSIC-DECISION-PENDING.md` and ask before writing audio
-code.**
+The 32-bit lane plays both soundtracks natively (`macos/wasm/native/music.m`):
+the disc's CD audio through AVAudioEngine, and the N64 modules live through
+libopenmpt, linked statically. The player picks one in the Music menu. The
+game's own music logic still decides what plays when; only its Windows
+backends (MCI and the EAR engine's CD channel) are replaced. The findings the
+choice was made on, and the rules that still hold (the exports stay 1:1 rips),
+are in `MUSIC-DECISION-PENDING.md`. The native 64-bit lane (`build.sh`) still
+has no music.
 
 ## macos/
 
@@ -44,8 +47,8 @@ which carries everything it reads: the whole data track as its CD root, the
 PC soundtrack (CD audio off the BIN/CUE) and the N64 soundtrack (off the ROM).
 The app needs neither image nor this tree once built; saves go to
 `~/Library/Application Support/Boss Rally`. Extraction happens once per set of
-sources (cached in `build/app/extract`, keyed on their MD5s). Both soundtracks
-are bundled, but nothing plays them yet: see the music section above.
+sources (cached in `build/app/extract`, keyed on their MD5s). The N64
+soundtrack is bundled as the ROM's modules (about 1 MB), not rendered audio.
 
 ### Where the port's code lives
 

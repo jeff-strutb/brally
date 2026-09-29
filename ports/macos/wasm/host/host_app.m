@@ -121,6 +121,12 @@ void happ_dik_state(u8 *out) { memcpy(out, g_dik, 256); }
 - (void)mouseExited:(NSEvent *)e { (void)e; [[NSCursor arrowCursor] set]; }
 @end
 
+@interface BRQuit : NSObject
+@end
+@implementation BRQuit
+- (void)quit:(id)sender { (void)sender; g_happ_quit = 1; }
+@end
+
 static int headless(void)
 {
     if (g_headless < 0) g_headless = getenv("BR_HEADLESS") != NULL;
@@ -134,6 +140,18 @@ void happ_init(void)
     [NSApplication sharedApplication];
     [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
     [NSApp finishLaunching];
+    {
+        /* the menu bar: the app menu here, native/music.m adds Music. Cmd-Q
+         * itself is the key handler's (happ_pump), as before. */
+        static BRQuit *quit;
+        NSMenu *bar = [NSMenu new], *app = [NSMenu new];
+        NSMenuItem *it;
+        quit = [BRQuit new];
+        it = [app addItemWithTitle:@"Quit Boss Rally" action:@selector(quit:) keyEquivalent:@"q"];
+        it.target = quit;
+        [bar addItemWithTitle:@"" action:nil keyEquivalent:@""].submenu = app;
+        NSApp.mainMenu = bar;
+    }
     g_window = [[NSWindow alloc] initWithContentRect:NSMakeRect(100, 100, 1280, 960)
                                            styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable |
                                                      NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable
@@ -204,6 +222,7 @@ void happ_pump(int block_ms)
 {
     NSDate *until;
     NSEvent *e;
+    nmusic_poll();
     if (headless() || !g_window) {
         if (block_ms) usleep((useconds_t)block_ms * 1000);
         return;

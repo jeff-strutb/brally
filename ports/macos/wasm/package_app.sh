@@ -9,15 +9,18 @@
 #                                   opens tracks/, cars/, sfx/ ... under; its
 #                                   BRGlide.dll is the image w_init loads)
 #   Contents/Resources/music/cd/    the PC soundtrack, CD audio tracks 2..13
-#   Contents/Resources/music/n64/   the N64 soundtrack, the ROM's six modules
+#   Contents/Resources/music/n64/   the N64 soundtrack: the ROM's six modules,
+#                                   played live (native/music.m), and its cues
+#   Contents/Resources/Licenses/    libopenmpt and the codecs linked with it
 #
 # Sources, all required (a partial app must not look like a complete one):
 #   --bin  BossRally.BIN (its .cue beside it)  default reference/brally/
 #   --rom  Top Gear Rally (USA).z64            default reference/tgrally/
-# and ffmpeg on PATH (FLAC encoder for both soundtracks).
+# ffmpeg on PATH (FLAC encoder for the CD audio), and Homebrew's libopenmpt,
+# mpg123, libogg and libvorbis (linked statically by build_wasm.sh).
 #
 # Extraction is cached in build/app/extract, keyed on the MD5 of every source,
-# so repackaging after a code change does not re-rip ~400 MB of audio.
+# so repackaging after a code change does not re-rip ~300 MB of audio.
 #
 # Usage: ports/macos/wasm/package_app.sh [--bin X] [--rom Y] [--no-build]
 set -e
@@ -51,7 +54,7 @@ APP="$OUT/Boss Rally.app"
 mkdir -p $OUT
 
 # ---- extract, once per set of sources -------------------------------------
-KEY=$(md5 -q "$BIN" "$CUE" "$ROM" | tr '\n' ' ')
+KEY="2 $(md5 -q "$BIN" "$CUE" "$ROM" | tr '\n' ' ')"   # 2: the extract's layout
 if [ ! -f $EX/.complete ] || [ "$(cat $EX/.complete)" != "$KEY" ]; then
     rm -rf $EX
     mkdir -p $EX/music
@@ -60,7 +63,7 @@ if [ ! -f $EX/.complete ] || [ "$(cat $EX/.complete)" != "$KEY" ]; then
     echo "extract: CD audio <- $CUE"
     $PY tools/extract_cdaudio.py -q "$CUE" $EX/music/cd
     echo "extract: N64 soundtrack <- $ROM"
-    $PY tools/extract_xm.py -q "$ROM" $EX/music/n64
+    $PY ports/macos/wasm/extract_modules.py "$ROM" $EX/music/n64
     # the stamp goes last: a run that died partway claims nothing
     echo "$KEY" > $EX/.complete
 else
@@ -68,7 +71,7 @@ else
 fi
 [ -f $EX/disc/BRGlide.dll ] || { echo "package_app: data track has no BRGlide.dll" >&2; exit 1; }
 [ -f $EX/music/cd/cdaudio.manifest.json ] || { echo "package_app: CD audio incomplete" >&2; exit 1; }
-[ -f $EX/music/n64/xm.manifest.json ] || { echo "package_app: N64 soundtrack incomplete" >&2; exit 1; }
+[ -f $EX/music/n64/modules.json ] || { echo "package_app: N64 soundtrack incomplete" >&2; exit 1; }
 
 # ---- build -----------------------------------------------------------------
 [ $BUILD = 0 ] || sh ports/macos/wasm/build_wasm.sh
@@ -85,6 +88,13 @@ cp build/wasm/c/portdata.bin "$APP/Contents/Resources/portdata.bin"
 cp -Rc $EX/disc "$APP/Contents/Resources/disc" 2>/dev/null || cp -R $EX/disc "$APP/Contents/Resources/disc"
 for m in cd n64; do
     cp -Rc $EX/music/$m "$APP/Contents/Resources/music/$m" 2>/dev/null || cp -R $EX/music/$m "$APP/Contents/Resources/music/$m"
+done
+
+# the licences of the libraries linked into the binary (build_wasm.sh MPT_LIBS)
+BREW=${BR_BREW:-/opt/homebrew/opt}
+mkdir -p "$APP/Contents/Resources/Licenses"
+for l in libopenmpt:LICENSE mpg123:COPYING libogg:COPYING libvorbis:COPYING; do
+    cp "$BREW/${l%%:*}/${l#*:}" "$APP/Contents/Resources/Licenses/${l%%:*}.txt"
 done
 
 ICO=$(find $EX/disc -maxdepth 1 -iname boss.ico | head -1)
