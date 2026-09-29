@@ -1,6 +1,7 @@
 /* racehud.c -- the race's frame hook: extra layers drawn over the 3-D view
  */
 #include "tgr/common.h"
+#include "tgr/car.h"
 
 /* -- declarations -- */
 void func_8020037C(void);
@@ -21,11 +22,11 @@ extern int D_802387B0;
 void func_8022F4F8(void);
 void func_8022F520(void);
 void func_8022F5D0(int param_1);
-int func_80238714();
+void BrHudTimeDraw(char *label, char *prefix, float t, int x, int y);
 extern int D_8026FF08;
 extern int D_8026FF18;
-extern int D_8028AAEC;
-extern int D_8028AAF0;
+extern int D_8028AAEC;                /* the view being drawn */
+extern BrCar *D_8028AAF0;             /* the car of the view being drawn */
 extern int D_8028AB0C;
 extern int D_802AA060;
 extern int D_802AA070;
@@ -36,7 +37,6 @@ extern int D_802AA0B8;
 extern int D_802AA0C8;
 extern int D_802AA0D8;
 extern int D_802AA0E8;
-extern int D_8031B2CC;
 void func_8022F4DC(void);
 void func_8022F4EC(void);
 void func_8022F514(void);
@@ -50,12 +50,11 @@ extern int D_802AA114;
 extern int D_802AA118;
 extern int D_802AA11C;
 extern int D_802AA120;
-extern int D_8031B2C8;
-extern int D_8031B2D4;
+typedef struct BrViewRect { int x; int y; int w; int h; int car; } BrViewRect;
+extern BrViewRect D_8031B2C8[2];        /* the players' views */
 void func_8022F504(void);
 extern int D_80238EBC;
 extern int D_80238F10;
-extern int D_8031B2D0;
 extern int D_80025C70;
 /* -- end declarations -- */
 
@@ -355,7 +354,7 @@ LAB_80233c10:
 /* @t4-pass 0x80238714 2 2026-09-26 compiles 16 best 70 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80238714 3 2026-09-26 compiles 13 best 70 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80238714 tgr BrHudTimeDraw */
-void BrHudTimeDraw(int label, int prefix, float t, int x, int y)
+void BrHudTimeDraw(char *label, char *prefix, float t, int x, int y)
 {
   char buf[44];
 
@@ -382,27 +381,27 @@ void BrHudTimesDraw(void)
   else {
     iVar1 = 0;
   }
-  iVar2 = *(int *)(&D_8031B2CC + D_8028AAEC * 0x14) + 0x14;
+  iVar2 = D_8031B2C8[D_8028AAEC].y + 0x14;
   func_8022F4F8();
   func_8022F520();
   func_8022F5D0(0xf);
   if (D_8026FF18 != 0) {
     if (D_8026FF18 == 1) {
       if (D_8028AB0C == 1) {
-        func_80238714("%15TOTAL TIME",&D_802AA094,*(int *)(D_8028AAF0 + 4000),
+        BrHudTimeDraw("%15TOTAL TIME",&D_802AA094,D_8028AAF0->lapTime,
                      0x128,iVar2);
       }
-      if (D_8028B304 <= *(int *)(D_8028AAF0 + 0xf78)) {
-        func_80238714("%15BEST LAP",&D_802AA0A4,*(int *)(D_8028AAF0 + 0xf98),
+      if (D_8028B304 <= D_8028AAF0->laps) {
+        BrHudTimeDraw("%15BEST LAP",&D_802AA0A4,D_8028AAF0->xf98,
                      0x128,iVar2 + iVar1);
         return;
       }
       if (D_8026FF08 == 1) {
-        func_80238714("%15TIME LEFT",&D_802AA0B8,*(int *)(D_8028AAF0 + 0xfa4),
+        BrHudTimeDraw("%15TIME LEFT",&D_802AA0B8,D_8028AAF0->xfa4,
                      0x128,iVar2 + iVar1);
         return;
       }
-      func_80238714("%15LAP TIME",&D_802AA0C8,*(int *)(D_8028AAF0 + 0xf80),0x128,
+      BrHudTimeDraw("%15LAP TIME",&D_802AA0C8,D_8028AAF0->raceTime,0x128,
                    iVar2 + iVar1);
       return;
     }
@@ -411,24 +410,24 @@ void BrHudTimesDraw(void)
         return;
       }
       if (D_8028AB0C == 1) {
-        func_80238714("%15BEST LAP",&D_802AA0D8,*(int *)(D_8028AAF0 + 0xf98),
+        BrHudTimeDraw("%15BEST LAP",&D_802AA0D8,D_8028AAF0->xf98,
                      0x128,iVar2);
       }
-      func_80238714("%15LAP TIME",&D_802AA0E8,*(int *)(D_8028AAF0 + 0xf80),0x128,
+      BrHudTimeDraw("%15LAP TIME",&D_802AA0E8,D_8028AAF0->raceTime,0x128,
                    iVar2 + iVar1);
       return;
     }
   }
   if (D_8028AB0C == 1) {
-    func_80238714("%15TOTAL TIME",&D_802AA060,*(int *)(D_8028AAF0 + 4000),0x128,
+    BrHudTimeDraw("%15TOTAL TIME",&D_802AA060,D_8028AAF0->lapTime,0x128,
                  iVar2);
   }
-  if (*(int *)(D_8028AAF0 + 0xf78) < D_8028B304) {
-    func_80238714("%15LAP TIME",&D_802AA080,*(int *)(D_8028AAF0 + 0xf80),0x128,
+  if (D_8028AAF0->laps < D_8028B304) {
+    BrHudTimeDraw("%15LAP TIME",&D_802AA080,D_8028AAF0->raceTime,0x128,
                  iVar2 + iVar1);
   }
   else {
-    func_80238714("%15BEST LAP",&D_802AA070,*(int *)(D_8028AAF0 + 0xf98),0x128,
+    BrHudTimeDraw("%15BEST LAP",&D_802AA070,D_8028AAF0->xf98,0x128,
                  iVar2 + iVar1);
   }
 }
@@ -450,13 +449,13 @@ void BrHudLapDraw(void)
   char *local_18;
   char auStack_14 [20];
   
-  iVar1 = D_8031B2C8;
+  iVar1 = D_8031B2C8[0].x;
   if (D_8026FF18 != 3) {
-    iVar5 = D_8031B2C8 + 0x10;
-    if (D_8028AAF4 != D_8028AAF0 + 0x1e78) {
-      iVar2 = *(int *)(D_8028AAF0 + 0xf78);
+    iVar5 = D_8031B2C8[0].x + 0x10;
+    if (D_8028AAF4 != (int)D_8028AAF0 + 0x1e78) {
+      iVar2 = D_8028AAF0->laps;
       if ((iVar2 < D_8028B304) || (D_8028AB0C == 1)) {
-        iVar4 = *(int *)(&D_8031B2CC + D_8028AAEC * 0x14);
+        iVar4 = D_8031B2C8[D_8028AAEC].y;
         if (iVar2 < D_8028B304) {
           if (D_8028AB0C == 2) {
             puVar3 = &D_802AA0F8;
@@ -476,14 +475,14 @@ void BrHudLapDraw(void)
       }
     }
     iVar4 = iVar1 + 0xe;
-    iVar6 = *(int *)(&D_8031B2D4 + D_8028AAEC * 0x14) +
-            *(int *)(&D_8031B2CC + D_8028AAEC * 0x14);
+    iVar6 = D_8031B2C8[D_8028AAEC].h +
+            D_8031B2C8[D_8028AAEC].y;
     func_8022F4DC();
     func_8022F514();
     func_8022F530(0xff,0xf0,0x7d,0xff,0x78,0);
-    func_80260DD4(auStack_14,&D_802AA110,*(int *)(D_8028AAF0 + 0xfac) + 1);
+    func_80260DD4(auStack_14,&D_802AA110,D_8028AAF0->xfac + 1);
     iVar5 = 0;
-    iVar2 = *(int *)(D_8028AAF0 + 0xfac);
+    iVar2 = D_8028AAF0->xfac;
     if (iVar2 == 0) {
       local_18 = &D_802AA114;
       iVar5 = -3;
@@ -517,45 +516,37 @@ void BrHudLapDraw(void)
   }
 }
 
-/* WHAT IT DOES: Draw the player's race position unless the display is
- * switched off, placed for one or two players. */
+/* WHAT IT DOES: Draw the car's current message (the first, else the
+ * second) centred in the view, a third of the way down, sized for one or
+ * two players, unless the display is switched off. */
 /* @t4-pass 0x80238DD4 1 2026-09-26 compiles 17 best 75 moved 2  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80238DD4 2 2026-09-26 compiles 17 best 76 moved 1  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80238DD4 3 2026-09-26 compiles 17 best 76 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80238DD4 tgr BrHudPositionDraw */
 void BrHudPositionDraw(void)
 {
-  int uVar1;
-  int iVar3;
-  int iVar2;
-  int iVar4;
-  
+  int x;
+  int y;
+  int big;
+  int small;
+
   if (D_8026FF10 == 0) {
     if (D_8028AB0C == 1) {
-      iVar2 = 0x1e;
-      uVar1 = 0x14;
+      big = 30;
+      small = 20;
+    } else {
+      big = 20;
+      small = 15;
     }
-    else {
-      iVar2 = 0x14;
-      uVar1 = 0xf;
-    }
-    iVar4 = D_8028AAEC * 0x14;
-    iVar3 = *(int *)(&D_8031B2D0 + iVar4);
-    if (iVar3 < 0) {
-      iVar3 = iVar3 + 1;
-    }
-    iVar3 = (iVar3 >> 1) + *(int *)(&D_8031B2C8 + iVar4);
-    iVar4 = *(int *)(&D_8031B2D4 + iVar4) / 3 + *(int *)(&D_8031B2CC + iVar4);
+    x = D_8031B2C8[D_8028AAEC].x + D_8031B2C8[D_8028AAEC].w / 2;
+    y = D_8031B2C8[D_8028AAEC].y + D_8031B2C8[D_8028AAEC].h / 3;
     func_8022F504();
-    if (*(int *)(D_8028AAF0 + 0xfb0) == 0) {
-      if (*(int *)(D_8028AAF0 + 0xfb8) != 0) {
-        func_8022F5D0(uVar1);
-        func_8022F5DC(*(int *)(D_8028AAF0 + 0xfb8),iVar3,(iVar2 * 3 >> 4) + iVar4);
-      }
-    }
-    else {
-      func_8022F5D0(iVar2);
-      func_8022F5DC(*(int *)(0xfb0 + D_8028AAF0),iVar3,(iVar2 >> 2) + iVar4);
+    if (D_8028AAF0->msgA != 0) {
+      func_8022F5D0(big);
+      func_8022F5DC(D_8028AAF0->msgA, x, big / 4 + y);
+    } else if (D_8028AAF0->msgB != 0) {
+      func_8022F5D0(small);
+      func_8022F5DC(D_8028AAF0->msgB, x, big * 3 / 16 + y);
     }
   }
 }
