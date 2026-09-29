@@ -38,6 +38,8 @@ extern BrCarKindParams D_8028B330[];
 typedef struct BrCarLink {
     char pad00[0x68];
     unsigned int flags;         /* 0x68  bits 0-1: the car is out of the race */
+    char pad6c[0x74 - 0x6C];
+    int x74;                    /* 0x74  the entrant's row in the AI pace table */
 } BrCarLink;
 
 /* A body of the car (0x208 bytes): the car itself is one, at 0x1C0 (its
@@ -108,7 +110,7 @@ typedef struct BrCar {
     struct BrCarLink *link;     /* 0xED0 */
     int xed4;                   /* 0xED4  a countdown, one per frame */
     int xed8;                   /* 0xED8  the car's control function (camera step, AI) */
-    char padedc[0xEE8 - 0xEDC];
+    BrVec3 aim;                 /* 0xEDC  the AI's smoothed aim point */
     BrVec3 linePos;             /* 0xEE8  the nearest point on the racing line */
     BrVec3 lineDir;             /* 0xEF4  the line's direction there */
     BrVec3 lineSide;            /* 0xF00  across the line */

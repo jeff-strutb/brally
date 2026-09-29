@@ -5,7 +5,7 @@
 #include "tgr/car.h"
 
 /* -- declarations -- */
-void func_8022762C(int ctl);
+void BrCtlAiBody(BrCar *car);
 typedef struct BrAiNode {       /* 0x10 bytes */
   short x0[3];
   char pad6[6];
@@ -152,6 +152,19 @@ extern BrVec3 D_8031B4F0[8];            /* copied-out left edges */
 extern BrVec3 D_8031B730;               /* aim point */
 extern BrVec3 D_8031B740;               /* half-depth look-ahead point */
 void BrAiInputClear();
+typedef struct BrMenuPick { char pad00[4]; unsigned char b4; unsigned char b5; } BrMenuPick;
+extern BrMenuPick *D_8031C5BC;          /* player one's season: its two option bytes */
+extern float D_8028B9F0[];              /* the AI's pace, by entrant and options */
+extern BrVec3 D_8028BAB0;               /* (0, 0, 1) */
+extern float D_8028AAD8;                /* seconds this frame */
+extern int D_8028B7F0;                  /* entries in D_803239A0 */
+void BrPerfMark(int bar, int r, int g, int b, int a);
+float BrVec3Length(BrVec3 *v);
+void BrCarCamPlaceChase(BrCar *car);
+unsigned int BrAiScanCorridor(BrCar *car, int depth, int mid, BrPathSeg *seg);
+void BrCarLineFit(BrCar *car);
+void BrCarPhysTick(BrCar *car);
+void BrCarRespawn(BrCar *car);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Put a car on the starting grid for a race: its record;
@@ -585,12 +598,445 @@ void BrCarLineFit(BrCar *car)
   }
 }
 
+/* WHAT IT DOES: Drive one computer-controlled car for this frame. Walk the
+ * car's path cursor ahead by a speed-scaled look-ahead, ease the aim point
+ * toward the corridor scan's suggestion and toward that waypoint, and build
+ * the path frame there; turn the car's offset from the line and its heading
+ * into a steering request (a side bias, a magnitude and a response curve);
+ * a throttle ladder over the scan's corridor edges decides whether to lift
+ * or brake; counters flip the car into reverse when it is stuck for 30
+ * frames and back; the nearest rival ahead pushes the line offset aside;
+ * and the body's velocity is reshaped along the path frame and scaled by
+ * the pace table or the weather. Its spin is clamped to unit length, then
+ * the car is ticked and respawned if need be. PC twin: BrCtlAiBody. */
+/* @implements 0x8022762C tgr BrCtlAiBody */
+void BrCtlAiBody(BrCar *car)
+{
+  BrPathSeg *seg;
+  int i;
+  float t;
+  BrVec3 target;
+  float velFwd;
+  BrVec3 aimDir;
+  BrVec3 up;
+  BrVec3 upCrossAim;
+  BrVec3 dead;
+  float lat;
+  float offset;
+  float heading;
+  float absOffset;
+  float mag;
+  BrVec3 edge;
+  float halfWidth;
+  float limit;
+  float scale;
+  int level;
+  BrVec3 vA;
+  BrVec3 vB;
+  BrVec3 vN;
+  float q;
+  float tq;
+  float speed;
+  int sVel;
+  int sAux;
+  int sFwd;
+  float f;
+  int best_i;
+  float best;
+  float add;
+  float lap;
+  float d;
+  float diff;
+  float k;
+  float t1;
+  float t2;
+  float t3;
+  float len;
+  short w;
+
+  if (!(car->link->flags & 1)) {
+    if (*car->pad & 0x2000000) {
+      car->xf48 = 1;
+      BrCarCamPlaceChase(car);
+    }
+    BrPerfMark(0, 0xFF, 0xFF, 0xFF, 0xFF);
+    seg = (BrPathSeg *)car->xf5c;
+    i = car->xf60;
+    t = BrVec3Length(&car->velfd8) * 3.0f + 20.0f;
+    {
+      float *p = &((BrPathSeg *)car->xf5c)->pt[car->xf60].pos.x;
+
+      target.x = p[0];
+      target.y = p[1];
+      target.z = p[2];
+    }
+    if (t > 80.0f) {
+      t = 80.0f;
+    }
+    for (;;) {
+      t -= seg->pt[i].dist - seg->pt[i + 1].dist;
+      i++;
+      if (i == seg->count) {
+        seg = seg->next;
+        i = 0;
+        while (seg->flags & 1) {
+          seg = seg->alt;
+        }
+      }
+      if (t < 0.0f) {
+        break;
+      }
+    }
+    target.x = seg->pt[i].pos.x;
+    target.y = seg->pt[i].pos.y;
+    target.z = seg->pt[i].pos.z;
+    if (BrAiScanCorridor(car, 0, car->xf60, (BrPathSeg *)car->xf5c) != 0) {
+      BrVec3Midpoint(&D_8031B730, &D_8031B730, &D_8031B740);
+      if (car->aim.x != 0.0f || car->aim.y != 0.0f || car->aim.z != 0.0f) {
+        BrVec3Lerp(&car->aim, &car->aim, &D_8031B730, 0.5f + D_8028AAD8);
+      } else {
+        car->aim.x = D_8031B730.x;
+        car->aim.y = D_8031B730.y;
+        car->aim.z = D_8031B730.z;
+      }
+    }
+    BrVec3Lerp(&car->aim, &car->aim, &target, 0.4f);
+    velFwd = BrVec3Dot(&car->velfd8, (BrVec3 *)car->mtx0[0]);
+    BrVec3Direction(&aimDir, (BrVec3 *)car->mtx0[3], &car->aim);
+    up = D_8028BAB0;
+    BrVec3Cross(&upCrossAim, &up, &aimDir);
+    BrVec3Cross(&dead, &aimDir, &upCrossAim);
+    lat = BrVec3Dot((BrVec3 *)car->mtx0[1], &aimDir);
+    car->x1ddc = BrVec3Dot((BrVec3 *)car->mtx0[0], &aimDir);
+    *car->pad |= 0x10000;
+
+    BrVec3Direction(&car->lineDir, &((BrPathSeg *)car->xf5c)->pt[car->xf60].pos,
+                    &((BrPathSeg *)car->xf5c)->pt[car->xf60 + 1].pos);
+    BrVec3Sub(&car->lineSide, &((BrPathSeg *)car->xf5c)->pt[car->xf60].left,
+              &((BrPathSeg *)car->xf5c)->pt[car->xf60].right);
+    BrVec3Cross(&car->lineUp, &car->lineDir, &car->lineSide);
+    BrVec3Normalise(&car->lineUp);
+    BrVec3Cross(&car->lineSide, &car->lineUp, &car->lineDir);
+    BrVec3Normalise(&car->lineSide);
+    BrVec3Sub(&car->lineRel, (BrVec3 *)car->mtx0[3], &((BrPathSeg *)car->xf5c)->pt[car->xf60].pos);
+    BrVec3MulAddTo(&car->lineRel, &car->velfd8, 0.4f);
+    offset = BrVec3Dot(&car->lineSide, &car->lineRel);
+    mag = 0.0f;
+    heading = BrVec3Dot((BrVec3 *)car->mtx0[0], &car->lineSide);
+    D_8028B80C = 0;
+    D_8028B808 = 0;
+    if (offset < 0.0f) {
+      absOffset = -offset;
+    } else {
+      absOffset = offset;
+    }
+    BrVec3Sub(&edge, &((BrPathSeg *)car->xf5c)->pt[car->xf60].left, &((BrPathSeg *)car->xf5c)->pt[car->xf60].pos);
+    halfWidth = BrVec3Dot(&car->lineSide, &edge);
+    if (halfWidth > 5.0f) {
+      limit = halfWidth - 3.0f;
+    } else {
+      limit = halfWidth * 0.4f;
+    }
+    if (absOffset > limit) {
+      if (offset > 0.0f) {
+        if (heading > -0.05) {
+          D_8028B80C = 0;
+          D_8028B808 = 1;
+          mag = heading * -0.2f * ((absOffset - limit) / absOffset) + 0.03f;
+        } else if (heading < -0.15) {
+          D_8028B80C = 1;
+          D_8028B808 = 0;
+          mag = heading * -0.3f * ((absOffset - limit) / absOffset) + 0.1f;
+        }
+      } else if (heading < 0.05) {
+        D_8028B80C = 1;
+        D_8028B808 = 0;
+        mag = heading * 0.2f * ((absOffset - limit) / absOffset) + 0.03f;
+      } else if (heading > 0.15) {
+        D_8028B80C = 0;
+        D_8028B808 = 1;
+        mag = heading * 0.3f * ((absOffset - limit) / absOffset) + 0.1f;
+      }
+    } else if (BrVec3Length(&car->velfd8) > 10.0f) {
+      f = BrVec3Dot(&car->velfd8, &car->lineSide);
+      if (f > 0.1f) {
+        sVel = 1;
+      } else if (f < -0.1f) {
+        sVel = -1;
+      } else {
+        sVel = 0;
+      }
+      f = BrVec3Dot((BrVec3 *)car->wheelMtx[0][0], &upCrossAim);
+      if (f > 0.1f) {
+        sAux = 1;
+      } else if (f < -0.1f) {
+        sAux = -1;
+      } else {
+        sAux = 0;
+      }
+      f = BrVec3Dot((BrVec3 *)car->mtx0[0], &upCrossAim);
+      if (f > 0.1f) {
+        sFwd = 1;
+      } else if (f < -0.1f) {
+        sFwd = -1;
+      } else {
+        sFwd = 0;
+      }
+      if (sVel != 0 || sFwd != 0) {
+        if (sVel != 0 && sVel + sFwd == 0) {
+          if (sVel == 1 && sAux == 1) {
+            D_8028B808 = 0;
+            D_8028B80C = 1;
+          } else if (sVel == -1 && sAux == -1) {
+            D_8028B808 = 1;
+            D_8028B80C = 0;
+          }
+          mag = 0.1f;
+        } else if (sVel != 0 && sVel == sFwd) {
+          if (sVel == 1 && sAux == 1) {
+            D_8028B808 = 1;
+            D_8028B80C = 0;
+          } else if (sVel == -1 && sAux == -1) {
+            D_8028B808 = 0;
+            D_8028B80C = 1;
+          }
+          mag = 0.4f;
+        } else if (sAux != 0 || sFwd != 0) {
+          if (sAux != 0 || sVel != 0) {
+            if (sAux == sFwd) {
+              if (sAux == 1) {
+                D_8028B808 = 1;
+                D_8028B80C = 0;
+              } else if (sAux == -1) {
+                D_8028B808 = 0;
+                D_8028B80C = 1;
+              }
+              mag = 0.5f;
+            } else if (sAux != 0 && sAux + sVel == 0) {
+              goto ladder;
+            }
+          }
+          *car->pad &= ~0x10000;
+        }
+      }
+    }
+  ladder:
+    scale = 1.0f;
+    for (level = 0; level < D_8028B804;) {
+      BrVec3Sub(&vA, &D_8031B430[level], &D_8031B490[level]);
+      BrVec3Sub(&vB, &D_8031B490[level + 1], &D_8031B490[level]);
+      BrVec3Cross(&vN, &vB, &vA);
+      BrVec3Normalise(&vN);
+      q = BrVec3Dot(&car->velfd8, &vN);
+      tq = BrVec3Dot(&car->velfd8, &vA) * 0.03f;
+      level++;
+      if (q < tq) {
+        q = tq;
+      } else if (tq < -q) {
+        q = -tq;
+      }
+      if (q > level * 6.0f) {
+        scale = 2.0f;
+        *car->pad &= ~0x10000;
+        *car->pad |= 0x40000;
+        break;
+      }
+      if (q > level * 4.5f) {
+        scale = 2.0f;
+        *car->pad &= ~0x10000;
+        break;
+      }
+      if (q > level * 3.0f) {
+        scale = 1.3f;
+        break;
+      }
+    }
+    if (BrVec3Length(&car->velfd8) > 10.0f) {
+      lat = lat * scale;
+      if (lat > 1.0f) {
+        *car->pad &= ~0x10000;
+        lat = 1.0f;
+      } else if (lat < -1.0f) {
+        lat = -1.0f;
+        *car->pad &= ~0x10000;
+      }
+    }
+    if (mag < 0.01f) {
+      mag = 0.01f;
+    }
+    if (lat < 0.0f) {
+      if (D_8028B80C != 0) {
+        if (lat < -(0.2f / mag)) {
+          lat = lat - mag * lat;
+        } else {
+          lat = lat + 0.2f;
+        }
+      } else if (D_8028B808 != 0) {
+        if (lat < -(0.2f / mag)) {
+          lat = lat + mag * lat;
+        } else {
+          lat = lat - 0.2f;
+        }
+      }
+      lat = 1.0f + lat;
+      lat = lat * lat * lat * lat - 1.0f;
+    } else {
+      if (D_8028B80C != 0) {
+        if (0.2f / mag < lat) {
+          lat = lat + mag * lat;
+        } else {
+          lat = lat + 0.2f;
+        }
+      } else if (D_8028B808 != 0) {
+        if (0.2f / mag < lat) {
+          lat = lat - mag * lat;
+        } else {
+          lat = lat - 0.2f;
+        }
+      }
+      lat = 1.0f - lat;
+      lat = 1.0f - lat * lat * lat * lat;
+    }
+    speed = BrVec3Length(&car->velfd8);
+    if (car->x1ddc >= 0.0f) {
+      if (car->xe70[1] != 0) {
+        car->xe70[1]--;
+        goto reverse;
+      }
+      if (velFwd < -1.0f) {
+        goto brake;
+      }
+      goto forward;
+    } else {
+      if (car->xe70[0] != 0) {
+        car->xe70[0]--;
+        goto forward;
+      }
+      if (velFwd > 1.0f) {
+        goto brake;
+      }
+      goto reverse;
+    }
+  forward:
+    ((float *)car->pad)[8] = -lat;
+    if (++car->xe70[3] > 30 && speed < 1.0f) {
+      car->xe70[1] = 60;
+      car->xe70[2] = 0;
+      car->xe70[3] = 0;
+    }
+    goto stepped;
+  brake:
+    *car->pad |= 0x40000;
+    goto stepped;
+  reverse:
+    *car->pad |= 0x10000;
+    if (lat < 0.0f) {
+      ((float *)car->pad)[8] = -1.0f;
+    } else {
+      ((float *)car->pad)[8] = 1.0f;
+    }
+    *car->pad |= 0x20000;
+    if (car->xe70[2] > 150) {
+      if (car->xe70[2] > 270) {
+        car->xe70[2] = 30;
+      } else {
+        ((float *)car->pad)[8] *= -1.0;
+      }
+    }
+    if (++car->xe70[2] > 30 && speed < 1.0f) {
+      car->xe70[0] = 60;
+      car->xe70[2] = 0;
+      car->xe70[3] = 0;
+    }
+  stepped:
+    BrCarLineFit(car);
+    best_i = -1;
+    best = 90.0f;
+    add = 0.0f;
+    for (level = 0; level < D_8028B7F0; level++) {
+      if (D_803239A0[level].car != 0 && D_803239A0[level].car != car) {
+        lap = D_80025C00.path->pt[0].dist;
+        d = D_803239A0[level].car->xfa8 - car->xfa8;
+        while (d > lap) {
+          d -= lap;
+        }
+        while (d < -lap) {
+          d += lap;
+        }
+        if (d > 0.0f && d < best) {
+          diff = D_803239A0[level].car->lineOff - offset;
+          best = d;
+          if (diff < 3.0f) {
+            add = (1.0f - d * 0.011111111f) * -10.0f;
+            if (add < -5.0f) {
+              add = -5.0f;
+            }
+            best_i = level;
+          } else if (diff > -3.0f) {
+            add = (1.0f - d * 0.011111111f) * 10.0f;
+            if (add > 5.0f) {
+              add = 5.0f;
+            }
+            best_i = level;
+          }
+        }
+      }
+    }
+    if (best_i != -1) {
+      offset = offset + add;
+      if (offset < 0.0f) {
+        car->lineOffAbs = -offset;
+      } else {
+        car->lineOffAbs = offset;
+      }
+    }
+    if (velFwd > 3.0f) {
+      if (car->lineOffAbs < halfWidth + 1.0f) {
+        k = (velFwd - 3.0f) * 0.015625f;
+        if (k < 0.0f) {
+          k = k * -0.25f;
+        }
+        if (k > 0.4f) {
+          k = 0.4f;
+        }
+        t1 = BrVec3Dot(&car->st.vel, &car->lineDir);
+        t2 = BrVec3Dot(&car->st.vel, &car->lineSide);
+        t3 = BrVec3Dot(&car->st.vel, &car->lineUp);
+        t2 = -(offset * k);
+        BrVec3Scale(&car->st.vel, &car->lineDir, t1);
+        BrVec3MulAddTo(&car->st.vel, &car->lineSide, t2);
+        BrVec3MulAddTo(&car->st.vel, &car->lineUp, t3);
+      }
+      if (D_8026FF18 == 0) {
+        BrVec3ScaleBy(&car->st.vel, D_8028B9F0[car->link->x74 + (D_8031C5BC->b4 * 4 + D_8031C5BC->b5) * 2]);
+      } else if (D_8026FF18 == 1) {
+        w = D_8028C800 - 1;
+        if (w > 2 || w < 0) {
+          w = 0;
+        }
+        if (w == 2) {
+          BrVec3ScaleBy(&car->st.vel, 0.99f);
+        } else {
+          BrVec3ScaleBy(&car->st.vel, 0.999f);
+        }
+      }
+    }
+  }
+  BrPerfMark(0, 0, 0x82, 0, 0xFF);
+  len = BrVec3Length(&car->st.angVel);
+  if (len > 1.0f && car->wheels[0].x13c != 0) {
+    BrVec3ScaleBy(&car->st.angVel, 1.0f / len);
+  }
+  BrCarPhysTick(car);
+  BrCarRespawn(car);
+}
+
 /* WHAT IT DOES: Drive one computer-controlled car for this frame: the
  * out-of-line entry to the AI driver's main body. */
 /* @implements 0x802288B4 tgr BrCtlAi */
 void BrCtlAi(int ctl)
 {
-    func_8022762C(ctl);
+    BrCtlAiBody((BrCar *)ctl);
 }
 
 /* WHAT IT DOES: Does nothing with its argument. An empty function the

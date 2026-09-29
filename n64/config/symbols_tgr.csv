@@ -273,6 +273,7 @@ va,name,kind
 80226D7C,BrCarCamStep,func
 80226D9C,BrAiScanCorridor,func
 80227214,BrCarLineFit,func
+8022762C,BrCtlAiBody,func
 802288B4,BrCtlAi,func
 802288D4,BrAiLaneSetup,func
 80228A3C,BrAiInputClear,func
