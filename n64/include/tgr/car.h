@@ -158,7 +158,8 @@ typedef struct BrCar {
     BrCarCam cams[4];           /* 0x1DF0 */
     char pad1f00[0x1F44 - 0x1F00];
     BrCarCam cam4;              /* 0x1F44 */
-    char pad1f88[0x1F90 - 0x1F88];
+    float camSpeed;             /* 0x1F88  the chase camera's smoothed speed */
+    float camSpin;              /* 0x1F8C  and spin */
     float x1f90;                /* 0x1F90 */
     BrVec3 camTarget;           /* 0x1F94  where the camera looks */
     BrVec3 camPosA;             /* 0x1FA0  copies of the chase camera's start position */

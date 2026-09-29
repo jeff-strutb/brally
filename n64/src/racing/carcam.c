@@ -38,6 +38,24 @@ float BrVec3Dot(BrVec3 *a, BrVec3 *b);
 float BrVec3Dist(BrVec3 *a, BrVec3 *b);
 void BrVec3Add(BrVec3 *out, BrVec3 *a, BrVec3 *b);
 int BrTriContainsPoint(BrVec3 *pPt, BrVec3 *pA, BrVec3 *pB, BrVec3 *pC, BrVec3 *pRef);
+extern int D_8028B7F8;                  /* camera hold timers */
+extern int D_8028B7FC;
+extern float D_8028AAC0;                /* the lens scale */
+void BrCarCamTargetStep(BrCar *car);
+void BrCarCamWallPush(BrCar *car, BrCarCam *cam, BrVec3 *prev);
+void BrCarCamPlaceBehind(BrCar *car, BrCarCam *cam, float t);
+void BrCarCamLookAt(BrCar *car, BrCarCam *cam);
+void BrVec3Negate(BrVec3 *out, BrVec3 *v);
+void BrVec3Normalise(BrVec3 *v);
+void BrVec3DivBy(BrVec3 *v, float d);
+float cosf(float x);
+void *memcpy(void *dst, void *src, unsigned int n);
+typedef struct BrCamView {      /* the lens offsets in a car's model buffer */
+  char pad00[0xB0];
+  float xb0;                    /* 0xB0 */
+  float xb4;                    /* 0xB4 */
+  float xb8;                    /* 0xB8 */
+} BrCamView;
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Update the camera placement for one car: an out-of-line
@@ -126,6 +144,159 @@ void BrCarCamInit(BrCar *car)
   car->camPosB.z = car->camPosA.z = car->cams[3].mtx[3][2] = z;
   car->x1fac = 0.0f;
   car->x1f90 = 2.0f;
+}
+
+/* WHAT IT DOES: Advance a car's chase camera by a frame: smooth the car's
+ * spin and speed into the camera's damped copies, place it behind the car
+ * lifted by how far the smoothed spin outruns the speed, step the target,
+ * push it out of walls and settle its height, look at the car, then rebuild
+ * the camera frame (a copy of the car's matrix when locked, else looking
+ * back from 20 behind), its copy, the eye basis, the lens from the eye
+ * distance, and the negated axis rows the renderer reads.  Ported from the
+ * PC twin (BrCamChaseStep); pos is a dead copy the ROM keeps, u is unused.
+ * RESIDUE (140): the ROM spills five matrix loads to its temp area for the
+ * closing axis rows (frame 0xB8 vs ours 0x70) and keeps &cams[1] as a spilled
+ * temp; structure, calls and named slots match. */
+/* @implements 0x80221170 tgr BrCamChaseStep */
+void BrCamChaseStep(BrCar *car)
+{
+  float pos[3];
+  float len2;
+  float spin;
+  float k;
+  float s;
+  float l;
+  float dist;
+  BrVec3 prev;
+  BrCamView *pv;
+  int u;
+  float speed;
+
+  prev.x = car->cams[1].mtx[3][0];
+  prev.y = car->cams[1].mtx[3][1];
+  prev.z = car->cams[1].mtx[3][2];
+  speed = BrVec3Length(&car->st.angVel);
+  len2 = BrVec3Length(&car->st.vel);
+  spin = len2 * 0.3f;
+  if (speed > 2.5f) {
+    speed = speed - 2.5f;
+  } else {
+    speed = 0.0f;
+  }
+  if (speed > 31.415928f) {
+    speed = 31.415928f;
+  }
+  if (spin > 31.415928f) {
+    spin = 31.415928f;
+  }
+  if (car->camSpeed < speed) {
+    car->camSpeed = speed;
+  } else {
+    car->camSpeed = car->camSpeed * 0.95f + speed * 0.05f;
+  }
+  car->camSpin = car->camSpin * 0.95f + spin * 0.05f;
+  car->camSpin = car->camSpin * (1.0f - car->x1fac * 18.181818f);
+  car->cams[1].mtx[3][0] = car->camPosA.x;
+  car->cams[1].mtx[3][2] = car->camPosA.z;
+  car->cams[1].mtx[3][1] = car->camPosA.y;
+  k = (D_80270788 != 0 ? 0.5f : 0.15f) / 31.415928f;
+  s = car->camSpeed * 0.009549296f;
+  l = car->camSpin * k;
+  if (car->x1fac + (s - l) > 0.07f) {
+    BrCarCamPlaceBehind(car, &car->cams[1], 0);
+  } else {
+    BrCarCamPlaceBehind(car, &car->cams[1], 0.07f - car->x1fac - s + l);
+  }
+  BrCarCamTargetStep(car);
+  car->camPosA.x = car->cams[1].mtx[3][0];
+  car->camPosA.y = car->cams[1].mtx[3][1];
+  car->camPosA.z = car->cams[1].mtx[3][2];
+  if (car->xf4c == 0) {
+    BrCarCamWallPush(car, &car->cams[1], &prev);
+    if (D_8028B710 != 0) {
+      if (D_80270788 != 0) {
+        D_8028B7FC = 30;
+        if (&car->cams[1] == car->cam) {
+          car->cam = &car->cams[0];
+          car->xf48 = 2;
+          D_8028B7F8 = 60;
+        }
+      }
+      if (car->x1fac < 0.02f) {
+        car->x1fac = 0.02f;
+      } else {
+        car->x1fac = car->x1fac + 0.01f;
+        if (car->x1fac > 0.055f) {
+          car->x1fac = 0.055f;
+        }
+      }
+      car->x1fac = 0.05f;
+    } else {
+      if (D_8028B7FC != 0) {
+        D_8028B7FC--;
+      }
+      car->x1fac = car->x1fac - 0.005f;
+      if (car->x1fac < 0.0f) {
+        car->x1fac = 0.0f;
+      }
+    }
+  }
+  BrCarCamLookAt(car, &car->cams[1]);
+  pos[0] = car->cams[0].mtx[3][0];
+  pos[1] = car->cams[0].mtx[3][1];
+  pos[2] = car->cams[0].mtx[3][2];
+  if (car->xf4c != 0) {
+    memcpy(&car->cams[0], car, sizeof(BrCarCam));
+  } else {
+    pv = (BrCamView *)car->model;
+    car->cams[0].mtx[3][0] = car->mtx0[3][0] + car->mtx0[0][0] * pv->xb0 + pv->xb8 * car->mtx0[2][0];
+    car->cams[0].mtx[3][1] = car->mtx0[3][1] + car->mtx0[0][1] * pv->xb0 + pv->xb8 * car->mtx0[2][1];
+    car->cams[0].mtx[3][2] = car->mtx0[3][2] + car->mtx0[0][2] * pv->xb0 + pv->xb8 * car->mtx0[2][2];
+    BrVec3MulAddTo((BrVec3 *)&car->cams[0], (BrVec3 *)car, -20.0f);
+    BrVec3Negate((BrVec3 *)&car->cams[0], (BrVec3 *)&car->cams[0]);
+    BrVec3Normalise((BrVec3 *)&car->cams[0]);
+    car->cams[0].mtx[1][0] = car->mtx0[1][0];
+    car->cams[0].mtx[1][1] = car->mtx0[1][1];
+    car->cams[0].mtx[1][2] = car->mtx0[1][2];
+    BrVec3Cross((BrVec3 *)car->cams[0].mtx[2], (BrVec3 *)&car->cams[0], (BrVec3 *)car->cams[0].mtx[1]);
+  }
+  memcpy(&car->cams[2], &car->cams[0], sizeof(BrCarCam));
+  BrVec3MulAddTo((BrVec3 *)car->cams[2].mtx[3], (BrVec3 *)car, 0.5f);
+  car->cams[3].mtx[2][0] = 0.0f;
+  car->cams[3].mtx[2][1] = 0.0f;
+  car->cams[3].mtx[2][2] = 1.0f;
+  BrVec3Add((BrVec3 *)car->cams[3].mtx[0], (BrVec3 *)car->mtx0[3], (BrVec3 *)car->mtx0[2]);
+  BrVec3SubFrom((BrVec3 *)car->cams[3].mtx[0], (BrVec3 *)car->cams[3].mtx[3]);
+  dist = BrVec3Length((BrVec3 *)car->cams[3].mtx[0]);
+  BrVec3DivBy((BrVec3 *)car->cams[3].mtx[0], dist);
+  BrVec3Cross((BrVec3 *)car->cams[3].mtx[1], (BrVec3 *)car->cams[3].mtx[2], (BrVec3 *)car->cams[3].mtx[0]);
+  BrVec3Cross((BrVec3 *)car->cams[3].mtx[2], (BrVec3 *)car->cams[3].mtx[0], (BrVec3 *)car->cams[3].mtx[1]);
+  if (dist <= 1.0f) {
+    dist = 0.0f;
+  } else if (dist >= 101.0f) {
+    dist = 100.0f;
+  } else {
+    dist = dist - 1.0f;
+  }
+  car->cams[3].fov = ((cosf((dist - 1.0f) * 0.041887902f) * 0.1f + 0.7f) + (51.0f - dist) * 0.004f) * D_8028AAC0;
+  car->cams[2].fov = D_8028AAC0;
+  car->cams[1].fov = D_8028AAC0;
+  car->cams[0].fov = D_8028AAC0;
+  car->cam4.fov = D_8028AAC0;
+  pv = (BrCamView *)car->model;
+  car->cam4.mtx[3][0] = pv->xb8 * car->mtx0[2][0] + (car->mtx0[3][0] + car->mtx0[0][0] * pv->xb4 * 2.0f);
+  car->cam4.mtx[3][1] = pv->xb8 * car->mtx0[2][1] + (car->mtx0[3][1] + car->mtx0[0][1] * pv->xb4 * 2.0f);
+  car->cam4.mtx[3][2] = pv->xb8 * car->mtx0[2][2] + (car->mtx0[3][2] + car->mtx0[0][2] * pv->xb4 * 2.0f);
+  car->cam4.mtx[0][0] = -car->mtx0[0][0];
+  car->cam4.mtx[0][1] = -car->mtx0[0][1];
+  car->cam4.mtx[0][2] = -car->mtx0[0][2];
+  car->cam4.mtx[1][0] = -car->mtx0[1][0];
+  car->cam4.mtx[1][1] = -car->mtx0[1][1];
+  car->cam4.mtx[1][2] = -car->mtx0[1][2];
+  car->cam4.mtx[2][0] = car->mtx0[2][0];
+  car->cam4.mtx[2][1] = car->mtx0[2][1];
+  car->cam4.mtx[2][2] = car->mtx0[2][2];
+  car->cam2 = car->cam;
 }
 
 /* WHAT IT DOES: Keep the chase camera out of walls: cast a ray from the
