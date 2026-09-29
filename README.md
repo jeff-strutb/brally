@@ -321,11 +321,28 @@ builds and the suites that need retail data skip with a reason.
 ## Mac port
 
 The game runs natively on macOS: an arm64 Mac app with a window, Metal
-rendering, and the Mac's keyboard and mouse. It is rough but working. It boots
-through the splash and loading screens to the main menu, runs the front end
-(menus, race and car setup, all menu art), and drives races with the textured
-track, cars, shadows and HUD on screen. Quitting from the menu,
+rendering, and the Mac's keyboard, mouse and game controllers. It is rough but
+working. It boots through the splash and loading screens to the main menu, runs
+the front end (menus, race and car setup, all menu art), and drives races with
+the textured track, cars, shadows and HUD on screen. Quitting from the menu,
 with Cmd-Q or with the close box exits cleanly.
+
+- **Native resolution.** 3D is projected, clipped and rasterised by the GPU
+  at the window's pixel size (2560x1920 in a 1280x960 window on a Retina
+  display), not drawn at 640x480 and stretched. The menus' 640x480 art is
+  scaled with whole pixels, so it stays crisp.
+- **Resize and full screen, live.** Drag the window (it keeps 4:3), use the
+  green button, View > Enter Full Screen or Ctrl-Cmd-F; the game redraws at
+  the new size without a restart. Above 8 million pixels (full screen on a 5K
+  display) it renders at that cap and scales up, to stay inside a frame.
+- **Display-paced frames.** The port starts each frame just before the
+  display's next refresh and presents 60 frames a second in menus, races and
+  replays. The race's 30 Hz simulation is untouched; each picture blends the
+  game's snapshots at the moment it reaches the screen. Frame start to screen
+  is about 40 ms while macOS composites the window, down from 65 ms.
+- **Game controllers.** Any controller macOS supports (Xbox, PlayStation,
+  Switch Pro, MFi) appears to the game as a joystick: choose it in the
+  game's options and bind it in its Controls menu, as on Windows.
 
 **How it works.** Every function in the verified M1 build (all T3 and T4
 bodies) is compiled from the same `src/` tree the byte-exact build uses; no
@@ -350,14 +367,28 @@ Win32, DirectX, Glide and C runtime calls the game makes:
 | `host_crt.c` | the C runtime |
 | `host_script.c` | replays `tools/brbox_scripts/` input scripts, for testing |
 
-This 32-bit lane is interim; a native 64-bit port comes later.
+A second seam replaces game functions outright: a body in
+`ports/macos/wasm/native/` tagged `@replaces 0xVA Name` takes that function's
+direct calls and dispatch-table slot, and the build stops if the address is
+not in the verified placement. That is how the Mac-native parts plug in:
+
+| Native file | What it replaces |
+|---|---|
+| `native/frame.m` | the frame swap and the game clock: display-timed pacing |
+| `native/render.m` | the display-list triangle leaves: GPU projection and clipping |
+| `native/input.m` | reads the Mac's game controller for the DirectInput joystick |
+| `native/window.m` | live resizing and full screen |
+
+`ports/macos/NATIVE_RENDERER.md` is the design and records what each piece
+measured. This 32-bit lane is interim; a native 64-bit port comes later.
 
 **Not there yet.**
 
 - **No sound or music.** The sound engine and DirectSound answer as working
   devices but play nothing. How music should work (the PC's CD soundtrack or
   the N64's tracker modules) is an open decision: `ports/MUSIC-DECISION-PENDING.md`.
-- **Keyboard and mouse only.** No joystick, wheel or force feedback.
+- **No wheels or force feedback.** Game controllers work as a joystick;
+  force-feedback wheels are not supported.
 - **No network play.** DirectPlay answers as a machine with no connection
   available, so multiplayer cannot host or join.
 - **Rough edges.** Expect visual differences from a real Voodoo card and
@@ -409,6 +440,13 @@ the host reads:
 | `BR_SCRIPT=file` | replay a `tools/brbox_scripts/` input script; its `shot NAME` writes a PPM to `BR_SHOTS` (default `build/wasm/shots`) |
 | `BR_SHOT_DIR`, `BR_SHOT_EVERY` | dump every Nth frame as a PPM |
 | `BR_LOG=1` | log host calls to stderr |
+| `BR_RES=WxH` | render at a fixed size instead of following the window |
+| `BR_MAXPIX=N` | largest render target in pixels (default 8000000) |
+| `BR_PACE=0` | turn the display-timed frame loop off |
+| `BR_FRAMELOG=file` | per-frame timing log; `ports/macos/wasm/framelog.py file` reports latency, misses and frame rate |
+| `BR_VCLOCK=ms` | virtual time (each clock read costs `ms`), so scripted runs repeat exactly |
+| `BR_GLIDE3D=1` | draw 3D through the original Glide path, for side-by-side checks |
+| `BR_PADFAKE=x,y,z,buttons` | a fixed controller state, for checks without a controller |
 
 The screenshot at the top of this file was taken headless:
 
@@ -416,7 +454,9 @@ The screenshot at the top of this file was taken headless:
 BR_HEADLESS=1 BR_SCRIPT=menu.txt BR_SHOTS=. build/wasm/brally
 ```
 
-with a `menu.txt` of `sleep 400`, `shot menu`, `quit`. Further tracing aids
+with a `menu.txt` of `sleep 400`, `shot menu`, `quit`. Scripts can also
+resize the window (`window W H`), toggle full screen (`fullscreen`) and press
+Mac shortcuts (`chord ctrl+cmd+f`). Further tracing aids
 (`BR_TRACE_FRAMES`, `BR_GLLOG`, `BR_PICK`, `BR_GLSTAT`, `BR_SWAPLOG`,
 `BR_MOUSELOG`, `BR_DUMP`) are documented where they are read, in
 `ports/macos/wasm/host/`.
