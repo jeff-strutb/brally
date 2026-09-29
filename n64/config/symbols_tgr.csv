@@ -649,6 +649,8 @@ va,name,kind
 80266B5C,__ll_to_f,func
 80266B74,__ull_to_d,func
 80266BA8,__ull_to_f,func
+80267410,guMtxXFML,func
+80267470,guMtxCatL,func
 802674D0,bcopy,func
 80268230,osAiSetFrequency,func
 80268390,osSetTimer,func
@@ -659,6 +661,10 @@ va,name,kind
 80268560,__osRestoreInt,func
 802686C0,guNormalize,func
 80268DC0,_Printf,func
+80269410,__osSiCreateAccessQueue,func
+80269460,__osSiGetAccess,func
+802694A4,__osSiRelAccess,func
+802694D0,__osSiRawStartDma,func
 8026AC80,__osDequeueThread,func
 8026B2EC,__osEnqueueAndYield,func
 8026B3EC,__osEnqueueThread,func
@@ -678,6 +684,7 @@ va,name,kind
 8026BE44,__osSetTimerIntr,func
 8026BEB8,__osInsertTimer,func
 8026CE20,__osAiDeviceBusy,func
+8026DBB0,__osSiDeviceBusy,func
 8026E600,__osProbeTLB,func
 8026E6C0,__osSetCompare,func
 8026EA00,rspbootTextStart,data
@@ -689,6 +696,7 @@ va,name,kind
 802A6180,__osPiDevMgr,data
 802A6220,__osViCurr,data
 802A6224,__osViNext,data
+802A6280,__osSiAccessQueueEnabled,data
 802A6290,__osThreadTail,data
 802A6298,__osRunQueue,data
 802A629C,__osActiveQueue,data
@@ -698,6 +706,8 @@ va,name,kind
 802ABA80,__libm_qnan_f,data
 802ABC00,gspF3DEX_fifoDataStart,data
 8037F370,__osEventStateTab,data
+80381880,siAccessBuf,data
+80381888,__osSiAccessQueue,data
 803818C0,__osCurrentTime,data
 803818C8,__osBaseCounter,data
 803818CC,__osViIntrCount,data
