@@ -50,10 +50,16 @@ def mutate(body, rng):
         if before in '+-*/%&|^<>' and before or after in '+-*/%&|^<>' and after:
             continue
         ops.append(('swap', m))
+    # x op= y <-> x = x op y only when y is ONE operand: with another
+    # operator in y the rewrite changes precedence (x = x * a - 1 is not
+    # x *= a - 1) or float association (x = x - a - b is not x -= a - b)
+    single = re.compile(r'^\s*(%s)\s*$' % OPERAND)
     for m in re.finditer(r'(\b[\w\.\->\[\]]+)\s*([+*&|^-])=\s*([^;]+);', body):
-        ops.append(('expand', m))
+        if single.match(m.group(3)):
+            ops.append(('expand', m))
     for m in re.finditer(r'(\b[\w\.\->\[\]]+)\s*=\s*\1\s*([+*&|^-])\s*([^;]+);', body):
-        ops.append(('contract', m))
+        if single.match(m.group(3)):
+            ops.append(('contract', m))
     lines = body.split('\n')
     decl = [i for i, l in enumerate(lines)
             if re.match(r'\s+(unsigned |signed )?(int|short|char|float|double|u8|u16|s16|u32|s32|f32|BrVec3)\b[^;(]*;\s*$', l)]
