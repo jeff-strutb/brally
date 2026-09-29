@@ -96,6 +96,8 @@ void BrRaceGateStep(BrRaceEnt *e);
  * load stored before the next, as if it could not tell the two apart; every
  * spelling tried here folds the offsets.  The frame is 0x60 against 0x58
  * here, with the path fraction spilled at 0x30. */
+/* @t4-pass 0x8022C9FC 1 2026-09-29 compiles 99 best 334 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8022C9FC 2 2026-09-29 compiles 99 best 334 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8022C9FC tgr BrGhostPlaybackStep */
 void BrGhostPlaybackStep(BrRaceEnt *e)
 {
