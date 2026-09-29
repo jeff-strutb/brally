@@ -21,7 +21,10 @@ typedef struct BrRbBody {       /* a rigid body with four attached wheels */
   BrTyreLoad *loads;            /* 0x18  one per wheel, linked */
   char pad1c[0x80 - 0x1c];
   float x80;                    /* 0x80  on a wheel: x1d8 held to [-0.4, 0] */
-  char pad84[0x1b4 - 0x84];
+  float vel[3];                 /* 0x84 */
+  char pad90[0x1a0 - 0x90];
+  unsigned char surface;        /* 0x1A0  on a wheel: what it is on */
+  char pad1a1[0x1b4 - 0x1a1];
   int x1b4;                     /* 0x1B4  on a wheel: it is on the ground */
   float x1b8;                   /* 0x1B8  spring load per unit of compression squared */
   float x1bc;                   /* 0x1BC  load per unit of upward speed */
@@ -32,42 +35,41 @@ typedef struct BrRbBody {       /* a rigid body with four attached wheels */
 } BrRbBody;
 #define SIGN(x) ((x) == 0.0f ? 0.0 : ((x) > 0 ? 1.0 : -1.0))
 float func_8025E96C(BrRbBody *b, BrRbBody *w);
+typedef struct BrRbForce {      /* a force applied to a body */
+  struct BrRbForce *next;       /* 0x00 */
+  int frame;                    /* 0x04 */
+  float f[3];                   /* 0x08 */
+} BrRbForce;
 void BrRbVelAtFlatPoint(float out[3], BrRbBody *b, BrRbBody *at);
 /* -- end declarations -- */
 
-/* WHAT IT DOES: Decide whether the car's tyres are skidding: from the
- * body's sideways speed and each wheel's surface, and start or stop the
- * skid sound and marks. */
-/* @t4-pass 0x8025E820 1 2026-09-26 compiles 17 best 93 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8025E820 2 2026-09-26 compiles 17 best 93 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8025E820 3 2026-09-26 compiles 17 best 93 moved 0  (n64/tools/n64permute.py) */
+/* WHAT IT DOES: The body's drag: a force of -110 times its velocity, and
+ * -220 times it more while it moves faster than 4 with any wheel on
+ * surface 4, unless the race mode is 3. */
 /* @implements 0x8025E820 tgr BrTyreSkidCheck */
-void BrTyreSkidCheck(int param_1,int param_2)
+void BrTyreSkidCheck(BrRbBody *b, BrRbForce *f)
 {
-  char cVar1;
-  char cVar2;
-  char cVar3;
-  char cVar4;
-  float fVar5;
-  float fVar6;
-  
-  *(float *)(param_2 + 8) = *(float *)(param_1 + 0x84) * -110.0f;
-  *(float *)(param_2 + 0xc) = *(float *)(param_1 + 0x88) * -110.0f;
-  *(float *)(param_2 + 0x10) = *(float *)(param_1 + 0x8c) * -110.0f;
-  cVar1 = *(char *)(*(int *)(param_1 + 4) + 0x1a0);
-  cVar2 = *(char *)(*(int *)(param_1 + 8) + 0x1a0);
-  cVar3 = *(char *)(*(int *)(param_1 + 0xc) + 0x1a0);
-  cVar4 = *(char *)(*(int *)(param_1 + 0x10) + 0x1a0);
-  fVar5 = (float)sqrtf(*(float *)(param_1 + 0x8c) * *(float *)(param_1 + 0x8c) +
-                              *(float *)(param_1 + 0x84) * *(float *)(param_1 + 0x84) +
-                              *(float *)(param_1 + 0x88) * *(float *)(param_1 + 0x88));
-  if (((4.0f < fVar5) && (D_8028C800 != 3)) &&
-     ((cVar1 == '\x04' || (((cVar2 == '\x04' || (cVar3 == '\x04')) || (cVar4 == '\x04')))))) {
-    fVar6 = *(float *)(param_1 + 0x88);
-    fVar5 = *(float *)(param_1 + 0x8c);
-    *(float *)(param_2 + 8) = *(float *)(param_2 + 8) + *(float *)(param_1 + 0x84) * -220.0f;
-    *(float *)(param_2 + 0xc) = *(float *)(param_2 + 0xc) + fVar6 * -220.0f;
-    *(float *)(param_2 + 0x10) = *(float *)(param_2 + 0x10) + fVar5 * -220.0f;
+  int s0;
+  int s1;
+  int s2;
+  int s3;
+  float d[3];
+
+  f->f[0] = b->vel[0] * -110.0f;
+  f->f[1] = b->vel[1] * -110.0f;
+  f->f[2] = b->vel[2] * -110.0f;
+  s0 = b->sub[0]->surface;
+  s1 = b->sub[1]->surface;
+  s2 = b->sub[2]->surface;
+  s3 = b->sub[3]->surface;
+  if (sqrtf(b->vel[0] * b->vel[0] + b->vel[1] * b->vel[1] + b->vel[2] * b->vel[2]) > 4.0f
+      && D_8028C800 != 3 && (s0 == 4 || s1 == 4 || s2 == 4 || s3 == 4)) {
+    d[0] = b->vel[0] * -220.0f;
+    d[1] = b->vel[1] * -220.0f;
+    d[2] = b->vel[2] * -220.0f;
+    f->f[0] += d[0];
+    f->f[1] += d[1];
+    f->f[2] += d[2];
   }
 }
 
