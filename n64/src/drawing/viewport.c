@@ -127,6 +127,90 @@ void BrViewOutline(int x, int y, int w, int h)
   gDPFillRectangle(D_8028A858++, x + w - 1, y, x + w, y + h);
 }
 
+/* WHAT IT DOES: Frame a view (the rear-view mirror) in three rings: a black
+ * two-pixel border in fill mode just outside it, the one-pixel outline on
+ * its edge (as BrViewOutline) and a one-pixel line two further out. */
+/* @implements 0x8021A0F8 tgr BrViewFrame */
+void BrViewFrame(int x, int y, int w, int h)
+{
+  Gfx *g;
+
+  gDPPipeSync(D_8028A858++);
+  {
+    Gfx *_g = D_8028A858++;
+    _g->words.w0 = 0xb900031d;         /* render mode */
+    _g->words.w1 = 0x0f0a4000;
+  }
+  {
+    Gfx *_g = D_8028A858++;
+    _g->words.w0 = 0xba001402;         /* cycle type: fill */
+    _g->words.w1 = 0x300000;
+  }
+  {
+    Gfx *_g = D_8028A858++;
+    _g->words.w0 = 0xf7000000;         /* fill colour */
+    _g->words.w1 = 0x10001;
+  }
+  {
+    Gfx *_g = D_8028A858++;
+    _g->words.w0 = 0xf8000000;         /* fog colour */
+    _g->words.w1 = 0xff;
+  }
+  gDPFillRectangle(D_8028A858++, x - 1, y - 2, x + w, y - 1);
+  gDPFillRectangle(D_8028A858++, x - 1, y + h, x + w, y + h + 1);
+  {
+    Gfx *_g = D_8028A858++;
+    _g->words.w0 = (_SHIFTL(G_FILLRECT, 24, 8) | _SHIFTL(x - 1, 14, 10) |
+                    _SHIFTL(y + h, 2, 10));
+    _g->words.w1 = (_SHIFTL(x - 2, 14, 10) | _SHIFTL(y - 1, 2, 10));
+  }
+  gDPFillRectangle(D_8028A858++, x + w, y - 1, x + w + 1, y + h);
+  gDPPipeSync(D_8028A858++);
+  {
+    Gfx *_g = D_8028A858++;
+    _g->words.w0 = 0xb900031d;         /* render mode */
+    _g->words.w1 = 0x55004240;
+  }
+  {
+    Gfx *_g = D_8028A858++;
+    _g->words.w0 = 0xba001402;         /* cycle type: one cycle */
+    _g->words.w1 = 0;
+  }
+  {
+    Gfx *_g = D_8028A858++;
+    _g->words.w0 = 0xf8000000;         /* fog colour */
+    _g->words.w1 = 0xff;
+  }
+  gDPFillRectangle(D_8028A858++, x, y, x + w, y + 1);
+  gDPFillRectangle(D_8028A858++, x, y + h - 1, x + w, y + h);
+  gDPFillRectangle(D_8028A858++, x, y, x + 1, y + h);
+  gDPFillRectangle(D_8028A858++, x + w - 1, y, x + w, y + h);
+  {
+    Gfx *_g = D_8028A858++;
+    _g->words.w0 = (_SHIFTL(G_FILLRECT, 24, 8) | _SHIFTL(x + w + 3, 14, 10) |
+                    _SHIFTL(y - 2, 2, 10));
+    _g->words.w1 = (_SHIFTL(x - 3, 14, 10) | _SHIFTL(y - 3, 2, 10));
+  }
+  {
+    Gfx *_g = D_8028A858++;
+    _g->words.w0 = (_SHIFTL(G_FILLRECT, 24, 8) | _SHIFTL(x + w + 3, 14, 10) |
+                    _SHIFTL(y + h + 3, 2, 10));
+    _g->words.w1 = (_SHIFTL(x - 3, 14, 10) | _SHIFTL(y + h + 2, 2, 10));
+  }
+  {
+    Gfx *_g = D_8028A858++;
+    _g->words.w0 = (_SHIFTL(G_FILLRECT, 24, 8) | _SHIFTL(x - 2, 14, 10) |
+                    _SHIFTL(y + h + 3, 2, 10));
+    _g->words.w1 = (_SHIFTL(x - 3, 14, 10) | _SHIFTL(y - 3, 2, 10));
+  }
+  {
+    Gfx *_g = D_8028A858++;
+    _g->words.w0 = (_SHIFTL(G_FILLRECT, 24, 8) | _SHIFTL(x + w + 3, 14, 10) |
+                    _SHIFTL(y + h + 3, 2, 10));
+    _g->words.w1 = (_SHIFTL(x + w + 2, 14, 10) | _SHIFTL(y - 3, 2, 10));
+  }
+}
+
 /* WHAT IT DOES: Turn a depth ratio (a / b) into the z-buffer's fixed-point
  * value through the current viewport's depth scale and offset. Nothing in
  * the ROM calls it. */
