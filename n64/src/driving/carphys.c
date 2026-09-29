@@ -190,6 +190,283 @@ void BrCarPhysStep(BrCar *car)
   BrPerfMark(0, 0, 0x80, 0, 0xFF);
 }
 
+/* -- declarations: BrCarDriveInput -- */
+typedef struct BrDrivePad {     /* the pad record as the drive input reads it */
+  unsigned int flags;           /* 0x00  0x10000 accelerate, 0x20000 brake, 0x40000 handbrake,
+                                 *       0x100000/0x200000 gear up/down */
+  char pad04[0x20 - 0x04];
+  float steer;                  /* 0x20 */
+  char pad24;
+  unsigned char kind;           /* 0x25  4: a steering wheel */
+} BrDrivePad;
+extern float D_8028B720;                /* this frame's steering lock, degrees */
+extern float D_8028B724;                /* the steering slew per frame */
+extern float D_8028B728;                /* the lock at the centre of the stick */
+extern float D_8028B72C;                /* lock lost at 90 forward */
+extern short D_8028B730;
+extern int D_8026FF18;                  /* game mode */
+float sqrtf(float x);
+void func_802586C0(float out[3], float m[4][4], BrVec3 *v);
+void BrPadConsume(BrDrivePad *pad, unsigned int bit);
+/* -- end declarations -- */
+
+#define SGN(x) ((x) == 0.0f ? 0.0f : ((x) > 0.0f ? 1.0f : -1.0f))
+
+/* WHAT IT DOES: Turn a car's pad into its drive inputs for the frame.  A
+ * steering wheel sets the wheel angle straight from the wheel (a 7/8 power
+ * curve, 10 degrees of lock).  A stick is dead-zoned and gives a steering
+ * target within a lock that narrows with forward speed (the handling mode
+ * picks the lock, its fall-off and the slew rate); past three quarters it
+ * is full lock, and in between the lock also narrows with the car's speed
+ * when the mode allows; the wheel angle then slews towards the target, at
+ * once back through the centre.  Then the gearbox (automatic on the
+ * engine speed, or the gear buttons), the engine force from the torque
+ * curve (in two-player arcade the car behind gets up to 30 more), and the
+ * engine speed from the driven wheels' spin through the gear ratio (or
+ * revved freely in neutral), clamped and slewed by at most 400; the
+ * handbrake sets the brake force.  The PC twin is BrCtlInputApply (a
+ * different tuning of the same idea).
+ * RESIDUE (766): the ROM computes x / 2.0f as a divide where ours becomes
+ * a multiply by 0.5, keeps the steering target in f14 (ours f18) and its
+ * frame is 0x10 smaller; the sign tests and the gearbox follow the same
+ * flow. */
+/* @implements 0x80222050 tgr BrCarDriveInput */
+void BrCarDriveInput(BrCar *car)
+{
+  float v[3];
+  float x;
+  float rate;
+  float old;
+  float s;
+  float a;
+  float t;
+  float sp;
+  float lim;
+  float hi;
+  float lo;
+  float tgt;
+  float cur;
+  float bonus;
+  float torque;
+  unsigned int flags;
+  int k;
+  int g;
+  int tltc;
+  int ctlt;
+  short ch;
+
+  s = ((BrDrivePad *)car->pad)->steer;
+  if (((BrDrivePad *)car->pad)->kind == 4) {
+    a = s < 0.0f ? -s : s;
+    t = SGN(s);
+    car->xdf0 = -(sqrtf(sqrtf(sqrtf(a) * a) * sqrtf(a)) * t) * 10.0f * 3.1415927f / 180.0f;
+  } else {
+    if (0.0f < s) {
+      s = s - 0.07f;
+      if (s < 0.0f) {
+        s = 0.0f;
+      }
+    } else {
+      s = s + 0.07f;
+      if (0.0f < s) {
+        s = 0.0f;
+      }
+    }
+    sp = car->xfe4[0];
+    sqrtf(car->st.vel.z * car->st.vel.z + (car->st.vel.x * car->st.vel.x + car->st.vel.y * car->st.vel.y));
+    func_802586C0(v, car->stMtx, &car->st.vel);
+    t = v[0];
+    if (t < 10.0f) {
+      t = 10.0f;
+    }
+    if (70.0f < t) {
+      t = 70.0f;
+    }
+    if (sp < 140.0f) {
+      sp = 140.0f;
+    }
+    if (340.0f < sp) {
+      sp = 340.0f;
+    }
+    sp -= 140.0f;
+    k = 1;
+    switch (car->xe68) {
+    case 0:
+      D_8028B720 = 14.0f;
+      D_8028B724 = 0.01f;
+      D_8028B728 = 6.0f;
+      D_8028B72C = 10.0f;
+      D_8028B730 = 0;
+      k = D_8028B730;
+      x = D_8028B728;
+      break;
+    case 1:
+      D_8028B720 = 14.0f;
+      D_8028B724 = 0.01f;
+      D_8028B728 = 6.0f;
+      D_8028B72C = 10.0f;
+      D_8028B730 = 0;
+      k = D_8028B730;
+      x = 3.0f;
+      break;
+    case 2:
+      D_8028B720 = 17.0f;
+      D_8028B724 = 0.1f;
+      D_8028B728 = 16.0f;
+      D_8028B72C = 14.0f;
+      D_8028B730 = 0;
+      k = D_8028B730;
+      x = D_8028B728;
+      break;
+    }
+    rate = D_8028B724;
+    lim = D_8028B720 - t / 90.0f * D_8028B72C;
+    a = s < 0.0f ? -s : s;
+    if (a < 0.001f) {
+      tgt = 0.0f;
+      hi = lim * 3.1415927f / 180.0f;
+      lo = -lim * 3.1415927f / 180.0f;
+    } else if (s < -0.75f) {
+      hi = lim * 3.1415927f / 180.0f;
+      lo = -lim * 3.1415927f / 180.0f;
+      tgt = hi;
+    } else if (0.75f < s) {
+      lo = -lim * 3.1415927f / 180.0f;
+      hi = lim * 3.1415927f / 180.0f;
+      tgt = lo;
+    } else {
+      x = x - k * (x / 2.0f) * (sp / 200.0f);
+      tgt = -s * (x * 3.1415927f / 180.0f);
+      hi = lim * 3.1415927f / 180.0f;
+      lo = -lim * 3.1415927f / 180.0f;
+    }
+    if (hi < tgt) {
+      tgt = hi;
+    }
+    if (tgt < lo) {
+      tgt = lo;
+    }
+    cur = car->xdf0;
+    ch = SGN(cur) != SGN(tgt) || (0.0f < cur && tgt < cur) || (cur < 0.0f && cur < tgt);
+    if (cur == 0.0f) {
+      ch = 0;
+      *(signed char *)CP_AT(car, 0xE51) = 0;
+      cur = car->xdf0;
+    }
+    tltc = tgt < cur;
+    ctlt = cur < tgt;
+    if (tltc && *(signed char *)CP_AT(car, 0xE51) < 0) {
+      ch = 1;
+    }
+    if (ctlt && *(signed char *)CP_AT(car, 0xE51) > 0) {
+      ch = 1;
+    }
+    if (ch) {
+      *(signed char *)CP_AT(car, 0xE51) = tltc ? -1 : 1;
+      rate = 1.0f;
+      cur = car->xdf0;
+      if (SGN(tgt) != SGN(cur)) {
+        tgt = 0.0f;
+      }
+    } else {
+      *(signed char *)CP_AT(car, 0xE51) = 0;
+      cur = car->xdf0;
+    }
+    a = cur < tgt ? -(cur - tgt) : cur - tgt;
+    if (a < rate) {
+      car->xdf0 = tgt;
+    } else if (tgt < cur) {
+      car->xdf0 = cur - rate;
+    } else {
+      car->xdf0 = cur + rate;
+    }
+  }
+  old = car->xdf4;
+  if (old < 800.0f) {
+    car->xdf4 = 800.0f;
+  }
+  if (car->xe30 != 0) {
+    g = car->xe40;
+    if (g >= 2 && car->xdf4 < 4000.0f) {
+      car->xe40 = g - 1;
+    } else if (g < car->xe28[0] && 6000.0f < car->xdf4 && !(((BrDrivePad *)car->pad)->flags & 0x20000)) {
+      car->xe40 = g + 1;
+    }
+    flags = ((BrDrivePad *)car->pad)->flags;
+  } else if (car->xe40 > 0 && (((BrDrivePad *)car->pad)->flags & 0x200000)) {
+    BrPadConsume((BrDrivePad *)car->pad, 0x200000);
+    car->xe40--;
+    flags = ((BrDrivePad *)car->pad)->flags;
+  } else if (car->xe40 < car->xe28[0] && ((flags = ((BrDrivePad *)car->pad)->flags) & 0x100000) &&
+             !(flags & 0x20000)) {
+    BrPadConsume((BrDrivePad *)car->pad, 0x100000);
+    car->xe40++;
+    flags = ((BrDrivePad *)car->pad)->flags;
+  }
+  bonus = 0.0f;
+  if (D_8026FF18 == 1 && car->xfac == 1) {
+    a = D_8031B760[car->slot ^ 1].xfa8 < car->xfa8 ? -(D_8031B760[car->slot ^ 1].xfa8 - car->xfa8)
+                                                   : D_8031B760[car->slot ^ 1].xfa8 - car->xfa8;
+    a = a * 0.5f;
+    bonus = a - 18.0f;
+    if (a < 18.0f) {
+      bonus = 0.0f;
+    } else if (30.0f < bonus) {
+      bonus = 30.0f;
+    }
+  }
+  torque = car->xe14[0] * car->xdf4 * car->xdf4 * car->xdf4 + car->xe14[1] * car->xdf4 * car->xdf4 +
+           car->xe14[2] * car->xdf4 + car->xe14[3] + bonus;
+  if (car->xe30 == 0) {
+    torque = torque * 1.03;
+  }
+  if (!(flags & 0x10000)) {
+    torque = 0.0f;
+  }
+  g = 0;
+  car->xe38 = torque * 7.0f;
+  if (car->link->flags & 1) {
+    car->xe40 = 0;
+  } else {
+    g = car->xe40;
+    if (g == 0) {
+      car->xe40 = 1;
+      g = 1;
+    }
+  }
+  if (g != 0) {
+    car->xdf4 = ((float *)car->xdf8)[g] * (-(*(float *)CP_AT(car, 0x71C) / 6.2831855f) * 60.0f * car->xe14[4]);
+  } else {
+    if (((BrDrivePad *)car->pad)->flags & 0x10000) {
+      car->xdf4 += 300.0f;
+    } else {
+      car->xdf4 -= 200.0f;
+    }
+    car->xe38 = 0.0f;
+  }
+  if (car->xdf4 < 0.0f) {
+    car->xdf4 = -car->xdf4;
+  }
+  if (car->xdf4 < 900.0f) {
+    car->xdf4 = 900.0f;
+  }
+  if (8000.0f < car->xdf4) {
+    car->xdf4 = 8000.0f;
+  }
+  t = car->xdf4 - old;
+  a = t < 0.0f ? -t : t;
+  if (400.0f < a) {
+    t = SGN(t) * 400.0f;
+  }
+  car->xe3c = 0.0f;
+  car->xdf4 = old + t;
+  if (((BrDrivePad *)car->pad)->flags & 0x40000) {
+    car->xe3c = -140000.0f;
+  }
+}
+
+#undef SGN
+
 /* WHAT IT DOES: Set up a car's rigid bodies for a race: the chassis (a
  * 3.5 by 2 by 1.5 box of 1000 at 2 up, level, with its spring set from the
  * car's class and its damper), each wheel (a fixed body at its mount from
