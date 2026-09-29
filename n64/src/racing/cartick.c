@@ -6,9 +6,42 @@
 /* -- declarations -- */
 extern int D_8026FF18;
 extern float D_8028AAD8;
-extern void *D_80025C70;                /* the track grid (0 before a track loads) */
+typedef struct BrPathPt {       /* a point on a path segment (0x28 bytes) */
+  BrVec3 left;                  /* 0x00  the track's left edge */
+  BrVec3 pos;                   /* 0x0C  its centre */
+  BrVec3 right;                 /* 0x18  its right edge */
+  float dist;                   /* 0x24  distance along the track */
+} BrPathPt;
+typedef struct BrPathSeg {      /* a path segment */
+  struct BrPathSeg *next;
+  struct BrPathSeg *alt;
+  char pad08[0x10 - 0x08];
+  unsigned char x0, y0, x1, y1; /* 0x10  the grid cells it covers */
+  unsigned short count;         /* 0x14  points */
+  unsigned short flags;         /* 0x16  bit 0: closed */
+  char pad18[0x40 - 0x18];
+  BrPathPt pt[1];               /* 0x40 */
+} BrPathSeg;
+typedef struct BrTrackPaths {   /* the loaded track's header */
+  char pad00[0x28];
+  float x28;                    /* 0x28 */
+  float x2c;                    /* 0x2C */
+  char pad30[0x70 - 0x30];
+  BrPathSeg *path;              /* 0x70  the path's first segment */
+  char pad74[0x78 - 0x74];
+  BrPathSeg **segs;             /* 0x78  every segment */
+  int nSegs;                    /* 0x7C */
+} BrTrackPaths;
+extern BrTrackPaths D_80025C00;
+extern BrPathSeg *D_80025C70;           /* the track's path (0 before a track loads) */
 int BrFloatToInt(float f);
-void func_8021EB50(BrCar *car);
+int BrCarTrackLocate(BrCar *car);
+int BrSeg2SideTest(float *a, float *b, float *c, float *d);
+float BrVec3Dist(BrVec3 *a, BrVec3 *b);
+float BrVec3Dot(BrVec3 *a, BrVec3 *b);
+void BrVec3Normalise(BrVec3 *v);
+extern int D_8028B940;
+extern int D_8026FF08;
 extern int D_8026FF10;
 typedef struct BrCarEnt {       /* a car's entity record (0x78 bytes) */
   char pad00[0x60];
@@ -45,6 +78,121 @@ void BrPadConsume(void *pad, int button);
 void BrCarBuildMatrices(BrCar *car);
 float sqrtf(float x);
 /* -- end declarations -- */
+
+/* WHAT IT DOES: Find the path point under a car: keep its last one while
+ * the car has not crossed either of that span's edges and is within 64 of
+ * it; otherwise search every segment whose grid box holds the car's cell
+ * (players' cars and mode 2 also the closed ones), within 1000 of its race
+ * distance, for the nearest point it is ahead of.  The race distance moves
+ * by the car's progress along that point (a jump of 1000 or more is
+ * ignored); the segment, point and the point's across direction are kept.
+ * Returns 0 when no point is found.  One corner of the tracks 3 and 8 grid
+ * is searched as a single cell with no distance check.  Ported from the PC
+ * twin (BrCarTrackLocate).
+ * RESIDUE (231): our IDO hoists the 1000.0f of the segment distance test
+ * out of the search loop (the ROM rematerialises it at each test), which
+ * shifts the loop body; x/z take f26/f30 the other way round and the car
+ * position pointer s1 for s2.  Structure, frame and calls match. */
+/* @implements 0x8021EB50 tgr BrCarTrackLocate */
+int BrCarTrackLocate(BrCar *car)
+{
+  float x;
+  float y;
+  float z;
+  unsigned char cx;
+  unsigned char cy;
+  int i;
+  BrPathSeg *seg;
+  int best;
+  int bestSeg;
+  int k;
+  int j;
+  int n;
+  BrPathPt *p;
+  float bestD;
+  float d;
+  int check;
+  float dist;
+  BrVec3 dir;
+  BrVec3 rel;
+  BrVec3 across;
+  BrVec3 off;
+
+  x = car->mtx0[3][0];
+  y = car->mtx0[3][1];
+  z = car->mtx0[3][2];
+  check = 1;
+  cx = car->cellX;
+  cy = car->cellY;
+  best = -1;
+  bestSeg = 0;
+  if ((D_8028B940 == 3 || D_8028B940 == 8) && cx >= 0x38 && cx < 0x3B && cy >= 0x17 && cy < 0x1C) {
+    cx = 0x39;
+    cy = 0x19;
+    check = 0;
+  }
+  dist = car->xfa8 - D_80025C70->pt[0].dist * car->xf7c;
+  if (check &&
+      !BrSeg2SideTest(&((BrPathSeg *)car->xf5c)->pt[car->xf60].left.x, &((BrPathSeg *)car->xf5c)->pt[car->xf60].right.x,
+                      &car->posPrev.x, car->mtx0[3]) &&
+      !BrSeg2SideTest(&((BrPathSeg *)car->xf5c)->pt[car->xf60 + 1].left.x, &((BrPathSeg *)car->xf5c)->pt[car->xf60 + 1].right.x,
+                      &car->posPrev.x, car->mtx0[3]) &&
+      BrVec3Dist((BrVec3 *)car->mtx0[3], &((BrPathSeg *)car->xf5c)->pt[car->xf60].pos) < 64.0f) {
+    seg = (BrPathSeg *)car->xf5c;
+    i = car->xf60;
+  } else {
+    bestD = D_80025C00.x2c - D_80025C00.x28;
+    bestD *= bestD;
+    for (k = 0; k < D_80025C00.nSegs; k++) {
+      if (car->slot < D_8026FF08 || D_8026FF18 == 2 || !(D_80025C00.segs[k]->flags & 1)) {
+        seg = D_80025C00.segs[k];
+        if (cx < seg->x0 || cx > seg->x1 || cy < seg->y0 || cy > seg->y1) {
+          continue;
+        }
+        if (check && ((D_80025C70->pt[0].dist - seg->pt[0].dist) - dist > 1000.0f ||
+                      dist - (D_80025C70->pt[0].dist - seg->pt[seg->count].dist) > 1000.0f)) {
+          continue;
+        }
+        n = seg->count;
+        for (j = 0, p = seg->pt; j < n; j++, p++) {
+          d = (p->pos.x - x) * (p->pos.x - x) + (p->pos.y - y) * (p->pos.y - y) + (p->pos.z - z) * (p->pos.z - z);
+          if (d < bestD) {
+            dir.x = p->left.y - p->right.y;
+            dir.y = p->right.x - p->left.x;
+            dir.z = 0.0f;
+            BrVec3Sub(&rel, (BrVec3 *)car->mtx0[3], &p->pos);
+            if (BrVec3Dot(&dir, &rel) >= 0.0f) {
+              bestD = d;
+              best = j;
+              bestSeg = k;
+            }
+          }
+        }
+      }
+    }
+    if (best == -1) {
+      return 0;
+    }
+    seg = D_80025C00.segs[bestSeg];
+    i = best;
+  }
+  p = &seg->pt[i];
+  across.x = p->left.y - p->right.y;
+  across.z = 0.0f;
+  across.y = p->right.x - p->left.x;
+  BrVec3Normalise(&across);
+  BrVec3Sub(&off, (BrVec3 *)car->mtx0[3], &p->pos);
+  d = BrVec3Dot(&across, &off) + (D_80025C70->pt[0].dist * (car->xf7c + 1) - p->dist) - car->xfa8;
+  if (!check || (-1000.0f < d && d < 1000.0f)) {
+    car->xfa8 += d;
+  }
+  car->xf5c = (int)seg;
+  car->xf60 = i;
+  car->xf64 = across.x;
+  car->xf68 = across.y;
+  car->xf6c = across.z;
+  return 1;
+}
 
 /* WHAT IT DOES: Advance a car's clocks by one frame while it is still in
  * the race: the race clock always, the lap clock except in mode 3, and in
@@ -109,7 +257,7 @@ void BrCarGridCell(BrCar *car)
     } else if (car->cellY >= 0x40) {
       car->cellY = 0x3f;
     }
-    func_8021EB50(car);
+    BrCarTrackLocate(car);
   }
 }
 
