@@ -138,6 +138,7 @@ va,name,kind
 8021DC34,BrModelRebase,func
 8021DDFC,BrModelReadRaw,func
 8021DE2C,BrModelLoad,func
+8021DE5C,BrTrackLoad,func
 8021E180,BrTrackIsPresent,func
 8021E1C0,BrWaitRetrace,func
 8021E1EC,BrHaltLoop,func

@@ -17,9 +17,12 @@ typedef struct MenuItem {
 /* A track (0x17C bytes), a table at 0x80270854; its menu row comes first. */
 typedef struct BrTrack {
     MenuItem item;              /* 0x00 */
-    int x14;                    /* 0x14 */
+    int x14;                    /* 0x14  ROM offset of the track data */
     int present;                /* 0x18  non-zero when the track's data is there */
-    char pad1c[0x17C - 0x1C];
+    int x1c;                    /* 0x1C  ROM offset of a 0x20-byte header + packed data (0x803736B0) */
+    int x20;
+    int x24;                    /* 0x24  the same for 0x80373ED0 */
+    char pad28[0x17C - 0x28];
 } BrTrack;
 
 extern BrTrack D_80270854[];
