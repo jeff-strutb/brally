@@ -159,6 +159,14 @@ extern BrImage D_8028D0B0;              /* the A button */
 extern BrImage D_8028D0E0;              /* the B button */
 extern float D_802AB260;
 extern float D_802AB264;
+typedef struct BrPadRec {       /* as tgr/pad.h (0x15C bytes) */
+  unsigned int pressed;         /* 0x00 */
+  unsigned int held;            /* 0x04 */
+  int repeat[4];                /* 0x08 */
+  float axis[2];                /* 0x18  stick axes */
+  char pad20[0x15c - 0x20];
+} BrPadRec;
+#define PADS ((BrPadRec *)&D_8036A8E0)
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Take the chosen preset's rectangle, and make every view
@@ -360,73 +368,48 @@ void BrPaintExitPrompt(void)
 /* @implements 0x8024BE78 tgr BrPaintStickMove */
 void BrPaintStickMove(void)
 {
-  int iVar1;
-  unsigned int *puVar2;
-  float fVar3;
-  
-  if (D_8028DBE8 == '\0') {
-    puVar2 = (unsigned int *)(&D_8036A8E0 + (unsigned int)D_8028DBBC * 0x15c);
-    fVar3 = *(float *)(&D_8036A8F8 + (unsigned int)D_8028DBBC * 0x15c);
-    if (fVar3 < 0.0f) {
-      fVar3 = -fVar3;
-    }
-    if (D_802AB20C <= fVar3) {
-      iVar1 = BrPaintCursorInRect((int *)&D_8028DB94);
-      if ((iVar1 == 0) || (D_8028DBC4 != '\0')) {
-        puVar2 = (unsigned int *)(&D_8036A8E0 + (unsigned int)D_8028DBBC * 0x15c);
-        D_8028D12C = D_8028D12C +
-                       (int)(*(float *)(&D_8036A8F8 + (unsigned int)D_8028DBBC * 0x15c) * 12.0f);
+  BrPadRec *pad;
+  float a;
+
+  if (D_8028DBE8 == 0) {
+    pad = &PADS[D_8028DBBC];
+    a = pad->axis[0] < 0.0 ? -pad->axis[0] : pad->axis[0];
+    if (a >= D_802AB20C) {
+      if (BrPaintCursorInRect((int *)&D_8028DB94) != 0 && D_8028DBC4 == 0) {
+        pad = &PADS[D_8028DBBC];
+        D_8028D110.x += (int)(pad->axis[0] * 6.0f);
+      } else {
+        pad = &PADS[D_8028DBBC];
+        D_8028D110.x += (int)(pad->axis[0] * 12.0f);
       }
-      else {
-        puVar2 = (unsigned int *)(&D_8036A8E0 + (unsigned int)D_8028DBBC * 0x15c);
-        D_8028D12C = D_8028D12C +
-                       (int)(*(float *)(&D_8036A8F8 + (unsigned int)D_8028DBBC * 0x15c) * 6.0f);
+    } else if (pad->pressed & 0x201) {
+      D_8028D110.x++;
+    } else if (pad->pressed & 0x804) {
+      D_8028D110.x--;
+    }
+    a = pad->axis[1] < 0.0 ? -pad->axis[1] : pad->axis[1];
+    if (a >= D_802AB210) {
+      if (BrPaintCursorInRect((int *)&D_8028DB94) != 0 && D_8028DBC4 == 0) {
+        pad = &PADS[D_8028DBBC];
+        D_8028D110.y -= (int)(pad->axis[1] * 6.0f);
+      } else {
+        pad = &PADS[D_8028DBBC];
+        D_8028D110.y -= (int)(pad->axis[1] * 12.0f);
       }
+    } else if (pad->pressed & 0x402) {
+      D_8028D110.y++;
+    } else if (pad->pressed & 0x108) {
+      D_8028D110.y--;
     }
-    else if ((*puVar2 & 0x201) == 0) {
-      if ((*puVar2 & 0x804) != 0) {
-        D_8028D12C = D_8028D12C + -1;
-      }
+    if (D_8028D110.x >= 610) {
+      D_8028D110.x = 609;
+    } else if (D_8028D110.x < 31) {
+      D_8028D110.x = 31;
     }
-    else {
-      D_8028D12C = D_8028D12C + 1;
-    }
-    fVar3 = (float)puVar2[7];
-    if (fVar3 < 0.0f) {
-      fVar3 = -fVar3;
-    }
-    if (D_802AB210 <= fVar3) {
-      iVar1 = BrPaintCursorInRect((int *)&D_8028DB94);
-      if ((iVar1 == 0) || (D_8028DBC4 != '\0')) {
-        D_8028D130 = D_8028D130 -
-                       (int)(*(float *)((unsigned int)D_8028DBBC * 0x15c + -0x7fc95704) * 12.0f);
-      }
-      else {
-        D_8028D130 = D_8028D130 -
-                       (int)(*(float *)((unsigned int)D_8028DBBC * 0x15c + -0x7fc95704) * 6.0f);
-      }
-    }
-    else if ((*puVar2 & 0x402) == 0) {
-      if ((*puVar2 & 0x108) != 0) {
-        D_8028D130 = D_8028D130 + -1;
-      }
-    }
-    else {
-      D_8028D130 = D_8028D130 + 1;
-    }
-    if (D_8028D12C < 0x262) {
-      if (D_8028D12C < 0x1f) {
-        D_8028D12C = 0x1f;
-      }
-    }
-    else {
-      D_8028D12C = 0x261;
-    }
-    if (D_8028D130 < 0x16) {
-      D_8028D130 = 0x16;
-    }
-    else if (0x1ca < D_8028D130) {
-      D_8028D130 = 0x1ca;
+    if (D_8028D110.y < 22) {
+      D_8028D110.y = 22;
+    } else if (D_8028D110.y > 458) {
+      D_8028D110.y = 458;
     }
   }
 }
