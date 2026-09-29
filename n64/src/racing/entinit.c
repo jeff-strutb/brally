@@ -242,6 +242,261 @@ void BrCarRespawn(BrCar *car)
   }
 }
 
+/* -- declarations: BrCarPlayerCtl -- */
+typedef struct BrCarInput {     /* the pad record as a car reads it */
+  unsigned int flags;           /* 0x00  buttons; bits 24-27 pick a camera */
+  char pad04[0x1C - 0x04];
+  float throttle;               /* 0x1C */
+  float steer;                  /* 0x20 */
+} BrCarInput;
+typedef struct BrViewRec { int x; int y; int w; int h; int car; } BrViewRec;
+extern BrViewRec D_8031B2C8[2];         /* the views and the car each follows */
+extern int D_8028AB0C;                  /* views on screen */
+extern int D_8028A8AC;                  /* the picture is mirrored */
+extern int D_8028B7F8;                  /* frames the camera keeps its checkpoint target */
+extern int D_8028B9EC;                  /* which fallback camera is next */
+extern int D_8028B7FC;
+extern int D_80270788;
+extern BrVec3 *D_80025C84;              /* the camera checkpoints */
+extern int D_80025C88;                  /* and their count */
+void BrPadConsume(BrCarInput *pad, unsigned int bit);
+void BrCarCamPlaceChase(BrCar *car);
+void BrVec3MulAddTo(BrVec3 *pV, float *pD, float t);
+void BrCarLineFit(BrCar *car);
+void BrVec3Scale(BrVec3 *pOut, BrVec3 *pV, float s);
+float BrVec3Dot(BrVec3 *pA, float *pB);
+void BrCarPhysTick(BrCar *car);
+void BrVec3Add(BrVec3 *pOut, BrVec3 *pA, BrVec3 *pB);
+void BrVec3AddTo(BrVec3 *pV, float *pB);
+void BrVec3Sub(BrVec3 *pOut, BrVec3 *pA, BrVec3 *pB);
+float BrVec3Length(BrVec3 *pV);
+void BrVec3ScaleBy(BrVec3 *pV, float s);
+float BrVec3Dist(BrVec3 *pA, BrVec3 *pB);
+float sqrtf(float x);
+void BrCamShakeAdd(int slot, float s);
+/* -- end declarations -- */
+
+#define PAD ((BrCarInput *)car->pad)
+#define VIEWED (car->slot == D_8031B2C8[0].car || (D_8028AB0C >= 2 && car->slot == D_8031B2C8[1].car))
+
+/* WHAT IT DOES: One frame of a car's control from its pad: the steering and
+ * throttle axes squared past their dead zones (steering mirrored with the
+ * picture), and for a car on screen the camera: the nearest checkpoint below
+ * it within 150 becomes the chase camera's target (the camera redrawn when
+ * that changes), or with none near the camera alternates between the two
+ * fallback views for 60 frames; the camera buttons pick a view, and the
+ * d-pad and the brake drive the free-flying camera instead while the car is
+ * on it.  In the demo mode the car drives itself along the racing line to
+ * the finish.  Then the physics step, the head bob spring between the two
+ * probe frames (a hard knock shakes the camera), and the respawn check.
+ * The PC twin is FUN_1005c8b0.  The unused arrays place the named locals
+ * where the ROM frame has them (b 0xC4, la 0x90, v 0x7C).
+ * RESIDUE (546): every slot is 8 above the ROM's (its spill area is 8
+ * smaller), the locked-camera test branches to the scan where the ROM
+ * branches (likely) to the buttons, the fallback-camera toggle is formed
+ * after the camera stores, and the +-1.0 constants are materialised per
+ * use. */
+/* @implements 0x80226488 tgr BrCarPlayerCtl */
+void BrCarPlayerCtl(BrCar *car)
+{
+  float b[3];
+  int u0[10];
+  BrVec3 la;
+  int u1[2];
+  BrVec3 v;
+  BrVec3 prev;
+  BrVec3 bb;
+  BrVec3 a;
+  BrVec3 *p;
+  float best;
+  float dx;
+  float dy;
+  float dz;
+  float d;
+  float s;
+  int i;
+
+  if (D_8028A8AC != 0) {
+    PAD->steer = -PAD->steer;
+  }
+  if (PAD->steer > 0.1f) {
+    car->x1dd4 = (PAD->steer - 0.1f) / 0.9f;
+    car->x1dd4 = car->x1dd4 * -car->x1dd4;
+  } else if (PAD->steer < -0.1f) {
+    car->x1dd4 = (PAD->steer + 0.1f) / 0.9f;
+    car->x1dd4 = car->x1dd4 * car->x1dd4;
+  } else {
+    car->x1dd4 = 0.0f;
+  }
+  if ((car->link->flags & 2) && VIEWED) {
+    if (D_8028B7F8 != 0) {
+      goto buttons;
+    }
+    goto scan;
+  }
+  if ((D_8026FF18 == 4 || D_8026FF18 == 5 || D_80270788 != 0) && VIEWED) {
+    if (D_8028B7F8 == 0) {
+scan:
+      best = 16777216.0f;
+      for (i = 0; i < D_80025C88; i++) {
+        dx = car->mtx0[3][0] - D_80025C84[i].x;
+        dy = car->mtx0[3][1] - D_80025C84[i].y;
+        dx = dx * dx;
+        dz = car->mtx0[3][2] - D_80025C84[i].z;
+        dy = dy * dy;
+        if (!(dz > 10.0f) && (d = dx + dy + dz * dz) < best) {
+          b[0] = D_80025C84[i].x;
+          b[1] = D_80025C84[i].y;
+          b[2] = D_80025C84[i].z;
+          best = d;
+        }
+      }
+      if (best < 22500.0f) {
+        if (car->cam != &car->cams[3] || car->cams[3].mtx[3][0] != b[0] || car->cams[3].mtx[3][1] != b[1] ||
+            car->cams[3].mtx[3][2] != b[2]) {
+          car->xf48 = 1;
+        }
+        car->cams[3].mtx[3][0] = b[0];
+        car->cams[3].mtx[3][1] = b[1];
+        car->cams[3].mtx[3][2] = b[2];
+        car->cam = &car->cams[3];
+      } else if (car->cam == &car->cams[3]) {
+        car->xf48 = 1;
+        if (D_8028B9EC == 0 && D_8028B7FC == 0) {
+          car->cam = &car->cams[1];
+        } else {
+          car->cam = &car->cams[0];
+        }
+        D_8028B7F8 = 60;
+        D_8028B9EC = D_8028B9EC == 0;
+      }
+    } else {
+      D_8028B7F8--;
+    }
+    if (PAD->flags & 0xF000000) {
+      D_8028B7F8 = 450;
+    }
+  } else if (VIEWED) {
+    D_8028B7F8 = 0;
+  }
+buttons:
+  if (PAD->flags & 0x1000000) {
+    car->cam = &car->cams[0];
+    car->xf48 = 1;
+    BrPadConsume(PAD, 0x1000000);
+  }
+  if (PAD->flags & 0x2000000) {
+    BrCarCamPlaceChase(car);
+    car->xf48 = 1;
+    BrPadConsume(PAD, 0x2000000);
+  }
+  if (PAD->flags & 0x4000000) {
+    car->cam = &car->cams[1];
+    car->xf48 = 1;
+    BrPadConsume(PAD, 0x4000000);
+  }
+  if (D_8028AB0C == 1 && (PAD->flags & 0x8000000)) {
+    car->cam = &car->cams[2];
+    car->xf48 = 1;
+    BrPadConsume(PAD, 0x8000000);
+  }
+  if (PAD->throttle > 0.25f) {
+    car->x1ddc = (PAD->throttle - 0.25f) / 0.75f;
+    car->x1ddc = car->x1ddc * car->x1ddc;
+  } else if (PAD->throttle < -0.25f) {
+    car->x1ddc = (PAD->throttle + 0.25f) / 0.75f;
+    car->x1ddc = car->x1ddc * -car->x1ddc;
+  } else {
+    car->x1ddc = 0.0f;
+  }
+  if (car->xf4c != 0) {
+    car->x1de0 = 0.0f;
+  }
+  if (PAD->flags & 0x8000) {
+    if (car->xf4c == 0) {
+      car->x1ddc = 1.0f;
+    }
+  } else if (car->xf4c != 0) {
+    car->x1dd8 = car->x1ddc;
+    car->x1ddc = 0.0f;
+  }
+  if (PAD->flags & 8) {
+    car->x1ddc = 1.0f;
+  }
+  if (PAD->flags & 2) {
+    car->x1ddc = -1.0f;
+  }
+  if (PAD->flags & 1) {
+    if (car->xf4c != 0) {
+      car->x1de0 = 1.0f;
+    } else {
+      car->x1dd4 = -1.0f;
+    }
+  }
+  if (PAD->flags & 4) {
+    if (car->xf4c != 0) {
+      car->x1de0 = -1.0f;
+    } else {
+      car->x1dd4 = 1.0f;
+    }
+  }
+  if (D_8026FF18 == 5) {
+    BrVec3MulAddTo((BrVec3 *)car->mtx0[3], car->mtx0[0], 15.0f);
+    BrCarLineFit(car);
+    la.x = car->lineDir.x;
+    la.y = car->lineDir.y;
+    la.z = car->lineDir.z;
+    BrVec3MulAddTo((BrVec3 *)car->mtx0[3], car->mtx0[0], -15.0f);
+    BrCarLineFit(car);
+    PAD->flags &= 0xF0C0FFFF;
+    if (car->xfa8 < 114.5f) {
+      BrVec3Scale(&v, &car->lineDir, 27.0f);
+    } else {
+      BrVec3Scale(&v, &car->lineDir, (168.5f - car->xfa8) * 0.5f);
+      if (167.5f < car->xfa8) {
+        PAD->flags |= 0x40000;
+        if (168.4f < car->xfa8) {
+          v.y = v.x = v.z = 0.0f;
+        }
+      } else {
+        PAD->flags |= 0x80000;
+      }
+    }
+    car->xdf0 = BrVec3Dot(&la, car->mtx0[1]) * 3.0f;
+    v.x = v.x - car->lineRel.x * 0.2f;
+    v.y = v.y - car->lineRel.y * 0.2f;
+    BrCarSetVel(car, v.x, v.y, v.z);
+  }
+  BrCarPhysTick(car);
+  if (car->xf4c == 0) {
+    BrVec3Add(&a, (BrVec3 *)car->mtx0[3], (BrVec3 *)car->mtx0[0]);
+    BrVec3AddTo(&a, car->mtx0[1]);
+    BrVec3Add(&bb, (BrVec3 *)&car->xfe4[2], (BrVec3 *)&car->xfe4[5]);
+    prev.x = car->xfe4[8];
+    prev.y = car->xfe4[9];
+    prev.z = car->xfe4[10];
+    BrVec3Sub((BrVec3 *)&car->xfe4[8], (BrVec3 *)&car->xfe4[2], &a);
+    d = BrVec3Length((BrVec3 *)&car->xfe4[8]);
+    if (d != 0.0f) {
+      BrVec3ScaleBy((BrVec3 *)&car->xfe4[8], d / (d + 1.0f) / d);
+    }
+    s = sqrtf(BrVec3Dist((BrVec3 *)&car->xfe4[8], &prev));
+    s = s / (BrVec3Length((BrVec3 *)&car->xfe4[5]) + 1.0f);
+    if (0.025f < s) {
+      BrCamShakeAdd(car->slot, s + s);
+    }
+    car->xfe4[2] = a.x;
+    car->xfe4[3] = a.y;
+    car->xfe4[4] = a.z;
+    BrVec3Sub((BrVec3 *)&car->xfe4[5], (BrVec3 *)&car->xfe4[2], &bb);
+    car->xfe4[7] -= 0.32666668f;
+  }
+  BrCarRespawn(car);
+}
+
+#undef PAD
+#undef VIEWED
+
 /* WHAT IT DOES: Put a car at (x, y, z): the body matrix's translation, the
  * spare copy at 0x1D78 and the three rigid-body states, then rebuild the
  * state's matrix.  Same store order as the PC twin BrEntSetPos

@@ -264,6 +264,7 @@ va,name,kind
 802260A0,BrCarDefaultColour,func
 80226100,BrCarReset,func
 80226248,BrCarRespawn,func
+80226488,BrCarPlayerCtl,func
 80226D7C,BrCarCamStep,func
 80226D9C,BrAiScanCorridor,func
 80227214,BrCarLineFit,func
