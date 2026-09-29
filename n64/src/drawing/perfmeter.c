@@ -2,17 +2,27 @@
  * bars, double-buffered so one frame is drawn while the next is recorded
  */
 #include "tgr/common.h"
+#include "tgr/gbi.h"
 
 /* -- declarations -- */
 typedef struct BrPerfEntry {
   unsigned int colour;          /* fill colour of the segment ending here */
-  int time;                     /* CPU count since the frame began */
+  unsigned int time;            /* CPU count since the frame began */
 } BrPerfEntry;
 unsigned int osGetCount(void);
 extern int D_8028BDA0;
 unsigned long long D_8028BDA8 = 0;
 extern int D_803519B0[2][3];
 extern BrPerfEntry D_8034E9B0[2][3][256];
+extern Gfx *D_8028A858;
+extern int D_8028AAB0;                  /* the screen width */
+extern int D_8028AAB4;                  /* and height */
+extern int D_8028A850;                  /* the frame buffer's scale shift (1 in high resolution) */
+extern int D_8028A85C;                  /* the frame buffer being drawn */
+extern unsigned int D_8031AA28[];      /* the frame buffers */
+extern unsigned int D_8028A890;         /* the render mode to restore */
+extern unsigned int D_8028A894;
+void BrScissorSet(int x, int y, int w, int h);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Record a timing mark on one of the performance meter's
@@ -48,4 +58,92 @@ void BrPerfFrameStart(void)
     D_803519B0[D_8028BDA0][i] = 0;
     D_8034E9B0[D_8028BDA0][i][0].time = 0;
   }
+}
+
+/* WHAT IT DOES: Draw the performance meter at the right edge of the screen
+ * from the last frame's marks: find the longest bar, let the scale follow
+ * it (growing at once, shrinking a frame-time step at a time after 30 quiet
+ * frames, never under 2350000 counts), then a dark frame, a white tick every
+ * frame time (781250 counts), and each bar's segments in their colours.
+ * The scale state is function static (the ROM addresses it afresh at every
+ * access); the local bounds and row pointers are what let IDO unroll both
+ * inner loops by four as the ROM has them.
+ * RESIDUE (722): the ROM keeps the first loop's counters and row pointer in
+ * s4/s6/s7/fp (it saves two more registers, frame 0x40) where ours uses
+ * temporaries, which renames everything after. */
+/* @implements 0x8022D97C tgr BrPerfMeterDraw */
+void BrPerfMeterDraw(void)
+{
+  static int hold = 0;              /* 0x8028BDB0: frames before the scale may shrink */
+  static unsigned int scale;        /* 0x803519C8: the meter's full scale, CPU counts */
+  unsigned int max;
+  unsigned int t;
+  int h;
+  int bar;
+  int j;
+  int n;
+  BrPerfEntry *e;
+
+  gDPPipeSync(D_8028A858++);
+  BrScissorSet(0, 0, D_8028AAB0, D_8028AAB4);
+  gDPSetRenderMode(D_8028A858++, G_RM_OPA_SURF, G_RM_OPA_SURF2);
+  gDPSetCycleType(D_8028A858++, G_CYC_FILL);
+  gDPSetColorImage(D_8028A858++, G_IM_FMT_RGBA, G_IM_SIZ_16b, D_8028AAB0 << D_8028A850,
+                   D_8031AA28[D_8028A85C] + 0x80000000);
+  max = 0;
+  for (bar = 0; bar < 3; bar++) {
+    n = D_803519B0[D_8028BDA0 ^ 1][bar];
+    e = D_8034E9B0[D_8028BDA0 ^ 1][bar];
+    for (j = 1; j < n; j++) {
+      if (max < e[j].time) {
+        max = e[j].time;
+      }
+    }
+  }
+  if (max < scale + 7812) {
+    if (hold != 0) {
+      hold--;
+      max = scale;
+    } else if (scale > 1736110) {
+      scale -= 781250;
+      if (max >= scale + 7812) {
+        scale = max;
+        hold = 30;
+      } else {
+        max = scale;
+        hold = 30;
+      }
+    }
+  } else {
+    scale = max;
+    hold = 30;
+  }
+  if (max < 1700000) {
+    max = 2350000;
+  }
+  h = ((D_8028AAB4 << D_8028A850) * 208) / 240;
+  gDPSetFillColor(D_8028A858++, 0x00010001);
+  gDPFillRectangle(D_8028A858++, ((D_8028AAB0 - 16) << D_8028A850) - 22, (16 << D_8028A850) - 2,
+                   ((D_8028AAB0 - 16) << D_8028A850) - 3, (16 << D_8028A850) + h + 2);
+  gDPPipeSync(D_8028A858++);
+  gDPSetFillColor(D_8028A858++, 0xFFFFFFFF);
+  for (t = 0; t < max; t += 781250) {
+    gDPFillRectangle(D_8028A858++, ((D_8028AAB0 - 16) << D_8028A850) - 21, (16 << D_8028A850) + t * h / max,
+                     ((D_8028AAB0 - 16) << D_8028A850) - 20, (16 << D_8028A850) + t * h / max);
+  }
+  gDPPipeSync(D_8028A858++);
+  for (bar = 0; bar < 3; bar++) {
+    n = D_803519B0[D_8028BDA0 ^ 1][bar];
+    e = D_8034E9B0[D_8028BDA0 ^ 1][bar];
+    for (j = 1; j < n; j++) {
+      gDPSetFillColor(D_8028A858++, e[j].colour);
+      gDPFillRectangle(D_8028A858++, ((D_8028AAB0 - 16) << D_8028A850) + bar * 4 - 18,
+                       e[j - 1].time * h / max + (16 << D_8028A850),
+                       ((D_8028AAB0 - 16) << D_8028A850) + bar * 4 - 16,
+                       e[j].time * h / max + (16 << D_8028A850));
+      gDPPipeSync(D_8028A858++);
+    }
+  }
+  gDPSetCycleType(D_8028A858++, G_CYC_1CYCLE);
+  gDPSetRenderMode(D_8028A858++, D_8028A890, D_8028A894);
 }
