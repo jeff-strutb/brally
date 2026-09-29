@@ -47,13 +47,16 @@ void guMtxF2L(float mf[4][4], Mtx *m);
  * passes (the opaque parts, then the blended ones), each under its own
  * translation; a part can switch its light colour, cull front faces or turn
  * fog off for itself, and restores them after.  Pops m at the end. */
-/* The loop sits in its own block with an unused int after the pass counter:
- * that is what puts the pass at 0xBC and the frame at 0x140 (each macro's
- * _g takes a home slot in declaration order).
+/* The pass counter is a register variable spilled at the start of each pass
+ * (0xBC), as the ROM has it: the pass test spelled !(flags & 8) != !pass
+ * keeps it out of memory, and the display list tested around the body
+ * (not a continue) is what reloads the part count there.  A homed counter
+ * behaved the same per call but left different state behind (whole-image
+ * run, rain and night scripts, frame 2983).
  * RESIDUE (196): the clear-geometry-mode command before the look-at stores
  * w1 before w0 where the ROM stores w0 first; every temporary after it is
- * then one register along (t6..t9 rotated).  Structure, frame and calls
- * match. */
+ * then one register along (t6..t9 rotated).  Size, structure, frame and
+ * calls match. */
 /* @t4-pass 0x80209D70 1 2026-09-29 compiles 196 best 196 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80209D70 2 2026-09-29 compiles 196 best 196 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80209D70 tgr BrModelDraw */
@@ -102,43 +105,41 @@ void BrModelDraw(BrModel *model, float m[4][4])
   gRaw(D_8028A858++, 0xF5000100, 0x05000000);
   {
   int pass;
-  int unused;
 
   for (pass = 0; pass != 2; pass++) {
     for (i = 0; i < model->count; i++) {
-      if (((model->parts[i].flags & 8) == 0) != (pass == 0)) {
+      if (!(model->parts[i].flags & 8) != !pass) {
         continue;
       }
-      if (model->parts[i].dl == 0) {
-        continue;
-      }
-      if (model->parts[i].flags & 0x400) {
-        gSPLightColor(D_8028A858++, 1, 0);
-        gSPLightColor(D_8028A858++, 2, D_80271D9C[model->parts[i].flags & 3]);
-      }
-      if (model->parts[i].flags & 4) {
-        gSPClearGeometryMode(D_8028A858++, 0x3000);
-      }
-      if ((model->parts[i].flags & 0x80) && D_8028AA48 != 0) {
-        gSPClearGeometryMode(D_8028A858++, 0x200);
-      }
-      gSPTexture(D_8028A858++, 0xFFFF, 0xFFFF, 0, 0, 1);
-      gDPTileSync(D_8028A858++);
-      mtx = BrMtxAlloc();
-      guTranslateF(D_8031AB10, model->parts[i].pos[0], model->parts[i].pos[1], model->parts[i].pos[2]);
-      guMtxF2L(D_8031AB10, mtx);
-      gSPMatrix(D_8028A858++, mtx, G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
-      gSPDisplayList(D_8028A858++, model->parts[i].dl);
-      gSPPopMatrix(D_8028A858++, 0);
-      if ((model->parts[i].flags & 0x80) && D_8028AA48 != 0) {
-        gSPSetGeometryMode(D_8028A858++, 0x200);
-      }
-      if (model->parts[i].flags & 4) {
-        gSPSetGeometryMode(D_8028A858++, D_8028A8A8 == D_8028A8AC ? 0x2000 : 0x1000);
-      }
-      if (model->parts[i].flags & 0x400) {
-        gSPLightColor(D_8028A858++, 1, 0xFFFFFF00);
-        gSPLightColor(D_8028A858++, 2, 0x40404000);
+      if (model->parts[i].dl != 0) {
+        if (model->parts[i].flags & 0x400) {
+          gSPLightColor(D_8028A858++, 1, 0);
+          gSPLightColor(D_8028A858++, 2, D_80271D9C[model->parts[i].flags & 3]);
+        }
+        if (model->parts[i].flags & 4) {
+          gSPClearGeometryMode(D_8028A858++, 0x3000);
+        }
+        if ((model->parts[i].flags & 0x80) && D_8028AA48 != 0) {
+          gSPClearGeometryMode(D_8028A858++, 0x200);
+        }
+        gSPTexture(D_8028A858++, 0xFFFF, 0xFFFF, 0, 0, 1);
+        gDPTileSync(D_8028A858++);
+        mtx = BrMtxAlloc();
+        guTranslateF(D_8031AB10, model->parts[i].pos[0], model->parts[i].pos[1], model->parts[i].pos[2]);
+        guMtxF2L(D_8031AB10, mtx);
+        gSPMatrix(D_8028A858++, mtx, G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
+        gSPDisplayList(D_8028A858++, model->parts[i].dl);
+        gSPPopMatrix(D_8028A858++, 0);
+        if ((model->parts[i].flags & 0x80) && D_8028AA48 != 0) {
+          gSPSetGeometryMode(D_8028A858++, 0x200);
+        }
+        if (model->parts[i].flags & 4) {
+          gSPSetGeometryMode(D_8028A858++, D_8028A8A8 - D_8028A8AC ? 0x1000 : 0x2000);
+        }
+        if (model->parts[i].flags & 0x400) {
+          gSPLightColor(D_8028A858++, 1, 0xFFFFFF00);
+          gSPLightColor(D_8028A858++, 2, 0x40404000);
+        }
       }
     }
   }
