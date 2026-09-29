@@ -683,10 +683,17 @@ va,name,kind
 8026B8A0,__osSpRawStartDma,func
 8026B930,__osSpDeviceBusy,func
 8026B960,osGetTime,func
+8026B9F0,__osSetSR,func
+8026BA00,__osGetSR,func
+8026BA10,__osSetFpcCsr,func
+8026BAC0,osInvalICache,func
+8026BB40,osMapTLBRdb,func
 8026BC40,__osTimerServicesInit,func
 8026BCCC,__osTimerInterrupt,func
 8026BE44,__osSetTimerIntr,func
 8026BEB8,__osInsertTimer,func
+8026C040,osGetThreadPri,func
+8026C060,__osViGetCurrentContext,func
 8026CE20,__osAiDeviceBusy,func
 8026DBB0,__osSiDeviceBusy,func
 8026E600,__osProbeTLB,func
