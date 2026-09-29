@@ -642,6 +642,7 @@ va,name,kind
 80266390,__osGetCurrFaultedThread,func
 802663A0,osPiReadIo,func
 80266400,osCreateViManager,func
+80266588,viMgrMain,func
 80266760,osCreatePiManager,func
 802668F0,osSetThreadPri,func
 802669D0,__d_to_ll,func
@@ -662,6 +663,7 @@ va,name,kind
 80268530,osAiGetLength,func
 80268540,__osDisableInt,func
 80268560,__osRestoreInt,func
+80268580,__osViInit,func
 802686C0,guNormalize,func
 80268DC0,_Printf,func
 80269410,__osSiCreateAccessQueue,func
@@ -694,6 +696,13 @@ va,name,kind
 8026BEB8,__osInsertTimer,func
 8026C040,osGetThreadPri,func
 8026C060,__osViGetCurrentContext,func
+8026C070,__osViSwapContext,func
+8026C5C0,__osPiCreateAccessQueue,func
+8026C610,__osPiGetAccess,func
+8026C654,__osPiRelAccess,func
+8026C680,osPiRawStartDma,func
+8026C760,osEPiRawStartDma,func
+8026C990,__osDevMgrMain,func
 8026CE20,__osAiDeviceBusy,func
 8026DBB0,__osSiDeviceBusy,func
 8026E600,__osProbeTLB,func
@@ -705,6 +714,7 @@ va,name,kind
 802A6130,__osContinitialized,data
 802A6140,osClockRate,data
 802A6148,osViClock,data
+802A6160,__osViDevMgr,data
 802A6180,__osPiDevMgr,data
 802A6220,__osViCurr,data
 802A6224,__osViNext,data
@@ -715,6 +725,7 @@ va,name,kind
 802A62A0,__osRunningThread,data
 802A62A4,__osFaultedThread,data
 802A62D0,__osTimerList,data
+802A62E0,__osPiAccessQueueEnabled,data
 802ABA80,__libm_qnan_f,data
 802ABC00,gspF3DEX_fifoDataStart,data
 8037F370,__osEventStateTab,data
@@ -729,3 +740,4 @@ va,name,kind
 803818C8,__osBaseCounter,data
 803818CC,__osViIntrCount,data
 803818D0,__osTimerCounter,data
+803819E8,__osPiAccessQueue,data
