@@ -325,6 +325,7 @@ va,name,kind
 8023880C,BrHudTimesDraw,func
 80238AB8,BrHudLapDraw,func
 80238DD4,BrHudPositionDraw,func
+80238F30,BrHudDraw,func
 80239CF0,BrParticlesInit,func
 80239D84,BrWindUpdate,func
 80239F28,BrBoltSplit,func
