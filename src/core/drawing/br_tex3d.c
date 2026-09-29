@@ -1401,7 +1401,7 @@ void BrTex3dCreate(int param_1,int param_2,int param_3,int param_4,int param_5,
  * BrTex3dCreate. */
 /* @implements 0x10027FB0 glide BrTex3dCreateBlank */
 
-void BrTex3dCreateBlank(int param_1,int param_2,int param_3,int param_4)
+int BrTex3dCreateBlank(int param_1,int param_2,int param_3,int param_4)
 {
   int iVar2;
   int uVar3;
@@ -1455,8 +1455,11 @@ void BrTex3dCreateBlank(int param_1,int param_2,int param_3,int param_4)
   r.f264 = 0;
   r.f268 = 0;
   uVar3 = FUN_10027b60(&r);
-  FUN_10027710(&r,uVar3);
-  return;
+  /* The new texture's handle: the original leaves FUN_10027710's result in
+   * eax, and its callers (BrFontRegisterPages's two font sheets, ...) store
+   * it.  Written `void` it matched all the same -- the value was already in
+   * eax -- but said nothing was returned. */
+  return FUN_10027710(&r,uVar3);
 }
 
 /* WHAT IT DOES: build a one-tile texture descriptor on the stack (same BrTexReq272
