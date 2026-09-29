@@ -605,6 +605,7 @@ va,name,kind
 80264650,osPiStartDma,func
 80264760,osContStartReadData,func
 80264824,osContGetReadData,func
+802648CC,__osPackReadData,func
 802649C0,osWritebackDCacheAll,func
 802649F0,osGetCount,func
 80264A60,osViSetMode,func
@@ -624,6 +625,8 @@ va,name,kind
 80265670,osCreateThread,func
 802657C0,osStartThread,func
 80265910,osContInit,func
+80265B08,__osContGetInitData,func
+80265BD8,__osPackRequestData,func
 80265D90,osInitialize,func
 80266020,__ull_rshift,func
 8026604C,__ull_rem,func
@@ -679,6 +682,7 @@ va,name,kind
 8026B860,__osSpSetPc,func
 8026B8A0,__osSpRawStartDma,func
 8026B930,__osSpDeviceBusy,func
+8026B960,osGetTime,func
 8026BC40,__osTimerServicesInit,func
 8026BCCC,__osTimerInterrupt,func
 8026BE44,__osSetTimerIntr,func
@@ -691,6 +695,7 @@ va,name,kind
 8026EAD0,rspbootTextEnd,data
 8026EAD0,gspF3DEX_fifoTextStart,data
 8028CAC0,inflate_mask,data
+802A6130,__osContinitialized,data
 802A6140,osClockRate,data
 802A6148,osViClock,data
 802A6180,__osPiDevMgr,data
@@ -706,6 +711,11 @@ va,name,kind
 802ABA80,__libm_qnan_f,data
 802ABC00,gspF3DEX_fifoDataStart,data
 8037F370,__osEventStateTab,data
+8037F3F0,__osContPifRam,data
+8037F430,__osContLastCmd,data
+8037F431,__osMaxControllers,data
+8037F458,__osEepromTimerQ,data
+8037F470,__osEepromTimerMsg,data
 80381880,siAccessBuf,data
 80381888,__osSiAccessQueue,data
 803818C0,__osCurrentTime,data
