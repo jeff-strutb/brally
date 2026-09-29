@@ -11,7 +11,7 @@
 #include <mach/mach_time.h>
 
 /* ============================================================== time == */
-static u64 now_us(void)
+static u64 real_us(void)
 {
     static mach_timebase_info_data_t tb;
     static u64 t0;
@@ -19,15 +19,35 @@ static u64 now_us(void)
     if (!tb.denom) { mach_timebase_info(&tb); t0 = t; }
     return (t - t0) * tb.numer / tb.denom / 1000;
 }
-u32 h_timeGetTime(void) { return (u32)(now_us() / 1000) + 1000; }
+
+/* BR_VCLOCK=ms: virtual time, kept the way brbox keeps it (tools/brbox.py,
+ * TICK_MS): a clock read on the main thread costs ms, Sleep(n) there costs n
+ * instead of sleeping, and waiting for a message costs 5; other threads read
+ * the clock without moving it.  Two runs of one script then draw the same
+ * frames, so their Glide streams (BR_GLLOG) can be compared exactly. */
+static u64 g_vclock_tick = ~0ULL, g_vclock_us;
+static int vclock(void)
+{
+    if (g_vclock_tick == ~0ULL) {
+        const char *e = getenv("BR_VCLOCK");
+        g_vclock_tick = e ? (u64)(atof(e) * 1000.0) : 0;
+    }
+    return g_vclock_tick != 0;
+}
+static void vclock_advance(u64 us) { if (vclock() && pthread_main_np()) g_vclock_us += us; }
+static u64 now_us(void) { return vclock() ? g_vclock_us : real_us(); }
+static u64 clock_read_us(void) { vclock_advance(g_vclock_tick); return now_us(); }
+
+u32 h_timeGetTime(void) { return (u32)(clock_read_us() / 1000) + 1000; }
 u32 h_timeBeginPeriod(u32 p) { (void)p; return 0; }
 void h_timeEndPeriod(u32 p) { (void)p; }
 u32 h_QueryPerformanceFrequency(u32 p) { W_ST(u64, p, 0, 1000000ULL); return 1; }
-u32 h_QueryPerformanceCounter(u32 p) { W_ST(u64, p, 0, now_us() + 1000000ULL); return 1; }
+u32 h_QueryPerformanceCounter(u32 p) { W_ST(u64, p, 0, clock_read_us() + 1000000ULL); return 1; }
 void h_Sleep(u32 ms)
 {
     happ_pump(0);
-    if (ms) usleep(ms * 1000);
+    if (vclock() && pthread_main_np()) vclock_advance((u64)ms * 1000);
+    else if (ms) usleep(ms * 1000);
 }
 
 /* ============================================================ handles == */
@@ -125,7 +145,7 @@ static void consume(hobj *o)
 static u32 wait_n(u32 n, const u32 *hs, int all, u32 ms)
 {
     struct timespec ts;
-    u64 dl = now_us() + (u64)ms * 1000;
+    u64 dl = real_us() + (u64)ms * 1000;      /* threads wait in real time */
     u32 i;
     pthread_mutex_lock(&g_hl);
     for (;;) {
@@ -142,12 +162,12 @@ static u32 wait_n(u32 n, const u32 *hs, int all, u32 ms)
             pthread_mutex_unlock(&g_hl);
             return all ? 0 : (u32)first;
         }
-        if (ms == 0 || (ms != 0xFFFFFFFFu && now_us() >= dl)) {
+        if (ms == 0 || (ms != 0xFFFFFFFFu && real_us() >= dl)) {
             pthread_mutex_unlock(&g_hl);
             return 0x102;                       /* WAIT_TIMEOUT */
         }
         {
-            u64 t = now_us() + 5000;
+            u64 t = real_us() + 5000;
             if (ms != 0xFFFFFFFFu && t > dl) t = dl;
             clock_gettime(CLOCK_REALTIME, &ts);
             ts.tv_nsec += 5000000;
@@ -653,9 +673,10 @@ u32 h_GetMessageA(u32 p, u32 hwnd, u32 lo, u32 hi)
         if (take(p, hwnd, lo, hi, 1))
             return H32(p + 4) == 0x12 ? 0 : 1;
         happ_pump(5);
+        vclock_advance(5000);
     }
 }
-u32 h_WaitMessage(void) { happ_pump(5); return 1; }
+u32 h_WaitMessage(void) { happ_pump(5); vclock_advance(5000); return 1; }
 u32 h_TranslateMessage(u32 p) { (void)p; return 0; }
 u32 h_DispatchMessageA(u32 p)
 {

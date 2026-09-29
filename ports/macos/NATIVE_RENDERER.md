@@ -1,6 +1,7 @@
 # Spec: a Mac-native renderer and frame loop for the playable port
 
-Status: **not started** (spec written 2026-09-29). Scope: the playable Mac
+Status: **phase 1 done** (spec written 2026-09-29; phase 1 the same day, see
+section 5). Scope: the playable Mac
 build, `build/wasm/brally` (the 32-bit lane, `ports/macos/wasm/`). The decomp
 (`src/`, `include/`) is not touched: everything here is port code.
 
@@ -176,6 +177,23 @@ Rules:
    0x1001DD50 calling the existing host swap) proving dispatch-table and
    direct-call replacement. Byte-for-byte same behaviour: the Glide stream log
    (`BR_GLLOG`) is identical before and after.
+   **Done 2026-09-29.** `w2c.py --native` reads `@replaces` tags from
+   `ports/macos/wasm/native/`, points direct calls and the dispatch slot at
+   `n_<Name>`, and writes `w2c_native.h` (prototypes with w2c's signature, plus
+   `W_ORIG_<Name>` for the translated body); a tag whose address is not placed,
+   or whose name is not the function placed there, stops the build. Overrides
+   are listed at the end of `build/wasm/c/w2c_report.txt`. `native/frame.m`
+   replaces the swap 0x1001DD50 (reached only through the hook table, so the
+   dispatch path) and the clock 0x1006E280 (31 direct call sites in 17 TUs, including
+   `BrRaceStep`). Generated C differs from the no-override build only in those
+   call targets and the two slots. Runs are reproducible under the host's new
+   virtual clock, `BR_VCLOCK=0.25` (brbox's model: 0.25 ms per main-thread clock
+   read). With it, `20_quickrace_drive`: two runs without overrides and two with
+   give identical `BR_GLLOG` for race frames 1400-1430 (3,776,344 lines, 1,338
+   swaps) and menu frames 240-330 (182 lines), and identical function traces
+   (10,184,004 entries, repeats folded, native names mapped). Without the virtual
+   clock two runs of one build already differ in the race, since the draws per
+   tick follow wall time.
 2. **Frame loop** on the existing Glide renderer: port-owned pacing, the race's
    `t` from the target present time. Measure section 6. Accept at <= 22 ms p90,
    0 misses in 10k frames, race at 60 presents/s, race clock = wall clock.
@@ -202,6 +220,8 @@ playing, and never leave a test instance running.
 
 ## 7. Verification
 
+- **Before/after comparisons** run under `BR_VCLOCK=0.25`, or two runs of the
+  same build will not agree once a race starts (phase 1).
 - **Game logic unchanged:** `tools/brbox_scripts/*` replayed through the port
   (`BR_SCRIPT`) reach the same checkpoints. The function-entry trace
   (`BR_TRACE_FRAMES`) matches the original's (`brbox`) outside renderer leaves.
