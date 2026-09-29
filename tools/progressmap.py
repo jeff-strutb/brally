@@ -82,6 +82,46 @@ def _match_set(path):
     return out
 
 
+def _cpp_matches():
+    """Byte-exact C++-lane VAs, read from build/match/report_cpp.csv itself.
+
+    cpp_matches.csv is a manifest tools/total.py writes only when it runs (a
+    slow EXE re-score), so it lags the C++ sweep: functions matched since the
+    last total.py run painted grey. Apply total.score_cpp's filter to the
+    sweep report directly; fall back to the manifest if the report is absent."""
+    p = os.path.join(ROOT, "build", "match", "report_cpp.csv")
+    if not os.path.exists(p):
+        return _match_set("cpp_matches.csv")
+    out = {}
+    with open(p) as f:
+        for r in csv.DictReader(f):
+            if r.get("status") != "match" or not r.get("orig_size"):
+                continue
+            if r.get("pieces") and r["pieces"] != "4/4":
+                continue
+            out[int(r["va"], 16)] = int(r["orig_size"])
+    return out
+
+
+def _implements_files():
+    """{va: repo-relative source file} from `@implements 0x... glide` tags.
+
+    C++-lane and T3 functions often have no report.csv row, so without this
+    they grouped as "unfiled" or into a single C++ box instead of the module
+    their source actually lives in."""
+    out = {}
+    try:
+        res = subprocess.run(["git", "grep", "-n", "-E", "@implements 0x[0-9A-Fa-f]+ glide",
+                              "--", "src"], cwd=ROOT, capture_output=True, text=True)
+    except Exception:
+        return out
+    for line in res.stdout.splitlines():
+        path, _, rest = line.split(":", 2)
+        va = int(rest.split("@implements", 1)[1].split()[0], 16)
+        out.setdefault(va, path)
+    return out
+
+
 def _refresh_t3():
     """Regenerate build/match/tier3.csv from source @t3 tags before rendering.
 
@@ -116,9 +156,10 @@ def load():
                 rep[va] = r
     # C++ EH matches verified off-report (total.py manifest): mark them
     # matched so the DLL map reflects them, grouped into their own region.
-    cpp = _match_set("cpp_matches.csv")
+    cpp = _cpp_matches()
     t3 = _match_set("tier3.csv")   # codegen-only diffs (T3), from tools/tiers.py
     fenced_dll = _fenced_dll()
+    impl = _implements_files()
     excl = set()
     _ep = os.path.join(ROOT, "config", "excluded.csv")
     if os.path.exists(_ep):
@@ -151,8 +192,7 @@ def load():
             funcs.append({
                 "va": va, "size": size,
                 "name": (m and m["name"]) or r.get("name") or "",
-                "file": ("src/core/cpp/(C++ EH)" if is_cpp
-                         else (m and m["file"])
+                "file": ((m and m["file"]) or impl.get(va)
                          or ("linker/CRT (fenced)" if status == "fenced" else "")),
                 "status": status,
                 "diffs": 0 if is_cpp else _diffs(m),
@@ -200,7 +240,7 @@ def group_key(fn):
     if fn["file"]:
         p = fn["file"]
         p = p[len("src/"):] if p.startswith("src/") else p
-        return p[:-2] if p.endswith(".c") else p
+        return os.path.splitext(p)[0] if p.endswith((".c", ".cpp")) else p
     return "unfiled 0x%04Xxxxx" % (fn["va"] >> 16)
 
 
