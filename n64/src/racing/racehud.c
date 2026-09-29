@@ -646,3 +646,67 @@ void BrTex4bFlipDraw(void *img, int tw, int th, int x, int y, int w, int h)
   gDPPipeSync(D_8028A858++);
   gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 19, 1, 0x80000);
 }
+
+/* WHAT IT DOES: BrTex4bFlipDraw with a colour and a mirror: the texture is
+ * shaded by the primitive colour (r, g, b) instead of tinted red, and a
+ * negative w also mirrors it (s starts at the right column and steps back).
+ * Drawn upside down, in 320-wide coordinates doubled on a hi-res screen,
+ * the texture loaded as one block with its wrap masks from BrTexSizeBits.
+ * The mirror's s start and step are conditionals inside the two RDP half
+ * words (IDO branches there, after the command word); the tile size is
+ * written out as a block (see BrTex4bFlipDraw). */
+/* @implements 0x80239750 tgr BrTex4bFlipDrawRGB */
+void BrTex4bFlipDrawRGB(void *img, int tw, int th, int x, int y, int w, int h, int r, int g, int b)
+{
+  int ms;
+  int mt;
+  int ss;
+  int st;
+  int mirror;
+
+  mirror = 0;
+  if (w < 0) {
+    w = -w;
+    mirror = 1;
+  }
+  BrTexSizeBits(tw, &ss, &ms);
+  BrTexSizeBits(th, &st, &mt);
+  gDPPipeSync(D_8028A858++);
+  gDPSetCycleType(D_8028A858++, G_CYC_1CYCLE);
+  gSPTexture(D_8028A858++, ss, st, 0, 0, 1);
+  gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 12, 2, D_8028A898);
+  gDPSetCombine(D_8028A858++, 0xffffff, 0xfffdf2f9);
+  gDPSetRenderMode(D_8028A858++, 0x504240, 0);
+  gDPSetTextureImage(D_8028A858++, 4, G_IM_SIZ_16b, 1, img);
+  gDPSetTile(D_8028A858++, 4, G_IM_SIZ_16b, 0, 0, 7, 0, 0, mt, 0, 0, ms, 0);
+  gDPLoadSync(D_8028A858++);
+  gDPLoadBlock(D_8028A858++, 7, 0, 0, ((tw * th + 3) >> 2) - 1,
+               ((1 << 11) + (tw / 16 < 1 ? 1 : tw / 16) - 1) / (tw / 16 < 1 ? 1 : tw / 16));
+  gDPPipeSync(D_8028A858++);
+  gDPSetTile(D_8028A858++, 4, 0, ((tw >> 1) + 7) >> 3, 0, 0, 0, 0, mt, 0, 0, ms, 0);
+  {
+    Gfx *_g = (Gfx *)(D_8028A858++);
+
+    _g->words.w0 = _SHIFTL(G_SETTILESIZE, 24, 8) | _SHIFTL(0, 12, 12) | _SHIFTL(0, 0, 12);
+    _g->words.w1 = _SHIFTL(0, 24, 3) | _SHIFTL((tw - 1) << 2, 12, 12) | _SHIFTL((th - 1) << 2, 0, 12);
+  }
+  gDPSetTextureLUT(D_8028A858++, 0);
+  gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 19, 1, 0);
+  if (D_8028A850 != 0) {
+    x <<= 1;
+    y <<= 1;
+    w <<= 1;
+    h <<= 1;
+  }
+  gDPSetPrimColor(D_8028A858++, 0xff, 0xff, r, g, b, 0xff);
+  {
+    Gfx *_g = (Gfx *)(D_8028A858++);
+
+    _g->words.w0 = (_SHIFTL(G_TEXRECT, 24, 8) | _SHIFTL((x + w) << 2, 12, 12) | _SHIFTL((y + h) << 2, 0, 12));
+    _g->words.w1 = (_SHIFTL(0, 24, 3) | _SHIFTL(x << 2, 12, 12) | _SHIFTL(y << 2, 0, 12));
+  }
+  gImmp1(D_8028A858++, G_RDPHALF_1, (_SHIFTL(mirror ? (tw - 1) << 5 : 0, 16, 16) | _SHIFTL((th - 1) << 5, 0, 16)));
+  gImmp1(D_8028A858++, G_RDPHALF_2, (_SHIFTL(mirror ? ((1 << 10) - (tw << 10)) / w : ((tw << 10) - (1 << 10)) / w, 16, 16) | _SHIFTL(((1 << 10) - (th << 10)) / h, 0, 16)));
+  gDPPipeSync(D_8028A858++);
+  gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 19, 1, 0x80000);
+}
