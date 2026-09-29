@@ -254,6 +254,7 @@ va,name,kind
 80226100,BrCarReset,func
 80226248,BrCarRespawn,func
 80226D7C,BrCarCamStep,func
+80226D9C,BrAiScanCorridor,func
 80227214,BrCarLineFit,func
 802288B4,BrCtlAi,func
 802288D4,BrAiLaneSetup,func

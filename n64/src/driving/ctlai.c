@@ -30,10 +30,10 @@ typedef struct BrAiCar {        /* the AI's view of a car record */
   short x1d30[36];              /* 0x1D30 */
 } BrAiCar;
 typedef struct BrPathPt {       /* a point on a path segment (0x28 bytes) */
-  BrVec3 pos;                   /* 0x00 */
-  char pad0c[0x18 - 0xc];
-  float dist;                   /* 0x18  distance along the track */
-  BrVec3 x1c;                   /* 0x1C */
+  BrVec3 left;                  /* 0x00  the track's left edge */
+  BrVec3 pos;                   /* 0x0C  its centre */
+  BrVec3 right;                 /* 0x18  its right edge */
+  float dist;                   /* 0x24  distance along the track */
 } BrPathPt;
 typedef struct BrPathSeg {      /* a path segment */
   struct BrPathSeg *next;       /* 0x00 */
@@ -41,8 +41,8 @@ typedef struct BrPathSeg {      /* a path segment */
   char pad08[0x14 - 0x8];
   unsigned short count;         /* 0x14  points */
   unsigned short flags;         /* 0x16  bit 0: closed */
-  char pad18[0x4c - 0x18];
-  BrPathPt pt[1];               /* 0x4C */
+  char pad18[0x40 - 0x18];
+  BrPathPt pt[1];               /* 0x40 */
 } BrPathSeg;
 extern BrVec3 D_8031B750;               /* the point found by BrPathWalk */
 extern BrPathSeg *D_8028B824;           /* and its segment */
@@ -131,6 +131,26 @@ void BrVec3Scale(BrVec3 *pOut, BrVec3 *pV, float s);
 void BrVec3MulAddTo(BrVec3 *pA, BrVec3 *pB, float s);
 void BrVec3Normalise(BrVec3 *pV);
 void BrVec3Cross(BrVec3 *pOut, BrVec3 *pA, BrVec3 *pB);
+void *memcpy(void *dst, void *src, unsigned int n);
+extern int D_8028B800;                  /* depth of the copied corridor edges */
+extern int D_8028B804;                  /* deepest clear corridor so far */
+extern int D_8028B808;                  /* steering hints */
+extern int D_8028B80C;
+extern int D_8028B810;                  /* the deepest corridor's point */
+extern BrPathSeg *D_8028B814;           /* and segment */
+extern int D_8028B818;
+extern int D_8028B81C;
+extern int D_8028B820;                  /* a level was blocked */
+extern BrVec3 D_8031B550[8];            /* right edge pulled in, per depth (from depth 1) */
+extern BrVec3 D_8031B5B0[8];            /* midpoint(right, centre) */
+extern BrVec3 D_8031B610[8];            /* centre */
+extern BrVec3 D_8031B670[8];            /* midpoint(left, centre) */
+extern BrVec3 D_8031B6D0[8];            /* left edge pulled in */
+extern BrVec3 D_8031B430[8];            /* copied-out right edges */
+extern BrVec3 D_8031B490[8];            /* copied-out centres */
+extern BrVec3 D_8031B4F0[8];            /* copied-out left edges */
+extern BrVec3 D_8031B730;               /* aim point */
+extern BrVec3 D_8031B740;               /* half-depth look-ahead point */
 void BrAiInputClear();
 /* -- end declarations -- */
 
@@ -361,6 +381,113 @@ void BrPathGates(BrPathSeg *seg, float d)
   }
 }
 
+/* WHAT IT DOES: The AI's corridor lookahead, eight path points deep.  Each
+ * call handles one point and recurses to the next: both edges pulled 0.2
+ * toward each other, the centre kept, the two midpoints built; the line from
+ * the car to the middle of the point must clear every level already visited,
+ * else that branch ends.  The deepest clear corridor is remembered with a
+ * left/right steering hint and its edges copied out.  Returns non-zero once
+ * a corridor has been banked.  Depth 0 clears the state; no segment means
+ * the path's start.  Past a segment's last point it recurses into each
+ * following segment.  Ported from the PC twin (BrAiScanCorridor).
+ * RESIDUE (255, size 1140 vs 1144): register allocation.  The ROM keeps
+ * car, depth and mid in their argument home slots and reloads them at each
+ * use (seg in s3, ret in s4, frame 0x80); ours gives car and mid s-registers
+ * (frame 0x78).  Structure and call order match. */
+/* @implements 0x80226D9C tgr BrAiScanCorridor */
+unsigned int BrAiScanCorridor(BrCar *car, int depth, int mid, BrPathSeg *seg)
+{
+  unsigned int ret;
+  int next;
+  BrVec3 midPt;
+  int level;
+  BrVec3 *pA;
+  BrVec3 *pB;
+  BrVec3 *pC;
+
+  ret = 0;
+  if (seg == 0) {
+    seg = D_80025C70;
+    mid = 0;
+  }
+  if (depth == 0) {
+    D_8028B804 = 0;
+    D_8028B818 = 0;
+    D_8028B81C = 0;
+    D_8028B820 = 0;
+  } else {
+    if (depth > 8 || (seg->flags & 1)) {
+      return 0;
+    }
+    BrVec3Lerp(&D_8031B6D0[depth - 1], &seg->pt[mid].left, &seg->pt[mid].right, 0.2f);
+    pC = &D_8031B610[depth - 1];
+    pC->x = seg->pt[mid].pos.x;
+    pC->y = seg->pt[mid].pos.y;
+    pC->z = seg->pt[mid].pos.z;
+    BrVec3Lerp(&D_8031B550[depth - 1], &seg->pt[mid].right, &seg->pt[mid].left, 0.2f);
+    BrVec3Midpoint(&D_8031B5B0[depth - 1], &D_8031B550[depth - 1], pC);
+    BrVec3Midpoint(&D_8031B670[depth - 1], &D_8031B6D0[depth - 1], pC);
+    midPt.x = (seg->pt[mid].right.x + seg->pt[mid].left.x) * 0.5f;
+    midPt.y = (seg->pt[mid].right.y + seg->pt[mid].left.y) * 0.5f;
+    pA = &D_8031B550[1];
+    pB = &D_8031B6D0[1];
+    for (level = 1; level < depth - 1; level++, pA++, pB++) {
+      if (BrSegmentsOverlapXY((float *)car->mtx0[3], (float *)&midPt, pA, pB) == 0) {
+        D_8028B820 = 1;
+        goto tail;
+      }
+    }
+    if (depth > D_8028B804) {
+      D_8028B804 = depth;
+      D_8028B814 = seg;
+      D_8028B810 = mid;
+      if (depth > 2) {
+        if (BrSegmentsOverlapXY((float *)car->mtx0[3], (float *)&D_8031B610[2], &D_8031B5B0[1], &D_8031B550[1]) != 0) {
+          D_8028B80C = 0;
+          D_8028B808 = 1;
+        } else if (BrSegmentsOverlapXY((float *)car->mtx0[3], (float *)&D_8031B610[2], &D_8031B670[1], &D_8031B6D0[1]) != 0) {
+          D_8028B80C = 1;
+          D_8028B808 = 0;
+        } else {
+          D_8028B80C = 0;
+          D_8028B808 = 0;
+        }
+      } else {
+        D_8028B80C = 0;
+        D_8028B808 = 0;
+      }
+      D_8031B740.x = D_8031B610[depth >> 1].x;
+      D_8031B740.y = D_8031B610[depth >> 1].y;
+      D_8031B740.z = D_8031B610[depth >> 1].z;
+      D_8031B730.x = pC->x;
+      D_8031B730.y = pC->y;
+      D_8031B730.z = pC->z;
+      memcpy(D_8031B430, D_8031B550, depth * sizeof(BrVec3));
+      memcpy(D_8031B490, D_8031B610, depth * sizeof(BrVec3));
+      memcpy(D_8031B4F0, D_8031B6D0, depth * sizeof(BrVec3));
+      ret = 1;
+      D_8028B800 = depth;
+    }
+  }
+tail:
+  if (++mid == seg->count) {
+    seg = seg->next;
+    if (seg == 0) {
+      seg = D_80025C70;
+    }
+    if (seg != 0) {
+      next = depth + 1;
+      do {
+        ret |= BrAiScanCorridor(car, next, 0, seg);
+        seg = seg->alt;
+      } while (seg != 0);
+    }
+  } else {
+    ret |= BrAiScanCorridor(car, depth + 1, mid, seg);
+  }
+  return ret;
+}
+
 /* WHAT IT DOES: Find where the car sits against the racing line: the line
  * between the two path points either side of it is a Hermite curve through
  * their midpoints, with tangents square to the neighbouring spans and scaled
@@ -391,8 +518,8 @@ void BrCarLineFit(BrCar *car)
   float t3;
 
   len = ((BrPathSeg *)car->xf5c)->pt[car->xf60].dist - ((BrPathSeg *)car->xf5c)->pt[car->xf60 + 1].dist;
-  BrVec3Sub(&a, &((BrPathSeg *)car->xf5c)->pt[car->xf60 - 1].x1c, &((BrPathSeg *)car->xf5c)->pt[car->xf60].pos);
-  BrVec3Sub(&b, &((BrPathSeg *)car->xf5c)->pt[car->xf60].x1c, &((BrPathSeg *)car->xf5c)->pt[car->xf60 + 1].pos);
+  BrVec3Sub(&a, &((BrPathSeg *)car->xf5c)->pt[car->xf60].left, &((BrPathSeg *)car->xf5c)->pt[car->xf60].pos);
+  BrVec3Sub(&b, &((BrPathSeg *)car->xf5c)->pt[car->xf60 + 1].left, &((BrPathSeg *)car->xf5c)->pt[car->xf60 + 1].pos);
   BrVec3Midpoint(&b, &a, &b);
   a.x = -b.y;
   a.y = b.x;
