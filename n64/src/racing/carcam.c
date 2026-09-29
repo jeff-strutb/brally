@@ -20,6 +20,24 @@ void BrVec3Scale(BrVec3 *out, BrVec3 *v, float s);
 void BrVec3ScaleBy(BrVec3 *v, float s);
 void BrVec3Lerp(BrVec3 *out, BrVec3 *a, BrVec3 *b, float t);
 extern int D_8028AB0C;                  /* the close camera mode */
+typedef struct BrCamPlane {     /* a collision triangle's plane (0x20 bytes) */
+  BrVec3 n;                     /* its normal */
+  float d;
+  BrVec3 *v0;                   /* 0x10  its corners */
+  BrVec3 *v1;
+  BrVec3 *v2;
+  int x1c;
+} BrCamPlane;
+extern BrCamPlane D_80379F80[][150];    /* each grid cell's collision planes */
+extern unsigned short D_8037EA88[];     /* and how many */
+extern int D_8028B710;                  /* the camera was pushed out of a wall */
+int func_8025F18C(float x, float y);
+void BrVec3MulAdd(BrVec3 *pOut, BrVec3 *pA, BrVec3 *pB, float s);
+float BrVec3Length(BrVec3 *v);
+float BrVec3Dot(BrVec3 *a, BrVec3 *b);
+float BrVec3Dist(BrVec3 *a, BrVec3 *b);
+void BrVec3Add(BrVec3 *out, BrVec3 *a, BrVec3 *b);
+int BrTriContainsPoint(BrVec3 *pPt, BrVec3 *pA, BrVec3 *pB, BrVec3 *pC, BrVec3 *pRef);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Update the camera placement for one car: an out-of-line
@@ -108,6 +126,121 @@ void BrCarCamInit(BrCar *car)
   car->camPosB.z = car->camPosA.z = car->cams[3].mtx[3][2] = z;
   car->x1fac = 0.0f;
   car->x1f90 = 2.0f;
+}
+
+/* WHAT IT DOES: Keep the chase camera out of walls: cast a ray from the
+ * car's camera anchor to the camera against every collision triangle in the
+ * grid cells of both ends (one if they share a cell), 0.1 of slack; on a
+ * hit, a second ray from the camera's previous position finds the wall it
+ * came through, the camera goes 0.1 in front of that wall along its normal,
+ * and if that brought it nearer the anchor it is pushed back out to its old
+ * distance along the new line.  Flags that the camera was moved.  Ported
+ * from the PC twin; u0-u3 are declared and unused (the ROM frame keeps
+ * their slots). */
+/* @implements 0x80220810 tgr BrCarCamWallPush */
+void BrCarCamWallPush(BrCar *car, BrCarCam *cam, BrVec3 *prev)
+{
+  BrVec3 dir;
+  BrVec3 hit;
+  BrVec3 toV0;
+  int c;
+  int cells[2];
+  int nCells;
+  BrCamPlane *pPlane;
+  BrCamPlane *pEnd;
+  BrCamPlane *pBest;
+  float tBest;
+  float denom;
+  float t;
+  BrVec3 hitOut;
+  int u0;
+  int u1;
+  int u2;
+  int u3;
+  float len;
+  float dist;
+
+  D_8028B710 = 0;
+  cells[0] = func_8025F18C(car->camTarget.x, car->camTarget.y);
+  cells[1] = func_8025F18C(cam->mtx[3][0], cam->mtx[3][1]);
+  if (cells[0] == cells[1]) {
+    nCells = 1;
+  } else {
+    nCells = 2;
+  }
+  BrVec3Sub(&dir, (BrVec3 *)cam->mtx[3], &car->camTarget);
+  pBest = 0;
+  len = BrVec3Length(&dir);
+  if (len != 0) {
+    tBest = (len + 0.1f) / len;
+  } else {
+    tBest = 1.0f;
+  }
+  for (c = 0; c < nCells; c++) {
+    pPlane = D_80379F80[cells[c]];
+    pEnd = pPlane + D_8037EA88[cells[c]];
+    for (; pPlane != pEnd; pPlane++) {
+      denom = BrVec3Dot(&dir, &pPlane->n);
+      if (denom < 0.0f) {
+        BrVec3Sub(&toV0, pPlane->v0, &car->camTarget);
+        t = BrVec3Dot(&toV0, &pPlane->n) / denom;
+        if (t > 0.0f && t < tBest) {
+          BrVec3MulAdd(&hit, &car->camTarget, &dir, t);
+          if (BrTriContainsPoint(&hit, pPlane->v0, pPlane->v1, pPlane->v2, &pPlane->n)) {
+            tBest = t;
+            pBest = pPlane;
+            hitOut.x = hit.x;
+            hitOut.y = hit.y;
+            hitOut.z = hit.z;
+          }
+        }
+      }
+    }
+  }
+  if (pBest == 0) {
+    return;
+  }
+  BrVec3Sub(&dir, (BrVec3 *)cam->mtx[3], prev);
+  pBest = 0;
+  tBest = 1.0f;
+  for (c = 0; c < nCells; c++) {
+    pPlane = D_80379F80[cells[c]];
+    pEnd = pPlane + D_8037EA88[cells[c]];
+    for (; pPlane != pEnd; pPlane++) {
+      denom = BrVec3Dot(&dir, &pPlane->n);
+      if (denom < 0.0f) {
+        BrVec3Sub(&toV0, pPlane->v0, prev);
+        t = BrVec3Dot(&toV0, &pPlane->n) / denom;
+        if (t > 0.0f && t < tBest) {
+          BrVec3MulAdd(&hit, prev, &dir, t);
+          if (BrTriContainsPoint(&hit, pPlane->v0, pPlane->v1, pPlane->v2, &pPlane->n)) {
+            tBest = t;
+            pBest = pPlane;
+            hitOut.x = hit.x;
+            hitOut.y = hit.y;
+            hitOut.z = hit.z;
+          }
+        }
+      }
+    }
+  }
+  if (pBest == 0) {
+    return;
+  }
+  dist = BrVec3Dist((BrVec3 *)cam->mtx[3], &car->camTarget);
+  BrVec3MulAdd((BrVec3 *)cam->mtx[3], &hitOut, &pBest->n, 0.1f);
+  {
+    BrVec3 v;
+    float l;
+
+    BrVec3Sub(&v, (BrVec3 *)cam->mtx[3], &car->camTarget);
+    l = BrVec3Length(&v);
+    if (dist < l && l != 0.0f) {
+      BrVec3ScaleBy(&v, dist / l);
+      BrVec3Add((BrVec3 *)cam->mtx[3], &car->camTarget, &v);
+    }
+  }
+  D_8028B710 = 1;
 }
 
 /* WHAT IT DOES: Place a car's camera behind it (the camera position is the
