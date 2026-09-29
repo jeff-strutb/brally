@@ -319,4 +319,10 @@ typedef union {
 #define gDPSetTextureDetail(pkt, type) \
     gSPSetOtherMode(pkt, G_SETOTHERMODE_H, G_MDSFT_TEXTDETAIL, 2, type)
 
+#define G_MW_NUMLIGHT       0x02
+#define G_MV_L0             0x86
+#define NUMLIGHTS(n)        (0x80000000 | (((n) + 1) * 32))
+#define gSPNumLights(pkt, n) gMoveWd(pkt, G_MW_NUMLIGHT, 0, NUMLIGHTS(n))
+#define gSPLight(pkt, l, n) gDma1p(pkt, G_MOVEMEM, l, 16, ((n) - 1) * 2 + G_MV_L0)
+
 #endif
