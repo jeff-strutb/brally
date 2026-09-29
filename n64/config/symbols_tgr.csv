@@ -287,6 +287,7 @@ va,name,kind
 8022D104,BrGridSpanEdge,func
 8022D3D4,BrGridSpanHas,func
 8022D43C,BrGridSpanHasPoint,func
+8022D49C,BrGridSpanFrustum,func
 8022D7E0,BrPerfMark,func
 8022D8AC,BrPerfFrameStart,func
 8022F4CC,BrTextHighlightOn,func
@@ -546,7 +547,7 @@ va,name,kind
 80268520,osAiGetStatus,func
 80268530,osAiGetLength,func
 8026EA00,rspbootTextStart,data
-8026EAD0,rspbootTextEnd,data
 8026EAD0,gspF3DEX_fifoTextStart,data
+8026EAD0,rspbootTextEnd,data
 802A6140,osClockRate,data
 802ABC00,gspF3DEX_fifoDataStart,data
