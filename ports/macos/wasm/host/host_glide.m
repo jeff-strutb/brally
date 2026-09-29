@@ -42,7 +42,7 @@ typedef struct {
     int at_fn, at_ref, fogmode, dmode, use_tex, clear;
     float clear_depth, pad0;
     float cconst[4], fogcolor[4], clearcol[4];
-    float su, sv, pad1, pad2;
+    float su, sv, lodbias, pad2;
     float fogtab[64];
 } gu;
 
@@ -54,7 +54,7 @@ static const char *SHADER =
 "  int ac_func, ac_fact, ac_local, ac_other, ac_inv;\n"
 "  int tc_rfunc, tc_rfact, tc_afunc, tc_afact, tc_rinv, tc_ainv;\n"
 "  int at_fn, at_ref, fogmode, dmode, use_tex, clear;\n"
-"  float clear_depth, pad0; float4 cconst, fogcolor, clearcol; float su, sv, pad1, pad2;\n"
+"  float clear_depth, pad0; float4 cconst, fogcolor, clearcol; float su, sv, lodbias, pad2;\n"
 "  float fogtab[64]; };\n"
 "struct VO { float4 pos [[position]];\n"
 "  float4 col [[center_no_perspective]]; float ooz [[center_no_perspective]];\n"
@@ -85,18 +85,31 @@ static const char *SHADER =
 "    prev = u.fogtab[i]; pw = tw; }\n"
 "  return u.fogtab[63]; }\n"
 "struct FO { float4 c [[color(0)]]; float d [[depth(any)]]; };\n"
+"/* The Voodoo's 16-bit W-buffer word: 4-bit exponent, 12-bit mantissa of\n"
+"   1/w as a .32 fraction.  Depth is stored and compared at this precision,\n"
+"   which is what lets a second pass over the same polygon (the car shadows\n"
+"   use grDepthBufferFunction(EQUAL)) hit every pixel the first one wrote. */\n"
+"uint wfloat(float oow) {\n"
+"  if (oow >= 1.0) return 0;\n"
+"  if (oow <= 0.0) return 0xFFFF;\n"
+"  uint t = uint(min(oow * 4294967296.0, 4294967295.0));\n"
+"  if (t == 0) return 0xFFFF;\n"
+"  int e = int(clz(t));\n"
+"  uint m = e <= 19 ? (~t >> uint(19 - e)) : (~t << uint(e - 19));\n"
+"  uint w = (uint(e) << 12) | (m & 0xFFF);\n"
+"  return w < 0xFFFF ? w + 1 : w; }\n"
 "fragment FO fs(VO in [[stage_in]], constant GU &u [[buffer(0)]],\n"
 "               texture2d<float> tex [[texture(0)]], sampler smp [[sampler(0)]]) {\n"
 "  FO o;\n"
 "  if (u.clear) { o.c = u.clearcol / 255.0; o.d = u.clear_depth; return o; }\n"
 "  float depth = 0;\n"
-"  if (u.dmode == 2 || u.dmode == 4) depth = in.oow != 0 ? (1.0 / in.oow) / 65536.0 : 1.0;\n"
-"  else if (u.dmode) depth = in.ooz / 65536.0;\n"
-"  o.d = clamp(depth, 0.0, 1.0);\n"
+"  if (u.dmode == 2 || u.dmode == 4) depth = float(wfloat(in.oow)) / 65536.0;\n"
+"  else if (u.dmode) depth = floor(clamp(in.ooz, 0.0, 65535.0)) / 65536.0;\n"
+"  o.d = depth;\n"
 "  float4 it = in.col; float4 t = float4(255);\n"
 "  if (u.use_tex && in.oow != 0) {\n"
 "    float2 st = float2(in.sow, in.tow) / in.oow;\n"
-"    float4 raw = tex.sample(smp, st * float2(u.su, u.sv)) * 255.0;\n"
+"    float4 raw = tex.sample(smp, st * float2(u.su, u.sv), bias(u.lodbias)) * 255.0;\n"
 "    float3 rc; for (int k = 0; k < 3; k++) {\n"
 "      rc[k] = comb1(u.tc_rfunc, factor(u.tc_rfact, raw, float4(0), raw.a, 0), raw[k], raw.a, 0);\n"
 "      if (u.tc_rinv) rc[k] = 255 - rc[k]; }\n"
@@ -145,14 +158,14 @@ static gu U;
 
 static struct {
     int ab_rs, ab_rd, ab_as, ab_ad;
-    int cull, dfunc, dmask, filter, clamp_s, clamp_t;
+    int cull, dfunc, dmask, filter, minfilt, mipmode, lodblend, clamp_s, clamp_t;
     int cx0, cy0, cx1, cy1;
     u32 tex_start, tex_large, tex_aspect, tex_fmt, tex_small;
     int colfmt, origin_ll;
 } S;
 
 static u8 g_tmem[4 << 20];
-typedef struct { u32 start, end, fmt, large, aspect; __unsafe_unretained id<MTLTexture> t; } texent;
+typedef struct { u32 start, end, fmt, large, small, aspect; __unsafe_unretained id<MTLTexture> t; } texent;
 static NSMutableArray *g_texobjs;     /* keeps the textures alive */
 static texent g_tex[512];
 static int g_ntex;
@@ -301,11 +314,16 @@ static id<MTLDepthStencilState> dss(int enabled, int fn, int mask)
 }
 static id<MTLSamplerState> samp(void)
 {
-    NSNumber *k = @((S.filter << 2) | (S.clamp_s << 1) | S.clamp_t);
+    NSNumber *k = @((S.lodblend << 6) | ((S.mipmode != 0) << 5) | (S.minfilt << 3) | (S.filter << 2) | (S.clamp_s << 1) | S.clamp_t);
     id<MTLSamplerState> s = g_samplers[k];
     if (!s) {
         MTLSamplerDescriptor *d = [MTLSamplerDescriptor new];
-        d.minFilter = d.magFilter = S.filter ? MTLSamplerMinMagFilterLinear : MTLSamplerMinMagFilterNearest;
+        d.magFilter = S.filter ? MTLSamplerMinMagFilterLinear : MTLSamplerMinMagFilterNearest;
+        d.minFilter = S.minfilt ? MTLSamplerMinMagFilterLinear : MTLSamplerMinMagFilterNearest;
+        /* GR_MIPMAP_DISABLE samples the large level only; NEAREST (and its
+         * dithered form) picks one level; lodBlend is trilinear */
+        d.mipFilter = !S.mipmode ? MTLSamplerMipFilterNotMipmapped
+                    : S.lodblend ? MTLSamplerMipFilterLinear : MTLSamplerMipFilterNearest;
         d.sAddressMode = S.clamp_s ? MTLSamplerAddressModeClampToEdge : MTLSamplerAddressModeRepeat;
         d.tAddressMode = S.clamp_t ? MTLSamplerAddressModeClampToEdge : MTLSamplerAddressModeRepeat;
         s = [g_dev newSamplerStateWithDescriptor:d];
@@ -388,32 +406,43 @@ static void decode(const u8 *src, int fmt, int w, int h, u32 *out)
         out[i] = r | g << 8 | b << 16 | a << 24;
     }
 }
+/* The texture at tex_start as a Metal texture with every mip level the
+ * application downloaded (large LOD first, each level packed after the
+ * previous one, as grTexDownloadMipMap lays them out). */
 static id<MTLTexture> cur_texture(void)
 {
-    int i, w, h;
-    u32 n;
+    int i, w, h, l, nlev, small = (int)S.tex_small < (int)S.tex_large ? (int)S.tex_large : (int)S.tex_small;
+    u32 n, off;
     MTLTextureDescriptor *td;
     id<MTLTexture> t;
     u32 *px;
     for (i = 0; i < g_ntex; i++)
         if (g_tex[i].t && g_tex[i].start == S.tex_start && g_tex[i].fmt == S.tex_fmt &&
-            g_tex[i].large == S.tex_large && g_tex[i].aspect == S.tex_aspect)
+            g_tex[i].large == S.tex_large && g_tex[i].small == (u32)small && g_tex[i].aspect == S.tex_aspect)
             return g_tex[i].t;
-    lod_dims((int)S.tex_large, (int)S.tex_aspect, &w, &h);
-    n = (u32)(w * h * fmt_bpp((int)S.tex_fmt));
+    n = tex_bytes(small, (int)S.tex_large, (int)S.tex_aspect, (int)S.tex_fmt);
     if (S.tex_start + n > sizeof g_tmem) return g_white;
+    nlev = small - (int)S.tex_large + 1;
+    lod_dims((int)S.tex_large, (int)S.tex_aspect, &w, &h);
     td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm
-                                                            width:(NSUInteger)w height:(NSUInteger)h mipmapped:NO];
+                                                            width:(NSUInteger)w height:(NSUInteger)h mipmapped:nlev > 1];
+    if (nlev > 1) td.mipmapLevelCount = (NSUInteger)nlev;
     t = [g_dev newTextureWithDescriptor:td];
     px = malloc((size_t)(w * h * 4));
-    decode(g_tmem + S.tex_start, (int)S.tex_fmt, w, h, px);
-    [t replaceRegion:MTLRegionMake2D(0, 0, (NSUInteger)w, (NSUInteger)h) mipmapLevel:0 withBytes:px bytesPerRow:(NSUInteger)w * 4];
+    for (l = 0, off = S.tex_start; l < nlev; l++) {
+        int lw, lh;
+        lod_dims((int)S.tex_large + l, (int)S.tex_aspect, &lw, &lh);
+        decode(g_tmem + off, (int)S.tex_fmt, lw, lh, px);
+        [t replaceRegion:MTLRegionMake2D(0, 0, (NSUInteger)lw, (NSUInteger)lh) mipmapLevel:(NSUInteger)l
+               withBytes:px bytesPerRow:(NSUInteger)lw * 4];
+        off += (u32)(lw * lh * fmt_bpp((int)S.tex_fmt));
+    }
     free(px);
     for (i = 0; i < g_ntex && g_tex[i].t; i++) ;
     if (i == 512) { i = rand() % 512; [g_texobjs removeObject:g_tex[i].t]; }
     if (i == g_ntex) g_ntex++;
     [g_texobjs addObject:t];
-    g_tex[i] = (texent){ S.tex_start, S.tex_start + n, S.tex_fmt, S.tex_large, S.tex_aspect, t };
+    g_tex[i] = (texent){ S.tex_start, S.tex_start + n, S.tex_fmt, S.tex_large, (u32)small, S.tex_aspect, t };
     return t;
 }
 
@@ -427,7 +456,7 @@ static void gllog(const char *fmt, ...)
     static int init;
     va_list ap;
     if (!w_tracing) return;
-    if (!init) { const char *p = getenv("BR_GLLOG"); init = 1; if (p) g_gllog = fopen(p, "w"); }
+    if (!init) { const char *p = getenv("BR_GLLOG"); init = 1; if (p) g_gllog = fopen(p, "w"); if (g_gllog) setvbuf(g_gllog, NULL, _IONBF, 0); }
     if (!g_gllog) return;
     va_start(ap, fmt); vfprintf(g_gllog, fmt, ap); va_end(ap);
     fputc('\n', g_gllog);
@@ -503,9 +532,22 @@ void h_grTexSource(u32 tmu, u32 start, u32 eo, u32 info)
     S.tex_aspect = H32(info + 8); S.tex_fmt = H32(info + 12);
 }
 void h_grTexClampMode(u32 tmu, u32 s, u32 t) { (void)tmu; S.clamp_s = (int)s; S.clamp_t = (int)t; }
-void h_grTexFilterMode(u32 tmu, u32 mn, u32 mg) { (void)tmu; (void)mn; S.filter = (int)mg; }
-void h_grTexMipMapMode(u32 tmu, u32 m, u32 b) { (void)tmu; (void)m; (void)b; }
-void h_grTexLodBiasValue(u32 tmu, f32 b) { (void)tmu; (void)b; }
+void h_grTexFilterMode(u32 tmu, u32 mn, u32 mg) { (void)tmu; S.minfilt = (int)mn; S.filter = (int)mg; }
+void h_grTexMipMapMode(u32 tmu, u32 m, u32 b) { (void)tmu; S.mipmode = (int)m; S.lodblend = b != 0; }
+/* Glide 2 packs the bias into the TMU's 6-bit two's-complement quarter-LOD
+ * field: (int)((bias + .125) / .25) & 0x3F, unclamped in release builds.
+ * The x86 float->int conversion gives 0x80000000 when out of range -- and
+ * the game does pass out-of-range values (0x10028420 converts its -8 field
+ * as unsigned, so 4294967288 * 0.25), which the card therefore sees as 0. */
+void h_grTexLodBiasValue(u32 tmu, f32 b)
+{
+    double q = ((double)b + 0.125) / 0.25;
+    int v = (q >= -2147483648.0 && q < 2147483648.0) ? (int)q : (int)0x80000000u;
+    v &= 0x3F;
+    if (v & 0x20) v -= 64;
+    (void)tmu;
+    U.lodbias = (float)v * 0.25f;
+}
 void h_grTexCombine(u32 tmu, u32 rf, u32 rfa, u32 af, u32 afa, u32 ri, u32 ai)
 {
     gllog("grTexCombine %u %u %u %u %u %u", rf, rfa, af, afa, ri, ai);
@@ -543,10 +585,42 @@ void h_grClipWindow(u32 x0, u32 y0, u32 x1, u32 y1)
 { gllog("grClipWindow %u %u %u %u", x0, y0, x1, y1); S.cx0 = (int)x0; S.cy0 = (int)y0; S.cx1 = (int)x1; S.cy1 = (int)y1; }
 u32 h_grBufferNumPending(void) { return 0; }
 
+/* BR_PICK=x,y: with BR_TRACE_FRAMES, every draw inside the traced frames
+ * that covers framebuffer pixel (x,y), with the state it was drawn under. */
+static void pick(const gv *v, int n)
+{
+    static int init, px = -1, py = -1;
+    int i;
+    if (!init) { const char *e = getenv("BR_PICK"); init = 1; if (e) sscanf(e, "%d,%d", &px, &py); }
+    if (px < 0 || !w_tracing) return;
+    for (i = 0; i + 2 < n; i += 3) {
+        const gv *a = &v[i], *b = &v[i + 1], *c = &v[i + 2];
+        float x = (float)px + 0.5f, y = (float)py + 0.5f;
+        float d1 = (b->x - a->x) * (y - a->y) - (b->y - a->y) * (x - a->x);
+        float d2 = (c->x - b->x) * (y - b->y) - (c->y - b->y) * (x - b->x);
+        float d3 = (a->x - c->x) * (y - c->y) - (a->y - c->y) * (x - c->x);
+        if ((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0)) continue;
+        fprintf(stderr, "pick: tex start %u fmt %u large %u small %u aspect %u mip %d/%d bias %g | cc %d %d %d %d %d ac %d %d %d %d %d tc %d %d %d %d | ab %d %d %d %d at %d/%d | filt %d clamp %d%d | dm %d df %d mask %d | cconst %g %g %g %g\n"
+                "pick:   (%g,%g w%g s%g t%g a%g) (%g,%g w%g s%g t%g a%g) (%g,%g w%g s%g t%g a%g)\n",
+                S.tex_start, S.tex_fmt, S.tex_large, S.tex_small, S.tex_aspect, S.mipmode, S.lodblend, U.lodbias,
+                U.cc_func, U.cc_fact, U.cc_local, U.cc_other, U.cc_inv,
+                U.ac_func, U.ac_fact, U.ac_local, U.ac_other, U.ac_inv,
+                U.tc_rfunc, U.tc_rfact, U.tc_afunc, U.tc_afact,
+                S.ab_rs, S.ab_rd, S.ab_as, S.ab_ad, U.at_fn, U.at_ref,
+                S.filter, S.clamp_s, S.clamp_t, U.dmode, S.dfunc, S.dmask,
+                U.cconst[0], U.cconst[1], U.cconst[2], U.cconst[3],
+                a->x, a->y, a->oow, a->sow, a->tow, a->a, b->x, b->y, b->oow, b->sow, b->tow, b->a,
+                c->x, c->y, c->oow, c->sow, c->tow, c->a);
+        { int k; fprintf(stderr, "pick:   tmem"); for (k = 0; k < 32; k++) fprintf(stderr, " %02X", g_tmem[S.tex_start + k]); fputc('\n', stderr); }
+        return;
+    }
+}
+
 static void draw(const gv *v, int n, int clear)
 {
     size_t bytes = (size_t)n * sizeof(gv);
     id<MTLTexture> t = g_white;
+    if (!clear) pick(v, n);
     begin_pass();
     if (g_voff + bytes > (16u << 20)) {
         /* a vertex-heavy frame: flush and start over in the next buffer */
