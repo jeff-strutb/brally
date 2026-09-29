@@ -45,7 +45,59 @@ extern int D_8028A898;
 extern int D_8028A89C;
 extern int D_8028A8A0;
 extern int D_802A3790;
+int BrRandStep(void);
+void BrVec3Scale(BrVec3 *pOut, BrVec3 *pV, float s);
+void BrVec3Sub(BrVec3 *pOut, BrVec3 *pA, BrVec3 *pB);
+void BrVec3MulAdd(BrVec3 *pOut, BrVec3 *pA, BrVec3 *pB, float s);
+float BrVec3Length(BrVec3 *pV);
 /* -- end declarations -- */
+
+/* WHAT IT DOES: A car's exhaust smoke for one frame: its emit timer counts
+ * up at a rate that grows with 0xDF4 plus a random part, and past a
+ * quarter second a particle comes off the free list onto the live list,
+ * blown backwards along the car, started between the last spot and one
+ * behind the rear wheel (a random square's way), sized by the same rate
+ * and made fainter the faster the car goes.  The PC twin is BrCarSub9020.
+ * The rate is written out in the timer sum and named inside the branch
+ * (IDO shares the product); the constants are literals (read-only, so the
+ * product survives the stores between). */
+/* @implements 0x8023B178 tgr BrCarSmokeEmit */
+void BrCarSmokeEmit(BrCar *car)
+{
+  BrVec3 v;
+  float g;
+  int n;
+  BrParticle *p;
+  float f;
+  float t;
+  int r;
+
+  r = BrRandStep();
+  car->x1010 = car->x1010 + D_8028AAD8 * (1.0f + car->xdf4 * 0.001f + (float)(r & 0x1fff) * (1.0f / 65536.0f));
+  if (car->x1010 > 0.25f && (n = D_8028C830) != 0) {
+    f = car->xdf4 * 0.001f;
+    car->x1010 = 0.0f;
+    p = &D_80366A80[n];
+    D_8028C830 = p->next;
+    p->next = D_8028C834;
+    D_8028C834 = n;
+    BrVec3Scale((BrVec3 *)p->vel, (BrVec3 *)car, -1.5f - f);
+    BrVec3Sub(&v, (BrVec3 *)car->wheelMtx[2][3], (BrVec3 *)car);
+    BrVec3MulAdd(&v, &v, (BrVec3 *)car->mtx0[2], 0.2f);
+    BrVec3MulAdd(&v, &v, (BrVec3 *)car->mtx0[1], 0.2f);
+    g = (float)(BrRandStep() & 0xffff) * 1.5259021893143654e-05f;
+    BrVec3Sub((BrVec3 *)p->pos, &car->smokeAt, &v);
+    BrVec3MulAdd((BrVec3 *)p->pos, &v, (BrVec3 *)p->pos, g * g);
+    car->smokeAt.x = v.x;
+    car->smokeAt.y = v.y;
+    car->smokeAt.z = v.z;
+    f *= 0.1f;
+    t = 1.0f + f;
+    p->size = t * 0.15f;
+    p->x1e = 1.0f / (BrVec3Length(&car->velfd8) + t) * 255.0f;
+    p->x1f = 0xff;
+  }
+}
 
 /* WHAT IT DOES: Step every live particle one frame: it grows, drifts with
  * the wind plus its own velocity scaled by its strength (x1f * x1e / 65280,

@@ -329,6 +329,7 @@ va,name,kind
 8023A0BC,BrLightningStep,func
 8023A1C0,BrStub8023A1C0,func
 8023B130,BrViewportDepthZ,func
+8023B178,BrCarSmokeEmit,func
 8023CBFC,BrParticleStep,func
 8023CD60,BrParticleFallStep,func
 8023CF30,BrParticleReset,func
