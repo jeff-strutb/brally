@@ -835,7 +835,8 @@ int BrGbiSizeShift(int n)
 /* WHAT IT DOES: passes a texture upload through to the graphics backend,
  * working out for it the one thing it does not get told -- how many bytes
  * one row of the texture occupies, given the width rounded up to a power of
- * two and the pixel size. */
+ * two and the pixel size -- and hands back the texture handle the backend
+ * returns (the font, shadow and panel textures are kept by that handle). */
 /* @t3 0x10027F00 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 124/124 insns 52/52 rows 0+0 regions 2 oracle UNCLASSIFIED
  * @t3-effort passes 4 zero-movement 3 4
@@ -861,16 +862,16 @@ int BrGbiSizeShift(int n)
  * pfn parameter is a port convenience. */
 extern BrGbiBlitFn g_pfn18ED1C4;    /* 0x118ED1C4 */
 
-void BrGbiBlit(uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4,
-               uintptr_t a5, uintptr_t a6, uintptr_t a7, uintptr_t a8,
-               uintptr_t a9, uintptr_t a10, uintptr_t a11, uintptr_t a12,
-               uintptr_t a13, uintptr_t a14)
+uintptr_t BrGbiBlit(uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4,
+                    uintptr_t a5, uintptr_t a6, uintptr_t a7, uintptr_t a8,
+                    uintptr_t a9, uintptr_t a10, uintptr_t a11, uintptr_t a12,
+                    uintptr_t a13, uintptr_t a14)
 {
     int32_t   rounded = (int32_t)(1 << BrGbiSizeShift((int)a3));
     int32_t   pitch   = (rounded / BrGbiTexelsPerWord((int)a5)) * 8;
 
-    g_pfn18ED1C4(a1, a2, a3, a4, (uintptr_t)(intptr_t)pitch,
-                 a5, a6, a7, a8, a9, a10, a11, a12, a13, a14);
+    return g_pfn18ED1C4(a1, a2, a3, a4, (uintptr_t)(intptr_t)pitch,
+                        a5, a6, a7, a8, a9, a10, a11, a12, a13, a14);
 }
 
 /* The 0x3EB / 0x3E8 / 0 token soup both emit paths hand to

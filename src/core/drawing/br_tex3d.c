@@ -1322,7 +1322,7 @@ int BrTex3dRecInstall(int *pReq, int hTex)
  * spelling below is what makes every store live. */
 /* @implements 0x100272F0 glide BrTex3dCreate */
 
-void BrTex3dCreate(int param_1,int param_2,int param_3,int param_4,int param_5,
+int BrTex3dCreate(int param_1,int param_2,int param_3,int param_4,int param_5,
                  int param_6,int param_7,int param_8,int param_9,
                  int param_10,int param_11,int param_12,int param_13,int param_14,
                  int param_15)
@@ -1391,8 +1391,7 @@ void BrTex3dCreate(int param_1,int param_2,int param_3,int param_4,int param_5,
   r.f260 = DAT_118ed1a0;
   r.cb29c = r.cbTotal;
   uVar3 = FUN_10027b60(&r);
-  FUN_10027710(&r,uVar3);
-  return;
+  return FUN_10027710(&r,uVar3);
 }
 
 /* WHAT IT DOES: build a texture-creation request for a BLANK texture of the given size

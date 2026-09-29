@@ -517,7 +517,7 @@ int BrGbiTexelsPerWord(int siz);
  * code a5. DEVIATION: the function pointer is a parameter (the original
  * reads the global) and the machine words are typed uintptr_t so that any
  * of them that is really a pointer survives on a 64-bit host. */
-typedef void (*BrGbiBlitFn)(uintptr_t a1, uintptr_t a2, uintptr_t a3,
+typedef uintptr_t (*BrGbiBlitFn)(uintptr_t a1, uintptr_t a2, uintptr_t a3,
                             uintptr_t a4, uintptr_t pitch, uintptr_t a5,
                             uintptr_t a6, uintptr_t a7, uintptr_t a8,
                             uintptr_t a9, uintptr_t a10, uintptr_t a11,
