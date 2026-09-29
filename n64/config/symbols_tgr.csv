@@ -94,6 +94,7 @@ va,name,kind
 8021B2F8,BrCameraSet,func
 8021B458,BrMenuCameraSet,func
 8021B5A4,BrScreenCameraSet,func
+8021B72C,BrDlRaceKindPatch,func
 8021B97C,BrRaceFlagsApply,func
 8021BBDC,BrSpEventThread,func
 8021BCA8,BrDpEventThread,func
