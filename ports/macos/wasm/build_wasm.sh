@@ -6,8 +6,11 @@
 #      handled here with flags, the port include overlay, and per-file
 #      pre-includes (ports/macos/wasm/pre/<basename>.h).
 #   2. symmap.py: every referenced symbol -> its original address
-#   3. w2c.py: objects -> C, linked against the original layout
-#   4. native clang: generated C + runtime + host layer -> build/wasm/brally
+#   3. w2c.py: objects -> C, linked against the original layout; a native
+#      body in ports/macos/wasm/native/ tagged `@replaces 0xVA Name` takes
+#      that function's direct calls and dispatch slot
+#   4. native clang: generated C + runtime + host layer + native overrides
+#      -> build/wasm/brally
 #
 # Toolchain: emscripten's LLVM (clang with the wasm backend, no emcc driver).
 set -e
@@ -54,7 +57,7 @@ with open('build/wasm/owners.csv', 'w', newline='') as f:
 EOF
 rm -f $OUT/c/*.c
 python3 ports/macos/wasm/w2c.py --out $OUT/c --symmap $OUT/symmap.csv \
-    --owners $OUT/owners.csv $OUT/obj/*.o
+    --owners $OUT/owners.csv --native ports/macos/wasm/native $OUT/obj/*.o
 
 # ---- native: generated C + runtime + host layer -> build/wasm/brally ------
 mkdir -p $OUT/nat
@@ -75,6 +78,13 @@ for f in ports/macos/wasm/rt/w2c_rt.c ports/macos/wasm/host/*.c; do
 done
 for f in ports/macos/wasm/host/*.m; do
     clang $NCF -fobjc-arc -c $f -o $OUT/nat/rt_$(basename $f .m).o
+done
+# native overrides: a removed file must not stay linked
+rm -f $OUT/nat/nv_*.o
+for f in ports/macos/wasm/native/*.c ports/macos/wasm/native/*.m; do
+    [ -f "$f" ] || continue
+    case $f in *.m) arc=-fobjc-arc ;; *) arc= ;; esac
+    clang $NCF $arc -c $f -o $OUT/nat/nv_$(basename $f | tr . _).o
 done
 clang $OUT/nat/*.o -framework Cocoa -framework Metal -framework QuartzCore -o $OUT/brally
 echo "built: $OUT/brally"
