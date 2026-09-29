@@ -18,6 +18,7 @@ va,name,kind
 80200764,BrRaceCueDraw,func
 8020082C,BrRaceTick,func
 80205FDC,BrRaceResultSave,func
+802060DC,BrRaceResultRestore,func
 80206304,BrSeasonPickRace,func
 80206830,BrCreditsDrawCars,func
 80208570,BrPakWarnScreen,func
