@@ -385,6 +385,9 @@ int BrCollRespTipKick(BrTipBody *b)
  * box face the triangle's centroid lies most flush against (sign from the
  * centroid's x) and scaling the face by the body's extents.  The PC twin is
  * BrCrPlaneResolve. */
+/* @t3 0x8025DCB8 */
+/* @t4-pass 0x8025DCB8 1 2026-09-29 compiles 41 best 4 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8025DCB8 2 2026-09-29 compiles 40 best 4 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8025DCB8 tgr BrCrPlaneResolve */
 void BrCrPlaneResolve(BrTipBody *b, float *pA, float planeD, float *pEdgeN, float *v)
 {
