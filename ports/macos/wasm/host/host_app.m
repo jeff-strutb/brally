@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <unistd.h>
 
 volatile int g_happ_quit;
 static NSWindow *g_window;
@@ -268,6 +269,22 @@ int main(int argc, char **argv)
     snprintf(dll, sizeof dll, "%s/orig/BRGlide.dll", root);
     snprintf(pd, sizeof pd, "%s/build/wasm/c/portdata.bin", root);
     snprintf(disc, sizeof disc, "%s", getenv("BR_CDROOT") ? getenv("BR_CDROOT") : "testdata/disc");
+    /* Boss Rally.app (package_app.sh) carries its own data: the CD root is
+     * Resources/disc, whose BRGlide.dll is the image the game's data comes
+     * from. A bare build/wasm/brally runs against the tree as above. */
+    {
+        NSString *res = [[NSBundle mainBundle] resourcePath];
+        const char *r = res ? res.fileSystemRepresentation : NULL;
+        char probe[1024];
+        snprintf(probe, sizeof probe, "%s/portdata.bin", r ? r : "");
+        if (r && access(probe, R_OK) == 0) {
+            snprintf(pd, sizeof pd, "%s", probe);
+            snprintf(dll, sizeof dll, "%s/disc/BRGlide.dll", r);
+            if (!getenv("BR_CDROOT")) snprintf(disc, sizeof disc, "%s/disc", r);
+        }
+    }
+    /* Finder passes -psn_... on older systems; it is not a command line */
+    if (argc > 1 && !strncmp(argv[1], "-psn_", 5)) argc = 1;
     snprintf(save, sizeof save, "%s/Library/Application Support/Boss Rally", getenv("HOME"));
     w_init(dll, pd);
     vfs_init(disc, save);
