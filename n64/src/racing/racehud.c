@@ -364,71 +364,58 @@ void BrHudTimeDraw(char *label, char *prefix, float t, int x, int y)
   func_8022F5DC(label, x, y);
 }
 
-/* WHAT IT DOES: Draw the race times panel: the total time and, per lap, the
- * lap times, placed for one or two players. */
+/* WHAT IT DOES: Draw the race times panel by race mode: the total time
+ * (single-player layout only), then the lap time, best lap or time left,
+ * placed below the top of the player's view. */
 /* @t4-pass 0x8023880C 1 2026-09-26 compiles 16 best 143 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8023880C 2 2026-09-26 compiles 17 best 143 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8023880C 3 2026-09-26 compiles 17 best 143 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8023880C tgr BrHudTimesDraw */
 void BrHudTimesDraw(void)
 {
-  int iVar1;
-  int iVar2;
-  
+  int y;
+  BrCar *car;                   /* declared, never used: its slot is in the frame */
+  int dy;
+
   if (D_8028AB0C == 1) {
-    iVar1 = 0x1e;
+    dy = 30;
+  } else {
+    dy = 0;
   }
-  else {
-    iVar1 = 0;
-  }
-  iVar2 = D_8031B2C8[D_8028AAEC].y + 0x14;
+  y = D_8031B2C8[D_8028AAEC].y + 20;
   func_8022F4F8();
   func_8022F520();
-  func_8022F5D0(0xf);
-  if (D_8026FF18 != 0) {
-    if (D_8026FF18 == 1) {
-      if (D_8028AB0C == 1) {
-        BrHudTimeDraw("%15TOTAL TIME",&D_802AA094,D_8028AAF0->lapTime,
-                     0x128,iVar2);
-      }
-      if (D_8028B304 <= D_8028AAF0->laps) {
-        BrHudTimeDraw("%15BEST LAP",&D_802AA0A4,D_8028AAF0->xf98,
-                     0x128,iVar2 + iVar1);
-        return;
-      }
-      if (D_8026FF08 == 1) {
-        BrHudTimeDraw("%15TIME LEFT",&D_802AA0B8,D_8028AAF0->xfa4,
-                     0x128,iVar2 + iVar1);
-        return;
-      }
-      BrHudTimeDraw("%15LAP TIME",&D_802AA0C8,D_8028AAF0->raceTime,0x128,
-                   iVar2 + iVar1);
-      return;
+  func_8022F5D0(15);
+  switch (D_8026FF18) {
+  case 0:
+  case 2:
+    if (D_8028AB0C == 1) {
+      BrHudTimeDraw("%15TOTAL TIME", (char *)&D_802AA060, D_8028AAF0->lapTime, 296, y);
     }
-    if (D_8026FF18 != 2) {
-      if (D_8026FF18 != 3) {
-        return;
-      }
-      if (D_8028AB0C == 1) {
-        BrHudTimeDraw("%15BEST LAP",&D_802AA0D8,D_8028AAF0->xf98,
-                     0x128,iVar2);
-      }
-      BrHudTimeDraw("%15LAP TIME",&D_802AA0E8,D_8028AAF0->raceTime,0x128,
-                   iVar2 + iVar1);
-      return;
+    if (D_8028AAF0->laps >= D_8028B304) {
+      BrHudTimeDraw("%15BEST LAP", (char *)&D_802AA070, D_8028AAF0->xf98, 296, y + dy);
+    } else {
+      BrHudTimeDraw("%15LAP TIME", (char *)&D_802AA080, D_8028AAF0->raceTime, 296, y + dy);
     }
-  }
-  if (D_8028AB0C == 1) {
-    BrHudTimeDraw("%15TOTAL TIME",&D_802AA060,D_8028AAF0->lapTime,0x128,
-                 iVar2);
-  }
-  if (D_8028AAF0->laps < D_8028B304) {
-    BrHudTimeDraw("%15LAP TIME",&D_802AA080,D_8028AAF0->raceTime,0x128,
-                 iVar2 + iVar1);
-  }
-  else {
-    BrHudTimeDraw("%15BEST LAP",&D_802AA070,D_8028AAF0->xf98,0x128,
-                 iVar2 + iVar1);
+    break;
+  case 1:
+    if (D_8028AB0C == 1) {
+      BrHudTimeDraw("%15TOTAL TIME", (char *)&D_802AA094, D_8028AAF0->lapTime, 296, y);
+    }
+    if (D_8028AAF0->laps >= D_8028B304) {
+      BrHudTimeDraw("%15BEST LAP", (char *)&D_802AA0A4, D_8028AAF0->xf98, 296, y + dy);
+    } else if (D_8026FF08 == 1) {
+      BrHudTimeDraw("%15TIME LEFT", (char *)&D_802AA0B8, D_8028AAF0->xfa4, 296, y + dy);
+    } else {
+      BrHudTimeDraw("%15LAP TIME", (char *)&D_802AA0C8, D_8028AAF0->raceTime, 296, y + dy);
+    }
+    break;
+  case 3:
+    if (D_8028AB0C == 1) {
+      BrHudTimeDraw("%15BEST LAP", (char *)&D_802AA0D8, D_8028AAF0->xf98, 296, y);
+    }
+    BrHudTimeDraw("%15LAP TIME", (char *)&D_802AA0E8, D_8028AAF0->raceTime, 296, y + dy);
+    break;
   }
 }
 
