@@ -9,20 +9,29 @@
 #                                   opens tracks/, cars/, sfx/ ... under; its
 #                                   BRGlide.dll is the image w_init loads)
 #   Contents/Resources/music/cd/    the PC soundtrack, CD audio tracks 2..13
-#   Contents/Resources/music/n64/   the N64 soundtrack: the ROM's six modules,
-#                                   played live (native/music.m), and its cues
+#   Contents/Resources/music/n64/   the N64 soundtrack: the ROM's six modules
+#                                   and their cues, and Barry Leitch's own
+#                                   recordings of the six pieces with their
+#                                   loop points when those are supplied
 #   Contents/Resources/Licenses/    libopenmpt and the codecs linked with it
 #
 # Sources, all required (a partial app must not look like a complete one):
 #   --bin  BossRally.BIN (its .cue beside it)  default reference/brally/
 #   --rom  Top Gear Rally (USA).z64            default reference/tgrally/
+# and, optional, the composer's recordings of the N64 soundtrack (six FLACs:
+# Title, Desert, Mountain, Coastline, Strip Mine, Jungle):
+#   --ost  DIR                                  default: the reference/tgrally/
+#                                               directory whose name ends
+#                                               "Soundtrack"
+# With them the app plays those instead of the modules, looped where each
+# recording repeats (ost_loops.py); that step needs numpy in python3.
 # ffmpeg on PATH (FLAC encoder for the CD audio), and Homebrew's libopenmpt,
 # mpg123, libogg and libvorbis (linked statically by build_wasm.sh).
 #
 # Extraction is cached in build/app/extract, keyed on the MD5 of every source,
 # so repackaging after a code change does not re-rip ~300 MB of audio.
 #
-# Usage: ports/macos/wasm/package_app.sh [--bin X] [--rom Y] [--no-build]
+# Usage: ports/macos/wasm/package_app.sh [--bin X] [--rom Y] [--ost D] [--no-build]
 set -e
 cd "$(dirname "$0")/../../.."
 PY=.venv/bin/python
@@ -30,11 +39,13 @@ PY=.venv/bin/python
 
 BIN=reference/brally/BossRally.BIN
 ROM="reference/tgrally/Top Gear Rally (USA).z64"
+OST=$(find reference/tgrally -maxdepth 1 -type d -name '*Soundtrack' 2>/dev/null | head -1)
 BUILD=1
 while [ $# -gt 0 ]; do
     case $1 in
         --bin) BIN=$2; shift 2 ;;
         --rom) ROM=$2; shift 2 ;;
+        --ost) OST=$2; shift 2 ;;
         --no-build) BUILD=0; shift ;;
         *) echo "package_app: unknown argument $1" >&2; exit 2 ;;
     esac
@@ -54,7 +65,7 @@ APP="$OUT/Boss Rally.app"
 mkdir -p $OUT
 
 # ---- extract, once per set of sources -------------------------------------
-KEY="2 $(md5 -q "$BIN" "$CUE" "$ROM" | tr '\n' ' ')"   # 2: the extract's layout
+KEY="3 $(md5 -q "$BIN" "$CUE" | tr '\n' ' ')"   # 3: the extract's layout
 if [ ! -f $EX/.complete ] || [ "$(cat $EX/.complete)" != "$KEY" ]; then
     rm -rf $EX
     mkdir -p $EX/music
@@ -62,12 +73,37 @@ if [ ! -f $EX/.complete ] || [ "$(cat $EX/.complete)" != "$KEY" ]; then
     $PY tools/extract_disc.py "$BIN" $EX/disc
     echo "extract: CD audio <- $CUE"
     $PY tools/extract_cdaudio.py -q "$CUE" $EX/music/cd
-    echo "extract: N64 soundtrack <- $ROM"
-    $PY ports/macos/wasm/extract_modules.py "$ROM" $EX/music/n64
     # the stamp goes last: a run that died partway claims nothing
     echo "$KEY" > $EX/.complete
 else
     echo "extract: cached ($EX)"
+fi
+
+# ---- the N64 soundtrack, once per ROM, recordings and tools ----------------
+N64=$EX/music/n64
+NKEY="1 $(md5 -q "$ROM" ports/macos/wasm/extract_modules.py ports/macos/wasm/ost_loops.py \
+            ports/macos/wasm/xmloop.c | tr '\n' ' ')"
+if [ -n "$OST" ]; then
+    ls "$OST"/*.flac >/dev/null 2>&1 || { echo "package_app: no FLACs in $OST" >&2; exit 1; }
+    NKEY="$NKEY $(cat "$OST"/*.flac | md5 -q)"
+fi
+if [ ! -f $N64/.complete ] || [ "$(cat $N64/.complete)" != "$NKEY" ]; then
+    rm -rf $N64
+    echo "extract: N64 soundtrack <- $ROM"
+    $PY ports/macos/wasm/extract_modules.py "$ROM" $N64
+    if [ -n "$OST" ]; then
+        BREW=${BR_BREW:-/opt/homebrew/opt}
+        python3 -c 'import numpy' 2>/dev/null ||
+            { echo "package_app: the recordings need numpy in python3 (or pass --ost '')" >&2; exit 1; }
+        clang -O2 -I$BREW/libopenmpt/include ports/macos/wasm/xmloop.c $BREW/libopenmpt/lib/libopenmpt.a \
+            $BREW/mpg123/lib/libmpg123.a $BREW/libvorbis/lib/libvorbisfile.a $BREW/libvorbis/lib/libvorbis.a \
+            $BREW/libogg/lib/libogg.a -lz -lc++ -o $OUT/xmloop
+        echo "extract: N64 recordings <- $OST"
+        python3 ports/macos/wasm/ost_loops.py "$OST" $N64 $OUT/xmloop $EX/music/cd
+    fi
+    echo "$NKEY" > $N64/.complete
+else
+    echo "extract: N64 soundtrack cached ($N64)"
 fi
 [ -f $EX/disc/BRGlide.dll ] || { echo "package_app: data track has no BRGlide.dll" >&2; exit 1; }
 [ -f $EX/music/cd/cdaudio.manifest.json ] || { echo "package_app: CD audio incomplete" >&2; exit 1; }

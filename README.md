@@ -302,7 +302,22 @@ reference/brally/BossRally.cue                cue sheet (data + 12 audio tracks)
     MD5  a48a4a5860558177c3041afee57e03c9     622 bytes
 reference/tgrally/Top Gear Rally (USA).z64    Top Gear Rally ROM (optional; the Mac app needs it)
     MD5  6f7030284b6bc84a49e07da864526b52     8,388,608 bytes (big-endian, NGRE)
+reference/tgrally/Top Gear Rally [9624] - Soundtrack/
+                                              Barry Leitch's own recordings of the
+                                              N64 soundtrack, 96 kHz / 24-bit FLAC
+                                              (optional; used by the Mac app)
+    MD5  951a2eb84d4b9dda5472ee9974d49384     144,841,265 bytes  01 Barry Leitch - Title Screen PAL.flac
+    MD5  8f05fa2aceda9b74bfc9c1eb55d8155e     152,764,931 bytes  02 Barry Leitch - Coastline.flac
+    MD5  06b99404dd4218f70174c11177fc13ba     162,395,270 bytes  03 Barry Leitch - Jungle.flac
+    MD5  dd368fce957d8fc4c6c27b7c96401cab     156,592,504 bytes  04 Barry Leitch - Mountain.flac
+    MD5  e91ce7985adf111098372389e5110e27     162,575,268 bytes  05 Barry Leitch - Desert.flac
+    MD5  a4fe1854f7c74b8743473a5fb402d3f4     129,418,800 bytes  06 Barry Leitch - Strip Mine.flac
 ```
+
+The soundtrack recordings are the full-quality masters the composer sold on
+his website: the same six pieces as the ROM's music modules, recorded from
+the original. The Mac app plays them in place of the modules when they are
+present (see [Mac port](#mac-port)).
 
 Rosetta 2 is required on Apple Silicon (the Wine build is x86_64). `setup.sh`
 pulls `BRD3D.dll`, `BRGlide.dll` and the other game binaries out of the BIN
@@ -344,17 +359,28 @@ from the menu, with Cmd-Q or with the close box exits cleanly.
   Switch Pro, MFi) appears to the game as a joystick: choose it in the
   game's options and bind it in its Controls menu, as on Windows.
 - **Two soundtracks.** The Music menu picks the PC soundtrack (the disc's CD
-  audio) or the N64 one (Top Gear Rally's tracker modules, played live and
-  looping as on the N64, with the pieces the N64 game uses for its title
-  screen and each race track). The choice is remembered and switches
-  mid-song; the two are level-matched. The game's own music logic decides
-  what plays when, as on Windows: the front-end track, a random track per
-  race, the next track when one ends, the Options jukebox and the
-  next/previous keys.
+  audio) or the N64 one, with the pieces the N64 game uses for its title
+  screen and each race track, looping forever as on the N64. The choice is
+  remembered and switches mid-song; the two are level-matched. The game's
+  own music logic decides what plays when, as on Windows: the front-end
+  track, a random track per race, the next track when one ends, the Options
+  jukebox and the next/previous keys.
+- **The composer's masters for the N64 music.** With Barry Leitch's 96 kHz
+  recordings in `reference/`, the app plays those instead of the ROM's
+  tracker modules. Each recording runs once and a bit through its piece and
+  fades out, so the build finds where it repeats and the app loops it there
+  with a hard, gapless, sample-exact jump: it plays from the start into the
+  loop, then round the loop forever, and never reaches the fade. The loop
+  point is the one where the recording's two passes agree best (it was
+  recorded in real time, so they are close, not identical), with the jump
+  placed on the sample where the waveform's value and slope line up. Without
+  the recordings the modules play live through libopenmpt and loop as the
+  N64 does.
 - **A self-contained app.** One command extracts everything the game reads
-  from your disc image and ROM (the data track, the CD audio, the N64
-  modules) and builds `Boss Rally.app` around it. Once built, the app needs
-  neither image nor this tree: copy it anywhere and open it.
+  from your disc image, ROM and recordings (the data track, the CD audio,
+  the N64 modules and masters) and builds `Boss Rally.app` around it. Once
+  built, the app needs none of them nor this tree: copy it anywhere and
+  open it.
 
 **How it works.** Every function in the verified M1 build (all T3 and T4
 bodies) is compiled from the same `src/` tree the byte-exact build uses; no
@@ -390,7 +416,7 @@ not in the verified placement. That is how the Mac-native parts plug in:
 | `native/render.m` | the display-list triangle leaves: GPU projection and clipping |
 | `native/input.m` | reads the Mac's game controller for the DirectInput joystick |
 | `native/window.m` | live resizing and full screen |
-| `native/music.m` | the CD music backends (MCI and the EAR engine's CD channel): AVAudioEngine for the CD audio, libopenmpt for the N64 modules, the Music menu |
+| `native/music.m` | the CD music backends (MCI and the EAR engine's CD channel): AVAudioEngine for the CD audio and the N64 masters (looped at the points `ost_loops.py` finds), libopenmpt for the N64 modules, the Music menu |
 
 `ports/macos/NATIVE_RENDERER.md` is the design and records what each piece
 measured. This 32-bit lane is interim; a native 64-bit port comes later.
@@ -424,11 +450,11 @@ measured. This 32-bit lane is interim; a native 64-bit port comes later.
    emscripten's LLVM (clang with the wasm backend), not the emcc driver; set
    `BR_WASM_LLVM` to use another wasm-capable LLVM `bin/` directory.
    libopenmpt is linked statically, so the built game depends on no
-   Homebrew library; ffmpeg only encodes the CD audio when the app is
-   packaged.
+   Homebrew library; ffmpeg and numpy are only used when the app is packaged
+   (encoding the CD audio, and finding the recordings' loop points).
 
    ```bash
-   brew install emscripten libopenmpt ffmpeg
+   brew install emscripten libopenmpt ffmpeg numpy
    ```
 
 4. Build. This writes `build/wasm/brally`; later runs rebuild only what
@@ -439,10 +465,15 @@ measured. This 32-bit lane is interim; a native 64-bit port comes later.
    ```
 
 5. Or build the app instead, which runs step 4 itself. It reads
-   `reference/brally/BossRally.BIN` (with its `.cue`) and
-   `reference/tgrally/Top Gear Rally (USA).z64`, or the paths given with
-   `--bin` and `--rom`, and writes `build/app/Boss Rally.app` (about 370 MB).
-   Extraction runs once per set of images; later packages reuse it.
+   `reference/brally/BossRally.BIN` (with its `.cue`),
+   `reference/tgrally/Top Gear Rally (USA).z64` and, when present, the
+   soundtrack recordings in the `reference/tgrally/` directory whose name
+   ends `Soundtrack` (or the paths given with `--bin`, `--rom` and `--ost`),
+   and writes `build/app/Boss Rally.app`: about 1.2 GB with the recordings,
+   370 MB without. Extraction runs once per set of sources; later packages
+   reuse it. It prints each recording's loop as it finds it (the loop's
+   start and end, how closely the two passes agree there, and how large the
+   jump is against an ordinary sample-to-sample step).
 
    ```bash
    ports/macos/wasm/package_app.sh
