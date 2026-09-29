@@ -457,6 +457,7 @@ va,name,kind
 802531C0,BrPaintExitPrompt,func
 802533F4,BrPaintPresetApply,func
 80253460,BrPaintCharset,func
+802534DC,BrPakManager,func
 80254620,BrPakCheckFiles,func
 80254870,BrStub80254870,func
 80254878,BrDebugPrint,func
@@ -665,6 +666,9 @@ va,name,kind
 80267410,guMtxXFML,func
 80267470,guMtxCatL,func
 802674D0,bcopy,func
+802677E0,osPfsNumFiles,func
+80267930,osPfsFileState,func
+80267C20,osPfsDeleteFile,func
 80268230,osAiSetFrequency,func
 80268390,osSetTimer,func
 80268470,osAiSetNextBuffer,func
