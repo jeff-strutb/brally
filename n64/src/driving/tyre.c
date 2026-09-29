@@ -19,12 +19,17 @@ typedef struct BrRbBody {       /* a rigid body with four attached wheels */
   struct BrRbBody *sub[4];      /* 0x04 */
   char pad14[0x18 - 0x14];
   BrTyreLoad *loads;            /* 0x18  one per wheel, linked */
-  char pad1c[0x80 - 0x1c];
+  char pad1c[0x78 - 0x1c];
+  float mount[2];               /* 0x78  on a wheel: where it hangs off the body */
   float x80;                    /* 0x80  on a wheel: x1d8 held to [-0.4, 0] */
   float vel[3];                 /* 0x84 */
-  char pad90[0x1a0 - 0x90];
+  char pad90[0xbc - 0x90];
+  float m[4][4];                /* 0xBC  the body's matrix */
+  char padfc[0x19c - 0xfc];
+  void *hit;                    /* 0x19C  on a wheel: the ground plane under it */
   unsigned char surface;        /* 0x1A0  on a wheel: what it is on */
-  char pad1a1[0x1b4 - 0x1a1];
+  char pad1a1[0x1a4 - 0x1a1];
+  float hitN[4];                /* 0x1A4  that plane's normal and constant */
   int x1b4;                     /* 0x1B4  on a wheel: it is on the ground */
   float x1b8;                   /* 0x1B8  spring load per unit of compression squared */
   float x1bc;                   /* 0x1BC  load per unit of upward speed */
@@ -34,7 +39,16 @@ typedef struct BrRbBody {       /* a rigid body with four attached wheels */
   unsigned char x203;           /* 0x203  0x80: a wheel has just landed */
 } BrRbBody;
 #define SIGN(x) ((x) == 0.0f ? 0.0 : ((x) > 0 ? 1.0 : -1.0))
-float func_8025E96C(BrRbBody *b, BrRbBody *w);
+float BrWheelGroundProbe(BrRbBody *b, BrRbBody *w);
+typedef struct { float v[3]; } BrTyreVec;
+extern BrTyreVec D_802A4B94;            /* (0, 0, -1): the body's down axis */
+extern unsigned short D_8037EA88[];     /* each grid cell's plane count */
+extern float D_80379F80[][150][8];      /* and its planes (normal, d, corners...) */
+int func_8025F18C(float x, float y);
+void BrMat3MulVecRows(float out[3], float m[4][4], float v[3]);
+void BrMat4RotateVecT(float out[3], float m[4][4], float v[3]);
+float BrCrPlaneDist(float *n, float d, float *p);
+int func_8025B3B0(float *plane, float *p);
 typedef struct BrRbForce {      /* a force applied to a body */
   struct BrRbForce *next;       /* 0x00 */
   int frame;                    /* 0x04 */
@@ -71,6 +85,73 @@ void BrTyreSkidCheck(BrRbBody *b, BrRbForce *f)
     f->f[1] += d[1];
     f->f[2] += d[2];
   }
+}
+
+/* WHAT IT DOES: How far one wheel can drop before it meets the ground: its
+ * mount point (height ignored) into the world by the body's matrix and the
+ * body's down axis rotated the same way, then every plane of the grid cell
+ * under that point within 2 of it is hit along that axis; the nearest hit
+ * within 2 on an upward-facing plane (normal z above 0.2) whose triangle
+ * contains it is recorded on the wheel (plane, surface byte, normal and
+ * constant).  Returns the drop, or 100.  The PC twin is BrWheelGroundProbe.
+ * RESIDUE (65): FP register choice from the ray dot product on -- the ROM
+ * also loads world x and y ahead of the |t| test and spills them; ours loads
+ * them after.  Frame and control flow match. */
+/* @implements 0x8025E96C tgr BrWheelGroundProbe */
+float BrWheelGroundProbe(BrRbBody *b, BrRbBody *w)
+{
+  float mount[3];
+  float world[3];
+  float *pPl;
+  float best;
+  float t;
+  float h;
+  float d;
+  int cell;
+  int i;
+  int n;
+  float dir[3];
+  int x;                        /* x, y, pad: declared, never used; */
+  int y;                        /* the frame holds them */
+  BrTyreVec down;
+  char pad[24];
+
+  down = D_802A4B94;
+  best = 100.0f;
+  mount[0] = w->mount[0];
+  mount[1] = w->mount[1];
+  mount[2] = 0.0f;
+  BrMat3MulVecRows(world, b->m, mount);
+  BrMat4RotateVecT(dir, b->m, down.v);
+  w->hit = 0;
+  cell = func_8025F18C(world[0], world[1]);
+  pPl = D_80379F80[cell][0];
+  n = D_8037EA88[cell];
+  for (i = 0; i < n; i++, pPl += 8) {
+    d = BrCrPlaneDist(pPl, pPl[3], world);
+    if (d > -2.0 && d < 2.0) {
+      t = pPl[0] * dir[0] + pPl[1] * dir[1] + dir[2] * pPl[2];
+      if ((t < 0.0f ? -t : t) > 0.001) {
+        h = -(pPl[3] + (pPl[0] * world[0] + pPl[1] * world[1] + world[2] * pPl[2])) / t;
+        mount[0] = dir[0] * h;
+        mount[1] = dir[1] * h;
+        mount[2] = dir[2] * h;
+        mount[0] = mount[0] + world[0];
+        mount[1] = mount[1] + world[1];
+        mount[2] += world[2];
+        if (h > -2.0 && h < 2.0 && h < best && pPl[2] > 0.2 && func_8025B3B0(pPl, mount) != 0) {
+          w->hit = pPl;
+          w->surface = ((unsigned char *)pPl)[0x1e];
+          best = h;
+          w->hitN[0] = pPl[0];
+          w->hitN[1] = pPl[1];
+          w->hitN[2] = pPl[2];
+          w->hitN[3] = pPl[3];
+        }
+      }
+    }
+  }
+  return best;
 }
 
 /* WHAT IT DOES: The four wheels' spring loads: each wheel counts frames on
@@ -211,7 +292,7 @@ void BrTyreDepthAll(BrRbBody *b)
       w = b->sub[3];
       break;
     }
-    f = -func_8025E96C(b, w);
+    f = -BrWheelGroundProbe(b, w);
     w->x1d8 = f;
     if (f > hi) {
       f = 0.0f;
