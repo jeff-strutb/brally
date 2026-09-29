@@ -779,6 +779,67 @@ void BrPaintDisc(int x, int y, int r, unsigned char screen)
   }
 }
 
+
+/* WHAT IT DOES: Draw a circle outline of radius r (plus half the brush)
+ * on the decal around a screen point (a quarter scale, y flipped): a
+ * midpoint circle walk at twice the resolution, and on every other step
+ * each of the eight octant points drawn as a run of texels the brush's size
+ * inward.  The centre's two conversions share a source line (IDO orders
+ * the copies into their registers by line). */
+/* @implements 0x802517B4 tgr BrPaintCircle */
+void BrPaintCircle(int sx, int sy, int r)
+{
+  int u0;                      /* declared, never used: the frame holds it */
+  int w;
+  int cx;
+  int cy;
+  int y;
+  int x;
+  int d;
+  int k;
+
+  cx = (sx - D_8028DB94.x) >> 2; cy = (D_8028DB94.y + D_8028DB94.h - sy) >> 2;
+  w = D_8028D4A0[D_8028DAC0].w;
+  r += w >> 1;
+  y = r * 2;
+  x = 0;
+  d = -y;
+  while (x <= y) {
+    if ((x & 1) == 0) {
+      for (k = 0; k < w; k++) {
+        BrPaintPlot((x >> 1) + cx, (y >> 1) + cy - k, D_8028DB58);
+      }
+      for (k = 0; k < w; k++) {
+        BrPaintPlot((x >> 1) + cx, cy - (y >> 1) + k, D_8028DB58);
+      }
+      for (k = 0; k < w; k++) {
+        BrPaintPlot(cx - (x >> 1), cy - (y >> 1) + k, D_8028DB58);
+      }
+      for (k = 0; k < w; k++) {
+        BrPaintPlot(cx - (x >> 1), (y >> 1) + cy - k, D_8028DB58);
+      }
+      for (k = 0; k < w; k++) {
+        BrPaintPlot((y >> 1) + cx - k, (x >> 1) + cy, D_8028DB58);
+      }
+      for (k = 0; k < w; k++) {
+        BrPaintPlot((y >> 1) + cx - k, cy - (x >> 1), D_8028DB58);
+      }
+      for (k = 0; k < w; k++) {
+        BrPaintPlot(cx - (y >> 1) + k, cy - (x >> 1), D_8028DB58);
+      }
+      for (k = 0; k < w; k++) {
+        BrPaintPlot(cx - (y >> 1) + k, (x >> 1) + cy, D_8028DB58);
+      }
+    }
+    d += x;
+    x++;
+    if (d >= 0) {
+      d -= y;
+      y--;
+    }
+  }
+}
+
 /* WHAT IT DOES: Place the paint-shop car and draw it: while a view change
  * is under way, ease the car's facing and up vectors over 16 frames from
  * the previous preset view to the new one (sidestepping through a
