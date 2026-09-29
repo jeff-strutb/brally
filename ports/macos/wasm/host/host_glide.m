@@ -2,7 +2,8 @@
  *
  * The 38 Glide 2 entry points BRGlide.dll imports, drawn with Metal into a
  * colour + depth target the size of the window's 4:3 area (640x480 headless,
- * or BR_RES=WxH); grBufferSwap copies it into the window.  The game's
+ * or BR_RES=WxH; at most BR_MAXPIX pixels), re-sized at any swap when the
+ * window changes; grBufferSwap copies it into the window.  The game's
  * coordinates stay 640x480 throughout; only the target is larger.
  *
  *   geometry     Glide vertices are already in screen space: the vertex
@@ -268,6 +269,18 @@ static void size_targets(void)
         double k = fmin(d.width / W, d.height / H);
         w = W; h = H;
         if (k > 0.1) { w = (int)lround(W * k); h = (int)lround(H * k); }
+        /* at most BR_MAXPIX pixels (default 8M): a 5K screen's full-screen
+         * 4320x3240 cost 13-14 ms of GPU a frame, 3200x2400 about 8; above
+         * the cap the present scales the picture up to the screen */
+        {
+            const char *m = getenv("BR_MAXPIX");
+            double cap = m ? atof(m) : 8.0e6;
+            if (cap >= 640.0 * 480.0 && (double)w * h > cap) {
+                w = (int)floor(sqrt(cap * 4.0 / 3.0));
+                w -= w % 4;
+                h = w * 3 / 4;
+            }
+        }
     } else {
         w = W; h = H;
     }
