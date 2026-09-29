@@ -147,10 +147,12 @@ void BrRankUpdate(void)
  * which keeps 40 in fp for the multu and the 0x340 store); the second
  * x2064 = 1.0 is a double literal, which gives it its own register (f26 vs
  * f30) as in the ROM; the slot tests read ent->car and the save takes it.
- * RESIDUE (462): the ROM frame is 0x18 smaller (fewer spill temps; every
+ * RESIDUE (443): the ROM frame is 0x18 smaller (fewer spill temps; every
  * named slot is 0x18 lower), &free[nFree] is formed in both save paths
  * before the jump, and the restore loop's pointer set-up is ordered
  * differently. */
+/* @t4-pass 0x80229700 1 2026-09-29 compiles 198 best 447 moved 15  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80229700 2 2026-09-29 compiles 198 best 443 moved 4  (n64/tools/n64permute.py) */
 /* @implements 0x80229700 tgr BrCarSlotSwap */
 void BrCarSlotSwap(BrCar *me)
 {
@@ -159,8 +161,8 @@ void BrCarSlotSwap(BrCar *me)
   float d;
   BrCar *free[7];
   int u1[2];
-  int group;
   int u2[6];
+  int group;
   BrVec3 tA;
   BrVec3 tB;
   BrRaceEnt *ent;
@@ -216,8 +218,8 @@ void BrCarSlotSwap(BrCar *me)
   group = 0;
   do {
     open = 1;
-    nFree = 0;
     seen = 0;
+    nFree = 0;
     for (i = 0, e = list; i < D_8028B7F0; i++, e++) {
       ent = &D_803239A0[e->ent];
       if (ent->group != group || ent->x64 < D_8026FF08) {
@@ -225,7 +227,7 @@ void BrCarSlotSwap(BrCar *me)
       }
       if (seen < 1) {
         seen++;
-        if (ent->car == 0) {
+        if (0 == ent->car) {
           continue;
         }
         open = 0;
@@ -249,28 +251,28 @@ void BrCarSlotSwap(BrCar *me)
       ent->vel.x = car->velfd8.x;
       ent->vel.y = car->velfd8.y;
       ent->vel.z = car->velfd8.z;
-      ent->x24 = car->xfe4[0];
       ent->seg = car->xf5c;
+      ent->x24 = car->xfe4[0];
       ent->pt = car->xf60;
+      ent->x44 = car->xf7c;
       ent->raceTime = car->raceTime;
       ent->x34 = car->xf98;
       ent->lapTime = car->lapTime;
       ent->x3c = car->xfa4;
       ent->laps = car->laps;
-      ent->x44 = car->xf7c;
-      ent->x48 = car->xf70;
       ent->x4c = car->xf74;
+      ent->x48 = car->xf70;
       osSyncPrintf("saving lap (%d/%d) and gate (%d/%d)\n", ent->laps, ent->x44, ent->x48, ent->x4c);
       ent->progress = car->xfa8;
       ent->rank = car->xfac;
       free[nFree++] = ent->car;
       ent->car = 0;
-      car->link = 0;
       car->xed4 = 60;
+      car->link = 0;
     }
     i = 0;
     if (open) {
-      osSyncPrintf("init slot %d to being open\n", D_8026FF08 + group);
+      osSyncPrintf("init slot %d to being open\n", group + D_8026FF08);
       free[nFree++] = &D_8031B760[D_8026FF08 + group];
     }
     for (e = &list[i]; nFree != 0 && i < D_8028B7F0; i++, e++) {
@@ -287,13 +289,13 @@ void BrCarSlotSwap(BrCar *me)
         car->lapTime = ent->lapTime;
         car->xfa4 = ent->x3c;
         car->laps = ent->laps;
-        car->xf7c = ent->x44;
         car->xf70 = ent->x48;
         car->xf74 = ent->x4c;
+        car->xf7c = ent->x44;
         osSyncPrintf("restoring lap (%d/%d) and gate (%d/%d)\n", car->laps, car->xf7c, car->xf70, car->xf74);
-        car->xfa8 = ent->progress;
         car->xfac = ent->rank;
         car->link = (BrCarLink *)ent;
+        car->xfa8 = ent->progress;
         car->colour[3] = 0;
         car->x2064 = 1.0f;
         car->xf48 = 1;
@@ -302,7 +304,7 @@ void BrCarSlotSwap(BrCar *me)
         car->posPrev.x = ent->posPrev.x;
         car->posPrev.y = ent->posPrev.y;
         car->posPrev.z = ent->posPrev.z;
-        BrCarSetPos(car, ent->pos.x, ent->pos.y, ent->pos.z + 0.1f);
+        BrCarSetPos(car, ent->pos.x, ent->pos.y, 0.1f + ent->pos.z);
         car->colour[3] = 0;
         car->x2064 = 1.0;
         car->colour[0] = ent->colour[0];
@@ -327,7 +329,7 @@ void BrCarSlotSwap(BrCar *me)
         if (car->link->flags & 1) {
           BrCarSetVel(car, 0.0f, 0.0f, 0.0f);
         } else {
-          BrCarSetVel(car, car->mtx0[0][0] * 50.0f, car->mtx0[0][1] * 50.0f, car->mtx0[0][2] * 50.0f);
+          BrCarSetVel(car, car->mtx0[0][0] * 50.0f, car->mtx0[0][1] * 50.0f, 50.0f * car->mtx0[0][2]);
         }
         car->wheel[0]->x19c = 0;
         car->wheel[0]->x1b4 = 0;
