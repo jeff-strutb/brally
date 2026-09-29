@@ -1,6 +1,6 @@
 # Spec: a Mac-native renderer and frame loop for the playable port
 
-Status: **phases 1-2 done** (spec written 2026-09-29; phases the same day,
+Status: **phases 1-3 done** (spec written 2026-09-29; phases the same day,
 see section 5). Scope: the playable Mac
 build, `build/wasm/brally` (the 32-bit lane, `ports/macos/wasm/`). The decomp
 (`src/`, `include/`) is not touched: everything here is port code.
@@ -217,6 +217,27 @@ Rules:
    compositor.
 3. **Renderer, 3D**: leaves replaced; native resolution. Accept by visual
    parity (section 7) on the scripted scenes.
+   **Done 2026-09-29** (`native/render.m`, `hglide_tri_h` in `host_glide.m`).
+   The six triangle leaves (0x1001ECF0, 0x1001FA30, 0x10020900, 0x10020D70
+   and the flat emitters 0x1001FF60 / 0x10020460 the four flat commands
+   share) hand the pool's clip-space corners to the GPU; the CPU divide,
+   quarter-pixel snap and seven-plane clipper are no longer reached. Culling
+   is Glide's rule on the sign of the homogeneous determinant. Two facts the
+   first parity run found: the no-Z vertex routines set 1/w to 1/65535 after
+   projecting (the backdrop then writes the far depth and textures affinely:
+   vertex kind 2), and a triangle the GPU clips at the near plane needs w, s,
+   t and colour perspective-correct, with 1/w rebuilt per pixel (screen-linear
+   attributes are wrong at the new corners). The target is the window's 4:3
+   area at drawable size (2560x1920 in a 1280x960 window; GPU 5.4 ms a frame),
+   LFB writes are quads, and triangles that share all state are one draw.
+   Parity at 640x480, `BR_GLIDE3D=1` (the original leaves) against the native
+   ones under `BR_VCLOCK`, a frame every 60-90 swaps: 20_quickrace_drive (972
+   frames, incl. the car shadows' depth-EQUAL pass and the start lights), 21
+   (replay), 28, 33, 34, 35, 36, 38 (about 1,560 frames): worst frame 0.14%
+   of pixels off by more than 48 levels, all on edges (the snap is gone).
+   Menus identical. Not native yet: the render-mode, combine and texture
+   leaves still reach Metal through the Glide state calls (`host_glide.m`
+   turns them into pipeline and fragment state).
 4. **Renderer, 2D**: sprite blits as quads; the Glide shim and LFB emulation
    are then dead for the menus.
 5. **Input**: native records and controllers.
