@@ -495,6 +495,7 @@ va,name,kind
 8025DFCC,BrCrRespWalk,func
 8025E55C,BrCarPhysAdvance,func
 8025E820,BrTyreSkidCheck,func
+8025E96C,BrWheelGroundProbe,func
 8025EC7C,BrTyreDepthAll,func
 8025EDBC,BrTyreSprings,func
 8025EF70,BrTyreLoads,func
