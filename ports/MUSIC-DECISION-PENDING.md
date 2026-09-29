@@ -16,6 +16,12 @@ at the bottom:
 5. Nothing waited on the renderer's open leads: `tools/xm_render.c` is not the
    player.
 
+Added the same day: when Barry Leitch's own 96 kHz recordings of the six
+pieces are supplied, the app plays those in place of the modules, looped with
+a hard, sample-exact jump (no crossfade) at the point where each recording's
+two passes match (`macos/wasm/ost_loops.py`). The recordings are copied into
+the app unmodified; the loop is applied at playback, per point 4 below.
+
 Levels (the third of the "four things that will bite" below): the modules play 4.0 dB down, putting their mean
 integrated loudness within 0.6 dB of the CD tracks' and the loudest module's
 peak below full scale. The implementation and its measurements are in

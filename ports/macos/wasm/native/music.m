@@ -15,11 +15,17 @@
  * Windows. What answers is AVAudioEngine:
  *
  *   PC   the disc's CD audio, track NN.flac, streamed by an AVAudioPlayerNode
- *   N64  Top Gear Rally's modules, played live by libopenmpt in an
- *        AVAudioSourceNode, looping forever as on the N64. The N64 game's
- *        own cues pick the module (extract_modules.py): its title module
- *        for track 2, and for a race track (3 up) one of the five per-track
- *        race modules, (track - 3) mod 5.
+ *   N64  Top Gear Rally's music, looping forever as on the N64. The N64
+ *        game's own cues pick the piece (extract_modules.py): its title
+ *        piece for track 2, and for a race track (3 up) one of the five
+ *        per-track race pieces, (track - 3) mod 5. With Barry Leitch's own
+ *        recordings of the six pieces in the app (ost_loops.py), those
+ *        play: an AVAudioPlayerNode plays [0, loop_end) and then
+ *        [loop_start, loop_end) over and over, queued back to back, so the
+ *        loop is a hard, gapless, sample-exact jump at the point where the
+ *        recording's two passes match, and the fade at its end is never
+ *        reached. Without them the ROM's modules play live through
+ *        libopenmpt in an AVAudioSourceNode.
  *
  * The player chooses the soundtrack in the Music menu; the choice is
  * remembered, a soundtrack whose files are missing is disabled there, and
@@ -27,7 +33,8 @@
  * Levels: the modules are rendered 4.0 dB down, which puts their mean
  * integrated loudness (-16.2 LUFS) within 0.6 dB of the CD tracks' (-15.6)
  * and keeps the loudest module's +4.0 dBFS peak below full scale
- * (measured 2026-09-29, ffmpeg ebur128).
+ * (measured 2026-09-29, ffmpeg ebur128). The recordings get the gain
+ * ost_loops.py measured for the same match (gain_db).
  *
  * When a track ends: under EAR the engine told the window and the game
  * advanced with BrCdTrackNextWrap; under MCI the drive played on through
@@ -41,7 +48,9 @@
  * Resources/music, else BR_MUSIC_DIR, else build/app/extract/music.
  * BR_MUSICWAV=path records the music output to a file; BR_MUSICSWAP=s
  * picks the other soundtrack through the Music menu's action s seconds
- * after the first track starts (checks the switch without a click).
+ * after the first track starts (checks the switch without a click);
+ * BR_MUSICLOOPTEST=s starts a recording s seconds before its loop end
+ * (checks the loop without waiting minutes for it).
  */
 #import <AVFoundation/AVFoundation.h>
 #import <Cocoa/Cocoa.h>
@@ -91,6 +100,9 @@ static struct {
     NSString *dir[2];
     NSString *title;
     NSArray<NSString *> *race;
+    NSDictionary *rec_title;          /* the recordings, when all are present */
+    NSArray<NSDictionary *> *rec_race;
+    float rec_gain_db;
     int soundtrack;
     int track;                        /* the CD track number playing, 0 none */
     int paused;
@@ -99,6 +111,9 @@ static struct {
     AVAudioPlayerNode *cd;
     AVAudioSourceNode *mod_node;
     AVAudioUnitEffect *limiter;
+    AVAudioPlayerNode *rec;
+    AVAudioUnitEQ *rec_eq;
+    AVAudioFormat *rec_fmt;
     atomic_uint gen, ended;
     os_unfair_lock lock;              /* guards mod against the render thread */
     openmpt_module *mod;
@@ -123,7 +138,7 @@ u32 n_FUN_100027e0(void);
     if (M.track) {
         int was = M.paused;
         play(M.track);
-        if (was) { M.paused = 1; [M.cd pause]; }
+        if (was) { M.paused = 1; [M.cd pause]; [M.rec pause]; }
     }
 }
 - (BOOL)validateMenuItem:(NSMenuItem *)it { return M.have[it.tag]; }
@@ -185,12 +200,24 @@ static void music_init(void)
         M.title = d[@"title"];
         M.race = d[@"race"];
         M.have[ST_N64] = M.title && M.race.count > 0;
+        {
+            NSDictionary *r = d[@"recordings"];
+            int ok = r && [r[@"race"] count] == M.race.count;
+            for (NSDictionary *x in ok ? [@[r[@"title"]] arrayByAddingObjectsFromArray:r[@"race"]] : @[])
+                ok = ok && [fm fileExistsAtPath:[M.dir[ST_N64] stringByAppendingPathComponent:x[@"file"]]];
+            if (ok) {
+                M.rec_title = r[@"title"];
+                M.rec_race = r[@"race"];
+                M.rec_gain_db = [r[@"gain_db"] floatValue];
+            }
+        }
     }
     pref = [[NSUserDefaults standardUserDefaults] stringForKey:@"Soundtrack"];
     M.soundtrack = [pref isEqualToString:@"n64"] ? ST_N64 : ST_PC;
     if (!M.have[M.soundtrack]) M.soundtrack = !M.soundtrack;
     fprintf(stderr, "music: %s; PC %s (tracks 2-%d), N64 %s; playing %s\n", root.UTF8String,
-            M.have[ST_PC] ? "yes" : "no", M.cd_last, M.have[ST_N64] ? "yes" : "no",
+            M.have[ST_PC] ? "yes" : "no", M.cd_last,
+            !M.have[ST_N64] ? "no" : M.rec_title ? "yes (recordings)" : "yes (modules)",
             M.soundtrack == ST_PC ? "PC" : "N64");
 
     M.silent = !happ_window() || (e && !atoi(e)) || !(M.have[0] || M.have[1]);
@@ -222,6 +249,18 @@ static void music_init(void)
     [M.engine attachNode:M.mod_node];
     [M.engine connect:M.mod_node to:M.engine.mainMixerNode
                format:[[AVAudioFormat alloc] initStandardFormatWithSampleRate:RATE channels:2]];
+    if (M.rec_title) {
+        NSString *p = [M.dir[ST_N64] stringByAppendingPathComponent:M.rec_title[@"file"]];
+        AVAudioFile *f = [[AVAudioFile alloc] initForReading:[NSURL fileURLWithPath:p] error:nil];
+        M.rec = [AVAudioPlayerNode new];
+        M.rec_eq = [[AVAudioUnitEQ alloc] initWithNumberOfBands:0];
+        M.rec_eq.globalGain = M.rec_gain_db;
+        M.rec_fmt = f.processingFormat;
+        [M.engine attachNode:M.rec];
+        [M.engine attachNode:M.rec_eq];
+        [M.engine connect:M.rec to:M.rec_eq format:M.rec_fmt];
+        [M.engine connect:M.rec_eq to:M.engine.mainMixerNode format:M.rec_fmt];
+    }
     M.engine.mainMixerNode.outputVolume = M.volume;
     {
         /* The disc is mastered to full scale, and resampling it to the
@@ -282,6 +321,7 @@ static void stop(void)
     M.paused = 0;
     if (M.silent) return;
     [M.cd stop];
+    [M.rec stop];
     mod_set(NULL);
 }
 
@@ -313,6 +353,41 @@ static void play_mod(int track)
     mod_set(m);
 }
 
+/* one more time round the loop, queued behind what is already queued;
+ * each one queues the next as it is taken, so two are always waiting */
+static void rec_loop(AVAudioFile *f, AVAudioFramePosition s, AVAudioFrameCount n, unsigned g)
+{
+    [M.rec scheduleSegment:f startingFrame:s frameCount:n atTime:nil
+     completionCallbackType:AVAudioPlayerNodeCompletionDataConsumed
+          completionHandler:^(AVAudioPlayerNodeCompletionCallbackType t) {
+        (void)t;
+        if (atomic_load(&M.gen) == g) rec_loop(f, s, n, g);
+    }];
+}
+
+static void play_rec(int track)
+{
+    NSDictionary *r = track <= 2 ? M.rec_title : M.rec_race[(NSUInteger)(track - 3) % M.rec_race.count];
+    NSString *p = [M.dir[ST_N64] stringByAppendingPathComponent:r[@"file"]];
+    NSError *err = nil;
+    AVAudioFile *f = [[AVAudioFile alloc] initForReading:[NSURL fileURLWithPath:p] error:&err];
+    AVAudioFramePosition s = [r[@"loop_start"] longLongValue], e = [r[@"loop_end"] longLongValue], from = 0;
+    unsigned g = atomic_load(&M.gen);
+    const char *t = getenv("BR_MUSICLOOPTEST");
+    if (!f) { fprintf(stderr, "music: %s: %s\n", p.UTF8String, err.localizedDescription.UTF8String); return; }
+    if (![f.processingFormat isEqual:M.rec_fmt]) {
+        M.rec_fmt = f.processingFormat;
+        [M.engine connect:M.rec to:M.rec_eq format:M.rec_fmt];
+        [M.engine connect:M.rec_eq to:M.engine.mainMixerNode format:M.rec_fmt];
+    }
+    if (t) from = MAX(0, e - (AVAudioFramePosition)(atof(t) * f.processingFormat.sampleRate));
+    [M.rec scheduleSegment:f startingFrame:from frameCount:(AVAudioFrameCount)(e - from) atTime:nil
+         completionHandler:nil];
+    rec_loop(f, s, (AVAudioFrameCount)(e - s), g);
+    rec_loop(f, s, (AVAudioFrameCount)(e - s), g);
+    [M.rec play];
+}
+
 static void play(int track)
 {
     stop();
@@ -320,6 +395,7 @@ static void play(int track)
     HLOG("music: play %d (%s)\n", track, M.soundtrack == ST_PC ? "PC" : "N64");
     if (M.silent) return;
     if (M.soundtrack == ST_PC) play_cd(track);
+    else if (M.rec_title) play_rec(track);
     else play_mod(track);
 }
 
@@ -327,14 +403,16 @@ static void pause_(void)
 {
     if (!M.track || M.paused) return;
     M.paused = 1;
-    if (!M.silent) [M.cd pause];
+    if (!M.silent) { [M.cd pause]; [M.rec pause]; }
 }
 
 static void resume(void)
 {
     if (!M.track || !M.paused) return;
     M.paused = 0;
-    if (!M.silent && M.soundtrack == ST_PC) [M.cd play];
+    if (M.silent) return;
+    if (M.soundtrack == ST_PC) [M.cd play];
+    else if (M.rec_title) [M.rec play];
 }
 
 static int active(void)
