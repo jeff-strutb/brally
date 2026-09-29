@@ -107,8 +107,8 @@ unsigned short BrU16QueuePop(unsigned short *q);
  * RESIDUE (41): register naming only -- |n1| and n1 swap f12/f14, the axis
  * indices sit in v1/a3 where ours use t1/t2, and u and the vertex copies
  * trade spill slots. */
-/* @implements 0x8025B3B0 tgr BrTriContainsPoint */
-short BrTriContainsPoint(BrCrPlane *pT, float *pP)
+/* @implements 0x8025B3B0 tgr BrCrTriContainsPoint */
+short BrCrTriContainsPoint(BrCrPlane *pT, float *pP)
 {
   float a0;
   float a1;
