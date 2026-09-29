@@ -131,6 +131,9 @@ void BrModReset(void)
  * order and one temp register later, and keeps 0xFFFEFFFE in v0 where the
  * ROM uses t6.  Loop tests, store order in the body and the constant's
  * spelling (chained, comma, one line) do not reach it. */
+/* @t4-pass 0x802575C4 1 2026-09-29 compiles 26 best 39 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802575C4 2 2026-09-29 compiles 26 best 39 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x802575C4 */
 /* @implements 0x802575C4 tgr BrMusicInit */
 void BrMusicInit(int param_1, char *param_2)
 {
@@ -243,6 +246,9 @@ void BrSfxVoiceStart(short v, unsigned int start, unsigned int len, unsigned int
  * the loop length, or falls silent if the sample does not loop.
  * RESIDUE (26): temporaries one register later than the ROM's, and the
  * loop/stop arms laid the other way round. */
+/* @t4-pass 0x80256D3C 1 2026-09-29 compiles 26 best 26 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80256D3C 2 2026-09-29 compiles 26 best 26 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80256D3C */
 /* @implements 0x80256D3C tgr BrMusicLoopSamples */
 void BrMusicLoopSamples(void)
 {

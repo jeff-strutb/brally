@@ -174,6 +174,9 @@ extern unsigned char D_8028DBB8;       /* the chosen decal style */
 extern BrImage *D_8028DB34[4];         /* the four style pictures */
 typedef struct { char *n[4]; } BrPaintNames;
 extern BrPaintNames D_8028DCF4;        /* the four style names */
+extern BrImage *D_8028DB44[4];         /* the four oval style pictures */
+extern BrPaintNames D_8028DD04;        /* and their names */
+void BrImageDraw(BrImage *img);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Take the chosen preset's rectangle, and make every view
@@ -677,6 +680,9 @@ void BrPaintStyleSelect(void)
  * spills the loop end; ours spills the y step.  Hoisting x/y, loops on the
  * parameters, loop-test spellings, declaration order and 396 permuter
  * compiles leave it. */
+/* @t4-pass 0x8024F000 1 2026-09-29 compiles 25 best 92 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8024F000 2 2026-09-29 compiles 25 best 92 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8024F000 */
 /* @implements 0x8024F000 tgr BrPaintLine */
 void BrPaintLine(int x0, int y0, int x1, int y1)
 {
@@ -757,6 +763,9 @@ void BrPaintLine(int x0, int y0, int x1, int y1)
  * 8-texel words swapped as the RDP's TMEM layout wants them.
  * RESIDUE (51): temporaries are numbered one register later than the ROM's
  * from the row-width shift on; the instructions and their order match. */
+/* @t4-pass 0x8024F25C 1 2026-09-29 compiles 26 best 51 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8024F25C 2 2026-09-29 compiles 26 best 51 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8024F25C */
 /* @implements 0x8024F25C tgr BrPaintPlot */
 void BrPaintPlot(int x, int y, unsigned char c)
 {
@@ -874,6 +883,555 @@ void BrPaintFrameRect(int sx0, int sy0, int sx1, int sy1)
     }
   }
 }
+
+/* WHAT IT DOES: Fill a rounded rectangle on the decal between two screen
+ * corners (either order) in the chosen colour: the corner radius is a
+ * quarter of the shorter side; the middle band is filled row by row, then a
+ * midpoint circle walk at twice the resolution adds, on every other step,
+ * the two spans above the band and the two below it.  The corners are
+ * worked in the parameters, inset by the radius after the band.
+ * RESIDUE (122): the ROM keeps the half steps in fp/s6 and the right edge in
+ * s7; ours homes the half steps on the stack, which moves the span bounds'
+ * registers. */
+/* @implements 0x8024FBC8 tgr BrPaintFillRoundRect */
+void BrPaintFillRoundRect(int sx0, int sy0, int sx1, int sy1)
+{
+  int x1;
+  int t;
+  int r;
+  int y;
+  int x;
+  int a;
+  int b;
+  int ha;
+  int hb;
+  int err;
+
+  sx0 = (sx0 - D_8028DB94.x) >> 2; sy0 = (D_8028DB94.y + D_8028DB94.h - sy0) >> 2;
+  x1 = (sx1 - D_8028DB94.x) >> 2; sy1 = (D_8028DB94.y + D_8028DB94.h - sy1) >> 2;
+  if (x1 < sx0) {
+    t = sx0;
+    sx0 = x1;
+    x1 = t;
+  }
+  if (sy1 < sy0) {
+    t = sy0;
+    sy0 = sy1;
+    sy1 = t;
+  }
+  r = (x1 - sx0 < sy1 - sy0 ? x1 - sx0 : sy1 - sy0) >> 2;
+  for (y = sy0 + r; y < sy1 - r; y++) {
+    for (x = sx0; x < x1; x++) {
+      BrPaintPlot(x, y, D_8028DB58);
+    }
+  }
+  sx0 += r;
+  sy0 += r;
+  x1 -= r;
+  sy1 -= r;
+  b = r * 2;
+  err = -b;
+  for (a = 0; a <= b; a++) {
+    if (!(a & 1)) {
+      ha = a >> 1;
+      hb = b >> 1;
+      for (x = sx0 - ha; x < ha + x1; x++) {
+        BrPaintPlot(x, sy0 - hb, D_8028DB58);
+      }
+      for (x = sx0 - hb; x < hb + x1; x++) {
+        BrPaintPlot(x, sy0 - ha, D_8028DB58);
+      }
+      for (x = sx0 - ha; x < ha + x1; x++) {
+        BrPaintPlot(x, sy1 + hb, D_8028DB58);
+      }
+      for (x = sx0 - hb; x < hb + x1; x++) {
+        BrPaintPlot(x, sy1 + ha, D_8028DB58);
+      }
+    }
+    err += a;
+    if (err >= 0) {
+      err -= b;
+      b--;
+    }
+  }
+}
+
+/* WHAT IT DOES: Draw a rounded rectangle outline on the decal between two
+ * screen corners (either order) in the chosen colour: the corner radius is
+ * a quarter of the shorter side plus a quarter of the brush; the straight
+ * edges are one texel wide for a brush under 2, else bands as wide as the
+ * brush centred on them, and the corners are a midpoint circle walk at
+ * twice the resolution, each octant point a run as long as the brush (a
+ * texel inward for the larger brushes).  The corners are worked in the
+ * parameters, inset by the radius after the edges.
+ * RESIDUE (496): the ROM holds the radius twice in its frame and keeps the
+ * corners in their stack homes; ours keeps more in saved registers, which
+ * reorders the edge loops' setup. */
+/* @implements 0x8024FEB8 tgr BrPaintFrameRoundRect */
+void BrPaintFrameRoundRect(int sx0, int sy0, int sx1, int sy1)
+{
+  int x1;
+  int t;
+  int bw;
+  int hw;
+  int q;
+  int r;
+  int x;
+  int y;
+  int a;
+  int b;
+  int err;
+  int ha;
+  int hb;
+  int k;
+
+  sx0 = (sx0 - D_8028DB94.x) >> 2;
+  x1 = (sx1 - D_8028DB94.x) >> 2;
+  sy0 = (D_8028DB94.y + D_8028DB94.h - sy0) >> 2;
+  sy1 = (D_8028DB94.y + D_8028DB94.h - sy1) >> 2;
+  if (x1 < sx0) {
+    t = sx0;
+    sx0 = x1;
+    x1 = t;
+  }
+  if (sy1 < sy0) {
+    t = sy0;
+    sy0 = sy1;
+    sy1 = t;
+  }
+  bw = D_8028D4A0[D_8028DAC0].w;
+  r = sy1 - sy0;
+  hw = bw >> 1;
+  if (x1 - sx0 < r) {
+    r = x1 - sx0;
+  }
+  q = hw >> 1;
+  r = (r >> 2) + q;
+  if (hw == 0) {
+    for (y = sy0 + r; y < sy1 - r; y++) {
+      BrPaintPlot(sx0, y, D_8028DB58);
+    }
+    for (y = sy0 + r; y < sy1 - r; y++) {
+      BrPaintPlot(x1, y, D_8028DB58);
+    }
+    for (x = sx0 + r; x < x1 - r; x++) {
+      BrPaintPlot(x, sy1, D_8028DB58);
+    }
+    for (x = sx0 + r; x < x1 - r; x++) {
+      BrPaintPlot(x, sy0, D_8028DB58);
+    }
+  } else {
+    for (y = sy0 + r; y <= sy1 - r; y++) {
+      for (x = sx0 - hw; x < sx0 + hw; x++) {
+        BrPaintPlot(x, y, D_8028DB58);
+      }
+    }
+    for (y = sy0 + r; y <= sy1 - r; y++) {
+      for (x = x1 - hw; x < x1 + hw; x++) {
+        BrPaintPlot(x, y, D_8028DB58);
+      }
+    }
+    for (y = sy1 - hw; y < sy1 + hw; y++) {
+      for (x = sx0 + r; x <= x1 - r; x++) {
+        BrPaintPlot(x, y, D_8028DB58);
+      }
+    }
+    for (y = sy0 - hw; y < sy0 + hw; y++) {
+      for (x = sx0 + r; x <= x1 - r; x++) {
+        BrPaintPlot(x, y, D_8028DB58);
+      }
+    }
+  }
+  sx0 += r;
+  x1 -= r;
+  sy0 += r;
+  sy1 -= r;
+  if (D_8028DAC0 > 2) {
+    sx0--;
+    sy0--;
+  }
+  r += q;
+  b = r * 2;
+  err = -b;
+  for (a = 0; a <= b;) {
+    if (!(a & 1)) {
+      ha = a >> 1;
+      hb = b >> 1;
+      if (hw == 0) {
+        BrPaintPlot(sx0 - ha, sy0 - hb, D_8028DB58);
+      } else {
+        for (k = 0; k < hw * 2; k++) {
+          BrPaintPlot(sx0 - ha, sy0 - hb + k, D_8028DB58);
+        }
+      }
+      if (hw == 0) {
+        BrPaintPlot(sx0 - ha, hb + sy1, D_8028DB58);
+      } else {
+        for (k = 0; k < hw * 2; k++) {
+          BrPaintPlot(sx0 - ha, hb + sy1 - k, D_8028DB58);
+        }
+      }
+      if (hw == 0) {
+        BrPaintPlot(ha + x1, hb + sy1, D_8028DB58);
+      } else {
+        for (k = 0; k < hw * 2; k++) {
+          BrPaintPlot(ha + x1, hb + sy1 - k, D_8028DB58);
+        }
+      }
+      if (hw == 0) {
+        BrPaintPlot(ha + x1, sy0 - hb, D_8028DB58);
+      } else {
+        for (k = 0; k < hw * 2; k++) {
+          BrPaintPlot(ha + x1, sy0 - hb + k, D_8028DB58);
+        }
+      }
+      if (hw == 0) {
+        BrPaintPlot(hb + x1, ha + sy1, D_8028DB58);
+      } else {
+        for (k = 0; k < hw * 2; k++) {
+          BrPaintPlot(hb + x1 - k, ha + sy1, D_8028DB58);
+        }
+      }
+      if (hw == 0) {
+        BrPaintPlot(hb + x1, sy0 - ha, D_8028DB58);
+      } else {
+        for (k = 0; k < hw * 2; k++) {
+          BrPaintPlot(hb + x1 - k, sy0 - ha, D_8028DB58);
+        }
+      }
+      if (hw == 0) {
+        BrPaintPlot(sx0 - hb, sy0 - ha, D_8028DB58);
+      } else {
+        for (k = 0; k < hw * 2; k++) {
+          BrPaintPlot(sx0 - hb + k, sy0 - ha, D_8028DB58);
+        }
+      }
+      if (hw == 0) {
+        BrPaintPlot(sx0 - hb, ha + sy1, D_8028DB58);
+      } else {
+        for (k = 0; k < hw * 2; k++) {
+          BrPaintPlot(sx0 - hb + k, ha + sy1, D_8028DB58);
+        }
+      }
+    }
+    err += a;
+    a++;
+    if (err >= 0) {
+      err -= b;
+      b--;
+    }
+  }
+}
+
+/* WHAT IT DOES: The paint shop's oval-style chooser, as the decal-style one:
+ * a box with the four pictures (placed once when the box opens: the first
+ * two 72 apart, the last two each after its partner's right edge, 52 apart)
+ * and the chosen style's name, A (select) and B (cancel) under it; left and
+ * right move the choice round, A keeps it and B restores the previous one,
+ * both closing the box.
+ * RESIDUE (84): after a left or right move the ROM rebuilds the pad's
+ * address from fresh lui pairs (as in BrPaintStyleSelect); ours reuses the
+ * saved base and index registers. */
+/* @implements 0x80250698 tgr BrPaintOvalStyleSelect */
+void BrPaintOvalStyleSelect(void)
+{
+  char spare[24];               /* declared, never used: the frame holds it */
+  int x;
+  int i;
+  int y;
+  int bx;
+  BrPaintNames names;
+  BrPadRec *pad;
+  unsigned int pressed;
+
+  names = D_8028DD04;
+  y = 323 - D_8028D0B0.w;
+  bx = 352 - D_8028D0E0.w;
+  func_80246F90(0xb8, 0x95, 0x110, 0xb6, 3, 0, 0, 0x80, 0x80, 0x80);
+  BrTextSetFont(16);
+  BrTextAlignCentre();
+  BrTextHighlightOff();
+  BrTextPrint("%rySELECT STYLE", 160, 91);
+  if (D_8028DBC0 != 0) {
+    D_8028DBB8 = D_8028CF8C;
+    for (i = 0; i * 72 + 200 < 344; i++) {
+      D_8028DB44[i]->x = i * 72 + 200;
+      D_8028DB44[i]->y = 203;
+    }
+    for (i = 0; i < 2; i++) {
+      D_8028DB44[i + 2]->x = D_8028DB44[1]->x + D_8028DB44[i]->drawW + i * 52;
+      D_8028DB44[i + 2]->y = 203;
+    }
+    D_8028DBC0 = 0;
+  }
+  for (i = 0; i < 4; i++) {
+    if (i == D_8028DBB8) {
+      BrImageDrawRect(D_8028DB44[i], D_8028DB44[i]->x, D_8028DB44[i]->y, D_8028DB44[i]->drawW,
+                      D_8028DB44[i]->drawH, 0x20, 200, 0xff);
+    } else {
+      BrImageDraw(D_8028DB44[i]);
+    }
+  }
+  func_80246F90(0xce, 0x101, 0xe4, 0x1e, 1, 1, 1, 0x80, 0x80, 0x80);
+  BrTextSetFont(11);
+  BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
+  BrTextPrint(names.n[D_8028DBB8], 159, 139);
+  BrTextSetFont(10);
+  BrTextAlignLeft();
+  BrTextPrint("%wwSELECT", (unsigned int)(D_8028D0B0.w + 220) >> 1, (y + 18) >> 1);
+  BrTextPrint("%wwCANCEL", (unsigned int)(bx + D_8028D0E0.w + 6) >> 1, (y + 18) >> 1);
+  BrImageDrawAt(&D_8028D0B0, 214, y);
+  BrImageDrawAt(&D_8028D0E0, bx, y);
+  BrPadStickToButtons(&PADS[D_8028DBBC]);
+  pad = &PADS[D_8028DBBC];
+  pressed = pad->pressed;
+  if (pressed & 4) {
+    BrPadConsume((unsigned int *)pad, 4);
+    if (D_8028DBB8 == 0) {
+      D_8028DBB8 = 3;
+    } else {
+      D_8028DBB8--;
+    }
+    pad = &PADS[D_8028DBBC];
+    pressed = pad->pressed;
+  } else if (pressed & 1) {
+    BrPadConsume((unsigned int *)pad, 1);
+    if (D_8028DBB8 == 3) {
+      D_8028DBB8 = 0;
+    } else {
+      D_8028DBB8++;
+    }
+    pad = &PADS[D_8028DBBC];
+    pressed = pad->pressed;
+  }
+  if (pressed & 0x10) {
+    BrPadConsume((unsigned int *)pad, 0x10);
+    D_8028CF8C = D_8028DBB8;
+    D_8028DBE0 = 0;
+  } else if (pressed & 0x20) {
+    BrPadConsume((unsigned int *)pad, 0x20);
+    D_8028DBE0 = 0;
+  }
+}
+
+/* WHAT IT DOES: Fill an oval on the decal inside two screen corners (either
+ * order) in the chosen colour: a midpoint ellipse walk at twice the
+ * resolution, radii half the sides (at least 1), and on every other step a
+ * span above and below the centre -- first the region where the walk steps
+ * across, then the one where it steps up.  rx*rx and ry*ry are each held
+ * twice (a2/a2b, b2/b2b), as the ROM's frame does.
+ * RESIDUE (250): register priority -- the ROM keeps the corners, the radii
+ * and the walk's running sums in their stack homes; ours holds more of them
+ * in saved registers. */
+/* @implements 0x80250B58 tgr BrPaintFillOval */
+void BrPaintFillOval(int sx0, int sy0, int sx1, int sy1)
+{
+  int ry;
+  int t;
+  int rx;
+  int x;
+  int y;
+  int err;
+  int cx;
+  int xs;
+  int xe;
+  int i;
+  int b2b;
+  int a2b;
+  int b2;
+  int a2;
+  int ey;
+  int ex;
+  int d;
+
+  sx0 = (sx0 - D_8028DB94.x) >> 2;
+  sx1 = (sx1 - D_8028DB94.x) >> 2;
+  sy0 = (D_8028DB94.y + D_8028DB94.h - sy0) >> 2;
+  sy1 = (D_8028DB94.y + D_8028DB94.h - sy1) >> 2;
+  if (sx1 < sx0) {
+    t = sx0;
+    sx0 = sx1;
+    sx1 = t;
+  }
+  if (sy1 < sy0) {
+    t = sy0;
+    sy0 = sy1;
+    sy1 = t;
+  }
+  ry = (sy1 - sy0) >> 1 < 2 ? 1 : (sy1 - sy0) >> 1;
+  x = 0;
+  rx = (sx1 - sx0) >> 1 < 2 ? 1 : (sx1 - sx0) >> 1;
+  y = ry * 2;
+  b2 = b2b = ry * ry;
+  a2 = a2b = rx * rx;
+  err = -a2 * y;
+  for (ex = a2b * y, ey = 0, d = 0; ey <= ex;) {
+    if (!(x & 1)) {
+      cx = (sx0 + sx1) >> 1;
+      xe = (x >> 1) + cx;
+      xs = cx - (x >> 1);
+      for (i = xs; i < xe; i++) {
+        BrPaintPlot(i, (y >> 1) + ((sy0 + sy1) >> 1), D_8028DB58);
+      }
+      for (i = xs; i < xe; i++) {
+        BrPaintPlot(i, ((sy0 + sy1) >> 1) - (y >> 1), D_8028DB58);
+      }
+    }
+    err += d;
+    ey += b2b;
+    x++;
+    d += ry * ry;
+    err += d;
+    if (err > 0) {
+      err -= a2 * y;
+      y--;
+      ex -= a2b;
+      err -= a2 * y;
+    }
+  }
+  x = rx * 2;
+  y = 0;
+  err = -b2 * x;
+  for (ey = b2b * x, ex = 0, d = 0; ex <= ey;) {
+    if (!(y & 1)) {
+      cx = (sx0 + sx1) >> 1;
+      xe = (x >> 1) + cx;
+      xs = cx - (x >> 1);
+      for (i = xs; i < xe; i++) {
+        BrPaintPlot(i, (y >> 1) + ((sy0 + sy1) >> 1), D_8028DB58);
+      }
+      for (i = xs; i < xe; i++) {
+        BrPaintPlot(i, ((sy0 + sy1) >> 1) - (y >> 1), D_8028DB58);
+      }
+    }
+    err += d;
+    y++;
+    ex += a2b;
+    d = d + rx * rx;
+    err += d;
+    if (err > 0) {
+      err -= b2 * x;
+      x--;
+      ey -= b2b;
+      err -= b2 * x;
+    }
+  }
+}
+
+/* WHAT IT DOES: Draw an oval outline on the decal inside two screen corners
+ * (either order) in the chosen colour: the midpoint ellipse walk of
+ * BrPaintFillOval with the radii grown by half the brush, and on every
+ * other step each quadrant's point drawn as a run of texels the brush's
+ * size inward (up/down in the first region, across in the second).
+ * RESIDUE (371): the ROM's frame is 8 smaller and keeps the corners and
+ * radii in their stack homes; ours holds them in saved registers first. */
+/* @implements 0x80250FCC tgr BrPaintFrameOval */
+void BrPaintFrameOval(int sx0, int sy0, int sx1, int sy1)
+{
+  int ry;
+  int rx;
+  int t;
+  int dx;
+  int dy;
+  int w;
+  int x;
+  int y;
+  int err;
+  int k;
+  int b2b;
+  int a2b;
+  int b2;
+  int a2;
+  int ey;
+  int ex;
+  int d;
+
+  sx0 = (sx0 - D_8028DB94.x) >> 2;
+  sy0 = (D_8028DB94.y + D_8028DB94.h - sy0) >> 2;
+  sx1 = (sx1 - D_8028DB94.x) >> 2;
+  sy1 = (D_8028DB94.y + D_8028DB94.h - sy1) >> 2;
+  dx = sx1 - sx0;
+  if (dx < 0) {
+    dx = sx0 - sx1;
+    t = sx0;
+    sx0 = sx1;
+    sx1 = t;
+  }
+  dy = sy1 - sy0;
+  if (dy < 0) {
+    dy = sy0 - sy1;
+    t = sy0;
+    sy0 = sy1;
+    sy1 = t;
+  }
+  w = D_8028D4A0[D_8028DAC0].w;
+  ry = (dy + w) >> 1 < 2 ? 1 : (dy + w) >> 1;
+  rx = (dx + w) >> 1 < 2 ? 1 : (dx + w) >> 1;
+  x = 0;
+  y = ry * 2;
+  b2 = b2b = ry * ry;
+  a2 = a2b = rx * rx;
+  err = -a2 * y;
+  for (ex = a2b * y, ey = 0, d = 0; ey <= ex;) {
+    if (!(x & 1)) {
+      for (k = 0; k < w; k++) {
+        BrPaintPlot((x >> 1) + ((sx0 + sx1) >> 1), (y >> 1) + ((sy0 + sy1) >> 1) - k, D_8028DB58);
+      }
+      for (k = 0; k < w; k++) {
+        BrPaintPlot((x >> 1) + ((sx0 + sx1) >> 1), ((sy0 + sy1) >> 1) - (y >> 1) + k, D_8028DB58);
+      }
+      for (k = 0; k < w; k++) {
+        BrPaintPlot(((sx0 + sx1) >> 1) - (x >> 1), ((sy0 + sy1) >> 1) - (y >> 1) + k, D_8028DB58);
+      }
+      for (k = 0; k < w; k++) {
+        BrPaintPlot(((sx0 + sx1) >> 1) - (x >> 1), (y >> 1) + ((sy0 + sy1) >> 1) - k, D_8028DB58);
+      }
+    }
+    err += d;
+    ey += b2b;
+    x++;
+    d += ry * ry;
+    err += d;
+    if (err > 0) {
+      err -= a2 * y;
+      y--;
+      ex -= a2b;
+      err -= a2 * y;
+    }
+  }
+  x = rx * 2;
+  y = 0;
+  err = -b2 * x;
+  for (ey = b2b * x, ex = 0, d = 0; ex <= ey;) {
+    if (!(y & 1)) {
+      for (k = 0; k < w; k++) {
+        BrPaintPlot((x >> 1) + ((sx0 + sx1) >> 1) - k, (y >> 1) + ((sy0 + sy1) >> 1), D_8028DB58);
+      }
+      for (k = 0; k < w; k++) {
+        BrPaintPlot((x >> 1) + ((sx0 + sx1) >> 1) - k, ((sy0 + sy1) >> 1) - (y >> 1), D_8028DB58);
+      }
+      for (k = 0; k < w; k++) {
+        BrPaintPlot(((sx0 + sx1) >> 1) - (x >> 1) + k, ((sy0 + sy1) >> 1) - (y >> 1), D_8028DB58);
+      }
+      for (k = 0; k < w; k++) {
+        BrPaintPlot(((sx0 + sx1) >> 1) - (x >> 1) + k, (y >> 1) + ((sy0 + sy1) >> 1), D_8028DB58);
+      }
+    }
+    err += d;
+    y++;
+    ex += a2b;
+    d += rx * rx;
+    err += d;
+    if (err > 0) {
+      err -= b2 * x;
+      x--;
+      ey -= b2b;
+      err -= b2 * x;
+    }
+  }
+}
+
+
 
 /* WHAT IT DOES: Paint a filled disc of radius r in the chosen colour
  * centred on (x, y) -- in texels, or in screen pixels over the paint area
@@ -1275,6 +1833,9 @@ void BrPaintDashLine(int x0, int y0, int x1, int y1)
  * RESIDUE (60): saved-register choice -- the ROM keeps on, x, y in s1, s2,
  * s3 (ours x, y, on) and toggles on as (on + 1) & 1 straight into its
  * register; declaration order and every toggle spelling leave it. */
+/* @t4-pass 0x80251CD4 1 2026-09-29 compiles 26 best 60 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80251CD4 2 2026-09-29 compiles 26 best 60 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80251CD4 */
 /* @implements 0x80251CD4 tgr BrPaintDashRect */
 void BrPaintDashRect(int x0, int y0, int x1, int y1)
 {

@@ -261,6 +261,9 @@ void BrRbSetParams(BrRbParams *p, float a, float b, float c, float d, float e, f
  * RESIDUE (75): the ROM keeps the squared sides in stack homes (h*h at
  * sp+0x2C, w then w*w at sp+0x24) and loads the side into f14 in each case
  * arm; ours keeps them in registers. */
+/* @t4-pass 0x80258C24 1 2026-09-29 compiles 26 best 75 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80258C24 2 2026-09-29 compiles 26 best 75 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80258C24 */
 /* @implements 0x80258C24 tgr BrRbBodyInit */
 void BrRbBodyInit(BrRbBody *b)
 {
