@@ -87,6 +87,7 @@ va,name,kind
 8021A0F8,BrViewFrame,func
 8021A4C8,BrScreenFlush2Layout1,func
 8021A540,BrScreenFlush2Layout0,func
+8021A5B8,BrTexAnimUpdate,func
 8021A920,BrPadStartRead,func
 8021A964,BrPadRead,func
 8021A9B4,BrPadPollAll,func

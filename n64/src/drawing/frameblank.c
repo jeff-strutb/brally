@@ -576,6 +576,117 @@ void BrScreenFlush2Layout0(void)
   D_8028A884 = 0;
 }
 
+typedef struct BrTexKey {       /* one frame of an animated texture (0xC bytes) */
+  int tex;                      /* texture's ROM offset, -1 for none */
+  int pal;                      /* palette's ROM offset, -1 for none */
+  unsigned int time;            /* when the next frame starts */
+} BrTexKey;
+typedef struct BrTexAnim {
+  unsigned short x0;
+  unsigned short n;             /* 0x02  frames + 1 */
+  int x4;
+  unsigned int t0;              /* 0x08  -1: a day/night pair */
+  BrTexKey key[1];              /* 0x0C */
+} BrTexAnim;
+typedef struct BrTexSlot {      /* a track texture in RAM (0x24 bytes) */
+  void *dst;                    /* the texture */
+  void *palDst;                 /* 0x04  its palette */
+  BrTexAnim *anim;              /* 0x08  animated: its frames; else a palette index */
+  char pad0c[0x20 - 0x0C];
+  unsigned int x20 : 4;         /* 0x20 */
+  unsigned int fmt : 4;         /*       1: 16-colour palette; 0xB: a night bank */
+  unsigned int x20b : 3;
+  unsigned int animated : 1;
+  unsigned int x20c : 2;
+  unsigned int size : 18;       /*       texture bytes */
+} BrTexSlot;
+typedef struct BrTexHdr {       /* the loaded track's header */
+  char pad00[0x18];
+  int nTex;                     /* 0x18 */
+  BrTexSlot *tex;               /* 0x1C */
+} BrTexHdr;
+extern BrTexHdr D_80025C00;
+extern int D_8028AA84;
+extern int D_8028AA88;
+extern int D_8028B940;
+extern unsigned int D_8028AAD4;
+extern int D_8026FF10;
+extern int D_8028A880;
+extern int D_80319F88[];
+void *BrRomDmaSlot(void);
+int osPiStartDma(void *mb, int pri, int dir, unsigned int devAddr, void *vAddr, unsigned int n, void *mq);
+
+/* WHAT IT DOES: Bring the track's textures up to date: each animated one
+ * loads the frame for the current time (with kind 3 at night, the first
+ * frame of a 16-colour-bank texture; a day/night pair switches frame when
+ * kind 3 is toggled), DMAing its texture and palette from the ROM; a plain
+ * texture reloads its palette when kind 3 changed.  Remembers kind 3. */
+/* @implements 0x8021A5B8 tgr BrTexAnimUpdate */
+void BrTexAnimUpdate(void)
+{
+  int i;
+  BrTexAnim *anim;
+  int tex;
+  int pal;
+  unsigned int period;
+  int k;
+  int night;
+  unsigned int t;
+
+  night = D_8028AA84 != 0 && D_8028B940 != 2 && D_8028B940 != 7;
+  for (i = 0; i < D_80025C00.nTex; i++) {
+    if (D_80025C00.tex[i].dst == 0) {
+      continue;
+    }
+    if (D_80025C00.tex[i].animated) {
+      anim = D_80025C00.tex[i].anim;
+      period = anim->key[anim->n - 2].time - anim->t0;
+      t = D_8028AAD4 - D_8028AAD4 / period * period;
+      if (anim->n == 2 && anim->t0 == -1) {
+        if (D_8028AA84 != D_8028AA88) {
+          k = D_8028AA84 == 0;
+          if (D_8028AA84 == 0) {
+            tex = -1;
+            goto palette;
+          }
+          goto frame;
+        }
+        continue;
+      }
+      if (D_8026FF10 != 0) {
+        continue;
+      }
+      if (night && D_80025C00.tex[i].fmt == 0xB) {
+        k = 1;
+      } else {
+        for (k = 1; k < anim->n; k++) {
+          if (t < anim->key[k - 1].time) {
+            break;
+          }
+        }
+      }
+      k--;
+frame:
+      tex = anim->key[k].tex;
+palette:
+      pal = anim->key[k].pal;
+      if (D_80025C00.tex[i].size != 0 && tex != -1) {
+        osPiStartDma(BrRomDmaSlot(), 0, 0, tex + D_8028A880, D_80025C00.tex[i].dst,
+                     D_80025C00.tex[i].size, D_80319F88);
+      }
+load:
+      if (D_80025C00.tex[i].palDst != 0 && pal != -1) {
+        osPiStartDma(BrRomDmaSlot(), 0, 0, pal + D_8028A880, D_80025C00.tex[i].palDst,
+                     D_80025C00.tex[i].fmt == 1 ? 0x20 : 0x200, D_80319F88);
+      }
+    } else if (D_8028AA88 != D_8028AA84) {
+      pal = ((int)D_80025C00.tex[i].anim & 0xFFF) << 5;
+      goto load;
+    }
+  }
+  D_8028AA88 = D_8028AA84;
+}
+
 /* WHAT IT DOES: Push three empty frames through the second screen layout
  * with the video output blanked (the last one not cleared), before a
  * front-end screen that needs every buffer reset. */
