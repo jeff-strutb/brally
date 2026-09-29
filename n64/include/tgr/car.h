@@ -73,7 +73,8 @@ typedef struct BrCar {
     unsigned char x344;         /* 0x344  a pending HUD arrow (0 = none) */
     char pad345[0x3C8 - 0x345];
     BrCarBody wheels[4];        /* 0x3C8  the wheels' bodies (wheel[] points at them) */
-    char padbe8[0xDF8 - 0xBE8];
+    char padbe8[0xDF4 - 0xBE8];
+    float xdf4;                 /* 0xDF4  scales the exhaust smoke (0.001 per unit) */
     char xdf8[0x1c];            /* 0xDF8  from the kind table */
     float xe14[5];              /* 0xE14  from the kind table */
     int xe28[2];                /* 0xE28  from the kind table */
@@ -91,7 +92,14 @@ typedef struct BrCar {
     struct BrCarLink *link;     /* 0xED0 */
     int xed4;                   /* 0xED4  a countdown, one per frame */
     int xed8;                   /* 0xED8  the car's control function (camera step, AI) */
-    char padedc[0xF2C - 0xEDC];
+    char padedc[0xEE8 - 0xEDC];
+    BrVec3 linePos;             /* 0xEE8  the nearest point on the racing line */
+    BrVec3 lineDir;             /* 0xEF4  the line's direction there */
+    BrVec3 lineSide;            /* 0xF00  across the line */
+    BrVec3 lineUp;              /* 0xF0C */
+    float lineOffAbs;           /* 0xF18  |lineOff| */
+    BrVec3 lineRel;             /* 0xF1C  the car relative to linePos */
+    float lineOff;              /* 0xF28  the car's signed distance across the line */
     BrVec3 posStart;            /* 0xF2C  where the race started */
     int xf38;                   /* 0xF38 */
     int xf3c;                   /* 0xF3C */
@@ -100,8 +108,8 @@ typedef struct BrCar {
     int xf48;                   /* 0xF48  camera mode */
     int xf4c;                   /* 0xF4C  the camera keeps the car's up axis */
     BrVec3 posPrev;             /* 0xF50  last frame's position */
-    int xf5c;                   /* 0xF5C */
-    int xf60;                   /* 0xF60 */
+    int xf5c;                   /* 0xF5C  the path segment the car is on */
+    int xf60;                   /* 0xF60  and the point in it */
     float xf64;                 /* 0xF64  the heading's atan2 arguments at the restart point */
     float xf68;                 /* 0xF68 */
     float xf6c;                 /* 0xF6C */
@@ -126,7 +134,8 @@ typedef struct BrCar {
     BrVec3 velfd8;              /* 0xFD8  another velocity copy */
     float xfe4[11];             /* 0xFE4 */
     float x1010;                /* 0x1010  zeroed when the particle pool is reset */
-    char pad1014[0x1D78 - 0x1014];
+    BrVec3 smokeAt;             /* 0x1014  where the last smoke particle started */
+    char pad1020[0x1D78 - 0x1020];
     BrVec3 pos1d78;             /* 0x1D78  another position copy */
     char pad1d84[0x1D88 - 0x1D84];
     int mtx[16];                /* 0x1D88 */
