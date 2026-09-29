@@ -116,6 +116,8 @@ void BrCreditsDrawCars(void)
  * RESIDUE (1461, same size): the ROM frame is 0xB0 against 0xA0 here,
  * and each model load reloads the stored pointer where the ROM passes v0
  * on. */
+/* @t4-pass 0x8020686C 1 2026-09-29 compiles 101 best 1461 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8020686C 2 2026-09-29 compiles 101 best 1461 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8020686C tgr BrIntroScreen */
 void BrIntroScreen(void)
 {

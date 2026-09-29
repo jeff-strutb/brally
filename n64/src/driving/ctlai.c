@@ -609,6 +609,8 @@ void BrCarLineFit(BrCar *car)
  * and the body's velocity is reshaped along the path frame and scaled by
  * the pace table or the weather. Its spin is clamped to unit length, then
  * the car is ticked and respawned if need be. PC twin: BrCtlAiBody. */
+/* @t4-pass 0x8022762C 1 2026-09-29 compiles 100 best 1064 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8022762C 2 2026-09-29 compiles 100 best 1064 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8022762C tgr BrCtlAiBody */
 void BrCtlAiBody(BrCar *car)
 {
@@ -618,8 +620,8 @@ void BrCtlAiBody(BrCar *car)
   BrVec3 target;
   float velFwd;
   BrVec3 aimDir;
-  BrVec3 up;
   BrVec3 upCrossAim;
+  BrVec3 up;
   BrVec3 dead;
   float lat;
   float offset;
@@ -867,7 +869,7 @@ void BrCtlAiBody(BrCar *car)
     if (lat < 0.0f) {
       if (D_8028B80C != 0) {
         if (lat < -(0.2f / mag)) {
-          lat = lat - mag * lat;
+          lat -= mag * lat;
         } else {
           lat = lat + 0.2f;
         }
