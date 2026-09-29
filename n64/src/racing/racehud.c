@@ -9,7 +9,8 @@ void func_8022D7E0(int param_1,unsigned int param_2,unsigned int param_3,int par
 void func_8023BF60(void);
 extern int D_8026FF10;
 float func_80224404();
-extern int D_8028B304;
+extern int D_8028B304;                /* laps in the race */
+extern char D_8028B308[];             /* "%yyWRONG WAY" */
 float func_8022576C(float param_1,float param_2);
 void func_8022F5DC(unsigned char *s, int x, int y);
 int func_80260DD4();
@@ -87,49 +88,23 @@ void BrStub8023870C(void)
 /* @t4-pass 0x8021F1F0 2 2026-09-26 compiles 17 best 62 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8021F1F0 3 2026-09-26 compiles 17 best 62 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8021F1F0 tgr BrWrongWayCheck */
-void BrWrongWayCheck(int param_1)
+void BrWrongWayCheck(BrCar *car)
 {
-  unsigned int uVar1;
-  char *pcVar2;
-  float fVar3;
-  
   if (D_80025C70 != 0) {
-    if (*(int *)(param_1 + 0xf78) < D_8028B304) {
-      if (*(int *)(param_1 + 0xf4c) == 0) {
-        fVar3 = (float)func_80224404(param_1 + 0xf64);
-        if (fVar3 < 0.0f) {
-          uVar1 = *(int *)(param_1 + 0x206c) + 1;
-          *(unsigned int *)(param_1 + 0x206c) = uVar1;
-          if ((int)uVar1 < 0x20) {
-            pcVar2 = *(char **)(param_1 + 0xfb0);
-          }
-          else {
-            if ((uVar1 & 0x10) == 0x10) {
-              if (*(int *)(param_1 + 0xfb0) != 0) {
-                return;
-              }
-              *(char **)(param_1 + 0xfb0) = "%yyWRONG WAY";
-              *(int *)(param_1 + 0xfb8) = 0;
-              *(int *)(param_1 + 0xfb4) = 0x3e800000;
-              return;
-            }
-            pcVar2 = *(char **)(param_1 + 0xfb0);
-          }
-          if (pcVar2 == "%yyWRONG WAY") {
-            *(int *)(param_1 + 0xfb8) = 0;
-            *(int *)(param_1 + 0xfb0) = 0;
-          }
+    if (car->laps < D_8028B304 && car->xf4c == 0 && func_80224404(&car->xf64) < 0.0) {
+      car->wrongWay++;
+      if (car->wrongWay >= 32 && (car->wrongWay & 0x10) == 0x10) {
+        if (car->msgA == 0) {
+          car->msgA = (int)D_8028B308;
+          car->msgB = 0;
+          car->msgATime = 0.25f;
         }
-        else {
-          *(int *)(param_1 + 0x206c) = 0;
-        }
+      } else if (car->msgA == (int)D_8028B308) {
+        car->msgB = 0;
+        car->msgA = 0;
       }
-      else {
-        *(int *)(param_1 + 0x206c) = 0;
-      }
-    }
-    else {
-      *(int *)(param_1 + 0x206c) = 0;
+    } else {
+      car->wrongWay = 0;
     }
   }
 }
