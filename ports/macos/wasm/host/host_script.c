@@ -8,7 +8,9 @@
  *
  * Supported: sleep N, press KEY [N], hold KEY, release KEY, mouse X Y,
  * point X Y (absolute, the windowed pointer path), quit (as Cmd-Q),
- * click [N], wait/waitb ADDR OP VALUE [N], mark NAME, shot NAME, end.
+ * click [N], wait/waitb ADDR OP VALUE [N], mark NAME, shot NAME, end,
+ * window W H (resize the content to W x H points), fullscreen (toggle),
+ * chord KEYS (a Command/Control chord such as ctrl+cmd+f, as a real key event).
  * Not yet: autopilot, waittext, text, peer, files, savefiles, tmu,
  * joystick -- a script using one stops with a message naming it.
  *
@@ -92,6 +94,11 @@ static void load(void)
 }
 
 static void key(u8 vk, u8 dik, int down) { happ_key_script(dik, vk, down); }
+
+/* native/window.m; nothing to resize headless */
+__attribute__((weak)) void hwindow_resize(int w, int h) { (void)w; (void)h; }
+__attribute__((weak)) void hwindow_fullscreen(void) {}
+__attribute__((weak)) void hwindow_chord(const char *spec) { (void)spec; }
 
 static int test(const step_t *s)
 {
@@ -188,6 +195,12 @@ void happ_frame(void)
             g_sleep_until = g_frame + 2;
         } else if (!strcmp(s->op, "quit")) {
             g_happ_quit = 1;                   /* what Cmd-Q and the close box do */
+        } else if (!strcmp(s->op, "window")) {
+            hwindow_resize(atoi(s->a[0]), atoi(s->a[1]));   /* content size, points */
+        } else if (!strcmp(s->op, "fullscreen")) {
+            hwindow_fullscreen();              /* toggles, as the green button does */
+        } else if (!strcmp(s->op, "chord")) {
+            hwindow_chord(s->a[0]);            /* e.g. ctrl+cmd+f, through the menu bar */
         } else if (!strcmp(s->op, "point")) {
             /* the windowed pointer path: an absolute 640x480 position */
             hdx_mouse_abs(atoi(s->a[0]), atoi(s->a[1]), 0);

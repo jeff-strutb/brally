@@ -214,6 +214,10 @@ void happ_pump(int block_ms)
                                           inMode:NSDefaultRunLoopMode dequeue:YES])) {
             switch (e.type) {
             case NSEventTypeKeyDown:
+                /* a Command chord is the menu bar's (Quit, View > Enter Full
+                 * Screen, ...), as in any Mac app; the game never sees it */
+                if ((e.modifierFlags & NSEventModifierFlagCommand) && [NSApp.mainMenu performKeyEquivalent:e])
+                    continue;
                 if (!e.isARepeat) set_key(e.keyCode, 1);
                 if ((e.modifierFlags & NSEventModifierFlagCommand) && e.keyCode == 0x0C) g_happ_quit = 1;
                 continue;                              /* no beep */

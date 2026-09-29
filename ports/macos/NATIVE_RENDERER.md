@@ -238,6 +238,18 @@ Rules:
    Menus identical. Not native yet: the render-mode, combine and texture
    leaves still reach Metal through the Glide state calls (`host_glide.m`
    turns them into pipeline and fragment state).
+   **Live window size (2026-09-29, after the phases).** The window resizes
+   and goes full screen (green button, View > Enter Full Screen, Ctrl-Cmd-F)
+   without a restart: `native/window.m` keeps the layer's drawable at the
+   view's pixel size (a layer set on a view does not follow it by itself),
+   and the target re-sizes at the next swap. The target is capped at
+   `BR_MAXPIX` (default 8M): a 5K screen's full-screen 4320x3240 cost 13-14 ms
+   of GPU a frame, the capped 3264x2448 about 8, and the present scales it
+   up. Command chords go to the menu bar before the game's key handling.
+   Measured in a race: 800x600, 1600x1200, full screen and back, 60
+   presents/s throughout, misses only during macOS's transitions. While the
+   user drags a window edge AppKit runs its own resize loop on the main
+   thread, so the game holds still until the drag ends.
 4. **Renderer, 2D**: sprite blits as quads; the Glide shim and LFB emulation
    are then dead for the menus.
    **Done 2026-09-29, differently from the plan, on the measurement.** The
