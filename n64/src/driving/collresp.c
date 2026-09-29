@@ -33,6 +33,8 @@ typedef struct BrTipBody {
   float f1E8;                   /* 0x1E8 */
   char pad1ec[0x1f8 - 0x1ec];
   int stuck;                    /* 0x1F8  frames left before it counts as stuck */
+  char pad1fc[0x200 - 0x1fc];
+  unsigned char idle;           /* 0x200  frames with no contact (to 40) */
 } BrTipBody;
 void BrQuatToMat(float m[4][4], void *st);
 void BrMat3MulVecRows(float out[3], float m[4][4], float v[3]);
@@ -50,7 +52,7 @@ void BrMat4InvertScaled(float m[4][4], float out[4][4], float s[3]);
 int BrCollRespBroadPhase(BrTipBody *b, float m[4][4]);
 void func_8025FDE4(void);
 void BrRbStateStep(void *out, void *in, float dt);
-int func_8025DFCC(BrTipBody *b, float m[4][4]);
+int BrCrRespWalk(BrTipBody *b, float m[4][4]);
 void *memcpy(void *d, const void *s, unsigned int n);
 int BrCollRespTipKick(BrTipBody *b);
 
@@ -68,6 +70,12 @@ extern int D_802A4A30;                /* walk the cell backwards (flips every fr
 int func_8025F18C(float x, float y);
 int BrTriCubeTest(float *tri, float *norm);
 void BrCrListPush(void *plane);
+
+extern int D_8026FF18;                /* the game mode; 4 arms the contact-kick path */
+void BrVec3NormaliseF(float v[3]);
+int func_8025B73C(BrTipBody *b, void *plane, int flag, int spin);
+int func_8025BBB8(BrTipBody *b, float *n, void *plane, int flag, float rest);
+void BrCrPlaneResolve(BrTipBody *b, float *pA, float planeD, float *pEdgeN, float *v);
 
 #define ABS(x) ((x) < 0.0f ? -(x) : (x))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
@@ -344,6 +352,145 @@ void BrCrPlaneResolve(BrTipBody *b, float *pA, float planeD, float *pEdgeN, floa
   }
 }
 
+/* WHAT IT DOES: The collision response: walk this frame's contact list,
+ * and for each triangle that still touches the body's box build its plane
+ * (normal, distance, the box corner it drives toward), resolve it and apply
+ * the impulse -- or, in game mode 4, the contact kick for a triangle edge
+ * against a box face -- and on a response push the body back out along the
+ * triangle's normal and restore its orientation.  Counts frames with no
+ * contact in body+0x200 (to 40).  Returns 1 if any contact responded.  The
+ * PC twin is BrCrRespWalk.
+ * RESIDUE (~300): register priority -- the ROM keeps the addresses of all
+ * three plane globals in saved registers and homes m in its argument slot;
+ * ours keeps m and loads D_802A4A2C by address each time, which moves every
+ * saved register and temp after it.  Frame, slots and control flow match. */
+/* @implements 0x8025DFCC tgr BrCrRespWalk */
+int BrCrRespWalk(BrTipBody *b, float m[4][4])
+{
+  BrCrNode *node;
+  float v[9];
+  float nrm[3];
+  float e1[3];
+  float e2[3];
+  BrCrPlane *pP;
+  float planeD;
+  int ret;
+  short cnt;
+  float sign[3];
+  int flag;
+  int spin;
+  int sgn;
+  int r;
+  float d;
+  int unused;                   /* unused, pad: declared, never used; */
+  float dp[3];
+  int pad[2];                   /* the frame holds them */
+
+  ret = 0;
+  cnt = 0;
+  for (node = D_802A4A20; node != 0; node = node->next) {
+    pP = node->plane;
+    BrMat3MulVecRows(&v[0], m, pP->v0);
+    BrMat3MulVecRows(&v[3], m, pP->v1);
+    BrMat3MulVecRows(&v[6], m, pP->v2);
+    e1[0] = v[3] - v[0];
+    e1[1] = v[4] - v[1];
+    e1[2] = v[5] - v[2];
+    e2[0] = v[6] - v[0];
+    e2[1] = v[7] - v[1];
+    e2[2] = v[8] - v[2];
+    nrm[0] = e1[1] * e2[2] - e2[1] * e1[2];
+    nrm[1] = e1[2] * e2[0] - e2[2] * e1[0];
+    nrm[2] = e1[0] * e2[1] - e2[0] * e1[1];
+    if (BrTriCubeTest(v, nrm) != 0) {
+      BrVec3NormaliseF(nrm);
+      flag = 1;
+      D_802A4A28 = 0;
+      cnt++;
+      planeD = v[2] * nrm[2] + nrm[0] * v[0] + nrm[1] * v[1];
+      if (D_8026FF18 == 4) {
+        if ((nrm[0] < 0.0f ? -nrm[0] : nrm[0]) <= 0.999f
+            && (nrm[1] < 0.0f ? -nrm[1] : nrm[1]) <= 0.999f
+            && (nrm[2] < 0.0f ? -nrm[2] : nrm[2]) <= 0.999f) {
+          if ((planeD < 0.0f ? -planeD : planeD) < 0.5f) {
+            osSyncPrintf("Triangle Edge to CubeFace\n");
+            spin = 0;
+            D_802A4A28 = 2;
+          }
+        } else {
+          D_802A4A28 = 1;
+          osSyncPrintf("Wank CT1 case\n");
+          spin = 1;
+        }
+      }
+      osSyncPrintf("Cube Edge to Triangle Face\n");
+      e1[0] = nrm[0] * planeD;
+      e1[1] = nrm[1] * planeD;
+      e1[2] = nrm[2] * planeD;
+      if (e1[0] < 0) {
+        sgn = -1;
+      } else {
+        sgn = 1;
+      }
+      sign[0] = sgn * 0.5f;
+      if (e1[1] < 0) {
+        sgn = -1;
+      } else {
+        sgn = 1;
+      }
+      sign[1] = sgn * 0.5f;
+      if (e1[2] < 0) {
+        sgn = -1;
+      } else {
+        sgn = 1;
+      }
+      sign[2] = sgn * 0.5f;
+      D_8037EAA8[0] = sign[0] * b->f1DC;
+      D_8037EAA8[1] = sign[1] * b->f1E0;
+      D_8037EAA8[2] = sign[2] * b->f1E4 + b->f1E8;
+      D_802A4A2C = pP;
+      BrCrPlaneResolve(b, nrm, planeD, sign, v);
+      if (b->m[2][2] > 0.5f) {
+        flag = 0;
+      }
+      if (flag) {
+        osSyncPrintf("Resistive collision %10.3f\n", b->m[2][2]);
+      }
+      if (D_802A4A28 != 1) {
+        r = func_8025BBB8(b, D_8037EAA8, D_802A4A2C, flag, 0.0f);
+      } else {
+        r = func_8025B73C(b, D_802A4A2C, flag, spin);
+      }
+      if (r != 0) {
+        ret = 1;
+        dp[0] = b->cur[0] - b->state[0];
+        dp[1] = b->cur[1] - b->state[1];
+        dp[2] = b->cur[2] - b->state[2];
+        d = (pP->n[2] * dp[2] + dp[0] * pP->n[0] + dp[1] * pP->n[1]) * 1.1;
+        dp[0] = pP->n[0] * d;
+        dp[1] = pP->n[1] * d;
+        dp[2] = pP->n[2] * d;
+        b->cur[0] = b->cur[0] - dp[0];
+        b->cur[1] = b->cur[1] - dp[1];
+        b->cur[2] = b->cur[2] - dp[2];
+        b->cur[6] = b->state[6];
+        b->cur[7] = b->state[7];
+        b->cur[8] = b->state[8];
+        BrRbQuatDerivative(b->cur);
+        BrQuatToMat(b->m, b->cur);
+      }
+    }
+  }
+  if (cnt == 0) {
+    if (b->idle < 40) {
+      b->idle++;
+    }
+  } else {
+    b->idle = 0;
+  }
+  return ret;
+}
+
 /* WHAT IT DOES: One frame of a car body's position physics in 1/120 s
  * substeps: clear the contact list and the shared plane, gather the nearby
  * track once, then (kicking a car standing on its nose upright) collide
@@ -392,7 +539,7 @@ void BrCarPhysAdvance(BrTipBody *b)
     BrQuatToMat(b->m, b->cur);
     BrMat4InvertScaled(b->m, m, s);
     m[3][2] -= b->f1E8;
-    if (func_8025DFCC(b, m) != 0) {
+    if (BrCrRespWalk(b, m) != 0) {
       BrRbQuatDerivative(b->cur);
       BrQuatToMat(b->m, b->cur);
     }
