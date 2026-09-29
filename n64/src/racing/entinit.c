@@ -604,6 +604,7 @@ void BrCarSetVel(BrCar *car, float x, float y, float z)
 {
   BrVec3 *v;
 
+  v = &car->velfd8;
   car->st.vel.x = x;
   car->st.vel.y = y;
   car->st.vel.z = z;
