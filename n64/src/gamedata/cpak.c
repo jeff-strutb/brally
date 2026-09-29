@@ -698,15 +698,18 @@ LAB_802162c8:
  * a pak reported inconsistent), then read every file's state and fail if
  * a readable one belongs to another game (not company NGRE, game 5D).
  * Returns 1 when the pak can be used.
- * RESIDUE (3): the ROM's frame is 0x80 with the file-count word at
- * sp+0x64 (24 unreferenced bytes above it, 52 below); ours is 0x40. */
+ * The ROM's frame is 0x80 with the file-count word at sp+0x64: two
+ * declared, never-used buffers around it (24 bytes above, 40 below) hold
+ * their slots under IDO. */
 /* @implements 0x80254620 tgr BrPakCheckFiles */
 int BrPakCheckFiles(void)
 {
   static unsigned short bad = 0;          /* 0x8028DDA0: files whose state would not read */
   static int used;                        /* 0x8036A278 */
   static BrPfsState states[16];           /* 0x8036A280 */
+  char unusedA[24];
   int maxFiles;
+  char unusedB[40];
   int i;
 
   D_802A4BE8 = 0;
