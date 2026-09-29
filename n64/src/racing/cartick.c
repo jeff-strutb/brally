@@ -22,16 +22,47 @@ typedef struct BrPathSeg {      /* a path segment */
   char pad18[0x40 - 0x18];
   BrPathPt pt[1];               /* 0x40 */
 } BrPathSeg;
+typedef struct BrTrackTri {     /* a collision triangle's record (8 bytes) */
+  short x0;
+  short x2;
+  short x4;
+  unsigned short surface;       /* 0x06  its surface id */
+} BrTrackTri;
 typedef struct BrTrackPaths {   /* the loaded track's header */
-  char pad00[0x28];
+  char pad00[0x0C];
+  BrTrackTri *tris;             /* 0x0C */
+  char pad10[0x28 - 0x10];
   float x28;                    /* 0x28 */
   float x2c;                    /* 0x2C */
-  char pad30[0x70 - 0x30];
+  char pad30[0x38 - 0x30];
+  float x38;                    /* 0x38 */
+  float x3c;                    /* 0x3C */
+  char pad40[0x70 - 0x40];
   BrPathSeg *path;              /* 0x70  the path's first segment */
   char pad74[0x78 - 0x74];
   BrPathSeg **segs;             /* 0x78  every segment */
   int nSegs;                    /* 0x7C */
+  char pad80[0x8C - 0x80];
+  unsigned short *triggers;     /* 0x8C  zero-terminated trigger id lists */
+  unsigned short *triTrigger;   /* 0x90  each triangle's list in triggers */
 } BrTrackPaths;
+typedef struct BrCollPlane {    /* a collision triangle's plane (0x20 bytes) */
+  BrVec3 n;                     /* its normal */
+  float d;
+  BrVec3 *v0;                   /* 0x10  its corners */
+  BrVec3 *v1;
+  BrVec3 *v2;
+  short tri;                    /* 0x1C  its triangle */
+  short x1e;
+} BrCollPlane;
+extern BrCollPlane D_80379F80[][150];   /* each grid cell's collision planes */
+extern unsigned short D_8037EA88[];     /* and how many */
+extern BrVec3 D_8028B318;               /* the default normals */
+extern BrVec3 D_8028B324;
+int func_8025F18C(float x, float y);
+void BrVec3Negate(BrVec3 *out, BrVec3 *v);
+void BrVec3MulAdd(BrVec3 *out, BrVec3 *a, BrVec3 *b, float s);
+int BrTriContainsPoint(BrVec3 *pPt, BrVec3 *pA, BrVec3 *pB, BrVec3 *pC, BrVec3 *pRef);
 extern BrTrackPaths D_80025C00;
 extern BrPathSeg *D_80025C70;           /* the track's path (0 before a track loads) */
 int BrFloatToInt(float f);
@@ -63,7 +94,8 @@ typedef struct BrCarWheel {     /* a wheel's rigid body */
 typedef struct BrViewRect { int x; int y; int w; int h; int car; } BrViewRect;
 extern BrViewRect D_8031B2C8[2];        /* the players' views */
 extern int D_8028AB0C;                  /* number of views */
-int func_8021F380();
+int BrGroundRay(BrVec3 *pPosOut, BrVec3 *pNormOut, BrVec3 *pEye, unsigned short *pNearIds, int *pGotHit,
+                unsigned short *pFarIds, int *pFarCount, float *pDistOut, int *pFaceOut);
 void func_80222050(BrCar *car);
 void func_80221940(BrCar *car);
 void func_80221170(BrCar *car);
@@ -239,6 +271,188 @@ void BrCarTickMessages(BrCar *car)
   }
 }
 
+/* WHAT IT DOES: Cast a ray straight down through the collision grid cell
+ * under a point: of the upward-facing triangles it crosses, the nearest at
+ * or below 1.5 above the point gives the ground height, normal, triangle and
+ * the distance down to it, and each one hit adds its surface to the near
+ * list (and, within 5, its triggers to the far list); failing any, the
+ * nearest just above (within 1) stands in.  Returns how many were hit.
+ * Ported from the PC twin (the collision ray); the u locals are declared
+ * and unused (the ROM frame keeps their slots).
+ * RESIDUE (387): the loop end is a spilled temp at 0x9C in the ROM (ours sits
+ * elsewhere), which with FP colouring shifts most rows; frame, named slots,
+ * structure and calls match. */
+/* @implements 0x8021F380 tgr BrGroundRay */
+int BrGroundRay(BrVec3 *pPosOut, BrVec3 *pNormOut, BrVec3 *pEye, unsigned short *pNearIds, int *pGotHit,
+                unsigned short *pFarIds, int *pFarCount, float *pDistOut, int *pFaceOut)
+{
+  int hitCount;
+  int nearCount;
+  int farCount;
+  float dt;
+  BrVec3 dir;
+  float bestFarHitZ;
+  float bestNearHitZ;
+  float bestNearDist;
+  float bestFarDist;
+  BrVec3 tmpV;
+  float t;
+  int u0;
+  int u1;
+  BrVec3 hitPt;
+  BrVec3 origin;
+  float dist;
+  int u2;
+  unsigned short farFaceVal;
+  unsigned short farFaceIdx;
+  BrCollPlane *pP;
+  BrCollPlane *pEnd;
+  int ci;
+  int cell;
+  int u3;
+  int u4;
+  BrVec3 bestFarNorm;
+  BrVec3 bestNearNorm;
+  int u6[8];
+
+  bestFarNorm = D_8028B318;
+  bestNearNorm = D_8028B324;
+  dt = D_80025C00.x3c - D_80025C00.x38;
+  bestNearDist = dt * dt + 1.0f;
+  farFaceVal = 0;
+  farFaceIdx = 0;
+  bestNearHitZ = pEye->z;
+  bestFarHitZ = pEye->z;
+  dir.x = 0.0f;
+  dir.y = 0.0f;
+  dir.z = 1.0f;
+  origin.y = pEye->y;
+  origin.x = pEye->x;
+  origin.z = 1.0f;
+  hitCount = 0;
+  *pFaceOut = 0;
+  bestFarDist = bestNearDist;
+  nearCount = 0;
+  farCount = 0;
+  cell = func_8025F18C(origin.x, origin.y);
+  pP = D_80379F80[cell];
+  pEnd = pP + D_8037EA88[cell];
+  for (; pP != pEnd; pP++) {
+    if (pP->n.z < 0.0f) {
+      continue;
+    }
+    dist = BrVec3Dot(&dir, &pP->n);
+    if (dist == 0) {
+      continue;
+    }
+    BrVec3Sub(&tmpV, pP->v0, &origin);
+    t = BrVec3Dot(&tmpV, &pP->n) / dist;
+    BrVec3MulAdd(&hitPt, &origin, &dir, t);
+    if (!BrTriContainsPoint(&hitPt, pP->v0, pP->v1, pP->v2, &pP->n)) {
+      continue;
+    }
+    dist = pEye->z + 1.5f - hitPt.z;
+    if (dist >= 0.0f) {
+      hitCount++;
+      if (dist < bestNearDist) {
+        bestNearDist = dist;
+        *pFaceOut = pP->tri;
+        bestNearHitZ = hitPt.z;
+        if (pP->n.z < 0.0f) {
+          BrVec3Negate(&bestNearNorm, &pP->n);
+        } else {
+          bestNearNorm.x = pP->n.x;
+          bestNearNorm.y = pP->n.y;
+          bestNearNorm.z = pP->n.z;
+        }
+        if (nearCount < 32) {
+          pNearIds[nearCount++] = pNearIds[0];
+        }
+        pNearIds[0] = D_80025C00.tris[pP->tri].surface + 1;
+        if (dist < 5.0f) {
+          ci = D_80025C00.triTrigger[pP->tri];
+          if (D_80025C00.triggers[ci] != 0) {
+            do {
+              if (farCount < 32) {
+                pFarIds[farCount++] = pFarIds[0];
+              }
+              pFarIds[0] = D_80025C00.triggers[ci];
+              ci++;
+            } while (D_80025C00.triggers[ci] != 0);
+          }
+        }
+      } else if (nearCount < 32) {
+        pNearIds[nearCount++] = D_80025C00.tris[pP->tri].surface + 1;
+        if (dist < 5.0f) {
+          ci = D_80025C00.triTrigger[pP->tri];
+          if (D_80025C00.triggers[ci] != 0) {
+            do {
+              if (farCount < 32) {
+                pFarIds[farCount++] = D_80025C00.triggers[ci];
+              }
+              ci++;
+            } while (D_80025C00.triggers[ci] != 0);
+          }
+        }
+      }
+    }
+    dist -= 1.5f;
+    if (dist <= 0.0f && dist < bestFarDist) {
+      farFaceVal = D_80025C00.tris[pP->tri].surface + 1;
+      if (-1.0f < dist) {
+        bestFarDist = dist;
+        farFaceIdx = pP->tri;
+        bestFarHitZ = hitPt.z;
+        if (pP->n.z < 0.0f) {
+          BrVec3Negate(&bestFarNorm, &pP->n);
+        } else {
+          bestFarNorm.x = pP->n.x;
+          bestFarNorm.y = pP->n.y;
+          bestFarNorm.z = pP->n.z;
+        }
+      }
+    }
+  }
+  if (hitCount != 0) {
+    if (pPosOut != 0) {
+      pPosOut->z = bestNearHitZ;
+      *pDistOut = bestNearDist - 1.5f;
+    }
+    if (pNormOut != 0) {
+      pNormOut->x = bestNearNorm.x;
+      pNormOut->y = bestNearNorm.y;
+      pNormOut->z = bestNearNorm.z;
+    }
+  } else {
+    ci = D_80025C00.triTrigger[farFaceIdx];
+    while (D_80025C00.triggers[ci] != 0) {
+      if (farCount < 32) {
+        pFarIds[farCount++] = D_80025C00.triggers[ci];
+      } else {
+        pFarIds[31] = D_80025C00.triggers[ci];
+        break;
+      }
+      ci++;
+    }
+    if (nearCount < 32) {
+      pNearIds[nearCount] = farFaceVal;
+    } else {
+      pNearIds[31] = farFaceVal;
+    }
+    if (pPosOut != 0) {
+      pPosOut->z = bestFarHitZ;
+    }
+    if (pNormOut != 0) {
+      pNormOut->x = bestFarNorm.x;
+      pNormOut->y = bestFarNorm.y;
+      pNormOut->z = bestFarNorm.z;
+    }
+  }
+  *pGotHit = 1;
+  *pFarCount = farCount;
+  return hitCount;
+}
+
 /* WHAT IT DOES: Put the car in its 32-unit cell of the 64 by 64 track grid
  * (held to the grid's edges) and update the grid's record of it. */
 /* @implements 0x8021F2D8 tgr BrCarGridCell */
@@ -325,8 +539,8 @@ void BrCarPhysTick(BrCar *car)
       BrPadConsume(car->pad, 0x10);
     }
   } else {
-    car->xfd4 = func_8021F380(car->mtx0[3], car->mtx0[2], car->mtx0[3], car->x1fc0, &car->x2000,
-                              car->x2004, &car->x2044, &car->x2048, &car->x204c);
+    car->xfd4 = BrGroundRay((BrVec3 *)car->mtx0[3], (BrVec3 *)car->mtx0[2], (BrVec3 *)car->mtx0[3], car->x1fc0, &car->x2000,
+                             (unsigned short *)car->x2004, &car->x2044, (float *)&car->x2048, &car->x204c);
     car->wheel[0]->x1c0 = car->wheel[1]->x1c0 = 0.0f;
     func_80222050(car);
     car->wheel[2]->x1c0 = car->wheel[3]->x1c0 = car->xdf0;
