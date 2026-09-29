@@ -430,6 +430,7 @@ va,name,kind
 8024D6B8,BrPaintPaletteDraw,func
 8024D7D8,BrPaintGet,func
 8024D844,BrPaintPeek,func
+8024D89C,BrPaintBrushSelect,func
 8024EC30,BrPaintTextStamp,func
 8024F000,BrPaintLine,func
 8024F25C,BrPaintPlot,func

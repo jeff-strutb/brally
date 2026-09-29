@@ -185,6 +185,10 @@ extern BrImage D_8028D260;              /* the text box under it */
 extern unsigned char D_8028DBA4;        /* the key under the cursor */
 extern char D_80369EA8[];               /* the typed text */
 void BrImageDrawTinted(BrImage *img, unsigned char r, unsigned char g, unsigned char b);
+extern BrImage D_8028D410;              /* the round brush picture */
+typedef struct { char *n[2]; } BrPaintNames2;
+extern BrPaintNames2 D_8028DCE4;       /* "ROUND BRUSH", "SQUARE BRUSH" */
+extern unsigned char D_8028CE9C;        /* the chosen brush shape */
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Take the chosen preset's rectangle, and make every view
@@ -633,6 +637,74 @@ unsigned char BrPaintPeek(unsigned char *tex, int x, int y)
     c = tex[o] >> 4;
   }
   return c;
+}
+
+/* WHAT IT DOES: The paint shop's brush-shape chooser: a box with the round
+ * brush picture and a square, the chosen one outlined, and its name, with
+ * A (select) and B (cancel) buttons; left or right swaps the choice, A
+ * keeps it and B restores the previous one, both closing the box.
+ * RESIDUE (5): the button row's y spills to sp+0x30 where the ROM uses
+ * sp+0x38 (the ROM's frame holds no slots for pad and pressed), and one
+ * lui is scheduled a slot later. */
+/* @implements 0x8024D89C tgr BrPaintBrushSelect */
+void BrPaintBrushSelect(void)
+{
+  char spare[28];               /* declared, never used: the frame holds it */
+  int y;
+  int bx;
+  BrPaintNames2 names;
+  BrPadRec *pad;
+  unsigned int pressed;
+
+  names = D_8028DCE4;
+  y = 322 - D_8028D0B0.w;
+  bx = 349 - D_8028D0E0.w;
+  func_80246F90(200, 0x96, 0xf0, 0xb4, 3, 0, 0, 0x80, 0x80, 0x80);
+  if (D_8028DBC0 != 0) {
+    D_8028DBB8 = D_8028CE9C;
+    D_8028DBC0 = 0;
+  }
+  BrTextSetFont(15);
+  BrTextAlignCentre();
+  BrTextHighlightOff();
+  BrTextPrint("%rySELECT STYLE", 159, 91);
+  if (D_8028DBB8 == 0) {
+    BrImageDrawRect(&D_8028D410, 250, 200, D_8028D410.drawW, D_8028D410.drawH, 0x20, 200, 0xff);
+  } else {
+    BrImageDrawRect(&D_8028D410, 250, 200, D_8028D410.drawW, D_8028D410.drawH, 0, 0, 0);
+  }
+  if (D_8028DBB8 == 1) {
+    BrFillRect(D_8028D410.drawW + 276, 202, 38, 38, 0x20, 200, 0xff);
+  } else {
+    BrFillRect(D_8028D410.drawW + 276, 202, 38, 38, 0, 0, 0);
+  }
+  func_80246F90(0xe0, 0xff, 0xc0, 0x1e, 1, 1, 1, 0x80, 0x80, 0x80);
+  BrTextSetFont(11);
+  BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
+  BrTextPrint(names.n[D_8028DBB8], 159, 138);
+  BrImageDrawAt(&D_8028D0B0, 216, y);
+  BrImageDrawAt(&D_8028D0E0, bx, y);
+  BrTextSetFont(10);
+  BrTextAlignLeft();
+  BrTextPrint("%wwSELECT", (unsigned int)(D_8028D0B0.w + 222) >> 1, (y + 18) >> 1);
+  BrTextPrint("%wwCANCEL", (unsigned int)(bx + D_8028D0E0.w + 6) >> 1, (y + 18) >> 1);
+  BrPadStickToButtons(&PADS[D_8028DBBC]);
+  pad = &PADS[D_8028DBBC];
+  pressed = pad->pressed;
+  if (pressed & 5) {
+    BrPadConsume((unsigned int *)pad, 5);
+    D_8028DBB8 ^= 1;
+    pad = &PADS[D_8028DBBC];
+    pressed = pad->pressed;
+  }
+  if (pressed & 0x10) {
+    BrPadConsume((unsigned int *)pad, 0x10);
+    D_8028CE9C = D_8028DBB8;
+    D_8028DBE0 = 0;
+  } else if (pressed & 0x20) {
+    BrPadConsume((unsigned int *)pad, 0x20);
+    D_8028DBE0 = 0;
+  }
 }
 
 /* WHAT IT DOES: Stamp the typed text into the decal at a screen point (a
