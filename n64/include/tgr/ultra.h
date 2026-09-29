@@ -420,4 +420,21 @@ extern OSViMode osViModeMpalLan1;
 extern OSViMode osViModeNtscLan1;
 void bzero(void *p, int len);
 
+#define VI_ORIGIN_REG 0x04400004
+#define VI_WIDTH_REG 0x04400008
+#define VI_INTR_REG 0x0440000C
+#define VI_V_CURRENT_LINE_REG 0x04400010
+#define VI_BURST_REG 0x04400014
+#define VI_V_SYNC_REG 0x04400018
+#define VI_H_SYNC_REG 0x0440001C
+#define VI_LEAP_REG 0x04400020
+#define VI_H_START_REG 0x04400024
+#define VI_V_START_REG 0x04400028
+#define VI_V_BURST_REG 0x0440002C
+#define VI_X_SCALE_REG 0x04400030
+#define VI_Y_SCALE_REG 0x04400034
+#define VI_SCALE_MASK 0xfff
+#define VI_2_10_FPART_MASK 0x3ff
+#define VI_SUBPIXEL_SH 0x10
+
 #endif
