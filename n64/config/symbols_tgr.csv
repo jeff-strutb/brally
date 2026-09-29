@@ -420,6 +420,7 @@ va,name,kind
 80253460,BrPaintCharset,func
 80254620,BrPakCheckFiles,func
 80254870,BrStub80254870,func
+80254878,BrDebugPrint,func
 80254D4C,BrObjViewReset,func
 80254D90,BrObjSelCycle,func
 80254E3C,BrObjViewFrame,func
