@@ -690,6 +690,7 @@ va,name,kind
 8026BA10,__osSetFpcCsr,func
 8026BAC0,osInvalICache,func
 8026BB40,osMapTLBRdb,func
+8026BBA0,bzero,func
 8026BC40,__osTimerServicesInit,func
 8026BCCC,__osTimerInterrupt,func
 8026BE44,__osSetTimerIntr,func
@@ -716,6 +717,7 @@ va,name,kind
 802A6148,osViClock,data
 802A6160,__osViDevMgr,data
 802A6180,__osPiDevMgr,data
+802A61C0,vi,data
 802A6220,__osViCurr,data
 802A6224,__osViNext,data
 802A6280,__osSiAccessQueueEnabled,data
@@ -726,6 +728,9 @@ va,name,kind
 802A62A4,__osFaultedThread,data
 802A62D0,__osTimerList,data
 802A62E0,__osPiAccessQueueEnabled,data
+802A62F0,osViModePalLan1,data
+802A6340,osViModeMpalLan1,data
+802A6390,osViModeNtscLan1,data
 802ABA80,__libm_qnan_f,data
 802ABC00,gspF3DEX_fifoDataStart,data
 8037F370,__osEventStateTab,data

@@ -409,4 +409,15 @@ void __osViSwapContext(void);
 void __osTimerServicesInit(void);
 void __osTimerInterrupt(void);
 
+#define VI_CONTROL_REG 0x04400000
+#define VI_CURRENT_REG 0x04400010
+#define OS_TV_PAL 0
+#define OS_TV_NTSC 1
+#define OS_TV_MPAL 2
+extern s32 osTvType;
+extern OSViMode osViModePalLan1;
+extern OSViMode osViModeMpalLan1;
+extern OSViMode osViModeNtscLan1;
+void bzero(void *p, int len);
+
 #endif
