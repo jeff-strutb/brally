@@ -280,6 +280,7 @@ va,name,kind
 80229510,BrRankCmpKey,func
 80229550,BrRankUpdate,func
 80229700,BrCarSlotSwap,func
+8022A0E0,BrRaceGateStep,func
 8022ADCC,BrVarListSave,func
 8022AE70,BrVarListLoad,func
 8022AED8,BrVarSaveAll,func
