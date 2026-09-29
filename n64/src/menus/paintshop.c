@@ -167,6 +167,13 @@ typedef struct BrPadRec {       /* as tgr/pad.h (0x15C bytes) */
   char pad20[0x15c - 0x20];
 } BrPadRec;
 #define PADS ((BrPadRec *)&D_8036A8E0)
+void BrImageDrawRect(BrImage *img, int x, int y, int w, int h, unsigned char r, unsigned char g, unsigned char b);
+void BrTextAlignCentre(void);
+void BrPadStickToButtons(BrPadRec *pad);
+extern unsigned char D_8028DBB8;       /* the chosen decal style */
+extern BrImage *D_8028DB34[4];         /* the four style pictures */
+typedef struct { char *n[4]; } BrPaintNames;
+extern BrPaintNames D_8028DCF4;        /* the four style names */
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Take the chosen preset's rectangle, and make every view
@@ -578,6 +585,87 @@ void BrPaintTextStamp(int sx, int sy)
       kern = D_80369E68[i]->kernR < D_80369E68[i + 1]->kernL ? D_80369E68[i]->kernR : D_80369E68[i + 1]->kernL;
       x += D_80369E68[i]->w - kern + 2;
     }
+  }
+}
+
+/* WHAT IT DOES: The paint shop's decal-style chooser: a box with the four
+ * style pictures (the chosen one outlined) and the chosen style's name,
+ * A (select) and B (cancel) buttons under it; left and right move the
+ * choice round, A keeps it and B restores the previous one, both closing
+ * the box.  The four names are a local copy of the table at 0x8028DCF4.
+ * RESIDUE (100): the loop's picture pointer and x sit in s2/s1 where the ROM
+ * has s1/s2, and after a left or right move the ROM rebuilds the pad's
+ * address with shifts instead of reusing the saved base, index and 0x15C. */
+/* @implements 0x8024F39C tgr BrPaintStyleSelect */
+void BrPaintStyleSelect(void)
+{
+  char spare[24];               /* declared, never used: the frame holds it */
+  int x;
+  int i;
+  int y;
+  int bx;
+  BrPaintNames names;
+  BrPadRec *pad;
+  unsigned int pressed;
+
+  names = D_8028DCF4;
+  y = 323 - D_8028D0B0.w;
+  bx = 353 - D_8028D0E0.w;
+  func_80246F90(0x9f, 0x95, 0x142, 0xb6, 3, 0, 0, 0x80, 0x80, 0x80);
+  BrTextSetFont(16);
+  BrTextAlignCentre();
+  BrTextHighlightOff();
+  BrTextPrint("%rySELECT STYLE", 159, 92);
+  if (D_8028DBC0 != 0) {
+    D_8028DBC0 = 0;
+    D_8028DBB8 = D_8028CF5C;
+  }
+  for (i = 0, x = 175; i < 4; i++, x += 76) {
+    if (i == D_8028DBB8) {
+      BrImageDrawRect(D_8028DB34[i], x, 203, D_8028DB34[i]->drawW, D_8028DB34[i]->drawH, 0x20, 200, 0xff);
+    } else {
+      BrImageDrawAt(D_8028DB34[i], x, 203);
+    }
+  }
+  func_80246F90(0xb1, 0x103, 0x11e, 0x1e, 1, 1, 1, 0x80, 0x80, 0x80);
+  BrTextSetFont(11);
+  BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
+  BrTextPrint(names.n[D_8028DBB8], 159, 140);
+  BrTextSetFont(10);
+  BrTextAlignLeft();
+  BrTextPrint("%wwSELECT", (unsigned int)(D_8028D0B0.w + 219) >> 1, (y + 18) >> 1);
+  BrTextPrint("%wwCANCEL", (unsigned int)(bx + D_8028D0E0.w + 6) >> 1, (y + 18) >> 1);
+  BrImageDrawAt(&D_8028D0B0, 213, y);
+  BrImageDrawAt(&D_8028D0E0, bx, y);
+  BrPadStickToButtons(&PADS[D_8028DBBC]);
+  pad = &PADS[D_8028DBBC];
+  pressed = pad->pressed;
+  if (pressed & 4) {
+    BrPadConsume((unsigned int *)pad, 4);
+    if (D_8028DBB8 == 0) {
+      D_8028DBB8 = 3;
+    } else {
+      D_8028DBB8--;
+    }
+    pad = &PADS[D_8028DBBC];
+    pressed = pad->pressed;
+  } else if (pressed & 1) {
+    BrPadConsume((unsigned int *)pad, 1);
+    if (D_8028DBB8 == 3) {
+      D_8028DBB8 = 0;
+    } else {
+      D_8028DBB8++;
+    }
+    pad = &PADS[D_8028DBBC];
+    pressed = pad->pressed;
+  }
+  if (pressed & 0x10) {
+    BrPadConsume((unsigned int *)pad, 0x10);
+    D_8028CF5C = D_8028DBB8;
+    D_8028DBE0 = 0;
+  } else if (pressed & 0x20) {
+    BrPadConsume((unsigned int *)pad, 0x20);
+    D_8028DBE0 = 0;
   }
 }
 
@@ -1181,16 +1269,22 @@ void BrPaintDashLine(int x0, int y0, int x1, int y1)
  * (either order): the edges in 4-pixel dashes alternating between the two
  * dash colours (swapped every 8 frames), top, right, bottom then left, the
  * right and left edges finished with a 2-pixel stub at the bottom.
- * RESIDUE (143): the ROM's frame is 8 smaller with the dash colour byte at
- * sp+0x59, and its saved registers go on, x, y where ours go y, x, on;
- * swap temps and local order leave it. */
+ * The colour is never set when no dash is drawn before a stub, so the stub
+ * takes whatever byte sits in c's home (sp+0x59, after c1 and c2); t holds
+ * y1 - 1 for the two stubs.
+ * RESIDUE (60): saved-register choice -- the ROM keeps on, x, y in s1, s2,
+ * s3 (ours x, y, on) and toggles on as (on + 1) & 1 straight into its
+ * register; declaration order and every toggle spelling leave it. */
 /* @implements 0x80251CD4 tgr BrPaintDashRect */
 void BrPaintDashRect(int x0, int y0, int x1, int y1)
 {
   int x;
   int y;
   int on;
+  char c1;                      /* c1, c2: declared, never used; */
+  char c2;                      /* they put c at sp+0x59 */
   unsigned char c;
+  int t;
 
   on = 0;
   if ((++D_8028DBB0 & 7) == 0) {
@@ -1207,27 +1301,28 @@ void BrPaintDashRect(int x0, int y0, int x1, int y1)
     y1 = y;
   }
   for (x = x0; x < x1 - 4; x += 4) {
-    on = (on + 1) & 1;
+    on ^= 1;
     c = on ? D_8028DAB8 : D_8028DABC;
     BrFillRect(x, y0, 4, 1, c, c, c);
   }
   for (y = y0; y < y1 - 4; y += 4) {
-    on = (on + 1) & 1;
+    on ^= 1;
     c = on ? D_8028DAB8 : D_8028DABC;
     BrFillRect(x1, y, 1, 4, c, c, c);
   }
-  BrFillRect(x1, y1 - 1, 1, 2, c, c, c);
+  t = y1 - 1;
+  BrFillRect(x1, t, 1, 2, c, c, c);
   for (x = x0; x < x1 - 4; x += 4) {
-    on = (on + 1) & 1;
+    on ^= 1;
     c = on ? D_8028DAB8 : D_8028DABC;
     BrFillRect(x, y1, 4, 1, c, c, c);
   }
   for (y = y0; y < y1 - 4; y += 4) {
-    on = (on + 1) & 1;
+    on ^= 1;
     c = on ? D_8028DAB8 : D_8028DABC;
     BrFillRect(x0, y, 1, 4, c, c, c);
   }
-  BrFillRect(x0, y1 - 1, 1, 2, c, c, c);
+  BrFillRect(x0, t, 1, 2, c, c, c);
 }
 
 
