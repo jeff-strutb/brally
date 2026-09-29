@@ -42,8 +42,8 @@ void BrRbQuatDerivative(void *st);
 
 extern int D_802A4A28;
 extern void *D_802A4A2C;
-extern float D_8037EAA8[3];           /* the shared contact plane's normal */
-extern float D_8037EAC8[3];
+extern float D_8037EAA8[4];           /* the shared contact plane: normal and w */
+extern float D_8037EAC8[3];           /* the push-out it gives */
 extern BrCrNode D_80379940[];         /* the contact-list nodes */
 void BrPerfMark(int a, int r, int g, int b, int al);
 void BrMat4InvertScaled(float m[4][4], float out[4][4], float s[3]);
@@ -276,6 +276,73 @@ int BrCollRespTipKick(BrTipBody *b)
   return 1;
 }
 
+
+/* WHAT IT DOES: Turn one candidate contact into a push-out: the contact
+ * normal scaled by how far the point lies from the plane -- with the plane
+ * given (mode other than 2) or, for the box-face case, after picking the
+ * box face the triangle's centroid lies most flush against (sign from the
+ * centroid's x) and scaling the face by the body's extents.  The PC twin is
+ * BrCrPlaneResolve. */
+/* @implements 0x8025DCB8 tgr BrCrPlaneResolve */
+void BrCrPlaneResolve(BrTipBody *b, float *pA, float planeD, float *pEdgeN, float *v)
+{
+  int pad0;                     /* pad0, u: declared, never used; */
+  float c[3];
+  float s;
+  int sgn;
+  int k;
+  float u[3];                   /* the frame holds them */
+
+  if (D_802A4A28 != 2) {
+    s = (pA[0] * pEdgeN[0] + pA[1] * pEdgeN[1] + pA[2] * pEdgeN[2]) - planeD;
+    D_8037EAC8[0] = pA[0] * -s;
+    D_8037EAC8[1] = pA[1] * -s;
+    D_8037EAC8[2] = pA[2] * -s;
+  } else {
+    for (k = 0; k < 3; k++) {
+      c[k] = v[k] + v[k + 3] + v[k + 6];
+      c[k] /= 3.0f;
+    }
+    if ((c[0] < 0.0f ? -c[0] : c[0]) < (c[1] < 0.0f ? -c[1] : c[1])) {
+      if ((c[0] < 0.0f ? -c[0] : c[0]) < (c[2] < 0.0f ? -c[2] : c[2])) {
+        D_8037EAA8[1] = D_8037EAA8[2] = 0.0f;
+        if (c[0] < 0) {
+          sgn = -1;
+        } else {
+          sgn = 1;
+        }
+        D_8037EAA8[0] = sgn * 0.5f;
+        goto face;
+      }
+    } else {
+      if ((c[1] < 0.0f ? -c[1] : c[1]) < (c[2] < 0.0f ? -c[2] : c[2])) {
+        D_8037EAA8[0] = D_8037EAA8[2] = 0.0f;
+        if (c[0] < 0) {
+          sgn = -1;
+        } else {
+          sgn = 1;
+        }
+        D_8037EAA8[1] = sgn * 0.5f;
+        goto face;
+      }
+    }
+    D_8037EAA8[0] = D_8037EAA8[1] = 0.0f;
+    if (!(c[0] < 0)) {
+      sgn = 1;
+    } else {
+      sgn = -1;
+    }
+    D_8037EAA8[2] = sgn * 0.5f;
+  face:
+    s = (pA[0] * D_8037EAA8[0] + pA[1] * D_8037EAA8[1] + pA[2] * D_8037EAA8[2]) - planeD;
+    D_8037EAA8[0] = D_8037EAA8[0] * b->f1DC;
+    D_8037EAA8[0] = D_8037EAA8[0] * b->f1E0;
+    D_8037EAA8[3] = D_8037EAA8[3] * b->f1E4;
+    D_8037EAC8[0] = pA[0] * -s;
+    D_8037EAC8[1] = pA[1] * -s;
+    D_8037EAC8[2] = pA[2] * -s;
+  }
+}
 
 /* WHAT IT DOES: One frame of a car body's position physics in 1/120 s
  * substeps: clear the contact list and the shared plane, gather the nearby
