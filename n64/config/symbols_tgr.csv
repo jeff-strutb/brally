@@ -79,6 +79,7 @@ va,name,kind
 80217E20,BrZBufferClearRect,func
 80217FB8,BrScreenClear,func
 80218104,BrGfxFillRect,func
+802182A8,BrFogSetup,func
 80218C8C,BrFogAmount,func
 80218D5C,BrFrameTintSetup,func
 80219470,BrFrameBegin,func
