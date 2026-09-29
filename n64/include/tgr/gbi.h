@@ -279,4 +279,44 @@ typedef union {
 #define gSPDisplayList(pkt, dl)     gDma1p(pkt, G_DL, dl, 0, G_DL_PUSH)
 #define gSPPerspNormalize(pkt, s)   gMoveWd(pkt, G_MW_PERSPNORM, 0, (s))
 
+#define G_SETGEOMETRYMODE   0xb7
+#define G_CLEARGEOMETRYMODE 0xb6
+#define G_POPMTX            0xbd
+#define G_SETBLENDCOLOR     0xf9
+#define G_MW_LIGHTCOL       0x0a
+#define G_MV_LOOKATY        0x82
+#define G_MV_LOOKATX        0x84
+#define G_MDSFT_ALPHACOMPARE 0
+#define G_MDSFT_ALPHADITHER 4
+#define G_MDSFT_TEXTFILT    12
+#define G_MDSFT_TEXTLUT     14
+#define G_MDSFT_TEXTLOD     16
+#define G_MDSFT_TEXTDETAIL  17
+
+#define gSPSetGeometryMode(pkt, word)   gImmp1(pkt, G_SETGEOMETRYMODE, word)
+#define gSPClearGeometryMode(pkt, word) gImmp1(pkt, G_CLEARGEOMETRYMODE, word)
+#define gSPPopMatrix(pkt, n)            gImmp1(pkt, G_POPMTX, n)
+#define gDPSetBlendColor(pkt, r, g, b, a) \
+    gDPSetColor(pkt, G_SETBLENDCOLOR, (_SHIFTL(r, 24, 8) | _SHIFTL(g, 16, 8) | _SHIFTL(b, 8, 8) | _SHIFTL(a, 0, 8)))
+/* a light's colour goes to both of its copies (0x20 bytes per light) */
+#define gSPLightColor(pkt, n, col)                                      \
+{                                                                       \
+    gMoveWd(pkt, G_MW_LIGHTCOL, ((n) - 1) * 0x20, col);                 \
+    gMoveWd(pkt, G_MW_LIGHTCOL, ((n) - 1) * 0x20 + 4, col);             \
+}
+#define gSPLookAtX(pkt, l)  gDma1p(pkt, G_MOVEMEM, l, 16, G_MV_LOOKATX)
+#define gSPLookAtY(pkt, l)  gDma1p(pkt, G_MOVEMEM, l, 16, G_MV_LOOKATY)
+#define gDPSetAlphaCompare(pkt, type) \
+    gSPSetOtherMode(pkt, G_SETOTHERMODE_L, G_MDSFT_ALPHACOMPARE, 2, type)
+#define gDPSetAlphaDither(pkt, mode) \
+    gSPSetOtherMode(pkt, G_SETOTHERMODE_H, G_MDSFT_ALPHADITHER, 2, mode)
+#define gDPSetTextureFilter(pkt, type) \
+    gSPSetOtherMode(pkt, G_SETOTHERMODE_H, G_MDSFT_TEXTFILT, 2, type)
+#define gDPSetTextureLUT(pkt, type) \
+    gSPSetOtherMode(pkt, G_SETOTHERMODE_H, G_MDSFT_TEXTLUT, 2, type)
+#define gDPSetTextureLOD(pkt, type) \
+    gSPSetOtherMode(pkt, G_SETOTHERMODE_H, G_MDSFT_TEXTLOD, 1, type)
+#define gDPSetTextureDetail(pkt, type) \
+    gSPSetOtherMode(pkt, G_SETOTHERMODE_H, G_MDSFT_TEXTDETAIL, 2, type)
+
 #endif

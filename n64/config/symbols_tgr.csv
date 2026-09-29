@@ -28,6 +28,7 @@ va,name,kind
 80208A58,BrSeasonDrawHelp,func
 80208CF0,BrSeasonDraw,func
 80209434,BrTrackSelectScreen,func
+80209D70,BrModelDraw,func
 8020A524,BrMenuIconDraw,func
 8020A6A4,BrMenuIconDrawScaled,func
 8020A820,BrMenuRingDraw,func
