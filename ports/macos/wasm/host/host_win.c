@@ -11,14 +11,16 @@
 #include <mach/mach_time.h>
 
 /* ============================================================== time == */
-static u64 real_us(void)
+static mach_timebase_info_data_t g_tb;
+static u64 g_t0;
+/* microseconds on the host clock (QueryPerformanceCounter's, less its 1 s
+ * offset) at mach_absolute_time() m; the frame loop converts refresh times */
+u64 hwin_us_at_mach(u64 m)
 {
-    static mach_timebase_info_data_t tb;
-    static u64 t0;
-    u64 t = mach_absolute_time();
-    if (!tb.denom) { mach_timebase_info(&tb); t0 = t; }
-    return (t - t0) * tb.numer / tb.denom / 1000;
+    if (!g_tb.denom) { mach_timebase_info(&g_tb); g_t0 = mach_absolute_time(); }
+    return m < g_t0 ? 0 : (m - g_t0) * g_tb.numer / g_tb.denom / 1000;
 }
+static u64 real_us(void) { return hwin_us_at_mach(mach_absolute_time()); }
 
 /* BR_VCLOCK=ms: virtual time, kept the way brbox keeps it (tools/brbox.py,
  * TICK_MS): a clock read on the main thread costs ms, Sleep(n) there costs n

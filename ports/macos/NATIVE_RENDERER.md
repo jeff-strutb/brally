@@ -1,7 +1,7 @@
 # Spec: a Mac-native renderer and frame loop for the playable port
 
-Status: **phase 1 done** (spec written 2026-09-29; phase 1 the same day, see
-section 5). Scope: the playable Mac
+Status: **phases 1-2 done** (spec written 2026-09-29; phases the same day,
+see section 5). Scope: the playable Mac
 build, `build/wasm/brally` (the 32-bit lane, `ports/macos/wasm/`). The decomp
 (`src/`, `include/`) is not touched: everything here is port code.
 
@@ -197,6 +197,24 @@ Rules:
 2. **Frame loop** on the existing Glide renderer: port-owned pacing, the race's
    `t` from the target present time. Measure section 6. Accept at <= 22 ms p90,
    0 misses in 10k frames, race at 60 presents/s, race clock = wall clock.
+   **Done 2026-09-29** (`native/frame.m`, analysed by `wasm/framelog.py`).
+   Race, 10,000 frames windowed: 59.85 presents/s over 167 s, clock rate
+   1.00000 game ms per presented ms, latency median 44.4 / p90 57.3 / max
+   75.6 ms (was 65 ms, pacing off: `BR_PACE=0`), 103 late frames. The 22 ms
+   target was reached (22-28 ms, frames shown one refresh after the latch)
+   only while WindowServer composited one refresh deep. For most of the day
+   it composited two or three deep: a standalone probe, presenting one clear
+   per refresh, showed every frame two refreshes after its latch whatever the
+   submit phase (0-13 ms before), with or without skipped refreshes, in a
+   window or fullscreen (this display runs a scaled mode, so WindowServer
+   always composites). `CAMetalDisplayLink` (`preferredFrameLatency` 1)
+   targets presentation 2 refreshes after its deadline, so lead + 33 ms at
+   best; `presentDrawable:atTime:` showed frames 4 refreshes after the
+   deadline. So the loop learns the depth (a miss a skip does not cure sets
+   it; 30 early frames lower it) and aims the race clock at it; the 103
+   late frames are the depth changes. Remaining lever, untested: a display
+   mode at the panel's native resolution, where fullscreen can bypass the
+   compositor.
 3. **Renderer, 3D**: leaves replaced; native resolution. Accept by visual
    parity (section 7) on the scripted scenes.
 4. **Renderer, 2D**: sprite blits as quads; the Glide shim and LFB emulation
