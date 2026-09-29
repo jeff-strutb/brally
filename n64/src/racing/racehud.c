@@ -57,6 +57,16 @@ void func_8022F504(void);
 extern int D_80238EBC;
 extern int D_80238F10;
 extern int D_80025C70;
+void BrScissorSet(int x0, int y0, int x1, int y1);
+void func_80237980(void);
+extern int D_802723D8;                 /* speed in mph (else kph) */
+extern char D_80361C30[];              /* the speed text */
+typedef struct BrHudPanel {     /* one per view, 0x14 bytes */
+  short x0;
+  unsigned short h;             /* 0x02  height of the view's top panel */
+  char pad04[0x14 - 0x04];
+} BrHudPanel;
+extern BrHudPanel D_8028C7B4[2];
 /* -- end declarations -- */
 
 /* WHAT IT DOES: The race's frame hook: unless the race has switched the
@@ -502,6 +512,69 @@ void BrHudPositionDraw(void)
     } else if (D_8028AAF0->msgB != 0) {
       func_8022F5D0(small);
       func_8022F5DC(D_8028AAF0->msgB, x, big * 3 / 16 + y);
+    }
+  }
+}
+
+
+/* WHAT IT DOES: The race HUD for the view being drawn: clip to the view,
+ * the arrow and times panels (not from the car's third camera), the lap
+ * counter and position and the car's message, then its speed (never
+ * negative) in kph or mph at the bottom right -- smaller in the two-player
+ * layout, with the units under it in the one-player one.  (From the third
+ * camera in the one-player layout x keeps its first value, 296.) */
+/* @implements 0x80238F30 tgr BrHudDraw */
+void BrHudDraw(void)
+{
+  float speed;
+  int x;
+  int y;
+
+  speed = D_8028AAF0->xfe4[0];
+  BrScissorSet(8, D_8031B2C8[D_8028AAEC].y, 312, D_8031B2C8[D_8028AAEC].h);
+  if (speed < 0.0) {
+    speed = 0.0f;
+  }
+  if (D_8028AAF4 != &D_8028AAF0->cams[2]) {
+    func_80237980();
+    BrHudTimesDraw();
+  }
+  BrHudLapDraw();
+  BrHudPositionDraw();
+  func_8022F4F8();
+  func_8022F520();
+  if (D_802723D8 != 0) {
+    func_80260DD4(D_80361C30, "%%yw%.0f", speed / 1.609344f);
+  } else {
+    func_80260DD4(D_80361C30, "%%yw%.0f", speed);
+  }
+  x = 296;
+  y = D_8031B2C8[D_8028AAEC].y + D_8031B2C8[D_8028AAEC].h - 4;
+  if (D_8028AB0C == 2) {
+    if (D_8028AAF4 != &D_8028AAF0->cams[2]) {
+      y = y - D_8028C7B4[D_8028AAEC].h * 3 / 4 - 1;
+    }
+    func_8022F5D0(15);
+    func_8022F5DC((unsigned char *)D_80361C30, x, y);
+  } else {
+    if (D_8028AAF4 != &D_8028AAF0->cams[2]) {
+      x = 266;
+      y = y - D_8028C7B4[D_8028AAEC].h;
+    }
+    func_8022F5D0(20);
+    if (D_802723D8 != 0) {
+      func_8022F5DC((unsigned char *)D_80361C30, x, y - 3);
+    } else {
+      func_8022F5DC((unsigned char *)D_80361C30, x - 3, y - 3);
+    }
+    if (D_8028AAF4 != &D_8028AAF0->cams[2]) {
+      func_8022F5D0(15);
+      func_8022F514();
+      if (D_802723D8 != 0) {
+        func_8022F5DC((unsigned char *)"%wwmph", x, y - 3);
+      } else {
+        func_8022F5DC((unsigned char *)"%wwkph", x - 3, y - 3);
+      }
     }
   }
 }
