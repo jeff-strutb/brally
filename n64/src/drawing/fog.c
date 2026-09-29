@@ -54,6 +54,7 @@ float BrVec3DistXY(float *pA, float *pB);
  * before the camera's x; ours loads x first (300 permuter compiles). */
 /* @t4-pass 0x802182A8 1 2026-09-29 compiles 150 best 6 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x802182A8 2 2026-09-29 compiles 150 best 6 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x802182A8 */
 /* @implements 0x802182A8 tgr BrFogSetup */
 void BrFogSetup(void)
 {
