@@ -73,7 +73,7 @@ float BrSinF(float a);
  * so the axle-difference divisions are finite, param_2 nonzero divisor);
  * negative-controlled: an integer flag write and a velocity-solve term (svB[0])
  * both DIFF, correct code stays equivalent.  Do not reopen before the
- * end-grind (project rule 12). */
+ * end-grind. */
 /* @implements 0x100645A0 glide BrCarPhysDriveMatch */
 void BrCarPhysDriveMatch(int param_1, float param_2, float *param_3, float *param_4, char *param_5, char *param_6)
 {
@@ -267,7 +267,7 @@ void BrCarPhysDriveMatch(int param_1, float param_2, float *param_3, float *para
                           iVar9) * 4);
     local_84 = *(int *)(&DAT_100b5178 + iVar10);
     fVar7 = *(float *)(DAT_11778820 + iVar10);
-    /* â¼ `speed` (fVar8 - fVar2 above) survives the clamp: the original keeps
+    /* !! `speed` (fVar8 - fVar2 above) survives the clamp: the original keeps
      * it on the x87 stack (`fld st(2)` at +0x484 clamps a COPY) and tests
      * THAT against `hold` at +0x4FE.  Reusing one variable for the clamped
      * value and the ratio made the hold test compare the ratio (~0.3)
@@ -300,7 +300,7 @@ void BrCarPhysDriveMatch(int param_1, float param_2, float *param_3, float *para
       }
     }
     if (!(speed < hold)) {
-      /* orig: mov y-bits, mov x-bits, fld z â integer copies of x/y so the
+      /* orig: mov y-bits, mov x-bits, fld z: integer copies of x/y so the
        * squares go through stack slots, not fld [body+0x84]. */
       local_84 = *(int *)(param_1 + 0x88);
       local_x = *(int *)(param_1 + 0x84);

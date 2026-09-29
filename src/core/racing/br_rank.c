@@ -82,7 +82,7 @@ int BrNetGetA102212D0(int param_1);
  * @t3-effort passes 3 zero-movement 3 4
  * residue after tools/crank.py: 250 compiles this pass, levers accepted: none;
  * every candidate and score is in build/match/crank.log.
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x1005F580 glide BrRankAssign */
 
 void BrRankAssign(void)

@@ -64,7 +64,7 @@ static __inline float BrSq(float a)
  * way round and was 1 ulp off on 566 of 2000 random inputs; this one is
  * bit-identical on all 2000 (differential emulation against 0x10062640).
  * Placed as the /O2 compile (config/t3_variant_c.csv).  Do not reopen
- * before the end-grind (project rule 12). */
+ * before the end-grind. */
 /* @t4-pass 0x10062640 1 2026-09-27 probes 45 bytes 365 insns 126 regions 1 rows 1 census yes  (hand: preamble census -- int pads 0-76, 5 system headers, C and /TP) */
 /* @t4-pass 0x10062640 2 2026-09-27 probes 82 bytes 365 insns 126 regions 1 rows 1 census no  (hand: operand orders, sign forms, copy variables, statement placement of the y*xs / w*zs pair) */
 /* @t4-pass 0x10062640 3 2026-09-27 probes 12 bytes 433 insns 147 regions 3 rows 60 census no  (hand: 12 compiler option sets on the rounding-exact body) */

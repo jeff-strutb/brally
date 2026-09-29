@@ -9,7 +9,7 @@ handed to the session directly (specs in the repo go stale).
     .venv/bin/python tools/t4lane.py --n 30 --max-bytes 400
     .venv/bin/python tools/t4lane.py --claim         # lock Pool B primaries (TOKEN)
 
-‼ LOCK THROUGH THIS TOOL, never `claim_lane.py claim N` (hard error).
+!! LOCK THROUGH THIS TOOL, never `claim_lane.py claim N` (hard error).
 `--claim` with both pools locks Pool B only; Pool A is printed as T3
 candidates. `--pool A --claim` still locks Pool A for a qualify batch.
 

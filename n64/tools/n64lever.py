@@ -8,7 +8,7 @@ A lever is a whole-function rewrite that the ROM, not taste, decides -- the
 Ghidra draft said one thing and the bytes may say another.  Unlike the
 permuter's respellings these can change meaning (`0.0` vs `0.0f`), so a lever
 is kept only when the function gets strictly closer to the ROM AND no other
-function in the file gets further away (project rule 6: surroundings decide
+function in the file gets further away (surroundings decide
 codegen).  The file is rebuilt with n64build.py either way, so verify.csv
 stays current.
 

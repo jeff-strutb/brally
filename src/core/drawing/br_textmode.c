@@ -95,7 +95,7 @@ static __inline void br_corner(short *p, int cx, int cy, float x, float y, float
  * Residue: one load placement -- the reload of v[0] is issued before
  * `fild n` here, after r * v[1] in the original.  Scheduling only; the
  * dossier and dead list are in the body comment.  Do not reopen before the
- * end-grind (project rule 12). */
+ * end-grind. */
 /* @t4-pass 0x1000C9E0 3 2026-09-27 probes 82 bytes 308 insns 99 regions 1 rows 4 census yes  (hand: symbol-table census, extern-int pads 0-1296 ahead of the function) */
 /* @t4-pass 0x1000C9E0 4 2026-09-27 probes 12 bytes 308 insns 99 regions 1 rows 4 census no  (hand: 12 compiler option sets incl. /Ox /Ob0 /Ob2 /G3 /G5 /Gi /TP) */
 /* @implements 0x1000C9E0 glide FUN_1000c9e0 */
@@ -181,7 +181,7 @@ extern int DAT_106ed67c;
  * folds the absolute base into `lea ecx,[edx+A]` where the original keeps
  * ecx and `add ecx,A` (paired by t3.py canon's reloc'd-base lea/add class,
  * ff83432).  Dead probes in the RESIDUE note and the two ledger lines.
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x1000CB20 glide BrViewBuffersRebase */
 
 void BrViewBuffersRebase(void)

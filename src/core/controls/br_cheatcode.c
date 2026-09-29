@@ -98,7 +98,7 @@ extern int          g_brKeyRingPos;     /* 0x10AC5DA0 */
  * @t3-effort passes 4 zero-movement 3 4
  * RESIDUE: register colouring only -- same size; a few register-move choices
  * differ across four small regions (crank 50+ compiles, no byte-exact, census
- * yes). Do not reopen before the end-grind (project rule 12). */
+ * yes). Do not reopen before the end-grind. */
 /* @implements 0x10040A90 glide BrCheatCodeScan */
 void BrCheatCodeScan(void)
 {

@@ -8,7 +8,7 @@ puts `WHAT IT DOES:` and `@implements` above it, merges its declarations into
 the destination file's declaration block, and appends it.  Then the whole
 destination file is rebuilt with n64build.py; if ANY function in it is no
 longer EXACT the file is restored and the move refused -- surroundings decide
-codegen, and a move that costs a neighbour is not a move (project rule 6).
+codegen, and a move that costs a neighbour is not a move.
 
 The name goes into n64/config/symbols_tgr.csv so every other file resolves it.
 

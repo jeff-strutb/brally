@@ -6,7 +6,7 @@
  * @cpp_symbol ?BrUiHook85_1003EE20@@YAHPAVGameObj@@@Z
  *
  * Range-clamped index through a slot-8 vcall on the embedded object at
- * +0x3838 (`add ecx,0x3838` - embedded member, not a pointer load), the
+ * +0x3838 (`add ecx,0x3838`: embedded member, not a pointer load), the
  * result written back to the global when non-negative. No EH.
  */
 #define _CRTIMP __declspec(dllimport)

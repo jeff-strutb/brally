@@ -1,4 +1,4 @@
-/* Auto-generated from disassembly - 0x00401DB0
+/* Auto-generated from disassembly: 0x00401DB0
  * _setdefaultprecision: E8 to the local _controlfp IAT thunk (not FF 15). */
 /* WHAT IT DOES: set the floating-point precision the game expects at start-
  * up. */

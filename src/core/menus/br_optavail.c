@@ -54,7 +54,7 @@ typedef char br06_assert_namelist[
  * `idx -= 16` (paired by t3.py canon, a326268) plus its 1-byte encoding
  * shadow; same fork proven on 0x1006FD50 with the keep-sub mechanisms all
  * inert.  Dossier in the block below; dead probes in the two ledger lines.
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x1003F320 d3d BrOptAvailB */
 /* One argument; every input is a loose global (fAlt and maskPair are each
  * loaded ONCE and live in registers across the whole function).  Raw

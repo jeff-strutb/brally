@@ -10,7 +10,7 @@
  */
 #include <string.h>
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* -- Ghidra-matched functions --------------------------- */
 extern int DAT_10ac5bb4;
 extern int DAT_10ac5e50;
 extern int DAT_10ac6050;
@@ -138,7 +138,7 @@ int FUN_100368a0(HWND param_1, int *param_2, int param_3)
  * residue is the frame-pointer decision: orig is frameless (ebp holds
  * lpFormat, one spill into a dead incoming-arg slot); VC5 emits an ebp
  * frame and a dedicated local.  One xor-zero remat.  Dossier in the
- * RESIDUE block below.  Do not reopen before the end-grind (project rule 12). */
+ * RESIDUE block below.  Do not reopen before the end-grind. */
 /* @implements 0x10036A30 glide FUN_10036a30 */
 /* RESIDUE (2026-09-06): +4 B / +1 insn, REGNORM 1+0. Body is complete and
  * correct -- instruction-for-instruction identical to the original except the

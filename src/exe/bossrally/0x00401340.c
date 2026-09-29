@@ -1,4 +1,4 @@
-/* 0x00401340 WinMain - CPlay && inits; drain/fullscreen goto fail; no nReturn=hPrev */
+/* 0x00401340 WinMain: CPlay && inits; drain/fullscreen goto fail; no nReturn=hPrev */
 /* WHAT IT DOES: the intro program itself -- start COM, open brally.avi, play
  * it full screen, then launch the real game launcher. Skipping the video is
  * what the key and mouse handlers do. */

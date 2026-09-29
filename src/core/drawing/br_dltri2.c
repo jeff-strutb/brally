@@ -155,7 +155,7 @@ extern void BrDlVtxFinishTex(BrDlVtx *v, const BrDlClipSt *pSt);  /* 0x1001FCF0 
  * the two passes is byte-identical.  The ib corner's pointer-form 1/w load
  * (the no-Z twin's residue) LANDED here (q1, -3 B, rows 1+2 -> 0+1) -- the
  * twin's dead list does not transfer between TUs.
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x1001FA30 glide BrDlCmdTri2 */
 const uint8_t *BrDlCmdTri2(const uint8_t *p)
 {

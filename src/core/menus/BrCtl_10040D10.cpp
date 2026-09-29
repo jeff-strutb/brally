@@ -6,7 +6,7 @@
  *
  * 0x10040D10 is the virtual destructor of the 0x1E214-byte UI control
  * (ctor is 0x10040B10, 478 B; scalar-deleting dtor is 0x10040CF0).
- * Body, from the orig bytes - not a ctor:
+ * Body, from the orig bytes, not a ctor:
  *
  *   mov eax, fs:[0]; push -1; push handler; push eax; mov fs:[0], esp
  *   push esi; mov esi, ecx
@@ -19,7 +19,7 @@
  *   call __ehvec_dtor            ; 0x100746C0 (reloc)
  *   mov ecx, [esp+4]; pop esi; mov fs:[0], ecx; add esp, 0xc; ret
  *
- * Layout forced by those displacements (not relocs - they must be exact):
+ * Layout forced by those displacements (not relocs: they must be exact):
  *
  *   +0x0000  vptr
  *   +0x2B5C  TextBox boxes[3]     ; each 0x438, dtor 0x10053EE0

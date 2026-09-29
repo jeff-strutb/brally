@@ -1,4 +1,4 @@
-/* Auto-generated from disassembly - 0x00401470
+/* Auto-generated from disassembly: 0x00401470
  * CHK_AllocateMemory. size==0 returns without allocating (eax still 0). */
 /* WHAT IT DOES: allocate memory, treating a zero-byte request as 'nothing to
  * do' and returning null rather than calling the allocator. */

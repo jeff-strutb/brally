@@ -1,7 +1,7 @@
 /* slice4_52.c -- BRD3D.dll, a later pass.  See slice4_52.h, especially the note
  * about the packet listing being mis-paired: everything below was decompiled
  * from asm/ at the address named on the `WANTED AS` line, not from the body
- * printed under it in work/slice4/agent52.asm.
+ * printed under it in work/slice4/packet52.asm.
  *
  * Float literals are the exact values of the 32-bit patterns the original
  * pushes (195.0f == 0x43430000, 460.0f == 0x43E60000, ...).
@@ -362,4 +362,4 @@ void BrOptFn10051990(struct BrOptObj *pThis)
     /* The original returns 1; the declared return type is void. */
 }
 
-/* ── Ghidra-matched functions ─────────────────────────── */
+/* -- Ghidra-matched functions --------------------------- */

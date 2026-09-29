@@ -9,7 +9,7 @@ build/n64/cand/<VA>.c with every declaration it needs, compiled with the real
 N64 flags and graded by n64build.grade() -- the same resolved-relocation check
 as the T4 gate.  A candidate that grades EXACT is a match waiting to be filed:
 someone still has to name it, say WHAT IT DOES, and move it into its module
-(project rule 6).  The rest are drafts with a measured distance.
+.  The rest are drafts with a measured distance.
 
 What the transform does to Ghidra's C:
   * Ghidra types -> C types (undefined4 -> int, ...)

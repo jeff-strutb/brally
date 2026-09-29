@@ -9,12 +9,12 @@
  * Residue: photo1's ten-instruction Pentium-pairing schedule (identical
  * multiset; the 3+3 rows are the EH frame's fs:[0] reloc form). Dossier,
  * dead list and the three ledger lines are in the block below.
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x1004AEE0 glide BrExt_10052030
  * @cpp_kind method
  * @cpp_symbol ?BrExt_10052030@@YAHPAVGameUi@@@Z
  *
- * 3862 B cdecl EH-frame multiplayer/session menu builder - 0x100425E0
+ * 3862 B cdecl EH-frame multiplayer/session menu builder: 0x100425E0
  * family (same layouts and levers). Photo trio is unconditional here:
  * xi lives in ebx across all three pages, xi+0x7f is spelled INLINE in
  * each (VC5's own CSE spills it across the news), yi is fresh per page, fy steps

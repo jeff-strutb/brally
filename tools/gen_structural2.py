@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Standalone structural refine transforms for three recurring Ghidra→VC5 idioms.
+"""Standalone structural refine transforms for three recurring Ghidra->VC5 idioms.
 
 Ghidra splits `return f() != 0` through a temp (setne), prints `n < K+1` for
 original `n <= K`, and prints `-1 < x` / `x > -1` for original `x >= 0`.
@@ -7,7 +7,7 @@ Each generator yields `(label, mutated_source)` in the `_refine_candidates`
 style so the hill-climb can fold them one edit at a time.
 
 This does not write ghidra_work, does not edit ghidra_to_match.py, and does
-not commit. Decision logic: docs/archive/gen-structural2-notes.md.
+not commit.
 
     python3 tools/gen_structural2.py --dry-run
     python3 tools/gen_structural2.py --validate
@@ -131,7 +131,7 @@ def _orig_wants_le(orig, k):
 
 
 def _has_test_jl(b):
-    """`test r,r; jl` - orig `if (x >= 0)`. Pushes may sit between test and jl
+    """`test r,r; jl`: orig `if (x >= 0)`. Pushes may sit between test and jl
     (0x1006E0A0: `test eax,eax; push esi; push edi; jl`)."""
     for i in range(len(b) - 2):
         if b[i] != 0x85:
@@ -145,13 +145,13 @@ def _has_test_jl(b):
 
 
 def _has_cmp_m1_jle(b):
-    """`cmp r, -1; jle` - Ghidra's `x > -1` / `-1 < x` lowering."""
+    """`cmp r, -1; jle`: Ghidra's `x > -1` / `-1 < x` lowering."""
     hits = _cmp_imm8_jccs(b, 0xff)
     return any(jcc in (0x7e, 0x7c, 0x7f, 0x7d, 0x18e, 0x18c) for _off, jcc in hits)
 
 
 # ---------------------------------------------------------------------------
-# 1. i = f(...); return i != 0;  →  return f(...) != 0;
+# 1. i = f(...); return i != 0;  ->  return f(...) != 0;
 # ---------------------------------------------------------------------------
 
 # Optional Ghidra/wrap cast around the compare: `(uint)(i != 0)`,
@@ -266,7 +266,7 @@ def _iter_ret_temp(body):
 
 
 def gen_ret_notemp(src):
-    """Ghidra `i = f(...); return i != 0;` → `return f(...) != 0;`.
+    """Ghidra `i = f(...); return i != 0;` -> `return f(...) != 0;`.
 
     Distinguisher: orig `f7 d8 1b c0 f7 d8` (neg; sbb; neg). The temp form
     is `xor r,r; test eax; setne r; mov eax,r` (+3). `return f(...) == 0`
@@ -301,10 +301,10 @@ def transform_ret_notemp(src, orig=None):
 
 
 # ---------------------------------------------------------------------------
-# 2. n < K+1  →  n <= K
+# 2. n < K+1  ->  n <= K
 # ---------------------------------------------------------------------------
 
-# Same shape as `_refine_candidates` (i) `X > C` → `X >= C+1`, the dual.
+# Same shape as `_refine_candidates` (i) `X > C` -> `X >= C+1`, the dual.
 # Requires wrapping parens, so `for (i = 0; i < 8; i++)` (no extra parens
 # around the test) does not fire; `if (param_1 < 9)` does.
 _LEBOUND = re.compile(
@@ -321,18 +321,18 @@ def _fmt_imm(tok, val):
 
 def _is_narrow_temp(name):
     """Ghidra char/short temps (`cVar4`, `sVar2`). Their `-1 <` / `< 0x80`
-    is an ASCII window, not the int `>= 0` / `<= K` idiom - orig is often
+    is an ASCII window, not the int `>= 0` / `<= K` idiom: orig is often
     `cmp r8, -1` even when a dword `test; jl` lives elsewhere in the
     function (0x100541B0 / 0x10054280 scored worse)."""
     return bool(re.match(r'[cs]Var\d+$', name.strip()))
 
 
 def gen_lebound(src):
-    """Ghidra `if (n < K+1)` → `if (n <= K)`.
+    """Ghidra `if (n < K+1)` -> `if (n <= K)`.
 
     Distinguisher: orig `cmp n, K; jg` (`83 xx K; 7f`) vs `cmp n, K+1; jge`.
-    Proven MATCH 0x100378C0 (`param_1 < 9` → `param_1 <= 8`). Dual of
-    `_refine_candidates` (i) `X > C` → `X >= C+1`. Yields `lebound:X<=K`.
+    Proven MATCH 0x100378C0 (`param_1 < 9` -> `param_1 <= 8`). Dual of
+    `_refine_candidates` (i) `X > C` -> `X >= C+1`. Yields `lebound:X<=K`.
     """
     head, body = _split(src)
     for m in _LEBOUND.finditer(body):
@@ -348,7 +348,7 @@ def gen_lebound(src):
 
 
 def transform_lebound(src, orig=None):
-    """Apply every `X < C` → `X <= C-1`. If orig bytes are given, keep only
+    """Apply every `X < C` -> `X <= C-1`. If orig bytes are given, keep only
     sites whose orig is `cmp C-1; jg/jle` (not `cmp C; jl/jge`)."""
     labels = []
     changed = True
@@ -358,7 +358,7 @@ def transform_lebound(src, orig=None):
             if cand == src:
                 continue
             if orig is not None:
-                # label is lebound:X<=K - recover K
+                # label is lebound:X<=K: recover K
                 ktok = label.split('<=', 1)[-1]
                 try:
                     k = int(ktok, 0)
@@ -374,7 +374,7 @@ def transform_lebound(src, orig=None):
 
 
 # ---------------------------------------------------------------------------
-# 3. -1 < x  /  x > -1  →  x >= 0
+# 3. -1 < x  /  x > -1  ->  x >= 0
 # ---------------------------------------------------------------------------
 
 _GT_M1 = re.compile(
@@ -453,11 +453,11 @@ def _iter_neg1_lt(body):
 
 
 def gen_ge0(src):
-    """Ghidra `-1 < x` / `x > -1` → `x >= 0`.
+    """Ghidra `-1 < x` / `x > -1` -> `x >= 0`.
 
     Distinguisher: orig `test r,r; jl` (`85 xx 7c`) vs `cmp r, -1; jle`
     (`83 xx ff 7e`). Proven as the opening of 0x1006E130 (`(-1 < param_1)
-    && (param_1 < 8)` → `(param_1 >= 0) && (param_1 < 8)`). Yields
+    && (param_1 < 8)` -> `(param_1 >= 0) && (param_1 < 8)`). Yields
     `ge0:lt:X` / `ge0:gt:X`.
     """
     head, body = _split(src)
@@ -477,7 +477,7 @@ def gen_ge0(src):
 
 
 def transform_ge0(src, orig=None):
-    """Apply every `-1 < x` / `x > -1` → `x >= 0`."""
+    """Apply every `-1 < x` / `x > -1` -> `x >= 0`."""
     labels = []
     changed = True
     while changed:
@@ -524,7 +524,7 @@ def residue_rows():
 def prey_ret_notemp(src, orig, va=None):
     if any(True for _ in gen_ret_notemp(src)):
         return True
-    # orig has the sbb form but the wrap may already have folded - still
+    # orig has the sbb form but the wrap may already have folded: still
     # count as prey for --from-decomp extras.
     if orig and _has_neg_sbb(orig) and re.search(
             r'return\s+(?:\([^;]*\)\s*)?\w+\s*(!=|==)\s*0', src):
@@ -661,7 +661,7 @@ def run_one(va_hex, gen_name=None, from_decomp=False, verbose=True,
     before = score_src(src, fname, va_hex, tag + 'b')
     after = score_src(new_src, fname, va_hex, tag + 'a')
     if verbose:
-        print('  diffs  %s → %s   opt %s → %s' % (
+        print('  diffs  %s -> %s   opt %s -> %s' % (
             before[0], after[0], before[1], after[1]))
         if after[0] == 0:
             print('  MATCH')
@@ -786,7 +786,7 @@ def run_validate(from_decomp=False, gens=None, max_prey=None, workers=4):
                         mark = ' MOVE'
                     elif r.get('worse'):
                         mark = ' worse'
-                    print('  %-12s %8s → %8s  %s%s' % (
+                    print('  %-12s %8s -> %8s  %s%s' % (
                         r['va'], r.get('before'), r.get('after'),
                         ' '.join(r.get('labels') or [])[:40], mark),
                           flush=True)
@@ -854,7 +854,7 @@ def run_dry(from_decomp=False, gens=None, max_prey=None):
 
 
 def _self_test():
-    """Snippet checks - no MSVC. Fail loud if a proven spelling stopped matching."""
+    """Snippet checks: no MSVC. Fail loud if a proven spelling stopped matching."""
     fails = []
 
     def check(name, cond):
@@ -915,7 +915,7 @@ def _self_test():
     check('le-9-to-8', '(param_1 <= 8)' in out)
     check('le-not-lt9', '(param_1 < 9)' not in out)
 
-    # for-loop `i < 8` has no extra parens - must not fire
+    # for-loop `i < 8` has no extra parens: must not fire
     body = (
         'void FUN_x(void)\n{\n  int i;\n'
         '  for (i = 0; i < 8; i = i + 1) {\n  }\n}\n'

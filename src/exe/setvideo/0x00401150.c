@@ -1,4 +1,4 @@
-/* Auto-generated from disassembly - 0x00401150
+/* Auto-generated from disassembly: 0x00401150
  * CHK_FGets: getc line reader. Translates a bare CR (and CR/LF) to LF,
  * NUL-terminates, and returns the write cursor. Walks the `buf` parameter
  * in place (no separate cursor) so the empty-input path reloads buf and the

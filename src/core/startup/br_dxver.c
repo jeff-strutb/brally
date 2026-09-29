@@ -200,7 +200,7 @@ const char BrDxMsgCreateSurfaceFailed[] = "Couldn't CreateSurface\r\n";
  * Residue is register choice only: the original parks constant 0 in edi
  * until the DirectDraw probe and then caches GetProcAddress/LoadLibraryA in
  * edi/ebp (12 extra instructions); ours keeps 0 in ebx and calls the imports
- * through memory.  Do not reopen before the end-grind (project rule 12).
+ * through memory.  Do not reopen before the end-grind.
  * Oracle coverage: the game only ever runs the Windows 98 / DirectX 6 path
  * (134 of 314 instructions).  Every other branch was forced from the real
  * boot state by swapping the emulator's import models: GetVersionEx

@@ -236,7 +236,7 @@ static void s17_stf(unsigned char *p, float v)
  * edi, which also swaps `inc eax` with the count load).  Size, count and
  * the register-blind multiset are exact; the 1+1 is that lea/add pair.
  * Dossier and the 32-compile dead list: the RESIDUE block above; ledger
- * lines above.  Do not reopen before the end-grind (project rule 12). */
+ * lines above.  Do not reopen before the end-grind. */
 /* @implements 0x1002FB20 d3d BrScenePropsDraw */
 void BrScenePropsDraw(const BrPropList *pList, const BrMat4 *pViewMtx)
 {

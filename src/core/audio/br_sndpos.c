@@ -376,7 +376,7 @@ extern int BrSfxSrcPlaySilent(int, int, int, int);   /* 0x1006E560 */
  * colouring choice no source lever reaches (the PARKED dossier's dead-probe list
  * plus the two @t4-pass batches above).  A5 oracle EQUIVALENT: 64 inputs agree
  * (return, globals, side effects), which supersedes the A4 byte-shape lost-sync
- * the rotation causes.  Do not reopen before the end-grind (project rule 12). */
+ * the rotation causes.  Do not reopen before the end-grind. */
 /* @implements 0x10060F40 glide BrSndNearestCommit */
 void BrSndNearestCommit(void)
 {

@@ -482,7 +482,7 @@ void BrMenuAutoSaveName(void)
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
  * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind (project rule 12). */
+ * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x10040730 d3d BrMenuCap0730 */
 int32_t BrMenuCap0730(BrMenuItem *pItem)
 {
@@ -1327,7 +1327,7 @@ int32_t BrMenuFlags18F0(BrMenuItem *pItem)
     return 1;
 }
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* -- Ghidra-matched functions --------------------------- */
 extern char DAT_10ac592c;
 extern int DAT_10ac5930;
 extern int DAT_10ac5934;

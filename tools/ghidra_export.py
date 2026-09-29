@@ -2,7 +2,7 @@
 # Ghidra headless script: decompile functions at known addresses, export C.
 # Run via: analyzeHeadless ... -postScript ghidra_export.py <output_dir> <csv_path>
 #
-# Ghidra Jython (Python 2.7) script - no f-strings, no pathlib.
+# Ghidra Jython (Python 2.7) script: no f-strings, no pathlib.
 from ghidra.app.decompiler import DecompInterface
 from ghidra.util.task import ConsoleTaskMonitor
 import csv

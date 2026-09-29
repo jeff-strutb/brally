@@ -1,4 +1,4 @@
-/* Auto-generated from disassembly - 0x00401050
+/* Auto-generated from disassembly: 0x00401050
  * CHK_FileExists. Verbose path uses OutputDebugStringA, not fprintf. */
 /* WHAT IT DOES: test whether a file exists, optionally reporting the check
  * to the debugger. The launcher's guard before it tries to open anything. */

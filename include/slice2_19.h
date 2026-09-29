@@ -1,6 +1,6 @@
 /* slice2_19.h -- Boss Rally (BRD3D.dll) decompilation, a later pass.
  *
- * Packet range 0x10033CB1 .. 0x10036C00 (work/slice2/agent19.asm).
+ * Packet range 0x10033CB1 .. 0x10036C00 (work/slice2/packet19.asm).
  *
  * Clusters found in this range:
  *

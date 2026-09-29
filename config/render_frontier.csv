@@ -28,8 +28,8 @@ va,glide_size,aligned,status,name,note
 0x10017F80,529,yes,done,BrFadeDrawSprite,implemented
 0x100183B0,803,yes,done,BrFadeDrawBars,implemented
 0x100186E0,685,yes,done,BrFadeTick,implemented
-0x1002AB8F,5,no,n/a,,"bare-ret/empty stub - omit at call site (cf. 0x10008D60), not a port"
-0x1002AB94,5,yes,n/a,,"bare-ret/empty stub - omit at call site (cf. 0x10008D60), not a port"
+0x1002AB8F,5,no,n/a,,"bare-ret/empty stub: omit at call site (cf. 0x10008D60), not a port"
+0x1002AB94,5,yes,n/a,,"bare-ret/empty stub: omit at call site (cf. 0x10008D60), not a port"
 0x1002AB99,416,no,done,BrGfxClearScreen,implemented
 0x1002AD39,478,no,done,BrGfxFillRect,implemented
 0x1002AF17,1241,no,done,BrFogUpdate,D3D twin ported before the frontier was drawn; verified real body
@@ -38,14 +38,14 @@ va,glide_size,aligned,status,name,note
 0x1002BF50,419,yes,done,BrSub_1003289F,implemented
 0x1002C0F3,502,no,done,BrViewportSet,D3D twin ported before the frontier was drawn; verified real body
 0x1002C2E9,442,no,done,BrViewportSetFull,D3D twin ported before the frontier was drawn; verified real body
-0x1002C509,5,no,n/a,,"bare-ret/empty stub - omit at call site (cf. 0x10008D60), not a port"
-0x1002C50E,1585,no,TODO,,unaligned start - verify boundary before porting
-0x1002CB49,744,no,TODO,,unaligned start - verify boundary before porting
+0x1002C509,5,no,n/a,,"bare-ret/empty stub: omit at call site (cf. 0x10008D60), not a port"
+0x1002C50E,1585,no,TODO,,unaligned start: verify boundary before porting
+0x1002CB49,744,no,TODO,,unaligned start: verify boundary before porting
 0x1002CEE9,1145,no,done,BrFrameEnd,D3D twin ported before the frontier was drawn; verified real body
 0x1002D362,466,no,done,BrCamFrustumBuild,implemented
 0x1002D534,251,yes,done,BrCamMatrixSetup,implemented
 0x1002D72E,310,no,done,BrCamMatrixSetupOrtho,implemented
 0x10034010,657,yes,done,BrSpanBuildHull,implemented
 0x1006D280,27,yes,done,BrStrGet,implemented
-0x1006E590,1,yes,n/a,,"bare-ret/empty stub - omit at call site (cf. 0x10008D60), not a port"
+0x1006E590,1,yes,n/a,,"bare-ret/empty stub: omit at call site (cf. 0x10008D60), not a port"
 0x1006EC30,1331,yes,TODO,,

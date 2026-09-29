@@ -552,4 +552,4 @@ void BrPoolEmit(void *pvThis)
     pNode->b1F = 0xFF;
 }
 
-/* ── Ghidra-matched functions ─────────────────────────── */
+/* -- Ghidra-matched functions --------------------------- */

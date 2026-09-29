@@ -161,7 +161,7 @@ extern void (*g_pfn18AA0CC)(void *pTable, int cRecords);
  * residue is scheduler-canonical u16 pair load order (see the NOT MATCHING
  * note above: three spellings compile byte-identical); identical multiset,
  * size-exact; two crank census passes at these numbers.
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x100316D0 glide BrTrackFixupRec54 */
 void BrTrackFixupRec54(void *pvRec)
 {

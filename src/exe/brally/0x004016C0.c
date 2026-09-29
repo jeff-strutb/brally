@@ -1,4 +1,4 @@
-/* Auto-generated from disassembly - 0x004016C0
+/* Auto-generated from disassembly: 0x004016C0
  * SetCommentChar. Byte store of a char argument. */
 /* WHAT IT DOES: change the character that starts a comment, so a settings
  * file can use ';' while a list file uses '#'. */

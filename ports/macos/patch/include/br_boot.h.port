@@ -161,7 +161,7 @@ int32_t BrAppStateSetMode(void);    /* 0x1001CE20 */
  *
  * THIS WAS MISSING WHILE THIS HEADER CLAIMED THE ENTRY POINT WAS DONE. The
  * five state handlers and the frame tick were transcribed and the 324-byte
- * function that drives them was not; a brief written off this header told an
+ * function that drives them was not; a brief written off this header told a
  * worker RallyMain was "now transcribed in br_boot.c", and the worker checked
  * and found it was not. Recorded because the failure is the same one this
  * project keeps making in the other direction -- asserting the state of the

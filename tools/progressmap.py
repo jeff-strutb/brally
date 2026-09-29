@@ -22,7 +22,7 @@ FENCED = "#6e5494"  # static CRT / library: reproduced by linking, not decompile
 EXCLUDED = "#3f6f7a"  # game code the retail game never runs (config/excluded.csv)
 
 # Per-EXE static-CRT boundary: functions at/after this VA are linked library
-# code (fenced), not a decomp target. So they never turn green - distinct from
+# code (fenced), not a decomp target. So they never turn green: distinct from
 # unfinished user code ("todo").
 CRT_START = {"brally": 0x401BC0, "setvideo": 0x402D20, "bossrally": 0x401BC0}
 
@@ -30,8 +30,8 @@ CRT_START = {"brally": 0x401BC0, "setvideo": 0x402D20, "bossrally": 0x401BC0}
 def _fenced_exe():
     """Interleaved static-CRT functions that sit BELOW an EXE's CRT boundary
     (linked library code physically laid out inside the game-code VA range).
-    They are reproduced by linking the CRT, not decompiled - same category as
-    the DLL's config/fenced.csv - so they must not count as unfinished game
+    They are reproduced by linking the CRT, not decompiled: same category as
+    the DLL's config/fenced.csv, so they must not count as unfinished game
     code. Returns {(exe, va): True}."""
     out = {}
     p = os.path.join(ROOT, "config", "fenced_exe.csv")
@@ -45,7 +45,7 @@ def _fenced_exe():
 def _fenced_dll():
     """The DLL's linker-reproduced functions (config/fenced.csv): import
     thunks, jump stubs, CRT helper intrinsics, CRT startup. Same category as
-    fenced_exe - not decomp targets, must not render as untried game code.
+    fenced_exe, not decomp targets, must not render as untried game code.
     Returns {va: class}."""
     out = {}
     p = os.path.join(ROOT, "config", "fenced.csv")
@@ -60,7 +60,7 @@ def _diffs(m):
     """The row's diff count, or -1 for "not in the report at all".
 
     A `compile_error` row carries the COMPILER'S MESSAGE in this column, not a
-    number, so this must never int() blindly - one such row used to crash the
+    number, so this must never int() blindly: one such row used to crash the
     whole map. Treat any non-numeric value as "unknown, but tagged" (0)."""
     if not m:
         return -1
@@ -108,13 +108,13 @@ def load():
             va = int(r["va"], 16)
             # An address may carry more than one row (e.g. a function filed
             # into its own module while a stale diff row from its old slice
-            # lingers). A VA is matched if ANY row matches - prefer a match
+            # lingers). A VA is matched if ANY row matches: prefer a match
             # row over a non-match one, independent of file order, so the
             # count agrees with total.py's unique-matched-VA total.
             prev = rep.get(va)
             if prev is None or (r["status"] == "match" and prev["status"] != "match"):
                 rep[va] = r
-    # C++ EH matches verified off-report (total.py manifest) - mark them
+    # C++ EH matches verified off-report (total.py manifest): mark them
     # matched so the DLL map reflects them, grouped into their own region.
     cpp = _match_set("cpp_matches.csv")
     t3 = _match_set("tier3.csv")   # codegen-only diffs (T3), from tools/tiers.py
@@ -138,7 +138,7 @@ def load():
                 status = "excluded"   # never run by the game: outside the target
             elif va in t3:
                 # T3: certified same-behaviour (register/sched-only residue).
-                # Independent of the sweep report - a function filed into its
+                # Independent of the sweep report: a function filed into its
                 # own module (src/core/cpp/<VA>.cpp) carries an @t3 tag but no
                 # report.csv row, and must not fall through to grey/todo.
                 status = "codegen"
@@ -353,7 +353,7 @@ def render(funcs, out_path):
  .f:hover{outline:1px solid #fff;z-index:3}
 </style>
 <header>
- <h1>BRGlide.dll - matching decomp progress</h1>
+ <h1>BRGlide.dll: matching decomp progress</h1>
  <div class="stats">
   <span>T4 byte-exact: <b>%(nm)d / %(nf)d</b> functions (%(nmp).1f%%)</span>
   <span>T3 codegen-only: <b>%(nc)d</b></span>

@@ -378,7 +378,7 @@ uint32_t __fastcall BrAiScanCorridor(BrAiCar *pCar, float a,
  * populated car object graph); negative controls across the steering/throttle
  * rules all DIFF, so the profile has teeth.  Residue is register colouring
  * (reggap ~24), two zero-movement probe passes above.  Do not reopen before the
- * end-grind (project rule 12). */
+ * end-grind. */
 /* @implements 0x1005D770 glide BrCtlAiBody */
 void BR_THISCALL1 BrCtlAiBody(BrAiCar *pCar)
 {
@@ -796,7 +796,7 @@ stepped:
                  * (A3 10 -> 14, swept 2026-09-12) -- both ternary polarities
                  * are dead; the orig's fstp st/fld [pool] clamp is not
                  * reachable from a ternary here.
-                 * â¼ CORPUS MISS 2026-09-12 (--at 0xa9f --len 12): the in-st
+                 * !! CORPUS MISS 2026-09-12 (--at 0xa9f --len 12): the in-st
                  * conditional fmul + fstp st/fld [pool] clamp run is proven
                  * NOWHERE in the solved tree (only the leading 4-insn float
                  * compare matches).  Unproven construct -- park, do not

@@ -136,7 +136,7 @@ uint8_t *g_brRcaBlob;      /* 0x106B7C7C */
  * residue is register colouring only: identical register-blind multiset
  * (rows 0+0), 1 byte of encoding shadow, 2 masked regions; two crank
  * census passes at these numbers.
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x10018B60 glide BrRcaFixupRecord */
 void BrRcaFixupRecord(void *pRec)
 {
@@ -245,7 +245,7 @@ void BrRcaFixupRecord(void *pRec)
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
  * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind (project rule 12). */
+ * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x10018D50 glide BrRcaSwapMesh */
 void BrRcaSwapMesh(void *pv)
 {

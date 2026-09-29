@@ -58,7 +58,7 @@
  * Pure fxch/store-order permutation at +0x32, register-blind gap 0+0 --
  * VC5 keeps x/y/z live across their three uses in a different schedule than
  * the original; 20 spellings tried, none move it. Do not reopen before the
- * end-grind (project rule 12). */
+ * end-grind. */
 /* @implements 0x1003B3F0 d3d BrMtxXfmDir3 */
 /* @implements 0x10034A70 glide BrMtxXfmDir3 */
 void BrMtxXfmDir3(BrVec3 *pOut, const BrVec3 *pV, const BrMat4 *pM)

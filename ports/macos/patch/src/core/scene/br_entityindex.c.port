@@ -39,7 +39,7 @@
  * to add-negative (paired by t3.py canon, a326268).  The dossier below has
  * the full dead list including VC4.2 cross-evidence; the two ledger lines
  * add the keep-sub mechanism experiments (none fire here).
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x10076AE0 d3d BrEntitySetIndex */
 void BrEntitySetIndex(void *pEntity, int index)
 {

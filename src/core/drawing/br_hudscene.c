@@ -212,7 +212,7 @@ static __inline const BrHudSprite *BrHudSpriteAt(int32_t i)
  * @t3-effort passes 2 zero-movement 1 2
  * RESIDUE: register colouring only -- one surplus `mov R, R`; A4 leaves 164 B
  * uncompared at key 6 but A3/A5 prove the multiset and EQUIVALENT (crank census
- * yes x2). Do not reopen before the end-grind (project rule 12). */
+ * yes x2). Do not reopen before the end-grind. */
 /* @implements 0x10016A60 d3d BrGfxDrawTexRect */
 void BrGfxDrawTexRect(uint32_t dlAddr, int x, int y, int w, int h)
 {
@@ -732,7 +732,7 @@ extern const char *BrStrGet(int id);   /* slice4_52.c, Glide 0x1006D280 */
  * residue is allocation/scheduling only: size- and insn-exact, rows 2+2
  * all canon-paired, 6 masked regions; the sub/add and sprintf tail-merge
  * shapes are already proven in the inline notes.  Dead probes in the two
- * ledger lines.  Do not reopen before the end-grind (project rule 12). */
+ * ledger lines.  Do not reopen before the end-grind. */
 /* @implements 0x10017D90 d3d BrHudDraw */
 void BrHudDraw(BrHudView *aViews, int a2)
 {
@@ -1401,7 +1401,7 @@ const BrGfxCmd *BrCmdUnpackModeBits(const BrGfxCmd *pCmd)
     return pCmd + 1;
 }
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* -- Ghidra-matched functions --------------------------- */
 extern int DAT_104ab504;
 
 

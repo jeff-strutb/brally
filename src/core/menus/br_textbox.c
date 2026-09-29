@@ -195,7 +195,7 @@ void BR_THISCALL1 BrTextBoxMeasureB(BrTextBox *pBox)
     }
 }
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* -- Ghidra-matched functions --------------------------- */
 typedef int (*funcptr)();
 extern funcptr PTR_FUN_100776F0;
 extern funcptr PTR_FUN_100776f0;

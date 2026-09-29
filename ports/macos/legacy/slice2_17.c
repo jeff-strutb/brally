@@ -310,4 +310,4 @@ void BrTexNoOp(void)
 }
 
 
-/* ── Ghidra-matched functions ─────────────────────────── */
+/* -- Ghidra-matched functions --------------------------- */

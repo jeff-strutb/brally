@@ -310,7 +310,7 @@ void BrRaceEnterOutro(void)
  * (recomp `mov esi, <g_aBrRaceCue+4>` prints its addend bare, absorbed as
  * the two singletons); identical multiset otherwise after the mid-bump
  * lever (788b247), size- and insn-exact.
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x10019930 glide BrRaceCueLayout */
 /* @n64 0x802006C8 located */
 void BrRaceCueLayout(void)
@@ -403,7 +403,7 @@ void BrRaceCarCtlOutro(BrDriverCar *pCar)
  * other. */
 /* @implements 0x10019A10 glide BrRaceDriverReset */
 /* @n64 0x8021735C located */
-/* Orig is `mov edi, 0x10AF07F8` â the drivers ARE that address, not a
+/* Orig is `mov edi, 0x10AF07F8`: the drivers ARE that address, not a
  * pointer stored there.  Slot +0x00 is 1-arg thiscall. */
 extern BrDriver DAT_10af07f8[];
 void __fastcall FUN_1005f530(BrDriver *pThis);

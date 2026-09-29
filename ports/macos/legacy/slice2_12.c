@@ -683,4 +683,4 @@ finish:
 }
 
 
-/* ── Ghidra-matched functions ─────────────────────────── */
+/* -- Ghidra-matched functions --------------------------- */

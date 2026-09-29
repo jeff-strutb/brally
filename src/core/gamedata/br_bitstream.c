@@ -90,7 +90,7 @@ void BR_THISCALL1 BrBitStreamAlignWrite(BrBitStream *pBs)
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 2 and 3);
  * hand passes (tools/fnmatch/fn.py variants); the dead-probe list is in the
- * comment block above.  Do not reopen before the end-grind (project rule 12). */
+ * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x10073B60 d3d BrBitStreamInit */
 /* thiscall, two stack args.  Both extra arguments are structs so neither
  * claims edx.  The original RETURNS this: `mov eax,ecx` at the top and every
@@ -188,7 +188,7 @@ unsigned int BR_THISCALL1 BrBitStreamReadU16(BrBitStream *pBs)
  * every one inert or worse) and 40 crank compiles accepting no lever; every
  * candidate and score is in build/match/crank.log.  The corpus is a MISS on
  * the 7-instruction run at the divergence, so no proven spelling exists to
- * copy.  Do not reopen before the end-grind (project rule 12). */
+ * copy.  Do not reopen before the end-grind. */
 /* @implements 0x10073C10 d3d BrBitStreamReadU24 */
 unsigned int BR_THISCALL1 BrBitStreamReadU24(BrBitStream *pBs)
 {
@@ -225,7 +225,7 @@ unsigned int BR_THISCALL1 BrBitStreamReadU24(BrBitStream *pBs)
  * @t3-effort passes 2 zero-movement 1 2
  * RESIDUE: register colouring / instruction-encoding only -- every divergence
  * row pairs (0 unpaired), recompile is a few bytes shorter, A5 EQUIVALENT
- * (crank census yes). Do not reopen before the end-grind (project rule 12). */
+ * (crank census yes). Do not reopen before the end-grind. */
 /* @implements 0x10073C40 d3d BrBitStreamReadS32 */
 int BR_THISCALL1 BrBitStreamReadS32(BrBitStream *pBs)
 {

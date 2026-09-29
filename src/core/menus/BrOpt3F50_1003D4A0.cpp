@@ -6,7 +6,7 @@
  *
  * Free cdecl. Slot+0x1C is a no-arg virtual thiscall
  * (`mov edx,[ecx]; call [edx+0x1C]`). Slot+0x00 with one stack arg is
- * `mov eax,[ecx]; push 1; call [eax]` - C __fastcall edx-slot colours
+ * `mov eax,[ecx]; push 1; call [eax]`: C __fastcall edx-slot colours
  * the vtbl into edx. No EH (no new).
  */
 #define _CRTIMP __declspec(dllimport)

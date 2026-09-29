@@ -5,10 +5,10 @@
  * @cpp_symbol ?Release@Nav59320@@QAEXXZ
  *
  * Thiscall receiver releasing a C-style object at +0x50: the member's
- * FUNCTION-POINTER TABLE (not a C++ vtbl - the object is pushed as a
+ * FUNCTION-POINTER TABLE (not a C++ vtbl: the object is pushed as a
  * stack arg, ecx carries the table) is called at slot 8 then slot 2,
  * the second through a fresh member reload, then the member is zeroed.
- * The table entries are __stdcall (no add esp after either call) - 
+ * The table entries are __stdcall (no add esp after either call):
  * COM-interface shape (slot 2 = Release).
  */
 #define _CRTIMP __declspec(dllimport)

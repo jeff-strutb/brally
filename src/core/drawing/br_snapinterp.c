@@ -143,7 +143,7 @@ void    BrFrameDrawView(int32_t iView);     /* 0x10011FA0  the frame driver     
  * blend math, the wheels, the integer lock/counter state and the return.  The
  * timer (0x1006E280) and frame driver (0x10011FA0) are black-boxed by the
  * oracle -- both sides call them identically.  Colouring/scheduling wall; do
- * not reopen before the end-grind (project rule 12). */
+ * not reopen before the end-grind. */
 /* @implements 0x100131E0 glide BrSnapInterpDraw */
 int32_t BrSnapInterpDraw(int32_t force)
 {
@@ -341,7 +341,7 @@ int32_t BrSnapInterpDraw(int32_t force)
  * and every spelling tried emits store #5 at 0x4d instead, leaving `mov eax`
  * back-to-back with `mov [eax]`.
  *
- * â¼ WHAT DID MOVE THE NEEDLE (keep it): `g_brRaceBeginLimitOn = 1;` must be
+ * !! WHAT DID MOVE THE NEEDLE (keep it): `g_brRaceBeginLimitOn = 1;` must be
  * the FIRST statement in the block.  That is what forces `mov edx,1` into the
  * prologue, which in turn denies edx to the memset's zero temp and buys the
  * `push esi` / `pop esi` pair the original has.  Without it the function is
@@ -402,7 +402,7 @@ extern BrRbCar g_aBrRbCar[5];       /* 0x10396F48 */
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
  * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind (project rule 12). */
+ * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x10013E80 glide BrRaceBeginResetOnce */
 void BrRaceBeginResetOnce(void)
 {
@@ -461,7 +461,7 @@ extern int DAT_104ab500;
  * @t3-effort passes 4 zero-movement 3 4
  * residue after tools/crank.py: 84 compiles this pass, levers accepted: mut:reorder_stmts;
  * every candidate and score is in build/match/crank.log.
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x10013F20 glide BrSnapPickSlot */
 int BrSnapPickSlot(void)
 {

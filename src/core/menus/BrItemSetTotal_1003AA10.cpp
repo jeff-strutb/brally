@@ -5,7 +5,7 @@
  * @t3-measure bytes 238/238 insns 92/92 rows 0+0 regions 4 oracle UNCLASSIFIED
  * @t3-effort passes 3 zero-movement 2 3
  * Residue: register plan -- `mov ecx,4` scheduled after the table lea and the buffer lea/push pair in eax/ecx instead of ecx/edx (rows 0+0 after regnorm, 4 masked regions). Dead list = the three ledger passes (31 cpp probes: loop shape, declaration order, slot-census spellings).
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x1003AA10 glide BrItemSetTotal_1003AA10
  * @cpp_kind free
  * @cpp_symbol ?BrItemSetTotal_1003AA10@@YAHPAVObj3AA10@@@Z

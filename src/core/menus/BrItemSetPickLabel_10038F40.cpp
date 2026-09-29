@@ -4,7 +4,7 @@
  * @t3-measure bytes 567/567 insns 172/172 rows 0+0 regions 1 oracle UNCLASSIFIED
  * @t3-effort passes 2 zero-movement 1 2
  * Residue: the eax/ecx/edx rotation of the three index-lookup arms (rows 0+0 after regnorm). Dossier in this header; dead list = the two ledger passes (23 cpp probes).
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x10038F40 glide BrItemSetPickLabel_10038F40
  * @cpp_kind free
  * @cpp_symbol ?BrItemSetPickLabel_10038F40@@YAHPAVObj38F40@@@Z

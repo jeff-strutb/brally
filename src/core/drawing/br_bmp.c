@@ -267,7 +267,7 @@ void BrBmpFree(BrBmp *pBmp)
     pBmp->w = pBmp->h = 0;
 }
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* -- Ghidra-matched functions --------------------------- */
 extern char DAT_100ad7ec;
 extern char DAT_100ad7f0;
 extern char DAT_100ad7f4;

@@ -1,4 +1,4 @@
-/* Auto-generated from disassembly - 0x00401810
+/* Auto-generated from disassembly: 0x00401810
  * WinMain: registry dir, optional SetVideo.exe, ReadINI [Video]/Driver,
  * LoadLibrary the renderer DLL, call RallyMain cdecl with the WinMain args.
  * Idiom: "BRD3D.dll" / "BRGlide.dll" must be extern char[] so strcpy uses

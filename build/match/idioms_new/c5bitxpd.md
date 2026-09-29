@@ -1,8 +1,8 @@
-# 0x1001E9F0 br_dl_fillcolour - 5-bit RGB and/or expand
+# 0x1001E9F0 br_dl_fillcolour: 5-bit RGB and/or expand
 
 ## Landed: 110 B, MATCH /O2
 
-Source is the 5→8 widen, not the xor-blend the bytes show:
+Source is the 5->8 widen, not the xor-blend the bytes show:
 
 ```
 DAT = (unsigned char)(((w >> s) & 0xF8) | ((w >> t) & 7));

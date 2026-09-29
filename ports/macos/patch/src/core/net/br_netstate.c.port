@@ -283,7 +283,7 @@ int BrNetLockSetIfZero22AAF4(BrNetState *pNet)
     return 1;
 }
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* -- Ghidra-matched functions --------------------------- */
 
 
 

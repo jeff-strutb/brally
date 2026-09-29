@@ -42,7 +42,7 @@ typedef char BrCarStateSizeCheck[
  * residue is register colouring/scheduling only: identical register-blind
  * multiset (rows 0+0), size- and insn-exact, 3 masked regions.  Dead
  * probes in the two ledger lines.
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x100079E0 d3d BrCarStateLerp */
 void BrCarStateLerp(BrCarState *pDst, float t,
                     const BrCarState *pA, const BrCarState *pB)

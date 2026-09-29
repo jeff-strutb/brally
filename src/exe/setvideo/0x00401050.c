@@ -1,4 +1,4 @@
-/* Auto-generated from disassembly - 0x00401050
+/* Auto-generated from disassembly: 0x00401050
  * CHK_FReadOpen. 8-byte {FILE*, name} wrapper. Error path writes
  * c:\RallyError.txt then OutputDebugStringA + exit(1). */
 /* WHAT IT DOES: open a file for reading and abort with a message if it is
@@ -47,7 +47,7 @@ CHKFile *CHK_FReadOpen(char *path)
     if (p->fp == 0) {
         err = fopen("c:\\RallyError.txt", "w");
         sprintf(buf, "CHK_FReadOpen(): error opening file %s.\n", p->name);
-        /* FILE* first: orig push buf, push fp → cdecl (fp, buf). */
+        /* FILE* first: orig push buf, push fp -> cdecl (fp, buf). */
         fputs_fp(err, buf);
         OutputDebugStringA(buf);
         fclose(err);

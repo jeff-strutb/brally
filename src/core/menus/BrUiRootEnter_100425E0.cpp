@@ -8,18 +8,18 @@
  *
  * 2659 B cdecl EH-frame root-menu builder. `new Phase32F` (0x348, ctor
  * 0x100418C0) then thirteen `new BrCtl` (0x1E214, ctor 0x10040B10) page
- * blocks - each new is its own /GX EH state (incrementing trylevels,
+ * blocks: each new is its own /GX EH state (incrementing trylevels,
  * new-result spilled to the unwind temp), null-checked into the Err(4)
  * shell. s38 (+0x38) is the 8-arg init vcall (floats push raw for
  * simple lvalues, fld/fsub/fstp for the computed y offsets); s34
  * (+0x34) takes (BrStrGet(n), 1, 1, &str). Menu entries hook pfn08/
  * pfn0C and thread w2AB6[0] = w14+1 sublinks. THREE PROVEN LEVERS:
  * (1) the null check is a CHAR bool computed AFTER the slot store
- * (`store; bad = (p==0); if (bad)`) - that's what emits sete al/test al
+ * (`store; bad = (p==0); if (bad)`): that's what emits sete al/test al
  * (an int bool folds to a plain jne); (2) the sublink temp is the
  * INLINE expression `(short)(cont->w14 + 1)` (a named short temp
  * allocates to ax, the original uses dx); (3) tail order is
- * w2AB6-store FIRST, w2AB4-inc second - the scheduler sinks the store.
+ * w2AB6-store FIRST, w2AB4-inc second: the scheduler sinks the store.
  * Transcribed from the Ghidra draft; container/page layouts shared
  * with 0x10041980 / 0x100415D0 / 0x10040D10.
  */

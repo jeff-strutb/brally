@@ -154,4 +154,4 @@ void BrTimeUpdate(BrTimeState *pState, unsigned int ms)
  *               structure, so any struct here would be invented.
  */
 
-/* ── Ghidra-matched functions ─────────────────────────── */
+/* -- Ghidra-matched functions --------------------------- */

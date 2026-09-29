@@ -1,4 +1,4 @@
-/* Auto-generated from disassembly - 0x00401DE0
+/* Auto-generated from disassembly: 0x00401DE0
  * CRT startup calls this (empty user init). 1 byte: ret. */
 /* WHAT IT DOES: the user start-up hook the CRT calls; deliberately empty. */
 /* @implements 0x00401DE0 brally.exe CRT_empty */

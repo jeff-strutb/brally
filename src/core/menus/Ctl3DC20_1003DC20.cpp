@@ -9,7 +9,7 @@
  * Family-1 installer plus BrOptOpen2954 tail. First-time path returns 1
  * after HostGo so g_host stays live in eax across the g_inited test
  * (mov ecx,[g_inited], not a1). The inited path is a second `if (g_host)
- * HostGo()` - that is the orig `test eax; je` before the shared call.
+ * HostGo()`: that is the orig `test eax; je` before the shared call.
  */
 #define _CRTIMP __declspec(dllimport)
 

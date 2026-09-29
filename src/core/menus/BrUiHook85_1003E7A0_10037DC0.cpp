@@ -6,7 +6,7 @@
  *
  * Tile-row emitter: two `(int)float` casts through CRT __ftol (value in
  * ST0, no stack arg), signed /16 (cdq/and 0xF/sar), then three slot-5
- * vcalls - VC5 CSEs the virtual function pointer into a spill slot and
+ * vcalls: VC5 CSEs the virtual function pointer into a spill slot and
  * strength-reduces `x + i*16` to a running register in the loop. No EH.
  *
  * BYTE-EXACT 2026-09-12 (was parked 16 diffs: y/n in swapped registers

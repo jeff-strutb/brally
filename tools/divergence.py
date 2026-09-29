@@ -17,7 +17,7 @@ separates stack-slot-layout noise from real divergence: run both and the
 difference between the two counts is the layout cascade.
 
 --key N sets how many consecutive matching instructions count as a resync
-(default 6).  ‼ SIX IS TOO SHORT FOR A FUNCTION BUILT FROM REPEATED ARMS.
+(default 6).  !! SIX IS TOO SHORT FOR A FUNCTION BUILT FROM REPEATED ARMS.
 The key has to be longer than the longest sequence that repeats, or a resync
 lands on the WRONG copy and every delta after it is fiction.  Measured
 2026-09-03 on 0x100250D0 (twelve near-identical channel arms, all ending in
@@ -29,7 +29,7 @@ meaning -- but on any function with repeated arms, read it at --key 10 and
 SAY WHICH KEY the number came from.  Going further (14) is too coarse: the
 resync starts skipping whole arms and swallows real regions.
 
-‼ AND A SUSPECT RESYNC POISONS THE TWO REGIONS AFTER IT, not just its own
+!! AND A SUSPECT RESYNC POISONS THE TWO REGIONS AFTER IT, not just its own
 line.  `change` is a difference of two deltas, so once a resync lands on the
 wrong copy the next region's delta is wrong and the two `change` values
 computed from it are fiction.  Both are now labelled.  Do not grind a block
@@ -181,7 +181,7 @@ first_shown = False
 # ------------------------------------------------------------------
 # Lost-sync RE-ANCHOR.
 #
-# ‼ The bounded resync above only looks 400 instructions ahead.  When one
+# !! The bounded resync above only looks 400 instructions ahead.  When one
 # block diverges harder than that the walk used to STOP -- printing "lost
 # sync" and a region total that silently covered only the prefix.  That is
 # a measurement trap of exactly the kind this tool exists to kill: on
@@ -349,7 +349,7 @@ print(f"\ntotal divergence regions from offset {start_at:#x}: {ndiv}"
       f"  (resync key {KEY} insns)")
 if lost_gaps:
     pct = 100.0 * lost_bytes / max(1, len(orig))
-    print(f"‼ {lost_gaps} lost-sync gap(s): {lost_bytes} orig bytes "
+    print(f"!! {lost_gaps} lost-sync gap(s): {lost_bytes} orig bytes "
           f"({pct:.1f}% of the function) were NEVER COMPARED -- the region "
           f"count above does not cover them.")
 # The COFF function extent is padded to a 16-byte boundary, so the recompile

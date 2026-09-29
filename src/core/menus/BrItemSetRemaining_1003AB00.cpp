@@ -8,7 +8,7 @@
  * unproven in all three source corpora and under VC4.2 (see the passes
  * above); everything after is byte-identical shifted 2.  Dossier and
  * dead list live in this header.
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x1003AB00 glide BrItemSetRemaining_1003AB00
  * @cpp_kind free
  * @cpp_symbol ?BrItemSetRemaining_1003AB00@@YAHPAVObj3AB00@@@Z

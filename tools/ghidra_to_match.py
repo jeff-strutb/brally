@@ -4,10 +4,10 @@ with MSVC5, and check against original bytes.
 
 This is the progressive automation engine. Each run:
 1. Reads Ghidra's decompiled C for uncovered functions
-2. Applies cleanup transforms (Ghidra-isms → MSVC5-compatible C)
+2. Applies cleanup transforms (Ghidra-isms -> MSVC5-compatible C)
 3. Compiles via Wine + MSVC5
 4. Diffs against original bytes
-5. Records learnings for every function - match, close, or far
+5. Records learnings for every function: match, close, or far
 
 Run:
     python3 tools/ghidra_to_match.py                    # all uncovered functions
@@ -59,7 +59,7 @@ def matched_vas_all_reports():
                 out |= {r['va'].lower() for r in csv.DictReader(f)
                         if r.get('status') == 'match'}
     # Fenced VAs (CRT helpers, EH funclets/fragments, thunks) are not
-    # hand-C targets either - without this the residue kept offering
+    # hand-C targets either: without this the residue kept offering
     # __alldiv and catch-funclet fragments as long/frame-class work.
     p = os.path.join(ROOT, 'config', 'fenced.csv')
     if os.path.exists(p):
@@ -119,7 +119,7 @@ def load_globals():
     return g
 
 def load_fn_names():
-    """Function VA → name from report.csv and @implements tags."""
+    """Function VA -> name from report.csv and @implements tags."""
     names = {}
     if os.path.exists(REPORT_CSV):
         with open(REPORT_CSV) as f:
@@ -183,11 +183,11 @@ def clean_ghidra_types(code):
     ]
     for pat, repl in subs:
         code = re.sub(pat, repl, code)
-    # PTR_FUN_XXXXXXXX - keep as extern globals (replacing with 0 breaks &PTR_FUN_)
+    # PTR_FUN_XXXXXXXX: keep as extern globals (replacing with 0 breaks &PTR_FUN_)
     # They're declared as externs in wrap_for_compile instead
-    # PTR_DAT_XXXXXXXX → data pointer refs
+    # PTR_DAT_XXXXXXXX -> data pointer refs
     code = re.sub(r'\bPTR_DAT_([0-9a-fA-F]{8})\b', r'DAT_\1', code)
-    # Ghidra goto labels - KEEP them (they are the original's control flow;
+    # Ghidra goto labels: KEEP them (they are the original's control flow;
     # stripping them compiles semantically wrong code). Normalise the three
     # label spellings to valid C identifiers and give each label a statement
     # so `LAB_x: }` parses.
@@ -196,7 +196,7 @@ def clean_ghidra_types(code):
     code = re.sub(r'\bjoined_r0x([0-9a-fA-F]+)\b', r'LAB_j\1', code)
     code = re.sub(r'^(\s*)(LAB_\w+)\s*:\s*$', r'\1\2: ;', code, flags=re.M)
     # &LAB_x / LAB_x where x is a known function start: Ghidra failed to make
-    # a function there but the reference is a real code pointer - keep it.
+    # a function there but the reference is a real code pointer: keep it.
     def _lab(m):
         va = '0x' + m.group(1).upper()
         if os.path.exists(os.path.join(ORIG_DIR, va + '.bin')):
@@ -205,10 +205,10 @@ def clean_ghidra_types(code):
     code = re.sub(r'&\s*LAB_([0-9a-fA-F]{8})\b', _lab, code)
     # (bare LAB_ value references in jump tables are left alone; the few
     # functions using them fail loudly instead of compiling wrong code)
-    # Ghidra 'code' pointer type → callable function pointer (trailing space
-    # prevents concatenation with the variable name, e.g. code *pcVar3 → funcptr pcVar3)
+    # Ghidra 'code' pointer type -> callable function pointer (trailing space
+    # prevents concatenation with the variable name, e.g. code *pcVar3 -> funcptr pcVar3)
     code = re.sub(r'\bcode\s*\*', 'funcptr ', code)
-    # Ghidra cast patterns: (*(code **)(expr)) → ((funcptr*)(expr))
+    # Ghidra cast patterns: (*(code **)(expr)) -> ((funcptr*)(expr))
     # Already handled by the above since 'code' is replaced
     # Ghidra struct member access on int: ._0_1_, ._0_2_, ._0_4_ etc
     code = re.sub(r'\._\d+_\d+_', '', code)
@@ -373,7 +373,7 @@ def clean_ghidra_types(code):
         return code
     code = _dlemit_sub(code)
     # Drop local declarations left referencing nothing (e.g. the puVar temps
-    # the emit rewrite absorbed) - /Od would give dead decls stack slots.
+    # the emit rewrite absorbed): /Od would give dead decls stack slots.
     def _dead_decls(code):
         for m in list(re.finditer(
                 r'^\s+(?:unsigned |signed )?(?:int|char|short|long|float|double)'
@@ -390,13 +390,13 @@ def clean_ghidra_types(code):
                   r'((\1) ? \2 : 0)', code)
     code = re.sub(r'2 - \(unsigned int\)\(([^()]+) != 0\)',
                   r'((\1) ? 1 : 2)', code)
-    # x87 intrinsics Ghidra names by opcode → the CRT names VC5 inlines at /Oi
+    # x87 intrinsics Ghidra names by opcode -> the CRT names VC5 inlines at /Oi
     code = re.sub(r'\bfcos\s*\(', 'cos(', code)
     code = re.sub(r'\bfsin\s*\(', 'sin(', code)
     code = re.sub(r'\bfsqrt\s*\(', 'sqrt(', code)
     code = re.sub(r'\bfpatan\s*\(', 'atan2(', code)
-    # PTR_s_XXXXX (string pointer references) → extern globals (declared in wrapper)
-    # PTR_XXXXX_exref (external references) → extern globals
+    # PTR_s_XXXXX (string pointer references) -> extern globals (declared in wrapper)
+    # PTR_XXXXX_exref (external references) -> extern globals
     # These are left in place; wrap_for_compile will declare them.
     return code
 
@@ -404,9 +404,9 @@ _SIG_RE = r'(^|\n)([^\n;{}/]*?)\b(%s)\s*\(([^)]*)\)\s*\n?\s*\{'
 
 def fix_calling_convention(code, func_name, orig_bytes):
     """Rewrite the defined function's signature from the original bytes:
-    - __thiscall(this, a, b) → __fastcall(this, int _edx, a, b): same ecx
+    - __thiscall(this, a, b) -> __fastcall(this, int _edx, a, b): same ecx
       this, same stack args, same callee cleanup (BR_THISCALL1 idiom).
-    - trailing `ret imm16` with no convention → __stdcall with imm/4 params
+    - trailing `ret imm16` with no convention -> __stdcall with imm/4 params
       (pads missing params as int).
     """
     m = re.search(_SIG_RE % re.escape(func_name), code)
@@ -512,7 +512,7 @@ def callee_decl(fn):
 
 def wrap_for_compile(func_c, va_hex):
     """Wrap a cleaned Ghidra function in a minimal compilable file."""
-    header = """/* Auto-generated from Ghidra decompilation - %s */
+    header = """/* Auto-generated from Ghidra decompilation: %s */
 #ifdef BR_MATCHING_BUILD
 
 /* The original binary is /MD: CRT calls resolve through the import table. */
@@ -544,7 +544,7 @@ typedef int (*funcptr)();
     if re.search(r'\b_errno\s*\(', func_c):
         header += "_CRTIMP int *__cdecl _errno(void);\n"
 
-    # Extract any FUN_ calls that weren't resolved - but skip the function
+    # Extract any FUN_ calls that weren't resolved, but skip the function
     # being defined (its name appears in the body as the definition itself)
     defined_funcs = set(re.findall(r'(\w+)\s*\([^)]*\)\s*\n?\s*\{', func_c))
     unresolved = set(re.findall(r'(FUN_[0-9a-fA-F]{8})', func_c)) - defined_funcs
@@ -562,7 +562,7 @@ typedef int (*funcptr)();
             header += "extern funcptr %s;\n" % dat
         elif re.search(r'&\s*%s\b\s*\+' % re.escape(dat), func_c):
             # used as a byte-arithmetic base (&DAT + ofs): Ghidra emits
-            # byte-scaled address expressions for these - must be char.
+            # byte-scaled address expressions for these: must be char.
             header += "extern char %s;\n" % dat
         elif _is_pointer_typed(dat, func_c):
             header += "extern int *%s;\n" % dat
@@ -578,12 +578,12 @@ typedef int (*funcptr)();
             else:
                 header += "extern int %s;\n" % dat
 
-    # PTR_FUN_XXXXXXXX - function pointer globals (not replaced with 0 anymore)
+    # PTR_FUN_XXXXXXXX: function pointer globals (not replaced with 0 anymore)
     ptr_funs = set(re.findall(r'(PTR_FUN_[0-9a-fA-F]{8})', func_c))
     for pf in sorted(ptr_funs):
         header += "extern funcptr %s;\n" % pf
 
-    # PTR_PTR_XXXXXXXX - data pointer globals
+    # PTR_PTR_XXXXXXXX: data pointer globals
     ptr_ptrs = set(re.findall(r'(PTR_PTR_[0-9a-fA-F]{8})', func_c))
     for pp in sorted(ptr_ptrs):
         header += "extern int *%s;\n" % pp
@@ -610,7 +610,7 @@ typedef int (*funcptr)();
         else:
             header += "extern int %s;\n" % g
 
-    # Ghidra compiler temporaries ($T147 etc.) - declare as local ints
+    # Ghidra compiler temporaries ($T147 etc.): declare as local ints
     dollar_temps = set(re.findall(r'(\$T\d+)', func_c))
     for t in sorted(dollar_temps):
         safe_name = t.replace('$', '_dollar_')
@@ -620,12 +620,12 @@ typedef int (*funcptr)();
     for t in sorted(set(re.findall(r'\b(_S_T\d+)\b', func_c))):
         header += "float %s;\n" % t
 
-    # Ghidra stack references (stack0xNNNN) - declare as local ints
+    # Ghidra stack references (stack0xNNNN): declare as local ints
     stack_vars = set(re.findall(r'(stack0x[0-9a-fA-F]+)', func_c))
     for sv in sorted(stack_vars):
         header += "int %s;\n" % sv
 
-    # PTR_s_XXXXX (Ghidra string pointer refs) - extern globals
+    # PTR_s_XXXXX (Ghidra string pointer refs): extern globals
     ptr_s_vars = set(re.findall(r'(PTR_s_\w+)', func_c))
     for ps in sorted(ptr_s_vars):
         header += "extern int %s;\n" % ps
@@ -647,7 +647,7 @@ typedef int (*funcptr)();
     br_called = set(re.findall(r'\b(Br\w+)\s*\(', func_c)) - defined_funcs
     for bf in sorted(br_called):
         header += "int %s();\n" % bf
-    # Non-called Br* that aren't globals - declare as extern int
+    # Non-called Br* that aren't globals: declare as extern int
     for bf in sorted(br_funcs - br_called):
         if bf == 'BrDlCmd':
             continue
@@ -668,7 +668,7 @@ typedef int (*funcptr)();
         header += "int %s();\n" % kf
 
     # Windows struct types that MSVC5 headers may not expose directly
-    # _MEMORYSTATUS, _MMCKINFO - use the non-underscore form via windows.h
+    # _MEMORYSTATUS, _MMCKINFO: use the non-underscore form via windows.h
     func_c = re.sub(r'\b_MEMORYSTATUS\b', 'MEMORYSTATUS', func_c)
     func_c = re.sub(r'\b_MMCKINFO\b', 'MMCKINFO', func_c)
 
@@ -821,7 +821,7 @@ def prepare_function(func, globals_map, fn_names):
 def single_compile_and_check(func, globals_map, fn_names):
     """Compile one function individually, check against original.
 
-    Designed to run in a worker process - all imports happen inside.
+    Designed to run in a worker process: all imports happen inside.
     Returns a result dict.
     """
     import match_diff
@@ -931,7 +931,7 @@ def single_compile_and_check(func, globals_map, fn_names):
 _REFINE_TYPES = ['char', 'unsigned char', 'short', 'unsigned short',
                  'unsigned int', 'int', 'float', 'double']
 # Ghidra wraps the originally-first operand of a flipped compare in an
-# identity (int)/(unsigned int) cast, which hid the flip from this regex - 
+# identity (int)/(unsigned int) cast, which hid the flip from this regex,
 # `if (bound <= (int)idx)` never offered the `idx >= bound` candidate that
 # matches (proven 0x10008F90 BrObjSelCycle, found by the pass).
 _SW = re.compile(
@@ -985,14 +985,14 @@ def _score_source(src_text, func_name, orig_bytes, opts, tag):
 
 def _classify_divergence(orig_bytes, rb, relocs):
     """Coarse failure class for residue grouping, spelled <class>@<first>/<n>.
-    Classes: short±N (recomp too small - structural, code missing),
+    Classes: short±N (recomp too small: structural, code missing),
     long+N (extra code emitted), frame (diverges inside the first 0x10
-    bytes - prologue/frame shape wrong), dense (>=5% of bytes differ - 
-    structural rewrite needed), scattered (localized diffs - encoding or
+    bytes: prologue/frame shape wrong), dense (>=5% of bytes differ:
+    structural rewrite needed), scattered (localized diffs: encoding or
     register-allocation, the hill-climbable band)."""
     if rb is None:
         return 'error'
-    # Strip trailing .obj 16-byte-alignment padding before sizing - 65 of
+    # Strip trailing .obj 16-byte-alignment padding before sizing: 65 of
     # the first wide run's 137 'long' rows were nothing but this artifact
     # (spotted on 0x10063DB0, proven corpus-wide by the pass).
     n = len(rb)
@@ -1200,11 +1200,10 @@ def transform_stackshred(src, orig=None):
 def _refine_candidates(src):
     """Yield (label, new_src) single-edit variants of a wrapped source."""
     # Combined folds first (one candidate each, not a search) so they always
-    # take a slot in the max_cands budget - (a) retype alone can emit 80+
-    # cands. Decision: docs/archive/gen-structural2-notes.md (retnotemp/ge0;
-    # lebound is NOT folded, 3 prey / 184, 0 MATCH) and
-    # docs/archive/gen-fresh-notes.md (stringops; charret is orig-gated in
-    # refine_function next to callconv).
+    # take a slot in the max_cands budget: (a) retype alone can emit 80+
+    # cands. retnotemp/ge0 are folded; lebound is NOT (3 prey / 184,
+    # 0 MATCH). stringops is folded; charret is orig-gated in
+    # refine_function next to callconv.
     import gen_structural2 as _gs2
     # (t) Ghidra-shredded stack struct -> one struct of the frame size.
     #     Orig-gated padding (sub esp) is applied in refine_function next
@@ -1218,7 +1217,7 @@ def _refine_candidates(src):
     #     return expression is `neg; sbb; neg` (`f7 d8 1b c0 f7 d8`); the
     #     temp form is `xor r,r; test eax; setne r; mov eax,r` (+3). `== 0`
     #     is `neg; sbb; inc` (`f7 d8 1b c0 40`). Adjacent call-then-return
-    #     only - does not fold a load + intervening store (0x1006B530, orig
+    #     only: does not fold a load + intervening store (0x1006B530, orig
     #     `setne`). Unused `int tmp;` decl stays (/Od slots). Proven MATCH
     #     0x1006BAA0 / 0x1006B6E0 / 0x1006BB10 / 0x1006B4F0 / 0x10058F90.
     _new, _ = _gs2.transform_ret_notemp(src)
@@ -1227,7 +1226,7 @@ def _refine_candidates(src):
     # (r) `-1 < x` / `x > -1` -> `x >= 0`. Orig `if (x >= 0)` is
     #     `test r,r; jl` (`85 xx 7c`); Ghidra's spelling is `cmp r,-1; jle`
     #     (`83 xx ff 7e`). Pushes may sit between test and jl (0x1006E0A0).
-    #     Skips Ghidra char/short temps (`cVar*`/`sVar*` - ASCII window,
+    #     Skips Ghidra char/short temps (`cVar*`/`sVar*`: ASCII window,
     #     0x100541B0 / 0x10054280). Does not touch `i + -1 < bound` or `<<`.
     #     Hill-climb rejects a real `x > -1` (would move away from orig).
     #     Proven moved 0x1006E130 / 0x10006460 / 0x100356B0 / 0x100031D0 /
@@ -1240,8 +1239,8 @@ def _refine_candidates(src):
     #     (address push). Wrap's _strcpy_sub / _strlen_sub / _memset_sub
     #     miss walker-rewind, signed `i = -1`, dest-scan strcat, and
     #     dword-only stosd/movsd. One candidate, not a search. strarr
-    #     first so memcpy does not steal scasb copies. Decision:
-    #     docs/archive/gen-fresh-notes.md. Proven MATCH 0x10038490 / 0x10038550 /
+    #     first so memcpy does not steal scasb copies.
+    #     Proven MATCH 0x10038490 / 0x10038550 /
     #     0x100387C0 (strlen:cmp), 0x10023900 / 0x10033C90 (memcpy:imm),
     #     0x100418C0 (memset:imm), 0x10055AF0 (strcpy/strcat + memset
     #     0x104 + char[]). Do not convert a stride-loop inner copy
@@ -1272,7 +1271,6 @@ def _refine_candidates(src):
     #     under a running byte budget comes back folded. Proven 0x100250D0
     #     (12 sites fire unaided: -160 B / -24 insns; 15 sites with the
     #     ping-pong ones hand-finished: +1152 -> +512 B, +234 -> +81 insns).
-    #     Decision: docs/archive/idioms-A.md.
     import gen_countfold as _gcf
     _new, _n = _gcf.transform_countfold(src)
     if _n and _new != src:
@@ -1315,7 +1313,7 @@ def _refine_candidates(src):
     head, body = src[:head_end], src[head_end:]
     # (w) signed -> unsigned char pointer: a byte read through Ghidra's
     #     `char *` widens with movsx; the original's `xor r,r; mov r8,[..]`
-    #     (default promotion to an unprototyped callee - the char-window
+    #     (default promotion to an unprototyped callee: the char-window
     #     entry in docs/VC5-IDIOMS.md) needs UNSIGNED char. Ghidra types
     #     byte pointers signed by default, so byte-indexed params come
     #     back movsx-shaped. One candidate per declared identifier plus an
@@ -1353,7 +1351,7 @@ def _refine_candidates(src):
     #     needs its high labels kept even when they return Y's value. A
     #     singleton extra case is folded again; a pair, or a fill through
     #     the high bound, survives. Proven 0x10024DF0 (pass). The
-    #     jump TABLE is data the scorer can't see - a swspan match needs
+    #     jump TABLE is data the scorer can't see: a swspan match needs
     #     its table verified against the DLL by hand (see VC5-IDIOMS.md).
     for m in _SW.finditer(body):
         nums = [int(c, 0) for c in
@@ -1468,7 +1466,7 @@ def _refine_candidates(src):
         nb = (body[:m.start()] + '(%s >= 0x%x)' % (x, c + 1) + body[m.end():])
         yield ('geq:%s>=%x' % (x[:16], c + 1), head + nb)
     # (j) drop one narrowing cast in a masked compare: `((char)X & M)` /
-    #     `((unsigned char)X & M)` -> `(X & M)` - the plain int compare
+    #     `((unsigned char)X & M)` -> `(X & M)`: the plain int compare
     #     narrows only the cmp (proven BrNetPeerMsgCancel).
     for m in re.finditer(r'\((?:unsigned )?char\)\s*(\*?\w+(?:\[\w+\])?)', body):
         nb = body[:m.start()] + m.group(1) + body[m.end():]
@@ -1868,7 +1866,7 @@ def transform_deadnull(src):
     """Drop Ghidra's dead re-zero on the COM out-of-memory failure path.
 
     `if ((g = CreateEventA(...)) == 0) hr = E_OUTOFMEMORY;` comes back as
-    `g = CALL(); if (g != 0) return; hr = -0x7ff8fff2; g = (HANDLE)0x0;` - 
+    `g = CALL(); if (g != 0) return; hr = -0x7ff8fff2; g = (HANDLE)0x0;`:
     the trailing store re-writes the zero already stored from eax and has
     no encoding in the original. Proven MATCH 0x100356B0 (with the
     `extern char s_*[]` string-address fix); 6 files carry the shape.
@@ -1888,7 +1886,7 @@ _FTOLFUSE_ASSIGN_RE = re.compile(
 def transform_ftolfuse(src):
     """Fuse Ghidra's discarded-float-call + bare `ftol()` artifact.
 
-    `floor(EXPR); iVar = ftol();` is really `iVar = (int)floor(EXPR);` - 
+    `floor(EXPR); iVar = ftol();` is really `iVar = (int)floor(EXPR);`:
     the decompiler splits the x87 result from the __ftol call because the
     conversion has no source operand.  Also handles the assignment shape
     `dVar1 = EXPR; iVar = ftol();` -> `iVar = (int)(EXPR);` when the float
@@ -1972,7 +1970,7 @@ def transform_misscode(src, orig=None):
 _CC_PE = []
 def _cc_pe():
     """Parse the reference PE once per process (gen_callconv re-parses it per
-    call otherwise - expensive across a wide batch). Cached in a workers-safe
+    call otherwise: expensive across a wide batch). Cached in a workers-safe
     way: each spawned worker builds its own on first use."""
     if not _CC_PE:
         import gen_callconv
@@ -2056,7 +2054,7 @@ def refine_function(row, max_rounds=4, max_cands=80, max_diffs=None):
     # every other generator. No-op when the function has no indirect/import
     # calls; failures are swallowed (never break a refine). ~223 functions
     # share this call shape.
-    # Initial score tries ALL variants - the row's recorded opt can be a
+    # Initial score tries ALL variants: the row's recorded opt can be a
     # stale artifact of a divergent best (a /Od row whose real match is /O2
     # walled 0x1001E220 until this).  The climb then stays in the winner.
     opts = ['/O2', '/Od', '/O2 /Oy-']
@@ -2064,7 +2062,7 @@ def refine_function(row, max_rounds=4, max_cands=80, max_diffs=None):
     cur, cur_opt, cur_rb, cur_rl = _score_source(
         src, func_name, orig_bytes, opts, tag)
     # Try the calling-convention transform, but ADOPT it only if it does not
-    # make the function worse - it mis-fires on some shapes (poisoned an
+    # make the function worse: it mis-fires on some shapes (poisoned an
     # as-is 0-diff match, 0x100368A0, to 312). Only-if-better keeps the win
     # on the ~223 it helps without corrupting the ones it hurts.
     applied = []
@@ -2083,10 +2081,10 @@ def refine_function(row, max_rounds=4, max_cands=80, max_diffs=None):
             pass
         # char-width return: orig `mov al,1; pop*; ret` (`b0 01 5b c3`)
         # came from `char` / BrBool, not Ghidra's `undefined4` -> wrap
-        # `int` (`b8 01 00 00 00 c3`). Orig-gated - an ungated int->char
+        # `int` (`b8 01 00 00 00 c3`). Orig-gated: an ungated int->char
         # would compile every `return 1` as `mov al,1` and burn the cand
-        # budget. Only-if-better, same as callconv. Decision:
-        # docs/archive/gen-fresh-notes.md. Proven MATCH 0x10054390 (already
+        # budget. Only-if-better, same as callconv.
+        # Proven MATCH 0x10054390 (already
         # tree) and 0x10069930. Skips fnstsw helpers whose AL is a
         # status nibble (0x10006A10; _DEF_SIG already skips ushort).
         try:
@@ -2102,7 +2100,7 @@ def refine_function(row, max_rounds=4, max_cands=80, max_diffs=None):
         except Exception:
             pass
         # stack-shred: Ghidra `local_N` cluster whose address escapes, padded
-        # to orig `sub esp, N`. Only-if-better - a giant hole or a
+        # to orig `sub esp, N`. Only-if-better: a giant hole or a
         # coincidental local_ pair must not poison the climb. Proven MATCH
         # 0x100027E0 (MCI_STATUS, 80 B /O2). 0x10002580 is a no-op (no
         # locals). Decision: frame residue class, 2026-08-27.
@@ -2190,7 +2188,7 @@ def refine_function(row, max_rounds=4, max_cands=80, max_diffs=None):
         if not improved or ncomp > max_cands:
             break
     row = dict(row)
-    # Always record THIS run's truth - the old improvement-only condition
+    # Always record THIS run's truth: the old improvement-only condition
     # (`cur < start`) left a row that scored 0 on its very first compile
     # stuck at its stale DIFF result (0x1001E220 after the preamble fix).
     row['divergence'] = _classify_divergence(orig_bytes, cur_rb, cur_rl)
@@ -2219,7 +2217,7 @@ def run_refine(max_diffs=5, target_va=None, max_rounds=4, max_cands=80,
     if os.path.exists(lock):
         try:
             os.kill(int(open(lock).read().strip() or 0), 0)
-            sys.exit('another refine run is live (%s) - wait for it or '
+            sys.exit('another refine run is live (%s): wait for it or '
                      'delete the lock if it crashed' % lock)
         except (OSError, ValueError):
             pass  # stale lock from a dead run
@@ -2247,7 +2245,7 @@ def _run_refine_locked(max_diffs, target_va, max_rounds, max_cands, min_size):
     # Wrap call-shape VAs that never entered learnings. wrap_for_compile
     # skips anything already in report.csv (DIFF tags included), so the
     # seed never saw them. 0x10017F10 BrFadeRelease wraps 0-diff as-is;
-    # callconv used to C2444 because wrap renamed FUN_ → BrFadeRelease.
+    # callconv used to C2444 because wrap renamed FUN_ -> BrFadeRelease.
     learned = {r['va'].lower() for r in rows}
     if report_rows and not target_va:
         pe = _cc_pe()
@@ -2376,7 +2374,7 @@ def _run_refine_locked(max_diffs, target_va, max_rounds, max_cands, min_size):
     n_match = sum(1 for r in out.values() if r['result'] == 'MATCH')
     print(f'refine: {n_match} new MATCH of {len(todo)}', flush=True)
     if n_match:
-        print('file them by hand into the owning module (autofile.py is retired)', flush=True)
+        print('file them by hand into the owning module', flush=True)
 
 
 def print_residue():
@@ -2386,13 +2384,13 @@ def print_residue():
         rows = list(csv.DictReader(f))
     # Stale learnings rows for functions the tree already matched by hand
     # poisoned a hand-off once (0x10008F90 was recommended as a target a day
-    # after it was committed) - filter them out of the report.
+    # after it was committed): filter them out of the report.
     tree_matched = matched_vas_all_reports()
     att = [r for r in rows if r.get('divergence')
            and r['divergence'] not in ('', 'match')
            and r['va'].lower() not in tree_matched]
     if not att:
-        print('no divergence data yet - run --refine first')
+        print('no divergence data yet: run --refine first')
         return
     groups = defaultdict(list)
     for r in att:
@@ -2408,7 +2406,7 @@ def print_residue():
             print(f'      {r["va"]}  {r["orig_size"]:>6s}B  {r["diffs"]:>4s} diffs'
                   f'  {r["divergence"]:20s}  {r["name"]}')
     print('\nscattered = hill-climbable (needs a new generator idiom);')
-    print('frame/short/dense = structural - hand-solve one, mint a transform.')
+    print('frame/short/dense = structural: hand-solve one, mint a transform.')
 
 
 def load_prior_errors():

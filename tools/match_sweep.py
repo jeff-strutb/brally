@@ -43,7 +43,7 @@ WINE = os.path.join(ROOT, 'tools', 'wine.sh')
 
 
 # BR_MSVC names the toolchain directory to compile with, relative to ROOT or
-# absolute; it defaults to the staged MSVC 5.0.  ‼ THIS EXISTS TO TEST WHICH
+# absolute; it defaults to the staged MSVC 5.0.  !! THIS EXISTS TO TEST WHICH
 # BUILD OF THE COMPILER SHIPPED THE GAME, which is an open question -- the
 # staged one is RTM (cl 11.00.7022) and VS97 SP3 has a different C2.EXE (the
 # code generator, 630,544 -> 660,240 bytes).  Point it at a parallel staging
@@ -69,7 +69,7 @@ CACHE = os.path.join(ROOT, 'build', 'match', 'sweep_cache.json')
 
 # Ten originals carry a 16-byte link-stage preamble (jmp +0x0b over 11 nops)
 # fused into their map entry; the compiler's output starts at +0x10.  The
-# preamble bytes are link output - same category as relocs and jmp thunks - 
+# preamble bytes are link output: same category as relocs and jmp thunks,
 # so they are recorded in config/preambles.csv, verified VERBATIM here, and
 # the body is matched in full.  A tagged match still accounts for every
 # original byte: preamble verified + body compiler-matched.
@@ -380,7 +380,7 @@ def main():
     # Parse flags EXPLICITLY and reject unknown ones. This used to filter out
     # anything starting with '--' and treat whatever was left as the file list,
     # so a typo -- or `--help` -- left zero arguments and silently launched the
-    # 20-minute whole-tree run. Three workers tripped that in one session.
+    # 20-minute whole-tree run. Three runs tripped that in one day.
     args, force, jobs = [], False, 4
     for a in sys.argv[1:]:
         if a.startswith('-j'):

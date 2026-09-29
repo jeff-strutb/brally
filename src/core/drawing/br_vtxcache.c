@@ -11,7 +11,7 @@
  *
  * See slice1_05.h for the per-function notes and gotchas.
  *
- * â¼ br_gamestep.h IS LOAD-BEARING and must not be dropped as an unused
+ * !! br_gamestep.h IS LOAD-BEARING and must not be dropped as an unused
  * include.  Nothing here calls into it, but without it 0x10019210 loses its
  * match (12 differing bytes, and the best variant slides from /O2 to
  * /O2 /Oy-).  br_rdpmode.c carries the same warning for the same reason.
@@ -105,7 +105,7 @@ void BrVtxSwap(BrVtxSrc16 *v, int count)
  * @t3-effort passes 3 zero-movement 2 3
  * residue after tools/crank.py: 228 compiles this pass, levers accepted: none;
  * every candidate and score is in build/match/crank.log.
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x1002BE30 d3d BrVtxExpand */
 /* Original: 2 args, state in globals. Each conversion is a direct
  * short/char load with an inline (float) cast -- one shared int home

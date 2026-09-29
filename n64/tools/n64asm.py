@@ -5,7 +5,7 @@ assembly the game carries (the boot entry, the audio mixer loops).
     .venv/bin/python n64/tools/n64asm.py 0x802562E0 BrFloatToInt 0x802562F0 BrMixStereo
 
 Nothing here is project code: the output is a starting point that still has
-to be read, named and described (project rule 6) before it is filed.  It
+to be read, named and described before it is filed.  It
 uses register numbers (IDO's as has no names), `.set noreorder` so delay slots
 stay where the ROM has them, `-mips3 -32` (a cflags line; IDO's as rejects
 `.set mips3`) for the 64-bit accumulators, local

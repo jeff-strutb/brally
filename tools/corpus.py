@@ -11,7 +11,7 @@ produces which allocation.
 And we own ~860 worked examples of exactly that.  Every byte-exact function
 is a PROOF that "this C produced these bytes", spills, slot layout and
 scheduling included.  Until now that corpus was write-only: it was counted,
-never queried.  the project rules and docs/VC5-IDIOMS.md both say the right thing --
+never queried.  The project rules and docs/VC5-IDIOMS.md both say the right thing --
 "before writing 'the compiler will not do X', find a site in the same binary
 doing it" -- and everybody did it by hand, one site at a time.  This makes it
 a query.
@@ -26,7 +26,7 @@ functions that are stuck.
     .venv/bin/python tools/corpus.py find --pattern 'mov byte ptr [esp+S], B; mov R, dword ptr [esp+S]; and R, 0xff'
     .venv/bin/python tools/corpus.py show --va 0x10012345 --at 0x40 --len 8
 
-‼ THE INDEX IS OVER **ORIGINAL** BYTES, NOT OURS.  A corpus member is
+!! THE INDEX IS OVER **ORIGINAL** BYTES, NOT OURS.  A corpus member is
 byte-exact by definition, so an offset in the original is the same offset in
 our object -- which is what lets `show` map a hit back to real source lines
 through the compiler's own /FAcs listing.  Never index recompiled bytes: a
@@ -411,7 +411,7 @@ def _scan_listing(tmp, nm, at, length):
         return ['(no .cod listing produced)']
     with open(cod, errors='replace') as f:
         lines = f.read().split('\n')
-    # ‼ OFFSETS RESTART AT 0 FOR EVERY FUNCTION (each is its own COMDAT), so
+    # !! OFFSETS RESTART AT 0 FOR EVERY FUNCTION (each is its own COMDAT), so
     # the scan MUST be scoped to this function's PROC..ENDP block.  Without
     # that, every hit in a multi-function file resolves against whichever
     # function happens to sit at that offset -- which reads as plausible
@@ -545,7 +545,7 @@ def cmd_find(a):
               'anywhere in the solved tree, so there is no spelling to copy.')
         return
     if len(used) < len(pat):
-        print('‼ the FULL pattern is not in the corpus; longest run that is: '
+        print('!! the FULL pattern is not in the corpus; longest run that is: '
               '%d of %d instructions' % (len(used), len(pat)))
         print('  the corpus explains:')
         for t in used:

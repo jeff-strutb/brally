@@ -145,7 +145,7 @@ void BrVec3Sub(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
  * residue is the commutative-fold fork on the x component only: orig
  * fld s / fmul pV->x, ours fld pV->x / fmul s; y and z already match.
  * VC5 canonicalises a lone fmul.  Dead list in the dossier below plus
- * ledger lines 4 and 5.  Do not reopen before the end-grind (project rule 12). */
+ * ledger lines 4 and 5.  Do not reopen before the end-grind. */
 /* @implements 0x10034360 glide BrVec3Scale */
 /* @implements 0x1003ACE0 d3d BrVec3Scale */
 /* @n64 0x802244FC exact */
@@ -189,7 +189,7 @@ void BrVec3Scale(BrVec3 *pOut, const BrVec3 *pV, float s)
  * cancelled as the crossed quad by t3.py classify (7dd2eb1); the N64 twin
  * at 0x80224528 is blind to the order (see BrVec3Scale note above).  The
  * dead-probe list is in the BrVec3Scale dossier and the two ledger lines.
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x1003AD10 d3d BrVec3ScaleBy */
 /* @n64 0x80224528 located */
 void BrVec3ScaleBy(BrVec3 *pV, float s)
@@ -212,7 +212,7 @@ void BrVec3ScaleBy(BrVec3 *pV, float s)
  * cancelled as the crossed quad by t3.py classify (7dd2eb1).  Argument
  * order itself is proven by the original's stack layout (note above).
  * Dead probes: the two ledger lines.
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x1003AFE0 d3d BrVec3MulAdd */
 /* @n64 0x8022494C located */
 /* pOut = pA + pB*s.  The original scales the SECOND vector arg ([esp+0xc]) and
@@ -238,7 +238,7 @@ void BrVec3MulAdd(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB, float s)
  * cancelled as the crossed quad by t3.py classify (7dd2eb1).  The source
  * spelling is independently confirmed by the byte-exact N64 twin (note
  * above) -- the residue is VC5's fold, not the source.  Dead probes: the
- * two ledger lines.  Do not reopen before the end-grind (project rule 12). */
+ * two ledger lines.  Do not reopen before the end-grind. */
 /* @implements 0x1003B020 d3d BrVec3MulAddTo */
 /* @n64 0x80224990 exact */
 /* pA += pB*s, in place.  The x87 forms s*pB.x then adds pA.x; float add

@@ -916,7 +916,7 @@ void    BrGlNavTail(void);          /* 0x10059060 */
  * assignment, a named zero and both chain orders are value-numbered to the
  * same code (probed 2026-09-09, 3 variants, byte-identical), the same
  * mechanism as br_tex3d's specMem note.  Crank passes 1-2 are the ledger.
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x10059410 glide BrGlNavPoll */
 /* RESIDUE, measured 2026-09-03: 943 B / 297 insns against 939 / 298, and the
  * register-blind gap is 0+1 -- ONE missing `xor R,R`.  divergence.py (key 8)

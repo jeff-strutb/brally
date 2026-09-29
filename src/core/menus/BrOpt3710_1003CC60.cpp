@@ -6,7 +6,7 @@
  *
  * Guarded-vcall family variant: plain helper, then a non-virtual
  * thiscall on a STATIC object (`push offset g_arg; mov ecx,offset g_nav;
- * call m` - only a real C++ member call on a global object reaches the
+ * call m`: only a real C++ member call on a global object reaches the
  * ecx-immediate shape), the slot-6 vcall, and two cdecl helpers with
  * call-site argument reads. No EH.
  */

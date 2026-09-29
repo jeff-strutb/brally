@@ -31,7 +31,7 @@
  * low half before `mov dh,al`), a value MSVC 5.0 never re-emits because the
  * only consumer is al; every spelling folds it (dossier + dead list above).
  * Behaviourally identical (the AND is dead). Do not reopen before the
- * end-grind (project rule 12). */
+ * end-grind. */
 /* @implements 0x100271F0 glide BrTex3dTexel */
 uint16_t BrTex3dTexel(int v)
 {

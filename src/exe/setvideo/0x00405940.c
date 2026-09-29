@@ -1,4 +1,4 @@
-/* Auto-generated from disassembly - 0x00405940
+/* Auto-generated from disassembly: 0x00405940
  * _setdefaultprecision: E8 to the local _controlfp IAT thunk (not FF 15). */
 /* WHAT IT DOES: set the floating-point precision the program expects at
  * start-up. */

@@ -1,4 +1,4 @@
-/* Auto-generated from disassembly - 0x00401610
+/* Auto-generated from disassembly: 0x00401610
  * CountSections: FindFirst + FindNext until index == -1. */
 /* WHAT IT DOES: count how many sections the settings file has -- what the
  * dialog needs before it can fill a drop-down. */

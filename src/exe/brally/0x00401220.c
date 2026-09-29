@@ -1,4 +1,4 @@
-/* Auto-generated from disassembly - 0x00401220
+/* Auto-generated from disassembly: 0x00401220
  * NextObj: advance INI cursor; stop on EOF or a '[' section header. */
 /* WHAT IT DOES: step a settings-file cursor to the next entry, stopping at
  * end of file or at the '[' that begins the next section. */

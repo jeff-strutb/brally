@@ -14,7 +14,7 @@
  *   6. path walking + segment crossing     0x10065B20 0x10065C80
  *      (plus the image tint scale setter   0x10061460)
  *
- * Recovered from work/slice3/agent40.asm.  Fields whose meaning could not be
+ * Recovered from work/slice3/packet40.asm.  Fields whose meaning could not be
  * established keep positional names (fNN = byte offset NN).
  */
 #ifndef SLICE3_40_H

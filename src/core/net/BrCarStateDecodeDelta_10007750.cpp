@@ -15,7 +15,7 @@
  * @t3-effort passes 2 zero-movement 1 2
  * Residue: allocation only -- the f18 doubling as lea from the surviving
  * register vs an in-place shl, esi/edi rotated around it (RESIDUE note
- * above).  Do not reopen before the end-grind (project rule 12). */
+ * above).  Do not reopen before the end-grind. */
 /* @implements 0x10007750 glide BrCarStateDecodeDelta
  * @cpp_symbol _BrCarStateDecodeDelta
  *

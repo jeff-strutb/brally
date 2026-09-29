@@ -89,7 +89,7 @@ static const unsigned aWheelOff[4] = { 0x994u, 0x57Cu, 0x370u, 0x788u };
  * Minor: one int->float uses fild qword where the original uses fild dword, and
  * one zeroing is sub r,r vs xor r,r.  Slot census (tools/slotcensus.py) shows
  * matched per-slot write/read balance -- no dropped store.  Do not reopen
- * before the end-grind (project rule 12). */
+ * before the end-grind. */
 /* @implements 0x10039200 d3d BrCarWheelFx */
 /* The Glide twin (0x10032880) is __fastcall(pCar): everything the port passes
  * as pEnv->* and pSeed is a file-scope global here, and the wheel effect state

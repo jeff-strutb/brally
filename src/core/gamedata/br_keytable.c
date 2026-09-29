@@ -57,8 +57,8 @@ uint32_t g_brKeyBias;                    /* 0x10AC080C */
  * A5 oracle EQUIVALENT on 64 seeds under the 0x10030FD0 profile in
  * tools/oracle_profiles.py (count pinned 0..3 -- a random count is a 2^31
  * runaway -- hit and miss paths both driven).  Dossier and dead list: the
- * comment blocks above.  Do not reopen before the end-grind (the project rules
- * rule 12). */
+ * comment blocks above.  Do not reopen before the end-grind.
+ */
 /* @t4-pass 0x10030FD0 3 2026-09-19 probes 43 bytes 81 insns 28 regions 1 rows 3 census yes  (tools/crank.py) */
 /* @t4-pass 0x10030FD0 4 2026-09-19 probes 43 bytes 81 insns 28 regions 1 rows 3 census yes  (tools/crank.py) */
 /* @implements 0x10037930 d3d BrKeyTableFind */

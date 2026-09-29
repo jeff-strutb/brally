@@ -4,10 +4,10 @@
  * @cpp_kind method
  * @cpp_symbol ?Adv@Phase32F@@QAEHXZ
  *
- * 64 B frameless thiscall - the Adv() the 0x10041980 Frame twin calls.
+ * 64 B frameless thiscall: the Adv() the 0x10041980 Frame twin calls.
  * The limit word is read into a register var FIRST (dx, zero-extended
  * with and 0xffff at the compare); the paced counter is DIRECT REREADS
- * of the global (a short local spills and grows a frame - the
+ * of the global (a short local spills and grows a frame: the
  * direct-global-reread idiom), CSEd into ax across the branches;
  * wrap-to-0 vs clamp-to-lim-1 share the cross-jumped word store, then
  * w346 latches the forwarded value.

@@ -40,7 +40,7 @@ static int32_t br_dls_sext12(uint32_t v)
  * parameter load scheduled between the two pushes in the original and
  * after them here (identical multiset after the decimal-esp normaliser
  * fix, 8f86659).  Dead list in the RESIDUE block below.
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x1001EC30 glide BrDlsTileSizeDecode */
 extern int DAT_118ed198;
 extern int DAT_1186c950;

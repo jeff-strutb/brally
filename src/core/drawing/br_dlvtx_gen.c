@@ -79,7 +79,7 @@ extern void    FUN_10022070(void *, void *, float, float, float);
  * compilation (no TU neighbours).  All unpaired rows are instruction-
  * encoding differences (reg vs mem operand, direct vs reloc call).
  * A5 oracle: EQUIVALENT on 64 seeds.
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x10022BF0 glide BrDlVtxGenLin */
 const uint8_t *BrDlVtxGenLin(const uint8_t *p)
 {

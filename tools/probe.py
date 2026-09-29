@@ -29,7 +29,7 @@ is compiled with the EXACT sweep flags into build/match/t3d/probe_<TAG>.obj
 (plus probe_<TAG>.cod, whose `^  00<offset>` lines map a divergence offset to a
 source line), so each tag owns its own object and N probers never contend.
 
-‼ NEVER run tools/match_sweep.py to score a probe: it is a 20-minute
+!! NEVER run tools/match_sweep.py to score a probe: it is a 20-minute
 bookkeeping pass, and the one-file sweep still compiles the whole TU.  This is
 the measuring instrument; the sweep is the scoreboard, run once at the end.
 

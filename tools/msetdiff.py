@@ -5,7 +5,7 @@
         build/match/orig/<VA>.bin build/match/t3d/<v>.obj <SymbolName> [rows] \
         [--orig-range LO-HI] [--recomp-range LO-HI]
 
-‼ THE RANGE FLAGS ARE HOW YOU SEE INSIDE A LOST-SYNC GAP.  divergence.py
+!! THE RANGE FLAGS ARE HOW YOU SEE INSIDE A LOST-SYNC GAP.  divergence.py
 cannot compare a block that holds no `--key` consecutive matching
 instructions; on 0x100250D0 that hid 1,093 bytes (12.9%) behind one
 "NEVER COMPARED" line for five sessions.  A windowed multiset over the same

@@ -7,8 +7,8 @@ have reproduced, assembled at the addresses it claims, is byte-identical to the
 original.  Its bar is byte-identity, and the file it emits is a drop-in.
 
 This proves the wider CONTRACT-VALID corpus: every T4 function PLUS every
-T3-certified function (complete and verified, NOT byte-exact -- project rule
-12, decided by tools/t3.py --qualify) COMPILES under MSVC 5.0 and places at its
+T3-certified function (complete and verified, NOT byte-exact, decided by
+tools/t3.py --qualify) COMPILES under MSVC 5.0 and places at its
 claimed address.  That is the Milestone-1 claim in the README, made checkable:
 "we could compile from these and port from them."
 
@@ -1500,7 +1500,7 @@ def main():
     WORD = {'ok': 'OK', 'claims': 'FAILED', 'build': 'INCONCLUSIVE (build)'}
     print('  BRGlide.dll (T3+)   %s' % WORD[verdict])
     if raced:
-        print('\n‼ THE TREE CHANGED WHILE THIS RUN WAS GRADING IT '
+        print('\n!! THE TREE CHANGED WHILE THIS RUN WAS GRADING IT '
               '(%d file(s)):' % len(raced))
         for p in raced[:8]:
             print('    %s' % ib._show(p))

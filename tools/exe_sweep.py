@@ -10,7 +10,7 @@ has its own CRT linkage, so the cl flags are per-binary:
 
 @implements tags are `0xVA <exe>.exe Name` (the `.exe` is load-bearing:
 match_sweep.sources() walks all of src/ looking for `@implements`, and
-match_diff.parse_implements requires `0xVA word word` - `brally.exe` fails
+match_diff.parse_implements requires `0xVA word word`: `brally.exe` fails
 that parse so a DLL full-sweep cannot score these against BRGlide orig).
 
 Usage:
@@ -43,7 +43,7 @@ OPT_SHAPES = ('/O2', '/Od', '/O2 /Oy-')
 FIELDS = ['exe', 'file', 'va', 'name', 'status', 'opt',
           'orig_size', 'recomp_size', 'diffs']
 
-# `0xVA brally.exe FreeObjList` - the `.exe` keeps parse_implements from
+# `0xVA brally.exe FreeObjList`: the `.exe` keeps parse_implements from
 # matching (it wants two \\w+ tokens after the VA).
 IMPL_RE = re.compile(
     r'@implements\s+0x([0-9A-Fa-f]+)\s+(\w+)\.exe\s+(\w+)')
@@ -61,7 +61,7 @@ def opts_for(exe):
 
 
 def func_name(src):
-    """First real C function. Strip comments first - a comment like
+    """First real C function. Strip comments first: a comment like
     `ID_APP_EXIT (0xE141) ...` plus the body's `{` is a false match."""
     src = re.sub(r'/\*.*?\*/', '', src, flags=re.S)
     src = re.sub(r'//[^\n]*', '', src)
@@ -255,19 +255,19 @@ def ingest_work():
             name = func_name(src)
             rel_dest = 'src/exe/%s/%s' % (exe, fn)
             if not os.path.exists(binp):
-                print('[%s %d/%d] %s  no_orig - skip' % (exe, i, len(files), va),
+                print('[%s %d/%d] %s  no_orig: skip' % (exe, i, len(files), va),
                       flush=True)
                 skipped += 1
                 continue
             orig = open(binp, 'rb').read()
             if not name:
-                print('[%s %d/%d] %s  no function - skip' % (
+                print('[%s %d/%d] %s  no function: skip' % (
                     exe, i, len(files), va), flush=True)
                 skipped += 1
                 continue
             nd, opt, rlen = score_text(src, name, orig, exe, va)
             if nd != 0:
-                print('[%s %d/%d] %s %s  diffs=%s - wall, not copied' % (
+                print('[%s %d/%d] %s %s  diffs=%s: wall, not copied' % (
                     exe, i, len(files), va, name, nd), flush=True)
                 skipped += 1
                 continue
@@ -368,7 +368,7 @@ def main():
             sys.exit('unknown option %s' % a)
     if summary:
         if not os.path.exists(REPORT):
-            sys.exit('no %s - run tools/exe_sweep.py first' % REPORT)
+            sys.exit('no %s: run tools/exe_sweep.py first' % REPORT)
         with open(REPORT) as f:
             summarise(list(csv.DictReader(f)))
         return

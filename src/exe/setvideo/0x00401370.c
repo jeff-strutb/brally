@@ -1,4 +1,4 @@
-/* Auto-generated from disassembly - 0x00401370
+/* Auto-generated from disassembly: 0x00401370
  * CHK_FClose. fclose; on EOF debug+exit; then free name and wrapper. */
 /* WHAT IT DOES: close a checked file and free the handle record and its copy
  * of the name. */

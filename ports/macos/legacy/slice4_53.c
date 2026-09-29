@@ -281,4 +281,4 @@ void BrSub1003C230(void)
     (void)BrTimerStart1003C230();
 }
 
-/* ── Ghidra-matched functions ─────────────────────────── */
+/* -- Ghidra-matched functions --------------------------- */

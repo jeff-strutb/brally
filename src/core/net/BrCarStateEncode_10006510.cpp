@@ -7,8 +7,8 @@
  * @t3-effort passes 3 zero-movement 2 3
  * Residue: the push-early/narrow-shift argument schedule at ~30 write sites
  * (identical multiset, no rows). Dossier, the three-front-end map and the
- * ledger are in the block below. Do not reopen before the end-grind
- * (project rule 12). */
+ * ledger are in the block below. Do not reopen before the end-grind.
+ */
 /* @implements 0x10006510 glide BrCarStateEncode
  * @cpp_symbol _BrCarStateEncode
  *

@@ -83,7 +83,7 @@ void BrUiSprBlitKeyed(unsigned short *pDst, int dstPitch, int w, int h,
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
  * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind (project rule 12). */
+ * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x10001320 glide BrUiSprBlit */
 void BrUiSprBlit(BrSurf *pDst, int x, int y, BrSurf *pSrc,
                  const int *pRect, int flags)

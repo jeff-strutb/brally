@@ -94,7 +94,7 @@ extern const uint8_t *g_apBrImgTintTex[];
  * @t3-effort passes 4 zero-movement 3 4
  * residue after tools/crank.py: 40 compiles this pass, levers accepted: mut:addr_taken:stride > mut:reorder_stmts;
  * every candidate and score is in build/match/crank.log.
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x1005A300 glide BrImgMulByTexture */
 void BrImgMulByTexture(int32_t iTex, uint8_t *pPix, int32_t w, int32_t h)
 {

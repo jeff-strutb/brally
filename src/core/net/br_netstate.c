@@ -219,7 +219,7 @@ int BrNetLockSetIfZero22AAF4(void)
     return 1;
 }
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* -- Ghidra-matched functions --------------------------- */
 #include <windows.h>
 extern int DAT_1021c81c;
 extern int DAT_1021c908;

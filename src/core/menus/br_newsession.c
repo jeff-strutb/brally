@@ -30,7 +30,7 @@
  * float fields through a second zero register (xor ecx,ecx) beside the ebx
  * zero web; every spelling joins one web (DEAD lists above; the same class
  * is certified in 0x10063DD0).  A3 pairs it by the promoted-zero rule.
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x1003E680 d3d BrSub1003E680 */
 /* Matching arm: loose Glide globals in the original's store order, the
  * imported sprintf cached in esi, memset as rep stosd.  The three float

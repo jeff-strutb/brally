@@ -76,7 +76,7 @@ void BrVtxSwap(void *pVerts, int count)
  * @t3-effort passes 3 zero-movement 2 3
  * residue after tools/crank.py: 228 compiles this pass, levers accepted: none;
  * every candidate and score is in build/match/crank.log.
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x1002BE30 d3d BrVtxExpand */
 float *BrVtxExpand(BrVtxCache *pCache, const void *pVerts, int count)
 {

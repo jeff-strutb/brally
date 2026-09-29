@@ -274,7 +274,7 @@ static const float kF72A0 = 0.5f;                  /* 0x100772A0 */
  * (original: below), and the +0xaf two-address add destination
  * (`add edx,eax` vs `add eax,edx`, both operands dead after).  The full
  * dead lists live in this header (sites 1, 1-old, 2 and the shadow).
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x10011FA0 glide BrFrameDraw */
 void BrFrameDraw(int iSlot)
 {

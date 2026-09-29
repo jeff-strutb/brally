@@ -1,4 +1,4 @@
-/* Auto-generated from disassembly - 0x004017B0
+/* Auto-generated from disassembly: 0x004017B0
  * LoadRallyMain: LoadLibraryA + GetProcAddress("RallyMain"), setne return. */
 /* WHAT IT DOES: load the chosen renderer DLL and find its RallyMain entry
  * point. Reports whether both succeeded -- this is the moment the launcher

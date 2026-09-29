@@ -1,4 +1,4 @@
-/* Auto-generated from disassembly - 0x00401B30
+/* Auto-generated from disassembly: 0x00401B30
  * GetInstallDir: HKLM\SOFTWARE\SouthPeak Interactive\Boss Rally\Directory.
  * Fallback "c:\\"; append '\\' if the value has none. */
 /* WHAT IT DOES: look the game's install directory up in the registry,

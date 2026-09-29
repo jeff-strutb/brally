@@ -72,7 +72,7 @@ const uint8_t *BrDlCmdTri1(BrDlCmd *pS, const uint8_t *p)
  * uses for most of its geometry, since flat surfaces come in pairs. Each is
  * dropped, trimmed or drawn on its own, and whatever happens to the first the
  * second is still considered. */
-/* â¼ RESIDUE, 2026-09-05.  The body below is the POINTER form and is 624 B
+/* !! RESIDUE, 2026-09-05.  The body below is the POINTER form and is 624 B
  * against the original's 696 with 527 diffs.  Two measurements now say what
  * it needs, and both were made by scratch-compiling copies (build/probe/):
  *
@@ -87,7 +87,7 @@ const uint8_t *BrDlCmdTri1(BrDlCmd *pS, const uint8_t *p)
  *     are the other way round (`fmul [texScale]` then `fmul [oow]` in the
  *     original).  A working copy is build/probe/tri2_indexform_KEEP.c.
  *
- *  2. â¼ IT CANNOT LIVE IN THIS FILE.  Adding that body here as a third user
+ *  2. !! IT CANNOT LIVE IN THIS FILE.  Adding that body here as a third user
  *     of BR_DLCMD_TRI_I UN-MATCHES BOTH of its siblings: 0x1001ECF0 goes from
  *     byte-exact to 22 differing bytes and 0x10020900 to 258.  The surrounding
  *     translation unit decides the codegen, so 0x1001FA30 needs its OWN .c

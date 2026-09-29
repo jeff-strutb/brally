@@ -40,7 +40,7 @@
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
  * hand passes (tools/fnmatch/fn.py variants); the dead-probe list is in the
- * comment block above.  Do not reopen before the end-grind (project rule 12). */
+ * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x1002B280 d3d BrCursorPairSet */
 void *g_brCursor575510;   /* 0x10575510 */
 void *g_brCursor575518;   /* 0x10575518 */

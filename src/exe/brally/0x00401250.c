@@ -1,4 +1,4 @@
-/* Auto-generated from disassembly - 0x00401250
+/* Auto-generated from disassembly: 0x00401250
  * ReadINI: alloc 8-byte cursor, temporarily set comment char to ';'. */
 /* WHAT IT DOES: open and parse a settings file into a cursor the other
  * readers walk. Comments are ';' for the duration of this read, restored

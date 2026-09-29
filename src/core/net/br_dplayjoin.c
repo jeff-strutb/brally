@@ -97,7 +97,7 @@ int BrSub1003C260(void)
     return 1;
 }
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* -- Ghidra-matched functions --------------------------- */
 #include <windows.h>
 extern int DAT_10078828;
 extern int DAT_10078858;
@@ -265,7 +265,7 @@ extern DWORD DAT_10ac40a8[20];          /* the session name, 80 bytes     */
  * residue is one rematerialised zero (the xor singleton; the original
  * reuses a live zero register, -1 insn) plus colouring; identical
  * multiset otherwise, 4 masked regions.  Dead probes in the two ledger
- * lines.  Do not reopen before the end-grind (project rule 12). */
+ * lines.  Do not reopen before the end-grind. */
 /* @implements 0x10035DD0 glide BrDpSessionJoin */
 int BrDpSessionJoin(void *pDp, DWORD *pGuidInstance, BrDpLogin *pLogin,
                     BrDpSess *pSess)
@@ -366,7 +366,7 @@ int BrDpSessionJoin(void *pDp, DWORD *pGuidInstance, BrDpLogin *pLogin,
     return hr;
 }
 
-/* ââ the lobby launch path âââââââââââââââââââââââââââââââââââââââââââââââ */
+/* -- the lobby launch path ----------------------------------------------- */
 
 /* CLSID_DirectPlayLobby (0x10078918), IID_IDirectPlayLobby3A (0x10078908),
  * and the IID ConnectEx asks for (0x10078848). */
@@ -406,7 +406,7 @@ typedef int (__stdcall *BrComRel)(void *pThis);                      /* +0x08 */
  * through the C++ front end (also folds, and C++ costs elsewhere).  The
  * ternary must be spelled `flag != 0 ? 0x100 : 0` (the literal
  * `-(uint)(flag != 0) & 0x100` compiles to setne).
- * â¼ The nine probes above were recorded 2026-09-09 in a shape Gate B does not
+ * !! The nine probes above were recorded 2026-09-09 in a shape Gate B does not
  * count -- `probes=9 result=-6B/raw0+1` instead of the counted form -- so
  * t3.py read the ledger as empty. Re-stated below at the numbers that still
  * hold (the function has not changed since); the work was done, only the
@@ -438,7 +438,7 @@ typedef int (__stdcall *BrComRel)(void *pThis);                      /* +0x08 */
  * residue is instruction scheduling only: the `and esi,0xff` and the later
  * `shr/and` of the flag bit are placed among the SetConnectionSettings
  * pushes differently (same instructions, same registers, same size).
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x10032320 glide BrDpLobbyConnect */
 int BrDpLobbyConnect(int *param_1)
 {

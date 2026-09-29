@@ -101,7 +101,7 @@ void BrSurfFree(BrSurf *pSurf)
  * register (`or ebx,edx` for the original's `or edx,ebx`) and the row-counter
  * copy is stored in the prologue instead of after the pushes; the multiset
  * is identical.  Ledger lines above, dead list in the loop comment.  Do not
- * reopen before the end-grind (project rule 12). */
+ * reopen before the end-grind. */
 /* @implements 0x100011C0 glide BrSurfBlt24 */
 void BrSurfBlt24(uint16_t *pDst, const uint8_t *pBits,
                  int32_t cx, int32_t cy, int32_t cbWidthBytes)
@@ -201,7 +201,7 @@ BrSurf *BrSurfFromBitmap(const BrGdiBitmap *pbm)
  * @t3-effort passes 3 zero-movement 2 3
  * RESIDUE: register colouring only -- same size, same instruction count, one
  * register choice differs (crank census yes x3, dossier above). Do not
- * reopen before the end-grind (project rule 12). */
+ * reopen before the end-grind. */
 /* @implements 0x100014A0 glide BrSurfSetColourKey */
 void BrSurfSetColourKey(BrSurf *pSurf, uint32_t colorref)
 {
@@ -272,7 +272,7 @@ uint32_t BrSurf565ToRgb(uint16_t v)
     return (r << 16) | (g << 8) | b;
 }
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* -- Ghidra-matched functions --------------------------- */
 void __stdcall grLfbWriteRegion(int, int, int, int, int, int, int, int);
 
 /* WHAT IT DOES: blit a surface's pixel data to the Glide linear frame buffer. */

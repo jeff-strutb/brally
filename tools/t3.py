@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """T3-certified functions: complete and verified, not yet byte-exact -- and the
-OBJECTIVE gates that decide it (project rule 12).
+OBJECTIVE gates that decide it.
 
     .venv/bin/python tools/t3.py --qualify 0x1000EAF0   # gates 0, A and B; emits the tag on PASS
     .venv/bin/python tools/t3.py --qualify --all         # every diff row <= 400 B, one line each
@@ -1111,7 +1111,7 @@ def tag_text(m, date, eff):
             ' * @t3-measure bytes %d/%d insns %d/%d rows %d+%d regions %d oracle %s\n'
             ' * @t3-effort passes %d zero-movement %d %d\n'
             ' * <what the residue is, by wall; where the dossier and dead list live;\n'
-            ' *  "Do not reopen before the end-grind (project rule 12)."> */'
+            ' *  "Do not reopen before the end-grind."> */'
             % ('0x%08X' % int(m['va'], 16), date, m['rbytes'], m['obytes'], m['ri'], m['oi'],
                m['nmiss'], m['nextra'], m['regions'], m['oracle'], eff[0], eff[1], eff[2]))
 

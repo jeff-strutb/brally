@@ -411,7 +411,7 @@ void BrSndBankSetCar(int iCar, int iName)
     g_0B6C48[iCar].iName = iName;
 }
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* -- Ghidra-matched functions --------------------------- */
 extern int BrSndG0B5DE8;
 extern int BrSndG18290FC;
 extern int BrSndPDS;
@@ -505,7 +505,7 @@ int BrSfxCarBankInit(int param_1,int param_2)
   return;
 }
 
-/* ââ the bank loader ââââââââââââââââââââââââââââââââââââââââââââââââââââ */
+/* -- the bank loader ---------------------------------------------------- */
 
 extern int   DAT_100b55f8[];    /* 0x100B55F8  the voice table, 18 dwords a row */
 extern int   DAT_100b5cb8[];    /* 0x100B5CB8  voice row 24 (engine HIGH)       */
@@ -548,7 +548,7 @@ int BrSndVoiceLoad();           /* 0x1006BC10, br_sndload.c                     
  * residue is the engine loop's i/IV24 esi-edi transposition only (the
  * BrSelLookup class); size- and insn-exact, identical register-blind
  * multiset.  Dead list w1-w6 in the RESIDUE block above plus the two
- * ledger lines.  Do not reopen before the end-grind (project rule 12). */
+ * ledger lines.  Do not reopen before the end-grind. */
 /* @implements 0x1006C290 glide BrSfxBankLoad */
 
 int BrSfxBankLoad(int iSet)

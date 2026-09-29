@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Scan the ORIGINAL bytes corpus and derive each global's access profile:
 width (1/2/4/8), signedness hint (movsx/movzx), and floatness (x87 dword/
-qword loads). Writes build/orig_global_widths.csv - ground truth for the
+qword loads). Writes build/orig_global_widths.csv: ground truth for the
 matching pipeline's extern declarations (better than Ghidra's undefined4)."""
 import glob, os, csv, collections
 from capstone import Cs, CS_ARCH_X86, CS_MODE_32
@@ -54,7 +54,7 @@ def decide(p):
     if sizes == {2}: return 'short' if p.get('s2') else 'unsigned short'
     if not sizes: return ''            # address-taken only
     if sizes == {4}: return 'int'
-    return 'int'                        # mixed - widest wins
+    return 'int'                        # mixed: widest wins
 
 os.makedirs('build', exist_ok=True)
 with open('build/orig_global_widths.csv','w',newline='') as fh:

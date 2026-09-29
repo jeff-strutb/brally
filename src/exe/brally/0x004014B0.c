@@ -1,4 +1,4 @@
-/* Auto-generated from disassembly - 0x004014B0
+/* Auto-generated from disassembly: 0x004014B0
  * ReadListLine: fgets with #include nesting and comment-char skip.
  * Returns the (possibly replaced) FILE*, or 0 on EOF of the include stack. */
 /* WHAT IT DOES: read the next line of a list file, following #include

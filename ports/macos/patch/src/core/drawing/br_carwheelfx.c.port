@@ -49,7 +49,7 @@
  * Minor: one int->float uses fild qword where the original uses fild dword, and
  * one zeroing is sub r,r vs xor r,r.  Slot census (tools/slotcensus.py) shows
  * matched per-slot write/read balance -- no dropped store.  Do not reopen
- * before the end-grind (project rule 12). */
+ * before the end-grind. */
 /* @implements 0x10039200 d3d BrCarWheelFx */
 void BrCarWheelFx(struct BrCar *pCar, const BrCarFxEnv *pEnv, uint32_t *pSeed)
 {

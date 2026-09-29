@@ -30,7 +30,7 @@
  *     the packers in this TU call floor) f10/f14 are code-first and f18/f78
  *     cur-first, as in the original.  Measured with N dummy prototypes in
  *     their place: N=200..248 and 328..376 match, 0..192 leave f18's
- *     cur/code colouring swapped.  ‼ Adding or removing declarations above
+ *     cur/code colouring swapped.  !! Adding or removing declarations above
  *     the function can flip this; re-score after any preamble edit.
  * The six tail bits are plain `!= 0.0f` arguments: VC5 emits the original's
  * `fcomp [pool 0.0]; fnstsw; test ah,0x40; jne; mov 1; jmp; xor` diamond at

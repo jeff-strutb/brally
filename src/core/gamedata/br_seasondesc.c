@@ -18,7 +18,7 @@
 
 #include "slice6_73.h"
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* -- Ghidra-matched functions --------------------------- */
 #include <windows.h>
 int FUN_100378c0();
 extern char DAT_1007b600[];

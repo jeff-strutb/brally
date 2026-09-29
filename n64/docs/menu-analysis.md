@@ -35,7 +35,7 @@ code in any of them.** All 883 functions are in the one segment.
 2. Frame layout is `[outgoing args][saved regs][locals]`, saved regs low
    (`ra` at `sp+0x54` in a `0x100`-byte frame), which is IDO. GCC puts them at
    the top.
-3. **951 branch-likely instructions** (`beql`/`bnel`/`bnezl`/…, ~1.1% of the
+3. **951 branch-likely instructions** (`beql`/`bnel`/`bnezl`/..., ~1.1% of the
    88k decoded). GCC 2.7.x for MIPS does not emit these.
 4. Float constants materialised through a GPR (`lui $at,0x41a0; mtc1 $at,$f4`
    for `20.0f`) instead of a `.rodata` load.
@@ -75,7 +75,7 @@ recovered by scanning for the shape. Examples:
 | `0x802723DC` | BGM, SFX, Units, Controller Configuration, Save/Load Configuration, Credits |
 | `0x80272240` | Sunny, Fog, Rain, Snow, Night |
 | `0x802725F4` | TYPE A/B/C/D, STEERING WHEEL |
-| `0x80272078` … `0x80272178` | car setup: Type 1-3, Manual/Automatic, Slippy/Normal/Grippy, Softer/Normal/Harder |
+| `0x80272078` ... `0x80272178` | car setup: Type 1-3, Manual/Automatic, Slippy/Normal/Grippy, Softer/Normal/Harder |
 
 Track records are bigger structs (`0x17C` stride, `0x80270854`+) that **embed a
 `MenuItem` as their first 20 bytes**. Desert, Mountain, Coastline, Strip Mine,
@@ -151,7 +151,7 @@ height 40. Width tables at `0x802A187C` (`0x188` B) and `0x802A17A0`
 
 **Inline colour escapes.** Strings carry `%XY` where X and Y are colour letters:
 
-- `%%` → literal `%`; `%i`, `%n` → single-char controls.
+- `%%` -> literal `%`; `%i`, `%n` -> single-char controls.
 - X selects the **primary** colour, Y the **secondary** (the combiner blends the
   two, giving two-tone / drop-shadow text).
 - Each letter indexes a 43-entry jump table, `0x802A9D60` for X, `0x802A9E0C`
@@ -294,7 +294,7 @@ What this yields, in rough order of value:
    record-bundle descriptor entirely.
 3. **Reference frames for pixel diffing**, a regression oracle that keeps a
    re-implementation honest instead of letting it drift.
-4. **Observed input→state transitions**, enough to re-implement the driver
+4. **Observed input->state transitions**, enough to re-implement the driver
    behaviourally without matching it.
 
 The honest limit: a DL capture is a *recording*, not a menu. Interactivity still
@@ -324,8 +324,8 @@ Phase 1 (only if the PC decomp lands and this is still wanted):
 4. Set up splat with the layout in §1 and let it split the single segment.
 5. Pin the IDO version by putting `0x8022F4F8`/`0x8022F504` (12 and 16 bytes)
    and `0x8020C408` (88 bytes) on decomp.me and trying 5.3 then 7.1.
-6. Decompile in this order: text renderer → item loader (`0x8020C27C`) → driver
-   (`0x8020AD5C`) → main menu (`0x802111E0`). That is a runnable menu.
+6. Decompile in this order: text renderer -> item loader (`0x8020C27C`) -> driver
+   (`0x8020AD5C`) -> main menu (`0x802111E0`). That is a runnable menu.
 
 ## 10. The N64 collision module, usable now, no N64 decomp required
 
@@ -465,7 +465,7 @@ titles ship the same track asset, not merely the same container.
 > from here.
 
 One structural difference worth noting: the PC maps to a *fixed* vram base, while
-the N64 stores a per-track base at `+0x0C` (`0x800C5A40`, `0x800ABF38`, …).
+the N64 stores a per-track base at `+0x0C` (`0x800C5A40`, `0x800ABF38`, ...).
 
 This corrects a guess in `extracted/n64/README.md`, which listed these five
 records as large menu-art bundles with an undecoded `[size, vaddr]` DMA table.
@@ -501,7 +501,7 @@ the embedded `RSP Gfx ucode F3DEX.NoN 1.21`. The texrect counts line up exactly 
 `gSPTextureRectangle`.
 
 **This independently confirms a divergence the PC decomp already documented.**
-`docs/archive/CONVENTIONS.md` records that in the PC build, command `0xE1` is FILL RECTANGLE
+The PC decomp records that in the PC build, command `0xE1` is FILL RECTANGLE
 with plain 12-bit *integer* corners, unlike the N64's `0xF6` with 10.2 fixed
 point. Counting on the N64 side: **`0xF6` appears at 17 sites, `0xE1` at zero.**
 The N64 uses the stock fill rect and never emits `0xE1` at all, so the PC's

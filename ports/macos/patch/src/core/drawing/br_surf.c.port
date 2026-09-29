@@ -60,7 +60,7 @@ BrSurf *BrSurfFromBitmap(const BrGdiBitmap *pbm)
  * @t3-effort passes 3 zero-movement 2 3
  * RESIDUE: register colouring only -- same size, same instruction count, one
  * register choice differs (crank census yes x3, dossier above). Do not
- * reopen before the end-grind (project rule 12). */
+ * reopen before the end-grind. */
 /* @implements 0x100014A0 glide BrSurfSetColourKey */
 void BrSurfSetColourKey(BrSurf *pSurf, uint32_t colorref)
 {

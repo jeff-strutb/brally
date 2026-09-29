@@ -27,7 +27,7 @@
  * a.y`, ours `fld a.y / fmul b.z`, the crossed quad t3.py classify already
  * cancels. No stack slots, no spills, no uncompared code outside the 4 B the
  * key-3 walk skips. Dead probes: the two ledger lines above.
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x1001DD00 glide BrVec3dCross */
 /* @implements 0x10030670 d3d BrVec3dCross */
 void BrVec3dCross(const BrVec3d *pA, const BrVec3d *pB, BrVec3d *pOut)

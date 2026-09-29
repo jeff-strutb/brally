@@ -131,7 +131,7 @@ int BrX10072580(int a0)
 }
 
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââ */
+/* -- Ghidra-matched functions ----------------------- */
 
 /* 0x1184C1E8 -- each channel's base rate; br_sfxsrc.h owns the model. */
 extern double g_aBrSfxChanRate[];

@@ -7,7 +7,7 @@
  * Residue: one register plan -- n and the byte pointer swapped between edi
  * and edx, and the byteIdx load hoisted a few instructions.  The dossier
  * and dead list are in this header (PARKED paragraph and the two ledger
- * passes).  Do not reopen before the end-grind (project rule 12). */
+ * passes).  Do not reopen before the end-grind. */
 /* @implements 0x1006D0B0 glide BrBitStreamWriteBits_1006D0B0
  * @t4-pass 0x1006D0B0 1 2026-09-13 probes 12 bytes 164 insns 63 regions 2 rows 0 census yes  (hand, cpp_score variants: n/sh as ternaries, nbits decrement after the store, a room local, do-while with guard, compound bit test, byteIdx before bit, ~(~0<<n) mask, 0xff<<(8-bit) keep, reversed compare, 8-(bit+nbits), int n/sh, implicit narrowing)
  * @t4-pass 0x1006D0B0 2 2026-09-13 probes 11 bytes 164 insns 63 regions 2 rows 0 census yes  (hand, cpp_score variants: sh/n declaration order, p before keep, for-loop, keep&*p, OR operand order, bit>7, unsigned mask literals, unsigned bit/byteIdx members, nbits=nbits-n, byteIdx+=1, named field local -- best 40 every time)

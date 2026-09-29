@@ -38,7 +38,7 @@
 #undef BrTextBoxMeasureA
 #undef BrTextBoxMeasureB
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* -- Ghidra-matched functions --------------------------- */
 int operator_delete();
 int __fastcall BrObj54710Dtor(void *pThis);
 /* Lives in src/core/menus/br_textbox.c; BrObj54710Dtor still takes its

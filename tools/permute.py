@@ -5,26 +5,26 @@ Modeled on simonlindholm/decomp-permuter: mutate semantically-equivalent C,
 compile with the original MSVC 5.0, score against original bytes, keep
 improvements, anneal (accept-worse) and restart from the best.
 
-Mutations target LIVENESS, TEMP COUNT, and REGISTER COLORING - the levers
+Mutations target LIVENESS, TEMP COUNT, and REGISTER COLORING: the levers
 that move VC5's first-region graph coloring. Decl reordering and pure
 renames are proven /O2-neutral and are not used.
 
 Coloring-perturbing mutations (this pass):
-  identity     x → (x+0)/(x*1)/(x|0)/(x^0) on a rvalue (materialize)
+  identity     x -> (x+0)/(x*1)/(x|0)/(x^0) on a rvalue (materialize)
   addr_taken   (void)&v / volatile load through &v  (stack slot / class)
   guard_nest   if (a && b) <-> if (a) if (b)  (live-across-branch)
   first_live   extra first-region copy/use of a later value (caller-saved)
   recompute    duplicate an early assignment so it competes for a reg
   store_temp   t = rhs; lhs = t  on a field/deref store
-  store_swap   lhs = a OP b  →  lhs = b OP a  (store-side operand order)
+  store_swap   lhs = a OP b  ->  lhs = b OP a  (store-side operand order)
   self_assign  v = v; after an assignment (copy web)
   live_merge   reuse one local across two disjoint assignment sites
   paren        extra (x) on a rvalue
   deref0       *p <-> *(p+0)  (real deref only; `x * y` is mul)
   dead_use     (void)v; in the first region
-  binop_ident  a OP b → a OP (b+0)/(b|0)  (0x10007D50 24→16 lever)
+  binop_ident  a OP b -> a OP (b+0)/(b|0)  (0x10007D50 24->16 lever)
 Existing split_local / merge_locals / reassoc / intro_temp still apply.
-split_add (a=b+c → t=b; a=t+c) cracked 0x1003CC00 - fold into _refine_candidates.
+split_add (a=b+c -> t=b; a=t+c) cracked 0x1003CC00: fold into _refine_candidates.
 
     python3 tools/permute.py --va 0x1002F380 --iters 20000
     python3 tools/permute.py --batch --iters 2000
@@ -63,7 +63,7 @@ REPORT = os.path.join(ROOT, 'build', 'match', 'report.csv')
 ORIG_DIR = os.path.join(ROOT, 'build', 'match', 'orig')
 SHARED_CSV = os.path.join(ROOT, 'config', 'shared.csv')
 
-WRAP_HEAD = '''/* permute seed - %s */
+WRAP_HEAD = '''/* permute seed: %s */
 #ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #include <windows.h>
@@ -619,7 +619,7 @@ def wrap_tree_function(src_path, func_name, va):
         header += inc + '\n'
     header += '\n'
     inc_text = _included_header_text(includes, src_path)
-    # typedef / struct tags used as types (fn body or emitted decls) - before externs
+    # typedef / struct tags used as types (fn body or emitted decls): before externs
     i = 0
     while True:
         m = re.search(r'^typedef\b', text[i:], re.M)
@@ -1244,7 +1244,7 @@ def _split_top_binop(cond, op):
 
 
 def mut_identity(body, rng):
-    """x → (x+0)/(x*1)/(x|0)/(x^0) on one rvalue. Forces a materialization."""
+    """x -> (x+0)/(x*1)/(x|0)/(x^0) on one rvalue. Forces a materialization."""
     kinds = _kind_map(body)
     names = list(kinds) or list(_decl_names_all(body))
     rng.shuffle(names)
@@ -1428,7 +1428,7 @@ def mut_recompute(body, rng):
 
 
 def mut_self_assign(body, rng):
-    """Insert `v = v;` (or `v = (v | 0);`) after an assignment - extra copy web."""
+    """Insert `v = v;` (or `v = (v | 0);`) after an assignment: extra copy web."""
     stmts = _top_statements(body)
     cands = []
     for i, s in enumerate(stmts):
@@ -1451,7 +1451,7 @@ def mut_self_assign(body, rng):
 
 
 def mut_store_swap(body, rng):
-    """lhs = a OP b  →  lhs = b OP a on a store/assign (store-side operand order)."""
+    """lhs = a OP b  ->  lhs = b OP a on a store/assign (store-side operand order)."""
     ops = list(re.finditer(
         r'=\s*((?:' + IDENT + r'|' + NUM + r'|\([^()]{0,48}\)))\s*'
         r'([\+\*\|\&\^])\s*'
@@ -1461,13 +1461,13 @@ def mut_store_swap(body, rng):
         _fail()
     m = rng.choice(comm)
     a, op, b = m.group(1).strip(), m.group(2), m.group(3).strip()
-    # keep the '=' - match started at '='
+    # keep the '=': match started at '='
     repl = '= %s %s %s;' % (b, op, a)
     return body[:m.start()] + repl + body[m.end():], 'store_swap:%s' % op
 
 
 def mut_store_temp(body, rng):
-    """t = rhs; lhs = t;  on a pointer/field store - forces rhs into a temp."""
+    """t = rhs; lhs = t;  on a pointer/field store: forces rhs into a temp."""
     mlist = list(re.finditer(
         r'((?:\*(?:\s*\([^)]*\))?\s*(?:' + IDENT + r'|\([^;]{1,50}\))|'
         r'' + IDENT + r'\s*(?:->|\.)\s*' + IDENT + r'))\s*=\s*([^;]+);',
@@ -1532,10 +1532,10 @@ def mut_paren(body, rng):
 
 
 def mut_deref0(body, rng):
-    """*p <-> *(p+0) - materializes the pointer without changing the value.
+    """*p <-> *(p+0): materializes the pointer without changing the value.
 
     Skip `x * y` multiplies: a preceding ident/number/`)` makes `*` a binop.
-    (The 0x10007D50 24→16 drop was that accident; see mut_binop_ident.)
+    (The 0x10007D50 24->16 drop was that accident; see mut_binop_ident.)
     """
     back = list(re.finditer(r'\*\(\s*(' + IDENT + r')\s*\+\s*0\s*\)', body))
     fwd = []
@@ -1568,7 +1568,7 @@ def mut_deref0(body, rng):
 
 
 def mut_dead_use(body, rng):
-    """(void)v; in the first region - keeps v live / competing without a store."""
+    """(void)v; in the first region: keeps v live / competing without a store."""
     names = _decl_names_all(body)
     if not names:
         _fail()
@@ -1584,7 +1584,7 @@ def mut_dead_use(body, rng):
 
 
 def mut_binop_ident(body, rng):
-    """a OP b → a OP (b+0) / (b|0) / (b*1). Proven 0x10007D50 via accidental deref0 on `* t`."""
+    """a OP b -> a OP (b+0) / (b|0) / (b*1). Proven 0x10007D50 via accidental deref0 on `* t`."""
     ops = []
     for m in re.finditer(
             r'([\+\-\*\|\&\^])\s*(' + IDENT + r')\b', body):
@@ -1639,7 +1639,7 @@ MUTATIONS = [
     (6, mut_paren),
     (6, mut_deref0),
     (6, mut_dead_use),
-    (10, mut_binop_ident),         # folded candidate: 0x10007D50 24→16
+    (10, mut_binop_ident),         # folded candidate: 0x10007D50 24->16
 ]
 
 

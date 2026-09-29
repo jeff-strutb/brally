@@ -1,4 +1,4 @@
-/* Auto-generated from disassembly - 0x00401660
+/* Auto-generated from disassembly: 0x00401660
  * IncludeStackEmpty: sete al after xor eax,eax. */
 /* WHAT IT DOES: report whether the include stack has anything on it. */
 /* @implements 0x00401660 brally.exe IncludeStackEmpty */

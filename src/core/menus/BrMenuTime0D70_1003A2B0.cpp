@@ -6,7 +6,7 @@
  * @t3-effort passes 2 zero-movement 1 2
  * Residue: register colouring of the stage-byte lookup only (bias, stage*3
  * and index rotate across eax/ecx/edx); dossier and dead list in the header
- * below.  Do not reopen before the end-grind (project rule 12). */
+ * below.  Do not reopen before the end-grind. */
 /* @implements 0x1003A2B0 glide BrMenuTime0D70_1003A2B0
  * @cpp_kind free
  * @cpp_symbol ?BrMenuTime0D70_1003A2B0@@YAHPAVObj3A2B0@@@Z

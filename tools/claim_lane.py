@@ -22,7 +22,7 @@ def diffs():
         if os.path.exists(p):
             with open(p) as f:
                 done.update((r.get('va') or '').lower() for r in csv.DictReader(f) if r.get('status')=='match')
-    # Hand-certified T3 functions (project rule 12, tools/t3.py) are parked
+    # Hand-certified T3 functions (tools/t3.py) are parked
     # until the end-grind: complete and verified, not byte-exact, and NOT a
     # target.  Never hand one out.
     try:
@@ -68,7 +68,7 @@ def claim(n,big=False,vas=None):
         # (lower score = better target: SHAPE < mixed < missing-code < coloring
         # wall). When present, hand out best-first; the held-set already keeps
         # parallel lanes disjoint. Without it, fall back to rotation.
-        # ‼ triage_rank.csv is a 2026-08-28 snapshot of 231 rows: once its
+        # !! triage_rank.csv is a 2026-08-28 snapshot of 231 rows: once its
         # SHAPE rows are gone it hands out the GIANTS (score 10007+).  A
         # byte-exact lane must come in through tools/t4lane.py --claim, which
         # passes `vas` and never consults the rank file.

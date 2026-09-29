@@ -1,4 +1,4 @@
-/* Auto-generated from disassembly - 0x00401690
+/* Auto-generated from disassembly: 0x00401690
  * PopInclude: return gIncludeStack[--gIncludeDepth]. */
 /* WHAT IT DOES: pop the previous file off the include stack when an included
  * file ends. */

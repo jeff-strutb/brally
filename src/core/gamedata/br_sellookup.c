@@ -52,7 +52,7 @@
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
  * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind (project rule 12). */
+ * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x1002F460 d3d BrSelLookup */
 /* Original: no parameters. The input record comes through a pointer
  * global, the table is two interleaved pinned byte columns (0x100B3028 /

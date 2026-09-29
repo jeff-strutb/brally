@@ -28,7 +28,7 @@ extern short BrCollGridCellAcquire(float x, float y);
  * @t3-effort passes 2 zero-movement 1 2
  * Residue: frameless (orig sub esp,0x68) vs EBP-frame (recomp sub esp,0x6c),
  * FP interleaving (fld+fxch vs mov pairs), uint16 masking (extra and R,0xffff).
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* WHAT IT DOES: vertical raycast from the eye through the collision grid.
  * Finds the nearest face directly below the camera and builds near/far
  * hit-index lists for the caller. */

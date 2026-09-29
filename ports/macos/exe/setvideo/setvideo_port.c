@@ -1,8 +1,8 @@
-/* setvideo - macOS port driver for SetVideo.exe.
+/* setvideo: macOS port driver for SetVideo.exe.
  *
  * SetVideo.exe is byte-exact (42/42 functions, 7,228/7,228 B of .text). Of
- * those 42, twenty-nine are plain C - the .vdb/.ini reader, the section
- * cursor, the checked-file helpers - and are compiled here VERBATIM from
+ * those 42, twenty-nine are plain C: the .vdb/.ini reader, the section
+ * cursor, the checked-file helpers, and are compiled here VERBATIM from
  * src/exe/setvideo/ with BR_MATCHING_BUILD defined. The original logic runs;
  * only the shell around it is new.
  *
@@ -174,8 +174,8 @@ static void PreselectFromIni(void)
 /* ------------------------------------------------------------------ */
 
 /* WinMain case 3/4 (vendor and chipset pages write identically): the chosen
- * section's name as Card=, then every line of that section - after following
- * any Use= redirection - copied out verbatim. */
+ * section's name as Card=, then every line of that section (after following
+ * any Use= redirection) copied out verbatim. */
 static void WriteCard(char *name)
 {
     CHKFile *fp;
@@ -232,7 +232,7 @@ static void WriteSymptoms(void)
 }
 
 /* ------------------------------------------------------------------ */
-/* Listing - what FillComboA/FillComboB put in the drop-downs         */
+/* Listing: what FillComboA/FillComboB put in the drop-downs         */
 /* ------------------------------------------------------------------ */
 
 /* prefix == 0 lists every section; "[v:" and "[c:" reproduce the vendor and
@@ -301,7 +301,7 @@ static void ShowCurrent(void)
     INI     *bound;
 
     if (CHK_FileExists(gIniPath) == 0) {
-        printf("%s: not present - no card selected yet.\n", gIniPath);
+        printf("%s: not present: no card selected yet.\n", gIniPath);
         return;
     }
     pini2 = ReadINI(gIniPath);
@@ -326,7 +326,7 @@ static void ShowCurrent(void)
 static void Usage(void)
 {
     printf(
-"setvideo - Boss Rally Display Wizard (macOS port of SetVideo.exe)\n"
+"setvideo: Boss Rally Display Wizard (macOS port of SetVideo.exe)\n"
 "\n"
 "  --dir <path>        directory holding BossRally.ini   (default: .)\n"
 "  --vdb <path>        device database                   (default: <dir>/BossRally.vdb)\n"
@@ -453,7 +453,7 @@ int main(int argc, char **argv)
         printf("Wrote %s (symptoms profile).\n", gIniPath);
     } else if (setwhat != 0) {
         /* Card names in the retail database begin with digits ("3Dfx Voodoo
-         * Rush …"), so only an argument that is ENTIRELY digits is an
+         * Rush ..."), so only an argument that is ENTIRELY digits is an
          * ordinal. */
         for (i = 0; setwhat[i] >= '0' && setwhat[i] <= '9'; i++)
             ;

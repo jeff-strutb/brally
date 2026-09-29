@@ -105,7 +105,7 @@ int BrNetWritePlayerRec(void *pBs, unsigned char a, unsigned int flags,
                         unsigned char b, unsigned char c, unsigned char d,
                         unsigned char e, char *pszName, unsigned int id);
 
-/* Hand-matched from disassembly â 0x1006CD80
+/* Hand-matched from disassembly: 0x1006CD80
  * fastcall: pointer in ecx, four fields zeroed then a self-pointer stored at
  * offset 0x10 (= p+0x14), returns this. */
 

@@ -10,7 +10,7 @@
  *      (0x10060F70, 0x10060FB0, 0x1006C740)
  *
  * Everything here was recovered from the disassembly in
- * work/slice1/agent07.asm.  Field names that could not be justified are
+ * work/slice1/packet07.asm.  Field names that could not be justified are
  * positional (fNN = byte offset NN).
  *
  * NOTE 0x10069490 is NOT in this packet; it is already implemented as

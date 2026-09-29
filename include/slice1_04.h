@@ -24,15 +24,15 @@
  * ==========================================================================
  *
  * These three are the remaining half of the clip-plane family whose shared
- * body, node pool and free list agent03 already ported (BrClipPlane in
+ * body, node pool and free list packet 03 already ported (BrClipPlane in
  * port/src/slice1_03.c, plus BrClipVert / BrClipList / BrClipLerpVert /
  * BrClipPoolInit in slice1_03.h). All six originals are byte-for-byte
  * identical apart from the two x87 loads that compute the plane distance:
  *
- *      0x1001D810   d = f18            BrClipPlaneW           (agent03)
- *      0x1001D9F0   d = f18 + f04      BrClipPlaneWPlusF04    (agent03)
- *      0x1001DB30   d = f18 - f04      BrClipPlaneWMinusF04   (agent03)
- *      0x1001DC70   d = f08 + f18      BrClipPlaneWPlusF08    (agent03)
+ *      0x1001D810   d = f18            BrClipPlaneW           (packet 03)
+ *      0x1001D9F0   d = f18 + f04      BrClipPlaneWPlusF04    (packet 03)
+ *      0x1001DB30   d = f18 - f04      BrClipPlaneWMinusF04   (packet 03)
+ *      0x1001DC70   d = f08 + f18      BrClipPlaneWPlusF08    (packet 03)
  *      0x1001DDB0   d = f18 - f08      <- this packet
  *      0x1001DEF0   d = f0C + f18      <- this packet
  *      0x1001E030   d = f18 - f0C      <- this packet

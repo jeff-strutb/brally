@@ -78,7 +78,7 @@
  * 1. 0x1003C020 carries TWO wanted names in this one packet:
  *      BrSub1003C020 (slice2_25.h:425, slice4_50, slice4_53) and
  *      BrExt_1003C020 (slice2_26.h:252).  Same `void (void)` shape.
- *    Both blocks in work/slice5/agent60.asm are byte-identical, so this is a
+ *    Both blocks in work/slice5/packet60.asm are byte-identical, so this is a
  *    naming duplicate, not a mispairing.
  *
  * 2. 0x1002BF80 carries TWO pre-existing names with INCOMPATIBLE shapes:

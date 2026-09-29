@@ -8,7 +8,7 @@
  * True thiscall receiver (this in ecx, no stack params): early-out slot-7
  * vcall when the mode word is clear; else a signed-short index selects a
  * code word (written back at +0x1E20C) and a 16-byte record whose pointer
- * feeds the slot-6 vcall. One shared `return 1` after if/else - VC5
+ * feeds the slot-6 vcall. One shared `return 1` after if/else: VC5
  * tail-duplicates it per path with the epilogue pop BEFORE the constant
  * load (`pop esi; mov eax,1; ret`); explicit per-branch returns emit the
  * mov first and miss by 4 bytes. No EH.

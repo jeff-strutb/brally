@@ -69,7 +69,7 @@
 /* @t3 0x10065C80 2026-09-23 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 1406/1448 insns 419/422 rows 106+103 regions 5 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 1 2
- * â¼ 2026-09-23: the earlier "scheduling and layout only" verdict came from
+ * !! 2026-09-23: the earlier "scheduling and layout only" verdict came from
  * the retired seed oracle, which tolerated float differences.  On real race
  * contacts the live oracle (tools/t3live.py) showed the results differing
  * by several ULP: the original rounds at different points -- the cross
@@ -425,7 +425,7 @@ void BrCrPlaneResolve(const BrVec3 *pExt, const BrVec3 *pA, float planeD,
  * t3.py's stack-dup fold (exact identity, user-approved 2026-09-12; the
  * thirteen dead spellings are in the STATE 2026-09-10 block above).
  * Dossier and dead list: this file header.  Do not reopen before the
- * end-grind (project rule 12). */
+ * end-grind. */
 /* @implements 0x10067710 glide BrCrRespWalk */
 int BrCrRespWalk(float mass, const BrMat3 *pInvInertia, BrMat4 *pOrient,
                  const float ext[4],

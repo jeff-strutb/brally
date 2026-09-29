@@ -1,4 +1,4 @@
-/* 0x00401230 DoMainLoop - CPlay while(TRUE) + GetGraphEvent each lap */
+/* 0x00401230 DoMainLoop: CPlay while(TRUE) + GetGraphEvent each lap */
 /* WHAT IT DOES: the intro player's message loop: pump Windows messages until
  * the video finishes or the player quits. */
 /* @implements 0x00401230 bossrally.exe DoMainLoop */

@@ -31,7 +31,7 @@
  * pCmd; the table is the global at 0x100A79F0.  Rename the port prototype
  * in this TU so the matching body can use the original shape. */
 #define BrGbiRun BrGbiRun_port
-/* OtherMode H/0E and TexCreate: orig takes no state pointer â those fields
+/* OtherMode H/0E and TexCreate: orig takes no state pointer: those fields
  * are standalone globals (0x10697A44 / 0x106B7AB0 / 0x118ED1C8). */
 #define BrGbiTexScanOtherModeH   BrGbiTexScanOtherModeH_port
 #define BrGbiTexScanOtherModeH0E BrGbiTexScanOtherModeH0E_port
@@ -598,7 +598,7 @@ void BrGbiTexScanTexture(const BrGfxWords *pCmd)
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
  * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind (project rule 12). */
+ * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x10029420 glide BrGbiTexScanSetImg */
 void BrGbiTexScanSetImg(BrGfxWords *pCmd)
 {
@@ -631,7 +631,7 @@ void BrGbiTexScanSetImg(BrGfxWords *pCmd)
  * @t3-effort passes 3 zero-movement 2 3
  * residue after tools/crank.py: 62 compiles this pass, levers accepted: none;
  * every candidate and score is in build/match/crank.log.
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x10029480 glide BrGbiTexScanLoadTlut */
 extern uint8_t *DAT_100a9e58;          /* tlut dest, 0x100A9E58 */
 void BrGbiTexScanLoadTlut(const BrGfxWords *pCmd)
@@ -683,7 +683,7 @@ void BrGbiTexScanLoadTlut(const BrGfxWords *pCmd)
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
  * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind (project rule 12). */
+ * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x10029510 glide BrGbiTexScanLoadBlock */
 extern uint32_t DAT_105d17f0;          /* stageSrc, 0x105D17F0 */
 extern int32_t  DAT_10697a54;          /* stageLen, 0x10697A54 */
@@ -805,7 +805,7 @@ void BrGbiTexScanOtherModeL(const BrGfxWords *pCmd)
  * lowering in the tail (the 7 rows / +1 insn vs the original's branchy
  * cmp/mov/jle).  A5 oracle EQUIVALENT on 64 inputs; behavioural verdict
  * outranks the byte residue.  Dead probes: the comment block above.
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @t4-pass 0x10027290 5 2026-09-19 probes 26 bytes 94 insns 35 regions 1 rows 7 census yes  (tools/crank.py) */
 /* @t4-pass 0x10027290 6 2026-09-19 probes 26 bytes 94 insns 35 regions 1 rows 7 census yes  (tools/crank.py) */
 /* @implements 0x10027290 glide BrGbiSizeShift */
@@ -845,7 +845,7 @@ int BrGbiSizeShift(int n)
  * every row pairs under t3.py's canonical classes.  Effort: 4 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 3 and 4);
  * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind (project rule 12). */
+ * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x10028BF0 d3d BrGbiBlit */
 /* @t4-pass 0x10027F00 1 2026-09-07 probes 18 bytes 124 insns 52 regions 3 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10027F00 2 2026-09-07 probes 18 bytes 124 insns 52 regions 3 rows 0 census yes  (tools/crank.py) */

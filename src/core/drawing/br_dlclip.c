@@ -26,14 +26,14 @@
  *     0x1001F8F0   d = w - z            311 B   FAR
  *     0x1001F530   d = y + w            311 B   BOTTOM
  *
- * â¼ RESIDUE.  SIX of the seven are byte-exact.  Only LEFT (0x1001F2B0) is
+ * !! RESIDUE.  SIX of the seven are byte-exact.  Only LEFT (0x1001F2B0) is
  * still out, by 2 bytes, and both are the field displacement in ONE
  * `fld`/`fadd` pair -- the dPrev site:
  *
  *     LEFT   orig  fld [w] ; fadd [x]      ours  fld [x] ; fadd [w]
  *                                          (the dCur site now matches)
  *
- * â¼ THE DISTANCE EXPRESSION IS PER-SITE, NOT PER-PLANE.  This is what the
+ * !! THE DISTANCE EXPRESSION IS PER-SITE, NOT PER-PLANE.  This is what the
  * earlier pass got wrong, and it cost NEAR several sessions.  The macro body
  * evaluates the plane distance at TWO sites (dCur and dPrev), and the
  * original's two sites do NOT agree with each other: NEAR leads with f0C at
@@ -250,7 +250,7 @@ BR_CLIP_PLANE(BrClipPlaneW, BRCLIP_W, BRCLIP_W)
  * residue is the dPrev-site commutative fadd operand order (fld w; fadd x
  * vs fld x; fadd w) plus fst vs fstp+fld keep-reload; the LEAD paren that
  * flips dCur also sinks dPrev, so no spelling reaches both.  Dossier in the
- * file header.  Do not reopen before the end-grind (project rule 12). */
+ * file header.  Do not reopen before the end-grind. */
 /* @implements 0x1001F2B0 glide BrClipPlaneWPlusF04 */
 BR_CLIP_PLANE(BrClipPlaneWPlusF04, BRCLIP_W_PLUS_X_LEAD, BRCLIP_W_PLUS_X)
 

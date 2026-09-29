@@ -6,7 +6,7 @@ extracts the corresponding code from the .obj via COFF symbol table parsing,
 and diffs against the original bytes in the reference directory.
 
 Relocations in the .obj (call/jmp targets, global addresses) are masked
-during comparison since the linker resolves them - only instruction opcodes
+during comparison since the linker resolves them: only instruction opcodes
 and non-relocated operands are compared.
 
 Usage:
@@ -98,7 +98,7 @@ def parse_coff_obj(obj_path):
     """Parse a COFF .obj and return {name: (bytes, reloc_offsets)} for .text symbols.
 
     reloc_offsets is a set of byte offsets within the function where the linker
-    will patch in an address - these bytes will always differ from the original
+    will patch in an address: these bytes will always differ from the original
     and should be masked during comparison.
     """
     with open(obj_path, 'rb') as f:

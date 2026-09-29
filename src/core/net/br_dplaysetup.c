@@ -27,7 +27,7 @@
 /* 0x10035400                                                         */
 /* ------------------------------------------------------------------ */
 
-/* Matching TU for 0x10035400 â DirectPlay init (prefix of a map-split
+/* Matching TU for 0x10035400: DirectPlay init (prefix of a map-split
  * function; 0x10035533 is the internal join, not a separate C function).
  * Inferred from orig bytes: two lstrcpyA via IAT-in-esi, /Oi memset of
  * 8+16 dwords, stride-0xe0 zero, nested GetModuleHandleA into
@@ -454,12 +454,12 @@ extern BrDpGuid DAT_100789f8;
  *    across the movs, GUID store order pair-swapped 1,0,3,2); ours keeps
  *    source order (stores, then cmpsb+jne adjacent). Ternary, temp-variable,
  *    duplicated-arm and member-wise-copy spellings all fail to reproduce the
- *    hoist (probes w3, w4, w6) â the temp materializes an sbb pair instead.
+ *    hoist (probes w3, w4, w6): the temp materializes an sbb pair instead.
  *  - the tail: the original lays out [err][jmp cleanup][2nd-call][cleanup]
  *    [success]; ours emits [err][cleanup][2nd-call][success] with a
  *    backward jl, eliding the jmp (one instruction fewer, same bytes).
  *    goto-shaped and arm-swapped restructures compile to identical bytes
- *    (probes w2, w5) â the layout is not source-reachable from here.
+ *    (probes w2, w5): the layout is not source-reachable from here.
  * Proven levers already in this file: null pointers spelled bare 0 (any
  * (void*)0x0 cast flips the whole tail layout AND the strlen guards, +11 B);
  * pObj/vt COM locals per the byte-exact sibling 0x10036F40; strlen guards
@@ -473,7 +473,7 @@ extern BrDpGuid DAT_100789f8;
  * @t3-effort passes 2 zero-movement 2 3
  * Residue: the tail's either-or layout fork and the branch-3 cmpsb hoist --
  * both in the certified layout class; dead lists in the T2 RESIDUE note
- * above.  Do not reopen before the end-grind (project rule 12). */
+ * above.  Do not reopen before the end-grind. */
 /* @implements 0x10036B20 glide BrDpAddressBuild */
 int BrDpAddressBuild(int *param_1, unsigned int *param_2)
 

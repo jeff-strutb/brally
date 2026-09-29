@@ -67,7 +67,7 @@ extern float DAT_1007745c;
  * inverts the branch and unanchors 115 B.
  * 30 compiles in the last pass, levers accepted: none that survived the
  * cluster rule; every candidate and score is in build/match/crank.log.
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x10028200 glide FUN_10028200 */
 int FUN_10028200(int tmu, unsigned int lod, int a2, int a3, int a4, int a5,
                  int a6, int a7, int a8, int a9, int a10, int a11,

@@ -1,4 +1,4 @@
-/* Auto-generated from disassembly - 0x00401910
+/* Auto-generated from disassembly: 0x00401910
  * ResetIncludeStack. */
 /* WHAT IT DOES: empty the include stack, so a fresh list read starts with no
  * nesting. */

@@ -85,7 +85,7 @@ static const char *Br70Str(int id)
  * x-argument sites (proven source-unreachable in the RESIDUE block above:
  * VC5 reassociates the chain unconditionally); size- and insn-exact,
  * identical register-blind multiset.
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x100173F0 d3d BrSub_100173F0 */
 /* Orig reads cViews / iView / the race object / the suppress flag as
  * standalone globals (no BrScreenGet / BrHudGetEnv), sprintf via the IAT

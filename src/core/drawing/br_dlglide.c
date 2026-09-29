@@ -387,7 +387,7 @@ BrDlGlHandler BrDlGlDispatch(unsigned op)
     }
 }
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* -- Ghidra-matched functions --------------------------- */
 int __stdcall grBufferNumPending(void);
 void __stdcall grBufferSwap(int);
 
@@ -731,7 +731,7 @@ extern int32_t BrGlScreenH;         /* 0x100A7518 */
  * @t3-effort passes 5 zero-movement 4 5
  * residue after tools/crank.py: 43 compiles this pass, levers accepted: none;
  * every candidate and score is in build/match/crank.log.
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @t4-pass 0x1001E080 6 2026-09-19 probes 23 bytes 176 insns 40 regions 1 rows 3 census yes  (tools/crank.py) */
 /* @implements 0x1001E080 glide BrGlInstall */
 void BrGlInstall(void)

@@ -1,4 +1,4 @@
-/* Auto-generated from disassembly - 0x00406C85
+/* Auto-generated from disassembly: 0x00406C85
  * User _matherr stub (pushed to __setusermatherr). 3 bytes: xor eax,eax; ret. */
 /* WHAT IT DOES: the maths error hook the CRT calls; it does nothing and
  * reports the error unhandled. */

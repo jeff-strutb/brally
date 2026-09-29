@@ -1,4 +1,4 @@
-/* Auto-generated from disassembly - 0x004011C0
+/* Auto-generated from disassembly: 0x004011C0
  * CHK_FreeMemory: free wrapper, cdecl add esp,4. */
 /* WHAT IT DOES: free a block obtained from the launcher's allocator. A thin
  * wrapper so allocation and release stay paired. */

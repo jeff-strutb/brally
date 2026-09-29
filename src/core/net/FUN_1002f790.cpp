@@ -37,7 +37,7 @@
  * call-through-a-cached-import register, valid packet seeding); the last of
  * those was what made the apparent record-path divergence vanish -- it was the
  * emulator leaking a stdcall arg on `call reg`, not this transcription.
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x1002F790 glide FUN_1002f790
  * @cpp_kind free
  * @cpp_symbol _FUN_1002f790

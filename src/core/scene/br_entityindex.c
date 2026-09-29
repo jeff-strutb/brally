@@ -47,7 +47,7 @@
  * to add-negative (paired by t3.py canon, a326268).  The dossier below has
  * the full dead list including VC4.2 cross-evidence; the two ledger lines
  * add the keep-sub mechanism experiments (none fire here).
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x10076AE0 d3d BrEntitySetIndex */
 /* thiscall, one stack arg.  Size-exact (50) but encoding-walled:
  * original `sub eax, 0x10`, VC5 `add eax, -0x10`.  `i - 16`, `i -= 16`,

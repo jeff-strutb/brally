@@ -75,7 +75,7 @@ def main():
     gr = load(sys.argv[2], sys.argv[3])
     print("call groups: orig %d  recomp %d" % (len(go), len(gr)))
     if len(go) != len(gr):
-        print("‼ group counts differ -- the two builds disagree on call "
+        print("!! group counts differ -- the two builds disagree on call "
               "structure; the per-group report below is not meaningful.")
     bad = 0
     for k, (a, b) in enumerate(zip(go, gr)):

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Screen the refine residue for functions that are C++ methods in
-disguise - route them to the C++ TU lane instead of burning C refine
+disguise: route them to the C++ TU lane instead of burning C refine
 climbs on shapes C cannot reach.
 
 Traits read off the original bytes (each proven on landed TUs):
@@ -96,7 +96,7 @@ def main():
         # eax-vcall is unreachable from C, and thiscall-with-stack-args
         # (this + ret imm) beats the one-arg fastcall trick. Bare
         # this-ecx alone is __fastcall-representable in C (see the
-        # thiscall-via-fastcall idiom) - only a WEAK hint.
+        # thiscall-via-fastcall idiom): only a WEAK hint.
         is_strong = ('eax-vcall' in traits
                      or ('this-ecx' in traits and 'ret-n' in traits))
         tag = 'CPP ' if is_strong else 'weak'

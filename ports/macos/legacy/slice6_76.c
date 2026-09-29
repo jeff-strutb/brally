@@ -436,4 +436,4 @@ int32_t BrSub10005D30(void)
     return g_br094294;
 }
 
-/* ── Ghidra-matched functions ─────────────────────────── */
+/* -- Ghidra-matched functions --------------------------- */

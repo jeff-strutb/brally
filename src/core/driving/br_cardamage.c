@@ -65,8 +65,8 @@ extern BrDmgBit   DAT_100b3028[];
  * through ecx and copies it to edx before widening car[4], and hoists the
  * second statement's `mov edi,1`; ours widens each byte in its own zeroed
  * register.  The dossier, the dead list and the three ledger passes are in
- * the comment block above.  Do not reopen before the end-grind (the project rules
- * rule 12). */
+ * the comment block above.  Do not reopen before the end-grind.
+ */
 /* @implements 0x1001CA30 glide BrCarDamageTick */
 void BrCarDamageTick(void)
 {

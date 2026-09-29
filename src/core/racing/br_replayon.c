@@ -85,7 +85,7 @@ int BrDelta_100713A0(void)
     return BrExt_10075020() - (int)g_178FEE8;
 }
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* -- Ghidra-matched functions --------------------------- */
 int FUN_1002f282();
 extern int g_BrReplayOn;
 extern int g_a220B20;

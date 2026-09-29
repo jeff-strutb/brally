@@ -8,7 +8,7 @@
 #define _CRTIMP __declspec(dllimport)
 #include <stdlib.h>
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* -- Ghidra-matched functions --------------------------- */
 int FUN_1006f840();
 
 /* WHAT IT DOES: copy a car position record and its trailing 3-vector. */

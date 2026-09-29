@@ -92,7 +92,7 @@ void BrSessionReinitVideo(void);
  * dossier and the dead-probe list are in this file's header block above.
  * Passes 1-2 (ledger lines in the header) moved nothing at 252/65/1/0;
  * hoisting the car-sel pointer and a selector temp both went worse, not
- * better.  Do not reopen before the end-grind (project rule 12). */
+ * better.  Do not reopen before the end-grind. */
 /* @implements 0x10002460 glide BrRaceSelFromMenu */
 void BrRaceSelFromMenu(void)
 {

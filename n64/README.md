@@ -1,4 +1,4 @@
-# n64/ - the Top Gear Rally (N64, 1997) decomp
+# n64/: the Top Gear Rally (N64, 1997) decomp
 
 A second byte-matched target, separate from the PC decomp. The repo root
 serves `BRGlide.dll` under MSVC 5.0; this tree serves `Top Gear Rally (USA).z64`
@@ -12,11 +12,11 @@ See the top-level README for the measurement.
 
 ## Standard
 
-The same as the PC lane (root `the project rules`, rules 2, 6 and 12):
+The same as the PC lane:
 
 | | |
 |---|---|
-| T1 | not started - a Ghidra draft exists in `build/n64/ghidra/` |
+| T1 | not started: a Ghidra draft exists in `build/n64/ghidra/` |
 | T2 | in `n64/src`, bytes still differ |
 | T3 | certified complete, not byte-exact: `n64t3.py --qualify` passes |
 | T4 | byte-exact against the ROM, every relocation resolved |
@@ -33,7 +33,7 @@ fenced out (`config/fenced_tgr.csv`, with the evidence in `config/README.md`).
 | `src/<area>/` | the decomp's C, one file per responsibility (see `src/README.md`) |
 | `include/tgr/` | the decomp's headers |
 | `include/*.h` | libc/Win32 type shims for the old PC-source cross-compile only |
-| `config/symbols_tgr.csv` | name → address |
+| `config/symbols_tgr.csv` | name -> address |
 | `config/fenced_tgr.csv` | library code outside the target |
 | `config/t3_live.csv` | per-function live-oracle verdicts (A5) |
 | `config/whole_image.csv` | whole-image runs (A7) |
@@ -43,8 +43,8 @@ fenced out (`config/fenced_tgr.csv`, with the evidence in `config/README.md`).
 
 | | |
 |---|---|
-| `n64build.py` | compile `src` with IDO 5.3 (`-O2 -mips2 -G 0 -Wab,-r4300_mul`) and grade every function - the T4 gate |
-| `n64tiers.py` | T1 - T4 and M1/M2, rebuilt fresh |
+| `n64build.py` | compile `src` with IDO 5.3 (`-O2 -mips2 -G 0 -Wab,-r4300_mul`) and grade every function: the T4 gate |
+| `n64tiers.py` | T1-T4 and M1/M2, rebuilt fresh |
 | `n64image.py` | M2 gate: every T4 body placed in the ROM image, must differ by 0 bytes; `--t3` builds the M1 image |
 | `n64box.py` | the original ROM run headless (Unicorn, R4000 model) with the OS and hardware modelled; scripts in `tools/n64box_scripts/` |
 | `n64t3.py` | `--live` A5 oracle, `--image` A7 whole-image run, `--qualify` the T3 gate |

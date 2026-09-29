@@ -9,7 +9,7 @@
  * @cpp_symbol ?Activate@Ctl3E370@@QAEHXZ
  *
  * Same shared-return activate as the 201 B family, plus two global copies
- * before the slot test (orig 223 B). Do not name temps for the copies - 
+ * before the slot test (orig 223 B). Do not name temps for the copies:
  * `int t0 = src` keeps eax/ecx live and flips the post-call flag stores
  * from `mov edx,[g_cur]` / c7 to the 201 B eax/ecx coloring (18 diffs).
  */

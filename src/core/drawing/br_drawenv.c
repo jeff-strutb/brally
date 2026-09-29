@@ -83,7 +83,7 @@ static void env_trace(void) { }
  *   7. Tail: pipe sync + othermode restore.
  * ==================================================================== */
 
-/* Hand-matched from disassembly â 0x100597F0
+/* Hand-matched from disassembly: 0x100597F0
  * Inlined memset: fills `count` bytes at `dst` with byte `c`
  * (broadcast to a dword, rep stosd for count/4, rep stosb for count&3). */
 

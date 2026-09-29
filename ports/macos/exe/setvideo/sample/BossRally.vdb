@@ -1,4 +1,4 @@
-; BossRally.vdb - SAMPLE device database.
+; BossRally.vdb: SAMPLE device database.
 ;
 ; HAND-WRITTEN FOR THE macOS PORT DEMO. This is NOT the data file that
 ; shipped with Boss Rally; that file is not in this repository. The format is

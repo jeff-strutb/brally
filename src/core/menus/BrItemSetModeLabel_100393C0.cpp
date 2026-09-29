@@ -8,7 +8,7 @@
  * @t3-effort passes 2 zero-movement 1 2
  * residue is one register choice: the shared index for the 0x5BFC and 0x5D58
  * arms lands in eax where the original has ecx (2 bytes, same instructions).
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x100393C0 glide BrItemSetModeLabel_100393C0
  * @cpp_kind free
  * @cpp_symbol ?BrItemSetModeLabel_100393C0@@YAHPAVObj393C0@@@Z

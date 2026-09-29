@@ -72,7 +72,7 @@ __declspec(dllimport) void *__stdcall GlobalFree(void *hMem);
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
  * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind (project rule 12). */
+ * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x1003D180 d3d BrComGetAlloc */
 int32_t BrComGetAlloc(BrDPlayObj *pObj, void *pParam, void **ppvOut)
 {

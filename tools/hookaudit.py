@@ -40,7 +40,7 @@ WHICH SLOT a builder stores into matters and is reported, because it is easy
 to assume every hook is an action. It is not: +0x08 is the ACTION (0x10048180
 calls it when the ACTIVATE bit is set), while +0x04 is the per-frame caption
 and text setter. A brief that calls a pfn04 caption setter an "action hook"
-sends an worker looking for a screen transition that was never there. That
+sends a worker looking for a screen transition that was never there. That
 mistake was made here too.
 
 Usage:  hookaudit.py            # full audit

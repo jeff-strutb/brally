@@ -1247,4 +1247,4 @@ int32_t BrCfgFindConflicts(BrUiGlobals *pG, int32_t kind, void *pB4DF30)
     return found;
 }
 
-/* ── Ghidra-matched functions ─────────────────────────── */
+/* -- Ghidra-matched functions --------------------------- */

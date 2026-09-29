@@ -5,7 +5,7 @@
  * a cdecl free function taking one object pointer, doing its work through
  * that object's vtable and returning 1.
  *
- * â¼ THIS BELONGS TO THE C++ LANE, for exactly one reason, and the structure
+ * !! THIS BELONGS TO THE C++ LANE, for exactly one reason, and the structure
  * below is otherwise complete: 40 instructions against the original's 40 in
  * shape, REGNORM 4+2, and the ONLY rows are
  *

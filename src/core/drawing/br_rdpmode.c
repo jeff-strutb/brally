@@ -7,7 +7,7 @@
  * pipeline sync, render mode, blend colour, the colour combiner -- and the
  * combiner-word builders those commands are made of.
  *
- * â¼ br_gamestep.h IS LOAD-BEARING and must not be dropped as an unused
+ * !! br_gamestep.h IS LOAD-BEARING and must not be dropped as an unused
  * include.  It declares nothing this file calls, yet without it 0x1001CF90
  * loses its match outright -- same 448 bytes, 142 of them different, i.e. a
  * wholesale re-colouring.  slice1_05.c, where these functions came from,

@@ -122,7 +122,7 @@ float __fastcall BrUiTweenCurve_10047CE0(BrUiTwCurve *p, int _edx, int n)
  * and the one to fall back to. */
 /* @implements 0x10047FB0 d3d BrUiInit_10047FB0 */
 /* Orig is thiscall / ret 0x20. BR_THISCALL1 is 1-arg only; a dummy edx
- * slot keeps pPhase on the stack (no xor edx,edx â the param is unused). */
+ * slot keeps pPhase on the stack (no xor edx,edx: the param is unused). */
 void __fastcall BrUiInit_10047FB0(BrUiObj *pObj, void *_edx,
                                    BrPhaseFull *pPhase, float f3C, float f40,
                                    uint32_t nOr1C, uint32_t nOr24, uint32_t nOr28,
@@ -137,7 +137,7 @@ void __fastcall BrUiInit_10047FB0(BrUiObj *pObj, void *_edx,
     *(uint32_t *)(void *)(p + 0x28) |= nOr28;
     *(uint32_t *)(void *)(p + 0x2968) = n2968;
     /* Mention f3C first so it hoists into edx; the wCode load clobbers
-     * eax, so f40 (eax) stores first and f3C (edx) after â orig order. */
+     * eax, so f40 (eax) stores first and f3C (edx) after: orig order. */
     *(float *)(void *)(p + 0x3C) = f3C;
     *(float *)(void *)(p + 0x40) = f40;
     *(uint16_t *)(void *)(p + 0x2A40) = (uint16_t)wCode;
@@ -187,7 +187,7 @@ int BR_THISCALL1 BrPhaseFn_100488B0(BrPhaseFull *pThis)
     return 1;
 }
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* -- Ghidra-matched functions --------------------------- */
 int operator_delete();
 int __fastcall FUN_10040d10(void *pThis);
 typedef int (*funcptr)();

@@ -24,7 +24,7 @@
  * reloc-masked printf string and import slot. Nothing unexplained. The
  * instruction stream is positionally identical register-blind, all 91 rows.
  * Dead probes: the two ledger lines above.
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x10030810 d3d BrMat4Frustum */
 int BrMat4Frustum(BrMat4 *pM, float l, float r, float b, float t,
                   float n, float f)

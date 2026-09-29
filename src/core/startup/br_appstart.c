@@ -597,7 +597,7 @@ void BrAppCfgResetForTest(void)
     BrSndG0B5DE8           = 1;
 }
 
-/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* -- Ghidra-matched functions --------------------------- */
 #include <windows.h>
 extern int DAT_10226e78;
 

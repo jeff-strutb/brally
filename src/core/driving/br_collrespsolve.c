@@ -70,7 +70,7 @@ static uint8_t br_cr_ftol_byte(float x)
  * associative, so this is the source order and not a scheduling artefact --
  * writing the conventional x, y, z sum pairs the wrong two products.
  *
- * â¼ NO PROTOTYPE.  This function is byte-exact ONLY when its definition is
+ * !! NO PROTOTYPE.  This function is byte-exact ONLY when its definition is
  * not preceded by a declaration of itself: putting the obvious prototype in
  * br_collrespsolve.h adds one `fxch st(1)` and takes it 41 -> 43 bytes.
  * Isolated and re-measured both ways (the bare prototype alone does it, with
@@ -140,7 +140,7 @@ float BrCrPlaneDist(const BrVec3 *pN, float planeD, const BrVec3 *pPoint)
 /* @t3 0x10065C80 2026-09-23 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 1406/1448 insns 419/422 rows 106+103 regions 5 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 1 2
- * â¼ 2026-09-23: the earlier "scheduling and layout only" verdict came from
+ * !! 2026-09-23: the earlier "scheduling and layout only" verdict came from
  * the retired seed oracle, which tolerated float differences.  On real race
  * contacts the live oracle (tools/t3live.py) showed the results differing
  * by several ULP: the original rounds at different points -- the cross
@@ -620,7 +620,7 @@ void BrCrPlaneResolve(const BrVec3 *pExt, const BrVec3 *pA, float planeD,
  * t3.py's stack-dup fold (exact identity, user-approved 2026-09-12; the
  * thirteen dead spellings are in the STATE 2026-09-10 block above).
  * Dossier and dead list: this file header.  Do not reopen before the
- * end-grind (project rule 12). */
+ * end-grind. */
 /* @implements 0x10067710 glide BrCrRespWalk */
 /* Matching arm, transcribed from the bytes.  The original is
  * (body, pMatBox): every field the port passes separately is read off the
@@ -663,7 +663,7 @@ void BrCrPlaneResolve(const BrVec3 *pExt, const BrVec3 *pA, float planeD,
  *    fourth stack slot and take the frame to 0x7c against the orig's 0x78.
  * Residue, every row allocation or layout:
  *  - four `fxch` and one register copy (x87 drain and slot colouring);
- *  - â¼ THE ONLY THING BLOCKING CERTIFICATION: a 4-row x87 operand-hand
+ *  - !! THE ONLY THING BLOCKING CERTIFICATION: a 4-row x87 operand-hand
  *    fork on `pP->nx` between the dot product and the push-out vector.
  *    The original duplicates d and multiplies the copy by memory
  *    (`fld st; fmul [nx]`); ours loads nx and multiplies it by the copy

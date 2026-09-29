@@ -1,6 +1,6 @@
 /* Dialog templates read out of the retail SetVideo.exe by tools/rsrc_dump.py.
  *
- * The table itself is GENERATED at build time and never committed - the
+ * The table itself is GENERATED at build time and never committed: the
  * captions are retail content, and this repository holds code only. build.sh
  * pulls SetVideo.exe off the disc image (or uses orig/) and regenerates it.
  *
@@ -12,7 +12,7 @@
 
 typedef struct BrDlgItem {
     int          id;        /* control id; -1 is IDC_STATIC */
-    const char  *cls;       /* "STATIC", "PUSHBUTTON", "AUTOCHECKBOX", … */
+    const char  *cls;       /* "STATIC", "PUSHBUTTON", "AUTOCHECKBOX", ... */
     const char  *text;
     short        x, y, cx, cy;
     unsigned     style;

@@ -8,7 +8,7 @@
  * Sibling of 0x10035A30: same Sel slot-4 vcall through a Sel* temp
  * (different arg global), then a store into the 1080-byte slot array
  * indexed by the unsigned short at +0x1E164, and a local call.
- * Early-outs: 0 when the game object is null (eax reuse - return the
+ * Early-outs: 0 when the game object is null (eax reuse: return the
  * pointer itself), 1 when bit 9 of arg4 is set.
  */
 #define _CRTIMP __declspec(dllimport)

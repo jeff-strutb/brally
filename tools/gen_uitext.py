@@ -6,7 +6,7 @@ reloc/rel-masked parameter sites (index global, string table, getter
 call, apply call): strcpy a looked-up string into the item's text
 buffer, slot-1 virtual thiscall on the embedded item, apply, return 1.
 The vtbl load scheduled INSIDE the strcpy intrinsic is C++ frontend
-member-call order - the C fastcall spelling leaves it after the copy
+member-call order: the C fastcall spelling leaves it after the copy
 (18 diffs) and no C temp reaches it (hoists to ebp, +1 push). Proven
 byte-exact 0x10038D30 (see the UI-text entry in docs/VC5-IDIOMS.md).
 

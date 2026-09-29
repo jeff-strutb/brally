@@ -18,7 +18,7 @@
  * pCmd; the table is the global at 0x100A79F0.  Rename the port prototype
  * in this TU so the matching body can use the original shape. */
 #define BrGbiRun BrGbiRun_port
-/* OtherMode H/0E and TexCreate: orig takes no state pointer â those fields
+/* OtherMode H/0E and TexCreate: orig takes no state pointer: those fields
  * are standalone globals (0x10697A44 / 0x106B7AB0 / 0x118ED1C8). */
 #define BrGbiTexScanOtherModeH   BrGbiTexScanOtherModeH_port
 #define BrGbiTexScanOtherModeH0E BrGbiTexScanOtherModeH0E_port
@@ -325,7 +325,7 @@ static uint32_t br16_bar_w0(int32_t top, int32_t width, int32_t shift)
  * reaches the bar command from the local the test already loaded.
  * 30 compiles in the last pass, levers accepted: none; every candidate and
  * score is in build/match/crank.log.
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x100183B0 glide BrFadeDrawBars */
 /* The original takes NO ARGUMENT: it reads eleven standalone globals, exactly
  * as BrFadeDrawSprite above does, and its very first instruction is
@@ -580,7 +580,7 @@ uint8_t g_brFadeOutB;      /* 0x100BB2E4 */
  * residue is one esi/edi role toggle in the backward-wipe arm (see the
  * NOT MATCHING note above); identical multiset, size-exact; two crank
  * census passes at these numbers.
- * Do not reopen before the end-grind (project rule 12). */
+ * Do not reopen before the end-grind. */
 /* @implements 0x100186E0 glide BrFadeTick */
 void BrFadeTick(void)
 {

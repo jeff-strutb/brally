@@ -83,8 +83,8 @@ extern void    FUN_10022070(void *, void *, float, float, float);
  * @t3-measure bytes 1025/1019 insns 292/289 rows 5+8 regions 8 oracle EQUIVALENT
  * @t3-effort passes 4 zero-movement 3 4
  * Residue is x87 scheduling and register choice only (see the Open list
- * above); the arithmetic is the original's, rounding points included.  Do not reopen before the end-grind (the project rules
- * rule 12).
+ * above); the arithmetic is the original's, rounding points included.  Do not reopen before the end-grind.
+ *
  * Oracle coverage: the 25 scripts run 283 of the 289 instructions (the
  * light refresh 287,585 times), all but the no-lights colour copy and the
  * NULL-matrix path.  t3live, object mode, 8 scripts: 72/72 calls agree;

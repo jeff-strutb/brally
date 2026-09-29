@@ -1,4 +1,4 @@
-/* windows.h - minimal shim so the byte-matched SetVideo.exe translation units
+/* windows.h: minimal shim so the byte-matched SetVideo.exe translation units
  * compile on macOS/clang unchanged.
  *
  * NOT byte-matched, NOT part of the decomp. This header exists only so the
@@ -33,14 +33,14 @@
  *
  *     fp->_flag & 0x10   ->   fp->_flags & 0x20 ? 0x10 : 0 & 0x10
  *
- * `&` binds tighter than `?:`, so that is (flags & __SEOF) ? 0x10 : 0 - the
+ * `&` binds tighter than `?:`, so that is (flags & __SEOF) ? 0x10 : 0: the
  * same truth value the original tests. */
 #define _flag _flags & 0x20 ? 0x10 : 0
 
 /* MSVC opens the device database in text mode ("rt") and its CRT collapses
  * each CRLF to a bare LF on the way through fgets. There is no text mode on
  * BSD, and the retail BossRally.vdb is a DOS file, so without this every
- * value keeps a trailing '\r' and - worse - every blank line arrives as the
+ * value keeps a trailing '\r' and (worse) every blank line arrives as the
  * one-character string "\r" instead of "\n". ReadList only drops lines of
  * one character, so those blanks become entries, and GetIniValue then finds
  * a line with no '=' and exits: "Unable to parse  in section [...]".
