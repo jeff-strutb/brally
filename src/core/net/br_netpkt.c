@@ -65,7 +65,7 @@ void BrNetPktStamp(void *pPkt)
  * field can never go out. */
 /* @t4-pass 0x1006B080 2 2026-09-07 probes 48 bytes 99 insns 35 regions 2 rows 4 census yes  (tools/crank.py) */
 /* @t4-pass 0x1006B080 3 2026-09-07 probes 48 bytes 99 insns 35 regions 2 rows 4 census yes  (tools/crank.py) */
-/* port-only body; Glide match is src/core/cpp/0x1006B080.cpp */
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1006B080.cpp */
 /* RESIDUE (2026-09-06): +4 insns / +16 B, REGNORM 4+0. The C body is
  * complete and correct; the wall is the SAME construct C cannot spell that
  * parks its family (BrNetWriteTagC0 / BrNetWriteRaceOpts in ghidra_batch.c):
@@ -87,24 +87,7 @@ int  __fastcall BrCountedTotal(void *pBs);              /* 0x1006D180 */
 void __fastcall BrBitStreamWriteU8(void *pBs, BrU8Arg v); /* 0x1006CFA0 */
 extern unsigned char DAT_11849e68[];                    /* 0x11849E68 */
 
-int BrNetWriteTag20(void *pThis, unsigned char kind)
-{
-    BrU8Arg b;
-    unsigned char *p;
-
-    if (BrCountedTotal(pThis) + 9 <= 0x100) {
-        b.b = (unsigned char)(kind | 0x20);
-        BrBitStreamWriteU8(pThis, b);
-        p = DAT_11849e68;
-        do {
-            b.b = (unsigned char)((p[4] << 4) | p[0]);
-            BrBitStreamWriteU8(pThis, b);
-            p += 8;
-        } while ((int)p < (int)&DAT_11849e68[0x40]);
-        return 1;
-    }
-    return 0;
-}
+int BrNetWriteTag20(void *pThis, unsigned char kind);
 
 typedef struct { unsigned int v; } BrU32Arg;
 void __fastcall BrBitStreamWriteU32(void *pBs, BrU32Arg v); /* 0x1006D050 */
@@ -117,65 +100,10 @@ extern unsigned int DAT_1184c074;
 /* @t4-pass 0x1006AEB0 1 2026-09-08 probes 1 bytes 304 insns 0 regions 1 rows 0 census no
  * PARKED T2. Same U8 thiscall wall as BrNetWriteTag20 in this file: MSVC
  * homes each byte arg; orig pushes eax with dirty high bytes. Do not grind. */
-/* port-only body; Glide match is src/core/cpp/0x1006AEB0.cpp */
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1006AEB0.cpp */
 int BrNetWritePlayerRec(void *pBs, unsigned char a, unsigned int flags,
                         unsigned char b, unsigned char c, unsigned char d,
-                        unsigned char e, char *pszName, unsigned int id)
-{
-    BrU8Arg u8;
-    BrU32Arg u32;
-    BrPktU24Arg u24;
-    int n;
-    int type;
-    int i;
-    int done;
-
-    n = BrCountedTotal(pBs) + 10;
-    type = (int)(flags & 0x3f);
-    if (type <= 2)
-        n += 0x18;
-    if (type == 4)
-        n += 3;
-    if (n > 0x100)
-        return 0;
-
-    u8.b = a;
-    BrBitStreamWriteU8(pBs, u8);
-    u8.b = (unsigned char)flags;
-    BrBitStreamWriteU8(pBs, u8);
-    u8.b = b;
-    BrBitStreamWriteU8(pBs, u8);
-    u8.b = c;
-    BrBitStreamWriteU8(pBs, u8);
-    u8.b = d;
-    BrBitStreamWriteU8(pBs, u8);
-    u8.b = e;
-    BrBitStreamWriteU8(pBs, u8);
-    u32.v = id;
-    BrBitStreamWriteU32(pBs, u32);
-
-    if (type <= 2) {
-        done = 0;
-        i = 0;
-        do {
-            if (done) {
-                u8.b = 0;
-                BrBitStreamWriteU8(pBs, u8);
-            } else {
-                u8.b = (unsigned char)pszName[i];
-                BrBitStreamWriteU8(pBs, u8);
-                if (pszName[i] == 0)
-                    done = 1;
-            }
-            i++;
-        } while (i < 0x18);
-    }
-    if (type == 4) {
-        u24.v = DAT_1184c074;
-        BrBitStreamWriteU24(pBs, u24);
-    }
-    return 1;
-}
+                        unsigned char e, char *pszName, unsigned int id);
 
 /* Hand-matched from disassembly â 0x1006CD80
  * fastcall: pointer in ecx, four fields zeroed then a self-pointer stored at

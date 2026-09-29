@@ -13,4 +13,4 @@
 @drop type:BrDrawArg
 @drop type:y
 @drop type:BrIconItem
-@drop fn:BrItemDrawIconRow
+@drop proto:BrItemDrawIconRow

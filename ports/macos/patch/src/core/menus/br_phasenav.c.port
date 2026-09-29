@@ -100,6 +100,22 @@
 #  define BR31_AA2A48   (g_pExt->nAA2A48)
 #  define BR31_A9E150   (g_pExt->aA9E150)
 @end
+@drop proto:Br31Thunk_10044CB0
+@after proto:Br31Thunk_10044CB0
+
+/* DEVIATION 3: slice2_26's 0x10044CB0 wants a context as its first argument;
+ * BrPhase.pfnHook can only pass one void*. */
+/* WHAT IT DOES: an adapter, nothing more. Menu rows can only call a routine
+ * that takes one argument, so this supplies the shared context that the real
+ * leave routine needs alongside it. */
+/* port-only body; Glide match is src/core/cpp/0x1003E200.cpp */
+static int32_t Br31Thunk_10044CB0(void *pEntity)
+{
+    (void)BrPhaseLeave_10044CB0(g_pBase, pEntity);
+    return 0;
+}
+@end
+@drop proto:BR31_HOOK_C8
 @drop var:DAT_100a9360
 @drop var:DAT_10af2094
 @drop var:DAT_10ac5d08
@@ -108,7 +124,52 @@
 @drop proto:BrSub10037B20
 @drop proto:BrOpt6D70
 @drop fn:BrPhaseHook_10045AA0
-@after fn:BrPhaseHook_10045AA0
+@drop proto:BrPhaseActivate_10045AF0
+@drop proto:BrPhaseActivate_10045BC0
+@drop proto:BrExt_10045C90
+@drop proto:BrPhaseActivate_10045DC0
+@drop proto:BrPhaseActivate_10045EA0
+@drop proto:BrPhaseActivate_10045F70
+@drop proto:BrPhaseActivate_100460A0
+@drop proto:BrPhaseActivate_10046170
+@drop proto:BrPhaseActivate_10046260
+@drop fn:BrPhaseHook_10046380
+@after fn:BrPhaseHook_10046380
+
+BR31_HOOK_C8(BrPhaseHook_10045780, BrPhaseLeave_10046750)
+BR31_HOOK_F4(BrPhaseHook_100457A0, BrPhaseLeaveNamed_10046790)
+BR31_HOOK_C8(BrPhaseHook_100457C0, BrPhaseLeave_10046830)
+BR31_HOOK_F4(BrPhaseHook_100457E0, BrPhaseLeaveNamed_10046870)
+BR31_HOOK_C8(BrPhaseHook_10045800, BrPhaseLeave_10046910)
+BR31_HOOK_F4(BrPhaseHook_10045820, BrPhaseLeaveNamed_10046950)
+BR31_HOOK_C8(BrPhaseHook_10045840, BrPhaseLeave_100469F0)
+BR31_HOOK_F4(BrPhaseHook_10045860, BrPhaseLeaveNamed_10046A30)
+BR31_HOOK_C8(BrPhaseHook_10045880, BrPhaseLeave_10046AD0)
+BR31_HOOK_F4(BrPhaseHook_100458A0, BrPhaseLeaveNamed_10046B10)
+BR31_HOOK_C8(BrPhaseHook_100458C0, BrPhaseLeave_10046BB0)
+BR31_HOOK_F4(BrPhaseHook_100458E0, BrPhaseLeaveNamed_10046BF0)
+
+/* ==========================================================================
+ * ACTIVATE routines
+ * ========================================================================== */
+
+/* 0x10045900 */
+/* WHAT IT DOES: brings up a screen that needs the game CD in the drive. It
+ * checks for the disc first, and if it is not there it puts up the "please
+ * insert Boss Rally CD" message and refuses to open the screen at all. */
+/* port-only body; Glide match is src/core/cpp/0x1003ED90.cpp */
+int BrPhaseActivate_10045900(void)
+{
+    int fBuilt;
+
+    if (BrExt_10045A00() == 0) {
+        BrExt_100419D0(BrExt_10074030(0xD));
+        return 0;
+    }
+    BrExt_100419D0(g_pBase->p0AD300);
+
+    return Br31Activate(&g_pExt->pAA291C, BrExt_1004F2B0, &fBuilt);
+}
 
 /* 0x10045AA0 -- an installer, not an activate, but it lives here in the
  * original's layout. */
@@ -127,9 +188,153 @@ int BrPhaseHook_10045AA0(void *pArg)
     BrExt_1003E510();
     return 1;
 }
-@end
-@drop fn:BrPhaseHook_10046380
-@after fn:BrPhaseHook_10046380
+
+/* 0x10045AF0 */
+/* WHAT IT DOES: brings up the "load championship season" screen, building it
+ * the first time and just making it current thereafter. */
+/* port-only body; Glide match is src/core/cpp/0x1003EF90.cpp */
+/* @n64 0x8021C814 located */
+int BrPhaseActivate_10045AF0(void)
+{
+    int fBuilt;
+    return Br31Activate(&g_pExt->pAA2924, BrExt_1004F700, &fBuilt);
+}
+
+/* 0x10045BC0 */
+/* WHAT IT DOES: brings up the screen the season-save button leads to,
+ * building it the first time. */
+/* port-only body; Glide match is src/core/cpp/0x1003F060.cpp */
+int BrPhaseActivate_10045BC0(void)
+{
+    int fBuilt;
+    return Br31Activate(&g_pExt->pAA2928, BrExt_10050060, &fBuilt);
+}
+
+/* 0x10045C90 -- pre-declared by slice2_26.h. Two objects; the second is built
+ * only on the just-built path of the first. The original returns 1, or 0 if
+ * either allocation failed. */
+/* WHAT IT DOES: opens a menu screen and, the first time round only, also
+ * builds the "are you sure you want to exit the season?" confirmation behind it
+ * so it is ready when the player asks to leave. If the screen was already open
+ * the confirmation is not rebuilt. It ignores the argument it is handed. */
+/* port-only body; Glide match is src/core/cpp/0x1003F130.cpp */
+void BrExt_10045C90(void *p)
+{
+    int fBuilt;
+
+    (void)p;    /* the original reads no argument */
+
+    if (!Br31Activate(&g_pExt->pAA292C, BrExt_100509F0, &fBuilt))
+        return;
+    if (!fBuilt)
+        return;
+
+    (void)Br31ActivateSecond(&g_pExt->pAA2974, BrExt_10049F40);
+}
+
+/* 0x10045DC0 */
+/* WHAT IT DOES: brings up the season-progress screen, copying the current
+ * round number into the slot that screen reads from first. */
+/* port-only body; Glide match is src/core/cpp/0x1003F260.cpp */
+int BrPhaseActivate_10045DC0(void)
+{
+    int fBuilt;
+
+    g_pExt->nAA28AC = g_pExt->nAA28A4;
+
+    return Br31Activate(&g_pExt->pAA2930, BrExt_10052030, &fBuilt);
+}
+
+/* 0x10045EA0 */
+/* WHAT IT DOES: brings one particular menu screen up, building it if it is not
+ * already there. Which screen it is was not established here. */
+/* port-only body; Glide match is src/core/cpp/0x1003F340.cpp */
+int BrPhaseActivate_10045EA0(void)
+{
+    int fBuilt;
+    return Br31Activate(&g_pExt->pAA2934, BrExt_10052F50, &fBuilt);
+}
+
+/* 0x10045F70 -- the twin of 0x10045C90. */
+/* WHAT IT DOES: opens a menu screen and, only when that screen has to be built
+ * for the first time, also builds a second screen behind it -- the same
+ * two-at-once pattern used for a screen and its confirmation. Which pair these
+ * are was not established here. */
+/* port-only body; Glide match is src/core/cpp/0x1003F410.cpp */
+int BrPhaseActivate_10045F70(void)
+{
+    int fBuilt;
+
+    if (!Br31Activate(&g_pExt->pAA2938, BrExt_10053CF0, &fBuilt))
+        return 0;
+    if (!fBuilt)
+        return 1;
+
+    return Br31ActivateSecond(&g_pExt->pAA2978, BrExt_1004A260);
+}
+
+/* 0x100460A0 */
+/* WHAT IT DOES: brings one particular menu screen up, building it if needed.
+ * Which screen it is was not established here. */
+/* port-only body; Glide match is src/core/cpp/0x1003F540.cpp */
+int BrPhaseActivate_100460A0(void)
+{
+    int fBuilt;
+    return Br31Activate(&g_pExt->pAA293C, BrExt_10054B50, &fBuilt);
+}
+
+/* 0x10046170 */
+/* WHAT IT DOES: brings up a menu screen and switches the background music over
+ * to a different track as it does so -- and it does that switch every time,
+ * including when the screen was already open. */
+/* port-only body; Glide match is src/core/cpp/0x1003F610.cpp */
+/* @n64 0x80248F38 located */
+int BrPhaseActivate_10046170(void)
+{
+    int fBuilt;
+
+    BrExt_100419D0(g_pBase->p0AD300);
+    BrExt_10072AF0(3, 0x00200020u);
+    g_pExt->nAA2854 = 3;            /* both paths, including already-built */
+
+    return Br31Activate(&g_pExt->pAA2910, BrExt_10049C20, &fBuilt);
+}
+
+/* 0x10046260 */
+/* WHAT IT DOES: opens the screen that the game leaves the menus through,
+ * resetting a good deal of shared state on the way: the menu mode, the season
+ * block, a marker byte and two guard flags. The three final set-up steps and
+ * the wiring of its exit row happen only when the screen has to be built. */
+/* port-only body; Glide match is src/core/cpp/0x1003F700.cpp */
+int BrPhaseActivate_10046260(void)
+{
+    int fBuilt;
+
+    g_pBase->n0AA010 = 2;
+    BrExt_1003E680();
+    g_pExt->nACED34  = 0;
+    g_pExt->nAD0984  = 1;
+    g_pBase->n0AA010 = 2;           /* stored twice by the original */
+    g_pBase->n0AC304 = 1;
+    g_pExt->b680738  = 0xFF;
+
+    /* The original repeats the n0AC304 store on the not-yet-built path only.
+     * The value is the same, so this is observably a no-op -- it is kept so
+     * the transcription stays literal. */
+    if (g_pBase->pAA290C == NULL)
+        g_pBase->n0AC304 = 1;
+
+    if (!Br31Activate(&g_pBase->pAA290C, BrPhaseEnterPlaceholder_1004B430, &fBuilt))
+        return 0;
+    if (!fBuilt)
+        return 1;
+
+    BrExt_10008B80();               /* a bare `ret` in this build */
+    BrExt_1003DFC0();
+    BrExt_1003E510();
+    g_pExt->pAA29AC->pfnHook = Br31Thunk_10044CB0;   /* 0x10044CB0 */
+    return 1;
+}
 
 /* 0x10046380 */
 /* WHAT IT DOES: opens a screen with one guard flag suppressed across the
@@ -149,7 +354,8 @@ int BrPhaseHook_10046380(void *pArg)
 @end
 @drop proto:BR31_LEAVE
 @drop proto:BR31_LEAVE#2
-@after proto:BR31_LEAVE#2
+@drop proto:BrPhaseLeave_100466C0
+@after proto:BrPhaseLeave_100466C0
 
 BR31_LEAVE(BrPhaseLeave_100463C0, g_pExt->pAA2958,
            g_pBase->pAA2940 = NULL;)
@@ -242,7 +448,27 @@ int32_t BrPhaseLeave_10046560(void *pEntity)
     BrExt_10079550();
     return 0;
 }
+
+/* 0x100466C0 */
+/* WHAT IT DOES: leaves a screen and writes the settings out to disk as it
+ * goes, so changes made on it survive. */
+/* port-only body; Glide match is src/core/cpp/0x1003FB10.cpp */
+int32_t BrPhaseLeave_100466C0(void *pEntity)
+{
+    BrPhase *pNext;
+
+    Br31LeavePrologue(pEntity);
+    pNext = g_pBase->pAA2918;
+    g_pBase->pAA2984 = NULL;
+    BR_PHASE_CUR = pNext;
+
+    BrExt_1003E310();
+    /* __thiscall: `this` is 0x10B4DF30, its one argument 0x10B4FBE8. */
+    BrExt_1006A4A0(g_pExt->pB4DF30, g_pExt->pB4FBE8);
+    return 0;
+}
 @end
+@drop proto:BR31_LEAVE_NAMED
 @drop var:g_brPhaseAA2904#2
 @drop var:g_brPhaseAA2974
 @drop var:g_brPhaseAA292C
@@ -252,6 +478,37 @@ int32_t BrPhaseLeave_10046560(void *pEntity)
 @drop define:BR31_GOTO_292C
 @drop define:BR31_GOTO_293C
 @after define:BR31_GOTO_293C
+
+BR31_LEAVE_NAMED(BrPhaseLeaveNamed_10046790, g_pExt->pAA292C)
+BR31_LEAVE_NAMED(BrPhaseLeaveNamed_10046870, g_pExt->pAA2930)
+BR31_LEAVE_NAMED(BrPhaseLeaveNamed_10046950, g_pExt->pAA2934)
+BR31_LEAVE_NAMED(BrPhaseLeaveNamed_10046A30, g_pExt->pAA2938)
+BR31_LEAVE_NAMED(BrPhaseLeaveNamed_10046B10, g_pExt->pAA293C)
+BR31_LEAVE_NAMED(BrPhaseLeaveNamed_10046BF0, g_pBase->pAA2914)
+BR31_LEAVE_NAMED(BrPhaseLeaveNamed_10046EB0, g_pExt->pAA2934)
+
+/* 0x10046E10 -- clears a different set of globals from the other seven. */
+/* WHAT IT DOES: leaves a screen and resets the name being edited back to the
+ * shared working copy -- but it clears a different, smaller set of state than
+ * the seven other name-resetting exits do, so it is not simply another one of
+ * them. */
+/* port-only body; Glide match is src/core/cpp/0x10040260.cpp */
+int32_t BrPhaseLeaveNamed_10046E10(void *pEntity)
+{
+    BrPhase *pNext;
+
+    Br31LeavePrologue(pEntity);
+
+    g_pExt->pAA2924 = NULL;
+    g_pExt->nAA28E0 = 0;
+    g_pExt->n0AB3F4 = -1;
+    Br31CopyName(g_pExt->szAA2518, g_pExt->sz39B720);
+    Br31CopyName(g_pExt->szA9D618, g_pExt->sz39B720);
+
+    pNext = g_pExt->pAA291C;
+    BR_PHASE_CUR = pNext;
+    return 0;
+}
 
 /* --- the three one-statement gotos ---------------------------------------- */
 
@@ -284,11 +541,37 @@ int32_t BrPhaseLeave_10046560(void *pEntity)
 #define BR31_GOTO_292C   g_pExt->pAA292C
 #define BR31_GOTO_293C   g_pExt->pAA293C
 @end
-@drop fn:BrPhaseLeave_10046FD0
+@drop proto:BrPhaseLeave_10046F60
+@drop proto:BrPhaseLeave_10046FD0
 @drop fn:BrPhaseLeave_10047120
 @drop fn:BrPhaseLeave_100471B0
 @drop fn:BrPhaseLeave_10047290
 @after fn:BrPhaseLeave_10047290
+
+/* --- LEAVE routines with a different shape -------------------------------- */
+
+/* 0x10046F60 */
+/* WHAT IT DOES: leaves a screen all the way back to the root menu, releasing
+ * the confirmation screen that was sitting behind it. It briefly leaves no
+ * screen current at all, which the release runs inside -- so anything that
+ * release does sees no current screen. */
+/* port-only body; Glide match is src/core/cpp/0x100403B0.cpp */
+int32_t BrPhaseLeave_10046F60(void *pEntity)
+{
+    BrPhase *pSaved;
+
+    Br31LeavePrologue(pEntity);
+
+    pSaved = g_pExt->pAA292C;
+    BR_PHASE_CUR = NULL;        /* visible only to the notify below */
+    g_pExt->pAA2974  = NULL;
+    if (pSaved != NULL) {
+        pSaved->pVtbl->f00(pSaved, 1);
+        g_pExt->pAA292C = NULL;
+    }
+    BR_PHASE_CUR = g_pBase->pAA2908;
+    return 0;
+}
 
 /* 0x10046FD0 */
 /* WHAT IT DOES: leaves a screen and throws away three other screens with it,

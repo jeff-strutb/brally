@@ -710,29 +710,8 @@ int32_t BrUiNavHook_10045AF0(BrUiCtl_ *pCtl)
     return 1;
 }
 
-/* port-only body; Glide match is src/core/cpp/0x100400E0.cpp */
-int32_t BrUiNavHook_10046C90(BrUiCtl_ *pCtl)
-{
-    BrUiNav  *pNav = g_pBrUiNav;
-    BrPhase_ *pOwner = pCtl->pOwner;
-
-    pOwner->pVtbl->f1C(pOwner);
-
-    /* The CURRENT phase is re-read here, after +0x1C has run. */
-    if (pNav->pAA2904 != NULL)
-        (void)pNav->pAA2904->pVtbl->f00(pNav->pAA2904, 1);
-
-    /* GOTCHA, and it is the original's order: 0x10AA2908 is loaded BEFORE
-     * 0x10AA291C is cleared, and only then stored into 0x10AA2904. */
-    {
-        BrPhase_ *pRoot = pNav->pAA2908;
-        pNav->nAA291C = 0;
-        pNav->pAA2904 = pRoot;
-    }
-    /* `xor eax,eax` -- 0 from a +0x08 hook stops 0x10048180 and, through it,
-     * the page walk in 0x10048530. */
-    return 0;
-}
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x100400E0.cpp */
+int32_t BrUiNavHook_10046C90(BrUiCtl_ *pCtl);
 
 /* ==========================================================================
  * Vtable adapters and the input seam

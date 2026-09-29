@@ -15,9 +15,9 @@
 @drop proto:BrCountedTotal
 @drop proto:BrBitStreamWriteU8
 @drop var:DAT_11849e68
-@drop fn:BrNetWriteTag20
+@drop proto:BrNetWriteTag20
 @drop type:BrU32Arg
 @drop proto:BrBitStreamWriteU32
 @drop var:DAT_1184c074
-@drop fn:BrNetWritePlayerRec
+@drop proto:BrNetWritePlayerRec
 @drop fn:FUN_1006cd80

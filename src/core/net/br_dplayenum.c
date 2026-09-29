@@ -35,50 +35,9 @@ typedef struct { int a, b, c, d; } BrSessionGuid;
  * timeout) it tells the lobby list widget about the game, copies the 16-byte
  * session id, and hands that id to the join helper. Returns 1 to keep
  * enumerating, 0 if there is no lobby object or DirectPlay timed out. */
-/* port-only body; Glide match is src/core/cpp/0x10036220.cpp */
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x10036220.cpp */
 int __stdcall BrNetEnumSessionCb(void *pDesc, void *pUnused, unsigned flags,
-                                 void *pCtx)
-{
-  unsigned char *pList;
-  void *pMem;
-  BrDpI a, b, c, d, e;
-
-  (void)pUnused;
-  if (g_brPAA29D4 == 0)
-    return 0;
-  if ((flags & 1) != 0)
-    return 0;
-
-  pMem = (void *)flags;
-  if (DAT_10ac5bf0 != 0) {
-    if (*(unsigned *)((char *)pDesc + 0x2c) < 8u
-        && (*(unsigned char *)((char *)pDesc + 4) & 0x20) == 0) {
-      b.v = 1;
-      *(unsigned char *)&flags = 1;
-    } else {
-      b.v = 0x11;
-      *(unsigned char *)&flags = 0;
-    }
-    pList = (unsigned char *)g_brPAA29D4 + 0x3838;
-    a.v = *(int *)((char *)pDesc + 0x30);
-    c.v = (int)flags;
-    d.v = (int)&DAT_100aabe8;
-    e.v = 1;
-    (*(BrDpListF10 *)(*(int *)pList + 0x10))(pList, a, b, c, d, e);
-
-    pMem = GlobalLock(GlobalAlloc(0x42, 0x10));
-    if (pMem == 0)
-      return 1;
-    *(BrSessionGuid *)pMem = *(BrSessionGuid *)((char *)pDesc + 8);
-    a.v = (int)pMem;
-    b.v = 0x10;
-    c.v = -1;
-    pList = (unsigned char *)g_brPAA29D4 + 0x3838;
-    (*(BrDpListF28 *)(*(int *)pList + 0x28))(pList, a, b, c);
-  }
-  FUN_100361a0(pMem, (void *)0x10036130, pCtx, 0);
-  return 1;
-}
+                                 void *pCtx);
 
 /* ------------------------------------------------------------------ */
 /* 0x10036300 -- the EnumSessions initiator                            */

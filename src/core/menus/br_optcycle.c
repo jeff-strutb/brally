@@ -750,12 +750,8 @@ int BrOptCycleAA2A00(void)
 
 /* WHAT IT DOES: opens one of the menu screens, building it the first time
  * and reusing it afterwards. Which screen this is was not established. */
-/* port-only body; Glide match is src/core/cpp/0x1003C7B0.cpp */
-int BrOptOpen296C(BrGameObj *pUnused)
-{
-    (void)pUnused;
-    return BrOptEnsureObj(&g_brPAA296C, BrOptFn10051990);
-}
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003C7B0.cpp */
+int BrOptOpen296C(BrGameObj *pUnused);
 
 /* WHAT IT DOES: opens another menu screen the same way. Which screen this
  * is was not established. */
@@ -864,43 +860,15 @@ int BrOptCycleAA2A24(void)
 /* WHAT IT DOES: leaves the current menu screen: it tells the screen to
  * close, resets a couple of race settings in single-player, saves the
  * settings block and returns to the caller with "stop here". */
-/* port-only body; Glide match is src/core/cpp/0x1003CCB0.cpp */
-int BrOpt3760(BrGameObj *pGame)
-{
-    BrGameSub *pSub;
-
-    pSub = pGame->pSub;
-    pSub->f68 = 0;
-    pSub = pGame->pSub;                 /* reloaded by the original */
-    pSub->pVtbl->pfnSlot6(pSub, 0);
-
-    if (g_br0AA010 == 0)
-        g_br0BD3E0 = 3;
-
-    BrSub1003E310();
-    BrSub1006A4A0(g_aBrB4DF30[0], g_aBrB4FBE8);
-    BrSub10041B50();
-    return 0;
-}
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003CCB0.cpp */
+int BrOpt3760(BrGameObj *pGame);
 
 /* 0x100437D0 */
 /* WHAT IT DOES: backs out of a network screen when the connection has gone
  * away -- it closes the screen and tears the session down. If the
  * connection is still up it does nothing at all. */
-/* port-only body; Glide match is src/core/cpp/0x1003CD20.cpp */
-int BrOpt37D0(BrGameObj *pGame)
-{
-    BrGameSub *pSub;
-
-    if (g_brAA2894 != 0 && g_brA9D000 != 0) {
-        pSub = pGame->pSub;
-        pSub->f68 = 0;
-        pSub = pGame->pSub;
-        pSub->pVtbl->pfnSlot6(pSub, 0);
-        BrSub10038F30(0);
-    }
-    return 1;
-}
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003CD20.cpp */
+int BrOpt37D0(BrGameObj *pGame);
 
 /* 0x10043810 */
 /* WHAT IT DOES: the once-a-frame handler for the network lobby: it deals
@@ -908,110 +876,8 @@ int BrOpt37D0(BrGameObj *pGame)
  * connected player whether anybody else is present, and on the way out
  * closes the lobby and plays a sound. Most of the function is the several
  * different ways of leaving. */
-/* port-only body; Glide match is src/core/cpp/0x1003CD60.cpp */
-int BrOpt3810(BrGameObj *pGame)
-{
-    /* orig: no frame, no ebp; xor ebx,ebx. leave_host is a far je, not an
-     * inlined else â `if (AA2894==0) goto check; if (A9D000!=0) goto psub;
-     * goto leave_host`. pfnSlot6 thiscall +1 stack; f1C thiscall no arg;
-     * KERNEL32 IAT. g_brPAA2904 is (*g_ppBrPhaseCur); orig stores 0x10ac5c5c
-     * (DAT_10ac5c5c). C++ probe build/cpp_work/0x1003CD60.cpp is 2 diffs
-     * (leave_host mov eax vs ecx [esp+0x10]); Rec6A4A0::go is thiscall
-     * without edx. C __fastcall 6A4A0 still loads edx. */
-    typedef void (__fastcall *Slot6)(BrGameSub *pThis, void *edx_slot, int arg);
-    typedef void (__fastcall *F1C)(BrOptObj *pThis, void *edx_vtbl);
-    typedef void (__fastcall *Fn6A4A0)(void *pThis, void *edx_live, void *pArg);
-    extern BrOptObj *DAT_10ac5c5c;
-    BrGameSub       *pSub;
-    BrOptObj        *pObj;
-    BrDPSessionDesc *pDesc;
-    BrSlot          *pSlot;
-    int              i;
-
-    if (g_brAA2894 == 0)
-        goto check;
-    if (g_brA9D000 != 0)
-        goto psub;
-    goto leave_host;
-
-psub:
-    pSub = pGame->pSub;
-    pSub->f68 = 0;
-    pSub = pGame->pSub;
-    ((Slot6)pSub->pVtbl->pfnSlot6)(pSub, pSub->pVtbl, 0);
-    BrSub10038F30(0);
-
-check:
-    if (g_brAA2890 != 0) {
-        BrSub10046400(pGame);
-        pObj = g_brPAA2950;
-        if (pObj != NULL) {
-            ((F1C)pObj->pVtbl->f1C)(pObj, pObj->pVtbl);
-            g_brPAA2950 = NULL;
-        }
-        BrOptOpen294C(NULL);
-        BrOptOpen2950B(NULL);
-        BrOptOpen2954(NULL);
-        g_brAA2890 = 0;
-        return 0;
-    }
-
-    if (g_brAA2884 != 0) {
-        pDesc = NULL;
-        if (g_brP277B40 != NULL)
-            BrSub1003D0B0(g_brP277B40, &pDesc);
-
-        if (pDesc != NULL) {
-            i = 0;
-            for (pSlot = g_aBrAA2538;
-                 (int)pSlot < (int)(g_aBrAA2538 + BR_SLOT_COUNT);
-                 pSlot++) {
-                if (pSlot->id == g_brPA9D008->f08) {
-                    pSlot->a = (pDesc->dwCurrentPlayers > 1);
-                    break;
-                }
-                i++;
-            }
-        }
-        if (pDesc != NULL) {
-            GlobalUnlock(GlobalHandle(pDesc));
-            GlobalFree(GlobalHandle(pDesc));
-        }
-    }
-
-    if (g_brAA288C != 0) {
-        BrSub1003E310();
-        ((Fn6A4A0)BrSub1006A4A0)(g_aBrB4DF30, g_aBrB4FBE8, g_aBrB4FBE8);
-        pSub = pGame->pSub;
-        pSub->f68 = 0;
-        pSub = pGame->pSub;
-        ((Slot6)pSub->pVtbl->pfnSlot6)(pSub, pSub->pVtbl, 0);
-        g_brAA285C = 0;
-        BrSub10072AF0(2, 0x200020);
-        g_brAA2854 = 2;
-        return 0;
-    }
-    return 1;
-
-leave_host:
-    BrSub10046400(pGame);
-    pObj = g_brPAA2950;
-    if (pObj != NULL) {
-        ((F1C)pObj->pVtbl->f1C)(pObj, pObj->pVtbl);
-        g_brPAA2950 = NULL;
-    }
-    DAT_10ac5c5c = g_brPAA2948;
-    BrSub1003BF60();
-    g_brAA2898 = 1;
-    if (g_brAA287C == 0 || g_brAA287C == 1)
-        BrSub1003C020();
-    if (g_brAA287C == 2 || g_brAA287C == 3) {
-        if (g_brPAA29D8 != NULL)
-            g_brPAA29D8->f1C &= ~0x10;
-    }
-    g_brAA2894 = 0;
-    return 0;
-}
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003CD60.cpp */
+int BrOpt3810(BrGameObj *pGame);
 
 /* ==========================================================================
  * 0x10043CD0 .. 0x10043E70 -- more screen installers
@@ -1019,12 +885,8 @@ leave_host:
 
 /* WHAT IT DOES: opens another menu screen, building it once and reusing it.
  * Which screen this is was not established. */
-/* port-only body; Glide match is src/core/cpp/0x1003D220.cpp */
-int BrOptOpen2940(BrGameObj *pUnused)
-{
-    (void)pUnused;
-    return BrOptEnsureObj(&g_brPAA2940, BrOptFn100558A0);
-}
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003D220.cpp */
+int BrOptOpen2940(BrGameObj *pUnused);
 
 /* WHAT IT DOES: opens another menu screen the same way. Which screen this
  * is was not established. */
@@ -1040,19 +902,8 @@ int BrOptOpen298C(BrGameObj *pUnused)
  * after finding an existing one -- so it also starts the network connection
  * attempt on every call, not just the first, provided the game is in a mode
  * that wants one. */
-/* port-only body; Glide match is src/core/cpp/0x1003D3C0.cpp */
-int BrOptOpen2948(BrGameObj *pUnused)
-{
-    (void)pUnused;
-
-    if (!BrOptEnsureObj(&g_brPAA2948, BrOptFn10056FF0))
-        return 0;
-
-    if (g_brA9CFFC == 0 && g_brA9D000 == 0 &&
-        (g_brAA287C == 0 || g_brAA287C == 1))
-        BrSub1003C020();
-    return 1;
-}
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003D3C0.cpp */
+int BrOptOpen2948(BrGameObj *pUnused);
 
 /* ==========================================================================
  * 0x10043F50 .. 0x100440B0
@@ -1119,78 +970,23 @@ int BrOpt40B0(BrGameObj *pGame) { g_brAA287C = 2; BrSub10047360(pGame); return 1
 
 /* WHAT IT DOES: opens another menu screen, building it once and reusing it.
  * Which screen this is was not established. */
-/* port-only body; Glide match is src/core/cpp/0x1003D620.cpp */
-int BrOptOpen294C(BrGameObj *pUnused)
-{
-    (void)pUnused;
-    return BrOptEnsureObj(&g_brPAA294C, BrOptFn100575F0);
-}
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003D620.cpp */
+int BrOptOpen294C(BrGameObj *pUnused);
 
 /* 0x10044280 */
 /* WHAT IT DOES: joins somebody else's network game and opens the lobby
  * screen for it. It refuses to go ahead when the player has not typed a
  * long enough name in one of the modes, and falls back to setting the
  * connection up first if there is nothing to join yet. */
-/* port-only body; Glide match lane is src/core/cpp/0x1003D7D0.cpp (T2 there: layout residue) */
-int BrOptOpen2950A(BrGameObj *pUnused)
-{
-    int fOpen;
-
-    (void)pUnused;
-
-    g_brAA2884 = 0;
-    g_brAA2898 = 0;
-
-    if (g_brAA2878 == 0) {
-        fOpen = 0;
-        if (g_brAA287C == 2 || g_brAA287C == 3) {
-            g_brAA2898 = 1;
-            /* Mode 2 additionally demands at least seven characters in the
-             * text at 0x10A9CDF0. */
-            if (g_brAA287C == 2 && strlen(g_aBrA9CDF0) < 7)
-                return 1;
-            if (g_brPAA29D8 == NULL) {
-                BrSub1003C1E0();
-                return 1;
-            }
-            if (g_brPAA29D4->f1E164 == 0) {
-                BrSub1003C1E0();
-                return 1;
-            }
-            fOpen = (BrSub1003C260() != 0);
-        } else {
-            fOpen = (BrSub1003C260() != 0);
-        }
-        if (!fOpen)
-            return 1;
-    }
-
-    if (!BrOptEnsureObj(&g_brPAA2950, BrOptFn10057C10))
-        return 0;
-
-    g_brPAA29B8->pfnHook = BrOptFn10044970;
-    return 1;
-}
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003D7D0.cpp (T2 there: layout residue) */
+int BrOptOpen2950A(BrGameObj *pUnused);
 
 /* 0x100443E0 */
 /* WHAT IT DOES: the hosting counterpart: marks this machine as the host and
  * opens the same lobby screen, with the host's own set of controls attached
  * to it. */
-/* port-only body; Glide match is src/core/cpp/0x1003D930.cpp */
-int BrOptOpen2950B(BrGameObj *pUnused)
-{
-    (void)pUnused;
-
-    g_brAA2884 = 1;
-    g_br22AF18 = 2;
-    g_brAA2898 = 0;
-
-    if (!BrOptEnsureObj(&g_brPAA2950, BrOptFn10057C10))
-        return 0;
-
-    g_brPAA29B8->pfnHook = BrOptFn10044A30;
-    return 1;
-}
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003D930.cpp */
+int BrOptOpen2950B(BrGameObj *pUnused);
 
 /* 0x100444C0. Returns 0. Glide match is src/core/cpp/0x1003DA10.cpp. */
 /* WHAT IT DOES: leaves the network lobby and goes back to the screen behind
@@ -1264,29 +1060,8 @@ int BrOptCycleAA2A18(void)
 /* WHAT IT DOES: opens the screen the game shows once a network race is
  * agreed on, switches the game into that mode, and, if this machine is the
  * host, starts hosting the session at that point. */
-/* port-only body; Glide match is src/core/cpp/0x1003DC20.cpp */
-int BrOptOpen2954(BrGameObj *pUnused)
-{
-    (void)pUnused;
-
-    if (!BrOptEnsureObj(&g_brPAA2954, BrOptFn10058750))
-        return 0;
-
-    g_br0AA010 = 6;
-
-    if (g_brAA2884 != 0) {
-        if (g_brAA2888 == 0) {
-            if (g_brAA287C == 2 || g_brAA287C == 3)
-                BrSub1003C230();
-            BrSub1003C150();
-            g_brAA2888 = 1;
-            BrSub1003CDA0();
-        } else {
-            BrSub1003CDA0();
-        }
-    }
-    return 1;
-}
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003DC20.cpp */
+int BrOptOpen2954(BrGameObj *pUnused);
 
 /* ==========================================================================
  * DEVIATIONs, collected

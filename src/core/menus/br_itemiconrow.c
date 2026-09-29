@@ -72,23 +72,6 @@ typedef struct {
  * free to change it.  Always reports success. */
 /* @t4-pass 0x10037FA0 1 2026-09-07 probes 61 bytes 98 insns 42 regions 3 rows 6 census yes  (tools/crank.py) */
 /* @t4-pass 0x10037FA0 2 2026-09-07 probes 61 bytes 98 insns 42 regions 3 rows 6 census yes  (tools/crank.py) */
-/* port-only body; Glide match is src/core/cpp/0x10037FA0.cpp */
-int BrItemDrawIconRow(BrIconItem *pItem)
-{
-    BrItemDrawFn fn;
-    BrDrawArg code, x, y;
-    unsigned int i;
-
-    x.v = (int)pItem->x;
-    y.v = (int)pItem->y + 0x13;
-    fn = (BrItemDrawFn)pItem->vt[5];
-    code.v = 0x74;
-    fn(pItem, code, x, y);
-    for (i = 0; i < g_brItemIconCount; i++) {
-        code.v = 0x75;
-        fn(pItem, code, x, y);
-        x.v += 0xc;
-    }
-    return 1;
-}
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x10037FA0.cpp */
+int BrItemDrawIconRow(BrIconItem *pItem);
 

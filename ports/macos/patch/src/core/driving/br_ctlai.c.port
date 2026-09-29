@@ -10,4 +10,4 @@ uint32_t BrAiScanCorridor(BrAiCar *pCar, int32_t a, uint32_t idx,
 #define BR_AI_SCAN(pCar, a, idx, node) \
     BrAiScanCorridor((pCar), (a), (idx).v, (node).p)
 @end
-@drop fn:BrAiScanCorridor
+@drop proto:BrAiScanCorridor#2

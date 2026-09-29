@@ -376,22 +376,8 @@ static int BrSprGlyphClassify(char c)
  *     and sprite at +4 -- while slice3_39.h's BrGlyphMetric is eight bytes at
  *     0x100AC6E4.  A third table, or a wider one; it needs its own type
  *     before this body can be written. */
-/* port-only body; Glide match is src/core/cpp/0x100540D0.cpp */
-float BrSprFontPenStart_1005B2B0(BrTextBox *pBox)
-{
-    if (pBox == NULL) {
-        return 0.0f;                /* DEVIATION: the original faults. */
-    }
-    /* `test byte [edi+4],1` -- re-centre, and take the float the centring
-     * method RETURNS rather than re-reading +0x410.  BrTextBoxCentreX stores
-     * the same value into +0x410 on its way out, so the two agree; the
-     * original reads the return value and so does this. */
-    if ((pBox->f04 & 1u) != 0 && pBox->pVtbl != NULL
-        && pBox->pVtbl->pfn28 != NULL) {
-        return pBox->pVtbl->pfn28(pBox);
-    }
-    return pBox->x;
-}
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x100540D0.cpp */
+float BrSprFontPenStart_1005B2B0(BrTextBox *pBox);
 
 float BrSprFontDraw_1005B2B0(BrTextBox *pBox,
                              BrSprFontBlitFn pfnBlit, void *pCtx)

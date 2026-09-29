@@ -320,7 +320,7 @@ void BR_THISCALL1 BrCtlAiRespawn(BrAiCar *pCar);           /* 0x1005C6D0 */
  * arrives in a float slot only so that thiscall's edx stays free and the
  * callee clears its own three arguments -- its bits are an int, read back as
  * one here (see BR_AI_SCAN and the arg struct notes above). */
-/* port-only body; Glide match is src/core/driving/BrAiCorridor_1005D060.cpp
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/driving/BrAiCorridor_1005D060.cpp
  * (byte-exact as a C++ thiscall member under /O2 /Gi).  History below.
  * 0x1005D060 glide BrAiScanCorridor -- TRANSCRIBED, NOT YET BYTE-EXACT (T2).
  * Fills the corridor-scan "binding gap" named in br_ai.h rule 8.  First-pass
@@ -347,121 +347,7 @@ void BR_THISCALL1 BrCtlAiRespawn(BrAiCar *pCar);           /* 0x1005C6D0 */
  * inline aPt[mid] access (inert, VC5 folds +0x40 either way); dropping the
  * `mid` local for in-place midArg.v (paid, RAW -16).  Dead in C lane. */
 uint32_t __fastcall BrAiScanCorridor(BrAiCar *pCar, float a,
-                                     BrAiIdxArg midArg, BrAiNodeArg nodeArg)
-{
-    BrAiPathNode *pNode = nodeArg.p;
-    int32_t  depth = *(int32_t *)&a;
-    uint32_t result = 0;
-    BrVec3        midPt;
-    BrVec3       *pCarPos;
-    int32_t       level, kk;
-    BrAiPathNode *pChild;
-    BrAiIdxArg    midNext;
-    BrAiNodeArg   nodeNext;
-    float         aNext;
-    uint32_t      count;
-
-    if (pNode == NULL) {
-        pNode = g_pBrAiPathRoot;
-        midArg.v = 0;
-    }
-    if (depth == 0) {
-        g_brAiScanN      = 0;
-        g_brAiScanFlag18 = 0;
-        g_brAiScanF08    = 0;
-        g_brAiScanF0C    = 0;
-    } else {
-        if (depth > 8)
-            return 0;
-        if (pNode->flags & 1)
-            return 0;
-
-        BrVec3Lerp(&g_aScanInsetA[depth], &pNode->aPt[midArg.v].left,
-                   &pNode->aPt[midArg.v].right, 0.2f);
-        g_aScanCentre[depth] = pNode->aPt[midArg.v].centre;
-        BrVec3Lerp(&g_aScanInsetB[depth], &pNode->aPt[midArg.v].right,
-                   &pNode->aPt[midArg.v].left, 0.2f);
-        BrVec3Midpoint(&g_aScanMidB[depth], &g_aScanInsetB[depth],
-                       &g_aScanCentre[depth]);
-        BrVec3Midpoint(&g_aScanMidA[depth], &g_aScanInsetA[depth],
-                       &g_aScanCentre[depth]);
-        midPt.x = (pNode->aPt[midArg.v].left.x + pNode->aPt[midArg.v].right.x)
-                  * g_brAiScanHalf;
-        midPt.y = (pNode->aPt[midArg.v].right.y + pNode->aPt[midArg.v].left.y)
-                  * g_brAiScanHalf;
-
-        if (depth - 1 > 1) {
-            pCarPos = &pCar->pos;
-            kk = 0;
-            level = 1;
-            do {
-                if (BrSeg2Intersect(pCarPos, &midPt,
-                                    &g_aScanHitA[kk], &g_aScanHitB[kk]) == 0) {
-                    g_brAiScanF0C = 1;
-                    goto tail;
-                }
-                level++;
-                kk++;
-            } while (level < depth - 1);
-        }
-
-        if (depth > g_brAiScanN) {
-            g_brAiScanN         = depth;
-            g_pBrAiScanBestNode = pNode;
-            g_brAiScanBestPt    = (int32_t)midArg.v;
-            if (depth > 2) {
-                pCarPos = &pCar->pos;
-                if (BrSeg2Intersect(pCarPos, &g_brAiScanProbe,
-                                    &g_brAiScanEndA, &g_aScanHitA[0]) != 0) {
-                    g_brAiBiasPos = 0;
-                    g_brAiBiasNeg = 1;
-                } else if (BrSeg2Intersect(pCarPos, &g_brAiScanProbe,
-                                           &g_brAiScanEndB, &g_aScanHitB[0]) != 0) {
-                    g_brAiBiasPos = 1;
-                    g_brAiBiasNeg = 0;
-                } else {
-                    g_brAiBiasPos = 0;
-                    g_brAiBiasNeg = 0;
-                }
-            } else {
-                g_brAiBiasPos = 0;
-                g_brAiBiasNeg = 0;
-            }
-            g_brAiScanAim = g_aScanCentre[depth];
-            result = 1;
-            g_brAiScanPt    = g_aScanCentre[1 + (depth >> 1)];
-            g_brAiScanDepth = depth;
-            memcpy(g_aBrAiScanA, &g_aScanInsetB[1], depth * sizeof(BrVec3));
-            memcpy(g_aBrAiScanB, &g_aScanCentre[1], depth * sizeof(BrVec3));
-            memcpy(g_aScanOut3,  &g_aScanInsetA[1], depth * sizeof(BrVec3));
-        }
-    }
-
-tail:
-    count = pNode->count;
-    if (midArg.v + 1 != count) {
-        *(int32_t *)&aNext = depth + 1;
-        midNext.v  = midArg.v + 1;
-        nodeNext.p = pNode;
-        result |= BrAiScanCorridor(pCar, aNext, midNext, nodeNext);
-        return result;
-    }
-
-    pChild = pNode->pNext;
-    if (pChild == NULL) {
-        pChild = g_pBrAiPathRoot;
-        if (pChild == NULL)
-            return result;
-    }
-    *(int32_t *)&aNext = depth + 1;
-    midNext.v = 0;
-    do {
-        nodeNext.p = pChild;
-        result |= BrAiScanCorridor(pCar, aNext, midNext, nodeNext);
-        pChild = pChild->pSib;
-    } while (pChild != NULL);
-    return result;
-}
+                                     BrAiIdxArg midArg, BrAiNodeArg nodeArg);
 
 /* WHAT IT DOES: drive one computer-controlled car for this frame. It walks
  * the car's waypoint cursor ahead by a speed-scaled lookahead, smooths the
