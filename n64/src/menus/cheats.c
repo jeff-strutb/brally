@@ -103,11 +103,11 @@ void BrCheatToggleAA68(void)
 /* WHAT IT DOES: Record a change of the held buttons in the controller's
  * 128-entry history ring, and run every cheat whose button sequence
  * matches the newest entries.
- * RESIDUE (33): register colouring only -- the ROM keeps the sequence
- * pointer, the loaded entry, the ring index and the ring base in four
- * separate registers (a2, a0, v1, a1); ours folds two of them.  Loop forms
- * (for/while, indexed table, post-increment, a loaded-entry local) and 250
- * permuter compiles leave 33. */
+ * RESIDUE (11): register naming only -- the ROM keeps the sequence
+ * pointer in a2, ours in a0 (and one move/addiu pair swaps with it).  The
+ * head's decrement-and-store through pad->pos and the compare-then-advance
+ * loop took it from 33; declaration order, statement order in the loop
+ * head, the table start spelling and 295 permuter compiles leave 11. */
 /* @implements 0x80255048 tgr BrCheatInput */
 void BrCheatInput(BrPadHistory *pad)
 {
@@ -117,10 +117,9 @@ void BrCheatInput(BrPadHistory *pad)
   unsigned short *h;
   unsigned int i;
 
-  i = (pad->pos - 1) & 0x7f;
   if (pad->buttons != pad->hist[pad->pos]) {
-    pad->pos = i;
-    pad->hist[i] = pad->buttons;
+    pad->pos = (pad->pos - 1) & 0x7f;
+    pad->hist[pad->pos] = pad->buttons;
     seq = D_8028DF4C;
     c = D_8028DF48;
     while (seq != 0) {
@@ -128,11 +127,11 @@ void BrCheatInput(BrPadHistory *pad)
       h = pad->hist;
       p = seq;
       while (*p != 0xffff) {
-        if (*p++ != h[i]) {
+        if (*p != h[i]) {
           goto next;
         }
-        i++;
-        i &= 0x7f;
+        p++;
+        i = (i + 1) & 0x7f;
       }
       c->fn();
     next:
