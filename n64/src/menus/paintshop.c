@@ -22,9 +22,12 @@ typedef struct BrPaintState {   /* 0x8028D110 */
   int y;                        /* 0x20 */
 } BrPaintState;
 typedef struct BrPaintBrush {   /* 0x8028D290 */
-  char pad00[0x24];
+  char pad00[0x1c];
+  int x;                        /* 0x1C */
+  int y;                        /* 0x20 */
   int w;                        /* 0x24 */
   int h;                        /* 0x28 */
+  unsigned char flash;          /* 0x2C  the key cursor was just moved */
 } BrPaintBrush;
 typedef struct BrPaintBox {
   int pad[7];
@@ -177,6 +180,11 @@ extern BrPaintNames D_8028DCF4;        /* the four style names */
 extern BrImage *D_8028DB44[4];         /* the four oval style pictures */
 extern BrPaintNames D_8028DD04;        /* and their names */
 void BrImageDraw(BrImage *img);
+extern BrImage D_8028D230;              /* the on-screen keyboard */
+extern BrImage D_8028D260;              /* the text box under it */
+extern unsigned char D_8028DBA4;        /* the key under the cursor */
+extern char D_80369EA8[];               /* the typed text */
+void BrImageDrawTinted(BrImage *img, unsigned char r, unsigned char g, unsigned char b);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Take the chosen preset's rectangle, and make every view
@@ -367,6 +375,115 @@ void BrPaintExitPrompt(void)
         D_8028DB60 = D_8028DB64;
       }
     }
+  }
+}
+
+/* WHAT IT DOES: The paint shop's text keyboard: draw it with the text box
+ * under it, and while the cursor is over the box, move the key cursor to
+ * the key it touches (flashing it for 3 frames when A or Z picks it); a
+ * picked key appends its glyph to the text (while the kerned width fits
+ * the decal, up to 16), key 47 deletes the last one and key 49 closes the
+ * keyboard (starting the text stamp when there is text).  The text is
+ * printed centred in the box, in the chosen paint colour.
+ * RESIDUE (205): saved-register choice in the key loop (the key pointer and
+ * the constant 1 swap s3/s4, the text-length and width globals s0/s1) and
+ * the pad address kept in a0 for the consume. */
+/* @implements 0x8024AC70 tgr BrPaintKeyboard */
+void BrPaintKeyboard(void)
+{
+  int spare;                    /* declared, never used: the frame holds it */
+  int x;
+  int y;
+  int i;
+  BrGlyph *k;
+  unsigned int n;
+  int kern;
+
+  D_8028DBD8 = 0;
+  D_8028DBC8 = 0;
+  BrImageDrawTinted(&D_8028D260, 0xe0, 0xe0, 0xe0);
+  if (D_8028D290.flash != 0) {
+    D_8028D290.flash = 0;
+    if (D_8028DBB0 > 0) {
+      D_8028DBB0--;
+    }
+    if (D_8028DBB0 == 0) {
+      BrImageDrawTinted((BrImage *)&D_8028D290, 0x20, 200, 0xff);
+    } else {
+      BrImageDrawTinted((BrImage *)&D_8028D290, 0xff, 0xeb, 0);
+    }
+  }
+  BrImageDraw(&D_8028D230);
+  x = D_8028D230.x;
+  y = D_8028D230.y + D_8028D230.h + 32;
+  BrImageDrawRect(&D_8028D260, x, y, 200, 48, 0xe0, 0xe0, 0xe0);
+  BrFillFrame(x, y, 200, 48, 2, 0xff, 0xff, 0xff);
+  if (BrPaintCursorInBox((int *)&D_8028D260) != 0) {
+    for (i = 0, k = D_8028D540; i < 50; i++, k++) {
+      if (BrPaintCursorInBrush(&k->x0) != 0) {
+        D_8028DBA4 = i;
+        D_8028D290.flash = 1;
+        D_8028D290.x = k->x0;
+        D_8028D290.y = k->x4;
+      }
+      if (BrPaintCursorInBox((int *)&D_8028D290) != 0 && (PADS[D_8028DBBC].pressed & 0x8010)) {
+        BrPadConsume((unsigned int *)&PADS[D_8028DBBC], 0x8010);
+        D_8028DBB0 = 3;
+        if (D_8028DBA4 == 49) {
+          if (D_8028DBA8 > 0) {
+            D_8028DBC0 = 1;
+            D_8028DBE4 = 1;
+          } else {
+            D_8028DBC0 = 0;
+            D_8028DBC4 = 0;
+          }
+          D_8028DBD8 = 1;
+          D_8028DBC8 = 1;
+        } else if (D_8028DBA4 == 47) {
+          n = (unsigned char)(D_8028DBA8 - 1);
+          if (D_80369E68[D_8028DBA8 - 1] == 0) {
+            n = 0;
+            D_8028DBA8 = 0;
+            D_8028DBAC = 0;
+          } else {
+            D_8028DBA8 = n;
+            if (n == 0) {
+              D_8028DBAC -= D_80369E68[0]->w;
+            } else {
+              kern = D_80369E68[n - 1]->kernR < D_80369E68[n]->kernL ? D_80369E68[n - 1]->kernR : D_80369E68[n]->kernL;
+              D_8028DBAC = D_8028DBAC - D_80369E68[n]->w + kern - 2;
+            }
+          }
+          D_80369EA8[n] = 0;
+          D_80369E68[n] = 0;
+        } else {
+          if (D_8028D540[D_8028DBA4].w + D_8028DBAC + 2 < D_8028DB88) {
+            n = D_8028DBA8;
+            D_80369EA8[n] = D_8028D540[D_8028DBA4].c;
+            D_80369E68[n] = &D_8028D540[D_8028DBA4];
+            if (n == 0) {
+              D_8028DBAC = D_8028D540[D_8028DBA4].w + D_8028DBAC;
+            } else {
+              kern = D_80369E68[n - 1]->kernR < D_80369E68[n]->kernL ? D_80369E68[n - 1]->kernR : D_80369E68[n]->kernL;
+              D_8028DBAC = D_8028D540[D_8028DBA4].w + D_8028DBAC - kern + 2;
+            }
+            D_80369EA8[(unsigned char)(n + 1)] = 0;
+            D_8028DBA8 = n + 1;
+            if ((unsigned char)(n + 1) > 16) {
+              D_8028DBA8 = 16;
+            }
+          }
+        }
+      }
+    }
+  }
+  if (D_8028DBA8 > 0) {
+    BrTextSetColours(D_80369B98[D_8028DB58].r, D_80369B98[D_8028DB58].g, D_80369B98[D_8028DB58].b,
+                     D_80369B98[D_8028DB58].r, D_80369B98[D_8028DB58].g, D_80369B98[D_8028DB58].b);
+    BrTextSetFont(20);
+    BrTextAlignCentre();
+    BrTextHighlightOff();
+    BrTextPrint(D_80369EA8, (x + 100) >> 1, (y + 36) >> 1);
   }
 }
 
