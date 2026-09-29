@@ -3,7 +3,8 @@
  *
  * zlib 1.0.4, Copyright (C) 1995-1996 Mark Adler.  For conditions of
  * distribution and use, see the notice in tgr/zinfl.h.  Altered from the
- * original: K&R header written as a prototype, traces removed.
+ * original: K&R header written as a prototype, traces removed; the hang on
+ * a 0x10001 distance link is the game's.
  */
 #include "tgr/zinfl.h"
 
@@ -20,10 +21,8 @@
 /* WHAT IT DOES: Decode codes straight into the window while there are at
  * least 258 bytes of room and 10 of input, with no per-bit input checks:
  * literals, and length/distance copies from earlier in the window
- * (wrapping round its end); returns the block's end or a bad code.
- * RESIDUE (293): the ROM's version is the game's: it hangs when a distance
- * table link is 0x10001, and its frame is 0x50 larger; zlib's source as
- * written here is the starting point. */
+ * (wrapping round its end); returns the block's end or a bad code.  The
+ * game added one check: a distance table link of 0x10001 hangs. */
 /* @implements 0x80241FC0 tgr inflate_fast */
 int inflate_fast(uInt bl, uInt bd, inflate_huft *tl, inflate_huft *td,
                  inflate_blocks_statef *s, z_streamp z)
@@ -101,7 +100,12 @@ int inflate_fast(uInt bl, uInt bd, inflate_huft *tl, inflate_huft *td,
             break;
           }
           else if ((e & 64) == 0)
+          {
+            if (t->next == (inflate_huft *)0x10001)
+              while (1)
+                ;
             e = (t = t->next + ((uInt)b & inflate_mask[e]))->exop;
+          }
           else
           {
             z->msg = (char*)"invalid distance code";
