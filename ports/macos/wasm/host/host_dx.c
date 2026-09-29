@@ -184,6 +184,7 @@ static u32 did_acq(u32 t) { didev *d = hdr(t)->st; int w = d->acquired; d->acqui
 static u32 did_unacq(u32 t) { didev *d = hdr(t)->st; int w = d->acquired; d->acquired = 0; return w ? S_OK : 1; }
 static u32 did_poll(u32 t) { (void)t; return 1; }
 static int g_mdx, g_mdy, g_mbtn;
+unsigned hdx_mouse_polls;               /* BR_GLSTAT reports it per 60 swaps */
 void hdx_mouse(int dx, int dy, int btn) { g_mdx += dx; g_mdy += dy; g_mbtn = btn; }
 
 /* The windowed host's pointer.  The game keeps its own cursor (the menu
@@ -211,6 +212,10 @@ static void abs_step(void)
     if (pt < 0x1000u) return;
     g_mdx += g_ax - (int)H32(pt);
     g_mdy += g_ay - (int)H32(pt + 4);
+    static int mlog = -1;
+    if (mlog < 0) mlog = getenv("BR_MOUSELOG") != NULL;
+    if (mlog)
+        fprintf(stderr, "mouse: target %d,%d game %d,%d\n", g_ax, g_ay, (int)H32(pt), (int)H32(pt + 4));
 }
 static u32 did_state(u32 t, u32 n, u32 p)
 {
@@ -231,6 +236,7 @@ static u32 did_state(u32 t, u32 n, u32 p)
         b[0] = m & 1 ? 0x80 : 0; b[1] = m & 2 ? 0x80 : 0;
     }
     g_mdx = g_mdy = 0; g_mlatch = 0;
+    hdx_mouse_polls++;
     return S_OK;
 }
 static u32 did_data(u32 t, u32 sz, u32 buf, u32 pn, u32 fl) { (void)t; (void)sz; (void)buf; (void)fl; if (pn) HW32(pn, 0); return S_OK; }

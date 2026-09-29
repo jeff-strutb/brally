@@ -237,7 +237,10 @@ static void gl_setup(void)
     { u32 w = 0xFFFFFFFFu; [g_white replaceRegion:MTLRegionMake2D(0, 0, 1, 1) mipmapLevel:0 withBytes:&w bytesPerRow:4]; }
     for (i = 0; i < 3; i++)
         g_vbuf[i] = [g_dev newBufferWithLength:(16u << 20) options:MTLResourceStorageModeShared];
-    g_inflight = dispatch_semaphore_create(3);
+    /* two frames in flight, and two drawables below: every frame queued
+     * ahead of the display is ~17 ms more between moving the mouse and
+     * seeing the game's cursor move; three made the pointer feel laggy. */
+    g_inflight = dispatch_semaphore_create(2);
     g_pipes = [NSMutableDictionary new];
     g_dss = [NSMutableDictionary new];
     g_samplers = [NSMutableDictionary new];
@@ -250,7 +253,7 @@ static void gl_setup(void)
     if (!g_present) { fprintf(stderr, "present pipeline: %s\n", err.localizedDescription.UTF8String); exit(1); }
     {
         CAMetalLayer *l = happ_metal_layer();
-        if (l) { l.device = g_dev; l.pixelFormat = MTLPixelFormatBGRA8Unorm; l.framebufferOnly = YES; }
+        if (l) { l.device = g_dev; l.pixelFormat = MTLPixelFormatBGRA8Unorm; l.framebufferOnly = YES; l.maximumDrawableCount = 2; }
     }
 }
 
@@ -717,6 +720,12 @@ void h_grBufferSwap(u32 interval)
     begin_pass();
     end_pass();
     glstat_swap();
+    if (getenv("BR_SWAPLOG")) {                 /* present-to-present interval, ms */
+        static double last;
+        double t = CACurrentMediaTime() * 1000.0;
+        if (last) fprintf(stderr, "swap: %.2f\n", t - last);
+        last = t;
+    }
     gllog("grBufferSwap");
     shot();
     l = happ_metal_layer();
@@ -812,8 +821,10 @@ static void glstat_swap(void)
     if (g_st_on < 0) g_st_on = getenv("BR_GLSTAT") != NULL;
     if (!g_st_on) return;
     if (++g_st_swaps % 60 == 0)
-        fprintf(stderr, "glstat: swap %u: tri %u culled %u poly %u (last 60 swaps)\n",
-                g_st_swaps, g_st_tri, g_st_cull, g_st_poly);
+        { extern unsigned hdx_mouse_polls;
+          fprintf(stderr, "glstat: swap %u: tri %u culled %u poly %u mouse polls %u (last 60 swaps)\n",
+                  g_st_swaps, g_st_tri, g_st_cull, g_st_poly, hdx_mouse_polls);
+          hdx_mouse_polls = 0; }
     if (g_st_swaps % 60 == 0) g_st_tri = g_st_cull = g_st_poly = 0;
 }
 
