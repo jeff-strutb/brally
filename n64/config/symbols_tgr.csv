@@ -442,6 +442,7 @@ va,name,kind
 802587E8,BrMat3MulVecRows,func
 802588B8,BrMat3MulVec,func
 80258950,BrRbAccel,func
+802589F4,BrRbAddForce,func
 80258BDC,BrRbApplyForces,func
 80258C24,BrRbBodyInit,func
 80258DB0,BrMat3Skew,func

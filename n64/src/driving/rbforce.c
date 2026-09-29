@@ -24,7 +24,6 @@ typedef struct BrRbBody {       /* a rigid body with up to four attached */
   char pad114[0x1b4 - 0x114];
   int x1b4;                     /* 0x1B4  on a wheel: it is on the ground */
 } BrRbBody;
-void func_802589F4(int param_1,int param_2);
 void BrRbAddWheelForces(BrRbBody *b, BrRbBody *w);
 void BrRbSolveAccel(BrRbBody *b);
 void func_802586C0(float out[3], float m[4][4], float v[3]);   /* v into the body frame */
@@ -38,6 +37,8 @@ typedef struct BrRbForce {      /* a force applied to a body */
   float at[3];                  /* 0x14  where, in body axes */
 } BrRbForce;
 void BrRbAddForces(BrRbBody *b);
+void BrRbAddForce(BrRbBody *b, BrRbForce *a);
+void func_802607DC();
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Turn a body's accumulated force and torque into
@@ -60,6 +61,48 @@ void BrRbAccel(BrRbBody *b)
   }
 }
 
+/* WHAT IT DOES: Add one applied force into a body's accumulators: the force
+ * (given in world or body axes) into the force sum and, unless the body
+ * does not rotate, its moment about the body's centre into the torque sum;
+ * then two debug prints: the force record, and the body's sums.
+ * RESIDUE (32): FP registers one off from the case-0 copy on (the ROM's
+ * join loads f[0] first; ours loads the force sum first) -- the class of
+ * BrRbAddForces; add spellings, if/switch and a struct-typed f leave it. */
+/* @implements 0x802589F4 tgr BrRbAddForce */
+void BrRbAddForce(BrRbBody *b, BrRbForce *a)
+{
+  float r[3];
+  float f[3];
+  float t[3];
+
+  switch (a->frame) {
+  case 0:
+    f[0] = a->f[0];
+    f[1] = a->f[1];
+    f[2] = a->f[2];
+    break;
+  case 1:
+    func_80258758(f, b->m, a->f);
+    break;
+  }
+  b->force[0] = f[0] + b->force[0];
+  b->force[1] = f[1] + b->force[1];
+  b->force[2] = f[2] + b->force[2];
+  if (b->kind != 2) {
+    func_80258758(r, b->m, a->at);
+    t[0] = r[1] * f[2] - f[1] * r[2];
+    t[1] = r[2] * f[0] - f[2] * r[0];
+    t[2] = r[0] * f[1] - f[0] * r[1];
+    b->torque[0] = t[0] + b->torque[0];
+    b->torque[1] = t[1] + b->torque[1];
+    b->torque[2] = t[2] + b->torque[2];
+  }
+  func_802607DC("Force = %10.4f, %10.4f, %10.4f, %10.4f, %10.4f, %10.4f\n",
+                a->f[0], a->f[1], a->f[2], a->at[0], a->at[1], a->at[2]);
+  func_802607DC("F/T = %10.4f, %10.4f, %10.4f, %10.4f, %10.4f, %10.4f\n",
+                b->force[0], b->force[1], b->force[2], b->torque[0], b->torque[1], b->torque[2]);
+}
+
 /* WHAT IT DOES: Apply every force attached to a rigid body for this step:
  * walks the body's list of force records and adds each one in turn. */
 /* @implements 0x80258BDC tgr BrRbApplyForces */
@@ -68,7 +111,7 @@ void BrRbApplyForces(int param_1)
   int *piVar1;
   
   for (piVar1 = *(int **)(param_1 + 0x18); piVar1 != (int *)0x0; piVar1 = (int *)*piVar1) {
-    func_802589F4(param_1,piVar1);
+    BrRbAddForce(param_1,piVar1);
   }
 }
 
