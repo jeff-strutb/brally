@@ -20,7 +20,9 @@ typedef struct BrTipBody {
   char padfc[0x114 - 0xfc];
   float state[0x28 / 4];        /* 0x114  saved rigid-body state */
   float angVel[3];              /* 0x13C */
-  char pad148[0x1a4 - 0x148];
+  char pad148[0x158 - 0x148];
+  float cur[0x44 / 4];          /* 0x158  the state being stepped */
+  char pad19c[0x1a4 - 0x19c];
   float n[3];                   /* 0x1A4  ground plane normal */
   float d;                      /* 0x1B0 */
   int f1B4;                     /* 0x1B4  contact count */
@@ -29,12 +31,28 @@ typedef struct BrTipBody {
   float f1E0;                   /* 0x1E0 */
   float f1E4;                   /* 0x1E4 */
   float f1E8;                   /* 0x1E8 */
+  char pad1ec[0x1f8 - 0x1ec];
+  int stuck;                    /* 0x1F8  frames left before it counts as stuck */
 } BrTipBody;
 void BrQuatToMat(float m[4][4], void *st);
 void BrMat3MulVecRows(float out[3], float m[4][4], float v[3]);
 void BrRbVelAtPoint(float out[3], BrTipBody *b, float *pt);
 void BrMat4RotateVecT(float out[3], float m[4][4], float v[3]);
 void BrRbQuatDerivative(void *st);
+
+extern int D_802A4A28;
+extern void *D_802A4A2C;
+extern float D_8037EAA8[3];           /* the shared contact plane's normal */
+extern float D_8037EAC8[3];
+extern BrCrNode D_80379940[];         /* the contact-list nodes */
+void BrPerfMark(int a, int r, int g, int b, int al);
+void BrMat4InvertScaled(float m[4][4], float out[4][4], float s[3]);
+void func_8025D060(BrTipBody *b, float m[4][4]);
+void func_8025FDE4(void);
+void BrRbStateStep(void *out, void *in, float dt);
+int func_8025DFCC(BrTipBody *b, float m[4][4]);
+void *memcpy(void *d, const void *s, unsigned int n);
+int BrCollRespTipKick(BrTipBody *b);
 
 #define ABS(x) ((x) < 0.0f ? -(x) : (x))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
@@ -174,4 +192,73 @@ int BrCollRespTipKick(BrTipBody *b)
   b->angVel[2] = b->angVel[2] + w[2];
   BrRbQuatDerivative(b->state);
   return 1;
+}
+
+
+/* WHAT IT DOES: One frame of a car body's position physics in 1/120 s
+ * substeps: clear the contact list and the shared plane, gather the nearby
+ * track once, then (kicking a car standing on its nose upright) collide
+ * car against car, step the state, rebuild the matrix, hand the unit-box
+ * view to the collision response and keep the result, until 1/30 s is
+ * used; then count the stuck timer down while the body is not upright.
+ * The PC twin is BrCarPhysAdvance.  The substep is t / 4 (IDO propagates
+ * t's literal into it but does not fold the division). */
+/* @implements 0x8025E55C tgr BrCarPhysAdvance */
+void BrCarPhysAdvance(BrTipBody *b)
+{
+  float m[4][4];
+  float s[3];
+  float t;
+  float dt;
+  float spare[4];               /* declared, never used: the frame holds it */
+
+  D_802A4A20 = 0;
+  D_802A4A24 = D_80379940;
+  D_8037EAA8[0] = 0.0f;
+  D_8037EAA8[1] = 0.0f;
+  D_8037EAA8[2] = 0.0f;
+  D_8037EAC8[0] = 0.0f;
+  D_8037EAC8[1] = 0.0f;
+  D_8037EAC8[2] = 0.0f;
+  D_802A4A28 = 0;
+  D_802A4A2C = 0;
+  BrPerfMark(0, 0x80, 0x80, 0x80, 0xff);
+  s[1] = 0.1f;
+  s[0] = 0.1f;
+  s[2] = 0.1f;
+  BrMat4InvertScaled(b->m, m, s);
+  func_8025D060(b, m);
+  BrPerfMark(0, 0x80, 0x80, 0, 0xff);
+  s[0] = 1.0f / b->f1DC;
+  t = 0.033333335f;
+  s[1] = 1.0f / b->f1E0;
+  s[2] = 1.0f / b->f1E4;
+  dt = t / 4;
+  while (t > 0.002f) {
+    if (BrCollRespTipKick(b) != 0) {
+      osSyncPrintf("Standing on it's F'in Nose damnit\n");
+    }
+    func_8025FDE4();
+    BrRbStateStep(b->cur, b->state, dt);
+    BrQuatToMat(b->m, b->cur);
+    BrMat4InvertScaled(b->m, m, s);
+    m[3][2] -= b->f1E8;
+    if (func_8025DFCC(b, m) != 0) {
+      BrRbQuatDerivative(b->cur);
+      BrQuatToMat(b->m, b->cur);
+    }
+    memcpy(b->state, b->cur, 0x44);
+    t -= dt;
+  }
+  BrQuatToMat(b->m, b->cur);
+  BrPerfMark(0, 0x80, 0x80, 0, 0xff);
+  memcpy(b->state, b->cur, 0x44);
+  if (b->m[2][2] < 0.5f) {
+    if (b->stuck < 0) {
+      b->stuck = -1;
+    }
+    b->stuck--;
+  } else {
+    b->stuck = 35;
+  }
 }

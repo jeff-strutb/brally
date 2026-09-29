@@ -485,6 +485,7 @@ va,name,kind
 8025D018,BrTriCubeTest,func
 8025D35C,BrStub8025D35C,func
 8025D368,BrCollRespTipKick,func
+8025E55C,BrCarPhysAdvance,func
 8025E820,BrTyreSkidCheck,func
 8025EC7C,BrTyreDepthAll,func
 8025EDBC,BrTyreSprings,func
