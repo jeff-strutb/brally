@@ -50,6 +50,10 @@ void happ_init(void);
 void happ_pump(int block_ms);
 int happ_key_down(int vk);
 void happ_dik_state(u8 *out256);
+void happ_key_script(u8 dik, u8 vk, int down);
+void happ_frame(void);              /* host_script.c: one BrAppFrame entry */
+void hglide_shot(const char *path); /* host_glide.m: the frame so far, as PPM */
+void hdx_mouse(int dx, int dy, int btn);
 extern volatile int g_happ_quit;
 
 /* windows message queue (host_win.c) */

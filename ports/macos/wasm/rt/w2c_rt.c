@@ -32,10 +32,24 @@
 _Thread_local u32 w_sp;
 int w_tracing;
 
+/* BR_WATCH=<hex guest address>: with BR_TRACE, report each change of that
+ * dword at the next function entry -- the change happened in the function
+ * traced just before, or in a callee it made before this one. */
+static u32 g_watch_a, g_watch_v;
+static int g_watch_on;
+
 void w_trace(const char *fn)
 {
     static const char *last;
     static unsigned rep;
+    if (g_watch_on) {
+        u32 v = W_LD(u32, g_watch_a, 0);
+        if (v != g_watch_v) {
+            if (rep) { fprintf(stderr, "  (x%u)\n", rep + 1); rep = 0; last = 0; }
+            fprintf(stderr, "!! [%08X] %08X -> %08X (before %s)\n", g_watch_a, g_watch_v, v, fn);
+            g_watch_v = v;
+        }
+    }
     if (fn == last) { rep++; return; }
     if (rep) fprintf(stderr, "  (x%u)\n", rep + 1);
     rep = 0;
@@ -320,4 +334,9 @@ void w_init(const char *dll, const char *portdata)
     }
     w_sp = 0x03000000u - 16;             /* main thread: top of the stacks */
     w_tracing = getenv("BR_TRACE") != NULL;
+    if (getenv("BR_WATCH")) {
+        g_watch_a = (u32)strtoul(getenv("BR_WATCH"), 0, 16);
+        g_watch_v = W_LD(u32, g_watch_a, 0);
+        g_watch_on = 1;
+    }
 }

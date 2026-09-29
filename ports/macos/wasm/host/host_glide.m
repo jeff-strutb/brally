@@ -23,6 +23,7 @@
 #import <Metal/Metal.h>
 #import <QuartzCore/QuartzCore.h>
 #include "host.h"
+#include <execinfo.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -559,6 +560,24 @@ void h_grBufferClear(u32 color, u32 alpha, u32 depth)
     draw(q, 6, 1);                 /* the scissor keeps it inside the clip window */
 }
 
+/* The current colour target as a binary PPM. */
+void hglide_shot(const char *path)
+{
+    FILE *f;
+    u32 *px;
+    int i;
+    flush_wait();
+    px = malloc(W * H * 4);
+    [g_color getBytes:px bytesPerRow:W * 4 fromRegion:MTLRegionMake2D(0, 0, W, H) mipmapLevel:0];
+    f = fopen(path, "wb");
+    if (f) {
+        fprintf(f, "P6\n%d %d\n255\n", W, H);
+        for (i = 0; i < W * H; i++) { u8 c[3] = { (u8)px[i], (u8)(px[i] >> 8), (u8)(px[i] >> 16) }; fwrite(c, 1, 3, f); }
+        fclose(f);
+    }
+    free(px);
+}
+
 static int g_nshot;
 static void shot(void)
 {
@@ -584,12 +603,14 @@ static void shot(void)
     free(px);
 }
 
+static void glstat_swap(void);
 void h_grBufferSwap(u32 interval)
 {
     CAMetalLayer *l;
     (void)interval;
     begin_pass();
     end_pass();
+    glstat_swap();
     shot();
     l = happ_metal_layer();
     if (!g_cb) begin_pass(), end_pass();
@@ -664,16 +685,48 @@ static void load_vtx(u32 p, gv *v)
 static int culled(const gv *a, const gv *b, const gv *c)
 {
     float area = (b->x - a->x) * (c->y - a->y) - (c->x - a->x) * (b->y - a->y);
+    static int flip = -1;
+    if (flip < 0) flip = getenv("BR_CULL_FLIP") != NULL;
+    if (flip) area = -area;
     if (area == 0) return 1;
     if (S.cull == 1 && area < 0) return 1;
     if (S.cull == 2 && area > 0) return 1;
     return 0;
 }
+/* BR_GLSTAT: per-swap counts of triangles submitted and culled, to stderr
+ * every 60 swaps -- tells "the game drew nothing" from "Metal dropped it". */
+static unsigned g_st_tri, g_st_cull, g_st_poly, g_st_swaps;
+static int g_st_on = -1;
+static void glstat_swap(void)
+{
+    if (g_st_on < 0) g_st_on = getenv("BR_GLSTAT") != NULL;
+    if (!g_st_on) return;
+    if (++g_st_swaps % 60 == 0)
+        fprintf(stderr, "glstat: swap %u: tri %u culled %u poly %u (last 60 swaps)\n",
+                g_st_swaps, g_st_tri, g_st_cull, g_st_poly);
+    if (g_st_swaps % 60 == 0) g_st_tri = g_st_cull = g_st_poly = 0;
+}
+
 void h_grDrawTriangle(u32 a, u32 b, u32 c)
 {
     gv v[3];
+    static int dumpn = -1;
+    if (dumpn < 0) dumpn = getenv("BR_VTXDUMP") ? atoi(getenv("BR_VTXDUMP")) : 0;
+    if (dumpn > 0 && w_tracing) {   /* with BR_TRACE_FRAMES: inside the traced frames */
+        const float *fa = (const float *)W_P(a), *fb = (const float *)W_P(b), *fc = (const float *)W_P(c);
+        fprintf(stderr, "vtx: [%08X %08X %08X] (%g,%g,z%g,w%g) (%g,%g,z%g,w%g) (%g,%g,z%g,w%g)\n", a, b, c,
+                fa[0], fa[1], fa[6], fa[8], fb[0], fb[1], fb[6], fb[8], fc[0], fc[1], fc[6], fc[8]);
+        if (dumpn == 1) {
+            void *bt[8]; int k, nb = backtrace(bt, 8);
+            char **sy = backtrace_symbols(bt, nb);
+            for (k = 0; k < nb; k++) fprintf(stderr, "vtx-bt: %s\n", sy[k]);
+        }
+        dumpn--;
+    }
     load_vtx(a, &v[0]); load_vtx(b, &v[1]); load_vtx(c, &v[2]);
+    g_st_tri++;
     if (!culled(&v[0], &v[1], &v[2])) draw(v, 3, 0);
+    else g_st_cull++;
 }
 /* the game's GrVertex is 0x3C bytes (two TMUs): include/br_imgblit.h */
 void h_grDrawPolygonVertexList(u32 n, u32 p)
@@ -682,6 +735,7 @@ void h_grDrawPolygonVertexList(u32 n, u32 p)
     int k = 0;
     u32 i;
     if (n < 3) return;
+    g_st_poly++;
     load_vtx(p, &v0);
     load_vtx(p + 60, &a);
     for (i = 2; i < n && k < 64; i++) {

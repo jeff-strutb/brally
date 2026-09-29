@@ -33,6 +33,7 @@ COMMON="-fms-extensions -fshort-wchar -fno-builtin -femit-all-decls
   -D_M_IX86=500 -D_X86_ -D_WIN32 -DWIN32 -D_MSC_VER=1100
   -D_INTEGRAL_MAX_BITS=64 -DBR_MATCHING_BUILD
   -Iinclude -I$OUT/inc -Iports/macos/wasm/inc -Itools/msvc5-compat
+  -include ports/macos/wasm/inc/msvc_intrinsics.h
   -Itools/msvc5/include"
 IR="-O0 -Xclang -disable-O0-optnone -S -emit-llvm"
 

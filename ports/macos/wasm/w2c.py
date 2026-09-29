@@ -291,6 +291,7 @@ TEXT_LO, TEXT_HI = 0x10001000, 0x10077000
 
 FUNC_STARTS = set()      # filled from build/match/orig/<VA>.bin names
 MAGIC = 0x7EC00000       # ccmark.py's convention marker
+APP_FRAME_VA = 0x1001CF80  # BrAppFrame: one entry per main-loop frame
 THUNKS = {}              # VA of a `jmp [IAT]` stub in the original -> import name
 IAT = {}                 # IAT slot VA -> import name
 JMPS = {}                # function start that is `jmp rel32` -> its target
@@ -379,7 +380,11 @@ def ir_norm(n):
     n = n.strip('"')
     if n.startswith('\\01'):
         n = n[3:]
-        n = n.lstrip('_@')
+        # ONE decoration character: '_' (cdecl/stdcall) or '@' (fastcall).
+        # A C++ name is _Z..., so its stdcall form is __Z...@N -- stripping
+        # every leading '_' made it Z..., matching nothing.
+        if n[:1] in ('_', '@'):
+            n = n[1:]
         n = re.sub(r'@\d+$', '', n)
     return n
 
@@ -401,13 +406,94 @@ def split_params(ps):
     return [p.strip() for p in out if p.strip() and p.strip() != '...']
 
 
-def load_conv(path):
-    """{name: (kind, cc, [inreg flags])} from one TU's i686 IR."""
+IR_CALLSITE = re.compile(r'\bcall\s+(x86_\w+cc\s+)?[^@(]*@("(?:[^"\\]|\\.)*"|[\w.$]+)\((.*)\)')
+
+
+def ir_struct_sizes(lines):
+    """{'%struct.X': (size, align)} for wasm32 layout, from an IR's type table."""
+    defs = {}
+    for l in lines:
+        m = re.match(r'^(%[\w.$"]+) = type \{(.*)\}\s*$', l)
+        if m:
+            defs[m.group(1)] = m.group(2)
+    memo = {}
+
+    def sa(t):
+        t = t.strip()
+        if t in memo:
+            return memo[t]
+        base = {'i8': (1, 1), 'i16': (2, 2), 'i32': (4, 4), 'i64': (8, 8), 'float': (4, 4),
+                'double': (8, 8), 'ptr': (4, 4)}
+        if t in base:
+            return base[t]
+        m = re.match(r'^\[(\d+) x (.*)\]$', t)
+        if m:
+            sz, al = sa(m.group(2))
+            return int(m.group(1)) * sz, al
+        body = defs.get(t)
+        if body is None:
+            return 4, 4
+        off, al = 0, 1
+        for f in split_params(body):
+            fs, fa = sa(f)
+            off = (off + fa - 1) // fa * fa + fs
+            al = max(al, fa)
+        r = ((off + al - 1) // al * al, al)
+        memo[t] = r
+        return r
+    return sa
+
+
+def load_byval(path):
+    """{function name: {param index: struct size}} -- the by-value struct
+    parameters of each function DEFINED in one TU's wasm IR.  wasm32 passes
+    such a struct as a pointer to a copy; x86 passes it as its words on the
+    stack, which is how callers that declare the members as separate
+    arguments (BrEntSetPos(pCar, x, y, z)) line up with it there."""
     out = {}
     try:
         lines = open(path, errors='replace').read().split('\n')
     except OSError:
         return out
+    sa = ir_struct_sizes(lines)
+    for l in lines:
+        if not l.startswith('define') or 'byval(' not in l:
+            continue
+        m = IR_FN.match(l)
+        if not m:
+            continue
+        bv = {}
+        for i, prm in enumerate(split_params(m.group(4))):
+            mb = re.search(r'byval\((%[\w.$"]+)\)', prm)
+            if mb:
+                bv[i] = sa(mb.group(1))[0]
+        if bv:
+            out[ir_norm(m.group(3))] = bv
+    return out
+
+
+def load_conv(path):
+    """{name: (kind, cc, [inreg flags])} from one TU's i686 IR.
+
+    A direct call can name a function through a cast to another convention
+    -- ((BrSub603A0ThisCall)BrSub100603A0)(this, arg): the declaration is
+    cdecl, the call is fastcall with `this` in ecx, and x86 honours the CALL.
+    So when every direct call to a name in this TU agrees on one convention
+    that differs from its declaration, that call-site convention is what
+    this TU's callers use, and it is what is recorded."""
+    out = {}
+    try:
+        lines = open(path, errors='replace').read().split('\n')
+    except OSError:
+        return out
+    sites = {}
+    for l in lines:
+        if ' call ' in l and not l.lstrip().startswith(('define', 'declare')):
+            mc = IR_CALLSITE.search(l)
+            if mc and mc.group(2):
+                cc = (mc.group(1) or '').strip() or 'c'
+                flags = ['inreg' in p.split() for p in split_params(mc.group(3))]
+                sites.setdefault(ir_norm(mc.group(2)), set()).add((cc, tuple(flags)))
     for l in lines:
         m = IR_FN.match(l)
         if not m:
@@ -419,6 +505,12 @@ def load_conv(path):
         prev = out.get(name)
         if prev is None or (kind == 'define' and prev[0] != 'define'):
             out[name] = (kind, cc, flags)
+    for name, ss in sites.items():
+        if len(ss) != 1 or name not in out or out[name][0] == 'define':
+            continue
+        (cc, flags), = ss
+        if cc != out[name][1] and len(flags) == len(out[name][2]):
+            out[name] = ('declare', cc, list(flags))
     return out
 
 
@@ -453,6 +545,7 @@ class Linker:
         self.placed = defaultdict(dict)    # src base -> {name: va}
         self.placed_va = {}                # va -> src base
         self.placed_any = {}               # name -> va, placements with no src
+        self.placement_rows = list(placement)
         for va, name, base in placement:
             for nm in {name, msvc_qual(name), name.lstrip('_')}:
                 if base:
@@ -560,6 +653,8 @@ class Linker:
         self.fname = {}      # (oid, fidx) -> C name
         self.fdef = {}       # (oid, fidx) -> (obj, definition name)
         self.conv = {}       # obj path -> load_conv()
+        self.byval = {}      # obj path -> load_byval()
+        self.byval_adapters = {}   # (csig, dsig, byval items) -> id
         self.fva = {}        # (oid, fidx) -> address (u32)
         self.fsig = {}
         syn = 0xF0000000
@@ -626,6 +721,14 @@ class Linker:
         for k, va in self.fva.items():
             if va < 0xF0000000:
                 self.by_va[va] = k
+        # placed functions by name (one VA per name, or none if ambiguous)
+        self.placed_any_name = {}
+        seen = {}
+        for va, nm, _src in self.placement_rows:
+            seen.setdefault(nm, set()).add(va)
+        for nm, vs in seen.items():
+            if len(vs) == 1:
+                self.placed_any_name[nm] = next(iter(vs))
         # canonical functions by their plain (demangled) name
         self.by_plain = {}
         for nm, (go, gs) in self.gfunc.items():
@@ -738,6 +841,15 @@ class Linker:
             self.conv[o.oid] = c
         return c
 
+    def byval_of(self, k):
+        """{param index: struct size} for the function k defines, if any."""
+        if k is None or k not in self.fdef:
+            return None
+        co, nm = self.fdef[k]
+        if co.path not in self.byval:
+            self.byval[co.path] = load_byval(co.path + '.mk.ll')
+        return self.byval[co.path].get(self.plain(nm)) or self.byval[co.path].get(nm)
+
     def x86_bridge(self, o, symidx, csig, k):
         """(caller frame, callee frame) when they differ, else None."""
         if k is None or k not in self.fdef:
@@ -762,6 +874,29 @@ class Linker:
     def _func_ref(self, o, symidx):
         s = o.syms[symidx]
         fi = s['index']
+        # clang's `__L<name>_bitcast_invalid`: the TU called <name> through a
+        # cast its own (wrong) declaration could not be converted to, so the
+        # wrapper is a trap.  On x86 the call just pushes the cast's arguments
+        # at the real function -- do that: resolve the real name, and let the
+        # caller/callee signature bridge handle the difference.
+        mi = re.match(r'^[._]+L(.+)_bitcast_invalid$', s['name'] or '')
+        if mi:
+            real = mi.group(1)
+            for cand in (real, '_' + real):
+                if cand in self.gfunc:
+                    go, gs = self.gfunc[cand]
+                    k = (go.oid, gs['index'])
+                    self.last_k = k
+                    return self.fname[k], self.fva[k], self.fsig[k]
+            pk = self.by_plain.get(real)
+            if pk is not None:
+                self.last_k = pk
+                return self.fname[pk], self.fva[pk], self.fsig[pk]
+            va = self.placed_any_name.get(real)
+            if va is not None and va in self.by_va:
+                k = self.by_va[va]
+                self.last_k = k
+                return self.fname[k], self.fva[k], self.fsig[k]
         # the C library and the original's imports are the host's, whatever
         # a map or an annotation says (a `sqrt` resolved through a comment to
         # BrSqrtF, which calls sqrt, recursed forever)
@@ -789,6 +924,18 @@ class Linker:
                 k = (go.oid, gs['index'])
             else:
                 k = (o.oid, fi)
+                # A file-static C twin the certified build never placed
+                # (br_dl.c's br_dl_project: "port-only body; the Glide match
+                # is br_dlproject.c") shares its name with the placed
+                # original, and the certified image links the call to that
+                # original by name.  Do the same: an unplaced local never
+                # stands in for a placed function of the same name.
+                va_here = self.fva.get(k)
+                pn = self.plain(s['name'])
+                if (va_here is None or va_here >= 0xF0000000) and pn in self.placed_any_name:
+                    pva = self.placed_any_name[pn]
+                    if pva in self.by_va:
+                        k = self.by_va[pva]
             self.last_k = k
             return self.fname[k], self.fva[k], self.fsig[k]
         nm = s['name']
@@ -1205,6 +1352,13 @@ class Fn:
                     self.out.x86[key] = aid
                     call = 'w_x86_%d(%s%s)' % (aid, '(void *)&' + cn, ''.join(', ' + a for a in args))
                     self.out.externs[cn] = dsig
+                elif dsig is not None and dsig != csig and L.byval_of(L.last_k):
+                    # the callee takes a struct by value (a pointer to a copy
+                    # in wasm32) where this caller passes its members
+                    key = (csig, dsig, tuple(sorted(L.byval_of(L.last_k).items())))
+                    bid = L.byval_adapters.setdefault(key, len(L.byval_adapters))
+                    call = 'w_adaptb_%d(%s%s)' % (bid, '(void *)&' + cn, ''.join(', ' + a for a in args))
+                    self.out.externs[cn] = dsig
                 elif dsig is not None and dsig != csig:
                     call = 'w_adapt_%s_%s(%s%s)' % (
                         csig, dsig, '(void *)&' + cn, ''.join(', ' + a for a in args))
@@ -1449,6 +1603,10 @@ def translate(L, o, outdir):
         dec = ['  %s v%d = 0;' % (CT[t], k) for k, t in enumerate(f.locals) if k >= len(ps)]
         dec += ['  %s %s;' % (CT[t], v) for t, v in sorted(f.decls)]
         tr = ['  W_TRACE("%s");' % cn]
+        # BrAppFrame, the main loop's one call per frame: the host's frame
+        # hook (scripted input, host_script.c) runs first, as brbox's does.
+        if L.fva.get((o.oid, fidx)) == APP_FRAME_VA:
+            tr.append('  { extern void happ_frame(void); happ_frame(); }')
         body.append(hdr + ' {\n' + '\n'.join(dec + tr + lines) + '\n}\n')
         defined.append(cn)
     src = ['/* generated by ports/macos/wasm/w2c.py from %s -- do not edit */'
@@ -1653,6 +1811,38 @@ def write_link(L, outs, outdir):
         else:
             th.append('  return w_conv_%s_%s(%s);' % (rd, rt, call))
         th.append('}')
+    # by-value struct adapters: the caller's arguments flattened to x86
+    # stack words, the struct parameter rebuilt from its words on the guest
+    # stack and passed by address, as wasm32 expects
+    for (a, b, bv), bid in sorted(L.byval_adapters.items(), key=lambda x: x[1]):
+        ps, rt = sig_types(a)
+        pd, rd = sig_types(b)
+        bvd = dict(bv)
+        args = ''.join(', %s x%d' % (t, i) for i, t in enumerate(ps))
+        th.append('%s w_adaptb_%d(void *fn%s) {' % (rt, bid, args))
+        th.append('  u32 w[32] = {0}; int n = 0; u32 sp0 = w_sp;')
+        for i, t in enumerate(ps):
+            th.append('  n = w_flat_%s(w, n, x%d);' % (t, i))
+        k = 0
+        cargs = []
+        for i, t in enumerate(pd):
+            if i in bvd:
+                sz = bvd[i]
+                th.append('  w_sp -= %d; memcpy(W_P(w_sp), &w[%d], %d); u32 b%d = w_sp;'
+                          % ((sz + 15) & ~15, k, sz, i))
+                cargs.append('b%d' % i)
+                k += (sz + 3) // 4
+            else:
+                cargs.append('w_unflat_%s(w, %d)' % (t, k))
+                k += 2 if t in ('u64', 'f64') else 1
+        call = '((%s (*)(%s))fn)(%s)' % (rd, ', '.join(pd) or 'void', ', '.join(cargs))
+        if rt == 'void':
+            th.append('  %s; w_sp = sp0;' % call)
+        elif rd == 'void':
+            th.append('  %s; w_sp = sp0; return 0;' % call)
+        else:
+            th.append('  %s r = w_conv_%s_%s(%s); w_sp = sp0; return r;' % (rt, rd, rt, call))
+        th.append('}')
     open(os.path.join(outdir, 'w2c_thunks.c'), 'w').write('\n'.join(th) + '\n')
     # generic callers: call a function of signature S with arguments read
     # from 32-bit stack words (the mismatch path of an indirect call)
@@ -1688,6 +1878,9 @@ def write_link(L, outs, outdir):
     for a, b in sorted(adapters):
         ps, rt = sig_types(a)
         hd.append('%s w_adapt_%s_%s(void *fn%s);' % (rt, a, b, ''.join(', ' + t for t in ps)))
+    for (a, b, bv), bid in sorted(L.byval_adapters.items(), key=lambda x: x[1]):
+        ps, rt = sig_types(a)
+        hd.append('%s w_adaptb_%d(void *fn%s);' % (rt, bid, ''.join(', ' + t for t in ps)))
     # x86-frame adapters (see x86_frame)
     CT_ = {'i32': 'u32', 'i64': 'u64', 'f32': 'f32', 'f64': 'f64'}
     rtm = {'i': 'i32', 'I': 'i64', 'f': 'f32', 'F': 'f64'}
