@@ -184,6 +184,8 @@ void BrRankUpdate(void)
 /* @t4-pass 0x80229700 1 2026-09-29 compiles 198 best 447 moved 15  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80229700 2 2026-09-29 compiles 198 best 443 moved 4  (n64/tools/n64permute.py) */
 /* @t3 0x80229700 */
+/* @t4-pass 0x80229700 3 2026-09-29 compiles 150 best 443 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80229700 4 2026-09-29 compiles 150 best 443 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80229700 tgr BrCarSlotSwap */
 void BrCarSlotSwap(BrCar *me)
 {
