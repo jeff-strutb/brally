@@ -345,6 +345,7 @@ va,name,kind
 80238DD4,BrHudPositionDraw,func
 80238F30,BrHudDraw,func
 80239220,BrTex4bFlipDraw,func
+80239750,BrTex4bFlipDrawRGB,func
 80239CF0,BrParticlesInit,func
 80239D84,BrWindUpdate,func
 80239F28,BrBoltSplit,func
