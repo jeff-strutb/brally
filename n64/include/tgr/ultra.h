@@ -266,7 +266,9 @@ typedef struct {
 	OSMesgQueue *evtQueue;
 	OSMesgQueue *acsQueue;
 	s32 (*dma)(s32, u32, void *, u32);
+	s32 (*edma)(struct OSPiHandle_s *, s32, u32, void *, u32);
 } OSDevMgr;
+s32 osEPiRawStartDma(struct OSPiHandle_s *pihandle, s32 direction, u32 devAddr, void *dramAddr, u32 size);
 extern OSDevMgr __osPiDevMgr;
 #define OS_MESG_TYPE_DMAREAD 11
 #define OS_MESG_TYPE_DMAWRITE 12
@@ -379,5 +381,32 @@ s32 __osSiRawStartDma(s32 direction, void *dramAddr);
 extern u64 osClockRate;
 OSTime osGetTime(void);
 int osSetTimer(OSTimer *t, OSTime countdown, OSTime interval, OSMesgQueue *mq, OSMesg msg);
+
+#define PI_DRAM_ADDR_REG 0x04600000
+#define PI_CART_ADDR_REG 0x04600004
+#define PI_RD_LEN_REG 0x04600008
+#define PI_WR_LEN_REG 0x0460000C
+#define PI_Q_BUF_LEN 1
+#define OS_EVENT_COUNTER 3
+#define OS_EVENT_VI 7
+#define OS_EVENT_PI 8
+#define OS_MESG_TYPE_VRETRACE 13
+#define OS_MESG_TYPE_COUNTER 14
+#define OS_PIM_STACKSIZE 4096
+#define OS_VIM_STACKSIZE 4096
+extern u32 __osPiAccessQueueEnabled;
+extern OSMesgQueue __osPiAccessQueue;
+void __osPiCreateAccessQueue(void);
+void osSetEventMesg(OSEvent event, OSMesgQueue *mq, OSMesg msg);
+OSPri osGetThreadPri(OSThread *t);
+void osSetThreadPri(OSThread *t, OSPri pri);
+void osCreateThread(OSThread *t, OSId id, void (*entry)(void *), void *arg, void *sp, OSPri p);
+void __osDevMgrMain(void *arg);
+s32 osPiRawStartDma(s32 direction, u32 devAddr, void *dramAddr, u32 size);
+__OSViContext *__osViGetCurrentContext(void);
+void __osViInit(void);
+void __osViSwapContext(void);
+void __osTimerServicesInit(void);
+void __osTimerInterrupt(void);
 
 #endif
