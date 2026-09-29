@@ -29,6 +29,40 @@ typedef struct BrCarWheel {     /* a wheel's rigid body */
   float mtx[4][4];              /* 0xBC */
 } BrCarWheel;
 #define CP_AT(car, off) ((char *)(car) + (off))
+typedef struct BrPhysBody {     /* a rigid body as the car embeds it (0x208 bytes) */
+  char pad00[0x1C];
+  int shape;                    /* 0x1C  1: box; 2: wheel */
+  float w, h, d;                /* 0x20  box size */
+  float mass;                   /* 0x2C */
+  char pad30[0x78 - 0x30];
+  float pos[3];                 /* 0x78  state: position */
+  float vel[3];                 /* 0x84 */
+  float q[4];                   /* 0x90  orientation */
+  float omega[3];               /* 0xA0 */
+  float qdot[4];                /* 0xAC */
+  float mtx[4][4];              /* 0xBC */
+  char padfc[0x19C - 0xFC];
+  int x19c;                     /* 0x19C */
+  char pad1a0[0x1B8 - 0x1A0];
+  float spring;                 /* 0x1B8 */
+  float damper;                 /* 0x1BC */
+  char pad1c0[0x1C4 - 0x1C0];
+  float x1c4;                   /* 0x1C4 */
+  char pad1c8[0x1D8 - 0x1C8];
+  float x1d8;                   /* 0x1D8 */
+  char pad1dc[0x208 - 0x1DC];
+} BrPhysBody;
+typedef struct BrCarMounts {    /* the wheel mounts in a car's model buffer */
+  char pad00[0xEC];
+  float rearX;                  /* 0xEC */
+  float rearY;                  /* 0xF0 */
+  char padf4[0xF8 - 0xF4];
+  float frontX;                 /* 0xF8 */
+  float frontY;                 /* 0xFC */
+} BrCarMounts;
+void BrRbBodyInit(void *body);
+void BrRbSetParams(void *force, float fx, float fy, float fz, float rx, float ry, float rz, int frame);
+#define CP_BODY(car, off) ((BrPhysBody *)CP_AT(car, off))
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Place a car at a new position: copies the 4x4 placement
@@ -154,6 +188,188 @@ void BrCarPhysStep(BrCar *car)
   BrQuatToMat((float *)car->wheel[2]->mtx, (float *)car->wheel[2]->state);
   BrQuatToMat((float *)car->wheel[3]->mtx, (float *)car->wheel[3]->state);
   BrPerfMark(0, 0, 0x80, 0, 0xFF);
+}
+
+/* WHAT IT DOES: Set up a car's rigid bodies for a race: the chassis (a
+ * 3.5 by 2 by 1.5 box of 1000 at 2 up, level, with its spring set from the
+ * car's class and its damper), each wheel (a fixed body at its mount from
+ * the model, 0.1 down, the right side mirrored) and the force lists (the
+ * four corners then weight, a drag list, the wheels' tyre nodes on shared
+ * weight nodes); the tyre pass is skipped on the first frame.  The PC
+ * twin is BrCarPhysInit (a port-side reconstruction).
+ * RESIDUE (243): the ROM keeps 2.0 in f22 across the chassis init call (for
+ * the start height) and 1.0 in f24, one frame slot more; ours reloads 2.0,
+ * which shifts the register numbering and scheduling of the store runs. */
+/* @implements 0x80222D54 tgr BrCarPhysInit */
+void BrCarPhysInit(BrCar *car)
+{
+  *(int *)CP_AT(car, 0xE54) = 1;
+  *(int *)CP_AT(car, 0xE40) = 0;
+  *(float *)CP_AT(car, 0xDF0) = 0.0f;
+  *(float *)CP_AT(car, 0xDF4) = 0.0f;
+  if (car->model != 0) {
+    CP_BODY(car, 0x148)->shape = 1;
+    CP_BODY(car, 0x148)->h = 2.0f;
+    CP_BODY(car, 0x148)->mass = 1000.0f;
+    CP_BODY(car, 0x148)->w = 3.5f;
+    CP_BODY(car, 0x148)->d = 1.5f;
+    BrRbBodyInit(CP_BODY(car, 0x148));
+    CP_BODY(car, 0x148)->pos[0] = 0.0f;
+    CP_BODY(car, 0x148)->pos[1] = 0.0f;
+    CP_BODY(car, 0x148)->pos[2] = 2.0f;
+    CP_BODY(car, 0x148)->vel[0] = 0.0f;
+    CP_BODY(car, 0x148)->vel[1] = 0.0f;
+    CP_BODY(car, 0x148)->vel[2] = 0.0f;
+    CP_BODY(car, 0x148)->q[1] = 0.0f;
+    CP_BODY(car, 0x148)->q[2] = 0.0f;
+    CP_BODY(car, 0x148)->q[3] = 0.0f;
+    CP_BODY(car, 0x148)->omega[0] = 0.0f;
+    CP_BODY(car, 0x148)->omega[1] = 0.0f;
+    CP_BODY(car, 0x148)->omega[2] = 0.0f;
+    CP_BODY(car, 0x148)->q[0] = 1.0f;
+    BrQuatToMat((float *)CP_BODY(car, 0x148)->mtx, CP_BODY(car, 0x148)->pos);
+    CP_BODY(car, 0x148)->spring = (car->xe64 * 4.0f + 20.0f) * 16000.0f;
+    CP_BODY(car, 0x148)->damper = -3000.0f;
+    CP_BODY(car, 0x350)->x19c = 0;
+    CP_BODY(car, 0x350)->shape = 2;
+    CP_BODY(car, 0x350)->mass = 0.0f;
+    CP_BODY(car, 0x350)->w = 0.0f;
+    CP_BODY(car, 0x350)->h = 0.0f;
+    CP_BODY(car, 0x350)->d = 0.0f;
+    CP_BODY(car, 0x350)->x1d8 = 0.0f;
+    CP_BODY(car, 0x350)->x1c4 = 0.0f;
+    BrRbBodyInit(CP_BODY(car, 0x350));
+    CP_BODY(car, 0x350)->pos[0] = ((BrCarMounts *)car->model)->frontX;
+    CP_BODY(car, 0x350)->pos[1] = ((BrCarMounts *)car->model)->frontY;
+    CP_BODY(car, 0x350)->vel[2] = 0.0f;
+    CP_BODY(car, 0x350)->vel[1] = 0.0f;
+    CP_BODY(car, 0x350)->vel[0] = 0.0f;
+    CP_BODY(car, 0x350)->q[3] = 0.0f;
+    CP_BODY(car, 0x350)->q[2] = 0.0f;
+    CP_BODY(car, 0x350)->q[1] = 0.0f;
+    CP_BODY(car, 0x350)->q[0] = 1.0f;
+    CP_BODY(car, 0x350)->omega[2] = 0.0f;
+    CP_BODY(car, 0x350)->omega[1] = 0.0f;
+    CP_BODY(car, 0x350)->omega[0] = 0.0f;
+    CP_BODY(car, 0x350)->pos[2] = -0.1f;
+    BrQuatToMat((float *)CP_BODY(car, 0x350)->mtx, CP_BODY(car, 0x350)->pos);
+    CP_BODY(car, 0x760)->x19c = 0;
+    CP_BODY(car, 0x760)->shape = 2;
+    CP_BODY(car, 0x760)->mass = 0.0f;
+    CP_BODY(car, 0x760)->w = 0.0f;
+    CP_BODY(car, 0x760)->h = 0.0f;
+    CP_BODY(car, 0x760)->d = 0.0f;
+    CP_BODY(car, 0x760)->x1d8 = 0.0f;
+    CP_BODY(car, 0x760)->x1c4 = 0.0f;
+    BrRbBodyInit(CP_BODY(car, 0x760));
+    CP_BODY(car, 0x760)->pos[0] = ((BrCarMounts *)car->model)->frontX;
+    CP_BODY(car, 0x760)->pos[1] = -((BrCarMounts *)car->model)->frontY;
+    CP_BODY(car, 0x760)->vel[2] = 0.0f;
+    CP_BODY(car, 0x760)->vel[1] = 0.0f;
+    CP_BODY(car, 0x760)->vel[0] = 0.0f;
+    CP_BODY(car, 0x760)->q[3] = 0.0f;
+    CP_BODY(car, 0x760)->q[2] = 0.0f;
+    CP_BODY(car, 0x760)->q[1] = 0.0f;
+    CP_BODY(car, 0x760)->q[0] = 1.0f;
+    CP_BODY(car, 0x760)->omega[2] = 0.0f;
+    CP_BODY(car, 0x760)->omega[1] = 0.0f;
+    CP_BODY(car, 0x760)->omega[0] = 0.0f;
+    CP_BODY(car, 0x760)->pos[2] = -0.1f;
+    BrQuatToMat((float *)CP_BODY(car, 0x760)->mtx, CP_BODY(car, 0x760)->pos);
+    CP_BODY(car, 0x558)->x19c = 0;
+    CP_BODY(car, 0x558)->shape = 2;
+    CP_BODY(car, 0x558)->mass = 0.0f;
+    CP_BODY(car, 0x558)->w = 0.0f;
+    CP_BODY(car, 0x558)->h = 0.0f;
+    CP_BODY(car, 0x558)->d = 0.0f;
+    CP_BODY(car, 0x558)->x1d8 = 0.0f;
+    CP_BODY(car, 0x558)->x1c4 = 0.0f;
+    BrRbBodyInit(CP_BODY(car, 0x558));
+    CP_BODY(car, 0x558)->pos[0] = ((BrCarMounts *)car->model)->rearX;
+    CP_BODY(car, 0x558)->pos[1] = ((BrCarMounts *)car->model)->rearY;
+    CP_BODY(car, 0x558)->vel[2] = 0.0f;
+    CP_BODY(car, 0x558)->vel[1] = 0.0f;
+    CP_BODY(car, 0x558)->vel[0] = 0.0f;
+    CP_BODY(car, 0x558)->q[3] = 0.0f;
+    CP_BODY(car, 0x558)->q[2] = 0.0f;
+    CP_BODY(car, 0x558)->q[1] = 0.0f;
+    CP_BODY(car, 0x558)->q[0] = 1.0f;
+    CP_BODY(car, 0x558)->omega[2] = 0.0f;
+    CP_BODY(car, 0x558)->omega[1] = 0.0f;
+    CP_BODY(car, 0x558)->omega[0] = 0.0f;
+    CP_BODY(car, 0x558)->pos[2] = -0.1f;
+    BrQuatToMat((float *)CP_BODY(car, 0x558)->mtx, CP_BODY(car, 0x558)->pos);
+    CP_BODY(car, 0x968)->x19c = 0;
+    CP_BODY(car, 0x968)->shape = 2;
+    CP_BODY(car, 0x968)->mass = 0.0f;
+    CP_BODY(car, 0x968)->w = 0.0f;
+    CP_BODY(car, 0x968)->h = 0.0f;
+    CP_BODY(car, 0x968)->d = 0.0f;
+    CP_BODY(car, 0x968)->x1d8 = 0.0f;
+    CP_BODY(car, 0x968)->x1c4 = 0.0f;
+    BrRbBodyInit(CP_BODY(car, 0x968));
+    CP_BODY(car, 0x968)->pos[0] = ((BrCarMounts *)car->model)->rearX;
+    CP_BODY(car, 0x968)->pos[1] = -((BrCarMounts *)car->model)->rearY;
+    CP_BODY(car, 0x968)->vel[2] = 0.0f;
+    CP_BODY(car, 0x968)->vel[1] = 0.0f;
+    CP_BODY(car, 0x968)->vel[0] = 0.0f;
+    CP_BODY(car, 0x968)->q[3] = 0.0f;
+    CP_BODY(car, 0x968)->q[2] = 0.0f;
+    CP_BODY(car, 0x968)->q[1] = 0.0f;
+    CP_BODY(car, 0x968)->q[0] = 1.0f;
+    CP_BODY(car, 0x968)->omega[2] = 0.0f;
+    CP_BODY(car, 0x968)->omega[1] = 0.0f;
+    CP_BODY(car, 0x968)->omega[0] = 0.0f;
+    CP_BODY(car, 0x968)->pos[2] = -0.1f;
+    BrQuatToMat((float *)CP_BODY(car, 0x968)->mtx, CP_BODY(car, 0x968)->pos);
+    car->wheel[0] = (struct BrCarWheel *)CP_AT(car, 0x350);
+    car->wheel[1] = (struct BrCarWheel *)CP_AT(car, 0x760);
+    car->wheel[2] = (struct BrCarWheel *)CP_AT(car, 0x558);
+    car->wheel[3] = (struct BrCarWheel *)CP_AT(car, 0x968);
+    BrRbSetParams(CP_AT(car, 0xB70), 0.0f, 0.0f, 0.0f, -1.5f, -1.0f, 0.0f, 1);
+    BrRbSetParams(CP_AT(car, 0xBB0), 0.0f, 0.0f, 0.0f, -1.5f, 1.0f, 0.0f, 1);
+    BrRbSetParams(CP_AT(car, 0xB90), 0.0f, 0.0f, 0.0f, 1.5f, -1.0f, 0.0f, 1);
+    BrRbSetParams(CP_AT(car, 0xBD0), 0.0f, 0.0f, 0.0f, 1.5f, 1.0f, 0.0f, 1);
+    BrRbSetParams(CP_AT(car, 0xC70), 0.0f, 0.0f, -15450.75f, 0.0f, 0.0f, 0.0f, 0);
+    BrRbSetParams(CP_AT(car, 0xC90), 0.0f, 0.0f, -103.005005f, 0.0f, 0.0f, 0.0f, 0);
+    BrRbSetParams(CP_AT(car, 0xCB0), 0.0f, 0.0f, -103.005005f, 0.0f, 0.0f, 0.0f, 0);
+    *(char **)CP_AT(car, 0xB70) = CP_AT(car, 0xBB0);
+    *(char **)CP_AT(car, 0xBB0) = CP_AT(car, 0xB90);
+    *(char **)CP_AT(car, 0xB90) = CP_AT(car, 0xBD0);
+    *(char **)CP_AT(car, 0xC70) = 0;
+    *(char **)CP_AT(car, 0xBD0) = CP_AT(car, 0xC70);
+    *(char **)CP_AT(car, 0x160) = CP_AT(car, 0xB70);
+    BrRbSetParams(CP_AT(car, 0xCF0), 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1);
+    BrRbSetParams(CP_AT(car, 0xD30), 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1);
+    BrRbSetParams(CP_AT(car, 0xD10), 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1);
+    BrRbSetParams(CP_AT(car, 0xD50), 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1);
+    *(char **)CP_AT(car, 0x368) = CP_AT(car, 0xCF0);
+    *(char **)CP_AT(car, 0x778) = CP_AT(car, 0xD30);
+    *(char **)CP_AT(car, 0x570) = CP_AT(car, 0xD10);
+    *(char **)CP_AT(car, 0xCB0) = 0;
+    *(char **)CP_AT(car, 0xC90) = 0;
+    *(char **)CP_AT(car, 0xCF0) = CP_AT(car, 0xCB0);
+    *(char **)CP_AT(car, 0xD30) = CP_AT(car, 0xCB0);
+    *(char **)CP_AT(car, 0xD10) = CP_AT(car, 0xC90);
+    *(char **)CP_AT(car, 0xD50) = CP_AT(car, 0xC90);
+    *(char **)CP_AT(car, 0x980) = CP_AT(car, 0xD50);
+    BrRbSetParams(CP_AT(car, 0xBF0), 0.0f, 0.0f, 0.0f, -1.5f, -1.0f, 0.0f, 1);
+    BrRbSetParams(CP_AT(car, 0xC30), 0.0f, 0.0f, 0.0f, -1.5f, 1.0f, 0.0f, 1);
+    BrRbSetParams(CP_AT(car, 0xC10), 0.0f, 0.0f, 0.0f, 1.5f, -1.0f, 0.0f, 1);
+    BrRbSetParams(CP_AT(car, 0xC50), 0.0f, 0.0f, 0.0f, 1.5f, 1.0f, 0.0f, 1);
+    BrRbSetParams(CP_AT(car, 0xCD0), 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0);
+    *(char **)CP_AT(car, 0xBF0) = CP_AT(car, 0xC30);
+    *(char **)CP_AT(car, 0xC30) = CP_AT(car, 0xC10);
+    *(char **)CP_AT(car, 0xCD0) = 0;
+    *(unsigned char *)CP_AT(car, 0xE51) = 0;
+    *(float *)CP_AT(car, 0xE44) = 0.0f;
+    *(float *)CP_AT(car, 0xE4C) = 0.0f;
+    *(char **)CP_AT(car, 0xC50) = CP_AT(car, 0xCD0);
+    car->x344 = car->xe60;
+    *(char **)CP_AT(car, 0xC10) = CP_AT(car, 0xC50);
+  }
+  *(unsigned char *)CP_AT(car, 0xE50) = 0;
+  *(unsigned char *)CP_AT(car, 0xE48) = 0;
 }
 
 /* WHAT IT DOES: Build the car's draw matrices from its body state: the body

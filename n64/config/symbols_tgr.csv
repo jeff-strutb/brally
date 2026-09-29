@@ -188,6 +188,7 @@ va,name,kind
 80221864,BrCarCamInit,func
 80221940,BrCarPhysStep,func
 80221E0C,BrCarBuildMatrices,func
+80222D54,BrCarPhysInit,func
 80223470,BrScreenFlashClear,func
 80223480,BrScreenFlashDraw,func
 80223688,BrFadeTo,func
