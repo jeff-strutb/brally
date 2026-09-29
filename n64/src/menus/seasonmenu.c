@@ -174,6 +174,8 @@ void BrSeasonDrawHelp(int row)
  * (state & 1 in fp) and the text buffer in s2; ours spills the state and the
  * race count reloads each pass of the first loop.  Structure, calls and the
  * blink clock match. */
+/* @t4-pass 0x80208CF0 1 2026-09-29 compiles 196 best 440 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80208CF0 2 2026-09-29 compiles 196 best 440 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80208CF0 tgr BrSeasonDraw */
 void BrSeasonDraw(void)
 {
@@ -284,6 +286,8 @@ void BrSeasonDraw(void)
  * 100-byte buffer is what the ROM frame holds above the two named slots.
  * RESIDUE (6): the hoisted BrCarCamStep address spills to 0x58 where the ROM
  * uses 0x5C, and the highlighted row's item sits in v0 for the ROM's v1. */
+/* @t4-pass 0x80209434 1 2026-09-29 compiles 199 best 6 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80209434 2 2026-09-29 compiles 199 best 6 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80209434 tgr BrTrackSelectScreen */
 void BrTrackSelectScreen(void)
 {

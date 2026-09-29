@@ -54,6 +54,8 @@ void guMtxF2L(float mf[4][4], Mtx *m);
  * w1 before w0 where the ROM stores w0 first; every temporary after it is
  * then one register along (t6..t9 rotated).  Structure, frame and calls
  * match. */
+/* @t4-pass 0x80209D70 1 2026-09-29 compiles 196 best 196 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80209D70 2 2026-09-29 compiles 196 best 196 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80209D70 tgr BrModelDraw */
 void BrModelDraw(BrModel *model, float m[4][4])
 {
