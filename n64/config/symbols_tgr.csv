@@ -284,6 +284,7 @@ va,name,kind
 8022BCAC,BrCarCamClearCut,func
 8022CF88,BrCarEntTick,func
 8022D090,BrGridSpanExtend,func
+8022D104,BrGridSpanEdge,func
 8022D3D4,BrGridSpanHas,func
 8022D43C,BrGridSpanHasPoint,func
 8022D7E0,BrPerfMark,func
