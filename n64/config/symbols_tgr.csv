@@ -714,6 +714,11 @@ va,name,kind
 8026DBB0,__osSiDeviceBusy,func
 8026E600,__osProbeTLB,func
 8026E6C0,__osSetCompare,func
+8026E6D0,__osResetGlobalIntMask,func
+8026E730,__osEPiRawWriteIo,func
+8026E780,__osEPiRawReadIo,func
+8026E7D0,__osSetGlobalIntMask,func
+8026E820,osYieldThread,func
 8026EA00,rspbootTextStart,data
 8026EAD0,rspbootTextEnd,data
 8026EAD0,gspF3DEX_fifoTextStart,data
@@ -721,6 +726,7 @@ va,name,kind
 802A6130,__osContinitialized,data
 802A6140,osClockRate,data
 802A6148,osViClock,data
+802A6150,__OSGlobalIntMask,data
 802A6160,__osViDevMgr,data
 802A6180,__osPiDevMgr,data
 802A61C0,vi,data
