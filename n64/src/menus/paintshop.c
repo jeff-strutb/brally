@@ -508,6 +508,79 @@ unsigned char BrPaintPeek(unsigned char *tex, int x, int y)
   return c;
 }
 
+/* WHAT IT DOES: Stamp the typed text into the decal at a screen point (a
+ * quarter scale, y flipped), centred on it: each glyph's full-bright texels
+ * from the font image become texels of the chosen colour, with a shadow
+ * texel one down and to the right in the shadow colour first when shadows
+ * are on; glyphs advance by their width less the tighter of the two kerns,
+ * plus 2. */
+/* @implements 0x8024EC30 tgr BrPaintTextStamp */
+void BrPaintTextStamp(int sx, int sy)
+{
+  int t0;                       /* declared, never used: the frame holds it */
+  int u;
+  int i;
+  int k;
+  int kern;
+  int g;
+  int row;
+  int o;
+  int u0;
+  int u1;
+  int x;
+  int px;
+
+  sx = ((sx - D_8028DB94.x) >> 2) + 1;
+  sy = (D_8028DB94.y + D_8028DB94.h - sy) >> 2;
+  x = sx - (D_8028DBAC >> 1);
+  for (i = 0; i < D_8028DBA8; i++) {
+    for (k = 0; k < 50; k++) {
+      if (D_80369E68[i]->c == D_8028D540[k].c) {
+        g = k;
+        break;
+      }
+    }
+    u0 = D_80369E68[i]->off + g * 16;
+    u1 = D_80369E68[i]->w + u0;
+    if (D_8028CF2C != 0) {
+      for (row = 0; row < D_8028D2C0.h; row++) {
+        for (u = u0; u <= u1; u++) {
+          px = u - u0 + x;
+          if (px >= 0 && px < D_8028DB88 && row + sy >= 0 && row + sy < D_8028DB8C) {
+            o = (u >> 1) + row * ((unsigned int)D_8028D2C0.w >> 1);
+            if (u & 1) {
+              if ((D_8028D2C0.data[o] & 0xf) == 0xf) {
+                BrPaintPlot(px + 1, row + sy - 1, D_8028DB5C);
+              }
+            } else if (D_8028D2C0.data[o] >> 4 == 0xf) {
+              BrPaintPlot(px + 1, row + sy - 1, D_8028DB5C);
+            }
+          }
+        }
+      }
+    }
+    for (row = 0; row < D_8028D2C0.h; row++) {
+      for (u = u0; u <= u1; u++) {
+        px = u - u0 + x;
+        if (px >= 0 && px < D_8028DB88 && row + sy >= 0 && row + sy < D_8028DB8C) {
+          o = (u >> 1) + row * ((unsigned int)D_8028D2C0.w >> 1);
+          if (u & 1) {
+            if ((D_8028D2C0.data[o] & 0xf) == 0xf) {
+              BrPaintPlot(px, row + sy, D_8028DB58);
+            }
+          } else if (D_8028D2C0.data[o] >> 4 == 0xf) {
+            BrPaintPlot(px, row + sy, D_8028DB58);
+          }
+        }
+      }
+    }
+    if (i < D_8028DBA8 - 1) {
+      kern = D_80369E68[i]->kernR < D_80369E68[i + 1]->kernL ? D_80369E68[i]->kernR : D_80369E68[i + 1]->kernL;
+      x += D_80369E68[i]->w - kern + 2;
+    }
+  }
+}
+
 /* WHAT IT DOES: Draw a line on the decal between two screen points (a
  * quarter scale, y flipped) by Bresenham's method, stepping along the
  * longer axis from the lower end: each point a texel in the chosen colour,
