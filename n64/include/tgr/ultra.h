@@ -305,4 +305,19 @@ extern u32 __osBaseCounter;
 extern u32 __osViIntrCount;
 extern u32 __osTimerCounter;
 
+/* si */
+#define SI_DRAM_ADDR_REG 0x04800000
+#define SI_PIF_ADDR_RD64B_REG 0x04800004
+#define SI_PIF_ADDR_WR64B_REG 0x04800010
+#define SI_STATUS_REG 0x04800018
+#define SI_STATUS_DMA_BUSY 0x0001
+#define SI_STATUS_RD_BUSY 0x0002
+#define PIF_RAM_START 0x1FC007C0
+#define SI_Q_BUF_LEN 1
+s32 osRecvMesg(OSMesgQueue *mq, OSMesg *msg, s32 flags);
+void osCreateMesgQueue(OSMesgQueue *mq, OSMesg *msg, s32 msgCount);
+void osInvalDCache(void *vaddr, s32 nbytes);
+int __osSiDeviceBusy(void);
+void __osSiCreateAccessQueue(void);
+
 #endif
