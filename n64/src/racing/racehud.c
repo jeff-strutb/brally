@@ -349,22 +349,20 @@ LAB_80233c10:
 }
 
 /* WHAT IT DOES: Draw a race time as minutes, seconds and hundredths under
- * its label. */
+ * its label.  No named locals: the ROM's frame holds only the buffer, and
+ * the seconds and minutes are the one expression CSE'd. */
 /* @t4-pass 0x80238714 1 2026-09-26 compiles 17 best 70 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80238714 2 2026-09-26 compiles 16 best 70 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80238714 3 2026-09-26 compiles 13 best 70 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80238714 tgr BrHudTimeDraw */
-void BrHudTimeDraw(int param_1,int param_2,float param_3,int param_4,int param_5
-                 )
+void BrHudTimeDraw(int label, int prefix, float t, int x, int y)
 {
-  int iVar1;
-  char auStack_2c [44];
-  
-  iVar1 = (int)(param_3 * 100.0f) / 100;
-  func_80260DD4(auStack_2c,"%s%d'%02d\"%02d",param_2,iVar1 / 0x3c,iVar1 % 0x3c,
-               (int)(param_3 * 100.0f) % 100);
-  func_8022F5DC(auStack_2c,param_4,param_5 + 0xf);
-  func_8022F5DC(param_1,param_4,param_5);
+  char buf[44];
+
+  func_80260DD4(buf, "%s%d'%02d\"%02d", prefix,
+                ((int)(t * 100.0f) / 100) / 60, ((int)(t * 100.0f) / 100) - ((int)(t * 100.0f) / 100) / 60 * 60, (int)(t * 100.0f) - ((int)(t * 100.0f) / 100) * 100);
+  func_8022F5DC(buf, x, y + 15);
+  func_8022F5DC(label, x, y);
 }
 
 /* WHAT IT DOES: Draw the race times panel: the total time and, per lap, the
