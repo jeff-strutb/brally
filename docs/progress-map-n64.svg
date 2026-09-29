@@ -656,7 +656,7 @@
 <rect x="1418.5" y="790.1" width="10.4" height="15.1" fill="#3fb950"><title>BrPadFrameInit  0x8021A920  68B  [core/controls/br_pad]</title></rect>
 <rect x="1418.5" y="805.8" width="10.4" height="9.6" fill="#3fb950"><title>BrSub_1002F242  0x8021E1C0  44B  [core/controls/br_pad]</title></rect>
 <rect x="1402.5" y="819.0" width="20.0" height="14.1" fill="#3fb950"><title>BrEntSetMatrix  0x80220150  120B  [core/driving/br_entstate]</title></rect>
-<rect x="1402.5" y="833.7" width="20.0" height="9.7" fill="#d29922"><title>BrEntSetVel  0x802201C8  84B  0 diff bytes  [core/driving/br_entstate]</title></rect>
+<rect x="1402.5" y="833.7" width="20.0" height="9.7" fill="#3fb950"><title>BrEntSetVel  0x802201C8  84B  [core/driving/br_entstate]</title></rect>
 <rect x="1423.1" y="819.0" width="5.9" height="24.5" fill="#3fb950"><title>BrEntSetAngVel  0x80220358  64B  [core/driving/br_entstate]</title></rect>
 <rect x="1402.5" y="847.0" width="16.0" height="24.5" fill="#3fb950"><title>BrVarSave  0x8022ADCC  164B  [core/gamedata/br_varblock]</title></rect>
 <rect x="1419.0" y="847.0" width="9.9" height="24.5" fill="#3fb950"><title>BrVarLoad  0x8022AE70  104B  [core/gamedata/br_varblock]</title></rect>
@@ -813,4 +813,4 @@
 <rect x="1588.1" y="893.1" width="0.9" height="4.8" fill="#3fb950"><title>SetCommentChar  0x8022F4EC  12B  [exe/brally/0x004016C0]</title></rect>
 <rect x="1592.6" y="893.1" width="0.9" height="4.8" fill="#6e5494"><title>BrGbiMtxSlot  0x80242810  12B  [core/drawing/br_gbihandlers]</title></rect>
 <rect x="1597.0" y="893.1" width="0.9" height="4.8" fill="#3fb950"><title>BrRet0Std3_10054600  0x8025D35C  12B  [core/menus/br_textlist]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 438 &#183; T3 codegen-only 37 &#183; 104,796/457,392 bytes exact (22.9%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 439 &#183; T3 codegen-only 37 &#183; 104,880/457,392 bytes exact (22.9%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
