@@ -396,6 +396,7 @@ void BrPathGates(BrPathSeg *seg, float d)
  * (frame 0x78).  Structure and call order match. */
 /* @t4-pass 0x80226D9C 1 2026-09-29 compiles 13 best 253 moved 2  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80226D9C 2 2026-09-29 compiles 13 best 253 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80226D9C */
 /* @implements 0x80226D9C tgr BrAiScanCorridor */
 unsigned int BrAiScanCorridor(BrCar *car, int depth, int mid, BrPathSeg *seg)
 {

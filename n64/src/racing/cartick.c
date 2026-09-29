@@ -127,6 +127,7 @@ float sqrtf(float x);
  * position pointer s1 for s2.  Structure, frame and calls match. */
 /* @t4-pass 0x8021EB50 1 2026-09-29 compiles 13 best 230 moved 1  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8021EB50 2 2026-09-29 compiles 13 best 230 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8021EB50 */
 /* @implements 0x8021EB50 tgr BrCarTrackLocate */
 int BrCarTrackLocate(BrCar *car)
 {
@@ -518,6 +519,7 @@ void BrCarEntTick(BrCarEnt *e)
  * f0 and the frame time f2 throughout; ours swaps them. */
 /* @t4-pass 0x8021F998 1 2026-09-29 compiles 12 best 48 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8021F998 2 2026-09-29 compiles 12 best 48 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8021F998 */
 /* @implements 0x8021F998 tgr BrCarPhysTick */
 void BrCarPhysTick(BrCar *car)
 {
