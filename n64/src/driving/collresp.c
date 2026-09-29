@@ -47,12 +47,27 @@ extern float D_8037EAC8[3];
 extern BrCrNode D_80379940[];         /* the contact-list nodes */
 void BrPerfMark(int a, int r, int g, int b, int al);
 void BrMat4InvertScaled(float m[4][4], float out[4][4], float s[3]);
-void func_8025D060(BrTipBody *b, float m[4][4]);
+int BrCollRespBroadPhase(BrTipBody *b, float m[4][4]);
 void func_8025FDE4(void);
 void BrRbStateStep(void *out, void *in, float dt);
 int func_8025DFCC(BrTipBody *b, float m[4][4]);
 void *memcpy(void *d, const void *s, unsigned int n);
 int BrCollRespTipKick(BrTipBody *b);
+
+typedef struct BrCrPlane {      /* a collision triangle's plane (0x20 bytes) */
+  float n[3];
+  float d;
+  float *v0;                    /* 0x10  its corners */
+  float *v1;
+  float *v2;
+  int x1c;
+} BrCrPlane;
+extern BrCrPlane D_80379F80[][150];   /* each grid cell's collision planes */
+extern unsigned short D_8037EA88[];   /* and how many */
+extern int D_802A4A30;                /* walk the cell backwards (flips every frame) */
+int func_8025F18C(float x, float y);
+int BrTriCubeTest(float *tri, float *norm);
+void BrCrListPush(void *plane);
 
 #define ABS(x) ((x) < 0.0f ? -(x) : (x))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
@@ -96,6 +111,62 @@ void BrCrListPrintCount(void)
     osSyncPrintf("----%d-------------------------------\n", count);
   }
 }
+
+#define BR_CR_GATHER_ONE(pP)                                            \
+  BrMat3MulVecRows(&v[0], m, (pP)->v0);                                 \
+  BrMat3MulVecRows(&v[3], m, (pP)->v1);                                 \
+  BrMat3MulVecRows(&v[6], m, (pP)->v2);                                 \
+  e1[0] = v[3] - v[0];                                                  \
+  e1[1] = v[4] - v[1];                                                  \
+  e1[2] = v[5] - v[2];                                                  \
+  e2[0] = v[6] - v[0];                                                  \
+  e2[1] = v[7] - v[1];                                                  \
+  e2[2] = v[8] - v[2];                                                  \
+  nrm[0] = e1[1] * e2[2] - e1[2] * e2[1];                               \
+  nrm[1] = e1[2] * e2[0] - e1[0] * e2[2];                               \
+  nrm[2] = e1[0] * e2[1] - e1[1] * e2[0];                               \
+  if (BrTriCubeTest(v, nrm) != 0) {                                     \
+    BrCrListPush(pP);                                                   \
+    n++;                                                                \
+  }
+/* WHAT IT DOES: The broad phase of car-versus-track collision: take the
+ * grid cell under the body, put each of its triangles into the body's box
+ * space and keep, on this frame's contact list, each one that touches the
+ * box; returns how many.  The cell is walked backwards on alternate
+ * frames.  The PC twin is BrCollRespBroadPhase.
+ * RESIDUE (4): in each arm the ROM loads v[2] before v[8] for the edges;
+ * ours the other way round (edge statement orders, array shapes and 200
+ * permuter compiles leave it). */
+/* @implements 0x8025D060 tgr BrCollRespBroadPhase */
+int BrCollRespBroadPhase(BrTipBody *b, float m[4][4])
+{
+  float v[9];
+  float nrm[3];
+  float e1[3];
+  float e2[3];
+  BrCrPlane *pP;
+  int cell;
+  int count;
+  int i;
+  int n;
+
+  n = 0;
+  cell = func_8025F18C(b->m[3][0], b->m[3][1]);
+  count = D_8037EA88[cell];
+  if (D_802A4A30 != 0) {
+    pP = &D_80379F80[cell][count - 1];
+    for (i = count - 1; i >= 0; i--, pP--) {
+      BR_CR_GATHER_ONE(pP)
+    }
+  } else {
+    pP = D_80379F80[cell];
+    for (i = 0; i < count; i++, pP++) {
+      BR_CR_GATHER_ONE(pP)
+    }
+  }
+  return n;
+}
+#undef BR_CR_GATHER_ONE
 
 /* WHAT IT DOES: The PC's BrCollRespTipKick: rebuild the body matrix from its
  * saved state, then for each of the four wheels with a ground contact place
@@ -227,7 +298,7 @@ void BrCarPhysAdvance(BrTipBody *b)
   s[0] = 0.1f;
   s[2] = 0.1f;
   BrMat4InvertScaled(b->m, m, s);
-  func_8025D060(b, m);
+  BrCollRespBroadPhase(b, m);
   BrPerfMark(0, 0x80, 0x80, 0, 0xff);
   s[0] = 1.0f / b->f1DC;
   t = 0.033333335f;
