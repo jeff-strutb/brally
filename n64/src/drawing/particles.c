@@ -103,9 +103,12 @@ void BrCarSmokeEmit(BrCar *car)
  * the wind plus its own velocity scaled by its strength (x1f * x1e / 65280,
  * with a rise of 0.8 on z), and x1e becomes 5.7375 / size^2.  A particle
  * whose strength falls below 1/32 goes back on the free list.
- * RESIDUE (44): the ROM reads the next index before the position update and
+ * RESIDUE (40): the ROM reads the next index before the position update and
  * keeps a copy of it for the loop (an extra register, p in a1); ours reads
  * it after.  Reading it first, index types and loop shapes score worse. */
+/* @t4-pass 0x8023CBFC 1 2026-09-29 compiles 25 best 40 moved 4  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8023CBFC 2 2026-09-29 compiles 20 best 40 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8023CBFC */
 /* @implements 0x8023CBFC tgr BrParticleStep */
 void BrParticleStep(void)
 {
@@ -125,8 +128,8 @@ void BrParticleStep(void)
     p->size += grow;
     f = (float)(int)(p->x1f * p->x1e) * (1.0f / 65280.0f);
     p->pos[0] = p->pos[0] + (D_803634D0[0] + p->vel[0] * f * D_8028AAD8);
-    p->pos[1] = p->pos[1] + (D_803634D0[1] + p->vel[1] * f * D_8028AAD8);
-    p->pos[2] = p->pos[2] + (D_803634D0[2] + (p->vel[2] * f + 0.8f) * D_8028AAD8);
+    p->pos[1] = (D_803634D0[1] + p->vel[1] * f * D_8028AAD8) + p->pos[1];
+    p->pos[2] += (D_803634D0[2] + (p->vel[2] * f + 0.8f) * D_8028AAD8);
     p->x1e = (int)(5.7375f / (p->size * p->size));
     n = p->next;
     if (f < 0.03125f) {
@@ -143,10 +146,13 @@ void BrParticleStep(void)
  * BrParticleStep, but the particles also fall (z velocity loses
  * 19.62 * dt), x1e becomes 102 / size, and a particle is freed when its
  * strength falls below 1/32 or it falls faster than 30.
- * RESIDUE (81): the ROM re-reads p->next for the unlink and chooses the
+ * RESIDUE (72): the ROM re-reads p->next for the unlink and chooses the
  * list head per branch; ours reuses the early read (one more live register,
  * s0 saved).  Read order, index types, alias-breaking spellings and 294
  * permuter compiles leave it. */
+/* @t4-pass 0x8023CD60 1 2026-09-29 compiles 26 best 72 moved 9  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8023CD60 2 2026-09-29 compiles 26 best 72 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8023CD60 */
 /* @implements 0x8023CD60 tgr BrParticleFallStep */
 void BrParticleFallStep(void)
 {
@@ -172,7 +178,7 @@ void BrParticleFallStep(void)
       p->size += grow;
       f = (float)(int)(p->x1f * p->x1e) * (1.0f / 65280.0f);
       p->pos[0] = p->pos[0] + (D_803634D0[0] + p->vel[0] * f * D_8028AAD8);
-      p->pos[1] = p->pos[1] + (D_803634D0[1] + p->vel[1] * f * D_8028AAD8);
+      p->pos[1] = (D_803634D0[1] + p->vel[1] * f * D_8028AAD8) + p->pos[1];
       p->pos[2] = p->pos[2] + (D_803634D0[2] + (p->vel[2] * f + 0.8f) * D_8028AAD8);
       p->vel[2] = p->vel[2] - D_8028AAD8 * 19.62f;
       p->x1e = (int)(102.0f / p->size);

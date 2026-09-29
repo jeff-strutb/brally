@@ -108,6 +108,9 @@ void BrCheatToggleAA68(void)
  * head's decrement-and-store through pad->pos and the compare-then-advance
  * loop took it from 33; declaration order, statement order in the loop
  * head, the table start spelling and 295 permuter compiles leave 11. */
+/* @t4-pass 0x80255048 1 2026-09-29 compiles 25 best 11 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80255048 2 2026-09-29 compiles 25 best 11 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80255048 */
 /* @implements 0x80255048 tgr BrCheatInput */
 void BrCheatInput(BrPadHistory *pad)
 {

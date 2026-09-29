@@ -97,6 +97,9 @@ void BrTyreSkidCheck(BrRbBody *b, BrRbForce *f)
  * RESIDUE (65): FP register choice from the ray dot product on -- the ROM
  * also loads world x and y ahead of the |t| test and spills them; ours loads
  * them after.  Frame and control flow match. */
+/* @t4-pass 0x8025E96C 1 2026-09-29 compiles 26 best 65 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8025E96C 2 2026-09-29 compiles 26 best 65 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8025E96C */
 /* @implements 0x8025E96C tgr BrWheelGroundProbe */
 float BrWheelGroundProbe(BrRbBody *b, BrRbBody *w)
 {
@@ -164,6 +167,9 @@ float BrWheelGroundProbe(BrRbBody *b, BrRbBody *w)
  * RESIDUE (53, same 109 instructions): the hoisted constants' FP registers
  * (the ROM keeps 1.0/-1.0 in f26/f28 and 0.0 in f20) and literal pool order
  * (the ROM pools -0.3 double before -0.3f). */
+/* @t4-pass 0x8025EDBC 1 2026-09-29 compiles 26 best 53 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8025EDBC 2 2026-09-29 compiles 26 best 53 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8025EDBC */
 /* @implements 0x8025EDBC tgr BrTyreSprings */
 void BrTyreSprings(BrRbBody *b)
 {

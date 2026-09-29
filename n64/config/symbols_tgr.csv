@@ -398,6 +398,10 @@ va,name,kind
 8024F7D4,BrPaintFillRect,func
 8024F8CC,BrPaintFrameRect,func
 8024FBC8,BrPaintFillRoundRect,func
+8024FEB8,BrPaintFrameRoundRect,func
+80250698,BrPaintOvalStyleSelect,func
+80250B58,BrPaintFillOval,func
+80250FCC,BrPaintFrameOval,func
 8025159C,BrPaintDisc,func
 802517B4,BrPaintCircle,func
 80251A54,BrPaintDashLine,func

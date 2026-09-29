@@ -127,6 +127,9 @@ unsigned short BrU16QueuePop(unsigned short *q);
  * RESIDUE (41): register naming only -- |n1| and n1 swap f12/f14, the axis
  * indices sit in v1/a3 where ours use t1/t2, and u and the vertex copies
  * trade spill slots. */
+/* @t4-pass 0x8025B3B0 1 2026-09-29 compiles 26 best 41 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8025B3B0 2 2026-09-29 compiles 26 best 41 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8025B3B0 */
 /* @implements 0x8025B3B0 tgr BrCrTriContainsPoint */
 short BrCrTriContainsPoint(BrCrPlane *pT, float *pP)
 {
@@ -689,6 +692,9 @@ void BrCrPlaneResolve(BrTipBody *b, float *pA, float planeD, float *pEdgeN, floa
  * three plane globals in saved registers and homes m in its argument slot;
  * ours keeps m and loads D_802A4A2C by address each time, which moves every
  * saved register and temp after it.  Frame, slots and control flow match. */
+/* @t4-pass 0x8025DFCC 1 2026-09-29 compiles 26 best 342 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8025DFCC 2 2026-09-29 compiles 26 best 342 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8025DFCC */
 /* @implements 0x8025DFCC tgr BrCrRespWalk */
 int BrCrRespWalk(BrTipBody *b, float m[4][4])
 {
@@ -891,10 +897,14 @@ void BrCarPhysAdvance(BrTipBody *b)
  * triangle of that square: its three vertex pointers, index and surface
  * bits, unit normal (v1 - v0) x (v2 - v0) and plane constant.  The PC twin
  * is BrCollGridCellAcquire.
- * RESIDUE (211): ours hoists the vertex-index scale (12) into a saved
+ * RESIDUE (208): ours hoists the vertex-index scale (12) into a saved
  * register and multiplies; the ROM shifts ((i << 2) - i) << 2 in place, so
  * every saved register after it moves.  Index types and byte/float/struct
  * pointer spellings all hoist. */
+/* @t4-pass 0x8025F18C 1 2026-09-29 compiles 26 best 209 moved 2  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8025F18C 2 2026-09-29 compiles 26 best 208 moved 1  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8025F18C 3 2026-09-29 compiles 26 best 208 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8025F18C */
 /* @implements 0x8025F18C tgr BrCollGridCellAcquire */
 short BrCollGridCellAcquire(float x, float y)
 {
@@ -921,15 +931,15 @@ short BrCollGridCellAcquire(float x, float y)
       return i;
     }
     if (D_8037EA90[i] < best) {
-      victim = i;
       best = D_8037EA90[i];
+      victim = i;
     }
   }
   D_8037EA90[victim] = D_8037EAA0;
   D_8037EA80[victim] = key;
+  packed = BrGridCellRangeAt(x, y);
   n = 0;
   p = D_80379F80[victim][0].n;
-  packed = BrGridCellRangeAt(x, y);
   cur[0] = packed;
   cur[1] = packed >> 16;
   if (packed != 0) {

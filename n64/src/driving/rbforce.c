@@ -257,6 +257,9 @@ void BrRbSolveAccel(BrRbBody *b)
  * RESIDUE (25): float temporaries rotate one register off from the
  * world-axes copy on (f10 vs f16); operand orders swept, 394 permuter
  * compiles leave it. */
+/* @t4-pass 0x802594BC 1 2026-09-29 compiles 26 best 25 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802594BC 2 2026-09-29 compiles 26 best 25 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x802594BC */
 /* @implements 0x802594BC tgr BrRbAddForces */
 void BrRbAddForces(BrRbBody *b)
 {
@@ -298,6 +301,9 @@ void BrRbAddForces(BrRbBody *b)
  * the car body's torque.
  * RESIDUE (42): the float-register rotation of BrRbAddForces, from the
  * body-axes copy on; 298 permuter compiles leave it. */
+/* @t4-pass 0x80259634 1 2026-09-29 compiles 26 best 42 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80259634 2 2026-09-29 compiles 26 best 42 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80259634 */
 /* @implements 0x80259634 tgr BrRbAddWheelForces */
 void BrRbAddWheelForces(BrRbBody *b, BrRbBody *w)
 {
