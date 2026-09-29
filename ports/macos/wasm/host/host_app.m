@@ -97,6 +97,29 @@ void happ_dik_state(u8 *out) { memcpy(out, g_dik, 256); }
 - (BOOL)windowShouldClose:(id)sender { (void)sender; g_happ_quit = 1; return NO; }
 @end
 
+/* The game draws its own cursor, so over the game view the Mac cursor is
+ * blank -- through a cursor-update tracking area, the way any Mac app
+ * changes its cursor: AppKit puts the arrow back the moment the pointer
+ * leaves the view or the app goes to the background.  (An app-wide
+ * [NSCursor hide] stayed hidden outside the window, because moved events
+ * stop arriving once the pointer has left it.) */
+@interface BRCursorOwner : NSObject
+@end
+@implementation BRCursorOwner
+- (NSCursor *)blank
+{
+    static NSCursor *c;
+    if (!c) {
+        NSImage *img = [[NSImage alloc] initWithSize:NSMakeSize(1, 1)];
+        c = [[NSCursor alloc] initWithImage:img hotSpot:NSZeroPoint];
+    }
+    return c;
+}
+- (void)cursorUpdate:(NSEvent *)e { (void)e; [[self blank] set]; }
+- (void)mouseEntered:(NSEvent *)e { (void)e; [[self blank] set]; }
+- (void)mouseExited:(NSEvent *)e { (void)e; [[NSCursor arrowCursor] set]; }
+@end
+
 static int headless(void)
 {
     if (g_headless < 0) g_headless = getenv("BR_HEADLESS") != NULL;
@@ -126,30 +149,54 @@ void happ_init(void)
         g_view.layer = ml;
     }
     [g_window setAcceptsMouseMovedEvents:YES];
+    {
+        static BRCursorOwner *co;
+        co = [BRCursorOwner new];
+        [g_view addTrackingArea:[[NSTrackingArea alloc] initWithRect:NSZeroRect
+            options:NSTrackingCursorUpdate | NSTrackingMouseEnteredAndExited |
+                    NSTrackingActiveInActiveApp | NSTrackingInVisibleRect
+            owner:co userInfo:nil]];
+    }
     [g_window makeKeyAndOrderFront:nil];
     [NSApp activateIgnoringOtherApps:YES];
 }
 
 /* The pointer in the game's 640x480 coordinates: the picture is drawn
  * letterboxed into the view (host_glide.m's present), so undo that
- * scale and offset, and flip the view's bottom-up y.  Over the picture the
- * Mac cursor is hidden -- the game draws its own. */
+ * scale and offset, and flip the view's bottom-up y.
+ *
+ * Mac behaviour, not a captured mouse: only events for this window move
+ * the game's cursor; buttons are the ones pressed in this window (not
+ * [NSEvent pressedMouseButtons], which also reports presses made in other
+ * apps); and the click that brings the window to the front only does that,
+ * it is not passed to the game. */
 static void pointer(NSEvent *e)
 {
-    static int hidden;
+    static int btn, swallow;
     NSPoint p = [g_view convertPoint:e.locationInWindow fromView:nil];
     NSRect b = g_view.bounds;
     double s = fmin(b.size.width / 640.0, b.size.height / 480.0);
     double ox = (b.size.width - 640.0 * s) / 2, oy = (b.size.height - 480.0 * s) / 2;
     double gx = (p.x - ox) / s, gy = (b.size.height - p.y - oy) / s;
-    int btn = (int)[NSEvent pressedMouseButtons];
-    int inside = gx >= 0 && gx < 640 && gy >= 0 && gy < 480 && e.window == g_window;
-    if (inside != hidden) { if (inside) [NSCursor hide]; else [NSCursor unhide]; hidden = inside; }
-    if (e.type == NSEventTypeMouseMoved || e.type == NSEventTypeLeftMouseDragged ||
-        e.type == NSEventTypeRightMouseDragged || inside)
-        hdx_mouse_abs((int)fmin(fmax(gx, 0), 639), (int)fmin(fmax(gy, 0), 479), btn);
-    else
+    int bit = (e.type == NSEventTypeRightMouseDown || e.type == NSEventTypeRightMouseUp) ? 2 : 1;
+    if (e.window != g_window) return;
+    switch (e.type) {
+    case NSEventTypeLeftMouseDown: case NSEventTypeRightMouseDown:
+        if (!g_window.isKeyWindow || !NSPointInRect(p, b)) { swallow |= bit; return; }
+        btn |= bit;
+        break;
+    case NSEventTypeLeftMouseUp: case NSEventTypeRightMouseUp:
+        if (swallow & bit) { swallow &= ~bit; return; }
+        btn &= ~bit;
         hdx_mouse_btn(btn);
+        return;
+    case NSEventTypeLeftMouseDragged: case NSEventTypeRightMouseDragged:
+        if (!btn) return;                      /* a drag that began outside the game */
+        break;
+    default:
+        break;
+    }
+    hdx_mouse_abs((int)fmin(fmax(gx, 0), 639), (int)fmin(fmax(gy, 0), 479), btn);
 }
 
 void happ_pump(int block_ms)
