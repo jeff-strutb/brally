@@ -326,6 +326,7 @@ va,name,kind
 8022F694,BrTextPrintAt,func
 8022F720,BrTextWidth,func
 8022F900,BrRaceSplitScreen,func
+8022F968,BrSkyDraw,func
 8022FEF0,BrCarPlaceWheels,func
 8022FFB4,BrCarDrawWheels,func
 802303D4,BrCarVisibility,func
