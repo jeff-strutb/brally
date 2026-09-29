@@ -189,3 +189,43 @@ void BrMat4InvertScaled(float m[4][4], float out[4][4], float s[3])
   t[2] = -m[3][2];
   BrMat4RotateVecT(out[3], out, t);
 }
+
+
+/* WHAT IT DOES: Solve the 3x3 system m x = v for x by Cramer's rule (no
+ * guard against a singular matrix): six 2x2 products per column, the
+ * determinant's reciprocal kept in d.  The PC twin is BrMat3Solve. */
+/* @implements 0x802590E8 tgr BrMat3Solve */
+void BrMat3Solve(float out[3], float m[9], float v[3])
+{
+  float p0;
+  float p1;
+  float p2;
+  float p3;
+  float p4;
+  float p5;
+  float d;
+
+  p0 = m[4] * m[8];
+  p1 = m[5] * m[7];
+  p2 = m[1] * m[8];
+  p3 = m[2] * m[7];
+  p4 = m[1] * m[5];
+  p5 = m[2] * m[4];
+  d = -m[0] * p0 + m[0] * p1 + m[3] * p2 - m[3] * p3 - m[6] * p4 + m[6] * p5;
+  d = 1.0f / d;
+  out[0] = (-v[0] * p0 + v[0] * p1 + v[1] * p2 - v[1] * p3 - v[2] * p4 + v[2] * p5) * d;
+  p0 = m[3] * m[8];
+  p1 = m[5] * m[6];
+  p2 = m[0] * m[8];
+  p3 = m[2] * m[6];
+  p4 = m[0] * m[5];
+  p5 = m[2] * m[3];
+  out[1] = -(-v[0] * p0 + v[0] * p1 + v[1] * p2 - v[1] * p3 - v[2] * p4 + v[2] * p5) * d;
+  p0 = m[3] * m[7];
+  p1 = m[4] * m[6];
+  p2 = m[0] * m[7];
+  p3 = m[1] * m[6];
+  p4 = m[0] * m[4];
+  p5 = m[1] * m[3];
+  out[2] = (-v[0] * p0 + v[0] * p1 + v[1] * p2 - v[1] * p3 - v[2] * p4 + v[2] * p5) * d;
+}

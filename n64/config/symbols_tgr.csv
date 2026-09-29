@@ -454,6 +454,7 @@ va,name,kind
 80258EF8,BrMat3Mul,func
 80258F70,BrMat3Sub,func
 80258FD4,BrMat4InvertScaled,func
+802590E8,BrMat3Solve,func
 80259350,BrTriCacheReset,func
 802594BC,BrRbAddForces,func
 80259634,BrRbAddWheelForces,func
