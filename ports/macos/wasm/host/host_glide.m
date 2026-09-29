@@ -713,6 +713,12 @@ static void shot(void)
 }
 
 static void glstat_swap(void);
+/* The frame loop (native/frame.m) presents, to time and log each frame;
+ * without it, a plain present. */
+__attribute__((weak)) void hframe_present(id<MTLCommandBuffer> cb, id<CAMetalDrawable> d)
+{
+    [cb presentDrawable:d];
+}
 void h_grBufferSwap(u32 interval)
 {
     CAMetalLayer *l;
@@ -748,7 +754,7 @@ void h_grBufferSwap(u32 interval)
             [e setFragmentTexture:g_color atIndex:0];
             [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
             [e endEncoding];
-            [g_cb presentDrawable:d];
+            hframe_present(g_cb, d);
         }
     }
     [g_cb commit];

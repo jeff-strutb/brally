@@ -243,6 +243,11 @@ void happ_pump(int block_ms)
     }
 }
 
+NSWindow *happ_window(void)
+{
+    return headless() ? nil : g_window;
+}
+
 CAMetalLayer *happ_metal_layer(void)
 {
     return (g_view && !headless()) ? (CAMetalLayer *)g_view.layer : nil;
