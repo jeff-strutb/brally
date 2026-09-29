@@ -611,7 +611,9 @@ va,name,kind
 80264C7C,osSpTaskLoad,func
 80264E0C,osSpTaskStartGo,func
 80264E50,guLookAtF,func
+80265108,guLookAt,func
 80265180,guPerspectiveF,func
+802653B0,guPerspective,func
 80265410,osCreateMesgQueue,func
 80265440,osSetEventMesg,func
 802654B0,osSendMesg,func
