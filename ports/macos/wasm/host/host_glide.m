@@ -1,10 +1,15 @@
 /* host_glide.m -- glide2x.dll on Metal (port code).
  *
  * The 38 Glide 2 entry points BRGlide.dll imports, drawn with Metal into a
- * 640x480 colour + depth target that grBufferSwap scales into the window.
+ * colour + depth target the size of the window's 4:3 area (640x480 headless,
+ * or BR_RES=WxH); grBufferSwap copies it into the window.  The game's
+ * coordinates stay 640x480 throughout; only the target is larger.
  *
  *   geometry     Glide vertices are already in screen space: the vertex
- *                shader only maps pixels to NDC. Colour and the texture
+ *                shader only maps pixels to NDC.  The native renderer's
+ *                triangles (native/render.m, hglide_tri_h) arrive in clip
+ *                space instead, and the GPU projects and clips them.
+ *                Colour and the texture
  *                coordinates are interpolated linearly in screen space
  *                (center_no_perspective), as the Voodoo iterates them; the
  *                fragment shader divides sow/tow by oow per pixel.
@@ -18,7 +23,9 @@
  *                decoded from it to RGBA8, re-decoded when downloads
  *                overwrite it.
  *   clip / cull  scissor rect / screen-space winding.
- *   LFB writes   written into the target between passes.
+ *   LFB writes   drawn as textured quads, in order with everything else.
+ *   batching     consecutive triangles that share every piece of state are
+ *                one draw.
  */
 #import <Metal/Metal.h>
 #import <QuartzCore/QuartzCore.h>
@@ -31,6 +38,7 @@
 
 #define W 640
 #define H 480
+static int RW = W, RH = H;     /* the render target, in pixels */
 
 CAMetalLayer *happ_metal_layer(void);   /* host_app.m; nil when headless */
 
@@ -59,12 +67,38 @@ static const char *SHADER =
 "struct VO { float4 pos [[position]];\n"
 "  float4 col [[center_no_perspective]]; float ooz [[center_no_perspective]];\n"
 "  float oow [[center_no_perspective]]; float sow [[center_no_perspective]];\n"
-"  float tow [[center_no_perspective]]; };\n"
+"  float tow [[center_no_perspective]];\n"
+"  float pw, ps, pt; float4 pcol; int pm [[flat]]; };   /* pm: w, s, t, colour perspective-correct (vsc) */\n"
 "vertex VO vs(uint vid [[vertex_id]], const device GV *v [[buffer(0)]]) {\n"
 "  GV g = v[vid]; VO o;\n"
 "  o.pos = float4(g.x / 320.0 - 1.0, 1.0 - g.y / 240.0, 0.5, 1.0);\n"
 "  o.col = float4(g.r, g.g, g.b, g.a); o.ooz = g.ooz; o.oow = g.oow; o.sow = g.sow; o.tow = g.tow;\n"
+"  o.pw = 1; o.ps = 0; o.pt = 0; o.pcol = 0; o.pm = 0;\n"
 "  return o; }\n"
+"/* clip-space corners from the native renderer: the GPU divides by w; 1/w,\n"
+"   s/w and t/w are carried unperspective, the values the Voodoo iterates */\n"
+"struct CV { float x, y, z, w, r, g, b, a, s, t; };\n"
+"vertex VO vsc(uint vid [[vertex_id]], const device CV *v [[buffer(0)]]) {\n"
+"  CV g = v[vid]; VO o; float q = 1.0 / g.w;\n"
+"  o.pos = float4(g.x, g.y, g.z, g.w);\n"
+"  o.col = float4(g.r, g.g, g.b, g.a); o.ooz = 0; o.oow = q; o.sow = g.s * q; o.tow = g.t * q;\n"
+"  o.pw = g.w; o.ps = g.s; o.pt = g.t; o.pcol = o.col; o.pm = 1;\n"
+"  return o; }\n"
+"/* the same corners drawn without the depth buffer: the no-Z vertex routines\n"
+"   overwrite 1/w with 1/65535 after projecting, so the card writes the far\n"
+"   depth and maps the texture without perspective */\n"
+"vertex VO vscn(uint vid [[vertex_id]], const device CV *v [[buffer(0)]]) {\n"
+"  CV g = v[vid]; VO o; float q = 1.0 / 65535.0;\n"
+"  o.pos = float4(g.x, g.y, g.z, g.w);\n"
+"  o.col = float4(g.r, g.g, g.b, g.a); o.ooz = 0; o.oow = q; o.sow = g.s * q; o.tow = g.t * q;\n"
+"  o.pw = 1; o.ps = 0; o.pt = 0; o.pcol = 0; o.pm = 0;\n"
+"  return o; }\n"
+"struct BV { float2 p; float2 uv; };\n"
+"struct BO { float4 pos [[position]]; float2 uv; };\n"
+"vertex BO bvs(uint vid [[vertex_id]], const device BV *v [[buffer(0)]]) {\n"
+"  BO o; o.pos = float4(v[vid].p, 0, 1); o.uv = v[vid].uv; return o; }\n"
+"fragment float4 bfs(BO in [[stage_in]], texture2d<float> t [[texture(0)]]) {\n"
+"  constexpr sampler s(filter::linear, address::clamp_to_edge); return t.sample(s, in.uv); }\n"
 "float comb1(int f, float fac, float l, float la, float o) {\n"
 "  switch (f) { case 0: return 0; case 1: return l; case 2: return la;\n"
 "  case 3: return fac * o; case 4: return fac * o + l; case 5: return fac * o + la;\n"
@@ -98,9 +132,12 @@ static const char *SHADER =
 "  uint m = e <= 19 ? (~t >> uint(19 - e)) : (~t << uint(e - 19));\n"
 "  uint w = (uint(e) << 12) | (m & 0xFFF);\n"
 "  return w < 0xFFFF ? w + 1 : w; }\n"
-"fragment FO fs(VO in [[stage_in]], constant GU &u [[buffer(0)]],\n"
+"fragment FO fs(VO vin [[stage_in]], constant GU &u [[buffer(0)]],\n"
 "               texture2d<float> tex [[texture(0)]], sampler smp [[sampler(0)]]) {\n"
-"  FO o;\n"
+"  FO o; VO in = vin;\n"
+"  /* clip-space corners: w, s and t come perspective-correct, so 1/w, s/w and\n"
+"     t/w are exact at every pixel, clipped by the GPU or not */\n"
+"  if (in.pm) { in.oow = 1.0 / in.pw; in.sow = in.ps * in.oow; in.tow = in.pt * in.oow; in.col = in.pcol; }\n"
 "  if (u.clear) { o.c = u.clearcol / 255.0; o.d = u.clear_depth; return o; }\n"
 "  float depth = 0;\n"
 "  if (u.dmode == 2 || u.dmode == 4) depth = float(wfloat(in.oow)) / 65536.0;\n"
@@ -146,7 +183,7 @@ static id<MTLDevice> g_dev;
 static id<MTLCommandQueue> g_q;
 static id<MTLLibrary> g_lib;
 static id<MTLTexture> g_color, g_depth, g_white;
-static id<MTLRenderPipelineState> g_present;
+static id<MTLRenderPipelineState> g_present, g_blit;
 static id<MTLCommandBuffer> g_cb;
 static id<MTLRenderCommandEncoder> g_enc;
 static id<MTLBuffer> g_vbuf[3];
@@ -209,6 +246,40 @@ static void argb4(u32 c, float *o)
 }
 
 /* ------------------------------------------------------------ device */
+/* The target follows the window: its 4:3 area at the drawable's pixel size.
+ * Called at setup and at every swap, the one point where no frame is being
+ * drawn; the game clears what it draws each frame. */
+static void size_targets(void)
+{
+    int w = W, h = H;
+    const char *e = getenv("BR_RES");
+    CAMetalLayer *l = happ_metal_layer();
+    MTLTextureDescriptor *td;
+    if (e && sscanf(e, "%dx%d", &w, &h) == 2 && w >= 64 && h >= 48)
+        ;
+    else if (l) {
+        CGSize d = l.drawableSize;
+        double k = fmin(d.width / W, d.height / H);
+        w = W; h = H;
+        if (k > 0.1) { w = (int)lround(W * k); h = (int)lround(H * k); }
+    } else {
+        w = W; h = H;
+    }
+    if (g_color && w == RW && h == RH) return;
+    RW = w; RH = h;
+    td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm
+                                                            width:(NSUInteger)RW height:(NSUInteger)RH mipmapped:NO];
+    td.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
+    td.storageMode = MTLStorageModeShared;
+    g_color = [g_dev newTextureWithDescriptor:td];
+    td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float
+                                                            width:(NSUInteger)RW height:(NSUInteger)RH mipmapped:NO];
+    td.usage = MTLTextureUsageRenderTarget;
+    td.storageMode = MTLStorageModePrivate;
+    g_depth = [g_dev newTextureWithDescriptor:td];
+    HLOG("render target %dx%d\n", RW, RH);
+}
+
 static void gl_setup(void)
 {
     NSError *err = nil;
@@ -221,16 +292,7 @@ static void gl_setup(void)
     g_q = [g_dev newCommandQueue];
     g_lib = [g_dev newLibraryWithSource:[NSString stringWithUTF8String:SHADER] options:nil error:&err];
     if (!g_lib) { fprintf(stderr, "Glide shader: %s\n", err.localizedDescription.UTF8String); exit(1); }
-    td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm
-                                                            width:W height:H mipmapped:NO];
-    td.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
-    td.storageMode = MTLStorageModeShared;
-    g_color = [g_dev newTextureWithDescriptor:td];
-    td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float
-                                                            width:W height:H mipmapped:NO];
-    td.usage = MTLTextureUsageRenderTarget;
-    td.storageMode = MTLStorageModePrivate;
-    g_depth = [g_dev newTextureWithDescriptor:td];
+    size_targets();
     td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm
                                                             width:1 height:1 mipmapped:NO];
     g_white = [g_dev newTextureWithDescriptor:td];
@@ -251,6 +313,13 @@ static void gl_setup(void)
     pd.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
     g_present = [g_dev newRenderPipelineStateWithDescriptor:pd error:&err];
     if (!g_present) { fprintf(stderr, "present pipeline: %s\n", err.localizedDescription.UTF8String); exit(1); }
+    pd = [MTLRenderPipelineDescriptor new];
+    pd.vertexFunction = [g_lib newFunctionWithName:@"bvs"];
+    pd.fragmentFunction = [g_lib newFunctionWithName:@"bfs"];
+    pd.colorAttachments[0].pixelFormat = MTLPixelFormatRGBA8Unorm;
+    pd.depthAttachmentPixelFormat = MTLPixelFormatDepth32Float;
+    g_blit = [g_dev newRenderPipelineStateWithDescriptor:pd error:&err];
+    if (!g_blit) { fprintf(stderr, "blit pipeline: %s\n", err.localizedDescription.UTF8String); exit(1); }
     {
         CAMetalLayer *l = happ_metal_layer();
         if (l) { l.device = g_dev; l.pixelFormat = MTLPixelFormatBGRA8Unorm; l.framebufferOnly = YES; l.maximumDrawableCount = 2; }
@@ -272,15 +341,15 @@ static MTLBlendFactor bf(int f, int isdst)
     default: return MTLBlendFactorOne;
     }
 }
-static id<MTLRenderPipelineState> gpipe(int rs, int rd, int as, int ad, int nocolor)
+static id<MTLRenderPipelineState> gpipe(int rs, int rd, int as, int ad, int nocolor, int kind)
 {
-    NSNumber *k = @((rs << 24) | (rd << 16) | (as << 8) | ad | (nocolor << 30));
+    NSNumber *k = @(((long)kind << 32) | (rs << 24) | (rd << 16) | (as << 8) | ad | (nocolor << 30));
     id<MTLRenderPipelineState> p = g_pipes[k];
     if (!p) {
         NSError *err = nil;
         MTLRenderPipelineDescriptor *d = [MTLRenderPipelineDescriptor new];
         MTLRenderPipelineColorAttachmentDescriptor *c;
-        d.vertexFunction = [g_lib newFunctionWithName:@"vs"];
+        d.vertexFunction = [g_lib newFunctionWithName:kind == 2 ? @"vscn" : kind ? @"vsc" : @"vs"];
         d.fragmentFunction = [g_lib newFunctionWithName:@"fs"];
         d.depthAttachmentPixelFormat = MTLPixelFormatDepth32Float;
         c = d.colorAttachments[0];
@@ -358,11 +427,40 @@ static void begin_pass(void)
     rp.depthAttachment.loadAction = MTLLoadActionLoad;
     rp.depthAttachment.storeAction = MTLStoreActionStore;
     g_enc = [g_cb renderCommandEncoderWithDescriptor:rp];
-    [g_enc setViewport:(MTLViewport){ 0, 0, W, H, 0, 1 }];
+    [g_enc setViewport:(MTLViewport){ 0, 0, RW, RH, 0, 1 }];
+}
+
+/* The pending run of triangles that share every piece of state. */
+static struct {
+    int n, kind;
+    size_t off;
+    id<MTLRenderPipelineState> pipe;
+    id<MTLDepthStencilState> ds;
+    id<MTLTexture> tex;
+    id<MTLSamplerState> smp;
+    MTLScissorRect sc;
+    gu u;
+} B;
+static unsigned g_st_draws;
+static void flush_batch(void)
+{
+    if (!B.n) return;
+    [g_enc setRenderPipelineState:B.pipe];
+    [g_enc setDepthStencilState:B.ds];
+    [g_enc setScissorRect:B.sc];
+    [g_enc setVertexBuffer:g_vbuf[g_vbi] offset:B.off atIndex:0];
+    [g_enc setFragmentBytes:&B.u length:sizeof B.u atIndex:0];
+    [g_enc setFragmentTexture:B.tex atIndex:0];
+    [g_enc setFragmentSamplerState:B.smp atIndex:0];
+    [g_enc drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:(NSUInteger)B.n];
+    B.n = 0;
+    B.pipe = nil; B.ds = nil; B.tex = nil; B.smp = nil;
+    g_voff = (g_voff + 255) & ~(size_t)255;
+    g_st_draws++;
 }
 static void end_pass(void)
 {
-    if (g_enc) { [g_enc endEncoding]; g_enc = nil; }
+    if (g_enc) { flush_batch(); [g_enc endEncoding]; g_enc = nil; }
 }
 /* finish all GPU work: needed before the CPU touches the target */
 static void flush_wait(void)
@@ -371,14 +469,18 @@ static void flush_wait(void)
     if (g_cb) { [g_cb commit]; [g_cb waitUntilCompleted]; g_cb = nil; }
 }
 
-static void set_scissor(void)
+/* The clip window, in 640x480 units, as a scissor on the target. */
+static MTLScissorRect scissor_rect(void)
 {
     int x0 = S.cx0 < 0 ? 0 : S.cx0, y0 = S.cy0 < 0 ? 0 : S.cy0;
     int x1 = S.cx1 > W ? W : S.cx1, y1 = S.cy1 > H ? H : S.cy1;
-    if (x1 <= x0 || y1 <= y0) { x0 = y0 = 0; x1 = y1 = 1; }
+    int px0, py0, px1, py1;
+    if (x1 <= x0 || y1 <= y0) return (MTLScissorRect){ 0, 0, 1, 1 };
     if (S.origin_ll) { int t = H - y1; y1 = H - y0; y0 = t; }
-    [g_enc setScissorRect:(MTLScissorRect){ (NSUInteger)x0, (NSUInteger)y0,
-                                            (NSUInteger)(x1 - x0), (NSUInteger)(y1 - y0) }];
+    px0 = x0 * RW / W; px1 = x1 * RW / W; py0 = y0 * RH / H; py1 = y1 * RH / H;
+    if (px1 <= px0 || py1 <= py0) return (MTLScissorRect){ 0, 0, 1, 1 };
+    return (MTLScissorRect){ (NSUInteger)px0, (NSUInteger)py0,
+                             (NSUInteger)(px1 - px0), (NSUInteger)(py1 - py0) };
 }
 
 /* ---------------------------------------------------------- textures */
@@ -619,20 +721,25 @@ static void pick(const gv *v, int n)
     }
 }
 
-static void draw(const gv *v, int n, int clear)
+/* v: n corners of `kind` 0 (gv, screen space) or 1 (clip space, 10 floats
+ * too).  Appended to the pending run when every piece of state matches. */
+static void draw(const void *v, int n, int clear, int kind)
 {
     size_t bytes = (size_t)n * sizeof(gv);
     id<MTLTexture> t = g_white;
-    if (!clear) pick(v, n);
+    id<MTLRenderPipelineState> pipe;
+    id<MTLDepthStencilState> ds;
+    id<MTLSamplerState> smp;
+    MTLScissorRect sc;
+    if (!clear && !kind) pick((const gv *)v, n);
     begin_pass();
-    if (g_voff + bytes > (16u << 20)) {
+    if (g_voff + bytes + 256 > (16u << 20)) {
         /* a vertex-heavy frame: flush and start over in the next buffer */
         end_pass();
         [g_cb commit];
         g_cb = nil;
         begin_pass();
     }
-    memcpy((u8 *)g_vbuf[g_vbi].contents + g_voff, v, bytes);
     U.clear = clear;
     U.use_tex = !clear && (U.cc_other == 1 || U.ac_other == 1 || (U.cc_fact & 7) == 4 || (U.ac_fact & 7) == 4);
     if (U.use_tex) {
@@ -643,15 +750,20 @@ static void draw(const gv *v, int n, int clear)
         U.su = (float)md / (256.0f * (float)tw);
         U.sv = (float)md / (256.0f * (float)th);
     }
-    [g_enc setRenderPipelineState:clear ? gpipe(4, 0, 4, 0, 0) : gpipe(S.ab_rs, S.ab_rd, S.ab_as, S.ab_ad, 0)];
-    [g_enc setDepthStencilState:clear ? dss(1, 7, 1) : dss(U.dmode != 0, S.dfunc, S.dmask)];
-    set_scissor();
-    [g_enc setVertexBuffer:g_vbuf[g_vbi] offset:g_voff atIndex:0];
-    [g_enc setFragmentBytes:&U length:sizeof U atIndex:0];
-    [g_enc setFragmentTexture:t atIndex:0];
-    [g_enc setFragmentSamplerState:samp() atIndex:0];
-    [g_enc drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:(NSUInteger)n];
-    g_voff += (bytes + 255) & ~(size_t)255;
+    pipe = clear ? gpipe(4, 0, 4, 0, 0, 0) : gpipe(S.ab_rs, S.ab_rd, S.ab_as, S.ab_ad, 0, kind);
+    ds = clear ? dss(1, 7, 1) : dss(U.dmode != 0, S.dfunc, S.dmask);
+    smp = samp();
+    sc = scissor_rect();
+    if (B.n && (B.kind != kind || B.pipe != pipe || B.ds != ds || B.tex != t || B.smp != smp ||
+                memcmp(&B.sc, &sc, sizeof sc) || memcmp(&B.u, &U, sizeof U)))
+        flush_batch();
+    if (!B.n) {
+        B.off = g_voff; B.kind = kind; B.pipe = pipe; B.ds = ds; B.tex = t; B.smp = smp;
+        B.sc = sc; B.u = U;
+    }
+    memcpy((u8 *)g_vbuf[g_vbi].contents + g_voff, v, bytes);
+    g_voff += bytes;
+    B.n += n;
 }
 
 void h_grBufferClear(u32 color, u32 alpha, u32 depth)
@@ -666,7 +778,7 @@ void h_grBufferClear(u32 color, u32 alpha, u32 depth)
     q[0].x = x0; q[0].y = y0; q[1].x = x1; q[1].y = y0; q[2].x = x0; q[2].y = y1;
     q[3].x = x1; q[3].y = y0; q[4].x = x1; q[4].y = y1; q[5].x = x0; q[5].y = y1;
     for (i = 0; i < 6; i++) q[i].oow = 1;
-    draw(q, 6, 1);                 /* the scissor keeps it inside the clip window */
+    draw(q, 6, 1, 0);              /* the scissor keeps it inside the clip window */
 }
 
 /* The current colour target as a binary PPM. */
@@ -676,12 +788,12 @@ void hglide_shot(const char *path)
     u32 *px;
     int i;
     flush_wait();
-    px = malloc(W * H * 4);
-    [g_color getBytes:px bytesPerRow:W * 4 fromRegion:MTLRegionMake2D(0, 0, W, H) mipmapLevel:0];
+    px = malloc((size_t)RW * RH * 4);
+    [g_color getBytes:px bytesPerRow:(NSUInteger)RW * 4 fromRegion:MTLRegionMake2D(0, 0, (NSUInteger)RW, (NSUInteger)RH) mipmapLevel:0];
     f = fopen(path, "wb");
     if (f) {
-        fprintf(f, "P6\n%d %d\n255\n", W, H);
-        for (i = 0; i < W * H; i++) { u8 c[3] = { (u8)px[i], (u8)(px[i] >> 8), (u8)(px[i] >> 16) }; fwrite(c, 1, 3, f); }
+        fprintf(f, "P6\n%d %d\n255\n", RW, RH);
+        for (i = 0; i < RW * RH; i++) { u8 c[3] = { (u8)px[i], (u8)(px[i] >> 8), (u8)(px[i] >> 16) }; fwrite(c, 1, 3, f); }
         fclose(f);
     }
     free(px);
@@ -700,13 +812,13 @@ static void shot(void)
     if (every < 1) every = 1;
     if (g_nshot++ % every) return;
     flush_wait();
-    px = malloc(W * H * 4);
-    [g_color getBytes:px bytesPerRow:W * 4 fromRegion:MTLRegionMake2D(0, 0, W, H) mipmapLevel:0];
+    px = malloc((size_t)RW * RH * 4);
+    [g_color getBytes:px bytesPerRow:(NSUInteger)RW * 4 fromRegion:MTLRegionMake2D(0, 0, (NSUInteger)RW, (NSUInteger)RH) mipmapLevel:0];
     snprintf(p, sizeof p, "%s/frame%05d.ppm", dir, g_nshot - 1);
     f = fopen(p, "wb");
     if (f) {
-        fprintf(f, "P6\n%d %d\n255\n", W, H);
-        for (i = 0; i < W * H; i++) { u8 c[3] = { (u8)px[i], (u8)(px[i] >> 8), (u8)(px[i] >> 16) }; fwrite(c, 1, 3, f); }
+        fprintf(f, "P6\n%d %d\n255\n", RW, RH);
+        for (i = 0; i < RW * RH; i++) { u8 c[3] = { (u8)px[i], (u8)(px[i] >> 8), (u8)(px[i] >> 16) }; fwrite(c, 1, 3, f); }
         fclose(f);
     }
     free(px);
@@ -747,8 +859,8 @@ void h_grBufferSwap(u32 interval)
             rp.colorAttachments[0].storeAction = MTLStoreActionStore;
             e = [g_cb renderCommandEncoderWithDescriptor:rp];
             {
-                double dw = d.texture.width, dh = d.texture.height, s = fmin(dw / W, dh / H);
-                [e setViewport:(MTLViewport){ (dw - W * s) / 2, (dh - H * s) / 2, W * s, H * s, 0, 1 }];
+                double dw = d.texture.width, dh = d.texture.height, s = fmin(dw / RW, dh / RH);
+                [e setViewport:(MTLViewport){ floor((dw - RW * s) / 2), floor((dh - RH * s) / 2), RW * s, RH * s, 0, 1 }];
             }
             [e setRenderPipelineState:g_present];
             [e setFragmentTexture:g_color atIndex:0];
@@ -759,6 +871,7 @@ void h_grBufferSwap(u32 interval)
     }
     [g_cb commit];
     g_cb = nil;
+    size_targets();
     happ_pump(0);
 }
 
@@ -780,15 +893,25 @@ u32 h_grLfbWriteRegion(u32 buf, u32 x, u32 y, u32 fmt, u32 w, u32 h, u32 stride,
             px[j * w + i] = r | g << 8 | b << 16 | a << 24;
         }
     }
-    flush_wait();
-    {
-        int x0 = (int)x, y0 = (int)y, ww = (int)w, hh = (int)h;
-        if (x0 < W && y0 < H && x0 + ww > 0 && y0 + hh > 0) {
-            int cx = x0 < 0 ? -x0 : 0, cy = y0 < 0 ? -y0 : 0;
-            int rw = (x0 + ww > W ? W - x0 : ww) - cx, rh = (y0 + hh > H ? H - y0 : hh) - cy;
-            [g_color replaceRegion:MTLRegionMake2D((NSUInteger)(x0 + cx), (NSUInteger)(y0 + cy), (NSUInteger)rw, (NSUInteger)rh)
-                       mipmapLevel:0 withBytes:px + cy * w + cx bytesPerRow:w * 4];
-        }
+    if (w && h) {
+        /* the region as a texture, copied onto its 640x480 rectangle */
+        MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm
+                                                                                      width:w height:h mipmapped:NO];
+        id<MTLTexture> t = [g_dev newTextureWithDescriptor:td];
+        float x0 = (float)(int)x / (W / 2) - 1, x1 = (float)((int)x + (int)w) / (W / 2) - 1;
+        float y0 = 1 - (float)(int)y / (H / 2), y1 = 1 - (float)((int)y + (int)h) / (H / 2);
+        float q[6][4] = { { x0, y0, 0, 0 }, { x1, y0, 1, 0 }, { x0, y1, 0, 1 },
+                          { x1, y0, 1, 0 }, { x1, y1, 1, 1 }, { x0, y1, 0, 1 } };
+        [t replaceRegion:MTLRegionMake2D(0, 0, w, h) mipmapLevel:0 withBytes:px bytesPerRow:w * 4];
+        begin_pass();
+        flush_batch();
+        [g_enc setRenderPipelineState:g_blit];
+        [g_enc setDepthStencilState:dss(0, 7, 0)];
+        [g_enc setScissorRect:(MTLScissorRect){ 0, 0, (NSUInteger)RW, (NSUInteger)RH }];
+        [g_enc setVertexBytes:q length:sizeof q atIndex:0];
+        [g_enc setFragmentTexture:t atIndex:0];
+        [g_enc drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
+        g_st_draws++;
     }
     free(px);
     return 1;
@@ -828,10 +951,10 @@ static void glstat_swap(void)
     if (!g_st_on) return;
     if (++g_st_swaps % 60 == 0)
         { extern unsigned hdx_mouse_polls;
-          fprintf(stderr, "glstat: swap %u: tri %u culled %u poly %u mouse polls %u (last 60 swaps)\n",
-                  g_st_swaps, g_st_tri, g_st_cull, g_st_poly, hdx_mouse_polls);
+          fprintf(stderr, "glstat: swap %u: tri %u culled %u poly %u draws %u mouse polls %u (last 60 swaps)\n",
+                  g_st_swaps, g_st_tri, g_st_cull, g_st_poly, g_st_draws, hdx_mouse_polls);
           hdx_mouse_polls = 0; }
-    if (g_st_swaps % 60 == 0) g_st_tri = g_st_cull = g_st_poly = 0;
+    if (g_st_swaps % 60 == 0) g_st_tri = g_st_cull = g_st_poly = g_st_draws = 0;
 }
 
 void h_grDrawTriangle(u32 a, u32 b, u32 c)
@@ -854,8 +977,49 @@ void h_grDrawTriangle(u32 a, u32 b, u32 c)
     gllog("grDrawTriangle"); gllog_vtx("v", a); gllog_vtx("v", b); gllog_vtx("v", c);
     load_vtx(a, &v[0]); load_vtx(b, &v[1]); load_vtx(c, &v[2]);
     g_st_tri++;
-    if (!culled(&v[0], &v[1], &v[2])) draw(v, 3, 0);
+    if (!culled(&v[0], &v[1], &v[2])) draw(v, 3, 0, 0);
     else g_st_cull++;
+}
+
+/* A triangle from the native renderer (native/render.m).  Each corner is
+ * ten floats: X, Y, Z, W, r, g, b, a, s, t, where (X/W, Y/W) is the Glide
+ * screen position the game would have computed, Z the clip-space z (-W..W
+ * inside the near and far planes), and s, t the texture coordinates before
+ * the divide.  The GPU divides, clips and interpolates; culling is Glide's
+ * rule on the same winding, tested on the homogeneous corners (the sign of
+ * the determinant is the screen-space winding of the part in front of the
+ * eye, so a triangle through the near plane culls as the original's clipped
+ * polygon did).  `noz`: the corners came from a no-Z vertex routine, which
+ * sets 1/w to 1/65535 for the card (see vscn). */
+void hglide_tri_h(const float *a, const float *b, const float *c, int noz)
+{
+    const float *p[3] = { a, b, c };
+    float v[3][10], det;
+    int i;
+    det = a[0] * (b[1] * c[3] - c[1] * b[3]) - b[0] * (a[1] * c[3] - c[1] * a[3]) +
+          c[0] * (a[1] * b[3] - b[1] * a[3]);
+    g_st_tri++;
+    if (det == 0 || (S.cull == 1 && det < 0) || (S.cull == 2 && det > 0)) { g_st_cull++; return; }
+    if (a[3] > 0 && b[3] > 0 && c[3] > 0) {     /* BR_PICK sees them in screen space */
+        gv g[3];
+        for (i = 0; i < 3; i++) {
+            memset(&g[i], 0, sizeof g[i]);
+            g[i].x = p[i][0] / p[i][3];
+            g[i].y = S.origin_ll ? (float)H - p[i][1] / p[i][3] : p[i][1] / p[i][3];
+            g[i].oow = noz ? 1.0f / 65535.0f : 1.0f / p[i][3]; g[i].sow = p[i][8] * g[i].oow; g[i].tow = p[i][9] * g[i].oow;
+            g[i].a = p[i][7];
+        }
+        pick(g, 3);
+    }
+    for (i = 0; i < 3; i++) {
+        const float *q = p[i];
+        v[i][0] = q[0] / (W / 2) - q[3];
+        v[i][1] = S.origin_ll ? q[1] / (H / 2) - q[3] : q[3] - q[1] / (H / 2);
+        v[i][2] = (q[2] + q[3]) * 0.5f;
+        v[i][3] = q[3];
+        memcpy(&v[i][4], &q[4], 6 * sizeof(float));
+    }
+    draw(v, 3, 0, noz ? 2 : 1);
 }
 /* the game's GrVertex is 0x3C bytes (two TMUs): include/br_imgblit.h */
 void h_grDrawPolygonVertexList(u32 n, u32 p)
@@ -880,5 +1044,5 @@ void h_grDrawPolygonVertexList(u32 n, u32 p)
         if (!culled(&v0, &a, &b)) { tri[3 * k] = v0; tri[3 * k + 1] = a; tri[3 * k + 2] = b; k++; }
         a = b;
     }
-    if (k) draw(tri, 3 * k, 0);
+    if (k) draw(tri, 3 * k, 0, 0);
 }
