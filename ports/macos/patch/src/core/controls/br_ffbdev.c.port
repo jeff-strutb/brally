@@ -35,12 +35,63 @@ typedef void (*BrDbgSink)(const char *pMsg);
 @drop type:uint32_t#2
 @drop define:BR_DI_SETPARAMS
 @drop define:BR_DI_SETPROP
-@after define:BR_DI_SETPROP
+@drop proto:BrDiAcquire
+@drop proto:BrDiKeyboardShutdown
+@after proto:BrDiKeyboardShutdown
 
 #define BR_DI_SETPARAMS(p, eff, flags) \
     (BrDiEff(p)->pfnSetParameters((p), (eff), (flags)))
 #define BR_DI_SETPROP(p, prop, pdiph) \
     (BrDiDev(p)->pfnSetProperty((p), (prop), (pdiph)))
+
+/* ====================================================================== */
+/* 4. DirectInput devices                                                  */
+/* ====================================================================== */
+
+/* 0x100773D0 */
+/* WHAT IT DOES: takes hold of the joystick or wheel so the game can read it,
+ * which Windows requires again every time the game comes back to the
+ * foreground. It reports whether it succeeded, and says "no" harmlessly if
+ * there is no such device. */
+/* port-only body; Glide match is src/core/generated/0x100706B0.c */
+int32_t BrDiAcquire(void)
+{
+    BrDiObj *pDev = g_brFfb.pDevice;
+
+    if (pDev == NULL) {
+        return 0;
+    }
+    return (BrDiDev(pDev)->pfnAcquire(pDev) >= 0) ? 1 : 0;
+}
+
+/* 0x10078BC0 */
+/* WHAT IT DOES: lets go of the keyboard, but only once as many parts of the
+ * game have finished with it as asked for it in the first place -- it counts
+ * users rather than shutting down on the first call. An extra call after the
+ * count has already reached zero does nothing at all. */
+/* port-only body; Glide match is src/core/generated/0x10071EB0.c */
+void BrDiKeyboardShutdown(void)
+{
+    BrDiObj *pDev;
+
+    g_br18ABDD8 -= 1;
+    if (g_br18ABDD8 < 0) {
+        g_br18ABDD8 = 0;
+        return;                       /* clamp, and NO teardown */
+    }
+    if (g_br18ABDD8 != 0) {
+        return;
+    }
+    pDev = g_pBr18ABDD0;
+    if (pDev == NULL) {
+        return;
+    }
+    BrDiDev(pDev)->pfnUnacquire(pDev);
+    /* Re-read, deliberately without a second NULL test -- as the original. */
+    pDev = g_pBr18ABDD0;
+    BrDiDev(pDev)->pfnRelease(pDev);
+    g_pBr18ABDD0 = NULL;
+}
 @end
 @drop fn:BrFfbSetup
 @after fn:BrFfbSetup

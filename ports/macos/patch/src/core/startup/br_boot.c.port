@@ -6,7 +6,10 @@
 @drop var:DAT_10b71a50
 @drop var:DAT_10b71a54
 @drop fn:BrAppStateLoading
-@after fn:BrAppStateLoading
+@drop proto:BrAppStateSetMode
+@drop proto:int32_t
+@drop fn:BrAppFrame
+@after fn:BrAppFrame
 
 /* ------------------------------------------------------------------ *
  * 0x1001CDD0 -- state 3, LOADING SCREEN
@@ -44,10 +47,68 @@ int32_t BrAppStateLoading(void)
     g_brAppState = BR_APP_ENTER_RUN;             /* 1 */
     return 1;
 }
-@end
-@drop proto:int32_t
-@drop fn:BrAppFrame
-@after fn:BrAppFrame
+
+/* ------------------------------------------------------------------ *
+ * 0x1001CE20 -- state 4, VIDEO MODE / RENDERER INIT
+ *
+ * Two arms, selected by a pair of globals:
+ *
+ *   0x10AC5C5C  a renderer/device handle -- zero means "not yet created"
+ *   0x100ABAA0  a "mode change requested" flag, cleared at the end
+ *
+ *   both zero      -> first run. Install 640x480 into the six mode globals,
+ *                     call 0x1006C460, go to state 3 (the loading screen).
+ *
+ * CORRECTION: this file first described 0x1006C460 as "renderer create", which
+ * was a guess from its position in a video-mode state and was wrong. Its first
+ * instruction reads 0x100B55F0 -- BrSndG0B5DE8, the SOUND enable flag in
+ * slice1_08.c -- and it is gated on that plus two more sound globals before
+ * calling into the 0x1006BBxx family. It is a SOUND reset. The mode state
+ * resets audio because a mode change tears the device down, which is a
+ * different fact from the one the old label asserted.
+ *                     Returns 1 immediately -- the tail below does not run.
+ *   handle zero,
+ *   flag non-zero  -> 0x1006C290(0), 0x10056260(), 0x1006E280() -> 0x10AC6748
+ *   otherwise      -> straight to the tail
+ *
+ * The literals are 0x280 and 0x1E0 -- 640 and 480 -- and the same two values
+ * go to three globals each. See g_brAppModeW/H above for why that matters.
+ *
+ * The tail (from 0x1001CE9D) is a block of configuration stores gated on
+ * 0x118EEEDC. Those globals belong to modules this file does not own, so the
+ * tail is NOT transcribed here; it is reached through a counted frontier
+ * entry so that a run reports having hit it rather than silently skipping it.
+ * ------------------------------------------------------------------ */
+/* WHAT IT DOES: decides what resolution the game runs at and gets the display
+ * ready. On a first run there is no choice recorded, so it picks 640x480. If
+ * the player has changed the mode it tears the old display down and rebuilds
+ * -- which also resets the sound, because that goes with the device. */
+/* port-only body; Glide match is src/core/cpp/0x1001CE20.cpp */
+int32_t BrAppStateSetMode(void)
+{
+    const int32_t hDevice = BrBootGlobal_AC5C5C();
+    const int32_t fModeChange = BrBootGlobal_ABAA0();
+
+    if (hDevice == 0 && fModeChange == 0) {
+        g_brAppModeW = BR_APP_DEFAULT_W;   /* 0x280 */
+        g_brAppModeH = BR_APP_DEFAULT_H;   /* 0x1E0 */
+        BrBootSetModeGlobals(g_brAppModeW, g_brAppModeH);
+
+        BrBootFrontier_1006C460();
+        g_brAppState = BR_APP_LOADING;     /* 3 */
+        return 1;
+    }
+
+    if (hDevice == 0 && fModeChange != 0) {
+        BrBootFrontier_1006C290(0);
+        BrBootFrontier_10056260();
+        BrBootSetAC6748(BrBootFrontier_1006E280());
+    }
+
+    /* 0x1001CE9D onward -- the gated configuration tail. */
+    BrBootFrontier_SetModeTail();
+    return 1;
+}
 
 /* ------------------------------------------------------------------ *
  * 0x1001CF80 -- the frame tick.

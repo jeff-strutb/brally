@@ -135,91 +135,12 @@ void        (*g_pfnBrRaceAiControl)(BrDriverCar *);
  * how a car that has no physics of its own -- an entrant the player never
  * sees driving -- is moved round the circuit. If it runs out of line it leaves
  * the answer untouched rather than reporting an error. */
-/* port-only body; Glide match is src/core/generated/0x1005ECF0.c
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/generated/0x1005ECF0.c
  * (the original walks relocated node POINTERS and reads the fields in place;
  * the BrAiNodeAt/BrAiPoint_ bounds-checked accessors below are a port
  * addition, as is the local BrVec3 the two lerps write into). */
 void BrRacePathAdvance(uint32_t offNode, uint32_t index,
-                       float ratio, float dist)
-{
-    BrAiNode node;
-
-    if (g_pBrRaceTrack == NULL)
-        return;
-
-    for (;;) {
-        uint32_t count;
-
-        if (offNode == 0)                             /* 0x1005ECFF */
-            return;
-        if (BrAiNodeAt(g_pBrRaceTrack, offNode, &node) != 0) {
-            ++g_aBrRaceStepHole[BR_RS_HOLE_PATHEDGE];
-            return;
-        }
-        /* 0x1005ED05: hop SKIP nodes through the SIBLING link.  The original
-         * exits this loop on a NULL sibling and then tests the node again;
-         * both spellings are kept because the second test is what returns. */
-        while ((node.flags & BR_AI_NODE_SKIP) != 0) {
-            offNode = node.offSib;
-            if (offNode == 0)
-                break;
-            if (BrAiNodeAt(g_pBrRaceTrack, offNode, &node) != 0) {
-                ++g_aBrRaceStepHole[BR_RS_HOLE_PATHEDGE];
-                return;
-            }
-        }
-        if (offNode == 0)                             /* 0x1005ED11 */
-            return;
-
-        count = node.count;                           /* 0x1005ED1B */
-        if ((int32_t)index >= (int32_t)count)         /* 0x1005ED1F */
-            goto next_node;
-
-        for (;;) {                                    /* 0x1005ED2D */
-            BrAiPoint a, b;
-            float     segLen, avail;
-
-            if (BrAiPoint_(&node, index, &a) != 0 ||
-                BrAiPoint_(&node, index + 1u, &b) != 0) {
-                ++g_aBrRaceStepHole[BR_RS_HOLE_PATHEDGE];
-                return;
-            }
-            segLen = a.arc - b.arc;                   /* 0x1005ED30 */
-            avail  = segLen * ratio;                  /* 0x1005ED38 */
-
-            /* 0x1005ED40 `fcomp` + `test ah,0x41` + `jne <found>`: C0 is set
-             * for LESS and C3 for EQUAL, and BOTH are set for UNORDERED, so
-             * the walk STOPS on less, on equal and on a NaN distance.
-             * `!(dist > avail)` is false only for an ordered greater-than,
-             * which is exactly the fall-through. */
-            if (!(dist > avail)) {
-                BrVec3 p;
-
-                /* 0x1005ED85: where the slot is standing right now --
-                 * BrVec3Lerp is (a - b) * t + b, so t == 1 gives pts[i]. */
-                BrVec3Lerp(&p, &a.centre, &b.centre, ratio);
-                /* 0x1005ED8A: how far into what is left it has travelled,
-                 * then 0x1005EDA4 moves it that far toward pts[i+1]. */
-                BrVec3Lerp(&p, &b.centre, &p, dist / avail);
-
-                g_brRacePathPos   = p;                /* 0x10B1CE98 */
-                g_brRacePathNode  = offNode;          /* 0x10B1CBEC */
-                g_brRacePathIndex = index;            /* 0x10AF07F0 */
-                return;
-            }
-
-            dist  -= avail;                           /* 0x1005ED4F */
-            ++index;                                  /* 0x1005ED53 */
-            ratio  = 1.0f;                            /* 0x1005ED59 */
-            if ((int32_t)index >= (int32_t)count)     /* 0x1005ED57 */
-                break;
-        }
-
-    next_node:
-        offNode = node.offNext;                       /* 0x1005ED67 */
-        index   = 0u;
-    }
-}
+                       float ratio, float dist);
 
 /* NOT A PORT, and it is here rather than in a host because it is the exact
  * INVARIANT the phantom arm above requires, which is a fact about
@@ -529,43 +450,9 @@ void BR_THISCALL1 BrRaceDriverAnim(BrDriver *pDrv)
  * the car with any lap gates it has just crossed, work out how fast it is
  * actually travelling from how far it moved, and run down a short per-car
  * countdown. Nothing happens at all while the game is paused. */
-/* port-only body; the Glide match is
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is
  * src/core/racing/BrRaceDriverPost_100623E0.cpp (a __thiscall member). */
-void BrRaceDriverPost(BrDriver *pDrv)
-{
-    BrDriverCar *pCar;
-
-    if (g_brRacePaused != 0)                          /* 0x100623EA */
-        return;
-    pCar = pDrv->pCar;
-    if (pCar == NULL)                                 /* 0x100623F5 */
-        return;
-
-    if (pCar->b360 != 0u) {                           /* 0x10062403 */
-        /* 0x10062405..0x10062459: the skid trail -- a 2-D length, a random
-         * draw, an emitter and a decal append.  Four unported callees. */
-        BR_RS_HOLE(BR_RS_HOLE_SKID, pfnSkid, pCar);
-        pCar->b360 = 0u;                              /* 0x1006245C */
-    }
-    /* 0x10062466 / 0x1006246E / 0x10062476 */
-    BR_RS_HOLE(BR_RS_HOLE_SKID, pfnSkid, pCar);
-
-    (void)BrRaceGateStep(&g_brRaceRules, pDrv);       /* 0x1006247D */
-
-    BR_RS_HOLE(BR_RS_HOLE_SKID, pfnSkid, pCar);       /* 0x10062485 */
-
-    /* 0x1006249E / 0x100624BF: the world velocity, from the two positions
-     * 0x1005FF00 has just finished reading. */
-    BrVec3Sub(&pCar->f1024, &pCar->pos, &pCar->posPrev);
-    BrVec3ScaleBy(&pCar->f1024, 1.0f / g_brRaceStepDt);
-
-    /* 0x100624CA: car+0x2718 from a 2-D length of car+0x2734's first two
-     * floats.  car+0x2734 is a pointer this port does not have. */
-    BR_RS_HOLE(BR_RS_HOLE_SKID, pfnSkid, pCar);
-
-    if (pCar->fF04 != 0)                              /* 0x100624F1 */
-        --pCar->fF04;                                 /* 0x100624F5 */
-}
+void BrRaceDriverPost(BrDriver *pDrv);
 
 /* ==========================================================================
  * The start-light state machine

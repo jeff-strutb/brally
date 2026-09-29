@@ -1027,41 +1027,13 @@ int32_t BrMenuTime0C00(BrMenuItem *pItem)
 
 /* WHAT IT DOES: the same lap-time readout as 0x10040C00, from a second
  * stored table. */
-/* port-only body; Glide match is src/core/menus/BrMenuTime0D70_1003A2B0.cpp */
-int32_t BrMenuTime0D70(BrMenuItem *pItem)
-{
-    BrMenuState *pSt = &g_menu;
-    char         sz[32];
-
-    memset(sz, 0, sizeof sz);
-    if (MENU_gAA289C == 0)
-        BrStrCopy(sz, sizeof sz, "--:--");
-    else
-        BrMenuFormatLapTime(sz, sizeof sz,
-                            BrMenuStageTime(pSt, pSt->pTimes27A0));
-    return BrMenuStoreFormatted(pItem, sz, 1);
-}
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/menus/BrMenuTime0D70_1003A2B0.cpp */
+int32_t BrMenuTime0D70(BrMenuItem *pItem);
 
 /* WHAT IT DOES: put a lap time onto this row from a chosen slot -- 0, 1
  * or 2 index a table; 3 means the live time instead. */
-/* port-only body; Glide match is src/core/cpp/0x1003A420.cpp */
-int32_t BrMenuTime0EE0(BrMenuItem *pItem)
-{
-    BrMenuState *pSt = &g_menu;
-    char         sz[32];
-    float        t;
-
-    memset(sz, 0, sizeof sz);
-    if (MENU_gAA28D0 == 3u)
-        t = pSt->gAA28C8;
-    else if (pSt->pTimes25A0 != NULL)  /* DEVIATION: NULL check */
-        t = pSt->pTimes25A0[MENU_gAA28D0];
-    else
-        t = 0.0f;
-
-    BrMenuFormatLapTime(sz, sizeof sz, t);
-    return BrMenuStoreFormatted(pItem, sz, 1);
-}
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003A420.cpp */
+int32_t BrMenuTime0EE0(BrMenuItem *pItem);
 
 static __inline void
 BrMenuFillLapTime(char *pszOut, float fTime)
@@ -1084,88 +1056,12 @@ BrMenuFillLapTime(char *pszOut, float fTime)
 }
 
 /* WHAT IT DOES: format one stored lap time onto this row as m:ss.hh. */
-/* port-only body; Glide match is src/core/cpp/0x1003A580.cpp */
-int32_t BrMenuTime1040(BrMenuItem *pItem)
-{
-    char    sz[32];
-    char   *psz;
-    char   *pszDash = "--:--";
-    int32_t nCenti, nSec, nHund, nMin, nSecOfMin;
-    float   fSecStored;
-
-    /* Inlined FillLapTime against the GLOBAL so fld/fcom stay live (fcomp
-     * would pop a parameter copy).  pszDash is a pointer so strcpy expands
-     * as mov-edi + rep movs, not as immediate word stores of the literal.
-     * `<=` so the dash copy is fall-through and format is `je`. */
-    memset(sz, 0, sizeof sz);
-    if (g_menu.gAA28C8 <= 0.0f) {
-        strcpy(sz, pszDash);
-    } else {
-        nCenti     = (int32_t)(g_menu.gAA28C8 * 100.0f);
-        nSec       = (int32_t)((float)nCenti * 0.01f);
-        fSecStored = (float)nSec;
-        nHund      = (int32_t)((float)nCenti - fSecStored * 100.0f);
-        nMin       = (int32_t)(fSecStored * 0.016666667f);
-        nSecOfMin  = (int32_t)(fSecStored - (float)nMin * 60.0f);
-        sprintf(sz, "%d:%02d.%02d", (int)nMin, (int)nSecOfMin, (int)nHund);
-    }
-
-    if (strlen(sz) == 0)
-        return 0;
-
-    psz = pItem->text.sz;
-    strcpy(psz, BrStrUpr(sz));
-
-    {
-        const BrMenuTextVtbl *pVtbl = pItem->text.pVtbl;
-        BrMenuText           *pText = &pItem->text;
-
-        pVtbl->pfn04(pText);
-        if (psz != NULL)
-            pVtbl->pfn10(pText);
-    }
-    return 1;
-}
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003A580.cpp */
+int32_t BrMenuTime1040(BrMenuItem *pItem);
 
 /* WHAT IT DOES: format a second stored lap time onto this row as m:ss.hh. */
-/* port-only body; Glide match is src/core/cpp/0x1003A6D0.cpp */
-int32_t BrMenuTime1180(BrMenuItem *pItem)
-{
-    char    sz[32];
-    char   *psz;
-    char   *pszDash = "--:--";
-    int32_t nCenti, nSec, nHund, nMin, nSecOfMin;
-    float   fSecStored;
-
-    memset(sz, 0, sizeof sz);
-    if (g_menu.gAA28CC <= 0.0f) {
-        strcpy(sz, pszDash);
-    } else {
-        nCenti     = (int32_t)(g_menu.gAA28CC * 100.0f);
-        nSec       = (int32_t)((float)nCenti * 0.01f);
-        fSecStored = (float)nSec;
-        nHund      = (int32_t)((float)nCenti - fSecStored * 100.0f);
-        nMin       = (int32_t)(fSecStored * 0.016666667f);
-        nSecOfMin  = (int32_t)(fSecStored - (float)nMin * 60.0f);
-        sprintf(sz, "%d:%02d.%02d", (int)nMin, (int)nSecOfMin, (int)nHund);
-    }
-
-    if (strlen(sz) == 0)
-        return 0;
-
-    psz = pItem->text.sz;
-    strcpy(psz, BrStrUpr(sz));
-
-    {
-        const BrMenuTextVtbl *pVtbl = pItem->text.pVtbl;
-        BrMenuText           *pText = &pItem->text;
-
-        pVtbl->pfn04(pText);
-        if (psz != NULL)
-            pVtbl->pfn10(pText);
-    }
-    return 1;
-}
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003A6D0.cpp */
+int32_t BrMenuTime1180(BrMenuItem *pItem);
 
 /* WHAT IT DOES: put this stage's name on the row, in capitals.  The
  * string-table entry itself is uppercased, so the next reader sees

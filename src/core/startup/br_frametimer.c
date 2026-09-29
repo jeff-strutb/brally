@@ -89,7 +89,7 @@ static void br86_st32(void *p, size_t off, int32_t v)
 /* WHAT IT DOES: starts the frame clock ticking from now, noting the current
  * time and when the next frame is due. It uses the machine's precise timer
  * where there is one and the ordinary Windows clock otherwise. */
-/* port-only body; Glide match is src/core/generated/0x1006E3F0.c */
+/* Glide match is src/core/generated/0x1006E3F0.c (now filed in its module) */
 /* 0x1006E3F0 is matched in src/core/generated/0x1006E3F0.c; BrX100751D0's
  * `mov ecx,esi / call` needs that symbol, not a local copy. */
 extern void BR_THISCALL1 br86_timer_restart(void *pThis);

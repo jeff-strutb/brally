@@ -326,12 +326,8 @@ static void Br31NotifyAndClear(BrPhase **ppSlot)
 /* WHAT IT DOES: an adapter, nothing more. Menu rows can only call a routine
  * that takes one argument, so this supplies the shared context that the real
  * leave routine needs alongside it. */
-/* port-only body; Glide match is src/core/cpp/0x1003E200.cpp */
-static int32_t Br31Thunk_10044CB0(void *pEntity)
-{
-    (void)BrPhaseLeave_10044CB0(g_pBase, pEntity);
-    return 0;
-}
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003E200.cpp */
+static int32_t Br31Thunk_10044CB0(void *pEntity);
 
 /* ==========================================================================
  * 0x10045780-0x100458E0 -- the twelve HOOK installers
@@ -376,19 +372,8 @@ BR31_HOOK_F4(BrPhaseHook_100458E0, BrPhaseLeaveNamed_10046BF0)
 /* WHAT IT DOES: brings up a screen that needs the game CD in the drive. It
  * checks for the disc first, and if it is not there it puts up the "please
  * insert Boss Rally CD" message and refuses to open the screen at all. */
-/* port-only body; Glide match is src/core/cpp/0x1003ED90.cpp */
-int BrPhaseActivate_10045900(void)
-{
-    int fBuilt;
-
-    if (BrExt_10045A00() == 0) {
-        BrExt_100419D0(BrExt_10074030(0xD));
-        return 0;
-    }
-    BrExt_100419D0(g_pBase->p0AD300);
-
-    return Br31Activate(&g_pExt->pAA291C, BrExt_1004F2B0, &fBuilt);
-}
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003ED90.cpp */
+int BrPhaseActivate_10045900(void);
 
 /* 0x10045AA0 -- an installer, not an activate, but it lives here in the
  * original's layout. */
@@ -421,23 +406,15 @@ int BrPhaseHook_10045AA0(void *pArg)
 /* 0x10045AF0 */
 /* WHAT IT DOES: brings up the "load championship season" screen, building it
  * the first time and just making it current thereafter. */
-/* port-only body; Glide match is src/core/cpp/0x1003EF90.cpp */
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003EF90.cpp */
 /* @n64 0x8021C814 located */
-int BrPhaseActivate_10045AF0(void)
-{
-    int fBuilt;
-    return Br31Activate(&g_pExt->pAA2924, BrExt_1004F700, &fBuilt);
-}
+int BrPhaseActivate_10045AF0(void);
 
 /* 0x10045BC0 */
 /* WHAT IT DOES: brings up the screen the season-save button leads to,
  * building it the first time. */
-/* port-only body; Glide match is src/core/cpp/0x1003F060.cpp */
-int BrPhaseActivate_10045BC0(void)
-{
-    int fBuilt;
-    return Br31Activate(&g_pExt->pAA2928, BrExt_10050060, &fBuilt);
-}
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003F060.cpp */
+int BrPhaseActivate_10045BC0(void);
 
 /* 0x10045C90 -- pre-declared by slice2_26.h. Two objects; the second is built
  * only on the just-built path of the first. The original returns 1, or 0 if
@@ -446,124 +423,50 @@ int BrPhaseActivate_10045BC0(void)
  * builds the "are you sure you want to exit the season?" confirmation behind it
  * so it is ready when the player asks to leave. If the screen was already open
  * the confirmation is not rebuilt. It ignores the argument it is handed. */
-/* port-only body; Glide match is src/core/cpp/0x1003F130.cpp */
-void BrExt_10045C90(void *p)
-{
-    int fBuilt;
-
-    (void)p;    /* the original reads no argument */
-
-    if (!Br31Activate(&g_pExt->pAA292C, BrExt_100509F0, &fBuilt))
-        return;
-    if (!fBuilt)
-        return;
-
-    (void)Br31ActivateSecond(&g_pExt->pAA2974, BrExt_10049F40);
-}
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003F130.cpp */
+void BrExt_10045C90(void *p);
 
 /* 0x10045DC0 */
 /* WHAT IT DOES: brings up the season-progress screen, copying the current
  * round number into the slot that screen reads from first. */
-/* port-only body; Glide match is src/core/cpp/0x1003F260.cpp */
-int BrPhaseActivate_10045DC0(void)
-{
-    int fBuilt;
-
-    g_pExt->nAA28AC = g_pExt->nAA28A4;
-
-    return Br31Activate(&g_pExt->pAA2930, BrExt_10052030, &fBuilt);
-}
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003F260.cpp */
+int BrPhaseActivate_10045DC0(void);
 
 /* 0x10045EA0 */
 /* WHAT IT DOES: brings one particular menu screen up, building it if it is not
  * already there. Which screen it is was not established here. */
-/* port-only body; Glide match is src/core/cpp/0x1003F340.cpp */
-int BrPhaseActivate_10045EA0(void)
-{
-    int fBuilt;
-    return Br31Activate(&g_pExt->pAA2934, BrExt_10052F50, &fBuilt);
-}
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003F340.cpp */
+int BrPhaseActivate_10045EA0(void);
 
 /* 0x10045F70 -- the twin of 0x10045C90. */
 /* WHAT IT DOES: opens a menu screen and, only when that screen has to be built
  * for the first time, also builds a second screen behind it -- the same
  * two-at-once pattern used for a screen and its confirmation. Which pair these
  * are was not established here. */
-/* port-only body; Glide match is src/core/cpp/0x1003F410.cpp */
-int BrPhaseActivate_10045F70(void)
-{
-    int fBuilt;
-
-    if (!Br31Activate(&g_pExt->pAA2938, BrExt_10053CF0, &fBuilt))
-        return 0;
-    if (!fBuilt)
-        return 1;
-
-    return Br31ActivateSecond(&g_pExt->pAA2978, BrExt_1004A260);
-}
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003F410.cpp */
+int BrPhaseActivate_10045F70(void);
 
 /* 0x100460A0 */
 /* WHAT IT DOES: brings one particular menu screen up, building it if needed.
  * Which screen it is was not established here. */
-/* port-only body; Glide match is src/core/cpp/0x1003F540.cpp */
-int BrPhaseActivate_100460A0(void)
-{
-    int fBuilt;
-    return Br31Activate(&g_pExt->pAA293C, BrExt_10054B50, &fBuilt);
-}
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003F540.cpp */
+int BrPhaseActivate_100460A0(void);
 
 /* 0x10046170 */
 /* WHAT IT DOES: brings up a menu screen and switches the background music over
  * to a different track as it does so -- and it does that switch every time,
  * including when the screen was already open. */
-/* port-only body; Glide match is src/core/cpp/0x1003F610.cpp */
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003F610.cpp */
 /* @n64 0x80248F38 located */
-int BrPhaseActivate_10046170(void)
-{
-    int fBuilt;
-
-    BrExt_100419D0(g_pBase->p0AD300);
-    BrExt_10072AF0(3, 0x00200020u);
-    g_pExt->nAA2854 = 3;            /* both paths, including already-built */
-
-    return Br31Activate(&g_pExt->pAA2910, BrExt_10049C20, &fBuilt);
-}
+int BrPhaseActivate_10046170(void);
 
 /* 0x10046260 */
 /* WHAT IT DOES: opens the screen that the game leaves the menus through,
  * resetting a good deal of shared state on the way: the menu mode, the season
  * block, a marker byte and two guard flags. The three final set-up steps and
  * the wiring of its exit row happen only when the screen has to be built. */
-/* port-only body; Glide match is src/core/cpp/0x1003F700.cpp */
-int BrPhaseActivate_10046260(void)
-{
-    int fBuilt;
-
-    g_pBase->n0AA010 = 2;
-    BrExt_1003E680();
-    g_pExt->nACED34  = 0;
-    g_pExt->nAD0984  = 1;
-    g_pBase->n0AA010 = 2;           /* stored twice by the original */
-    g_pBase->n0AC304 = 1;
-    g_pExt->b680738  = 0xFF;
-
-    /* The original repeats the n0AC304 store on the not-yet-built path only.
-     * The value is the same, so this is observably a no-op -- it is kept so
-     * the transcription stays literal. */
-    if (g_pBase->pAA290C == NULL)
-        g_pBase->n0AC304 = 1;
-
-    if (!Br31Activate(&g_pBase->pAA290C, BrPhaseEnterPlaceholder_1004B430, &fBuilt))
-        return 0;
-    if (!fBuilt)
-        return 1;
-
-    BrExt_10008B80();               /* a bare `ret` in this build */
-    BrExt_1003DFC0();
-    BrExt_1003E510();
-    g_pExt->pAA29AC->pfnHook = Br31Thunk_10044CB0;   /* 0x10044CB0 */
-    return 1;
-}
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003F700.cpp */
+int BrPhaseActivate_10046260(void);
 
 /* 0x10046380 */
 /* WHAT IT DOES: opens a screen with one guard flag suppressed across the
@@ -612,25 +515,9 @@ BR31_LEAVE(BrPhaseLeave_100463C0, g_pExt->pAA2958,
 /* 0x10046400 -- pre-declared by slice2_25.h. */
 /* WHAT IT DOES: leaves a screen, forgetting it and clearing three counters
  * that went with it, and hands the player back to a remembered screen. */
-/* port-only body; Glide match is src/core/cpp/0x1003F8A0.cpp */
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003F8A0.cpp */
 /* @n64 0x80264A60 located */
-int32_t BrSub10046400(BrGameObj *p)
-{
-    BrPhase *pCur;
-    BrPhase *pNext;
-
-    ((const Br31SubVtblMatch *)p->pSub->pVtbl)->pfnSlot7(p->pSub);
-    pCur = g_brPhaseAA2904;
-    if (pCur != NULL)
-        (void)((const Br31PhaseVtblMatch *)pCur->pVtbl)->f00(pCur, pCur->pVtbl, 1);
-    pNext = g_brAA2950;
-    g_brAA2954 = NULL;
-    g_brAA29E4 = 0;
-    g_brAA29E0 = 0;
-    g_brAA285C = 0;
-    g_brPhaseAA2904 = pNext;
-    return 0;
-}
+int32_t BrSub10046400(BrGameObj *p);
 
 BR31_LEAVE(BrPhaseLeave_10046450, g_pBase->pAA2908,
            g_pBase->pAA290C = NULL; g_pExt->pAA29AC = NULL;)
@@ -688,43 +575,15 @@ BR31_LEAVE(BrPhaseLeave_100470E0, g_pExt->pAA2938,
 /* WHAT IT DOES: leaves a screen and, on the way out, switches the wheel's
  * force feedback off -- so this is the exit from a screen that had it
  * running. */
-/* port-only body; Glide match is src/core/cpp/0x1003FA00.cpp */
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003FA00.cpp */
 /* @n64 0x80264B20 located */
-int32_t BrPhaseLeave_10046560(void *pEntity)
-{
-    BrGameObj *pObj = (BrGameObj *)pEntity;
-    BrPhase   *pCur;
-    BrPhase   *pNext;
-
-    ((const Br31SubVtblMatch *)pObj->pSub->pVtbl)->pfnSlot7(pObj->pSub);
-    pCur = g_brPhaseAA2904;
-    if (pCur != NULL)
-        (void)((const Br31PhaseVtblMatch *)pCur->pVtbl)->f00(pCur, pCur->pVtbl, 1);
-    pNext = g_brAA297C;
-    g_brAA2998 = NULL;
-    g_brPhaseAA2904 = pNext;
-    BrExt_10079550();
-    return 0;
-}
+int32_t BrPhaseLeave_10046560(void *pEntity);
 
 /* 0x100466C0 */
 /* WHAT IT DOES: leaves a screen and writes the settings out to disk as it
  * goes, so changes made on it survive. */
-/* port-only body; Glide match is src/core/cpp/0x1003FB10.cpp */
-int32_t BrPhaseLeave_100466C0(void *pEntity)
-{
-    BrPhase *pNext;
-
-    Br31LeavePrologue(pEntity);
-    pNext = g_pBase->pAA2918;
-    g_pBase->pAA2984 = NULL;
-    BR_PHASE_CUR = pNext;
-
-    BrExt_1003E310();
-    /* __thiscall: `this` is 0x10B4DF30, its one argument 0x10B4FBE8. */
-    BrExt_1006A4A0(g_pExt->pB4DF30, g_pExt->pB4FBE8);
-    return 0;
-}
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003FB10.cpp */
+int32_t BrPhaseLeave_100466C0(void *pEntity);
 
 /* --- the eight LEAVE routines that also reset the player name ------------ */
 
@@ -760,23 +619,8 @@ BR31_LEAVE_NAMED(BrPhaseLeaveNamed_10046EB0, g_pExt->pAA2934)
  * shared working copy -- but it clears a different, smaller set of state than
  * the seven other name-resetting exits do, so it is not simply another one of
  * them. */
-/* port-only body; Glide match is src/core/cpp/0x10040260.cpp */
-int32_t BrPhaseLeaveNamed_10046E10(void *pEntity)
-{
-    BrPhase *pNext;
-
-    Br31LeavePrologue(pEntity);
-
-    g_pExt->pAA2924 = NULL;
-    g_pExt->nAA28E0 = 0;
-    g_pExt->n0AB3F4 = -1;
-    Br31CopyName(g_pExt->szAA2518, g_pExt->sz39B720);
-    Br31CopyName(g_pExt->szA9D618, g_pExt->sz39B720);
-
-    pNext = g_pExt->pAA291C;
-    BR_PHASE_CUR = pNext;
-    return 0;
-}
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x10040260.cpp */
+int32_t BrPhaseLeaveNamed_10046E10(void *pEntity);
 
 /* --- the three one-statement gotos ---------------------------------------- */
 
@@ -834,58 +678,15 @@ int32_t BrPhaseGoto_10047050(void) { BR31_GOTO_CUR = BR31_GOTO_293C; return 0; }
  * the confirmation screen that was sitting behind it. It briefly leaves no
  * screen current at all, which the release runs inside -- so anything that
  * release does sees no current screen. */
-/* port-only body; Glide match is src/core/cpp/0x100403B0.cpp */
-int32_t BrPhaseLeave_10046F60(void *pEntity)
-{
-    BrPhase *pSaved;
-
-    Br31LeavePrologue(pEntity);
-
-    pSaved = g_pExt->pAA292C;
-    BR_PHASE_CUR = NULL;        /* visible only to the notify below */
-    g_pExt->pAA2974  = NULL;
-    if (pSaved != NULL) {
-        pSaved->pVtbl->f00(pSaved, 1);
-        g_pExt->pAA292C = NULL;
-    }
-    BR_PHASE_CUR = g_pBase->pAA2908;
-    return 0;
-}
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x100403B0.cpp */
+int32_t BrPhaseLeave_10046F60(void *pEntity);
 
 /* 0x10046FD0 */
 /* WHAT IT DOES: leaves a screen and throws away three other screens with it,
  * then returns the player to the root menu. This is the exit that unwinds a
  * whole branch of the menus rather than one step. */
-/* port-only body; Glide match is src/core/cpp/0x10040420.cpp */
-int32_t BrPhaseLeave_10046FD0(void *pEntity)
-{
-    BrPhase *p;
-    BrGameObj *pObj;
-
-    p = g_brAA2934;
-    if (p != 0) {
-        ((const Br31PhaseVtblF1C *)p->pVtbl)->f1C(p);
-        g_brAA2934 = 0;
-    }
-    p = g_brAA2938;
-    if (p != 0) {
-        ((const Br31PhaseVtblF1C *)p->pVtbl)->f1C(p);
-        g_brAA2938 = 0;
-    }
-    p = g_brAA293C;
-    if (p != 0) {
-        ((const Br31PhaseVtblF1C *)p->pVtbl)->f1C(p);
-        g_brAA293C = 0;
-    }
-    pObj = (BrGameObj *)pEntity;
-    ((const Br31SubVtblMatch *)pObj->pSub->pVtbl)->pfnSlot7(pObj->pSub);
-    p = (BrPhase *)g_brPhaseAA2904;
-    if (p != 0)
-        (void)((const Br31PhaseVtblMatch *)p->pVtbl)->f00(p, p->pVtbl, 1);
-    g_brAA2974 = 0;
-    g_brPhaseAA2904 = (BrPhase_ *)g_brAA2908;
-    return 0;
-}
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x10040420.cpp */
+int32_t BrPhaseLeave_10046FD0(void *pEntity);
 
 /* 0x10047120 */
 /* WHAT IT DOES: leaves a screen and, if nothing has been entered yet, wipes

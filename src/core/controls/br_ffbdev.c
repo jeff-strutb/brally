@@ -158,45 +158,16 @@ typedef long (__stdcall *BrDiSetPropFn)(BrDiObj *, uint32_t, const void *);
  * which Windows requires again every time the game comes back to the
  * foreground. It reports whether it succeeded, and says "no" harmlessly if
  * there is no such device. */
-/* port-only body; Glide match is src/core/generated/0x100706B0.c */
-int32_t BrDiAcquire(void)
-{
-    BrDiObj *pDev = g_brFfb.pDevice;
-
-    if (pDev == NULL) {
-        return 0;
-    }
-    return (BrDiDev(pDev)->pfnAcquire(pDev) >= 0) ? 1 : 0;
-}
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/generated/0x100706B0.c */
+int32_t BrDiAcquire(void);
 
 /* 0x10078BC0 */
 /* WHAT IT DOES: lets go of the keyboard, but only once as many parts of the
  * game have finished with it as asked for it in the first place -- it counts
  * users rather than shutting down on the first call. An extra call after the
  * count has already reached zero does nothing at all. */
-/* port-only body; Glide match is src/core/generated/0x10071EB0.c */
-void BrDiKeyboardShutdown(void)
-{
-    BrDiObj *pDev;
-
-    g_br18ABDD8 -= 1;
-    if (g_br18ABDD8 < 0) {
-        g_br18ABDD8 = 0;
-        return;                       /* clamp, and NO teardown */
-    }
-    if (g_br18ABDD8 != 0) {
-        return;
-    }
-    pDev = g_pBr18ABDD0;
-    if (pDev == NULL) {
-        return;
-    }
-    BrDiDev(pDev)->pfnUnacquire(pDev);
-    /* Re-read, deliberately without a second NULL test -- as the original. */
-    pDev = g_pBr18ABDD0;
-    BrDiDev(pDev)->pfnRelease(pDev);
-    g_pBr18ABDD0 = NULL;
-}
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/generated/0x10071EB0.c */
+void BrDiKeyboardShutdown(void);
 
 /* 0x10078C30 BrDiSetPropRange, 0x10078C80 BrDiSetPropDword,
  * 0x10078ED0 BrFfbCommitDuration and 0x100790B0 BrFfbSetSpringCoeff moved to

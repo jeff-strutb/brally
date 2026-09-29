@@ -200,32 +200,8 @@ int32_t BrAppStateLoading(void)
  * ready. On a first run there is no choice recorded, so it picks 640x480. If
  * the player has changed the mode it tears the old display down and rebuilds
  * -- which also resets the sound, because that goes with the device. */
-/* port-only body; Glide match is src/core/cpp/0x1001CE20.cpp */
-int32_t BrAppStateSetMode(void)
-{
-    const int32_t hDevice = BrBootGlobal_AC5C5C();
-    const int32_t fModeChange = BrBootGlobal_ABAA0();
-
-    if (hDevice == 0 && fModeChange == 0) {
-        g_brAppModeW = BR_APP_DEFAULT_W;   /* 0x280 */
-        g_brAppModeH = BR_APP_DEFAULT_H;   /* 0x1E0 */
-        BrBootSetModeGlobals(g_brAppModeW, g_brAppModeH);
-
-        BrBootFrontier_1006C460();
-        g_brAppState = BR_APP_LOADING;     /* 3 */
-        return 1;
-    }
-
-    if (hDevice == 0 && fModeChange != 0) {
-        BrBootFrontier_1006C290(0);
-        BrBootFrontier_10056260();
-        BrBootSetAC6748(BrBootFrontier_1006E280());
-    }
-
-    /* 0x1001CE9D onward -- the gated configuration tail. */
-    BrBootFrontier_SetModeTail();
-    return 1;
-}
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1001CE20.cpp */
+int32_t BrAppStateSetMode(void);
 
 /* ------------------------------------------------------------------ *
  * 0x1001CF80 -- the frame tick.
