@@ -162,6 +162,7 @@ va,name,kind
 8021F158,BrCarTickMessages,func
 8021F1F0,BrWrongWayCheck,func
 8021F2D8,BrCarGridCell,func
+8021F380,BrGroundRay,func
 8021F998,BrCarPhysTick,func
 8021FE04,BrCarSetPos,func
 8021FE80,BrCarSetHeading,func
