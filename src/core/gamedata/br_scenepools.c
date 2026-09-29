@@ -8,7 +8,6 @@
  *
  * See slice2_19.h for the recovered layouts and the gotchas.
  */
-#ifdef BR_MATCHING_BUILD
 #include <windows.h>
 
 extern int DAT_106b7ac8;
@@ -106,4 +105,3 @@ next:
   DAT_106ed6e0 = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
   return;
 }
-#endif /* BR_MATCHING_BUILD */

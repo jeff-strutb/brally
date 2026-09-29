@@ -15,10 +15,8 @@
  * key packer) hit in Glide only.  So there is nothing to cross-check against
  * for these, and config/shared.csv reports them unpaired for the same reason.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "br_surf.h"
 
 #include <stdlib.h>
@@ -170,10 +168,6 @@ BrSurf *BrSurfFromBitmap(const BrGdiBitmap *pbm)
 {
     BrSurf *pSurf;
 
-#ifndef BR_MATCHING_BUILD
-    /* Port-only: orig has no NULL test (`mov esi,[esp+8]; cmp word [esi+12],18`). */
-    if (!pbm) return NULL;
-#endif
     if (pbm->cBitsPixel != 24) return NULL;
 
     pSurf = BrSurfNew(pbm->cx, pbm->cy);
@@ -214,10 +208,6 @@ void BrSurfSetColourKey(BrSurf *pSurf, uint32_t colorref)
     int key;
     unsigned char b;
 
-#ifndef BR_MATCHING_BUILD
-    /* Port-only: orig loads pSurf after packing (`mov eax,[esp+4]; mov [eax+0xc],cx`). */
-    if (!pSurf) return;
-#endif
 
     /* 0x00BBGGRR -> 565 with red in the high bits.  The red and green terms
      * share a `<< 3`, and the source says so: the whole point of writing the
@@ -282,8 +272,7 @@ uint32_t BrSurf565ToRgb(uint16_t v)
     return (r << 16) | (g << 8) | b;
 }
 
-/* ── Ghidra-matched functions ─────────────────────────── */
-#ifdef BR_MATCHING_BUILD
+/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
 void __stdcall grLfbWriteRegion(int, int, int, int, int, int, int, int);
 
 /* WHAT IT DOES: blit a surface's pixel data to the Glide linear frame buffer. */
@@ -314,4 +303,3 @@ int __fastcall BrVec3Predict(int param_1)
   return;
 }
 
-#endif /* BR_MATCHING_BUILD */

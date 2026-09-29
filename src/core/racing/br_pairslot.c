@@ -2,10 +2,8 @@
  *
  * Resetting one two-field slot record. Filed out of slice2_19.c.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original binary is /MD: CRT calls resolve through the import table. */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice2_19.h"
 
 /* 0x10035041 */

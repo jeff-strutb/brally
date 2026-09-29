@@ -10,7 +10,6 @@
  * LOAD-BEARING although neither body uses it: dropping those four changes
  * 0x1005C490's code (measured 2026-09-28).  It is TU state, not a need.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
 #include <windows.h>
@@ -196,4 +195,3 @@ void __fastcall BrRaceCarReset(unsigned char *pCar)
     *(int *)(pCar + 0xe88) = 0;
 }
 
-#endif /* BR_MATCHING_BUILD */

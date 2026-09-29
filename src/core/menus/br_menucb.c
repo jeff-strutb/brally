@@ -11,10 +11,8 @@
  *
  * Original range: BRD3D.dll 0x10040450-0x10042740. See slice2_24.h. */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice2_24.h"
 
 #include <stdio.h>
@@ -126,51 +124,11 @@ static char *BrStrUpr(char *psz)
  * this packet hands it a 32-byte buffer and a value that is at most eleven
  * characters, so no call here can overrun; the size argument the wrapper took
  * was never doing any work. */
-#ifdef _MSC_VER
-#ifdef BR_MATCHING_BUILD
 /* Orig is /MD: `call [__imp__itoa]` / `[__imp__strupr]` (FF 15), not E8. */
 __declspec(dllimport) char *_itoa(int value, char *pszOut, int radix);
 __declspec(dllimport) char *_strupr(char *psz);
-#else
-char *_itoa(int value, char *pszOut, int radix);
-#endif
 #define BrItoa _itoa
-#ifdef BR_MATCHING_BUILD
 #define BrStrUpr _strupr
-#endif
-#else
-static char *BrItoa(int value, char *pszOut, int radix)
-{
-    char     tmp[36];
-    unsigned u;
-    int      neg = 0;
-    int      n   = 0;
-    char    *p   = pszOut;
-
-    if (radix < 2 || radix > 36) {
-        pszOut[0] = '\0';
-        return pszOut;
-    }
-    if (radix == 10 && value < 0) {
-        neg = 1;
-        u   = (unsigned)(-(value + 1)) + 1u;   /* INT_MIN-safe */
-    } else {
-        u = (unsigned)value;
-    }
-    do {
-        unsigned d = u % (unsigned)radix;
-        tmp[n++]   = (char)(d < 10u ? '0' + d : 'a' + (d - 10u));
-        u /= (unsigned)radix;
-    } while (u != 0u);
-
-    if (neg)
-        *p++ = '-';
-    while (n > 0)
-        *p++ = tmp[--n];
-    *p = '\0';
-    return pszOut;
-}
-#endif
 
 /* =====================================================================
  * 1. Module state
@@ -199,7 +157,6 @@ BrMenuState *BrMenuGetState(void)
  * The matching build reads the fields below as the separate globals they are,
  * by their DAT_ names (the image gate resolves those from the address they
  * spell).  pSt is always &g_menu, so pSt->x and g_menu.x name the same object. */
-#ifdef BR_MATCHING_BUILD
 extern uint32_t DAT_100a9360;
 #define MENU_g0AA010 DAT_100a9360
 extern uint32_t DAT_100abde8;
@@ -270,43 +227,6 @@ extern uint32_t DAT_10ac6744;
 #define MENU_gAA33E4 DAT_10ac6744
 extern int32_t DAT_10af21b0;
 #define MENU_gACEE50 DAT_10af21b0
-#else
-#define MENU_g0AA010 g_menu.g0AA010
-#define MENU_g0AC648 g_menu.g0AC648
-#define MENU_g0AC64C g_menu.g0AC64C
-#define MENU_g0AC650 g_menu.g0AC650
-#define MENU_g0BD3E0 g_menu.g0BD3E0
-#define MENU_g1782CD0 g_menu.g1782CD0
-#define MENU_g18ABDBC g_menu.g18ABDBC
-#define MENU_g220B24 g_menu.g220B24
-#define MENU_gA9D618 g_menu.gA9D618
-#define MENU_gAA2518 g_menu.gAA2518
-#define MENU_gAA2844 g_menu.gAA2844
-#define MENU_gAA287C g_menu.gAA287C
-#define MENU_gAA289C g_menu.gAA289C
-#define MENU_gAA28A0 g_menu.gAA28A0
-#define MENU_gAA28A4 g_menu.gAA28A4
-#define MENU_gAA28A8 g_menu.gAA28A8
-#define MENU_gAA28AC g_menu.gAA28AC
-#define MENU_gAA28B8 g_menu.gAA28B8
-#define MENU_gAA28C4 g_menu.gAA28C4
-#define MENU_gAA28D0 g_menu.gAA28D0
-#define MENU_gAA28D8 g_menu.gAA28D8
-#define MENU_gAA28E0 g_menu.gAA28E0
-#define MENU_gAA28E4 g_menu.gAA28E4
-#define MENU_gAA28E8 g_menu.gAA28E8
-#define MENU_gAA2904 g_menu.gAA2904
-#define MENU_gAA2964 g_menu.gAA2964
-#define MENU_gAA2A00 g_menu.gAA2A00
-#define MENU_gAA2A08 g_menu.gAA2A08
-#define MENU_gAA2A0C g_menu.gAA2A0C
-#define MENU_gAA2A1C g_menu.gAA2A1C
-#define MENU_gAA2A20 g_menu.gAA2A20
-#define MENU_gAA2A24 g_menu.gAA2A24
-#define MENU_gAA2A28 g_menu.gAA2A28
-#define MENU_gAA33E4 g_menu.gAA33E4
-#define MENU_gACEE50 g_menu.gACEE50
-#endif
 
 /* =====================================================================
  * 2. The caption tables
@@ -1039,7 +959,6 @@ static float BrMenuStageTime(const BrMenuState *pSt, const float *pTimes)
 
 /* WHAT IT DOES: put a lap time from one stored table onto this row, or
  * "--:--" if times are not available yet. */
-#ifdef BR_MATCHING_BUILD
 /* The GLIDE original (0x1003A140) INLINES every helper this callback's
  * portable spelling factored out -- the stage-byte lookup, the "--:--"
  * copy, the whole lap formatter and the store tail -- so the placed body
@@ -1105,22 +1024,6 @@ int32_t BrMenuTime0C00(BrMenuItem *pItem)
     }
     return 1;
 }
-#else
-/* @implements 0x10040C00 d3d BrMenuTime0C00 */
-int32_t BrMenuTime0C00(BrMenuItem *pItem)
-{
-    BrMenuState *pSt = &g_menu;
-    char         sz[32];               /* the original's local is 0x20, zeroed */
-
-    memset(sz, 0, sizeof sz);
-    if (MENU_gAA289C == 0)
-        BrStrCopy(sz, sizeof sz, "--:--");
-    else
-        BrMenuFormatLapTime(sz, sizeof sz,
-                            BrMenuStageTime(pSt, pSt->pTimes27FC));
-    return BrMenuStoreFormatted(pItem, sz, 1);
-}
-#endif /* BR_MATCHING_BUILD */
 
 /* WHAT IT DOES: the same lap-time readout as 0x10040C00, from a second
  * stored table. */
@@ -1160,11 +1063,7 @@ int32_t BrMenuTime0EE0(BrMenuItem *pItem)
     return BrMenuStoreFormatted(pItem, sz, 1);
 }
 
-#ifdef _MSC_VER
 static __inline void
-#else
-static void
-#endif
 BrMenuFillLapTime(char *pszOut, float fTime)
 {
     char    *pszDash = "--:--";
@@ -1532,8 +1431,7 @@ int32_t BrMenuFlags18F0(BrMenuItem *pItem)
     return 1;
 }
 
-/* ── Ghidra-matched functions ─────────────────────────── */
-#ifdef BR_MATCHING_BUILD
+/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
 extern char DAT_10ac592c;
 extern int DAT_10ac5930;
 extern int DAT_10ac5934;
@@ -1542,4 +1440,3 @@ extern char DAT_10ac5c10;
 extern int g_brAA28A4;
 
 
-#endif /* BR_MATCHING_BUILD */

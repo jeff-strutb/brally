@@ -4,14 +4,11 @@
  * corrupt read can be told from a good one. Filed out of slice1_01.c, which
  * was an address batch and not a module.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 #include <stdlib.h>
 
-#ifdef BR_MATCHING_BUILD
 
 /* ---------------------------------------------------------------------------
  * 0x10001000 -- zlib adler32.
@@ -87,4 +84,3 @@ unsigned long BrAdler32(unsigned long adler, const unsigned char *pBuf,
     return (s2 << 16) | s1;
 }
 
-#endif /* BR_MATCHING_BUILD */

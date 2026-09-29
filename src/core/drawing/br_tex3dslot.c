@@ -10,7 +10,6 @@
  * fail, and shuffles the GrTexInfo store order. goto-fail helped the
  * TMEM-full path only. Not a first-compile leaf -- needs a store-order
  * pass against the orig fill block at 0x100282D0. */
-#ifdef BR_MATCHING_BUILD
 
 #define _CRTIMP __declspec(dllimport)
 
@@ -138,4 +137,3 @@ fail:
   return -1;
 }
 
-#endif /* BR_MATCHING_BUILD */

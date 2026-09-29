@@ -25,9 +25,7 @@
  * same lever is used at 0x10009010.  The twin's real name cannot be
  * recovered.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 struct DIDev;
 

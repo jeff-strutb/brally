@@ -7,10 +7,8 @@
  *
  * See slice3_42.h for the recovered layouts and the GOTCHAs.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice3_42.h"
 
 /* .rdata constant carried from slice3_42.c, read out of orig/BRD3D.dll. */
@@ -328,7 +326,6 @@ void BrReplayApplyCar(void *pCar)
     BrReplayApply(pCar, BR_CAR_I32(pCar, BR_S42_CAR_OFF_INDEX));
 }
 
-#ifdef BR_MATCHING_BUILD
 
 /* WHAT IT DOES: return the byte size of the current replay (frame count * 0x18). */
 /* @implements 0x10063B50 glide BrReplayGetSize */
@@ -340,4 +337,3 @@ int BrReplayGetSize(void)
   return g_BrReplayCount[0] * 0x18;
 }
 
-#endif /* BR_MATCHING_BUILD */

@@ -19,10 +19,8 @@
  *     BRGlide  0x100A7518 =  480       (an INT, `fild`: the screen height)
  * See BrGbiCall10024260, which now transcribes the Glide arithmetic.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice5_61.h"
 
 #include <string.h>
@@ -96,7 +94,6 @@ static void Br61AdvanceCar(void)
  * selections forward to the next one that is actually available, so a locked
  * choice cannot be left selected. */
 /* @implements 0x1003E510 d3d BrSub1003E510 */
-#ifdef BR_MATCHING_BUILD
 /* The two sweeps are INLINE in the original -- 99 instructions against 47
  * with them factored out, which is the whole 137-byte gap. They stay as
  * static helpers for their other caller (0x1003E4?? above); MSVC declines to
@@ -173,35 +170,3 @@ void BrSub1003E510(void)
 
     BrSub1005FCF0();
 }
-#else
-void BrSub1003E510(void)
-{
-    BrSub1003E3A0();
-    g_br094350 = g_br0AC65C;
-
-    if (g_br0AA010 == 6)
-        BrSub10044540();
-
-    Br61AdvanceTrack();
-
-    g_br22B34C = g_aBrAC420[g_br0AC654];
-    g_br09435C = g_aBrAC4A0[g_br0AC64C];
-    g_br094358 = g_aBrAC4B0[g_br0AC650];
-    g_br094354 = g_aBrAC518[g_brAA2A08];
-
-    if (g_br0AA010 != 0) {
-        Br61AdvanceCar();
-
-        g_br0B380C = g_aBrAC4D8[g_br0AC648];
-        g_br0BD3E0 = g_br0AC658;
-        g_br22B350 = g_aBrAC4C0[g_brAA2A00];
-    } else {
-        size_t idx = (size_t)g_brAA26F5 + 12u * (size_t)g_brAA26F4;
-
-        g_br0B380C = g_aBr0B3820[idx * 2u + 0u];
-        g_br22B350 = g_aBr0B3820[idx * 2u + 1u];
-    }
-
-    BrSub1005FCF0();
-}
-#endif

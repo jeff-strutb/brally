@@ -1,5 +1,4 @@
 /* 0x00401230 DoMainLoop — CPlay while(TRUE) + GetGraphEvent each lap */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: the intro player's message loop: pump Windows messages until
  * the video finishes or the player quits. */
 /* @implements 0x00401230 bossrally.exe DoMainLoop */
@@ -57,4 +56,3 @@ UINT DoMainLoop(void)
     }
 }
 
-#endif

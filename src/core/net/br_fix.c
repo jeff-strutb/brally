@@ -4,16 +4,13 @@
  * matched first and grouped by what they are afterwards.
  * Every function carries its original address.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import
  * table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdint.h>
 #include <math.h>
 #include <string.h>
 
-#ifdef BR_MATCHING_BUILD
 
 
 /* 0x10007250.  Scale 0x1008F11C = -0.0078125f (= -1/128).
@@ -259,7 +256,6 @@ void BrFixDecodeRecord_10007AA0(float *pOut, const unsigned char *pSrc)
     pOut[0x27] = (pSrc[0x08] & 4) ? DAT_100770cc : DAT_100770c8;
 }
 
-#endif /* BR_MATCHING_BUILD */
 
 /* =====================================================================
  * The packers: the wire side of the same codecs.
@@ -313,7 +309,6 @@ static int32_t BrFtol(double d)
 /* @implements 0x100066E0 d3d BrFixPackU24Q13 */
 int32_t BrFixPackU24Q13(float v)
 {
-#ifdef BR_MATCHING_BUILD
     /* The scale and bias are FLOAT constants (single-precision fmul/fsubr);
      * the clamp stays in ST(0), and the final `(int32_t)` is the plain cast
      * VC5 tail-jumps to __ftol -- the same form as BrFixPackS24Q1. */
@@ -324,15 +319,6 @@ int32_t BrFixPackU24Q13(float v)
     if (d > 16777215.0)
         d = 16777215.0;
     return (int32_t)d;
-#else
-    double d = BrFloor(0.5 - (double)v * -8192.0);
-
-    if (!(d >= 0.0))
-        d = 0.0;
-    if (d > 16777215.0)
-        d = 16777215.0;
-    return BrFtol(d);
-#endif
 }
 
 /* 0x10006730.  0x1008F100 = -2.0f. Clamp is on the INTEGER, after __ftol, and
@@ -342,16 +328,9 @@ int32_t BrFixPackU24Q13(float v)
 /* @implements 0x10006730 d3d BrFixPackS24Q1 */
 int32_t BrFixPackS24Q1(float v)
 {
-#ifdef BR_MATCHING_BUILD
     /* The original leaves the scaled value in ST(0) and `call __ftol`, and a
      * plain cast is the only form VC5 compiles to that. */
     int32_t r = (int32_t)BrFloor(0.5f - v * -2.0f);
-#else
-    /* Host: the cast is undefined once the scaled value leaves int32, and
-     * ARM64 saturates where __ftol wraps. The clamp below is applied to the
-     * INTEGER, so it sees the wrapped value -- go through BrFtol to keep it. */
-    int32_t r = BrFtol(BrFloor(0.5f - v * -2.0f));
-#endif
 
     if (r < -8388608)
         r = -8388608;
@@ -366,15 +345,8 @@ int32_t BrFixPackS24Q1(float v)
 /* @implements 0x10006770 d3d BrFixPackS16Q7 */
 int32_t BrFixPackS16Q7(float v)
 {
-#ifdef BR_MATCHING_BUILD
     /* As BrFixPackS24Q1 above: plain cast so VC5 emits `call __ftol`. */
     int32_t r = (int32_t)BrFloor(0.5f - v * -128.0f);
-#else
-    /* Host: __ftol's low-dword wrap, which the integer clamp below relies on.
-     * 1.0e9 scales to ~1.28e11 -- fits in int64, so it wraps NEGATIVE and
-     * clamps to -32768 rather than saturating to +32767. */
-    int32_t r = BrFtol(BrFloor(0.5f - v * -128.0f));
-#endif
 
     if (r < -32768)
         r = -32768;

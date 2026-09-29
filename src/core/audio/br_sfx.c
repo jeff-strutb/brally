@@ -24,10 +24,8 @@
  * is br_mix.c, which supplies the object slice1_08.c's DirectSound calls go
  * through; this file stays pure so its suite needs neither.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "br_sfx.h"
 #include "br_match.h"    /* BR_STDCALL -- the COM calls below are stdcall */
 
@@ -398,15 +396,9 @@ typedef struct BrSndBankCarSlot {
     int32_t pad;
 } BrSndBankCarSlot;
 
-#ifdef BR_MATCHING_BUILD
 extern BrSndBankCarSlot g_0B6540[];
 extern BrSndBankCarSlot g_0B6C00[];
 extern BrSndBankCarSlot g_0B6C48[];
-#else
-BrSndBankCarSlot g_0B6540[8];
-BrSndBankCarSlot g_0B6C00[8];
-BrSndBankCarSlot g_0B6C48[8];
-#endif
 
 /* WHAT IT DOES: records which car belongs in a given engine-voice slot.
  * Zero means empty; stored codes start at 1. */
@@ -419,8 +411,7 @@ void BrSndBankSetCar(int iCar, int iName)
     g_0B6C48[iCar].iName = iName;
 }
 
-/* ── Ghidra-matched functions ─────────────────────────── */
-#ifdef BR_MATCHING_BUILD
+/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
 extern int BrSndG0B5DE8;
 extern int BrSndG18290FC;
 extern int BrSndPDS;
@@ -514,7 +505,7 @@ int BrSfxCarBankInit(int param_1,int param_2)
   return;
 }
 
-/* ── the bank loader ──────────────────────────────────────────────────── */
+/* ââ the bank loader ââââââââââââââââââââââââââââââââââââââââââââââââââââ */
 
 extern int   DAT_100b55f8[];    /* 0x100B55F8  the voice table, 18 dwords a row */
 extern int   DAT_100b5cb8[];    /* 0x100B5CB8  voice row 24 (engine HIGH)       */
@@ -663,4 +654,3 @@ int BrSfxCarBankLoad(int iCar)
     return ok;
 }
 
-#endif /* BR_MATCHING_BUILD */

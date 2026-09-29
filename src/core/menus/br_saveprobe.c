@@ -27,7 +27,6 @@
  *  - the tail is if/else + ONE return; the second epilogue in the bytes
  *    is VC5's return-duplication (see the note in the RallySeason body).
  */
-#ifdef BR_MATCHING_BUILD
 
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
@@ -131,9 +130,7 @@ int BrSaveProbeTimeAttack(int pList, int *pIdx)
     return 1;
 }
 
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 /* 0x10055C50 -- store a display name into the season or time-attack record
  * named by a save key.
  *
@@ -208,9 +205,7 @@ int __stdcall BrSaveSlotNameSet_10055C50(const char *pKey, const char *pName)
     strcpy(pRec, pName);
     return 1;
 }
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: count how many files match a wildcard pattern, using the
  * CRT's find-first/find-next walk and stopping after 100 entries. Returns
  * -1 when nothing matches at all; otherwise the number of matches AFTER the
@@ -236,4 +231,3 @@ int __stdcall BrFileCountMatching(const char *pszPattern)
   _findclose(h);
   return n;
 }
-#endif /* BR_MATCHING_BUILD */

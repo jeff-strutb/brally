@@ -8,7 +8,6 @@
  */
 #include <stdint.h>
 
-#ifdef BR_MATCHING_BUILD
 
 typedef struct BrVec3 { float x, y, z; } BrVec3;
 typedef struct BrMat4 { float m[4][4]; } BrMat4;
@@ -291,4 +290,3 @@ void __fastcall BrCamChaseStep(BrCamCar *car)
     car->pTargetPrev = car->pTarget;
 }
 
-#endif /* BR_MATCHING_BUILD */

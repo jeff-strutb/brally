@@ -10,7 +10,6 @@
  * sees, and trimming them changes the compiler's view of the code.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
 /* The original BrOptSave takes no arguments (loose globals in, packed
@@ -19,20 +18,13 @@
  * the port signature (cdecl, extra args harmless at run time). */
 #define BrOptSave   BrOptSave_hdr
 #define BrOptAvailB BrOptAvailB_hdr
-#ifdef BR_MATCHING_BUILD
 /* The original BrNameListInit is a thiscall ctor with no stack args (vtbl
  * and fill string are fixed); hide the port's 3-arg prototype. */
 #define BrNameListInit BrNameListInit_port
 #include "slice1_06.h"
 #undef BrNameListInit
-#else
-#include "slice1_06.h"
-#endif
 #undef BrOptSave
 #undef BrOptAvailB
-#else
-#include "slice1_06.h"
-#endif
 
 #include <stdlib.h>
 #include <string.h>

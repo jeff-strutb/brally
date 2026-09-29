@@ -9,17 +9,14 @@
  * rather than a home in an /O2 module.  br_framebegin.c's preamble is
  * carried over verbatim.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <math.h>
 #include <stddef.h>
 #include <stdint.h>
 
 #include "slice2_18.h"
 
-#ifdef BR_MATCHING_BUILD
 extern int   DAT_106ed6a8;          /* 0x106ED6A8  depth cue enabled      */
 extern int   DAT_106e9d84;          /* 0x106E9D84  depth scale (int)      */
 extern int   DAT_106e86a8;          /* 0x106E86A8  depth bias (int)       */
@@ -53,4 +50,3 @@ float BrPointDepthFrac(const BrVec3 *pV)
     }
     return f;
 }
-#endif /* BR_MATCHING_BUILD */

@@ -24,17 +24,14 @@
  * not source: every source order compiles the same, and the TU's symbol
  * table size flips it.  The residue note sits above the function.
  */
-#ifdef BR_MATCHING_BUILD
 /* TU state only (symbol-table size): with these declarations in front,
  * VC5 gives the matrix products the operand roles the original has.
  * Nothing here uses them. */
 #include <dsound.h>
 #include <stdio.h>
-#endif
 #include <stdint.h>
 #include "br_dl.h"
 
-#ifdef BR_MATCHING_BUILD
 
 /* Combined model-view-projection matrix, 4x4 row-major at 0x105D1760. */
 extern float DAT_105d1760, DAT_105d1764, DAT_105d1768, DAT_105d176c;
@@ -146,4 +143,3 @@ const uint32_t *BrDlVtxNoZ(const uint32_t *p)
     return p + 2;
 }
 
-#endif /* BR_MATCHING_BUILD */

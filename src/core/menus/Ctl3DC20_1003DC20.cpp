@@ -11,9 +11,7 @@
  * (mov ecx,[g_inited], not a1). The inited path is a second `if (g_host)
  * HostGo()` — that is the orig `test eax; je` before the shared call.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Phase;
 

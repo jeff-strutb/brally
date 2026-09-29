@@ -4,15 +4,12 @@
  * matched first and grouped by what they are afterwards.
  * Every function carries its original address.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import
  * table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdint.h>
 #include <string.h>
 
-#ifdef BR_MATCHING_BUILD
 
 int operator_delete();
 void __fastcall BrObj87Dtor(void *pThis);
@@ -75,4 +72,3 @@ void __fastcall BrObj87Dtor(void *pThis)
     BrSub10008D60(p + 1);
 }
 
-#endif /* BR_MATCHING_BUILD */

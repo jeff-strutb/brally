@@ -12,27 +12,21 @@
  * Filed out of the address batch slice2_13.c; its preamble is carried over
  * verbatim. See slice2_13.h for the identification notes and every GOTCHA.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef BR_MATCHING_BUILD
 /* Header prototype is cdecl; the original is __stdcall. */
 #define BrFileWriteChecked BrFileWriteChecked_cdecl
 #define BrDPlayThreadProc  BrDPlayThreadProc_cdecl_hdr
-#endif
 #include "slice2_13.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrFileWriteChecked
 #undef BrDPlayThreadProc
 uint32_t __stdcall BrDPlayThreadProc(void *pvCtx);
-#endif
 #include "slice1_03.h"   /* BrAppMsg, BrAppMsgDispatch (= 0x1000BEA0) */
 
 /* ==========================================================================
@@ -192,16 +186,8 @@ void BrPolyClipPlane(BrPolyList *pList, BrPolyDistFn pfnDist)
                 float       t    = dPrev / (dPrev - dCur);
                 BrLerpNode *pNew = BrLerpNodeAlloc(pPrev, pCur, t);
 
-#ifndef BR_MATCHING_BUILD
-                /* DEVIATION: the original never tests the allocation and
-                 * writes through a null node when the pool is empty. */
-                if (pNew != NULL) {
-#endif
                     pNew->pNext = pOut->pNext;
                     pOut->pNext = pNew;
-#ifndef BR_MATCHING_BUILD
-                }
-#endif
                 cv = pList->cVerts + 1;
                 pOut = pCur;
                 goto BR_STORE_CV;
@@ -219,15 +205,9 @@ void BrPolyClipPlane(BrPolyList *pList, BrPolyDistFn pfnDist)
                 pRecycle    = pCur;
 
                 pNew = BrLerpNodeAlloc(pCur, pPrev, t);
-#ifndef BR_MATCHING_BUILD
-                if (pNew != NULL) {
-#endif
                     pNew->pNext = pOut->pNext;
                     pOut->pNext = pNew;
                     pOut        = pNew;
-#ifndef BR_MATCHING_BUILD
-                }
-#endif
                 /* count unchanged: one out, one in */
             } else {
                 /* wholly outside: drop pCur */

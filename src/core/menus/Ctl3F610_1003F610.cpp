@@ -10,9 +10,7 @@
  * ResetBuf, MusicFn(3, 0x200020), slot load, g_track=3 (both paths,
  * interleaved after the test), then shared-return activate.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Phase;
 

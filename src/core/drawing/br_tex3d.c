@@ -1,10 +1,8 @@
 /* br_tex3d.c -- see br_tex3d.h.  The load-time texture pass, transcribed
  * from BRGlide.dll 0x10028820 and the eleven routines it reaches. */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "br_tex3d.h"
 #include "slice1_04.h"      /* BrTexFormatCode (0x10027220 == 0x10027B90) */
 
@@ -211,7 +209,6 @@ static int32_t br_tex3d_register(BrTex3d *pTex)
 /* WHAT IT DOES: notes where a run of texture-setup commands stops. Only the
  * first command that ends the run counts; later ones do not move it. */
 /* @implements 0x100293D0 glide br_tex3d_end */
-#ifdef BR_MATCHING_BUILD
 /* Orig is one stack arg and a global at 0x106B7A9C: `if (g==0) g=p`.
  * The port threads the end pointer through ppEnd. */
 extern int DAT_106b7a9c;
@@ -221,15 +218,6 @@ static void br_tex3d_end(uint8_t *p)
         DAT_106b7a9c = (int)p;
 }
 #define br_tex3d_end3(pTex, p, ppEnd) br_tex3d_end(p)
-#else
-static void br_tex3d_end(BrTex3d *pTex, uint8_t *p, uint8_t **ppEnd)
-{
-    (void)pTex;
-    if (*ppEnd == NULL)
-        *ppEnd = p;
-}
-#define br_tex3d_end3(pTex, p, ppEnd) br_tex3d_end(pTex, p, ppEnd)
-#endif
 
 /* 0x10028B50 == BRD3D 0x10029410 == slice2_16.c's BrGbiTexScanFlush.  Ninety-
  * two bytes, byte-identical in both images.  THE SEAM. */
@@ -681,128 +669,6 @@ static int br_te_unit(BrTexExpSink *pS, int kind, const uint8_t *pu,
  * full. */
 /* Port reconstruction (not byte-exact). Matching twin is BrTex3dExpand at
  * 0x100250D0, transcribed separately. */
-#ifndef BR_MATCHING_BUILD
-void BrTex3dExpand(uint8_t *pOut, int32_t cbOut, int32_t siz,
-                   const uint8_t *pTexels, const uint8_t *pPal, int32_t fmt,
-                   int32_t fMirrorS, int32_t fMirrorT,
-                   int32_t lod, int32_t lodEnd,
-                   const BrTex3dTile *aTile, int32_t flags, int32_t mode,
-                   int32_t hi0, int32_t hi1, int32_t hi2, int32_t hi3,
-                   int32_t lo0, int32_t lo1, int32_t lo2, int32_t lo3,
-                   int32_t maskOdd)
-{
-    BrTexExpSink s;
-    int32_t aHi[4], aLo[4];
-
-    aHi[0] = hi0; aHi[1] = hi1; aHi[2] = hi2; aHi[3] = hi3;
-    aLo[0] = lo0; aLo[1] = lo1; aLo[2] = lo2; aLo[3] = lo3;
-
-    s.p = pOut; s.cb = 0; s.cbMax = cbOut;
-
-    /* 0x100250F5.  The guard is on the FIRST iteration's condition, so an
-     * empty LOD range leaves the buffer untouched. */
-    for (; lod < lodEnd; lod++) {
-        /* 0x1002510D: the tile array is indexed by the ABSOLUTE tile number
-         * and the cursor restarts from the texel base every level. */
-        const BrTex3dTile *pT = &aTile[lod];
-        const uint8_t *pRow = pTexels + (size_t)pT->tmem * 8;
-        int32_t w, h, y, rowElems;
-        int kind, elem, nPer, srcUnit;
-
-        if (siz == 0) {
-            if (fmt == 2) {
-                /* 0x10025148.  Both halves of the test matter: the raw-index
-                 * arm needs bit 1 of the descriptor's +0x260 flags AND the
-                 * level to be exactly 1.  It reads its width, height and
-                 * pitch from tile[1] by a hard-coded displacement rather
-                 * than from tile[lod] -- the same tile, because of the
-                 * guard, so the two spellings cannot disagree. */
-                kind = ((flags & 2) != 0 && lod == 1) ? BR_TE_IDX4 : BR_TE_CI4;
-            } else if (fmt == 4) {
-                kind = (mode == 1) ? BR_TE_I4BLEND : BR_TE_I4;
-            } else {
-                continue;
-            }
-            /* 0x10025169: maskS MINUS ONE, because a 4bpp row is half as
-             * many bytes as it is texels, and the loops below count BYTES. */
-            w = (int32_t)((uint32_t)1 << ((uint32_t)(pT->maskS - 1) & 31u));
-        } else if (siz == 1) {
-            if (fmt == 2)      kind = BR_TE_CI8;
-            else if (fmt == 3) kind = (mode == 1) ? BR_TE_IA8BLEND : BR_TE_AI44;
-            else if (fmt == 4) kind = BR_TE_I8;
-            else               continue;
-            w = (int32_t)((uint32_t)1 << ((uint32_t)pT->maskS & 31u));
-        } else if (siz == 2 && fmt == 0) {
-            kind = BR_TE_RGBA16;
-            w = (int32_t)((uint32_t)1 << ((uint32_t)pT->maskS & 31u));
-        } else {
-            continue;
-        }
-        h = (int32_t)((uint32_t)1 << ((uint32_t)pT->maskT & 31u));
-
-        elem    = (kind == BR_TE_I4 || kind == BR_TE_AI44 ||
-                   kind == BR_TE_I8) ? 1 : 2;
-        nPer    = (kind == BR_TE_CI4 || kind == BR_TE_IDX4 ||
-                   kind == BR_TE_I4BLEND || kind == BR_TE_I4) ? 2 : 1;
-        srcUnit = (kind == BR_TE_RGBA16) ? 2 : 1;
-
-        for (y = 0; y < h; y++) {
-            int fOdd = (y & maskOdd) != 0;
-            int32_t i;
-
-            for (i = 0; i < w; i++) {
-                size_t off = br_tex3d_swiz((size_t)i * (size_t)srcUnit, fOdd);
-                if (br_te_unit(&s, kind, pRow + off, pPal, aHi, aLo)) {
-                    /* 0x10026FEE.  The RGBA16 SWIZZLED loop -- and only that
-                     * one -- tests the row bound BEFORE the budget, so the
-                     * last texel of a row does not abandon the row's mirror
-                     * tail.  Every other arm tests the budget first. */
-                    if (!(kind == BR_TE_RGBA16 && fOdd && i + 1 >= w))
-                        return;
-                }
-            }
-
-            /* 0x10025680: the S mirror re-emits the row just written,
-             * backwards, doubling its width. */
-            if (fMirrorS) {
-                const uint8_t *q = s.p - elem;
-                int32_t k, n = w * nPer;
-                for (k = 0; k < n; k++) {
-                    uint32_t v = br_te_get(q, elem);
-                    q -= elem;
-                    if (br_te_put(&s, v, elem))
-                        return;
-                }
-            }
-
-            /* 0x100256BC: the source pitch is the tile's `line`, added once
-             * per row and NOT clamped up to the row width -- a `line`
-             * narrower than the mask makes consecutive rows overlap, which
-             * is the N64 idiom for a non-power-of-two image. */
-            pRow += (size_t)pT->line;
-        }
-
-        /* 0x100256E8: and the T mirror does the same to whole rows, walking
-         * the finished image backwards a row at a time. */
-        if (fMirrorT && h > 0) {
-            uint8_t *q = s.p;
-            rowElems = (fMirrorS ? 2 : 1) * w * nPer;
-            for (y = 0; y < h; y++) {
-                const uint8_t *p;
-                int32_t k;
-                q -= (size_t)rowElems * (size_t)elem;
-                p = q;
-                for (k = 0; k < rowElems; k++) {
-                    uint32_t v = br_te_get(p, elem);
-                    p += elem;
-                    if (br_te_put(&s, v, elem))
-                        return;
-                }
-            }
-        }
-    }
-}
-#endif /* BR_MATCHING_BUILD */
 
 static int br_tex3d_bpp(const BrTex3dTile *pT)
 {
@@ -967,8 +833,7 @@ void BrTex3dToRgba8(const uint16_t *pArgb1555, uint32_t count, uint8_t *pRgba)
     }
 }
 
-/* ── Ghidra-matched functions ─────────────────────────── */
-#ifdef BR_MATCHING_BUILD
+/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
 extern int DAT_105ccbd0;
 extern int _DAT_106b7aa4;
 extern int _DAT_106b7aa8;
@@ -2235,4 +2100,3 @@ void BrTex3dFreeAll(void)
 }
 
 
-#endif /* BR_MATCHING_BUILD */

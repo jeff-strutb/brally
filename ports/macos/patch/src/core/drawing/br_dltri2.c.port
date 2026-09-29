@@ -1,0 +1,19 @@
+# Port deviations for src/core/drawing/br_dltri2.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop var:g_aBrDlVtxPool
+@drop var:g_brDlTexScaleS
+@drop var:g_brDlTexScaleT
+@drop proto:BrDlClipTri
+@drop proto:grDrawTriangle
+@drop define:BrDlDrawTri
+@drop type:BrDlClipSt
+@drop proto:BrDlVtxFinishTex
+@drop define:BR_DL_PUN
+@drop define:V
+@drop define:BR_DLCMD_FINISH_VTX_I
+@drop define:BR_DLCMD_FINISH_VTX_I_N
+@drop define:BR_DLCMD_TRI_I
+@drop define:BR_DLCMD_FINISH_VTX_I_N2
+@drop define:BR_DLCMD_TRI_I_TEX
+@drop fn:BrDlCmdTri2

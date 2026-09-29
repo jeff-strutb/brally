@@ -2,7 +2,6 @@
  * IDOK / IDCANCEL. Last inner case (IDCANCEL) EndDialog then falls
  * through to `return 0` — an explicit `return 0` there outlines it
  * with `je` + a 5-byte xor-ret (53 diffs). */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: handle a simple OK/Cancel dialog's messages. */
 /* @implements 0x00401C10 setvideo.exe DlgProcOKCancel */
 
@@ -39,4 +38,3 @@ int __stdcall DlgProcOKCancel(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 }
 
 
-#endif /* BR_MATCHING_BUILD */

@@ -11,9 +11,7 @@
  * Early-outs: 0 when the game object is null (eax reuse — return the
  * pointer itself), 1 when bit 9 of arg4 is set.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Sel {
 public:

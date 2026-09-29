@@ -7,10 +7,8 @@
  * matched first and grouped by what they are afterwards.
  * Every function carries its original address.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdint.h>
 
 /* 0x100048D0 */
@@ -20,7 +18,6 @@
  * into the packet as its first three-byte field -- the timestamp every
  * receiver uses to order what arrives. */
 /* @implements 0x10004C40 glide BrNetPktStamp */
-#ifdef BR_MATCHING_BUILD
 /* The mutex pair is the raw Win32 import (FF 15), the same lock idiom the
  * rest of the net layer uses; slice1_02.c declared it once for the whole
  * translation unit. */
@@ -179,10 +176,8 @@ int BrNetWritePlayerRec(void *pBs, unsigned char a, unsigned int flags,
     }
     return 1;
 }
-#endif
 
-#ifdef BR_MATCHING_BUILD
-/* Hand-matched from disassembly — 0x1006CD80
+/* Hand-matched from disassembly â 0x1006CD80
  * fastcall: pointer in ecx, four fields zeroed then a self-pointer stored at
  * offset 0x10 (= p+0x14), returns this. */
 
@@ -200,4 +195,3 @@ int *__fastcall FUN_1006cd80(int *p)
   p[4] = (int)(p + 5);   /* [0x10] = p + 0x14 */
   return p;
 }
-#endif /* BR_MATCHING_BUILD */

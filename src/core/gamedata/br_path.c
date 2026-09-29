@@ -4,14 +4,11 @@
  * matched first and grouped by what they are afterwards.
  * Every function carries its original address.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import
  * table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdint.h>
 
-#ifdef BR_MATCHING_BUILD
 
 
 /* WHAT IT DOES: copy the last path component of `param_1` (after the final backslash)
@@ -33,4 +30,3 @@ void __stdcall BrPathBasename(char *param_1,char *param_2)
   return;
 }
 
-#endif /* BR_MATCHING_BUILD */

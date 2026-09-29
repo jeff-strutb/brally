@@ -20,9 +20,7 @@
  * and y ebp, with x's spill at slot 0x14.  The unsigned loop count is still
  * required (signed emits jle AND an ebp frame).
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Ui3E7A0 {
 public:

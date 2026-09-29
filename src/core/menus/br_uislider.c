@@ -22,24 +22,19 @@
 
 #include <string.h>
 
-#ifdef BR_MATCHING_BUILD
 /* Header prototype is cdecl; the original is thiscall.  Rename the
  * prototype so the thiscall definition is not a C2373 redefinition. */
 #define BrCarInitTables BrCarInitTables_cdecl_hdr
 #define BrCarClear29C8  BrCarClear29C8_cdecl_hdr
 #define BrZeroRegions   BrZeroRegions_cdecl_hdr
-#endif
 #include "slice3_40.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrCarInitTables
 #undef BrCarClear29C8
 #undef BrZeroRegions
 void BrZeroRegions(void);
-#endif
 
 #include "br_match.h"    /* BR_THISCALL1 */
 
-#ifdef BR_MATCHING_BUILD
 extern unsigned char DAT_100ad770;
 extern unsigned char DAT_100ad798;
 extern unsigned char DAT_100bb2e0;
@@ -122,4 +117,3 @@ void BrUiVolumeApply(void)
 }
 
 
-#endif /* BR_MATCHING_BUILD */

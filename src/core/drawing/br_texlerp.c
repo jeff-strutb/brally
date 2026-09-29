@@ -5,13 +5,10 @@
  * drafts drop the post-floor clamp against 0x10077438 / 0x1007743c
  * (0.0f and 255.0f); the original always saturates before __ftol.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdio.h>
 #include <math.h>
 
-#ifdef BR_MATCHING_BUILD
 
 extern float DAT_10077434;   /* -0.5f -- floor(x - (-0.5)) == round-nearest */
 extern float DAT_10077438;   /*  0.0f */
@@ -157,4 +154,3 @@ void BrTexResample(char *pDst, int dw, int dh, char *pSrc, int sw, int sh,
     }
 }
 
-#endif /* BR_MATCHING_BUILD */

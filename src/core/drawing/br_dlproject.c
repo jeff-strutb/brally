@@ -9,7 +9,6 @@
  * assembly -- `fld t; fistp [int]` -- which is why the function has an EBP
  * frame and why every intermediate goes through the one float temp (packed
  * by VC5 into the dead `pIn` parameter slot at [ebp+0xC]). */
-#ifdef BR_MATCHING_BUILD
 
 typedef struct BrDlProjOut {
     float x;            /* +0x00 */
@@ -74,4 +73,3 @@ void br_dl_project(BrDlProjOut *pOut, const BrDlProjIn *pIn,
     pOut->y = t * 0.25f;
 }
 
-#endif /* BR_MATCHING_BUILD */

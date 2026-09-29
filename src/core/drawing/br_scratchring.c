@@ -13,18 +13,12 @@
  * /O2 register choice, so it is kept whole); its state block g_s17 is
  * declared in slice2_17.h and defined there.
  */
-#ifdef BR_MATCHING_BUILD
 /* slice2_17.h prototypes a list pointer the original never takes. */
 #define BrPtrListContains BrPtrListContains_port
-#endif
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice2_17.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrPtrListContains
-#endif
 
 #include <math.h>
 #include <stdio.h>
@@ -64,11 +58,7 @@ extern int   BrX10060E90(void);
  * at the call site (arg1 in ecx, no stack cleanup), so that is what the
  * matching build uses. Off MSVC the qualifier vanishes and it is an ordinary
  * one-argument function. */
-#if defined(_MSC_VER)
 #define BRS17_THISCALL __fastcall
-#else
-#define BRS17_THISCALL
-#endif
 extern void BRS17_THISCALL BrX100751D0(void *pThis);
 /* XSLICE 0x1002C2C0 */
 extern void  BrX1002C2C0(void);
@@ -160,7 +150,6 @@ static void s17_stf(unsigned char *p, float v)
  * free rather than handing out a buffer that is still being read. */
 /* @implements 0x1002A840 glide BrScratchRingAlloc */
 /* @implements 0x10031190 d3d BrScratchRingAlloc */
-#ifdef BR_MATCHING_BUILD
 /* Depth / index / wait-object / ring are four absolute addresses, not
  * fields of g_s17. Orig is ebp-framed with no locals: `n = n + 1`
  * (mov/add/mov, not inc-dword), signed `(i+1)%32` (cdq/xor/sub/and),
@@ -179,34 +168,12 @@ void *BrScratchRingAlloc(void)
     DAT_106ed668 = (DAT_106ed668 + 1) % BR_SCRATCH_SLOTS;
     return DAT_106e9a80 + DAT_106ed668 * BR_SCRATCH_STRIDE;
 }
-#else
-void *BrScratchRingAlloc(void)
-{
-    int i;
-
-    if (g_s17.nScratchDepth == BR_SCRATCH_DEPTH)
-        BrX10042AF0(g_s17.pScratchWait, 0, 1);   /* NOT incremented here */
-    else
-        g_s17.nScratchDepth += 1;
-
-    /* MSVC's signed (i + 1) % 32: abs, mask, restore the sign. */
-    i = g_s17.iScratch + 1;
-    if (i < 0)
-        i = -((-i) & 0x1F);
-    else
-        i = i & 0x1F;
-    g_s17.iScratch = i;
-
-    return g_s17.pScratch + (ptrdiff_t)i * BR_SCRATCH_STRIDE;
-}
-#endif
 
 /* 0x100311E4 */
 /* WHAT IT DOES: waits until every scratch buffer that has been handed out has
  * come back, which is how the game makes sure the graphics hardware has
  * finished with them before going further. */
 /* @implements 0x100311E4 d3d BrScratchRingDrain */
-#ifdef BR_MATCHING_BUILD
 /* Literal: the wait object is the global at 0x106ED570 itself (an immediate
  * address in the bytes), not a stored pointer. */
 extern int DAT_106ed66c;
@@ -219,12 +186,3 @@ void BrScratchRingDrain(void)
         DAT_106ed66c = DAT_106ed66c - 1;
     }
 }
-#else
-void BrScratchRingDrain(void)
-{
-    while (g_s17.nScratchDepth != 0) {
-        BrX10042AF0(g_s17.pScratchWait, 0, 1);
-        g_s17.nScratchDepth -= 1;
-    }
-}
-#endif

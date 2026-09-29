@@ -1,0 +1,128 @@
+# Port deviations for src/core/audio/br_sfxsrc.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:BrSfxSrcStart
+@drop undef:BrSfxSrcStart
+@drop fn:BrSfxChanStart
+@after fn:BrSfxChanStart
+
+/* WHAT IT DOES: actually starts a sound playing on one of the mixer's
+ * channels. It finds the sound the channel is meant to be playing, sets it
+ * going, works out how fast to step through the samples so the sound comes out
+ * at its recorded pitch, and remembers that speed in two places -- the
+ * channel's own record and the separate note of what the hardware has really
+ * been told -- so the per-frame retune can tell whether anything has changed.
+ * With sound switched off it reports success without doing anything. */
+/* @implements 0x1006B880 glide BrSfxChanStart */
+int BrSfxChanStart(int group, int ch, int32_t loop)
+{
+    int         idx;
+    BrSndVoice *pVoice;
+
+    if (sfx_off())                       /* 0x1006B88D / 9A / A7 */
+        return 1;
+    if (!chan_ok(ch))
+        return 0;
+    idx = BrSfxVoiceIndex(group, ch);
+    if (idx < 0)
+        return 0;
+
+    /* 0x1006B8BB: the voice is looked up by (group, ch) again, NOT taken
+     * from the channel's bound pointer.  With 0x1006B530 having just run
+     * they are the same object; the original still does the lookup. */
+    pVoice = BrSndVoices[idx];
+    if (pVoice == NULL)                  /* 0x1006B8C4 */
+        return 0;
+
+    /* 0x1006B8CC -> 0x1006B950 == slice1_08.c's BrSndVoiceSetLoopAndStart.
+     * It returns the DirectSound HRESULT, so non-zero is failure. */
+    if (BrSndVoiceSetLoopAndStart(pVoice, loop) != 0)   /* 0x1006B8D4 */
+        return 0;
+
+    /* 0x1006B8D8..0x1006B8FE: fild the voice's f0C zero-extended to 64 bits,
+     * multiply by 2^32, divide by the CHANNEL's base rate, truncate.  That
+     * is br_sfx.c's BrSfxRatioFromHz exactly -- including the unguarded
+     * divide, which is why a channel bound to a rate of 0 yields the x87
+     * indefinite here rather than a diagnostic. */
+    /* 0x1006B903/09, esi = ch*24 */
+    g_aBrSfxChan[ch].ratio = BrSfxRatioFromHz(pVoice->f0C,
+                                              g_aBrSfxChanRate[ch]);
+
+    /* 0x1006B915: only NOW does the channel's bound voice become this one on
+     * the path where 0x1006B530 was never called. */
+    g_apBrSfxChanVoice[ch] = pVoice;
+
+    /* THE SECOND STORE, which this port used not to make at all.  The ratio
+     * goes to TWO stride-24 arrays:
+     *
+     *   1006B903  mov [esi+0x118EEF48], eax    ; chan[ch].ratio, low
+     *   1006B909  mov [esi+0x118EEF4C], edx    ;                 high
+     *   1006B90F  mov ecx, [esi+0x118EEF48]    ; READ BACK the low dword
+     *   1006B915  mov [edi*4+0x1184C268], ebx  ; the bound voice, above
+     *   1006B91C  mov [esi+0x1184C088], ecx    ; applied[ch].ratio, low
+     *   1006B922  mov [esi+0x1184C08C], edx    ;                    high
+     *
+     * The two source registers differ -- eax then ecx -- and that is worth
+     * being explicit about, because it looks like two different values and is
+     * not one: 0x1006B90F reloads ecx from the slot 0x1006B903 has just
+     * written, with only the high-dword store in between, so ecx == eax and
+     * edx is still the same high dword.  The two arrays get the same 64-bit
+     * ratio.  Writing chan -> applied rather than the ftol result twice is the
+     * literal instruction order. */
+    g_aBrSfxChanApplied[ch].ratio = g_aBrSfxChan[ch].ratio;
+    return 1;
+}
+@end
+@drop fn:BrSfxSrcStart
+@after fn:BrSfxSrcStart
+
+/* ==========================================================================
+ * The source layer
+ * ========================================================================== */
+
+int BrSfxSrcStart(int ch, int group, int32_t f0C, int32_t loop,
+                  uint32_t packed)
+{
+    /* Argument mapping, traced instruction by instruction against esp:
+     *
+     *   0x1006E4C2  movsx esi,[esp+0xC]   esp = E-8   -> E+4  = a0 = ch
+     *   0x1006E4C7  mov  ebp,[esp+0x1C]   esp = E-8   -> E+14 = a4 = packed
+     *   0x1006E4CC  mov  edi,[esp+0x14]   esp = E-12  -> E+8  = a1 = group
+     *   0x1006E4FB  mov  ebx,[esp+0x20]   esp = E-16  -> E+10 = a3 = loop
+     *
+     * a2 (f0C) is pushed by both callers and never read.  Kept in the
+     * signature because the table field it comes from is real. */
+    (void)f0C;
+
+    if (!chan_ok(ch))
+        return 0;
+
+    /* 0x1006E4D8 / DE / E8 -- the channel record is written FIRST and
+     * unconditionally, before any gate is consulted. */
+    g_aBrSfxChan[ch].group  = group;
+    g_aBrSfxChan[ch].f10    = 0;
+    g_aBrSfxChan[ch].packed = packed;
+
+    /* 0x1006E4EE.  A zero return skips the whole tail -- and the gates make
+     * that return 1, so a disabled sound system takes the LONG path and each
+     * callee no-ops individually. */
+    if (BrSfxChanBind(group, ch) == 0)   /* 0x1006E4F8 */
+        return 0;
+
+    (void)BrSfxChanSetLoop(ch, loop);        /* 0x1006E501 */
+    (void)BrSfxChanSetLevels(ch, packed);    /* 0x1006E50B */
+    return BrSfxChanStart(group, ch, loop);  /* 0x1006E516 */
+}
+@end
+@drop var:DAT_100b32b0
+@drop var:DAT_100b32bc
+@drop var:DAT_100b32c0
+@drop var:DAT_1184c094
+@drop proto:FUN_1006b790
+@drop proto:FUN_1006e590
+@drop var:g_BrSndAA3470
+@drop var:g_aBrSndBankVoice
+@drop fn:BrSfxBankPlay
+@drop fn:BrSndVoiceSetFreq
+@drop fn:BrThunk6E580
+@drop fn:BrNop6E590

@@ -25,14 +25,13 @@
  * in br_fadewipe.c); with them here BrFadeDrawSprite moves under /O2 /Op.
  * See slice2_16.h for the per-function notes and gotchas.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original binary is /MD: CRT calls resolve through the import table. */
 #define _CRTIMP __declspec(dllimport)
 /* Header prototype is the port's (table, pCmd).  The original takes only
  * pCmd; the table is the global at 0x100A79F0.  Rename the port prototype
  * in this TU so the matching body can use the original shape. */
 #define BrGbiRun BrGbiRun_port
-/* OtherMode H/0E and TexCreate: orig takes no state pointer — those fields
+/* OtherMode H/0E and TexCreate: orig takes no state pointer â those fields
  * are standalone globals (0x10697A44 / 0x106B7AB0 / 0x118ED1C8). */
 #define BrGbiTexScanOtherModeH   BrGbiTexScanOtherModeH_port
 #define BrGbiTexScanOtherModeH0E BrGbiTexScanOtherModeH0E_port
@@ -65,9 +64,7 @@
 #define BrFadeDrawSprite        BrFadeDrawSprite_port
 /* Fade bars: orig takes NO argument at all -- eleven standalone globals. */
 #define BrFadeDrawBars          BrFadeDrawBars_port
-#endif
 #include "slice2_16.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrGbiRun
 #undef BrGbiTexScanOtherModeH
 #undef BrGbiTexScanOtherModeH0E
@@ -131,7 +128,6 @@ extern int DAT_105ccfd0;   /* numLights    */
 extern BrGfxWords *DAT_106e7710;  /* DL write cursor */
 extern int         DAT_106ec798;  /* fade rectIdx    */
 extern int         DAT_106e7718;  /* otherModeH      */
-#endif
 
 /* The routines this file and br_dl.c BOTH used to transcribe.  Same original
  * function, one host body -- see br_dlshared.h. */
@@ -323,7 +319,6 @@ static BrMat4 *br16_mtx_current(BrGbiMtxState *pSt)
  * The unread w0 local is TU state, not code: without a sixth local symbol
  * here BrFadeDrawSprite, later in this file, swaps esi/edi (2 B). */
 /* @implements 0x10021080 glide BrGbiMatrix */
-#ifdef BR_MATCHING_BUILD
 BrGfxWords *BrGbiMatrix(BrGfxWords *pCmd)
 {
     unsigned w0 = pCmd->w0;     /* unread; see below */
@@ -373,38 +368,6 @@ BrGfxWords *BrGbiMatrix(BrGfxWords *pCmd)
     BrMat4Mul(cur, &DAT_105ccd00, &DAT_105d1760);
     return pCmd + 1;
 }
-#else
-BrGfxWords *BrGbiMatrix(BrGbiState *pSt, BrGfxWords *pCmd, const BrMat4 *pIn)
-{
-    BrGbiMtxState *pM = &pSt->mtx;
-    uint32_t       w0 = pCmd->w0;
-
-    if ((w0 & 0x10000u) != 0) {
-        /* projection: G_MTX_PUSH is ignored on this path. */
-        if ((w0 & 0x20000u) != 0)
-            memcpy(BrGbiMtxProj(pM), pIn, 16 * sizeof(float));
-        else
-            BrMat4Mul(pIn, BrGbiMtxProj(pM), BrGbiMtxProj(pM));
-    } else if ((w0 & 0x20000u) != 0) {
-        /* modelview load */
-        if ((w0 & 0x40000u) != 0)
-            br16_mtx_push(pM);
-        memcpy(BrGbiMtxSlot(pM, pM->top), pIn, 16 * sizeof(float));
-        pM->f5180 = 0;
-    } else {
-        /* modelview multiply: tmp = new * current, then store. */
-        BrMat4 tmp;
-        BrMat4Mul(pIn, br16_mtx_current(pM), &tmp);
-        if ((w0 & 0x40000u) != 0)
-            br16_mtx_push(pM);
-        memcpy(BrGbiMtxSlot(pM, pM->top), &tmp, 16 * sizeof(float));
-        pM->f5180 = 0;
-    }
-
-    BrMat4Mul(br16_mtx_current(pM), BrGbiMtxProj(pM), &pM->combined);
-    return pCmd + 1;
-}
-#endif
 
 /* 0x10021510 */
 /* WHAT IT DOES: draws a textured rectangle straight onto the screen -- the
@@ -541,14 +504,6 @@ int BrGbiClipCodes(const float *pVert)
  * made combined transform matrix outright, replacing whatever the matrix
  * commands had built up. */
 /* port-only body; Glide match is src/core/generated/0x10023900.c */
-#ifndef BR_MATCHING_BUILD
-BrGfxWords *BrGbiMoveMemMatrix(BrGbiState *pSt, BrGfxWords *pCmd,
-                               const void *pSrc)
-{
-    memcpy(&pSt->mtx.combined, pSrc, 16 * sizeof(float));
-    return pCmd + 1;
-}
-#endif
 
 /* 0x10024150  G_MOVEMEM.
  *
@@ -562,7 +517,6 @@ BrGfxWords *BrGbiMoveMemMatrix(BrGbiState *pSt, BrGfxWords *pCmd,
  * outside the known set are ignored. The port clamps a light copy to the
  * light array, which the original did not. */
 /* @implements 0x10023810 glide BrGbiMoveMem */
-#ifdef BR_MATCHING_BUILD
 BrGfxWords *BrGbiMoveMem(BrGfxWords *pCmd)
 {
     /* Hand-transcribed from the asm.  The index is a CAST to unsigned char:
@@ -600,47 +554,7 @@ BrGfxWords *BrGbiMoveMem(BrGfxWords *pCmd)
     }
     return pCmd + 1;
 }
-#else
-BrGfxWords *BrGbiMoveMem(BrGbiState *pSt, BrGfxWords *pCmd, const void *pSrc)
-{
-    uint32_t idx = (pCmd->w0 >> 16) & 0xFFu;
 
-    if (idx < 0x80u || idx > 0x9Eu)
-        return pCmd + 1;
-
-    switch (idx) {
-    case 0x80:
-        return BrGbiCall10024260(pCmd);
-    case 0x82:
-        pSt->f1698 = pCmd->w1;
-        return pCmd + 1;
-    case 0x84:
-        pSt->f169C = pCmd->w1;
-        return pCmd + 1;
-    case 0x9E:
-        return BrGbiMoveMemMatrix(pSt, pCmd, pSrc);
-    case 0x86: case 0x88: case 0x8A: case 0x8C:
-    case 0x8E: case 0x90: case 0x92: case 0x94: {
-        /* dst = 0x104BBE38 + ((idx - 0x86) >> 1) * 16, length = w0 & 0xFFFF.
-         * DEVIATION: the length comes straight out of the command and the
-         * original does not check it; it is clamped to the record here so a
-         * malformed list cannot walk off the light array. */
-        size_t   slot = (size_t)((idx - 0x86u) >> 1);
-        size_t   len  = (size_t)(pCmd->w0 & 0xFFFFu);
-        size_t   room = sizeof pSt->lights.aRaw - slot * BR_GBI_LIGHT_SIZE;
-        if (len > room)
-            len = room;
-        memcpy(&pSt->lights.aRaw[slot * BR_GBI_LIGHT_SIZE], pSrc, len);
-        pSt->mtx.f5180 = 0;
-        return pCmd + 1;
-    }
-    default:
-        return pCmd + 1;
-    }
-}
-#endif
-
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: handle the display-list command that loads a matrix, by
  * copying its 64 bytes from wherever the list points into the renderer's
  * current-matrix slot. Returns the pointer to the next command. */
@@ -650,7 +564,6 @@ BrGfxWords *BrGbiMoveMemMatrix(BrGfxWords *pCmd)
     memcpy(&DAT_105d1760, (const void *)pCmd->w1, 64);
     return pCmd + 1;
 }
-#endif /* BR_MATCHING_BUILD */
 
 /* ================================================================== */
 /* 2. Texture-load scanning pass                                      */
@@ -664,19 +577,11 @@ const void *BrGbiTexScanData(BrGbiTexScan *pSt, uint32_t addr)
 }
 
 /* 0x10029E80  G_TEXTURE */
-#ifdef BR_MATCHING_BUILD
 void BrGbiTexScanTexture(const BrGfxWords *pCmd)
 {
     g_brTexScan5553E8 = (int32_t)((pCmd->w0 >> 8)  & 7u);
     g_brTexScan5553E0 = (int32_t)((pCmd->w0 >> 11) & 7u);
 }
-#else
-void BrGbiTexScanTexture(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
-{
-    pSt->f5553E8 = (int32_t)((pCmd->w0 >> 8)  & 7u);
-    pSt->f5553E0 = (int32_t)((pCmd->w0 >> 11) & 7u);
-}
-#endif
 
 /* 0x10029EB0  G_SETTIMG */
 /* WHAT IT DOES: during the texture-load hunt, notes the address and pixel
@@ -695,7 +600,6 @@ void BrGbiTexScanTexture(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
  * crank candidates and scores in build/match/crank.log, dead probes in the
  * comment block above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10029420 glide BrGbiTexScanSetImg */
-#ifdef BR_MATCHING_BUILD
 void BrGbiTexScanSetImg(BrGfxWords *pCmd)
 {
     int32_t s = g_brTexScanState;
@@ -713,24 +617,6 @@ void BrGbiTexScanSetImg(BrGfxWords *pCmd)
     }
     g_brTexScanState = 1;
 }
-#else
-void BrGbiTexScanSetImg(BrGbiTexScan *pSt, BrGfxWords *pCmd)
-{
-    int32_t s = pSt->state;
-
-    if (s != 0 && s != 3 && s != 6)
-        return;
-
-    pSt->timgSiz  = (int32_t)((pCmd->w0 >> 19) & 3u);
-    pSt->timgAddr = pCmd->w1;
-    pSt->srcSeen  = 0;
-    if (s == 0) {
-        pSt->pRunStart = pCmd;
-        pSt->pRunEnd   = NULL;
-    }
-    pSt->state = 1;
-}
-#endif
 
 /* 0x10029F10  G_LOADTLUT */
 /* WHAT IT DOES: during the texture-load hunt, copies a colour palette out of
@@ -747,7 +633,6 @@ void BrGbiTexScanSetImg(BrGbiTexScan *pSt, BrGfxWords *pCmd)
  * every candidate and score is in build/match/crank.log.
  * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10029480 glide BrGbiTexScanLoadTlut */
-#ifdef BR_MATCHING_BUILD
 extern uint8_t *DAT_100a9e58;          /* tlut dest, 0x100A9E58 */
 void BrGbiTexScanLoadTlut(const BrGfxWords *pCmd)
 {
@@ -777,28 +662,6 @@ void BrGbiTexScanLoadTlut(const BrGfxWords *pCmd)
     memcpy(DAT_100a9e58, src, len);
     g_brTexScanState = 7;
 }
-#else
-void BrGbiTexScanLoadTlut(BrGbiTexScan *pSt, const BrGfxWords *pCmd,
-                          const void *pSrc)
-{
-    int32_t  ds, dt;
-    uint32_t len;
-
-    if (pSt->state != 1)
-        return;
-
-    ds = (int32_t)(pCmd->w1 & 0xFFFu) - (int32_t)(pCmd->w0 & 0xFFFu);
-    dt = (int32_t)((pCmd->w1 >> 12) & 0xFFFu) -
-         (int32_t)((pCmd->w0 >> 12) & 0xFFFu);
-    len = (uint32_t)((ds + 1) * (dt + 1)) << 1;
-
-    pSt->srcSeen = pSt->timgAddr;
-    /* DEVIATION: the destination is a caller-owned buffer and the length is
-     * data-driven; the original does not check it and neither does this. */
-    memcpy(pSt->pTlutDst, pSrc, len);
-    pSt->state = 7;
-}
-#endif
 
 /* 0x10029FA0  G_LOADBLOCK */
 /* WHAT IT DOES: during the texture-load hunt, copies the texture's pixels
@@ -822,7 +685,6 @@ void BrGbiTexScanLoadTlut(BrGbiTexScan *pSt, const BrGfxWords *pCmd,
  * crank candidates and scores in build/match/crank.log, dead probes in the
  * comment block above.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x10029510 glide BrGbiTexScanLoadBlock */
-#ifdef BR_MATCHING_BUILD
 extern uint32_t DAT_105d17f0;          /* stageSrc, 0x105D17F0 */
 extern int32_t  DAT_10697a54;          /* stageLen, 0x10697A54 */
 void BrGbiTexScanLoadBlock(const BrGfxWords *pCmd)
@@ -843,31 +705,6 @@ void BrGbiTexScanLoadBlock(const BrGfxWords *pCmd)
     memcpy(g_brTexScanStage, src, len);
     g_brTexScanState = 3;
 }
-#else
-void BrGbiTexScanLoadBlock(BrGbiTexScan *pSt, const BrGfxWords *pCmd,
-                           const void *pSrc)
-{
-    int32_t  d;
-    uint32_t len, copy;
-
-    if (pSt->state != 2)
-        return;
-
-    d = (int32_t)((pCmd->w1 >> 12) & 0xFFFu) -
-        (int32_t)((pCmd->w0 >> 12) & 0xFFFu);
-    len = (uint32_t)(d + d + 2);
-
-    pSt->stageSrc = pSt->timgAddr;
-    pSt->stageLen = len;              /* the unclamped request, as published */
-
-    /* DEVIATION: clamped to the staging buffer. */
-    copy = len;
-    if (copy > (uint32_t)BR_GBI_STAGE_SIZE)
-        copy = (uint32_t)BR_GBI_STAGE_SIZE;
-    memcpy(pSt->aStage, pSrc, copy);
-    pSt->state = 3;
-}
-#endif
 
 /* 0x1002A1A0  G_SETOTHERMODE_L */
 /* WHAT IT DOES: during the texture-load hunt, watches for changes to the
@@ -876,7 +713,6 @@ void BrGbiTexScanLoadBlock(BrGbiTexScan *pSt, const BrGfxWords *pCmd,
  * without two particular bits set, turn the flag off. */
 /* @implements 0x1002A1A0 d3d BrGbiTexScanOtherModeL */
 /* @implements 0x10029710 glide BrGbiTexScanOtherModeL */
-#ifdef BR_MATCHING_BUILD
 void BrGbiTexScanOtherModeL(const BrGfxWords *pCmd)
 {
     uint32_t v;
@@ -914,27 +750,6 @@ void BrGbiTexScanOtherModeL(const BrGfxWords *pCmd)
     }
     g_brTexScan575414 = (int32_t)z;
 }
-#else
-void BrGbiTexScanOtherModeL(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
-{
-    uint32_t v;
-
-    if ((pCmd->w0 & 0xFF00u) != 0x300u)
-        return;
-
-    v = pCmd->w1;
-    if (v == 0x504F50u || v == 0xC184240u || v == 0x504240u || v == 0) {
-        pSt->f575414 = 0;
-        return;
-    }
-    /* `test ah,0x18` -- bits 11 and 12 of w1. */
-    if ((v & 0x1800u) == 0) {
-        pSt->f575414 = 0;
-        return;
-    }
-    pSt->f575414 = (int32_t)((v >> 16) & 1u);
-}
-#endif
 
 /* BrGbiTexScanOtherModeH / OtherModeH0E filed to drawing/br_gbitexscan.c. */
 
@@ -961,98 +776,6 @@ void BrGbiTexScanOtherModeL(BrGbiTexScan *pSt, const BrGfxWords *pCmd)
  * render modes in force. It stops at the end-of-list command. */
 /* @d3donly 0x100290E0 BrGbiTexScanRun -- glide twin 0x10028820 is the Glide arm in drawing/br_gbitexscan.c */
 /* (the Glide arm is at the END of this file -- see the note there) */
-#ifndef BR_MATCHING_BUILD
-void BrGbiTexScanRun(BrGbiTexScan *pSt, BrGfxWords *pCmd)
-{
-    if (pCmd == NULL)
-        return;
-
-    pSt->f5544C    = 0;
-    pSt->maxTile   = 0;
-    pSt->f575448   = 0;
-    pSt->state     = 0;
-    pSt->pRunEnd   = NULL;
-
-    for (;;) {
-        uint32_t op = (pCmd->w0 >> 24) & 0xFFu;
-
-        switch (op) {
-        case 0xB8:                       /* G_ENDDL */
-            return;
-
-        case 0x04: case 0xB1: case 0xBF: /* G_VTX, G_TRI2, G_TRI1 */
-            BrGbiTexScanFlush(pSt, pCmd);
-            break;
-        case 0xB9:                       /* G_SETOTHERMODE_L */
-            BrGbiTexScanOtherModeL(pSt, pCmd);
-            BrGbiTexScanMark(pSt, pCmd);
-            break;
-        case 0xBA:
-#ifdef BR_MATCHING_BUILD
-            BrGbiTexScanOtherModeH(pCmd);
-#else
-            BrGbiTexScanOtherModeH(pSt, pCmd);
-#endif
-            break;
-        case 0xBB:
-            BrGbiTexScanTexture(pSt, pCmd);
-            break;
-        case 0xE6:
-            BrGbiTexScanLoadSync(pSt);
-            break;
-        case 0xE7:
-            BrGbiTexScanPipeSync(pSt);
-            break;
-        case 0xE8:
-            BrGbiTexScanTileSync(pSt);
-            break;
-        case 0xF0:
-            BrGbiTexScanLoadTlut(pSt, pCmd,
-                                 BrGbiTexScanData(pSt, pSt->timgAddr));
-            break;
-        case 0xF2:
-            BrGbiTexScanSetTileSize(pSt, pCmd);
-            break;
-        case 0xF3:
-            BrGbiTexScanLoadBlock(pSt, pCmd,
-                                  BrGbiTexScanData(pSt, pSt->timgAddr));
-            break;
-        case 0xF5:
-            BrGbiTexScanSetTile(pSt, pCmd);
-            break;
-        case 0xFD:
-            BrGbiTexScanSetImg(pSt, pCmd);
-            break;
-
-        case 0xFA:                       /* inline block 0x100291FA */
-            pSt->prim[0] = (uint8_t)(pCmd->w1 >> 24);
-            pSt->prim[1] = (uint8_t)(pCmd->w1 >> 16);
-            pSt->prim[2] = (uint8_t)(pCmd->w1 >> 8);
-            pSt->prim[3] = (uint8_t)(pCmd->w1);
-            pSt->f575444 = 1;
-            break;
-        case 0xFB:                       /* inline block 0x10029233 */
-            pSt->env[0] = (uint8_t)(pCmd->w1 >> 24);
-            pSt->env[1] = (uint8_t)(pCmd->w1 >> 16);
-            pSt->env[2] = (uint8_t)(pCmd->w1 >> 8);
-            pSt->env[3] = (uint8_t)(pCmd->w1);
-            pSt->f575440 = 1;
-            break;
-        case 0xFC:                       /* inline block 0x1002926D */
-            /* One specific G_SETCOMBINE is recognised; every other combine
-             * clears the flag. */
-            pSt->f575448 = (pCmd->w0 == 0xFC50FE04u &&
-                            pCmd->w1 == 0x3FFDF3F8u) ? 1 : 0;
-            break;
-
-        default:
-            BrGbiTexScanMark(pSt, pCmd);
-            break;
-        }
-        pCmd += 1;
-    }
-}
-#endif /* BR_MATCHING_BUILD */
 
 /* ================================================================== */
 /* 2b. Texture upload thunks                                          */
@@ -1133,7 +856,6 @@ int BrGbiSizeShift(int n)
  * @t4-pass 0x10027F00 3 2026-09-09 probes 10 bytes 124 insns 52 regions 2 rows 0 census yes  (hand, fn.py variants)
  * @t4-pass 0x10027F00 4 2026-09-09 probes 14 bytes 124 insns 52 regions 2 rows 0 census yes  (position sweep; 14 of 64 slots compile for this block) */
 /* @implements 0x10027F00 glide BrGbiBlit */
-#ifdef BR_MATCHING_BUILD
 /* The original takes 14 args and calls through the import-pointer global
  * at 0x118ED1C4 (the slot before BrGbiTexCreate's 0x118ED1C8); the port's
  * pfn parameter is a port convenience. */
@@ -1150,20 +872,6 @@ void BrGbiBlit(uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4,
     g_pfn18ED1C4(a1, a2, a3, a4, (uintptr_t)(intptr_t)pitch,
                  a5, a6, a7, a8, a9, a10, a11, a12, a13, a14);
 }
-#else
-void BrGbiBlit(BrGbiBlitFn pfn,
-               uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4,
-               uintptr_t a5, uintptr_t a6, uintptr_t a7, uintptr_t a8,
-               uintptr_t a9, uintptr_t a10, uintptr_t a11, uintptr_t a12,
-               uintptr_t a13, uintptr_t a14)
-{
-    int32_t   rounded = (int32_t)(1 << BrGbiSizeShift((int)a3));
-    int32_t   pitch   = (rounded / BrGbiTexelsPerWord((int)a5)) * 8;
-
-    pfn(a1, a2, a3, a4, (uintptr_t)(intptr_t)pitch,
-        a5, a6, a7, a8, a9, a10, a11, a12, a13, a14);
-}
-#endif
 
 /* The 0x3EB / 0x3E8 / 0 token soup both emit paths hand to
  * BrRdpSetCombineLERP; spelled out once so the two call sites stay readable
@@ -1185,7 +893,6 @@ static void br16_combine(BrGfxWords *pOut, int t13, int t9, int t5, int t1)
  * regions. */
 /* @implements 0x1002AF10 d3d BrFadeDrawSprite */
 /* @implements 0x10017F80 glide BrFadeDrawSprite */
-#ifdef BR_MATCHING_BUILD
 /* orig: cdecl (pRecs, alpha); cursor DAT_106e7710, rectIdx DAT_106ec798,
  * otherModeH DAT_106e7718. Combine is BrRdpSetCombineLERP(DAT++, 17 args)
  * with 0x3EB/0x3E8 immediates hoisted across the preceding emits.
@@ -1282,81 +989,3 @@ void BrFadeDrawSprite(const uint32_t *pRecs, float alpha)
     p->w0 = 0xBA000602u;
     p->w1 = (uint32_t)DAT_106e7718;
 }
-#else
-void BrFadeDrawSprite(BrFadeState *pSt, const uint32_t *pRecs, float alpha)
-{
-    BrGfxWords     *p;
-    BrGfxWords     *pE1;
-    const uint32_t *pRec;
-    uint32_t        lo, hi;
-
-    /* NEGATED, and that is the whole point -- found by the equivalence audit.
-     *
-     *   1002AF14  fcomp dword ptr [0x1008F414]   ; 0.1f
-     *   1002AF1A  fnstsw ax
-     *   1002AF1C  test  ah, 1                    ; C0
-     *   1002AF1F  jne   0x1002B120               ; -> ret
-     *
-     * `fcomp` sets C0 for LESS-THAN *and* for UNORDERED, so the original
-     * returns on NaN and emits nothing. `alpha < 0.1f` is FALSE for NaN, so
-     * the port fell through and emitted all ten display-list commands --
-     * including a G_SETPRIMCOLOR whose alpha byte came from __ftol(NaN).
-     *
-     * NaN is reachable here: `over` is a duration and a zero `over` yields an
-     * infinity that propagates into alpha (see slice2_16.h).
-     *
-     * This idiom was already understood in this very file -- BrFadeSetTarget
-     * below uses `!(to < pSt->value)` for exactly this reason. It simply was
-     * not applied here.
-     *
-     * The SECOND compare needs no negation: `test ah,0x41 / jne` fires only
-     * when C0 and C3 are both clear, i.e. strictly greater AND ordered, and
-     * `alpha > 0.7f` is already false for NaN. */
-    if (!(alpha >= 0.1f))         /* 0x1008F414 */
-        return;
-    if (alpha > 0.7f)             /* 0x1008F418; the original overwrites the
-                                   * incoming argument slot */
-        alpha = 0.7f;
-
-    p = br16_fade_alloc(pSt); p->w0 = 0xE7000000u; p->w1 = 0;
-    p = br16_fade_alloc(pSt); p->w0 = 0xBA001402u; p->w1 = 0;
-    p = br16_fade_alloc(pSt); p->w0 = 0xB900031Du; p->w1 = 0x00504340u;
-    br16_combine(br16_fade_alloc(pSt), 0x3EB, 0x3EB, 0x3EB, 0x3EB);
-
-    p = br16_fade_alloc(pSt);
-    p->w0 = 0xFA000000u;                      /* G_SETPRIMCOLOR */
-    p->w1 = (uint32_t)br16_ftol((double)(alpha * 255.0f)) | 0xFFFFFF00u;
-
-    p = br16_fade_alloc(pSt); p->w0 = 0xBA000602u; p->w1 = 0x000000C0u;
-
-    pE1  = br16_fade_alloc(pSt);
-    pRec = pRecs + (size_t)pSt->rectIdx * BR_FADE_RECT_DWORDS;
-
-    /* RESIDUE, and it is the whole function: TWO bytes, at 1002B0BA/1002B0BE
-     * (glide 0x10017F80 + 0x137).  The original loads pRec[3] into esi and
-     * pRec[1] into edi before `add esi, edi`; the recompile pairs them the
-     * other way round.  Size, instruction count and both multisets are exact
-     * (RAW and REGNORM 0+0), so this is register pairing, nothing else.
-     * Probed and ruled out, do not re-run: swapping the two addends, naming
-     * each operand as a block-scoped temp, splitting the mask into a separate
-     * statement, and computing hi before lo -- all four are byte-identical to
-     * what is here. T3a.
-     *
-     * Two more dead, 2026-09-03, both from levers proven elsewhere this week:
-     * naming ONLY the addend that must load first (the "name the pointer"
-     * lever that flipped a store's load order on 0x1006CFC0), and moving the
-     * w1 store ahead of the w0 computation so pRec[1]'s other use comes
-     * first. Both byte-identical. VC5 canonicalises the operand order of an
-     * INTEGER sum the same way it does a float one, so the register pairing
-     * is not reachable by rewriting this expression. Six probes now. */
-    lo = (pRec[3] + pRec[1]) & 0xFFFu;
-    hi = ((pRec[2] + pRec[0]) << 12) & 0xFFF000u;
-    pE1->w0 = 0xE1000000u | hi | lo;
-    pE1->w1 = ((pRec[0] & 0xFFFu) << 12) | (pRec[1] & 0xFFFu);
-
-    br16_combine(br16_fade_alloc(pSt), 0x3E8, 0x3E8, 0x3EB, 0x3EB);
-
-    p = br16_fade_alloc(pSt); p->w0 = 0xE7000000u; p->w1 = 0;
-    p = br16_fade_alloc(pSt); p->w0 = 0xBA000602u; p->w1 = pSt->otherModeH;
-}
-#endif

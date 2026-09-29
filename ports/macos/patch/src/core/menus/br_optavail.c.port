@@ -1,0 +1,95 @@
+# Port deviations for src/core/menus/br_optavail.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop define:BrOptSave
+@drop define:BrOptAvailB
+@drop define:BrNameListInit
+@drop undef:BrNameListInit
+@drop undef:BrOptSave
+@drop undef:BrOptAvailB
+@drop var:g_br6EE1DC_fRebaseB
+@drop var:g_br6EE184_fAlt
+@drop var:g_br6EE0C8_maskPair
+@drop var:g_br0A9360_mode
+@drop var:g_br6EE1D8_fLowAlways
+@drop var:g_br6EDE80_maskB
+@drop var:g_brAAB88_maskB6
+@drop var:g_brAF3CE4_nAlwaysB
+@drop var:g_brAAB84_maskBDef
+@drop fn:BrOptAvailB
+@after fn:BrOptAvailB
+
+/* ==========================================================================
+ * 0x1003F320
+ * ========================================================================== */
+
+/* WHAT IT DOES: decides whether one particular option is offered to the player
+ * or shown unavailable, by testing its number against a bitmask of what the
+ * machine and the current mode support. Which mask applies depends on the mode,
+ * and there are several special cases -- some modes fold a high number back
+ * into the low range, some declare everything below sixteen always available,
+ * and one number is remapped to a different one entirely. Its sibling above
+ * answers the same question for the other family of options. */
+/* @t4-pass 0x10038860 1 2026-09-09 probes 10 bytes 284 insns 99 regions 2 rows 2 census no  (hand, fn.py variants: fixup spellings minus/hex/neg-add/unsigned, guard forms, remap and mask spellings, all inert or worse) */
+/* @t4-pass 0x10038860 2 2026-09-09 probes 10 bytes 284 insns 99 regions 2 rows 2 census yes  (hand, fn.py variants: keep-sub mechanism experiment -- pointer difference, loop-carried, split constant, nested ifs, named subtrahend -- all still emit add-negative) */
+/* @t3 0x10038860 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 284/285 insns 99/99 rows 1+1 regions 2 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is the sub/add-negative instruction-selection fork on the first
+ * `idx -= 16` (paired by t3.py canon, a326268) plus its 1-byte encoding
+ * shadow; same fork proven on 0x1006FD50 with the keep-sub mechanisms all
+ * inert.  Dossier in the block below; dead probes in the two ledger lines.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+/* @implements 0x1003F320 d3d BrOptAvailB */
+int32_t BrOptAvailB(const BrOptCaps *pCaps, uint32_t n)
+{
+    int32_t idx = (int32_t)n;
+
+    /* Both `jle`/`jg` in the original are signed. */
+    if (pCaps->fRebaseB != 0 && idx > 15) {
+        idx -= 16;
+    }
+    if (pCaps->fAlt != 0 && idx > 15 && (pCaps->maskPair & 0x8000u) != 0u) {
+        idx -= 16;
+    }
+
+    if (pCaps->mode == 0) {
+        if (idx == 15) {
+            idx = 11;
+        }
+        if (pCaps->fLowAlways != 0 && idx <= 15) {
+            return 1;
+        }
+        if (pCaps->fAlt != 0) {
+            /* `and esi,0xFFFF` -- the LOW half of the same dword */
+            return (int32_t)(BR06_BIT(idx) & (pCaps->maskPair & 0xFFFFu));
+        }
+        return (int32_t)(BR06_BIT(idx) & pCaps->maskB);
+    }
+
+    if (pCaps->mode == 6) {
+        if (idx == 15) {
+            idx = 7;            /* 7 here, 11 everywhere else */
+        }
+        if (pCaps->fLowAlways != 0 && idx <= 15) {
+            return 1;
+        }
+        return (int32_t)(BR06_BIT(idx) & pCaps->maskBMode6);
+    }
+
+    if (pCaps->mode == 2 && idx == pCaps->nAlwaysB) {
+        return 1;
+    }
+
+    if (idx == 15) {
+        idx = 11;
+    }
+    if (pCaps->fLowAlways != 0 && idx <= 15) {
+        return 1;
+    }
+    /* `movsx ecx, word ptr [0x100AB3E4]` -- SIGN-extended, unlike the
+     * zero-extended masks above. */
+    return (int32_t)(BR06_BIT(idx) & (uint32_t)(int32_t)pCaps->maskBDefault);
+}
+@end

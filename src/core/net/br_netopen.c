@@ -12,13 +12,10 @@
  * store and at every loop test.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <windows.h>
 
-#ifdef BR_MATCHING_BUILD
 
 int  FUN_10004900(void *, int, unsigned char, unsigned char, unsigned char,
                   void *, int);
@@ -82,4 +79,3 @@ int BrNetOpenAnnounce(void)
     return result;
 }
 
-#endif /* BR_MATCHING_BUILD */

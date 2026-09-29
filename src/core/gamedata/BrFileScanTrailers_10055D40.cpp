@@ -23,9 +23,7 @@
  * call and spells the offset `sub eax,0x80` (5 B); with the local the push
  * sinks below the call and the constant folds to `add eax,-0x80` (3 B).
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdio.h>
 #include <string.h>
 #include <io.h>

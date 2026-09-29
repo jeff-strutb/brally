@@ -1,5 +1,4 @@
 /* 0x00401540 SetVideoDrain: IVideoWindow::put_MessageDrain(hwnd) */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: connect the graph's video output to the player's window, so
  * the picture lands there rather than in a window of DirectShow's own. */
 /* @implements 0x00401540 bossrally.exe SetVideoDrain */
@@ -38,4 +37,3 @@ int SetVideoDrain(HWND hwnd)
     return 1;
 }
 
-#endif

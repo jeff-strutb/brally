@@ -10,10 +10,8 @@
  *
  * See slice3_41.h for the recovered layouts.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -69,7 +67,6 @@ void *BrFrameBankAlloc(BrFrameBank *pBank)
  * keeps the count in its register across the address computation and emits the
  * original's trailing `inc ecx / mov [count],ecx`.  That one token is the whole
  * difference between 78 bytes and an exact 77. */
-#ifdef BR_MATCHING_BUILD
 extern int32_t BrG_6C65EC;      /* 0x106C65EC  frame parity, shared by all three */
 extern int32_t BrG_B01C48;      /* 0x10B01C48  16-byte bank counter              */
 extern uint8_t BrG_B02190[];    /* 0x10B02190  16-byte bank base                 */
@@ -85,12 +82,6 @@ void *BrPool16Alloc(void)
     BrG_B01C48 = ++c;
     return &BrG_B022D0[BrG_6C65EC * 21 * 16];
 }
-#else
-void *BrPool16Alloc(void)
-{
-    return BrFrameBankAlloc(&g_BrPool16);
-}
-#endif
 
 /* Glide 0x100625A0 == D3D 0x10069530 (shared.csv pair).  Tagged on the Glide
  * side -- the reference build, and the address 0x1000A110's specular pass
@@ -104,7 +95,6 @@ void *BrPool16Alloc(void)
 /* @implements 0x100625A0 glide BrPool32Alloc */
 /* Same template as BrPool16Alloc, with 32-byte slots (`shl eax,5`) and its own
  * counter and two bases; see the note there for the `= ++c` requirement. */
-#ifdef BR_MATCHING_BUILD
 extern int32_t BrG_B01C44;      /* 0x10B01C44  32-byte bank counter       */
 extern uint8_t BrG_B01C50[];    /* 0x10B01C50  32-byte bank base          */
 extern uint8_t BrG_B01ED0[];    /* 0x10B01ED0  32-byte bank overflow slot */
@@ -119,12 +109,6 @@ void *BrPool32Alloc(void)
     BrG_B01C44 = ++c;
     return &BrG_B01ED0[BrG_6C65EC * 21 * 32];
 }
-#else
-void *BrPool32Alloc(void)
-{
-    return BrFrameBankAlloc(&g_BrPool32);
-}
-#endif
 
 /* Glide 0x100625F0: XOR EAX,EAX / MOV [BrG_B01C40],EAX /
  * MOV [BrG_B01C48],EAX / MOV [BrG_B01C44],EAX / RET (18 bytes, 3 relocs).
@@ -134,7 +118,6 @@ void *BrPool32Alloc(void)
  * pools, which is how they are emptied -- nothing is freed individually, the
  * counts simply go back to zero and the space is reused next frame. */
 /* @implements 0x100625F0 glide BrGfx69580 */
-#ifdef BR_MATCHING_BUILD
 extern int32_t BrG_B01C40;      /* 0x10B24FA0  64-byte bank counter */
 void BrGfx69580(void)
 {
@@ -142,24 +125,6 @@ void BrGfx69580(void)
     BrG_B01C48 = 0;
     BrG_B01C44 = 0;
 }
-#else
-/* WHAT IT DOES: throws away everything handed out of the three frame-scratch
- * pools, which is how they are emptied -- nothing is freed individually, the
- * counts simply go back to zero and the space is reused. */
-void BrGfx69580(void)
-{
-    /* DEVIATION: the original writes 0x10B01C40 directly.  That counter is
-     * br_pool.h's BrPool::count, and br_pool.h exposes no global instance,
-     * so it is reached through a integration-supplied pointer.  A NULL hook
-     * simply skips it. */
-    if (g_pBrPool64 != NULL)
-        g_pBrPool64->count = 0;
-
-    g_BrPool16.count = 0;
-    g_BrPool32.count = 0;
-    /* The frame index is untouched -- something else advances 0x106C65EC. */
-}
-#endif
 
 /* ==================================================================== */
 /* 6. 0x10069490 -- adapter over br_pool.c                              */
@@ -177,7 +142,6 @@ BrPool g_brPool10069490;
  * This one is the 64-byte bank: 256 usable, 257 slots per frame, and its own
  * counter and two bases.  The `= ++c` on the counter is required for the same
  * reason as there; `c + 1` costs a byte and moves a register. */
-#ifdef BR_MATCHING_BUILD
 extern int32_t BrG_6C65EC;      /* 0x106C65EC  frame parity               */
 extern int32_t BrG_B01C40;      /* 0x10B01C40  64-byte bank counter       */
 extern uint8_t BrG_AF9BC0[];    /* 0x10AF9BC0  64-byte bank base          */
@@ -193,9 +157,3 @@ BrMat4 *BrSub_10069490(void)
     BrG_B01C40 = ++c;
     return (BrMat4 *)&BrG_AFDBC0[BrG_6C65EC * 257 * 64];
 }
-#else
-BrMat4 *BrSub_10069490(void)
-{
-    return (BrMat4 *)BrPoolAlloc(&g_brPool10069490);
-}
-#endif

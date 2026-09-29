@@ -10,7 +10,6 @@
  * and that is what this arm does.  The header's prototype for the port
  * twin is renamed out of the way for this translation unit.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
 #define BrCamFrameInitB BrCamFrameInitB_port
@@ -83,4 +82,3 @@ void __fastcall BrCamFrameInitB(unsigned char *p)
     car->v2900.z   = pPos->z;
     car->slew      = 2.0f;
 }
-#endif /* BR_MATCHING_BUILD */

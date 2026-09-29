@@ -1,5 +1,4 @@
 /* 0x00401000 HandleCommand: ID_APP_EXIT (0xE141) posts quit. cdecl. */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: handle a menu or accelerator command sent to the intro
  * player's window. */
 /* @implements 0x00401000 bossrally.exe HandleCommand */
@@ -16,4 +15,3 @@ LRESULT HandleCommand(HWND hwnd, WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
-#endif

@@ -3,7 +3,6 @@
  * Fresh transcription from build/ghidra_decomp/0x10014e00.c against the
  * original bytes, 2026-09-13.  Matching arm only.
  */
-#ifdef BR_MATCHING_BUILD
 
 /* The original binary is /MD: CRT calls resolve through the import table. */
 #define _CRTIMP __declspec(dllimport)
@@ -151,4 +150,3 @@ void BrHudDrawEntrants(int *pScr, int cars)
     }
 }
 
-#endif /* BR_MATCHING_BUILD */

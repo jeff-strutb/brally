@@ -1,0 +1,35 @@
+# Port deviations for src/core/drawing/br_collray.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop include:<stdint.h>
+@drop include:"br_vec.h"
+@drop include:"slice1_06.h"
+@drop include:"slice1_08.h"
+@drop include:"slice2_11.h"
+@drop var:DAT_106eed14
+@drop var:DAT_106eed10
+@drop var:DAT_11773698
+@drop var:DAT_11778800
+@drop var:g_pBrCollTriIdx
+@drop var:DAT_106eed64
+@drop var:DAT_106eed68
+@drop proto:BrCollGridCellAcquire
+@drop fn:FUN_1006ec30
+@drop comment:
+@after comment:
+/* br_collray.c -- vertical raycast into the collision grid.
+ *
+ * TU 56, slot 5 (0x1006EC30).  Casts a ray straight down from the camera
+ * through the collision grid, collecting near and far triangle hits.
+ * Called once per frame from BrFrameDrive via FUN_1006ec30(0, 0, eye, ...). */
+
+/* Port stub -- the port uses BrPhysProbeCell via br_collgrid.h instead. */
+int FUN_1006ec30(void *a, void *b, const float *pEye,
+                 void *p4, int *p5, void *p6, int *p7, float *p8, int *p9)
+{
+    *p9 = 0;
+    *p5 = 0;
+    *p7 = 0;
+    return 0;
+}
+@end

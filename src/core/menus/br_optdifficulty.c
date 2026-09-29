@@ -21,10 +21,8 @@
  * constant except 0x1008F6A0 -- which is POSITIVE -- is an addition.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <string.h>
 
 #include "slice6_72.h"
@@ -45,13 +43,11 @@
  * the group numbering. It only recomputes when the group differs from the last
  * time it ran, which means that if anything else writes those two values they
  * are left stale rather than corrected. */
-#ifdef BR_MATCHING_BUILD
 /* Orig stores through absolute globals, not g_pBr72Env->field. */
 extern int32_t g_brAA2A18;
 extern int32_t g_brAA2A44;
 extern int32_t g_br0AB3E8;
 extern int32_t g_br0AC654;
-#endif
 
 /* WHAT IT DOES: push the current difficulty setting out to the two globals
  * the rest of the game reads, but only when it has actually changed. GOTCHA:
@@ -61,7 +57,6 @@ extern int32_t g_br0AC654;
 /* @implements 0x1003DA90 glide BrSub10044540 */
 void BrSub10044540(void)
 {
-#ifdef BR_MATCHING_BUILD
     int32_t n = g_brAA2A18;
 
     if (g_brAA2A44 == n) {
@@ -82,29 +77,4 @@ void BrSub10044540(void)
         g_br0AB3E8 = 0x102;
         break;
     }
-#else
-    Br72Env *pE = g_pBr72Env;
-    int32_t  n  = pE->nAA2A18;
-
-    if (pE->nAA2A44 == n) {
-        return;
-    }
-    pE->nAA2A44 = n;
-
-    if ((uint32_t)n > 4u) {
-        /* 0x100445CD -- the same pair as case 0, written the other way
-         * round.  Order preserved for the record; no observer here. */
-        pE->n0AC654 = 1;
-        pE->n0AB3E8 = 0x102;
-        return;
-    }
-
-    switch (n) {                        /* jump table at 0x100445E4 */
-    case 0:  pE->n0AB3E8 = 0x102;  pE->n0AC654 = 1;    break;
-    case 1:  pE->n0AB3E8 = 0x81;   pE->n0AC654 = 0;    break;
-    case 2:  pE->n0AB3E8 = 0x4050; pE->n0AC654 = 6;    break;
-    case 3:  pE->n0AB3E8 = 0x202C; pE->n0AC654 = 3;    break;
-    default: pE->n0AB3E8 = 0x1E00; pE->n0AC654 = 0x0B; break;   /* case 4 */
-    }
-#endif
 }

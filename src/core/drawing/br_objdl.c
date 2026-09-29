@@ -39,7 +39,6 @@
  * RESIDUE MAP / DEAD PROBES: see the bottom of this header, kept current as
  * the function is ground down.
  */
-#ifdef BR_MATCHING_BUILD
 
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
@@ -515,4 +514,3 @@ void BrObjDlBuild(int pRects, int idx, uint32_t cls, int bLit, int pScene)
     DAT_1035faec = pVtx;
 }
 
-#endif /* BR_MATCHING_BUILD */

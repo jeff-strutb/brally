@@ -10,7 +10,6 @@
  */
 #include <stdint.h>
 
-#ifdef BR_MATCHING_BUILD
 
 extern float _DAT_10077a78;                          /* 0.0f */
 
@@ -168,4 +167,3 @@ int BrObbOverlap(const float *m, const float *t, const float *a, const float *b)
     return ok;
 }
 
-#endif /* BR_MATCHING_BUILD */

@@ -1,5 +1,4 @@
 /* 0x004019A0 OnGraphNotify — CPlay nested SUCCEEDED + EC_FULLSCREEN_LOST */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: handle a DirectShow notification -- most importantly the one
  * saying the clip has finished, which is what ends the intro. */
 /* @implements 0x004019A0 bossrally.exe OnGraphNotify */
@@ -43,4 +42,3 @@ void OnGraphNotify(void)
     }
 }
 
-#endif

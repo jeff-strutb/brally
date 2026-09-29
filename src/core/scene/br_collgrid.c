@@ -133,7 +133,6 @@ int BrCollGridLoaded(int *pCells, int *pPlanes)
     return (g_pBrCollGrid != NULL);
 }
 
-#ifdef BR_MATCHING_BUILD
 /* 0x100686D0 (D3D twin 0x1006F720, port body in slice6_73.c) */
 /* Transcribed from the Glide bytes: four slots, keys (u16) at 0x11778838,
  * stamps at 0x11778828, the clock at 0x11778840 bumped in place, 150 plane
@@ -218,4 +217,3 @@ short BrCollGridCellAcquire(float x, float y)
     DAT_11778800[victim] = n;
     return (short)victim;
 }
-#endif /* BR_MATCHING_BUILD */

@@ -16,7 +16,7 @@
  * register-eligible, so it is forced back onto the stack -- see
  * BrSub10060260 in src/core/slice4_52.c) or .cpp compilation.
  *
- * ‼ CORRECTED 2026-09-03: this used to say "a struct-typed SECOND parameter",
+ * â¼ CORRECTED 2026-09-03: this used to say "a struct-typed SECOND parameter",
  * and that is only enough when there are exactly two arguments. __fastcall
  * SKIPS a struct when it hands out ecx and edx -- it does not stop there --
  * so with three arguments a wrapper on the second one just lets the THIRD
@@ -34,16 +34,8 @@
 
 #define BR_THISCALL
 
-#ifdef _MSC_VER
 #define BR_THISCALL1 __fastcall
-#else
-#define BR_THISCALL1
-#endif
 
-#ifdef _MSC_VER
 #define BR_STDCALL __stdcall
-#else
-#define BR_STDCALL
-#endif
 
 #endif /* BR_MATCH_H */

@@ -144,30 +144,20 @@ int32_t BrAppStateRun(void)
  * picture is "loading.img"; the game shows it while the next stage sets
  * itself up. */
 /* @implements 0x1001CDD0 glide BrAppStateLoading */
-#ifdef BR_MATCHING_BUILD
 /* Orig loads these four globals directly (mov eax,[0x10B71A54] ...), not
  * through the port's accessor thunks. */
 extern int32_t DAT_10b71a48;
 extern int32_t DAT_10b71a4c;
 extern int32_t DAT_10b71a50;
 extern int32_t DAT_10b71a54;
-#endif
 
 int32_t BrAppStateLoading(void)
 {
-#ifdef BR_MATCHING_BUILD
     BrBootFrontier_10063970(3,
                             DAT_10b71a48,
                             DAT_10b71a4c,
                             DAT_10b71a50,
                             DAT_10b71a54);
-#else
-    BrBootFrontier_10063970(3,
-                            BrBootGlobal_B71A48(),
-                            BrBootGlobal_B71A4C(),
-                            BrBootGlobal_B71A50(),
-                            BrBootGlobal_B71A54());
-#endif
     BrBootFrontier_1006C990("loading.img", 0);   /* 0x100A9924 */
     BrBootFrontier_100628B0();
 
@@ -258,7 +248,6 @@ int32_t BrAppStateSetMode(void)
  * through a table; this port refuses an unrecognised stage instead, which is a
  * deliberate difference described below. */
 /* @implements 0x1001CF80 glide BrAppFrame */
-#ifdef BR_MATCHING_BUILD
 /* The original is twelve bytes: load the state and jump straight through a
  * five-entry table -- `mov eax,[g_brAppState]; jmp dword ptr [tbl + eax*4]`,
  * with no bounds check at all.  A C `switch` cannot produce that: MSVC always
@@ -282,19 +271,6 @@ int32_t BrAppFrame(void)
 {
     return s_apfnAppState[g_brAppState]();
 }
-#else
-int32_t BrAppFrame(void)
-{
-    switch (g_brAppState) {
-    case BR_APP_COLD_INIT: return BrAppStateColdInit();
-    case BR_APP_ENTER_RUN: return BrAppStateEnterRun();
-    case BR_APP_RUN:       return BrAppStateRun();
-    case BR_APP_LOADING:   return BrAppStateLoading();
-    case BR_APP_SET_MODE:  return BrAppStateSetMode();
-    default:               return 0;   /* see the banner: not the original's */
-    }
-}
-#endif
 
 void BrAppResetForTest(void)
 {
@@ -329,7 +305,6 @@ const BrBootArgs *BrAppArgs(void) { return &s_args; }
  *
  * 0x1001CC00 -- see br_boot.h for the instruction-level listing. */
 /* @implements 0x1001CC00 glide BrRallyMain */
-#ifdef BR_MATCHING_BUILD
 /* The original calls its platform DIRECTLY -- six `call rel32`, three
  * `call dword ptr [IAT]` and two inlined string intrinsics. The port's ops
  * table turns every one of those into `call dword ptr [ops+N]`, which is the
@@ -437,70 +412,3 @@ int32_t BrRallyMain(void *hInstance, void *hPrevInstance,
     CoUninitialize();                          /* 0x1001CD33 */
     return g_brAppExitCode;                    /* 0x1001CD39 */
 }
-#else
-int32_t BrRallyMain(const BrBootArgs *pArgs, const BrRallyMainOps *pOps)
-{
-    int32_t dxVersion;
-
-    if (pArgs == NULL || pOps == NULL ||
-        pOps->pfnCoInitialize == NULL || pOps->pfnCoUninitialize == NULL ||
-        pOps->pfnMessageBox   == NULL || pOps->pfnDxVersion      == NULL ||
-        pOps->pfnStartGate    == NULL || pOps->pfnCreateWindow   == NULL ||
-        pOps->pfnPreLoopGate  == NULL || pOps->pfnRunLoop        == NULL) {
-        return 0;
-    }
-
-    g_brAppExitCode = 0;                       /* 0x1001CC03 */
-
-    /* 0x1001CC11. A failure here skips EVERYTHING, including the argument
-     * stores below -- the jump goes straight to CoUninitialize. */
-    if (pOps->pfnCoInitialize(pOps->pUser) < 0) {
-        pOps->pfnCoUninitialize(pOps->pUser);
-        return g_brAppExitCode;
-    }
-
-    s_args = *pArgs;                           /* 0x1001CC2F..0x1001CC4A */
-
-    /* 0x1001CC50 -> 0x1001D8A0, then the UNSIGNED compare at 0x1001CC5C. */
-    dxVersion = pOps->pfnDxVersion(pOps->pUser);
-    if ((uint32_t)dxVersion < (uint32_t)BR_APP_MIN_DXVERSION) {
-        /* 0x1001CC63: MessageBoxA(NULL, str(0x128), str(0x126), 0x10).
-         * The push order in the listing is uType, caption, text, hWnd, so the
-         * TEXT is 0x128 and the CAPTION is 0x126 -- the reverse of the order
-         * the ids appear in. */
-        pOps->pfnMessageBox(pOps->pUser, BR_APP_STR_DX_TEXT,
-                            BR_APP_STR_DX_CAPTION);
-        return 0;                              /* 0x1001CC89 xor eax,eax */
-    }
-
-    /* 0x1001CC91. Zero aborts, and note it returns WITHOUT CoUninitialize --
-     * the original really does leak the apartment on this one path. Preserved:
-     * it is observable to anything else in the process. */
-    if (pOps->pfnStartGate(pOps->pUser) == 0) {
-        return 0;
-    }
-
-    BrBootFrontier_10007F10();
-    BrBootFrontier_10063860();
-    BrBootFrontier_1006D1A0();
-    BrBootFrontier_10007F40(s_args.pszCmdLine);   /* 0x1001CCB0, arg3 */
-
-    /* 0x1001CCB5..0x1001CD0D -- inlined strcpy then strcat, building
-     * <dir> + "BossRally.cfg" at 0x10B72F48 from 0x10B73540. */
-    BrBootBuildConfigPath();
-
-    /* 0x1001CD12, __thiscall on 0x10B71290 with the path just built. */
-    BrBootFrontier_10063060();
-
-    /* 0x1001CD17. Window creation; zero goes to the CoUninitialize tail. */
-    if (pOps->pfnCreateWindow(pOps->pUser) != 0) {
-        BrBootFrontier_10009C00();             /* 0x1001CD20 */
-        if (pOps->pfnPreLoopGate(pOps->pUser) != 0) {   /* 0x1001CD25 */
-            pOps->pfnRunLoop(pOps->pUser);     /* 0x1001CD2E -- the main loop */
-        }
-    }
-
-    pOps->pfnCoUninitialize(pOps->pUser);      /* 0x1001CD33 */
-    return g_brAppExitCode;                    /* 0x1001CD39 */
-}
-#endif

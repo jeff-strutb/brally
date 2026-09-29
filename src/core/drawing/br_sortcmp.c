@@ -9,7 +9,6 @@
  */
 #include <stdint.h>
 
-#ifdef BR_MATCHING_BUILD
 
 /* WHAT IT DOES: qsort comparator on the int16 at +2: 1 / 0 / -1, first argument compared
  * on the left (jle / setge). */
@@ -24,4 +23,3 @@ int BrQsortCmpS2(int param_1,int param_2)
   return (*(short *)(param_1 + 2) >= *(short *)(param_2 + 2)) - 1;
 }
 
-#endif /* BR_MATCHING_BUILD */

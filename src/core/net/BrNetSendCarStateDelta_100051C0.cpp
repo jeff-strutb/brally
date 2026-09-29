@@ -17,9 +17,7 @@
  * between the compare and the EH-state store).  The two-handle array sits
  * in its own scope below the packet; frame 0x21C = 0x214 + 8.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Pkt {
     char b[0x214];

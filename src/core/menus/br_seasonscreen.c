@@ -9,10 +9,8 @@
  * verbatim below.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <string.h>
 
 #include "slice6_72.h"
@@ -38,17 +36,12 @@
  * placed body may not call a helper the original never linked.  VC5 /O2
  * honours __inline in C (/Ob1), so one keyword reproduces the original's
  * shape while the port keeps the out-of-line helpers. */
-#ifdef BR_MATCHING_BUILD
 #define BR72_HELPER static __inline
 #define BR72_NEW_RAW FUN_10074572
 extern void FUN_100378c0(int32_t); /* fatal error routine */
 extern void *FUN_10074572(uint32_t);   /* the EH-aware operator new the original calls */ /* the fatal error routine, as the original calls it */
 extern BrUiPage_ * BR_THISCALL1 FUN_100418c0(BrUiPage_ *);  /* page ctor */
 extern BrUiCtl_  * BR_THISCALL1 FUN_10040b10(BrUiCtl_ *);   /* ctl ctor  */
-#else
-#define BR72_HELPER static
-#define BR72_NEW_RAW BrOperatorNew
-#endif
 BR72_HELPER BrUiPage_ *Br72ScreenNew(BrPhase_ *pPhase, float fX, float fY)
 {
     Br72Env   *pE = g_pBr72Env;
@@ -57,48 +50,27 @@ BR72_HELPER BrUiPage_ *Br72ScreenNew(BrPhase_ *pPhase, float fX, float fY)
 
     i = pPhase->nPages;
     pPhase->iPage = 0;
-#ifndef BR_MATCHING_BUILD
-    if (i < BR_PHASE_PAGES)
-#endif
     {
         pPhase->aFlags[i] = 1;
     }
 
     pScr = (BrUiPage_ *)BR72_NEW_RAW(BR72_ALLOC(BrUiPage_,
                                                  BR72_PAGE_ORIG_SIZE));
-#ifdef BR_MATCHING_BUILD
     /* the original constructs DIRECT (`mov ecx,eax; call 0x100418c0`);
      * the env's ctor pointer is port scaffolding nothing in the image
      * initialises */
     pScr = (pScr != NULL) ? FUN_100418c0(pScr) : NULL;
-#else
-    pScr = (pScr != NULL) ? pE->pfnPageCtor(pScr) : NULL;
-#endif
 
     /* The original re-reads the counter here rather than reusing `i`. */
     i = pPhase->nPages;
-#ifndef BR_MATCHING_BUILD
-    if (i < BR_PHASE_PAGES)
-#endif
     {
         pPhase->aPages[i] = pScr;
     }
     if (pScr == NULL) {
-#ifdef BR_MATCHING_BUILD
         FUN_100378c0(4);   /* one arg, as 0x100378C0 takes */
-#else
-        BrErrShow(pE->pErrHost, 4);
-#endif
     }
     pPhase->nPages++;
 
-#ifndef BR_MATCHING_BUILD
-    /* The matching build falls through like the original: BrErrShow(4) is
-     * fatal in practice, and the original dereferences pScr regardless. */
-    if (pScr == NULL) {
-        return NULL;                    /* DEVIATION: see above */
-    }
-#endif
 
     pScr->pOwner = pPhase;
     pScr->f10    = 0;
@@ -114,13 +86,8 @@ BR72_HELPER BrUiCtl_ *Br72CtlNew(BrUiPage_ *pScr)
 
     pCtl = (BrUiCtl_ *)BR72_NEW_RAW(BR72_ALLOC(BrUiCtl_,
                                                 BR72_CTL_ORIG_SIZE));
-#ifdef BR_MATCHING_BUILD
     pCtl = (pCtl != NULL) ? FUN_10040b10(pCtl) : NULL;   /* direct, as orig */
-#else
-    pCtl = (pCtl != NULL) ? pE->pfnCtlCtor(pCtl) : NULL;
-#endif
 
-#ifdef BR_MATCHING_BUILD
     /* The original's exact shape: the store is unchecked (apCtl ends at the
      * first float and the original relies on it), and after the error report
      * control FALLS THROUGH into the caller's next dereference -- BrErrShow
@@ -131,15 +98,6 @@ BR72_HELPER BrUiCtl_ *Br72CtlNew(BrUiPage_ *pScr)
     if (pCtl == NULL) {
         FUN_100378c0(4);
     }
-#else
-    /* Stored BEFORE the null test, exactly as the original does. */
-    if (pScr->cCtl < BR72_PAGE_CTL_MAX) {
-        pScr->apCtl[pScr->cCtl] = pCtl;
-    }
-    if (pCtl == NULL) {
-        BrErrShow(pE->pErrHost, 4);
-    }
-#endif
     return pCtl;
 }
 
@@ -147,18 +105,10 @@ BR72_HELPER BrUiCtl_ *Br72CtlNew(BrUiPage_ *pScr)
  * pScr / pCtl, which every builder below declares.  The matching build drops
  * the per-site null return: the original has no test after the inlined
  * constructor -- BrErrShow(4) already ended the world. */
-#ifdef BR_MATCHING_BUILD
 #define BR_NEW_CTL()                                    \
     do {                                                \
         pCtl = Br72CtlNew(pScr);                        \
     } while (0)
-#else
-#define BR_NEW_CTL()                                    \
-    do {                                                \
-        pCtl = Br72CtlNew(pScr);                        \
-        if (pCtl == NULL) { return; }                   \
-    } while (0)
-#endif
 
 /* ==========================================================================
  * 0x10052030 -- BrExt_10052030.  Twenty-three controls.
@@ -179,7 +129,6 @@ BR72_HELPER BrUiCtl_ *Br72CtlNew(BrUiPage_ *pScr)
  * (p10040730 -> 0x10039C70 BrMenuCap0730, p100415A0 -> 0x1003AB00
  * BrMenuText15A0).  The trailing hex in each FUN_/DAT_ name IS the address
  * the resolver uses. */
-#ifdef BR_MATCHING_BUILD
 extern void FUN_100407b0(void); extern void FUN_10040790(void);
 extern void FUN_1003e5a0(void); extern void FUN_100404b0(void);
 extern void FUN_1003ec70(void); extern void FUN_1003d4f0(void);
@@ -220,46 +169,13 @@ extern int32_t DAT_100aabc8, DAT_100aabcc;
 #define pE_p39B720    ((const void *)&DAT_10396f08)
 #define pE_nAB428     DAT_100aabc8
 #define pE_nAB42C     DAT_100aabcc
-#else
-#define pH_p10047360  (pH->p10047360)
-#define pH_p10047340  (pH->p10047340)
-#define pH_p10045050  (pH->p10045050)
-#define pH_p10047060  (pH->p10047060)
-#define pH_p100457E0  (pH->p100457E0)
-#define pH_p10043FA0  (pH->p10043FA0)
-#define pH_p100457C0  (pH->p100457C0)
-#define pH_p100407E0  (pH->p100407E0)
-#define pH_p1003FE80  (pH->p1003FE80)
-#define pH_p10040730  (pH->p10040730)
-#define pH_p1003FA00  (pH->p1003FA00)
-#define pH_p100415A0  (pH->p100415A0)
-#define pH_p100414B0  (pH->p100414B0)
-#define pH_p10041300  (pH->p10041300)
-#define pH_p100413B0  (pH->p100413B0)
-#define pH_p10040B30  (pH->p10040B30)
-#define pE_p0AB448    (pE->p0AB448)
-#define pE_p0AB458    (pE->p0AB458)
-#define pE_p0AB478    (pE->p0AB478)
-#define pE_p0AB4A8    (pE->p0AB4A8)
-#define pE_p0AB4B8    (pE->p0AB4B8)
-#define pE_p0AB4F8    (pE->p0AB4F8)
-#define pE_p0AB508    (pE->p0AB508)
-#define pE_p0AD300    (pE->p0AD300)
-#define pE_p39B720    (pE->p39B720)
-#define pE_nAB428     (pE->nAB428)
-#define pE_nAB42C     (pE->nAB42C)
-#endif
 
 /* WHAT IT DOES: builds the season-progress screen the player sees between
  * championship rounds (the full description is with the dossier at the head
  * of this section: heading, Reset Round, Continue/Back, standings readouts,
  * and the three right-hand picture buttons with their pressed states). */
 /* @implements 0x10052030 d3d BrExt_10052030 */
-#ifdef BR_MATCHING_BUILD
 int32_t BrExt_10052030(BrPhase_ *pPhase)
-#else
-void BrExt_10052030(BrPhase_ *pPhase)
-#endif
 {
     Br72Env           *pE = g_pBr72Env;
     const BrUi72Hooks *pH = pE->pHooks;
@@ -272,13 +188,6 @@ void BrExt_10052030(BrPhase_ *pPhase)
     int32_t            iRight = 0;  /* [esp+0x14], live across the three     */
 
     pScr = Br72ScreenNew(pPhase, 195.0f, 130.0f);
-#ifndef BR_MATCHING_BUILD
-    /* The original never tests: allocation failure already hit the fatal
-     * error path inside the inlined ScreenNew. */
-    if (pScr == NULL) {
-        return;
-    }
-#endif
 
     /* 0x100520B6 -- the root */
     BR_NEW_CTL();
@@ -501,7 +410,5 @@ void BrExt_10052030(BrPhase_ *pPhase)
     pCtl->w1E20C = 0x34;
     pCtl->pVtbl->f34(pCtl, pE_p39B720, 1, 4, pE_p0AB448);
     pScr->cCtl++;
-#ifdef BR_MATCHING_BUILD
     return 1;                          /* the original's `mov eax,1` */
-#endif
 }

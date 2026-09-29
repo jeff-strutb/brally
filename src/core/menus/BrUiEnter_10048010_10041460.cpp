@@ -12,9 +12,7 @@
  * phase's own +0x10 vcall, returning 0 only when it returns 0).
  * No EH (no new).
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class BrPhaseItem41E {
 public:

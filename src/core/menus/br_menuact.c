@@ -1,13 +1,10 @@
 /* br_menuact.c -- menus.  See br_menuact.h. */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "br_menuact.h"
 
 #include <stdint.h>
 
-#ifdef BR_MATCHING_BUILD
 extern uint32_t g_AA287C;
 extern uint32_t *g_AA29F4;
 extern uint32_t *g_AA29C8;
@@ -31,21 +28,6 @@ void BrExt_10046950(void) {}
 void BrExt_100469F0(void) {}
 void BrExt_10046A30(void) {}
 void BrExt_10046BB0(void) {}
-#else
-uint32_t  g_AA287C;
-uint32_t *g_AA29F4;
-uint32_t *g_AA29C8;
-void BrExt_10043E70(void *p);
-void BrExt_10045BC0(void *p);
-void BrExt_100451E0(void *p);
-void BrExt_10046790(void);
-void BrExt_10046750(void);
-void BrExt_10046910(void);
-void BrExt_10046950(void);
-void BrExt_100469F0(void);
-void BrExt_10046A30(void);
-void BrExt_10046BB0(void);
-#endif
 
 /* WHAT IT DOES: the first play-mode button.  Records "mode 0" and opens
  * the next screen.  Always reports success. */
@@ -123,7 +105,6 @@ int BrHook_100458C0(void *p)
     return 1;
 }
 
-#ifdef BR_MATCHING_BUILD
 /* CRT (strlen/strcpy/_stricmp) resolves via the FF 15 import table. */
 #include <string.h>
 /* ------------------------------------------------------------------ */
@@ -323,9 +304,7 @@ int BrMenuOpt409F0(void)
   return;
 }
 
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 extern int DAT_10ac5d28;
 extern int g_brAA28D8;
 extern int g_i0AB3F4;
@@ -349,9 +328,7 @@ int BrExt_10042410(int param_1)
   }
   return 1;
 }
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 extern int           DAT_10ac5a48;   /* src dword */
 extern unsigned char DAT_10ac5a4c;   /* src byte  */
 extern unsigned char DAT_10ac5a4d;   /* src byte -> widened */
@@ -369,4 +346,3 @@ int FUN_10039f60(void)
   DAT_10ac5bfc = DAT_10ac5a4d;
   return 1;
 }
-#endif /* BR_MATCHING_BUILD */

@@ -18,9 +18,7 @@
  * and all three comparisons, which is why the null test on the callback
  * reads `cmp eax,edx` and not `test eax,eax`.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Rec549A0 {
 public:

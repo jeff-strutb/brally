@@ -22,10 +22,8 @@
  * memset forms and every flag set were dead (12 diffs, one permutation);
  * the loop is the source fact.  See docs/VC5-IDIOMS.md "rep stosd order".
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #include <string.h>
-#endif
 
 class Car6FCE0 {
 public:

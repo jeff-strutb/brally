@@ -18,9 +18,7 @@
  * +31 bytes over the original.  A real thiscall member call pushes the int
  * constant directly.  Same tell as BrVt8A70CallPair (src/core/cpp/0x10008A70).
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 /* 0x10062B10 -- __thiscall member, one int arg: `push n; mov ecx,obj; call`. */
 class CtrlCfg {

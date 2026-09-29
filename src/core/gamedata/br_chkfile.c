@@ -8,10 +8,8 @@
  *
  * See slice6_78.h for how the targets were chosen and the defects preserved.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -72,7 +70,6 @@ static FILE **ChkToPun(BrChkFile *pf)
  * file will not open the game writes an error line to a log on the C drive,
  * echoes it, and quits outright -- there is no recovery path here. */
 /* @implements 0x10002FE0 d3d BrChkFReadOpen */
-#ifdef BR_MATCHING_BUILD
 __declspec(dllimport) void __stdcall OutputDebugStringA(const char *psz);
 
 FILE **BrChkFReadOpen(const char *pPath)
@@ -108,57 +105,6 @@ FILE **BrChkFReadOpen(const char *pPath)
      * original's tail is one `mov eax,ebx`. */
     return (FILE **)(void *)pf;
 }
-#else
-FILE **BrChkFReadOpen(const char *pPath)
-{
-    BrChkFile *pf;
-    size_t     cb;
-
-    /* DEVIATION: the original allocates the literal 8.  On LP64 two pointers
-     * do not fit in 8 bytes, so this uses sizeof -- the rule CONVENTIONS
-     * states for exactly this shape of allocation.  The `what` strings are
-     * the originals, at 0x10094140 and 0x10094128. */
-    pf = (BrChkFile *)BrChkAlloc(sizeof(BrChkFile), "CHK_FReadOpen():pfil");
-
-    /* strlen + 1: the original's `repne scasb` count includes the NUL, and
-     * the copy that follows moves exactly that many bytes. */
-    cb = strlen(pPath) + 1u;
-    pf->pszName = (char *)BrChkAlloc(cb, "CHK_FReadOpen():szName");
-    memcpy(pf->pszName, pPath, cb);
-
-    /* The trace reads the COPY, not the argument. */
-    if (BrChkVerbose != 0) {
-        fprintf(stderr, "CHK_FReadOpen(%s)\n", pf->pszName);
-    }
-
-    pf->pFile = fopen(pf->pszName, "rb");
-
-    if (pf->pFile == NULL) {
-        /* The original opens "c:\RallyError.txt" for writing, puts the
-         * message in it, echoes it to the debugger, closes the log and
-         * exits(1).  The path is a Windows absolute path and is kept
-         * verbatim: on a POSIX host a backslash is an ordinary filename
-         * character, so this lands in the working directory instead of on
-         * drive C.  That is the faithful reading -- inventing a portable log
-         * location would be a behaviour this binary does not have.
-         *
-         * DEVIATION: a NULL log FILE is skipped.  The original hands it
-         * straight to the write and would fault. */
-        FILE *pLog = fopen("c:\\RallyError.txt", "w");
-
-        if (pLog != NULL) {
-            fprintf(pLog, "CHK_FReadOpen(): error opening file %s.\n",
-                    pf->pszName);
-            fclose(pLog);
-        }
-        fprintf(stderr, "CHK_FReadOpen(): error opening file %s.\n",
-                pf->pszName);
-        exit(1);
-    }
-
-    return ChkToPun(pf);
-}
-#endif
 
 /* 0x10002F90  CHK_FileSize.
  *
@@ -194,7 +140,6 @@ int BrChkFileSize(FILE **ppFile)
  * up short, printing how many bytes it wanted to the debugger. The engine
  * treats a short read as corrupt game data, so there is no recoverable case;
  * the destination comes back unchanged for chaining. */
-#ifdef BR_MATCHING_BUILD
 int BrFChkFRead(void *pDst, size_t size, size_t count, FILE **ppFile);  /* 0x10003430 */
 
 /* @implements 0x100034C0 glide BrChkFRead */
@@ -210,13 +155,11 @@ void *BrChkFRead(void *pDst, size_t size, size_t count, FILE **ppFile)
     }
     return pDst;
 }
-#endif
 
 /* 0x100035E0  CHK_FClose (D3D 0x10003290). */
 /* WHAT IT DOES: closes a game data file and releases the handle and the copy
  * of the name that went with it. A failed close is treated as fatal and the
  * game quits. */
-#ifdef BR_MATCHING_BUILD
 /* @implements 0x100035E0 glide BrChkFClose */
 void BrChkFClose(FILE **ppFile)
 {
@@ -235,29 +178,7 @@ void BrChkFClose(FILE **ppFile)
     free(pf->pszName);
     free(pf);
 }
-#else
-void BrChkFClose(FILE **ppFile)
-{
-    BrChkFile *pf = ChkFromPun(ppFile);
 
-    if (BrChkVerbose != 0) {
-        fprintf(stderr, "CHK_FClose(%s)\n", pf->pszName);
-    }
-
-    /* `cmp eax, -1` -- fclose's failure value, which is EOF. */
-    if (fclose(pf->pFile) == EOF) {
-        fprintf(stderr, "CHK_FClose(): error closing file %s.\n", pf->pszName);
-        exit(1);
-    }
-
-    /* Order is the original's: the name first, then the handle.  Both reads
-     * of pszName above happen before either free. */
-    free(pf->pszName);
-    free(pf);
-}
-#endif
-
-#ifdef BR_MATCHING_BUILD
 /* 0x10003680  CHK_FileExists. */
 /* WHAT IT DOES: reports whether a file can be opened for reading, and when
  * file tracing is on also prints CHK_FileExists(path) to the debugger. */
@@ -326,9 +247,7 @@ void *BrChkRealloc(void *pMem, size_t size, const char *pWhat)
     }
     return p;
 }
-#endif
 
-#ifdef BR_MATCHING_BUILD
 extern char s_File__s_missing_100aa318[];   /* "File %s missing" */
 void BrLogPrint(const void *p);
 
@@ -354,4 +273,3 @@ void BrFileReadInto(void *pDst, const char *pPath, int cb)
   BrChkFRead(pDst, 1, cb, ppFile);
   BrChkFClose(ppFile);
 }
-#endif /* BR_MATCHING_BUILD */

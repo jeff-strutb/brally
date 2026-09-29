@@ -5,7 +5,6 @@
  * car's own update callback, and -- when the recorded path is active -- step the
  * keyframe cursor and interpolate the along-path time.
  */
-#ifdef BR_MATCHING_BUILD
 #include "br_match.h"      /* BR_THISCALL1 -- thiscall via __fastcall on VC5 */
 
 void  BrRacePathAdvance(int keyA, int keyB, float t, float w);
@@ -202,4 +201,3 @@ void BR_THISCALL1 BrGhostPlaybackStep(unsigned int *param_1)
   return;
 }
 
-#endif /* BR_MATCHING_BUILD */

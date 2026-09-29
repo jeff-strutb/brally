@@ -4,7 +4,6 @@
  * Filed out of the address batch slice1_06.c; its preamble is carried verbatim.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
 /* The original BrOptSave takes no arguments (loose globals in, packed
@@ -13,20 +12,13 @@
  * the port signature (cdecl, extra args harmless at run time). */
 #define BrOptSave   BrOptSave_hdr
 #define BrOptAvailB BrOptAvailB_hdr
-#ifdef BR_MATCHING_BUILD
 /* The original BrNameListInit is a thiscall ctor with no stack args (vtbl
  * and fill string are fixed); hide the port's 3-arg prototype. */
 #define BrNameListInit BrNameListInit_port
 #include "slice1_06.h"
 #undef BrNameListInit
-#else
-#include "slice1_06.h"
-#endif
 #undef BrOptSave
 #undef BrOptAvailB
-#else
-#include "slice1_06.h"
-#endif
 
 #include <stdlib.h>
 #include <string.h>
@@ -46,7 +38,6 @@ typedef char br06_assert_namelist[
  * bumped -- but the length still counts up, so once it overflows it never
  * agrees with what is actually stored again. What the items are is not
  * established here. */
-#ifdef BR_MATCHING_BUILD
 /* Original layout from the context pointer at 0x106C7C3C: items at +4,
  * count at +0x7C. BrPendList in the header starts at the items, so matching
  * uses a wrapper with the leading dword the original addresses through. */
@@ -91,27 +82,3 @@ void BrPendListAdd(BrPendList *pList, void *pItem, uint32_t *pcDropped)
         p->count++;
     }
 }
-#else
-/* WHAT IT DOES: queue a piece of work to run later.  If the queue is
- * already full the item is dropped, but the counter still moves on. */
-/* port-only variant of BrPendListAdd (matching build uses the #ifdef branch above) */
-void BrPendListAdd(BrPendList *pList, void *pItem, uint32_t *pcDropped)
-{
-    if (pList->count < BR_PENDLIST_MAX) {
-        pList->apItems[pList->count] = pItem;
-        /* The original re-loads the context pointer from 0x106C7C3C here
-         * before incrementing -- irrelevant unless the callee moved it, and
-         * there is no callee. */
-        pList->count++;
-        return;
-    }
-
-    /* Over capacity: drop the item, bump the global at 0x106C7C40, and STILL
-     * increment the counter. */
-    if (pcDropped != NULL) {          /* DEVIATION: the original's counter is
-                                       * a fixed global and is never NULL. */
-        (*pcDropped)++;
-    }
-    pList->count++;
-}
-#endif

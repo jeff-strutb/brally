@@ -12,10 +12,8 @@
  * before the call, as the original has it.  aHdr[3] is never written (the
  * original's quirk).  br_podwrite.c keeps the port body.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdio.h>
 #include <string.h>
 

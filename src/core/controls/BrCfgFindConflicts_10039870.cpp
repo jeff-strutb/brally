@@ -33,9 +33,7 @@
  * the original has `sub esp,0x14` -- and rotates the loop registers.
  * Re-reading is worth all 201 diffs of the first draft.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 struct BrBind39870 {
     unsigned int key;           /* +0x00 */

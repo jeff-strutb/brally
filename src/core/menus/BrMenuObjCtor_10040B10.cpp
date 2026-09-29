@@ -15,9 +15,7 @@
  * The fills are memset intrinsics (`mov ecx,N; xor eax,eax / or eax,-1;
  * lea edi`); the 50-byte one is `rep stosd` + `stosw`.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <string.h>
 
 class Item438 {

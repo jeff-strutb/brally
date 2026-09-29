@@ -1,5 +1,4 @@
 /* 0x004018F0 OnMediaPauseStop: Pause, rewind, GetState, Stop, state=1 */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: pause playback, or stop it if it was already paused. */
 /* @implements 0x004018F0 bossrally.exe OnMediaPauseStop */
 
@@ -49,4 +48,3 @@ void OnMediaPauseStop(void)
     SetMediaState(1);
 }
 
-#endif

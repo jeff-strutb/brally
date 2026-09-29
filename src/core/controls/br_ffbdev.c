@@ -17,11 +17,8 @@
 #include <string.h>
 
 #include "br_match.h"
-#ifdef BR_MATCHING_BUILD
 /* Header is cdecl (this, x, y, z). Original is thiscall with ret 0xC. */
 #define BrEntSetPos BrEntSetPos_hdr
-#endif
-#ifdef BR_MATCHING_BUILD
 /* The entity setters are thiscall with three stack floats; hide the
  * port's cdecl prototypes so the twins can carry the fastcall shape. */
 #define BrEntSetMatrix      BrEntSetMatrix_port
@@ -35,12 +32,7 @@
 #undef BrEntSetAngVel
 #undef BrEntSetOrientation
 #undef BrEntSetHeading
-#else
-#include "slice3_45.h"
-#endif
-#ifdef BR_MATCHING_BUILD
 #undef BrEntSetPos
-#endif
 
 /* ====================================================================== */
 /* Constants read out of orig/BRD3D.dll .rdata (do not re-derive)          */
@@ -110,23 +102,14 @@ static void BrDbgPrint(const char *pMsg)
  * calls through it (`mov edi,[__imp__]; call edi`, stdcall). The matching arm
  * spells that pointer; the port routes the same local through the safe sink
  * above. */
-#ifdef BR_MATCHING_BUILD
 __declspec(dllimport) void __stdcall OutputDebugStringA(const char *pMsg);
 typedef void (__stdcall *BrDbgSink)(const char *pMsg);
 #define BR_DBG_SINK OutputDebugStringA
-#else
-typedef void (*BrDbgSink)(const char *pMsg);
-#define BR_DBG_SINK BrDbgPrint
-#endif
 
 /* BrFfbEnumDevice's original calls the import DIRECTLY per site
  * (`call dword ptr [__imp__OutputDebugStringA]`), unlike BrFfbInit's cached
  * register. The port routes the same sites through the safe sink. */
-#ifdef BR_MATCHING_BUILD
 #define BR_DBG_OUT(msg) OutputDebugStringA(msg)
-#else
-#define BR_DBG_OUT(msg) BrDbgPrint(msg)
-#endif
 
 /* ====================================================================== */
 /* Small helpers                                                           */
@@ -159,19 +142,12 @@ static __inline const BrDiEffVtbl *BrDiEff(BrDiObj *p)
     return (const BrDiEffVtbl *)(const void *)p->pVtbl;
 }
 
-#ifdef BR_MATCHING_BUILD
 typedef long (__stdcall *BrDiSetParamsFn)(BrDiObj *, const BrDiEffect *, uint32_t);
 typedef long (__stdcall *BrDiSetPropFn)(BrDiObj *, uint32_t, const void *);
 #define BR_DI_SETPARAMS(p, eff, flags) \
     ((BrDiSetParamsFn)(((const BrDiEffVtbl *)(const void *)(p)->pVtbl)->pfnSetParameters))((p), (eff), (flags))
 #define BR_DI_SETPROP(p, prop, pdiph) \
     ((BrDiSetPropFn)(((const BrDiDevVtbl *)(const void *)(p)->pVtbl)->pfnSetProperty))((p), (prop), (pdiph))
-#else
-#define BR_DI_SETPARAMS(p, eff, flags) \
-    (BrDiEff(p)->pfnSetParameters((p), (eff), (flags)))
-#define BR_DI_SETPROP(p, prop, pdiph) \
-    (BrDiDev(p)->pfnSetProperty((p), (prop), (pdiph)))
-#endif
 
 /* ====================================================================== */
 /* 4. DirectInput devices                                                  */
@@ -338,9 +314,6 @@ void BrFfbUpdateSpring(int32_t up, int32_t enable, int32_t decay)
  * SetParameters afterwards, so reproducing it in a build that actually RUNS
  * would be undefined behaviour.  The matching build spells it as the original
  * does; the port build gives the buffer static storage so it stays valid. */
-#ifndef BR_MATCHING_BUILD
-static uint32_t g_brFfbAxes[2];
-#endif
 
 /* 0x10079390 */
 /* WHAT IT DOES: builds the two force-feedback effects the game uses -- the
@@ -377,11 +350,7 @@ static uint32_t g_brFfbAxes[2];
 void BrFfbSetup(int32_t springCoeff, int32_t springCoeff2)
 {
     long hr;
-#ifdef BR_MATCHING_BUILD
     uint32_t rgAxes[2];            /* original: the axis buffer is a stack local */
-#else
-#define rgAxes g_brFfbAxes
-#endif
 
     rgAxes[0] = 0u;   /* lX */
     rgAxes[1] = 4u;   /* lY */
@@ -443,9 +412,6 @@ void BrFfbSetup(int32_t springCoeff, int32_t springCoeff2)
     (void)BrDiDev(g_brFfb.pDevice)->pfnCreateEffect(g_brFfb.pDevice, kBrGuidSquare, &g_brDiEffSquare,
                                          &g_brFfb.pEffectSquare, NULL);
 }
-#ifndef BR_MATCHING_BUILD
-#undef rgAxes
-#endif
 
 /* 0x100790E0 */
 /* WHAT IT DOES: called by Windows once for each controller it finds; this is

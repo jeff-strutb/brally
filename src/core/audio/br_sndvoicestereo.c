@@ -7,7 +7,6 @@
  * modules (br_sndvoice.c / slice6_76.c) -- so it must declare them int-returning
  * here, which it cannot do in the same translation unit as either definition.
  */
-#ifdef BR_MATCHING_BUILD
 
 /* Set when the sound system is up: the DirectSound object, and the two device
  * caps the mixer checks before touching a buffer.  Any of them zero means the
@@ -70,4 +69,3 @@ RET0:
   return 1;
 }
 
-#endif /* BR_MATCHING_BUILD */

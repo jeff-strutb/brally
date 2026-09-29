@@ -11,9 +11,7 @@
  * `push esi` prologue, `mov [g],esi` stores). Same source shape as the
  * C7-05 form gen_phaseleave stamps. No EH.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class GameSub {
 public:

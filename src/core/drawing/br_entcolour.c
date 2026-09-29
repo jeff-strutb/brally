@@ -16,11 +16,8 @@
 #include <string.h>
 
 #include "br_match.h"
-#ifdef BR_MATCHING_BUILD
 /* Header is cdecl (this, x, y, z). Original is thiscall with ret 0xC. */
 #define BrEntSetPos BrEntSetPos_hdr
-#endif
-#ifdef BR_MATCHING_BUILD
 /* The entity setters are thiscall with three stack floats; hide the
  * port's cdecl prototypes so the twins can carry the fastcall shape. */
 #define BrEntSetMatrix      BrEntSetMatrix_port
@@ -34,12 +31,7 @@
 #undef BrEntSetAngVel
 #undef BrEntSetOrientation
 #undef BrEntSetHeading
-#else
-#include "slice3_45.h"
-#endif
-#ifdef BR_MATCHING_BUILD
 #undef BrEntSetPos
-#endif
 
 /* 0x10076A00 */
 /* WHAT IT DOES: pushes the paint colour a car has been given down into the
@@ -62,11 +54,7 @@ void __fastcall BrEntRefreshColour(BrEnt *pE)
  * an out-of-range one silently points at whatever memory follows the table. */
 /* @implements 0x10076A40 d3d BrEntSetRecord */
 /* @n64 0x802203F0 located */
-#ifdef BR_MATCHING_BUILD
 void __fastcall BrEntSetRecord(BrEnt *pE, void *_dummy, int32_t idx)
-#else
-void BrEntSetRecord(BrEnt *pE, int32_t idx)
-#endif
 {
     /* The original's exact shift/add chain, in uint32_t so it wraps the same
      * way: ((((idx*11) << 6) - idx) << 4) + idx, times 8 == idx * 89992. */

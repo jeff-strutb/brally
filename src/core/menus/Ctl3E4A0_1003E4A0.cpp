@@ -12,9 +12,7 @@
  * cdecls run ONLY on the just-built path (slice2_26 BrPhaseActivate_10044F50).
  * return 1 sits after the if/else.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Phase;
 

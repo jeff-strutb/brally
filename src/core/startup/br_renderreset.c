@@ -12,20 +12,15 @@
  * /O2 register choice, so it is kept whole); its state block g_s17 is
  * declared in slice2_17.h and defined there.
  */
-#ifdef BR_MATCHING_BUILD
 /* slice2_17.h prototypes a list pointer the original never takes. */
 #define BrPtrListContains BrPtrListContains_port
-#endif
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice2_17.h"
 
 /* g_s17 is the port's gathering of scattered originals.  The matching build
  * reads the fields used here as the separate globals they are, by their
  * DAT_ names -- which the image gate resolves from the address they spell. */
-#ifdef BR_MATCHING_BUILD
 extern uint32_t *DAT_106e7710;
 #define S17_PGFX DAT_106e7710
 extern int DAT_106e7714;
@@ -52,24 +47,7 @@ extern int DAT_106e7734;
 #define S17_F6C06A4 DAT_106e7734
 extern int DAT_106e772c;
 #define S17_F6C069C DAT_106e772c
-#else
-#define S17_PGFX g_s17.pGfx
-#define S17_SCREENW g_s17.screenW
-#define S17_SCREENH g_s17.screenH
-#define S17_DEFAULTW g_s17.defaultW
-#define S17_DEFAULTH g_s17.defaultH
-#define S17_F6C32CC g_s17.f6C32CC
-#define S17_F6C56DC g_s17.f6C56DC
-#define S17_F6C1178 g_s17.f6C1178
-#define S17_F6C161C g_s17.f6C161C
-#define S17_F6C1610 g_s17.f6C1610
-#define S17_F6C33B8 g_s17.f6C33B8
-#define S17_F6C06A4 g_s17.f6C06A4
-#define S17_F6C069C g_s17.f6C069C
-#endif
-#ifdef BR_MATCHING_BUILD
 #undef BrPtrListContains
-#endif
 
 #include <math.h>
 #include <stdio.h>
@@ -109,11 +87,7 @@ extern int   BrX10060E90(void);
  * at the call site (arg1 in ecx, no stack cleanup), so that is what the
  * matching build uses. Off MSVC the qualifier vanishes and it is an ordinary
  * one-argument function. */
-#if defined(_MSC_VER)
 #define BRS17_THISCALL __fastcall
-#else
-#define BRS17_THISCALL
-#endif
 extern void BRS17_THISCALL BrX100751D0(void *pThis);
 /* XSLICE 0x1002C2C0 */
 extern void  BrX1002C2C0(void);

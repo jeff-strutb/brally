@@ -6,10 +6,8 @@
  * in src/core/generated/). The preamble is slice1_01.c's, carried whole.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice1_01.h"
 
 #include <stdlib.h>
@@ -41,9 +39,7 @@
  * caching and check reorder are all codegen-identical; only `wanted <= 0u`
  * went worse.  Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x100030E0 d3d BrFChkFRead */
-#ifdef BR_MATCHING_BUILD
 #include <windows.h>
-#endif
 /* RESIDUE (8 masked diffs, REGNORM 0+0): the original homes `size` in
  * ebx and `count` in edi; this build homes them the other way round, which
  * flips the two `push`es and the `imul` operands. Every instruction is the
@@ -60,11 +56,9 @@
  * @t4-pass 0x10003430 4 2026-09-09 probes 15 bytes 140 insns 48 regions 3 rows 0 census yes  (hand, fn.py variants + position sweep) */
 int BrFChkFRead(void *pDst, size_t size, size_t count, FILE **ppFile)
 {
-#ifdef BR_MATCHING_BUILD
     /* The original formats the failure message into a 0x400-byte stack buffer
      * (allocated in the prologue) and ships it to OutputDebugStringA. */
     char buf[0x400];
-#endif
     uint32_t wanted = (uint32_t)size * (uint32_t)count;
     size_t   got;
 
@@ -81,18 +75,11 @@ int BrFChkFRead(void *pDst, size_t size, size_t count, FILE **ppFile)
         return 1;
     }
 
-#ifdef BR_MATCHING_BUILD
     wsprintfA(buf,
               "FCHK_FRead(): trying to read %d bytes, but got only %d bytes.\n",
               (int)wanted, (int)((uint32_t)got * (uint32_t)size));
     OutputDebugStringA(buf);
     exit(1);
-#else
-    fprintf(stderr,
-            "FCHK_FRead(): trying to read %d bytes, but got only %d bytes.\n",
-            (int)wanted, (int)((uint32_t)got * (uint32_t)size));
-    exit(1);
-#endif
 
     return 1;   /* the original falls through to the `mov eax,1` tail */
 }

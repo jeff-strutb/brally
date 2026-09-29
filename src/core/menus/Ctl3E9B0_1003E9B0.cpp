@@ -10,9 +10,7 @@
  * TailFn(); return 1. That keeps `mov eax,1` out of the flag stores
  * so they stay `c7` immediates (maxState=1, op-delete).
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Phase;
 

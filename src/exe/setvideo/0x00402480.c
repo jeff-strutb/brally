@@ -29,7 +29,6 @@
  *    guard. The guard form makes the exit the fall-through (`jne write`);
  *    the original branches away to it (`je <outlined stub>`) and cross-jumps
  *    the exits so that case 1's block is the merge master. */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: the whole Display Wizard. Works out where the game is
  * installed, loads the video-device database, pre-selects whatever card
  * the existing BossRally.ini names, then loops over the wizard dialogs
@@ -324,4 +323,3 @@ radio:
 }
 
 
-#endif /* BR_MATCHING_BUILD */

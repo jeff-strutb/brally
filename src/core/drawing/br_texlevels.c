@@ -9,7 +9,6 @@
  * allocates fp to edi while path occupies esi, then reuses esi for
  * sscanf. Recomp reuses esi for fp and puts sscanf in edi. T3a
  * colouring -- park. */
-#ifdef BR_MATCHING_BUILD
 
 #define _CRTIMP __declspec(dllimport)
 #include <stdio.h>
@@ -66,4 +65,3 @@ DAT_10ac0808 = 0;DAT_1186c960 = 0x200000;if (FUN_10003680(pszPath) == 0) {
     FUN_100035e0(fp);
   }BrTexChooseLevel();}
 
-#endif /* BR_MATCHING_BUILD */

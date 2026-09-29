@@ -7,7 +7,6 @@
  * Either way it then hands off to the net/steer sub-steps, recomputes the
  * scalar speed, and -- for the local camera car -- advances the chase camera.
  */
-#ifdef BR_MATCHING_BUILD
 #include "br_match.h"      /* BR_THISCALL1 -- thiscall via __fastcall on VC5 */
 
 /* callees */
@@ -208,4 +207,3 @@ LAB_net:
   return;
 }
 
-#endif /* BR_MATCHING_BUILD */

@@ -4,14 +4,11 @@
  * matched first and grouped by what they are afterwards.
  * Every function carries its original address.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import
  * table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdint.h>
 
-#ifdef BR_MATCHING_BUILD
 
 
 /* ================================================================== */
@@ -27,4 +24,3 @@ void BrCopy8Words(void *pDst, const void *pSrc)
     memcpy(pDst, pSrc, 8 * sizeof(uint32_t));
 }
 
-#endif /* BR_MATCHING_BUILD */

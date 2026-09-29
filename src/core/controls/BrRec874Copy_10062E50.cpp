@@ -18,9 +18,7 @@
  * switch on a NAMED local (the dec/je chain runs on the loaded register);
  * the case pointers fall out of the dest-lea CSE from the four big copies.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 struct CpyA { char b[0xA8]; };     /* rep movsd 0x2a  */
 struct CpyB { char b[0x104]; };    /* rep movsd 0x41  */

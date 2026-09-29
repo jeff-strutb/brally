@@ -54,7 +54,6 @@
  *     `*(char *)(s+i)`, `*(char *)&ring[k]`, (int) casts on strlen.
  *   - declaration order of the locals, and swapping `e` / `s`.
  */
-#ifdef BR_MATCHING_BUILD
 
 /* The original binary is /MD: CRT calls resolve through the import table. */
 #define _CRTIMP __declspec(dllimport)
@@ -126,4 +125,3 @@ void BrCheatCodeScan(void)
     }
 }
 
-#endif /* BR_MATCHING_BUILD */

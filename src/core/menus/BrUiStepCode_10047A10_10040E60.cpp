@@ -13,9 +13,7 @@
  * load (`pop esi; mov eax,1; ret`); explicit per-branch returns emit the
  * mov first and miss by 4 bytes. No EH.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Ui47A10 {
 public:

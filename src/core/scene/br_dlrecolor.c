@@ -6,7 +6,6 @@
  * stack in declaration order, the `for` layout with the jump over the
  * increment. The sweep picks the /Od variant per function.
  */
-#ifdef BR_MATCHING_BUILD
 
 extern int BrG_6C661C;      /* 0x106ED6AC */
 extern int BrG_6C6624;      /* 0x106ED6B4 */
@@ -118,4 +117,3 @@ out:
   goto done;
 }
 
-#endif /* BR_MATCHING_BUILD */

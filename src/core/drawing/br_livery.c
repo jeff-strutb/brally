@@ -14,24 +14,19 @@
  */
 #include <string.h>
 
-#ifdef BR_MATCHING_BUILD
 /* Header prototype is cdecl; the original is thiscall.  Rename the
  * prototype so the thiscall definition is not a C2373 redefinition. */
 #define BrCarInitTables BrCarInitTables_cdecl_hdr
 #define BrCarClear29C8  BrCarClear29C8_cdecl_hdr
 #define BrZeroRegions   BrZeroRegions_cdecl_hdr
-#endif
 #include "slice3_40.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrCarInitTables
 #undef BrCarClear29C8
 #undef BrZeroRegions
 void BrZeroRegions(void);
-#endif
 
 #include "br_match.h"    /* BR_THISCALL1 */
 
-#ifdef BR_MATCHING_BUILD
 
 extern int DAT_100ad7d8;
 extern char DAT_100ad7e8;
@@ -91,7 +86,7 @@ void FUN_1005a6b0(void)
 }
 
 
-/* ‼ MAP DEFECT, fixed 2026-09-04.  config/functions_glide.csv listed
+/* â¼ MAP DEFECT, fixed 2026-09-04.  config/functions_glide.csv listed
  * 0x1005A480 as one 91-byte function.  It is two: a 5-byte `jmp 1005A490`
  * plus eleven alignment nops (16 bytes, MSVC emits the padding inside the
  * first function), then the 75-byte loader at the 16-aligned address that
@@ -193,4 +188,3 @@ void FUN_1005a420(void)
   return;
 }
 
-#endif /* BR_MATCHING_BUILD */

@@ -45,9 +45,7 @@
  *    case 0 / the disabled axis; the original keeps each arm whole and
  *    shares only case 0 with the disabled path.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Tween41180 {
 public:

@@ -57,11 +57,9 @@
  * @t4-pass 0x1003AB00 1 2026-09-13 probes 10 bytes 198 insns 74 regions 1 rows 3 census no  (cpp_score: v=v-x, fused-assign-in-if, dup-subtract CSE, !(>=0), arm ternary, (int) cast, block-scoped result local, v<=-1 (wrong-shape 128, rejected), branchless &~(v>>31) (131), 0>v -- residue unmoved)
  * @t4-pass 0x1003AB00 2 2026-09-13 probes 10 bytes 198 insns 74 regions 1 rows 3 census yes  (cpp_score: ternary in the _itoa arg, dup-subtract ternary, compare-before-subtract v>=x?v-x:0 (133), empty-else both polarities, += -x, long temp, mask-compare (133), v-=v, v=v-v -- zero movement; slot census identical both sides)
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #include <stdlib.h>
 #include <string.h>
-#endif
 
 class Item438D {
 public:

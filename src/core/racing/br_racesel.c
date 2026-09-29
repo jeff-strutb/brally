@@ -21,7 +21,6 @@
  * pCar stepped (243 B); the grid index as a 2-D array (inert).
  */
 
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #include <stdint.h>
 #include <string.h>
@@ -128,4 +127,3 @@ void BrRaceSelFromMenu(void)
     BrSessionReinitVideo();
 }
 
-#endif /* BR_MATCHING_BUILD */

@@ -67,11 +67,9 @@
  * @t4-pass 0x100038F0 1 2026-09-13 probes 13 bytes 4240 insns 1341 regions 22 rows 354 census no  (first-transcription byte grind: t as a union / byte-array-behind-int-cast / volatile t / volatile nMode; /Oi off (0x2f..0x337 goes byte-exact but the original's strcpy/strcat ARE inline) then #pragma intrinsic restore; full local rename; declaration in the original's frame order; frame 0x790-vs-0x794 temp. All allocation; numbers unmoved.)
  * @t4-pass 0x100038F0 2 2026-09-16 probes 20 bytes 4240 insns 1341 regions 22 rows 354 census yes  (five more source levers -- volatile nMode (2654, worse), #pragma intrinsic, register loop vars, decl reorder, tb scalar -- none beats 2647; the A5 oracle runs the packet dispatcher on 48 valid-state seeds and returns EQUIVALENT: return + every in-image global write + side effects agree, so the residue is case-0 register allocation, not missing/wrong code. Numbers unmoved.)
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #include <string.h>
 #include <stdio.h>
-#endif
 
 struct BrNetHdr {
     int f00;

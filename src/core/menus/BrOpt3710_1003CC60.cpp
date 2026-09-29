@@ -10,9 +10,7 @@
  * ecx-immediate shape), the slot-6 vcall, and two cdecl helpers with
  * call-site argument reads. No EH.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class GameSub {
 public:

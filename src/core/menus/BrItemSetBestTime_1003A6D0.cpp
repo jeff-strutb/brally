@@ -29,11 +29,9 @@
  * `fsubr st(1)` against the copy still on the stack. Unnamed, VC5
  * re-associates and starts spilling to slots the original never uses.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #include <stdio.h>
 #include <string.h>
-#endif
 
 class Item438H {
 public:

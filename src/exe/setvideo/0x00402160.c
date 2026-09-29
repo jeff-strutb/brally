@@ -2,7 +2,6 @@
  * case 0x3EA (Back) EndDialog(-1) falls through. IDOK keeps `ok` live
  * by merging EndDialog after if (idx >= 0) { ok=1; index=idx; } else
  * index=saved — two EndDialog sites fold ok to push-imm and drop ebp. */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: handle the dialog built around the first drop-down. */
 /* @implements 0x00402160 setvideo.exe DlgProcComboA */
 
@@ -68,4 +67,3 @@ int __stdcall DlgProcComboA(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 }
 
 
-#endif /* BR_MATCHING_BUILD */

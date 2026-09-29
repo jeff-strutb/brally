@@ -10,7 +10,6 @@
  * the set of names the translation unit sees, and trimming them changes the
  * compiler's view of the code.
  */
-#ifdef BR_MATCHING_BUILD
 /* slice1_09.h declares these cdecl; the originals are thiscall with stack
  * args.  Hide those prototypes so the matching bodies can use __fastcall
  * plus a struct-typed second argument (never register-eligible, so forced
@@ -23,9 +22,7 @@
 #define BrBitStreamWriteU32  BrBitStreamWriteU32_cdecl
 #define BrEntitySetIndex     BrEntitySetIndex_cdecl
 #define BrEntityBindAux      BrEntityBindAux_cdecl
-#endif
 #include "slice1_09.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrBitStreamReadBits
 #undef BrBitStreamInit
 #undef BrBitStreamSkipBytes
@@ -34,7 +31,6 @@
 #undef BrBitStreamWriteU32
 #undef BrEntitySetIndex
 #undef BrEntityBindAux
-#endif
 
 #include <math.h>
 #include <stddef.h>
@@ -93,7 +89,6 @@ void BrMat4TransformPoint4(float pOut[4], const BrVec3 *pV, const float *pM)
     pOut[3] = pM[3] * x + pM[7] * y + pM[11] * z + pM[15];
 }
 
-#ifdef BR_MATCHING_BUILD
 
 /* WHAT IT DOES: full 4x4 point transform with perspective divide -- computes
  * w from the matrix's fourth column first, then writes x, y, z as each row
@@ -115,7 +110,6 @@ void BrVec3TransformDivW(float *d, const float *s, const float (*m)[4])
     d[1] = (x * m[0][1] + y * m[1][1] + z * m[2][1] + m[3][1]) * w;
     d[2] = (x * m[0][2] + y * m[1][2] + z * m[2][2] + m[3][2]) * w;
 }
-#endif /* BR_MATCHING_BUILD */
 
 /* 0x100747C0.
  * Written out longhand rather than with temporaries so that the write order

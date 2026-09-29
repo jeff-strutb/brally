@@ -9,16 +9,12 @@
  * original takes (x, y) and reads the grid base from a global.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
 #define BrGrid64Sample BrGrid64Sample_port
-#endif
 #include "slice1_01.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrGrid64Sample
 extern const uint16_t *g_pBrGrid64;      /* 0x106EECFC */
-#endif
 
 #include <stdlib.h>
 
@@ -62,7 +58,6 @@ extern const uint16_t *g_pBrGrid64;      /* 0x106EECFC */
  * position outside the covered region answers zero, which is indistinguishable
  * from a square whose value genuinely is zero. */
 /* @implements 0x10002DE0 d3d BrGrid64Sample */
-#ifdef BR_MATCHING_BUILD
 uint32_t BrGrid64Sample(float x, float y)
 {
     unsigned short row, col, idx;
@@ -80,39 +75,7 @@ uint32_t BrGrid64Sample(float x, float y)
      * sum are (t1 - t0) mod 65536, which is the per-cell step. */
     return ((t1 + t0 * 65535u) << 16) | t0;
 }
-#else
-uint32_t BrGrid64Sample(const uint16_t *pGrid, float x, float y)
-{
-    unsigned int col, row, idx;
-    uint32_t t0, t1, acc;
 
-    /* Written as negated comparisons so NaN takes the reject path, which is
-     * what the original does: fcomp with a NaN sets C0, and the first guard
-     * rejects on C0. */
-    if (!(x >= 0.0f))    { return 0u; }
-    if (!(x < 2048.0f))  { return 0u; }
-    if (!(y >= 0.0f))    { return 0u; }
-    if (!(y < 2048.0f))  { return 0u; }
-
-    col = (unsigned int)(long)(x * 0.03125f) & 0xFFu;
-    row = (unsigned int)(long)(y * 0.03125f) & 0xFFu;
-
-    /* esi holds row<<6 with the caller's leftover high bits still in it and
-     * eax holds __ftol's high bits; both are discarded by `and 0xffff`. */
-    idx = ((row << 6) + col) & 0xFFFFu;
-
-    t0 = pGrid[idx];
-    t1 = pGrid[(idx + 1u) & 0xFFFFu];
-
-    /* Literally `t1 + t0*65535`, shifted up 16 -- the low 16 bits of that sum
-     * are (t1 - t0) mod 65536, which is the per-cell step. */
-    acc = (uint32_t)((t1 + t0 * 65535u) << 16);
-    return acc | t0;
-}
-
-#endif
-
-#ifdef BR_MATCHING_BUILD
 
 extern unsigned short *g_pBrGrid16;            /* 0x106EED44 -- 64 x 64 u16 */
 
@@ -136,4 +99,3 @@ unsigned int BrGrid16Pair(int a, int b)
     hi = g_pBrGrid16[i2];
     return ((hi + lo * 0xFFFF) << 16) | lo;
 }
-#endif /* BR_MATCHING_BUILD */

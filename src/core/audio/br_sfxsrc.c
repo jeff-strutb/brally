@@ -6,15 +6,11 @@
  */
 #include <string.h>
 
-#ifdef BR_MATCHING_BUILD
 /* Header prototype takes int ch; the original's first argument is a SHORT
  * (movsx esi,[esp+0xC]) and it returns nothing. */
 #define BrSfxSrcStart BrSfxSrcStart_cdecl
-#endif
 #include "br_sfxsrc.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrSfxSrcStart
-#endif
 #include "slice1_08.h"
 
 /* ==========================================================================
@@ -176,7 +172,6 @@ int BrSfxChanSetLevels(int ch, uint32_t packed)
  * been told -- so the per-frame retune can tell whether anything has changed.
  * With sound switched off it reports success without doing anything. */
 /* @implements 0x1006B880 glide BrSfxChanStart */
-#ifdef BR_MATCHING_BUILD
 /* Hand-transcribed from the asm.  No channel range check and no voice-index
  * helper: the voice is BrSndVoices[group*18 + ch] straight.  The success path
  * is the nested block -- it falls through with the failure `return 0` after
@@ -200,66 +195,6 @@ int BrSfxChanStart(int group, int ch, int32_t loop)
     }
     return 1;
 }
-#else
-int BrSfxChanStart(int group, int ch, int32_t loop)
-{
-    int         idx;
-    BrSndVoice *pVoice;
-
-    if (sfx_off())                       /* 0x1006B88D / 9A / A7 */
-        return 1;
-    if (!chan_ok(ch))
-        return 0;
-    idx = BrSfxVoiceIndex(group, ch);
-    if (idx < 0)
-        return 0;
-
-    /* 0x1006B8BB: the voice is looked up by (group, ch) again, NOT taken
-     * from the channel's bound pointer.  With 0x1006B530 having just run
-     * they are the same object; the original still does the lookup. */
-    pVoice = BrSndVoices[idx];
-    if (pVoice == NULL)                  /* 0x1006B8C4 */
-        return 0;
-
-    /* 0x1006B8CC -> 0x1006B950 == slice1_08.c's BrSndVoiceSetLoopAndStart.
-     * It returns the DirectSound HRESULT, so non-zero is failure. */
-    if (BrSndVoiceSetLoopAndStart(pVoice, loop) != 0)   /* 0x1006B8D4 */
-        return 0;
-
-    /* 0x1006B8D8..0x1006B8FE: fild the voice's f0C zero-extended to 64 bits,
-     * multiply by 2^32, divide by the CHANNEL's base rate, truncate.  That
-     * is br_sfx.c's BrSfxRatioFromHz exactly -- including the unguarded
-     * divide, which is why a channel bound to a rate of 0 yields the x87
-     * indefinite here rather than a diagnostic. */
-    /* 0x1006B903/09, esi = ch*24 */
-    g_aBrSfxChan[ch].ratio = BrSfxRatioFromHz(pVoice->f0C,
-                                              g_aBrSfxChanRate[ch]);
-
-    /* 0x1006B915: only NOW does the channel's bound voice become this one on
-     * the path where 0x1006B530 was never called. */
-    g_apBrSfxChanVoice[ch] = pVoice;
-
-    /* THE SECOND STORE, which this port used not to make at all.  The ratio
-     * goes to TWO stride-24 arrays:
-     *
-     *   1006B903  mov [esi+0x118EEF48], eax    ; chan[ch].ratio, low
-     *   1006B909  mov [esi+0x118EEF4C], edx    ;                 high
-     *   1006B90F  mov ecx, [esi+0x118EEF48]    ; READ BACK the low dword
-     *   1006B915  mov [edi*4+0x1184C268], ebx  ; the bound voice, above
-     *   1006B91C  mov [esi+0x1184C088], ecx    ; applied[ch].ratio, low
-     *   1006B922  mov [esi+0x1184C08C], edx    ;                    high
-     *
-     * The two source registers differ -- eax then ecx -- and that is worth
-     * being explicit about, because it looks like two different values and is
-     * not one: 0x1006B90F reloads ecx from the slot 0x1006B903 has just
-     * written, with only the high-dword store in between, so ecx == eax and
-     * edx is still the same high dword.  The two arrays get the same 64-bit
-     * ratio.  Writing chan -> applied rather than the ftol result twice is the
-     * literal instruction order. */
-    g_aBrSfxChanApplied[ch].ratio = g_aBrSfxChan[ch].ratio;
-    return 1;
-}
-#endif
 
 void BrSfxSrcChannelsReset(void)
 {
@@ -273,7 +208,6 @@ void BrSfxSrcChannelsReset(void)
  * The source layer
  * ========================================================================== */
 
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: bind and start a sound on a channel: record the channel's
  * group/loop-flag/packed levels, bind the voice, then pan, frequency, start.
  * The record stores happen before any gate; a2 is pushed by callers and
@@ -293,41 +227,6 @@ void BrSfxSrcStart(short ch, int group, int32_t f0C, int32_t loop,
         BrSfxChanStart(group, c, loop);
     }
 }
-#else
-int BrSfxSrcStart(int ch, int group, int32_t f0C, int32_t loop,
-                  uint32_t packed)
-{
-    /* Argument mapping, traced instruction by instruction against esp:
-     *
-     *   0x1006E4C2  movsx esi,[esp+0xC]   esp = E-8   -> E+4  = a0 = ch
-     *   0x1006E4C7  mov  ebp,[esp+0x1C]   esp = E-8   -> E+14 = a4 = packed
-     *   0x1006E4CC  mov  edi,[esp+0x14]   esp = E-12  -> E+8  = a1 = group
-     *   0x1006E4FB  mov  ebx,[esp+0x20]   esp = E-16  -> E+10 = a3 = loop
-     *
-     * a2 (f0C) is pushed by both callers and never read.  Kept in the
-     * signature because the table field it comes from is real. */
-    (void)f0C;
-
-    if (!chan_ok(ch))
-        return 0;
-
-    /* 0x1006E4D8 / DE / E8 -- the channel record is written FIRST and
-     * unconditionally, before any gate is consulted. */
-    g_aBrSfxChan[ch].group  = group;
-    g_aBrSfxChan[ch].f10    = 0;
-    g_aBrSfxChan[ch].packed = packed;
-
-    /* 0x1006E4EE.  A zero return skips the whole tail -- and the gates make
-     * that return 1, so a disabled sound system takes the LONG path and each
-     * callee no-ops individually. */
-    if (BrSfxChanBind(group, ch) == 0)   /* 0x1006E4F8 */
-        return 0;
-
-    (void)BrSfxChanSetLoop(ch, loop);        /* 0x1006E501 */
-    (void)BrSfxChanSetLevels(ch, packed);    /* 0x1006E50B */
-    return BrSfxChanStart(group, ch, loop);  /* 0x1006E516 */
-}
-#endif
 
 /* WHAT IT DOES: start a sound at full volume on a given channel -- a hit,
  * a menu beep, an engine, whatever the group's bank holds. */
@@ -394,8 +293,7 @@ void BrSfxSrcRaceCountdown(int iStep)
         BrSfxSrcBeep();
 }
 
-/* ── Ghidra-matched functions ─────────────────────────── */
-#ifdef BR_MATCHING_BUILD
+/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
 extern int DAT_100b32b0;
 extern int DAT_100b32bc;
 extern int DAT_100b32c0;
@@ -436,7 +334,7 @@ int BrSndVoiceSetFreq(int param_1,int param_2)
   return 1;
 }
 
-/* WHAT IT DOES: thunk — forwards to the shared no-op at 0x1006E590. */
+/* WHAT IT DOES: thunk â forwards to the shared no-op at 0x1006E590. */
 /* @implements 0x1006E580 glide BrThunk6E580 */
 
 int BrThunk6E580(void)
@@ -447,7 +345,7 @@ int BrThunk6E580(void)
 }
 
 
-/* WHAT IT DOES: no-op — the shared target of multiple thunks. */
+/* WHAT IT DOES: no-op â the shared target of multiple thunks. */
 /* @implements 0x1006E590 glide BrNop6E590 */
 
 int BrNop6E590(void)
@@ -456,4 +354,3 @@ int BrNop6E590(void)
   return;
 }
 
-#endif /* BR_MATCHING_BUILD */

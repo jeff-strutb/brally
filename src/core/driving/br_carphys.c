@@ -29,7 +29,6 @@
  * An integrator is nothing but clamps, and one of them backwards inverts the
  * whole thing silently.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
 #define BrCarPhysTyre BrCarPhysTyre_port   /* header keeps the port signature */
@@ -38,7 +37,6 @@
 #define BrCrRespWalk BrCrRespWalk_portproto    /* ditto: the original is 2-arg */
 #define BrCollRespTipKick BrCollRespTipKick_portproto /* ditto: original is 1-arg */
 #include <float.h>
-#endif
 #include <math.h>
 #include <string.h>
 
@@ -104,7 +102,6 @@ BrRbState *BrCarPhysBodyState(BrRbBodyFull *pBody)
 static void BrCpIntegrateVelocity(BrRbState *pS, const BrRbBodyFull *pB,
                                   float dt)
 {
-#ifdef BR_MATCHING_BUILD
     /* Orig loads all six body floats onto the x87 stack, then fxch/fmul
      * dt, and homes exactly THREE of the products -- the angular ones -- in
      * three consecutive frame slots (`sub esp,0xc`; `fst [esp]`, `[esp+4]`,
@@ -130,19 +127,6 @@ static void BrCpIntegrateVelocity(BrRbState *pS, const BrRbBodyFull *pB,
         pS->angVel.y = pS->angVel.y + da.y;
         pS->angVel.z = pS->angVel.z + da.z;
     }
-#else
-    BrRbBody tmp;
-
-    memset(&tmp, 0, sizeof tmp);
-    tmp.accel[0]    = pB->accel.x;
-    tmp.accel[1]    = pB->accel.y;
-    tmp.accel[2]    = pB->accel.z;
-    tmp.angAccel[0] = pB->angAccel.x;
-    tmp.angAccel[1] = pB->angAccel.y;
-    tmp.angAccel[2] = pB->angAccel.z;
-
-    BrRbIntegrateVelocity(pS, &tmp, dt);
-#endif
 }
 
 /* 0x10074870 == BrRbInitInertia, which reads mode/dim/mass and writes the two
@@ -200,7 +184,6 @@ __inline float BrCarPhysSign(float v)
     return BR_CP_SIGN_NEG;
 }
 
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: pushes each wheel up with its suspension spring -- the
  * further the wheel is compressed past its rest point, the harder the push,
  * growing with the square of the compression. A wheel that has left the
@@ -315,94 +298,11 @@ void BrCarPhysSpring(BrRbBodyFull *pBody)
         }
     }
 }
-#else
-void BrCarPhysSpring(BrRbBodyFull *pBody, uint8_t *pTouchdown)
-{
-    BrRbForce *pNode = pBody->pForces;
-    int        i;
-
-    for (i = 0; i < 4; ++i) {
-        BrRbBodyFull *pWheel;
-        float         v;
-        int32_t       contact, contactWas;
-
-        if (pNode == NULL) {
-            return;      /* the original walks blind; a truncated list here
-                          * would be a construction bug, not a frame bug */
-        }
-
-        /* The x and y components are zeroed before anything else, every
-         * frame, for all four nodes. */
-        pNode->f.y = 0.0f;
-        pNode->f.x = 0.0f;
-
-        /* The four-arm jump table at 0x10068509 is `switch (i - 0)` over the
-         * child array, in order. */
-        pWheel = pBody->child[i];
-
-        /* f1B4 is an int32 in the original (`mov eax, [ecx+0x1b4]`) and is
-         * ALSO read as a u16 in the same breath (`mov di, word ptr ...`) so
-         * the touchdown edge below can be tested on the low half only.
-         * slice3_42.h types it float; the port keeps the original's integer
-         * reading and converts, because every use of it is a counter. */
-        contact    = (int32_t)pWheel->f1B4;
-        contactWas = (int32_t)(uint16_t)(uint32_t)contact;
-
-        v = pWheel->f1D8;
-
-        if (contact < BR_CP_CONTACT_MAX) {
-            pWheel->f1B4 = (float)(contact + 1);
-        }
-
-        /* `fcom qword [0x10077BD0]` + `test ah,0x41` + `je` skips the block,
-         * so the block runs for LESS-EQUAL-OR-UNORDERED.  The constant is a
-         * DOUBLE and the operand a float, so the compare happens in double;
-         * writing it against a double literal reproduces the boundary. */
-        if (!((double)v > BR_CP_CONTACT_MIN)) {
-            v            = BR_CP_SUSP_REST;
-            pWheel->f1B4 = 0.0f;
-        }
-
-        /* `fcom` + `test ah,0x41` + `jne` skips the clamp, so the clamp runs
-         * only for strictly greater.  NaN keeps v. */
-        if (v > 0.0f) {
-            v = 0.0f;
-        }
-
-        v = v - BR_CP_SUSP_REST;
-
-        /* `fcom` + `test ah,1` + `je` skips, so the clamp runs for LESS OR
-         * UNORDERED.  A NaN lands on 0.0f here -- which is the one place a
-         * NaN gets absorbed rather than propagated. */
-        if (!(v >= 0.0f)) {
-            v = 0.0f;
-        }
-
-        /* sign(v) * v * v * k, with the multiply order traced: `fld st(1)`
-         * then `fmulp st(2)` forms v*v, then `fmul st(1)` folds in the sign,
-         * then `fmul [body+0x1B8]`. */
-        pNode->f.z = BrCarPhysSign(v) * v * v * pBody->f1B8;
-
-        /* The touchdown edge: the counter is non-zero NOW and its low 16 bits
-         * were zero BEFORE.  0x100685D2 re-reads f1B4 rather than using the
-         * value it incremented, so a wheel whose contact was just reset to 0
-         * above does NOT trip this. */
-        if ((int32_t)pWheel->f1B4 != 0 && contactWas == 0) {
-            if (pTouchdown != NULL) {
-                *pTouchdown = (uint8_t)BR_CP_TOUCHDOWN;
-            }
-        }
-
-        pNode = pNode->pNext;
-    }
-}
-#endif /* BR_MATCHING_BUILD */
 
 /* ==================================================================== */
 /* 0x10068600 -- the shock absorber                                      */
 /* ==================================================================== */
 
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: the shock absorber -- resists each wheel's upward motion
  * with a force proportional to how fast the wheel is moving up. A wheel
  * moving down, or one that has left the ground, gets no damping at all. */
@@ -457,47 +357,6 @@ void BrCarPhysDamper(BrRbBodyFull *pBody)
         pNode = pNode->pNext;
     }
 }
-#else
-void BrCarPhysDamper(BrRbBodyFull *pBody)
-{
-    BrRbForce *pNode = pBody->pForces;
-    int        i;
-
-    for (i = 0; i < 4; ++i) {
-        BrRbBodyFull *pWheel;
-        BrVec3        v;
-        float         f;
-
-        if (pNode == NULL) {
-            return;
-        }
-
-        pNode->f.y = 0.0f;
-        pNode->f.x = 0.0f;
-
-        pWheel = pBody->child[i];
-
-        /* 0x100642F0 == D3D 0x1006B340 == BrRbVelAtBodyPointXY, already
-         * ported in slice3_42.c.  Only the Z component is read back; the
-         * original still computes all three. */
-        v.x = 0.0f; v.y = 0.0f; v.z = 0.0f;
-        BrRbVelAtBodyPointXY(&v, pBody, pWheel);
-
-        if ((int32_t)pWheel->f1B4 == 0) {
-            f = 0.0f;
-        } else if (!(v.z >= 0.0f)) {
-            /* `fcomp` + `test ah,1` + `je` jumps to the multiply, so the
-             * ZERO arm is LESS OR UNORDERED. */
-            f = 0.0f;
-        } else {
-            f = pBody->f1BC * v.z;
-        }
-
-        pNode->f.z = f;
-        pNode = pNode->pNext;
-    }
-}
-#endif /* BR_MATCHING_BUILD */
 
 /* ==================================================================== */
 /* 0x100651A0 -- the per-wheel tyre pass                                 */
@@ -604,7 +463,6 @@ static int BrCpWeatherRow(void)
     return (int)w;
 }
 
-#ifdef BR_MATCHING_BUILD
 /* Constants shared with the other matching arms; the tyre arm itself sits
  * after the port's drive helpers (see its PLACEMENT note). */
 extern float  DAT_10077a78;   /* 0.0f   */
@@ -626,7 +484,6 @@ extern double DAT_10077b20;   /* 0.0    */
 extern float  DAT_10077b28;   /* -360.0f */
 extern double BrCosF(float x);           /* 0x100023E0 */
 extern double BrSinF(float x);           /* 0x10002560 */
-#endif /* BR_MATCHING_BUILD */
 
 void BrCarPhysTyre(BrCarPhys *pCar, int iWheel, float *pA,
                    const uint8_t *pB, float dt)
@@ -959,14 +816,11 @@ static float BrCpDrvBrake(BrRbBodyFull *pBody, BrRbBodyFull *pWheel, float dt)
  * scheduled against the TU's symbol table, and these five names (with the
  * drag pass's literals, now at the end of the file in address order) are
  * what they were matched against. */
-#ifdef BR_MATCHING_BUILD
 extern float BrSqrtF(float x);   /* 0x10002570 -- fld [esp+4]; fsqrt; ret */
 extern float _DAT_10077780;             /* 0.0f  the sign triple          */
 extern float _DAT_10077784;             /* 1.0f                           */
 extern float _DAT_10077788;             /* -1.0f                          */
-#endif
 
-#ifdef BR_MATCHING_BUILD
 /* 0x10068070 */
 /* Transcribed from the Glide bytes: the body matrix is pBody+0xBC; the
  * contact is cleared (wheel+0x19C = 0) before the search and set to the
@@ -1045,9 +899,7 @@ float BrWheelGroundProbe(int pBody, int pWheel)
     return best;
 }
 
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 #undef BrCarPhysTyre
 /* The wheel body as 0x100651A0 reads it: the hit record lives in the WHEEL at
  * +0x19C (plane pointer, surface byte, normal) and the spin state follows. */
@@ -1233,7 +1085,6 @@ void BrCarPhysTyre(BrTyreView *pBody, BrTyreView *pWheel, float *pA,
     }
 }
 
-#ifdef BR_MATCHING_BUILD
 /* 0x100682C0 */
 /* Transcribed from the Glide bytes: 150 planes of 0x20 bytes per cell at
  * 0x11773698 with the counts as words at 0x11778800; the direction (0,0,-1)
@@ -1295,9 +1146,7 @@ float BrGroundProbeZ(const float *pPoint)
     return best;
 }
 
-#endif /* BR_MATCHING_BUILD */
 #define BrCarPhysTyre BrCarPhysTyre_port
-#endif /* BR_MATCHING_BUILD */
 
 void BrCarPhysDrive(BrCarPhys *pCar, float dt)
 {
@@ -1738,7 +1587,6 @@ void BrCarPhysAdvance(BrCarPhys *pCar)
 /* 0x1005A7A0 -- one frame                                               */
 /* ==================================================================== */
 
-#ifdef BR_MATCHING_BUILD
 #undef BrCarPhysStep
 #undef BrCarPhysAdvance
 int  BrPodNop();                        /* 0x10008D60, the trace stub */
@@ -1753,7 +1601,6 @@ typedef struct { int d[17]; } BrCpStateImage;      /* 0x44-byte rigid state */
 
 #define BrCpSign(v) ((v) == _DAT_10077780 ? _DAT_10077780 : \
                      (v) > _DAT_10077780 ? _DAT_10077784 : _DAT_10077788)
-#endif
 /* WHAT IT DOES: advances one car's rigid-body physics by a single frame.
  * It hangs the wheel force lists off the body, zeroes the per-wheel forces,
  * then runs the force generators in order -- spring, the four tyre passes
@@ -1763,7 +1610,6 @@ typedef struct { int d[17]; } BrCpStateImage;      /* 0x44-byte rigid state */
  * Finally it advances the car record, records the suspension height for next
  * frame, and rebuilds every wheel's own matrix from its integrated state. */
 /* @implements 0x1005A7A0 glide BrCarPhysStep */
-#ifdef BR_MATCHING_BUILD
 void __fastcall BrCarPhysStep(char *pCar)
 {
     char  *pBody;
@@ -1869,172 +1715,6 @@ void __fastcall BrCarPhysStep(char *pCar)
 
     BrPodNop(0, 0, 0x80, 0, 0xFF);
 }
-#else
-void BrCarPhysStep(BrCarPhys *pCar)
-{
-    BrRbBodyFull *pBody  = &pCar->body;
-    BrRbState    *pState = BrCarPhysBodyState(pBody);
-    int           i;
-
-    /* 0x1005A7AE: a trace no-op bookend the original opens and closes the
-     * frame with (a second call sits at the very end). */
-#ifdef BR_MATCHING_BUILD
-    BrPodNop(0, 0x80, 0x80, 0, 0xFF);
-#endif
-
-    /* --- step 1 ---------------------------------------------------------
-     * 0x1005A7BE.  The wheel lists are assigned in the order 0xD20, 0xD60,
-     * 0xD40, 0xD80 against child[0..3] -- the middle two are CROSSED relative
-     * to the address order, and the constructor links each of those nodes to
-     * a shared weight node, so the crossing is real and not a misreading. */
-    pBody->pForces           = &pCar->aListA[0];
-    pBody->child[0]->pForces = &pCar->aWheelF[0];
-    pBody->child[1]->pForces = &pCar->aWheelF[1];
-    pBody->child[2]->pForces = &pCar->aWheelF[2];
-    pBody->child[3]->pForces = &pCar->aWheelF[3];
-
-    /* Each wheel's FIRST node has its force zeroed -- three separate stores
-     * with the child pointer re-loaded each time in the original. */
-    for (i = 0; i < 4; ++i) {
-        BrRbForce *pN = pBody->child[i]->pForces;
-        pN->f.x = 0.0f;
-        pN->f.y = 0.0f;
-        pN->f.z = 0.0f;
-    }
-
-    /* --- step 2: 0x100684F0 --------------------------------------------- */
-#ifdef BR_MATCHING_BUILD
-    BrCarPhysSpring(pBody);       /* the touchdown byte IS body+0x208 */
-#else
-    BrCarPhysSpring(pBody, &pCar->b208);
-#endif
-
-    /* --- step 3: 0x100651A0 x4, gated on car+0xE84 -----------------------
-     * The four call sites at 0x1005A8DE / 0x1005A901 / 0x1005A91E /
-     * 0x1005A93B were re-read from the pushes rather than taken on trust,
-     * and the previous pass's note had ONE of them wrong: the gate byte is
-     * &bE80 for wheels 0 and 1 and &bE78 for wheels 2 and 3, not &bE78 for
-     * all four.  Only three of the four scalars are pre-cleared -- bE78 is
-     * not, so the rear pair sees LAST frame's drivetrain flag. */
-    if (pCar->fE84 == 0) {
-        pCar->fE7C = 0.0f;
-        pCar->fE74 = 0.0f;
-        pCar->bE80 = 0u;
-
-        BrCarPhysTyre(pCar, 0, &pCar->fE7C, &pCar->bE80, BR_PHYS_DT);
-        BrCarPhysTyre(pCar, 1, &pCar->fE7C, &pCar->bE80, BR_PHYS_DT);
-        BrCarPhysTyre(pCar, 2, &pCar->fE74, &pCar->bE78, BR_PHYS_DT);
-        BrCarPhysTyre(pCar, 3, &pCar->fE74, &pCar->bE78, BR_PHYS_DT);
-    }
-
-    /* --- step 4: 0x1005A943 --------------------------------------------- */
-    pCar->fE84       = 0;
-    pBody->accel.x   = 0.0f;
-    pBody->accel.y   = 0.0f;
-    pBody->accel.z   = 0.0f;
-    pBody->angAccel.x = 0.0f;
-    pBody->angAccel.y = 0.0f;
-    pBody->angAccel.z = 0.0f;
-
-    /* --- step 5: 0x10064210 == BrRbAccumAll ----------------------------- */
-    BrRbAccumAll(pBody);
-
-    /* --- step 6: 0x1006D600 == BrRbIntegrateVelocity -------------------- */
-    BrCpIntegrateVelocity(pState, pBody, BR_PHYS_DT);
-
-    /* --- step 7: 0x100645A0(body, dt, &fE7C, &fE74, &fE80, &fE78) ------- */
-    BrCarPhysDrive(pCar, BR_PHYS_DT);
-
-    /* --- step 8: 0x1005A9B6 --------------------------------------------- */
-    BrRbQuatDerivative(pState);
-
-    /* The SECOND list, and the wheels drop theirs entirely.  Note the
-     * original writes body->f18 to car+0xC20 BEFORE clearing the children,
-     * and clears them in the order child0, child2, child1, child3. */
-    pBody->pForces           = &pCar->aListB[0];
-    pBody->child[0]->pForces = NULL;
-    pBody->child[2]->pForces = NULL;
-    pBody->child[1]->pForces = NULL;
-    pBody->child[3]->pForces = NULL;
-
-    /* 0x10067F30 fills the FIFTH node of list B, car+0xD00. */
-#ifdef BR_MATCHING_BUILD
-    BrCarPhysDrag(pBody, &pCar->aListB[4]);
-#else
-    BrCarPhysDrag(pBody, pCar->aHit, &pCar->aListB[4], /*mode*/ 0);
-#endif
-
-    /* 0x10068600 fills the first four. */
-    BrCarPhysDamper(pBody);
-
-    pBody->accel.x   = 0.0f;
-    pBody->accel.y   = 0.0f;
-    pBody->accel.z   = 0.0f;
-    pBody->angAccel.x = 0.0f;
-    pBody->angAccel.y = 0.0f;
-    pBody->angAccel.z = 0.0f;
-
-    BrRbAccumAll(pBody);
-
-    /* --- step 9: 0x1005AA34, the second velocity integration and the
-     * SIGN-CHANGE DAMPER ------------------------------------------------- */
-    pCar->next = *pState;
-    BrCpIntegrateVelocity(&pCar->next, pBody, BR_PHYS_DT);
-
-#ifdef BR_MATCHING_BUILD
-    /* 0x1005AA5B: the sign-change damper is INLINED in the original (the port
-     * factors it out as BrCarPhysSignDamp).  ONE float pointer walks from
-     * pState->angVel.x and reaches the matching next.* fields by fixed index,
-     * so the x87 compares stay in this frame; the sign is the same three-way
-     * comma-operator classify BrCarPhysSign uses, open-coded. */
-    {
-        float *pf = &pState->angVel.x;      /* car+0x204 */
-        int    k  = 3;
-        do {
-            if (BrCarPhysSign(pf[0]) == BrCarPhysSign(pf[0x38]))
-                pf[0] = pf[0x38];
-            else
-                pf[0] = 0.0f;
-
-            if (BrCarPhysSign(pf[-7]) == BrCarPhysSign(pf[0x31]))
-                pf[-7] = pf[0x31];
-            else
-                pf[-7] = 0.0f;
-
-            pf++;
-        } while (--k != 0);
-    }
-#else
-    BrCarPhysSignDamp(pState, &pCar->next);
-#endif
-
-    /* --- step 10: 0x1005AB85 -------------------------------------------- */
-    pCar->save = *pState;
-    BrRbQuatDerivative(&pCar->save);
-    /* DEAD DUPLICATE, 0x1005ABAA.  BrRbQuatDerivative is a pure function of
-     * angVel and quat and writes only qDot, so the second call cannot change
-     * anything.  Preserved -- see the header. */
-    BrRbQuatDerivative(&pCar->save);
-
-    /* 0x10067C30(car, body) */
-    BrCarPhysAdvance(pCar);
-
-    /* 0x1005ABBC: the integrated state becomes the live one. */
-    *pState = pCar->next;
-
-    /* 0x10068450 == BrWheelSuspensionSetZ, ported in br_phys.c.  This is what
-     * fills f1D8 for NEXT frame's spring, and the surface bytes for next
-     * frame's drag. */
-    BrWheelSuspensionSetZHit(pBody, pCar->aHit);
-
-    /* 0x1005ABD5: rebuild each wheel's own matrix from its own state. */
-    for (i = 0; i < 4; ++i) {
-        BrRbBodyFull *pWheel = pBody->child[i];
-        BrRbBuildMatrix(&pWheel->m, BrCarPhysBodyState(pWheel));
-    }
-
-}
-#endif /* BR_MATCHING_BUILD */
 
 /* ==================================================================== */
 /* Construction -- D3D 0x10062C50 / 0x10063000                           */
@@ -2263,7 +1943,6 @@ void BrCarPhysPlace(BrCarPhys *pCar, const BrVec3 *pPos, float yaw)
 /* 0x10067C30 -- the original two-argument position pass                 */
 /* ==================================================================== */
 
-#ifdef BR_MATCHING_BUILD
 #undef BrCarPhysAdvance
 
 extern float _DAT_10077ac8;             /* 0.5f  -- BR_CP_UPRIGHT_MIN     */
@@ -2380,13 +2059,11 @@ void BrCarPhysAdvance(char *pCar, char *pBody)
     *(int *)(pCar + 0x2AB4) = *(int *)(pBody + 0xF0);
     *(int *)(pCar + 0x2AB8) = *(int *)(pBody + 0xF4);
 }
-#endif /* BR_MATCHING_BUILD */
 
 /* ==================================================================== */
 /* 0x10067F30 -- aerodynamic drag                                        */
 /* ==================================================================== */
 
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: slows the car down with air resistance -- a push opposite
  * the velocity that grows with speed. Above walking pace, and only when a
  * wheel is on the special surface (4) and the weather is not mode 3, a
@@ -2432,48 +2109,3 @@ void BrCarPhysDrag(BrRbBodyFull *pBody, BrRbForce *pNode)
         pNode->f.z = d.z + pNode->f.z;
     }
 }
-#else
-void BrCarPhysDrag(const BrRbBodyFull *pBody, const BrGroundHit aHit[4],
-                   BrRbForce *pNode, int32_t mode)
-{
-    float speed, sq;
-    int   i, onSurface = 0;
-
-    pNode->f.x = pBody->vel.x * BR_CP_DRAG_K;
-    pNode->f.y = pBody->vel.y * BR_CP_DRAG_K;
-    pNode->f.z = pBody->vel.z * BR_CP_DRAG_K;
-
-    /* The sum order is the original's: (vx*vx + vy*vy) + vz*vz, formed by
-     * `faddp st(2)` then `faddp st(1)`. */
-    sq = (pBody->vel.x * pBody->vel.x + pBody->vel.y * pBody->vel.y)
-         + pBody->vel.z * pBody->vel.z;
-    speed = (float)sqrt((double)sq);   /* 0x10002570 is `fld; fsqrt; ret` */
-
-    /* `fcomp` + `test ah,0x41` + `jne` LEAVES on less-equal-or-unordered, so
-     * the second term needs a strictly greater speed. */
-    if (!(speed > BR_CP_DRAG_SPEED)) {
-        return;
-    }
-    if (mode == 3) {
-        return;
-    }
-
-    /* The four surface bytes are read with `movsx` -- SIGNED -- and compared
-     * against 4 in the order wheel0, wheel1, wheel2, wheel3. */
-    for (i = 0; i < 4; ++i) {
-        if ((int)(signed char)aHit[i].surface == BR_CP_DRAG_SURFACE) {
-            onSurface = 1;
-            break;
-        }
-    }
-    if (!onSurface) {
-        return;
-    }
-
-    /* `fst [esp+0x18]` of the Z term is dead -- nothing reads that slot --
-     * and is not reproduced because it has no observable effect. */
-    pNode->f.y = pBody->vel.y * BR_CP_DRAG_K2 + pNode->f.y;
-    pNode->f.z = pBody->vel.z * BR_CP_DRAG_K2 + pNode->f.z;
-    pNode->f.x = pBody->vel.x * BR_CP_DRAG_K2 + pNode->f.x;
-}
-#endif /* BR_MATCHING_BUILD */

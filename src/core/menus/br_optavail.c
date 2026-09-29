@@ -4,7 +4,6 @@
  * Filed out of the address batch slice1_06.c; its preamble is carried verbatim.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
 /* The original BrOptSave takes no arguments (loose globals in, packed
@@ -13,20 +12,13 @@
  * the port signature (cdecl, extra args harmless at run time). */
 #define BrOptSave   BrOptSave_hdr
 #define BrOptAvailB BrOptAvailB_hdr
-#ifdef BR_MATCHING_BUILD
 /* The original BrNameListInit is a thiscall ctor with no stack args (vtbl
  * and fill string are fixed); hide the port's 3-arg prototype. */
 #define BrNameListInit BrNameListInit_port
 #include "slice1_06.h"
 #undef BrNameListInit
-#else
-#include "slice1_06.h"
-#endif
 #undef BrOptSave
 #undef BrOptAvailB
-#else
-#include "slice1_06.h"
-#endif
 
 #include <stdlib.h>
 #include <string.h>
@@ -64,7 +56,6 @@ typedef char br06_assert_namelist[
  * inert.  Dossier in the block below; dead probes in the two ledger lines.
  * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x1003F320 d3d BrOptAvailB */
-#ifdef BR_MATCHING_BUILD
 /* One argument; every input is a loose global (fAlt and maskPair are each
  * loaded ONCE and live in registers across the whole function).  Raw
  * `1u << idx` (x86 masks the count in hardware; BR06_BIT's explicit &31
@@ -131,55 +122,3 @@ int32_t BrOptAvailB(uint32_t n)
     /* movsx: SIGN-extended, unlike the zero-extended masks above. */
     return (int32_t)((1u << idx) & (uint32_t)(int32_t)g_brAAB84_maskBDef);
 }
-#else
-int32_t BrOptAvailB(const BrOptCaps *pCaps, uint32_t n)
-{
-    int32_t idx = (int32_t)n;
-
-    /* Both `jle`/`jg` in the original are signed. */
-    if (pCaps->fRebaseB != 0 && idx > 15) {
-        idx -= 16;
-    }
-    if (pCaps->fAlt != 0 && idx > 15 && (pCaps->maskPair & 0x8000u) != 0u) {
-        idx -= 16;
-    }
-
-    if (pCaps->mode == 0) {
-        if (idx == 15) {
-            idx = 11;
-        }
-        if (pCaps->fLowAlways != 0 && idx <= 15) {
-            return 1;
-        }
-        if (pCaps->fAlt != 0) {
-            /* `and esi,0xFFFF` -- the LOW half of the same dword */
-            return (int32_t)(BR06_BIT(idx) & (pCaps->maskPair & 0xFFFFu));
-        }
-        return (int32_t)(BR06_BIT(idx) & pCaps->maskB);
-    }
-
-    if (pCaps->mode == 6) {
-        if (idx == 15) {
-            idx = 7;            /* 7 here, 11 everywhere else */
-        }
-        if (pCaps->fLowAlways != 0 && idx <= 15) {
-            return 1;
-        }
-        return (int32_t)(BR06_BIT(idx) & pCaps->maskBMode6);
-    }
-
-    if (pCaps->mode == 2 && idx == pCaps->nAlwaysB) {
-        return 1;
-    }
-
-    if (idx == 15) {
-        idx = 11;
-    }
-    if (pCaps->fLowAlways != 0 && idx <= 15) {
-        return 1;
-    }
-    /* `movsx ecx, word ptr [0x100AB3E4]` -- SIGN-extended, unlike the
-     * zero-extended masks above. */
-    return (int32_t)(BR06_BIT(idx) & (uint32_t)(int32_t)pCaps->maskBDefault);
-}
-#endif

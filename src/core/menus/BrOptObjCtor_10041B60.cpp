@@ -17,9 +17,7 @@
  * cached in ebp across the fill loop; the loop's test is on the
  * strength-reduced byte offset (`cmp esi,0x6590`).
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdio.h>
 #include <string.h>
 

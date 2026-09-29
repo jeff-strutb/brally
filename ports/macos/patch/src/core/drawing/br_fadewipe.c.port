@@ -1,0 +1,246 @@
+# Port deviations for src/core/drawing/br_fadewipe.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop define:BrGbiRun
+@drop define:BrGbiTexScanOtherModeH
+@drop define:BrGbiTexScanOtherModeH0E
+@drop define:BrGbiTexCreate
+@drop define:BrGbiTexScanLoadTlut
+@drop define:BrGbiTexScanLoadBlock
+@drop define:BrGbiSolidTexBuild
+@drop define:BrGbiBlit
+@drop define:BrFadeSetTarget
+@drop define:BrFadeSetTargetA
+@drop define:BrFadeSetTargetB
+@drop define:BrFadeIsClosing
+@drop define:BrFadeIsSettled
+@drop define:BrFadeIsShut
+@drop define:BrRcaFixupArray
+@drop define:BrFadeRelease
+@drop define:BrFadeLatch
+@drop define:BrGbiClearGeometryMode
+@drop define:BrGbiSetGeometryMode
+@drop define:BrGbiDList
+@drop define:BrGbiEndDList
+@drop define:BrGbiMatrix
+@drop define:BrGbiPopMatrix
+@drop define:BrGbiDispatch10020F50
+@drop define:BrGbiMoveMem
+@drop define:BrGbiMoveWord
+@drop define:BrGbiMoveMemMatrix
+@drop define:BrFadeDrawSprite
+@drop define:BrFadeDrawBars
+@drop undef:BrGbiRun
+@drop undef:BrGbiTexScanOtherModeH
+@drop undef:BrGbiTexScanOtherModeH0E
+@drop undef:BrGbiTexCreate
+@drop undef:BrGbiTexScanLoadTlut
+@drop undef:BrGbiTexScanLoadBlock
+@drop undef:BrGbiSolidTexBuild
+@drop undef:BrGbiBlit
+@drop undef:BrFadeSetTarget
+@drop undef:BrFadeSetTargetA
+@drop undef:BrFadeSetTargetB
+@drop undef:BrFadeIsClosing
+@drop undef:BrFadeIsSettled
+@drop undef:BrFadeIsShut
+@drop undef:BrRcaFixupArray
+@drop undef:BrFadeRelease
+@drop undef:BrFadeLatch
+@drop undef:BrGbiClearGeometryMode
+@drop undef:BrGbiSetGeometryMode
+@drop undef:BrGbiDList
+@drop undef:BrGbiEndDList
+@drop undef:BrGbiMatrix
+@drop undef:BrGbiPopMatrix
+@drop undef:BrGbiDispatch10020F50
+@drop undef:BrGbiMoveMem
+@drop undef:BrGbiMoveWord
+@drop undef:BrGbiMoveMemMatrix
+@drop undef:BrFadeDrawSprite
+@drop proto:BrFadeDrawSprite
+@drop undef:BrFadeDrawBars
+@drop proto:BrFadeDrawBars
+@drop proto:BrGbiTexScanOtherModeH
+@drop proto:BrGbiTexScanOtherModeH0E
+@drop proto:BrGbiTexScanLoadTlut
+@drop proto:BrGbiTexScanLoadBlock
+@drop proto:BrGbiSolidTexBuild
+@drop include:<stdlib.h>
+@drop proto:BrGbiClearGeometryMode
+@drop proto:BrGbiSetGeometryMode
+@drop proto:BrGbiDList
+@drop proto:BrGbiEndDList
+@drop proto:BrGbiMatrix
+@drop proto:BrGbiPopMatrix
+@drop proto:BrGbiDispatch10020F50
+@drop proto:BrGbiMoveMem
+@drop proto:BrGbiMoveWord
+@drop proto:BrGbiMoveMemMatrix
+@drop var:DAT_105d17c8
+@drop var:DAT_105d17cc
+@drop var:DAT_105ccfe8
+@drop var:DAT_105ce2e8
+@drop var:DAT_100a9a50
+@drop var:DAT_105ccd00
+@drop var:DAT_105ccd10
+@drop var:DAT_105d17d0
+@drop var:DAT_105d1760
+@drop var:DAT_105ce2d8
+@drop var:DAT_105ce2dc
+@drop var:DAT_105ccc78
+@drop var:DAT_105ccfd0
+@drop var:DAT_106e7710
+@drop var:DAT_106ec798
+@drop var:DAT_106e7718
+@drop var:DAT_104b161c
+@drop var:DAT_104b1688
+@drop fn:BrFadeRelease
+@drop var:DAT_100a7514
+@drop var:DAT_100a7518
+@drop var:DAT_104b16a4
+@drop var:DAT_104b16a8
+@drop fn:BrFadeLatch
+@after fn:BrFadeLatch
+
+/* ================================================================== */
+/* 3. Screen wipe / fade                                              */
+/* ================================================================== */
+
+/* 0x10017F10 (d3d 0x1002AEA0) */
+int BrFadeRelease(BrFadeState *pSt)
+{
+    pSt->refCount -= 1;
+    if (pSt->refCount == 0)
+        pSt->pfnRelease();
+    return 1;
+}
+
+/* 0x10017F30 (d3d 0x1002AEC0) */
+/* @n64 0x8026B434 located */
+void BrFadeLatch(BrFadeState *pSt)
+{
+    pSt->pos      = pSt->srcC0;
+    pSt->f5754FC  = pSt->srcC4;
+}
+@end
+@drop var:DAT_106e7714
+@drop var:DAT_106e9a2c
+@drop var:DAT_106ed674
+@drop var:DAT_106ed67c
+@drop var:DAT_104b1698
+@drop var:DAT_104b16a8#2
+@drop var:DAT_104b16b0
+@drop var:DAT_104b16c0
+@drop var:DAT_100a7510
+@drop proto:BrFadeIsShut
+@drop define:BR16_ALLOC
+@drop define:BR16_BAR_W0
+@drop fn:BrFadeDrawBars
+@drop undef:BR16_ALLOC
+@drop undef:BR16_BAR_W0
+@after undef:BR16_BAR_W0
+
+
+/* 0x1002B340 */
+/* WHAT IT DOES: draws the wipe bars -- the solid blocks that sweep across
+ * the screen during a transition -- by emitting the filled-rectangle
+ * commands for them. It draws nothing while the wipe is fully open, and only
+ * a limited number of frames' worth of bars once the wipe has run out of
+ * travel. */
+/* @implements 0x1002B340 d3d BrFadeDrawBars */
+/* @t4-pass 0x100183B0 1 2026-09-07 probes 80 bytes 800 insns 216 regions 4 rows 12 census yes  (tools/crank.py) */
+/* @t4-pass 0x100183B0 2 2026-09-07 probes 80 bytes 800 insns 216 regions 4 rows 12 census yes  (tools/crank.py) */
+/* @t4-pass 0x100183B0 3 2026-09-10 probes 30 bytes 800 insns 220 regions 6 rows 2 census yes  (tools/crank.py) */
+/* @t4-pass 0x100183B0 4 2026-09-10 probes 30 bytes 800 insns 220 regions 6 rows 2 census yes  (tools/crank.py) */
+/* @t3 0x100183B0 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 800/803 insns 220/222 rows 2+0 regions 6 oracle UNCLASSIFIED
+ * @t3-effort passes 4 zero-movement 3 4
+ * RESIDUE: two register copies, nothing else -- the whole multiset pairs
+ * and the instruction gap is 2.  The three levers that closed the rest are
+ * in the body: the bar's top edge is a local carried in from an earlier
+ * block (a literal 0 folds the original's four-instruction zero shift
+ * away), bars is read into a local whose decrement writes back, and pos2
+ * reaches the bar command from the local the test already loaded.
+ * 30 compiles in the last pass, levers accepted: none; every candidate and
+ * score is in build/match/crank.log.
+ * Do not reopen before the end-grind (CLAUDE.md rule 12). */
+/* @implements 0x100183B0 glide BrFadeDrawBars */
+void BrFadeDrawBars(BrFadeState *pSt)
+{
+    BrGfxWords *p;
+
+    /* 0x1002B34F `test ah,0x40 / jne 0x1002B661` (return).  C3 is set for
+     * EQUAL and for UNORDERED, so a NaN value emits nothing.  `value == 1.0f`
+     * is false for NaN, so the port emitted the whole twelve-command bar
+     * sequence where the original emits none. */
+    if (BR16_FEQU(pSt->value, 1.0f))   /* 0x1008F420 */
+        return;
+
+    p = br16_fade_alloc(pSt); p->w0 = 0xE7000000u; p->w1 = 0;
+    p = br16_fade_alloc(pSt); p->w0 = 0xBA001402u; p->w1 = 0;
+    p = br16_fade_alloc(pSt); p->w0 = 0xB900031Du; p->w1 = 0x0F0A4000u;
+    br16_combine(br16_fade_alloc(pSt), 0x3EB, 0x3EB, 0x3EB, 0x3EB);
+
+    p = br16_fade_alloc(pSt);
+    p->w0 = 0xE2000000u;
+    {
+        /* fild followed straight by __ftol: a round trip the compiler left
+         * in, so this really is just the shifted integer. */
+        uint32_t x = (uint32_t)br16_ftol((double)(pSt->width << pSt->shift))
+                     & 0xFFFu;
+        uint32_t y = (uint32_t)br16_ftol((double)(pSt->span  << pSt->shift))
+                     & 0xFFFu;
+        p->w1 = x | (y << 12);
+    }
+
+    p = br16_fade_alloc(pSt); p->w0 = 0xFA00FFFFu; p->w1 = 0;
+
+    if (pSt->pos2 != 0) {
+        /* Dead store in the original: the value read out of aPos2 with the
+         * parity inverted is written to a stack local nothing reads. */
+        (void)pSt->aPos2[pSt->parity ^ 1];
+
+        if (BrFadeIsShut(pSt))
+            pSt->bars = 3;
+
+        p = br16_fade_alloc(pSt);
+        p->w0 = 0xB900031Du; p->w1 = 0x00504340u;
+        br16_combine(br16_fade_alloc(pSt), 0x3EB, 0x3EB, 0x3EB, 0x3EB);
+
+        p = br16_fade_alloc(pSt); p->w0 = 0xFA000000u; p->w1 = 0xFFu;
+
+        p = br16_fade_alloc(pSt);
+        p->w1 = 0;
+        p->w0 = br16_bar_w0(pSt->pos2, pSt->width, pSt->shift);
+    }
+
+    if (pSt->pos < pSt->span) {
+        if (pSt->bars != 0) {
+            p = br16_fade_alloc(pSt);
+            pSt->bars -= 1;
+            p->w0 = br16_bar_w0(pSt->span, pSt->width, pSt->shift);
+            p->w1 = (uint32_t)(((uint32_t)pSt->pos << pSt->shift) & 0xFFFu)
+                    << 12;
+        }
+        /* 0x1002B5D5 `test ah,0x40 / je 0x1002B643` -- the arm is taken on
+         * C3, i.e. equal OR UNORDERED.  `value == 0.0f` skipped it on NaN.
+         *
+         * MUTATION SURVIVOR, legitimately: the guard at the top of this
+         * function already returns on a NaN `value`, and nothing between here
+         * and there writes it (BrFadeIsShut takes a const pointer), so this
+         * site can never see one.  Spelled faithfully anyway -- it is free,
+         * and the next edit to that top guard would otherwise silently make
+         * this one wrong. */
+    } else if (BR16_FEQU(pSt->value, 0.0f) && pSt->bars != 0) {  /* 0x1008F410 */
+        p = br16_fade_alloc(pSt);
+        pSt->bars -= 1;
+        p->w0 = br16_bar_w0(pSt->span, pSt->width, pSt->shift);
+        /* The original shifts a zero and masks it: always 0. */
+        p->w1 = 0;
+    }
+
+    p = br16_fade_alloc(pSt); p->w1 = 0; p->w0 = 0xE7000000u;
+}
+@end

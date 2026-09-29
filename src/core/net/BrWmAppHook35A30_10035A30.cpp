@@ -11,9 +11,7 @@
  * first CSEd into edi (called twice). 0x113 (WM_TIMER): two local
  * calls gated on globals. Every path returns 0.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Sel {
 public:

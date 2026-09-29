@@ -1,6 +1,5 @@
 /* Auto-generated from disassembly — 0x004014D0
  * SetSubstituteDir: alloc 8-byte section cursor, strcmp-scan for name. */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: point a section cursor at a named section of the loaded
  * settings file, by scanning the section names for a match. */
 /* @implements 0x004014D0 setvideo.exe SetSubstituteDir */
@@ -57,4 +56,3 @@ Section *SetSubstituteDir(INI *pini, char *name)
 }
 
 
-#endif /* BR_MATCHING_BUILD */

@@ -1,0 +1,14 @@
+# Port deviations for src/core/racing/br_secondtickloop.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop proto:FUN_1006a650
+@drop proto:FUN_1006a7e0
+@drop proto:BrNetPeerMsgReset
+@drop proto:FUN_1006ab80
+@drop proto:FUN_1006b0e0
+@drop var:DAT_11849ea8
+@drop var:DAT_1184c070
+@drop var:g_brP277B40
+@drop proto:BrDelta_100713A0
+@drop include:<windows.h>
+@drop fn:BrSecondTickLoop

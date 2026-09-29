@@ -1,6 +1,5 @@
 /* Auto-generated from disassembly — 0x00401250
  * ReadINI: alloc 8-byte cursor, temporarily set comment char to ';'. */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: open and parse a settings file into a cursor the other
  * readers walk. Comments are ';' for the duration of this read, restored
  * afterwards. */
@@ -50,4 +49,3 @@ INI *ReadINI(char *path)
 }
 
 
-#endif /* BR_MATCHING_BUILD */

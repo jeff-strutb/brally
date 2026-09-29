@@ -28,10 +28,8 @@
  * item's +0x40C short to the value still in eax rather than reloading
  * +0x54.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #include <string.h>
-#endif
 
 class Rec438 {
 public:

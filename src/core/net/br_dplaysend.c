@@ -9,10 +9,8 @@
  * Every function carries its original address.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdlib.h>
 #include <string.h>
 
@@ -36,7 +34,6 @@ extern void BrAppMsg107(void *pv1, const void *pData, uint32_t cbData,
  * send is marked as guaranteed delivery. */
 /* @implements 0x10009A00 glide BrDPlayRawSend */
 /* @implements 0x1000C4D0 d3d BrDPlayRawSend */
-#ifdef BR_MATCHING_BUILD
 /* Orig is 6-arg: EnterCS, stdcall Send at vtbl+0x68 with this pushed,
  * LeaveCS.  BrComCallLocked68 is a helper CALL (33 B vs 64 B). */
 extern int DAT_10273310;
@@ -55,18 +52,6 @@ static int BrDPlayRawSend(void *pIface, uint32_t idFrom, uint32_t idTo,
     LeaveCriticalSection(&DAT_10273310);
     return r;
 }
-#else
-static int BrDPlayRawSend(void *pIface, uint32_t idFrom,
-                          const void *pData, uint32_t cbData)
-{
-    return BrComCallLocked68((BrComObj *)pIface,
-                             BR_ARG(idFrom),
-                             BR_ARG(0),          /* DPID_ALLPLAYERS      */
-                             BR_ARG(1),          /* DPSEND_GUARANTEED    */
-                             (void *)(uintptr_t)(const void *)pData,
-                             BR_ARG(cbData));
-}
-#endif
 
 /* ==========================================================================
  * 4. 0x1003D950..0x1003DB50 -- the senders
@@ -83,13 +68,8 @@ int BrDPlaySendPair(const BrDPlayLink *pLink, int32_t fGate,
 
     aPayload[0] = tag;
     aPayload[1] = value;
-#ifdef BR_MATCHING_BUILD
     return BrDPlayRawSend(pLink->pIface, pLink->f08, 0, 1, aPayload,
                           (uint32_t)sizeof aPayload);
-#else
-    return BrDPlayRawSend(pLink->pIface, pLink->f08, aPayload,
-                          (uint32_t)sizeof aPayload);
-#endif
 }
 
 int BrDPlaySendTag2(const BrDPlayLink *pLink, int32_t fGate, uint32_t value)
@@ -148,13 +128,8 @@ int BrDPlaySendTag8(const BrDPlayLink *pLink, uint32_t a, uint32_t b)
         BrAppMsg107((void *)(uintptr_t)(const void *)pLink, aPayload,
                     (uint32_t)sizeof aPayload, pLink->f08, 1);
 
-#ifdef BR_MATCHING_BUILD
     return BrDPlayRawSend(pLink->pIface, pLink->f08, 0, 1, aPayload,
                           (uint32_t)sizeof aPayload);
-#else
-    return BrDPlayRawSend(pLink->pIface, pLink->f08, aPayload,
-                          (uint32_t)sizeof aPayload);
-#endif
 }
 
 /* ==========================================================================
@@ -165,7 +140,6 @@ int BrDPlaySendTag8(const BrDPlayLink *pLink, uint32_t a, uint32_t b)
  * local-echo flag (+0x0C) set the payload is also handed to the local message
  * path (0x1002F790) first.
  * ========================================================================== */
-#ifdef BR_MATCHING_BUILD
 extern int DAT_10ac5bec;                               /* 0x10AC5BEC: net lock */
 int __fastcall BrCountedTotal(void *pObj);             /* 0x1006D180 */
 int __fastcall BrStateGetField10(void *pObj);          /* 0x1006D190 */
@@ -221,4 +195,3 @@ int BrNetTrySend(int *param_1, void *param_2)
         return BrCountedTotal(param_2);
     return -1;
 }
-#endif

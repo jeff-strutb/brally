@@ -1,5 +1,4 @@
 /* 0x004017B0 OpenFile: OpenMediaFile + GetFullPathName + title + state=1 */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: open a clip and start it playing, wiring the window and
  * full-screen setup on the way. */
 /* @implements 0x004017B0 bossrally.exe OpenClip */
@@ -30,4 +29,3 @@ int OpenClip(HWND hwnd, const char *path)
     }
 }
 
-#endif

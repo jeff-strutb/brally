@@ -71,7 +71,6 @@
  * Residue is x87 scheduling in the SetPos block and one `mov ecx,esi`
  * placement (see RESIDUE above); A5 EQUIVALENT on 7 real calls over four
  * scripts (quick race, finish, time attack, multiplayer). */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 
 /* +0xEA0 impulse block: vector + countdown, reset by its own inline. */
@@ -291,4 +290,3 @@ void Car5E7B0::StartInit()
     fF74 = 1.0f;
 }
 
-#endif /* BR_MATCHING_BUILD */

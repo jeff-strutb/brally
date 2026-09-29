@@ -10,9 +10,7 @@
  * Phase-leave family: after the prefix, a SECOND guarded slot-0 vcall on
  * g_5C84 (also released to 0), then the g_cur swap from g_5C60. No EH.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class GameSub {
 public:

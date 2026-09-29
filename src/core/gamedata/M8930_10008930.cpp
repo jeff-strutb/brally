@@ -10,9 +10,7 @@
  * before the arg pushes (`mov eax,[ecx]` at +0 — C++ member-call
  * order), error printf through 0x10008EC0 on -1. No EH.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Tbl8900 {
 public:

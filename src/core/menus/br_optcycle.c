@@ -25,53 +25,19 @@
  * used as a flag -- set to 1 at 0x10043B10, tested at 0x10043925 -- not as a
  * count, which is further evidence they are unrelated.)
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice2_25.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef BR_MATCHING_BUILD
 /* KERNEL32 IAT used verbatim by BrOpt3A00 (0x1003CF50) / BrOpt3810. */
 __declspec(dllimport) void *__stdcall GlobalHandle(void *);
 __declspec(dllimport) int   __stdcall GlobalUnlock(void *);
 __declspec(dllimport) void *__stdcall GlobalFree(void *);
-#endif
 
-#ifndef _MSC_VER
-/* _itoa is Microsoft's, and the port's clang has no such function. Supply it
- * here rather than rewrite the call site: that call site is matched source and
- * the original really does `call dword ptr [__imp__itoa]`, so changing it
- * would trade a port problem for a matching problem.
- *
- * Radix 10 is the only one this module reaches, but a base-10-only stub named
- * `_itoa` would answer wrongly and silently for any other radix a later port
- * lands on -- so this is the whole function. MSVC's semantics: the sign is
- * only honoured for radix 10; every other radix reads the value as unsigned. */
-static char *_itoa(int value, char *buf, int radix)
-{
-    static const char digits[] = "0123456789abcdefghijklmnopqrstuvwxyz";
-    char tmp[36];
-    int i = 0, j = 0, neg = 0;
-    unsigned u;
-
-    if (radix < 2 || radix > 36) { buf[0] = '\0'; return buf; }
-
-    if (value < 0 && radix == 10) { neg = 1; u = (unsigned)(-(long)value); }
-    else                          { u = (unsigned)value; }
-
-    do { tmp[i++] = digits[u % (unsigned)radix]; u /= (unsigned)radix; } while (u);
-    if (neg) tmp[i++] = '-';
-
-    while (i > 0) buf[j++] = tmp[--i];
-    buf[j] = '\0';
-    return buf;
-}
-#endif
 
 /* ==========================================================================
  * Storage
@@ -814,7 +780,6 @@ int BrOptOpen2998(BrGameObj *pUnused)
  * stepping down does too. The result also selects which of four control
  * layouts is the active one. */
 /* @implements 0x10043400 d3d BrOptCycleAA2A0C */
-#ifdef BR_MATCHING_BUILD
 /* Per-arm switch tail (record addresses as immediates).
  * BYTE-EXACT 2026-09-12 (was parked at 176/178 B on a hoisted load): every
  * step and test is spelled ON THE GLOBAL, no `v` until the tail, and the
@@ -862,51 +827,6 @@ int BrOptCycleAA2A0C(void)
         return 1;
     }
 }
-#else
-int BrOptCycleAA2A0C(void)
-{
-    int32_t v;
-
-    if (g_brAA33D4 != 0) {
-        v = g_brAA2A0C + 1;
-        g_brAA2A0C = v;
-        if (v >= BR_OPT_AA2A0C_MAX + 1) {
-            v = 0;
-            g_brAA2A0C = 0;
-        }
-        if (v == 1) {           /* stepping up skips 1 -> 2 */
-            v = 2;
-            g_brAA2A0C = v;
-        }
-    } else if (g_brAA33D0 != 0) {
-        v = g_brAA2A0C - 1;
-        g_brAA2A0C = v;
-        if (v < 0) {
-            v = BR_OPT_AA2A0C_MAX;
-            g_brAA2A0C = v;
-        }
-        if (v == 1) {           /* stepping down skips 1 -> 0 */
-            v = 0;
-            g_brAA2A0C = v;
-        }
-    } else {
-        v = g_brAA2A0C;
-    }
-
-    g_brB4E728 = v;
-    v = g_aBrAC520[v];
-    g_brB4E1D0 = v;
-
-    /* The original is a `dec/je` chain over 1, 2, 3 with everything else
-     * falling through to record 0 -- i.e. exactly indexing the four-record
-     * array with anything outside 1..3 clamped to 0. */
-    if (v >= 1 && v <= 3)
-        g_brB4E1D4 = g_aBrB4DF30[v];
-    else
-        g_brB4E1D4 = g_aBrB4DF30[0];
-    return 1;
-}
-#endif
 
 /* ==========================================================================
  * 0x10043590, 0x100435F0, 0x10043650, 0x100436B0 -- two-state cyclers
@@ -989,11 +909,10 @@ int BrOpt37D0(BrGameObj *pGame)
  * closes the lobby and plays a sound. Most of the function is the several
  * different ways of leaving. */
 /* port-only body; Glide match is src/core/cpp/0x1003CD60.cpp */
-#ifdef BR_MATCHING_BUILD
 int BrOpt3810(BrGameObj *pGame)
 {
     /* orig: no frame, no ebp; xor ebx,ebx. leave_host is a far je, not an
-     * inlined else — `if (AA2894==0) goto check; if (A9D000!=0) goto psub;
+     * inlined else â `if (AA2894==0) goto check; if (A9D000!=0) goto psub;
      * goto leave_host`. pfnSlot6 thiscall +1 stack; f1C thiscall no arg;
      * KERNEL32 IAT. g_brPAA2904 is (*g_ppBrPhaseCur); orig stores 0x10ac5c5c
      * (DAT_10ac5c5c). C++ probe build/cpp_work/0x1003CD60.cpp is 2 diffs
@@ -1093,91 +1012,6 @@ leave_host:
     g_brAA2894 = 0;
     return 0;
 }
-#else
-int BrOpt3810(BrGameObj *pGame)
-{
-    BrGameSub       *pSub;
-    BrOptObj        *pObj;
-    BrDPSessionDesc *pDesc;
-    int              i;
-
-    if (g_brAA2894 != 0) {
-        if (g_brA9D000 == 0) {
-            /* --- 0x10043984 ------------------------------------------- */
-            BrSub10046400(pGame);
-            pObj = g_brPAA2950;
-            if (pObj != NULL) {
-                pObj->pVtbl->f00(pObj, 1);
-                g_brPAA2950 = NULL;
-            }
-            g_brPAA2904 = g_brPAA2948;
-            BrSub1003BF60();
-            g_brAA2898 = 1;
-            if (g_brAA287C == 0 || g_brAA287C == 1)
-                BrSub1003C020();
-            if (g_brAA287C == 2 || g_brAA287C == 3) {
-                if (g_brPAA29D8 != NULL)
-                    g_brPAA29D8->f1C &= ~0x10;
-            }
-            g_brAA2894 = 0;
-            return 0;
-        }
-        pSub = pGame->pSub;
-        pSub->f68 = 0;
-        pSub = pGame->pSub;
-        pSub->pVtbl->pfnSlot6(pSub, 0);
-        BrSub10038F30(0);
-    }
-
-    if (g_brAA2890 != 0) {
-        BrSub10046400(pGame);
-        pObj = g_brPAA2950;
-        if (pObj != NULL) {
-            pObj->pVtbl->f00(pObj, 1);
-            g_brPAA2950 = NULL;
-        }
-        BrOptOpen294C(NULL);
-        BrOptOpen2950B(NULL);
-        BrOptOpen2954(NULL);
-        g_brAA2890 = 0;
-        return 0;
-    }
-
-    /* --- 0x10043899 ----------------------------------------------------- */
-    if (g_brAA2884 != 0) {
-        pDesc = NULL;
-        if (g_brP277B40 != NULL)
-            BrSub1003D0B0(g_brP277B40, &pDesc);
-
-        if (pDesc != NULL) {
-            /* Find the slot whose id matches the UI selection and record
-             * "there is more than one player" in its second field. */
-            for (i = 0; i < BR_SLOT_COUNT; ++i) {
-                if (g_aBrAA2538[i].id == g_brPA9D008->f08) {
-                    g_aBrAA2538[i].a = (pDesc->dwCurrentPlayers > 1) ? 1 : 0;
-                    break;
-                }
-            }
-            BrGlobalUnlock(BrGlobalHandle(pDesc));
-            BrGlobalFree(BrGlobalHandle(pDesc));
-        }
-    }
-
-    if (g_brAA288C == 0)
-        return 1;
-
-    BrSub1003E310();
-    BrSub1006A4A0(g_aBrB4DF30[0], g_aBrB4FBE8);
-    pSub = pGame->pSub;
-    pSub->f68 = 0;
-    pSub = pGame->pSub;
-    pSub->pVtbl->pfnSlot6(pSub, 0);
-    g_brAA285C = 0;
-    BrSub10072AF0(2, 0x200020);
-    g_brAA2854 = 2;
-    return 0;
-}
-#endif
 
 /* ==========================================================================
  * 0x10043CD0 .. 0x10043E70 -- more screen installers

@@ -4,12 +4,9 @@
  * U8 interpolator's T3 object does not move.  Ghidra drops the post-floor
  * clamp; orig saturates each channel before __ftol.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <math.h>
 
-#ifdef BR_MATCHING_BUILD
 
 extern float DAT_10077434;   /* -0.5f */
 extern float DAT_10077438;   /*  0.0f */
@@ -124,4 +121,3 @@ void BrTexLerp4444(unsigned short *pOut,
     *pOut = (unsigned short)((((a << 4 | r) << 4 | g) << 4) | b);
 }
 
-#endif /* BR_MATCHING_BUILD */

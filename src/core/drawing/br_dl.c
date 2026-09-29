@@ -48,10 +48,8 @@
  * of each pair goes.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "br_dl.h"
 
 /* The clip planes, the interpolator and the node pool are slice1_03's --
@@ -265,17 +263,15 @@ typedef const uint8_t *(*BrDlHandler)(BrDl *, const uint8_t *);
  * N64 command set is far larger than the game actually uses, so the great
  * majority of the 256 slots land here. */
 /* @implements 0x10021240 glide br_dl_skip */
-#ifdef BR_MATCHING_BUILD
 const uint8_t *br_dl_skip(const uint8_t *p)
 {
     return p + 8;
 }
-#endif
 
 /* Table-compatible do-nothing handler for the PORT dispatch, which calls every
  * slot as (pDl, p). The byte-exact original (br_dl_skip above) takes one arg;
  * this two-arg wrapper does the same step (p + 8) so the 256-slot table is
- * type-uniform. Called as s_aTable[op](pDl, p) — br_dl_skip's 1-arg form would
+ * type-uniform. Called as s_aTable[op](pDl, p) â br_dl_skip's 1-arg form would
  * mis-read pDl as p, so the table must hold this version. */
 static const uint8_t *br_dl_skip_h(BrDl *pDl, const uint8_t *p)
 {
@@ -482,7 +478,6 @@ static const uint8_t *br_dl_movemem(BrDl *pDl, const uint8_t *p)
  * number -- comes out pointing straight along the third axis rather than
  * staying zero. The lighting setup relies on that. */
 /* @implements 0x100344D0 glide br_dl_normalise */
-#ifdef BR_MATCHING_BUILD
 extern float BrSqrtF(float x);   /* 0x10002570 -- fld [esp+4]; fsqrt; ret */
 static void br_dl_normalise(BrVec3 *pV)
 {
@@ -533,23 +528,6 @@ static void br_dl_normalise(BrVec3 *pV)
         pV->z = 1.0f;
     }
 }
-#else
-static void br_dl_normalise(BrVec3 *pV)
-{
-    float len = (float)sqrt((double)(pV->y * pV->y + pV->z * pV->z +
-                                     pV->x * pV->x));
-    if (!(len != 0.0f)) {
-        pV->x = 0.0f;
-        pV->y = 0.0f;
-        pV->z = 1.0f;
-        return;
-    }
-    len = 1.0f / len;                     /* fdivr 0x100775F0 == 1.0f */
-    pV->x = len * pV->x;
-    pV->y = len * pV->y;
-    pV->z = len * pV->z;
-}
-#endif
 
 /* --- 0x10021C70's prologue (0x10021C70..0x10021E0F) -------------------
  * Rebuild the derived light state.  Guarded by 0x105D17D0, which G_MTX
@@ -645,7 +623,6 @@ static void br_dl_light_setup(BrDl *pDl)
  * plus a share of the light's colour, capped at full brightness. Colours
  * here run 0 to 255, not 0 to 1. */
 /* @implements 0x10022AC0 glide br_dl_light_vertex */
-#ifdef BR_MATCHING_BUILD
 /* The original takes TWO arguments -- the source vertex record (normal at
  * +0x14/+0x18/+0x1C, already float) and the output vertex (colour at
  * +0x1C/+0x20/+0x24) -- and reads every light value from absolute globals;
@@ -690,7 +667,6 @@ void br_dl_light_vertex(const BrDlLvIn *pIn, BrDlLvOut *pOut)
 }
 /* The port helper below keeps its BrDl signature under another name. */
 #define br_dl_light_vertex br_dl_light_vertex_port
-#endif
 /* Port form (BrDl state, 3-component loop, the two port-only counters). */
 static void br_dl_light_vertex(BrDl *pDl, const float *pN, float *pOut)
 {
@@ -750,7 +726,6 @@ static void br_dl_light_vertex(BrDl *pDl, const float *pN, float *pOut)
 /* @t4-pass 0x1001FD70 1 2026-09-07 probes 50 bytes 365 insns 80 regions 2 rows 42 census yes  (tools/crank.py) */
 /* @t4-pass 0x1001FD70 2 2026-09-07 probes 50 bytes 365 insns 80 regions 2 rows 42 census yes  (tools/crank.py) */
 /* @implements 0x1001FD70 glide BrDlVtxRoutine */
-#ifdef BR_MATCHING_BUILD
 /* The port kept only the tail of this function -- the routine SELECTION --
  * and turned it into a value-returning query. The original takes no
  * arguments, returns nothing, and does three more things first:
@@ -792,11 +767,7 @@ void __stdcall BrGlSetDepthFn(int32_t m);    /* 0x100729C6 */
 extern void BrDlVtxLitDecal(void);   /* 0x100221D0 */
 extern void BrDlVtxLit(void);        /* 0x10021C70 */
 extern void BrDlVtxPlain(void);      /* 0x10021A20 */
-#ifdef BR_MATCHING_BUILD
 const uint8_t *BrDlVtxGenLin(const uint8_t *p);
-#else
-extern void BrDlVtxGenLin(void);     /* 0x10022BF0 */
-#endif
 extern void BrDlVtxGen(void);        /* 0x10022600 */
 extern void BrDlVtxNoZLit(void);     /* 0x10023360 */
 extern void BrDlVtxNoZ(void);        /* 0x10023110 */
@@ -883,38 +854,9 @@ side:
         }
     }
 }
-#else
-uint32_t BrDlVtxRoutine(const BrDl *pDl)
-{
-    uint32_t geo = pDl->geoMode;
-    uint32_t vtx;
-
-    if (geo & BR_DL_GEO_ZBUFFER) {                       /* 0x1001FE0D */
-        if (geo & BR_DL_GEO_LIGHTING)                    /* 0x1001FE15 */
-            vtx = pDl->fDecal ? 0x100221D0u : 0x10021C70u;
-        else
-            vtx = 0x10021A20u;
-        if (geo & BR_DL_GEO_TEXTURE_GEN) {               /* 0x1001FE48 */
-            vtx = 0x10022BF0u;
-            if (!(geo & BR_DL_GEO_TEXTURE_GEN_LIN))
-                vtx = 0x10022600u;
-        }
-    } else {                                             /* 0x1001FE99 */
-        vtx = (geo & BR_DL_GEO_LIGHTING) ? 0x10023360u : 0x10023110u;
-    }
-    return vtx;
-}
-#endif
 
 /* Port-only: it asks BrDlVtxRoutine for a VALUE, and the original's form
  * installs rather than returns. Nothing in the matching build calls it. */
-#ifndef BR_MATCHING_BUILD
-int BrDlIsLit(const BrDl *pDl)
-{
-    uint32_t v = BrDlVtxRoutine(pDl);
-    return (v != 0x10021A20u && v != 0x10023110u);
-}
-#endif
 
 float BrDlColourScale(const BrDl *pDl)
 {
@@ -1230,7 +1172,6 @@ static BrClipVert s_aClipSeed[3];                 /* the three &vtx->f40 */
  * borrows from, putting every one of them back on the free list ready for
  * the next frame. */
 /* @implements 0x10023B10 glide br_dl_clip_reset */
-#ifdef BR_MATCHING_BUILD
 extern int DAT_10b73530;
 extern int DAT_10b73534;
 extern int DAT_10b7352c;
@@ -1260,13 +1201,6 @@ static void br_dl_clip_reset(BrDl *pDl)
     DAT_100a9a50 = 1;
     DAT_105d17d4 = 0;
 }
-#else
-static void br_dl_clip_reset(BrDl *pDl)
-{
-    (void)pDl;
-    BrClipPoolInit(s_aClipPool, BR_DL_CLIP_POOL);
-}
-#endif
 
 /* The seven planes in 0x1001EE70's CALL order. */
 typedef void (*BrDlClipPlaneFn)(BrClipList *);
@@ -1652,7 +1586,6 @@ static const uint8_t *br_dl_rect(BrDl *pDl, const uint8_t *p,
 /* WHAT IT DOES: draws a solid-colour rectangle whose corners were given in
  * quarter-pixel units. The corners are unsigned in this form. The port
  * records the resulting screen window but does not itself paint the pixels. */
-#ifdef BR_MATCHING_BUILD
 extern int DAT_100a7518;
 void FUN_1001e380(int, int, int, int);
 
@@ -1697,18 +1630,6 @@ static const uint8_t *br_dl_fillE1(const uint8_t *p)
     return p + 8;
 }
 
-#else
-/* @implements 0x1001E320 glide br_dl_fillF6 */
-static const uint8_t *br_dl_fillF6(BrDl *d, const uint8_t *p)
-{ return br_dl_rect(d, p, 0, 1); }
-/* WHAT IT DOES: draws a solid-colour rectangle whose corners were given as
- * whole pixels. Unlike its quarter-pixel twin these corners are signed, so a
- * corner off the left of the screen really is negative. The port records the
- * window rather than painting it. */
-/* @implements 0x1001E720 glide br_dl_fillE1 */
-static const uint8_t *br_dl_fillE1(BrDl *d, const uint8_t *p)
-{ return br_dl_rect(d, p, 0, 0); }
-#endif
 /* WHAT IT DOES: draws a textured rectangle straight onto the screen -- the
  * command behind heads-up display panels and menu artwork -- with its
  * corners given in quarter-pixel units. It swallows three commands' worth of
@@ -1782,7 +1703,6 @@ static const uint8_t *br_dl_scissor(BrDl *pDl, const uint8_t *p, int fFrac)
     return p + 8;
 }
 
-#ifdef BR_MATCHING_BUILD
 extern int DAT_105d17bc;
 extern int DAT_105ccfe0;
 extern int DAT_105d17b8;
@@ -1838,25 +1758,6 @@ static const uint8_t *br_dl_scissorED(const uint8_t *p)
     grClipWindow(ulx, minY, lrx, maxY);
     return p + 8;
 }
-#else
-/* 0x1001EBC0 -- opcode 0xE2, 97 bytes.  Integer fields. */
-/* WHAT IT DOES: sets the clipping window -- the region of the screen
- * anything drawn afterwards is confined to -- from whole-pixel corners,
- * flipping the vertical axis because the game's display list counts down the
- * screen and the renderer counts up. */
-/* @implements 0x1001EBC0 glide br_dl_scissorE2 */
-static const uint8_t *br_dl_scissorE2(BrDl *pDl, const uint8_t *p)
-{ return br_dl_scissor(pDl, p, 0); }
-
-/* 0x1001EB50 -- opcode 0xED, 103 bytes.  10.2 fields. */
-/* WHAT IT DOES: the same clipping-window setter for the quarter-pixel form
- * of the command. These really are two separate routines in the original,
- * and routing both through one decode quietly divides one form's corners by
- * four. */
-/* @implements 0x1001EB50 glide br_dl_scissorED */
-static const uint8_t *br_dl_scissorED(BrDl *pDl, const uint8_t *p)
-{ return br_dl_scissor(pDl, p, 1); }
-#endif
 
 /* ---- 0xF2 G_SETTILESIZE  (0x1001EC30, SHARED) -----------------------
  * The D3D twin is 0x1001CF30, which slice2_16.c ports as BrGbiSetTileSize
@@ -1912,7 +1813,6 @@ static const uint8_t *br_dl_settilesize(BrDl *pDl, const uint8_t *p)
  * of transparency, and this expands it back out to four full bytes -- the
  * transparency bit becoming either fully solid or fully clear, never
  * anything between. */
-#ifdef BR_MATCHING_BUILD
 extern unsigned char DAT_105ccd40;
 extern unsigned char DAT_105ccfd8;
 extern unsigned char DAT_105d17a0;
@@ -1943,32 +1843,6 @@ static const uint8_t *br_dl_fillcolour(const uint8_t *p)
     return p + 8;
 }
 
-#else
-/* @implements 0x1001E9F0 glide br_dl_fillcolour */
-static const uint8_t *br_dl_fillcolour(BrDl *pDl, const uint8_t *p)
-{
-    uint32_t w1 = br_dl_w(p + 4);
-    uint8_t  hi, lo;
-
-    hi = (uint8_t)(w1 >> 8);            /* bits 15:8  -- carries R << 3 */
-    lo = (uint8_t)(w1 >> 13);           /* bits 15:13 -- carries R >> 2 */
-    pDl->fillR = (uint8_t)((hi & 0xF8u) | (lo & 0x07u));
-
-    hi = (uint8_t)(w1 >> 3);            /* bits 10:3  -- carries G << 3 */
-    lo = (uint8_t)(w1 >> 8);            /* bits 10:8  -- carries G >> 2 */
-    pDl->fillG = (uint8_t)((hi & 0xF8u) | (lo & 0x07u));
-
-    hi = (uint8_t)((uint8_t)(w1 & 0xFEu) << 2);
-    lo = (uint8_t)(w1 >> 3);            /* bits 5:3   -- carries B >> 2 */
-    pDl->fillB = (uint8_t)(hi | (lo & 0x07u));
-
-    pDl->fillA = (uint8_t)((w1 & 1u) ? 0xFFu : 0x00u);
-
-    /* Port bookkeeping, not a global -- see br_dl.h. */
-    pDl->fillColour = w1;
-    return p + 8;                       /* 0x1001EA4E `add eax,8` */
-}
-#endif
 static const uint8_t *br_dl_fogcolour(BrDl *pDl, const uint8_t *p)
 {
     pDl->fogColour = br_dl_w(p + 4);
@@ -2023,7 +1897,6 @@ static const uint8_t *br_dl_prim(BrDl *pDl, const uint8_t *p)
  * down to a 0-to-1 range as it is stored, which is a real difference between
  * the two commands and not an oversight. */
 /* @implements 0x1001E930 glide br_dl_env */
-#ifdef BR_MATCHING_BUILD
 /* FOUR FACTS, all read off 0x1001E930, and together they are the whole 183
  * bytes (this landed byte-exact at /O2 /Op -- see the note on the variant
  * below, the report row's O2y was simply the wrong guess):
@@ -2060,19 +1933,6 @@ static const uint8_t *br_dl_env(const uint8_t *p)
     DAT_105ccc74 = (float)(*(const uint32_t *)(p + 4) & 0xFFu) * k;
     return p + 8;
 }
-#else
-static const uint8_t *br_dl_env(BrDl *pDl, const uint8_t *p)
-{
-    uint32_t v = br_dl_w(p + 4);
-    const float k = 1.0f / 255.0f;    /* 0x10077400 == 0x3B808081 exactly */
-
-    pDl->env[0] = (float)(int32_t)((v >> 24) & 0xFFu) * k;
-    pDl->env[1] = (float)(int32_t)((v >> 16) & 0xFFu) * k;
-    pDl->env[2] = (float)(int32_t)((v >> 8) & 0xFFu) * k;
-    pDl->env[3] = (float)(int32_t)(v & 0xFFu) * k;
-    return p + 8;
-}
-#endif
 
 /* ---- 0xFC G_SETCOMBINE  (0x1001E770 SHARED -> 0x1001E7A0 Glide-only)  */
 
@@ -2151,36 +2011,18 @@ static void br_dl_build_table(void)
     s_aTable[0xDD] = br_dl_retarget;
     s_aTable[0xDE] = br_dl_setDE;
     s_aTable[0xDF] = br_dl_setDF;
-#ifdef BR_MATCHING_BUILD
     s_aTable[0xE1] = (BrDlHandler)br_dl_fillE1;
     s_aTable[0xE2] = (BrDlHandler)br_dl_scissorE2;
-#else
-    s_aTable[0xE1] = br_dl_fillE1;
-    s_aTable[0xE2] = br_dl_scissorE2;    /* 0x1001EBC0 -- integer */
-#endif
     s_aTable[0xE3] = br_dl_texE3;
     s_aTable[0xE4] = br_dl_texE4;
-#ifdef BR_MATCHING_BUILD
     s_aTable[0xED] = (BrDlHandler)br_dl_scissorED;
-#else
-    s_aTable[0xED] = br_dl_scissorED;    /* 0x1001EB50 -- 10.2    */
-#endif
     s_aTable[0xF2] = br_dl_settilesize;
-#ifdef BR_MATCHING_BUILD
     s_aTable[0xF6] = (BrDlHandler)br_dl_fillF6;
     s_aTable[0xF7] = (BrDlHandler)br_dl_fillcolour;
-#else
-    s_aTable[0xF6] = br_dl_fillF6;
-    s_aTable[0xF7] = br_dl_fillcolour;
-#endif
     s_aTable[0xF8] = br_dl_fogcolour;
     s_aTable[0xFA] = br_dl_prim;
-#ifdef BR_MATCHING_BUILD
     /* one-argument in this arm -- see the note on br_dl_env */
     s_aTable[0xFB] = (void *)br_dl_env;
-#else
-    s_aTable[0xFB] = br_dl_env;
-#endif
     s_aTable[0xFC] = br_dl_combine;
     s_fTableReady = 1;
 }
@@ -2392,8 +2234,7 @@ void BrDlAttachRaster(BrDl *pDl, BrDlRaster *pRas)
     pDl->sink.pfnTri = br_ras_tri;
 }
 
-/* ── Ghidra-matched functions ─────────────────────────── */
-#ifdef BR_MATCHING_BUILD
+/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
 typedef int (*funcptr)();
 extern funcptr DAT_118ed1cc;
 extern funcptr DAT_118ed1d0;
@@ -2632,4 +2473,3 @@ void BrDlBorderEmit(unsigned int param_1,unsigned int param_2,int param_3,int pa
   return;
 }
 
-#endif /* BR_MATCHING_BUILD */

@@ -8,7 +8,6 @@
  * vs orig `jb body; or eax,-1; 4 pops`. Tried: do-while, for(;;) with
  * in-loop return, break-then-return-i, i-n-1 exhaust, #pragma optimize
  * ("g",off), same TU as br_tex3d_append (regressed append). */
-#ifdef BR_MATCHING_BUILD
 
 #define _CRTIMP __declspec(dllimport)
 #include <stdlib.h>
@@ -85,4 +84,3 @@ int FUN_10027a70(int *pReq)
   return -1;
 }
 
-#endif /* BR_MATCHING_BUILD */

@@ -13,20 +13,14 @@
  * looks redundant has already been shown elsewhere in this module to move
  * VC5's register allocation (see br_rdpmode.c).
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
 #include <stdio.h>
-#endif
 #include <string.h>
 
-#ifdef BR_MATCHING_BUILD
 #define BrExt_1007AC00 BrExt_1007AC00_decl
-#endif
 #include "slice5_63.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrExt_1007AC00
-#endif
 
 #include "br_crt.h"      /* BrOperatorNew (0x1007DFE0)                       */
 #include "slice1_03.h"   /* BrTextGetState, BrHudDrawTimeEntry               */
@@ -85,7 +79,6 @@ static int32_t Br63RaceInt(uint32_t off)
  * drawn on top of one another, because the gap between them is only applied
  * in the full-screen layout. */
 /* @implements 0x10017290 d3d BrSub_10017290 */
-#ifdef BR_MATCHING_BUILD
 /* Orig reads the width, cViews, iView, the mode and the lap bound as
  * STANDALONE ABSOLUTE globals (no BrScreenGet / BrHudGetEnv -- slice5_61.c
  * and slice6_70.c record the same correction), reaches the race block through
@@ -175,68 +168,3 @@ void BrSub_10017290(BrHudView *aViews)
         break;
     }
 }
-#else
-void BrSub_10017290(BrHudView *aViews)
-{
-    const BrScreenInfo *pScr;
-    const BrHudEnv     *pEnv;
-    int32_t x, y, dy;
-    uint32_t mode;
-
-    if (g_br0BD3EC == 0) {
-        return;
-    }
-
-    pScr = BrScreenGet();
-    pEnv = BrHudGetEnv();
-
-    x  = pScr->cx - 0x10;
-    /* `dec/neg/sbb/and 0xFFFFFFE2/add 0x1E`: 0x1E when cViews == 1, else 0. */
-    dy = (pScr->cViews == 1) ? 0x1E : 0;
-    y  = aViews[pScr->iView].y + 0x14;
-
-    BrSub_10019260();
-    BrSub_10019290();
-    BrSub_100192F0(0x0F);
-
-    /* `cmp eax,6 / ja` -- unsigned, so a negative mode also falls out. */
-    mode = (uint32_t)g_br0AA010;
-    if (mode > 6u) {
-        return;
-    }
-
-    switch (mode) {
-    case 0u: case 1u: case 2u: case 6u:
-        if (pScr->cViews == 1) {
-            BrHudDrawTimeEntry(BrStrGet(BR63_STR_10017290_A),
-                               pEnv->pszSplitPrefix,
-                               Br63RaceFloat(BR63_RACE_TIME_C), x, y);
-        }
-        if (Br63RaceInt(BR63_RACE_COUNT) < g_br0BD3E0) {
-            BrHudDrawTimeEntry(BrStrGet(BR63_STR_10017290_C),
-                               pEnv->pszSplitPrefix,
-                               Br63RaceFloat(BR63_RACE_TIME_A), x, y + dy);
-        } else {
-            BrHudDrawTimeEntry(BrStrGet(BR63_STR_10017290_B),
-                               pEnv->pszSplitPrefix,
-                               Br63RaceFloat(BR63_RACE_TIME_B), x, y + dy);
-        }
-        break;
-
-    case 3u:
-        if (pScr->cViews == 1) {
-            BrHudDrawTimeEntry(BrStrGet(BR63_STR_10017290_B),
-                               pEnv->pszSplitPrefix,
-                               Br63RaceFloat(BR63_RACE_TIME_B), x, y);
-        }
-        BrHudDrawTimeEntry(BrStrGet(BR63_STR_10017290_C),
-                           pEnv->pszSplitPrefix,
-                           Br63RaceFloat(BR63_RACE_TIME_A), x, y + dy);
-        break;
-
-    default:
-        /* modes 4 and 5: the jump table sends both straight to the epilogue */
-        break;
-    }
-}
-#endif

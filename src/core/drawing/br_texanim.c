@@ -5,7 +5,6 @@
  * hash (letters in frame order), record fields re-read through the full
  * table expression at every use.
  */
-#ifdef BR_MATCHING_BUILD
 
 extern int DAT_106ed6b0;
 extern int BrG_0B380C;        /* 0x100B3014 */
@@ -95,4 +94,3 @@ upload:
 
 #undef REC
 #undef DESC
-#endif /* BR_MATCHING_BUILD */

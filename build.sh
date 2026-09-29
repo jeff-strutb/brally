@@ -12,11 +12,18 @@
 set -e
 mkdir -p build build/host
 
+# src/ and include/ are exactly what MSVC 5.0 compiles for the byte-matched
+# build. The port's differences live in ports/macos/patch/*.port specs;
+# portgen writes the port's copy of each spec'd module to build/port/src/ and
+# the port's view of every header to build/port/include/ -- the only header
+# directory the port compiles against. See ports/macos/tools/portgen.py.
+python3 ports/macos/tools/portgen.py
+
 # -fdeclspec: decomp TUs spell MSVC import prototypes (`__declspec(dllimport)`)
 # for the matching build; on the Mac the attribute is parsed and ignored.
 # Pointer-qualifier mismatches on callbacks (BR_STDCALL typedefs) are benign.
-CFLAGS="-std=c99 -Wall -Wextra -Wno-unused-parameter -Wno-error=implicit-function-declaration -Wno-implicit-function-declaration -fdeclspec -Wno-ignored-attributes -Wno-error=incompatible-function-pointer-types -g -D_DARWIN_C_SOURCE -Iinclude -Itests -Iports/macos/include"
-MFLAGS="-fobjc-arc -Wall -g -Iinclude -Iports/macos/include"
+CFLAGS="-std=c99 -Wall -Wextra -Wno-unused-parameter -Wno-error=implicit-function-declaration -Wno-implicit-function-declaration -fdeclspec -Wno-ignored-attributes -Wno-error=incompatible-function-pointer-types -g -D_DARWIN_C_SOURCE -Ibuild/port/include -Itests -Iports/macos/include"
+MFLAGS="-fobjc-arc -Wall -g -Ibuild/port/include -Iports/macos/include"
 FW="-framework Metal -framework Foundation -framework AppKit -framework QuartzCore"
 
 # --- modules ---------------------------------------------------------------
@@ -93,20 +100,13 @@ PORTINC="-Iports/macos/include"
 # Every compile below is independent; run them JOBS at a time.
 JOBS=${JOBS:-$(sysctl -n hw.ncpu 2>/dev/null || echo 8)}
 export CFLAGS PORTINC
-# A leading '_' is a scratch file (a permuter's candidate, a TU experiment):
-# never part of the game, and it can vanish mid-build.
-{
-    for src in $(find src/core -name '*.c' ! -name '_*'); do
-        [ -f "ports/macos/core/${src#src/core/}" ] || echo "$src"
-    done
-    find ports/macos/core ports/macos/legacy -name '*.c' 2>/dev/null
-} | sort | xargs -P "$JOBS" -n 1 sh -c '
-    src=$1; pre=""
-    case "$src" in
-        src/core/geometry/br_mat3.c) pre="-include ports/macos/include/br_mat3_port.h";;
-    esac
-    obj=$(printf "%s" "$src" | sed "s#^src/core/##; s#^ports/macos/core/##; s#^ports/macos/legacy/##; s#\.c\$##; s#/#_#g")
-    clang $CFLAGS $PORTINC $pre -c "$src" -o "build/core/$obj.o"' _
+# The TU list is portgen's: every src/core module (its build/port copy when
+# it has a spec; a leading '_' is a scratch file and never part of the game),
+# less any a ports/macos/core/ file replaces, plus ports/macos/core/ and
+# ports/macos/legacy/. Each line is "OBJNAME PATH EXTRA-FLAGS...".
+python3 ports/macos/tools/portgen.py --list | xargs -P "$JOBS" -L 1 sh -c '
+    obj=$1; src=$2; shift 2
+    clang $CFLAGS $PORTINC "$@" -c "$src" -o "build/core/$obj.o"' _
 clang $MFLAGS -c ports/macos/metal/br_gfx_metal.m -o build/br_gfx_metal.o
 
 # --- port-only: de-duplicate globals defined in two TUs --------------------

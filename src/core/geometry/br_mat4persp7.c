@@ -7,10 +7,8 @@
  * Filed out of the address batch slice4_50.c, whose preamble is carried
  * verbatim below.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -19,11 +17,9 @@
 #include "slice4_50.h"
 #include "br_gamestep.h"   /* 0x10034C51 == BRGlide 0x1002E302 -- one slot, one owner */
 
-#ifdef BR_MATCHING_BUILD
 /* Orig inlines KERNEL32 IAT WaitForSingleObject / ReleaseMutex (FF 15). */
 __declspec(dllimport) int __stdcall WaitForSingleObject(void *, unsigned int);
 __declspec(dllimport) int __stdcall ReleaseMutex(void *);
-#endif
 
 /* ==========================================================================
  * Cross-slice callees. Each is already declared, with this exact signature,
@@ -42,12 +38,8 @@ extern void    *BrOperatorNew(uint32_t cb);
 extern void     BrExt_100419D0(void *p);
 /* XSLICE 0x10005470 -- slice2_12.h. The original reads its two operands from
  * 0x10ACEDB0 and 0x100B36FC; that port takes them as parameters. */
-#ifdef BR_MATCHING_BUILD
 /* Orig reads 0x10ACEDB0 / 0x100B36FC from inside the callee -- no args. */
 extern uint32_t BrEntityCountActive(void);
-#else
-extern uint32_t BrEntityCountActive(const void *pvRecords, int32_t cRecords);
-#endif
 /* XSLICE 0x1000C670 -- slice2_13.h. 0xFFFF is its failure sentinel. */
 extern uint32_t BrDPlayGetCurrentPlayers(void);
 /* DEVIATION -- slice1_02.h. The original inlines KERNEL32
@@ -71,7 +63,6 @@ int BrMat4Perspective7(BrMat4 *pM, uint16_t *pPerspNorm,
                        float fovyDegrees, float aspect,
                        float n, float f, float scale)
 {
-#ifdef BR_MATCHING_BUILD
     /* pi/360 as a double so the half-angle multiply is `fmul qword`. fptan,
      * two fchs, eight-arg call (scale is pushed and unused by Frustum).
      * Return is the perspNorm pointer, not Frustum's status.
@@ -98,10 +89,5 @@ int BrMat4Perspective7(BrMat4 *pM, uint16_t *pPerspNorm,
         (pM, -w, w, nh, h, n, f, scale);
     *pPerspNorm = 1;
     return (int)pPerspNorm;
-#else
-    (void)scale;
-    return BrMat4Perspective(pM, (unsigned short *)pPerspNorm,
-                             fovyDegrees, aspect, n, f);
-#endif
 }
 

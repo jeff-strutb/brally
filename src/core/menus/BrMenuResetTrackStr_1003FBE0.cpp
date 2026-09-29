@@ -13,9 +13,7 @@
  * the -1 store scheduled into the intrinsic's latency slots. Seven
  * siblings differ only in the phase-source global (byte 145). No EH.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <string.h>
 
 class GameSub {

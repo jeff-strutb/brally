@@ -84,7 +84,6 @@ void BrFfbSetDurationShort(void)
  * settings the player had, selecting the matching device record on the way
  * back. */
 /* @implements 0x100795D0 d3d BrFfbReprobe */
-#ifdef BR_MATCHING_BUILD
 /* The restore chain is a real switch: each arm stores its record ADDRESS
  * as an immediate and restores the exclusive flag itself (arms in memory
  * order default,3,2,1; case 1 restores the flag before the pointer). */
@@ -123,39 +122,3 @@ void BrFfbReprobe(void)
         return;
     }
 }
-#else
-void BrFfbReprobe(void)
-{
-    int32_t nSavedMode = g_brB4E1D0;   /* esi */
-    int32_t nSavedExcl = g_brB4E1E0;   /* edi */
-
-    /* 0x100795DE..0x100795F2 -- force the known probe configuration: mode 2,
-     * record 2 (0x10B4E080), exclusive. */
-    g_brB4E1D0 = 2;
-    g_brB4E1D4 = g_aBrB4DF30[2];
-    g_brB4E1E0 = 1;
-
-    /* 0x100795FC / 0x10079601. BrFfbInit's result is discarded by the
-     * original (it does not even keep eax past the next call), so the
-     * "disabled vs already up" distinction its header describes is not used
-     * here. BrFfbShutdown then unwinds the nested-init count this raised. */
-    (void)BrFfbInit();
-    BrFfbShutdown(&g_brFfb);
-
-    /* 0x10079606 -- the mode is restored before the selection chain, because
-     * the chain decrements the register that held it. */
-    g_brB4E1D0 = nSavedMode;
-
-    /* 0x1007960C..0x1007965F -- `dec/je` three times over 1, 2, 3 with
-     * everything else falling through to record 0. Written the way
-     * slice2_25.c writes the same chain for 0x10043400, so the two sites read
-     * as the one idiom they are. Mode 0 and any mode > 3 both select 0. */
-    if (nSavedMode >= 1 && nSavedMode <= 3) {
-        g_brB4E1D4 = g_aBrB4DF30[nSavedMode];
-    } else {
-        g_brB4E1D4 = g_aBrB4DF30[0];
-    }
-
-    g_brB4E1E0 = nSavedExcl;
-}
-#endif

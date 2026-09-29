@@ -16,9 +16,7 @@
  * 16-bit at +0x10/+0x12; the per-item vcall is slot +4 on a re-read of
  * this->cur (EDX pattern).  No EH (no new).
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class BrPhaseItem41 {
 public:

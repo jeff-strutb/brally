@@ -4,10 +4,8 @@
  * grouped by what they are afterwards. Every function carries its original
  * address.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice1_01.h"
 #include "slice2_11.h"   /* g_pBrU16QueueTable -- BrU16QueuePop's table */
 
@@ -34,7 +32,6 @@
  * leaves the reader where it was -- but zero is also a perfectly valid entry,
  * so a caller cannot tell the two apart. */
 /* @implements 0x10002EF0 d3d BrU16CursorNext */
-#ifdef BR_MATCHING_BUILD
 /* The original takes only the cursor; the table is the global at 0x106C7C68.
  * The portable prototype keeps pTable as an explicit argument. */
 const uint16_t *g_br6C7C68;   /* 0x106C7C68 */
@@ -55,25 +52,6 @@ uint16_t BrU16CursorNext(BrU16Cursor *pCur)
     }
     return 0;
 }
-#else
-uint16_t BrU16CursorNext(const uint16_t *pTable, BrU16Cursor *pCur)
-{
-    uint32_t rem, pos, packed;
-
-    rem = pCur->remaining;
-    if (rem == 0u) {
-        return 0u;
-    }
-
-    pos = pCur->pos;
-    packed = (uint32_t)((rem + 0xFFFFu) << 16) | (pos + 1u);
-
-    pCur->pos       = (uint16_t)(packed & 0xFFFFu);
-    pCur->remaining = (uint16_t)((packed >> 16) & 0xFFFFu);
-
-    return pTable[pos];
-}
-#endif
 
 /* ================================================================== */
 /* 0x10002F40 -- pop from a u16 ring                                  */

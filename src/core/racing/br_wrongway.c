@@ -7,7 +7,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#ifdef BR_MATCHING_BUILD
 extern int DAT_100bcbe8;
 extern double _DAT_10077c40;
 extern int BrG_6C7CB8;
@@ -53,4 +52,3 @@ void __fastcall FUN_1006eb00(int param_1)
   return;
 }
 
-#endif /* BR_MATCHING_BUILD */

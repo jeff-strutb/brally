@@ -8,7 +8,6 @@
  */
 #include <stdint.h>
 
-#ifdef BR_MATCHING_BUILD
 
 /* The original binary is /MD: CRT calls resolve through the import table. */
 #define _CRTIMP __declspec(dllimport)
@@ -231,4 +230,3 @@ void BrCarCarCollide(void)
     }
 }
 
-#endif /* BR_MATCHING_BUILD */

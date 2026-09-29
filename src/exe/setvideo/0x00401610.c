@@ -1,6 +1,5 @@
 /* Auto-generated from disassembly — 0x00401610
  * CountSections: FindFirst + FindNext until index == -1. */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: count how many sections the settings file has -- what the
  * dialog needs before it can fill a drop-down. */
 /* @implements 0x00401610 setvideo.exe CountSections */
@@ -54,4 +53,3 @@ int CountSections(INI *pini)
 }
 
 
-#endif /* BR_MATCHING_BUILD */

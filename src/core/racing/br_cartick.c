@@ -6,7 +6,6 @@
  * lists all three under BR_RS_HOLE_SKID beside 0x1006EB00, which is in
  * br_wrongway.c and writes the message slots these count down.
  */
-#ifdef BR_MATCHING_BUILD
 
 extern volatile float g_f6C2CFC;  /* 0x106E9D8C  frame dt, seconds; VOLATILE:
                                    * it is what makes VC5 load it FIRST
@@ -94,4 +93,3 @@ void __fastcall BrCarTickGridCell(int pCar)
     }
 }
 
-#endif /* BR_MATCHING_BUILD */

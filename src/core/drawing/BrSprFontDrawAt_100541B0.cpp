@@ -27,9 +27,7 @@
  * under /O2 that preceded the re-sweep moved nothing -- the SIB order is a
  * per-TU option, not a source shape (docs/VC5-IDIOMS.md, /Gi entry).
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 struct Metric12 {
     short          advance;     /* +0x00 -- signed: movsx before the fild */

@@ -4,10 +4,8 @@
  * The hooks table and its accessor come along because they are the port
  * arm's only users of the file-static below.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice1_03.h"
 
 /* =====================================================================
@@ -41,7 +39,6 @@ BrAppMsgHooks *BrAppMsgGetHooks(void)
  * everything else simply returns. Two of the five arguments are passed by
  * every caller and never read. */
 /* @implements 0x1000BEA0 d3d BrAppMsgDispatch */
-#ifdef BR_MATCHING_BUILD
 /* The original really is the wide switch: empty DPSYS_* labels (same `ret`
  * as default, `return` not `break` so each keeps its own jump-table group)
  * preserve the compare chain for ids <= 0x21 and the two-level table for
@@ -83,35 +80,3 @@ void BrAppMsgDispatch(void *pv1, const BrAppMsg *pMsg, void *pv3, void *pv4,
         return;
     }
 }
-#else
-void BrAppMsgDispatch(void *pv1, const BrAppMsg *pMsg, void *pv3, void *pv4,
-                      void *pv5)
-{
-    int32_t id;
-
-    (void)pv3;    /* pushed by every caller, never read by the original */
-    (void)pv4;
-
-    if (pMsg == NULL)
-        return;   /* DEVIATION: the original dereferences unconditionally */
-
-    id = pMsg->id;
-
-    if (id > 0x21) {
-        if ((uint32_t)(id - 0x31) > 0xD6u)
-            return;
-        if (id != 0x107)
-            return;
-        if (g_appMsg.pfnMsg107 != NULL)
-            g_appMsg.pfnMsg107(pv1, pMsg->f0C, pMsg->f10, pMsg->f08, pv5);
-        return;
-    }
-
-    if (id != 5)
-        return;
-    if (g_appMsg.f0AC300 != 0)
-        return;
-    if (g_appMsg.pfnMsg5 != NULL)
-        g_appMsg.pfnMsg5(pMsg->f08);
-}
-#endif

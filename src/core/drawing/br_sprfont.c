@@ -37,18 +37,14 @@
  * file reads BrUiNav's, because the control it is handed is a struct control
  * and therefore came through the struct frame.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
 #define BrSprFontGlyphA_1005B730 BrSprFontGlyphA_1005B730_port
 #define BrSprFontGlyphB_1005B7A0 BrSprFontGlyphB_1005B7A0_port
-#endif
 #include "br_sprfont.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrSprFontGlyphA_1005B730
 #undef BrSprFontGlyphB_1005B7A0
 #include "br_match.h"
-#endif
 
 #include <stddef.h>
 #include <stdio.h>
@@ -112,7 +108,6 @@ static void BrSprGrid(int32_t (*pTab)[4], int n, int cols, int cw, int ch)
 /* @implements 0x10058540 glide BrSprFontRectInit_1005F800 */
 void BrSprFontRectInit_1005F800(void)
 {
-#ifdef BR_MATCHING_BUILD
     /* Byte-exact 2026-09-12 in INDEX FORM: VC5 strength-reduces each
      * `tab[i][k]` walk into the biased cursor the original has (`add ecx,
      * 0x10` at the top, stores at [ecx-0x14..-8], `cmp ecx, limit` on the
@@ -166,12 +161,6 @@ void BrSprFontRectInit_1005F800(void)
             g_aBrSprRectD[i][3] = top + 128;
         }
     }
-#else
-    BrSprGrid(g_aBrSprRectA, BR_SPRFONT_RECT_A, 8,  16,  16);
-    BrSprGrid(g_aBrSprRectB, BR_SPRFONT_RECT_B, 5,  39,  44);
-    BrSprGrid(g_aBrSprRectC, BR_SPRFONT_RECT_C, 5, 128, 128);
-    BrSprGrid(g_aBrSprRectD, BR_SPRFONT_RECT_D, 3, 128, 128);
-#endif
 }
 
 /* ==========================================================================
@@ -217,7 +206,6 @@ static int32_t BrSprSheetBlitFlags(int32_t iSheet)
  * position down to whole pixels, and hands the sheet, the character's
  * rectangle and the sheet's transparency setting to whatever does the actual
  * drawing. */
-#ifdef BR_MATCHING_BUILD
 /* arg3 declared short: the original's caller pushes the sheet's home
  * register raw (upper bits unspecified), which VC5 only emits for a
  * prototyped short -- an int arg forces a movsx that pins eax and pushes
@@ -258,18 +246,11 @@ int BR_STDCALL BrSprFontGlyphB_1005B7A0(short iGlyph, float x, float y,
                  g_aBrUiSprite[5].fBlit);
     return 1;
 }
-#endif
 
 /* @implements 0x1005B730 d3d BrSprFontGlyphA_1005B730 */
-#ifdef BR_MATCHING_BUILD
 void BrSprFontGlyphA_1005B730_port(const BrTextBox *pBox, int32_t iGlyph,
                               float x, float y, int32_t bKindUnused,
                               BrSprFontBlitFn pfnBlit, void *pCtx)
-#else
-void BrSprFontGlyphA_1005B730(const BrTextBox *pBox, int32_t iGlyph,
-                              float x, float y, int32_t bKindUnused,
-                              BrSprFontBlitFn pfnBlit, void *pCtx)
-#endif
 {
     int32_t iSheet, ix, iy;
 
@@ -303,15 +284,9 @@ void BrSprFontGlyphA_1005B730(const BrTextBox *pBox, int32_t iGlyph,
  * large characters always come from one fixed sheet. The style argument it is
  * handed is ignored. */
 /* @implements 0x1005B7A0 d3d BrSprFontGlyphB_1005B7A0 */
-#ifdef BR_MATCHING_BUILD
 void BrSprFontGlyphB_1005B7A0_port(int32_t iGlyph, float x, float y,
                               int32_t bKindUnused,
                               BrSprFontBlitFn pfnBlit, void *pCtx)
-#else
-void BrSprFontGlyphB_1005B7A0(int32_t iGlyph, float x, float y,
-                              int32_t bKindUnused,
-                              BrSprFontBlitFn pfnBlit, void *pCtx)
-#endif
 {
     int32_t ix, iy;
 
@@ -446,11 +421,7 @@ float BrSprFontDraw_1005B2B0(BrTextBox *pBox,
             /* The DRAW gates on `sprite`; the two MEASURERS gate on
              * `advance` and `height`.  Preserved -- see the header. */
             if (pG->sprite != BR_GLYPH_NONE) {
-#ifdef BR_MATCHING_BUILD
                 BrSprFontGlyphA_1005B730_port(pBox, (int32_t)(int16_t)pG->sprite,
-#else
-                BrSprFontGlyphA_1005B730(pBox, (int32_t)(int16_t)pG->sprite,
-#endif
                                          x, pBox->y,
                                          (int32_t)(int8_t)pBox->f08,
                                          pfnBlit, pCtx);
@@ -567,10 +538,9 @@ int32_t BrSprFontKindHook_10047360(BrUiCtl_ *pCtl)
     return 1;
 }
 
-/* BrSprFontDraw (0x10058380) lives in ghidra_batch.c — the original binary
+/* BrSprFontDraw (0x10058380) lives in ghidra_batch.c â the original binary
  * calls BrUiSprClip with 6 args, but the port header declares 7. */
 
-#ifdef BR_MATCHING_BUILD
 typedef int (__fastcall *VT1)(void *this);
 
 extern char DAT_100acb44[];
@@ -662,4 +632,3 @@ char __fastcall FUN_10054390(int *param_1)
   g_brAA33E4 = 0;
   return 1;
 }
-#endif /* BR_MATCHING_BUILD */

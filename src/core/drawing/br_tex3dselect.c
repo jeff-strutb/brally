@@ -10,12 +10,9 @@
  * is placement-sensitive.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 
-#ifdef BR_MATCHING_BUILD
 
 extern unsigned short DAT_1186c988[];   /* the shared expansion buffer   */
 extern unsigned short DAT_105e1828[];   /* the resampler's output        */
@@ -106,4 +103,3 @@ int FUN_10027b60(int rec)
     return ret;
 }
 
-#endif /* BR_MATCHING_BUILD */

@@ -11,10 +11,8 @@
  * (`push 0x10b72f48; mov ecx,0x10b71290; call`) homes the struct in a frame
  * slot under /Od; a class method call spells it directly.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #include <windows.h>
-#endif
 
 class Save1290 {
 public:

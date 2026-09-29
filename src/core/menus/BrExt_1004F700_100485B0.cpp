@@ -23,11 +23,9 @@
  * in full: the original's single shared `BrStrGet(0x35)` and `push 1` are
  * VC5 tail-merging them, not the source sharing them.
  */
-#ifdef BR_MATCHING_BUILD
 #include <stdio.h>
 #define _CRTIMP __declspec(dllimport)
 #include <string.h>
-#endif
 
 class GameUi;
 class BrCtl;

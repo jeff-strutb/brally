@@ -11,10 +11,8 @@
  * looks redundant has already been shown elsewhere in this module to move
  * VC5's register allocation (see br_rdpmode.c).
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdarg.h>
 #include "br_path.h"
 #include <stddef.h>
@@ -33,7 +31,6 @@ extern int32_t g_br18A9878;
 extern int32_t g_br18AA098;
 extern void   *g_br18AA0A0;
 
-#ifdef BR_MATCHING_BUILD
 extern char DAT_118ec998;
 extern char DAT_118ec99c;
 #ifndef BR_FUNCPTR_DEFINED
@@ -83,4 +80,3 @@ void BrTexQueuePop(void)
   return;
 }
 
-#endif /* BR_MATCHING_BUILD */

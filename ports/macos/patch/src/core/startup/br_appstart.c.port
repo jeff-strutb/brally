@@ -1,0 +1,95 @@
+# Port deviations for src/core/startup/br_appstart.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop define:BrChkFReadLine
+@after fn:BrAppStartSetHost
+
+/* ==========================================================================
+ * 0x10007E80 -- CheckPreviousApp.  THE GATE: RallyMain aborts on 0.
+ *
+ * Register trace, because `esi` changes meaning halfway through and that is
+ * the one thing a reader can get wrong here:
+ *
+ *   0x10007E91  esi = FindWindowA(...)          the OTHER instance's window
+ *   0x10007EAD  ebx = thread of the FOREGROUND window
+ *   0x10007EAF  eax = thread of esi
+ *   0x10007EC9  esi = GetLastActivePopup(esi)   REBOUND -- everything after
+ *                                               this acts on the popup
+ *
+ * Both GetWindowThreadProcessId calls pass NULL as the process-id out
+ * parameter (`push 0` at 0x10007EA5 and 0x10007EAA), so no process id is ever
+ * fetched; the comparison at 0x10007EB7 is between THREAD ids.
+ *
+ * The branch shape, exactly as written:
+ *
+ *   0x10007EB9  jne  -> different thread: restore, unconditionally
+ *   0x10007EC0  je   -> same thread and NOT iconic: skip the restore
+ *               otherwise (same thread, iconic): fall into the restore
+ *
+ * which is `if (idPopupOwner != idForeground || IsIconic(hWnd))`.  IsIconic is
+ * only reached when the threads match, so || short-circuiting is not an
+ * approximation of the original, it is the original.
+ * ========================================================================== */
+/* WHAT IT DOES: checks whether Boss Rally is already running, and if it is,
+ * brings that copy's window to the front instead of starting a second one.
+ * Whether it restores the window depends on whether the other copy owns the
+ * foreground and whether it is minimised. */
+int32_t BrAppCheckPreviousApp(void)
+{
+    const BrAppStartHost *pH = g_pBrAppStartHost;
+    void    *hWnd;
+    uint32_t idForeground;
+    uint32_t idOther;
+
+    hWnd = (pH->pfnFindWindow != NULL)
+         ? pH->pfnFindWindow(BR_APP_WNDCLASS, BR_APP_WNDTITLE)
+         : NULL;
+
+    if (hWnd == NULL) {
+        return 1;                       /* 0x10007EFA: mov eax,1 / ret */
+    }
+
+    idForeground = (pH->pfnGetWindowThreadProcessId != NULL &&
+                    pH->pfnGetForegroundWindow != NULL)
+                 ? pH->pfnGetWindowThreadProcessId(pH->pfnGetForegroundWindow(),
+                                                   NULL)
+                 : 0u;
+    idOther      = (pH->pfnGetWindowThreadProcessId != NULL)
+                 ? pH->pfnGetWindowThreadProcessId(hWnd, NULL)
+                 : 0u;
+
+    if (idOther != idForeground ||
+        (pH->pfnIsIconic != NULL && pH->pfnIsIconic(hWnd) != 0)) {
+
+        if (pH->pfnGetLastActivePopup != NULL) {
+            hWnd = pH->pfnGetLastActivePopup(hWnd);   /* 0x10007EC9: esi rebound */
+        }
+        if (pH->pfnIsIconic != NULL && pH->pfnIsIconic(hWnd) != 0) {
+            if (pH->pfnShowWindow != NULL) {
+                pH->pfnShowWindow(hWnd, BR_APP_SW_RESTORE);
+            }
+        }
+        if (pH->pfnBringWindowToTop != NULL) {
+            pH->pfnBringWindowToTop(hWnd);
+        }
+        if (pH->pfnSetForegroundWindow != NULL) {
+            pH->pfnSetForegroundWindow(hWnd);
+        }
+    }
+
+    /* 0x10007EE9 -- reached from BOTH arms. */
+    if (pH->pfnOutputDebugString != NULL) {
+        pH->pfnOutputDebugString(BR_APP_PREVAPP_MSG);
+    }
+    return 0;                           /* 0x10007EF5: xor eax,eax */
+}
+@end
+@drop include:<windows.h>
+@drop var:DAT_10226e78
+@drop fn:BrMemoryQuery
+@drop fn:BrAppCheckPreviousApp
+@drop undef:BrChkFReadLine
+@drop undef:getc
+@drop type:struct BrChkHandle
+@drop fn:BrChkFReadLine#2

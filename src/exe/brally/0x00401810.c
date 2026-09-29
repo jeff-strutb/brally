@@ -3,7 +3,6 @@
  * LoadLibrary the renderer DLL, call RallyMain cdecl with the WinMain args.
  * Idiom: "BRD3D.dll" / "BRGlide.dll" must be extern char[] so strcpy uses
  * generic rep movs (a literal becomes a dword-move burst). */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: the launcher itself: work out where the game is installed,
  * read the settings to decide which renderer to use, load that DLL and call
  * into it. This is the program the player actually starts. */
@@ -104,4 +103,3 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPSTR lpCmd, int nSh
 }
 
 
-#endif /* BR_MATCHING_BUILD */

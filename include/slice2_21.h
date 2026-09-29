@@ -246,11 +246,7 @@ int BrSpanTestPoint(const BrSpanVolume *pVol, float x, float y);
 /* The original takes NO arguments: both the volume and the six points are
  * absolute globals (0x10AC2C50.. and 0x106EA3A0), and the twelve edges are
  * UNROLLED, not a loop over a table. */
-#ifdef BR_MATCHING_BUILD
 void BrSpanBuildHull(void);
-#else
-void BrSpanBuildHull(BrSpanVolume *pVol, const BrVec3 aPt[6]);
-#endif
 
 /* ==========================================================================
  * 5. Particle pool
@@ -387,13 +383,8 @@ typedef struct BrCarFxEnv {
  *
  * Returns early (doing nothing) when mode6620 is set and sel0B380C is neither
  * 2 nor 8. */
-#ifdef BR_MATCHING_BUILD
 /* Glide 0x10032880 is __fastcall(pCar); pEnv/pSeed are globals in that build. */
 void __fastcall BrCarWheelFx(struct BrCar *pCar);
-#else
-void BrCarWheelFx(struct BrCar *pCar, const BrCarFxEnv *pEnv,
-                  uint32_t *pSeed);
-#endif
 
 /* 0x10039F20  spawn pool particles from the four wheels (thiscall).
  *

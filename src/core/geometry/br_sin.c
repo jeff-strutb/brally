@@ -4,14 +4,11 @@
  * matched first and grouped by what they are afterwards.
  * Every function carries its original address.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import
  * table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdint.h>
 
-#ifdef BR_MATCHING_BUILD
 
 
 /* ======================================================================
@@ -22,9 +19,7 @@
 /* WHAT IT DOES: the game's sine, a one-instruction wrapper round the
  * processor's own sine. Used throughout the physics and the camera work. */
 /* @implements 0x10002240 d3d BrSinF */
-#ifdef _MSC_VER
 #pragma intrinsic(sin)
-#endif
 float BrSinF(float x)
 {
     /* The original is fld [esp+4]; fsin; ret -- the x87 sine emitted inline,
@@ -45,9 +40,7 @@ float BrSinF(float x)
 /* WHAT IT DOES: the game's square root, a one-instruction wrapper round the
  * processor's own. Used everywhere a distance or a vector length is needed. */
 /* @implements 0x10002250 d3d BrSqrtF */
-#ifdef _MSC_VER
 #pragma intrinsic(sqrt)
-#endif
 float BrSqrtF(float x)
 {
     /* The original is three instructions -- fld [esp+4]; fsqrt; ret -- so the
@@ -59,4 +52,3 @@ float BrSqrtF(float x)
     return (float)sqrt(x);
 }
 
-#endif /* BR_MATCHING_BUILD */

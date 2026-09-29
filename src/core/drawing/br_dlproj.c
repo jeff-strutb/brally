@@ -38,7 +38,6 @@
 #include "br_dl.h"       /* BrDlVtx -- the 0x68-byte pool record             */
 #include "slice1_03.h"   /* BrClipVert, BrClipList, the seven planes         */
 
-#ifdef BR_MATCHING_BUILD
 
 /* The Glide 2.x GrVertex, two TMUs: 0x3C bytes.  BrDlVtx's first 0x3C bytes
  * are one of these; this function is handed a bare one by its caller, so it
@@ -101,4 +100,3 @@ void BrDlProjectNoZ(BrProjGrVtx *pV, BrClipVert *pN,
     BR_PROJ_SNAP(pV->y, l, tmp, invW);
 }
 
-#endif /* BR_MATCHING_BUILD */

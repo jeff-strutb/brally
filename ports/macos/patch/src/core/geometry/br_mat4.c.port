@@ -1,0 +1,20 @@
+# Port deviations for src/core/geometry/br_mat4.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:BrBitStreamReadBits
+@drop define:BrBitStreamInit
+@drop define:BrBitStreamSkipBytes
+@drop define:BrBitStreamWriteU8
+@drop define:BrBitStreamWriteU24
+@drop define:BrBitStreamWriteU32
+@drop define:BrEntitySetIndex
+@drop define:BrEntityBindAux
+@drop undef:BrBitStreamReadBits
+@drop undef:BrBitStreamInit
+@drop undef:BrBitStreamSkipBytes
+@drop undef:BrBitStreamWriteU8
+@drop undef:BrBitStreamWriteU24
+@drop undef:BrBitStreamWriteU32
+@drop undef:BrEntitySetIndex
+@drop undef:BrEntityBindAux
+@drop fn:BrVec3TransformDivW

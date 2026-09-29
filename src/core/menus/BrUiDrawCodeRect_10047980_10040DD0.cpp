@@ -18,9 +18,7 @@
  * and the +0x40 one is evaluated before the +0x3C one because arguments go
  * right to left.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 struct BrRow40DD0 {
     short w00;                  /* +0x00 */

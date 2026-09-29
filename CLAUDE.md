@@ -26,6 +26,10 @@ Pairing is not by shared strings (7 usable, not 195). Lookup: `build/n64/report.
 ## 1. Bit-exact under MSVC 5.0, same source cross-compiles as the port.
 
 Do not reorder matching to make something run. Do keep the port buildable.
+`src/` and `include/` hold only what MSVC compiles -- no `BR_MATCHING_BUILD` /
+`_MSC_VER` conditionals (the hook refuses one). A port difference is a spec in
+`ports/macos/patch/` (`ports/README.md`). Refactors of either side:
+`tools/ppgate.py` (MSVC tokens) and `ports/macos/tools/portpp.py` (port tokens).
 
 ## 2. `@implements` means the bytes diff clean. Nothing else.
 

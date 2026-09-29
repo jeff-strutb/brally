@@ -23,10 +23,8 @@
  * selector's vtable and `this` cached by VC5 across the whole loop from the
  * +0x14 configure call that precedes it.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #include <string.h>
-#endif
 
 class GameUi;
 class BrCtl;

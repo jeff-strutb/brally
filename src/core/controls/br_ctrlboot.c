@@ -8,7 +8,6 @@
 #include "slice3_42.h"
 #include "br_objlife.h"   /* BrAtexit_10069A70 -- 0x10069A70 */
 
-#ifdef BR_MATCHING_BUILD
 
 /* WHAT IT DOES: initialize the controller-config subsystem and register its atexit handler. */
 /* @implements 0x10062AC0 glide BrCtrlCfgBoot */
@@ -21,4 +20,3 @@ int BrCtrlCfgBoot(void)
   return;
 }
 
-#endif /* BR_MATCHING_BUILD */

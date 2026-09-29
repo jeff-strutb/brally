@@ -1,0 +1,12 @@
+# Port deviations for src/core/racing/br_reset.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop var:DAT_106ec740
+@drop var:DAT_106ec744
+@drop var:DAT_106e7294
+@drop var:DAT_106ec768
+@drop var:DAT_106ed588
+@drop var:DAT_106b7ac0
+@drop var:DAT_106e9d8c
+@drop fn:BrReset_1002E13B

@@ -14,11 +14,9 @@
  * and destructor (the out-of-line nop 0x10008D60) bracket the reads, which
  * is what routes it to the C++ lane.  The C twin in br_cfgfile.c stays as
  * the port's reader. */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #include <stdio.h>
 #include <string.h>
-#endif
 
 extern "C" char BrGlCfgMagic[];     /* 0x100B4C20  "RCfg" */
 

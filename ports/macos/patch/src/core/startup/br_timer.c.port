@@ -1,0 +1,92 @@
+# Port deviations for src/core/startup/br_timer.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop include:<windows.h>
+@drop var:g_br18AB118_S_S1499
+@drop fn:BrGetTimerState
+@drop var:g_br86HasPerf_S_S1437
+@drop proto:BrSub10075020
+@drop var:g_br86HasPerf_S_S1437#2
+@drop fn:br86_timer_restart
+@drop var:DAT_100bb2dc
+@drop var:DAT_118ee238
+@drop var:DAT_118ee240
+@drop var:DAT_118ee248
+@drop var:__int64
+@drop var:__int64#2
+@drop var:timeGetTime
+@drop fn:BrSub10075020
+@drop define:BrCarSub9020
+@drop include:"slice4_53.h"
+@drop undef:BrCarSub9020
+@drop include:<windows.h>#2
+@drop var:DAT_10ac306c
+@drop var:DAT_10ac408c
+@drop proto:FUN_100356b0
+@drop proto:FUN_10036300
+@drop fn:BrTimerStart
+@drop var:g_br18AB12C
+@drop var:g_br0BBAC8
+@drop var:g_br18AB118
+@drop var:g_br18AB134
+@drop fn:BrSub10075150
+@drop proto:BrSub10075020#2
+@drop var:DAT_118ee230
+@drop var:DAT_118ee244
+@drop var:DAT_118ee24c
+@drop fn:BrTimeUpdate
+@after fn:BrTimeUpdate
+
+/* 0x10075020 */
+/* WHAT IT DOES: tells the caller how many milliseconds have passed since the
+ * game started. On its first call it works out how to read the machine's
+ * high-resolution clock and notes the starting point; from then on it uses
+ * that, falling back to the ordinary Windows clock on any machine where the
+ * precise one is unavailable. */
+/* @implements 0x10075020 d3d BrSub10075020 */
+/* The port twin of 0x10075020; the tag above the #ifdef covers both arms. */
+int32_t BrSub10075020(void)
+{
+    int64_t now;
+
+    if (g_br0BBAD4 != 0) {
+        g_br18AB128 = BrPlatQueryPerfFreq(&g_br18AB120);
+        now = 0;
+        /* The original ignores this call's return value. */
+        (void)BrPlatQueryPerfCounter(&now);
+        g_br18AB130 = BrPerfToMs(now);
+        g_br0BBAD4  = 0;
+    }
+
+    if (g_br18AB128 == 0) {
+        return (int32_t)BrPlatTimeGetTime();
+    }
+    now = 0;
+    if (BrPlatQueryPerfCounter(&now) == 0) {
+        return (int32_t)BrPlatTimeGetTime();
+    }
+    return BrPerfToMs(now) - g_br18AB130;
+}
+
+/* ---- from slice4_53.c ------------------------------------------------
+ * That batch reached the three window/DirectPlay globals through
+ * slice4_53.h, with BrCarSub9020 renamed out of the way; kept verbatim.
+ * --------------------------------------------------------------------- */
+
+/* ---- from slice8_86.c ------------------------------------------------
+ * Section 10 of that batch: the 30 Hz tick stepper and the four statics
+ * only it used.
+ *
+ * CORRECTION.  This note used to say the neighbours 0x1006E4A0 / 0x10019830
+ * could not follow because they read a file-static g_br86HasPerf "which the
+ * rest of that batch still uses".  That was wrong: only section 8 of the
+ * batch ever touched that flag.  The whole of section 8 -- the flag, its
+ * single writer and its readers -- has since moved to br_frametimer.c
+ * together, so nothing was duplicated.  It is a separate file rather than
+ * this one because slice8_86.h's header chain will not compile alongside
+ * the four batches aggregated here (BrDPlayVtbl redefinition, and a
+ * timeEndPeriod whose return type disagrees with windows.h's).
+ * --------------------------------------------------------------------- */
+
+
+@end

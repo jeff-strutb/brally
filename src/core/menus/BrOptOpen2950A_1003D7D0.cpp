@@ -1,9 +1,7 @@
 /* BrOptOpen2950A_1003D7D0.cpp -- menus, one C++ TU: 0x1003D620 CtlD620 (a
  * page opener) and, after it, 0x1003D7D0 BrOptOpen2950A (join a network game
  * and open its lobby). */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <string.h>
 
 /* WHAT IT DOES: open this menu page: create its object the first time it is

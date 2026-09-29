@@ -8,17 +8,14 @@
  * Every function carries its original address.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdint.h>
 
 /* ==========================================================================
  * 0x10005F50
  * ========================================================================== */
 
-#ifdef BR_MATCHING_BUILD
 /* KERNEL32. dllimport emits `call dword ptr [IAT]`; with ten-plus call sites
  * VC5 hoists the IAT slot into edi once, which is what the original does. */
 __declspec(dllimport) int __stdcall CloseHandle(void *hObject);
@@ -86,4 +83,3 @@ int BrNetShutdown(void)
 
     return ok;
 }
-#endif

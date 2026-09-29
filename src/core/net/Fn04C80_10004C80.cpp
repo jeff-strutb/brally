@@ -10,9 +10,7 @@
  * (no unused-this push ecx). g_id is volatile int so the load is
  * `mov ecx,[g]` (8b 0d) not `mov cl,[g]` (8a 0d) before and cl / or cl.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Buf {
 public:

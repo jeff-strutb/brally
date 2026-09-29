@@ -23,12 +23,7 @@ void BrNodeChainReset_1000F460(void);
 extern uint8_t  g_4B0360;
 extern uint8_t  g_4B035C;
 extern uint32_t g_2E5E98, g_2E54C0, g_2E5ECC;
-#ifdef BR_MATCHING_BUILD
 extern uint32_t g_364308;
 extern uint32_t g_363F68;
-#else
-extern uint32_t g_364308[32];
-extern uint32_t g_363F68[32];
-#endif
 
 #endif

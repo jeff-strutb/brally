@@ -15,10 +15,8 @@
  * is a property of the data the flag pair selects, not of this transcription.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "br_tex3d.h"
 #include "slice1_04.h"      /* BrTexFormatCode (0x10027220 == 0x10027B90) */
 

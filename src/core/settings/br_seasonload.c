@@ -40,7 +40,6 @@
  * first.  A bool-returning .cpp of the same body scores WORSE (653 diffs,
  * three layouts), so the C++ lane needs its own read of this one; the C
  * body here is instruction-complete and stays as the reference. */
-#ifdef BR_MATCHING_BUILD
 
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
@@ -161,4 +160,3 @@ install:
     return 1;
 }
 
-#endif /* BR_MATCHING_BUILD */

@@ -11,22 +11,18 @@
  * is nobody's business but this host's.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
 /* slice4_52.h declares the port's void copy of the writer under the same
  * name; the matching definition at the end of this file returns char. */
 #define BrMenuSub100709A0 BrMenuSub100709A0_port
-#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "br_save.h"
 #include "slice1_01.h"   /* BrAdler32 -- 0x10001000, zlib adler32 verbatim */
-#ifdef BR_MATCHING_BUILD
 #undef BrMenuSub100709A0
-#endif
 
 /* Compile-time check that the layout constants still compose to the file the
  * two functions describe.  C99 has no _Static_assert here; the tree uses the
@@ -380,7 +376,6 @@ int BrBrfFileName(char *pszOut, size_t cbOut, const char *pszPrefix, int slot)
     return n;
 }
 
-#ifdef BR_MATCHING_BUILD
 extern char DAT_117a6030[];            /* the .BRF path */
 extern char DAT_1007b600[];            /* "wb" */
 extern int DAT_100b559c;               /* the file magic */
@@ -433,4 +428,3 @@ char BrMenuSub100709A0(void)
   fclose(fp);
   return 1;
 }
-#endif /* BR_MATCHING_BUILD */

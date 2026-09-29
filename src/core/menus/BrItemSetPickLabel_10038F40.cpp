@@ -54,10 +54,8 @@
  * @t4-pass 0x10038F40 1 2026-09-13 probes 11 bytes 567 insns 172 regions 1 rows 0 census no  (cpp harness: k at function scope (before/after buffer), index term order, map deref, descriptor local, save split, arm swaps, string local, ret local, table pointer)
  * @t4-pass 0x10038F40 2 2026-09-13 probes 12 bytes 567 insns 172 regions 1 rows 0 census yes  (cpp harness: slot census (save slot + two arg reads): /Op /Oy- /Os /Ot, shifted stride, unsigned k, signed map, guard swap, inline relayout helper, save at function scope, src local, int cast)
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #include <string.h>
-#endif
 
 class Item438L {
 public:

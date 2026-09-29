@@ -20,15 +20,10 @@ void BrCamFrustumBuild(const BrCamBasis *pCam, float a2, float a3,
 {
     float a, b;
 
-#ifdef BR_MATCHING_BUILD
     /* Braced: /Od otherwise peepholes `a = ...; b = a * ...` into one x87
      * chain (fst keeps a on the stack); the original stores and reloads. */
     { a = BrSub10002240(a2) * a3; }
     { b = a * a5 / a4; }
-#else
-    a = BrSub10002240(a2) * a3;
-    b = a * a5 / a4;
-#endif
     if (g_BrCamMode == 2)
         b = b / g_BrK08F514;
 

@@ -59,9 +59,7 @@
  * our cl DOES emit base=pointer (0x1006D000, 0x10054390), but only when
  * the base is a pointer VALUE in a register, never for `this`+const.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 struct Metric12 {
     short          advance;     /* +0x00 -- signed: the pen advance is movsx'd */

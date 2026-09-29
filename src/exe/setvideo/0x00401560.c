@@ -3,7 +3,6 @@
  * colors pini/list into edx and i into ecx (`mov edx,[edx]; xor ecx,ecx`).
  * `for (i = 0; i < list->n; i++)` starts i after pini dies and colors the
  * other way (4 diffs). */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: position a cursor on the first section of a settings file. */
 /* @implements 0x00401560 setvideo.exe FindFirstSection */
 
@@ -59,4 +58,3 @@ Section *FindFirstSection(INI *pini)
 }
 
 
-#endif /* BR_MATCHING_BUILD */

@@ -7,9 +7,7 @@
  * Tbl8900 family: bounds warn, slot-5 self-vcall (i, x), return x.
  * Vtbl cached across the call (C++ member-call order).
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Tbl8900 {
 public:

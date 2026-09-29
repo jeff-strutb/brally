@@ -1,7 +1,6 @@
 /* DlgProcComboB: chipset combo. Same as DlgProcComboA but FillComboB.
  * IDOK: merged EndDialog after if (idx >= 0) keeps ok live so EndDialog
  * IAT is ebp and prologue keeps 4 callee-saved. */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: handle the dialog built around the second drop-down. */
 /* @implements 0x00402260 setvideo.exe DlgProcComboB */
 
@@ -67,4 +66,3 @@ int __stdcall DlgProcComboB(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 }
 
 
-#endif /* BR_MATCHING_BUILD */

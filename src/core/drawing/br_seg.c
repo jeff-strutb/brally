@@ -34,7 +34,6 @@ uint32_t BrSegResolve(const BrSegMap *pMap, uint32_t n64Addr)
  * lives now, so that addresses inside it can be translated as the file is
  * walked. Every pointer in a loaded .rca or track file goes through this
  * mapping. */
-#ifdef BR_MATCHING_BUILD
 extern int32_t g_brSegN64Base;   /* 0x104B16E4 */
 extern int32_t g_brSegHostBase;  /* 0x104B16E0 */
 void BrRcaResetCounts(void);
@@ -58,10 +57,3 @@ void BrSegSetBases(BrSegMap *pMap, uint32_t n64Base, uint32_t hostBase)
     g_brSegHostBase = (int32_t)n64Base;  /* arg2 */
     (void)hostBase;
 }
-#else
-void BrSegSetBases(BrSegMap *pMap, uint32_t n64Base, uint32_t hostBase)
-{
-    pMap->n64Base  = n64Base;
-    pMap->hostBase = hostBase;
-}
-#endif

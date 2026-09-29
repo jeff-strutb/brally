@@ -8,16 +8,12 @@
 #include <stddef.h>
 #include <string.h>
 
-#ifdef BR_MATCHING_BUILD
 /* br_racestep.h declares this cdecl; the original is thiscall with the driver
  * in ecx and no stack argument, which BR_THISCALL1 reproduces exactly. Hide
  * the prototype so the matching definition is not a C2373 redefinition. */
 #define BrRaceDriverAnim BrRaceDriverAnim_cdecl
-#endif
 #include "br_racestep.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrRaceDriverAnim
-#endif
 #include "br_gamestep.h"
 
 /* ==========================================================================
@@ -491,7 +487,6 @@ void BrRaceDriverStep(BrDriver *pDrv)
  * 0x100623A0 -- a pure hole, transcribed for its control flow only
  * ========================================================================== */
 
-#ifdef BR_MATCHING_BUILD
 /* The car field the network gate passes as the slot index. +0x144 falls inside
  * BrDriverCar's `_pad144`, and slice3_41.h is a shared header, so it is read
  * through an offset here rather than by widening the struct. */
@@ -524,23 +519,6 @@ void BR_THISCALL1 BrRaceDriverAnim(BrDriver *pDrv)
         BrSub10001CF0(pDrv->pCar);                    /* 0x100623D3 */
     }
 }
-#else
-void BrRaceDriverAnim(BrDriver *pDrv)
-{
-    BrDriverCar *pCar = pDrv->pCar;
-
-    if (pCar == NULL)                                 /* 0x100623A8 */
-        return;
-    if (g_brRaceNet != 0) {
-        /* 0x100623BC: 0x10059D30(car, car+0x144) decides whether this slot
-         * animates at all.  Unported, so the gate is entered and counted. */
-        BR_RS_HOLE(BR_RS_HOLE_ANIM, pfnAnim, pCar);
-        return;
-    }
-    /* 0x100623CB / 0x100623D3: 0x1005ACE0 and 0x10001CF0. */
-    BR_RS_HOLE(BR_RS_HOLE_ANIM, pfnAnim, pCar);
-}
-#endif
 
 /* ==========================================================================
  * 0x100623E0 -- one driver, part two.  The car entrant's gate step.
@@ -842,13 +820,13 @@ void BrRaceStepLights(void)
  *     BrSndNearestOfferTrack when the fly-past is armed and through
  *     BrSndNearestOfferDefault for each entry of 0x105BC778 (count
  *     0x105BCAE8), then BrSndNearestCommit, BrRaceHudFrame, BrSndBankPickSlot.
- *   - ‼ HAZARD: 0x10008D60 is called with FIVE arguments at 0x1001B27A and
+ *   - â¼ HAZARD: 0x10008D60 is called with FIVE arguments at 0x1001B27A and
  *     0x1001B298 and with ONE at 0x1001B955 (`push edi; call; add esp,4`).
  *     It is BrPodNop, so both are harmless at runtime, but a single C
  *     prototype cannot spell both -- the matching arm needs two, and picking
  *     the wrong arity silently changes the caller's stack adjustment.
  *
- * ‼ 2026-09-10: THE CALLEE GATE IS SPENT.  All 64 distinct callees of the
+ * â¼ 2026-09-10: THE CALLEE GATE IS SPENT.  All 64 distinct callees of the
  * remaining block already have symbols in this tree -- 115 of its 116 call
  * sites land on a report.csv row and the last (0x100325B0) is the C++ lane's
  * WM_DESTROY teardown.  What blocks this address now is transcription volume
@@ -1331,8 +1309,7 @@ void BrRaceStepSpecials(void)
     }
 }
 
-/* ── Ghidra-matched functions ─────────────────────────── */
-#ifdef BR_MATCHING_BUILD
+/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
 extern int DAT_100b2f04;
 
 /* WHAT IT DOES: zero every row in the sound-command table. */
@@ -1353,4 +1330,3 @@ int BrSndTableClear(void)
   return;
 }
 
-#endif /* BR_MATCHING_BUILD */

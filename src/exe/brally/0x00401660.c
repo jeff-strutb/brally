@@ -1,6 +1,5 @@
 /* Auto-generated from disassembly — 0x00401660
  * IncludeStackEmpty: sete al after xor eax,eax. */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: report whether the include stack has anything on it. */
 /* @implements 0x00401660 brally.exe IncludeStackEmpty */
 /* @n64 0x80268520 located */
@@ -28,4 +27,3 @@ int IncludeStackEmpty(void)
 }
 
 
-#endif /* BR_MATCHING_BUILD */

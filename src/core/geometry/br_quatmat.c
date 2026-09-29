@@ -11,12 +11,8 @@
  * pulling in br_mat.h.
  */
 #include "slice1_02.h"      /* BrCarState */
-#ifdef BR_MATCHING_BUILD
 typedef struct BrMat4 { float m[4][4]; } BrMat4;   /* = br_mat.h's */
 void BrMat4FromCarState(BrMat4 *pOut, const BrCarState *pSrc);
-#else
-#include "slice3_42.h"
-#endif
 
 #define BR_K_0  0.0f    /* 0x10077A1C */
 #define BR_K_2  2.0f    /* 0x10077A20 */

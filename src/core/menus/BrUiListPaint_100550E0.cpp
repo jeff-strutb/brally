@@ -20,9 +20,7 @@
  * merges the two calls back into one with the `push 0x2f; jmp` argument
  * select; a `?:` argument instead hoists `mov eax,0x2f` above the loads).
  */
-#ifdef BR_MATCHING_BUILD
 #include <string.h>
-#endif
 extern "C" int FUN_10051580(int v);
 
 class Item550E0 {

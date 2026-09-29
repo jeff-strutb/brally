@@ -4,12 +4,9 @@
  * (0x100590A0); slice3_33.h is the header the first batch reached
  * BrOperatorNew through, and the second declared its two callees itself.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 
-#ifdef BR_MATCHING_BUILD
 
 #include "slice3_33.h"      /* BrOperatorNew (0x1007DFE0) */
 
@@ -29,7 +26,7 @@ void BrLogFatalPrintf(const char *pFmt, ...)
     pBuf = (char *)BrOperatorNew(0x400);
     va_start(ap, pFmt);
     vsprintf(pBuf, pFmt, ap);
-#if !defined(BR_MATCHING_BUILD) || defined(BR_FATAL_LOG)
+#if defined(BR_FATAL_LOG)
     /* Compiled out of the byte-exact build (the T4 image gate grades this
      * function against the original); the T3 play image's force-annex
      * compile defines BR_FATAL_LOG (tools/image_build_t3.py, mode 'log'). */
@@ -75,9 +72,7 @@ void BrMsgBoxAA(void *hWnd, int unused, const char *pText)
     MessageBoxA(hWnd, pText, BrStrGet(0xaa), 0);
 }
 
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 /* 0x100ABE00: the Glide copy of the nine-entry error table (BrErrEnt in
  * slice1_06.h; the D3D twin of this function is 0x1003E260). */
 extern BrErrEnt DAT_100abe00[];
@@ -101,4 +96,3 @@ void FUN_100378c0(int iErr)
     }
   }
 }
-#endif /* BR_MATCHING_BUILD */

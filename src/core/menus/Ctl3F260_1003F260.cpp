@@ -14,9 +14,7 @@
  * `return 1` MUST sit after the if/else (duplicated epilogues, c7 stores).
  * Ctor DECLAREd, no dtor — unwind is operator delete (maxState=1).
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Phase;
 

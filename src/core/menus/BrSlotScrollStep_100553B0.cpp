@@ -80,10 +80,8 @@
  * @t4-pass 0x100553B0 1 2026-09-21 probes 12 bytes 1447 insns 408 regions 5 rows 8 census no  (spelling sweep on the three residue causes: fdiv-merge via compound-assign / per-arm-divisor-local / numerator-hoist, fsubr via mul-first / temp / negated-reverse, and the i1a9b4=1 store via a result-var. The per-arm-divisor-local cut raw bytes 1072->683 but broke Gate A2, and store-before-call reorders across the pfn10 callback; neither is a faithful floor. The faithful residue is unmoved.)
  * @t4-pass 0x100553B0 2 2026-09-21 probes 12 bytes 1447 insns 408 regions 5 rows 8 census yes  (flag mechanism sweep: /O2 /Ob0, /Ox, /O2 /Op, /Og /Oy, /O1, /O2 /Os, /O2 /Ot, /Oxs, /O2 /Gy, /O2 /Ob1, /O2 /Oy /Ob2, /Oy /Ot /Og /Oi -- every one leaves the register-blind residue at 408 insns / 5 regions / 8 rows or diverges further. The A5 oracle proves same-in/same-out; the residue is register allocation plus the two x87 operand-role picks above. Numbers unmoved from pass 1.)
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #include <string.h>
-#endif
 
 struct BrPad553B0 {
     char pad00[0x2C];

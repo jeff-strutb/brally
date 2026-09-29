@@ -213,11 +213,7 @@ void __fastcall BrEntRefreshColour(BrEnt *pE);
  * wrap-around behaviour on a large index matches.
  *
  * GOTCHA: `idx` is not range-checked at all. */
-#ifdef BR_MATCHING_BUILD
 void __fastcall BrEntSetRecord(BrEnt *pE, void *_dummy, int32_t idx);
-#else
-void BrEntSetRecord(BrEnt *pE, int32_t idx);
-#endif
 
 /* 0x10076B20  __thiscall. Reset the instance and pull constants out of pRec.
  *
@@ -286,11 +282,7 @@ extern void BrSub10074090(BrVec4 *pDst, const BrVec4 *pA, const BrVec4 *pB);
 
 /* 0x10062C50 -- __thiscall on the entity, no other arguments. */
 /* XSLICE 0x10062C50 */
-#ifdef BR_MATCHING_BUILD
 extern void __fastcall BrSub10062C50(BrEnt *pE);
-#else
-extern void BrSub10062C50(BrEnt *pE);
-#endif
 
 /* ====================================================================== */
 /* 2. 0x10077090                                                           */

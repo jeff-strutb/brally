@@ -1,0 +1,39 @@
+# Port deviations for src/core/startup/br_gamestep.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop fn:BrGameStepInvoke
+@after fn:BrGameStepInvoke
+
+/* 0x1002E324 -- `call dword ptr [0x106E79F4]`.  The original does NOT test
+ * for NULL; this does, because a null call is a crash rather than a
+ * behaviour, and the harness needs to be able to say "nothing installed". */
+/* WHAT IT DOES: runs one frame of whatever the game is currently doing. The
+ * window's message pump calls this over and over, and it is the single point
+ * where the race, or the front end, gets its turn each frame. */
+/* @implements 0x1002E324 glide BrGameStepInvoke */
+/* @n64 0x8021C6F0 located */
+int BrGameStepInvoke(void)
+{
+    if (g_pfnStep == NULL) {
+        return 0;
+    }
+    g_pfnStep();
+    return 1;
+}
+@end
+@drop fn:BrNop_1002E32F
+@drop fn:BrNop_1002E334
+@drop var:DAT_106ed6d8
+@drop var:DAT_106ec740
+@drop var:DAT_106e7294
+@drop var:DAT_100ad7c0
+@drop var:DAT_106ec768
+@drop var:DAT_106ed588
+@drop var:DAT_100774f0
+@drop var:DAT_106e9d8c
+@drop var:DAT_106b7ac0
+@drop proto:FUN_10059f00
+@drop type:BrFrameClockTicks
+@drop proto:BrPadTranslateAll
+@drop proto:FUN_10008d60
+@drop fn:BrFrameClockStep

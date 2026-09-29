@@ -14,7 +14,6 @@
  *    arguments first);
  *  - the far corner computes y1 before x1.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
 #include <stdlib.h>
@@ -143,4 +142,3 @@ void BrImgShowFullScreen(const char *pszName, unsigned int key)
     DAT_106b7ab8();
     FUN_100281c0();
 }
-#endif /* BR_MATCHING_BUILD */

@@ -4,7 +4,6 @@
  * file's, copied verbatim.  The globals are shared with 0x10005E80
  * BrNetMutexInit, which stays in the batch, so these are declarations only.
  */
-#ifdef BR_MATCHING_BUILD
 
 #include <windows.h>
 
@@ -39,4 +38,3 @@ void FUN_10006460(void)
     ReleaseMutex((void *)DAT_10226a54);
 }
 
-#endif /* BR_MATCHING_BUILD */

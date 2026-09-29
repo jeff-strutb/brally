@@ -10,7 +10,6 @@
  *                            SetCooperativeLevel(PRIORITY), primary buffer,
  *                            Play(LOOPING).
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT and Win32 calls go through the import table
  * (FF 15).  acmMetrics is the exception: it is reached through the linker's
  * jmp[IAT] thunk at 0x10074558 (E8), so it is declared WITHOUT dllimport --
@@ -105,9 +104,7 @@ int BrSndDevOpen(void)
     return hr >= 0;
 }
 
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 extern LPVOID DAT_1184c2a8;             /* the ACM scratch format        */
 int BrSndBankFree(void);                /* 0x1006C460, br_sndvoice.c      */
 
@@ -145,4 +142,3 @@ int FUN_1006c6a0(void)
   }
   return 1;
 }
-#endif /* BR_MATCHING_BUILD */

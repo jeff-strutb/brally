@@ -13,10 +13,8 @@
  * host, which is exactly the bug this whole range exists to avoid.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <string.h>
 
 /* The original takes ONE argument: `mov esi,[esp+0x10]` after three

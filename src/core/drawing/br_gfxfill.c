@@ -14,34 +14,22 @@
  * /O2 register choice, so it is kept whole); its state block g_s17 is
  * declared in slice2_17.h and defined there.
  */
-#ifdef BR_MATCHING_BUILD
 /* slice2_17.h prototypes a list pointer the original never takes. */
 #define BrPtrListContains BrPtrListContains_port
-#endif
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice2_17.h"
 
 /* g_s17 is the port's gathering of scattered originals.  The matching build
  * reads the fields used here as the separate globals they are, by their
  * DAT_ names -- which the image gate resolves from the address they spell. */
-#ifdef BR_MATCHING_BUILD
 extern uint32_t *DAT_106e7710;
 #define S17_PGFX DAT_106e7710
 extern int DAT_106e7714;
 #define S17_SCREENW DAT_106e7714
 extern int DAT_106e9a2c;
 #define S17_SCREENH DAT_106e9a2c
-#else
-#define S17_PGFX g_s17.pGfx
-#define S17_SCREENW g_s17.screenW
-#define S17_SCREENH g_s17.screenH
-#endif
-#ifdef BR_MATCHING_BUILD
 #undef BrPtrListContains
-#endif
 
 #include <math.h>
 #include <stdio.h>
@@ -81,11 +69,7 @@ extern int   BrX10060E90(void);
  * at the call site (arg1 in ecx, no stack cleanup), so that is what the
  * matching build uses. Off MSVC the qualifier vanishes and it is an ordinary
  * one-argument function. */
-#if defined(_MSC_VER)
 #define BRS17_THISCALL __fastcall
-#else
-#define BRS17_THISCALL
-#endif
 extern void BRS17_THISCALL BrX100751D0(void *pThis);
 /* XSLICE 0x1002C2C0 */
 extern void  BrX1002C2C0(void);
@@ -187,7 +171,6 @@ static uint32_t s17_rgba5551(int r, int g, int b)
  * hardware into its fast fill mode to do it and putting it back afterwards. */
 /* @implements 0x1002AB99 glide BrGfxClearScreen */
 /* @implements 0x100314E8 d3d BrGfxClearScreen */
-#ifdef BR_MATCHING_BUILD
 /* /Od TU: packing inlined, colour is a 16-bit slot, each emit has its own
  * cursor local and re-reads pGfx to bump. screenW sits at pGfx+4 in the
  * original (DAT_106e7714); g_s17.screenW is a later field. */
@@ -243,28 +226,6 @@ void BrGfxClearScreen(int r, int g, int b)
     p7[0] = 0xBA001402u;
     p7[1] = 0;
 }
-#else
-void BrGfxClearScreen(int r, int g, int b)
-{
-    uint32_t c = s17_rgba5551(r, g, b);
-    /* `shl reg, cl` uses only the low five bits of cl. */
-    unsigned sh = (unsigned)g_s17.scaleShift & 31u;
-    uint32_t lr;
-
-    s17_emit(0xE7000000u, 0);                       /* pipe sync            */
-    s17_emit(0xB900031Du, 0x0F0A4000u);             /* othermode L          */
-    s17_emit(0xBA001402u, 0x00300000u);             /* othermode H = fill   */
-    s17_emit(0xF7000000u, (c << 16) | c);           /* fill colour          */
-
-    lr  = BR_GFX_FILLRECT;
-    lr |= ((((uint32_t)S17_SCREENW << sh) - 1u) & 0xFFFu) << 12;
-    lr |=  (((uint32_t)S17_SCREENH << sh) - 1u) & 0xFFFu;
-    s17_emit(lr, 0);
-
-    s17_emit(0xE7000000u, 0);
-    s17_emit(0xBA001402u, 0);
-}
-#endif
 
 /* 0x10031688 */
 /* WHAT IT DOES: fills a rectangle with one flat colour. In the double-size
@@ -274,7 +235,6 @@ void BrGfxClearScreen(int r, int g, int b)
  * larger than asked for. That asymmetry is the original's. */
 /* @implements 0x1002AD39 glide BrGfxFillRect */
 /* @implements 0x10031688 d3d BrGfxFillRect */
-#ifdef BR_MATCHING_BUILD
 extern int DAT_106ed674;
 void BrGfxFillRect(int ulx, int uly, int w, int h, int r, int g, int b)
 {
@@ -330,39 +290,6 @@ void BrGfxFillRect(int ulx, int uly, int w, int h, int r, int g, int b)
     p7[0] = 0xBA001402u;
     p7[1] = 0;
 }
-#else
-void BrGfxFillRect(int ulx, int uly, int w, int h, int r, int g, int b)
-{
-    uint32_t c;
-    unsigned sh = (unsigned)g_s17.scaleShift & 31u;
-    uint32_t w0;
-
-    if (g_s17.scaleShift != 0) {
-        ulx *= 2;
-        uly *= 2;
-        w   *= 2;
-        h   *= 2;
-    }
-
-    c = s17_rgba5551(r, g, b);
-
-    s17_emit(0xE7000000u, 0);
-    s17_emit(0xB900031Du, 0x0F0A4000u);
-    s17_emit(0xBA001402u, 0x00300000u);
-    s17_emit(0xF7000000u, (c << 16) | c);
-
-    /* GOTCHA: the lower-right corner is shifted by scaleShift AGAIN after
-     * the doubling above, while the upper-left corner below is not shifted
-     * at all. Faithful to the original. */
-    w0  = BR_GFX_FILLRECT;
-    w0 |= (((((uint32_t)(ulx + w)) << sh) - 1u) & 0xFFFu) << 12;
-    w0 |=  ((((uint32_t)(uly + h)) << sh) - 1u) & 0xFFFu;
-    s17_emit(w0, (((uint32_t)ulx & 0xFFFu) << 12) | ((uint32_t)uly & 0xFFFu));
-
-    s17_emit(0xE7000000u, 0);
-    s17_emit(0xBA001402u, 0);
-}
-#endif
 
 /* 0x10031481 */
 /* WHAT IT DOES: tells the hardware to use one particular texture out of a
@@ -372,7 +299,6 @@ void BrGfxFillRect(int ulx, int uly, int w, int h, int r, int g, int b)
 /* @implements 0x10031481 d3d BrGfxEmitTexCmd */
 void BrGfxEmitTexCmd(int i, const void *pRecords)
 {
-#ifdef BR_MATCHING_BUILD
     /* Orig /Od: two `imul i,0x24`, dword `[base+i*0x24+disp]`,
      * `if (((f20>>20)&1)==0) { p=pGfx; pGfx=pGfx+2; *p=w0; p[1]=1; }`.
      * `if (bit) return` becomes je+jmp; the do-while(0) emit macro
@@ -386,13 +312,4 @@ void BrGfxEmitTexCmd(int i, const void *pRecords)
                 & 0x00FFFFFFu) | 0xDC000000u;
         p[1] = 1;
     }
-#else
-    const unsigned char *rec =
-        (const unsigned char *)pRecords + (size_t)i * BR_TEXREC_STRIDE;
-
-    if (((s17_ld32(rec + 0x20) >> 20) & 1u) != 0)
-        return;
-
-    s17_emit((s17_ld32(rec) & 0x00FFFFFFu) | 0xDC000000u, 1);
-#endif
 }

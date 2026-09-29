@@ -16,9 +16,7 @@
  * (`mov ecx,[0x10AC5C58]; push hwnd`), which is what routes this body to
  * the C++ lane. ebx/ebp are the 0/1 constant webs.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdlib.h>
 #include <string.h>
 

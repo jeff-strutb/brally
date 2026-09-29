@@ -19,10 +19,8 @@
  * host, which is exactly the bug this whole range exists to avoid.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <string.h>
 
 /* The original takes ONE argument: `mov esi,[esp+0x10]` after three
@@ -301,7 +299,7 @@ extern void BrSegSetBasesG(uint32_t n64Base, void *pHost);
  * +0x8098/0x809C pair order; a q alias in the DL loop; the +0x8090 swap
  * after the +0x8094 rebase; the descriptor index widened; crank's full
  * mut/stmt/decl/comm/samebase list (filepos cannot compile this TU's
- * dependencies).  ‼ crank's parked endpoint (build/ghidra_work/
+ * dependencies).  â¼ crank's parked endpoint (build/ghidra_work/
  * 0x10030770.crank.c, "regions 8 bytes -2") is UNSOUND -- it reads the
  * record count at +0x8010 BEFORE the BR_LD32BE that byte-swaps it, so its
  * gain is not a transcription; do not land it.  Corpus: MISS at +0x19.
@@ -704,7 +702,6 @@ void BrTrackHdrRead(void *pvHdr, FILE **ppFile)
 }
 
 
-#ifdef BR_MATCHING_BUILD
 /* 0x10018D20-region helper the original calls 19 times at the tail --
  * the pointer fixup the port names BrFixupAt. */
 extern void BrGlFixupAt(uint8_t *p);
@@ -915,4 +912,3 @@ void BrGlTrackHdrRead(void *pvHdr, FILE **ppFile)
     BrGlFixupAt(p94);
 }
 #undef h
-#endif /* BR_MATCHING_BUILD */

@@ -33,10 +33,8 @@
  * @t4-pass 0x1004BE00 1 2026-09-12 probes 240 bytes 3475 insns 1016 regions 1 rows 6 census no  (generated: all 240 orders of {xi, fy, f50, f58, f5C, f2968}; best 32 = f50 before fy, none 0)
  * @t4-pass 0x1004BE00 2 2026-09-12 probes 27 bytes 3475 insns 1016 regions 1 rows 6 census yes  (27 compiler options incl. /Gi /Op /G5 /Ow /Ob2, all 34 or worse; corpus query MISS at +0x5fc len 8; residue byte-identical to 0x1004AEE0's certified census)
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #include <string.h>
-#endif
 
 class GameUi;
 class BrCtl;

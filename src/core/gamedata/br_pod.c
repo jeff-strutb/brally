@@ -11,10 +11,8 @@
  *   - the bounds checks return instead of reporting and then indexing anyway.
  * Each of these is noted at the call site.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "br_pod.h"
 
 #include "br_path.h"
@@ -206,24 +204,15 @@ void *BrPodLoad(BrPod *pPod, int iEntry, uint32_t *pcbOut)
  * left as it was. There is no length cap. */
 /* @implements 0x10008B40 d3d BrPodSetName */
 /* @implements 0x10008D20 glide BrPodSetName */
-#ifdef BR_MATCHING_BUILD
 typedef struct { const char *psz; } BrPodSetNameArg;
 void BR_THISCALL1 BrPodSetName(void *pThis, BrPodSetNameArg a)
 {
     if (a.psz != NULL)
         strcpy((char *)pThis + 0x20, a.psz);
 }
-#else
-void BrPodSetName(void *pThis, const char *pszName)
-{
-    if (pszName != NULL)
-        strcpy((char *)pThis + 0x20, pszName);
-}
-#endif
 
-/* ── Ghidra-matched functions ─────────────────────────── */
-#ifdef BR_MATCHING_BUILD
-/* WHAT IT DOES: identity function — returns its argument unchanged (fastcall). */
+/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
+/* WHAT IT DOES: identity function â returns its argument unchanged (fastcall). */
 /* @implements 0x10008D50 glide BrPodIdentity */
 /* @n64 0x80268560 located */
 
@@ -242,4 +231,3 @@ int BrPodNop(void)
   return;
 }
 
-#endif /* BR_MATCHING_BUILD */

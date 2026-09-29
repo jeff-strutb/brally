@@ -8,10 +8,8 @@
  */
 /* slice1_01.c -- BRD3D.dll 0x10001000-0x10004910, a later pass. See slice1_01.h. */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice1_01.h"
 
 #include <stdlib.h>
@@ -110,7 +108,6 @@ unsigned long BrAdler32(unsigned long adler, const unsigned char *pBuf,
  * position outside the covered region answers zero, which is indistinguishable
  * from a square whose value genuinely is zero. */
 
-#ifdef BR_MATCHING_BUILD
 
 extern int BrGetTimerState(void);
 extern int DAT_1021c908;
@@ -141,4 +138,3 @@ uint32_t BrTicks30FromMs(uint32_t elapsedMs)
     return 3u * (elapsed / 100u) + (elapsed % 100u) / 33u;
 }
 
-#endif /* BR_MATCHING_BUILD */

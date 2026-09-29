@@ -15,10 +15,8 @@
  * looks redundant has already been shown elsewhere in this module to move
  * VC5's register allocation (see br_rdpmode.c).
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <math.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -47,7 +45,6 @@ void BrFrameBeginHiRes(void)
     BrFrameBegin(BrG_6C1628, 1);
 }
 
-#ifdef BR_MATCHING_BUILD
 extern int DAT_106ed674;
 extern int DAT_106ed670;
 extern int DAT_100aa044;
@@ -242,13 +239,11 @@ void BrSub_1003289F(int param_1,int param_2,int param_3,int param_4)
   return;
 }
 
-#endif /* BR_MATCHING_BUILD */
 
 /* ==========================================================================
  * 0x1002CEE9 -- closing the frame.  The counterpart of the openers above, in
  * the same /Od range (br_framedrive.c names it BrFrameEnd).
  * ========================================================================== */
-#ifdef BR_MATCHING_BUILD
 /* The per-frame task record: 0x40 bytes, two of them, selected by the frame
  * parity at 0x106ED67C. */
 typedef struct {
@@ -421,12 +416,10 @@ void BrFrameEnd(void)
     DAT_10b73530(rec->f30);
     DAT_106ed67c = DAT_106ed67c ^ 1;
 }
-#endif /* BR_MATCHING_BUILD */
 
 /* ==========================================================================
  * 0x1002AF17 -- the fog for this frame, emitted into the list.
  * ========================================================================== */
-#ifdef BR_MATCHING_BUILD
 typedef struct { char pad[0x30]; float f30; float f34; } BrFogSrc;
 typedef struct { char pad[0x38]; float f38; } BrFogCam;
 
@@ -559,12 +552,10 @@ void BrFrameFogEmit(void)
     q2->arg = ((DAT_106e72f0 & 0xFF) << 24) | ((DAT_106e86a4 & 0xFF) << 16)
             | ((DAT_106e7290 & 0xFF) << 8) | 0xFF;
 }
-#endif /* BR_MATCHING_BUILD */
 
 /* ==========================================================================
  * 0x1002B480 -- the frame's tint bytes: sky, ground and the four-step ramp.
  * ========================================================================== */
-#ifdef BR_MATCHING_BUILD
 extern float DAT_106e7700, DAT_106e7704, DAT_106e7708;   /* a BrVec3 handed to 0x100344D0 */
 void FUN_100344d0(float *);
 extern unsigned char DAT_106e8610, DAT_106ea3ec, DAT_106e79f8;   /* tint A r/g/b */
@@ -668,4 +659,3 @@ void BrFrameTintSetup(void)
                         | (unsigned int)DAT_106ea3e8[i] << 8;
     }
 }
-#endif /* BR_MATCHING_BUILD */

@@ -1,0 +1,94 @@
+# Port deviations for src/core/scene/br_spangrid.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:BrSpanTestPoint
+@drop undef:BrSpanTestPoint
+@drop proto:BrSpanTestPoint
+@drop proto:BrSpanContains
+@drop fn:BrSpanTestPoint
+@drop var:g_aBrSpanPt
+@drop var:g_aBrSpanRowHi
+@drop var:g_aBrSpanRowLo
+@drop var:g_aBrSpanMax
+@drop var:g_aBrSpanMin
+@drop var:g_brSpanColHi
+@drop var:g_brSpanRowHiG
+@drop var:g_brSpanColLo
+@drop var:g_brSpanRowLoG
+@drop proto:BrSpanAddLineG
+@drop define:BR_SPAN_EDGE
+@drop fn:BrSpanBuildHull
+@after fn:BrSpanBuildHull
+
+/* 0x1003A950 */
+/* WHAT IT DOES: asks whether a point falls inside the covered area, by
+ * dropping it into the coarse grid and checking that cell. */
+/* @implements 0x1003A950 d3d BrSpanTestPoint */
+/* @implements 0x10033FD0 glide BrSpanTestPoint */
+int BrSpanTestPoint(const BrSpanVolume *pVol, float x, float y)
+{
+    return BrSpanTest(&pVol->grid, BrFtolArg(x * K_CELL_RECIP),
+                                   BrFtolArg(y * K_CELL_RECIP));
+}
+
+/* 0x1003A990 */
+/* WHAT IT DOES: works out the coarse footprint of an eight-sided shape -- a
+ * top point, a bottom point and a four-corner ring between them -- by wiping the
+ * grid, drawing all twelve of its edges onto it, and then reducing each column
+ * to the first and last row that the shape reaches. The result is a cheap
+ * stand-in for the shape that later tests can be run against. */
+/* @implements 0x1003A990 d3d BrSpanBuildHull */
+void BrSpanBuildHull(BrSpanVolume *pVol, const BrVec3 aPt[6])
+{
+    static const unsigned char aEdge[12][2] = {
+        {0,1},{0,2},{0,3},{0,4},{5,1},{5,2},{5,3},{5,4},{1,2},{2,3},{3,4},{4,1}
+    };
+    int i, col;
+
+    for (i = 0; i < BR_SPAN_ROWS; i++) {
+        pVol->aRowHi[i]     = 0;
+        pVol->aRowLo[i]     = BR_SPAN_ROWS;
+        pVol->grid.aMax[i]  = 0;
+        pVol->grid.aMin[i]  = BR_SPAN_ROWS;
+    }
+    pVol->colHi        = 0;
+    pVol->grid.rowHi   = 0;
+    pVol->colLo        = BR_SPAN_ROWS - 1;
+    pVol->grid.rowLo   = BR_SPAN_ROWS - 1;
+
+    for (i = 0; i < 12; i++) {
+        const BrVec3 *a = &aPt[aEdge[i][0]];
+        const BrVec3 *b = &aPt[aEdge[i][1]];
+        BrSpanAddLine(pVol, a->x, a->y, b->x, b->y);
+    }
+
+    if (pVol->colLo < 0)
+        pVol->colLo = 0;
+    if (pVol->grid.rowLo < 0)
+        pVol->grid.rowLo = 0;
+    if (pVol->colHi >= BR_SPAN_ROWS)
+        pVol->colHi = BR_SPAN_ROWS - 1;
+    if (pVol->grid.rowHi >= BR_SPAN_ROWS)
+        pVol->grid.rowHi = BR_SPAN_ROWS - 1;
+
+    for (col = pVol->colLo; col <= pVol->colHi; col++) {
+        int lo = pVol->grid.rowLo;
+        int hi = pVol->grid.rowHi;
+
+        /* DEVIATION: the original scans with no upper/lower bound at all
+         * (`inc edx; jmp` / `dec ecx; jmp`), so a column that no row covers
+         * walks off both ends of the 64-entry arrays. Bounded here. When a
+         * covering row exists -- the case the original was written for -- the
+         * results are identical. */
+        while (lo < BR_SPAN_ROWS &&
+               (col < pVol->grid.aMin[lo] || col > pVol->grid.aMax[lo]))
+            lo++;
+        while (hi >= 0 &&
+               (col < pVol->grid.aMin[hi] || col > pVol->grid.aMax[hi]))
+            hi--;
+
+        pVol->aRowLo[col] = lo;
+        pVol->aRowHi[col] = hi;
+    }
+}
+@end

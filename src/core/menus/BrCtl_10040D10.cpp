@@ -31,9 +31,7 @@
  * Unwind data (FuncInfo magic 0x19930520, maxState=1, nTryBlocks=0,
  * action = __ehvec_dtor of boxes) lives in .rdata, not in these 97 bytes.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 enum {
     kVptr       = 4,

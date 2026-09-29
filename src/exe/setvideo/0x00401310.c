@@ -1,6 +1,5 @@
 /* Auto-generated from disassembly — 0x00401310
  * CHK_FPutS(str, CHKFile *). fputs; on EOF debug+exit. */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: write one line out, aborting if the write fails. */
 /* @implements 0x00401310 setvideo.exe CHK_FPutS */
 
@@ -35,4 +34,3 @@ void CHK_FPutS(char *s, CHKFile *p)
 }
 
 
-#endif /* BR_MATCHING_BUILD */

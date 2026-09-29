@@ -25,10 +25,8 @@
  * @t4-pass 0x10038CA0 1 2026-09-13 probes 12 bytes 136 insns 48 regions 1 rows 0 census no  (cpp harness: table load/push register: index deref, table pointer, unsigned/long/register k, wrap compare, const s, per-arm strcpy, dst/item locals, negated guard, sized table)
  * @t4-pass 0x10038CA0 2 2026-09-13 probes 12 bytes 136 insns 48 regions 1 rows 0 census yes  (cpp harness: slot census (one arg read): /Op /Oy- /Os /Ot, !flag, arm swap, ret local, object local, s = 0, &szName[0], decimal index)
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #include <string.h>
-#endif
 
 class Item38CA0 {
 public:

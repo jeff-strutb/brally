@@ -14,10 +14,8 @@
  * pushes (195.0f == 0x43430000, 460.0f == 0x43E60000, ...).
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice4_52.h"
 #include "slice1_03.h"      /* BrComCallLocked68 (0x1000C4D0) */
 
@@ -49,10 +47,8 @@
  * argument in ecx, and a struct is never register-eligible, so a 4-byte struct
  * in second position is forced onto the stack.  That reproduces thiscall's
  * register/stack split and its callee-cleanup exactly. */
-#ifdef BR_MATCHING_BUILD
 typedef struct { void *p; } BrSub603A0Arg;
 typedef void(__fastcall *BrSub603A0ThisCall)(void *pThis, BrSub603A0Arg arg);
-#endif
 
 /* WHAT IT DOES: hand the main window over to the UI root object. GOTCHA: the
  * declared parameter has no counterpart in the original and is DISCARDED --
@@ -63,13 +59,9 @@ void BrSub10060260(void *pThis)
     /* Both operands come from globals.  The declared parameter has no
      * counterpart in the original and is discarded -- see the header. */
     (void)pThis;
-#ifdef BR_MATCHING_BUILD
     {
         BrSub603A0Arg arg;
         arg.p = g_brP680584;
         ((BrSub603A0ThisCall)BrSub100603A0)((void *)g_pBrAA2E80, arg);
     }
-#else
-    BrSub100603A0((void *)g_pBrAA2E80, g_brP680584);
-#endif
 }

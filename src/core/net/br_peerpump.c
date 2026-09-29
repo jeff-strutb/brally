@@ -2,7 +2,6 @@
  * In its own TU for the same reason as br_peerrank.c: it needs the peer
  * table typed as records where br_peer.c declares it as an int.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT and KERNEL32 calls go through the import table. */
 #define _CRTIMP __declspec(dllimport)
 #include <windows.h>
@@ -175,4 +174,3 @@ void BrNetPeerPump(void)
     }
 }
 
-#endif /* BR_MATCHING_BUILD */

@@ -50,7 +50,6 @@ void BrRbAccumAll(BrRbBodyFull *pB)
     BrRbSolveAccel(pB);
 }
 
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: adds up everything pushing on the body itself -- each force
  * on its list lands in the body's acceleration, rotated into the body's own
  * frame when the node says so, and (unless the body is in no-torque mode)
@@ -142,7 +141,6 @@ void BrRbAccumChildForces(BrRbBodyFull *pParent, BrRbBodyFull *pChild)
         }
     }
 }
-#endif /* BR_MATCHING_BUILD */
 
 /* 0x1006B170 */
 /* WHAT IT DOES: turns all the pushes and twists that have been piled onto a

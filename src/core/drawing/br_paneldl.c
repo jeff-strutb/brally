@@ -3,7 +3,6 @@
  * Fresh transcription from build/ghidra_decomp/0x10010fb0.c against the
  * original bytes, 2026-09-13.  Matching arm only.
  */
-#ifdef BR_MATCHING_BUILD
 
 extern unsigned int *DAT_106e7710;      /* display-list cursor */
 extern int           DAT_106ed6b0;
@@ -127,4 +126,3 @@ void BrPanelDlBuild(short *param_1)
     }
 }
 
-#endif /* BR_MATCHING_BUILD */

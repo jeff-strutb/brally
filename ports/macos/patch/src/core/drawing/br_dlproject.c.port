@@ -1,0 +1,11 @@
+# Port deviations for src/core/drawing/br_dlproject.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop type:BrDlProjOut
+@drop type:BrDlProjIn
+@drop var:DAT_105ccd48
+@drop var:DAT_105cd9f8
+@drop var:DAT_105ccfdc
+@drop var:DAT_105cd9fc
+@drop var:DAT_105ce310
+@drop fn:br_dl_project

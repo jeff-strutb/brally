@@ -5,7 +5,6 @@
  * unchanged.  These are whole original functions, not placeholders: the
  * shipped code really is this small.
  */
-#ifdef BR_MATCHING_BUILD
 
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
@@ -119,7 +118,6 @@ FUN_10074ae6(void)
     _except_handler3();
 }
 
-#endif /* BR_MATCHING_BUILD */
 
 /* ---- from slice2_17.c ------------------------------------------------
  * Two members of that batch's 0x1002A840..0x1002A957 run -- one original
@@ -137,18 +135,12 @@ FUN_10074ae6(void)
  * The batch's preamble is carried verbatim, per this file's convention.
  * --------------------------------------------------------------------- */
 
-#ifdef BR_MATCHING_BUILD
 /* slice2_17.h prototypes a list pointer the original never takes. */
 #define BrPtrListContains BrPtrListContains_port
-#endif
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice2_17.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrPtrListContains
-#endif
 
 #include <math.h>
 #include <stdio.h>

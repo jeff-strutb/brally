@@ -6,7 +6,6 @@
  */
 #include <stdint.h>
 
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: reads one 16-bit colour out of N64 texture data. As well as
  * taking the two bytes the N64's way round, it rotates the value by one bit,
  * which moves the transparency bit from the bottom of the N64's layout to
@@ -44,4 +43,3 @@ uint16_t BrTex3dTexel(int v)
     w &= 0xffffu;
     return (uint16_t)((w >> 1) | ((w & 1u) << 15));
 }
-#endif /* BR_MATCHING_BUILD */

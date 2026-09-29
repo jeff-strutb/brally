@@ -1,6 +1,5 @@
 /* Auto-generated from disassembly — 0x004011C0
  * CHK_FreeMemory: free wrapper, cdecl add esp,4. */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: free a block obtained from the launcher's allocator. A thin
  * wrapper so allocation and release stay paired. */
 /* @implements 0x004011C0 brally.exe CHK_FreeMemory */
@@ -27,4 +26,3 @@ void CHK_FreeMemory(void *p)
 }
 
 
-#endif /* BR_MATCHING_BUILD */

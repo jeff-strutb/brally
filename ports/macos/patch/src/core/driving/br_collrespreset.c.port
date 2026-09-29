@@ -1,0 +1,29 @@
+# Port deviations for src/core/driving/br_collrespreset.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop include:<windows.h>
+@drop include:<stdlib.h>
+@drop include:<stdio.h>
+@drop include:<string.h>
+@drop include:<math.h>
+@drop include:<mmsystem.h>
+@drop if:#ifndef true
+@drop if:#ifndef NAN
+@drop type:funcptr
+@drop type:BrCollPlaneZ
+@drop type:BrCollNodeZ
+@drop var:DAT_11773698
+@drop var:DAT_117781b0
+@drop var:DAT_11778198
+@drop var:DAT_11778844
+@drop var:DAT_11778840
+@drop var:DAT_11778800
+@drop var:DAT_11778804
+@drop var:DAT_11778828
+@drop var:DAT_1177882c
+@drop var:DAT_11778830
+@drop var:DAT_11778834
+@drop var:DAT_11778838
+@drop var:DAT_1177883c
+@drop fn:BrCollRespReset

@@ -1,6 +1,5 @@
 /* Auto-generated from disassembly — 0x004014A0
  * ResetIncludeStack. */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: empty the include stack, so a fresh list read starts with no
  * nesting. */
 /* @implements 0x004014A0 brally.exe ResetIncludeStack */
@@ -28,4 +27,3 @@ void ResetIncludeStack(void)
 }
 
 
-#endif /* BR_MATCHING_BUILD */

@@ -6,14 +6,11 @@
  * least aligned with and solves the little 2x2 system.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 #include <stdint.h>
 
-#ifdef BR_MATCHING_BUILD
 
 extern float _DAT_10077a78;      /* 0.0f */
 extern float _DAT_10077a7c;      /* 1.0f */
@@ -153,4 +150,3 @@ out:
     return (int16_t)r;
 }
 
-#endif /* BR_MATCHING_BUILD */

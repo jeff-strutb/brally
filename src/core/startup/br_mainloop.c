@@ -42,7 +42,6 @@ int BrMainLoopFrameAllowed(void)
  * if three separate readiness flags allow it. The loop ends when the window
  * closes or a frame reports that the game should stop. */
 /* @implements 0x10019730 glide BrMainLoopRun */
-#ifdef BR_MATCHING_BUILD
 /* The port's ops table turned four direct USER32 calls into `call [ops+N]`,
  * and the whole window bring-up in front of the loop -- ShowWindow,
  * UpdateWindow, SetFocus and the mode-2 gate -- had never been transcribed.
@@ -122,46 +121,3 @@ void BrMainLoopRun(void)
         WaitMessage();                           /* 0x100197ED -- BLOCK */
     }
 }
-#else
-int32_t BrMainLoopRun(const BrMainLoopOps *pOps)
-{
-    int32_t cFrames = 0;
-
-    if (pOps == NULL ||
-        pOps->pfnPeek == NULL || pOps->pfnGet == NULL ||
-        pOps->pfnPump == NULL || pOps->pfnWait == NULL) {
-        return 0;
-    }
-
-    for (;;) {
-        /* 0x10019793: PeekMessage(&msg, 0, 0, 0, PM_NOREMOVE). */
-        if (pOps->pfnPeek(pOps->pUser)) {
-            /* 0x100197A6: GetMessage; 0 means WM_QUIT, and the loop ends
-             * WITHOUT running a frame. */
-            if (!pOps->pfnGet(pOps->pUser)) {
-                break;
-            }
-            /* 0x100197B7 / 0x100197C2: Translate then Dispatch, always as a
-             * pair, then straight back to the top -- messages are drained
-             * before any frame runs. */
-            pOps->pfnPump(pOps->pUser);
-            continue;
-        }
-
-        /* Queue empty. 0x100197C7: run a frame only if the gate is open. */
-        if (BrMainLoopFrameAllowed()) {
-            if (BrAppFrame() == 0) {     /* 0x100197E2 -> 0x1001CF80 */
-                break;                   /* 0 quits */
-            }
-            ++cFrames;
-            continue;
-        }
-
-        /* 0x100197ED: BLOCK. The original does not spin here, and a port that
-         * did would burn a core doing nothing the original does. */
-        pOps->pfnWait(pOps->pUser);
-    }
-
-    return cFrames;
-}
-#endif

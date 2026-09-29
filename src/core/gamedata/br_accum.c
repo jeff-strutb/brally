@@ -5,10 +5,8 @@
  * limit constants stay with the constant table in that file and are reached
  * through slice2_19.h.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original binary is /MD: CRT calls resolve through the import table. */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice2_19.h"
 
 /* 0x100347BA */

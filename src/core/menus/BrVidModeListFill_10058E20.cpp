@@ -37,9 +37,7 @@
  *
  * @t4-pass 0x10058E20 1 2026-09-10 probes 10 bytes 353 insns 118 regions 2 rows 56 census no  (allocation grind: entry-compare register roles swapped (count in eax vs ecx), frame slots rotate one dword (idx/found/bpp-spill order); dead levers -- three declaration orders, block-scope vs function-scope mode fields, the zd rename, compare operand swap. The rotation is the symbol-index/declaration-order bucket; no spelling reached it.)
  * @t4-pass 0x10058E20 2 2026-09-16 probes 10 bytes 353 insns 118 regions 2 rows 56 census yes  (extern "C" so the oracle resolves the symbol; A5 oracle EQUIVALENT on 64 valid-state seeds -- return + every in-image global write + side effects agree, so the residue is register allocation, not missing/wrong code. Confirming probes -- #pragma intrinsic, opt variants -- do not move it. Numbers unmoved.) */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Sel58E20 {
 public:

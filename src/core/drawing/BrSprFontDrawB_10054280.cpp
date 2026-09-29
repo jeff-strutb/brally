@@ -29,9 +29,7 @@
  * preceded the re-sweep moved nothing.  Same resolution as 0x100540D0 and
  * 0x100541B0 (docs/VC5-IDIOMS.md, /Gi entry).
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 struct Metric12B {
     short          advance;     /* +0x00 -- signed: movsx before the fild */

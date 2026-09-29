@@ -13,11 +13,8 @@
 #include <string.h>
 
 #include "br_match.h"
-#ifdef BR_MATCHING_BUILD
 /* Header is cdecl (this, x, y, z). Original is thiscall with ret 0xC. */
 #define BrEntSetPos BrEntSetPos_hdr
-#endif
-#ifdef BR_MATCHING_BUILD
 /* The entity setters are thiscall with three stack floats; hide the
  * port's cdecl prototypes so the twins can carry the fastcall shape. */
 #define BrEntSetMatrix      BrEntSetMatrix_port
@@ -31,12 +28,7 @@
 #undef BrEntSetAngVel
 #undef BrEntSetOrientation
 #undef BrEntSetHeading
-#else
-#include "slice3_45.h"
-#endif
-#ifdef BR_MATCHING_BUILD
 #undef BrEntSetPos
-#endif
 
 /* ====================================================================== */
 /* Constants read out of orig/BRD3D.dll .rdata (do not re-derive)          */
@@ -69,7 +61,6 @@ static const float kBrHalf = 0.5f;
  * above plus the two ledger lines.
  * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x100764C0 d3d BrEntSetHeading */
-#ifdef BR_MATCHING_BUILD
 /* thiscall + one stack float (ret 4); sin/cos are the float-arg tree
  * wrappers, as in BrEntSetOrientation below.
  *
@@ -127,49 +118,3 @@ void __fastcall BrEntSetHeading(BrEnt *pE, float a)
 
     BrRbBuildMatrix(&pE->matrix, &pE->st);
 }
-#else
-void BrEntSetHeading(BrEnt *pE, float a)
-{
-    float c  = cosf(a);
-    float s  = sinf(a);
-    float b  = a - kBrNegHalfPi;   /* a + pi/2, to the float's precision */
-    float cb = cosf(b);
-    float sb = sinf(b);
-    float h  = a * kBrHalf;
-    float qw, qx, qy, qz;
-
-    pE->mat0.m[0][0] = c;
-    pE->mat0.m[0][1] = s;
-    pE->mat0.m[0][2] = 0.0f;
-    pE->mat0.m[1][1] = sb;
-    pE->mat0.m[1][0] = cb;
-    pE->mat0.m[1][2] = 0.0f;
-    pE->mat0.m[2][0] = 0.0f;
-    pE->mat0.m[2][1] = 0.0f;
-    pE->mat0.m[2][2] = 1.0f;
-
-    pE->st.quat.f00 = cosf(h);
-    pE->st.quat.f04 = 0.0f;
-    pE->st.quat.f08 = 0.0f;
-
-    /* The original reloads w/x/y from memory here, BEFORE computing z, and
-     * writes z to all three copies with fst/fst/fstp. Preserved. */
-    qw = pE->st.quat.f00;
-    qx = pE->st.quat.f04;
-    qy = pE->st.quat.f08;
-    qz = sinf(h);
-
-    pE->st.quat.f0C  = qz;
-    pE->stB.quat.f0C = qz;
-    pE->stA.quat.f0C = qz;
-
-    pE->stB.quat.f00 = qw;
-    pE->stA.quat.f00 = qw;
-    pE->stB.quat.f04 = qx;
-    pE->stB.quat.f08 = qy;
-    pE->stA.quat.f04 = qx;
-    pE->stA.quat.f08 = qy;
-
-    BrRbBuildMatrix(&pE->matrix, &pE->st);
-}
-#endif

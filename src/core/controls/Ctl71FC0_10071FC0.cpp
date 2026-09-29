@@ -9,9 +9,7 @@
  * dtor). DirectInputCreateA is NOT dllimport (orig E8 to a JMP thunk);
  * MessageBoxA IS dllimport (orig FF 15). No NULL-return after new.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class DiDev {
 public:

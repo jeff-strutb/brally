@@ -9,9 +9,7 @@
  * Phase-leave prefix + double-strcpy tail, the 0x1003FBE0 shape with two
  * zero stores instead of four. No EH.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <string.h>
 
 class GameSub {

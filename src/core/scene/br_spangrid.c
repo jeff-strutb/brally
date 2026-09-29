@@ -6,17 +6,13 @@
  *
  * Moved here out of src/core/slice2_21.c (an address batch, not a module).
  */
-#ifdef BR_MATCHING_BUILD
 /* The original takes the two coordinates only; the port's prototype leads
  * with the volume.  Hide it so the matching body can carry the real shape. */
 #define BrSpanTestPoint BrSpanTestPoint_port
-#endif
 #include "slice2_21.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrSpanTestPoint
 int  BrSpanTestPoint(float x, float y);
 int  BrSpanContains(int param_1, int param_2);
-#endif
 
 /* 0x1008F61C / 0x1008F608 -- the cell size reciprocal. */
 #define K_CELL_RECIP   0.03125f
@@ -26,20 +22,12 @@ int  BrSpanContains(int param_1, int param_2);
  * dropping it into the coarse grid and checking that cell. */
 /* @implements 0x1003A950 d3d BrSpanTestPoint */
 /* @implements 0x10033FD0 glide BrSpanTestPoint */
-#ifdef BR_MATCHING_BUILD
 int BrSpanTestPoint(float x, float y)
 {
     /* Right-to-left: y ftol first, its eax is pushed, then x ftol, Contains. */
     return BrSpanContains(BrFtolArg(x * K_CELL_RECIP),
                           BrFtolArg(y * K_CELL_RECIP));
 }
-#else
-int BrSpanTestPoint(const BrSpanVolume *pVol, float x, float y)
-{
-    return BrSpanTest(&pVol->grid, BrFtolArg(x * K_CELL_RECIP),
-                                   BrFtolArg(y * K_CELL_RECIP));
-}
-#endif
 
 /* 0x1003A990 */
 /* WHAT IT DOES: works out the coarse footprint of an eight-sided shape -- a
@@ -48,7 +36,6 @@ int BrSpanTestPoint(const BrSpanVolume *pVol, float x, float y)
  * to the first and last row that the shape reaches. The result is a cheap
  * stand-in for the shape that later tests can be run against. */
 /* @implements 0x1003A990 d3d BrSpanBuildHull */
-#ifdef BR_MATCHING_BUILD
 /* NO ARGUMENTS, ABSOLUTE GLOBALS, AND THE TWELVE EDGES UNROLLED. The port
  * takes the volume and the point array as parameters and walks a static edge
  * table; the original reads both as absolute globals and emits twelve
@@ -126,58 +113,3 @@ void BrSpanBuildHull(void)
         g_aBrSpanRowHi[col] = hi;
     }
 }
-#else
-void BrSpanBuildHull(BrSpanVolume *pVol, const BrVec3 aPt[6])
-{
-    static const unsigned char aEdge[12][2] = {
-        {0,1},{0,2},{0,3},{0,4},{5,1},{5,2},{5,3},{5,4},{1,2},{2,3},{3,4},{4,1}
-    };
-    int i, col;
-
-    for (i = 0; i < BR_SPAN_ROWS; i++) {
-        pVol->aRowHi[i]     = 0;
-        pVol->aRowLo[i]     = BR_SPAN_ROWS;
-        pVol->grid.aMax[i]  = 0;
-        pVol->grid.aMin[i]  = BR_SPAN_ROWS;
-    }
-    pVol->colHi        = 0;
-    pVol->grid.rowHi   = 0;
-    pVol->colLo        = BR_SPAN_ROWS - 1;
-    pVol->grid.rowLo   = BR_SPAN_ROWS - 1;
-
-    for (i = 0; i < 12; i++) {
-        const BrVec3 *a = &aPt[aEdge[i][0]];
-        const BrVec3 *b = &aPt[aEdge[i][1]];
-        BrSpanAddLine(pVol, a->x, a->y, b->x, b->y);
-    }
-
-    if (pVol->colLo < 0)
-        pVol->colLo = 0;
-    if (pVol->grid.rowLo < 0)
-        pVol->grid.rowLo = 0;
-    if (pVol->colHi >= BR_SPAN_ROWS)
-        pVol->colHi = BR_SPAN_ROWS - 1;
-    if (pVol->grid.rowHi >= BR_SPAN_ROWS)
-        pVol->grid.rowHi = BR_SPAN_ROWS - 1;
-
-    for (col = pVol->colLo; col <= pVol->colHi; col++) {
-        int lo = pVol->grid.rowLo;
-        int hi = pVol->grid.rowHi;
-
-        /* DEVIATION: the original scans with no upper/lower bound at all
-         * (`inc edx; jmp` / `dec ecx; jmp`), so a column that no row covers
-         * walks off both ends of the 64-entry arrays. Bounded here. When a
-         * covering row exists -- the case the original was written for -- the
-         * results are identical. */
-        while (lo < BR_SPAN_ROWS &&
-               (col < pVol->grid.aMin[lo] || col > pVol->grid.aMax[lo]))
-            lo++;
-        while (hi >= 0 &&
-               (col < pVol->grid.aMin[hi] || col > pVol->grid.aMax[hi]))
-            hi--;
-
-        pVol->aRowLo[col] = lo;
-        pVol->aRowHi[col] = hi;
-    }
-}
-#endif

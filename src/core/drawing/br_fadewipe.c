@@ -12,14 +12,13 @@
  * Filed out of the address batch slice2_16.c; its preamble is carried over
  * verbatim.  See slice2_16.h for the per-function notes and gotchas.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original binary is /MD: CRT calls resolve through the import table. */
 #define _CRTIMP __declspec(dllimport)
 /* Header prototype is the port's (table, pCmd).  The original takes only
  * pCmd; the table is the global at 0x100A79F0.  Rename the port prototype
  * in this TU so the matching body can use the original shape. */
 #define BrGbiRun BrGbiRun_port
-/* OtherMode H/0E and TexCreate: orig takes no state pointer — those fields
+/* OtherMode H/0E and TexCreate: orig takes no state pointer â those fields
  * are standalone globals (0x10697A44 / 0x106B7AB0 / 0x118ED1C8). */
 #define BrGbiTexScanOtherModeH   BrGbiTexScanOtherModeH_port
 #define BrGbiTexScanOtherModeH0E BrGbiTexScanOtherModeH0E_port
@@ -54,9 +53,7 @@
 #define BrFadeDrawSprite        BrFadeDrawSprite_port
 /* Fade bars: orig takes NO argument at all -- eleven standalone globals. */
 #define BrFadeDrawBars          BrFadeDrawBars_port
-#endif
 #include "slice2_16.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrGbiRun
 #undef BrGbiTexScanOtherModeH
 #undef BrGbiTexScanOtherModeH0E
@@ -121,7 +118,6 @@ extern int DAT_105ccfd0;   /* numLights    */
 extern BrGfxWords *DAT_106e7710;  /* DL write cursor */
 extern int         DAT_106ec798;  /* fade rectIdx    */
 extern int         DAT_106e7718;  /* otherModeH      */
-#endif
 
 /* The routines this file and br_dl.c BOTH used to transcribe.  Same original
  * function, one host body -- see br_dlshared.h. */
@@ -240,7 +236,6 @@ static BrGfxWords *br16_fade_alloc(BrFadeState *pSt)
 /* ================================================================== */
 
 /* 0x10017F10 (d3d 0x1002AEA0) */
-#ifdef BR_MATCHING_BUILD
 /* The original takes no argument and addresses its globals absolutely; the
  * port's BrFadeState view is the #else arm. */
 extern void (*DAT_104b161c)(void);   /* the registered teardown callback */
@@ -259,19 +254,9 @@ int BrFadeRelease(void)
   }
   return 1;
 }
-#else
-int BrFadeRelease(BrFadeState *pSt)
-{
-    pSt->refCount -= 1;
-    if (pSt->refCount == 0)
-        pSt->pfnRelease();
-    return 1;
-}
-#endif
 
 /* 0x10017F30 (d3d 0x1002AEC0) */
 /* @n64 0x8026B434 located */
-#ifdef BR_MATCHING_BUILD
 /* The original takes no argument and addresses all four values absolutely:
  * 0x100A7514 / 0x100A7518 are the grSstWinOpen screen width and height (d3d
  * 0x100A81C0 / 0x100A81C4), the destinations d3d 0x105754FC / 0x10575500.
@@ -292,13 +277,6 @@ void BrFadeLatch(void)
   DAT_104b16a8 = DAT_100a7514;
   DAT_104b16a4 = DAT_100a7518;
 }
-#else
-void BrFadeLatch(BrFadeState *pSt)
-{
-    pSt->pos      = pSt->srcC0;
-    pSt->f5754FC  = pSt->srcC4;
-}
-#endif
 
 /* The 0x3EB / 0x3E8 / 0 token soup both emit paths hand to
  * BrRdpSetCombineLERP; spelled out once so the two call sites stay readable
@@ -349,7 +327,6 @@ static uint32_t br16_bar_w0(int32_t top, int32_t width, int32_t shift)
  * score is in build/match/crank.log.
  * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x100183B0 glide BrFadeDrawBars */
-#ifdef BR_MATCHING_BUILD
 /* The original takes NO ARGUMENT: it reads eleven standalone globals, exactly
  * as BrFadeDrawSprite above does, and its very first instruction is
  * `fld [0x104b16c0]` (the fade value).  The port's BrFadeState * costs a
@@ -510,84 +487,6 @@ void BrFadeDrawBars(void)
 }
 #undef BR16_ALLOC
 #undef BR16_BAR_W0
-#else
-void BrFadeDrawBars(BrFadeState *pSt)
-{
-    BrGfxWords *p;
-
-    /* 0x1002B34F `test ah,0x40 / jne 0x1002B661` (return).  C3 is set for
-     * EQUAL and for UNORDERED, so a NaN value emits nothing.  `value == 1.0f`
-     * is false for NaN, so the port emitted the whole twelve-command bar
-     * sequence where the original emits none. */
-    if (BR16_FEQU(pSt->value, 1.0f))   /* 0x1008F420 */
-        return;
-
-    p = br16_fade_alloc(pSt); p->w0 = 0xE7000000u; p->w1 = 0;
-    p = br16_fade_alloc(pSt); p->w0 = 0xBA001402u; p->w1 = 0;
-    p = br16_fade_alloc(pSt); p->w0 = 0xB900031Du; p->w1 = 0x0F0A4000u;
-    br16_combine(br16_fade_alloc(pSt), 0x3EB, 0x3EB, 0x3EB, 0x3EB);
-
-    p = br16_fade_alloc(pSt);
-    p->w0 = 0xE2000000u;
-    {
-        /* fild followed straight by __ftol: a round trip the compiler left
-         * in, so this really is just the shifted integer. */
-        uint32_t x = (uint32_t)br16_ftol((double)(pSt->width << pSt->shift))
-                     & 0xFFFu;
-        uint32_t y = (uint32_t)br16_ftol((double)(pSt->span  << pSt->shift))
-                     & 0xFFFu;
-        p->w1 = x | (y << 12);
-    }
-
-    p = br16_fade_alloc(pSt); p->w0 = 0xFA00FFFFu; p->w1 = 0;
-
-    if (pSt->pos2 != 0) {
-        /* Dead store in the original: the value read out of aPos2 with the
-         * parity inverted is written to a stack local nothing reads. */
-        (void)pSt->aPos2[pSt->parity ^ 1];
-
-        if (BrFadeIsShut(pSt))
-            pSt->bars = 3;
-
-        p = br16_fade_alloc(pSt);
-        p->w0 = 0xB900031Du; p->w1 = 0x00504340u;
-        br16_combine(br16_fade_alloc(pSt), 0x3EB, 0x3EB, 0x3EB, 0x3EB);
-
-        p = br16_fade_alloc(pSt); p->w0 = 0xFA000000u; p->w1 = 0xFFu;
-
-        p = br16_fade_alloc(pSt);
-        p->w1 = 0;
-        p->w0 = br16_bar_w0(pSt->pos2, pSt->width, pSt->shift);
-    }
-
-    if (pSt->pos < pSt->span) {
-        if (pSt->bars != 0) {
-            p = br16_fade_alloc(pSt);
-            pSt->bars -= 1;
-            p->w0 = br16_bar_w0(pSt->span, pSt->width, pSt->shift);
-            p->w1 = (uint32_t)(((uint32_t)pSt->pos << pSt->shift) & 0xFFFu)
-                    << 12;
-        }
-        /* 0x1002B5D5 `test ah,0x40 / je 0x1002B643` -- the arm is taken on
-         * C3, i.e. equal OR UNORDERED.  `value == 0.0f` skipped it on NaN.
-         *
-         * MUTATION SURVIVOR, legitimately: the guard at the top of this
-         * function already returns on a NaN `value`, and nothing between here
-         * and there writes it (BrFadeIsShut takes a const pointer), so this
-         * site can never see one.  Spelled faithfully anyway -- it is free,
-         * and the next edit to that top guard would otherwise silently make
-         * this one wrong. */
-    } else if (BR16_FEQU(pSt->value, 0.0f) && pSt->bars != 0) {  /* 0x1008F410 */
-        p = br16_fade_alloc(pSt);
-        pSt->bars -= 1;
-        p->w0 = br16_bar_w0(pSt->span, pSt->width, pSt->shift);
-        /* The original shifts a zero and masks it: always 0. */
-        p->w1 = 0;
-    }
-
-    p = br16_fade_alloc(pSt); p->w1 = 0; p->w0 = 0xE7000000u;
-}
-#endif
 
 /* One ramp step. Shared by the two ramp arms of 0x1002B670, which are
  * identical instruction for instruction: ramp A at 0x1002B7F2..0x1002B864 and

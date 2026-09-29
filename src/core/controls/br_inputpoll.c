@@ -90,10 +90,8 @@
  *   bytes; under C++ it is the mouse site (+1 insn, -3 B).  If the C++ lane
  *   finds a C1XX spelling for the mouse accumulate, this file moves there.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdint.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -727,7 +725,6 @@ uint8_t BrInputIsDown(int32_t action)
     return r;
 }
 
-#ifdef BR_MATCHING_BUILD
 /* The rising edge of one control: up last frame, down this frame.  Written
  * as an __inline function with an explicit `return 1; return 0;` because
  * that is what the bytes say: the three button arms of 0x100719D0
@@ -828,9 +825,7 @@ uint8_t BrInputJustPressed(int32_t action)
           && (g_brInKeys[g_brInKeyCur][b[4]] & 0x80) != 0;
     return r;
 }
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 extern int *DAT_118eeee8;
 extern int DAT_118eeef0;
 typedef int (__stdcall *CC_std_1)();   /* COM method: this + arguments */
@@ -854,4 +849,3 @@ void BrDiKeyboardShutdown(void)
   }
   return;
 }
-#endif /* BR_MATCHING_BUILD */

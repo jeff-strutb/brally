@@ -7,9 +7,7 @@
  * Tbl8900 family: bounds-checked getter — warn printf on overflow,
  * then return items[i].f4 (76-byte entries, field at +4).
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 struct Ent {
     int f0;

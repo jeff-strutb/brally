@@ -9,9 +9,7 @@
  * the static-object thiscall (`mov ecx,offset g_nav`), and a trailing
  * cdecl helper. No EH.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class GameSub {
 public:

@@ -8,15 +8,11 @@
  * verbatim below.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdint.h>
 #include <string.h>
-#ifdef BR_MATCHING_BUILD
 #include <stdio.h>
-#endif
 #include "slice1_03.h"      /* BrComCallLocked68 (0x1000C4D0) */
 
 #include "slice6_70.h"
@@ -91,7 +87,6 @@ static const char *Br70Str(int id)
  * identical register-blind multiset.
  * Do not reopen before the end-grind (CLAUDE.md rule 12). */
 /* @implements 0x100173F0 d3d BrSub_100173F0 */
-#ifdef BR_MATCHING_BUILD
 /* Orig reads cViews / iView / the race object / the suppress flag as
  * standalone globals (no BrScreenGet / BrHudGetEnv), sprintf via the IAT
  * (CSE'd into ebp), and `switch (pos - 0)` with the zero live in ebx so
@@ -214,119 +209,3 @@ void BrSub_100173F0(BrHudView *aViews, int a2)
 
     BrSub_10019250();
 }
-#else
-void BrSub_100173F0(BrHudView *aViews, int a2)
-{
-    char          szBuf[BR70_173F0_BUF];
-    BrScreenInfo *pScr;
-    BrHudEnv     *pEnv;
-    int           x;
-    int           y;
-
-    (void)a2;   /* pushed by both call sites, never read by the original */
-
-    if (g_br0AA010 == 3) {
-        return;
-    }
-
-    pScr = BrScreenGet();
-    pEnv = BrHudGetEnv();
-
-    /* GOTCHA: view ZERO's x, not the current view's. Only the y/h below are
-     * per-view. That asymmetry is the original's. */
-    x = aViews[0].x + 0x10;
-
-    /* ---- the lap counter ---------------------------------------------- */
-    if (g_br0BD3E8 != 0) {
-        int32_t cSplits = pEnv->pRace->cSplits;   /* +0x0FA8 */
-        int32_t nLaps   = g_br0BD3E0;
-
-        /* Drawn when the race is unfinished OR the view is full-screen. */
-        if (cSplits < nLaps || pScr->cViews == 1) {
-            y = aViews[pScr->iView].y + 5;
-
-            if (cSplits < nLaps) {
-                /* The bare "L" replaces string 0xE5 ONLY at two views. */
-                const char *pszTag = (pScr->cViews == 2)
-                                   ? g_pszBr0A73D4
-                                   : Br70Str(BR70_STR_LAP_LONG);
-
-                /* Both operands are re-read after the lookup. */
-                BrSprintf(szBuf, g_pszBr0A73C8, pszTag,
-                          (int)(pEnv->pRace->cSplits + 1), (int)g_br0BD3E0);
-            } else {
-                /* GOTCHA: the looked-up string is the FORMAT, not an
-                 * argument -- a format-string hazard in the original. */
-                BrSprintf(szBuf, Br70Str(BR70_STR_LAP_DONE));
-            }
-
-            BrSub_10019260();
-            BrSub_10019280();
-            BrSub_100192F0(0xF);
-            y += 0xF;
-            BrTextDraw(szBuf, x, y);
-        }
-    }
-
-    /* ---- the finishing position --------------------------------------- */
-    if (g_br0BD3F8 == 0) {
-        return;
-    }
-    if (pEnv->f22AF1C != 0) {          /* 0x1022AF1C suppresses the readout */
-        return;
-    }
-
-    x -= 2;
-    y = aViews[pScr->iView].y + aViews[pScr->iView].h - 0xC;
-
-    BrSub_10019240();
-    BrSub_10019280();
-    BrTextSetColors(0xFF, 0xF0, 0x7D, 0xFF, 0x78, 0);
-
-    {
-        int32_t     pos = (g_pBrRace0FF8 != NULL) ? *g_pBrRace0FF8 : 0;
-        const char *pszSuffix;
-        int32_t     nudge;
-        int         w;
-
-        BrSprintf(szBuf, g_pszBr0A73C4, (int)(pos + 1));
-
-        /* The original re-reads +0x0FF8 for the switch. */
-        pos = (g_pBrRace0FF8 != NULL) ? *g_pBrRace0FF8 : 0;
-
-        if (pos == 0) {
-            pszSuffix = Br70Str(BR70_STR_POS_0);
-            nudge     = -3;
-        } else if (pos == 1) {
-            pszSuffix = Br70Str(BR70_STR_POS_1);
-            nudge     = 1;
-        } else if (pos == 2) {
-            pszSuffix = Br70Str(BR70_STR_POS_2);
-            nudge     = 0;
-        } else {
-            pszSuffix = Br70Str(BR70_STR_POS_N);
-            nudge     = 1;
-        }
-
-        if (pScr->cViews == 1) {
-            BrSub_100192F0(0x28);
-            w = BrSub_100193C0(szBuf, 0x28);
-            /* Both coordinates are nudged by one on the full-screen path. */
-            BrTextDraw(szBuf, x - 1, y - 1);
-            BrSub_100192F0(0x14);
-            BrTextDraw(pszSuffix, w + (int)nudge + x + 3, y - 0xF);
-        } else {
-            BrSub_100192F0(0x1A);
-            w = BrSub_100193C0(szBuf, 0x1A);
-            BrTextDraw(szBuf, x, y);
-            BrSub_100192F0(0xD);
-            /* The original's 0x55555556 magic-multiply: (2*nudge)/3 rounded
-             * TOWARD ZERO, which C's `/` already is. -3 -> -2, 1 -> 0. */
-            BrTextDraw(pszSuffix,
-                       (int)((2 * nudge) / 3) + w + x + 3, y - 0xA);
-        }
-    }
-
-    BrSub_10019250();
-}
-#endif /* BR_MATCHING_BUILD */

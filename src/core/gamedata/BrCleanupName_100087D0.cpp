@@ -31,10 +31,8 @@
  * named length) emits the lea last (7 diffs).  Same lever as 0x1006FCE0's
  * constant-size fill: see docs/VC5-IDIOMS.md "rep stosd order".
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #include <string.h>
-#endif
 
 class Sub8D70 {
 public:

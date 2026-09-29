@@ -1,6 +1,5 @@
 /* Auto-generated from disassembly — 0x004016C0
  * SetCommentChar. Byte store of a char argument. */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: change the character that starts a comment, so a settings
  * file can use ';' while a list file uses '#'. */
 /* @implements 0x004016C0 brally.exe SetCommentChar */
@@ -29,4 +28,3 @@ void SetCommentChar(char c)
 }
 
 
-#endif /* BR_MATCHING_BUILD */

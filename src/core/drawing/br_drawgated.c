@@ -11,20 +11,15 @@
  * /O2 register choice, so it is kept whole); its state block g_s17 is
  * declared in slice2_17.h and defined there.
  */
-#ifdef BR_MATCHING_BUILD
 /* slice2_17.h prototypes a list pointer the original never takes. */
 #define BrPtrListContains BrPtrListContains_port
-#endif
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice2_17.h"
 
 /* g_s17 is the port's gathering of scattered originals.  The matching build
  * reads the fields used here as the separate globals they are, by their
  * DAT_ names -- which the image gate resolves from the address they spell. */
-#ifdef BR_MATCHING_BUILD
 extern uint32_t *DAT_106e7710;
 #define S17_PGFX DAT_106e7710
 extern int DAT_105ccb58;
@@ -33,15 +28,7 @@ extern int DAT_106e9d8c;
 #define S17_F6C2CFC DAT_106e9d8c
 extern int DAT_105bcaec;
 #define S17_F680944 DAT_105bcaec
-#else
-#define S17_PGFX g_s17.pGfx
-#define S17_F6909B0 g_s17.f6909B0
-#define S17_F6C2CFC g_s17.f6C2CFC
-#define S17_F680944 g_s17.f680944
-#endif
-#ifdef BR_MATCHING_BUILD
 #undef BrPtrListContains
-#endif
 
 #include <math.h>
 #include <stdio.h>
@@ -81,11 +68,7 @@ extern int   BrX10060E90(void);
  * at the call site (arg1 in ecx, no stack cleanup), so that is what the
  * matching build uses. Off MSVC the qualifier vanishes and it is an ordinary
  * one-argument function. */
-#if defined(_MSC_VER)
 #define BRS17_THISCALL __fastcall
-#else
-#define BRS17_THISCALL
-#endif
 extern void BRS17_THISCALL BrX100751D0(void *pThis);
 /* XSLICE 0x1002C2C0 */
 extern void  BrX1002C2C0(void);
@@ -179,7 +162,6 @@ static void s17_stf(unsigned char *p, float v)
 /* @implements 0x1002C2D0 d3d BrS17DrawGated */
 void BrS17DrawGated(void)
 {
-#ifdef BR_MATCHING_BUILD
     /* Orig `push ecx` slot: uninitialised, spilled across the call
      * (`mov [esp],eax` / `mov edx,[esp]`), shared ret via `je`. */
     volatile int saved;
@@ -193,22 +175,4 @@ void BrS17DrawGated(void)
         if (S17_F6909B0 == -1)
             S17_F6C2CFC = saved;
     }
-#else
-    /* DEVIATION: seed the slot so a -1 flip by the callee is a no-op
-     * rather than restoring garbage. */
-    int saved = S17_F6C2CFC;
-
-    if (S17_F6909B0 == 0)
-        return;
-
-    if (S17_F6909B0 == -1) {
-        saved = S17_F6C2CFC;
-        S17_F6C2CFC = 0;
-    }
-
-    BrX1003563A(S17_F680944);
-
-    if (S17_F6909B0 == -1)
-        S17_F6C2CFC = saved;
-#endif
 }

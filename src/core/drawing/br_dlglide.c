@@ -387,8 +387,7 @@ BrDlGlHandler BrDlGlDispatch(unsigned op)
     }
 }
 
-/* ── Ghidra-matched functions ─────────────────────────── */
-#ifdef BR_MATCHING_BUILD
+/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
 int __stdcall grBufferNumPending(void);
 void __stdcall grBufferSwap(int);
 
@@ -833,4 +832,3 @@ void BrGlSetCombine(unsigned w0, unsigned w1)
     }
 }
 
-#endif /* BR_MATCHING_BUILD */

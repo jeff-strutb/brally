@@ -1,0 +1,49 @@
+# Port deviations for src/core/menus/br_uinameedit.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop var:g_brUinAA28EC
+@drop define:BR73_NAA28EC
+@after define:BR73_NAA28EC
+
+/* g_br73 is the port's gathering of separate originals.  The matching build
+ * names the ones used here as the globals they are (config/globals_glide.csv),
+ * so each relocation resolves to its own variable. */
+#define BR73_NAA28EC g_br73.nAA28EC
+@end
+@drop fn:BrExt_100424D0
+@after fn:BrExt_100424D0
+
+/* WHAT IT DOES: cancels a name edit, putting the name that was set aside back
+ * on the record and clearing the edit box. It looks at the flag the commit
+ * half above set but writes into a DIFFERENT array of records than that half
+ * read from -- an asymmetry that is the original's, not a slip here. */
+/* @implements 0x1003BA30 glide BrExt_100424D0 */
+int32_t BrExt_100424D0(void *pArg)
+{
+    unsigned char *pRec;
+    char          *pszName;
+
+    if (g_br73.pfnClearSub70 != NULL) {     /* see BrExt_10041A00 */
+        g_br73.pfnClearSub70(pArg);
+    }
+
+    BR73_NAA28EC = 0;
+
+    if (g_brAA28D8 == 0) {
+        return 1;
+    }
+    /* the original tests the ADDRESS 0x10A9D078 against zero here; it is a
+     * literal, so the branch is dead.  Kept as an always-true condition. */
+
+    if (g_brPAA29D0 == NULL) {
+        return 1;
+    }
+    pRec    = Br73Rec(g_brPAA29D0, g_br0AB3F4);
+    pszName = (char *)pRec + BR61_REC29D0_OFF_NAME;
+
+    strcpy(pszName, g_aBrA9D078);
+    strcpy(g_aBrA9D078, g_aBr39B720);
+    return 1;
+}
+@end

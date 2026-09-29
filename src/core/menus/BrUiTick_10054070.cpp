@@ -17,9 +17,7 @@
  * scratch pair the other way through every add-operand / split-delta /
  * old-temp spelling.  Byte-exact 2026-09-13.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Ui54070 {
 public:

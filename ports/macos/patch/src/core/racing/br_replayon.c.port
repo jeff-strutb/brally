@@ -1,0 +1,28 @@
+# Port deviations for src/core/racing/br_replayon.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop var:g_B502E4
+@drop var:g_0B8C94
+@drop var:g_178FEE8
+@drop var:g_18ABDE0_64
+@after var:g_18ABDE0_64
+
+uint32_t g_1750308, g_B502E4;
+uint32_t g_690A20, g_B501C8, g_0B8C94;
+uint32_t g_A9BFD0, g_18ABDE0, g_18ABDE4, g_178FEE8;
+int64_t g_18ABDE0_64;
+@end
+@drop fn:BrExt_10024460
+@drop fn:BrExt_1002A640
+@drop fn:BrExt_10075020
+@drop proto:FUN_1002f282
+@drop var:g_BrReplayOn
+@drop var:g_a220B20
+@drop fn:BrReplayIsOn
+@drop fn:BrSetMode5
+@drop var:DAT_10b73668
+@drop fn:BrReplayGetBuf
+@drop var:DAT_10cf3668
+@drop fn:BrReplayGetBuf2
+@drop var:DAT_10b7364c
+@drop fn:BrReplayCountFromBytes

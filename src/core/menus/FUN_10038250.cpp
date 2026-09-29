@@ -11,9 +11,7 @@
  */
 /* Twin of 0x10038100 BrUiHook85_1003EB10 (tools/gen_cpptwin.py): identical machine code,
  * only the reloc slots differ. */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Sel {
 public:

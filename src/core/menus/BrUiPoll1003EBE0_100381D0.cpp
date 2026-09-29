@@ -14,9 +14,7 @@
  * second parameter; the original is cdecl with ONE argument and direct
  * global addresses. Same split as the 0x10038650 sibling.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Sel381D0 {
 public:

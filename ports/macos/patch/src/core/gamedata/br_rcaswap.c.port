@@ -1,0 +1,27 @@
+# Port deviations for src/core/gamedata/br_rcaswap.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop define:BrRcaFixupArray
+@drop undef:BrRcaFixupArray
+@drop fn:BrRcaFixupArray
+@after fn:BrRcaFixupArray
+
+/* 0x1002BA80 */
+/* WHAT IT DOES: runs the record preparation above over a whole array of
+ * records from an .rca data file. */
+/* @implements 0x1002BA80 d3d BrRcaFixupArray */
+/* @implements 0x10018B40 glide BrRcaFixupArray */
+void BrRcaFixupArray(const BrRcaFixup *pCtx, void *pv, int count)
+{
+    uint8_t *p = (uint8_t *)pv;
+    int      i;
+
+    if (count <= 0)
+        return;
+    for (i = 0; i < count; ++i) {
+        BrRcaFixupRecord(p);
+        p += BR_RCA_REC_SIZE;
+    }
+}
+@end

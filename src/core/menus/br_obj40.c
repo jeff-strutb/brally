@@ -4,14 +4,11 @@
  * matched first and grouped by what they are afterwards.
  * Every function carries its original address.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import
  * table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdint.h>
 
-#ifdef BR_MATCHING_BUILD
 
 int operator_delete();
 int __fastcall FUN_10040d10(void *pThis);
@@ -30,4 +27,3 @@ void * __fastcall BrObj40CF0DeleteDtor(void *param_1,int _edx_unused,unsigned ch
   return param_1;
 }
 
-#endif /* BR_MATCHING_BUILD */

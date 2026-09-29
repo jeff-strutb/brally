@@ -60,9 +60,7 @@
  * /Ox, /O2 /Ot, /O2 /Gy, /O2 /Ob0 (all 44 pre-tail-fix), /Od (567),
  * /O2 /Oy- (536).
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Hud54730 {
 public:

@@ -57,12 +57,10 @@ void BrFn1003E070(void)
  * reads again. When there is no keyboard device at all it reports what looks
  * like success and leaves the caller's buffer holding whatever was in it
  * before, so keys can appear stuck. */
-#ifdef BR_MATCHING_BUILD
 typedef int32_t (__stdcall *BrDiGetStateFn)(BrDInputDev *, uint32_t, void *);
 typedef int32_t (__stdcall *BrDiAcquireFn)(BrDInputDev *);
 /* Orig is `mov eax,[0x118eeee8]` three times, not an env-struct field. */
 extern BrDInputDev *g_pBrDik18ABDD0;
-#endif
 
 /* WHAT IT DOES: read the whole keyboard state array from DirectInput in one
  * go. Reports failure without touching the caller's buffer when there is no
@@ -70,7 +68,6 @@ extern BrDInputDev *g_pBrDik18ABDD0;
 /* @implements 0x10070490 glide BrDikGetDeviceState */
 int32_t BrDikGetDeviceState(uint8_t *pState)
 {
-#ifdef BR_MATCHING_BUILD
     BrDInputDev *pDev;
     int32_t      hr;
     uint8_t     *p;
@@ -95,30 +92,6 @@ int32_t BrDikGetDeviceState(uint8_t *pState)
         }
     }
     return hr;
-#else
-    Br72Env     *pE = g_pBr72Env;
-    BrDInputDev *pDev = pE->pDik18ABDD0;
-    int32_t      hr;
-
-    if (pDev == NULL) {
-        /* GOTCHA: a POSITIVE 1, so a caller testing `>= 0` proceeds with
-         * whatever was already in the buffer. */
-        return 1;
-    }
-
-    hr = pDev->pVtbl->GetDeviceState(pDev, 0x100u, pState);
-    if (hr < 0 && hr == BR72_DIERR_NOTACQUIRED) {
-        pDev = pE->pDik18ABDD0;             /* the original re-reads it */
-        hr = pDev->pVtbl->Acquire(pDev);
-        if (hr >= 0) {
-            pDev = pE->pDik18ABDD0;         /* and again */
-            hr = pDev->pVtbl->GetDeviceState(pDev, 0x100u, pState);
-        }
-        /* GOTCHA: when the re-acquire fails, ITS hresult is returned, not
-         * DIERR_NOTACQUIRED. */
-    }
-    return hr;
-#endif
 }
 
 /* WHAT IT DOES: translates a typed key into the character it should produce,
@@ -132,13 +105,9 @@ int32_t BrDikGetDeviceState(uint8_t *pState)
  * (see slice3_39.h); ending the matching loop at ITS end named an address
  * 904 bytes in, and the function read as byte-exact only because the image
  * gate copied the original's bound. */
-#ifdef BR_MATCHING_BUILD
 #define BR_CHARMAP_SCAN 784
 extern BrCharMapEntry g_BrCharMapImage[BR_CHARMAP_SCAN];   /* 0x100AC5F8 */
 #define g_BrCharMap g_BrCharMapImage
-#else
-#define BR_CHARMAP_SCAN BR_CHARMAP_COUNT
-#endif
 /* @implements 0x1005B540 d3d BrCharMapLookup */
 uint8_t BrCharMapLookup(int32_t code)
 {
@@ -151,9 +120,7 @@ uint8_t BrCharMapLookup(int32_t code)
     }
     return 0;
 }
-#ifdef BR_MATCHING_BUILD
 #undef g_BrCharMap
-#endif
 
 /* Storage in the same 0x118ABxxx input-globals block as the DirectInput
  * keyboard device pointer, reset by the routine below. */
@@ -182,7 +149,6 @@ void BrSub100770C0(void)
  * actually up, it asks that device to do one of two things. Which one is
  * picked by a global flag. The extra argument it is handed is never looked
  * at. */
-#ifdef BR_MATCHING_BUILD
 /* Original is 2-arg thiscall: `this` in ecx, one unread stack dword, `ret 4`.
  * BR_THISCALL1 (= __fastcall) would put that dword in edx; a struct is never
  * register-eligible, so it is forced back onto the stack.
@@ -226,9 +192,7 @@ void BR_THISCALL1 BrSub10060750(BrDevSlot *pSlot, BrSub10060750Arg unused)
         }
     }
 }
-#endif
 
-#ifdef BR_MATCHING_BUILD
 extern int *DAT_118eeeec;
 extern int DAT_10b71530;
 extern int *DAT_10b71534;
@@ -294,4 +258,3 @@ int BrJoyScanAny(int *param_1)
   }
   return -1;
 }
-#endif

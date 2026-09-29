@@ -1,5 +1,4 @@
 /* 0x00401A30 SpawnWait: _spawnv(P_WAIT, cmd, &rest). User wrapper around CRT. */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: spawn another program with a variable argument list and wait
  * for it to finish. This is what runs the game launcher once the intro is
  * over. */
@@ -14,4 +13,3 @@ int SpawnWait(const char *cmd, ...)
     return Spawnve3(cmd, (const char *const *)(&cmd + 1), 0);
 }
 
-#endif

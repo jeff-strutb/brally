@@ -1,0 +1,35 @@
+# Port deviations for src/core/startup/br_ringmutex.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop var:CreateMutexA
+@drop var:CloseHandle
+@drop fn:BrMutexCreateAA0A0
+@drop fn:BrMutexCloseAA0A0
+@after fn:BrMutexCloseAA0A0
+
+/* WHAT IT DOES: creates the unnamed pair-ring mutex and empties the ring. */
+/* @implements 0x10074F20 d3d BrMutexCreateAA0A0 */
+void *BrMutexCreateAA0A0(void)
+{
+    void *h;
+
+    g_br18A9878 = 0;
+    g_br18AA098 = 0;
+    h = NULL;
+    g_br18AA0A0 = h;
+    return h;
+}
+
+/* WHAT IT DOES: closes that mutex and empties the ring again. */
+/* @implements 0x10074F40 d3d BrMutexCloseAA0A0 */
+void BrMutexCloseAA0A0(void)
+{
+    void *h;
+
+    h = g_br18AA0A0;
+    g_br18A9878 = 0;
+    g_br18AA098 = 0;
+    (void)h;
+    g_br18AA0A0 = NULL;
+}
+@end

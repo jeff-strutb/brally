@@ -1,7 +1,6 @@
 /* FollowUse: walk Use= aliases. do { use = GetIniValue(p,"Use");
  * if (use) { free p; p = SetSubstituteDir(pini, use); } } while (use);
  * for(;;) + break is jmp back-edge and duplicates GetIniValue (+16). */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: follow a 'use' redirection in the settings file, so one
  * section can defer to another instead of repeating its contents. */
 /* @implements 0x00402360 setvideo.exe FollowUse */
@@ -54,4 +53,3 @@ Section *FollowUse(INI *pini, char *name)
 }
 
 
-#endif /* BR_MATCHING_BUILD */

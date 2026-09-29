@@ -1,6 +1,5 @@
 /* Auto-generated from disassembly — 0x004017B0
  * LoadRallyMain: LoadLibraryA + GetProcAddress("RallyMain"), setne return. */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: load the chosen renderer DLL and find its RallyMain entry
  * point. Reports whether both succeeded -- this is the moment the launcher
  * commits to Glide or Direct3D. */
@@ -37,4 +36,3 @@ int LoadRallyMain(char *dll)
 }
 
 
-#endif /* BR_MATCHING_BUILD */

@@ -26,7 +26,6 @@ extern int BrOptCycleAA2A24(void);   /* 0x100436B0 */
 /* WHAT IT DOES: steps the Specular option on to its next setting when the
  * player activates that row. */
 /* @implements 0x100436B0 d3d BrUiOptHook_100436B0 */
-#ifdef BR_MATCHING_BUILD
 /* Literal: the up/down cycling of the 0..1 option index is inlined here
  * (the port routes it through BrOptCycleAA2A24 / BrOptCycle), and the
  * chosen table entry lands in 0x10B7153C. */
@@ -52,10 +51,3 @@ if (DAT_10ac6734) {
             DAT_10ac5d7c = 1;
         }
     }v = DAT_10ac5d7c;DAT_10b7153c = DAT_100abce0[v];return 1;}
-#else
-int32_t BrUiOptHook_100436B0(BrUiCtl_ *pCtl)
-{
-    (void)pCtl;
-    return (int32_t)BrOptCycleAA2A24();
-}
-#endif

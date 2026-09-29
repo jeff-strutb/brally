@@ -14,10 +14,8 @@
  * strcpy is the inline scan + rep movsd form because the helper\'s result
  * is an opaque char*.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #include <string.h>
-#endif
 
 class Item438C {
 public:

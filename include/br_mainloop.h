@@ -92,10 +92,6 @@ int  BrMainLoopFrameAllowed(void);
 /* The original takes no arguments and returns void: it reads the window and
  * the show-command out of globals and calls USER32 directly. The ops table is
  * the PORT's shape and is exactly what blocked the match. */
-#ifdef BR_MATCHING_BUILD
 void BrMainLoopRun(void);
-#else
-int32_t BrMainLoopRun(const BrMainLoopOps *pOps);
-#endif
 
 #endif /* BR_MAINLOOP_H */

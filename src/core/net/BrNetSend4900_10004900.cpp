@@ -11,9 +11,7 @@
  * Free cdecl. PutByte takes unsigned char so flags stays a byte load
  * (`mov bl,[esp+0x248]`), not a dword. volatile g_id keeps `a1`.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Pkt {
     char b[0x214];

@@ -12,10 +12,8 @@
  * 0x100425E0 / 0x10048160 (char bool after the slot store, raw
  * float pushes for simple lvalues, w14-then-w344 tails).
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #include <string.h>
-#endif
 
 class GameUi;
 class BrCtl;

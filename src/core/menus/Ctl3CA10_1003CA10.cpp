@@ -8,9 +8,7 @@
  *
  * Family-1 201 B installer. Shared-return activate; ctor DECLARED, no dtor.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Phase;
 

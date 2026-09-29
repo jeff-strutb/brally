@@ -1,0 +1,59 @@
+# Port deviations for src/core/drawing/br_bankflip.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:BrPtrListContains
+@drop define:_CRTIMP
+@drop undef:BrPtrListContains
+@drop define:BRS17_THISCALL
+@after define:BRS17_THISCALL
+/* XSLICE 0x100751D0
+ * 0x1002C2A0 tail-jumps into it with the object in ecx and nothing on the
+ * stack: it is a C++ __thiscall method. MSVC 5.0's C front end cannot spell
+ * __thiscall, but for a single pointer argument __fastcall is byte-identical
+ * at the call site (arg1 in ecx, no stack cleanup), so that is what the
+ * matching build uses. Off MSVC the qualifier vanishes and it is an ordinary
+ * one-argument function. */
+#define BRS17_THISCALL
+@end
+@drop var:DAT_105b9718
+@drop var:DAT_105b9720
+@drop var:DAT_105b9724
+@drop var:DAT_105b9700
+@drop var:DAT_105b972c
+@drop proto:FUN_10008d60
+@drop proto:FUN_10059f00
+@drop fn:BrS17BankFlip
+@after fn:BrS17BankFlip
+
+/* 0x1002C210 */
+/* WHAT IT DOES: switch to the other of two buffer banks and wipe it ready for
+ * use -- double buffering. It resets three channels to a default state, flips
+ * the bank index, timestamps the new bank, then clears its buffer in 0x800-byte
+ * steps. */
+/* @implements 0x1002C210 d3d BrS17BankFlip */
+void BrS17BankFlip(void)
+{
+    int i;
+    int bank;
+    uint32_t *hdr;
+    unsigned char *buf;
+
+    for (i = 0; i < 3; ++i)
+        BrStub10008B80(i, 0xFF, 0, 0xFF, 0x7F);
+
+    g_s17.bank ^= 1;
+    g_s17.bank578 = BrX10060E90();
+    g_s17.bank57C = 0;
+
+    bank = g_s17.bank;
+    hdr = g_s17.pBankHdr + (size_t)bank * 3;      /* lea [ecx*4 + base], ecx=3n */
+    buf = g_s17.pBankBuf + (size_t)bank * 3 * 0x800;
+
+    hdr[0] = 0;
+    hdr[1] = 0;
+    hdr[2] = 0;
+
+    for (i = 0; i < 3; ++i)
+        s17_st32(buf + (size_t)i * 0x800, 0);
+}
+@end

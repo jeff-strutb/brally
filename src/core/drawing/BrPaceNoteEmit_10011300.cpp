@@ -48,10 +48,8 @@
  *
  * BYTE-EXACT 2026-09-25 under /O2 /GX /MD.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 #include <stdio.h>     /* the preamble size is a codegen input: see the header */
 

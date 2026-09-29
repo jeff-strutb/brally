@@ -4,7 +4,6 @@
  * Filed out of the address batch slice1_06.c; its preamble is carried verbatim.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
 /* The original BrOptSave takes no arguments (loose globals in, packed
@@ -13,20 +12,13 @@
  * the port signature (cdecl, extra args harmless at run time). */
 #define BrOptSave   BrOptSave_hdr
 #define BrOptAvailB BrOptAvailB_hdr
-#ifdef BR_MATCHING_BUILD
 /* The original BrNameListInit is a thiscall ctor with no stack args (vtbl
  * and fill string are fixed); hide the port's 3-arg prototype. */
 #define BrNameListInit BrNameListInit_port
 #include "slice1_06.h"
 #undef BrNameListInit
-#else
-#include "slice1_06.h"
-#endif
 #undef BrOptSave
 #undef BrOptAvailB
-#else
-#include "slice1_06.h"
-#endif
 
 #include <stdlib.h>
 #include <string.h>
@@ -46,7 +38,6 @@ typedef char br06_assert_namelist[
  * answer is, allocates that much, then asks again to have it filled in, and
  * hands the block to the caller. On any failure it releases the block and
  * reports the error instead. */
-#ifdef BR_MATCHING_BUILD
 /* COM methods are stdcall; the header's BrComGetFn is cdecl. A local
  * stdcall typedef is what removes the `add esp, 10h` the cdecl form emits
  * after each call. __declspec(dllimport) is what emits `call dword ptr
@@ -148,46 +139,3 @@ success:
     *ppvOut = pv;
     return 0;       /* the original discards hr here */
 }
-#else
-/* WHAT IT DOES: the same two-step fetch, using calloc instead of a
- * Windows global heap block. */
-/* port-only variant of BrComGetAlloc (matching build uses the #ifdef branch above) */
-int32_t BrComGetAlloc(BrDPlayObj *pObj, void *pParam, void **ppvOut)
-{
-    BrComGetFn pfn = pObj->pVtbl->pfnGet;
-    uint32_t   cb  = 0;
-    void      *pv  = NULL;
-    int32_t    hr;
-
-    hr = pfn(pObj, pParam, NULL, &cb);
-    if (hr == BR_COM_E_BUFFERTOOSMALL) {
-        /* DEVIATION: GlobalAlloc(GMEM_MOVEABLE|GMEM_ZEROINIT, cb) followed by
-         * GlobalLock -> calloc; GlobalUnlock(GlobalHandle(p)) +
-         * GlobalFree(GlobalHandle(p)) -> free. The original's caller
-         * therefore receives a locked global handle's base pointer, not a CRT
-         * allocation; anything that later passes it back to GlobalFree has to
-         * be adjusted alongside this.
-         *
-         * Corner case, not reproduced: GlobalAlloc(GMEM_MOVEABLE, 0) yields a
-         * handle to a discarded object and the following GlobalLock returns
-         * NULL, so the original turns a zero-size result into
-         * E_OUTOFMEMORY. calloc has no such rule; the substitution below
-         * succeeds instead. No caller in this range asks for zero. */
-        pv = calloc(cb ? cb : 1u, 1u);
-        if (pv == NULL) {
-            hr = BR_COM_E_OUTOFMEMORY;
-        } else {
-            hr = pfn(pObj, pParam, pv, &cb);
-            if (hr >= 0) {
-                *ppvOut = pv;
-                return 0;   /* the original discards hr here */
-            }
-        }
-    }
-
-    if (pv != NULL) {
-        free(pv);
-    }
-    return hr;
-}
-#endif

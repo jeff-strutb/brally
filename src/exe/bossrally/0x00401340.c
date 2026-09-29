@@ -1,5 +1,4 @@
 /* 0x00401340 WinMain — CPlay && inits; drain/fullscreen goto fail; no nReturn=hPrev */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: the intro program itself -- start COM, open brally.avi, play
  * it full screen, then launch the real game launcher. Skipping the video is
  * what the key and mouse handlers do. */
@@ -58,4 +57,3 @@ fail:
     return nReturn;
 }
 
-#endif

@@ -8,9 +8,7 @@
  * then sub.Read(fFile, dst, items[i].f4) — thiscall on the member
  * object at +4 (0x10008E60).
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdio.h>
 
 struct Ent {

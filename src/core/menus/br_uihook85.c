@@ -8,7 +8,6 @@
  *
  * Every function carries its original address.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
 #include <windows.h>
@@ -251,4 +250,3 @@ int BrUiFn1003F280(int param_1)
   return 1;
 }
 
-#endif /* BR_MATCHING_BUILD */

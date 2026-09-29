@@ -1,0 +1,16 @@
+# Port deviations for src/core/net/br_ghostpick.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop include:<windows.h>
+@drop proto:BrTicks30FromMs
+@drop proto:BrCarStateLerp
+@drop proto:BrVec3Length_100682C0
+@drop proto:BrQuatNormalise_1006D410
+@drop proto:BrAngleWrap_10005C40
+@drop proto:BrAngleWrap_10005C70
+@drop proto:BrAngleWrap_10005CA0
+@drop var:DAT_10226a64
+@drop var:DAT_1007b264
+@drop var:DAT_1021ce58
+@drop var:DAT_100770b0
+@drop fn:BrGhostPickBlend

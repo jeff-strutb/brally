@@ -1,0 +1,16 @@
+# Port deviations for src/core/gamedata/br_seasondesc.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop include:<windows.h>
+@drop proto:FUN_100378c0
+@drop var:DAT_1007b600
+@drop var:g_brPhaseAA2904
+@drop var:s_seasondesc_dat_100acb4c
+@drop fn:FUN_10055a40
+@drop proto:FUN_100378c0#2
+@drop var:DAT_1007b0e0
+@drop var:DAT_100acaf8
+@drop var:g_brPhaseAA2904#2
+@drop var:s_RallySeason_100acb00
+@drop fn:FUN_10055af0

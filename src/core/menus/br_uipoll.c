@@ -25,10 +25,8 @@
  * over strlen+1 bytes, i.e. exactly strcpy, with no bound. strcpy is used.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice2_23.h"
 
 #include <stdio.h>
@@ -51,7 +49,6 @@
  * second position is forced back onto the stack.  Same trick, same reasoning
  * as BrSub10060260 in slice4_52.c -- see br_match.h.
  * ========================================================================== */
-#ifdef BR_MATCHING_BUILD
 /* XSLICE 0x100AA010 */ extern int32_t  g_i0AA010;
 /* XSLICE 0x10220B20 */ extern int32_t  g_i220B20;
 /* XSLICE 0x100AB3D8 */ extern int32_t  g_i0AB3D8;
@@ -106,7 +103,6 @@ typedef void (__fastcall *BrUiThis0)(void *pThis);
         a_.v = (v_);                                                         \
         (r_) = ((BrUiSelOfferFn)pVt_->f20)(pSel_, a_);                       \
     } while (0)
-#endif /* BR_MATCHING_BUILD */
 
 /* Layout facts the original's arithmetic depends on. */
 typedef char br23_assert_cfgrec[(sizeof(BrCfgRec) == 0x24) ? 1 : -1];
@@ -120,18 +116,11 @@ typedef char br23_assert_item[
 /* @implements 0x1003E920 d3d BrUiFn1003E920 */
 int32_t BrUiFn1003E920(BrUiObj *pObj, BrUiGlobals *pG)
 {
-#ifdef BR_MATCHING_BUILD
     /* Orig: lea 11*g+0x3D, fild, fstp [pObj+0x3c]. BrUiStF is an extern CALL. */
     int32_t v = g_i0AC65C * 11 + 0x3D;
     (void)pG;
     *(float *)(pObj + BR_UI_OFF_F3C) = (float)v;
     return 1;
-#else
-    /* lea ecx,[eax+eax*4] ; lea edx,[eax+ecx*2+0x3D]  ->  11*a + 61 */
-    int32_t v = pG->g0AC65C * 11 + 0x3D;
-    BrUiStF(pObj, BR_UI_OFF_F3C, (float)v);
-    return 1;
-#endif
 }
 
 /* ==========================================================================
@@ -142,7 +131,6 @@ int32_t BrUiFn1003E920(BrUiObj *pObj, BrUiGlobals *pG)
  * -- no track, no opponents chosen, the first control layout selected --
  * which is what a fresh trip into the menus begins from. */
 /* @implements 0x1003DFC0 d3d BrUiFn1003DFC0 */
-#ifdef BR_MATCHING_BUILD
 /* Orig (Glide 0x10037660, 66 B) is ten stores to fixed globals and reads
  * nothing off the stack.  `xor eax,eax` / `mov ecx,1` feed the 0/1 stores;
  * 2 and the 0x10B4DF30 pointer are imm32.  The port's pState/pB4DF30
@@ -161,20 +149,6 @@ void BrUiFn1003DFC0(BrStartupState *pState, void *pB4DF30)
     DAT_10b71534 = DAT_10b71290;
     DAT_1007b320 = 1;
 }
-#else
-void BrUiFn1003DFC0(BrStartupState *pState, void *pB4DF30)
-{
-    pState->g0B380C = 0;
-    pState->g22B350 = 0;
-    pState->g22B34C = 0;
-    pState->g094354 = 1;
-    pState->g09435C = 2;
-    pState->g094358 = 1;
-    pState->gB4E1D0 = 0;
-    pState->gB4E1D4 = pB4DF30;
-    pState->g094350 = 1;
-}
-#endif
 
 /* ==========================================================================
  * 0x1003E010 / 0x1003E040
@@ -185,7 +159,6 @@ void BrUiFn1003DFC0(BrStartupState *pState, void *pB4DF30)
  * pair the new-session reset writes, so this is a partial re-do of that
  * reset. */
 /* @implements 0x1003E010 d3d BrUiFn1003E010 */
-#ifdef BR_MATCHING_BUILD
 /* Orig materialises 0x102 in eax, stores ax as word then eax as dword.
  * Link-stage jmp+nop preamble is stripped by match_sweep. */
 void BrUiFn1003E010(BrUiGlobals *pG)
@@ -196,19 +169,11 @@ void BrUiFn1003E010(BrUiGlobals *pG)
     DAT_10ac5b38 = (int16_t)v;
     DAT_10ac58f0 = v;
 }
-#else
-void BrUiFn1003E010(BrUiGlobals *pG)
-{
-    pG->gAA27E0 = (int16_t)0x0102;
-    pG->gAA2598 = 0x102;
-}
-#endif
 
 /* WHAT IT DOES: the companion of the above, stamping a different fixed pair
  * into two more session settings. Again the meaning of the values was not
  * established. */
 /* @implements 0x1003E040 d3d BrUiFn1003E040 */
-#ifdef BR_MATCHING_BUILD
 void BrUiFn1003E040(BrUiGlobals *pG)
 {
     int v;
@@ -217,13 +182,6 @@ void BrUiFn1003E040(BrUiGlobals *pG)
     DAT_10ac5b3a = (int16_t)v;
     DAT_10ac40a0 = v;
 }
-#else
-void BrUiFn1003E040(BrUiGlobals *pG)
-{
-    pG->gAA27E2 = (int16_t)0x0037;
-    pG->gA9D010 = 0x37;
-}
-#endif
 
 /* ==========================================================================
  * The poll family
@@ -260,16 +218,12 @@ static int32_t br23_poll_store(BrUiObj *pObj, int32_t *pVal)
 /* @implements 0x1003EAE0 d3d BrUiPoll1003EAE0 */
 int32_t BrUiPoll1003EAE0(BrUiObj *pObj, BrUiGlobals *pG)
 {
-#ifdef BR_MATCHING_BUILD
     int32_t r;
     (void)pG;
     BR23_SEL_OFFER(pObj, r, g_i0AB3F4);
     if (r >= 0) {
         g_i0AB3F4 = r;
     }
-#else
-    (void)br23_poll_store(pObj, &pG->g0AB3F4);
-#endif
     return 1;
 }
 
@@ -279,15 +233,11 @@ int32_t BrUiPoll1003EAE0(BrUiObj *pObj, BrUiGlobals *pG)
 /* @implements 0x1003EBC0 d3d BrUiPoll1003EBC0 */
 int32_t BrUiPoll1003EBC0(BrUiObj *pObj, BrUiGlobals *pG)
 {
-#ifdef BR_MATCHING_BUILD
     int32_t r;
     (void)pG;
     /* The answer is thrown away -- there is no store-back here. */
     BR23_SEL_OFFER(pObj, r, g_iAA2880);
     (void)r;
-#else
-    (void)br23_sel_offer(pObj, pG->gAA2880);
-#endif
     return 1;
 }
 
@@ -297,17 +247,12 @@ int32_t BrUiPoll1003EBC0(BrUiObj *pObj, BrUiGlobals *pG)
 /* @implements 0x1003EC80 d3d BrUiPoll1003EC80 */
 int32_t BrUiPoll1003EC80(BrUiObj *pObj, BrUiGlobals *pG)
 {
-#ifdef BR_MATCHING_BUILD
     int32_t r;
     (void)pG;
     BR23_SEL_OFFER(pObj, r, g_iAA2840);
     if (r >= 0)
         g_iAA2840 = r;
     return 1;
-#else
-    (void)br23_poll_store(pObj, &pG->gAA2840);
-    return 1;
-#endif
 }
 
 /* WHAT IT DOES: the same ask-and-remember, storing into yet another
@@ -316,17 +261,12 @@ int32_t BrUiPoll1003EC80(BrUiObj *pObj, BrUiGlobals *pG)
 /* @implements 0x1003EDF0 d3d BrUiPoll1003EDF0 */
 int32_t BrUiPoll1003EDF0(BrUiObj *pObj, BrUiGlobals *pG)
 {
-#ifdef BR_MATCHING_BUILD
     int32_t r;
     (void)pG;
     BR23_SEL_OFFER(pObj, r, g_iAA2A30);
     if (r >= 0)
         g_iAA2A30 = r;
     return 1;
-#else
-    (void)br23_poll_store(pObj, &pG->gAA2A30);
-    return 1;
-#endif
 }
 
 /* WHAT IT DOES: the same, storing into the setting that tracks which entry
@@ -335,17 +275,12 @@ int32_t BrUiPoll1003EDF0(BrUiObj *pObj, BrUiGlobals *pG)
 /* @implements 0x1003EB60 d3d BrUiPoll1003EB60 */
 int32_t BrUiPoll1003EB60(BrUiObj *pObj, BrUiGlobals *pG)
 {
-#ifdef BR_MATCHING_BUILD
     int32_t r;
     (void)pG;
     BR23_SEL_OFFER(pObj, r, g_iAA28AC);
     if (r >= 0)
         g_iAA28AC = r;
     return 1;
-#else
-    (void)br23_poll_store(pObj, &pG->gAA28AC);
-    return 1;
-#endif
 }
 
 /* WHAT IT DOES: the same, storing into a different setting again. */
@@ -353,17 +288,12 @@ int32_t BrUiPoll1003EB60(BrUiObj *pObj, BrUiGlobals *pG)
 /* @implements 0x1003EB90 d3d BrUiPoll1003EB90 */
 int32_t BrUiPoll1003EB90(BrUiObj *pObj, BrUiGlobals *pG)
 {
-#ifdef BR_MATCHING_BUILD
     int32_t r;
     (void)pG;
     BR23_SEL_OFFER(pObj, r, g_iAA2880);
     if (r >= 0)
         g_iAA2880 = r;
     return 1;
-#else
-    (void)br23_poll_store(pObj, &pG->gAA2880);
-    return 1;
-#endif
 }
 
 int FUN_1003fac0(int);

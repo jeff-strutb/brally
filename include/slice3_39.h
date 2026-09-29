@@ -149,7 +149,6 @@ typedef struct BrTextBox {
  * matters.  Default NULL. */
 extern const BrTextBoxVtbl *g_pBrTextBoxVtbl;   /* stands in for 0x1008F728 */
 
-#ifdef BR_MATCHING_BUILD
 /* The original does not load a pointer variable -- it plants the vtable's
  * ADDRESS as an immediate, so matching needs an object to take the address
  * of, not a pointer to read.  Only ever declared: the sweep compiles with
@@ -157,7 +156,6 @@ extern const BrTextBoxVtbl *g_pBrTextBoxVtbl;   /* stands in for 0x1008F728 */
  * (which lives in the original image at 0x1008F728) is not needed here.
  * The port keeps using the g_pBrTextBoxVtbl hook above. */
 extern const BrTextBoxVtbl g_BrTextBoxVtbl;     /* 0x1008F728 */
-#endif
 
 /* 0x1005B050 (thiscall).  Zeroes sz[], width, height, x, y, f418, f41C,
  * f420 and f04; sets f08 = 1; returns pBox.
@@ -675,7 +673,7 @@ int32_t BrTextListConfig(BrTextList *pList, int32_t a1, const void *pStyle,
  * count to 99 -- so the hundredth row is overwritten again and again rather
  * than the list growing.  +0x2C is NOT ported, so that path faults.
  *
- * GOTCHA: the a5 == 0 path's strncpy(…, 10) does not NUL-terminate a source of
+ * GOTCHA: the a5 == 0 path's strncpy(â¦, 10) does not NUL-terminate a source of
  * ten or more characters, and the strcat that follows then scans past it.  In
  * practice the constructor has zeroed the whole 0x400-byte buffer, so byte 10
  * is a NUL and the append lands there.  Preserved, not fixed.

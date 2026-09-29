@@ -18,7 +18,6 @@
  * edge. Both residues are compiler scheduling/layout, not statement form.
  * REGNORM 2+1, +2 B, still parked.
  * @t4-pass 0x100583C0 1 2026-09-06 probes 2 bytes 379 insns 118 regions 2 rows 3 census no */
-#ifdef BR_MATCHING_BUILD
 
 #define _CRTIMP __declspec(dllimport)
 #include <stdio.h>
@@ -118,4 +117,3 @@ int FUN_100583c0(void)
   return 1;
 }
 
-#endif /* BR_MATCHING_BUILD */

@@ -7,15 +7,12 @@
  * matched first and grouped by what they are afterwards.
  * Every function carries its original address.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import
  * table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdio.h>
 #include <string.h>
 
-#ifdef BR_MATCHING_BUILD
 #include <windows.h>
 
 extern char DAT_100acacc[];
@@ -52,4 +49,3 @@ int FUN_100377a0(int param_1)
   return 0;
 }
 
-#endif /* BR_MATCHING_BUILD */

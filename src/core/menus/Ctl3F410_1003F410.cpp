@@ -16,9 +16,7 @@
  * `mov eax,1` and delays esi=1 until after the first enter (82 diffs).
  * Ctor DECLARED, no dtor.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Phase;
 

@@ -9,7 +9,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#ifdef BR_MATCHING_BUILD
 extern uint32_t g_67D550, g_0A81C8, g_AC300, g_690A14;
 extern uint32_t g_690A24, g_690A28;
 extern uint32_t g_0B3A68, g_0B39B0, g_1826BD0;
@@ -19,13 +18,8 @@ void BrExt_1001BAD0(void);
 void BrExt_10008B80(void);
 void BrExt_10067880(void *, void *, int);
 void BrExt_10067900(void *, void *);
-#ifdef _MSC_VER
 void __stdcall BrExt_1007F560(void *, int, int, void (*)(void));
 void __stdcall BrExt_1007F680(void *, int, int, void (*)(void), void (*)(void));
-#else
-void BrExt_1007F560(void *, int, int, void (*)(void));
-void BrExt_1007F680(void *, int, int, void (*)(void), void (*)(void));
-#endif
 void BrExt_10073B40(void);
 void BrExt_1003DA90(void *, void *);
 void BrExt_1007E8B0(void (*)(void));
@@ -36,81 +30,23 @@ void BrExt_1001BAD0(void) {}
 void BrExt_10008B80(void) {}
 void BrExt_10067880(void *a, void *b, int n) { (void)a; (void)b; (void)n; }
 void BrExt_10067900(void *a, void *b) { (void)a; (void)b; }
-#ifdef _MSC_VER
 void __stdcall BrExt_1007F560(void *a, int b, int c, void (*d)(void))
 { (void)a; (void)b; (void)c; (void)d; }
 void __stdcall BrExt_1007F680(void *a, int b, int c, void (*d)(void), void (*e)(void))
 { (void)a; (void)b; (void)c; (void)d; (void)e; }
-#else
-void BrExt_1007F560(void *a, int b, int c, void (*d)(void))
-{ (void)a; (void)b; (void)c; (void)d; }
-void BrExt_1007F680(void *a, int b, int c, void (*d)(void), void (*e)(void))
-{ (void)a; (void)b; (void)c; (void)d; (void)e; }
-#endif
 void BrExt_10073B40(void) {}
 void BrExt_1003DA90(void *a, void *b) { (void)a; (void)b; }
 void BrExt_1007E8B0(void (*p)(void)) { (void)p; }
 void BrExt_10038EB0(void) {}
 void BrExt_10069A80(void) {}
 void BrExt_10035585(void *p, int a, int b) { (void)p; (void)a; (void)b; }
-#else
-uint32_t g_67D550, g_0A81C8, g_AC300, g_690A14;
-uint32_t g_690A24, g_690A28;
-uint32_t g_0B3A68, g_0B39B0, g_1826BD0;
-uint32_t *g_A9D008, *g_57543C;
-uint32_t g_6C7C44, g_6C7C38, g_18AC2D0;
-
-void BrExt_1001BAD0(void) {}
-/* Declared, not defined: slice6_74.c carries the transcribed body of
- * BrExt_10008B80.  The original really is an empty function -- that is the
- * shipped behaviour, not a gap -- so a stand-in here looks harmless and is
- * not: it collides with the real definition at link time.  This TU still
- * passes it as a callback below, hence the declaration. */
-void BrExt_10008B80(void);
-void BrExt_10067880(void *a, void *b, int n) { (void)a; (void)b; (void)n; }
-void BrExt_10067900(void *a, void *b) { (void)a; (void)b; }
-void BrExt_1007F560(void *a, int b, int c, void (*d)(void))
-{ (void)a; (void)b; (void)c; (void)d; }
-void BrExt_1007F680(void *a, int b, int c, void (*d)(void), void (*e)(void))
-{ (void)a; (void)b; (void)c; (void)d; (void)e; }
-void BrExt_10073B40(void) {}
-void BrExt_1003DA90(void *a, void *b) { (void)a; (void)b; }
-void BrExt_1007E8B0(void (*p)(void)) { (void)p; }
-void BrExt_10038EB0(void) {}
-void BrExt_10069A80(void) {}
-void BrExt_10035585(void *p, int a, int b) { (void)p; (void)a; (void)b; }
-/* No stub for BrExt_10043E70: slice5_63.c carries the transcribed body.  The
- * stub also had the wrong signature -- void * where slice5_63.h and
- * slice2_26.h both declare int32_t. */
-void BrExt_10045BC0(void *p) { (void)p; }
-void BrExt_100451E0(void *p) { (void)p; }
-void BrExt_10046790(void) {}
-void BrExt_10046750(void) {}
-void BrExt_10046910(void) {}
-void BrExt_10046950(void) {}
-void BrExt_100469F0(void) {}
-void BrExt_10046A30(void) {}
-void BrExt_10046BB0(void) {}
-void BrExt_10002660(void *p) { (void)p; }
-void BrExt_100025F0(void *p) { (void)p; }
-void BrExt_10072B30(void *a, int b, int c) { (void)a; (void)b; (void)c; }
-void BrExt_10072A90(void *a, int b, int c, int d)
-{ (void)a; (void)b; (void)c; (void)d; }
-void BrExt_10024460(void) {}
-void BrExt_1002A640(void) {}
-int  BrExt_10075020(void) { return 0; }
-#endif
 
 /* WHAT IT DOES: drop a live object pointer and retarget a function slot. */
 /* @implements 0x1002B950 d3d BrFlagInit_1002B950 */
 void BrFlagInit_1002B950(void)
 {
     g_67D550 = 0;
-#ifdef BR_MATCHING_BUILD
     g_0A81C8 = 0x104B16E8u;  /* Glide VA */
-#else
-    g_0A81C8 = 0x10575540u;
-#endif
 }
 
 /* WHAT IT DOES: turn on the gate that skips "part 2", dispatch slot 4. */
@@ -152,22 +88,14 @@ int BrSet_1002F6E0(void)
 /* @implements 0x10067980 d3d BrWrap_10067980 */
 void BrWrap_10067980(void)
 {
-#ifdef BR_MATCHING_BUILD
     BrExt_10067880(&g_0B3A68, (void *)(uintptr_t)0x10B1CBA8, 0x40);  /* Glide VA */
-#else
-    BrExt_10067880(&g_0B3A68, (void *)(uintptr_t)0x10AF9848, 0x40);
-#endif
 }
 
 /* WHAT IT DOES: bind that 64-byte buffer without filling it. */
 /* @implements 0x100679A0 d3d BrWrap_100679A0 */
 void BrWrap_100679A0(void)
 {
-#ifdef BR_MATCHING_BUILD
     BrExt_10067900(&g_0B3A68, (void *)(uintptr_t)0x10B1CBA8);  /* Glide VA */
-#else
-    BrExt_10067900(&g_0B3A68, (void *)(uintptr_t)0x10AF9848);
-#endif
 }
 
 /* WHAT IT DOES: bind the same kind of buffer inside the caller's object. */
@@ -387,8 +315,7 @@ void BrWrap_10035610(void *p)
     BrExt_10035585(p, 1, 2);
 }
 
-/* ── Ghidra-matched functions ─────────────────────────── */
-#ifdef BR_MATCHING_BUILD
+/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
 extern int DAT_100a7514;
 extern int DAT_100a7518;
 extern int DAT_106e7714;
@@ -553,4 +480,3 @@ void BrRenderModeRestart(int param_1)
   return;
 }
 
-#endif /* BR_MATCHING_BUILD */

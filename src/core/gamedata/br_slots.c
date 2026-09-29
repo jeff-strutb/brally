@@ -32,7 +32,6 @@ int BrSlotsFindFree(const BrSlotTable *pTable)
     return -1;
 }
 
-#ifdef BR_MATCHING_BUILD
 extern BrSlot g_aBrAA2538[BR_SLOT_COUNT];
 
 /* WHAT IT DOES: walks the eight fixed slots at 0x10AA2538 and, for each
@@ -70,4 +69,3 @@ int BrSlotsFindById(int id)
     }
     return 0;
 }
-#endif

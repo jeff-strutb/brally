@@ -5,7 +5,7 @@
  * a cdecl free function taking one object pointer, doing its work through
  * that object's vtable and returning 1.
  *
- * ‼ THIS BELONGS TO THE C++ LANE, for exactly one reason, and the structure
+ * â¼ THIS BELONGS TO THE C++ LANE, for exactly one reason, and the structure
  * below is otherwise complete: 40 instructions against the original's 40 in
  * shape, REGNORM 4+2, and the ONLY rows are
  *
@@ -34,7 +34,6 @@
  * 0x10B71A68 re-read from memory on every iteration (both the entry test
  * and the back edge are UNSIGNED: `test/jbe` then `cmp/jb`).
  */
-#ifdef BR_MATCHING_BUILD
 
 /* The original binary is /MD: CRT calls resolve through the import table. */
 #define _CRTIMP __declspec(dllimport)
@@ -93,4 +92,3 @@ int BrItemDrawIconRow(BrIconItem *pItem)
     return 1;
 }
 
-#endif /* BR_MATCHING_BUILD */

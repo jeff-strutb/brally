@@ -16,9 +16,7 @@
  * The port body in slice3_32.c takes a globals-struct pointer it does not
  * need; the original is a bare thiscall. Same split as the siblings.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Tween41100 {
 public:

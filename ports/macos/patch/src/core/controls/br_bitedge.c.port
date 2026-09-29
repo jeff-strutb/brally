@@ -1,0 +1,22 @@
+# Port deviations for src/core/controls/br_bitedge.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:BrRgbSinkSet
+@drop define:BrSub100088B0
+@drop define:BrSegSetBases
+@drop undef:BrSub100088B0
+@drop undef:BrSegSetBases
+@drop type:BrModelLoadArg
+@drop var:g_brModelMgr
+@drop proto:BrSub100088B0
+@drop proto:BrSegSetBases
+@drop undef:BrRgbSinkSet
+@drop proto:BrRaceStep_10019A70
+@drop define:BR_PAD_RACE_STEP
+@after define:BR_PAD_RACE_STEP
+
+/* 0x10019A70 is the (unclaimed, 11 KB) race step.  The original passes its
+ * address as an IMMEDIATE, so the matching build needs a function symbol,
+ * not a pointer variable.  The port keeps the variable. */
+#define BR_PAD_RACE_STEP g_BrPadHookFn
+@end

@@ -1,7 +1,6 @@
 /* Auto-generated from disassembly — 0x00401050
  * CHK_FReadOpen. 8-byte {FILE*, name} wrapper. Error path writes
  * c:\RallyError.txt then OutputDebugStringA + exit(1). */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: open a file for reading and abort with a message if it is
  * not there. The settings tool reads its lists this way so a missing file is
  * loud, not silent. */
@@ -58,4 +57,3 @@ CHKFile *CHK_FReadOpen(char *path)
 }
 
 
-#endif /* BR_MATCHING_BUILD */

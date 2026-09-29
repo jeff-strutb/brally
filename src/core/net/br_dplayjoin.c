@@ -8,10 +8,8 @@
  * Every function carries its original address.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdio.h>
 #include <string.h>
 
@@ -61,7 +59,6 @@ void BrSub1003C150(void)
  * unless something else changed it. As with hosting, the failure message it
  * builds is discarded rather than shown. */
 /* @implements 0x1003C260 d3d BrSub1003C260 */
-#ifdef BR_MATCHING_BUILD
 /* Direct globals/callees; the 29D4 deref is unguarded as in the original;
  * the retry hook is a direct call; one shared return-1 tail. */
 extern int   DAT_10273328;
@@ -124,75 +121,8 @@ int BrSub1003C260(void)
     BrSub1003CE80();
     return 1;
 }
-#else
-/* WHAT IT DOES: joins a network game somebody else is hosting, under the
- * player's Windows user name. If that name is already taken it asks whether
- * to try again and does so with the same name -- which will fail the same way
- * unless something else changed it. As with hosting, the failure message it
- * builds is discarded rather than shown. */
-/* @implements 0x1003C260 d3d BrSub1003C260 */
-int BrSub1003C260(void)
-{
-    unsigned char aJoin[BR50_DPJOIN_SIZE];
-    char          szName[BR50_DPNAME_SIZE];
-    char          szMsg[BR50_DPMSG_SIZE];
-    uint32_t      cbName;
-    int32_t       hr;
 
-    if (g_brP277B40 == NULL) {
-        return 0;
-    }
-
-    /* GOTCHA: 29D8 is the one that is null-tested; 29D4 is then dereferenced
-     * unguarded. DEVIATION: guarded, folded into the same early-out. */
-    if (g_brPAA29D8 == NULL || g_brPAA29D4 == NULL) {
-        return 1;
-    }
-    /* `cmp word ptr [eax+0x1E164], 0 / jbe` -- unsigned, so this is == 0. */
-    if (g_brPAA29D4->f1E164 == 0) {
-        return 1;
-    }
-
-    if (g_brA9D000 == 0) {
-        hr = BrSub1003D030(aJoin);
-        if (hr >= 0) {
-            memset(szName, 0, sizeof szName);   /* rep stosd, ecx = 0xC8 */
-            cbName = BR50_DPNAME_CB;
-            (void)BrPlatGetUserName(szName, &cbName);
-
-            hr = BrSub1003C740(g_brP277B40, aJoin, szName, g_brPA9D008);
-
-            /* DPERR_USERCANCEL: run 0x10042AF0 on the name and, if it says
-             * yes, retry the join with the same arguments. If it says no the
-             * original returns immediately -- WITHOUT the 0x1003BF60 /
-             * 0x1003C020 teardown the ordinary failure path runs. */
-            if (hr == (int32_t)0x88770820u) {
-                if (g_brPfn42AF0_1 == NULL || g_brPfn42AF0_1(szName) == 0) {
-                    return 0;
-                }
-                hr = BrSub1003C740(g_brP277B40, aJoin, szName, g_brPA9D008);
-            }
-        }
-
-        if (hr < 0) {
-            BrSub1003BF60();
-            BrSub1003C020();
-            BrSprintf(szMsg,
-                      "Could not join session because of error 0x%08X",
-                      (unsigned int)hr);
-            return 0;
-        }
-    }
-
-    g_br22AF18 = 1;
-    BrSub10005B10(1);
-    BrSub1003CE80();
-    return 1;
-}
-#endif
-
-/* ── Ghidra-matched functions ─────────────────────────── */
-#ifdef BR_MATCHING_BUILD
+/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
 #include <windows.h>
 extern int DAT_10078828;
 extern int DAT_10078858;
@@ -461,7 +391,7 @@ int BrDpSessionJoin(void *pDp, DWORD *pGuidInstance, BrDpLogin *pLogin,
     return hr;
 }
 
-/* ── the lobby launch path ─────────────────────────────────────────────── */
+/* ââ the lobby launch path âââââââââââââââââââââââââââââââââââââââââââââââ */
 
 /* CLSID_DirectPlayLobby (0x10078918), IID_IDirectPlayLobby3A (0x10078908),
  * and the IID ConnectEx asks for (0x10078848). */
@@ -501,7 +431,7 @@ typedef int (__stdcall *BrComRel)(void *pThis);                      /* +0x08 */
  * through the C++ front end (also folds, and C++ costs elsewhere).  The
  * ternary must be spelled `flag != 0 ? 0x100 : 0` (the literal
  * `-(uint)(flag != 0) & 0x100` compiles to setne).
- * ‼ The nine probes above were recorded 2026-09-09 in a shape Gate B does not
+ * â¼ The nine probes above were recorded 2026-09-09 in a shape Gate B does not
  * count -- `probes=9 result=-6B/raw0+1` instead of the counted form -- so
  * t3.py read the ledger as empty. Re-stated below at the numbers that still
  * hold (the function has not changed since); the work was done, only the
@@ -619,4 +549,3 @@ int BrDpLobbyConnect(int *param_1)
     return iVar2;
 }
 
-#endif /* BR_MATCHING_BUILD */

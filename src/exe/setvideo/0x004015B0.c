@@ -2,7 +2,6 @@
  * i = p->index + 1 while pini is still live, then list = p->pini->list.
  * Indexed `list->rgsz[i][0]` (`while (i < n)`). Loading i after pini dies
  * colors pini into ecx (3 diffs). */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: advance a cursor to the next section, so the sections can be
  * enumerated. */
 /* @implements 0x004015B0 setvideo.exe FindNextSection */
@@ -61,4 +60,3 @@ Section *FindNextSection(Section *p)
 }
 
 
-#endif /* BR_MATCHING_BUILD */

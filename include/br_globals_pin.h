@@ -6,7 +6,6 @@
 #ifndef BR_GLOBALS_PIN_H
 #define BR_GLOBALS_PIN_H
 
-#ifdef BR_MATCHING_BUILD
 
 /* --- .data (1952 globals) --- */
 /* 0x100940A4 */  /* g_0940A4, 4 bytes */
@@ -2592,5 +2591,4 @@
  * alongside this header by the matching build system.
  */
 
-#endif /* BR_MATCHING_BUILD */
 #endif /* BR_GLOBALS_PIN_H */
