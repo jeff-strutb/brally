@@ -113,8 +113,9 @@ void BrCreditsDrawCars(void)
  * animates three of them), the clock, sound banks and flags function statics
  * (the ROM addresses each afresh and keeps the clock in f16 with stores
  * back); ROM file offsets are link-time symbols.
- * RESIDUE (1461, same size): the ROM frame is 0xB0 against 0xA0 here, and each model load reloads
- * the stored pointer where the ROM passes v0 on. */
+ * RESIDUE (1461, same size): the ROM frame is 0xB0 against 0xA0 here,
+ * and each model load reloads the stored pointer where the ROM passes v0
+ * on. */
 /* @implements 0x8020686C tgr BrIntroScreen */
 void BrIntroScreen(void)
 {
