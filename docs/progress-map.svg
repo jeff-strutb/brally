@@ -2109,7 +2109,7 @@
 <rect x="1061.1" y="624.8" width="49.3" height="52.3" fill="#58a6ff"><title>BrGhostPlaybackStep  0x10061F60  1073B  [core/racing/br_ghoststep]</title></rect>
 <rect x="1061.1" y="680.7" width="49.3" height="52.2" fill="#58a6ff"><title>BrGhostPickBlend  0x10005810  1070B  [core/net/br_ghostpick]</title></rect>
 <rect x="1061.1" y="736.5" width="49.3" height="51.8" fill="#58a6ff"><title>BrModelSwap  0x100302A0  1062B  [core/gamedata/br_modelswap]</title></rect>
-<rect x="1061.1" y="791.9" width="49.3" height="51.6" fill="#3f6f7a"><title>BrDlVtxLitDecal  0x100221D0  1059B  [core/drawing/br_dlvtx_litdecal]</title></rect>
+<rect x="1061.1" y="791.9" width="49.3" height="51.6" fill="#3fb950"><title>BrDlVtxLitDecal  0x100221D0  1059B  [core/drawing/br_dlvtx_litdecal]</title></rect>
 <rect x="1061.1" y="847.1" width="49.3" height="50.8" fill="#58a6ff"><title>BrCarTrackLocate  0x1006E5C0  1044B  [core/racing/br_cartracklocate]</title></rect>
 <rect x="1114.1" y="389.6" width="51.6" height="48.0" fill="#3fb950"><title>BrGbiCall10021560  0x100215C0  1032B  [core/drawing/br_dltexrect]</title></rect>
 <rect x="1169.3" y="389.6" width="20.0" height="30.4" fill="#3fb950"><title>BrChkFReadOpen  0x10003320  260B  [core/gamedata/br_chkfile]</title></rect>
@@ -2786,4 +2786,4 @@
 <rect x="1594.7" y="892.9" width="3.2" height="0.4" fill="#3fb950"><title>BrFtolArg  0x10018990  9B  [core/geometry/br_ftol]</title></rect>
 <rect x="1594.7" y="896.6" width="0.4" height="1.3" fill="#3fb950"><title>BrCosF  0x100023E0  7B  [core/geometry/br_cos]</title></rect>
 <rect x="1598.7" y="896.6" width="0.4" height="1.3" fill="#3fb950"><title>BrThunk5C440  0x1005C440  5B  [core/racing/br_thunks]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1401 &#183; T3 codegen-only 188 &#183; 276,362/521,753 bytes exact (53.0%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1402 &#183; T3 codegen-only 188 &#183; 277,421/521,753 bytes exact (53.2%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
