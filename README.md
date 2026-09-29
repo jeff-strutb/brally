@@ -300,7 +300,7 @@ reference/brally/BossRally.BIN                retail PC disc
     MD5  31c64f9b1e09788c2dfc384b44af8f6c     616,572,096 bytes (MODE1/2352)
 reference/brally/BossRally.cue                cue sheet (data + 12 audio tracks)
     MD5  a48a4a5860558177c3041afee57e03c9     622 bytes
-reference/tgrally/Top Gear Rally (USA).z64    Top Gear Rally ROM (optional)
+reference/tgrally/Top Gear Rally (USA).z64    Top Gear Rally ROM (optional; the Mac app needs it)
     MD5  6f7030284b6bc84a49e07da864526b52     8,388,608 bytes (big-endian, NGRE)
 ```
 
@@ -324,8 +324,8 @@ The game runs natively on macOS: an arm64 Mac app with a window, Metal
 rendering, and the Mac's keyboard, mouse and game controllers. It is rough but
 working. It boots through the splash and loading screens to the main menu, runs
 the front end (menus, race and car setup, all menu art), and drives races with
-the textured track, cars, shadows and HUD on screen. Quitting from the menu,
-with Cmd-Q or with the close box exits cleanly.
+the textured track, cars, shadows and HUD on screen, with music. Quitting
+from the menu, with Cmd-Q or with the close box exits cleanly.
 
 - **Native resolution.** 3D is projected, clipped and rasterised by the GPU
   at the window's pixel size (2560x1920 in a 1280x960 window on a Retina
@@ -343,6 +343,18 @@ with Cmd-Q or with the close box exits cleanly.
 - **Game controllers.** Any controller macOS supports (Xbox, PlayStation,
   Switch Pro, MFi) appears to the game as a joystick: choose it in the
   game's options and bind it in its Controls menu, as on Windows.
+- **Two soundtracks.** The Music menu picks the PC soundtrack (the disc's CD
+  audio) or the N64 one (Top Gear Rally's tracker modules, played live and
+  looping as on the N64, with the pieces the N64 game uses for its title
+  screen and each race track). The choice is remembered and switches
+  mid-song; the two are level-matched. The game's own music logic decides
+  what plays when, as on Windows: the front-end track, a random track per
+  race, the next track when one ends, the Options jukebox and the
+  next/previous keys.
+- **A self-contained app.** One command extracts everything the game reads
+  from your disc image and ROM (the data track, the CD audio, the N64
+  modules) and builds `Boss Rally.app` around it. Once built, the app needs
+  neither image nor this tree: copy it anywhere and open it.
 
 **How it works.** Every function in the verified M1 build (all T3 and T4
 bodies) is compiled from the same `src/` tree the byte-exact build uses; no
@@ -361,7 +373,7 @@ Win32, DirectX, Glide and C runtime calls the game makes:
 |---|---|
 | `host_app.m` | `main`, the window, keyboard and mouse, presenting frames |
 | `host_glide.m` | Glide on Metal, modelled on the Voodoo: 16-bit W/Z depth, mip levels, filtering, LOD bias |
-| `host_win.c` | Win32: files (the disc image as the CD, saves), threads, timers, CD audio control |
+| `host_win.c` | Win32: files (the disc image as the CD, saves), threads, timers |
 | `host_dx.c` | DirectInput, DirectSound, DirectPlay as COM objects in game memory |
 | `host_ear.c` | the EAR 3D sound engine the game loads by name |
 | `host_crt.c` | the C runtime |
@@ -378,15 +390,15 @@ not in the verified placement. That is how the Mac-native parts plug in:
 | `native/render.m` | the display-list triangle leaves: GPU projection and clipping |
 | `native/input.m` | reads the Mac's game controller for the DirectInput joystick |
 | `native/window.m` | live resizing and full screen |
+| `native/music.m` | the CD music backends (MCI and the EAR engine's CD channel): AVAudioEngine for the CD audio, libopenmpt for the N64 modules, the Music menu |
 
 `ports/macos/NATIVE_RENDERER.md` is the design and records what each piece
 measured. This 32-bit lane is interim; a native 64-bit port comes later.
 
 **Not there yet.**
 
-- **No sound or music.** The sound engine and DirectSound answer as working
-  devices but play nothing. How music should work (the PC's CD soundtrack or
-  the N64's tracker modules) is an open decision: `ports/MUSIC-DECISION-PENDING.md`.
+- **No sound effects.** Music plays; the sound engine and DirectSound
+  answer as working devices but play no effects.
 - **No wheels or force feedback.** Game controllers work as a joystick;
   force-feedback wheels are not supported.
 - **No network play.** DirectPlay answers as a machine with no connection
@@ -408,12 +420,15 @@ measured. This 32-bit lane is interim; a native 64-bit port comes later.
    .venv/bin/python tools/match_sweep.py
    ```
 
-3. Install Homebrew's emscripten. The build uses only its LLVM (clang with the
-   wasm backend), not the emcc driver. Set `BR_WASM_LLVM` to use another
-   wasm-capable LLVM `bin/` directory.
+3. Install Homebrew's emscripten, libopenmpt and ffmpeg. The build uses only
+   emscripten's LLVM (clang with the wasm backend), not the emcc driver; set
+   `BR_WASM_LLVM` to use another wasm-capable LLVM `bin/` directory.
+   libopenmpt is linked statically, so the built game depends on no
+   Homebrew library; ffmpeg only encodes the CD audio when the app is
+   packaged.
 
    ```bash
-   brew install emscripten
+   brew install emscripten libopenmpt ffmpeg
    ```
 
 4. Build. This writes `build/wasm/brally`; later runs rebuild only what
@@ -423,7 +438,19 @@ measured. This 32-bit lane is interim; a native 64-bit port comes later.
    sh ports/macos/wasm/build_wasm.sh
    ```
 
-**Running.** From the repo root:
+5. Or build the app instead, which runs step 4 itself. It reads
+   `reference/brally/BossRally.BIN` (with its `.cue`) and
+   `reference/tgrally/Top Gear Rally (USA).z64`, or the paths given with
+   `--bin` and `--rom`, and writes `build/app/Boss Rally.app` (about 370 MB).
+   Extraction runs once per set of images; later packages reuse it.
+
+   ```bash
+   ports/macos/wasm/package_app.sh
+   ```
+
+**Running.** Open `build/app/Boss Rally.app`, or run the bare build from the
+repo root (it reads the disc from `testdata/disc/` and the music from the
+app's extract in `build/app/extract/music`):
 
 ```bash
 build/wasm/brally
@@ -447,6 +474,10 @@ the host reads:
 | `BR_VCLOCK=ms` | virtual time (each clock read costs `ms`), so scripted runs repeat exactly |
 | `BR_GLIDE3D=1` | draw 3D through the original Glide path, for side-by-side checks |
 | `BR_PADFAKE=x,y,z,buttons` | a fixed controller state, for checks without a controller |
+| `BR_MUSIC=0` | no music (headless runs are always silent) |
+| `BR_MUSIC_DIR=dir` | where the bare build finds the soundtracks (`cd/`, `n64/`) |
+| `BR_MUSICWAV=file` | record the music output to a file, for checks without listening |
+| `BR_MUSICSWAP=s` | switch soundtrack through the Music menu's action `s` seconds in |
 
 The screenshot at the top of this file was taken headless:
 
