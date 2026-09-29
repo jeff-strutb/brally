@@ -60,6 +60,8 @@ void BrGfxFillRect(int x, int y, int w, int h, int r, int g, int b);
  * RESIDUE (116): the two cull-mode ternaries -- the ROM materialises the 0x1000
  * arm first and fills the branch's delay slot from the 0x2000 arm (4 bytes
  * longer); everything after is shifted by that. */
+/* @t4-pass 0x8022F968 1 2026-09-29 compiles 97 best 116 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8022F968 2 2026-09-29 compiles 97 best 116 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8022F968 tgr BrSkyDraw */
 void BrSkyDraw(void)
 {
