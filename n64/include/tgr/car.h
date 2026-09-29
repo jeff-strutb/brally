@@ -45,7 +45,9 @@ typedef struct BrCarLink {
 typedef struct BrCarBody {
     char pad000[0x74];
     float pos[3];               /* 0x74  where it hangs off the car body */
-    char pad080[0x148 - 0x80];
+    char pad080[0x13C - 0x80];
+    int x13c;                   /* 0x13C */
+    char pad140[0x148 - 0x140];
     float steer;                /* 0x148  radians */
     char pad14c[0x15C - 0x14C];
     float spin;                 /* 0x15C  degrees */
@@ -73,14 +75,18 @@ typedef struct BrCar {
     unsigned char x344;         /* 0x344  a pending HUD arrow (0 = none) */
     char pad345[0x3C8 - 0x345];
     BrCarBody wheels[4];        /* 0x3C8  the wheels' bodies (wheel[] points at them) */
-    char padbe8[0xDF4 - 0xBE8];
+    char padbe8[0xDF0 - 0xBE8];
+    float xdf0;                 /* 0xDF0 */
     float xdf4;                 /* 0xDF4  scales the exhaust smoke (0.001 per unit) */
     char xdf8[0x1c];            /* 0xDF8  from the kind table */
     float xe14[5];              /* 0xE14  from the kind table */
     int xe28[2];                /* 0xE28  from the kind table */
     int xe30;                   /* 0xE30 */
     int xe34;                   /* 0xE34  from the kind table */
-    char pade38[0xE58 - 0xE38];
+    float xe38;                 /* 0xE38 */
+    float xe3c;                 /* 0xE3C */
+    int xe40;                   /* 0xE40 */
+    char pade44[0xE58 - 0xE44];
     int xe58;                   /* 0xE58 */
     BrSeason *season;           /* 0xE5C  the player's season, 0 for others */
     int xe60;                   /* 0xE60  from the season (or the ghost's header) */
@@ -141,7 +147,11 @@ typedef struct BrCar {
     int mtx[16];                /* 0x1D88 */
     char pad1dc8[0x1DCC - 0x1DC8];
     float heading;              /* 0x1DCC  of the camera, radians */
-    char pad1dd0[0x1DE4 - 0x1DD0];
+    char pad1dd0[0x1DD4 - 0x1DD0];
+    float x1dd4;                /* 0x1DD4  rotation rates while free-flying */
+    float x1dd8;                /* 0x1DD8 */
+    float x1ddc;                /* 0x1DDC  speed while free-flying */
+    float x1de0;                /* 0x1DE0 */
     float fog;                  /* 0x1DE4  fog amount at the car */
     BrCarCam *cam;              /* 0x1DE8  the camera in use */
     BrCarCam *cam2;             /* 0x1DEC  the camera it switches back to */
@@ -157,9 +167,11 @@ typedef struct BrCar {
     BrVec3 camPosB;             /* 0x1FB4 */
     unsigned short x1fc0[32];   /* 0x1FC0  trigger ids the car has passed */
     int x2000;                  /* 0x2000  entries in x1fc0 */
-    char pad2004[0x2044 - 0x2004];
+    int x2004[16];              /* 0x2004 */
     int x2044;                  /* 0x2044 */
-    char pad2048[0x2058 - 0x2048];
+    int x2048;                  /* 0x2048 */
+    int x204c;                  /* 0x204C */
+    char pad2050[0x2058 - 0x2050];
     int x2058;                  /* 0x2058  the kind it was given (copied to kind) */
     int kind;                   /* 0x205C */
     unsigned char colour[4];    /* 0x2060  body colour r, g, b and a fourth byte */
