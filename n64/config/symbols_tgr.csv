@@ -490,6 +490,7 @@ va,name,kind
 8025B3B0,BrCrTriContainsPoint,func
 8025B704,BrCrPlaneDist,func
 8025B73C,BrCrContactKick,func
+8025BBB8,BrCrImpulseSolve,func
 8025BBA4,BrStub8025BBA4,func
 8025C24C,BrCrListPush,func
 8025C27C,BrCrListPrintCount,func
@@ -526,6 +527,7 @@ va,name,kind
 80260FD0,guMtxIdentF,func
 80261058,guMtxIdent,func
 80261140,sqrtf,func
+80261150,guLookAtReflectF,func
 80261610,sinf,func
 802617D0,cosf,func
 80261940,osPfsIsPlug,func
