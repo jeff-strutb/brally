@@ -195,17 +195,28 @@ void h_DeleteCriticalSection(u32 cs) { (void)cs; }
 /* threads: each on its own 1 MB shadow stack below the main one */
 static int g_nthreads;
 typedef struct { u32 start, param, sp; u32 h; } thr_arg;
+static __thread u32 t_self;             /* this thread's handle; 0 on the main thread */
+/* A thread handle is signalled when the thread ends, however it ends:
+ * returning from its start routine or calling ExitThread. */
+static void thr_signal_self(void)
+{
+    hobj *o;
+    pthread_mutex_lock(&g_hl);
+    if (t_self && (o = hget(t_self)) != NULL) o->signalled = 1;
+    pthread_cond_broadcast(&g_hc);
+    pthread_mutex_unlock(&g_hl);
+}
 static void *thr_main(void *p)
 {
     thr_arg a = *(thr_arg *)p;
     u32 r;
     free(p);
     w_sp = a.sp;
+    t_self = a.h;
+    HLOG("thread %08X start %08X\n", a.h, a.start);
     r = w_icall_i_i(a.start, a.param);
-    pthread_mutex_lock(&g_hl);
-    hget(a.h)->signalled = 1;
-    pthread_cond_broadcast(&g_hc);
-    pthread_mutex_unlock(&g_hl);
+    HLOG("thread %08X returned %u\n", a.h, r);
+    thr_signal_self();
     (void)r;
     return NULL;
 }
@@ -228,7 +239,9 @@ u32 h_CreateThread(u32 sa, u32 ss, u32 start, u32 param, u32 flags, u32 ptid)
     pthread_create(&hget(h)->thr, NULL, thr_main, a);
     return h;
 }
-void h_ExitThread(u32 code) { (void)code; pthread_exit(NULL); }
+/* BrDPlayThreadProc ends this way; without the signal, BrDPlayShutdown's
+ * WaitForSingleObject(thread, INFINITE) never returned and quitting hung. */
+void h_ExitThread(u32 code) { HLOG("thread %08X ExitThread(%u)\n", t_self, code); thr_signal_self(); pthread_exit(NULL); }
 u32 h_DisableThreadLibraryCalls(u32 h) { (void)h; return 1; }
 
 /* ============================================================ system == */
