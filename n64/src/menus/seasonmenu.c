@@ -32,6 +32,28 @@ extern int D_80315EE0;
 extern int D_80315EE8;
 extern int D_8036A8E0;
 extern int D_8036A8F8;
+extern float D_80271D5C;                /* the current race's blink clock */
+extern float D_8028AAD8;                /* the frame time */
+extern int D_8028AAB0;                  /* the screen width */
+extern int D_8028AAB4;                  /* and height */
+extern char D_80315F38[];               /* a text line */
+extern char **D_80271D1C[];             /* the tracks (their names first) */
+extern char **D_802722A4[];             /* the weathers (their names first) */
+extern int D_8028AA78;
+extern int D_8028AA80;
+extern int D_8028AA84;
+extern int D_8028AA8C;
+typedef struct BrSeasonView { int x; int y; int w; int h; int car; } BrSeasonView;
+extern BrSeasonView D_8031B2C8[2];
+void BrTextHighlightOff(void);
+void BrTextAlignLeft(void);
+void BrTextAlignRight(void);
+void BrTextSetColours(int r1, int g1, int b1, int r2, int g2, int b2);
+void BrTimeFormat(char *buf, float t);
+void func_802182A8(void);
+void BrFrameTintSetup(void);
+void func_8020C6D0(int a, int b, int c, int x, int y, int w, int h, float d, int e, int f, int g, float k, float l);
+void BrScissorSet(int x, int y, int w, int h);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Make player 1's season record consistent: a negative state
@@ -136,4 +158,110 @@ void BrSeasonDrawHelp(int param_1)
       BrFrontSetMenuFlag(D_8028B940);
     }
   }
+}
+
+/* WHAT IT DOES: Draw the season screen: the season's name, the round's
+ * races (track and weather, mirrored on a mirror season; the one to run
+ * next blinks yellow) with the player's race and lap records for each track,
+ * and the cars on offer, with the two car views set up side by side.
+ * RESIDUE (454): the ROM keeps the season state in s4 (state & 1 hoisted to
+ * fp per loop), the round in s0 and the text buffer address in s2, spilling
+ * the race and the round pointer (0x84, 0x70) in a 0xB0 frame; ours spills
+ * the state and reloads the race count each pass.  The blink clock's address
+ * is rematerialised per access in the ROM.  Part of the count is the TU's
+ * later functions (their strings and .lit4 floats precede and follow ours). */
+/* @implements 0x80208CF0 tgr BrSeasonDraw */
+void BrSeasonDraw(void)
+{
+  int race;
+  int round;
+  unsigned int state;
+  BrRound *r;
+  int i;
+  int k;
+  int off;
+  int y;
+  float t;
+
+  D_80271D5C = t = D_80271D5C + D_8028AAD8;
+  while (t > 0.75f) {
+    t -= 0.75f;
+  }
+  D_80271D5C = t;
+  y = 95;
+  race = D_8031B760[0].season->race;
+  round = D_8031B760[0].season->round;
+  state = D_8031B760[0].season->state;
+  BrTextHighlightOff();
+  BrTextAlignCentre();
+  BrTextSetFont(20);
+  r = &D_8028B944[round];
+  sprintf(D_80315F38, "%%ry%s:", (char *)r->x4);
+  BrTextPrint((int)D_80315F38, D_8028AAB0 / 2, D_8028AAB4 * 20 / 64);
+  off = 0;
+  for (i = 0; i < r->x8; i++) {
+    if (D_8028B944[round].races[i][0] < 5) {
+      if (state & 1) {
+        off = D_8028AAB0 * 3 / 64;
+        break;
+      }
+    } else if (!(state & 1)) {
+      off = D_8028AAB0 * 3 / 64;
+      break;
+    }
+  }
+  BrTextSetFont(8);
+  BrTextAlignRight();
+  BrTextPrint((int)"Race Record", D_8028AAB0 * 23 / 32 + off, 0x56);
+  BrTextPrint((int)"Lap Record", D_8028AAB0 * 28 / 32 + off + 2, 0x56);
+  BrTextSetFont(10);
+  for (i = 0; i < r->x8; i++) {
+    k = D_8028B944[round].races[i][0];
+    if (state & 1) {
+      if (k < 5) {
+        k += 5;
+      } else {
+        k -= 5;
+      }
+    }
+    BrTextAlignLeft();
+    if (i == race && D_80271D5C < 0.4f) {
+      BrTextSetColours(0xFF, 0xF0, 0x50, 0xFF, 0xF0, 0x50);
+    } else {
+      BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF);
+    }
+    sprintf(D_80315F38, "Race %d", i + 1);
+    BrTextPrint((int)D_80315F38, D_8028AAB0 * 4 / 32 - off, y);
+    sprintf(D_80315F38, "%s/%s", *D_80271D1C[k], *D_802722A4[D_8028B944[round].races[i][1]]);
+    BrTextPrint((int)D_80315F38, D_8028AAB0 * 8 / 32 - off + 4, y);
+    BrTextAlignRight();
+    if (D_8031B760[0].season->xe8[k] != 0) {
+      BrTimeFormat(D_80315F38, D_8031B760[0].season->xe8[k]);
+    } else {
+      sprintf(D_80315F38, "--    ");
+    }
+    BrTextPrint((int)D_80315F38, D_8028AAB0 * 23 / 32 + off - 1, y);
+    if (D_8031B760[0].season->x8c[k] != 0) {
+      BrTimeFormat(D_80315F38, D_8031B760[0].season->x8c[k]);
+    } else {
+      sprintf(D_80315F38, "--    ");
+    }
+    BrTextPrint((int)D_80315F38, D_8028AAB0 * 28 / 32 + off, y);
+    y += 10;
+  }
+  BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF);
+  BrTextAlignCentre();
+  BrTextPrint((int)"Cars For", D_8028AAB0 >> 1, 0x94);
+  BrTextPrint((int)"This Season:", D_8028AAB0 >> 1, 0x9E);
+  D_8028AA78 = 0;
+  D_8028AA80 = 0;
+  D_8028AA8C = 0;
+  D_8028AA84 = 0;
+  func_802182A8();
+  BrFrameTintSetup();
+  D_8031B2C8[0].car = 0;
+  D_8031B2C8[1].car = 1;
+  func_8020C6D0(0, 0, 0, 0, D_8028AAB4 * 7 / 16, D_8028AAB0 * 5 / 8, D_8028AAB4 * 5 / 8, 0.0f, 1, 0, 0, 0.0f, 1.5707964f);
+  func_8020C6D0(0, 0, 1, D_8028AAB0 * 3 / 8, D_8028AAB4 * 7 / 16, D_8028AAB0 * 5 / 8, D_8028AAB4 * 5 / 8, 0.0f, 1, 1, 1, 0.0f, 0.0f);
+  BrScissorSet(0, 0, D_8028AAB0, D_8028AAB4);
 }

@@ -26,6 +26,7 @@ va,name,kind
 80208900,BrTrackSelectable,func
 802089D0,BrSeasonValidate,func
 80208A58,BrSeasonDrawHelp,func
+80208CF0,BrSeasonDraw,func
 8020A524,BrMenuIconDraw,func
 8020A6A4,BrMenuIconDrawScaled,func
 8020A820,BrMenuRingDraw,func
