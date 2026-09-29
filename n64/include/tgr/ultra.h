@@ -320,4 +320,64 @@ void osInvalDCache(void *vaddr, s32 nbytes);
 int __osSiDeviceBusy(void);
 void __osSiCreateAccessQueue(void);
 
+/* controllers */
+typedef struct {
+	u16 button;
+	s8 stick_x;
+	s8 stick_y;
+	u8 errno;
+} OSContPad;
+typedef struct {
+	u16 type;
+	u8 status;
+	u8 errno;
+} OSContStatus;
+typedef struct {
+	u32 ramarray[15];
+	u32 pifstatus;
+} OSPifRam;
+typedef struct {
+	u8 dummy;
+	u8 txsize;
+	u8 rxsize;
+	u8 cmd;
+	u16 button;
+	s8 stick_x;
+	s8 stick_y;
+} __OSContReadFormat;
+typedef struct {
+	u8 align;
+	u8 txsize;
+	u8 rxsize;
+	u8 poll;
+	u8 typeh;
+	u8 typel;
+	u8 status;
+	u8 align1;
+} __OSContRequesFormat;
+#define ARRLEN(x) ((s32)(sizeof(x) / sizeof(x[0])))
+#define CHNL_ERR_MASK 0xC0
+#define CHNL_ERR(format) (((format).rxsize & CHNL_ERR_MASK) >> 4)
+#define CONT_CMD_REQUEST_STATUS 0
+#define CONT_CMD_READ_BUTTON 1
+#define CONT_CMD_READ_BUTTON_TX 1
+#define CONT_CMD_READ_BUTTON_RX 4
+#define CONT_CMD_REQUEST_STATUS_TX 1
+#define CONT_CMD_REQUEST_STATUS_RX 3
+#define CONT_CMD_RESET 0xff
+#define CONT_CMD_NOP 0xff
+#define CONT_CMD_END 0xfe
+#define CONT_CMD_EXE 1
+#define MAXCONTROLLERS 4
+extern OSPifRam __osContPifRam;
+extern u8 __osContLastCmd;
+extern u8 __osMaxControllers;
+void __osSiGetAccess(void);
+void __osSiRelAccess(void);
+s32 __osSiRawStartDma(s32 direction, void *dramAddr);
+
+extern u64 osClockRate;
+OSTime osGetTime(void);
+int osSetTimer(OSTimer *t, OSTime countdown, OSTime interval, OSMesgQueue *mq, OSMesg msg);
+
 #endif
