@@ -200,6 +200,9 @@ void BrCarPhysStep(BrCar *car)
  * RESIDUE (243): the ROM keeps 2.0 in f22 across the chassis init call (for
  * the start height) and 1.0 in f24, one frame slot more; ours reloads 2.0,
  * which shifts the register numbering and scheduling of the store runs. */
+/* @t3 0x80222D54 */
+/* @t4-pass 0x80222D54 1 2026-09-29 compiles 231 best 243 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80222D54 2 2026-09-29 compiles 231 best 243 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80222D54 tgr BrCarPhysInit */
 void BrCarPhysInit(BrCar *car)
 {
