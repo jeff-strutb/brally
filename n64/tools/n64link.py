@@ -29,13 +29,16 @@ def sext16(x):
     return x - 0x10000 if x & 0x8000 else x
 
 
-def link_function(obj, name, place_va, data_va, fnvas, syms, self_va=None):
+def link_function(obj, name, place_va, data_va, fnvas, syms, self_va=None, static_va=None):
     """-> (code bytes, [(va, bytes)] data blocks).
 
     place_va  where the code goes
     data_va   where this object's .rodata/.data go (placed whole)
     fnvas     name -> VA for the object's other functions
     self_va   where calls to the function itself should go (default place_va)
+    static_va section -> ROM VA for sections that hold the file's statics
+              (n64build.static_bases): references go to the statics' ROM
+              homes, and those sections are not placed at data_va
     """
     ti, text = obj.sec('.text')
     pieces = {n: (s, e) for n, s, e in B.carve(obj) if n}
@@ -49,8 +52,12 @@ def link_function(obj, name, place_va, data_va, fnvas, syms, self_va=None):
 
     # data sections, laid out one after another from data_va (8-aligned)
     secbase, blocks, cur = {}, [], data_va
+    static_va = static_va or {}
     for sname in ('.rodata', '.data', '.sdata', '.bss'):
         si, blob = obj.sec(sname)
+        if sname in static_va:
+            secbase[sname] = static_va[sname]
+            continue
         if si is None or not blob:
             continue
         cur = (cur + 15) & ~15
