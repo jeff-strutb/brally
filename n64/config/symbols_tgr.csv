@@ -1,6 +1,8 @@
 va,name,kind
 80000300,osTvType,data
 80000308,osRomBase,data
+8000030C,osResetType,data
+8000031C,osAppNMIBuffer,data
 80200000,BrEntry,func
 80200050,BrRaceSetKind,func
 80200108,BrFrontReturnToTitle,func
@@ -672,6 +674,7 @@ va,name,kind
 802694A4,__osSiRelAccess,func
 802694D0,__osSiRawStartDma,func
 8026AC80,__osDequeueThread,func
+8026ACC0,__osExceptionPreamble,func
 8026B2EC,__osEnqueueAndYield,func
 8026B3EC,__osEnqueueThread,func
 8026B434,__osPopThread,func
@@ -689,6 +692,8 @@ va,name,kind
 8026B9F0,__osSetSR,func
 8026BA00,__osGetSR,func
 8026BA10,__osSetFpcCsr,func
+8026BA20,__osSiRawReadIo,func
+8026BA70,__osSiRawWriteIo,func
 8026BAC0,osInvalICache,func
 8026BB40,osMapTLBRdb,func
 8026BBA0,bzero,func
@@ -740,6 +745,7 @@ va,name,kind
 8037F431,__osMaxControllers,data
 8037F458,__osEepromTimerQ,data
 8037F470,__osEepromTimerMsg,data
+8037F480,__osFinalrom,data
 80381880,siAccessBuf,data
 80381888,__osSiAccessQueue,data
 803818C0,__osCurrentTime,data
