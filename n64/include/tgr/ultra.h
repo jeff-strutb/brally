@@ -158,4 +158,134 @@ extern __OSViContext *__osViNext;
 #define VI_STATE_REPEATLINE 0x40
 #define VI_STATE_FADE 0x80
 
+/* rcp registers */
+#define PHYS_TO_K1(x) ((u32)(x) | 0xA0000000)
+#define IO_READ(addr) (*(volatile u32 *)PHYS_TO_K1(addr))
+#define IO_WRITE(addr, data) (*(volatile u32 *)PHYS_TO_K1(addr) = (u32)(data))
+#define AI_DRAM_ADDR_REG 0x04500000
+#define AI_LEN_REG 0x04500004
+#define AI_CONTROL_REG 0x04500008
+#define AI_STATUS_REG 0x0450000C
+#define AI_DACRATE_REG 0x04500010
+#define AI_BITRATE_REG 0x04500014
+#define AI_CONTROL_DMA_ON 0x01
+#define AI_MIN_DAC_RATE 132
+#define AI_MAX_BIT_RATE 16
+extern s32 osViClock;
+u32 osVirtualToPhysical(void *addr);
+int __osAiDeviceBusy(void);
+
+#define AI_STATUS_FIFO_FULL 0x80000000
+#define K0BASE 0x80000000
+#define K1BASE 0xA0000000
+#define K2BASE 0xC0000000
+#define IS_KSEG0(x) ((u32)(x) >= K0BASE && (u32)(x) < K1BASE)
+#define IS_KSEG1(x) ((u32)(x) >= K1BASE && (u32)(x) < K2BASE)
+#define K0_TO_PHYS(x) ((u32)(x) & 0x1FFFFFFF)
+#define K1_TO_PHYS(x) ((u32)(x) & 0x1FFFFFFF)
+u32 __osProbeTLB(void *addr);
+
+/* sp */
+typedef struct {
+	u32 type;
+	u32 flags;
+	u64 *ucode_boot;
+	u32 ucode_boot_size;
+	u64 *ucode;
+	u32 ucode_size;
+	u64 *ucode_data;
+	u32 ucode_data_size;
+	u64 *dram_stack;
+	u32 dram_stack_size;
+	u64 *output_buff;
+	u64 *output_buff_size;
+	u64 *data_ptr;
+	u32 data_size;
+	u64 *yield_data_ptr;
+	u32 yield_data_size;
+} OSTask_t;
+typedef union {
+	OSTask_t t;
+	long long force_structure_alignment;
+} OSTask;
+#define OS_TASK_YIELDED 0x0001
+#define OS_TASK_LOADABLE 0x0004
+#define OS_YIELD_DATA_SIZE 0xc00
+#define SP_CLR_HALT 0x00001
+#define SP_CLR_BROKE 0x00004
+#define SP_CLR_SSTEP 0x00020
+#define SP_SET_INTR_BREAK 0x00100
+#define SP_CLR_SIG0 0x00200
+#define SP_CLR_SIG1 0x00800
+#define SP_CLR_SIG2 0x02000
+#define SP_CLR_YIELD SP_CLR_SIG0
+#define SP_CLR_YIELDED SP_CLR_SIG1
+#define SP_CLR_TASKDONE SP_CLR_SIG2
+#define SP_IMEM_START 0x04001000
+#define OS_READ 0
+#define OS_WRITE 1
+void bcopy(const void *src, void *dst, int len);
+void osWritebackDCache(void *vaddr, s32 nbytes);
+void __osSpSetStatus(u32 data);
+s32 __osSpSetPc(u32 pc);
+s32 __osSpRawStartDma(s32 direction, u32 devAddr, void *dramAddr, u32 size);
+int __osSpDeviceBusy(void);
+
+/* timers */
+typedef u64 OSTime;
+typedef struct OSTimer_s {
+	struct OSTimer_s *next;
+	struct OSTimer_s *prev;
+	OSTime interval;
+	OSTime value;
+	OSMesgQueue *mq;
+	OSMesg msg;
+} OSTimer;
+extern OSTimer *__osTimerList;
+OSTime __osInsertTimer(OSTimer *t);
+void __osSetTimerIntr(OSTime tim);
+
+/* pi */
+typedef struct {
+	u16 type;
+	u8 pri;
+	u8 status;
+	OSMesgQueue *retQueue;
+} OSIoMesgHdr;
+typedef struct {
+	OSIoMesgHdr hdr;
+	void *dramAddr;
+	u32 devAddr;
+	u32 size;
+	struct OSPiHandle_s *piHandle;
+} OSIoMesg;
+typedef struct {
+	s32 active;
+	OSThread *thread;
+	OSMesgQueue *cmdQueue;
+	OSMesgQueue *evtQueue;
+	OSMesgQueue *acsQueue;
+	s32 (*dma)(s32, u32, void *, u32);
+} OSDevMgr;
+extern OSDevMgr __osPiDevMgr;
+#define OS_MESG_TYPE_DMAREAD 11
+#define OS_MESG_TYPE_DMAWRITE 12
+#define OS_MESG_PRI_NORMAL 0
+#define OS_MESG_PRI_HIGH 1
+OSMesgQueue *osPiGetCmdQueue(void);
+s32 osJamMesg(OSMesgQueue *mq, OSMesg msg, s32 flag);
+s32 osSendMesg(OSMesgQueue *mq, OSMesg msg, s32 flags);
+void __osPiGetAccess(void);
+void __osPiRelAccess(void);
+s32 osPiRawReadIo(u32 devAddr, u32 *data);
+
+#define PI_STATUS_REG 0x04600010
+#define PI_STATUS_DMA_BUSY 0x01
+#define PI_STATUS_IO_BUSY 0x02
+#define WAIT_ON_IOBUSY(stat) \
+	stat = IO_READ(PI_STATUS_REG); \
+	while (stat & (PI_STATUS_IO_BUSY | PI_STATUS_DMA_BUSY)) \
+		stat = IO_READ(PI_STATUS_REG);
+extern u32 osRomBase;
+
 #endif
