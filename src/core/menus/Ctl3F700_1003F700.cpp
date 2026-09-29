@@ -14,9 +14,7 @@
  * arm returns 1. Ctor DECLARED, no dtor - unwind is operator delete
  * (maxState=1).
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Phase;
 

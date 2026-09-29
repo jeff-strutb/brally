@@ -1,0 +1,155 @@
+# Port deviations for src/core/controls/br_ffbdev.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:BrEntSetPos
+@drop define:BrEntSetMatrix
+@drop define:BrEntSetVel
+@drop define:BrEntSetAngVel
+@drop define:BrEntSetOrientation
+@drop define:BrEntSetHeading
+@drop undef:BrEntSetMatrix
+@drop undef:BrEntSetVel
+@drop undef:BrEntSetAngVel
+@drop undef:BrEntSetOrientation
+@drop undef:BrEntSetHeading
+@drop undef:BrEntSetPos
+@drop var:pMsg
+@drop type:pMsg
+@drop define:BR_DBG_SINK
+@drop define:BR_DBG_OUT
+@after define:BR_DBG_OUT
+
+/* BrFfbInit's original caches &KERNEL32!OutputDebugStringA in a register and
+ * calls through it (`mov edi,[__imp__]; call edi`, stdcall). The matching arm
+ * spells that pointer; the port routes the same local through the safe sink
+ * above. */
+typedef void (*BrDbgSink)(const char *pMsg);
+#define BR_DBG_SINK BrDbgPrint
+
+/* BrFfbEnumDevice's original calls the import DIRECTLY per site
+ * (`call dword ptr [__imp__OutputDebugStringA]`), unlike BrFfbInit's cached
+ * register. The port routes the same sites through the safe sink. */
+#define BR_DBG_OUT(msg) BrDbgPrint(msg)
+@end
+@drop type:uint32_t
+@drop type:uint32_t#2
+@drop define:BR_DI_SETPARAMS
+@drop define:BR_DI_SETPROP
+@after define:BR_DI_SETPROP
+
+#define BR_DI_SETPARAMS(p, eff, flags) \
+    (BrDiEff(p)->pfnSetParameters((p), (eff), (flags)))
+#define BR_DI_SETPROP(p, prop, pdiph) \
+    (BrDiDev(p)->pfnSetProperty((p), (prop), (pdiph)))
+@end
+@drop fn:BrFfbSetup
+@after fn:BrFfbSetup
+
+/* In the original both DIEFFECTs' rgdwAxes point at a two-dword STACK local of
+ * 0x10079390 -- the `sub esp,8` frame and the two `lea` writes into the axis
+ * pointers are that buffer.  It dangles the moment the function returns, and
+ * BrFfbSetSpringCoeff / BrFfbCommitDuration hand those descriptors back to
+ * SetParameters afterwards, so reproducing it in a build that actually RUNS
+ * would be undefined behaviour.  The matching build spells it as the original
+ * does; the port build gives the buffer static storage so it stays valid. */
+static uint32_t g_brFfbAxes[2];
+
+/* 0x10079390 */
+/* WHAT IT DOES: builds the two force-feedback effects the game uses -- the
+ * constant centring pull that gives the steering its weight, and the shake
+ * used for bumps and impacts -- and hands both to the wheel ready to be
+ * started. The centring effect is created but deliberately left stopped. */
+/*
+ * SIZE-EXACT (80/80 insns, 440/440 B), REGNORM 6+6, from four source facts:
+ *   1. the axis buffer is a STACK local, not a file-scope global -- that is
+ *      the `sub esp,8` frame and the two `lea` writes (matching arm only;
+ *      the port keeps it static because it dangles after return);
+ *   2. g_brFfb.pDevice is re-read at each CreateEffect site, not hoisted into
+ *      a local -- hoisting pins it in a callee-saved reg and costs a push ebp;
+ *   3. BrDiRoot/BrDiDev/BrDiEff must be __inline or VC5 emits an out-of-line
+ *      call for each vtable cast (an extra call + `add esp,4` per use);
+ *   4. the COM vtable pointers are BR_STDCALL -- callee-cleaned, so no
+ *      `add esp,0x14` after each CreateEffect.
+ * RESIDUE (2026-09-26, register-blind rows 0+0, 4 masked regions): the
+ * original hoists each CreateEffect's argument pushes (and the pDevice load)
+ * above the effect-structure fills; ours pushes them just before the call.
+ * Pure scheduling -- every instruction is the same.  (The older note here
+ * blamed unmapped d3d globals; the image gate resolves those through
+ * reloc_overrides, and the classifier's `push 4` phantom was a msetdiff
+ * masking bug, fixed 15e794ac.)
+ * @t4-pass 0x10072680 1 2026-09-26 probes 12 bytes 440 insns 80 regions 4 rows 0 census no  (hand: pDevice local early/late, hr int/init/!hr, call as the if condition, axes/direction/condition store order, void* effect pointer, GUID cast -- none moves the push hoist)
+ * @t4-pass 0x10072680 2 2026-09-26 probes 67 bytes 440 insns 80 regions 4 rows 0 census yes  (mechanism: TU symbol count 5..4600 externs and nine system-header combinations, all 151 diffs) */
+/* @t3 0x10072680 2026-09-26 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 440/440 insns 80/80 rows 0+0 regions 4 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue: the CreateEffect argument pushes are hoisted above the effect
+ * structure fills in the original (pure scheduling, rows 0+0); see the
+ * header above.  Do not reopen before the end-grind (project rule 12). */
+/* @implements 0x10079390 d3d BrFfbSetup */
+void BrFfbSetup(int32_t springCoeff, int32_t springCoeff2)
+{
+    long hr;
+#define rgAxes g_brFfbAxes
+
+    rgAxes[0] = 0u;   /* lX */
+    rgAxes[1] = 4u;   /* lY */
+
+    g_brDiSpringCond[1].lPositiveCoefficient = springCoeff2;
+    g_brDiSpringCond[1].lNegativeCoefficient = springCoeff2;
+
+    g_brDiSpringCond[0].lOffset              = 0;
+    g_brDiSpringCond[0].lPositiveCoefficient = springCoeff;
+    g_brDiSpringCond[0].lNegativeCoefficient = springCoeff;
+    g_brDiSpringCond[0].dwPositiveSaturation = 10000u;
+    g_brDiSpringCond[0].dwNegativeSaturation = 10000u;
+    g_brDiSpringCond[0].lDeadBand            = 0;
+    g_brDiSpringCond[1].lOffset              = 0;
+    g_brDiSpringCond[1].dwPositiveSaturation = 10000u;
+    g_brDiSpringCond[1].dwNegativeSaturation = 10000u;
+    g_brDiSpringCond[1].lDeadBand            = 0;
+
+    g_brDiEffSpring.dwSize                 = 0x34u;   /* sizeof on x86 */
+    g_brDiEffSpring.dwFlags                = 0x12u;   /* OBJECTOFFSETS|CARTESIAN */
+    g_brDiEffSpring.dwDuration             = 0xFFFFFFFFu;  /* INFINITE */
+    g_brDiEffSpring.dwSamplePeriod         = 0u;
+    g_brDiEffSpring.dwGain                 = 10000u;
+    g_brDiEffSpring.dwTriggerButton        = 0xFFFFFFFFu;  /* DIEB_NOTRIGGER */
+    g_brDiEffSpring.dwTriggerRepeatInterval = 0u;
+    g_brDiEffSpring.cAxes                  = 2u;
+    g_brDiEffSpring.rgdwAxes               = rgAxes;
+    g_brDiEffSpring.rglDirection           = g_brDiSpringDir;
+    g_brDiEffSpring.lpEnvelope             = NULL;
+    g_brDiEffSpring.cbTypeSpecificParams   = 0x30u;   /* two DICONDITIONs */
+    g_brDiEffSpring.lpvTypeSpecificParams  = g_brDiSpringCond;
+
+    hr = BrDiDev(g_brFfb.pDevice)->pfnCreateEffect(g_brFfb.pDevice, kBrGuidSpring, &g_brDiEffSpring,
+                                        &g_brFfb.pEffectSpring, NULL);
+    if (hr == 0) {
+        g_br18ABD78 = springCoeff;
+        g_br18ABDF8 = 1;               /* created, but not started */
+    }
+
+    g_brDiSquarePeriod.dwMagnitude = 10000u;
+    g_brDiSquarePeriod.lOffset     = 0;
+    g_brDiSquarePeriod.dwPhase     = 0u;
+    g_brDiSquarePeriod.dwPeriod    = 0x3D090u;   /* 250000 us */
+
+    g_brDiEffSquare.dwSize                  = 0x34u;
+    g_brDiEffSquare.dwFlags                 = 0x12u;
+    g_brDiEffSquare.dwDuration              = (uint32_t)g_br0BD438;
+    g_brDiEffSquare.dwSamplePeriod          = 0u;
+    g_brDiEffSquare.dwGain                  = 10000u;
+    g_brDiEffSquare.dwTriggerButton         = 0xFFFFFFFFu;
+    g_brDiEffSquare.dwTriggerRepeatInterval = 0u;
+    g_brDiEffSquare.cAxes                   = 2u;
+    g_brDiEffSquare.rgdwAxes                = rgAxes;
+    g_brDiEffSquare.rglDirection            = g_br0BD430;
+    g_brDiEffSquare.lpEnvelope              = NULL;
+    g_brDiEffSquare.cbTypeSpecificParams    = 0x10u;  /* one DIPERIODIC */
+    g_brDiEffSquare.lpvTypeSpecificParams   = &g_brDiSquarePeriod;
+
+    (void)BrDiDev(g_brFfb.pDevice)->pfnCreateEffect(g_brFfb.pDevice, kBrGuidSquare, &g_brDiEffSquare,
+                                         &g_brFfb.pEffectSquare, NULL);
+}
+#undef rgAxes
+@end

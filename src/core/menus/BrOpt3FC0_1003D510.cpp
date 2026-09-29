@@ -8,9 +8,7 @@
  * zero-stores and a pointer copy. No named temp on the copy (ecx form).
  * No EH.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class GameSub {
 public:

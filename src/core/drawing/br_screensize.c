@@ -11,24 +11,17 @@
  * VC5's register allocation (see br_rdpmode.c), so nothing is trimmed here
  * on the grounds that it is unused.
  */
-#ifdef BR_MATCHING_BUILD
 /* slice2_17.h prototypes a list pointer the original never takes. */
 #define BrPtrListContains BrPtrListContains_port
-#endif
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice2_17.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrPtrListContains
-#endif
 
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
 
-#ifdef BR_MATCHING_BUILD
 
 /* ==========================================================================
  * Screen-size fan-out: 0x1001E1E0 - 0x1001E2B0
@@ -139,34 +132,23 @@ void THUNK_1001E2B0(void)
   return;
 }
 
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <string.h>
 
 #include "slice1_07.h"   /* BrDevSlot -- see the note in slice3_39.h */
-#ifdef BR_MATCHING_BUILD
 /* Header prototype is cdecl; matching needs thiscall.  Rename the cdecl
  * declaration so the definition below can wear a different convention. */
 #define BrTextBoxDeleteDtor BrTextBoxDeleteDtor_cdecl
 #define BrTextBoxMeasureA  BrTextBoxMeasureA_cdecl
 #define BrTextBoxMeasureB  BrTextBoxMeasureB_cdecl
-#endif
-#ifdef BR_MATCHING_BUILD
 #define BrTextBoxInit BrTextBoxInit_port
 #include "slice3_39.h"
 #undef BrTextBoxInit
-#else
-#include "slice3_39.h"
-#endif
-#ifdef BR_MATCHING_BUILD
 #undef BrTextBoxDeleteDtor
 #undef BrTextBoxMeasureA
 #undef BrTextBoxMeasureB
-#endif
 
 /* WHAT IT DOES: records the screen's width and height and works out its
  * centre point, then clears seven other numbers. Its argument is never

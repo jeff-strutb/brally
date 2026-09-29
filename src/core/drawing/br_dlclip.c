@@ -26,14 +26,14 @@
  *     0x1001F8F0   d = w - z            311 B   FAR
  *     0x1001F530   d = y + w            311 B   BOTTOM
  *
- * ‼ RESIDUE.  SIX of the seven are byte-exact.  Only LEFT (0x1001F2B0) is
+ * â¼ RESIDUE.  SIX of the seven are byte-exact.  Only LEFT (0x1001F2B0) is
  * still out, by 2 bytes, and both are the field displacement in ONE
  * `fld`/`fadd` pair -- the dPrev site:
  *
  *     LEFT   orig  fld [w] ; fadd [x]      ours  fld [x] ; fadd [w]
  *                                          (the dCur site now matches)
  *
- * ‼ THE DISTANCE EXPRESSION IS PER-SITE, NOT PER-PLANE.  This is what the
+ * â¼ THE DISTANCE EXPRESSION IS PER-SITE, NOT PER-PLANE.  This is what the
  * earlier pass got wrong, and it cost NEAR several sessions.  The macro body
  * evaluates the plane distance at TWO sites (dCur and dPrev), and the
  * original's two sites do NOT agree with each other: NEAR leads with f0C at
@@ -116,7 +116,6 @@
  */
 #include "slice1_03.h"
 
-#ifdef BR_MATCHING_BUILD
 
 /* 0x105CDA00 -- head of the spare-vertex free list, as the seven planes
  * address it.  BrClipLerpVert (0x1001F200), further down this file, reaches
@@ -277,7 +276,6 @@ BR_CLIP_PLANE(BrClipPlaneWPlusF0C, BRCLIP_Z_PLUS_W_LEAD, BRCLIP_Z_PLUS_W)
 /* @implements 0x1001F8F0 glide BrClipPlaneWMinusF0C */
 BR_CLIP_PLANE(BrClipPlaneWMinusF0C, BRCLIP_W_MINUS_Z, BRCLIP_W_MINUS_Z)
 
-#endif /* BR_MATCHING_BUILD */
 
 /* =====================================================================
  * The node pool and the vertex the planes splice in.  Moved here out of
@@ -352,10 +350,6 @@ BrClipVert *BrClipLerpVert(const BrClipVert *pA, const BrClipVert *pB,
      * (`test eax,eax / je`) but then stores through eax unconditionally, so
      * an exhausted free list is a NULL dereference. The port returns NULL
      * instead; every caller in this file checks and skips the insertion. */
-#ifndef BR_MATCHING_BUILD
-    if (pOut == NULL)
-        return NULL;
-#endif
 
     /* +0x00 is deliberately not written -- it still holds the free-list
      * link, and each caller overwrites it right after this returns. */
@@ -371,159 +365,3 @@ BrClipVert *BrClipLerpVert(const BrClipVert *pA, const BrClipVert *pB,
     return pOut;
 }
 
-#ifndef BR_MATCHING_BUILD
-/* The matching build gets the original's SEVEN separate 311-byte functions
- * from the macro above (one macro, seven instantiations); the
- * shared-body-plus-function-pointer form below is the port only, because the
- * indirect call it emits is not in the original. */
-typedef float (*BrClipDistFn)(const BrClipVert *pV);
-
-/* The body shared by 0x1001D810 / 0x1001D9F0 / 0x1001DB30 / 0x1001DC70.
- * Those four are byte-for-byte identical apart from the two `fld/fadd/fsub`
- * pairs that produce the plane distance, so they are one function here with
- * the distance passed in.
- *
- * Register correspondence, for anyone checking against the disassembly:
- *   ecx  pPrev     previous vertex of the SOURCE polygon
- *   edi  pOutPrev  previous node of the OUTPUT list (they diverge)
- *   esi  pCur
- *   ebp  pDead     chain of unlinked vertices, recycled at the end
- *   ebx  pList
- *   [esp+0x14] i,  [esp+0x18] pNext, [esp+0x10] dCur, [esp+0x20] dPrev
- */
-static void BrClipPlane(BrClipList *pList, BrClipDistFn pfnDist)
-{
-    BrClipVert *pPrev;
-    BrClipVert *pOutPrev;
-    BrClipVert *pCur;
-    BrClipVert *pNext;
-    BrClipVert *pDead = NULL;
-    BrClipVert *pTmp;
-    BrClipVert *pNew;
-    float dCur, dPrev, t;
-    int i;
-
-    /* DEVIATION: the original loads pList->pHead and dereferences it before
-     * testing the count, so an empty list with a NULL head faults. */
-    if (pList == NULL || pList->pHead == NULL)
-        return;
-
-    pPrev    = pList->pHead;
-    i        = pList->cVerts;
-    pCur     = pPrev->pNext;
-    pOutPrev = pPrev;
-
-    if (i > 0) {
-        for (;;) {
-            dCur  = pfnDist(pCur);
-            dPrev = pfnDist(pPrev);
-            pNext = pCur->pNext;    /* saved before anything is relinked */
-
-            /* Written as `>= 0.0f` rather than `< 0.0f` on purpose: the
-             * original branches on the x87 C0 bit, which is also set for an
-             * unordered compare, so a NaN distance counts as OUTSIDE. */
-            if (dCur >= 0.0f) {
-                if (dPrev >= 0.0f) {
-                    /* both inside -- nothing to do but advance */
-                    pOutPrev = pCur;
-                } else {
-                    /* entering: splice an on-plane vertex in before pCur */
-                    t = dPrev / (dPrev - dCur);
-                    pNew = BrClipLerpVert(pPrev, pCur, t);
-                    if (pNew != NULL) {
-                        pNew->pNext = pOutPrev->pNext;
-                        pOutPrev->pNext = pNew;
-                        pList->cVerts = pList->cVerts + 1;
-                    }
-                    pOutPrev = pCur;
-                }
-            } else if (dPrev >= 0.0f) {
-                /* leaving: drop pCur, splice an on-plane vertex in its
-                 * place. The count is deliberately left alone -- one out,
-                 * one in. */
-                pTmp = pOutPrev->pNext;
-                if (pTmp != NULL)
-                    pOutPrev->pNext = pTmp->pNext;
-
-                t = dCur / (dCur - dPrev);
-                pCur->pNext = pDead;
-                pDead = pCur;
-
-                pNew = BrClipLerpVert(pCur, pPrev, t);
-                if (pNew != NULL) {
-                    pNew->pNext = pOutPrev->pNext;
-                    pOutPrev->pNext = pNew;
-                    pOutPrev = pNew;
-                }
-            } else {
-                /* both outside: drop pCur */
-                pTmp = pOutPrev->pNext;
-                if (pTmp != NULL)
-                    pOutPrev->pNext = pTmp->pNext;
-
-                pCur->pNext = pDead;
-                pDead = pCur;
-                pList->cVerts = pList->cVerts - 1;
-            }
-
-            pPrev = pCur;
-            pCur  = pNext;
-
-            /* Two independent exits, in this order. The count test comes
-             * first, so a polygon that collapses below 2 vertices stops
-             * immediately and leaves the remaining vertices unvisited. */
-            if (pList->cVerts < 2)
-                break;
-            if (--i <= 0)
-                break;
-        }
-    }
-
-    /* The head is set to pCur unconditionally -- which, after a full pass
-     * over a circular list, is the node one position past the old head. So
-     * every clip call ROTATES the polygon by one vertex. On the early exits
-     * it can even be a vertex that was just discarded. */
-    pList->pHead = pCur;
-
-    /* Return the discarded chain to the free list, but only those nodes
-     * that live inside the pool; anything else is dropped on the floor. */
-    pTmp = pDead;
-    if (pDead != NULL)
-        pDead = pDead->pNext;
-
-    while (pTmp != NULL) {
-        if (g_aClipPool != NULL &&
-            pTmp >= g_aClipPool && pTmp < g_aClipPool + g_cClipPool) {
-            pTmp->pNext = g_pClipFree;
-            g_pClipFree = pTmp;
-        }
-        pNew = pDead;
-        if (pDead != NULL)
-            pDead = pDead->pNext;
-        pTmp = pNew;
-    }
-}
-
-static float BrClipDistW(const BrClipVert *pV)          { return pV->f18; }
-static float BrClipDistWPlusF04(const BrClipVert *pV)   { return pV->f18 + pV->f04; }
-static float BrClipDistWMinusF04(const BrClipVert *pV)  { return pV->f18 - pV->f04; }
-/* 0x1001DC70 loads f08 first and adds f18, unlike its three siblings which
- * lead with f18. Same value, but noted because it is the one asymmetry. */
-static float BrClipDistWPlusF08(const BrClipVert *pV)   { return pV->f08 + pV->f18; }
-
-/* The three slice1_04.h left out, read off BRGlide's copies (0x1001F670,
- * 0x1001F7B0, 0x1001F8F0) rather than BRD3D's: same 311-byte body, same two
- * x87 loads, and the operand order below is theirs -- 0x1001F7B0 leads with
- * f0C exactly as 0x1001DC70 leads with f08. */
-static float BrClipDistWMinusF08(const BrClipVert *pV) { return pV->f18 - pV->f08; }
-static float BrClipDistWPlusF0C(const BrClipVert *pV)  { return pV->f0C + pV->f18; }
-static float BrClipDistWMinusF0C(const BrClipVert *pV) { return pV->f18 - pV->f0C; }
-
-void BrClipPlaneW(BrClipList *pList)          { BrClipPlane(pList, BrClipDistW); }
-void BrClipPlaneWPlusF04(BrClipList *pList)   { BrClipPlane(pList, BrClipDistWPlusF04); }
-void BrClipPlaneWMinusF04(BrClipList *pList)  { BrClipPlane(pList, BrClipDistWMinusF04); }
-void BrClipPlaneWPlusF08(BrClipList *pList)   { BrClipPlane(pList, BrClipDistWPlusF08); }
-void BrClipPlaneWMinusF08(BrClipList *pList)  { BrClipPlane(pList, BrClipDistWMinusF08); }
-void BrClipPlaneWPlusF0C(BrClipList *pList)   { BrClipPlane(pList, BrClipDistWPlusF0C); }
-void BrClipPlaneWMinusF0C(BrClipList *pList)  { BrClipPlane(pList, BrClipDistWMinusF0C); }
-#endif /* !BR_MATCHING_BUILD */

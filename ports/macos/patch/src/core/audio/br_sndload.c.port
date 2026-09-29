@@ -1,0 +1,23 @@
+# Port deviations for src/core/audio/br_sndload.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop include:<windows.h>
+@drop type:BrSndLoadVoice
+@drop type:x1AC
+@drop type:BrWavFmtHead
+@drop proto:BrWavLoad
+@drop proto:BrSndVoiceCreate
+@drop proto:BrSndListAppend
+@drop proto:BrSndVoiceBufRelease
+@drop proto:BrSndVoiceApplyFreq
+@drop proto:BrSndVoiceApplyPan
+@drop proto:BrSndVoiceApplyVolume
+@drop var:DAT_1184c2a8
+@drop fn:BrSndVoiceLoad
+@drop include:<mmsystem.h>
+@drop fn:BrWavReadData
+@drop proto:FUN_1006ffc0
+@drop proto:BrWaveSeekData
+@drop fn:BrWavLoad
+@drop fn:FUN_1006ffc0

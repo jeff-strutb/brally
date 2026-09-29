@@ -12,10 +12,8 @@
  * the C is written to reproduce that exactly (including what happens to a
  * NaN), not to look tidy.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -323,7 +321,6 @@ void BrSndNearestOfferTrack(int32_t f8C, const BrVec3 *pPos,
  * 5.  The per-frame commit: 0x10060F40 (D3D 0x10067ED0, shared body)
  * ===================================================================== */
 
-#ifdef BR_MATCHING_BUILD
 #define BR_K_00779E4   9.09090886125341e-05f   /* 1/11000, the Hz->ratio scale */
 #define BR_K_00779E8   4294967296.0            /* 2^32, double: the 32.32 shift */
 
@@ -462,4 +459,3 @@ void BrSndNearestCommit(void)
     g_BrSndNearest.pObjPrev = g_BrSndNearest.pObj;
     g_BrSndNearest.f90      = g_BrSndNearest.f8C;
 }
-#endif /* BR_MATCHING_BUILD */

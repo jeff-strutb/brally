@@ -8,9 +8,7 @@
  * before the two NULL stores so orig's `test eax` sits above them.
  * No EH.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class GameSub {
 public:

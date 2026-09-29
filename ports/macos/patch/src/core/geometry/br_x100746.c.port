@@ -1,0 +1,5 @@
+# Port deviations for src/core/geometry/br_x100746.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop fn:BrX100746E0

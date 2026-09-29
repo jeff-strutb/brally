@@ -100,7 +100,6 @@
  *      byte-identical to what is here.  The difference from the race
  *      site: `w` has a second use (`0x130 - w`) before the add.
  */
-#ifdef BR_MATCHING_BUILD
 
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
@@ -656,4 +655,3 @@ void BrFrameDraw(int iSlot)
     FUN_1002cee9();
 }
 
-#endif /* BR_MATCHING_BUILD */

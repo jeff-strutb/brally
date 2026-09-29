@@ -15,9 +15,7 @@
  * The row's own short reaches the callee via the SHORT PUSH; the two
  * `(int)` casts are `call __ftol`.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 struct BrRow40D80 {
     short w00;                  /* +0x00 */

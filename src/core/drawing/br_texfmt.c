@@ -14,10 +14,8 @@
  * already been shown elsewhere in this module to move VC5's register
  * allocation (see br_rdpmode.c).
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice1_04.h"
 
 /* 0x100251A0 */
@@ -95,7 +93,6 @@ int BrTexAspectFromSize(int *pCode, int a, int b)
  * extra mode flag. Most combinations fall through to the same general
  * format; only a couple of specific pairings get a format of their own. */
 /* @implements 0x10027B90 d3d BrTexFormatCode */
-#ifdef BR_MATCHING_BUILD
 /* The original keeps two SEMANTICALLY REDUNDANT `if (b == 2) return 11;`
  * early-outs (each a cmp/je straight into the shared return-11 tail) and a
  * dead read of b in the a == 2 arm (`mov eax,[esp+8]` immediately
@@ -124,45 +121,13 @@ int BrTexFormatCode(int a, int b, int c)
     }
     return 11;
 }
-#else
-int BrTexFormatCode(int a, int b, int c)
-{
-    if (a == 0) {
-        if (b == 4) {
-            /* `dec/neg/sbb eax,eax` yields 0 for c == 1 and -1 otherwise;
-             * `and al,0xF7` then turns -1 into -9, and +11 gives 11 or 2. */
-            return (c == 1) ? 11 : 2;
-        }
-        return 11;
-    }
-    if (a == 1) {
-        if (b == 3) {
-            /* same idiom, masked with 0xF8 and biased by 12 */
-            return (c == 1) ? 12 : 4;
-        }
-        if (b == 4) {
-            return 2;
-        }
-        return 11;
-    }
-    /* a == 2 reloads b in the original and then discards it -- a dead load,
-     * not a missing case. Everything here returns 11. */
-    return 11;
-}
-#endif
 
-#ifdef BR_MATCHING_BUILD
 /* slice2_17.h prototypes a list pointer the original never takes. */
 #define BrPtrListContains BrPtrListContains_port
-#endif
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice2_17.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrPtrListContains
-#endif
 
 #include <math.h>
 #include <stdio.h>
@@ -231,7 +196,6 @@ void BrTexSizeShift(int size, int *pOut1, int *pOut2)
     *pOut1 = 0xFFFF;
 }
 
-#ifdef BR_MATCHING_BUILD
 
 /* WHAT IT DOES: map a mode number onto which of two variants to use. GOTCHA:
  * modes 11 and 12 and the default all return the same value, so only modes
@@ -331,4 +295,3 @@ int FUN_100275c0(int *param_1,int param_2,int param_3)
   return 0;
 }
 
-#endif /* BR_MATCHING_BUILD */

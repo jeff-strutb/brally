@@ -1,0 +1,191 @@
+# Port deviations for src/core/racing/br_race.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop include:<string.h>
+@drop var:pFmt
+@drop proto:BrExt_10008D60
+@drop proto:BrStrGet
+@drop proto:BrTimeFormat
+@drop proto:BrSfxSrcBeep
+@drop define:BR_FCOM_EQ0
+@drop define:BR_RACE_RECORD_LAP
+@drop define:BR_RACE_WRAP_UNWIND
+@drop fn:BrRaceGateStep
+@drop undef:BR_FCOM_EQ0
+@drop undef:BR_RACE_RECORD_LAP
+@drop undef:BR_RACE_WRAP_UNWIND
+@after undef:BR_RACE_WRAP_UNWIND
+
+/* ==========================================================================
+ * 0x1005FF00
+ * ========================================================================== */
+
+/* WHAT IT DOES: advances one driver through the race's checkpoint gates. It
+ * works out which gate they are heading for, tests whether the line they
+ * moved along this frame crossed it, and if so moves them on -- rolling over
+ * the lap counter and the lap time when they pass the last gate, and
+ * unwinding it again if they cross backwards. This is where lap counting
+ * actually happens. */
+
+int BrRaceGateStep(BrRaceRules *pRules, BrDriver *pDrv)
+{
+    BrDriverCar *pCar;
+    const BrRaceGate *pGate;
+    int32_t nGates, gate, iCur, iNext;
+    float   tLap;
+    BrVec2  segFrom, segTo;
+    int     nLapped = 0;
+
+    nGates = pRules->nGates;
+    if (nGates == 0)                            /* 0x1005FF0F */
+        return 0;
+
+    pCar = pDrv->pCar;                          /* +0x60 */
+    if (pCar != NULL) {
+        BrRaceLoadFromCar(pDrv);
+        nGates = pRules->nGates;                /* re-read at 0x1005FF8E */
+    }
+
+    gate  = pDrv->f4C;
+    iCur  = BrRaceGateIndex(gate, nGates);
+    iNext = (iCur + 1) % nGates;                /* 0x1005FFBE */
+
+    tLap = BrRaceTruncHundredths(pDrv->f30);
+
+    /* The motion segment. BrSeg2Intersect reads only offsets 0 and 4 of each
+     * operand, so this is the driver's X and Y and never its Z. The gate's
+     * posts go in SECOND POST FIRST: the original pushes +0x08 then +0x00. */
+    segFrom.x = pDrv->f0C.x;  segFrom.y = pDrv->f0C.y;   /* last frame */
+    segTo.x   = pDrv->f00.x;  segTo.y   = pDrv->f00.y;   /* this frame */
+
+    /* ---- did it cross the gate it is standing on? (backwards) ---------- */
+    pGate = &pRules->aGates[iCur];
+    if (BrSeg2Intersect(&pGate->postB, &pGate->postA, &segFrom, &segTo) != 0) {
+        /* "%d went backwards, from gate %d to gate %d\n"
+         *  pDrv->f64, pDrv->f4C, pDrv->f4C - 1 */
+        if (iCur == 0)                          /* 0x10060026 */
+            pDrv->f44 -= 1;
+
+        /* "Hmm %d == %d %% %d && %d < 0 ? %d\n" -- the original builds that
+         * predicate into a register purely to print it, then recomputes the
+         * modulus and branches on the recomputed value. Only the branch is
+         * kept. */
+        if (iCur == pDrv->f48 % nGates) {       /* 0x10060089, truncating % */
+            if (pDrv->f4C < 0) {                /* 0x10060090 */
+                pDrv->f4C += nGates;
+                pDrv->f44 += 1;
+                if (pRules->pfLapLength != NULL)
+                    pDrv->f50 += *pRules->pfLapLength;
+                /* "lapping %d forward to -1\n", pDrv->f64 */
+            }
+        }
+        pDrv->f4C -= 1;                         /* 0x100600C3, both arms */
+        goto tail;
+    }
+
+    /* ---- did it cross the next one? (forwards) ------------------------- */
+    pGate = &pRules->aGates[iNext];
+    if (BrSeg2Intersect(&pGate->postB, &pGate->postA, &segFrom, &segTo) == 0)
+        goto tail;                              /* 0x100600EE */
+
+    /* "%d went forward, from gate %d to gate %d\n"
+     *  pDrv->f64, pDrv->f4C, pDrv->f4C + 1 */
+    pDrv->f4C = gate + 1;                       /* 0x10060113 */
+
+    if (pDrv->f4C > pDrv->f48) {                /* 0x10060119, `jle` */
+        /* --- new furthest-gate high-water mark --------------------------- */
+        pDrv->f48 = pDrv->f4C;
+        /* "moved ahead one gate, getting %f seconds\n",
+         *  pRules->aGates[iNext].tAward  -- read, printed, never applied. */
+
+        if (iNext != 0)                         /* 0x1006013D */
+            goto positions;
+
+        if (pDrv->f40 < pRules->nLaps) {        /* 0x1006014D, `jge` */
+            BrRaceBestLap(pDrv, tLap);
+            BrRaceRecordLap(pDrv, tLap);
+            pDrv->f40 += 1;                     /* 0x10060226 */
+            pDrv->f44 = pDrv->f40;
+            nLapped = 1;
+
+            if (pRules->mode == BR_RACE_MODE_WRAP) {   /* 0x10060232 */
+                if (pDrv->f40 == 1) {
+                    /* "lapping %d back to 0 (a)\n", pDrv->f64 */
+                    BrRaceModeWrapUnwind(pRules, pDrv);
+                    nLapped = 0;
+                }
+            } else if (pCar != NULL) {          /* 0x1006029A */
+                /* "******* LAP #%d ********\n", pDrv->f40 */
+                /* OMITTED (br_race.h, item 2): the lap banner -- either the
+                 * "final lap" string (id 0x10B, when f40 == nLaps - 1) or an
+                 * sprintf of id 0x10C with f40 + 1 -- into car +0x100C, then
+                 * car +0xFFC/+0x1000 and, when the best-lap block above
+                 * produced a message id, +0x1004/+0x1008. */
+            }
+        }
+
+        /* ---- THE FINISH CONDITION, 0x1006033B ------------------------- */
+        /* Reached whether or not the lap block above ran: when f40 has
+         * already reached nLaps the increment is skipped and this fires
+         * again on every further crossing of gate 0. */
+        if (pDrv->f40 == pRules->nLaps) {
+            pDrv->f68 |= BR_RACE_FINISHED;      /* 0x1006034E, before the
+                                                 * car test -- a driver with
+                                                 * no car still finishes */
+            if (pCar != NULL) {
+                pCar->tFinal -= pDrv->f30;      /* 0x1006035C */
+                pCar->f29B0   = BR_RACE_KFINISH;
+                pDrv->f30     = BR_RACE_KZERO;
+                pCar->fFF8    = pRules->nFinished;
+                /* OMITTED (br_race.h, items 2 and 3): the placing banner
+                 * ("1st"/"2nd"/...) and, when nLaps == 3 and this driver has
+                 * a car index below the car count, the best-total record at
+                 * 0x10AF2094 + 0x10C. */
+            }
+            pRules->nFinished += 1;             /* 0x10060440 -- reached from
+                                                 * the no-car path too */
+            goto tail;                          /* the finish arm SKIPS the
+                                                 * standings recompute */
+        }
+    positions:
+        /* OMITTED (br_race.h, item 4): 0x1006044B, the standings recompute
+         * for modes 1, 6 and 2. It reads and writes the whole field and the
+         * cars' HUD text; it touches none of the state this module owns. */
+        goto tail;
+    }
+
+    /* --- forward, but back over ground already covered ------------------ */
+    /* 0x100606E6. This is how a driver that dropped back and re-crossed gate
+     * 0 is given the lap it has, in the original's words, technically
+     * earned. */
+    if (iNext != 0)
+        goto tail;
+
+    pDrv->f44 += 1;                             /* 0x100606F4 */
+    if (pDrv->f44 > pDrv->f40) {                /* `jle` */
+        BrRaceBestLap(pDrv, tLap);
+        BrRaceRecordLap(pDrv, tLap);
+        pDrv->f40 = pDrv->f44;                  /* 0x100607CF -- assignment,
+                                                 * not an increment */
+        nLapped = 1;
+        /* "******* LAP #%d ********\n" and the same banner, omitted. */
+    }
+
+    /* "granting technically-earned lap %d/%d to %d\n",
+     *  pDrv->f44, pDrv->f40, pDrv->f64 */
+    if (pRules->mode == BR_RACE_MODE_WRAP && pDrv->f40 == 1) {
+        /* "lapping %d back to 0 (b)\n", pDrv->f64 */
+        BrRaceModeWrapUnwind(pRules, pDrv);
+        nLapped = 0;
+    }
+
+    /* NOTE, and it is the original's: this arm has NO finish test. A lap
+     * granted here can take f40 to nLaps without ever setting the finished
+     * flag -- the flag is only reachable through the high-water arm. */
+
+tail:
+    if (pCar != NULL)                           /* 0x1006089F */
+        BrRaceStoreToCar(pDrv);
+    return nLapped;
+}
+@end

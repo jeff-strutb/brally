@@ -184,7 +184,7 @@ def compile_port(rel_src, objdir, tag):
     if os.path.exists(obj):
         os.unlink(obj)
     cmd = ['sh', ms.WINE, ms.CL, '/nologo', '/O2', '/W3',
-           '/I', 'include', '/I', 'ports/macos/include', '/I', 'tools/msvc5-compat',
+           '/I', 'build/port/include', '/I', 'ports/macos/include', '/I', 'tools/msvc5-compat',
            '/I', os.path.join(os.path.relpath(ms.MSVC_DIR, ROOT), 'include'),
            '/c', rel_src,
            '/Fo' + os.path.relpath(obj, ROOT).replace('/', '\\')]
@@ -257,24 +257,13 @@ def materialise_baseline(ref, rels, mapping):
 # ----------------------------------------------------------------- main -----
 
 def default_sources():
-    """What build.sh compiles: every src/core module, except that a port TU
-    under ports/macos/core/ replaces its src counterpart, plus the port's own
-    ports/macos/core/ and ports/macos/legacy/ files."""
-    out = []
-    port_core = os.path.join(ROOT, 'ports', 'macos', 'core')
-    for dirpath, _dirs, files in os.walk(os.path.join(ROOT, 'src', 'core')):
-        for f in files:
-            if not f.endswith('.c') or f.startswith('_'):
-                continue
-            rel = os.path.relpath(os.path.join(dirpath, f), os.path.join(ROOT, 'src', 'core'))
-            if not os.path.exists(os.path.join(port_core, rel)):
-                out.append(os.path.relpath(os.path.join(dirpath, f), ROOT))
-    for sub in ('core', 'legacy'):
-        for dirpath, _dirs, files in os.walk(os.path.join(ROOT, 'ports', 'macos', sub)):
-            for f in files:
-                if f.endswith('.c'):
-                    out.append(os.path.relpath(os.path.join(dirpath, f), ROOT))
-    return sorted(out)
+    """Exactly the core TUs build.sh compiles for the port: a module with a
+    port spec is compiled from its generated copy under build/port/ (see
+    ports/macos/tools/portgen.py), which this regenerates first."""
+    sys.path.insert(0, os.path.join(ROOT, 'ports', 'macos', 'tools'))
+    import portgen
+    portgen.generate()
+    return [path for _key, path, _extra in portgen.core_units()]
 
 
 def main():

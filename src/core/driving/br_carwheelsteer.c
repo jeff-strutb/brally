@@ -12,13 +12,10 @@
  * fold in a steer angle scaled by a fixed constant before the roll/camber
  * pair.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdint.h>
 
-#ifdef BR_MATCHING_BUILD
 
 extern int   DAT_105ccb88;      /* 0x105CCB88 replay-mode flag       */
 extern int   DAT_100a9360;      /* 0x100A9360 game mode              */
@@ -114,4 +111,3 @@ void __fastcall BrCarWheelSteerStep_1005ACE0(int pCar)
     pf[0xa88 / 4] = pf[0xa88 / 4] - 0.254f;
 }
 
-#endif /* BR_MATCHING_BUILD */

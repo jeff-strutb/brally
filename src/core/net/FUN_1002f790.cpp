@@ -59,10 +59,8 @@
  * @t4-pass 0x1002F790 1 2026-09-16 probes 24 bytes 2653 insns 864 regions 11 rows 392 census no  (byte-exactness grind: name scratch sized to 0x400 to match the frame, index*0x96c hoisted once into soff/roff, imports routed through pointer locals -- MSVC folds them back to call [mem]; register allocation of the two mutex imports and the slot base is the residue, unmoved.)
  * @t4-pass 0x1002F790 2 2026-09-16 probes 11 bytes 2653 insns 864 regions 11 rows 392 census yes  (ordered global-write census: every write to the peer/record tables is identical in address and value to the original, only two record-field stores reordered -- the residue is register allocation/scheduling, not missing or wrong code; the A5 oracle proves same-in/same-out on 48 seeds.  Numbers unmoved from pass 1.)
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #include <string.h>
-#endif
 
 struct BrNetHdr {
     int f00;

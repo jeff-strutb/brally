@@ -4,7 +4,6 @@
  * Filed out of the address batch slice1_05.c; its preamble is carried verbatim.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The originals of the vtx-cache cluster take no BrVtxCache parameter --
  * state is loose globals -- and BrVtxExpand/Insert/Resolve have different
  * arities. Hide the header's port prototypes behind renames so the
@@ -25,10 +24,6 @@
 #undef BrSelLookup
 #undef BrPtrListAdd
 #undef BrF3DVtxFixup
-#else
-#include "slice1_05.h"
-#include "br_gamestep.h"   /* 0x10034C66/0x10034C73 == BRGlide 0x1002E317/0x1002E324 */
-#endif
 
 #include <stddef.h>
 
@@ -43,7 +38,6 @@
  * full it reports failure. The local player is always slot zero. */
 BrPeer g_aBrPeers[BR_PEER_COUNT];   /* Glide 0x117A9B88; loop 1 starts at [1] */
 
-#ifdef BR_MATCHING_BUILD
 /* The original probes every record under that record's own Win32 mutex:
  * WaitForSingleObject(h, INFINITE), read f04/f2C, ReleaseMutex(h) -- through
  * the import table (the Wait import is CSEd into ebp, Release stays a
@@ -94,25 +88,3 @@ int BrPeerFind(uint32_t id)
 
     return -1;
 }
-#else
-int BrPeerFind(uint32_t id)
-{
-    int i;
-
-    if (id == 1)
-        return 0;
-
-    for (i = 1; i < BR_PEER_COUNT; ++i) {
-        if ((g_aBrPeers[i].f2C & BR_PEER_STATE_MASK) != 0u &&
-            g_aBrPeers[i].f04 == id)
-            return i;
-    }
-
-    for (i = 1; i < BR_PEER_COUNT; ++i) {
-        if ((g_aBrPeers[i].f2C & BR_PEER_STATE_MASK) == 0u)
-            return i;
-    }
-
-    return -1;
-}
-#endif

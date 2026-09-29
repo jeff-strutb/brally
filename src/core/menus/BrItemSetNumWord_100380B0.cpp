@@ -21,10 +21,8 @@
  * Twin of 0x10037EF0, which differs only in the setting it reads (a byte
  * table indexed by the same selector instead of a word table).
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #include <stdlib.h>
-#endif
 
 class Item438B {
 public:

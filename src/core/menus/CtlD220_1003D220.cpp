@@ -12,9 +12,7 @@
  *
  * 0xC8 Phase: +0 vtbl, +4 pfnEnter, +0xC f0C, +0x68 f68.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Phase;
 

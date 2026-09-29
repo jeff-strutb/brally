@@ -11,9 +11,7 @@
  * pattern, arg pushed before the receiver loads), then hands 0 to the
  * shutdown sequence 0x100325B0.  Always returns 1.  No EH (no new).
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class BrPhaseCD {
 public:

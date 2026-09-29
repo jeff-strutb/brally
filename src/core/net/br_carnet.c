@@ -196,7 +196,6 @@ int32_t BrCarPredictRemote(BrCar *pCar, int32_t slot)
 /* 2. Car record -> BrCarState (the sender's packer)                    */
 /* ==================================================================== */
 
-#ifdef BR_MATCHING_BUILD
 /* 0x10059820 (D3D 0x100607B0, shared body).  The port's BrCarRecordToState
  * in slice8_83.c is the same function written for the host; this is the
  * byte-exact one, and BrCarNetSendState above reaches it through the
@@ -267,4 +266,3 @@ void BrCarRecordToState(BrCarState *pDst, BrCar *pCar)
     pDst->f98 = (float)CAR_U8(pCar, 0x369);
     pDst->f9C = (float)CAR_U8(pCar, 0x36A);
 }
-#endif /* BR_MATCHING_BUILD */

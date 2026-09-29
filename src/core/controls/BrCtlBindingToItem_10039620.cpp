@@ -1,10 +1,8 @@
 /* BrCtlBindingToItem_10039620.cpp -- controls, one C++ TU: 0x10039580
  * BrCtlNameFind (the name-table reader) and, after it, 0x10039620
  * BrCtlBindingToItem (writes the bound key's name into a menu label). */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #include <string.h>
-#endif
 
 class Item39620 {
 public:

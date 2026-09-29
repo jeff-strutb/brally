@@ -24,15 +24,12 @@
  * construct is not proven anywhere in the solved tree, so there is no
  * spelling to copy.  That MISS is pass 3's census.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import
  * table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdint.h>
 #include <stdlib.h>
 
-#ifdef BR_MATCHING_BUILD
 
 
 /* 0x10066620 */
@@ -158,4 +155,3 @@ void BrRankAssign(void)
   return;
 }
 
-#endif /* BR_MATCHING_BUILD */

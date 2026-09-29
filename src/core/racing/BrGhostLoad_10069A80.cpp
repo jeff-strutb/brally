@@ -56,7 +56,6 @@
  *     405 every time -- the tie is with a compiler-generated constant temp, not
  *     a declared local, so declaration-order-tiebreak has no handle here.
  */
-#ifdef BR_MATCHING_BUILD
 
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
@@ -213,4 +212,3 @@ install:
     }
 }
 
-#endif /* BR_MATCHING_BUILD */

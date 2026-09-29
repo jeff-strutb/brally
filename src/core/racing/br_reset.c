@@ -4,14 +4,11 @@
  * matched first and grouped by what they are afterwards.
  * Every function carries its original address.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import
  * table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdint.h>
 
-#ifdef BR_MATCHING_BUILD
 
 extern int DAT_106ec740;
 extern int DAT_106ec744;
@@ -39,4 +36,3 @@ void BrReset_1002E13B(void)
   return;
 }
 
-#endif /* BR_MATCHING_BUILD */

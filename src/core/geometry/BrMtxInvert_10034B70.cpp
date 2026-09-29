@@ -51,9 +51,7 @@
  *    pads 0-160, include sets, and /Ox /Ob2 /G5 /Gi /GR /Gy- /Gf-.
  *    /Op /Oa /Ow /G6 /O1 are far worse.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 #include <windows.h>   /* the preamble is a codegen input: see the header */
 

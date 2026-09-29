@@ -13,9 +13,7 @@
  * `int t0 = src` keeps eax/ecx live and flips the post-call flag stores
  * from `mov edx,[g_cur]` / c7 to the 201 B eax/ecx coloring (18 diffs).
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Phase;
 

@@ -1,0 +1,85 @@
+# Port deviations for src/core/driving/br_entheading.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:BrEntSetPos
+@drop define:BrEntSetMatrix
+@drop define:BrEntSetVel
+@drop define:BrEntSetAngVel
+@drop define:BrEntSetOrientation
+@drop define:BrEntSetHeading
+@drop undef:BrEntSetMatrix
+@drop undef:BrEntSetVel
+@drop undef:BrEntSetAngVel
+@drop undef:BrEntSetOrientation
+@drop undef:BrEntSetHeading
+@drop undef:BrEntSetPos
+@drop proto:BrSinF
+@drop proto:BrCosF
+@drop fn:BrEntSetHeading
+@after fn:BrEntSetHeading
+
+/* ====================================================================== */
+/* 1. Entity state setters                                                 */
+/* ====================================================================== */
+
+/* 0x100764C0 */
+/* WHAT IT DOES: points a car (or other object in the world) in a given
+ * compass direction, keeping it upright -- it can only turn about the
+ * vertical, not tip or roll. It writes the new facing into every copy of the
+ * object's state the physics keeps, so nothing is left pointing the old way. */
+/* @t4-pass 0x1006F720 1 2026-09-09 probes 10 bytes 279 insns 74 regions 1 rows 0 census no  (hand, fn.py variants: decl/store orders, dword-pun zeros, chain forms, h placement, all inert or worse) */
+/* @t4-pass 0x1006F720 2 2026-09-09 probes 10 bytes 279 insns 74 regions 1 rows 0 census yes  (hand, fn.py variants: store-order swaps, temps, mul order, q-decl forms, all inert or worse; corpus MISS at +0x30 len 12 -- the stores-before-fstp schedule is proven nowhere) */
+/* @t3 0x1006F720 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 279/279 insns 74/74 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is one scheduling fork: the original emits the c/s/0 stores
+ * before popping the pending sin result, every spelling here pops at the
+ * call return (identical multiset, 0+0).  Dead list in the RESIDUE block
+ * above plus the two ledger lines.
+ * Do not reopen before the end-grind (project rule 12). */
+/* @implements 0x100764C0 d3d BrEntSetHeading */
+void BrEntSetHeading(BrEnt *pE, float a)
+{
+    float c  = cosf(a);
+    float s  = sinf(a);
+    float b  = a - kBrNegHalfPi;   /* a + pi/2, to the float's precision */
+    float cb = cosf(b);
+    float sb = sinf(b);
+    float h  = a * kBrHalf;
+    float qw, qx, qy, qz;
+
+    pE->mat0.m[0][0] = c;
+    pE->mat0.m[0][1] = s;
+    pE->mat0.m[0][2] = 0.0f;
+    pE->mat0.m[1][1] = sb;
+    pE->mat0.m[1][0] = cb;
+    pE->mat0.m[1][2] = 0.0f;
+    pE->mat0.m[2][0] = 0.0f;
+    pE->mat0.m[2][1] = 0.0f;
+    pE->mat0.m[2][2] = 1.0f;
+
+    pE->st.quat.f00 = cosf(h);
+    pE->st.quat.f04 = 0.0f;
+    pE->st.quat.f08 = 0.0f;
+
+    /* The original reloads w/x/y from memory here, BEFORE computing z, and
+     * writes z to all three copies with fst/fst/fstp. Preserved. */
+    qw = pE->st.quat.f00;
+    qx = pE->st.quat.f04;
+    qy = pE->st.quat.f08;
+    qz = sinf(h);
+
+    pE->st.quat.f0C  = qz;
+    pE->stB.quat.f0C = qz;
+    pE->stA.quat.f0C = qz;
+
+    pE->stB.quat.f00 = qw;
+    pE->stA.quat.f00 = qw;
+    pE->stB.quat.f04 = qx;
+    pE->stB.quat.f08 = qy;
+    pE->stA.quat.f04 = qx;
+    pE->stA.quat.f08 = qy;
+
+    BrRbBuildMatrix(&pE->matrix, &pE->st);
+}
+@end

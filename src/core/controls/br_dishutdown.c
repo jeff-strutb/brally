@@ -12,7 +12,6 @@
  */
 #include "br_match.h"
 
-#ifdef BR_MATCHING_BUILD
 
 struct BrDI;
 
@@ -70,9 +69,7 @@ int BrDInputShutdown(void)
     return 1;
 }
 
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 extern int *DAT_118eeeec;
 extern int *DAT_118eef04;
 extern int *DAT_118eef14;
@@ -108,4 +105,3 @@ void BrExt_10079550(void)
   }
   return;
 }
-#endif /* BR_MATCHING_BUILD */

@@ -10,9 +10,7 @@
  * p = g_slot; g_c20 = 0; g_c24 = 0; then shared-return activate.
  * Slot load BEFORE the two zero stores (cpp-family2-notes.md).
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Phase;
 

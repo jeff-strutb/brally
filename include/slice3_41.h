@@ -112,7 +112,6 @@ extern int32_t g_Br0B380C;
  * along the track, accumulated across laps. */
 #define BR_RACE_LAPTIME_MAX  12  /* (0xFE4 - 0xFB4) / 4 -- see br_race.h */
 
-#ifdef BR_MATCHING_BUILD
 /* ============================ TRUE LAYOUT ================================
  * The original record is 0x2B68 bytes and every field below sits at the
  * offset the original instructions use.  The port arm further down keeps the
@@ -261,105 +260,6 @@ BR_DC_AT(f29B0,     0x29B0);
 BR_DC_AT(pCtl,      0x29C0);
 typedef char BrDriverCarOrigSize[(sizeof(BrDriverCar) == 0x2B68) ? 1 : -1];
 
-#else  /* ---- port arm: fields packed sequentially, offsets in comments ---- */
-
-typedef struct BrDriverCar {
-    BrVec3  pos;            /* +0x030  position this frame                */
-    BrVec3  posPrev;        /* +0xF80  position last frame                */
-    int32_t gateHi;         /* +0xFA0  furthest gate reached (unwrapped)  */
-    int32_t gate;           /* +0xFA4  current gate (unwrapped, may be <0)*/
-    int32_t lap;            /* +0xFA8  lap counter                        */
-    int32_t lapB;           /* +0xFAC  "technically earned" lap counter   */
-    float   tRun;           /* +0xFB0  time accumulated in the lap so far */
-    float   aLapTime[BR_RACE_LAPTIME_MAX];  /* +0xFB4  "lapTimeFinal[]"   */
-    float   tBest;          /* +0xFE4  best lap time, 0 == none yet       */
-    int32_t lapBest;        /* +0xFE8  lap the best was set on            */
-    float   tFinal;         /* +0xFEC  race time, trimmed at the flag     */
-    float   fFF4;           /* +0xFF4  sort key / distance along track    */
-    int32_t fFF8;           /* +0xFF8  rank output -- AND the finishing
-                             *         order, which 0x1005FF00 overwrites
-                             *         it with at the flag                */
-    float   f29B0;          /* +0x29B0 set to 0.9f at the flag            */
-
-    /* ---- EXTENDED AGAIN, by br_racestep.h's pass ------------------------
-     * Same rule as the extension above, and for the same reason: 0x10061F60
-     * and 0x100623E0 read and write these on the SAME 0x2B68 record the two
-     * blocks above model, so a rival struct would be a second view of one
-     * original object.  Every one carries its original offset.
-     *
-     * +0x29C0 is a POINTER to a control block in the original; only its
-     * first dword, its +0x20 and its +0x24 are ever touched from these two
-     * functions, so the three are members here rather than a block. */
-    int32_t f140;           /* +0x140   compared against the entrant count
-                             *          before the difficulty lookup       */
-    int32_t fE70;           /* +0xE70   zeroed either side of the
-                             *          controller call on the frozen arm  */
-    int32_t fF00;           /* +0xF00   non-zero == this car body is live; the
-                             *          phantom arm tests the car it borrows */
-    int32_t fF04;           /* +0xF04   a frame countdown 0x100623E0 bleeds */
-    int32_t fF78;           /* +0xF78   zeroed once a frame by 0x10061430,
-                             *          whose eleven bytes are that store   */
-    void  (*pfnControl)(struct BrDriverCar *);  /* +0xF08 the controller;
-                             *          0x1005D050 for a human slot,
-                             *          0x1005E690 for an AI one           */
-    BrVec3  f1024;          /* +0x1024  world velocity, (pos - posPrev)/dt */
-    float   f1030;          /* +0x1030  speed                              */
-    float   f1034;          /* +0x1034  distance run, f1030 * dt integrated*/
-    uint8_t b29AF;          /* +0x29AF  the finish / recovery state byte   */
-    uint32_t f29C0Ctl;      /* +0x29C0 -> +0x00, the control bit word      */
-    float   f29C0Steer;     /* +0x29C0 -> +0x20, the steering command      */
-    uint8_t b29C024;        /* +0x29C0 -> +0x24                            */
-    uint8_t b360;           /* +0x360   the skid-trail sample count        */
-
-    /* ---- EXTENDED AGAIN, by br_racebegin.h's pass -----------------------
-     * Same rule and the same reason as the two extensions above: Glide
-     * 0x10019A70's ONE-TIME ARM reads and writes these on the SAME 0x2B68
-     * record, so a rival struct would be a second view of one original
-     * object.  Every one carries its original offset and the instruction
-     * that pins it.
-     *
-     * The four equipment slots are named by TWO independent readings that
-     * agree: 0x1001A490 copies them out of the equipment record whose
-     * offsets br_racestart.h pins from 0x100628B0, and 0x10019EBD reads the
-     * same four out of the eight-byte replay header 0x1001A14A builds.
-     * car+0xE94 being the suspension also agrees with CONVENTIONS.md's
-     * spring rate, `(20 - n*-4) * 16000` with `n` at car+0xE94. */
-    int32_t  f730;          /* +0x730   0x100199AC gates the speed update  */
-    BrVec3   f1E8;          /* +0x1E8   the velocity 0x100199BC takes the
-                             *          length of.  Its components are read
-                             *          in the order +0x1EC, +0x1E8, +0x1F0
-                             *          and summed (y*y + x*x) + z*z, which
-                             *          is the order the port keeps          */
-    int32_t  fE88;          /* +0xE88   0x1001A619 gates the 0x1006FCE0
-                             *          call on this being zero            */
-    uint8_t *pEquip;        /* +0xE8C   -> the 0x200-byte equipment record
-                             *          slice5_60.h reaches as
-                             *          g_BrCarEquipTarget.  RAW BYTES: the
-                             *          record is written to disc verbatim  */
-    int32_t  fE90;          /* +0xE90   tire type,        0x1001A4A3       */
-    int32_t  fE94;          /* +0xE94   suspension type,  0x1001A498       */
-    int32_t  fE98;          /* +0xE98   handling type,    0x1001A4B9       */
-    int32_t  fE9C;          /* +0xE9C   transmission,     0x1001A49B       */
-    int32_t  fF7C;          /* +0xF7C   0x1001A641                         */
-    int32_t  fFFC;          /* +0xFFC   0x1001A644                         */
-    int32_t  f1004;         /* +0x1004  0x1001A64A, and the byte count
-                             *          0x1001A8D0's download returns       */
-    int32_t  f29A4;         /* +0x29A4  the car model REQUESTED; 0x10019EA7
-                             *          writes it and passes the same value
-                             *          to 0x1006FD50                       */
-    int32_t  f29A8;         /* +0x29A8  the car model APPLIED; 0x1001A127
-                             *          records THIS into the replay header
-                             *          and 0x1001A61E passes it on         */
-
-    /* +0x29C0's POINTEE.  The three fields above (f29C0Ctl, f29C0Steer,
-     * b29C024) are that block's +0x00, +0x20 and +0x24 flattened into this
-     * record; br_racebegin.h's BrRaceCtl deliberately does NOT repeat them,
-     * so there is exactly one model of each dword.  A host that supplies a
-     * real block has to decide which object owns those three. */
-    struct BrRaceCtl *pCtl; /* +0x29C0                                     */
-} BrDriverCar;
-
-#endif /* BR_MATCHING_BUILD -- true layout vs port layout */
 
 /* The three bits of car+0x29C0's first dword that 0x10061F60 writes.  br_ai.h
  * names the same word's 0x10000 / 0x20000 / 0x40000 from the controller's

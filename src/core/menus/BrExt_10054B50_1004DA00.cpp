@@ -45,10 +45,8 @@
  * 0x1004CBA0, 18,395 B -- so it is worth a fresh IDEA, but not another
  * permutation of this statement list.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #include <string.h>
-#endif
 
 class GameUi;
 class BrCtl;

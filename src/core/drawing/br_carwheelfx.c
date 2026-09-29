@@ -12,18 +12,14 @@
  * st(n)) are spelled out in the arithmetic here rather than "tidied", because
  * `fsubr m32` is `st0 = m32 - st0` and getting that backwards is silent.
  */
-#ifdef BR_MATCHING_BUILD
 #define BrSpanTestPoint BrSpanTestPoint_port
 #define BrPfxReset      BrPfxReset_port
-#endif
 #include "slice2_21.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrSpanTestPoint
 #undef BrPfxReset
 int  BrSpanTestPoint(float x, float y);
 void BrPfxReset(void);
 int  BrSpanContains(int param_1, int param_2);
-#endif
 
 #include <string.h>
 
@@ -95,7 +91,6 @@ static const unsigned aWheelOff[4] = { 0x994u, 0x57Cu, 0x370u, 0x788u };
  * matched per-slot write/read balance -- no dropped store.  Do not reopen
  * before the end-grind (project rule 12). */
 /* @implements 0x10039200 d3d BrCarWheelFx */
-#ifdef BR_MATCHING_BUILD
 /* The Glide twin (0x10032880) is __fastcall(pCar): everything the port passes
  * as pEnv->* and pSeed is a file-scope global here, and the wheel effect state
  * lives on the car object reached through ecx.  Same algorithm as the port
@@ -292,167 +287,3 @@ void __fastcall BrCarWheelFx(struct BrCar *pCar)
         pF    += 0x120;
     }
 }
-#else
-void BrCarWheelFx(struct BrCar *pCar, const BrCarFxEnv *pEnv, uint32_t *pSeed)
-{
-    int bMasked = 0;
-    float k1, k2, dot;
-    int i;
-
-    if (CAR_I(pCar, 0x294C) != 0 && pEnv->pRecs != NULL) {
-        unsigned idx = CAR_U16(pCar, 0x290C);
-        if (pEnv->pRecs[idx * 84u + 0x4Cu] & 0x10u)
-            bMasked = 1;
-    }
-
-    if (pEnv->mode6620 != 0) {
-        if (pEnv->sel0B380C != 2 && pEnv->sel0B380C != 8)
-            return;
-    }
-
-    /* (1 - 50/(speed + 50)) * 3 */
-    k1 = (K_1 - 50.0f / (CAR_F(pCar, 0x1030) - -50.0f)) * 3.0f;
-
-    dot = BrVec3Dot(CAR_V(pCar, 0x00), CAR_V(pCar, 0x1024));
-    if (dot < K_0)
-        dot = -dot;
-    /* (1 - 25/(25 - (-2.24 * |dot|))) * 3 */
-    k2 = (K_1 - 25.0f / (25.0f - dot * -2.240000009536743f)) * 3.0f;
-
-    for (i = 0; i < 4; i++) {
-        unsigned char *pW    = CAR_B(pCar, aWheelOff[i]);
-        unsigned char *pSoa  = CAR_B(pCar, 0x10AC + 4u * (unsigned)i);
-        BrVec3        *pWpos = CAR_V(pCar, 0x70   + 0x40u * (unsigned)i);
-        BrVec3        *pPrev = CAR_V(pCar, 0x10EC + 12u * (unsigned)i);
-        int16_t       *pS16  = CAR_S16(pCar, 0x2326 + 0xD8u * (unsigned)i);
-        uint16_t      *pTag  = &CAR_U16(pCar, 0x2680 + 0x12u * (unsigned)i);
-        float         *pF    = &CAR_F(pCar, 0x1140 + 0x480u * (unsigned)i);
-
-        float *pSoa00 = (float *)  (pSoa + 0x00);
-        int32_t *pSoa10 = (int32_t *)(pSoa + 0x10);
-        float *pSoa20 = (float *)  (pSoa + 0x20);
-        int32_t *pSoa30 = (int32_t *)(pSoa + 0x30);
-
-        BrVec3 vecA, vecB, vecC;
-        float t, s, dv;
-        int bIdle, kind;
-
-        vecA.x = vecA.y = vecA.z = 0.0f;
-        vecB = vecA;
-        vecC = vecA;
-        s = 0.0f;
-
-        /* fsubr: timer - (dt * -4) */
-        t = *pSoa20 - pEnv->dt * -4.0f;
-        *pSoa20 = t;
-        if (t <= 0.75f) {
-            bIdle = 1;
-            *pSoa30 = 0;
-        } else {
-            bIdle = 0;
-            if (t < 1.7000000476837158f)
-                *pSoa20 = 0.0f;         /* stored as an integer 0 */
-            else
-                *pSoa20 = t - K_1;
-            *pSoa30 = 1;
-        }
-
-        if (WHEEL_LIVE(pW) != 0) {
-            *pSoa00 = 3.0f;
-            *pSoa10 = WHEEL_SURF(pW);   /* movsx: signed */
-        } else if (*pSoa00 != K_0) {
-            *pSoa00 = *pSoa00 - K_1;
-        }
-
-        kind = *pSoa10;
-        if (*pSoa00 == K_0)
-            goto zero_path;
-
-        if (bIdle) {
-            s = 1.5f;
-        } else if (kind == 4) {
-            s = 2.5f;
-        } else if (kind == 3) {
-            if (pEnv->flag6624 == 0)
-                goto zero_path;
-            if (bMasked)
-                goto zero_path;
-            s = 1.5f;
-            *pSoa20 = 7.75f;
-        } else {
-            goto zero_path;
-        }
-
-        if (!bIdle) {
-            BrVec3Scale(&vecA, CAR_V(pCar, 0x20), s);
-            if (kind != 3) {
-                BrVec3MulAddTo(&vecA, CAR_V(pCar, 0x10),
-                               (i != 0 && i < 3) ? -s : s);
-                BrVec3ScaleBy(&vecA, k1);
-                BrVec3MulAddTo(&vecA, CAR_V(pCar, 0x1024),
-                               0.30000001192092896f);
-                dv = BrVec3Dot(CAR_V(pCar, 0x10), CAR_V(pCar, 0x1024)) * 0.5f;
-                BrVec3MulAddTo(&vecA, CAR_V(pCar, 0x10), dv);
-            } else {
-                BrVec3ScaleBy(&vecA, k2);
-                if (k2 != K_0) {
-                    if (i >= 2)
-                        vecA.z = vecA.z + vecA.z;
-                    dv = BrVec3Dot(CAR_V(pCar, 0x10), CAR_V(pCar, 0x1024))
-                       * 0.30000001192092896f;
-                    BrVec3MulAddTo(&vecA, CAR_V(pCar, 0x10), dv);
-                }
-            }
-        }
-
-        BrVec3MulAdd(&vecB, pWpos, CAR_V(pCar, 0x20), -0.25f);
-
-        if (!(kind == 3 && i >= 2)) {
-            float s3 = (i == 0) ? 0.15000000596046448f
-                     : (i < 3)  ? -0.15000000596046448f
-                                : 0.15000000596046448f;
-            BrVec3MulAddTo(&vecB, CAR_V(pCar, 0x10), s3);
-        }
-
-        vecC = vecB;
-        if (!bIdle) {
-            if (BrVec3DistSq(&vecB, pPrev) < 256.0f) {
-                float u = (float)(int)(BrDPlayRandStep(pSeed) & 0xFFFFu)
-                        * K_65536_RECIP;
-                BrVec3Lerp(&vecB, pPrev, &vecB, u * u);
-            }
-        }
-        /* The PRE-lerp value is what gets remembered, on both branches. */
-        *pPrev = vecC;
-        goto have_vectors;
-
-    zero_path:
-        BrVec3Zero(&vecA);
-        vecB = *pWpos;
-
-    have_vectors:
-        if (!bIdle) {
-            pS16[0] = (int16_t)BrFtolTrunc(vecA.x * 127.0f);
-            pS16[1] = (int16_t)BrFtolTrunc(vecA.y * 127.0f);
-            pS16[2] = (int16_t)BrFtolTrunc(vecA.z * 127.0f);
-            if (kind == 3 && pEnv->flag6624 != 0) {
-                pS16[-3] = pS16[0];
-                pS16[-2] = pS16[1];
-            } else {
-                pS16[-3] = (int16_t)(pS16[0] >> 1);   /* sar: arithmetic */
-                pS16[-2] = (int16_t)(pS16[1] >> 1);
-            }
-            pS16[-1] = 0;
-        }
-
-        *pTag = (uint16_t)kind;
-
-        pF[0] = (float)(int16_t)BrFtolTrunc((vecB.x - CAR_F(pCar, 0x26C8)) * 127.0f);
-        pF[1] = (float)(int16_t)BrFtolTrunc((vecB.y - CAR_F(pCar, 0x26CC)) * 127.0f);
-        pF[2] = (float)(int16_t)BrFtolTrunc((vecB.z - CAR_F(pCar, 0x26D0)) * 127.0f);
-        pF[-8] = pF[0];
-        pF[-7] = pF[1];
-        pF[-6] = pF[2];
-    }
-}
-#endif /* BR_MATCHING_BUILD */

@@ -7,10 +7,8 @@
  * The two ESP traces that make these functions readable are in the header, not
  * here, because they are the thing a future reader has to check first.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "br_window.h"
 #include "br_input.h"      /* g_brWndPlatform: MessageBoxA / exit / the strings */
 #include "br_boot.h"       /* g_brAppModeW / g_brAppModeH == 0x100A7514 / 18 */
@@ -122,7 +120,6 @@ void BrWindowDescribe(BrWindowDesc *pDesc)
  * learn about the game's window class and then to create the window itself,
  * and reports whether one came back. It does not remember the window: the
  * window's own message handler does that when it is told the window exists. */
-#ifdef BR_MATCHING_BUILD
 #include <windows.h>
 
 /* @implements 0x10019670 glide BrWindowCreate */
@@ -153,37 +150,6 @@ int BrWindowCreate(const BrWindowOps *pOps)
                            NULL, NULL, (HINSTANCE)g_brhInstance, NULL);
     return hWnd != NULL;
 }
-#else
-int BrWindowCreate(const BrWindowOps *pOps)
-{
-    BrWindowDesc desc;
-    void        *hWnd;
-
-    /* 0x10019673 / 0x1001967B: the instance handle is read once and copied to
-     * the second global before anything else happens. */
-    g_brhInstance2 = g_brhInstance;
-
-    if (pOps == NULL || pOps->pfnRegisterClass == NULL ||
-        pOps->pfnCreateWindow == NULL)
-        return 0;
-
-    BrWindowDescribe(&desc);
-
-    /* 0x100196E0: RegisterClassA. ITS RESULT IS DISCARDED -- nothing tests it
-     * and the very next instruction reloads eax from 0x105BC730. A failed
-     * registration is followed by a CreateWindowExA attempt anyway. */
-    (void)pOps->pfnRegisterClass(&desc, pOps->pUser);
-
-    /* 0x10019718: CreateWindowExA. The handle is NOT stored here -- the
-     * window procedure stores it from WM_CREATE, which CreateWindowExA
-     * dispatches before returning. A host whose pfnCreateWindow does not do
-     * the same leaves g_brhWnd NULL. */
-    hWnd = pOps->pfnCreateWindow(&desc, pOps->pUser);
-
-    /* 0x1001971E: xor ecx,ecx / test eax,eax / setne cl / mov eax,ecx. */
-    return (hWnd != NULL) ? 1 : 0;
-}
-#endif /* BR_MATCHING_BUILD */
 
 /* ================================================================== *
  * 0x10017E30 -- the mode-2 (EAR) startup. 211 bytes, __cdecl, one argument.
@@ -215,7 +181,6 @@ int BrWindowCreate(const BrWindowOps *pOps)
  * crank candidates and scores in build/match/crank.log, dead probes in the
  * comment block above.  Do not reopen before the end-grind (project rule 12). */
 /* @implements 0x10017E30 glide BrWindowEarStartup */
-#ifdef BR_MATCHING_BUILD
 #include <stdlib.h>
 extern int32_t DAT_100a74fc;                 /* 0x100A74FC, the DLL selector */
 int   FUN_10017910(int32_t sel);             /* loads the EAR DLL, 0 = fail */
@@ -259,96 +224,3 @@ int32_t BrWindowEarStartup(void *hWnd, const BrEarOps *pOps)
     }
     return 1;
 }
-#else
-int32_t BrWindowEarStartup(void *hWnd, const BrEarOps *pOps)
-{
-    int32_t iErr;
-
-    /* 0x10017E30..0x10017E45. The counter is incremented and compared to 1,
-     * and it is NEVER decremented, so this is a run-once guard: the second and
-     * every later call returns 1 having done nothing. Transcribed as the
-     * increment-and-compare it is rather than as a boolean, because the
-     * original's counter is observable to anything else that reads
-     * 0x104B1688. */
-    ++s_cEarStartupCalls;
-    if (s_cEarStartupCalls != 1)
-        return 1;
-
-    ++s_cEarStartupBodies;
-
-    if (pOps == NULL || pOps->pfnLoad == NULL)
-        return 1;    /* frontier: nothing to call, and nothing invented */
-
-    /* 0x10017E46..0x10017E67: 0x10017910([0x100A74FC]). That function loads
-     * earpds.dll when the argument is non-zero and earias.dll when it is zero,
-     * resolves about thirty _EAR_DLL_* entry points into 0x104B15F8..0x104B1684,
-     * and finishes with
-     *     RegisterWindowMessageA("EAR Interactive Around-Sound") -> 0x104B1620
-     * which is the message br_input.c's mode-2 arm compares uMsg against.
-     * It returns 0 on failure. */
-    if (pOps->pfnLoad(s_iEarDllSelect, pOps->pUser) == 0) {
-        /* 0x10017E6B..0x10017E90: MessageBoxA(hWnd, str(0xFE), str(0xFD),
-         * MB_ICONHAND) then exit(1). lpText is the SECOND lookup pushed and
-         * lpCaption the first -- 0xFD is pushed with the 0x10 and its result
-         * becomes the caption. */
-        if (g_brWndPlatform.pfnMessageBox != NULL)
-            g_brWndPlatform.pfnMessageBox(
-                hWnd,
-                (g_brWndPlatform.pfnString != NULL)
-                    ? g_brWndPlatform.pfnString(0xFE) : NULL,
-                (g_brWndPlatform.pfnString != NULL)
-                    ? g_brWndPlatform.pfnString(0xFD) : NULL,
-                BR_MB_ICONERROR);
-        if (g_brWndPlatform.pfnExit != NULL)
-            g_brWndPlatform.pfnExit(1);
-        /* The original does not come back from exit(). A test that supplies a
-         * recording pfnExit does, and then falls through to 0x10017E93 exactly
-         * as the instruction stream would -- which is what the original's
-         * fall-through into the validate call literally is. */
-    }
-
-    /* 0x10017E93: [0x104B1658](0x9BE9C9) -- _EAR_DLL_AAA_Validate@4. */
-    if (pOps->pfnAAAValidate != NULL)
-        pOps->pfnAAAValidate(BR_EAR_VALIDATE_COOKIE, pOps->pUser);
-
-    /* 0x10017E9E: [0x104B1634](hWnd) -- _EAR_DLL_AssignHwnd@4. This is the
-     * only thing in the whole startup that uses the window handle, and it is
-     * why the main loop has to pass it. */
-    if (pOps->pfnAssignHwnd != NULL)
-        pOps->pfnAssignHwnd(hWnd, pOps->pUser);
-
-    /* 0x10017EA5: [0x104B1668](0) -- _EAR_DLL_InitializeEar@4. NON-ZERO is
-     * success: 0x10017EAF `jne 0x10017EFA` returns 1 straight away. */
-    if (pOps->pfnInitializeEar != NULL &&
-        pOps->pfnInitializeEar(0, pOps->pUser) != 0)
-        return 1;
-
-    /* 0x10017EB1: [0x104B166C]() -- _EAR_DLL_GetLastError@0. */
-    iErr = (pOps->pfnGetLastError != NULL)
-         ? pOps->pfnGetLastError(pOps->pUser) : 0;
-
-    if (iErr == 3) {                          /* 0x10017EB7 */
-        /* 0x10017EBC..0x10017EE1: MessageBoxA(hWnd, str(0x12E), str(0xFD),
-         * MB_ICONHAND) then exit(1). Same caption as the load failure. */
-        if (g_brWndPlatform.pfnMessageBox != NULL)
-            g_brWndPlatform.pfnMessageBox(
-                hWnd,
-                (g_brWndPlatform.pfnString != NULL)
-                    ? g_brWndPlatform.pfnString(0x12E) : NULL,
-                (g_brWndPlatform.pfnString != NULL)
-                    ? g_brWndPlatform.pfnString(0xFD) : NULL,
-                BR_MB_ICONERROR);
-        if (g_brWndPlatform.pfnExit != NULL)
-            g_brWndPlatform.pfnExit(1);
-        return 1;                             /* 0x10017EE4 */
-    }
-
-    /* 0x10017EED: [0x104B1650]() -- _EAR_DLL_ShowLastError@0, which puts the
-     * message up itself, then exit(1). No MessageBoxA on this path. */
-    if (pOps->pfnShowLastError != NULL)
-        pOps->pfnShowLastError(pOps->pUser);
-    if (g_brWndPlatform.pfnExit != NULL)
-        g_brWndPlatform.pfnExit(1);
-    return 1;                                 /* 0x10017EFC */
-}
-#endif /* BR_MATCHING_BUILD */

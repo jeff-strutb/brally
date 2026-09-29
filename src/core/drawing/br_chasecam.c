@@ -14,17 +14,11 @@
  * looks redundant has already been shown elsewhere in this module to move
  * VC5's register allocation (see br_rdpmode.c).
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
-#ifdef BR_MATCHING_BUILD
 #define BrCarSub9020 BrCarSub9020_port2
 #include "slice4_53.h"
 #undef BrCarSub9020
-#else
-#include "slice4_53.h"
-#endif
 #include "slice1_03.h"      /* BrComCallLocked68 (0x1000C4D0) */
 
 #include <math.h>
@@ -36,13 +30,9 @@
 #include "slice2_18.h"      /* BrGfx2C210, BrGfx31227 declarations        */
 #include "slice2_19.h"      /* BrSub10002240, BrSub100088B0, BrSub10037740 */
 #include "slice2_20.h"      /* BrPoolEmit, BrRcaLoadCar                   */
-#ifdef BR_MATCHING_BUILD
 #define BrCarSub9020 BrCarSub9020_port
 #include "slice2_21.h"      /* BrSinF, BrSqrtF, BrCarSub9020              */
 #undef BrCarSub9020
-#else
-#include "slice2_21.h"      /* BrSinF, BrSqrtF, BrCarSub9020              */
-#endif
 #include "slice2_22.h"      /* BrDPlayLink, BrDPlaySendTag4               */
 #include "slice2_24.h"      /* BrStringById, BrMenuSub10044B90, ...       */
 
@@ -53,7 +43,6 @@
 /* XSLICE 0x1007CC00 */
 extern void BrGbiStackOverflow(int code);
 
-#ifdef BR_MATCHING_BUILD
 
 extern float _DAT_10077000;
 
@@ -371,4 +360,3 @@ void __fastcall FUN_10001510(char *car, int _edx_unused, char *cam, BrCamV3 *pre
     DAT_100bcdcc = 1;
 }
 
-#endif /* BR_MATCHING_BUILD */

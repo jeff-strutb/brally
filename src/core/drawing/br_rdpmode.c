@@ -7,7 +7,7 @@
  * pipeline sync, render mode, blend colour, the colour combiner -- and the
  * combiner-word builders those commands are made of.
  *
- * ‼ br_gamestep.h IS LOAD-BEARING and must not be dropped as an unused
+ * â¼ br_gamestep.h IS LOAD-BEARING and must not be dropped as an unused
  * include.  It declares nothing this file calls, yet without it 0x1001CF90
  * loses its match outright -- same 448 bytes, 142 of them different, i.e. a
  * wholesale re-colouring.  slice1_05.c, where these functions came from,
@@ -114,7 +114,6 @@ void BrRdpSetCombineLERP(BrGfxWords *pOut,
                | (Ad1 & 7);
 }
 
-#ifdef BR_MATCHING_BUILD
 
 extern int *DAT_106e7710;
 extern int DAT_106e72e8;
@@ -170,9 +169,7 @@ void FUN_100119c0(int param_1, int param_2)
   FUN_10010fb0(param_2);
 }
 
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 
 
 /* 0x106ED520 holds a pointer to the camera matrix, kept as an int here. */
@@ -261,4 +258,3 @@ void FUN_10011650(int param_1)
   BR_EMIT(0xba000402, DAT_106e79b0)
   BR_EMIT(0xb9000002, 1)
 }
-#endif /* BR_MATCHING_BUILD */

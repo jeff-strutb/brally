@@ -1,0 +1,12 @@
+# Port deviations for src/core/gamedata/br_idle.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop var:DAT_106e7738
+@drop var:DAT_106e9a30
+@drop var:DAT_106ec6a8
+@drop var:DAT_106ed700
+@drop proto:BrPodNop
+@drop var:DAT_106ed5d0
+@drop proto:BrStubTrue
+@drop fn:BrIdleLoop_1002DE04

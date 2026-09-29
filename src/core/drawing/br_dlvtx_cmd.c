@@ -7,16 +7,13 @@
  * stack int, and 1/w is left as computed.  The port body is BrDlCmdVtx in
  * br_dlcmd.c; this file is the matching arm only.
  */
-#ifdef BR_MATCHING_BUILD
 /* TU state only (symbol-table size): with the DirectSound declarations in
  * front, VC5 orders the matrix row terms y, z, x as the original does.
  * Nothing here uses them. */
 #include <dsound.h>
-#endif
 #include <stdint.h>
 #include "br_dl.h"
 
-#ifdef BR_MATCHING_BUILD
 
 /* Combined model-view-projection matrix, 4x4 row-major at 0x105D1760. */
 extern float DAT_105d1760, DAT_105d1764, DAT_105d1768, DAT_105d176c;
@@ -110,4 +107,3 @@ const uint32_t *BrDlCmdVtx(const uint32_t *p)
     return p + 2;
 }
 
-#endif /* BR_MATCHING_BUILD */

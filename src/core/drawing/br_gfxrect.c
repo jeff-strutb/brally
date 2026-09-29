@@ -12,24 +12,17 @@
  * write through slice2_17.c's g_s17 state block and carry that batch's
  * whole helper set, which this file's preamble does not.
  */
-#ifdef BR_MATCHING_BUILD
 /* slice2_17.h prototypes a list pointer the original never takes. */
 #define BrPtrListContains BrPtrListContains_port
-#endif
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice2_17.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrPtrListContains
-#endif
 
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
 
-#ifdef BR_MATCHING_BUILD
 
 /* WHAT IT DOES: empty function (/Od frame, nothing else). */
 /* @implements 0x1002AB8F glide BrNop_1002AB8F */
@@ -49,4 +42,3 @@ void BrNop_1002AB94(void)
   return;
 }
 
-#endif /* BR_MATCHING_BUILD */

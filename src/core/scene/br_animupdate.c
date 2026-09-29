@@ -15,21 +15,16 @@
  * and the C below uses the negated-comparison forms that reproduce the
  * unordered case as well, not just the ordered one.
  */
-#ifdef BR_MATCHING_BUILD
 /* Header prototype is cdecl (this, r, g, b).  Original is thiscall with
  * ret 0xC; hide that prototype so the definition can take the struct-arg
  * __fastcall shape that reproduces it. */
 #define BrRgbSinkSet BrRgbSinkSet_hdr
-#endif
-#ifdef BR_MATCHING_BUILD
 /* slice2_19.h / br_seg.h declare these cdecl with a leading state pointer the
  * originals do not have.  Hide those prototypes so BrModelLoad can call them
  * with the shapes the bytes show. */
 #define BrSub100088B0 BrSub100088B0_cdecl
 #define BrSegSetBases BrSegSetBases_cdecl
-#endif
 #include "slice2_19.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrSub100088B0
 #undef BrSegSetBases
 typedef struct { void *p; } BrModelLoadArg;
@@ -37,10 +32,7 @@ extern int g_brModelMgr;                        /* 0x10AC0810 */
 void * __fastcall BrSub100088B0(void *pThis, BrModelLoadArg a,
                                 BrModelLoadArg b);
 void BrSegSetBases(uint32_t n64Base, uint32_t hostBase);
-#endif
-#ifdef BR_MATCHING_BUILD
 #undef BrRgbSinkSet
-#endif
 
 #include <string.h>
 
@@ -55,16 +47,7 @@ void BrSegSetBases(uint32_t n64Base, uint32_t hostBase);
  * garbage frac is multiplied by a zero delta and never reaches the output.
  * The matching build spells the cast itself: the original is a plain
  * `call __ftol`, and at /Od a static helper would be a real call. */
-#ifdef BR_MATCHING_BUILD
 #define BrFtol(f) ((int)(f))
-#else
-static int BrFtol(float f)
-{
-    if (!(f > -2147483649.0f && f < 2147483648.0f))
-        return (int)0x80000000L;
-    return (int)f;
-}
-#endif
 
 /* lo + (((hi - lo) * frac) >> 12), truncated back to the source width. The
  * truncation is a `movsx ax` / `movsx al` in the original and does wrap.

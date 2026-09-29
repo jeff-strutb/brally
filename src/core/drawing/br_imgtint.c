@@ -11,20 +11,16 @@
  */
 #include <string.h>
 
-#ifdef BR_MATCHING_BUILD
 /* Header prototype is cdecl; the original is thiscall.  Rename the
  * prototype so the thiscall definition is not a C2373 redefinition. */
 #define BrCarInitTables BrCarInitTables_cdecl_hdr
 #define BrCarClear29C8  BrCarClear29C8_cdecl_hdr
 #define BrZeroRegions   BrZeroRegions_cdecl_hdr
-#endif
 #include "slice3_40.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrCarInitTables
 #undef BrCarClear29C8
 #undef BrZeroRegions
 void BrZeroRegions(void);
-#endif
 
 #include "br_match.h"    /* BR_THISCALL1 */
 
@@ -141,7 +137,6 @@ void BrImgMulByTexture(int32_t iTex, uint8_t *pPix, int32_t w, int32_t h)
     }
 }
 
-#ifdef BR_MATCHING_BUILD
 /* 0x1005A500 (D3D twin 0x10061480, port body BrImgTintBlit in slice1_07.c) */
 /* Transcribed from the Glide bytes: the pixel is copied as a dword before
  * the key test re-reads byte 0; the three channels share one grey value and
@@ -193,9 +188,7 @@ int FUN_1005a500(const uint8_t *pSrc, int32_t left, int32_t right,
     }
     return 1;
 }
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: scan a 32-bit-per-pixel image region (x0..x1, y0..y1,
  * rows packed at the region's own width) for a pixel whose first byte is
  * zero and whose next two bytes are equal -- the livery loader's test for
@@ -248,4 +241,3 @@ int BrImgRegionHasKey(const char *pImg, int x0, int x1, int y0, int y1)
   }
   return 0;
 }
-#endif /* BR_MATCHING_BUILD */

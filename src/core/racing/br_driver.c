@@ -4,14 +4,11 @@
  * car's position record, and the release of a driver's loaded assets.
  * Every function carries its original address.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdlib.h>
 
-/* ── Ghidra-matched functions ─────────────────────────── */
-#ifdef BR_MATCHING_BUILD
+/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
 int FUN_1006f840();
 
 /* WHAT IT DOES: copy a car position record and its trailing 3-vector. */
@@ -50,4 +47,3 @@ void __fastcall BrDriverAssetsFree(int param_1)
   return;
 }
 
-#endif /* BR_MATCHING_BUILD */

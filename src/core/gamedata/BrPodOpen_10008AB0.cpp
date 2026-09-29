@@ -23,9 +23,7 @@
  * Do not dllimport operator new: the original calls the 0x10074572 thunk
  * (E8), not the IAT (FF 15) -- same as 0x10056260.cpp.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdio.h>
 #include <string.h>
 

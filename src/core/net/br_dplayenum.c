@@ -17,7 +17,6 @@
  * (287, worse), 0x100AABE8 literal (239, FIRSTDIV +6).
  */
 
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #include <windows.h>
 
@@ -168,4 +167,3 @@ int BrNetEnumSessionsStart(void *pIface)
     *(unsigned char *)(DAT_10ac5d30 + 0x2b64) = 0;
     return r;
 }
-#endif /* BR_MATCHING_BUILD */

@@ -4,7 +4,6 @@
  * Filed out of the address batch slice1_05.c; its preamble is carried verbatim.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The originals of the vtx-cache cluster take no BrVtxCache parameter --
  * state is loose globals -- and BrVtxExpand/Insert/Resolve have different
  * arities. Hide the header's port prototypes behind renames so the
@@ -25,10 +24,6 @@
 #undef BrSelLookup
 #undef BrPtrListAdd
 #undef BrF3DVtxFixup
-#else
-#include "slice1_05.h"
-#include "br_gamestep.h"   /* 0x10034C66/0x10034C73 == BRGlide 0x1002E317/0x1002E324 */
-#endif
 
 #include <stddef.h>
 
@@ -59,7 +54,6 @@
  * crank candidates and scores in build/match/crank.log, dead probes in the
  * comment block above.  Do not reopen before the end-grind (project rule 12). */
 /* @implements 0x1002F460 d3d BrSelLookup */
-#ifdef BR_MATCHING_BUILD
 /* Original: no parameters. The input record comes through a pointer
  * global, the table is two interleaved pinned byte columns (0x100B3028 /
  * 0x100B3029), and the results are globals. A shared unsigned-char temp
@@ -102,23 +96,3 @@ void BrSelLookup(void)
     idx = p->f04 * 12 + p->f05;
     DAT_104b15e8 = DAT_100b3029[idx * 2];
 }
-#else
-void BrSelLookup(const BrSelInput *pIn, const unsigned char (*aTable)[2],
-                 int *pOutA, int *pOutB)
-{
-    int idx = (int)pIn->f04 * 12 + (int)pIn->f05;
-    int a   = (int)aTable[idx][0];
-
-    *pOutA = a;
-
-    if (pIn->f00 & 1) {
-        a = (a >= 6) ? (a - 6) : (a + 6);
-        *pOutA = a;
-    }
-
-    /* Recomputed from f04/f05 in the original, so the fold above cannot
-     * leak into the second lookup. */
-    idx = (int)pIn->f04 * 12 + (int)pIn->f05;
-    *pOutB = (int)aTable[idx][1];
-}
-#endif

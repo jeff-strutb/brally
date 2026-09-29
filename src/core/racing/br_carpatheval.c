@@ -5,7 +5,6 @@
  * parameter from the car's position, and from its cubic powers lay down the
  * blended position, tangent and normal frame (car+0xF18..+0xF58).
  */
-#ifdef BR_MATCHING_BUILD
 #include "br_match.h"      /* BR_THISCALL1 -- thiscall via __fastcall on VC5 */
 
 void  BrVec3Sub(float *pOut, const void *pA, const void *pB);
@@ -182,4 +181,3 @@ void BR_THISCALL1 BrCarPathEval(unsigned char *pCar)
   return;
 }
 
-#endif /* BR_MATCHING_BUILD */

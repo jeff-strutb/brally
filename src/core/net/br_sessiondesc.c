@@ -27,7 +27,6 @@ extern void BrExt_1003CDA0(void);
  * forwards and nothing more; what the routine itself does is described where
  * its body is. */
 /* @implements 0x1003CDA0 d3d BrSub1003CDA0 */
-#ifdef BR_MATCHING_BUILD
 /* NOT an adapter in the image. Glide 0x10036430 and D3D 0x1003CDA0 are both
  * 212 bytes of the real body -- the two spellings the tree found are two
  * COPIES the linker did not fold, not a forwarder and an owner. slice6_72.c
@@ -109,9 +108,3 @@ int32_t BrSub1003CDA0(void)
     GlobalFree(GlobalHandle(pDesc));
     return 0;
 }
-#else
-void BrSub1003CDA0(void)
-{
-    BrExt_1003CDA0();
-}
-#endif

@@ -1,0 +1,13 @@
+# Port deviations for src/core/drawing/br_anim.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:BrRgbSinkSet
+@drop define:BrSub100088B0
+@drop define:BrSegSetBases
+@drop undef:BrSub100088B0
+@drop undef:BrSegSetBases
+@drop type:BrModelLoadArg
+@drop var:g_brModelMgr
+@drop proto:BrSub100088B0
+@drop proto:BrSegSetBases
+@drop undef:BrRgbSinkSet

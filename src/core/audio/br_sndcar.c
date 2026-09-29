@@ -3,13 +3,10 @@
  * Per-car engine loops and one-shot dispatch, once a frame, thiscall on the
  * car.  Neighbour 0x10061310 (race bring-up) lives in br_sndrace.c.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import
  * table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 
-#ifdef BR_MATCHING_BUILD
 
 #include <stdint.h>
 
@@ -488,4 +485,3 @@ LAB_10061dc3:
   return;
 }
 
-#endif /* BR_MATCHING_BUILD */

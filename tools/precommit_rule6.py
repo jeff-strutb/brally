@@ -86,12 +86,24 @@ def tag_vas_now(path):
         return set(m.group(1).upper() for m in TAG.finditer(f.read()))
 
 
+# src/ and include/ are what MSVC compiles and nothing else: a Mac-port
+# difference is a spec in ports/macos/patch/ (ports/macos/tools/portgen.py),
+# never a conditional on the build.  Judged on the lines the commit adds.
+PORT_COND = re.compile(r'^\s*#\s*(if|ifdef|ifndef|elif)\b.*\b(BR_MATCHING_BUILD|_MSC_VER)\b')
+
+
 def main():
-    bad, batches, filed_into_batch = [], [], []
+    bad, batches, filed_into_batch, conds = [], [], [], []
     for rel in staged_files():
         path = os.path.join(ROOT, rel)
         if not os.path.exists(path):
             continue
+        if re.match(r'(src|include)/', rel):
+            add = added_lines(rel)
+            for i, l in enumerate(open(path, encoding='utf-8',
+                                       errors='replace').read().split('\n')):
+                if (i + 1) in add and PORT_COND.match(l):
+                    conds.append((rel, i + 1))
         if re.match(r'src/core/slice\d+_\d+\.c$', rel):
             was = subprocess.run(['git', 'cat-file', '-e', 'HEAD:' + rel],
                                  cwd=ROOT, capture_output=True)
@@ -117,8 +129,16 @@ def main():
             if not described(lines, i):
                 bad.append((rel, i + 1, TAG.search(l).group(1)))
 
+    if conds:
+        print('\nsrc/ and include/ hold only what MSVC 5.0 compiles. These lines')
+        print('add a build conditional:\n')
+        for rel, ln in conds:
+            print('  PORT CONDITIONAL  %s:%d' % (rel, ln))
+        print('\nWrite the matching code unconditionally. Whatever the Mac port')
+        print('must do differently goes in ports/macos/patch/<path>.port -- see')
+        print('ports/macos/tools/portgen.py for the format.\n')
     if not bad and not batches and not filed_into_batch:
-        return 0
+        return 1 if conds else 0
 
     print('\nRULE 6 (the project rules): a decompiled function is not done until it')
     print('says what it does and lives in its module.\n')

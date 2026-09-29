@@ -29,11 +29,9 @@
  * @t4-pass 0x1003AA10 2 2026-09-13 probes 11 bytes 238 insns 92 regions 4 rows 0 census yes  (cpp harness: slot census (buffer lea x5): /Op /Oy- /Os /Ot, !strlen, strupr split, field null test, arm swap, unsigned sum, ret local, int selector)
  * @t4-pass 0x1003AA10 3 2026-09-13 probes 10 bytes 238 insns 92 regions 4 rows 0 census no  (cpp harness: loop shape + declaration order: i before p, index form, row struct, do-while, --n, count-up pointer, both at function scope (two orders), init order, end-pointer while)
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #include <stdlib.h>
 #include <string.h>
-#endif
 
 class Item438E {
 public:

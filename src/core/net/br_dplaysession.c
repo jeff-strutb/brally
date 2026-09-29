@@ -9,25 +9,18 @@
  * Every function carries its original address.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <string.h>
 
 #include "slice6_73.h"
 /* g_br73 is the port's gathering of separate originals.  The matching build
  * names the ones used here as the globals they are (config/globals_glide.csv),
  * so each relocation resolves to its own variable. */
-#ifdef BR_MATCHING_BUILD
 extern int32_t g_brUinAA2880;   /* 0x10AC5BD8 */
 #define BR73_NAA2880 g_brUinAA2880
 extern void *const *g_brUiapJoinBlob;   /* 0x10AC5D2C */
 #define BR73_APJOINBLOB g_brUiapJoinBlob
-#else
-#define BR73_NAA2880 g_br73.nAA2880
-#define BR73_APJOINBLOB g_br73.apJoinBlob
-#endif
 
 /* ==========================================================================
  * 0x1003D030 -- the 16-byte join blob
@@ -45,14 +38,10 @@ int32_t BrSub1003D030(void *pBlob)
     if (BR73_APJOINBLOB == NULL) {
         return 0;
     }
-#ifdef BR_MATCHING_BUILD
     /* Orig `mov eax,[eax+ecx*8+0x1de48]`: the pointer at 0x10AA29D4 is a
      * base, not a pointer-to-pointer table.  Each slot is 8 bytes. */
     pSrc = *(void *const *)((const char *)BR73_APJOINBLOB
                             + 0x1DE48 + (size_t)BR73_NAA2880 * 8);
-#else
-    pSrc = BR73_APJOINBLOB[BR73_NAA2880];
-#endif
     if (pSrc == NULL) {
         return 0;
     }
@@ -61,7 +50,6 @@ int32_t BrSub1003D030(void *pBlob)
     return 0;
 }
 
-#ifdef BR_MATCHING_BUILD
 extern int32_t g_brAA287C;
 extern uint8_t g_aBrA9C0B8[];
 
@@ -75,9 +63,7 @@ int32_t BrSub1003CFC0(uint8_t **ppGuid)
     *ppGuid = g_aBrA9C0B8 + n * 224;
     return 0;
 }
-#endif
 
-#ifdef BR_MATCHING_BUILD
 #include <windows.h>
 
 extern int DAT_10ac315c;
@@ -271,4 +257,3 @@ int BrNetSessionHost(void *pIface, char *pHost, int *pRec)
     return 0;
 }
 
-#endif /* BR_MATCHING_BUILD */

@@ -9,9 +9,7 @@
  * (BrPolyClipPlane) uses it.  Returning it reproduces the interleave.
  */
 
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 extern void *DAT_102e16b4;
 
@@ -76,7 +74,6 @@ void *BrVertLerp8(void *pA, void *pB, float t)
   return pNode;
 }
 
-#ifdef BR_MATCHING_BUILD
 /* One 32-byte corner slot: position, 2D key, three unused floats. */
 typedef struct BrScrSlot {
   float p[3];
@@ -120,9 +117,7 @@ void BrScrPtKeepNearest(const float *pM, BrScrSlot *aOut, int *aFlags, int idx,
   aOut[idx].key[1] = pIn->key[1];
   aFlags[idx] = 1;
 }
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 
 extern float g_BrDrawCombined[4][4];           /* 0x106E78F0 */
 
@@ -150,4 +145,3 @@ void BrPointProjectXY(float *v)
     v[4] = x * g_BrDrawCombined[0][1] + y * g_BrDrawCombined[1][1]
          + z * g_BrDrawCombined[2][1] + g_BrDrawCombined[3][1];
 }
-#endif /* BR_MATCHING_BUILD */

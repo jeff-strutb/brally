@@ -4,14 +4,11 @@
  * matched first and grouped by what they are afterwards.
  * Every function carries its original address.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import
  * table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdint.h>
 
-#ifdef BR_MATCHING_BUILD
 
 void BrOperatorDelete(void *p);
 
@@ -32,10 +29,8 @@ void __fastcall BrChainFreeRec_10058C90(int param_1)
   return;
 }
 
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
-/* Hand-matched from disassembly - 0x10058C70
+/* Hand-matched from disassembly â 0x10058C70
  * fastcall: pointer arrives in ecx, five consecutive dwords zeroed, ret. */
 
 /* WHAT IT DOES: the constructor of the bounds-tree Node (0x14 bytes) that
@@ -52,4 +47,3 @@ int *__fastcall FUN_10058c70(int *p)
   p[4] = 0;
   return p;
 }
-#endif /* BR_MATCHING_BUILD */

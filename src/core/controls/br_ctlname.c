@@ -3,10 +3,8 @@
  * RESPONSIBILITY: reading what the player is doing -- specifically, naming
  * the things that can be bound.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: sprintf is the imported one (`call edi`). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "br_ctlname.h"
 
 #include "slice4_52.h"   /* BrStrGet, D3D 0x10074030 == Glide 0x1006D280 */
@@ -190,7 +188,6 @@ static void ctlname_axis(BrCfgRec *pRec, uint32_t code, uint32_t base)
  * controls menu: the first rows of each are "BUTTON n", the rest get the
  * axis names (left, right, up, down, ...) from the string table. */
 /* @implements 0x10058AF0 glide BrCtlNameInit */
-#ifdef BR_MATCHING_BUILD
 /* Hand-transcribed from the asm: sprintf straight on BrStrGet's format, the
  * axis arms as a switch whose cases each make their own call (VC5 merges the
  * calls and leaves `push id / jmp`), and the mouse code as an unsigned-char
@@ -240,63 +237,6 @@ void BrCtlNameInit(void)
         }
     }
 }
-#else
-void BrCtlNameInit(void)
-{
-    int32_t i;
-
-    /* 0x10058AF4 and 0x10058B02.  DWORD counts; deliberately short of both
-     * tables -- br_ctlname.h says why that is kept. */
-    memset(g_aBrCtlNameMouse, 0, BR_CTLNAME_MOUSE_CLEAR);
-    memset(g_aBrCtlNameJoy,   0, BR_CTLNAME_JOY_CLEAR);
-
-    /* ---- 0x10058B16 .. 0x10058BA3 -- the MOUSE table, 10 records ------- *
-     * esi starts at &mouse[0].szText and the record's key is written
-     * through [esi-4].  The button/axis split is a comparison of esi
-     * against 0x10B71B9C, i.e. index 4. */
-    for (i = 0; i < BR_CTLNAME_MOUSE_COUNT; i++) {
-        if (i < BR_CTLNAME_MOUSE_BUTTONS) {
-            /* 0x10058B23.  The `push ebx` at 0x10058B23 is the sprintf
-             * VARARG and sits UNDER the string id pushed at 0x10058B24 --
-             * the `add esp,4` at 0x10058B31 pops only the id, so the three
-             * words the `add esp,0xc` at 0x10058B38 removes are
-             * (buffer, format, index).  Tracing that is the only way to see
-             * this is a one-argument sprintf and not a two-argument one. */
-            g_aBrCtlNameMouse[i].key = (uint32_t)i;
-            ctlname_sprintf(g_aBrCtlNameMouse[i].szText,
-                            BrStrGet(BR_CTLNAME_STR_BUTTON), (int)i);
-        } else {
-            /* 0x10058B3D.  `mov al,bl / sub al,0x7E` into a one-byte local
-             * that is then read back as a DWORD and masked with 0xFF -- so
-             * the three high bytes of that read are uninitialised and
-             * discarded, and the value is (unsigned char)(i - 0x7E). */
-            uint32_t code = (uint32_t)(uint8_t)(i - 0x7E);
-
-            g_aBrCtlNameMouse[i].key = code;
-            ctlname_axis(&g_aBrCtlNameMouse[i], code,
-                         BR_CTLNAME_MOUSE_AXIS_BASE);
-        }
-    }
-
-    /* ---- 0x10058BAB .. 0x10058C2C -- the JOYSTICK table, 134 records --- *
-     * The same shape with a different split (index 128) and a different
-     * axis code base. */
-    for (i = 0; i < BR_CTLNAME_JOY_COUNT; i++) {
-        if (i < BR_CTLNAME_JOY_BUTTONS) {
-            g_aBrCtlNameJoy[i].key = (uint32_t)i;
-            ctlname_sprintf(g_aBrCtlNameJoy[i].szText,
-                            BrStrGet(BR_CTLNAME_STR_BUTTON), (int)i);
-        } else {
-            /* 0x10058BD2.  `mov eax,ebx / and eax,0xFF` -- no offset here,
-             * which is the whole of the difference from the mouse arm. */
-            uint32_t code = (uint32_t)(uint8_t)i;
-
-            g_aBrCtlNameJoy[i].key = code;
-            ctlname_axis(&g_aBrCtlNameJoy[i], code, BR_CTLNAME_JOY_AXIS_BASE);
-        }
-    }
-}
-#endif
 
 /* ==========================================================================
  * The three tables as slice2_23.c wants them

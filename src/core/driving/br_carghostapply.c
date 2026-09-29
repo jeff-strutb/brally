@@ -13,14 +13,11 @@
  * the whole applied block into two shadow copies (+0x278 and +700), and
  * resets the wheel-force accumulator (0x1006D530) once.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdint.h>
 #include <string.h>
 
-#ifdef BR_MATCHING_BUILD
 
 extern float DAT_10077770;    /* the "unset" sentinel both float tests use */
 extern float DAT_10077778;    /* the "last seen" clock's forward tolerance */
@@ -117,4 +114,3 @@ void BrCarGhostApply_10059A80(int pCar, const float *pRec)
     memcpy((void *)(pCar + 700),   (const void *)block, 0x44);
 }
 
-#endif /* BR_MATCHING_BUILD */

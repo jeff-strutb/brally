@@ -11,9 +11,7 @@
  * vcall (`mov eax,[ecx]; push 1; call [eax]`) that only a real C++
  * virtual call reaches. No EH (no `new`).
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class GameSub {
 public:

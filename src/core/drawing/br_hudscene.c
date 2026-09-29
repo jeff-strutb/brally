@@ -40,10 +40,8 @@
  *    undefined behaviour in C, so it returns 0x80000000 there, which is what
  *    the x87 indefinite-integer store produces.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -100,7 +98,6 @@ BrHudEnv     *BrHudGetEnv(void)   { return &g_hud; }
  * byte-exact functions of this file read the fields as the separate globals
  * they are, by their DAT_ names; the two T3 bodies keep the structs and
  * their pinned relocation rows. */
-#ifdef BR_MATCHING_BUILD
 extern int32_t DAT_100bcbfc;
 #define HUD_f0BD3F4 DAT_100bcbfc
 extern int32_t DAT_10226a4c;
@@ -125,21 +122,6 @@ extern const char *DAT_104abb20;
 #define HUD_pszCentre DAT_104abb20
 extern char DAT_104ab708[32];
 #define HUD_szGap DAT_104ab708
-#else
-#define HUD_f0BD3F4 g_hud.f0BD3F4
-#define HUD_f22AF1C g_hud.f22AF1C
-#define HUD_f6909B4 g_hud.f6909B4
-#define HUD_f6C0684 g_hud.f6C0684
-#define HUD_f6C299C g_hud.f6C299C
-#define HUD_f6C65EC g_hud.f6C65EC
-#define HUD_cCars g_hud.cCars
-#define HUD_pRace g_hud.pRace
-#define HUD_aQuads g_hud.aQuads
-#define HUD_aLastSeq g_hud.aLastSeq
-#define HUD_pszCentre g_hud.pszCentre
-#define HUD_szGap g_hud.szGap
-#endif
-#ifdef BR_MATCHING_BUILD
 extern int32_t DAT_100a7514;
 #define SCR_cx DAT_100a7514
 extern int32_t DAT_100a7518;
@@ -148,12 +130,6 @@ extern int32_t DAT_100aa044;
 #define SCR_cViews DAT_100aa044
 extern int32_t DAT_106ec798;
 #define SCR_iView DAT_106ec798
-#else
-#define SCR_cx g_screen.cx
-#define SCR_cy g_screen.cy
-#define SCR_cViews g_screen.cViews
-#define SCR_iView g_screen.iView
-#endif
 BrSceneEnv   *BrSceneGetEnv(void) { return &g_scene; }
 BrWeather    *BrWeatherGet(void)  { return &g_weather; }
 BrRdpRegs    *BrRdpGetRegs(void)  { return &g_regs; }
@@ -682,14 +658,10 @@ void BrHudDrawSplitLine(const char *pszPrefix, int rank, float fSeconds,
     char szBuf[0x20];                 /* the original's stack buffer */
     int32_t total, whole, minutes;
 
-#ifdef BR_MATCHING_BUILD
     /* 0x10015550..0x1001555E: `fld dword [esp+0xC]; fmul dword [kF334];
      * call __ftol`. A FLOAT multiply and the CRT helper -- the BrFtol
      * wrapper takes a double, so it pushes eight bytes and calls itself. */
     total      = (int32_t)(fSeconds * kF334);
-#else
-    total      = BrFtol((double)fSeconds * (double)kF334);
-#endif
     /* The split is spelled as BrTimeFormat (0x100023F0) and BrHudDrawTimeEntry
      * (0x10014760) spell it -- corpus hit at +0x28: a NAMED quotient and a
      * compound `-=` mul-back that lands in the dividend itself.  That is
@@ -856,7 +828,6 @@ void BrHudDraw(BrHudView *aViews, int a2)
  * rather than the sky. Five separate conditions each force the flat fill --
  * among them having no sky picture loaded at all. */
 /* @implements 0x10018070 d3d BrSceneUsePlainClear */
-#ifdef BR_MATCHING_BUILD
 /* Loose globals, goto-shared return-1 tail with the last test inverted
  * (the fade-family shape). */
 extern int DAT_106ed6ac, DAT_106ed6b0, DAT_106ed6b4;
@@ -877,23 +848,6 @@ int BrSceneUsePlainClear(void)
 yes:
     return 1;
 }
-#else
-int BrSceneUsePlainClear(void)
-{
-    if (g_scene.f6C661C == 0) {
-        if (g_scene.f6C6620 == 0) {
-            if (g_scene.f6C6624 == 0) {
-                if (g_scene.f6C7C98 != 0) {
-                    if (g_scene.f0B4050 != 2) {
-                        return 0;
-                    }
-                }
-            }
-        }
-    }
-    return 1;
-}
-#endif
 
 /* =====================================================================
  * 0x100180B0
@@ -903,7 +857,6 @@ int BrSceneUsePlainClear(void)
  * for one frame on alternate lightning flashes, which is what makes a storm
  * flicker -- or the sky drawn through the camera's current view. */
 /* @implements 0x100180B0 d3d BrSceneSetupFrame */
-#ifdef BR_MATCHING_BUILD
 /* Byte-exact against the Glide twin 0x10015630 (1239 B), transcribed from
  * its bytes.  Three source facts:
  *  - the body reads loose globals, not the port's state blocks: through a
@@ -1010,104 +963,6 @@ void BrSceneSetupFrame(const BrHudView *aViews)
     BrSsfEmit(0xB7000000u, 0x00020205u);
     BrSsfEmit(0xBD000000u, 0);
 }
-#else
-void BrSceneSetupFrame(const BrHudView *aViews)
-{
-    const BrHudView *pView;
-    BrGfxCmd *p;
-    BrMat4 *pDst;
-    uint32_t bitsB7, bitsB6;
-
-    BrGfxEmit(0xBC000404u, 0x00000001u);
-    BrGfxEmit(0xBC000C04u, 0x00000001u);
-    BrGfxEmit(0xBC001404u, 0x0000FFFFu);
-    BrGfxEmit(0xBC001C04u, 0x0000FFFFu);
-
-    if (g_scene.f6C6608 != 0)
-        return;
-
-    if (BrSceneUsePlainClear()) {
-        int32_t c0, c1, c2;
-
-        pView = &aViews[SCR_iView];
-
-        /* SHIFT, NOT DIVIDE.  The original ends each of the three brightened
-         * components with a bare `sar reg,2`; a signed `/ 4` makes MSVC emit
-         * the round-toward-zero correction (`cdq; and edx,3; add; sub`) --
-         * three `cdq`s, and 11 of the register-blind gap.  Same value for the
-         * non-negative inputs these always have.
-         *
-         * 1001814B: `test al,1` -- the flat fill brightens on ODD lightning
-         * counts only, and only while the counter is still positive. */
-        if (g_scene.f0A79CC > 0 && (g_scene.f0A79CC & 1) != 0) {
-            c0 = (((int32_t)g_scene.c6C0200 + 0x55) * 3) >> 2;
-            c1 = ((int32_t)g_scene.c6C1614 * 3 + 0xF8) >> 2;
-            c2 = (((int32_t)g_scene.c6C0260 + 0x50) * 3) >> 2;
-        } else {
-            c0 = g_scene.c6C0200;
-            c1 = g_scene.c6C1614;
-            c2 = g_scene.c6C0260;
-        }
-        BrSub_10031688(pView->x, pView->y, pView->w, pView->h, c2, c1, c0);
-        return;
-    }
-
-    BrSub_10031140(&g_scene.mtx, g_scene.pCam->f30, g_scene.pCam->f34,
-                   (float)((double)g_scene.pCam->f38 * (double)kF34C));
-
-    pDst = BrSub_10069490();
-    BrMat4Copy(&g_scene.mtx, pDst);      /* source first -- see br_mat.h */
-
-    BrGfxEmit(0x01030040u, (uint32_t)g_scene.f6C32D0);
-    BrGfxEmit(0x01040040u, BrGfxAddr(pDst));   /* DEVIATION: 32-bit address */
-    BrGfxEmit(0xE7000000u, 0u);
-    BrGfxEmit(0xBA001402u, 0u);
-
-    /* The 17-argument emitter is called in BOTH arms, as the original does
-     * (two `add esp,0x44` sites); the matching arm above carries the rest. */
-    if (g_scene.f6C6618 != 0) {
-        p = BrGfxAlloc();
-        BrSub_1002F900(p, 0, 0, 0, 0x3E9, 0, 0, 0, 0x3EC,
-                          0, 0, 0, 0x3E9, 0, 0, 0, 0x3EC);
-        p = BrGfxAlloc();
-        p->w0 = 0xFB000000u;
-        p->w1 = ((uint32_t)g_scene.c6C0260 << 24)
-              | ((uint32_t)g_scene.c6C1614 << 16)
-              | ((uint32_t)g_scene.c6C0200 << 8)
-              |  (uint32_t)g_scene.c690BE8;
-    } else {
-        p = BrGfxAlloc();
-        BrSub_1002F900(p, 0, 0, 0, 0x3E9, 0, 0, 0, 0x3EC,
-                          0, 0, 0, 0x3E9, 0, 0, 0, 0x3EC);
-    }
-
-    BrGfxEmit(0xB900031Du, 0x0F0A4200u);
-    BrGfxEmit(0xBA000C02u, (uint32_t)g_scene.f6C0258);
-    BrGfxEmit(0xB6000000u, 0x000F0205u);
-
-    if (g_scene.f6C6618 != 0)
-        BrGfxEmit(0xB7000000u, 0x00010000u);
-
-    /* neg/sbb turns "the two globals differ" into a mask. */
-    bitsB7 = (g_scene.f6C3364 != g_scene.f6C1174) ? 0x1000u : 0x2000u;
-    BrGfxEmit(0xB7000000u, bitsB7);
-    bitsB6 = (g_scene.f6C3364 != g_scene.f6C1174) ? 0x2000u : 0x1000u;
-    BrGfxEmit(0xB6000000u, bitsB6);
-
-    BrGfxEmit(0xBA001001u, 0u);
-    BrGfxEmit(0xBB000001u, 0xFFFFFFFFu);
-    BrGfxEmit(0xB6000000u, 0x000C0000u);
-    BrGfxEmit(0xE8000000u, 0u);
-    BrGfxEmit(0xF5100000u, 0x07000000u);
-    BrGfxEmit(0xF50001F0u, 0x06000000u);
-    BrGfxEmit(0xF5000100u, 0x05000000u);
-    BrGfxEmit(0x06000000u, (uint32_t)g_scene.f6C7C98);
-    BrGfxEmit(0xE7000000u, 0u);
-    BrGfxEmit(0xBA001402u, 0u);
-    BrGfxEmit(0xB7000000u, 0x00020205u);
-    BrGfxEmit(0xBD000000u, 0u);
-}
-#endif /* BR_MATCHING_BUILD */
 
 /* =====================================================================
  * 0x10019490
@@ -1118,15 +973,10 @@ void BrSceneSetupFrame(const BrHudView *aViews)
  * 0x104ADD50, whose end (&a[2][0][2] = 0x104AF5CC) is the loop bound.  In the
  * struct that end fell on windGain's offset, so one relocation named two
  * different original variables. */
-#ifdef BR_MATCHING_BUILD
 extern int32_t DAT_104add38;                                              /* cParticles */
 extern int16_t DAT_104add50[BR_PARTICLE_LAYERS][BR_PARTICLE_STRIDE][3];   /* aParticles */
 #define WX_cParticles DAT_104add38
 #define WX_aParticles DAT_104add50
-#else
-#define WX_cParticles g_weather.cParticles
-#define WX_aParticles g_weather.aParticles
-#endif
 
 /* WHAT IT DOES: scatters the rain or snow to random positions, which is what
  * gets the weather started and what resets it when the view jumps. Each layer
@@ -1158,7 +1008,6 @@ void BrWeatherRandomiseParticles(void)
  * ===================================================================== */
 /* BrWeatherStepWind reads the wind state as the separate globals it is in the
  * original, by DAT_ name, rather than as fields of the port's g_weather. */
-#ifdef BR_MATCHING_BUILD
 /* DECLARATION ORDER IS LOAD-BEARING (see BrWeatherStepLightning and
  * BrWeatherStepParticles below): the FIRST declaration of a symbol fixes its
  * place, and in a both-memory fmul the later-declared symbol takes the fld
@@ -1178,14 +1027,6 @@ extern float DAT_104add40, DAT_104add44, DAT_104add48;   /* windX Y Z */
 #define WS_windAngle DAT_104b15ec
 #define WS_windGain DAT_100a7188
 #define WS_dt DAT_106e9d8c
-#else
-#define WS_windX g_weather.windX
-#define WS_windY g_weather.windY
-#define WS_windZ g_weather.windZ
-#define WS_windAngle g_weather.windAngle
-#define WS_windGain g_weather.windGain
-#define WS_dt g_weather.dt
-#endif
 
 /* WHAT IT DOES: drifts the wind on by one frame. Both its direction and its
  * strength wander randomly rather than being set anywhere -- the direction
@@ -1250,7 +1091,6 @@ void BrWeatherStepWind(void)
  * travelling outward at the speed of sound, and once that has gone far enough
  * it starts watching for the next strike. */
 /* @implements 0x10019620 d3d BrWeatherStepLightning */
-#ifdef BR_MATCHING_BUILD
 extern int    DAT_100a718c;
 extern float  DAT_104add3c;
 /* DECLARATION ORDER IS LOAD-BEARING: in a both-memory fmul, the
@@ -1287,35 +1127,6 @@ void BrWeatherStepLightning(void)
         DAT_104abb68 = DAT_106eed10;
     }
 }
-#else
-void BrWeatherStepLightning(void)
-{
-    if (g_weather.lightning < 0) {
-        /* 1001966D: 0x80 in 0x10000 per call. */
-        if ((BrRandom() & 0xFFFF) >= 0x80)
-            return;
-        g_weather.thunderDist = 0.0f;
-        g_weather.lightning   = 3;
-        g_weather.flashX = (float)(BrRandom() & 0x7FF);
-        g_weather.flashZ = g_weather.f6C7C80;   /* latched before flashY */
-        g_weather.flashY = (float)(BrRandom() & 0x7FF);
-        return;
-    }
-
-    /* fsubr against -343 * dt, i.e. the distance the thunder has travelled. */
-    g_weather.thunderDist = (float)((double)g_weather.thunderDist
-                                    - (double)g_weather.dt * (double)kF36C);
-
-    if (g_weather.lightning > 0) {
-        g_weather.lightning -= 1;
-        return;
-    }
-
-    /* 1001964E: C0|C3 -- <= 2048 (or unordered) keeps the strike alive. */
-    if ((double)g_weather.thunderDist > kF370)
-        g_weather.lightning = -1;
-}
-#endif
 
 /* =====================================================================
  * 0x100196D0
@@ -1328,7 +1139,6 @@ void BrWeatherStepLightning(void)
  * is on it abandons the whole loop, not just the current view. */
 /* @implements 0x10016C90 glide BrWeatherStepParticles */
 /* @implements 0x100196D0 d3d BrWeatherStepParticles */
-#ifdef BR_MATCHING_BUILD
 /* Byte-exact against the Glide twin (1142 B), hand-transcribed from its
  * bytes; every relocation checked against the original's absolute.
  * Source facts:
@@ -1471,158 +1281,6 @@ void BrWeatherStepParticles(void)
         }
     }
 }
-#else
-void BrWeatherStepParticles(void)
-{
-    int32_t iView;
-
-    BrWeatherStepWind();
-
-    if (g_weather.storm != 0)
-        BrWeatherStepLightning();
-
-    /* 0x200 split between the views.
-     * DEVIATION: the original divides BEFORE testing cViews, so cViews == 0
-     * faults on the idiv. Guarded here. */
-    g_weather.cParticles = (SCR_cViews != 0)
-                         ? (int32_t)(0x200 / SCR_cViews)
-                         : 0;
-    if (SCR_cViews <= 0)
-        return;
-
-    for (iView = 0; iView < SCR_cViews; ++iView) {
-        const BrCamBlock *pBlk = g_weather.pfnGetBlock(iView);
-        BrVec3 pos;
-        BrVec3 d;
-        float dx, dy, dz;
-        /* DEVIATION: the original walks a raw cursor, so cViews > 2 would run
-         * off the end of the two-layer particle field. Clamped. */
-        int32_t layer = (iView < BR_PARTICLE_LAYERS)
-                      ? iView : (BR_PARTICLE_LAYERS - 1);
-
-        /* out = block->v30 + block->v00 * 3.0f */
-        BrVec3MulAdd(&pos, &pBlk->v30, &pBlk->v00, 3.0f);
-
-        if (g_weather.fInit == 0) {
-            BrWeatherRandomiseParticles();
-            g_weather.aPrev[0] = pos;
-            g_weather.aPrev[1] = pos;
-            g_weather.fInit = 1;
-        }
-
-        /* Both off -> the whole loop is abandoned, not just this view. */
-        if (g_weather.rain == 0 && g_weather.storm == 0)
-            return;
-
-        dx = pos.x - g_weather.aPrev[iView].x;
-        dy = pos.y - g_weather.aPrev[iView].y;
-        dz = pos.z - g_weather.aPrev[iView].z;
-
-        g_weather.speed = (float)(sqrt((double)dx * dx
-                                     + (double)dy * dy
-                                     + (double)dz * dz)
-                                  / (double)g_weather.dt);
-
-        if (g_weather.speed > kF378) {
-            double k = sqrt((double)g_weather.speed * (double)kF37C)
-                     * (double)kF378 / (double)g_weather.speed;
-            g_weather.k = (float)k;
-            g_weather.speed = (float)(k * (double)g_weather.speed);
-            dx = (float)((double)dx * (double)g_weather.k);
-            dy = (float)((double)dy * (double)g_weather.k);
-            dz = (float)((double)dz * (double)g_weather.k);
-        } else {
-            g_weather.k = 1.0f;
-        }
-
-        if (g_weather.rain != 0) {
-            /* Rain falls straight: dz picks up -0.5 * dt and nothing else. */
-            dz = (float)((double)dz - (double)g_weather.dt * (double)kF368);
-        } else {
-            /* Snow drifts on the wind. */
-            double a  = (double)g_weather.windAngle;
-            double cw = cos(a) * (double)g_weather.windGain
-                                * (double)g_weather.dt;
-            double sw = sin(a) * (double)g_weather.windGain
-                                * (double)g_weather.dt;
-            double dt2 = (double)g_weather.dt + (double)g_weather.dt;
-
-            d.x = dx;
-            d.y = dy;
-            d.z = dz;
-
-            g_weather.aDrift[iView].x = (float)cw;
-            g_weather.aDrift[iView].y = (float)sw;
-            g_weather.aDrift[iView].z = (float)dt2;
-
-            dx = (float)((double)dx + (double)g_weather.aDrift[iView].x);
-            dy = (float)((double)dy + (double)g_weather.aDrift[iView].y);
-            dz = (float)((double)dz + dt2);
-
-            BrVec3ScaleBy(&d, (float)((double)g_weather.k * (double)kF364));
-            BrVec3AddTo(&g_weather.aDrift[iView], &d);
-        }
-
-        {
-            float j0, j1;
-            int32_t D0, D1, D2, R1, R2;
-            int32_t i, cx, cy;
-
-            if (g_weather.rain != 0) {
-                double r;
-                r = (double)(BrRandom() & 0xFFFF) * (double)kF350
-                    - (double)kF354;
-                j0 = (float)(r * (double)g_weather.dt * (double)kF384);
-                r = (double)(BrRandom() & 0xFFFF) * (double)kF350
-                    - (double)kF354;
-                j1 = (float)(r * (double)g_weather.dt * (double)kF384);
-            } else {
-                j0 = 0.0f;
-                j1 = 0.0f;
-            }
-
-            g_weather.aPrev[iView] = pos;
-
-            cx = BrRandom() & 0xF;
-            cy = BrRandom() & 0xF;
-
-            D0 = BrFtol((double)dx * kF388);
-            D1 = BrFtol((double)dy * kF388);
-            D2 = BrFtol((double)dz * kF388);
-            R1 = BrFtol((double)j0 * kF388);
-            R2 = BrFtol((double)j1 * kF388);
-
-            for (i = 0; i < g_weather.cParticles; ++i) {
-                int16_t *pRec = g_weather.aParticles[layer][i];
-
-                /* Every cx'th particle gets the jitter folded in and the
-                 * jitter's SIGN flipped, then a fresh countdown. */
-                if (cx != 0) {
-                    pRec[0] = (int16_t)((uint16_t)pRec[0] + (uint16_t)D0);
-                    --cx;
-                } else {
-                    pRec[0] = (int16_t)((uint16_t)pRec[0]
-                                        + (uint16_t)(R1 + D0));
-                    R1 = -R1;
-                    cx = BrRandom() & 0xF;
-                }
-
-                if (cy != 0) {
-                    pRec[1] = (int16_t)((uint16_t)pRec[1] + (uint16_t)D1);
-                    --cy;
-                } else {
-                    pRec[1] = (int16_t)((uint16_t)pRec[1]
-                                        + (uint16_t)(R2 + D1));
-                    R2 = -R2;
-                    cy = BrRandom() & 0xF;
-                }
-
-                pRec[2] = (int16_t)((uint16_t)pRec[2] + (uint16_t)D2);
-            }
-        }
-    }
-}
-#endif
 
 /* =====================================================================
  * 0x1001A4B0
@@ -1743,8 +1401,7 @@ const BrGfxCmd *BrCmdUnpackModeBits(const BrGfxCmd *pCmd)
     return pCmd + 1;
 }
 
-/* ── Ghidra-matched functions ─────────────────────────── */
-#ifdef BR_MATCHING_BUILD
+/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
 extern int DAT_104ab504;
 
 
@@ -1806,4 +1463,3 @@ void BrHudDrawSplitTimes(const unsigned char *pLayout)
     }
 }
 
-#endif /* BR_MATCHING_BUILD */

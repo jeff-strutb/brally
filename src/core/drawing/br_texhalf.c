@@ -6,7 +6,6 @@
  * RESIDUE 2026-09-12: 1328/1377 B.  The orig inlines dword/byte copy
  * loops where this file calls import memcpy; malloc is the /MD import.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
 
@@ -196,4 +195,3 @@ fail:
     return 0;
 }
 
-#endif /* BR_MATCHING_BUILD */

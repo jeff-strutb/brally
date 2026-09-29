@@ -1,0 +1,221 @@
+# Port deviations for src/core/menus/br_menucb.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop var:radix
+@drop var:psz
+@drop define:BrItoa
+@drop define:BrStrUpr
+@after define:BrStrUpr
+
+/* 0x1008C000 is MSVC's _itoa; every call site in this packet passes base 10.
+ *
+ * This is a real three-argument call in the original's instruction stream --
+ * `push 0xA; push <dest>; push <value>; call _itoa` -- so it has to stay one
+ * here.  The wrapper this replaces took (dest, size, value) and was a bounded
+ * snprintf -- a different callee with the arguments in a different order,
+ * which put a different sequence on the stack and cost every text setter in
+ * the packet its match.
+ *
+ * DEVIATION (unchanged in substance): _itoa is unbounded.  Every caller in
+ * this packet hands it a 32-byte buffer and a value that is at most eleven
+ * characters, so no call here can overrun; the size argument the wrapper took
+ * was never doing any work. */
+static char *BrItoa(int value, char *pszOut, int radix)
+{
+    char     tmp[36];
+    unsigned u;
+    int      neg = 0;
+    int      n   = 0;
+    char    *p   = pszOut;
+
+    if (radix < 2 || radix > 36) {
+        pszOut[0] = '\0';
+        return pszOut;
+    }
+    if (radix == 10 && value < 0) {
+        neg = 1;
+        u   = (unsigned)(-(value + 1)) + 1u;   /* INT_MIN-safe */
+    } else {
+        u = (unsigned)value;
+    }
+    do {
+        unsigned d = u % (unsigned)radix;
+        tmp[n++]   = (char)(d < 10u ? '0' + d : 'a' + (d - 10u));
+        u /= (unsigned)radix;
+    } while (u != 0u);
+
+    if (neg)
+        *p++ = '-';
+    while (n > 0)
+        *p++ = tmp[--n];
+    *p = '\0';
+    return pszOut;
+}
+@end
+@drop var:DAT_100a9360
+@drop define:MENU_g0AA010
+@drop var:DAT_100abde8
+@drop define:MENU_g0AC648
+@drop var:DAT_100abdec
+@drop define:MENU_g0AC64C
+@drop var:DAT_100abdf0
+@drop define:MENU_g0AC650
+@drop var:DAT_100bcbe8
+@drop define:MENU_g0BD3E0
+@drop var:DAT_117a6030
+@drop define:MENU_g1782CD0
+@drop var:DAT_118eeed4
+@drop define:MENU_g18ABDBC
+@drop var:DAT_1021c654
+@drop define:MENU_g220B24
+@drop var:DAT_10ac46a0
+@drop define:MENU_gA9D618
+@drop var:DAT_10ac5870
+@drop define:MENU_gAA2518
+@drop var:DAT_10ac5b9c
+@drop define:MENU_gAA2844
+@drop var:DAT_10ac5bd4
+@drop define:MENU_gAA287C
+@drop var:DAT_10ac5bf4
+@drop define:MENU_gAA289C
+@drop var:DAT_10ac5bf8
+@drop define:MENU_gAA28A0
+@drop var:DAT_10ac5bfc
+@drop define:MENU_gAA28A4
+@drop var:DAT_10ac5c00
+@drop define:MENU_gAA28A8
+@drop var:DAT_10ac5c04
+@drop define:MENU_gAA28AC
+@drop var:DAT_10ac5c10
+@drop define:MENU_gAA28B8
+@drop var:DAT_10ac5c1c
+@drop define:MENU_gAA28C4
+@drop var:DAT_10ac5c28
+@drop define:MENU_gAA28D0
+@drop var:DAT_10ac5c30
+@drop define:MENU_gAA28D8
+@drop var:DAT_10ac5c38
+@drop define:MENU_gAA28E0
+@drop var:DAT_10ac5c3c
+@drop define:MENU_gAA28E4
+@drop var:DAT_10ac5c40
+@drop define:MENU_gAA28E8
+@drop var:DAT_10ac5c5c
+@drop define:MENU_gAA2904
+@drop var:DAT_10ac5cbc
+@drop define:MENU_gAA2964
+@drop var:DAT_10ac5d58
+@drop define:MENU_gAA2A00
+@drop var:DAT_10ac5d60
+@drop define:MENU_gAA2A08
+@drop var:DAT_10ac5d64
+@drop define:MENU_gAA2A0C
+@drop var:DAT_10ac5d74
+@drop define:MENU_gAA2A1C
+@drop var:DAT_10ac5d78
+@drop define:MENU_gAA2A20
+@drop var:DAT_10ac5d7c
+@drop define:MENU_gAA2A24
+@drop var:DAT_10ac5d80
+@drop define:MENU_gAA2A28
+@drop var:DAT_10ac6744
+@drop define:MENU_gAA33E4
+@drop var:DAT_10af21b0
+@drop define:MENU_gACEE50
+@after define:MENU_gACEE50
+
+/* g_menu is the port's gathering of the menu module's scattered originals.
+ * The matching build reads the fields below as the separate globals they are,
+ * by their DAT_ names (the image gate resolves those from the address they
+ * spell).  pSt is always &g_menu, so pSt->x and g_menu.x name the same object. */
+#define MENU_g0AA010 g_menu.g0AA010
+#define MENU_g0AC648 g_menu.g0AC648
+#define MENU_g0AC64C g_menu.g0AC64C
+#define MENU_g0AC650 g_menu.g0AC650
+#define MENU_g0BD3E0 g_menu.g0BD3E0
+#define MENU_g1782CD0 g_menu.g1782CD0
+#define MENU_g18ABDBC g_menu.g18ABDBC
+#define MENU_g220B24 g_menu.g220B24
+#define MENU_gA9D618 g_menu.gA9D618
+#define MENU_gAA2518 g_menu.gAA2518
+#define MENU_gAA2844 g_menu.gAA2844
+#define MENU_gAA287C g_menu.gAA287C
+#define MENU_gAA289C g_menu.gAA289C
+#define MENU_gAA28A0 g_menu.gAA28A0
+#define MENU_gAA28A4 g_menu.gAA28A4
+#define MENU_gAA28A8 g_menu.gAA28A8
+#define MENU_gAA28AC g_menu.gAA28AC
+#define MENU_gAA28B8 g_menu.gAA28B8
+#define MENU_gAA28C4 g_menu.gAA28C4
+#define MENU_gAA28D0 g_menu.gAA28D0
+#define MENU_gAA28D8 g_menu.gAA28D8
+#define MENU_gAA28E0 g_menu.gAA28E0
+#define MENU_gAA28E4 g_menu.gAA28E4
+#define MENU_gAA28E8 g_menu.gAA28E8
+#define MENU_gAA2904 g_menu.gAA2904
+#define MENU_gAA2964 g_menu.gAA2964
+#define MENU_gAA2A00 g_menu.gAA2A00
+#define MENU_gAA2A08 g_menu.gAA2A08
+#define MENU_gAA2A0C g_menu.gAA2A0C
+#define MENU_gAA2A1C g_menu.gAA2A1C
+#define MENU_gAA2A20 g_menu.gAA2A20
+#define MENU_gAA2A24 g_menu.gAA2A24
+#define MENU_gAA2A28 g_menu.gAA2A28
+#define MENU_gAA33E4 g_menu.gAA33E4
+#define MENU_gACEE50 g_menu.gACEE50
+@end
+@drop var:DAT_10ac5bf4#2
+@drop var:DAT_10ac5c10#2
+@drop var:DAT_10ac5c04#2
+@drop var:DAT_100b3028
+@drop var:DAT_10ac5b54
+@drop fn:BrMenuTime0C00
+@after fn:BrMenuTime0C00
+
+/* WHAT IT DOES: put a lap time from one stored table onto this row, or
+ * "--:--" if times are not available yet. */
+/* @implements 0x10040C00 d3d BrMenuTime0C00 */
+int32_t BrMenuTime0C00(BrMenuItem *pItem)
+{
+    BrMenuState *pSt = &g_menu;
+    char         sz[32];               /* the original's local is 0x20, zeroed */
+
+    memset(sz, 0, sizeof sz);
+    if (MENU_gAA289C == 0)
+        BrStrCopy(sz, sizeof sz, "--:--");
+    else
+        BrMenuFormatLapTime(sz, sizeof sz,
+                            BrMenuStageTime(pSt, pSt->pTimes27FC));
+    return BrMenuStoreFormatted(pItem, sz, 1);
+}
+@end
+@drop fn:BrMenuFillLapTime
+@after fn:BrMenuFillLapTime
+
+static void
+BrMenuFillLapTime(char *pszOut, float fTime)
+{
+    char    *pszDash = "--:--";
+    int32_t  nCenti, nSec, nHund, nMin, nSecOfMin;
+    float    fSecStored;
+
+    if (!(fTime > 0.0f)) {
+        strcpy(pszOut, pszDash);
+        return;
+    }
+    nCenti     = (int32_t)(fTime * 100.0f);
+    nSec       = (int32_t)((float)nCenti * 0.01f);
+    fSecStored = (float)nSec;
+    nHund      = (int32_t)((float)nCenti - fSecStored * 100.0f);
+    nMin       = (int32_t)(fSecStored * 0.016666667f);
+    nSecOfMin  = (int32_t)(fSecStored - (float)nMin * 60.0f);
+    sprintf(pszOut, "%d:%02d.%02d", (int)nMin, (int)nSecOfMin, (int)nHund);
+}
+@end
+@drop var:DAT_10ac592c
+@drop var:DAT_10ac5930
+@drop var:DAT_10ac5934
+@drop var:DAT_10ac5bf8#2
+@drop var:DAT_10ac5c10#3
+@drop var:g_brAA28A4

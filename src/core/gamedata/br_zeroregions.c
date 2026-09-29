@@ -8,22 +8,18 @@
 
 #include <string.h>
 
-#ifdef BR_MATCHING_BUILD
 /* Header prototype is cdecl; the original is thiscall.  Rename the
  * prototype so the thiscall definition is not a C2373 redefinition. */
 #define BrCarInitTables BrCarInitTables_cdecl_hdr
 #define BrCarClear29C8  BrCarClear29C8_cdecl_hdr
 #define BrZeroRegions   BrZeroRegions_cdecl_hdr
 #define BrPathWalk      BrPathWalk_port_hdr   /* defined on the raw node */
-#endif
 #include "slice3_40.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrCarInitTables
 #undef BrCarClear29C8
 #undef BrZeroRegions
 #undef BrPathWalk
 void BrZeroRegions(void);
-#endif
 
 #include "br_match.h"    /* BR_THISCALL1 */
 
@@ -65,7 +61,6 @@ void BrZeroRegions(void);
  * crank candidates and scores in build/match/crank.log, dead probes in the
  * comment block above.  Do not reopen before the end-grind (project rule 12). */
 /* @implements 0x100633E0 d3d BrZeroRegions */
-#ifdef BR_MATCHING_BUILD
 extern BrZeroRegion DAT_100b2f08[];    /* list head, 0x100B2F08 */
 void BrZeroRegions(void)
 {
@@ -84,25 +79,3 @@ void BrZeroRegions(void)
             break;
     }
 }
-#else
-void BrZeroRegions(BrZeroRegion *pList)
-{
-    if (pList == NULL || pList->p == NULL) {
-        return;
-    }
-    for (;;) {
-        uint8_t *pBeg = (uint8_t *)pList->p;
-        uint8_t *pEnd = pBeg + pList->size;
-
-        /* the original's guard is an UNSIGNED `jae`, i.e. skip when the
-         * end pointer did not advance; size 0 is the only reachable way */
-        if (pBeg < pEnd) {
-            memset(pBeg, 0, (size_t)(pEnd - pBeg));
-        }
-        ++pList;
-        if (pList->p == NULL) {
-            break;
-        }
-    }
-}
-#endif

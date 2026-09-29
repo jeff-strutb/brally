@@ -10,8 +10,7 @@
  */
 #include <string.h>
 
-/* ── Ghidra-matched functions ─────────────────────────── */
-#ifdef BR_MATCHING_BUILD
+/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
 extern int DAT_10ac5bb4;
 extern int DAT_10ac5e50;
 extern int DAT_10ac6050;
@@ -52,9 +51,7 @@ int FUN_100371f0(int *param_1,int param_2,int param_3)
 }
 
 
-#ifdef BR_MATCHING_BUILD
 #include <windows.h>
-#endif
 int FUN_10036a30(int, int, LPCSTR, LPCVOID *, int);
 int BrComGetAlloc(int pObj, int pParam, LPCVOID *ppvOut);   /* 0x10036810 */
 extern char DAT_10ac4db0[];
@@ -437,4 +434,3 @@ void FUN_100367c0(char *param_1)
   return;
 }
 
-#endif /* BR_MATCHING_BUILD */

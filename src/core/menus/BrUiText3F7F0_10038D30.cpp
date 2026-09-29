@@ -11,9 +11,7 @@
  * vtbl load scheduled inside the strcpy intrinsic - C++ frontend order,
  * not reachable from the C fastcall spelling). No EH.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <string.h>
 
 class Item {

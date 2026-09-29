@@ -7,15 +7,12 @@
  *
  */
 
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 #include <math.h>
 
 #include "br_match.h"
 
-#ifdef BR_MATCHING_BUILD
 
 void BrMat4MulVec3(float *pOut, float *pM, float *pV);
 void __fastcall BrBitLatchTake(void *pThis, void *_edx, unsigned mask);
@@ -572,4 +569,3 @@ LAB_have_x:
   }
 }
 
-#endif /* BR_MATCHING_BUILD */

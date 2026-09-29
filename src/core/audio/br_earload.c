@@ -4,7 +4,6 @@
  * original bytes, 2026-09-13.  Matching arm only; the port keeps its own
  * loader (slice1_04).
  */
-#ifdef BR_MATCHING_BUILD
 
 /* The original binary is /MD: CRT calls resolve through the import table. */
 #define _CRTIMP __declspec(dllimport)
@@ -210,4 +209,3 @@ int BrEarLoad(int usePds)
     return 1;
 }
 
-#endif /* BR_MATCHING_BUILD */

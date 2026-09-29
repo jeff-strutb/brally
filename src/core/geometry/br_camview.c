@@ -12,18 +12,12 @@
  * schedules its tail differently (refile checked byte-identical against
  * the batch compile for both functions).
  */
-#ifdef BR_MATCHING_BUILD
 /* slice2_17.h prototypes a list pointer the original never takes. */
 #define BrPtrListContains BrPtrListContains_port
-#endif
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice2_17.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrPtrListContains
-#endif
 
 #include <math.h>
 #include <stdio.h>
@@ -75,11 +69,7 @@ extern int   BrX10060E90(void);
  * at the call site (arg1 in ecx, no stack cleanup), so that is what the
  * matching build uses. Off MSVC the qualifier vanishes and it is an ordinary
  * one-argument function. */
-#if defined(_MSC_VER)
 #define BRS17_THISCALL __fastcall
-#else
-#define BRS17_THISCALL
-#endif
 extern void BRS17_THISCALL BrX100751D0(void *pThis);
 /* XSLICE 0x1002C2C0 */
 extern void  BrX1002C2C0(void);
@@ -147,15 +137,9 @@ void BrMat4LookAt(BrMat4 *pM,
      * 80-bit stack `xEye - xAt` would round to float, so the port keeps the
      * casts and only the matching build drops them. Same value either way on
      * the original hardware. */
-#ifdef BR_MATCHING_BUILD
     z.x = xEye - xAt;
     z.y = yEye - yAt;
     z.z = zEye - zAt;
-#else
-    z.x = (double)xEye - (double)xAt;
-    z.y = (double)yEye - (double)yAt;
-    z.z = (double)zEye - (double)zAt;
-#endif
     BrVec3dNormalise(&z);
 
     /* y = normalise(up - dot(up, z) * z). Note the dot's argument order:
@@ -252,7 +236,6 @@ static int32_t s17_ftol(double v)
  * CSE n*4 into esi.  Dossier and dead list in the matching arm below.  Do
  * not reopen before the end-grind (project rule 12). */
 /* @implements 0x10030B50 d3d BrLightDirsAndAngles */
-#ifdef BR_MATCHING_BUILD
 /* The original inlines every port helper: the packs, the three column dots
  * (as macros, in the original's term orders), atan2 as fpatan and __ftol as
  * a cast.  ONE vector local serves both directions -- the second direction
@@ -306,50 +289,7 @@ void BrLightDirsAndAngles(BrMat4 *pM, BrLightPair *pLights,
 #undef v
 
 }
-#else
-void BrLightDirsAndAngles(BrMat4 *pM, BrLightPair *pLights,
-                          BrSkyAngles *pAngles,
-                          float xEye, float yEye, float zEye,
-                          float xAt,  float yAt,  float zAt,
-                          float xUp,  float yUp,  float zUp,
-                          float xA, float yA, float zA,
-                          float xB, float yB, float zB,
-                          int nS1, int nT1)
-{
-    BrVec3d a, b;
-    double t;
 
-    BrMat4LookAt(pM, xEye, yEye, zEye, xAt, yAt, zAt, xUp, yUp, zUp);
-    s17_pack_dirs(pM, pLights);
-
-    /* --- first direction, half-revolution count hardcoded at 0x100 --- */
-    a.x = (double)xA; a.y = (double)yA; a.z = (double)zA;
-    BrVec3dNormalise(&a);
-
-    /* t is computed BEFORE the atan2 in the original and spilled to the
-     * stack across the __ftol call; kept in that order. */
-    t = s17_dot_col_zxy(pM, 1, &a);
-    pAngles->s0 = 0x100 - s17_ftol(atan2(s17_dot_col_zyx(pM, 0, &a),
-                                         s17_dot_col_yzx(pM, 2, &a))
-                                   * BR_ANG_K256);
-    pAngles->t0 = 0x100 - s17_ftol(asin(t) * BR_ANG_K256);
-
-    /* --- second direction, counts from the arguments --------------- */
-    b.x = (double)xB; b.y = (double)yB; b.z = (double)zB;
-    BrVec3dNormalise(&b);
-
-    t = s17_dot_col_zxy(pM, 1, &b);
-    /* `fimul` first, then the constant: (theta * n) * k, not theta * (n*k). */
-    pAngles->s1 = nS1 * 4
-        - s17_ftol(atan2(s17_dot_col_zyx(pM, 0, &b),
-                         s17_dot_col_yzx(pM, 2, &b))
-                   * (double)(nS1 * 4) * BR_ANG_K1);
-    pAngles->t1 = nT1 * 4
-        - s17_ftol(asin(t) * (double)(nT1 * 4) * BR_ANG_K1);
-}
-#endif
-
-#ifdef BR_MATCHING_BUILD
 
 extern int DAT_100a9ec0;
 extern int DAT_105bcaec;
@@ -402,4 +342,3 @@ void FUN_10011d20(void)
   }
   return;
 }
-#endif /* BR_MATCHING_BUILD */

@@ -10,18 +10,15 @@
  * See slice6_73.h for the scope and the conflicts.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <string.h>
 #include <stdio.h>
 #include <stddef.h>
 
 #include "slice6_73.h"
 
-/* ── Ghidra-matched functions ─────────────────────────── */
-#ifdef BR_MATCHING_BUILD
+/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
 #include <windows.h>
 int FUN_100378c0();
 extern char DAT_1007b600[];
@@ -112,4 +109,3 @@ int __stdcall FUN_10055af0(short param_1)
   return 1;
 }
 
-#endif /* BR_MATCHING_BUILD */

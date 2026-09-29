@@ -23,21 +23,16 @@
  * and the C below uses the negated-comparison forms that reproduce the
  * unordered case as well, not just the ordered one.
  */
-#ifdef BR_MATCHING_BUILD
 /* Header prototype is cdecl (this, r, g, b).  Original is thiscall with
  * ret 0xC; hide that prototype so the definition can take the struct-arg
  * __fastcall shape that reproduces it. */
 #define BrRgbSinkSet BrRgbSinkSet_hdr
-#endif
-#ifdef BR_MATCHING_BUILD
 /* slice2_19.h / br_seg.h declare these cdecl with a leading state pointer the
  * originals do not have.  Hide those prototypes so BrModelLoad can call them
  * with the shapes the bytes show. */
 #define BrSub100088B0 BrSub100088B0_cdecl
 #define BrSegSetBases BrSegSetBases_cdecl
-#endif
 #include "slice2_19.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrSub100088B0
 #undef BrSegSetBases
 typedef struct { void *p; } BrModelLoadArg;
@@ -45,10 +40,7 @@ extern int g_brModelMgr;                        /* 0x10AC0810 */
 void * __fastcall BrSub100088B0(void *pThis, BrModelLoadArg a,
                                 BrModelLoadArg b);
 void BrSegSetBases(uint32_t n64Base, uint32_t hostBase);
-#endif
-#ifdef BR_MATCHING_BUILD
 #undef BrRgbSinkSet
-#endif
 
 #include <string.h>
 
@@ -136,12 +128,8 @@ const void          *g_BrPadHookFn;
 /* 0x10019A70 is the (unclaimed, 11 KB) race step.  The original passes its
  * address as an IMMEDIATE, so the matching build needs a function symbol,
  * not a pointer variable.  The port keeps the variable. */
-#ifdef BR_MATCHING_BUILD
 extern void BrRaceStep_10019A70(void);
 #define BR_PAD_RACE_STEP ((const void *)BrRaceStep_10019A70)
-#else
-#define BR_PAD_RACE_STEP g_BrPadHookFn
-#endif
 int32_t g_br5CCB5C;   /* 0x105CCB5C -- used only by this module; defined here
                        * so the port links (matching pins the address via
                        * config/globals.csv, unaffected by this BSS def). */

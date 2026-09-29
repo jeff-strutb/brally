@@ -9,9 +9,7 @@
  * Phase-leave family, esi-form (five zero stores through esi), with one
  * trailing cdecl helper call after the g_cur swap. No EH.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class GameSub {
 public:

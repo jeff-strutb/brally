@@ -35,10 +35,8 @@
  * MISSING EFFECT, not a no-op that has been argued to be equivalent.
  * slice6_73.c's builders guard their own f34 / f14 / f10 calls the same way.
  * ========================================================================== */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice8_85.h"
 
 #include "br_sprfont.h"   /* BrSprFontKindHook_10047360 -- 0x10047360 over
@@ -879,8 +877,7 @@ void BrUiHook85Install(BrUi73Hooks *pHooks)
      * and the eleven slots slice7_80.c / slice7_81.c / the host already own. */
 }
 
-/* ── Ghidra-matched functions ─────────────────────────── */
-#ifdef BR_MATCHING_BUILD
+/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
 extern int g_brAA28D8;
 
 /* WHAT IT DOES: stub that always returns 1. */
@@ -921,9 +918,7 @@ int BrInputBitHeld(int code)
 
 
 
-#ifdef BR_MATCHING_BUILD
 #include <windows.h>
-#endif
 int FUN_100377a0(int);
 extern char DAT_100acacc[];
 _CRTIMP int __cdecl _getdrive(void);
@@ -1150,9 +1145,7 @@ int FUN_1003cb40(void)
   return 1;
 }
 
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 int FUN_100368a0();
 int FUN_100387f0();
 extern int DAT_100abaa8[];
@@ -1226,4 +1219,3 @@ int FUN_1003c430(void)
   }
   return 1;
 }
-#endif /* BR_MATCHING_BUILD */

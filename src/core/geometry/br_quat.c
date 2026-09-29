@@ -6,13 +6,9 @@
  * them to BrVec4Normalise. */
 #include "br_vec.h"
 
-#ifdef BR_MATCHING_BUILD
 extern float g_077C38;   /* 0x10077C38 -- branch threshold */
 extern float g_077C4C;   /* 0x10077C4C */
 extern float g_077C50;   /* 0x10077C50 */
-#else
-static float g_077C38, g_077C4C, g_077C50;
-#endif
 
 /* WHAT IT DOES: turns a rotation held as a 3x4 matrix into the equivalent
  * unit quaternion. It picks whichever of four formulas is numerically safest

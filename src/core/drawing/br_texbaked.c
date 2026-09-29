@@ -23,7 +23,6 @@
  */
 #include <stdint.h>
 
-#ifdef BR_MATCHING_BUILD
 
 /* 0x118AA0B0 -- the backend texture constructor.  cdecl, last argument
  * pushed first; the handle comes back in eax. */
@@ -124,4 +123,3 @@ void BrSub10073B00(void)
                                        0, 0, 0, 0);
 }
 
-#endif /* BR_MATCHING_BUILD */

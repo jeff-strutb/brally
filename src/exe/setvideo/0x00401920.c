@@ -1,7 +1,6 @@
 /* Auto-generated from disassembly - 0x00401920
  * ReadListLine: fgets with #include nesting and comment-char skip.
  * Returns the (possibly replaced) FILE*, or 0 on EOF of the include stack. */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: read the next line of a list file, following #include
  * directives into nested files and skipping comment lines. Returns the file
  * it ended up reading from, or nothing once every include has run out. */
@@ -79,4 +78,3 @@ FILE *ReadListLine(char *buf, int n, FILE *fp)
 }
 
 
-#endif /* BR_MATCHING_BUILD */

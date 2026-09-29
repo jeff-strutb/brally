@@ -17,15 +17,11 @@
  * `sub_XXXXXXXX @ XXXXXXXX` line: all twelve agree.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdint.h>
 #include <string.h>
-#ifdef BR_MATCHING_BUILD
 #include <stdio.h>
-#endif
 #include "slice1_03.h"      /* BrComCallLocked68 (0x1000C4D0) */
 
 #include "slice6_70.h"
@@ -35,13 +31,11 @@ extern uint8_t *g_brPAA29E4;
 
 /* The vtable view is shared with BrSub1003D070, which stayed behind: these
  * are typedefs only, so each file keeps its own copy. */
-#ifdef BR_MATCHING_BUILD
 typedef struct { int i; } BrC9B0Arg;
 typedef struct BrC9B0Vtbl {
     void *pad[11];
     void (__fastcall *f2C)(void *pThis, BrC9B0Arg a);
 } BrC9B0Vtbl;
-#endif
 
 
 /* WHAT IT DOES: walks every row of one particular on-screen list -- the one
@@ -49,10 +43,8 @@ typedef struct BrC9B0Vtbl {
  * object at +0x3838 to do whatever its vtable slot +0x2C does for that row's
  * index. A missing pointer or a zero row-count is a no-op. The pointer is
  * re-read before every row because the call is allowed to replace it. */
-#ifdef BR_MATCHING_BUILD
 /* @implements 0x1003C9B0 d3d BrSub1003C9B0 */
 /* @implements 0x10036040 glide BrSub1003C9B0 */
-#endif
 void BrSub1003C9B0(void)
 {
     uint8_t  *pObj;
@@ -66,19 +58,10 @@ void BrSub1003C9B0(void)
     n = *(uint16_t *)(pObj + 0x1E164);
     for (i = 0; i < n; i++) {
         uint8_t *pSub;
-#ifdef BR_MATCHING_BUILD
         BrC9B0Arg a;
-#endif
         pObj = g_brPAA29E4;
         pSub = pObj + 0x3838;
-#ifdef BR_MATCHING_BUILD
         a.i = (int)i;
         (*(BrC9B0Vtbl **)pSub)->f2C(pSub, a);
-#else
-        {
-            void **pVtbl = *(void ***)pSub;
-            ((void (*)(void *, unsigned))pVtbl[11])(pSub, i);
-        }
-#endif
     }
 }

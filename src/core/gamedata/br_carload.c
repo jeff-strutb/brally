@@ -8,10 +8,8 @@
  * 0x10030DE0 -- is br_cardata.c; see br_cardata.h for the trail from the
  * disc to body+0x1DC.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice4_53.h"
 #include "slice2_20.h"      /* BrFileReadInto, BrRcaLoadCar */
 
@@ -22,7 +20,6 @@
 /* WHAT IT DOES: loads one car's model and data out of the game's .rca
  * archive into the given buffer. */
 /* @implements 0x10037740 d3d BrSub10037740 */
-#ifdef BR_MATCHING_BUILD
 /* The original is the full path-building loader the port folded into
  * BrRcaLoadCar: special-buffer gate, per-arm hook call (cross-jumped),
  * strcpy/strcat path assembly, magic check via the imported memcmp, the
@@ -79,20 +76,6 @@ void BrSub10037740(void *pCar, void *pArg)
     if (pCar != (void *)&DAT_100bcdd0)
         DAT_100b8498 = saved;
 }
-#else
-/* WHAT IT DOES: the port spelling of the same load -- fetch car iCar's .rca
- * record into the caller's buffer. The path building, magic check and fixup
- * are folded into the portable reader instead of being spelled out here. */
-/* @implements 0x10037740 d3d BrSub10037740 */
-void BrSub10037740(void *pCar, void *pArg)
-{
-    /* DEVIATION: pArg is declared void* by slice2_19 but is an integer index
-     * in the original.  DEVIATION: cbDest is slice2_20's port-only bound;
-     * the original has none.  0x15F88 is the stride its only caller
-     * (0x10035520) uses to compute pCar, so it is the true extent. */
-    BrRcaLoadCar(pCar, (size_t)BR_RCA_CAR_STRIDE, (int)(intptr_t)pArg);
-}
-#endif
 
 /* ==========================================================================
  * The .rca texture-record fixup (filed out of drawing/br_fadewipe.c, which
@@ -264,7 +247,6 @@ void BrRcaFixupRecord(void *pRec)
  * crank candidates and scores in build/match/crank.log, dead probes in the
  * comment block above.  Do not reopen before the end-grind (project rule 12). */
 /* @implements 0x10018D50 glide BrRcaSwapMesh */
-#ifdef BR_MATCHING_BUILD
 void BrRcaSwapMesh(void *pv)
 {
     uint8_t *p = (uint8_t *)pv;
@@ -294,25 +276,3 @@ void BrRcaSwapMesh(void *pv)
         i += 1;
     } while (i < (int)*(unsigned short *)(p + 2));
 }
-#else
-void BrRcaSwapMesh(void *pv)
-{
-    uint8_t *p = (uint8_t *)pv;
-    uint32_t i;
-
-    if (p == NULL)
-        return;
-
-    br16_swap_u16_at(p + 2);
-    br16_swap_u32_at(p + 4);
-
-    /* The count is re-read from +0x02 on every iteration, exactly as the
-     * original does. */
-    for (i = 0; i < (uint32_t)br16_ld16(p + 2); ++i) {
-        uint8_t *e = p + 8 + i * 12;
-        br16_swap_u32_at(e + 0);
-        br16_swap_u32_at(e + 4);
-        br16_swap_u32_at(e + 8);
-    }
-}
-#endif

@@ -1,0 +1,28 @@
+# Port deviations for src/core/net/br_dplaymsg.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop var:DAT_10ac5bb4
+@drop var:DAT_10ac5e50
+@drop var:DAT_10ac6050
+@drop var:DAT_10ac610c
+@drop var:DAT_10ac6114
+@drop var:DAT_10ac6730
+@drop var:DAT_10ac6734
+@drop var:DAT_10ac6738
+@drop var:DAT_10ac673c
+@drop proto:FUN_10037720
+@drop proto:FUN_100038f0
+@drop proto:BrDPlayRawSend
+@drop fn:FUN_100371f0
+@drop include:<windows.h>
+@drop proto:FUN_10036a30
+@drop proto:BrComGetAlloc
+@drop var:DAT_10ac4db0
+@drop var:g_brAA288C
+@drop proto:BrDPlayRawSend#2
+@drop fn:FUN_100368a0
+@drop fn:FUN_10036a30
+@drop var:DAT_10ac3070
+@drop fn:FUN_100372b0
+@drop var:DAT_10ac40a8
+@drop fn:FUN_100367c0

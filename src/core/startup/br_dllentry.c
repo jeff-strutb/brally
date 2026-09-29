@@ -11,7 +11,6 @@
  * matched only because the image gate filled the call's displacement from
  * the original; they are fenced as data_table in config/fenced.csv now.
  */
-#ifdef BR_MATCHING_BUILD
 #include <excpt.h>   /* GetExceptionInformation, for the array unwinders */
 
 extern int DAT_118ef178;
@@ -79,9 +78,7 @@ int BrCrtAtExit(BrOnExitFn pfn)
   return (p != 0) ? 0 : -1;
 }
 
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 
 typedef void (__fastcall *PDtor)(void *);
 void __stdcall BrEhArrayUnwind(void *ptr, unsigned size, int count, PDtor dtor);
@@ -108,9 +105,7 @@ BrEhVecDtor(void *ptr, unsigned size, int count, PDtor dtor)
             BrEhArrayUnwind(ptr, size, count, dtor);
     }
 }
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 
 typedef void (__fastcall *PDtor)(void *);
 
@@ -132,9 +127,7 @@ BrEhArrayUnwind(void *ptr, unsigned size, int count, PDtor dtor)
     } __except (BrEhArrayUnwindFilter((int *)GetExceptionInformation())) {
     }
 }
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 
 typedef void (__fastcall *PDtor)(void *);
 typedef void (__fastcall *PCtor)(void *);
@@ -161,4 +154,3 @@ BrEhVecCtor(void *ptr, unsigned size, int count, PCtor ctor, PDtor dtor)
             BrEhArrayUnwind(ptr, size, i, dtor);
     }
 }
-#endif /* BR_MATCHING_BUILD */

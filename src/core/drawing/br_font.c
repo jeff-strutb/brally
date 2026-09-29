@@ -13,7 +13,6 @@
  * address literal below is tagged with the build it came from.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
 /* Port signatures take a BrFont*.  Originals write/read globals and take
@@ -21,9 +20,7 @@
 #define BrFontRegisterPages BrFontRegisterPages_Portable
 #define BrFontMeasure BrFontMeasure_Portable
 #define BrTextEmitString BrTextEmitString_Portable
-#endif
 #include "br_font.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrFontRegisterPages
 #undef BrFontMeasure
 #undef BrTextEmitString
@@ -33,7 +30,6 @@ int32_t BrFontMeasure(const char *psz, int32_t scale);
  * absolute globals -- br_font.h's BrTextEmit is the port's gathering of them
  * and is the accessor sub-case docs/VC5-IDIOMS.md records. */
 void BrTextEmitString(const char *psz);
-#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -373,11 +369,7 @@ int BrFontLoad(BrFont *pFont, const char *pszDllPath)
         }
 
     if (pFont->build == BR_FONT_BUILD_GLIDE)
-#ifdef BR_MATCHING_BUILD
         BrFontRegisterPages();
-#else
-        BrFontRegisterPages(pFont);
-#endif
     else
         BrFontRegisterGlyphs(pFont);
     rc = 0;
@@ -408,7 +400,6 @@ done:
  * one holding every small one. Drawing a particular letter then means aiming at
  * a window inside the right sheet. */
 /* @implements 0x1006C790 glide BrFontRegisterPages */
-#ifdef BR_MATCHING_BUILD
 int FUN_10001000();
 int FUN_10027fb0();
 extern int DAT_1007b618;
@@ -425,13 +416,6 @@ void BrFontRegisterPages(void)
     DAT_1184c46c = FUN_10027fb0(&DAT_1009d218, 0x20, 0x20, 4);
     FUN_10001000(sum, &DAT_1009d218, 0x8700);
 }
-#else
-void BrFontRegisterPages(BrFont *pFont)
-{
-    pFont->ahPage[BR_FONT_LARGE] = BR_FONT_TOK_PAGE(BR_FONT_LARGE);
-    pFont->ahPage[BR_FONT_SMALL] = BR_FONT_TOK_PAGE(BR_FONT_SMALL);
-}
-#endif
 
 /* 0x10073820 (D3D).  Four loops of 27, 26, 27, 26 over the two offset tables, in
  * the original's order: large punctuation, large letters, small punctuation,
@@ -646,7 +630,6 @@ void BrTextEmitInit(BrTextEmit *pSt, const BrFont *pFont,
  * Glide line was missing for the same reason BrFontMeasure's was -- see the
  * note there -- which left the reference build's emitter unclaimed while the
  * D3D one was claimed, in a file whose whole point is that it does both. */
-#ifdef BR_MATCHING_BUILD
 
 /* ==========================================================================
  * THE MATCHING ARM -- 0x10015B10, the Glide emitter
@@ -1112,306 +1095,6 @@ void BrTextEmitString(const char *psz)
 #undef BR_F12
 #undef BR_CLAMP16
 
-#else  /* --------------------- the port arm ----------------------------- */
-
-/* @implements 0x10015B10 glide BrTextEmitString */
-void BrTextEmitString(BrTextEmit *pSt, const char *psz)
-{
-    uint32_t        aCombine[2];
-    const int32_t  *pOff;
-    const uint32_t *pahTex;
-    uint32_t        hRampA, hRampB, hPage, vaBlock;
-    int32_t         scale, penX, top, cell, stride;
-    int             fGlide;
-    const char     *p, *q;
-
-    if (pSt == NULL || psz == NULL)
-        return;
-
-    fGlide = (pSt->build == BR_FONT_BUILD_GLIDE);
-
-    scale = pSt->scale;
-    penX  = pSt->x;
-
-    /* (30 * scale) / 40 by reciprocal multiply with a sign correction, i.e.
-     * truncating toward zero, which is what C division already does. */
-    top = pSt->y - (30 * scale) / 40;
-
-    if (pSt->fHiRes != 0) {
-        top   <<= 1;
-        scale <<= 1;
-        penX  <<= 1;
-    }
-
-    /* BUILD DIVERGENCE 1 -- the detail global is D3D-ONLY.
-     *
-     * D3D 0x100185E7: `cmp dword [0x100B8C90],1 / jg small`, then the scale
-     * compare at 0x100185F0.  Glide 0x10015B67 goes straight to the scale
-     * compare; nothing in 0x10015B10..0x100166FA reads 0x100B8C90 or any
-     * analogue of it.  The same nine bytes are the whole difference between
-     * the two width routines (0x100193C0 is 207 bytes, 0x10016980 is 198),
-     * which is a second sighting of the same edit.
-     *
-     * Both compares are signed, and the threshold is tested against the
-     * ALREADY-DOUBLED scale -- so hi-res can select the large font for a size
-     * that would otherwise take the small one.  Both width routines agree. */
-    if ((fGlide || pSt->detail <= 1) && scale >= BR_FONT_LARGE_MIN) {
-        cell    = BR_FONT_LARGE_CELL;
-        pOff    = pSt->pOffLarge;
-        pahTex  = pSt->ahTexLarge;
-        hRampA  = pSt->hRampLargeA;
-        hRampB  = pSt->hRampLargeB;
-        hPage   = pSt->hPageLarge;
-        vaBlock = pSt->vaBlockLarge;
-        stride  = pSt->strideLarge;
-    } else {
-        cell    = BR_FONT_SMALL_CELL;
-        pOff    = pSt->pOffSmall;
-        pahTex  = pSt->ahTexSmall;
-        hRampA  = pSt->hRampSmallA;
-        hRampB  = pSt->hRampSmallB;
-        hPage   = pSt->hPageSmall;
-        vaBlock = pSt->vaBlockSmall;
-        stride  = pSt->strideSmall;
-    }
-    if (pOff == NULL || pSt->pClassMap == NULL)
-        return;                             /* DEVIATION: no table, no text */
-
-    br_emit(pSt, 0xE7000000u, 0x00000000u);
-    br_emit(pSt, 0xBA001402u, 0x00100000u);
-
-    /* The combine command: the original reserves the slot, advances the
-     * cursor, then lets 0x1002F900 fill it in.  Only ONE of the sixteen
-     * tokens depends on the ramp selection -- b1, which is G_CCMUX_0 for the
-     * first ramp and G_CCMUX_TEXEL0 (1001) for the second. */
-    aCombine[0] = 0;
-    aCombine[1] = 0;
-    BrRdpSetCombineLERP((struct BrGfxWords *)aCombine,
-                        1003, 1005, 1002, 1005,
-                        0,    0,    0,    1001,
-                        1000, (pSt->fAltRamp != 0) ? 1001 : 0, 1002, 0,
-                        0,    0,    0,    1002);
-    br_emit(pSt, aCombine[0], aCombine[1]);
-
-    br_emit(pSt, 0xB900031Du, 0x0C184240u);
-    br_emit(pSt, 0xBA000C02u, pSt->f6C0258);
-    br_emit(pSt, 0xBA000E02u, 0x00000000u);
-    br_emit(pSt, 0xBA001301u, 0x00000000u);
-    br_emit(pSt, 0xBA001001u, 0x00000000u);
-    br_emit(pSt, 0xBB000001u, 0xFFFFFFFFu);
-    br_emit(pSt, 0xE8000000u, 0x00000000u);
-    br_emit(pSt, 0xE6000000u, 0x00000000u);
-    br_emit(pSt, 0xE7000000u, 0x00000000u);
-
-    /* Load the shading ramp: SETTILE(load tile 7) / SETTIMG / LOADBLOCK /
-     * SETTILE(render tile 1) / SETTILESIZE.  The SETTIMG payload is the only
-     * part that varies. */
-    br_emit(pSt, 0xF51001B0u, 0x07000000u);
-    br_emit(pSt, 0xFD100000u, (pSt->fAltRamp != 0) ? hRampB : hRampA);
-    br_emit(pSt, 0xF3000000u, 0x0713F000u);
-    br_emit(pSt, 0xF56803B0u, 0x01098030u);
-    br_emit(pSt, 0xF2002002u, 0x0101E09Eu);
-
-    if (pSt->fUserColour != 0) {
-        br_emit(pSt, 0xFB000000u,
-                br_pack_rgb(pSt->envR, pSt->envG, pSt->envB));
-        br_emit(pSt, 0xFA00FFFFu,
-                br_pack_rgb(pSt->primR, pSt->primG, pSt->primB));
-    } else if (pSt->fAltColour != 0) {
-        br_emit(pSt, 0xFB000000u, 0xFF7F00FFu);
-        br_emit(pSt, 0xFA00FFFFu, 0xFFFF7FFFu);
-    } else {
-        br_emit(pSt, 0xFB000000u, 0xC80000FFu);
-        br_emit(pSt, 0xFA00FFFFu, 0xE6E600FFu);
-    }
-
-    p = psz;
-    /* `q` is set ONCE, to psz + 2, and then stepped in lockstep with `p`, so
-     * it is always two characters ahead.  Kept explicit rather than written
-     * as p + 2 because the escape paths step the two before rejoining. */
-    q = psz + 2;
-
-    while (*p != '\0') {
-        int c          = (unsigned char)*p;
-        int fDrawGlyph = 0;
-
-        if (c == ' ') {
-            /* (14 * scale) / 40, plus one.  0x100193C0 computes the same
-             * quotient and does NOT add the one, so a string with spaces
-             * measures narrower than it draws.  Both are preserved. */
-            penX += (14 * scale) / 40 + 1;
-        } else if (c == '%' && p[1] != '\0' && p[1] != '%') {
-            int c2 = (unsigned char)p[1];
-
-            if (c2 == 'i' || c2 == 'n') {
-                /* Consumed, no output. */
-                ++p;
-                ++q;
-            } else if (c2 == 'x') {
-                unsigned int r = 0, g = 0, b = 0;
-                int32_t br, bg, bb;
-
-                /* Six hex digits out of `q`, the character after "%x".  A
-                 * short or malformed field leaves the original's stack slots
-                 * holding garbage; this port zeroes them first.  DEVIATION,
-                 * and the only one on this path. */
-                (void)sscanf(q, "%02x%02x%02x", &r, &g, &b);
-
-                br_emit(pSt, 0xFA00FFFFu,
-                        br_pack_rgb((int32_t)r, (int32_t)g, (int32_t)b));
-
-                /* The same triple brightened by 0x80 and saturated at 0xFF
-                 * (unsigned compares) becomes the other end of the gradient,
-                 * so "%xRRGGBB" sets both ends from one value. */
-                br = (int32_t)r + 0x80;
-                bg = (int32_t)g + 0x80;
-                bb = (int32_t)b + 0x80;
-                if ((uint32_t)br > 0xFFu) br = 0xFF;
-                if ((uint32_t)bg > 0xFFu) bg = 0xFF;
-                if ((uint32_t)bb > 0xFFu) bb = 0xFF;
-
-                /* The original steps seven characters unconditionally, which
-                 * walks off the end of a truncated "%x" field.  DEVIATION:
-                 * the step stops at the terminator.  It can only differ where
-                 * the original was already reading out of bounds. */
-                {
-                    int n = 7;
-                    while (n-- > 0 && *p != '\0') { ++p; ++q; }
-                }
-                br_emit(pSt, 0xFB000000u, br_pack_rgb(br, bg, bb));
-            } else if (*q == '\0') {
-                /* The colour code needs TWO letters; with only one left the
-                 * '%' is drawn as an ordinary glyph instead. */
-                fDrawGlyph = 1;
-            } else {
-                int k1 = (int)(signed char)p[1] - 0x30;
-                int k2 = (int)(signed char)*q  - 0x30;
-
-                br_emit(pSt, 0xE7000000u, 0x00000000u);
-
-                /* The first letter sets the primitive colour, the second the
-                 * environment colour -- the two ends of the gradient.  An
-                 * unrecognised letter (case 12) emits nothing, so "%zz"
-                 * silently changes neither and still eats both characters. */
-                if ((uint32_t)k1 <= 0x49u && s_aColourCase[k1] < 12u)
-                    br_emit(pSt, 0xFA00FFFFu, s_aPrimColour[s_aColourCase[k1]]);
-                if ((uint32_t)k2 <= 0x49u && s_aColourCase[k2] < 12u)
-                    br_emit(pSt, 0xFB000000u, s_aEnvColour[s_aColourCase[k2]]);
-
-                p += 2;
-                q += 2;
-            }
-        } else {
-            if (c == '%' && p[1] == '%') {
-                /* "%%": swallow one, draw the other. */
-                ++p;
-                ++q;
-            }
-            fDrawGlyph = 1;
-        }
-
-        if (fDrawGlyph) {
-            signed char sc = (signed char)(unsigned char)*p;
-
-            /* Signed compares in the original, so 0x80..0xFF are outside. */
-            if (sc >= (signed char)BR_FONT_CLASS_LO &&
-                sc <= (signed char)BR_FONT_CLASS_HI) {
-                int      cls = pSt->pClassMap[(int)sc - BR_FONT_CLASS_LO];
-                int32_t  left, w, drawW, rightEdge, bottom;
-                uint32_t hTex, lrs, lrt;
-
-                /* DEVIATION: the original trusts the class map. */
-                if (cls >= 0 && cls < BR_FONT_CLASSES - 1) {
-                    left = pOff[cls];
-                    w    = pOff[cls + 1] - left + 1;   /* 0x10018A21 inc ecx */
-
-                    /* BUILD DIVERGENCE 2 -- how the glyph is bound.
-                     *
-                     * D3D 0x100189D4 emits ONE command, 0xDC carrying the
-                     * handle 0x10073820 registered for this class: 106
-                     * textures, switched between.
-                     *
-                     * Glide 0x10015FC1..0x10015FFD emits TWO.  The handle is
-                     * the SAME for every glyph of a size (0x1184C47C /
-                     * 0x1184C46C, the two textures 0x1006C790 made), and a
-                     * 0xDD in front of the 0xDC re-points it at this class's
-                     * window -- `base + stride*cls`, the `imul ebx,edx / add
-                     * ebx,[esp+0x30]` at 0x10015FDC.  ONE texture, re-aimed.
-                     *
-                     * The payload here is the ORIGINAL virtual address, not
-                     * an invented token, so the emitted word is the word the
-                     * original emitted and the rasteriser can decode the
-                     * class straight back out of it. */
-                    if (fGlide) {
-                        br_emit(pSt, 0xDD000000u | (hPage & 0x00FFFFFFu),
-                                vaBlock + (uint32_t)stride * (uint32_t)cls);
-                        br_emit(pSt, 0xDC000000u | (hPage & 0x00FFFFFFu), 1u);
-                    } else {
-                        hTex = (pahTex != NULL) ? pahTex[cls] : 0u;
-                        br_emit(pSt, 0xDC000000u | (hTex & 0x00FFFFFFu), 1u);
-                    }
-                    br_emit(pSt, 0xDE000000u, 0x3F800000u);   /*  1.0f */
-                    br_emit(pSt, 0xDF000000u, 0xBF800000u);   /* -1.0f */
-
-                    /* SETTILESIZE, tile 0, 10.2 fixed point: uls = ult = 0.5
-                     * (the 0x2002 in w0), lrs = w - 0.5, lrt = cell - 0.5. */
-                    lrs = (((uint32_t)w << 14) - 0x2000u) & 0x00FFF000u;
-                    lrt = (uint32_t)(cell * 4 - 2) & 0xFFFu;
-                    br_emit(pSt, 0xF2002002u, lrs | lrt);
-
-                    drawW     = (scale * w) / cell;
-                    rightEdge = penX + drawW;
-                    bottom    = top + scale;
-
-                    if (penX >= 0 && rightEdge <= 0x140 &&
-                        top >= 0 && bottom <= 0xF0) {
-                        br_emit(pSt,
-                                0xE3000000u |
-                                    (((uint32_t)rightEdge & 0xFFFu) << 12) |
-                                    ((uint32_t)bottom & 0xFFFu),
-                                (((uint32_t)penX & 0xFFFu) << 12) |
-                                    ((uint32_t)top & 0xFFFu));
-                    } else {
-                        /* The other arm emits the SAME rectangle with every
-                         * corner clamped at zero -- and only at zero.  A
-                         * rectangle past the right or bottom edge still goes
-                         * out unchanged, so this is not a scissor. */
-                        int32_t cr = br_clamp_lo16(rightEdge);
-                        int32_t cb = br_clamp_lo16(bottom);
-                        int32_t cl = br_clamp_lo16(penX);
-                        int32_t ct = br_clamp_lo16(top);
-
-                        br_emit(pSt,
-                                0xE3000000u |
-                                    (((uint32_t)cr & 0xFFFu) << 12) |
-                                    ((uint32_t)cb & 0xFFFu),
-                                (((uint32_t)cl & 0xFFFu) << 12) |
-                                    ((uint32_t)ct & 0xFFFu));
-                    }
-
-                    /* The pen advances by ONE LESS than the tile width -- the
-                     * quantity 0x100193C0 sums. */
-                    penX += (scale * (w - 1)) / cell;
-                }
-            }
-        }
-
-        /* The original reads the NEXT byte and then steps, so a NUL ends the
-         * loop without being classified.  The `*p` half of the test is the
-         * DEVIATION above: an escape path may have parked `p` on the
-         * terminator, where the original would read past it. */
-        if (*p == '\0' || p[1] == '\0')
-            break;
-        ++p;
-        ++q;
-    }
-
-    br_emit(pSt, 0xE7000000u, 0x00000000u);
-    br_emit(pSt, 0xBA001301u, 0x00080000u);
-    br_emit(pSt, 0xBA001402u, 0x00000000u);
-}
-
-#endif /* BR_MATCHING_BUILD */
 
 /* 0x100193C0 (D3D) and 0x10016980 (Glide).
  *
@@ -1461,7 +1144,6 @@ void BrTextEmitString(BrTextEmit *pSt, const char *psz)
  * every candidate and score is in build/match/crank.log.
  * Do not reopen before the end-grind (project rule 12). */
 /* @implements 0x10016980 glide BrFontMeasure */
-#ifdef BR_MATCHING_BUILD
 extern int DAT_106ed674;
 extern signed char DAT_100a58f7[];
 extern int DAT_100a5978[];
@@ -1526,87 +1208,6 @@ int32_t BrFontMeasure(const char *psz, int32_t scale)
         total >>= 1;
     return total;
 }
-#else
-int32_t BrFontMeasure(const BrFont *pFont, const char *psz,
-                      int32_t scale, int32_t fHiRes, int32_t detail)
-{
-    const int32_t *pOff;
-    const char    *p;
-    int32_t        divisor, total = 0;
-    int            c;
-
-    if (pFont == NULL || psz == NULL)
-        return 0;
-
-    if (fHiRes != 0)
-        scale <<= 1;
-
-    /* BUILD DIVERGENCE -- see BrTextEmitString.  Signed compares (`jg`,
-     * `jl`), and the threshold sees the already-doubled scale. */
-    if ((pFont->build == BR_FONT_BUILD_GLIDE || detail <= 1) &&
-        scale >= BR_FONT_LARGE_MIN) {
-        divisor = BR_FONT_LARGE_CELL;
-        pOff    = pFont->aOff[BR_FONT_LARGE];
-    } else {
-        divisor = BR_FONT_SMALL_CELL;
-        pOff    = pFont->aOff[BR_FONT_SMALL];
-    }
-
-    p = psz;
-    c = (unsigned char)*p;
-    while (c != 0) {
-        int fGlyph = 1;
-
-        /* The original compares AL SIGNED, so every byte from 0x80 up takes
-         * the same branch as a space or a control character. */
-        if ((signed char)(unsigned char)c < (signed char)BR_FONT_CLASS_LO ||
-            (signed char)(unsigned char)c > (signed char)BR_FONT_CLASS_HI) {
-            /* 14*scale/40 by reciprocal multiply, truncating toward zero --
-             * which C division already does.  NOT scaled by the font cell. */
-            total += (14 * scale) / 40;
-            fGlyph = 0;
-        } else if (c == '%' && p[1] != '\0') {
-            if ((unsigned char)p[1] == (unsigned char)c) {
-                /* "%%" -- consume one, then measure '%' as a glyph. */
-                ++p;
-            } else if (p[1] == 'i' || p[1] == 'n') {
-                ++p;
-                fGlyph = 0;
-            } else if (p[2] != '\0') {
-                /* ORIGINAL BUG, preserved and present in BOTH builds
-                 * (0x10016A08 / 0x10019451): this steps by 2 and the shared
-                 * advance below steps again, so THREE characters vanish and
-                 * none is measured.  It also means "%xRRGGBB" -- which the
-                 * emitter consumes seven characters for -- is measured as
-                 * "%x" plus SIX GLYPHS here, so any caption using the hex
-                 * colour escape measures far too wide.  Both builds. */
-                p += 2;
-                fGlyph = 0;
-            }
-            /* else p[2] is NUL: falls through with AL still '%', so the '%'
-             * is measured and the directive letter is measured next time. */
-        }
-
-        if (fGlyph) {
-            int k = pFont->aClass[c - BR_FONT_CLASS_LO];
-
-            /* DEVIATION: the original trusts the class map, which cannot
-             * yield the gap here because no character maps to it. */
-            if (k >= 0 && k < BR_FONT_CLASSES - 1)
-                total += ((pOff[k + 1] - pOff[k]) * scale) / divisor;
-        }
-
-        /* Read the NEXT byte, then step -- so a NUL ends the loop. */
-        c = (unsigned char)p[1];
-        ++p;
-    }
-
-    if (fHiRes != 0)
-        total >>= 1;            /* arithmetic shift in the original (`sar`) */
-
-    return total;
-}
-#endif
 
 /* ======================================================================
  * PART 3 -- reference rasteriser
@@ -1864,7 +1465,6 @@ size_t BrFontDrawString(const BrFont *pFont, const char *psz,
     return BrFontRasteriseDL(pFont, s_aDL, st.cWordsWanted, pRgba, cx, cy);
 }
 
-#ifdef BR_MATCHING_BUILD
 /* 0x10073980
  *
  * Fourteen constant arguments through the backend texture constructor at
@@ -1888,10 +1488,8 @@ void BrSub10073980(void)
     g_1829108 = g_18AA0B0(g_0B9CB0, 0, 0x20, 0x40, 0, 4,
                           0, 0, 0, 0, 0, 0, 1, 0);
 }
-#endif
 
-/* ── Ghidra-matched functions ─────────────────────────── */
-#ifdef BR_MATCHING_BUILD
+/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
 typedef int (*funcptr)();
 extern int DAT_100b64b0;
 extern int DAT_100ba2d0;
@@ -2047,4 +1645,3 @@ int BrFontTexCreateFlat(void)
   return;
 }
 
-#endif /* BR_MATCHING_BUILD */

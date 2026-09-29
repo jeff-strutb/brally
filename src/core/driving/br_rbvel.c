@@ -12,7 +12,6 @@
 
 #include <string.h>
 
-#ifdef BR_MATCHING_BUILD
 /* slice3_42.h declares this cdecl; the original is thiscall with one stack
  * argument.  Hide the prototype so the matching body can carry the
  * __fastcall shape with a struct-typed second argument (never
@@ -20,9 +19,7 @@
 #define BrCtrlCfgLoadDefaults BrCtrlCfgLoadDefaults_cdecl
 #define BrFn10069BC0          BrFn10069BC0_cdecl
 #define BrFn10069C30          BrFn10069C30_cdecl
-#endif
 #include "slice3_42.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrCtrlCfgLoadDefaults
 #undef BrFn10069BC0
 #undef BrFn10069C30
@@ -33,7 +30,6 @@ typedef struct { int32_t v; } BrCtrlProfileArg;
  * for `this` and puts the pair on the stack, which is thiscall exactly. */
 typedef struct { int32_t v; } BrCtrlKindArg;
 typedef struct { uint32_t v; } BrCtrlKeyArg;
-#endif
 
 /* =====================================================================
  * .rdata constants, read out of orig/BRD3D.dll rather than assumed.
@@ -113,7 +109,6 @@ static BrVec3 BrS42VelAt(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pP)
  * list are in the body comment below.
  * Do not reopen before the end-grind (project rule 12). */
 /* @implements 0x1006B510 d3d BrRbVelAtPoint */
-#ifdef BR_MATCHING_BUILD
 /* BrS42VelAt RETURNS A BrVec3, so MSVC will not inline it and the original
  * has no call there -- the whole 137-byte gap is one factored helper. The
  * body is spelled out here; the spill map in BrS42VelAt's banner above is
@@ -132,7 +127,7 @@ static BrVec3 BrS42VelAt(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pP)
  *    `fld`s pair up in -- 5+22 regnorm becomes 7+24, slightly WORSE
  *    (2026-09-03).
  *
- * ‼ AND THE REASON THE ORDER DOES NOT HELP IS NOW UNDERSTOOD. The six `fld`s
+ * â¼ AND THE REASON THE ORDER DOES NOT HELP IS NOW UNDERSTOOD. The six `fld`s
  * are hoisted above the `add esp,0xC` that cleans the call's three arguments:
  * once esp moves, every `[esp+N]` displacement for `r` changes, so MSVC loads
  * all six uses of r BEFORE adjusting the stack and then shuffles them with 16
@@ -141,7 +136,7 @@ static BrVec3 BrS42VelAt(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pP)
  * spelled, which is why every term ordering leaves it unchanged. A source
  * lever here would have to move the stack cleanup, not the expressions.
  *
- * ‼ CONFIRMED EXHAUSTIVELY 2026-09-05: all SIX permutations of the three
+ * â¼ CONFIRMED EXHAUSTIVELY 2026-09-05: all SIX permutations of the three
  * cross-term statements x each of the two add orders (x,y,z and the
  * original's completion order y,z,x) -- thirteen builds -- land between
  * 4+23 and 5+24 register-blind, none better than the 5+22 here, and none
@@ -187,13 +182,6 @@ void BrRbVelAtPoint(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pPoint)
         pOut->z = z + pOut->z;
     }
 }
-#else
-void BrRbVelAtPoint(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pPoint)
-{
-    BrVec3 p = *pPoint;         /* the original copies it to a stack slot */
-    *pOut = BrS42VelAt(pOut, pB, &p);
-}
-#endif
 
 /* 0x1006B430 */
 /* WHAT IT DOES: the same question, but about the spot belonging to another
@@ -225,7 +213,6 @@ void BrRbVelAtPoint(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pPoint)
  * Do not reopen before the end-grind (project rule 12). */
 /* @implements 0x1006B430 d3d BrRbVelAtBodyPoint */
 /* @n64 0x80267410 located */
-#ifdef BR_MATCHING_BUILD
 /* Same inlining and the same three float facts as BrRbVelAtPoint above --
  * BrS42VelAt returns a BrVec3 and so is never inlined; the velocity copy is
  * field-wise; the products put the rotated point first and stay float.
@@ -263,14 +250,6 @@ void BrRbVelAtBodyPoint(BrVec3 *pOut, const BrRbBodyFull *pB,
     pOut->y = cy + pOut->y;
     pOut->z = cz + pOut->z;
 }
-#else
-void BrRbVelAtBodyPoint(BrVec3 *pOut, const BrRbBodyFull *pB,
-                        const BrRbBodyFull *pAt)
-{
-    BrVec3 p = pAt->f78;
-    *pOut = BrS42VelAt(pOut, pB, &p);
-}
-#endif
 
 /* 0x1006B340 */
 /* WHAT IT DOES: the same again, except the attachment point is flattened --
@@ -278,7 +257,6 @@ void BrRbVelAtBodyPoint(BrVec3 *pOut, const BrRbBodyFull *pB,
  * world rather than against the body. The caller must not pass the same
  * storage in twice, because the answer slot is used as scratch on the way. */
 /* @implements 0x1006B340 d3d BrRbVelAtBodyPointXY */
-#ifdef BR_MATCHING_BUILD
 /* Same inlining and the same cross product as the two above.  The sums go
  * back into p, the transform's INPUT (the original's closing fstp triple
  * and the pointer passed to BrMat4MulVec3 are both at p's slot), and vel.z
@@ -315,17 +293,3 @@ void BrRbVelAtBodyPointXY(BrVec3 *pOut, const BrRbBodyFull *pB,
 
     BrMat4MulVec3(pOut, &pB->m, &p);
 }
-#else
-void BrRbVelAtBodyPointXY(BrVec3 *pOut, const BrRbBodyFull *pB,
-                          const BrRbBodyFull *pAt)
-{
-    BrVec3 p, sum;
-
-    p.x = pAt->f78.x;
-    p.y = pAt->f78.y;
-    p.z = 0.0f;                 /* the original stores a literal 0 dword */
-
-    sum = BrS42VelAt(pOut, pB, &p);
-    BrMat4MulVec3(pOut, &pB->m, &sum);
-}
-#endif

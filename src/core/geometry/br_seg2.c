@@ -13,18 +13,14 @@
  * st(n)) are spelled out in the arithmetic here rather than "tidied", because
  * `fsubr m32` is `st0 = m32 - st0` and getting that backwards is silent.
  */
-#ifdef BR_MATCHING_BUILD
 #define BrSpanTestPoint BrSpanTestPoint_port
 #define BrPfxReset      BrPfxReset_port
-#endif
 #include "slice2_21.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrSpanTestPoint
 #undef BrPfxReset
 int  BrSpanTestPoint(float x, float y);
 void BrPfxReset(void);
 int  BrSpanContains(int param_1, int param_2);
-#endif
 
 #include <string.h>
 

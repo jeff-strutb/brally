@@ -12,9 +12,7 @@
  * Obj hook: do not name a pointer for g_obj (`a1` eax). Direct class*
  * member access puts the object in ecx; int f08 occupies eax.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Phase;
 

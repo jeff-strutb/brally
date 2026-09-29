@@ -34,10 +34,8 @@
  *    a 0x74-byte stack buffer in the original (esp+0x10 inside a 0x84-byte
  *    frame) that a longer string smashes; it is BR87_TEXT_MAX here.
  * ========================================================================== */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice8_87.h"
 
 #include <string.h>
@@ -50,7 +48,6 @@
  * of the option values. An out-of-range value gives the same answer as
  * choice zero, so the two cannot be told apart. */
 /* @implements 0x1003F5E0 d3d BrUiHook87_1003F5E0 */
-#ifdef BR_MATCHING_BUILD
 /* Global read directly; each arm carries its own store + return (the imm
  * values differ so nothing cross-jumps). The glide field offset is
  * 0x1E20C (the port struct maps the D3D 0x1E204). */
@@ -68,33 +65,12 @@ int32_t BrUiHook87_1003F5E0(BrUiCtl_ *pCtl)
     default: BR87_W(pCtl) = 0x56u; return 1;
     }
 }
-#else
-int32_t BrUiHook87_1003F5E0(BrUiCtl_ *pCtl)
-{
-    uint32_t k = (g_pBr72Env != NULL) ? (uint32_t)g_pBr72Env->nAA2A18 : 0u;
-    uint16_t v;
-
-    /* `cmp eax,4 / ja default` -- UNSIGNED, so a negative index is out of
-     * range and lands on the default. */
-    switch (k) {
-    case 0u: v = 0x56u; break;
-    case 1u: v = 0x57u; break;
-    case 2u: v = 0x59u; break;
-    case 3u: v = 0x5Bu; break;
-    case 4u: v = 0x5Du; break;
-    default: v = 0x56u; break;   /* the SAME value index 0 produces */
-    }
-    pCtl->w1E20C = v;
-    return 1;
-}
-#endif
 
 /* WHAT IT DOES: the twin of the hook above, on the same option value but
  * with a different set of caption codes. This one maps both choice zero and
  * an out-of-range value to the "no caption" sentinel, which is where the two
  * twins part company. */
 /* @implements 0x1003F680 d3d BrUiHook87_1003F680 */
-#ifdef BR_MATCHING_BUILD
 int32_t BrUiHook87_1003F680(BrUiCtl_ *pCtl)
 {
     switch (DAT_10ac5d70) {
@@ -106,21 +82,3 @@ int32_t BrUiHook87_1003F680(BrUiCtl_ *pCtl)
     default: BR87_W(pCtl) = 0xFFFFu; return 1;
     }
 }
-#else
-int32_t BrUiHook87_1003F680(BrUiCtl_ *pCtl)
-{
-    uint32_t k = (g_pBr72Env != NULL) ? (uint32_t)g_pBr72Env->nAA2A18 : 0u;
-    uint16_t v;
-
-    switch (k) {
-    case 0u: v = 0xFFFFu; break;   /* index 0 IS the sentinel in this twin */
-    case 1u: v = 0x58u; break;
-    case 2u: v = 0x5Au; break;
-    case 3u: v = 0x5Cu; break;
-    case 4u: v = 0x5Eu; break;
-    default: v = 0xFFFFu; break;
-    }
-    pCtl->w1E20C = v;
-    return 1;
-}
-#endif

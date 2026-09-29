@@ -3,7 +3,6 @@
  * Fresh transcription from build/ghidra_decomp/0x1001ca30.c against the
  * original bytes, 2026-09-13.  Matching arm only.
  */
-#ifdef BR_MATCHING_BUILD
 
 /* One 0x18-byte damage-stage record at 0x100B301C, indexed by the car's
  * current stage byte (+4).  Only three fields are read here. */
@@ -160,4 +159,3 @@ state:
     } while (i < DAT_100b3858);
 }
 
-#endif /* BR_MATCHING_BUILD */

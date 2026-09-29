@@ -28,11 +28,9 @@
  * @t4-pass 0x1003A2B0 1 2026-09-26 probes 12 bytes 360 insns 120 regions 1 rows 0 census no  (inline-helper shapes, named e/k locals, 2-D/struct table views)
  * @t4-pass 0x1003A2B0 2 2026-09-26 probes 127 bytes 360 insns 120 regions 1 rows 0 census yes  (mechanism: all 120 extern orders, 50..4000 extra symbols, <windows.h>)
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #include <stdio.h>
 #include <string.h>
-#endif
 
 class Item438K {
 public:

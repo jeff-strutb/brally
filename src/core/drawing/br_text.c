@@ -18,10 +18,8 @@
  * elsewhere in this module to move VC5's register allocation (see
  * br_rdpmode.c).
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice1_03.h"
 
 #include <stdio.h>
@@ -38,15 +36,12 @@ BrTextState *BrTextGetState(void)
  * with, and raises the flag that says a colour has been chosen. */
 /* @implements 0x100192A0 d3d BrTextSetColors */
 /* @n64 0x8022F530 located */
-#ifdef BR_MATCHING_BUILD
 /* The two colour triples and the chosen flag are separate globals in the
  * original (0x100A6C68.. and 0x104ABB4C..), not fields of the port's g_text. */
 extern int DAT_100a6c68, DAT_100a6c6c, DAT_100a6c70;
 extern int DAT_104abb4c, DAT_104abb50, DAT_104abb54, DAT_104abb58;
-#endif
 void BrTextSetColors(int a1, int a2, int a3, int a4, int a5, int a6)
 {
-#ifdef BR_MATCHING_BUILD
     DAT_100a6c68 = a1;
     DAT_100a6c6c = a2;
     DAT_100a6c70 = a3;
@@ -54,15 +49,6 @@ void BrTextSetColors(int a1, int a2, int a3, int a4, int a5, int a6)
     DAT_104abb50 = a4;
     DAT_104abb54 = a5;
     DAT_104abb58 = a6;
-#else
-    g_text.f0A74A8 = a1;
-    g_text.f0A74AC = a2;
-    g_text.f0A74B0 = a3;
-    g_text.f4B0364 = 1;
-    g_text.f4B0368 = a4;
-    g_text.f4B036C = a5;
-    g_text.f4B0370 = a6;
-#endif
 }
 
 /* 0x10019300 */
@@ -74,7 +60,6 @@ void BrTextSetColors(int a1, int a2, int a3, int a4, int a5, int a6)
  * recognise leaves the horizontal position at whatever the previous call
  * used. */
 /* @implements 0x10019300 d3d BrTextDraw */
-#ifdef BR_MATCHING_BUILD
 /* The original: DL-emit macro (no pGfx guard), switch on the signed-char
  * align global (arms in source order 2,1,0,default; case 0 stores x and
  * falls into default's y store), direct calls to the measurer and emitter
@@ -114,54 +99,6 @@ void BrTextDraw(const char *psz, int x, int y)
     DAT_104abb2c = y;
     BrTextEmitString(s);
 }
-#else
-void BrTextDraw(const char *psz, int x, int y)
-{
-    int w;
-
-    /* Two dwords into the display list, cursor advanced by 8 bytes. On the
-     * N64 command set 0xB6 is G_CLEARGEOMETRYMODE and the payload 0x1 is
-     * G_ZBUFFER, i.e. "turn the z-buffer off for this text". */
-    if (g_text.pGfx != NULL) {      /* DEVIATION: original never checks */
-        g_text.pGfx[0] = 0xB6000000u;
-        g_text.pGfx[1] = 0x00000001u;
-        g_text.pGfx += 2;
-    }
-
-    switch (g_text.align) {
-    case BR_TEXT_ALIGN_CENTER:
-        w = (g_text.pfnMeasure != NULL)
-                ? g_text.pfnMeasure(psz, g_text.scale) : 0;
-        /* the original uses `sar eax,1`, an arithmetic shift, not a signed
-         * divide -- they differ for a negative measurement */
-        g_text.x = x - (w >> 1);
-        g_text.y = y;
-        break;
-
-    case BR_TEXT_ALIGN_RIGHT:
-        w = (g_text.pfnMeasure != NULL)
-                ? g_text.pfnMeasure(psz, g_text.scale) : 0;
-        g_text.x = x - w;
-        g_text.y = y;
-        break;
-
-    case BR_TEXT_ALIGN_LEFT:
-        g_text.x = x;
-        g_text.y = y;
-        break;
-
-    default:
-        /* x is NOT touched here: the original's case-0 arm falls through
-         * into the default arm, which only stores y. Any align value other
-         * than 0/1/2 therefore reuses the previous call's x. */
-        g_text.y = y;
-        break;
-    }
-
-    if (g_text.pfnDrawString != NULL)
-        g_text.pfnDrawString(psz);
-}
-#endif
 
 void BrFormatTime(char *pszOut, size_t cbOut, const char *pszPrefix,
                   float fSeconds)
@@ -191,7 +128,6 @@ void BrFormatTime(char *pszOut, size_t cbOut, const char *pszPrefix,
  * number goes out before the label. */
 /* @implements 0x100171F0 d3d BrHudDrawTimeEntry */
 /* @n64 0x80238714 located */
-#ifdef BR_MATCHING_BUILD
 /* The original inlines the whole of BrFormatTime: the minute/second/hundredth
  * split (magic divides by 100 and 60) and an UNBOUNDED sprintf into the
  * 32-byte stack buffer, with the prefix passed raw -- no NULL guard. */
@@ -213,21 +149,7 @@ void BrHudDrawTimeEntry(const char *pszLabel, const char *pszPrefix,
     BrTextDraw(sz, x, y + 15);
     BrTextDraw(pszLabel, x, y);
 }
-#else
-void BrHudDrawTimeEntry(const char *pszLabel, const char *pszPrefix,
-                        float fSeconds, int x, int y)
-{
-    char sz[32];      /* the original's local buffer is exactly 0x20 */
 
-    BrFormatTime(sz, sizeof(sz), pszPrefix, fSeconds);
-
-    /* the time line goes out first, 15 pixels below the label */
-    BrTextDraw(sz, x, y + 15);
-    BrTextDraw(pszLabel, x, y);
-}
-#endif
-
-#ifdef BR_MATCHING_BUILD
 
 /* WHAT IT DOES: store a value into the global at 0x104ABB30. */
 /* @implements 0x100168B0 glide BrSetGlobal_ABB30 */
@@ -239,12 +161,9 @@ int BrSetGlobal_ABB30(int param_1)
   return;
 }
 
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice5_61.h"
 
 #include <string.h>
@@ -268,20 +187,14 @@ void BrSub_10019290(void)
     g_br4B035C = 1;
 }
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
 #include <stdio.h>
-#endif
 #include <string.h>
 
-#ifdef BR_MATCHING_BUILD
 #define BrExt_1007AC00 BrExt_1007AC00_decl
-#endif
 #include "slice5_63.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrExt_1007AC00
-#endif
 
 #include "br_crt.h"      /* BrOperatorNew (0x1007DFE0)                       */
 #include "slice1_03.h"   /* BrTextGetState, BrHudDrawTimeEntry               */
@@ -297,10 +210,8 @@ void BrSub_10019280(void)
     g_br4B035C = 0;
 }
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdarg.h>
 #include "br_path.h"
 #include <stddef.h>

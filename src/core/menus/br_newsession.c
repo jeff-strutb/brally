@@ -7,10 +7,8 @@
  * slice6_73.c, which models these globals as fields of g_br73 (and whose
  * BR_HOST_LINK renaming keeps slice6_70 the port owner).
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <string.h>
 #include <stdio.h>
 #include <stddef.h>
@@ -34,7 +32,6 @@
  * is certified in 0x10063DD0).  A3 pairs it by the promoted-zero rule.
  * Do not reopen before the end-grind (project rule 12). */
 /* @implements 0x1003E680 d3d BrSub1003E680 */
-#ifdef BR_MATCHING_BUILD
 /* Matching arm: loose Glide globals in the original's store order, the
  * imported sprintf cached in esi, memset as rep stosd.  The three float
  * fields (0x10AC40F8, 0x10AC40FC, 0x10AC5C20) are zeroed through a SECOND
@@ -109,4 +106,3 @@ void BrSub1003E680(void)
     DAT_1021c650[0] = -1;
     BrSub10037B20();
 }
-#endif

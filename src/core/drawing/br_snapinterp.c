@@ -35,15 +35,12 @@
  * Neighbours by address (0x10011D20 .. 0x10013FC0) are all drawing: the FPS
  * readout, the frame driver, the HUD scene, the per-frame flags in br_clear.c.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
 
-#ifdef BR_MATCHING_BUILD
 
 /* One of the six 0x44-byte matrix records hung off a car: a 4x4 plus one
  * trailing float.  Two pointers in the car record (+0x2734, +0x2738) each
@@ -344,7 +341,7 @@ int32_t BrSnapInterpDraw(int32_t force)
  * and every spelling tried emits store #5 at 0x4d instead, leaving `mov eax`
  * back-to-back with `mov [eax]`.
  *
- * ‼ WHAT DID MOVE THE NEEDLE (keep it): `g_brRaceBeginLimitOn = 1;` must be
+ * â¼ WHAT DID MOVE THE NEEDLE (keep it): `g_brRaceBeginLimitOn = 1;` must be
  * the FIRST statement in the block.  That is what forces `mov edx,1` into the
  * prologue, which in turn denies edx to the memset's zero temp and buys the
  * `push esi` / `pop esi` pair the original has.  Without it the function is
@@ -504,4 +501,3 @@ int BrSnapPickSlot(void)
 }
 
 
-#endif /* BR_MATCHING_BUILD */

@@ -4,7 +4,6 @@
  * port's bounds-checked twin (three arguments, snprintf) lives in
  * slice2_11.c; this is the original's two-argument sprintf form, byte-exact.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: sprintf goes through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
 #include <stdio.h>
@@ -33,4 +32,3 @@ void BrTimeFormat(char *psz, float t)
 
     sprintf(psz, "%d:%02d.%02d", minutes, whole, total);
 }
-#endif /* BR_MATCHING_BUILD */

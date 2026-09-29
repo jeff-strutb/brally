@@ -54,9 +54,7 @@
  * swapping the n/sh declarations (40), and `&pBuf[byteIdx]` (40) all leave
  * the pairing alone.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class BitStream6D0B0 {
 public:

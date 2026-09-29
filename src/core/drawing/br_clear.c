@@ -9,15 +9,12 @@
  * both together -- and the scene accumulators the third function zeroes are
  * cleared at the same point in the frame.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import
  * table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdint.h>
 #include "slice2_15.h"   /* g_4B16A0, g_4B16AC */
 
-#ifdef BR_MATCHING_BUILD
 
 extern int DAT_104ab4f0;
 extern int DAT_104ab504;
@@ -43,7 +40,6 @@ int BrGetFlag_AB4F0(void)
   return DAT_104ab4f0;
 }
 
-#endif /* BR_MATCHING_BUILD */
 
 /* =====================================================================
  * 0x10017F60

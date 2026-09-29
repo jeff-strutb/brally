@@ -33,11 +33,7 @@
  * latch; explicit `latched` local; non-compound `|`; the two stores swapped
  * (-2 B); int-typed edx dummy; every slot in the TU (3).  Corpus: the
  * `mov R,R; push; mov R,[R+4]; and; or; not` run is proven nowhere. */
-#ifdef BR_MATCHING_BUILD
 void __fastcall BrBitLatchTake(BrBitLatch *pLatch, void *_dummy, uint32_t mask)
-#else
-void BR_THISCALL BrBitLatchTake(BrBitLatch *pLatch, uint32_t mask)
-#endif
 {
     uint32_t pending = pLatch->pending;
 

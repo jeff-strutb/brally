@@ -11,9 +11,7 @@
  * on the phase by its f0C flag, then the timed phase-leave (f68=0,
  * v6(0)) once the 90000-tick window expires.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Phase {
 public:

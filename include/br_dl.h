@@ -683,11 +683,7 @@ float BrDlColourScale(const BrDl *pDl);
  * that changed since last call, and writes the chosen vertex routine and the
  * two triangle handlers into their dispatch slots. The port's
  * value-returning form is a fragment of the tail. */
-#ifdef BR_MATCHING_BUILD
 void BrDlVtxRoutine(void);
-#else
-uint32_t BrDlVtxRoutine(const BrDl *pDl);
-#endif
 
 /* Non-zero when BrDlVtxRoutine's answer is one of the five that light. */
 int BrDlIsLit(const BrDl *pDl);

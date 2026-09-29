@@ -1,5 +1,4 @@
 /* 0x00401030 WndProc (__stdcall ret 16) */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: the intro player's window procedure -- routes every Windows
  * message: paint, keys, close, and the private message DirectShow uses to
  * report playback events. */
@@ -30,4 +29,3 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     }
 }
 
-#endif

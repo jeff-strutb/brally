@@ -3,7 +3,6 @@
  * Track/environment display-list emitter.  The port lives in br_drawenv.c
  * behind #ifndef BR_MATCHING_BUILD; this file is the matching body.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
 
@@ -347,4 +346,3 @@ void BrEnvEmit(void)
   return;
 }
 
-#endif /* BR_MATCHING_BUILD */

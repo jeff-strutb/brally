@@ -1,7 +1,6 @@
 /* FillComboA: enumerate VDB sections whose name starts with "[v:", strip
  * the "[v:" prefix and trailing byte, CB_ADDSTRING / CB_SETITEMDATA(i) /
  * CB_SETCURSEL if Sel.index == i. Combo ctl 0x3E9. */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: populate the first drop-down from the settings file's
  * sections. */
 /* @implements 0x00401F00 setvideo.exe FillComboA */
@@ -83,4 +82,3 @@ int FillComboA(HWND hWnd)
 }
 
 
-#endif /* BR_MATCHING_BUILD */

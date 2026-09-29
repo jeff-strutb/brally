@@ -7,10 +7,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#ifdef BR_MATCHING_BUILD
 __declspec(dllimport) void * __stdcall CreateMutexA(void *, int, const char *);
 __declspec(dllimport) int __stdcall CloseHandle(void *);
-#endif
 
 extern int32_t g_br18A9878;
 extern int32_t g_br18AA098;
@@ -24,11 +22,7 @@ void *BrMutexCreateAA0A0(void)
 
     g_br18A9878 = 0;
     g_br18AA098 = 0;
-#ifdef BR_MATCHING_BUILD
     h = CreateMutexA(0, 0, 0);
-#else
-    h = NULL;
-#endif
     g_br18AA0A0 = h;
     return h;
 }
@@ -42,10 +36,6 @@ void BrMutexCloseAA0A0(void)
     h = g_br18AA0A0;
     g_br18A9878 = 0;
     g_br18AA098 = 0;
-#ifdef BR_MATCHING_BUILD
     (void)CloseHandle(h);
-#else
-    (void)h;
-#endif
     g_br18AA0A0 = NULL;
 }

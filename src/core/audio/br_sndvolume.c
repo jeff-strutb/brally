@@ -88,8 +88,7 @@ extern int g_i0B8C90;
  * OWNS the storage; this packet only reads it.  See the note in section 1. */
 extern int32_t g_br094294;
 
-/* ── Ghidra-matched functions ─────────────────────────── */
-#ifdef BR_MATCHING_BUILD
+/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
 extern int DAT_11849e64;
 int FUN_1006a650();
 int FUN_1006a7e0();
@@ -109,7 +108,7 @@ extern int DAT_1184c07c;
 void BrSndVoiceApplyFreq(int);
 void BrSndVoiceApplyPan(int);
 
-/* BrSndVoiceSetPan (0x1006B5B0) stays in ghidra_batch.c - context-sensitive codegen. */
+/* BrSndVoiceSetPan (0x1006B5B0) stays in ghidra_batch.c â context-sensitive codegen. */
 
 typedef void (__stdcall *dsbuf_fn2)(int, int);
 
@@ -181,4 +180,3 @@ void BrSndVoiceApplyVolume(int param_1)
   return;
 }
 
-#endif /* BR_MATCHING_BUILD */

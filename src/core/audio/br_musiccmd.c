@@ -3,7 +3,6 @@
 
 #include <stdint.h>
 
-#ifdef BR_MATCHING_BUILD
 extern uint32_t g_0940A4;
 void BrExt_10002660(void *);
 void BrExt_100025F0(void *);
@@ -16,13 +15,6 @@ void BrExt_10072B30(void *a, int b, int c) { (void)a; (void)b; (void)c; }
 /* @n64 0x802607DC located */
 void BrExt_10072A90(void *a, int b, int c, int d)
 { (void)a; (void)b; (void)c; (void)d; }
-#else
-uint32_t g_0940A4;
-void BrExt_10002660(void *p);
-void BrExt_100025F0(void *p);
-void BrExt_10072B30(void *a, int b, int c);
-void BrExt_10072A90(void *a, int b, int c, int d);
-#endif
 
 /* WHAT IT DOES: send one command to the live music path: Windows CD
  * audio if that mode is on, otherwise the in-process EAR mixer. */
@@ -59,8 +51,7 @@ void BrWrap_10072A70(void *a, int b, int c)
     BrExt_10072A90(a, 1, b, c);
 }
 
-/* ── Ghidra-matched functions ─────────────────────────── */
-#ifdef BR_MATCHING_BUILD
+/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
 #include <windows.h>
 extern int BrSndG0B5DE8;
 extern int BrSndG18290FC;
@@ -172,4 +163,3 @@ void BrSub10072AF0(int a, int b)
     (void)BrSndPlayGroup((int32_t)a, (uint32_t)b, 0);
 }
 
-#endif /* BR_MATCHING_BUILD */

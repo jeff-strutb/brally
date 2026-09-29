@@ -14,7 +14,6 @@
 #include <math.h>
 #include <string.h>
 
-#ifdef BR_MATCHING_BUILD
 
 extern BrDlVtx g_aBrDlVtxPool[];    /* 0x105CE318, stride 0x68 */
 extern float   g_brDlTexScaleS;     /* 0x118ED1A4 */
@@ -174,4 +173,3 @@ const uint8_t *BrDlCmdTri2(const uint8_t *p)
     return p + 8;
 }
 
-#endif /* BR_MATCHING_BUILD */

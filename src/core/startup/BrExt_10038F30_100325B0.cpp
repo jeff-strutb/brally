@@ -12,9 +12,7 @@
  * BrKeyCacheReset is thiscall on the g_AC0810 object (`mov ecx,imm`).
  * CoUninitialize and exit are /MD imports (FF 15). No EH (no new).
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <windows.h>
 #include <objbase.h>
 #include <stdlib.h>

@@ -17,9 +17,7 @@
  * separate statement on the member; VC5 tail-merges the three arms onto
  * one store and keeps the value live for the second.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 struct Rect55330 {
     int x0;     /* +0x00 */

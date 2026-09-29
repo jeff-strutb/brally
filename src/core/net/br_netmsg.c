@@ -10,10 +10,8 @@
  * byte-identical to the original.  Filed out of slice4_50/52/53 and
  * slice6_70 per the file-as-you-match rule. */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdint.h>
 #include "slice2_25.h"      /* BrOptUi, g_brAA288C */
 #include "slice2_26.h"      /* BrObjA9D008 (tag 7's object view) */
@@ -177,7 +175,6 @@ int32_t BrExt_1003DB00(struct BrObjA9D008 *pObj, void *p)
 }
 
 
-#ifdef BR_MATCHING_BUILD
 /* ------------------------------------------------------------------ */
 /* 0x10037260 -- format-and-MessageBox                                 */
 /* ------------------------------------------------------------------ */
@@ -205,4 +202,3 @@ void BrNetErrMsgBox(const char *param_1,int param_2)
   MessageBoxA((void *)0x0,local_c8,BrStrGet(0x126),0);
   return;
 }
-#endif /* BR_MATCHING_BUILD */

@@ -343,7 +343,6 @@ static void br_dlcmd_tri(BrDlCmd *pS, int i0, int i1, int i2)
  */
 /* The matching-build definition of 0x1001ECF0 sits below BrDlTriFlatZ, in
  * the index-form block; the port body is at the #else. */
-#ifdef BR_MATCHING_BUILD
 /* Everything the port factored out is INLINE in the original, and there is a
  * lot of it: br_dlcmd_tri, br_dlcmd_finish_vtx three times over, and the state
  * pointer itself. 113 instructions against 18.
@@ -363,7 +362,7 @@ static void br_dlcmd_tri(BrDlCmd *pS, int i0, int i1, int i2)
  *
  * Tri1 is BYTE-EXACT (2026-09-04) in the index form below BrDlTriFlatZ; the
  * pointer form here is what Tri2 still uses.  Tri2 after the __stdcall draw
- * fix: 624 B against 696, 527 diffs.  ‼ Tri2 in the SAME index form as Tri1
+ * fix: 624 B against 696, 527 diffs.  â¼ Tri2 in the SAME index form as Tri1
  * (two BR_DLCMD_TRI_I instantiations, indices assigned a, b, c per triangle,
  * with either shared or six distinct int locals) is WORSE: 743 B, +7 insns,
  * regnorm 17+10, and the frame differs from the first byte -- the original
@@ -468,13 +467,6 @@ void BrDlVtxFinishTex(BrDlVtx *v, const BrDlClipSt *pSt)
 
 /* The matching-build BrDlCmdTri1 is defined below BrDlTriFlatZ, in the
  * index-form block it shares with it. */
-#else
-const uint8_t *BrDlCmdTri1(BrDlCmd *pS, const uint8_t *p)
-{
-    br_dlcmd_tri(pS, p[6], p[5], p[4]);
-    return p + 8;
-}
-#endif
 
 /* 0x1001FA30 -- G_TRI2, opcode 0xB1.  696 bytes, Glide-only.
  *
@@ -490,7 +482,7 @@ const uint8_t *BrDlCmdTri1(BrDlCmd *pS, const uint8_t *p)
  * uses for most of its geometry, since flat surfaces come in pairs. Each is
  * dropped, trimmed or drawn on its own, and whatever happens to the first the
  * second is still considered. */
-/* ‼ RESIDUE, 2026-09-05.  The body below is the POINTER form and is 624 B
+/* â¼ RESIDUE, 2026-09-05.  The body below is the POINTER form and is 624 B
  * against the original's 696 with 527 diffs.  Two measurements now say what
  * it needs, and both were made by scratch-compiling copies (build/probe/):
  *
@@ -505,7 +497,7 @@ const uint8_t *BrDlCmdTri1(BrDlCmd *pS, const uint8_t *p)
  *     are the other way round (`fmul [texScale]` then `fmul [oow]` in the
  *     original).  A working copy is build/probe/tri2_indexform_KEEP.c.
  *
- *  2. ‼ IT CANNOT LIVE IN THIS FILE.  Adding that body here as a third user
+ *  2. â¼ IT CANNOT LIVE IN THIS FILE.  Adding that body here as a third user
  *     of BR_DLCMD_TRI_I UN-MATCHES BOTH of its siblings: 0x1001ECF0 goes from
  *     byte-exact to 22 differing bytes and 0x10020900 to 258.  The surrounding
  *     translation unit decides the codegen, so 0x1001FA30 needs its OWN .c
@@ -522,7 +514,6 @@ const uint8_t *BrDlCmdTri1(BrDlCmd *pS, const uint8_t *p)
  * 0x10020D70 from 57 to 465 (measured 2026-09-09) -- the surrounding TU,
  * symbol names included, decides those functions' codegen.  Dead code in
  * every build; the port arm is the #else below. */
-#ifdef BR_MATCHING_BUILD
 const uint8_t *BrDlCmdTri2(const uint8_t *p)
 {
     BrDlVtx *a0 = &g_aBrDlVtxPool[p[2]];
@@ -537,16 +528,7 @@ const uint8_t *BrDlCmdTri2(const uint8_t *p)
     BR_DLCMD_TRI(a1, b1, c1, u);
     return p + 8;
 }
-#else
-const uint8_t *BrDlCmdTri2(BrDlCmd *pS, const uint8_t *p)
-{
-    br_dlcmd_tri(pS, p[2], p[1], p[0]);
-    br_dlcmd_tri(pS, p[6], p[5], p[4]);
-    return p + 8;
-}
-#endif
 
-#ifdef BR_MATCHING_BUILD
 /* ====================================================================
  * 0x1001FF60 -- the FLAT-shaded triangle emitter, z-buffered.
  *
@@ -763,7 +745,7 @@ void BrDlTriFlatNoZ(int i0, int i1, int i2)
  * lea'd pointer with ONE oow load.  BYTE-EXACT 2026-09-04; the pointer form
  * this replaced (`BrDlVtx *a = &pool[p[6]]`) was parked at 322 B / 258 diffs.
  *
- * ‼ THE INDEX READ ORDER IS NOT THE SOURCE ORDER.  The original reads the
+ * â¼ THE INDEX READ ORDER IS NOT THE SOURCE ORDER.  The original reads the
  * bytes 6, 4, 5 (ecx, eax, edx).  With int locals, `ia = p[6]; ic = p[4];
  * ib = p[5];` compiles to reads 4, 6, 5 -- VC5 swaps the first two -- and
  * `ic = p[4]; ia = p[6]; ib = p[5];` gives the original's 6, 4, 5.  With the
@@ -1002,7 +984,6 @@ unsigned char *BrDlCmdTri2Flat(unsigned char *p)
 
 #undef V
 #define V(i) (*(i))
-#endif
 
 /* ====================================================================
  * 0x1001E320 -- G_FILLRECT, opcode 0xF6.  96 bytes; the body is shared with
@@ -1106,7 +1087,6 @@ const uint8_t *BrDlCmdFillColour(BrDlCmd *pS, const uint8_t *p)
  * of its own. */
 /* @implements 0x1001EA60 glide BrDlCmdFogColour */
 /* @n64 0x8023DF00 located */
-#ifdef BR_MATCHING_BUILD
 /* Literal: one stdcall into the driver with the raw dword at p+4. */
 void __stdcall grFogColorValue(int);
 const uint8_t *BrDlCmdFogColour(const uint8_t *p, BrDlCmd *pS)
@@ -1114,16 +1094,7 @@ const uint8_t *BrDlCmdFogColour(const uint8_t *p, BrDlCmd *pS)
     grFogColorValue(*(const int *)(const void *)(p + 4));
     return p + 8;
 }
-#else
-const uint8_t *BrDlCmdFogColour(BrDlCmd *pS, const uint8_t *p)
-{
-    if (pS->sink.pfnFogColor)
-        pS->sink.pfnFogColor(pS->sink.pUser, br_dlcmd_w(p + 4));
-    return p + 8;
-}
-#endif
 
-#ifdef BR_MATCHING_BUILD
 /* Forward declarations for unknown functions/globals */
 extern float DAT_105ce2d0;
 extern float DAT_105d17a4;
@@ -1146,7 +1117,6 @@ int br_dl_prim(int param_1)
   grConstantColorValue(*(int *)(param_1 + 4));
   return param_1 + 8;
 }
-#endif /* BR_MATCHING_BUILD */
 
 /* ====================================================================
  * 0x1001EA80 -- G_SETPRIMCOLOR, opcode 0xFA.  138 bytes, Glide-only.
@@ -1224,7 +1194,6 @@ const uint8_t *BrDlCmdEnvColour(BrDlCmd *pS, const uint8_t *p)
  * choice as well as applying it, because the rectangle filler later checks
  * which recipe is in force to decide where its colour comes from. */
 /* @implements 0x1001E770 glide BrDlCmdSetCombine */
-#ifdef BR_MATCHING_BUILD
 extern int DAT_105d17ac;
 extern int DAT_105d17b0;
 void FUN_1001e7a0(int, int);
@@ -1239,20 +1208,6 @@ const uint8_t *BrDlCmdSetCombine(const uint8_t *p, BrDlCmd *pS)
     FUN_1001e7a0(w0, w1);
     return p + 8;
 }
-#else
-const uint8_t *BrDlCmdSetCombine(BrDlCmd *pS, const uint8_t *p)
-{
-    uint32_t w0 = br_dlcmd_w(p);
-    uint32_t w1 = br_dlcmd_w(p + 4);
-
-    pS->combineW0 = w0;               /* 0x105D17AC */
-    pS->combineW1 = w1;               /* 0x105D17B0 */
-
-    if (pS->sink.pfnCombine)
-        pS->sink.pfnCombine(pS->sink.pUser, w0, w1);
-    return p + 8;
-}
-#endif
 
 /* ==================================================================== */
 /* wiring                                                               */
@@ -1279,14 +1234,9 @@ BrDlCmdFn BrDlCmdLookup(unsigned op)
 {
     switch (op) {
     case 0x04: return BrDlCmdVtx;
-#ifdef BR_MATCHING_BUILD
     /* One-argument in the matching arm; the table's type is the port's. */
     case 0xB1: return (BrDlCmdFn)BrDlCmdTri2;
     case 0xBF: return (BrDlCmdFn)BrDlCmdTri1;
-#else
-    case 0xB1: return BrDlCmdTri2;
-    case 0xBF: return BrDlCmdTri1;
-#endif
     case 0xF6: return BrDlCmdFillRect;
     case 0xF7: return BrDlCmdFillColour;
     case 0xF8: return BrDlCmdFogColour;

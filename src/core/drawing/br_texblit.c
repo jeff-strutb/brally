@@ -10,21 +10,16 @@
  * looks redundant has already been shown elsewhere in this module to move
  * VC5's register allocation (see br_rdpmode.c).
  */
-#ifdef BR_MATCHING_BUILD
 /* Header prototype is cdecl (this, r, g, b).  Original is thiscall with
  * ret 0xC; hide that prototype so the definition can take the struct-arg
  * __fastcall shape that reproduces it. */
 #define BrRgbSinkSet BrRgbSinkSet_hdr
-#endif
-#ifdef BR_MATCHING_BUILD
 /* slice2_19.h / br_seg.h declare these cdecl with a leading state pointer the
  * originals do not have.  Hide those prototypes so BrModelLoad can call them
  * with the shapes the bytes show. */
 #define BrSub100088B0 BrSub100088B0_cdecl
 #define BrSegSetBases BrSegSetBases_cdecl
-#endif
 #include "slice2_19.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrSub100088B0
 #undef BrSegSetBases
 typedef struct { void *p; } BrModelLoadArg;
@@ -32,14 +27,10 @@ extern int g_brModelMgr;                        /* 0x10AC0810 */
 void * __fastcall BrSub100088B0(void *pThis, BrModelLoadArg a,
                                 BrModelLoadArg b);
 void BrSegSetBases(uint32_t n64Base, uint32_t hostBase);
-#endif
-#ifdef BR_MATCHING_BUILD
 #undef BrRgbSinkSet
-#endif
 
 #include <string.h>
 
-#ifdef BR_MATCHING_BUILD
 
 void FUN_100746b4(void *d, void *s, unsigned n);
 
@@ -208,4 +199,3 @@ again:
   goto newchan;
 }
 
-#endif /* BR_MATCHING_BUILD */

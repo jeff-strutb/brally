@@ -8,7 +8,6 @@
  * `cmp eax,edi / je`; `sub eax,5` vs `add eax,-5`.  Two int-to-float
  * sites are `fild [esp]` in orig.
  */
-#ifdef BR_MATCHING_BUILD
 
 #include <stdint.h>
 #include "br_match.h"
@@ -144,4 +143,3 @@ void BR_THISCALL1 BrRaceGridPlace(uint8_t *pDrv)
     }
 }
 
-#endif /* BR_MATCHING_BUILD */

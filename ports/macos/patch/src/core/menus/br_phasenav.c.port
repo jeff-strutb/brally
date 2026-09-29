@@ -1,0 +1,446 @@
+# Port deviations for src/core/menus/br_phasenav.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:BrSub10047360
+@drop undef:BrSub10047360
+@drop var:g_brAA28F0
+@drop var:g_brAA28F4
+@drop var:g_brAA28F8
+@drop var:g_brAA28FC
+@drop var:g_brAA2854
+@drop var:g_brAA28A4
+@drop var:g_aBrA9D618
+@drop var:g_brAA2A40
+@drop var:g_br0AC6A4
+@drop var:g_brAA33E4
+@drop var:g_brAA2AD4
+@drop var:g_brAA26F5
+@drop var:g_brAA29C8
+@drop var:g_brAA29F4
+@drop var:g_brAA2970
+@drop var:g_brAA297C
+@drop var:g_brAA2998
+@drop var:g_brPhaseAA2904
+@drop var:g_br0AA010
+@drop var:g_br0AC304
+@drop var:g_brAA29B4
+@drop var:g_brAA2950
+@drop var:g_brAA2954
+@drop var:g_brAA29E4
+@drop var:g_brAA29E0
+@drop var:g_brAA285C
+@drop var:g_brAA2A48
+@drop var:g_aBrA9E150
+@drop var:g_brAA2934
+@drop var:g_brAA2938
+@drop var:g_brAA293C
+@drop var:g_brAA2908
+@drop var:g_brAA2974
+@drop var:g_brAA296C
+@drop var:g_brAA26F0
+@drop var:g_brAA26F4
+@drop var:g_aBrAA26F6
+@drop var:g_aBrAA270E
+@drop var:g_aBrAA2740
+@drop var:g_brAA28C4
+@drop var:g_brAA28B0
+@drop var:g_brAA28B4
+@drop var:g_brAA284C
+@drop var:g_brAA2E80
+@drop define:BR31_AA28F0
+@drop define:BR31_AA28F4
+@drop define:BR31_AA28F8
+@drop define:BR31_AA28FC
+@drop define:BR31_AA2854
+@drop define:BR31_AA28A4
+@drop define:BR31_A9D618
+@drop define:BR31_AA2A40
+@drop define:BR31_0AC6A4
+@drop define:BR31_AA33E4
+@drop define:BR31_AA2AD4
+@drop define:BR31_AA26F5
+@drop define:BR31_AA29C8
+@drop define:BR31_AA29F4
+@drop define:BR31_AA2970
+@drop define:BR31_AA2A48
+@drop define:BR31_A9E150
+@drop type:Br31SubVtblMatch
+@drop type:Br31PhaseVtblMatch
+@drop type:Br31PhaseVtblF1C
+@after type:Br31PhaseVtblF1C
+
+/* --------------------------------------------------------------------------
+ * MATCHING BUILD: the globals the original addresses absolutely.
+ *
+ * DEVIATION 1 above routes every one of these through g_pExt / g_pBase, which
+ * costs an extra `mov reg,[ctx]` and turns a `mov [abs],imm` into
+ * `mov [reg+off],imm`. The original has no context pointer at all. Under
+ * BR_MATCHING_BUILD the same fields are named as what they are -- fixed
+ * globals -- and the port keeps the context indirection unchanged.
+ *
+ * Names follow the in-tree g_br<ADDRESS> convention. Seven of them already
+ * have definitions elsewhere in-tree (slice2_25.c, slice5_63.c); the rest are
+ * declared here only, since the matching build compiles and never links.
+ * ------------------------------------------------------------------------ */
+#  define BR31_AA28F0   (g_pExt->nAA28F0)
+#  define BR31_AA28F4   (g_pExt->nAA28F4)
+#  define BR31_AA28F8   (g_pExt->nAA28F8)
+#  define BR31_AA28FC   (g_pExt->nAA28FC)
+#  define BR31_AA2854   (g_pExt->nAA2854)
+#  define BR31_AA28A4   (g_pExt->nAA28A4)
+#  define BR31_A9D618   (g_pExt->szA9D618)
+#  define BR31_AA2A40   (g_pExt->nAA2A40)
+#  define BR31_0AC6A4   (g_pExt->n0AC6A4)
+#  define BR31_AA33E4   (g_pExt->nAA33E4)
+#  define BR31_AA2AD4   (g_pExt->nAA2AD4)
+#  define BR31_AA26F5   (g_pExt->bAA26F5)
+#  define BR31_AA29C8   (g_pExt->pAA29C8)
+#  define BR31_AA29F4   (g_pBase->pAA29F4)
+#  define BR31_AA2970   (g_pExt->pAA2970)
+#  define BR31_AA2A48   (g_pExt->nAA2A48)
+#  define BR31_A9E150   (g_pExt->aA9E150)
+@end
+@drop var:DAT_100a9360
+@drop var:DAT_10af2094
+@drop var:DAT_10ac5d08
+@drop proto:BrSub10037C90
+@drop proto:BrSub1003F130
+@drop proto:BrSub10037B20
+@drop proto:BrOpt6D70
+@drop fn:BrPhaseHook_10045AA0
+@after fn:BrPhaseHook_10045AA0
+
+/* 0x10045AA0 -- an installer, not an activate, but it lives here in the
+ * original's layout. */
+/* WHAT IT DOES: opens a screen, clears the shared text buffer and the season
+ * block behind it, wires the new screen's Back row so the player can get out,
+ * and puts the menus back in their default mode. */
+/* @implements 0x10045AA0 d3d BrPhaseHook_10045AA0 */
+int BrPhaseHook_10045AA0(void *pArg)
+{
+    g_pBase->n0AA010 = 0;
+    BrExt_1003E680();
+    g_pExt->nACED34 = 0;
+    BrExt_10045C90(pArg);
+    g_pBase->pAA29B0->pfnHook = BrPhaseLeave_10046D70;
+    g_pBase->n0AA010 = 0;
+    BrExt_1003E510();
+    return 1;
+}
+@end
+@drop fn:BrPhaseHook_10046380
+@after fn:BrPhaseHook_10046380
+
+/* 0x10046380 */
+/* WHAT IT DOES: opens a screen with one guard flag suppressed across the
+ * opening, wires the resulting screen's Back row, and leaves the menus in a
+ * particular mode. */
+/* @implements 0x10046380 d3d BrPhaseHook_10046380 */
+int BrPhaseHook_10046380(void *pArg)
+{
+    g_pBase->n0AC304 = 0;
+    (void)BrPhaseActivate_10045110(g_pBase);    /* ignores pArg */
+    (void)pArg;
+    g_pBase->n0AC304 = 1;
+    g_pBase->pAA29B4->pfnHook = BrPhaseLeave_10046D20;
+    g_pBase->n0AA010 = 2;
+    return 1;
+}
+@end
+@drop proto:BR31_LEAVE
+@drop proto:BR31_LEAVE#2
+@after proto:BR31_LEAVE#2
+
+BR31_LEAVE(BrPhaseLeave_100463C0, g_pExt->pAA2958,
+           g_pBase->pAA2940 = NULL;)
+
+/* 0x10046400 -- pre-declared by slice2_25.h. */
+/* WHAT IT DOES: leaves a screen, forgetting it and clearing three counters
+ * that went with it, and hands the player back to a remembered screen. */
+/* port-only body; Glide match is src/core/cpp/0x1003F8A0.cpp */
+/* @n64 0x80264A60 located */
+int32_t BrSub10046400(BrGameObj *p)
+{
+    BrPhase *pNext;
+
+    Br31LeavePrologue(p);
+    pNext = g_pExt->pAA2950;
+    g_pBase->pAA2954 = NULL;
+    g_pExt->nAA29E4  = 0;
+    g_pExt->nAA29E0  = 0;
+    g_pExt->nAA285C  = 0;
+    BR_PHASE_CUR = pNext;
+    return 0;
+}
+
+BR31_LEAVE(BrPhaseLeave_10046450, g_pBase->pAA2908,
+           g_pBase->pAA290C = NULL; g_pExt->pAA29AC = NULL;)
+BR31_LEAVE(BrPhaseLeave_100464A0, g_pBase->pAA2908,
+           g_pExt->pAA2910 = NULL;)
+BR31_LEAVE(BrPhaseLeave_100464E0, g_pBase->pAA290C,
+           g_pBase->pAA2914 = NULL;)
+BR31_LEAVE(BrPhaseLeave_10046520, g_pBase->pAA2908,
+           g_pBase->pAA2918 = NULL;)
+BR31_LEAVE(BrPhaseLeave_100465A0, g_pBase->pAA2918,
+           g_pBase->pAA297C = NULL;)
+BR31_LEAVE(BrPhaseLeave_100465E0, g_pBase->pAA2918,
+           g_pBase->pAA2980 = NULL;)
+BR31_LEAVE(BrPhaseLeave_10046620, g_pBase->pAA2980,
+           g_pBase->pAA2990 = NULL; g_pExt->nAA29F0 = 0;)
+BR31_LEAVE(BrPhaseLeave_10046670, g_pBase->pAA2980,
+           g_pBase->pAA2994 = NULL; g_pExt->nAA29EC = 0;)
+BR31_LEAVE(BrPhaseLeave_10046710, g_pBase->pAA2918,
+           g_pBase->pAA2988 = NULL;)
+BR31_LEAVE(BrPhaseLeave_10046750, g_pExt->pAA292C,
+           g_pBase->pAA2918 = NULL;)
+BR31_LEAVE(BrPhaseLeave_10046830, g_pExt->pAA2930,
+           g_pBase->pAA2918 = NULL;)
+BR31_LEAVE(BrPhaseLeave_10046910, g_pExt->pAA2934,
+           g_pBase->pAA2918 = NULL;)
+BR31_LEAVE(BrPhaseLeave_100469F0, g_pExt->pAA2938,
+           g_pBase->pAA2918 = NULL;)
+BR31_LEAVE(BrPhaseLeave_10046AD0, g_pExt->pAA293C,
+           g_pBase->pAA2918 = NULL;)
+BR31_LEAVE(BrPhaseLeave_10046BB0, g_pBase->pAA2914,
+           g_pBase->pAA2918 = NULL;)
+BR31_LEAVE(BrPhaseLeave_10046C90, g_pBase->pAA2908,
+           g_pExt->pAA291C = NULL;)
+BR31_LEAVE(BrExt_10046CD0,        g_pExt->pAA2930,
+           g_pBase->pAA2914 = NULL; g_pBase->pAA29B4 = NULL;)
+BR31_LEAVE(BrPhaseLeave_10046D20, g_pBase->pAA295C,
+           g_pBase->pAA2914 = NULL; g_pBase->pAA29B4 = NULL;)
+BR31_LEAVE(BrPhaseLeave_10046D70, g_pExt->pAA291C,
+           g_pExt->pAA292C = NULL; g_pBase->pAA29B0 = NULL;
+           g_pExt->pAA2974 = NULL;)
+BR31_LEAVE(BrExt_10046DC0,        g_pExt->pAA2924,
+           g_pExt->pAA292C = NULL; g_pBase->pAA29B0 = NULL;
+           g_pExt->pAA2974 = NULL;)
+BR31_LEAVE(BrPhaseLeave_10047060, g_pExt->pAA292C,
+           g_pExt->pAA2930 = NULL;)
+BR31_LEAVE(BrPhaseLeave_100470A0, g_pExt->pAA2934,
+           g_pExt->pAA2938 = NULL;)
+BR31_LEAVE(BrPhaseLeave_100470E0, g_pExt->pAA2938,
+           g_pExt->pAA293C = NULL;)
+
+/* The two LEAVE routines with a tail the macro cannot carry. Both put the
+ * tail call AFTER the repoint of pAA2904. */
+
+/* 0x10046560 */
+/* WHAT IT DOES: leaves a screen and, on the way out, switches the wheel's
+ * force feedback off -- so this is the exit from a screen that had it
+ * running. */
+/* port-only body; Glide match is src/core/cpp/0x1003FA00.cpp */
+/* @n64 0x80264B20 located */
+int32_t BrPhaseLeave_10046560(void *pEntity)
+{
+    BrPhase *pNext;
+
+    Br31LeavePrologue(pEntity);
+    pNext = g_pBase->pAA297C;
+    g_pExt->pAA2998 = NULL;
+    BR_PHASE_CUR = pNext;
+    BrExt_10079550();
+    return 0;
+}
+@end
+@drop var:g_brPhaseAA2904#2
+@drop var:g_brPhaseAA2974
+@drop var:g_brPhaseAA292C
+@drop var:g_brPhaseAA293C
+@drop define:BR31_GOTO_CUR
+@drop define:BR31_GOTO_2974
+@drop define:BR31_GOTO_292C
+@drop define:BR31_GOTO_293C
+@after define:BR31_GOTO_293C
+
+/* --- the three one-statement gotos ---------------------------------------- */
+
+/* GLOBAL ACCESS, and the one place in this module where the two build targets
+ * spell the same four dwords differently.
+ *
+ * All three routines are a single dword move, and the original reaches both
+ * ends of it by absolute address:
+ *
+ *     10046F50  a1 74 29 aa 10   mov eax, [0x10aa2974]
+ *     10046F55  a3 04 29 aa 10   mov [0x10aa2904], eax
+ *     10046F5A  33 c0            xor eax, eax
+ *     10046F5C  c3               ret                       -- thirteen bytes
+ *
+ * The portable form cannot produce those thirteen. It reaches the source
+ * through this module's g_pExt context pointer (DEVIATION 1 at the top of the
+ * file) and the destination through br_phasecur.h's indirection, so each end
+ * costs a pointer load first -- four instructions where the original has two,
+ * and no amount of scheduling removes them.
+ *
+ * So the matching build names the four globals directly and the port keeps
+ * the context-pointer form. This is the SAME STORAGE either way: 0x10AA2904
+ * is BR_PHASE_CUR's one slot and 0x10AA2974 / 0x10AA292C / 0x10AA293C are the
+ * three BrPhaseExt members, so the routines move the same dword between the
+ * same two places under both targets. Only the spelling of the addresses
+ * changes -- and only here, because only here is the whole function body one
+ * move, with nothing else for the extra loads to hide behind. */
+#define BR31_GOTO_CUR    BR_PHASE_CUR
+#define BR31_GOTO_2974   g_pExt->pAA2974
+#define BR31_GOTO_292C   g_pExt->pAA292C
+#define BR31_GOTO_293C   g_pExt->pAA293C
+@end
+@drop fn:BrPhaseLeave_10046FD0
+@drop fn:BrPhaseLeave_10047120
+@drop fn:BrPhaseLeave_100471B0
+@drop fn:BrPhaseLeave_10047290
+@after fn:BrPhaseLeave_10047290
+
+/* 0x10046FD0 */
+/* WHAT IT DOES: leaves a screen and throws away three other screens with it,
+ * then returns the player to the root menu. This is the exit that unwinds a
+ * whole branch of the menus rather than one step. */
+/* port-only body; Glide match is src/core/cpp/0x10040420.cpp */
+int32_t BrPhaseLeave_10046FD0(void *pEntity)
+{
+    Br31DestroyPhase(&g_pExt->pAA2934);
+    Br31DestroyPhase(&g_pExt->pAA2938);
+    Br31DestroyPhase(&g_pExt->pAA293C);
+
+    Br31LeavePrologue(pEntity);
+
+    g_pExt->pAA2974  = NULL;
+    BR_PHASE_CUR = g_pBase->pAA2908;
+    return 0;
+}
+
+/* 0x10047120 */
+/* WHAT IT DOES: leaves a screen and, if nothing has been entered yet, wipes
+ * the three blocks of entered data behind it clean. It does NOT change which
+ * screen is current -- whatever opens next has to say so itself. */
+/* @implements 0x10047120 d3d BrPhaseLeave_10047120 */
+int32_t BrPhaseLeave_10047120(void *pEntity)
+{
+    BrGameObj *pObj = (BrGameObj *)pEntity;
+
+    BrExt_10045C90(pEntity);
+
+    if (g_pExt->nAA26F0 > 0 && g_pExt->bAA26F4 == 0 && g_pExt->bAA26F5 == 0) {
+        memset(g_pExt->aAA26F6, 0, sizeof(g_pExt->aAA26F6));   /*  6 dwords */
+        memset(g_pExt->aAA270E, 0, sizeof(g_pExt->aAA270E));   /* 12 dwords */
+        memset(g_pExt->aAA2740, 0, sizeof(g_pExt->aAA2740));   /* 24 dwords */
+    }
+    g_pExt->nAA28C4 = 0;
+
+    pObj->pSub->pVtbl->pfnSlot7(pObj->pSub);
+    Br31NotifyAndClear(&g_pExt->pAA296C);   /* pAA2904 is NOT touched */
+    return 0;
+}
+
+/* 0x100471B0 */
+/* WHAT IT DOES: leaves a screen, opening the screen behind it and letting go
+ * of one other, without changing which screen is current. */
+/* @implements 0x100471B0 d3d BrPhaseLeave_100471B0 */
+int32_t BrPhaseLeave_100471B0(void *pEntity)
+{
+    BrGameObj *pObj = (BrGameObj *)pEntity;
+
+    BrExt_10045C90(pEntity);
+    pObj->pSub->pVtbl->pfnSlot7(pObj->pSub);
+    Br31NotifyAndClear(&g_pExt->pAA2970);
+    return 0;
+}
+
+/* 0x10047290 */
+/* WHAT IT DOES: leaves a screen and unwinds two others with it, then takes one
+ * of three different routes out depending on which of two markers is set -- and
+ * clears that marker as it goes, so the special route is taken once only. */
+/* @implements 0x10047290 d3d BrPhaseLeave_10047290 */
+int32_t BrPhaseLeave_10047290(void *pEntity)
+{
+    BrGameObj *pObj = (BrGameObj *)pEntity;
+
+    BrExt_1005FBC0(1);
+    Br31DestroyPhase(&g_pExt->pAA2934);
+    Br31DestroyPhase(&g_pExt->pAA2938);
+
+    if (g_pExt->nAA28B0 != 0) {
+        BrExt_10043260(pEntity);
+        g_pExt->nAA28B0 = 0;
+    } else if (g_pExt->nAA28B4 != 0) {
+        BrExt_10043330(pEntity);
+        g_pExt->nAA28B4 = 0;
+    } else {
+        BrExt_10045C90(pEntity);
+    }
+
+    pObj->pSub->pVtbl->pfnSlot7(pObj->pSub);
+    Br31NotifyAndClear(&g_pExt->pAA293C);
+    return 0;
+}
+@end
+@drop type:BrGoM47360
+@drop fn:BrSub10047360
+@after fn:BrSub10047360
+
+/* 0x10047360 -- pre-declared by slice2_25.h. Original returns int; see
+ * DEVIATION 4 and the table in slice3_31.h. */
+/* WHAT IT DOES: makes the highlighted menu row pulse. Every sixty milliseconds
+ * it steps that row's lettering on through grey, white and mid-grey and then
+ * back to the start, so the selection breathes rather than sitting still; if
+ * the mouse is over the row it jumps straight to yellow instead and the cycle
+ * is skipped. Rows that are disabled or hidden are left entirely alone. */
+/* @implements 0x10047360 d3d BrSub10047360 */
+void BrSub10047360(BrGameObj *p)
+{
+    uint32_t uFlags;
+    int32_t  iCase;
+    uint16_t uCount;
+
+    uFlags = Br31Ld32(p, BR_GAMEOBJ_OFF_FLAGS);
+    if ((uFlags & BR_GAMEOBJ_FLAG_10) != 0)
+        return;                                     /* original: 0 */
+    if ((uFlags & BR_GAMEOBJ_FLAG_1000000) != 0)
+        return;                                     /* original: 0 */
+    if ((Br31Ld32(p, BR_GAMEOBJ_OFF_F3850) & BR_GAMEOBJ_FLAG_1000000) != 0)
+        return;                                     /* original: 0 */
+
+    if (g_pExt->nAA284C != 0) {
+        /* No NULL guard in the original, and none added. */
+        const BrObjAA2E80 *q = g_pExt->pAA2E80;
+        if (q->f2C != 0 || q->f30 != 0 || q->f34 != 0 || q->f38 != 0) {
+            Br31St8(p, BR_GAMEOBJ_OFF_STATE, 4);
+            return;                                 /* original: 1 -- and
+                                                     * uFlags is NOT stored */
+        }
+    }
+
+    if ((uFlags & BR_GAMEOBJ_FLAG_100) == 0)
+        return;                                     /* original: 1 */
+
+    uCount = (uint16_t)(Br31Ld16(p, BR_GAMEOBJ_OFF_COUNT) + 1);
+    Br31St16(p, BR_GAMEOBJ_OFF_COUNT, uCount);
+
+    /* movsx to 32 bits, then -2, then an UNSIGNED compare against 0x32:
+     * counts of 0 and 1 wrap negative and land in the default. */
+    iCase = (int32_t)(int16_t)uCount - 2;
+
+    uFlags &= ~BR_GAMEOBJ_FLAG_100;
+
+    if ((uint32_t)iCase <= 0x32u) {
+        switch (g_aJump10047470[(uint32_t)iCase]) {
+        case 0: Br31St8(p, BR_GAMEOBJ_OFF_STATE, 0); break;
+        case 1: Br31St8(p, BR_GAMEOBJ_OFF_STATE, 1); break;
+        case 2: Br31St8(p, BR_GAMEOBJ_OFF_STATE, 2); break;
+        case 3: Br31St8(p, BR_GAMEOBJ_OFF_STATE, 4); break;
+        default: Br31St16(p, BR_GAMEOBJ_OFF_COUNT, 2); break;
+        }
+    } else {
+        Br31St16(p, BR_GAMEOBJ_OFF_COUNT, 2);
+    }
+
+    Br31St32(p, BR_GAMEOBJ_OFF_FLAGS, uFlags);      /* original: returns 1 */
+}
+@end
+@drop proto:FUN_10040040
+@drop var:g_AA29F4
+@drop var:DAT_10ac5c4c
+@drop var:DAT_10ac5c50
+@drop var:DAT_10ac5c54
+@drop var:DAT_10ac5d98
+@drop var:g_brAA2854#2
+@drop fn:BrPhaseActivate_1003ED70

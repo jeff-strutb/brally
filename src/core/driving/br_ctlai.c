@@ -290,7 +290,6 @@ int BrSeg2Intersect(const BrVec3 *pO, const BrVec3 *pP,
 int  BrPodNop();                              /* 0x10008D60, the no-op logger */
 void BrVec3NormaliseGuard(BrVec3 *pV);        /* 0x100344D0                */
 
-#ifdef BR_MATCHING_BUILD
 /* thiscall callees, reached through __fastcall (br_match.h).  The corridor
  * scan takes three stack arguments: they are typed so that none is
  * register-eligible -- a float for the constant (pushed as an immediate),
@@ -300,12 +299,6 @@ uint32_t __fastcall BrAiScanCorridor(BrAiCar *pCar, float a, BrAiIdxArg idx,
                                      BrAiNodeArg node);   /* 0x1005D060 */
 #define BR_AI_SCAN(pCar, a, idx, node) \
     BrAiScanCorridor((pCar), (float)(a), (idx), (node))
-#else
-uint32_t BrAiScanCorridor(BrAiCar *pCar, int32_t a, uint32_t idx,
-                          BrAiPathNode *pNode);
-#define BR_AI_SCAN(pCar, a, idx, node) \
-    BrAiScanCorridor((pCar), (a), (idx).v, (node).p)
-#endif
 void BR_THISCALL1 BrVec3Predict(BrAiCar *pCar);            /* 0x10001C90 */
 void BR_THISCALL1 BrCtlAiLineStep(BrAiCar *pCar);          /* 0x1005D3C0 */
 void BR_THISCALL1 BrCarCtlChain_1006F170(BrAiCar *pCar);   /* 0x1006F170 */
@@ -353,7 +346,6 @@ void BR_THISCALL1 BrCtlAiRespawn(BrAiCar *pCar);           /* 0x1005C6D0 */
  * registers and edx naturally free.  Probes tried here: field-pointer vs
  * inline aPt[mid] access (inert, VC5 folds +0x40 either way); dropping the
  * `mid` local for in-place midArg.v (paid, RAW -16).  Dead in C lane. */
-#ifdef BR_MATCHING_BUILD
 uint32_t __fastcall BrAiScanCorridor(BrAiCar *pCar, float a,
                                      BrAiIdxArg midArg, BrAiNodeArg nodeArg)
 {
@@ -470,7 +462,6 @@ tail:
     } while (pChild != NULL);
     return result;
 }
-#endif /* BR_MATCHING_BUILD */
 
 /* WHAT IT DOES: drive one computer-controlled car for this frame. It walks
  * the car's waypoint cursor ahead by a speed-scaled lookahead, smooths the
@@ -919,7 +910,7 @@ stepped:
                  * (A3 10 -> 14, swept 2026-09-12) -- both ternary polarities
                  * are dead; the orig's fstp st/fld [pool] clamp is not
                  * reachable from a ternary here.
-                 * ‼ CORPUS MISS 2026-09-12 (--at 0xa9f --len 12): the in-st
+                 * â¼ CORPUS MISS 2026-09-12 (--at 0xa9f --len 12): the in-st
                  * conditional fmul + fstp st/fld [pool] clamp run is proven
                  * NOWHERE in the solved tree (only the leading 4-insn float
                  * compare matches).  Unproven construct -- park, do not

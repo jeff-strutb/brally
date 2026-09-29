@@ -59,8 +59,9 @@ declarations they carry are part of those modules' translation units.
 ## src/ is the decomp and nothing else
 
 Port code -- a body that exists only so the Mac build runs -- lives under
-`ports/macos/`, never here. See `ports/README.md` for how the port compiles a
-module whose original body only builds for the 32-bit target.
+`ports/macos/`, never here, and so does every difference the port needs from
+a module here: a spec in `ports/macos/patch/`, not a `BR_MATCHING_BUILD`
+conditional. See `ports/README.md`.
 
 ## Rules
 

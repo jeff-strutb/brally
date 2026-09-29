@@ -24,10 +24,8 @@
  * table. The two copy arms share one `and ecx,3 / rep movsb` tail -- that
  * is VC5 cross-jumping the identical tails, not one copy.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #include <string.h>
-#endif
 
 /* The object embedded at record+0x2C. */
 class Item54A30 {

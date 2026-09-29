@@ -1,6 +1,5 @@
 /* Auto-generated from disassembly - 0x004012A0
  * FreeINI: FreeObjList(p->list); free(p). */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: release a parsed settings file -- its object list and then
  * the cursor itself. */
 /* @implements 0x004012A0 brally.exe FreeINI */
@@ -39,4 +38,3 @@ void FreeINI(INI *p)
 }
 
 
-#endif /* BR_MATCHING_BUILD */

@@ -10,22 +10,18 @@
 
 #include <string.h>
 
-#ifdef BR_MATCHING_BUILD
 /* Header prototype is cdecl; the original is thiscall.  Rename the
  * prototype so the thiscall definition is not a C2373 redefinition. */
 #define BrCarInitTables BrCarInitTables_cdecl_hdr
 #define BrCarClear29C8  BrCarClear29C8_cdecl_hdr
 #define BrZeroRegions   BrZeroRegions_cdecl_hdr
 #define BrPathWalk      BrPathWalk_port_hdr   /* defined on the raw node */
-#endif
 #include "slice3_40.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrCarInitTables
 #undef BrCarClear29C8
 #undef BrZeroRegions
 #undef BrPathWalk
 void BrZeroRegions(void);
-#endif
 
 #include "br_match.h"    /* BR_THISCALL1 */
 
@@ -90,7 +86,6 @@ static void BrPathCountCrossing(const BrVec3 *pA, const BrVec3 *pB)
  * first one. A distance of nonsense stops the walk where it is rather than
  * running off the end. */
 /* @implements 0x10065B20 d3d BrPathWalk */
-#ifdef BR_MATCHING_BUILD
 /* Glide arm, hand-transcribed from 0x1005EB90.  Same node layout and loop
  * shape as BrRacePathAdvance (0x1005ECF0): the node loop's null test is the
  * skip walk's own guard.  The segment-crossing count is written out at both
@@ -155,57 +150,7 @@ void BrPathWalk(PwNode *pNode, float dist)
         pNode = pNode->pNext;
     }
 }
-#else
-void BrPathWalk(BrNode *pNode, float t)
-{
-    BrPathCrossCount = 0;
-    BrPathWrapCount  = 0;
 
-    while (pNode != NULL) {
-        int32_t i;
-        int32_t count;
-
-        /* skipped nodes hand over to their f04 */
-        while (pNode != NULL && (pNode->flags & BR_NODE_FLAG_SKIP)) {
-            pNode = pNode->f04;
-        }
-        if (pNode == NULL) {
-            return;
-        }
-
-        count = (int32_t)pNode->count;
-        for (i = 0; i < count; ++i) {
-            /* pts[i+1] is read while i is still < count: one past the end
-             * on the last iteration.  The original does this. */
-            const BrPathPoint *p0 = &pNode->pts[i];
-            const BrPathPoint *p1 = &pNode->pts[i + 1];
-            /* held in an x87 register, never rounded to float */
-            double seg = (double)p0->f18 - (double)p1->f18;
-
-            /* `test ah,0x41` folds unordered in with less-or-equal, so a
-             * NaN t ends the walk here rather than running off the end */
-            if (!((double)t > seg)) {
-                /* partial segment: this is where the walk ends */
-                float u = (float)((double)t / seg);
-
-                /* operand order is the MIRROR of BrPathWalkFrom's */
-                BrVec3Lerp(&BrPathWalkPoint, &p1->pos, &p0->pos, u);
-                BrPathCountCrossing(&p0->pos, &BrPathWalkPoint);
-
-                BrPathWalkNode  = pNode;
-                BrPathWalkIndex = i;
-                return;
-            }
-
-            t = (float)((double)t - seg);
-            BrPathCountCrossing(&p0->pos, &p1->pos);
-        }
-        pNode = pNode->f00;
-    }
-}
-#endif
-
-#ifdef BR_MATCHING_BUILD
 typedef struct RcPoint {            /* 0x28 */
     BrVec3 left;                    /* +0x00 */
     BrVec3 centre;                  /* +0x0C */
@@ -280,4 +225,3 @@ void BrRacePathAdvance(RcNode *pNode, int index, float ratio, float dist)
         index = 0;
     }
 }
-#endif /* BR_MATCHING_BUILD */

@@ -5,7 +5,6 @@
  * the other three force generators) as BrCarPhysDamper.
  */
 
-#ifdef BR_MATCHING_BUILD
 
 extern float _DAT_10077bc8;
 
@@ -61,4 +60,3 @@ void BrWheelSuspensionSetZ(int pCar)
     }
 }
 
-#endif /* BR_MATCHING_BUILD */

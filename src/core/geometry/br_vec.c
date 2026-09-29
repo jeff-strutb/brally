@@ -435,7 +435,6 @@ float BrVec3DistSq(const BrVec3 *pA, const BrVec3 *pB)
  * that nothing in the port links today -- naming it unconditionally leaves
  * test_vec with an undefined symbol, and dragging slice4_53 into a vector
  * test's deps to reach a seven-byte leaf is the wrong trade. */
-#ifdef BR_MATCHING_BUILD
 extern float BrSqrtF(float x);   /* 0x10002250 -- fld [esp+4]; fsqrt; ret */
 float BrVec3Dist(const BrVec3 *pA, const BrVec3 *pB)
 {
@@ -444,15 +443,6 @@ float BrVec3Dist(const BrVec3 *pA, const BrVec3 *pB)
     float dz = pA->z - pB->z;
     return BrSqrtF(dx * dx + dy * dy + dz * dz);
 }
-#else
-float BrVec3Dist(const BrVec3 *pA, const BrVec3 *pB)
-{
-    float dx = pA->x - pB->x;
-    float dy = pA->y - pB->y;
-    float dz = pA->z - pB->z;
-    return sqrtf(dx * dx + dy * dy + dz * dz);
-}
-#endif
 
 /* 0x1003B170 (Glide 0x100347F0, `shared`, matched by body) -- 65 bytes, traced
  * through every fxch:
@@ -508,7 +498,6 @@ float BrVec3Dist(const BrVec3 *pA, const BrVec3 *pB)
  * (x, y, z) triple. */
 /* @implements 0x1003B170 d3d BrVec3Length */
 /* @n64 0x80224B08 located */
-#ifdef BR_MATCHING_BUILD
 float BrVec3Length(const BrVec3 *pV)
 {
     float x = pV->x;
@@ -517,19 +506,6 @@ float BrVec3Length(const BrVec3 *pV)
 
     return BrSqrtF(y * y + z * z + x * x);
 }
-#else
-float BrVec3Length(const BrVec3 *pV)
-{
-    double xx = (double)pV->x * (double)pV->x;
-    double yy = (double)pV->y * (double)pV->y;
-    double zz = (double)pV->z * (double)pV->z;
-
-    /* `fstp dword [esp]` -- the sum is rounded to float32 BEFORE the sqrt. */
-    float sum = (float)((yy + zz) + xx);
-
-    return sqrtf(sum);
-}
-#endif
 
 /* WHAT IT DOES: returns 1 if the first vector's y is below the second's y
  * (or either is a NaN), else 0. A two-way "is lower" test, not a three-way

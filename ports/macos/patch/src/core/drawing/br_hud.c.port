@@ -1,0 +1,13 @@
+# Port deviations for src/core/drawing/br_hud.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop var:DAT_100a5eb0
+@drop var:DAT_100a5ebc
+@drop var:DAT_106e7714
+@drop var:DAT_106e9a2c
+@drop proto:BrSetGlobal_ABB30
+@drop proto:BrSet_10019270
+@drop proto:BrTextFlag358Clear
+@drop proto:BrTextSetColors
+@drop fn:BrHudTextListDraw

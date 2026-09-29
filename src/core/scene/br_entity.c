@@ -10,20 +10,16 @@
 #include <string.h>
 
 #include "slice1_05.h"
-#ifdef BR_MATCHING_BUILD
 /* Orig takes no args: it walks DAT_10af2110 / DAT_100b2f04 directly. */
 #define BrEntityCountActive BrEntityCountActive_cdecl_hdr
 /* slice1_09.h declares this cdecl; the original is thiscall with no stack
  * args.  Hide that prototype so the matching body can use __fastcall --
  * the same split src/core/slice1_09.c made while this lived there. */
 #define BrEntityBindAux      BrEntityBindAux_cdecl
-#endif
 #include "slice1_09.h"   /* BR_ENTITY_* offsets and strides, BrMat4 */
 #include "slice2_12.h"   /* the BrEntityCountActive prototype */
-#ifdef BR_MATCHING_BUILD
 #undef BrEntityBindAux
 #undef BrEntityCountActive
-#endif
 
 /* 0x10035FE0 */
 /* WHAT IT DOES: prepares one entity for use -- clears its state, works out its
@@ -56,7 +52,6 @@ void __fastcall BrEntInit(BrEnt *pEnt)
  * down the diagonal, zeroes everywhere else -- so whatever it is applied to
  * comes through unchanged. */
 /* @implements 0x100307D0 d3d BrMat4IdentityLocal */
-#ifdef BR_MATCHING_BUILD
 /* The original is fully unrolled: sixteen sequential stores, 1.0f and 0.0f
  * hoisted into edx/ecx as integer patterns. */
 static void BrMat4IdentityLocal(BrMat4 *pM)
@@ -66,15 +61,6 @@ static void BrMat4IdentityLocal(BrMat4 *pM)
     pM->m[2][0] = 0.0f; pM->m[2][1] = 0.0f; pM->m[2][2] = 1.0f; pM->m[2][3] = 0.0f;
     pM->m[3][0] = 0.0f; pM->m[3][1] = 0.0f; pM->m[3][2] = 0.0f; pM->m[3][3] = 1.0f;
 }
-#else
-static void BrMat4IdentityLocal(BrMat4 *pM)
-{
-    int r, c;
-    for (r = 0; r < 4; ++r)
-        for (c = 0; c < 4; ++c)
-            pM->m[r][c] = (r == c) ? 1.0f : 0.0f;
-}
-#endif
 
 /* 0x10076C90  __thiscall.
  *
@@ -96,7 +82,6 @@ static void BrMat4IdentityLocal(BrMat4 *pM)
  * the object's transform matrix to no transform. */
 /* @implements 0x10076C90 d3d BrEntityBindAux */
 /* @n64 0x802207A4 located */
-#ifdef BR_MATCHING_BUILD
 /* thiscall, no stack args. Both array bases are pinned globals; the index
  * is a signed magic-divide by the 0x2B68 entity stride. */
 extern char DAT_10af1208;   /* entity[0] */
@@ -112,20 +97,6 @@ void __fastcall BrEntityBindAux(void *pThis, int _edx_unused)
         &DAT_106ed708 + idx * BR_ENTITY_AUX_STRIDE;
     BrMat4IdentityLocal((BrMat4 *)(void *)(p + BR_ENTITY_OFF_MATRIX));
 }
-#else
-void BrEntityBindAux(void *pEntity, void *pEntityArrayBase,
-                     void *pAuxArrayBase)
-{
-    unsigned char *p    = (unsigned char *)pEntity;
-    unsigned char *pAux = (unsigned char *)pAuxArrayBase;
-    ptrdiff_t      idx  = (p - (unsigned char *)pEntityArrayBase)
-                          / BR_ENTITY_STRIDE;
-    void **ppAux = (void **)(void *)(p + BR_ENTITY_OFF_AUX);
-
-    *ppAux = pAux + idx * BR_ENTITY_AUX_STRIDE;
-    BrMat4IdentityLocal((BrMat4 *)(void *)(p + BR_ENTITY_OFF_MATRIX));
-}
-#endif
 
 /* 0x10005470.  BR_ENTITY_STRIDE (0x2B68) comes from slice1_09.h.
  *
@@ -138,7 +109,6 @@ void BrEntityBindAux(void *pEntity, void *pEntityArrayBase,
  * objects are in use, by checking each record's first word for a non-zero
  * value. */
 /* @implements 0x10005470 d3d BrEntityCountActive */
-#ifdef BR_MATCHING_BUILD
 /* Orig: `mov edx,[DAT_100b2f04]; mov ecx, offset DAT_10af2110` then a
  * countdown do-while.  Parameters are a port convenience. */
 extern int32_t DAT_100b2f04;
@@ -149,7 +119,7 @@ uint32_t BrEntityCountActive(void)
     uint32_t c = 0;
     unsigned char *p;
 
-    /* Orig `test edx,edx; jle ret` - skip the countdown, do not early-return
+    /* Orig `test edx,edx; jle ret` â skip the countdown, do not early-return
      * (that duplicates `ret`). */
     if (n > 0) {
         p = DAT_10af2110;
@@ -162,26 +132,8 @@ uint32_t BrEntityCountActive(void)
     }
     return c;
 }
-#else
-uint32_t BrEntityCountActive(const void *pvRecords, int32_t cRecords)
-{
-    const unsigned char *p = (const unsigned char *)pvRecords;
-    uint32_t             n = 0;
-    int32_t              i;
-
-    for (i = 0; i < cRecords; ++i) {
-        uint32_t first;
-        memcpy(&first, p, sizeof first);        /* byte order is irrelevant */
-        if (first != 0)
-            ++n;
-        p += BR_ENTITY_STRIDE;
-    }
-    return n;
-}
-#endif
 
 /* ---- moved out of src/core/slice2_19.c's ghidra-matched tail ---------- */
-#ifdef BR_MATCHING_BUILD
 extern int DAT_106ed6fc;
 extern int DAT_100b2f04;
 extern unsigned char DAT_10af3bb7;
@@ -243,4 +195,3 @@ void BrEntGfxRebindAll(void)
   return;
 }
 
-#endif /* BR_MATCHING_BUILD */

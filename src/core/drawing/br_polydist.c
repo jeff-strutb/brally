@@ -19,10 +19,8 @@
  * looks redundant has already been shown elsewhere in this module to move
  * VC5's register allocation (see br_rdpmode.c).
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice4_52.h"
 #include "slice1_03.h"      /* BrComCallLocked68 (0x1000C4D0) */
 
@@ -59,7 +57,6 @@ float BrPolyDistY(const struct BrScrPt *pPt)
     return ((const BrScrPt *)pPt)->f10;
 }
 
-#ifdef BR_MATCHING_BUILD
 extern int DAT_117a5f28;
 extern float _DAT_1007720c;
 int FUN_10069A80();
@@ -232,4 +229,3 @@ void BrPolyClipTri(float *pM, int aOut, int aFlags, const BrScrPt *pV0,
     }
 }
 
-#endif /* BR_MATCHING_BUILD */

@@ -25,20 +25,14 @@
  * implementation of either function is created: the definitions in
  * slice1_06.c are the ones that run.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
 #include <stdio.h>
-#endif
 #include <string.h>
 
-#ifdef BR_MATCHING_BUILD
 #define BrExt_1007AC00 BrExt_1007AC00_decl
-#endif
 #include "slice5_63.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrExt_1007AC00
-#endif
 
 #include "br_crt.h"      /* BrOperatorNew (0x1007DFE0)                       */
 #include "slice1_03.h"   /* BrTextGetState, BrHudDrawTimeEntry               */
@@ -84,7 +78,6 @@ extern int BrSub1007A940(void);
  * thing it accomplishes is whatever that call does along the way. What the
  * question is has not been established; the purpose is unclear. */
 /* @implements 0x10058F90 glide BrExt_1007AC00 */
-#ifdef BR_MATCHING_BUILD
 /* Glide 0x10058F90 is 12 bytes: CALL 0x10058E20 / NEG EAX / SBB EAX,EAX /
  * NEG EAX / RET.  No BrSub1007A840 gate -- that guard exists only in D3D.
  * `!= 0` keeps EAX alive so VC5 /O2 emits neg/sbb/neg rather than a tail jmp. */
@@ -92,18 +85,8 @@ int BrExt_1007AC00(void)
 {
     return BrSub1007A940() != 0;
 }
-#else
-void BrExt_1007AC00(void)
-{
-    /* Kept as a call so the side effects of 0x10058E20 (== D3D 0x1007A940)
-     * still happen; the comparison itself is dead.  No 0x1007A840 gate:
-     * Glide 0x10058F90 has none. */
-    (void)(BrSub1007A940() != 0);
-}
-#endif
 
-/* ── Ghidra-matched functions ─────────────────────────── */
-#ifdef BR_MATCHING_BUILD
+/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
 
 /* WHAT IT DOES: thiscall predicate: 1 if `param_2` is non-NULL, this->+0x10 is non-NULL and
  * all three words of param_2 are <= the corresponding words of this->+0x10 (a bounds-fits
@@ -121,4 +104,3 @@ int __fastcall BrBoundsFits_10058CC0(int param_1,int _edx_unused,int *param_2)
   return 0;
 }
 
-#endif /* BR_MATCHING_BUILD */

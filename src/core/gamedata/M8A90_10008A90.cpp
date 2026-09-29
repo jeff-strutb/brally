@@ -5,9 +5,7 @@
  *
  * Twin of 0x10008A70: return v7(v3(a, b)); vtbl cached in edi.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Vt8A90 {
 public:

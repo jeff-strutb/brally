@@ -178,9 +178,6 @@ void BrRaceStoreToCar(BrDriver *pDrv);
  * `pRules->nFinished` is READ AND WRITTEN: it is the shared "who finished
  * next" counter, and it is incremented for every driver that reaches the
  * flag, whether or not that driver has a car. */
-#ifndef BR_MATCHING_BUILD
-int BrRaceGateStep(BrRaceRules *pRules, BrDriver *pDrv);
-#endif
 
 /* ==========================================================================
  * THE MATCHING ARM'S VIEW OF THE SAME STATE
@@ -195,7 +192,6 @@ int BrRaceGateStep(BrRaceRules *pRules, BrDriver *pDrv);
  * docs/VC5-IDIOMS.md records.  The port arm keeps BrRaceRules; this arm
  * spells the globals out.
  * ========================================================================== */
-#ifdef BR_MATCHING_BUILD
 
 #include "br_match.h"    /* BR_THISCALL1 -- thiscall via __fastcall on VC5 */
 
@@ -248,6 +244,5 @@ extern BrDriver       g_aBrRaceDriver[];    /* 0x10AF07F8, stride 0x80      */
 
 void BR_THISCALL1 BrRaceGateStep(BrDriver *pDrv);
 
-#endif /* BR_MATCHING_BUILD */
 
 #endif /* BR_RACE_H */

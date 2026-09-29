@@ -362,8 +362,7 @@ void BrRaceStartResetForTest(void)
     s_cSpun = 0;
 }
 
-/* ── Ghidra-matched functions ─────────────────────────── */
-#ifdef BR_MATCHING_BUILD
+/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
 extern char DAT_10af1208;
 extern char DAT_10b1c888;
 extern char DAT_106ed708;
@@ -541,4 +540,3 @@ void BrGlRaceStart(void)
   return;
 }
 
-#endif /* BR_MATCHING_BUILD */

@@ -58,10 +58,8 @@
  * @t4-pass 0x10058680 1 2026-09-13 probes 13 bytes 630 insns 167 regions 5 rows 2 census no  (first transcription, 13 cpp probes: entrant block as one object vs separate globals; Ghidra-literal car arithmetic vs unsigned char* base; score sum as a once-stored local; named zero z driving the byte/stage compares; unsigned > entrant tests. Every instruction present; residue is register colouring.)
  * @t4-pass 0x10058680 2 2026-09-16 probes 12 bytes 630 insns 167 regions 5 rows 2 census yes  (confirming sweep -- #pragma intrinsic, #pragma optimize speed, declaration/rename levers -- none moves the 5 regions / 2 rows; divergence at key 8 shows 0 unpaired rows: every diff pairs as a register rename (dl/cl swap, the +0x1E word into dx not cx, the vtable pointer in eax not edx, the folded mov eax,1), so the residue is which-global-into-which-register allocation, not missing or wrong code. Numbers unmoved.)
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #include <stdio.h>
-#endif
 
 class Ui5C5C {
 public:

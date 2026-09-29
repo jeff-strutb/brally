@@ -17,9 +17,7 @@
  * register. Writing the flag last, or between two copies, batches the
  * loads into two registers instead (18-26 diffs).
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Tween41160 {
 public:

@@ -44,10 +44,8 @@
  * clean form and its allocator failed to merge the third arm. Either way
  * no source shape lands on 330. DO NOT RE-PROBE the three above.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #include <string.h>
-#endif
 
 class Item438K {
 public:

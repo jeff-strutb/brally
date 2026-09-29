@@ -4,14 +4,11 @@
  * its message slots is guarded by its own mutex, so clearing the tables means
  * taking each record's mutex in turn.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import
  * table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdint.h>
 
-#ifdef BR_MATCHING_BUILD
 #include <windows.h>
 
 /* One networking record: 0x96C bytes, its own mutex at +0, the payload
@@ -71,4 +68,3 @@ void FUN_1006a330(void)
     }
 }
 
-#endif /* BR_MATCHING_BUILD */

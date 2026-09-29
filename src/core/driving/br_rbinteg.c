@@ -26,9 +26,7 @@
 /* A bare `ret` in this build (see CONTRACT).  Name and prototype copied from
  * slice2_18.h so integration can wire it mechanically.  In the matching build
  * it is the tree's BrPodNop (glide 0x10008D60), so the call relocates. */
-#ifdef BR_MATCHING_BUILD
 #define BrStub8B80_1p BrPodNop
-#endif
 extern void BrStub8B80_1p(const void *p0);
 
 /* BrVec4Normalise (0x100741B0) and BrMat4MulVec3Transposed (0x10074770) come
@@ -72,12 +70,8 @@ void BrMat3Mul(BrMat3 *pOut, const BrMat3 *pA, const BrMat3 *pB)
 /* The divide reads the image's float 1.0 at 0x10077C1C: with det a double,
  * a literal would become an 8-byte constant the original .rdata does not
  * have. */
-#ifdef BR_MATCHING_BUILD
 extern float _DAT_10077c1c;
 #define BR_SOLVE_ONE _DAT_10077c1c
-#else
-#define BR_SOLVE_ONE 1.0f
-#endif
 /* WHAT IT DOES: solves the 3x3 system pM * x = pV for x by Cramer's rule and
  * writes x to pOut.  No singularity guard -- a singular matrix yields +-inf or
  * NaN, exactly as the original.  Confirmed equivalent to the original bytes by
@@ -283,7 +277,6 @@ void BrRbIntegrateVelocity(BrRbState *pS, const BrRbBody *pBody, float dt)
  * already updated them. */
 /* port-only body; Glide match is src/core/driving/BrRbIntegrateState_1006D850.cpp
  * (the original is C++: see that file). */
-#ifdef BR_MATCHING_BUILD
 /* FLOAT, not double. The double model here was written for the D3D twin's
  * codegen -- BrRbBuildMatrix below records the same correction -- and the
  * GLIDE original never spills a qword: every product is
@@ -335,62 +328,6 @@ void BrRbIntegrateState(BrRbState *pDst, const BrRbState *pSrc, float dt)
     pDst->angVel = pSrc->angVel;
     pDst->qDot   = pSrc->qDot;
 }
-#else
-void BrRbIntegrateState(BrRbState *pDst, const BrRbState *pSrc, float dt)
-{
-    /* SPILL MAP.  Seven products; three are spilled and reloaded, four are
-     * not, and they alternate in a way no rule of thumb would predict:
-     *
-     *   10074623  fstp [esp+0x10]  dt*vel.z    reloaded 10074637  ROUNDED
-     *   10074670  fstp [esp+0x0C]  dt*qDot[1]  reloaded 10074681  ROUNDED
-     *   10074689  fstp [esp+0x14]  dt*qDot[3]  reloaded 100746A0  ROUNDED
-     *
-     * dt*vel.x, dt*vel.y, dt*qDot[0] and dt*qDot[2] are never stored: they go
-     * straight into their `fadd` from the register (10074611, 1007461F,
-     * 10074666, 10074695).  So pos.x and pos.y round once and pos.z rounds
-     * twice; quat.f00 and quat.f08 round once and quat.f04 and quat.f0C round
-     * twice.  There is no pattern to carry over -- each one was read off its
-     * own instruction.
-     *
-     * (The reload at 100746A0 reads [esp+0x18], not [esp+0x14], because the
-     * `push eax` at 10074697 moved esp by four between the store and the
-     * load.  Same slot, different displacement -- the trap CONVENTIONS.md
-     * records under the wheel-probe entry.)
-     *
-     * Every destination is `fstp dword`, so each expression rounds to float
-     * at its store.  vel, angVel and qDot are copied as raw dwords by
-     * integer moves and carry no arithmetic at all. */
-    const double d = (double)dt;
-
-    /* 10074611: fadd from the register */
-    pDst->pos.x = (float)((double)pSrc->pos.x + d * (double)pSrc->vel.x);
-    /* 1007461F: fadd st(1), also from the register */
-    pDst->pos.y = (float)((double)pSrc->pos.y + d * (double)pSrc->vel.y);
-    /* 10074623/10074637: spilled, reloaded, so the product is float first */
-    pDst->pos.z = (float)((double)pSrc->pos.z
-                          + (double)(float)(d * (double)pSrc->vel.z));
-
-    pDst->vel = pSrc->vel;
-
-    /* 10074666: from the register */
-    pDst->quat.f00 = (float)((double)pSrc->quat.f00
-                             + d * (double)pSrc->qDot.f00);
-    /* 10074670/10074681: spilled and reloaded */
-    pDst->quat.f04 = (float)((double)pSrc->quat.f04
-                             + (double)(float)(d * (double)pSrc->qDot.f04));
-    /* 10074695: from the register */
-    pDst->quat.f08 = (float)((double)pSrc->quat.f08
-                             + d * (double)pSrc->qDot.f08);
-    /* 10074689/100746A0: spilled and reloaded */
-    pDst->quat.f0C = (float)((double)pSrc->quat.f0C
-                             + (double)(float)(d * (double)pSrc->qDot.f0C));
-
-    BrVec4Normalise(&pDst->quat);
-
-    pDst->angVel = pSrc->angVel;
-    pDst->qDot   = pSrc->qDot;
-}
-#endif
 
 /* 0x100742D0 */
 /* WHAT IT DOES: works out how fast a body's orientation is changing, given

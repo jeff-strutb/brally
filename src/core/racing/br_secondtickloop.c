@@ -8,7 +8,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#ifdef BR_MATCHING_BUILD
 int FUN_1006a650();
 int FUN_1006a7e0();
 void BrNetPeerMsgReset(void);   /* 0x1006AAF0, br_peer.c */
@@ -43,4 +42,3 @@ void BrSecondTickLoop(void)
   } while( 1 );
 }
 
-#endif /* BR_MATCHING_BUILD */

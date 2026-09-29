@@ -4,7 +4,6 @@
  * through the collision grid, collecting near and far triangle hits.
  * Called once per frame from BrFrameDrive via FUN_1006ec30(0, 0, eye, ...). */
 
-#ifdef BR_MATCHING_BUILD
 
 #include <stdint.h>
 #include "br_vec.h"
@@ -238,14 +237,3 @@ int FUN_1006ec30(BrVec3 *pPosOut, BrVec3 *pNormOut, const BrVec3 *pEye, uint16_t
     return hitCount;
 }
 
-#else
-/* Port stub -- the port uses BrPhysProbeCell via br_collgrid.h instead. */
-int FUN_1006ec30(void *a, void *b, const float *pEye,
-                 void *p4, int *p5, void *p6, int *p7, float *p8, int *p9)
-{
-    *p9 = 0;
-    *p5 = 0;
-    *p7 = 0;
-    return 0;
-}
-#endif

@@ -12,9 +12,7 @@
  * (BrOptOpen2950B). After both arms, write pfnHook at +8 of a third
  * Phase *. Do not name temps for the stores.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Phase;
 

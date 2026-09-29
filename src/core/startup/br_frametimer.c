@@ -26,23 +26,17 @@
  * address named in a banner is the D3D one, because that is the numbering the
  * rest of port/ uses; the Glide address actually read is given beside it.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef BR_MATCHING_BUILD
 /* slice8_86.h declares BrX100751D0 cdecl for the port; the Glide twin below
  * is thiscall (the caller 0x10019810 loads ecx), so the header's name is
  * diverted for this build only. */
 #define BrX100751D0 BrX100751D0_port
-#endif
 #include "slice8_86.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrX100751D0
-#endif
 #include "slice7_82.h"   /* BrGlobalHandle/Unlock/Free, BrPlat* clocks */
 #include "br_match.h"    /* BR_THISCALL1 */
 
@@ -96,25 +90,9 @@ static void br86_st32(void *p, size_t off, int32_t v)
  * time and when the next frame is due. It uses the machine's precise timer
  * where there is one and the ordinary Windows clock otherwise. */
 /* port-only body; Glide match is src/core/generated/0x1006E3F0.c */
-#ifdef BR_MATCHING_BUILD
 /* 0x1006E3F0 is matched in src/core/generated/0x1006E3F0.c; BrX100751D0's
  * `mov ecx,esi / call` needs that symbol, not a local copy. */
 extern void BR_THISCALL1 br86_timer_restart(void *pThis);
-#else
-static void br86_timer_restart(void *pThis)
-{
-    if (g_br86HasPerf) {
-        int64_t now = 0;
-
-        (void)BrPlatQueryPerfCounter(&now);
-        br86_st64(pThis, BR86_TMR_NOW, now);
-        br86_st64(pThis, BR86_TMR_DUE, br86_ld64(pThis, BR86_TMR_PERIOD));
-    } else {
-        br86_st32(pThis, BR86_TMR_NOW_MS, (int32_t)BrPlatTimeGetTime());
-        br86_st32(pThis, BR86_TMR_DUE_MS, br86_ld32(pThis, BR86_TMR_PERIOD_MS));
-    }
-}
-#endif
 
 /* WHAT IT DOES: set the frame clock up for a 30 Hz tick. The first call
  * asks Windows whether a high-resolution counter exists and remembers the
@@ -122,7 +100,6 @@ static void br86_timer_restart(void *pThis)
  * it asks for 1 ms timer resolution and uses a 33 ms period. Either way the
  * clock is then started, and the timer object is handed back. */
 /* @implements 0x1006E430 glide BrX100751D0 */
-#ifdef BR_MATCHING_BUILD
 __declspec(dllimport) int __stdcall QueryPerformanceFrequency(__int64 *pFreq);
 __declspec(dllimport) unsigned int __stdcall timeBeginPeriod(unsigned int uPeriod);
 void * BR_THISCALL1 BrX100751D0(void *pThis)
@@ -142,41 +119,12 @@ void * BR_THISCALL1 BrX100751D0(void *pThis)
     br86_timer_restart(pThis);
     return pThis;
 }
-#else
-void BrX100751D0(void *pThis)
-{
-    if (pThis == NULL) {
-        return;
-    }
-
-    if (g_br86Probed == 0) {
-        g_br86HasPerf = BrPlatQueryPerfFreq(&g_br86PerfFreq);
-        g_br86Probed  = 1;
-    }
-
-    if (g_br86HasPerf) {
-        /* `push 0 / push 0x1e / call __alldiv` -- a 64-bit divide by the
-         * LITERAL 30, i.e. a 30 Hz tick. */
-        br86_st64(pThis, BR86_TMR_PERIOD, g_br86PerfFreq / 30);
-    } else {
-        if (g_pBrPlatOs86 != NULL && g_pBrPlatOs86->pfnTimeBeginPeriod != NULL) {
-            g_pBrPlatOs86->pfnTimeBeginPeriod(1);
-        }
-        br86_st32(pThis, BR86_TMR_PERIOD_MS, 0x21);   /* 33 ms */
-    }
-
-    br86_timer_restart(pThis);
-    /* The original returns `this`; slice2_17.c's declaration is void and the
-     * one call site discards it. */
-}
-#endif
 
 /* 0x10075240 -- the teardown 0x1002C2C0 tail-calls into. */
 /* WHAT IT DOES: gives back the finer timer resolution the game asked Windows
  * for, and only on machines that needed it -- where the precise timer was
  * available nothing was asked for and nothing is returned. */
 /* @implements 0x1006E4A0 glide br86_timer_end_period */
-#ifdef BR_MATCHING_BUILD
 /* Glide 0x1006E4A0: 18 B -- MOV EAX,[g_br86HasPerf] / TEST / JNZ+8 /
  * PUSH 1 / CALL [IAT:timeEndPeriod] / RET.  No struct-pointer guard.
  * Direct dllimport call produces FF 15 [IAT] = one reloc at offset 13. */
@@ -187,20 +135,6 @@ static void BR_THISCALL1 br86_timer_end_period(void *pThis)
     if (g_br86HasPerf == 0)
         timeEndPeriod(1);
 }
-#else
-static void BR_THISCALL1 br86_timer_end_period(void *pThis)
-{
-    /* `this` is passed but never read -- the body only looks at globals. It
-     * is declared so that 0x1002C2C0's thunk can load it into ecx. */
-    (void)pThis;
-
-    if (g_br86HasPerf == 0) {
-        if (g_pBrPlatOs86 != NULL && g_pBrPlatOs86->pfnTimeEndPeriod != NULL) {
-            g_pBrPlatOs86->pfnTimeEndPeriod(1);
-        }
-    }
-}
-#endif
 
 /* WHAT IT DOES: shuts the frame clock down on the way out of the game, by
  * handing back the timer resolution above. */

@@ -8,9 +8,7 @@
  * the 0x10038D30 skeleton (strcpy looked-up string into the item text
  * buffer, slot-1 virtual thiscall on the embedded item, apply). No EH.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <string.h>
 
 class Item {

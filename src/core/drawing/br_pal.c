@@ -10,10 +10,8 @@
  * looks redundant has already been shown elsewhere in this module to move
  * VC5's register allocation (see br_rdpmode.c).
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice1_02.h"
 
 #include <math.h>
@@ -41,7 +39,6 @@
 /* WHAT IT DOES: reads one colour out of a palette: three bytes at the
  * entry's position, copied straight through with no channel reordering. */
 /* @implements 0x100049C0 d3d BrPalFetch */
-#ifdef BR_MATCHING_BUILD
 /* The original takes no arguments: index is 0x10094294, table is
  * 0x100B37D0, dest is 0x10AD0854.  The port signature is the header's.
  * volatile on the index stops VC5 CSEing the three loads into one lea. */
@@ -63,13 +60,3 @@ void BrPalFetch(const uint8_t *pTable, int32_t index, uint8_t aOut[3])
     g_brAD0854[1] = (uint8_t)b1;
     g_brAD0854[0] = (uint8_t)b0;
 }
-#else
-void BrPalFetch(const uint8_t *pTable, int32_t index, uint8_t aOut[3])
-{
-    const uint8_t *p = pTable + (ptrdiff_t)index * 3;
-
-    aOut[2] = p[2];
-    aOut[1] = p[1];
-    aOut[0] = p[0];
-}
-#endif

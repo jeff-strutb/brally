@@ -1,0 +1,10 @@
+# Port deviations for src/core/controls/br_devrec.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop define:BrOptSave
+@drop define:BrOptAvailB
+@drop define:BrNameListInit
+@drop undef:BrNameListInit
+@drop undef:BrOptSave
+@drop undef:BrOptAvailB

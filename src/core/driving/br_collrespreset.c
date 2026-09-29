@@ -5,7 +5,6 @@
  * response walker in br_collrespsolve.c reads).  Its own TU: the certified
  * bytes depend on this exact preamble (see the residue note below).
  */
-#ifdef BR_MATCHING_BUILD
 
 /* The original binary is /MD: CRT calls resolve through the import table. */
 #define _CRTIMP __declspec(dllimport)
@@ -134,4 +133,3 @@ void BrCollRespReset(void)
 }
 
 
-#endif /* BR_MATCHING_BUILD */

@@ -224,12 +224,7 @@ extern const char BrDxMsgCreateSurfaceFailed[];/* 0x100A9940 */
  * ------------------------------------------------------------------ */
 /* The original has no host seam -- it calls KERNEL32 and the DirectDraw
  * vtables directly, so the matching arm takes only the two out pointers. */
-#ifdef BR_MATCHING_BUILD
 void BrDxDetect(uint32_t *pdwDXVersion, uint32_t *pdwDXPlatform);
-#else
-void BrDxDetect(const BrDxHost *pHost,
-                uint32_t *pdwDXVersion, uint32_t *pdwDXPlatform);
-#endif
 
 /* RallyMain 0x1001CC5C/0x1001CC61 -- `cmp eax,0x600` + `jae`, UNSIGNED.
  * 1 == the game is allowed to start.

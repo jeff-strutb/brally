@@ -22,11 +22,8 @@
 #include <string.h>
 
 #include "br_match.h"
-#ifdef BR_MATCHING_BUILD
 /* Header is cdecl (this, x, y, z). Original is thiscall with ret 0xC. */
 #define BrEntSetPos BrEntSetPos_hdr
-#endif
-#ifdef BR_MATCHING_BUILD
 /* The entity setters are thiscall with three stack floats; hide the
  * port's cdecl prototypes so the twins can carry the fastcall shape. */
 #define BrEntSetMatrix      BrEntSetMatrix_port
@@ -40,46 +37,9 @@
 #undef BrEntSetAngVel
 #undef BrEntSetOrientation
 #undef BrEntSetHeading
-#else
-#include "slice3_45.h"
-#endif
-#ifdef BR_MATCHING_BUILD
 #undef BrEntSetPos
-#endif
 
-#ifndef BR_MATCHING_BUILD
-/* PRIVATE COPIES of slice3_45.c's file-static BrDiDev and BrDiEff, verbatim.
- *
- * Why copies are correct here, and why they are not a shared-state hazard:
- * each is a pure, stateless cast of a pointer to a wider vtable type, not a
- * static variable -- two copies cannot drift into two different values. The
- * tree already does exactly this with BrFtol, which slice1_02.c and
- * slice2_12.c each define privately for the same reason, and with
- * slice3_42.c's BrCtrlProfileIndex, copied into controls/br_ctrlquery.c.
- *
- * Why they are #ifndef BR_MATCHING_BUILD: only the PORT arm of the two macros
- * below calls them. The matching arm casts the vtable inline, because the
- * originals reach pfnSetProperty / pfnSetParameters through a __stdcall
- * function-pointer type that the port's cdecl vtable declarations do not
- * carry -- so in the matching build these must not be in scope at all.
- * Without the copies the port arm compiles to a C4013 implicit declaration
- * and leaves unresolved externals `_BrDiDev` / `_BrDiEff` in the object: a
- * link failure no sweep can see.
- *
- * slice3_45.c keeps its own definitions; its remaining users (the device
- * teardown paths, and BrFfbUpdateSpring's pfnStop/pfnStart) never leave that
- * file. */
-static const BrDiDevVtbl *BrDiDev(BrDiObj *p)
-{
-    return (const BrDiDevVtbl *)(const void *)p->pVtbl;
-}
-static const BrDiEffVtbl *BrDiEff(BrDiObj *p)
-{
-    return (const BrDiEffVtbl *)(const void *)p->pVtbl;
-}
-#endif
 
-#ifdef BR_MATCHING_BUILD
 typedef long (__stdcall *BrDiSetParamsFn)(BrDiObj *, const BrDiEffect *, uint32_t);
 typedef long (__stdcall *BrDiSetPropFn)(BrDiObj *, uint32_t, const void *);
 #define BR_DI_SETPARAMS(p, eff, flags) \
@@ -95,14 +55,6 @@ extern BrDiObj *g_brFfbEffectSpring;   /* 0x118EEF04 */
 extern BrDiObj *g_brFfbEffectSquare;   /* 0x118EEF14 */
 #define BR_FFB_SPRING g_brFfbEffectSpring
 #define BR_FFB_SQUARE g_brFfbEffectSquare
-#else
-#define BR_FFB_SPRING g_brFfb.pEffectSpring
-#define BR_FFB_SQUARE g_brFfb.pEffectSquare
-#define BR_DI_SETPARAMS(p, eff, flags) \
-    (BrDiEff(p)->pfnSetParameters((p), (eff), (flags)))
-#define BR_DI_SETPROP(p, prop, pdiph) \
-    (BrDiDev(p)->pfnSetProperty((p), (prop), (pdiph)))
-#endif
 
 /* 0x10078C30 */
 /* WHAT IT DOES: tells Windows what range of numbers one axis of a controller

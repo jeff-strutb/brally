@@ -13,9 +13,7 @@
  * path is fall-through (orig `je` far to the fail block at the end).
  * `if (CdCheck() == 0) { fail; return 0; } success` inverts to a short jne.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Phase;
 

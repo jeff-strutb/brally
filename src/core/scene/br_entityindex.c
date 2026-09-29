@@ -4,7 +4,6 @@
  * Filed out of the address batch slice1_09.c; its preamble is carried verbatim.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* slice1_09.h declares these cdecl; the originals are thiscall with stack
  * args.  Hide those prototypes so the matching bodies can use __fastcall
  * plus a struct-typed second argument (never register-eligible, so forced
@@ -17,9 +16,7 @@
 #define BrBitStreamWriteU32  BrBitStreamWriteU32_cdecl
 #define BrEntitySetIndex     BrEntitySetIndex_cdecl
 #define BrEntityBindAux      BrEntityBindAux_cdecl
-#endif
 #include "slice1_09.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrBitStreamReadBits
 #undef BrBitStreamInit
 #undef BrBitStreamSkipBytes
@@ -28,7 +25,6 @@
 #undef BrBitStreamWriteU32
 #undef BrEntitySetIndex
 #undef BrEntityBindAux
-#endif
 
 #include <math.h>
 #include <stddef.h>
@@ -53,7 +49,6 @@
  * add the keep-sub mechanism experiments (none fire here).
  * Do not reopen before the end-grind (project rule 12). */
 /* @implements 0x10076AE0 d3d BrEntitySetIndex */
-#ifdef BR_MATCHING_BUILD
 /* thiscall, one stack arg.  Size-exact (50) but encoding-walled:
  * original `sub eax, 0x10`, VC5 `add eax, -0x10`.  `i - 16`, `i -= 16`,
  * unsigned subtract, and inline-in-store all emit the add form under
@@ -87,19 +82,3 @@ void __fastcall BrEntitySetIndex(void *pEntity, BrEntityIndexArg index)
         *(int *)((unsigned char *)pEntity + BR_ENTITY_OFF_INDEX) = i;
     }
 }
-#else
-void BrEntitySetIndex(void *pEntity, int index)
-{
-    unsigned char *p = (unsigned char *)pEntity;
-    int *pIndex = (int *)(void *)(p + BR_ENTITY_OFF_INDEX);
-    int *pBank  = (int *)(void *)(p + BR_ENTITY_OFF_BANK);
-
-    if (index >= 16) {
-        *pBank  = 1;
-        *pIndex = index - 16;
-    } else {
-        *pBank  = 0;
-        *pIndex = index;
-    }
-}
-#endif

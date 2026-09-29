@@ -24,10 +24,8 @@
  * have no observable effect on any path that returns, and are not reproduced.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <string.h>
 #include <stdio.h>
 #include <stddef.h>
@@ -37,12 +35,8 @@
 /* g_br73 is the port's gathering of separate originals.  The matching build
  * names the ones used here as the globals they are (config/globals_glide.csv),
  * so each relocation resolves to its own variable. */
-#ifdef BR_MATCHING_BUILD
 extern int32_t g_brUinAA28EC;   /* 0x10AC5C44 */
 #define BR73_NAA28EC g_brUinAA28EC
-#else
-#define BR73_NAA28EC g_br73.nAA28EC
-#endif
 
 /* --- DUPLICATE OWNERSHIP (host link only) -------------------------------
  * slice6_73 and slice6_70 each independently ported 0x1003E680. Both bodies
@@ -87,7 +81,6 @@ static unsigned char *Br73Rec(unsigned char *pBase, int32_t n)
 /* @implements 0x1003BA30 glide BrExt_100424D0 */
 int32_t BrExt_100424D0(void *pArg)
 {
-#ifdef BR_MATCHING_BUILD
     /* Orig pushes esi/edi only on the strcpy path (after the two early
      * returns), so do not keep named locals that force a prologue save. */
     *(int32_t *)(*(char **)((char *)pArg + 0x2ae8) + 0x70) = 0;
@@ -98,30 +91,4 @@ int32_t BrExt_100424D0(void *pArg)
         strcpy(g_aBrA9D078, g_aBr39B720);
     }
     return 1;
-#else
-    unsigned char *pRec;
-    char          *pszName;
-
-    if (g_br73.pfnClearSub70 != NULL) {     /* see BrExt_10041A00 */
-        g_br73.pfnClearSub70(pArg);
-    }
-
-    BR73_NAA28EC = 0;
-
-    if (g_brAA28D8 == 0) {
-        return 1;
-    }
-    /* the original tests the ADDRESS 0x10A9D078 against zero here; it is a
-     * literal, so the branch is dead.  Kept as an always-true condition. */
-
-    if (g_brPAA29D0 == NULL) {
-        return 1;
-    }
-    pRec    = Br73Rec(g_brPAA29D0, g_br0AB3F4);
-    pszName = (char *)pRec + BR61_REC29D0_OFF_NAME;
-
-    strcpy(pszName, g_aBrA9D078);
-    strcpy(g_aBrA9D078, g_aBr39B720);
-    return 1;
-#endif
 }

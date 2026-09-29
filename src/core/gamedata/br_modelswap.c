@@ -7,21 +7,16 @@
  * Filed out of the address batch slice2_19.c; the preamble is slice2_19.c's,
  * carried whole, with the byte-reversal helpers BrModelSwap uses.
  */
-#ifdef BR_MATCHING_BUILD
 /* Header prototype is cdecl (this, r, g, b).  Original is thiscall with
  * ret 0xC; hide that prototype so the definition can take the struct-arg
  * __fastcall shape that reproduces it. */
 #define BrRgbSinkSet BrRgbSinkSet_hdr
-#endif
-#ifdef BR_MATCHING_BUILD
 /* slice2_19.h / br_seg.h declare these cdecl with a leading state pointer the
  * originals do not have.  Hide those prototypes so BrModelLoad can call them
  * with the shapes the bytes show. */
 #define BrSub100088B0 BrSub100088B0_cdecl
 #define BrSegSetBases BrSegSetBases_cdecl
-#endif
 #include "slice2_19.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrSub100088B0
 #undef BrSegSetBases
 typedef struct { void *p; } BrModelLoadArg;
@@ -29,10 +24,7 @@ extern int g_brModelMgr;                        /* 0x10AC0810 */
 void * __fastcall BrSub100088B0(void *pThis, BrModelLoadArg a,
                                 BrModelLoadArg b);
 void BrSegSetBases(uint32_t n64Base, uint32_t hostBase);
-#endif
-#ifdef BR_MATCHING_BUILD
 #undef BrRgbSinkSet
-#endif
 
 #include <string.h>
 
@@ -117,7 +109,6 @@ static uint16_t BrLd16(const void *pv)
  * proving teeth; that supersedes the byte gates (project rule 12).  Do not
  * reopen before the end-grind. */
 /* @implements 0x10036C00 d3d BrModelSwap */
-#ifdef BR_MATCHING_BUILD
 /* RESIDUE 1062 vs 1053 bytes, 371 vs 368 instructions, register-blind 8+11
  * (from 149+285 when this was first opened, and 13+23 before the leaf-loop
  * step below -- see the git log).  The 2-byte reversal being a halfword
@@ -184,7 +175,6 @@ void *BrModelDerefDirect(uint32_t slot);
  *   extern void g_BrGfxSubmitB;                  0x118ED1DC  */
 #define g_BrModelFixup BrModelFixupDirect
 #define g_BrModelDeref BrModelDerefDirect
-#endif
 void BrModelSwap(void *pImage)
 {
     unsigned char *pHdr = (unsigned char *)pImage;
@@ -297,7 +287,6 @@ void BrModelSwap(void *pImage)
         g_BrGfxSubmitB(BrLd32(pRec - 0x02));
     }
 }
-#ifdef BR_MATCHING_BUILD
 #undef BrRev4
 #undef BrRev2
 #undef BrRdBe32
@@ -305,4 +294,3 @@ void BrModelSwap(void *pImage)
 #undef BrLd16
 #undef g_BrModelFixup
 #undef g_BrModelDeref
-#endif

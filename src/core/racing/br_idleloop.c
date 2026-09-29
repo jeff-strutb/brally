@@ -5,14 +5,11 @@
  * are copied rather than moved, because functions left behind in the slice
  * use the same symbols.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import
  * table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdint.h>
 
-#ifdef BR_MATCHING_BUILD
 
 extern int DAT_106e7738;
 extern int DAT_106e79d0;
@@ -55,4 +52,3 @@ void BrIdleLoop_1002DD9A(void)
   }
 }
 
-#endif /* BR_MATCHING_BUILD */

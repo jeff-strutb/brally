@@ -1,0 +1,9 @@
+# Port deviations for src/core/drawing/br_texdetail.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop type:funcptr
+@drop var:DAT_118ed1d8
+@drop proto:BrTex3dRecSet278
+@drop fn:FUN_1006e130
+@drop fn:BrTexDetailBumpNeighbour

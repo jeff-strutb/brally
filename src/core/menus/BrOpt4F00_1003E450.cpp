@@ -10,9 +10,7 @@
  * its current-phase slot is g_5CC0, not the family's g_cur, and the
  * tail sets a mode global to 2 instead of a zero store.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class GameSub {
 public:

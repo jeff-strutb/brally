@@ -43,10 +43,8 @@
  *    per-TU: 0x10004AD0 is exact only WITHOUT it (it flips an `or cl,al`).
  *    cpp_score.DEFAULT_OPTS now carries the /Gi shape; the sweep picks it.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #include <string.h>
-#endif
 
 class GameUi;
 class BrCtl;

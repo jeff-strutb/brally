@@ -5,7 +5,6 @@
  * thread runs, 0x1006A5F0 BrSecondTickLoop, is filed under racing/ and stays
  * where it is; this TU only needs its address.
  */
-#ifdef BR_MATCHING_BUILD
 
 #include <windows.h>
 
@@ -33,4 +32,3 @@ void BrSecondTickStart(void)
   return;
 }
 
-#endif /* BR_MATCHING_BUILD */

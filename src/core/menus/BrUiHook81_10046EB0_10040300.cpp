@@ -15,9 +15,7 @@
  */
 /* Twin of 0x1003FBE0 BrMenuResetTrackStr (tools/gen_cpptwin.py): identical machine code,
  * only the reloc slots differ. */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <string.h>
 
 class GameSub {

@@ -55,9 +55,7 @@
  * @t4-pass 0x1005C8B0 1 2026-09-13 probes 18 bytes 1951 insns 526 regions 11 rows 0 census no  (generated: all 6 orders of {dz, dx2, dy2}, 4 sum shapes, spring temp as q/dx, 1<AA044, p30/pF24/fl/ext-late pointer and copy locals; best 122 = pF24, no region moved, none 0)
  * @t4-pass 0x1005C8B0 2 2026-09-13 probes 22 bytes 1951 insns 526 regions 11 rows 0 census yes  (22 compiler options incl. /Gi /Op /G3 /G4 /G5 /Ow /Ob1 /Ob2 /Ox /O1 /Oa /Os /Ot /Oy- /Za /Gf /Gy /Gr /Ge, all 128 or worse; corpus query MISS at +0x8d len 12; per-cluster registers named above)
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 struct In5C8B0 {
     int      flags;                     /* +0x00 */

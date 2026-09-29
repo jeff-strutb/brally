@@ -1,7 +1,7 @@
 /* br_drawcar.c -- see br_drawcar.h.  The vehicle's display list, from
  * BRGlide.dll.
  *
- * ‼‼ 2026-09-05 -- THE BYTE-LANE WALL IS BROKEN AT THE SHARED colourB JOIN
+ * â¼â¼ 2026-09-05 -- THE BYTE-LANE WALL IS BROKEN AT THE SHARED colourB JOIN
  * (see the cbTop comment at the site).  State: msetdiff 13+5 -> 9+5,
  * instructions 8 short -> 4, bytes 31 short -> 16, REGNORM 5+13 -> 5+9,
  * frame intact.  Masked regions 24 -> 29, the documented artefact here.
@@ -11,19 +11,19 @@
  *   because arm 2 `jmp 0x427` INTO the read, which arm 3 falls through to.
  *   That asymmetry is what identifies a shared join and says which values
  *   have to be live across the edge.  Census the slots before theorising.
- *   ‼ AND THE LEVER IS JOIN-ONLY -- MEASURED, do not re-run.  The identical
+ *   â¼ AND THE LEVER IS JOIN-ONLY -- MEASURED, do not re-run.  The identical
  *   dword-partial applied to the two STRAIGHT-LINE pack sites (arm 1's
  *   colourB, arm 3's colourA), separately AND together, is BYTE-IDENTICAL:
  *   with no edge to cross there is nothing for it to change and VC5 folds
  *   `(part | pack[0])` straight back into the lane form.
- *   ‼ ALSO RE-TESTED UNDER THE NEW ALLOCATION (staleness rule) and the old
+ *   â¼ ALSO RE-TESTED UNDER THE NEW ALLOCATION (staleness rule) and the old
  *   verdict HOLDS: arm 3's `topA` moved LAST, matching the original's load
  *   order (pack, pack, top at 0x3ca-0x3d6), leaves the multiset unchanged at
  *   9+5 and costs one raw row each side (41+45 -> 42+46).  topA stays first.
  *   WHAT IS LEFT: 6 MISSING + 1 EXTRA of byte-lane at those two straight-line
  *   sites (~300 recorded-dead compiles plus the four above), the float
  *   operand swap (4 rows, no N64 oracle -- below), and the pCam reload.
- *   ‼ 2026-09-09 re-measure under the table-aware gates and the new canon
+ *   â¼ 2026-09-09 re-measure under the table-aware gates and the new canon
  *   classes: gate 0 PASSES (marker words were prose, reworded), A1/A2/A4/A5
  *   PASS, the x87 commute quad is now CLASSIFIED, and A3 is down to 8
  *   unpaired rows -- 2 byte homes + 2 widens + 2 or-merges + the pCam
@@ -33,7 +33,7 @@
  *   sound -- an unpaired or-merge is exactly what A3 exists to refuse.
  *   T3 is blocked on breaking this wall, not on effort.
  *
- * ‼ 2026-09-05 (parallel probe sweep) -- 0x1000A110's two residue defects
+ * â¼ 2026-09-05 (parallel probe sweep) -- 0x1000A110's two residue defects
  * each took one more measured-dead lever.  Do NOT re-run:
  *   - THE FLOAT OPERAND SWAP (2nd light call arg pCarF[12] + eyeScale, orig
  *     flds the stack local, ours the struct field): the N64 commutative-order
@@ -57,28 +57,21 @@
  * functions here are classed `shared` in config/shared.csv, so the D3D
  * twins (0x1000C6E0 and 0x1000CBE0) are the same code under other numbers.
  */
-#ifdef BR_MATCHING_BUILD
 /* Header is (const void *, void *).  Original is a 4x4 int copy
  * (`mov ebp,[ecx+eax]` / `mov [eax],ebp`, not fld/fstp). */
 #define BrGuMtxStore BrGuMtxStore_port
-#endif
 #include "br_drawcar.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrGuMtxStore
-#endif
 #include "slice1_05.h"   /* BrGfxWords, BrRdpSetCombineLERP, BrMat4Mul   */
 #include "slice2_15.h"   /* g_4B16A0 / g_4B16AC scene accumulators       */
 #include "slice2_17.h"   /* BrGfxEmitTexCmd, BrS17GetState               */
 #include "slice2_18.h"   /* BrG_6C0680 cursor; BrFogFactorAtPoint; car globals */
 #include "slice2_19.h"   /* g_BrMtxSlot current projection slot          */
-#ifdef BR_MATCHING_BUILD
 /* Header is the port's (volume, x, y).  The original reads the span grid
  * as a global and takes only (x, y).  Hide the port prototype so this TU
  * can call the two-float form. */
 #define BrSpanTestPoint BrSpanTestPoint_port
-#endif
 #include "slice2_21.h"   /* BrSpanVolume, BrSpanTestPoint                */
-#ifdef BR_MATCHING_BUILD
 #undef BrSpanTestPoint
 /* Original pushes the two world-space floats as dwords (mov/push), not
  * through the x87.  Spelling the prototype as int32_t is what makes VC5
@@ -89,7 +82,6 @@ int BrSpanTestPoint(int32_t xBits, int32_t yBits);
 void BrCarDrawWheels_raw(void *pCar);
 /* 0x106E86AC -- original adds model+0x8000 into this dword, no getter. */
 extern int32_t g_6C161C;
-#endif
 #include "br_racebegin.h" /* g_brRaceBeginDifficulty, g_brRaceBeginNTexSet */
 #include "br_appstart.h"  /* g_brCfgGameMode                             */
 #include "br_bootfrontier.h" /* BrBootGlobal_ABAA0                       */
@@ -158,7 +150,6 @@ void    BrDrawCarFrontierReset(void) { s_cFrontier = 0; }
  * the two builds' numbers, and a second host model of it would be the
  * aliased-storage bug CONVENTIONS.md documents.
  * ------------------------------------------------------------------ */
-#ifdef BR_MATCHING_BUILD
 /* It is a MACRO, not a call.  The bytes evaluate the SECOND word only after
  * the first has been stored -- 0x10009C9C writes 0xB900031D into [eax] and
  * only then loads 0x10273644 for [eax+4], and the wheel-list tail at
@@ -172,15 +163,6 @@ void    BrDrawCarFrontierReset(void) { s_cFrontier = 0; }
          BrG_6C0680 += 2;                                                \
          p_[0] = (w0_);                                                  \
          p_[1] = (w1_); } while (0)
-#else
-static void put(uint32_t w0, uint32_t w1)
-{
-    uint32_t *p = BrG_6C0680;
-    BrG_6C0680 += 2;
-    p[0] = w0;
-    p[1] = w1;
-}
-#endif
 
 /* The command the combiner builder writes into.  The original bumps the
  * cursor BEFORE the call and hands the routine the old slot, so a caller
@@ -230,7 +212,6 @@ void BrGuMtxHookNop(const BrMat4 *pM)
 /* WHAT IT DOES: copies one transform into a slot the graphics list will
  * point at, so the list keeps its own snapshot of where a thing was. */
 /* @implements 0x10029E50 glide BrGuMtxStore */
-#ifdef BR_MATCHING_BUILD
 void BrGuMtxStore(const int pSrc[4][4], int pDst[4][4])
 {
     int i, j;
@@ -238,16 +219,6 @@ void BrGuMtxStore(const int pSrc[4][4], int pDst[4][4])
         for (j = 0; j < 4; ++j)
             pDst[i][j] = pSrc[i][j];
 }
-#else
-void BrGuMtxStore(const void *pSrc, void *pDst)
-{
-    const uint32_t *s = (const uint32_t *)pSrc;
-    uint32_t       *d = (uint32_t *)pDst;
-    int i;
-    for (i = 0; i < 16; ++i)
-        d[i] = s[i];
-}
-#endif
 
 /* A pooled matrix, as the display list must name it.  The pool itself is
  * already transcribed under its D3D address in slice5_62.c; this is the
@@ -310,7 +281,6 @@ static BrMat4 *mtx_alloc(uint32_t *pAddr)
 /* @implements 0x10009C10 glide BrCarDrawWheels */
 void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel)
 {
-#ifdef BR_MATCHING_BUILD
     /* The original takes ONE argument -- the raw 0x2B68 car record -- reads
      * the model from the global above rather than from a second argument,
      * and its matrix allocator (0x10062500 == d3d 0x10069490) cannot fail,
@@ -390,80 +360,6 @@ void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel)
         put(0xBD000000u, 0);                    /* pop matrix            */
         pWheel = pWheel + 1;
     } while (--pass != 0);
-#else
-    int pass;
-
-    /* 0x10009C19 -- the gate, read once and from the model, not per pass */
-    if (pModel->dlWheel == 0)
-        return;
-
-    for (pass = 0; pass < 4; ++pass) {
-        const BrMat4 *pWheel = &pCar->aWheel[pass];
-        BrMat4   *pSlot;
-        uint32_t  addr;
-
-        put(0xE7000000u, 0);                    /* pipe sync            */
-        put(0xBA001402u, 0x00100000u);          /* two-cycle            */
-
-        if (pCar->bKind == 2) {
-            put(0xB900031Du, g_BrDrawRenderMode | 0x00104A50u);
-            put(0xFB000000u, (uint32_t)g_BrDrawFogAlpha & 0xFFu);
-            BrRdpSetCombineLERP(put_slot(),
-                TK_TEXEL0, TK_ZERO, TK_PRIMITIVE, TK_ZERO,
-                TK_ZERO,   TK_ZERO, TK_ZERO,      TK_TEXEL0,
-                TK_ZERO,   TK_ZERO, TK_ZERO,      TK_COMBINED,
-                TK_COMBINED, TK_ZERO, TK_SHADE,   TK_ZERO);
-        } else {
-            BrRdpSetCombineLERP(put_slot(),
-                TK_TEXEL0, TK_ZERO, TK_PRIMITIVE, TK_ZERO,
-                TK_ZERO,   TK_ZERO, TK_ZERO,      TK_TEXEL0,
-                TK_ZERO,   TK_ZERO, TK_ZERO,      TK_COMBINED,
-                TK_ZERO,   TK_ZERO, TK_ZERO,      TK_COMBINED);
-            put(0xB900031Du, g_BrDrawRenderMode | 0x00112230u);
-        }
-
-        /* 0x10009D75 -- the shared tail.  0x3B808081 is 1/255, read out of
-         * the binary rather than assumed; the same constant is pushed
-         * three times at 0x10009D75/7A/7F. */
-        BrMat4Scale(&g_BrDrawScale, 0.003921569f, 0.003921569f, 0.003921569f);
-        BrMat4Mul(&g_BrDrawScale, pWheel, &g_BrDrawWorld);
-
-        pSlot = mtx_alloc(&addr);
-        if (pSlot) BrGuMtxStore(&g_BrDrawWorld, pSlot);
-        put(0x01060040u, addr);                 /* gsSPMatrix, PUSH|LOAD */
-
-        BrMat4Mul(&g_BrDrawWorld, &g_BrDrawView, &g_BrDrawCombined);
-
-        pSlot = mtx_alloc(&addr);
-        if (pSlot) BrGuMtxStore(&g_BrDrawCombined, pSlot);
-        /* DEVIATION, frontier only: the original computes addr+0x10/0x20/
-         * 0x30 unconditionally because its allocator cannot fail.  With no
-         * pool hook installed `addr` is the frontier's zero, and offsetting
-         * it would put 0x10/0x20/0x30 into the list -- three plausible-
-         * looking addresses that are not addresses.  Zero stays zero. */
-        put(0x039E0010u, addr);
-        put(0x03980010u, addr ? addr + 0x10u : 0);
-        put(0x039A0010u, addr ? addr + 0x20u : 0);
-        put(0x039C0010u, addr ? addr + 0x30u : 0);
-
-        put(0xBB000001u, 0xFFFFFFFFu);          /* texture on            */
-        put(0xB6000000u, 0x000C0000u);          /* clear both texgen bits*/
-        put(0xE8000000u, 0);                    /* tile sync             */
-        put(0xF5100000u, 0x07000000u);
-        put(0xF50001F0u, 0x06000000u);
-        put(0xF5000100u, 0x05000000u);
-
-        if (g_BrDrawWheelAlt != 0) {
-            if (pModel->dlWheelAlt != 0)
-                put(0x06000000u, pModel->dlWheelAlt);
-        } else {
-            if (pModel->dlWheel != 0)
-                put(0x06000000u, pModel->dlWheel);
-        }
-
-        put(0xBD000000u, 0);                    /* pop matrix            */
-    }
-#endif
 }
 
 /* ==================================================================== *
@@ -495,11 +391,7 @@ int32_t g_BrCarVisAny[BR_CAR_MAX];      /* 0x10273350 (d3d 0x10277B68) */
 uint32_t g_BrCarMtxSlot[BR_CAR_MAX];    /* 0x102735B0 */
 uint32_t g_BrCarLightSlot[BR_CAR_MAX];  /* 0x10273600 */
 
-#ifdef BR_MATCHING_BUILD
 #define BR_CAR_SPAN(x, y) BrSpanTestPoint(*(int32_t *)&(x), *(int32_t *)&(y))
-#else
-#define BR_CAR_SPAN(x, y) BrSpanTestPoint(&g_BrFrameHull, (x), (y))
-#endif
 
 /* WHAT IT DOES: decide, once per car per frame, whether that car will be
  * drawn at all and in which pass -- solid, see-through, or not at all -- and
@@ -793,7 +685,7 @@ static void wheel_call(unsigned char *car)
  *   which 0x1000A67C then reads back as [esp+0x60].  Three displacements,
  *   two slots, one function.
  *
- * ‼ SESSION 18 (2026-09-05) -- THE DECLARATION-ORDER LEVER IS EXHAUSTED HERE,
+ * â¼ SESSION 18 (2026-09-05) -- THE DECLARATION-ORDER LEVER IS EXHAUSTED HERE,
  * AND THE PACK WALL IS EXPLAINED.  Four parallel probe lanes, ~300 fresh
  * compiles through a scratch harness, every one byte-identical to HEAD
  * (24 masked / 34 raw / 7,546 B / 1,835 insns / msetdiff 13+5 / sub esp,0x4c)
@@ -814,7 +706,7 @@ static void wheel_call(unsigned char *car)
  *       both pack writes -- all inert.  topB loaded above colourA is the
  *       session-15 trade re-confirmed under the honest msetdiff: one
  *       spurious EXTRA `mov B,B` gone for one real instruction lost.
- *       ‼ THE MECHANISM, settled by a DIAGNOSTIC (unfaithful) probe: reading
+ *       â¼ THE MECHANISM, settled by a DIAGNOSTIC (unfaithful) probe: reading
  *       each pack byte a SECOND time after the join makes VC5 home both and
  *       read both back widened -- MISSING 13 -> 10, the `and/or/mov byte`
  *       rows appear.  USE COUNT after the join is the discriminator (the
@@ -846,7 +738,7 @@ static void wheel_call(unsigned char *car)
  *   Honest state: 18 rows, two coupled defects, both needing the original's
  *   byte-slot frame layout at once, and no faithful source reaches it.
  *
- * SESSION 15 (2026-09-03) -- ‼ A WRONG ADDRESS IN THE DISPLAY LIST, found
+ * SESSION 15 (2026-09-03) -- â¼ A WRONG ADDRESS IN THE DISPLAY LIST, found
  * by reading which STACK SLOT each pool allocation lands in.  Two regions
  * closed and the residue is down to 17+14 multiset rows.
  *   The second specular MOVEMEM pair (0xBC3F) was spelled `specMem` like
@@ -865,10 +757,10 @@ static void wheel_call(unsigned char *car)
  * different variables the CSE has nothing to share and both `add`s appear.
  *   Scorecard: masked regions 24 -> 22, msetdiff 19+10 -> 17+14, REGNORM
  * 25+34 -> 21+32, RAW 50+59 -> 45+56, first divergence unchanged at +0x17.
- * ‼ SIZE MOVED THE WRONG WAY -- 36 short -> 42, instructions 9 short -> 11 --
+ * â¼ SIZE MOVED THE WRONG WAY -- 36 short -> 42, instructions 9 short -> 11 --
  * and that is the pattern session 11 already documented: removing an
  * accidental spill exposes a real deficit elsewhere.  Rank by the multiset.
- *   ‼ THE REUSABLE SCREEN, and it is cheap: for every value the original
+ *   â¼ THE REUSABLE SCREEN, and it is cheap: for every value the original
  * homes in a stack slot, list EVERY read of that slot and check the source
  * uses the same variable at each one.  Two puts spelled with one variable
  * where the original reads two different slots is invisible to
@@ -883,7 +775,7 @@ static void wheel_call(unsigned char *car)
  *       spec1 += 0x10; put(spec1);` and the same at the second site):
  *       BYTE-IDENTICAL.
  *   (b) a destructive `specMem += 0x10u;` at the LAST site only (safe --
- *       it is specMem's last use): BYTE-IDENTICAL.  ‼ IDIOM: VC5 value-
+ *       it is specMem's last use): BYTE-IDENTICAL.  â¼ IDIOM: VC5 value-
  *       numbers `x + c`, `t = x; t += c` and `x += c` to the SAME value, so
  *       a CSE cannot be broken by respelling the update.  The only thing
  *       that breaks one is the operands genuinely differing.
@@ -917,7 +809,7 @@ static void wheel_call(unsigned char *car)
  * variable we are missing, it is that orig's packer left a hole and packed
  * two bytes into an existing dword where ours packs densely and spends a
  * whole dword.
- * ‼ RETRACTED 2026-09-03 (session 7), and the retraction re-opens region 1.
+ * â¼ RETRACTED 2026-09-03 (session 7), and the retraction re-opens region 1.
  * The census closed with "chasing 'which value are we not homing' is the
  * wrong question; instruction counts are equal (1843 = 1843), so no value
  * is missing."  THE COUNTS WERE NEVER EQUAL.  `divergence.py` was counting
@@ -977,7 +869,7 @@ static void wheel_call(unsigned char *car)
  * original passes TEXEL0 and 0x3F4, so the emitted display list was wrong,
  * not merely differently compiled.  Four more regions: 29 -> 25 masked,
  * 33 raw, and 48 -> 40 bytes short.  All 34 call groups now agree token for
- * token.  ‼ Neither tool could see this: divergence.py wildcards imm32, and
+ * token.  â¼ Neither tool could see this: divergence.py wildcards imm32, and
  * a multiset comparison passes a permutation.  On any emit-heavy function,
  * run the sequence census before believing a region map.
  *
@@ -1023,7 +915,7 @@ static void wheel_call(unsigned char *car)
  * cross-jumped into the shared tail.  Still one byte slot short of the
  * original's two.
  *
- * ‼‼ SESSION 15b (2026-09-03) -- EVERY REGISTER-BLIND NUMBER IN THIS HEADER
+ * â¼â¼ SESSION 15b (2026-09-03) -- EVERY REGISTER-BLIND NUMBER IN THIS HEADER
  * IS INFLATED, AND THIS FUNCTION IS THE ONE THAT EXPOSED IT.  `fn.py` and
  * `triage.py` did not mask reloc'd operands (only `msetdiff.py` did), so
  * every absolutely-addressed instruction was counted TWICE.  Fixed
@@ -1034,7 +926,7 @@ static void wheel_call(unsigned char *car)
  *   instructions that are IDENTICAL, at IDENTICAL offsets -- the original
  *   carries the array base in the displacement, our object carries it in a
  *   relocation with the addend in the displacement.
- *   ‼ THIS FUNCTION'S HONEST RESIDUE IS 5+13 = 18 ROWS, not 20+28 = 48.
+ *   â¼ THIS FUNCTION'S HONEST RESIDUE IS 5+13 = 18 ROWS, not 20+28 = 48.
  *   Twenty-eight of the forty-eight were noise, and the whole map is:
  *     the pack byte-lane defect   `and R,I` x3, `or R,R` x3,
  *                                 `mov byte [esp+S],B` x3, `xor R,R`
@@ -1050,10 +942,10 @@ static void wheel_call(unsigned char *car)
  *   the other sources.  That is the commutative-operand class the N64 twin
  *   is the oracle for (see the project rules); nobody has looked at it here.
  *
- * ‼ SESSION 17 (2026-09-03) -- THE BYTE-LANE WALL, ATTACKED WITH THE CORPUS
+ * â¼ SESSION 17 (2026-09-03) -- THE BYTE-LANE WALL, ATTACKED WITH THE CORPUS
  * QUERY (tools/corpus.py).  No closure, but the search space is now bounded
  * by evidence instead of by guesswork, and that is worth more than the probe.
- *   ‼ THE CONSTRUCT IS NOT PROVEN ANYWHERE IN THE TREE.  Asked over the 1,036
+ *   â¼ THE CONSTRUCT IS NOT PROVEN ANYWHERE IN THE TREE.  Asked over the 1,036
  *   byte-exact functions, NEITHER `mov R,[esp+S]; and R,0xff; or R,R` NOR
  *   `mov byte [esp+S],B; mov R,[esp+S]; and R,0xff` occurs even once.  Nor
  *   does `mov byte [esp+S],B; xor R,R`.  So ~10 sessions of this file's
@@ -1078,7 +970,7 @@ static void wheel_call(unsigned char *car)
  * shape, and the one combination the session-7/10 probes did NOT cover
  * (they went the other way, giving arms MORE private locals).  BYTE-
  * IDENTICAL: 34 regions, 1,835 insns, 7,546 B, multiset 13/5, all unchanged.
- * ‼ IDIOM: array IDENTITY is inert when the live ranges do not overlap --
+ * â¼ IDIOM: array IDENTITY is inert when the live ranges do not overlap --
  * VC5 gives a private array and a shared one the same slots and the same
  * code.  The `packA[2]` note above is therefore free to revisit for
  * readability but is not a lever either way.
@@ -1087,7 +979,7 @@ static void wheel_call(unsigned char *car)
  *   each.  If use COUNT rather than edge count is the discriminator, no
  *   faithful spelling of this function can add uses, and the wall is real.
  *   Test that claim before spending another session on the pack.
- * ‼ TOOL CAVEAT, learned the hard way this session: `corpus.py show` maps a
+ * â¼ TOOL CAVEAT, learned the hard way this session: `corpus.py show` maps a
  * hit back through /FAcs and is RELIABLE ONLY when the resolved lines are
  * checked against the actual source.  It resolved 0x1001E380 +0xc7
  * correctly (the bR/bG/bB/bA block) and gave plausible-looking NONSENSE for
@@ -1095,14 +987,14 @@ static void wheel_call(unsigned char *car)
  * the rule-2 screen anyway.  READ THE SOURCE THE TOOL POINTS AT; do not
  * quote a listing line you have not opened.
  *
- * ‼ SESSION 16 (2026-09-03) -- ONE CORRECTION, NO PROBES.  The whole residue
+ * â¼ SESSION 16 (2026-09-03) -- ONE CORRECTION, NO PROBES.  The whole residue
  * above was re-derived from scratch (region map + windowed multiset) without
  * reading the dossier first, and it reproduces EXACTLY: 34 raw regions, the
  * 13+5 = 18 multiset rows row for row, the `fld [esp+0x4c]`/`fadd [ebx+0x30]`
  * swap at the second light call, and the `mov eax,[0x106ed520]` reload.  Both
  * of those are already dead (15b (a)/(b) and the pCam entry).  This dossier
  * is CURRENT; trust it and do not re-derive it a third time.
- *   ‼ WHAT IS STALE IS THE ONE NUMBER NOBODY RE-MEASURED: the STATE block
+ *   â¼ WHAT IS STALE IS THE ONE NUMBER NOBODY RE-MEASURED: the STATE block
  *   below says "1843 vs 1843 instructions (EQUAL -- no missing or extra code
  *   anywhere)".  IT IS NOT EQUAL.  Measured this session: orig 1,843 vs ours
  *   1,835 (+6 pad) -- EIGHT SHORT -- and 7,577 vs 7,546 bytes, not 7,536.
@@ -1126,7 +1018,7 @@ static void wheel_call(unsigned char *car)
  *   (b) `pCarF[12]` reached as `ptr[0]` off its own pointer
  *       (`pCarP = (const float *)car + 12`), i.e. THE SAME LEVER THAT CLOSED
  *       0x1000EAF0's term-3 flip the same day: BYTE-IDENTICAL here.
- *       ‼ AND THAT QUALIFIES THE IDIOM, which is worth more than the probe.
+ *       â¼ AND THAT QUALIFIES THE IDIOM, which is worth more than the probe.
  *       On 0x1000EAF0 the pointer locals were MULTI-USE and already lived in
  *       registers, so `ptr[0]` against `ptr[2]` really was two different
  *       addressing expressions.  Here `pCarP` is single-use and VC5 forward-
@@ -1138,7 +1030,7 @@ static void wheel_call(unsigned char *car)
  *   So this swap is allocation at a 20-argument push stream, not spelling.
  *
  * SESSION 15 (2026-09-03) -- the session-14 fix does NOT transfer to arms
- * 2/3, and the reason is worth more than the probes: ‼ THE ARM-2/3 SHARED
+ * 2/3, and the reason is worth more than the probes: â¼ THE ARM-2/3 SHARED
  * TAIL HAS THE SAME DEFECT AND IT IS BLOCKED BY THE FRAME.
  *   Read at the bytes, arm 3 carries the lane defect TWICE.  Its colourA
  *   (orig 0x3fa-0x40f) and its colourB (orig 0x411-0x444) both home BOTH
@@ -1146,7 +1038,7 @@ static void wheel_call(unsigned char *car)
  *   ecx,[esp+0x32]; and eax,0xff; and ecx,0xff; or edx,eax; or edx,ecx`),
  *   where we home one and forward the other into a lane (`mov dl,cl`) --
  *   character for character the arm-1 defect that session 14 closed.
- *   ‼ WHY THE SAME FIX CANNOT BE USED: arm 1 could hoist its pack above
+ *   â¼ WHY THE SAME FIX CANNOT BE USED: arm 1 could hoist its pack above
  *   colourA because it has its OWN array.  Arms 2 and 3 share ONE array
  *   between colourA and colourB -- colourA READS pack[0]/pack[1] before
  *   colourB overwrites them -- so colourB's bytes cannot be assigned early
@@ -1170,7 +1062,7 @@ static void wheel_call(unsigned char *car)
  *     is already eight instructions short -- the wrong direction on a
  *     missing-code residue.  Not taken.
  *
- * SESSION 14 (2026-09-03) -- ‼ ARM 1 NO LONGER CROSS-JUMPS, and the wall
+ * SESSION 14 (2026-09-03) -- â¼ ARM 1 NO LONGER CROSS-JUMPS, and the wall
  * that held it for four sessions was not inside the pack at all: it was
  * WHERE THE PACK IS FILLED.  Read the original's schedule rather than its
  * arithmetic and it says so outright -- `mov cl,[6C0960]` at 0x30c and
@@ -1187,7 +1079,7 @@ static void wheel_call(unsigned char *car)
  *   its own `or ecx,edx; shl ecx,8; ...; mov edi,ecx` inline and jumps with
  *   the tail unmerged, which is the shape the session-7 note said was
  *   missing.
- *   ‼ AND IT COSTS SOMETHING, stated plainly: masked regions 22 -> 24 and
+ *   â¼ AND IT COSTS SOMETHING, stated plainly: masked regions 22 -> 24 and
  *   arm 1's first divergence moves 0x30c -> 0x2f0, which is the exact
  *   "un-merged early" signature the session-10 and session-12 notes below
  *   use as their REGRESSION TELL.  That heuristic is now RETIRED for this
@@ -1213,7 +1105,7 @@ static void wheel_call(unsigned char *car)
  *     back: BYTE-IDENTICAL, exactly as the regions-2/3 note predicts.
  *
  * SESSION 12 (2026-09-03) -- THE LIGHT-DIRECTION COPY IS BYTE-EXACT, and it
- * proves a rule this file should have applied a session earlier: ‼ A DEAD
+ * proves a rule this file should have applied a session earlier: â¼ A DEAD
  * VERDICT MEASURED AGAINST A WRONG FRAME IS STALE.  That copy carried five
  * measured-dead spellings and the note "treat this region as T3a UNTIL THE
  * FRAME IS SOLVED"; the frame was solved last session, and the SIXTH spelling
@@ -1245,13 +1137,13 @@ static void wheel_call(unsigned char *car)
  * no `(double)` modelling and no qword spills, so the Glide-is-float lever
  * does not apply here.
  *
- * SESSION 11 (2026-09-03) -- ‼ REGION 1, THE FRAME, IS CLOSED.  `sub esp,
+ * SESSION 11 (2026-09-03) -- â¼ REGION 1, THE FRAME, IS CLOSED.  `sub esp,
  * 0x4c` matches and the prologue is byte-exact instruction for instruction.
  * The fix was one declaration: the two colour-pack byte locals are an ARRAY,
  * `uint8_t pack[2]`, not two scalars.  VC5 never enregisters an array, so it
  * spends a locals-area slot on it instead of tucking two scalars into the
  * dead argument slots -- and that missing locals dword WAS the 0x48-vs-0x4c
- * gap the frame census below spends its whole length hunting.  ‼ The census's
+ * gap the frame census below spends its whole length hunting.  â¼ The census's
  * closing claim ("chasing which value we are not homing is the wrong
  * question") is now RETRACTED for the second time: it was the right question,
  * and the answer was a storage class, not a value.  Masked regions 25 -> 23;
@@ -1266,11 +1158,11 @@ static void wheel_call(unsigned char *car)
  * the put made VC5 spill the pair and the finished word to slots
  * (`mov [esp+0x38],ecx; mov ecx,[esp+0x60]; mov edx,[esp+0x38]`).  Reading
  * the fields inline in both words makes the block instruction-for-instruction
- * the original and removes its 15-byte drift.  ‼ GENERALISE: a named local
+ * the original and removes its 15-byte drift.  â¼ GENERALISE: a named local
  * that CACHES A STRUCT FIELD is wrong wherever the original re-reads it --
  * the same rule the frame note at the bottom of this header already states
  * for car+0x140 and BrG_6C3308.  Check every cached field against the bytes.
- * ‼ AND READ THE SIZE NUMBER CAREFULLY AFTER A FIX LIKE THAT: this one took
+ * â¼ AND READ THE SIZE NUMBER CAREFULLY AFTER A FIX LIKE THAT: this one took
  * the function from 38 bytes short to 53 short, because the spill it removed
  * was three instructions of accidental padding against a real deficit
  * elsewhere.  Bytes moved the wrong way while the multiset went 64+75 ->
@@ -1287,7 +1179,7 @@ static void wheel_call(unsigned char *car)
  * schedules them.  Reloc-masked byte diff 4,658 -> 4,539; instructions
  * 1,831 -> 1,832 (12 short -> 11); bytes 7,537 -> 7,539 (40 short -> 38);
  * region 6's change -30 -> -28; masked regions FLAT at 25, frame intact
- * (first divergence still +0x2).  ‼ GENERALISE THIS BEFORE ANYTHING ELSE
+ * (first divergence still +0x2).  â¼ GENERALISE THIS BEFORE ANYTHING ELSE
  * HERE: the Horner packs' TOP component wants a named byte local wherever
  * the original loads it to a byte register before the lane move -- check
  * each pack site against the bytes, one at a time.
@@ -1312,7 +1204,7 @@ static void wheel_call(unsigned char *car)
  *
  * SESSION 9 (2026-09-03) -- RE-RANKING, no movement (25 masked / 33 raw,
  * 1,831 vs 1,843 insns, 7,537 vs 7,577 bytes; unchanged from session 8).
- * ‼ REGION 6 IS MIS-ATTRIBUTED ABOVE.  Its -30 does NOT come from the
+ * â¼ REGION 6 IS MIS-ATTRIBUTED ABOVE.  Its -30 does NOT come from the
  * three-float light-direction copy that opens it at orig+0x4cf (that block
  * is 34 bytes in both builds); it accrues in the stretch BEFORE it.  Split
  * the 0x3c0..0x4cf window by block and it reads:
@@ -1410,7 +1302,7 @@ static void wheel_call(unsigned char *car)
  * equal.  Rows now bind by the symbol each site loads (R 0x106E8610,
  * G 0x106EA3EC, B 0x106E79F8, matching the else arm's rows); A5 EQUIVALENT and
  * A7 IDENTICAL on 28_weather_rain and 37_bonus_rain.
- * ‼ 2026-09-09 post-tag: the session-18 second-read diagnostic scored under
+ * â¼ 2026-09-09 post-tag: the session-18 second-read diagnostic scored under
  * the CURRENT gates -- four inert-read spellings (|x&0, idempotent |x|x,
  * post-statement re-reads; at arm 1, the join, and both) are ALL
  * byte-identical to head: VC5 value-numbers a foldable read away before it
@@ -1425,7 +1317,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     int32_t  lod, distNear, flag290C;
     float    dist;
     uint32_t colourA, colourB;
-    uint8_t  pack[2];  /* ‼ AN ARRAY, NOT TWO SCALARS -- THIS IS WHAT
+    uint8_t  pack[2];  /* â¼ AN ARRAY, NOT TWO SCALARS -- THIS IS WHAT
                              * CLOSES THE FRAME.  VC5 never enregisters an
                              * array, so `pack` gets its own slot in the
                              * LOCALS area instead of being packed into the
@@ -1445,7 +1337,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
                              * go back to scalars to tidy the spelling. */
     uint32_t lodOff;
     uint32_t specMem = 0;
-    /* ‼ FUNCTION-SCOPE ON PURPOSE.  The SECOND specular MOVEMEM pair (0xBC3F)
+    /* â¼ FUNCTION-SCOPE ON PURPOSE.  The SECOND specular MOVEMEM pair (0xBC3F)
      * points at the SECOND pool allocation, not the third -- read off the
      * original's slots: [esp+0x2c] takes 0x10062550's result (pSkyAng, read
      * once at 0x1772), [esp+0x30] the FIRST 0x100625A0 (read at 0x690 for the
@@ -1525,29 +1417,19 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     BrMat4Scale(&g_BrDrawScale, 0.003921569f, 0.003921569f, 0.003921569f);
     BrMat4Mul(&g_BrDrawScale, (const BrMat4 *)car, &g_BrDrawWorld);
 
-#ifdef BR_MATCHING_BUILD
     /* 0x10062500 cannot fail; store the pointer itself (re-read iCar). */
     pSlot = BrSub_10069490();
     g_BrCarMtxSlot[*(int32_t *)(car + BR_CAR_OFF_ICAR)] = (uint32_t)pSlot;
     BrGuMtxStore(&g_BrDrawWorld,
         (int (*)[4])g_BrCarMtxSlot[*(int32_t *)(car + BR_CAR_OFF_ICAR)]);
-#else
-    pSlot = mtx_alloc(&g_BrCarMtxSlot[*(int32_t *)(car + BR_CAR_OFF_ICAR)]);
-    if (pSlot) BrGuMtxStore(&g_BrDrawWorld, pSlot);
-#endif
 
     BrMat4Mul(&g_BrDrawWorld, &g_BrDrawView, &g_BrDrawCombined);
     BrGuMtxHookNop(&g_BrDrawCombined);
 
-#ifdef BR_MATCHING_BUILD
     pSlot = BrSub_10069490();
     g_BrCarLightSlot[*(int32_t *)(car + BR_CAR_OFF_ICAR)] = (uint32_t)pSlot;
     BrGuMtxStore(&g_BrDrawCombined,
         (int (*)[4])g_BrCarLightSlot[*(int32_t *)(car + BR_CAR_OFF_ICAR)]);
-#else
-    pSlot = mtx_alloc(&g_BrCarLightSlot[*(int32_t *)(car + BR_CAR_OFF_ICAR)]);
-    if (pSlot) BrGuMtxStore(&g_BrDrawCombined, pSlot);
-#endif
 
     /* 0xA354 -- player self-view guard. */
     if ((void *)car == BrG_6C2CF8) {
@@ -1573,7 +1455,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         float div = dist * 0.1f;
         uint8_t packA[2]; uint8_t top1;
         if (!(div >= 1.0f)) div = 1.0f;
-        /* ‼ THE TWO PACK BYTES ARE FILLED BEFORE colourA, top1 AFTER IT.
+        /* â¼ THE TWO PACK BYTES ARE FILLED BEFORE colourA, top1 AFTER IT.
          * That is read straight off the bytes: the original loads
          * packA[0] at 0x30c and HOMES it at 0x317 -- both inside colourA's
          * tail, before the third ftol result is merged -- loads top1 at
@@ -1599,7 +1481,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
          * [esp+0x31]/[esp+0x32] byte slots and reading them back with & 0xFF
          * at the common pack.  Factor the final statement out to reproduce it. */
         uint8_t topB, topA;
-        /* ‼ THE TOP BYTE IS FOLDED INTO A DWORD PARTIAL INSIDE EACH ARM, not
+        /* â¼ THE TOP BYTE IS FOLDED INTO A DWORD PARTIAL INSIDE EACH ARM, not
          * at the shared statement.  Read straight off the bytes: the original
          * emits `xor edx,edx; mov dh,<top>` at 0x3c6 (arm 2, just before its
          * `jmp 0x427`) and at 0x425 (arm 3, just before it falls through) --
@@ -1649,7 +1531,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         else
             BrVec3Negate(&g_BrDrawDir0, (const BrVec3 *)BrG_6C2CF8);
     } else {
-        /* ‼ SOLVED 2026-09-03, and exactly as the old note predicted: "treat
+        /* â¼ SOLVED 2026-09-03, and exactly as the old note predicted: "treat
          * this region as T3a UNTIL THE FRAME IS SOLVED".  The frame is solved
          * now (see the header's session-11 entry), and the sixth copy
          * spelling lands byte-exact where five had failed against the wrong
@@ -1705,24 +1587,17 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     }
 
     /* 0xA6F6 -- four pool allocations, then look-at / angles.
-     * Orig: 0x10062500 (discarded), 0x10062550 → pSkyAng,
-     * two 0x100625A0 → pLights then specMem. */
+     * Orig: 0x10062500 (discarded), 0x10062550 â pSkyAng,
+     * two 0x100625A0 â pLights then specMem. */
     {
         float          eyeX, eyeY, atOffset, eyeScale;
         const float   *pCam = (const float *)BrG_6C6490;
         const float   *pCarF = (const float *)car;
 
-#ifdef BR_MATCHING_BUILD
         (void)BrSub_10069490();
-#endif
         pSkyAng  = (BrSkyAngles *)BrPool16Alloc();
         pLights  = (BrLightPair *)BrPool32Alloc();
-#ifdef BR_MATCHING_BUILD
         specMem  = (uint32_t)(uintptr_t)BrPool32Alloc();
-#else
-        specMem  = pLights ? (uint32_t)(uintptr_t)pLights : 0;
-        (void)BrPool32Alloc();
-#endif
 
         atOffset = 0.0f;
         eyeScale = 0.0f;
@@ -1746,17 +1621,13 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
             0.0f, 0.0f, 0.0f,
             0.0f, 0.0f, 1.0f);
 
-        /* ‼ The angles call writes its direction pair into the SECOND pool
+        /* â¼ The angles call writes its direction pair into the SECOND pool
          * block, not pLights: the original pushes [esp+0x28] (0x1000A7FF,
          * `mov edx,[esp+0x68]` after 16 pushes) where the look-at call above
          * pushed [esp+0x30].  Passing pLights here made the angles call
          * overwrite the look-at pair and left the second block unwritten --
          * found by the live oracle (tools/t3live.py) on a real race frame. */
-#ifdef BR_MATCHING_BUILD
         BrLightDirsAndAngles(&g_BrDrawCombined, (BrLightPair *)specMem, pSkyAng,
-#else
-        BrLightDirsAndAngles(&g_BrDrawCombined, pLights, pSkyAng,
-#endif
             pCam[12], pCam[13], pCam[14],
             pCarF[12] + eyeScale, pCarF[13],
             pCarF[14] + atOffset,
@@ -1783,13 +1654,8 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
          * store (bases 0x102733b0/b1/b2 fold the +0x10/11/12); only the
          * player pointer is cached (esi). */
         const float *pPlayer;
-#ifdef BR_MATCHING_BUILD
         memcpy(&g_BrDrawLights[*(int32_t *)(car + BR_CAR_OFF_ICAR) * 24],
                (const void *)&BrG_0AA860, 24);
-#else
-        memcpy(&g_BrDrawLights[*(int32_t *)(car + BR_CAR_OFF_ICAR) * 24],
-               (const void *)BrG_0AA860, 24);
-#endif
         pPlayer = (const float *)BrG_6C2CF8;
         g_BrDrawLights[*(int32_t *)(car + BR_CAR_OFF_ICAR) * 24 + 0x10] =
             (uint8_t)(int32_t)(pPlayer[0] * -120.0f);
@@ -1873,13 +1739,8 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     put(0xBC00240Au, colourB);
 
     /* 0xACCA -- early wheel call (class 2 only).  Orig: push ebx; call; add esp,4. */
-#ifdef BR_MATCHING_BUILD
     if (car[BR_CAR_OFF_KIND] == 2)
         BrCarDrawWheels_raw(car);
-#else
-    if (car[BR_CAR_OFF_KIND] == 2)
-        wheel_call(car);
-#endif
 
     /* 0xACE3 -- four light MOVEMEMs (unconditional, +0x10/+0x20/+0x30). */
     put(0x039E0010u, g_BrCarLightSlot[*(int32_t *)(car + BR_CAR_OFF_ICAR)]);
@@ -1891,11 +1752,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
      * immediate (mov [eax+4], OFFSET g_BrDrawTexBlob), not the pointer's runtime
      * value.  &g_BrDrawTexBlob reproduces that store form for the matching build;
      * the port keeps the value-read semantics. */
-#ifdef BR_MATCHING_BUILD
     put(0xFD100000u, (uint32_t)(uintptr_t)&g_BrDrawTexBlob);
-#else
-    put(0xFD100000u, (uint32_t)(uintptr_t)g_BrDrawTexBlob);
-#endif
     put(0xE8000000u, 0);
     put(0xF50001E0u, 0x07000000u);
     put(0xE6000000u, 0);
@@ -1907,7 +1764,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     put(0x03820010u, specMem + 0x10);
 
     /* 0xAE72 -- underside pass (gated on suppress + i29B4). */
-    /* lea eax,[eax+eax*4]; shl eax,3  - not imul 40. */
+    /* lea eax,[eax+eax*4]; shl eax,3  â not imul 40. */
     /* lodOff is NOT computed here -- the 0x8038 and 0x8030 sites inline
      * (lod+lod*4)<<3, and only the 0x8024 site assigns lodOff
      * (orig 0x153d stores it to the dead pCar arg slot). */
@@ -1982,14 +1839,8 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
              * Orig calls the hook UNCONDITIONALLY and reads dlBase (model+0x80)
              * at the call site, not hoisted -- the null-check was a port-safety
              * addition the original never had. */
-#ifdef BR_MATCHING_BUILD
 #define BR_DLHOOK(sel) g_BrDrawModelDlHook( \
                 *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x80), (sel))
-#else
-#define BR_DLHOOK(sel) do { if (g_BrDrawModelDlHook) g_BrDrawModelDlHook( \
-                *(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x80), (sel)); \
-            } while (0)
-#endif
             if (auxFlags & 0xC0000u) {
                 if (!(fe68 >= 0.0f))
                     BR_DLHOOK(*(const uint32_t *)((const unsigned char *)BrG_6C3308 + 0x90));
@@ -2179,13 +2030,8 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
          * [tblIdx*4 + 0x100A5C58].  Both symbols are the array DATA at a
          * fixed link address (folded as a displacement), not pointer vars,
          * so &g_-cast to the pinned base.  The *2 scales refIndex. */
-#ifdef BR_MATCHING_BUILD
         int8_t tblIdx = ((const int8_t *)&g_BrDrawRefTbl)[idx2714 + g_BrDrawRefIndex * 2];
         uint32_t texVal = ((const uint32_t *)&g_BrDrawRefColors)[tblIdx];
-#else
-        int8_t tblIdx = g_BrDrawRefTbl[idx2714 + g_BrDrawRefIndex * 2];
-        uint32_t texVal = g_BrDrawRefColors[tblIdx];
-#endif
         put((texVal & 0x00FFFFFFu) | 0xDC000000u, 1);
     }
 
@@ -2236,13 +2082,8 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     put(0xBA000E02u, 0);
 
     /* 0xBDE8 -- late wheel call (non-class 2). */
-#ifdef BR_MATCHING_BUILD
     if (car[BR_CAR_OFF_KIND] != 2)
         BrCarDrawWheels_raw(car);
-#else
-    if (car[BR_CAR_OFF_KIND] != 2)
-        wheel_call(car);
-#endif
 
     /* 0xBE14 -- final: sync, combiner, render mode. */
     put(0xE7000000u, 0);
@@ -2258,11 +2099,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
 
     /* 0xBE98 -- model cost accumulation.  Orig adds into 0x106E86AC
      * directly from a reload of BrG_6C3308. */
-#ifdef BR_MATCHING_BUILD
     g_6C161C += *(const int32_t *)((const unsigned char *)BrG_6C3308 + 0x8000);
-#else
-    BrS17GetState()->f6C161C += *(const int32_t *)((const unsigned char *)BrG_6C3308 + 0x8000);
-#endif
 }
 
 /* 0x10009C00 BrDPlayBootInit is in net/br_dplay.c. */

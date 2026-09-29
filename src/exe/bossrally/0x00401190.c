@@ -1,5 +1,4 @@
 /* 0x00401190 CreatePlayerWindow: "Player" + " - Untitled", tiny owner window. */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: create the window the video plays inside. */
 /* @implements 0x00401190 bossrally.exe CreatePlayerWindow */
 
@@ -23,4 +22,3 @@ int CreatePlayerWindow(int nCmdShow)
     return 1;
 }
 
-#endif

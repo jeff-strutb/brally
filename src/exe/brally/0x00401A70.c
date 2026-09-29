@@ -3,7 +3,6 @@
  * Idiom: dest is &gArgBuf[gArgOff] (scan s, then load gArgOff). gArgOff +=
  * strlen(s)+1 is spelled BEFORE gArgv[gArgc]=0 so the scasb-zero is hoisted
  * into the strcpy tail and reused for the NULL store. */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: append one argument to the list the launcher will pass on
  * when it spawns another program, keeping the list null-terminated. */
 /* @implements 0x00401A70 brally.exe AddSpawnArg */
@@ -38,4 +37,3 @@ void AddSpawnArg(char *s)
 }
 
 
-#endif /* BR_MATCHING_BUILD */

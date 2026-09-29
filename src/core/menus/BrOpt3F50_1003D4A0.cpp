@@ -9,9 +9,7 @@
  * `mov eax,[ecx]; push 1; call [eax]` - C __fastcall edx-slot colours
  * the vtbl into edx. No EH (no new).
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class GameSub {
 public:

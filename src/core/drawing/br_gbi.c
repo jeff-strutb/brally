@@ -15,14 +15,13 @@
  * this module to move VC5's register allocation (see br_rdpmode.c), so
  * nothing here is trimmed on the grounds that it is unused.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original binary is /MD: CRT calls resolve through the import table. */
 #define _CRTIMP __declspec(dllimport)
 /* Header prototype is the port's (table, pCmd).  The original takes only
  * pCmd; the table is the global at 0x100A79F0.  Rename the port prototype
  * in this TU so the matching body can use the original shape. */
 #define BrGbiRun BrGbiRun_port
-/* OtherMode H/0E and TexCreate: orig takes no state pointer - those fields
+/* OtherMode H/0E and TexCreate: orig takes no state pointer â those fields
  * are standalone globals (0x10697A44 / 0x106B7AB0 / 0x118ED1C8). */
 #define BrGbiTexScanOtherModeH   BrGbiTexScanOtherModeH_port
 #define BrGbiTexScanOtherModeH0E BrGbiTexScanOtherModeH0E_port
@@ -55,9 +54,7 @@
 #define BrFadeDrawSprite        BrFadeDrawSprite_port
 /* Fade bars: orig takes NO argument at all -- eleven standalone globals. */
 #define BrFadeDrawBars          BrFadeDrawBars_port
-#endif
 #include "slice2_16.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrGbiRun
 #undef BrGbiTexScanOtherModeH
 #undef BrGbiTexScanOtherModeH0E
@@ -120,7 +117,6 @@ extern int DAT_105ccfd0;   /* numLights    */
 extern BrGfxWords *DAT_106e7710;  /* DL write cursor */
 extern int         DAT_106ec798;  /* fade rectIdx    */
 extern int         DAT_106e7718;  /* otherModeH      */
-#endif
 
 /* The routines this file and br_dl.c BOTH used to transcribe.  Same original
  * function, one host body -- see br_dlshared.h. */
@@ -136,19 +132,11 @@ extern int         DAT_106e7718;  /* otherModeH      */
  * unknown. */
 /* @implements 0x1001CD60 d3d BrGbiSet0A79E8 */
 /* @implements 0x1001EB10 glide BrGbiSet0A79E8 */
-#ifdef BR_MATCHING_BUILD
 BrGfxWords *BrGbiSet0A79E8(BrGfxWords *pCmd)
 {
     g_brGbi0A79E8 = pCmd->w1;
     return pCmd + 1;
 }
-#else
-BrGfxWords *BrGbiSet0A79E8(BrGbiState *pSt, BrGfxWords *pCmd)
-{
-    pSt->f0A79E8 = pCmd->w1;
-    return pCmd + 1;
-}
-#endif
 
 /* 0x1001CD80 */
 /* WHAT IT DOES: another one-line drawing-command handler that parks the
@@ -156,19 +144,11 @@ BrGfxWords *BrGbiSet0A79E8(BrGbiState *pSt, BrGfxWords *pCmd)
  * neighbour, what the setting is used for is not established. */
 /* @implements 0x1001CD80 d3d BrGbiSet4C5174 */
 /* @implements 0x1001EB30 glide BrGbiSet4C5174 */
-#ifdef BR_MATCHING_BUILD
 BrGfxWords *BrGbiSet4C5174(BrGfxWords *pCmd)
 {
     g_brGbi4C5174 = pCmd->w1;
     return pCmd + 1;
 }
-#else
-BrGfxWords *BrGbiSet4C5174(BrGbiState *pSt, BrGfxWords *pCmd)
-{
-    pSt->f4C5174 = pCmd->w1;
-    return pCmd + 1;
-}
-#endif
 
 /* 0x1001E790 */
 /* WHAT IT DOES: turns geometry features off. Drawing commands carry a set of
@@ -176,7 +156,6 @@ BrGfxWords *BrGbiSet4C5174(BrGbiState *pSt, BrGfxWords *pCmd)
  * clears the ones named in the command, remembering what they were before,
  * then tells the renderer the switches changed. */
 /* @implements 0x1001FD40 glide BrGbiClearGeometryMode */
-#ifdef BR_MATCHING_BUILD
 BrGfxWords *BrGbiClearGeometryMode(BrGfxWords *pCmd)
 {
     /* The update is a compound assignment on the GLOBAL, not on a local copy
@@ -190,22 +169,12 @@ BrGfxWords *BrGbiClearGeometryMode(BrGfxWords *pCmd)
     BrGbiGeoModeChanged();
     return pCmd + 1;
 }
-#else
-BrGfxWords *BrGbiClearGeometryMode(BrGbiState *pSt, BrGfxWords *pCmd)
-{
-    pSt->geo.prev = pSt->geo.cur;
-    pSt->geo.cur  = pSt->geo.cur & ~pCmd->w1;
-    BrGbiGeoModeChanged();
-    return pCmd + 1;
-}
-#endif
 
 /* 0x10020F20 */
 /* WHAT IT DOES: turns geometry features on: the mirror image of the clear
  * above. It sets the switches named in the command, remembers the previous
  * setting, and notifies the renderer. */
 /* @implements 0x100211E0 glide BrGbiSetGeometryMode */
-#ifdef BR_MATCHING_BUILD
 BrGfxWords *BrGbiSetGeometryMode(BrGfxWords *pCmd)
 {
     /* In place on the global -- see BrGbiClearGeometryMode above. Here it is
@@ -215,15 +184,6 @@ BrGfxWords *BrGbiSetGeometryMode(BrGfxWords *pCmd)
     BrGbiGeoModeChanged();
     return pCmd + 1;
 }
-#else
-BrGfxWords *BrGbiSetGeometryMode(BrGbiState *pSt, BrGfxWords *pCmd)
-{
-    pSt->geo.prev = pSt->geo.cur;
-    pSt->geo.cur  = pSt->geo.cur | pCmd->w1;
-    BrGbiGeoModeChanged();
-    return pCmd + 1;
-}
-#endif
 
 /* 0x10020D60 */
 /* WHAT IT DOES: jumps the drawing-command reader into another list of
@@ -232,7 +192,6 @@ BrGfxWords *BrGbiSetGeometryMode(BrGbiState *pSt, BrGfxWords *pCmd)
  * address stack holds ten entries but the game complains one entry early,
  * and stores anyway. */
 /* @implements 0x10021020 glide BrGbiDList */
-#ifdef BR_MATCHING_BUILD
 BrGfxWords *BrGbiDList(BrGfxWords *pCmd)
 {
     int n;
@@ -255,23 +214,6 @@ BrGfxWords *BrGbiDList(BrGfxWords *pCmd)
     }
     return (BrGfxWords *)(uintptr_t)pCmd->w1;
 }
-#else
-BrGfxWords *BrGbiDList(BrGbiState *pSt, BrGfxWords *pCmd)
-{
-    BrGbiDLStack *p = &pSt->dl;
-
-    if ((pCmd->w0 & 0x00FF0000u) == 0) {
-        /* GOTCHA: the guard tests the value the counter is ABOUT to take and
-         * then stores anyway, so slot 9 is written and reported both. */
-        if (p->n + 1 == BR_GBI_DL_STACK_MAX)
-            BrGbiStackOverflow(1);
-        p->ap[p->n] = pCmd + 1;
-        p->n += 1;
-    }
-    /* DEVIATION: 32-bit branch target reinterpreted as a pointer. */
-    return (BrGfxWords *)(uintptr_t)pCmd->w1;
-}
-#endif
 
 /* 0x10020DA0 -- takes no argument in the original. */
 /* WHAT IT DOES: ends the current list of drawing commands and returns to
@@ -279,7 +221,6 @@ BrGfxWords *BrGbiDList(BrGbiState *pSt, BrGfxWords *pCmd)
  * nowhere to go back to, which is what stops the drawing-command reader
  * altogether. */
 /* @implements 0x10021060 glide BrGbiEndDList */
-#ifdef BR_MATCHING_BUILD
 BrGfxWords *BrGbiEndDList(void)
 {
     int n = DAT_105ccfe8;
@@ -297,23 +238,11 @@ BrGfxWords *BrGbiEndDList(void)
     }
     return (BrGfxWords *)0;
 }
-#else
-BrGfxWords *BrGbiEndDList(BrGbiState *pSt)
-{
-    BrGbiDLStack *p = &pSt->dl;
-
-    if (p->n == 0)
-        return NULL;
-    p->n -= 1;
-    return p->ap[p->n];
-}
-#endif
 
 /* 0x10020EF0 */
 /* WHAT IT DOES: restores the previously saved model matrix, undoing one save
  * made by the matrix command above. If nothing was saved it does nothing. */
 /* @implements 0x100211B0 glide BrGbiPopMatrix */
-#ifdef BR_MATCHING_BUILD
 BrGfxWords *BrGbiPopMatrix(BrGfxWords *pCmd)
 {
     int top = DAT_100a9a50;
@@ -326,19 +255,6 @@ BrGfxWords *BrGbiPopMatrix(BrGfxWords *pCmd)
     }
     return pCmd + 1;
 }
-#else
-BrGfxWords *BrGbiPopMatrix(BrGbiState *pSt, BrGfxWords *pCmd)
-{
-    BrGbiMtxState *pM = &pSt->mtx;
-
-    if (pM->top != 0) {
-        pM->top -= 1;
-        if (pM->top == 0)
-            pM->top = 10;
-    }
-    return pCmd + 1;
-}
-#endif
 
 /* 0x10020F80 */
 /* WHAT IT DOES: handles a drawing command that parks the command's payload
@@ -346,7 +262,6 @@ BrGfxWords *BrGbiPopMatrix(BrGbiState *pSt, BrGfxWords *pCmd)
  * which acts on it. What the setting means is not established here. */
 /* @implements 0x10020F80 d3d BrGbiSet4C1694 */
 /* @implements 0x10021250 glide BrGbiSet4C1694 */
-#ifdef BR_MATCHING_BUILD
 BrGfxWords *BrGbiSet4C1694(BrGfxWords *pCmd)
 {
     /* w1 named once: the original loads it a single time and reuses that
@@ -357,21 +272,12 @@ BrGfxWords *BrGbiSet4C1694(BrGfxWords *pCmd)
     BrGbiCall10020FA0(w1);
     return pCmd + 1;
 }
-#else
-BrGfxWords *BrGbiSet4C1694(BrGbiState *pSt, BrGfxWords *pCmd)
-{
-    pSt->f1694 = pCmd->w1;
-    BrGbiCall10020FA0(pCmd->w1);
-    return pCmd + 1;
-}
-#endif
 
 /* 0x10020F50 */
 /* WHAT IT DOES: a drawing command with a small selector byte in it: selector
  * 0 and selector 3 each go to a different handler, and anything else is
  * ignored and skipped. What the two arms do is described where they live. */
 /* @implements 0x10021210 glide BrGbiDispatch10020F50 */
-#ifdef BR_MATCHING_BUILD
 BrGfxWords *BrGbiDispatch10020F50(BrGfxWords *pCmd)
 {
     int sel = ((int)pCmd->w0 << 16) >> 24;
@@ -391,18 +297,6 @@ BrGfxWords *BrGbiDispatch10020F50(BrGfxWords *pCmd)
         return pCmd + 1;
     }
 }
-#else
-BrGfxWords *BrGbiDispatch10020F50(BrGbiState *pSt, BrGfxWords *pCmd)
-{
-    int sel = (int8_t)((pCmd->w0 >> 16) & 0xFFu);
-
-    if (sel == 0)
-        return BrGbiCall100243D0(pCmd);
-    if (sel == 3)
-        return BrGbiSet4C1694(pSt, pCmd);
-    return pCmd + 1;
-}
-#endif
 
 /* 0x100242F0  G_MOVEWORD.
  *
@@ -416,7 +310,6 @@ BrGfxWords *BrGbiDispatch10020F50(BrGbiState *pSt, BrGfxWords *pCmd)
  * and rewriting the colour or the direction bytes of one particular light.
  * Everything else is skipped. */
 /* @implements 0x100239C0 glide BrGbiMoveWord */
-#ifdef BR_MATCHING_BUILD
 BrGfxWords *BrGbiMoveWord(BrGfxWords *pCmd)
 {
     unsigned w0  = pCmd->w0;
@@ -460,47 +353,6 @@ BrGfxWords *BrGbiMoveWord(BrGfxWords *pCmd)
         return pCmd + 1;
     }
 }
-#else
-BrGfxWords *BrGbiMoveWord(BrGbiState *pSt, BrGfxWords *pCmd)
-{
-    int      sel = (int8_t)(pCmd->w0 & 0xFFu);
-    uint32_t off;
-    size_t   slot;
-    uint8_t *p;
-
-    if ((uint32_t)(sel - 2) > 0xCu)
-        return pCmd + 1;
-
-    if (sel == 0x02) {
-        pSt->light.numLights = (int32_t)((pCmd->w1 >> 5) & 0xFu);
-        return pCmd + 1;
-    }
-    if (sel != 0x0A)
-        return pCmd + 1;
-
-    off  = (pCmd->w0 >> 8) & 0xFFFFu;
-    slot = (size_t)(off >> 5);
-    /* DEVIATION: `off` is a full 16 bits and the original scales it straight
-     * into the light array with no bound. Out-of-range slots are dropped. */
-    if (slot >= BR_GBI_LIGHT_SLOTS)
-        return pCmd + 1;
-
-    p = &pSt->lights.aRaw[slot * BR_GBI_LIGHT_SIZE];
-    /* Low nibble 0 writes the record's first three bytes, anything else its
-     * bytes 4..6. The original tests `off & 0xF` -- not `== 4`. */
-    if ((off & 0xFu) == 0) {
-        p[0] = (uint8_t)(pCmd->w1 >> 24);
-        p[1] = (uint8_t)(pCmd->w1 >> 16);
-        p[2] = (uint8_t)(pCmd->w1 >> 8);
-    } else {
-        p[4] = (uint8_t)(pCmd->w1 >> 24);
-        p[5] = (uint8_t)(pCmd->w1 >> 16);
-        p[6] = (uint8_t)(pCmd->w1 >> 8);
-    }
-    pSt->mtx.f5180 = 0;
-    return pCmd + 1;
-}
-#endif
 
 /* 0x10024A90 */
 /* WHAT IT DOES: the drawing-command reader itself. It reads the command's
@@ -510,7 +362,6 @@ BrGfxWords *BrGbiMoveWord(BrGbiState *pSt, BrGfxWords *pCmd)
  * the game. */
 /* @implements 0x10024A90 d3d BrGbiRun */
 /* @implements 0x10023C90 glide BrGbiRun */
-#ifdef BR_MATCHING_BUILD
 /* Original is cdecl, one argument: the table is the global at 0x100A79F0
  * and the opcode is byte 3 of the command in host order. */
 extern BrGbiHandler g_brGbi0A79F0[];
@@ -519,18 +370,9 @@ void BrGbiRun(BrGfxWords *pCmd)
     while (pCmd != NULL)
         pCmd = g_brGbi0A79F0[((unsigned char *)pCmd)[3]](pCmd);
 }
-#else
-void BrGbiRun(const BrGbiHandler *apTable, BrGfxWords *pCmd)
-{
-    while (pCmd != NULL)
-        pCmd = apTable[(pCmd->w0 >> 24) & 0xFFu](pCmd);
-}
-#endif
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice5_61.h"
 
 #include <string.h>
@@ -591,14 +433,12 @@ void BrGbiRun(const BrGbiHandler *apTable, BrGfxWords *pCmd)
  * viewport values the projection uses. The vertical one is measured down from
  * the bottom of the screen rather than the top, which is how the drawing
  * list's top-down coordinates become the renderer's bottom-up ones. */
-#ifdef BR_MATCHING_BUILD
 /* Orig filds 0x100A7518 and fstp's 0x105CCD48 / 0x105CD9F8 / 0x105CD9FC
  * as absolute globals, not through BrScreenGet / BrRdpGetRegs. */
 extern int32_t DAT_100a7518;
 extern float   DAT_105ccd48;
 extern float   DAT_105cd9f8;
 extern float   DAT_105cd9fc;
-#endif
 
 /* WHAT IT DOES: handle the display-list command that sets the viewport:
  * reads the packed scale and offset values, converts them to floats, and
@@ -607,7 +447,6 @@ extern float   DAT_105cd9fc;
 /* @implements 0x10023920 glide BrGbiCall10024260 */
 BrGfxWords *BrGbiCall10024260(BrGfxWords *pCmd)
 {
-#ifdef BR_MATCHING_BUILD
     /* Orig: movsx from w1 as int16*, fild height first, /Op fstp;fld on
      * each i16->float, fsubr height for Y translate, add eax,8 early. */
     const int16_t *pVp;
@@ -625,43 +464,4 @@ BrGfxWords *BrGbiCall10024260(BrGfxWords *pCmd)
     DAT_105cd9f8 = (float)pVp[4] * 0.25f;
     DAT_105cd9fc = *pH - (float)pVp[5] * 0.25f;
     return pCmd;
-#else
-    BrRdpRegs      *pRegs = BrRdpGetRegs();
-    const uint8_t  *pVp;
-    int             vscaleX, vscaleY, vtransX, vtransY;
-    float           cyScreen;
-
-    /* DEVIATION: w1 is a 32-bit address in the original and the port keeps
-     * display-list words 32 bits wide, so on a 64-bit host it cannot hold a
-     * host pointer. The same problem is solved the same way in slice2_19.h
-     * (g_BrModelDeref): a resolver hook, defaulting to the original's plain
-     * reinterpretation, which is exact on a 32-bit build. */
-    pVp = (const uint8_t *)((g_brPfnDerefW1 != NULL)
-                                ? g_brPfnDerefW1(pCmd->w1)
-                                : (const void *)(uintptr_t)pCmd->w1);
-
-    /* Vp: s16 vscale[4] at +0, s16 vtrans[4] at +8. Decoded byte-wise --
-     * the payload is little-endian here (it is written by the PC backend),
-     * but a struct overlay would still be wrong on a host with different
-     * alignment rules. */
-    vscaleX = (int16_t)((uint16_t)pVp[0] | ((uint16_t)pVp[1] << 8));
-    vscaleY = (int16_t)((uint16_t)pVp[2] | ((uint16_t)pVp[3] << 8));
-    vtransX = (int16_t)((uint16_t)pVp[8] | ((uint16_t)pVp[9] << 8));
-    vtransY = (int16_t)((uint16_t)pVp[10] | ((uint16_t)pVp[11] << 8));
-
-    /* Glide 0x10023925 -- read ONCE at the top, before any of the four
-     * conversions, and used only by the last of them. */
-    cyScreen = (float)BrScreenGet()->cy;         /* 0x100A7518 */
-
-    /* Glide 0x10023950 / 0x10023970 / 0x10023990 / 0x100239B4.  The host
-     * field names are the D3D globals, because that is what slice2_15.h's
-     * BrRdpRegs models; the ARITHMETIC below is BRGlide's. */
-    pRegs->f4BBF08 = (float)vscaleX * 0.25f;    /* 0x105CCD48 / 0x104BBF08 */
-    g_br4BC198     = (float)vscaleY * 0.25f;    /* 0x105CCFDC / 0x104BC198 */
-    pRegs->f4C0BB0 = (float)vtransX * 0.25f;    /* 0x105CD9F8 / 0x104C0BB0 */
-    /* `fsubr dword [esp]` at 0x100239B0 is `mem - ST0`, not `ST0 - mem`. */
-    pRegs->f4C0BB8 = cyScreen - (float)vtransY * 0.25f;  /* 0x105CD9FC */
-
-    return pCmd + 1;                            /* `add eax, 8` */
-#endif
 }

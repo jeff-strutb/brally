@@ -9,10 +9,8 @@
  * and the addresses, not proved, and the file says so rather than renaming
  * anything on the strength of it.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: rand() below is an FF 15 [IAT] call. */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdlib.h>
 #include "slice3_44.h"
 
@@ -43,7 +41,6 @@ void BrSub10074E20(unsigned int *pDst)
         pDst[i] = g_BrX1829850[i];
 }
 
-#ifdef BR_MATCHING_BUILD
 
 typedef int (*funcptr)();
 extern funcptr DAT_118ed1d8;
@@ -108,4 +105,3 @@ void BrTexDetailBumpNeighbour(int i, int pTex, int pLevels)
     }
 }
 
-#endif /* BR_MATCHING_BUILD */

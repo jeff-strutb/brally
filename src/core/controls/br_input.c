@@ -8,10 +8,8 @@
  * entries that do nothing and count, and the fifteen globals owned by modules
  * that do not exist yet are shadows with one re-point site each.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "br_input.h"
 #include "br_window.h"
 #include "br_mainloop.h"
@@ -143,7 +141,6 @@ static const char *brstr(int32_t id)
  * keep running and when to sit still. It only records the state; the actual
  * pausing is done elsewhere. */
 /* @implements 0x10070370 glide BrOnActivate */
-#ifdef BR_MATCHING_BUILD
 /* Matching build names the three gates and the 0x10008B80 stub directly so
  * MSVC emits the original's `mov [imm32]` stores and tail `jmp`. */
 extern uint32_t g_brActivateGate1;   /* 0x10680598 / 0x105BC740 */
@@ -176,28 +173,7 @@ void BrOnActivate(BrWParam wParam)
     if (lo == 0u || hi != 0u)
         BrOnActivateTail();
 }
-#else
-void BrOnActivate(BrWParam wParam)
-{
-    /* The original's registers are 32 bits wide. Masking reproduces
-     * `shr eax,0x10` exactly on LP64, where a bare >>16 of a 64-bit WPARAM
-     * would carry bits 32..47 down into the HIWORD. */
-    uint32_t w  = (uint32_t)wParam;
-    uint32_t lo = w & 0xFFFFu;
-    uint32_t hi = w >> 16;
 
-    /* 0x105BC740 and 0x105BC744, in the original's order. br_mainloop.c owns
-     * this storage; see the aliasing note in br_input.h. */
-    BrMainLoopSetReady((int)w, (int)lo);
-
-    /* 0x105BC748 -- MINIMISED. */
-    BrMainLoopSetSuspended((int)hi);
-
-    /* 0x10070391..0x1007039C: both arms reach a bare `ret`. Nothing to do. */
-}
-#endif
-
-#ifdef BR_MATCHING_BUILD
 extern int DAT_10073ae0;
 extern int DAT_10078718;
 extern int DAT_118ee9cc;
@@ -262,7 +238,6 @@ int FUN_100703d0(void)
   }
   return 1;
 }
-#endif /* BR_MATCHING_BUILD */
 
 /* ================================================================== *
  * 0x10019350 -- WM_ACTIVATEAPP. 294 bytes, __cdecl, three arguments.
@@ -287,7 +262,6 @@ int FUN_100703d0(void)
  * mode, and if that fails it apologises with a message box and asks the window
  * to close. Both halves live in one function and the second is not an else of
  * the first, so a single call can do both. */
-#ifdef BR_MATCHING_BUILD
 extern int32_t g_br105CCB5C;
 extern int32_t g_br105CCB88;
 extern int32_t g_br105BC8DC;
@@ -352,94 +326,6 @@ BrWndResult BrOnActivateApp(void *hWnd, BrWParam wParam, BrLParam lParam)
     }
     return DefWindowProcA(hWnd, 0x1C, (uint32_t)wParam, (int32_t)lParam);
 }
-#else
-/* @implements 0x10019350 glide BrOnActivateApp */
-BrWndResult BrOnActivateApp(void *hWnd, BrWParam wParam, BrLParam lParam)
-{
-    BrWndResult r;
-    int fActive = (int)(uint32_t)wParam;
-
-    (void)lParam;   /* only reaches DefWindowProcA, at 0x10019464 */
-
-    /* 0x1001935C: [0x105BC740] = fActive. ONLY gate 1 -- 0x105BC744 is left
-     * alone, so gate 2 is read back and written unchanged. Without the
-     * read-modify-write, br_mainloop.c's two-in-one setter would silently
-     * clear a gate this function never touches. */
-    BrMainLoopSetReady(fActive, BrMainLoopReady2());
-
-    if (fActive == 0) {                       /* 0x10019362 jne skips it all */
-        /* 0x10019368 / 0x10019371: either latch set skips straight to the
-         * tail at 0x100193D8 -- the four calls AND the 0x10226A48 arm are
-         * both inside this guard. */
-        if (BrWndShadowGet(BR_SH_105CCB5C) == 0 &&
-            BrWndShadowGet(BR_SH_105CCB88) == 0) {
-            frontier(BR_WF_100609F0);          /* 0x1001937A */
-            frontier(BR_WF_10002EB0);          /* 0x1001937F */
-            frontier(BR_WF_1006BD70);          /* 0x10019384 */
-            frontier(BR_WF_10061440);          /* 0x10019389 */
-
-            /* 0x1001938E loads 0x10226A48 BEFORE 0x10019393 clears
-             * 0x105BC8DC. Different addresses, so the order is not
-             * observable -- kept anyway, because "not observable" is a claim
-             * about callees this port has not read. */
-            BrWndShadowSet(BR_SH_105BC8DC, 0); /* 0x10019393 */
-
-            if (BrWndShadowGet(BR_SH_10226A48) != 0 &&
-                BrWndShadowGet(BR_SH_10226A44) != 0 &&
-                BrWndShadowGet(BR_SH_105CCB88) == 0 &&
-                BrWndShadowGet(BR_SH_10AF21B0) <
-                BrWndShadowGet(BR_SH_100BCBE8)) {   /* 0x100193BE jge skips */
-                frontier(BR_WF_10004F50);      /* 0x100193C2 */
-                frontier(BR_WF_10005330);      /* 0x100193C7 */
-            } else {
-                BrWndShadowSet(BR_SH_105CCB5C, 1);  /* 0x100193CE */
-            }
-        }
-        /* 0x100193D8: `call 0x10008D60` is the one-byte stub -- omitted. */
-        frontier(BR_WF_1007296C);              /* 0x100193DD */
-        BrWndShadowSet(BR_SH_100A9354, 1);     /* 0x100193E7 */
-        if (g_brWndPlatform.pfnInvalidate != NULL)
-            g_brWndPlatform.pfnInvalidate(hWnd);   /* 0x100193F1, (hWnd,0,0) */
-    }
-
-    /* 0x100193F7 -- the ORIGINAL RE-READS [0x105BC740] rather than reusing
-     * edi. It cannot differ from fActive here (nothing between writes it), but
-     * the re-read is transcribed as a re-read so that a future writer inserted
-     * into the block above changes this test, exactly as it would in the
-     * original. */
-    if (BrMainLoopReady1()) {
-        /* 0x10019400 and 0x10019410: mode-restore pending, and not minimised.
-         * Both `jne` to the same tail, so they collapse to one condition. */
-        if (BrWndShadowGet(BR_SH_100A9354) == 1 && !BrMainLoopSuspended()) {
-            /* 0x10019412..0x10019425: push [0x100A7518] then [0x100A7514],
-             * cdecl, so the arguments are (width, height) -- the LAST push is
-             * the FIRST argument. Those two globals are g_brAppModeW/H, owned
-             * by br_boot.c and reused here rather than redeclared. */
-            frontier(BR_WF_1001DD80);
-            if (s_iModeResult == 0) {          /* 0x10019428 test/jne */
-                /* 0x1001942C..0x1001943D: MessageBoxA(hWnd, str(0x129),
-                 * NULL, 0). The two `push eax` reuse the zero the test left
-                 * in eax, which is why the caption and type are both NULL/0. */
-                if (g_brWndPlatform.pfnMessageBox != NULL)
-                    g_brWndPlatform.pfnMessageBox(hWnd, brstr(0x129), NULL, 0);
-                /* 0x10019443: PostMessageA(hWnd, WM_CLOSE, 0, 0). */
-                if (g_brWndPlatform.pfnPostMessage != NULL)
-                    g_brWndPlatform.pfnPostMessage(hWnd, BR_WM_CLOSE, 0, 0);
-            }
-            BrWndShadowSet(BR_SH_100A9354, 2); /* 0x10019450 */
-        }
-        /* 0x1001945A: `call 0x10008D60` -- the stub again, omitted. */
-        frontier(BR_WF_10019A40);              /* 0x1001945F */
-    }
-
-    /* 0x10019464: DefWindowProcA(hWnd, WM_ACTIVATEAPP, wParam, lParam) and
-     * return ITS value -- on every path, including the one that just asked the
-     * window to close. */
-    r.fCallDefault = 1;
-    r.lResult      = 0;
-    return r;
-}
-#endif
 
 /* ================================================================== *
  * 0x10019480 -- WM_SYSCOMMAND. 61 bytes, __cdecl, three arguments.
@@ -457,7 +343,6 @@ BrWndResult BrOnActivateApp(void *hWnd, BrWParam wParam, BrLParam lParam)
  * window from the system menu, so the display stays the size the game set it
  * to; anything else on that menu is passed through to Windows untouched. It
  * also asks Windows for the window's user data and throws the answer away. */
-#ifdef BR_MATCHING_BUILD
 /* @implements 0x10019480 glide BrOnSysCommand */
 BrWndResult BrOnSysCommand(void *hWnd, BrWParam wParam, BrLParam lParam)
 {
@@ -474,38 +359,6 @@ BrWndResult BrOnSysCommand(void *hWnd, BrWParam wParam, BrLParam lParam)
         return DefWindowProcA(hWnd, 0x112, sc, (int32_t)lParam);
     }
 }
-#else
-/* @implements 0x10019480 glide BrOnSysCommand */
-BrWndResult BrOnSysCommand(void *hWnd, BrWParam wParam, BrLParam lParam)
-{
-    BrWndResult r;
-    uint32_t sc = (uint32_t)wParam;
-
-    (void)lParam;   /* only reaches DefWindowProcA, at 0x100194A5 */
-
-    /* 0x10019488: GetWindowLongA(hWnd, GWL_USERDATA). ITS RESULT IS DISCARDED
-     * -- eax is overwritten by `mov eax,ecx` at 0x10019492 before anything
-     * reads it. Kept because a call is not nothing: CONVENTIONS.md's
-     * 0x10066D70 note is that a dead return value says nothing about side
-     * effects, and this port cannot see inside USER32. */
-    if (g_brWndPlatform.pfnGetWindowLong != NULL)
-        (void)g_brWndPlatform.pfnGetWindowLong(hWnd, BR_GWL_USERDATA);
-
-    /* 0x10019494 / 0x1001949B / 0x100194A0 -- three chained subtractions,
-     * against the EXACT values and with NO 0xFFF0 mask. See the enum's comment
-     * in br_input.h: keyboard-initiated variants such as 0xF012 pass straight
-     * through to DefWindowProcA. Preserved. */
-    if (sc == BR_SC_SIZE || sc == BR_SC_MOVE || sc == BR_SC_MAXIMIZE) {
-        r.fCallDefault = 0;      /* 0x100194B9 xor eax,eax / ret */
-        r.lResult      = 0;
-        return r;
-    }
-
-    r.fCallDefault = 1;          /* 0x100194B1 DefWindowProcA(hWnd,0x112,..) */
-    r.lResult      = 0;
-    return r;
-}
-#endif
 
 /* ================================================================== *
  * 0x100194C0 -- THE WINDOW PROCEDURE. 423 bytes, __stdcall, four arguments.
@@ -519,7 +372,6 @@ BrWndResult BrOnSysCommand(void *hWnd, BrWParam wParam, BrLParam lParam)
  * it is destroyed, keeps the mouse pointer hidden, and hands focus changes to
  * the handlers above. Anything it does not recognise goes back to Windows for
  * the default treatment. */
-#ifdef BR_MATCHING_BUILD
 extern int32_t g_br10AC5C5C;
 extern int32_t g_br10AC5C58;
 extern int32_t g_br10AC408C;
@@ -623,132 +475,8 @@ BrWndResult __stdcall BrWndProc(void *hWnd, uint32_t uMsg, BrWParam wParam, BrLP
 defwnd:
     return DefWindowProcA(hWnd, uMsg, (uint32_t)wParam, (int32_t)lParam);
 }
-#else
-/* @implements 0x100194C0 glide BrWndProc */
-BrWndResult BrWndProc(void *hWnd, uint32_t uMsg, BrWParam wParam, BrLParam lParam)
-{
-    BrWndResult r;
-    int32_t iMode;
 
-    r.fCallDefault = 0;
-    r.lResult      = 0;
-
-    /* ---- 0x100194C0..0x10019504: the two pre-dispatch hooks ---------- *
-     * Hook B is nested inside hook A's guard -- 0x100194FA's `je` lands at
-     * 0x10019505, past both -- so [0x10AC408C] alone does not run it. */
-    if (BrWndShadowGet(BR_SH_10AC5C5C) != 0 &&
-        BrWndShadowGet(BR_SH_10AC5C5C_68) != 0) {
-        if (g_pfnBrWndMsgHookA != NULL)
-            g_pfnBrWndMsgHookA(BrWndShadowGet(BR_SH_10AC5C58),
-                               hWnd, uMsg, wParam, lParam);   /* 0x100194EE */
-        if (BrWndShadowGet(BR_SH_10AC408C) != 0) {
-            if (g_pfnBrWndMsgHookB != NULL)
-                g_pfnBrWndMsgHookB(hWnd, uMsg, wParam, lParam); /* 0x10019500 */
-        }
-    }
-
-    /* 0x10019505: eax = [0x1007B074], and it STAYS in eax all the way to
-     * 0x10019628, which is why the MM_MCINOTIFY arm can test it without
-     * reloading. */
-    iMode = BrWindowAudioBackend();
-
-    /* ---- 0x1001950A: the mode-2 (EAR) arm --------------------------- */
-    if (iMode == BR_AUDIO_EAR) {
-        /* 0x1001950F. Compared against the RAW global, which is 0 until
-         * 0x10017E1B registers the message -- so with no EAR DLL, uMsg 0
-         * lands here. Preserved; see br_input.h. */
-        if ((int32_t)uMsg == BrWndShadowGet(BR_SH_104B1620)) {
-            /* 0x10019517 `cmp ebx,eax` with eax still 2: lParam == 2. */
-            if (lParam == 2) {
-                /* 0x1001951F: 0x100027A0 is six bytes,
-                 * `mov eax,[0x1021C788]; ret` -- transcribed inline as the
-                 * shadow read it is, not made a frontier entry. */
-                if ((int32_t)(uint32_t)wParam == BrWndShadowGet(BR_SH_1021C788))
-                    frontier(BR_WF_10002CF0);      /* 0x1001952C */
-            }
-            /* Every arm here returns 0: 0x10019519, 0x10019526 and
-             * 0x10019531 all reach `xor eax,eax / ret 0x10`. */
-            return r;
-        }
-
-        if (uMsg == BR_WM_DEVICECHANGE) {          /* 0x1001953A, 0x219 */
-            if (wParam == BR_DBT_DEVICEARRIVAL) {  /* 0x10019542, 0x8000 */
-                frontier(BR_WF_10002580);          /* 0x1001954A */
-                frontier(BR_WF_10002AF0);          /* 0x10019551, arg 1 */
-            }
-            /* NOT an else: 0x10019559 is reached by fall-through as well as by
-             * the `jne` at 0x10019548. 0x8000 therefore runs the arrival work
-             * and then fails all three of these. */
-            if (wParam == BR_DBT_DEVICEQUERYREMOVE ||
-                wParam == BR_DBT_DEVICEREMOVEPENDING ||
-                wParam == BR_DBT_DEVICEREMOVECOMPLETE) {
-                frontier(BR_WF_10002F70);          /* 0x10019575 */
-                frontier(BR_WF_10002760);          /* 0x1001957A */
-            }
-            /* Both tails -- 0x1001957F and 0x1001960C -- return 1. */
-            r.lResult = 1;
-            return r;
-        }
-        /* anything else in mode 2 falls through to the main chain */
-    }
-
-    /* ---- 0x1001958B: the main comparison chain ---------------------- */
-    switch (uMsg) {
-    case BR_WM_CREATE:              /* 1 -- 0x100195BD */
-        /* THE ONLY GLOBAL THIS FUNCTION WRITES. 0x105BC72C is the handle the
-         * main loop hands to ShowWindow/UpdateWindow/SetFocus; 0x10019670
-         * throws CreateWindowExA's result away, so this is where it comes
-         * from. Returning 0 lets creation proceed. */
-        g_brhWnd = hWnd;
-        return r;                   /* lResult 0, fCallDefault 0 */
-
-    case BR_WM_DESTROY:             /* 2 -- 0x1001959A */
-        frontier(BR_WF_100325B0);                       /* called with 0 */
-        if (g_brWndPlatform.pfnPostQuit != NULL)
-            g_brWndPlatform.pfnPostQuit(0);             /* 0x100195A6 */
-        break;                      /* falls into DefWindowProcA at 0x100195AC */
-
-    case BR_WM_ACTIVATE:            /* 6 -- 0x100195CC */
-        BrOnActivate(wParam);       /* 0x10070370, cdecl, wParam only */
-        break;                      /* then DefWindowProcA at 0x100195D9 */
-
-    case BR_WM_ACTIVATEAPP:         /* 0x1C -- 0x100195F2 */
-        /* 0x100195FD returns 0x10019350's eax UNCHANGED -- there is no
-         * `mov eax,..` between the call and the epilogue. */
-        return BrOnActivateApp(hWnd, wParam, lParam);
-
-    case BR_WM_SETCURSOR:           /* 0x20 -- 0x10019604 */
-        if (g_brWndPlatform.pfnSetCursorNone != NULL)
-            g_brWndPlatform.pfnSetCursorNone();         /* SetCursor(NULL) */
-        r.lResult = 1;              /* 0x1001960C -- TRUE stops further work */
-        return r;
-
-    case BR_WM_SYSCOMMAND:          /* 0x112 -- 0x10019655 */
-        return BrOnSysCommand(hWnd, wParam, lParam);    /* 0x10019480 */
-
-    case BR_MM_MCINOTIFY:           /* 0x3B9 -- 0x10019628 */
-        /* 0x10019628 `cmp eax,1` on the mode still in eax. NOT mode 1 means
-         * DefWindowProcA; mode 1 means return 0 whatever else happens. */
-        if (iMode != BR_AUDIO_MCI)
-            break;
-        if (lParam == (BrLParam)BrWndShadowGet(BR_SH_1021C770) &&  /* 0x10019631 */
-            wParam == 1 &&                                /* MCI_NOTIFY_SUCCESSFUL */
-            BrWndShadowGet(BR_SH_105CCB5C) == 0)          /* 0x1001963E */
-            frontier(BR_WF_10002830);                     /* 0x10019647 */
-        return r;                   /* 0x1001964C xor eax,eax */
-
-    default:
-        break;                      /* 0x100195AC */
-    }
-
-    r.fCallDefault = 1;
-    r.lResult      = 0;
-    return r;
-}
-#endif
-
-/* ── Ghidra-matched functions ─────────────────────────── */
-#ifdef BR_MATCHING_BUILD
+/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
 #include <windows.h>
 #include <mmsystem.h>
 /* WHAT IT DOES: seek a RIFF WAVE file to the start of its "data" chunk via mmioDescend. */
@@ -1059,9 +787,7 @@ int32_t __stdcall BrSub100590D0(int32_t iArg, void *hWnd, uint32_t uMsg,
     return r;
 }
 
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 extern int *DAT_118eeeec;
 
 /* WHAT IT DOES: take exclusive control of the input device back from Windows
@@ -1080,10 +806,8 @@ int BrDiAcquire(void)
   }
   return 0;
 }
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
-/* Hand-matched from disassembly - 0x100592F0
+/* Hand-matched from disassembly â 0x100592F0
  * fastcall: pointer in ecx, ten fields zeroed in source order, returns this. */
 
 /* WHAT IT DOES: the constructor of the 0x54-byte DirectInput object that
@@ -1105,4 +829,3 @@ int *__fastcall FUN_100592f0(int *p)
   p[19] = 0;   /* 0x4c */
   return p;
 }
-#endif /* BR_MATCHING_BUILD */

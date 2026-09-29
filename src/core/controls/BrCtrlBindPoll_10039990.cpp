@@ -22,9 +22,7 @@
  * addresses, compared as SIGNED ints (`jl`, not the pointer `jb`).
  * @t4-pass 2026-09-09 probes=7 result=diff289/missing-1-cache census no
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Cfg39990 {
 public:

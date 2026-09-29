@@ -9,7 +9,6 @@
  * matched first and grouped by what they are afterwards.
  * Every function carries its original address.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
 /* The header declares the port's (state, slot, ...) forms of these; the
@@ -19,15 +18,12 @@
 #define BrNetSlotGetF02C  BrNetSlotGetF02C_hdr
 #define BrNetSlotSetF02C  BrNetSlotSetF02C_hdr
 #define BrNetDropMatching BrNetDropMatching_hdr
-#endif
 #include "slice1_02.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrNetSlotName
 #undef BrNetSlotGetF004
 #undef BrNetSlotGetF02C
 #undef BrNetSlotSetF02C
 #undef BrNetDropMatching
-#endif
 
 #include <string.h>
 
@@ -38,7 +34,6 @@
  * are deliberately stepped over and left as they were, and the disarmed
  * timers are set to -1 rather than zero. */
 /* @implements 0x10005960 d3d BrNetReset */
-#ifdef BR_MATCHING_BUILD
 /* The original takes no arguments and reaches every field as a loose global:
  * the slot array runs from 0x1021CE58, and the shared state is scattered from
  * 0x1021C81C to 0x105CCB80.  The mutex is the raw Win32 pair
@@ -163,87 +158,10 @@ int BrNetReset(BrNetState *pNet)
     DAT_105ccb80 = 0;
     return 1;
 }
-#else
-int BrNetReset(BrNetState *pNet)
-{
-    int i;
-
-    for (i = 0; i < BR_NET_SLOTS; ++i) {
-        BrNetSlot *p = &pNet->aSlots[i];
-
-        BrNetMutexLock(p->hMutex);
-
-        /* The original clears +0x08, then +0x0C..+0x28, then +0x2C, then
-         * +0x38..+0x54. +0x04, +0x30 and +0x34 are stepped over on purpose. */
-        p->f008 = 0;
-        memset(p->f00C, 0, sizeof p->f00C);
-        p->f02C = 0;
-        memset(p->f038, 0, sizeof p->f038);
-
-        p->f558 = 0;
-        p->f55C = 0;
-        p->f560 = -1;
-        p->f568 = 0;
-        p->f56C = 0;
-        p->f564 = 0;
-        p->f974 = 0;
-
-        BrNetMutexUnlock(p->hMutex);
-    }
-
-    BrNetMutexLock(pNet->h1022AF24);
-    pNet->f1022AEF8 = -1;
-    pNet->f1022AF08 = 0;
-    pNet->f10220E80 = 0;
-    BrNetMutexUnlock(pNet->h1022AF24);
-
-    BrNetMutexLock(pNet->h1022AF28);
-    memset(pNet->a102212D0, 0, sizeof pNet->a102212D0);
-    BrNetMutexUnlock(pNet->h1022AF28);
-
-    BrNetMutexLock(pNet->h1022AF2C);
-    pNet->f10220DD4 = -1;
-    BrNetMutexUnlock(pNet->h1022AF2C);
-
-    BrNetMutexLock(pNet->h1022AF30);
-    pNet->f10221318 = -1;
-    BrNetMutexUnlock(pNet->h1022AF30);
-
-    BrNetMutexLock(pNet->h10221324);
-    pNet->f1022AAA8 = 0;
-    BrNetMutexUnlock(pNet->h10221324);
-
-    BrNetMutexLock(pNet->h1022AF04);
-    pNet->f1022AAF4 = 0;
-    BrNetMutexUnlock(pNet->h1022AF04);
-
-    BrNetMutexLock(pNet->h10220DDC);
-    pNet->f10221314 = 0;
-    BrNetMutexUnlock(pNet->h10220DDC);
-
-    BrNetMutexLock(pNet->h1022131C);
-    pNet->f10220DD0 = 0;
-    BrNetMutexUnlock(pNet->h1022131C);
-
-    BrNetMutexLock(pNet->h10220CEC);
-    pNet->f1022AF00 = -1;
-    BrNetMutexUnlock(pNet->h10220CEC);
-
-    /* Tail: no lock is taken for any of these. */
-    pNet->f10220DD8 = 0;
-    pNet->f1022AF3C = -1;
-    memset(pNet->a1022AAB0, 0, sizeof pNet->a1022AAB0);
-    pNet->f1022AF20 = 0;
-    pNet->f106909D8 = 0;
-
-    return 1;
-}
-#endif
 
 /* 0x10004DC0 / d3d 0x10004A50 */
 /* WHAT IT DOES: writes a player slot's status word under that slot's lock. */
 /* @implements 0x10004DC0 glide BrNetSlotSetF02C */
-#ifdef BR_MATCHING_BUILD
 /* Orig is two-arg cdecl (index at [esp+4], value at [esp+8]), not the port's
  * (pNet, slot, value).  Mutex lock is the raw import, same shape as BrNetReset:
  * WaitForSingleObject(h, INFINITE) / ReleaseMutex(h), not BrNetMutexLock.
@@ -271,18 +189,7 @@ void BrNetSlotSetF02C(int param_1, int param_2)
     slots[param_1].f02C = param_2;
     ReleaseMutex((void *)slots[param_1].hMutex);
 }
-#else
-void BrNetSlotSetF02C(BrNetState *pNet, int32_t slot, int32_t value)
-{
-    BrNetSlot *p = &pNet->aSlots[slot];
 
-    BrNetMutexLock(p->hMutex);
-    p->f02C = value;
-    BrNetMutexUnlock(p->hMutex);
-}
-#endif
-
-#ifdef BR_MATCHING_BUILD
 __declspec(dllimport) unsigned long __stdcall WaitForSingleObject(void *, unsigned long);
 __declspec(dllimport) int __stdcall ReleaseMutex(void *);
 
@@ -311,27 +218,8 @@ int BrNetLockSetIfZero22AAF4(void)
     ReleaseMutex(g_brH22AF04);
     return 1;
 }
-#else
-int BrNetLockSet22AAA8(BrNetState *pNet)
-{
-    BrNetMutexLock(pNet->h10221324);
-    pNet->f1022AAA8 = 1;
-    BrNetMutexUnlock(pNet->h10221324);
-    return 1;
-}
 
-int BrNetLockSetIfZero22AAF4(BrNetState *pNet)
-{
-    BrNetMutexLock(pNet->h1022AF04);
-    if (pNet->f1022AAF4 == 0)
-        pNet->f1022AAF4 = 1;
-    BrNetMutexUnlock(pNet->h1022AF04);
-    return 1;
-}
-#endif
-
-/* ── Ghidra-matched functions ─────────────────────────── */
-#ifdef BR_MATCHING_BUILD
+/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
 #include <windows.h>
 extern int DAT_1021c81c;
 extern int DAT_1021c908;
@@ -577,9 +465,7 @@ int FUN_100054a0(float *param_1)
   return uVar1;
 }
 
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 /* Forward declarations for unknown functions/globals */
 extern int DAT_1021ce58;
 extern char DAT_1021ce5c;
@@ -597,9 +483,7 @@ int BrNetSlotGetF004(int param_1)
   ReleaseMutex((HANDLE)(&DAT_1021ce58)[param_1 * 0x25e]);
   return uVar1;
 }
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 /* The original binary is /MD: CRT calls resolve through the import table. */
 #define _CRTIMP __declspec(dllimport)
 #include <windows.h>
@@ -630,9 +514,7 @@ int BrNetStackPop(void)
     ReleaseMutex((HANDLE)DAT_10226a5c);
     return v;
 }
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 /* The original binary is /MD: CRT calls resolve through the import table. */
 #define _CRTIMP __declspec(dllimport)
 #include <windows.h>
@@ -658,9 +540,7 @@ int BrNetSlotGetF030(int i, unsigned char *pb34, unsigned char *pb35,
     ReleaseMutex(*(HANDLE *)((char *)&DAT_1021ce58 + off));
     return v;
 }
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 /* Forward declarations for unknown functions/globals */
 extern int DAT_1021ce00;
 extern int DAT_10226a58;
@@ -678,9 +558,7 @@ int BrNetGetA102212D0(int param_1)
   ReleaseMutex((void *)DAT_10226a58);
   return uVar1;
 }
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 /* Forward declarations for unknown functions/globals */
 extern int DAT_1021ce58;
 extern char DAT_1021d3c8;
@@ -698,9 +576,7 @@ char *BrNetSlotName(int param_1)
   ReleaseMutex((HANDLE)(&DAT_1021ce58)[param_1 * 0x25e]);
   return DAT_10226628;
 }
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 /* Forward declarations for unknown functions/globals */
 extern int DAT_1021ce58;
 extern char DAT_1021d3c8;
@@ -716,9 +592,7 @@ void BrNetSlotSetName(int param_1,char *param_2)
   ReleaseMutex((HANDLE)(&DAT_1021ce58)[param_1 * 0x25e]);
   return;
 }
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 /* The original binary is /MD: CRT calls resolve through the import table. */
 #define _CRTIMP __declspec(dllimport)
 #include <windows.h>
@@ -739,9 +613,7 @@ int BrNetSlotGetF02CBiased(int i)
     ReleaseMutex((HANDLE)(&DAT_1021ce58)[i * 0x25e]);
     return (v > 0) ? v : 0;
 }
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 /* Forward declarations for unknown functions/globals */
 extern int DAT_1021ce58;
 extern int DAT_1021d7cc;
@@ -762,9 +634,7 @@ int BrNetSlotGetF974(int param_1)
   }
   return iVar1;
 }
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 /* The original binary is /MD: CRT calls resolve through the import table. */
 #define _CRTIMP __declspec(dllimport)
 #include <stdio.h>
@@ -810,9 +680,7 @@ void BrNetDropMatching(int key)
         BrNetAnnounce(szMsg);
     }
 }
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 /* Forward declarations for unknown functions/globals */
 extern int DAT_1021c900;
 extern int DAT_1021ce4c;
@@ -828,9 +696,7 @@ void BrNetSetF10220DD0(void)
   ReleaseMutex((void *)DAT_1021ce4c);
   return;
 }
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 /* Forward declarations for unknown functions/globals */
 extern int DAT_1021c900;
 extern int DAT_1021ce4c;
@@ -846,9 +712,7 @@ void BrNetClearF10220DD0(void)
   ReleaseMutex((void *)DAT_1021ce4c);
   return;
 }
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 /* Forward declarations for unknown functions/globals */
 extern int DAT_1021c81c;
 extern int DAT_10226a30;
@@ -872,13 +736,11 @@ void BrNetCheckDeadline(void)
   ReleaseMutex((void *)DAT_1021c81c);
   return;
 }
-#endif /* BR_MATCHING_BUILD */
 
 /* ------------------------------------------------------------------ */
 /* 0x10004D80 -- slot field accessor                                  */
 /* ------------------------------------------------------------------ */
 
-#ifdef BR_MATCHING_BUILD
 /* Forward declarations for unknown functions/globals */
 extern int DAT_1021ce58;
 extern int DAT_1021ce84;
@@ -897,9 +759,7 @@ int BrNetSlotGetF02C(int param_1)
   ReleaseMutex((HANDLE)(&DAT_1021ce58)[param_1 * 0x25e]);
   return uVar1;
 }
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 
 typedef struct {
     int key;         /* what the ack quotes back */
@@ -940,4 +800,3 @@ void BrNetPingSync(int key, int tSent, int ackKey, unsigned rtt)
     if (g_brPingHead >= 8)
         g_brPingHead = 0;
 }
-#endif /* BR_MATCHING_BUILD */

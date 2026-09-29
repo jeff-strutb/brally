@@ -4,17 +4,14 @@
  * matched first and grouped by what they are afterwards.
  * Every function carries its original address.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import
  * table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdint.h>
 
 #include "slice3_44.h"   /* BrMat3 / BrMat4 / BrVec3, for the routines moved
                           * here out of src/core/slice3_44.c                */
 
-#ifdef BR_MATCHING_BUILD
 
 
 /* 0x10074B20 */
@@ -54,7 +51,6 @@ void BrMat3Sub(float *pOut, const float *pA, const float *pB)
             pOut[3 * i + j] = pA[3 * i + j] - pB[3 * i + j];
 }
 
-#endif /* BR_MATCHING_BUILD */
 
 /* 0x10074830 */
 /* WHAT IT DOES: rotates a 3D vector by a 3x3 matrix. Used all through the

@@ -4,14 +4,11 @@
  * matched first and grouped by what they are afterwards.
  * Every function carries its original address.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import
  * table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdint.h>
 
-#ifdef BR_MATCHING_BUILD
 
 
 /* 0x10005900 */
@@ -59,4 +56,3 @@ void BrCarClampUnit(float *pv)
         *pv = 1.0f;
 }
 
-#endif /* BR_MATCHING_BUILD */

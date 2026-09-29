@@ -23,11 +23,9 @@
  * Hoisting the index into a variable and calling once instead collapses
  * that structure.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #include <stdio.h>
 #include <string.h>
-#endif
 
 class Item438F {
 public:

@@ -11,7 +11,6 @@
  * ours keep them in a callee-saved register from InitInertia.  Record
  * pointer is re-derived per field (the BrInputPoll load idiom).
  */
-#ifdef BR_MATCHING_BUILD
 
 #include <stdint.h>
 #include "br_match.h"
@@ -270,4 +269,3 @@ void BR_THISCALL1 BrSub10062C50(void *pCar)
     BY(p, 0xe78) = 0;
 }
 
-#endif /* BR_MATCHING_BUILD */

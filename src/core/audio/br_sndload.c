@@ -7,14 +7,11 @@
  *
  * Every function carries its original address.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdint.h>
 #include <string.h>
 
-#ifdef BR_MATCHING_BUILD
 #include <windows.h>
 
 /* The voice record, 0x1AC bytes, GlobalAlloc'd.  slice1_08.h's BrSndVoice
@@ -303,14 +300,12 @@ int32_t BrWavLoad(const char *pszPath, uint32_t *pnDataBytes,
     return rc;
 }
 
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 
 
 /* WaveOpenFile (DX5 wave.c, CSE'd PCM/extra alloc). Ghidra shredded
  * PCMWAVEFORMAT into 4 ints so mmioRead's HPSTR was only known to touch
- * the first dword - /O2 frame 0x18 vs orig 0x24. cbExtraBytes lives in
+ * the first dword â /O2 frame 0x18 vs orig 0x24. cbExtraBytes lives in
  * the dead pszFileName slot. Success returns the mmioAscend result, not
  * a fresh 0; cleanup nulls hmmio then stores it. */
 /* WHAT IT DOES: open a .WAV file and get it ready to read -- walks the RIFF
@@ -395,4 +390,3 @@ TEMPCLEANUP:
   *param_2 = (int)hmmio;
   return MVar5;
 }
-#endif /* BR_MATCHING_BUILD */

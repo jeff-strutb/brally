@@ -37,9 +37,7 @@ void BrQuatMul(float *pOut, const float *pA, const float *pB)
 
 #include <math.h>
 
-#ifdef BR_MATCHING_BUILD
 extern float BrSqrtF(float x);   /* 0x10002570 -- fld [esp+4]; fsqrt; ret */
-#endif
 
 
 /* WHAT IT DOES: shrink or stretch a vector IN PLACE so it is exactly one unit
@@ -59,11 +57,7 @@ void BrVec3Normalise(BrVec3 *pV)
     float y = pV->y;
     float z = pV->z;
     float k, k2, k3;
-#ifdef BR_MATCHING_BUILD
     k = 1.0f / BrSqrtF(y * y + z * z + x * x);
-#else
-    k = 1.0f / sqrtf(y * y + z * z + x * x);
-#endif
     pV->x = pV->x * k;
     pV->y = (k2 = k) * pV->y;
     pV->z = (k3 = k) * pV->z;
@@ -84,11 +78,7 @@ void BrVec4Normalise(BrVec4 *pV)
     float z = pV->f08;
     float x = pV->f00;
     float k, k2, k3, k4;
-#ifdef BR_MATCHING_BUILD
     k = 1.0f / BrSqrtF(y * y + z * z + w * w + x * x);
-#else
-    k = 1.0f / sqrtf(y * y + z * z + w * w + x * x);
-#endif
     pV->f00 = pV->f00 * k;
     pV->f04 = (k2 = k) * pV->f04;
     pV->f08 = (k3 = k) * pV->f08;

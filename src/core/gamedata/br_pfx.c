@@ -6,7 +6,6 @@
  *
  * See slice2_21.h for the field offsets and the gotchas.
  */
-#ifdef BR_MATCHING_BUILD
 /* The header declares the port's pool/env-parameter forms; the originals
  * take no arguments (or the car alone) and reach the pool as globals. */
 #define BrPfxReset      BrPfxReset_port
@@ -16,9 +15,7 @@
 #define BrPfxTick       BrPfxTick_port
 #define BrPfxSaveState  BrPfxSaveState_port
 #define BrCarSub9020    BrCarSub9020_port
-#endif
 #include "slice2_21.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrPfxReset
 #undef BrCarPfxSpawn
 #undef BrPfxUpdateB0
@@ -27,7 +24,6 @@
 #undef BrPfxSaveState
 #undef BrCarSub9020
 void BrPfxReset(void);
-#endif
 
 #include <string.h>
 
@@ -41,7 +37,6 @@ void BrPfxReset(void);
  * and spray currently in the air vanishes. */
 /* @implements 0x1003A4D0 d3d BrPfxReset */
 /* @implements 0x10033B50 glide BrPfxReset */
-#ifdef BR_MATCHING_BUILD
 extern unsigned char DAT_10ac0c84[];   /* aRec[1].iNext, stride 0x20 */
 extern unsigned char DAT_10ac2c64[];   /* loop end (exclusive) */
 extern uint16_t DAT_10ac2c44;          /* aRec[255].iNext */
@@ -78,21 +73,7 @@ void BrPfxReset(void)
     DAT_10ac0c3c = 0;
     DAT_10ac0c44 = 0;
 }
-#else
-void BrPfxReset(BrPfxPool *pPool)
-{
-    int i;
-    for (i = 1; i <= BR_PFX_RECS - 1; i++)
-        pPool->aRec[i].iNext = (uint16_t)(i + 1);
-    pPool->aRec[BR_PFX_RECS - 1].iNext = 0;   /* written after the loop */
-    pPool->iFree    = 1;
-    pPool->iListB0  = 0;
-    pPool->iListAC  = 0;
-    pPool->iListB4  = 0;
-}
-#endif
 
-#ifdef BR_MATCHING_BUILD
 extern float    g_fPfxDt;        /* 0x106E9D8C */
 extern BrPfxRec g_aPfxRec[];     /* 0x10AC0C48 */
 extern uint16_t g_iPfxFree;      /* 0x10AC0C38 */
@@ -202,11 +183,11 @@ void __fastcall BrCarPfxSpawn(struct BrCar *pCar)
     }
 }
 
-/* Glide match for BrPfxUpdateB0 - 0x10033880
+/* Glide match for BrPfxUpdateB0 â 0x10033880
  *
  * The port body lives in src/core/slice2_21.c (tagged 0x1003A200 d3d) and
- * takes `(BrPfxPool *, const BrPfxEnv *)`.  The original takes NOTHING - 
- * its call site at 0x10033BB0 pushes no arguments at all - because dt,
+ * takes `(BrPfxPool *, const BrPfxEnv *)`.  The original takes NOTHING â
+ * its call site at 0x10033BB0 pushes no arguments at all â because dt,
  * the ambient drift, the 32-byte record array and the list heads are
  * globals and the free is inlined against the free head.  Same
  * globals-struct-parameter blocker as its sibling BrPfxUpdateB4AC, whose
@@ -299,7 +280,7 @@ void BrPfxUpdateB0(void)
     }
 }
 
-/* Glide match for BrPfxUpdateB4AC - 0x100339C0
+/* Glide match for BrPfxUpdateB4AC â 0x100339C0
  *
  * Third member of the particle-step family, after 0x10033BB0 BrPfxTick
  * and 0x10033880 BrPfxUpdateB0.  The port body in src/core/slice2_21.c
@@ -428,7 +409,7 @@ void BrPfxUpdateB4AC(void)
     }
 }
 
-/* Glide match for BrPfxTick - 0x10033BB0
+/* Glide match for BrPfxTick â 0x10033BB0
  *
  * The port body lives in src/core/slice2_21.c (tagged 0x1003A530 d3d) and
  * carries the aggregate parameters `(pPool, pEnv, pFxEnv, pTick, pSeed)`
@@ -436,7 +417,7 @@ void BrPfxUpdateB4AC(void)
  * the two mode words, the driver count and the driver-slot table are
  * globals, and the three per-car helpers are __fastcall on the car
  * pointer alone (`mov ecx,[esi]` / `call`).  That parameter list is the
- * whole reason the port body could never converge - see the
+ * whole reason the port body could never converge â see the
  * port-safety/globals-struct class in docs/VC5-IDIOMS.md.
  *
  * Shape notes, read off the original:
@@ -525,4 +506,3 @@ void BrPfxSaveState(short *pOut)
     pOut[3] = (short)DAT_10ac0c44;
     memcpy(pOut + 4, g_aPfxRec, 8192);
 }
-#endif

@@ -7,19 +7,13 @@
  * Transcribed from orig/BRGlide.dll.  Every branch carries the address of the
  * instruction it is, so the two can be diffed.
  */
-#ifdef BR_MATCHING_BUILD
 /* Header takes the race-step body as an argument; the original is void and
  * pushes 0x10019A70 / 0x1002C500 as an immediate. */
 #define BrRaceEnterOutro BrRaceEnterOutro_port
-#endif
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "br_racebegin.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrRaceEnterOutro
-#endif
 
 #include <stddef.h>
 #include <string.h>
@@ -260,7 +254,6 @@ static BrDriverCar *car_at(int32_t i)
  * so what the shipped game gets out of them is the two calls between them. */
 /* @implements 0x10019890 glide BrRaceHudFrame */
 /* @n64 0x802003E4 located */
-#ifdef BR_MATCHING_BUILD
 /* Orig always calls 0x10008D60 with five args (add esp,0x14) even though
  * the callee is a bare ret; omitting the call is a port-only fold. */
 void BrExt_10008D60(int a, int b, int c, int d, int e);
@@ -276,24 +269,6 @@ void BrRaceHudFrame(void)
     BrExt_10032E40();
     BrExt_10008D60(0, 0, 0x82, 0, 0xFF);
 }
-#else
-void BrRaceHudFrame(void)
-{
-    if (g_brRacePaused != 0)                          /* 0x10019897 */
-        return;
-
-    /* 0x10019899: (0, 0x80, 0x80, 0xF0, 0xFF) */
-    trace();
-    if (OP(BR_RB_10019840, pfn10019840))              /* 0x100198B7 */
-        g_brRaceBeginOps.pfn10019840();
-    /* 0x100198BC: (0, 0, 0, 0xC0, 0xFF) */
-    trace();
-    if (OP(BR_RB_10032E40, pfn10032E40))              /* 0x100198D4 */
-        g_brRaceBeginOps.pfn10032E40();
-    /* 0x100198D9: (0, 0, 0x82, 0, 0xFF) */
-    trace();
-}
-#endif
 
 /* ==========================================================================
  * 0x10019900 -- into the outro
@@ -305,7 +280,6 @@ void BrRaceHudFrame(void)
  * the ending plays through the race machinery rather than beside it. */
 /* @implements 0x10019900 glide BrRaceEnterOutro */
 /* @n64 0x8020068C located */
-#ifdef BR_MATCHING_BUILD
 void BrRaceEnterOutro(void)
 {
     /* 0x10019900 / 0x1002C390: push 0x10019A70, then the two stores, then
@@ -314,18 +288,6 @@ void BrRaceEnterOutro(void)
     g_brRaceBeginStage = 2;
     BrGameStepSet(BrRaceStepFrame);
 }
-#else
-void BrRaceEnterOutro(void (*pfnRaceStep)(void))
-{
-    /* 0x10019900 pushes 0x10019A70 -- the race step itself -- BEFORE the two
-     * stores.  A host cannot name an original address, so the body goes in as
-     * an argument; the order of the two stores against the install is what is
-     * preserved, and nothing runs a frame between them. */
-    g_brRaceRules.mode  = 4;                          /* 0x10019905 */
-    g_brRaceBeginStage  = 2;                          /* 0x1001990F */
-    BrGameStepSet(pfnRaceStep);                       /* 0x10019919 */
-}
-#endif
 
 /* ==========================================================================
  * 0x10019930 / 0x10019980 -- the cue schedule
@@ -351,7 +313,6 @@ void BrRaceEnterOutro(void (*pfnRaceStep)(void))
  * Do not reopen before the end-grind (project rule 12). */
 /* @implements 0x10019930 glide BrRaceCueLayout */
 /* @n64 0x802006C8 located */
-#ifdef BR_MATCHING_BUILD
 void BrRaceCueLayout(void)
 {
     int32_t *p;
@@ -379,49 +340,10 @@ void BrRaceCueLayout(void)
         t += (len - three) + p[-3];
     } while (p[2] != 0);
 }
-#else
-void BrRaceCueLayout(void)
-{
-    int32_t t;
-    int     i;
-
-    if (g_brRaceCueArmed == 0)                        /* 0x1001993E */
-        return;
-
-    /* 0x10019936: the running position starts at 0x106E9A2C and is never
-     * stored back -- the global is read-only here. */
-    t = g_brRaceCueBase;
-
-    for (i = 0; i < BR_RACEBEGIN_CUE_MAX; ++i) {
-        int32_t len   = g_aBrRaceCue[i].len;          /* 0x10019946 */
-        int32_t three = (len * 3) / 4;                /* 0x1001994B..0x10019954:
-                                                       * `cdq / and edx,3 / add
-                                                       * / sar 2` is signed
-                                                       * division truncating
-                                                       * toward zero          */
-
-        t += three;                                   /* 0x10019957 */
-        g_aBrRaceCue[i].start = t;                    /* 0x10019959 */
-
-        /* 0x1001995C re-reads the SAME field it just used and recomputes the
-         * same quotient; the difference is what is left of the cue. */
-        t += (len - three) + g_aBrRaceCue[i].gap;     /* 0x1001996B..0x10019975 */
-
-        /* 0x10019972 `mov eax,[esi+8]` -- after the cursor has advanced, so
-         * the terminator read is the NEXT record's +0x0C, not this one's. */
-        if (i + 1 >= BR_RACEBEGIN_CUE_MAX)
-            break;                                    /* DEVIATION: the
-                                                       * original has no bound */
-        if (g_aBrRaceCue[i + 1].next == 0)            /* 0x10019977 */
-            break;
-    }
-}
-#endif
 
 /* WHAT IT DOES: moves every cue in the list one step earlier. */
 /* @implements 0x10019980 glide BrRaceCueRewind */
 /* @n64 0x8020072C located */
-#ifdef BR_MATCHING_BUILD
 void BrRaceCueRewind(void)
 {
     BrRaceCue *p;
@@ -434,23 +356,6 @@ void BrRaceCueRewind(void)
         p++;
     } while (p->next != 0);
 }
-#else
-void BrRaceCueRewind(void)
-{
-    int i;
-
-    if (g_brRaceCueArmed == 0)                        /* 0x10019987 */
-        return;
-
-    for (i = 0; i < BR_RACEBEGIN_CUE_MAX; ++i) {
-        g_aBrRaceCue[i].start -= 1;                   /* 0x1001998E..0x10019994 */
-        if (i + 1 >= BR_RACEBEGIN_CUE_MAX)
-            break;                                    /* DEVIATION, as above  */
-        if (g_aBrRaceCue[i + 1].next == 0)            /* 0x10019997 */
-            break;
-    }
-}
-#endif
 
 /* ==========================================================================
  * 0x100199A0 -- the outro controller
@@ -462,7 +367,6 @@ void BrRaceCueRewind(void)
  * so the car is steered by whatever is behind that, and this only keeps the
  * speed readout honest. */
 /* @implements 0x100199A0 glide BrRaceCarCtlOutro */
-#ifdef BR_MATCHING_BUILD
 extern float BrSqrtF(float x);                  /* 0x10002570 */
 extern void BR_THISCALL1 BrCarCtlChain_1006F170(BrDriverCar *pCar);
 
@@ -490,41 +394,6 @@ void BrRaceCarCtlOutro(BrDriverCar *pCar)
 
     BrCarCtlChain_1006F170(pCar);
 }
-#else
-void BrRaceCarCtlOutro(BrDriverCar *pCar)
-{
-    if (pCar == NULL)
-        return;
-
-    if (pCar->f730 != 0) {                            /* 0x100199AC */
-        /* 0x100199BC..0x100199E7.  The three components are loaded in the
-         * order +0x1EC, +0x1E8, +0x1F0 and the products are summed
-         * (y*y + x*x) + z*z -- st(2) first, then st(1).  Each product and
-         * each sum lives in an x87 register, which CONVENTIONS.md pins at
-         * 53-bit, so they are `double` exactly.
-         *
-         * 0x100199E7 `fstp dword ptr [esp]` SPILLS the sum to a 32-bit slot
-         * before the square root is called, so the port rounds there too --
-         * widening past that point would be the same bug pointing the other
-         * way. */
-        double x = (double)pCar->f1E8.y;   /* +0x1EC */
-        double y = (double)pCar->f1E8.x;   /* +0x1E8 */
-        double z = (double)pCar->f1E8.z;   /* +0x1F0 */
-        float  sum = (float)((y * y + x * x) + z * z);
-        float  len = 0.0f;
-
-        if (OP(BR_RB_SQRT, pfnSqrt))                  /* 0x100199EC */
-            len = g_brRaceBeginOps.pfnSqrt(sum);
-
-        /* 0x100199F1 multiplies in a register and 0x100199FA spills to
-         * car+0x1030, so the product rounds once, at the store. */
-        pCar->f1030 = (float)((double)len * BR_RACEBEGIN_MPS_TO_MPH);
-    }
-
-    if (OP(BR_RB_1006F170, pfn1006F170))              /* 0x10019A02 */
-        g_brRaceBeginOps.pfn1006F170(pCar);
-}
-#endif
 
 /* ==========================================================================
  * 0x10019A10 / 0x10019A40
@@ -534,8 +403,7 @@ void BrRaceCarCtlOutro(BrDriverCar *pCar)
  * other. */
 /* @implements 0x10019A10 glide BrRaceDriverReset */
 /* @n64 0x8021735C located */
-#ifdef BR_MATCHING_BUILD
-/* Orig is `mov edi, 0x10AF07F8` - the drivers ARE that address, not a
+/* Orig is `mov edi, 0x10AF07F8` â the drivers ARE that address, not a
  * pointer stored there.  Slot +0x00 is 1-arg thiscall. */
 extern BrDriver DAT_10af07f8[];
 void __fastcall FUN_1005f530(BrDriver *pThis);
@@ -556,26 +424,12 @@ void BrRaceDriverReset(void)
         p++;
     } while (i < g_brRaceNDriver);
 }
-#else
-void BrRaceDriverReset(void)
-{
-    int32_t i;
-
-    for (i = 0; i < g_brRaceNDriver; ++i) {           /* 0x10019A18/0x10019A35 */
-        if (g_pBrRaceDriver == NULL)
-            break;
-        if (OP(BR_RB_1005F530, pfn1005F530))          /* 0x10019A24 */
-            g_brRaceBeginOps.pfn1005F530(&g_pBrRaceDriver[i]);
-    }
-}
-#endif
 
 /* WHAT IT DOES: restarts the frame clock. It throws away the running total of
  * elapsed time -- by setting the frame counter so that the very next frame
  * finds it at zero and clears the total rather than adding to it -- and turns
  * the frame limiter back on. */
 /* @implements 0x10019A40 glide BrRaceClockReset */
-#ifdef BR_MATCHING_BUILD
 /* Direct calls: thiscall 0x1006E3F0 on the object at 0x105BC858, and the
  * closing 0x1006E360 in tail position (VC5 emits it as a plain jmp). */
 extern int DAT_105bc858;
@@ -592,24 +446,6 @@ void BrRaceClockReset(void)
 
     FUN_1006e360();                                   /* 0x10019A5E, tail jmp */
 }
-#else
-void BrRaceClockReset(void)
-{
-    if (OP(BR_RB_1006E3F0, pfn1006E3F0))              /* 0x10019A45 */
-        g_brRaceBeginOps.pfn1006E3F0();
-
-    /* 0x10019A4A.  -1, not 0: the clock's own `inc` then `je` is what turns
-     * this into "clear the accumulator on the NEXT frame". */
-    g_brRaceClockCount   = -1;
-    g_brRaceBeginLimitOn = 1;                         /* 0x10019A54 */
-
-    if (OP(BR_RB_1006E360, pfn1006E360))              /* 0x10019A5E, a tail
-                                                       * call, so it is the
-                                                       * last thing that
-                                                       * happens either way   */
-        g_brRaceBeginOps.pfn1006E360();
-}
-#endif
 
 /* ==========================================================================
  * 0x10019A70..0x10019AF8 -- the frame clock and the substate branch

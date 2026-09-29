@@ -4,28 +4,18 @@
  * matched first and grouped by what they are afterwards.
  * Every function carries its original address.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import
  * table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdint.h>
 
 #include <stdlib.h>
 
-#ifdef BR_MATCHING_BUILD
 #include <windows.h>
-#endif
 
-#ifdef _MSC_VER
 typedef int (__stdcall *BrEarShutdownChannelFn)(int);
 typedef int (__stdcall *BrCdVolumeSetFn)(int, int);
-#else
-typedef int (*BrEarShutdownChannelFn)(int);
-typedef int (*BrCdVolumeSetFn)(int, int);
-#endif
 
-#ifdef BR_MATCHING_BUILD
 extern int g_0940A4;
 extern int g_220CD0;
 extern int g_220C3C;
@@ -37,16 +27,6 @@ extern BrCdVolumeSetFn g_575454;
 __declspec(dllimport) unsigned long __stdcall mciSendCommandA(
     unsigned long id, unsigned long msg,
     unsigned long flags, unsigned long param);
-#else
-int g_0940A4;
-int g_220CD0;
-int g_220C3C;
-int g_220C40;
-int g_220CD8;
-int g_0940A8;
-BrEarShutdownChannelFn g_575470;
-BrCdVolumeSetFn g_575454;
-#endif
 
 /* WHAT IT DOES: closes the EAR music channel if one is actually running. */
 /* @implements 0x10002440 d3d BrCdMaybeClose */
@@ -57,12 +37,7 @@ int BrCdMaybeClose(void)
             if (g_220C3C != 0) {
                 int h = g_0940A8;
                 g_220C3C = 0;
-#ifdef BR_MATCHING_BUILD
                 return g_575470(h);
-#else
-                (void)h;
-                return 1;
-#endif
             }
         }
     }
@@ -88,18 +63,13 @@ int BrCdVolumeScale(int vol)
     if (g_0940A4 != 0) {
         if (g_220CD0 != 0) {
             if (g_220C3C != 0) {
-#ifdef BR_MATCHING_BUILD
                 g_575454(g_0940A8, (10000 * (vol & 0xFF)) / 255);
-#else
-                (void)vol;
-#endif
             }
         }
     }
     return 1;
 }
 
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: pauses CD soundtrack if disc music is in use. */
 /* @implements 0x10002AE0 d3d BrCdMciPause */
 int BrCdMciPause(void)
@@ -118,7 +88,6 @@ int BrCdMciPause(void)
     }
     return 1;
 }
-#endif
 
 /* ==========================================================================
  * The CD track query
@@ -150,8 +119,7 @@ int BrCdTrackGetEar(void)
     return 0;
 }
 
-/* ── Ghidra-matched functions ─────────────────────────── */
-#ifdef BR_MATCHING_BUILD
+/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
 extern int DAT_1021c778;
 int BrSub10075020();
 int BrWindowEarStartup();
@@ -187,7 +155,7 @@ int BrCdTrackPrev(void)
   return 1;
 }
 
-/* WHAT IT DOES: get the current track number - EAR path when CD audio is enabled, real CD otherwise. */
+/* WHAT IT DOES: get the current track number â EAR path when CD audio is enabled, real CD otherwise. */
 /* @implements 0x10002C50 glide BrCdTrackGet */
 
 int BrCdTrackGet(void)
@@ -202,7 +170,7 @@ int BrCdTrackGet(void)
 }
 
 
-/* WHAT IT DOES: set music volume - dispatches to EAR mixer or CD-audio path. */
+/* WHAT IT DOES: set music volume â dispatches to EAR mixer or CD-audio path. */
 /* @implements 0x10002D30 glide BrCdVolumeSet */
 
 int BrCdVolumeSet(int param_1)
@@ -231,7 +199,7 @@ int BrCdTrackResume(void)
   return 1;
 }
 
-/* ‼ MAP DEFECT, and it is what blocks these two.  config/functions_glide.csv
+/* â¼ MAP DEFECT, and it is what blocks these two.  config/functions_glide.csv
  * lists 0x10002EB0 and 0x10002F10 as 86 bytes each.  They are not: each is a
  * 14-byte DISPATCHER followed by 16-byte alignment padding and then a
  * SEPARATE function that only the dispatcher reaches, by tail jump.
@@ -253,7 +221,7 @@ int BrCdTrackResume(void)
  * The dispatcher's 32 bytes INCLUDE the 13 alignment nops, which MSVC emits
  * inside the first function, not the second.
  *
- * ‼ THE TELL, and it generalises.  Written inline instead -- one function
+ * â¼ THE TELL, and it generalises.  Written inline instead -- one function
  * containing both arms -- VC5 hoists the `g_brCdEnabled` load into a
  * register and turns the original's `cmp dword ptr [g],1` into
  * `mov eax,[g] / cmp eax,1`, then re-uses eax for the second test where the
@@ -316,7 +284,6 @@ int BrCdResume(void)
   return BrCdResumeMsg();
 }
 
-#ifdef BR_MATCHING_BUILD
 /* The third member of the same map defect.  config/functions_glide.csv
  * carried 0x10002F70 as ONE 180-byte row; it is the same dispatcher shape as
  * pause/resume above -- 14 bytes + 18 alignment nops (32), then the
@@ -481,7 +448,6 @@ int BrCdStopRelease(void)
   }
   return BrCdStopReleaseMsg();
 }
-#endif /* BR_MATCHING_BUILD */
 
 /* WHAT IT DOES: play the next CD track, clamping to the last track. */
 /* @implements 0x10002CB0 glide BrCdTrackNext */
@@ -593,9 +559,7 @@ int BrCdEnableApply(char param_1)
 }
 
 
-#ifdef BR_MATCHING_BUILD
 #include <windows.h>
-#endif
 extern int DAT_1021c77c;
 extern int g_220C40;
 extern int g_220CD8;
@@ -883,4 +847,3 @@ int BrCdEarChannelOpen(void)
     return 1;
 }
 
-#endif /* BR_MATCHING_BUILD */

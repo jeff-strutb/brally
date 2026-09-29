@@ -1,0 +1,12 @@
+# Port deviations for src/core/gamedata/br_obj87.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop proto:operator_delete
+@drop proto:BrObj87Dtor
+@drop fn:BrObj87A0DeleteDtor
+@drop var:BrObj87Vtbl
+@drop proto:BrPodIdentity
+@drop proto:BrSub10008D60
+@drop fn:BrObj87Ctor
+@drop fn:BrObj87Dtor

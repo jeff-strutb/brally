@@ -16,9 +16,7 @@
  * on the BASE ctl: +0x10 hook (cdecl, one pushed arg), +0x1C flag word
  * (`and al,0xFD`, full dword store).  No EH (no new).
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class BrBox85 {
 public:

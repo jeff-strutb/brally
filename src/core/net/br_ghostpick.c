@@ -5,7 +5,6 @@
  * the newest snapshot has aged), fold the along-track delta into the result,
  * then renormalise the car's orientation quaternion and wrap its angles.
  */
-#ifdef BR_MATCHING_BUILD
 #include <windows.h>
 
 int   BrTicks30FromMs(void);
@@ -207,4 +206,3 @@ LAB_done:
   return 1;
 }
 
-#endif /* BR_MATCHING_BUILD */

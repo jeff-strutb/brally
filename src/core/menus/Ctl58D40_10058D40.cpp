@@ -9,9 +9,7 @@
  * Ctor and dtor DECLARED (unwind is operator delete of the in-flight new,
  * not the list teardown).
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Node {
 public:

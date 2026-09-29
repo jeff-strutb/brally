@@ -22,7 +22,7 @@
  *  - the byte-position fix-up loop re-reads the count from the GLOBAL, not
  *    from the local that was just stored to it.
  *
- * ‼ BOTH PARKED 2026-09-05 -- instruction-identical, register-blind
+ * â¼ BOTH PARKED 2026-09-05 -- instruction-identical, register-blind
  * multiset 0, one-file sweep tried all four flag sets (O2 is the best).
  *
  * 0x1003B6D0 RallySeason: 11 diff bytes = ONE FRAME SLOT.  The original's
@@ -53,7 +53,6 @@
  *   guard, /Op, /Oy-.  Statement order is the port body's and matches the
  *   original's store order exactly.
  */
-#ifdef BR_MATCHING_BUILD
 
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
@@ -348,4 +347,3 @@ void BrSaveResumeAutoSave(void)
     }
 }
 
-#endif /* BR_MATCHING_BUILD */

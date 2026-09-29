@@ -22,9 +22,7 @@
  * `a1`/`a3`) into ecx. The port body's temp, added to "preserve" the
  * observed order, is exactly what breaks the match here.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Sub2AE8_400E0 {
 public:

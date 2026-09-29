@@ -1,0 +1,28 @@
+# Port deviations for src/core/net/br_peerslot.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop var:dwMilliseconds
+@drop var:hMutex
+@drop type:Br71Peer
+@drop type:x96C
+@drop type:x2C
+@drop var:g_aBrPeer71
+@drop fn:BrSub100714D0
+@drop var:dwMilliseconds#2
+@drop var:hMutex#2
+@drop type:Br71510Rec
+@drop type:xA02C
+@drop var:g_aBr178FEF8
+@drop fn:BrSub10071510
+@drop var:dwMilliseconds#3
+@drop var:dwExitCode
+@drop var:DAT_11849e60
+@drop type:BrNetSendBs
+@drop type:x214
+@drop var:g_aBrNetSendBs
+@drop proto:BrCountedTotal
+@drop proto:BrStateGetField10
+@drop proto:BrSub10003580
+@drop proto:BrDPlayRawSend
+@drop fn:BrNetPeerSendPass

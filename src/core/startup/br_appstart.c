@@ -10,7 +10,6 @@
  * 0x10007F40 <- D3D 0x10007BD0.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
 /* The port's BrChkFReadLine takes the FILE* itself; the original takes the
@@ -19,7 +18,6 @@
  * renamed out of the way, and the byte-exact form at the end of the file
  * takes the real name (the #undef is there). */
 #define BrChkFReadLine BrChkFReadLine_port
-#endif
 #include "br_appstart.h"
 
 #include <stdlib.h>
@@ -135,57 +133,6 @@ void BrAppStartSetHost(const BrAppStartHost *pHost)
  * brings that copy's window to the front instead of starting a second one.
  * Whether it restores the window depends on whether the other copy owns the
  * foreground and whether it is minimised. */
-#ifndef BR_MATCHING_BUILD
-int32_t BrAppCheckPreviousApp(void)
-{
-    const BrAppStartHost *pH = g_pBrAppStartHost;
-    void    *hWnd;
-    uint32_t idForeground;
-    uint32_t idOther;
-
-    hWnd = (pH->pfnFindWindow != NULL)
-         ? pH->pfnFindWindow(BR_APP_WNDCLASS, BR_APP_WNDTITLE)
-         : NULL;
-
-    if (hWnd == NULL) {
-        return 1;                       /* 0x10007EFA: mov eax,1 / ret */
-    }
-
-    idForeground = (pH->pfnGetWindowThreadProcessId != NULL &&
-                    pH->pfnGetForegroundWindow != NULL)
-                 ? pH->pfnGetWindowThreadProcessId(pH->pfnGetForegroundWindow(),
-                                                   NULL)
-                 : 0u;
-    idOther      = (pH->pfnGetWindowThreadProcessId != NULL)
-                 ? pH->pfnGetWindowThreadProcessId(hWnd, NULL)
-                 : 0u;
-
-    if (idOther != idForeground ||
-        (pH->pfnIsIconic != NULL && pH->pfnIsIconic(hWnd) != 0)) {
-
-        if (pH->pfnGetLastActivePopup != NULL) {
-            hWnd = pH->pfnGetLastActivePopup(hWnd);   /* 0x10007EC9: esi rebound */
-        }
-        if (pH->pfnIsIconic != NULL && pH->pfnIsIconic(hWnd) != 0) {
-            if (pH->pfnShowWindow != NULL) {
-                pH->pfnShowWindow(hWnd, BR_APP_SW_RESTORE);
-            }
-        }
-        if (pH->pfnBringWindowToTop != NULL) {
-            pH->pfnBringWindowToTop(hWnd);
-        }
-        if (pH->pfnSetForegroundWindow != NULL) {
-            pH->pfnSetForegroundWindow(hWnd);
-        }
-    }
-
-    /* 0x10007EE9 -- reached from BOTH arms. */
-    if (pH->pfnOutputDebugString != NULL) {
-        pH->pfnOutputDebugString(BR_APP_PREVAPP_MSG);
-    }
-    return 0;                           /* 0x10007EF5: xor eax,eax */
-}
-#endif /* !BR_MATCHING_BUILD -- matching twin in the windows.h block below */
 
 /* ==========================================================================
  * 0x10007F10 -- the machine probe.  See br_appstart.h for the ESP trace that
@@ -650,8 +597,7 @@ void BrAppCfgResetForTest(void)
     BrSndG0B5DE8           = 1;
 }
 
-/* ── Ghidra-matched functions ─────────────────────────── */
-#ifdef BR_MATCHING_BUILD
+/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
 #include <windows.h>
 extern int DAT_10226e78;
 
@@ -775,4 +721,3 @@ char *BrChkFReadLine(char *pszDst, int cbMax, struct BrChkHandle *pChk)
     return pszDst;
 }
 
-#endif /* BR_MATCHING_BUILD */

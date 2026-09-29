@@ -11,7 +11,6 @@
 
 #include <string.h>
 
-#ifdef BR_MATCHING_BUILD
 /* slice3_42.h declares this cdecl; the original is thiscall with one stack
  * argument.  Hide the prototype so the matching body can carry the
  * __fastcall shape with a struct-typed second argument (never
@@ -19,9 +18,7 @@
 #define BrCtrlCfgLoadDefaults BrCtrlCfgLoadDefaults_cdecl
 #define BrFn10069BC0          BrFn10069BC0_cdecl
 #define BrFn10069C30          BrFn10069C30_cdecl
-#endif
 #include "slice3_42.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrCtrlCfgLoadDefaults
 #undef BrFn10069BC0
 #undef BrFn10069C30
@@ -32,7 +29,6 @@ typedef struct { int32_t v; } BrCtrlProfileArg;
  * for `this` and puts the pair on the stack, which is thiscall exactly. */
 typedef struct { int32_t v; } BrCtrlKindArg;
 typedef struct { uint32_t v; } BrCtrlKeyArg;
-#endif
 
 /* =====================================================================
  * .rdata constants, read out of orig/BRD3D.dll rather than assumed.

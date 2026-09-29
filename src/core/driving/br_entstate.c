@@ -12,7 +12,6 @@
 #include <string.h>
 
 #include "br_match.h"
-#ifdef BR_MATCHING_BUILD
 /* The entity setters are thiscall with three stack floats; hide the
  * port's cdecl prototypes so the twins can carry the fastcall shape. */
 #define BrEntSetMatrix      BrEntSetMatrix_port
@@ -24,10 +23,6 @@
 #undef BrEntSetVel
 #undef BrEntSetAngVel
 #undef BrEntSetOrientation
-#else
-#include <math.h>
-#include "slice3_45.h"
-#endif
 
 /* ====================================================================== */
 /* Constants read out of orig/BRD3D.dll .rdata (do not re-derive)          */
@@ -68,7 +63,6 @@ static void BrEntMirrorQuat(BrEnt *pE)
  * quaternion mirror is written out here rather than calling
  * BrEntMirrorQuat: VC5 does not inline the static helper, and the original
  * has the eight dword copies in line. */
-#ifdef BR_MATCHING_BUILD
 void __fastcall BrEntSetMatrix(BrEnt *pE, int _edx_unused, const BrMat4 *pSrc)
 {
     (void)_edx_unused;
@@ -90,18 +84,6 @@ void __fastcall BrEntSetMatrix(BrEnt *pE, int _edx_unused, const BrMat4 *pSrc)
 
     BrRbBuildMatrix(&pE->matrix, &pE->st);
 }
-#else
-void BrEntSetMatrix(BrEnt *pE, const BrMat4 *pSrc)
-{
-    /* `rep movsd` of 16 dwords. */
-    memcpy(&pE->mat0, pSrc, sizeof(BrMat4));
-
-    BrSub100765E0(pSrc, &pE->st.quat);
-    BrEntMirrorQuat(pE);
-
-    BrRbBuildMatrix(&pE->matrix, &pE->st);
-}
-#endif
 
 /* 0x100767A0 */
 /* WHAT IT DOES: tells an object how fast and in which direction it is
@@ -109,7 +91,6 @@ void BrEntSetMatrix(BrEnt *pE, const BrMat4 *pSrc)
  * they agree. Nothing else about the object is disturbed. */
 /* @implements 0x100767A0 d3d BrEntSetVel */
 /* @n64 0x802201C8 located */
-#ifdef BR_MATCHING_BUILD
 void __fastcall BrEntSetVel(BrEnt *pE, int _edx_unused, float x, float y,
                             float z)
 {
@@ -131,26 +112,6 @@ void __fastcall BrEntSetVel(BrEnt *pE, int _edx_unused, float x, float y,
     pE->f1024[1] = y;
     pE->f1024[2] = z;
 }
-#else
-void BrEntSetVel(BrEnt *pE, float x, float y, float z)
-{
-    pE->st.vel.x = x;
-    pE->st.vel.y = y;
-    pE->st.vel.z = z;
-
-    pE->stB.vel.x = x;
-    pE->stB.vel.y = y;
-    pE->stB.vel.z = z;
-
-    pE->stA.vel.x = x;
-    pE->stA.vel.y = y;
-    pE->stA.vel.z = z;
-
-    pE->f1024[0] = x;
-    pE->f1024[1] = y;
-    pE->f1024[2] = z;
-}
-#endif
 
 /* 0x10076820 */
 /* WHAT IT DOES: turns an object by three angles about its three axes. It
@@ -158,7 +119,6 @@ void BrEntSetVel(BrEnt *pE, float x, float y, float z)
  * replacing it, and unlike the other setters here it leaves the object's
  * drawing transform stale until something else rebuilds it. */
 /* @implements 0x10076820 d3d BrEntSetOrientation */
-#ifdef BR_MATCHING_BUILD
 /* thiscall + three stack floats; sin/cos are the float-arg tree wrappers
  * (sin FIRST per axis), quat built fresh each axis with immediate zeros. */
 extern float BrSinF(float a);      /* glide 0x10002560 */
@@ -212,49 +172,12 @@ void __fastcall BrEntSetOrientation(BrEnt *pE, int _edx_unused,
     pE->stA.quat.f08 = pE->st.quat.f08;
     pE->stA.quat.f0C = pE->st.quat.f0C;
 }
-#else
-/* The port twin of 0x10076820; the tag above the #ifdef covers both arms. */
-void BrEntSetOrientation(BrEnt *pE, float a1, float a2, float a3)
-{
-    /* All three half-angles are formed up front, before any call. */
-    float h1 = a1 * kBrHalf;
-    float h2 = a2 * kBrHalf;
-    float h3 = a3 * kBrHalf;
-    BrVec4 q;
-
-    /* Z: (cos, 0, 0, sin) */
-    q.f0C = sinf(h1);
-    q.f00 = cosf(h1);
-    q.f04 = 0.0f;
-    q.f08 = 0.0f;
-    BrSub10074090(&pE->st.quat, &pE->st.quat, &q);
-
-    /* Y: (cos, 0, sin, 0) */
-    q.f08 = sinf(h2);
-    q.f00 = cosf(h2);
-    q.f04 = 0.0f;
-    q.f0C = 0.0f;
-    BrSub10074090(&pE->st.quat, &pE->st.quat, &q);
-
-    /* X: (cos, sin, 0, 0) */
-    q.f04 = sinf(h3);
-    q.f00 = cosf(h3);
-    q.f08 = 0.0f;
-    q.f0C = 0.0f;
-    BrSub10074090(&pE->st.quat, &pE->st.quat, &q);
-
-    BrVec4Normalise(&pE->st.quat);
-    BrEntMirrorQuat(pE);
-    /* No BrRbBuildMatrix here -- see the header. */
-}
-#endif
 
 /* 0x100769A0 */
 /* WHAT IT DOES: tells an object how fast it is spinning, writing it into all
  * three places the game keeps that figure so they agree. */
 /* @implements 0x100769A0 d3d BrEntSetAngVel */
 /* @n64 0x80220358 located */
-#ifdef BR_MATCHING_BUILD
 void __fastcall BrEntSetAngVel(BrEnt *pE, int _edx_unused, float x, float y,
                                float z)
 {
@@ -272,19 +195,3 @@ void __fastcall BrEntSetAngVel(BrEnt *pE, int _edx_unused, float x, float y,
     pE->stA.angVel.y = y;
     pE->stA.angVel.z = z;
 }
-#else
-void BrEntSetAngVel(BrEnt *pE, float x, float y, float z)
-{
-    pE->st.angVel.x = x;
-    pE->st.angVel.y = y;
-    pE->st.angVel.z = z;
-
-    pE->stB.angVel.x = x;
-    pE->stB.angVel.y = y;
-    pE->stB.angVel.z = z;
-
-    pE->stA.angVel.x = x;
-    pE->stA.angVel.y = y;
-    pE->stA.angVel.z = z;
-}
-#endif

@@ -11,9 +11,7 @@
  * `mov ebp,esi; and ebp,0x3f` (copy then and); a stored `kind = a8 &
  * 0x3F` ands esi in place (5 diffs).
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Pkt {
     char b[0x214];

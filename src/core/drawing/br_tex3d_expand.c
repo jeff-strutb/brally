@@ -1,4 +1,4 @@
-/* 0x100250D0 BrTex3dExpand - fresh hand transcription from the disassembly
+/* 0x100250D0 BrTex3dExpand â fresh hand transcription from the disassembly
  * (2026-09-16). Authored block-by-block off build/match/orig/0x100250D0.bin;
  * arithmetic expressions carried verbatim from the verified decomp, control
  * flow rewritten by hand, no permuter codegen tuning. Behavioural equivalence
@@ -39,7 +39,6 @@
  * @t4-pass 0x100250D0 1 2026-09-16 probes 11 bytes 8211 insns 2412 regions 72 rows 73 census no
  * @t4-pass 0x100250D0 2 2026-09-16 probes 11 bytes 8211 insns 2412 regions 72 rows 73 census yes
  */
-#ifdef BR_MATCHING_BUILD
 
 #define _CRTIMP __declspec(dllimport)
 #include <windows.h>
@@ -1038,4 +1037,3 @@ void BrTex3dExpand(unsigned short *param_1, int param_2, int param_3, unsigned c
     }
 }
 
-#endif /* BR_MATCHING_BUILD */

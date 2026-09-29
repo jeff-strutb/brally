@@ -21,35 +21,24 @@
  * are done on the SIGN-EXTENDED byte.  Both are reproduced literally.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <string.h>
 
 #include "slice1_07.h"   /* BrDevSlot -- see the note in slice3_39.h */
-#ifdef BR_MATCHING_BUILD
 /* Header prototype is cdecl; matching needs thiscall.  Rename the cdecl
  * declaration so the definition below can wear a different convention. */
 #define BrTextBoxDeleteDtor BrTextBoxDeleteDtor_cdecl
 #define BrTextBoxMeasureA  BrTextBoxMeasureA_cdecl
 #define BrTextBoxMeasureB  BrTextBoxMeasureB_cdecl
-#endif
-#ifdef BR_MATCHING_BUILD
 #define BrTextBoxInit BrTextBoxInit_port
 #include "slice3_39.h"
 #undef BrTextBoxInit
-#else
-#include "slice3_39.h"
-#endif
-#ifdef BR_MATCHING_BUILD
 #undef BrTextBoxDeleteDtor
 #undef BrTextBoxMeasureA
 #undef BrTextBoxMeasureB
-#endif
 
-/* ── Ghidra-matched functions ─────────────────────────── */
-#ifdef BR_MATCHING_BUILD
+/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
 int operator_delete();
 int __fastcall BrObj54710Dtor(void *pThis);
 /* Lives in src/core/menus/br_textbox.c; BrObj54710Dtor still takes its
@@ -99,7 +88,6 @@ int __stdcall BrRet0Std3_10054600(int _pad_0,int _pad_1,int _pad_2)
   return 0;
 }
 
-#endif /* BR_MATCHING_BUILD */
 
 /* =====================================================================
  * 0x1005C200 -- store an opaque blob against an item slot
@@ -146,7 +134,6 @@ int32_t BR_THISCALL1 BrTextListSetBlob(BrTextList *pList, BrBlobSrcArg pSrc,
     return 1;
 }
 
-#ifdef BR_MATCHING_BUILD
 /* 0x100AAD08: the UI sprite table, 24-byte entries (see include/br_uispr.h).
  * +0x00 is read as a WORD and pushed as-is, so the callee's third parameter
  * is declared short here; +0x04 is the source rect, +0x14 the blit flag. */
@@ -167,4 +154,3 @@ int __stdcall BrUiSprDrawAt(unsigned short iSpr, float x, float y)
                 *(int *)(g_aBrUiSprite + off + 0x14u));
   return 1;
 }
-#endif /* BR_MATCHING_BUILD */

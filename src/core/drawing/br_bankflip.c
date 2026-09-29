@@ -10,18 +10,12 @@
  * /O2 register choice, so it is kept whole); its state block g_s17 is
  * declared in slice2_17.h and defined there.
  */
-#ifdef BR_MATCHING_BUILD
 /* slice2_17.h prototypes a list pointer the original never takes. */
 #define BrPtrListContains BrPtrListContains_port
-#endif
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice2_17.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrPtrListContains
-#endif
 
 #include <math.h>
 #include <stdio.h>
@@ -61,11 +55,7 @@ extern int   BrX10060E90(void);
  * at the call site (arg1 in ecx, no stack cleanup), so that is what the
  * matching build uses. Off MSVC the qualifier vanishes and it is an ordinary
  * one-argument function. */
-#if defined(_MSC_VER)
 #define BRS17_THISCALL __fastcall
-#else
-#define BRS17_THISCALL
-#endif
 extern void BRS17_THISCALL BrX100751D0(void *pThis);
 /* XSLICE 0x1002C2C0 */
 extern void  BrX1002C2C0(void);
@@ -157,7 +147,6 @@ static void s17_stf(unsigned char *p, float v)
  * the bank index, timestamps the new bank, then clears its buffer in 0x800-byte
  * steps. */
 /* @implements 0x1002C210 d3d BrS17BankFlip */
-#ifdef BR_MATCHING_BUILD
 /* Literal layout: the header triple and the byte banks are FIXED arrays at
  * 0x105B9700 / 0x105B972C, not pointers loaded from the struct; the clear
  * loop stores an immediate 0 every 0x800 bytes, counting down. */
@@ -193,30 +182,3 @@ void BrS17BankFlip(void)
         buf += 0x800;
     }
 }
-#else
-void BrS17BankFlip(void)
-{
-    int i;
-    int bank;
-    uint32_t *hdr;
-    unsigned char *buf;
-
-    for (i = 0; i < 3; ++i)
-        BrStub10008B80(i, 0xFF, 0, 0xFF, 0x7F);
-
-    g_s17.bank ^= 1;
-    g_s17.bank578 = BrX10060E90();
-    g_s17.bank57C = 0;
-
-    bank = g_s17.bank;
-    hdr = g_s17.pBankHdr + (size_t)bank * 3;      /* lea [ecx*4 + base], ecx=3n */
-    buf = g_s17.pBankBuf + (size_t)bank * 3 * 0x800;
-
-    hdr[0] = 0;
-    hdr[1] = 0;
-    hdr[2] = 0;
-
-    for (i = 0; i < 3; ++i)
-        s17_st32(buf + (size_t)i * 0x800, 0);
-}
-#endif

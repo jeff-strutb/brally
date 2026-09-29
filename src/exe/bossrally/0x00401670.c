@@ -1,5 +1,4 @@
 /* 0x00401670 OpenMediaFile: graph + MultiByteToWideChar + RenderFile */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: open a media file and get the graph ready to play it. */
 /* @implements 0x00401670 bossrally.exe OpenMediaFile */
 
@@ -36,4 +35,3 @@ int OpenMediaFile(const char *path)
     return hr >= 0;
 }
 
-#endif

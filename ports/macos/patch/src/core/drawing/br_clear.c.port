@@ -1,0 +1,8 @@
+# Port deviations for src/core/drawing/br_clear.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop var:DAT_104ab4f0
+@drop var:DAT_104ab504
+@drop fn:BrClearFlag_AB504
+@drop fn:BrGetFlag_AB4F0

@@ -4,11 +4,9 @@
  * matched first and grouped by what they are afterwards.
  * Every function carries its original address.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import
  * table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdint.h>
 #include <string.h>
 
@@ -46,7 +44,6 @@ static void *BrPtrAt(const void *pv)
     return BrLoadResolve(BrRd32(pv));
 }
 
-#ifdef BR_MATCHING_BUILD
 
 extern void BrSegPtrFixup(uint32_t *p);
 int BrTrackFixupSegRec();
@@ -336,7 +333,6 @@ void BrTrackSurfaceSet(int param_1)
   }
 }
 
-#endif /* BR_MATCHING_BUILD */
 
 /* ==========================================================================
  * Filed out of slice2_20.c.  These four sit either side of the block above
@@ -348,18 +344,15 @@ void BrTrackSurfaceSet(int param_1)
  * the loaded track image and into the places the texture records point at,
  * for those records that ask for it. Records that fail any of half a dozen
  * checks are quietly skipped. */
-#ifdef BR_MATCHING_BUILD
 /* The two globals the original reads here (g_BrLoad gathers them for the
  * port, see slice2_20.h): the texture/TLUT byte base and the parallel flag
  * array.  Named separately so each relocation resolves to its own variable
  * (config/globals_glide.csv). */
 extern uint8_t *g_brLoadTexBase;    /* 0x106B7C7C */
 extern uint8_t *g_brLoadTexFlags;   /* 0x106EECF4 */
-#endif
 /* @implements 0x10038450 d3d BrTexCopyRecords */
 void BrTexCopyRecords(void *pvTable, int cRecords)
 {
-#ifdef BR_MATCHING_BUILD
     /* orig: ebx=-8; lea eax,[table+8]; sub ebx,table; ebp=n; then
      * [eax+0x18] flags and [pTexFlags+ebx+eax+0x20] for the parallel
      * array. ebx stays loop-invariant. */
@@ -425,78 +418,6 @@ void BrTexCopyRecords(void *pvTable, int cRecords)
     next:
         pWalk += 0x24;
     } while (--n);
-#else
-    uint8_t *pTable = (uint8_t *)pvTable;
-    int i;
-
-    if (cRecords <= 0)
-        return;
-
-    for (i = 0; i < cRecords; ++i) {
-        uint8_t *pRec = pTable + (size_t)i * 0x24;
-        uint8_t *pDst;
-        uint8_t *pDesc;
-        uint8_t *pSrc;
-        uint32_t uFlags;
-        uint32_t cb;
-
-        pDst = (uint8_t *)BrPtrAt(pRec + 0x00);
-        if (pDst == NULL)
-            continue;
-
-        uFlags = BrRd32(pRec + 0x20);
-        if ((uFlags & 0x00100000u) == 0)
-            continue;
-
-        pDesc = (uint8_t *)BrPtrAt(pRec + 0x08);
-        if (pDesc == NULL)
-            continue;
-        if (BrRd16(pDesc + 0x02) != 2)
-            continue;
-        if ((int32_t)BrRd32(pDesc + 0x08) != -1)
-            continue;
-
-        cb = uFlags & 0x0003FFFFu;
-        if (cb == 0)
-            continue;
-
-        /* DEVIATION: the sources are byte offsets into the texture image and
-         * the original adds them to a raw global base with no check.  The
-         * port refuses a copy that would run past the declared image. */
-        pSrc = g_BrLoad.pTexBase;
-        if (pSrc == NULL)
-            continue;
-        {
-            uint32_t off = BrRd32(pDesc + 0x0C);
-            if ((size_t)off > g_BrLoad.cbTexBase
-             || (size_t)cb  > g_BrLoad.cbTexBase - off)
-                continue;
-            memcpy(pDst, pSrc + off, cb);
-        }
-
-        pDst = (uint8_t *)BrPtrAt(pRec + 0x04);
-        if (pDst == NULL)
-            continue;
-
-        {
-            uint32_t uSel;
-            uint32_t cbPal;
-            uint32_t off = BrRd32(pDesc + 0x10);
-
-            if (g_BrLoad.pTexFlags == NULL)
-                continue;
-            /* Parallel array, same index and stride, field +0x20. */
-            uSel = BrRd32(g_BrLoad.pTexFlags + (size_t)i * 0x24 + 0x20);
-            uSel &= 0x0F000000u;
-            cbPal = (uSel == 0x01000000u) ? 0x20u : 0x200u;
-
-            if ((size_t)off > g_BrLoad.cbTexBase
-             || (size_t)cbPal > g_BrLoad.cbTexBase - off)
-                continue;
-            memcpy(pDst, g_BrLoad.pTexBase + off, cbPal);
-        }
-    }
-#endif
 }
 
 /* WHAT IT DOES: clears a block of state, plants an 8 in its first slot, and
@@ -509,7 +430,6 @@ void BrInit220B20(void)
     BrSub10035BD1();
 }
 
-#ifdef BR_MATCHING_BUILD
 
 /* WHAT IT DOES: work out how many slots the track header's lookup table
  * actually needs. It scans the u16 index array at +0x20 for the largest index
@@ -651,9 +571,7 @@ void BrGlTrackFixupAll(int param_1)
   return;
 }
 
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 
 /* 0x100311C0 BrTrackLoad and what it needs.  _CRTIMP is already the
  * dllimport form above. */
@@ -793,9 +711,7 @@ void BrTrackLoad(int param_1)
   FUN_1005a780();
   FUN_10069530(param_1);
 }
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 void FUN_10031030(char *pszPath);     /* 0x10031030, br_texlevels.c */
 extern char DAT_100aa338[];            /* ".hnt" */
 extern char DAT_100aa340[];            /* "%s%s" */
@@ -816,4 +732,3 @@ void BrTrackLoadHandling(int iTrack)
   strcpy(strrchr(szPath, '.'), DAT_100aa338);
   FUN_10031030(szPath);
 }
-#endif /* BR_MATCHING_BUILD */

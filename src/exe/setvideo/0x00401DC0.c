@@ -1,5 +1,4 @@
 /* DlgProcRadio: method picker. Last command case 0x3EA falls through. */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: handle a dialog whose choices are radio buttons, tracking
  * which one is selected. */
 /* @implements 0x00401DC0 setvideo.exe DlgProcRadio */
@@ -59,4 +58,3 @@ int __stdcall DlgProcRadio(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 }
 
 
-#endif /* BR_MATCHING_BUILD */

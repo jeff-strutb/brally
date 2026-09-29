@@ -14,9 +14,7 @@
  * the body.  The C twin in slice3_39.c stops at 160/218 B because a C
  * caller cannot emit the vector-constructor-iterator call.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <string.h>
 
 class Item438 {

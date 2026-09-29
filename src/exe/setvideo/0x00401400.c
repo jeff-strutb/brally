@@ -1,6 +1,5 @@
 /* Auto-generated from disassembly - 0x00401400
  * CHK_FileExists. Verbose path uses OutputDebugStringA, not fprintf. */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: test whether a file exists, optionally reporting the check
  * to the debugger. */
 /* @implements 0x00401400 setvideo.exe CHK_FileExists */
@@ -39,4 +38,3 @@ int CHK_FileExists(char *path)
 }
 
 
-#endif /* BR_MATCHING_BUILD */

@@ -8,17 +8,11 @@
  * carried whole (its #pragma function lines included; the forwarder bodies
  * between them stay in slice4_53.c).
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
-#ifdef BR_MATCHING_BUILD
 #define BrCarSub9020 BrCarSub9020_port2
 #include "slice4_53.h"
 #undef BrCarSub9020
-#else
-#include "slice4_53.h"
-#endif
 #include "slice1_03.h"      /* BrComCallLocked68 (0x1000C4D0) */
 
 #include <math.h>
@@ -30,13 +24,9 @@
 #include "slice2_18.h"      /* BrGfx2C210, BrGfx31227 declarations        */
 #include "slice2_19.h"      /* BrSub10002240, BrSub100088B0, BrSub10037740 */
 #include "slice2_20.h"      /* BrPoolEmit, BrRcaLoadCar                   */
-#ifdef BR_MATCHING_BUILD
 #define BrCarSub9020 BrCarSub9020_port
 #include "slice2_21.h"      /* BrSinF, BrSqrtF, BrCarSub9020              */
 #undef BrCarSub9020
-#else
-#include "slice2_21.h"      /* BrSinF, BrSqrtF, BrCarSub9020              */
-#endif
 #include "slice2_22.h"      /* BrDPlayLink, BrDPlaySendTag4               */
 #include "slice2_24.h"      /* BrStringById, BrMenuSub10044B90, ...       */
 
@@ -47,13 +37,9 @@
 /* XSLICE 0x1007CC00 */
 extern void BrGbiStackOverflow(int code);
 
-#ifdef _MSC_VER
 #pragma function(sin)
-#endif
 
-#ifdef _MSC_VER
 #pragma function(sqrt)
-#endif
 
 /* 0x10039020 */
 /* WHAT IT DOES: runs a car's particle emitter for one frame: it counts up a
@@ -70,7 +56,6 @@ extern void BrGbiStackOverflow(int code);
  * lands after the c66 byte store.  Dead probes: the two @t4-pass ledger
  * lines above.  Do not reopen before the end-grind (project rule 12). */
 /* @implements 0x10039020 d3d BrCarSub9020 */
-#ifdef BR_MATCHING_BUILD
 /* The original is the full particle-spawn body the port folded into
  * BrPoolEmit: timer accumulate + threshold, free-slot word shuffle,
  * velocity build via the vec helpers, and the slot's colour/life fields
@@ -146,9 +131,3 @@ void __fastcall BrCarSub9020(struct BrCar *pCar)
         }
     }
 }
-#else
-void BrCarSub9020(struct BrCar *pCar)
-{
-    BrPoolEmit(pCar);
-}
-#endif

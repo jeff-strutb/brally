@@ -9,10 +9,8 @@
  * verbatim below.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <string.h>
 #include <stdio.h>
 #include <stddef.h>
@@ -64,7 +62,6 @@
  * slice6_72.c): the original inlines every helper, stores unchecked, calls
  * the one-argument fatal 0x100378C0 error routine directly, and falls through
  * after it. */
-#ifdef BR_MATCHING_BUILD
 #define BR73_HELPER static __inline
 #define BR73_NEW_RAW FUN_10074572
 extern void FUN_100378c0(int32_t); /* fatal error routine */
@@ -77,16 +74,6 @@ static __inline void Br73Err(int32_t idx)
 {
     FUN_100378c0(idx);   /* one arg, as 0x100378C0 takes */
 }
-#else
-#define BR73_HELPER static
-#define BR73_NEW_RAW BrOperatorNew
-static void Br73Err(int32_t idx)
-{
-    if (g_br73.pErrHost != NULL) {
-        BrErrShow(g_br73.pErrHost, idx);
-    }
-}
-#endif
 
 /* The page prologue, identical in all six builders except for the flag value
  * (1 everywhere but 0x10050060's SECOND page) and the two extra hook stores
@@ -111,24 +98,14 @@ BR73_HELPER BrUiPage_ *Br73PageNew(BrPhase_ *pPhase, int32_t nFlag)
     uint16_t   i;
 
     i = pPhase->nPages;
-#ifndef BR_MATCHING_BUILD
-    if (i < BR_PHASE_PAGES)
-#endif
     {
         pPhase->aFlags[i] = nFlag;
     }
 
     pPage = (BrUiPage_ *)BR73_NEW_RAW(BR73_ALLOC(BrUiPage_, BR73_PAGE_ORIG_SIZE));
-#ifdef BR_MATCHING_BUILD
     pPage = (pPage != NULL) ? FUN_100418c0(pPage) : NULL;  /* direct, as orig */
-#else
-    pPage = (pPage != NULL) ? BrUiPageCtor_10048470(pPage) : NULL;
-#endif
 
     i = pPhase->nPages;
-#ifndef BR_MATCHING_BUILD
-    if (i < BR_PHASE_PAGES)
-#endif
     {
         pPhase->aPages[i] = pPage;
     }
@@ -137,12 +114,6 @@ BR73_HELPER BrUiPage_ *Br73PageNew(BrPhase_ *pPhase, int32_t nFlag)
     }
     pPhase->nPages++;
 
-#ifndef BR_MATCHING_BUILD
-    /* Matching build falls through like the original: Br73Err(4) is fatal. */
-    if (pPage == NULL) {
-        return NULL;
-    }
-#endif
 
     pPage->pOwner = pPhase;
     pPage->f10    = 0;
@@ -161,19 +132,9 @@ BR73_HELPER BrUiCtl_ *Br73CtlNew(BrUiPage_ *pPage)
     BrUiCtl_ *pCtl;
 
     pCtl = (BrUiCtl_ *)BR73_NEW_RAW(BR73_ALLOC(BrUiCtl_, BR73_CTL_ORIG_SIZE));
-#ifdef BR_MATCHING_BUILD
     pCtl = (pCtl != NULL) ? FUN_10040b10(pCtl) : NULL;     /* direct, as orig */
-#else
-    pCtl = (pCtl != NULL) ? BrUiCtlCtor(pCtl) : NULL;
-#endif
 
-#ifdef BR_MATCHING_BUILD
     pPage->apCtl[pPage->cCtl] = pCtl;      /* unchecked, as the original */
-#else
-    if (pPage->cCtl < BR73_PAGE_CTL_MAX) {
-        pPage->apCtl[pPage->cCtl] = pCtl;
-    }
-#endif
     if (pCtl == NULL) {
         Br73Err(4);
     }
@@ -188,9 +149,6 @@ BR73_HELPER BrUiCtl_ *Br73Ctl(BrUiPage_ *pPage, BrPhase_ *pPhase,
 {
     BrUiCtl_ *pCtl = Br73CtlNew(pPage);
 
-#ifndef BR_MATCHING_BUILD
-    if (pCtl != NULL)
-#endif
     {
         /* matching: unconditional, as the original -- the error path above
          * never returns in practice */
@@ -208,7 +166,6 @@ BR73_HELPER void Br73Text(BrUiCtl_ *pCtl, int id, int32_t a2, int32_t a3,
 
 /* Shorthand so the transcriptions stay readable.  Relies on the local names
  * pPage / pPhase / pCtl, which every builder declares. */
-#ifdef BR_MATCHING_BUILD
 /* fully macro-expanded: VC5's inline budget gave up on four of the twenty
  * __inline sites, and a call to our own static helper cannot place */
 #define BR73_CTL(x, y, flags, a6, a7)                                        \
@@ -221,13 +178,6 @@ BR73_HELPER void Br73Text(BrUiCtl_ *pCtl, int id, int32_t a2, int32_t a3,
         pCtl->pVtbl->f38(pCtl, pPhase, (x), (y), (flags), 2, 5,              \
                          (a6), (a7));                                        \
     } while (0)
-#else
-#define BR73_CTL(x, y, flags, a6, a7)                                        \
-    do {                                                                     \
-        pCtl = Br73Ctl(pPage, pPhase, (x), (y), (flags), (a6), (a7));        \
-        if (pCtl == NULL) { return; }                                        \
-    } while (0)
-#endif
 
 /* ==========================================================================
  * 0x10054B50 -- 20 controls, three of them rectangles
@@ -244,7 +194,6 @@ BR73_HELPER void Br73Text(BrUiCtl_ *pCtl, int id, int32_t a2, int32_t a3,
  * port scaffolding the image never initialises.  Three hooks recur in BOTH
  * builders with identical glide values (p10043FA0, p10041300, p100413B0),
  * which pins the sequence mapping independently. */
-#ifdef BR_MATCHING_BUILD
 extern void FUN_10039f30(void); extern void FUN_10039f60(void);
 extern void FUN_100406e0(void); extern void FUN_10040530(void);
 extern void FUN_1003ed30(void); extern void FUN_1003ed10(void);
@@ -277,40 +226,13 @@ extern int32_t DAT_100aabc8, DAT_100aabcc;
 #define pS73_p0AB508    ((const void *)&DAT_100aaca8)
 #define g73_n0AB428     DAT_100aabc8
 #define g73_n0AB42C     DAT_100aabcc
-#else
-#define pH73_p100409F0  (pH->p100409F0)
-#define pH73_p10040A20  (pH->p10040A20)
-#define pH73_p10047360  (pH->p10047360)
-#define pH73_p10047290  (pH->p10047290)
-#define pH73_p100470E0  (pH->p100470E0)
-#define pH73_p100458A0  (pH->p100458A0)
-#define pH73_p10043FA0  (pH->p10043FA0)
-#define pH73_p10045880  (pH->p10045880)
-#define pH73_p10041300  (pH->p10041300)
-#define pH73_p100413B0  (pH->p100413B0)
-#define pH73_p10041670  (pH->p10041670)
-#define pH73_p100417B0  (pH->p100417B0)
-#define pH73_p10041710  (pH->p10041710)
-#define pS73_p0AB448    (pS->p0AB448)
-#define pS73_p0AB458    (pS->p0AB458)
-#define pS73_p0AB468    (pS->p0AB468)
-#define pS73_p0AB478    (pS->p0AB478)
-#define pS73_p0AB4F8    (pS->p0AB4F8)
-#define pS73_p0AB508    (pS->p0AB508)
-#define g73_n0AB428     (g_br73.n0AB428)
-#define g73_n0AB42C     (g_br73.n0AB42C)
-#endif
 
 /* WHAT IT DOES: lays out the largest of the menu screens -- twenty controls,
  * three of them drawn boxes that share a left edge because only the first
  * works one out (the original's doing; the fuller description is with the
  * dossier at the head of this section). */
 /* @implements 0x10054B50 d3d BrExt_10054B50 */
-#ifdef BR_MATCHING_BUILD
 int32_t BrExt_10054B50(BrPhase_ *pSelf)
-#else
-void BrExt_10054B50(BrPhase_ *pSelf)
-#endif
 {
     const BrUi73Hooks  *pH = g_br73.pHooks;
     const BrUi73Styles *pS = &g_br73.aStyles;
@@ -467,7 +389,5 @@ void BrExt_10054B50(BrPhase_ *pSelf)
     pCtl->w1E20C = 5;
     pCtl->pVtbl->f34(pCtl, g_aBr39B720, 1, 3, pS73_p0AB478);
     pPage->cCtl++;
-#ifdef BR_MATCHING_BUILD
     return 1;                          /* the original's `mov eax,1` */
-#endif
 }

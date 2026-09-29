@@ -9,9 +9,7 @@
  *
  * ResetBuf(&g_buf) then the shared-return activate (cpp-family2-notes.md).
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Phase;
 

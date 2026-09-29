@@ -7,11 +7,9 @@
  * matched first and grouped by what they are afterwards.
  * Every function carries its original address.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import
  * table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stddef.h>
 #include <stdint.h>
 
@@ -45,11 +43,7 @@ void BrSub100586A0(void)
         p[0]  = nZero;
         p[1]  = nZero;
         p += 3;
-#ifdef BR_MATCHING_BUILD
     } while ((int32_t)p < (int32_t)((char *)g_aBrAA2538 + 0x64));
-#else
-    } while (p < (int32_t *)((char *)g_aBrAA2538 + 0x64));
-#endif
 }
 
 /* 0x10058700 / Glide 0x100515B0, 72 bytes.
@@ -102,11 +96,7 @@ void BrSlotMark(int id)
     int     i = 0;
     BrSlot *p;
 
-#ifdef BR_MATCHING_BUILD
     for (p = g_aBrAA2538; (int)p < (int)&g_aBrAA2538[BR_SLOT_COUNT]; p++) {
-#else
-    for (p = g_aBrAA2538; p < &g_aBrAA2538[BR_SLOT_COUNT]; p++) {
-#endif
         if (p->id == id) {
             g_aBrAA2538[i].b = 1;
             return;

@@ -11,18 +11,12 @@
  * /O2 register choice, so it is kept whole); its state block g_s17 is
  * declared in slice2_17.h and defined there.
  */
-#ifdef BR_MATCHING_BUILD
 /* slice2_17.h prototypes a list pointer the original never takes. */
 #define BrPtrListContains BrPtrListContains_port
-#endif
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice2_17.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrPtrListContains
-#endif
 
 #include <math.h>
 #include <stdio.h>
@@ -48,7 +42,6 @@
 
 /* g_s17 is declared in slice2_17.h and defined in slice2_17.c. */
 
-#ifdef BR_MATCHING_BUILD
 /* The matched bytes need the state block FILE-STATIC in this TU, as it was
  * in slice2_17.c: against an external g_s17, /O2 reschedules every pGfx
  * bump (1776 -> 1648 bytes).  The image resolves each of these references
@@ -57,7 +50,6 @@
  * layout.  The port has no #else arm to change: it uses the shared g_s17. */
 static BrS17State s17_tuState;
 #define g_s17 s17_tuState
-#endif
 
 /* 0x100AA5D0, 0x106C08A0 and 0x106C0860 are fixed STORAGE in the original,
  * not pointers to storage: BrScenePropsDraw passes their addresses as
@@ -73,18 +65,12 @@ static BrS17State s17_tuState;
  * and drop the three assignments in tests/test_slice2_17.c. Until then the
  * matching build models them locally and the PORT IS LEFT EXACTLY AS IT
  * WAS -- do not delete the #else arm. */
-#ifdef BR_MATCHING_BUILD
 static const uint32_t s17_colAA5D0[4];   /* 0x100AA5D0 */
 static BrMat4 s17_lightMtx;              /* 0x106C08A0 */
 static BrMat4 s17_transMtx;              /* 0x106C0860 */
 #define BRS17_COL       s17_colAA5D0
 #define BRS17_LIGHTMTX  (&s17_lightMtx)
 #define BRS17_TRANSMTX  (&s17_transMtx)
-#else
-#define BRS17_COL       g_s17.pColAA5D0
-#define BRS17_LIGHTMTX  g_s17.pLightMtx
-#define BRS17_TRANSMTX  g_s17.pTransMtx
-#endif
 
 /* BrPropItem's f04/f05 are ONE 16-bit flags word in the original: the loop
  * head loads it whole (`mov ax,word ptr [esi]`) and tests the high half with
@@ -122,11 +108,7 @@ extern int   BrX10060E90(void);
  * at the call site (arg1 in ecx, no stack cleanup), so that is what the
  * matching build uses. Off MSVC the qualifier vanishes and it is an ordinary
  * one-argument function. */
-#if defined(_MSC_VER)
 #define BRS17_THISCALL __fastcall
-#else
-#define BRS17_THISCALL
-#endif
 extern void BRS17_THISCALL BrX100751D0(void *pThis);
 /* XSLICE 0x1002C2C0 */
 extern void  BrX1002C2C0(void);

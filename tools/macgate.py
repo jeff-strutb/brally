@@ -68,7 +68,7 @@ def compile_survey():
     sys.path.insert(0, os.path.join(ROOT, "tools"))
     from portcheck import default_sources   # exactly the TUs build.sh compiles
     srcs = [os.path.join(ROOT, s) for s in default_sources()]
-    cflags = ["-std=c99", "-w", "-D_DARWIN_C_SOURCE", "-Iinclude", "-Itests", "-Iports/macos/include"]
+    cflags = ["-std=c99", "-w", "-D_DARWIN_C_SOURCE", "-Ibuild/port/include", "-Itests", "-Iports/macos/include"]
     bad = []
     for s in srcs:
         rel = os.path.relpath(s, ROOT)

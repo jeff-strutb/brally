@@ -1,0 +1,44 @@
+# Port deviations for src/core/drawing/br_texfmt.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop fn:BrTexFormatCode
+@drop define:BrPtrListContains
+@drop define:_CRTIMP#2
+@after define:_CRTIMP#2
+
+
+/* 0x10027B90 */
+/* WHAT IT DOES: decides which of the backend's pixel formats a texture
+ * should be created in, from the N64's own format and size codes plus one
+ * extra mode flag. Most combinations fall through to the same general
+ * format; only a couple of specific pairings get a format of their own. */
+/* @implements 0x10027B90 d3d BrTexFormatCode */
+int BrTexFormatCode(int a, int b, int c)
+{
+    if (a == 0) {
+        if (b == 4) {
+            /* `dec/neg/sbb eax,eax` yields 0 for c == 1 and -1 otherwise;
+             * `and al,0xF7` then turns -1 into -9, and +11 gives 11 or 2. */
+            return (c == 1) ? 11 : 2;
+        }
+        return 11;
+    }
+    if (a == 1) {
+        if (b == 3) {
+            /* same idiom, masked with 0xF8 and biased by 12 */
+            return (c == 1) ? 12 : 4;
+        }
+        if (b == 4) {
+            return 2;
+        }
+        return 11;
+    }
+    /* a == 2 reloads b in the original and then discards it -- a dead load,
+     * not a missing case. Everything here returns 11. */
+    return 11;
+}
+@end
+@drop undef:BrPtrListContains
+@drop fn:FUN_10024df0
+@drop fn:FUN_100275c0

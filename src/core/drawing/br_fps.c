@@ -13,10 +13,8 @@
  * on the grounds that it is unused.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice2_14.h"
 #include "slice2_17.h"   /* BrPropList, BrScenePropsDraw (0x1002FB20)          */
 #include "slice3_40.h"   /* BrNode, BrPathPoint, BrG_6C7CB8 -- the AI path root */
@@ -66,11 +64,7 @@ void BrFpsReadout(void)
         float sum = 0.0f;
         int n = g_BrFpsCountA;
         if (n > 0) {
-#ifdef BR_MATCHING_BUILD
             int32_t *p = (int32_t *)&g_BrFpsSamplesA;
-#else
-            int32_t *p = g_BrFpsSamplesA;
-#endif
             do {
                 sum += (unsigned)*p++;
             } while (--n);
@@ -82,11 +76,7 @@ void BrFpsReadout(void)
         float sum = 0.0f;
         int n = g_BrFpsCountB;
         if (n > 0) {
-#ifdef BR_MATCHING_BUILD
             int32_t *p = (int32_t *)&g_BrFpsSamplesB;
-#else
-            int32_t *p = g_BrFpsSamplesB;
-#endif
             do {
                 sum += (unsigned)*p++;
             } while (--n);
@@ -100,11 +90,10 @@ void BrFpsReadout(void)
     BrTextDraw(buf, g_BrFpsScreenW / 2, g_BrFpsScreenH - 10);
 }
 
-/* ── Ghidra-matched functions ─────────────────────────── */
-#ifdef BR_MATCHING_BUILD
+/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
 int FUN_1006e590();
 
-/* WHAT IT DOES: thunk - forwards to the shared no-op at 0x1006E590. */
+/* WHAT IT DOES: thunk â forwards to the shared no-op at 0x1006E590. */
 /* @implements 0x10011D10 glide BrThunk11D10 */
 /* @n64 0x802288B4 exact */
 
@@ -121,4 +110,3 @@ extern short DAT_10396f00;
 extern int DAT_10396f04;
 
 
-#endif /* BR_MATCHING_BUILD */

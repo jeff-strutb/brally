@@ -1,5 +1,4 @@
 /* FillComboB: same as FillComboA but prefix "[c:" (chipset). */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: populate the second drop-down, whose contents depend on the
  * first one's selection. */
 /* @implements 0x00402030 setvideo.exe FillComboB */
@@ -81,4 +80,3 @@ int FillComboB(HWND hWnd)
 }
 
 
-#endif /* BR_MATCHING_BUILD */

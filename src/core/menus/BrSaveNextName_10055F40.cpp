@@ -26,9 +26,7 @@
  * length, and a plain 0..99 walk of the table that VC5 turns into the
  * pointer and down-counter.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdlib.h>
 #include <string.h>
 

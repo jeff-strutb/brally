@@ -17,26 +17,18 @@
  * order).  All 25 compiles left the esi/edi assignment exactly where it was.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* Header prototypes take a host / a texmem argument.  Both originals read
  * and write absolute globals and take no argument. */
 #define BrTexInit        BrTexInit_port
 #define BrTexChooseLevel BrTexChooseLevel_port
-#endif
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "br_texinit.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrTexInit
 #undef BrTexChooseLevel
-#endif
 
 #include <stddef.h>
-#ifdef BR_MATCHING_BUILD
 #include <stdlib.h>
-#endif
 
 int32_t  g_brTexTmuCount    = 0;          /* 0x105CCBD0 */
 uint32_t g_brTexLowThreshold = 0;         /* 0x1186C960 */
@@ -142,7 +134,6 @@ void BrTexInitResetForTest(void)
  * has. A small card, or a machine with 32MB or less, gets less detail. The
  * threshold is four million bytes, decimal -- not four megabytes, which is a
  * different number. */
-#ifdef BR_MATCHING_BUILD
 uint32_t g_brTex1829844;              /* 0x11829844  available texels */
 uint32_t g_brTex1829848;              /* 0x11829848  low-memory threshold */
 int32_t  g_brTex575420;               /* 0x10575420  nonzero forces level 2 */
@@ -170,19 +161,6 @@ void BrTexChooseLevel(void)
     }
     s_level = 2;
 }
-#else
-/* WHAT IT DOES: the same detail-level choice, as a function of the
- * measured texture memory rather than of the original's globals. */
-/* port-only variant of BrTexChooseLevel (matching build uses the #ifdef branch above) */
-int32_t BrTexChooseLevel(uint32_t texmem)
-{
-    if (texmem <= g_brTexLowThreshold)          /* jbe -- UNSIGNED */
-        return 2;
-    if (g_brTexSysMem <= 0x2000000u)            /* 32 MB of system RAM */
-        return 1;
-    return (texmem < 0x3D0900u) ? 1 : 0;
-}
-#endif
 
 /* ------------------------------------------------------------------ *
  * 0x1002A640 -- install the thirteen hooks, then measure the card.
@@ -193,7 +171,6 @@ int32_t BrTexChooseLevel(uint32_t texmem)
  * The matching body is the D3D original (absolute slots, two free()s, a
  * GetAvailableTextureMem query). The port records the same install order
  * and measures through a host hook so it does not need those addresses. */
-#ifdef BR_MATCHING_BUILD
 /* The thirteen slot stores, in the original's order. 0x118AA084 is eleventh
  * in the listing while being lowest in memory -- same out-of-sequence store
  * as Glide's 0x118ED19C. */
@@ -344,71 +321,3 @@ void BrTexInit(void)
     FUN_10029c70();
     FUN_1006e180();
 }
-#else
-/* WHAT IT DOES: the same setup, recording which hook went in which slot
- * instead of writing the original's absolute addresses. */
-/* port-only variant of BrTexInit (matching build uses the #ifdef branch above) */
-void BrTexInit(const BrTexInitHost *pHost)
-{
-    uint32_t texmem;
-    int      i;
-
-    /* 0x1002A649..0x1002A6C1. The port cannot write to the original's .data
-     * addresses, so the installation is RECORDED -- which slot received which
-     * function, and in what order. That is what a consumer of this module
-     * needs to know and it is what a test can check; inventing storage at
-     * those addresses would create a second owner for slots that other
-     * modules will eventually declare. */
-    s_cInstalled = 0;
-    for (i = 0; i < BR_TEXINIT_NSLOTS; ++i)
-        s_aInstalled[s_cInstalled++] = s_aSlot[i];
-
-    /* 0x10029BD4 -- BEFORE the measurement, which is easy to get wrong by
-     * reading the listing as "install, measure, then everything else". */
-    ++s_aTail[0];                       /* call 0x100281C0 -- frontier */
-
-    /* 0x10029BDB..0x10029C14. grTexMaxAddress(tmu) - grTexMinAddress(tmu),
-     * summed over the second TMU when 0x105CCBD0 > 1.
-     *
-     * No host means no card: equal min and max, hence texmem 0, which selects
-     * level 2. That is the original's own answer for a card with no texture
-     * memory, not a substitute for one. */
-    texmem = 0;
-    if (pHost != NULL &&
-        pHost->pfnTexMinAddress != NULL && pHost->pfnTexMaxAddress != NULL) {
-        texmem = pHost->pfnTexMaxAddress(pHost->pUser, 0)
-               - pHost->pfnTexMinAddress(pHost->pUser, 0);
-        if (g_brTexTmuCount > 1) {
-            texmem += pHost->pfnTexMaxAddress(pHost->pUser, 1)
-                    - pHost->pfnTexMinAddress(pHost->pUser, 1);
-        }
-    }
-    s_texmem = texmem;
-
-    /* 0x10029C1C, before the level decision. */
-    s_g5E1820 = -1;
-
-    /* 0x10029C22 */
-    s_level = BrTexChooseLevel(texmem);
-
-    /* 0x10029C2C. Both of these are `or edi,0xFFFFFFFF` then stored, i.e. -1
-     * rather than 0 -- the `rep stosd` fills elsewhere in this binary that
-     * write 0xFFFFFFFF are the same idiom, and -1 means "empty" while 0 is a
-     * valid index. Getting it backwards is a documented hazard here. */
-    s_g5E1808 = -1;
-
-    /* 0x10029C3F. free() runs on whatever 0x106B7AA0 held, and the pointer is
-     * cleared AFTER the call -- so a second entry frees nothing rather than
-     * double-freeing. Transcribed rather than skipped because the ordering is
-     * the interesting part. */
-    ++s_cFree;
-
-    /* 0x10029C33..0x10029C5A -- five globals to zero, in the original's
-     * order, which is not ascending. */
-    for (i = 0; i < 5; ++i)
-        s_aZeroed[s_cZeroed++] = s_aZeroTarget[i];
-
-    ++s_aTail[1];                       /* 0x10029C60 call 0x10029C70   */
-    ++s_aTail[2];                       /* 0x10029C65 call 0x1006E180   */
-}
-#endif

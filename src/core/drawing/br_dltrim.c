@@ -36,7 +36,6 @@
 #include "br_dl.h"       /* BrDlVtx -- the 0x68-byte pool record             */
 #include "slice1_03.h"   /* BrClipVert, BrClipList, the seven planes         */
 
-#ifdef BR_MATCHING_BUILD
 
 /* The Glide 2.x GrVertex, two TMUs: 0x3C bytes.  BrDlVtx's first 0x3C bytes
  * are one of these, but the trimmer builds its OUTPUT on the stack at the
@@ -193,7 +192,7 @@ void NAME ARGS                                                              \
 #define BR_TRIM_NO_LOCAL
 
 
-/* ‼ WHAT DECIDED THE LAYOUT, 2026-09-05 -- both instantiations byte-exact.
+/* â¼ WHAT DECIDED THE LAYOUT, 2026-09-05 -- both instantiations byte-exact.
  * The body was 196/196 instructions with every instruction right for a whole
  * session; the only defect was where VC5 PUT two blocks:
  *
@@ -213,7 +212,7 @@ void NAME ARGS                                                              \
  * code following versus the emit code in an `else`, and the step spelled out
  * versus wrapped in BR_TRIM_STEP.
  *
- * ‼ AND ARM ORDER IS THE WHOLE THING: `if (cVerts >= 3) { emit } else {
+ * â¼ AND ARM ORDER IS THE WHOLE THING: `if (cVerts >= 3) { emit } else {
  * fail: giveup }` -- same control-flow graph, same goto, label still inside
  * an arm -- reverts exactly to the 633-byte defect.  The FAILURE arm has to
  * be the one the compiler lays first.  See docs/VC5-IDIOMS.md, "a lone
@@ -271,4 +270,3 @@ BR_TRIM_BODY(BrDlClipTriZ, BR_TRIM_ARGS_VTX,
              BR_TRIM_COLDECL_VTX, BR_TRIM_COLLOAD_VTX, BR_TRIM_Z_KEEP,
              DAT_105ce310, BR_TRIM_GLOBAL_SNAP, BR_TRIM_GLOBAL_INIT, tmp)
 
-#endif /* BR_MATCHING_BUILD */

@@ -10,7 +10,6 @@
  *
  * See slice1_09.h for the recovered layouts and the argument-order notes.
  */
-#ifdef BR_MATCHING_BUILD
 /* slice1_09.h declares these cdecl; the originals are thiscall with stack
  * args.  Hide those prototypes so the matching bodies can use __fastcall
  * plus a struct-typed second argument (never register-eligible, so forced
@@ -23,9 +22,7 @@
 #define BrBitStreamWriteU32  BrBitStreamWriteU32_cdecl
 #define BrEntitySetIndex     BrEntitySetIndex_cdecl
 #define BrEntityBindAux      BrEntityBindAux_cdecl
-#endif
 #include "slice1_09.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrBitStreamReadBits
 #undef BrBitStreamInit
 #undef BrBitStreamSkipBytes
@@ -34,7 +31,6 @@
 #undef BrBitStreamWriteU32
 #undef BrEntitySetIndex
 #undef BrEntityBindAux
-#endif
 
 #include <math.h>
 #include <stddef.h>
@@ -96,7 +92,6 @@ void BR_THISCALL1 BrBitStreamAlignWrite(BrBitStream *pBs)
  * hand passes (tools/fnmatch/fn.py variants); the dead-probe list is in the
  * comment block above.  Do not reopen before the end-grind (project rule 12). */
 /* @implements 0x10073B60 d3d BrBitStreamInit */
-#ifdef BR_MATCHING_BUILD
 /* thiscall, two stack args.  Both extra arguments are structs so neither
  * claims edx.  The original RETURNS this: `mov eax,ecx` at the top and every
  * store through eax is the return value being formed, not a register
@@ -123,36 +118,18 @@ BrBitStream * __fastcall BrBitStreamInit(BrBitStream *pBs, BrBitStreamInitBuf pB
     pBs->pBuf      = (unsigned char *)pBuf.p;
     return pBs;
 }
-#else
-void BrBitStreamInit(BrBitStream *pBs, void *pBuf, int nBytes)
-{
-    pBs->writeBit  = 0;
-    pBs->readBit   = 0;
-    pBs->readByte  = 0;
-    pBs->writeByte = nBytes;
-    pBs->pBuf      = (unsigned char *)pBuf;
-}
-#endif
 
 /* 0x10073BA0  __thiscall, ret 4 */
 /* WHAT IT DOES: skips forward a number of whole bytes in the stream,
  * rounding up to a byte boundary first. */
 /* @implements 0x10073BA0 d3d BrBitStreamSkipBytes */
 /* @n64 0x8023FF34 located */
-#ifdef BR_MATCHING_BUILD
 typedef struct { int n; } BrBitStreamSkipArg;
 void __fastcall BrBitStreamSkipBytes(BrBitStream *pBs, BrBitStreamSkipArg n)
 {
     BrBitStreamAlignRead(pBs);
     pBs->readByte += n.n;
 }
-#else
-void BrBitStreamSkipBytes(BrBitStream *pBs, int n)
-{
-    BrBitStreamAlignRead(pBs);
-    pBs->readByte += n;
-}
-#endif
 
 /* 0x10073BC0  __thiscall.
  * The original returns the byte in AL only; the upper 24 bits of EAX are
@@ -334,7 +311,6 @@ int BR_THISCALL1 BrBitStreamReadS32(BrBitStream *pBs)
  * compressed format the game reads. */
 /* port-only body; the Glide match is
  * src/core/gamedata/BrBitStreamReadBits_1006CED0.cpp (a __thiscall method). */
-#ifdef BR_MATCHING_BUILD
 typedef struct { int n; } BrBitStreamReadArg;
 /* RESIDUE (12 regnorm, +20 bytes): the original is frameless with ONE stack
  * local -- `push ecx` for the dead `consumed` counter -- and keeps the
@@ -400,47 +376,6 @@ unsigned int __fastcall BrBitStreamReadBits(BrBitStream *pBs,
 
     return acc;
 }
-#else
-unsigned int BrBitStreamReadBits(BrBitStream *pBs, int nBits)
-{
-    unsigned int acc = 0;
-    int remaining = nBits;
-
-    if (remaining == 0)
-        return 0;
-
-    do {
-        int avail = 8 - pBs->readBit;
-        int take, shift;
-        int byteIndex;
-        unsigned int mask, v;
-
-        if (avail > remaining) {
-            take  = remaining;
-            shift = avail - remaining;
-        } else {
-            take  = avail;
-            shift = 0;
-        }
-
-        byteIndex = pBs->readByte;
-        mask = ((1u << take) - 1u) << shift;
-        v    = (mask & (unsigned int)pBs->pBuf[byteIndex]) >> shift;
-
-        pBs->readBit += take;
-        acc = (acc << take) | v;
-
-        if (pBs->readBit >= 8) {
-            pBs->readBit  = 0;
-            pBs->readByte = byteIndex + 1;
-        }
-
-        remaining -= take;
-    } while (remaining != 0);
-
-    return acc;
-}
-#endif
 
 /* 0x10073D40  __thiscall, no stack args. Signed compare (setge). */
 /* WHAT IT DOES: reports whether the reader has caught up with the end of the
@@ -468,7 +403,6 @@ int BR_THISCALL1 BrBitStreamAtEnd(const BrBitStream *pBs)
 /* WHAT IT DOES: writes one byte into the stream, rounding up to a byte
  * boundary first. */
 /* @implements 0x10073D60 d3d BrBitStreamWriteU8 */
-#ifdef BR_MATCHING_BUILD
 typedef struct { unsigned int v; } BrBitStreamByteArg;
 void __fastcall BrBitStreamWriteU8(BrBitStream *pBs, BrBitStreamByteArg v)
 {
@@ -476,20 +410,11 @@ void __fastcall BrBitStreamWriteU8(BrBitStream *pBs, BrBitStreamByteArg v)
     pBs->pBuf[pBs->writeByte] = (unsigned char)v.v;
     pBs->writeByte++;
 }
-#else
-void BrBitStreamWriteU8(BrBitStream *pBs, unsigned int v)
-{
-    BrBitStreamAlignWrite(pBs);
-    pBs->pBuf[pBs->writeByte] = (unsigned char)v;
-    pBs->writeByte++;
-}
-#endif
 
 /* 0x10073D80  big-endian 16-bit (glide 0x1006CFC0). */
 /* WHAT IT DOES: writes a two-byte number into the stream, most significant
  * byte first. */
 /* @implements 0x1006CFC0 glide BrBitStreamWriteU16 */
-#ifdef BR_MATCHING_BUILD
 /* thiscall, ret 4; the argument is a SHORT (`mov ax,[esp+0xc]`).
  *
  * BYTE-EXACT.  Same two-byte residue as WriteU32 and the same cause -- the
@@ -521,23 +446,11 @@ void __fastcall BrBitStreamWriteU16(BrBitStream *pBs, BrBitStreamWordArg v)
     pBs->pBuf[pBs->writeByte] = (unsigned char)v.v;
     pBs->writeByte++;
 }
-#else
-void BrBitStreamWriteU16(BrBitStream *pBs, unsigned int v)
-{
-    int w;
-    BrBitStreamAlignWrite(pBs);
-    w = pBs->writeByte;
-    pBs->pBuf[w]     = (unsigned char)(v >> 8);
-    pBs->pBuf[w + 1] = (unsigned char)v;
-    pBs->writeByte = w + 2;
-}
-#endif
 
 /* 0x10073DC0  big-endian 24-bit. */
 /* WHAT IT DOES: writes a three-byte number into the stream, most significant
  * byte first. */
 /* @implements 0x10073DC0 d3d BrBitStreamWriteU24 */
-#ifdef BR_MATCHING_BUILD
 /* thiscall.  Size-exact (70) but register-walled on the first pair:
  * original loads writeByte into edx and pBuf into edi; VC5 swaps them.
  * Naming writeByte first dropped below orig size. */
@@ -552,20 +465,7 @@ void __fastcall BrBitStreamWriteU24(BrBitStream *pBs, BrBitStreamByteArg v)
     pBs->pBuf[pBs->writeByte] = (unsigned char)x;
     pBs->writeByte++;
 }
-#else
-void BrBitStreamWriteU24(BrBitStream *pBs, unsigned int v)
-{
-    int w;
-    BrBitStreamAlignWrite(pBs);
-    w = pBs->writeByte;
-    pBs->pBuf[w]     = (unsigned char)(v >> 16);
-    pBs->pBuf[w + 1] = (unsigned char)(v >> 8);
-    pBs->pBuf[w + 2] = (unsigned char)v;
-    pBs->writeByte = w + 3;
-}
-#endif
 
-#ifdef BR_MATCHING_BUILD
 /* br_obj.h's BrObjClear (0x10073B80 / glide 0x1006CDC0), redeclared over
  * BrBitStream -- same layout, this TU does not pull br_obj.h. */
 void BR_THISCALL1 BrObjClear(BrBitStream *pBs);
@@ -582,13 +482,11 @@ void BrObjResetMsgHdr(BrBitStream *pBs)
     a.v = (unsigned int)DAT_1184c070;
     BrBitStreamWriteU24(pBs, a);
 }
-#endif
 
 /* 0x10073E10  big-endian 32-bit. */
 /* WHAT IT DOES: writes a four-byte number into the stream, most significant
  * byte first. */
 /* @implements 0x10073E10 d3d BrBitStreamWriteU32 */
-#ifdef BR_MATCHING_BUILD
 /* thiscall.  BYTE-EXACT.  The last two bytes were the FIRST store's two
  * address loads coming out in the wrong order: the original loads pBuf into
  * edx and writeByte into edi, VC5 the reverse.  Naming pBuf in a local that is
@@ -612,17 +510,4 @@ void __fastcall BrBitStreamWriteU32(BrBitStream *pBs, BrBitStreamByteArg v)
     pBs->pBuf[pBs->writeByte] = (unsigned char)x;
     pBs->writeByte++;
 }
-#else
-void BrBitStreamWriteU32(BrBitStream *pBs, unsigned int v)
-{
-    int w;
-    BrBitStreamAlignWrite(pBs);
-    w = pBs->writeByte;
-    pBs->pBuf[w]     = (unsigned char)(v >> 24);
-    pBs->pBuf[w + 1] = (unsigned char)(v >> 16);
-    pBs->pBuf[w + 2] = (unsigned char)(v >> 8);
-    pBs->pBuf[w + 3] = (unsigned char)v;
-    pBs->writeByte = w + 4;
-}
-#endif
 

@@ -20,18 +20,14 @@
  *     a good canary, and port/tests/test_br_bmp.c uses it as one.
  *   - Pixels are stored B,G,R.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
 /* The header's BrBmpLoadRgba is the port's (path, &cx, &cy) form; the
  * original takes the path alone (every call site pushes one argument). */
 #define BrBmpLoadRgba BrBmpLoadRgba_port
-#endif
 #include "br_bmp.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrBmpLoadRgba
 uint8_t *BrBmpLoadRgba(const char *pszPath);
-#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -150,7 +146,6 @@ void BrBmpGdiFree(BrGdiBitmapMem *pMem)
  * transparency key. Only 24-bit-colour bitmaps are accepted. The original
  * could also load a bitmap out of its own resources, but the DLL carries
  * none, so that path always failed and is not transcribed. */
-#ifdef BR_MATCHING_BUILD
 __declspec(dllimport) void *__stdcall GetModuleHandleA(const char *);
 __declspec(dllimport) void *__stdcall LoadImageA(void *, const char *,
     unsigned int, int, int, unsigned int);
@@ -180,27 +175,6 @@ BrSurf *BrBmpLoadSurface(const char *pszPath, int32_t cx, int32_t cy)
         pSurf->key = 0x7E0;
     return pSurf;
 }
-#else
-/* @implements 0x10001290 glide BrBmpLoadSurface */
-BrSurf *BrBmpLoadSurface(const char *pszPath, int32_t cx, int32_t cy)
-{
-    BrGdiBitmapMem mem;
-    BrSurf        *pSurf;
-
-    /* LoadImageA's stretch parameters. Every call site in BRGlide.dll passes
-     * 0, 0 -- 0x1005841D and 0x100584CB, the only two -- so no host scaler is
-     * needed to be faithful. Asserted rather than silently ignored. */
-    if (cx != 0 || cy != 0) return NULL;
-
-    if (BrBmpGdiLoad(&mem, pszPath) != 0) return NULL;
-
-    pSurf = BrSurfFromBitmap(&mem.bm);      /* 0x10001240: the 24bpp gate */
-    BrBmpGdiFree(&mem);                     /* DeleteObject */
-
-    if (pSurf) pSurf->key = (uint16_t)BR_SURF_KEY_565;   /* 0x10001308 */
-    return pSurf;
-}
-#endif
 
 /* ======================================================================
  * 0x1005A210 / 0x10059F10 / 0x10059F70 -- the RGBA8888 texture loader
@@ -212,7 +186,6 @@ BrSurf *BrBmpLoadSurface(const char *pszPath, int32_t cx, int32_t cy)
  * picture's size. It flips the image the right way up on the way through,
  * because bitmap files are stored bottom row first. Only 24-bit-colour
  * bitmaps are accepted. */
-#ifdef BR_MATCHING_BUILD
 void *BrBmpToRgba32(int param_1);
 
 /* WHAT IT DOES: load a .BMP from disc and hand back raw 32-bit RGBA pixels
@@ -236,55 +209,6 @@ uint8_t *BrBmpLoadRgba(const char *pszPath)
     DeleteObject(hbm);
     return (uint8_t *)pOut;
 }
-#else
-/* @implements 0x1005A210 glide BrBmpLoadRgba */
-uint8_t *BrBmpLoadRgba(const char *pszPath, int32_t *pcx, int32_t *pcy)
-{
-    BrGdiBitmapMem mem;
-    uint8_t       *pOut;
-    const uint8_t *pRow;
-    int32_t        y;
-
-    if (BrBmpGdiLoad(&mem, pszPath) != 0) return NULL;
-
-    /* 0x1005A247 -- the same gate as 0x1000124B, at the caller this time.
-     * The original returns here without DeleteObject; the port has to free
-     * the buffer or it would leak for real rather than reproducing a leak. */
-    if (mem.bm.cBitsPixel != 24) { BrBmpGdiFree(&mem); return NULL; }
-
-    /* 0x10059F10: malloc(cx*cy*4). */
-    pOut = (uint8_t *)malloc((size_t)mem.bm.cx * (size_t)mem.bm.cy * 4u);
-    if (!pOut) { BrBmpGdiFree(&mem); return NULL; }
-
-    /* 0x10059F70: the same bottom-up walk as BrSurfBlt24, widening instead of
-     * packing.  B is read first, then G, then R, and R,G,B,0xFF are stored. */
-    pRow = mem.bm.pBits + (size_t)(mem.bm.cy - 1) * (size_t)mem.bm.cbWidthBytes;
-    {
-        uint8_t *pDst = pOut;
-        for (y = mem.bm.cy; y != 0; y--) {
-            const uint8_t *pSrc = pRow;
-            int32_t        x;
-            for (x = mem.bm.cx; x != 0; x--) {
-                uint8_t b = pSrc[0], g = pSrc[1], r = pSrc[2];
-                pSrc   += 3;
-                *pDst++ = r;
-                *pDst++ = g;
-                *pDst++ = b;
-                *pDst++ = 0xFF;
-            }
-            pRow -= mem.bm.cbWidthBytes;
-        }
-    }
-
-    /* 0x10059F57/0x10059F60 publish these through globals; here they are out
-     * parameters.  Written only on success, as the original writes them. */
-    if (pcx) *pcx = mem.bm.cx;
-    if (pcy) *pcy = mem.bm.cy;
-
-    BrBmpGdiFree(&mem);
-    return pOut;
-}
-#endif
 
 /* ======================================================================
  * The host adaptor -- 0x10001290 then 565 -> RGBA8888
@@ -343,8 +267,7 @@ void BrBmpFree(BrBmp *pBmp)
     pBmp->w = pBmp->h = 0;
 }
 
-/* ── Ghidra-matched functions ─────────────────────────── */
-#ifdef BR_MATCHING_BUILD
+/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
 extern char DAT_100ad7ec;
 extern char DAT_100ad7f0;
 extern char DAT_100ad7f4;
@@ -407,9 +330,7 @@ void BrBmpRect4Get(int param_1,int param_2,int *param_3,int *param_4,
   return;
 }
 
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 /* Forward declarations for unknown functions/globals */
 int BrChkFileExists(const char *pPath);   /* 0x10003680 */
 int FUN_1005a280(int, int, int, void *);
@@ -469,9 +390,7 @@ void FUN_1005a080(int param_1, int param_2)
     nLeft = nLeft - 1;
   } while (nLeft != 0);
 }
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: convert a bottom-up 24-bit BGR bitmap into a top-down
  * 32-bit RGBA image: walks the source rows from the last one upward and,
  * per pixel, reads B, G, R and writes R, G, B, 0xFF. The same walk as
@@ -509,4 +428,3 @@ void BrBmpWiden24ToRgba(unsigned char *pDst, const unsigned char *pBits,
     pBits -= cbWidthBytes;
   } while (--y);
 }
-#endif /* BR_MATCHING_BUILD */

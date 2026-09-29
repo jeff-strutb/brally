@@ -7,10 +7,8 @@
  * Filed out of the address batch slice3_41.c, with that file's preamble.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

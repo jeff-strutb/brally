@@ -46,7 +46,6 @@
  *     (path=arg, cnt=arg, mode==3))`): 1+16, FIRSTDIV worse (+0x4);
  *   - swapping the default's `path=`/`count=` assignment order: inert (2+16).
  */
-#ifdef BR_MATCHING_BUILD
 
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
@@ -153,4 +152,3 @@ char BrSaveLoad(int mode, int arg)
     return 1;
 }
 
-#endif /* BR_MATCHING_BUILD */

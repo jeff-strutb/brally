@@ -12,12 +12,8 @@
 /* 0x10019A70 is the (unclaimed, 11 KB) race step.  The original passes its
  * address as an IMMEDIATE, so the matching build needs a function symbol,
  * not a pointer variable.  The port keeps the variable. */
-#ifdef BR_MATCHING_BUILD
 extern void BrRaceStep_10019A70(void);
 #define BR_PAD_RACE_STEP ((const void *)BrRaceStep_10019A70)
-#else
-#define BR_PAD_RACE_STEP g_BrPadHookFn
-#endif
 
 /* 0x1002F380  __thiscall (one arg in ecx -- BR_THISCALL1 is exact) */
 /* WHAT IT DOES: turns one frame of raw controller readings into what the game
@@ -154,7 +150,6 @@ void BR_THISCALL1 BrPadTranslate(BrPad *pPad)
     }
 }
 
-#ifdef BR_MATCHING_BUILD
 
 extern int DAT_106ed5d0;
 extern int DAT_106b8090;
@@ -231,4 +226,3 @@ void BrPadFrameBegin(void)
   return;
 }
 
-#endif /* BR_MATCHING_BUILD */

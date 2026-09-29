@@ -8,17 +8,14 @@
  * Every function carries its original address.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <string.h>
 
 /* ==========================================================================
  * 6. 0x1003D850 -- IDirectPlayLobby::EnumAddress callback
  * ========================================================================== */
 
-#ifdef BR_MATCHING_BUILD
 /* DPAID_Modem at 0x100909E0. */
 extern unsigned char g_0909E0[16];
 
@@ -46,4 +43,3 @@ int __stdcall BrSub1003D850(const void *pGuid, unsigned dwDataSize,
     }
     return 1;
 }
-#endif

@@ -30,9 +30,7 @@
  * which is where 322 of the original 398 diffs went.
  * @t4-pass 2026-09-09 probes=10 result=diff12/tail-pair-window census no
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 /* One wheel record, seen through the three slots this method touches. */
 class Whl5C6D0 {

@@ -12,21 +12,16 @@
  * been shown elsewhere in this module to move VC5's register allocation
  * (see br_rdpmode.c).
  */
-#ifdef BR_MATCHING_BUILD
 /* Header prototype is cdecl (this, r, g, b).  Original is thiscall with
  * ret 0xC; hide that prototype so the definition can take the struct-arg
  * __fastcall shape that reproduces it. */
 #define BrRgbSinkSet BrRgbSinkSet_hdr
-#endif
-#ifdef BR_MATCHING_BUILD
 /* slice2_19.h / br_seg.h declare these cdecl with a leading state pointer the
  * originals do not have.  Hide those prototypes so BrModelLoad can call them
  * with the shapes the bytes show. */
 #define BrSub100088B0 BrSub100088B0_cdecl
 #define BrSegSetBases BrSegSetBases_cdecl
-#endif
 #include "slice2_19.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrSub100088B0
 #undef BrSegSetBases
 typedef struct { void *p; } BrModelLoadArg;
@@ -34,17 +29,13 @@ extern int g_brModelMgr;                        /* 0x10AC0810 */
 void * __fastcall BrSub100088B0(void *pThis, BrModelLoadArg a,
                                 BrModelLoadArg b);
 void BrSegSetBases(uint32_t n64Base, uint32_t hostBase);
-#endif
-#ifdef BR_MATCHING_BUILD
 #undef BrRgbSinkSet
-#endif
 
 #include <string.h>
 
 /* WHAT IT DOES: stores a colour as three separate red, green and blue
  * amounts, keeping only the bottom byte of each. */
 /* @implements 0x10035CA0 d3d BrRgbSinkSet */
-#ifdef BR_MATCHING_BUILD
 /* Second argument is a struct so it is not register-eligible: __fastcall
  * then puts `this` in ecx and the three ints on the stack, i.e. thiscall. */
 typedef struct { int r, g, b; } BrRgbSinkSetArgs;
@@ -54,14 +45,6 @@ void BR_THISCALL1 BrRgbSinkSet(BrRgbSink *pSink, BrRgbSinkSetArgs a)
     pSink->g = (unsigned char)a.g;
     pSink->b = (unsigned char)a.b;
 }
-#else
-void BrRgbSinkSet(BrRgbSink *pSink, int r, int g, int b)
-{
-    pSink->r = (unsigned char)r;
-    pSink->g = (unsigned char)g;
-    pSink->b = (unsigned char)b;
-}
-#endif
 
 /* WHAT IT DOES: repaints a car by writing the chosen colour into the twelve
  * body panels of its model and re-submitting them for drawing, then fixes up
@@ -181,7 +164,6 @@ void BrCarGfxSetColour(BrCarGfx *pCar, int r, int g, int b)
  * in. */
 /* @implements 0x10035452 d3d BrCarGfxReadColour */
 /* @n64 0x8021D2A0 located */
-#ifdef BR_MATCHING_BUILD
 /* True __thiscall with THREE stack args and no edx setup. That IS reachable:
  * declare every stack argument as a ONE-MEMBER STRUCT, which is never
  * register-eligible, so ecx takes `this`, edx is left alone and no dummy has
@@ -220,24 +202,3 @@ void BrCarGfxReadColour(BrRgbSink *pSink, const BrCarGfx *pCar)
         }
     }
 }
-#else
-void BrCarGfxReadColour(BrRgbSink *pSink, const BrCarGfx *pCar)
-{
-    const BrGfxSlot *pSlot = &pCar->pSlots[pCar->aSlotIdx[2]];
-    const uint16_t  *pw    = pSlot->pWords;
-    int c, r, g, b;
-
-    if (pw == NULL)
-        return;
-    if (((pSlot->f20 >> 24) & 0xFu) != 1u)
-        return;
-
-    /* Read natively -- see the GOTCHA in the header. */
-    c = (int)pw[0];
-    r = ((c >> 8) & 0xF8) | ((c >> 13) & 7);
-    g = ((c >> 3) & 0xF8) | ((c >>  8) & 7);
-    b = ((c << 2) & 0xF8) | ((c >>  3) & 7);
-
-    BrRgbSinkSet(pSink, r, g, b);
-}
-#endif

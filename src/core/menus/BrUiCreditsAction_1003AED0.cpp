@@ -9,9 +9,7 @@
  * the stores and the vcall arg), then the member zero-store + slot-6
  * vcall. No EH.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class GameSub {
 public:

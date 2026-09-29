@@ -6,7 +6,6 @@
  * to the port copy's name (see br_uinav.h), so the matching body cannot
  * live there.
  */
-#ifdef BR_MATCHING_BUILD
 
 /* The original binary is /MD: CRT calls resolve through the import table. */
 #define _CRTIMP __declspec(dllimport)
@@ -58,4 +57,3 @@ int * __fastcall BrUiPageCtor_10048470(int *param_1)
 }
 
 
-#endif /* BR_MATCHING_BUILD */

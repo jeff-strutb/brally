@@ -1,7 +1,6 @@
 /* br_trackletter.c -- the track/car-class letter id on the player record
  * (0x10038A80).  Refiled from ghidra_batch.c 2026-09-13; matching arm only.
  */
-#ifdef BR_MATCHING_BUILD
 
 
 extern int DAT_10ac5a48;
@@ -66,4 +65,3 @@ int BrMenuSetTrackLetter(int param_1)
     return 1;
 }
 
-#endif /* BR_MATCHING_BUILD */

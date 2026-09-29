@@ -12,18 +12,12 @@
  * VC5's register allocation (see br_rdpmode.c), so nothing is trimmed here
  * on the grounds that it is unused.
  */
-#ifdef BR_MATCHING_BUILD
 /* slice2_17.h prototypes a list pointer the original never takes. */
 #define BrPtrListContains BrPtrListContains_port
-#endif
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice2_17.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrPtrListContains
-#endif
 
 #include <math.h>
 #include <stdio.h>
@@ -51,7 +45,6 @@ void BrLightDirsFromLookAt(BrMat4 *pM, BrLightPair *pLights,
     pLights->dir1[2] = BrPackNormalByte((double)pM->m[2][1]);
 }
 
-#ifdef BR_MATCHING_BUILD
 
 extern double _DAT_10077488;
 extern double _DAT_10077490;
@@ -77,4 +70,3 @@ int FUN_1002a490(double param_1)
   return iVar1;
 }
 
-#endif /* BR_MATCHING_BUILD */

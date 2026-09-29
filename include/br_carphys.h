@@ -660,11 +660,7 @@ void BrCarPhysPlace(BrCarPhys *pCar, const BrVec3 *pPos, float yaw);
  * for LESS-OR-EQUAL-OR-UNORDERED, so a NaN f1D8 lands on the no-contact arm
  * and a NaN v survives the two clamps and produces a NaN force.  Writing them
  * the tidy way inverts all three. */
-#ifdef BR_MATCHING_BUILD
 void BrCarPhysSpring(BrRbBodyFull *pBody);   /* touchdown byte = body+0x208 */
-#else
-void BrCarPhysSpring(BrRbBodyFull *pBody, uint8_t *pTouchdown);
-#endif
 
 /* 0x10068600, 200 B.  The shock absorber, into the chassis's current list:
  *
@@ -686,13 +682,8 @@ void BrCarPhysDamper(BrRbBodyFull *pBody);
  * The speed test is `test ah,0x41` + `jne` on the sqrt, i.e. it rejects
  * less-equal-or-unordered, so a NaN speed skips the second term.  The four
  * surface bytes are read as SIGNED bytes (`movsx`) and compared against 4. */
-#ifdef BR_MATCHING_BUILD
 /* Surfaces come from child[i]+0x1A0 and the mode from g_brCarPhysWeather. */
 void BrCarPhysDrag(BrRbBodyFull *pBody, BrRbForce *pNode);
-#else
-void BrCarPhysDrag(const BrRbBodyFull *pBody, const BrGroundHit aHit[4],
-                   BrRbForce *pNode, int32_t mode);
-#endif
 
 /* The sign classifier the damper uses, exposed because its polarity is the
  * single easiest thing in this module to get backwards:

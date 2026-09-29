@@ -1,0 +1,16 @@
+# Port deviations for src/core/driving/br_carctor.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop include:<stdint.h>
+@drop include:"br_match.h"
+@drop var:_DAT_10077864
+@drop var:_DAT_1007788c
+@drop var:_DAT_10077890
+@drop proto:BrRbInitInertia
+@drop proto:BrRbBuildMatrix
+@drop proto:BrX100746E0
+@drop proto:BrPodNop
+@drop define:DW
+@drop define:FL
+@drop define:BY
+@drop fn:BrSub10062C50

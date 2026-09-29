@@ -131,8 +131,7 @@ int BrX10072580(int a0)
 }
 
 
-/* ── Ghidra-matched functions ─────────────────────── */
-#ifdef BR_MATCHING_BUILD
+/* ââ Ghidra-matched functions âââââââââââââââââââââââ */
 
 /* 0x1184C1E8 -- each channel's base rate; br_sfxsrc.h owns the model. */
 extern double g_aBrSfxChanRate[];
@@ -538,4 +537,3 @@ int BrSndListAppend(int param_1,int param_2)
 }
 
 
-#endif /* BR_MATCHING_BUILD */

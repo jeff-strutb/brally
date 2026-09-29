@@ -10,9 +10,7 @@
  * BrOptOpen2948): if two guards are clear and the mode is 0 or 1, call
  * NetFn. return 1 AFTER that tail so the flag stores stay c7.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Phase;
 

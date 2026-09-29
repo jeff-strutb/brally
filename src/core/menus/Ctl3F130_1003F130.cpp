@@ -10,9 +10,7 @@
  * `mov esi,1` between `test eax,eax` and the far `jne`. Ctor DECLARED,
  * no dtor.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Phase;
 

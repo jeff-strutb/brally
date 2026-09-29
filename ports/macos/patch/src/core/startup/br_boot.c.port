@@ -1,0 +1,182 @@
+# Port deviations for src/core/startup/br_boot.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop var:DAT_10b71a48
+@drop var:DAT_10b71a4c
+@drop var:DAT_10b71a50
+@drop var:DAT_10b71a54
+@drop fn:BrAppStateLoading
+@after fn:BrAppStateLoading
+
+/* ------------------------------------------------------------------ *
+ * 0x1001CDD0 -- state 3, LOADING SCREEN
+ *
+ *     push [0x10B71A54] ; push [0x10B71A50] ; push [0x10B71A4C]
+ *     push [0x10B71A48] ; push 3
+ *     call 0x10063970 ; add esp,0x14          (cdecl, 5 args)
+ *     push 0 ; push "loading.img"
+ *     call 0x1006C990 ; add esp,8             (cdecl, 2 args)
+ *     call 0x100628B0
+ *     mov eax, 1
+ *     mov [0x105CCBBC], eax                   -> state 1
+ *     ret 1
+ *
+ * The argument order is right-to-left in the listing, so the call reads
+ * 0x10063970(3, [0x10B71A48], [0x10B71A4C], [0x10B71A50], [0x10B71A54]).
+ *
+ * "loading.img" at 0x100A9924 is the loading graphic.
+ * ------------------------------------------------------------------ */
+/* WHAT IT DOES: puts the loading screen on the display and moves on. The
+ * picture is "loading.img"; the game shows it while the next stage sets
+ * itself up. */
+/* @implements 0x1001CDD0 glide BrAppStateLoading */
+
+int32_t BrAppStateLoading(void)
+{
+    BrBootFrontier_10063970(3,
+                            BrBootGlobal_B71A48(),
+                            BrBootGlobal_B71A4C(),
+                            BrBootGlobal_B71A50(),
+                            BrBootGlobal_B71A54());
+    BrBootFrontier_1006C990("loading.img", 0);   /* 0x100A9924 */
+    BrBootFrontier_100628B0();
+
+    g_brAppState = BR_APP_ENTER_RUN;             /* 1 */
+    return 1;
+}
+@end
+@drop proto:int32_t
+@drop fn:BrAppFrame
+@after fn:BrAppFrame
+
+/* ------------------------------------------------------------------ *
+ * 0x1001CF80 -- the frame tick.
+ *
+ *     mov eax, [0x105CCBBC]
+ *     jmp [eax*4 + 0x100A9900]
+ *
+ * Two instructions and no bounds check: the original jumps through the table
+ * with whatever 0x105CCBBC holds. This port RANGE-CHECKS, and that is a
+ * deliberate deviation rather than an oversight -- an out-of-range state in
+ * the original transfers control to whatever follows the table, which is the
+ * string "BossRally", i.e. it executes ASCII. Reproducing that faithfully
+ * would mean reproducing undefined behaviour, and there is nothing to gain:
+ * no reachable path writes an out-of-range value, so the check is unobservable
+ * on every input the game can actually produce.
+ * ------------------------------------------------------------------ */
+/* WHAT IT DOES: runs whichever stage the game is currently in -- cold start,
+ * video setup, loading screen, or play -- once per turn of the main loop, and
+ * passes back that stage's "keep going" answer. The original jumps blindly
+ * through a table; this port refuses an unrecognised stage instead, which is a
+ * deliberate difference described below. */
+/* @implements 0x1001CF80 glide BrAppFrame */
+int32_t BrAppFrame(void)
+{
+    switch (g_brAppState) {
+    case BR_APP_COLD_INIT: return BrAppStateColdInit();
+    case BR_APP_ENTER_RUN: return BrAppStateEnterRun();
+    case BR_APP_RUN:       return BrAppStateRun();
+    case BR_APP_LOADING:   return BrAppStateLoading();
+    case BR_APP_SET_MODE:  return BrAppStateSetMode();
+    default:               return 0;   /* see the banner: not the original's */
+    }
+}
+@end
+@drop proto:BrStrGet
+@drop proto:BrDxDetect
+@drop proto:BrAppCheckPreviousApp
+@drop proto:BrMemoryQuery
+@drop proto:BrBaseDirInit
+@drop proto:BrStrResLoad
+@drop proto:BrCmdLineParse
+@drop proto:BrWindowCreate
+@drop proto:BrDPlayBootInit
+@drop proto:BrUiBootPreLoopGate
+@drop proto:BrMainLoopRun
+@drop type:BrCfgPathArg
+@drop proto:BrCfgReadFileT
+@drop var:DAT_10b71290
+@drop var:DAT_10b72f48
+@drop var:DAT_10b73540
+@drop var:pvReserved
+@drop var:CoUninitialize
+@drop var:uType
+@drop fn:BrRallyMain
+@after fn:BrRallyMain
+
+/* WHAT IT DOES: this is where Boss Rally starts. The launcher hands control
+ * here, and it brings the game up in order -- check the machine has DirectX 6
+ * (refusing with a message box if not), make sure another copy is not already
+ * running, read the settings file next to the game, create the window, and
+ * hand over to the message loop. When the loop ends it tidies up and returns
+ * the game's exit code. Most of the function is failure paths: there are five
+ * different ways to give up and they clean up differently.
+ *
+ * 0x1001CC00 -- see br_boot.h for the instruction-level listing. */
+/* @implements 0x1001CC00 glide BrRallyMain */
+int32_t BrRallyMain(const BrBootArgs *pArgs, const BrRallyMainOps *pOps)
+{
+    int32_t dxVersion;
+
+    if (pArgs == NULL || pOps == NULL ||
+        pOps->pfnCoInitialize == NULL || pOps->pfnCoUninitialize == NULL ||
+        pOps->pfnMessageBox   == NULL || pOps->pfnDxVersion      == NULL ||
+        pOps->pfnStartGate    == NULL || pOps->pfnCreateWindow   == NULL ||
+        pOps->pfnPreLoopGate  == NULL || pOps->pfnRunLoop        == NULL) {
+        return 0;
+    }
+
+    g_brAppExitCode = 0;                       /* 0x1001CC03 */
+
+    /* 0x1001CC11. A failure here skips EVERYTHING, including the argument
+     * stores below -- the jump goes straight to CoUninitialize. */
+    if (pOps->pfnCoInitialize(pOps->pUser) < 0) {
+        pOps->pfnCoUninitialize(pOps->pUser);
+        return g_brAppExitCode;
+    }
+
+    s_args = *pArgs;                           /* 0x1001CC2F..0x1001CC4A */
+
+    /* 0x1001CC50 -> 0x1001D8A0, then the UNSIGNED compare at 0x1001CC5C. */
+    dxVersion = pOps->pfnDxVersion(pOps->pUser);
+    if ((uint32_t)dxVersion < (uint32_t)BR_APP_MIN_DXVERSION) {
+        /* 0x1001CC63: MessageBoxA(NULL, str(0x128), str(0x126), 0x10).
+         * The push order in the listing is uType, caption, text, hWnd, so the
+         * TEXT is 0x128 and the CAPTION is 0x126 -- the reverse of the order
+         * the ids appear in. */
+        pOps->pfnMessageBox(pOps->pUser, BR_APP_STR_DX_TEXT,
+                            BR_APP_STR_DX_CAPTION);
+        return 0;                              /* 0x1001CC89 xor eax,eax */
+    }
+
+    /* 0x1001CC91. Zero aborts, and note it returns WITHOUT CoUninitialize --
+     * the original really does leak the apartment on this one path. Preserved:
+     * it is observable to anything else in the process. */
+    if (pOps->pfnStartGate(pOps->pUser) == 0) {
+        return 0;
+    }
+
+    BrBootFrontier_10007F10();
+    BrBootFrontier_10063860();
+    BrBootFrontier_1006D1A0();
+    BrBootFrontier_10007F40(s_args.pszCmdLine);   /* 0x1001CCB0, arg3 */
+
+    /* 0x1001CCB5..0x1001CD0D -- inlined strcpy then strcat, building
+     * <dir> + "BossRally.cfg" at 0x10B72F48 from 0x10B73540. */
+    BrBootBuildConfigPath();
+
+    /* 0x1001CD12, __thiscall on 0x10B71290 with the path just built. */
+    BrBootFrontier_10063060();
+
+    /* 0x1001CD17. Window creation; zero goes to the CoUninitialize tail. */
+    if (pOps->pfnCreateWindow(pOps->pUser) != 0) {
+        BrBootFrontier_10009C00();             /* 0x1001CD20 */
+        if (pOps->pfnPreLoopGate(pOps->pUser) != 0) {   /* 0x1001CD25 */
+            pOps->pfnRunLoop(pOps->pUser);     /* 0x1001CD2E -- the main loop */
+        }
+    }
+
+    pOps->pfnCoUninitialize(pOps->pUser);      /* 0x1001CD33 */
+    return g_brAppExitCode;                    /* 0x1001CD39 */
+}
+@end

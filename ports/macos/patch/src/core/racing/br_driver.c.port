@@ -1,0 +1,7 @@
+# Port deviations for src/core/racing/br_driver.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop proto:FUN_1006f840
+@drop fn:BrRacePosCopy
+@drop fn:BrDriverAssetsFree

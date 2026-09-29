@@ -28,9 +28,7 @@
  *  - byte-exact under /O2 /Gi (the lane's second variant); under plain /O2
  *    two commutative adds come out with their operands swapped.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Rip0C4E0 {
 public:

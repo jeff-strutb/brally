@@ -4,7 +4,6 @@
  * Filed out of the address batch slice1_05.c; its preamble is carried verbatim.
  */
 
-#ifdef BR_MATCHING_BUILD
 /* The originals of the vtx-cache cluster take no BrVtxCache parameter --
  * state is loose globals -- and BrVtxExpand/Insert/Resolve have different
  * arities. Hide the header's port prototypes behind renames so the
@@ -25,10 +24,6 @@
 #undef BrSelLookup
 #undef BrPtrListAdd
 #undef BrF3DVtxFixup
-#else
-#include "slice1_05.h"
-#include "br_gamestep.h"   /* 0x10034C66/0x10034C73 == BRGlide 0x1002E317/0x1002E324 */
-#endif
 
 #include <stddef.h>
 
@@ -47,7 +42,6 @@
  * hand passes (tools/fnmatch/fn.py variants); the dead-probe list is in the
  * comment block above.  Do not reopen before the end-grind (project rule 12). */
 /* @implements 0x1002B280 d3d BrCursorPairSet */
-#ifdef BR_MATCHING_BUILD
 void *g_brCursor575510;   /* 0x10575510 */
 void *g_brCursor575518;   /* 0x10575518 */
 
@@ -86,10 +80,3 @@ void BrCursorPairSet(void *pv)
     g_brCursor575510 = pv;
     g_brCursor575518 = pv;
 }
-#else
-void BrCursorPairSet(BrCursorPair *pPair, void *pv)
-{
-    pPair->f10 = pv;
-    pPair->f18 = pv;
-}
-#endif

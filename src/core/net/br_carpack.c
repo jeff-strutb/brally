@@ -7,7 +7,6 @@
  * matched first and grouped by what they are afterwards.
  * Every function carries its original address.
  */
-#ifdef BR_MATCHING_BUILD
 /* The two 16-bit quantisers return `short` in the original: their results
  * are shifted in AX (`sar ax,8` / `sar ax,1`) and only then widened
  * (`movsx ecx,ax`), which VC5 only does when the value is known to be
@@ -15,18 +14,13 @@
  * the port, so rename those prototypes and re-declare them narrow. */
 #define BrFixPackS16Q15Neg BrFixPackS16Q15Neg_int_hdr
 #define BrFixPackS16Q7     BrFixPackS16Q7_int_hdr
-#endif
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice2_12.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrFixPackS16Q15Neg
 #undef BrFixPackS16Q7
 int16_t BrFixPackS16Q15Neg(float v);
 int16_t BrFixPackS16Q7(float v);
-#endif
 
 /* 0x10006BD0 */
 /* WHAT IT DOES: packs a car's state into a fixed 22-byte record -- a second,

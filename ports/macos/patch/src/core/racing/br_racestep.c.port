@@ -1,0 +1,34 @@
+# Port deviations for src/core/racing/br_racestep.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:BrRaceDriverAnim
+@drop undef:BrRaceDriverAnim
+@drop define:BR_RSA_SLOT
+@drop proto:BrSub1005ACE0
+@drop proto:BrSub10001CF0
+@drop proto:BrCarPredictRemote
+@drop fn:BrRaceDriverAnim
+@after fn:BrRaceDriverAnim
+
+/* ==========================================================================
+ * 0x100623A0 -- a pure hole, transcribed for its control flow only
+ * ========================================================================== */
+
+void BrRaceDriverAnim(BrDriver *pDrv)
+{
+    BrDriverCar *pCar = pDrv->pCar;
+
+    if (pCar == NULL)                                 /* 0x100623A8 */
+        return;
+    if (g_brRaceNet != 0) {
+        /* 0x100623BC: 0x10059D30(car, car+0x144) decides whether this slot
+         * animates at all.  Unported, so the gate is entered and counted. */
+        BR_RS_HOLE(BR_RS_HOLE_ANIM, pfnAnim, pCar);
+        return;
+    }
+    /* 0x100623CB / 0x100623D3: 0x1005ACE0 and 0x10001CF0. */
+    BR_RS_HOLE(BR_RS_HOLE_ANIM, pfnAnim, pCar);
+}
+@end
+@drop var:DAT_100b2f04
+@drop fn:BrSndTableClear

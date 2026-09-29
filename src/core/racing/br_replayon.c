@@ -2,7 +2,6 @@
 #include "br_replayon.h"
 #include "br_objlife.h"
 
-#ifdef BR_MATCHING_BUILD
 extern uint32_t g_1750308, g_B502E4;
 extern uint32_t g_690A20, g_B501C8, g_0B8C94;
 extern uint32_t g_A9BFD0, g_18ABDE0, g_18ABDE4, g_178FEE8;
@@ -13,15 +12,6 @@ int  BrExt_10075020(void);
 void BrExt_10024460(void) {}
 void BrExt_1002A640(void) {}
 int  BrExt_10075020(void) { return 0; }
-#else
-uint32_t g_1750308, g_B502E4;
-uint32_t g_690A20, g_B501C8, g_0B8C94;
-uint32_t g_A9BFD0, g_18ABDE0, g_18ABDE4, g_178FEE8;
-int64_t g_18ABDE0_64;
-void BrExt_10024460(void);
-void BrExt_1002A640(void);
-int  BrExt_10075020(void);
-#endif
 
 /* WHAT IT DOES: turn replay recording on. */
 /* @implements 0x1006AA90 d3d BrSet_1006AA90 */
@@ -95,8 +85,7 @@ int BrDelta_100713A0(void)
     return BrExt_10075020() - (int)g_178FEE8;
 }
 
-/* ── Ghidra-matched functions ─────────────────────────── */
-#ifdef BR_MATCHING_BUILD
+/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
 int FUN_1002f282();
 extern int g_BrReplayOn;
 extern int g_a220B20;
@@ -157,4 +146,3 @@ unsigned int BrReplayCountFromBytes(unsigned int cb)
   return DAT_10b7364c = cb / 0x18;
 }
 
-#endif /* BR_MATCHING_BUILD */

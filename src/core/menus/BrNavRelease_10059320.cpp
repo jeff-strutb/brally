@@ -11,9 +11,7 @@
  * The table entries are __stdcall (no add esp after either call) - 
  * COM-interface shape (slot 2 = Release).
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 struct CObj;
 

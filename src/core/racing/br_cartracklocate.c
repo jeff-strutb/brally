@@ -5,7 +5,6 @@
  * and picking the nearest segment whose facing agrees; on a hit, update the
  * car's cell/segment record and along-track progress and return 1, else 0.
  */
-#ifdef BR_MATCHING_BUILD
 #include "br_match.h"      /* BR_THISCALL1 -- thiscall via __fastcall on VC5 */
 
 int   BrSeg2SideTest(int a, int b, int c, int d);
@@ -169,4 +168,3 @@ LAB_found:
   return 1;
 }
 
-#endif /* BR_MATCHING_BUILD */

@@ -27,20 +27,14 @@
  * implementation of either function is created: the definitions in
  * slice1_06.c are the ones that run.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
 #include <stdio.h>
-#endif
 #include <string.h>
 
-#ifdef BR_MATCHING_BUILD
 #define BrExt_1007AC00 BrExt_1007AC00_decl
-#endif
 #include "slice5_63.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrExt_1007AC00
-#endif
 
 #include "br_crt.h"      /* BrOperatorNew (0x1007DFE0)                       */
 #include "slice1_03.h"   /* BrTextGetState, BrHudDrawTimeEntry               */
@@ -129,9 +123,7 @@ extern void BrSub1003CC70(void *p);
  * BRGlide.dll has no counterpart and the Glide twin 0x10058F90 calls the
  * body unconditionally.  Declared only for the matching build, which diffs
  * against BRD3D.dll. */
-#ifdef BR_MATCHING_BUILD
 extern int BrSub1007A840(void);
-#endif
 /* XSLICE 0x1007A940 (Glide 0x10058E20 -- byte-identical, shared.csv `body`) */
 extern int BrSub1007A940(void);
 
@@ -212,7 +204,6 @@ void BrExt_1005FBC0(int32_t a)
     }
 
     /* Both counters are printed PLUS ONE. */
-#ifdef BR_MATCHING_BUILD
     /* THIS site calls MSVCRT's imported sprintf (0x118F0570), not the
      * in-DLL BrSprintf at 0x1007C830 -- two calls, so VC5 caches the import
      * pointer in esi and issues `call esi` twice. And the format is the
@@ -220,10 +211,6 @@ void BrExt_1005FBC0(int32_t a)
      * the string's address as an immediate, which a pointer read cannot be. */
     sprintf(g_aBrAA2518, "%d", g_brAA28A0 + 1);
     sprintf(g_aBrA9D618, "%d", g_brAA28A4 + 1);
-#else
-    BrSprintf(g_aBrAA2518, g_pszBr0A73C4, g_brAA28A0 + 1);
-    BrSprintf(g_aBrA9D618, g_pszBr0A73C4, g_brAA28A4 + 1);
-#endif
 
     g_brAA28AC = g_brAA28A4;
 
@@ -261,7 +248,6 @@ void BrExt_1005FBC0(int32_t a)
     g_brAA2A14 |= (int32_t)DAT_10ac5b3a;
 }
 
-#ifdef BR_MATCHING_BUILD
 extern int DAT_1007b324;            /* the menu's picks (g_br094354..5C)   */
 extern int DAT_1007b328;
 extern int DAT_1007b32c;
@@ -310,4 +296,3 @@ void BrRaceSettingsCommit(void)
   DAT_10ac5d68 |= DAT_10ac5b38 & 0xffff;
   DAT_10ac5d6c |= DAT_10ac5b3a;
 }
-#endif /* BR_MATCHING_BUILD */

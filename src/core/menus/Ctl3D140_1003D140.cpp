@@ -9,9 +9,7 @@
  *
  * ResetBuf(&g_buf); PrepFn(); then shared-return activate.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Phase;
 

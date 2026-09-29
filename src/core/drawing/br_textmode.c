@@ -4,18 +4,10 @@
 #include <stddef.h>
 #include <string.h>
 
-#ifdef BR_MATCHING_BUILD
 extern uint8_t  g_4B0360;
 extern uint8_t  g_4B035C;
 extern uint32_t g_2E5E98, g_2E54C0, g_2E5ECC;
 extern uint32_t g_364308, g_363F68;
-#else
-uint8_t  g_4B0360;
-uint8_t  g_4B035C;
-uint32_t g_2E5E98, g_2E54C0, g_2E5ECC;
-uint32_t g_364308[32];
-uint32_t g_363F68[32];
-#endif
 
 /* WHAT IT DOES: turn off a one-byte text-pass flag sitting next to the
  * alignment byte.  The next string is drawn without that special pass. */
@@ -69,7 +61,6 @@ void BrNodeChainReset_1000F460(void)
     g_2E5ECC = prev;
 }
 
-#ifdef BR_MATCHING_BUILD
 /* One camera's viewport record, 0x58 bytes; only the rectangle is read. */
 typedef struct BrVisView {
     int x, y, w, h;
@@ -164,9 +155,7 @@ void FUN_1000c9e0(BrVisView *pView, const void *pPt, int n, short *pMin,
         br_corner(pMax, cx, cy, pv[0], pv[1], fhw, fhh);
     }
 }
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 extern int DAT_102e16ac;
 extern int DAT_102e16b0;
 extern char DAT_102e1710;
@@ -223,4 +212,3 @@ void BrTextFlag358Clear(void)
     g_br4B0358 = 0;
 }
 
-#endif /* BR_MATCHING_BUILD */

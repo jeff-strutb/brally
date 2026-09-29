@@ -1,5 +1,4 @@
 /* 0x00401100 RegisterWindowClass */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: register the window class the intro player's window is
  * created from. */
 /* @implements 0x00401100 bossrally.exe RegisterWindowClass */
@@ -31,4 +30,3 @@ int RegisterWindowClass(HINSTANCE hInst, HINSTANCE hPrev)
     return 1;
 }
 
-#endif

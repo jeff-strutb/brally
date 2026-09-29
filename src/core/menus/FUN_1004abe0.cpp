@@ -29,9 +29,7 @@
  * vcall's vtable load before the third -- `cmp r,ebx` versus `test r,r` is
  * that register dying, not a source difference.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class GameUi;
 class BrCtl;

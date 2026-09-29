@@ -23,7 +23,6 @@
  *  - fwrite is called through one register (its import address is loaded
  *    once, after fopen succeeds).
  */
-#ifdef BR_MATCHING_BUILD
 
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
@@ -113,4 +112,3 @@ char BrGhostSave(void)
     return 1;
 }
 
-#endif /* BR_MATCHING_BUILD */

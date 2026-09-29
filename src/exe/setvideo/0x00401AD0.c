@@ -1,6 +1,5 @@
 /* Auto-generated from disassembly - 0x00401AD0
  * PushInclude: gIncludeStack[gIncludeDepth++] = f. */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: push a file onto the include stack when a #include is
  * followed. */
 /* @implements 0x00401AD0 setvideo.exe PushInclude */
@@ -30,4 +29,3 @@ void PushInclude(void *f)
 }
 
 
-#endif /* BR_MATCHING_BUILD */

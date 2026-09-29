@@ -7,9 +7,7 @@
  * Tbl8900 family: bounds warn, p = alloc(v4(i)), v5(i, p), return p.
  * Vtbl cached in edi across both vcalls.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Tbl8900 {
 public:

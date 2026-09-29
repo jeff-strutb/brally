@@ -5,23 +5,17 @@
  *
  * See slice2_12.h for the recovered layouts.
  */
-#ifdef BR_MATCHING_BUILD
 /* Header prototype is cdecl; the original is thiscall.  Rename the
  * prototype so the thiscall definition is not a C2373 redefinition. */
 #define BrKeyCacheReset BrKeyCacheReset_cdecl_hdr
 #define BrKeyCacheFind  BrKeyCacheFind_cdecl_hdr
-#endif
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include "slice2_12.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrKeyCacheReset
 #undef BrKeyCacheFind
 /* 0x1007DE40 -- local `operator delete`, an E8, not CRT free (FF 15). */
 extern void BrOperatorDelete(void *p);
-#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,7 +31,6 @@ extern void BrOperatorDelete(void *p);
  * match. Only the middle of each record takes part in the comparison; the
  * first few words are payload the search ignores. What the cache holds is
  * not established here. */
-#ifdef BR_MATCHING_BUILD
 /* Orig is thiscall, one stack arg (the vtbl[1] argument, not the key).
  * vtbl[1](this, arg, &key) is thiscall / ret 8; the search is 16 unrolled
  * dword compares at +0x0C of each 0x4C-byte record. */
@@ -83,32 +76,6 @@ int32_t __fastcall BrKeyCacheFind(BrKeyCache *pCache, int _edx, void *pArg)
     }
     return -1;
 }
-#else
-/* WHAT IT DOES: the port spelling of the same lookup -- scan the cache's
- * entries for the one whose 64-byte key equals the key handed in and report
- * its position, or -1. The caller builds the key here rather than the cache
- * calling back into its own key-building function. */
-/* @implements 0x10008850 glide BrKeyCacheFind */
-int32_t BrKeyCacheFind(const BrKeyCache *pCache, const int32_t aKey[16])
-{
-    int32_t i;
-
-    for (i = 0; i < pCache->cEntries; ++i) {
-        int32_t j;
-        int     fMatch = 1;
-
-        for (j = 0; j < 16; ++j) {
-            if (pCache->aEntries[i].aKey[j] != aKey[j]) {
-                fMatch = 0;
-                break;
-            }
-        }
-        if (fMatch)
-            return i;
-    }
-    return -1;                          /* `or eax,0xffffffff` */
-}
-#endif
 
 /* 0x10008970 */
 /* WHAT IT DOES: empties that cache: closes the file it was reading from,
@@ -122,11 +89,7 @@ void BR_THISCALL1 BrKeyCacheReset(BrKeyCache *pCache)
     if (pCache->pFile != NULL)
         fclose(pCache->pFile);          /* 0x1007CD50  FF 15 */
     if (pCache->aEntries != NULL)
-#ifdef BR_MATCHING_BUILD
         BrOperatorDelete(pCache->aEntries);  /* 0x1007DE40  E8, not free */
-#else
-        free(pCache->aEntries);
-#endif
 
     pCache->aEntries = NULL;
     pCache->pFile    = NULL;

@@ -29,10 +29,8 @@
  * the PARAMETER -- `idx = wCount - 1` -- which is why the original keeps
  * that index in idx's argument slot.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
 #include <string.h>
-#endif
 
 struct BrEnt54E20 {
     int a;

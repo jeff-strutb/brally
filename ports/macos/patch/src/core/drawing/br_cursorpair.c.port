@@ -1,0 +1,41 @@
+# Port deviations for src/core/drawing/br_cursorpair.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:BrVtxExpand
+@drop define:BrVtxCacheInsert
+@drop define:BrVtxCacheResolve
+@drop define:BrSelLookup
+@drop define:BrPtrListAdd
+@drop define:BrF3DVtxFixup
+@drop undef:BrVtxExpand
+@drop undef:BrVtxCacheInsert
+@drop undef:BrVtxCacheResolve
+@drop undef:BrSelLookup
+@drop undef:BrPtrListAdd
+@drop undef:BrF3DVtxFixup
+@drop var:g_brCursor575510
+@drop var:g_brCursor575518
+@drop fn:BrCursorPairSet
+@after fn:BrCursorPairSet
+
+/* 0x1002B280 */
+/* WHAT IT DOES: points both halves of a pair of cursors at the same place,
+ * which is how a buffer gets rewound to its start. What the buffer holds is not
+ * established here. */
+/* @t4-pass 0x100182F0 1 2026-09-09 probes 12 bytes 15 insns 4 regions 1 rows 1 census yes  (hand, fn.py variants) */
+/* @t4-pass 0x100182F0 2 2026-09-09 probes 23 bytes 15 insns 4 regions 1 rows 1 census yes  (hand, fn.py variants) */
+/* @t3 0x100182F0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 15/18 insns 4/5 rows 1+0 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is allocation/scheduling: 1+0 classified rows, 1 masked region, 3 B short;
+ * every row pairs under t3.py's canonical classes.  Effort: 2 counted
+ * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
+ * hand passes (tools/fnmatch/fn.py variants); the dead-probe list is in the
+ * comment block above.  Do not reopen before the end-grind (project rule 12). */
+/* @implements 0x1002B280 d3d BrCursorPairSet */
+void BrCursorPairSet(BrCursorPair *pPair, void *pv)
+{
+    pPair->f10 = pv;
+    pPair->f18 = pv;
+}
+@end

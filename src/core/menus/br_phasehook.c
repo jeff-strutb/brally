@@ -29,7 +29,6 @@
 #include <stddef.h>
 #include "br_phase.h"   /* BR_PHASE_ALLOC_SIZE */
 
-#ifdef BR_MATCHING_BUILD
 /* Header prototypes thread pCtx; the original leave/hook/dispatch
  * functions are one-arg cdecl (entity or click arg). */
 #define BrPhaseHook_100450C0     BrPhaseHook_100450C0_port
@@ -40,9 +39,7 @@
 #define BrPhaseHook_10045050     BrPhaseHook_10045050_port
 #define BrPhaseHook_10045090     BrPhaseHook_10045090_port
 #define BrPhaseDispatch_100450F0 BrPhaseDispatch_100450F0_port
-#endif
 #include "slice2_26.h"
-#ifdef BR_MATCHING_BUILD
 #include "br_match.h"
 #undef BrPhaseHook_100450C0
 #undef BrPhaseLeave_10044B40
@@ -72,10 +69,6 @@ typedef void (BR_THISCALL1 *Br26F1C)(BrEntSub *);
  * vtbl) so the site is `push 1; call [edx]`, not `xor edx,edx` and not
  * `mov eax,1; push eax` from a struct temp. */
 typedef void *(__fastcall *Br26F00)(BrPhase *, const BrPhaseVtbl *, int32_t);
-#else
-#define BR26_AA29B0  (pCtx->pAA29B0)
-#define BR26_0AA010  (pCtx->n0AA010)
-#endif
 
 /* ==========================================================================
  * Hook installers and the dispatcher
@@ -88,7 +81,6 @@ typedef void *(__fastcall *Br26F00)(BrPhase *, const BrPhaseVtbl *, int32_t);
  * stale one. */
 /* @implements 0x10045050 d3d BrPhaseHook_10045050 */
 /* @n64 0x80211194 located */
-#ifdef BR_MATCHING_BUILD
 int BrPhaseHook_10045050(void *pArg)
 {
     /* Orig is one-arg cdecl; it pushes that arg at Activate_45110, which
@@ -100,30 +92,11 @@ int BrPhaseHook_10045050(void *pArg)
     g_br0AA010 = 0;
     return 1;
 }
-#else
-int BrPhaseHook_10045050(BrPhaseCtx *pCtx, void *pArg)
-{
-    /* The original pushes pArg at 0x10045110, which ignores it (both are
-     * __cdecl, so the extra argument is harmless). Nothing else uses pArg. */
-    (void)pArg;
-
-    pCtx->n0AC304 = 0;
-    (void)BrPhaseActivate_10045110(pCtx);   /* result discarded */
-    pCtx->n0AC304 = 1;
-
-    /* pAA29B4 is read after the activation, so an activation that changes it
-     * is what gets hooked. */
-    pCtx->pAA29B4->pfnHook = BrExt_10046CD0;
-    pCtx->n0AA010 = 0;
-    return 1;
-}
-#endif
 
 /* WHAT IT DOES: opens a screen and then wires its Back row to the routine that
  * returns the player to the previous screen. Same pattern as its neighbour
  * above, without the flag juggling. */
 /* @implements 0x10045090 d3d BrPhaseHook_10045090 */
-#ifdef BR_MATCHING_BUILD
 int BrPhaseHook_10045090(void *pArg)
 {
     BrExt_10045C90(pArg);
@@ -131,27 +104,13 @@ int BrPhaseHook_10045090(void *pArg)
     g_br0AA010 = 0;
     return 1;
 }
-#else
-int BrPhaseHook_10045090(BrPhaseCtx *pCtx, void *pArg)
-{
-    BrExt_10045C90(pArg);
-
-    pCtx->pAA29B0->pfnHook = BrExt_10046DC0;
-    pCtx->n0AA010 = 0;
-    return 1;
-}
-#endif
 
 /* WHAT IT DOES: the same as the routine above -- open a screen, wire its Back
  * row -- with one extra preparation call in front of it. That call is a
  * do-nothing stub in this build, so the two behave identically here; the
  * difference is preserved because the order is what the original recorded. */
 /* @implements 0x100450C0 d3d BrPhaseHook_100450C0 */
-#ifdef BR_MATCHING_BUILD
 int BrPhaseHook_100450C0(void *pArg)
-#else
-int BrPhaseHook_100450C0(BrPhaseCtx *pCtx, void *pArg)
-#endif
 {
     BrExt_10041BD0();
     BrExt_10045C90(pArg);
@@ -167,18 +126,9 @@ int BrPhaseHook_100450C0(BrPhaseCtx *pCtx, void *pArg)
  * than success, on every path. */
 /* @implements 0x100450F0 d3d BrPhaseDispatch_100450F0 */
 /* @n64 0x80241F88 located */
-#ifdef BR_MATCHING_BUILD
 int BrPhaseDispatch_100450F0(void *pArg)
 {
     g_brAA29F4->pfnHook(pArg);
     g_br0AA010 = 0;
     return 0;
 }
-#else
-int BrPhaseDispatch_100450F0(BrPhaseCtx *pCtx, void *pArg)
-{
-    pCtx->pAA29F4->pfnHook(pArg);
-    pCtx->n0AA010 = 0;
-    return 0;   /* GOTCHA: 0, unlike its three neighbours */
-}
-#endif

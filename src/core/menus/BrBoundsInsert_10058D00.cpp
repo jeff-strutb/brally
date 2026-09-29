@@ -12,9 +12,7 @@
  * The two exits share the `p->f10 = node` store -- VC5 tail-merges them,
  * which is why the early-return arm costs nothing.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class BoundsNode {
 public:

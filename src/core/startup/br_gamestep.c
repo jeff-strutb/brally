@@ -71,23 +71,12 @@ int BrGameStepIsAddr(const void *pv)
  * where the race, or the front end, gets its turn each frame. */
 /* @implements 0x1002E324 glide BrGameStepInvoke */
 /* @n64 0x8021C6F0 located */
-#ifdef BR_MATCHING_BUILD
 /* Orig: PUSH EBP / MOV EBP,ESP / CALL [g_pfnStep] / POP EBP / RET (11 B).
  * No NULL guard -- just calls through the pointer and returns whatever EAX is. */
 int BrGameStepInvoke(void)
 {
     return ((int (*)(void))g_pfnStep)();
 }
-#else
-int BrGameStepInvoke(void)
-{
-    if (g_pfnStep == NULL) {
-        return 0;
-    }
-    g_pfnStep();
-    return 1;
-}
-#endif
 
 BrGameStepFn BrGameStepGet(void)
 {
@@ -130,8 +119,7 @@ int BrGameStepPump(int state)
     return BrGameStepInvoke();
 }
 
-/* ── Ghidra-matched functions ─────────────────────────── */
-#ifdef BR_MATCHING_BUILD
+/* ââ Ghidra-matched functions âââââââââââââââââââââââââââ */
 
 /* WHAT IT DOES: empty function (/Od frame, nothing else). */
 /* @implements 0x1002E32F glide BrNop_1002E32F */
@@ -218,4 +206,3 @@ void BrFrameClockStep(void)
     DAT_106b7ac0 = DAT_106ec768 - DAT_106ed588;
 }
 
-#endif /* BR_MATCHING_BUILD */

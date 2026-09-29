@@ -3,7 +3,6 @@
  * bring-up -- are in br_peer.c; this one is in its own TU because it needs
  * the peer table typed as records where br_peer.c declares it as an int.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT and KERNEL32 calls go through the import table. */
 #define _CRTIMP __declspec(dllimport)
 #include <windows.h>
@@ -154,4 +153,3 @@ void BrNetPeerRank(void)
     for (k = 0; k < BR_PEERS; k++)
         g_aBrPeerOrder[g_aBrPeerRank[k].idx] = k;
 }
-#endif /* BR_MATCHING_BUILD */

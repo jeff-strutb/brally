@@ -12,11 +12,9 @@
  * matched first and grouped by what they are afterwards.
  * Every function carries its original address.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import
  * table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdint.h>
 
 /* XSLICE 0x100940A4 -- slice2_11.h's name. */
@@ -42,7 +40,6 @@ void BrCdTrackPlay(int track)
     BrSub100027F0(track);
 }
 
-#ifdef BR_MATCHING_BUILD
 /* ==========================================================================
  * 10. 0x100027F0 -- CD play path B (EAR)
  * ==========================================================================
@@ -109,4 +106,3 @@ int BrCdPlayClamped(int track)
     }
     return 1;
 }
-#endif /* BR_MATCHING_BUILD */

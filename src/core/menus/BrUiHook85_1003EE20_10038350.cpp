@@ -9,9 +9,7 @@
  * +0x3838 (`add ecx,0x3838` - embedded member, not a pointer load), the
  * result written back to the global when non-negative. No EH.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class Sel {
 public:

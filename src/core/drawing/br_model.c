@@ -4,15 +4,12 @@
  * matched first and grouped by what they are afterwards.
  * Every function carries its original address.
  */
-#ifdef BR_MATCHING_BUILD
 /* The original is /MD: CRT calls go through the import
  * table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#endif
 #include <stdint.h>
 #include <string.h>
 
-#ifdef BR_MATCHING_BUILD
 
 int FUN_1006e1d0();
 extern int g_AC300;
@@ -170,23 +167,17 @@ int BrModelSlotApply(int param_1,int param_2)
   return;
 }
 
-#endif /* BR_MATCHING_BUILD */
 
-#ifdef BR_MATCHING_BUILD
 /* Header prototype is cdecl (this, r, g, b).  Original is thiscall with
  * ret 0xC; hide that prototype so the definition can take the struct-arg
  * __fastcall shape that reproduces it. */
 #define BrRgbSinkSet BrRgbSinkSet_hdr
-#endif
-#ifdef BR_MATCHING_BUILD
 /* slice2_19.h / br_seg.h declare these cdecl with a leading state pointer the
  * originals do not have.  Hide those prototypes so BrModelLoad can call them
  * with the shapes the bytes show. */
 #define BrSub100088B0 BrSub100088B0_cdecl
 #define BrSegSetBases BrSegSetBases_cdecl
-#endif
 #include "slice2_19.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrSub100088B0
 #undef BrSegSetBases
 typedef struct { void *p; } BrModelLoadArg;
@@ -194,10 +185,7 @@ extern int g_brModelMgr;                        /* 0x10AC0810 */
 void * __fastcall BrSub100088B0(void *pThis, BrModelLoadArg a,
                                 BrModelLoadArg b);
 void BrSegSetBases(uint32_t n64Base, uint32_t hostBase);
-#endif
-#ifdef BR_MATCHING_BUILD
 #undef BrRgbSinkSet
-#endif
 
 #include <string.h>
 
@@ -217,7 +205,6 @@ void BrSegSetBases(uint32_t n64Base, uint32_t hostBase);
  * pushes 0 and the loaded block and nothing else.  br_seg.c's matching body
  * already records that its third parameter is the port's own pMap slot, so
  * this call site simply declares the two-argument shape. */
-#ifdef BR_MATCHING_BUILD
 void *BrModelLoad(void *a1, void *a2)
 {
     BrModelLoadArg x, y;
@@ -231,16 +218,3 @@ void *BrModelLoad(void *a1, void *a2)
     BrModelSwap(p);
     return p;
 }
-#else
-void *BrModelLoad(void *pMgr, void *a1, void *a2)
-{
-    void *p;
-
-    /* GOTCHA: a2 is pushed last, so it is the callee's FIRST argument. */
-    p = BrSub100088B0(pMgr, a2, a1);
-
-    BrSegSetBases(g_BrSegMap, 0, (uint32_t)(uintptr_t)p);
-    BrModelSwap(p);
-    return p;
-}
-#endif

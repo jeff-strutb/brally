@@ -42,9 +42,7 @@
  *
  * @t4-pass 0x10062B80 1 2026-09-13 probes 22 bytes 166 insns 60 regions 2 rows 5 census no  (fresh transcription, 22 cpp probes; every instruction shape present. RESIDUE is one register plan: original homes base/delta/counter in ebp/edi/ebx and loads mod->dl key->ecx; ours in edi/ebx/ebp with mod->cl key->eax widening through a zeroed dx. Dead: int/ushort/uchar key+mod in every combination, mix as one expression / mod^=key / int-or-uchar temp / mix-before-p / key-to-local / counter as profile or fresh local.)
  * @t4-pass 0x10062B80 2 2026-09-16 probes 10 bytes 166 insns 60 regions 2 rows 5 census yes  (the t3.py demangled-name fix let the A5 oracle run this thiscall method; it returns EQUIVALENT on 64 valid-state seeds -- return + every in-image global write + side effects agree, so the residue is register allocation, not missing/wrong code. Confirming probes (char/int mod, intrinsic, opt variants) do not move the 61-diff residue. Numbers unmoved.) */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 extern "C" {
 unsigned short DAT_100b38a0[];      /* default bindings, profile 0 */

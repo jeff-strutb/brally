@@ -1,0 +1,18 @@
+# Port deviations for src/core/controls/br_dishutdown.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop var:BrDI
+@drop type:BrDIVtbl
+@drop type:BrDI
+@drop var:g_BrDInputUsers
+@drop var:g_pDInput
+@drop var:g_pBrAC61E0
+@drop proto:BrNavRelease_10059320
+@drop proto:BrOperatorDelete
+@drop fn:BrDInputShutdown
+@drop var:DAT_118eeeec
+@drop var:DAT_118eef04
+@drop var:DAT_118eef14
+@drop var:DAT_118eef18
+@drop type:CC_std_1
+@drop fn:BrExt_10079550

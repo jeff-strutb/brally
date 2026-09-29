@@ -88,7 +88,6 @@ typedef struct BrDlVtx {
     float   n0, n1, n2;
 } BrDlVtx;
 
-#ifdef BR_MATCHING_BUILD
 
 /* MVP matrix, 4x4 row-major at 0x105D1760. */
 extern float DAT_105d1760, DAT_105d1764, DAT_105d1768, DAT_105d176c;
@@ -241,4 +240,3 @@ const uint8_t *BrDlVtxNoZLit(const uint8_t *p)
     return p + 8;
 }
 
-#endif /* BR_MATCHING_BUILD */

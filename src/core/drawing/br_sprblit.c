@@ -61,7 +61,6 @@
  * pointers and both pitches must be computed ONCE, before the flag test.
  * Spelling them inline in each call arm duplicates them (+33 B, reggap 18+8).
  */
-#ifdef BR_MATCHING_BUILD
 
 #include <string.h>
 
@@ -172,4 +171,3 @@ void BrUiSprBlitKeyed(unsigned short *pDst, int dstPitch, int w, int h,
     }
 }
 
-#endif /* BR_MATCHING_BUILD */

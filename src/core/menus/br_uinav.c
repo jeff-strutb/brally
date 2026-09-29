@@ -11,14 +11,10 @@
  * comment slice3_32.c carries is repeated here so a future diff of the two is
  * a diff of behaviour and not of documentation.
  */
-#ifdef BR_MATCHING_BUILD
 /* Header is cdecl (nav, ctl). Original is thiscall with this = ctl. */
 #define BrUiNavCtlHit_10047A60 BrUiNavCtlHit_10047A60_hdr
-#endif
 #include "br_uinav.h"
-#ifdef BR_MATCHING_BUILD
 #undef BrUiNavCtlHit_10047A60
-#endif
 #include <stddef.h>
 
 BrUiNav *g_pBrUiNav;
@@ -208,7 +204,6 @@ static int BrNavPtInStyle(const BrTextStyle *pRc, int32_t x, int32_t y)
  * behind mouse navigation of the front end. */
 /* @t4-pass 0x10040EB0 1 2026-09-27 probes 26 bytes 568 insns 184 regions 3 rows 11 census yes  (hand: retranscribed from the listing 24+28 -> 2+9; then tail/nesting shapes, C++ member function, flag sets -- census = the C++ and flag mechanism runs) */
 /* @implements 0x10047A60 d3d BrUiNavCtlHit_10047A60 */
-#ifdef BR_MATCHING_BUILD
 /* Orig is thiscall (this = pCtl in ecx, `mov esi, ecx`) and reads the
  * cursor / hot-rects / ordinal / activity flags as standalone globals,
  * not through a BrUiNav *. BrIsAnyActive is 0-arg cdecl; page-select is
@@ -319,121 +314,6 @@ int BR_THISCALL1 BrUiNavCtlHit_10047A60(BrUiCtl_ *pCtl)
     }
     return 0;
 }
-#else
-int BrUiNavCtlHit_10047A60(BrUiNav *pNav, BrUiCtl_ *pCtl)
-{
-    BrScrGlobals  *pG = pNav->pG;
-    BrActiveFlags *pA = pNav->pActive;
-    uint32_t f;
-    int32_t  x, y;
-    int      fCurrent;      /* edx -- "this control is the selected one"     */
-    int      fHot;          /* ecx -- "cursor is inside one of the 3 rects"  */
-    int      fInside;
-
-    f = (uint32_t)pCtl->flags1C;
-
-    /* `test al,8` -- inert. Returns 0 with nothing written. */
-    if (f & 0x00000008u)
-        return 0;
-
-    /* `test al,0x10` -- the page frame's own ordinal arm handles this
-     * control; here it only advances the cursor and counts. */
-    if (f & BR_SCR_F1C_0010) {
-        if (pG->wAA286C == pG->wAA2870) {
-            pG->wAA286C = (uint16_t)(pG->wAA286C + pG->w0AB3DC);
-            (void)BrUiNavPageSelect_100484F0(pNav, pCtl->pOwner->pCur);
-        }
-        ++pG->wAA2870;
-        return 0;
-    }
-
-    /* The 0x80000 latch. The original calls 0x1003E080 TWICE here and
-     * re-tests the same flag between the calls; the predicate reads only
-     * globals and nothing between the two calls writes them, so the second
-     * answer is the first. Both calls are kept so the call graph matches. */
-    if (f & 0x00080000u) {
-        if (BrIsAnyActive(pA) != 0) {
-            if (BrIsAnyActive(pA) != 0) {
-                pCtl->flags1C = (int32_t)((uint32_t)pCtl->flags1C | 0x22u);
-                return 1;
-            }
-        } else {
-            /* `and dword [esi+0x1c], 0xfff7fffd` -- clears 0x80000 AND 0x2. */
-            pCtl->flags1C =
-                (int32_t)((uint32_t)pCtl->flags1C & 0xFFF7FFFDu);
-        }
-    }
-
-    x = pNav->pCursor[0];
-    y = pNav->pCursor[1];
-
-    if (BrNavPtInStyle(pNav->apHot[0], x, y)
-     || BrNavPtInStyle(pNav->apHot[1], x, y)
-     || BrNavPtInStyle(pNav->apHot[2], x, y)) {
-        fHot     = 1;
-        fCurrent = 0;
-    } else {
-        fHot = 0;
-        /* The original computes 19*cursor and 19*ordinal (two `lea` pairs,
-         * both biased by whatever was left in edx) and compares them. It is
-         * an equality test on the two words, and the bias cancels. */
-        fCurrent = ((int32_t)(int16_t)pG->wAA286C
-                 == (int32_t)(int16_t)pG->wAA2870) ? 1 : 0;
-    }
-
-    ++pG->wAA2870;
-    pNav->nAA284C = fHot;
-
-    fInside = BrNavPtIn(pCtl->rcLeft, pCtl->rcTop, pCtl->rcRight,
-                        pCtl->rcBottom, x, y);
-
-    if (!fInside && !fCurrent) {
-        /* `and al,0xdd` -- clears CURRENT (0x20) and ACTIVATE (0x02). */
-        pCtl->flags1C = (int32_t)((uint32_t)pCtl->flags1C & ~0x22u);
-        return 0;
-    }
-
-    if (fCurrent) {
-        /* The first four of 0x1003E080's nine globals, inlined. Any of them
-         * set means "a modal thing is running": leave the flags alone. */
-        if (pA->a0 != 0 || pA->a1 != 0 || pA->a2 != 0 || pA->a3 != 0)
-            return 1;
-    }
-
-    f = (uint32_t)pCtl->flags1C;
-    if (f & 0x00040000u) {
-        const BrObjAA2E80 *p = pG->pAA2E80;
-        if (p->f2C != 0 || p->f30 != 0)
-            f |= 0x00080002u;
-        else
-            f &= ~0x00000002u;
-    } else {
-        int fFire;
-
-        /* The original's arms, kept in its order: the override global short-
-         * circuits straight to the full predicate (which it forces to 0),
-         * while a5 or a6 set the bit without calling anything. */
-        if (pA->override != 0)
-            fFire = (BrIsAnyActive(pA) != 0);
-        else if (pA->a5 != 0 || pA->a6 != 0)
-            fFire = 1;
-        else
-            fFire = (BrIsAnyActive(pA) != 0);
-
-        if (fFire)
-            f |= 0x00000002u;
-        else
-            f &= ~0x00000002u;
-    }
-    /* The original stores TWICE: once without the CURRENT bit and once with
-     * it. Reproduced, because a hook reached from another thread would see
-     * the intermediate value. */
-    pCtl->flags1C = (int32_t)f;
-    f |= 0x00000020u;
-    pCtl->flags1C = (int32_t)f;
-    return 1;
-}
-#endif /* BR_MATCHING_BUILD */
 
 /* ==========================================================================
  * 0x10048180 -- control vtable +0x0C, one frame of one control.
@@ -873,11 +753,7 @@ static int32_t   NavV_f10(BrUiCtl_ *p)
 }
 static int32_t   NavV_f20(BrUiCtl_ *p)
 {
-#ifdef BR_MATCHING_BUILD
     return BrUiNavCtlHit_10047A60(p);
-#else
-    return BrUiNavCtlHit_10047A60(g_pBrUiNav, p);
-#endif
 }
 static int32_t   NavV_f3C(BrUiCtl_ *p)
 {
@@ -969,7 +845,6 @@ int BrUiNavSelection(const BrUiNav *pNav)
  * bookkeeping, per-button edge machines, and the common tail hook
  * (g_..5DD8 = this; 0x10059060).
  * ====================================================================== */
-#ifdef BR_MATCHING_BUILD
 
 typedef struct BrDInVtbl_ {
     int (__stdcall *f00[7])(void *);
@@ -1271,4 +1146,3 @@ void __fastcall BrGlNavPoll(BrGlNavRec *pNav, int _edx_unused, int _unused)
     BrGlNavTail();
 }
 
-#endif /* BR_MATCHING_BUILD */

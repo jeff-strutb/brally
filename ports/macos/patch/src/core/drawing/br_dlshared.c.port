@@ -1,0 +1,99 @@
+# Port deviations for src/core/drawing/br_dlshared.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:BrDlsClipCodes
+@drop define:BrDlsTileSizeDecode
+@drop define:BrDlsTileRectDecode
+@drop undef:BrDlsClipCodes
+@drop undef:BrDlsTileSizeDecode
+@drop undef:BrDlsTileRectDecode
+@drop var:DAT_118ed198
+@drop var:DAT_1186c950
+@drop var:DAT_1186c954
+@drop var:DAT_118ec988
+@drop var:DAT_1186c958
+@drop var:DAT_118ed1ac
+@drop fn:BrDlsTileSizeDecode
+@drop proto:FUN_100215c0
+@drop fn:BrDlsTileRectE4
+@drop fn:BrDlsTileRectE3
+@drop fn:BrDlsClipCodes
+@after fn:BrDlsClipCodes
+
+/* WHAT IT DOES: reads the drawing command that says which rectangle of a
+ * texture the next drawings will use, and works out that rectangle's width
+ * and height in texture pixels. Sign is kept throughout, so a rectangle
+ * given back to front stays back to front rather than becoming enormous. */
+/* @t4-pass 0x1001EC30 1 2026-09-07 probes 33 bytes 178 insns 45 regions 5 rows 2 census yes  (tools/crank.py) */
+/* @t4-pass 0x1001EC30 2 2026-09-07 probes 33 bytes 178 insns 45 regions 5 rows 2 census yes  (tools/crank.py) */
+/* @t4-pass 0x1001EC30 3 2026-09-09 probes 10 bytes 178 insns 45 regions 4 rows 0 census no  (hand, fn.py variants: decl orders, mask/shift/guard spellings, q local, register hint, all inert or worse) */
+/* @t4-pass 0x1001EC30 4 2026-09-09 probes 11 bytes 178 insns 45 regions 4 rows 0 census yes  (hand, fn.py variants: word temp, param copy, return/diff spellings, all inert; corpus MISS at +0x1 len 12 -- the between-pushes parameter load is proven nowhere) */
+/* @t3 0x1001EC30 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 178/178 insns 45/45 rows 0+0 regions 4 oracle EQUIVALENT
+ * @t3-effort passes 4 zero-movement 3 4
+ * residue is one register-colouring fork: esi<->edi for `p` vs `ult`, the
+ * parameter load scheduled between the two pushes in the original and
+ * after them here (identical multiset after the decimal-esp normaliser
+ * fix, 8f86659).  Dead list in the RESIDUE block below.
+ * Do not reopen before the end-grind (project rule 12). */
+/* @implements 0x1001EC30 glide BrDlsTileSizeDecode */
+void BrDlsTileSizeDecode(uint32_t w0, uint32_t w1, BrDlsTileSize *pOut)
+{
+    pOut->uls = br_dls_sext12(w0 >> 12);
+    pOut->ult = br_dls_sext12(w0);
+    pOut->lrs = br_dls_sext12(w1 >> 12);
+    pOut->lrt = br_dls_sext12(w1);
+    /* `sar eax,2` -- arithmetic, so a negative span rounds toward -inf. */
+    pOut->tileW = (pOut->lrs - pOut->uls + 4) >> 2;
+    pOut->tileH = (pOut->lrt - pOut->ult + 4) >> 2;
+}
+
+/* WHAT IT DOES: reads the drawing command that puts a piece of a texture
+ * straight onto the screen -- the command behind heads-up panels and menu
+ * artwork -- and pulls out its four corners and which loaded texture to use.
+ * The command comes in two forms, one giving the corners in quarter-pixels
+ * and one in whole pixels, and the whole-pixel form is scaled up here so both
+ * hand on the same units. */
+/* Port-only decode helper.  The originals are BrDlsTileRectE4 / E3 above. */
+void BrDlsTileRectDecode(uint32_t w0, uint32_t w1, int fInteger,
+                         BrDlsTileRect *pOut)
+{
+    pOut->ulx  = (int32_t)((w1 >> 12) & 0xFFFu);
+    pOut->uly  = (int32_t)(w1 & 0xFFFu);
+    pOut->lrx  = (int32_t)((w0 >> 12) & 0xFFFu);
+    pOut->lry  = (int32_t)(w0 & 0xFFFu);
+    pOut->tile = (int32_t)((w1 >> 24) & 7u);
+
+    /* 0xE3 only.  `shl edx,2` on the two low fields and `shr ecx,0xA /
+     * and 0x3FFC` on the two high ones -- the same multiply by four, folded
+     * into the shift.  0xE4 does none of this. */
+    if (fInteger) {
+        pOut->ulx <<= 2;
+        pOut->uly <<= 2;
+        pOut->lrx <<= 2;
+        pOut->lry <<= 2;
+    }
+}
+
+/* WHAT IT DOES: checks whether a transformed vertex has fallen outside the
+ * viewing frustum and reports which of the seven boundaries it crossed, so
+ * the triangle assembler knows whether to clip the triangle, keep it or throw
+ * it away. A coordinate that is not a number counts as outside on every
+ * boundary it appears in. */
+/* @implements 0x10022120 glide BrDlsClipCodes */
+int32_t BrDlsClipCodes(float cx, float cy, float cz, float cw)
+{
+    int32_t oc = 0;
+
+    /* NEGATED, ALL SEVEN -- see the header.  `!(v >= 0)` and not `v < 0`,
+     * because the original's `test ah,1` is true for UNORDERED too. */
+    if (!(cw >= 0.0f))        oc |= 0x01;   /* w      */
+    if (!(cz + cw >= 0.0f))   oc |= 0x02;   /* near   */
+    if (!(cw - cz >= 0.0f))   oc |= 0x04;   /* far    */
+    if (!(cx + cw >= 0.0f))   oc |= 0x08;   /* left   */
+    if (!(cw - cx >= 0.0f))   oc |= 0x10;   /* right  */
+    if (!(cy + cw >= 0.0f))   oc |= 0x20;   /* bottom */
+    if (!(cw - cy >= 0.0f))   oc |= 0x40;   /* top    */
+    return oc;
+}
+@end

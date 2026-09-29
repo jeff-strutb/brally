@@ -1,5 +1,4 @@
 /* 0x00401410 CanRun: state is Stopped(1) or Paused(2) */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: report whether a playback graph exists and is in a state
  * that can be started. */
 /* @implements 0x00401410 bossrally.exe CanRun */
@@ -18,4 +17,3 @@ int CanRun(void)
     return 0;
 }
 
-#endif

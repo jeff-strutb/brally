@@ -9,9 +9,7 @@
  * Phase-leave family: one zero store (C7-05 form), then the plain helper
  * and the static-object thiscall after the g_cur swap. No EH.
  */
-#ifdef BR_MATCHING_BUILD
 #define _CRTIMP __declspec(dllimport)
-#endif
 
 class GameSub {
 public:

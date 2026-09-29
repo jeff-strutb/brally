@@ -1,6 +1,5 @@
 /* Auto-generated from disassembly - 0x00403140
  * CRT startup calls this (empty user init). 1 byte: ret. */
-#ifdef BR_MATCHING_BUILD
 /* WHAT IT DOES: the user start-up hook the CRT calls; deliberately empty. */
 /* @implements 0x00403140 setvideo.exe CRT_empty */
 
@@ -25,4 +24,3 @@ void CRT_empty(void)
 }
 
 
-#endif /* BR_MATCHING_BUILD */

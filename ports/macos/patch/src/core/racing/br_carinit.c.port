@@ -1,0 +1,23 @@
+# Port deviations for src/core/racing/br_carinit.c -- see ports/macos/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:BrCarInitTables
+@drop define:BrCarClear29C8
+@drop undef:BrCarInitTables
+@drop undef:BrCarClear29C8
+@drop fn:BrCarClear29C8
+@after fn:BrCarClear29C8
+
+/* 0x10065710 */
+/* WHAT IT DOES: clears a small block of a car's bookkeeping -- four numbers
+ * and one half-sized one -- back to zero. */
+/* @implements 0x10065710 d3d BrCarClear29C8 */
+void BrCarClear29C8(BrCar *pCar)
+{
+    CAR_I32(pCar, 0x29C8) = 0;
+    CAR_I32(pCar, 0x29CC) = 0;
+    CAR_I32(pCar, 0x29D0) = 0;
+    CAR_I32(pCar, 0x29D4) = 0;
+    CAR_U16(pCar, 0x29D8) = 0;   /* a WORD, not a dword */
+}
+@end
