@@ -1027,12 +1027,22 @@ void hglide_tri_h(const float *a, const float *b, const float *c, int noz)
     }
     draw(v, 3, 0, noz ? 2 : 1);
 }
-/* the game's GrVertex is 0x3C bytes (two TMUs): include/br_imgblit.h */
+/* the game's GrVertex is 0x3C bytes (two TMUs): include/br_imgblit.h
+ *
+ * RETIRING: only the game's CPU polygon clipper calls this, and with the
+ * native triangle leaves (native/render.m) that clipper is never reached.
+ * It stays for BR_GLIDE3D=1 (the original leaves, for side-by-side checks)
+ * until the native path has soaked; reaching it otherwise is reported once. */
 void h_grDrawPolygonVertexList(u32 n, u32 p)
 {
     gv tri[3 * 64], v0, a, b;
     int k = 0;
     u32 i;
+    static int warned;
+    if (!warned && !(getenv("BR_GLIDE3D") && atoi(getenv("BR_GLIDE3D")))) {
+        warned = 1;
+        fprintf(stderr, "glide: grDrawPolygonVertexList reached with the native renderer on\n");
+    }
     if (n < 3) return;
     g_st_poly++;
     gllog("grDrawPolygonVertexList %u", n);
