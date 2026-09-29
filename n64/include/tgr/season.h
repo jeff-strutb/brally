@@ -9,8 +9,9 @@ typedef struct BrSeason {
     int state;                  /* 0x00 */
     unsigned char round;        /* 0x04 */
     unsigned char race;         /* 0x05 */
-    char pad06[0x18];
-    short points[55];           /* 0x1E  points per round */
+    unsigned char place[6][4];  /* 0x06  finishing position per round and race */
+    unsigned short points[7];   /* 0x1E  points per round */
+    float times[6][4];          /* 0x2C  lap clock per round and race */
     float x8c[16];              /* 0x8C  one per car */
     unsigned short unlocked;    /* 0xCC  bit n: car n may be picked */
     unsigned short xce;         /* 0xCE */

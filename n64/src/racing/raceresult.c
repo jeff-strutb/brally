@@ -15,6 +15,9 @@ extern int D_80315DA8[2];               /* laps completed */
 extern int D_8026FF08;                  /* human players */
 extern int D_8028B304;                  /* laps in the race */
 extern int D_80270790;                  /* results are ready */
+extern int D_8026FF18;                  /* the game mode */
+extern unsigned char D_802707AC[];      /* season points per finishing position */
+void osSyncPrintf(char *fmt, ...);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Copy each human player's race numbers (laps done, lap
@@ -37,4 +40,33 @@ void BrRaceResultSave(void)
     }
   }
   D_80270790 = 1;
+}
+
+/* WHAT IT DOES: Put the saved race results back into the players' cars
+ * (laps, lap times and the rest); in a season race with results ready, first
+ * add each player's points for their finishing position to the round and
+ * record the position and lap clock for the race. */
+/* @implements 0x802060DC tgr BrRaceResultRestore */
+void BrRaceResultRestore(void)
+{
+  int i;
+  int j;
+
+  if (D_8026FF18 == 0 && D_80270790 != 0) {
+    for (i = 0; i < D_8026FF08; i++) {
+      D_8031B760[i].season->points[D_8031B760[i].season->round] += D_802707AC[D_80315D60[i]];
+      D_8031B760[i].season->place[D_8031B760[i].season->round][D_8031B760[i].season->race] = D_80315D60[i];
+      D_8031B760[i].season->times[D_8031B760[i].season->round][D_8031B760[i].season->race] = D_80315D68[i];
+      osSyncPrintf("points = %d\n", D_8031B760[i].season->points[D_8031B760[i].season->round]);
+    }
+  }
+  for (i = 0; i < D_8026FF08; i++) {
+    for (j = 0; j < D_8028B304; j++) {
+      D_8031B760[i].lapTimes[j] = D_80315D78[i][j];
+    }
+    D_8031B760[i].laps = D_80315DA8[i];
+    D_8031B760[i].xf9c = D_80315DA0[i];
+    D_8031B760[i].lapTime = D_80315D68[i];
+    D_8031B760[i].xfac = D_80315D60[i];
+  }
 }
