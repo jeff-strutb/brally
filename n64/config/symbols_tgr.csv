@@ -679,6 +679,7 @@ va,name,kind
 802A6298,__osRunQueue,data
 802A629C,__osActiveQueue,data
 802A62A0,__osRunningThread,data
+802A62A4,__osFaultedThread,data
 802A62D0,__osTimerList,data
 802ABA80,__libm_qnan_f,data
 802ABC00,gspF3DEX_fifoDataStart,data
