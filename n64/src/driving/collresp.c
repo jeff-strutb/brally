@@ -31,9 +31,11 @@ typedef struct BrTipBody {
   float f1E0;                   /* 0x1E0 */
   float f1E4;                   /* 0x1E4 */
   float f1E8;                   /* 0x1E8 */
-  char pad1ec[0x1f8 - 0x1ec];
+  float hitN[3];                /* 0x1EC  the last hard contact's plane normal */
   int stuck;                    /* 0x1F8  frames left before it counts as stuck */
-  char pad1fc[0x200 - 0x1fc];
+  unsigned char hitSize;        /* 0x1FC  how hard it was (0 when under 10) */
+  char pad1fd[2];
+  unsigned char hitPeak;        /* 0x1FF  the hardest since it was cleared, 128-255 */
   unsigned char idle;           /* 0x200  frames with no contact (to 40) */
 } BrTipBody;
 void BrQuatToMat(float m[4][4], void *st);
@@ -73,7 +75,11 @@ void BrCrListPush(void *plane);
 
 extern int D_8026FF18;                /* the game mode; 4 arms the contact-kick path */
 void BrVec3NormaliseF(float v[3]);
-int func_8025B73C(BrTipBody *b, void *plane, int flag, int spin);
+int BrCrContactKick(BrTipBody *b, float *pN, int dampFlag, int spinFlag);
+extern double D_802AB7E8;              /* 1.05 */
+extern float D_802AB7F0;               /* 0.9 */
+extern float D_802AB7F4;               /* 0.9 */
+void BrMat4RotateVec(float out[3], float m[4][4], float v[3]);
 int func_8025BBB8(BrTipBody *b, float *n, void *plane, int flag, float rest);
 void BrCrPlaneResolve(BrTipBody *b, float *pA, float planeD, float *pEdgeN, float *v);
 
@@ -181,6 +187,82 @@ short BrCrTriContainsPoint(BrCrPlane *pT, float *pP)
 float BrCrPlaneDist(float n[3], float d, float p[3])
 {
   return n[0] * p[0] + n[1] * p[1] + n[2] * p[2] + d;
+}
+
+/* WHAT IT DOES: One collision "kick" on a body: bounce its velocity off the
+ * contact normal (1.05 of the approach removed) unless it is already moving
+ * away; after 10 frames without contact also record how hard it hit (and
+ * the plane's normal) for the effects and damp it; damp it again when
+ * asked; and with spinFlag keep only the spin about the contact normal.
+ * Returns 0 when the body was moving away.  The PC twin is BrCrContactKick. */
+/* @implements 0x8025B73C tgr BrCrContactKick */
+int BrCrContactKick(BrTipBody *b, float *pN, int dampFlag, int spinFlag)
+{
+  float t[3];
+  float v[3];
+  float M[4][4];
+  float d;
+  float k;                       /* the hit size, then the damping */
+
+  d = pN[0] * b->cur[3] + pN[1] * b->cur[4] + pN[2] * b->cur[5];
+  if (d >= 0.0f) {
+    return 0;
+  }
+  t[0] = pN[0] * (d * D_802AB7E8);
+  t[1] = pN[1] * (d * D_802AB7E8);
+  t[2] = pN[2] * (d * D_802AB7E8);
+  b->cur[3] = b->cur[3] - t[0];
+  b->cur[4] = b->cur[4] - t[1];
+  b->cur[5] = b->cur[5] - t[2];
+  if (b->idle < 10) {
+    k = D_802AB7F0;
+  } else {
+    k = d < 0.0f ? -d : d;
+    if (k > 27.0f) {
+      k = 27.0f;
+    }
+    b->hitSize = k;
+    if (b->hitSize < 10) {
+      b->hitSize = 0;
+    } else {
+      b->hitN[0] = D_8037EAA8[0];
+      b->hitN[1] = D_8037EAA8[1];
+      b->hitN[2] = D_8037EAA8[2];
+    }
+    b->hitPeak = b->hitPeak < (unsigned char)(k * 127.0f / 27.0f + 128.0f)
+        ? (unsigned char)(k * 127.0f / 27.0f + 128.0f) : b->hitPeak;
+    k = D_802AB7F4;
+    b->cur[3] = b->cur[3] * k;
+    b->cur[4] = b->cur[4] * k;
+    b->cur[5] = b->cur[5] * k;
+  }
+  if (dampFlag) {
+    b->cur[3] = b->cur[3] * k;
+    b->cur[4] = b->cur[4] * k;
+    b->cur[5] = b->cur[5] * k;
+  }
+  if (spinFlag == 0) {
+    return 1;
+  }
+  t[0] = pN[1];
+  t[1] = pN[2];
+  t[2] = pN[0];
+  M[1][0] = pN[1] * t[2] - pN[2] * t[1];
+  M[1][1] = pN[2] * t[0] - pN[0] * t[2];
+  M[1][2] = pN[0] * t[1] - pN[1] * t[0];
+  M[2][0] = pN[1] * M[1][2] - pN[2] * M[1][1];
+  M[2][1] = pN[2] * M[1][0] - pN[0] * M[1][2];
+  M[2][2] = pN[0] * M[1][1] - pN[1] * M[1][0];
+  M[0][0] = pN[0];
+  M[0][1] = pN[1];
+  M[0][2] = pN[2];
+  BrMat4RotateVecT(t, M, pN);
+  BrMat4RotateVecT(v, M, &b->cur[10]);
+  v[0] *= t[0];
+  v[1] *= t[1];
+  v[2] *= t[2];
+  BrMat4RotateVec(&b->cur[10], M, v);
+  return 1;
 }
 
 /* WHAT IT DOES: Push a contact plane on the front of the contact list,
@@ -556,7 +638,7 @@ int BrCrRespWalk(BrTipBody *b, float m[4][4])
       if (D_802A4A28 != 1) {
         r = func_8025BBB8(b, D_8037EAA8, D_802A4A2C, flag, 0.0f);
       } else {
-        r = func_8025B73C(b, D_802A4A2C, flag, spin);
+        r = BrCrContactKick(b, D_802A4A2C, flag, spin);
       }
       if (r != 0) {
         ret = 1;
