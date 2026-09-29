@@ -352,7 +352,7 @@ class Box:
         H[0x80266390] = ('__osGetCurrFaultedThread', lambda: self.ret(0))
         H[0x80265910] = ('osContInit', self.os_cont_init)
         H[0x80261940] = ('osPfsIsPlug', self.os_pfs_is_plug)
-        H[0x80262370] = ('osMotorInit', lambda: self.ret(1))      # PFS_ERR_NOPACK
+        H[0x80262370] = ('osMotorInit', self.os_motor_init)
         H[0x80261F20] = ('osMotorStop', lambda: self.ret(0))
         H[0x80262088] = ('osMotorStart', lambda: self.ret(0))
         # The Controller Pak.  By default none is plugged in and every pak call
@@ -623,7 +623,22 @@ class Box:
         self.ret(0)
 
     def os_pfs_is_plug(self):
-        self.write(self.arg(1), b'\x01' if self.pad.pak else b'\x00')
+        self.write(self.arg(1), b'\x01' if self.pad.pak or self.pad.rumble else b'\x00')
+        self.ret(0)
+
+    def os_motor_init(self):
+        """A script with a `rumble` line has a Rumble Pak in port 1: the motor
+        initialises (libultra fills the OSPfs: status, queue, channel, and
+        the bank register 0xFF it leaves selected).  Otherwise there is no
+        Rumble Pak and the call answers PFS_ERR_NOPACK, as it always did."""
+        if not self.pad.rumble or self.arg(2) != 0:
+            self.ret(1)                                 # PFS_ERR_NOPACK
+            return
+        pfs = self.arg(1)
+        self.w32(pfs, 0)                                # status
+        self.w32(pfs + 4, self.arg(0))                  # queue
+        self.w32(pfs + 8, 0)                            # channel
+        self.write(pfs + 0x65, b'\xff')                 # activebank
         self.ret(0)
 
     # ------------------------------------------------ Controller Pak model
@@ -633,7 +648,9 @@ class Box:
 
     def pfs_init(self):
         if not self.pad.pak:
-            self.ret(1)                                 # PFS_ERR_NOPACK
+            # a Rumble Pak is plugged but holds no file system: its id area
+            # fails the checksum and cannot be repaired
+            self.ret(10 if self.pad.rumble else 1)      # PFS_ERR_ID_FATAL / NOPACK
             return
         pfs = self.arg(1)
         self.w32(pfs, 0)                                # status
@@ -862,7 +879,8 @@ class Script:
     as names joined by + (A B Z START L R CU CD CL CR DU DD DL DR) or `-`.
     A line starting `p2` is the same for a second controller in port 2; a
     script with any such line has two controllers plugged in, otherwise one.
-    A `pak` line plugs a Controller Pak into port 1; `frames N` is how long
+    A `pak` line plugs a Controller Pak into port 1, a `rumble` line a Rumble
+    Pak; `frames N` is how long
     the script runs (the oracle's default is a minute)."""
     BITS = dict(A=0x8000, B=0x4000, Z=0x2000, START=0x1000, DU=0x0800, DD=0x0400,
                 DL=0x0200, DR=0x0100, L=0x0020, R=0x0010, CU=0x0008, CD=0x0004,
@@ -871,6 +889,7 @@ class Script:
     def __init__(self, path):
         self.ports = [[], []]
         self.pak = False                        # a `pak` line: a Controller Pak in port 1
+        self.rumble = False                     # a `rumble` line: a Rumble Pak in port 1
         self.frames = None                      # a `frames N` line: the run's length
         if path:
             for line in open(path):
@@ -879,6 +898,9 @@ class Script:
                     continue
                 if line[0] == 'pak':
                     self.pak = True
+                    continue
+                if line[0] == 'rumble':
+                    self.rumble = True
                     continue
                 if line[0] == 'frames':
                     self.frames = int(line[1])

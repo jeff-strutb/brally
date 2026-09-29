@@ -1,0 +1,61 @@
+# The demo cheat, then Options -> Credits: the credits roll over the other demo race.
+#
+# Written by n64/tools/n64drive.py (plan 'credits_demo2'); the driver saw:
+#   TOP GEAR RALLY: row 2
+#   TRACK SELECT: row 2
+#   P1 car 1
+#   cheats: demo2
+#   TOP GEAR RALLY: row 6
+#   OPTIONS: row 6
+frames 10001
+0 -
+80 A
+88 -
+294 START
+302 -
+456 - 80 0
+464 -
+488 - 80 0
+496 -
+532 A
+540 -
+590 A
+598 -
+696 START
+720 -
+734 A
+758 -
+772 A
+796 -
+810 A
+834 -
+848 A
+872 -
+886 A
+916 -
+964 CD
+972 -
+980 DR
+988 -
+996 DD
+1004 -
+1012 Z
+1020 -
+1028 START
+1036 -
+1096 DU
+1104 -
+1144 START
+1152 -
+1188 - -80 0
+1196 -
+1220 - -80 0
+1228 -
+1252 - -80 0
+1260 -
+1296 A
+1304 -
+1342 - -80 0
+1350 -
+1386 A
+1394 -

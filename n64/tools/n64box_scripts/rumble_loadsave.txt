@@ -1,0 +1,37 @@
+# A Rumble Pak in controller 1: Load/Save, every row tried, where the pak is not a Controller Pak.
+#
+# Written by n64/tools/n64drive.py (plan 'rumble_loadsave'); the driver saw:
+#   TOP GEAR RALLY: row 5
+frames 2737
+rumble
+0 -
+80 A
+88 -
+294 START
+302 -
+456 - -80 0
+464 -
+488 - -80 0
+496 -
+532 A
+540 -
+562 A
+570 -
+870 B
+878 -
+1066 - 80 0
+1074 -
+1194 A
+1202 -
+1512 B
+1520 -
+1710 - 80 0
+1718 -
+1838 A
+1846 -
+2156 B
+2164 -
+2354 - 80 0
+2362 -
+2482 B
+2490 -
