@@ -346,4 +346,58 @@ typedef union {
 #define gDPSetEnvColor(pkt, r, g, b, a) \
     gDPSetColor(pkt, G_SETENVCOLOR, (_SHIFTL(r, 24, 8) | _SHIFTL(g, 16, 8) | _SHIFTL(b, 8, 8) | _SHIFTL(a, 0, 8)))
 
+#define G_LOADTILE          0xf4
+#define G_IM_FMT_IA         3
+#define G_IM_SIZ_8b         1
+#define G_MDSFT_TEXTPERSP   19
+#define G_TP_NONE           (0 << G_MDSFT_TEXTPERSP)
+#define G_TP_PERSP          (1 << G_MDSFT_TEXTPERSP)
+#define G_CYC_2CYCLE        (1 << G_MDSFT_CYCLETYPE)
+#define G_RM_PASS           0x0c080000
+#define G_RM_XLU_SURF2      0x00104240
+#ifndef MAX
+#define MAX(a, b)           ((a) > (b) ? (a) : (b))
+#endif
+#define gDPSetTexturePersp(pkt, type) \
+    gSPSetOtherMode(pkt, G_SETOTHERMODE_H, G_MDSFT_TEXTPERSP, 1, type)
+#define gDPLoadTile(pkt, t, uls, ult, lrs, lrt) \
+    gDPLoadTileGeneric(pkt, G_LOADTILE, t, uls, ult, lrs, lrt)
+#define gSPTextureRectangle(pkt, xl, yl, xh, yh, tile, s, t, dsdx, dtdy) \
+{                                                                       \
+    Gfx *_g = (Gfx *)(pkt);                                             \
+                                                                        \
+    _g->words.w0 = (_SHIFTL(G_TEXRECT, 24, 8) | _SHIFTL(xh, 12, 12) |   \
+                    _SHIFTL(yh, 0, 12));                                \
+    _g->words.w1 = (_SHIFTL(tile, 24, 3) | _SHIFTL(xl, 12, 12) |        \
+                    _SHIFTL(yl, 0, 12));                                \
+    gImmp1(pkt, G_RDPHALF_1, (_SHIFTL(s, 16, 16) | _SHIFTL(t, 0, 16))); \
+    gImmp1(pkt, G_RDPHALF_2, (_SHIFTL(dsdx, 16, 16) | _SHIFTL(dtdy, 0, 16))); \
+}
+/* the rectangle clamped at the top-left edges, its texture coordinates
+ * advanced by what the clamp cut off */
+#define gSPScisTextureRectangle(pkt, xl, yl, xh, yh, tile, s, t, dsdx, dtdy) \
+{                                                                       \
+    Gfx *_g = (Gfx *)(pkt);                                             \
+                                                                        \
+    _g->words.w0 = (_SHIFTL(G_TEXRECT, 24, 8) |                         \
+                    _SHIFTL(MAX((s16)(xh), 0), 12, 12) |                \
+                    _SHIFTL(MAX((s16)(yh), 0), 0, 12));                 \
+    _g->words.w1 = (_SHIFTL((tile), 24, 3) |                            \
+                    _SHIFTL(MAX((s16)(xl), 0), 12, 12) |                \
+                    _SHIFTL(MAX((s16)(yl), 0), 0, 12));                 \
+    gImmp1(pkt, G_RDPHALF_1,                                            \
+           (_SHIFTL(((s) - (((s16)(xl) < 0) ?                           \
+                            (((s16)(dsdx) < 0) ?                        \
+                             (MAX((((s16)(xl) * (s16)(dsdx)) >> 7), 0)) : \
+                             (MIN((((s16)(xl) * (s16)(dsdx)) >> 7), 0))) : 0)), \
+                    16, 16) |                                           \
+            _SHIFTL(((t) - (((yl) < 0) ?                                \
+                            (((s16)(dtdy) < 0) ?                        \
+                             (MAX((((s16)(yl) * (s16)(dtdy)) >> 7), 0)) : \
+                             (MIN((((s16)(yl) * (s16)(dtdy)) >> 7), 0))) : 0)), \
+                    0, 16)));                                           \
+    gImmp1(pkt, G_RDPHALF_2, (_SHIFTL((dsdx), 16, 16) |                 \
+                              _SHIFTL((dtdy), 0, 16)));                 \
+}
+
 #endif
