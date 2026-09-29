@@ -33,7 +33,7 @@ typedef struct BrPathPt {       /* a point on a path segment (0x28 bytes) */
   BrVec3 pos;                   /* 0x00 */
   char pad0c[0x18 - 0xc];
   float dist;                   /* 0x18  distance along the track */
-  char pad1c[0x28 - 0x1c];
+  BrVec3 x1c;                   /* 0x1C */
 } BrPathPt;
 typedef struct BrPathSeg {      /* a path segment */
   struct BrPathSeg *next;       /* 0x00 */
@@ -122,6 +122,15 @@ void BrVec3Direction(BrVec3 *pOut, BrVec3 *pFrom, BrVec3 *pTo);
 float cosf(float x);
 float sinf(float x);
 void BrAiLaneSetup();
+void BrVec3Sub(BrVec3 *pOut, BrVec3 *pA, BrVec3 *pB);
+void BrVec3Midpoint(BrVec3 *pOut, BrVec3 *pA, BrVec3 *pB);
+float BrVec3Dot(BrVec3 *pA, BrVec3 *pB);
+void BrVec3ScaleBy(BrVec3 *pV, float s);
+float BrVec3Dist(BrVec3 *pA, BrVec3 *pB);
+void BrVec3Scale(BrVec3 *pOut, BrVec3 *pV, float s);
+void BrVec3MulAddTo(BrVec3 *pA, BrVec3 *pB, float s);
+void BrVec3Normalise(BrVec3 *pV);
+void BrVec3Cross(BrVec3 *pOut, BrVec3 *pA, BrVec3 *pB);
 void BrAiInputClear();
 /* -- end declarations -- */
 
@@ -349,6 +358,100 @@ void BrPathGates(BrPathSeg *seg, float d)
       }
     }
     seg = seg->next;
+  }
+}
+
+/* WHAT IT DOES: Find where the car sits against the racing line: the line
+ * between the two path points either side of it is a Hermite curve through
+ * their midpoints, with tangents square to the neighbouring spans and scaled
+ * by the span length; the parameter comes from the car's projections on the
+ * two tangents.  Leaves the curve point, its direction, a side and up axis,
+ * and the car's signed and absolute distance across the line. */
+/* @implements 0x80227214 tgr BrCarLineFit */
+void BrCarLineFit(BrCar *car)
+{
+  float dist;
+  float len;
+  float half;
+  BrVec3 a;
+  BrVec3 b;
+  BrPathSeg *seg1;
+  BrPathSeg *seg2;
+  int i1;
+  int i2;
+  BrVec3 m1;
+  BrVec3 m2;
+  BrVec3 p;
+  BrVec3 d1;
+  BrVec3 d2;
+  float e1;
+  float e2;
+  float t;
+  float t2;
+  float t3;
+
+  len = ((BrPathSeg *)car->xf5c)->pt[car->xf60].dist - ((BrPathSeg *)car->xf5c)->pt[car->xf60 + 1].dist;
+  BrVec3Sub(&a, &((BrPathSeg *)car->xf5c)->pt[car->xf60 - 1].x1c, &((BrPathSeg *)car->xf5c)->pt[car->xf60].pos);
+  BrVec3Sub(&b, &((BrPathSeg *)car->xf5c)->pt[car->xf60].x1c, &((BrPathSeg *)car->xf5c)->pt[car->xf60 + 1].pos);
+  BrVec3Midpoint(&b, &a, &b);
+  a.x = -b.y;
+  a.y = b.x;
+  a.z = 0.0f;
+  BrVec3Midpoint(&b, &((BrPathSeg *)car->xf5c)->pt[car->xf60].pos, &((BrPathSeg *)car->xf5c)->pt[car->xf60 + 1].pos);
+  BrVec3Sub(&b, (BrVec3 *)car->mtx0[3], &b);
+  if (BrVec3Dot(&a, &b) < 0.0f) {
+    seg1 = (BrPathSeg *)car->xf5c;
+    i1 = car->xf60;
+    seg2 = seg1;
+    if (i1 + 1 == seg1->count) {
+      seg2 = seg1->next;
+      if (seg2->flags & 1) {
+        do {
+          seg2 = seg2->alt;
+        } while (seg2->flags & 1);
+      }
+      i2 = 0;
+    } else {
+      i2 = i1 + 1;
+    }
+  } else {
+    seg1 = (BrPathSeg *)car->xf5c;
+    i1 = car->xf60 - 1;
+    seg2 = (BrPathSeg *)car->xf5c;
+    i2 = car->xf60;
+  }
+  BrVec3Direction(&a, &seg1->pt[i1].pos, &seg1->pt[i1 + 1].pos);
+  BrVec3Direction(&b, &seg2->pt[i2].pos, &seg2->pt[i2 + 1].pos);
+  BrVec3ScaleBy(&a, len * 0.5f);
+  BrVec3ScaleBy(&b, len * 0.5f);
+  BrVec3Midpoint(&m1, &seg1->pt[i1].pos, &seg1->pt[i1 + 1].pos);
+  BrVec3Midpoint(&m2, &seg2->pt[i2].pos, &seg2->pt[i2 + 1].pos);
+  p.x = car->mtx0[3][0];
+  p.y = car->mtx0[3][1];
+  p.z = 0.0f;
+  BrVec3Sub(&d1, &p, &m1);
+  BrVec3Sub(&d2, &p, &m2);
+  e1 = BrVec3Dot(&d1, &a);
+  e2 = -BrVec3Dot(&d2, &b);
+  dist = BrVec3Dist(&m1, &m2);
+  t = dist * e1 / (e1 + e2) / dist;
+  t2 = t * t;
+  t3 = t2 * t;
+  BrVec3Scale(&car->linePos, &m1, t3 + t3 - 3.0f * t2 + 1.0f);
+  BrVec3MulAddTo(&car->linePos, &m2, -2.0f * t3 + 3.0f * t2);
+  BrVec3MulAddTo(&car->linePos, &a, t3 - (t2 + t2) + t);
+  BrVec3MulAddTo(&car->linePos, &b, t3 - t2);
+  BrVec3Lerp(&car->lineDir, &b, &a, t);
+  BrVec3Normalise(&car->lineDir);
+  BrVec3Cross(&car->lineSide, &car->lineUp, &car->lineDir);
+  BrVec3Normalise(&car->lineSide);
+  BrVec3Cross(&car->lineUp, &car->lineDir, &car->lineSide);
+  BrVec3Sub(&car->lineRel, (BrVec3 *)car->mtx0[3], &car->linePos);
+  car->lineOff = BrVec3Dot(&car->lineSide, &car->lineRel);
+  if (car->lineOff < 0.0f) {
+    car->lineOffAbs = -car->lineOff;
+  } else {
+    car->lineOffAbs = car->lineOff;
   }
 }
 
