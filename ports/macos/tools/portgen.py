@@ -217,7 +217,7 @@ def _fn_header(h):
     """A function definition header ends in `)` plus attribute-like words."""
     h = re.sub(r'/\*.*?\*/', ' ', h, flags=re.S)
     h = re.sub(r'\s+', ' ', h).strip()
-    return bool(re.search(r'\)\s*(\w+\s*)*$', h)) and '=' not in h
+    return bool(re.search(r'\)[\s\w]*$', h)) and '=' not in h
 
 
 def _strip(code):

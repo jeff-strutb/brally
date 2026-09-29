@@ -18,6 +18,7 @@ until the text compiles:
   C++ operator new(unsigned)   declaration dropped (implicitly declared)
   C++ void* = function         explicit (void *) cast
   x87 `fld a / fistp b`        `b = w_fistp(a)` (round-to-nearest, as x87)
+  x87 `fild a / fstp b`        `b = a` (the same int-to-b conversion)
   SEH __try/__except/__finally the guarded body runs; the handler never
                                does; a __finally block runs after it
 
@@ -136,6 +137,12 @@ def main():
                     r'(\2) = w_fistp(\1);', t)
     t, n2 = re.subn(r'__asm\s+fld\s+(\w+)\s*__asm\s+fistp\s+(\w+)',
                     r'(\2) = w_fistp(\1);', t)
+    # fild a / fstp b: load an integer, store it rounded to b's type -- a C
+    # assignment does exactly that conversion (round-to-nearest, as x87).
+    t, n1b = re.subn(r'__asm\s*\{\s*fild\s+([^}]+?)\s*\}\s*__asm\s*\{\s*fstp\s+([^}]+?)\s*\}',
+                     r'(\2) = (\1);', t)
+    t, n2b = re.subn(r'__asm\s+fild\s+(\w+)\s*__asm\s+fstp\s+(\w+)',
+                     r'(\2) = (\1);', t)
     t, n3 = re.subn(r'\b__try\b', '', t)
     t, n4 = re.subn(r'\b__except\s*\(', 'if (0 && (', t)
     if n4:
@@ -147,7 +154,8 @@ def main():
     t, n5 = re.subn(r'\b__finally\b', '', t)   # the finally block just runs
     if n5:
         log.append('__finally x%d' % n5)
-    for n, what in ((n1 + n2, 'x87 fld/fistp'), (n3, '__try'), (n4, '__except')):
+    for n, what in ((n1 + n2, 'x87 fld/fistp'), (n1b + n2b, 'x87 fild/fstp'),
+                    (n3, '__try'), (n4, '__except')):
         if n:
             log.append('%s x%d' % (what, n))
     lines = t.split('\n')
@@ -250,7 +258,11 @@ def main():
                 log.append('drop operator new decl line %d' % (ln + 1))
                 fixed = True
                 break
-            m = re.match(r"assigning to 'void \*' from incompatible type", msg)
+            # clang words it two ways: "incompatible type", and for a
+            # function pointer "converts between void pointer and function
+            # pointer"; MSVC takes both silently.
+            m = re.match(r"assigning to 'void \*' from (incompatible type|"
+                         r".*converts between void pointer and function pointer)", msg)
             if m:
                 seg = lines[ln]
                 k = seg.find('=', 0)

@@ -124,8 +124,18 @@ def record_sites(obj, d, secs, syms, relocs, va, name, code, only):
                 tgt = (val + va + plen + off + 4 - addend) & 0xFFFFFFFF
             else:
                 continue
-            sites.setdefault((obj, t['name'], addend), set()).add(
-                (tgt + addend) & 0xFFFFFFFF)
+            got = (tgt + addend) & 0xFFFFFFFF
+            # Every address the placed image can hold is inside it: the
+            # original's image (0x10000000 + SizeOfImage 0x190D000) or the
+            # annex just above.  A value outside that is this reader's
+            # mistake, not the image's -- a slot read one byte off because
+            # the placed body came from a different compile variant than the
+            # object whose relocations we walk (0x106B7A98 read as
+            # 0x6B7A9815) -- and recording it made the real address look
+            # ambiguous, so the port dropped it (g_brTexScanSrcSeen).
+            if not (0x10000000 <= got < 0x11A00000):
+                continue
+            sites.setdefault((obj, t['name'], addend), set()).add(got)
             site_fn[(obj, t['name'], addend)] = va
         return
 
