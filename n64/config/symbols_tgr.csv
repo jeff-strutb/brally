@@ -642,11 +642,16 @@ va,name,kind
 80268560,__osRestoreInt,func
 802686C0,guNormalize,func
 80268DC0,_Printf,func
+8026B2EC,__osEnqueueAndYield,func
+8026B434,__osPopThread,func
 8026EA00,rspbootTextStart,data
 8026EAD0,rspbootTextEnd,data
 8026EAD0,gspF3DEX_fifoTextStart,data
 8028CAC0,inflate_mask,data
 802A6140,osClockRate,data
 802A6224,__osViNext,data
+802A6290,__osThreadTail,data
+802A62A0,__osRunningThread,data
 802ABA80,__libm_qnan_f,data
 802ABC00,gspF3DEX_fifoDataStart,data
+8037F370,__osEventStateTab,data
