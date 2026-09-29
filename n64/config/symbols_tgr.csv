@@ -561,6 +561,8 @@ va,name,kind
 8025F0A4,BrTriCacheDrop,func
 8025F18C,BrCollGridCellAcquire,func
 80260490,BrRumbleUpdate,func
+802607AC,BrStub802607AC,func
+802607C0,BrStub802607C0,func
 802607DC,osSyncPrintf,func
 80260800,guScaleF,func
 80260854,guScale,func
@@ -633,6 +635,8 @@ va,name,kind
 80268470,osAiSetNextBuffer,func
 80268520,osAiGetStatus,func
 80268530,osAiGetLength,func
+80268540,__osDisableInt,func
+80268560,__osRestoreInt,func
 802686C0,guNormalize,func
 80268DC0,_Printf,func
 8026EA00,rspbootTextStart,data
@@ -640,5 +644,6 @@ va,name,kind
 8026EAD0,gspF3DEX_fifoTextStart,data
 8028CAC0,inflate_mask,data
 802A6140,osClockRate,data
+802A6224,__osViNext,data
 802ABA80,__libm_qnan_f,data
 802ABC00,gspF3DEX_fifoDataStart,data
