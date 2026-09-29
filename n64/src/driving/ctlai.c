@@ -54,7 +54,12 @@ typedef struct BrGate {         /* a lap gate across the track (0x14 bytes) */
   int x10;
 } BrGate;
 typedef struct BrTrackGates {   /* the gates in the loaded track's header */
-  char pad00[0x98];
+  char pad00[0x40];
+  BrVec3 start;                 /* 0x40  the start line */
+  float heading;                /* 0x4C  facing along the start line */
+  char pad50[0x70 - 0x50];
+  BrPathSeg *path;              /* 0x70  the track's path (D_80025C70) */
+  char pad74[0x98 - 0x74];
   BrGate gate[10];              /* 0x98 */
   int nGates;                   /* 0x160 */
 } BrTrackGates;
@@ -107,7 +112,119 @@ extern int D_8028C800;                  /* the difficulty, 1-3 */
 extern BrPathSeg *D_80025C70;           /* the track's path */
 void osSyncPrintf(const char *fmt, ...);
 void BrPathGates(BrPathSeg *seg, float d);
+void BrCarResetFrames(BrCar *car);
+void BrEntSetRecord(BrCar *car, int slot);
+void BrCarSetPos(BrCar *car, float x, float y, float z);
+void BrCarSetHeading(BrCar *car, float h);
+void BrCarSetVel(BrCar *car, float x, float y, float z);
+void BrCarCamInit(BrCar *car);
+void BrVec3Direction(BrVec3 *pOut, BrVec3 *pFrom, BrVec3 *pTo);
+float cosf(float x);
+float sinf(float x);
+void BrAiLaneSetup();
+void BrAiInputClear();
 /* -- end declarations -- */
+
+/* WHAT IT DOES: Put a car on the starting grid for a race: its record;
+ * two columns 3 apart, rows 8 back from the start line by slot (one centred
+ * spot in the modes without a grid); facing along the line, stopped, camera
+ * set; with a path, the clocks cleared, the time limit for the difficulty
+ * and its class, and the path's first direction; lap state cleared (players'
+ * cars flagged), the rest of the per-race state zeroed, AI lanes and input
+ * reset. */
+/* @implements 0x80228A6C tgr BrCarGridStart */
+void BrCarGridStart(BrCar *car)
+{
+  float row;
+  float col;
+  float c1;
+  float s1;
+  float c2;
+  short k;
+
+  BrCarResetFrames(car);
+  if (D_8026FF18 == 2 || D_8026FF18 == 4 || (D_8026FF18 == 3 && D_8026FF08 == 1) || D_8026FF18 == 0) {
+    BrEntSetRecord(car, car->slot);
+    row = 0.0f;
+    col = 0.5f;
+  } else {
+    BrEntSetRecord(car, car->slot);
+    row = car->slot >> 1;
+    col = (car->slot & 1) ^ 1;
+  }
+  c1 = cosf(D_80025C00.heading);
+  s1 = sinf(D_80025C00.heading);
+  c2 = cosf(D_80025C00.heading + 1.5707964f);
+  BrCarSetPos(car, D_80025C00.start.x - c2 * 3.0f * (col - 0.5f) - c1 * 8.0f * (row + 1.0f),
+              D_80025C00.start.y - sinf(D_80025C00.heading + 1.5707964f) * 3.0f * (col - 0.5f) -
+                  s1 * 8.0f * (row + 1.0f),
+              D_80025C00.start.z + 0.1f);
+  car->xfa8 = (row + 0.5f) * -8.0f;
+  BrCarSetHeading(car, D_80025C00.heading);
+  car->posPrev.x = car->mtx0[3][0];
+  car->posStart.x = car->mtx0[3][0];
+  car->posPrev.y = car->mtx0[3][1];
+  car->posStart.y = car->mtx0[3][1];
+  car->posPrev.z = car->mtx0[3][2];
+  car->posStart.z = car->mtx0[3][2];
+  BrCarCamInit(car);
+  car->xe70[0] = 0;
+  car->xe70[1] = 0;
+  car->xe70[2] = 0;
+  car->xe70[3] = -180;
+  BrCarSetVel(car, 0.0f, 0.0f, 0.0f);
+  if (D_80025C00.path != 0) {
+    car->raceTime = 0.0f;
+    car->lapTime = 0.0f;
+    car->xf98 = 0.0f;
+    k = D_8028C800 - 1;
+    if (k > 2 || k < 0) {
+      k = 0;
+    }
+    car->xfa4 = D_80271D1C[D_8028B940]->limit[car->xe34][k].secs;
+    car->xf5c = (int)D_80025C00.path;
+    car->xf60 = 0;
+    BrVec3Direction((BrVec3 *)&car->xf64, &D_80025C00.path->pt[0].pos, &D_80025C00.path->pt[1].pos);
+  } else {
+    car->xf68 = 0.0f;
+    car->xf6c = 0.0f;
+    car->xf64 = 1.0f;
+  }
+  car->xfac = D_8028B7F0 - car->slot - 1;
+  car->laps = 0;
+  car->xf9c = 0;
+  car->xf70 = 0;
+  if (car->slot < D_8026FF08 || D_8026FF18 == 1 || D_8026FF18 == 2 || D_8026FF18 == 4) {
+    car->xf7c = -1;
+    car->xf74 = -1;
+  } else {
+    car->xf7c = 0;
+    car->xf74 = 0;
+  }
+  car->x2000 = 0;
+  car->x2044 = 0;
+  car->heading = 0.0f;
+  car->xfe4[1] = 0.0f;
+  car->xfe4[0] = 0.0f;
+  car->xfe4[2] = 0.0f;
+  car->xfe4[3] = 0.0f;
+  car->xfe4[4] = 0.0f;
+  car->xfe4[5] = 0.0f;
+  car->xfe4[6] = 0.0f;
+  car->xfe4[7] = 0.0f;
+  car->xfe4[8] = 0.0f;
+  car->xfe4[9] = 0.0f;
+  car->xfe4[10] = 0.0f;
+  car->xfd4 = 0;
+  car->xed4 = 0;
+  BrAiLaneSetup(car);
+  BrAiInputClear(car);
+  car->xf48 = 0;
+  car->xf38 = 0;
+  car->xf3c = 0;
+  car->xf40 = 0;
+  car->xf44 = 1.0f;
+}
 
 /* WHAT IT DOES: Set up one race entity: its index and colour; the cars
  * in the race get their car record (and the car links back); the others are
