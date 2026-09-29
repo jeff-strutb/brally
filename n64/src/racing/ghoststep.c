@@ -45,15 +45,16 @@ typedef struct BrRaceEnt {      /* a race entity (0x78 bytes): the cars, then th
   char pad6c[0x74 - 0x6C];
   int group;                    /* 0x74  which half of the field (0 or 1) */
 } BrRaceEnt;
-typedef struct BrGhostTrail {   /* 0x18 bytes */
-  char pad00[8];
-  long long x08;
-  char pad10[4];
+typedef struct BrRaceSnd {     /* a sound channel (0x18 bytes) */
+  void *p;
+  int x4;
+  long long x8;
+  int x10;
   int x14;
-} BrGhostTrail;
-extern BrGhostTrail D_802A4920[5];
+} BrRaceSnd;
+extern BrRaceSnd D_802A4920[6];         /* six sound channels */
 extern int D_8026FF08;                  /* players */
-extern int D_8026FF10;                  /* set: clear the trail and stop */
+extern int D_8026FF10;                  /* set: silence the channels and stop */
 extern int D_8026FF18;                  /* game mode */
 extern float D_8028AAD8;                /* the frame time */
 extern float D_802A9D54;
@@ -81,8 +82,8 @@ void BrRaceGateStep(BrRaceEnt *e);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Step one race entity for the frame. An AI car outside mode
- * 5 has its pad cleared first; the clear flag empties the ghost trail and
- * stops. A car held at the start keeps its pad pressed and runs its control
+ * 5 has its pad cleared first; the silence flag clears five sound
+ * channels and stops. A car held at the start keeps its pad pressed and runs its control
  * function; a finished car brakes (in a race it fades out over a second),
  * saves its position and runs its control; a racing car fades back in,
  * saves its position, runs its control and accumulates its distance. An
@@ -108,15 +109,15 @@ void BrGhostPlaybackStep(BrRaceEnt *e)
     ((float *)e->car->pad)[8] = 0.0f;
   }
   if (D_8026FF10 != 0) {
-    D_802A4920[0].x08 = 0;
+    D_802A4920[0].x8 = 0;
     D_802A4920[0].x14 = 0;
-    D_802A4920[1].x08 = 0;
+    D_802A4920[1].x8 = 0;
     D_802A4920[1].x14 = 0;
-    D_802A4920[2].x08 = 0;
+    D_802A4920[2].x8 = 0;
     D_802A4920[2].x14 = 0;
-    D_802A4920[3].x08 = 0;
+    D_802A4920[3].x8 = 0;
     D_802A4920[3].x14 = 0;
-    D_802A4920[4].x08 = 0;
+    D_802A4920[4].x8 = 0;
     D_802A4920[4].x14 = 0;
     return;
   }
