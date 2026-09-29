@@ -1,6 +1,6 @@
 # Spec: a Mac-native renderer and frame loop for the playable port
 
-Status: **phases 1-4 done** (spec written 2026-09-29; phases the same day,
+Status: **phases 1-5 done** (spec written 2026-09-29; phases the same day,
 see section 5). Scope: the playable Mac
 build, `build/wasm/brally` (the 32-bit lane, `ports/macos/wasm/`). The decomp
 (`src/`, `include/`) is not touched: everything here is port code.
@@ -252,6 +252,23 @@ Rules:
    blended across one target pixel at each texel edge), identical at 1:1
    (menus match the Glide path exactly at 640x480) and crisp at 4x.
 5. **Input**: native records and controllers.
+   **Done 2026-09-29.** Controllers: the game already reads a joystick
+   through DirectInput (enumerate once, open, set X/Y to +-128, poll a
+   DIJOYSTATE2; which axis or button drives what is the player's binding in
+   the game's Controls menu), so `host_dx.c` reports one joystick and answers
+   its polls from `native/input.m` (GameController.framework, any controller
+   macOS knows): X/Y the left stick, Z the triggers, 16 buttons, the d-pad as
+   the hat. Checked end to end without hardware (`BR_PADFAKE`): with the
+   joystick chosen in the options, the game's own record 0x118EEBF8 reads
+   the stick and the car steers. Keyboard and mouse: measured, nothing to
+   gain -- the frame loop pumps events just before each frame starts, and the
+   menu cursor already lands on the pointer at the poll it is read (the
+   remaining lag is the display pipeline, phase 2). Choosing the joystick
+   meant leaving the options page, which crashed on the committed build too:
+   a C++ ABI mismatch in the wasm lane (Itanium virtual destructors and
+   member pointers against the original's MSVC vtables), fixed in
+   `ccmark.py` (4d914d08). Open, for the user: draw the Mac arrow in menus
+   and hide the game's cursor sprite (zero cursor latency, changes the look).
 6. **Retire** what the overrides made dead in `host_glide.m`, keeping it
    buildable behind a switch until phase 3 has soaked.
 
