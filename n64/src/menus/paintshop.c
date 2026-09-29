@@ -189,6 +189,8 @@ extern BrImage D_8028D410;              /* the round brush picture */
 typedef struct { char *n[2]; } BrPaintNames2;
 extern BrPaintNames2 D_8028DCE4;       /* "ROUND BRUSH", "SQUARE BRUSH" */
 extern unsigned char D_8028CE9C;        /* the chosen brush shape */
+extern unsigned char *D_8028DB84;         /* a scratch copy of the decal */
+typedef struct { int y, xl, xr, dy; } BrFillSeg;
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Take the chosen preset's rectangle, and make every view
@@ -706,6 +708,104 @@ void BrPaintBrushSelect(void)
     D_8028DBE0 = 0;
   }
 }
+
+/* WHAT IT DOES: Flood-fill the region of one colour under a screen point
+ * with the chosen colour (Heckbert's scanline seed fill, a 400-segment
+ * stack): the fill is painted into a scratch copy of the decal with the
+ * mask off, then the whole copy is plotted back into the decal so the mask
+ * applies.  Nothing when the region is already that colour.
+ * RESIDUE (~260): the ROM keeps the stack count in its stack home and
+ * recomputes each segment's address from it (dy and x1 homed too); ours
+ * walks a pointer. */
+/* @implements 0x8024DCA0 tgr BrPaintFloodFill */
+void BrPaintFloodFill(int sx, int sy)
+{
+  unsigned char ov;
+  int n;
+  int x;
+  int y;
+  int l;
+  int x1;
+  int x2;
+  int dy;
+  unsigned char *decal;
+  unsigned char *mask;
+  BrFillSeg stack[400];
+
+  x = (sx - D_8028DB94.x) >> 2;
+  y = (D_8028DB94.y + D_8028DB94.h - sy) >> 2;
+  ov = BrPaintGet(x, y);
+  if (D_8028DB58 != ov) {
+    stack[0].y = y;
+    stack[0].xl = x;
+    stack[0].xr = x;
+    stack[0].dy = 1;
+    stack[1].y = y + 1;
+    stack[1].xl = x;
+    stack[1].xr = x;
+    stack[1].dy = -1;
+    n = 2;
+    mask = D_8028DB7C;
+    D_8028DB7C = 0;
+    memcpy(D_8028DB84, D_8028DB78, 0x800);
+    decal = D_8028DB78;
+    D_8028DB78 = D_8028DB84;
+    do {
+      n--;
+      dy = stack[n].dy;
+      y = stack[n].y + dy;
+      x1 = stack[n].xl;
+      x2 = stack[n].xr;
+      for (x = x1; x >= 0 && y >= 0 && y < D_8028DB8C && BrPaintGet(x, y) == ov; x--) {
+        BrPaintPlot(x, y, D_8028DB58);
+      }
+      if (x >= x1) {
+        goto skip;
+      }
+      l = x + 1;
+      if (l < x1) {
+        stack[n].y = y;
+        stack[n].xl = l;
+        stack[n].xr = x1 - 1;
+        stack[n].dy = -dy;
+        n++;
+      }
+      x = x1 + 1;
+      do {
+        for (; x < D_8028DB88 && y >= 0 && y < D_8028DB8C && BrPaintGet(x, y) == ov; x++) {
+          BrPaintPlot(x, y, D_8028DB58);
+        }
+        stack[n].y = y;
+        stack[n].xl = l;
+        stack[n].xr = x - 1;
+        stack[n].dy = dy;
+        n++;
+        if (x > x2 + 1) {
+          stack[n].y = y;
+          stack[n].xl = x2 + 1;
+          stack[n].xr = x - 1;
+          stack[n].dy = -dy;
+          n++;
+        }
+      skip:
+        for (x++; x <= x2 && x < D_8028DB88 && y >= 0 && y < D_8028DB8C && BrPaintGet(x, y) != ov; x++) {
+        }
+        l = x;
+      } while (x <= x2);
+    } while (n > 0 && n < 400);
+    D_8028DB7C = mask;
+    for (y = 0; y < D_8028DB8C; y++) {
+      for (x = 0; x < D_8028DB88; x++) {
+        ov = BrPaintGet(x, y);
+        D_8028DB78 = decal;
+        BrPaintPlot(x, y, ov);
+        D_8028DB78 = D_8028DB84;
+      }
+    }
+    D_8028DB78 = decal;
+  }
+}
+
 
 /* WHAT IT DOES: Stamp the typed text into the decal at a screen point (a
  * quarter scale, y flipped), centred on it: each glyph's full-bright texels
