@@ -365,7 +365,7 @@ void BrCarPhysInit(BrCar *car)
     *(float *)CP_AT(car, 0xE44) = 0.0f;
     *(float *)CP_AT(car, 0xE4C) = 0.0f;
     *(char **)CP_AT(car, 0xC50) = CP_AT(car, 0xCD0);
-    car->x344 = car->xe60;
+    *(unsigned char *)CP_AT(car, 0x345) = car->xe60;
     *(char **)CP_AT(car, 0xC10) = CP_AT(car, 0xC50);
   }
   *(unsigned char *)CP_AT(car, 0xE50) = 0;
