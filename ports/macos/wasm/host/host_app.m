@@ -13,6 +13,7 @@
 #include "host.h"
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 volatile int g_happ_quit;
 static NSWindow *g_window;
@@ -22,6 +23,8 @@ static u8 g_dik[256];
 static u8 g_vk[256];
 
 void hdx_mouse(int dx, int dy, int btn);
+void hdx_mouse_abs(int x, int y, int btn);
+void hdx_mouse_btn(int btn);
 
 /* macOS virtual key code -> (DirectInput scan code, Windows VK) */
 static const struct { u16 mac; u8 dik; u8 vk; } KEYMAP[] = {
@@ -122,8 +125,31 @@ void happ_init(void)
         ml.contentsScale = g_window.backingScaleFactor;
         g_view.layer = ml;
     }
+    [g_window setAcceptsMouseMovedEvents:YES];
     [g_window makeKeyAndOrderFront:nil];
     [NSApp activateIgnoringOtherApps:YES];
+}
+
+/* The pointer in the game's 640x480 coordinates: the picture is drawn
+ * letterboxed into the view (host_glide.m's present), so undo that
+ * scale and offset, and flip the view's bottom-up y.  Over the picture the
+ * Mac cursor is hidden -- the game draws its own. */
+static void pointer(NSEvent *e)
+{
+    static int hidden;
+    NSPoint p = [g_view convertPoint:e.locationInWindow fromView:nil];
+    NSRect b = g_view.bounds;
+    double s = fmin(b.size.width / 640.0, b.size.height / 480.0);
+    double ox = (b.size.width - 640.0 * s) / 2, oy = (b.size.height - 480.0 * s) / 2;
+    double gx = (p.x - ox) / s, gy = (b.size.height - p.y - oy) / s;
+    int btn = (int)[NSEvent pressedMouseButtons];
+    int inside = gx >= 0 && gx < 640 && gy >= 0 && gy < 480 && e.window == g_window;
+    if (inside != hidden) { if (inside) [NSCursor hide]; else [NSCursor unhide]; hidden = inside; }
+    if (e.type == NSEventTypeMouseMoved || e.type == NSEventTypeLeftMouseDragged ||
+        e.type == NSEventTypeRightMouseDragged || inside)
+        hdx_mouse_abs((int)fmin(fmax(gx, 0), 639), (int)fmin(fmax(gy, 0), 479), btn);
+    else
+        hdx_mouse_btn(btn);
 }
 
 void happ_pump(int block_ms)
@@ -156,7 +182,10 @@ void happ_pump(int block_ms)
                 continue;
             }
             case NSEventTypeMouseMoved: case NSEventTypeLeftMouseDragged:
-                hdx_mouse((int)e.deltaX, (int)e.deltaY, (int)[NSEvent pressedMouseButtons]);
+            case NSEventTypeRightMouseDragged:
+            case NSEventTypeLeftMouseDown: case NSEventTypeLeftMouseUp:
+            case NSEventTypeRightMouseDown: case NSEventTypeRightMouseUp:
+                pointer(e);
                 break;
             default:
                 break;
