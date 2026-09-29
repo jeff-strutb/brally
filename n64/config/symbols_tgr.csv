@@ -390,6 +390,7 @@ va,name,kind
 802517B4,BrPaintCircle,func
 80251A54,BrPaintDashLine,func
 80251CD4,BrPaintDashRect,func
+802528F8,BrPaintDashCircle,func
 80252C9C,BrPaintTextDraw,func
 80252F50,BrSwapBytes,func
 80252F64,BrTexRectFlipDraw,func

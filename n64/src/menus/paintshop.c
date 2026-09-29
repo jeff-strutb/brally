@@ -1157,6 +1157,82 @@ void BrPaintDashRect(int x0, int y0, int x1, int y1)
   BrFillRect(x0, y1 - 1, 1, 2, c, c, c);
 }
 
+
+/* WHAT IT DOES: Draw a dashed circle outline of radius r around a screen
+ * point, clipped to the paint area: a midpoint walk at double resolution,
+ * on every other step the eight octant points on odd pixels only, in dashes
+ * of the two dash colours (swapped every 8 frames), four points each.
+ * RESIDUE (~200): the ROM keeps the dash counter n in a temp register
+ * (spilled to its home around the calls) and x in memory; ours keeps both
+ * in memory, which shifts every temp after. */
+/* @implements 0x802528F8 tgr BrPaintDashCircle */
+void BrPaintDashCircle(int cx, int cy, int r)
+{
+  int n;
+  unsigned char c;
+  int y;
+  int x;
+  int ax;
+  int ay;
+  int ax2;
+  int ay2;
+  int u0;                       /* u0, u1: declared, never used; */
+  int u1;                       /* the frame holds them */
+  int d;
+
+  ax = D_8028DB94.x;
+  ay = D_8028DB94.y;
+  ax2 = D_8028DB94.x + D_8028DB94.w;
+  ay2 = D_8028DB94.y + D_8028DB94.h;
+  n = 0;
+  if ((++D_8028DBB0 & 7) == 0) {
+    BrSwapBytes((char *)&D_8028DAB8, (char *)&D_8028DABC);
+  }
+  y = r * 2;
+  d = -y;
+  x = 0;
+  while (x <= y) {
+    if ((x & 1) == 0) {
+      n = (n + 1) % 8;
+      if (n < 4) {
+        c = D_8028DAB8;
+      } else {
+        c = D_8028DABC;
+      }
+      if ((((x >> 1) + cx) & 1) && (x >> 1) + cx >= ax && (x >> 1) + cx < ax2 && (y >> 1) + cy >= ay && (y >> 1) + cy < ay2) {
+        BrFillPoint((x >> 1) + cx, (y >> 1) + cy, c);
+      }
+      if ((((x >> 1) + cx) & 1) && (x >> 1) + cx >= ax && (x >> 1) + cx < ax2 && cy - (y >> 1) >= ay && cy - (y >> 1) < ay2) {
+        BrFillPoint((x >> 1) + cx, cy - (y >> 1), c);
+      }
+      if (((cx - (x >> 1)) & 1) && cx - (x >> 1) >= ax && cx - (x >> 1) < ax2 && cy - (y >> 1) >= ay && cy - (y >> 1) < ay2) {
+        BrFillPoint(cx - (x >> 1), cy - (y >> 1), c);
+      }
+      if (((cx - (x >> 1)) & 1) && cx - (x >> 1) >= ax && cx - (x >> 1) < ax2 && (y >> 1) + cy >= ay && (y >> 1) + cy < ay2) {
+        BrFillPoint(cx - (x >> 1), (y >> 1) + cy, c);
+      }
+      if ((((x >> 1) + cy) & 1) && (y >> 1) + cx >= ax && (y >> 1) + cx < ax2 && (x >> 1) + cy >= ay && (x >> 1) + cy < ay2) {
+        BrFillPoint((y >> 1) + cx, (x >> 1) + cy, c);
+      }
+      if (((cy - (x >> 1)) & 1) && (y >> 1) + cx >= ax && (y >> 1) + cx < ax2 && cy - (x >> 1) >= ay && cy - (x >> 1) < ay2) {
+        BrFillPoint((y >> 1) + cx, cy - (x >> 1), c);
+      }
+      if (((cy - (x >> 1)) & 1) && cx - (y >> 1) >= ax && cx - (y >> 1) < ax2 && cy - (x >> 1) >= ay && cy - (x >> 1) < ay2) {
+        BrFillPoint(cx - (y >> 1), cy - (x >> 1), c);
+      }
+      if ((((x >> 1) + cy) & 1) && cx - (y >> 1) >= ax && cx - (y >> 1) < ax2 && (x >> 1) + cy >= ay && (x >> 1) + cy < ay2) {
+        BrFillPoint(cx - (y >> 1), (x >> 1) + cy, c);
+      }
+    }
+    d += x;
+    x++;
+    if (d >= 0) {
+      d -= y;
+      y--;
+    }
+  }
+}
+
 /* WHAT IT DOES: Draw the paint shop's text line at (x, y), moved left by
  * half of 0x8028DBAC and up by the font's height (both in texels, 4 screen
  * pixels each): each character's glyph (found by code in the 50-glyph table) is drawn 16x16
