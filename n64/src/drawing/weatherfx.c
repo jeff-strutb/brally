@@ -68,22 +68,19 @@ void BrWindUpdate(void)
 /* WHAT IT DOES: Build the lightning bolt by midpoint displacement: point
  * i becomes the average of points i - n and i + n, x and y each jittered by
  * a random amount within +-4n; then the two halves are split the same way
- * down to single steps (the depth counter up 4 per level meanwhile).
- * RESIDUE (22, same 101 instructions): the ROM's frame has a slot between
- * mask (0x3C) and half (0x34) that no declaration reproduces (an unused
- * local grows the frame instead), and it builds [i - n] from the first
- * i * 12 chain where ours uses the second; the rest is register naming. */
+ * down to single steps (the depth counter up 4 per level meanwhile). */
 /* @implements 0x80239F28 tgr BrBoltSplit */
 void BrBoltSplit(int i, int n)
 {
   int mask;
+  int unused;                   /* declared, never used: its slot is in the frame */
   float half;
 
   mask = n * 8 - 1;
   half = mask * 0.5f;
-  D_803634F8[i].x = (BrRandStep() & mask) + (D_803634F8[i - n].x + D_803634F8[i + n].x) * 0.5f - half;
-  D_803634F8[i].y = (BrRandStep() & mask) + (D_803634F8[i - n].y + D_803634F8[i + n].y) * 0.5f - half;
-  D_803634F8[i].z = (D_803634F8[i + n].z + D_803634F8[i - n].z) * 0.5f;
+  D_803634F8[i].x = (D_803634F8[i - n].x + D_803634F8[i + n].x) * 0.5f + (BrRandStep() & mask) - half;
+  D_803634F8[i].y = (D_803634F8[i - n].y + D_803634F8[i + n].y) * 0.5f + (BrRandStep() & mask) - half;
+  D_803634F8[i].z = (D_803634F8[i - n].z + D_803634F8[i + n].z) * 0.5f;
   n >>= 1;
   if (n != 0) {
     D_8028C81C += 4;
