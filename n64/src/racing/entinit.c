@@ -296,6 +296,8 @@ void BrCamShakeAdd(int slot, float s);
  * branches (likely) to the buttons, the fallback-camera toggle is formed
  * after the camera stores, and the +-1.0 constants are materialised per
  * use. */
+/* @t4-pass 0x80226488 1 2026-09-29 compiles 185 best 546 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80226488 2 2026-09-29 compiles 185 best 546 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80226488 tgr BrCarPlayerCtl */
 void BrCarPlayerCtl(BrCar *car)
 {
