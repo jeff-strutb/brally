@@ -598,7 +598,9 @@ void BrMatToQuat(float m[4][4], float q[4])
 }
 
 /* WHAT IT DOES: Set a car's velocity: its three rigid-body states and the
- * spare copy at 0xFD8 all get (x, y, z). */
+ * spare copy at 0xFD8 all get (x, y, z).  The copy's pointer is taken twice
+ * (first and again before use); with only either one the last two stores
+ * swap. */
 /* @implements 0x802201C8 tgr BrCarSetVel */
 void BrCarSetVel(BrCar *car, float x, float y, float z)
 {
