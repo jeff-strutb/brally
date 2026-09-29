@@ -34,7 +34,7 @@ typedef struct BrRound {
     int x8;                     /* 0x08 */
     int xc;                     /* 0x0C */
     unsigned char kinds[2];     /* 0x10  car kind for the first cars */
-    short kindMask;             /* 0x12  bit n: kind n allowed */
+    unsigned short kindMask;    /* 0x12  bit n: kind n allowed */
     unsigned char races[4][2];  /* 0x14  per race: track, weather */
 } BrRound;
 
