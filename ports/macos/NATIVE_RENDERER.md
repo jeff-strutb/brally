@@ -1,6 +1,6 @@
 # Spec: a Mac-native renderer and frame loop for the playable port
 
-Status: **phases 1-5 done** (spec written 2026-09-29; phases the same day,
+Status: **phases 1-6 done**; the retired Glide path is soaking behind `BR_GLIDE3D=1` (spec written 2026-09-29; phases the same day,
 see section 5). Scope: the playable Mac
 build, `build/wasm/brally` (the 32-bit lane, `ports/macos/wasm/`). The decomp
 (`src/`, `include/`) is not touched: everything here is port code.
@@ -271,6 +271,19 @@ Rules:
    and hide the game's cursor sprite (zero cursor latency, changes the look).
 6. **Retire** what the overrides made dead in `host_glide.m`, keeping it
    buildable behind a switch until phase 3 has soaked.
+   **Done 2026-09-29, as far as the soak allows.** Measured what the native
+   path no longer reaches: `grDrawPolygonVertexList` (only the game's CPU
+   polygon clipper calls it) drew 0 polygons across 20, 21, 28 and 38; the
+   remaining screen-space `grDrawTriangle` callers are the 2D image and text
+   rectangles (`br_imgshow.c`, `br_dlglide.c`), still live. The polygon path
+   stays for `BR_GLIDE3D=1` and reports once if the native path ever reaches
+   it (silent on all four scripts). Delete it, and the switch, after the
+   soak. Section 7, 2026-09-29: quit paths, Cmd-Q / close box 25 ms (menu)
+   and 39 ms (race), in-game YES QUIT 37 ms; pacing, menus one present per
+   refresh while drawing, race 59.85 and attract-mode replay 59.87
+   presents/s, clock rate 1.00000 / 0.99997; latency is lead plus
+   WindowServer's compositing depth, which was 2-3 refreshes all afternoon
+   (40-58 ms; 22-28 ms at depth 1, see phase 2).
 
 ## 6. The one measurement instrument
 
