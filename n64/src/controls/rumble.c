@@ -122,3 +122,10 @@ void BrRumbleUpdate(int arg0)
     }
   }
 }
+
+/* WHAT IT DOES: Does nothing: an empty function the rumble code ends with,
+ * called once from the game's startup. */
+/* @implements 0x802607AC tgr BrStub802607AC */
+void BrStub802607AC(void)
+{
+}
