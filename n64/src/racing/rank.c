@@ -158,29 +158,21 @@ void BrRankUpdate(void)
 }
 
 /* WHAT IT DOES: Hand the AI car slots round so the cars near this car are
- * the ones simulated.  Every entity is keyed by its lap-wrapped distance
- * along the track from this car, squared, plus its straight-line distance
- * (a car of another player far behind, or a finished car stopped in the
- * pits, keyed out of the way), this car's own entry is swapped to the front
- * and the rest sorted.  Then for each half of the field: the first AI entity
- * in key order that has a finished, stopped car, or any later one whose car
- * is more than 80000 away and not already moving slots, gives its car up --
- * the car's position, route point, clocks and lap state are saved into the
- * entity -- and a half with no car at all gets its slot opened.  The freed
- * cars then go, nearest first, to the unfinished entities without one: the
- * saved state is restored, the car set down 0.1 above its saved position,
- * repainted in the entity's colour, turned along its route and set moving
- * at 50 (or held, at the start).  The car's own list of entities by key is
- * written as it goes.  The PC twin is BrLapSaveRestore.
- * Source facts: the scoring loop indexes list[] and D_803239A0[] (IDO
- * strength-reduces both); the route point is int arithmetic (seg + pt * 40,
- * which keeps 40 in fp for the multu and the 0x340 store); the second
- * x2064 = 1.0 is a double literal, which gives it its own register (f26 vs
- * f30) as in the ROM; the slot tests read ent->car and the save takes it.
- * RESIDUE (443): the ROM frame is 0x18 smaller (fewer spill temps; every
- * named slot is 0x18 lower), &free[nFree] is formed in both save paths
- * before the jump, and the restore loop's pointer set-up is ordered
- * differently. */
+ * the ones simulated.  Entities are keyed by lap-wrapped track distance from
+ * this car, squared, plus straight-line distance (far-behind player cars and
+ * finished cars keyed out of the way); this car's entry goes first and
+ * the rest are sorted.  Per half of the field, the
+ * first AI entity with a finished, stopped car, or any later one whose car
+ * is over 80000 away and not moving slots, gives its car up (position,
+ * route point, clocks and lap state saved into the entity); a half with no
+ * car opens a slot.  The freed cars go, nearest first, to unfinished
+ * entities without one: state restored, set down 0.1 above the saved
+ * position, repainted, turned along the route and set moving at 50 (held at
+ * the start), writing the car's list of entities by key.  PC twin:
+ * BrLapSaveRestore.
+ * Source facts: indexed arrays; int seg + pt * 40; a double 1.0.
+ * RESIDUE (443): frame 0x18 larger (spill temps); &free[nFree] formed in
+ * both save paths; restore-loop set-up order. */
 /* @t4-pass 0x80229700 1 2026-09-29 compiles 198 best 447 moved 15  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80229700 2 2026-09-29 compiles 198 best 443 moved 4  (n64/tools/n64permute.py) */
 /* @t3 0x80229700 */
