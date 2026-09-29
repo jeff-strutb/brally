@@ -37,11 +37,18 @@ COMMON="-fms-extensions -fshort-wchar -fno-builtin -femit-all-decls
   -Itools/msvc5/include"
 IR="-O0 -Xclang -disable-O0-optnone -S -emit-llvm"
 
+# C++: a third view in the Microsoft C++ ABI, whose vtable slots are the
+# original's (ccmark.py puts every virtual call on them).
 build() {   # $1 = input, $2 = language flags
+  ms=
+  case "$2" in *c++*)
+    "$LLVM/clang" --target=i686-pc-windows-msvc $COMMON $IR $(echo "$2" | sed 's/-fapple-kext//') "$1" \
+        -o "$obj.ms.ll" 2>/dev/null && ms="$obj.ms.ll" ;;
+  esac
   "$LLVM/clang" --target=wasm32 $COMMON $IR $2 "$1" -o "$obj.wasm.ll" 2>"$obj.err" &&
   "$LLVM/clang" --target=i686-w64-windows-gnu -mlong-double-64 $COMMON $IR $2 "$1" \
       -o "$obj.x86.ll" 2>>"$obj.err" &&
-  python3 ports/macos/wasm/ccmark.py "$obj.wasm.ll" "$obj.x86.ll" "$obj.mk.ll" 2>>"$obj.err" &&
+  python3 ports/macos/wasm/ccmark.py "$obj.wasm.ll" "$obj.x86.ll" "$obj.mk.ll" $ms 2>>"$obj.err" &&
   "$LLVM/clang" --target=wasm32 -O2 -w -c "$obj.mk.ll" -o "$obj" 2>>"$obj.err"
 }
 

@@ -16,7 +16,26 @@ the i686 call is thiscall or fastcall appends one constant argument:
 w2c.py recognises and strips it. It also marks every definition noinline, so
 each function the original has stays a function the port can address.
 
-Usage: ccmark.py <wasm.ll> <x86.ll> <out.ll>
+VIRTUAL CALLS TAKE THE ORIGINAL'S VTABLE SLOTS.  Both clang views use the
+Itanium C++ ABI, where a virtual destructor fills TWO vtable slots (complete
+and deleting) and `delete p` calls the second with `this` alone.  MSVC gives
+it ONE slot, the scalar deleting destructor, called with (this, 1); every
+virtual after it sits one slot lower.  The objects the port runs on carry
+the ORIGINAL vtables (w2c.py maps each constructor's vtable to the MSVC one),
+so a clang-numbered call lands on the wrong function -- leaving the options
+page called a file scan with no pattern.  Given a third view, the same TU
+compiled for i686-pc-windows-msvc (the Microsoft ABI), each virtual call in
+the wasm IR takes that view's slot index and any extra constant arguments.
+
+POINTERS TO MEMBER FUNCTIONS ARE MSVC'S TOO.  The tree reads them straight
+out of original vtables (`add = *(AddPmf *)(vt + 0x10)`, reproducing the
+original's codegen), where MSVC's single-inheritance form is one code
+pointer.  clang's is two words, the second an adjustment and virtual flag,
+so the port read the NEXT slot as an adjustment and called with a wild
+`this`.  Every member-pointer call's second word is taken as 0: no
+adjustment, not virtual -- the MSVC reading.
+
+Usage: ccmark.py <wasm.ll> <x86.ll> <out.ll> [<msvc.ll>]
 """
 import re
 import sys
@@ -74,9 +93,129 @@ def indirect_calls(lines):
     return out
 
 
+GEP = re.compile(r'^\s*(%[\w.]+) = getelementptr inbounds ptr, ptr (%[\w.]+), i(?:32|64) (\d+)\s*$')
+LOADP = re.compile(r'^\s*(%[\w.]+) = load ptr, ptr (%[\w.]+)(, align \d+)?\s*$')
+
+
+def msvc_qual(sym):
+    """MSVC decorated name -> 'Class::Method' (w2c.py's reading)."""
+    sym = sym.strip('"').replace('\\01', '')
+    m = re.match(r'\?\?([01])([A-Za-z_]\w*)@@', sym)
+    if m:
+        c = m.group(2)
+        return '%s::%s%s' % (c, '~' if m.group(1) == '1' else '', c)
+    m = re.match(r'\?([A-Za-z_]\w*)@(?:([A-Za-z_]\w*)@)?@', sym)
+    if m:
+        return '%s::%s' % (m.group(2), m.group(1)) if m.group(2) else m.group(1)
+    return sym.lstrip('_@').split('@')[0]
+
+
+def vcall(lines, ci):
+    """For the indirect call at line ci: (vtable reg, slot, load line, gep
+    line or None) when its callee is a slot loaded from a vtable, else None."""
+    m = CALL.search(lines[ci])
+    f = m.group(2)
+    for j in range(ci - 1, max(ci - 8, -1), -1):
+        lm = LOADP.match(lines[j])
+        if lm and lm.group(1) == f:
+            ptr = lm.group(2)
+            for k in range(j - 1, max(j - 6, -1), -1):
+                gm = GEP.match(lines[k])
+                if gm and gm.group(1) == ptr:
+                    return gm.group(2), int(gm.group(3)), j, k
+            return ptr, 0, j, None
+    return None
+
+
+def msvc_slots(wl, ms_path):
+    """Rewrite wl's virtual calls to the Microsoft ABI's slots. Returns the
+    number of calls changed."""
+    import subprocess
+    import os
+    try:
+        ml = open(ms_path).read().split('\n')
+    except OSError:
+        return 0
+    wi, mi = indirect_calls(wl), indirect_calls(ml)
+    llvm = os.environ.get('LLVM', '/opt/homebrew/opt/emscripten/libexec/llvm/bin')
+    names = [n for n in wi if n.startswith('_Z')]
+    dem = {}
+    if names:
+        out = subprocess.run([os.path.join(llvm, 'llvm-cxxfilt')], input='\n'.join(names),
+                             capture_output=True, text=True).stdout.split('\n')
+        dem = {n: re.sub(r'\(.*$', '', d).strip() for n, d in zip(names, out)}
+    # MSVC functions by qualified name, unique only
+    mby = {}
+    for n in mi:
+        mby.setdefault(msvc_qual(n), []).append(n)
+    wby = {}
+    for n in wi:
+        wby.setdefault(dem.get(n, n), []).append(n)
+    changed, fresh = 0, 0
+    edits = {}            # line index -> replacement text (may hold 2 lines)
+    for q, wnames in wby.items():
+        mnames = mby.get(q)
+        if not mnames or len(mnames) != 1:
+            continue
+        mcalls = mi[mnames[0]]
+        cands = [n for n in wnames if len(wi[n]) == len(mcalls)]
+        if len(cands) != 1:
+            continue
+        for wci, mci in zip(wi[cands[0]], mcalls):
+            wv, mv = vcall(wl, wci), vcall(ml, mci)
+            if not wv or not mv:
+                continue
+            wargs = split_args(CALL.search(wl[wci]).group(3))
+            margs = split_args(CALL.search(ml[mci]).group(3))
+            extra = margs[len(wargs):] if len(margs) > len(wargs) else []
+            if any(not re.search(r'\bi32\b.*\s-?\d+\s*$', a) for a in extra):
+                continue            # only constant ints (the deleting flag)
+            if wv[1] == mv[1] and not extra:
+                continue
+            vt, _, lj, gk = wv
+            fresh += 1
+            g = '%%brms.%d' % fresh
+            lm = LOADP.match(wl[lj])
+            edits[lj] = '  %s = getelementptr inbounds ptr, ptr %s, i32 %d\n  %s = load ptr, ptr %s%s' % (
+                g, vt, mv[1], lm.group(1), g, lm.group(3) or '')
+            if extra:
+                cm = CALL.search(wl[wci])
+                pre = cm.group(1)
+                if re.search(r'\(.*\)\s*$', pre):
+                    pre = re.sub(r'\((.*?)\)(\s*)$', lambda z: '(' + z.group(1) + ''.join(
+                        ', i32' for _ in extra) + ')' + z.group(2), pre)
+                args = cm.group(3) + ''.join(', ' + re.sub(r'\bnoundef\s+', '', a.strip()) for a in extra)
+                edits[wci] = wl[wci][:cm.start()] + 'call' + pre + ' ' + cm.group(2) + '(' + args + ')' + cm.group(4)
+            changed += 1
+    for i, t in edits.items():
+        wl[i] = t
+    return changed
+
+
+MPADJ = re.compile(r'^(\s*)(%[\w.]+) = extractvalue \{ i32, i32 \} %[\w.]+, 1\s*$')
+
+
+def msvc_memptrs(wl):
+    """A member-function pointer's second word, where the call sequence
+    shifts it for the adjustment, becomes the constant 0."""
+    n = 0
+    for i, l in enumerate(wl):
+        m = MPADJ.match(l)
+        if not m:
+            continue
+        v = re.escape(m.group(2))
+        if any(re.search(r'= ashr i32 %s, 1\b' % v, wl[j]) for j in range(i + 1, min(i + 4, len(wl)))):
+            wl[i] = '%s%s = add i32 0, 0' % (m.group(1), m.group(2))
+            n += 1
+    return n
+
+
 def main():
     wl = open(sys.argv[1]).read().split('\n')
     xl = open(sys.argv[2]).read().split('\n')
+    remapped = msvc_slots(wl, sys.argv[4]) if len(sys.argv) > 4 else 0
+    memptrs = msvc_memptrs(wl) if len(sys.argv) > 4 else 0
+    wl = '\n'.join(wl).split('\n')
     wi, xi = indirect_calls(wl), indirect_calls(xl)
     marked = 0
     for fn, wcalls in wi.items():
@@ -133,6 +272,10 @@ def main():
     open(sys.argv[3], 'w').write(out)
     if marked:
         print('ccmark: %s: %d indirect call(s) marked' % (sys.argv[1], marked), file=sys.stderr)
+    if remapped:
+        print('ccmark: %s: %d virtual call(s) on MSVC slots' % (sys.argv[1], remapped), file=sys.stderr)
+    if memptrs:
+        print('ccmark: %s: %d member-pointer call(s) read as MSVC' % (sys.argv[1], memptrs), file=sys.stderr)
 
 
 if __name__ == '__main__':
