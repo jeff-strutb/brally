@@ -226,16 +226,18 @@ void BrPadConsume(BrDrivePad *pad, unsigned int bit);
  * revved freely in neutral), clamped and slewed by at most 400; the
  * handbrake sets the brake force.  The PC twin is BrCtlInputApply (a
  * different tuning of the same idea).
- * RESIDUE (766): the ROM computes x / 2.0f as a divide where ours becomes
+ * RESIDUE (753): the ROM computes x / 2.0f as a divide where ours becomes
  * a multiply by 0.5, keeps the steering target in f14 (ours f18) and its
  * frame is 0x10 smaller; the sign tests and the gearbox follow the same
  * flow. */
+/* @t4-pass 0x80222050 1 2026-09-29 compiles 121 best 753 moved 13  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80222050 2 2026-09-29 compiles 121 best 753 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80222050 tgr BrCarDriveInput */
 void BrCarDriveInput(BrCar *car)
 {
   float v[3];
-  float x;
   float rate;
+  float x;
   float old;
   float s;
   float a;
@@ -252,8 +254,8 @@ void BrCarDriveInput(BrCar *car)
   int k;
   int g;
   int tltc;
-  int ctlt;
   short ch;
+  int ctlt;
 
   s = ((BrDrivePad *)car->pad)->steer;
   if (((BrDrivePad *)car->pad)->kind == 4) {
@@ -293,9 +295,9 @@ void BrCarDriveInput(BrCar *car)
     switch (car->xe68) {
     case 0:
       D_8028B720 = 14.0f;
-      D_8028B724 = 0.01f;
       D_8028B728 = 6.0f;
       D_8028B72C = 10.0f;
+      D_8028B724 = 0.01f;
       D_8028B730 = 0;
       k = D_8028B730;
       x = D_8028B728;
@@ -304,8 +306,8 @@ void BrCarDriveInput(BrCar *car)
       D_8028B720 = 14.0f;
       D_8028B724 = 0.01f;
       D_8028B728 = 6.0f;
-      D_8028B72C = 10.0f;
       D_8028B730 = 0;
+      D_8028B72C = 10.0f;
       k = D_8028B730;
       x = 3.0f;
       break;
@@ -319,8 +321,8 @@ void BrCarDriveInput(BrCar *car)
       x = D_8028B728;
       break;
     }
-    rate = D_8028B724;
     lim = D_8028B720 - t / 90.0f * D_8028B72C;
+    rate = D_8028B724;
     a = s < 0.0f ? -s : s;
     if (a < 0.001f) {
       tgt = 0.0f;
@@ -363,8 +365,8 @@ void BrCarDriveInput(BrCar *car)
     }
     if (ch) {
       *(signed char *)CP_AT(car, 0xE51) = tltc ? -1 : 1;
-      rate = 1.0f;
       cur = car->xdf0;
+      rate = 1.0f;
       if (SGN(tgt) != SGN(cur)) {
         tgt = 0.0f;
       }

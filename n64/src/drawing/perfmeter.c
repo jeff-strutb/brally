@@ -68,9 +68,11 @@ void BrPerfFrameStart(void)
  * The scale state is function static (the ROM addresses it afresh at every
  * access); the local bounds and row pointers are what let IDO unroll both
  * inner loops by four as the ROM has them.
- * RESIDUE (722): the ROM keeps the first loop's counters and row pointer in
+ * RESIDUE (717): the ROM keeps the first loop's counters and row pointer in
  * s4/s6/s7/fp (it saves two more registers, frame 0x40) where ours uses
  * temporaries, which renames everything after. */
+/* @t4-pass 0x8022D97C 1 2026-09-29 compiles 119 best 717 moved 5  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8022D97C 2 2026-09-29 compiles 119 best 717 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8022D97C tgr BrPerfMeterDraw */
 void BrPerfMeterDraw(void)
 {
@@ -107,8 +109,8 @@ void BrPerfMeterDraw(void)
     } else if (scale > 1736110) {
       scale -= 781250;
       if (max >= scale + 7812) {
-        scale = max;
         hold = 30;
+        scale = max;
       } else {
         max = scale;
         hold = 30;
@@ -133,8 +135,8 @@ void BrPerfMeterDraw(void)
   }
   gDPPipeSync(D_8028A858++);
   for (bar = 0; bar < 3; bar++) {
-    n = D_803519B0[D_8028BDA0 ^ 1][bar];
     e = D_8034E9B0[D_8028BDA0 ^ 1][bar];
+    n = D_803519B0[D_8028BDA0 ^ 1][bar];
     for (j = 1; j < n; j++) {
       gDPSetFillColor(D_8028A858++, e[j].colour);
       gDPFillRectangle(D_8028A858++, ((D_8028AAB0 - 16) << D_8028A850) + bar * 4 - 18,
