@@ -146,6 +146,19 @@ extern unsigned char D_8028DB5C;
 extern unsigned char D_8028DBA8;
 extern unsigned char D_8028DBAC;
 extern BrGlyph *D_80369E68[];
+void BrFadeTo(float dir, float speed);
+void func_80246F90();
+void BrTextSetFont(int size);
+void BrTextAlignLeft(void);
+void BrTextHighlightOff(void);
+void BrTextSetColours(int r, int g, int b, int a, int x, int y);
+void BrTextPrint(char *s, int x, int y);
+void BrImageDrawAt(BrImage *img, int x, int y);
+void BrPadConsume(unsigned int *pad, unsigned int bits);
+extern BrImage D_8028D0B0;              /* the A button */
+extern BrImage D_8028D0E0;              /* the B button */
+extern float D_802AB260;
+extern float D_802AB264;
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Take the chosen preset's rectangle, and make every view
@@ -292,6 +305,51 @@ void BrTexRectFlipDraw(int tw, int th, int x, int y, int w, int h)
   gImmp1(D_8028A858++, G_RDPHALF_2, (_SHIFTL((tw << 10) / w, 16, 16) | _SHIFTL(-(th << 10) / h, 0, 16)));
   gDPPipeSync(D_8028A858++);
   gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 19, 1, 0x80000);
+}
+
+
+/* WHAT IT DOES: The paint shop's leave prompt: with nothing changed, fade
+ * out at once; otherwise draw the "CHANGES NOT SAVED. EXIT ANYWAY?" box
+ * with its A (yes) and B (no) buttons -- A fades out and leaves, B goes back
+ * to the screen it came from. */
+/* @implements 0x802531C0 tgr BrPaintExitPrompt */
+void BrPaintExitPrompt(void)
+{
+  char unused[28];             /* declared, never used: the frame holds it */
+  unsigned int *pad;
+  int y;
+  int bx;
+
+  if (D_8028DBE8 == 0) {
+    if (D_8028DBB4 <= 0) {
+      D_8028DBE8 = 1;
+      BrFadeTo(0, D_802AB260);
+    } else {
+      y = 285 - D_8028D0B0.w;
+      bx = 361 - D_8028D0E0.w;
+      func_80246F90(0xbf, 0xbb, 0x102, 0x6a, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrTextSetFont(12);
+      BrTextAlignLeft();
+      BrTextHighlightOff();
+      BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xca, 0);
+      BrTextPrint("CHANGES NOT SAVED.", 103, 109);
+      BrTextPrint("EXIT ANYWAY?", 103, 123);
+      BrTextSetFont(10);
+      BrTextPrint("%wwYES", (D_8028D0B0.drawW + 249) >> 1, (y + 18) >> 1);
+      BrTextPrint("%wwNO", (bx + D_8028D0E0.drawW + 8) >> 1, (y + 18) >> 1);
+      BrImageDrawAt(&D_8028D0B0, 243, y);
+      BrImageDrawAt(&D_8028D0E0, bx, y);
+      pad = (unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c);
+      if (*pad & 0x10) {
+        BrPadConsume(pad, 0x10);
+        D_8028DBE8 = 1;
+        BrFadeTo(0, D_802AB264);
+      } else if (*pad & 0x20) {
+        BrPadConsume(pad, 0x20);
+        D_8028DB60 = D_8028DB64;
+      }
+    }
+  }
 }
 
 /* WHAT IT DOES: Move the paint shop cursor from the stick once it is pushed
