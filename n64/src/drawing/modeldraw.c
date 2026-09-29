@@ -59,6 +59,7 @@ void guMtxF2L(float mf[4][4], Mtx *m);
  * calls match. */
 /* @t4-pass 0x80209D70 1 2026-09-29 compiles 196 best 196 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80209D70 2 2026-09-29 compiles 196 best 196 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80209D70 */
 /* @implements 0x80209D70 tgr BrModelDraw */
 void BrModelDraw(BrModel *model, float m[4][4])
 {
