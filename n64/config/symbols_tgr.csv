@@ -729,6 +729,7 @@ va,name,kind
 802A6150,__OSGlobalIntMask,data
 802A6160,__osViDevMgr,data
 802A6180,__osPiDevMgr,data
+802A61A0,__osCurrentHandle,data
 802A61C0,vi,data
 802A6220,__osViCurr,data
 802A6224,__osViNext,data
