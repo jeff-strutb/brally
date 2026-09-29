@@ -45,7 +45,9 @@ typedef struct BrCarLink {
 typedef struct BrCarBody {
     char pad000[0x74];
     float pos[3];               /* 0x74  where it hangs off the car body */
-    char pad080[0x13C - 0x80];
+    char pad080[0x128 - 0x80];
+    unsigned char surface;      /* 0x128  the surface under it (read when x13c is set) */
+    char pad129[0x13C - 0x129];
     int x13c;                   /* 0x13C */
     char pad140[0x148 - 0x140];
     float steer;                /* 0x148  radians */
@@ -58,7 +60,8 @@ typedef struct BrCar {
     float mtx0[4][4];           /* 0x000  body matrix */
     float wheelMtx[4][4][4];    /* 0x040  one per wheel: the body's rotation, the wheel's position */
     int slot;                   /* 0x140  index in the car array */
-    char pad144[0x14C - 0x144];
+    short sndHits;              /* 0x144  impact sounds in a row (to 16) */
+    char pad146[0x14C - 0x146];
     struct BrCarWheel *wheel[4];  /* 0x14C  the wheels' rigid bodies */
     char pad15c[0x1C0 - 0x15C];
     BrRbState st;               /* 0x1C0  the body's state */
@@ -73,7 +76,14 @@ typedef struct BrCar {
     BrVec3 x334;                /* 0x334  where the HUD arrow points */
     int x340;                   /* 0x340  negative: the car is off the track */
     unsigned char x344;         /* 0x344  a pending HUD arrow (0 = none) */
-    char pad345[0x3C8 - 0x345];
+    unsigned char x345;         /* 0x345 */
+    unsigned char sndHitA;      /* 0x346  pending one-shot sounds: loudness, 0 none */
+    unsigned char sndHitB;      /* 0x347 */
+    char pad348[0x34A - 0x348];
+    unsigned char x34a;         /* 0x34A */
+    unsigned char sndHitC;      /* 0x34B */
+    unsigned char sndImpact;    /* 0x34C  the surface impact level */
+    char pad34d[0x3C8 - 0x34D];
     BrCarBody wheels[4];        /* 0x3C8  the wheels' bodies (wheel[] points at them) */
     char padbe8[0xDF0 - 0xBE8];
     float xdf0;                 /* 0xDF0 */

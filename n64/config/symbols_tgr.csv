@@ -304,6 +304,7 @@ va,name,kind
 8022BA98,BrStub8022BA98,func
 8022BAA0,BrCarSfxLoad,func
 8022BCAC,BrCarCamClearCut,func
+8022BCB4,BrSndCarStep,func
 8022C9FC,BrGhostPlaybackStep,func
 8022CF88,BrCarEntTick,func
 8022D090,BrGridSpanExtend,func
