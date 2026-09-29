@@ -11,7 +11,7 @@ extern int D_8026FF10;
 float func_80224404();
 extern int D_8028B304;
 float func_8022576C(float param_1,float param_2);
-void func_8022F5DC(int param_1,int param_2,int param_3);
+void func_8022F5DC(unsigned char *s, int x, int y);
 int func_80260DD4();
 extern int D_8023876C;
 extern int D_8023877C;
@@ -42,14 +42,14 @@ void func_8022F4EC(void);
 void func_8022F514(void);
 int func_8022F530();
 int func_8022F720(unsigned char *param_1,int param_2);
-extern int D_8028AAF4;
-extern int D_802AA0F8;
-extern int D_802AA0FC;
-extern int D_802AA110;
-extern int D_802AA114;
-extern int D_802AA118;
-extern int D_802AA11C;
-extern int D_802AA120;
+extern BrCarCam *D_8028AAF4;           /* the camera being drawn from */
+extern char D_802AA0F8[];
+extern char D_802AA0FC[];
+extern char D_802AA110[];
+extern char D_802AA114[];
+extern char D_802AA118[];
+extern char D_802AA11C[];
+extern char D_802AA120[];
 typedef struct BrViewRect { int x; int y; int w; int h; int car; } BrViewRect;
 extern BrViewRect D_8031B2C8[2];        /* the players' views */
 void func_8022F504(void);
@@ -419,85 +419,78 @@ void BrHudTimesDraw(void)
   }
 }
 
-/* WHAT IT DOES: Draw the lap counter (LAP n/m) for the player being shown,
- * while the race is on. */
+/* WHAT IT DOES: Draw the lap counter and the race position.  Outside race
+ * mode 3: unless the view is the car's third camera, the lap counter
+ * (n/m, or FINISHED once done; shown finished only in the single-player
+ * layout) at the top left; then the position number at the bottom left
+ * with its st/nd/rd/th suffix after it, sized for the layout. */
 /* @t4-pass 0x80238AB8 1 2026-09-26 compiles 17 best 194 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80238AB8 2 2026-09-26 compiles 17 best 194 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80238AB8 3 2026-09-26 compiles 17 best 194 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80238AB8 tgr BrHudLapDraw */
 void BrHudLapDraw(void)
 {
-  int iVar1;
-  int iVar2;
-  char *puVar3;
-  int iVar4;
-  int iVar5;
-  int iVar6;
-  char *local_18;
-  char auStack_14 [20];
-  
-  iVar1 = D_8031B2C8[0].x;
+  char buf[20];
+  char *suffix;
+  int x;
+  int y;
+  int adj;
+  int w;
+
   if (D_8026FF18 != 3) {
-    iVar5 = D_8031B2C8[0].x + 0x10;
-    if (D_8028AAF4 != (int)D_8028AAF0 + 0x1e78) {
-      iVar2 = D_8028AAF0->laps;
-      if ((iVar2 < D_8028B304) || (D_8028AB0C == 1)) {
-        iVar4 = D_8031B2C8[D_8028AAEC].y;
-        if (iVar2 < D_8028B304) {
-          if (D_8028AB0C == 2) {
-            puVar3 = &D_802AA0F8;
-          }
-          else {
-            puVar3 = &D_802AA0FC;
-          }
-          func_80260DD4(auStack_14,"%%y1%s%d/%d",puVar3,iVar2 + 1,D_8028B304);
+    x = D_8031B2C8[0].x + 16;
+    if (D_8028AAF4 != &D_8028AAF0->cams[2]) {
+      if (D_8028AAF0->laps < D_8028B304 || D_8028AB0C == 1) {
+        y = D_8031B2C8[D_8028AAEC].y + 5;
+        if (D_8028AAF0->laps < D_8028B304) {
+          func_80260DD4(buf, "%%y1%s%d/%d", D_8028AB0C == 2 ? D_802AA0F8 : D_802AA0FC,
+                  D_8028AAF0->laps + 1, D_8028B304);
+        } else {
+          func_80260DD4(buf, "FINISHED");
         }
-        else {
-          func_80260DD4(auStack_14,"FINISHED");
-        }
+        y += 15;
         func_8022F4F8();
         func_8022F514();
-        func_8022F5D0(0xf);
-        func_8022F5DC(auStack_14,iVar5,iVar4 + 0x14);
+        func_8022F5D0(15);
+        func_8022F5DC(buf, x, y);
       }
     }
-    iVar4 = iVar1 + 0xe;
-    iVar6 = D_8031B2C8[D_8028AAEC].h +
-            D_8031B2C8[D_8028AAEC].y;
+    y = D_8031B2C8[D_8028AAEC].y + D_8031B2C8[D_8028AAEC].h - 12;
+    x -= 2;
     func_8022F4DC();
     func_8022F514();
-    func_8022F530(0xff,0xf0,0x7d,0xff,0x78,0);
-    func_80260DD4(auStack_14,&D_802AA110,D_8028AAF0->xfac + 1);
-    iVar5 = 0;
-    iVar2 = D_8028AAF0->xfac;
-    if (iVar2 == 0) {
-      local_18 = &D_802AA114;
-      iVar5 = -3;
-    }
-    else if (iVar2 == 1) {
-      local_18 = &D_802AA118;
-      iVar5 = 1;
-    }
-    else if (iVar2 == 2) {
-      local_18 = &D_802AA11C;
-    }
-    else {
-      local_18 = &D_802AA120;
-      iVar5 = 1;
+    func_8022F530(0xff, 0xf0, 0x7d, 0xff, 0x78, 0);
+    func_80260DD4(buf, D_802AA110, D_8028AAF0->xfac + 1);
+    adj = 0;
+    switch (D_8028AAF0->xfac) {
+    case 0:
+      suffix = D_802AA114;
+      adj = -3;
+      break;
+    case 1:
+      suffix = D_802AA118;
+      adj = 1;
+      break;
+    case 2:
+      suffix = D_802AA11C;
+      break;
+    default:
+      suffix = D_802AA120;
+      adj = 1;
+      break;
     }
     if (D_8028AB0C == 1) {
-      func_8022F5D0(0x28);
-      iVar2 = func_8022F720(auStack_14,0x28);
-      func_8022F5DC(auStack_14,iVar1 + 0xd,iVar6 + -0xd);
-      func_8022F5D0(0x14);
-      func_8022F5DC(local_18,iVar4 + iVar5 + iVar2 + 3,iVar6 + -0x1b);
-    }
-    else {
-      func_8022F5D0(0x1a);
-      iVar1 = func_8022F720(auStack_14,0x1a);
-      func_8022F5DC(auStack_14,iVar4,iVar6 + -0xc);
-      func_8022F5D0(0xd);
-      func_8022F5DC(local_18,iVar4 + (iVar5 << 1) / 3 + iVar1 + 3,iVar6 + -0x16);
+      func_8022F5D0(40);
+      w = func_8022F720(buf, 40);
+      func_8022F5DC(buf, x - 1, y - 1);
+      func_8022F5D0(20);
+      func_8022F5DC(suffix, x + adj + w + 3, y - 15);
+    } else {
+      func_8022F5D0(26);
+      w = func_8022F720(buf, 26);
+      func_8022F5DC(buf, x, y);
+      func_8022F5D0(13);
+      func_8022F5DC(suffix, x + 3 + adj * 2 / 3 + w, y - 10);
     }
     func_8022F4EC();
   }
