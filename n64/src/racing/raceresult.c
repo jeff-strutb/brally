@@ -84,6 +84,8 @@ void BrRaceResultRestore(void)
  * messages go to the results screen's lines, a blank line between groups.
  * RESIDUE (38): register colouring only -- the ROM puts the message address
  * in a0 and the last round's race count in a1; ours swaps them. */
+/* @t4-pass 0x802063A4 1 2026-09-29 compiles 13 best 38 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802063A4 2 2026-09-29 compiles 13 best 38 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x802063A4 tgr BrSeasonRaceDone */
 void BrSeasonRaceDone(void)
 {

@@ -394,6 +394,8 @@ void BrPathGates(BrPathSeg *seg, float d)
  * car, depth and mid in their argument home slots and reloads them at each
  * use (seg in s3, ret in s4, frame 0x80); ours gives car and mid s-registers
  * (frame 0x78).  Structure and call order match. */
+/* @t4-pass 0x80226D9C 1 2026-09-29 compiles 13 best 253 moved 2  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80226D9C 2 2026-09-29 compiles 13 best 253 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80226D9C tgr BrAiScanCorridor */
 unsigned int BrAiScanCorridor(BrCar *car, int depth, int mid, BrPathSeg *seg)
 {
@@ -443,8 +445,8 @@ unsigned int BrAiScanCorridor(BrCar *car, int depth, int mid, BrPathSeg *seg)
       D_8028B810 = mid;
       if (depth > 2) {
         if (BrSegmentsOverlapXY((float *)car->mtx0[3], (float *)&D_8031B610[2], &D_8031B5B0[1], &D_8031B550[1]) != 0) {
-          D_8028B80C = 0;
           D_8028B808 = 1;
+          D_8028B80C = 0;
         } else if (BrSegmentsOverlapXY((float *)car->mtx0[3], (float *)&D_8031B610[2], &D_8031B670[1], &D_8031B6D0[1]) != 0) {
           D_8028B80C = 1;
           D_8028B808 = 0;

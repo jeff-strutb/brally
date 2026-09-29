@@ -125,6 +125,8 @@ float sqrtf(float x);
  * out of the search loop (the ROM rematerialises it at each test), which
  * shifts the loop body; x/z take f26/f30 the other way round and the car
  * position pointer s1 for s2.  Structure, frame and calls match. */
+/* @t4-pass 0x8021EB50 1 2026-09-29 compiles 13 best 230 moved 1  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021EB50 2 2026-09-29 compiles 13 best 230 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8021EB50 tgr BrCarTrackLocate */
 int BrCarTrackLocate(BrCar *car)
 {
@@ -218,8 +220,8 @@ int BrCarTrackLocate(BrCar *car)
   if (!check || (-1000.0f < d && d < 1000.0f)) {
     car->xfa8 += d;
   }
-  car->xf5c = (int)seg;
   car->xf60 = i;
+  car->xf5c = (int)seg;
   car->xf64 = across.x;
   car->xf68 = across.y;
   car->xf6c = across.z;
@@ -282,6 +284,8 @@ void BrCarTickMessages(BrCar *car)
  * RESIDUE (387): the loop end is a spilled temp at 0x9C in the ROM (ours sits
  * elsewhere), which with FP colouring shifts most rows; frame, named slots,
  * structure and calls match. */
+/* @t4-pass 0x8021F380 1 2026-09-29 compiles 13 best 387 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021F380 2 2026-09-29 compiles 13 best 387 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8021F380 tgr BrGroundRay */
 int BrGroundRay(BrVec3 *pPosOut, BrVec3 *pNormOut, BrVec3 *pEye, unsigned short *pNearIds, int *pGotHit,
                 unsigned short *pFarIds, int *pFarCount, float *pDistOut, int *pFaceOut)
@@ -512,6 +516,8 @@ void BrCarEntTick(BrCarEnt *e)
  * (the ROM frame keeps their slots).
  * RESIDUE (48): FP register colouring only -- the ROM gives the float zero
  * f0 and the frame time f2 throughout; ours swaps them. */
+/* @t4-pass 0x8021F998 1 2026-09-29 compiles 12 best 48 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021F998 2 2026-09-29 compiles 12 best 48 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8021F998 tgr BrCarPhysTick */
 void BrCarPhysTick(BrCar *car)
 {
