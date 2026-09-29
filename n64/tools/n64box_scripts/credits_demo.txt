@@ -1,0 +1,19 @@
+# Options -> Credits: the credits roll over a demo race, then back to options.
+#
+# Written by n64/tools/n64drive.py (plan 'credits_demo'); the driver saw:
+#   TOP GEAR RALLY: row 6
+#   OPTIONS: row 6
+frames 8001
+0 -
+80 A
+88 -
+294 START
+302 -
+456 - -80 0
+464 -
+500 A
+508 -
+546 - -80 0
+554 -
+590 A
+598 -

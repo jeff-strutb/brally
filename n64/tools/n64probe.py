@@ -46,7 +46,12 @@ WATCH = [
     (0x8028B7F4, 'cars'),           # cars in the race
     (0x8028AB0C, 'views'),          # views on screen
     (0x8028AA54, 'rearview'),       # the rear-view mirror size
+    (0x8026FF20, 'cheatDemo'),      # the toggle cheats
+    (0x8028AA68, 'cheatFilter'),
+    (0x8028AA94, 'cheatFx'),
 ]
+BYTES = [(0x8036A8E0 + 0x25, 'ctlP1'),         # controller type: A B C D wheel
+         (0x8036A8E0 + 0x15C + 0x25, 'ctlP2')]
 
 
 def names():
@@ -134,7 +139,8 @@ class ProbeBox(NB.Box):
             if getattr(self, 'snap', False):
                 self.snap = False
                 self.events_out.append((self.frame, 'setup', ' '.join(
-                    '%s=%d' % (n, self.s32(va)) for va, n in WATCH)))
+                    ['%s=%d' % (n, self.s32(va)) for va, n in WATCH] +
+                    ['%s=%d' % (n, self.read(va, 1)[0]) for va, n in BYTES])))
             for va, name in WATCH:
                 v = self.r32(va)
                 v = v - (1 << 32) if v & 0x80000000 else v
@@ -156,7 +162,7 @@ def probe(script, frames, prints=False):
 
 def _cover_worker(args):
     sc, frames, vas = args
-    box = ProbeBox(os.path.join(SCRIPTS, sc), cover=vas)
+    box = ProbeBox(sc, cover=vas)
     r = box.run(frames)
     return sc, r, box.frame, box.reached
 
@@ -166,16 +172,16 @@ def script_frames(sc):
     return n64t3.script_frames(sc)
 
 
-def cover(only=None):
+def cover(dirs=(SCRIPTS,)):
     tm, size = tiers()
     vas = sorted(tm)
-    scs = [s for s in sorted(os.listdir(SCRIPTS)) if s.endswith('.txt')]
-    if only:
-        scs = [s for s in scs if s in only]
+    scs = [os.path.join(os.path.abspath(d), s) for d in dirs for s in sorted(os.listdir(d))
+           if s.endswith('.txt')]
     seen = {}
     per = {}
     with ProcessPoolExecutor(min(14, len(scs))) as ex:
         for sc, r, fr, reached in ex.map(_cover_worker, [(s, script_frames(s), vas) for s in scs]):
+            sc = os.path.basename(sc)
             per[sc] = reached
             for va in reached:
                 seen.setdefault(va, []).append(sc)
@@ -199,10 +205,11 @@ def main():
     ap.add_argument('--frames', type=int)
     ap.add_argument('--prints', action='store_true')
     ap.add_argument('--cover', action='store_true', help='the whole suite: functions reached, by tier')
+    ap.add_argument('--dir', action='append', help='with --cover: script directories (default the suite)')
     ap.add_argument('--unreached', metavar='TIERS', help='with --cover: list unreached functions of these tiers (e.g. T3,T4)')
     a = ap.parse_args()
     if a.cover:
-        tm, seen, size, per = cover()
+        tm, seen, size, per = cover(a.dir or (SCRIPTS,))
         if a.unreached:
             nm = names()
             want = a.unreached.split(',')
@@ -214,7 +221,7 @@ def main():
     sc = a.script
     if not os.path.exists(sc):
         sc = os.path.join(SCRIPTS, sc)
-    frames = a.frames or script_frames(os.path.basename(sc))
+    frames = a.frames or script_frames(os.path.abspath(sc))
     r, box, ev = probe(sc, frames, a.prints)
     for f, kind, s in ev:
         print('%5d  %-5s %s' % (f, kind, s))

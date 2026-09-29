@@ -15,13 +15,15 @@ green light (a closed chain of segments from the car's +0xF5C).  The
 autopilot chases a point a little ahead of the car along it (pure pursuit),
 brakes into sharp turns and backs out when it is stuck.
 
-Plans live in n64drive_plans.py; each writes n64/tools/n64box_scripts/<name>.txt
+Plans live in n64drive_plans.py; each writes build/n64/drive/<name>.txt (with
+--install, n64/tools/n64box_scripts/<name>.txt)
 with a header saying what the run covers and what the probe saw.
 
-    .venv/bin/python n64/tools/n64drive.py show arcade_desert_rain         # play it, print the probe
-    .venv/bin/python n64/tools/n64drive.py gen arcade_desert_rain          # one plan
+    .venv/bin/python n64/tools/n64drive.py show arc_desert_fog_car1         # play it, print the probe
+    .venv/bin/python n64/tools/n64drive.py gen arc_desert_fog_car1          # one plan, to build/n64/drive
+    .venv/bin/python n64/tools/n64drive.py gen --install arc_desert_fog_car1  # into the suite
     .venv/bin/python n64/tools/n64drive.py gen --all                       # every plan, in parallel
-    .venv/bin/python n64/tools/n64drive.py verify arcade_desert_rain       # replay == recording
+    .venv/bin/python n64/tools/n64drive.py verify arc_desert_fog_car1       # replay == recording
     .venv/bin/python n64/tools/n64drive.py list
 """
 import argparse
@@ -37,11 +39,15 @@ import n64box as NB  # noqa: E402
 import n64probe as P  # noqa: E402
 
 SCRIPTS = os.path.join(HERE, 'n64box_scripts')
+# generated scripts land here until `gen --install` puts them in the suite
+# (anything in SCRIPTS is played by the A5/A7 oracle)
+DRAFTS = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'build/n64/drive')
 
 BITS = NB.Script.BITS
 CAR0, CAR_STRIDE = 0x8031B760, 0x2090
 RACE_TICK = 0x8020082C
 CAR_SELECT = 0x8020D004
+TITLE = 0x8020686C
 
 TRACKS = ['Desert', 'Mountain', 'Coastline', 'Strip Mine', 'Jungle',
           'Mirror Desert', 'Mirror Mountain', 'Mirror Coastline', 'Mirror Strip Mine', 'Mirror Jungle']
@@ -82,9 +88,9 @@ def f32(b, va):
 class Driver(P.ProbeBox):
     """The box with a controller that plays a plan."""
 
-    def __init__(self, plan, pads=1, pak=False, name='plan'):
+    def __init__(self, plan, pads=1, pak=False, name='plan', rumble=False):
         super().__init__(None)
-        self.pad.pads, self.pad.pak = pads, pak
+        self.pad.pads, self.pad.pak, self.pad.rumble = pads, pak, rumble
         self.name = name
         self.out = [(0, 0, 0)] * 2          # the pad state this frame, per port
         self.rec = [[], []]                 # (frame, b, x, y) whenever it changes
@@ -180,7 +186,7 @@ class Driver(P.ProbeBox):
 
     def do_menu(self, title, row, confirm='A', timeout=900):
         """Bring the lit row of the menu titled `title` to `row` (the shorter
-        way round the ring), then confirm."""
+        way round, stepping on the stick's x axis), then confirm."""
         yield from self.wait_for(lambda: self.menu_up(title), timeout, 'menu %s' % title)
         yield from self.idle(8)
         name = self.menu[1]
@@ -189,8 +195,7 @@ class Driver(P.ProbeBox):
         while self.menu[2] != row:
             before = self.menu[2]
             fwd = (row - before) % n
-            x = 80 if fwd <= n - fwd else -80
-            yield from self.tap('-', x=x, hold=4, gap=2)
+            yield from self.tap('-', x=80 if fwd <= n - fwd else -80, hold=4, gap=2)
             t0 = self.frame
             while self.menu[2] == before and self.frame - t0 < 60:
                 yield {}
@@ -200,10 +205,18 @@ class Driver(P.ProbeBox):
                 raise Fail('menu %s: row %d cannot be chosen' % (title, row))
         yield from self.idle(6)
         if confirm:
+            # a screen still running its opening ignores the press: try again
             left = self.frame
-            yield from self.tap(confirm)
-            yield from self.wait_for(lambda: not self.menu_up(title) or self.mode_frame >= left,
-                                     300, 'leave menu %s' % title)
+            gone = lambda: not self.menu_up(title) or self.mode_frame >= left  # noqa: E731
+            for _ in range(4):
+                yield from self.tap(confirm)
+                t0 = self.frame
+                while not gone() and self.frame - t0 < 90:
+                    yield {}
+                if gone():
+                    break
+            else:
+                raise Fail('menu %s: row %d not taken' % (title, row))
         self.notes.append('%s: row %d' % (name, row))
 
     def do_cheats(self, names):
@@ -232,6 +245,64 @@ class Driver(P.ProbeBox):
         yield from self.tap('START')
         yield from self.wait_for(lambda: self.mode == 0x802111E0, 600, 'back at the main menu')
 
+    PAINT = 0x80243260
+
+    def paint_return(self):
+        """Back into the paint shop after a press that left it."""
+        yield from self.wait_for(lambda: self.mode in (self.PAINT, 0x802111E0, CAR_SELECT, TITLE),
+                                 1500, 'back to the paint shop')
+        if self.mode == TITLE:                  # the shop's exit goes to the title
+            yield from self.idle(60)
+            yield from self.tap('START')
+            yield from self.wait_for(lambda: self.mode == 0x802111E0, 900, 'main menu')
+        if self.mode == 0x802111E0:
+            yield from self.do_menu('TOP GEAR', MAIN['paintshop'])
+        if self.mode == CAR_SELECT:
+            yield from self.idle(40)
+            yield from self.tap('A', gap=30)
+        yield from self.wait_for(lambda: self.mode == self.PAINT, 900, 'paint shop')
+        yield from self.idle(60)
+        self.paint_exits += 1
+
+    def cursor_to(self, tx, ty, hold=0):
+        """Steer the paint cursor (0x8028D12C, 0x8028D130) to a point, holding
+        `hold` buttons on the way (a stroke when it is A)."""
+        last, still = None, 0
+        for _ in range(150):
+            cx, cy = self.s32(0x8028D12C), self.s32(0x8028D130)
+            dx, dy = tx - cx, ty - cy
+            if abs(dx) <= 3 and abs(dy) <= 3:
+                return
+            still = still + 1 if (cx, cy) == last else 0
+            last = (cx, cy)
+            if still > 12 or self.mode != self.PAINT:
+                return
+            sx = 0 if abs(dx) <= 3 else int(math.copysign(min(80, max(28, abs(dx) * 2)), dx))
+            sy = 0 if abs(dy) <= 3 else int(math.copysign(min(80, max(28, abs(dy) * 2)), -dy))
+            yield {0: (hold, sx, sy)}
+
+    def do_paint_sweep(self, seed=1, moves=300, budget=16000):
+        """The paint shop explored: a seeded random walk of the cursor over the
+        screen; half the moves hold A (strokes), each stop presses A, and now
+        and then B, Z, L, R or a C button.  A press that leaves the shop is
+        followed back in (main menu row 4, car select A)."""
+        import random
+        rng = random.Random(seed)
+        t0, n = self.frame, 0
+        self.paint_exits = 0
+        other = ['Z', 'CU', 'CD', 'CL', 'CR', 'L', 'R', 'B']
+        while n < moves and self.frame - t0 < budget:
+            if self.mode != self.PAINT:
+                yield from self.paint_return()
+            tx, ty = rng.randrange(24, 616), rng.randrange(24, 456)   # hi-res: 640 x 480
+            yield from self.cursor_to(tx, ty, BITS['A'] if rng.random() < 0.5 else 0)
+            yield from self.idle(2)
+            r = rng.random()
+            yield from self.tap('A' if r < 0.75 else rng.choice(other), hold=4, gap=20)
+            n += 1
+        self.notes.append('paint shop: %d random moves (seed %d), left and re-entered %d times'
+                          % (n, seed, self.paint_exits))
+
     def car_state(self, p):
         return (self.s32(0x803162B0 + 4 * p),            # step: 0 car, 1-5 setup, 6 ready
                 f32(self, 0x80316260 + 4 * p),            # turning (input ignored)
@@ -243,6 +314,7 @@ class Driver(P.ProbeBox):
         (START: keep the setup) or {handling,transmission,tires,suspension}
         row numbers, decal=row)."""
         yield from self.wait_for(lambda: self.mode == CAR_SELECT, timeout, 'car select')
+        self.car_specs = specs
         yield from self.idle(30)
         t0 = self.frame
         busy = [0] * len(specs)
@@ -334,12 +406,20 @@ class Driver(P.ProbeBox):
         else:
             i = min(range(i - 5, i + 80), key=d2) % n
             step = (i - st['i']) % n
-            if step < n // 2:
-                st['prog'] = st.get('prog', 0) + step
+            st['prog'] = st.get('prog', 0) + (step if step < n // 2 else step - n)
         off = math.sqrt(d2(i))
         st['i'] = i
         look = max(3, int((12.0 + 0.35 * speed) / 4.0)) if off < 25 else 2
         tgt = trail[(i + look) % n]
+        # after a stall, take the line a few units to one side for a while
+        # (the sides alternate and widen with each stall at the same place)
+        lane = 0.0
+        if st.get('lane_until') is not None and (st['lane_until'] - i) % n < n // 2:
+            a0, a1 = trail[(i + look) % n], trail[(i + look + 1) % n]
+            dx, dy = a1[0] - a0[0], a1[1] - a0[1]
+            dl = math.hypot(dx, dy) or 1.0
+            lane = st['lane']
+            tgt = (tgt[0] - dy / dl * lane, tgt[1] + dx / dl * lane, tgt[2])
         head = math.atan2(fwd[1], fwd[0])
         err = math.atan2(tgt[1] - pos[1], tgt[0] - pos[0]) - head
         err = (err + math.pi) % (2 * math.pi) - math.pi
@@ -352,13 +432,17 @@ class Driver(P.ProbeBox):
             st['rev'] -= 1
             if st['rev'] == 0:
                 st['mark'], st['calm'] = (st['t'], i), 60
-            return BITS['A'], int(max(-80, min(80, 150 * err))), -80
+            return self.reverse(p, int(max(-80, min(80, 150 * err))))
         mt, mi = st.setdefault('mark', (st['t'], i))
         if not going or ((i - mi) % n > 4 and (i - mi) % n < n // 2):
             st['mark'] = (st['t'], i)
         elif st['t'] - mt > 75:
             st['rev'] = 90
-            return BITS['A'], 0, -80
+            k = st['stalls'] = st.get('stalls', 0) + 1 if abs(i - st.get('stall_i', -999)) < 40 else 1
+            st['stall_i'] = i
+            st['lane'] = (1 if k % 2 else -1) * (7.0 + 5.0 * ((k - 1) // 2 % 3))
+            st['lane_until'] = (i + 60) % n
+            return self.reverse(p, 0)
         x = int(max(-80, min(80, -150 * err)))
         # the bends coming up within about a second and a half of travel:
         # the most the line turns away from where the car is heading
@@ -372,25 +456,68 @@ class Driver(P.ProbeBox):
         if st.get('calm', 0) > 0:               # just backed out: ease away
             st['calm'] -= 1
             want = min(want, 25)
-        b = BITS['A']
+        pedal = 'gas'
         if speed > want + 8 or (abs(err) > 0.6 and speed > 25):
-            b = BITS['B']
+            pedal = 'brake'
         elif speed > want:
-            b = 0
-        return b, x, 0
+            pedal = 'coast'
+        return self.controls(p, st, pedal, x, speed)
 
-    def do_race(self, frames=None, drivers=('auto',), extras=(), until_mode_leaves=False):
+    def reverse(self, p, x):
+        kind = self.read(0x8036A8E0 + 0x15C * p + 0x25, 1)[0]
+        if kind == 3:
+            return 0, x, -80
+        if kind == 2:
+            return BITS['A'] | (BITS['DL'] if x < -20 else BITS['DR'] if x > 20 else 0) | BITS['DD'], 0, -80
+        return BITS['A'], x, -80
+
+    # The controller types (the pad record's +0x25, set on the Controller
+    # screen) map the pad differently (0x80255120): A and B/wheel take A to
+    # accelerate and B to brake with the stick steering; C steers on the
+    # d-pad; D accelerates with the stick pushed up and brakes on Z.
+    def controls(self, p, st, pedal, x, speed):
+        kind = self.read(0x8036A8E0 + 0x15C * p + 0x25, 1)[0]
+        b, y = 0, 0
+        if kind == 3:
+            y = 80 if pedal == 'gas' else 0
+            b = BITS['Z'] if pedal == 'brake' else 0
+        else:
+            b = BITS['A'] if pedal == 'gas' else BITS['B'] if pedal == 'brake' else 0
+        if kind == 2:
+            b |= BITS['DL'] if x < -20 else BITS['DR'] if x > 20 else 0
+            x = 0
+        # a manual gearbox: up on R above 16 units a gear, down on Z below it
+        if st.get('manual'):
+            g = st.setdefault('gear', 1)
+            if st.get('shift', 0) > 0:
+                st['shift'] -= 1
+                if st['shift'] >= 6:
+                    b |= BITS[st['shift_btn']]
+            elif g < 5 and speed > 16 * g + 4:
+                st['gear'], st['shift'], st['shift_btn'] = g + 1, 12, 'R'
+            elif g > 1 and speed < 16 * (g - 1) - 4:
+                st['gear'], st['shift'], st['shift_btn'] = g - 1, 12, 'Z' if kind != 3 else 'L'
+        return b, x, y
+
+    def do_race(self, frames=None, drivers=('auto',), extras=(), until_mode_leaves=False, manual=None,
+                until_finish=False):
         """Drive the race.  drivers: per port 'auto' | 'idle' | 'sweep'.
         extras: (frame offset from the green light, port, buttons, hold)."""
         yield from self.wait_for(lambda: self.mode == RACE_TICK, 3000, 'race start')
         yield from self.idle(10)
         trail = self.load_trail() if 'auto' in drivers else None
-        st = [{} for _ in drivers]
+        if manual is None:
+            manual = [(sp.get('setup') or {}).get('transmission') == 0
+                      for sp in getattr(self, 'car_specs', [])]
+        manual = list(manual) + [False] * (len(drivers) - len(manual))
+        st = [{'manual': m} for m in manual]
         t0 = self.frame
         ex = sorted(extras)
         k = 0
         while frames is None or self.frame - t0 < frames:
             if until_mode_leaves and self.mode != RACE_TICK:
+                break
+            if until_finish and self.s32(self.car(0) + 0xF78) >= self.s32(0x8028B304):
                 break
             t = self.frame - t0
             step = {}
@@ -409,8 +536,9 @@ class Driver(P.ProbeBox):
                     else:
                         step[port] = (b | self.btn(names), x, y)
             yield step
-        self.notes.append('race %d frames%s; %s' % (
+        self.notes.append('race %d frames%s%s; %s' % (
             self.frame - t0, '' if self.mode == RACE_TICK else ' (race over)',
+            ' (P1 finished, %d laps)' % self.s32(self.car(0) + 0xF78) if until_finish else '',
             ', '.join('P%d drove %.2f laps' % (p + 1, s.get('prog', 0) / float(len(trail)))
                       for p, s in enumerate(st) if trail)))
 
@@ -444,6 +572,8 @@ class Driver(P.ProbeBox):
                 port, names, x, y, n = args
                 for _ in range(n):
                     yield {port: (self.btn(names), x, y)}
+            elif op == 'paint':
+                yield from self.do_paint_sweep(*args)
             elif op == 'gen':                   # a custom generator: fn(driver)
                 yield from args[0](self)
             else:
@@ -456,6 +586,8 @@ def write_script(path, d, header, frames):
     lines.append('frames %d' % frames)
     if d.pad.pak:
         lines.append('pak')
+    if d.pad.rumble:
+        lines.append('rumble')
     for port in range(d.pad.pads):
         pre = 'p2 ' if port else ''
         ev = d.rec[port] or [(0, 0, 0, 0)]
@@ -479,16 +611,18 @@ def summarise(path, frames):
     return r, box, seen
 
 
-def generate(name, verbose=True):
+def generate(name, install=False):
     spec = plans()[name]
     plan, frames = spec['plan'], spec['frames']
-    d = Driver(plan, pads=spec.get('pads', 1), pak=spec.get('pak', False), name=name)
+    d = Driver(plan, pads=spec.get('pads', 1), pak=spec.get('pak', False), name=name,
+               rumble=spec.get('rumble', False))
     r = d.run(frames)
     if d.fault:
         return name, 'FAIL %s' % d.fault
     err = None if r in ('frames', 'plan done') else 'stopped: %s' % r
     frames = d.frame + 1
-    path = os.path.join(SCRIPTS, name + '.txt')
+    os.makedirs(DRAFTS, exist_ok=True)
+    path = os.path.join(SCRIPTS if install else DRAFTS, name + '.txt')
     header = spec['doc'].strip().splitlines() + [
         '', 'Written by n64/tools/n64drive.py (plan %r); the driver saw:' % name] + [
         '  ' + n for n in d.notes]
@@ -500,9 +634,13 @@ def verify(name, frames=None):
     """Replaying the script must give the recording's RAM digest stream."""
     spec = plans()[name]
     frames = frames or spec['frames']
-    d = Driver(spec['plan'], pads=spec.get('pads', 1), pak=spec.get('pak', False))
+    d = Driver(spec['plan'], pads=spec.get('pads', 1), pak=spec.get('pak', False),
+               rumble=spec.get('rumble', False))
     d.run(frames)
-    b = NB.Box(script=os.path.join(SCRIPTS, name + '.txt'))
+    path = os.path.join(SCRIPTS, name + '.txt')
+    if not os.path.exists(path):
+        path = os.path.join(DRAFTS, name + '.txt')
+    b = NB.Box(script=path)
     b.run(d.frame)
     a_ram = [x for x in d.log if x[1] == 'ram']
     b_ram = [x for x in b.log if x[1] == 'ram']
@@ -517,9 +655,10 @@ def plans():
     return n64drive_plans.PLANS
 
 
-def _gen(name):
+def _gen(job):
+    name, install = job
     try:
-        return generate(name)
+        return generate(name, install)
     except Exception as e:                      # noqa: BLE001
         return name, 'ERROR %r' % e
 
@@ -529,6 +668,7 @@ def main():
     ap.add_argument('cmd', choices=['gen', 'verify', 'list', 'show'])
     ap.add_argument('names', nargs='*')
     ap.add_argument('--all', action='store_true')
+    ap.add_argument('--install', action='store_true', help='gen: write into the oracle\'s script suite')
     a = ap.parse_args()
     PLANS = plans()
     if a.cmd == 'list':
@@ -539,7 +679,8 @@ def main():
     if a.cmd == 'show':                         # play a plan, print what the probe saw
         for n in names:
             spec = PLANS[n]
-            d = Driver(spec['plan'], pads=spec.get('pads', 1), pak=spec.get('pak', False))
+            d = Driver(spec['plan'], pads=spec.get('pads', 1), pak=spec.get('pak', False),
+                       rumble=spec.get('rumble', False))
             r = d.run(spec['frames'])
             for f, kind, s in sorted(d.events_out, key=lambda e: e[0]):
                 if kind != 'print':
@@ -549,11 +690,12 @@ def main():
         return
     if a.cmd == 'gen':
         with ProcessPoolExecutor(min(14, max(1, len(names)))) as ex:
-            for n, r in ex.map(_gen, names):
+            for n, r in ex.map(_gen, [(n, a.install) for n in names]):
                 print('%-32s %s' % (n, r))
     else:
-        for n in names:
-            print('%-32s %s' % (n, verify(n)))
+        with ProcessPoolExecutor(min(14, max(1, len(names)))) as ex:
+            for n, r in zip(names, ex.map(verify, names)):
+                print('%-32s %s' % (n, r))
 
 
 if __name__ == '__main__':
