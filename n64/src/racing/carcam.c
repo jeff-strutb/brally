@@ -159,6 +159,7 @@ void BrCarCamInit(BrCar *car)
  * temp; structure, calls and named slots match. */
 /* @t4-pass 0x80221170 1 2026-09-29 compiles 13 best 140 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80221170 2 2026-09-29 compiles 13 best 140 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80221170 */
 /* @implements 0x80221170 tgr BrCamChaseStep */
 void BrCamChaseStep(BrCar *car)
 {
