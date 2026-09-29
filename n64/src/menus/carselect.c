@@ -46,6 +46,173 @@ int BrCarSelectable(int n)
          BrCarModelPresent(n);
 }
 
+/* -- declarations: BrCarViewDraw -- */
+#include "tgr/car.h"
+typedef struct BrModel BrModel;
+typedef struct BrStream { char pad00[0x28]; } BrStream;
+extern BrCar *D_8028AAF0;               /* the car being drawn */
+extern BrCarCam *D_8028AAF4;            /* the camera being drawn from */
+extern float D_8028AAC0;                /* the lens scale */
+extern float D_8028AAC8;
+extern int D_80272074;
+extern BrStream D_8031B370[4];
+extern float D_8031AB10[4][4];
+extern float D_8031AB50[4][4];
+extern char D_802721F0[];               /* the car-select lights: the ambient, then four lights */
+float cosf(float x);
+float sinf(float x);
+void BrVec3Cross(BrVec3 *pOut, BrVec3 *pA, BrVec3 *pB);
+float BrAtan2(float x, float y);
+void BrCameraSet(BrCarCam *cam, float fov, float far, float w, float h);
+void BrViewportSet(int x, int y, int w, int h, int scissor);
+void BrGridSpanExtend(int x, int y);
+void BrCarPlaceWheels(int n);
+int BrEntLoadModel(BrStream *s);
+int BrEntIsFree(BrStream *s);
+void BrEntSetRecord(BrCar *car, int kind);
+void BrMenuBackdropBegin(BrCar *car);
+void BrMenu3DBegin(BrCar *car);
+void BrMenuCarDraw(BrCar *car);
+void BrCarVisibility(BrCar *car);
+void func_80230554(BrCar *car, int a);
+void *BrVpAlloc(void);
+Mtx *BrMtxAlloc(void);
+void guLookAtReflectF(float mf[4][4], void *l, float xEye, float yEye, float zEye, float xAt, float yAt,
+                      float zAt, float xUp, float yUp, float zUp);
+void guScaleF(float mf[4][4], float x, float y, float z);
+void guRotateF(float mf[4][4], float a, float x, float y, float z);
+void guMtxCatF(float m[4][4], float n[4][4], float r[4][4]);
+void guTranslateF(float mf[4][4], float x, float y, float z);
+void BrModelDraw(BrModel *model, float m[4][4]);
+/* -- end declarations -- */
+
+/* WHAT IT DOES: Draw a car-select view: point the player's car and camera
+ * at the view (turned by spin radians), set the viewport, and slide the
+ * shown car sideways by slide squared times k.  The car kindA is drawn
+ * there -- its own model once streamed in, or the model iconA under fixed
+ * lights when given -- and while the view is sliding the car kindB (or
+ * iconB) comes in from the other side, k further along.  The unused
+ * array and the order of la among the locals are what the ROM frame holds
+ * (0xE0, the two look-at pointers at 0xCC and 0xA4). */
+/* @implements 0x8020C6D0 tgr BrCarViewDraw */
+void BrCarViewDraw(BrModel *iconA, BrModel *iconB, int player, int x, int y, int w, int h, float slide,
+                   int noBegin, int kindA, int kindB, float k, float spin)
+{
+  BrStream *sA;
+  BrStream *sB;
+  float neg;
+  float *p;
+  void *la;
+  float deg;
+
+  D_8028AAF0 = &D_8031B760[player];
+  D_8028AAF0->mtx0[0][0] = cosf(spin);
+  D_8028AAF0->mtx0[0][1] = sinf(spin);
+  D_8028AAF0->mtx0[0][2] = 0.0f;
+  BrVec3Cross((BrVec3 *)D_8028AAF0->mtx0[1], (BrVec3 *)D_8028AAF0->mtx0[2], (BrVec3 *)D_8028AAF0->mtx0[0]);
+  D_8028AAF4 = D_8028AAF0->cam = &D_8028AAF0->cams[3];
+  D_8028AAF0->heading = BrAtan2(D_8028AAF4->mtx[0][0], D_8028AAF4->mtx[0][1]);
+  D_8028AAF0->heading = BrAtan2(D_8028AAF4->mtx[0][0], D_8028AAF4->mtx[0][1]);
+  BrCameraSet(D_8028AAF4, D_8028AAC0, D_8028AAC8 * 0.2f, w, h);
+  BrViewportSet(x, y, w, h, 1);
+  BrGridSpanExtend(0, 0);
+  if (slide < 0.0) {
+    slide = slide * slide * -k;
+  } else {
+    slide = slide * slide * k;
+  }
+  p = D_8028AAF0->mtx0[3];
+  p[0] = slide;
+  p[1] = neg = -slide;
+  p[2] = 0.254f;
+  if (iconA == 0) {
+    BrCarPlaceWheels(player);
+  }
+  sA = &D_8031B370[kindA];
+  BrEntLoadModel(sA);
+  BrMenuBackdropBegin(D_8028AAF0);
+  if (noBegin == 0 && D_80272074 == 0) {
+    BrMenu3DBegin(D_8028AAF0);
+  }
+  if (iconA) {
+    la = BrVpAlloc();
+    guLookAtReflectF(D_8031AB50, la, 11.0f, 11.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
+    gSPLookAtX(D_8028A858++, la);
+    gSPLookAtY(D_8028A858++, (char *)la + 16);
+    gSPNumLights(D_8028A858++, 4);
+    gSPLight(D_8028A858++, D_802721F0 + 8, 1);
+    gSPLight(D_8028A858++, D_802721F0 + 24, 2);
+    gSPLight(D_8028A858++, D_802721F0 + 40, 3);
+    gSPLight(D_8028A858++, D_802721F0 + 56, 4);
+    gSPLight(D_8028A858++, D_802721F0, 5);
+    BrMtxAlloc();
+    guScaleF(D_8031AB10, 1.0f / 768, 1.0f / 768, 1.0f / 768);
+    guRotateF(D_8031AB50, spin * 57.295776f, 0.0f, 0.0f, 1.0f);
+    guMtxCatF(D_8031AB10, D_8031AB50, D_8031AB10);
+    guTranslateF(D_8031AB50, slide, neg, 0);
+    guMtxCatF(D_8031AB10, D_8031AB50, D_8031AB10);
+    BrModelDraw(iconA, D_8031AB10);
+  } else if (BrEntIsFree(sA)) {
+    BrEntSetRecord(D_8028AAF0, kindA);
+    BrMenuCarDraw(D_8028AAF0);
+    BrCarVisibility(D_8028AAF0);
+    func_80230554(D_8028AAF0, 0);
+  }
+  sB = &D_8031B370[kindB];
+  BrEntLoadModel(sB);
+  if (slide != 0.0f) {
+    if (iconB) {
+      void *la;
+      int u0[9];
+
+      deg = spin * 57.295776f;
+      la = BrVpAlloc();
+      guLookAtReflectF(D_8031AB50, la, 0.0f, -1.0f, 15.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+      gSPLookAtX(D_8028A858++, la);
+      gSPLookAtY(D_8028A858++, (char *)la + 16);
+      gSPNumLights(D_8028A858++, 4);
+      gSPLight(D_8028A858++, D_802721F0 + 8, 1);
+      gSPLight(D_8028A858++, D_802721F0 + 24, 2);
+      gSPLight(D_8028A858++, D_802721F0 + 40, 3);
+      gSPLight(D_8028A858++, D_802721F0 + 56, 4);
+      gSPLight(D_8028A858++, D_802721F0, 5);
+      BrMtxAlloc();
+      guScaleF(D_8031AB10, 1.0f / 768, 1.0f / 768, 1.0f / 768);
+      guRotateF(D_8031AB50, deg, 0, 0, 1.0f);
+      guMtxCatF(D_8031AB10, D_8031AB50, D_8031AB10);
+      if (0.0f < slide) {
+        guTranslateF(D_8031AB50, slide - k, -(slide - k), 0);
+      } else {
+        guTranslateF(D_8031AB50, slide + k, -(slide + k), 0);
+      }
+      guMtxCatF(D_8031AB10, D_8031AB50, D_8031AB10);
+      BrModelDraw(iconB, D_8031AB10);
+    } else {
+      if (BrEntIsFree(sB) || !BrEntLoadModel(sB)) {
+        BrEntSetRecord(D_8028AAF0, kindB);
+        if (0.0f < slide) {
+          p = D_8028AAF0->mtx0[3];
+          p[0] = slide - k;
+          p[1] = -(slide - k);
+          p[2] = 0.254f;
+        } else {
+          p = D_8028AAF0->mtx0[3];
+          p[0] = slide + k;
+          p[1] = -(slide + k);
+          p[2] = 0.254f;
+        }
+        BrCarPlaceWheels(player);
+        BrMenuCarDraw(D_8028AAF0);
+        BrCarVisibility(D_8028AAF0);
+        func_80230554(D_8028AAF0, 0);
+        if (BrEntIsFree(sA)) {
+          BrEntSetRecord(D_8028AAF0, kindA);
+        }
+      }
+    }
+  }
+}
+
 /* WHAT IT DOES: Format a time in seconds as minutes'seconds"hundredths.
  * Same arithmetic as the PC twin BrTimeFormat (br_timefmt.c). */
 /* @implements 0x8020CF44 tgr BrTimeFormat */
@@ -75,7 +242,6 @@ int BrCarModelPresent(int param_1)
 #include "tgr/menu.h"
 #include "tgr/season.h"
 typedef struct BrRomFile { int start; int end; void *data; } BrRomFile;
-typedef struct BrStream { char pad00[0x28]; } BrStream;
 typedef struct { char raw[0xdf88]; } BrCarModelBuf;
 extern BrCarModelBuf D_803C8000[];  /* each car's model buffer */
 extern BrStream D_8031B370[4];  /* the two players' model streams, two apiece */
