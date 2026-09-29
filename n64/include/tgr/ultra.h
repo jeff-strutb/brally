@@ -94,5 +94,68 @@ void __osEnqueueThread(OSThread **queue, OSThread *t);
 OSThread *__osPopThread(OSThread **queue);
 void __osDispatchThread(void);
 void osStartThread(OSThread *t);
+void __osDequeueThread(OSThread **queue, OSThread *t);
+void __osCleanupThread(void);
+typedef u32 OSIntMask;
+#define OS_IM_ALL 0x003FFF01
+#define SR_IMASK 0x0000ff00
+#define SR_EXL 0x00000002
+#define SR_IE 0x00000001
+#define RCP_IMASK 0x003f0000
+#define RCP_IMASKSHIFT 16
+#define FPCSR_FS 0x01000000
+#define FPCSR_EV 0x00000800
+
+
+/* vi */
+typedef struct {
+	u32 ctrl;
+	u32 width;
+	u32 burst;
+	u32 vSync;
+	u32 hSync;
+	u32 leap;
+	u32 hStart;
+	u32 xScale;
+	u32 vCurrent;
+} OSViCommonRegs;
+typedef struct {
+	u32 origin;
+	u32 yScale;
+	u32 vStart;
+	u32 vBurst;
+	u32 vIntr;
+} OSViFieldRegs;
+typedef struct {
+	u8 type;
+	OSViCommonRegs comRegs;
+	OSViFieldRegs fldRegs[2];
+} OSViMode;
+typedef struct {
+	f32 factor;
+	u16 offset;
+	u32 scale;
+} __OSViScale;
+typedef struct {
+	u16 state;
+	u16 retraceCount;
+	void *framep;
+	OSViMode *modep;
+	u32 control;
+	OSMesgQueue *msgq;
+	OSMesg msg;
+	__OSViScale x;
+	__OSViScale y;
+} __OSViContext;
+extern __OSViContext *__osViCurr;
+extern __OSViContext *__osViNext;
+#define VI_STATE_MODE_UPDATED 0x01
+#define VI_STATE_XSCALE_UPDATED 0x02
+#define VI_STATE_YSCALE_UPDATED 0x04
+#define VI_STATE_CTRL_UPDATED 0x08
+#define VI_STATE_BUFFER_UPDATED 0x10
+#define VI_STATE_BLACK 0x20
+#define VI_STATE_REPEATLINE 0x40
+#define VI_STATE_FADE 0x80
 
 #endif
