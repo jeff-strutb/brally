@@ -337,6 +337,7 @@ extern funcptr PTR_FUN_100b849c;
 int BrPodNop();
 int BrTexInit();
 int br_dl_clip_reset();
+int BrGlInstall();                  /* 0x1001E080, drawing/br_dlglide.c */
 
 /* WHAT IT DOES: map the current width/height globals to a Glide resolution constant and
  * open the 3dfx window with it; unknown sizes skip the open. Either way, push the size
@@ -429,8 +430,14 @@ int BrObjLifeInit6A540(void)
   return;
 }
 
-/* WHAT IT DOES: record the render state; state 3 installs the object-ctor, display-list
- * clip-reset and texture-init hooks into their three runtime slots. */
+/* WHAT IT DOES: record the render state; state 3 installs the Glide bring-up
+ * (BrGlInstall, which also sets the frame-flip hooks), the display-list
+ * clip-reset and the texture-init hook into their three runtime slots.
+ * The first store is `mov [0x106B7AB4], 0x1001E080` in the original -- the
+ * Glide installer.  It used to name BrInstall_1001BAE0, the D3D twin that
+ * shares only this slot; the bytes matched because the store is a
+ * relocation, but the certified image and the Mac port both followed the
+ * name to the wrong function and the game never got its flip hook. */
 /* @implements 0x10063940 glide BrRenderStateSet */
 
 void BrRenderStateSet(int param_1)
@@ -438,7 +445,7 @@ void BrRenderStateSet(int param_1)
 {
   DAT_10b73644 = param_1;
   if (param_1 == 3) {
-    DAT_106b7ab4 = BrInstall_1001BAE0;
+    DAT_106b7ab4 = BrGlInstall;
     DAT_10b73528 = br_dl_clip_reset;
     PTR_FUN_100b849c = BrTexInit;
   }
