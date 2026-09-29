@@ -239,6 +239,7 @@ va,name,kind
 80225180,BrMat4Mul,func
 802252EC,BrMat4Transpose,func
 80225350,BrMat4Copy,func
+80225370,BrMat4Inverse,func
 8022576C,BrAtan2,func
 8022591C,BrTriContainsPoint,func
 80225A40,BrTriContainsPointEps,func
