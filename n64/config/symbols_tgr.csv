@@ -659,10 +659,13 @@ va,name,kind
 8026B860,__osSpSetPc,func
 8026B8A0,__osSpRawStartDma,func
 8026B930,__osSpDeviceBusy,func
+8026BC40,__osTimerServicesInit,func
+8026BCCC,__osTimerInterrupt,func
 8026BE44,__osSetTimerIntr,func
 8026BEB8,__osInsertTimer,func
 8026CE20,__osAiDeviceBusy,func
 8026E600,__osProbeTLB,func
+8026E6C0,__osSetCompare,func
 8026EA00,rspbootTextStart,data
 8026EAD0,rspbootTextEnd,data
 8026EAD0,gspF3DEX_fifoTextStart,data
@@ -680,3 +683,7 @@ va,name,kind
 802ABA80,__libm_qnan_f,data
 802ABC00,gspF3DEX_fifoDataStart,data
 8037F370,__osEventStateTab,data
+803818C0,__osCurrentTime,data
+803818C8,__osBaseCounter,data
+803818CC,__osViIntrCount,data
+803818D0,__osTimerCounter,data
