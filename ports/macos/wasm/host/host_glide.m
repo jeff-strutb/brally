@@ -23,6 +23,7 @@
 #import <Metal/Metal.h>
 #import <QuartzCore/QuartzCore.h>
 #include "host.h"
+#include <stdarg.h>
 #include <execinfo.h>
 #include <stdlib.h>
 #include <string.h>
@@ -416,6 +417,29 @@ static id<MTLTexture> cur_texture(void)
     return t;
 }
 
+/* BR_GLLOG=path: with BR_TRACE_FRAMES, the Glide call stream of the traced
+ * frames, one call per line, vertices expanded -- the same text brbox's
+ * recorder (tools/brbox_imports.py on_glide) is formatted to, so the port's
+ * rendering can be diffed against the original's call by call. */
+static FILE *g_gllog;
+static void gllog(const char *fmt, ...)
+{
+    static int init;
+    va_list ap;
+    if (!w_tracing) return;
+    if (!init) { const char *p = getenv("BR_GLLOG"); init = 1; if (p) g_gllog = fopen(p, "w"); }
+    if (!g_gllog) return;
+    va_start(ap, fmt); vfprintf(g_gllog, fmt, ap); va_end(ap);
+    fputc('\n', g_gllog);
+}
+static void gllog_vtx(const char *what, u32 p)
+{
+    const float *f = (const float *)W_P(p);
+    if (!w_tracing || !g_gllog) return;
+    fprintf(g_gllog, "  %s %.4g %.4g z%.4g w%.4g st %.4g %.4g rgba %.4g %.4g %.4g %.4g\n", what,
+            f[0], f[1], f[6], f[8], f[9], f[10], f[3], f[4], f[5], f[7]);
+}
+
 /* ------------------------------------------------------------- API */
 void h_grGlideInit(void) {}
 void h_grGlideShutdown(void) {}
@@ -455,6 +479,11 @@ void h_grTexDownloadMipMap(u32 tmu, u32 start, u32 eo, u32 info)
     u32 data = H32(info + 16), end;
     int i;
     (void)tmu; (void)eo;
+    if (w_tracing && g_gllog && data) {
+        u32 hsh = 2166136261u, k; const u8 *q = (const u8 *)W_P(data);
+        for (k = 0; k < n; k++) hsh = (hsh ^ q[k]) * 16777619u;
+        gllog("grTexDownloadMipMap start %u n %u fmt %u hash %08X", start, n, H32(info + 12), hsh);
+    }
     if (start >= sizeof g_tmem) return;
     if (start + n > sizeof g_tmem) n = (u32)sizeof g_tmem - start;
     if (data) memcpy(g_tmem + start, W_P(data), n);
@@ -468,6 +497,7 @@ void h_grTexDownloadMipMap(u32 tmu, u32 start, u32 eo, u32 info)
 }
 void h_grTexSource(u32 tmu, u32 start, u32 eo, u32 info)
 {
+    gllog("grTexSource start %u fmt %u large %u aspect %u", start, H32(info + 12), H32(info + 4), H32(info + 8));
     (void)tmu; (void)eo;
     S.tex_start = start; S.tex_small = H32(info); S.tex_large = H32(info + 4);
     S.tex_aspect = H32(info + 8); S.tex_fmt = H32(info + 12);
@@ -478,21 +508,22 @@ void h_grTexMipMapMode(u32 tmu, u32 m, u32 b) { (void)tmu; (void)m; (void)b; }
 void h_grTexLodBiasValue(u32 tmu, f32 b) { (void)tmu; (void)b; }
 void h_grTexCombine(u32 tmu, u32 rf, u32 rfa, u32 af, u32 afa, u32 ri, u32 ai)
 {
+    gllog("grTexCombine %u %u %u %u %u %u", rf, rfa, af, afa, ri, ai);
     (void)tmu;
     U.tc_rfunc = (int)rf; U.tc_rfact = (int)rfa; U.tc_afunc = (int)af; U.tc_afact = (int)afa;
     U.tc_rinv = (int)ri; U.tc_ainv = (int)ai;
 }
 void h_grColorCombine(u32 f, u32 fa, u32 l, u32 o, u32 inv)
-{ U.cc_func = (int)f; U.cc_fact = (int)fa; U.cc_local = (int)l; U.cc_other = (int)o; U.cc_inv = (int)inv; }
+{ gllog("grColorCombine %u %u %u %u %u", f, fa, l, o, inv); U.cc_func = (int)f; U.cc_fact = (int)fa; U.cc_local = (int)l; U.cc_other = (int)o; U.cc_inv = (int)inv; }
 void h_grAlphaCombine(u32 f, u32 fa, u32 l, u32 o, u32 inv)
-{ U.ac_func = (int)f; U.ac_fact = (int)fa; U.ac_local = (int)l; U.ac_other = (int)o; U.ac_inv = (int)inv; }
+{ gllog("grAlphaCombine %u %u %u %u %u", f, fa, l, o, inv); U.ac_func = (int)f; U.ac_fact = (int)fa; U.ac_local = (int)l; U.ac_other = (int)o; U.ac_inv = (int)inv; }
 void h_grAlphaBlendFunction(u32 rs, u32 rd, u32 as, u32 ad)
-{ S.ab_rs = (int)rs; S.ab_rd = (int)rd; S.ab_as = (int)as; S.ab_ad = (int)ad; }
+{ gllog("grAlphaBlendFunction %u %u %u %u", rs, rd, as, ad); S.ab_rs = (int)rs; S.ab_rd = (int)rd; S.ab_as = (int)as; S.ab_ad = (int)ad; }
 void h_grAlphaTestFunction(u32 f) { U.at_fn = (int)f; }
 void h_grAlphaTestReferenceValue(u32 v) { U.at_ref = (int)(v & 0xFF); }
-void h_grConstantColorValue(u32 c) { argb4(to_argb(c), U.cconst); }
+void h_grConstantColorValue(u32 c) { gllog("grConstantColorValue %08X", c); argb4(to_argb(c), U.cconst); }
 void h_grCullMode(u32 m) { S.cull = (int)m; }
-void h_grDepthBufferMode(u32 m) { U.dmode = (int)m; }
+void h_grDepthBufferMode(u32 m) { gllog("grDepthBufferMode %u", m); U.dmode = (int)m; }
 void h_grDepthBufferFunction(u32 f) { S.dfunc = (int)f; }
 void h_grDepthMask(u32 m) { S.dmask = (int)m; }
 void h_grFogMode(u32 m) { U.fogmode = (int)m; }
@@ -509,7 +540,7 @@ void h_guFogGenerateLinear(u32 p, f32 nearw, f32 farw)
     }
 }
 void h_grClipWindow(u32 x0, u32 y0, u32 x1, u32 y1)
-{ S.cx0 = (int)x0; S.cy0 = (int)y0; S.cx1 = (int)x1; S.cy1 = (int)y1; }
+{ gllog("grClipWindow %u %u %u %u", x0, y0, x1, y1); S.cx0 = (int)x0; S.cy0 = (int)y0; S.cx1 = (int)x1; S.cy1 = (int)y1; }
 u32 h_grBufferNumPending(void) { return 0; }
 
 static void draw(const gv *v, int n, int clear)
@@ -548,6 +579,7 @@ static void draw(const gv *v, int n, int clear)
 
 void h_grBufferClear(u32 color, u32 alpha, u32 depth)
 {
+    gllog("grBufferClear %08X %u %u", color, alpha, depth);
     gv q[6];
     float x0 = 0, y0 = 0, x1 = W, y1 = H;
     int i;
@@ -611,6 +643,7 @@ void h_grBufferSwap(u32 interval)
     begin_pass();
     end_pass();
     glstat_swap();
+    gllog("grBufferSwap");
     shot();
     l = happ_metal_layer();
     if (!g_cb) begin_pass(), end_pass();
@@ -645,6 +678,7 @@ u32 h_grLfbWriteRegion(u32 buf, u32 x, u32 y, u32 fmt, u32 w, u32 h, u32 stride,
 {
     u32 *px = malloc((size_t)w * h * 4), i, j;
     (void)buf;
+    gllog("grLfbWriteRegion buf %u x %u y %u fmt %u w %u h %u stride %u", buf, x, y, fmt, w, h, stride);
     gl_setup();
     for (j = 0; j < h; j++) {
         const u8 *s = (const u8 *)W_P(data + j * stride);
@@ -685,9 +719,11 @@ static void load_vtx(u32 p, gv *v)
 static int culled(const gv *a, const gv *b, const gv *c)
 {
     float area = (b->x - a->x) * (c->y - a->y) - (c->x - a->x) * (b->y - a->y);
-    static int flip = -1;
-    if (flip < 0) flip = getenv("BR_CULL_FLIP") != NULL;
-    if (flip) area = -area;
+    /* Glide judges winding in the coordinates the application passed.
+     * load_vtx has already turned y over for a lower-left origin, which
+     * reverses every triangle's sign; undo that here.  Culling the other
+     * way dropped the sky, the sea and the near road. */
+    if (S.origin_ll) area = -area;
     if (area == 0) return 1;
     if (S.cull == 1 && area < 0) return 1;
     if (S.cull == 2 && area > 0) return 1;
@@ -714,8 +750,9 @@ void h_grDrawTriangle(u32 a, u32 b, u32 c)
     if (dumpn < 0) dumpn = getenv("BR_VTXDUMP") ? atoi(getenv("BR_VTXDUMP")) : 0;
     if (dumpn > 0 && w_tracing) {   /* with BR_TRACE_FRAMES: inside the traced frames */
         const float *fa = (const float *)W_P(a), *fb = (const float *)W_P(b), *fc = (const float *)W_P(c);
-        fprintf(stderr, "vtx: [%08X %08X %08X] (%g,%g,z%g,w%g) (%g,%g,z%g,w%g) (%g,%g,z%g,w%g)\n", a, b, c,
-                fa[0], fa[1], fa[6], fa[8], fb[0], fb[1], fb[6], fb[8], fc[0], fc[1], fc[6], fc[8]);
+        fprintf(stderr, "vtx: [%08X %08X %08X] (%g,%g,w%g,s%g,t%g) (%g,%g,w%g,s%g,t%g) (%g,%g,w%g,s%g,t%g) tex=%d fmt=%u\n", a, b, c,
+                fa[0], fa[1], fa[8], fa[9], fa[10], fb[0], fb[1], fb[8], fb[9], fb[10], fc[0], fc[1], fc[8], fc[9], fc[10],
+                (U.cc_other == 1 || U.ac_other == 1 || (U.cc_fact & 7) == 4 || (U.ac_fact & 7) == 4), S.tex_fmt);
         if (dumpn == 1) {
             void *bt[8]; int k, nb = backtrace(bt, 8);
             char **sy = backtrace_symbols(bt, nb);
@@ -723,6 +760,7 @@ void h_grDrawTriangle(u32 a, u32 b, u32 c)
         }
         dumpn--;
     }
+    gllog("grDrawTriangle"); gllog_vtx("v", a); gllog_vtx("v", b); gllog_vtx("v", c);
     load_vtx(a, &v[0]); load_vtx(b, &v[1]); load_vtx(c, &v[2]);
     g_st_tri++;
     if (!culled(&v[0], &v[1], &v[2])) draw(v, 3, 0);
@@ -736,6 +774,14 @@ void h_grDrawPolygonVertexList(u32 n, u32 p)
     u32 i;
     if (n < 3) return;
     g_st_poly++;
+    gllog("grDrawPolygonVertexList %u", n);
+    { u32 k; for (k = 0; k < n && k < 16; k++) gllog_vtx("v", p + 60 * k); }
+    if (w_tracing && getenv("BR_VTXDUMP")) {
+        const float *f = (const float *)W_P(p);
+        fprintf(stderr, "poly n%u: (%g,%g,oow%g,s%g,t%g) rgba(%g,%g,%g,%g) cc_f%d cc_fa%d cc_o%d ac_o%d fmt%u start%u\n", n,
+                f[0], f[1], f[8], f[9], f[10], f[3], f[4], f[5], f[7],
+                U.cc_func, U.cc_fact, U.cc_other, U.ac_other, S.tex_fmt, S.tex_start);
+    }
     load_vtx(p, &v0);
     load_vtx(p + 60, &a);
     for (i = 2; i < n && k < 64; i++) {
