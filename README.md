@@ -1,5 +1,9 @@
 # Boss Rally: bit-exact decompilation
 
+![Boss Rally's main menu, running natively on macOS through the Mac port](docs/mac-port-main-menu.png)
+
+*The main menu, running natively on an Apple Silicon Mac ([Mac port](#mac-port)).*
+
 **Maintainer:** Jeffrey Wilbur, Strut B, LLC\
 **Contact:** [retro@strutb.com](mailto:retro@strutb.com)
 
@@ -223,20 +227,8 @@ bars, or BRGlide `.text` at 480,853 B: say which).
 
 In-scope EXE game code (BRally.exe, BossRally.exe, SetVideo.exe) is complete;
 what remains in those images is statically-linked CRT, reproduced by linking.
-The macOS/Metal port is a separate build (`./build.sh`). C++ EH functions are a separate lane (`tools/cpp_sweep.py`).
-
-**macOS full-boot port (interim 32-bit lane, 2026-09-25).**
-`ports/macos/wasm/build_wasm.sh` compiles the verified build's sources to
-wasm32, translates them to C and links a native arm64 `build/wasm/brally`. The
-original image's data sits at its original addresses, rendering goes through
-Metal, and the game data is extracted from the retail bin/cue
-(`tools/extract_disc.py`). No decomp source is edited for it. Current build:
-666 objects, 2,785 functions (1,497 of BRGlide's 2,148 at their original
-addresses), 291 host imports, 0 missing game functions. A run boots, draws the
-copyright screen, and reaches the first track load. There it stops: a
-colour-indexed texture reaches `BrTex3dExpand` with no palette, because two
-scan globals get no port address (details in `ports/macos/wasm/FINDINGS.csv`).
-The native 64-bit port comes later.
+C++ EH functions are a separate lane (`tools/cpp_sweep.py`). The Mac port is
+described under [Mac port](#mac-port).
 
 A byte-exact session picks targets with `python3 tools/t4lane.py --claim`
 (Pool B). Procedure: `docs/MATCHING.md`.
@@ -321,9 +313,113 @@ builds and the suites that need retail data skip with a reason.
 - **`sh build_match.sh`**: compiles with the original compiler and diffs; each
   function reports MATCH or DIFF with the first divergence. `tools/pe_patch.py`
   patches matches back into the DLL for drop-in testing.
-- **`./build.sh`**: builds the macOS port with clang (core + tests + a runnable
-  `build/brally`). Modules and tests are auto-discovered. `./tools/regress.sh`
-  runs every suite.
+- **`./build.sh`**: builds the portable core natively with clang, with its unit
+  tests and the older partial harness `build/brally`. Modules and tests are
+  auto-discovered. `./tools/regress.sh` runs every suite. The playable Mac
+  build is separate: see below.
+
+## Mac port
+
+The game runs natively on macOS: an arm64 Mac app with a window, Metal
+rendering, and the Mac's keyboard and mouse. It is rough but working. It boots
+through the splash and loading screens to the main menu, runs the front end
+(menus, race and car setup, all menu art), and drives races with the textured
+track, cars, shadows and HUD on screen. Quitting from the menu,
+with Cmd-Q or with the close box exits cleanly.
+
+**How it works.** Every function in the verified M1 build (all T3 and T4
+bodies) is compiled from the same `src/` tree the byte-exact build uses; no
+decomp source is edited for the port. The game is 32-bit to the core: pointers
+live in 32-bit fields and the original's data tables hold 32-bit code and data
+addresses. So for now the port keeps that model exactly: each module is
+compiled to wasm32 (which is ILP32, like Win32), the objects are translated to
+C by `ports/macos/wasm/w2c.py`, which also acts as the linker, and that C is
+compiled natively for arm64 against a 32-bit address space. The original
+DLL's data sits at its original addresses, so every function lands at the
+address the verified build gives it and the original's function-pointer tables
+work unchanged. A small host layer (`ports/macos/wasm/host/`) answers the
+Win32, DirectX, Glide and C runtime calls the game makes:
+
+| Host file | What it stands in for |
+|---|---|
+| `host_app.m` | `main`, the window, keyboard and mouse, presenting frames |
+| `host_glide.m` | Glide on Metal, modelled on the Voodoo: 16-bit W/Z depth, mip levels, filtering, LOD bias |
+| `host_win.c` | Win32: files (the disc image as the CD, saves), threads, timers, CD audio control |
+| `host_dx.c` | DirectInput, DirectSound, DirectPlay as COM objects in game memory |
+| `host_ear.c` | the EAR 3D sound engine the game loads by name |
+| `host_crt.c` | the C runtime |
+| `host_script.c` | replays `tools/brbox_scripts/` input scripts, for testing |
+
+This 32-bit lane is interim; a native 64-bit port comes later.
+
+**Not there yet.**
+
+- **No sound or music.** The sound engine and DirectSound answer as working
+  devices but play nothing. How music should work (the PC's CD soundtrack or
+  the N64's tracker modules) is an open decision: `ports/MUSIC-DECISION-PENDING.md`.
+- **Keyboard and mouse only.** No joystick, wheel or force feedback.
+- **No network play.** DirectPlay answers as a machine with no connection
+  available, so multiplayer cannot host or join.
+- **Rough edges.** Expect visual differences from a real Voodoo card and
+  untested corners of the game. `ports/macos/wasm/FINDINGS.csv` lists defects
+  the port turned up in certified function bodies.
+
+**Building.** On an Apple Silicon Mac:
+
+1. Run `./setup.sh` with the reference data in place (see
+   [Reference data](#reference-data-you-supply-none-tracked-in-git)). The port
+   needs what it stages: `orig/BRGlide.dll` and the disc extracted to
+   `testdata/disc/`.
+2. Run the matching sweep once, so `build/match/report.csv` exists. The port
+   links the placement of the verified build, which is derived from it:
+
+   ```bash
+   .venv/bin/python tools/match_sweep.py
+   ```
+
+3. Install Homebrew's emscripten. The build uses only its LLVM (clang with the
+   wasm backend), not the emcc driver. Set `BR_WASM_LLVM` to use another
+   wasm-capable LLVM `bin/` directory.
+
+   ```bash
+   brew install emscripten
+   ```
+
+4. Build. This writes `build/wasm/brally`; later runs rebuild only what
+   changed.
+
+   ```bash
+   sh ports/macos/wasm/build_wasm.sh
+   ```
+
+**Running.** From the repo root:
+
+```bash
+build/wasm/brally
+```
+
+Saves go to `~/Library/Application Support/Boss Rally`. Environment variables
+the host reads:
+
+| Variable | Effect |
+|---|---|
+| `BR_ROOT` | repo root to load `orig/BRGlide.dll` and build outputs from (default: current directory) |
+| `BR_CDROOT` | directory used as the game's CD (default `testdata/disc`) |
+| `BR_HEADLESS=1` | no window; Metal still renders |
+| `BR_SCRIPT=file` | replay a `tools/brbox_scripts/` input script; its `shot NAME` writes a PPM to `BR_SHOTS` (default `build/wasm/shots`) |
+| `BR_SHOT_DIR`, `BR_SHOT_EVERY` | dump every Nth frame as a PPM |
+| `BR_LOG=1` | log host calls to stderr |
+
+The screenshot at the top of this file was taken headless:
+
+```bash
+BR_HEADLESS=1 BR_SCRIPT=menu.txt BR_SHOTS=. build/wasm/brally
+```
+
+with a `menu.txt` of `sleep 400`, `shot menu`, `quit`. Further tracing aids
+(`BR_TRACE_FRAMES`, `BR_GLLOG`, `BR_PICK`, `BR_GLSTAT`, `BR_SWAPLOG`,
+`BR_MOUSELOG`, `BR_DUMP`) are documented where they are read, in
+`ports/macos/wasm/host/`.
 
 ## Top Gear Rally (N64)
 
