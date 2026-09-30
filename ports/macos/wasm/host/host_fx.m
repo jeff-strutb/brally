@@ -512,10 +512,31 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
     float paint = (1.0 - smoothstep(0.12, 0.25, (max(tx.r, max(tx.g, tx.b)) - min(tx.r, min(tx.g, tx.b))) / max(tx.r + tx.g, 0.05) * 2.0))
                 + smoothstep(0.1, 0.25, min(tx.r, tx.g) - tx.b);
     float mark = smoothstep(1.4, 1.9, y / max(yb, 1e-3)) * w[0] * saturate(paint);
+    /* parallax occlusion: the dominant material's height map, marched along
+       the view ray in its tangent space, shifts every map's lookup so stones,
+       cracks and ridges stand up at grazing angles; then a short march toward
+       the sun shades their far sides */
+    const float HGT[6] = { 0.012, 0.02, 0.02, 0.045, 0.05, 0.03 };   /* metres, full range */
+    int md = 0; for (int m = 1; m < 6; m++) if (w[m] > w[md]) md = m;
+    float2 poff = 0; float hsurf = 0.5, pshadow = 1.0;
+    float pk = (1.0 - smoothstep(12.0, 30.0, dist)) * step(0.02, w[md]);
+    if (pk > 0.0) {
+      float3 Vt = float3(dot(V, T1), dot(V, T2), max(dot(V, N), 0.08));
+      float hs = HGT[md] / TILE[md] * pk;
+      float2 stepv = -Vt.xy / Vt.z * hs / 12.0;
+      float2 uvp = q / TILE[md]; float lay = 1.0, hcur = matA.sample(ms, uvp, md).a;
+      for (int i = 0; i < 12 && hcur < lay; i++) { lay -= 1.0 / 12.0; uvp += stepv; hcur = matA.sample(ms, uvp, md).a; }
+      poff = (uvp - q / TILE[md]) * TILE[md];
+      hsurf = hcur;
+      float3 Lt = float3(dot(L, T1), dot(L, T2), max(dot(L, N), 0.05));
+      float2 sp = uvp; float sl = hsurf; float2 sst = Lt.xy / Lt.z * hs / 6.0;
+      for (int i = 0; i < 6; i++) { sp += sst; sl += 1.0 / 6.0 * (Lt.z < 0.3 ? 0.5 : 1.0);
+        float hh = matA.sample(ms, sp, md).a; if (hh > sl) pshadow = min(pshadow, 1.0 - saturate((hh - sl) * 6.0)); }
+      pshadow = mix(1.0, pshadow, pk); }
     float3 ma = 0, mnrm = 0; float mr = 0, mao = 0, wt = 0;
     for (int m = 0; m < 6; m++) {
       if (w[m] < 0.02) continue;
-      float2 uv1 = q / TILE[m], uv2 = uv1 * 0.29 + float2(0.37, 0.61);
+      float2 uv1 = (q + poff) / TILE[m], uv2 = (q + poff * 0.29) / TILE[m] * 0.29 + float2(0.37, 0.61);
       float4 c1 = matA.sample(ms, uv1, m), c2 = matA.sample(ms, uv2, m);
       float4 n1 = matN.sample(ms, uv1, m), n2 = matN.sample(ms, uv2, m);
       float3 c = pow(mix(c1.rgb, c2.rgb, 0.35), 2.2);
@@ -533,6 +554,10 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
       N = normalize(N + (T1 * mnrm.x + T2 * mnrm.y) * 0.9 * nk);
       ndl = saturate(dot(N, L));
       mrough = mix(mrough, mr, k);
+      /* rain gathers in the low spots of the surface first */
+      float pud2 = wet * u.p0.w * smoothstep(0.38, 0.18, hsurf) * k * (1.0 - tk);
+      if (pud2 > puddle) { alb *= mix(1.0, 0.7, pud2 - puddle); puddle = pud2; }
+      sh *= mix(1.0, pshadow, k);
       matdone = true; }
     if (int(u.p3.y) == 14) return float4(w[0] + w[3] + w[4] * 0.5, w[1] + w[4] * 0.5 + w[5], w[2] + w[3] + w[5], G.a); }
   /* asphalt, resynthesised: the game's road texture is baked streaks and
@@ -1620,6 +1645,7 @@ static void load_materials(id<MTLDevice> dev, id<MTLCommandQueue> q)
     const int SZ = 1024;
     int m, i, ok = 0;
     u8 *c = malloc((size_t)SZ * SZ * 4), *n = malloc((size_t)SZ * SZ * 4), *r = malloc((size_t)SZ * SZ * 4), *a = malloc((size_t)SZ * SZ * 4);
+    u8 *h = malloc((size_t)SZ * SZ * 4);
     MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm width:SZ height:SZ mipmapped:YES];
     td.textureType = MTLTextureType2DArray; td.arrayLength = 6;
     g_mat_state = -1;
@@ -1631,10 +1657,11 @@ static void load_materials(id<MTLDevice> dev, id<MTLCommandQueue> q)
         if (!load_map(MATS[m], "Color", c, SZ) || !load_map(MATS[m], "NormalGL", n, SZ)) continue;
         if (!load_map(MATS[m], "Roughness", r, SZ)) memset(r, 180, (size_t)SZ * SZ * 4);
         if (!load_map(MATS[m], "AmbientOcclusion", a, SZ)) memset(a, 255, (size_t)SZ * SZ * 4);
+        if (!load_map(MATS[m], "Displacement", h, SZ)) memset(h, 128, (size_t)SZ * SZ * 4);
         for (i = 0; i < SZ * SZ; i++) {
             int k;
             for (k = 0; k < 3; k++) sum[k] += pow(c[i * 4 + k] / 255.0, 2.2);
-            c[i * 4 + 3] = 255;
+            c[i * 4 + 3] = h[i * 4];           /* height, for parallax and puddles */
             n[i * 4 + 2] = r[i * 4]; n[i * 4 + 3] = a[i * 4];
         }
         for (i = 0; i < 3; i++) g_matmean[m][i] = (float)(sum[i] / (SZ * SZ));
@@ -1650,7 +1677,7 @@ static void load_materials(id<MTLDevice> dev, id<MTLCommandQueue> q)
         g_mat_state = 1;
     } else { g_matA = g_matN = nil; fprintf(stderr, "fx: ground materials missing (%d of 6)\n", ok); }
 out:
-    free(c); free(n); free(r); free(a);
+    free(c); free(n); free(r); free(a); free(h);
 }
 
 /* ---- temporal: the jitter this frame's 3D is drawn with (Halton 2,3 over
