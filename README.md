@@ -570,9 +570,15 @@ blender --background --python ports/macos/tools/remaster_bake.py -- ports/common
 python3 ports/macos/tools/remaster_car.py --body ports/common/models/es/decimated/body.glb --wheel ports/common/models/es/decimated/wheel.glb --out ports/common/models/es/pack
 ```
 
+```bash
+blender --background --python ports/macos/tools/remaster_glass.py -- ports/common/models/es/pack
+```
+
 Decimate is the only mesh operation: remeshing to a budget before this step
 leaves the panels lumpy, and the source's own UVs and textures go through
-unchanged. `package_app.sh` copies the pack into the app; without it the
+unchanged. The model has window openings but no glass, so the last step
+makes the panes: it finds the openings by casting rays from the cabin's hull
+into the body, and fits tinted glass that reflects the scene into each one. `package_app.sh` copies the pack into the app; without it the
 Remastered renderer draws the original car.
 
 **Not there yet.**

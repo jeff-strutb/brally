@@ -189,7 +189,10 @@ fragment FO gfs(VO in [[stage_in]], constant CU &u [[buffer(0)]], texture2d<floa
   float3 R = reflect(-V, N), L = u.sun.xyz, H = normalize(L + V);
   float nl = saturate(dot(N, L));
   float3 spec = D_ggx(saturate(dot(N, H)), 0.03 * 0.03 + 0.001) * V_sg(nl, max(nv, 1e-3), 0.03) * F * u.sunc.rgb * nl;
-  float3 refl = env_at(u, th, in.wp, R, 0.02) * F + spec;
+  /* the sky and the horizon, as a real car's glass shows them; the last
+     frame only near the horizon, where it holds the scenery */
+  float3 scene = env_at(u, th, in.wp, R, 0.02), sky = sky_at(u, R);
+  float3 refl = mix(sky, scene, smoothstep(0.35, 0.0, abs(R.z))) * F + spec;
   float a = mix(u.glass.x, 1.0, F);                     /* more mirror than window at a glance */
   float3 col = u.glass.yzw * (1.0 - F) * a + refl;
   if (u.fogc.w > 0.5) { float k = fogof(u, 1.0 / in.oow) / 255.0; col = mix(col, u.fogc.rgb * a, k); }
@@ -563,7 +566,7 @@ void hcar_draw(int slot)
         draw_mesh(e, &g_wheel, &u, 0);
     }
     if (g_glass.ni) {                   /* the windows, over the body and the cabin */
-        u.glass[0] = 0.55f;                 /* opacity face-on: tinted */
+        u.glass[0] = 0.78f;                 /* opacity face-on: dark rally tint */
         u.glass[1] = 0.010f; u.glass[2] = 0.013f; u.glass[3] = 0.016f;   /* the tint, linear */
         memcpy(u.M, r->car, sizeof u.M);
         [e setRenderPipelineState:g_gpipe];
