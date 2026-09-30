@@ -271,13 +271,16 @@ float shadow_at(constant FXU &u, depth2d<float> sm, float3 wp, float3 N, float2 
     s += sm.sample_compare(cs, st + float2(cos(a), sin(a)) * r * soft, c.z - 0.00012); }
   float fade = smoothstep(0.85, 1.0, max(abs(c.x), abs(c.y)));
   return mix(s / 12.0, 1.0, fade); }
-/* the Remastered sky (host_sky.m): a panorama spanning 180 degrees of heading,
-   wrapped twice around the eye, horizon on its bottom row, SKY_TOP (75 degrees)
-   on its top row; above that, the top row's average colour */
+/* the Remastered sky (host_sky.m): each panorama is a level photograph, so it
+   is laid out with a photograph's proportions: horizon on its bottom row,
+   35 degrees up on its top row, 60 degrees of heading across, repeated six
+   times around the eye; above 35 degrees, the top row's average colour.
+   The chase camera sees about 39 x 30 degrees centred on the horizon, so the
+   lower half of the picture is what is on screen. */
 float3 pano(constant FXU &u, texture2d<float> sky, float3 vd) {
   constexpr sampler ws(filter::linear, mip_filter::linear, s_address::repeat, t_address::clamp_to_edge);
-  float e = asin(clamp(vd.z, -1.0, 1.0)) / 1.3090;
-  float2 st = float2(atan2(vd.y, vd.x) / 3.14159265, 1.0 - saturate(e));
+  float e = asin(clamp(vd.z, -1.0, 1.0)) / 0.6109;
+  float2 st = float2(atan2(vd.y, vd.x) / 1.0472, 1.0 - saturate(e));
   float3 c = sky.sample(ws, st, level(0.0)).rgb;
   float3 z = sky.sample(ws, float2(st.x, 0.0), level(7.0)).rgb;
   return mix(c, z, smoothstep(0.85, 1.25, e)) * u.tm.z; }
