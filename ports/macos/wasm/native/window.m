@@ -46,10 +46,26 @@ static void fit(void)
 }
 @end
 
+/* View > Vertical Sync (native/frame.m): off, the race draws as fast as
+ * the GPU allows */
+int hframe_vsync(void);
+void hframe_set_vsync(int on);
+@interface BRVSync : NSObject
+@end
+@implementation BRVSync
+- (void)toggle:(id)sender { (void)sender; hframe_set_vsync(!hframe_vsync()); }
+- (BOOL)validateMenuItem:(NSMenuItem *)item
+{
+    item.state = hframe_vsync() ? NSControlStateValueOn : NSControlStateValueOff;
+    return YES;
+}
+@end
+
 static void menu(void)
 {
     static int done;
     static BRFullScreen *fs;
+    static BRVSync *vs;
     NSMenu *bar = NSApp.mainMenu, *view;
     NSMenuItem *it;
     if (done) return;
@@ -64,6 +80,9 @@ static void menu(void)
     it = [view addItemWithTitle:@"Enter Full Screen" action:@selector(toggle:) keyEquivalent:@"f"];
     it.target = fs;
     it.keyEquivalentModifierMask = NSEventModifierFlagControl | NSEventModifierFlagCommand;
+    vs = [BRVSync new];
+    it = [view addItemWithTitle:@"Vertical Sync" action:@selector(toggle:) keyEquivalent:@""];
+    it.target = vs;
     [bar addItemWithTitle:@"View" action:nil keyEquivalent:@""].submenu = view;
 }
 

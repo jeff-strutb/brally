@@ -1,10 +1,22 @@
 /* host_glide.m -- glide2x.dll on Metal (port code).
  *
  * The 38 Glide 2 entry points BRGlide.dll imports, drawn with Metal into a
- * colour + depth target the size of the window's 4:3 area (640x480 headless,
- * or BR_RES=WxH; at most BR_MAXPIX pixels), re-sized at any swap when the
- * window changes; grBufferSwap copies it into the window.  The game's
- * coordinates stay 640x480 throughout; only the target is larger.
+ * colour + depth target the size of the window, whatever its shape (640x480
+ * headless, or BR_RES=WxH; at most BR_MAXPIX pixels), re-sized at any swap
+ * when the window changes; grBufferSwap copies it into the window.  The
+ * game's coordinates stay 640x480 throughout.
+ *
+ *   screen map   every vertex names an entry of a per-frame table that maps
+ *                the game's 640x480 onto the target.  Menus are the 4:3
+ *                picture centred (pillar- or letterboxed).  A race frame
+ *                (native/aspect.m) fills the target: its 3D is stretched to
+ *                the window and the game's camera is widened by the same
+ *                factor (Hor+, or Vert+ in a tall window), so nothing is
+ *                distorted; its 2D keeps its proportions, each element (a
+ *                gauge, a line of text: 2D triangles that touch, grouped at
+ *                the swap) anchored to the edge or centre of its clip window
+ *                it sat nearest in 640x480.  The table is written at the
+ *                swap, before the GPU runs the frame.
  *
  *   geometry     Glide vertices are already in screen space: the vertex
  *                shader only maps pixels to NDC.  The native renderer's
@@ -37,6 +49,7 @@
 #include <string.h>
 #include <math.h>
 #include <unistd.h>
+#include <os/lock.h>
 
 #define W 640
 #define H 480
@@ -44,7 +57,8 @@ static int RW = W, RH = H;     /* the render target, in pixels */
 
 CAMetalLayer *happ_metal_layer(void);   /* host_app.m; nil when headless */
 
-typedef struct { float x, y, ooz, oow, r, g, b, a, sow, tow; } gv;
+typedef struct { float x, y, ooz, oow, r, g, b, a, sow, tow, xf; } gv;   /* xf: its screen-map entry */
+#define CVN 15                   /* floats per clip-space corner (render.m's 14, and xf) */
 typedef struct {
     int cc_func, cc_fact, cc_local, cc_other, cc_inv;
     int ac_func, ac_fact, ac_local, ac_other, ac_inv;
@@ -59,7 +73,7 @@ typedef struct {
 static const char *SHADER =
 "#include <metal_stdlib>\n"
 "using namespace metal;\n"
-"struct GV { float x, y, ooz, oow, r, g, b, a, sow, tow; };\n"
+"struct GV { float x, y, ooz, oow, r, g, b, a, sow, tow, xf; };\n"
 "struct GU { int cc_func, cc_fact, cc_local, cc_other, cc_inv;\n"
 "  int ac_func, ac_fact, ac_local, ac_other, ac_inv;\n"
 "  int tc_rfunc, tc_rfact, tc_afunc, tc_afact, tc_rinv, tc_ainv;\n"
@@ -72,34 +86,38 @@ static const char *SHADER =
 "  float tow [[center_no_perspective]];\n"
 "  float pw, ps, pt; float4 pcol; int pm [[flat]];   /* pm: w, s, t, colour perspective-correct (vsc) */\n"
 "  float3 wp; float fl [[flat]]; };   /* fx G-buffer: world position, 1 main 3D / 2 sky / 3 other view */\n"
-"vertex VO vs(uint vid [[vertex_id]], const device GV *v [[buffer(0)]]) {\n"
-"  GV g = v[vid]; VO o;\n"
-"  o.pos = float4(g.x / 320.0 - 1.0, 1.0 - g.y / 240.0, 0.5, 1.0);\n"
+"/* the screen map (see the header): NDC = xy * T.xz + T.yw, xy in 640x480\n"
+"   pixels, y down */\n"
+"vertex VO vs(uint vid [[vertex_id]], const device GV *v [[buffer(0)]], const device float4 *xt [[buffer(1)]]) {\n"
+"  GV g = v[vid]; VO o; float4 T = xt[int(g.xf)];\n"
+"  o.pos = float4(T.x * g.x + T.y, T.z * g.y + T.w, 0.5, 1.0);\n"
 "  o.col = float4(g.r, g.g, g.b, g.a); o.ooz = g.ooz; o.oow = g.oow; o.sow = g.sow; o.tow = g.tow;\n"
 "  o.pw = 1; o.ps = 0; o.pt = 0; o.pcol = 0; o.pm = 0; o.wp = 0; o.fl = 0;\n"
 "  return o; }\n"
 "/* clip-space corners from the native renderer: the GPU divides by w; 1/w,\n"
 "   s/w and t/w are carried unperspective, the values the Voodoo iterates */\n"
-"struct CV { float x, y, z, w, r, g, b, a, s, t, wx, wy, wz, fl; };\n"
-"vertex VO vsc(uint vid [[vertex_id]], const device CV *v [[buffer(0)]]) {\n"
-"  CV g = v[vid]; VO o; float q = 1.0 / g.w;\n"
-"  o.pos = float4(g.x, g.y, g.z, g.w);\n"
+"/* x, y: 640x480 pixels (y down) times w */\n"
+"struct CV { float x, y, z, w, r, g, b, a, s, t, wx, wy, wz, fl, xf; };\n"
+"vertex VO vsc(uint vid [[vertex_id]], const device CV *v [[buffer(0)]], const device float4 *xt [[buffer(1)]]) {\n"
+"  CV g = v[vid]; VO o; float q = 1.0 / g.w; float4 T = xt[int(g.xf)];\n"
+"  o.pos = float4(T.x * g.x + T.y * g.w, T.z * g.y + T.w * g.w, g.z, g.w);\n"
 "  o.col = float4(g.r, g.g, g.b, g.a); o.ooz = 0; o.oow = q; o.sow = g.s * q; o.tow = g.t * q;\n"
 "  o.pw = g.w; o.ps = g.s; o.pt = g.t; o.pcol = o.col; o.pm = 1; o.wp = float3(g.wx, g.wy, g.wz); o.fl = g.fl;\n"
 "  return o; }\n"
 "/* the same corners drawn without the depth buffer: the no-Z vertex routines\n"
 "   overwrite 1/w with 1/65535 after projecting, so the card writes the far\n"
 "   depth and maps the texture without perspective */\n"
-"vertex VO vscn(uint vid [[vertex_id]], const device CV *v [[buffer(0)]]) {\n"
-"  CV g = v[vid]; VO o; float q = 1.0 / 65535.0;\n"
-"  o.pos = float4(g.x, g.y, g.z, g.w);\n"
+"vertex VO vscn(uint vid [[vertex_id]], const device CV *v [[buffer(0)]], const device float4 *xt [[buffer(1)]]) {\n"
+"  CV g = v[vid]; VO o; float q = 1.0 / 65535.0; float4 T = xt[int(g.xf)];\n"
+"  o.pos = float4(T.x * g.x + T.y * g.w, T.z * g.y + T.w * g.w, g.z, g.w);\n"
 "  o.col = float4(g.r, g.g, g.b, g.a); o.ooz = 0; o.oow = q; o.sow = g.s * q; o.tow = g.t * q;\n"
 "  o.pw = 1; o.ps = 0; o.pt = 0; o.pcol = 0; o.pm = 0; o.wp = 0; o.fl = g.fl == 1.0 ? 2.0 : 0.0;\n"
 "  return o; }\n"
-"struct BV { float2 p; float2 uv; };\n"
+"struct BV { float x, y, u, v, xf, pad; };\n"
 "struct BO { float4 pos [[position]]; float2 uv; };\n"
-"vertex BO bvs(uint vid [[vertex_id]], const device BV *v [[buffer(0)]]) {\n"
-"  BO o; o.pos = float4(v[vid].p, 0, 1); o.uv = v[vid].uv; return o; }\n"
+"vertex BO bvs(uint vid [[vertex_id]], const device BV *v [[buffer(0)]], const device float4 *xt [[buffer(1)]]) {\n"
+"  BV b = v[vid]; float4 T = xt[int(b.xf)]; BO o;\n"
+"  o.pos = float4(T.x * b.x + T.y, T.z * b.y + T.w, 0, 1); o.uv = float2(b.u, b.v); return o; }\n"
 "fragment float4 bfs(BO in [[stage_in]], texture2d<float> t [[texture(0)]]) {\n"
 "  /* sharp bilinear: whole texels at any scale, blended only across the one\n"
 "     target pixel a texel edge falls in (plain bilinear at 1:1) */\n"
@@ -215,7 +233,6 @@ static int g_fx_fresh = 1;
 int hfx_on(void);
 int hfx_game_particles(void);
 void hfx_jitter(float *jx, float *jy, int rw, int rh);
-static float g_jx, g_jy;
 void hfx_tick(void);
 void hfx_prof_attach(MTLRenderPassDescriptor *rp, const char *label);
 void hfx_shadow_batch(id<MTLBuffer> buf, size_t off, int n, id<MTLTexture> tex, id<MTLSamplerState> smp,
@@ -299,8 +316,147 @@ static void argb4(u32 c, float *o)
     o[2] = (float)(c & 255); o[3] = (float)(c >> 24);
 }
 
+/* ------------------------------------------------------- screen map */
+/* Table entries (see the header).  Each is the NDC affine of 640x480 pixels
+ * (y down): ndc.x = x * T[0] + T[1], ndc.y = y * T[2] + T[3]. */
+enum { XF_BOX3D, XF_WIDE3D, XF_MIRROR, XF_STRETCH, XF_BOX2D, XF_FIRST };
+#define XF_MAX 8192
+typedef struct { double ax, bx, ay, by; } xmap;     /* target pixels = a * game pixels + b */
+typedef struct { float x0, y0, x1, y1; float r[4]; } xel;   /* a 2D triangle's box, and its clip window */
+static id<MTLBuffer> g_xbuf[3];
+static int g_xi;
+static int g_wide;                  /* this frame fills the target (native/aspect.m) */
+static int g_wide_prev;             /* the last frame did: the next one starts from black */
+static xel g_el[XF_MAX];
+static int g_nel;
+static float g_mirror_r[4];         /* the rear-view mirror's clip window this frame (y down) */
+static int g_mirror_ok;
+
+/* The clip window, y down, clamped to the screen (all of it when empty). */
+static void clip_rect(float *r)
+{
+    float cy0 = (float)S.cy0, cy1 = (float)S.cy1;
+    if (S.origin_ll) { float k = H - cy1; cy1 = H - cy0; cy0 = k; }
+    r[0] = fmaxf((float)S.cx0, 0); r[1] = fmaxf(cy0, 0);
+    r[2] = fminf((float)S.cx1, W); r[3] = fminf(cy1, H);
+    if (r[2] <= r[0] || r[3] <= r[1]) { r[0] = 0; r[1] = 0; r[2] = W; r[3] = H; }
+}
+
+static xmap map_of(int which)
+{
+    double s = (double)RW / W, t = (double)RH / H, u = fmin(s, t);
+    switch (which) {
+    case XF_WIDE3D: case XF_STRETCH: return (xmap){ s, 0, t, 0 };
+    case XF_MIRROR: return (xmap){ u, RW * 0.5 - 320.0 * u, u, 0 };   /* the mirror: its own shape, centred, from the top */
+    default: return (xmap){ u, (RW - W * u) * 0.5, u, (RH - H * u) * 0.5 };
+    }
+}
+static void map_ndc(xmap m, float *T)
+{
+    T[0] = (float)(2.0 * m.ax / RW); T[1] = (float)(2.0 * m.bx / RW - 1.0);
+    T[2] = (float)(-2.0 * m.ay / RH); T[3] = (float)(1.0 - 2.0 * m.by / RH);
+}
+/* How far the race's 3D view is widened (kx) or heightened (ky) past the
+ * game's 4:3 to fill the target, for native/aspect.m's camera. */
+void hglide_view_scale(float *kx, float *ky)
+{
+    double a = (double)RW / RH;
+    *kx = (float)fmax(1.0, a * 0.75);
+    *ky = (float)fmax(1.0, 1.0 / (a * 0.75));
+}
+void hglide_set_wide(int on) { g_wide = on; }
+/* The NDC map of the 3D view drawn now (native/render.m's view class: 0 the
+ * camera, 2 the rear-view mirror), without the anti-aliasing jitter: for the
+ * Remastered car and lighting, which project on their own. */
+void hglide_map(int view, float T[4])
+{
+    map_ndc(map_of(!g_wide ? XF_BOX3D : view == 2 ? XF_MIRROR : XF_WIDE3D), T);
+}
+/* A 2D triangle (or polygon) with this box: its entry.  In a race frame
+ * each gets one of its own, placed at the swap; otherwise the 4:3 picture. */
+static float xf_2d(float x0, float y0, float x1, float y1)
+{
+    xel *e;
+    float r[4];
+    if (!g_wide) return XF_BOX2D;
+    clip_rect(r);
+    /* 2D in the mirror's window (its frame) goes where the mirror does */
+    if (g_mirror_ok && !memcmp(r, g_mirror_r, sizeof r)) return XF_MIRROR;
+    if (g_nel >= XF_MAX - XF_FIRST) return XF_BOX2D;
+    e = &g_el[g_nel];
+    e->x0 = fminf(x0, x1); e->x1 = fmaxf(x0, x1); e->y0 = fminf(y0, y1); e->y1 = fmaxf(y0, y1);
+    memcpy(e->r, r, sizeof r);
+    return (float)(XF_FIRST + g_nel++);
+}
+static int el_root(int *p, int i) { while (p[i] != i) i = p[i] = p[p[i]]; return i; }
+/* One axis of an element's placement: stretched with the window when it
+ * spans its clip window, else its own size, kept at the distance from the
+ * edge (or the centre) it sat nearest. */
+static void place(double lo, double hi, double r0, double r1, double k, double u, double *a, double *b)
+{
+    double rw = r1 - r0;
+    if (hi - lo >= 0.9 * rw) { *a = k; *b = 0; return; }
+    *a = u;
+    if (hi <= r0 + 0.42 * rw) *b = r0 * k - r0 * u;
+    else if (lo >= r0 + 0.58 * rw) *b = r1 * k - r1 * u;
+    else *b = (r0 + r1) * 0.5 * (k - u);
+}
+/* Write this frame's table: the fixed entries, and every 2D element placed
+ * by the group it belongs to -- the 2D triangles of one clip window whose
+ * boxes touch (within 6 game pixels), or that sit on one row a few spaces
+ * apart, which is what a gauge or a line of text is.  A triangle that spans
+ * its window (a fade, a panel) joins none. */
+static void resolve_xf(void)
+{
+    float *T;
+    int i, j, n = g_nel;
+    static int par[XF_MAX];
+    static float gb[XF_MAX][4];
+    double s = (double)RW / W, t = (double)RH / H, u = fmin(s, t);
+    float jx, jy;
+    if (!g_xbuf[g_xi]) return;
+    T = (float *)g_xbuf[g_xi].contents;
+    hfx_jitter(&jx, &jy, RW, RH);
+    map_ndc(map_of(XF_BOX3D), T + 4 * XF_BOX3D);
+    map_ndc(map_of(XF_WIDE3D), T + 4 * XF_WIDE3D);
+    map_ndc(map_of(XF_MIRROR), T + 4 * XF_MIRROR);
+    map_ndc(map_of(XF_STRETCH), T + 4 * XF_STRETCH);
+    map_ndc(map_of(XF_BOX2D), T + 4 * XF_BOX2D);
+    for (i = XF_BOX3D; i <= XF_MIRROR; i++) { T[4 * i + 1] += jx; T[4 * i + 3] += jy; }
+    for (i = 0; i < n; i++) par[i] = i;
+    if (n <= 3000)
+        for (i = 0; i < n; i++) {
+            const xel *a = &g_el[i];
+            if (a->x1 - a->x0 >= 0.9f * (a->r[2] - a->r[0]) || a->y1 - a->y0 >= 0.9f * (a->r[3] - a->r[1])) continue;
+            for (j = i + 1; j < n; j++) {
+                const xel *b = &g_el[j];
+                if (memcmp(a->r, b->r, sizeof a->r)) continue;
+                if (b->x1 - b->x0 >= 0.9f * (b->r[2] - b->r[0]) || b->y1 - b->y0 >= 0.9f * (b->r[3] - b->r[1])) continue;
+                if ((a->x0 - 6 <= b->x1 && b->x0 - 6 <= a->x1 && a->y0 - 6 <= b->y1 && b->y0 - 6 <= a->y1) ||
+                    /* words of one line of text: the same row, a few spaces apart */
+                    (fabsf(a->y0 - b->y0) < 2 && fabsf(a->y1 - b->y1) < 2 && a->x0 - 40 <= b->x1 && b->x0 - 40 <= a->x1)) {
+                    int ra = el_root(par, i), rb = el_root(par, j);
+                    if (ra != rb) par[rb] = ra;
+                }
+            }
+        }
+    for (i = 0; i < n; i++) { gb[i][0] = 1e9f; gb[i][1] = 1e9f; gb[i][2] = -1e9f; gb[i][3] = -1e9f; }
+    for (i = 0; i < n; i++) {
+        int r = el_root(par, i);
+        gb[r][0] = fminf(gb[r][0], g_el[i].x0); gb[r][1] = fminf(gb[r][1], g_el[i].y0);
+        gb[r][2] = fmaxf(gb[r][2], g_el[i].x1); gb[r][3] = fmaxf(gb[r][3], g_el[i].y1);
+    }
+    for (i = 0; i < n; i++) {
+        const float *g = gb[el_root(par, i)], *r = g_el[i].r;
+        xmap m;
+        place(g[0], g[2], r[0], r[2], s, u, &m.ax, &m.bx);
+        place(g[1], g[3], r[1], r[3], t, u, &m.ay, &m.by);
+        map_ndc(m, T + 4 * (XF_FIRST + i));
+    }
+}
+
 /* ------------------------------------------------------------ device */
-/* The target follows the window: its 4:3 area at the drawable's pixel size.
+/* The target follows the window: the drawable's pixel size, any shape.
  * Called at setup and at every swap, the one point where no frame is being
  * drawn; the game clears what it draws each frame. */
 static void size_targets(void)
@@ -313,19 +469,19 @@ static void size_targets(void)
         ;
     else if (l) {
         CGSize d = l.drawableSize;
-        double k = fmin(d.width / W, d.height / H);
-        w = W; h = H;
-        if (k > 0.1) { w = (int)lround(W * k); h = (int)lround(H * k); }
-        /* at most BR_MAXPIX pixels (default 8M): a 5K screen's full-screen
-         * 4320x3240 cost 13-14 ms of GPU a frame, 3200x2400 about 8; above
-         * the cap the present scales the picture up to the screen */
+        w = (int)lround(d.width); h = (int)lround(d.height);
+        if (w < 64 || h < 48) { w = W; h = H; }
+        /* at most BR_MAXPIX pixels (default 8M), keeping the shape: a 5K
+         * screen's full-screen 4320x3240 cost 13-14 ms of GPU a frame,
+         * 3200x2400 about 8; above the cap the present scales the picture
+         * up to the screen */
         {
             const char *m = getenv("BR_MAXPIX");
             double cap = m ? atof(m) : 8.0e6;
             if (cap >= 640.0 * 480.0 && (double)w * h > cap) {
-                w = (int)floor(sqrt(cap * 4.0 / 3.0));
-                w -= w % 4;
-                h = w * 3 / 4;
+                double k = sqrt(cap / ((double)w * h));
+                w = (int)floor(w * k); w -= w % 4;
+                h = (int)floor(h * k); h -= h % 2;
             }
         }
     } else {
@@ -374,8 +530,10 @@ static void gl_setup(void)
                                                             width:1 height:1 mipmapped:NO];
     g_white = [g_dev newTextureWithDescriptor:td];
     { u32 w = 0xFFFFFFFFu; [g_white replaceRegion:MTLRegionMake2D(0, 0, 1, 1) mipmapLevel:0 withBytes:&w bytesPerRow:4]; }
-    for (i = 0; i < 3; i++)
+    for (i = 0; i < 3; i++) {
         g_vbuf[i] = [g_dev newBufferWithLength:(16u << 20) options:MTLResourceStorageModeShared];
+        g_xbuf[i] = [g_dev newBufferWithLength:XF_MAX * 16 options:MTLResourceStorageModeShared];
+    }
     /* two frames in flight, and two drawables below: every frame queued
      * ahead of the display is ~17 ms more between moving the mouse and
      * seeing the game's cursor move; three made the pointer feel laggy. */
@@ -518,7 +676,10 @@ static void begin_pass(void)
     }
     rp = [MTLRenderPassDescriptor renderPassDescriptor];
     rp.colorAttachments[0].texture = g_color;
-    rp.colorAttachments[0].loadAction = MTLLoadActionLoad;
+    /* after a race frame, which fills the target, a menu's 4:3 picture
+     * must not leave the race showing beside it */
+    rp.colorAttachments[0].loadAction = g_fx_fresh && g_wide_prev ? MTLLoadActionClear : MTLLoadActionLoad;
+    rp.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 1);
     rp.colorAttachments[0].storeAction = MTLStoreActionStore;
     rp.depthAttachment.texture = g_depth;
     rp.depthAttachment.loadAction = MTLLoadActionLoad;
@@ -555,6 +716,7 @@ static void flush_batch(void)
     [g_enc setDepthStencilState:B.ds];
     [g_enc setScissorRect:B.sc];
     [g_enc setVertexBuffer:g_vbuf[g_vbi] offset:B.off atIndex:0];
+    [g_enc setVertexBuffer:g_xbuf[g_xi] offset:0 atIndex:1];
     [g_enc setFragmentBytes:&B.u length:sizeof B.u atIndex:0];
     [g_enc setFragmentTexture:B.tex atIndex:0];
     [g_enc setFragmentSamplerState:B.smp atIndex:0];
@@ -575,7 +737,7 @@ static void end_pass(void)
 static void flush_wait(void)
 {
     end_pass();
-    if (g_cb) { [g_cb commit]; [g_cb waitUntilCompleted]; g_cb = nil; }
+    if (g_cb) { resolve_xf(); [g_cb commit]; [g_cb waitUntilCompleted]; g_cb = nil; }
     else if (g_q) {
         /* nothing open: frames already committed may still be drawing; an
          * empty buffer behind them on the queue completes after they do */
@@ -584,15 +746,23 @@ static void flush_wait(void)
     }
 }
 
-/* The clip window, in 640x480 units, as a scissor on the target. */
-static MTLScissorRect scissor_rect(void)
+/* The clip window, in 640x480 units, as a scissor on the target through
+ * screen-map entry `which`.  A window over the whole 640x480 in a race
+ * frame is the whole target, whatever the entry. */
+static MTLScissorRect scissor_rect(int which)
 {
     int x0 = S.cx0 < 0 ? 0 : S.cx0, y0 = S.cy0 < 0 ? 0 : S.cy0;
     int x1 = S.cx1 > W ? W : S.cx1, y1 = S.cy1 > H ? H : S.cy1;
-    int px0, py0, px1, py1;
+    long px0, py0, px1, py1;
+    xmap m;
     if (x1 <= x0 || y1 <= y0) return (MTLScissorRect){ 0, 0, 1, 1 };
     if (S.origin_ll) { int t = H - y1; y1 = H - y0; y0 = t; }
-    px0 = x0 * RW / W; px1 = x1 * RW / W; py0 = y0 * RH / H; py1 = y1 * RH / H;
+    if (g_wide && x0 == 0 && y0 == 0 && x1 == W && y1 == H) return (MTLScissorRect){ 0, 0, (NSUInteger)RW, (NSUInteger)RH };
+    /* 2D elements move within their window as it is stretched */
+    m = map_of(which >= XF_FIRST || which == XF_STRETCH ? XF_STRETCH : which);
+    px0 = lround(m.ax * x0 + m.bx); px1 = lround(m.ax * x1 + m.bx);
+    py0 = lround(m.ay * y0 + m.by); py1 = lround(m.ay * y1 + m.by);
+    if (px0 < 0) px0 = 0; if (py0 < 0) py0 = 0; if (px1 > RW) px1 = RW; if (py1 > RH) py1 = RH;
     if (px1 <= px0 || py1 <= py0) return (MTLScissorRect){ 0, 0, 1, 1 };
     return (MTLScissorRect){ (NSUInteger)px0, (NSUInteger)py0,
                              (NSUInteger)(px1 - px0), (NSUInteger)(py1 - py0) };
@@ -907,7 +1077,8 @@ static int g_shonly;
  * too).  Appended to the pending run when every piece of state matches. */
 static void draw(const void *v, int n, int clear, int kind)
 {
-    size_t bytes = (size_t)n * (kind ? 14 * sizeof(float) : sizeof(gv));
+    size_t bytes = (size_t)n * (kind ? CVN * sizeof(float) : sizeof(gv));
+    int xf0 = (int)(kind ? ((const float *)v)[CVN - 1] : ((const gv *)v)->xf);
     id<MTLTexture> t = g_white;
     id<MTLRenderPipelineState> pipe;
     id<MTLDepthStencilState> ds;
@@ -919,6 +1090,7 @@ static void draw(const void *v, int n, int clear, int kind)
     if (g_voff + bytes + 256 > (16u << 20)) {
         /* a vertex-heavy frame: flush and start over in the next buffer */
         end_pass();
+        resolve_xf();
         [g_cb commit];
         g_cb = nil;
         begin_pass();
@@ -955,7 +1127,7 @@ static void draw(const void *v, int n, int clear, int kind)
         for (i = 0; i < ns && strcmp(seen[i], k); i++) ;
         if (i == ns && ns < 256) { strcpy(seen[ns++], k); fprintf(stderr, "drawstat: swap %u n %d %s\n", g_swaps, n, k); }
     }
-    sc = scissor_rect();
+    sc = scissor_rect(xf0);
     if (B.n && (B.shonly != g_shonly || B.kind != kind || B.pipe != pipe || B.ds != ds || B.tex != t || B.smp != smp ||
                 memcmp(&B.sc, &sc, sizeof sc) || memcmp(&B.u, &U, sizeof U)))
         flush_batch();
@@ -981,13 +1153,19 @@ id<MTLRenderCommandEncoder> hglide_native_pass(id<MTLDevice> *dev, MTLScissorRec
     begin_pass();
     flush_batch();
     *dev = g_dev;
-    *sc = scissor_rect();
+    *sc = scissor_rect(g_wide ? XF_WIDE3D : XF_BOX3D);
     *origin_ll = S.origin_ll;
     *fogmode = U.fogmode;
     memcpy(fogcolor, U.fogcolor, sizeof U.fogcolor);
     memcpy(fogtab, U.fogtab, sizeof U.fogtab);
     *rw = RW; *rh = RH;
     return g_enc;
+}
+
+/* The clip window as a scissor for a 3D view (0 the camera, 2 the mirror). */
+MTLScissorRect hglide_scissor(int view)
+{
+    return scissor_rect(!g_wide ? XF_BOX3D : view == 2 ? XF_MIRROR : XF_WIDE3D);
 }
 
 void h_grBufferClear(u32 color, u32 alpha, u32 depth)
@@ -1001,7 +1179,26 @@ void h_grBufferClear(u32 color, u32 alpha, u32 depth)
     memset(q, 0, sizeof q);
     q[0].x = x0; q[0].y = y0; q[1].x = x1; q[1].y = y0; q[2].x = x0; q[2].y = y1;
     q[3].x = x1; q[3].y = y0; q[4].x = x1; q[4].y = y1; q[5].x = x0; q[5].y = y1;
-    for (i = 0; i < 6; i++) q[i].oow = 1;
+    for (i = 0; i < 6; i++) { q[i].oow = 1; q[i].xf = g_wide ? XF_STRETCH : XF_BOX2D; }
+    if (g_wide) {
+        /* a race frame: a clear over part of the screen (a fill rectangle:
+         * the mirror's frame, a panel) is a 2D element like any other, drawn
+         * as its own rectangle and placed at the swap */
+        float r[4];
+        clip_rect(r);
+        if (r[0] > 0 || r[1] > 0 || r[2] < W || r[3] < H) {
+            int c0 = S.cx0, c1 = S.cx1, d0 = S.cy0, d1 = S.cy1;
+            float xf;
+            q[0].x = q[2].x = q[5].x = r[0]; q[1].x = q[3].x = q[4].x = r[2];
+            q[0].y = q[1].y = q[3].y = r[1]; q[2].y = q[4].y = q[5].y = r[3];
+            S.cx0 = 0; S.cy0 = 0; S.cx1 = W; S.cy1 = H;     /* the rectangle is the clip */
+            xf = xf_2d(r[0], r[1], r[2], r[3]);
+            for (i = 0; i < 6; i++) q[i].xf = xf;
+            draw(q, 6, 1, 0);
+            S.cx0 = c0; S.cy0 = d0; S.cx1 = c1; S.cy1 = d1;
+            return;
+        }
+    }
     draw(q, 6, 1, 0);              /* the scissor keeps it inside the clip window */
 }
 
@@ -1066,9 +1263,61 @@ __attribute__((weak)) void hframe_present(id<MTLCommandBuffer> cb, id<CAMetalDra
 {
     [cb presentDrawable:d];
 }
+/* Vertical sync off (native/frame.m): a mailbox.  The game draws as fast
+ * as the GPU allows and never waits for a drawable -- a window's drawables
+ * come back only as fast as WindowServer composites, 60 or 120 a second,
+ * and waiting for one held the game to that rate.  Each finished picture
+ * is posted here; at every refresh the display link's thread shows the
+ * newest one.  The picture is read on the GPU after the frame that drew it
+ * (one queue, in commit order), so it is always a whole frame. */
+int hframe_mailbox(void);
+static os_unfair_lock g_mbl = OS_UNFAIR_LOCK_INIT;
+static id<MTLTexture> g_mbox;
+static unsigned g_mbox_seq, g_mbox_shown;
+static CAMetalLayer *g_layer;
+static void present_quad(id<MTLCommandBuffer> cb, id<CAMetalDrawable> d, id<MTLTexture> pic)
+{
+    MTLRenderPassDescriptor *rp = [MTLRenderPassDescriptor renderPassDescriptor];
+    id<MTLRenderCommandEncoder> e;
+    double dw, dh, s, pw = pic.width, ph = pic.height;
+    rp.colorAttachments[0].texture = d.texture;
+    rp.colorAttachments[0].loadAction = MTLLoadActionClear;
+    rp.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 1);
+    rp.colorAttachments[0].storeAction = MTLStoreActionStore;
+    e = [cb renderCommandEncoderWithDescriptor:rp];
+    dw = d.texture.width; dh = d.texture.height; s = fmin(dw / pw, dh / ph);
+    [e setViewport:(MTLViewport){ floor((dw - pw * s) / 2), floor((dh - ph * s) / 2), pw * s, ph * s, 0, 1 }];
+    [e setRenderPipelineState:g_present];
+    [e setFragmentTexture:pic atIndex:0];
+    [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
+    [e endEncoding];
+}
+/* native/frame.m's display link, once a refresh, on its own thread */
+void hglide_mailbox_present(void)
+{
+    id<MTLTexture> t;
+    unsigned seq;
+    os_unfair_lock_lock(&g_mbl);
+    t = g_mbox; seq = g_mbox_seq;
+    os_unfair_lock_unlock(&g_mbl);
+    if (!t || !g_layer || seq == g_mbox_shown) return;
+    g_mbox_shown = seq;
+    @autoreleasepool {
+        id<CAMetalDrawable> d = [g_layer nextDrawable];
+        id<MTLCommandBuffer> cb;
+        if (!d) return;
+        cb = [g_q commandBuffer];
+        present_quad(cb, d, t);
+        [cb presentDrawable:d];
+        [cb commit];
+    }
+}
+
 void h_grBufferSwap(u32 interval)
 {
     CAMetalLayer *l;
+    int mailbox = hframe_mailbox();
+    id<MTLTexture> pic;
     (void)interval;
     begin_pass();
     end_pass();
@@ -1080,6 +1329,7 @@ void h_grBufferSwap(u32 interval)
         last = t;
     }
     gllog("grBufferSwap");
+    resolve_xf();                       /* before hfx_run moves the jitter on */
     g_fxout = nil;
     hfx_tick();
     if (hfx_on()) {
@@ -1096,26 +1346,13 @@ void h_grBufferSwap(u32 interval)
     l = happ_metal_layer();
     if (!g_cb) begin_pass(), end_pass();
     if (l) {
-        id<CAMetalDrawable> d = [l nextDrawable];
+        id<CAMetalDrawable> d = mailbox ? nil : [l nextDrawable];
         if (d) {
-            MTLRenderPassDescriptor *rp = [MTLRenderPassDescriptor renderPassDescriptor];
-            id<MTLRenderCommandEncoder> e;
-            rp.colorAttachments[0].texture = d.texture;
-            rp.colorAttachments[0].loadAction = MTLLoadActionClear;
-            rp.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 1);
-            rp.colorAttachments[0].storeAction = MTLStoreActionStore;
-            e = [g_cb renderCommandEncoderWithDescriptor:rp];
-            {
-                double dw = d.texture.width, dh = d.texture.height, s = fmin(dw / RW, dh / RH);
-                [e setViewport:(MTLViewport){ floor((dw - RW * s) / 2), floor((dh - RH * s) / 2), RW * s, RH * s, 0, 1 }];
-            }
-            [e setRenderPipelineState:g_present];
-            [e setFragmentTexture:g_fxout ? g_fxout : g_color atIndex:0];
-            [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
-            [e endEncoding];
+            present_quad(g_cb, d, g_fxout ? g_fxout : g_color);
             hframe_present(g_cb, d);
         }
     }
+    pic = g_fxout ? g_fxout : g_color;
     if (getenv("BR_GPUTIME")) {
         [g_cb addCompletedHandler:^(id<MTLCommandBuffer> b) {
             static double acc, mx; static int n;
@@ -1126,6 +1363,17 @@ void h_grBufferSwap(u32 interval)
     }
     [g_cb commit];
     g_cb = nil;
+    g_layer = l;
+    if (mailbox && l) {                 /* committed: the presenter may take it */
+        os_unfair_lock_lock(&g_mbl);
+        g_mbox = pic; g_mbox_seq++;
+        os_unfair_lock_unlock(&g_mbl);
+    }
+    g_xi = (g_xi + 1) % 3;              /* the frames in flight keep theirs */
+    g_nel = 0;
+    g_mirror_ok = 0;
+    g_wide_prev = g_wide;
+    g_wide = 0;
     size_targets();
     happ_pump(0);
 }
@@ -1153,10 +1401,11 @@ u32 h_grLfbWriteRegion(u32 buf, u32 x, u32 y, u32 fmt, u32 w, u32 h, u32 stride,
         MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm
                                                                                       width:w height:h mipmapped:NO];
         id<MTLTexture> t = [g_dev newTextureWithDescriptor:td];
-        float x0 = (float)(int)x / (W / 2) - 1, x1 = (float)((int)x + (int)w) / (W / 2) - 1;
-        float y0 = 1 - (float)(int)y / (H / 2), y1 = 1 - (float)((int)y + (int)h) / (H / 2);
-        float q[6][4] = { { x0, y0, 0, 0 }, { x1, y0, 1, 0 }, { x0, y1, 0, 1 },
-                          { x1, y0, 1, 0 }, { x1, y1, 1, 1 }, { x0, y1, 0, 1 } };
+        float x0 = (float)(int)x, x1 = (float)((int)x + (int)w);
+        float y0 = (float)(int)y, y1 = (float)((int)y + (int)h);
+        float xf = xf_2d(x0, y0, x1, y1);
+        float q[6][6] = { { x0, y0, 0, 0, xf, 0 }, { x1, y0, 1, 0, xf, 0 }, { x0, y1, 0, 1, xf, 0 },
+                          { x1, y0, 1, 0, xf, 0 }, { x1, y1, 1, 1, xf, 0 }, { x0, y1, 0, 1, xf, 0 } };
         [t replaceRegion:MTLRegionMake2D(0, 0, w, h) mipmapLevel:0 withBytes:px bytesPerRow:w * 4];
         begin_pass();
         flush_batch();
@@ -1164,6 +1413,7 @@ u32 h_grLfbWriteRegion(u32 buf, u32 x, u32 y, u32 fmt, u32 w, u32 h, u32 stride,
         [g_enc setDepthStencilState:dss(0, 7, 0)];
         [g_enc setScissorRect:(MTLScissorRect){ 0, 0, (NSUInteger)RW, (NSUInteger)RH }];
         [g_enc setVertexBytes:q length:sizeof q atIndex:0];
+        [g_enc setVertexBuffer:g_xbuf[g_xi] offset:0 atIndex:1];
         [g_enc setFragmentTexture:t atIndex:0];
         [g_enc drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
         g_st_draws++;
@@ -1182,6 +1432,16 @@ static void load_vtx(u32 p, gv *v)
     /* Glide apps snap vertices with a large bias; take it back off */
     if (v->x > 4096.0f) { v->x -= (float)(3 << 18); v->y -= (float)(3 << 18); }
     if (S.origin_ll) v->y = (float)H - v->y;
+    v->xf = XF_BOX2D;
+}
+/* The box round n screen-space corners: their 2D entry, given to each. */
+static void set_xf_2d(gv *v, int n)
+{
+    float x0 = v[0].x, y0 = v[0].y, x1 = v[0].x, y1 = v[0].y, xf;
+    int i;
+    for (i = 1; i < n; i++) { x0 = fminf(x0, v[i].x); x1 = fmaxf(x1, v[i].x); y0 = fminf(y0, v[i].y); y1 = fmaxf(y1, v[i].y); }
+    xf = xf_2d(x0, y0, x1, y1);
+    for (i = 0; i < n; i++) v[i].xf = xf;
 }
 static int culled(const gv *a, const gv *b, const gv *c)
 {
@@ -1232,7 +1492,7 @@ void h_grDrawTriangle(u32 a, u32 b, u32 c)
     gllog("grDrawTriangle"); gllog_vtx("v", a); gllog_vtx("v", b); gllog_vtx("v", c);
     load_vtx(a, &v[0]); load_vtx(b, &v[1]); load_vtx(c, &v[2]);
     g_st_tri++;
-    if (!culled(&v[0], &v[1], &v[2])) draw(v, 3, 0, 0);
+    if (!culled(&v[0], &v[1], &v[2])) { set_xf_2d(v, 3); draw(v, 3, 0, 0); }
     else g_st_cull++;
 }
 
@@ -1255,7 +1515,7 @@ void h_grDrawTriangle(u32 a, u32 b, u32 c)
 void hglide_tri_shadow(const float *a, const float *b, const float *c)
 {
     const float *p[3] = { a, b, c };
-    float v[3][14];
+    float v[3][CVN];
     int i;
     static int camonly = -1;          /* BR_FX_SHCAM=1: the camera's triangles only, as before */
     if (camonly < 0) camonly = getenv("BR_FX_SHCAM") != NULL;
@@ -1263,23 +1523,26 @@ void hglide_tri_shadow(const float *a, const float *b, const float *c)
     for (i = 0; i < 3; i++) {
         memset(v[i], 0, 4 * sizeof(float));
         memcpy(&v[i][4], &p[i][4], 10 * sizeof(float));
+        v[i][14] = XF_BOX3D;
     }
     g_shonly = 1;
     draw(v, 3, 0, 1);
     g_shonly = 0;
 }
 
-void hglide_tri_h(const float *a, const float *b, const float *c, int noz)
+/* `view`: 0 the camera's perspective, 1 flat 2D (an orthographic
+ * projection: the HUD, text), 2 the rear-view mirror. */
+void hglide_tri_h(const float *a, const float *b, const float *c, int noz, int view)
 {
     const float *p[3] = { a, b, c };
-    float v[3][14], det;
+    float v[3][CVN], det, xf;
     int i;
     det = a[0] * (b[1] * c[3] - c[1] * b[3]) - b[0] * (a[1] * c[3] - c[1] * a[3]) +
           c[0] * (a[1] * b[3] - b[1] * a[3]);
     g_st_tri++;
     if (det == 0 || (S.cull == 1 && det < 0) || (S.cull == 2 && det > 0)) {
         g_st_cull++;
-        if (!noz) hglide_tri_shadow(a, b, c);   /* facing away from the camera, not from the sun */
+        if (!noz && view != 1) hglide_tri_shadow(a, b, c);   /* facing away from the camera, not from the sun */
         return;
     }
     if (a[3] > 0 && b[3] > 0 && c[3] > 0) {     /* BR_PICK sees them in screen space */
@@ -1293,16 +1556,28 @@ void hglide_tri_h(const float *a, const float *b, const float *c, int noz)
         }
         pick(g, 3);
     }
-    hfx_jitter(&g_jx, &g_jy, RW, RH);
+    if (view == 1) {                  /* 2D: placed as an element; w is the same at every corner */
+        float x0 = 1e9f, y0 = 1e9f, x1 = -1e9f, y1 = -1e9f;
+        for (i = 0; i < 3; i++) {
+            float x = p[i][0] / p[i][3], y = p[i][1] / p[i][3];
+            if (S.origin_ll) y = (float)H - y;
+            x0 = fminf(x0, x); x1 = fmaxf(x1, x); y0 = fminf(y0, y); y1 = fmaxf(y1, y);
+        }
+        xf = xf_2d(x0, y0, x1, y1);
+    } else {
+        xf = !g_wide ? XF_BOX3D : view == 2 ? XF_MIRROR : XF_WIDE3D;
+        if (view == 2 && g_wide) { clip_rect(g_mirror_r); g_mirror_ok = 1; }
+    }
     for (i = 0; i < 3; i++) {
         const float *q = p[i];
-        v[i][0] = q[0] / (W / 2) - q[3];
-        v[i][1] = S.origin_ll ? q[1] / (H / 2) - q[3] : q[3] - q[1] / (H / 2);
+        /* 640x480 pixels (y down) times w: the screen map places them; the
+         * 3D entries carry Remastered's anti-aliasing jitter */
+        v[i][0] = q[0];
+        v[i][1] = S.origin_ll ? (float)H * q[3] - q[1] : q[1];
         v[i][2] = (q[2] + q[3]) * 0.5f;
         v[i][3] = q[3];
         memcpy(&v[i][4], &q[4], 10 * sizeof(float));
-        /* Remastered's temporal anti-aliasing: this frame's sub-pixel offset */
-        v[i][0] += g_jx * q[3]; v[i][1] += g_jy * q[3];
+        v[i][14] = xf;
     }
     draw(v, 3, 0, noz ? 2 : 1);
 }
@@ -1333,5 +1608,5 @@ void h_grDrawPolygonVertexList(u32 n, u32 p)
         if (!culled(&v0, &a, &b)) { tri[3 * k] = v0; tri[3 * k + 1] = a; tri[3 * k + 2] = b; k++; }
         a = b;
     }
-    if (k) draw(tri, 3 * k, 0, 0);
+    if (k) { set_xf_2d(tri, 3 * k); draw(tri, 3 * k, 0, 0); }
 }
