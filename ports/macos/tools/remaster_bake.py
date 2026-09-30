@@ -3,11 +3,12 @@ Remastered car with Blender's Collapse Decimate, keeping the model's own UVs
 and textures.  Run by Blender:
 
     blender --background --python ports/macos/tools/remaster_bake.py -- \
-        <raw.glb> <out_dir> <name> <target_tris> [crease_deg 45]
+        <source.blend | raw.glb> <out_dir> <name> <target_tris> [crease_deg 45]
 
-The model is Collapse-decimated and its normals are recomputed smooth by
-angle (creases above crease_deg stay sharp): the same steps as the web
-project's validated Blender route.
+The source is the model's own .blend (the API's GLB carries extra seams and
+normals that decimate into lumps), Collapse-decimated, with normals made
+smooth by angle (creases above crease_deg stay sharp): the web project's
+validated Blender route, nothing added.
 Decimate is the only operation that changes the shape.  A source that was
 already remeshed to a polygon budget is lumpy at the triangle scale; the
 full-density source decimated here is not.  Nothing is unwrapped or
@@ -24,12 +25,22 @@ src_path, out_dir, name, target = argv[0], argv[1], argv[2], int(argv[3])
 crease = float(argv[4]) if len(argv) > 4 else 45.0
 os.makedirs(out_dir, exist_ok=True)
 
-bpy.ops.wm.read_factory_settings(use_empty=True)
-bpy.ops.import_scene.gltf(filepath=src_path)
+# a .blend is OPENED, never imported: the web project found an imported GLB
+# carries extra UV/normal seams that decimate into lumps and seam speckle,
+# while the model's own .blend decimates clean.  GLB stays for a model with
+# no .blend yet.
+if src_path.lower().endswith(".blend"):
+    bpy.ops.wm.open_mainfile(filepath=src_path)
+else:
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    bpy.ops.import_scene.gltf(filepath=src_path)
 meshes = [o for o in bpy.context.scene.objects if o.type == "MESH"]
 if len(meshes) != 1:
     raise SystemExit(f"expected one mesh in {src_path}, found {len(meshes)}")
 obj = meshes[0]
+for o in bpy.context.scene.objects:
+    if o.type != "MESH":
+        o.select_set(False)
 src_tris = sum(len(p.vertices) - 2 for p in obj.data.polygons)
 print(f"SRC {src_tris} tris")
 
@@ -69,9 +80,8 @@ dm = obj.modifiers.new("dec", "DECIMATE")
 dm.decimate_type = "COLLAPSE"
 dm.ratio = min(1.0, target / max(1, src_tris))
 bpy.ops.object.modifier_apply(modifier="dec")
-# crease normals from the decimated surface: the kept vertices otherwise carry
-# the full-density model's normals, 15-23 degrees off the coarser surface,
-# which shades as lumps
+# crease normals from the decimated surface (the validated route; nothing
+# else: welding or clearing normals made it worse, measured)
 bpy.ops.object.shade_smooth_by_angle(angle=math.radians(crease))
 out_tris = sum(len(p.vertices) - 2 for p in obj.data.polygons)
 print(f"DECIMATED {out_tris} tris (ratio {target / max(1, src_tris):.4f})")
