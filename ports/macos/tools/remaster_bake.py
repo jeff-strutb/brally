@@ -78,15 +78,18 @@ bpy.context.view_layer.objects.active = obj
 # (measured: the tail lights warped at the 150k level)
 dm = obj.modifiers.new("dec", "DECIMATE")
 dm.decimate_type = "COLLAPSE"
-# with Subdivision Surface the body is decimated to 1M first: subdividing
-# the full 3M-triangle source needs about 188 GB (measured), and 1M
-# subdivided and decimated again reflects as cleanly
-pre = max(target, 1000000) if name == "body" and int(os.environ.get("SUBSURF", "1")) > 0 else target
+# with Subdivision Surface the body is decimated to 200k first, then
+# subdivided three levels (about 19M triangles, 25 GB) and decimated to the
+# target: level 3 holds one continuous highlight along the panels where
+# levels 1 and 2 still broke, and 200k keeps the panel gaps crisper than
+# 100k (glossy matcap, measured).  The full 3M source subdivided even once
+# needs about 188 GB.
+pre = int(os.environ.get("SUBSURF_PRE", "0")) or (200000 if name == "body" and int(os.environ.get("SUBSURF", "3")) > 0 else target)
 dm.ratio = min(1.0, pre / max(1, src_tris))
 bpy.ops.object.modifier_apply(modifier="dec")
 # Subdivision Surface, then back down to the target: Catmull-Clark rounds
 # out the generated surface's small facets, which a gloss shows as ripples
-subsurf = int(os.environ.get("SUBSURF", "1" if name == "body" else "0"))
+subsurf = int(os.environ.get("SUBSURF", "3" if name == "body" else "0"))
 if subsurf > 0:
     ss = obj.modifiers.new("ss", "SUBSURF"); ss.levels = subsurf; ss.render_levels = subsurf
     bpy.ops.object.modifier_apply(modifier="ss")
