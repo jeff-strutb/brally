@@ -46,7 +46,7 @@ using namespace metal;
 struct CV { float x, y, z, w, r, g, b, a, s, t, wx, wy, wz, fl; };
 struct FXU {
   float4x4 vp, ivp, svp;
-  float4 eye, sun, sunc, skyc, grnd, fogc, vpt, scr, p0, p1, p2, p3, p4, flash, wb, nsky, sk2, tm;
+  float4 eye, sun, sunc, skyc, grnd, fogc, vpt, scr, p0, p1, p2, p3, p4, flash, wb, nsky, sk2, tm, wx;
 };
 /* headlights: up to 32 spot lights (two per car); misc = count, beam
    strength, light intensity, air density */
@@ -111,14 +111,18 @@ float3 atmos(constant FXU &u, float3 vd) {
    height flattened with distance so far water does not shimmer */
 float3 waveN(float2 xy, float t, float amp) {
   float e = 0.12;
-  float2 w1 = float2(t * 0.32, t * 0.21), w2 = float2(-t * 0.55, t * 0.38);
+  float2 w1 = float2(t * 0.06, t * 0.04), w2 = float2(-t * 0.1, t * 0.07);
   float h0 = fbm(xy * 0.35 + w1) + 0.45 * fbm(xy * 1.3 + w2);
   float hx = fbm((xy + float2(e, 0)) * 0.35 + w1) + 0.45 * fbm((xy + float2(e, 0)) * 1.3 + w2);
   float hy = fbm((xy + float2(0, e)) * 0.35 + w1) + 0.45 * fbm((xy + float2(0, e)) * 1.3 + w2);
   return normalize(float3(-(hx - h0) / e * amp, -(hy - h0) / e * amp, 1.0)); }
 /* blue-green, which only the sea is in these tracks */
 float seamask(float3 sb) {
-  return smoothstep(1.06, 1.22, sb.b / max(sb.r, 0.02)) * smoothstep(1.04, 1.16, sb.g / max(sb.r, 0.02)); }
+  /* green over red with blue at least level with red, and not bright: the
+     open sea and the greyer shallows alike, but not grass, walls or snow */
+  float mx = max(sb.r, max(sb.g, sb.b));
+  return smoothstep(1.04, 1.09, sb.g / max(sb.r, 0.02)) * smoothstep(0.96, 1.0, sb.b / max(sb.r, 0.02))
+       * (1.0 - smoothstep(0.66, 0.76, mx)); }
 /* ---- volumetric clouds: a cumulus layer 1.2-2.6 km up, ray-marched, lit by
    the sun through the cloud (Beer-Lambert with a powder term and forward
    scattering) and by the sky from above */
@@ -160,6 +164,20 @@ float4 clouds(constant FXU &u, float3 vd, float2 pos) {
   /* fade into the haze toward the horizon */
   float f = smoothstep(0.015, 0.09, vd.z);
   return float4(L * f, mix(1.0, T, f)); }
+/* ---- rain on standing water: rings spreading from where drops land; the
+   gradient they add to a flat surface's normal */
+float2 ripples(float2 xy, float t, float amt) {
+  float2 g = 0;
+  for (int l = 0; l < 2; l++) {
+    float2 p = xy * (l == 0 ? 3.0 : 4.7) + float(l) * 17.0;
+    float2 c = floor(p), f = fract(p) - 0.5;
+    float h = hash2(c), ph = fract(t * (1.1 + 0.4 * float(l)) + h * 5.0);
+    float2 o = float2(hash2(c + 3.1), hash2(c + 7.7)) * 0.5 - 0.25;
+    float2 dv = f - o; float r = length(dv), R = ph * 0.45;
+    float ring = exp(-pow((r - R) / 0.035, 2.0)) * (1.0 - ph) * step(h, amt);
+    g += dv / max(r, 1e-3) * ring * cos((r - R) * 70.0); }
+  return g; }
+
 /* the colour a reflected ray sees when it leaves the screen */
 
 /* ---- shadow map: the frame's opaque triangles from the sun */
@@ -293,7 +311,7 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
                        texture2d<float> gn [[texture(0)]], texture2d<float> gp [[texture(1)]],
                        texture2d<float> col [[texture(2)]], depth2d<float> sm [[texture(3)]],
                        texture2d<float> aot [[texture(4)]], texture2d<float> ssr [[texture(5)]],
-                       texture2d<float> sky [[texture(6)]],
+                       texture2d<float> sky [[texture(6)]], texture2d<float> trk [[texture(7)]],
                        constant HL &hl [[buffer(1)]]) {
   float4 C = col.sample(ns, in.uv), P = gp.sample(ns, in.uv), G = gn.sample(ns, in.uv);
   float3 lin = pow(C.rgb, 2.2);
@@ -304,6 +322,15 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
     float sh = u.sun.w > 0 ? shadow_at(u, sm, wp, N, in.pos.xy) : 1.0;
     float k = saturate(dot(N, u.sun.xyz) * 4.0) * (1.0 - sh);
     float3 o = lin * 4.0 * (1.0 - 0.6 * k);
+    /* rain on the car: drops landing on its upper surfaces, a bright pop that
+       fades, and beads standing on the paint catching the sky */
+    if (u.wx.x > 0.0) {
+      float3 q = wp * 26.0, cc = floor(q), f = fract(q) - 0.5;
+      float h = hash3(cc), ph = fract(u.tm.x * 1.6 + h * 9.0), top = saturate(N.z * 1.8 - 0.2);
+      float3 R = reflect(-normalize(u.eye.xyz - wp), N);
+      float pop = step(h, 0.22 * u.wx.x) * smoothstep(0.42, 0.08, length(f)) * pow(1.0 - ph, 5.0) * top;
+      float bead = step(hash3(cc + 11.0), 0.3 * u.wx.x) * smoothstep(0.3, 0.12, length(f)) * top;
+      o += air(u, R) * (pop * 1.4 + bead * 0.35); }
     if (any(isnan(o)) || any(isinf(o))) o = lin;
     return float4(o, G.a); }
   if (P.w > 2.5 && int(u.p3.y) == 11) return float4(0, 0, 1, G.a);
@@ -347,9 +374,13 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
     /* the sea painted into the backdrop, below the horizon: water on a plane
        under the eye, reflecting the sky, with the sun's glitter */
     if (vd.z < 0.0 && u.sk2.w > 0.0 && G.a > 0.01) {
-      float m = seamask(saturate(G.rgb / G.a)) * u.sk2.w;
+      /* the final colour: in some weathers the sea is a see-through layer
+         over the backdrop, which the G-buffer's sky colour does not hold */
+      float m = seamask(saturate(C.rgb)) * u.sk2.w;
       if (m > 0.0) {
-        float t = min(4.0 / max(-vd.z, 1e-3), 3000.0);
+        /* a sea plane fixed in the world (z = 0), not under the camera, so the
+           waves stay put as the camera rises and falls */
+        float t = min(max(u.eye.z, 1.0) / max(-vd.z, 1e-3), 3000.0);
         float2 xy = u.eye.xy + vd.xy * t;
         float3 Nw = waveN(xy * 0.5, u.tm.x, 0.45 * smoothstep(1500.0, 60.0, t) + 0.04);
         float3 R = reflect(vd, Nw);
@@ -384,7 +415,18 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
   /* standing water: puddles in the dips of a world-space noise */
   /* more water, more and larger puddles */
   float puddle = wet * smoothstep(0.64 - 0.14 * u.p0.w, 0.74 - 0.1 * u.p0.w, fbm(wp.xy * 0.18));
+  /* tyre tracks: pressed snow, darkened dirt, and on a wet road the lines
+     the tyres squeezed dry */
+  float tk = 0;
+  { float4 TK = trk.sample(ls, in.uv);
+    if (TK.r > 0.0 && abs(TK.g - wp.z) < 0.45 && N.z > 0.7) tk = saturate(TK.r); }
+  wet *= 1.0 - 0.6 * tk * (1.0 - u.wx.z); puddle *= 1.0 - tk;
+  /* rain landing on standing water */
+  if (u.wx.x > 0.0 && wet > 0.0) {
+    float2 rg = ripples(wp.xy, u.tm.x, 0.55 * u.wx.x) * (0.35 + 0.65 * puddle / max(wet, 1e-3));
+    N = normalize(N + float3(rg * 0.28 * wet, 0.0)); }
   float3 alb = lin * mix(1.0, 0.6, wet) * mix(1.0, 0.7, puddle);
+  alb *= mix(float3(1.0), mix(float3(0.82), float3(0.7, 0.74, 0.82), u.wx.z), tk);
   /* asphalt: the old road textures carry a purple cast; flat, unsaturated
      surfaces are pulled toward a neutral, very slightly cool grey */
   { float3 sb = saturate(C.rgb); float mx = max(sb.r, max(sb.g, sb.b)), mn = min(sb.r, min(sb.g, sb.b));
@@ -422,7 +464,12 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
   /* open water: flat, and blue-green where everything else is not.  Moving
      waves, the sky and the scene mirrored with Fresnel, the sun's glitter */
   { float3 sb = saturate(C.rgb);
-    float water = u.sk2.w * step(0.97, N.z) * seamask(sb);
+    /* modelled water must be clearly blue-green: snowy and wet roads are
+       greenish-grey too */
+    /* modelled water: clearly blue-green, or sea-coloured and below the road
+       (wet and snowy roads are greenish-grey too, but sit higher) */
+    float water = u.sk2.w * step(0.97, N.z) * max(smoothstep(1.12, 1.24, sb.b / max(sb.r, 0.02))
+                * smoothstep(1.08, 1.18, sb.g / max(sb.r, 0.02)), smoothstep(1.04, 1.1, sb.g / max(sb.r, 0.02)) * (1.0 - smoothstep(0.2, 0.45, wp.z)));
     if (water > 0.0) {
       float3 Nw = waveN(wp.xy, u.tm.x, 0.55);
       float3 R = reflect(-V, Nw);
@@ -451,6 +498,7 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
   else if (dbg == 4) o = fract(wp / 50.0);
   else if (dbg == 5) o = A.rgb;
   else if (dbg == 6) o = S.rgb * S.a;
+  else if (dbg == 12) o = float3(wp.z < 0.0, wp.z < 0.6, wp.z < 1.2);
   else if (dbg == 7 || dbg == 8) {
     float4 c = u.svp * float4(wp, 1); float2 st = float2(c.x * 0.5 + 0.5, 0.5 - c.y * 0.5);
     o = dbg == 7 ? float3(sm.sample(ns, st), fract(st * 8.0)) : float3(c.z, fract(st * 8.0)); }
@@ -513,10 +561,10 @@ float3 lamps(constant FXU &u, constant HL &hl, texture2d<float> gp, float2 uv) {
     if (cw <= 0) continue;
     float4 Q = gp.sample(ns, lu);
     if (is_solid(Q.w) && distance(u.eye.xyz, Q.xyz) < d - 0.35) continue;   /* hidden */
-    float px = length((uv - lu) * scr), s = clamp(60.0 / d, 0.8, 14.0);
-    float core = exp(-px * px / (s * s)), halo = 1.0 / (1.0 + pow(px / (s * 6.0), 2.0));
+    float px = length((uv - lu) * scr), s = clamp(40.0 / d, 0.8, 8.0);
+    float core = exp(-px * px / (s * s)), halo = 1.0 / (1.0 + pow(px / (s * 2.5), 2.0)) * smoothstep(s * 10.0, s * 3.0, px);
     float3 c = hl.g[i].w > 0.5 ? float3(1.0, 0.06, 0.03) * 0.6 : float3(1.0, 0.95, 0.85);
-    acc += c * (core * 6.0 + halo * 0.25) * pow(face, 2.0); }
+    acc += c * (core * 6.0 + halo * 0.08) * pow(face, 2.0); }
   return acc * hl.gmisc.y; }
 fragment float4 shaftfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
                         texture2d<float> gp [[texture(0)]], texture2d<float> col [[texture(1)]],
@@ -535,6 +583,107 @@ fragment float4 shaftfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
     dec *= 0.94; }
   float g = saturate(1.0 - length((in.uv - sp) * float2(1.333, 1.0)) * 0.9);
   return float4(u.sunc.rgb * acc / 32.0 * (0.4 + g) * u.p2.x + bm, 1); }
+
+/* ---- tyre tracks: ribbons along each wheel's path, drawn into a mask the
+   lighting pass reads (r strength, g the ground's height, to reject pixels
+   the ribbon passes in front of) */
+struct TV { float4 p; float4 a; };                 /* world xyz + strength; across */
+struct TO { float4 pos [[position]]; float k; float z; float a; };
+vertex TO trkvs(uint vid [[vertex_id]], const device TV *v [[buffer(0)]], constant FXU &u [[buffer(1)]]) {
+  TV g = v[vid]; TO o;
+  float4 c = u.vp * float4(g.p.xyz, 1);
+  float sx = u.vpt.x * c.x + u.vpt.y * c.w, sy = u.vpt.z * c.y + u.vpt.w * c.w;
+  o.pos = float4(sx / 320.0 - c.w, u.p3.x > 0.5 ? sy / 240.0 - c.w : c.w - sy / 240.0, 0.5 * c.w, c.w);
+  o.k = g.p.w; o.z = g.p.z; o.a = g.a.x; return o; }
+fragment float4 trkfs(TO in [[stage_in]]) {
+  float e = 1.0 - in.a * in.a;
+  /* the tread: fine bands across the ribbon */
+  float tread = 0.8 + 0.2 * step(0.5, fract(in.a * 3.0 + 0.5));
+  return float4(in.k * e * tread, in.z, 0, 1); }
+
+/* ---- volumetric particles (smoke, dust, snow and water spray) and falling
+   rain and snow, ray-marched per pixel at half resolution; premultiplied */
+struct PF { float4 p[160]; float4 c[160]; float4 misc; float4 amb; };
+fragment float4 pfxfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]], constant HL &hl [[buffer(1)]],
+                      const device PF &pf [[buffer(2)]], texture2d<float> gp [[texture(0)]]) {
+  float3 vd = view_dir(u, in.uv), eye = u.eye.xyz;
+  float4 P = gp.sample(ns, in.uv);
+  float dmax = is_solid(P.w) ? distance(eye, P.xyz) : 1e5;
+  float T = 1.0; float3 Lc = 0;
+  float t = u.tm.x, j0 = ign(in.pos.xy);
+  int n = int(pf.misc.x);
+  float mu = dot(vd, u.sun.xyz);
+  float phase = 0.55 + 1.1 * pow(saturate(mu), 6.0);
+  for (int i = 0; i < n && T > 0.02; i++) {
+    float3 c = pf.p[i].xyz; float r = pf.p[i].w;
+    float3 oc = c - eye; float b = dot(oc, vd), dd = dot(oc, oc) - b * b;
+    if (dd >= r * r) continue;
+    float h = sqrt(r * r - dd), t0 = max(b - h, 0.05), t1 = min(b + h, dmax);
+    if (t1 <= t0) continue;
+    float od = 0;
+    for (int k = 0; k < 3; k++) {
+      float3 x = eye + vd * mix(t0, t1, (float(k) + j0) / 3.0);
+      float q = length(x - c) / r;
+      float3 np = x * 1.6 + float3(float(i) * 7.31, 0, -t * 0.7);
+      float dens = saturate(1.0 - q * q) * (0.35 + 1.1 * vnoise3(np) * vnoise3(np * 2.3 + 5.0));
+      od += dens; }
+    od *= (t1 - t0) / 3.0 * pf.c[i].w;
+    float a = 1.0 - exp(-od);
+    /* sun (forward-scattering), sky and ground, the headlights */
+    float3 hd = 0, Ld;
+    for (int m = 0; m < int(hl.misc.x); m++) hd += spotw(hl, m, c, Ld);
+    float3 lum = pf.c[i].rgb * (u.sunc.rgb * phase * 0.8 + pf.amb.rgb + hl.col.rgb * hl.misc.z * hd * 1.5);
+    Lc += T * a * lum; T *= 1.0 - a; }
+  /* falling rain: thin streaks on columns fixed in the world, in four
+     layers of distance; lit by the air's light and the headlights */
+  if (u.wx.x > 0.0 || u.wx.y > 0.0) {
+    float2 fw = normalize(vd.xy + float2(1e-5, 0)), side = float2(-fw.y, fw.x);
+    for (int l = 0; l < 4; l++) {
+      float d = 1.6 * exp2(float(l)) * (0.85 + 0.3 * j0);
+      if (d >= dmax) break;
+      float3 p = eye + vd * d;
+      bool snow = u.wx.y > 0.0;
+      float g = snow ? 0.5 : 0.28;
+      float2 cell = floor(p.xy / g);
+      float cover = 0;
+      for (int k = 0; k < 2; k++) {
+        float2 ck = cell + float2(k * 41, l * 17);
+        float h = hash2(ck), h2 = hash2(ck + 9.1);
+        float2 col = (cell + float2(h, h2)) * g;
+        if (snow) col += float2(sin(t * 0.9 + h * 30.0), cos(t * 0.7 + h2 * 30.0)) * 0.15;
+        float2 dv = p.xy - col;
+        float along = dot(dv, fw), lat = abs(dot(dv, side));
+        if (abs(along) > g * 0.5) continue;
+        float w = 0.0018 * d + 0.0015;
+        if (snow) {
+          /* a flake every S metres down the column, each one only sometimes
+             there and each at its own sideways offset */
+          float S = 1.4, zz = (p.z + t * 1.1) / S + h * 3.0, rep = floor(zz), z = fract(zz) - 0.5;
+          float hr = hash2(ck + rep * 1.37);
+          if (hr > 0.45) continue;
+          float lat2 = abs(lat - (hr - 0.22) * g * 0.8);
+          float rr = length(float2(lat2, z * S)) / (w * 1.6);
+          cover += smoothstep(1.0, 0.35, rr) * 0.85;
+        } else {
+          /* a drop every S metres down the column, each one only sometimes
+             there and each at its own sideways offset: short streaks, no dashes */
+          float S = 2.6, len = 0.42, zz = (p.z + t * 9.5) / S + h * 5.0, rep = floor(zz);
+          float hr = hash2(ck + rep * 1.37);
+          if (hr > 0.35) continue;
+          float lat2 = abs(lat - (hr - 0.17) * g * 1.2);
+          float z = fract(zz) * S;
+          cover += smoothstep(w, w * 0.2, lat2) * smoothstep(0.0, 0.1, z) * smoothstep(len, len * 0.5, z) * 0.4;
+        } }
+      cover = saturate(cover) * (snow ? u.wx.y : u.wx.x) / (1.0 + float(l) * 0.35);
+      if (cover <= 0.0) continue;
+      float3 hd = 0, Ld;
+      for (int m = 0; m < int(hl.misc.x); m++) hd += spotw(hl, m, p, Ld);
+      float3 lum = (snow ? float3(0.95) : float3(0.7, 0.75, 0.8)) * (pf.amb.rgb * 1.3 + u.sunc.rgb * 0.3)
+                 + hl.col.rgb * hl.misc.z * hd * 2.5;
+      Lc += T * cover * lum; T *= 1.0 - cover; } }
+  return float4(Lc, 1.0 - T); }
+
+fragment float4 pfxcfs(QO in [[stage_in]], texture2d<float> p [[texture(0)]]) { return p.sample(ls, in.uv); }
 
 /* ---- tonemap and grade, over the untouched 2D */
 /* Khronos PBR Neutral: colours below ~0.76 come through exactly, highlights
@@ -632,7 +781,7 @@ fragment float4 aafs(QO in [[stage_in]], texture2d<float> t [[texture(0)]], text
 typedef struct {
     float vp[16], ivp[16], svp[16];
     float eye[4], sun[4], sunc[4], skyc[4], grnd[4], fogc[4], vpt[4], scr[4];
-    float p0[4], p1[4], p2[4], p3[4], p4[4], flash[4], wb[4], nsky[4], sk2[4], tm[4];
+    float p0[4], p1[4], p2[4], p3[4], p4[4], flash[4], wb[4], nsky[4], sk2[4], tm[4], wx[4];   /* wx: rain, snowfall, snow ground, - */
 } fxu;
 typedef struct { float p[32][4], d[32][4], col[4], misc[4]; float g[64][4], gd[64][4], gmisc[4]; } hlu;
 static float g_hl_int, g_hl_beam, g_hl_air;
@@ -640,8 +789,10 @@ typedef struct { int at_fn, at_ref, use_tex, pad; float su, sv, pad2, pad3; floa
 
 static id<MTLDevice> D;
 static id<MTLLibrary> L;
+static id<MTLRenderPipelineState> p_trk, p_pfx, p_pfxc;
 static id<MTLRenderPipelineState> p_sh, p_ao, p_blur, p_ssr, p_comp, p_pre, p_down, p_up, p_shaft, p_fin, p_aa, p_scene, p_mix;
 static id<MTLDepthStencilState> ds_sh;
+static id<MTLTexture> t_trk, t_pfx;
 static id<MTLTexture> t_sm, t_ao, t_ao2, t_ssr, t_hdr, t_bl[6], t_shaft, t_out, t_aa;
 static int tw, th;
 static int g_on = -1;
@@ -710,6 +861,7 @@ void hfx_toggle(void)
     g_on = !hfx_on();
     [[NSUserDefaults standardUserDefaults] setObject:g_on ? @"remastered" : @"original" forKey:@"Renderer"];
     fprintf(stderr, "renderer: %s\n", g_on ? "Remastered" : "Original");
+    nmusic_remastered(g_on);
     badge();
 }
 
@@ -825,6 +977,29 @@ static void setup(id<MTLDevice> dev)
     p_aa = mkpipe(@"fsq", @"aafs", MTLPixelFormatRGBA8Unorm, 0);
     p_scene = mkpipe(@"fsq", @"scenefs", MTLPixelFormatRGBA8Unorm, 0);
     p_mix = mkpipe(@"fsq", @"mixfs", MTLPixelFormatRGBA8Unorm, 0);
+    p_pfx = mkpipe(@"fsq", @"pfxfs", MTLPixelFormatRGBA16Float, 0);
+    {   /* track ribbons: the strongest wins where they overlap */
+        MTLRenderPipelineDescriptor *d = [MTLRenderPipelineDescriptor new];
+        d.vertexFunction = [L newFunctionWithName:@"trkvs"];
+        d.fragmentFunction = [L newFunctionWithName:@"trkfs"];
+        d.colorAttachments[0].pixelFormat = MTLPixelFormatRGBA16Float;
+        d.colorAttachments[0].blendingEnabled = YES;
+        d.colorAttachments[0].rgbBlendOperation = d.colorAttachments[0].alphaBlendOperation = MTLBlendOperationMax;
+        p_trk = [D newRenderPipelineStateWithDescriptor:d error:&err];
+        if (!p_trk) { fprintf(stderr, "fx track pipeline: %s\n", err.localizedDescription.UTF8String); exit(1); }
+        /* particles over the lit scene, premultiplied; the scene's coverage kept */
+        d = [MTLRenderPipelineDescriptor new];
+        d.vertexFunction = [L newFunctionWithName:@"fsq"];
+        d.fragmentFunction = [L newFunctionWithName:@"pfxcfs"];
+        d.colorAttachments[0].pixelFormat = MTLPixelFormatRGBA16Float;
+        d.colorAttachments[0].blendingEnabled = YES;
+        d.colorAttachments[0].sourceRGBBlendFactor = MTLBlendFactorOne;
+        d.colorAttachments[0].destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
+        d.colorAttachments[0].sourceAlphaBlendFactor = MTLBlendFactorZero;
+        d.colorAttachments[0].destinationAlphaBlendFactor = MTLBlendFactorOne;
+        p_pfxc = [D newRenderPipelineStateWithDescriptor:d error:&err];
+        if (!p_pfxc) { fprintf(stderr, "fx particle pipeline: %s\n", err.localizedDescription.UTF8String); exit(1); }
+    }
     {
         MTLDepthStencilDescriptor *d = [MTLDepthStencilDescriptor new];
         d.depthCompareFunction = MTLCompareFunctionLess;
@@ -853,6 +1028,8 @@ static void size(int w, int h)
     for (i = 0; i < 6; i++) t_bl[i] = mktex(hw >> i, hh >> i, MTLPixelFormatRGBA16Float, 0);
     t_out = mktex(w, h, MTLPixelFormatRGBA8Unorm, 1);
     t_aa = mktex(w, h, MTLPixelFormatRGBA8Unorm, 1);
+    t_trk = mktex(hw, hh, MTLPixelFormatRGBA16Float, 0);
+    t_pfx = mktex(hw, hh, MTLPixelFormatRGBA16Float, 0);
 }
 
 static id<MTLRenderCommandEncoder> pass(id<MTLCommandBuffer> cb, id<MTLTexture> t, int load)
@@ -995,9 +1172,9 @@ static void weather(fxu *u, const float *fogc)
         break;
     case 3:  /* snow: bright overcast, strong bounce */
         sunk = 0.55f; sc[0] = 1.0f; sc[1] = 0.97f; sc[2] = 0.93f;
-        sk[0] = 0.72f; sk[1] = 0.78f; sk[2] = 0.9f; gr[0] = 0.72f; gr[1] = 0.74f; gr[2] = 0.8f;
-        memcpy(u->p0, (float[4]){ 0.9f, 0.6f, 0.1f, 0.0f }, 16);
-        memcpy(u->p1, (float[4]){ 1.05f, 1.0f, 1.03f, 0.08f }, 16);
+        sk[0] = 0.62f; sk[1] = 0.68f; sk[2] = 0.8f; gr[0] = 0.5f; gr[1] = 0.52f; gr[2] = 0.58f;
+        memcpy(u->p0, (float[4]){ 1.0f, 0.35f, 0.1f, 0.0f }, 16);
+        memcpy(u->p1, (float[4]){ 1.0f, 1.0f, 1.08f, 0.08f }, 16);
         u->p2[0] = 0.12f; u->p2[1] = 3.0f; u->p3[2] = 0.45f; u->p4[0] = 1.1f; u->p4[1] = 0.5f;
         hz = 1.25f; wb[0] = 0.97f; wb[1] = 1.0f; wb[2] = 1.06f;
         break;
@@ -1024,14 +1201,20 @@ static void weather(fxu *u, const float *fogc)
     /* haze: how far toward the air colour distance takes a surface, and the
      * sky's share of fog; headlights: on at night, in storms and in fog */
     u->nsky[3] = w == 1 ? 0.9f : 0.3f;
+    /* falling rain (storm heaviest), falling snow, snow on the ground */
+    u->wx[0] = w == 2 ? 1.0f : w == 4 ? 0.75f : 0.0f;
+    u->wx[1] = w == 3 ? 1.0f : 0.0f;
+    u->wx[2] = w == 3 ? 1.0f : 0.0f;
     /* a real sky in clear weather (clouds kept from texels whose darkest
      * channel is between sk2.y and sk2.z), and water shading */
     u->sk2[0] = w == 0 ? 1.0f : 0.0f; u->sk2[1] = 0.36f; u->sk2[2] = 0.55f;
-    u->sk2[3] = w == 3 ? 0.0f : w == 1 ? 0.5f : 1.0f;
+    u->sk2[3] = w == 1 ? 0.5f : 1.0f;
     u->wb[3] = w == 1 ? 0.8f : 0.0f;
-    g_hl_int = w == 4 ? 1.6f : w == 2 ? 0.7f : w == 1 ? 0.6f : 0.0f;
+    g_hl_int = w == 4 ? 1.0f : w == 2 ? 0.6f : w == 1 ? 0.5f : 0.0f;
     g_hl_beam = w == 4 ? 1.0f : w == 2 ? 0.8f : w == 1 ? 1.4f : 0.0f;
-    g_hl_air = w == 1 ? 0.006f : w == 2 ? 0.004f : 0.003f;
+    /* how much the air scatters a beam: clear night air barely, rain a
+     * little, fog most; any more and the scene reads as seen through film */
+    g_hl_air = w == 1 ? 0.0035f : w == 2 ? 0.0012f : 0.0007f;
     {   /* the world's darkness per weather, for the car rig (see hfx_car_rig) */
         float wk = w == 4 ? 0.15f : w == 2 ? 0.7f : w == 1 ? 0.9f : 1.0f;
         int i;
@@ -1058,7 +1241,8 @@ static void weather(fxu *u, const float *fogc)
       if ((e = getenv("BR_FX_AOR"))) u->p2[2] = (float)atof(e);
       if ((e = getenv("BR_FX_DEBUG"))) u->p3[1] = (float)atof(e);
       if (getenv("BR_FX_NOSHAFT")) u->p2[0] = 0;
-      if (getenv("BR_FX_NOSHADOW")) u->sun[3] = 0; }
+      if (getenv("BR_FX_NOSHADOW")) u->sun[3] = 0;
+      if (getenv("BR_FX_NOBLOOM")) u->p1[3] = 0; }
 }
 
     /* BR_FX_TESTKEY=N,M,...: post a real ~ key press at those swaps (a
@@ -1077,6 +1261,231 @@ void hfx_tick(void)
                                           timestamp:NSProcessInfo.processInfo.systemUptime windowNumber:happ_window().windowNumber
                                           context:nil characters:@"`" charactersIgnoringModifiers:@"`" isARepeat:NO keyCode:0x32] atStart:NO];
               } } }
+}
+
+/* ---- weather effects the port draws itself in Remastered: particles
+ * (the game's smoke, dust and snow spray, and water spray and splashes from
+ * every wheel in the wet), falling rain and snow, tyre tracks.  The game's
+ * own particle and rain draws are left out (hfx_game_particles). */
+int hfx_game_particles(void) { return !hfx_on() || getenv("BR_FX_GAMEPFX") != NULL; }
+
+static float fhash2(float x, float y)
+{
+    float v = sinf(x * 127.1f + y * 311.7f) * 43758.5453f;
+    return v - floorf(v);
+}
+static float fvnoise(float x, float y)
+{
+    float ix = floorf(x), iy = floorf(y), fx = x - ix, fy = y - iy;
+    fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy);
+    float a = fhash2(ix, iy), b = fhash2(ix + 1, iy), c = fhash2(ix, iy + 1), d = fhash2(ix + 1, iy + 1);
+    return (a + (b - a) * fx) + ((c + (d - c) * fx) - (a + (b - a) * fx)) * fy;
+}
+static float ffbm(float x, float y)   /* the shader's fbm, for where its puddles are */
+{
+    return fvnoise(x, y) * 0.55f + fvnoise(x * 2.03f + 17.1f, y * 2.03f + 17.1f) * 0.3f
+         + fvnoise(x * 4.1f + 5.3f, y * 4.1f + 5.3f) * 0.15f;
+}
+static float frand(void) { return (float)rand() / (float)RAND_MAX; }
+
+typedef struct { float p[3], v[3], age, life, r0, r1, dens, col[3], grav, drag; } sprt;
+#define NSPR 700
+static sprt g_spr[NSPR];
+static int g_nspr;
+static float g_emit[FX_CARS][4];
+
+#define TRK_N 320
+typedef struct { float p[TRK_N][3], k[TRK_N], t[TRK_N]; int head, n; u32 car; } trkw;
+static trkw g_trk[FX_CARS * 4];
+static float g_time;
+
+static const u32 WHEEL_REC[4] = { 0x994, 0x57C, 0x370, 0x788 };
+
+static void emit(const float *p, const float *v, float life, float r0, float r1, float dens,
+                 float cr, float cg, float cb, float grav, float drag)
+{
+    sprt *s;
+    if (g_nspr == NSPR) return;
+    s = &g_spr[g_nspr++];
+    memcpy(s->p, p, 12); memcpy(s->v, v, 12);
+    s->age = 0; s->life = life; s->r0 = r0; s->r1 = r1; s->dens = dens;
+    s->col[0] = cr; s->col[1] = cg; s->col[2] = cb; s->grav = grav; s->drag = drag;
+}
+
+/* One frame of the port's own weather effects: spray and splashes from each
+ * wheel, and the tyre-track samples. */
+static void fx_sim(int w, float wetness, float dt)
+{
+    int c, k, i;
+    float wetroad = wetness;
+    g_time += dt;
+    /* age and move the spray */
+    for (i = 0; i < g_nspr; ) {
+        sprt *s = &g_spr[i];
+        s->age += dt;
+        if (s->age >= s->life) { g_spr[i] = g_spr[--g_nspr]; continue; }
+        for (k = 0; k < 3; k++) { s->v[k] *= 1.0f - s->drag * dt; s->p[k] += s->v[k] * dt; }
+        s->v[2] -= s->grav * dt;
+        i++;
+    }
+    for (c = 0; c < g_ncars; c++) {
+        u32 car = g_carptr[c];
+        const float *m = g_cars[c];
+        float up[3] = { m[8], m[9], m[10] }, fw[3] = { m[0], m[1], m[2] };
+        float vel[3] = { W_LD(f32, car, 0x1024), W_LD(f32, car, 0x1028), W_LD(f32, car, 0x102C) };
+        float spd = sqrtf(vel[0] * vel[0] + vel[1] * vel[1] + vel[2] * vel[2]);
+        for (k = 0; k < 4; k++) {
+            float hub[3] = { W_LD(f32, car, 0x70 + 0x40 * k), W_LD(f32, car, 0x74 + 0x40 * k), W_LD(f32, car, 0x78 + 0x40 * k) };
+            float gp[3];
+            int on = W_LD(s32, car, WHEEL_REC[k] + 0x1B4) != 0;
+            int surf = W_LD(s8, car, WHEEL_REC[k] + 0x1A0);
+            int j;
+            for (j = 0; j < 3; j++) gp[j] = hub[j] - up[j] * 0.3f;
+            /* tracks: a sample every 0.3 m while the tyre is down on something
+             * that keeps a mark */
+            {
+                trkw *t = &g_trk[c * 4 + k];
+                float kk = 0;
+                if (t->car != car) { memset(t, 0, sizeof *t); t->car = car; }
+                if (on) kk = (surf >= 1 && surf <= 3) ? (w == 3 ? 1.0f : 0.8f) : (wetroad > 0.5f ? 0.6f : 0.0f);
+                if (kk > 0) {
+                    int last = (t->head + TRK_N - 1) % TRK_N;
+                    float dx = gp[0] - t->p[last][0], dy = gp[1] - t->p[last][1], dz = gp[2] - t->p[last][2];
+                    float d2 = dx * dx + dy * dy + dz * dz;
+                    if (t->n == 0 || d2 > 0.09f) {
+                        if (t->n > 0 && d2 > 4.0f) t->k[last] = -1;     /* a gap: the ribbon breaks here */
+                        memcpy(t->p[t->head], gp, 12); t->k[t->head] = kk; t->t[t->head] = g_time;
+                        t->head = (t->head + 1) % TRK_N; if (t->n < TRK_N) t->n++;
+                    }
+                } else if (t->n > 0) t->k[(t->head + TRK_N - 1) % TRK_N] = -1;
+            }
+            /* water: a fine spray off every tyre on a wet road, and a splash
+             * where the tyre goes through standing water */
+            if (on && wetroad > 0.0f && spd > 4.0f && surf != 3) {
+                float pud = ffbm(gp[0] * 0.18f, gp[1] * 0.18f), lo = 0.64f - 0.14f * wetroad;
+                int inpud = pud > lo + 0.04f;
+                float rate = (inpud ? 70.0f : 22.0f * wetroad) * fminf(spd / 30.0f, 1.6f);
+                g_emit[c][k] += rate * dt;
+                while (g_emit[c][k] >= 1.0f) {
+                    float p[3], v[3], sd = (k == 0 || k == 3) ? 1.0f : -1.0f;
+                    float lf[3] = { m[4], m[5], m[6] };
+                    g_emit[c][k] -= 1.0f;
+                    for (j = 0; j < 3; j++) {
+                        p[j] = gp[j] - fw[j] * 0.35f + up[j] * 0.05f;
+                        v[j] = vel[j] * (inpud ? 0.45f : 0.55f) - fw[j] * spd * 0.05f
+                             + up[j] * (inpud ? 1.6f + 2.2f * frand() : 0.5f + 0.8f * frand())
+                             + lf[j] * sd * (inpud ? 1.5f + 1.5f * frand() : 0.4f * frand());
+                    }
+                    if (inpud) emit(p, v, 0.55f + 0.3f * frand(), 0.12f, 0.55f, 3.5f, 0.78f, 0.82f, 0.86f, 7.0f, 0.8f);
+                    else emit(p, v, 0.7f + 0.5f * frand(), 0.25f, 1.1f, 0.9f, 0.8f, 0.83f, 0.87f, 0.6f, 1.6f);
+                }
+            } else g_emit[c][k] = 0;
+        }
+    }
+}
+
+/* The particles for this frame, nearest first: the game's (read from its
+ * pool) and the port's spray. */
+typedef struct { float p[160][4], c[160][4], misc[4], amb[4]; } pfu;
+static u32 g_pborn_id[512]; static float g_pborn[512];
+static int fx_particles(pfu *out, const float *eye, int w)
+{
+    typedef struct { float d, p[4], c[4]; } cand;
+    static cand cs[1400];
+    int n = 0, i, l;
+    static const u32 HEADS[3] = { 0x10AC0C40u, 0x10AC0C3Cu, 0x10AC0C44u };
+    for (l = 0; l < 3; l++) {
+        u32 idx = W_LD(u16, HEADS[l], 0), guard = 0;
+        while (idx && idx < 512 && guard++ < 512 && n < 1400) {
+            u32 r = 0x10AC0C48u + idx * 0x20u;
+            float p[3] = { W_LD(f32, r, 0), W_LD(f32, r, 4), W_LD(f32, r, 8) };
+            /* the game fades each particle out through its byte at +0x1E
+             * (255 new, 0 gone): that is its opacity, and its spread */
+            float a = (float)W_LD(u8, r, 0x1E) / 255.0f, age = 1.0f - a;
+            {
+                cand *q = &cs[n++];
+                float dx = p[0] - eye[0], dy = p[1] - eye[1], dz = p[2] - eye[2];
+                q->d = dx * dx + dy * dy + dz * dz;
+                memcpy(q->p, p, 12);
+                q->p[3] = (l == 0 ? 0.25f : 0.35f) + (l == 0 ? 0.9f : 1.4f) * age;
+                if (l == 1) { q->c[0] = 0.62f; q->c[1] = 0.55f; q->c[2] = 0.45f; }             /* dust */
+                else if (l == 2 && w == 3) { q->c[0] = 0.92f; q->c[1] = 0.94f; q->c[2] = 0.97f; } /* snow */
+                else if (l == 2) { q->c[0] = 0.8f; q->c[1] = 0.83f; q->c[2] = 0.87f; }           /* water */
+                else { q->c[0] = 0.55f; q->c[1] = 0.55f; q->c[2] = 0.56f; }                       /* smoke */
+                q->c[3] = (l == 2 ? 1.4f : l == 0 ? 0.6f : 1.0f) * a;
+            }
+            idx = W_LD(u16, r, 0x1C);
+        }
+    }
+    if (getenv("BR_FX_PFXPROBE") && ((int)(g_time * 60) % 30) == 0) {
+        for (l = 0; l < 3; l++) {
+            u32 idx = W_LD(u16, HEADS[l], 0); int cnt = 0;
+            fprintf(stderr, "pfx list %d:", l);
+            while (idx && idx < 512 && cnt < 200) {
+                u32 r = 0x10AC0C48u + idx * 0x20u;
+                if (cnt < 3) fprintf(stderr, " [%u p %.1f %.1f %.2f v %.1f %.1f %.1f age %.3f e %u f %u]", idx, W_LD(f32, r, 0), W_LD(f32, r, 4), W_LD(f32, r, 8),
+                                     W_LD(f32, r, 12), W_LD(f32, r, 16), W_LD(f32, r, 20), W_LD(f32, r, 0x18), W_LD(u8, r, 0x1E), W_LD(u8, r, 0x1F));
+                cnt++; idx = W_LD(u16, r, 0x1C); }
+            fprintf(stderr, " n=%d\n", cnt); }
+        fprintf(stderr, "pfx eye %.1f %.1f %.1f own %d\n", eye[0], eye[1], eye[2], g_nspr);
+    }
+    for (i = 0; i < g_nspr && n < 1400; i++) {
+        const sprt *s = &g_spr[i];
+        float f = s->age / s->life;
+        cand *q = &cs[n++];
+        float dx = s->p[0] - eye[0], dy = s->p[1] - eye[1], dz = s->p[2] - eye[2];
+        q->d = dx * dx + dy * dy + dz * dz;
+        memcpy(q->p, s->p, 12);
+        q->p[3] = s->r0 + (s->r1 - s->r0) * sqrtf(f);
+        memcpy(q->c, s->col, 12);
+        q->c[3] = s->dens * (1.0f - f) * (1.0f - f);
+    }
+    /* nearest 160, nearest first */
+    {
+        int cnt = 0, j;
+        for (i = 0; i < n; i++) if (cs[i].d < 140.0f * 140.0f && cs[i].c[3] > 0.01f) cs[cnt++] = cs[i];
+        for (i = 1; i < cnt; i++) { cand t = cs[i]; for (j = i - 1; j >= 0 && cs[j].d > t.d; j--) cs[j + 1] = cs[j]; cs[j + 1] = t; }
+        if (cnt > 160) cnt = 160;
+        for (i = 0; i < cnt; i++) { memcpy(out->p[i], cs[i].p, 16); memcpy(out->c[i], cs[i].c, 16); }
+        return cnt;
+    }
+}
+
+/* the tyre-track ribbons near the camera */
+static id<MTLBuffer> fx_tracks(id<MTLDevice> dev, const float *eye, int *nv)
+{
+    static float *v; static int cap;
+    int n = 0, i, s;
+    for (i = 0; i < FX_CARS * 4; i++) {
+        trkw *t = &g_trk[i];
+        for (s = 1; s < t->n; s++) {
+            int a = (t->head - t->n + s - 1 + 2 * TRK_N) % TRK_N, b = (a + 1) % TRK_N;
+            float ka, kb, dx, dy, len, ax, ay, fa, fb;
+            if (t->k[a] < 0 || t->k[b] < 0) continue;
+            dx = t->p[b][0] - eye[0]; dy = t->p[b][1] - eye[1];
+            if (dx * dx + dy * dy > 110.0f * 110.0f) continue;
+            fa = 1.0f - (g_time - t->t[a]) / 120.0f; fb = 1.0f - (g_time - t->t[b]) / 120.0f;
+            if (fa <= 0 || fb <= 0) continue;
+            ka = t->k[a] * fa; kb = t->k[b] * fb;
+            dx = t->p[b][0] - t->p[a][0]; dy = t->p[b][1] - t->p[a][1]; len = sqrtf(dx * dx + dy * dy);
+            if (len < 1e-3f) continue;
+            ax = -dy / len * 0.11f; ay = dx / len * 0.11f;
+            if (n + 6 > cap) { cap = cap ? cap * 2 : 6144; v = realloc(v, (size_t)cap * 8 * sizeof(float)); }
+            {
+                float q[4][8] = {
+                    { t->p[a][0] - ax, t->p[a][1] - ay, t->p[a][2], ka, -1, 0, 0, 0 },
+                    { t->p[a][0] + ax, t->p[a][1] + ay, t->p[a][2], ka,  1, 0, 0, 0 },
+                    { t->p[b][0] - ax, t->p[b][1] - ay, t->p[b][2], kb, -1, 0, 0, 0 },
+                    { t->p[b][0] + ax, t->p[b][1] + ay, t->p[b][2], kb,  1, 0, 0, 0 } };
+                memcpy(v + (n + 0) * 8, q[0], 32); memcpy(v + (n + 1) * 8, q[1], 32); memcpy(v + (n + 2) * 8, q[2], 32);
+                memcpy(v + (n + 3) * 8, q[1], 32); memcpy(v + (n + 4) * 8, q[3], 32); memcpy(v + (n + 5) * 8, q[2], 32);
+                n += 6;
+            }
+        }
+    }
+    *nv = n;
+    if (!n) return nil;
+    return [dev newBufferWithBytes:v length:(NSUInteger)n * 8 * sizeof(float) options:MTLResourceStorageModeShared];
 }
 
 /* Relight the finished frame.  Returns the picture to present, or nil when
@@ -1202,6 +1611,12 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
         u32 vc = H32(0x106E9D88u);
         for (i = 0; i < g_ncars; i++) if (g_carptr[i] == vc) {
             static float lp[3]; float *m = g_cars[i];
+            { u32 c = g_carptr[i]; int k; static const u32 WO[4] = { 0x994, 0x57C, 0x370, 0x788 };
+              for (k = 0; k < 4; k++)
+                  fprintf(stderr, "wheel%d: %.2f %.2f %.2f contact %d surf %d\n", k, W_LD(f32, c, 0x70 + 0x40 * k), W_LD(f32, c, 0x74 + 0x40 * k),
+                          W_LD(f32, c, 0x78 + 0x40 * k), W_LD(s32, c, WO[k] + 0x1B4), W_LD(s8, c, WO[k] + 0x1A0));
+              fprintf(stderr, "speed %.1f h %.2f vel %.2f %.2f %.2f\n", W_LD(f32, c, 0x1030), W_LD(f32, c, 0x2994),
+                      W_LD(f32, c, 0x1024), W_LD(f32, c, 0x1028), W_LD(f32, c, 0x102C)); }
             fprintf(stderr, "car: r0 %.2f %.2f %.2f r1 %.2f %.2f %.2f r2 %.2f %.2f %.2f pos %.1f %.1f %.1f d %.2f %.2f %.2f camfwd %.2f %.2f %.2f\n",
                     m[0], m[1], m[2], m[4], m[5], m[6], m[8], m[9], m[10], m[12], m[13], m[14],
                     m[12] - lp[0], m[13] - lp[1], m[14] - lp[2], cf[0], cf[1], cf[2]);
@@ -1255,10 +1670,53 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
         [enc setFragmentBytes:d2 length:8 atIndex:1];
         quad(enc, p_blur, &u, @[t_ao2, gp, gn]);
     }
+    /* 3b. this frame's spray and track samples, and the track mask */
+    {
+        int w = (int)H32(0x104B15E8u), nv = 0;
+        id<MTLBuffer> tb;
+        if (getenv("BR_FX_WEATHER")) w = atoi(getenv("BR_FX_WEATHER"));
+        fx_sim(w, u.p0[3], 1.0f / 60.0f);
+        tb = fx_tracks(dev, u.eye, &nv);
+        {
+            MTLRenderPassDescriptor *rp = [MTLRenderPassDescriptor renderPassDescriptor];
+            rp.colorAttachments[0].texture = t_trk;
+            rp.colorAttachments[0].loadAction = MTLLoadActionClear;
+            rp.colorAttachments[0].clearColor = MTLClearColorMake(0, -10000, 0, 0);
+            rp.colorAttachments[0].storeAction = MTLStoreActionStore;
+            enc = [cb renderCommandEncoderWithDescriptor:rp];
+            if (tb) {
+                if (!g_keep) g_keep = [NSMutableArray new];
+                [g_keep addObject:tb];
+                [enc setRenderPipelineState:p_trk];
+                [enc setVertexBuffer:tb offset:0 atIndex:0];
+                [enc setVertexBytes:&u length:sizeof u atIndex:1];
+                [enc drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:(NSUInteger)nv];
+            }
+            [enc endEncoding];
+        }
+    }
     /* 4. lighting */
     enc = pass(cb, t_hdr, 0);
     [enc setFragmentBytes:&hl length:sizeof hl atIndex:1];
-    quad(enc, p_comp, &u, @[gn, gp, col, t_sm, t_ao, t_ssr, g_skyt ? g_skyt : col]);
+    quad(enc, p_comp, &u, @[gn, gp, col, t_sm, t_ao, t_ssr, g_skyt ? g_skyt : col, t_trk]);
+    /* 4b. particles and falling rain/snow over the lit scene */
+    if (!getenv("BR_FX_NOPFX")) {
+        pfu *pu = calloc(1, sizeof *pu);
+        id<MTLBuffer> pb;
+        pu->misc[0] = (float)fx_particles(pu, u.eye, (int)H32(0x104B15E8u));
+        for (i = 0; i < 3; i++) pu->amb[i] = g_car_rig[2][i] * 0.8f + g_car_rig[3][i] * 0.4f;
+        pb = [dev newBufferWithBytes:pu length:sizeof *pu options:MTLResourceStorageModeShared];
+        free(pu);
+        if (!g_keep) g_keep = [NSMutableArray new];
+        [g_keep addObject:pb];
+        {
+            enc = pass(cb, t_pfx, 0);
+            [enc setFragmentBytes:&hl length:sizeof hl atIndex:1];
+            [enc setFragmentBuffer:pb offset:0 atIndex:2];
+            quad(enc, p_pfx, &u, @[gp]);
+            quad(pass(cb, t_hdr, 1), p_pfxc, NULL, @[t_pfx]);
+        }
+    }
     /* 5. bloom */
     quad(pass(cb, t_bl[0], 0), p_pre, &u, @[t_hdr]);
     for (i = 1; i < 6; i++) quad(pass(cb, t_bl[i], 0), p_down, NULL, @[t_bl[i - 1]]);
