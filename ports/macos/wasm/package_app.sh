@@ -162,6 +162,22 @@ if ls ports/common/models/sky/pack/*.png >/dev/null 2>&1; then
     cp ports/common/models/sky/pack/*.png "$APP/Contents/Resources/sky/"
 fi
 
+# the Remastered ground materials (host/host_fx.m): photoscanned sets from
+# ambientCG (CC0) in ports/common/models/materials/src, their colour, normal,
+# roughness and AO maps at the 1024 the renderer uses; without them the
+# renderer keeps its procedural detail
+if ls ports/common/models/materials/src/*/*_Color.jpg >/dev/null 2>&1; then
+    rm -rf "$APP/Contents/Resources/materials"
+    for d in ports/common/models/materials/src/*/; do
+        n=$(basename "$d")
+        mkdir -p "$APP/Contents/Resources/materials/$n"
+        for k in Color NormalGL Roughness AmbientOcclusion Displacement; do
+            f="$d${n}_2K-JPG_$k.jpg"
+            [ -f "$f" ] && sips -Z 1024 "$f" --out "$APP/Contents/Resources/materials/$n/" >/dev/null
+        done
+    done
+fi
+
 # the licences of the libraries linked into the binary (build_wasm.sh MPT_LIBS)
 BREW=${BR_BREW:-/opt/homebrew/opt}
 mkdir -p "$APP/Contents/Resources/Licenses"
