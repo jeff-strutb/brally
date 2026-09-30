@@ -13,6 +13,7 @@
 #                                   and their cues
 #   Contents/Resources/assets/      the PC and N64 version icons (Tab)
 #   Contents/Resources/remaster/    the Remastered player car's model and maps
+#   Contents/Resources/sky/         the Remastered skies, one per track and weather
 #   Contents/Resources/Licenses/    libopenmpt and the codecs linked with it
 #
 # Sources, all required (a partial app must not look like a complete one):
@@ -151,6 +152,14 @@ done
 if [ -f ports/common/models/es/pack/car.cfg ]; then
     rm -rf "$APP/Contents/Resources/remaster"
     cp -Rc ports/common/models/es/pack "$APP/Contents/Resources/remaster" 2>/dev/null || cp -R ports/common/models/es/pack "$APP/Contents/Resources/remaster"
+fi
+
+# the Remastered skies (host/host_sky.m): the pack remaster_sky.py writes;
+# without it the Remastered renderer keeps the game's own sky
+if ls ports/common/models/sky/pack/*.png >/dev/null 2>&1; then
+    rm -rf "$APP/Contents/Resources/sky"
+    mkdir -p "$APP/Contents/Resources/sky"
+    cp ports/common/models/sky/pack/*.png "$APP/Contents/Resources/sky/"
 fi
 
 # the licences of the libraries linked into the binary (build_wasm.sh MPT_LIBS)
