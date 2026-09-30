@@ -13,6 +13,13 @@ at the bottom:
    soundtrack answers those with the N64 game's own cues, read from its code
    and data: its title module for track 2, and for a race track one of its
    five per-track race modules, (track - 3) mod 5.
+   **Changed 2026-09-30:** the N64 and remastered pieces no longer follow the
+   random CD track. They follow the course, as Top Gear Rally does
+   (`D_8026FF24[track]`): a race on desert, mountain, coast, mine or amazon
+   (and their mirrors) plays that environment's piece; the race circuit, the
+   bonus track, the ending and everything off the track play the title
+   piece. The CD side keeps the game's random pick. See `cue()` in
+   `macos/wasm/native/music.m`.
 5. Nothing waited on the renderer's open leads: `tools/xm_render.c` is not the
    player.
 

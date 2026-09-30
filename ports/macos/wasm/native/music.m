@@ -17,8 +17,8 @@
  *   PC   the disc's CD audio, track NN.flac, streamed into an AVAudioPlayerNode
  *   N64  Top Gear Rally's music, looping forever as on the N64. The N64
  *        game's own cues pick the piece (extract_modules.py): its title
- *        piece for track 2, and for a race track (3 up) one of the five
- *        per-track race pieces, (track - 3) mod 5. With Barry Leitch's own
+ *        piece off the track, and in a race the piece of that course's
+ *        environment (cue() below), whatever CD track the game drew. With Barry Leitch's own
  *        recordings of the six pieces in the app (ost_loops.py, which also
  *        clears them of the PAL hardware's hum), those play: [0, loop_end)
  *        and then [loop_start, loop_end) over and over, streamed back to
@@ -78,6 +78,8 @@
 #define G_CUR      0x1021C804u   /* g_brCdTrackCur */
 #define G_PENDING  0x1021C808u   /* a track has been asked for */
 #define G_STEP     0x106E79F4u   /* g_pfnStep: the current activity (br_gamestep.c) */
+#define G_TRACK    0x100B3014u   /* g_brCfgChosenTrack: index into the .trk names */
+#define G_MODE     0x100A9360u   /* g_brRaceRules.mode: 4 is the ending (outro, credits) */
 /* game functions called back */
 #define F_TRACKRESUME   0x10002E80u   /* BrCdTrackResume */
 #define F_NEXTWRAP      0x10002CF0u   /* BrCdTrackNextWrap */
@@ -101,6 +103,8 @@ NSWindow *happ_window(void);
 enum { ST_PC = HV_PC, ST_N64 = HV_N64, ST_REM, NST };
 int hfx_on(void);
 
+enum { CUE_NONE = -2, CUE_TITLE = -1 };   /* else 0-4, the N64 race piece */
+
 static struct {
     int init, silent;
     int have[NST];
@@ -116,8 +120,8 @@ static struct {
     int remastered;                   /* heard over either version while Remastered is on (~) */
     int soundtrack;                   /* the version heard: native/version.m's */
     int track;                        /* the CD track number playing, 0 none */
+    int cue;                          /* the N64/remastered piece playing: CUE_* or a race piece */
     int paused;
-    int advancing;                    /* the PC track ended: only it moves on */
     float volume;
     AVAudioEngine *engine;
     AVAudioMixerNode *mix[NST];       /* each source's submix, crossfaded */
@@ -132,7 +136,7 @@ static struct {
     atomic_uint gen[NST], ended;      /* per source: a stale callback is ignored */
     os_unfair_lock lock;              /* guards mod against the render thread */
     openmpt_module *mod;
-} M = { .lock = OS_UNFAIR_LOCK_INIT, .volume = 1.0f };
+} M = { .lock = OS_UNFAIR_LOCK_INIT, .volume = 1.0f, .cue = CUE_NONE };
 
 /* The crossfade: x runs from 0 (the PC version alone) to 1 (the N64 one
  * alone) at 1/FADE_S per second, and the two submixes get equal-power
@@ -400,6 +404,7 @@ static void stop(void)
     stop_n64();
     stop_rem();
     M.track = 0;
+    M.cue = CUE_NONE;
     M.paused = 0;
 }
 
@@ -514,9 +519,25 @@ static void play_cd(int track)
     feed(M.cd, ST_PC, p, 0, 0, -1, ^{ atomic_store(&M.ended, g); });
 }
 
-static void play_mod(int track)
+/* The N64 and remastered piece for what is on screen. The CD track is the
+ * game's own pick (random in a race), but Top Gear Rally ties its music to
+ * the course: BrMusicLoadTrack plays D_8026FF24[track], one piece per
+ * environment. Boss Rally's first five environments are those five
+ * (desert.trk .. amazon.trk, indices 0-4 and their mirrors 6-10, the order
+ * of the N64 race table), so a race on one plays its piece. race.trk
+ * (5, 11), gamewin.trk (12), bonus.trk (13, 14), the ending (mode 4) and
+ * everything off the track play the title piece (decided 2026-09-30). */
+static int cue(void)
 {
-    NSString *name = track <= 2 ? M.title : M.race[(NSUInteger)(track - 3) % M.race.count];
+    s32 t = GI(G_TRACK);
+    if ((u32)GI(G_STEP) != F_RACESTEP || GI(G_MODE) == 4 || t < 0 || t >= 12 || t % 6 == 5)
+        return CUE_TITLE;
+    return t % 6;
+}
+
+static void play_mod(int c)
+{
+    NSString *name = c < 0 ? M.title : M.race[(NSUInteger)c % M.race.count];
     NSData *d = [NSData dataWithContentsOfFile:[M.dir[ST_N64] stringByAppendingPathComponent:name]];
     openmpt_module *m = d ? openmpt_module_create_from_memory2(d.bytes, d.length, NULL, NULL, NULL, NULL,
                                                                 NULL, NULL, NULL) : NULL;
@@ -526,9 +547,9 @@ static void play_mod(int track)
     mod_set(m);
 }
 
-static void play_rec(int track)
+static void play_rec(int c)
 {
-    NSDictionary *r = track <= 2 ? M.rec_title : M.rec_race[(NSUInteger)(track - 3) % M.rec_race.count];
+    NSDictionary *r = c < 0 ? M.rec_title : M.rec_race[(NSUInteger)c % M.rec_race.count];
     NSString *p = [M.dir[ST_N64] stringByAppendingPathComponent:r[@"file"]];
     AVAudioFramePosition s = [r[@"loop_start"] longLongValue], e = [r[@"loop_end"] longLongValue], from = 0;
     const char *t = getenv("BR_MUSICLOOPTEST");
@@ -538,43 +559,47 @@ static void play_rec(int track)
 
 /* The remastered piece for a cue, looped like the recordings; its gain
  * levels it with the CD tracks. */
-static void play_rem(int track)
+static void play_rem(int c)
 {
-    NSDictionary *r = track <= 2 ? M.rem_title : M.rem_race[(NSUInteger)(track - 3) % M.rem_race.count];
+    NSDictionary *r = c < 0 ? M.rem_title : M.rem_race[(NSUInteger)c % M.rem_race.count];
     M.rem_eq.globalGain = [r[@"gain_db"] floatValue];
     feed(M.rem, ST_REM, [M.dir[ST_REM] stringByAppendingPathComponent:r[@"file"]], 0,
          [r[@"loop_end"] longLongValue], [r[@"loop_start"] longLongValue], nil);
 }
 
-/* A cue starts both versions of it: the one not heard plays on at zero
- * gain, so a switch finds it where it would be. When the PC track has
- * ended and the game moves on (M.advancing), only the PC version changes
- * track; the N64 piece loops on regardless, as it does on the N64. */
+/* A request starts every version of it: the ones not heard play on at zero
+ * gain, so a switch finds them where they would be. The PC version plays
+ * the CD track asked for. The N64 and remastered pieces follow cue(), so
+ * they change only when what is on screen does: a CD track that ended, the
+ * jukebox, next/previous and the race's random pick leave them looping on,
+ * as on the N64. */
 static void play(int track)
 {
-    if (M.advancing) {
-        stop_cd();
-        M.track = track;
-        HLOG("music: play %d (PC moves on)\n", track);
+    int c = cue();
+    stop_cd();
+    M.track = track;
+    HLOG("music: play %d, piece %d (heard: %s)\n", track, c, M.soundtrack == ST_PC ? "PC" : "N64");
+    if (c != M.cue) {
+        stop_n64();
+        stop_rem();
+        M.paused = 0;
+        M.cue = c;
         if (M.silent) return;
         if (M.have[ST_PC]) play_cd(track);
-        if (M.paused) {                        /* the game asked for music: none is paused */
-            M.paused = 0;
-            [M.rec play];
-            [M.rem play];
+        if (M.have[ST_N64]) {
+            if (M.rec_title) play_rec(c);
+            else play_mod(c);
         }
+        if (M.have[ST_REM]) play_rem(c);
         return;
     }
-    stop();
-    M.track = track;
-    HLOG("music: play %d (heard: %s)\n", track, M.soundtrack == ST_PC ? "PC" : "N64");
     if (M.silent) return;
     if (M.have[ST_PC]) play_cd(track);
-    if (M.have[ST_N64]) {
-        if (M.rec_title) play_rec(track);
-        else play_mod(track);
+    if (M.paused) {                            /* the game asked for music: none is paused */
+        M.paused = 0;
+        [M.rec play];
+        [M.rem play];
     }
-    if (M.have[ST_REM]) play_rem(track);
 }
 
 static void pause_(void)
@@ -670,7 +695,6 @@ void nmusic_poll(void)
     e = atomic_exchange(&M.ended, 0);
     if (!e || e != atomic_load(&M.gen[ST_PC]) || !M.track) return;
     HLOG("music: track %d ended\n", M.track);
-    M.advancing = 1;
     if (GI(G_ENABLED) == 1) {
         /* MCI: the drive plays on through the disc, then notifies */
         if (M.track < GI(G_LAST)) play(M.track + 1);
@@ -679,7 +703,6 @@ void nmusic_poll(void)
         M.track = 0;
         w_icall__i(F_NEXTWRAP);
     }
-    M.advancing = 0;
 }
 
 /* ------------------------------------------------------- overrides -- */
@@ -850,13 +873,7 @@ u32 n_BrCdPause(void)
 u32 n_BrCdResume(void)
 {
     W_TRACE("n_BrCdResume");
-    if (GI(G_ENABLED) == 1) {
-        u32 r;
-        M.advancing = 1;
-        r = w_icall__i(F_TRACKRESUME);
-        M.advancing = 0;
-        return r;
-    }
+    if (GI(G_ENABLED) == 1) return w_icall__i(F_TRACKRESUME);
     if (active()) resume();
     return 1;
 }
