@@ -227,17 +227,21 @@ def main():
         b = re.sub(r'_sweep_[0-9A-F]{8}_\d+$', '', b)
         return src_of.get(b, b)
 
+    def placed_file(va):
+        # a certified function's @t3 tag names its file: authoritative
+        p = placements.get(va)
+        if p is None:
+            return file_of_va.get(va)
+        return (p[3] if len(p) > 3 and p[3] else
+                file_of_va.get(va) or src(p[2]))
+
     os.makedirs('build/wasm', exist_ok=True)
     with open('build/wasm/placement.csv', 'w', newline='') as f:
         w = csv.writer(f)
         w.writerow(['va', 'name', 'lane', 'src'])
         for va in sorted(placements):
-            p = placements[va]
-            name, lane, obj = p[:3]
-            # a certified function's @t3 tag names its file: authoritative
-            w.writerow(['0x%08X' % va, name, lane,
-                        (p[3] if len(p) > 3 and p[3] else
-                         file_of_va.get(va) or src(obj))])
+            name, lane = placements[va][:2]
+            w.writerow(['0x%08X' % va, name, lane, placed_file(va)])
     n_amb = 0
     with open('build/wasm/sites.csv', 'w', newline='') as f:
         w = csv.writer(f)
@@ -246,9 +250,12 @@ def main():
             if len(vs) != 1:
                 n_amb += 1
                 continue
-            # the file is the one owning the function the site sits in: obj
-            # basenames collide (audio/ and controls/ both have br_input.c)
-            f = file_of_va.get(site_fn.get((obj, sym, add))) or src(obj)
+            # the file is the one the placement gives the function the site
+            # sits in: obj basenames collide (audio/ and controls/ both have
+            # br_input.c), and a VA the reports list under a C draft as well
+            # as its certified C++ file (0x1004AEE0: br_seasonscreen.c and
+            # BrExt_10052030_1004AEE0.cpp) is the certified file's
+            f = placed_file(site_fn.get((obj, sym, add))) or src(obj)
             w.writerow([f, sym, undecorate(sym), add, '0x%08X' % next(iter(vs))])
     lanes = {}
     for _n, lane, *_o in placements.values():
