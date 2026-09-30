@@ -36,6 +36,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <unistd.h>
 
 #define W 640
 #define H 480
@@ -248,6 +249,17 @@ typedef struct { u32 start, end, fmt, large, small, aspect; __unsafe_unretained 
 static NSMutableArray *g_texobjs;     /* keeps the textures alive */
 static texent g_tex[512];
 static int g_ntex;
+
+/* Releases entry i. Its Remastered texture (fx_texture) is often the
+ * same object as t (a texture that already has its mips), and the entries
+ * are unretained: t is released once, and tm only when it is its own. */
+static void tex_drop(int i)
+{
+    id<MTLTexture> t = g_tex[i].t, tm = g_tex[i].tm;
+    g_tex[i].t = nil; g_tex[i].tm = nil;
+    if (tm && tm != t) [g_texobjs removeObjectIdenticalTo:tm];
+    if (t) [g_texobjs removeObjectIdenticalTo:t];
+}
 
 static const int LODW[9] = { 256, 128, 64, 32, 16, 8, 4, 2, 1 };
 static const int ASPX[7] = { 8, 4, 2, 1, 1, 1, 1 };
@@ -643,9 +655,28 @@ static id<MTLTexture> cur_texture(void)
                withBytes:px bytesPerRow:(NSUInteger)lw * 4];
         off += (u32)(lw * lh * fmt_bpp((int)S.tex_fmt));
     }
+    /* BR_TEXDUMP=dir: every texture the game uploads, once per distinct
+     * content (level 0 as a PPM named by its hash, format and size), for
+     * cataloguing what Remastered could replace */
+    if (getenv("BR_TEXDUMP")) {
+        u32 hsh = 2166136261u, k;
+        int lw0, lh0;
+        lod_dims((int)S.tex_large, (int)S.tex_aspect, &lw0, &lh0);
+        decode(g_tmem + S.tex_start, (int)S.tex_fmt, lw0, lh0, px);
+        for (k = 0; k < (u32)(lw0 * lh0); k++) hsh = (hsh ^ px[k]) * 16777619u;
+        {
+            char path[1024]; FILE *f;
+            snprintf(path, sizeof path, "%s/%08X_f%u_%dx%d.ppm", getenv("BR_TEXDUMP"), hsh, S.tex_fmt, lw0, lh0);
+            if (access(path, F_OK) != 0 && (f = fopen(path, "wb"))) {
+                fprintf(f, "P6\n%d %d\n255\n", lw0, lh0);
+                for (k = 0; k < (u32)(lw0 * lh0); k++) { u8 c3[3] = { (u8)px[k], (u8)(px[k] >> 8), (u8)(px[k] >> 16) }; fwrite(c3, 1, 3, f); }
+                fclose(f);
+            }
+        }
+    }
     free(px);
     for (i = 0; i < g_ntex && g_tex[i].t; i++) ;
-    if (i == 512) { i = rand() % 512; [g_texobjs removeObject:g_tex[i].t]; if (g_tex[i].tm) [g_texobjs removeObject:g_tex[i].tm]; }
+    if (i == 512) { i = rand() % 512; tex_drop(i); }
     if (i == g_ntex) g_ntex++;
     [g_texobjs addObject:t];
     g_tex[i] = (texent){ S.tex_start, S.tex_start + n, S.tex_fmt, S.tex_large, (u32)small, S.tex_aspect, t, nil };
@@ -771,9 +802,7 @@ void h_grTexDownloadMipMap(u32 tmu, u32 start, u32 eo, u32 info)
     /* anything decoded from the bytes just overwritten is stale */
     for (i = 0; i < g_ntex; i++)
         if (g_tex[i].t && g_tex[i].start < end && start < g_tex[i].end) {
-            [g_texobjs removeObject:g_tex[i].t];
-            if (g_tex[i].tm) [g_texobjs removeObject:g_tex[i].tm];
-            g_tex[i].t = nil; g_tex[i].tm = nil;
+            tex_drop(i);
         }
 }
 void h_grTexSource(u32 tmu, u32 start, u32 eo, u32 info)
@@ -903,8 +932,9 @@ static void draw(const void *v, int n, int clear, int kind)
     if (kind && U.use_tex && hfx_on()) { t = fx_texture(t); smp = fx_samp(); }
     { static long hide = -2; if (hide == -2) hide = getenv("BR_HIDETEX") ? atol(getenv("BR_HIDETEX")) : -1;
       if (hide >= 0 && U.use_tex && (long)S.tex_start == hide) return; }   /* debug: what a texture draws */
-    /* Remastered draws its own smoke, dust, spray and rain (host_fx.m) */
-    if (!clear && U.use_tex && S.tex_fmt == 2 && S.ab_rs == 1 && S.ab_rd == 5 && U.dmode && !S.dmask &&
+    /* Remastered draws its own smoke, dust, spray and rain (host_fx.m); the
+     * game's dust puffs are the same sprites with depth writes left on */
+    if (!clear && U.use_tex && S.tex_fmt == 2 && S.ab_rs == 1 && S.ab_rd == 5 && U.dmode && (!S.dmask || !kind) &&
         (U.cc_other == 1 || U.cc_other == 2) && !hfx_game_particles())
         return;
     { static int hc = -2; if (hc == -2) hc = getenv("BR_HIDECLASS") ? atoi(getenv("BR_HIDECLASS")) : -1;
