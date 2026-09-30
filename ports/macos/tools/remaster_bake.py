@@ -5,9 +5,9 @@ and textures.  Run by Blender:
     blender --background --python ports/macos/tools/remaster_bake.py -- \
         <raw.glb> <out_dir> <name> <target_tris> [crease_deg 45]
 
-Coincident vertices are welded, the model is Collapse-decimated, and its
-normals are recomputed smooth by angle (creases above crease_deg stay
-sharp): the same steps as the web project's validated Blender route.
+The model is Collapse-decimated and its normals are recomputed smooth by
+angle (creases above crease_deg stay sharp): the same steps as the web
+project's validated Blender route.
 Decimate is the only operation that changes the shape.  A source that was
 already remeshed to a polygon budget is lumpy at the triangle scale; the
 full-density source decimated here is not.  Nothing is unwrapped or
@@ -62,13 +62,9 @@ for o in bpy.context.scene.objects:
     o.select_set(False)
 obj.select_set(True)
 bpy.context.view_layer.objects.active = obj
-# weld coincident vertices first: the imported model is split at every seam of
-# its own UV layout, and Collapse would reduce each piece on its own; UVs are
-# stored per face corner, so they survive the weld
-bpy.ops.object.mode_set(mode="EDIT")
-bpy.ops.mesh.select_all(action="SELECT")
-bpy.ops.mesh.remove_doubles(threshold=1e-5)
-bpy.ops.object.mode_set(mode="OBJECT")
+# no weld: the validated route welds only meshes it re-bakes; welding lets
+# Collapse merge vertices across the texture's seams, which drags the texture
+# (measured: the tail lights warped at the 150k level)
 dm = obj.modifiers.new("dec", "DECIMATE")
 dm.decimate_type = "COLLAPSE"
 dm.ratio = min(1.0, target / max(1, src_tris))
