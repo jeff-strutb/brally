@@ -771,8 +771,8 @@ void hcar_draw(int slot)
         {
             float dx = C[12] - u.eye[0], dy = C[13] - u.eye[1], dz = C[14] - u.eye[2], dist = sqrtf(dx * dx + dy * dy + dz * dz);
             const char *f = getenv("BR_CAR_LOD");
-            /* the full model at the chase camera: below it decimation shows as ripples in the paint */
-            lod = !main ? 2 : dist < 28.0f ? 0 : dist < 60.0f ? 1 : 2;
+            /* subdivided and decimated (remaster_bake.py), 300k reflects as cleanly as 1M */
+            lod = !main ? 2 : dist < 5.0f ? 0 : dist < 28.0f ? 1 : 2;
             if (f) lod = atoi(f);
             if (lod >= g_nlod) lod = g_nlod - 1;
             if (lod < 0) lod = 0;

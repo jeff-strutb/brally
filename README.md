@@ -613,16 +613,14 @@ python3 ports/macos/tools/remaster_dent.py testdata/disc/cars/es.rca ports/commo
 ```
 
 Each level is made from the source's own `.blend` (a GLB import carries
-extra seams and normals that decimate into lumps), Collapse-decimated, not
-welded (welding lets it merge across the texture's seams and warps it), and
-given smooth-by-angle normals
-recomputed from its own surface (the kept vertices otherwise carry the full
-model's normals and shade as lumps); nothing else changes the shape, and
-the source's own UVs and textures go through unchanged.  The source's normal
-map is not used: it matches only the full-density surface. The model has window openings but no glass, so the last step
-makes the panes: it finds the openings by casting rays from the cabin's hull
-into the body, and fits tinted glass that reflects the scene into each one. `package_app.sh` copies the pack into the app; without it the
-Remastered renderer draws the original car.
+extra seams and normals that decimate into lumps): Collapse-decimated to a
+million triangles, given one level of Subdivision Surface, decimated again
+to the level's target, and given smooth-by-angle normals.  The subdivision
+rounds out the small facets a generated surface has, which a glossy clear
+coat otherwise shows as ripples; subdividing the full 3M-triangle source
+directly needs about 188 GB.  Nothing is welded (welding lets Collapse
+merge across the texture's seams and warps it), and the source's normal map
+is not used: it matches only the full-density surface.
 
 **Not there yet.**
 
