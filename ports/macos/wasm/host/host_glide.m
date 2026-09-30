@@ -120,12 +120,20 @@ static const char *SHADER =
 "  switch (f) { case 0: return false; case 1: return a < b; case 2: return a == b;\n"
 "  case 3: return a <= b; case 4: return a > b; case 5: return a != b; case 6: return a >= b;\n"
 "  default: return true; } }\n"
+"/* Glide's table fog: entry i sits at w = 2^(3+i/4) / (8 - i%4), so entries\n"
+"   4g..4g+3 fall in [2^g, 2^(g+1)); find the pair around w directly (the\n"
+"   same value the 64-step search gave) and blend them */\n"
+"float fogtw(int i) { return exp2(3.0 + float(i >> 2)) / float(8 - (i & 3)); }\n"
 "float fogof(constant GU &u, float w) {\n"
-"  if (w <= 1.0) return u.fogtab[0]; float prev = 0, pw = 1;\n"
-"  for (int i = 0; i < 64; i++) { float tw = exp2(3.0 + float(i >> 2)) / float(8 - (i & 3));\n"
-"    if (w <= tw) return prev + (u.fogtab[i] - prev) * (w - pw) / (tw - pw);\n"
-"    prev = u.fogtab[i]; pw = tw; }\n"
-"  return u.fogtab[63]; }\n"
+"  if (w <= 1.0) return u.fogtab[0];\n"
+"  int g = int(floor(log2(w))); float m = w / exp2(float(g));\n"
+"  int k = m > 1.6 ? 3 : m > 8.0 / 6.0 ? 2 : m > 8.0 / 7.0 ? 1 : 0;\n"
+"  int i = 4 * g + k + 1;\n"
+"  if (i > 1 && w <= fogtw(i - 1)) i--;                 /* float edge cases */\n"
+"  if (i < 63 && w > fogtw(i)) i++;\n"
+"  if (i > 63) return u.fogtab[63];\n"
+"  float pw = fogtw(i - 1), tw = fogtw(i), prev = u.fogtab[i - 1];\n"
+"  return prev + (u.fogtab[i] - prev) * (w - pw) / (tw - pw); }\n"
 "struct FO { float4 c [[color(0)]]; float4 n [[color(1)]]; float4 g [[color(2)]]; float d [[depth(any)]]; };\n"
 "/* The Voodoo's 16-bit W-buffer word: 4-bit exponent, 12-bit mantissa of\n"
 "   1/w as a .32 fraction.  Depth is stored and compared at this precision,\n"
@@ -177,19 +185,20 @@ static const char *SHADER =
 "  if (u.ac_inv) outc.a = 255 - outc.a;\n"
 "  outc = clamp(outc, 0.0, 255.0);\n"
 "  if (!cmpf(u.at_fn, floor(outc.a), float(u.at_ref))) discard_fragment();\n"
+"  float kf = 0;\n"
 "  if (u.fogmode & 1) {\n"
 "    float w = in.oow != 0 ? 1.0 / in.oow : 65535.0;\n"
-"    float k = fogof(u, w) / 255.0;\n"
-"    outc.rgb = mix(outc.rgb, u.fogcolor.rgb, k); }\n"
+"    kf = fogof(u, w) / 255.0;\n"
+"    outc.rgb = mix(outc.rgb, u.fogcolor.rgb, kf); }\n"
 "  o.c = outc / 255.0;\n"
 "  /* fx G-buffer (host_fx.m); the pipeline decides what reaches it */\n"
 "  if (vin.fl == 1.0) {\n"
-"    float3 nn = cross(dfdy(vin.wp), dfdx(vin.wp)); float kf = 0;\n"
-"    if (u.fogmode & 1) { float w = in.oow != 0 ? 1.0 / in.oow : 65535.0; kf = fogof(u, w) / 255.0; }\n"
+"    float3 nn = cross(dfdy(vin.wp), dfdx(vin.wp));\n"
 "    o.n = float4(length(nn) > 0 ? normalize(nn) : float3(0, 0, 1), 1); o.g = float4(vin.wp, 1.0 + 0.9 * kf);\n"
 "  } else if (vin.fl == 2.0) { o.n = float4(o.c.rgb, 1); o.g = float4(0, 0, 0, 3); }   /* the sky keeps its own colour, for host_fx.m */\n"
 "  else o.n = float4(0, 0, 0, o.c.a);   /* 2D: blended ones scale the scene coverage by 1 - a */\n"
 "  return o; }\n"
+"fragment FO fs_trivial(VO vin [[stage_in]]) { FO o; o.c = float4(0.5); o.n = 0; o.g = 0; o.d = 0.5; return o; }\n"
 "struct PO { float4 pos [[position]]; float2 uv; };\n"
 "vertex PO pvs(uint vid [[vertex_id]]) {\n"
 "  float2 p = float2((vid << 1) & 2, vid & 2); PO o;\n"
@@ -207,11 +216,13 @@ int hfx_game_particles(void);
 void hfx_jitter(float *jx, float *jy, int rw, int rh);
 static float g_jx, g_jy;
 void hfx_tick(void);
+void hfx_prof_attach(MTLRenderPassDescriptor *rp, const char *label);
 void hfx_shadow_batch(id<MTLBuffer> buf, size_t off, int n, id<MTLTexture> tex, id<MTLSamplerState> smp,
                       int at_fn, int at_ref, int use_tex, float su, float sv);
 id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture> col, id<MTLTexture> gn,
                        id<MTLTexture> gp, int w, int h, int origin_ll, const float *fogc);
 static id<MTLTexture> g_fxout;
+static unsigned g_st_passes;
 static unsigned g_swaps;
 unsigned hglide_swaps(void) { return g_swaps; }
 static id<MTLRenderPipelineState> g_present, g_blit;
@@ -408,7 +419,7 @@ static id<MTLRenderPipelineState> gpipe(int rs, int rd, int as, int ad, int noco
         MTLRenderPipelineDescriptor *d = [MTLRenderPipelineDescriptor new];
         MTLRenderPipelineColorAttachmentDescriptor *c;
         d.vertexFunction = [g_lib newFunctionWithName:kind == 2 ? @"vscn" : kind ? @"vsc" : @"vs"];
-        d.fragmentFunction = [g_lib newFunctionWithName:@"fs"];
+        d.fragmentFunction = [g_lib newFunctionWithName:(getenv("BR_EXP") && atoi(getenv("BR_EXP")) == 2) ? @"fs_trivial" : @"fs"];
         d.depthAttachmentPixelFormat = MTLPixelFormatDepth32Float;
         c = d.colorAttachments[0];
         c.pixelFormat = MTLPixelFormatRGBA8Unorm;
@@ -423,6 +434,8 @@ static id<MTLRenderPipelineState> gpipe(int rs, int rd, int as, int ad, int noco
          * 2D scales the scene coverage (normal.a) by 1 - its alpha */
         d.colorAttachments[1].pixelFormat = MTLPixelFormatRGBA16Float;
         d.colorAttachments[2].pixelFormat = MTLPixelFormatRGBA32Float;
+        if (getenv("BR_EXP") && atoi(getenv("BR_EXP")) == 1) {
+            d.colorAttachments[1].writeMask = MTLColorWriteMaskNone; d.colorAttachments[2].writeMask = MTLColorWriteMaskNone; }
         if (c.blendingEnabled) {
             d.colorAttachments[2].writeMask = MTLColorWriteMaskNone;
             if (kind) d.colorAttachments[1].writeMask = MTLColorWriteMaskNone;
@@ -504,6 +517,8 @@ static void begin_pass(void)
     rp.colorAttachments[1].clearColor = rp.colorAttachments[2].clearColor = MTLClearColorMake(0, 0, 0, 0);
     rp.colorAttachments[1].storeAction = rp.colorAttachments[2].storeAction = MTLStoreActionStore;
     g_fx_fresh = 0;
+    g_st_passes++;
+    hfx_prof_attach(rp, "game scene");
     g_enc = [g_cb renderCommandEncoderWithDescriptor:rp];
     [g_enc setViewport:(MTLViewport){ 0, 0, RW, RH, 0, 1 }];
 }
@@ -919,11 +934,12 @@ static void draw(const void *v, int n, int clear, int kind)
 
 /* A native mesh drawn in display-list order (host_car.m): the pending run is
  * drawn first, then the frame's encoder is handed over with what the mesh
- * needs to match the scene -- the clip window, the origin, the fog.  The
+ * needs to match the scene -- the clip window, the origin, the fog, the
+ * target's size (for the anti-aliasing jitter).  The
  * caller sets every piece of encoder state it uses and leaves the viewport
  * and cull mode as it found them; flush_batch sets the rest for the next run. */
 id<MTLRenderCommandEncoder> hglide_native_pass(id<MTLDevice> *dev, MTLScissorRect *sc, int *origin_ll,
-                                               int *fogmode, float *fogcolor, float *fogtab)
+                                               int *fogmode, float *fogcolor, float *fogtab, int *rw, int *rh)
 {
     begin_pass();
     flush_batch();
@@ -933,6 +949,7 @@ id<MTLRenderCommandEncoder> hglide_native_pass(id<MTLDevice> *dev, MTLScissorRec
     *fogmode = U.fogmode;
     memcpy(fogcolor, U.fogcolor, sizeof U.fogcolor);
     memcpy(fogtab, U.fogtab, sizeof U.fogtab);
+    *rw = RW; *rh = RH;
     return g_enc;
 }
 
@@ -1062,6 +1079,14 @@ void h_grBufferSwap(u32 interval)
             hframe_present(g_cb, d);
         }
     }
+    if (getenv("BR_GPUTIME")) {
+        [g_cb addCompletedHandler:^(id<MTLCommandBuffer> b) {
+            static double acc, mx; static int n;
+            double t = (b.GPUEndTime - b.GPUStartTime) * 1000.0;
+            acc += t; if (t > mx) mx = t;
+            if (++n == 240) { fprintf(stderr, "gputime: %.2f ms mean, %.2f max (240 frames)\n", acc / n, mx); acc = mx = 0; n = 0; }
+        }];
+    }
     [g_cb commit];
     g_cb = nil;
     size_targets();
@@ -1144,10 +1169,10 @@ static void glstat_swap(void)
     if (!g_st_on) return;
     if (++g_st_swaps % 60 == 0)
         { extern unsigned hdx_mouse_polls;
-          fprintf(stderr, "glstat: swap %u: tri %u culled %u poly %u draws %u mouse polls %u (last 60 swaps)\n",
-                  g_st_swaps, g_st_tri, g_st_cull, g_st_poly, g_st_draws, hdx_mouse_polls);
+          fprintf(stderr, "glstat: swap %u: tri %u culled %u poly %u draws %u passes %u mouse polls %u (last 60 swaps)\n",
+                  g_st_swaps, g_st_tri, g_st_cull, g_st_poly, g_st_draws, g_st_passes, hdx_mouse_polls);
           hdx_mouse_polls = 0; }
-    if (g_st_swaps % 60 == 0) g_st_tri = g_st_cull = g_st_poly = g_st_draws = 0;
+    if (g_st_swaps % 60 == 0) g_st_tri = g_st_cull = g_st_poly = g_st_draws = g_st_passes = 0;
 }
 
 void h_grDrawTriangle(u32 a, u32 b, u32 c)
