@@ -254,6 +254,7 @@ void happ_pump(int block_ms)
     NSDate *until;
     NSEvent *e;
     nmusic_poll();
+    nsound_poll();
     if (headless() || !g_window) {
         if (block_ms) usleep((useconds_t)block_ms * 1000);
         return;

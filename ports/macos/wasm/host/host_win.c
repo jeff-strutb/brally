@@ -798,7 +798,7 @@ u32 h_mciSendCommandA(u32 id, u32 msg, u32 p1, u32 p2)
 u32 h_acmMetrics(u32 o, u32 m, u32 p) { (void)o; (void)m; if (p) HW32(p, 0); return 0; }
 
 /* mmio: RIFF reading over the VFS */
-typedef struct { FILE *f; } hmmio;
+typedef struct { FILE *f; u32 buf; } hmmio;   /* buf: the I/O buffer, in game memory */
 static hmmio g_mmio[32];
 u32 h_mmioOpenA(u32 name, u32 info, u32 fl)
 {
@@ -812,7 +812,17 @@ u32 h_mmioOpenA(u32 name, u32 info, u32 fl)
     return g_mmio[i].f ? (u32)i : 0;
 }
 static FILE *mmf(u32 h) { return h < 32 ? g_mmio[h].f : NULL; }
-u32 h_mmioClose(u32 h, u32 fl) { (void)fl; if (mmf(h)) { fclose(g_mmio[h].f); g_mmio[h].f = NULL; } return 0; }
+u32 h_mmioClose(u32 h, u32 fl)
+{
+    (void)fl;
+    if (mmf(h)) {
+        fclose(g_mmio[h].f);
+        g_mmio[h].f = NULL;
+        if (g_mmio[h].buf) hmem_free(g_mmio[h].buf);
+        g_mmio[h].buf = 0;
+    }
+    return 0;
+}
 u32 h_mmioRead(u32 h, u32 buf, u32 n) { FILE *f = mmf(h); return f ? (u32)fread(W_P(buf), 1, n, f) : (u32)-1; }
 u32 h_mmioSeek(u32 h, u32 off, u32 org)
 {
@@ -820,12 +830,15 @@ u32 h_mmioSeek(u32 h, u32 off, u32 org)
     if (!f || fseek(f, (long)(s32)off, (int)org)) return (u32)-1;
     return (u32)ftell(f);
 }
-/* MMCKINFO: ckid, cksize, fccType, dwDataOffset, dwFlags */
+/* MMCKINFO: ckid, cksize, fccType, dwDataOffset, dwFlags. With none of
+ * MMIO_FINDCHUNK (0x10), FINDRIFF (0x20), FINDLIST (0x40) the next chunk is
+ * taken whatever it is: the caller's ckid/fccType are not read (BrWavLoad's
+ * RIFF descend passes them uninitialised). */
 u32 h_mmioDescend(u32 h, u32 ck, u32 parent, u32 fl)
 {
     FILE *f = mmf(h);
     u32 end = parent ? H32(parent + 12) + H32(parent + 4) : 0xFFFFFFFFu;
-    u32 want_id = H32(ck), want_type = H32(ck + 8);
+    u32 want_id = (fl & 0x70) ? H32(ck) : 0, want_type = (fl & 0x60) ? H32(ck + 8) : 0;
     if (!f) return 0x101;
     for (;;) {
         u8 hd[12];
@@ -864,6 +877,53 @@ u32 h_mmioAscend(u32 h, u32 ck, u32 fl)
     fseek(f, (long)(H32(ck + 12) + ((H32(ck + 4) + 1) & ~1u)), SEEK_SET);
     return 0;
 }
-u32 h_mmioGetInfo(u32 h, u32 info, u32 fl) { (void)h; (void)fl; memset(W_P(info), 0, 72); return 0; }
-u32 h_mmioSetInfo(u32 h, u32 info, u32 fl) { (void)h; (void)info; (void)fl; return 0; }
-u32 h_mmioAdvance(u32 h, u32 info, u32 fl) { (void)h; (void)info; (void)fl; return 0; }
+/* Direct access to the I/O buffer (BrWavReadData reads the samples this
+ * way). MMIOINFO: cchBuffer +20, pchBuffer +24, pchNext +28, pchEndRead
+ * +32, pchEndWrite +36, lBufOffset +40, lDiskOffset +44, hmmio +68. The
+ * buffer is handed out empty at the file's position; mmioAdvance fills it
+ * from there, and mmioSetInfo puts the file where the caller has read to,
+ * so the unbuffered calls (mmioRead, mmioAscend) carry on from the right
+ * place. */
+#define MMIO_BUFSZ 8192u
+u32 h_mmioGetInfo(u32 h, u32 info, u32 fl)
+{
+    FILE *f = mmf(h);
+    u32 pos;
+    (void)fl;
+    memset(W_P(info), 0, 72);
+    if (!f) return 5;                                             /* MMSYSERR_INVALHANDLE */
+    if (!g_mmio[h].buf) g_mmio[h].buf = hmem_alloc(MMIO_BUFSZ, 1);
+    pos = (u32)ftell(f);
+    HW32(info + 20, MMIO_BUFSZ);
+    HW32(info + 24, g_mmio[h].buf);
+    HW32(info + 28, g_mmio[h].buf);
+    HW32(info + 32, g_mmio[h].buf);
+    HW32(info + 36, g_mmio[h].buf + MMIO_BUFSZ);
+    HW32(info + 40, pos);
+    HW32(info + 44, pos);
+    HW32(info + 68, h);
+    return 0;
+}
+u32 h_mmioSetInfo(u32 h, u32 info, u32 fl)
+{
+    FILE *f = mmf(h);
+    (void)fl;
+    if (!f) return 5;
+    fseek(f, (long)(H32(info + 40) + (H32(info + 28) - H32(info + 24))), SEEK_SET);
+    return 0;
+}
+u32 h_mmioAdvance(u32 h, u32 info, u32 fl)
+{
+    FILE *f = mmf(h);
+    u32 pos, n;
+    (void)fl;
+    if (!f || !info) return 5;
+    pos = H32(info + 40) + (H32(info + 28) - H32(info + 24));    /* where the caller has read to */
+    fseek(f, (long)pos, SEEK_SET);
+    n = (u32)fread(W_P(H32(info + 24)), 1, H32(info + 20), f);
+    HW32(info + 28, H32(info + 24));
+    HW32(info + 32, H32(info + 24) + n);
+    HW32(info + 40, pos);
+    HW32(info + 44, pos + n);
+    return 0;
+}
