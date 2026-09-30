@@ -325,6 +325,14 @@ builds and the suites that need retail data skip with a reason.
 
 ## Mac port
 
+<p>
+<img src="docs/mac-port-coastline-original.png" width="49%" alt="Coastline at 83 mph in the Mac port with Original on: the game's own picture and its 1999 car model">
+<img src="docs/mac-port-coastline-remastered.png" width="49%" alt="The same moment with Remastered on: modern lighting, sun shadows and the high-detail model of the player's car">
+</p>
+
+*The same moment of a Quick Race on Coastline, Original (left) and
+Remastered (right): press ~ to switch between them live.*
+
 The game runs natively on macOS: an arm64 Mac app with a window, Metal
 rendering, and the Mac's keyboard, mouse and game controllers. It is rough but
 working. It boots through the splash and loading screens to the main menu, runs
