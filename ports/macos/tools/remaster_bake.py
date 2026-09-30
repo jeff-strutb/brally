@@ -78,8 +78,25 @@ bpy.context.view_layer.objects.active = obj
 # (measured: the tail lights warped at the 150k level)
 dm = obj.modifiers.new("dec", "DECIMATE")
 dm.decimate_type = "COLLAPSE"
-dm.ratio = min(1.0, target / max(1, src_tris))
+# with Subdivision Surface the body is decimated to 1M first: subdividing
+# the full 3M-triangle source needs about 188 GB (measured), and 1M
+# subdivided and decimated again reflects as cleanly
+pre = max(target, 1000000) if name == "body" and int(os.environ.get("SUBSURF", "1")) > 0 else target
+dm.ratio = min(1.0, pre / max(1, src_tris))
 bpy.ops.object.modifier_apply(modifier="dec")
+# Subdivision Surface, then back down to the target: Catmull-Clark rounds
+# out the generated surface's small facets, which a gloss shows as ripples
+subsurf = int(os.environ.get("SUBSURF", "1" if name == "body" else "0"))
+if subsurf > 0:
+    ss = obj.modifiers.new("ss", "SUBSURF"); ss.levels = subsurf; ss.render_levels = subsurf
+    bpy.ops.object.modifier_apply(modifier="ss")
+    bpy.ops.object.mode_set(mode="EDIT"); bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.mesh.quads_convert_to_tris(quad_method="BEAUTY", ngon_method="BEAUTY")
+    bpy.ops.object.mode_set(mode="OBJECT")
+    n = sum(len(p.vertices) - 2 for p in obj.data.polygons)
+    d2 = obj.modifiers.new("dec2", "DECIMATE"); d2.decimate_type = "COLLAPSE"; d2.ratio = min(1.0, target / max(1, n))
+    bpy.ops.object.modifier_apply(modifier="dec2")
+    print(f"SUBSURF level {subsurf}: {n} tris, decimated back to the target")
 # crease normals from the decimated surface (the validated route; nothing
 # else: welding or clearing normals made it worse, measured)
 bpy.ops.object.shade_smooth_by_angle(angle=math.radians(crease))
