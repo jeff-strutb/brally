@@ -110,10 +110,23 @@ void happ_key_script(u8 dik, u8 vk, int down)
 int happ_key_down(int vk) { return vk >= 0 && vk < 256 && g_vk[vk]; }
 void happ_dik_state(u8 *out) { memcpy(out, g_dik, 256); }
 
+/* Every key still down goes up, WM_KEYUP and all. Once the window is no
+ * longer key (Cmd-Tab, a click in another app) the releases go to whichever
+ * app is, and a key held across that stayed down for the game for good. */
+static void release_keys(void)
+{
+    size_t i;
+    for (i = 0; i < sizeof KEYMAP / sizeof KEYMAP[0]; i++)
+        if (g_dik[KEYMAP[i].dik]) set_key(KEYMAP[i].mac, 0);
+    memset(g_dik, 0, sizeof g_dik);
+    memset(g_vk, 0, sizeof g_vk);
+}
+
 @interface BRWinDelegate : NSObject <NSWindowDelegate>
 @end
 @implementation BRWinDelegate
 - (BOOL)windowShouldClose:(id)sender { (void)sender; g_happ_quit = 1; return NO; }
+- (void)windowDidResignKey:(NSNotification *)n { (void)n; release_keys(); }
 @end
 
 /* The game draws its own cursor, so over the game view the Mac cursor is
