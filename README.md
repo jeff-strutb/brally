@@ -553,8 +553,8 @@ other car are the same either way.
   car takes the same displacement, vertex for vertex, through a mapping
   `remaster_dent.py` makes, adds a finer crumple where it is dented, scuffs
   the paint through to primer and metal, and crazes the glass.
-- **Levels of detail and culling.** About a million triangles close up, 300
-  thousand at the chase camera, 20 thousand far away and in the mirror; a
+- **Levels of detail and culling.** About a million triangles out to 28 m (the
+  chase camera), 300 thousand to 60 m, 20 thousand beyond and in the mirror; a
   car out of view is not drawn, and only its outer faces are. Both cars
   cost about 1.3 ms of GPU a frame at 2560x1920.
 - **In the display list's order.** The game still builds the car's drawing
@@ -576,11 +576,11 @@ be decided). They live in `ports/common/models/es/`, which is ignored:
 Rebuilding the pack from the sources:
 
 ```bash
-blender --background --python ports/macos/tools/remaster_bake.py -- ports/common/models/es/source/body_raw.glb ports/common/models/es/decimated body 1000000
+blender --background --python ports/macos/tools/remaster_bake.py -- ports/common/models/es/source/body_raw.blend ports/common/models/es/decimated body 1000000
 ```
 
 ```bash
-blender --background --python ports/macos/tools/remaster_bake.py -- ports/common/models/es/source/wheel_raw.glb ports/common/models/es/decimated wheel 250000
+blender --background --python ports/macos/tools/remaster_bake.py -- ports/common/models/es/source/wheel_raw.blend ports/common/models/es/decimated wheel 250000
 ```
 
 The lower levels of detail are the same Blender step at lower targets, into
@@ -612,8 +612,10 @@ python3 ports/macos/tools/remaster_livery.py ports/common/models/es/pack
 python3 ports/macos/tools/remaster_dent.py testdata/disc/cars/es.rca ports/common/models/es/pack
 ```
 
-Each level is Collapse-decimated (not welded: welding lets it merge across
-the texture's seams, which warps the texture) and given smooth-by-angle normals
+Each level is made from the source's own `.blend` (a GLB import carries
+extra seams and normals that decimate into lumps), Collapse-decimated, not
+welded (welding lets it merge across the texture's seams and warps it), and
+given smooth-by-angle normals
 recomputed from its own surface (the kept vertices otherwise carry the full
 model's normals and shade as lumps); nothing else changes the shape, and
 the source's own UVs and textures go through unchanged.  The source's normal

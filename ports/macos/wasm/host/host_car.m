@@ -120,7 +120,8 @@ float3 sky_at(constant CU &u, float3 d) {
 float3 env_at(constant CU &u, texture2d<float> h, float3 wp, float3 R, float rough) {
   constexpr sampler hs(filter::linear, mip_filter::linear, address::clamp_to_edge);
   float3 sky = sky_at(u, R);
-  if (u.hist.x < 0.5) return sky;
+  if (u.hist.x < 0.5 || u.dbg.z > 0.5 && u.dbg.z < 1.5) return sky;
+  if (u.dbg.z > 1.5) rough = max(rough, 0.6);
   float t = R.z < -0.02 ? clamp((u.hist.w - wp.z) / R.z, 0.3, 400.0) : 400.0;
   float4 c = u.HP * float4(wp + R * t, 1);
   if (c.w <= 0.05) return sky;
@@ -743,6 +744,7 @@ void hcar_draw(int slot)
     memcpy(u.livf, g_livf, sizeof g_livf);
     memcpy(u.paint, r->ai ? g_paint_ai : g_paint, sizeof g_paint);   /* linear */
     if (getenv("BR_CAR_DEBUG")) u.dbg[0] = (float)atoi(getenv("BR_CAR_DEBUG"));
+    if (getenv("BR_CAR_ENV")) u.dbg[2] = (float)atoi(getenv("BR_CAR_ENV"));
 
     if (main) { memcpy(g_curP, u.P, sizeof g_curP); memcpy(g_curvpt, u.vpt, sizeof g_curvpt); g_curvalid = 1; g_horigin = origin_ll; }
     if (g_hvalid && g_hist) {
@@ -769,7 +771,8 @@ void hcar_draw(int slot)
         {
             float dx = C[12] - u.eye[0], dy = C[13] - u.eye[1], dz = C[14] - u.eye[2], dist = sqrtf(dx * dx + dy * dy + dz * dz);
             const char *f = getenv("BR_CAR_LOD");
-            lod = !main ? 2 : dist < 5.0f ? 0 : dist < 28.0f ? 1 : 2;
+            /* the full model at the chase camera: below it decimation shows as ripples in the paint */
+            lod = !main ? 2 : dist < 28.0f ? 0 : dist < 60.0f ? 1 : 2;
             if (f) lod = atoi(f);
             if (lod >= g_nlod) lod = g_nlod - 1;
             if (lod < 0) lod = 0;
