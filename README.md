@@ -553,7 +553,7 @@ other car are the same either way.
   car takes the same displacement, vertex for vertex, through a mapping
   `remaster_dent.py` makes, adds a finer crumple where it is dented, scuffs
   the paint through to primer and metal, and crazes the glass.
-- **Levels of detail and culling.** About a million triangles close up, 150
+- **Levels of detail and culling.** About a million triangles close up, 300
   thousand at the chase camera, 20 thousand far away and in the mirror; a
   car out of view is not drawn, and only its outer faces are. Both cars
   cost about 1.3 ms of GPU a frame at 2560x1920.
@@ -584,7 +584,7 @@ blender --background --python ports/macos/tools/remaster_bake.py -- ports/common
 ```
 
 The lower levels of detail are the same Blender step at lower targets, into
-`decimated/lod1` (body 150000, wheel 20000) and `decimated/lod2` (body 20000,
+`decimated/lod1` (body 300000, wheel 20000) and `decimated/lod2` (body 20000,
 wheel 3000). Then the pack, the windows at each level, the livery and the
 dent maps:
 
@@ -612,7 +612,8 @@ python3 ports/macos/tools/remaster_livery.py ports/common/models/es/pack
 python3 ports/macos/tools/remaster_dent.py testdata/disc/cars/es.rca ports/common/models/es/pack
 ```
 
-Each level is welded, Collapse-decimated and given smooth-by-angle normals
+Each level is Collapse-decimated (not welded: welding lets it merge across
+the texture's seams, which warps the texture) and given smooth-by-angle normals
 recomputed from its own surface (the kept vertices otherwise carry the full
 model's normals and shade as lumps); nothing else changes the shape, and
 the source's own UVs and textures go through unchanged.  The source's normal
