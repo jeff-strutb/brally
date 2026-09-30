@@ -537,7 +537,7 @@ static void begin_pass(void)
 
 /* The pending run of triangles that share every piece of state. */
 static struct {
-    int n, kind, shadow;
+    int n, kind, shadow, shonly;
     size_t off;
     id<MTLRenderPipelineState> pipe;
     id<MTLDepthStencilState> ds;
@@ -550,6 +550,7 @@ static unsigned g_st_draws;
 static void flush_batch(void)
 {
     if (!B.n) return;
+    if (B.shonly) goto shadow;
     [g_enc setRenderPipelineState:B.pipe];
     [g_enc setDepthStencilState:B.ds];
     [g_enc setScissorRect:B.sc];
@@ -558,6 +559,7 @@ static void flush_batch(void)
     [g_enc setFragmentTexture:B.tex atIndex:0];
     [g_enc setFragmentSamplerState:B.smp atIndex:0];
     [g_enc drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:(NSUInteger)B.n];
+shadow:
     if (B.shadow)
         hfx_shadow_batch(g_vbuf[g_vbi], B.off, B.n, B.tex, B.smp, B.u.at_fn, B.u.at_ref, B.u.use_tex, B.u.su, B.u.sv);
     B.n = 0;
@@ -897,6 +899,10 @@ static void pick(const gv *v, int n)
     }
 }
 
+/* Set while a triangle the camera does not see (hglide_tri_shadow) goes
+ * through draw(): it joins a run of its own that only the shadow map draws. */
+static int g_shonly;
+
 /* v: n corners of `kind` 0 (gv, screen space) or 1 (clip space, 10 floats
  * too).  Appended to the pending run when every piece of state matches. */
 static void draw(const void *v, int n, int clear, int kind)
@@ -907,6 +913,7 @@ static void draw(const void *v, int n, int clear, int kind)
     id<MTLDepthStencilState> ds;
     id<MTLSamplerState> smp;
     MTLScissorRect sc;
+    if (g_shonly && !(kind == 1 && S.ab_rs == 4 && S.ab_rd == 0 && S.dmask && U.dmode)) return;
     if (!clear && !kind) pick((const gv *)v, n);
     begin_pass();
     if (g_voff + bytes + 256 > (16u << 20)) {
@@ -949,11 +956,11 @@ static void draw(const void *v, int n, int clear, int kind)
         if (i == ns && ns < 256) { strcpy(seen[ns++], k); fprintf(stderr, "drawstat: swap %u n %d %s\n", g_swaps, n, k); }
     }
     sc = scissor_rect();
-    if (B.n && (B.kind != kind || B.pipe != pipe || B.ds != ds || B.tex != t || B.smp != smp ||
+    if (B.n && (B.shonly != g_shonly || B.kind != kind || B.pipe != pipe || B.ds != ds || B.tex != t || B.smp != smp ||
                 memcmp(&B.sc, &sc, sizeof sc) || memcmp(&B.u, &U, sizeof U)))
         flush_batch();
     if (!B.n) {
-        B.off = g_voff; B.kind = kind; B.pipe = pipe; B.ds = ds; B.tex = t; B.smp = smp;
+        B.off = g_voff; B.shonly = g_shonly; B.kind = kind; B.pipe = pipe; B.ds = ds; B.tex = t; B.smp = smp;
         B.shadow = kind == 1 && S.ab_rs == 4 && S.ab_rd == 0 && S.dmask && U.dmode && hfx_on();
         B.sc = sc; B.u = U;
     }
@@ -1239,6 +1246,29 @@ void h_grDrawTriangle(u32 a, u32 b, u32 c)
  * eye, so a triangle through the near plane culls as the original's clipped
  * polygon did).  `noz`: the corners came from a no-Z vertex routine, which
  * sets 1/w to 1/65535 for the card (see vscn). */
+/* A triangle the camera does not draw -- outside the view (native/render.m's
+ * trivial reject) or facing away from it -- can still stand between the sun
+ * and what the camera sees.  Remastered's shadow map takes it; the frame does
+ * not.  Without this a shadow is cut to the caster's on-screen, camera-facing
+ * triangles: it pops in as the caster comes into view, and its edge follows
+ * the triangles that happen to be culled. */
+void hglide_tri_shadow(const float *a, const float *b, const float *c)
+{
+    const float *p[3] = { a, b, c };
+    float v[3][14];
+    int i;
+    static int camonly = -1;          /* BR_FX_SHCAM=1: the camera's triangles only, as before */
+    if (camonly < 0) camonly = getenv("BR_FX_SHCAM") != NULL;
+    if (camonly || !hfx_on()) return;
+    for (i = 0; i < 3; i++) {
+        memset(v[i], 0, 4 * sizeof(float));
+        memcpy(&v[i][4], &p[i][4], 10 * sizeof(float));
+    }
+    g_shonly = 1;
+    draw(v, 3, 0, 1);
+    g_shonly = 0;
+}
+
 void hglide_tri_h(const float *a, const float *b, const float *c, int noz)
 {
     const float *p[3] = { a, b, c };
@@ -1247,7 +1277,11 @@ void hglide_tri_h(const float *a, const float *b, const float *c, int noz)
     det = a[0] * (b[1] * c[3] - c[1] * b[3]) - b[0] * (a[1] * c[3] - c[1] * a[3]) +
           c[0] * (a[1] * b[3] - b[1] * a[3]);
     g_st_tri++;
-    if (det == 0 || (S.cull == 1 && det < 0) || (S.cull == 2 && det > 0)) { g_st_cull++; return; }
+    if (det == 0 || (S.cull == 1 && det < 0) || (S.cull == 2 && det > 0)) {
+        g_st_cull++;
+        if (!noz) hglide_tri_shadow(a, b, c);   /* facing away from the camera, not from the sun */
+        return;
+    }
     if (a[3] > 0 && b[3] > 0 && c[3] > 0) {     /* BR_PICK sees them in screen space */
         gv g[3];
         for (i = 0; i < 3; i++) {

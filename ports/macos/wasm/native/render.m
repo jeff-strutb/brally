@@ -26,6 +26,7 @@
 #include "w2c_native.h"
 
 void hglide_tri_h(const float *a, const float *b, const float *c, int noz);
+void hglide_tri_shadow(const float *a, const float *b, const float *c);
 void hfx_set_cam(const float *P, float sx, float tx, float sy, float ty);
 int hfx_on(void);
 unsigned hglide_swaps(void);
@@ -142,13 +143,15 @@ static void tri(u32 ia, u32 ib, u32 ic, int flat, int noz)
 {
     u32 a = POOL + ia * VSZ, b = POOL + ib * VSZ, c = POOL + ic * VSZ;
     float va[14], vb[14], vc[14];
-    if (W_LD(s32, a + V_OUTCODE, 0) & W_LD(s32, b + V_OUTCODE, 0) & W_LD(s32, c + V_OUTCODE, 0))
+    int out = W_LD(s32, a + V_OUTCODE, 0) & W_LD(s32, b + V_OUTCODE, 0) & W_LD(s32, c + V_OUTCODE, 0);
+    if (out && (noz || !hfx_on()))
         return;                          /* all outside one plane */
     if (hfx_on()) fx_camera(noz); else g_cur_main = 0;
     corner(va, a, a);
     corner(vb, b, flat ? a : b);
     corner(vc, c, flat ? a : c);
-    hglide_tri_h(va, vb, vc, noz);
+    if (out) hglide_tri_shadow(va, vb, vc);   /* off screen, but it may shade what is on it */
+    else hglide_tri_h(va, vb, vc, noz);
 }
 
 #define B(p, i) W_LD(u8, (p) + (i), 0)
