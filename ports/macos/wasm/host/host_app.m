@@ -70,12 +70,15 @@ static const struct { u16 mac; u8 dik; u8 vk; } KEYMAP[] = {
     { 0x5D, 0x7D, 0x00 }, { 0x68, 0x70, 0x15 },                          /* JIS yen, kana */
 };
 
+static double g_down_at[256];          /* by scan code: when the key went down */
+
 static void set_key(u16 mac, int down)
 {
     size_t i;
     for (i = 0; i < sizeof KEYMAP / sizeof KEYMAP[0]; i++)
         if (KEYMAP[i].mac == mac) {
             int was = g_dik[KEYMAP[i].dik] != 0;
+            if (down && !was) g_down_at[KEYMAP[i].dik] = CFAbsoluteTimeGetCurrent();
             g_dik[KEYMAP[i].dik] = down ? 0x80 : 0;
             g_vk[KEYMAP[i].vk] = (u8)down;
             if (hwin_main_hwnd() && down != was) {
@@ -120,6 +123,26 @@ static void release_keys(void)
         if (g_dik[KEYMAP[i].dik]) set_key(KEYMAP[i].mac, 0);
     memset(g_dik, 0, sizeof g_dik);
     memset(g_vk, 0, sizeof g_vk);
+}
+
+/* A key the game holds but the keyboard no longer does goes up.  The
+ * release can be swallowed while the window stays key: the screenshot
+ * shortcut's crosshair (Cmd-Shift-4) takes the keyboard from over the game,
+ * and the releases of keys held through it never arrive (a key held in the
+ * race stayed down for good).  The keyboard's own state needs no permission to read.  A key only
+ * just pressed is left alone, so a tap shorter than a frame still reaches
+ * the game; a script's keys are posted events, not the keyboard's. */
+static void reconcile_keys(void)
+{
+    static int scripted = -1;
+    double now = CFAbsoluteTimeGetCurrent();
+    size_t i;
+    if (scripted < 0) scripted = getenv("BR_SCRIPT") != NULL;
+    if (scripted) return;
+    for (i = 0; i < sizeof KEYMAP / sizeof KEYMAP[0]; i++)
+        if (g_dik[KEYMAP[i].dik] && now - g_down_at[KEYMAP[i].dik] > 0.1 &&
+            !CGEventSourceKeyState(kCGEventSourceStateHIDSystemState, KEYMAP[i].mac))
+            set_key(KEYMAP[i].mac, 0);
 }
 
 @interface BRWinDelegate : NSObject <NSWindowDelegate>
@@ -314,6 +337,7 @@ void happ_pump(int block_ms)
             [NSApp sendEvent:e];
             until = [NSDate distantPast];
         }
+        reconcile_keys();
     }
 }
 

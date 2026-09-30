@@ -98,32 +98,38 @@ NSWindow *happ_window(void);
 
 #define FADE_S 0.5                    /* the version crossfade, seconds */
 
-enum { ST_PC = HV_PC, ST_N64 = HV_N64 };
+enum { ST_PC = HV_PC, ST_N64 = HV_N64, ST_REM, NST };
+int hfx_on(void);
 
 static struct {
     int init, silent;
-    int have[2];
+    int have[NST];
     int cd_last;                      /* highest CD track number on disc */
-    NSString *dir[2];
+    NSString *dir[NST];
     NSString *title;
     NSArray<NSString *> *race;
     NSDictionary *rec_title;          /* the recordings, when all are present */
     NSArray<NSDictionary *> *rec_race;
     float rec_gain_db;
+    NSDictionary *rem_title;          /* the remastered soundtrack (ports/common/music) */
+    NSArray<NSDictionary *> *rem_race;
+    int remastered;                   /* heard over either version while Remastered is on (~) */
     int soundtrack;                   /* the version heard: native/version.m's */
     int track;                        /* the CD track number playing, 0 none */
     int paused;
     int advancing;                    /* the PC track ended: only it moves on */
     float volume;
     AVAudioEngine *engine;
-    AVAudioMixerNode *mix[2];         /* each version's submix, crossfaded */
+    AVAudioMixerNode *mix[NST];       /* each source's submix, crossfaded */
     AVAudioPlayerNode *cd;
     AVAudioSourceNode *mod_node;
     AVAudioUnitEffect *limiter;
     AVAudioPlayerNode *rec;
     AVAudioUnitEQ *rec_eq;
+    AVAudioPlayerNode *rem;
+    AVAudioUnitEQ *rem_eq;
     AVAudioFormat *fmt;               /* the output device's rate: every source's */
-    atomic_uint gen[2], ended;        /* per version: a stale callback is ignored */
+    atomic_uint gen[NST], ended;      /* per source: a stale callback is ignored */
     os_unfair_lock lock;              /* guards mod against the render thread */
     openmpt_module *mod;
 } M = { .lock = OS_UNFAIR_LOCK_INIT, .volume = 1.0f };
@@ -134,41 +140,57 @@ static struct {
  * It runs on its own queue at 4 ms steps (a fifth of a render buffer or
  * less), so the game's frame loop can neither stall nor step it; a Tab in
  * the middle of a fade just turns it round from where it is. */
+/* The remastered soundtrack fades the same way on its own axis y: 0 is
+ * the version Tab picked, 1 the remastered one, whichever version is under
+ * it; the three gains keep the sum equal-power throughout. */
 static struct {
     dispatch_queue_t q;
     dispatch_source_t timer;
-    double x, last;
-    int target;
+    double x, y, last;
+    int target, ytarget;
 } X;
 
 static void fade_apply(void)
 {
-    M.mix[ST_PC].outputVolume = (float)cos(X.x * M_PI_2);
-    M.mix[ST_N64].outputVolume = (float)sin(X.x * M_PI_2);
+    double under = cos(X.y * M_PI_2);
+    M.mix[ST_PC].outputVolume = (float)(cos(X.x * M_PI_2) * under);
+    M.mix[ST_N64].outputVolume = (float)(sin(X.x * M_PI_2) * under);
+    if (M.mix[ST_REM]) M.mix[ST_REM].outputVolume = (float)sin(X.y * M_PI_2);
 }
 
-static void fade(int v, int now)
+static double fade_step(double v, int target, double d)
+{
+    return target ? fmin(v + d, 1) : fmax(v - d, 0);
+}
+
+static void fade_to(int v, int y, int now)
 {
     dispatch_async(X.q, ^{
-        X.target = v;
-        if (now) X.x = v;
+        X.target = v; X.ytarget = y;
+        if (now) { X.x = v; X.y = y; }
         fade_apply();
-        if (now || X.timer || X.x == v) return;
+        if (now || X.timer || (X.x == v && X.y == y)) return;
         X.last = CACurrentMediaTime();
         X.timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, X.q);
         dispatch_source_set_timer(X.timer, DISPATCH_TIME_NOW, 4 * NSEC_PER_MSEC, NSEC_PER_MSEC);
         dispatch_source_set_event_handler(X.timer, ^{
             double t = CACurrentMediaTime(), d = (t - X.last) / FADE_S;
             X.last = t;
-            X.x = X.target ? fmin(X.x + d, 1) : fmax(X.x - d, 0);
+            X.x = fade_step(X.x, X.target, d);
+            X.y = fade_step(X.y, X.ytarget, d);
             fade_apply();
-            if (X.x == X.target) {
+            if (X.x == X.target && X.y == X.ytarget) {
                 dispatch_source_cancel(X.timer);
                 X.timer = nil;
             }
         });
         dispatch_resume(X.timer);
     });
+}
+
+static void fade(int v, int now)
+{
+    fade_to(v, M.remastered && M.have[ST_REM], now);
 }
 
 static void play(int track);
@@ -219,13 +241,32 @@ static void music_init(void)
             }
         }
     }
+    {
+        /* the remastered soundtrack: the app's music/remastered, or the tree's ports/common/music */
+        NSString *d = [root stringByAppendingPathComponent:@"remastered"];
+        NSDictionary *r;
+        NSData *j;
+        if (![fm fileExistsAtPath:[d stringByAppendingPathComponent:@"remastered.json"]])
+            d = [@(getenv("BR_ROOT") ? getenv("BR_ROOT") : ".") stringByAppendingPathComponent:@"ports/common/music"];
+        M.dir[ST_REM] = d;
+        j = [NSData dataWithContentsOfFile:[d stringByAppendingPathComponent:@"remastered.json"]];
+        r = j ? [NSJSONSerialization JSONObjectWithData:j options:0 error:nil] : nil;
+        if (r && [r[@"race"] count] > 0) {
+            int ok = 1;
+            for (NSDictionary *x in [@[r[@"title"]] arrayByAddingObjectsFromArray:r[@"race"]])
+                ok = ok && [fm fileExistsAtPath:[d stringByAppendingPathComponent:x[@"file"]]];
+            if (ok) { M.rem_title = r[@"title"]; M.rem_race = r[@"race"]; M.have[ST_REM] = 1; }
+        }
+    }
     M.soundtrack = hversion();
-    fprintf(stderr, "music: %s; PC %s (tracks 2-%d), N64 %s; playing %s\n", root.UTF8String,
+    M.remastered = hfx_on();
+    fprintf(stderr, "music: %s; PC %s (tracks 2-%d), N64 %s, remastered %s; playing %s\n", root.UTF8String,
             M.have[ST_PC] ? "yes" : "no", M.cd_last,
             !M.have[ST_N64] ? "no" : M.rec_title ? "yes (recordings)" : "yes (modules)",
-            M.soundtrack == ST_PC ? "PC" : "N64");
+            M.have[ST_REM] ? "yes" : "no",
+            M.remastered && M.have[ST_REM] ? "remastered" : M.soundtrack == ST_PC ? "PC" : "N64");
 
-    M.silent = !happ_window() || (e && !atoi(e)) || !(M.have[0] || M.have[1]);
+    M.silent = !happ_window() || (e && !atoi(e)) || !(M.have[0] || M.have[1] || M.have[ST_REM]);
     if (M.silent) return;
     M.engine = [AVAudioEngine new];
     /* Everything runs at the output device's rate, so the engine converts
@@ -235,7 +276,7 @@ static void music_init(void)
      * feed() below; the modules render at this rate directly. */
     M.fmt = [[AVAudioFormat alloc] initStandardFormatWithSampleRate:
                [M.engine.outputNode outputFormatForBus:0].sampleRate channels:2];
-    for (t = 0; t < 2; t++) {
+    for (t = 0; t < NST; t++) {
         M.mix[t] = [AVAudioMixerNode new];
         [M.engine attachNode:M.mix[t]];
         [M.engine connect:M.mix[t] to:M.engine.mainMixerNode format:M.fmt];
@@ -270,6 +311,14 @@ static void music_init(void)
         [M.engine attachNode:M.rec_eq];
         [M.engine connect:M.rec to:M.rec_eq format:M.fmt];
         [M.engine connect:M.rec_eq to:M.mix[ST_N64] format:M.fmt];
+    }
+    if (M.have[ST_REM]) {
+        M.rem = [AVAudioPlayerNode new];
+        M.rem_eq = [[AVAudioUnitEQ alloc] initWithNumberOfBands:0];
+        [M.engine attachNode:M.rem];
+        [M.engine attachNode:M.rem_eq];
+        [M.engine connect:M.rem to:M.rem_eq format:M.fmt];
+        [M.engine connect:M.rem_eq to:M.mix[ST_REM] format:M.fmt];
     }
     M.engine.mainMixerNode.outputVolume = M.volume;
     X.q = dispatch_queue_create("music.fade", DISPATCH_QUEUE_SERIAL);
@@ -338,11 +387,18 @@ static void stop_n64(void)
     mod_set(NULL);
 }
 
+static void stop_rem(void)
+{
+    atomic_fetch_add(&M.gen[ST_REM], 1);
+    if (!M.silent) [M.rem stop];
+}
+
 static void stop(void)
 {
     if (M.track) HLOG("music: stop %d\n", M.track);
     stop_cd();
     stop_n64();
+    stop_rem();
     M.track = 0;
     M.paused = 0;
 }
@@ -480,6 +536,16 @@ static void play_rec(int track)
     feed(M.rec, ST_N64, p, from, e, s, nil);
 }
 
+/* The remastered piece for a cue, looped like the recordings; its gain
+ * levels it with the CD tracks. */
+static void play_rem(int track)
+{
+    NSDictionary *r = track <= 2 ? M.rem_title : M.rem_race[(NSUInteger)(track - 3) % M.rem_race.count];
+    M.rem_eq.globalGain = [r[@"gain_db"] floatValue];
+    feed(M.rem, ST_REM, [M.dir[ST_REM] stringByAppendingPathComponent:r[@"file"]], 0,
+         [r[@"loop_end"] longLongValue], [r[@"loop_start"] longLongValue], nil);
+}
+
 /* A cue starts both versions of it: the one not heard plays on at zero
  * gain, so a switch finds it where it would be. When the PC track has
  * ended and the game moves on (M.advancing), only the PC version changes
@@ -495,6 +561,7 @@ static void play(int track)
         if (M.paused) {                        /* the game asked for music: none is paused */
             M.paused = 0;
             [M.rec play];
+            [M.rem play];
         }
         return;
     }
@@ -507,6 +574,7 @@ static void play(int track)
         if (M.rec_title) play_rec(track);
         else play_mod(track);
     }
+    if (M.have[ST_REM]) play_rem(track);
 }
 
 static void pause_(void)
@@ -514,7 +582,7 @@ static void pause_(void)
     if (!M.track || M.paused) return;
     M.paused = 1;
     HLOG("music: pause %d\n", M.track);
-    if (!M.silent) { [M.cd pause]; [M.rec pause]; }
+    if (!M.silent) { [M.cd pause]; [M.rec pause]; [M.rem pause]; }
 }
 
 static void resume(void)
@@ -525,6 +593,7 @@ static void resume(void)
     if (M.silent) return;
     [M.cd play];
     [M.rec play];
+    [M.rem play];
 }
 
 /* native/version.m: Tab. The other version fades in where it has got to. */
@@ -548,6 +617,17 @@ void nmusic_version(int v)
     fade(v, 0);
 }
 
+/* host_fx.m: ~. While Remastered is on the remastered soundtrack is heard
+ * whichever version Tab has picked; off, that version is heard as before. */
+void nmusic_remastered(int on)
+{
+    M.remastered = on;
+    if (!M.init || M.silent) return;
+    if (on && !M.have[ST_REM]) fprintf(stderr, "music: no remastered soundtrack in %s\n", M.dir[ST_REM].UTF8String);
+    HLOG("music: remastered %s\n", on ? "on" : "off");
+    fade(M.soundtrack, 0);
+}
+
 static int active(void)
 {
     return GI(G_ENABLED) && GI(G_PLAYING) && GI(G_MEDIAOK);
@@ -569,8 +649,8 @@ static void media_open(void)
  * pieces loop), and they end whichever version is heard. */
 /* The game makes no music call when a race ends (no caller of the CD
  * module in the original runs on the way out), so on Windows the race's
- * CD track played on under the menus, and the N64 pieces, which loop,
- * would never end. Leaving the race activity cues the title
+ * CD track played on under the menus, and the N64 and remastered pieces,
+ * which loop, would never end. Leaving the race activity cues the title
  * piece, as Top Gear Rally does on the N64: through BrCdTrackPlay(2), the
  * game's own call at boot (BrBootInit), so its track state follows. */
 static void race_left(void)

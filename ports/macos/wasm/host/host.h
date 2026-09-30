@@ -55,6 +55,7 @@ void happ_frame(void);              /* host_script.c: one BrAppFrame entry */
 void hglide_shot(const char *path); /* host_glide.m: the frame so far, as PPM */
 void nmusic_poll(void);             /* native/music.m: a track that ended */
 void nmusic_version(int v);         /* native/music.m: the other soundtrack */
+void nmusic_remastered(int on);     /* native/music.m: Remastered (~) on or off */
 int nsound_open(void);              /* native/sound.m: start the effects mixer, 1 if one runs */
 void nsound_poll(void);             /* native/sound.m: focus, and a headless recording's progress */
 void hdx_sfx_render(float *l, float *r, u32 n, double rate);   /* host_dx.c: the effects mix */
