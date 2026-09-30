@@ -19,6 +19,7 @@ Outputs:
   body.rcm, wheel.rcm   vertices {pos3 nrm3 uv2 tan4} f32 + u32 indices
   proxy.rcm             the body clustered to a few thousand triangles, for
                         the sun's shadow map
+  glass.rcm             the windows (see glass())
   <mesh>_base.png       base colour; the body's alpha marks painted surfaces
   <mesh>_orm.png        occlusion, roughness, metal
   <mesh>_normal.png     tangent-space normals (OpenGL convention)
@@ -121,6 +122,72 @@ def hubs(V, UV, base):
     return out
 
 
+def lamps(V, UV, base):
+    """Where the lamps are (car frame): the headlights are the bright,
+    colourless texels at the front, the tail lights the red ones at the back,
+    each side's middle.  Order: front-left, front-right, rear-left, rear-right."""
+    img = np.asarray(base.convert('RGB').resize((2048, 2048)), float) / 255
+    c = img[np.clip((UV[:, 1] % 1 * 2047).astype(int), 0, 2047), np.clip((UV[:, 0] % 1 * 2047).astype(int), 0, 2047)]
+    mx, mn = c.max(1), c.min(1)
+    lo, hi = V.min(0), V.max(0)
+    white = (mx > 0.65) & (mx - mn < 0.12)
+    red = (c[:, 0] > 0.45) & (c[:, 1] < 0.3) & (c[:, 2] < 0.3)
+    out = []
+    for sel, front in ((white, True), (red, False)):
+        zone = V[:, 0] > hi[0] - 0.35 if front else V[:, 0] < lo[0] + 0.35
+        for side in (1, -1):
+            m = sel & zone & (np.sign(V[:, 1]) == side) & (np.abs(V[:, 1]) > 0.2)
+            if m.sum() < 20:
+                raise SystemExit(f"no {'head' if front else 'tail'} light found on side {side}")
+            P = V[m]
+            # the outermost cluster along x (the lamp face, not glass behind it)
+            k = np.argmax(P[:, 0]) if front else np.argmin(P[:, 0])
+            P = P[np.abs(P[:, 0] - P[k, 0]) < 0.12]
+            out.append(np.median(P, axis=0))
+    return out
+
+
+def glass(V, belt, x0, x1, ymax, inset):
+    """The windows.  The body has openings but no glass, and its surface is
+    shell fragments (no clean window outlines to fill).  A 1990s greenhouse is
+    near enough convex, so the glass is the convex hull of the body above the
+    beltline (wing and mirrors left out by the x and y limits), less the faces
+    on the cut or facing down, set `inset` metres inside the body: where roof
+    and pillars are, the body covers it; where the openings are, it is the
+    pane.  Normals are smoothed except across creases (the pillars)."""
+    from scipy.spatial import ConvexHull
+    m = (V[:, 2] > belt) & (V[:, 0] > x0) & (V[:, 0] < x1) & (np.abs(V[:, 1]) < ymax)
+    P = V[m]
+    h = ConvexHull(P)
+    used = np.unique(h.simplices)
+    remap = -np.ones(len(P), int); remap[used] = np.arange(len(used))
+    Q = P[used]; F = remap[h.simplices]
+    c = Q.mean(0)
+    fn = np.cross(Q[F[:, 1]] - Q[F[:, 0]], Q[F[:, 2]] - Q[F[:, 0]])
+    flip = (fn * (Q[F].mean(1) - c)).sum(1) < 0            # wind outward
+    F[flip] = F[flip][:, ::-1]; fn[flip] *= -1
+    fn /= np.linalg.norm(fn, axis=1, keepdims=True) + 1e-12
+    # no faces on the cut or facing down, and none as flat as the roof: the
+    # raked windscreen and rear window are steeper, and a hull face over the
+    # roof would show through where the roof dips below it
+    keep = (fn[:, 2] > -0.2) & (fn[:, 2] < 0.9) & ~(np.abs(Q[F][:, :, 2] - belt).max(1) < 0.03)
+    F, fn = F[keep], fn[keep]
+    # split vertices per face, then smooth across neighbours within 35 degrees
+    V3 = Q[F].reshape(-1, 3); N3 = np.repeat(fn, 3, axis=0); ids = F.reshape(-1)
+    Ns = np.zeros_like(N3)
+    order = np.argsort(ids); sid = ids[order]
+    bounds = np.searchsorted(sid, np.arange(len(Q) + 1))
+    for k in range(len(Q)):
+        grp = order[bounds[k]:bounds[k + 1]]
+        if not len(grp): continue
+        n = N3[grp]
+        sim = (n @ n.T) > np.cos(np.radians(35))
+        Ns[grp] = sim.astype(float) @ n
+    Ns /= np.linalg.norm(Ns, axis=1, keepdims=True) + 1e-12
+    V3 = V3 - Ns * inset
+    return V3, Ns, np.arange(len(V3)).reshape(-1, 3)
+
+
 def cluster(V, F, cell):
     q = np.floor(V / cell).astype(np.int64)
     key, inv = np.unique(q, axis=0, return_inverse=True); inv = inv.reshape(-1)
@@ -167,6 +234,10 @@ def main():
     ap.add_argument('--wheel-radius', type=float, default=0.33)
     ap.add_argument('--wheel-width', type=float, default=0.26)
     ap.add_argument('--paint', default='0.02,0.2,0.06', help='linear rgb')
+    ap.add_argument('--belt', type=float, default=0.72, help='beltline height: the glass starts above it')
+    ap.add_argument('--glass-x', type=float, nargs=2, default=(-1.58, 0.98), help='the greenhouse, rear to front (the wing is behind it)')
+    ap.add_argument('--glass-ymax', type=float, default=0.84, help='half-width limit (the mirrors are outside it)')
+    ap.add_argument('--glass-inset', type=float, default=0.02, help='how far inside the body the panes sit')
     ap.add_argument('--top-from', type=float, default=0.42, help='height the top ribbon starts at')
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
@@ -187,11 +258,17 @@ def main():
     for k, c in sorted(H.items()):
         print('hub', k, np.round(c * s + shift, 3))
     write_rcm(os.path.join(a.out, 'body.rcm'), V, N, UV, T, F)
+    L = lamps(V, UV, base)
+    for n, q in zip(('head left', 'head right', 'tail left', 'tail right'), L):
+        print('lamp', n, np.round(q, 3))
     rgba(stem(a.body) + '_base.png', os.path.join(a.out, 'body_base.png'), paint_mask(base))
     orm(stem(a.body) + '_mr.png', os.path.join(a.out, 'body_orm.png'))
     rgba(stem(a.body) + '_normal.png', os.path.join(a.out, 'body_normal.png'))
     bl, bh = V.min(0), V.max(0)
     print(f'body {len(F)} tris, extent x {bl[0]:.3f}..{bh[0]:.3f} y {bl[1]:.3f}..{bh[1]:.3f} z {bl[2]:.3f}..{bh[2]:.3f}')
+    Vg, Ng, Fg = glass(V, a.belt, a.glass_x[0], a.glass_x[1], a.glass_ymax, a.glass_inset)
+    write_rcm(os.path.join(a.out, 'glass.rcm'), Vg, Ng, np.zeros((len(Vg), 2)), np.zeros((len(Vg), 4)), Fg)
+    print(f'glass {len(Fg)} tris, beltline z {a.belt}')
     P, G = cluster(V, F, 0.08)
     write_rcm(os.path.join(a.out, 'proxy.rcm'), P, np.zeros_like(P), np.zeros((len(P), 2)), np.zeros((len(P), 4)), G)
     print(f'proxy {len(G)} tris')
@@ -225,6 +302,7 @@ def main():
         f.write(f'livery_side {x0:.4f} {xl:.4f} {z0:.4f} {zh:.4f}\n')
         f.write(f'livery_top {y0:.4f} {yw:.4f} {a.top_from:.3f} {a.top_from + 0.1:.3f}\n')
         f.write('wheel_flip 1\n')
+        f.write('lamps ' + ' '.join(f'{v:.4f}' for q in L for v in q) + '\n')
 
 
 if __name__ == '__main__':
