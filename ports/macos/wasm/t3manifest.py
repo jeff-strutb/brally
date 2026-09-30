@@ -39,6 +39,15 @@ placements = {}     # va -> (name, lane, obj)
 cands = {}          # va -> {name: obj}, every compile that yielded the VA
 site_fn = {}        # site key -> VA of a function it came from
 sites = {}          # (obj, symbol, addend) -> set(va)
+# (va, placed bytes) -> [(obj, symbol, addend, target)]: the slots of every
+# body any compile yielded.  The build tries several compiles per function
+# (variants, both lanes) and config/reloc_overrides.csv rows are keyed by
+# function offset, so in a compile the build did NOT place a row's offset can
+# sit on a different symbol: BrCarDrawVehicle's variants bound BrG_6C335C to
+# the ambient's blue byte and g_BrDrawByte80 to the light's, the port kept
+# whichever row sorted last, and every car was lit orange.  Only the slots of
+# the body actually placed are answers.
+cand_sites = {}
 _lane = ['T4']
 
 
@@ -87,13 +96,16 @@ def recording(objs, fnmap, glmap, only=None, **kw):
             except Exception:
                 d = None
             if d is not None:
-                record_sites(obj, d, secs, syms, relocs, va, name, code, only)
+                cand_sites[(va, bytes(code))] = record_sites(
+                    obj, d, secs, syms, relocs, va, name, code, only)
         placements[va] = (name, _lane[0], obj)
         cands.setdefault(va, {})[name] = obj
         yield va, name, code, unres, fromref
 
 
 def record_sites(obj, d, secs, syms, relocs, va, name, code, only):
+    """The resolved slots of one compiled body: [(obj, symbol, addend, va)]."""
+    out = []
     byidx = {s['idx']: s for s in syms}
     pre = ib.PREAMBLES.get('0x%08x' % va, b'')
     plen = len(pre)
@@ -135,9 +147,9 @@ def record_sites(obj, d, secs, syms, relocs, va, name, code, only):
             # ambiguous, so the port dropped it (g_brTexScanSrcSeen).
             if not (0x10000000 <= got < 0x11A00000):
                 continue
-            sites.setdefault((obj, t['name'], addend), set()).add(got)
-            site_fn[(obj, t['name'], addend)] = va
-        return
+            out.append((obj, t['name'], addend, got))
+        return out
+    return out
 
 
 ib.compiled_functions = recording
@@ -163,6 +175,34 @@ def main():
     fa, _annex = t3b._force_annex(annex)
     for va, entry in fa.items():
         placements.setdefault(va, (entry[0], 'T4', None))
+
+    # the slots of the bodies placed, as the placements above rank them
+    placed_code = {va: e[1] for va, e in t4_best.items()}
+    placed_code.update((va, e[1]) for va, e in fa.items() if va not in placed_code)
+    placed_code.update((va, e[1]) for va, e in t3_best.items())
+    by_va = {}
+    for (va, _c), rec in cand_sites.items():
+        by_va.setdefault(va, []).append(rec)
+    n_annex = n_nosites = 0
+    for va, code in placed_code.items():
+        rec = cand_sites.get((va, bytes(code)))
+        if rec is not None:
+            recs = [rec]
+        else:
+            # An annexed body: the VA holds a jmp thunk and the annex builds
+            # the body from the placement's object itself, so no compile
+            # matches the placed bytes.  That object's compiles are the answer.
+            obj = placements[va][2]
+            recs = [r for r in by_va.get(va, []) if r and r[0][0] == obj]
+            if recs:
+                n_annex += 1
+            else:
+                n_nosites += 1
+                continue
+        for rec in recs:
+            for obj, sym, add, got in rec:
+                sites.setdefault((obj, sym, add), set()).add(got)
+                site_fn[(obj, sym, add)] = va
 
     # obj -> source file
     src_of = {}
@@ -214,9 +254,10 @@ def main():
     for _n, lane, *_o in placements.values():
         lanes[lane] = lanes.get(lane, 0) + 1
     print('t3manifest: %d functions placed (%s), %d resolved slots '
-          '(%d ambiguous dropped)' % (
+          '(%d ambiguous dropped); slots from %d annexed bodies\' objects, '
+          '%d placed bodies with no recorded compile' % (
               len(placements), ', '.join('%s %d' % kv for kv in sorted(lanes.items())),
-              len(sites) - n_amb, n_amb))
+              len(sites) - n_amb, n_amb, n_annex, n_nosites))
 
 
 if __name__ == '__main__':
