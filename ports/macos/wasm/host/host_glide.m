@@ -203,12 +203,15 @@ static id<MTLLibrary> g_lib;
 static id<MTLTexture> g_color, g_depth, g_white, g_gn, g_gp;
 static int g_fx_fresh = 1;
 int hfx_on(void);
+int hfx_game_particles(void);
 void hfx_tick(void);
 void hfx_shadow_batch(id<MTLBuffer> buf, size_t off, int n, id<MTLTexture> tex, id<MTLSamplerState> smp,
                       int at_fn, int at_ref, int use_tex, float su, float sv);
 id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture> col, id<MTLTexture> gn,
                        id<MTLTexture> gp, int w, int h, int origin_ll, const float *fogc);
 static id<MTLTexture> g_fxout;
+static unsigned g_swaps;
+unsigned hglide_swaps(void) { return g_swaps; }
 static id<MTLRenderPipelineState> g_present, g_blit;
 static id<MTLCommandBuffer> g_cb;
 static id<MTLRenderCommandEncoder> g_enc;
@@ -881,6 +884,23 @@ static void draw(const void *v, int n, int clear, int kind)
     ds = clear ? dss(1, 7, 1) : dss(U.dmode != 0, S.dfunc, S.dmask);
     smp = samp();
     if (kind && U.use_tex && hfx_on()) { t = fx_texture(t); smp = fx_samp(); }
+    { static long hide = -2; if (hide == -2) hide = getenv("BR_HIDETEX") ? atol(getenv("BR_HIDETEX")) : -1;
+      if (hide >= 0 && U.use_tex && (long)S.tex_start == hide) return; }   /* debug: what a texture draws */
+    /* Remastered draws its own smoke, dust, spray and rain (host_fx.m) */
+    if (!clear && U.use_tex && S.tex_fmt == 2 && S.ab_rs == 1 && S.ab_rd == 5 && U.dmode && !S.dmask &&
+        (U.cc_other == 1 || U.cc_other == 2) && !hfx_game_particles())
+        return;
+    { static int hc = -2; if (hc == -2) hc = getenv("BR_HIDECLASS") ? atoi(getenv("BR_HIDECLASS")) : -1;
+      if (hc >= 0 && !clear && U.use_tex && S.tex_fmt == 2 && S.ab_rs == 1 && S.ab_rd == 5 &&
+          ((hc == 0 && !kind && U.cc_other == 2) || (hc == 1 && kind && U.cc_other == 2) || (hc == 2 && kind && U.cc_other == 1)))
+          return; }
+    if (getenv("BR_DRAWSTAT") && !clear) {     /* blended draw census */
+        static char seen[256][96]; static int ns; char k[96]; int i;
+        snprintf(k, sizeof k, "kind %d tex %u fmt %u use %d ab %d %d dm %d mask %d cc %d %d %d %d", kind, U.use_tex ? S.tex_start : 0, S.tex_fmt,
+                 U.use_tex, S.ab_rs, S.ab_rd, U.dmode, S.dmask, U.cc_func, U.cc_fact, U.cc_local, U.cc_other);
+        for (i = 0; i < ns && strcmp(seen[i], k); i++) ;
+        if (i == ns && ns < 256) { strcpy(seen[ns++], k); fprintf(stderr, "drawstat: swap %u n %d %s\n", g_swaps, n, k); }
+    }
     sc = scissor_rect();
     if (B.n && (B.kind != kind || B.pipe != pipe || B.ds != ds || B.tex != t || B.smp != smp ||
                 memcmp(&B.sc, &sc, sizeof sc) || memcmp(&B.u, &U, sizeof U)))
@@ -990,8 +1010,6 @@ __attribute__((weak)) void hframe_present(id<MTLCommandBuffer> cb, id<CAMetalDra
 {
     [cb presentDrawable:d];
 }
-static unsigned g_swaps;
-unsigned hglide_swaps(void) { return g_swaps; }
 void h_grBufferSwap(u32 interval)
 {
     CAMetalLayer *l;
