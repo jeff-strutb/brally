@@ -47,18 +47,28 @@ struct CV { float x, y, z, w, r, g, b, a, s, t, wx, wy, wz, fl; };
 struct FXU {
   float4x4 vp, ivp, svp;
   float4 eye, sun, sunc, skyc, grnd, fogc, vpt, scr, p0, p1, p2, p3, p4, flash, wb, nsky, sk2, tm, wx;
-  float4x4 pvp; float4 jit; float4x4 svp2; float4 csm; float4 mat; float4 matmean[6];
+  float4x4 pvp; float4 jit; float4x4 svp2; float4 csm; float4 mat; float4 matmean[6]; float4 rmap;
 };
 /* headlights: up to 32 spot lights (two per car); misc = count, beam
    strength, light intensity, air density */
 struct HL { float4 p[32]; float4 d[32]; float4 col; float4 misc;
   float4 g[64]; float4 gd[64]; float4 gmisc; };   /* g: lamp position, w 0 head / 1 tail; gd: facing */
 /* how much of headlight i reaches point x, and the direction to it */
+/* a low-beam pattern, not a round spot: the hot spot just below the
+   horizon, a sharp cutoff above it, little light straight down in front of
+   the car, a wide spread to the sides; intensity falls with the square of
+   the distance.  hl.d is the lamp's level forward direction. */
 float spotw(constant HL &hl, int i, float3 x, thread float3 &Ld) {
   float3 Lv = hl.p[i].xyz - x; float d = length(Lv); Ld = Lv / max(d, 1e-3);
-  float cd = dot(-Ld, hl.d[i].xyz);
-  float spot = smoothstep(0.86, 0.975, cd) + 0.25 * smoothstep(0.6, 0.9, cd);
-  return spot / (1.0 + d * d * 0.012) * smoothstep(90.0, 35.0, d); }
+  float3 dir = -Ld;
+  float below = -dir.z;                                  /* sine of the angle under the horizon */
+  float2 fh = normalize(hl.d[i].xy + float2(1e-5, 0)), dh = normalize(dir.xy + float2(1e-5, 0));
+  float ch = dot(fh, dh) * step(0.0, dot(dir, hl.d[i].xyz));
+  float iv = smoothstep(-0.03, 0.0, below)                 /* the cutoff */
+           * mix(0.012, 1.0, exp(-pow(max(below - 0.015, 0.0) / 0.05, 2.0)));
+  float ih = smoothstep(0.82, 0.97, ch) + 0.3 * smoothstep(0.45, 0.85, ch);
+  return 50.0 * iv * ih / (d * d + 0.5) * smoothstep(140.0, 70.0, d); }
+struct MVC { float4 cur[16][4]; float4 prev[16][4]; float4 misc; };   /* rows 0-2 + position; box in misc */
 struct SHU { int at_fn, at_ref, use_tex, pad; float su, sv, pad2, pad3; float4x4 svp; };
 struct QO { float4 pos [[position]]; float2 uv; };
 vertex QO fsq(uint vid [[vertex_id]]) {
@@ -316,6 +326,29 @@ float3 pano(constant FXU &u, texture2d<float> sky, float3 vd, float lv = 0.0) {
 float3 skylight(constant FXU &u, texture2d<float> sky, float3 d) {
   if (u.tm.z > 0.0) return pano(u, sky, d);
   return u.sk2.x > 0.5 ? atmos(u, d) : air(u, d); }
+/* the game's colour averaged over two rings (7 and 20 pixels) round a ground
+   pixel, from the samples on the same surface only: a car, a sign or a post
+   in front must not darken the average, or the ground beside it reads as a
+   painted marking and keeps its old texture, a pale rim round everything */
+float3 ring_same_surface(constant FXU &u, texture2d<float> col, texture2d<float> gp, texture2d<float> gn,
+                         float2 uv, float2 px, float3 wp, float3 N) {
+  float d0 = distance(u.eye.xyz, wp), tol = 0.06 * d0 + 0.3;
+  float3 acc = 0; float n = 0;
+  for (int k = 0; k < 16; k++) {
+    float a = float(k >> 1) * 0.785398 + ((k & 1) ? 0.39 : 0.0);
+    float2 q = uv + float2(cos(a), sin(a)) * px * ((k & 1) ? 2.9 : 1.0);
+    float4 Q = gp.sample(ns, q);
+    if (!is_geo(Q.w) || abs(distance(u.eye.xyz, Q.xyz) - d0) > tol) continue;
+    if (dot(onormal(gn.sample(ns, q).xyz, Q.xyz, u.eye.xyz), N) < 0.8) continue;   /* a wall or post standing on it */
+    acc += col.sample(ls, q).rgb; n += 1.0; }
+  return n > 0.0 ? acc / n : col.sample(ns, uv).rgb; }
+/* at half resolution: the average is wide and smooth, it loses nothing */
+fragment float4 ringfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]], texture2d<float> col [[texture(0)]],
+                       texture2d<float> gp [[texture(1)]], texture2d<float> gn [[texture(2)]]) {
+  float4 P = gp.sample(ns, in.uv);
+  if (!is_geo(P.w)) return col.sample(ns, in.uv);
+  float3 N = onormal(gn.sample(ns, in.uv).xyz, P.xyz, u.eye.xyz);
+  return float4(ring_same_surface(u, col, gp, gn, in.uv, 7.0 / float2(col.get_width(), col.get_height()), P.xyz, N), 1); }
 fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
                        texture2d<float> gn [[texture(0)]], texture2d<float> gp [[texture(1)]],
                        texture2d<float> col [[texture(2)]], depth2d<float> sm [[texture(3)]],
@@ -323,7 +356,8 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
                        texture2d<float> sky [[texture(6)]], texture2d<float> trk [[texture(7)]],
                        depth2d<float> sm2 [[texture(8)]], texture2d<float> gsm [[texture(9)]],
                        texture2d_array<float> matA [[texture(10)]], texture2d_array<float> matN [[texture(11)]],
-                       constant HL &hl [[buffer(1)]]) {
+                       texture2d<float> ring [[texture(12)]], texture2d<float> rmap [[texture(13)]],
+                       constant HL &hl [[buffer(1)]], constant MVC &mv [[buffer(2)]]) {
   float4 C = col.sample(ns, in.uv), P = gp.sample(ns, in.uv), G = gn.sample(ns, in.uv);
   if (int(u.p3.y) == 15)                             /* debug: the G-buffer's class (red car, green lit, blue sky) */
     return float4(P.w > 3.5 && P.w < 4.5, P.w > 0.5 && P.w < 2.5, P.w > 2.5 && P.w < 3.5, 1) * (0.4 + 0.6 * dot(pow(C.rgb, 2.2), 0.33));
@@ -335,15 +369,60 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
     float sh = u.sun.w > 0 ? shadow_at(u, sm, wp, N, in.pos.xy, sm2) : 1.0;
     float k = saturate(dot(N, u.sun.xyz) * 4.0) * (1.0 - sh);
     float3 o = lin * 4.0 * (1.0 - 0.6 * k);
-    /* rain on the car: drops landing on its upper surfaces, a bright pop that
-       fades, and beads standing on the paint catching the sky */
+    /* rain on the car, in the car's own frame so it rides with it: beads
+       standing on the paint (little lenses: the paint darker under them, a
+       rim, the sky and a spark of light in them), drips running down the
+       sides, and on the upper panels the small crowns of drops landing */
     if (u.wx.x > 0.0) {
-      float3 q = wp * 26.0, cc = floor(q), f = fract(q) - 0.5;
-      float h = hash3(cc), ph = fract(u.tm.x * 1.6 + h * 9.0), top = saturate(N.z * 1.8 - 0.2);
-      float3 R = reflect(-normalize(u.eye.xyz - wp), N);
-      float pop = step(h, 0.22 * u.wx.x) * smoothstep(0.42, 0.08, length(f)) * pow(1.0 - ph, 5.0) * top;
-      float bead = step(hash3(cc + 11.0), 0.3 * u.wx.x) * smoothstep(0.3, 0.12, length(f)) * top;
-      o += air(u, R) * (pop * 1.4 + bead * 0.35); }
+      int ci = -1;
+      for (int i = 0; i < int(mv.misc.x); i++) {
+        float3 d = wp - mv.cur[i][3].xyz;
+        float3 l = float3(dot(d, mv.cur[i][0].xyz), dot(d, mv.cur[i][1].xyz), dot(d, mv.cur[i][2].xyz));
+        if (abs(l.x) < 2.8 && abs(l.y) < 1.4 && l.z > -1.2 && l.z < 2.0) { ci = i; break; } }
+      if (ci >= 0) {
+        float3 F = mv.cur[ci][0].xyz, Lf = mv.cur[ci][1].xyz, Up = mv.cur[ci][2].xyz, d = wp - mv.cur[ci][3].xyz;
+        float3 l = float3(dot(d, F), dot(d, Lf), dot(d, Up)), nl = float3(dot(N, F), dot(N, Lf), dot(N, Up));
+        float3 an = abs(nl);
+        /* the panel's plane: top, side or end */
+        float2 q; float3 Ta, Tb; float side;
+        if (an.z >= an.x && an.z >= an.y) { q = l.xy; Ta = F; Tb = Lf; side = 0.0; }
+        else if (an.y >= an.x) { q = float2(l.x, l.z); Ta = F; Tb = Up; side = 1.0; }
+        else { q = float2(l.y, l.z); Ta = Lf; Tb = Up; side = 1.0; }
+        float wet = u.wx.x, t = u.tm.x;
+        const float S = 0.02;                                  /* 2 cm cells */
+        float2 g = q / S;
+        /* on the sides a share of the columns run: the beads slide down */
+        float colh = hash2(float2(floor(g.x), 3.7));
+        float run = side * step(0.72, colh);
+        g.y += run * t * (1.5 + 3.0 * colh) / S * 0.02;
+        float2 cell = floor(g), f = fract(g) - 0.5;
+        float h1 = hash2(cell), h2 = hash2(cell + 5.3), h3 = hash2(cell + 9.1);
+        float2 c0 = (float2(h2, h3) - 0.5) * 0.5;
+        float2 df = f - c0;
+        if (run > 0.0) df.y *= 0.45;                           /* a drip is drawn out down its path */
+        float rad = mix(0.18, 0.4, h3) * (side > 0.5 ? 0.85 : 1.0);
+        float r = length(df) / rad;
+        float bead = step(h1, 0.42 * wet) * step(r, 1.0) * saturate(dot(nl, float3(0, 0, 1)) + 0.9);
+        float3 Vv = normalize(u.eye.xyz - wp);
+        if (bead > 0.0) {
+          /* the bead's surface: a lens over the panel */
+          float2 sl = df / rad;
+          float3 Nb = normalize(N * sqrt(max(1.0 - dot(sl, sl), 0.02)) + (Ta * sl.x + Tb * sl.y) * 0.9);
+          float3 Rb = reflect(-Vv, Nb);
+          float Fb = 0.04 + 0.96 * pow(1.0 - saturate(dot(Nb, Vv)), 5.0);
+          float3 Hb = normalize(u.sun.xyz + Vv);
+          float spark = pow(saturate(dot(Nb, Hb)), 400.0) * 8.0 * u.sun.w;
+          float rim = smoothstep(0.55, 1.0, r);
+          o *= mix(0.82, 0.6, rim);                            /* the paint seen through it, and its dark edge */
+          o += (skylight(u, sky, Rb) * u.p4.w * Fb * 1.6 + u.sunc.rgb * spark) * bead; }
+        /* drops landing: a thin ring spreading for a tenth of a second */
+        if (side < 0.5) {
+          float2 gi = q / 0.06, ic = floor(gi), fi = fract(gi) - 0.5;
+          float hi = hash2(ic + 17.0), ph = fract(t * 2.5 + hi * 7.0);
+          float2 io = (float2(hash2(ic + 2.0), hash2(ic + 4.0)) - 0.5) * 0.6;
+          float rr = length(fi - io), R = ph * 0.45;
+          float ring = step(hi, 0.5 * wet) * exp(-pow((rr - R) / 0.03, 2.0)) * (1.0 - ph) * step(ph, 0.35);
+          o += skylight(u, sky, reflect(-Vv, N)) * u.p4.w * ring * 0.5; } } }
     if (any(isnan(o)) || any(isinf(o))) o = lin;
     return float4(o, G.a); }
   if (P.w > 2.5 && int(u.p3.y) == 11) return float4(0, 0, 1, G.a);
@@ -489,11 +568,7 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
     const float3 lw = float3(0.2126, 0.7152, 0.0722);
     /* two rings, 7 and 20 pixels: wide enough that the old textures' colour
        speckle averages out of the classification */
-    float2 px = 7.0 / float2(col.get_width(), col.get_height());
-    float3 cbl = 0;
-    for (int k = 0; k < 8; k++) { float a = float(k) * 0.785398; cbl += col.sample(ls, in.uv + float2(cos(a), sin(a)) * px).rgb;
-                                  cbl += col.sample(ls, in.uv + float2(cos(a + 0.39), sin(a + 0.39)) * px * 2.9).rgb; }
-    cbl /= 16.0;
+    float3 cbl = ring.sample(ns, in.uv).rgb;
     float mx = max(cbl.r, max(cbl.g, cbl.b)), mn = min(cbl.r, min(cbl.g, cbl.b));
     float sat = (mx - mn) / max(mx, 0.05);
     float grey = 1.0 - smoothstep(0.14, 0.26, sat);
@@ -502,15 +577,32 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
     float flat = smoothstep(0.6, 0.85, N.z), steep = 1.0 - flat;
     float dist = distance(u.eye.xyz, wp), fade = 1.0 - smoothstep(140.0, 300.0, dist);
     float snowg = u.wx.z;
+    /* the road from the track's own collision surfaces (the road map), in
+       every weather; where there is no map, from the colour as before */
+    float rm = -1.0, redge = 0.0;
+    if (u.rmap.z > 0.0) {
+      float2 ru = (wp.xy - u.rmap.xy) * u.rmap.zw;
+      float r0 = rmap.sample(ls, ru).r;
+      if (r0 > 0.002) {
+        rm = smoothstep(0.3, 0.7, r0);
+        float re = 0.0;
+        for (int k = 0; k < 4; k++) { float a = float(k) * 1.5708 + 0.4; re += rmap.sample(ls, ru + float2(cos(a), sin(a)) * 2.5 * u.rmap.zw).r; }
+        redge = 1.0 - saturate(re * 0.25); } }
+    bool hasmap = rm >= 0.0;
+    float rd = hasmap ? rm : grey;
+    /* a race road in snow is ploughed: asphalt, with packed snow along its
+       edges and in drifts across it; the rest lies under snow */
+    float snowroad = snowg * saturate(redge * 1.4 + (fbm(wp.xy * 0.3) - 0.62) * 1.8);
+    float offroad = hasmap ? 1.0 - rm : 1.0;
     float w[6];
-    w[0] = flat * grey * (1.0 - snowg);                                   /* asphalt */
-    w[1] = flat * green * (1.0 - snowg);                                  /* grass */
-    w[2] = flat * warm * step(0.45, mx) * (1.0 - snowg);                  /* sand (bright) */
-    w[3] = flat * warm * (1.0 - step(0.45, mx)) * (1.0 - snowg);          /* gravel (darker) */
+    w[0] = flat * rd * (1.0 - (hasmap ? snowroad : snowg));               /* asphalt */
+    w[1] = flat * green * (1.0 - snowg) * offroad;                        /* grass */
+    w[2] = flat * warm * step(0.45, mx) * (1.0 - snowg) * offroad;        /* sand (bright) */
+    w[3] = flat * warm * (1.0 - step(0.45, mx)) * (1.0 - snowg) * offroad; /* gravel (darker) */
     /* rock: natural slopes only (earthy or green); buildings, walls and
        banners are painted or plastered and keep the game's own texture */
     w[4] = steep * saturate(warm + green) * smoothstep(0.1, 0.25, N.z);
-    w[5] = flat * snowg;                                                  /* snow */
+    w[5] = flat * (hasmap ? mix(snowg, snowroad, rm) : snowg);           /* snow */
     float ws = 0; for (int m = 0; m < 6; m++) ws += w[m];
     if (ws > 1.0) for (int m = 0; m < 6; m++) w[m] /= ws;
     ws = min(ws, 1.0) * fade;
@@ -525,7 +617,8 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
     float3 tx = saturate(C.rgb);
     float paint = (1.0 - smoothstep(0.12, 0.25, (max(tx.r, max(tx.g, tx.b)) - min(tx.r, min(tx.g, tx.b))) / max(tx.r + tx.g, 0.05) * 2.0))
                 + smoothstep(0.1, 0.25, min(tx.r, tx.g) - tx.b);
-    float mark = smoothstep(1.4, 1.9, y / max(yb, 1e-3)) * w[0] * saturate(paint);
+    float mark = smoothstep(1.4, 1.9, y / max(yb, 1e-3)) * w[0] * saturate(paint)
+               * (hasmap ? 1.0 - snowg : 1.0);        /* in snow the game's road is white streaks, not paint */
     /* parallax occlusion: the dominant material's height map, marched along
        the view ray in its tangent space, shifts every map's lookup so stones,
        cracks and ridges stand up at grazing angles; then a short march toward
@@ -555,9 +648,15 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
       float4 n1 = matN.sample(ms, uv1, m), n2 = matN.sample(ms, uv2, m);
       float3 c = pow(mix(c1.rgb, c2.rgb, 0.35), 2.2);
       float4 n = mix(n1, n2, 0.35);
-      /* asphalt takes the game's brightness but not its purple cast */
-      float3 tn = m == 0 ? float3(dot(tone, lw)) * float3(0.97, 1.0, 1.03) : tone;
-      ma += w[m] * tn * c / max(u.matmean[m].rgb, 0.02);
+      /* asphalt takes the game's brightness but not its purple cast (in
+         snow the game paints the road white: there it is dark wet tarmac);
+         rock and snow take the game's colour and only their relief from the
+         scan -- the scanned snow lies over grass, the scanned rock is gold */
+      float cl = dot(c, lw) / max(dot(u.matmean[m].rgb, lw), 0.02);
+      if (m == 0) ma += w[m] * float3(mix(dot(tone, lw), 0.075, hasmap ? snowg : 0.0)) * float3(0.97, 1.0, 1.03) * c / max(u.matmean[m].rgb, 0.02);
+      else if (m == 4) ma += w[m] * tone * cl;
+      else if (m == 5) ma += w[m] * float3(0.84, 0.87, 0.93) * mix(0.9, 1.05, saturate(cl));
+      else ma += w[m] * tone * c / max(u.matmean[m].rgb, 0.02);
       mnrm += w[m] * float3(n.xy * 2.0 - 1.0, 0.0);
       mr += w[m] * n.z; mao += w[m] * n.w; wt += w[m]; }
     if (wt > 0.0) {
@@ -580,10 +679,7 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
      markings (texels well above it), and lay a world-space asphalt over it:
      patches, fine grain and aggregate */
   if (!matdone) { const float3 lw = float3(0.2126, 0.7152, 0.0722);
-    float2 px = 7.0 / float2(col.get_width(), col.get_height());
-    float3 cbl = 0;
-    for (int k = 0; k < 8; k++) { float a = float(k) * 0.785398; cbl += col.sample(ls, in.uv + float2(cos(a), sin(a)) * px).rgb; }
-    cbl /= 8.0;
+    float3 cbl = ring.sample(ns, in.uv).rgb;
     float mx = max(cbl.r, max(cbl.g, cbl.b)), mn = min(cbl.r, min(cbl.g, cbl.b));
     float grey = 1.0 - smoothstep(0.1, 0.2, (mx - mn) / max(mx, 0.05));
     float road = smoothstep(0.85, 0.96, N.z) * grey * (1.0 - u.wx.z) * step(0.5, u.tm.y);
@@ -641,12 +737,23 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
     for (int i = 0; i < n; i++) {
       float3 Ld; float w = spotw(hl, i, wp + N * 0.05, Ld);
       if (w <= 0.0) continue;
+      /* rough ground lit from beside the eye sends much of the light back
+         toward it (the opposition effect of asphalt and dirt): a flattened
+         cosine, so the pool on the road reads at grazing angles */
       float nl = saturate(dot(N, Ld));
+      nl = max(nl, 0.35 * saturate(dot(Ld, V)) * step(0.0, dot(N, Ld)));
       float3 H2 = normalize(Ld + V); float n2 = saturate(dot(N, H2));
       float d2 = n2 * n2 * (a2 - 1.0) + 1.0;
       hd += w * nl;
       hs += w * nl * (a2 / (3.14159 * d2 * d2)) * (0.04 + 0.96 * pow(1.0 - saturate(dot(V, H2)), 5.0)); }
-    o += hl.col.rgb * hl.misc.z * (alb * hd * ao + hs * 0.25 * wet); }
+    /* the eye adapted to the night sees the pool on the road far brighter
+       than the grazing irradiance alone: a gain on surfaces */
+    /* the game's colours are already darkened for the night: the lamps
+       light the surface's own albedo, which hl.col.w recovers */
+    float3 albh = min(alb * hl.col.w, 0.7);
+    hd = hd / (1.0 + 0.35 * hd);                     /* a lamp a few metres off lights, not burns */
+    o += hl.col.rgb * hl.misc.z * 3.0 * (albh * hd * ao + hs * 0.25 * wet);
+    if (int(u.p3.y) == 16) return float4(float3(hd.x, alb.g * 4.0, ao) , G.a); }   /* debug: headlight irradiance, albedo, occlusion */
   /* reflections */
   float4 S = ssr.sample(ls, in.uv);
   /* open water: flat, and blue-green where everything else is not.  Moving
@@ -947,7 +1054,6 @@ fragment float4 pfxfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]], constan
    whole area; each pixel's position last frame comes from its world position
    through last frame's camera, or through its car's last transform when it
    is on a car. */
-struct MVC { float4 cur[16][4]; float4 prev[16][4]; float4 misc; };   /* rows 0-2 + position; box in misc */
 float2 prev_uv(constant FXU &u, constant MVC &mv, float4 P, float2 uv) {
   float3 wp;
   if (is_solid(P.w)) {
@@ -1170,10 +1276,10 @@ typedef struct {
     float p0[4], p1[4], p2[4], p3[4], p4[4], flash[4], wb[4], nsky[4], sk2[4], tm[4], wx[4];
     float pvp[16], jit[4];   /* last frame's view x projection; this frame's jitter (ndc) and the last one's */
     float svp2[16], csm[4];  /* the far shadow cascade; csm.x its texel size */
-    float mat[4], matmean[6][4];   /* ground materials: mat.x loaded; each one's mean colour (linear) */   /* wx: rain, snowfall, snow ground, - */
+    float mat[4], matmean[6][4], rmap[4];   /* ground materials: mat.x loaded; each one's mean colour (linear) */   /* wx: rain, snowfall, snow ground, - */
 } fxu;
 typedef struct { float p[32][4], d[32][4], col[4], misc[4]; float g[64][4], gd[64][4], gmisc[4]; } hlu;
-static float g_hl_int, g_hl_beam, g_hl_air;
+static float g_hl_int, g_hl_beam, g_hl_air, g_wdark = 1.0f;
 typedef struct { int at_fn, at_ref, use_tex, pad; float su, sv, pad2, pad3; float svp[16]; } shu;
 
 /* BR_FX_PROF=1: GPU time of every pass (stage-boundary timestamps), summed
@@ -1195,10 +1301,10 @@ static void prof_attach(MTLRenderPassDescriptor *rp, const char *label)
 }
 static id<MTLDevice> D;
 static id<MTLLibrary> L;
-static id<MTLRenderPipelineState> p_trk, p_pfx, p_pfxc, p_nrm, p_taa, p_mb;
+static id<MTLRenderPipelineState> p_trk, p_pfx, p_pfxc, p_nrm, p_taa, p_mb, p_ring;
 static id<MTLRenderPipelineState> p_sh, p_ao, p_blur, p_ssr, p_comp, p_pre, p_down, p_up, p_shaft, p_fin, p_aa, p_scene, p_mix;
 static id<MTLDepthStencilState> ds_sh;
-static id<MTLTexture> t_trk, t_pfx, t_nrm, t_hist[2], t_mb, t_pnz;
+static id<MTLTexture> t_trk, t_pfx, t_nrm, t_hist[2], t_mb, t_pnz, t_ring;
 static int g_hist_ok, g_hist_i;
 static id<MTLTexture> t_sm2;
 static id<MTLTexture> t_sm, t_ao, t_ao2, t_ssr, t_hdr, t_bl[6], t_shaft, t_out, t_aa;
@@ -1398,6 +1504,7 @@ static void setup(id<MTLDevice> dev)
     p_mix = mkpipe(@"fsq", @"mixfs", MTLPixelFormatRGBA8Unorm, 0);
     p_pfx = mkpipe(@"fsq", @"pfxfs", MTLPixelFormatRGBA16Float, 0);
     p_nrm = mkpipe(@"fsq", @"nrmfs", MTLPixelFormatRGBA16Float, 0);
+    p_ring = mkpipe(@"fsq", @"ringfs", MTLPixelFormatRGBA16Float, 0);
     p_taa = mkpipe(@"fsq", @"taafs", MTLPixelFormatRGBA16Float, 0);
     p_mb = mkpipe(@"fsq", @"mbfs", MTLPixelFormatRGBA16Float, 0);
     {   /* track ribbons: the strongest wins where they overlap */
@@ -1459,6 +1566,7 @@ static void size(int w, int h)
     t_trk = mktex(hw, hh, MTLPixelFormatRGBA16Float, 0);
     t_pfx = mktex(hw, hh, MTLPixelFormatRGBA16Float, 0);
     t_nrm = mktex(hw, hh, MTLPixelFormatRGBA16Float, 0);
+    t_ring = mktex(hw, hh, MTLPixelFormatRGBA16Float, 0);
     t_hist[0] = mktex(w, h, MTLPixelFormatRGBA16Float, 0);
     t_hist[1] = mktex(w, h, MTLPixelFormatRGBA16Float, 0);
     t_mb = mktex(w, h, MTLPixelFormatRGBA16Float, 0);
@@ -1536,6 +1644,91 @@ static id<MTLTexture> mk_plume_noise(id<MTLDevice> dev)
         free(px);
         return t;
     }
+}
+
+/* The road map: the track's collision mesh (the same triangles and surface
+ * codes the wheels find, br_collgrid.c) drawn from above into a texture over
+ * the track, 1 where the ground is sealed (surface 3), 0 where it is loose.
+ * The lighting pass knows the road from it in every weather, snow included,
+ * where the game paints road and verge alike. */
+static id<MTLTexture> t_rmap;
+static float g_rmap[4];            /* x0, y0, 1/width, 1/height (metres) */
+static u32 g_rmap_key;
+static void roadmap(id<MTLDevice> dev)
+{
+    u32 faces = H32(0x106EECE4u), verts = H32(0x106EECECu), flags = H32(0x106EED6Cu);
+    u32 key = faces ^ (verts * 31u) ^ (flags * 131u);
+    int nt, i, W = 2048;
+    float lo[2] = { 1e9f, 1e9f }, hi[2] = { -1e9f, -1e9f };
+    unsigned char *px;
+    if (!faces || !verts || !flags || flags <= faces) return;
+    if (key == g_rmap_key && t_rmap) return;
+    nt = (int)((flags - faces) / 8u);
+    if (nt <= 1 || nt > 200000) return;
+    for (i = 1; i < nt; i++) {
+        int k;
+        for (k = 0; k < 3; k++) {
+            u32 vi = W_LD(u16, faces, i * 8 + k * 2);
+            float x = W_LD(f32, verts, vi * 12), y = W_LD(f32, verts, vi * 12 + 4);
+            if (x < lo[0]) lo[0] = x; if (x > hi[0]) hi[0] = x;
+            if (y < lo[1]) lo[1] = y; if (y > hi[1]) hi[1] = y;
+        }
+    }
+    if (!(hi[0] > lo[0]) || !(hi[1] > lo[1])) return;
+    lo[0] -= 4; lo[1] -= 4; hi[0] += 4; hi[1] += 4;
+    px = calloc((size_t)W * W, 1);
+    {
+        float sx = W / (hi[0] - lo[0]), sy = W / (hi[1] - lo[1]);
+        int nsealed = 0;
+        for (i = 1; i < nt; i++) {
+            float P[3][3], e1[3], e2[3], nz;
+            int k, x0, x1, y0, y1, x, y;
+            unsigned char v;
+            for (k = 0; k < 3; k++) {
+                u32 vi = W_LD(u16, faces, i * 8 + k * 2);
+                P[k][0] = W_LD(f32, verts, vi * 12); P[k][1] = W_LD(f32, verts, vi * 12 + 4); P[k][2] = W_LD(f32, verts, vi * 12 + 8);
+            }
+            for (k = 0; k < 3; k++) { e1[k] = P[1][k] - P[0][k]; e2[k] = P[2][k] - P[0][k]; }
+            nz = e1[0] * e2[1] - e1[1] * e2[0];
+            {   /* only ground: walls and banks stand up from it */
+                float nx = e1[1] * e2[2] - e1[2] * e2[1], ny = e1[2] * e2[0] - e1[0] * e2[2];
+                if (fabsf(nz) < 0.3f * sqrtf(nx * nx + ny * ny + nz * nz)) continue;
+            }
+            v = (W_LD(u8, flags, i) & 7) == 3 ? 255 : 1;
+            if (v == 255) nsealed++;
+            for (k = 0; k < 3; k++) { P[k][0] = (P[k][0] - lo[0]) * sx; P[k][1] = (P[k][1] - lo[1]) * sy; }
+            x0 = (int)floorf(fminf(P[0][0], fminf(P[1][0], P[2][0]))); x1 = (int)ceilf(fmaxf(P[0][0], fmaxf(P[1][0], P[2][0])));
+            y0 = (int)floorf(fminf(P[0][1], fminf(P[1][1], P[2][1]))); y1 = (int)ceilf(fmaxf(P[0][1], fmaxf(P[1][1], P[2][1])));
+            if (x0 < 0) x0 = 0; if (y0 < 0) y0 = 0; if (x1 > W - 1) x1 = W - 1; if (y1 > W - 1) y1 = W - 1;
+            {
+                float d = (P[1][0] - P[0][0]) * (P[2][1] - P[0][1]) - (P[1][1] - P[0][1]) * (P[2][0] - P[0][0]);
+                if (fabsf(d) < 1e-6f) continue;
+                for (y = y0; y <= y1; y++) for (x = x0; x <= x1; x++) {
+                    float qx = x + 0.5f - P[0][0], qy = y + 0.5f - P[0][1];
+                    float b1 = (qx * (P[2][1] - P[0][1]) - qy * (P[2][0] - P[0][0])) / d;
+                    float b2 = (qy * (P[1][0] - P[0][0]) - qx * (P[1][1] - P[0][1])) / d;
+                    if (b1 < -0.02f || b2 < -0.02f || b1 + b2 > 1.02f) continue;
+                    if (v > px[y * W + x]) px[y * W + x] = v;
+                }
+            }
+        }
+        if (getenv("BR_FX_CARPROBE"))
+            fprintf(stderr, "roadmap: %d triangles, %d sealed, %.0f x %.0f m at %.2f m\n", nt - 1, nsealed,
+                    hi[0] - lo[0], hi[1] - lo[1], (hi[0] - lo[0]) / W);
+        if (getenv("BR_FX_RMAPDUMP")) {
+            FILE *f = fopen(getenv("BR_FX_RMAPDUMP"), "wb");
+            if (f) { fprintf(f, "P5\n%d %d\n255\n", W, W); fwrite(px, 1, (size_t)W * W, f); fclose(f); }
+        }
+    }
+    {
+        MTLTextureDescriptor *d = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatR8Unorm width:W height:W mipmapped:NO];
+        d.usage = MTLTextureUsageShaderRead;
+        t_rmap = [dev newTextureWithDescriptor:d];
+        [t_rmap replaceRegion:MTLRegionMake2D(0, 0, W, W) mipmapLevel:0 withBytes:px bytesPerRow:W];
+    }
+    free(px);
+    g_rmap[0] = lo[0]; g_rmap[1] = lo[1]; g_rmap[2] = 1.0f / (hi[0] - lo[0]); g_rmap[3] = 1.0f / (hi[1] - lo[1]);
+    g_rmap_key = key;
 }
 
 static void quad(id<MTLRenderCommandEncoder> e, id<MTLRenderPipelineState> p, const fxu *u, NSArray *tex)
@@ -1717,6 +1910,7 @@ static void weather(fxu *u, const float *fogc)
     {   /* the world's darkness per weather, for the car rig (see hfx_car_rig) */
         float wk = w == 4 ? 0.15f : w == 2 ? 0.7f : w == 1 ? 0.9f : 1.0f;
         int i;
+        g_wdark = wk;
         for (i = 0; i < 3; i++) {
             g_car_rig[1][i] = u->sunc[i];
             g_car_rig[2][i] = u->skyc[i] * wk * (w == 4 ? 0.9f : 1.0f);
@@ -2228,6 +2422,8 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
     u.tm[1] = 0.75f;                           /* asphalt neutralising */
     if (!g_mat_state) load_materials(dev, cb.commandQueue);
     if (g_mat_state > 0) { u.mat[0] = 1; memcpy(u.matmean, g_matmean, sizeof u.matmean); }
+    roadmap(dev);
+    if (t_rmap && !getenv("BR_FX_NORMAP")) memcpy(u.rmap, g_rmap, sizeof u.rmap);
     weather(&u, fogc);
     /* the Remastered sky for the track and weather (tm.z: its gain, 0 = none) */
     { const char *ov = getenv("BR_FX_WEATHER");
@@ -2263,8 +2459,8 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
             }
             if (!have) continue;
             norm3(f); norm3(lf); norm3(up);
-            for (k = 0; k < 3; k++) dv[k] = f[k] - up[k] * 0.07;
-            norm3(dv);
+            for (k = 0; k < 3; k++) dv[k] = f[k];
+            dv[2] = 0; norm3(dv);
             for (j = 0; j < 4; j++) {
                 float w[3];
                 for (k = 0; k < 3; k++) w[k] = (float)(m[12 + k] + f[k] * L[j][0] + lf[k] * L[j][1] + up[k] * L[j][2]);
@@ -2280,8 +2476,12 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
         }
         hl.misc[0] = (float)n;
         hl.gmisc[0] = (float)ng; hl.gmisc[1] = 1.0f;
+        if (getenv("BR_FX_CARPROBE") && g_frame % 200 == 0)
+            fprintf(stderr, "headlights: %d of %d cars, lamp0 %.2f %.2f %.2f dir %.2f %.2f %.2f\n", n / 2, g_ncars,
+                    hl.p[0][0], hl.p[0][1], hl.p[0][2], hl.d[0][0], hl.d[0][1], hl.d[0][2]);
     }
     hl.col[0] = 1.0f; hl.col[1] = 0.93f; hl.col[2] = 0.8f;
+    hl.col[3] = 1.0f / g_wdark;         /* undoes the game's own darkening of the world, for true albedo */
     hl.misc[1] = g_hl_beam; hl.misc[2] = g_hl_int; hl.misc[3] = g_hl_air;
 
     /* the sun's view: an orthographic box ahead of the camera, snapped to
@@ -2374,6 +2574,7 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
     /* (at half resolution: a smoothed normal has no fine detail to lose;
      * the lighting pass takes it only where it agrees with the face's own) */
     id<MTLTexture> gface = gn;
+    quad(pass(cb, t_ring, 0), p_ring, &u, @[col, gp, gn]);
     if (!getenv("BR_FX_FLAT")) { quad(pass(cb, t_nrm, 0), p_nrm, &u, @[gn, gp]); gn = t_nrm; }
     quad(pass(cb, t_ao, 0), p_ao, &u, @[gn, gp, col]);
     if (!taa_on()) {
@@ -2423,32 +2624,9 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
             [enc endEncoding];
         }
     }
-    /* 4. lighting */
-    enc = pass(cb, t_hdr, 0);
-    [enc setFragmentBytes:&hl length:sizeof hl atIndex:1];
-    quad(enc, p_comp, &u, @[gface, gp, col, t_sm, t_ao, t_ssr, g_skyt ? g_skyt : col, t_trk, t_sm2, gn, g_matA ? g_matA : t_trk, g_matN ? g_matN : t_trk]);
-    /* 4b. particles and falling rain/snow over the lit scene */
-    if (getenv("BR_FX_NOPFX")) [pass(cb, t_pfx, 0) endEncoding];
-    else {
-        pfu *pu = calloc(1, sizeof *pu);
-        id<MTLBuffer> pb;
-        pu->misc[0] = (float)fx_particles(pu, u.eye, u.sun, u.vp, u.vpt, u.p3[0] > 0.5f, (int)H32(0x104B15E8u));
-        for (i = 0; i < 3; i++) pu->amb[i] = g_car_rig[2][i] * 0.8f + g_car_rig[3][i] * 0.4f;
-        pb = [dev newBufferWithBytes:pu length:sizeof *pu options:MTLResourceStorageModeShared];
-        free(pu);
-        if (!g_keep) g_keep = [NSMutableArray new];
-        [g_keep addObject:pb];
-        {
-            enc = pass(cb, t_pfx, 0);
-            [enc setFragmentBytes:&hl length:sizeof hl atIndex:1];
-            [enc setFragmentBuffer:pb offset:0 atIndex:2];
-            if (!t_pnz) t_pnz = mk_plume_noise(dev);
-            quad(enc, p_pfx, &u, @[gp, t_pnz]);
-            /* with TAA the resolve lays the particles over the scene */
-            if (!taa_on()) quad(pass(cb, t_hdr, 1), p_pfxc, &u, @[t_pfx, gp]);
-        }
-    }
-    /* 4c. temporal anti-aliasing, then motion blur */
+    /* each car's frame now and last frame (motion vectors, and the rain on
+     * the cars in the lighting pass) */
+    id<MTLBuffer> mb;
     {
         mvu *mv = calloc(1, sizeof *mv);
         int c, k, nm = 0;
@@ -2477,11 +2655,40 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
             nm++;
         }
         mv->misc[0] = (float)nm;
+        mb = [dev newBufferWithBytes:mv length:sizeof *mv options:MTLResourceStorageModeShared];
+        free(mv);
+        if (!g_keep) g_keep = [NSMutableArray new];
+        [g_keep addObject:mb];
+    }
+    /* 4. lighting */
+    enc = pass(cb, t_hdr, 0);
+    [enc setFragmentBytes:&hl length:sizeof hl atIndex:1];
+    [enc setFragmentBuffer:mb offset:0 atIndex:2];
+    quad(enc, p_comp, &u, @[gface, gp, col, t_sm, t_ao, t_ssr, g_skyt ? g_skyt : col, t_trk, t_sm2, gn, g_matA ? g_matA : t_trk, g_matN ? g_matN : t_trk, t_ring, t_rmap ? t_rmap : t_trk]);
+    /* 4b. particles and falling rain/snow over the lit scene */
+    if (getenv("BR_FX_NOPFX")) [pass(cb, t_pfx, 0) endEncoding];
+    else {
+        pfu *pu = calloc(1, sizeof *pu);
+        id<MTLBuffer> pb;
+        pu->misc[0] = (float)fx_particles(pu, u.eye, u.sun, u.vp, u.vpt, u.p3[0] > 0.5f, (int)H32(0x104B15E8u));
+        for (i = 0; i < 3; i++) pu->amb[i] = g_car_rig[2][i] * 0.8f + g_car_rig[3][i] * 0.4f;
+        pb = [dev newBufferWithBytes:pu length:sizeof *pu options:MTLResourceStorageModeShared];
+        free(pu);
+        if (!g_keep) g_keep = [NSMutableArray new];
+        [g_keep addObject:pb];
         {
-            id<MTLBuffer> mb = [dev newBufferWithBytes:mv length:sizeof *mv options:MTLResourceStorageModeShared];
-            free(mv);
-            if (!g_keep) g_keep = [NSMutableArray new];
-            [g_keep addObject:mb];
+            enc = pass(cb, t_pfx, 0);
+            [enc setFragmentBytes:&hl length:sizeof hl atIndex:1];
+            [enc setFragmentBuffer:pb offset:0 atIndex:2];
+            if (!t_pnz) t_pnz = mk_plume_noise(dev);
+            quad(enc, p_pfx, &u, @[gp, t_pnz]);
+            /* with TAA the resolve lays the particles over the scene */
+            if (!taa_on()) quad(pass(cb, t_hdr, 1), p_pfxc, &u, @[t_pfx, gp]);
+        }
+    }
+    /* 4c. temporal anti-aliasing, then motion blur */
+    {
+        {
             if (taa_on()) {
                 id<MTLTexture> dst = t_hist[g_hist_i], his = t_hist[g_hist_i ^ 1];
                 enc = pass(cb, dst, 0);
@@ -2497,7 +2704,7 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
         /* remember this frame for the next */
         memcpy(g_pvp, g_P, sizeof g_pvp); g_pvp_ok = 1;
         g_nprev = g_ncars;
-        for (c = 0; c < g_ncars; c++) { g_prevcar[c] = g_carptr[c]; memcpy(g_prevmat[c], g_cars[c], sizeof g_prevmat[c]); }
+        { int c; for (c = 0; c < g_ncars; c++) { g_prevcar[c] = g_carptr[c]; memcpy(g_prevmat[c], g_cars[c], sizeof g_prevmat[c]); } }
         next_jitter();
     }
     /* 5. bloom */
