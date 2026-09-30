@@ -304,11 +304,11 @@ float shadow_at(constant FXU &u, depth2d<float> sm, float3 wp, float3 N, float2 
    times around the eye; above 35 degrees, the top row's average colour.
    The chase camera sees about 39 x 30 degrees centred on the horizon, so the
    lower half of the picture is what is on screen. */
-float3 pano(constant FXU &u, texture2d<float> sky, float3 vd) {
+float3 pano(constant FXU &u, texture2d<float> sky, float3 vd, float lv = 0.0) {
   constexpr sampler ws(filter::linear, mip_filter::linear, s_address::repeat, t_address::clamp_to_edge);
   float e = asin(clamp(vd.z, -1.0, 1.0)) / 0.6109;
   float2 st = float2(atan2(vd.y, vd.x) / 1.0472, 1.0 - saturate(e));
-  float3 c = sky.sample(ws, st, level(0.0)).rgb;
+  float3 c = sky.sample(ws, st, level(lv)).rgb;
   float3 z = sky.sample(ws, float2(st.x, 0.0), level(7.0)).rgb;
   return mix(c, z, smoothstep(0.85, 1.25, e)) * u.tm.z; }
 /* the colour a reflected ray sees when it leaves the screen: the track's sky
@@ -325,6 +325,8 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
                        texture2d_array<float> matA [[texture(10)]], texture2d_array<float> matN [[texture(11)]],
                        constant HL &hl [[buffer(1)]]) {
   float4 C = col.sample(ns, in.uv), P = gp.sample(ns, in.uv), G = gn.sample(ns, in.uv);
+  if (int(u.p3.y) == 15)                             /* debug: the G-buffer's class (red car, green lit, blue sky) */
+    return float4(P.w > 3.5 && P.w < 4.5, P.w > 0.5 && P.w < 2.5, P.w > 2.5 && P.w < 3.5, 1) * (0.4 + 0.6 * dot(pow(C.rgb, 2.2), 0.33));
   float3 lin = pow(C.rgb, 2.2);
   if (P.w > 3.5 && P.w < 4.5) {                      /* pre-lit surface (host_car.m): colour holds
                                                         (radiance / 4)^(1/2.2); only the sun's
@@ -384,18 +386,30 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
       o = mix(o, ns, u.sk2.x * smoothstep(-0.005, 0.02, vd.z) * max(skyish, smoothstep(0.03, 0.08, vd.z))); }
     /* the sea painted into the backdrop, below the horizon: water on a plane
        under the eye, reflecting the sky, with the sun's glitter */
-    if (vd.z < 0.0 && u.sk2.w > 0.0 && G.a > 0.01) {
+    if (vd.z < 0.006 && u.sk2.w > 0.0 && G.a > 0.01) {
       /* the final colour: in some weathers the sea is a see-through layer
-         over the backdrop, which the G-buffer's sky colour does not hold */
-      float m = seamask(saturate(C.rgb)) * u.sk2.w;
+         over the backdrop, which the G-buffer's sky colour does not hold.
+         Decided on the backdrop's colour smoothed along the horizon, so its
+         big texels do not break the sea into streaks, and carried up to the
+         backdrop's own painted horizon, which sits a little above the true one */
+      float2 hp = float2(3.0 / col.get_width(), 1.0 / col.get_height());
+      float3 cs = (C.rgb + col.sample(ls, in.uv + float2(hp.x, 0)).rgb + col.sample(ls, in.uv - float2(hp.x, 0)).rgb
+                 + col.sample(ls, in.uv + float2(2.0 * hp.x, hp.y)).rgb + col.sample(ls, in.uv - float2(2.0 * hp.x, -hp.y)).rgb) * 0.2;
+      float m = smoothstep(0.2, 0.7, seamask(saturate(cs))) * u.sk2.w;
+      m *= smoothstep(0.006, 0.0, vd.z);
       if (m > 0.0) {
         /* a sea plane fixed in the world (z = 0), not under the camera, so the
            waves stay put as the camera rises and falls */
         float t = min(max(u.eye.z, 1.0) / max(-vd.z, 1e-3), 3000.0);
         float2 xy = u.eye.xy + vd.xy * t;
-        float3 Nw = waveN(xy * 0.5, u.tm.x, 0.22 * smoothstep(900.0, 40.0, t) + 0.03);
+        /* waves fade to a mirror with distance, before they are finer than a pixel */
+        float3 Nw = waveN(xy * 0.5, u.tm.x, 0.22 * smoothstep(500.0, 30.0, t));
         float3 R = reflect(vd, Nw);
-        float3 refl = skylight(u, sky, float3(R.xy, abs(R.z)));
+        /* never the panorama's bottom rows: they hold its painted horizon */
+        /* rough with distance: far water mirrors a blur of the sky, never
+           single clouds drawn out into streaks */
+        float3 Rd = normalize(float3(R.xy, max(abs(R.z), 0.04)));
+        float3 refl = u.tm.z > 0.0 ? pano(u, sky, Rd, mix(1.0, 6.0, smoothstep(40.0, 700.0, t))) : skylight(u, sky, Rd);
         float Fw = 0.02 + 0.98 * pow(1.0 - saturate(dot(Nw, -vd)), 5.0);
         float3 Hw = normalize(u.sun.xyz - vd); float nhw = saturate(dot(Nw, Hw));
         float aw = 0.1 * 0.1 * 0.1 * 0.1, dw = nhw * nhw * (aw - 1.0) + 1.0;
@@ -861,8 +875,12 @@ fragment float4 pfxfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]], constan
       if (D < 0.002) continue;
       alb /= D; ods /= D; odu /= D;
       /* billows, rolling up and outward; fine wisps eat the thin edges */
-      float3 q = x * 0.42 + float3(0.0, 0.0, -t * 0.12);
-      float bil = nz.sample(rs3, q).r, wisp = nz.sample(rs3, x * 1.3 + float3(t * 0.05, 0.0, -t * 0.25)).g;
+      /* two scales that never line up, the second turned off the axes, so
+         the tiling volume shows no period across a plume */
+      float3 xr = float3(0.8 * x.x - 0.6 * x.y, 0.6 * x.x + 0.8 * x.y, x.z);
+      float bil = nz.sample(rs3, x * 0.11 + float3(0.0, 0.0, -t * 0.03)).r * 0.55
+                + nz.sample(rs3, xr * 0.317 + float3(0.37, 0.71, -t * 0.09)).r * 0.45;
+      float wisp = nz.sample(rs3, xr * 0.93 + float3(t * 0.05, 0.13, -t * 0.2)).g;
       /* the noise shapes the density, it never cuts it into islands: thin
          mist stays a mist, thick smoke gets its rolls, the edges fray */
       float edge = 1.0 - saturate(D * 1.5);
@@ -939,7 +957,7 @@ float2 prev_uv(constant FXU &u, constant MVC &mv, float4 P, float2 uv) {
       float3 l = float3(dot(d, mv.cur[i][0].xyz), dot(d, mv.cur[i][1].xyz), dot(d, mv.cur[i][2].xyz));
       /* the car's own pixels ride with it; the road under and around the
          tyres (below the contact plane in .w) does not */
-      float fl = mv.cur[i][3].w + (P.w > 3.5 ? -0.1 : 0.06);
+      float fl = mv.cur[i][3].w + (P.w > 3.5 ? -0.1 : 0.35);   /* the HD car, or an original body well above the road */
       if (abs(l.x) < 2.6 && abs(l.y) < 1.3 && l.z > fl && l.z < 1.8) {
         wp = mv.prev[i][3].xyz + l.x * mv.prev[i][0].xyz + l.y * mv.prev[i][1].xyz + l.z * mv.prev[i][2].xyz;
         break; } }
@@ -990,13 +1008,21 @@ fragment float4 taafs(QO in [[stage_in]], constant FXU &u [[buffer(0)]], constan
   C.rgb = C.rgb * (1.0 - pc.a) + pc.rgb;
   if (u.jit.w < 0.5) return C;                       /* no history yet */
   float2 px = 1.0 / float2(cur.get_width(), cur.get_height());
-  float3 m1 = 0, m2 = 0;
+  /* the clamp's neighbourhood is only the pixels on the same kind of
+     surface: road just uncovered beside a tyre must not accept the tyre's
+     colour as history, nor the car the road's */
+  float4 P0 = gp.sample(ns, in.uv);
+  bool car0 = P0.w > 3.5 && P0.w < 4.5;
+  float3 m1 = 0, m2 = 0; float nw = 0;
   for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) {
-    float3 cc = withpfx(cur, pf, in.uv + float2(x, y) * px).rgb;
+    float2 q = in.uv + float2(x, y) * px;
+    float wq = gp.sample(ns, q).w;
+    if ((wq > 3.5 && wq < 4.5) != car0) continue;
+    float3 cc = withpfx(cur, pf, q).rgb;
     float3 c = ycc(cc / (1.0 + dot(cc, float3(0.2126, 0.7152, 0.0722))));
-    m1 += c; m2 += c * c; }
-  m1 /= 9.0; float3 sd = sqrt(max(m2 / 9.0 - m1 * m1, 0.0));
-  float2 pu = prev_uv(u, mv, gp.sample(ns, in.uv), in.uv);
+    m1 += c; m2 += c * c; nw += 1.0; }
+  m1 /= nw; float3 sd = sqrt(max(m2 / nw - m1 * m1, 0.0));
+  float2 pu = prev_uv(u, mv, P0, in.uv);
   if (any(pu < 0.0) || any(pu > 1.0)) return C;
   float3 H = hist_cr(hist, pu);
   float3 hy = ycc(H / (1.0 + dot(H, float3(0.2126, 0.7152, 0.0722))));
@@ -1011,19 +1037,24 @@ fragment float4 taafs(QO in [[stage_in]], constant FXU &u [[buffer(0)]], constan
   float3 o = rgb_(r); o = o / max(1.0 - dot(o, float3(0.2126, 0.7152, 0.0722)), 1e-3);
   return float4(max(o, 0.0), C.a); }
 fragment float4 mbfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]], constant MVC &mv [[buffer(1)]],
-                     texture2d<float> src [[texture(0)]], texture2d<float> gp [[texture(1)]]) {
+                     texture2d<float> src [[texture(0)]], texture2d<float> gp [[texture(1)]],
+                     texture2d<float> pf [[texture(2)]]) {
   float4 C = src.sample(ns, in.uv);
   if (C.a < 0.5 || u.jit.w < 0.5) return C;
+  /* smoke drifts on its own, not with the surface behind it: where it is
+     thick there is nothing to smear */
+  float pa = pf.sample(ls, in.uv).a;
   float2 pu = prev_uv(u, mv, gp.sample(ns, in.uv), in.uv);
   if (any(pu < -0.5)) return C;
   float2 sz = float2(src.get_width(), src.get_height());
-  float2 v = (in.uv - pu) * u.jit.z;                 /* shutter */
+  float2 v = (in.uv - pu) * u.jit.z * (1.0 - saturate(pa * 1.5));   /* shutter */
   float l = length(v * sz);
   if (l < 1.0) return C;
   v *= min(l, 0.04 * sz.x) / l;
   float3 acc = C.rgb; float n = 1.0, j = ign(in.pos.xy) - 0.5;
   float4 P = gp.sample(ns, in.uv);
   float de = is_solid(P.w) ? distance(u.eye.xyz, P.xyz) : 1e5;
+  bool car0 = P.w > 3.5 && P.w < 4.5;
   for (int i = 1; i <= 8; i++) {
     float t = (float(i) + j) / 8.0 - 0.5;
     float2 q = in.uv + v * t;
@@ -1032,6 +1063,7 @@ fragment float4 mbfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]], constant
     /* nearer surfaces (the car over the streaming road) do not smear
        into what is behind them */
     float4 Q = gp.sample(ns, q);
+    if ((Q.w > 3.5 && Q.w < 4.5) != car0) continue;          /* the car and the world move apart */
     if (is_solid(Q.w) && distance(u.eye.xyz, Q.xyz) < de * 0.9 - 0.3) continue;
     acc += s.rgb; n += 1.0; }
   return float4(acc / n, C.a); }
@@ -2459,7 +2491,7 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
                 enc = pass(cb, t_hdr, 0);
                 [enc setFragmentBuffer:mb offset:0 atIndex:1];
                 if (getenv("BR_FX_NOMB")) u.jit[2] = 0;       /* shutter 0: a copy */
-                quad(enc, p_mb, &u, @[dst, gp]);
+                quad(enc, p_mb, &u, @[dst, gp, t_pfx]);
             }
         }
         /* remember this frame for the next */
