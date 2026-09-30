@@ -9,6 +9,8 @@
 #                                   opens tracks/, cars/, sfx/ ... under; its
 #                                   BRGlide.dll is the image w_init loads)
 #   Contents/Resources/music/cd/    the PC soundtrack, CD audio tracks 2..13
+#   Contents/Resources/music/remastered/  the remastered N64 soundtrack
+#                                   (ports/common/music), heard while Remastered (~) is on
 #   Contents/Resources/music/n64/   the N64 soundtrack: the ROM's six modules
 #                                   and their cues
 #   Contents/Resources/assets/      the PC and N64 version icons (Tab)
@@ -139,6 +141,11 @@ cp -Rc $EX/disc "$APP/Contents/Resources/disc" 2>/dev/null || cp -R $EX/disc "$A
 for m in cd n64; do
     cp -Rc $EX/music/$m "$APP/Contents/Resources/music/$m" 2>/dev/null || cp -R $EX/music/$m "$APP/Contents/Resources/music/$m"
 done
+if [ -f ports/common/music/remastered.json ]; then
+    mkdir -p "$APP/Contents/Resources/music/remastered"
+    cp -c ports/common/music/remastered.json ports/common/music/*.flac "$APP/Contents/Resources/music/remastered/" 2>/dev/null ||
+        cp ports/common/music/remastered.json ports/common/music/*.flac "$APP/Contents/Resources/music/remastered/"
+fi
 
 # the PC / N64 version icons (native/version.m), from the shared port assets,
 # rasterised, so macOS releases without SVG in NSImage show them
