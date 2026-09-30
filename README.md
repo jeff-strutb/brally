@@ -474,7 +474,12 @@ measured. This 32-bit lane is interim; a native 64-bit port comes later.
    and two in the Jungle piece. It is off by default, and the modules are then
    exactly the ROM's. The sources are other people's recordings and are not
    tracked here; a WAV that is missing or differs from the listed file
-   stops the build.
+   stops the build. A search for better copies of every sample (the Mod
+   Archive, all of Modland's tracker modules, the ST-XX disks, the Sounds
+   Terrific and Da Capo Amiga sample CDs, Aminet, and the Roland JV-1080
+   and Korg Trinity sample sets) found no others: each higher-rate or
+   16-bit copy elsewhere is one of these 8-bit samples upsampled, rescaled
+   or padded.
 
    ```bash
    ports/macos/wasm/package_app.sh --hq-samples reference/tgrally/XM
