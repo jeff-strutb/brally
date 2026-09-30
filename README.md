@@ -540,6 +540,22 @@ other car are the same either way.
   light rig Remastered uses for the weather, and reflections of the scene
   itself (the previous frame, sampled along each reflection ray). The car
   casts sun shadows and receives them, and is anti-aliased with the scene.
+- **Every ES in the race.** The player's car in its green, the others (the
+  Quick Race opponent) in the opponent's orange-yellow; the livery is the
+  original's own design for both, as in the game.
+- **The original's livery.** `remaster_livery.py` draws the original ES
+  model from the side, top, front and back in the new model's frame, keeps
+  its red, white and blue ribbons (badges, numbers, plates and script
+  removed) and smooths the 1999 texels into clean curves.
+- **Damage.** The original dents a car by moving its model's own vertices
+  in eight zones around it as it hits things. Every frame the Remastered
+  car takes the same displacement, vertex for vertex, through a mapping
+  `remaster_dent.py` makes, adds a finer crumple where it is dented, scuffs
+  the paint through to primer and metal, and crazes the glass.
+- **Levels of detail and culling.** About a million triangles close up, 150
+  thousand at the chase camera, 20 thousand far away and in the mirror; a
+  car out of view is not drawn, and only its outer faces are. Both cars
+  cost about 1.3 ms of GPU a frame at 2560x1920.
 - **In the display list's order.** The game still builds the car's drawing
   commands, with its lists emptied, and a marker takes the model's place in
   the list, so it draws in the right order under whichever camera is current
@@ -566,12 +582,33 @@ blender --background --python ports/macos/tools/remaster_bake.py -- ports/common
 blender --background --python ports/macos/tools/remaster_bake.py -- ports/common/models/es/source/wheel_raw.glb ports/common/models/es/decimated wheel 250000
 ```
 
+The lower levels of detail are the same Blender step at lower targets, into
+`decimated/lod1` (body 150000, wheel 20000) and `decimated/lod2` (body 20000,
+wheel 3000). Then the pack, the windows at each level, the livery and the
+dent maps:
+
 ```bash
-python3 ports/macos/tools/remaster_car.py --body ports/common/models/es/decimated/body.glb --wheel ports/common/models/es/decimated/wheel.glb --out ports/common/models/es/pack
+python3 ports/macos/tools/remaster_car.py --body ports/common/models/es/decimated/body.glb --wheel ports/common/models/es/decimated/wheel.glb --out ports/common/models/es/pack --lods ports/common/models/es/decimated/lod1 ports/common/models/es/decimated/lod2
 ```
 
 ```bash
 blender --background --python ports/macos/tools/remaster_glass.py -- ports/common/models/es/pack
+```
+
+```bash
+GLASS_EDGE=0.08 GLASS_OUT=glass_lod1 blender --background --python ports/macos/tools/remaster_glass.py -- ports/common/models/es/pack
+```
+
+```bash
+GLASS_EDGE=0.2 GLASS_OUT=glass_lod2 blender --background --python ports/macos/tools/remaster_glass.py -- ports/common/models/es/pack
+```
+
+```bash
+python3 ports/macos/tools/remaster_livery.py testdata/disc/cars/es.rca ports/common/models/es/pack
+```
+
+```bash
+python3 ports/macos/tools/remaster_dent.py testdata/disc/cars/es.rca ports/common/models/es/pack
 ```
 
 Decimate is the only mesh operation: remeshing to a budget before this step
@@ -711,6 +748,8 @@ the host reads:
 | `BR_REMASTER_DIR=dir` | load the Remastered car's pack from `dir` (default: the app's `Resources/remaster`, else `ports/common/models/es/pack`) |
 | `BR_CAR_DEBUG=N` | show one ingredient of the car: 1 base colour, 2 paint mask, 3 occlusion, 4 normals, 5 roughness and metal, 6 diffuse, 7 reflections, 8 sun highlight |
 | `BR_CARLOG=1` | print the followed car's position and its wheel hubs in the car's frame (the numbers `remaster_car.py --hubs` takes) |
+| `BR_CAR_LOD=N` | draw the Remastered car at level of detail N (0 finest) whatever its distance |
+| `BR_DENTLOG=1` | print the player's car's eight damage zones and how far its dents have moved the body |
 
 The screenshots at the top of this file were taken headless (the Remastered
 one with `BR_FX=1 BR_RES=2560x1920`, scaled down to 1280x960, and a script
