@@ -148,7 +148,7 @@ static const char *SHADER =
 "  if (in.pm) { in.oow = 1.0 / in.pw; in.sow = in.ps * in.oow; in.tow = in.pt * in.oow; in.col = in.pcol; }\n"
 "  o.n = 0; o.g = 0;\n"
 "  /* a clear is background: the sky, where the game draws none (night, storm) */\n"
-"  if (u.clear) { o.c = u.clearcol / 255.0; o.d = u.clear_depth; o.n = float4(0, 0, 0, 1); o.g = float4(0, 0, 0, 3); return o; }\n"
+"  if (u.clear) { o.c = u.clearcol / 255.0; o.d = u.clear_depth; o.n = float4(o.c.rgb, 1); o.g = float4(0, 0, 0, 3); return o; }\n"
 "  float depth = 0;\n"
 "  if (u.dmode == 2 || u.dmode == 4) depth = float(wfloat(in.oow)) / 65536.0;\n"
 "  else if (u.dmode) depth = floor(clamp(in.ooz, 0.0, 65535.0)) / 65536.0;\n"
@@ -187,7 +187,7 @@ static const char *SHADER =
 "    float3 nn = cross(dfdy(vin.wp), dfdx(vin.wp)); float kf = 0;\n"
 "    if (u.fogmode & 1) { float w = in.oow != 0 ? 1.0 / in.oow : 65535.0; kf = fogof(u, w) / 255.0; }\n"
 "    o.n = float4(length(nn) > 0 ? normalize(nn) : float3(0, 0, 1), 1); o.g = float4(vin.wp, 1.0 + 0.9 * kf);\n"
-"  } else if (vin.fl == 2.0) { o.n = float4(0, 0, 0, 1); o.g = float4(0, 0, 0, 3); }\n"
+"  } else if (vin.fl == 2.0) { o.n = float4(o.c.rgb, 1); o.g = float4(0, 0, 0, 3); }   /* the sky keeps its own colour, for host_fx.m */\n"
 "  else o.n = float4(0, 0, 0, o.c.a);   /* 2D: blended ones scale the scene coverage by 1 - a */\n"
 "  return o; }\n"
 "struct PO { float4 pos [[position]]; float2 uv; };\n"
@@ -228,7 +228,7 @@ static struct {
 } S;
 
 static u8 g_tmem[4 << 20];
-typedef struct { u32 start, end, fmt, large, small, aspect; __unsafe_unretained id<MTLTexture> t; } texent;
+typedef struct { u32 start, end, fmt, large, small, aspect; __unsafe_unretained id<MTLTexture> t, tm; } texent;
 static NSMutableArray *g_texobjs;     /* keeps the textures alive */
 static texent g_tex[512];
 static int g_ntex;
@@ -625,11 +625,56 @@ static id<MTLTexture> cur_texture(void)
     }
     free(px);
     for (i = 0; i < g_ntex && g_tex[i].t; i++) ;
-    if (i == 512) { i = rand() % 512; [g_texobjs removeObject:g_tex[i].t]; }
+    if (i == 512) { i = rand() % 512; [g_texobjs removeObject:g_tex[i].t]; if (g_tex[i].tm) [g_texobjs removeObject:g_tex[i].tm]; }
     if (i == g_ntex) g_ntex++;
     [g_texobjs addObject:t];
-    g_tex[i] = (texent){ S.tex_start, S.tex_start + n, S.tex_fmt, S.tex_large, (u32)small, S.tex_aspect, t };
+    g_tex[i] = (texent){ S.tex_start, S.tex_start + n, S.tex_fmt, S.tex_large, (u32)small, S.tex_aspect, t, nil };
     return t;
+}
+
+/* Remastered (host_fx.m) samples 3D textures with anisotropic trilinear
+ * filtering, as a modern renderer would: the game's own mip chain where it
+ * downloaded one, else a full chain generated once from its single level.
+ * The Original look never sees either. */
+static id<MTLTexture> fx_texture(id<MTLTexture> t)
+{
+    int i;
+    for (i = 0; i < g_ntex; i++) if (g_tex[i].t == t) break;
+    if (i == g_ntex) return t;
+    if (!g_tex[i].tm) {
+        id<MTLTexture> m = t;
+        if (t.mipmapLevelCount == 1 && (t.width > 1 || t.height > 1)) {
+            MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm
+                                           width:t.width height:t.height mipmapped:YES];
+            id<MTLCommandBuffer> b = [g_q commandBuffer];
+            id<MTLBlitCommandEncoder> e;
+            m = [g_dev newTextureWithDescriptor:td];
+            e = [b blitCommandEncoder];
+            [e copyFromTexture:t sourceSlice:0 sourceLevel:0 toTexture:m destinationSlice:0 destinationLevel:0 sliceCount:1 levelCount:1];
+            [e generateMipmapsForTexture:m];
+            [e endEncoding];
+            [b commit];
+            [g_texobjs addObject:m];
+        }
+        g_tex[i].tm = m;
+    }
+    return g_tex[i].tm;
+}
+static id<MTLSamplerState> fx_samp(void)
+{
+    NSNumber *k = @((1 << 7) | (S.clamp_s << 1) | S.clamp_t);
+    id<MTLSamplerState> s = g_samplers[k];
+    if (!s) {
+        MTLSamplerDescriptor *d = [MTLSamplerDescriptor new];
+        d.magFilter = d.minFilter = MTLSamplerMinMagFilterLinear;
+        d.mipFilter = MTLSamplerMipFilterLinear;
+        d.maxAnisotropy = 16;
+        d.sAddressMode = S.clamp_s ? MTLSamplerAddressModeClampToEdge : MTLSamplerAddressModeRepeat;
+        d.tAddressMode = S.clamp_t ? MTLSamplerAddressModeClampToEdge : MTLSamplerAddressModeRepeat;
+        s = [g_dev newSamplerStateWithDescriptor:d];
+        g_samplers[k] = s;
+    }
+    return s;
 }
 
 /* BR_GLLOG=path: with BR_TRACE_FRAMES, the Glide call stream of the traced
@@ -707,7 +752,8 @@ void h_grTexDownloadMipMap(u32 tmu, u32 start, u32 eo, u32 info)
     for (i = 0; i < g_ntex; i++)
         if (g_tex[i].t && g_tex[i].start < end && start < g_tex[i].end) {
             [g_texobjs removeObject:g_tex[i].t];
-            g_tex[i].t = nil;
+            if (g_tex[i].tm) [g_texobjs removeObject:g_tex[i].tm];
+            g_tex[i].t = nil; g_tex[i].tm = nil;
         }
 }
 void h_grTexSource(u32 tmu, u32 start, u32 eo, u32 info)
@@ -834,6 +880,7 @@ static void draw(const void *v, int n, int clear, int kind)
     pipe = clear ? gpipe(4, 0, 4, 0, 0, 0) : gpipe(S.ab_rs, S.ab_rd, S.ab_as, S.ab_ad, 0, kind);
     ds = clear ? dss(1, 7, 1) : dss(U.dmode != 0, S.dfunc, S.dmask);
     smp = samp();
+    if (kind && U.use_tex && hfx_on()) { t = fx_texture(t); smp = fx_samp(); }
     sc = scissor_rect();
     if (B.n && (B.kind != kind || B.pipe != pipe || B.ds != ds || B.tex != t || B.smp != smp ||
                 memcmp(&B.sc, &sc, sizeof sc) || memcmp(&B.u, &U, sizeof U)))

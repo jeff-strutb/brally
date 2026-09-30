@@ -462,8 +462,23 @@ What Remastered adds:
   that leaves colours as they are until the highlights roll off, a colour
   balance per weather (cool and blue at night), and a colour-only filter
   that keeps the 1999 textures' colour speckle from being amplified.
-- **Skies.** A brighter horizon and the sun's glow; at night a deep-blue
-  sky where the game leaves black.
+- **Headlights.** At night, in storms and in fog every car's headlights
+  light the road and scenery ahead of it in real time, with glints on wet
+  surfaces and beams visible in the air. The lamps sit where each car's own
+  model has them, and glow when they face the camera and nothing hides
+  them: white headlights on oncoming cars, red tail lights from behind.
+- **Skies.** Each track's own sky panorama where one is installed (see the
+  sky tools), otherwise in clear weather a drawn sky with a visible sun and
+  soft ray-marched volumetric clouds that drift; the hills and scenery the
+  game paints along the horizon are kept. At night a deep-blue sky where
+  the game leaves black.
+- **Water.** The sea (painted into the game's backdrop or modelled) is
+  shaded as moving water: waves, the sky reflected with Fresnel falloff,
+  and the sun's glitter.
+- **Sharper surfaces.** 3D textures are sampled with 16x anisotropic
+  trilinear filtering (mip chains generated where the game has none), so
+  the road stays crisp into the distance, and asphalt loses the old
+  textures' purple cast.
 - **Anti-aliasing on the scene only.** FXAA smooths the edges of the 3D
   scene after it is graded and before the game's 2D is laid over it, so the
   HUD, text and menus never pass through the filter.
@@ -475,10 +490,10 @@ It follows the race's weather:
 | Weather | Look |
 |---|---|
 | Sunny | clean high-key daylight, crisp shadows filled with sky blue, light shafts, matte dry roads |
-| Fog | soft diffuse light, heavy haze, a faint damp sheen on the road |
-| Storm | dim overcast, wet roads with puddles, lightning flashes light the scene |
+| Fog | real fog: distance and sky fade into grey, headlights on with visible beams, a faint damp sheen on the road |
+| Storm | dim overcast, wet roads with puddles, headlights on, lightning flashes light the scene |
 | Snow | bright overcast, cold bounce light off the snow |
-| Rain (a night race) | moonlight under a deep-blue sky, cool colour balance, no sun shadows, wet roads with puddles reflecting the lit windows and cars |
+| Rain (a night race) | moonlight under a deep-blue sky, cool colour balance, headlights lighting the road, glowing tail lights, wet roads with puddles reflecting the lit windows and cars |
 
 **How it works.** Alongside its colour, each frame now also records every
 pixel's position in the world and its surface direction. The positions come
