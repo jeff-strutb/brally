@@ -493,7 +493,7 @@ It follows the race's weather:
 | Fog | real fog: distance and sky fade into grey, headlights on with visible beams, a faint damp sheen on the road |
 | Storm | dim overcast, wet roads with puddles, headlights on, lightning flashes light the scene |
 | Snow | bright overcast, cold bounce light off the snow |
-| Rain (a night race) | moonlight under a deep-blue sky, cool colour balance, headlights lighting the road, glowing tail lights, wet roads with puddles reflecting the lit windows and cars |
+| Night | a clear, dry night: moonlight under a deep-blue sky, cool colour balance, headlights lighting the road, tail and brake lights glowing red behind every car, lit windows |
 
 **How it works.** Alongside its colour, each frame now also records every
 pixel's position in the world and its surface direction. The positions come
@@ -739,7 +739,7 @@ the host reads:
 | `BR_SFXWAV=file` | record the sound effects to a WAV file; headless, they are rendered offline in step with the game's clock (use `BR_VCLOCK` for game-time length) |
 | `BR_SFXQUIET=1` | with `BR_SFXWAV`, record a windowed run without playing it |
 | `BR_FX=0` / `BR_FX=1` | force Original or Remastered, overriding the remembered choice (headless runs default to Original) |
-| `BR_FX_WEATHER=N` | light the scene as weather N (0 sunny, 1 fog, 2 storm, 3 snow, 4 rain) whatever the race's weather |
+| `BR_FX_WEATHER=N` | light the scene as weather N (0 sunny, 1 fog, 2 storm, 3 snow, 4 night) whatever the race's weather |
 | `BR_FX_SUN=x,y,z` | sun direction in the world (default 1,1,1.1, the game's own light direction) |
 | `BR_FX_SHADOWR=m`, `BR_FX_AOR=m` | shadow-map half-width and occlusion radius, in metres |
 | `BR_FX_DEBUG=N` | show one ingredient: 1 normals, 2 shadow, 3 occlusion, 4 world position, 5 bounce, 6 reflections, 7-8 shadow map, 9 the game's own colour, 10 invalid values |
