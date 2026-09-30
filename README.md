@@ -543,10 +543,11 @@ other car are the same either way.
 - **Every ES in the race.** The player's car in its green, the others (the
   Quick Race opponent) in the opponent's orange-yellow; the livery is the
   original's own design for both, as in the game.
-- **The original's livery.** `remaster_livery.py` draws the original ES
-  model from the side, top, front and back in the new model's frame, keeps
-  its red, white and blue ribbons (badges, numbers, plates and script
-  removed) and smooths the 1999 texels into clean curves.
+- **The livery.** The original's composition in red, white and blue (an
+  arch over the doors with a sweep over each wheel, stripes fanning up the
+  bonnet, a band over the roof, a pinstripe across the back), drawn afresh
+  as smooth ribbons by `remaster_livery.py`: the 1999 textures draw it
+  panel by panel for a tiny texture and break into blobs on real panels.
 - **Damage.** The original dents a car by moving its model's own vertices
   in eight zones around it as it hits things. Every frame the Remastered
   car takes the same displacement, vertex for vertex, through a mapping
@@ -604,16 +605,18 @@ GLASS_EDGE=0.2 GLASS_OUT=glass_lod2 blender --background --python ports/macos/to
 ```
 
 ```bash
-python3 ports/macos/tools/remaster_livery.py testdata/disc/cars/es.rca ports/common/models/es/pack
+python3 ports/macos/tools/remaster_livery.py ports/common/models/es/pack
 ```
 
 ```bash
 python3 ports/macos/tools/remaster_dent.py testdata/disc/cars/es.rca ports/common/models/es/pack
 ```
 
-Decimate is the only mesh operation: remeshing to a budget before this step
-leaves the panels lumpy, and the source's own UVs and textures go through
-unchanged. The model has window openings but no glass, so the last step
+Each level is welded, Collapse-decimated and given smooth-by-angle normals
+recomputed from its own surface (the kept vertices otherwise carry the full
+model's normals and shade as lumps); nothing else changes the shape, and
+the source's own UVs and textures go through unchanged.  The source's normal
+map is not used: it matches only the full-density surface. The model has window openings but no glass, so the last step
 makes the panes: it finds the openings by casting rays from the cabin's hull
 into the body, and fits tinted glass that reflects the scene into each one. `package_app.sh` copies the pack into the app; without it the
 Remastered renderer draws the original car.

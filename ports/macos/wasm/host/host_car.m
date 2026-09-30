@@ -303,6 +303,7 @@ static rec g_rec[16];
 typedef struct { u32 model; int n; u32 addr[DENT_MAX]; float rest[DENT_MAX][3]; } dentsrc;
 static dentsrc g_dsrc[16];
 static id<MTLBuffer> g_dbuf[3], g_dummy;
+static id<MTLTexture> g_flatn;          /* a flat normal map */
 static float g_mainP[16];
 static unsigned g_main_serial = ~0u;
 static int g_nrec;
@@ -398,8 +399,8 @@ static int load_mesh(NSString *dir, NSString *name, mesh *m, int textured, int k
     if (textured) {
         m->base = load_tex([dir stringByAppendingPathComponent:[name stringByAppendingString:@"_base.png"]], 1);
         m->mr = load_tex([dir stringByAppendingPathComponent:[name stringByAppendingString:@"_orm.png"]], 0);
-        m->nrm = load_tex([dir stringByAppendingPathComponent:[name stringByAppendingString:@"_normal.png"]], 0);
-        if (!m->base || !m->mr || !m->nrm) return 0;
+        m->nrm = g_flatn;                    /* no normal map: see setup() */
+        if (!m->base || !m->mr) return 0;
     }
     return 1;
 }
@@ -429,6 +430,12 @@ static void setup(id<MTLDevice> dev)
                    &g_lamps[3][0], &g_lamps[3][1], &g_lamps[3][2]) == 12)
             g_have_lamps = 1;
     }
+    {
+        MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm width:1 height:1 mipmapped:NO];
+        u32 up = 0xFFFF8080u;                                  /* (0.5, 0.5, 1): straight out */
+        g_flatn = [D newTextureWithDescriptor:td];
+        [g_flatn replaceRegion:MTLRegionMake2D(0, 0, 1, 1) mipmapLevel:0 withBytes:&up bytesPerRow:4];
+    }
     if (!load_mesh(dir, @"body", &g_body, 1, 0) || !load_mesh(dir, @"wheel", &g_wheel, 1, 0) ||
         !load_mesh(dir, @"proxy", &g_proxy, 0, 1))
         return;
@@ -439,8 +446,11 @@ static void setup(id<MTLDevice> dev)
         if (!load_mesh(dir, [@"body" stringByAppendingString:sfx], b, 0, 0) ||
             !load_mesh(dir, [@"wheel" stringByAppendingString:sfx], w, 0, 0))
             break;
-        b->base = g_body.base; b->mr = g_body.mr; b->nrm = g_body.nrm;
-        w->base = g_wheel.base; w->mr = g_wheel.mr; w->nrm = g_wheel.nrm;
+        /* every level shades with its own crease normals (remaster_bake.py):
+         * the model's normal map holds the full-density surface's detail and
+         * on a decimated one it no longer lines up (measured: lumpy) */
+        b->base = g_body.base; b->mr = g_body.mr; b->nrm = g_flatn;
+        w->base = g_wheel.base; w->mr = g_wheel.mr; w->nrm = g_flatn;
         if (!load_mesh(dir, [@"glass" stringByAppendingString:sfx], gl, 0, 0)) *gl = g_glass;
     }
     g_liv_side = load_tex([dir stringByAppendingPathComponent:@"livery_side.png"], 1);
