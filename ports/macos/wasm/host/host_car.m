@@ -96,7 +96,7 @@ vertex VO cvs(uint vid [[vertex_id]], const device MV *v [[buffer(0)]], constant
   o.wn = (u.M * float4(m.n, 0)).xyz; o.wt = (u.M * float4(m.t.xyz, 0)).xyz; o.tw = m.t.w;
   o.uv = m.uv; o.oow = 1.0 / c.w;
   return o; }
-struct FO { float4 c [[color(0)]]; float4 n [[color(1)]]; float4 g [[color(2)]]; float d [[depth(any)]]; };
+struct FO { float4 c [[color(0)]]; float4 n [[color(1)]]; float4 g [[color(2)]]; float4 a [[color(3)]]; float d [[depth(any)]]; };
 uint wfloat(float oow) {
   if (oow >= 1.0) return 0;
   if (oow <= 0.0) return 0xFFFF;
@@ -143,7 +143,7 @@ fragment FO cfs(VO in [[stage_in]], constant CU &u [[buffer(0)]],
                 texture2d<float> lf [[texture(6)]], texture2d<float> lr [[texture(7)]]) {
   constexpr sampler s(filter::linear, mip_filter::linear, address::repeat, max_anisotropy(8));
   constexpr sampler sc(filter::linear, mip_filter::linear, address::clamp_to_zero, max_anisotropy(8));
-  FO o;
+  FO o; o.a = 0;   /* no baked-light surface colour: the car is lit here */
   float4 B = tb.sample(s, in.uv);
   float3 alb = pow(B.rgb, 2.2);
   float paint = u.paint.w > 0.5 ? B.a : 0.0;
@@ -232,7 +232,7 @@ fragment FO cfs(VO in [[stage_in]], constant CU &u [[buffer(0)]],
    blended over what is behind (premultiplied); it writes no depth and none
    of the G-buffer, so the lighting still sees the cabin through it */
 fragment FO gfs(VO in [[stage_in]], constant CU &u [[buffer(0)]], texture2d<float> th [[texture(5)]]) {
-  FO o;
+  FO o; o.a = 0;   /* no baked-light surface colour: the car is lit here */
   float3 N = normalize(in.wn), V = normalize(u.eye.xyz - in.wp);
   if (dot(N, V) < 0) N = -N;
   float nv = saturate(dot(N, V));
@@ -474,6 +474,9 @@ static void setup(id<MTLDevice> dev)
     pd.colorAttachments[0].pixelFormat = MTLPixelFormatRGBA8Unorm;
     pd.colorAttachments[1].pixelFormat = MTLPixelFormatRGBA16Float;
     pd.colorAttachments[2].pixelFormat = MTLPixelFormatRGBA32Float;
+    pd.colorAttachments[3].pixelFormat = MTLPixelFormatRGBA8Unorm;
+    pd.colorAttachments[4].pixelFormat = MTLPixelFormatR8Unorm;
+    pd.colorAttachments[4].writeMask = MTLColorWriteMaskNone;
     pd.depthAttachmentPixelFormat = MTLPixelFormatDepth32Float;
     g_pipe = [D newRenderPipelineStateWithDescriptor:pd error:&err];
     if (!g_pipe) { fprintf(stderr, "car pipeline: %s\n", err.localizedDescription.UTF8String); return; }
@@ -485,6 +488,7 @@ static void setup(id<MTLDevice> dev)
     pd.colorAttachments[0].destinationAlphaBlendFactor = MTLBlendFactorOne;
     pd.colorAttachments[1].writeMask = MTLColorWriteMaskNone;
     pd.colorAttachments[2].writeMask = MTLColorWriteMaskNone;
+    pd.colorAttachments[3].writeMask = MTLColorWriteMaskNone;
     g_gpipe = [D newRenderPipelineStateWithDescriptor:pd error:&err];
     if (!g_gpipe) { fprintf(stderr, "car glass pipeline: %s\n", err.localizedDescription.UTF8String); return; }
     {
@@ -498,7 +502,7 @@ static void setup(id<MTLDevice> dev)
     {
         int i;
         for (i = 0; i < 3; i++)
-            g_shadow[i] = [D newBufferWithLength:(size_t)g_proxy.ni * 15 * 4 options:MTLResourceStorageModeShared];
+            g_shadow[i] = [D newBufferWithLength:(size_t)g_proxy.ni * 18 * 4 options:MTLResourceStorageModeShared];
     }
     {
         MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm width:1 height:1 mipmapped:NO];
@@ -699,8 +703,8 @@ static void cast_shadow(const float *M)
     int i;
     for (i = 0; i < g_proxy.ni; i++) {
         const float *p = g_proxy.pos + 3 * g_proxy.idx[i];
-        float *v = o + 15 * i;           /* host_glide.m's clip-space corner (CVN floats) */
-        memset(v, 0, 15 * 4);
+        float *v = o + 18 * i;           /* host_glide.m's clip-space corner (CVN floats) */
+        memset(v, 0, 18 * 4);
         v[10] = p[0] * M[0] + p[1] * M[4] + p[2] * M[8] + M[12];
         v[11] = p[0] * M[1] + p[1] * M[5] + p[2] * M[9] + M[13];
         v[12] = p[0] * M[2] + p[1] * M[6] + p[2] * M[10] + M[14];

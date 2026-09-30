@@ -58,13 +58,13 @@ static int RW = W, RH = H;     /* the render target, in pixels */
 CAMetalLayer *happ_metal_layer(void);   /* host_app.m; nil when headless */
 
 typedef struct { float x, y, ooz, oow, r, g, b, a, sow, tow, xf; } gv;   /* xf: its screen-map entry */
-#define CVN 15                   /* floats per clip-space corner (render.m's 14, and xf) */
+#define CVN 18                   /* floats per clip-space corner: render.m's 14, xf, the smooth normal */
 typedef struct {
     int cc_func, cc_fact, cc_local, cc_other, cc_inv;
     int ac_func, ac_fact, ac_local, ac_other, ac_inv;
     int tc_rfunc, tc_rfact, tc_afunc, tc_afact, tc_rinv, tc_ainv;
     int at_fn, at_ref, fogmode, dmode, use_tex, clear;
-    float clear_depth, pad0;
+    float clear_depth, mat;      /* mat: the bound texture's material (texmat.csv), 0 unknown */
     float cconst[4], fogcolor[4], clearcol[4];
     float su, sv, lodbias, pad2;
     float fogtab[64];
@@ -78,31 +78,33 @@ static const char *SHADER =
 "  int ac_func, ac_fact, ac_local, ac_other, ac_inv;\n"
 "  int tc_rfunc, tc_rfact, tc_afunc, tc_afact, tc_rinv, tc_ainv;\n"
 "  int at_fn, at_ref, fogmode, dmode, use_tex, clear;\n"
-"  float clear_depth, pad0; float4 cconst, fogcolor, clearcol; float su, sv, lodbias, pad2;\n"
+"  float clear_depth, mat; float4 cconst, fogcolor, clearcol; float su, sv, lodbias, pad2;\n"
 "  float fogtab[64]; };\n"
 "struct VO { float4 pos [[position]];\n"
 "  float4 col [[center_no_perspective]]; float ooz [[center_no_perspective]];\n"
 "  float oow [[center_no_perspective]]; float sow [[center_no_perspective]];\n"
 "  float tow [[center_no_perspective]];\n"
 "  float pw, ps, pt; float4 pcol; int pm [[flat]];   /* pm: w, s, t, colour perspective-correct (vsc) */\n"
-"  float3 wp; float fl [[flat]]; };   /* fx G-buffer: world position, 1 main 3D / 2 sky / 3 other view */\n"
+"  float3 wp; float fl [[flat]];   /* fx G-buffer: world position, 1 main 3D / 2 sky / 3 other view */\n"
+"  float3 nrm; };                   /* the smooth normal at the corner (hglide_normals), or 0 */\n"
 "/* the screen map (see the header): NDC = xy * T.xz + T.yw, xy in 640x480\n"
 "   pixels, y down */\n"
 "vertex VO vs(uint vid [[vertex_id]], const device GV *v [[buffer(0)]], const device float4 *xt [[buffer(1)]]) {\n"
 "  GV g = v[vid]; VO o; float4 T = xt[int(g.xf)];\n"
 "  o.pos = float4(T.x * g.x + T.y, T.z * g.y + T.w, 0.5, 1.0);\n"
 "  o.col = float4(g.r, g.g, g.b, g.a); o.ooz = g.ooz; o.oow = g.oow; o.sow = g.sow; o.tow = g.tow;\n"
-"  o.pw = 1; o.ps = 0; o.pt = 0; o.pcol = 0; o.pm = 0; o.wp = 0; o.fl = 0;\n"
+"  o.pw = 1; o.ps = 0; o.pt = 0; o.pcol = 0; o.pm = 0; o.wp = 0; o.fl = 0; o.nrm = 0;\n"
 "  return o; }\n"
 "/* clip-space corners from the native renderer: the GPU divides by w; 1/w,\n"
 "   s/w and t/w are carried unperspective, the values the Voodoo iterates */\n"
 "/* x, y: 640x480 pixels (y down) times w */\n"
-"struct CV { float x, y, z, w, r, g, b, a, s, t, wx, wy, wz, fl, xf; };\n"
+"struct CV { float x, y, z, w, r, g, b, a, s, t, wx, wy, wz, fl, xf, nx, ny, nz; };\n"
 "vertex VO vsc(uint vid [[vertex_id]], const device CV *v [[buffer(0)]], const device float4 *xt [[buffer(1)]]) {\n"
 "  CV g = v[vid]; VO o; float q = 1.0 / g.w; float4 T = xt[int(g.xf)];\n"
 "  o.pos = float4(T.x * g.x + T.y * g.w, T.z * g.y + T.w * g.w, g.z, g.w);\n"
 "  o.col = float4(g.r, g.g, g.b, g.a); o.ooz = 0; o.oow = q; o.sow = g.s * q; o.tow = g.t * q;\n"
 "  o.pw = g.w; o.ps = g.s; o.pt = g.t; o.pcol = o.col; o.pm = 1; o.wp = float3(g.wx, g.wy, g.wz); o.fl = g.fl;\n"
+"  o.nrm = float3(g.nx, g.ny, g.nz);\n"
 "  return o; }\n"
 "/* the same corners drawn without the depth buffer: the no-Z vertex routines\n"
 "   overwrite 1/w with 1/65535 after projecting, so the card writes the far\n"
@@ -111,7 +113,7 @@ static const char *SHADER =
 "  CV g = v[vid]; VO o; float q = 1.0 / 65535.0; float4 T = xt[int(g.xf)];\n"
 "  o.pos = float4(T.x * g.x + T.y * g.w, T.z * g.y + T.w * g.w, g.z, g.w);\n"
 "  o.col = float4(g.r, g.g, g.b, g.a); o.ooz = 0; o.oow = q; o.sow = g.s * q; o.tow = g.t * q;\n"
-"  o.pw = 1; o.ps = 0; o.pt = 0; o.pcol = 0; o.pm = 0; o.wp = 0; o.fl = g.fl == 1.0 ? 2.0 : 0.0;\n"
+"  o.pw = 1; o.ps = 0; o.pt = 0; o.pcol = 0; o.pm = 0; o.wp = 0; o.fl = g.fl == 1.0 ? 2.0 : 0.0; o.nrm = 0;\n"
 "  return o; }\n"
 "struct BV { float x, y, u, v, xf, pad; };\n"
 "struct BO { float4 pos [[position]]; float2 uv; };\n"
@@ -153,7 +155,8 @@ static const char *SHADER =
 "  if (i > 63) return u.fogtab[63];\n"
 "  float pw = fogtw(i - 1), tw = fogtw(i), prev = u.fogtab[i - 1];\n"
 "  return prev + (u.fogtab[i] - prev) * (w - pw) / (tw - pw); }\n"
-"struct FO { float4 c [[color(0)]]; float4 n [[color(1)]]; float4 g [[color(2)]]; float d [[depth(any)]]; };\n"
+"struct FO { float4 c [[color(0)]]; float4 n [[color(1)]]; float4 g [[color(2)]]; float4 a [[color(3)]];\n"
+"  float m [[color(4)]]; float d [[depth(any)]]; };   /* m: the surface's material id / 255 */\n"
 "/* The Voodoo's 16-bit W-buffer word: 4-bit exponent, 12-bit mantissa of\n"
 "   1/w as a .32 fraction.  Depth is stored and compared at this precision,\n"
 "   which is what lets a second pass over the same polygon (the car shadows\n"
@@ -167,13 +170,28 @@ static const char *SHADER =
 "  uint m = e <= 19 ? (~t >> uint(19 - e)) : (~t << uint(e - 19));\n"
 "  uint w = (uint(e) << 12) | (m & 0xFFF);\n"
 "  return w < 0xFFFF ? w + 1 : w; }\n"
+"/* the colour and alpha combine units: iterated colour `it`, texel `t` */\n"
+"float4 combine(constant GU &u, float4 it, float4 t) {\n"
+"  float4 cc = u.cconst, loc, oth, outc;\n"
+"  loc.rgb = u.cc_local == 1 ? cc.rgb : it.rgb;\n"
+"  oth.rgb = u.cc_other == 1 ? t.rgb : (u.cc_other == 2 ? cc.rgb : it.rgb);\n"
+"  loc.a = u.ac_local == 1 ? cc.a : it.a;\n"
+"  oth.a = u.ac_other == 1 ? t.a : (u.ac_other == 2 ? cc.a : it.a);\n"
+"  for (int k = 0; k < 3; k++) {\n"
+"    float f = factor(u.cc_fact, loc, oth, t.a, loc[k]);\n"
+"    outc[k] = comb1(u.cc_func, f, loc[k], loc.a, oth[k]);\n"
+"    if (u.cc_inv) outc[k] = 255 - outc[k]; }\n"
+"  float fa = factor(u.ac_fact, loc, oth, t.a, loc.a);\n"
+"  outc.a = comb1(u.ac_func, fa, loc.a, loc.a, oth.a);\n"
+"  if (u.ac_inv) outc.a = 255 - outc.a;\n"
+"  return clamp(outc, 0.0, 255.0); }\n"
 "fragment FO fs(VO vin [[stage_in]], constant GU &u [[buffer(0)]],\n"
 "               texture2d<float> tex [[texture(0)]], sampler smp [[sampler(0)]]) {\n"
 "  FO o; VO in = vin;\n"
 "  /* clip-space corners: w, s and t come perspective-correct, so 1/w, s/w and\n"
 "     t/w are exact at every pixel, clipped by the GPU or not */\n"
 "  if (in.pm) { in.oow = 1.0 / in.pw; in.sow = in.ps * in.oow; in.tow = in.pt * in.oow; in.col = in.pcol; }\n"
-"  o.n = 0; o.g = 0;\n"
+"  o.n = 0; o.g = 0; o.a = 0; o.m = 0;\n"
 "  /* a clear is background: the sky, where the game draws none (night, storm) */\n"
 "  if (u.clear) { o.c = u.clearcol / 255.0; o.d = u.clear_depth; o.n = float4(o.c.rgb, 1); o.g = float4(0, 0, 0, 3); return o; }\n"
 "  float depth = 0;\n"
@@ -190,19 +208,7 @@ static const char *SHADER =
 "    float ra = comb1(u.tc_afunc, factor(u.tc_afact, raw, float4(0), raw.a, raw.a), raw.a, raw.a, 0);\n"
 "    if (u.tc_ainv) ra = 255 - ra;\n"
 "    t = clamp(float4(rc, ra), 0.0, 255.0); }\n"
-"  float4 cc = u.cconst, loc, oth, outc;\n"
-"  loc.rgb = u.cc_local == 1 ? cc.rgb : it.rgb;\n"
-"  oth.rgb = u.cc_other == 1 ? t.rgb : (u.cc_other == 2 ? cc.rgb : it.rgb);\n"
-"  loc.a = u.ac_local == 1 ? cc.a : it.a;\n"
-"  oth.a = u.ac_other == 1 ? t.a : (u.ac_other == 2 ? cc.a : it.a);\n"
-"  for (int k = 0; k < 3; k++) {\n"
-"    float f = factor(u.cc_fact, loc, oth, t.a, loc[k]);\n"
-"    outc[k] = comb1(u.cc_func, f, loc[k], loc.a, oth[k]);\n"
-"    if (u.cc_inv) outc[k] = 255 - outc[k]; }\n"
-"  float fa = factor(u.ac_fact, loc, oth, t.a, loc.a);\n"
-"  outc.a = comb1(u.ac_func, fa, loc.a, loc.a, oth.a);\n"
-"  if (u.ac_inv) outc.a = 255 - outc.a;\n"
-"  outc = clamp(outc, 0.0, 255.0);\n"
+"  float4 outc = combine(u, it, t);\n"
 "  if (!cmpf(u.at_fn, floor(outc.a), float(u.at_ref))) discard_fragment();\n"
 "  float kf = 0;\n"
 "  if (u.fogmode & 1) {\n"
@@ -212,8 +218,19 @@ static const char *SHADER =
 "  o.c = outc / 255.0;\n"
 "  /* fx G-buffer (host_fx.m); the pipeline decides what reaches it */\n"
 "  if (vin.fl == 1.0) {\n"
-"    float3 nn = cross(dfdy(vin.wp), dfdx(vin.wp));\n"
+"    /* the smooth normal where the mesh has one, else the face's */\n"
+"    float3 nn = length(vin.nrm) > 0.01 ? vin.nrm : cross(dfdy(vin.wp), dfdx(vin.wp));\n"
 "    o.n = float4(length(nn) > 0 ? normalize(nn) : float3(0, 0, 1), 1); o.g = float4(vin.wp, 1.0 + 0.9 * kf);\n"
+"    /* the surface's own colour, before the vertex light and the fog: the\n"
+"       combine with a white vertex colour, times the vertex colour's hue;\n"
+"       its brightness (the light the game baked in, and its darkening for\n"
+"       the weather) goes to alpha.  A combine the vertex colour does not\n"
+"       reach keeps its colour, at full brightness */\n"
+"    o.m = u.mat / 255.0;\n"
+"    float4 w1 = combine(u, float4(255, 255, 255, it.a), t);\n"
+"    float sh = max(it.r, max(it.g, it.b)) / 255.0;\n"
+"    if (all(abs(w1.rgb - outc.rgb) < 0.5) || sh < 1e-3) o.a = float4(outc.rgb / 255.0, 1);\n"
+"    else o.a = float4(saturate(w1.rgb / 255.0 * (it.rgb / 255.0 / sh)), sh);\n"
 "  } else if (vin.fl == 2.0) { o.n = float4(o.c.rgb, 1); o.g = float4(0, 0, 0, 3); }   /* the sky keeps its own colour, for host_fx.m */\n"
 "  else o.n = float4(0, 0, 0, o.c.a);   /* 2D: blended ones scale the scene coverage by 1 - a */\n"
 "  return o; }\n"
@@ -228,7 +245,7 @@ static const char *SHADER =
 static id<MTLDevice> g_dev;
 static id<MTLCommandQueue> g_q;
 static id<MTLLibrary> g_lib;
-static id<MTLTexture> g_color, g_depth, g_white, g_gn, g_gp;
+static id<MTLTexture> g_color, g_depth, g_white, g_gn, g_gp, g_ga, g_gm;   /* g_ga: the surface's own colour + baked light; g_gm its material */
 static int g_fx_fresh = 1;
 int hfx_on(void);
 int hfx_game_particles(void);
@@ -238,7 +255,8 @@ void hfx_prof_attach(MTLRenderPassDescriptor *rp, const char *label);
 void hfx_shadow_batch(id<MTLBuffer> buf, size_t off, int n, id<MTLTexture> tex, id<MTLSamplerState> smp,
                       int at_fn, int at_ref, int use_tex, float su, float sv);
 id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture> col, id<MTLTexture> gn,
-                       id<MTLTexture> gp, int w, int h, int origin_ll, const float *fogc);
+                       id<MTLTexture> gp, id<MTLTexture> ga, id<MTLTexture> gm, int w, int h, int origin_ll, const float *fogc);
+int hfx_cam_eye(float e[3]);
 static id<MTLTexture> g_fxout;
 static unsigned g_st_passes;
 static unsigned g_swaps;
@@ -262,7 +280,7 @@ static struct {
 } S;
 
 static u8 g_tmem[4 << 20];
-typedef struct { u32 start, end, fmt, large, small, aspect; __unsafe_unretained id<MTLTexture> t, tm; } texent;
+typedef struct { u32 start, end, fmt, large, small, aspect; __unsafe_unretained id<MTLTexture> t, tm; u32 hash; int mat; } texent;
 static NSMutableArray *g_texobjs;     /* keeps the textures alive */
 static texent g_tex[512];
 static int g_ntex;
@@ -509,6 +527,16 @@ static void size_targets(void)
     td.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
     td.storageMode = MTLStorageModePrivate;
     g_gp = [g_dev newTextureWithDescriptor:td];
+    td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm
+                                                            width:(NSUInteger)RW height:(NSUInteger)RH mipmapped:NO];
+    td.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
+    td.storageMode = MTLStorageModePrivate;
+    g_ga = [g_dev newTextureWithDescriptor:td];
+    td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatR8Unorm
+                                                            width:(NSUInteger)RW height:(NSUInteger)RH mipmapped:NO];
+    td.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
+    td.storageMode = MTLStorageModePrivate;
+    g_gm = [g_dev newTextureWithDescriptor:td];
     g_fx_fresh = 1;
     HLOG("render target %dx%d\n", RW, RH);
 }
@@ -556,6 +584,10 @@ static void gl_setup(void)
     pd.colorAttachments[1].writeMask = MTLColorWriteMaskNone;
     pd.colorAttachments[2].pixelFormat = MTLPixelFormatRGBA32Float;
     pd.colorAttachments[2].writeMask = MTLColorWriteMaskNone;
+    pd.colorAttachments[3].pixelFormat = MTLPixelFormatRGBA8Unorm;
+    pd.colorAttachments[3].writeMask = MTLColorWriteMaskNone;
+    pd.colorAttachments[4].pixelFormat = MTLPixelFormatR8Unorm;
+    pd.colorAttachments[4].writeMask = MTLColorWriteMaskNone;
     pd.depthAttachmentPixelFormat = MTLPixelFormatDepth32Float;
     g_blit = [g_dev newRenderPipelineStateWithDescriptor:pd error:&err];
     if (!g_blit) { fprintf(stderr, "blit pipeline: %s\n", err.localizedDescription.UTF8String); exit(1); }
@@ -604,10 +636,15 @@ static id<MTLRenderPipelineState> gpipe(int rs, int rd, int as, int ad, int noco
          * 2D scales the scene coverage (normal.a) by 1 - its alpha */
         d.colorAttachments[1].pixelFormat = MTLPixelFormatRGBA16Float;
         d.colorAttachments[2].pixelFormat = MTLPixelFormatRGBA32Float;
+        d.colorAttachments[3].pixelFormat = MTLPixelFormatRGBA8Unorm;
+        d.colorAttachments[4].pixelFormat = MTLPixelFormatR8Unorm;
         if (getenv("BR_EXP") && atoi(getenv("BR_EXP")) == 1) {
-            d.colorAttachments[1].writeMask = MTLColorWriteMaskNone; d.colorAttachments[2].writeMask = MTLColorWriteMaskNone; }
+            d.colorAttachments[1].writeMask = MTLColorWriteMaskNone; d.colorAttachments[2].writeMask = MTLColorWriteMaskNone;
+            d.colorAttachments[3].writeMask = MTLColorWriteMaskNone; d.colorAttachments[4].writeMask = MTLColorWriteMaskNone; }
         if (c.blendingEnabled) {
             d.colorAttachments[2].writeMask = MTLColorWriteMaskNone;
+            d.colorAttachments[3].writeMask = MTLColorWriteMaskNone;
+            d.colorAttachments[4].writeMask = MTLColorWriteMaskNone;
             if (kind) d.colorAttachments[1].writeMask = MTLColorWriteMaskNone;
             else {
                 MTLRenderPipelineColorAttachmentDescriptor *n = d.colorAttachments[1];
@@ -686,9 +723,16 @@ static void begin_pass(void)
     rp.depthAttachment.storeAction = MTLStoreActionStore;
     rp.colorAttachments[1].texture = g_gn;
     rp.colorAttachments[2].texture = g_gp;
-    rp.colorAttachments[1].loadAction = rp.colorAttachments[2].loadAction = g_fx_fresh ? MTLLoadActionClear : MTLLoadActionLoad;
-    rp.colorAttachments[1].clearColor = rp.colorAttachments[2].clearColor = MTLClearColorMake(0, 0, 0, 0);
-    rp.colorAttachments[1].storeAction = rp.colorAttachments[2].storeAction = MTLStoreActionStore;
+    rp.colorAttachments[3].texture = g_ga;
+    rp.colorAttachments[4].texture = g_gm;
+    {
+        int k;
+        for (k = 1; k <= 4; k++) {
+            rp.colorAttachments[k].loadAction = g_fx_fresh ? MTLLoadActionClear : MTLLoadActionLoad;
+            rp.colorAttachments[k].clearColor = MTLClearColorMake(0, 0, 0, 0);
+            rp.colorAttachments[k].storeAction = MTLStoreActionStore;
+        }
+    }
     g_fx_fresh = 0;
     g_st_passes++;
     hfx_prof_attach(rp, "game scene");
@@ -733,11 +777,13 @@ static void end_pass(void)
 {
     if (g_enc) { flush_batch(); [g_enc endEncoding]; g_enc = nil; }
 }
+static void hglide_normals(void);
+
 /* finish all GPU work: needed before the CPU touches the target */
 static void flush_wait(void)
 {
     end_pass();
-    if (g_cb) { resolve_xf(); [g_cb commit]; [g_cb waitUntilCompleted]; g_cb = nil; }
+    if (g_cb) { hglide_normals(); resolve_xf(); [g_cb commit]; [g_cb waitUntilCompleted]; g_cb = nil; }
     else if (g_q) {
         /* nothing open: frames already committed may still be drawing; an
          * empty buffer behind them on the queue completes after they do */
@@ -796,6 +842,63 @@ static void decode(const u8 *src, int fmt, int w, int h, u32 *out)
         out[i] = r | g << 8 | b << 16 | a << 24;
     }
 }
+/* ------------------------------------------------ the material catalogue */
+/* texmat.csv: every game texture Remastered knows, by the hash of its large
+ * level's content (the name BR_TEXDUMP gives it), and what it is a picture
+ * of.  host_fx.m lights and details a surface by its material instead of
+ * guessing from its colour.  Looked for in the app's Resources, else
+ * $BR_ROOT/ports/macos/wasm. */
+static struct { u32 hash; int mat; } *g_tm;
+static int g_ntm, g_tm_state, g_cur_mat;
+static const char *const MATNAMES[] = { "unknown", "asphalt", "marking", "dirt", "sand", "grass", "rock", "snow",
+    "ice", "water", "concrete", "building", "wood", "metal", "window", "foliage", "sign", "lamp", "sky",
+    "tunnel", "vehicle", "effect" };
+static int texmat_cmp(const void *a, const void *b)
+{
+    u32 x = *(const u32 *)a, y = *(const u32 *)b;
+    return x < y ? -1 : x > y;
+}
+static void texmat_load(void)
+{
+    char path[1024], line[512];
+    FILE *f;
+    const char *res = getenv("BR_TEXMAT");
+    g_tm_state = 1;
+    if (res) snprintf(path, sizeof path, "%s", res);
+    else {
+        NSString *r = [[NSBundle mainBundle] pathForResource:@"texmat" ofType:@"csv"];
+        if (r) snprintf(path, sizeof path, "%s", r.UTF8String);
+        else snprintf(path, sizeof path, "%s/ports/macos/wasm/texmat.csv", getenv("BR_ROOT") ? getenv("BR_ROOT") : ".");
+    }
+    if (!(f = fopen(path, "r"))) return;
+    while (fgets(line, sizeof line, f)) {
+        char name[64];
+        unsigned h;
+        int k;
+        if (line[0] == '#' || sscanf(line, "%x,%63[a-z]", &h, name) != 2) continue;
+        for (k = 1; k < (int)(sizeof MATNAMES / sizeof MATNAMES[0]); k++)
+            if (!strcmp(name, MATNAMES[k])) break;
+        if (k == (int)(sizeof MATNAMES / sizeof MATNAMES[0])) continue;
+        if ((g_ntm & 255) == 0) g_tm = realloc(g_tm, sizeof *g_tm * (size_t)(g_ntm + 256));
+        g_tm[g_ntm].hash = h; g_tm[g_ntm].mat = k; g_ntm++;
+    }
+    fclose(f);
+    qsort(g_tm, (size_t)g_ntm, sizeof *g_tm, texmat_cmp);
+    HLOG("texmat: %d textures from %s\n", g_ntm, path);
+}
+static int texmat(u32 h)
+{
+    int lo = 0, hi;
+    if (!g_tm_state) texmat_load();
+    hi = g_ntm - 1;
+    while (lo <= hi) {
+        int m = (lo + hi) / 2;
+        if (g_tm[m].hash == h) return g_tm[m].mat;
+        if (g_tm[m].hash < h) lo = m + 1; else hi = m - 1;
+    }
+    return 0;
+}
+
 /* The texture at tex_start as a Metal texture with every mip level the
  * application downloaded (large LOD first, each level packed after the
  * previous one, as grTexDownloadMipMap lays them out). */
@@ -805,11 +908,14 @@ static id<MTLTexture> cur_texture(void)
     u32 n, off;
     MTLTextureDescriptor *td;
     id<MTLTexture> t;
-    u32 *px;
+    u32 *px, hsh = 0;
+    g_cur_mat = 0;
     for (i = 0; i < g_ntex; i++)
         if (g_tex[i].t && g_tex[i].start == S.tex_start && g_tex[i].fmt == S.tex_fmt &&
-            g_tex[i].large == S.tex_large && g_tex[i].small == (u32)small && g_tex[i].aspect == S.tex_aspect)
+            g_tex[i].large == S.tex_large && g_tex[i].small == (u32)small && g_tex[i].aspect == S.tex_aspect) {
+            g_cur_mat = g_tex[i].mat;
             return g_tex[i].t;
+        }
     n = tex_bytes(small, (int)S.tex_large, (int)S.tex_aspect, (int)S.tex_fmt);
     if (S.tex_start + n > sizeof g_tmem) return g_white;
     nlev = small - (int)S.tex_large + 1;
@@ -823,6 +929,11 @@ static id<MTLTexture> cur_texture(void)
         int lw, lh;
         lod_dims((int)S.tex_large + l, (int)S.tex_aspect, &lw, &lh);
         decode(g_tmem + off, (int)S.tex_fmt, lw, lh, px);
+        if (l == 0) {   /* its identity: the content of the large level (as BR_TEXDUMP names it) */
+            u32 k;
+            hsh = 2166136261u;
+            for (k = 0; k < (u32)(lw * lh); k++) hsh = (hsh ^ px[k]) * 16777619u;
+        }
         [t replaceRegion:MTLRegionMake2D(0, 0, (NSUInteger)lw, (NSUInteger)lh) mipmapLevel:(NSUInteger)l
                withBytes:px bytesPerRow:(NSUInteger)lw * 4];
         off += (u32)(lw * lh * fmt_bpp((int)S.tex_fmt));
@@ -851,7 +962,8 @@ static id<MTLTexture> cur_texture(void)
     if (i == 512) { i = rand() % 512; tex_drop(i); }
     if (i == g_ntex) g_ntex++;
     [g_texobjs addObject:t];
-    g_tex[i] = (texent){ S.tex_start, S.tex_start + n, S.tex_fmt, S.tex_large, (u32)small, S.tex_aspect, t, nil };
+    g_tex[i] = (texent){ S.tex_start, S.tex_start + n, S.tex_fmt, S.tex_large, (u32)small, S.tex_aspect, t, nil, hsh, texmat(hsh) };
+    g_cur_mat = g_tex[i].mat;
     return t;
 }
 
@@ -1075,8 +1187,9 @@ static int g_shonly;
 
 /* v: n corners of `kind` 0 (gv, screen space) or 1 (clip space, 10 floats
  * too).  Appended to the pending run when every piece of state matches. */
-static void draw(const void *v, int n, int clear, int kind)
+static float *draw(const void *v, int n, int clear, int kind)
 {
+    float *dst;
     size_t bytes = (size_t)n * (kind ? CVN * sizeof(float) : sizeof(gv));
     int xf0 = (int)(kind ? ((const float *)v)[CVN - 1] : ((const gv *)v)->xf);
     id<MTLTexture> t = g_white;
@@ -1084,12 +1197,13 @@ static void draw(const void *v, int n, int clear, int kind)
     id<MTLDepthStencilState> ds;
     id<MTLSamplerState> smp;
     MTLScissorRect sc;
-    if (g_shonly && !(kind == 1 && S.ab_rs == 4 && S.ab_rd == 0 && S.dmask && U.dmode)) return;
+    if (g_shonly && !(kind == 1 && S.ab_rs == 4 && S.ab_rd == 0 && S.dmask && U.dmode)) return NULL;
     if (!clear && !kind) pick((const gv *)v, n);
     begin_pass();
     if (g_voff + bytes + 256 > (16u << 20)) {
         /* a vertex-heavy frame: flush and start over in the next buffer */
         end_pass();
+        hglide_normals();
         resolve_xf();
         [g_cb commit];
         g_cb = nil;
@@ -1097,9 +1211,11 @@ static void draw(const void *v, int n, int clear, int kind)
     }
     U.clear = clear;
     U.use_tex = !clear && (U.cc_other == 1 || U.ac_other == 1 || (U.cc_fact & 7) == 4 || (U.ac_fact & 7) == 4);
+    U.mat = 0;
     if (U.use_tex) {
         int tw, th, md;
         t = cur_texture();
+        U.mat = (float)g_cur_mat;
         lod_dims((int)S.tex_large, (int)S.tex_aspect, &tw, &th);
         md = tw > th ? tw : th;
         U.su = (float)md / (256.0f * (float)tw);
@@ -1110,16 +1226,16 @@ static void draw(const void *v, int n, int clear, int kind)
     smp = samp();
     if (kind && U.use_tex && hfx_on()) { t = fx_texture(t); smp = fx_samp(); }
     { static long hide = -2; if (hide == -2) hide = getenv("BR_HIDETEX") ? atol(getenv("BR_HIDETEX")) : -1;
-      if (hide >= 0 && U.use_tex && (long)S.tex_start == hide) return; }   /* debug: what a texture draws */
+      if (hide >= 0 && U.use_tex && (long)S.tex_start == hide) return NULL; }   /* debug: what a texture draws */
     /* Remastered draws its own smoke, dust, spray and rain (host_fx.m); the
      * game's dust puffs are the same sprites with depth writes left on */
     if (!clear && U.use_tex && S.tex_fmt == 2 && S.ab_rs == 1 && S.ab_rd == 5 && U.dmode && (!S.dmask || !kind) &&
         (U.cc_other == 1 || U.cc_other == 2) && !hfx_game_particles())
-        return;
+        return NULL;
     { static int hc = -2; if (hc == -2) hc = getenv("BR_HIDECLASS") ? atoi(getenv("BR_HIDECLASS")) : -1;
       if (hc >= 0 && !clear && U.use_tex && S.tex_fmt == 2 && S.ab_rs == 1 && S.ab_rd == 5 &&
           ((hc == 0 && !kind && U.cc_other == 2) || (hc == 1 && kind && U.cc_other == 2) || (hc == 2 && kind && U.cc_other == 1)))
-          return; }
+          return NULL; }
     if (getenv("BR_DRAWSTAT") && !clear) {     /* blended draw census */
         static char seen[256][96]; static int ns; char k[96]; int i;
         snprintf(k, sizeof k, "kind %d tex %u fmt %u use %d ab %d %d dm %d mask %d cc %d %d %d %d", kind, U.use_tex ? S.tex_start : 0, S.tex_fmt,
@@ -1136,9 +1252,11 @@ static void draw(const void *v, int n, int clear, int kind)
         B.shadow = kind == 1 && S.ab_rs == 4 && S.ab_rd == 0 && S.dmask && U.dmode && hfx_on();
         B.sc = sc; B.u = U;
     }
-    memcpy((u8 *)g_vbuf[g_vbi].contents + g_voff, v, bytes);
+    dst = (float *)((u8 *)g_vbuf[g_vbi].contents + g_voff);
+    memcpy(dst, v, bytes);
     g_voff += bytes;
     B.n += n;
+    return dst;
 }
 
 /* A native mesh drawn in display-list order (host_car.m): the pending run is
@@ -1329,13 +1447,14 @@ void h_grBufferSwap(u32 interval)
         last = t;
     }
     gllog("grBufferSwap");
+    hglide_normals();                   /* before hfx_run: it needs this frame's camera */
     resolve_xf();                       /* before hfx_run moves the jitter on */
     g_fxout = nil;
     hfx_tick();
     if (hfx_on()) {
         float fc[3] = { powf(U.fogcolor[0] / 255.0f, 2.2f), powf(U.fogcolor[1] / 255.0f, 2.2f), powf(U.fogcolor[2] / 255.0f, 2.2f) };
         if (!g_cb) begin_pass(), end_pass();
-        g_fxout = hfx_run(g_dev, g_cb, g_color, g_gn, g_gp, RW, RH, S.origin_ll, fc);
+        g_fxout = hfx_run(g_dev, g_cb, g_color, g_gn, g_gp, g_ga, g_gm, RW, RH, S.origin_ll, fc);
     }
     { void hcar_frame_end(id<MTLCommandBuffer> cb, id<MTLTexture> pic);
       if (!g_cb) begin_pass(), end_pass();
@@ -1506,6 +1625,88 @@ void h_grDrawTriangle(u32 a, u32 b, u32 c)
  * eye, so a triangle through the near plane culls as the original's clipped
  * polygon did).  `noz`: the corners came from a no-Z vertex routine, which
  * sets 1/w to 1/65535 for the card (see vscn). */
+/* ---------------------------------------------------- smooth normals */
+/* The game's meshes carry no normals for most of the world (its lighting is
+ * baked into vertex colours), and the G-buffer's face normals make every
+ * low-poly slope a facet.  At the swap -- the frame's vertices are still in
+ * the shared buffer the GPU reads after the commit -- every camera triangle's
+ * corners get the normal a modeller's smoothing groups would give them: the
+ * area-weighted normals of the faces meeting at that point in the world,
+ * those within 50 degrees of the corner's own face only, so creases (a wall
+ * on the road, a kerb) stay sharp.  Faces are turned toward the eye first.
+ *
+ * The same pass measures the light the game baked into this race's vertex
+ * colours, which carries its darkening for the weather: the running mean
+ * of their brightness since the race (track and weather) began.  host_fx.m
+ * lights the true surface colour relative to it. */
+static float **g_nt;
+static int g_nnt, g_capnt;
+static double g_bake_sum, g_bake_n;
+static u32 g_bake_key;
+static int q_main(float fl) { return fl == 1.0f; }
+static void nt_add(float *d)
+{
+    if (!hfx_on()) return;
+    if (g_nnt == g_capnt) { g_capnt = g_capnt ? g_capnt * 2 : 4096; g_nt = realloc(g_nt, sizeof *g_nt * (size_t)g_capnt); }
+    g_nt[g_nnt++] = d;
+}
+float hglide_bake_ref(void) { return g_bake_n > 0 ? (float)(g_bake_sum / g_bake_n) : 0.0f; }
+typedef struct { int32_t k[3]; int next; } nkey;
+static void hglide_normals(void)
+{
+    static float (*fn)[4];
+    static int *head, capf, caph;
+    static nkey *ck;
+    int n = g_nnt, i, c, nh;
+    float eye[3];
+    u32 key;
+    if (!n) return;
+    key = H32(0x104B15E8u) * 131u ^ H32(0x100B3014u);        /* weather, track */
+    if (key != g_bake_key) { g_bake_key = key; g_bake_sum = g_bake_n = 0; }
+    if (n > capf) { capf = n * 2; fn = realloc(fn, sizeof *fn * (size_t)capf); ck = realloc(ck, sizeof *ck * (size_t)capf * 3); }
+    for (nh = 1024; nh < n * 6; nh <<= 1) ;
+    if (nh > caph) { caph = nh; head = realloc(head, sizeof *head * (size_t)caph); }
+    for (i = 0; i < nh; i++) head[i] = -1;
+    if (!hfx_cam_eye(eye)) eye[0] = eye[1] = eye[2] = 0;
+    for (i = 0; i < n; i++) {
+        const float *a = g_nt[i], *b = a + CVN, *d = a + 2 * CVN;
+        float e1[3] = { b[10] - a[10], b[11] - a[11], b[12] - a[12] }, e2[3] = { d[10] - a[10], d[11] - a[11], d[12] - a[12] };
+        float nx = e1[1] * e2[2] - e1[2] * e2[1], ny = e1[2] * e2[0] - e1[0] * e2[2], nz = e1[0] * e2[1] - e1[1] * e2[0];
+        float l = sqrtf(nx * nx + ny * ny + nz * nz), cx = (a[10] + b[10] + d[10]) / 3, cy = (a[11] + b[11] + d[11]) / 3, cz = (a[12] + b[12] + d[12]) / 3;
+        if (l > 0 && (nx * (eye[0] - cx) + ny * (eye[1] - cy) + nz * (eye[2] - cz)) < 0) { nx = -nx; ny = -ny; nz = -nz; }
+        fn[i][0] = l > 0 ? nx / l : 0; fn[i][1] = l > 0 ? ny / l : 0; fn[i][2] = l > 0 ? nz / l : 0; fn[i][3] = l * 0.5f;
+        for (c = 0; c < 3; c++) {
+            const float *q = g_nt[i] + c * CVN;
+            nkey *k = &ck[i * 3 + c];
+            u32 h;
+            k->k[0] = (int32_t)lrintf(q[10] * 100.0f); k->k[1] = (int32_t)lrintf(q[11] * 100.0f); k->k[2] = (int32_t)lrintf(q[12] * 100.0f);
+            h = ((u32)k->k[0] * 73856093u ^ (u32)k->k[1] * 19349663u ^ (u32)k->k[2] * 83492791u) & (u32)(nh - 1);
+            k->next = head[h]; head[h] = i * 3 + c;
+            {   /* the baked light: the corner colour's brightness, linear */
+                float sh = fmaxf(q[4], fmaxf(q[5], q[6])) / 255.0f;
+                g_bake_sum += pow(sh > 1 ? 1 : sh, 2.2); g_bake_n += 1;
+            }
+        }
+    }
+    for (i = 0; i < n; i++)
+        for (c = 0; c < 3; c++) {
+            const nkey *k = &ck[i * 3 + c];
+            float acc[3] = { 0, 0, 0 }, l;
+            u32 h = ((u32)k->k[0] * 73856093u ^ (u32)k->k[1] * 19349663u ^ (u32)k->k[2] * 83492791u) & (u32)(nh - 1);
+            int j;
+            float *q = g_nt[i] + c * CVN;
+            for (j = head[h]; j >= 0; j = ck[j].next) {
+                const float *m = fn[j / 3];
+                if (ck[j].k[0] != k->k[0] || ck[j].k[1] != k->k[1] || ck[j].k[2] != k->k[2]) continue;
+                if (m[0] * fn[i][0] + m[1] * fn[i][1] + m[2] * fn[i][2] < 0.64f) continue;
+                acc[0] += m[0] * m[3]; acc[1] += m[1] * m[3]; acc[2] += m[2] * m[3];
+            }
+            l = sqrtf(acc[0] * acc[0] + acc[1] * acc[1] + acc[2] * acc[2]);
+            if (l > 0) { q[15] = acc[0] / l; q[16] = acc[1] / l; q[17] = acc[2] / l; }
+        }
+    g_nnt = 0;
+}
+
 /* A triangle the camera does not draw -- outside the view (native/render.m's
  * trivial reject) or facing away from it -- can still stand between the sun
  * and what the camera sees.  Remastered's shadow map takes it; the frame does
@@ -1521,7 +1722,7 @@ void hglide_tri_shadow(const float *a, const float *b, const float *c)
     if (camonly < 0) camonly = getenv("BR_FX_SHCAM") != NULL;
     if (camonly || !hfx_on()) return;
     for (i = 0; i < 3; i++) {
-        memset(v[i], 0, 4 * sizeof(float));
+        memset(v[i], 0, sizeof v[i]);
         memcpy(&v[i][4], &p[i][4], 10 * sizeof(float));
         v[i][14] = XF_BOX3D;
     }
@@ -1568,6 +1769,16 @@ void hglide_tri_h(const float *a, const float *b, const float *c, int noz, int v
         xf = !g_wide ? XF_BOX3D : view == 2 ? XF_MIRROR : XF_WIDE3D;
         if (view == 2 && g_wide) { clip_rect(g_mirror_r); g_mirror_ok = 1; }
     }
+    if (getenv("BR_VCSTAT") && view == 0 && !noz) {   /* debug: the camera's vertex colours, per frame */
+        static double acc[4], n; static unsigned last;
+        if (g_swaps != last && g_swaps % 120 == 0 && n > 0) {
+            fprintf(stderr, "vcstat: swap %u mean vertex colour %.1f %.1f %.1f (max %.1f) over %.0f corners, textured %.0f%%\n",
+                    g_swaps, acc[0] / n, acc[1] / n, acc[2] / n, acc[3], n, 100.0 * g_st_tri / fmax(1, g_st_tri));
+            acc[0] = acc[1] = acc[2] = acc[3] = n = 0;
+        }
+        last = g_swaps;
+        for (i = 0; i < 3; i++) { int k; for (k = 0; k < 3; k++) { acc[k] += p[i][4 + k]; if (p[i][4 + k] > acc[3]) acc[3] = p[i][4 + k]; } n++; }
+    }
     for (i = 0; i < 3; i++) {
         const float *q = p[i];
         /* 640x480 pixels (y down) times w: the screen map places them; the
@@ -1578,8 +1789,12 @@ void hglide_tri_h(const float *a, const float *b, const float *c, int noz, int v
         v[i][3] = q[3];
         memcpy(&v[i][4], &q[4], 10 * sizeof(float));
         v[i][14] = xf;
+        v[i][15] = v[i][16] = v[i][17] = 0;   /* the smooth normal: hglide_normals, at the swap */
     }
-    draw(v, 3, 0, noz ? 2 : 1);
+    {
+        float *d = draw(v, 3, 0, noz ? 2 : 1);
+        if (d && view == 0 && !noz && q_main(v[0][13])) nt_add(d);
+    }
 }
 /* the game's GrVertex is 0x3C bytes (two TMUs): include/br_imgblit.h
  *
