@@ -40,12 +40,13 @@ CAMetalLayer *happ_metal_layer(void);
 id<MTLTexture> hsky_tex(id<MTLDevice> dev, int weather);   /* host_sky.m */
 static id<MTLTexture> g_skyt;   /* this frame's Remastered sky, or nil */
 void hglide_map(int view, float T[4]);                     /* host_glide.m */
+float hglide_bake_ref(void);
 double hframe_game_ms(void);                               /* native/frame.m */
 
 #define STR(...) #__VA_ARGS__
 static const char *FXSRC = "#include <metal_stdlib>\n" STR(
 using namespace metal;
-struct CV { float x, y, z, w, r, g, b, a, s, t, wx, wy, wz, fl, xf; };
+struct CV { float x, y, z, w, r, g, b, a, s, t, wx, wy, wz, fl, xf, nx, ny, nz; };
 struct FXU {
   float4x4 vp, ivp, svp;
   float4 eye, sun, sunc, skyc, grnd, fogc, vpt, scr, p0, p1, p2, p3, p4, flash, wb, nsky, sk2, tm, wx;
@@ -104,6 +105,9 @@ float3 view_dir(constant FXU &u, float2 uv) {
   float3 d = (h.xyz - u.eye.xyz * h.w) * (h.w < 0 ? -1.0 : 1.0);
   return length(d) > 1e-12 ? normalize(d) : float3(0, 0, 1); }
 bool is_geo(float w) { return w > 0.5 && w < 2.5; }
+/* the material ids of host_glide.m's texmat.csv */
+constant int MAT_ASPHALT = 1, MAT_MARKING = 2, MAT_DIRT = 3, MAT_SAND = 4, MAT_GRASS = 5, MAT_ROCK = 6,
+             MAT_SNOW = 7, MAT_ICE = 8, MAT_WATER = 9;
 /* anything solid: lit geometry or the pre-lit Remastered car (class 4) */
 bool is_solid(float w) { return (w > 0.5 && w < 2.5) || (w > 3.5 && w < 4.5); }
 bool cmpf(int f, float a, float b) {
@@ -369,6 +373,7 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
                        depth2d<float> sm2 [[texture(8)]], texture2d<float> gsm [[texture(9)]],
                        texture2d_array<float> matA [[texture(10)]], texture2d_array<float> matN [[texture(11)]],
                        texture2d<float> ring [[texture(12)]], texture2d<float> rmap [[texture(13)]],
+                       texture2d<float> ga [[texture(14)]], texture2d<float> gmt [[texture(15)]],
                        constant HL &hl [[buffer(1)]], constant MVC &mv [[buffer(2)]]) {
   float4 C = col.sample(ns, in.uv), P = gp.sample(ns, in.uv), G = gn.sample(ns, in.uv);
   if (int(u.p3.y) == 15)                             /* debug: the G-buffer's class (red car, green lit, blue sky) */
@@ -450,6 +455,10 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
     if (any(isnan(o)) || any(isinf(o))) o = lin;
     return float4(o, G.a); }
   if (P.w > 2.5 && int(u.p3.y) == 11) return float4(0, 0, 1, G.a);
+  if (int(u.p3.y) == 17) {                           /* debug: the catalogued material (grey: none) */
+    int m = int(gmt.sample(ns, in.uv).r * 255.0 + 0.5);
+    float3 mc = m == 0 ? float3(0.3) : fract(float3(m * 0.37, m * 0.61, m * 0.83)) * 0.8 + 0.2;
+    return float4(is_geo(P.w) ? mc : float3(0), G.a); }
   if (P.w > 2.5) {                                   /* sky */
     float3 vd = view_dir(u, in.uv); float g = saturate(dot(vd, u.sun.xyz));
     float3 o = lin * u.p4.x;
@@ -524,12 +533,27 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
     return float4(o, G.a); }
   if (!is_geo(P.w)) return float4(lin, 0);
   float fogk = saturate((P.w - 1.0) / 0.9);
+  /* the surface's own colour, before the game's vertex light and fog
+     (host_glide.m): rgb the colour, a the light the game baked in, which
+     also carries its darkening for the weather.  bref is that light's mean
+     over the race: the sun, moon and lamps light the true colour at that
+     level, so the game's baked shading stays in the ambient term only and
+     is not laid a second time over the shadow map's */
+  float4 AL = ga.sample(ns, in.uv);
+  /* what the surface is (host_glide.m's texmat.csv, by its texture; 0
+     where the texture is not catalogued: then its colour decides, as before) */
+  int mid = int(gmt.sample(ns, in.uv).r * 255.0 + 0.5);
+  float bake = pow(AL.a, 2.2), bref = u.mat.y > 0.0 ? u.mat.y : 0.5;
+  float rdir = bref / max(bake, 0.3 * bref);
+  lin = pow(AL.rgb, 2.2) * bake;
   /* the 1999 textures carry colour noise that relighting would amplify:
      keep every pixel's brightness but take its colour from a 3-pixel
      neighbourhood (a chroma-only filter; edges shift by under 2 pixels) */
   { float2 px = 1.5 / float2(col.get_width(), col.get_height());
-    float3 cb = pow(col.sample(ls, in.uv + float2(px.x, px.y)).rgb, 2.2) + pow(col.sample(ls, in.uv - float2(px.x, px.y)).rgb, 2.2)
-              + pow(col.sample(ls, in.uv + float2(px.x, -px.y)).rgb, 2.2) + pow(col.sample(ls, in.uv - float2(px.x, -px.y)).rgb, 2.2);
+    float4 a0 = ga.sample(ls, in.uv + float2(px.x, px.y)), a1 = ga.sample(ls, in.uv - float2(px.x, px.y));
+    float4 a2 = ga.sample(ls, in.uv + float2(px.x, -px.y)), a3 = ga.sample(ls, in.uv - float2(px.x, -px.y));
+    float3 cb = pow(a0.rgb, 2.2) * pow(a0.a, 2.2) + pow(a1.rgb, 2.2) * pow(a1.a, 2.2)
+              + pow(a2.rgb, 2.2) * pow(a2.a, 2.2) + pow(a3.rgb, 2.2) * pow(a3.a, 2.2);
     cb *= 0.25;
     const float3 lw = float3(0.2126, 0.7152, 0.0722);
     float yl = dot(lin, lw), yb = dot(cb, lw);
@@ -627,6 +651,18 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
        banners are painted or plastered and keep the game's own texture */
     w[4] = steep * saturate(warm + green) * smoothstep(0.1, 0.25, N.z);
     w[5] = flat * (hasmap ? mix(snowg, snowroad, rm) : snowg);           /* snow */
+    if (mid > 0) {
+      /* catalogued: the texture says which ground it is -- or that it is
+         no ground at all (a wall, a building, a sign), which keeps its own
+         texture; snow still lies where the weather and the road map put it */
+      int gs = mid == MAT_ASPHALT || mid == MAT_MARKING ? 0 : mid == MAT_GRASS ? 1 : mid == MAT_SAND ? 2
+             : mid == MAT_DIRT ? 3 : mid == MAT_ROCK ? 4 : mid == MAT_SNOW || mid == MAT_ICE ? 5 : -1;
+      float sn = w[5];
+      for (int m = 0; m < 6; m++) w[m] = 0.0;
+      if (gs >= 0) {
+        w[gs] = gs == 4 ? 1.0 : flat + (gs == 3 || gs == 1 ? steep * 0.5 : 0.0);
+        if (gs != 5 && gs != 4) { w[gs] *= 1.0 - sn; w[5] = sn; }
+      } }
     float ws = 0; for (int m = 0; m < 6; m++) ws += w[m];
     if (ws > 1.0) for (int m = 0; m < 6; m++) w[m] /= ws;
     ws = min(ws, 1.0) * fade;
@@ -643,6 +679,7 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
                 + smoothstep(0.1, 0.25, min(tx.r, tx.g) - tx.b);
     float mark = smoothstep(1.4, 1.9, y / max(yb, 1e-3)) * w[0] * saturate(paint)
                * (hasmap ? 1.0 - snowg : 1.0);        /* in snow the game's road is white streaks, not paint */
+    if (mid == MAT_MARKING) mark = max(mark, 0.85 * smoothstep(1.15, 1.5, y / max(yb, 1e-3)));
     /* parallax occlusion: the dominant material's height map, marched along
        the view ray in its tangent space, shifts every map's lookup so stones,
        cracks and ridges stand up at grazing angles; then a short march toward
@@ -706,7 +743,8 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
     float3 cbl = ring.sample(ns, in.uv).rgb;
     float mx = max(cbl.r, max(cbl.g, cbl.b)), mn = min(cbl.r, min(cbl.g, cbl.b));
     float grey = 1.0 - smoothstep(0.1, 0.2, (mx - mn) / max(mx, 0.05));
-    float road = smoothstep(0.85, 0.96, N.z) * grey * (1.0 - u.wx.z) * step(0.5, u.tm.y);
+    float road = smoothstep(0.85, 0.96, N.z) * grey * (1.0 - u.wx.z) * step(0.5, u.tm.y)
+               * (mid == 0 || mid == MAT_ASPHALT || mid == MAT_MARKING ? 1.0 : 0.0);
     if (road > 0.0) {
       float yb = dot(pow(cbl, 2.2), lw);
       float y = dot(lin, lw), dist = distance(u.eye.xyz, wp);
@@ -747,7 +785,7 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
   float3 fl = u.flash.rgb * u.flash.w * saturate(dot(N, normalize(float3(0.3, 0.2, 1.0))) * 0.7 + 0.3);
   /* bounce light carries the occluders' brightness, not their texture noise */
   float bounce = dot(A.rgb, float3(0.2126, 0.7152, 0.0722));
-  float3 o = alb * ((dl + amb + fl) * u.p4.w + bounce * u.p0.y * ao);
+  float3 o = alb * ((dl * rdir + amb + fl) * u.p4.w + bounce * u.p0.y * ao);
   /* sun specular, GGX */
   float3 H = normalize(L + V); float nh = saturate(dot(N, H)), vh = saturate(dot(V, H));
   float rough = mix(mrough, mix(0.3, 0.08, puddle), wet), a2 = rough * rough * rough * rough;
@@ -773,9 +811,9 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
       hs += lc * w * nl * (1.0 - hl.p[i].w) * (a2 / (3.14159 * d2 * d2)) * (0.04 + 0.96 * pow(1.0 - saturate(dot(V, H2)), 5.0)); }
     /* the eye adapted to the night sees the pool on the road far brighter
        than the grazing irradiance alone: a gain on surfaces */
-    /* the game's colours are already darkened for the night: the lamps
-       light the surface's own albedo, which hl.col.w recovers */
-    float3 albh = min(alb * hl.col.w, 0.7);
+    /* the lamps light the surface's true colour: the game's baked light
+       (and its darkening for the night) divided back out */
+    float3 albh = min(alb / max(bake, 0.3 * bref), 0.7);
     hd = hd / (1.0 + 0.2 * hd);                      /* a lamp a few metres off lights, not burns */
     o += 3.0 * (albh * hd * ao + hs * 0.25 * wet);
     if (int(u.p3.y) == 16) return float4(float3(hd.x, alb.g * 4.0, ao) , G.a); }   /* debug: headlight irradiance, albedo, occlusion */
@@ -790,6 +828,7 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
        (wet and snowy roads are greenish-grey too, but sit higher) */
     float water = u.sk2.w * step(0.97, N.z) * max(smoothstep(1.12, 1.24, sb.b / max(sb.r, 0.02))
                 * smoothstep(1.08, 1.18, sb.g / max(sb.r, 0.02)), smoothstep(1.04, 1.1, sb.g / max(sb.r, 0.02)) * (1.0 - smoothstep(0.2, 0.45, wp.z)));
+    if (mid > 0) water = mid == MAT_WATER ? u.sk2.w * smoothstep(0.9, 0.97, N.z) : 0.0;   /* catalogued: no guessing */
     if (water > 0.0) {
       float3 Nw = waveN(wp.xy, u.tm.x, 0.3 * smoothstep(250.0, 15.0, distance(u.eye.xyz, wp)) + 0.05);
       float3 R = reflect(-V, Nw);
@@ -809,8 +848,8 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
   /* aerial perspective: distant surfaces pick up the sky's colour */
   { float dd = distance(u.eye.xyz, wp), hz = (1.0 - exp(-dd * u.fogc.w)) * u.nsky.w;
     o = mix(o, air(u, -V), hz); }
-  /* the game's fog already sits in the colour: fade the relighting with it */
-  o = mix(o, lin * u.p4.z, fogk);
+  /* the game's own fog, over the relit surface: its colour, by its amount */
+  o = mix(o, u.fogc.rgb * u.p4.z, fogk);
   int dbg = int(u.p3.y);
   if (dbg == 1) o = N * 0.5 + 0.5;
   else if (dbg == 2) o = float3(sh);
@@ -1423,6 +1462,22 @@ void hfx_set_cam(const float *P, float sx, float tx, float sy, float ty)
     memcpy(g_P, P, sizeof g_P);
     g_vpt[0] = sx; g_vpt[1] = tx; g_vpt[2] = sy; g_vpt[3] = ty;
     g_havecam = 1;
+}
+
+static void inv4(const double *m, double *o);
+static void rowmul(const double *v, const double *M, double *h);
+/* host_glide.m: the eye of this frame's camera (0 before it has one) */
+int hfx_cam_eye(float e[3])
+{
+    double P[16], IP[16], v[4] = { 0, 0, 1, 0 }, h[4];
+    int i;
+    if (!g_havecam) return 0;
+    for (i = 0; i < 16; i++) P[i] = g_P[i];
+    inv4(P, IP);
+    rowmul(v, IP, h);
+    if (h[3] == 0) return 0;
+    for (i = 0; i < 3; i++) e[i] = (float)(h[i] / h[3]);
+    return 1;
 }
 
 void hfx_shadow_batch(id<MTLBuffer> buf, size_t off, int n, id<MTLTexture> tex, id<MTLSamplerState> smp,
@@ -2404,7 +2459,7 @@ static id<MTLBuffer> fx_tracks(id<MTLDevice> dev, const float *eye, int *nv)
 /* Relight the finished frame.  Returns the picture to present, or nil when
  * this frame had no main-camera 3D (menus). */
 id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture> col, id<MTLTexture> gn,
-                       id<MTLTexture> gp, int w, int h, int origin_ll, const float *fogc)
+                       id<MTLTexture> gp, id<MTLTexture> ga, id<MTLTexture> gm, int w, int h, int origin_ll, const float *fogc)
 {
     fxu u;
     hlu hl;
@@ -2464,6 +2519,7 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
     u.tm[1] = 0.75f;                           /* asphalt neutralising */
     if (!g_mat_state) load_materials(dev, cb.commandQueue);
     if (g_mat_state > 0) { u.mat[0] = 1; memcpy(u.matmean, g_matmean, sizeof u.matmean); }
+    u.mat[1] = hglide_bake_ref();
     roadmap(dev);
     if (t_rmap && !getenv("BR_FX_NORMAP")) memcpy(u.rmap, g_rmap, sizeof u.rmap);
     weather(&u, fogc);
@@ -2545,7 +2601,6 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
                     hl.p[0][0], hl.p[0][1], hl.p[0][2], hl.d[0][0], hl.d[0][1], hl.d[0][2]);
     }
     hl.col[0] = 1.0f; hl.col[1] = 0.93f; hl.col[2] = 0.8f;
-    hl.col[3] = 1.0f / g_wdark;         /* undoes the game's own darkening of the world, for true albedo */
     hl.misc[1] = g_hl_beam; hl.misc[2] = g_hl_int; hl.misc[3] = g_hl_air;
 
     /* the sun's view: an orthographic box ahead of the camera, snapped to
@@ -2639,7 +2694,9 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
      * the lighting pass takes it only where it agrees with the face's own) */
     id<MTLTexture> gface = gn;
     quad(pass(cb, t_ring, 0), p_ring, &u, @[col, gp, gn]);
-    if (!getenv("BR_FX_FLAT")) { quad(pass(cb, t_nrm, 0), p_nrm, &u, @[gn, gp]); gn = t_nrm; }
+    /* the G-buffer's normals are the meshes' smooth ones (host_glide.m); the
+     * old screen-space smoothing stays behind BR_FX_SSNRM=1 */
+    if (getenv("BR_FX_SSNRM")) { quad(pass(cb, t_nrm, 0), p_nrm, &u, @[gn, gp]); gn = t_nrm; }
     quad(pass(cb, t_ao, 0), p_ao, &u, @[gn, gp, col]);
     if (!taa_on()) {
         float d1[2] = { 1, 0 }, d2[2] = { 0, 1 };
@@ -2728,7 +2785,7 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
     enc = pass(cb, t_hdr, 0);
     [enc setFragmentBytes:&hl length:sizeof hl atIndex:1];
     [enc setFragmentBuffer:mb offset:0 atIndex:2];
-    quad(enc, p_comp, &u, @[gface, gp, col, t_sm, t_ao, t_ssr, g_skyt ? g_skyt : col, t_trk, t_sm2, gn, g_matA ? g_matA : t_trk, g_matN ? g_matN : t_trk, t_ring, t_rmap ? t_rmap : t_trk]);
+    quad(enc, p_comp, &u, @[gface, gp, col, t_sm, t_ao, t_ssr, g_skyt ? g_skyt : col, t_trk, t_sm2, gn, g_matA ? g_matA : t_trk, g_matN ? g_matN : t_trk, t_ring, t_rmap ? t_rmap : t_trk, ga, gm]);
     /* 4b. particles and falling rain/snow over the lit scene */
     if (getenv("BR_FX_NOPFX")) [pass(cb, t_pfx, 0) endEncoding];
     else {
