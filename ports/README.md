@@ -23,10 +23,8 @@ draws through Metal. Same slot in the design, different platform.
 
 The 32-bit lane plays both soundtracks natively (`macos/wasm/native/music.m`):
 the disc's CD audio through AVAudioEngine, and the N64 modules live through
-libopenmpt, linked statically, or, when the composer's recordings are
-supplied, those, looped at the points `macos/wasm/ost_loops.py` finds. The
-player picks one in the Music menu. The
-game's own music logic still decides what plays when; only its Windows
+libopenmpt, linked statically. Tab switches between them live
+(`macos/wasm/native/version.m`). The game's own music logic still decides what plays when; only its Windows
 backends (MCI and the EAR engine's CD channel) are replaced. The findings the
 choice was made on, and the rules that still hold (the exports stay 1:1 rips),
 are in `MUSIC-DECISION-PENDING.md`. The native 64-bit lane (`build.sh`) still

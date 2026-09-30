@@ -10,22 +10,19 @@
 #                                   BRGlide.dll is the image w_init loads)
 #   Contents/Resources/music/cd/    the PC soundtrack, CD audio tracks 2..13
 #   Contents/Resources/music/n64/   the N64 soundtrack: the ROM's six modules
-#                                   and their cues, and Barry Leitch's own
-#                                   recordings of the six pieces with their
-#                                   loop points when those are supplied
+#                                   and their cues
+#   Contents/Resources/assets/      the PC and N64 version icons (Tab)
 #   Contents/Resources/remaster/    the Remastered player car's model and maps
 #   Contents/Resources/Licenses/    libopenmpt and the codecs linked with it
 #
 # Sources, all required (a partial app must not look like a complete one):
 #   --bin  BossRally.BIN (its .cue beside it)  default reference/brally/
 #   --rom  Top Gear Rally (USA).z64            default reference/tgrally/
-# and, optional, the composer's recordings of the N64 soundtrack (six FLACs:
-# Title, Desert, Mountain, Coastline, Strip Mine, Jungle):
-#   --ost  DIR                                  default: the reference/tgrally/
-#                                               directory whose name ends
-#                                               "Soundtrack"
-# With them the app plays those instead of the modules, looped where each
-# recording repeats (ost_loops.py); that step needs numpy in python3.
+# The app plays the ROM's modules. Parked, off unless asked for: --ost DIR
+# (the composer's recordings of the six pieces, FLAC) plays those instead,
+# looped where each recording repeats (ost_loops.py; needs numpy in
+# python3). The recordings carry the PAL capture hardware's noise, so they
+# are not used by default.
 # Also off unless asked for: --hq-samples DIR swaps seven of the modules'
 # samples for better copies of the same recordings (upgrade_samples.py,
 # hq_samples.json; DIR holds those WAVs, e.g. reference/tgrally/XM). By
@@ -44,7 +41,7 @@ PY=.venv/bin/python
 
 BIN=reference/brally/BossRally.BIN
 ROM="reference/tgrally/Top Gear Rally (USA).z64"
-OST=$(find reference/tgrally -maxdepth 1 -type d -name '*Soundtrack' 2>/dev/null | head -1)
+OST=
 HQ=
 BUILD=1
 while [ $# -gt 0 ]; do
@@ -140,6 +137,13 @@ cp build/wasm/c/portdata.bin "$APP/Contents/Resources/portdata.bin"
 cp -Rc $EX/disc "$APP/Contents/Resources/disc" 2>/dev/null || cp -R $EX/disc "$APP/Contents/Resources/disc"
 for m in cd n64; do
     cp -Rc $EX/music/$m "$APP/Contents/Resources/music/$m" 2>/dev/null || cp -R $EX/music/$m "$APP/Contents/Resources/music/$m"
+done
+
+# the PC / N64 version icons (native/version.m), from the shared port assets,
+# rasterised, so macOS releases without SVG in NSImage show them
+mkdir -p "$APP/Contents/Resources/assets"
+for i in n64 retro_pc; do
+    sips -s format png -Z 512 ports/common/assets/$i.svg --out "$APP/Contents/Resources/assets/$i.png" >/dev/null
 done
 
 # the Remastered player car (host/host_car.m): the pack remaster_car.py writes;

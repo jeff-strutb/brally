@@ -99,6 +99,20 @@ void hwindow_resize(int w, int h)
     [win setContentSize:NSMakeSize(w, h)];
 }
 
+/* scripts: `keycode` -- a real key down or up with that macOS virtual key
+ * code, so it takes the keyboard's path (happ_pump's key table) */
+void hwindow_keycode(int code, int down)
+{
+    NSWindow *win = happ_window();
+    if (!win) return;
+    [NSApp postEvent:[NSEvent keyEventWithType:down ? NSEventTypeKeyDown : NSEventTypeKeyUp
+                                      location:NSZeroPoint modifierFlags:0
+                                     timestamp:NSProcessInfo.processInfo.systemUptime
+                                  windowNumber:win.windowNumber context:nil characters:@""
+                   charactersIgnoringModifiers:@"" isARepeat:NO keyCode:(unsigned short)code]
+             atStart:NO];
+}
+
 /* scripts: `fullscreen` */
 void hwindow_fullscreen(void)
 {
