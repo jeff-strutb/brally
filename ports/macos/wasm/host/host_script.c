@@ -12,8 +12,9 @@
  * window W H (resize the content to W x H points), fullscreen (toggle),
  * chord KEYS (a Command/Control chord such as ctrl+cmd+f, as a real key event),
  * version (Tab, the PC / N64 switch, as a real key event),
- * keycode MACVK [N] (a real key event by macOS virtual key code, held N frames).
- * Not yet: autopilot, waittext, text, peer, files, savefiles, tmu,
+ * keycode MACVK [N] (a real key event by macOS virtual key code, held N frames),
+ * autopilot on|off (brbox_drive.py's racing-line steering).
+ * Not yet: waittext, text, peer, files, savefiles, tmu,
  * joystick -- a script using one stops with a message naming it.
  *
  * BR_SHOTS=<dir> is where `shot NAME` writes NAME.ppm (default build/wasm/shots).
@@ -23,6 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include <sys/stat.h>
 
 typedef struct { const char *name; u8 vk, dik; } key_t_;
@@ -97,6 +99,69 @@ static void load(void)
 
 static void key(u8 vk, u8 dik, int down) { happ_key_script(dik, vk, down); }
 
+/* autopilot on|off: brbox_drive.py's steer(), the same walk down the
+ * player car's racing-line cursor (car+0xF8C node, +0xF90 point), holding
+ * UP and LEFT/RIGHT toward a point ~12 m + 0.6 s ahead; car+0x10 points to
+ * the car's LEFT, so a target on its positive side takes the LEFT arrow. */
+#define AP_ENTRANTS 0x10AF0858u
+enum { AP_UP, AP_DOWN, AP_LEFT, AP_RIGHT };
+static const u8 AP_VK[4] = { 0x26, 0x28, 0x25, 0x27 }, AP_DIK[4] = { 0xC8, 0xD0, 0xCB, 0xCD };
+static int g_ap, g_ap_down[4], g_ap_stuck, g_ap_reverse;
+
+static float ap_f(u32 a) { float f; memcpy(&f, W_P(a), 4); return f; }
+
+static void ap_keys(const int *want)
+{
+    int k;
+    for (k = 0; k < 4; k++)
+        if (want[k] != g_ap_down[k]) { key(AP_VK[k], AP_DIK[k], want[k]); g_ap_down[k] = want[k]; }
+}
+
+static void steer(void)
+{
+    u32 car = W_LD(u32, AP_ENTRANTS, 0);
+    int want[4] = { 1, 0, 0, 0 };
+    if (car) {
+        u32 node = W_LD(u32, car + 0xF8C, 0), n = node, nxt;
+        int k = (int)W_LD(u32, car + 0xF90, 0), cnt, i, guard;
+        float px = ap_f(car + 0x30), py = ap_f(car + 0x34), rx = ap_f(car + 0x10), ry = ap_f(car + 0x14);
+        float speed = hypotf(ap_f(car + 0x1024), ap_f(car + 0x1028)), t, dx, dy, d, lat;
+        if (node) {
+            t = 12.0f + speed * 0.6f;
+            for (i = 0; i < 400; i++) {
+                cnt = W_LD(u16, n + 0x14, 0);
+                t -= ap_f(n + 0x40 + 0x28 * (u32)k + 0x24) - ap_f(n + 0x40 + 0x28 * (u32)(k + 1) + 0x24);
+                if (++k >= cnt) {
+                    /* the Mine layouts end the node list without looping back */
+                    nxt = W_LD(u32, n, 0);
+                    for (guard = 0; nxt && (W_LD(u16, nxt + 0x16, 0) & 1) && guard < 16; guard++)
+                        nxt = W_LD(u32, nxt + 4, 0);
+                    if (!nxt) { k = cnt - 1; break; }
+                    n = nxt; k = 0;
+                }
+                if (t < 0) break;
+            }
+            dx = ap_f(n + 0x40 + 0x28 * (u32)k + 0x0C) - px;
+            dy = ap_f(n + 0x40 + 0x28 * (u32)k + 0x10) - py;
+            d = hypotf(dx, dy); if (d == 0) d = 1;
+            lat = (rx * dx + ry * dy) / d;
+            if (lat > 0.08f) want[AP_LEFT] = 1;
+            else if (lat < -0.08f) want[AP_RIGHT] = 1;
+            if (fabsf(lat) > 0.6f && speed > 25) want[AP_UP] = 0;
+            /* stuck against something: back off with the wheel reversed */
+            if (speed < 2.0f) g_ap_stuck++; else g_ap_stuck = 0;
+            if (g_ap_stuck > 45 || g_ap_reverse > 0) {
+                int l = want[AP_LEFT];
+                if (g_ap_reverse == 0) g_ap_reverse = 40;
+                g_ap_reverse--; g_ap_stuck = 0;
+                want[AP_UP] = 0; want[AP_DOWN] = 1;
+                want[AP_LEFT] = want[AP_RIGHT]; want[AP_RIGHT] = l;
+            }
+        }
+    }
+    ap_keys(want);
+}
+
 /* native/window.m; nothing to resize headless */
 __attribute__((weak)) void hwindow_resize(int w, int h) { (void)w; (void)h; }
 __attribute__((weak)) void hwindow_fullscreen(void) {}
@@ -168,6 +233,7 @@ void happ_frame(void)
             g_rel[i] = g_rel[--g_nrel];
         } else i++;
     }
+    if (g_ap) steer();
     while (g_pc < g_nsteps && g_frame >= g_sleep_until) {
         const step_t *s = &g_steps[g_pc];
         u8 vk, dik;
@@ -236,6 +302,10 @@ void happ_frame(void)
                 return;
             }
             g_waiting = 0;
+        } else if (!strcmp(s->op, "autopilot")) {
+            static const int none[4];
+            g_ap = !strcmp(s->a[0], "on");
+            if (!g_ap) ap_keys(none);
         } else if (!strcmp(s->op, "mark")) {
             /* a checkpoint: already logged above */
         } else if (!strcmp(s->op, "shot")) {
