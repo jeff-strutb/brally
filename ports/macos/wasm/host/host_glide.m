@@ -204,6 +204,8 @@ static id<MTLTexture> g_color, g_depth, g_white, g_gn, g_gp;
 static int g_fx_fresh = 1;
 int hfx_on(void);
 int hfx_game_particles(void);
+void hfx_jitter(float *jx, float *jy, int rw, int rh);
+static float g_jx, g_jy;
 void hfx_tick(void);
 void hfx_shadow_batch(id<MTLBuffer> buf, size_t off, int n, id<MTLTexture> tex, id<MTLSamplerState> smp,
                       int at_fn, int at_ref, int use_tex, float su, float sv);
@@ -1202,6 +1204,7 @@ void hglide_tri_h(const float *a, const float *b, const float *c, int noz)
         }
         pick(g, 3);
     }
+    hfx_jitter(&g_jx, &g_jy, RW, RH);
     for (i = 0; i < 3; i++) {
         const float *q = p[i];
         v[i][0] = q[0] / (W / 2) - q[3];
@@ -1209,6 +1212,8 @@ void hglide_tri_h(const float *a, const float *b, const float *c, int noz)
         v[i][2] = (q[2] + q[3]) * 0.5f;
         v[i][3] = q[3];
         memcpy(&v[i][4], &q[4], 10 * sizeof(float));
+        /* Remastered's temporal anti-aliasing: this frame's sub-pixel offset */
+        v[i][0] += g_jx * q[3]; v[i][1] += g_jy * q[3];
     }
     draw(v, 3, 0, noz ? 2 : 1);
 }
