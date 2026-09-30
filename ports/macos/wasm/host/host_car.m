@@ -51,6 +51,9 @@ unsigned hglide_swaps(void);
 id<MTLRenderCommandEncoder> hglide_native_pass(id<MTLDevice> *dev, MTLScissorRect *sc, int *origin_ll,
                                                int *fogmode, float *fogcolor, float *fogtab, int *rw, int *rh);
 void hfx_jitter(float *jx, float *jy, int rw, int rh);
+void hglide_map(int view, float T[4]);                 /* host_glide.m: the screen map */
+MTLScissorRect hglide_scissor(int view);
+int hrender_view(void);                                /* native/render.m */
 void hfx_shadow_batch(id<MTLBuffer> buf, size_t off, int n, id<MTLTexture> tex, id<MTLSamplerState> smp,
                       int at_fn, int at_ref, int use_tex, float su, float sv);
 
@@ -61,6 +64,7 @@ struct MV { packed_float3 p; packed_float3 n; float2 uv; float4 t; };
 struct CU {
   float4x4 M, P, HP;
   float4 vpt, eye, sun, sunc, skyc, grnd, fogc, misc, liv, livs, paint, dbg, hvpt, hist, glass, jit, livf;
+  float4 map, hmap;   /* host_glide.m's screen map of this view, and of the last frame's */
   float fogtab[64];
 };
 struct VO { float4 pos [[position]]; float3 wp; float3 lp; float3 wn; float3 wt; float tw; float2 uv; float oow; float dent; };
@@ -85,7 +89,8 @@ vertex VO cvs(uint vid [[vertex_id]], const device MV *v [[buffer(0)]], constant
   float4 w = u.M * float4(p, 1);
   float4 c = u.P * w;
   float X = u.vpt.x * c.x + u.vpt.y * c.w, Y = u.vpt.z * c.y + u.vpt.w * c.w;
-  o.pos = float4(X / 320.0 - c.w, u.misc.x > 0.5 ? Y / 240.0 - c.w : c.w - Y / 240.0, (c.z + c.w) * 0.5, c.w);
+  float Yd = u.misc.x > 0.5 ? 480.0 * c.w - Y : Y;
+  o.pos = float4(u.map.x * X + u.map.y * c.w, u.map.z * Yd + u.map.w * c.w, (c.z + c.w) * 0.5, c.w);
   o.pos.xy += u.jit.xy * c.w;              /* the scene's anti-aliasing jitter (host_fx.m's TAA) */
   o.wp = w.xyz; o.lp = p; o.dent = dent;
   o.wn = (u.M * float4(m.n, 0)).xyz; o.wt = (u.M * float4(m.t.xyz, 0)).xyz; o.tw = m.t.w;
@@ -125,8 +130,9 @@ float3 env_at(constant CU &u, texture2d<float> h, float3 wp, float3 R, float rou
   float t = R.z < -0.02 ? clamp((u.hist.w - wp.z) / R.z, 0.3, 400.0) : 400.0;
   float4 c = u.HP * float4(wp + R * t, 1);
   if (c.w <= 0.05) return sky;
-  float2 q = float2((u.hvpt.x * c.x / c.w + u.hvpt.y) / 640.0, (u.hvpt.z * c.y / c.w + u.hvpt.w) / 480.0);
-  if (u.hist.y > 0.5) q.y = 1.0 - q.y;
+  float sx = u.hvpt.x * c.x / c.w + u.hvpt.y, sy = u.hvpt.z * c.y / c.w + u.hvpt.w;
+  float yd = u.hist.y > 0.5 ? 480.0 - sy : sy;
+  float2 q = float2(u.hmap.x * sx + u.hmap.y, u.hmap.z * yd + u.hmap.w) * float2(0.5, -0.5) + 0.5;
   float2 e = smoothstep(0.0, 0.12, q) * smoothstep(0.0, 0.12, 1.0 - q);
   float3 f = pow(h.sample(hs, q, level(rough * 7.0)).rgb, 2.2) / u.hist.z;
   return mix(sky, f, e.x * e.y); }
@@ -264,6 +270,7 @@ fragment FO gfs(VO in [[stage_in]], constant CU &u [[buffer(0)]], texture2d<floa
 typedef struct {
     float M[16], P[16], HP[16];
     float vpt[4], eye[4], sun[4], sunc[4], skyc[4], grnd[4], fogc[4], misc[4], liv[4], livs[4], paint[4], dbg[4], hvpt[4], hist[4], glass[4], jit[4], livf[4];
+    float map[4], hmap[4];
     float fogtab[64];
 } cu;
 
@@ -312,7 +319,7 @@ static unsigned g_rec_serial = ~0u;
 static id<MTLBuffer> g_shadow[3];
 /* the last finished frame, for reflections, and the main view it was seen through */
 static id<MTLTexture> g_hist, g_black;
-static float g_hP[16], g_hvpt[4], g_curP[16], g_curvpt[4];
+static float g_hP[16], g_hvpt[4], g_curP[16], g_curvpt[4], g_hmap[4], g_curmap[4];
 static int g_hvalid, g_curvalid, g_horigin;
 static int g_shadow_i;
 
@@ -491,7 +498,7 @@ static void setup(id<MTLDevice> dev)
     {
         int i;
         for (i = 0; i < 3; i++)
-            g_shadow[i] = [D newBufferWithLength:(size_t)g_proxy.ni * 14 * 4 options:MTLResourceStorageModeShared];
+            g_shadow[i] = [D newBufferWithLength:(size_t)g_proxy.ni * 15 * 4 options:MTLResourceStorageModeShared];
     }
     {
         MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm width:1 height:1 mipmapped:NO];
@@ -692,8 +699,8 @@ static void cast_shadow(const float *M)
     int i;
     for (i = 0; i < g_proxy.ni; i++) {
         const float *p = g_proxy.pos + 3 * g_proxy.idx[i];
-        float *v = o + 14 * i;
-        memset(v, 0, 14 * 4);
+        float *v = o + 15 * i;           /* host_glide.m's clip-space corner (CVN floats) */
+        memset(v, 0, 15 * 4);
         v[10] = p[0] * M[0] + p[1] * M[4] + p[2] * M[8] + M[12];
         v[11] = p[0] * M[1] + p[1] * M[5] + p[2] * M[9] + M[13];
         v[12] = p[0] * M[2] + p[1] * M[6] + p[2] * M[10] + M[14];
@@ -717,6 +724,11 @@ void hcar_draw(int slot)
     memset(&u, 0, sizeof u);
     e = hglide_native_pass(&dev, &sc, &origin_ll, &fogmode, fogc, u.fogtab, &rw, &rh);
     hfx_jitter(&u.jit[0], &u.jit[1], rw, rh);
+    {   /* where this view sits on the target: the camera's or the mirror's */
+        int view = hrender_view();
+        hglide_map(view, u.map);
+        sc = hglide_scissor(view);
+    }
     for (i = 0; i < 16; i++) { u.P[i] = W_LD(f32, 0x105CCD00u, 4 * i); P[i] = u.P[i]; }
     u.vpt[0] = W_LD(f32, 0x105CCD48u, 0); u.vpt[1] = W_LD(f32, 0x105CD9F8u, 0);
     u.vpt[2] = W_LD(f32, 0x105CCFDCu, 0); u.vpt[3] = W_LD(f32, 0x105CD9FCu, 0);
@@ -746,9 +758,9 @@ void hcar_draw(int slot)
     if (getenv("BR_CAR_DEBUG")) u.dbg[0] = (float)atoi(getenv("BR_CAR_DEBUG"));
     if (getenv("BR_CAR_ENV")) u.dbg[2] = (float)atoi(getenv("BR_CAR_ENV"));
 
-    if (main) { memcpy(g_curP, u.P, sizeof g_curP); memcpy(g_curvpt, u.vpt, sizeof g_curvpt); g_curvalid = 1; g_horigin = origin_ll; }
+    if (main) { memcpy(g_curP, u.P, sizeof g_curP); memcpy(g_curvpt, u.vpt, sizeof g_curvpt); memcpy(g_curmap, u.map, sizeof g_curmap); g_curvalid = 1; g_horigin = origin_ll; }
     if (g_hvalid && g_hist) {
-        memcpy(u.HP, g_hP, sizeof u.HP); memcpy(u.hvpt, g_hvpt, sizeof u.hvpt);
+        memcpy(u.HP, g_hP, sizeof u.HP); memcpy(u.hvpt, g_hvpt, sizeof u.hvpt); memcpy(u.hmap, g_hmap, sizeof u.hmap);
         u.hist[0] = 1; u.hist[1] = (float)g_horigin; u.hist[2] = u.misc[2];
         u.hist[3] = r->car[14] - 0.28f;          /* the ground under the car */
     }
@@ -849,7 +861,7 @@ void hcar_frame_end(id<MTLCommandBuffer> cb, id<MTLTexture> pic)
              toTexture:g_hist destinationSlice:0 destinationLevel:0 destinationOrigin:MTLOriginMake(0, 0, 0)];
     [b generateMipmapsForTexture:g_hist];
     [b endEncoding];
-    memcpy(g_hP, g_curP, sizeof g_hP); memcpy(g_hvpt, g_curvpt, sizeof g_hvpt);
+    memcpy(g_hP, g_curP, sizeof g_hP); memcpy(g_hvpt, g_curvpt, sizeof g_hvpt); memcpy(g_hmap, g_curmap, sizeof g_hmap);
     g_hvalid = 1; g_curvalid = 0;
 }
 

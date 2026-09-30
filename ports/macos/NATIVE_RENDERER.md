@@ -150,8 +150,10 @@ Rules:
   same depth for the same vertices. With GPU projection that holds naturally
   (same inputs, same vertex function, `invariant` position). Keep a test for it
   (section 7).
-- Native resolution: the 3D pass renders at the drawable size, letterboxed
-  4:3. 2D is authored in 640x480 and scaled. The game's screen-space constants
+- Native resolution: the 3D pass renders at the drawable size, any shape
+  (2026-09-30: a race fills the window, its camera widened Hor+ / Vert+ by
+  `native/aspect.m`, its 2D anchored per element; menus are the 4:3 picture
+  centred -- `host_glide.m`'s screen map). 2D is authored in 640x480 and scaled. The game's screen-space constants
   (scissor, fill rects, the 2D layout) stay in 640x480 space and are scaled at
   the leaf.
 - Glide-only behaviours the game relies on are reproduced once, at the leaf:

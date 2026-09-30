@@ -224,7 +224,7 @@ void happ_init(void)
                                                      NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable
                                              backing:NSBackingStoreBuffered defer:NO];
     [g_window setTitle:@"Boss Rally"];
-    [g_window setContentAspectRatio:NSMakeSize(4, 3)];
+    /* any shape: the race fills it (host_glide.m's screen map), menus sit centred */
     del = [BRWinDelegate new];
     [g_window setDelegate:del];
     g_view = [g_window contentView];

@@ -20,12 +20,13 @@
  *
  * BR_GLIDE3D=1 runs the original leaves instead, for side-by-side checks.
  */
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include "w2c_native.h"
 
-void hglide_tri_h(const float *a, const float *b, const float *c, int noz);
+void hglide_tri_h(const float *a, const float *b, const float *c, int noz, int view);
 void hglide_tri_shadow(const float *a, const float *b, const float *c);
 void hfx_set_cam(const float *P, float sx, float tx, float sy, float ty);
 int hfx_on(void);
@@ -90,7 +91,20 @@ static void inv4(const double *m, double *o)
     for (i = 0; i < 4; i++) for (j = 0; j < 4; j++) o[i * 4 + j] = a[i][j + 4];
 }
 
-static void fx_camera(int noz)
+/* Which view a triangle belongs to, from the projection and viewport it is
+ * drawn through: 1 flat 2D (an orthographic projection, whose w does not
+ * depend on the position: the HUD and text), 2 the rear-view mirror (its
+ * viewport is flipped left to right: BrFrameDraw gives it a negative
+ * width), 0 the camera.  host_glide.m places each kind on the screen its
+ * own way (any window shape). */
+static int view_now(void)
+{
+    if (F(PROJ + 12) == 0 && F(PROJ + 28) == 0 && F(PROJ + 44) == 0) return 1;
+    return F(VP_SCALE_X) < 0 ? 2 : 0;
+}
+int hrender_view(void) { return view_now(); }
+
+static void fx_camera(int noz, int view)
 {
     float P[16];
     int i;
@@ -103,7 +117,7 @@ static void fx_camera(int noz)
         for (i = 0; i < 16; i++) d[i] = P[i];
         inv4(d, g_IP);
     }
-    if (!g_have_main && !noz) {
+    if (!g_have_main && !noz && view == 0) {
         memcpy(g_mainP, P, sizeof P);
         g_have_main = 1;
         hfx_set_cam(P, F(VP_SCALE_X), F(VP_TRANS_X), F(VP_SCALE_Y), F(VP_TRANS_Y));
@@ -144,14 +158,26 @@ static void tri(u32 ia, u32 ib, u32 ic, int flat, int noz)
     u32 a = POOL + ia * VSZ, b = POOL + ib * VSZ, c = POOL + ic * VSZ;
     float va[14], vb[14], vc[14];
     int out = W_LD(s32, a + V_OUTCODE, 0) & W_LD(s32, b + V_OUTCODE, 0) & W_LD(s32, c + V_OUTCODE, 0);
-    if (out && (noz || !hfx_on()))
+    int view = view_now();
+    if (out && (noz || view == 1 || !hfx_on()))
         return;                          /* all outside one plane */
-    if (hfx_on()) fx_camera(noz); else g_cur_main = 0;
+    if (hfx_on()) fx_camera(noz, view); else g_cur_main = 0;
     corner(va, a, a);
     corner(vb, b, flat ? a : b);
     corner(vc, c, flat ? a : c);
+    if (getenv("BR_VIEWLOG")) {          /* debug: the views a frame draws through */
+        static unsigned last = ~0u, n[3]; static float sx[3];
+        unsigned sw = hglide_swaps();
+        if (sw != last) {
+            if (last != ~0u && sw % 120 == 0)
+                fprintf(stderr, "views: swap %u camera %u (vp %.1f) 2d %u (vp %.1f) mirror %u (vp %.1f)\n",
+                        sw, n[0], sx[0], n[1], sx[1], n[2], sx[2]);
+            last = sw; n[0] = n[1] = n[2] = 0;
+        }
+        n[view]++; sx[view] = F(VP_SCALE_X);
+    }
     if (out) hglide_tri_shadow(va, vb, vc);   /* off screen, but it may shade what is on it */
-    else hglide_tri_h(va, vb, vc, noz);
+    else hglide_tri_h(va, vb, vc, noz, view);
 }
 
 #define B(p, i) W_LD(u8, (p) + (i), 0)

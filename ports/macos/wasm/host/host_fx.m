@@ -39,15 +39,18 @@
 CAMetalLayer *happ_metal_layer(void);
 id<MTLTexture> hsky_tex(id<MTLDevice> dev, int weather);   /* host_sky.m */
 static id<MTLTexture> g_skyt;   /* this frame's Remastered sky, or nil */
+void hglide_map(int view, float T[4]);                     /* host_glide.m */
+double hframe_game_ms(void);                               /* native/frame.m */
 
 #define STR(...) #__VA_ARGS__
 static const char *FXSRC = "#include <metal_stdlib>\n" STR(
 using namespace metal;
-struct CV { float x, y, z, w, r, g, b, a, s, t, wx, wy, wz, fl; };
+struct CV { float x, y, z, w, r, g, b, a, s, t, wx, wy, wz, fl, xf; };
 struct FXU {
   float4x4 vp, ivp, svp;
   float4 eye, sun, sunc, skyc, grnd, fogc, vpt, scr, p0, p1, p2, p3, p4, flash, wb, nsky, sk2, tm, wx;
   float4x4 pvp; float4 jit; float4x4 svp2; float4 csm; float4 mat; float4 matmean[6]; float4 rmap;
+  float4 m3;   /* host_glide.m's screen map of the view: NDC = (x, y down) * m3.xz + m3.yw */
 };
 /* headlights: up to 32 spot lights (two per car); misc = count, beam
    strength, light intensity, air density */
@@ -84,13 +87,19 @@ float vnoise(float2 p) { float2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2
   return mix(mix(hash2(i), hash2(i + float2(1, 0)), f.x), mix(hash2(i + float2(0, 1)), hash2(i + float2(1, 1)), f.x), f.y); }
 float fbm(float2 p) { return vnoise(p) * 0.55 + vnoise(p * 2.03 + 17.1) * 0.3 + vnoise(p * 4.1 + 5.3) * 0.15; }
 float ign(float2 p) { return fract(52.9829189 * fract(dot(p, float2(0.06711056, 0.00583715)))); }
+/* the game's screen (640x480, its own y) to the target's uv, and back */
+float2 scr_uv(constant FXU &u, float sx, float sy) {
+  float yd = u.p3.x > 0.5 ? 480.0 - sy : sy;
+  return float2(u.m3.x * sx + u.m3.y, u.m3.z * yd + u.m3.w) * float2(0.5, -0.5) + 0.5; }
+float2 uv_scr(constant FXU &u, float2 uv) {
+  float2 n = (uv - 0.5) * float2(2.0, -2.0);
+  float sx = (n.x - u.m3.y) / u.m3.x, yd = (n.y - u.m3.w) / u.m3.z;
+  return float2(sx, u.p3.x > 0.5 ? 480.0 - yd : yd); }
 float2 to_uv(constant FXU &u, float3 wp, thread float &cw) {
   float4 c = u.vp * float4(wp, 1); cw = c.w;
-  float sx = u.vpt.x * c.x / c.w + u.vpt.y, sy = u.vpt.z * c.y / c.w + u.vpt.w;
-  float v = sy / 480.0; if (u.p3.x > 0.5) v = 1.0 - v;
-  return float2(sx / 640.0, v); }
+  return scr_uv(u, u.vpt.x * c.x / c.w + u.vpt.y, u.vpt.z * c.y / c.w + u.vpt.w); }
 float3 view_dir(constant FXU &u, float2 uv) {
-  float sx = uv.x * 640.0, sy = (u.p3.x > 0.5 ? 1.0 - uv.y : uv.y) * 480.0;
+  float2 sp = uv_scr(u, uv); float sx = sp.x, sy = sp.y;
   float4 h = u.ivp * float4((sx - u.vpt.y) / u.vpt.x, (sy - u.vpt.w) / u.vpt.z, 0.5, 1.0);
   float3 d = (h.xyz - u.eye.xyz * h.w) * (h.w < 0 ? -1.0 : 1.0);
   return length(d) > 1e-12 ? normalize(d) : float3(0, 0, 1); }
@@ -935,7 +944,8 @@ vertex TO trkvs(uint vid [[vertex_id]], const device TV *v [[buffer(0)]], consta
   TV g = v[vid]; TO o;
   float4 c = u.vp * float4(g.p.xyz, 1);
   float sx = u.vpt.x * c.x + u.vpt.y * c.w, sy = u.vpt.z * c.y + u.vpt.w * c.w;
-  o.pos = float4(sx / 320.0 - c.w, u.p3.x > 0.5 ? sy / 240.0 - c.w : c.w - sy / 240.0, 0.5 * c.w, c.w);
+  float yd = u.p3.x > 0.5 ? 480.0 * c.w - sy : sy;
+  o.pos = float4(u.m3.x * sx + u.m3.y * c.w, u.m3.z * yd + u.m3.w * c.w, 0.5 * c.w, c.w);
   o.k = g.p.w; o.z = g.p.z; o.a = g.a.x; return o; }
 fragment float4 trkfs(TO in [[stage_in]]) {
   float e = 1.0 - in.a * in.a;
@@ -1087,9 +1097,7 @@ float2 prev_uv(constant FXU &u, constant MVC &mv, float4 P, float2 uv) {
   } else wp = u.eye.xyz + view_dir(u, uv) * 20000.0;
   float4 c = u.pvp * float4(wp, 1);
   if (c.w <= 0) return float2(-1);
-  float sx = u.vpt.x * c.x / c.w + u.vpt.y, sy = u.vpt.z * c.y / c.w + u.vpt.w;
-  float v = sy / 480.0; if (u.p3.x > 0.5) v = 1.0 - v;
-  return float2(sx / 640.0, v); }
+  return scr_uv(u, u.vpt.x * c.x / c.w + u.vpt.y, u.vpt.z * c.y / c.w + u.vpt.w); }
 float3 ycc(float3 c) { return float3(0.25 * c.r + 0.5 * c.g + 0.25 * c.b, 0.5 * c.r - 0.5 * c.b, -0.25 * c.r + 0.5 * c.g - 0.25 * c.b); }
 float3 rgb_(float3 y) { return float3(y.x + y.y - y.z, y.x + y.z, y.x - y.y - y.z); }
 /* Catmull-Rom history fetch, 5 taps (Jimenez) */
@@ -1294,6 +1302,7 @@ typedef struct {
     float pvp[16], jit[4];   /* last frame's view x projection; this frame's jitter (ndc) and the last one's */
     float svp2[16], csm[4];  /* the far shadow cascade; csm.x its texel size */
     float mat[4], matmean[6][4], rmap[4];   /* ground materials: mat.x loaded; each one's mean colour (linear) */   /* wx: rain, snowfall, snow ground, - */
+    float m3[4];                            /* the screen map (host_glide.m) */
 } fxu;
 typedef struct { float p[64][4], d[64][4], col[4], misc[4]; float g[64][4], gd[64][4], gmisc[4]; } hlu;
 static float g_hl_int, g_hl_beam, g_hl_air, g_wdark = 1.0f, g_brake[64];
@@ -1335,6 +1344,7 @@ static NSMutableArray *g_keep;           /* keeps recorded buffers/textures aliv
 static int g_havecam;
 static float g_P[16], g_vpt[4];
 static unsigned g_frame;
+static double g_last_ms, g_clock, g_dt;   /* the game clock at the last frame; effect time; this frame's step (s) */
 
 int hfx_on(void)
 {
@@ -2234,7 +2244,7 @@ static int cand_cmp(const void *a, const void *b)
     float x = *(const float *)a, y = *(const float *)b;
     return x < y ? -1 : x > y;
 }
-static int fx_particles(pfu *out, const float *eye, const float *sun, const float *vp, const float *vpt, int flip, int w)
+static int fx_particles(pfu *out, const float *eye, const float *sun, const float *vp, const float *vpt, const float *m3, int flip, int w)
 {
     typedef struct { float d, p[4], c[4]; } cand;
     static cand cs[2000];
@@ -2339,8 +2349,12 @@ own_done:
                     int k;
                     for (k = 0; k < 4; k++) c[k] = vp[k] * x + vp[4 + k] * y + vp[8 + k] * z + vp[12 + k];
                     if (c[3] < 0.05f) { all = 1; break; }
-                    uv[0] = (vpt[0] * c[0] / c[3] + vpt[1]) / 640.0f;
-                    uv[1] = (vpt[2] * c[1] / c[3] + vpt[3]) / 480.0f; if (flip) uv[1] = 1.0f - uv[1];
+                    {   /* the game's screen, then the screen map, to uv */
+                        float sx = vpt[0] * c[0] / c[3] + vpt[1], sy = vpt[2] * c[1] / c[3] + vpt[3];
+                        float yd = flip ? 480.0f - sy : sy;
+                        uv[0] = (m3[0] * sx + m3[1]) * 0.5f + 0.5f;
+                        uv[1] = 0.5f - 0.5f * (m3[2] * yd + m3[3]);
+                    }
                     for (k = 0; k < 2; k++) { if (uv[k] < lo[k]) lo[k] = uv[k]; if (uv[k] > hi[k]) hi[k] = uv[k]; }
                 }
             if (all) { lo[0] = lo[1] = 0; hi[0] = hi[1] = 1; }
@@ -2436,7 +2450,17 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
     u.p3[0] = (float)origin_ll;
     u.p2[2] = 6.0f;
     u.p2[3] = (float)(g_frame % 64);
-    u.tm[0] = (float)((double)g_frame / 60.0);
+    hglide_map(0, u.m3);
+    /* effects run on the game's clock (the time of the frame being shown),
+     * however many frames a second are drawn: the step since the last
+     * frame, held under a tenth of a second across a stall or a pause */
+    {
+        double ms = hframe_game_ms();
+        g_dt = g_last_ms > 0 && ms >= g_last_ms ? fmin((ms - g_last_ms) / 1000.0, 0.1) : 0.0;
+        g_last_ms = ms;
+        g_clock += g_dt;
+    }
+    u.tm[0] = (float)g_clock;
     u.tm[1] = 0.75f;                           /* asphalt neutralising */
     if (!g_mat_state) load_materials(dev, cb.commandQueue);
     if (g_mat_state > 0) { u.mat[0] = 1; memcpy(u.matmean, g_matmean, sizeof u.matmean); }
@@ -2643,7 +2667,7 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
         int w = (int)H32(0x104B15E8u), nv = 0;
         id<MTLBuffer> tb;
         if (getenv("BR_FX_WEATHER")) w = atoi(getenv("BR_FX_WEATHER"));
-        fx_sim(w, u.p0[3], 1.0f / 60.0f);
+        fx_sim(w, u.p0[3], (float)g_dt);
         tb = fx_tracks(dev, u.eye, &nv);
         {
             MTLRenderPassDescriptor *rp = [MTLRenderPassDescriptor renderPassDescriptor];
@@ -2710,7 +2734,7 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
     else {
         pfu *pu = calloc(1, sizeof *pu);
         id<MTLBuffer> pb;
-        pu->misc[0] = (float)fx_particles(pu, u.eye, u.sun, u.vp, u.vpt, u.p3[0] > 0.5f, (int)H32(0x104B15E8u));
+        pu->misc[0] = (float)fx_particles(pu, u.eye, u.sun, u.vp, u.vpt, u.m3, u.p3[0] > 0.5f, (int)H32(0x104B15E8u));
         for (i = 0; i < 3; i++) pu->amb[i] = g_car_rig[2][i] * 0.8f + g_car_rig[3][i] * 0.4f;
         pb = [dev newBufferWithBytes:pu length:sizeof *pu options:MTLResourceStorageModeShared];
         free(pu);
