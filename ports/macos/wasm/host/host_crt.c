@@ -272,6 +272,9 @@ int hfmt(char *out, size_t cap, const char *f, u32 va)
         conv = *f;
         if (!conv) break;
         f++;
+        /* MSVC's narrow %C is one wide character, converted: the CD check
+         * formats its drive root with "%C:\\" */
+        if (conv == 'C') conv = 'c';
         k = (int)(f - s);
         if (k >= (int)sizeof spec - 4) k = (int)sizeof spec - 4;
         /* host spec: strip our length modifiers, add our own */
