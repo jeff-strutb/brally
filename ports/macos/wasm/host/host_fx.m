@@ -321,7 +321,7 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
                        texture2d<float> col [[texture(2)]], depth2d<float> sm [[texture(3)]],
                        texture2d<float> aot [[texture(4)]], texture2d<float> ssr [[texture(5)]],
                        texture2d<float> sky [[texture(6)]], texture2d<float> trk [[texture(7)]],
-                       depth2d<float> sm2 [[texture(8)]],
+                       depth2d<float> sm2 [[texture(8)]], texture2d<float> gsm [[texture(9)]],
                        constant HL &hl [[buffer(1)]]) {
   float4 C = col.sample(ns, in.uv), P = gp.sample(ns, in.uv), G = gn.sample(ns, in.uv);
   float3 lin = pow(C.rgb, 2.2);
@@ -417,6 +417,8 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
     float yl = dot(lin, lw), yb = dot(cb, lw);
     if (yb > 1e-4) lin = cb * (yl / yb); }
   float3 wp = P.xyz, N = onormal(G.xyz, wp, u.eye.xyz), V = normalize(u.eye.xyz - wp), L = u.sun.xyz;
+  { float3 Ns = gsm.sample(ls, in.uv).xyz;
+    if (length(Ns) > 0.5) { Ns = onormal(Ns, wp, u.eye.xyz); if (dot(Ns, N) > 0.55) N = Ns; } }
   /* surface detail: the texture's own light and dark read as relief (a bump
      map from its brightness, by the surface gradient of Mikkelsen 2020),
      fading out where the texture is too far away to show it */
@@ -668,19 +670,22 @@ fragment float4 nrmfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
   if (!is_geo(P.w)) return G;
   float3 N0 = onormal(G.xyz, P.xyz, u.eye.xyz);
   float de = distance(u.eye.xyz, P.xyz);
-  /* a 0.9 m disc, in pixels at this distance */
+  /* far away a face is a few pixels: nothing to smooth */
+  if (de > 140.0) return float4(N0, G.a);
+  /* a 0.9 m disc, in pixels at this distance; the taps are TAA-rotated, so
+     eight a frame accumulate to many */
   float2 scr = float2(gn.get_width(), gn.get_height());
-  float rpx = clamp(0.9 * u.scr.w / max(de, 0.5), 2.0, 60.0);
+  float rpx = clamp(0.9 * u.scr.w / max(de, 0.5), 2.0, 40.0);
   float3 acc = N0; float wsum = 1.0;
-  float rot = ign(in.pos.xy) * 6.2831853;
-  for (int i = 0; i < 12; i++) {
-    float r = sqrt((float(i) + 0.5) / 12.0) * rpx, a = rot + float(i) * 2.3999632;
+  float rot = (ign(in.pos.xy) + u.p2.w * 0.618) * 6.2831853;
+  for (int i = 0; i < 8; i++) {
+    float r = sqrt((float(i) + 0.5) / 8.0) * rpx, a = rot + float(i) * 2.3999632;
     float2 q = in.uv + float2(cos(a), sin(a)) * r / scr;
     float4 Q = gp.sample(ns, q);
-    if (!is_geo(Q.w)) continue;
-    float3 Nk = onormal(gn.sample(ns, q).xyz, Q.xyz, u.eye.xyz);
     float plane = abs(dot(N0, Q.xyz - P.xyz)) / (0.02 * de + 0.05);
-    float w = saturate(1.0 - plane) * smoothstep(0.62, 0.9, dot(N0, Nk));
+    if (!is_geo(Q.w) || plane >= 1.0) continue;
+    float3 Nk = onormal(gn.sample(ns, q).xyz, Q.xyz, u.eye.xyz);
+    float w = (1.0 - plane) * smoothstep(0.62, 0.9, dot(N0, Nk));
     acc += Nk * w; wsum += w; }
   return float4(normalize(acc), G.a); }
 
@@ -817,14 +822,20 @@ float3 hist_cr(texture2d<float> h, float2 uv) {
            + h.sample(ls, float2(t12.x, t3.y)).rgb * (w12.x * w3.y);
   float ws = w12.x * w0.y + w0.x * w12.y + w12.x * w12.y + w3.x * w12.y + w12.x * w3.y;
   return max(c / ws, 0.0); }
+/* the lit scene with the particles and precipitation over it */
+float4 withpfx(texture2d<float> cur, texture2d<float> pf, float2 uv) {
+  float4 c = cur.sample(ns, uv), p = pf.sample(ls, uv);
+  return float4(c.rgb * (1.0 - p.a) + p.rgb, c.a); }
 fragment float4 taafs(QO in [[stage_in]], constant FXU &u [[buffer(0)]], constant MVC &mv [[buffer(1)]],
-                      texture2d<float> cur [[texture(0)]], texture2d<float> hist [[texture(1)]], texture2d<float> gp [[texture(2)]]) {
-  float4 C = cur.sample(ns, in.uv);
+                      texture2d<float> cur [[texture(0)]], texture2d<float> hist [[texture(1)]], texture2d<float> gp [[texture(2)]],
+                      texture2d<float> pf [[texture(3)]]) {
+  float4 C = withpfx(cur, pf, in.uv);
   if (u.jit.w < 0.5) return C;                       /* no history yet */
   float2 px = 1.0 / float2(cur.get_width(), cur.get_height());
   float3 m1 = 0, m2 = 0;
   for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) {
-    float3 c = ycc(cur.sample(ns, in.uv + float2(x, y) * px).rgb / (1.0 + dot(cur.sample(ns, in.uv + float2(x, y) * px).rgb, float3(0.2126, 0.7152, 0.0722))));
+    float3 cc = withpfx(cur, pf, in.uv + float2(x, y) * px).rgb;
+    float3 c = ycc(cc / (1.0 + dot(cc, float3(0.2126, 0.7152, 0.0722))));
     m1 += c; m2 += c * c; }
   m1 /= 9.0; float3 sd = sqrt(max(m2 / 9.0 - m1 * m1, 0.0));
   float2 pu = prev_uv(u, mv, gp.sample(ns, in.uv), in.uv);
@@ -966,6 +977,23 @@ typedef struct { float p[32][4], d[32][4], col[4], misc[4]; float g[64][4], gd[6
 static float g_hl_int, g_hl_beam, g_hl_air;
 typedef struct { int at_fn, at_ref, use_tex, pad; float su, sv, pad2, pad3; float svp[16]; } shu;
 
+/* BR_FX_PROF=1: GPU time of every pass (stage-boundary timestamps), summed
+ * over 120 frames and printed as a table */
+static int g_prof = -1, g_prof_n, g_prof_buf;
+static id<MTLCounterSampleBuffer> g_psb[2];
+static const char *g_plab[2][64];
+static double g_pacc[64], g_pvacc[64], g_pgap[64]; static const char *g_pacc_lab[64]; static int g_pacc_n, g_pacc_frames;
+static void prof_attach(MTLRenderPassDescriptor *rp, const char *label)
+{
+    if (g_prof < 0) g_prof = getenv("BR_FX_PROF") != NULL;
+    if (!g_prof || !g_psb[g_prof_buf] || g_prof_n >= 64) return;
+    rp.sampleBufferAttachments[0].sampleBuffer = g_psb[g_prof_buf];
+    rp.sampleBufferAttachments[0].startOfVertexSampleIndex = (NSUInteger)g_prof_n * 4;
+    rp.sampleBufferAttachments[0].endOfVertexSampleIndex = (NSUInteger)g_prof_n * 4 + 1;
+    rp.sampleBufferAttachments[0].startOfFragmentSampleIndex = (NSUInteger)g_prof_n * 4 + 2;
+    rp.sampleBufferAttachments[0].endOfFragmentSampleIndex = (NSUInteger)g_prof_n * 4 + 3;
+    g_plab[g_prof_buf][g_prof_n++] = label;
+}
 static id<MTLDevice> D;
 static id<MTLLibrary> L;
 static id<MTLRenderPipelineState> p_trk, p_pfx, p_pfxc, p_nrm, p_taa, p_mb;
@@ -1117,6 +1145,7 @@ static id<MTLRenderPipelineState> mkpipe(NSString *vs, NSString *fs, MTLPixelFor
             d.colorAttachments[0].destinationAlphaBlendFactor = MTLBlendFactorOne;
         }
     }
+    d.label = fs;
     id<MTLRenderPipelineState> p = [D newRenderPipelineStateWithDescriptor:d error:&err];
     if (!p) { fprintf(stderr, "fx pipeline %s: %s\n", fs.UTF8String, err.localizedDescription.UTF8String); exit(1); }
     return p;
@@ -1145,6 +1174,16 @@ static void setup(id<MTLDevice> dev)
         d.depthAttachmentPixelFormat = MTLPixelFormatDepth32Float;
         p_sh = [D newRenderPipelineStateWithDescriptor:d error:&err];
         if (!p_sh) { fprintf(stderr, "fx shadow pipeline: %s\n", err.localizedDescription.UTF8String); exit(1); }
+    }
+    if (getenv("BR_FX_PROF") && [D supportsCounterSampling:MTLCounterSamplingPointAtStageBoundary]) {
+        for (id<MTLCounterSet> cs in D.counterSets)
+            if ([cs.name isEqualToString:MTLCommonCounterSetTimestamp]) {
+                MTLCounterSampleBufferDescriptor *sd = [MTLCounterSampleBufferDescriptor new];
+                sd.counterSet = cs; sd.storageMode = MTLStorageModeShared; sd.sampleCount = 256;
+                g_psb[0] = [D newCounterSampleBufferWithDescriptor:sd error:&err];
+                g_psb[1] = [D newCounterSampleBufferWithDescriptor:sd error:&err];
+            }
+        if (!g_psb[0]) fprintf(stderr, "fx prof: no timestamp counters\n");
     }
     p_ao = mkpipe(@"fsq", @"aofs", MTLPixelFormatRGBA16Float, 0);
     p_blur = mkpipe(@"fsq", @"blurfs", MTLPixelFormatRGBA16Float, 0);
@@ -1211,20 +1250,28 @@ static void size(int w, int h)
     t_shaft = mktex(hw, hh, MTLPixelFormatRGBA16Float, 0);
     t_hdr = mktex(w, h, MTLPixelFormatRGBA16Float, 0);
     for (i = 0; i < 6; i++) t_bl[i] = mktex(hw >> i, hh >> i, MTLPixelFormatRGBA16Float, 0);
-    t_out = mktex(w, h, MTLPixelFormatRGBA8Unorm, 1);
-    t_aa = mktex(w, h, MTLPixelFormatRGBA8Unorm, 1);
+    /* the CPU reads the output only for scripted screenshots; otherwise it
+     * stays in GPU memory, where the GPU can compress it */
+    {
+        int shots = getenv("BR_SHOTS") || getenv("BR_SHOT_DIR") || getenv("BR_SCRIPT");
+        t_out = mktex(w, h, MTLPixelFormatRGBA8Unorm, shots);
+        t_aa = mktex(w, h, MTLPixelFormatRGBA8Unorm, shots);
+    }
     t_trk = mktex(hw, hh, MTLPixelFormatRGBA16Float, 0);
     t_pfx = mktex(hw, hh, MTLPixelFormatRGBA16Float, 0);
-    t_nrm = mktex(w, h, MTLPixelFormatRGBA16Float, 0);
+    t_nrm = mktex(hw, hh, MTLPixelFormatRGBA16Float, 0);
     t_hist[0] = mktex(w, h, MTLPixelFormatRGBA16Float, 0);
     t_hist[1] = mktex(w, h, MTLPixelFormatRGBA16Float, 0);
     t_mb = mktex(w, h, MTLPixelFormatRGBA16Float, 0);
     g_hist_ok = 0;
 }
 
+static const char *g_next_label;
+void hfx_prof_attach(MTLRenderPassDescriptor *rp, const char *label) { prof_attach(rp, label); }
 static id<MTLRenderCommandEncoder> pass(id<MTLCommandBuffer> cb, id<MTLTexture> t, int load)
 {
     MTLRenderPassDescriptor *rp = [MTLRenderPassDescriptor renderPassDescriptor];
+    prof_attach(rp, g_next_label ? g_next_label : "?"); g_next_label = NULL;
     rp.colorAttachments[0].texture = t;
     rp.colorAttachments[0].loadAction = load ? MTLLoadActionLoad : MTLLoadActionClear;
     rp.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 0);
@@ -1233,6 +1280,7 @@ static id<MTLRenderCommandEncoder> pass(id<MTLCommandBuffer> cb, id<MTLTexture> 
 }
 static void quad(id<MTLRenderCommandEncoder> e, id<MTLRenderPipelineState> p, const fxu *u, NSArray *tex)
 {
+    if (g_prof > 0 && g_prof_n > 0 && p.label) g_plab[g_prof_buf][g_prof_n - 1] = p.label.UTF8String;
     NSUInteger i;
     [e setRenderPipelineState:p];
     if (u) [e setFragmentBytes:u length:sizeof *u atIndex:0];
@@ -1711,7 +1759,7 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
     double P[16], IP[16], v[4], e[4], f[4], sun[3], cf[3];
     int i, aa = 0;
     id<MTLRenderCommandEncoder> enc;
-    if (!g_havecam) { g_nrec = 0; g_ncars = 0; [g_keep removeAllObjects]; return nil; }
+    if (!g_havecam || getenv("BR_FX_SKIP")) { g_havecam = 0; g_nrec = 0; g_ncars = 0; [g_keep removeAllObjects]; g_prof_n = 0; return nil; }
     setup(dev);
     size(w, h);
     memset(&u, 0, sizeof u);
@@ -1860,6 +1908,7 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
     if (u.sun[3] > 0) for (int cas = 0; cas < 2; cas++) {
         MTLRenderPassDescriptor *rp = [MTLRenderPassDescriptor renderPassDescriptor];
         rp.depthAttachment.texture = cas ? t_sm2 : t_sm;
+        prof_attach(rp, cas ? "shadow far" : "shadow near");
         rp.depthAttachment.loadAction = MTLLoadActionClear;
         rp.depthAttachment.clearDepth = 1.0;
         rp.depthAttachment.storeAction = MTLStoreActionStore;
@@ -1882,9 +1931,12 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
     }
     /* 2. occlusion + bounce, blurred */
     /* 1b. smoothed normals: every pass after this reads them */
+    /* (at half resolution: a smoothed normal has no fine detail to lose;
+     * the lighting pass takes it only where it agrees with the face's own) */
+    id<MTLTexture> gface = gn;
     if (!getenv("BR_FX_FLAT")) { quad(pass(cb, t_nrm, 0), p_nrm, &u, @[gn, gp]); gn = t_nrm; }
     quad(pass(cb, t_ao, 0), p_ao, &u, @[gn, gp, col]);
-    {
+    if (!taa_on()) {
         float d1[2] = { 1, 0 }, d2[2] = { 0, 1 };
         enc = pass(cb, t_ao2, 0);
         [enc setFragmentBytes:d1 length:8 atIndex:1];
@@ -1915,6 +1967,7 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
         {
             MTLRenderPassDescriptor *rp = [MTLRenderPassDescriptor renderPassDescriptor];
             rp.colorAttachments[0].texture = t_trk;
+            prof_attach(rp, "tracks");
             rp.colorAttachments[0].loadAction = MTLLoadActionClear;
             rp.colorAttachments[0].clearColor = MTLClearColorMake(0, -10000, 0, 0);
             rp.colorAttachments[0].storeAction = MTLStoreActionStore;
@@ -1933,9 +1986,10 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
     /* 4. lighting */
     enc = pass(cb, t_hdr, 0);
     [enc setFragmentBytes:&hl length:sizeof hl atIndex:1];
-    quad(enc, p_comp, &u, @[gn, gp, col, t_sm, t_ao, t_ssr, g_skyt ? g_skyt : col, t_trk, t_sm2]);
+    quad(enc, p_comp, &u, @[gface, gp, col, t_sm, t_ao, t_ssr, g_skyt ? g_skyt : col, t_trk, t_sm2, gn]);
     /* 4b. particles and falling rain/snow over the lit scene */
-    if (!getenv("BR_FX_NOPFX")) {
+    if (getenv("BR_FX_NOPFX")) [pass(cb, t_pfx, 0) endEncoding];
+    else {
         pfu *pu = calloc(1, sizeof *pu);
         id<MTLBuffer> pb;
         pu->misc[0] = (float)fx_particles(pu, u.eye, (int)H32(0x104B15E8u));
@@ -1949,7 +2003,8 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
             [enc setFragmentBytes:&hl length:sizeof hl atIndex:1];
             [enc setFragmentBuffer:pb offset:0 atIndex:2];
             quad(enc, p_pfx, &u, @[gp]);
-            quad(pass(cb, t_hdr, 1), p_pfxc, NULL, @[t_pfx]);
+            /* with TAA the resolve lays the particles over the scene */
+            if (!taa_on()) quad(pass(cb, t_hdr, 1), p_pfxc, NULL, @[t_pfx]);
         }
     }
     /* 4c. temporal anti-aliasing, then motion blur */
@@ -1981,7 +2036,7 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
                 id<MTLTexture> dst = t_hist[g_hist_i], his = t_hist[g_hist_i ^ 1];
                 enc = pass(cb, dst, 0);
                 [enc setFragmentBuffer:mb offset:0 atIndex:1];
-                quad(enc, p_taa, &u, @[t_hdr, his, gp]);
+                quad(enc, p_taa, &u, @[t_hdr, his, gp, t_pfx]);
                 g_hist_i ^= 1; g_hist_ok = 1;
                 enc = pass(cb, t_hdr, 0);
                 [enc setFragmentBuffer:mb offset:0 atIndex:1];
@@ -2000,6 +2055,11 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
     for (i = 1; i < 6; i++) quad(pass(cb, t_bl[i], 0), p_down, NULL, @[t_bl[i - 1]]);
     for (i = 4; i >= 0; i--) quad(pass(cb, t_bl[i], 1), p_up, NULL, @[t_bl[i + 1]]);
     /* 6. shafts */
+    {   /* sun shafts only while the sun is on or near the screen */
+        double sp[4], sv[4] = { u.eye[0] + sun[0] * 8000.0, u.eye[1] + sun[1] * 8000.0, u.eye[2] + sun[2] * 8000.0, 1 };
+        rowmul(sv, P, sp);
+        if (sp[3] <= 0 || fabs(sp[0] / sp[3]) > 1.6 || fabs(sp[1] / sp[3]) > 1.6) u.p2[0] = 0;
+    }
     if (u.p2[0] > 0 || (hl.misc[0] > 0 && hl.misc[1] > 0)) {
         enc = pass(cb, t_shaft, 0);
         [enc setFragmentBytes:&hl length:sizeof hl atIndex:1];
@@ -2021,13 +2081,41 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
     {
         NSArray *keep = [g_keep copy];
         int stat = getenv("BR_FX_STAT") != NULL;
+        int pb = g_prof_buf, pn = g_prof_n;
+        const char **labs = malloc(sizeof(char *) * 64);
+        memcpy(labs, g_plab[pb], sizeof(char *) * 64);
         [cb addCompletedHandler:^(id<MTLCommandBuffer> b) {
             static double acc; static int n;
             (void)keep;
+            if (pn > 0 && g_psb[pb]) {
+                NSData *d = [g_psb[pb] resolveCounterRange:NSMakeRange(0, (NSUInteger)pn * 4)];
+                const MTLCounterResultTimestamp *t = d.bytes;
+                int k;
+                if (!g_pacc_n) { g_pacc_n = pn; for (k = 0; k < pn; k++) g_pacc_lab[k] = labs[k]; }
+                for (k = 0; k < pn && k < g_pacc_n; k++) {
+                    /* passes overlap on the tile GPU: charge each one the time
+                       from the previous pass's end to its own end */
+                    uint64_t a = t[k * 4 + 2].timestamp, e = t[k * 4 + 3].timestamp;   /* fragment stage span */
+                    uint64_t va = t[k * 4].timestamp, ve = t[k * 4 + 1].timestamp;     /* vertex stage span */
+                    if (e > a && e - a < 1000000000ull) g_pacc[k] += (double)(e - a) / 1e6;
+                    if (ve > va && ve - va < 1000000000ull) g_pvacc[k] += (double)(ve - va) / 1e6;
+                    if (k + 1 < pn) { uint64_t nx = t[(k + 1) * 4].timestamp; if (nx > e && nx - e < 1000000000ull) g_pgap[k] += (double)(nx - e) / 1e6; }
+                }
+                if (++g_pacc_frames == 120) {
+                    (void)0;
+                    double tot = 0;
+                    for (k = 0; k < g_pacc_n; k++) tot += g_pacc[k];
+                    fprintf(stderr, "fx prof (ms/frame over 120 frames, sum %.2f):\n", tot / 120);
+                    for (k = 0; k < g_pacc_n; k++) fprintf(stderr, "  %-16s frag %6.2f  vert %6.2f  gap-after %6.2f\n", g_pacc_lab[k], g_pacc[k] / 120, g_pvacc[k] / 120, g_pgap[k] / 120);
+                    memset(g_pacc, 0, sizeof g_pacc); memset(g_pvacc, 0, sizeof g_pvacc); memset(g_pgap, 0, sizeof g_pgap); g_pacc_frames = 0; g_pacc_n = 0;
+                }
+            }
+            free(labs);
             if (!stat) return;
             acc += (b.GPUEndTime - b.GPUStartTime) * 1000.0;
             if (++n == 240) { fprintf(stderr, "fx: gpu %.2f ms per frame (last 240, whole frame)\n", acc / n); acc = 0; n = 0; }
         }];
+        g_prof_buf ^= 1; g_prof_n = 0;       /* the next frame's passes, the game's scene first */
     }
     [g_keep removeAllObjects];
     g_nrec = 0;
