@@ -30,6 +30,17 @@ choice was made on, and the rules that still hold (the exports stay 1:1 rips),
 are in `MUSIC-DECISION-PENDING.md`. The native 64-bit lane (`build.sh`) still
 has no music.
 
+## Sound effects
+
+The 32-bit lane plays the game's effects natively too. The game still drives
+DirectSound (one static buffer per sample: volume, pan, pitch, play, stop);
+`macos/wasm/host/host_dx.c` mixes those buffers with DirectSound's gain and
+pan laws and `macos/wasm/native/sound.m` sends the mix to AVAudioEngine at
+the device rate, through a peak limiter. Muted while the app is inactive, as
+DirectSound mutes a window without focus. `BR_SFX=0` silences it;
+`BR_SFXWAV=path` records it (headless runs render it offline, in step with
+the game's clock).
+
 ## macos/
 
 The macOS/Metal port. `metal/br_gfx_metal.m` is the graphics backend (the peer

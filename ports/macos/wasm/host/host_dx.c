@@ -5,8 +5,8 @@
  * `p->lpVtbl->Method(p, ...)` indirect calls land here. Method sets and
  * answers follow tools/brbox_com.py, the oracle the T3 build was certified
  * under: a DirectX 6 machine, keyboard + mouse, no joystick, DirectPlay with
- * no lobby. DirectSound buffers keep time but make no sound (music/audio is
- * an open decision, ports/README.md).
+ * no lobby. DirectSound buffers mix for real (the sound effects, below;
+ * native/sound.m plays the mix).
  */
 #include "host.h"
 #include <stdlib.h>
@@ -360,7 +360,45 @@ u32 h_DirectInputCreateA(u32 inst, u32 ver, u32 out, u32 unk)
 }
 
 /* =========================================================== DirectSound */
-typedef struct { u32 flags, size, mem, rate, align, playing, looping, pos; u64 t0; u8 fmt[18]; } dsbuf;
+/* The game's sound effects: every sample is a static secondary buffer
+ * (br_sndbuf.c), filled once through Lock/Unlock and then driven with
+ * SetVolume, SetPan, SetFrequency, Play (one-shot or looping), Stop,
+ * SetCurrentPosition and GetStatus. These buffers mix for real: Unlock
+ * takes the samples as floats, and hdx_sfx_render (called by
+ * native/sound.m, for the output device or a recording) sums the playing
+ * ones with DirectSound's laws:
+ *
+ *   volume  hundredths of a dB, 0 = as recorded, never amplified;
+ *           -10000 (DSBVOLUME_MIN) is silence
+ *   pan     hundredths of a dB taken off the far side: -4000 is the right
+ *           channel 40 dB down, the left untouched
+ *   freq    the rate the samples are played at, 0 = the buffer's own
+ *
+ * resampled to the output rate by 4-point Hermite interpolation. A volume
+ * or pan change ramps over one render block, so the engine's continuous
+ * level changes do not click.
+ *
+ * While a mixer runs, it is the play cursor: a one-shot stops when its
+ * last sample has been played, as on the device. Without one (headless,
+ * BR_SFX=0) the cursor is the clock, as the oracle models it: the game's
+ * state moves the same, nothing is heard. */
+typedef struct {
+    u32 flags, size, mem, rate, align, playing, looping, pos; u64 t0; u8 fmt[18];
+    int ch, bits;                   /* from the format */
+    float *pcm;                     /* the samples, Unlock's copy, ch interleaved */
+    u32 frames;
+    s32 vol, pan;
+    u32 freq;
+    double fpos;                    /* the mixer's cursor, in frames */
+    float gl, gr;                   /* gains applied at the end of the last block */
+    int live;                       /* on g_live */
+} dsbuf;
+static pthread_mutex_t g_sl = PTHREAD_MUTEX_INITIALIZER;
+static dsbuf *g_live[512];
+static int g_nlive;
+static int g_mixing;                /* a mixer runs: it moves the cursors */
+__attribute__((weak)) int nsound_open(void) { return 0; }
+
 static u32 ds_init(u32 t, u32 g) { (void)t; (void)g; return S_OK; }
 static u32 ds_coop(u32 t, u32 h, u32 l) { (void)t; (void)h; (void)l; return S_OK; }
 static u32 ds_caps(u32 t, u32 p) { u32 sz = H32(p); (void)t; memset(W_P(p + 4), 0, sz > 4 ? sz - 4 : 0); HW32(p + 4, 0x0F0F); return S_OK; }
@@ -373,9 +411,15 @@ static const meth DS[] = {
     { "GetSpeakerConfig", 2, (void *)ds_spk }, { "SetSpeakerConfig", 2, 0 }, { "Initialize", 2, (void *)ds_init },
 };
 u32 h_timeGetTime(void);
+
+/* the play cursor, in bytes; called with g_sl held */
 static u32 dsb_cur(dsbuf *b)
 {
     u64 p;
+    if (g_mixing && !(b->flags & 1)) {
+        p = (u64)b->fpos * b->align;
+        return (u32)(p < b->size ? p : 0);
+    }
     if (!b->playing) return b->pos;
     p = b->pos + (u64)(h_timeGetTime() - b->t0) * b->rate * b->align / 1000;
     p -= p % b->align;
@@ -385,8 +429,29 @@ static u32 dsb_cur(dsbuf *b)
     }
     return (u32)p;
 }
-static u32 dsb_pos(u32 t, u32 pp, u32 pw) { dsbuf *b = hdr(t)->st; u32 p = dsb_cur(b); if (pp) HW32(pp, p); if (pw) HW32(pw, p); return S_OK; }
-static u32 dsb_status(u32 t, u32 p) { dsbuf *b = hdr(t)->st; dsb_cur(b); HW32(p, (b->playing ? 1 : 0) | (b->playing && b->looping ? 4 : 0)); return S_OK; }
+static void dsb_live(dsbuf *b)
+{
+    if (b->live || g_nlive == (int)(sizeof g_live / sizeof g_live[0])) return;
+    g_live[g_nlive++] = b;
+    b->live = 1;
+}
+static void dsb_unlive(dsbuf *b)
+{
+    int i;
+    if (!b->live) return;
+    for (i = 0; i < g_nlive; i++)
+        if (g_live[i] == b) { g_live[i] = g_live[--g_nlive]; break; }
+    b->live = 0;
+}
+#define DSB_LOCKED(t, body) do { dsbuf *b = hdr(t)->st; if (!b) break; pthread_mutex_lock(&g_sl); body; pthread_mutex_unlock(&g_sl); } while (0)
+static u32 dsb_pos(u32 t, u32 pp, u32 pw) { u32 p = 0; DSB_LOCKED(t, p = dsb_cur(b)); if (pp) HW32(pp, p); if (pw) HW32(pw, p); return S_OK; }
+static u32 dsb_status(u32 t, u32 p)
+{
+    u32 s = 0;
+    DSB_LOCKED(t, dsb_cur(b); s = (b->playing ? 1 : 0) | (b->playing && b->looping ? 4 : 0));
+    HW32(p, s);
+    return S_OK;
+}
 static u32 dsb_caps(u32 t, u32 p) { dsbuf *b = hdr(t)->st; HW32(p + 4, b->flags); HW32(p + 8, b->size); HW32(p + 12, 0); return S_OK; }
 static u32 dsb_getfmt(u32 t, u32 p, u32 n, u32 pw)
 {
@@ -395,19 +460,26 @@ static u32 dsb_getfmt(u32 t, u32 p, u32 n, u32 pw)
     if (pw) HW32(pw, 18);
     return S_OK;
 }
+static void dsb_fmt(dsbuf *b)
+{
+    b->rate = b->fmt[4] | b->fmt[5] << 8 | b->fmt[6] << 16 | (u32)b->fmt[7] << 24;
+    b->align = (u32)(b->fmt[12] | b->fmt[13] << 8);
+    if (!b->align) b->align = 1;
+    b->ch = b->fmt[2] ? b->fmt[2] : 1;
+    b->bits = b->fmt[14];
+}
 static u32 dsb_setfmt(u32 t, u32 p)
 {
     dsbuf *b = hdr(t)->st;
     memcpy(b->fmt, W_P(p), 16);
-    b->rate = H32(p + 4);
-    b->align = *(u16 *)W_P(p + 12) ? *(u16 *)W_P(p + 12) : 1;
+    dsb_fmt(b);
     return S_OK;
 }
 static u32 dsb_lock(u32 t, u32 off, u32 n, u32 pp1, u32 pn1, u32 pp2, u32 pn2, u32 fl)
 {
     dsbuf *b = hdr(t)->st;
     u32 n1;
-    if (fl & 1) off = dsb_cur(b);
+    if (fl & 1) { pthread_mutex_lock(&g_sl); off = dsb_cur(b); pthread_mutex_unlock(&g_sl); }
     if (fl & 2) { off = 0; n = b->size; }
     off %= b->size ? b->size : 1;
     if (n > b->size) n = b->size;
@@ -418,27 +490,87 @@ static u32 dsb_lock(u32 t, u32 off, u32 n, u32 pp1, u32 pn1, u32 pp2, u32 pn2, u
     if (pn2) HW32(pn2, n - n1);
     return S_OK;
 }
-static u32 dsb_unlock(u32 t, u32 a, u32 b, u32 c, u32 d) { (void)t; (void)a; (void)b; (void)c; (void)d; return S_OK; }
-static u32 dsb_play(u32 t, u32 r1, u32 r2, u32 fl)
+/* Unlock: the buffer's samples, as floats, become what the mixer plays.
+ * PCM only: 8-bit unsigned, 16-bit signed. */
+static u32 dsb_unlock(u32 t, u32 a, u32 b_, u32 c, u32 d)
 {
     dsbuf *b = hdr(t)->st;
-    (void)r1; (void)r2;
-    if (!b->playing) { b->playing = 1; b->t0 = h_timeGetTime(); }
-    b->looping = fl & 1;
+    const u8 *m = W_P(b->mem);
+    u32 frames, i, k, n;
+    float *pcm, *old;
+    (void)a; (void)b_; (void)c; (void)d;
+    if ((b->flags & 1) || (b->fmt[0] | b->fmt[1] << 8) != 1 || (b->bits != 8 && b->bits != 16)) return S_OK;
+    frames = b->size / b->align;
+    n = frames * (u32)b->ch;
+    pcm = malloc((n ? n : 1) * sizeof *pcm);
+    for (i = 0; i < frames; i++)
+        for (k = 0; k < (u32)b->ch; k++) {
+            const u8 *s = m + i * b->align + k * (u32)(b->bits / 8);
+            pcm[i * (u32)b->ch + k] = b->bits == 8 ? ((int)s[0] - 128) / 128.0f
+                                                   : (s16)(s[0] | s[1] << 8) / 32768.0f;
+        }
+    pthread_mutex_lock(&g_sl);
+    old = b->pcm;
+    b->pcm = pcm;
+    b->frames = frames;
+    if (b->fpos >= frames) b->fpos = 0;
+    pthread_mutex_unlock(&g_sl);
+    free(old);
     return S_OK;
 }
-static u32 dsb_stop(u32 t) { dsbuf *b = hdr(t)->st; b->pos = dsb_cur(b); b->playing = 0; return S_OK; }
-static u32 dsb_setpos(u32 t, u32 p) { dsbuf *b = hdr(t)->st; b->pos = p % (b->size ? b->size : 1); b->t0 = h_timeGetTime(); return S_OK; }
-static u32 dsb_ok2(u32 t, u32 v) { (void)t; (void)v; return S_OK; }
-static u32 dsb_get2(u32 t, u32 p) { (void)t; if (p) HW32(p, 0); return S_OK; }
+static u32 dsb_play(u32 t, u32 r1, u32 r2, u32 fl)
+{
+    (void)r1; (void)r2;
+    DSB_LOCKED(t, {
+        if (!b->playing) { b->playing = 1; b->t0 = h_timeGetTime(); }
+        b->looping = fl & 1;
+        if (b->pcm) dsb_live(b);
+    });
+    return S_OK;
+}
+static u32 dsb_stop(u32 t) { DSB_LOCKED(t, { b->pos = dsb_cur(b); b->playing = 0; dsb_unlive(b); }); return S_OK; }
+static u32 dsb_setpos(u32 t, u32 p)
+{
+    DSB_LOCKED(t, {
+        b->pos = p % (b->size ? b->size : 1);
+        b->pos -= b->pos % b->align;
+        b->t0 = h_timeGetTime();
+        b->fpos = b->pos / b->align;
+    });
+    return S_OK;
+}
+static s32 clamps(s32 v, s32 lo, s32 hi) { return v < lo ? lo : v > hi ? hi : v; }
+static u32 dsb_setvol(u32 t, u32 v) { DSB_LOCKED(t, b->vol = clamps((s32)v, -10000, 0)); return S_OK; }
+static u32 dsb_setpan(u32 t, u32 v) { DSB_LOCKED(t, b->pan = clamps((s32)v, -10000, 10000)); return S_OK; }
+static u32 dsb_setfreq(u32 t, u32 v) { DSB_LOCKED(t, b->freq = v ? (u32)clamps((s32)v, 100, 200000) : 0); return S_OK; }
+static u32 dsb_getvol(u32 t, u32 p) { if (p) HW32(p, (u32)((dsbuf *)hdr(t)->st)->vol); return S_OK; }
+static u32 dsb_getpan(u32 t, u32 p) { if (p) HW32(p, (u32)((dsbuf *)hdr(t)->st)->pan); return S_OK; }
+static u32 dsb_getfreq(u32 t, u32 p) { dsbuf *b = hdr(t)->st; if (p) HW32(p, b->freq ? b->freq : b->rate); return S_OK; }
+/* the last Release takes the buffer out of the mix and frees its samples */
+static u32 dsb_release(u32 t)
+{
+    comhdr *h = hdr(t);
+    dsbuf *b = h->st;
+    if (h->ref) h->ref--;
+    if (h->ref || !b) return h->ref;
+    pthread_mutex_lock(&g_sl);
+    dsb_unlive(b);
+    b->playing = 0;
+    h->st = NULL;
+    pthread_mutex_unlock(&g_sl);
+    free(b->pcm);
+    if (b->mem) hmem_free(b->mem);
+    free(b);
+    return 0;
+}
 static const meth DSB[] = {
-    { "QueryInterface", 3, 0 }, { "AddRef", 1, (void *)m_addref }, { "Release", 1, (void *)m_release },
+    { "QueryInterface", 3, 0 }, { "AddRef", 1, (void *)m_addref }, { "Release", 1, (void *)dsb_release },
     { "GetCaps", 2, (void *)dsb_caps }, { "GetCurrentPosition", 3, (void *)dsb_pos },
-    { "GetFormat", 4, (void *)dsb_getfmt }, { "GetVolume", 2, (void *)dsb_get2 }, { "GetPan", 2, (void *)dsb_get2 },
-    { "GetFrequency", 2, (void *)dsb_get2 }, { "GetStatus", 2, (void *)dsb_status }, { "Initialize", 3, 0 },
+    { "GetFormat", 4, (void *)dsb_getfmt }, { "GetVolume", 2, (void *)dsb_getvol }, { "GetPan", 2, (void *)dsb_getpan },
+    { "GetFrequency", 2, (void *)dsb_getfreq }, { "GetStatus", 2, (void *)dsb_status }, { "Initialize", 3, 0 },
     { "Lock", 8, (void *)dsb_lock }, { "Play", 4, (void *)dsb_play }, { "SetCurrentPosition", 2, (void *)dsb_setpos },
-    { "SetFormat", 2, (void *)dsb_setfmt }, { "SetVolume", 2, (void *)dsb_ok2 }, { "SetPan", 2, (void *)dsb_ok2 },
-    { "SetFrequency", 2, (void *)dsb_ok2 }, { "Stop", 1, (void *)dsb_stop }, { "Unlock", 5, (void *)dsb_unlock },
+    { "SetFormat", 2, (void *)dsb_setfmt }, { "SetVolume", 2, (void *)dsb_setvol }, { "SetPan", 2, (void *)dsb_setpan },
+    { "SetFrequency", 2, (void *)dsb_setfreq }, { "Stop", 1, (void *)dsb_stop }, { "Unlock", 5, (void *)dsb_unlock },
     { "Restore", 1, (void *)ok1 },
 };
 static u32 ds_create(u32 t, u32 desc, u32 out, u32 unk)
@@ -456,12 +588,82 @@ static u32 ds_create(u32 t, u32 desc, u32 out, u32 unk)
         if (!wfx || !b->size) { free(b); HW32(out, 0); return 0x80070057u; }
         memcpy(b->fmt, W_P(wfx), 16);
     }
-    b->rate = b->fmt[4] | b->fmt[5] << 8 | b->fmt[6] << 16 | (u32)b->fmt[7] << 24;
-    b->align = (u32)(b->fmt[12] | b->fmt[13] << 8);
-    if (!b->align) b->align = 1;
+    dsb_fmt(b);
     b->mem = hmem_alloc(b->size, 1);
     HW32(out, com_new("IDirectSoundBuffer", DSB, N(DSB), b));
     return S_OK;
+}
+
+/* 4-point Hermite (Catmull-Rom) between s1 and s2, at x in [0, 1) */
+static inline float herm(float s0, float s1, float s2, float s3, float x)
+{
+    float c1 = 0.5f * (s2 - s0);
+    float c2 = s0 - 2.5f * s1 + 2.0f * s2 - 0.5f * s3;
+    float c3 = 0.5f * (s3 - s0) + 1.5f * (s1 - s2);
+    return ((c3 * x + c2) * x + c1) * x + s1;
+}
+static inline float dsb_at(const dsbuf *b, s64 i, int k)
+{
+    if (i < 0 || i >= (s64)b->frames) {
+        if (!b->looping || !b->frames) return 0;
+        i %= (s64)b->frames;
+        if (i < 0) i += b->frames;
+    }
+    return b->pcm[i * b->ch + k];
+}
+static float cb_gain(s32 cb) { return cb <= -10000 ? 0.0f : cb >= 0 ? 1.0f : powf(10.0f, (float)cb / 2000.0f); }
+
+/* The mix: n frames at `rate` Hz into l and r (overwritten). Called by
+ * native/sound.m from the output device's render thread, or for a
+ * recording. */
+void hdx_sfx_render(float *l, float *r, u32 n, double rate)
+{
+    int v;
+    memset(l, 0, n * sizeof *l);
+    memset(r, 0, n * sizeof *r);
+    pthread_mutex_lock(&g_sl);
+    for (v = 0; v < g_nlive; v++) {
+        dsbuf *b = g_live[v];
+        float g = cb_gain(b->vol);
+        float gl = g * (b->pan > 0 ? cb_gain(-b->pan) : 1.0f);
+        float gr = g * (b->pan < 0 ? cb_gain(b->pan) : 1.0f);
+        float dl = (gl - b->gl) / (float)n, dr = (gr - b->gr) / (float)n, al = b->gl, ar = b->gr;
+        double step = (double)(b->freq ? b->freq : b->rate) / rate, p = b->fpos;
+        u32 i;
+        if (!b->playing || !b->pcm || !b->frames) { b->live = 0; g_live[v--] = g_live[--g_nlive]; continue; }
+        for (i = 0; i < n; i++) {
+            s64 k = (s64)p;
+            float x = (float)(p - (double)k);
+            al += dl; ar += dr;
+            if (b->ch == 1) {
+                float s = herm(dsb_at(b, k - 1, 0), dsb_at(b, k, 0), dsb_at(b, k + 1, 0), dsb_at(b, k + 2, 0), x);
+                l[i] += s * al;
+                r[i] += s * ar;
+            } else {
+                l[i] += herm(dsb_at(b, k - 1, 0), dsb_at(b, k, 0), dsb_at(b, k + 1, 0), dsb_at(b, k + 2, 0), x) * al;
+                r[i] += herm(dsb_at(b, k - 1, 1), dsb_at(b, k, 1), dsb_at(b, k + 1, 1), dsb_at(b, k + 2, 1), x) * ar;
+            }
+            p += step;
+            if (p >= b->frames) {
+                if (b->looping) p = fmod(p, (double)b->frames);
+                else { b->playing = 0; b->pos = 0; p = 0; break; }
+            }
+        }
+        b->fpos = p;
+        b->gl = gl;
+        b->gr = gr;
+        if (!b->playing) { b->live = 0; g_live[v--] = g_live[--g_nlive]; }
+    }
+    pthread_mutex_unlock(&g_sl);
+}
+/* native/sound.m: a mixer has started (it now moves the play cursors) */
+void hdx_sfx_mixing(int on)
+{
+    int v;
+    pthread_mutex_lock(&g_sl);
+    g_mixing = on;
+    for (v = 0; v < g_nlive; v++) g_live[v]->fpos = g_live[v]->pos / g_live[v]->align;
+    pthread_mutex_unlock(&g_sl);
 }
 
 /* ============================================================ DirectPlay */
@@ -509,6 +711,7 @@ u32 h_CoCreateInstance(u32 clsid, u32 outer, u32 ctx, u32 iid, u32 out)
         return S_OK;
     }
     if (guid_is(clsid, 0x47D4D946, 0x62E8, 0x11CF, "93BC444553540000")) {
+        hdx_sfx_mixing(nsound_open());
         HW32(out, com_new("IDirectSound", DS, N(DS), 0));
         return S_OK;
     }

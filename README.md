@@ -329,7 +329,8 @@ The game runs natively on macOS: an arm64 Mac app with a window, Metal
 rendering, and the Mac's keyboard, mouse and game controllers. It is rough but
 working. It boots through the splash and loading screens to the main menu, runs
 the front end (menus, race and car setup, all menu art), and drives races with
-the textured track, cars, shadows and HUD on screen, with music. Quitting
+the textured track, cars, shadows and HUD on screen, with music and sound
+effects. Quitting
 from the menu, with Cmd-Q or with the close box exits cleanly.
 
 - **Native resolution.** 3D is projected, clipped and rasterised by the GPU
@@ -366,6 +367,12 @@ from the menu, with Cmd-Q or with the close box exits cleanly.
   the default car drawn as a modern high-detail model. See
   [Remastered lighting](#remastered-lighting) and
   [Remastered car](#remastered-car).
+- **Sound effects.** The menu clicks, the engines, the start countdown and
+  the race's hits and scrapes play as on Windows: the game still drives DirectSound, and the
+  port mixes its buffers natively (DirectSound's volume, pan and pitch laws)
+  and plays them through AVAudioEngine. Checked against the original game
+  under brbox, the port starts and stops the same sounds on the same frames.
+  Like the original, the effects mute while the app is in the background.
 - **A self-contained app.** One command extracts everything the game reads
   from your disc image and ROM (the data track, the CD audio and the N64
   modules) and builds `Boss Rally.app` around it. Once
@@ -392,7 +399,7 @@ Win32, DirectX, Glide and C runtime calls the game makes:
 | `host_fx.m` | Remastered lighting: the G-buffer passes, shadow map, tonemap, anti-aliasing and the ~ switch (not a stand-in; port-only) |
 | `host_car.m` | the Remastered car: loads its model and draws it in Metal (not a stand-in; port-only) |
 | `host_win.c` | Win32: files (the disc image as the CD, saves), threads, timers |
-| `host_dx.c` | DirectInput, DirectSound, DirectPlay as COM objects in game memory |
+| `host_dx.c` | DirectInput, DirectSound, DirectPlay as COM objects in game memory; DirectSound's buffers are mixed for real |
 | `host_ear.c` | the EAR 3D sound engine the game loads by name |
 | `host_crt.c` | the C runtime |
 | `host_script.c` | replays `tools/brbox_scripts/` input scripts, for testing |
@@ -409,6 +416,7 @@ not in the verified placement. That is how the Mac-native parts plug in:
 | `native/input.m` | reads the Mac's game controller for the DirectInput joystick |
 | `native/window.m` | live resizing and full screen |
 | `native/music.m` | the CD music backends (MCI and the EAR engine's CD channel): AVAudioEngine for the CD audio, libopenmpt for the N64 modules, both versions at once, crossfaded |
+| `native/sound.m` | plays the DirectSound mix through AVAudioEngine; replaces the WAV loader's data seek and three sound-bank wrappers the translation could not reach |
 | `native/version.m` | the PC / N64 version: Tab, its icon, the remembered choice |
 | `native/car.m` | the car draw (0x1000A110) and G_MOVEWORD (0x100239C0): with Remastered on, the followed car's display lists are emptied and a marker puts the modern model in their place |
 
@@ -546,8 +554,6 @@ Remastered renderer draws the original car.
 
 **Not there yet.**
 
-- **No sound effects.** Music plays; the sound engine and DirectSound
-  answer as working devices but play no effects.
 - **No wheels or force feedback.** Game controllers work as a joystick;
   force-feedback wheels are not supported.
 - **No network play.** DirectPlay answers as a machine with no connection
@@ -659,6 +665,9 @@ the host reads:
 | `BR_MUSIC=0` | no music (headless runs are always silent) |
 | `BR_MUSIC_DIR=dir` | where the bare build finds the soundtracks (`cd/`, `n64/`) |
 | `BR_MUSICWAV=file` | record the music output to a file, for checks without listening |
+| `BR_SFX=0` | no sound effects (headless runs are silent) |
+| `BR_SFXWAV=file` | record the sound effects to a WAV file; headless, they are rendered offline in step with the game's clock (use `BR_VCLOCK` for game-time length) |
+| `BR_SFXQUIET=1` | with `BR_SFXWAV`, record a windowed run without playing it |
 | `BR_FX=0` / `BR_FX=1` | force Original or Remastered, overriding the remembered choice (headless runs default to Original) |
 | `BR_FX_WEATHER=N` | light the scene as weather N (0 sunny, 1 fog, 2 storm, 3 snow, 4 rain) whatever the race's weather |
 | `BR_FX_SUN=x,y,z` | sun direction in the world (default 1,1,1.1, the game's own light direction) |
