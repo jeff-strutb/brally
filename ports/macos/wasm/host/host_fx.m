@@ -51,7 +51,7 @@ struct FXU {
 };
 /* headlights: up to 32 spot lights (two per car); misc = count, beam
    strength, light intensity, air density */
-struct HL { float4 p[32]; float4 d[32]; float4 col; float4 misc;
+struct HL { float4 p[64]; float4 d[64]; float4 col; float4 misc;   /* p.w: 0 head, 1 tail; d.w: its level */
   float4 g[64]; float4 gd[64]; float4 gmisc; };   /* g: lamp position, w 0 head / 1 tail; gd: facing */
 /* how much of headlight i reaches point x, and the direction to it */
 /* a low-beam pattern, not a round spot: the hot spot just below the
@@ -67,7 +67,10 @@ float spotw(constant HL &hl, int i, float3 x, thread float3 &Ld) {
   float iv = smoothstep(-0.03, 0.0, below)                 /* the cutoff */
            * mix(0.012, 1.0, exp(-pow(max(below - 0.015, 0.0) / 0.05, 2.0)));
   float ih = smoothstep(0.82, 0.97, ch) + 0.3 * smoothstep(0.45, 0.85, ch);
-  return 50.0 * iv * ih / (d * d + 0.5) * smoothstep(140.0, 70.0, d); }
+  if (hl.p[i].w > 0.5)          /* a tail or brake lamp: a broad red glow behind the car, a few metres */
+    return 0.5 * hl.d[i].w * smoothstep(0.05, 0.6, dot(dir, hl.d[i].xyz)) / (d * d + 0.3) * smoothstep(9.0, 3.0, d);
+  return 150.0 * hl.d[i].w * iv * ih / (d * d + 0.5) * smoothstep(200.0, 110.0, d); }
+float3 spotc(constant HL &hl, int i) { return hl.p[i].w > 0.5 ? float3(1.0, 0.04, 0.015) : hl.col.rgb; }
 struct MVC { float4 cur[16][4]; float4 prev[16][4]; float4 misc; };   /* rows 0-2 + position; box in misc */
 struct SHU { int at_fn, at_ref, use_tex, pad; float su, sv, pad2, pad3; float4x4 svp; };
 struct QO { float4 pos [[position]]; float2 uv; };
@@ -369,6 +372,18 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
     float sh = u.sun.w > 0 ? shadow_at(u, sm, wp, N, in.pos.xy, sm2) : 1.0;
     float k = saturate(dot(N, u.sun.xyz) * 4.0) * (1.0 - sh);
     float3 o = lin * 4.0 * (1.0 - 0.6 * k);
+    /* the lamps' lenses light up: the red of a tail lamp near its bulb glows
+       with the brake, a headlamp's clear glass with its beam */
+    for (int i = 0; i < int(hl.gmisc.x); i++) {
+      float dl = distance(wp, hl.g[i].xyz);
+      if (dl > 0.3) continue;
+      float fall = smoothstep(0.3, 0.1, dl);
+      if (hl.g[i].w > 0.5) {
+        float red = saturate((lin.r - max(lin.g, lin.b) * 1.8) * 6.0);
+        o += float3(1.0, 0.05, 0.02) * red * fall * hl.gd[i].w * 1.8; }
+      else {
+        float clear = saturate((dot(lin, 0.33) - 0.25) * 3.0) * (1.0 - saturate((max(lin.r, max(lin.g, lin.b)) - min(lin.r, min(lin.g, lin.b))) * 4.0));
+        o += float3(1.0, 0.95, 0.85) * clear * fall * hl.gd[i].w * hl.misc.z * 3.0; } }
     /* rain on the car, in the car's own frame so it rides with it: beads
        standing on the paint (little lenses: the paint darker under them, a
        rim, the sky and a spark of light in them), drips running down the
@@ -736,23 +751,24 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
   { float3 hd = 0, hs = 0; int n = int(hl.misc.x);
     for (int i = 0; i < n; i++) {
       float3 Ld; float w = spotw(hl, i, wp + N * 0.05, Ld);
+      float3 lc = spotc(hl, i);
       if (w <= 0.0) continue;
       /* rough ground lit from beside the eye sends much of the light back
          toward it (the opposition effect of asphalt and dirt): a flattened
          cosine, so the pool on the road reads at grazing angles */
       float nl = saturate(dot(N, Ld));
-      nl = max(nl, 0.35 * saturate(dot(Ld, V)) * step(0.0, dot(N, Ld)));
+      if (hl.p[i].w < 0.5) nl = max(nl, 0.35 * saturate(dot(Ld, V)) * step(0.0, dot(N, Ld)));
       float3 H2 = normalize(Ld + V); float n2 = saturate(dot(N, H2));
       float d2 = n2 * n2 * (a2 - 1.0) + 1.0;
-      hd += w * nl;
-      hs += w * nl * (a2 / (3.14159 * d2 * d2)) * (0.04 + 0.96 * pow(1.0 - saturate(dot(V, H2)), 5.0)); }
+      hd += lc * w * nl;
+      hs += lc * w * nl * (1.0 - hl.p[i].w) * (a2 / (3.14159 * d2 * d2)) * (0.04 + 0.96 * pow(1.0 - saturate(dot(V, H2)), 5.0)); }
     /* the eye adapted to the night sees the pool on the road far brighter
        than the grazing irradiance alone: a gain on surfaces */
     /* the game's colours are already darkened for the night: the lamps
        light the surface's own albedo, which hl.col.w recovers */
     float3 albh = min(alb * hl.col.w, 0.7);
-    hd = hd / (1.0 + 0.35 * hd);                     /* a lamp a few metres off lights, not burns */
-    o += hl.col.rgb * hl.misc.z * 3.0 * (albh * hd * ao + hs * 0.25 * wet);
+    hd = hd / (1.0 + 0.2 * hd);                      /* a lamp a few metres off lights, not burns */
+    o += 3.0 * (albh * hd * ao + hs * 0.25 * wet);
     if (int(u.p3.y) == 16) return float4(float3(hd.x, alb.g * 4.0, ao) , G.a); }   /* debug: headlight irradiance, albedo, occlusion */
   /* reflections */
   float4 S = ssr.sample(ls, in.uv);
@@ -828,20 +844,21 @@ fragment float4 upfs(QO in [[stage_in]], texture2d<float> h [[texture(0)]]) {
    surface the ray meets */
 float3 beams(constant FXU &u, constant HL &hl, texture2d<float> gp, float2 uv, float2 pos) {
   int n = int(hl.misc.x);
+  float3 acc = 0;
   if (n == 0 || hl.misc.y <= 0.0) return 0;
   float4 P = gp.sample(ns, uv);
   float3 vd = view_dir(u, uv);
   float tmax = is_solid(P.w) ? distance(u.eye.xyz, P.xyz) : 90.0;
   tmax = min(tmax, 90.0);
   const int NS = 20;
-  float dt = tmax / float(NS), t = dt * ign(pos), acc = 0;
+  float dt = tmax / float(NS), t = dt * ign(pos);
   for (int k = 0; k < NS; k++, t += dt) {
     float3 x = u.eye.xyz + vd * t, Ld;
     for (int i = 0; i < n; i++) {
       float w = spotw(hl, i, x, Ld);
       /* forward scattering: brighter looking into a beam */
-      acc += w * (0.35 + 0.65 * pow(saturate(dot(-vd, Ld) * 0.5 + 0.5), 4.0)); } }
-  return hl.col.rgb * acc * dt * hl.misc.y * hl.misc.w; }
+      acc += spotc(hl, i) * w * (0.35 + 0.65 * pow(saturate(dot(-vd, Ld) * 0.5 + 0.5), 4.0)); } }
+  return acc * dt * hl.misc.y * hl.misc.w * 0.33; }
 /* the lamps themselves: a glow where each lamp faces the eye and nothing
    stands in front of it (white heads, red tails), with a soft halo */
 float3 lamps(constant FXU &u, constant HL &hl, texture2d<float> gp, float2 uv) {
@@ -858,7 +875,7 @@ float3 lamps(constant FXU &u, constant HL &hl, texture2d<float> gp, float2 uv) {
     if (is_solid(Q.w) && distance(u.eye.xyz, Q.xyz) < d - 0.35) continue;   /* hidden */
     float px = length((uv - lu) * scr), s = clamp(40.0 / d, 0.8, 8.0);
     float core = exp(-px * px / (s * s)), halo = 1.0 / (1.0 + pow(px / (s * 2.5), 2.0)) * smoothstep(s * 10.0, s * 3.0, px);
-    float3 c = hl.g[i].w > 0.5 ? float3(1.0, 0.06, 0.03) * 0.6 : float3(1.0, 0.95, 0.85);
+    float3 c = hl.g[i].w > 0.5 ? float3(1.0, 0.06, 0.03) * 0.6 * hl.gd[i].w : float3(1.0, 0.95, 0.85) * hl.gd[i].w;
     acc += c * (core * 6.0 + halo * 0.08) * pow(face, 2.0); }
   return acc * hl.gmisc.y; }
 fragment float4 shaftfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
@@ -962,8 +979,8 @@ fragment float4 pfxfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]], constan
     float phase = 0.35 + 3.0 * hg;
     float3 hd = 0, Ld;
     { float3 xm = eye + vd * (0.5 * (ta + tb));
-      for (int m = 0; m < int(hl.misc.x); m++) hd += spotw(hl, m, xm, Ld); }
-    float3 sunL = u.sunc.rgb * phase, ambL = pf.amb.rgb, hdL = hl.col.rgb * hl.misc.z * hd * 1.5;
+      for (int m = 0; m < int(hl.misc.x); m++) hd += spotc(hl, m) * spotw(hl, m, xm, Ld) * 0.33; }
+    float3 sunL = u.sunc.rgb * phase, ambL = pf.amb.rgb, hdL = hd * 1.5;
     const int NS = 8;
     float dt = (tb - ta) / float(NS);
     for (int s = 0; s < NS && T > 0.01; s++) {
@@ -1043,9 +1060,9 @@ fragment float4 pfxfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]], constan
       cover = saturate(cover) * (snow ? u.wx.y : u.wx.x) / (1.0 + float(l) * 0.35);
       if (cover <= 0.0) continue;
       float3 hd = 0, Ld;
-      for (int m = 0; m < int(hl.misc.x); m++) hd += spotw(hl, m, p, Ld);
+      for (int m = 0; m < int(hl.misc.x); m++) hd += spotc(hl, m) * spotw(hl, m, p, Ld) * 0.33;
       float3 lum = (snow ? float3(0.95) : float3(0.7, 0.75, 0.8)) * (pf.amb.rgb * 1.3 + u.sunc.rgb * 0.3)
-                 + hl.col.rgb * hl.misc.z * hd * 2.5;
+                 + hd * 2.5;
       Lc += T * cover * lum; T *= 1.0 - cover; } }
   return float4(Lc, 1.0 - T); }
 
@@ -1278,8 +1295,8 @@ typedef struct {
     float svp2[16], csm[4];  /* the far shadow cascade; csm.x its texel size */
     float mat[4], matmean[6][4], rmap[4];   /* ground materials: mat.x loaded; each one's mean colour (linear) */   /* wx: rain, snowfall, snow ground, - */
 } fxu;
-typedef struct { float p[32][4], d[32][4], col[4], misc[4]; float g[64][4], gd[64][4], gmisc[4]; } hlu;
-static float g_hl_int, g_hl_beam, g_hl_air, g_wdark = 1.0f;
+typedef struct { float p[64][4], d[64][4], col[4], misc[4]; float g[64][4], gd[64][4], gmisc[4]; } hlu;
+static float g_hl_int, g_hl_beam, g_hl_air, g_wdark = 1.0f, g_brake[64];
 typedef struct { int at_fn, at_ref, use_tex, pad; float su, sv, pad2, pad3; float svp[16]; } shu;
 
 /* BR_FX_PROF=1: GPU time of every pass (stage-boundary timestamps), summed
@@ -2441,9 +2458,34 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
      * places the Remastered car reports), carried by its car -> world matrix
      * (row 0 forward, row 1 left, row 2 up) */
     memset(&hl, 0, sizeof hl);
-    if (g_hl_int > 0 && !getenv("BR_FX_NOLIGHTS")) {
+    /* braking, from each car's own motion: moving forward and slowing harder
+     * than rolling and air alone would (the same for the player and the AI) */
+    {
+        static u32 bcar[FX_CARS]; static float bvel[FX_CARS], blev[FX_CARS], bdec[FX_CARS];
+        float nb[FX_CARS], nd[FX_CARS]; u32 nc[FX_CARS]; float nv[FX_CARS];
+        int c, j;
+        for (c = 0; c < g_ncars; c++) {
+            u32 car = g_carptr[c];
+            const float *m = g_cars[c];
+            float fl = sqrtf(m[0] * m[0] + m[1] * m[1] + m[2] * m[2]);
+            float vf = (W_LD(f32, car, 0x1024) * m[0] + W_LD(f32, car, 0x1028) * m[1] + W_LD(f32, car, 0x102C) * m[2]) / (fl > 0 ? fl : 1);
+            float lev = 0, ds = 0;
+            for (j = 0; j < FX_CARS && bcar[j] != car; j++) ;
+            if (j < FX_CARS) {
+                /* m/s^2, smoothed over a few frames: the sampled speed jitters */
+                ds = bdec[j] * 0.8f + (bvel[j] - vf) * 60.0f * 0.2f;
+                lev = blev[j] * 0.85f;                     /* lamps hold a moment */
+                if (vf > 1.0f && ds > 4.0f) lev = 1.0f;
+            }
+            nc[c] = car; nv[c] = vf; nb[c] = lev; nd[c] = ds;
+        }
+        memset(bcar, 0, sizeof bcar);
+        for (c = 0; c < g_ncars; c++) { bcar[c] = nc[c]; bvel[c] = nv[c]; blev[c] = nb[c]; bdec[c] = nd[c]; g_brake[c] = nb[c]; }
+        if (getenv("BR_FX_BRAKEPROBE") && g_ncars) fprintf(stderr, "brake: v %.1f lev %.2f\n", nv[0], nb[0]);
+    }
+    if (!getenv("BR_FX_NOLIGHTS")) {
         int c, k, n = 0, ng = 0;
-        for (c = 0; c < g_ncars && n + 2 <= 32 && ng + 4 <= 64; c++) {
+        for (c = 0; c < g_ncars && n + 4 <= 64 && ng + 4 <= 64; c++) {
             const float *m = g_cars[c];
             double f[3] = { m[0], m[1], m[2] }, lf[3] = { m[4], m[5], m[6] }, up[3] = { m[8], m[9], m[10] }, dv[3];
             float L[4][3];
@@ -2463,15 +2505,19 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
             dv[2] = 0; norm3(dv);
             for (j = 0; j < 4; j++) {
                 float w[3];
+                /* heads burn in the dark; tails glow dimly in the dark and
+                 * full when braking, in any light */
+                float lev = j < 2 ? g_hl_int : fmaxf(g_hl_int > 0 ? 0.22f : 0.0f, g_brake[c]);
+                if (lev <= 0) continue;
                 for (k = 0; k < 3; k++) w[k] = (float)(m[12 + k] + f[k] * L[j][0] + lf[k] * L[j][1] + up[k] * L[j][2]);
                 memcpy(hl.g[ng], w, 12); hl.g[ng][3] = j < 2 ? 0.0f : 1.0f;
                 for (k = 0; k < 3; k++) hl.gd[ng][k] = (float)(j < 2 ? f[k] : -f[k]);
+                hl.gd[ng][3] = j < 2 ? 1.0f : lev * 2.2f;
                 ng++;
-                if (j < 2) {
-                    memcpy(hl.p[n], w, 12);
-                    for (k = 0; k < 3; k++) hl.d[n][k] = (float)dv[k];
-                    n++;
-                }
+                memcpy(hl.p[n], w, 12); hl.p[n][3] = j < 2 ? 0.0f : 1.0f;
+                for (k = 0; k < 3; k++) hl.d[n][k] = (float)(j < 2 ? dv[k] : -f[k]);
+                hl.d[n][3] = lev;
+                n++;
             }
         }
         hl.misc[0] = (float)n;
@@ -2717,7 +2763,7 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
         rowmul(sv, P, sp);
         if (sp[3] <= 0 || fabs(sp[0] / sp[3]) > 1.6 || fabs(sp[1] / sp[3]) > 1.6) u.p2[0] = 0;
     }
-    if (u.p2[0] > 0 || (hl.misc[0] > 0 && hl.misc[1] > 0)) {
+    if (u.p2[0] > 0 || hl.gmisc[0] > 0) {
         enc = pass(cb, t_shaft, 0);
         [enc setFragmentBytes:&hl length:sizeof hl atIndex:1];
         quad(enc, p_shaft, &u, @[gp, col]);
