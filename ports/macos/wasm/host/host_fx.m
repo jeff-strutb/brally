@@ -68,7 +68,7 @@ float spotw(constant HL &hl, int i, float3 x, thread float3 &Ld) {
            * mix(0.012, 1.0, exp(-pow(max(below - 0.015, 0.0) / 0.05, 2.0)));
   float ih = smoothstep(0.82, 0.97, ch) + 0.3 * smoothstep(0.45, 0.85, ch);
   if (hl.p[i].w > 0.5)          /* a tail or brake lamp: a broad red glow behind the car, a few metres */
-    return 0.5 * hl.d[i].w * smoothstep(0.05, 0.6, dot(dir, hl.d[i].xyz)) / (d * d + 0.3) * smoothstep(9.0, 3.0, d);
+    return 0.25 * hl.d[i].w * smoothstep(0.05, 0.6, dot(dir, hl.d[i].xyz)) / (d * d + 0.3) * smoothstep(6.0, 2.0, d);
   return 150.0 * hl.d[i].w * iv * ih / (d * d + 0.5) * smoothstep(200.0, 110.0, d); }
 float3 spotc(constant HL &hl, int i) { return hl.p[i].w > 0.5 ? float3(1.0, 0.04, 0.015) : hl.col.rgb; }
 struct MVC { float4 cur[16][4]; float4 prev[16][4]; float4 misc; };   /* rows 0-2 + position; box in misc */
@@ -1860,10 +1860,11 @@ static void weather(fxu *u, const float *fogc)
     float hz = 1.3f, hf = 0.0f;
     float wb[3] = { 1.03f, 1.0f, 0.96f }, ns[3] = { 0, 0, 0 };
     switch (w) {
-    case 4:  /* rain, at night: moonlight, wet, lit windows glowing */
+    case 4:  /* night, clear and dry (the game's grip tables give it the dry
+              * row): moonlight, lit windows glowing */
         sunk = 0.14f; sc[0] = 0.6f; sc[1] = 0.72f; sc[2] = 1.0f;
         sk[0] = 0.5f; sk[1] = 0.56f; sk[2] = 0.72f; gr[0] = 0.3f; gr[1] = 0.3f; gr[2] = 0.35f;
-        memcpy(u->p0, (float[4]){ 1.0f, 0.5f, 0.75f, 0.85f }, 16);
+        memcpy(u->p0, (float[4]){ 1.0f, 0.5f, 0.0f, 0.0f }, 16);
         memcpy(u->p1, (float[4]){ 1.25f, 0.95f, 1.04f, 0.3f }, 16);
         u->p2[0] = 0.0f; u->p2[1] = 7.0f; u->p3[2] = 0.35f; u->p4[0] = 1.0f; u->p4[1] = 0.0f;
         u->scr[2] = 0.3f; hf = 1.0f;
@@ -1910,7 +1911,7 @@ static void weather(fxu *u, const float *fogc)
      * sky's share of fog; headlights: on at night, in storms and in fog */
     u->nsky[3] = w == 1 ? 0.9f : 0.3f;
     /* falling rain (storm heaviest), falling snow, snow on the ground */
-    u->wx[0] = w == 2 ? 1.0f : w == 4 ? 0.75f : 0.0f;
+    u->wx[0] = w == 2 ? 1.0f : 0.0f;
     u->wx[1] = w == 3 ? 1.0f : 0.0f;
     u->wx[2] = w == 3 ? 1.0f : 0.0f;
     u->wx[3] = getenv("BR_FX_DETAIL") ? (float)atof(getenv("BR_FX_DETAIL")) : 1.0f;
@@ -2200,7 +2201,7 @@ static void fx_sim(int w, float wetness, float dt)
                 /* the game's grip tables: 3 and 11 are the sealed surfaces */
                 int loose = surf != 3 && surf != 11, rear = k == 1 || k == 2;
                 float rate = 0;
-                int rain = w == 2 || w == 4 || wetroad > 0.3f;   /* wet: neither smoke nor dust */
+                int rain = w == 2 || wetroad > 0.3f;   /* wet: neither smoke nor dust */
                 if (rain) rate = 0;
                 else if (on && loose) rate = (fminf(spd / 25.0f, 1.3f) * 14.0f + slide * 22.0f) * (rear ? 1.0f : 0.35f);
                 else if (on) rate = fminf(slide * 2.0f, 1.0f) * (rear ? 30.0f : 12.0f);
@@ -2458,30 +2459,23 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
      * places the Remastered car reports), carried by its car -> world matrix
      * (row 0 forward, row 1 left, row 2 up) */
     memset(&hl, 0, sizeof hl);
-    /* braking, from each car's own motion: moving forward and slowing harder
-     * than rolling and air alone would (the same for the player and the AI) */
+    /* braking, from the car's own controls as the physics applies them
+     * (br_carstep.c): the brake torque at car+0xE6C (negative when held: the
+     * handbrake, the grid hold), or drive torque at car+0xE68 against the
+     * direction of travel (the brake pedal: the down key while moving
+     * forward); the same for the player and the AI */
     {
-        static u32 bcar[FX_CARS]; static float bvel[FX_CARS], blev[FX_CARS], bdec[FX_CARS];
-        float nb[FX_CARS], nd[FX_CARS]; u32 nc[FX_CARS]; float nv[FX_CARS];
-        int c, j;
+        int c;
         for (c = 0; c < g_ncars; c++) {
             u32 car = g_carptr[c];
             const float *m = g_cars[c];
             float fl = sqrtf(m[0] * m[0] + m[1] * m[1] + m[2] * m[2]);
             float vf = (W_LD(f32, car, 0x1024) * m[0] + W_LD(f32, car, 0x1028) * m[1] + W_LD(f32, car, 0x102C) * m[2]) / (fl > 0 ? fl : 1);
-            float lev = 0, ds = 0;
-            for (j = 0; j < FX_CARS && bcar[j] != car; j++) ;
-            if (j < FX_CARS) {
-                /* m/s^2, smoothed over a few frames: the sampled speed jitters */
-                ds = bdec[j] * 0.8f + (bvel[j] - vf) * 60.0f * 0.2f;
-                lev = blev[j] * 0.85f;                     /* lamps hold a moment */
-                if (vf > 1.0f && ds > 4.0f) lev = 1.0f;
-            }
-            nc[c] = car; nv[c] = vf; nb[c] = lev; nd[c] = ds;
+            float thr = W_LD(f32, car, 0xE68), brk = W_LD(f32, car, 0xE6C);
+            g_brake[c] = (brk < 0.0f || (fabsf(vf) > 0.3f && thr * vf < 0.0f)) ? 1.0f : 0.0f;
+            if (getenv("BR_FX_BRAKEPROBE"))
+                fprintf(stderr, "brake: car %d v %.1f thr %.1f brk %.1f -> %.0f\n", c, vf, thr, brk, g_brake[c]);
         }
-        memset(bcar, 0, sizeof bcar);
-        for (c = 0; c < g_ncars; c++) { bcar[c] = nc[c]; bvel[c] = nv[c]; blev[c] = nb[c]; bdec[c] = nd[c]; g_brake[c] = nb[c]; }
-        if (getenv("BR_FX_BRAKEPROBE") && g_ncars) fprintf(stderr, "brake: v %.1f lev %.2f\n", nv[0], nb[0]);
     }
     if (!getenv("BR_FX_NOLIGHTS")) {
         int c, k, n = 0, ng = 0;
