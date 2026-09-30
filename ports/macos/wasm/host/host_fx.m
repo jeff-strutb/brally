@@ -47,7 +47,7 @@ struct CV { float x, y, z, w, r, g, b, a, s, t, wx, wy, wz, fl; };
 struct FXU {
   float4x4 vp, ivp, svp;
   float4 eye, sun, sunc, skyc, grnd, fogc, vpt, scr, p0, p1, p2, p3, p4, flash, wb, nsky, sk2, tm, wx;
-  float4x4 pvp; float4 jit; float4x4 svp2; float4 csm;
+  float4x4 pvp; float4 jit; float4x4 svp2; float4 csm; float4 mat; float4 matmean[6];
 };
 /* headlights: up to 32 spot lights (two per car); misc = count, beam
    strength, light intensity, air density */
@@ -322,6 +322,7 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
                        texture2d<float> aot [[texture(4)]], texture2d<float> ssr [[texture(5)]],
                        texture2d<float> sky [[texture(6)]], texture2d<float> trk [[texture(7)]],
                        depth2d<float> sm2 [[texture(8)]], texture2d<float> gsm [[texture(9)]],
+                       texture2d_array<float> matA [[texture(10)]], texture2d_array<float> matN [[texture(11)]],
                        constant HL &hl [[buffer(1)]]) {
   float4 C = col.sample(ns, in.uv), P = gp.sample(ns, in.uv), G = gn.sample(ns, in.uv);
   float3 lin = pow(C.rgb, 2.2);
@@ -452,6 +453,7 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
   if (u.wx.x > 0.0 && wet > 0.0) {
     float2 rg = ripples(wp.xy, u.tm.x, 0.55 * u.wx.x) * (0.35 + 0.65 * puddle / max(wet, 1e-3));
     N = normalize(N + float3(rg * 0.28 * wet, 0.0)); }
+  float mrough = u.p3.z;
   float3 alb = lin * mix(1.0, 0.6, wet) * mix(1.0, 0.7, puddle);
   alb *= mix(float3(1.0), mix(float3(0.82), float3(0.7, 0.74, 0.82), u.wx.z), tk);
   /* asphalt: the old road textures carry a purple cast; flat, unsaturated
@@ -461,12 +463,84 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
     float road = smoothstep(0.8, 0.95, N.z) * grey * u.tm.y;
     float y = dot(alb, float3(0.2126, 0.7152, 0.0722));
     alb = mix(alb, y * float3(0.97, 1.0, 1.04), road); }
+  /* photoscanned ground materials (ambientCG, CC0): asphalt, grass, sand,
+     gravel, rock, snow.  Each surface is classified from the game's own
+     texture (its broad colour and its slope); the material's photographed
+     detail is laid over the game's broad tone in world space, at two scales
+     so it does not visibly repeat, with its normal map and roughness.  The
+     game's painted road markings stay; far away the game's texture returns */
+  bool matdone = false;
+  if (u.mat.x > 0.5) {
+    constexpr sampler ms(filter::linear, mip_filter::linear, address::repeat, max_anisotropy(16));
+    const float3 lw = float3(0.2126, 0.7152, 0.0722);
+    /* two rings, 7 and 20 pixels: wide enough that the old textures' colour
+       speckle averages out of the classification */
+    float2 px = 7.0 / float2(col.get_width(), col.get_height());
+    float3 cbl = 0;
+    for (int k = 0; k < 8; k++) { float a = float(k) * 0.785398; cbl += col.sample(ls, in.uv + float2(cos(a), sin(a)) * px).rgb;
+                                  cbl += col.sample(ls, in.uv + float2(cos(a + 0.39), sin(a + 0.39)) * px * 2.9).rgb; }
+    cbl /= 16.0;
+    float mx = max(cbl.r, max(cbl.g, cbl.b)), mn = min(cbl.r, min(cbl.g, cbl.b));
+    float sat = (mx - mn) / max(mx, 0.05);
+    float grey = 1.0 - smoothstep(0.14, 0.26, sat);
+    float green = smoothstep(0.015, 0.06, cbl.g - max(cbl.r, cbl.b));
+    float warm = smoothstep(0.03, 0.12, cbl.r - cbl.b) * (1.0 - green) * (1.0 - grey);
+    float flat = smoothstep(0.6, 0.85, N.z), steep = 1.0 - flat;
+    float dist = distance(u.eye.xyz, wp), fade = 1.0 - smoothstep(140.0, 300.0, dist);
+    float snowg = u.wx.z;
+    float w[6];
+    w[0] = flat * grey * (1.0 - snowg);                                   /* asphalt */
+    w[1] = flat * green * (1.0 - snowg);                                  /* grass */
+    w[2] = flat * warm * step(0.45, mx) * (1.0 - snowg);                  /* sand (bright) */
+    w[3] = flat * warm * (1.0 - step(0.45, mx)) * (1.0 - snowg);          /* gravel (darker) */
+    /* rock: natural slopes only (earthy or green); buildings, walls and
+       banners are painted or plastered and keep the game's own texture */
+    w[4] = steep * saturate(warm + green) * smoothstep(0.1, 0.25, N.z);
+    w[5] = flat * snowg;                                                  /* snow */
+    float ws = 0; for (int m = 0; m < 6; m++) ws += w[m];
+    if (ws > 1.0) for (int m = 0; m < 6; m++) w[m] /= ws;
+    ws = min(ws, 1.0) * fade;
+    const float TILE[6] = { 4.0, 3.0, 4.0, 3.0, 5.0, 4.0 };
+    float3 an = abs(N);
+    float2 q = flat > 0.5 ? wp.xy : (an.x > an.y ? wp.yz : wp.xz);
+    float3 T1 = flat > 0.5 ? float3(1, 0, 0) : (an.x > an.y ? float3(0, 1, 0) : float3(1, 0, 0));
+    float3 T2 = flat > 0.5 ? float3(0, 1, 0) : float3(0, 0, 1);
+    float3 tone = pow(cbl, 2.2) * mix(1.0, 0.6, wet) * mix(1.0, 0.7, puddle);
+    float y = dot(lin, lw), yb = dot(pow(cbl, 2.2), lw);
+    /* painted markings are white or yellow: bright, and blue lowest */
+    float3 tx = saturate(C.rgb);
+    float paint = (1.0 - smoothstep(0.12, 0.25, (max(tx.r, max(tx.g, tx.b)) - min(tx.r, min(tx.g, tx.b))) / max(tx.r + tx.g, 0.05) * 2.0))
+                + smoothstep(0.1, 0.25, min(tx.r, tx.g) - tx.b);
+    float mark = smoothstep(1.4, 1.9, y / max(yb, 1e-3)) * w[0] * saturate(paint);
+    float3 ma = 0, mnrm = 0; float mr = 0, mao = 0, wt = 0;
+    for (int m = 0; m < 6; m++) {
+      if (w[m] < 0.02) continue;
+      float2 uv1 = q / TILE[m], uv2 = uv1 * 0.29 + float2(0.37, 0.61);
+      float4 c1 = matA.sample(ms, uv1, m), c2 = matA.sample(ms, uv2, m);
+      float4 n1 = matN.sample(ms, uv1, m), n2 = matN.sample(ms, uv2, m);
+      float3 c = pow(mix(c1.rgb, c2.rgb, 0.35), 2.2);
+      float4 n = mix(n1, n2, 0.35);
+      /* asphalt takes the game's brightness but not its purple cast */
+      float3 tn = m == 0 ? float3(dot(tone, lw)) * float3(0.97, 1.0, 1.03) : tone;
+      ma += w[m] * tn * c / max(u.matmean[m].rgb, 0.02);
+      mnrm += w[m] * float3(n.xy * 2.0 - 1.0, 0.0);
+      mr += w[m] * n.z; mao += w[m] * n.w; wt += w[m]; }
+    if (wt > 0.0) {
+      ma /= wt; mnrm /= wt; mr /= wt; mao /= wt;
+      float k = ws * (1.0 - mark);
+      alb = mix(alb, ma * mix(1.0, mao, 0.6), k);
+      float nk = k * (1.0 - smoothstep(20.0, 80.0, dist));
+      N = normalize(N + (T1 * mnrm.x + T2 * mnrm.y) * 0.9 * nk);
+      ndl = saturate(dot(N, L));
+      mrough = mix(mrough, mr, k);
+      matdone = true; }
+    if (int(u.p3.y) == 14) return float4(w[0] + w[3] + w[4] * 0.5, w[1] + w[4] * 0.5 + w[5], w[2] + w[3] + w[5], G.a); }
   /* asphalt, resynthesised: the game's road texture is baked streaks and
      colour speckle.  On flat grey surfaces (judged on a wide blur, which the
      speckle averages out of) keep only that blur's tone and the painted
      markings (texels well above it), and lay a world-space asphalt over it:
      patches, fine grain and aggregate */
-  { const float3 lw = float3(0.2126, 0.7152, 0.0722);
+  if (!matdone) { const float3 lw = float3(0.2126, 0.7152, 0.0722);
     float2 px = 7.0 / float2(col.get_width(), col.get_height());
     float3 cbl = 0;
     for (int k = 0; k < 8; k++) { float a = float(k) * 0.785398; cbl += col.sample(ls, in.uv + float2(cos(a), sin(a)) * px).rgb; }
@@ -488,7 +562,7 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
   /* close up, the 1999 textures run out of detail: add the material's own
      fine structure, in world space -- aggregate in asphalt, blades in grass,
      grain in sand, stone on walls -- as colour variation and relief */
-  { float dist = distance(u.eye.xyz, wp), k = smoothstep(26.0, 3.0, dist) * u.wx.w;
+  { float dist = distance(u.eye.xyz, wp), k = smoothstep(26.0, 3.0, dist) * u.wx.w * (matdone ? 0.0 : 1.0);
     if (k > 0.0) {
       float3 sb = saturate(C.rgb); float mx = max(sb.r, max(sb.g, sb.b)), mn = min(sb.r, min(sb.g, sb.b));
       float sat = (mx - mn) / max(mx, 0.05);
@@ -517,7 +591,7 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
   float3 o = alb * ((dl + amb + fl) * u.p4.w + bounce * u.p0.y * ao);
   /* sun specular, GGX */
   float3 H = normalize(L + V); float nh = saturate(dot(N, H)), vh = saturate(dot(V, H));
-  float rough = mix(u.p3.z, mix(0.3, 0.08, puddle), wet), a2 = rough * rough * rough * rough;
+  float rough = mix(mrough, mix(0.3, 0.08, puddle), wet), a2 = rough * rough * rough * rough;
   float d = nh * nh * (a2 - 1.0) + 1.0, D = a2 / (3.14159 * d * d);
   float F = 0.04 + 0.96 * pow(1.0 - vh, 5.0);
   /* dry asphalt is matte: highlights come only from water on it */
@@ -971,7 +1045,8 @@ typedef struct {
     float eye[4], sun[4], sunc[4], skyc[4], grnd[4], fogc[4], vpt[4], scr[4];
     float p0[4], p1[4], p2[4], p3[4], p4[4], flash[4], wb[4], nsky[4], sk2[4], tm[4], wx[4];
     float pvp[16], jit[4];   /* last frame's view x projection; this frame's jitter (ndc) and the last one's */
-    float svp2[16], csm[4];  /* the far shadow cascade; csm.x its texel size */   /* wx: rain, snowfall, snow ground, - */
+    float svp2[16], csm[4];  /* the far shadow cascade; csm.x its texel size */
+    float mat[4], matmean[6][4];   /* ground materials: mat.x loaded; each one's mean colour (linear) */   /* wx: rain, snowfall, snow ground, - */
 } fxu;
 typedef struct { float p[32][4], d[32][4], col[4], misc[4]; float g[64][4], gd[64][4], gmisc[4]; } hlu;
 static float g_hl_int, g_hl_beam, g_hl_air;
@@ -1502,6 +1577,82 @@ void hfx_tick(void)
               } } }
 }
 
+/* ---- the ground materials: photoscanned sets (ambientCG, CC0) from the app's
+ * Resources/materials, else the tree's ports/common/models/materials/src,
+ * each colour map and its normal+roughness+AO packed into two 1024x1024
+ * texture arrays with full mip chains.  Missing sets leave the procedural
+ * detail in place. */
+#import <ImageIO/ImageIO.h>
+static const char *MATS[6] = { "Asphalt031", "Grass004", "Ground054", "Gravel043", "Rock064", "Snow015" };
+static id<MTLTexture> g_matA, g_matN;
+static float g_matmean[6][4];
+static int g_mat_state;              /* 0 not tried, 1 loaded, -1 unavailable */
+static int load_map(const char *name, const char *kind, u8 *out, int sz)
+{
+    NSString *base = [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"materials"];
+    NSString *f = [NSString stringWithFormat:@"%s/%s_2K-JPG_%s.jpg", name, name, kind];
+    NSString *p = [base stringByAppendingPathComponent:f];
+    CGImageSourceRef src;
+    CGImageRef img;
+    CGContextRef cx;
+    if (![[NSFileManager defaultManager] fileExistsAtPath:p]) {
+        NSString *root = @(getenv("BR_ROOT") ? getenv("BR_ROOT") : ".");
+        p = [[root stringByAppendingPathComponent:@"ports/common/models/materials/src"] stringByAppendingPathComponent:f];
+    }
+    src = CGImageSourceCreateWithURL((__bridge CFURLRef)[NSURL fileURLWithPath:p], NULL);
+    if (!src) return 0;
+    img = CGImageSourceCreateImageAtIndex(src, 0, NULL);
+    CFRelease(src);
+    if (!img) return 0;
+    {
+        CGColorSpaceRef cs = CGColorSpaceCreateDeviceRGB();
+        cx = CGBitmapContextCreate(out, (size_t)sz, (size_t)sz, 8, (size_t)sz * 4, cs, kCGImageAlphaNoneSkipLast);
+        CGColorSpaceRelease(cs);
+    }
+    CGContextSetInterpolationQuality(cx, kCGInterpolationHigh);
+    CGContextDrawImage(cx, CGRectMake(0, 0, sz, sz), img);
+    CGContextRelease(cx);
+    CGImageRelease(img);
+    return 1;
+}
+static void load_materials(id<MTLDevice> dev, id<MTLCommandQueue> q)
+{
+    const int SZ = 1024;
+    int m, i, ok = 0;
+    u8 *c = malloc((size_t)SZ * SZ * 4), *n = malloc((size_t)SZ * SZ * 4), *r = malloc((size_t)SZ * SZ * 4), *a = malloc((size_t)SZ * SZ * 4);
+    MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm width:SZ height:SZ mipmapped:YES];
+    td.textureType = MTLTextureType2DArray; td.arrayLength = 6;
+    g_mat_state = -1;
+    if (getenv("BR_FX_NOMAT")) goto out;
+    g_matA = [dev newTextureWithDescriptor:td];
+    g_matN = [dev newTextureWithDescriptor:td];
+    for (m = 0; m < 6; m++) {
+        double sum[3] = { 0, 0, 0 };
+        if (!load_map(MATS[m], "Color", c, SZ) || !load_map(MATS[m], "NormalGL", n, SZ)) continue;
+        if (!load_map(MATS[m], "Roughness", r, SZ)) memset(r, 180, (size_t)SZ * SZ * 4);
+        if (!load_map(MATS[m], "AmbientOcclusion", a, SZ)) memset(a, 255, (size_t)SZ * SZ * 4);
+        for (i = 0; i < SZ * SZ; i++) {
+            int k;
+            for (k = 0; k < 3; k++) sum[k] += pow(c[i * 4 + k] / 255.0, 2.2);
+            c[i * 4 + 3] = 255;
+            n[i * 4 + 2] = r[i * 4]; n[i * 4 + 3] = a[i * 4];
+        }
+        for (i = 0; i < 3; i++) g_matmean[m][i] = (float)(sum[i] / (SZ * SZ));
+        [g_matA replaceRegion:MTLRegionMake2D(0, 0, SZ, SZ) mipmapLevel:0 slice:(NSUInteger)m withBytes:c bytesPerRow:SZ * 4 bytesPerImage:0];
+        [g_matN replaceRegion:MTLRegionMake2D(0, 0, SZ, SZ) mipmapLevel:0 slice:(NSUInteger)m withBytes:n bytesPerRow:SZ * 4 bytesPerImage:0];
+        ok++;
+    }
+    if (ok == 6) {
+        id<MTLCommandBuffer> b = [q commandBuffer];
+        id<MTLBlitCommandEncoder> e = [b blitCommandEncoder];
+        [e generateMipmapsForTexture:g_matA]; [e generateMipmapsForTexture:g_matN];
+        [e endEncoding]; [b commit];
+        g_mat_state = 1;
+    } else { g_matA = g_matN = nil; fprintf(stderr, "fx: ground materials missing (%d of 6)\n", ok); }
+out:
+    free(c); free(n); free(r); free(a);
+}
+
 /* ---- temporal: the jitter this frame's 3D is drawn with (Halton 2,3 over
  * 8 frames, in the target's pixels, as clip-space NDC for host_glide.m), last
  * frame's camera, and each car's last transform */
@@ -1782,12 +1933,26 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
     u.tm[3] = getenv("BR_FX_BUMP") ? (float)atof(getenv("BR_FX_BUMP")) : 0.18f;
     memcpy(u.pvp, g_pvp_ok ? g_pvp : g_P, sizeof u.pvp);
     u.jit[2] = getenv("BR_FX_SHUTTER") ? (float)atof(getenv("BR_FX_SHUTTER")) : 0.5f;
+    /* a camera cut (a new view, a replay angle): no history, no blur */
+    {
+        static float le[3], lf[3]; static int have;
+        double d2 = 0, dotf = 0;
+        v[0] = 0; v[1] = 0; v[2] = 0.5; v[3] = 1; rowmul(v, IP, f);
+        for (i = 0; i < 3; i++) { double ff = f[i] / f[3] - u.eye[i]; cf[i] = ff; }
+        norm3(cf);
+        for (i = 0; i < 3; i++) { d2 += (u.eye[i] - le[i]) * (u.eye[i] - le[i]); dotf += cf[i] * lf[i]; }
+        if (have && (d2 > 4.0 * 4.0 || dotf < 0.94)) g_hist_ok = 0;
+        for (i = 0; i < 3; i++) { le[i] = u.eye[i]; lf[i] = (float)cf[i]; }
+        have = 1;
+    }
     u.jit[3] = (g_pvp_ok && g_hist_ok && taa_on()) ? 1.0f : 0.0f;
     u.p3[0] = (float)origin_ll;
     u.p2[2] = 6.0f;
     u.p2[3] = (float)(g_frame % 64);
     u.tm[0] = (float)((double)g_frame / 60.0);
     u.tm[1] = 0.75f;                           /* asphalt neutralising */
+    if (!g_mat_state) load_materials(dev, cb.commandQueue);
+    if (g_mat_state > 0) { u.mat[0] = 1; memcpy(u.matmean, g_matmean, sizeof u.matmean); }
     weather(&u, fogc);
     /* the Remastered sky for the track and weather (tm.z: its gain, 0 = none) */
     { const char *ov = getenv("BR_FX_WEATHER");
@@ -1986,7 +2151,7 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
     /* 4. lighting */
     enc = pass(cb, t_hdr, 0);
     [enc setFragmentBytes:&hl length:sizeof hl atIndex:1];
-    quad(enc, p_comp, &u, @[gface, gp, col, t_sm, t_ao, t_ssr, g_skyt ? g_skyt : col, t_trk, t_sm2, gn]);
+    quad(enc, p_comp, &u, @[gface, gp, col, t_sm, t_ao, t_ssr, g_skyt ? g_skyt : col, t_trk, t_sm2, gn, g_matA ? g_matA : t_trk, g_matN ? g_matN : t_trk]);
     /* 4b. particles and falling rain/snow over the lit scene */
     if (getenv("BR_FX_NOPFX")) [pass(cb, t_pfx, 0) endEncoding];
     else {
