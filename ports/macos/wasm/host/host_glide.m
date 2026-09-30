@@ -69,21 +69,22 @@ static const char *SHADER =
 "  float4 col [[center_no_perspective]]; float ooz [[center_no_perspective]];\n"
 "  float oow [[center_no_perspective]]; float sow [[center_no_perspective]];\n"
 "  float tow [[center_no_perspective]];\n"
-"  float pw, ps, pt; float4 pcol; int pm [[flat]]; };   /* pm: w, s, t, colour perspective-correct (vsc) */\n"
+"  float pw, ps, pt; float4 pcol; int pm [[flat]];   /* pm: w, s, t, colour perspective-correct (vsc) */\n"
+"  float3 wp; float fl [[flat]]; };   /* fx G-buffer: world position, 1 main 3D / 2 sky / 3 other view */\n"
 "vertex VO vs(uint vid [[vertex_id]], const device GV *v [[buffer(0)]]) {\n"
 "  GV g = v[vid]; VO o;\n"
 "  o.pos = float4(g.x / 320.0 - 1.0, 1.0 - g.y / 240.0, 0.5, 1.0);\n"
 "  o.col = float4(g.r, g.g, g.b, g.a); o.ooz = g.ooz; o.oow = g.oow; o.sow = g.sow; o.tow = g.tow;\n"
-"  o.pw = 1; o.ps = 0; o.pt = 0; o.pcol = 0; o.pm = 0;\n"
+"  o.pw = 1; o.ps = 0; o.pt = 0; o.pcol = 0; o.pm = 0; o.wp = 0; o.fl = 0;\n"
 "  return o; }\n"
 "/* clip-space corners from the native renderer: the GPU divides by w; 1/w,\n"
 "   s/w and t/w are carried unperspective, the values the Voodoo iterates */\n"
-"struct CV { float x, y, z, w, r, g, b, a, s, t; };\n"
+"struct CV { float x, y, z, w, r, g, b, a, s, t, wx, wy, wz, fl; };\n"
 "vertex VO vsc(uint vid [[vertex_id]], const device CV *v [[buffer(0)]]) {\n"
 "  CV g = v[vid]; VO o; float q = 1.0 / g.w;\n"
 "  o.pos = float4(g.x, g.y, g.z, g.w);\n"
 "  o.col = float4(g.r, g.g, g.b, g.a); o.ooz = 0; o.oow = q; o.sow = g.s * q; o.tow = g.t * q;\n"
-"  o.pw = g.w; o.ps = g.s; o.pt = g.t; o.pcol = o.col; o.pm = 1;\n"
+"  o.pw = g.w; o.ps = g.s; o.pt = g.t; o.pcol = o.col; o.pm = 1; o.wp = float3(g.wx, g.wy, g.wz); o.fl = g.fl;\n"
 "  return o; }\n"
 "/* the same corners drawn without the depth buffer: the no-Z vertex routines\n"
 "   overwrite 1/w with 1/65535 after projecting, so the card writes the far\n"
@@ -92,7 +93,7 @@ static const char *SHADER =
 "  CV g = v[vid]; VO o; float q = 1.0 / 65535.0;\n"
 "  o.pos = float4(g.x, g.y, g.z, g.w);\n"
 "  o.col = float4(g.r, g.g, g.b, g.a); o.ooz = 0; o.oow = q; o.sow = g.s * q; o.tow = g.t * q;\n"
-"  o.pw = 1; o.ps = 0; o.pt = 0; o.pcol = 0; o.pm = 0;\n"
+"  o.pw = 1; o.ps = 0; o.pt = 0; o.pcol = 0; o.pm = 0; o.wp = 0; o.fl = g.fl == 1.0 ? 2.0 : 0.0;\n"
 "  return o; }\n"
 "struct BV { float2 p; float2 uv; };\n"
 "struct BO { float4 pos [[position]]; float2 uv; };\n"
@@ -125,7 +126,7 @@ static const char *SHADER =
 "    if (w <= tw) return prev + (u.fogtab[i] - prev) * (w - pw) / (tw - pw);\n"
 "    prev = u.fogtab[i]; pw = tw; }\n"
 "  return u.fogtab[63]; }\n"
-"struct FO { float4 c [[color(0)]]; float d [[depth(any)]]; };\n"
+"struct FO { float4 c [[color(0)]]; float4 n [[color(1)]]; float4 g [[color(2)]]; float d [[depth(any)]]; };\n"
 "/* The Voodoo's 16-bit W-buffer word: 4-bit exponent, 12-bit mantissa of\n"
 "   1/w as a .32 fraction.  Depth is stored and compared at this precision,\n"
 "   which is what lets a second pass over the same polygon (the car shadows\n"
@@ -145,7 +146,9 @@ static const char *SHADER =
 "  /* clip-space corners: w, s and t come perspective-correct, so 1/w, s/w and\n"
 "     t/w are exact at every pixel, clipped by the GPU or not */\n"
 "  if (in.pm) { in.oow = 1.0 / in.pw; in.sow = in.ps * in.oow; in.tow = in.pt * in.oow; in.col = in.pcol; }\n"
-"  if (u.clear) { o.c = u.clearcol / 255.0; o.d = u.clear_depth; return o; }\n"
+"  o.n = 0; o.g = 0;\n"
+"  /* a clear is background: the sky, where the game draws none (night, storm) */\n"
+"  if (u.clear) { o.c = u.clearcol / 255.0; o.d = u.clear_depth; o.n = float4(0, 0, 0, 1); o.g = float4(0, 0, 0, 3); return o; }\n"
 "  float depth = 0;\n"
 "  if (u.dmode == 2 || u.dmode == 4) depth = float(wfloat(in.oow)) / 65536.0;\n"
 "  else if (u.dmode) depth = floor(clamp(in.ooz, 0.0, 65535.0)) / 65536.0;\n"
@@ -178,7 +181,15 @@ static const char *SHADER =
 "    float w = in.oow != 0 ? 1.0 / in.oow : 65535.0;\n"
 "    float k = fogof(u, w) / 255.0;\n"
 "    outc.rgb = mix(outc.rgb, u.fogcolor.rgb, k); }\n"
-"  o.c = outc / 255.0; return o; }\n"
+"  o.c = outc / 255.0;\n"
+"  /* fx G-buffer (host_fx.m); the pipeline decides what reaches it */\n"
+"  if (vin.fl == 1.0) {\n"
+"    float3 nn = cross(dfdy(vin.wp), dfdx(vin.wp)); float kf = 0;\n"
+"    if (u.fogmode & 1) { float w = in.oow != 0 ? 1.0 / in.oow : 65535.0; kf = fogof(u, w) / 255.0; }\n"
+"    o.n = float4(length(nn) > 0 ? normalize(nn) : float3(0, 0, 1), 1); o.g = float4(vin.wp, 1.0 + 0.9 * kf);\n"
+"  } else if (vin.fl == 2.0) { o.n = float4(0, 0, 0, 1); o.g = float4(0, 0, 0, 3); }\n"
+"  else o.n = float4(0, 0, 0, o.c.a);   /* 2D: blended ones scale the scene coverage by 1 - a */\n"
+"  return o; }\n"
 "struct PO { float4 pos [[position]]; float2 uv; };\n"
 "vertex PO pvs(uint vid [[vertex_id]]) {\n"
 "  float2 p = float2((vid << 1) & 2, vid & 2); PO o;\n"
@@ -189,7 +200,15 @@ static const char *SHADER =
 static id<MTLDevice> g_dev;
 static id<MTLCommandQueue> g_q;
 static id<MTLLibrary> g_lib;
-static id<MTLTexture> g_color, g_depth, g_white;
+static id<MTLTexture> g_color, g_depth, g_white, g_gn, g_gp;
+static int g_fx_fresh = 1;
+int hfx_on(void);
+void hfx_tick(void);
+void hfx_shadow_batch(id<MTLBuffer> buf, size_t off, int n, id<MTLTexture> tex, id<MTLSamplerState> smp,
+                      int at_fn, int at_ref, int use_tex, float su, float sv);
+id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture> col, id<MTLTexture> gn,
+                       id<MTLTexture> gp, int w, int h, int origin_ll, const float *fogc);
+static id<MTLTexture> g_fxout;
 static id<MTLRenderPipelineState> g_present, g_blit;
 static id<MTLCommandBuffer> g_cb;
 static id<MTLRenderCommandEncoder> g_enc;
@@ -296,6 +315,17 @@ static void size_targets(void)
     td.usage = MTLTextureUsageRenderTarget;
     td.storageMode = MTLStorageModePrivate;
     g_depth = [g_dev newTextureWithDescriptor:td];
+    td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA16Float
+                                                            width:(NSUInteger)RW height:(NSUInteger)RH mipmapped:NO];
+    td.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
+    td.storageMode = MTLStorageModePrivate;
+    g_gn = [g_dev newTextureWithDescriptor:td];
+    td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA32Float
+                                                            width:(NSUInteger)RW height:(NSUInteger)RH mipmapped:NO];
+    td.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
+    td.storageMode = MTLStorageModePrivate;
+    g_gp = [g_dev newTextureWithDescriptor:td];
+    g_fx_fresh = 1;
     HLOG("render target %dx%d\n", RW, RH);
 }
 
@@ -336,6 +366,10 @@ static void gl_setup(void)
     pd.vertexFunction = [g_lib newFunctionWithName:@"bvs"];
     pd.fragmentFunction = [g_lib newFunctionWithName:@"bfs"];
     pd.colorAttachments[0].pixelFormat = MTLPixelFormatRGBA8Unorm;
+    pd.colorAttachments[1].pixelFormat = MTLPixelFormatRGBA16Float;
+    pd.colorAttachments[1].writeMask = MTLColorWriteMaskNone;
+    pd.colorAttachments[2].pixelFormat = MTLPixelFormatRGBA32Float;
+    pd.colorAttachments[2].writeMask = MTLColorWriteMaskNone;
     pd.depthAttachmentPixelFormat = MTLPixelFormatDepth32Float;
     g_blit = [g_dev newRenderPipelineStateWithDescriptor:pd error:&err];
     if (!g_blit) { fprintf(stderr, "blit pipeline: %s\n", err.localizedDescription.UTF8String); exit(1); }
@@ -379,6 +413,20 @@ static id<MTLRenderPipelineState> gpipe(int rs, int rd, int as, int ad, int noco
             c.destinationRGBBlendFactor = bf(rd, 1);
             c.sourceAlphaBlendFactor = bf(as, 0);
             c.destinationAlphaBlendFactor = bf(ad, 1);
+        }
+        /* fx G-buffer: opaque draws write it; blended 3D leaves it; blended
+         * 2D scales the scene coverage (normal.a) by 1 - its alpha */
+        d.colorAttachments[1].pixelFormat = MTLPixelFormatRGBA16Float;
+        d.colorAttachments[2].pixelFormat = MTLPixelFormatRGBA32Float;
+        if (c.blendingEnabled) {
+            d.colorAttachments[2].writeMask = MTLColorWriteMaskNone;
+            if (kind) d.colorAttachments[1].writeMask = MTLColorWriteMaskNone;
+            else {
+                MTLRenderPipelineColorAttachmentDescriptor *n = d.colorAttachments[1];
+                n.blendingEnabled = YES;
+                n.sourceRGBBlendFactor = MTLBlendFactorZero; n.destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
+                n.sourceAlphaBlendFactor = MTLBlendFactorZero; n.destinationAlphaBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
+            }
         }
         p = [g_dev newRenderPipelineStateWithDescriptor:d error:&err];
         if (!p) { fprintf(stderr, "Glide pipeline: %s\n", err.localizedDescription.UTF8String); exit(1); }
@@ -445,13 +493,19 @@ static void begin_pass(void)
     rp.depthAttachment.texture = g_depth;
     rp.depthAttachment.loadAction = MTLLoadActionLoad;
     rp.depthAttachment.storeAction = MTLStoreActionStore;
+    rp.colorAttachments[1].texture = g_gn;
+    rp.colorAttachments[2].texture = g_gp;
+    rp.colorAttachments[1].loadAction = rp.colorAttachments[2].loadAction = g_fx_fresh ? MTLLoadActionClear : MTLLoadActionLoad;
+    rp.colorAttachments[1].clearColor = rp.colorAttachments[2].clearColor = MTLClearColorMake(0, 0, 0, 0);
+    rp.colorAttachments[1].storeAction = rp.colorAttachments[2].storeAction = MTLStoreActionStore;
+    g_fx_fresh = 0;
     g_enc = [g_cb renderCommandEncoderWithDescriptor:rp];
     [g_enc setViewport:(MTLViewport){ 0, 0, RW, RH, 0, 1 }];
 }
 
 /* The pending run of triangles that share every piece of state. */
 static struct {
-    int n, kind;
+    int n, kind, shadow;
     size_t off;
     id<MTLRenderPipelineState> pipe;
     id<MTLDepthStencilState> ds;
@@ -472,6 +526,8 @@ static void flush_batch(void)
     [g_enc setFragmentTexture:B.tex atIndex:0];
     [g_enc setFragmentSamplerState:B.smp atIndex:0];
     [g_enc drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:(NSUInteger)B.n];
+    if (B.shadow)
+        hfx_shadow_batch(g_vbuf[g_vbi], B.off, B.n, B.tex, B.smp, B.u.at_fn, B.u.at_ref, B.u.use_tex, B.u.su, B.u.sv);
     B.n = 0;
     B.pipe = nil; B.ds = nil; B.tex = nil; B.smp = nil;
     g_voff = (g_voff + 255) & ~(size_t)255;
@@ -486,6 +542,12 @@ static void flush_wait(void)
 {
     end_pass();
     if (g_cb) { [g_cb commit]; [g_cb waitUntilCompleted]; g_cb = nil; }
+    else if (g_q) {
+        /* nothing open: frames already committed may still be drawing; an
+         * empty buffer behind them on the queue completes after they do */
+        id<MTLCommandBuffer> b = [g_q commandBuffer];
+        [b commit]; [b waitUntilCompleted];
+    }
 }
 
 /* The clip window, in 640x480 units, as a scissor on the target. */
@@ -744,7 +806,7 @@ static void pick(const gv *v, int n)
  * too).  Appended to the pending run when every piece of state matches. */
 static void draw(const void *v, int n, int clear, int kind)
 {
-    size_t bytes = (size_t)n * sizeof(gv);
+    size_t bytes = (size_t)n * (kind ? 14 * sizeof(float) : sizeof(gv));
     id<MTLTexture> t = g_white;
     id<MTLRenderPipelineState> pipe;
     id<MTLDepthStencilState> ds;
@@ -778,11 +840,31 @@ static void draw(const void *v, int n, int clear, int kind)
         flush_batch();
     if (!B.n) {
         B.off = g_voff; B.kind = kind; B.pipe = pipe; B.ds = ds; B.tex = t; B.smp = smp;
+        B.shadow = kind == 1 && S.ab_rs == 4 && S.ab_rd == 0 && S.dmask && U.dmode && hfx_on();
         B.sc = sc; B.u = U;
     }
     memcpy((u8 *)g_vbuf[g_vbi].contents + g_voff, v, bytes);
     g_voff += bytes;
     B.n += n;
+}
+
+/* A native mesh drawn in display-list order (host_car.m): the pending run is
+ * drawn first, then the frame's encoder is handed over with what the mesh
+ * needs to match the scene -- the clip window, the origin, the fog.  The
+ * caller sets every piece of encoder state it uses and leaves the viewport
+ * and cull mode as it found them; flush_batch sets the rest for the next run. */
+id<MTLRenderCommandEncoder> hglide_native_pass(id<MTLDevice> *dev, MTLScissorRect *sc, int *origin_ll,
+                                               int *fogmode, float *fogcolor, float *fogtab)
+{
+    begin_pass();
+    flush_batch();
+    *dev = g_dev;
+    *sc = scissor_rect();
+    *origin_ll = S.origin_ll;
+    *fogmode = U.fogmode;
+    memcpy(fogcolor, U.fogcolor, sizeof U.fogcolor);
+    memcpy(fogtab, U.fogtab, sizeof U.fogtab);
+    return g_enc;
 }
 
 void h_grBufferClear(u32 color, u32 alpha, u32 depth)
@@ -808,12 +890,23 @@ void hglide_shot(const char *path)
     int i;
     flush_wait();
     px = malloc((size_t)RW * RH * 4);
-    [g_color getBytes:px bytesPerRow:(NSUInteger)RW * 4 fromRegion:MTLRegionMake2D(0, 0, (NSUInteger)RW, (NSUInteger)RH) mipmapLevel:0];
+    [(g_fxout ? g_fxout : g_color) getBytes:px bytesPerRow:(NSUInteger)RW * 4 fromRegion:MTLRegionMake2D(0, 0, (NSUInteger)RW, (NSUInteger)RH) mipmapLevel:0];
     f = fopen(path, "wb");
     if (f) {
         fprintf(f, "P6\n%d %d\n255\n", RW, RH);
         for (i = 0; i < RW * RH; i++) { u8 c[3] = { (u8)px[i], (u8)(px[i] >> 8), (u8)(px[i] >> 16) }; fwrite(c, 1, 3, f); }
         fclose(f);
+    }
+    if (g_fxout && getenv("BR_FX_SHOTC")) {       /* the game's own colour beside it */
+        char q[1024];
+        snprintf(q, sizeof q, "%s.c.ppm", path);
+        [g_color getBytes:px bytesPerRow:(NSUInteger)RW * 4 fromRegion:MTLRegionMake2D(0, 0, (NSUInteger)RW, (NSUInteger)RH) mipmapLevel:0];
+        f = fopen(q, "wb");
+        if (f) {
+            fprintf(f, "P6\n%d %d\n255\n", RW, RH);
+            for (i = 0; i < RW * RH; i++) { u8 c[3] = { (u8)px[i], (u8)(px[i] >> 8), (u8)(px[i] >> 16) }; fwrite(c, 1, 3, f); }
+            fclose(f);
+        }
     }
     free(px);
 }
@@ -832,7 +925,7 @@ static void shot(void)
     if (g_nshot++ % every) return;
     flush_wait();
     px = malloc((size_t)RW * RH * 4);
-    [g_color getBytes:px bytesPerRow:(NSUInteger)RW * 4 fromRegion:MTLRegionMake2D(0, 0, (NSUInteger)RW, (NSUInteger)RH) mipmapLevel:0];
+    [(g_fxout ? g_fxout : g_color) getBytes:px bytesPerRow:(NSUInteger)RW * 4 fromRegion:MTLRegionMake2D(0, 0, (NSUInteger)RW, (NSUInteger)RH) mipmapLevel:0];
     snprintf(p, sizeof p, "%s/frame%05d.ppm", dir, g_nshot - 1);
     f = fopen(p, "wb");
     if (f) {
@@ -850,6 +943,8 @@ __attribute__((weak)) void hframe_present(id<MTLCommandBuffer> cb, id<CAMetalDra
 {
     [cb presentDrawable:d];
 }
+static unsigned g_swaps;
+unsigned hglide_swaps(void) { return g_swaps; }
 void h_grBufferSwap(u32 interval)
 {
     CAMetalLayer *l;
@@ -864,6 +959,18 @@ void h_grBufferSwap(u32 interval)
         last = t;
     }
     gllog("grBufferSwap");
+    g_fxout = nil;
+    hfx_tick();
+    if (hfx_on()) {
+        float fc[3] = { powf(U.fogcolor[0] / 255.0f, 2.2f), powf(U.fogcolor[1] / 255.0f, 2.2f), powf(U.fogcolor[2] / 255.0f, 2.2f) };
+        if (!g_cb) begin_pass(), end_pass();
+        g_fxout = hfx_run(g_dev, g_cb, g_color, g_gn, g_gp, RW, RH, S.origin_ll, fc);
+    }
+    { void hcar_frame_end(id<MTLCommandBuffer> cb, id<MTLTexture> pic);
+      if (!g_cb) begin_pass(), end_pass();
+      hcar_frame_end(g_cb, g_fxout ? g_fxout : g_color); }
+    g_fx_fresh = 1;
+    g_swaps++;
     shot();
     l = happ_metal_layer();
     if (!g_cb) begin_pass(), end_pass();
@@ -882,7 +989,7 @@ void h_grBufferSwap(u32 interval)
                 [e setViewport:(MTLViewport){ floor((dw - RW * s) / 2), floor((dh - RH * s) / 2), RW * s, RH * s, 0, 1 }];
             }
             [e setRenderPipelineState:g_present];
-            [e setFragmentTexture:g_color atIndex:0];
+            [e setFragmentTexture:g_fxout ? g_fxout : g_color atIndex:0];
             [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
             [e endEncoding];
             hframe_present(g_cb, d);
@@ -1013,7 +1120,7 @@ void h_grDrawTriangle(u32 a, u32 b, u32 c)
 void hglide_tri_h(const float *a, const float *b, const float *c, int noz)
 {
     const float *p[3] = { a, b, c };
-    float v[3][10], det;
+    float v[3][14], det;
     int i;
     det = a[0] * (b[1] * c[3] - c[1] * b[3]) - b[0] * (a[1] * c[3] - c[1] * a[3]) +
           c[0] * (a[1] * b[3] - b[1] * a[3]);
@@ -1036,7 +1143,7 @@ void hglide_tri_h(const float *a, const float *b, const float *c, int noz)
         v[i][1] = S.origin_ll ? q[1] / (H / 2) - q[3] : q[3] - q[1] / (H / 2);
         v[i][2] = (q[2] + q[3]) * 0.5f;
         v[i][3] = q[3];
-        memcpy(&v[i][4], &q[4], 6 * sizeof(float));
+        memcpy(&v[i][4], &q[4], 10 * sizeof(float));
     }
     draw(v, 3, 0, noz ? 2 : 1);
 }

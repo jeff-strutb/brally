@@ -1,0 +1,566 @@
+/* host_car.m -- the Remastered player car (port code).
+ *
+ * A modern model of the player's car -- body, and one wheel drawn four
+ * times -- replaces the .rca model while the Remastered renderer is on
+ * (host_fx.m; ~ switches back to the original, model and all).  native/car.m
+ * keeps the game drawing the car exactly as before with its lists emptied,
+ * and queues a marker where the car sits in the display list; hcar_draw runs
+ * when the list reaches it.
+ *
+ *   placement   the body by the car's own world matrix (car+0x00), each wheel
+ *               by the game's matrix for that wheel (car+0x40.. +0x100: spin,
+ *               steer and suspension), read when the list was built, like the
+ *               game's own matrix slots.  The projection is the one current
+ *               when the list runs, so the rear-view mirror works unchanged.
+ *   depth       the Voodoo W-buffer word the Glide shader writes, from the same
+ *               clip-space w, so the model and the game's scene share one
+ *               depth buffer.
+ *   shading     metal/roughness PBR from the model's maps, a clear coat over
+ *               the paint, the baked occlusion and normal maps, the light rig
+ *               host_fx.m uses for the weather, and
+ *               the livery: separate projected decal textures laid over the
+ *               painted surfaces only (the base colour's alpha marks paint).
+ *               In the main view the result goes to the fx composite as a
+ *               pre-lit surface (G-buffer class 4), which adds the sun's
+ *               shadows, bloom and the tone map; in the mirror it is finished
+ *               here.  The body casts sun shadows through a low-poly proxy.
+ *
+ * Assets: <dir>/car.cfg, body.rcm, wheel.rcm, proxy.rcm and their textures,
+ * from ports/macos/tools/remaster_car.py.  <dir> is $BR_REMASTER_DIR, the
+ * app's Resources/remaster, or ports/common/models/es/pack (the models are
+ * kept out of git).  BR_CAR=0 turns it off.
+ */
+#import <Cocoa/Cocoa.h>
+#import <Metal/Metal.h>
+#include "host.h"
+#include <math.h>
+#include <stdlib.h>
+#include <string.h>
+
+int hfx_on(void);
+int hfx_car_rig(float *sun, float *sunc, float *skyc, float *grnd);
+unsigned hglide_swaps(void);
+id<MTLRenderCommandEncoder> hglide_native_pass(id<MTLDevice> *dev, MTLScissorRect *sc, int *origin_ll,
+                                               int *fogmode, float *fogcolor, float *fogtab);
+void hfx_shadow_batch(id<MTLBuffer> buf, size_t off, int n, id<MTLTexture> tex, id<MTLSamplerState> smp,
+                      int at_fn, int at_ref, int use_tex, float su, float sv);
+
+#define STR(...) #__VA_ARGS__
+static const char *CARSRC = "#include <metal_stdlib>\n" STR(
+using namespace metal;
+struct MV { packed_float3 p; packed_float3 n; float2 uv; float4 t; };
+struct CU {
+  float4x4 M, P, HP;
+  float4 vpt, eye, sun, sunc, skyc, grnd, fogc, misc, liv, livs, paint, dbg, hvpt, hist;
+  float fogtab[64];
+};
+struct VO { float4 pos [[position]]; float3 wp; float3 lp; float3 wn; float3 wt; float tw; float2 uv; float oow; };
+vertex VO cvs(uint vid [[vertex_id]], const device MV *v [[buffer(0)]], constant CU &u [[buffer(1)]]) {
+  MV m = v[vid]; VO o;
+  float4 w = u.M * float4(m.p, 1);
+  float4 c = u.P * w;
+  float X = u.vpt.x * c.x + u.vpt.y * c.w, Y = u.vpt.z * c.y + u.vpt.w * c.w;
+  o.pos = float4(X / 320.0 - c.w, u.misc.x > 0.5 ? Y / 240.0 - c.w : c.w - Y / 240.0, (c.z + c.w) * 0.5, c.w);
+  o.wp = w.xyz; o.lp = m.p;
+  o.wn = (u.M * float4(m.n, 0)).xyz; o.wt = (u.M * float4(m.t.xyz, 0)).xyz; o.tw = m.t.w;
+  o.uv = m.uv; o.oow = 1.0 / c.w;
+  return o; }
+struct FO { float4 c [[color(0)]]; float4 n [[color(1)]]; float4 g [[color(2)]]; float d [[depth(any)]]; };
+uint wfloat(float oow) {
+  if (oow >= 1.0) return 0;
+  if (oow <= 0.0) return 0xFFFF;
+  uint t = uint(min(oow * 4294967296.0, 4294967295.0));
+  if (t == 0) return 0xFFFF;
+  int e = int(clz(t));
+  uint m = e <= 19 ? (~t >> uint(19 - e)) : (~t << uint(e - 19));
+  uint w = (uint(e) << 12) | (m & 0xFFF);
+  return w < 0xFFFF ? w + 1 : w; }
+float fogof(constant CU &u, float w) {
+  if (w <= 1.0) return u.fogtab[0]; float prev = 0, pw = 1;
+  for (int i = 0; i < 64; i++) { float tw = exp2(3.0 + float(i >> 2)) / float(8 - (i & 3));
+    if (w <= tw) return prev + (u.fogtab[i] - prev) * (w - pw) / (tw - pw);
+    prev = u.fogtab[i]; pw = tw; }
+  return u.fogtab[63]; }
+float D_ggx(float nh, float a) { float a2 = a * a, d = nh * nh * (a2 - 1.0) + 1.0; return a2 / (3.14159 * d * d); }
+float V_sg(float nl, float nv, float a) { float k = a * 0.5; return 0.25 / ((nl * (1 - k) + k) * (nv * (1 - k) + k)); }
+float3 sky_at(constant CU &u, float3 d) {
+  float h = d.z;
+  float3 c = h > 0 ? mix(u.skyc.rgb * 1.25, u.skyc.rgb * 0.8, pow(saturate(h), 0.6)) : mix(u.skyc.rgb * 1.1, u.grnd.rgb * 0.7, saturate(-h * 4.0));
+  float g = saturate(dot(d, u.sun.xyz));
+  return c + u.sunc.rgb * (pow(g, 800.0) * 40.0 + pow(g, 16.0) * 0.25) * u.sun.w; }
+/* what a reflection ray sees: the last finished frame where the ray lands
+   on it (the ground for rays that point down, the distance for the rest),
+   the sky model where it does not */
+float3 env_at(constant CU &u, texture2d<float> h, float3 wp, float3 R, float rough) {
+  constexpr sampler hs(filter::linear, mip_filter::linear, address::clamp_to_edge);
+  float3 sky = sky_at(u, R);
+  if (u.hist.x < 0.5) return sky;
+  float t = R.z < -0.02 ? clamp((u.hist.w - wp.z) / R.z, 0.3, 400.0) : 400.0;
+  float4 c = u.HP * float4(wp + R * t, 1);
+  if (c.w <= 0.05) return sky;
+  float2 q = float2((u.hvpt.x * c.x / c.w + u.hvpt.y) / 640.0, (u.hvpt.z * c.y / c.w + u.hvpt.w) / 480.0);
+  if (u.hist.y > 0.5) q.y = 1.0 - q.y;
+  float2 e = smoothstep(0.0, 0.12, q) * smoothstep(0.0, 0.12, 1.0 - q);
+  float3 f = pow(h.sample(hs, q, level(rough * 7.0)).rgb, 2.2) / u.hist.z;
+  return mix(sky, f, e.x * e.y); }
+float3 aces(float3 x) { return saturate(x * (2.51 * x + 0.03) / (x * (2.43 * x + 0.59) + 0.14)); }
+fragment FO cfs(VO in [[stage_in]], constant CU &u [[buffer(0)]],
+                texture2d<float> tb [[texture(0)]], texture2d<float> tm [[texture(1)]], texture2d<float> tn [[texture(2)]],
+                texture2d<float> ls [[texture(3)]], texture2d<float> lt [[texture(4)]], texture2d<float> th [[texture(5)]]) {
+  constexpr sampler s(filter::linear, mip_filter::linear, address::repeat, max_anisotropy(8));
+  constexpr sampler sc(filter::linear, mip_filter::linear, address::clamp_to_zero, max_anisotropy(8));
+  FO o;
+  float4 B = tb.sample(s, in.uv);
+  float3 alb = pow(B.rgb, 2.2);
+  float paint = u.paint.w > 0.5 ? B.a : 0.0;
+  float4 MR = tm.sample(s, in.uv);                 /* occlusion, roughness, metal */
+  float rough = clamp(MR.g, 0.04, 1.0), metal = MR.b;
+  /* the baked normal map: tangent space, MikkTSpace tangents from the bake */
+  float3 nm = tn.sample(s, in.uv).xyz * 2.0 - 1.0;
+  float3 N0 = normalize(in.wn);
+  float3 T = in.wt - N0 * dot(N0, in.wt);
+  T = length(T) > 1e-6 ? normalize(T) : float3(1, 0, 0);
+  float3 Bt = cross(N0, T) * (in.tw < 0 ? -1.0 : 1.0);
+  float3 N = normalize(T * nm.x + Bt * nm.y + N0 * nm.z);
+  float ao = MR.r, so = saturate(ao * 1.3 - 0.1);                   /* ambient and specular occlusion */
+  /* the stored normals face out (the screen mapping mirrors y, so the
+     rasteriser's facing says nothing); an inside surface seen through the
+     glass is the only one that faces away from the eye */
+  if (dot(N0, u.eye.xyz - in.wp) < 0) { N = -N; N0 = -N0; }
+  /* paint: one colour and the livery over it; the livery is projected in the
+     car's own frame, sides from +-y and the top from +z */
+  if (paint > 0.0) {
+    float3 base = u.paint.rgb;
+    float3 ln = normalize((transpose(u.M) * float4(N0, 0)).xyz);
+    float2 us = float2((in.lp.x - u.liv.x) / u.liv.y, 1.0 - (in.lp.z - u.liv.z) / u.liv.w);
+    float2 ut = float2((in.lp.x - u.liv.x) / u.liv.y, (in.lp.y - u.livs.x) / u.livs.y);
+    float ws = pow(abs(ln.y), 3.0), wt = pow(saturate(ln.z), 3.0) * smoothstep(u.livs.z, u.livs.w, in.lp.z);
+    float sw = ws + wt + 1e-4;                 /* the top ribbon stays on the bonnet, roof and boot */
+    float4 L = (ls.sample(sc, us) * ws + lt.sample(sc, ut) * wt) / sw;
+    L.rgb = pow(L.rgb, 2.2);
+    base = mix(base, L.rgb, L.a * saturate((ws + wt) * 3.0));
+    alb = mix(alb, base, paint);
+    rough = mix(rough, 0.32, paint); metal = mix(metal, 0.0, paint);
+  }
+  float3 V = normalize(u.eye.xyz - in.wp), L = u.sun.xyz, H = normalize(L + V);
+  float nl = saturate(dot(N, L)), nv = max(dot(N, V), 1e-3), nh = saturate(dot(N, H)), vh = saturate(dot(V, H));
+  float a = rough * rough;
+  float3 F0 = mix(float3(0.04), alb, metal);
+  float3 F = F0 + (1.0 - F0) * pow(1.0 - vh, 5.0);
+  float3 spec = D_ggx(nh, a) * V_sg(nl, nv, a) * F;
+  float3 kd = (1.0 - F) * (1.0 - metal);
+  float3 sunl = u.sunc.rgb * nl;
+  float3 amb = mix(u.grnd.rgb, u.skyc.rgb, N.z * 0.5 + 0.5) * ao;
+  float3 R = reflect(-V, N);
+  float3 Fr = F0 + (max(float3(1.0 - rough), F0) - F0) * pow(1.0 - nv, 5.0);
+  float3 env = mix(amb, env_at(u, th, in.wp, R, rough) * so, 1.0 - rough) * Fr;
+  float3 col = alb * kd * (sunl + amb) + spec * sunl + env;
+  /* clear coat on the paint */
+  if (paint > 0.0) {
+    float Fc = 0.04 + 0.96 * pow(1.0 - nv, 5.0);
+    float3 Hc = H; float nhc = saturate(dot(N0, Hc));
+    float3 cs = D_ggx(nhc, 0.03 * 0.03 + 0.002) * V_sg(saturate(dot(N0, L)), max(dot(N0, V), 1e-3), 0.03) * (0.04 + 0.96 * pow(1.0 - vh, 5.0)) * u.sunc.rgb * saturate(dot(N0, L));
+    float3 Rc = reflect(-V, N0);
+    col = col * (1.0 - Fc * paint) + (env_at(u, th, in.wp, Rc, 0.02) * Fc * so + cs) * paint * u.misc.w;
+  }
+  if (u.dbg.x > 0.5) {
+    int m = int(u.dbg.x);
+    col = m == 6 ? alb * kd * (sunl + amb) : m == 7 ? env : m == 8 ? spec * sunl : m == 9 ? float3(0.02, 0.2, 0.05) :
+          m == 1 ? pow(B.rgb, 2.2) * 2.0 : m == 2 ? float3(B.a) * 2.0 : m == 3 ? float3(ao) * 2.0 : m == 4 ? (N0 * 0.5 + 0.5) * 2.0 : float3(MR.g, MR.b, 0) * 2.0;
+  } else if (u.fogc.w > 0.5) col = mix(col, u.fogc.rgb, fogof(u, 1.0 / in.oow) / 255.0);
+  o.d = float(wfloat(in.oow)) / 65536.0;
+  if (u.misc.y > 0.5) {                        /* main view: pre-lit, to the fx composite */
+    o.c = float4(pow(saturate(col / 4.0), 1.0 / 2.2), 1);
+    o.n = float4(N0, 1); o.g = float4(in.wp, 4.0);
+  } else {                                     /* another view: finished here */
+    o.c = float4(pow(aces(col * u.misc.z), 1.0 / 2.2), 1);
+    o.n = float4(0, 0, 0, 1); o.g = float4(0);
+  }
+  return o; }
+);
+
+typedef struct {
+    float M[16], P[16], HP[16];
+    float vpt[4], eye[4], sun[4], sunc[4], skyc[4], grnd[4], fogc[4], misc[4], liv[4], livs[4], paint[4], dbg[4], hvpt[4], hist[4];
+    float fogtab[64];
+} cu;
+
+typedef struct {
+    id<MTLBuffer> vb, ib;
+    int nv, ni;
+    id<MTLTexture> base, mr, nrm;
+    float *pos;                          /* the proxy keeps its positions on the CPU */
+    u32 *idx;
+} mesh;
+
+static id<MTLDevice> D;
+static id<MTLRenderPipelineState> g_pipe;
+static id<MTLDepthStencilState> g_ds;
+static mesh g_body, g_wheel, g_proxy;
+static id<MTLTexture> g_liv_side, g_liv_top;
+static int g_state;                      /* 0 not tried, 1 ready, -1 unavailable */
+static float g_paint[3] = { 0.03f, 0.22f, 0.07f };
+static float g_liv[4], g_livs[4];
+static float g_wheel_flip = 1;
+
+/* per list build: the car's transforms when its marker was queued */
+typedef struct { float car[16], wheel[4][16]; int drawn; } rec;
+static rec g_rec[16];
+static int g_nrec;
+static unsigned g_rec_serial = ~0u;
+static id<MTLBuffer> g_shadow[3];
+/* the last finished frame, for reflections, and the main view it was seen through */
+static id<MTLTexture> g_hist, g_black;
+static float g_hP[16], g_hvpt[4], g_curP[16], g_curvpt[4];
+static int g_hvalid, g_curvalid, g_horigin;
+static int g_shadow_i;
+
+static NSString *asset_dir(void)
+{
+    const char *e = getenv("BR_REMASTER_DIR");
+    NSString *r;
+    if (e) return [NSString stringWithUTF8String:e];
+    r = [[NSBundle mainBundle].resourcePath stringByAppendingPathComponent:@"remaster"];
+    if ([[NSFileManager defaultManager] fileExistsAtPath:[r stringByAppendingPathComponent:@"car.cfg"]]) return r;
+    return @"ports/common/models/es/pack";
+}
+
+static id<MTLTexture> load_tex(NSString *path, int srgb_unused)
+{
+    NSData *data = [NSData dataWithContentsOfFile:path];
+    NSBitmapImageRep *rep;
+    id<MTLTexture> t;
+    MTLTextureDescriptor *td;
+    int w, h, y;
+    u8 *px;
+    (void)srgb_unused;
+    if (!data) { fprintf(stderr, "car: missing %s\n", path.UTF8String); return nil; }
+    rep = [NSBitmapImageRep imageRepWithData:data];
+    if (!rep) return nil;
+    w = (int)rep.pixelsWide; h = (int)rep.pixelsHigh;
+    /* remaster_car.py writes 8-bit RGBA, straight alpha (the body's alpha
+     * is a mask, so it must not be premultiplied on the way in) */
+    if (rep.bitsPerSample != 8 || rep.samplesPerPixel != 4 || rep.isPlanar ||
+        (rep.bitmapFormat & (NSBitmapFormatAlphaFirst | NSBitmapFormatFloatingPointSamples))) {
+        fprintf(stderr, "car: %s is not 8-bit RGBA\n", path.UTF8String);
+        return nil;
+    }
+    px = malloc((size_t)w * h * 4);
+    for (y = 0; y < h; y++) memcpy(px + (size_t)y * w * 4, rep.bitmapData + (size_t)y * rep.bytesPerRow, (size_t)w * 4);
+    td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm
+                                                            width:(NSUInteger)w height:(NSUInteger)h mipmapped:YES];
+    td.usage = MTLTextureUsageShaderRead;
+    t = [D newTextureWithDescriptor:td];
+    [t replaceRegion:MTLRegionMake2D(0, 0, (NSUInteger)w, (NSUInteger)h) mipmapLevel:0 withBytes:px bytesPerRow:(NSUInteger)w * 4];
+    free(px);
+    {
+        id<MTLCommandQueue> q = [D newCommandQueue];
+        id<MTLCommandBuffer> cb = [q commandBuffer];
+        id<MTLBlitCommandEncoder> b = [cb blitCommandEncoder];
+        [b generateMipmapsForTexture:t];
+        [b endEncoding];
+        [cb commit];
+        [cb waitUntilCompleted];
+    }
+    return t;
+}
+
+/* .rcm: "RCM1", nv, ni, then nv * {pos3 nrm3 uv2 tan4} floats, then ni u32 */
+static int load_mesh(NSString *dir, NSString *name, mesh *m, int textured, int keep_cpu)
+{
+    NSData *d = [NSData dataWithContentsOfFile:[dir stringByAppendingPathComponent:[name stringByAppendingString:@".rcm"]]];
+    const u8 *p;
+    u32 nv, ni;
+    if (!d || d.length < 12) { fprintf(stderr, "car: missing %s.rcm\n", name.UTF8String); return 0; }
+    p = d.bytes;
+    if (memcmp(p, "RCM1", 4)) return 0;
+    memcpy(&nv, p + 4, 4); memcpy(&ni, p + 8, 4);
+    if (d.length < 12 + (size_t)nv * 48 + (size_t)ni * 4) return 0;
+    m->nv = (int)nv; m->ni = (int)ni;
+    m->vb = [D newBufferWithBytes:p + 12 length:(size_t)nv * 48 options:MTLResourceStorageModeShared];
+    m->ib = [D newBufferWithBytes:p + 12 + (size_t)nv * 48 length:(size_t)ni * 4 options:MTLResourceStorageModeShared];
+    if (keep_cpu) {
+        u32 i;
+        m->pos = malloc((size_t)nv * 12); m->idx = malloc((size_t)ni * 4);
+        for (i = 0; i < nv; i++) memcpy(m->pos + 3 * i, p + 12 + (size_t)i * 48, 12);
+        memcpy(m->idx, p + 12 + (size_t)nv * 48, (size_t)ni * 4);
+    }
+    if (textured) {
+        m->base = load_tex([dir stringByAppendingPathComponent:[name stringByAppendingString:@"_base.png"]], 1);
+        m->mr = load_tex([dir stringByAppendingPathComponent:[name stringByAppendingString:@"_orm.png"]], 0);
+        m->nrm = load_tex([dir stringByAppendingPathComponent:[name stringByAppendingString:@"_normal.png"]], 0);
+        if (!m->base || !m->mr || !m->nrm) return 0;
+    }
+    return 1;
+}
+
+static void setup(id<MTLDevice> dev)
+{
+    NSString *dir, *cfg;
+    NSError *err = nil;
+    id<MTLLibrary> lib;
+    MTLRenderPipelineDescriptor *pd;
+    if (g_state) return;
+    g_state = -1;
+    D = dev;
+    dir = asset_dir();
+    cfg = [NSString stringWithContentsOfFile:[dir stringByAppendingPathComponent:@"car.cfg"] encoding:NSUTF8StringEncoding error:nil];
+    if (!cfg) { fprintf(stderr, "car: no model in %s; the original car stays\n", dir.UTF8String); return; }
+    for (NSString *line in [cfg componentsSeparatedByString:@"\n"]) {
+        const char *l = line.UTF8String;
+        sscanf(l, "paint %f %f %f", &g_paint[0], &g_paint[1], &g_paint[2]);
+        sscanf(l, "livery_side %f %f %f %f", &g_liv[0], &g_liv[1], &g_liv[2], &g_liv[3]);
+        sscanf(l, "livery_top %f %f %f %f", &g_livs[0], &g_livs[1], &g_livs[2], &g_livs[3]);
+        sscanf(l, "wheel_flip %f", &g_wheel_flip);
+    }
+    if (!load_mesh(dir, @"body", &g_body, 1, 0) || !load_mesh(dir, @"wheel", &g_wheel, 1, 0) ||
+        !load_mesh(dir, @"proxy", &g_proxy, 0, 1))
+        return;
+    g_liv_side = load_tex([dir stringByAppendingPathComponent:@"livery_side.png"], 1);
+    g_liv_top = load_tex([dir stringByAppendingPathComponent:@"livery_top.png"], 1);
+    if (!g_liv_side || !g_liv_top) return;
+    lib = [D newLibraryWithSource:[NSString stringWithUTF8String:CARSRC] options:nil error:&err];
+    if (!lib) { fprintf(stderr, "car shader: %s\n", err.localizedDescription.UTF8String); return; }
+    pd = [MTLRenderPipelineDescriptor new];
+    pd.vertexFunction = [lib newFunctionWithName:@"cvs"];
+    pd.fragmentFunction = [lib newFunctionWithName:@"cfs"];
+    pd.colorAttachments[0].pixelFormat = MTLPixelFormatRGBA8Unorm;
+    pd.colorAttachments[1].pixelFormat = MTLPixelFormatRGBA16Float;
+    pd.colorAttachments[2].pixelFormat = MTLPixelFormatRGBA32Float;
+    pd.depthAttachmentPixelFormat = MTLPixelFormatDepth32Float;
+    g_pipe = [D newRenderPipelineStateWithDescriptor:pd error:&err];
+    if (!g_pipe) { fprintf(stderr, "car pipeline: %s\n", err.localizedDescription.UTF8String); return; }
+    {
+        MTLDepthStencilDescriptor *d = [MTLDepthStencilDescriptor new];
+        d.depthCompareFunction = MTLCompareFunctionLess;
+        d.depthWriteEnabled = YES;
+        g_ds = [D newDepthStencilStateWithDescriptor:d];
+    }
+    {
+        int i;
+        for (i = 0; i < 3; i++)
+            g_shadow[i] = [D newBufferWithLength:(size_t)g_proxy.ni * 14 * 4 options:MTLResourceStorageModeShared];
+    }
+    {
+        MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm width:1 height:1 mipmapped:NO];
+        u32 z = 0;
+        g_black = [D newTextureWithDescriptor:td];
+        [g_black replaceRegion:MTLRegionMake2D(0, 0, 1, 1) mipmapLevel:0 withBytes:&z bytesPerRow:4];
+    }
+    fprintf(stderr, "car: Remastered model loaded from %s (body %d tris, wheel %d)\n", dir.UTF8String, g_body.ni / 3, g_wheel.ni / 3);
+    g_state = 1;
+}
+
+int hcar_enabled(void)
+{
+    static int off = -1;
+    if (off < 0) off = getenv("BR_CAR") && !atoi(getenv("BR_CAR"));
+    if (off || !hfx_on()) return 0;
+    if (!g_state) setup(MTLCreateSystemDefaultDevice());
+    return g_state == 1;
+}
+
+/* The car's transforms as the list is built: its world matrix and the four
+ * wheel matrices (row vectors, metres). */
+int hcar_record(u32 car)
+{
+    rec *r;
+    int i;
+    if (hglide_swaps() != g_rec_serial) { g_rec_serial = hglide_swaps(); g_nrec = 0; }
+    if (g_nrec == 16) return -1;
+    r = &g_rec[g_nrec];
+    for (i = 0; i < 16; i++) r->car[i] = W_LD(f32, car, 4 * i);
+    for (i = 0; i < 64; i++) r->wheel[i / 16][i % 16] = W_LD(f32, car, 0x40 + 4 * i);
+    r->drawn = 0;
+    return g_nrec++;
+}
+
+static void inv4(const double *m, double *o)
+{
+    double a[4][8];
+    int i, j, k;
+    for (i = 0; i < 4; i++) for (j = 0; j < 8; j++) a[i][j] = j < 4 ? m[i * 4 + j] : (j - 4 == i);
+    for (i = 0; i < 4; i++) {
+        int p = i; double t;
+        for (k = i + 1; k < 4; k++) if (fabs(a[k][i]) > fabs(a[p][i])) p = k;
+        for (j = 0; j < 8; j++) { t = a[i][j]; a[i][j] = a[p][j]; a[p][j] = t; }
+        t = a[i][i]; if (t == 0) t = 1e-30;
+        for (j = 0; j < 8; j++) a[i][j] /= t;
+        for (k = 0; k < 4; k++) if (k != i) { t = a[k][i]; for (j = 0; j < 8; j++) a[k][j] -= t * a[i][j]; }
+    }
+    for (i = 0; i < 4; i++) for (j = 0; j < 4; j++) o[i * 4 + j] = a[i][j + 4];
+}
+
+/* host_fx.m's light rig for the weather, the same numbers */
+static void rig(cu *u)
+{
+    int w = (int)H32(0x104B15E8u);
+    float k, sc[3], sk[3], gr[3];
+    const char *ov = getenv("BR_FX_WEATHER"), *s = getenv("BR_FX_SUN");
+    double sun[3] = { 1, 1, 1.1 }, l;
+    if (ov) w = atoi(ov);
+    u->misc[2] = w == 2 ? 1.12f : w == 4 ? 1.25f : w == 3 ? 1.05f : w == 1 ? 1.08f : 1.08f;   /* the fx exposure */
+    u->misc[3] = w == 2 || w == 4 ? 1.0f : 0.85f;                                            /* coat strength */
+    /* host_fx.m's rig for true-albedo models, so the two never drift apart */
+    if (hfx_car_rig(u->sun, u->sunc, u->skyc, u->grnd)) return;
+    switch (w) {
+    case 4:  k = 0.28f; sc[0] = 0.85f; sc[1] = 0.9f; sc[2] = 1.0f; sk[0] = 0.62f; sk[1] = 0.68f; sk[2] = 0.78f; gr[0] = 0.32f; gr[1] = 0.32f; gr[2] = 0.33f; break;
+    case 2:  k = 0.10f; sc[0] = 0.8f; sc[1] = 0.85f; sc[2] = 1.0f; sk[0] = 0.48f; sk[1] = 0.53f; sk[2] = 0.64f; gr[0] = 0.22f; gr[1] = 0.22f; gr[2] = 0.24f; break;
+    case 3:  k = 0.75f; sc[0] = 1.0f; sc[1] = 0.97f; sc[2] = 0.95f; sk[0] = 0.62f; sk[1] = 0.68f; sk[2] = 0.8f; gr[0] = 0.62f; gr[1] = 0.64f; gr[2] = 0.7f; break;
+    case 1:  k = 0.3f; sc[0] = 1.0f; sc[1] = 0.97f; sc[2] = 0.92f; sk[0] = 0.66f; sk[1] = 0.68f; sk[2] = 0.7f; gr[0] = 0.4f; gr[1] = 0.39f; gr[2] = 0.37f; break;
+    default: k = 1.6f; sc[0] = 1.0f; sc[1] = 0.91f; sc[2] = 0.76f; sk[0] = 0.40f; sk[1] = 0.48f; sk[2] = 0.62f; gr[0] = 0.34f; gr[1] = 0.28f; gr[2] = 0.21f; break;
+    }
+    if (s) sscanf(s, "%lf,%lf,%lf", &sun[0], &sun[1], &sun[2]);
+    l = sqrt(sun[0] * sun[0] + sun[1] * sun[1] + sun[2] * sun[2]);
+    u->sun[0] = (float)(sun[0] / l); u->sun[1] = (float)(sun[1] / l); u->sun[2] = (float)(sun[2] / l);
+    u->sun[3] = k > 0.2f ? 1.0f : 0.0f;
+    u->sunc[0] = sc[0] * k; u->sunc[1] = sc[1] * k; u->sunc[2] = sc[2] * k;
+    memcpy(u->skyc, sk, 12); memcpy(u->grnd, gr, 12);
+    u->misc[2] = w == 2 ? 1.4f : w == 4 ? 1.35f : w == 3 ? 1.2f : w == 1 ? 1.3f : 1.35f;   /* the fx exposure */
+    u->misc[3] = w == 2 || w == 4 ? 1.0f : 0.85f;                                            /* coat strength */
+}
+
+static void mul44(const float *a, const float *b, float *o)
+{
+    int i, j, k;
+    for (i = 0; i < 4; i++) for (j = 0; j < 4; j++) { float s = 0; for (k = 0; k < 4; k++) s += a[i * 4 + k] * b[k * 4 + j]; o[i * 4 + j] = s; }
+}
+
+static void draw_mesh(id<MTLRenderCommandEncoder> e, mesh *m, cu *u, int paint)
+{
+    u->paint[3] = (float)paint;
+    [e setVertexBuffer:m->vb offset:0 atIndex:0];
+    [e setVertexBytes:u length:sizeof *u atIndex:1];
+    [e setFragmentBytes:u length:sizeof *u atIndex:0];
+    [e setFragmentTexture:m->base atIndex:0];
+    [e setFragmentTexture:m->mr atIndex:1];
+    [e setFragmentTexture:m->nrm atIndex:2];
+    [e setFragmentTexture:g_liv_side atIndex:3];
+    [e setFragmentTexture:g_liv_top atIndex:4];
+    [e setFragmentTexture:g_hist ? g_hist : g_black atIndex:5];
+    [e drawIndexedPrimitives:MTLPrimitiveTypeTriangle indexCount:(NSUInteger)m->ni indexType:MTLIndexTypeUInt32
+                 indexBuffer:m->ib indexBufferOffset:0];
+}
+
+/* the proxy in world space, as host_fx.m's shadow pass takes geometry */
+static void cast_shadow(const float *M)
+{
+    id<MTLBuffer> b = g_shadow[g_shadow_i = (g_shadow_i + 1) % 3];
+    float *o = b.contents;
+    int i;
+    for (i = 0; i < g_proxy.ni; i++) {
+        const float *p = g_proxy.pos + 3 * g_proxy.idx[i];
+        float *v = o + 14 * i;
+        memset(v, 0, 14 * 4);
+        v[10] = p[0] * M[0] + p[1] * M[4] + p[2] * M[8] + M[12];
+        v[11] = p[0] * M[1] + p[1] * M[5] + p[2] * M[9] + M[13];
+        v[12] = p[0] * M[2] + p[1] * M[6] + p[2] * M[10] + M[14];
+        v[13] = 1;
+    }
+    hfx_shadow_batch(b, 0, g_proxy.ni, nil, nil, 7, 0, 0, 1, 1);
+}
+
+void hcar_draw(int slot)
+{
+    id<MTLDevice> dev;
+    id<MTLRenderCommandEncoder> e;
+    MTLScissorRect sc;
+    int origin_ll, fogmode, i, main;
+    float fogc[4];
+    cu u;
+    rec *r;
+    double P[16], IP[16];
+    if (g_state != 1 || slot < 0 || slot >= g_nrec || hglide_swaps() != g_rec_serial) return;
+    r = &g_rec[slot];
+    memset(&u, 0, sizeof u);
+    e = hglide_native_pass(&dev, &sc, &origin_ll, &fogmode, fogc, u.fogtab);
+    for (i = 0; i < 16; i++) { u.P[i] = W_LD(f32, 0x105CCD00u, 4 * i); P[i] = u.P[i]; }
+    u.vpt[0] = W_LD(f32, 0x105CCD48u, 0); u.vpt[1] = W_LD(f32, 0x105CD9F8u, 0);
+    u.vpt[2] = W_LD(f32, 0x105CCFDCu, 0); u.vpt[3] = W_LD(f32, 0x105CD9FCu, 0);
+    inv4(P, IP);
+    {   /* the eye: clip-space (0,0,1,0) back into the world */
+        double h[4]; int j;
+        for (j = 0; j < 4; j++) h[j] = IP[8 + j];
+        for (j = 0; j < 3; j++) u.eye[j] = (float)(h[j] / h[3]);
+    }
+    rig(&u);
+    main = !r->drawn;                    /* the main view's pass runs first; the mirror's after */
+    r->drawn = 1;
+    u.misc[0] = (float)origin_ll;
+    u.misc[1] = (float)main;
+    u.fogc[0] = fogc[0] / 255.0f; u.fogc[1] = fogc[1] / 255.0f; u.fogc[2] = fogc[2] / 255.0f;
+    u.fogc[3] = (float)(fogmode & 1);
+    {
+        int k;
+        for (k = 0; k < 3; k++) u.fogc[k] = powf(u.fogc[k], 2.2f);
+    }
+    memcpy(u.liv, g_liv, sizeof g_liv);
+    memcpy(u.livs, g_livs, sizeof g_livs);
+    memcpy(u.paint, g_paint, sizeof g_paint);   /* linear */
+    if (getenv("BR_CAR_DEBUG")) u.dbg[0] = (float)atoi(getenv("BR_CAR_DEBUG"));
+
+    if (main) { memcpy(g_curP, u.P, sizeof g_curP); memcpy(g_curvpt, u.vpt, sizeof g_curvpt); g_curvalid = 1; g_horigin = origin_ll; }
+    if (g_hvalid && g_hist) {
+        memcpy(u.HP, g_hP, sizeof u.HP); memcpy(u.hvpt, g_hvpt, sizeof u.hvpt);
+        u.hist[0] = 1; u.hist[1] = (float)g_horigin; u.hist[2] = u.misc[2];
+        u.hist[3] = r->car[14] - 0.28f;          /* the ground under the car */
+    }
+    [e setRenderPipelineState:g_pipe];
+    [e setDepthStencilState:g_ds];
+    [e setScissorRect:sc];
+    [e setCullMode:MTLCullModeNone];
+    memcpy(u.M, r->car, sizeof u.M);
+    draw_mesh(e, &g_body, &u, 1);
+    for (i = 0; i < 4; i++) {
+        /* the wheel's face points out of the car on both sides: the model's
+         * outer face is its +y; on the car's -y side turn it half round about
+         * its vertical axis (a rotation, so the winding and the spin stay) */
+        const float *W = r->wheel[i];
+        float side = (W[12] - r->car[12]) * r->car[4] + (W[13] - r->car[13]) * r->car[5] + (W[14] - r->car[14]) * r->car[6];
+        float flip[16] = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
+        if ((side < 0) == (g_wheel_flip > 0)) { flip[0] = -1; flip[5] = -1; }
+        mul44(flip, W, u.M);
+        draw_mesh(e, &g_wheel, &u, 0);
+    }
+    if (main) cast_shadow(r->car);
+    if (getenv("BR_CARLOG") && hglide_swaps() % 120 == 0) {
+        const float *C = r->car;
+        float c[4]; int j;
+        for (j = 0; j < 4; j++) c[j] = C[12] * u.P[j] + C[13] * u.P[4 + j] + C[14] * u.P[8 + j] + u.P[12 + j];
+        fprintf(stderr, "car: main %d P %g %g %g %g / %g %g %g %g / %g %g %g %g / %g %g %g %g  clip(pos) %g %g %g %g  vpt %g %g %g %g eye %g %g %g\n", main,
+                u.P[0], u.P[1], u.P[2], u.P[3], u.P[4], u.P[5], u.P[6], u.P[7], u.P[8], u.P[9], u.P[10], u.P[11], u.P[12], u.P[13], u.P[14], u.P[15],
+                c[0], c[1], c[2], c[3], u.vpt[0], u.vpt[1], u.vpt[2], u.vpt[3], u.eye[0], u.eye[1], u.eye[2]);
+        fprintf(stderr, "car: pos %.2f %.2f %.2f  x %.2f %.2f %.2f  y %.2f %.2f %.2f  z %.2f %.2f %.2f\n",
+                C[12], C[13], C[14], C[0], C[1], C[2], C[4], C[5], C[6], C[8], C[9], C[10]);
+        for (i = 0; i < 4; i++) {
+            const float *W = r->wheel[i];
+            float d[3] = { W[12] - C[12], W[13] - C[13], W[14] - C[14] };
+            fprintf(stderr, "car:   wheel %d local %.3f %.3f %.3f  axle %.2f %.2f %.2f\n", i,
+                    d[0] * C[0] + d[1] * C[1] + d[2] * C[2], d[0] * C[4] + d[1] * C[5] + d[2] * C[6],
+                    d[0] * C[8] + d[1] * C[9] + d[2] * C[10], W[4], W[5], W[6]);
+        }
+    }
+}
+
+/* host_glide.m, at every swap with the finished picture: keep it (mip-mapped)
+ * as the next frame's reflection source, with the main view it was seen
+ * through.  A frame with no car keeps nothing. */
+void hcar_frame_end(id<MTLCommandBuffer> cb, id<MTLTexture> pic)
+{
+    id<MTLBlitCommandEncoder> b;
+    if (g_state != 1 || !g_curvalid || !pic) { g_hvalid = 0; g_curvalid = 0; return; }
+    if (!g_hist || g_hist.width != pic.width || g_hist.height != pic.height) {
+        MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm
+                                        width:pic.width height:pic.height mipmapped:YES];
+        td.usage = MTLTextureUsageShaderRead;
+        td.storageMode = MTLStorageModePrivate;
+        g_hist = [D newTextureWithDescriptor:td];
+    }
+    b = [cb blitCommandEncoder];
+    [b copyFromTexture:pic sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(0, 0, 0) sourceSize:MTLSizeMake(pic.width, pic.height, 1)
+             toTexture:g_hist destinationSlice:0 destinationLevel:0 destinationOrigin:MTLOriginMake(0, 0, 0)];
+    [b generateMipmapsForTexture:g_hist];
+    [b endEncoding];
+    memcpy(g_hP, g_curP, sizeof g_hP); memcpy(g_hvpt, g_curvpt, sizeof g_hvpt);
+    g_hvalid = 1; g_curvalid = 0;
+}

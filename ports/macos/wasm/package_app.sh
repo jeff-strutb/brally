@@ -13,6 +13,7 @@
 #                                   and their cues, and Barry Leitch's own
 #                                   recordings of the six pieces with their
 #                                   loop points when those are supplied
+#   Contents/Resources/remaster/    the Remastered player car's model and maps
 #   Contents/Resources/Licenses/    libopenmpt and the codecs linked with it
 #
 # Sources, all required (a partial app must not look like a complete one):
@@ -140,6 +141,13 @@ cp -Rc $EX/disc "$APP/Contents/Resources/disc" 2>/dev/null || cp -R $EX/disc "$A
 for m in cd n64; do
     cp -Rc $EX/music/$m "$APP/Contents/Resources/music/$m" 2>/dev/null || cp -R $EX/music/$m "$APP/Contents/Resources/music/$m"
 done
+
+# the Remastered player car (host/host_car.m): the pack remaster_car.py writes;
+# without it the Remastered renderer draws the original car
+if [ -f ports/common/models/es/pack/car.cfg ]; then
+    rm -rf "$APP/Contents/Resources/remaster"
+    cp -Rc ports/common/models/es/pack "$APP/Contents/Resources/remaster" 2>/dev/null || cp -R ports/common/models/es/pack "$APP/Contents/Resources/remaster"
+fi
 
 # the licences of the libraries linked into the binary (build_wasm.sh MPT_LIBS)
 BREW=${BR_BREW:-/opt/homebrew/opt}

@@ -70,3 +70,7 @@ vc50.pdb
 *.pdb
 tools/msvc40/
 tools/msvc41/
+
+# the Remastered models (sources, concepts, decimated and packed); large, kept
+# out of git for now
+ports/common/models/

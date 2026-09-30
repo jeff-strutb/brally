@@ -21,9 +21,14 @@
  * BR_GLIDE3D=1 runs the original leaves instead, for side-by-side checks.
  */
 #include <stdlib.h>
+#include <string.h>
+#include <math.h>
 #include "w2c_native.h"
 
 void hglide_tri_h(const float *a, const float *b, const float *c, int noz);
+void hfx_set_cam(const float *P, float sx, float tx, float sy, float ty);
+int hfx_on(void);
+unsigned hglide_swaps(void);
 
 /* the vertex pool (br_dl.h, BrDlVtx) */
 #define POOL        0x105CE318u
@@ -56,6 +61,57 @@ static int glide3d(void)
 
 #define F(a) W_LD(f32, (a), 0)
 
+/* The fx G-buffer (host_fx.m) wants each corner's world position.  The
+ * display-list machine's projection slot 0x105CCD00 holds the camera's view
+ * x projection (BrCamMatrixSetup's g_BrCurMat), so a clip-space corner times
+ * its inverse is the corner in the world.  The first depth-buffered triangle
+ * of a frame names the main camera; triangles drawn through another (the
+ * rear-view mirror) are marked and left unlit. */
+#define PROJ 0x105CCD00u
+static float g_P[16], g_mainP[16];
+static double g_IP[16];
+static int g_have_main, g_cur_main;
+static unsigned g_serial = ~0u;
+
+static void inv4(const double *m, double *o)
+{
+    double a[4][8];
+    int i, j, k;
+    for (i = 0; i < 4; i++) for (j = 0; j < 8; j++) a[i][j] = j < 4 ? m[i * 4 + j] : (j - 4 == i);
+    for (i = 0; i < 4; i++) {
+        int p = i; double t;
+        for (k = i + 1; k < 4; k++) if (fabs(a[k][i]) > fabs(a[p][i])) p = k;
+        for (j = 0; j < 8; j++) { t = a[i][j]; a[i][j] = a[p][j]; a[p][j] = t; }
+        t = a[i][i]; if (t == 0) t = 1e-30;
+        for (j = 0; j < 8; j++) a[i][j] /= t;
+        for (k = 0; k < 4; k++) if (k != i) { t = a[k][i]; for (j = 0; j < 8; j++) a[k][j] -= t * a[i][j]; }
+    }
+    for (i = 0; i < 4; i++) for (j = 0; j < 4; j++) o[i * 4 + j] = a[i][j + 4];
+}
+
+static void fx_camera(int noz)
+{
+    float P[16];
+    int i;
+    unsigned sw = hglide_swaps();
+    for (i = 0; i < 16; i++) P[i] = F(PROJ + 4 * i);
+    if (sw != g_serial) { g_serial = sw; g_have_main = 0; }
+    if (memcmp(P, g_P, sizeof P)) {
+        double d[16];
+        memcpy(g_P, P, sizeof P);
+        for (i = 0; i < 16; i++) d[i] = P[i];
+        inv4(d, g_IP);
+    }
+    if (!g_have_main && !noz) {
+        memcpy(g_mainP, P, sizeof P);
+        g_have_main = 1;
+        hfx_set_cam(P, F(VP_SCALE_X), F(VP_TRANS_X), F(VP_SCALE_Y), F(VP_TRANS_Y));
+    }
+    /* the backdrop is drawn before the frame's first depth-buffered
+     * triangle: it belongs to the main view */
+    g_cur_main = g_have_main ? !memcmp(P, g_mainP, sizeof P) : noz;
+}
+
 /* One corner for the host: Glide screen space, homogeneous. */
 static void corner(float *o, u32 v, u32 colour_from)
 {
@@ -70,6 +126,14 @@ static void corner(float *o, u32 v, u32 colour_from)
     o[7] = F(v + V_A);
     o[8] = F(v + V_S) * F(TEX_SCALE_S);
     o[9] = F(v + V_T) * F(TEX_SCALE_T);
+    {
+        double c[4] = { F(v + V_CX), F(v + V_CY), F(v + V_CZ), F(v + V_CW) }, h[4];
+        int j;
+        for (j = 0; j < 4; j++) h[j] = c[0] * g_IP[j] + c[1] * g_IP[4 + j] + c[2] * g_IP[8 + j] + c[3] * g_IP[12 + j];
+        if (h[3] == 0) h[3] = 1e-30;
+        o[10] = (float)(h[0] / h[3]); o[11] = (float)(h[1] / h[3]); o[12] = (float)(h[2] / h[3]);
+        o[13] = g_cur_main ? 1.0f : 3.0f;
+    }
 }
 
 /* Draw pool entries ia, ib, ic; `flat` gives every corner ia's colour; `noz`
@@ -77,9 +141,10 @@ static void corner(float *o, u32 v, u32 colour_from)
 static void tri(u32 ia, u32 ib, u32 ic, int flat, int noz)
 {
     u32 a = POOL + ia * VSZ, b = POOL + ib * VSZ, c = POOL + ic * VSZ;
-    float va[10], vb[10], vc[10];
+    float va[14], vb[14], vc[14];
     if (W_LD(s32, a + V_OUTCODE, 0) & W_LD(s32, b + V_OUTCODE, 0) & W_LD(s32, c + V_OUTCODE, 0))
         return;                          /* all outside one plane */
+    if (hfx_on()) fx_camera(noz); else g_cur_main = 0;
     corner(va, a, a);
     corner(vb, b, flat ? a : b);
     corner(vc, c, flat ? a : c);

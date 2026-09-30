@@ -26,6 +26,7 @@ static u8 g_vk[256];
 void hdx_mouse(int dx, int dy, int btn);
 void hdx_mouse_abs(int x, int y, int btn);
 void hdx_mouse_btn(int btn);
+int hfx_key(NSEvent *e);
 
 /* macOS virtual key code -> (DirectInput scan code, Windows VK) */
 static const struct { u16 mac; u8 dik; u8 vk; } KEYMAP[] = {
@@ -231,6 +232,8 @@ void happ_pump(int block_ms)
     @autoreleasepool {
         while ((e = [NSApp nextEventMatchingMask:NSEventMaskAny untilDate:until
                                           inMode:NSDefaultRunLoopMode dequeue:YES])) {
+            if ((e.type == NSEventTypeKeyDown || e.type == NSEventTypeKeyUp) && hfx_key(e))
+                continue;                              /* ~: host_fx.m's Remastered / Original */
             switch (e.type) {
             case NSEventTypeKeyDown:
                 /* a Command chord is the menu bar's (Quit, View > Enter Full
