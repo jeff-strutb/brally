@@ -14,23 +14,27 @@
  * the game's own code, so the game asks for exactly what it asked for on
  * Windows. What answers is AVAudioEngine:
  *
- *   PC   the disc's CD audio, track NN.flac, streamed by an AVAudioPlayerNode
+ *   PC   the disc's CD audio, track NN.flac, streamed into an AVAudioPlayerNode
  *   N64  Top Gear Rally's music, looping forever as on the N64. The N64
  *        game's own cues pick the piece (extract_modules.py): its title
  *        piece for track 2, and for a race track (3 up) one of the five
  *        per-track race pieces, (track - 3) mod 5. With Barry Leitch's own
- *        recordings of the six pieces in the app (ost_loops.py), those
- *        play: an AVAudioPlayerNode plays [0, loop_end) and then
- *        [loop_start, loop_end) over and over, queued back to back, so the
- *        loop is a hard, gapless, sample-exact jump at the point where the
- *        recording's two passes match, and the fade at its end is never
- *        reached. Without them the ROM's modules play live through
+ *        recordings of the six pieces in the app (ost_loops.py, which also
+ *        clears them of the PAL hardware's hum), those play: [0, loop_end)
+ *        and then [loop_start, loop_end) over and over, streamed back to
+ *        back, so the loop is a hard, gapless, sample-exact jump at the
+ *        point where the recording's two passes match, and the fade at its
+ *        end is never reached. Without them the ROM's modules play live through
  *        libopenmpt in an AVAudioSourceNode.
  *
- * The player chooses the soundtrack in the Music menu; the choice is
- * remembered, a soundtrack whose files are missing is disabled there, and
- * switching mid-track restarts the current cue in the other soundtrack.
- * Levels: the modules are rendered 4.0 dB down, which puts their mean
+ * Which one is heard is the version the port is being, PC or N64
+ * (native/version.m, Tab). Both play every cue at once, each through its
+ * own submix, the one not heard at zero gain, so a switch crossfades
+ * (FADE_S, equal power) to the other where it has got to: switching back
+ * and forth never restarts either. The CD tracks end and the game moves on
+ * to the next one whichever version is heard; the N64 piece loops on under
+ * that, as on the N64, and changes only when the game asks for a new cue.
+ * A version whose files are missing is silence. Levels: the modules are rendered 4.0 dB down, which puts their mean
  * integrated loudness (-16.2 LUFS) within 0.6 dB of the CD tracks' (-15.6)
  * and keeps the loudest module's +4.0 dBFS peak below full scale
  * (measured 2026-09-29, ffmpeg ebur128). The recordings get the gain
@@ -46,16 +50,16 @@
  * Silent (the game's state still moves, nothing is heard and no track
  * ever ends) when headless or with BR_MUSIC=0. Data: the app's
  * Resources/music, else BR_MUSIC_DIR, else build/app/extract/music.
- * BR_MUSICWAV=path records the music output to a file; BR_MUSICSWAP=s
- * picks the other soundtrack through the Music menu's action s seconds
- * after the first track starts (checks the switch without a click);
- * BR_MUSICLOOPTEST=s starts a recording s seconds before its loop end
+ * BR_MUSICWAV=path records the music output to a file (a script's
+ * `version` command switches, as Tab does); BR_MUSICLOOPTEST=s starts a recording s seconds before its loop end
  * (checks the loop without waiting minutes for it).
  */
 #import <AVFoundation/AVFoundation.h>
 #import <Cocoa/Cocoa.h>
 #import <QuartzCore/QuartzCore.h>
 #include <libopenmpt/libopenmpt.h>
+#include <dispatch/dispatch.h>
+#include <math.h>
 #include <os/lock.h>
 #include <stdatomic.h>
 #include <stdlib.h>
@@ -88,10 +92,11 @@
 void h_srand(u32 s);
 NSWindow *happ_window(void);
 
-#define RATE 44100
 #define N64_GAIN_MB (-400)            /* millibel, see the header */
 
-enum { ST_PC, ST_N64 };
+#define FADE_S 0.5                    /* the version crossfade, seconds */
+
+enum { ST_PC = HV_PC, ST_N64 = HV_N64 };
 
 static struct {
     int init, silent;
@@ -103,46 +108,70 @@ static struct {
     NSDictionary *rec_title;          /* the recordings, when all are present */
     NSArray<NSDictionary *> *rec_race;
     float rec_gain_db;
-    int soundtrack;
+    int soundtrack;                   /* the version heard: native/version.m's */
     int track;                        /* the CD track number playing, 0 none */
     int paused;
+    int advancing;                    /* the PC track ended: only it moves on */
     float volume;
     AVAudioEngine *engine;
+    AVAudioMixerNode *mix[2];         /* each version's submix, crossfaded */
     AVAudioPlayerNode *cd;
     AVAudioSourceNode *mod_node;
     AVAudioUnitEffect *limiter;
     AVAudioPlayerNode *rec;
     AVAudioUnitEQ *rec_eq;
-    AVAudioFormat *rec_fmt;
-    atomic_uint gen, ended;
+    AVAudioFormat *fmt;               /* the output device's rate: every source's */
+    atomic_uint gen[2], ended;        /* per version: a stale callback is ignored */
     os_unfair_lock lock;              /* guards mod against the render thread */
     openmpt_module *mod;
-    NSMenuItem *item[2];
 } M = { .lock = OS_UNFAIR_LOCK_INIT, .volume = 1.0f };
+
+/* The crossfade: x runs from 0 (the PC version alone) to 1 (the N64 one
+ * alone) at 1/FADE_S per second, and the two submixes get equal-power
+ * gains cos and sin of x * pi/2, so the sum stays as loud through the fade.
+ * It runs on its own queue at 4 ms steps (a fifth of a render buffer or
+ * less), so the game's frame loop can neither stall nor step it; a Tab in
+ * the middle of a fade just turns it round from where it is. */
+static struct {
+    dispatch_queue_t q;
+    dispatch_source_t timer;
+    double x, last;
+    int target;
+} X;
+
+static void fade_apply(void)
+{
+    M.mix[ST_PC].outputVolume = (float)cos(X.x * M_PI_2);
+    M.mix[ST_N64].outputVolume = (float)sin(X.x * M_PI_2);
+}
+
+static void fade(int v, int now)
+{
+    dispatch_async(X.q, ^{
+        X.target = v;
+        if (now) X.x = v;
+        fade_apply();
+        if (now || X.timer || X.x == v) return;
+        X.last = CACurrentMediaTime();
+        X.timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, X.q);
+        dispatch_source_set_timer(X.timer, DISPATCH_TIME_NOW, 4 * NSEC_PER_MSEC, NSEC_PER_MSEC);
+        dispatch_source_set_event_handler(X.timer, ^{
+            double t = CACurrentMediaTime(), d = (t - X.last) / FADE_S;
+            X.last = t;
+            X.x = X.target ? fmin(X.x + d, 1) : fmax(X.x - d, 0);
+            fade_apply();
+            if (X.x == X.target) {
+                dispatch_source_cancel(X.timer);
+                X.timer = nil;
+            }
+        });
+        dispatch_resume(X.timer);
+    });
+}
 
 static void play(int track);
 u32 n_FUN_10002980(u32 hwnd);
 u32 n_FUN_100027e0(void);
-
-@interface BRMusicMenu : NSObject
-@end
-@implementation BRMusicMenu
-- (void)choose:(NSMenuItem *)it
-{
-    int st = (int)it.tag;
-    if (st == M.soundtrack || !M.have[st]) return;
-    M.soundtrack = st;
-    [[NSUserDefaults standardUserDefaults] setObject:st == ST_N64 ? @"n64" : @"pc" forKey:@"Soundtrack"];
-    M.item[ST_PC].state = st == ST_PC ? NSControlStateValueOn : NSControlStateValueOff;
-    M.item[ST_N64].state = st == ST_N64 ? NSControlStateValueOn : NSControlStateValueOff;
-    if (M.track) {
-        int was = M.paused;
-        play(M.track);
-        if (was) { M.paused = 1; [M.cd pause]; [M.rec pause]; }
-    }
-}
-- (BOOL)validateMenuItem:(NSMenuItem *)it { return M.have[it.tag]; }
-@end
 
 static NSString *music_root(void)
 {
@@ -154,34 +183,10 @@ static NSString *music_root(void)
     return [@(getenv("BR_ROOT") ? getenv("BR_ROOT") : ".") stringByAppendingPathComponent:@"build/app/extract/music"];
 }
 
-static void menu_init(void)
-{
-    static BRMusicMenu *target;
-    NSMenu *bar = NSApp.mainMenu, *m;
-    NSMenuItem *top;
-    int i;
-    if (!bar) return;
-    target = [BRMusicMenu new];
-    m = [[NSMenu alloc] initWithTitle:@"Music"];
-    M.item[ST_PC] = [m addItemWithTitle:@"PC Soundtrack (CD Audio)" action:@selector(choose:) keyEquivalent:@""];
-    M.item[ST_N64] = [m addItemWithTitle:@"N64 Soundtrack (Top Gear Rally)" action:@selector(choose:) keyEquivalent:@""];
-    for (i = 0; i < 2; i++) {
-        M.item[i].tag = i;
-        M.item[i].target = target;
-        M.item[i].state = i == M.soundtrack ? NSControlStateValueOn : NSControlStateValueOff;
-    }
-    top = [bar addItemWithTitle:@"Music" action:nil keyEquivalent:@""];
-    top.submenu = m;
-    HLOG("music: menu bar:");
-    for (NSMenuItem *t in bar.itemArray)
-        HLOG(" [%s]", t.submenu.title.UTF8String);
-    HLOG("\n");
-}
-
 static void music_init(void)
 {
     NSFileManager *fm = [NSFileManager defaultManager];
-    NSString *root, *pref;
+    NSString *root;
     const char *e = getenv("BR_MUSIC");
     int t;
     if (M.init) return;
@@ -212,9 +217,7 @@ static void music_init(void)
             }
         }
     }
-    pref = [[NSUserDefaults standardUserDefaults] stringForKey:@"Soundtrack"];
-    M.soundtrack = [pref isEqualToString:@"n64"] ? ST_N64 : ST_PC;
-    if (!M.have[M.soundtrack]) M.soundtrack = !M.soundtrack;
+    M.soundtrack = hversion();
     fprintf(stderr, "music: %s; PC %s (tracks 2-%d), N64 %s; playing %s\n", root.UTF8String,
             M.have[ST_PC] ? "yes" : "no", M.cd_last,
             !M.have[ST_N64] ? "no" : M.rec_title ? "yes (recordings)" : "yes (modules)",
@@ -222,21 +225,30 @@ static void music_init(void)
 
     M.silent = !happ_window() || (e && !atoi(e)) || !(M.have[0] || M.have[1]);
     if (M.silent) return;
-    menu_init();
     M.engine = [AVAudioEngine new];
+    /* Everything runs at the output device's rate, so the engine converts
+     * nothing: its own converter (the mixers') is a cheap one, measured
+     * 2026-09-29 at 20 dB signal to error on a CD track taken to 48 kHz,
+     * heard as fuzz and crackle. Each file is converted as it streams, by
+     * feed() below; the modules render at this rate directly. */
+    M.fmt = [[AVAudioFormat alloc] initStandardFormatWithSampleRate:
+               [M.engine.outputNode outputFormatForBus:0].sampleRate channels:2];
+    for (t = 0; t < 2; t++) {
+        M.mix[t] = [AVAudioMixerNode new];
+        [M.engine attachNode:M.mix[t]];
+        [M.engine connect:M.mix[t] to:M.engine.mainMixerNode format:M.fmt];
+    }
     M.cd = [AVAudioPlayerNode new];
     [M.engine attachNode:M.cd];
-    [M.engine connect:M.cd to:M.engine.mainMixerNode
-               format:[[AVAudioFormat alloc] initStandardFormatWithSampleRate:RATE channels:2]];
-    M.mod_node = [[AVAudioSourceNode alloc] initWithFormat:
-                    [[AVAudioFormat alloc] initStandardFormatWithSampleRate:RATE channels:2]
+    [M.engine connect:M.cd to:M.mix[ST_PC] format:M.fmt];
+    M.mod_node = [[AVAudioSourceNode alloc] initWithFormat:M.fmt
         renderBlock:^OSStatus(BOOL *silence, const AudioTimeStamp *ts, AVAudioFrameCount n, AudioBufferList *abl) {
             float *l = abl->mBuffers[0].mData, *r = abl->mNumberBuffers > 1 ? abl->mBuffers[1].mData : NULL;
             size_t got = 0;
             (void)ts;
             if (os_unfair_lock_trylock(&M.lock)) {
                 if (M.mod && !M.paused && r)
-                    got = openmpt_module_read_float_stereo(M.mod, RATE, n, l, r);
+                    got = openmpt_module_read_float_stereo(M.mod, (int32_t)M.fmt.sampleRate, n, l, r);
                 os_unfair_lock_unlock(&M.lock);
             }
             if (got < n) {
@@ -247,21 +259,19 @@ static void music_init(void)
             return noErr;
         }];
     [M.engine attachNode:M.mod_node];
-    [M.engine connect:M.mod_node to:M.engine.mainMixerNode
-               format:[[AVAudioFormat alloc] initStandardFormatWithSampleRate:RATE channels:2]];
+    [M.engine connect:M.mod_node to:M.mix[ST_N64] format:M.fmt];
     if (M.rec_title) {
-        NSString *p = [M.dir[ST_N64] stringByAppendingPathComponent:M.rec_title[@"file"]];
-        AVAudioFile *f = [[AVAudioFile alloc] initForReading:[NSURL fileURLWithPath:p] error:nil];
         M.rec = [AVAudioPlayerNode new];
         M.rec_eq = [[AVAudioUnitEQ alloc] initWithNumberOfBands:0];
         M.rec_eq.globalGain = M.rec_gain_db;
-        M.rec_fmt = f.processingFormat;
         [M.engine attachNode:M.rec];
         [M.engine attachNode:M.rec_eq];
-        [M.engine connect:M.rec to:M.rec_eq format:M.rec_fmt];
-        [M.engine connect:M.rec_eq to:M.engine.mainMixerNode format:M.rec_fmt];
+        [M.engine connect:M.rec to:M.rec_eq format:M.fmt];
+        [M.engine connect:M.rec_eq to:M.mix[ST_N64] format:M.fmt];
     }
     M.engine.mainMixerNode.outputVolume = M.volume;
+    X.q = dispatch_queue_create("music.fade", DISPATCH_QUEUE_SERIAL);
+    fade(M.soundtrack, 1);
     {
         /* The disc is mastered to full scale, and resampling it to the
          * device rate overshoots (+0.9 dBFS on track 2 at 48 kHz, measured
@@ -270,9 +280,7 @@ static void music_init(void)
          * it is. */
         AudioComponentDescription d = { kAudioUnitType_Effect, kAudioUnitSubType_PeakLimiter,
                                         kAudioUnitManufacturer_Apple, 0, 0 };
-        /* at the device's rate, so the conversion happens before the limit */
-        AVAudioFormat *out = [[AVAudioFormat alloc] initStandardFormatWithSampleRate:
-                                [M.engine.outputNode outputFormatForBus:0].sampleRate channels:2];
+        AVAudioFormat *out = M.fmt;
         M.limiter = [[AVAudioUnitEffect alloc] initWithAudioComponentDescription:d];
         [M.engine attachNode:M.limiter];
         [M.engine disconnectNodeOutput:M.engine.mainMixerNode];
@@ -314,31 +322,137 @@ static void mod_set(openmpt_module *m)
     if (old) openmpt_module_destroy(old);
 }
 
-static void stop(void)
+static void stop_cd(void)
 {
-    atomic_fetch_add(&M.gen, 1);
-    M.track = 0;
-    M.paused = 0;
+    atomic_fetch_add(&M.gen[ST_PC], 1);
+    if (!M.silent) [M.cd stop];
+}
+
+static void stop_n64(void)
+{
+    atomic_fetch_add(&M.gen[ST_N64], 1);
     if (M.silent) return;
-    [M.cd stop];
     [M.rec stop];
     mod_set(NULL);
+}
+
+static void stop(void)
+{
+    stop_cd();
+    stop_n64();
+    M.track = 0;
+    M.paused = 0;
+}
+
+/* A file streamed into a player, converted to the output rate on the way
+ * by AVAudioConverter at its best (the mastering algorithm, maximum
+ * quality): 0.25 s buffers, three queued ahead, each one converted on the
+ * feed's own queue as the player takes the one before. With a loop it
+ * reads [from, end) and then [loop, end) over and over: the converter sees
+ * one continuous stream in which frame end-1 is followed by frame loop, so
+ * the jump stays hard and sample-exact at the recording's own rate. Without
+ * one, when the file runs out the last buffer reports it (ended). */
+@interface BRFeed : NSObject {
+@public
+    AVAudioFile *file;
+    AVAudioConverter *cv;
+    AVAudioPCMBuffer *in;
+    AVAudioPlayerNode *player;
+    AVAudioFramePosition pos, end, loop;          /* loop < 0: none */
+    atomic_uint *genp;
+    unsigned gen;
+    int done;
+    void (^ended)(void);
+    dispatch_queue_t q;
+}
+@end
+@implementation BRFeed
+@end
+
+#define FEED_S 0.25
+#define FEED_AHEAD 3
+
+static void feed_next(BRFeed *F)
+{
+    AVAudioPCMBuffer *out;
+    NSError *err = nil;
+    AVAudioConverterOutputStatus st;
+    __block int eof = 0;
+    if (F->done || atomic_load(F->genp) != F->gen) return;
+    out = [[AVAudioPCMBuffer alloc] initWithPCMFormat:M.fmt
+                                        frameCapacity:(AVAudioFrameCount)(M.fmt.sampleRate * FEED_S)];
+    st = [F->cv convertToBuffer:out error:&err withInputFromBlock:
+          ^AVAudioBuffer *(AVAudioPacketCount n, AVAudioConverterInputStatus *s) {
+        AVAudioFrameCount k;
+        NSError *e = nil;
+        if (F->pos >= F->end) {
+            if (F->loop < 0) { eof = 1; *s = AVAudioConverterInputStatus_EndOfStream; return nil; }
+            F->pos = F->loop;
+        }
+        k = (AVAudioFrameCount)MIN((AVAudioFramePosition)MIN(n, F->in.frameCapacity), F->end - F->pos);
+        if (F->file.framePosition != F->pos) F->file.framePosition = F->pos;
+        if (![F->file readIntoBuffer:F->in frameCount:k error:&e] || !F->in.frameLength) {
+            fprintf(stderr, "music: read %s: %s\n", F->file.url.path.UTF8String, e.localizedDescription.UTF8String);
+            eof = 1; *s = AVAudioConverterInputStatus_EndOfStream; return nil;
+        }
+        F->pos += F->in.frameLength;
+        *s = AVAudioConverterInputStatus_HaveData;
+        return F->in;
+    }];
+    if (st == AVAudioConverterOutputStatus_Error) {
+        fprintf(stderr, "music: convert: %s\n", err.localizedDescription.UTF8String);
+        eof = 1;
+    }
+    F->done = eof || st == AVAudioConverterOutputStatus_EndOfStream;
+    if (!F->done) {
+        [F->player scheduleBuffer:out atTime:nil options:0
+           completionCallbackType:AVAudioPlayerNodeCompletionDataConsumed
+                completionHandler:^(AVAudioPlayerNodeCompletionCallbackType t) {
+            (void)t;
+            dispatch_async(F->q, ^{ feed_next(F); });
+        }];
+        return;
+    }
+    [F->player scheduleBuffer:out atTime:nil options:0
+       completionCallbackType:AVAudioPlayerNodeCompletionDataPlayedBack
+            completionHandler:^(AVAudioPlayerNodeCompletionCallbackType t) {
+        (void)t;
+        if (F->ended && atomic_load(F->genp) == F->gen) F->ended();
+    }];
+}
+
+/* start streaming path into player from frame `from` (see BRFeed); 0 when
+ * the file cannot be read */
+static int feed(AVAudioPlayerNode *player, int st, NSString *path, AVAudioFramePosition from,
+                AVAudioFramePosition end, AVAudioFramePosition loop, void (^ended)(void))
+{
+    NSError *err = nil;
+    BRFeed *F = [BRFeed new];
+    F->file = [[AVAudioFile alloc] initForReading:[NSURL fileURLWithPath:path] error:&err];
+    if (!F->file) { fprintf(stderr, "music: %s: %s\n", path.UTF8String, err.localizedDescription.UTF8String); return 0; }
+    F->cv = [[AVAudioConverter alloc] initFromFormat:F->file.processingFormat toFormat:M.fmt];
+    F->cv.sampleRateConverterAlgorithm = AVSampleRateConverterAlgorithm_Mastering;
+    F->cv.sampleRateConverterQuality = AVAudioQualityMax;
+    F->in = [[AVAudioPCMBuffer alloc] initWithPCMFormat:F->file.processingFormat frameCapacity:16384];
+    F->player = player;
+    F->pos = from;
+    F->end = end > 0 ? end : F->file.length;
+    F->loop = loop;
+    F->genp = &M.gen[st];
+    F->gen = atomic_load(&M.gen[st]);
+    F->ended = ended;
+    F->q = dispatch_queue_create("music.feed", DISPATCH_QUEUE_SERIAL);
+    dispatch_sync(F->q, ^{ for (int k = 0; k < FEED_AHEAD; k++) feed_next(F); });
+    [player play];
+    return 1;
 }
 
 static void play_cd(int track)
 {
     NSString *p = [M.dir[ST_PC] stringByAppendingPathComponent:
                    [NSString stringWithFormat:@"track%02d.flac", track]];
-    NSError *err = nil;
-    AVAudioFile *f = [[AVAudioFile alloc] initForReading:[NSURL fileURLWithPath:p] error:&err];
-    unsigned g = atomic_load(&M.gen);
-    if (!f) { fprintf(stderr, "music: %s: %s\n", p.UTF8String, err.localizedDescription.UTF8String); return; }
-    [M.cd scheduleFile:f atTime:nil completionCallbackType:AVAudioPlayerNodeCompletionDataPlayedBack
-     completionHandler:^(AVAudioPlayerNodeCompletionCallbackType t) {
-        (void)t;
-        if (atomic_load(&M.gen) == g) atomic_store(&M.ended, g);
-    }];
-    [M.cd play];
+    unsigned g = atomic_load(&M.gen[ST_PC]);
+    feed(M.cd, ST_PC, p, 0, 0, -1, ^{ atomic_store(&M.ended, g); });
 }
 
 static void play_mod(int track)
@@ -353,50 +467,43 @@ static void play_mod(int track)
     mod_set(m);
 }
 
-/* one more time round the loop, queued behind what is already queued;
- * each one queues the next as it is taken, so two are always waiting */
-static void rec_loop(AVAudioFile *f, AVAudioFramePosition s, AVAudioFrameCount n, unsigned g)
-{
-    [M.rec scheduleSegment:f startingFrame:s frameCount:n atTime:nil
-     completionCallbackType:AVAudioPlayerNodeCompletionDataConsumed
-          completionHandler:^(AVAudioPlayerNodeCompletionCallbackType t) {
-        (void)t;
-        if (atomic_load(&M.gen) == g) rec_loop(f, s, n, g);
-    }];
-}
-
 static void play_rec(int track)
 {
     NSDictionary *r = track <= 2 ? M.rec_title : M.rec_race[(NSUInteger)(track - 3) % M.rec_race.count];
     NSString *p = [M.dir[ST_N64] stringByAppendingPathComponent:r[@"file"]];
-    NSError *err = nil;
-    AVAudioFile *f = [[AVAudioFile alloc] initForReading:[NSURL fileURLWithPath:p] error:&err];
     AVAudioFramePosition s = [r[@"loop_start"] longLongValue], e = [r[@"loop_end"] longLongValue], from = 0;
-    unsigned g = atomic_load(&M.gen);
     const char *t = getenv("BR_MUSICLOOPTEST");
-    if (!f) { fprintf(stderr, "music: %s: %s\n", p.UTF8String, err.localizedDescription.UTF8String); return; }
-    if (![f.processingFormat isEqual:M.rec_fmt]) {
-        M.rec_fmt = f.processingFormat;
-        [M.engine connect:M.rec to:M.rec_eq format:M.rec_fmt];
-        [M.engine connect:M.rec_eq to:M.engine.mainMixerNode format:M.rec_fmt];
-    }
-    if (t) from = MAX(0, e - (AVAudioFramePosition)(atof(t) * f.processingFormat.sampleRate));
-    [M.rec scheduleSegment:f startingFrame:from frameCount:(AVAudioFrameCount)(e - from) atTime:nil
-         completionHandler:nil];
-    rec_loop(f, s, (AVAudioFrameCount)(e - s), g);
-    rec_loop(f, s, (AVAudioFrameCount)(e - s), g);
-    [M.rec play];
+    if (t) from = MAX(0, e - (AVAudioFramePosition)(atof(t) * [r[@"rate"] doubleValue]));
+    feed(M.rec, ST_N64, p, from, e, s, nil);
 }
 
+/* A cue starts both versions of it: the one not heard plays on at zero
+ * gain, so a switch finds it where it would be. When the PC track has
+ * ended and the game moves on (M.advancing), only the PC version changes
+ * track; the N64 piece loops on regardless, as it does on the N64. */
 static void play(int track)
 {
+    if (M.advancing) {
+        stop_cd();
+        M.track = track;
+        HLOG("music: play %d (PC moves on)\n", track);
+        if (M.silent) return;
+        if (M.have[ST_PC]) play_cd(track);
+        if (M.paused) {                        /* the game asked for music: none is paused */
+            M.paused = 0;
+            [M.rec play];
+        }
+        return;
+    }
     stop();
     M.track = track;
-    HLOG("music: play %d (%s)\n", track, M.soundtrack == ST_PC ? "PC" : "N64");
+    HLOG("music: play %d (heard: %s)\n", track, M.soundtrack == ST_PC ? "PC" : "N64");
     if (M.silent) return;
-    if (M.soundtrack == ST_PC) play_cd(track);
-    else if (M.rec_title) play_rec(track);
-    else play_mod(track);
+    if (M.have[ST_PC]) play_cd(track);
+    if (M.have[ST_N64]) {
+        if (M.rec_title) play_rec(track);
+        else play_mod(track);
+    }
 }
 
 static void pause_(void)
@@ -411,8 +518,29 @@ static void resume(void)
     if (!M.track || !M.paused) return;
     M.paused = 0;
     if (M.silent) return;
-    if (M.soundtrack == ST_PC) [M.cd play];
-    else if (M.rec_title) [M.rec play];
+    [M.cd play];
+    [M.rec play];
+}
+
+/* native/version.m: Tab. The other version fades in where it has got to. */
+void nmusic_version(int v)
+{
+    M.soundtrack = v;
+    if (!M.init || M.silent) return;
+    if (!M.have[v]) fprintf(stderr, "music: no %s soundtrack in %s\n", v == ST_PC ? "PC" : "N64",
+                            M.dir[v].UTF8String);
+    if (g_hlog) {
+        AVAudioTime *pc = [M.cd playerTimeForNodeTime:M.cd.lastRenderTime];
+        AVAudioTime *n = [M.rec playerTimeForNodeTime:M.rec.lastRenderTime];
+        double mod;
+        os_unfair_lock_lock(&M.lock);
+        mod = M.mod ? openmpt_module_get_position_seconds(M.mod) : -1;
+        os_unfair_lock_unlock(&M.lock);
+        HLOG("music: to %s; PC at %.2f s, N64 at %.2f s\n", v == ST_PC ? "PC" : "N64",
+             pc ? pc.sampleTime / pc.sampleRate : -1,
+             n ? n.sampleTime / n.sampleRate : mod);
+    }
+    fade(v, 0);
 }
 
 static int active(void)
@@ -432,22 +560,14 @@ static void media_open(void)
 }
 
 /* happ_pump: a track that ended is handled here, where the window's
- * messages would have been. */
+ * messages would have been. Only the PC version's tracks end (the N64
+ * pieces loop), and they end whichever version is heard. */
 void nmusic_poll(void)
 {
-    static double swap_at = -1;
-    unsigned e;
-    if (swap_at < 0 && M.track && M.item[0])
-        swap_at = getenv("BR_MUSICSWAP") ? CACurrentMediaTime() + atof(getenv("BR_MUSICSWAP")) : 0;
-    if (swap_at > 0 && CACurrentMediaTime() >= swap_at) {
-        NSMenuItem *it = M.item[!M.soundtrack];
-        swap_at = 0;
-        HLOG("music: menu picks %s\n", it.title.UTF8String);
-        [NSApp sendAction:it.action to:it.target from:it];
-    }
-    e = atomic_exchange(&M.ended, 0);
-    if (!e || e != atomic_load(&M.gen) || !M.track) return;
+    unsigned e = atomic_exchange(&M.ended, 0);
+    if (!e || e != atomic_load(&M.gen[ST_PC]) || !M.track) return;
     HLOG("music: track %d ended\n", M.track);
+    M.advancing = 1;
     if (GI(G_ENABLED) == 1) {
         /* MCI: the drive plays on through the disc, then notifies */
         if (M.track < GI(G_LAST)) play(M.track + 1);
@@ -456,6 +576,7 @@ void nmusic_poll(void)
         M.track = 0;
         w_icall__i(F_NEXTWRAP);
     }
+    M.advancing = 0;
 }
 
 /* ------------------------------------------------------- overrides -- */
@@ -620,12 +741,19 @@ u32 n_BrCdPause(void)
 }
 
 /* WHY: resume; the EAR arm was ChangeChannelControl(0xC). Under MCI the
- * game replays the current track itself (BrCdTrackResume), as it did. */
+ * game replays the current track itself (BrCdTrackResume), as it did; that
+ * replays the CD track only, and the N64 piece resumes where it paused. */
 /* @replaces 0x10002F10 BrCdResume */
 u32 n_BrCdResume(void)
 {
     W_TRACE("n_BrCdResume");
-    if (GI(G_ENABLED) == 1) return w_icall__i(F_TRACKRESUME);
+    if (GI(G_ENABLED) == 1) {
+        u32 r;
+        M.advancing = 1;
+        r = w_icall__i(F_TRACKRESUME);
+        M.advancing = 0;
+        return r;
+    }
     if (active()) resume();
     return 1;
 }

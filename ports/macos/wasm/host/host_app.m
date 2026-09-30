@@ -26,6 +26,7 @@ static u8 g_vk[256];
 void hdx_mouse(int dx, int dy, int btn);
 void hdx_mouse_abs(int x, int y, int btn);
 void hdx_mouse_btn(int btn);
+int hversion_key(NSEvent *e);
 int hfx_key(NSEvent *e);
 
 /* macOS virtual key code -> (DirectInput scan code, Windows VK) */
@@ -50,7 +51,23 @@ static const struct { u16 mac; u8 dik; u8 vk; } KEYMAP[] = {
     { 0x19, 0x0A, '9' }, { 0x1D, 0x0B, '0' },
     { 0x7A, 0x3B, 0x70 }, { 0x78, 0x3C, 0x71 }, { 0x63, 0x3D, 0x72 }, { 0x76, 0x3E, 0x73 },
     { 0x60, 0x3F, 0x74 }, { 0x61, 0x40, 0x75 }, { 0x62, 0x41, 0x76 }, { 0x64, 0x42, 0x77 },
-    { 0x65, 0x43, 0x78 }, { 0x6D, 0x44, 0x79 },
+    { 0x65, 0x43, 0x78 }, { 0x6D, 0x44, 0x79 }, { 0x67, 0x57, 0x7A }, { 0x6F, 0x58, 0x7B },
+    { 0x69, 0x64, 0x7C }, { 0x6B, 0x65, 0x7D }, { 0x71, 0x66, 0x7E },   /* F11-F15 */
+    /* punctuation: ` - = [ ] \ ; ' , . / */
+    { 0x32, 0x29, 0xC0 }, { 0x1B, 0x0C, 0xBD }, { 0x18, 0x0D, 0xBB }, { 0x21, 0x1A, 0xDB },
+    { 0x1E, 0x1B, 0xDD }, { 0x2A, 0x2B, 0xDC }, { 0x29, 0x27, 0xBA }, { 0x27, 0x28, 0xDE },
+    { 0x2B, 0x33, 0xBC }, { 0x2F, 0x34, 0xBE }, { 0x2C, 0x35, 0xBF },
+    /* the navigation block: Home, PgUp, End, PgDn, Help (Insert's place), Delete */
+    { 0x73, 0xC7, 0x24 }, { 0x74, 0xC9, 0x21 }, { 0x77, 0xCF, 0x23 }, { 0x79, 0xD1, 0x22 },
+    { 0x72, 0xD2, 0x2D }, { 0x75, 0xD3, 0x2E },
+    /* keypad 0-9 . * + - / = and Clear (NumLock's place) */
+    { 0x52, 0x52, 0x60 }, { 0x53, 0x4F, 0x61 }, { 0x54, 0x50, 0x62 }, { 0x55, 0x51, 0x63 },
+    { 0x56, 0x4B, 0x64 }, { 0x57, 0x4C, 0x65 }, { 0x58, 0x4D, 0x66 }, { 0x59, 0x47, 0x67 },
+    { 0x5B, 0x48, 0x68 }, { 0x5C, 0x49, 0x69 }, { 0x41, 0x53, 0x6E }, { 0x43, 0x37, 0x6A },
+    { 0x45, 0x4E, 0x6B }, { 0x4E, 0x4A, 0x6D }, { 0x4B, 0xB5, 0x6F }, { 0x51, 0x8D, 0x92 },
+    { 0x47, 0x45, 0x90 },
+    { 0x37, 0xDB, 0x5B }, { 0x36, 0xDC, 0x5C },                          /* lcmd, rcmd */
+    { 0x5D, 0x7D, 0x00 }, { 0x68, 0x70, 0x15 },                          /* JIS yen, kana */
 };
 
 static void set_key(u16 mac, int down)
@@ -126,7 +143,12 @@ void happ_dik_state(u8 *out) { memcpy(out, g_dik, 256); }
 @end
 @implementation BRQuit
 - (void)quit:(id)sender { (void)sender; g_happ_quit = 1; }
+/* the quit Apple event: the Dock's Quit, logout, restart, shutdown */
+- (void)quitEvent:(NSAppleEventDescriptor *)e reply:(NSAppleEventDescriptor *)r { (void)e; (void)r; g_happ_quit = 1; }
 @end
+
+/* kill / SIGTERM: the same shutdown; a second one ends the process outright */
+static void quit_signal(int sig) { g_happ_quit = 1; signal(sig, SIG_DFL); }
 
 static int headless(void)
 {
@@ -142,7 +164,7 @@ void happ_init(void)
     [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
     [NSApp finishLaunching];
     {
-        /* the menu bar: the app menu here, native/music.m adds Music. Cmd-Q
+        /* the menu bar: the app menu here, native/window.m adds View. Cmd-Q
          * itself is the key handler's (happ_pump), as before. */
         static BRQuit *quit;
         NSMenu *bar = [NSMenu new], *app = [NSMenu new];
@@ -152,6 +174,14 @@ void happ_init(void)
         it.target = quit;
         [bar addItemWithTitle:@"" action:nil keyEquivalent:@""].submenu = app;
         NSApp.mainMenu = bar;
+        /* Every way of quitting runs the game's own shutdown, as Cmd-Q does.
+         * AppKit's handler for the quit event (installed by finishLaunching)
+         * is terminate:, which exits on the spot: the game never shut down
+         * and its settings and saves were never written. */
+        [[NSAppleEventManager sharedAppleEventManager]
+            setEventHandler:quit andSelector:@selector(quitEvent:reply:)
+              forEventClass:kCoreEventClass andEventID:kAEQuitApplication];
+        signal(SIGTERM, quit_signal);
     }
     g_window = [[NSWindow alloc] initWithContentRect:NSMakeRect(100, 100, 1280, 960)
                                            styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable |
@@ -232,6 +262,8 @@ void happ_pump(int block_ms)
     @autoreleasepool {
         while ((e = [NSApp nextEventMatchingMask:NSEventMaskAny untilDate:until
                                           inMode:NSDefaultRunLoopMode dequeue:YES])) {
+            if ((e.type == NSEventTypeKeyDown || e.type == NSEventTypeKeyUp) && hversion_key(e))
+                continue;                              /* Tab: native/version.m's */
             if ((e.type == NSEventTypeKeyDown || e.type == NSEventTypeKeyUp) && hfx_key(e))
                 continue;                              /* ~: host_fx.m's Remastered / Original */
             switch (e.type) {
@@ -251,7 +283,8 @@ void happ_pump(int block_ms)
                 u16 k = e.keyCode;
                 int down = (k == 0x38 || k == 0x3C) ? !!(f & NSEventModifierFlagShift)
                          : (k == 0x3B || k == 0x3E) ? !!(f & NSEventModifierFlagControl)
-                         : (k == 0x3A || k == 0x3D) ? !!(f & NSEventModifierFlagOption) : 0;
+                         : (k == 0x3A || k == 0x3D) ? !!(f & NSEventModifierFlagOption)
+                         : (k == 0x37 || k == 0x36) ? !!(f & NSEventModifierFlagCommand) : 0;
                 set_key(k, down);
                 continue;
             }

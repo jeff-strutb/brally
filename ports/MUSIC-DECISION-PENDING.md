@@ -6,8 +6,8 @@ at the bottom:
 1. The N64 soundtrack plays as its modules, live, through libopenmpt.
 2. A third-party library is acceptable: libopenmpt, linked statically together
    with the codecs Homebrew built it against; their licences ship in the app.
-3. A soundtrack whose files are missing is disabled in the Music menu, and the
-   player falls back to the other one.
+3. A soundtrack whose files are missing is silence when its version is
+   chosen (Tab switches the PC and N64 versions; see `native/version.m`).
 4. No interim mapping was invented. The PC game's own cue logic drives both:
    track 2 on the front end, a random track from 3 up in a race. The N64
    soundtrack answers those with the N64 game's own cues, read from its code

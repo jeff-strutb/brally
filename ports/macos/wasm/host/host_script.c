@@ -10,7 +10,9 @@
  * point X Y (absolute, the windowed pointer path), quit (as Cmd-Q),
  * click [N], wait/waitb ADDR OP VALUE [N], mark NAME, shot NAME, end,
  * window W H (resize the content to W x H points), fullscreen (toggle),
- * chord KEYS (a Command/Control chord such as ctrl+cmd+f, as a real key event).
+ * chord KEYS (a Command/Control chord such as ctrl+cmd+f, as a real key event),
+ * version (Tab, the PC / N64 switch, as a real key event),
+ * keycode MACVK [N] (a real key event by macOS virtual key code, held N frames).
  * Not yet: autopilot, waittext, text, peer, files, savefiles, tmu,
  * joystick -- a script using one stops with a message naming it.
  *
@@ -99,6 +101,7 @@ static void key(u8 vk, u8 dik, int down) { happ_key_script(dik, vk, down); }
 __attribute__((weak)) void hwindow_resize(int w, int h) { (void)w; (void)h; }
 __attribute__((weak)) void hwindow_fullscreen(void) {}
 __attribute__((weak)) void hwindow_chord(const char *spec) { (void)spec; }
+__attribute__((weak)) void hwindow_keycode(int code, int down) { (void)code; (void)down; }
 
 static int test(const step_t *s)
 {
@@ -159,7 +162,8 @@ void happ_frame(void)
     g_frame++;
     for (i = 0; i < g_nrel; ) {
         if (g_rel[i].frame <= g_frame) {
-            if (g_rel[i].mouse) hdx_mouse(0, 0, 0);
+            if (g_rel[i].mouse == 2) hwindow_keycode(g_rel[i].dik, 0);
+            else if (g_rel[i].mouse) hdx_mouse(0, 0, 0);
             else key(g_rel[i].vk, g_rel[i].dik, 0);
             g_rel[i] = g_rel[--g_nrel];
         } else i++;
@@ -201,6 +205,17 @@ void happ_frame(void)
             hwindow_fullscreen();              /* toggles, as the green button does */
         } else if (!strcmp(s->op, "chord")) {
             hwindow_chord(s->a[0]);            /* e.g. ctrl+cmd+f, through the menu bar */
+        } else if (!strcmp(s->op, "keycode")) {
+            /* keycode MACVK [N]: a real key event, held N frames (default 2) */
+            unsigned n = s->na > 1 ? (unsigned)atoi(s->a[1]) : 2;
+            hwindow_keycode((int)strtol(s->a[0], 0, 0), 1);
+            if (g_nrel < 64) {
+                g_rel[g_nrel].frame = g_frame + n; g_rel[g_nrel].dik = (u8)strtol(s->a[0], 0, 0);
+                g_rel[g_nrel].mouse = 2; g_nrel++;
+            }
+            g_sleep_until = g_frame + n + 1;
+        } else if (!strcmp(s->op, "version")) {
+            hversion_script();                 /* Tab: the PC / N64 switch */
         } else if (!strcmp(s->op, "point")) {
             /* the windowed pointer path: an absolute 640x480 position */
             hdx_mouse_abs(atoi(s->a[0]), atoi(s->a[1]), 0);
