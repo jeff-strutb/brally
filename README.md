@@ -1,8 +1,13 @@
 # Boss Rally: bit-exact decompilation
 
-![Boss Rally's main menu, running natively on macOS through the Mac port](docs/mac-port-main-menu.png)
+<p>
+<img src="docs/mac-port-main-menu.png" width="49%" alt="Boss Rally's main menu, running natively on macOS through the Mac port">
+<img src="docs/mac-port-remastered.png" width="49%" alt="Racing past the Coastline lighthouse in the Mac port's Remastered mode: the modern model of the player's car, sun shadows, light shafts and a clean colour grade">
+</p>
 
-*The main menu, running natively on an Apple Silicon Mac ([Mac port](#mac-port)).*
+*Left: the main menu, running natively on an Apple Silicon Mac ([Mac port](#mac-port)).
+Right: Coastline with [Remastered lighting](#remastered-lighting) and the
+[Remastered car](#remastered-car) on (press ~ to switch back to the original look).*
 
 **Maintainer:** Jeffrey Wilbur, Strut B, LLC\
 **Contact:** [retro@strutb.com](mailto:retro@strutb.com)
@@ -354,6 +359,13 @@ from the menu, with Cmd-Q or with the close box exits cleanly.
   own music logic decides what plays when, as on Windows: the front-end
   track, a random track per race, the next track when one ends, the Options
   jukebox and the next/previous keys.
+- **Remastered or Original, on ~.** The ~ key (left of 1) switches live
+  between the original picture and modern lighting laid over it: sun
+  shadows, ambient occlusion, bounce light, wet-road reflections, bloom,
+  light shafts and a filmic grade, all following the race's weather, and
+  the default car drawn as a modern high-detail model. See
+  [Remastered lighting](#remastered-lighting) and
+  [Remastered car](#remastered-car).
 - **A self-contained app.** One command extracts everything the game reads
   from your disc image and ROM (the data track, the CD audio and the N64
   modules) and builds `Boss Rally.app` around it. Once
@@ -377,6 +389,8 @@ Win32, DirectX, Glide and C runtime calls the game makes:
 |---|---|
 | `host_app.m` | `main`, the window, keyboard and mouse, presenting frames |
 | `host_glide.m` | Glide on Metal, modelled on the Voodoo: 16-bit W/Z depth, mip levels, filtering, LOD bias |
+| `host_fx.m` | Remastered lighting: the G-buffer passes, shadow map, tonemap, anti-aliasing and the ~ switch (not a stand-in; port-only) |
+| `host_car.m` | the Remastered car: loads its model and draws it in Metal (not a stand-in; port-only) |
 | `host_win.c` | Win32: files (the disc image as the CD, saves), threads, timers |
 | `host_dx.c` | DirectInput, DirectSound, DirectPlay as COM objects in game memory |
 | `host_ear.c` | the EAR 3D sound engine the game loads by name |
@@ -396,9 +410,139 @@ not in the verified placement. That is how the Mac-native parts plug in:
 | `native/window.m` | live resizing and full screen |
 | `native/music.m` | the CD music backends (MCI and the EAR engine's CD channel): AVAudioEngine for the CD audio, libopenmpt for the N64 modules, both versions at once, crossfaded |
 | `native/version.m` | the PC / N64 version: Tab, its icon, the remembered choice |
+| `native/car.m` | the car draw (0x1000A110) and G_MOVEWORD (0x100239C0): with Remastered on, the followed car's display lists are emptied and a marker puts the modern model in their place |
 
 `ports/macos/NATIVE_RENDERER.md` is the design and records what each piece
 measured. This 32-bit lane is interim; a native 64-bit port comes later.
+
+### Remastered lighting
+
+An optional modern lighting pass over the game's own picture, switched live
+with **~** (the key left of 1). Original is the frame exactly as the game
+draws it; Remastered relights that frame on the GPU. The game's rendering,
+simulation and display lists are unchanged either way, and nothing under
+`src/` is involved. The choice is remembered between launches (the default
+is Remastered), a word in the top left corner says which one is on for a
+moment after a switch, and the game never sees the key.
+
+What Remastered adds:
+
+- **Sun shadows.** Every opaque triangle the frame drew is drawn again from
+  the sun into a 2048x2048 shadow map, trees and fences cut out by their
+  textures' alpha, and sampled with soft filtering. The sun stays fixed in
+  the world as the camera turns.
+- **Ambient occlusion and bounce light.** Creases, wheel arches and wall
+  bases darken, and nearby surfaces tint each other with their colour (one
+  bounce, sampled in world space against the frame's own geometry).
+- **Wet roads, only when wet.** Dry asphalt is matte: no reflections and
+  no sun glints. In the wet, screen-space reflections and sun highlights
+  scale with how wet the weather is: a faint sheen in fog, glossy roads in
+  rain and storms, and puddles scattered over the track that mirror the
+  cars and scenery.
+- **Light shafts, bloom and air.** Light scattering from the sky around the
+  sun, bright details glowing (lit windows and lamps at night), and distant
+  surfaces taking on the colour of sunlit air.
+- **Clean, colour-true grading.** A neutral tonemap (Khronos PBR Neutral)
+  that leaves colours as they are until the highlights roll off, a colour
+  balance per weather (cool and blue at night), and a colour-only filter
+  that keeps the 1999 textures' colour speckle from being amplified.
+- **Skies.** A brighter horizon and the sun's glow; at night a deep-blue
+  sky where the game leaves black.
+- **Anti-aliasing on the scene only.** FXAA smooths the edges of the 3D
+  scene after it is graded and before the game's 2D is laid over it, so the
+  HUD, text and menus never pass through the filter.
+- **HUD and menus untouched.** Anything the game draws in 2D keeps its
+  exact colours.
+
+It follows the race's weather:
+
+| Weather | Look |
+|---|---|
+| Sunny | clean high-key daylight, crisp shadows filled with sky blue, light shafts, matte dry roads |
+| Fog | soft diffuse light, heavy haze, a faint damp sheen on the road |
+| Storm | dim overcast, wet roads with puddles, lightning flashes light the scene |
+| Snow | bright overcast, cold bounce light off the snow |
+| Rain (a night race) | moonlight under a deep-blue sky, cool colour balance, no sun shadows, wet roads with puddles reflecting the lit windows and cars |
+
+**How it works.** Alongside its colour, each frame now also records every
+pixel's position in the world and its surface direction. The positions come
+from the game itself: the display-list machine keeps the camera's view and
+projection as one matrix, and its inverse takes each triangle corner the
+game already projected back into the world (a Z-up world where one unit is
+about a metre). At the swap, `host_fx.m` builds the shadow map, occlusion,
+reflections, light and bloom from that record and presents the result. The
+weather comes from the game's weather variable, and the storm's lightning
+from its lightning timer.
+
+**Cost.** About 10 to 14 ms of GPU per frame at 2560x1920 with everything
+on, inside a 60 Hz frame on an Apple Silicon Mac. Light shafts are about 2
+ms of it and sun shadows about 1.5 ms. Full screen on a 5K display renders
+more pixels and has not been measured.
+
+**Limits.** Only what is on screen can cast shadows or appear in
+reflections, since the game draws nothing off screen. Surfaces are lit by
+their triangles' facing, so low-poly shapes light in flat facets. The game's
+textures and vertex colours already carry its own lighting; Remastered
+treats them as the surface colour and lights on top.
+
+### Remastered car
+
+With Remastered on, the car the camera follows (the default Quick Race car,
+the 4WD ES) is drawn as a modern high-detail model of the car it stands for,
+a mid-1990s Escort RS Cosworth rally car, instead of its 1999 model; ~ swaps
+it back to the original on the next frame, with the rest of Remastered.
+Nothing the game does changes: its physics, cameras, matrices and every
+other car are the same either way.
+
+- **Body and wheels separately.** The body (about a million triangles) has
+  no wheels; one wheel and tyre (250,000 triangles) is drawn four times on
+  the game's own wheel transforms, so the wheels spin, steer and ride the
+  suspension exactly as the original's do.
+- **Placed by the game's hubs.** The body is scaled and seated so its brake
+  discs sit on the game's four wheel hubs, which puts it at the original's
+  size, wheelbase and ride height.
+- **Paint and livery.** The model is painted one plain green with no badges
+  or text; the red, white and blue ribbons are a separate livery texture
+  projected onto the painted surfaces only, so a livery can change without
+  touching the model.
+- **Shading.** Metal and roughness maps, a clear coat on the paint, the
+  light rig Remastered uses for the weather, and reflections of the scene
+  itself (the previous frame, sampled along each reflection ray). The car
+  casts sun shadows and receives them, and is anti-aliased with the scene.
+- **In the display list's order.** The game still builds the car's drawing
+  commands, with its lists emptied, and a marker takes the model's place in
+  the list, so it draws in the right order under whichever camera is current
+  (the rear-view mirror too) and shares the scene's W-buffer depth.
+
+**The models are not in git** (they are large; a home for them is still to
+be decided). They live in `ports/common/models/es/`, which is ignored:
+
+| Folder | What is in it |
+|---|---|
+| `source/` | the full-density source models, body and wheel (about 3 million triangles each) |
+| `concept/` | the concept images the models were made from, the prompts, and renders of the game's own ES from its `.rca` |
+| `decimated/` | the source models after Blender's Collapse Decimate, with their own UVs and textures |
+| `pack/` | what the port loads: meshes in the car frame, 8-bit RGBA maps, the livery, the shadow proxy |
+| `tools/`, `archive/` | the scripts that made the sources, and earlier attempts |
+
+Rebuilding the pack from the sources:
+
+```bash
+blender --background --python ports/macos/tools/remaster_bake.py -- ports/common/models/es/source/body_raw.glb ports/common/models/es/decimated body 1000000
+```
+
+```bash
+blender --background --python ports/macos/tools/remaster_bake.py -- ports/common/models/es/source/wheel_raw.glb ports/common/models/es/decimated wheel 250000
+```
+
+```bash
+python3 ports/macos/tools/remaster_car.py --body ports/common/models/es/decimated/body.glb --wheel ports/common/models/es/decimated/wheel.glb --out ports/common/models/es/pack
+```
+
+Decimate is the only mesh operation: remeshing to a budget before this step
+leaves the panels lumpy, and the source's own UVs and textures go through
+unchanged. `package_app.sh` copies the pack into the app; without it the
+Remastered renderer draws the original car.
 
 **Not there yet.**
 
@@ -447,7 +591,8 @@ measured. This 32-bit lane is interim; a native 64-bit port comes later.
    `reference/brally/BossRally.BIN` (with its `.cue`),
    `reference/tgrally/Top Gear Rally (USA).z64` (or the paths given with
    `--bin` and `--rom`), and writes `build/app/Boss Rally.app`, about
-   370 MB. Extraction runs once per set of sources; later packages reuse
+   370 MB, or about 475 MB with the [Remastered car](#remastered-car)'s models
+   in place. Extraction runs once per set of sources; later packages reuse
    it.
 
    ```bash
@@ -514,8 +659,25 @@ the host reads:
 | `BR_MUSIC=0` | no music (headless runs are always silent) |
 | `BR_MUSIC_DIR=dir` | where the bare build finds the soundtracks (`cd/`, `n64/`) |
 | `BR_MUSICWAV=file` | record the music output to a file, for checks without listening |
+| `BR_FX=0` / `BR_FX=1` | force Original or Remastered, overriding the remembered choice (headless runs default to Original) |
+| `BR_FX_WEATHER=N` | light the scene as weather N (0 sunny, 1 fog, 2 storm, 3 snow, 4 rain) whatever the race's weather |
+| `BR_FX_SUN=x,y,z` | sun direction in the world (default 1,1,1.1, the game's own light direction) |
+| `BR_FX_SHADOWR=m`, `BR_FX_AOR=m` | shadow-map half-width and occlusion radius, in metres |
+| `BR_FX_DEBUG=N` | show one ingredient: 1 normals, 2 shadow, 3 occlusion, 4 world position, 5 bounce, 6 reflections, 7-8 shadow map, 9 the game's own colour, 10 invalid values |
+| `BR_FX_NOSHAFT=1`, `BR_FX_NOSHADOW=1` | turn light shafts or sun shadows off, to measure their cost |
+| `BR_FX_STAT=1` | print shadow-caster counts, camera and weather, and GPU time per frame |
+| `BR_FX_SHOTC=1` | with Remastered, `shot NAME` also writes the game's own colour to `NAME.c.ppm` |
+| `BR_FX_TESTKEY=N,M,...` | post a real ~ key press at those swaps (a windowed check of the switch) |
+| `BR_FX_AA=0` | leave the scene's anti-aliasing out |
+| `BR_CAR=0` | keep the original car in Remastered |
+| `BR_REMASTER_DIR=dir` | load the Remastered car's pack from `dir` (default: the app's `Resources/remaster`, else `ports/common/models/es/pack`) |
+| `BR_CAR_DEBUG=N` | show one ingredient of the car: 1 base colour, 2 paint mask, 3 occlusion, 4 normals, 5 roughness and metal, 6 diffuse, 7 reflections, 8 sun highlight |
+| `BR_CARLOG=1` | print the followed car's position and its wheel hubs in the car's frame (the numbers `remaster_car.py --hubs` takes) |
 
-The screenshot at the top of this file was taken headless:
+The screenshots at the top of this file were taken headless (the Remastered
+one with `BR_FX=1 BR_RES=2560x1920`, scaled down to 1280x960, and a script
+that starts a Quick Race, presses PgDn for the chase camera and holds the
+throttle for ten seconds to the lighthouse):
 
 ```bash
 BR_HEADLESS=1 BR_SCRIPT=menu.txt BR_SHOTS=. build/wasm/brally
