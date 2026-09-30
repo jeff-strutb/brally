@@ -25,7 +25,7 @@
  *               shadows, bloom and the tone map; in the mirror it is finished
  *               here.  The body casts sun shadows through a low-poly proxy.
  *
- * Assets: <dir>/car.cfg, body.rcm, wheel.rcm, proxy.rcm and their textures,
+ * Assets: <dir>/car.cfg, body.rcm, wheel.rcm, proxy.rcm, glass.rcm and their textures,
  * from ports/macos/tools/remaster_car.py.  <dir> is $BR_REMASTER_DIR, the
  * app's Resources/remaster, or ports/common/models/es/pack (the models are
  * kept out of git).  BR_CAR=0 turns it off.
@@ -51,7 +51,7 @@ using namespace metal;
 struct MV { packed_float3 p; packed_float3 n; float2 uv; float4 t; };
 struct CU {
   float4x4 M, P, HP;
-  float4 vpt, eye, sun, sunc, skyc, grnd, fogc, misc, liv, livs, paint, dbg, hvpt, hist;
+  float4 vpt, eye, sun, sunc, skyc, grnd, fogc, misc, liv, livs, paint, dbg, hvpt, hist, glass;
   float fogtab[64];
 };
 struct VO { float4 pos [[position]]; float3 wp; float3 lp; float3 wn; float3 wt; float tw; float2 uv; float oow; };
@@ -177,11 +177,31 @@ fragment FO cfs(VO in [[stage_in]], constant CU &u [[buffer(0)]],
     o.n = float4(0, 0, 0, 1); o.g = float4(0);
   }
   return o; }
+/* the windows: tinted glass, the scene and the sun reflected by Fresnel,
+   blended over what is behind (premultiplied); it writes no depth and none
+   of the G-buffer, so the lighting still sees the cabin through it */
+fragment FO gfs(VO in [[stage_in]], constant CU &u [[buffer(0)]], texture2d<float> th [[texture(5)]]) {
+  FO o;
+  float3 N = normalize(in.wn), V = normalize(u.eye.xyz - in.wp);
+  if (dot(N, V) < 0) N = -N;
+  float nv = saturate(dot(N, V));
+  float F = 0.04 + 0.96 * pow(1.0 - nv, 5.0);
+  float3 R = reflect(-V, N), L = u.sun.xyz, H = normalize(L + V);
+  float nl = saturate(dot(N, L));
+  float3 spec = D_ggx(saturate(dot(N, H)), 0.03 * 0.03 + 0.001) * V_sg(nl, max(nv, 1e-3), 0.03) * F * u.sunc.rgb * nl;
+  float3 refl = env_at(u, th, in.wp, R, 0.02) * F + spec;
+  float a = mix(u.glass.x, 1.0, F);                     /* more mirror than window at a glance */
+  float3 col = u.glass.yzw * (1.0 - F) * a + refl;
+  if (u.fogc.w > 0.5) { float k = fogof(u, 1.0 / in.oow) / 255.0; col = mix(col, u.fogc.rgb * a, k); }
+  o.d = float(wfloat(in.oow)) / 65536.0;
+  o.c = u.misc.y > 0.5 ? float4(pow(saturate(col / 4.0), 1.0 / 2.2), a) : float4(pow(aces(col * u.misc.z), 1.0 / 2.2), a);
+  o.n = 0; o.g = 0;
+  return o; }
 );
 
 typedef struct {
     float M[16], P[16], HP[16];
-    float vpt[4], eye[4], sun[4], sunc[4], skyc[4], grnd[4], fogc[4], misc[4], liv[4], livs[4], paint[4], dbg[4], hvpt[4], hist[4];
+    float vpt[4], eye[4], sun[4], sunc[4], skyc[4], grnd[4], fogc[4], misc[4], liv[4], livs[4], paint[4], dbg[4], hvpt[4], hist[4], glass[4];
     float fogtab[64];
 } cu;
 
@@ -194,17 +214,19 @@ typedef struct {
 } mesh;
 
 static id<MTLDevice> D;
-static id<MTLRenderPipelineState> g_pipe;
-static id<MTLDepthStencilState> g_ds;
-static mesh g_body, g_wheel, g_proxy;
+static id<MTLRenderPipelineState> g_pipe, g_gpipe;
+static id<MTLDepthStencilState> g_ds, g_gds;
+static mesh g_body, g_wheel, g_proxy, g_glass;
 static id<MTLTexture> g_liv_side, g_liv_top;
 static int g_state;                      /* 0 not tried, 1 ready, -1 unavailable */
 static float g_paint[3] = { 0.03f, 0.22f, 0.07f };
 static float g_liv[4], g_livs[4];
 static float g_wheel_flip = 1;
+static float g_lamps[4][3];
+static int g_have_lamps;
 
 /* per list build: the car's transforms when its marker was queued */
-typedef struct { float car[16], wheel[4][16]; int drawn; } rec;
+typedef struct { float car[16], wheel[4][16]; int drawn; u32 addr; } rec;
 static rec g_rec[16];
 static int g_nrec;
 static unsigned g_rec_serial = ~0u;
@@ -312,10 +334,15 @@ static void setup(id<MTLDevice> dev)
         sscanf(l, "livery_side %f %f %f %f", &g_liv[0], &g_liv[1], &g_liv[2], &g_liv[3]);
         sscanf(l, "livery_top %f %f %f %f", &g_livs[0], &g_livs[1], &g_livs[2], &g_livs[3]);
         sscanf(l, "wheel_flip %f", &g_wheel_flip);
+        if (sscanf(l, "lamps %f %f %f %f %f %f %f %f %f %f %f %f", &g_lamps[0][0], &g_lamps[0][1], &g_lamps[0][2],
+                   &g_lamps[1][0], &g_lamps[1][1], &g_lamps[1][2], &g_lamps[2][0], &g_lamps[2][1], &g_lamps[2][2],
+                   &g_lamps[3][0], &g_lamps[3][1], &g_lamps[3][2]) == 12)
+            g_have_lamps = 1;
     }
     if (!load_mesh(dir, @"body", &g_body, 1, 0) || !load_mesh(dir, @"wheel", &g_wheel, 1, 0) ||
         !load_mesh(dir, @"proxy", &g_proxy, 0, 1))
         return;
+    if (!load_mesh(dir, @"glass", &g_glass, 0, 0)) g_glass.ni = 0;   /* optional: no windows */
     g_liv_side = load_tex([dir stringByAppendingPathComponent:@"livery_side.png"], 1);
     g_liv_top = load_tex([dir stringByAppendingPathComponent:@"livery_top.png"], 1);
     if (!g_liv_side || !g_liv_top) return;
@@ -330,11 +357,23 @@ static void setup(id<MTLDevice> dev)
     pd.depthAttachmentPixelFormat = MTLPixelFormatDepth32Float;
     g_pipe = [D newRenderPipelineStateWithDescriptor:pd error:&err];
     if (!g_pipe) { fprintf(stderr, "car pipeline: %s\n", err.localizedDescription.UTF8String); return; }
+    pd.fragmentFunction = [lib newFunctionWithName:@"gfs"];
+    pd.colorAttachments[0].blendingEnabled = YES;
+    pd.colorAttachments[0].sourceRGBBlendFactor = MTLBlendFactorOne;
+    pd.colorAttachments[0].destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
+    pd.colorAttachments[0].sourceAlphaBlendFactor = MTLBlendFactorZero;
+    pd.colorAttachments[0].destinationAlphaBlendFactor = MTLBlendFactorOne;
+    pd.colorAttachments[1].writeMask = MTLColorWriteMaskNone;
+    pd.colorAttachments[2].writeMask = MTLColorWriteMaskNone;
+    g_gpipe = [D newRenderPipelineStateWithDescriptor:pd error:&err];
+    if (!g_gpipe) { fprintf(stderr, "car glass pipeline: %s\n", err.localizedDescription.UTF8String); return; }
     {
         MTLDepthStencilDescriptor *d = [MTLDepthStencilDescriptor new];
         d.depthCompareFunction = MTLCompareFunctionLess;
         d.depthWriteEnabled = YES;
         g_ds = [D newDepthStencilStateWithDescriptor:d];
+        d.depthWriteEnabled = NO;
+        g_gds = [D newDepthStencilStateWithDescriptor:d];
     }
     {
         int i;
@@ -372,6 +411,7 @@ int hcar_record(u32 car)
     for (i = 0; i < 16; i++) r->car[i] = W_LD(f32, car, 4 * i);
     for (i = 0; i < 64; i++) r->wheel[i / 16][i % 16] = W_LD(f32, car, 0x40 + 4 * i);
     r->drawn = 0;
+    r->addr = car;
     return g_nrec++;
 }
 
@@ -522,6 +562,19 @@ void hcar_draw(int slot)
         mul44(flip, W, u.M);
         draw_mesh(e, &g_wheel, &u, 0);
     }
+    if (g_glass.ni) {                   /* the windows, over the body and the cabin */
+        u.glass[0] = 0.55f;                 /* opacity face-on: tinted */
+        u.glass[1] = 0.010f; u.glass[2] = 0.013f; u.glass[3] = 0.016f;   /* the tint, linear */
+        memcpy(u.M, r->car, sizeof u.M);
+        [e setRenderPipelineState:g_gpipe];
+        [e setDepthStencilState:g_gds];
+        [e setVertexBuffer:g_glass.vb offset:0 atIndex:0];
+        [e setVertexBytes:&u length:sizeof u atIndex:1];
+        [e setFragmentBytes:&u length:sizeof u atIndex:0];
+        [e setFragmentTexture:g_hist ? g_hist : g_black atIndex:5];
+        [e drawIndexedPrimitives:MTLPrimitiveTypeTriangle indexCount:(NSUInteger)g_glass.ni indexType:MTLIndexTypeUInt32
+                     indexBuffer:g_glass.ib indexBufferOffset:0];
+    }
     if (main) cast_shadow(r->car);
     if (getenv("BR_CARLOG") && hglide_swaps() % 120 == 0) {
         const float *C = r->car;
@@ -563,4 +616,21 @@ void hcar_frame_end(id<MTLCommandBuffer> cb, id<MTLTexture> pic)
     [b endEncoding];
     memcpy(g_hP, g_curP, sizeof g_hP); memcpy(g_hvpt, g_curvpt, sizeof g_hvpt);
     g_hvalid = 1; g_curvalid = 0;
+}
+
+/* host_fx.m's headlights: where this model's lamps are, when `car` is drawn
+ * as it (this frame's list, or the last one), in the car frame (metres from
+ * the car matrix's origin: x forward, y left, z up).  Front-left,
+ * front-right, rear-left, rear-right, measured from the model by
+ * remaster_car.py. */
+int hcar_lamps(u32 car, float out[4][3])
+{
+    int i;
+    if (g_state != 1 || !g_have_lamps || !hcar_enabled()) return 0;
+    for (i = 0; i < g_nrec; i++)
+        if (g_rec[i].addr == car) {
+            memcpy(out, g_lamps, sizeof g_lamps);
+            return 1;
+        }
+    return 0;
 }
