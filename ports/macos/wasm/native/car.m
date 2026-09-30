@@ -25,6 +25,7 @@
 int hcar_enabled(void);
 int hcar_record(u32 car);
 void hcar_draw(int slot);
+void hfx_car_seen(u32 car);
 u32 hmem_alloc(u32 n, int zero);
 
 #define LIST_CURSOR   0x106E7710u    /* DAT_106e7710, the list write cursor      */
@@ -48,6 +49,7 @@ void n_BrCarDrawVehicle(u32 car, u32 lodBias)
 {
     u32 model, saved[3][5], wheel, before, after;
     int lod, i, slot;
+    hfx_car_seen(car);                  /* host_fx.m: every car's headlights */
     if (!hcar_enabled() || car != W_LD(u32, VIEW_CAR, 0) || !(model = W_LD(u32, car, CAR_MODEL))) {
         W_ORIG_BrCarDrawVehicle(car, lodBias);
         return;
