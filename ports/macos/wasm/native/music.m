@@ -77,6 +77,7 @@
 #define G_PLAYING  0x1021C800u   /* g_brCdPlaying: open count */
 #define G_CUR      0x1021C804u   /* g_brCdTrackCur */
 #define G_PENDING  0x1021C808u   /* a track has been asked for */
+#define G_STEP     0x106E79F4u   /* g_pfnStep: the current activity (br_gamestep.c) */
 /* game functions called back */
 #define F_TRACKRESUME   0x10002E80u   /* BrCdTrackResume */
 #define F_NEXTWRAP      0x10002CF0u   /* BrCdTrackNextWrap */
@@ -85,6 +86,7 @@
 #define F_CLOCK         0x1006E280u   /* BrSub10075020, the ms clock */
 #define F_TRACKPLAY     0x10002AF0u   /* BrCdTrackPlay, the mode dispatch */
 #define F_STARTUP       0x10002910u   /* BrCdStartup, the EAR route's open */
+#define F_RACESTEP      0x10019A70u   /* BrRaceStep, the race activity */
 
 #define GI(a) ((s32)W_LD(u32, (a), 0))
 #define GS(a, v) W_ST(u32, (a), 0, (u32)(v))
@@ -338,6 +340,7 @@ static void stop_n64(void)
 
 static void stop(void)
 {
+    if (M.track) HLOG("music: stop %d\n", M.track);
     stop_cd();
     stop_n64();
     M.track = 0;
@@ -510,6 +513,7 @@ static void pause_(void)
 {
     if (!M.track || M.paused) return;
     M.paused = 1;
+    HLOG("music: pause %d\n", M.track);
     if (!M.silent) { [M.cd pause]; [M.rec pause]; }
 }
 
@@ -517,6 +521,7 @@ static void resume(void)
 {
     if (!M.track || !M.paused) return;
     M.paused = 0;
+    HLOG("music: resume %d\n", M.track);
     if (M.silent) return;
     [M.cd play];
     [M.rec play];
@@ -562,9 +567,27 @@ static void media_open(void)
 /* happ_pump: a track that ended is handled here, where the window's
  * messages would have been. Only the PC version's tracks end (the N64
  * pieces loop), and they end whichever version is heard. */
+/* The game makes no music call when a race ends (no caller of the CD
+ * module in the original runs on the way out), so on Windows the race's
+ * CD track played on under the menus, and the N64 pieces, which loop,
+ * would never end. Leaving the race activity cues the title
+ * piece, as Top Gear Rally does on the N64: through BrCdTrackPlay(2), the
+ * game's own call at boot (BrBootInit), so its track state follows. */
+static void race_left(void)
+{
+    static u32 last;
+    u32 s = (u32)GI(G_STEP);
+    if (s == last) return;
+    HLOG("music: activity %08X -> %08X\n", last, s);
+    if (last == F_RACESTEP && GI(G_ENABLED) && GI(G_PLAYING)) w_icall_i_i(F_TRACKPLAY, 2);
+    last = s;
+}
+
 void nmusic_poll(void)
 {
-    unsigned e = atomic_exchange(&M.ended, 0);
+    unsigned e;
+    race_left();
+    e = atomic_exchange(&M.ended, 0);
     if (!e || e != atomic_load(&M.gen[ST_PC]) || !M.track) return;
     HLOG("music: track %d ended\n", M.track);
     M.advancing = 1;
