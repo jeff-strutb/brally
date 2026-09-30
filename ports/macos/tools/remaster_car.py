@@ -17,6 +17,7 @@ axis x, y, z, which signed model axis it is; it must be a rotation.
 
 Outputs:
   body.rcm, wheel.rcm   vertices {pos3 nrm3 uv2 tan4} f32 + u32 indices
+  <mesh>_lodN.rcm       the same at the lower detail levels --lods names
   proxy.rcm             the body clustered to a few thousand triangles, for
                         the sun's shadow map
   (glass.rcm, the windows, is remaster_glass.py's, run on this pack after)
@@ -192,7 +193,9 @@ def main():
     ap.add_argument('--hubs', default='1.33,-1.27,0.055', help="the game's front x, rear x, hub z (BR_CARLOG)")
     ap.add_argument('--wheel-radius', type=float, default=0.33)
     ap.add_argument('--wheel-width', type=float, default=0.26)
-    ap.add_argument('--paint', default='0.02,0.2,0.06', help='linear rgb')
+    ap.add_argument('--paint', default='0.02,0.2,0.06', help="the player's paint, linear rgb")
+    ap.add_argument('--paint-ai', default='0.79,0.40,0.02', help="the other cars' paint (the Quick Race opponent's yellow), linear rgb")
+    ap.add_argument('--lods', nargs='*', default=[], help='directories holding lower-detail body.glb / wheel.glb, finest first')
     ap.add_argument('--top-from', type=float, default=0.42, help='height the top ribbon starts at')
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
@@ -221,6 +224,12 @@ def main():
     rgba(stem(a.body) + '_normal.png', os.path.join(a.out, 'body_normal.png'))
     bl, bh = V.min(0), V.max(0)
     print(f'body {len(F)} tris, extent x {bl[0]:.3f}..{bh[0]:.3f} y {bl[1]:.3f}..{bh[1]:.3f} z {bl[2]:.3f}..{bh[2]:.3f}')
+    # lower detail levels: the same placement and textures (decimation keeps the UVs)
+    for n, dname in enumerate(a.lods, 1):
+        Vl, Nl, UVl, Tl, Fl = read_glb(os.path.join(dname, 'body.glb'))
+        Vl = (Vl @ R.T) * s + shift
+        write_rcm(os.path.join(a.out, f'body_lod{n}.rcm'), Vl, Nl @ R.T, UVl, np.hstack([Tl[:, :3] @ R.T, Tl[:, 3:4]]), Fl)
+        print(f'body_lod{n} {len(Fl)} tris')
     P, G = cluster(V, F, 0.08)
     write_rcm(os.path.join(a.out, 'proxy.rcm'), P, np.zeros_like(P), np.zeros((len(P), 2)), np.zeros((len(P), 4)), G)
     print(f'proxy {len(G)} tris')
@@ -239,6 +248,13 @@ def main():
     Tw = np.hstack([(Tw[:, :3] @ Rw.T) @ K.T, Tw[:, 3:4]])
     Tw[:, :3] /= np.linalg.norm(Tw[:, :3], axis=1, keepdims=True) + 1e-12
     write_rcm(os.path.join(a.out, 'wheel.rcm'), Vw, Nw, UVw, Tw, Fw)
+    for n, dname in enumerate(a.lods, 1):
+        Vl, Nl, UVl, Tl, Fl = read_glb(os.path.join(dname, 'wheel.glb'))
+        Vl = (((Vl @ Rw.T) - c) * sw) @ K.T
+        Nl = (Nl @ Rw.T) @ np.linalg.inv(K); Nl /= np.linalg.norm(Nl, axis=1, keepdims=True)
+        Tl = np.hstack([(Tl[:, :3] @ Rw.T) @ K.T, Tl[:, 3:4]]); Tl[:, :3] /= np.linalg.norm(Tl[:, :3], axis=1, keepdims=True) + 1e-12
+        write_rcm(os.path.join(a.out, f'wheel_lod{n}.rcm'), Vl, Nl, UVl, Tl, Fl)
+        print(f'wheel_lod{n} {len(Fl)} tris')
     rgba(stem(a.wheel) + '_base.png', os.path.join(a.out, 'wheel_base.png'))
     orm(stem(a.wheel) + '_mr.png', os.path.join(a.out, 'wheel_orm.png'))
     rgba(stem(a.wheel) + '_normal.png', os.path.join(a.out, 'wheel_normal.png'))
@@ -251,6 +267,7 @@ def main():
     with open(os.path.join(a.out, 'car.cfg'), 'w') as f:
         f.write('# written by ports/macos/tools/remaster_car.py\n')
         f.write('paint %s\n' % a.paint.replace(',', ' '))
+        f.write('paint_ai %s\n' % a.paint_ai.replace(',', ' '))
         f.write(f'livery_side {x0:.4f} {xl:.4f} {z0:.4f} {zh:.4f}\n')
         f.write(f'livery_top {y0:.4f} {yw:.4f} {a.top_from:.3f} {a.top_from + 0.1:.3f}\n')
         f.write('wheel_flip 1\n')

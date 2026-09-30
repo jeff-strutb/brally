@@ -24,6 +24,9 @@ fragments with no clean window outlines to fill.  So:
      cover their edges, and their normals are smoothed within each pane
      (never across a pillar), so reflections run clean across the glass.
 
+GLASS_EDGE (default 0.03 m) sets the subdivision and GLASS_OUT the output
+name, for the lower detail levels (glass_lod1, glass_lod2).
+
 Writes <pack>/glass.rcm ({pos3 nrm3 uv2 tan4} f32, u32 indices, car frame).
 """
 import bpy, bmesh, sys, os, struct
@@ -33,6 +36,8 @@ from mathutils.bvhtree import BVHTree
 
 argv = sys.argv[sys.argv.index("--") + 1:]
 pack = argv[0]
+edge = float(os.environ.get("GLASS_EDGE", "0.03"))            # subdivision; coarser for the lower detail levels
+outname = os.environ.get("GLASS_OUT", "glass")
 belt, x0, x1, ymax, inset, xc = [float(v) for v in (argv[1:7] if len(argv) >= 7 else (0.72, -1.56, 0.62, 0.84, 0.02, -1.2))]
 
 
@@ -71,7 +76,7 @@ print(f"hull {len(bm.faces)} faces")
 
 # 2. subdivide to ~2 cm, classify by an inward ray
 for _ in range(12):
-    long = [e for e in bm.edges if e.calc_length() > 0.03]
+    long = [e for e in bm.edges if e.calc_length() > edge]
     if not long:
         break
     bmesh.ops.subdivide_edges(bm, edges=long, cuts=1, use_grid_fill=True)
@@ -135,7 +140,7 @@ for _ in range(40):
     Nn = Ns / np.linalg.norm(Ns, axis=1, keepdims=True)
 P = P - Nn * inset
 data = np.hstack([P, Nn, np.zeros((len(P), 6))]).astype(np.float32)
-with open(os.path.join(pack, "glass.rcm"), "wb") as fo:
+with open(os.path.join(pack, f"{outname}.rcm"), "wb") as fo:
     fo.write(b"RCM1" + struct.pack("<II", len(P), T.size))
     fo.write(data.tobytes()); fo.write(T.astype(np.uint32).tobytes())
 print(f"GLASS_OK {len(T)} tris")

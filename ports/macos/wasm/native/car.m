@@ -1,8 +1,9 @@
 /* car.m -- the Remastered player car's seam into the display list (port code).
  *
  * While the Remastered renderer is on (host_fx.m, the ~ key) and a
- * replacement model is installed (host_car.m), the car each view follows is
- * drawn as that model instead of its .rca display lists.  Everything else
+ * replacement model is installed (host_car.m), every car given the ES (model
+ * 1: the player's default and the Quick Race opponent) is drawn as that model
+ * instead of its .rca display lists.  Everything else
  * about the car is still the game's: BrCarDrawVehicle runs as the original,
  * with the model record's body, glass, detail and reflection lists pointed at
  * an empty list and its wheel list cleared (which skips BrCarDrawWheels), so
@@ -31,6 +32,8 @@ u32 hmem_alloc(u32 n, int zero);
 #define LIST_CURSOR   0x106E7710u    /* DAT_106e7710, the list write cursor      */
 #define VIEW_CAR      0x106E9D88u    /* BrG_6C2CF8, the car the current view follows */
 #define CAR_MODEL     0x29C4u        /* car -> its .rca model record            */
+#define CAR_MODELIDX  0x29A8u        /* the model it was given (0 CE, 1 ES, ...) */
+#define REMASTERED_MODEL 1u          /* the ES: the model host_car.m has */
 #define MARK_W0       0xBC000008u
 #define MARK_TAG      0xCA5E0000u
 
@@ -50,7 +53,7 @@ void n_BrCarDrawVehicle(u32 car, u32 lodBias)
     u32 model, saved[3][5], wheel, before, after;
     int lod, i, slot;
     hfx_car_seen(car);                  /* host_fx.m: every car's headlights */
-    if (!hcar_enabled() || car != W_LD(u32, VIEW_CAR, 0) || !(model = W_LD(u32, car, CAR_MODEL))) {
+    if (!hcar_enabled() || W_LD(u32, car, CAR_MODELIDX) != REMASTERED_MODEL || !(model = W_LD(u32, car, CAR_MODEL))) {
         W_ORIG_BrCarDrawVehicle(car, lodBias);
         return;
     }
