@@ -47,7 +47,7 @@ struct CV { float x, y, z, w, r, g, b, a, s, t, wx, wy, wz, fl; };
 struct FXU {
   float4x4 vp, ivp, svp;
   float4 eye, sun, sunc, skyc, grnd, fogc, vpt, scr, p0, p1, p2, p3, p4, flash, wb, nsky, sk2, tm, wx;
-  float4x4 pvp; float4 jit;
+  float4x4 pvp; float4 jit; float4x4 svp2; float4 csm;
 };
 /* headlights: up to 32 spot lights (two per car); misc = count, beam
    strength, light intensity, air density */
@@ -279,17 +279,25 @@ fragment float4 ssrfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
   return float4(u.fogc.rgb, R.z > 0 ? 0.5 * u.p0.w : 0.0); }
 
 /* ---- lighting composite (full res, HDR): a = how much of the pixel is scene */
-float shadow_at(constant FXU &u, depth2d<float> sm, float3 wp, float3 N, float2 px) {
+float shadow1(depth2d<float> sm, float4x4 m, float3 wp, float bias, float soft, float2 px, thread float &edge) {
   constexpr sampler cs(filter::linear, address::clamp_to_border, border_color::opaque_white, compare_func::less_equal);
-  float4 c = u.svp * float4(wp + N * u.p3.w * 1.2, 1);
+  float4 c = m * float4(wp, 1);
   float2 st = float2(c.x * 0.5 + 0.5, 0.5 - c.y * 0.5);
-  if (any(st < 0.0) || any(st > 1.0) || c.z > 1.0) return 1.0;
-  float soft = u.p2.y / 2048.0, rot = ign(px) * 6.2831853, s = 0;
+  edge = max(abs(c.x), abs(c.y));
+  if (any(st < 0.0) || any(st > 1.0) || c.z > 1.0) { edge = 2.0; return 1.0; }
+  float rot = ign(px) * 6.2831853, s = 0;
   for (int i = 0; i < 12; i++) {
     float r = sqrt((float(i) + 0.5) / 12.0), a = rot + float(i) * 2.3999632;
-    s += sm.sample_compare(cs, st + float2(cos(a), sin(a)) * r * soft, c.z - 0.00012); }
-  float fade = smoothstep(0.85, 1.0, max(abs(c.x), abs(c.y)));
-  return mix(s / 12.0, 1.0, fade); }
+    s += sm.sample_compare(cs, st + float2(cos(a), sin(a)) * r * soft, c.z - bias); }
+  return s / 12.0; }
+/* two cascades: a sharp one around the car, a wide one to the distance */
+float shadow_at(constant FXU &u, depth2d<float> sm, float3 wp, float3 N, float2 px, depth2d<float> sm2) {
+  float e1, e2;
+  float s1 = shadow1(sm, u.svp, wp + N * u.p3.w * 1.2, 0.00012, u.p2.y / 2048.0, px, e1);
+  if (e1 < 0.85) return s1;
+  float s2 = shadow1(sm2, u.svp2, wp + N * u.csm.x * 1.2, 0.00025, u.p2.y * 0.6 / 2048.0, px, e2);
+  s2 = mix(s2, 1.0, smoothstep(0.85, 1.0, e2));
+  return mix(s1, s2, smoothstep(0.85, 1.0, e1)); }
 /* the Remastered sky (host_sky.m): each panorama is a level photograph, so it
    is laid out with a photograph's proportions: horizon on its bottom row,
    35 degrees up on its top row, 60 degrees of heading across, repeated six
@@ -313,6 +321,7 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
                        texture2d<float> col [[texture(2)]], depth2d<float> sm [[texture(3)]],
                        texture2d<float> aot [[texture(4)]], texture2d<float> ssr [[texture(5)]],
                        texture2d<float> sky [[texture(6)]], texture2d<float> trk [[texture(7)]],
+                       depth2d<float> sm2 [[texture(8)]],
                        constant HL &hl [[buffer(1)]]) {
   float4 C = col.sample(ns, in.uv), P = gp.sample(ns, in.uv), G = gn.sample(ns, in.uv);
   float3 lin = pow(C.rgb, 2.2);
@@ -320,7 +329,7 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
                                                         (radiance / 4)^(1/2.2); only the sun's
                                                         shadow is applied here */
     float3 wp = P.xyz, N = normalize(G.xyz);
-    float sh = u.sun.w > 0 ? shadow_at(u, sm, wp, N, in.pos.xy) : 1.0;
+    float sh = u.sun.w > 0 ? shadow_at(u, sm, wp, N, in.pos.xy, sm2) : 1.0;
     float k = saturate(dot(N, u.sun.xyz) * 4.0) * (1.0 - sh);
     float3 o = lin * 4.0 * (1.0 - 0.6 * k);
     /* rain on the car: drops landing on its upper surfaces, a bright pop that
@@ -383,13 +392,13 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
            waves stay put as the camera rises and falls */
         float t = min(max(u.eye.z, 1.0) / max(-vd.z, 1e-3), 3000.0);
         float2 xy = u.eye.xy + vd.xy * t;
-        float3 Nw = waveN(xy * 0.5, u.tm.x, 0.45 * smoothstep(1500.0, 60.0, t) + 0.04);
+        float3 Nw = waveN(xy * 0.5, u.tm.x, 0.22 * smoothstep(900.0, 40.0, t) + 0.03);
         float3 R = reflect(vd, Nw);
         float3 refl = skylight(u, sky, float3(R.xy, abs(R.z)));
         float Fw = 0.02 + 0.98 * pow(1.0 - saturate(dot(Nw, -vd)), 5.0);
         float3 Hw = normalize(u.sun.xyz - vd); float nhw = saturate(dot(Nw, Hw));
-        float aw = 0.08 * 0.08 * 0.08 * 0.08, dw = nhw * nhw * (aw - 1.0) + 1.0;
-        float glint = aw / (3.14159 * dw * dw) * 0.02 * saturate(dot(Nw, u.sun.xyz)) * u.sun.w;
+        float aw = 0.1 * 0.1 * 0.1 * 0.1, dw = nhw * nhw * (aw - 1.0) + 1.0;
+        float glint = aw / (3.14159 * dw * dw) * 0.012 * saturate(dot(Nw, u.sun.xyz)) * u.sun.w;
         float3 ow = mix(lin * 0.7, refl, saturate(Fw * 1.1 + 0.1)) + u.sunc.rgb * glint;
         o = mix(o, ow, m); } }
     o += u.flash.rgb * u.flash.w * 0.35;
@@ -424,7 +433,7 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
       float3 grad = sign(det) * (hx * r1 + hy * r2);
       N = normalize(abs(det) * N - grad * k); } }
   float ndl = saturate(dot(N, L)), up = saturate(N.z);
-  float sh = u.sun.w > 0 ? shadow_at(u, sm, wp, N, in.pos.xy) : 1.0;
+  float sh = u.sun.w > 0 ? shadow_at(u, sm, wp, N, in.pos.xy, sm2) : 1.0;
   float4 A = aot.sample(ls, in.uv);
   float ao = mix(1.0, A.a, u.p0.x);
   float wet = u.p0.w * smoothstep(0.55, 0.9, up);
@@ -450,6 +459,54 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
     float road = smoothstep(0.8, 0.95, N.z) * grey * u.tm.y;
     float y = dot(alb, float3(0.2126, 0.7152, 0.0722));
     alb = mix(alb, y * float3(0.97, 1.0, 1.04), road); }
+  /* asphalt, resynthesised: the game's road texture is baked streaks and
+     colour speckle.  On flat grey surfaces (judged on a wide blur, which the
+     speckle averages out of) keep only that blur's tone and the painted
+     markings (texels well above it), and lay a world-space asphalt over it:
+     patches, fine grain and aggregate */
+  { const float3 lw = float3(0.2126, 0.7152, 0.0722);
+    float2 px = 7.0 / float2(col.get_width(), col.get_height());
+    float3 cbl = 0;
+    for (int k = 0; k < 8; k++) { float a = float(k) * 0.785398; cbl += col.sample(ls, in.uv + float2(cos(a), sin(a)) * px).rgb; }
+    cbl /= 8.0;
+    float mx = max(cbl.r, max(cbl.g, cbl.b)), mn = min(cbl.r, min(cbl.g, cbl.b));
+    float grey = 1.0 - smoothstep(0.1, 0.2, (mx - mn) / max(mx, 0.05));
+    float road = smoothstep(0.85, 0.96, N.z) * grey * (1.0 - u.wx.z) * step(0.5, u.tm.y);
+    if (road > 0.0) {
+      float yb = dot(pow(cbl, 2.2), lw);
+      float y = dot(lin, lw), dist = distance(u.eye.xyz, wp);
+      float mark = smoothstep(1.4, 1.9, y / max(yb, 1e-3));
+      float f1 = smoothstep(80.0, 20.0, dist), f2 = smoothstep(30.0, 6.0, dist);
+      float n = 1.0 + (fbm(wp.xy * 0.35) - 0.5) * 0.35
+              + (fbm(wp.xy * 6.0) - 0.5) * 0.3 * f1
+              + (step(0.8, vnoise(wp.xy * 55.0)) * 0.3 - vnoise(wp.xy * 23.0) * 0.12) * f2;
+      float3 asph = yb * n * float3(0.98, 1.0, 1.03) * mix(1.0, 0.6, wet) * mix(1.0, 0.7, puddle);
+      alb = mix(alb, asph, road * (1.0 - mark)); }
+    if (int(u.p3.y) == 13) return float4(road, grey, smoothstep(0.85, 0.96, N.z), G.a); }
+  /* close up, the 1999 textures run out of detail: add the material's own
+     fine structure, in world space -- aggregate in asphalt, blades in grass,
+     grain in sand, stone on walls -- as colour variation and relief */
+  { float dist = distance(u.eye.xyz, wp), k = smoothstep(26.0, 3.0, dist) * u.wx.w;
+    if (k > 0.0) {
+      float3 sb = saturate(C.rgb); float mx = max(sb.r, max(sb.g, sb.b)), mn = min(sb.r, min(sb.g, sb.b));
+      float sat = (mx - mn) / max(mx, 0.05);
+      float green = smoothstep(0.02, 0.08, sb.g - max(sb.r, sb.b));
+      float sand = smoothstep(0.04, 0.14, sb.r - sb.b) * (1.0 - green);
+      float grey = 1.0 - smoothstep(0.06, 0.18, sat);
+      float3 an = abs(N);
+      float2 q = an.z > 0.6 ? wp.xy : (an.x > an.y ? wp.yz : wp.xz);
+      float f = green > 0.5 ? 60.0 : sand > 0.5 ? 45.0 : 30.0;
+      float e = 0.35 / f;
+      float h0 = fbm(q * f), hx = fbm((q + float2(e, 0)) * f), hy = fbm((q + float2(0, e)) * f);
+      float spk = step(0.78, vnoise(q * 140.0)) * grey;              /* aggregate stones */
+      float blades = green * (vnoise(float2(q.x * 180.0, q.y * 22.0)) * 0.5 + vnoise(float2(q.x * 25.0, q.y * 170.0)) * 0.5);
+      float amp = grey * 0.22 + green * 0.3 + sand * 0.16 + 0.08;
+      alb *= 1.0 + k * ((h0 - 0.5) * amp * 1.6 + spk * 0.25 - blades * 0.25);
+      float3 g3 = float3(hx - h0, hy - h0, 0.0) * (0.9 * k);
+      float3 t1 = an.z > 0.6 ? float3(1, 0, 0) : (an.x > an.y ? float3(0, 1, 0) : float3(1, 0, 0));
+      float3 t2 = an.z > 0.6 ? float3(0, 1, 0) : float3(0, 0, 1);
+      N = normalize(N - (t1 * g3.x + t2 * g3.y) * 6.0);
+      ndl = saturate(dot(N, L)); } }
   float3 amb = mix(u.grnd.rgb, u.skyc.rgb, N.z * 0.5 + 0.5) * ao;
   float3 dl = u.sunc.rgb * ndl * sh;
   float3 fl = u.flash.rgb * u.flash.w * saturate(dot(N, normalize(float3(0.3, 0.2, 1.0))) * 0.7 + 0.3);
@@ -487,13 +544,13 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
     float water = u.sk2.w * step(0.97, N.z) * max(smoothstep(1.12, 1.24, sb.b / max(sb.r, 0.02))
                 * smoothstep(1.08, 1.18, sb.g / max(sb.r, 0.02)), smoothstep(1.04, 1.1, sb.g / max(sb.r, 0.02)) * (1.0 - smoothstep(0.2, 0.45, wp.z)));
     if (water > 0.0) {
-      float3 Nw = waveN(wp.xy, u.tm.x, 0.55);
+      float3 Nw = waveN(wp.xy, u.tm.x, 0.3 * smoothstep(250.0, 15.0, distance(u.eye.xyz, wp)) + 0.05);
       float3 R = reflect(-V, Nw);
       float3 refl = mix(skylight(u, sky, float3(R.xy, abs(R.z))), S.rgb, S.a * 0.8);
       float Fw = 0.02 + 0.98 * pow(1.0 - saturate(dot(Nw, V)), 5.0);
       float3 Hw = normalize(L + V); float nhw = saturate(dot(Nw, Hw));
-      float aw = 0.07 * 0.07 * 0.07 * 0.07, dw = nhw * nhw * (aw - 1.0) + 1.0;
-      float glint = aw / (3.14159 * dw * dw) * 0.02 * saturate(dot(Nw, L)) * sh;
+      float aw = 0.1 * 0.1 * 0.1 * 0.1, dw = nhw * nhw * (aw - 1.0) + 1.0;
+      float glint = aw / (3.14159 * dw * dw) * 0.012 * saturate(dot(Nw, L)) * sh;
       float3 body = lin * 0.5 * (amb + dl * 0.4);
       float3 ow = mix(body, refl, saturate(Fw * 1.2 + 0.08)) + u.sunc.rgb * glint;
       o = mix(o, ow, water); }
@@ -902,7 +959,8 @@ typedef struct {
     float vp[16], ivp[16], svp[16];
     float eye[4], sun[4], sunc[4], skyc[4], grnd[4], fogc[4], vpt[4], scr[4];
     float p0[4], p1[4], p2[4], p3[4], p4[4], flash[4], wb[4], nsky[4], sk2[4], tm[4], wx[4];
-    float pvp[16], jit[4];   /* last frame's view x projection; this frame's jitter (ndc) and the last one's */   /* wx: rain, snowfall, snow ground, - */
+    float pvp[16], jit[4];   /* last frame's view x projection; this frame's jitter (ndc) and the last one's */
+    float svp2[16], csm[4];  /* the far shadow cascade; csm.x its texel size */   /* wx: rain, snowfall, snow ground, - */
 } fxu;
 typedef struct { float p[32][4], d[32][4], col[4], misc[4]; float g[64][4], gd[64][4], gmisc[4]; } hlu;
 static float g_hl_int, g_hl_beam, g_hl_air;
@@ -915,6 +973,7 @@ static id<MTLRenderPipelineState> p_sh, p_ao, p_blur, p_ssr, p_comp, p_pre, p_do
 static id<MTLDepthStencilState> ds_sh;
 static id<MTLTexture> t_trk, t_pfx, t_nrm, t_hist[2], t_mb;
 static int g_hist_ok, g_hist_i;
+static id<MTLTexture> t_sm2;
 static id<MTLTexture> t_sm, t_ao, t_ao2, t_ssr, t_hdr, t_bl[6], t_shaft, t_out, t_aa;
 static int tw, th;
 static int g_on = -1;
@@ -1137,6 +1196,7 @@ static void setup(id<MTLDevice> dev)
         td.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
         td.storageMode = MTLStorageModePrivate;
         t_sm = [D newTextureWithDescriptor:td];
+        t_sm2 = [D newTextureWithDescriptor:td];
     }
 }
 
@@ -1335,6 +1395,7 @@ static void weather(fxu *u, const float *fogc)
     u->wx[0] = w == 2 ? 1.0f : w == 4 ? 0.75f : 0.0f;
     u->wx[1] = w == 3 ? 1.0f : 0.0f;
     u->wx[2] = w == 3 ? 1.0f : 0.0f;
+    u->wx[3] = getenv("BR_FX_DETAIL") ? (float)atof(getenv("BR_FX_DETAIL")) : 1.0f;
     /* a real sky in clear weather (clouds kept from texels whose darkest
      * channel is between sk2.y and sk2.z), and water shading */
     u->sk2[0] = w == 0 ? 1.0f : 0.0f; u->sk2[1] = 0.36f; u->sk2[2] = 0.55f;
@@ -1755,6 +1816,20 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
         M[12] = -tx / R; M[13] = -ty / R; M[14] = (-tz + depth * 0.5) / depth; M[15] = 1;
         for (i = 0; i < 16; i++) u.svp[i] = (float)M[i];
         u.p3[3] = (float)tex;
+        /* the far cascade: the same view, 4x wider */
+        {
+            double R2 = R * 4.0, c2[3], tex2 = 2.0 * R2 / 2048.0;
+            for (i = 0; i < 3; i++) c2[i] = u.eye[i] + fl[i] * R2 * 0.6;
+            tx = rt[0] * c2[0] + rt[1] * c2[1] + rt[2] * c2[2];
+            ty = up[0] * c2[0] + up[1] * c2[1] + up[2] * c2[2];
+            tz = fw[0] * c2[0] + fw[1] * c2[1] + fw[2] * c2[2];
+            tx = floor(tx / tex2) * tex2; ty = floor(ty / tex2) * tex2;
+            memset(M, 0, sizeof M);
+            for (i = 0; i < 3; i++) { M[i * 4 + 0] = rt[i] / R2; M[i * 4 + 1] = up[i] / R2; M[i * 4 + 2] = fw[i] / (depth * 2); }
+            M[12] = -tx / R2; M[13] = -ty / R2; M[14] = (-tz + depth) / (depth * 2); M[15] = 1;
+            for (i = 0; i < 16; i++) u.svp2[i] = (float)M[i];
+            u.csm[0] = (float)tex2;
+        }
     }
 
     if (getenv("BR_FX_STAT") && g_frame % 500 == 0) {
@@ -1781,10 +1856,10 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
             lp[0] = m[12]; lp[1] = m[13]; lp[2] = m[14];
         }
     }
-    /* 1. shadow map */
-    if (u.sun[3] > 0) {
+    /* 1. shadow maps */
+    if (u.sun[3] > 0) for (int cas = 0; cas < 2; cas++) {
         MTLRenderPassDescriptor *rp = [MTLRenderPassDescriptor renderPassDescriptor];
-        rp.depthAttachment.texture = t_sm;
+        rp.depthAttachment.texture = cas ? t_sm2 : t_sm;
         rp.depthAttachment.loadAction = MTLLoadActionClear;
         rp.depthAttachment.clearDepth = 1.0;
         rp.depthAttachment.storeAction = MTLStoreActionStore;
@@ -1795,7 +1870,7 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
         [enc setDepthBias:2.0f slopeScale:3.0f clamp:0.02f];
         for (i = 0; i < g_nrec; i++) {
             shrec *r = &g_rec[i];
-            memcpy(r->s.svp, u.svp, sizeof u.svp);
+            memcpy(r->s.svp, cas ? u.svp2 : u.svp, sizeof u.svp);
             [enc setVertexBuffer:r->buf offset:r->off atIndex:0];
             [enc setVertexBytes:&r->s length:sizeof r->s atIndex:1];
             [enc setFragmentBytes:&r->s length:sizeof r->s atIndex:0];
@@ -1858,7 +1933,7 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
     /* 4. lighting */
     enc = pass(cb, t_hdr, 0);
     [enc setFragmentBytes:&hl length:sizeof hl atIndex:1];
-    quad(enc, p_comp, &u, @[gn, gp, col, t_sm, t_ao, t_ssr, g_skyt ? g_skyt : col, t_trk]);
+    quad(enc, p_comp, &u, @[gn, gp, col, t_sm, t_ao, t_ssr, g_skyt ? g_skyt : col, t_trk, t_sm2]);
     /* 4b. particles and falling rain/snow over the lit scene */
     if (!getenv("BR_FX_NOPFX")) {
         pfu *pu = calloc(1, sizeof *pu);
