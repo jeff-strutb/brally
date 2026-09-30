@@ -47,6 +47,7 @@ struct CV { float x, y, z, w, r, g, b, a, s, t, wx, wy, wz, fl; };
 struct FXU {
   float4x4 vp, ivp, svp;
   float4 eye, sun, sunc, skyc, grnd, fogc, vpt, scr, p0, p1, p2, p3, p4, flash, wb, nsky, sk2, tm, wx;
+  float4x4 pvp; float4 jit;
 };
 /* headlights: up to 32 spot lights (two per car); misc = count, beam
    strength, light intensity, air density */
@@ -407,6 +408,21 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
     float yl = dot(lin, lw), yb = dot(cb, lw);
     if (yb > 1e-4) lin = cb * (yl / yb); }
   float3 wp = P.xyz, N = onormal(G.xyz, wp, u.eye.xyz), V = normalize(u.eye.xyz - wp), L = u.sun.xyz;
+  /* surface detail: the texture's own light and dark read as relief (a bump
+     map from its brightness, by the surface gradient of Mikkelsen 2020),
+     fading out where the texture is too far away to show it */
+  { float2 px = 2.0 / float2(col.get_width(), col.get_height());
+    const float3 lw = float3(0.2126, 0.7152, 0.0722);
+    float h0 = dot(col.sample(ls, in.uv).rgb, lw);
+    float hx = dot(col.sample(ls, in.uv + float2(px.x, 0)).rgb, lw) - h0;
+    float hy = dot(col.sample(ls, in.uv + float2(0, px.y)).rgb, lw) - h0;
+    float3 sx = gp.sample(ns, in.uv + float2(px.x, 0)).xyz - wp, sy = gp.sample(ns, in.uv + float2(0, px.y)).xyz - wp;
+    float3 r1 = cross(sy, N), r2 = cross(N, sx);
+    float det = dot(sx, r1);
+    float k = u.tm.w * smoothstep(60.0, 8.0, distance(u.eye.xyz, wp));
+    if (abs(det) > 1e-9 && k > 0.0) {
+      float3 grad = sign(det) * (hx * r1 + hy * r2);
+      N = normalize(abs(det) * N - grad * k); } }
   float ndl = saturate(dot(N, L)), up = saturate(N.z);
   float sh = u.sun.w > 0 ? shadow_at(u, sm, wp, N, in.pos.xy) : 1.0;
   float4 A = aot.sample(ls, in.uv);
@@ -584,6 +600,33 @@ fragment float4 shaftfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
   float g = saturate(1.0 - length((in.uv - sp) * float2(1.333, 1.0)) * 0.9);
   return float4(u.sunc.rgb * acc / 32.0 * (0.4 + g) * u.p2.x + bm, 1); }
 
+/* ---- smooth shading: the game's models are low-poly and its G-buffer
+   normals are per face.  Average each pixel's normal with its neighbours on
+   the same continuous surface (close to its plane, bent by under ~50 deg),
+   across a disc a fixed size in the world, as a modeller's smoothing groups
+   would; creases sharper than that stay sharp */
+fragment float4 nrmfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
+                      texture2d<float> gn [[texture(0)]], texture2d<float> gp [[texture(1)]]) {
+  float4 G = gn.sample(ns, in.uv), P = gp.sample(ns, in.uv);
+  if (!is_geo(P.w)) return G;
+  float3 N0 = onormal(G.xyz, P.xyz, u.eye.xyz);
+  float de = distance(u.eye.xyz, P.xyz);
+  /* a 0.9 m disc, in pixels at this distance */
+  float2 scr = float2(gn.get_width(), gn.get_height());
+  float rpx = clamp(0.9 * u.scr.w / max(de, 0.5), 2.0, 60.0);
+  float3 acc = N0; float wsum = 1.0;
+  float rot = ign(in.pos.xy) * 6.2831853;
+  for (int i = 0; i < 12; i++) {
+    float r = sqrt((float(i) + 0.5) / 12.0) * rpx, a = rot + float(i) * 2.3999632;
+    float2 q = in.uv + float2(cos(a), sin(a)) * r / scr;
+    float4 Q = gp.sample(ns, q);
+    if (!is_geo(Q.w)) continue;
+    float3 Nk = onormal(gn.sample(ns, q).xyz, Q.xyz, u.eye.xyz);
+    float plane = abs(dot(N0, Q.xyz - P.xyz)) / (0.02 * de + 0.05);
+    float w = saturate(1.0 - plane) * smoothstep(0.62, 0.9, dot(N0, Nk));
+    acc += Nk * w; wsum += w; }
+  return float4(normalize(acc), G.a); }
+
 /* ---- tyre tracks: ribbons along each wheel's path, drawn into a mask the
    lighting pass reads (r strength, g the ground's height, to reject pixels
    the ribbon passes in front of) */
@@ -683,6 +726,83 @@ fragment float4 pfxfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]], constan
       Lc += T * cover * lum; T *= 1.0 - cover; } }
   return float4(Lc, 1.0 - T); }
 
+/* ---- temporal anti-aliasing and motion blur.  Every 3D triangle is drawn
+   with a sub-pixel jitter (host_glide.m), so over frames each pixel sees its
+   whole area; each pixel's position last frame comes from its world position
+   through last frame's camera, or through its car's last transform when it
+   is on a car. */
+struct MVC { float4 cur[16][4]; float4 prev[16][4]; float4 misc; };   /* rows 0-2 + position; box in misc */
+float2 prev_uv(constant FXU &u, constant MVC &mv, float4 P, float2 uv) {
+  float3 wp;
+  if (is_solid(P.w)) {
+    wp = P.xyz;
+    for (int i = 0; i < int(mv.misc.x); i++) {
+      float3 d = wp - mv.cur[i][3].xyz;
+      float3 l = float3(dot(d, mv.cur[i][0].xyz), dot(d, mv.cur[i][1].xyz), dot(d, mv.cur[i][2].xyz));
+      if (abs(l.x) < 2.6 && abs(l.y) < 1.3 && l.z > -1.2 && l.z < 1.8) {
+        wp = mv.prev[i][3].xyz + l.x * mv.prev[i][0].xyz + l.y * mv.prev[i][1].xyz + l.z * mv.prev[i][2].xyz;
+        break; } }
+  } else wp = u.eye.xyz + view_dir(u, uv) * 20000.0;
+  float4 c = u.pvp * float4(wp, 1);
+  if (c.w <= 0) return float2(-1);
+  float sx = u.vpt.x * c.x / c.w + u.vpt.y, sy = u.vpt.z * c.y / c.w + u.vpt.w;
+  float v = sy / 480.0; if (u.p3.x > 0.5) v = 1.0 - v;
+  return float2(sx / 640.0, v); }
+float3 ycc(float3 c) { return float3(0.25 * c.r + 0.5 * c.g + 0.25 * c.b, 0.5 * c.r - 0.5 * c.b, -0.25 * c.r + 0.5 * c.g - 0.25 * c.b); }
+float3 rgb_(float3 y) { return float3(y.x + y.y - y.z, y.x + y.z, y.x - y.y - y.z); }
+/* Catmull-Rom history fetch, 5 taps (Jimenez) */
+float3 hist_cr(texture2d<float> h, float2 uv) {
+  float2 sz = float2(h.get_width(), h.get_height()), p = uv * sz - 0.5, t1 = floor(p) + 0.5, f = p - floor(p);
+  float2 w0 = f * (-0.5 + f * (1.0 - 0.5 * f)), w1 = 1.0 + f * f * (-2.5 + 1.5 * f), w2 = f * (0.5 + f * (2.0 - 1.5 * f)), w3 = f * f * (-0.5 + 0.5 * f);
+  float2 w12 = w1 + w2, t0 = (t1 - 1.0) / sz, t3 = (t1 + 2.0) / sz, t12 = (t1 + w2 / w12) / sz;
+  float3 c = h.sample(ls, float2(t12.x, t0.y)).rgb * (w12.x * w0.y) + h.sample(ls, float2(t0.x, t12.y)).rgb * (w0.x * w12.y)
+           + h.sample(ls, t12).rgb * (w12.x * w12.y) + h.sample(ls, float2(t3.x, t12.y)).rgb * (w3.x * w12.y)
+           + h.sample(ls, float2(t12.x, t3.y)).rgb * (w12.x * w3.y);
+  float ws = w12.x * w0.y + w0.x * w12.y + w12.x * w12.y + w3.x * w12.y + w12.x * w3.y;
+  return max(c / ws, 0.0); }
+fragment float4 taafs(QO in [[stage_in]], constant FXU &u [[buffer(0)]], constant MVC &mv [[buffer(1)]],
+                      texture2d<float> cur [[texture(0)]], texture2d<float> hist [[texture(1)]], texture2d<float> gp [[texture(2)]]) {
+  float4 C = cur.sample(ns, in.uv);
+  if (u.jit.w < 0.5) return C;                       /* no history yet */
+  float2 px = 1.0 / float2(cur.get_width(), cur.get_height());
+  float3 m1 = 0, m2 = 0;
+  for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) {
+    float3 c = ycc(cur.sample(ns, in.uv + float2(x, y) * px).rgb / (1.0 + dot(cur.sample(ns, in.uv + float2(x, y) * px).rgb, float3(0.2126, 0.7152, 0.0722))));
+    m1 += c; m2 += c * c; }
+  m1 /= 9.0; float3 sd = sqrt(max(m2 / 9.0 - m1 * m1, 0.0));
+  float2 pu = prev_uv(u, mv, gp.sample(ns, in.uv), in.uv);
+  if (any(pu < 0.0) || any(pu > 1.0)) return C;
+  float3 H = hist_cr(hist, pu);
+  float3 hy = ycc(H / (1.0 + dot(H, float3(0.2126, 0.7152, 0.0722))));
+  float3 lo = m1 - sd * 1.25, hi = m1 + sd * 1.25;
+  /* clip the history toward the neighbourhood's mean */
+  float3 d = hy - m1, e = max(abs(d) / max(hi - m1, 1e-4), 1.0);
+  hy = m1 + d / max(e.x, max(e.y, e.z));
+  float3 cy = ycc(C.rgb / (1.0 + dot(C.rgb, float3(0.2126, 0.7152, 0.0722))));
+  float speed = length((in.uv - pu) / px);
+  float a = mix(0.08, 0.25, saturate(speed / 30.0));
+  float3 r = mix(hy, cy, a);
+  float3 o = rgb_(r); o = o / max(1.0 - dot(o, float3(0.2126, 0.7152, 0.0722)), 1e-3);
+  return float4(max(o, 0.0), C.a); }
+fragment float4 mbfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]], constant MVC &mv [[buffer(1)]],
+                     texture2d<float> src [[texture(0)]], texture2d<float> gp [[texture(1)]]) {
+  float4 C = src.sample(ns, in.uv);
+  if (C.a < 0.5 || u.jit.w < 0.5) return C;
+  float2 pu = prev_uv(u, mv, gp.sample(ns, in.uv), in.uv);
+  if (any(pu < -0.5)) return C;
+  float2 sz = float2(src.get_width(), src.get_height());
+  float2 v = (in.uv - pu) * u.jit.z;                 /* shutter */
+  float l = length(v * sz);
+  if (l < 1.0) return C;
+  v *= min(l, 0.04 * sz.x) / l;
+  float3 acc = C.rgb; float n = 1.0, j = ign(in.pos.xy) - 0.5;
+  for (int i = 1; i <= 8; i++) {
+    float t = (float(i) + j) / 8.0 - 0.5;
+    float4 s = src.sample(ls, in.uv + v * t);
+    if (s.a < 0.5) continue;
+    acc += s.rgb; n += 1.0; }
+  return float4(acc / n, C.a); }
+
 fragment float4 pfxcfs(QO in [[stage_in]], texture2d<float> p [[texture(0)]]) { return p.sample(ls, in.uv); }
 
 /* ---- tonemap and grade, over the untouched 2D */
@@ -781,7 +901,8 @@ fragment float4 aafs(QO in [[stage_in]], texture2d<float> t [[texture(0)]], text
 typedef struct {
     float vp[16], ivp[16], svp[16];
     float eye[4], sun[4], sunc[4], skyc[4], grnd[4], fogc[4], vpt[4], scr[4];
-    float p0[4], p1[4], p2[4], p3[4], p4[4], flash[4], wb[4], nsky[4], sk2[4], tm[4], wx[4];   /* wx: rain, snowfall, snow ground, - */
+    float p0[4], p1[4], p2[4], p3[4], p4[4], flash[4], wb[4], nsky[4], sk2[4], tm[4], wx[4];
+    float pvp[16], jit[4];   /* last frame's view x projection; this frame's jitter (ndc) and the last one's */   /* wx: rain, snowfall, snow ground, - */
 } fxu;
 typedef struct { float p[32][4], d[32][4], col[4], misc[4]; float g[64][4], gd[64][4], gmisc[4]; } hlu;
 static float g_hl_int, g_hl_beam, g_hl_air;
@@ -789,10 +910,11 @@ typedef struct { int at_fn, at_ref, use_tex, pad; float su, sv, pad2, pad3; floa
 
 static id<MTLDevice> D;
 static id<MTLLibrary> L;
-static id<MTLRenderPipelineState> p_trk, p_pfx, p_pfxc;
+static id<MTLRenderPipelineState> p_trk, p_pfx, p_pfxc, p_nrm, p_taa, p_mb;
 static id<MTLRenderPipelineState> p_sh, p_ao, p_blur, p_ssr, p_comp, p_pre, p_down, p_up, p_shaft, p_fin, p_aa, p_scene, p_mix;
 static id<MTLDepthStencilState> ds_sh;
-static id<MTLTexture> t_trk, t_pfx;
+static id<MTLTexture> t_trk, t_pfx, t_nrm, t_hist[2], t_mb;
+static int g_hist_ok, g_hist_i;
 static id<MTLTexture> t_sm, t_ao, t_ao2, t_ssr, t_hdr, t_bl[6], t_shaft, t_out, t_aa;
 static int tw, th;
 static int g_on = -1;
@@ -978,6 +1100,9 @@ static void setup(id<MTLDevice> dev)
     p_scene = mkpipe(@"fsq", @"scenefs", MTLPixelFormatRGBA8Unorm, 0);
     p_mix = mkpipe(@"fsq", @"mixfs", MTLPixelFormatRGBA8Unorm, 0);
     p_pfx = mkpipe(@"fsq", @"pfxfs", MTLPixelFormatRGBA16Float, 0);
+    p_nrm = mkpipe(@"fsq", @"nrmfs", MTLPixelFormatRGBA16Float, 0);
+    p_taa = mkpipe(@"fsq", @"taafs", MTLPixelFormatRGBA16Float, 0);
+    p_mb = mkpipe(@"fsq", @"mbfs", MTLPixelFormatRGBA16Float, 0);
     {   /* track ribbons: the strongest wins where they overlap */
         MTLRenderPipelineDescriptor *d = [MTLRenderPipelineDescriptor new];
         d.vertexFunction = [L newFunctionWithName:@"trkvs"];
@@ -1030,6 +1155,11 @@ static void size(int w, int h)
     t_aa = mktex(w, h, MTLPixelFormatRGBA8Unorm, 1);
     t_trk = mktex(hw, hh, MTLPixelFormatRGBA16Float, 0);
     t_pfx = mktex(hw, hh, MTLPixelFormatRGBA16Float, 0);
+    t_nrm = mktex(w, h, MTLPixelFormatRGBA16Float, 0);
+    t_hist[0] = mktex(w, h, MTLPixelFormatRGBA16Float, 0);
+    t_hist[1] = mktex(w, h, MTLPixelFormatRGBA16Float, 0);
+    t_mb = mktex(w, h, MTLPixelFormatRGBA16Float, 0);
+    g_hist_ok = 0;
 }
 
 static id<MTLRenderCommandEncoder> pass(id<MTLCommandBuffer> cb, id<MTLTexture> t, int load)
@@ -1262,6 +1392,28 @@ void hfx_tick(void)
                                           context:nil characters:@"`" charactersIgnoringModifiers:@"`" isARepeat:NO keyCode:0x32] atStart:NO];
               } } }
 }
+
+/* ---- temporal: the jitter this frame's 3D is drawn with (Halton 2,3 over
+ * 8 frames, in the target's pixels, as clip-space NDC for host_glide.m), last
+ * frame's camera, and each car's last transform */
+static float g_jit[2], g_pvp[16];
+static int g_pvp_ok, g_jit_i;
+static int g_taa = -1;
+static int taa_on(void) { if (g_taa < 0) g_taa = !getenv("BR_FX_TAA") || atoi(getenv("BR_FX_TAA")); return g_taa; }
+static float halton(int i, int b) { float f = 1, r = 0; while (i > 0) { f /= (float)b; r += f * (float)(i % b); i /= b; } return r; }
+/* host_glide.m: the offset (NDC) to add to every 3D corner this frame */
+void hfx_jitter(float *jx, float *jy, int rw, int rh)
+{
+    if (!hfx_on() || !taa_on()) { *jx = *jy = 0; return; }
+    *jx = g_jit[0] * 2.0f / (float)rw; *jy = g_jit[1] * 2.0f / (float)rh;
+}
+static void next_jitter(void)
+{
+    g_jit_i = (g_jit_i + 1) % 8;
+    g_jit[0] = halton(g_jit_i + 1, 2) - 0.5f; g_jit[1] = halton(g_jit_i + 1, 3) - 0.5f;
+}
+typedef struct { float cur[16][4][4], prev[16][4][4], misc[4]; } mvu;
+static u32 g_prevcar[FX_CARS]; static float g_prevmat[FX_CARS][16]; static int g_nprev;
 
 /* ---- weather effects the port draws itself in Remastered: particles
  * (the game's smoke, dust and snow spray, and water spray and splashes from
@@ -1516,6 +1668,12 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
     norm3(cf);
     memcpy(u.vpt, g_vpt, sizeof u.vpt);
     u.scr[0] = (float)w; u.scr[1] = (float)h;
+    /* pixels per metre at 1 m: the projection's x scale times half the width */
+    u.scr[3] = (float)(sqrt(P[0] * P[0] + P[4] * P[4] + P[8] * P[8]) * w * 0.5);
+    u.tm[3] = getenv("BR_FX_BUMP") ? (float)atof(getenv("BR_FX_BUMP")) : 0.18f;
+    memcpy(u.pvp, g_pvp_ok ? g_pvp : g_P, sizeof u.pvp);
+    u.jit[2] = getenv("BR_FX_SHUTTER") ? (float)atof(getenv("BR_FX_SHUTTER")) : 0.5f;
+    u.jit[3] = (g_pvp_ok && g_hist_ok && taa_on()) ? 1.0f : 0.0f;
     u.p3[0] = (float)origin_ll;
     u.p2[2] = 6.0f;
     u.p2[3] = (float)(g_frame % 64);
@@ -1648,6 +1806,8 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
         [enc endEncoding];
     }
     /* 2. occlusion + bounce, blurred */
+    /* 1b. smoothed normals: every pass after this reads them */
+    if (!getenv("BR_FX_FLAT")) { quad(pass(cb, t_nrm, 0), p_nrm, &u, @[gn, gp]); gn = t_nrm; }
     quad(pass(cb, t_ao, 0), p_ao, &u, @[gn, gp, col]);
     {
         float d1[2] = { 1, 0 }, d2[2] = { 0, 1 };
@@ -1717,6 +1877,49 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
             quad(pass(cb, t_hdr, 1), p_pfxc, NULL, @[t_pfx]);
         }
     }
+    /* 4c. temporal anti-aliasing, then motion blur */
+    {
+        mvu *mv = calloc(1, sizeof *mv);
+        int c, k, nm = 0;
+        for (c = 0; c < g_ncars && nm < 16; c++) {
+            int j2;
+            for (j2 = 0; j2 < g_nprev && g_prevcar[j2] != g_carptr[c]; j2++) ;
+            if (j2 == g_nprev) continue;
+            for (k = 0; k < 4; k++) {
+                int r;
+                for (r = 0; r < 3; r++) { mv->cur[nm][k][r] = g_cars[c][k * 4 + r]; mv->prev[nm][k][r] = g_prevmat[j2][k * 4 + r]; }
+                if (k < 3) {       /* unit rows */
+                    float l1 = sqrtf(mv->cur[nm][k][0] * mv->cur[nm][k][0] + mv->cur[nm][k][1] * mv->cur[nm][k][1] + mv->cur[nm][k][2] * mv->cur[nm][k][2]);
+                    float l2 = sqrtf(mv->prev[nm][k][0] * mv->prev[nm][k][0] + mv->prev[nm][k][1] * mv->prev[nm][k][1] + mv->prev[nm][k][2] * mv->prev[nm][k][2]);
+                    for (r = 0; r < 3; r++) { mv->cur[nm][k][r] /= l1 > 0 ? l1 : 1; mv->prev[nm][k][r] /= l2 > 0 ? l2 : 1; }
+                }
+            }
+            nm++;
+        }
+        mv->misc[0] = (float)nm;
+        {
+            id<MTLBuffer> mb = [dev newBufferWithBytes:mv length:sizeof *mv options:MTLResourceStorageModeShared];
+            free(mv);
+            if (!g_keep) g_keep = [NSMutableArray new];
+            [g_keep addObject:mb];
+            if (taa_on()) {
+                id<MTLTexture> dst = t_hist[g_hist_i], his = t_hist[g_hist_i ^ 1];
+                enc = pass(cb, dst, 0);
+                [enc setFragmentBuffer:mb offset:0 atIndex:1];
+                quad(enc, p_taa, &u, @[t_hdr, his, gp]);
+                g_hist_i ^= 1; g_hist_ok = 1;
+                enc = pass(cb, t_hdr, 0);
+                [enc setFragmentBuffer:mb offset:0 atIndex:1];
+                if (getenv("BR_FX_NOMB")) u.jit[2] = 0;       /* shutter 0: a copy */
+                quad(enc, p_mb, &u, @[dst, gp]);
+            }
+        }
+        /* remember this frame for the next */
+        memcpy(g_pvp, g_P, sizeof g_pvp); g_pvp_ok = 1;
+        g_nprev = g_ncars;
+        for (c = 0; c < g_ncars; c++) { g_prevcar[c] = g_carptr[c]; memcpy(g_prevmat[c], g_cars[c], sizeof g_prevmat[c]); }
+        next_jitter();
+    }
     /* 5. bloom */
     quad(pass(cb, t_bl[0], 0), p_pre, &u, @[t_hdr]);
     for (i = 1; i < 6; i++) quad(pass(cb, t_bl[i], 0), p_down, NULL, @[t_bl[i - 1]]);
@@ -1731,7 +1934,7 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
     /* 7. tone map and grade; with anti-aliasing (BR_FX_AA=0 leaves it out,
      * the debug views skip it) the scene is graded alone, anti-aliased, and
      * the game's 2D laid over it afterwards */
-    if ((!getenv("BR_FX_AA") || atoi(getenv("BR_FX_AA"))) && u.p3[1] < 0.5) {
+    if ((!getenv("BR_FX_AA") || atoi(getenv("BR_FX_AA"))) && u.p3[1] < 0.5 && !taa_on()) {
         quad(pass(cb, t_aa, 0), p_scene, &u, @[t_hdr, col, t_bl[0], t_shaft]);
         quad(pass(cb, t_out, 0), p_aa, NULL, @[t_aa, t_hdr]);
         quad(pass(cb, t_aa, 0), p_mix, NULL, @[t_out, t_hdr, col]);
