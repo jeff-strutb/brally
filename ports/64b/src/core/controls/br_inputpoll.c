@@ -1,0 +1,851 @@
+/* br_inputpoll.c -- controls: the per-frame input poll.
+ *
+ * RESPONSIBILITY: reading what the player is doing -- one call per frame
+ * that pulls the keyboard, joystick and mouse in through DirectInput, flips
+ * the three double buffers, and folds every bound action into the flag word
+ * the race step and the menus read.
+ *
+ * FUNCTIONS: 0x100706D0 BrInputPoll (4,145 B; D3D twin 0x100773F0) and
+ * 0x100719D0 BrInputJustPressed (1,246 B, byte-exact; D3D twin 0x100786E0,
+ * whose port body stays in slice3_45.c).  0x10071710 BrInputIsDown
+ * (695 B, byte-exact) sits between them, as in the original.
+ * Neighbours 0x10070370 BrOnActivate and 0x10070170 BrWaveSeekData live in
+ * br_input.c; 0x10070490 BrDikGetDeviceState in br_dik.c.
+ *
+ * Transcribed from the BRGlide.dll bytes, not from the Ghidra draft: the
+ * draft mis-modelled the frame (unaff_EBX/EBP/ESI locals) and turned the two
+ * out-parameters into stack slots.  The frame is 0x110 bytes: a 16-byte
+ * DIMOUSESTATE at esp+0x10 and a 256-byte sprintf buffer at esp+0x20; the
+ * two parameters are read late at esp+0x124 / esp+0x128.
+ *
+ * Shape notes, all read off the bytes:
+ *   - ebx is the pinned zero, ebp the flag accumulator (`xor ebx,ebx; xor
+ *     ebp,ebp` straight after the pushes).  `mov ebp,0x100` / `mov ebp,
+ *     0x8000` are `flags |= K` with ebp provably still zero.
+ *   - every exit stores the result to 0x118EEBE8 before returning it.
+ *   - the three axis switches are `cmp; jg; je; cmp; jne` binary trees:
+ *     real `switch` statements on the binding word masked to its high byte
+ *     (the compacted node form -- BrInputIsDown's original has the other one).
+ *   - `x * 80 / 128` is `lea [x+x*4]; shl 4; cdq; and 0x7f; add; sar 7`; the
+ *     negated direction is `neg; shl 2; sub; shl 4` i.e. `x * -80`.
+ *   - the mouse accumulate reads the PREVIOUS record's ax for all three axes
+ *     (+0x5C three times) -- a copy-paste in the original, transcribed as is.
+ *   - `memset(buttons, 0, 4)` is the `lea; mov [reg],ebx` dword zero; the
+ *     0x80-byte joystick button wipe and the 0x1C mouse record wipe are the
+ *     `rep stosd` intrinsic.
+ *
+ * STATE (2026-09-05): 4145/4145 B, 1185/1185 instructions, register-blind
+ * 0+0, ONE region of 2 bytes at orig+0x34.  Everything else in the function
+ * is byte-identical.  Two source facts closed the rest of the residue:
+ *
+ *   1. THE FRAME (0x118 -> 0x110).  The benchmark block converts an unsigned
+ *      divisor through an 8-byte temp (`mov [esp+0x14],ebx` zeroes the high
+ *      half, `fild`/`fidiv` read the low dword).  The original parks that
+ *      temp ON TOP OF the dead DIMOUSESTATE (esp+0x10); ours gave it its own
+ *      8 bytes while `ms` was a function-scope local.  Declaring `ms` INSIDE
+ *      the mouse block lets the slot be reused.  (The 2026-09-03 note that
+ *      /O2 slot packing "ignores scope" was measured on scalars; an
+ *      ADDRESS-TAKEN aggregate is different -- its block scope ends its
+ *      lifetime for the packer.)
+ *   2. THE MOUSE ACCUMULATE.  The original reads the previous record's `ax`
+ *      once by scaled index (`mov esi,[ecx*4+A]`), keeps the ADDRESS
+ *      (`lea eax,[ecx*4+A]`) and reads the two copy-pasted terms through it
+ *      (`add edx,[eax]`).  Written three times as `g_brInMouse[prev].ax`
+ *      VC5 forms the address once and reads through it all three times, and
+ *      hoists the three DIMOUSESTATE loads into esi/edi ahead of the index
+ *      arithmetic (+1 instruction, 3+2 register-blind).  A pointer to the
+ *      FIELD, `int32_t *pPrevAx = &g_brInMouse[g_brInMousePrev].ax`, used
+ *      for all three reads, is byte-exact: the C front end folds the first
+ *      `*pPrevAx` back into the direct load and keeps the pointer for the
+ *      rest.  A pointer to the RECORD (`pPrev->ax`) is size-exact but reads
+ *      `[eax+0xc]` (+1 insn); operand order, `int ms[4]`, and `ms` through
+ *      a pointer are all dead (see below).
+ *
+ * THE 2-BYTE RESIDUE, orig+0x34: keyboard arm, `mov edx,[ecx]` (vtable) then
+ * `mov [g_brInKeyCur],eax` in the original; we emit the store first.  VC5's
+ * C front end will not move a pointer deref above a store to a global (the
+ * whole binary has exactly THREE deref-then-global-store adjacencies and the
+ * other two, 0x1003BCA0 and 0x100382D0, are plain source order).  A source
+ * order that puts the read first needs a local, and every local floats to
+ * the top of the block instead.  DEAD, all measured (a8 = 2 B unless said):
+ *   - the store inside the argument, `g_brInKeys[g_brInKeyCur = ...]` (=)
+ *   - an `idx` local, stored then indexed (=)
+ *   - `g_brInKeyCur` file-static (=); `volatile` + idx local (micro: =)
+ *   - vtable field `const`, device pointer `const *`, `* const` (=, =, =)
+ *   - `#pragma optimize("a"|"w", on)`: -220 B, the function falls apart
+ *   - a device local assigned BEFORE the prev store: dev load hoists to +0x25
+ *     (5 diffs); assigned AFTER the prev store: identical to a8
+ *   - a VTABLE local, in any position (top, after idx, with/without a device
+ *     local, via a comma expression, via a `*volatile*` deref): the dev load
+ *     hoists to +0x21 and the vtable read to +0x30 (13-14 diffs)
+ *   - the prev store as an absolute deref to anchor the dev load: +1 insn
+ *   - the store target as a struct member / array element (micro: =)
+ *   - the whole TU compiled as C++ (COM struct with virtual __stdcall slots,
+ *     /O2 /GX /MD): THIS SITE IS BYTE-EXACT -- C1XX treats the vptr load
+ *     as non-aliasing -- but the mouse site above then regresses to the
+ *     plain-form shape under every C++ spelling tried (plain, field pointer,
+ *     record pointer, const pointer, reference, value+pointer, register,
+ *     function-scope, arithmetic/cast/flat-int pointer, ms via pointer).
+ *   ONE front end built the original.  Under C the residue is these 2
+ *   bytes; under C++ it is the mouse site (+1 insn, -3 B).  If the C++ lane
+ *   finds a C1XX spelling for the mouse accumulate, this file moves there.
+ */
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#include "br_coretypes.h"   /* br_globals: its objects */
+#include "br_race.h"   /* br_globals: its objects */
+#include "slice1_10.h"   /* br_globals: its objects */
+#include "slice3_39.h"   /* br_globals: its objects */
+#include "slice3_41.h"   /* br_globals: its objects */
+#include "slice3_42.h"   /* br_globals: its objects */
+#include "slice6_72.h"   /* br_globals: its objects */
+#include <stdint.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+/* ------------------------------------------------------------------ *
+ * Local declarations.  Everything this TU needs is declared here so that
+ * no shared header has to move; the names are the ones the rest of the
+ * tree already uses for these addresses.
+ * ------------------------------------------------------------------ */
+
+/* IDirectInputDevice2A: slot 7 (+0x1C) Acquire, slot 9 (+0x24)
+ * GetDeviceState(cbData, lpvData), slot 25 (+0x64) Poll. */
+/* BrInDiDev: br_coretypes.h */
+typedef struct BrInDiDevVtbl BrInDiDevVtbl;
+struct BrInDiDevVtbl {
+    void   *aReserved00[7];                                     /* +0x00 */
+    int32_t (__stdcall *Acquire)(BrInDiDev *pThis);             /* +0x1C */
+    void   *f20;                                                /* +0x20 */
+    int32_t (__stdcall *GetDeviceState)(BrInDiDev *pThis,
+                                        uint32_t cb, void *pv); /* +0x24 */
+    void   *aReserved28[15];                                    /* +0x28 */
+    int32_t (__stdcall *Poll)(BrInDiDev *pThis);                /* +0x64 */
+};
+struct BrInDiDev { const BrInDiDevVtbl *pVtbl; };
+
+#define BR_DIERR_NOTACQUIRED  ((int32_t)0x8007001E)
+
+/* The DirectInput root record (0x10AC61E0 points at it); the mouse device
+ * sits at +0x50. */
+typedef struct BrInDiRoot {
+    uint8_t    pad00[0x50];
+    BrInDiDev *pMouse;                                          /* +0x50 */
+} BrInDiRoot;
+
+/* DIJOYSTATE2 (0x110 bytes) and DIMOUSESTATE (0x10 bytes). */
+/* BrInJoy: br_coretypes.h */
+typedef struct BrInMouseState {
+    int32_t lX, lY, lZ;                /* +0x00 +0x04 +0x08 */
+    uint8_t rgbButtons[4];             /* +0x0C              */
+} BrInMouseState;
+
+/* The game's own mouse record: scaled axes, raw accumulators, buttons. */
+typedef struct BrInMouse {
+    int32_t x, y, z;                   /* +0x00 +0x04 +0x08  scaled     */
+    int32_t ax, ay, az;                /* +0x0C +0x10 +0x14  accumulated */
+    uint8_t buttons[4];                /* +0x18                          */
+} BrInMouse;
+
+/* 64-bit core: declared once, in br_globals.h or its struct's header */        /* 0x118EEEF4 frames polled, caps at 0x7FFF */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */         /* 0x118EEBE8 the flags last returned        */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */         /* 0x118EE9CC                                 */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */          /* 0x118EEBF0                                 */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */         /* 0x118EEE94                                 */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */          /* 0x118EEBD0                                 */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */       /* 0x118EEBEC                                 */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */        /* 0x118EEE98                                 */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */    /* 0x118EE9D0                                 */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */           /* 0x118EEBF8, stride 0x110                   */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */         /* 0x118EEE50, stride 0x1C                    */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */       /* 0x118EEEE8 keyboard device                 */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */         /* 0x118EEEEC joystick device                 */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */         /* 0x10AC61E0                                 */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */            /* 0x10B71530 controller kind (1/2 = stick)   */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */ /* 0x10B71534 the bindings, 6 B each     */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */         /* 0x10AF20A0 sensitivity index 0..7          */
+/* 64-bit core: declared once, in br_globals.h or its struct's header *//* 0x100BCC08 {803,618,475,366,281,216,166,128} */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */          /* 0x10226A48                                 */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */          /* 0x10226A44                                 */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */          /* 0x10226A50                                 */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */          /* 0x105CCB88                                 */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */          /* 0x105CCB5C race paused                     */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */          /* 0x10AF21B0                                 */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */          /* 0x100BCBE8 lap count                       */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */          /* 0x100BCBF0 F5 debug toggle                 */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */          /* 0x100BCBF4 F6                              */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */          /* 0x100BCBF8 F7                              */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */          /* 0x100BCBFC F8                              */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */          /* 0x100BCC00 F9                              */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */          /* 0x100BCC04 F10                             */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */          /* 0x10B73538 'F' toggle                      */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */          /* 0x118EEEE0 'P' toggle                      */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */       /* 0x100A9360                                 */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */          /* 0x118EEEE4                                 */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */       /* 0x118EEED8                                 */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x118EEEDC                                 */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */          /* 0x118EEE18 benchmark start time            */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */          /* 0x118EEE8C benchmark start frame           */
+
+/* BrInputJustPressed: prototype in br_funcs.h */
+/* BrInputIsDown: prototype in br_funcs.h */
+/* BrDiAcquire: prototype in br_funcs.h */
+/* BrSub10004F50: prototype in br_funcs.h */
+/* BrCdTrackPrev: prototype in br_funcs.h */
+/* BrCdTrackNext: prototype in br_funcs.h */
+/* BrSub10063A40: prototype in br_funcs.h */
+/* BrSub10004F20: prototype in br_funcs.h */
+/* BrSub10075020: prototype in br_funcs.h */
+/* BrGetFlag_AB4F0: prototype in br_funcs.h */
+/* BrLogPrint: prototype in br_funcs.h */
+
+/* 64-bit core: GetAsyncKeyState is declared by the platform headers */
+
+/* `x * 80 / 128`: an axis in +-128 scaled to +-80. */
+#define BR_AXIS_SCALE(v)   ((v) * 80 / 128)
+#define BR_AXIS_SCALE_NEG(v) ((v) * -80 / 128)
+
+/* WHAT IT DOES: the once-a-frame read of everything the player can touch.
+ * It pulls the keyboard, the joystick (when one is configured) and the mouse
+ * in through DirectInput, keeping this frame's and last frame's readings in
+ * paired buffers so "just pressed" can be told from "held"; scales the
+ * accumulated mouse movement by the sensitivity setting and clamps it; and
+ * then walks the action bindings, turning each one that is active into a bit
+ * of the flag word it returns and remembers.  Along the way it answers the
+ * debug keys (F5-F10 toggles, F11/F12 CD tracks, F and P after frame 15),
+ * lets Escape pause or quit, and, in benchmark mode, prints the frame rate
+ * after 441 frames and exits.  The two out-parameters carry the analogue
+ * steering and throttle amounts read from whichever axis is bound. */
+/* @t4-pass 0x100706D0 1 2026-09-07 probes 129 bytes 4145 insns 1185 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x100706D0 2 2026-09-07 probes 130 bytes 4145 insns 1185 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t3 0x100706D0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 4145/4145 insns 1185/1185 rows 0+0 regions 1 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue: ONE 2-byte region at orig+0x34 (keyboard arm) -- the original
+ * schedules the COM vtable deref ABOVE the g_brInKeyCur global store; VC5's
+ * C front end will not (whole-binary census: three such adjacencies, the
+ * other two are plain source order).  The site is byte-exact under C++ but
+ * the mouse-accumulate site then regresses, so the two front ends are
+ * mutually exclusive here.  Dossier and dead-probe list: this file's header
+ * (a8 series, hand) and the two crank ledgers above; idioms at the tail of
+ * docs/VC5-IDIOMS.md.  Do not reopen before the end-grind;
+ * the only live lead is a C1XX spelling for the mouse accumulate. */
+/* @implements 0x100706D0 glide BrInputPoll */
+uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
+{
+    char           buf[256];
+    uint32_t       flags;
+    int32_t        hr;
+    uint16_t       w;
+    int32_t        g;
+    int32_t        div;
+    int32_t        cur;
+
+    int32_t        now;
+    uint32_t       dt;
+    int32_t        df;
+
+    if (g_brInputFrame < 0x7FFF)
+        g_brInputFrame++;
+    flags = 0;
+
+    /* ---- keyboard --------------------------------------------------- */
+    g_brInKeyPrev = g_brInKeyCur;
+    g_brInKeyCur = (g_brInKeyCur - 1) & 1;
+    hr = g_pBrDik18ABDD0->pVtbl->GetDeviceState(g_pBrDik18ABDD0, 0x100u,
+                                                g_brInKeys[g_brInKeyCur]);
+    if (hr < 0) {
+        if (hr == BR_DIERR_NOTACQUIRED) {
+            hr = g_pBrDik18ABDD0->pVtbl->Acquire(g_pBrDik18ABDD0);
+            if (hr < 0) {
+                g_brInputLast = 0;
+                return 0;
+            }
+            hr = g_pBrDik18ABDD0->pVtbl->GetDeviceState(g_pBrDik18ABDD0, 0x100u,
+                                                        g_brInKeys[g_brInKeyCur]);
+            if (hr < 0) {
+                g_brInputLast = 0;
+                return 0;
+            }
+        } else {
+            g_brInputLast = 0;
+            return 0;
+        }
+    }
+    g_brInKeys[g_brInKeyCur][0] = 0;
+
+    /* ---- joystick --------------------------------------------------- */
+    if (g_brB4E1D0 == 1 || g_brB4E1D0 == 2) {
+        g_brInJoyPrev = g_brInJoyCur;
+        g_brInJoyCur = (g_brInJoyCur - 1) & 1;
+        g_pBrInJoyDev->pVtbl->Poll(g_pBrInJoyDev);
+        hr = g_pBrInJoyDev->pVtbl->GetDeviceState(g_pBrInJoyDev, 0x110u,
+                                                  &g_brInJoy[g_brInJoyCur]);
+        if (hr != 0) {
+            if (hr == BR_DIERR_NOTACQUIRED)
+                BrDiAcquire();
+            memset(g_brInJoy[g_brInJoyCur].rgbButtons, 0, 0x80);
+        }
+    }
+
+    /* ---- mouse ------------------------------------------------------ */
+    g_brInMousePrev = g_brInMouseCur;
+    g_brInMouseCur = (g_brInMouseCur - 1) & 1;
+    if (g_pBrInDiRoot != 0 && g_pBrInDiRoot->pMouse != 0) {
+        BrInMouseState ms;
+        hr = g_pBrInDiRoot->pMouse->pVtbl->GetDeviceState(g_pBrInDiRoot->pMouse,
+                                                          0x10u, &ms);
+        if (hr == 0) {
+            int32_t *pPrevAx = &g_brInMouse[g_brInMousePrev].ax;
+            cur = g_brInMouseCur;
+            g_brInMouse[cur].ax = ms.lX + *pPrevAx;
+            g_brInMouse[cur].ay = ms.lY + *pPrevAx;
+            g_brInMouse[cur].az = ms.lZ + *pPrevAx;
+            g = g_brMouseSens;
+            if (g < 0)
+                g = 0;
+            else if (g > 7)
+                g = 7;
+            div = g_brMouseDivTable[g];
+            g_brInMouse[cur].x = (g_brInMouse[cur].ax << 7) / div;
+            g_brInMouse[cur].y = (g_brInMouse[cur].ay << 7) / div;
+            g_brInMouse[cur].z = (g_brInMouse[cur].az << 7) / div;
+            if (g_brInMouse[cur].x < -0x80) {
+                g_brInMouse[cur].x = -0x80;
+                g_brInMouse[cur].ax = -div;
+            } else if (g_brInMouse[cur].x > 0x80) {
+                g_brInMouse[cur].x = 0x80;
+                g_brInMouse[cur].ax = div;
+            }
+            if (g_brInMouse[cur].y < -0x80) {
+                g_brInMouse[cur].y = -0x80;
+                g_brInMouse[cur].ay = -div;
+            } else if (g_brInMouse[cur].y > 0x80) {
+                g_brInMouse[cur].y = 0x80;
+                g_brInMouse[cur].ay = div;
+            }
+            if (g_brInMouse[cur].z < -0x80) {
+                g_brInMouse[cur].z = -0x80;
+                g_brInMouse[cur].az = -div;
+            } else if (g_brInMouse[cur].z > 0x80) {
+                g_brInMouse[cur].z = 0x80;
+                g_brInMouse[cur].az = div;
+            }
+            g_brInMouse[cur].buttons[0] = ms.rgbButtons[0];
+            g_brInMouse[cur].buttons[1] = ms.rgbButtons[1];
+            g_brInMouse[cur].buttons[2] = ms.rgbButtons[2];
+            g_brInMouse[cur].buttons[3] = ms.rgbButtons[3];
+        } else {
+            if (hr == BR_DIERR_NOTACQUIRED)
+                g_pBrInDiRoot->pMouse->pVtbl->Acquire(g_pBrInDiRoot->pMouse);
+            memset(g_brInMouse[g_brInMouseCur].buttons, 0, 4);
+        }
+    } else {
+        memset(&g_brInMouse[g_brInMouseCur], 0, sizeof(BrInMouse));
+    }
+
+    /* ---- Escape: pause, or leave -------------------------------------- */
+    if (BrInputJustPressed(15)) {
+        if (g_br10226A48 != 0 && g_br10226A44 != 0 && g_br105CCB88 == 0 &&
+            g_br10AF21B0 < g_br100BCBE8) {
+            BrSub10004F50();
+        } else {
+            g_br10226A50 = 1;
+            g_brInputLast = 0x4000;
+            return 0x4000;
+        }
+    }
+
+    /* ---- debug keys: F5..F10 toggles, F11/F12 CD tracks ---------------- */
+    if ((g_brInKeys[g_brInKeyPrev][0x3F] & 0x80) == 0 &&
+        (g_brInKeys[g_brInKeyCur][0x3F] & 0x80) != 0)
+        g_br100BCBF0 = (g_br100BCBF0 == 0);
+    if ((g_brInKeys[g_brInKeyPrev][0x40] & 0x80) == 0 &&
+        (g_brInKeys[g_brInKeyCur][0x40] & 0x80) != 0)
+        g_br100BCBF4 = (g_br100BCBF4 == 0);
+    if ((g_brInKeys[g_brInKeyPrev][0x41] & 0x80) == 0 &&
+        (g_brInKeys[g_brInKeyCur][0x41] & 0x80) != 0)
+        g_br100BCBF8 = (g_br100BCBF8 == 0);
+    if ((g_brInKeys[g_brInKeyPrev][0x42] & 0x80) == 0 &&
+        (g_brInKeys[g_brInKeyCur][0x42] & 0x80) != 0)
+        g_br100BCBFC = (g_br100BCBFC == 0);
+    if ((g_brInKeys[g_brInKeyPrev][0x43] & 0x80) == 0 &&
+        (g_brInKeys[g_brInKeyCur][0x43] & 0x80) != 0)
+        g_br100BCC00 = (g_br100BCC00 == 0);
+    if ((g_brInKeys[g_brInKeyPrev][0x44] & 0x80) == 0 &&
+        (g_brInKeys[g_brInKeyCur][0x44] & 0x80) != 0)
+        g_br100BCC04 = (g_br100BCC04 == 0);
+    if ((g_brInKeys[g_brInKeyPrev][0x57] & 0x80) == 0 &&
+        (g_brInKeys[g_brInKeyCur][0x57] & 0x80) != 0)
+        BrCdTrackPrev();
+    if ((g_brInKeys[g_brInKeyPrev][0x58] & 0x80) == 0 &&
+        (g_brInKeys[g_brInKeyCur][0x58] & 0x80) != 0)
+        BrCdTrackNext();
+
+    if ((GetAsyncKeyState(0x46) & 1) && g_brInputFrame > 15)
+        g_BrFpsGuard = (g_BrFpsGuard == 0);
+    if ((GetAsyncKeyState(0x50) & 1) && g_brInputFrame > 15)
+        g_br118EEEE0 = (g_br118EEEE0 == 0);
+
+    /* ---- the non-race screens ------------------------------------------ */
+    if (g_br105CCB88 != 0) {
+        if (g_br105CCB88 == 2) {
+            if (BrInputJustPressed(8))  flags |= 0x100;
+            if (BrInputJustPressed(9))  flags |= 0x200;
+            if (BrInputJustPressed(10)) flags |= 0x400;
+        }
+        if (BrInputJustPressed(11))   flags |= 0x800;
+        if (BrInputJustPressed(0x15)) flags |= 0x100400;
+        if (BrInputIsDown(0x16))      flags |= 0x200000;
+        if (BrInputIsDown(0x17))      flags |= 0x400000;
+        if (BrInputIsDown(0x18))      flags |= 0x800000;
+        if (BrInputIsDown(0x19))      flags |= 0x1000000;
+        if (BrInputJustPressed(0x1A)) flags |= 0x200000;
+        if (BrInputJustPressed(0x1B)) flags |= 0x400000;
+        g_brInputLast = flags;
+        return flags;
+    }
+
+    /* ---- in the race ------------------------------------------------- */
+    if (BrInputJustPressed(0x10)) {
+        if (g_br105CCB5C == 0 && g_brCfgGameMode != 4 && g_brCfgGameMode != 5)
+            g_br118EEEE4 = 1;
+        if (g_br10226A48 != 0) {
+            if (g_brRace18EEED8 == 0) {
+                BrSub10004F20();
+                g_brRace18EEED8 = 1;
+            }
+        } else {
+            g_br10226A44 = 1;
+            if (g_brCfgGameMode == 2)
+                BrSub10063A40();
+        }
+    }
+    if (BrInputJustPressed(14))
+        flags |= 0x8000;
+
+    *pAxis0 = 0;
+    if (g_brCfgGameMode != 4 && g_brCfgGameMode != 5) {
+        w = *(const uint16_t *)(const void *)g_BrPadModeBytes;
+        if (w & 0x8000) {
+            switch (w & 0xFF00) {
+            case 0x8000:
+                if (g_brInJoy[g_brInJoyCur].lX < 0)
+                    *pAxis0 = BR_AXIS_SCALE(g_brInJoy[g_brInJoyCur].lX);
+                break;
+            case 0x8100:
+                if (g_brInJoy[g_brInJoyCur].lX > 0)
+                    *pAxis0 = BR_AXIS_SCALE_NEG(g_brInJoy[g_brInJoyCur].lX);
+                break;
+            case 0x8200:
+                if (g_brInJoy[g_brInJoyCur].lY < 0)
+                    *pAxis0 = BR_AXIS_SCALE(g_brInJoy[g_brInJoyCur].lY);
+                break;
+            case 0x8300:
+                if (g_brInJoy[g_brInJoyCur].lY > 0)
+                    *pAxis0 = BR_AXIS_SCALE_NEG(g_brInJoy[g_brInJoyCur].lY);
+                break;
+            case 0x8400:
+                if (g_brInJoy[g_brInJoyCur].lZ < 0)
+                    *pAxis0 = BR_AXIS_SCALE(g_brInJoy[g_brInJoyCur].lZ);
+                break;
+            case 0x8500:
+                if (g_brInJoy[g_brInJoyCur].lZ > 0)
+                    *pAxis0 = BR_AXIS_SCALE_NEG(g_brInJoy[g_brInJoyCur].lZ);
+                break;
+            case 0x8600:
+                if (g_brInMouse[g_brInMouseCur].x < 0)
+                    *pAxis0 = BR_AXIS_SCALE(g_brInMouse[g_brInMouseCur].x);
+                break;
+            case 0x8700:
+                if (g_brInMouse[g_brInMouseCur].x > 0)
+                    *pAxis0 = BR_AXIS_SCALE_NEG(g_brInMouse[g_brInMouseCur].x);
+                break;
+            case 0x8800:
+                if (g_brInMouse[g_brInMouseCur].y < 0)
+                    *pAxis0 = BR_AXIS_SCALE(g_brInMouse[g_brInMouseCur].y);
+                break;
+            case 0x8900:
+                if (g_brInMouse[g_brInMouseCur].y > 0)
+                    *pAxis0 = BR_AXIS_SCALE_NEG(g_brInMouse[g_brInMouseCur].y);
+                break;
+            case 0x8A00:
+                if (g_brInMouse[g_brInMouseCur].z < 0)
+                    *pAxis0 = BR_AXIS_SCALE(g_brInMouse[g_brInMouseCur].z);
+                break;
+            case 0x8B00:
+                if (g_brInMouse[g_brInMouseCur].z > 0)
+                    *pAxis0 = BR_AXIS_SCALE_NEG(g_brInMouse[g_brInMouseCur].z);
+                break;
+            }
+        }
+        w = *(const uint16_t *)(const void *)(g_BrPadModeBytes + 6);
+        if (w & 0x8000) {
+            switch (w & 0xFF00) {
+            case 0x8000:
+                if (g_brInJoy[g_brInJoyCur].lX < 0)
+                    *pAxis0 = BR_AXIS_SCALE_NEG(g_brInJoy[g_brInJoyCur].lX);
+                break;
+            case 0x8100:
+                if (g_brInJoy[g_brInJoyCur].lX > 0)
+                    *pAxis0 = BR_AXIS_SCALE(g_brInJoy[g_brInJoyCur].lX);
+                break;
+            case 0x8200:
+                if (g_brInJoy[g_brInJoyCur].lY < 0)
+                    *pAxis0 = BR_AXIS_SCALE_NEG(g_brInJoy[g_brInJoyCur].lY);
+                break;
+            case 0x8300:
+                if (g_brInJoy[g_brInJoyCur].lY > 0)
+                    *pAxis0 = BR_AXIS_SCALE(g_brInJoy[g_brInJoyCur].lY);
+                break;
+            case 0x8400:
+                if (g_brInJoy[g_brInJoyCur].lZ < 0)
+                    *pAxis0 = BR_AXIS_SCALE_NEG(g_brInJoy[g_brInJoyCur].lZ);
+                break;
+            case 0x8500:
+                if (g_brInJoy[g_brInJoyCur].lZ > 0)
+                    *pAxis0 = BR_AXIS_SCALE(g_brInJoy[g_brInJoyCur].lZ);
+                break;
+            case 0x8600:
+                if (g_brInMouse[g_brInMouseCur].x < 0)
+                    *pAxis0 = BR_AXIS_SCALE_NEG(g_brInMouse[g_brInMouseCur].x);
+                break;
+            case 0x8700:
+                if (g_brInMouse[g_brInMouseCur].x > 0)
+                    *pAxis0 = BR_AXIS_SCALE(g_brInMouse[g_brInMouseCur].x);
+                break;
+            case 0x8800:
+                if (g_brInMouse[g_brInMouseCur].y < 0)
+                    *pAxis0 = BR_AXIS_SCALE_NEG(g_brInMouse[g_brInMouseCur].y);
+                break;
+            case 0x8900:
+                if (g_brInMouse[g_brInMouseCur].y > 0)
+                    *pAxis0 = BR_AXIS_SCALE(g_brInMouse[g_brInMouseCur].y);
+                break;
+            case 0x8A00:
+                if (g_brInMouse[g_brInMouseCur].z < 0)
+                    *pAxis0 = BR_AXIS_SCALE_NEG(g_brInMouse[g_brInMouseCur].z);
+                break;
+            case 0x8B00:
+                if (g_brInMouse[g_brInMouseCur].z > 0)
+                    *pAxis0 = BR_AXIS_SCALE(g_brInMouse[g_brInMouseCur].z);
+                break;
+            }
+        }
+    }
+
+    /* ---- paused ------------------------------------------------------ */
+    if (g_br105CCB5C != 0) {
+        if (BrInputJustPressed(12)) flags |= 0x1000;
+        if (BrInputJustPressed(13)) flags |= 0x2000;
+        if (BrInputJustPressed(0))  flags |= 1;
+        if (BrInputJustPressed(1))  flags |= 2;
+        if (BrInputJustPressed(2))  flags |= 4;
+        g_brInputLast = flags;
+        return flags;
+    }
+
+    /* ---- throttle ---------------------------------------------------- */
+    *pAxis1 = 0;
+    if (BrInputIsDown(2)) {
+        flags |= 4;
+        if ((g_BrPadModeBytes[0xD] & 0x80) == 0)
+            *pAxis1 = 0x50;
+    }
+    w = *(const uint16_t *)(const void *)(g_BrPadModeBytes + 0xC);
+    if (w & 0x8000) {
+        switch (w & 0xFF00) {
+        case 0x8000:
+            if (g_brInJoy[g_brInJoyCur].lX < 0)
+                *pAxis1 = BR_AXIS_SCALE_NEG(g_brInJoy[g_brInJoyCur].lX);
+            break;
+        case 0x8100:
+            if (g_brInJoy[g_brInJoyCur].lX > 0)
+                *pAxis1 = BR_AXIS_SCALE(g_brInJoy[g_brInJoyCur].lX);
+            break;
+        case 0x8200:
+            if (g_brInJoy[g_brInJoyCur].lY < 0)
+                *pAxis1 = BR_AXIS_SCALE_NEG(g_brInJoy[g_brInJoyCur].lY);
+            break;
+        case 0x8300:
+            if (g_brInJoy[g_brInJoyCur].lY > 0)
+                *pAxis1 = BR_AXIS_SCALE(g_brInJoy[g_brInJoyCur].lY);
+            break;
+        case 0x8400:
+            if (g_brInJoy[g_brInJoyCur].lZ < 0)
+                *pAxis1 = BR_AXIS_SCALE_NEG(g_brInJoy[g_brInJoyCur].lZ);
+            break;
+        case 0x8500:
+            if (g_brInJoy[g_brInJoyCur].lZ > 0)
+                *pAxis1 = BR_AXIS_SCALE(g_brInJoy[g_brInJoyCur].lZ);
+            break;
+        case 0x8600:
+            if (g_brInMouse[g_brInMouseCur].x < 0)
+                *pAxis1 = BR_AXIS_SCALE_NEG(g_brInMouse[g_brInMouseCur].x);
+            break;
+        case 0x8700:
+            if (g_brInMouse[g_brInMouseCur].x > 0)
+                *pAxis1 = BR_AXIS_SCALE(g_brInMouse[g_brInMouseCur].x);
+            break;
+        case 0x8800:
+            if (g_brInMouse[g_brInMouseCur].y < 0)
+                *pAxis1 = BR_AXIS_SCALE_NEG(g_brInMouse[g_brInMouseCur].y);
+            break;
+        case 0x8900:
+            if (g_brInMouse[g_brInMouseCur].y > 0)
+                *pAxis1 = BR_AXIS_SCALE(g_brInMouse[g_brInMouseCur].y);
+            break;
+        case 0x8A00:
+            if (g_brInMouse[g_brInMouseCur].z < 0)
+                *pAxis1 = BR_AXIS_SCALE_NEG(g_brInMouse[g_brInMouseCur].z);
+            break;
+        case 0x8B00:
+            if (g_brInMouse[g_brInMouseCur].z > 0)
+                *pAxis1 = BR_AXIS_SCALE(g_brInMouse[g_brInMouseCur].z);
+            break;
+        }
+    }
+
+    if (BrInputIsDown(3))
+        flags |= 8;
+    if (BrInputIsDown(4)) {
+        flags |= 0x10;
+        *pAxis1 = -0x50;
+    }
+    if (g_brCfgGameMode != 4 && g_brCfgGameMode != 5) {
+        if (BrInputIsDown(0)) flags |= 1;
+        if (BrInputIsDown(1)) flags |= 2;
+    }
+    if (BrInputIsDown(5))         flags |= 0x20;
+    if (BrInputIsDown(6))         flags |= 0x40;
+    if (BrInputJustPressed(8))    flags |= 0x100;
+    if (BrInputJustPressed(9))    flags |= 0x200;
+    if (BrInputJustPressed(10))   flags |= 0x400;
+    if (BrInputJustPressed(0x11)) flags |= 0x10000;
+    if (BrInputJustPressed(0x12)) flags |= 0x20000;
+    if (BrInputJustPressed(0x13)) flags |= 0x40000;
+    if (BrInputJustPressed(0x14)) flags |= 0x80000;
+    if (BrInputIsDown(7))         flags |= 0x80;
+
+    /* ---- benchmark: time 440 frames, print the rate, leave ------------ */
+    if (g_brCfgRunBenchmark != 0) {
+        if (g_brInputFrame == 1) {
+            g_br118EEE18 = BrSub10075020();
+            g_br118EEE8C = BrGetFlag_AB4F0();
+        }
+        if (g_brInputFrame == 0x1B9) {
+            now = BrSub10075020();
+            dt = now - g_br118EEE18;
+            g_br118EEE18 = now;
+            df = BrGetFlag_AB4F0() - g_br118EEE8C;
+            sprintf(buf, "fps = %0.2f", (float)df * 1000.0f / (float)dt);
+            exit(1);
+            BrLogPrint(buf);
+        }
+        GetAsyncKeyState(0x1B);
+        if (g_brInputFrame == 1) {
+            g_BrFpsGuard = 1;
+            flags = 0x400;
+        } else {
+            flags = (g_brInputFrame < 60) ? 0 : 4;
+        }
+    }
+    g_brInputLast = flags;
+    return flags;
+}
+
+/* WHAT IT DOES: answers "is the player holding down the control for this
+ * action right now?" -- checking whichever key, button, stick direction or
+ * mouse movement the action is bound to, plus up to two keyboard alternatives
+ * that always apply. Stick and mouse directions only count once they are
+ * pushed past a dead zone, so a resting stick reads as nothing.
+ *
+ * The original indexes the key/button tables with UNCHECKED bytes (no & 1 /
+ * & 3 masks). A plain switch on the u16 binding word masked to its high
+ * byte (VC5 lowers it to the cmp/jg/je tree); the alternates test the whole
+ * u16 word & 0xFF00, which VC5 folds to `test byte [b+3], 0xff`. */
+/* @implements 0x10071710 glide BrInputIsDown */
+uint8_t BrInputIsDown(int32_t action)
+{
+    uint8_t r = 0;
+    const uint8_t *b = g_BrPadModeBytes + 6 * action;
+    switch (*(const uint16_t *)(const void *)b & 0xFF00) {
+    case 0x0000:
+        r = (uint8_t)(g_brInKeys[g_brInKeyCur][b[0]] & 0x80u);
+        break;
+    case 0x0100:
+        r = (uint8_t)(g_brInJoy[g_brInJoyCur].rgbButtons[b[0]] & 0x80u);
+        break;
+    case 0x0300:
+        r = (uint8_t)(g_brInMouse[g_brInMouseCur].buttons[b[0]] & 0x80u);
+        break;
+    case 0x8000:
+        if (g_brInJoy[g_brInJoyCur].lX < -50) r = 0x80;
+        break;
+    case 0x8100:
+        if (g_brInJoy[g_brInJoyCur].lX > 50) r = 0x80;
+        break;
+    case 0x8200:
+        if (g_brInJoy[g_brInJoyCur].lY < -50) r = 0x80;
+        break;
+    case 0x8300:
+        if (g_brInJoy[g_brInJoyCur].lY > 50) r = 0x80;
+        break;
+    case 0x8400:
+        if (g_brInJoy[g_brInJoyCur].lZ < -50) r = 0x80;
+        break;
+    case 0x8500:
+        if (g_brInJoy[g_brInJoyCur].lZ > 50) r = 0x80;
+        break;
+    case 0x8600:
+        if (g_brInMouse[g_brInMouseCur].x < -50) r = 0x80;
+        break;
+    case 0x8700:
+        if (g_brInMouse[g_brInMouseCur].x > 50) r = 0x80;
+        break;
+    case 0x8800:
+        if (g_brInMouse[g_brInMouseCur].y < -50) r = 0x80;
+        break;
+    case 0x8900:
+        if (g_brInMouse[g_brInMouseCur].y > 50) r = 0x80;
+        break;
+    case 0x8A00:
+        if (g_brInMouse[g_brInMouseCur].z < -50) r = 0x80;
+        break;
+    case 0x8B00:
+        if (g_brInMouse[g_brInMouseCur].z > 50) r = 0x80;
+        break;
+    }
+    if ((*(const uint16_t *)(const void *)(b + 2) & 0xFF00) == 0)
+        r |= (uint8_t)(g_brInKeys[g_brInKeyCur][b[2]] & 0x80u);
+    if ((*(const uint16_t *)(const void *)(b + 4) & 0xFF00) == 0)
+        r |= (uint8_t)(g_brInKeys[g_brInKeyCur][b[4]] & 0x80u);
+    return r;
+}
+
+/* The rising edge of one control: up last frame, down this frame.  Written
+ * as an __inline function with an explicit `return 1; return 0;` because
+ * that is what the bytes say: the three button arms of 0x100719D0
+ * materialise the answer as a full-width `mov eax,1` / `xor eax,eax` (the
+ * inliner's int return temp) and then keep only its low byte, while the
+ * axis arms and the two keyboard tails work in the byte register.  The
+ * same test written in place -- `&&` into the byte, `?:`, if/else, or an
+ * inline body with a single `return` expression -- all compile to
+ * `mov al,1` and lose the shared `xor eax,eax` exit. */
+static __inline int BrInEdge(uint8_t prev, uint8_t cur)
+{
+    if ((prev & 0x80) == 0 && (cur & 0x80) != 0)
+        return 1;
+    return 0;
+}
+
+/* WHAT IT DOES: answers "did the player press this control on THIS frame?"
+ * by comparing this frame's reading of the bound key, button or axis with
+ * last frame's -- it is what stops a held key repeating in the menus.  The
+ * binding's primary control may be a key, a joystick or mouse button (1 on
+ * the press) or a joystick/mouse axis crossing the +-50 dead zone (0x80 on
+ * the crossing); its two alternates are keyboard keys only and are ORed in
+ * as 1.  The mouse button index is NOT masked (the D3D twin's `& 3` is a
+ * port deviation). */
+/* @implements 0x100719D0 glide BrInputJustPressed */
+uint8_t BrInputJustPressed(int32_t action)
+{
+    /* r before b: the `xor al,al` lands ahead of the binding address and
+     * pushes the argument into ecx (b first puts it in eax). */
+    uint8_t r = 0;
+    const unsigned char *b = g_BrPadModeBytes + action * 6;
+
+    switch (*(const uint16_t *)(const void *)b & 0xFF00) {
+    case 0x0000:
+        r = BrInEdge(g_brInKeys[g_brInKeyPrev][b[0]], g_brInKeys[g_brInKeyCur][b[0]]);
+        break;
+    case 0x0100:
+        r = BrInEdge(g_brInJoy[g_brInJoyPrev].rgbButtons[b[0]], g_brInJoy[g_brInJoyCur].rgbButtons[b[0]]);
+        break;
+    case 0x0300:
+        r = BrInEdge(g_brInMouse[g_brInMousePrev].buttons[b[0]], g_brInMouse[g_brInMouseCur].buttons[b[0]]);
+        break;
+    case 0x8000:
+        if (g_brInJoy[g_brInJoyPrev].lX >= -50 && g_brInJoy[g_brInJoyCur].lX < -50)
+            r = 0x80;
+        break;
+    case 0x8100:
+        if (g_brInJoy[g_brInJoyPrev].lX <= 50 && g_brInJoy[g_brInJoyCur].lX > 50)
+            r = 0x80;
+        break;
+    case 0x8200:
+        if (g_brInJoy[g_brInJoyPrev].lY >= -50 && g_brInJoy[g_brInJoyCur].lY < -50)
+            r = 0x80;
+        break;
+    case 0x8300:
+        if (g_brInJoy[g_brInJoyPrev].lY <= 50 && g_brInJoy[g_brInJoyCur].lY > 50)
+            r = 0x80;
+        break;
+    case 0x8400:
+        if (g_brInJoy[g_brInJoyPrev].lZ >= -50 && g_brInJoy[g_brInJoyCur].lZ < -50)
+            r = 0x80;
+        break;
+    case 0x8500:
+        if (g_brInJoy[g_brInJoyPrev].lZ <= 50 && g_brInJoy[g_brInJoyCur].lZ > 50)
+            r = 0x80;
+        break;
+    case 0x8600:
+        if (g_brInMouse[g_brInMousePrev].x >= -50 && g_brInMouse[g_brInMouseCur].x < -50)
+            r = 0x80;
+        break;
+    case 0x8700:
+        if (g_brInMouse[g_brInMousePrev].x <= 50 && g_brInMouse[g_brInMouseCur].x > 50)
+            r = 0x80;
+        break;
+    case 0x8800:
+        if (g_brInMouse[g_brInMousePrev].y >= -50 && g_brInMouse[g_brInMouseCur].y < -50)
+            r = 0x80;
+        break;
+    case 0x8900:
+        if (g_brInMouse[g_brInMousePrev].y <= 50 && g_brInMouse[g_brInMouseCur].y > 50)
+            r = 0x80;
+        break;
+    case 0x8A00:
+        if (g_brInMouse[g_brInMousePrev].z >= -50 && g_brInMouse[g_brInMouseCur].z < -50)
+            r = 0x80;
+        break;
+    case 0x8B00:
+        if (g_brInMouse[g_brInMousePrev].z <= 50 && g_brInMouse[g_brInMouseCur].z > 50)
+            r = 0x80;
+        break;
+    }
+
+    if ((*(const uint16_t *)(const void *)(b + 2) & 0xFF00) == 0)
+        r |= (g_brInKeys[g_brInKeyPrev][b[2]] & 0x80) == 0
+          && (g_brInKeys[g_brInKeyCur][b[2]] & 0x80) != 0;
+    if ((*(const uint16_t *)(const void *)(b + 4) & 0xFF00) == 0)
+        r |= (g_brInKeys[g_brInKeyPrev][b[4]] & 0x80) == 0
+          && (g_brInKeys[g_brInKeyCur][b[4]] & 0x80) != 0;
+    return r;
+}
+
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+typedef int (__stdcall *CC_std_1)();   /* COM method: this + arguments */
+
+/* WHAT IT DOES: drop one user of the keyboard system and release the
+ * DirectInput device when the last one goes. Clamps its own counter at zero,
+ * so an unmatched release is ignored rather than driving the count negative. */
+/* @implements 0x10071EB0 glide BrDiKeyboardShutdown */
+void BrDiKeyboardShutdown(void)
+
+{
+  DAT_118eeef0 = DAT_118eeef0 + -1;
+  if (DAT_118eeef0 < 0) {
+    DAT_118eeef0 = 0;
+    return;
+  }
+  if ((DAT_118eeef0 == 0) && (DAT_118eeee8 != (int *)0x0)) {
+    (*(CC_std_1 *)(*(int *)(DAT_118eeee8) + 32))(DAT_118eeee8);
+    (*(CC_std_1 *)(*(int *)(DAT_118eeee8) + 8))(DAT_118eeee8);
+    DAT_118eeee8 = (int *)0x0;
+  }
+  return;
+}

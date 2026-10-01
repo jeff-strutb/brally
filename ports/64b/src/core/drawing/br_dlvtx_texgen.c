@@ -1,0 +1,242 @@
+/* br_dlvtx_texgen.c -- drawing: lit + texgen vertex transform handler.
+ *
+ * ONE function, 0x10022600 (BrDlVtxGen), the TEXTURE_GEN (not _LINEAR)
+ * vertex handler.  The sibling of 0x10022BF0 BrDlVtxGenLin (br_dlvtx_gen.c):
+ * same light cache, same transform, same three per-vertex helpers; the
+ * texture coordinates are a straight linear projection of the world-space
+ * normal on the two lookat directions, with no asin.
+ *
+ * Filed on its own for the same reason as its sibling: br_dl.c's TU context
+ * carries eleven byte-exact functions whose x87 scheduling moves when a body
+ * is added there.
+ */
+#include "br_coretypes.h"   /* br_globals: its objects */
+#include "br_dl.h"   /* br_globals: its objects */
+#include <stdint.h>
+#include <stddef.h>
+/* BrVec3: br_vec.h */
+/* BrDlVtx: br_dl.h */
+
+
+/* MVP matrix, 4x4 row-major at 0x105D1760. */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+#define DAT_105d1770 (*(float *)0x105d1770)
+#define DAT_105d1774 (*(float *)0x105d1774)
+#define DAT_105d1778 (*(float *)0x105d1778)
+#define DAT_105d177c (*(float *)0x105d177c)
+#define DAT_105d1780 (*(float *)0x105d1780)
+#define DAT_105d1784 (*(float *)0x105d1784)
+#define DAT_105d1788 (*(float *)0x105d1788)
+#define DAT_105d178c (*(float *)0x105d178c)
+
+/* 64-bit core: declared once, in br_globals.h or its struct's header */          /* fLightCached */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */          /* nLights */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */          /* iModel */
+/* BrDlMtx: br_coretypes.h */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */    /* model matrix stack, 1-based: [top - 1] */
+
+/* The two N64 Light records at 0x105CCC78 (directional) and 0x105CCC88
+ * (ambient): colour bytes, their copy, signed direction bytes. */
+typedef struct {
+    unsigned char col[4];
+    unsigned char colc[4];
+    signed char   dir[4];
+    unsigned char pad[4];
+} BrDlLight;
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+
+/* 64-bit core: declared once, in br_globals.h or its struct's header */  /* lightScale[3] */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */  /* lightDir[3] */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */  /* lightAmb[3] */
+
+/* 64-bit core: declared once, in br_globals.h or its struct's header */     /* lookat ptr 1 */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */     /* lookat ptr 2 */
+
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+
+/* 64-bit core: declared once, in br_globals.h or its struct's header */        /* 128.0f */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */        /* texgen offset */
+
+/* Glide texture globals (outside BRGlide, in the Glide library). */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */          /* tex dim A (fild) */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */          /* tex offset B (fild) */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */        /* tex scale A (fdiv) */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */          /* tex dim C (fild) */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */          /* tex offset D (fild) */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */        /* tex scale B (fdiv) */
+
+typedef struct { float x, y, z, s, t, n0, n1, n2; } BrDlSrcVtxT;
+
+/* FUN_100344D0: prototype in br_funcs.h */
+/* FUN_10022AC0: prototype in br_funcs.h */
+/* FUN_10022120: prototype in br_funcs.h */
+/* FUN_10022070: prototype in br_funcs.h */
+
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* Transcription notes (2026-09-24, by hand from the asm; compiled /O2 /Op
+ * like the rest of its original TU): 52 of 362 instructions still differ
+ * (difflib count).  Spellings that each moved a whole class (all measured):
+ *  - the lights are N64 Light records read as BYTES: VC5 merges col[0]/col[1]
+ *    into one dword load + `and`/`mov dl,ah`, exactly as the original;
+ *  - x87 operand roles follow VC5's operand-kind ladder, not source order:
+ *    the z/y MVP columns are absolute-address derefs (they take the fld side
+ *    over the vertex fields), the x/w columns stay extern symbols;
+ *  - the normal pointer is re-derived from the source pointer at the top of
+ *    each pass (`pn = &pSrc->n1`), never advanced by hand: VC5 strength-
+ *    reduces it into the original's esi = ebx+0x18 induction and sets it up
+ *    AFTER the zero-trip test, as the original does;
+ *  - pSrc is advanced before the helper's output-vertex pointer (tail order
+ *    ebx, esi, pVc, as in the original);
+ *  - the output vertex pointer is formed BEFORE the vertex count is
+ *    extracted: that keeps the count in eax and the command pointer in esi;
+ *  - the model-matrix stack is 1-BASED, read as [top - 1] from 0x105CCD50:
+ *    VC5 folds the -0x40 into the displacement and emits the original's
+ *    `lea reg,[reg+0x105ccd10]` (every zero-based spelling gives `add`);
+ *  - the look-vector bytes are INLINE (float)(int) casts: under /Op each is
+ *    rounded through one scratch slot and consumed from memory, as in the
+ *    original; named float temps get reloaded instead;
+ *  - the x dot product is computed BEFORE the s store: VC5 will not hoist the
+ *    look1 byte loads above a store through the vertex pointer;
+ *  - the file carries its own minimal BrDlVtx typedef instead of br_dl.h and
+ *    declares the TU's other light/clip globals: the symbol table in front
+ *    of the function decides x87 operand-role ties.  Setup order, groupings
+ *    and declaration order were found by a hill-climb over those choices.
+ *  - `(double)pSrc->x` in the transform rows (0x100221D0's spelling): it
+ *    is what makes VC5 add the three products in the original's order,
+ *    ((y + z) + x) + w.  Source order does not: VC5 reorders these adds by
+ *    operand kind, and the plain spelling adds ((x + z) + y) + w -- different
+ *    rounding, a real divergence the byte score hid (found 2026-09-24).
+ * Arithmetic check: every float the function stores, with its rounding
+ * points, is the same expression tree as the original's (symbolic x87
+ * evaluation of both binaries).
+ * Open (x87 scheduling and register choice only): fxch/load order in the
+ * transform rows, the m[0]*n0 operand role, the light setup's three extra
+ * fxch, the texgen spill slots (0x2c/0x30).
+ * @t4-pass 0x10022600 1 2026-09-24 probes 733 bytes 1206 insns 359 regions 10 rows 11 census no  (light setup: all 720 orders of the three direction and three colour statements; transform rows: 8 grouping/operand-kind forms of the x term; matrix/vertex pointer types: struct matrix pointer, const, `*m`, cast and indexed x; nothing moved)
+ * @t4-pass 0x10022600 2 2026-09-24 probes 272 bytes 1206 insns 359 regions 10 rows 11 census yes  (census: every row is an x87 operand-role or issue-slot pair plus the dotX/t-scale spill-slot swap, which is what declaration order decides -- moved each of the 17 locals to every other slot; nothing moved)
+ * @t4-pass 0x10022600 3 2026-09-24 probes 272 bytes 1214 insns 363 regions 10 rows 29 census yes  (after the arithmetic fix; census: the rows are x87 load order and register choice, which declaration order decides -- moved each local to every other slot; nothing moved)
+ * @t4-pass 0x10022600 4 2026-09-24 probes 720 bytes 1214 insns 363 regions 10 rows 29 census no  (all 720 orders of the light setup's direction and colour statements; nothing moved) */
+/* @t3 0x10022600 2026-09-24 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 1214/1212 insns 363/362 rows 14+15 regions 10 oracle EQUIVALENT
+ * @t3-effort passes 4 zero-movement 3 4
+ * Residue is x87 scheduling and register choice only (see the Open list
+ * above); the arithmetic is the original's, rounding points included.  Do not reopen before the end-grind.
+ * Oracle coverage: the 25 scripts run 253 of the 362 instructions -- never
+ * the light refresh (the cache is always valid on entry here) -- and the
+ * game's one light has equal x/y/z direction bytes.  So the refresh was also
+ * forced at entry from real game state (t3live, object mode, 8 scripts):
+ * 64/64 calls agree; with an asymmetric light direction 64/64 agree; with no
+ * lights 25/25 agree.  Planted bugs (a doubled term, a y/z swap) were caught
+ * DIVERGENT.  Only the NULL-matrix path is unrun; it faults in both. */
+/* WHAT IT DOES: transforms a batch of vertices through the combined matrix,
+ * generates texture coordinates by rotating each normal into world space and
+ * projecting it on the two view-direction vectors (a straight linear map to
+ * the current texture's size), then lights and projects each vertex. */
+/* @implements 0x10022600 glide BrDlVtxGen */
+const uint8_t *BrDlVtxGen(const uint8_t *p)
+{
+    int v0;
+    int n;
+    BrDlVtx *pVc;
+    const uint8_t *look1, *look2;
+    int i;
+    float *pf;
+    const BrDlSrcVtxT *pSrc;
+    float *m;
+    BrVec3 td;
+    BrDlVtx *pV;
+    float dx, dy, dz;
+    const float *pn;
+    int off;
+    float dotX_128;
+    uint32_t w0;
+    float texDimA, texOffB, texDimC, texOffD;
+    int32_t oc;
+
+    if (!DAT_105d17d0) {
+        if (DAT_105ccfd0 != 0) {
+            m = DAT_100a9a50 ? DAT_105ccd50[DAT_100a9a50 - 1].m : NULL;
+            dx = (float)DAT_105ccc78[0].dir[0];
+            dy = (float)DAT_105ccc78[0].dir[1];
+            dz = (float)DAT_105ccc78[0].dir[2];
+            DAT_105ce210 = (float)DAT_105ccc78[0].col[0];
+            DAT_105ce214 = (float)DAT_105ccc78[0].col[1];
+            DAT_105ce218 = (float)DAT_105ccc78[0].col[2];
+            DAT_105ce21c = ((m[1] * dy + m[2] * dz) + m[0] * dx) / DAT_10077420;
+            DAT_105ce220 = ((m[4] * dx + m[6] * dz) + m[5] * dy) / DAT_10077420;
+            DAT_105ce224 = ((m[8] * dx + m[10] * dz) + m[9] * dy) / DAT_10077420;
+            FUN_100344D0(&DAT_105ce21c);
+            DAT_105ce228 = (float)DAT_105ccc78[1].col[0];
+            DAT_105ce22c = (float)DAT_105ccc78[1].col[1];
+            DAT_105ce230 = (float)DAT_105ccc78[1].col[2];
+        }
+        DAT_105d17d0 = 1;
+    }
+
+    w0 = *(const uint32_t *)p;
+    pSrc = *(const BrDlSrcVtxT **)(p + 4);
+    v0 = (w0 >> 16) & 0xFF;
+    pV = &DAT_105ce318[v0];
+    n  = (w0 >> 10) & 0x3F;
+
+    pVc = pV;
+    for (i = 0; i < n; i++) {
+        pn = &pSrc->n1;
+        pV[i].cx = DAT_105d1780 * pn[-4] + DAT_105d1770 * pn[-5] + (double)pSrc->x * DAT_105d1760 + DAT_105d1790;
+        pV[i].cy = DAT_105d1784 * pn[-4] + DAT_105d1774 * pn[-5] + (double)pSrc->x * DAT_105d1764 + DAT_105d1794;
+        pV[i].cz = DAT_105d1788 * pn[-4] + DAT_105d1778 * pn[-5] + (double)pSrc->x * DAT_105d1768 + DAT_105d1798;
+        pV[i].cw = DAT_105d178c * pn[-4] + DAT_105d177c * pn[-5] + (double)pSrc->x * DAT_105d176c + DAT_105d179c;
+
+        if (DAT_100a9a50 != 0) {
+            off = (DAT_100a9a50 - 1) << 6;
+            m = (float *)((char *)DAT_105ccd50 + off);
+        } else
+            m = NULL;
+
+        td.x = (m[0] * pn[-1] + m[8] * pn[1]) + m[4] * pn[0];
+        td.y = (m[1] * pn[-1] + m[9] * pn[1]) + m[5] * pn[0];
+        td.z = (m[2] * pn[-1] + m[10] * pn[1]) + m[6] * pn[0];
+
+        FUN_100344D0(&td);
+
+        pf = &pV[i].f40;
+        look1 = DAT_105ce2d8 + 8;
+        look2 = DAT_105ce2dc + 8;
+
+        dotX_128 = ((td.x * (float)(signed char)look1[0] + (float)(signed char)look1[2] * td.z) + (float)(signed char)look1[1] * td.y) / DAT_10077420;
+        pV[i].s = (((td.x * (float)(signed char)look2[0] + (float)(signed char)look2[2] * td.z) + (float)(signed char)look2[1] * td.y) / DAT_10077420
+                   * (float)DAT_1186c958 - DAT_10077424 - (float)DAT_118ed198) / DAT_118ed1a4;
+        pV[i].t = (dotX_128 * (float)DAT_118ed1ac - DAT_10077424 - (float)DAT_1186c950) / DAT_118ed1a8;
+
+        FUN_10022AC0(pSrc, pf);
+
+        oc = FUN_10022120(pf);
+        pV[i].outcode = oc;
+
+        if (oc == 0) {
+            FUN_10022070(pVc, pf, pV[i].n0, pV[i].n1, pV[i].n2);
+        }
+        pSrc++;
+        pVc++;
+    }
+    return p + 8;
+}
+

@@ -42,6 +42,22 @@ typedef f64 __attribute__((aligned(1), may_alias)) w_f64;
 #define W_LD(t, a, off) (*(volatile w_##t *)(uintptr_t)(W_BASE + (u64)(u32)(a) + (off)))
 #define W_ST(t, a, off, v) (*(volatile w_##t *)(uintptr_t)(W_BASE + (u64)(u32)(a) + (off)) = (t)(v))
 
+/* The traced build (w2c.py --trace, -DBR_TRACE): every load and store goes
+ * through rt/w2c_trace.c with its site id, which records what the site
+ * touched and whether it moved addresses. */
+#ifdef BR_TRACE
+extern unsigned w_tcall;
+void w_tmem(unsigned site, u32 ea, u32 bits, int width);
+static inline u32 w_tbits_u32(u32 v) { return v; }
+#define W_TBITS(t, v) (sizeof(w_##t) == 4 && (t)0.5 == 0 ? *(const u32 *)&(v) : 0u)
+#define W_TLD(t, a, off, s) ({ w_##t _tv = W_LD(t, a, off); \
+    w_tmem((s), (u32)(a) + (u32)(off), W_TBITS(t, _tv), (int)sizeof(w_##t)); _tv; })
+#define W_TST(t, a, off, v, s) do { t _tv = (t)(v); \
+    w_tmem((s), (u32)(a) + (u32)(off), W_TBITS(t, _tv), (int)sizeof(w_##t)); W_ST(t, a, off, _tv); } while (0)
+void w_talloc(u32 p, u32 n);
+void w_tfree(u32 p);
+#endif
+
 /* The game ran threads (sound, network); each has its own shadow stack. */
 extern _Thread_local u32 w_sp;
 

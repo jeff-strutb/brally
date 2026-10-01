@@ -14,8 +14,11 @@
  * version (Tab, the PC / N64 switch, as a real key event),
  * keycode MACVK [N] (a real key event by macOS virtual key code, held N frames),
  * autopilot on|off (brbox_drive.py's racing-line steering).
- * Not yet: waittext, text, peer, files, savefiles, tmu,
- * joystick -- a script using one stops with a message naming it.
+ * waittext TEXT [N] (until a string drawn last frame contains TEXT, `_` for
+ * space), text (log what the last frame drew), files NAME (the
+ * tools/brbox_saves/NAME fixture copied into the save directory before
+ * boot). savefiles, joystick and tmu are accepted and do nothing here; peer
+ * (a second machine) is not supported -- a script using it stops.
  *
  * BR_SHOTS=<dir> is where `shot NAME` writes NAME.ppm (default build/wasm/shots).
  * Progress goes to stderr as "script: frame F: <line>".
@@ -26,6 +29,8 @@
 #include <string.h>
 #include <math.h>
 #include <sys/stat.h>
+#include <dirent.h>
+#include <ctype.h>
 
 typedef struct { const char *name; u8 vk, dik; } key_t_;
 static const key_t_ KEYS[] = {
@@ -217,6 +222,95 @@ static void dump_window(void)
     }
 }
 
+/* what the engine drew: BrTextEmitString (0x10015B10) calls htext_emit; a
+ * buffer swap closes the frame (brbox_drive.py's text_now / text_last) */
+#define TEXT_MAX 256
+static char g_text_now[TEXT_MAX][96], g_text_last[TEXT_MAX][96];
+static int g_ntext_now, g_ntext_last;
+
+void htext_emit(u32 psz)
+{
+    if (psz && g_ntext_now < TEXT_MAX) {
+        const char *p = (const char *)W_P(psz);
+        snprintf(g_text_now[g_ntext_now++], 96, "%s", p);
+    }
+}
+
+void htext_swap(void)
+{
+    memcpy(g_text_last, g_text_now, sizeof g_text_now);
+    g_ntext_last = g_ntext_now;
+    g_ntext_now = 0;
+}
+
+static int text_seen(const char *want)
+{
+    char w[96], t[96];
+    int i, k;
+    snprintf(w, sizeof w, "%s", want);
+    for (k = 0; w[k]; k++) w[k] = w[k] == '_' ? ' ' : (char)tolower((u8)w[k]);
+    for (i = 0; i < g_ntext_last; i++) {
+        for (k = 0; g_text_last[i][k] && k < 95; k++) t[k] = (char)tolower((u8)g_text_last[i][k]);
+        t[k] = 0;
+        if (strstr(t, w)) return 1;
+    }
+    return 0;
+}
+
+/* `files NAME`: copy tools/brbox_saves/NAME/c/<path> into the save
+ * directory under the flattened name the file layer looks for (vfs_resolve:
+ * the path below the drive, backslashes as `_`, lower case). */
+static void copy_tree(const char *dir, const char *rel, const char *save)
+{
+    DIR *d = opendir(dir);
+    struct dirent *e;
+    if (!d) return;
+    while ((e = readdir(d))) {
+        char p[1200], r[600], q[1300];
+        struct stat st;
+        if (e->d_name[0] == '.') continue;
+        snprintf(p, sizeof p, "%s/%s", dir, e->d_name);
+        snprintf(r, sizeof r, "%s%s%s", rel, *rel ? "_" : "", e->d_name);
+        if (stat(p, &st) != 0) continue;
+        if (S_ISDIR(st.st_mode)) { copy_tree(p, r, save); continue; }
+        {
+            char *k;
+            FILE *in = fopen(p, "rb"), *out;
+            for (k = r; *k; k++) *k = (char)tolower((u8)*k);
+            snprintf(q, sizeof q, "%s/%s", save, r);
+            out = fopen(q, "wb");
+            if (in && out) {
+                char buf[65536];
+                size_t n;
+                while ((n = fread(buf, 1, sizeof buf, in)) > 0) fwrite(buf, 1, n, out);
+                fprintf(stderr, "script: fixture %s -> %s\n", p, q);
+            }
+            if (in) fclose(in);
+            if (out) fclose(out);
+        }
+    }
+    closedir(d);
+}
+
+void hscript_files(const char *save)
+{
+    const char *path = getenv("BR_SCRIPT"), *root = getenv("BR_ROOT");
+    FILE *f;
+    char line[512];
+    if (!path || !(f = fopen(path, "r"))) return;
+    while (fgets(line, sizeof line, f)) {
+        char op[32], name[256];
+        if (sscanf(line, "%31s %255s", op, name) == 2 && !strcmp(op, "files")) {
+            char dir[1200];
+            /* the fixture's c/bossrally is the game directory, which the
+             * file layer keeps at the top of the save directory */
+            snprintf(dir, sizeof dir, "%s/tools/brbox_saves/%s/c/bossrally", root ? root : ".", name);
+            copy_tree(dir, "", save);
+        }
+    }
+    fclose(f);
+}
+
 void happ_frame(void)
 {
     int i;
@@ -312,6 +406,25 @@ void happ_frame(void)
             char p[1200];
             snprintf(p, sizeof p, "%s/%s.ppm", g_shots, s->a[0]);
             hglide_shot(p);
+        } else if (!strcmp(s->op, "waittext")) {
+            if (!text_seen(s->a[0])) {
+                unsigned lim = s->na > 1 ? (unsigned)atoi(s->a[1]) : 1800;
+                if (!g_waiting) { g_waiting = 1; g_wait_since = g_frame; }
+                if (g_frame - g_wait_since > lim) {
+                    fprintf(stderr, "script line %d: text '%s' never drawn\n", s->line, s->a[0]);
+                    exit(3);
+                }
+                return;
+            }
+            g_waiting = 0;
+        } else if (!strcmp(s->op, "text")) {
+            int i;
+            fprintf(stderr, "script: frame %u text:", g_frame);
+            for (i = 0; i < g_ntext_last; i++) fprintf(stderr, " %s |", g_text_last[i]);
+            fprintf(stderr, "\n");
+        } else if (!strcmp(s->op, "files") || !strcmp(s->op, "savefiles") ||
+                   !strcmp(s->op, "joystick") || !strcmp(s->op, "tmu")) {
+            /* setup only (files: applied before boot) */
         } else if (!strcmp(s->op, "end")) {
             fprintf(stderr, "script: end at frame %u\n", g_frame);
             exit(0);

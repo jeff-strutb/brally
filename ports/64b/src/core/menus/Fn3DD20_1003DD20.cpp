@@ -1,0 +1,147 @@
+#include "br_race.h"   /* br_globals: its objects */
+#include "slice2_25.h"   /* br_globals: its objects */
+/* WHAT IT DOES: populate the session list -- asks the host for its
+ * description if this machine is hosting, otherwise fills the list from what
+ * the browser found. */
+/* @implements 0x1003DD20 glide Fn3DD20
+ * @cpp_kind method
+ * @cpp_symbol ?Fn3DD20@@YAHXZ
+ *
+ * Free cdecl (no unused-this `push ecx`; extra `sub esp,8` so the
+ * prologue is `mov eax, fs:[0]` first). One `new Phase` (maxState=1,
+ * unwind operator delete). Ctor DECLARED, no dtor. Live 1 in esi.
+ *
+ * Obj hook: do not name a pointer for g_obj_10AC4098 (`a1` eax). Direct class*
+ * member access puts the object in ecx; int f08 occupies eax.
+ */
+#define _CRTIMP __declspec(dllimport)
+
+class Phase;
+
+/* Phase: br_coretypes.h */
+
+class Phase {
+public:
+    void *vtbl;
+    PhaseEnterFn pfnEnter;
+    void *pfnHook;
+    int f0C;
+    char _pad[0x58];
+    int f68;
+    char _rest[0x5C];
+    Phase();
+};
+
+struct Item {
+    int f00;
+    int f04;
+};
+
+class Obj {
+public:
+    char pad[8];
+    int f08;
+};
+
+
+
+
+
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+#define g_slot DAT_10ac5cac
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+#define g_flag DAT_10ac408c
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+#define g_mode DAT_100a9360
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: g_obj_10AC4098 is defined once, in br_globals.c */
+
+/* ResetSlots: prototype in br_funcs.h */
+/* GetDesc: prototype in br_funcs.h */
+/* ActivateD140: prototype in br_funcs.h */
+/* ActivateD220: prototype in br_funcs.h */
+/* ActivateD3C0: prototype in br_funcs.h */
+/* ActivateD620: prototype in br_funcs.h */
+/* ActivateD930: prototype in br_funcs.h */
+/* ActivateD7D0: prototype in br_funcs.h */
+/* EnterFn was a stand-in; the original calls FUN_10051600 (?FUN_10051600@@YAHPAVGameUi@@@Z).  Declared under
+ * its real symbol so the relocation resolves by name. */
+class GameUi;
+/* FUN_10051600: prototype in br_funcs.h */
+#define EnterFn ((void (*)(Phase *))FUN_10051600)
+/* HostFirst: prototype in br_funcs.h */
+/* HostAgain: prototype in br_funcs.h */
+/* ObjHook: prototype in br_funcs.h */
+
+typedef void (__stdcall *Host_f7C)(void *self, void *item, int z);
+
+int Fn3DD20(void)
+{
+    Phase *p;
+    Item *item;
+    void *host;
+    int one;
+    int h;
+
+    one = 1;
+    g_flag = one;
+    ResetSlots();
+
+    if (g_host != 0) {
+        item = 0;
+        host = g_pHost;
+        if (host != 0)
+            GetDesc(host, (void **)(&item));
+        if (item != 0) {
+            item->f04 &= ~0x20;
+            host = g_pHost;
+            ((Host_f7C)(*(void ***)host)[0x1F])(host, item, 0);
+        }
+    }
+
+    ActivateD140(0);
+    ActivateD220(0);
+    ActivateD3C0(0);
+    if (g_host != 0) {
+        ActivateD620(0);
+        ActivateD930(0);
+    } else {
+        ActivateD7D0(0);
+    }
+
+    p = g_slot;
+    if (p == 0) {
+        p = new Phase;
+        g_slot = p;
+        g_cur = (Phase *)((BrOptObj *)(p));
+        if (p == 0)
+            return 0;
+        p->pfnEnter = EnterFn;
+        g_slot->pfnEnter(g_slot);
+        g_cur->f0C = one;
+        g_cur->f68 = one;
+    } else {
+        g_cur = (Phase *)((BrOptObj *)(p));
+    }
+
+    h = g_host;
+    g_mode = 6;
+    if (h != 0) {
+        if (g_inited == 0) {
+            HostFirst();
+            g_inited = one;
+            goto after_host;
+        }
+    }
+    if (h != 0)
+        HostAgain();
+after_host:
+    ;
+
+    if (g_obj_10AC4098 != 0 && g_obj_10AC4098->f08 != 0)
+        ObjHook((struct BrObjA9D008 *)(g_obj_10AC4098), g_obj_10AC4098->f08);
+    return one;
+}

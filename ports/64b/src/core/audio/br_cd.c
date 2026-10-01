@@ -1,0 +1,850 @@
+/* br_cd.c -- audio.
+ *
+ * Filed out of the address batches: these functions were
+ * matched first and grouped by what they are afterwards.
+ * Every function carries its original address.
+ */
+/* The original is /MD: CRT calls go through the import
+ * table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#include "br_coretypes.h"   /* br_globals: its objects */
+#include <stdint.h>
+
+#include <stdlib.h>
+
+#include <windows.h>
+
+/* BrEarShutdownChannelFn: br_coretypes.h */
+/* BrCdVolumeSetFn: br_coretypes.h */
+
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared by the platform headers */
+
+
+
+/* WHAT IT DOES: closes the EAR music channel if one is actually running. */
+/* @implements 0x10002440 d3d BrCdMaybeClose */
+int BrCdMaybeClose(void)
+{
+    if (g_0940A4 != 0) {
+        if (g_220CD0 != 0) {
+            if (g_220C3C != 0) {
+                int h = g_0940A8;
+                g_220C3C = 0;
+                return g_575470(h);
+            }
+        }
+    }
+    return 1;
+}
+
+/* ---------------------------------------------------------------------------
+ * 0x10002A20 (partial) -- 8-bit volume to the backend's 0..10000 scale.
+ *
+ * The original builds 10000*v with four `lea [r+r*4]` (x5 each, so x625) and
+ * a `shl 4`, then divides by 255 with the signed magic 0x80808081 / sar 7 /
+ * sign fixup. v is masked to 8 bits before any of that, so the input is
+ * always non-negative and the sign fixup never fires.
+ */
+/* WHAT IT DOES: converts a music volume from the 0-255 scale the game's own
+ * settings use into the 0-10000 scale Windows CD audio wants, then hands it to
+ * the backend -- but only when disc music is actually active (the same three
+ * guards as BrCdMaybeClose). A volume of exactly 256 comes out as silence
+ * rather than full, because only the low byte is looked at. */
+/* @implements 0x10002A20 d3d BrCdVolumeScale */
+int BrCdVolumeScale(int vol)
+{
+    if (g_0940A4 != 0) {
+        if (g_220CD0 != 0) {
+            if (g_220C3C != 0) {
+                g_575454(g_0940A8, (10000 * (vol & 0xFF)) / 255);
+            }
+        }
+    }
+    return 1;
+}
+
+/* WHAT IT DOES: pauses CD soundtrack if disc music is in use. */
+/* @implements 0x10002AE0 d3d BrCdMciPause */
+int BrCdMciPause(void)
+{
+    if (g_0940A4) {
+        if (g_220CD0) {
+            int media = g_220C3C;
+            g_220CD8 = 1;
+            if (media) {
+                if (mciSendCommandA((unsigned long)g_220C40, 0x809u, 0, 0)) {
+                    mciSendCommandA((unsigned long)g_220C40, 0x804u, 0, 0);
+                    return 0;
+                }
+            }
+        }
+    }
+    return 1;
+}
+
+/* ==========================================================================
+ * The CD track query
+ * ========================================================================== */
+
+/* br_data.c / slice2_11.h -- the CD module's globals. */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */     /* 0x100940A4, ships as 2 */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */     /* 0x10220CD0 */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */    /* 0x10220CD4 */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */     /* 0x10220C3C */
+
+/* 0x10002490 */
+/* WHAT IT DOES: reports which CD audio track is playing, or zero if there is
+ * none -- CD music is off, nothing is playing, or the disc is not readable
+ * all give zero. */
+/* @implements 0x10002490 d3d BrCdTrackGetEar */
+int BrCdTrackGetEar(void)
+{
+    /* Two success tests share one fail-out (`je` to `xor eax,eax / ret`).
+     * Early `return 0` inverts the branches. */
+    if (g_brCdEnabled != 0) {
+        if (g_brCdPlaying != 0) {
+            /* `neg eax / sbb eax, eax / and eax, ecx` -- a mask built from
+             * g_brCdMediaOk and ANDed with the track, not a branch.  The
+             * track is loaded either way. */
+            return (g_brCdMediaOk != 0) ? g_brCdTrackCur : 0;
+        }
+    }
+    return 0;
+}
+
+/* -- Ghidra-matched functions --------------------------- */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* BrSub10075020: prototype in br_funcs.h */
+/* BrWindowEarStartup: prototype in br_funcs.h */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared by the platform headers */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* FUN_100027e0: prototype in br_funcs.h */
+/* FUN_10002c50: prototype in br_funcs.h */
+/* BrCdEnableApply: prototype in br_funcs.h */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+
+/* WHAT IT DOES: play the previous CD track, clamping to the first track. */
+/* @implements 0x10002C70 glide BrCdTrackPrev */
+
+int BrCdTrackPrev(void)
+
+{
+  int iVar1;
+
+  if ((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) {
+    iVar1 = FUN_10002c50();
+    g_brCdTrackCur = iVar1 + -1;
+    if (iVar1 + -1 < g_brCdTrackFirst) {
+      g_brCdTrackCur = g_brCdTrackFirst;
+    }
+    BrCdTrackPlay(g_brCdTrackCur);
+  }
+  return 1;
+}
+
+/* WHAT IT DOES: get the current track number: EAR path when CD audio is enabled, real CD otherwise. */
+/* @implements 0x10002C50 glide BrCdTrackGet */
+
+int BrCdTrackGet(void)
+
+{
+  if (g_brCdEnabled == 1) {
+    FUN_100027e0();
+    return;
+  }
+  BrCdTrackGetEar();
+  return;
+}
+
+
+/* WHAT IT DOES: set music volume: dispatches to EAR mixer or CD-audio path. */
+/* @implements 0x10002D30 glide BrCdVolumeSet */
+
+int BrCdVolumeSet(int param_1)
+
+{
+  if (g_brCdEnabled == 1) {
+    BrCdEnableApply(param_1);
+    return;
+  }
+  BrCdVolumeScale(param_1);
+  return;
+}
+
+/* WHAT IT DOES: resume the current CD track if the disc is ready and playback is enabled. */
+/* @implements 0x10002E80 glide BrCdTrackResume */
+
+int BrCdTrackResume(void)
+
+{
+  int uVar1;
+
+  if (((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) && (g_brCdMediaOk != 0)) {
+    uVar1 = BrCdTrackPlay(g_brCdTrackCur);
+    return uVar1;
+  }
+  return 1;
+}
+
+/* !! MAP DEFECT, and it is what blocks these two.  config/functions_glide.csv
+ * lists 0x10002EB0 and 0x10002F10 as 86 bytes each.  They are not: each is a
+ * 14-byte DISPATCHER followed by 16-byte alignment padding and then a
+ * SEPARATE function that only the dispatcher reaches, by tail jump.
+ *
+ *     10002EB0  cmp dword ptr [g_brCdEnabled],1
+ *     10002EB7  jne  10002EBE
+ *     10002EB9  jmp  10002E20        <- tail call, a MAPPED function
+ *     10002EBE  jmp  10002ED0        <- tail call, NOT in the map
+ *     10002EC3  13 x nop             <- aligning 10002ED0 to 16
+ *     10002ED0  the message-transport body, 54 bytes, ending in its own ret
+ *
+ * 0x10002ED0 and 0x10002F30 are both 16-byte aligned, which is a function
+ * ENTRY, and the map had no row for either -- it merged each into the
+ * dispatcher above it because nothing CALLS them, only jumps.  Two C
+ * functions cannot be one symbol, so no spelling of a single 86-byte
+ * function could ever have matched.  FIXED 2026-09-03: config/functions_glide.csv
+ * now carries 0x10002EB0/32, 0x10002ED0/54, 0x10002F10/32, 0x10002F30/54 and
+ * build/match/orig/ was re-extracted for the four.  All four are byte-exact.
+ * The dispatcher's 32 bytes INCLUDE the 13 alignment nops, which MSVC emits
+ * inside the first function, not the second.
+ *
+ * !! THE TELL, and it generalises.  Written inline instead -- one function
+ * containing both arms -- VC5 hoists the `g_brCdEnabled` load into a
+ * register and turns the original's `cmp dword ptr [g],1` into
+ * `mov eax,[g] / cmp eax,1`, then re-uses eax for the second test where the
+ * original re-reads the global.  That CSE was a SYMPTOM of the wrong
+ * function boundary, not a defect of its own: two functions cannot share a
+ * register, so **a global that the original re-reads across what looks like
+ * a plain branch is evidence that the branch is a FUNCTION boundary.**
+ * Together with an unconditional `jmp` followed by nops up to a 16-byte
+ * address, that is the signature of a merged map row.
+ *
+ * 0x104B162C is the message-transport entry point and the second argument is
+ * the command (4 = pause, 0xC = resume).  Both bodies normalise the result to
+ * 0/1 with the original's `neg/sbb/neg`, which is what `!= 0` compiles to. */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */                              /* 0x1007B078 */
+extern int (__stdcall *DAT_104b162c)(int, int);     /* 0x104B162C */
+
+/* WHAT IT DOES: tell the CD drive to hold the music where it is, and report
+ * whether it agreed.  With the disc missing or nothing playing there is
+ * nothing to do and it reports success. */
+/* @implements 0x10002ED0 glide BrCdPauseMsg */
+static int BrCdPauseMsg(void)
+{
+  if (((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) && (g_brCdMediaOk != 0)) {
+    return (*DAT_104b162c)(g_br0940A8,4) != 0;
+  }
+  return 1;
+}
+
+/* WHAT IT DOES: stop the music where it is, so it can be picked up again from
+ * the same place.  If the game is playing its own music files it hands the job
+ * to that path; otherwise it goes out to the CD drive. */
+/* @implements 0x10002EB0 glide BrCdPause */
+int BrCdPause(void)
+{
+  if (g_brCdEnabled == 1) {
+    return BrCdMciPause();
+  }
+  return BrCdPauseMsg();
+}
+
+/* WHAT IT DOES: tell the CD drive to start playing again from where it was
+ * paused, and report whether it agreed.  The twin of BrCdPauseMsg above,
+ * differing only in the command it sends. */
+/* @implements 0x10002F30 glide BrCdResumeMsg */
+static int BrCdResumeMsg(void)
+{
+  if (((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) && (g_brCdMediaOk != 0)) {
+    return (*DAT_104b162c)(g_br0940A8,0xc) != 0;
+  }
+  return 1;
+}
+
+/* WHAT IT DOES: start the music again from wherever it was paused. */
+/* @implements 0x10002F10 glide BrCdResume */
+int BrCdResume(void)
+{
+  if (g_brCdEnabled == 1) {
+    return BrCdTrackResume();
+  }
+  return BrCdResumeMsg();
+}
+
+/* The third member of the same map defect.  config/functions_glide.csv
+ * carried 0x10002F70 as ONE 180-byte row; it is the same dispatcher shape as
+ * pause/resume above -- 14 bytes + 18 alignment nops (32), then the
+ * message-transport body at 0x10002F90 (47 bytes + nops, 64) and the MCI
+ * body at 0x10002FD0 (84), each reached only by the dispatcher's tail jump.
+ * Split 2026-09-04 into 32 + 64 + 84 and re-extracted.
+ *
+ * 0x104B1628 is the message-transport CLEAR-channel entry (the pause/resume
+ * twins use 0x104B162C with a command); its result is normalised with
+ * `neg/sbb/inc`, which is what `== 0` compiles to. */
+extern int (__stdcall *DAT_104b1628)(int, int);     /* 0x104B1628 */
+
+/* WHAT IT DOES: tell the CD drive to stop the music outright, and report
+ * whether it agreed (the transport answers 0 on success).  With the disc
+ * missing or nothing playing there is nothing to do and it reports success. */
+/* @implements 0x10002F90 glide BrCdStopMsg */
+static int BrCdStopMsg(void)
+{
+  if (((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) && (g_brCdMediaOk != 0)) {
+    return (*DAT_104b1628)(g_br0940A8,0) == 0;
+  }
+  return 1;
+}
+
+/* WHAT IT DOES: stop the game's own music-file playback through MCI.  If the
+ * stop command is refused it closes the device instead and reports failure. */
+/* @implements 0x10002FD0 glide BrCdMciStop */
+static int BrCdMciStop(void)
+{
+  if (((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) && (g_brCdMediaOk != 0)) {
+    if (mciSendCommandA((unsigned long)g_220C40, 0x808u, 0, 0)) {
+      mciSendCommandA((unsigned long)g_220C40, 0x804u, 0, 0);
+      return 0;
+    }
+  }
+  return 1;
+}
+
+/* WHAT IT DOES: stop the music.  If the game is playing its own music files
+ * it goes through MCI; otherwise it tells the CD drive. */
+/* @implements 0x10002F70 glide BrCdStop */
+int BrCdStop(void)
+{
+  if (g_brCdEnabled == 1) {
+    return BrCdMciStop();
+  }
+  return BrCdStopMsg();
+}
+
+/* BrFadeRelease: prototype in br_funcs.h */
+
+/* The functions_glide.csv row 0x10003030 (233 B) is really THREE 16-byte-
+ * aligned functions -- the same dispatcher/body split as BrCdStop above: a
+ * 32-byte dispatcher that tail-jumps to a message-transport body (0x10003050,
+ * 96 B incl. nops) or an MCI body (0x100030B0, 105 B).  Split 2026-09-06 into
+ * 32 + 96 + 105 and re-extracted.  Each body re-checks g_brCdEnabled because it
+ * is a standalone function reached only by the dispatcher's tail jump. */
+
+/* WHAT IT DOES: end one reference to transport-played music.  Drops the play
+ * count by one and clears the channel (unless the disc is missing, which is a
+ * silent success); when that was the last reference it releases the fade.
+ * Reports whether the clear was accepted. */
+/* @t4-pass 0x10003050 2 2026-09-07 probes 73 bytes 83 insns 29 regions 1 rows 12 census yes  (tools/crank.py) */
+/* @t4-pass 0x10003050 3 2026-09-07 probes 58 bytes 83 insns 29 regions 1 rows 12 census yes  (tools/crank.py) */
+/* @t4-pass 0x10003050 4 2026-09-07 probes 57 bytes 83 insns 29 regions 1 rows 12 census yes  (tools/crank.py) */
+/* @t4-pass 0x10003050 5 2026-09-10 probes 60 bytes 83 insns 29 regions 1 rows 1 census yes  (tools/crank.py) */
+/* @t4-pass 0x10003050 6 2026-09-10 probes 60 bytes 83 insns 29 regions 1 rows 1 census yes  (tools/crank.py) */
+/* @t4-pass 0x10003050 7 2026-09-10 probes 40 bytes 84 insns 29 regions 3 rows 1 census yes  (tools/crank.py) */
+/* @t4-pass 0x10003050 8 2026-09-10 probes 40 bytes 84 insns 29 regions 3 rows 1 census yes  (tools/crank.py) */
+/* @t3 0x10003050 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 84/96 insns 29/30 rows 1+0 regions 3 oracle EQUIVALENT
+ * @t3-effort passes 7 zero-movement 7 8
+ * residue after tools/crank.py: 40 compiles this pass, levers accepted: mut:split_add:g_brCdPlaying > mut:hoist_sink:-1;
+ * every candidate and score is in build/match/crank.log.
+ * Do not reopen before the end-grind. */
+/* @implements 0x10003050 glide BrCdStopReleaseMsg */
+/* RESIDUE (2026-09-06): body complete and correct; ignoring the 11 trailing
+ * alignment nops (which the sweep tolerates, as it does for BrCdStop's matched
+ * bodies) the only residue is PUSH PLACEMENT. The original pushes esi (holding
+ * r) unconditionally in the prologue -- scheduled into the load/test gap of the
+ * `enabled==0` guard -- so the early return pops it too; VC5 on this source
+ * sinks the push past the guard, leaving the early return with no pop. The
+ * hoist/sink lever (docs/VC5-IDIOMS: a `return` inside an if-arm hoists) does
+ * not apply -- the guard path needs no callee-saved register, so VC5 sinks.
+ * @t4-pass 0x10003050 1 2026-09-06 probes 3 bytes 96 insns 41 regions 1 rows 1 census no */
+static int BrCdStopReleaseMsg(void)
+{
+  int r;
+
+  if (g_brCdEnabled == 0) {
+    return 1;
+  }
+  g_brCdPlaying = g_brCdPlaying - 1;
+  if (g_brCdMediaOk == 0) {
+    r = 1;
+  } else {
+    r = (*DAT_104b1628)(g_br0940A8, 0) == 0;
+  }
+  if (g_brCdPlaying == 0) {
+    BrFadeRelease();
+  }
+  return r;
+}
+
+/* WHAT IT DOES: end one reference to MCI-played music files.  Drops the play
+ * count by one and sends the STOP command; when that was the last reference it
+ * closes the device.  Reports whether both commands were accepted. */
+/* @t4-pass 0x100030B0 3 2026-09-07 probes 51 bytes 105 insns 43 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x100030B0 4 2026-09-07 probes 51 bytes 105 insns 43 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t3 0x100030B0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 105/105 insns 43/43 rows 0+0 regions 1 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 3 4
+ * residue is register colouring only: identical register-blind instruction
+ * multiset (rows 0+0), 1 masked region;
+ * every row pairs under t3.py's canonical classes.  Effort: 2 counted
+ * @t4-pass passes (ledger lines above, zero movement on passes 3 and 4);
+ * crank candidates and scores in build/match/crank.log, dead probes in the
+ * comment block above.  Do not reopen before the end-grind. */
+/* @implements 0x100030B0 glide BrCdStopReleaseMci */
+/* RESIDUE (2026-09-07): body complete and correct; REGNORM 0+0, +0 bytes.
+ * The boolean codegen is now byte-for-byte: the borrow trick is the TERNARY's
+ * codegen, and the operator picks the tail op.  `r = (e1 ? -1 : 0) + 1` gives
+ * `neg; sbb; inc` (single-constant ternary + `+1` folds to `inc`); the mask
+ * `~(e2 ? -1 : 0)` gives `neg; sbb; not` (the `~` maps straight to `not`,
+ * where `~-(e2 != 0)` and `(e2 ? 0 : -1)` instead emit setne / `neg; dec`).
+ * The play-count `if` is inverted (`!= 0` returns r, `== 0` falls through to
+ * the second call) so the fall-through arm is `return r` -- that reproduces
+ * the original's `je` polarity.  Sole residue: a 3-instruction SCHEDULE gap --
+ * the original hoists the `mov eax,[playing]` reload into the slot after
+ * `mov esi,eax` (e1 -> r's home) and does the borrow on esi in place, while
+ * VC5 on this source does the borrow in eax, copies to esi, then reloads.
+ * Same instruction multiset, identical ops, three reordered; declaration
+ * order (all 12 perms) and every expression form are inert on the reorder.
+ * @t4-pass 0x100030B0 1 2026-09-06 probes 4 bytes 105 insns 43 regions 1 rows 4 census yes
+ * @t4-pass 0x100030B0 2 2026-09-07 probes 9 bytes 105 insns 43 regions 1 rows 1 census no */
+static int BrCdStopReleaseMci(void)
+{
+  MCIERROR e1, e2;
+  int r;
+
+  if (g_brCdEnabled == 0) {
+    return 1;
+  }
+  g_brCdPlaying = g_brCdPlaying - 1;
+  e1 = mciSendCommandA((unsigned long)g_220C40, 0x808u, 0, 0);
+  r = (e1 ? -1 : 0) + 1;
+  if (g_brCdPlaying != 0) {
+    return r;
+  }
+  e2 = mciSendCommandA((unsigned long)g_220C40, 0x804u, 0, 0);
+  return ~(e2 ? -1 : 0) & r;
+}
+
+/* WHAT IT DOES: end one reference to the music and, when it was the last,
+ * release it.  Dispatches by how the music is playing: the game's own music
+ * files go through MCI, anything else through the message transport. */
+/* @implements 0x10003030 glide BrCdStopRelease */
+int BrCdStopRelease(void)
+{
+  if (g_brCdEnabled == 1) {
+    return BrCdStopReleaseMci();
+  }
+  return BrCdStopReleaseMsg();
+}
+
+/* WHAT IT DOES: play the next CD track, clamping to the last track. */
+/* @implements 0x10002CB0 glide BrCdTrackNext */
+
+int BrCdTrackNext(void)
+
+{
+  int iVar1;
+
+  if ((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) {
+    iVar1 = BrCdTrackGet();
+    g_brCdTrackCur = iVar1 + 1;
+    if (iVar1 + 1 > g_brCdTrackLast) {
+      g_brCdTrackCur = g_brCdTrackLast;
+    }
+    BrCdTrackPlay(g_brCdTrackCur);
+  }
+  return 1;
+}
+
+/* WHAT IT DOES: play the next CD track, wrapping to the first track past the last. */
+/* @implements 0x10002CF0 glide BrCdTrackNextWrap */
+
+int BrCdTrackNextWrap(void)
+
+{
+  int iVar1;
+
+  if ((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) {
+    iVar1 = BrCdTrackGet();
+    g_brCdTrackCur = iVar1 + 1;
+    if (iVar1 + 1 > g_brCdTrackLast) {
+      g_brCdTrackCur = g_brCdTrackFirst;
+    }
+    BrCdTrackPlay(g_brCdTrackCur);
+  }
+  return 1;
+}
+
+/* WHAT IT DOES: request CD track `param_1`: mark music pending, record the track, and if the
+ * disc is readable and the player window is live, post it message 0x3B9 (play, 1). */
+/* WHAT IT DOES: choose a CD music track at random, from track 3 up to the
+ * last one on the disc. If the disc has more than six tracks it keeps drawing
+ * until it gets one that is not the track already playing, so the music
+ * actually changes; on a shorter disc it takes whatever it drew, repeat or
+ * not. The clamps are the original's and do not depend on rand() behaving.
+ * The one caller is BrRaceStep. */
+/* @implements 0x10002C00 glide BrCdTrackRandom */
+
+int BrCdTrackRandom(void)
+
+{
+  int iVar1;
+
+  do {
+    iVar1 = rand() * (g_brCdTrackLast - 5) / 0x8000 + 3;
+    if (iVar1 < 3) {
+      iVar1 = 3;
+    }
+    if (iVar1 > g_brCdTrackLast) {
+      iVar1 = g_brCdTrackLast;
+    }
+  } while ((g_brCdTrackLast > 6) && (iVar1 == g_brCdTrackCur));
+  return iVar1;
+}
+
+/* WHAT IT DOES: ask for a CD track to start playing. It records the wanted
+ * track and raises the pending flag, then -- only if a disc is actually in the
+ * drive and the window is up -- posts the message that makes the audio thread
+ * act on it. With no disc the request is remembered but nothing is posted, so
+ * it takes effect when the drive next reports media. Always reports success. */
+/* @implements 0x10002BA0 glide BrCdTrackRequest */
+
+int BrCdTrackRequest(int param_1)
+
+{
+  if ((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) {
+    g_220CD8 = 1;
+    g_brCdTrackCur = param_1;
+    if ((g_brCdMediaOk != 0) && (DAT_1021c80c != '\0')) {
+      PostMessageA(DAT_1021c77c,0x3b9,1,g_220C40);
+    }
+  }
+  return 1;
+}
+
+
+/* WHAT IT DOES: apply a new CD-music enable byte: turning it on while a track is pending
+ * resumes playback; turning it off (or already-on) with a pending track pauses MCI.
+ * Always records the byte at 0x1021C80C and returns 1. */
+/* @implements 0x10002DC0 glide BrCdEnableApply */
+
+int BrCdEnableApply(char param_1)
+
+{
+  if ((param_1 == '\0') || (DAT_1021c80c != '\0')) {
+    if ((param_1 == '\0') && ((DAT_1021c80c != '\0' && (g_220CD8 != 0)))) {
+      BrCdMciPause();
+    }
+  }
+  else if (g_220CD8 != 0) {
+    DAT_1021c80c = param_1;
+    BrCdTrackResume();
+    DAT_1021c80c = param_1;
+    return 1;
+  }
+  DAT_1021c80c = param_1;
+  return 1;
+}
+
+
+#include <windows.h>
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* BrSub10075020: prototype in br_funcs.h */
+
+/* WHAT IT DOES: open the CD audio device and start it playing, on the FIRST
+ * caller only -- later calls just raise the use count. Sets the device to
+ * track-and-frame time format so later seeks can name a track. This is how
+ * the in-game CD soundtrack starts. */
+/* @implements 0x10002980 glide FUN_10002980 */
+/* auto-filed from ghidra --refine; transforms: as-is */
+
+int FUN_10002980(char * param_1)
+
+{
+  unsigned int _Seed;
+  MCIERROR MVar1;
+  MCI_STATUS_PARMS status;
+  MCI_SET_PARMS setp;
+  MCI_OPEN_PARMS open;
+  CHAR buf[1024];
+
+  if ((g_brCdEnabled != 0) && (g_brCdPlaying = g_brCdPlaying + 1, g_brCdPlaying == 1)) {
+    DAT_1021c77c = param_1;
+    _Seed = BrSub10075020();
+    srand(_Seed);
+    g_brCdTrackCur = 2;
+    g_brCdTrackFirst = 0;
+    g_brCdTrackLast = 0;
+    g_220CD8 = 0;
+    g_brCdMediaOk = 0;
+    open.lpstrDeviceType = s_cdaudio_1007b094;
+    MVar1 = mciSendCommandA(0, MCI_OPEN, MCI_OPEN_TYPE, (DWORD)&open);
+    if (MVar1 != 0) {
+      return 0;
+    }
+    g_220C40 = open.wDeviceID;
+    setp.dwTimeFormat = MCI_FORMAT_TMSF;
+    MVar1 = mciSendCommandA(open.wDeviceID, MCI_SET, MCI_SET_TIME_FORMAT, (DWORD)&setp);
+    if (MVar1 != 0) {
+      mciSendCommandA(g_220C40, MCI_CLOSE, 0, 0);
+      return 0;
+    }
+    status.dwItem = MCI_STATUS_NUMBER_OF_TRACKS;
+    MVar1 = mciSendCommandA(g_220C40, MCI_STATUS, MCI_STATUS_ITEM | MCI_WAIT, (DWORD)&status);
+    if (MVar1 != 0) {
+      wsprintfA(buf, s_MCI_STATUS_returned__d_1007b07c, MVar1);
+      OutputDebugStringA(buf);
+      mciSendCommandA(g_220C40, MCI_CLOSE, 0, 0);
+      return 0;
+    }
+    g_brCdTrackFirst = 2;
+    g_brCdTrackLast = status.dwReturn;
+    g_brCdMediaOk = 1;
+  }
+  return 1;
+}
+
+
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+
+/* WHAT IT DOES: ask the CD device what it is doing now and report its status
+ * back. Answers zero without asking whenever CD audio is off, the drive is
+ * empty, or nothing is playing. */
+/* @implements 0x100027E0 glide FUN_100027e0 */
+/* auto-filed from ghidra --refine; transforms: stackshred */
+
+int FUN_100027e0(void)
+
+{
+  struct {
+  char local_10 [4];
+  int local_c;
+  int local_8;
+  int _pad_0;
+  } _fr;
+
+
+  if (((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) && (g_brCdMediaOk != 0)) {
+    _fr.local_8 = 8;
+    mciSendCommandA(g_220C40,0x814,0x100,(unsigned long)_fr.local_10);
+    return _fr.local_c;
+  }
+  return 0;
+}
+
+
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+
+/* WHAT IT DOES: tell the CD device to play from a given track through to the
+ * last one. Returns the raw MCI error code, so zero means it started. */
+/* @implements 0x10002870 glide FUN_10002870 */
+/* auto-filed from ghidra --refine; transforms: stackshred */
+
+MCIERROR FUN_10002870(HWND param_1,unsigned char param_2)
+
+{
+  MCIERROR MVar1;
+  struct {
+  int local_c;
+  unsigned int local_8;
+  unsigned int local_4;
+  } _fr;
+
+
+  _fr.local_8 = param_2 & 0xff;
+  _fr.local_4 = g_brCdTrackLast & 0xff;
+  _fr.local_c = param_1;
+  MVar1 = mciSendCommandA(g_220C40,0x806,0xd,(unsigned long)&_fr.local_c);
+  if (MVar1 != 0) {
+    mciSendCommandA(g_220C40,0x804,0,0);
+    return MVar1;
+  }
+  return 0;
+}
+
+
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+
+/* WHAT IT DOES: stop CD playback, reporting success. Like its siblings it
+ * does nothing and claims success when CD audio is off or there is no disc,
+ * so callers do not have to check first. */
+/* @implements 0x10002830 glide FUN_10002830 */
+/* MCI "advance track" poll: true unless the CD is enabled, playing and the
+ * media is ready, in which case forward the current track to 0x10002870 and
+ * report success as its result being zero.  param_2 is a BYTE there -- the
+ * caller emits `mov al,[g_brCdTrackCur]`, so the callee takes unsigned char. */
+
+int FUN_10002830(void)
+
+{
+  if (((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) && (g_brCdMediaOk != 0)) {
+    return FUN_10002870(DAT_1021c77c,(unsigned char)g_brCdTrackCur) == 0;
+  }
+  return 1;
+}
+
+
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+
+/* WHAT IT DOES: return the value of the global at 0x1021C788. */
+/* @implements 0x100027A0 glide BrGetGlobal_1C788 */
+
+int BrGetGlobal_1C788(void)
+
+{
+  return DAT_1021c788;
+}
+
+/* 0x10002580 -- the EAR-DLL CD channel state block at 0x1021C778, one
+ * global per field (the file's convention; a struct changes nothing below).
+ *
+ * T2 2026-09-13 (fresh transcription, 14 fn.py probes): 468/471 B, 93/95
+ * insns, register-blind residue 0+2.  RESIDUE: the original keeps THREE zero
+ * registers -- esi (the head compares and most stores), a fresh `xor edx,edx`
+ * for the +0x58/+0x5C/+0x60/+0x64 quartet and a fresh `xor ecx,ecx` for the
+ * +0x6C/+0x70/+0x74 trio -- where VC5 folds every zero here into esi.  The
+ * store multiset, the constant webs for 1 (ebx), 4 (eax, dword and word),
+ * 10000 (edi, shared with the RegisterChannel argument) and the early
+ * `push 0x10000020 / push eax` are all reproduced.  DEAD (do not re-run):
+ * typing the two groups unsigned, long, unsigned long, void *, float
+ * (stores an immediate), double and __int64 (immediate / folds), `0u` and
+ * `0L` literals, chained assignments in both directions, two zero locals,
+ * two static __inline reset helpers, int arrays, anonymous structs -- every
+ * one 468 B at 0+2.  VC5 reorders these independent global stores itself
+ * (a chain lands non-contiguous), so the emitted order is not the source
+ * order.  Corpus MISS at +0x5D len 5: the construct is proven nowhere.
+ * MECHANISM SEARCH 2026-09-13 (all 1,200 matched originals scanned for two
+ * zero registers feeding stores): the only proven source of a second zero
+ * register is a LOOP-CARRIED local (br_dl_clip_reset `c = 0; ... c = a`,
+ * BrCarInitTables loop counters).  Tested here and dead: zero locals
+ * reassigned by the two track calls (VC5 propagates the zero and keeps
+ * the call result in esi instead), the same with the stores right after
+ * each call (folds back), and zero locals re-assigned inside the
+ * conditional call block (VC5 propagates through the merge).  This
+ * function has no loop, so the second and third zero webs are not
+ * reachable from any source-level zero; the wall is characterised. */
+extern int (__stdcall *DAT_104b1648)(int, int, int, int);   /* 0x104B1648 EAR_DLL_RegisterChannel */
+extern int (__stdcall *DAT_104b1678)(int);                  /* 0x104B1678 */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+
+/* WHAT IT DOES: opens the CD-audio channel through the EAR sound DLL the
+ * first time the game wants CD music and the disc has not been checked yet.
+ * It registers the channel, resets the whole channel-state block to its
+ * starting values (volumes at full, the five fade steps, a 30-tick timer),
+ * asks the DLL for the first and last track numbers, and marks the disc as
+ * usable.  If registering fails the disc is marked unusable instead.  It
+ * always reports success to its caller. */
+/* @t4-pass 0x10002580 1 2026-09-13 probes 14 bytes 468 insns 93 regions 3 rows 2 census yes  (hand, fn.py variants of the zero-web typing; corpus query at +0x5D MISS) */
+/* @t4-pass 0x10002580 2 2026-09-13 probes 11 bytes 468 insns 93 regions 3 rows 2 census no  (hand, fn.py variants: truthiness guard, named call result, if/else tail, masked hwnd narrowing, constants grouped first, flag+1 argument, hwnd local for the two track calls, three tail stores reversed, summed fade constants, three early returns, two 10000 stores swapped -- 468/93/0+2 or worse every time) */
+/* @t3 0x10002580 2026-09-13 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 468/471 insns 93/95 rows 2+0 regions 3 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue: the original's two extra zero registers (a fresh xor edx,edx and
+ * xor ecx,ecx for two groups of the state-block stores) where VC5 folds
+ * every zero into esi.  The dossier, the dead typing list and the two
+ * ledger passes are in the comment block above.  Do not reopen before the
+ * end-grind. */
+/* @implements 0x10002580 glide BrCdEarChannelOpen */
+int BrCdEarChannelOpen(void)
+{
+    if (g_brCdEnabled != 0 && g_brCdPlaying != 0 && g_brCdMediaOk == 0) {
+        if ((*DAT_104b1648)(g_br0940A8, 6, 10000, 5) != 0) {
+            if (DAT_1021c778 == 0)
+                (*DAT_104b1678)(1);
+            DAT_1021c7d0 = 0;
+            DAT_1021c7e0 = 4;
+            DAT_1021c7e4 = 0;
+            DAT_1021c7d4 = 0;
+            DAT_1021c7a8 = 4;
+            DAT_1021c7e8 = 0;
+            DAT_1021c7d8 = 0;
+            DAT_1021c778 = 1;
+            DAT_1021c780 = 0x80;
+            DAT_1021c784 = 0;
+            DAT_1021c788 = 0;
+            DAT_1021c790 = 0;
+            DAT_1021c792 = 10000;
+            DAT_1021c794 = 10000;
+            DAT_1021c798 = 0;
+            DAT_1021c79c = 0;
+            DAT_1021c7a0 = 0;
+            DAT_1021c7a4 = 0;
+            DAT_1021c7aa = 0;
+            DAT_1021c7ac = 0;
+            DAT_1021c7b0 = 0;
+            DAT_1021c7be = 10000;
+            DAT_1021c7c0 = 10000;
+            DAT_1021c7c2 = 0;
+            DAT_1021c7c4 = 0;
+            DAT_1021c7c6 = 0;
+            DAT_1021c7c8 = 0;
+            DAT_1021c7bc = 0;
+            DAT_1021c7b4 = 0;
+            DAT_1021c7b8 = 1;
+            DAT_1021c7cc = 0;
+            DAT_1021c7ce = 0;
+            DAT_1021c7ec = 0;
+            DAT_1021c7f0 = 0;
+            DAT_1021c7f2 = 1000;
+            DAT_1021c7f4 = 2500;
+            DAT_1021c7f6 = 5000;
+            DAT_1021c7f8 = 7500;
+            DAT_1021c7fa = 9000;
+            DAT_1021c7fc = 10000;
+            DAT_1021c7dc = 0;
+            DAT_1021c782 = 30;
+            DAT_1021c78e = 1;
+            DAT_1021c78c = (uint16_t)g_br0940A8;
+            g_brCdTrackFirst = (*DAT_104b162c)(g_br0940A8, 0x10000020);
+            g_brCdTrackLast = (*DAT_104b162c)(g_br0940A8, 0x10000040);
+            g_brCdMediaOk = 1;
+            return 1;
+        }
+        g_brCdMediaOk = 0;
+    }
+    return 1;
+}
+

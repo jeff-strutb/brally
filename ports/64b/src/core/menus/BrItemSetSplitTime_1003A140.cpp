@@ -1,0 +1,158 @@
+/* WHAT IT DOES: format a stored split time into this item's label, showing
+ * dashes instead when no time has been set yet. */
+/* @t3 0x1003A140 2026-09-13 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 367/360 insns 120/120 rows 0+0 regions 4 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * Residue: block placement (the format block laid after the common tail,
+ * which lengthens one je to near) and the register rotation it drags into
+ * the index computation.  The dossier, the dead arm-order list and the two
+ * ledger passes are in this header.  Do not reopen before the end-grind.
+ */
+/* @implements 0x1003A140 glide BrItemSetSplitTime_1003A140
+ * @t4-pass 0x1003A140 1 2026-09-13 probes 12 bytes 367 insns 120 regions 4 rows 0 census yes  (hand, cpp_score variants: product operand order, c/d statement order, void-cast sprintf, memset literal, !strlen, _strupr as its own statement, index re-association, fc inlined, (float)d, declaration order, pLabel truthiness, !(t > K) -- 237 diffs every time, 236 with the split _strupr)
+ * @t4-pass 0x1003A140 2 2026-09-13 probes 11 bytes 367 insns 120 regions 4 rows 0 census yes  (hand, cpp_score variants: bare mode test, fa/fb as cast chains, s4 as an early-return tail, pLabel bound before the strlen gate, named index k, c inlined into sprintf, else without braces, hex buffer size, fc operand order, an item pointer local -- 237, 235 for the early pLabel, nothing moves the shape)
+ * @cpp_kind free
+ * @cpp_symbol ?BrItemSetSplitTime_1003A140@@YAHPAVObj3A140@@@Z
+ *
+ * cdecl, one arg, `ret`, 360 B. The split-time variant of 0x1003A580:
+ * same formatter, but the time comes from a float table indexed through a
+ * byte map, and the whole thing is skipped (sentinel string) when the mode
+ * flag is clear. VC5 merges the two sentinel arms.
+ *
+ * Same 0x438 item record as 0x10041300, same strlen gate,
+ * _strupr-into-the-label tail and label-pointer null test.
+ *
+ * PARKED at 237 diffs. The formatter, the tail, the memset and the mode
+ * test are all right; what is left is BLOCK PLACEMENT plus the register
+ * rotation it drags along. The original puts the sentinel block first,
+ * then the format block, then the common tail, so both branches are short
+ * jumps. Ours puts the format block AFTER the tail, which turns the inner
+ * `je` near (+4 bytes) and rotates the index computation's registers
+ * (orig keeps the selector in eax and scales into ecx; ours does the
+ * reverse and needs edx).
+ * 2026-09-12, six more dead: `!(t > K)` for the inner test (identical
+ * layout), the sentinel as the outer then-arm with the inner nested in the
+ * else (jne over an inline sentinel, format after the tail), `mode == 0 ||
+ * !((t = ..) > K)` and `!(mode != 0 && (t = ..) > K)` (both lay format
+ * first and the sentinel after the tail), and an explicit goto layout
+ * (sentinel written before the format block, jumped to from both tests --
+ * VC5 still moves the jump-only block to the end).  The original's layout
+ * [tests][sentinel; jmp tail][format][tail] has not been produced by any
+ * if/else or goto shape; only the register roles fell out (the outer
+ * sentinel-then variant gets the index computation's registers right).
+ * DO NOT RE-PROBE -- arm orders all measured: inner sentinel-then /
+ * format-else with outer format-first is this 237; inner format-then is
+ * 254 (outer je goes near too); outer sentinel-then duplicates the
+ * sentinel instead of merging it (416 B, 241); and folding the mode test
+ * into a short-circuit `||` moves the sentinel to the end (252).
+ *
+ * Every `(int)` of a float is a `call __ftol` and every int fed back into
+ * the float chain is `mov [temp],eax / fild [temp]`, so the conversions
+ * are the shape of the whole function.
+ *
+ * THE LEVER: one NAMED float local per intermediate. Writing the chain as
+ * five int locals with the conversions inline costs 205 diffs; naming the
+ * two int-to-float conversions (fa, fb) takes it to 155; naming the
+ * PRODUCT fb * K30 as well takes it to 0. Each named local is what makes
+ * VC5 treat the value as one definition with several uses, which is what
+ * produces the original's stack discipline -- `fld st(0)` to duplicate fa,
+ * `fst` (no pop) to home fb because three later statements read it, and
+ * `fsubr st(1)` against the copy still on the stack. Unnamed, VC5
+ * re-associates and starts spilling to slots the original never uses.
+ */
+#define _CRTIMP __declspec(dllimport)
+#include <stdio.h>
+#include <string.h>
+
+class Item438I {
+public:
+    virtual void  s0();
+    virtual void  s1();         /* +0x04 relayout */
+    virtual void  s2();         /* +0x08 */
+    virtual void  s3();
+    virtual void  s4();         /* +0x10 repaint */
+    virtual void  s5();
+    virtual void  s6();
+    virtual void  s7();
+    virtual void  s8();
+    virtual void  s9();
+    virtual float s10();        /* +0x28 */
+    virtual void  s11();        /* +0x2C repaint */
+
+    int   f004;                 /* +0x004 */
+    char  b008;                 /* +0x008 */
+    char  szName[0x401];        /* +0x009 */
+};
+
+
+
+class Obj3A140 {
+public:
+    char    pad000[0x2B5C];
+    Item438I m2B5C;              /* +0x2B5C */
+};
+
+
+
+extern "C" {
+/* In C++ a bare object declaration inside `extern "C" {}` is a DEFINITION:
+ * this TU grew its own .bss copies and the image build could not bind the
+ * five floats to the real cells.  `extern` makes them declarations of the
+ * image's globals; the addressing bytes are identical. */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+_CRTIMP char *_strupr(char *s);
+}
+
+int BrItemSetSplitTime_1003A140(Obj3A140 *pObj)
+{
+    char  szTime[32];
+    float t;
+    char *pLabel;
+
+    memset(szTime, 0, sizeof(szTime));
+
+    if (g_brMode5BF4 != 0) {
+        t = g_brFTbl5B54[
+                g_brMap3028[(g_brIdx5C04 + g_brSel5C10 * 12) * 2]];
+
+        if (t <= g_f077624) {
+            strcpy(szTime, g_szBrDashes);
+        } else {
+            int   a  = (int)(t * g_f077630);
+            float fa = (float)a;
+            int   b  = (int)(fa * g_f077634);
+            float fb = (float)b;
+            float fc = fb * g_f077630;
+            int   c  = (int)(fa - fc);
+            int   d  = (int)(fb * g_f077638);
+            int   e  = (int)(fb - d * g_f07763C);
+
+            sprintf(szTime, g_szBrFmtTime, d, e, c);
+        }
+    } else {
+        strcpy(szTime, g_szBrDashes);
+    }
+
+    if (strlen(szTime) == 0)
+        return 0;
+
+    pLabel = pObj->m2B5C.szName;
+    strcpy(pLabel, _strupr(szTime));
+
+    pObj->m2B5C.s1();
+    if (pLabel != 0)
+        pObj->m2B5C.s4();
+
+    return 1;
+}

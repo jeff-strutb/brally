@@ -1,0 +1,65 @@
+/* WHAT IT DOES: leave this menu page: run its leave routine, destroy the
+ * page object, and make its parent current again. One of a family that
+ * differ only in which parent they return to and which state flags they
+ * clear, restoring the name buffer from its saved copy. */
+/* @implements 0x10040260 glide BrPhaseLeaveNamed_10046E10
+ * @cpp_kind method
+ * @cpp_symbol ?BrPhaseLeaveNamed_10046E10@@YAHPAVGameObj@@@Z
+ *
+ * Phase-leave prefix + double-strcpy tail, the 0x1003FBE0 shape with two
+ * zero stores instead of four. No EH.
+ */
+#define _CRTIMP __declspec(dllimport)
+#include "slice2_25.h"   /* br_globals: its objects */
+#include <string.h>
+
+class GameSub {
+public:
+    virtual void s0();
+    virtual void s1();
+    virtual void s2();
+    virtual void s3();
+    virtual void s4();
+    virtual void s5();
+    virtual void s6(int);
+    virtual void s7();
+};
+
+class GameObj {
+public:
+    char pad[0x2AE8];
+    GameSub *pSub;
+};
+
+class Phase {
+public:
+    virtual void *f00(int);
+};
+
+typedef char chk_sub[(unsigned)&((GameObj *)0)->pSub == 0x2AE8 ? 1 : -1];
+
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+
+int BrPhaseLeaveNamed_10046E10(GameObj *pGame)
+{
+    Phase *pObj;
+
+    pGame->pSub->s7();
+    pObj = (Phase *)(g_cur);
+    if (pObj != 0)
+        pObj->f00(1);
+    g_5C7C = 0;
+    g_5C38 = 0;
+    strcpy(g_bufA, g_srcStr);
+    g_AB94 = -1;
+    strcpy(g_bufB, g_srcStr);
+    g_cur = (Phase *)((BrOptObj *)(g_5C74));
+    return 0;
+}
