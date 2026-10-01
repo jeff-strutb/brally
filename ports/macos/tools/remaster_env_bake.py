@@ -42,7 +42,10 @@ if lod0 is not None:
     srcs = [o for o in lod0.all_objects if o.type == "MESH"]
 else:
     helper = ("geometry_nodes", "geonodes", "_LOD1", "_LOD2", "_LOD3", "_LOD4")
-    srcs = [o for o in scene.objects if o.type == "MESH" and not o.modifiers and
+    # a scatter helper is built by modifiers; a shading-only one (weighted
+    # normals, Poly Haven's dry branches) still leaves an authored mesh
+    srcs = [o for o in scene.objects if o.type == "MESH" and
+            all(m.type == "WEIGHTED_NORMAL" for m in o.modifiers) and
             not any(h in c.name for c in o.users_collection for h in helper) and tris_of(o) > 0]
 if not srcs:
     raise SystemExit(f"{asset}: no source meshes")

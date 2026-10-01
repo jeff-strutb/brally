@@ -199,6 +199,8 @@ if ls ports/common/models/placements/*.env >/dev/null 2>&1; then
     mkdir -p "$ENVR/models/placements" "$ENVR/textures"
     cp -c ports/common/models/placements/*.env "$ENVR/models/placements/" 2>/dev/null ||
         cp ports/common/models/placements/*.env "$ENVR/models/placements/"
+    # the forest's canopy grids, beside their placements
+    for f in ports/common/models/placements/*.canopy; do [ -f "$f" ] && cp "$f" "$ENVR/models/placements/"; done
     for a in $(awk '/^asset / {print $3} /^put / {nextfile}' ports/common/models/placements/*.env | sort -u); do
         cp -Rc "ports/common/models/$a" "$ENVR/models/" 2>/dev/null || cp -R "ports/common/models/$a" "$ENVR/models/"
         [ -d "ports/common/textures/$a" ] && { cp -Rc "ports/common/textures/$a" "$ENVR/textures/" 2>/dev/null ||
