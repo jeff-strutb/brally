@@ -1,0 +1,182 @@
+/* br_rbaccum.c -- driving: one frame's force accumulation for a rigid body.
+ *
+ * Filed out of the address batches (slice3_42.c, section 5).  BrRbSolveAccel
+ * followed on 2026-09-07 and must stay LAST in this file (its byte-exact
+ * spelling depends on end-of-TU placement).  The matching arms of
+ * BrRbAccumOwnForces and BrRbAccumChildForces are here; their port forms
+ * are still in slice3_42.c, and slice3_42.h declares all four.
+ */
+
+#include "slice3_42.h"
+
+/* 0x1006B260 */
+/* WHAT IT DOES: one whole physics pass for a body: wipe last frame's answer,
+ * add up everything pushing on the body itself and on the four bodies
+ * attached to it, and work out the resulting acceleration and spin. This is
+ * the step that decides how a car moves this frame. The attached bodies' spin
+ * is deliberately not wiped, so theirs carries over from last frame. */
+/* @implements 0x1006B260 d3d BrRbAccumAll */
+/* @n64 0x8025993C located */
+void BrRbAccumAll(BrRbBodyFull *pB)
+{
+    pB->accel.x = 0.0f;
+    pB->accel.y = 0.0f;
+    pB->accel.z = 0.0f;
+    pB->angAccel.x = 0.0f;
+    pB->angAccel.y = 0.0f;
+    pB->angAccel.z = 0.0f;
+
+    /* orig reloads pB->child[k] for every store (`mov r,[esi+off]; mov
+     * [r+0xfc],eax`) and unrolls both the zeros and the four child-force
+     * calls. A counted loop is the extra dec/jne in the bag. */
+    pB->child[0]->accel.x = 0.0f;
+    pB->child[0]->accel.y = 0.0f;
+    pB->child[0]->accel.z = 0.0f;
+    pB->child[1]->accel.x = 0.0f;
+    pB->child[1]->accel.y = 0.0f;
+    pB->child[1]->accel.z = 0.0f;
+    pB->child[2]->accel.x = 0.0f;
+    pB->child[2]->accel.y = 0.0f;
+    pB->child[2]->accel.z = 0.0f;
+    pB->child[3]->accel.x = 0.0f;
+    pB->child[3]->accel.y = 0.0f;
+    pB->child[3]->accel.z = 0.0f;
+
+    BrRbAccumOwnForces(pB);
+    BrRbAccumChildForces(pB, pB->child[0]);
+    BrRbAccumChildForces(pB, pB->child[1]);
+    BrRbAccumChildForces(pB, pB->child[2]);
+    BrRbAccumChildForces(pB, pB->child[3]);
+    BrRbSolveAccel(pB);
+}
+
+/* WHAT IT DOES: adds up everything pushing on the body itself -- each force
+ * on its list lands in the body's acceleration, rotated into the body's own
+ * frame when the node says so, and (unless the body is in no-torque mode)
+ * its lever arm crossed with it lands in the spin. GOTCHA, kept: a node
+ * whose kind is neither 0 nor 1 reuses whatever the PREVIOUS node left in
+ * the force slot -- uninitialised stack on the first node. */
+/* @implements 0x10063E60 glide BrRbAccumOwnForces */
+void BrRbAccumOwnForces(BrRbBodyFull *pB)
+{
+    const BrRbForce *pN;
+    BrVec3 v;                        /* deliberately NOT initialised */
+
+    for (pN = pB->pForces; pN != NULL; pN = pN->pNext) {
+        switch (pN->kind) {
+        case 0:
+            /* Three scalar copies, not an aggregate assign -- the assign
+             * materialises &pN->f in a register. */
+            v.x = pN->f.x;
+            v.y = pN->f.y;
+            v.z = pN->f.z;
+            break;
+        case 1:
+            BrMat4MulVec3Transposed(&v, &pB->m, &pN->f);
+            break;
+        }
+
+        pB->accel.x += v.x;
+        pB->accel.y += v.y;
+        pB->accel.z += v.z;
+
+        if (pB->mode != 2) {
+            BrVec3 r;
+            BrMat4MulVec3Transposed(&r, &pB->m, &pN->r);
+            {
+                /* The z, y, x temporary order is the cross-product match
+                 * (see BrVec3Cross); the adds then run x, y, z. */
+                float z = r.x * v.y - r.y * v.x;
+                float y = r.z * v.x - r.x * v.z;
+                float x = r.y * v.z - r.z * v.y;
+                pB->angAccel.x += x;
+                pB->angAccel.y += y;
+                pB->angAccel.z += z;
+            }
+        }
+    }
+}
+/* WHAT IT DOES: adds up the pushes on one of the four attached bodies. Each
+ * force lands in the child's acceleration (turned into the parent's frame
+ * when the node says so); when the child's torque leg is enabled, its
+ * position crossed with the flattened force (height dropped) is added to the
+ * PARENT's spin.  GOTCHA, kept: a node of any other kind reuses the previous
+ * node's force -- uninitialised stack on the first.  The torque switch is
+ * tested as an integer (a -0.0f counts as on). */
+/* @implements 0x10063FA0 glide BrRbAccumChildForces */
+void BrRbAccumChildForces(BrRbBodyFull *pParent, BrRbBodyFull *pChild)
+{
+    const BrRbForce *pN;
+    BrVec3 v;
+    BrVec3 flat, b, lever, a;
+
+    for (pN = pChild->pForces; pN != NULL; pN = pN->pNext) {
+        if (pN->kind == 0)
+            BrMat4MulVec3(&v, &pParent->m, &pN->f);
+        if (pN->kind == 1) {
+            v.x = pN->f.x;
+            v.y = pN->f.y;
+            v.z = pN->f.z;
+        }
+        flat.x = v.x;
+        flat.y = v.y;
+        flat.z = 0.0f;
+        BrMat4MulVec3Transposed(&b, &pParent->m, &flat);
+        pChild->accel.x += v.x;
+        pChild->accel.y += v.y;
+        pChild->accel.z += v.z;
+        if (*(const int32_t *)&pChild->f1B4 != 0) {
+            lever.x = pChild->m.m[3][0];
+            lever.y = pChild->m.m[3][1];
+            lever.z = pChild->m.m[3][2];
+            BrMat4MulVec3Transposed(&a, &pParent->m, &lever);
+            {
+            float x = a.y * b.z - a.z * b.y;
+            float y = a.z * b.x - a.x * b.z;
+            float z = a.x * b.y - a.y * b.x;
+            pParent->angAccel.x += x;
+            pParent->angAccel.y += y;
+            pParent->angAccel.z += z;
+            }
+        }
+    }
+}
+
+/* 0x1006B170 */
+/* WHAT IT DOES: turns all the pushes and twists that have been piled onto a
+ * physical body this frame into how fast it is about to speed up and how fast
+ * it is about to start spinning -- heavier bodies respond less, and the shape
+ * of the body decides how readily it turns. The forces on the four bodies
+ * attached to it are folded in too, but only sideways and forwards: the
+ * up-and-down direction ignores them entirely, which looks like an oversight
+ * in the original rather than an intention. */
+/* Byte-exact 2026-09-07 (tools/crank.py): the three stores of the rotated
+ * force are in x, y, z order and the function sits at the END of its TU --
+ * in slice3_42.c the z, x, y order the old comment defended and its
+ * mid-file position were the 14-byte residue. */
+/* @implements 0x1006B170 d3d BrRbSolveAccel */
+/* @n64 0x8025980C located */
+void BrRbSolveAccel(BrRbBodyFull *pB)
+{
+    BrVec3 t, u, w;
+
+    BrMat4MulVec3(&t, &pB->m, &pB->accel);
+    pB->accel.x = t.x;
+    pB->accel.y = t.y;
+    pB->accel.z = t.z;
+
+    /* orig x: fld child[3], fadd [2],[1],[0], fadd t.x.  y: fld child[0],
+     * fadd [1],[2],[3], fadd t.y.  Z never sees the children.  Named child
+     * locals spill six extra stack movs. */
+    t.x = ((((pB->child[3]->accel.x + pB->child[2]->accel.x)
+             + pB->child[1]->accel.x) + pB->child[0]->accel.x) + t.x)
+          / pB->mass;
+    t.y = ((((pB->child[0]->accel.y + pB->child[1]->accel.y)
+             + pB->child[2]->accel.y) + pB->child[3]->accel.y) + t.y)
+          / pB->mass;
+    t.z = t.z / pB->mass;
+    BrMat4MulVec3Transposed(&pB->accel, &pB->m, &t);
+    BrMat4MulVec3(&u, &pB->m, &pB->angAccel);
+    BrMat3MulVec3(&w, &pB->invInertia, &u);
+    BrMat4MulVec3Transposed(&pB->angAccel, &pB->m, &w);
+}

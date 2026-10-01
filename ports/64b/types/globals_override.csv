@@ -1,0 +1,48 @@
+va,name,type,size32,note
+0x10AF07F8,g_aBrRaceDriver,BrDriver[20],2560,the entrant table: 20 driver records of 0x80; every slot view (car pointer first) is this table seen from +0x60
+0x104ABB20,DAT_104abb20,void *,4,holds a pointer (from the code: DAT_104abb20)
+0x106E79D4,DAT_106e79d4,void *,4,holds a pointer (from the code: DAT_106e79d4)
+0x10AC5CBC,DAT_10ac5cbc,void *,4,holds a pointer (from the code: g_brRoot5CBC)
+0x10AC5D08,DAT_10ac5d08,void *,4,holds a pointer (from the code: g_brAA29B0)
+0x10AC5D0C,DAT_10ac5d0c,void *,4,holds a pointer (from the code: DAT_10ac5d0c)
+0x10AC5D18,DAT_10ac5d18,void *,4,holds a pointer (from the code: DAT_10ac5d18)
+0x10AC5D40,DAT_10ac5d40,void *,4,holds a pointer (from the code: DAT_10ac5d40)
+0x10AC5D44,DAT_10ac5d44,void *,4,holds a pointer (from the code: DAT_10ac5d44)
+0x10AC5D70,DAT_10ac5d70,int,4,the session user dword (DPSESSIONDESC dwUser3); an integer
+0x10B73538,g_BrFpsGuard,int32_t,4,a 0/1 guard flag
+0x106ED6E0,DAT_106ed6e0,HANDLE,4,the scene pools mutex
+0x10661830,g_aBrTmuMem,BrTmuMem[2],16,per-TMU texture memory marks: low and high
+0x10661840,g_aBrTexSlot,BrTexSlot[1024],221184,the Glide texture slots: 0x400 records of 0xD8 (0x10028200 fills one)
+0x100AD7D8,g_aBrLivery,BrLivery[16][30],19200,the paint schemes: 30 per car; bitmap pointers and a file name per entry
+0x10AC67B0,g_apBrDamageBmp,void *[3],12,the three Paint_damage bitmaps
+0x1021CE58,g_aBrNetSlot,BrNetSlot[16],38784,the player slots: 16 records of 0x978 with a mutex each
+0x10AF1208,g_aBrRaceCar,BrDriverCar[16],177792,the race cars: 16 records of 0x2B68 (a loop at 0x10B1C888 bounds it)
+0x10AC3080,g_aBrNetSession,BrNetSession[16],3584,"the enumerated sessions: 16 records of 0xE0,  one per provider slot"
+0x117A9B88,g_aBrPeer71,BrPeerRec[16],38592,"the peer records: 16 of 0x96C,  a mutex each"
+0x117B3258,g_aBr178FEF8,BrPeerRec[16][16],617472,per-peer history: 16 x 16 peer records
+0x11849F30,g_aBrPeerMsg,BrPeerMsg[16],8512,one outgoing message stream per peer
+0x100A9A58,g_brGbi0A79F0,BrGbiHandler[256],1024,the display-list dispatch table: one handler per opcode byte (ends at 0x100A9E58)
+0x10AC0C48,g_aPfxRec,BrPfxRec[256],8192,the particle records (1-based links; record 255 ends at 0x10AC2C48)
+0x104B16E0,g_brSegHostBase,uint8_t *,4,the loaded block the fixups rebase into
+0x105B16F0,g_aBrVtxCache,BrVtxCacheEnt[2048],24576,expanded-vertex cache: source; count; copy
+0x102E16AC,DAT_102e16ac,void *,4,held addresses at run time (trace)
+0x1035FBA4,DAT_1035fba4,void *,4,held addresses at run time (trace)
+0x105BCAEC,DAT_105bcaec,void *,4,held addresses at run time (trace)
+0x105D17F0,DAT_105d17f0,void *,4,held addresses at run time (trace)
+0x106EED28,DAT_106eed28,void *,4,held addresses at run time (trace)
+0x106EED34,DAT_106eed34,void *,4,held addresses at run time (trace)
+0x106EED50,DAT_106eed50,void *,4,held addresses at run time (trace)
+0x10AC5D84,DAT_10ac5d84,void *,4,held addresses at run time (trace)
+0x106EC77C,_DAT_106ec77c,void *,4,held addresses at run time (trace)
+0x100B31B8,g_0B39B0,void *,4,held addresses at run time (trace)
+0x100B3270,g_0B3A68,void *,4,held addresses at run time (trace)
+0x10AC5C68,g_5C68,void *,4,held addresses at run time (trace)
+0x10AC5C80,g_5C80,void *,4,held addresses at run time (trace)
+0x10AC5CDC,g_5CDC,void *,4,held addresses at run time (trace)
+0x10AC5CE0,g_5CE0,void *,4,held addresses at run time (trace)
+0x10AC5CEC,g_5CEC,void *,4,held addresses at run time (trace)
+0x10AC5CF0,g_5CF0,void *,4,held addresses at run time (trace)
+0x10AC5D24,g_5D24,void *,4,held addresses at run time (trace)
+0x10AC0810,g_brModelMgr,void *,4,held addresses at run time (trace)
+0x106B7A98,g_brTexScanSrcSeen,void *,4,held addresses at run time (trace)
+0x105E180C,g_brTexScanTimgAddr,void *,4,held addresses at run time (trace)

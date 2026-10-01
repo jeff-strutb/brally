@@ -1,0 +1,427 @@
+/* br_dxver.c -- see br_dxver.h. PLATFORM: the DirectX capability probe,
+ * transcribed from BRGlide.dll 0x1001D8A0 (924 bytes; D3D 0x10030210, shared).
+ *
+ * ============================================================================
+ * THE STACK FRAME, TRACED EXPLICITLY, BECAUSE TWO DISPLACEMENTS IN THIS
+ * FUNCTION MEAN DIFFERENT THINGS AT DIFFERENT POINTS
+ * ============================================================================
+ *
+ * Let E be esp at entry, so the return address is at [E] and the two cdecl
+ * arguments are at [E+4] and [E+8].
+ *
+ *     1001D8A0  sub esp,0x114      esp = E-0x114
+ *     1001D8A6  push ebx           esp = E-0x118
+ *     1001D8A7  push ebp           esp = E-0x11C
+ *     1001D8A8  push esi           esp = E-0x120
+ *     1001D8A9  push edi           esp = E-0x124
+ *     1001D8B3  push eax           esp = E-0x128   (arg to GetVersionExA)
+ *     1001D8D3  call GetVersionExA esp = E-0x124   (stdcall, callee pops)
+ *
+ * so the arguments are [esp+0x128] and [esp+0x12C] whenever esp == E-0x124,
+ * which is what 0x1001D8DD/0x1001D8E4 read. The locals:
+ *
+ *     E-0x114   pDD      IDirectDraw *
+ *     E-0x110   pDDS     the primary IDirectDrawSurface *
+ *     E-0x10C   pDD2     QI(IID_IDirectDraw2) result
+ *     E-0x108   pDDS3    QI(IID_IDirectDrawSurface3) result
+ *     E-0x104   pDDS4    QI(IID_IDirectDrawSurface4) result
+ *     E-0x100   ddsd     DDSURFACEDESC, 0x6C bytes, ending exactly at E-0x94
+ *     E-0x94    osvi     OSVERSIONINFOA, 0x94 bytes
+ *
+ * That labelling is not a guess. The five stores at 0x1001D8B4..0x1001D8C4
+ * (esp == E-0x128, displacements 0x14/0x18/0x1C/0x20/0x24) zero exactly
+ * E-0x114..E-0x104 -- the five pointer slots and nothing else -- and the
+ * `rep stosd` of 0x1B dwords at 0x1001DB2D fills E-0x100..E-0x94, abutting
+ * osvi precisely. Both extents pin arithmetically.
+ *
+ * TWO DISPLACEMENT COLLISIONS. Both are the exact hazard CONVENTIONS.md
+ * describes, and both are inside this one function:
+ *
+ *   [esp+0x24] at 0x1001D8C4 is E-0x104 (pDDS4), because esp is E-0x128
+ *              there; at 0x1001DB27 it is E-0x100 (&ddsd), because esp is
+ *              E-0x124. A `push eax` separates them.
+ *
+ *   [esp+0x14] at 0x1001DB2F is E-0x114 (pDD), because the `push 8` at
+ *              0x1001DB2B has just lowered esp to E-0x128; at 0x1001DBC8,
+ *              0x1001DBF7 and 0x1001DC14 it is E-0x110 (pDDS), esp being
+ *              E-0x124. So the cooperative level is set on the DEVICE and the
+ *              two version-deciding QueryInterfaces are made on the SURFACE.
+ *              Read the displacement alone and DX5/DX6 detection appears to
+ *              interrogate the IDirectDraw object, which would be wrong about
+ *              the interfaces AND about which pointer gets released at
+ *              0x1001DC21.
+ *
+ * ONE REGISTER ALSO CHANGES MEANING. ebx holds pdwDXPlatform from 0x1001D901,
+ * and is RELOADED with pdwDXVersion at 0x1001DA5B. Every `mov [ebx],n` before
+ * that address is a platform write (2, 0, 1, 0, 0, 0); every one after is a
+ * version write (0x100, 0x200, 0x300, 0, 0, 0x500, 0x600). Consequence worth
+ * stating: once DirectDrawCreate has succeeded, the platform word is never
+ * written again -- not even on the failure arms that zero the version.
+ *
+ * ============================================================================
+ * BEHAVIOUR PRESERVED THAT LOOKS LIKE A MISTAKE
+ * ============================================================================
+ *
+ * These are recorded with the addresses that establish them, so the next
+ * reader can check the claim rather than inherit it. None of them is called a
+ * bug in the original except the first, which is one and is unreachable on any
+ * machine that could run the game.
+ *
+ *  1. NT with dwMajorVersion < 4 (0x1001D91E `jae`, 0x1001D923) returns
+ *     having written the PLATFORM twice (2, then 0) and the VERSION never.
+ *     RallyMain's slot is uninitialised, so it compares garbage against 0x600.
+ *     Only NT 3.x reaches it.
+ *
+ *  2. The DDRAW.DLL-missing arm at 0x1001D9C1 calls FreeLibrary on the NULL
+ *     handle it just failed to get (`push edi` with edi == 0), and is the only
+ *     failure arm with no OutputDebugStringA.
+ *
+ *  3. SetCooperativeLevel (0x1001DB72) and CreateSurface (0x1001DBB1) failing
+ *     write the version back to ZERO, discarding the 0x300 that DINPUT.DLL had
+ *     already earned. Every other failure arm leaves the rung it reached.
+ *
+ *  4. The IID_IDirectDrawSurface3 QI failing (0x1001DBDF) releases pDD and
+ *     frees DDRAW.DLL but leaks pDDS, and emits no diagnostic. The DX5-only
+ *     outcome (0x1001DC12 taking the jump) leaks pDDS too. Only the DX6 path
+ *     releases it, at 0x1001DC21 -- and that path in turn leaks pDDS3 and
+ *     pDDS4, which are never released on any path.
+ *
+ *  5. Any platform id other than 2 becomes BR_DXPLAT_WIN32_WINDOWS at
+ *     0x1001D9A8, including VER_PLATFORM_WIN32s (0). The routine does not
+ *     distinguish them.
+ *
+ *  6. On NT 4 exactly (0x1001D930), the probe never loads DDRAW.DLL at all and
+ *     can report at most 0x300. Since RallyMain requires 0x600, the game
+ *     refuses to start on NT 4 by construction, not by accident.
+ *
+ * ============================================================================
+ * MATCH RESIDUE (2026-09-03). NOT byte-exact. 898/924 B, reggap 19 (was 204).
+ * ============================================================================
+ *
+ * The BrDxHost seam was the structural gap and it is closed -- the matching
+ * arm calls KERNEL32 and the DirectDraw vtables directly and every block is
+ * present, in the original's order. Two residues remain, both allocator- or
+ * emitter-level:
+ *
+ *  A. CROSS-JUMPING, the documented wall. The IID_IDirectDrawSurface3
+ *     failure arm (0x1001DBDF) and the function's own tail (0x1001DC24) are
+ *     the same three statements -- Release(pDD), FreeLibrary(hDDraw),
+ *     return -- and in the ORIGINAL they came out with different scratch
+ *     registers (`mov edx,[eax]` vs `mov ecx,[eax]`), so VC5 left both
+ *     copies. Our cl allocates the same register in both, they become
+ *     byte-identical, and it tail-merges them: `jl` to the shared tail
+ *     instead of `jge` over an inline block. That is -24 bytes, one
+ *     epilogue and one Release. See docs/VC5-IDIOMS.md, "Cross-jumping: our
+ *     cl merges identical error tails, the original does not" -- probed
+ *     dead there, and the nested `if (hr >= 0)` rewrite is not available
+ *     here because the failure arm IS the fall-through tail, so nesting
+ *     would delete the duplicate rather than restore it.
+ *
+ *  B. ONE SPILL SLOT: `sub esp,0x118` against the original's 0x114. The
+ *     original caches GetProcAddress in edi (0x1001D9DE) after the NULL
+ *     constant that lived there dies, which leaves a register for the
+ *     mainline DirectInputCreateA pointer (0x1001DAF5 `mov edi,eax`). Ours
+ *     keeps the NULL constant in ebx to the end, never caches
+ *     GetProcAddress, and spills that pointer to a slot wedged at E-0x10C
+ *     (0x24D `mov [esp+0x20],eax`). Everything downstream shifts by 4.
+ *
+ * PROBED AND DEAD -- do not re-run: separate mainline locals for the second
+ * hDInput/DirectInputCreateA pair; reversing the whole declaration list so
+ * the two structures precede the five pointers; hoisting every HRESULT test
+ * inline to delete the `hr` local (that one DID help -- it removed a second
+ * spill slot -- and is kept).
+ */
+#include "br_dxver.h"
+
+#include <stddef.h>
+#include <string.h>   /* the ddsd `rep stosd` at 0x1001DB2D */
+
+/* ------------------------------------------------------------------ *
+ * .rdata, decoded field-wise. See the header for the raw bytes.
+ * ------------------------------------------------------------------ */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+
+int BrDxGuidEqual(const BrDxGuid *pA, const BrDxGuid *pB)
+{
+    int i;
+    if (pA == NULL || pB == NULL)
+        return pA == pB;
+    if (pA->d1 != pB->d1 || pA->d2 != pB->d2 || pA->d3 != pB->d3)
+        return 0;
+    for (i = 0; i < 8; i++)          /* bounded: a GUID's tail is always 8 */
+        if (pA->d4[i] != pB->d4[i])
+            return 0;
+    return 1;
+}
+
+/* ------------------------------------------------------------------ *
+ * .data string literals, at the addresses the original pushes.
+ * ------------------------------------------------------------------ */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */          /* 0x100A9A44 */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */  /* 0x100A9A10 */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */           /* 0x100A99DC */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */    /* 0x100A99C8 */
+
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+
+/* 0x1001D8A0 -- the probe itself. The frame trace, the two displacement
+ * collisions and the six preserved oddities are all in the file banner above;
+ * the addresses in the margin below are where each decision is made.
+ *
+ * NOTE ON THIS COMMENT'S SHAPE: it opens with the address as its first token
+ * on purpose. tools/isported.py's "banner over a body" detector requires that,
+ * and with a decorative rule line first it reported this very function as
+ * unported -- which is precisely the false negative that tool exists to
+ * prevent. Validated by running it after writing this. */
+/* @t4-pass 0x1001D8A0 1 2026-09-07 probes 104 bytes 898 insns 302 regions 16 rows 26 census yes  (tools/crank.py) */
+/* @t4-pass 0x1001D8A0 2 2026-09-07 probes 104 bytes 898 insns 302 regions 16 rows 26 census yes  (tools/crank.py) */
+/* @t4-pass 0x1001D8A0 3 2026-09-24 probes 51 bytes 898 insns 302 regions 16 rows 56 census no  (handle/proc local declaration orders, locals before or after the five COM pointers, reusing one variable for both GetProcAddress results; nothing moved) */
+/* @t4-pass 0x1001D8A0 4 2026-09-24 probes 245 bytes 898 insns 302 regions 16 rows 56 census yes  (census: the rows are the constant-0 register (edi in the original, live only until the DirectDraw probe, then reused to cache GetProcAddress/LoadLibraryA; ours holds 0 in ebx throughout and caches no imports) -- probed NULL-initialiser forms: in declarations, as statements before/after GetVersionEx, chained, literal 0, all 120 orders of the five pointers both ways; nothing moved) */
+/* @t3 0x1001D8A0 2026-09-24 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 898/924 insns 302/314 rows 34+22 regions 16 oracle EQUIVALENT
+ * @t3-effort passes 4 zero-movement 3 4
+ * Residue is register choice only: the original parks constant 0 in edi
+ * until the DirectDraw probe and then caches GetProcAddress/LoadLibraryA in
+ * edi/ebp (12 extra instructions); ours keeps 0 in ebx and calls the imports
+ * through memory.  Do not reopen before the end-grind.
+ * Oracle coverage: the game only ever runs the Windows 98 / DirectX 6 path
+ * (134 of 314 instructions).  Every other branch was forced from the real
+ * boot state by swapping the emulator's import models: GetVersionEx
+ * failure, NT 3, NT 4 with and without DINPUT / DirectInputCreateA, NT 5,
+ * an unknown platform, and each DirectDraw failure point (DDRAW.DLL, its
+ * proc, DirectDrawCreate, QI DDraw2, DINPUT load/proc, SetCooperativeLevel,
+ * CreateSurface, surface QI 3 and 4).  18/18 agree; planted bugs in the
+ * NT 4 and DirectX 6 arms were caught DIVERGENT. */
+/* WHAT IT DOES: works out which version of DirectX is installed and which
+ * family of Windows this is, by trying progressively newer interfaces and
+ * seeing how far it gets. This is what the startup code consults before
+ * refusing to run on a machine without DirectX 6. */
+/* @implements 0x1001D8A0 glide BrDxDetect */
+/* The BrDxHost seam is the port's, and it is the whole shape gap: every one of
+ * the original's five Win32 imports and five COM sends became `call [pH+N]`
+ * with an extra pCtx argument pushed in front. The logic below is the same
+ * one the port arm expresses -- the banner above documents all of it -- with
+ * the calls put back the way the original makes them.
+ *
+ * The two structures are real Win32 ones, laid out to their true offsets:
+ * OSVERSIONINFOA is 0x94 bytes with dwPlatformId at +0x10, and DDSURFACEDESC
+ * is 0x6C with ddsCaps.dwCaps at +0x68. Both extents are what pin the frame
+ * (0x114 = 5 pointers + 0x6C + 0x94). */
+typedef struct BrOsVersionInfoA {
+    uint32_t dwOSVersionInfoSize;   /* +0x00 */
+    uint32_t dwMajorVersion;        /* +0x04 */
+    uint32_t dwMinorVersion;        /* +0x08 */
+    uint32_t dwBuildNumber;         /* +0x0C */
+    uint32_t dwPlatformId;          /* +0x10 */
+    char     szCSDVersion[128];     /* +0x14 */
+} BrOsVersionInfoA;                 /* 0x94 */
+
+typedef struct BrDdSurfaceDesc {
+    uint32_t dwSize;                /* +0x00 */
+    uint32_t dwFlags;               /* +0x04 */
+    uint32_t adwBody[24];           /* +0x08 .. +0x67 */
+    uint32_t dwCaps;                /* +0x68, ddsCaps.dwCaps */
+} BrDdSurfaceDesc;                  /* 0x6C */
+
+/* Only the three slots the original sends to are named. The padding fixes
+ * CreateSurface at vtbl+0x18 and SetCooperativeLevel at vtbl+0x50, which is
+ * how those two sends are identified in the first place. */
+typedef struct BrDdObj BrDdObj;
+typedef struct BrDdVtbl {
+    int32_t  (__stdcall *QueryInterface)(BrDdObj *, const BrDxGuid *, void **);
+    uint32_t (__stdcall *AddRef)(BrDdObj *);
+    uint32_t (__stdcall *Release)(BrDdObj *);
+    void    *apfn0C[3];                                       /* +0x0C..+0x17 */
+    int32_t  (__stdcall *CreateSurface)(BrDdObj *,
+                                        const BrDdSurfaceDesc *,
+                                        BrDdObj **, void *);  /* +0x18 */
+    void    *apfn1C[13];                                      /* +0x1C..+0x4F */
+    int32_t  (__stdcall *SetCooperativeLevel)(BrDdObj *, void *,
+                                              uint32_t);      /* +0x50 */
+} BrDdVtbl;
+struct BrDdObj { const BrDdVtbl *pVtbl; };
+
+typedef int32_t (__stdcall *BrDirectDrawCreateFn)(void *pGuid, BrDdObj **ppDD,
+                                                  void *pUnkOuter);
+
+/* 64-bit core: GetVersionExA is declared by the platform headers */
+/* 64-bit core: LoadLibraryA is declared by the platform headers */
+/* 64-bit core: GetProcAddress is declared by the platform headers */
+/* 64-bit core: FreeLibrary is declared by the platform headers */
+/* 64-bit core: OutputDebugStringA is declared by the platform headers */
+
+void BrDxDetect(uint32_t *pdwDXVersion, uint32_t *pdwDXPlatform)
+{
+    BrDdObj *pDD   = NULL;             /* E-0x114 } all five zeroed at      */
+    BrDdObj *pDDS  = NULL;             /* E-0x110 } 0x1001D8B4..0x1001D8C4  */
+    BrDdObj *pDD2  = NULL;             /* E-0x10C } by stores of edi, which */
+    BrDdObj *pDDS3 = NULL;             /* E-0x108 } is zeroed at 0x1001D8B1 */
+    BrDdObj *pDDS4 = NULL;             /* E-0x104 }                         */
+    BrDdSurfaceDesc  ddsd;             /* E-0x100 */
+    BrOsVersionInfoA osvi;             /* E-0x94  */
+    void *hDDraw, *hDInput, *pfnDInputCreate;
+    BrDirectDrawCreateFn pfnDDrawCreate;
+
+    osvi.dwOSVersionInfoSize = sizeof(osvi);      /* 0x1001D8C8, 0x94 */
+    if (GetVersionExA(&osvi) == 0) {              /* 0x1001D8D3 */
+        *pdwDXVersion  = BR_DXVER_NONE;           /* 0x1001D8EB */
+        *pdwDXPlatform = BR_DXPLAT_UNKNOWN;       /* 0x1001D8ED */
+        return;
+    }
+
+    if (osvi.dwPlatformId == BR_DXPLAT_WIN32_NT) {   /* 0x1001D908 */
+        *pdwDXPlatform = BR_DXPLAT_WIN32_NT;         /* 0x1001D918 */
+
+        /* Two branches off ONE `cmp eax,4`: `jae` at 0x1001D921 and `jne` at
+         * 0x1001D930, so only major == 4 exactly takes the DINPUT-only arm. */
+        if (osvi.dwMajorVersion < 4) {
+            *pdwDXPlatform = BR_DXPLAT_UNKNOWN;      /* 0x1001D923 */
+            return;   /* NOTE 1: *pdwDXVersion deliberately not written */
+        }
+
+        if (osvi.dwMajorVersion == 4) {
+            *pdwDXVersion = BR_DXVER_2;              /* 0x1001D93E */
+
+            hDInput = LoadLibraryA(BrDxNameDInputDll);
+            if (hDInput == NULL) {                   /* 0x1001D94D */
+                OutputDebugStringA(BrDxMsgLoadDInputFailed);
+                return;                              /* stays at 0x200 */
+            }
+
+            pfnDInputCreate = GetProcAddress(hDInput, BrDxNameDInputCreate);
+            FreeLibrary(hDInput);                    /* 0x1001D976 */
+            if (pfnDInputCreate == NULL) {           /* 0x1001D97C */
+                OutputDebugStringA(BrDxMsgProcDInputFailed);
+                return;                              /* stays at 0x200 */
+            }
+
+            *pdwDXVersion = BR_DXVER_3;              /* 0x1001D996 */
+            return;
+        }
+        /* major > 4 -- NT 5 and later fall into the probe below. */
+    } else {
+        *pdwDXPlatform = BR_DXPLAT_WIN32_WINDOWS;    /* 0x1001D9A8, NOTE 5 */
+    }
+
+    /* ---- 0x1001D9AE: the common DirectDraw probe ------------------ */
+
+    hDDraw = LoadLibraryA(BrDxNameDDrawDll);         /* 0x1001D9B9 */
+    if (hDDraw == NULL) {                            /* 0x1001D9BD */
+        *pdwDXVersion  = BR_DXVER_NONE;              /* 0x1001D9C9 */
+        *pdwDXPlatform = BR_DXPLAT_UNKNOWN;          /* 0x1001D9CB */
+        /* NOTE 2: FreeLibrary on the handle it did not get. */
+        FreeLibrary(hDDraw);                         /* 0x1001D9CD */
+        return;
+    }
+
+    pfnDDrawCreate = (BrDirectDrawCreateFn)GetProcAddress(hDDraw,
+                                                          BrDxNameDDrawCreate);
+    if (pfnDDrawCreate == NULL) {                    /* 0x1001D9EC */
+        *pdwDXVersion  = BR_DXVER_NONE;              /* 0x1001D9F8 */
+        *pdwDXPlatform = BR_DXPLAT_UNKNOWN;          /* 0x1001D9FA */
+        FreeLibrary(hDDraw);
+        /* The string names LoadLibrary although this is the GetProcAddress
+         * arm. The original's, unchanged. */
+        OutputDebugStringA(BrDxMsgLoadDDrawFailed);
+        return;
+    }
+
+    if (pfnDDrawCreate(NULL, &pDD, NULL) < 0) {      /* 0x1001DA21/25 */
+        *pdwDXVersion  = BR_DXVER_NONE;              /* 0x1001DA2F */
+        *pdwDXPlatform = BR_DXPLAT_UNKNOWN;          /* 0x1001DA35 */
+        FreeLibrary(hDDraw);
+        OutputDebugStringA(BrDxMsgCreateDDrawFailed);
+        return;
+    }
+
+    /* From 0x1001DA5B ebx is pdwDXVersion; the platform word is finished
+     * with, and no arm below writes it again. */
+    *pdwDXVersion = BR_DXVER_1;                      /* 0x1001DA6F */
+
+    if (pDD->pVtbl->QueryInterface(pDD, &BrIidIDirectDraw2,
+                                   (void **)&pDD2) < 0) {  /* 0x1001DA75 */
+        pDD->pVtbl->Release(pDD);                    /* 0x1001DA82 */
+        FreeLibrary(hDDraw);
+        OutputDebugStringA(BrDxMsgQiDDraw2Failed);
+        return;                                      /* stays at 0x100 */
+    }
+    pDD2->pVtbl->Release(pDD2);                      /* 0x1001DAA9 */
+    *pdwDXVersion = BR_DXVER_2;                      /* 0x1001DAB1 */
+
+    hDInput = LoadLibraryA(BrDxNameDInputDll);       /* 0x1001DAB7 */
+    if (hDInput == NULL) {                           /* 0x1001DABB */
+        OutputDebugStringA(BrDxMsgLoadDInputFailed);
+        pDD->pVtbl->Release(pDD);                    /* 0x1001DAD1 */
+        FreeLibrary(hDDraw);
+        return;                                      /* stays at 0x200 */
+    }
+    pfnDInputCreate = GetProcAddress(hDInput, BrDxNameDInputCreate);
+    FreeLibrary(hDInput);                            /* 0x1001DAF7 */
+    if (pfnDInputCreate == NULL) {                   /* 0x1001DAF9 */
+        /* DDRAW.DLL is freed BEFORE pDD is released here, and after it in
+         * the arm above. 0x1001DAFD then 0x1001DB07. */
+        FreeLibrary(hDDraw);
+        pDD->pVtbl->Release(pDD);
+        OutputDebugStringA(BrDxMsgProcDInputFailed);
+        return;                                      /* stays at 0x200 */
+    }
+
+    memset(&ddsd, 0, sizeof(ddsd));                  /* 0x1001DB2D */
+    ddsd.dwSize  = BR_DDSURFACEDESC_SIZE;            /* 0x1001DB3E */
+    ddsd.dwFlags = BR_DDSD_CAPS;                     /* 0x1001DB46 */
+    ddsd.dwCaps  = BR_DDSCAPS_PRIMARYSURFACE;        /* 0x1001DB4E */
+
+    *pdwDXVersion = BR_DXVER_3;                      /* 0x1001DB36 */
+
+    if (pDD->pVtbl->SetCooperativeLevel(pDD, NULL,
+                                        BR_DDSCL_NORMAL) < 0) { /* 0x1001DB59 */
+        pDD->pVtbl->Release(pDD);
+        FreeLibrary(hDDraw);
+        *pdwDXVersion = BR_DXVER_NONE;   /* NOTE 3: 0x1001DB72, not 0x300 */
+        OutputDebugStringA(BrDxMsgCoopLevelFailed);
+        return;
+    }
+
+    if (pDD->pVtbl->CreateSurface(pDD, &ddsd, &pDDS, NULL) < 0) { /* 0x1001DB98 */
+        pDD->pVtbl->Release(pDD);
+        FreeLibrary(hDDraw);
+        *pdwDXVersion = BR_DXVER_NONE;   /* NOTE 3: 0x1001DBB1 */
+        OutputDebugStringA(BrDxMsgCreateSurfaceFailed);
+        return;
+    }
+
+    /* The `this` here is the SURFACE, not the device -- see the displacement
+     * collision note in the banner. */
+    if (pDDS->pVtbl->QueryInterface(pDDS, &BrIidIDirectDrawSurface3,
+                                    (void **)&pDDS3) < 0) {  /* 0x1001DBD9 */
+        /* NOTE 4: pDDS leaked, no diagnostic, version left at 0x300. */
+        pDD->pVtbl->Release(pDD);                    /* 0x1001DBE6 */
+        FreeLibrary(hDDraw);                         /* 0x1001DBEA */
+        return;
+    }
+
+    *pdwDXVersion = BR_DXVER_5;                      /* 0x1001DC08 */
+
+    if (pDDS->pVtbl->QueryInterface(pDDS, &BrIidIDirectDrawSurface4,
+                                    (void **)&pDDS4) >= 0) { /* 0x1001DC0E */
+        *pdwDXVersion = BR_DXVER_6;                  /* 0x1001DC18 */
+        pDDS->pVtbl->Release(pDDS);                  /* 0x1001DC21 */
+    }
+
+    pDD->pVtbl->Release(pDD);                        /* 0x1001DC2B */
+    FreeLibrary(hDDraw);                             /* 0x1001DC2F */
+}
+
+/* RallyMain 0x1001CC5C `cmp eax,0x600` + 0x1001CC61 `jae`. Unsigned. */
+int BrDxVersionIsSufficient(uint32_t dwDXVersion)
+{
+    return dwDXVersion >= BR_DXVER_REQUIRED;
+}

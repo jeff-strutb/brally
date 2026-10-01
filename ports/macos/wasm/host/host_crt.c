@@ -73,6 +73,9 @@ u32 hmem_alloc(u32 n, int zero)
     pthread_mutex_unlock(&g_heaplock);
     if (zero)
         memset(W_P(a + 8), 0, n);
+#ifdef BR_TRACE
+    w_talloc(a + 8, n);
+#endif
     return a + 8;
 }
 
@@ -82,6 +85,9 @@ void hmem_free(u32 p)
 {
     u32 a = p - 8, cap;
     if (!p) return;
+#ifdef BR_TRACE
+    w_tfree(p);
+#endif
     if (H32(a + 4) != MAGIC) { fprintf(stderr, "*** free of non-heap %08X\n", p); return; }
     cap = H32(a);
     HW32(a + 4, 0);
@@ -436,6 +442,7 @@ void vfs_init(const char *disc, const char *save)
     snprintf(g_disc, sizeof g_disc, "%s", disc);
     snprintf(g_save, sizeof g_save, "%s", save);
     mkdir(g_save, 0755);
+    { extern void hscript_files(const char *); hscript_files(g_save); }
 }
 
 const char *vfs_cwd(void) { return g_cwd; }

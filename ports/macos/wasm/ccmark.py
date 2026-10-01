@@ -93,8 +93,9 @@ def indirect_calls(lines):
     return out
 
 
-GEP = re.compile(r'^\s*(%[\w.]+) = getelementptr inbounds ptr, ptr (%[\w.]+), i(?:32|64) (\d+)\s*$')
-LOADP = re.compile(r'^\s*(%[\w.]+) = load ptr, ptr (%[\w.]+)(, align \d+)?\s*$')
+# (a traced build's IR carries `, !dbg !N` line annotations: allowed, dropped)
+GEP = re.compile(r'^\s*(%[\w.]+) = getelementptr inbounds ptr, ptr (%[\w.]+), i(?:32|64) (\d+)(?:, !dbg !\d+)?\s*$')
+LOADP = re.compile(r'^\s*(%[\w.]+) = load ptr, ptr (%[\w.]+)(, align \d+)?(?:, !dbg !\d+)?\s*$')
 
 
 def msvc_qual(sym):
@@ -192,7 +193,7 @@ def msvc_slots(wl, ms_path):
     return changed
 
 
-MPADJ = re.compile(r'^(\s*)(%[\w.]+) = extractvalue \{ i32, i32 \} %[\w.]+, 1\s*$')
+MPADJ = re.compile(r'^(\s*)(%[\w.]+) = extractvalue \{ i32, i32 \} %[\w.]+, 1(?:, !dbg !\d+)?\s*$')
 
 
 def msvc_memptrs(wl):
@@ -251,7 +252,7 @@ def main():
     # every definition noinline (the original has each as its own function)
     for i, l in enumerate(wl):
         if l.startswith('define ') and ' noinline' not in l:
-            wl[i] = re.sub(r'\)(\s*(?:#\d+\s*)?)\{\s*$', lambda q: ') noinline' + q.group(1) + '{', l)
+            wl[i] = re.sub(r'\)(\s*(?:#\d+\s*)?(?:!dbg !\d+\s*)?)\{\s*$', lambda q: ') noinline' + q.group(1) + '{', l)
     # File-static data is NOT private to its file in this tree: the decomp
     # models scattered original globals as one TU-static block (br_sceneprops.c's
     # s17_tuState) or declares a static table with no contents that stands for

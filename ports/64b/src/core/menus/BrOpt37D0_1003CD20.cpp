@@ -1,0 +1,50 @@
+/* WHAT IT DOES: leave this page only when a session is actually live --
+ * otherwise it does nothing, so the button is inert until there is something
+ * to leave. */
+/* @implements 0x1003CD20 glide BrOpt37D0
+ * @cpp_kind method
+ * @cpp_symbol BrOpt37D0
+ *
+ * Free cdecl (GameObj*): when both gates are set, clears the pSub phase's
+ * +0x68 flag (pSub at +0x2AE8, RE-READ for the call receiver exactly as
+ * the original does), fires its +0x18 vcall with a pushed 0 (EDX
+ * pattern, arg pushed before the receiver loads), then hands 0 to the
+ * shutdown sequence 0x100325B0.  Always returns 1.  No EH (no new).
+ */
+#define _CRTIMP __declspec(dllimport)
+
+class BrPhaseCD {
+public:
+    virtual int s0();
+    virtual int s1();
+    virtual int s2();
+    virtual int s3();
+    virtual int s4();
+    virtual int s5();
+    virtual int f18(void *);   /* +0x18 */
+
+    char pad04[0x68 - 4];
+    int  f68;
+};
+
+struct BrGameObjCD {
+    char        pad00[0x2AE8];
+    BrPhaseCD  *pSub;          /* +0x2AE8 */
+};
+
+extern "C" {
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+
+/* BrExt_10038F30: prototype in br_funcs.h */
+
+int BrOpt37D0(BrGameObjCD *pObj)
+{
+    if (DAT_10ac5bec != 0 && DAT_10ac4090 != 0) {
+        pObj->pSub->f68 = 0;
+        pObj->pSub->f18(0);
+        BrExt_10038F30(0);
+    }
+    return 1;
+}
+}

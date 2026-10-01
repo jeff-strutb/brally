@@ -35,7 +35,10 @@ COMMON="-fms-extensions -fshort-wchar -fno-builtin -femit-all-decls
   -Iinclude -I$OUT/inc -Iports/macos/wasm/inc -Itools/msvc5-compat
   -include ports/macos/wasm/inc/msvc_intrinsics.h
   -Itools/msvc5/include"
-IR="-O0 -Xclang -disable-O0-optnone -S -emit-llvm"
+# BR_WASM_G=1 (the traced build): line tables, so every load and store
+# maps back to its source line.
+G=; [ -n "$BR_WASM_G" ] && G=-g
+IR="-O0 $G -Xclang -disable-O0-optnone -S -emit-llvm"
 
 # C++: a third view in the Microsoft C++ ABI, whose vtable slots are the
 # original's (ccmark.py puts every virtual call on them).
@@ -49,7 +52,7 @@ build() {   # $1 = input, $2 = language flags
   "$LLVM/clang" --target=i686-w64-windows-gnu -mlong-double-64 $COMMON $IR $2 "$1" \
       -o "$obj.x86.ll" 2>>"$obj.err" &&
   python3 ports/macos/wasm/ccmark.py "$obj.wasm.ll" "$obj.x86.ll" "$obj.mk.ll" $ms 2>>"$obj.err" &&
-  "$LLVM/clang" --target=wasm32 -O2 -w -c "$obj.mk.ll" -o "$obj" 2>>"$obj.err"
+  "$LLVM/clang" --target=wasm32 -O2 $G -w -c "$obj.mk.ll" -o "$obj" 2>>"$obj.err"
 }
 
 rm -f "$obj"

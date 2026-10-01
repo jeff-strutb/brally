@@ -1433,6 +1433,7 @@ void hglide_mailbox_present(void)
 
 void h_grBufferSwap(u32 interval)
 {
+    { extern void htext_swap(void); htext_swap(); }
     CAMetalLayer *l;
     int mailbox = hframe_mailbox();
     id<MTLTexture> pic;

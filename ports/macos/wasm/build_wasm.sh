@@ -18,7 +18,15 @@ cd "$(dirname "$0")/../../.."
 ROOT=$(pwd)
 LLVM=${BR_WASM_LLVM:-/opt/homebrew/opt/emscripten/libexec/llvm/bin}
 [ -x "$LLVM/clang" ] || { echo "build_wasm: no wasm-capable clang at $LLVM" >&2; exit 1; }
-OUT=build/wasm
+# BR_TRACE_BUILD=1: the traced build (line tables, every load and store
+# reported to rt/w2c_trace.c) in build/wasm_trace; the address maps stay
+# build/wasm's.
+W=build/wasm
+OUT=$W
+TRACEFLAG=
+if [ -n "$BR_TRACE_BUILD" ]; then
+    OUT=build/wasm_trace; TRACEFLAG=--trace; BR_WASM_G=1; export BR_WASM_G
+fi
 mkdir -p $OUT/obj $OUT/c $OUT/inc
 JOBS=${JOBS:-14}
 
@@ -41,6 +49,7 @@ echo "wasm32: $(ls $OUT/obj/*.o | wc -l | tr -d ' ') of $(wc -l < $OUT/tus.txt |
 # a stale copy names files that were refiled since and silently gives their
 # functions synthetic addresses, and the original's data tables then call
 # into nothing.
+if [ -z "$BR_TRACE_BUILD" ]; then
 if [ ! -f $OUT/placement.csv ] || [ -n "$(find src config -newer $OUT/placement.csv -print -quit)" ]; then
     .venv/bin/python ports/macos/wasm/t3manifest.py
 fi
@@ -55,9 +64,10 @@ with open('build/wasm/owners.csv', 'w', newline='') as f:
     w = csv.writer(f); w.writerow(['name', 'base'])
     for k, v in sorted(rows.items()): w.writerow([k, v])
 EOF
+fi
 rm -f $OUT/c/*.c
-python3 ports/macos/wasm/w2c.py --out $OUT/c --symmap $OUT/symmap.csv \
-    --owners $OUT/owners.csv --native ports/macos/wasm/native $OUT/obj/*.o
+python3 ports/macos/wasm/w2c.py $TRACEFLAG --out $OUT/c --symmap $W/symmap.csv \
+    --owners $W/owners.csv --native ports/macos/wasm/native $OUT/obj/*.o
 
 # ---- native: generated C + runtime + host layer -> build/wasm/brally ------
 mkdir -p $OUT/nat
@@ -74,13 +84,15 @@ done
 # with the codecs it was built against, so the app carries no library.
 BREW=${BR_BREW:-/opt/homebrew/opt}
 MPT_LIBS="$BREW/libopenmpt/lib/libopenmpt.a $BREW/mpg123/lib/libmpg123.a $BREW/libvorbis/lib/libvorbisfile.a $BREW/libvorbis/lib/libvorbis.a $BREW/libogg/lib/libogg.a -lz -lc++"
-NCF="-std=gnu11 -O2 -g -w -Iports/macos/wasm/rt -I$OUT/c -Iports/macos/wasm/host -I$BREW/libopenmpt/include"
+TDEF=; [ -n "$BR_TRACE_BUILD" ] && TDEF=-DBR_TRACE
+NCF="$TDEF -std=gnu11 -O2 -g -w -Iports/macos/wasm/rt -I$OUT/c -Iports/macos/wasm/host -I$BREW/libopenmpt/include"
 # the flags reach sh through the environment: BSD xargs caps an -I command
 # at 255 bytes
 export NCF
 ls $OUT/c/*.c | xargs -P $JOBS -I{} sh -c \
   'n=$(basename {} .c); [ $OUT/nat/$n.o -nt {} ] || clang $NCF -c {} -o $OUT/nat/$n.o || echo "NATIVE FAIL $n"'
-for f in ports/macos/wasm/rt/w2c_rt.c ports/macos/wasm/host/*.c; do
+TRT=; [ -n "$BR_TRACE_BUILD" ] && TRT=ports/macos/wasm/rt/w2c_trace.c
+for f in ports/macos/wasm/rt/w2c_rt.c $TRT ports/macos/wasm/host/*.c; do
     clang $NCF -c $f -o $OUT/nat/rt_$(basename $f .c).o
 done
 for f in ports/macos/wasm/host/*.m; do

@@ -1,0 +1,642 @@
+/* br_dplay.c -- net.
+ *
+ * The DirectPlay session: the receive pump and its background thread, the
+ * housekeeping-message handler, start-up and shutdown, and the player-count
+ * query the lobby shows.
+ *
+ * Filed out of the address batches: these functions were
+ * matched first and grouped by what they are afterwards.
+ * Every function carries its original address.
+ */
+
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#include "slice2_25.h"   /* br_globals: its objects */
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+
+/* Header prototype is cdecl; the original is __stdcall. */
+#define BrDPlayThreadProc  BrDPlayThreadProc_cdecl_hdr
+/* The original's context is its SECOND argument (it reads [esp+0x10]). */
+#define BrDPlayStartup     BrDPlayStartup_hdr
+#include "slice2_13.h"
+#undef BrDPlayThreadProc
+#undef BrDPlayStartup
+/* BrDPlayThreadProc: prototype in br_funcs.h */
+#include "slice1_03.h"   /* BrAppMsg, BrAppMsgDispatch (= 0x1000BEA0) */
+/* initialised in the original source (restored: the 64-bit core keeps them
+ * private to this file; no Glide relocation places them elsewhere) */
+static const char g_szUnknown[] = "unknown";
+
+/* ==========================================================================
+ * Cross-slice declarations
+ * ========================================================================== */
+
+/* XSLICE 0x10071480 */
+/* BrSub10071480: prototype in br_funcs.h */
+/* XSLICE 0x10005FE0 */
+/* BrSub10005FE0: prototype in br_funcs.h */
+/* XSLICE 0x100360F0 */
+/* BrSub100360F0: prototype in br_funcs.h */
+/* XSLICE 0x1003CE80 */
+/* BrSub1003CE80: prototype in br_funcs.h */
+/* 0x1000BAF0, the non-system message route. slice2_22 knows it as
+ * APPMSG_HOSTSTARTED.
+ * XSLICE 0x1000BAF0 */
+/* BrSub1000BAF0: prototype in br_funcs.h */
+/* 0x1003D0B0 -- "size it, allocate it, fill it" over state->pDPGlobal.
+ * *ppvOut receives a GlobalAlloc'd + GlobalLock'ed record.
+ * XSLICE 0x1003D0B0 */
+/* 64-bit core: declared once, by its definition's header */
+
+/* ==========================================================================
+ * 3. DirectPlay
+ * ========================================================================== */
+
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+
+BrDPlayState *BrDPlayGetState(void)
+{
+    return &g_BrDPlay;
+}
+
+/* g_BrDPlay is the port's gathering of scattered originals; pSt is always
+ * &g_BrDPlay.  The matching build reads these fields as the separate globals
+ * they are, by their DAT_ names (resolved from the address they spell). */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+#define DPS_fCritInit DAT_10273348
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+#define DPS_hThread DAT_1027333c
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+#define DPS_idThread DAT_10273340
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+#define DPS_hQuit DAT_10273344
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+#define DPS_pDPGlobal DAT_10273328
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+#define DPS_fLog DAT_100abaa0
+
+/* DirectPlay's Win32 imports are stdcall IAT calls (FF 15). The portable
+ * BrDPlayOs function-pointer table is cdecl and cannot emit that sequence. */
+/* 64-bit core: GlobalAlloc is declared by the platform headers */
+/* 64-bit core: GlobalLock is declared by the platform headers */
+/* 64-bit core: GlobalHandle is declared by the platform headers */
+/* 64-bit core: GlobalUnlock is declared by the platform headers */
+/* 64-bit core: GlobalFree is declared by the platform headers */
+/* 64-bit core: InitializeCriticalSection is declared by the platform headers */
+/* 64-bit core: DeleteCriticalSection is declared by the platform headers */
+/* 64-bit core: CreateEventA is declared by the platform headers */
+/* 64-bit core: CreateThread is declared by the platform headers */
+/* 64-bit core: WaitForMultipleObjects is declared by the platform headers */
+/* 64-bit core: WaitForSingleObject is declared by the platform headers */
+/* 64-bit core: CloseHandle is declared by the platform headers */
+/* 64-bit core: SetEvent is declared by the platform headers */
+/* 64-bit core: ExitThread is declared by the platform headers */
+
+/* 0x10273310 -- the original's CRITICAL_SECTION. */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+
+/* COM vtable slots are stdcall; slice2_13.h's BrDPlay4Vtbl is cdecl. */
+typedef struct BrDPlay4VtblStd {
+    void *aSlots00[2];
+    int32_t (__stdcall *Release)(BrDPlay4Obj *pThis);
+    void *aSlots03[1];
+    int32_t (__stdcall *Close)(BrDPlay4Obj *pThis);
+    void *aSlots05[4];
+    int32_t (__stdcall *DestroyPlayer)(BrDPlay4Obj *pThis, uint32_t idPlayer);
+    void *aSlots10[15];
+    int32_t (__stdcall *Receive)(BrDPlay4Obj *pThis, uint32_t *pidFrom,
+                                 uint32_t *pidTo, uint32_t dwFlags,
+                                 void *pvData, uint32_t *pcbData);
+} BrDPlay4VtblStd;
+
+/* -- 0x1000C000 ---------------------------------------------------------- */
+
+/* WHAT IT DOES: reacts to the housekeeping messages the networking layer sends
+ * about the multiplayer session itself. Only two matter: a player leaving,
+ * which makes the game tear that player's presence down, and one further
+ * message type that is handed straight on elsewhere. Everything else is
+ * ignored. The leaving case is skipped entirely while the lobby log is
+ * running, because the logging path does that clean-up instead. */
+/* @implements 0x10009530 glide BrDPlaySysMsgDispatch */
+void BrDPlaySysMsgDispatch(void *pv1, const BrDPlaySysMsg *pMsg,
+                           uint32_t cbData, uint32_t idFrom, uint32_t idTo)
+{
+    uint32_t dwType = pMsg->dwType;
+
+    (void)cbData;
+    (void)idFrom;
+
+    /* Empty DPSYS_* labels (same `ret` as default) keep the two-level jump
+     * table 0x31..0x107. Folding them collapses it to a range check.
+     * `return` (not `break`) so each label is its own group. */
+    switch (dwType) {
+    case 3:                         /* DPSYS_CREATEPLAYERORGROUP */
+        return;
+    case 5:                         /* DPSYS_DESTROYPLAYERORGROUP */
+        if (DPS_fLog == 0) {
+            BrSub10071480(pMsg->f08);
+            BrSub10005FE0(pMsg->f08);
+        }
+        return;
+    case 0x21:                      /* DPSYS_DELETEPLAYERFROMGROUP */
+        return;
+    case 0x31:                      /* DPSYS_SESSIONLOST */
+        return;
+    case 0x101:                     /* DPSYS_HOST */
+        return;
+    case 0x102:                     /* DPSYS_SETPLAYERORGROUPDATA */
+        return;
+    case 0x103:                     /* DPSYS_SETPLAYERORGROUPNAME */
+        return;
+    case 0x107:                     /* DPSYS_CHAT */
+        BrSub100360F0(pv1, pMsg->f0C, pMsg->f10, pMsg->f08, idTo);
+        return;
+    }
+}
+
+/* -- 0x1000C170 ---------------------------------------------------------- */
+
+/* The two format strings at 0x100A6434 / 0x100A6478, and the debug line at
+ * 0x100A644C. */
+static const char g_szJoined[]  = "%s joined the game.\r\n";
+static const char g_szLeft[]    = "%s left the game.\r\n";
+static const char g_szDestroy[] = "Destroy Player message received, ID: %d\n";
+/* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x100A648C */
+
+/* The three USER32/KERNEL32 imports this function adds; stdcall IAT calls
+ * except wsprintfA, which is the one cdecl varargs export in USER32. */
+/* 64-bit core: lstrlenA is declared by the platform headers */
+/* 64-bit core: wsprintfA is declared by the platform headers */
+/* 64-bit core: OutputDebugStringA is declared by the platform headers */
+/* 64-bit core: PostMessageA is declared by the platform headers */
+
+/* WHAT IT DOES: routes one received session message -- to the housekeeping
+ * handler when the context is in session mode, to the app handler otherwise --
+ * and then, when the lobby log is running, turns a player join or leave into
+ * a "<name> joined/left the game" line (GlobalAlloc'd, posted to the log
+ * window as message 0x501, or freed when there is no window).  A leave also
+ * clears the leaver's slot in the player table and prints a debug line; type
+ * 0x104 kicks the shared handler 0x10036510 instead.
+ *
+ * RESIDUE (insn-exact 147/147, regnorm 0+0, 470 vs 469 B): pMsg sits in ebp
+ * where the original has ebx (and the case-5 length temp takes the other),
+ * so `mov eax,[ebp]` carries a disp8 byte the original's `mov eax,[ebx]`
+ * does not -- whole-body ebx<->ebp transposition, the BrSelLookup class.
+ * DEAD: the slot scan MUST be indexed `aSlots[i][0]` (an explicit cursor
+ * pointer gets its first iteration peeled into a direct global load and the
+ * loop rotated, +10 B); the scan compare must put the table element on the
+ * left uncast (a uint32_t cast on it forces load+reg-compare where the
+ * original has cmp [mem],reg); the do/while bound compare needs the (int)
+ * casts for jl, but the for-i form supersedes it.
+ * (thin pre-ledger pass, 4 probes, not counted: the DEAD list above) */
+/* @t4-pass 0x100096A0 1 2026-09-09 probes 10 bytes 470 insns 147 regions 8 rows 0 census no  (hand, fn.py variants: decl orders, name/buffer renames, literal spellings, all inert) */
+/* @t4-pass 0x100096A0 2 2026-09-09 probes 10 bytes 470 insns 147 regions 8 rows 0 census yes  (hand, fn.py variants: cast/amp/comparison forms across the switch, all inert; corpus hit at +0x30 confirms the dispatch guard shape) */
+/* @t3 0x100096A0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 470/469 insns 147/147 rows 0+0 regions 8 oracle UNCLASSIFIED
+ * @t3-effort passes 2 zero-movement 1 2
+ * residue is the whole-body ebx/ebp transposition of pMsg and the case-5
+ * length temp (+1 B of disp8, the BrSelLookup class); insn-exact,
+ * identical register-blind multiset.  Dead list in the RESIDUE block
+ * above plus the two ledger lines.
+ * Do not reopen before the end-grind. */
+/* @implements 0x100096A0 glide BrDPlaySysMsgLog */
+void BrDPlaySysMsgLog(BrDPlayCtx *pCtx, const BrDPlaySysMsg *pMsg,
+                      uint32_t cbData, uint32_t idFrom, uint32_t idTo)
+{
+    char        *pszB;
+    const char  *pszName;
+    int          cch1;
+    int          cch2;
+    int          i;
+    char         szDbg[0x104];
+
+    if (pCtx->f0C != 0)
+        BrDPlaySysMsgDispatch(pCtx, pMsg, cbData, idFrom, idTo);
+    else
+        BrAppMsgDispatch(pCtx, (const BrAppMsg *)pMsg,
+                         (void *)cbData, (void *)idFrom, (void *)idTo);
+
+    if (DPS_fLog != 0) {
+        pszB = NULL;
+        switch (pMsg->dwType) {
+        case 3:
+            pszName = (const char *)pMsg->pszName20;
+            if (pszName == NULL)
+                pszName = g_szUnknown;
+            cch1 = lstrlenA(g_szJoined);
+            cch2 = lstrlenA(pszName);
+            pszB = (char *)GlobalLock(GlobalAlloc(0x42u, cch1 + 1 + cch2));
+            if (pszB == NULL)
+                return;
+            wsprintfA(pszB, g_szJoined, pszName);
+            break;
+        case 5:
+            pszName = (const char *)pMsg->pszName24;
+            if (pszName == NULL)
+                pszName = g_szUnknown;
+            cch1 = lstrlenA(g_szLeft);
+            cch2 = lstrlenA(pszName);
+            pszB = (char *)GlobalLock(GlobalAlloc(0x42u, cch1 + 1 + cch2));
+            if (pszB == NULL)
+                return;
+            wsprintfA(pszB, g_szLeft, pszName);
+            for (i = 0; i < BR_DP_SLOTS; i++) {
+                if (g_BrDPlay.aSlots[i][0] == (int)pMsg->f08) {
+                    g_BrDPlay.aSlots[i][0] = -1;
+                    g_BrDPlay.aSlots[i][1] = 0;
+                    sprintf(szDbg, g_szDestroy, pMsg->f08);
+                    OutputDebugStringA(szDbg);
+                    break;
+                }
+            }
+            break;
+        case 0x104:
+            BrSub1003CE80();
+            break;
+        }
+        if (pszB != NULL) {
+            if (g_BrDPlay.pWnd != NULL) {
+                PostMessageA(g_BrDPlay.pWnd, 0x501u, 0u, (long)pszB);
+                return;
+            }
+            GlobalUnlock(GlobalHandle(pszB));
+            GlobalFree(GlobalHandle(pszB));
+        }
+    }
+}
+
+/* -- 0x1000C350 ---------------------------------------------------------- */
+
+/* WHAT IT DOES: empties the network mailbox. It keeps asking for the next
+ * waiting message until there are none left, growing its receive buffer
+ * whenever a message turns out to be bigger than the buffer it has, and sends
+ * each one to the right place: messages from the session itself go to the
+ * housekeeping handler, messages from another player go to the game. */
+/* @implements 0x10009880 glide BrDPlayPump */
+int32_t BrDPlayPump(BrDPlayCtx *pCtx)
+{
+    void    *pvBuf = NULL;
+    uint32_t cbBuf = 0;    /* zeroed ONCE -- see the GOTCHA in the header */
+    char *idFrom;
+    uint32_t idTo;
+    int32_t  hr;
+
+    for (;;) {
+        BrDPlay4Obj     *pDP   = pCtx->pDP;
+        BrDPlay4VtblStd *pVtbl = (BrDPlay4VtblStd *)pDP->pVtbl;
+
+        idFrom = 0;
+        idTo   = 0;
+        hr = pVtbl->Receive(pDP, &idFrom, &idTo, 1u, pvBuf, &cbBuf);
+
+        if (hr == BR_DP_E_BUFFERTOOSMALL) {
+            if (pvBuf != NULL) {
+                GlobalUnlock(GlobalHandle(pvBuf));
+                GlobalFree(GlobalHandle(pvBuf));
+            }
+            pvBuf = GlobalLock(GlobalAlloc(0x42u, cbBuf));
+            if (pvBuf == NULL)
+                hr = BR_DP_E_OUTOFMEMORY;
+            if (hr == BR_DP_E_BUFFERTOOSMALL)
+                continue;
+        }
+
+        if (hr >= 0) {
+            if (cbBuf >= 4u) {
+                if (idFrom == 0u)
+                    BrDPlaySysMsgLog(pCtx, (const BrDPlaySysMsg *)pvBuf,
+                                     cbBuf, 0u, idTo);
+                else
+                    BrSub1000BAF0(pCtx, pvBuf, cbBuf, idFrom, idTo);
+            }
+        }
+        if (hr < 0)
+            break;
+    }
+
+    if (pvBuf != NULL) {
+        GlobalUnlock(GlobalHandle(pvBuf));
+        GlobalFree(GlobalHandle(pvBuf));
+    }
+
+    return 0;
+}
+
+/* -- 0x1000C440 ---------------------------------------------------------- */
+
+/* WHAT IT DOES: the background thread that keeps multiplayer traffic flowing.
+ * It sleeps until either something arrives from the network or the game asks it
+ * to stop; on traffic it empties the mailbox and goes back to sleep, and on the
+ * stop request it ends the thread. */
+/* @implements 0x10009970 glide BrDPlayThreadProc */
+uint32_t __stdcall BrDPlayThreadProc(void *pvCtx)
+{
+    BrDPlayCtx *pCtx  = (BrDPlayCtx *)pvCtx;
+    /* Read through the port's struct, not DAT_10273344: as a separate global
+     * the load schedules differently and the function stops matching. */
+    void       *hQuit = g_BrDPlay.hQuit;
+    void       *ah[2];
+
+    ah[0] = pCtx->hRecvEvent;
+    ah[1] = hQuit;
+    if (WaitForMultipleObjects(2u, ah, 0, 0xffffffffu) == 0u) {
+        do {
+            BrDPlayPump(pCtx);
+        } while (WaitForMultipleObjects(2u, ah, 0, 0xffffffffu) == 0u);
+    }
+    ExitThread(0u);
+    return 0;
+}
+
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+typedef int (__stdcall *CC_std_2)(int *, int);
+
+/* WHAT IT DOES: destroy this machine's DirectPlay player, if the session
+ * record at 0x10A9D008 has both an interface (+0) and a player id (+8):
+ * vtable slot 9 (+0x24) of IDirectPlay is DestroyPlayer.  The id is then
+ * forgotten.  Returns the call's HRESULT, or 0 if there was nothing to do. */
+/* @implements 0x100099D0 glide BrComHolderRelease */
+int BrComHolderRelease(void)
+
+{
+  int *piVar1;
+  int uVar2;
+  
+  uVar2 = 0;
+  if (((g_brPA9D008 != (int *)0x0) && (piVar1 = (int *)*g_brPA9D008, piVar1 != (int *)0x0)) &&
+     (g_brPA9D008[2] != 0)) {
+    uVar2 = (*(CC_std_2 *)(*(int *)(piVar1) + 36))(piVar1,g_brPA9D008[2]);
+    g_brPA9D008[2] = 0;
+  }
+  return uVar2;
+}
+
+/* -- 0x1000C510 ---------------------------------------------------------- */
+
+/* WHAT IT DOES: leaves the multiplayer game and closes the networking down --
+ * asks the receiving thread to stop and waits for it, removes this machine's
+ * player from the session, and lets go of everything the session was holding.
+ * It is also the failure path for start-up, so it copes with any of those
+ * pieces never having existed. */
+/* @implements 0x10009A40 glide BrDPlayShutdown */
+int32_t BrDPlayShutdown(BrDPlayCtx *pCtx)
+{
+    /* The critical section really does go first -- see the GOTCHA. */
+    if (DPS_fCritInit != 0) {
+        DeleteCriticalSection(g_BrDPlayCrit);
+        DPS_fCritInit = 0;
+    }
+
+    if (DPS_hThread != NULL) {
+        SetEvent(DPS_hQuit);
+        WaitForSingleObject(DPS_hThread, 0xffffffffu);
+        CloseHandle(DPS_hThread);
+        DPS_hThread = NULL;
+    }
+
+    if (DPS_hQuit != NULL) {
+        CloseHandle(DPS_hQuit);
+        DPS_hQuit = NULL;
+    }
+
+    if (pCtx != NULL) {
+        if (pCtx->pDP != NULL) {
+            if (pCtx->idPlayer != 0u) {
+                ((BrDPlay4VtblStd *)pCtx->pDP->pVtbl)->DestroyPlayer(
+                    pCtx->pDP, pCtx->idPlayer);
+                pCtx->idPlayer = 0u;
+            }
+            ((BrDPlay4VtblStd *)pCtx->pDP->pVtbl)->Close(pCtx->pDP);
+            ((BrDPlay4VtblStd *)pCtx->pDP->pVtbl)->Release(pCtx->pDP);
+            pCtx->pDP = NULL;
+        }
+    }
+    /* Re-test: a nested `if (pCtx != NULL && ...)` inside the block above
+     * is deleted as dead. A sibling if keeps the second cmp/je. */
+    if (pCtx != NULL && pCtx->hRecvEvent != NULL) {
+        CloseHandle(pCtx->hRecvEvent);
+        pCtx->hRecvEvent = NULL;
+    }
+
+    return 0;
+}
+
+/* -- 0x1000C5D0 ---------------------------------------------------------- */
+
+/* WHAT IT DOES: gets multiplayer networking ready -- clears the session out,
+ * creates the signals the receiving side waits on, and starts the background
+ * thread that will collect incoming traffic. If any step fails it undoes the
+ * lot and reports that it ran out of memory. */
+/* @implements 0x10009B00 glide BrDPlayStartup */
+int32_t BrDPlayStartup(void *pUnused, BrDPlayCtx *pCtx)
+{
+    /* Hand-transcribed from the asm.  The context is cleared with memset
+     * (`xor eax,eax; mov ecx,esi; mov [ecx],eax ...`, the zero then reused
+     * for CreateEventA's pushes), and every failure jumps FORWARD to one
+     * shared cleanup placed after the success return -- the goto chain is
+     * what lays the blocks out fail-first; the nested/&& forms put the
+     * success exit first. */
+    if (DPS_fCritInit == 0) {
+        InitializeCriticalSection(g_BrDPlayCrit);
+        DPS_fCritInit = 1;
+    }
+    memset(pCtx, 0, sizeof *pCtx);
+
+    pCtx->hRecvEvent = CreateEventA(0, 0, 0, 0);
+    if (pCtx->hRecvEvent == NULL)
+        goto fail;
+    DPS_hQuit = CreateEventA(0, 0, 0, 0);
+    if (DPS_hQuit == NULL)
+        goto fail;
+    DPS_hThread = CreateThread(0, 0, BrDPlayThreadProc, pCtx, 0,
+                                     &DPS_idThread);
+    if (DPS_hThread == NULL)
+        goto fail;
+    return 0;
+
+fail:
+    BrDPlayShutdown(pCtx);
+    return BR_DP_E_OUTOFMEMORY;
+}
+
+/* -- 0x10009C00 ---------------------------------------------------------- */
+
+/* 64-bit core: GetDesktopWindow is declared by the platform headers */
+/* BrDPlayCreate: prototype in br_funcs.h */
+
+/* WHAT IT DOES: the boot-time entry into multiplayer: touches the desktop
+ * window, then tail-calls the DirectPlay object creation (0x10035400).
+ * RallyMain calls it once and ignores the result, so a game without network
+ * support still reaches the main loop. */
+/* @implements 0x10009C00 glide BrDPlayBootInit */
+void BrDPlayBootInit(void)
+{
+    GetDesktopWindow();
+    BrDPlayCreate();
+}
+
+/* -- 0x1000C670 ---------------------------------------------------------- */
+
+/* WHAT IT DOES: asks how many players are in the multiplayer session at this
+ * moment, so the lobby can show it. If the question cannot be answered it
+ * returns 0xFFFF rather than a count. */
+/* __declspec(dllimport) emits `call dword ptr [IAT]` (and, for GlobalHandle,
+ * a register-held IAT load because it is used twice). The portable pfnFree
+ * is a cdecl function pointer and cannot produce that sequence. */
+/* 64-bit core: declared once, by its definition's header */
+/* 64-bit core: GlobalUnlock is declared by the platform headers */
+/* 64-bit core: GlobalFree is declared by the platform headers */
+
+/* WHAT IT DOES: ask how many players are in the multiplayer session
+ * right now, so the lobby can show it.  0xFFFF means "could not tell". */
+/* @implements 0x1000C670 d3d BrDPlayGetCurrentPlayers */
+uint32_t BrDPlayGetCurrentPlayers(void)
+{
+    void    *pv = NULL;
+    uint32_t n;
+
+    if (BrSub1003D0B0(DPS_pDPGlobal, &pv) < 0)
+        return 0xFFFFu;
+
+    n = *(uint32_t *)((char *)pv + 0x2C);
+    GlobalUnlock(GlobalHandle(pv));
+    GlobalFree(GlobalHandle(pv));
+    return n;
+}
+
+/* ==========================================================================
+ * 0x10036E50 -- create the DirectPlay object and query the wanted iface.
+ * Filed from ghidra_batch.c 2026-09-09 (byte-exact; early-out guard shape).
+ * ========================================================================== */
+
+typedef struct BrIUnk BrIUnk;
+struct BrIUnk {
+    struct {
+        int (__stdcall *QueryInterface)(BrIUnk *, void *, void **);
+        int (__stdcall *AddRef)(BrIUnk *);
+        int (__stdcall *Release)(BrIUnk *);
+    } *vt;
+};
+/* FUN_10072960: prototype in br_funcs.h */
+/* FUN_10036f40: prototype in br_funcs.h */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+
+/* WHAT IT DOES: creates a DirectPlay object, queries the wanted interface
+ * and hands it back, releasing the original on success or both on failure. */
+/* @t4-pass 0x10036E50 1 2026-09-07 probes 73 bytes 158 insns 58 regions 1 rows 2 census yes  (tools/crank.py) */
+/* @t4-pass 0x10036E50 2 2026-09-07 probes 73 bytes 158 insns 58 regions 1 rows 2 census yes  (tools/crank.py) */
+/* @implements 0x10036E50 glide BrDpCreateIface */
+int BrDpCreateIface(BrIUnk **out)
+{
+    BrIUnk *a;
+    BrIUnk *b;
+    int hr;
+
+    a = 0;
+    b = 0;
+    hr = FUN_10072960(0, &a, 0, 0, 0);
+    /* Early-out, not an enclosing `if (hr >= 0)` block: that shape flips
+     * the first branch to jl where the original has jge (cracked 2026-09-09,
+     * the only residue row). */
+    if (hr < 0)
+        goto fail;
+    hr = a->vt->QueryInterface(a, &DAT_100788e8, (void **)&b);
+    if (hr < 0) {
+        goto fail;
+    }
+    a->vt->Release(a);
+    a = 0;
+    FUN_10036f40(DAT_105bc72c, b);
+    *out = b;
+    return 0;
+fail:
+    if (a != 0) {
+        a->vt->Release(a);
+    }
+    if (b != 0) {
+        b->vt->Release(b);
+    }
+    return hr;
+}
+
+
+/* ------------------------------------------------------------------ */
+/* 0x10036510 -- pull the session's settings into the globals          */
+/* ------------------------------------------------------------------ */
+
+/* 64-bit core: declared once, in br_globals.h or its struct's header */            /* the DirectPlay object, 0x10273328 */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */           /* race options, from desc+0x40      */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */           /* from desc+0x44                    */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */           /* from desc+0x48                    */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */           /* from desc+0x4c                    */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */           /* the current option slot           */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */         /* the session name                  */
+/* FUN_10036740: prototype in br_funcs.h */
+/* BrSub10044540: prototype in br_funcs.h */
+/* BrOptAvailB: prototype in br_funcs.h */
+
+/* WHAT IT DOES: after joining a game, copies the host's choices out of the
+ * received session description into this machine's own settings -- the race
+ * options, the four setting words, and the session's name. Then, if the
+ * currently selected option slot is not available in this session, walks
+ * forward (wrapping at 32) until one is. The description buffer DirectPlay
+ * lent us is unlocked and freed on every path out. */
+/* @implements 0x10036510 glide BrNetSessionApply */
+int BrNetSessionApply(void)
+{
+    void *pDesc;
+    int   desc[20];
+    int   r;
+    int   start;
+    char *pszName;
+
+    pDesc = 0;
+    if (g_brP277B40 == 0) {
+        return (int)0x88770082;
+    }
+    memset(desc, 0, 0x50);
+    r = FUN_10036740(g_brP277B40, &pDesc);
+    if (r < 0) {
+        if (pDesc != 0) {
+            GlobalUnlock(GlobalHandle(pDesc));
+            GlobalFree(GlobalHandle(pDesc));
+        }
+        return r;
+    }
+    DAT_100abde8 = *(int *)((char *)pDesc + 0x40);
+    DAT_100b3014 = DAT_100abde8;
+    DAT_10ac5d58 = *(int *)((char *)pDesc + 0x44);
+    DAT_10226e80 = DAT_10ac5d58;
+    DAT_10ac5d70 = *(int *)((char *)pDesc + 0x48);
+    DAT_100bcbe8 = *(int *)((char *)pDesc + 0x4c);
+    DAT_100abdf8 = DAT_100bcbe8;
+    BrSub10044540();
+    start = DAT_100abdf4;
+    if (BrOptAvailB(DAT_100abdf4) == 0) {
+        for (;;) {
+            DAT_100abdf4 = DAT_100abdf4 + 1;
+            if (DAT_100abdf4 > 0x1f) {
+                DAT_100abdf4 = 0;
+            }
+            if (DAT_100abdf4 == start) {
+                break;
+            }
+            if (BrOptAvailB(DAT_100abdf4) != 0) {
+                break;
+            }
+        }
+    }
+    pszName = *(char **)((char *)pDesc + 0x30);
+    if (pszName != 0) {
+        strcpy(DAT_10ac40a8, pszName);
+    }
+    GlobalUnlock(GlobalHandle(pDesc));
+    GlobalFree(GlobalHandle(pDesc));
+    return 0;
+}
