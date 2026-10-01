@@ -51,9 +51,11 @@ struct CV { float x, y, z, w, r, g, b, a, s, t, wx, wy, wz, fl, xf, nx, ny, nz; 
 struct FXU {
   float4x4 vp, ivp, svp;
   float4 eye, sun, sunc, skyc, grnd, fogc, vpt, scr, p0, p1, p2, p3, p4, flash, wb, nsky, sk2, tm, wx;
-  float4x4 pvp; float4 jit; float4x4 svp2; float4 csm; float4 mat; float4 matmean[7]; float4 rmap;
+  float4x4 pvp; float4 jit; float4x4 svp2; float4 csm; float4 mat; float4 matmean[8]; float4 rmap;
   float4 m3;   /* host_glide.m's screen map of the view: NDC = (x, y down) * m3.xz + m3.yw */
   float4 cmap; /* the forest's canopy grid (host_env.m): x0, y0, 1/width, 1/height (metres); z 0 none */
+  float4 mk;   /* the tyre marks map (host_marks.m): x0, y0, texels a metre, texels a tile; z 0 none */
+  float4 bnd;  /* the horizon band (host_sky.m): bottom row's elevation, its height (radians), copies round, haze; z 0 none */
 };
 /* headlights: up to 32 spot lights (two per car); misc = count, beam
    strength, light intensity, air density */
@@ -99,6 +101,24 @@ float hash2(float2 p) { return fract(sin(dot(p, float2(127.1, 311.7))) * 43758.5
 float vnoise(float2 p) { float2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
   return mix(mix(hash2(i), hash2(i + float2(1, 0)), f.x), mix(hash2(i + float2(0, 1)), hash2(i + float2(1, 1)), f.x), f.y); }
 float fbm(float2 p) { return vnoise(p) * 0.55 + vnoise(p * 2.03 + 17.1) * 0.3 + vnoise(p * 4.1 + 5.3) * 0.15; }
+/* the tyre marks map (host_marks.m) at a ground point: R its height (0.5
+   untouched), G the mark's darkness.  Bilinear by hand: each of the four
+   texels finds its own tile through the page grid, so tile edges are seamless;
+   a page whose ground is at another height (a road over this one) is none */
+float2 mark_at(texture2d<float> mkp, texture2d<float> mka, float4 mk, float2 p, float z) {
+  float2 q = (p - mk.xy) * mk.z - 0.5, f = fract(q);
+  int2 i0 = int2(floor(q)); int T = int(mk.w);
+  float2 v[4];
+  for (int k = 0; k < 4; k++) {
+    int2 t = i0 + int2(k & 1, k >> 1);
+    v[k] = float2(0.5, 0.0);
+    if (t.x < 0 || t.y < 0) continue;
+    uint2 pc = uint2(t / T);
+    if (pc.x >= mkp.get_width() || pc.y >= mkp.get_height()) continue;
+    float4 P = mkp.read(pc);
+    if (P.w < 0.5 || abs(P.z - z) > 4.0) continue;
+    v[k] = mka.read(uint2(uint(P.x) * uint(T) + uint(t.x % T), uint(P.y) * uint(T) + uint(t.y % T))).rg; }
+  return mix(mix(v[0], v[1], f.x), mix(v[2], v[3], f.x), f.y); }
 float ign(float2 p) { return fract(52.9829189 * fract(dot(p, float2(0.06711056, 0.00583715)))); }
 /* the game's screen (640x480, its own y) to the target's uv, and back */
 float2 scr_uv(constant FXU &u, float sx, float sy) {
@@ -393,6 +413,8 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
                        texture2d<float> ring [[texture(12)]], texture2d<float> rmap [[texture(13)]],
                        texture2d<float> ga [[texture(14)]], texture2d<float> gmt [[texture(15)]],
                        texture2d<float> cnp [[texture(16)]],
+                       texture2d<float> mka [[texture(17)]], texture2d<float> mkp [[texture(18)]],
+                       texture2d<float> bndt [[texture(19)]],
                        constant HL &hl [[buffer(1)]], constant MVC &mv [[buffer(2)]]) {
   float4 C = col.sample(ns, in.uv), P = gp.sample(ns, in.uv), G = gn.sample(ns, in.uv);
   if (int(u.p3.y) == 15)                             /* debug: the G-buffer's class (red car, green lit, blue sky) */
@@ -502,6 +524,22 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
        The weather's own touches below (the night floor, fog, the sun's glow,
        lightning) apply over it. */
     if (u.tm.z > 0.0 && G.a > 0.01) o = mix(o, pano(u, sky, vd), smoothstep(-0.004, 0.004, vd.z));
+    /* the distant land along the horizon (host_sky.m's band), over the sky:
+       copies round the eye, every other one mirrored so each join meets its
+       own edge, square pixels; lit and hazed by the weather's own horizon */
+    if (u.bnd.z > 0.0 && u.tm.z > 0.0 && G.a > 0.01) {
+      constexpr sampler bs(filter::linear, mip_filter::linear, address::clamp_to_edge);
+      float el = asin(clamp(vd.z, -1.0, 1.0)), t = (el - u.bnd.x) / u.bnd.y;
+      if (t > 0.0 && t < 1.0) {
+        float az = atan2(vd.y, vd.x) / 6.2831853 * u.bnd.z + 8.0, s = fract(az);
+        if ((int(floor(az)) & 1) != 0) s = 1.0 - s;
+        float4 b = bndt.sample(bs, float2(s, 1.0 - t));
+        /* the ridge's edge a touch soft, as air softens a far skyline */
+        b.a = min(b.a, bndt.sample(bs, float2(s, 1.0 - t), level(1.5)).a * 1.15);
+        float3 hz = pano(u, sky, normalize(float3(vd.xy, 0.02)), 6.0);
+        float lit = saturate(dot(hz, float3(0.2126, 0.7152, 0.0722)) / max(0.62 * u.tm.z, 1e-3));
+        float3 bc = mix(b.rgb * u.tm.z * lit, hz, u.bnd.w);
+        o = mix(o, bc, b.a); } }
     /* night: the sky is never black; a deep blue, lighter toward the horizon */
     o = max(o, u.nsky.rgb * (0.45 + 0.55 * pow(1.0 - saturate(vd.z), 3.0)));
     /* a luminous horizon and the sun's glow, as the air scatters it */
@@ -683,7 +721,7 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
        edges and in drifts across it; the rest lies under snow */
     float snowroad = snowg * saturate(redge * 1.4 + (fbm(wp.xy * 0.3) - 0.62) * 1.8);
     float offroad = hasmap ? 1.0 - rm : 1.0;
-    float w[7];
+    float w[8];
     w[0] = flat * rd * (1.0 - (hasmap ? snowroad : snowg));               /* asphalt */
     w[1] = flat * green * (1.0 - snowg) * offroad;                        /* grass */
     w[2] = flat * warm * step(0.45, mx) * (1.0 - snowg) * offroad;        /* sand (bright) */
@@ -699,7 +737,7 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
       int gs = mid == MAT_ASPHALT || mid == MAT_MARKING ? 0 : mid == MAT_GRASS ? 1 : mid == MAT_SAND ? 2
              : mid == MAT_DIRT ? 3 : mid == MAT_ROCK ? 4 : mid == MAT_SNOW || mid == MAT_ICE ? 5 : -1;
       float sn = w[5];
-      for (int m = 0; m < 7; m++) w[m] = 0.0;
+      for (int m = 0; m < 8; m++) w[m] = 0.0;
       if (gs >= 0) {
         w[gs] = gs == 4 ? 1.0 : flat + (gs == 3 || gs == 1 ? steep * 0.5 : 0.0);
         if (gs != 5 && gs != 4) { w[gs] *= 1.0 - sn; w[5] = sn; }
@@ -707,13 +745,17 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
     /* the forest floor under the trees: needles, leaf litter and dark earth
        in place of the meadow's grass and, partly, of loose dirt (the litter
        the trees drop at a dirt road's edges) */
-    w[6] = 0.0;
+    w[6] = 0.0; w[7] = 0.0;
     { float ff = smoothstep(0.06, 0.45, canopy);
       w[6] = (w[1] + w[3] * 0.6) * ff; w[1] *= 1.0 - ff; w[3] *= 1.0 - 0.6 * ff; }
-    float ws = 0; for (int m = 0; m < 7; m++) ws += w[m];
-    if (ws > 1.0) for (int m = 0; m < 7; m++) w[m] /= ws;
+    /* a dirt road is not one soil: stony, washed-out stretches come and go
+       along it, a few metres to tens of metres long */
+    { float st = smoothstep(0.42, 0.62, fbm(wp.xy * 0.07 + 3.7) * 0.7 + fbm(wp.xy * 0.4) * 0.3);
+      w[7] = w[3] * st * flat; w[3] -= w[7]; }   /* roads, not walls */
+    float ws = 0; for (int m = 0; m < 8; m++) ws += w[m];
+    if (ws > 1.0) for (int m = 0; m < 8; m++) w[m] /= ws;
     ws = min(ws, 1.0) * fade;
-    const float TILE[7] = { 4.0, 3.0, 4.0, 3.0, 5.0, 4.0, 3.0 };
+    const float TILE[8] = { 4.0, 3.0, 4.0, 3.0, 5.0, 4.0, 3.0, 2.5 };
     float3 an = abs(N);
     float2 q = flat > 0.5 ? wp.xy : (an.x > an.y ? wp.yz : wp.xz);
     float3 T1 = flat > 0.5 ? float3(1, 0, 0) : (an.x > an.y ? float3(0, 1, 0) : float3(1, 0, 0));
@@ -749,10 +791,11 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
        the view ray in its tangent space, shifts every map's lookup so stones,
        cracks and ridges stand up at grazing angles; then a short march toward
        the sun shades their far sides */
-    const float HGT[7] = { 0.012, 0.02, 0.02, 0.045, 0.05, 0.03, 0.03 };   /* metres, full range */
-    int md = 0; for (int m = 1; m < 7; m++) if (w[m] > w[md]) md = m;
+    const float HGT[8] = { 0.012, 0.02, 0.02, 0.07, 0.05, 0.03, 0.03, 0.06 }; /* metres, full range */
+    int md = 0; for (int m = 1; m < 8; m++) if (w[m] > w[md]) md = m;
     float2 poff = 0; float hsurf = 0.5, pshadow = 1.0;
-    float pk = (1.0 - smoothstep(6.0, 20.0, dist)) * step(0.02, w[md]);
+    /* a dirt road's stones and ruts stand up further out than asphalt's grain */
+    float pk = (1.0 - (md == 3 || md == 7 ? smoothstep(14.0, 40.0, dist) : smoothstep(6.0, 20.0, dist))) * step(0.02, w[md]);
     if (pk > 0.0) {
       float3 Vt = float3(dot(V, T1), dot(V, T2), max(dot(V, N), 0.08));
       float hs = HGT[md] / TILE[md] * pk;
@@ -767,7 +810,7 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
         float hh = matA.sample(ms, sp, md).a; if (hh > sl) pshadow = min(pshadow, 1.0 - saturate((hh - sl) * 6.0)); }
       pshadow = mix(1.0, pshadow, pk); }
     float3 ma = 0, mnrm = 0; float mr = 0, mao = 0, wt = 0;
-    for (int m = 0; m < 7; m++) {
+    for (int m = 0; m < 8; m++) {
       if (w[m] < 0.02) continue;
       float2 uv1 = (q + poff) / TILE[m], uv2 = (q + poff * 0.29) / TILE[m] * 0.29 + float2(0.37, 0.61);
       /* the scans are millimetre photographs.  Out to several car lengths their
@@ -781,7 +824,8 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
       float4 n1 = matN.sample(ms, uv1, m, bias(2.0)), n2 = matN.sample(ms, uv2, m, bias(2.0));
       float4 n = mix(n1, n2, 0.35);
       float3 c = pow(mix(c1.rgb, c2.rgb, 0.35), 2.2);
-      float3 cr = 1.0 + (c / max(u.matmean[m].rgb, 0.02) - 1.0) * mix(m == 0 ? 0.25 : 0.35, 0.8, near);
+      bool dirt = m == 3 || m == 7;
+      float3 cr = 1.0 + (c / max(u.matmean[m].rgb, 0.02) - 1.0) * mix(m == 0 ? 0.25 : dirt ? mix(0.35, 0.5, flat) : 0.35, dirt ? mix(0.8, 1.0, flat) : 0.8, near);
       /* asphalt takes the game's brightness but not its purple cast (in
          snow the game paints the road white: there it is dark wet tarmac);
          rock and snow take the game's colour and only their relief from the
@@ -793,6 +837,9 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
       /* the forest floor is not the game's grass green: its own colour, at
          the brightness of what the game painted there */
       else if (m == 6) ma += w[m] * c * (dot(tone, lw) / max(dot(u.matmean[m].rgb, lw), 0.02)) * 0.85;
+      /* dirt: the photographed soil's own colour (the 1999 texture's
+         orange is a flat paint), at the game's brightness */
+      else if (dirt) ma += w[m] * mix(tone * cr, c * (dot(tone, lw) / max(dot(u.matmean[m].rgb, lw), 0.02)), 0.65 * flat);
       else ma += w[m] * tone * cr;
       mnrm += w[m] * float3(n.xy * 2.0 - 1.0, 0.0);
       mr += w[m] * n.z; mao += w[m] * n.w; wt += w[m]; }
@@ -800,8 +847,20 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
       ma /= wt; mnrm /= wt; mr /= wt; mao /= wt;
       float k = ws * (1.0 - mark);
       alb = mix(alb, ma * mix(1.0, mao, 0.6), k);
-      float nk = k * (1.0 - smoothstep(10.0, 60.0, dist));
-      N = normalize(N + (T1 * mnrm.x + T2 * mnrm.y) * 0.35 * nk);
+      /* dirt: its stones and ruts in full relief, further out; and the
+         road's own bumps and dips, a few metres across */
+      float dw = (w[3] + w[7]) / max(wt, 1e-3);
+      float nk = k * (1.0 - mix(smoothstep(10.0, 60.0, dist), smoothstep(25.0, 90.0, dist), dw));
+      N = normalize(N + (T1 * mnrm.x + T2 * mnrm.y) * mix(0.35, 0.8, dw) * nk);
+      if (dw > 0.05 && flat > 0.5) {
+        float e = 0.25, h0 = fbm(wp.xy * 0.3), hx = fbm((wp.xy + float2(e, 0)) * 0.3), hy = fbm((wp.xy + float2(0, e)) * 0.3);
+        float bk = dw * k * (1.0 - smoothstep(30.0, 120.0, dist)) * 0.35 / e;   /* 35 cm of rise and fall */
+        N = normalize(N - float3(hx - h0, hy - h0, 0.0) * bk);
+        /* the dips hold the damp: darker soil, a little less rough (dry
+           weather too; it is earth, so no mirror) */
+        float damp = smoothstep(0.42, 0.3, h0) * dw * k;
+        alb *= mix(1.0, 0.72, damp);
+        mrough = mix(mrough, mrough * 0.8, damp); }
       ndl = saturate(dot(N, L));
       mrough = mix(mrough, mr, k);
       /* rain gathers in the low spots of the surface first */
@@ -809,6 +868,24 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
       if (pud2 > puddle) { alb *= mix(1.0, 0.7, pud2 - puddle); puddle = pud2; }
       sh *= mix(1.0, pshadow, k);
       matdone = true; }
+    /* the tyres' marks (host_marks.m): ruts pressed into loose ground with
+       lips of pushed-out soil, relit from their own relief; rubber on
+       asphalt; water standing in the ruts in the rain */
+    if (u.mk.z > 0.0 && dist < 90.0 && N.z > 0.5) {
+      float e = 1.0 / u.mk.z;
+      float2 m0 = mark_at(mkp, mka, u.mk, wp.xy, wp.z);
+      float2 mx = mark_at(mkp, mka, u.mk, wp.xy + float2(e, 0), wp.z), my = mark_at(mkp, mka, u.mk, wp.xy + float2(0, e), wp.z);
+      float fk = 1.0 - smoothstep(50.0, 90.0, dist);
+      float asph = w[0], range = 0.2;                  /* the map's full range: 20 cm */
+      float2 g = float2(mx.x - m0.x, my.x - m0.x) * range / e;
+      N = normalize(N - float3(g, 0.0) * fk * (1.0 - asph));
+      float pressed = saturate((0.5 - m0.x) * 4.0), heaped = saturate((m0.x - 0.5) * 6.0);
+      alb *= 1.0 - m0.y * mix(0.15, 0.65, asph) * fk;
+      alb *= mix(1.0, 0.82, pressed * (1.0 - asph) * fk);
+      alb *= 1.0 + 0.1 * heaped * fk;
+      mrough = mix(mrough, mrough * 0.85, m0.y * asph);
+      puddle = max(puddle, wet * u.p0.w * smoothstep(0.1, 0.6, pressed) * (1.0 - asph) * fk);
+      ndl = saturate(dot(N, L)); }
     if (int(u.p3.y) == 14) return float4(w[0] + w[3] + w[4] * 0.5, w[1] + w[4] * 0.5 + w[5], w[2] + w[3] + w[5], G.a); }
   /* asphalt, resynthesised: the game's road texture is baked streaks and
      colour speckle.  On flat grey surfaces (judged on a wide blur, which the
@@ -1438,9 +1515,11 @@ typedef struct {
     float p0[4], p1[4], p2[4], p3[4], p4[4], flash[4], wb[4], nsky[4], sk2[4], tm[4], wx[4];
     float pvp[16], jit[4];   /* last frame's view x projection; this frame's jitter (ndc) and the last one's */
     float svp2[16], csm[4];  /* the far shadow cascade; csm.x its texel size */
-    float mat[4], matmean[7][4], rmap[4];   /* ground materials: mat.x loaded; each one's mean colour (linear) */   /* wx: rain, snowfall, snow ground, - */
+    float mat[4], matmean[8][4], rmap[4];   /* ground materials: mat.x loaded; each one's mean colour (linear) */   /* wx: rain, snowfall, snow ground, - */
     float m3[4];                            /* the screen map (host_glide.m) */
     float cmap[4];                          /* the canopy grid's placing (host_env.m) */
+    float mk[4];                            /* the tyre marks map's placing (host_marks.m) */
+    float bnd[4];                           /* the horizon band's placing (host_sky.m) */
 } fxu;
 typedef struct { float p[64][4], d[64][4], col[4], misc[4]; float g[64][4], gd[64][4], gmisc[4]; } hlu;
 static float g_hl_int, g_hl_beam, g_hl_air, g_wdark = 1.0f, g_brake[64];
@@ -1837,6 +1916,20 @@ static id<MTLTexture> mk_plume_noise(id<MTLDevice> dev)
  * where the game paints road and verge alike. */
 static id<MTLTexture> t_rmap;
 static float g_rmap[4];            /* x0, y0, 1/width, 1/height (metres) */
+static unsigned char *g_rmap_px;   /* the map as built, for hfx_road_sealed */
+static int g_rmap_w;
+/* host_marks.m: the ground under a point: 1 sealed, 0 loose, -1 off the
+ * collision mesh, -2 no map built yet */
+int hfx_road_sealed(float x, float y)
+{
+    int ix, iy;
+    unsigned char v;
+    if (!g_rmap_px) return -2;
+    ix = (int)((x - g_rmap[0]) * g_rmap[2] * g_rmap_w); iy = (int)((y - g_rmap[1]) * g_rmap[3] * g_rmap_w);
+    if (ix < 0 || iy < 0 || ix >= g_rmap_w || iy >= g_rmap_w) return -1;
+    v = g_rmap_px[iy * g_rmap_w + ix];
+    return v == 255 ? 1 : v ? 0 : -1;
+}
 static u32 g_rmap_key;
 static void roadmap(id<MTLDevice> dev)
 {
@@ -1910,7 +2003,7 @@ static void roadmap(id<MTLDevice> dev)
         t_rmap = [dev newTextureWithDescriptor:d];
         [t_rmap replaceRegion:MTLRegionMake2D(0, 0, W, W) mipmapLevel:0 withBytes:px bytesPerRow:W];
     }
-    free(px);
+    free(g_rmap_px); g_rmap_px = px; g_rmap_w = W;     /* kept for hfx_road_sealed */
     g_rmap[0] = lo[0]; g_rmap[1] = lo[1]; g_rmap[2] = 1.0f / (hi[0] - lo[0]); g_rmap[3] = 1.0f / (hi[1] - lo[1]);
     g_rmap_key = key;
 }
@@ -1918,6 +2011,11 @@ static void roadmap(id<MTLDevice> dev)
 /* The forest's canopy (host_env.m's grid of the Remastered trees' crown
  * cover) as a texture, rebuilt whenever the track's placements change */
 int henv_canopy(const unsigned char **px, int *w, int *h, float *x0, float *y0, float *cell, int *gen);   /* host_env.m */
+int hmarks_bind(id<MTLDevice> dev, id<MTLTexture> *atlas, id<MTLTexture> *page, float *u);   /* host_marks.m */
+void hmarks_frame(void);
+static id<MTLTexture> t_mka, t_mkp;
+id<MTLTexture> hsky_band(id<MTLDevice> dev);   /* host_sky.m */
+static id<MTLTexture> g_bandt;
 static id<MTLTexture> t_cnp;
 static float g_cmap[4];
 static int g_cnp_gen = -1;
@@ -2198,8 +2296,9 @@ void hfx_tick(void)
 #import <ImageIO/ImageIO.h>
 /* Poly Haven (CC0) for the dirt road and the forest floor, converted to the
  * same layout by name */
-enum { NMAT = 7 };
-static const char *MATS[NMAT] = { "Asphalt031", "Grass004", "Ground054", "forest_ground_04", "Rock064", "Snow015", "mud_forest" };
+enum { NMAT = 8 };
+static const char *MATS[NMAT] = { "Asphalt031", "Grass004", "Ground054", "forest_ground_04", "Rock064", "Snow015", "mud_forest",
+                                  "stony_dirt_path" };
 static id<MTLTexture> g_matA, g_matN;
 static float g_matmean[NMAT][4];
 static int g_mat_state;              /* 0 not tried, 1 loaded, -1 unavailable */
@@ -2693,6 +2792,23 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
     if (t_rmap && !getenv("BR_FX_NORMAP")) memcpy(u.rmap, g_rmap, sizeof u.rmap);
     canopymap(dev);
     if (t_cnp) memcpy(u.cmap, g_cmap, sizeof u.cmap);
+    if (g_ncars > 0) hmarks_frame();
+    {   /* the horizon band: 90 degrees a copy, its bottom row 11 degrees under
+           the horizon, haze by weather (sunny, fog, storm, snow, night) */
+        static const float HAZE[5] = { 0.22f, 0.85f, 0.6f, 0.5f, 0.45f };
+        int wx = (int)H32(0x104B15E8u);
+        g_bandt = hsky_band(dev);
+        if (g_bandt) {
+            u.bnd[0] = -11.0f * 3.14159265f / 180.0f;
+            u.bnd[1] = (float)g_bandt.height / (float)g_bandt.width * (3.14159265f / 2.0f);
+            u.bnd[2] = 4.0f;
+            u.bnd[3] = HAZE[wx >= 0 && wx < 5 ? wx : 0];
+        }
+    }           /* a race is being drawn: its cars' tyres mark the ground */
+    {
+        id<MTLTexture> ma = nil, mp = nil;
+        if (hmarks_bind(dev, &ma, &mp, u.mk)) { t_mka = ma; t_mkp = mp; } else { t_mka = t_mkp = nil; u.mk[2] = 0; }
+    }
     weather(&u, fogc);
     /* the Remastered sky for the track and weather (tm.z: its gain, 0 = none) */
     { const char *ov = getenv("BR_FX_WEATHER");
@@ -2960,7 +3076,7 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
     enc = pass(cb, t_hdr, 0);
     [enc setFragmentBytes:&hl length:sizeof hl atIndex:1];
     [enc setFragmentBuffer:mb offset:0 atIndex:2];
-    quad(enc, p_comp, &u, @[gface, gp, col, t_sm, t_ao, t_ssr, g_skyt ? g_skyt : col, t_trk, t_sm2, gn, g_matA ? g_matA : t_trk, g_matN ? g_matN : t_trk, t_ring, t_rmap ? t_rmap : t_trk, ga, gm, t_cnp ? t_cnp : t_trk]);
+    quad(enc, p_comp, &u, @[gface, gp, col, t_sm, t_ao, t_ssr, g_skyt ? g_skyt : col, t_trk, t_sm2, gn, g_matA ? g_matA : t_trk, g_matN ? g_matN : t_trk, t_ring, t_rmap ? t_rmap : t_trk, ga, gm, t_cnp ? t_cnp : t_trk, t_mka ? t_mka : t_trk, t_mkp ? t_mkp : t_trk, g_bandt ? g_bandt : t_trk]);
     /* 4b. particles and falling rain/snow over the lit scene */
     if (getenv("BR_FX_NOPFX")) [pass(cb, t_pfx, 0) endEncoding];
     else {

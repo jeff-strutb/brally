@@ -697,7 +697,7 @@ def main(track):
                         away = -away
                     spacing = max(1.2, h * 0.32)
                     rows = 3
-                    spots, hs = [], []
+                    spots, hs, rws = [], [], []
                     for row in range(rows):
                         n = max(1, int(round(w / spacing)))
                         for k in range(n):
@@ -705,6 +705,7 @@ def main(track):
                                   + away * (row * spacing * 0.9 + rng.uniform(-0.25, 0.25) * spacing)
                             spots.append(q)
                             hs.append(h * rng.uniform(0.75, 1.05))
+                            rws.append(row)
                 elif kind == "crown":
                     # the card is the crown only: the tree runs from the
                     # ground under it to the crown's top
@@ -712,15 +713,21 @@ def main(track):
                     ztop = g[:, 2].max()
                     if zg is None or ztop - zg < 1.0:
                         continue
-                    spots, hs = [c], [ztop - zg]
+                    spots, hs, rws = [c], [ztop - zg], [0]
                     z0 = zg
                 else:
-                    spots, hs = [c], [h]
+                    spots, hs, rws = [c], [h], [0]
                 # every tree on the drawn ground under it, and none on or beside
                 # the racing line (an original card there is kept where it was)
+                # The rows behind a strip need ground drawn under them: past
+                # the world's edge a tree seen over a nearer bank stands on air
+                # (measured 2026-10-01: 4,418 of Mountain's 7,775 trees); the
+                # front row stands on the card's own foot
                 keep = []
-                for q, ht in zip(spots, hs):
+                for q, ht, rw in zip(spots, hs, rws):
                     z = ground.height(q[0], q[1], z0)
+                    if z is None and rw > 0:
+                        continue
                     zz = z if z is not None else z0
                     ok, _ = clear_of_road(np.array([q[0], q[1], zz]), 3.0)
                     if kind in ("single", "crown") or ok:
@@ -844,8 +851,7 @@ def main(track):
                         puts.append(f"put {inst} {k} " + " ".join(f"{x:.6g}" for x in m) + f" {maxd}")
         # the forest beyond the corridor: the track's world ends in tall
         # painted banks a car cannot climb; trees stand along their crests,
-        # rows deep away from the road, so the woods go on past what was
-        # ever drawn (their feet are behind the crest, out of sight)
+        # rows deep away from the road, on the ground drawn behind them
         ncrest = 0
         for (inst, tex, tf), t in zip(gsrc, gtris):
             if kinds.get((tex, tf)) not in fo.get("crest", ()):
@@ -881,11 +887,12 @@ def main(track):
                     # on it (lower ground seen from afar would show it
                     # floating); where none was, only the first rows, their
                     # feet below the crest's line
+                    # only on drawn ground: with none under it, a tree seen
+                    # over a nearer bank shows its trunk standing on air
                     zg = ground.height(q[0], q[1], q[2])
-                    if zg is not None:
-                        q = np.array([q[0], q[1], zg + 1.0])
-                    elif row > 1:
+                    if zg is None:
                         continue
+                    q = np.array([q[0], q[1], zg + 1.0])
                     asset = pick(fo["trees"])
                     vs = variants(asset)
                     vname, vh = vs[rng.randrange(len(vs))]

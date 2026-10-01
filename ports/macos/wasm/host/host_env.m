@@ -314,6 +314,7 @@ static int g_track_ok;
 static unsigned char *g_canopy;            /* the forest's canopy (canopy_load) */
 static int g_canopy_w, g_canopy_h, g_canopy_gen;
 static float g_canopy_at[3];
+static char g_track_name[32];              /* the loaded track, by its placements file */
 static id<MTLBuffer> g_inst[6];           /* instance matrices for the shadow pass: 2 cascades x 3 frames */
 static int g_inst_i;
 /* this frame's instance matrices for the scene draws, a ring of three frames */
@@ -682,6 +683,7 @@ static void clear_track(void)
     free(g_puts); g_puts = NULL; g_nputs = 0;
     memset(g_own_key, 0, sizeof g_own_key);
     free(g_canopy); g_canopy = NULL; g_canopy_gen++;
+    g_track_name[0] = 0;
     g_track_ok = 0;
 }
 
@@ -869,6 +871,11 @@ static void canopy_load(const char *name)
     }
     fclose(f);
 }
+/* host_sky.m: the track the game has loaded, known by its header's counts
+ * (the chosen-track setting does not always say: a scripted race on Mountain
+ * reads 5); "" until its placements are applied */
+const char *henv_track_name(void) { return g_track_name; }
+
 /* host_fx.m: the canopy grid, or 0; *gen changes whenever it does */
 int henv_canopy(const unsigned char **px, int *w, int *h, float *x0, float *y0, float *cell, int *gen)
 {
@@ -885,6 +892,7 @@ static void pack_apply(const tpack *p, const u32 *sig, u32 tab)
     long j;
     int i;
     fprintf(stderr, "env: track %s: placements %s.env\n", p->name, p->name);
+    snprintf(g_track_name, sizeof g_track_name, "%s", p->name);
     canopy_load(p->name);
     for (i = 0; i < p->nhides; i++) {
         const rhide *h = &p->hides[i];
