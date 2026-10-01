@@ -51,8 +51,9 @@ struct CV { float x, y, z, w, r, g, b, a, s, t, wx, wy, wz, fl, xf, nx, ny, nz; 
 struct FXU {
   float4x4 vp, ivp, svp;
   float4 eye, sun, sunc, skyc, grnd, fogc, vpt, scr, p0, p1, p2, p3, p4, flash, wb, nsky, sk2, tm, wx;
-  float4x4 pvp; float4 jit; float4x4 svp2; float4 csm; float4 mat; float4 matmean[6]; float4 rmap;
+  float4x4 pvp; float4 jit; float4x4 svp2; float4 csm; float4 mat; float4 matmean[7]; float4 rmap;
   float4 m3;   /* host_glide.m's screen map of the view: NDC = (x, y down) * m3.xz + m3.yw */
+  float4 cmap; /* the forest's canopy grid (host_env.m): x0, y0, 1/width, 1/height (metres); z 0 none */
 };
 /* headlights: up to 32 spot lights (two per car); misc = count, beam
    strength, light intensity, air density */
@@ -391,6 +392,7 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
                        texture2d_array<float> matA [[texture(10)]], texture2d_array<float> matN [[texture(11)]],
                        texture2d<float> ring [[texture(12)]], texture2d<float> rmap [[texture(13)]],
                        texture2d<float> ga [[texture(14)]], texture2d<float> gmt [[texture(15)]],
+                       texture2d<float> cnp [[texture(16)]],
                        constant HL &hl [[buffer(1)]], constant MVC &mv [[buffer(2)]]) {
   float4 C = col.sample(ns, in.uv), P = gp.sample(ns, in.uv), G = gn.sample(ns, in.uv);
   if (int(u.p3.y) == 15)                             /* debug: the G-buffer's class (red car, green lit, blue sky) */
@@ -614,6 +616,11 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
   float sh = u.sun.w > 0 ? shadow_at(u, sm, wp, N, in.pos.xy, sm2) : 1.0;
   float4 A = aot.sample(ls, in.uv);
   float ao = mix(1.0, A.a, u.p0.x);
+  /* under the forest's canopy (the Remastered trees' crown cover, host_env.m)
+     the ground sees far less sky: its floor is in the trees' shade even
+     where the sun comes through (the shadow map has the sun's part) */
+  float canopy = u.cmap.z > 0.0 ? cnp.sample(ls, (wp.xy - u.cmap.xy) * u.cmap.zw).r : 0.0;
+  ao *= 1.0 - 0.55 * canopy * smoothstep(0.35, 0.75, N.z);
   float wet = u.p0.w * smoothstep(0.55, 0.9, up);
   /* standing water: puddles in the dips of a world-space noise */
   /* more water, more and larger puddles */
@@ -676,7 +683,7 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
        edges and in drifts across it; the rest lies under snow */
     float snowroad = snowg * saturate(redge * 1.4 + (fbm(wp.xy * 0.3) - 0.62) * 1.8);
     float offroad = hasmap ? 1.0 - rm : 1.0;
-    float w[6];
+    float w[7];
     w[0] = flat * rd * (1.0 - (hasmap ? snowroad : snowg));               /* asphalt */
     w[1] = flat * green * (1.0 - snowg) * offroad;                        /* grass */
     w[2] = flat * warm * step(0.45, mx) * (1.0 - snowg) * offroad;        /* sand (bright) */
@@ -692,15 +699,21 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
       int gs = mid == MAT_ASPHALT || mid == MAT_MARKING ? 0 : mid == MAT_GRASS ? 1 : mid == MAT_SAND ? 2
              : mid == MAT_DIRT ? 3 : mid == MAT_ROCK ? 4 : mid == MAT_SNOW || mid == MAT_ICE ? 5 : -1;
       float sn = w[5];
-      for (int m = 0; m < 6; m++) w[m] = 0.0;
+      for (int m = 0; m < 7; m++) w[m] = 0.0;
       if (gs >= 0) {
         w[gs] = gs == 4 ? 1.0 : flat + (gs == 3 || gs == 1 ? steep * 0.5 : 0.0);
         if (gs != 5 && gs != 4) { w[gs] *= 1.0 - sn; w[5] = sn; }
       } }
-    float ws = 0; for (int m = 0; m < 6; m++) ws += w[m];
-    if (ws > 1.0) for (int m = 0; m < 6; m++) w[m] /= ws;
+    /* the forest floor under the trees: needles, leaf litter and dark earth
+       in place of the meadow's grass and, partly, of loose dirt (the litter
+       the trees drop at a dirt road's edges) */
+    w[6] = 0.0;
+    { float ff = smoothstep(0.06, 0.45, canopy);
+      w[6] = (w[1] + w[3] * 0.6) * ff; w[1] *= 1.0 - ff; w[3] *= 1.0 - 0.6 * ff; }
+    float ws = 0; for (int m = 0; m < 7; m++) ws += w[m];
+    if (ws > 1.0) for (int m = 0; m < 7; m++) w[m] /= ws;
     ws = min(ws, 1.0) * fade;
-    const float TILE[6] = { 4.0, 3.0, 4.0, 3.0, 5.0, 4.0 };
+    const float TILE[7] = { 4.0, 3.0, 4.0, 3.0, 5.0, 4.0, 3.0 };
     float3 an = abs(N);
     float2 q = flat > 0.5 ? wp.xy : (an.x > an.y ? wp.yz : wp.xz);
     float3 T1 = flat > 0.5 ? float3(1, 0, 0) : (an.x > an.y ? float3(0, 1, 0) : float3(1, 0, 0));
@@ -736,8 +749,8 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
        the view ray in its tangent space, shifts every map's lookup so stones,
        cracks and ridges stand up at grazing angles; then a short march toward
        the sun shades their far sides */
-    const float HGT[6] = { 0.012, 0.02, 0.02, 0.045, 0.05, 0.03 };   /* metres, full range */
-    int md = 0; for (int m = 1; m < 6; m++) if (w[m] > w[md]) md = m;
+    const float HGT[7] = { 0.012, 0.02, 0.02, 0.045, 0.05, 0.03, 0.03 };   /* metres, full range */
+    int md = 0; for (int m = 1; m < 7; m++) if (w[m] > w[md]) md = m;
     float2 poff = 0; float hsurf = 0.5, pshadow = 1.0;
     float pk = (1.0 - smoothstep(6.0, 20.0, dist)) * step(0.02, w[md]);
     if (pk > 0.0) {
@@ -754,7 +767,7 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
         float hh = matA.sample(ms, sp, md).a; if (hh > sl) pshadow = min(pshadow, 1.0 - saturate((hh - sl) * 6.0)); }
       pshadow = mix(1.0, pshadow, pk); }
     float3 ma = 0, mnrm = 0; float mr = 0, mao = 0, wt = 0;
-    for (int m = 0; m < 6; m++) {
+    for (int m = 0; m < 7; m++) {
       if (w[m] < 0.02) continue;
       float2 uv1 = (q + poff) / TILE[m], uv2 = (q + poff * 0.29) / TILE[m] * 0.29 + float2(0.37, 0.61);
       /* the scans are millimetre photographs.  Out to several car lengths their
@@ -777,6 +790,9 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
       if (m == 0) ma += w[m] * float3(mix(ytone, 0.075, hasmap ? snowg : 0.0)) * float3(0.97, 1.0, 1.03) * cr;
       else if (m == 4) ma += w[m] * tone * cl;
       else if (m == 5) ma += w[m] * float3(0.84, 0.87, 0.93) * mix(0.9, 1.05, saturate(cl));
+      /* the forest floor is not the game's grass green: its own colour, at
+         the brightness of what the game painted there */
+      else if (m == 6) ma += w[m] * c * (dot(tone, lw) / max(dot(u.matmean[m].rgb, lw), 0.02)) * 0.85;
       else ma += w[m] * tone * cr;
       mnrm += w[m] * float3(n.xy * 2.0 - 1.0, 0.0);
       mr += w[m] * n.z; mao += w[m] * n.w; wt += w[m]; }
@@ -1422,8 +1438,9 @@ typedef struct {
     float p0[4], p1[4], p2[4], p3[4], p4[4], flash[4], wb[4], nsky[4], sk2[4], tm[4], wx[4];
     float pvp[16], jit[4];   /* last frame's view x projection; this frame's jitter (ndc) and the last one's */
     float svp2[16], csm[4];  /* the far shadow cascade; csm.x its texel size */
-    float mat[4], matmean[6][4], rmap[4];   /* ground materials: mat.x loaded; each one's mean colour (linear) */   /* wx: rain, snowfall, snow ground, - */
+    float mat[4], matmean[7][4], rmap[4];   /* ground materials: mat.x loaded; each one's mean colour (linear) */   /* wx: rain, snowfall, snow ground, - */
     float m3[4];                            /* the screen map (host_glide.m) */
+    float cmap[4];                          /* the canopy grid's placing (host_env.m) */
 } fxu;
 typedef struct { float p[64][4], d[64][4], col[4], misc[4]; float g[64][4], gd[64][4], gmisc[4]; } hlu;
 static float g_hl_int, g_hl_beam, g_hl_air, g_wdark = 1.0f, g_brake[64];
@@ -1898,6 +1915,29 @@ static void roadmap(id<MTLDevice> dev)
     g_rmap_key = key;
 }
 
+/* The forest's canopy (host_env.m's grid of the Remastered trees' crown
+ * cover) as a texture, rebuilt whenever the track's placements change */
+int henv_canopy(const unsigned char **px, int *w, int *h, float *x0, float *y0, float *cell, int *gen);   /* host_env.m */
+static id<MTLTexture> t_cnp;
+static float g_cmap[4];
+static int g_cnp_gen = -1;
+static void canopymap(id<MTLDevice> dev)
+{
+    const unsigned char *px; int w, h, gen; float x0, y0, cell;
+    int ok = henv_canopy(&px, &w, &h, &x0, &y0, &cell, &gen);
+    if (gen == g_cnp_gen && (ok != 0) == (t_cnp != nil)) return;
+    g_cnp_gen = gen; t_cnp = nil; g_cmap[2] = 0;
+    if (!ok) return;
+    {
+        MTLTextureDescriptor *d = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatR8Unorm
+                                                                                     width:(NSUInteger)w height:(NSUInteger)h mipmapped:NO];
+        d.usage = MTLTextureUsageShaderRead;
+        t_cnp = [dev newTextureWithDescriptor:d];
+        [t_cnp replaceRegion:MTLRegionMake2D(0, 0, (NSUInteger)w, (NSUInteger)h) mipmapLevel:0 withBytes:px bytesPerRow:(NSUInteger)w];
+    }
+    g_cmap[0] = x0; g_cmap[1] = y0; g_cmap[2] = 1.0f / ((float)w * cell); g_cmap[3] = 1.0f / ((float)h * cell);
+}
+
 static void quad(id<MTLRenderCommandEncoder> e, id<MTLRenderPipelineState> p, const fxu *u, NSArray *tex)
 {
     if (g_prof > 0 && g_prof_n > 0 && p.label) g_plab[g_prof_buf][g_prof_n - 1] = p.label.UTF8String;
@@ -2156,9 +2196,12 @@ void hfx_tick(void)
  * texture arrays with full mip chains.  Missing sets leave the procedural
  * detail in place. */
 #import <ImageIO/ImageIO.h>
-static const char *MATS[6] = { "Asphalt031", "Grass004", "Ground054", "Gravel043", "Rock064", "Snow015" };
+/* Poly Haven (CC0) for the dirt road and the forest floor, converted to the
+ * same layout by name */
+enum { NMAT = 7 };
+static const char *MATS[NMAT] = { "Asphalt031", "Grass004", "Ground054", "forest_ground_04", "Rock064", "Snow015", "mud_forest" };
 static id<MTLTexture> g_matA, g_matN;
-static float g_matmean[6][4];
+static float g_matmean[NMAT][4];
 static int g_mat_state;              /* 0 not tried, 1 loaded, -1 unavailable */
 static int load_map(const char *name, const char *kind, u8 *out, int sz)
 {
@@ -2197,20 +2240,20 @@ static void load_materials(id<MTLDevice> dev)
     enum { SZ = 1024, NK = 5 };
     static const char *const KIND[NK] = { "Color", "NormalGL", "Roughness", "AmbientOcclusion", "Displacement" };
     int i, ok = 0;
-    u8 **buf = calloc(6 * NK, sizeof *buf);
-    int *got = calloc(6 * NK, sizeof *got), *setok = calloc(6, sizeof *setok);
+    u8 **buf = calloc(NMAT * NK, sizeof *buf);
+    int *got = calloc(NMAT * NK, sizeof *got), *setok = calloc(NMAT, sizeof *setok);
     MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm width:SZ height:SZ mipmapped:YES];
     id<MTLTexture> ta, tn;
-    td.textureType = MTLTextureType2DArray; td.arrayLength = 6;
+    td.textureType = MTLTextureType2DArray; td.arrayLength = NMAT;
     g_mat_state = -1;
     if (getenv("BR_FX_NOMAT")) { free(buf); free(got); free(setok); return; }
     ta = [dev newTextureWithDescriptor:td];
     tn = [dev newTextureWithDescriptor:td];
-    hload_for(6 * NK, ^(int j) { @autoreleasepool {
+    hload_for(NMAT * NK, ^(int j) { @autoreleasepool {
         buf[j] = malloc((size_t)SZ * SZ * 4);
         got[j] = load_map(MATS[j / NK], KIND[j % NK], buf[j], SZ);
     } });
-    hload_for(6, ^(int m) {
+    hload_for(NMAT, ^(int m) {
         u8 *c = buf[m * NK], *n = buf[m * NK + 1], *r = buf[m * NK + 2], *a = buf[m * NK + 3], *h = buf[m * NK + 4];
         double sum[3] = { 0, 0, 0 };
         int i2, k;
@@ -2228,16 +2271,16 @@ static void load_materials(id<MTLDevice> dev)
         [tn replaceRegion:MTLRegionMake2D(0, 0, SZ, SZ) mipmapLevel:0 slice:(NSUInteger)m withBytes:n bytesPerRow:SZ * 4 bytesPerImage:0];
         setok[m] = 1;
     });
-    for (i = 0; i < 6; i++) ok += setok[i];
-    if (ok == 6) {
+    for (i = 0; i < NMAT; i++) ok += setok[i];
+    if (ok == NMAT) {
         id<MTLCommandBuffer> b = [[dev newCommandQueue] commandBuffer];
         id<MTLBlitCommandEncoder> e = [b blitCommandEncoder];
         [e generateMipmapsForTexture:ta]; [e generateMipmapsForTexture:tn];
         [e endEncoding]; [b commit]; [b waitUntilCompleted];
         g_matA = ta; g_matN = tn;
         g_mat_state = 1;
-    } else fprintf(stderr, "fx: ground materials missing (%d of 6)\n", ok);
-    for (i = 0; i < 6 * NK; i++) free(buf[i]);
+    } else fprintf(stderr, "fx: ground materials missing (%d of %d)\n", ok, NMAT);
+    for (i = 0; i < NMAT * NK; i++) free(buf[i]);
     free(buf); free(got); free(setok);
 }
 static dispatch_once_t g_mat_once;
@@ -2648,6 +2691,8 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
     u.mat[1] = hglide_bake_ref();
     roadmap(dev);
     if (t_rmap && !getenv("BR_FX_NORMAP")) memcpy(u.rmap, g_rmap, sizeof u.rmap);
+    canopymap(dev);
+    if (t_cnp) memcpy(u.cmap, g_cmap, sizeof u.cmap);
     weather(&u, fogc);
     /* the Remastered sky for the track and weather (tm.z: its gain, 0 = none) */
     { const char *ov = getenv("BR_FX_WEATHER");
@@ -2915,7 +2960,7 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
     enc = pass(cb, t_hdr, 0);
     [enc setFragmentBytes:&hl length:sizeof hl atIndex:1];
     [enc setFragmentBuffer:mb offset:0 atIndex:2];
-    quad(enc, p_comp, &u, @[gface, gp, col, t_sm, t_ao, t_ssr, g_skyt ? g_skyt : col, t_trk, t_sm2, gn, g_matA ? g_matA : t_trk, g_matN ? g_matN : t_trk, t_ring, t_rmap ? t_rmap : t_trk, ga, gm]);
+    quad(enc, p_comp, &u, @[gface, gp, col, t_sm, t_ao, t_ssr, g_skyt ? g_skyt : col, t_trk, t_sm2, gn, g_matA ? g_matA : t_trk, g_matN ? g_matN : t_trk, t_ring, t_rmap ? t_rmap : t_trk, ga, gm, t_cnp ? t_cnp : t_trk]);
     /* 4b. particles and falling rain/snow over the lit scene */
     if (getenv("BR_FX_NOPFX")) [pass(cb, t_pfx, 0) endEncoding];
     else {

@@ -311,6 +311,9 @@ int henv_owner(u32 a)
 }
 static u32 g_track_sig[3], g_track_tab;   /* which track the placements belong to */
 static int g_track_ok;
+static unsigned char *g_canopy;            /* the forest's canopy (canopy_load) */
+static int g_canopy_w, g_canopy_h, g_canopy_gen;
+static float g_canopy_at[3];
 static id<MTLBuffer> g_inst[6];           /* instance matrices for the shadow pass: 2 cascades x 3 frames */
 static int g_inst_i;
 /* this frame's instance matrices for the scene draws, a ring of three frames */
@@ -678,6 +681,7 @@ static void clear_track(void)
     for (i = 0; i < MAX_INST; i++) { free(g_hide[i]); g_hide[i] = NULL; g_nhide[i] = 0; g_alt[i] = 0; g_count[i] = 0; }
     free(g_puts); g_puts = NULL; g_nputs = 0;
     memset(g_own_key, 0, sizeof g_own_key);
+    free(g_canopy); g_canopy = NULL; g_canopy_gen++;
     g_track_ok = 0;
 }
 
@@ -844,12 +848,44 @@ static tpack *pack_read(const char *path)
     return p;
 }
 
+/* The forest's canopy over the ground (placements/<track>.canopy, written
+ * with the placements): crown cover on a grid, 0..255, for the lighting
+ * pass's forest floor and the light under the trees (host_fx.m).  Header
+ * "CANOPY1 x0 y0 cell w h", then w*h bytes, row y from y0 up. */
+static void canopy_load(const char *name)
+{
+    NSString *path = [[models_dir() stringByAppendingPathComponent:@"placements"]
+                      stringByAppendingPathComponent:[NSString stringWithFormat:@"%s.canopy", name]];
+    FILE *f = fopen(path.UTF8String, "rb");
+    float x0, y0, cell;
+    int w, h;
+    free(g_canopy); g_canopy = NULL; g_canopy_gen++;
+    if (!f) return;
+    if (fscanf(f, "CANOPY1 %f %f %f %d %d", &x0, &y0, &cell, &w, &h) == 5 && fgetc(f) == '\n'
+        && w > 0 && h > 0 && w <= 8192 && h <= 8192 && cell > 0) {
+        g_canopy = malloc((size_t)w * (size_t)h);
+        if (fread(g_canopy, 1, (size_t)w * (size_t)h, f) != (size_t)w * (size_t)h) { free(g_canopy); g_canopy = NULL; }
+        else { g_canopy_w = w; g_canopy_h = h; g_canopy_at[0] = x0; g_canopy_at[1] = y0; g_canopy_at[2] = cell; }
+    }
+    fclose(f);
+}
+/* host_fx.m: the canopy grid, or 0; *gen changes whenever it does */
+int henv_canopy(const unsigned char **px, int *w, int *h, float *x0, float *y0, float *cell, int *gen)
+{
+    *gen = g_canopy_gen;
+    if (!g_canopy || !g_track_ok) return 0;
+    *px = g_canopy; *w = g_canopy_w; *h = g_canopy_h;
+    *x0 = g_canopy_at[0]; *y0 = g_canopy_at[1]; *cell = g_canopy_at[2];
+    return 1;
+}
+
 /* the placements the game's track takes, from a read file */
 static void pack_apply(const tpack *p, const u32 *sig, u32 tab)
 {
     long j;
     int i;
     fprintf(stderr, "env: track %s: placements %s.env\n", p->name, p->name);
+    canopy_load(p->name);
     for (i = 0; i < p->nhides; i++) {
         const rhide *h = &p->hides[i];
         free(g_hide[h->inst]);
