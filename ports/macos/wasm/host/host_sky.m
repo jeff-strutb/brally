@@ -34,6 +34,17 @@ static const char *const ENV[16] = {
 };
 static const char *const WEATHER[5] = { "clear", "fog", "storm", "snow", "night" };
 
+/* the environment of the track loaded: by host_env.m's reading of the track
+ * itself where it has one, else by the chosen-track setting */
+const char *henv_track_name(void);   /* host_env.m */
+static int env_index(u32 track)
+{
+    const char *n = henv_track_name();
+    int i;
+    if (n && n[0]) for (i = 0; i < 16; i++) if (!strcmp(n, ENV[i])) return i;
+    return (int)(track & 15);
+}
+
 static NSString *sky_dir(void)
 {
     const char *e = getenv("BR_SKY_DIR");
@@ -101,7 +112,7 @@ id<MTLTexture> hsky_tex(id<MTLDevice> dev, int weather)
     id<MTLTexture> t;
     if (!g_lock) g_lock = [NSObject new];
     if (weather < 0 || weather > 4) weather = 0;
-    env = ENV[track & 15];
+    env = ENV[env_index(track)];
     {   const char *ov = getenv("BR_SKY_ENV");   /* check any sky on any track */
         int i;
         if (ov) for (i = 0; i < 16; i++) if (!strcmp(ov, ENV[i])) { env = ENV[i]; break; } }
@@ -122,6 +133,84 @@ id<MTLTexture> hsky_tex(id<MTLDevice> dev, int weather)
             });
         }
         t = g_have == g_key ? g_tex : nil;
+    }
+    return t;
+}
+
+/* The track's horizon band: the distant land along the horizon, drawn over
+ * the sky (<dir>/<env>_band.png, RGBA, ports/macos/tools/remaster_sky_band.py),
+ * one for every weather of the track; or nil.  Alpha kept, straight (not
+ * premultiplied): CoreGraphics draws RGBA premultiplied, so it is undone here. */
+static id<MTLTexture> decode_rgba(id<MTLDevice> dev, NSString *path)
+{
+    CGImageSourceRef src = CGImageSourceCreateWithURL((__bridge CFURLRef)[NSURL fileURLWithPath:path], NULL);
+    CGImageRef img;
+    CGContextRef cx;
+    CGColorSpaceRef cs;
+    MTLTextureDescriptor *td;
+    id<MTLTexture> t;
+    size_t w, h, i;
+    unsigned char *px;
+    if (!src) return nil;
+    img = CGImageSourceCreateImageAtIndex(src, 0, NULL);
+    CFRelease(src);
+    if (!img) return nil;
+    w = CGImageGetWidth(img); h = CGImageGetHeight(img);
+    px = calloc(w * h, 4);
+    cs = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
+    cx = CGBitmapContextCreate(px, w, h, 8, w * 4, cs, kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big);
+    CGColorSpaceRelease(cs);
+    if (!cx) { CGImageRelease(img); free(px); return nil; }
+    CGContextSetBlendMode(cx, kCGBlendModeCopy);
+    CGContextDrawImage(cx, CGRectMake(0, 0, w, h), img);
+    CGContextRelease(cx);
+    CGImageRelease(img);
+    for (i = 0; i < w * h; i++) {
+        unsigned a = px[4 * i + 3], k;
+        if (a && a < 255) for (k = 0; k < 3; k++) { unsigned v = px[4 * i + k] * 255u / a; px[4 * i + k] = (unsigned char)(v > 255 ? 255 : v); }
+    }
+    td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm_sRGB width:w height:h mipmapped:YES];
+    td.usage = MTLTextureUsageShaderRead;
+    t = [dev newTextureWithDescriptor:td];
+    [t replaceRegion:MTLRegionMake2D(0, 0, w, h) mipmapLevel:0 withBytes:px bytesPerRow:w * 4];
+    free(px);
+    {
+        id<MTLCommandQueue> q = [dev newCommandQueue];
+        id<MTLCommandBuffer> cb = [q commandBuffer];
+        id<MTLBlitCommandEncoder> b = [cb blitCommandEncoder];
+        [b generateMipmapsForTexture:t];
+        [b endEncoding];
+        [cb commit];
+        [cb waitUntilCompleted];
+    }
+    return t;
+}
+
+static id<MTLTexture> g_band;
+static int g_band_key = -1, g_band_have = -1;
+id<MTLTexture> hsky_band(id<MTLDevice> dev)
+{
+    u32 track = H32(0x100B3014u);
+    int key = env_index(track);
+    id<MTLTexture> t;
+    if (!g_lock) g_lock = [NSObject new];
+    {   const char *ov = getenv("BR_SKY_ENV");
+        int i;
+        if (ov) for (i = 0; i < 16; i++) if (!strcmp(ov, ENV[i])) { key = i; break; } }
+    for (int i = 0; i < 16; i++) if (!strcmp(ENV[i], ENV[key])) { key = i; break; }   /* mirror tracks share it */
+    @synchronized (g_lock) {
+        if (key != g_band_key) {
+            NSString *path = [sky_dir() stringByAppendingPathComponent:[NSString stringWithFormat:@"%s_band.png", ENV[key]]];
+            int want = key;
+            g_band_key = key;
+            dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+                id<MTLTexture> nt = [[NSFileManager defaultManager] fileExistsAtPath:path] ? decode_rgba(dev, path) : nil;
+                @synchronized (g_lock) {
+                    if (g_band_key == want) { g_band = nt; g_band_have = want; }
+                }
+            });
+        }
+        t = g_band_have == g_band_key ? g_band : nil;
     }
     return t;
 }
