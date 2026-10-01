@@ -333,43 +333,35 @@ static NSString *asset_dir(void)
     return @"ports/common/models/es/pack";
 }
 
-static id<MTLTexture> load_tex(NSString *path, int srgb_unused)
+/* host_load.m: decode, parallel loops, batched mip chains */
+u8 *hload_png(const char *path, int *w, int *h, int *spp);
+void hload_for(int n, void (^f)(int i));
+void hload_mips(NSMutableArray *batch, id<MTLTexture> t);
+void hload_flush(NSMutableArray *batch);
+
+/* any thread; the mip chain is left to `batch` (hload_flush) */
+static id<MTLTexture> load_tex(NSString *path, NSMutableArray *batch)
 {
-    NSData *data = [NSData dataWithContentsOfFile:path];
-    NSBitmapImageRep *rep;
     id<MTLTexture> t;
     MTLTextureDescriptor *td;
-    int w, h, y;
+    int w, h, spp;
     u8 *px;
-    (void)srgb_unused;
-    if (!data) { fprintf(stderr, "car: missing %s\n", path.UTF8String); return nil; }
-    rep = [NSBitmapImageRep imageRepWithData:data];
-    if (!rep) return nil;
-    w = (int)rep.pixelsWide; h = (int)rep.pixelsHigh;
+    if (![[NSFileManager defaultManager] fileExistsAtPath:path]) { fprintf(stderr, "car: missing %s\n", path.UTF8String); return nil; }
     /* remaster_car.py writes 8-bit RGBA, straight alpha (the body's alpha
      * is a mask, so it must not be premultiplied on the way in) */
-    if (rep.bitsPerSample != 8 || rep.samplesPerPixel != 4 || rep.isPlanar ||
-        (rep.bitmapFormat & (NSBitmapFormatAlphaFirst | NSBitmapFormatFloatingPointSamples))) {
+    px = hload_png(path.UTF8String, &w, &h, &spp);
+    if (!px || spp != 4) {
         fprintf(stderr, "car: %s is not 8-bit RGBA\n", path.UTF8String);
+        free(px);
         return nil;
     }
-    px = malloc((size_t)w * h * 4);
-    for (y = 0; y < h; y++) memcpy(px + (size_t)y * w * 4, rep.bitmapData + (size_t)y * rep.bytesPerRow, (size_t)w * 4);
     td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm
                                                             width:(NSUInteger)w height:(NSUInteger)h mipmapped:YES];
     td.usage = MTLTextureUsageShaderRead;
     t = [D newTextureWithDescriptor:td];
     [t replaceRegion:MTLRegionMake2D(0, 0, (NSUInteger)w, (NSUInteger)h) mipmapLevel:0 withBytes:px bytesPerRow:(NSUInteger)w * 4];
     free(px);
-    {
-        id<MTLCommandQueue> q = [D newCommandQueue];
-        id<MTLCommandBuffer> cb = [q commandBuffer];
-        id<MTLBlitCommandEncoder> b = [cb blitCommandEncoder];
-        [b generateMipmapsForTexture:t];
-        [b endEncoding];
-        [cb commit];
-        [cb waitUntilCompleted];
-    }
+    hload_mips(batch, t);
     return t;
 }
 
@@ -405,10 +397,8 @@ static int load_mesh(NSString *dir, NSString *name, mesh *m, int textured, int k
         }
     }
     if (textured) {
-        m->base = load_tex([dir stringByAppendingPathComponent:[name stringByAppendingString:@"_base.png"]], 1);
-        m->mr = load_tex([dir stringByAppendingPathComponent:[name stringByAppendingString:@"_orm.png"]], 0);
         m->nrm = g_flatn;                    /* no normal map: see setup() */
-        if (!m->base || !m->mr) return 0;
+        if (!m->base || !m->mr) return 0;    /* loaded beforehand (setup) */
     }
     return 1;
 }
@@ -444,6 +434,21 @@ static void setup(id<MTLDevice> dev)
         g_flatn = [D newTextureWithDescriptor:td];
         [g_flatn replaceRegion:MTLRegionMake2D(0, 0, 1, 1) mipmapLevel:0 withBytes:&up bytesPerRow:4];
     }
+    {   /* the maps first, all at once, across the cores */
+        NSMutableArray *batch = [NSMutableArray new];
+        NSArray *nm = @[ @"body_base", @"body_orm", @"wheel_base", @"wheel_orm",
+                         @"livery_side", @"livery_top", @"livery_front", @"livery_rear" ];
+        hload_for(8, ^(int i) { @autoreleasepool {
+            id<MTLTexture> t = load_tex([dir stringByAppendingPathComponent:[nm[(NSUInteger)i] stringByAppendingString:@".png"]], batch);
+            switch (i) {
+            case 0: g_body.base = t; break;   case 1: g_body.mr = t; break;
+            case 2: g_wheel.base = t; break;  case 3: g_wheel.mr = t; break;
+            case 4: g_liv_side = t; break;    case 5: g_liv_top = t; break;
+            case 6: g_liv_front = t; break;   default: g_liv_rear = t; break;
+            }
+        } });
+        hload_flush(batch);
+    }
     if (!load_mesh(dir, @"body", &g_body, 1, 0) || !load_mesh(dir, @"wheel", &g_wheel, 1, 0) ||
         !load_mesh(dir, @"proxy", &g_proxy, 0, 1))
         return;
@@ -461,10 +466,6 @@ static void setup(id<MTLDevice> dev)
         w->base = g_wheel.base; w->mr = g_wheel.mr; w->nrm = g_flatn;
         if (!load_mesh(dir, [@"glass" stringByAppendingString:sfx], gl, 0, 0)) *gl = g_glass;
     }
-    g_liv_side = load_tex([dir stringByAppendingPathComponent:@"livery_side.png"], 1);
-    g_liv_top = load_tex([dir stringByAppendingPathComponent:@"livery_top.png"], 1);
-    g_liv_front = load_tex([dir stringByAppendingPathComponent:@"livery_front.png"], 1);
-    g_liv_rear = load_tex([dir stringByAppendingPathComponent:@"livery_rear.png"], 1);
     if (!g_liv_side || !g_liv_top || !g_liv_front || !g_liv_rear) return;
     lib = [D newLibraryWithSource:[NSString stringWithUTF8String:CARSRC] options:nil error:&err];
     if (!lib) { fprintf(stderr, "car shader: %s\n", err.localizedDescription.UTF8String); return; }
@@ -517,15 +518,32 @@ static void setup(id<MTLDevice> dev)
     }
     fprintf(stderr, "car: Remastered model loaded from %s (body %d tris, wheel %d, %d levels of detail)\n",
             dir.UTF8String, g_body.ni / 3, g_wheel.ni / 3, g_nlod);
-    g_state = 1;
+    __atomic_store_n(&g_state, 1, __ATOMIC_RELEASE);   /* setup may run on a prefetch thread */
+}
+
+static int car_off(void)
+{
+    static int off = -1;
+    if (off < 0) off = getenv("BR_CAR") && !atoi(getenv("BR_CAR"));
+    return off;
+}
+static dispatch_once_t g_once;
+static void setup_once(void) { dispatch_once(&g_once, ^{ setup(MTLCreateSystemDefaultDevice()); }); }
+
+/* host_fx.m, while Remastered is on: load the model in the background, long
+ * before the first race draws it */
+void hcar_prefetch(void)
+{
+    static int done;
+    if (done || car_off() || !hfx_on()) return;
+    done = 1;
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{ @autoreleasepool { setup_once(); } });
 }
 
 int hcar_enabled(void)
 {
-    static int off = -1;
-    if (off < 0) off = getenv("BR_CAR") && !atoi(getenv("BR_CAR"));
-    if (off || !hfx_on()) return 0;
-    if (!g_state) setup(MTLCreateSystemDefaultDevice());
+    if (car_off() || !hfx_on()) return 0;
+    setup_once();                    /* waits for a prefetch still loading */
     return g_state == 1;
 }
 
@@ -723,7 +741,7 @@ void hcar_draw(int slot)
     cu u;
     rec *r;
     double P[16], IP[16];
-    if (g_state != 1 || slot < 0 || slot >= g_nrec || hglide_swaps() != g_rec_serial) return;
+    if (__atomic_load_n(&g_state, __ATOMIC_ACQUIRE) != 1 || slot < 0 || slot >= g_nrec || hglide_swaps() != g_rec_serial) return;
     r = &g_rec[slot];
     memset(&u, 0, sizeof u);
     e = hglide_native_pass(&dev, &sc, &origin_ll, &fogmode, fogc, u.fogtab, &rw, &rh);
@@ -852,7 +870,7 @@ void hcar_draw(int slot)
 void hcar_frame_end(id<MTLCommandBuffer> cb, id<MTLTexture> pic)
 {
     id<MTLBlitCommandEncoder> b;
-    if (g_state != 1 || !g_curvalid || !pic) { g_hvalid = 0; g_curvalid = 0; return; }
+    if (__atomic_load_n(&g_state, __ATOMIC_ACQUIRE) != 1 || !g_curvalid || !pic) { g_hvalid = 0; g_curvalid = 0; return; }
     if (!g_hist || g_hist.width != pic.width || g_hist.height != pic.height) {
         MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm
                                         width:pic.width height:pic.height mipmapped:YES];
@@ -877,7 +895,7 @@ void hcar_frame_end(id<MTLCommandBuffer> cb, id<MTLTexture> pic)
 int hcar_lamps(u32 car, float out[4][3])
 {
     int i;
-    if (g_state != 1 || !g_have_lamps || !hcar_enabled()) return 0;
+    if (__atomic_load_n(&g_state, __ATOMIC_ACQUIRE) != 1 || !g_have_lamps || !hcar_enabled()) return 0;
     for (i = 0; i < g_nrec; i++)
         if (g_rec[i].addr == car) {
             memcpy(out, g_lamps, sizeof g_lamps);

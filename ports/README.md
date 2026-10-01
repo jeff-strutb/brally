@@ -30,6 +30,13 @@ choice was made on, and the rules that still hold (the exports stay 1:1 rips),
 are in `MUSIC-DECISION-PENDING.md`. The native 64-bit lane (`build.sh`) still
 has no music.
 
+## The portable 64-bit core (planned)
+
+The 32-bit lane is to be replaced by one native 64-bit build of the core
+for macOS, Linux and Windows, each OS supplying only its platform backends.
+The plan and what stands in the way are in `common/PORTABLE-CORE.md`;
+`common/tools/lp64audit.py` measures it.
+
 ## Sound effects
 
 The 32-bit lane plays the game's effects natively too. The game still drives

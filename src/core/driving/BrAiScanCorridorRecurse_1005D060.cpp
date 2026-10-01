@@ -39,11 +39,12 @@
  * strings and on what the shared idb already holds.  Measured the way the
  * image is built -- the "O2 Gi" rows compiled serially in (file, va) order
  * through one fresh idb, sweep-named objects -- this file's name length is
- * inside a matching window (12, 26-27 and 44 characters before `_1005D060`
- * match; the other lengths leave 4-8 bytes of reload order).  !! Renaming this
- * file, or adding an "O2 Gi" TU that sorts before it, can flip it: re-run
- * the serial chain.  The later "O2 Gi" rows (0x10054730, 0x10044860) still
- * match with this TU in the chain. */
+ * inside a matching window (measured 2026-09-30 with BrCtrlCfgAssign's
+ * "O2 Gi" row ahead of it: 9, 23 and 24 characters before `_1005D060`
+ * match; 8, 10-22 and 25-30 leave 4-8 bytes of reload order).  !! Renaming
+ * this file, or adding an "O2 Gi" TU that sorts before it, can flip it:
+ * re-run the serial chain.  The later "O2 Gi" rows (0x10054730, 0x10044860)
+ * still match with this TU in the chain. */
 #include <string.h>
 
 struct Vec5D060 {
