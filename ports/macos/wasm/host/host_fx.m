@@ -1703,6 +1703,9 @@ static void setup(id<MTLDevice> dev)
     }
 }
 
+static dispatch_once_t g_setup_once;
+static void setup_once(id<MTLDevice> dev) { dispatch_once(&g_setup_once, ^{ setup(dev); }); }
+
 static void size(int w, int h)
 {
     int i, hw = (w + 1) / 2, hh = (h + 1) / 2;
@@ -2106,9 +2109,28 @@ static void weather(fxu *u, const float *fogc)
 
     /* BR_FX_TESTKEY=N,M,...: post a real ~ key press at those swaps (a
      * windowed check of the switch's keyboard path) */
+static void materials_once(id<MTLDevice> dev);
+void henv_prefetch(void);   /* host_env.m */
+void hcar_prefetch(void);   /* host_car.m */
 void hfx_tick(void)
 {
     if (!hfx_on()) g_ncars = 0;
+    else {
+        /* what Remastered draws, loaded in the background before the race
+         * needs it: the shaders and ground materials and the car once, the
+         * environment for whichever track is chosen */
+        static int pre;
+        if (!pre) {
+            id<MTLDevice> dev = MTLCreateSystemDefaultDevice();
+            pre = 1;
+            dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{ @autoreleasepool {
+                setup_once(dev);
+                materials_once(dev);
+            } });
+            hcar_prefetch();
+        }
+        henv_prefetch();
+    }
     { static unsigned n; const char *t = getenv("BR_FX_TESTKEY"); n++;
       if (t && happ_window()) {
           char buf[256], *q, *sv; snprintf(buf, sizeof buf, "%s", t);
@@ -2160,45 +2182,60 @@ static int load_map(const char *name, const char *kind, u8 *out, int sz)
     CGImageRelease(img);
     return 1;
 }
-static void load_materials(id<MTLDevice> dev, id<MTLCommandQueue> q)
+void hload_for(int n, void (^f)(int i));   /* host_load.m */
+/* every map decodes on its own core, then each set packs on its own; the
+ * mip chains are built on a queue of their own, waited for (this may run on
+ * a prefetch thread, ahead of the first frame that samples them) */
+static void load_materials(id<MTLDevice> dev)
 {
-    const int SZ = 1024;
-    int m, i, ok = 0;
-    u8 *c = malloc((size_t)SZ * SZ * 4), *n = malloc((size_t)SZ * SZ * 4), *r = malloc((size_t)SZ * SZ * 4), *a = malloc((size_t)SZ * SZ * 4);
-    u8 *h = malloc((size_t)SZ * SZ * 4);
+    enum { SZ = 1024, NK = 5 };
+    static const char *const KIND[NK] = { "Color", "NormalGL", "Roughness", "AmbientOcclusion", "Displacement" };
+    int i, ok = 0;
+    u8 **buf = calloc(6 * NK, sizeof *buf);
+    int *got = calloc(6 * NK, sizeof *got), *setok = calloc(6, sizeof *setok);
     MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm width:SZ height:SZ mipmapped:YES];
+    id<MTLTexture> ta, tn;
     td.textureType = MTLTextureType2DArray; td.arrayLength = 6;
     g_mat_state = -1;
-    if (getenv("BR_FX_NOMAT")) goto out;
-    g_matA = [dev newTextureWithDescriptor:td];
-    g_matN = [dev newTextureWithDescriptor:td];
-    for (m = 0; m < 6; m++) {
+    if (getenv("BR_FX_NOMAT")) { free(buf); free(got); free(setok); return; }
+    ta = [dev newTextureWithDescriptor:td];
+    tn = [dev newTextureWithDescriptor:td];
+    hload_for(6 * NK, ^(int j) { @autoreleasepool {
+        buf[j] = malloc((size_t)SZ * SZ * 4);
+        got[j] = load_map(MATS[j / NK], KIND[j % NK], buf[j], SZ);
+    } });
+    hload_for(6, ^(int m) {
+        u8 *c = buf[m * NK], *n = buf[m * NK + 1], *r = buf[m * NK + 2], *a = buf[m * NK + 3], *h = buf[m * NK + 4];
         double sum[3] = { 0, 0, 0 };
-        if (!load_map(MATS[m], "Color", c, SZ) || !load_map(MATS[m], "NormalGL", n, SZ)) continue;
-        if (!load_map(MATS[m], "Roughness", r, SZ)) memset(r, 180, (size_t)SZ * SZ * 4);
-        if (!load_map(MATS[m], "AmbientOcclusion", a, SZ)) memset(a, 255, (size_t)SZ * SZ * 4);
-        if (!load_map(MATS[m], "Displacement", h, SZ)) memset(h, 128, (size_t)SZ * SZ * 4);
-        for (i = 0; i < SZ * SZ; i++) {
-            int k;
-            for (k = 0; k < 3; k++) sum[k] += pow(c[i * 4 + k] / 255.0, 2.2);
-            c[i * 4 + 3] = h[i * 4];           /* height, for parallax and puddles */
-            n[i * 4 + 2] = r[i * 4]; n[i * 4 + 3] = a[i * 4];
+        int i2, k;
+        if (!got[m * NK] || !got[m * NK + 1]) return;
+        if (!got[m * NK + 2]) memset(r, 180, (size_t)SZ * SZ * 4);
+        if (!got[m * NK + 3]) memset(a, 255, (size_t)SZ * SZ * 4);
+        if (!got[m * NK + 4]) memset(h, 128, (size_t)SZ * SZ * 4);
+        for (i2 = 0; i2 < SZ * SZ; i2++) {
+            for (k = 0; k < 3; k++) sum[k] += pow(c[i2 * 4 + k] / 255.0, 2.2);
+            c[i2 * 4 + 3] = h[i2 * 4];           /* height, for parallax and puddles */
+            n[i2 * 4 + 2] = r[i2 * 4]; n[i2 * 4 + 3] = a[i2 * 4];
         }
-        for (i = 0; i < 3; i++) g_matmean[m][i] = (float)(sum[i] / (SZ * SZ));
-        [g_matA replaceRegion:MTLRegionMake2D(0, 0, SZ, SZ) mipmapLevel:0 slice:(NSUInteger)m withBytes:c bytesPerRow:SZ * 4 bytesPerImage:0];
-        [g_matN replaceRegion:MTLRegionMake2D(0, 0, SZ, SZ) mipmapLevel:0 slice:(NSUInteger)m withBytes:n bytesPerRow:SZ * 4 bytesPerImage:0];
-        ok++;
-    }
+        for (k = 0; k < 3; k++) g_matmean[m][k] = (float)(sum[k] / (SZ * SZ));
+        [ta replaceRegion:MTLRegionMake2D(0, 0, SZ, SZ) mipmapLevel:0 slice:(NSUInteger)m withBytes:c bytesPerRow:SZ * 4 bytesPerImage:0];
+        [tn replaceRegion:MTLRegionMake2D(0, 0, SZ, SZ) mipmapLevel:0 slice:(NSUInteger)m withBytes:n bytesPerRow:SZ * 4 bytesPerImage:0];
+        setok[m] = 1;
+    });
+    for (i = 0; i < 6; i++) ok += setok[i];
     if (ok == 6) {
-        id<MTLCommandBuffer> b = [q commandBuffer];
+        id<MTLCommandBuffer> b = [[dev newCommandQueue] commandBuffer];
         id<MTLBlitCommandEncoder> e = [b blitCommandEncoder];
-        [e generateMipmapsForTexture:g_matA]; [e generateMipmapsForTexture:g_matN];
-        [e endEncoding]; [b commit];
+        [e generateMipmapsForTexture:ta]; [e generateMipmapsForTexture:tn];
+        [e endEncoding]; [b commit]; [b waitUntilCompleted];
+        g_matA = ta; g_matN = tn;
         g_mat_state = 1;
-    } else { g_matA = g_matN = nil; fprintf(stderr, "fx: ground materials missing (%d of 6)\n", ok); }
-out:
-    free(c); free(n); free(r); free(a); free(h);
+    } else fprintf(stderr, "fx: ground materials missing (%d of 6)\n", ok);
+    for (i = 0; i < 6 * NK; i++) free(buf[i]);
+    free(buf); free(got); free(setok);
 }
+static dispatch_once_t g_mat_once;
+static void materials_once(id<MTLDevice> dev) { dispatch_once(&g_mat_once, ^{ load_materials(dev); }); }
 
 /* ---- temporal: the jitter this frame's 3D is drawn with (Halton 2,3 over
  * 8 frames, in the target's pixels, as clip-space NDC for host_glide.m), last
@@ -2550,7 +2587,7 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
     int i, aa = 0;
     id<MTLRenderCommandEncoder> enc;
     if (!g_havecam || getenv("BR_FX_SKIP")) { g_havecam = 0; g_nrec = 0; g_ncars = 0; [g_keep removeAllObjects]; g_prof_n = 0; return nil; }
-    setup(dev);
+    setup_once(dev);
     size(w, h);
     memset(&u, 0, sizeof u);
     g_frame++;
@@ -2600,7 +2637,7 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
     }
     u.tm[0] = (float)g_clock;
     u.tm[1] = 0.75f;                           /* asphalt neutralising */
-    if (!g_mat_state) load_materials(dev, cb.commandQueue);
+    materials_once(dev);                       /* waits for a prefetch still loading */
     if (g_mat_state > 0) { u.mat[0] = 1; memcpy(u.matmean, g_matmean, sizeof u.matmean); }
     u.mat[1] = hglide_bake_ref();
     roadmap(dev);
