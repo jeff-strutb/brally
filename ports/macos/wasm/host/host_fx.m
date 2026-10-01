@@ -672,6 +672,18 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
     float3 T1 = flat > 0.5 ? float3(1, 0, 0) : (an.x > an.y ? float3(0, 1, 0) : float3(1, 0, 0));
     float3 T2 = flat > 0.5 ? float3(0, 1, 0) : float3(0, 0, 1);
     float3 tone = pow(cbl, 2.2) * mix(1.0, 0.6, wet) * mix(1.0, 0.7, puddle);
+    /* the 1999 road textures bake wear into long light and dark streaks; a
+       road is one even grey, so asphalt takes its brightness mostly from a
+       far wider average (taps on a different surface -- a wall, the verge,
+       their luminance far off -- left out) */
+    float ytone;
+    { float y0 = dot(tone, lw), ya = y0, na = 1.0;
+      float2 rp = 70.0 / float2(ring.get_width(), ring.get_height());
+      for (int k = 0; k < 8; k++) {
+        float a = float(k) * 0.7854 + 0.2;
+        float yq = dot(pow(ring.sample(ls, in.uv + float2(cos(a), sin(a)) * rp).rgb, 2.2), lw) * mix(1.0, 0.6, wet) * mix(1.0, 0.7, puddle);
+        if (abs(yq - y0) < 0.5 * y0 + 0.01) { ya += yq; na += 1.0; } }
+      ytone = mix(ya / na, y0, 0.3); }
     float y = dot(lin, lw), yb = dot(pow(cbl, 2.2), lw);
     /* painted markings are white or yellow: bright, and blue lowest */
     float3 tx = saturate(C.rgb);
@@ -687,7 +699,7 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
     const float HGT[6] = { 0.012, 0.02, 0.02, 0.045, 0.05, 0.03 };   /* metres, full range */
     int md = 0; for (int m = 1; m < 6; m++) if (w[m] > w[md]) md = m;
     float2 poff = 0; float hsurf = 0.5, pshadow = 1.0;
-    float pk = (1.0 - smoothstep(12.0, 30.0, dist)) * step(0.02, w[md]);
+    float pk = (1.0 - smoothstep(6.0, 20.0, dist)) * step(0.02, w[md]);
     if (pk > 0.0) {
       float3 Vt = float3(dot(V, T1), dot(V, T2), max(dot(V, N), 0.08));
       float hs = HGT[md] / TILE[md] * pk;
@@ -705,27 +717,35 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
     for (int m = 0; m < 6; m++) {
       if (w[m] < 0.02) continue;
       float2 uv1 = (q + poff) / TILE[m], uv2 = (q + poff * 0.29) / TILE[m] * 0.29 + float2(0.37, 0.61);
-      float4 c1 = matA.sample(ms, uv1, m), c2 = matA.sample(ms, uv2, m);
-      float4 n1 = matN.sample(ms, uv1, m), n2 = matN.sample(ms, uv2, m);
-      float3 c = pow(mix(c1.rgb, c2.rgb, 0.35), 2.2);
+      /* the scans are millimetre photographs.  Out to several car lengths their
+         stones show, crisp, at most of their own contrast; further out, at
+         full contrast, every stone is a lone pixel, a grit that TAA cannot
+         settle and motion blur draws into streaks.  So with distance they
+         are sampled coarser and fade to a mottling of an even surface --
+         asphalt most of all, one even grey by sixty metres */
+      float near = 1.0 - smoothstep(8.0, 60.0, dist), mb = mix(1.5, 0.0, near);
+      float4 c1 = matA.sample(ms, uv1, m, bias(mb)), c2 = matA.sample(ms, uv2, m, bias(mb));
+      float4 n1 = matN.sample(ms, uv1, m, bias(2.0)), n2 = matN.sample(ms, uv2, m, bias(2.0));
       float4 n = mix(n1, n2, 0.35);
+      float3 c = pow(mix(c1.rgb, c2.rgb, 0.35), 2.2);
+      float3 cr = 1.0 + (c / max(u.matmean[m].rgb, 0.02) - 1.0) * mix(m == 0 ? 0.25 : 0.35, 0.8, near);
       /* asphalt takes the game's brightness but not its purple cast (in
          snow the game paints the road white: there it is dark wet tarmac);
          rock and snow take the game's colour and only their relief from the
          scan -- the scanned snow lies over grass, the scanned rock is gold */
-      float cl = dot(c, lw) / max(dot(u.matmean[m].rgb, lw), 0.02);
-      if (m == 0) ma += w[m] * float3(mix(dot(tone, lw), 0.075, hasmap ? snowg : 0.0)) * float3(0.97, 1.0, 1.03) * c / max(u.matmean[m].rgb, 0.02);
+      float cl = 1.0 + (dot(c, lw) / max(dot(u.matmean[m].rgb, lw), 0.02) - 1.0) * mix(0.35, 0.8, near);
+      if (m == 0) ma += w[m] * float3(mix(ytone, 0.075, hasmap ? snowg : 0.0)) * float3(0.97, 1.0, 1.03) * cr;
       else if (m == 4) ma += w[m] * tone * cl;
       else if (m == 5) ma += w[m] * float3(0.84, 0.87, 0.93) * mix(0.9, 1.05, saturate(cl));
-      else ma += w[m] * tone * c / max(u.matmean[m].rgb, 0.02);
+      else ma += w[m] * tone * cr;
       mnrm += w[m] * float3(n.xy * 2.0 - 1.0, 0.0);
       mr += w[m] * n.z; mao += w[m] * n.w; wt += w[m]; }
     if (wt > 0.0) {
       ma /= wt; mnrm /= wt; mr /= wt; mao /= wt;
       float k = ws * (1.0 - mark);
       alb = mix(alb, ma * mix(1.0, mao, 0.6), k);
-      float nk = k * (1.0 - smoothstep(20.0, 80.0, dist));
-      N = normalize(N + (T1 * mnrm.x + T2 * mnrm.y) * 0.9 * nk);
+      float nk = k * (1.0 - smoothstep(10.0, 60.0, dist));
+      N = normalize(N + (T1 * mnrm.x + T2 * mnrm.y) * 0.35 * nk);
       ndl = saturate(dot(N, L));
       mrough = mix(mrough, mr, k);
       /* rain gathers in the low spots of the surface first */
