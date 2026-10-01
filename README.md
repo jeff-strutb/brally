@@ -658,15 +658,15 @@ python3 ports/macos/tools/remaster_dent.py testdata/disc/cars/es.rca ports/commo
 ```
 
 Each level is made from the source's own `.blend` (a GLB import carries
-extra seams and normals that decimate into lumps): Collapse-decimated to
-200 thousand triangles, given three levels of Subdivision Surface (about 19
-million triangles), decimated again to the level's target, and given smooth-by-angle normals.  The subdivision
-rounds out the small facets a generated surface has, which a glossy clear
-coat otherwise shows as ripples (level 3 holds one continuous highlight
-along the panels where 1 and 2 still broke); subdividing the full
-3M-triangle source even once needs about 188 GB.  Nothing is welded (welding lets Collapse
-merge across the texture's seams and warps it), and the source's normal map
-is not used: it matches only the full-density surface.
+extra seams and normals that decimate into lumps), Collapse-decimated to the
+level's target and given smooth-by-angle normals.  Its reflections then
+come from a subdivided copy: Blender subdivides a copy two levels and Data
+Transfer gives the body that copy's normals.  The subdivided surface holds
+long clean highlights where the generated one ripples under a glossy clear
+coat, and only its normals are taken, because subdividing the body itself
+moves it off the painted texture (the tail lights warp).  Nothing is
+welded, and the source's normal map is not used: it matches only the
+full-density surface.
 
 ### Remastered music
 
