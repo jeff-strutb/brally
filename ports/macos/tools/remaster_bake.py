@@ -84,22 +84,32 @@ dm.decimate_type = "COLLAPSE"
 # levels 1 and 2 still broke, and 200k keeps the panel gaps crisper than
 # 100k (glossy matcap, measured).  The full 3M source subdivided even once
 # needs about 188 GB.
-pre = int(os.environ.get("SUBSURF_PRE", "0")) or (200000 if name == "body" and int(os.environ.get("SUBSURF", "3")) > 0 else target)
+pre = target
 dm.ratio = min(1.0, pre / max(1, src_tris))
 bpy.ops.object.modifier_apply(modifier="dec")
-# Subdivision Surface, then back down to the target: Catmull-Clark rounds
-# out the generated surface's small facets, which a gloss shows as ripples
-subsurf = int(os.environ.get("SUBSURF", "3" if name == "body" else "0"))
+# Subdivision Surface for the reflections only.  Subdividing the body itself
+# moves its surface off the painted texture (the tail lights warp, measured
+# at levels 1 and 3, UV smoothing on or off), so a COPY is subdivided and
+# Data Transfer gives the body the copy's normals: the geometry and UVs stay
+# the decimated source's, and the paint reflects like the subdivided surface.
+subsurf = int(os.environ.get("SUBSURF", "2" if name == "body" else "0"))
 if subsurf > 0:
-    ss = obj.modifiers.new("ss", "SUBSURF"); ss.levels = subsurf; ss.render_levels = subsurf
+    bpy.ops.object.shade_smooth_by_angle(angle=math.radians(crease))
+    src = obj.copy(); src.data = obj.data.copy(); bpy.context.scene.collection.objects.link(src)
+    for o in bpy.context.scene.objects:
+        o.select_set(False)
+    src.select_set(True); bpy.context.view_layer.objects.active = src
+    ss = src.modifiers.new("ss", "SUBSURF"); ss.levels = subsurf; ss.render_levels = subsurf
     bpy.ops.object.modifier_apply(modifier="ss")
-    bpy.ops.object.mode_set(mode="EDIT"); bpy.ops.mesh.select_all(action="SELECT")
-    bpy.ops.mesh.quads_convert_to_tris(quad_method="BEAUTY", ngon_method="BEAUTY")
-    bpy.ops.object.mode_set(mode="OBJECT")
-    n = sum(len(p.vertices) - 2 for p in obj.data.polygons)
-    d2 = obj.modifiers.new("dec2", "DECIMATE"); d2.decimate_type = "COLLAPSE"; d2.ratio = min(1.0, target / max(1, n))
-    bpy.ops.object.modifier_apply(modifier="dec2")
-    print(f"SUBSURF level {subsurf}: {n} tris, decimated back to the target")
+    dt = obj.modifiers.new("ssn", "DATA_TRANSFER")
+    dt.object = src; dt.use_loop_data = True; dt.data_types_loops = {"CUSTOM_NORMAL"}
+    dt.loop_mapping = os.environ.get("SUBSURF_MAP", "POLYINTERP_NEAREST")
+    for o in bpy.context.scene.objects:
+        o.select_set(False)
+    obj.select_set(True); bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.modifier_apply(modifier="ssn")
+    bpy.data.objects.remove(src, do_unlink=True)
+    print(f"SUBSURF level {subsurf}: normals from a subdivided copy")
 # crease normals from the decimated surface (the validated route; nothing
 # else: welding or clearing normals made it worse, measured)
 bpy.ops.object.shade_smooth_by_angle(angle=math.radians(crease))
