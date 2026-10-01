@@ -68,11 +68,21 @@ float spotw(constant HL &hl, int i, float3 x, thread float3 &Ld) {
   float below = -dir.z;                                  /* sine of the angle under the horizon */
   float2 fh = normalize(hl.d[i].xy + float2(1e-5, 0)), dh = normalize(dir.xy + float2(1e-5, 0));
   float ch = dot(fh, dh) * step(0.0, dot(dir, hl.d[i].xyz));
+  /* the road just ahead of the bumper is lit too (the reflector's spill,
+     at a steep angle and a metre or two away, so it is the brightest patch
+     of all), and the pool fans out wide to both verges */
   float iv = smoothstep(-0.03, 0.0, below)                 /* the cutoff */
-           * mix(0.012, 1.0, exp(-pow(max(below - 0.015, 0.0) / 0.05, 2.0)));
-  float ih = smoothstep(0.82, 0.97, ch) + 0.3 * smoothstep(0.45, 0.85, ch);
-  if (hl.p[i].w > 0.5)          /* a tail or brake lamp: a broad red glow behind the car, a few metres */
-    return 0.25 * hl.d[i].w * smoothstep(0.05, 0.6, dot(dir, hl.d[i].xyz)) / (d * d + 0.3) * smoothstep(6.0, 2.0, d);
+           * mix(0.08, 1.0, exp(-pow(max(below - 0.015, 0.0) / 0.05, 2.0)))
+           /* above it a lamp still spills some light, falling off with the
+              angle: the trees over the road catch it */
+           + 0.12 * (1.0 - smoothstep(-0.03, 0.0, below)) * exp(-max(-below, 0.0) / 0.3);
+  float ih = smoothstep(0.82, 0.97, ch) + 0.45 * smoothstep(0.2, 0.8, ch);
+  /* a tail or brake lamp: a faint red wash behind the car, a few metres.
+     Its lenses are a few candela against a headlamp's thousands, so on dry
+     tarmac it barely shows; it eases in from the bumper rather than starting
+     at a line, which drew a hard red rectangle on the road */
+  if (hl.p[i].w > 0.5)
+    return 0.06 * hl.d[i].w * smoothstep(-0.1, 0.8, dot(dir, hl.d[i].xyz)) / (d * d + 0.3) * smoothstep(6.0, 2.0, d);
   return 150.0 * hl.d[i].w * iv * ih / (d * d + 0.5) * smoothstep(200.0, 110.0, d); }
 float3 spotc(constant HL &hl, int i) { return hl.p[i].w > 0.5 ? float3(1.0, 0.04, 0.015) : hl.col.rgb; }
 struct MVC { float4 cur[16][4]; float4 prev[16][4]; float4 misc; };   /* rows 0-2 + position; box in misc */
@@ -342,10 +352,15 @@ float3 pano(constant FXU &u, texture2d<float> sky, float3 vd, float lv = 0.0) {
 float3 skylight(constant FXU &u, texture2d<float> sky, float3 d) {
   if (u.tm.z > 0.0) return pano(u, sky, d);
   return u.sk2.x > 0.5 ? atmos(u, d) : air(u, d); }
-/* the game's colour averaged over two rings (7 and 20 pixels) round a ground
-   pixel, from the samples on the same surface only: a car, a sign or a post
-   in front must not darken the average, or the ground beside it reads as a
-   painted marking and keeps its old texture, a pale rim round everything */
+/* the surface's own colour (host_glide.m's: rgb times the baked light in
+   alpha, what compfs relights) averaged over two rings (7 and 20 pixels)
+   round a ground pixel, from the samples on the same surface only: a car, a
+   sign or a post in front must not darken the average, or the ground beside
+   it reads as a painted marking and keeps its old texture, a pale rim round
+   everything.  Not the game's finished colour: that holds what the game
+   blended over the ground, its own car shadows and fog, which the relit
+   surface leaves out -- averaged in, a car's old shadow came back as a flat
+   dark box on the road under it */
 float3 ring_same_surface(constant FXU &u, texture2d<float> col, texture2d<float> gp, texture2d<float> gn,
                          float2 uv, float2 px, float3 wp, float3 N) {
   float d0 = distance(u.eye.xyz, wp), tol = 0.06 * d0 + 0.3;
@@ -356,13 +371,14 @@ float3 ring_same_surface(constant FXU &u, texture2d<float> col, texture2d<float>
     float4 Q = gp.sample(ns, q);
     if (!is_geo(Q.w) || abs(distance(u.eye.xyz, Q.xyz) - d0) > tol) continue;
     if (dot(onormal(gn.sample(ns, q).xyz, Q.xyz, u.eye.xyz), N) < 0.8) continue;   /* a wall or post standing on it */
-    acc += col.sample(ls, q).rgb; n += 1.0; }
-  return n > 0.0 ? acc / n : col.sample(ns, uv).rgb; }
+    float4 c = col.sample(ls, q); acc += c.rgb * c.a; n += 1.0; }
+  float4 c0 = col.sample(ns, uv);
+  return n > 0.0 ? acc / n : c0.rgb * c0.a; }
 /* at half resolution: the average is wide and smooth, it loses nothing */
 fragment float4 ringfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]], texture2d<float> col [[texture(0)]],
                        texture2d<float> gp [[texture(1)]], texture2d<float> gn [[texture(2)]]) {
   float4 P = gp.sample(ns, in.uv);
-  if (!is_geo(P.w)) return col.sample(ns, in.uv);
+  if (!is_geo(P.w)) { float4 c = col.sample(ns, in.uv); return float4(c.rgb * c.a, 1); }
   float3 N = onormal(gn.sample(ns, in.uv).xyz, P.xyz, u.eye.xyz);
   return float4(ring_same_surface(u, col, gp, gn, in.uv, 7.0 / float2(col.get_width(), col.get_height()), P.xyz, N), 1); }
 fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
@@ -398,6 +414,20 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
       else {
         float clear = saturate((dot(lin, 0.33) - 0.25) * 3.0) * (1.0 - saturate((max(lin.r, max(lin.g, lin.b)) - min(lin.r, min(lin.g, lin.b))) * 4.0));
         o += float3(1.0, 0.95, 0.85) * clear * fall * hl.gd[i].w * hl.misc.z * 3.0; } }
+    /* the lamps light it too: host_env.m's trees and props leave their
+       surface colour in ga (alpha 1), lit here as the ground is.  Leaves and
+       cards are seen from both sides, so either face takes the light */
+    { float4 AG = ga.sample(ns, in.uv);
+      if (AG.a > 0.5 && hl.misc.x > 0.5) {
+        /* foliage is saturated green in its maps; under a lamp it reads as
+           lit leaves, not neon */
+        float3 albe = min(pow(AG.rgb, 2.2), 0.7), hd = 0;
+        albe = mix(float3(dot(albe, float3(0.2126, 0.7152, 0.0722))), albe, 0.6);
+        for (int i = 0; i < int(hl.misc.x); i++) {
+          float3 Ld; float w = spotw(hl, i, wp + N * 0.05, Ld);
+          if (w > 0.0) hd += spotc(hl, i) * w * abs(dot(N, Ld)); }
+        hd = hd / (1.0 + 0.2 * hd);
+        o += 3.0 * albe * hd; } }
     /* rain on the car, in the car's own frame so it rides with it: beads
        standing on the paint (little lenses: the paint darker under them, a
        rim, the sky and a spark of light in them), drips running down the
@@ -563,12 +593,15 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
     if (length(Ns) > 0.5) { Ns = onormal(Ns, wp, u.eye.xyz); if (dot(Ns, N) > 0.55) N = Ns; } }
   /* surface detail: the texture's own light and dark read as relief (a bump
      map from its brightness, by the surface gradient of Mikkelsen 2020),
-     fading out where the texture is too far away to show it */
+     fading out where the texture is too far away to show it.  The surface's
+     own colour, as the ring: the game's car shadow drawn over the road is
+     not relief */
   { float2 px = 2.0 / float2(col.get_width(), col.get_height());
     const float3 lw = float3(0.2126, 0.7152, 0.0722);
-    float h0 = dot(col.sample(ls, in.uv).rgb, lw);
-    float hx = dot(col.sample(ls, in.uv + float2(px.x, 0)).rgb, lw) - h0;
-    float hy = dot(col.sample(ls, in.uv + float2(0, px.y)).rgb, lw) - h0;
+    float4 b0 = ga.sample(ls, in.uv), b1 = ga.sample(ls, in.uv + float2(px.x, 0)), b2 = ga.sample(ls, in.uv + float2(0, px.y));
+    float h0 = dot(b0.rgb, lw) * b0.a;
+    float hx = dot(b1.rgb, lw) * b1.a - h0;
+    float hy = dot(b2.rgb, lw) * b2.a - h0;
     float3 sx = gp.sample(ns, in.uv + float2(px.x, 0)).xyz - wp, sy = gp.sample(ns, in.uv + float2(0, px.y)).xyz - wp;
     float3 r1 = cross(sy, N), r2 = cross(N, sx);
     float det = dot(sx, r1);
@@ -943,8 +976,12 @@ float3 lamps(constant FXU &u, constant HL &hl, texture2d<float> gp, float2 uv) {
     if (is_solid(Q.w) && distance(u.eye.xyz, Q.xyz) < d - 0.35) continue;   /* hidden */
     float px = length((uv - lu) * scr), s = clamp(40.0 / d, 0.8, 8.0);
     float core = exp(-px * px / (s * s)), halo = 1.0 / (1.0 + pow(px / (s * 2.5), 2.0)) * smoothstep(s * 10.0, s * 3.0, px);
-    float3 c = hl.g[i].w > 0.5 ? float3(1.0, 0.06, 0.03) * 0.6 * hl.gd[i].w : float3(1.0, 0.95, 0.85) * hl.gd[i].w;
-    acc += c * (core * 6.0 + halo * 0.08) * pow(face, 2.0); }
+    bool tail = hl.g[i].w > 0.5;
+    float3 c = tail ? float3(1.0, 0.06, 0.03) * 0.6 * hl.gd[i].w : float3(1.0, 0.95, 0.85) * hl.gd[i].w;
+    /* a brake lamp blooms: a wide red glow round each lens, stronger the
+       harder it burns (gd.w: 0.5 lit, 2.2 braking) */
+    float bloom = tail ? 1.0 / (1.0 + pow(px / (s * 6.0), 2.0)) * smoothstep(s * 24.0, s * 6.0, px) * 0.12 * hl.gd[i].w : 0.0;
+    acc += c * (core * 6.0 + halo * 0.08 + bloom) * pow(face, 2.0); }
   return acc * hl.gmisc.y; }
 fragment float4 shaftfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
                         texture2d<float> gp [[texture(0)]], texture2d<float> col [[texture(1)]],
@@ -1196,13 +1233,16 @@ fragment float4 taafs(QO in [[stage_in]], constant FXU &u [[buffer(0)]], constan
                       texture2d<float> pf [[texture(3)]]) {
   float4 C = cur.sample(ns, in.uv), pc = pfx_up(u, pf, gp, in.uv);
   C.rgb = C.rgb * (1.0 - pc.a) + pc.rgb;
-  if (u.jit.w < 0.5) return C;                       /* no history yet */
+  float4 P0 = gp.sample(ns, in.uv);
+  bool car0 = P0.w > 3.5 && P0.w < 4.5;
+  /* the history remembers which kind of surface each pixel was (2 added to
+     its alpha on a car; mbfs takes it off again) */
+  float4 Ct = float4(C.rgb, C.a + (car0 ? 2.0 : 0.0));
+  if (u.jit.w < 0.5) return Ct;                      /* no history yet */
   float2 px = 1.0 / float2(cur.get_width(), cur.get_height());
   /* the clamp's neighbourhood is only the pixels on the same kind of
      surface: road just uncovered beside a tyre must not accept the tyre's
      colour as history, nor the car the road's */
-  float4 P0 = gp.sample(ns, in.uv);
-  bool car0 = P0.w > 3.5 && P0.w < 4.5;
   float3 m1 = 0, m2 = 0; float nw = 0;
   for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) {
     float2 q = in.uv + float2(x, y) * px;
@@ -1213,7 +1253,13 @@ fragment float4 taafs(QO in [[stage_in]], constant FXU &u [[buffer(0)]], constan
     m1 += c; m2 += c * c; nw += 1.0; }
   m1 /= nw; float3 sd = sqrt(max(m2 / nw - m1 * m1, 0.0));
   float2 pu = prev_uv(u, mv, P0, in.uv);
-  if (any(pu < 0.0) || any(pu > 1.0)) return C;
+  if (any(pu < 0.0) || any(pu > 1.0)) return Ct;
+  /* disocclusion: road coming out from under a moving car finds the car
+     where it was last frame.  At night the two are too alike in colour for
+     the clamp to tell, and the car's underside was copied down the road
+     behind it frame after frame -- so history from the other kind of
+     surface is not used at all */
+  if ((hist.sample(ns, pu).a > 1.5) != car0) return Ct;
   float3 H = hist_cr(hist, pu);
   float3 hy = ycc(H / (1.0 + dot(H, float3(0.2126, 0.7152, 0.0722))));
   float3 lo = m1 - sd * 1.25, hi = m1 + sd * 1.25;
@@ -1225,11 +1271,12 @@ fragment float4 taafs(QO in [[stage_in]], constant FXU &u [[buffer(0)]], constan
   float a = mix(0.08, 0.25, saturate(speed / 30.0));
   float3 r = mix(hy, cy, a);
   float3 o = rgb_(r); o = o / max(1.0 - dot(o, float3(0.2126, 0.7152, 0.0722)), 1e-3);
-  return float4(max(o, 0.0), C.a); }
+  return float4(max(o, 0.0), Ct.a); }
 fragment float4 mbfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]], constant MVC &mv [[buffer(1)]],
                      texture2d<float> src [[texture(0)]], texture2d<float> gp [[texture(1)]],
                      texture2d<float> pf [[texture(2)]]) {
   float4 C = src.sample(ns, in.uv);
+  if (C.a > 1.5) C.a -= 2.0;                         /* taafs' surface mark */
   if (C.a < 0.5 || u.jit.w < 0.5) return C;
   /* smoke drifts on its own, not with the surface behind it: where it is
      thick there is nothing to smear */
@@ -1267,7 +1314,15 @@ fragment float4 pfxcfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]], textur
 float3 neutral(float3 c) {
   const float start = 0.76, desat = 0.15;
   float x = min(c.r, min(c.g, c.b)), off = x < 0.08 ? x - 6.25 * x * x : 0.04;
-  c -= off;
+  /* the toe darkens near-black by subtracting the smallest channel, which
+     on a grey a hair bluer than neutral left only the blue: night's unlit
+     road came out saturated blue.  Down there a near-grey darkens by
+     scaling, which keeps the hue; a strong colour (its smallest channel far
+     below its largest, where scaling by it would crush the colour to black)
+     and everything brighter keep the original curve */
+  float peak0 = max(c.r, max(c.g, c.b));
+  float ks = (1.0 - smoothstep(0.03, 0.08, x)) * smoothstep(0.5, 0.85, x / max(peak0, 1e-6));
+  c = mix(c - off, c * (6.25 * x), ks);
   float peak = max(c.r, max(c.g, c.b));
   if (peak < start) return c;
   float d = 1.0 - start, np = 1.0 - d * d / (peak + d - start);
@@ -1947,13 +2002,20 @@ static void weather(fxu *u, const float *fogc)
     switch (w) {
     case 4:  /* night, clear and dry (the game's grip tables give it the dry
               * row): moonlight, lit windows glowing */
-        sunk = 0.14f; sc[0] = 0.6f; sc[1] = 0.72f; sc[2] = 1.0f;
-        sk[0] = 0.5f; sk[1] = 0.56f; sk[2] = 0.72f; gr[0] = 0.3f; gr[1] = 0.3f; gr[2] = 0.35f;
+        /* the moon and the sky's fill dim enough that a headlamp's pool is
+         * the brightest thing on the road by far, and what lies outside it
+         * still reads, darkly */
+        /* and neutral: the dark is black-grey, not blue (a blue cast reads
+         * as murk; a neutral one keeps what is in it visible) */
+        sunk = 0.09f; sc[0] = 0.85f; sc[1] = 0.9f; sc[2] = 1.0f;
+        sk[0] = 0.7f; sk[1] = 0.72f; sk[2] = 0.77f; gr[0] = 0.4f; gr[1] = 0.4f; gr[2] = 0.42f;
         memcpy(u->p0, (float[4]){ 1.0f, 0.5f, 0.0f, 0.0f }, 16);
-        memcpy(u->p1, (float[4]){ 1.25f, 0.95f, 1.04f, 0.3f }, 16);
+        /* bloom as by day: stronger, it laid the sky's blue and the lamps'
+         * glow over every dark surface, a blue haze instead of black */
+        memcpy(u->p1, (float[4]){ 1.25f, 0.95f, 1.04f, 0.07f }, 16);
         u->p2[0] = 0.0f; u->p2[1] = 7.0f; u->p3[2] = 0.35f; u->p4[0] = 1.0f; u->p4[1] = 0.0f;
         u->scr[2] = 0.3f; hf = 1.0f;
-        wb[0] = 0.82f; wb[1] = 0.95f; wb[2] = 1.25f;
+        wb[0] = 0.97f; wb[1] = 0.98f; wb[2] = 1.04f;
         ns[0] = 0.018f; ns[1] = 0.03f; ns[2] = 0.065f;
         break;
     case 2:  /* storm: overcast, wet, lightning */
@@ -2620,7 +2682,8 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
             fprintf(stderr, "headlights: %d of %d cars, lamp0 %.2f %.2f %.2f dir %.2f %.2f %.2f\n", n / 2, g_ncars,
                     hl.p[0][0], hl.p[0][1], hl.p[0][2], hl.d[0][0], hl.d[0][1], hl.d[0][2]);
     }
-    hl.col[0] = 1.0f; hl.col[1] = 0.93f; hl.col[2] = 0.8f;
+    /* halogen-warm, and bright: at night the pool is what the eye adapts to */
+    hl.col[0] = 1.6f; hl.col[1] = 1.4f; hl.col[2] = 1.05f;   /* halogen-warm */
     hl.misc[1] = g_hl_beam; hl.misc[2] = g_hl_int; hl.misc[3] = g_hl_air;
 
     /* the sun's view: an orthographic box ahead of the camera, snapped to
@@ -2713,7 +2776,7 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
     /* (at half resolution: a smoothed normal has no fine detail to lose;
      * the lighting pass takes it only where it agrees with the face's own) */
     id<MTLTexture> gface = gn;
-    quad(pass(cb, t_ring, 0), p_ring, &u, @[col, gp, gn]);
+    quad(pass(cb, t_ring, 0), p_ring, &u, @[ga, gp, gn]);
     /* the G-buffer's normals are the meshes' smooth ones (host_glide.m); the
      * old screen-space smoothing stays behind BR_FX_SSNRM=1 */
     if (getenv("BR_FX_SSNRM")) { quad(pass(cb, t_nrm, 0), p_nrm, &u, @[gn, gp]); gn = t_nrm; }
