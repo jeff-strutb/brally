@@ -1431,6 +1431,33 @@ void hglide_mailbox_present(void)
     }
 }
 
+/* BR_GPUFRAME=1: the GPU's real cost per frame, while the GPU is what
+ * limits the frame rate: each frame's GPU end minus the previous frame's.
+ * A frame's own GPU start-to-end span is not its cost: with two frames in
+ * flight it overlaps its neighbours' work (measured 2026-10-01 at
+ * 2560x1920: span 20.7-22.7 ms, true cost 12.6-14.4 ms, matching the
+ * Remastered passes' own timestamps). */
+static void gpuframe(id<MTLCommandBuffer> cb)
+{
+    static int on = -1;
+    static double last_end, acc, acc_span, mn = 1e9;
+    static int n;
+    if (on < 0) on = getenv("BR_GPUFRAME") != NULL;
+    if (!on || !cb) return;
+    [cb addCompletedHandler:^(id<MTLCommandBuffer> b) {
+        double en = b.GPUEndTime;
+        if (last_end > 0) {
+            double d = (en - last_end) * 1000.0;
+            acc += d; acc_span += (en - b.GPUStartTime) * 1000.0; if (d < mn) mn = d;
+            if (++n == 240) {
+                fprintf(stderr, "gpuframe: %.2f ms per frame (min %.2f; own span %.2f) over 240 frames\n", acc / n, mn, acc_span / n);
+                acc = acc_span = 0; n = 0; mn = 1e9;
+            }
+        }
+        last_end = en;
+    }];
+}
+
 void h_grBufferSwap(u32 interval)
 {
     { extern void htext_swap(void); htext_swap(); }
@@ -1481,6 +1508,7 @@ void h_grBufferSwap(u32 interval)
             if (++n == 240) { fprintf(stderr, "gputime: %.2f ms mean, %.2f max (240 frames)\n", acc / n, mx); acc = mx = 0; n = 0; }
         }];
     }
+    gpuframe(g_cb);
     [g_cb commit];
     g_cb = nil;
     g_layer = l;
