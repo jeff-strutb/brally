@@ -93,14 +93,22 @@ static void inv4(const double *m, double *o)
 
 /* Which view a triangle belongs to, from the projection and viewport it is
  * drawn through: 1 flat 2D (an orthographic projection, whose w does not
- * depend on the position: the HUD and text), 2 the rear-view mirror (its
- * viewport is flipped left to right: BrFrameDraw gives it a negative
- * width), 0 the camera.  host_glide.m places each kind on the screen its
- * own way (any window shape). */
+ * depend on the position: the HUD and text), 2 the rear-view mirror, 0 the
+ * camera.  host_glide.m places each kind on the screen its own way (any
+ * window shape).
+ *
+ * The mirror is told by its HEIGHT, not by the sign of its width.
+ * BrFrameDraw (0x10011FA0) draws it into a strip w/4..3w/8+2 wide and a
+ * quarter of that tall: at most 62 pixels of the 480, a viewport half-height
+ * (VP_SCALE_Y) of at most 31.  The camera's view is never under 120 pixels
+ * (split screen halves it).  A negative width is not the mirror's alone: the
+ * mirrored tracks (the track selector's second round, indices 6..11) flip
+ * the camera's own view with one, and the old test took the whole race for
+ * the mirror -- no Remastered lighting, sky or ground on a mirrored track. */
 static int view_now(void)
 {
     if (F(PROJ + 12) == 0 && F(PROJ + 28) == 0 && F(PROJ + 44) == 0) return 1;
-    return F(VP_SCALE_X) < 0 ? 2 : 0;
+    return fabsf(F(VP_SCALE_Y)) < 48.0f ? 2 : 0;
 }
 int hrender_view(void) { return view_now(); }
 

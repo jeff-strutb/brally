@@ -42,6 +42,7 @@ static id<MTLTexture> g_skyt;   /* this frame's Remastered sky, or nil */
 void hglide_map(int view, float T[4]);                     /* host_glide.m */
 float hglide_bake_ref(void);
 double hframe_game_ms(void);                               /* native/frame.m */
+void henv_shadow(id<MTLRenderCommandEncoder> e, const float *svp, const float *eye, float range);   /* host_env.m */
 
 #define STR(...) #__VA_ARGS__
 static const char *FXSRC = "#include <metal_stdlib>\n" STR(
@@ -2769,6 +2770,9 @@ id<MTLTexture> hfx_run(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture
             if (r->smp) [enc setFragmentSamplerState:r->smp atIndex:0];
             [enc drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:(NSUInteger)r->n];
         }
+        /* the Remastered environment's models (host_env.m), instanced */
+        henv_shadow(enc, cas ? u.svp2 : u.svp, u.eye,
+                    (float)((getenv("BR_FX_SHADOWR") ? atof(getenv("BR_FX_SHADOWR")) : 110.0) * (cas ? 4.0 : 1.0) * 1.6));
         [enc endEncoding];
     }
     /* 2. occlusion + bounce, blurred */

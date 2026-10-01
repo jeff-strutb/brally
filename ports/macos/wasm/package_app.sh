@@ -201,6 +201,25 @@ if [ -n "$ICO" ]; then
     ICON_KEY="<key>CFBundleIconFile</key><string>BossRally</string>"
 fi
 
+# the Remastered environment (host/host_env.m): the placements and every
+# model and texture set they name, from ports/common/models (kept out of git;
+# remaster_env_bake.py / remaster_env_place.py write them), and the credits
+# the CC-BY models require.  Without these the app draws the original cards.
+if ls ports/common/models/placements/*.env >/dev/null 2>&1; then
+    ENVR="$APP/Contents/Resources/env"
+    rm -rf "$ENVR"
+    mkdir -p "$ENVR/models/placements" "$ENVR/textures"
+    cp -c ports/common/models/placements/*.env "$ENVR/models/placements/" 2>/dev/null ||
+        cp ports/common/models/placements/*.env "$ENVR/models/placements/"
+    for a in $(awk '/^asset / {print $3} /^put / {nextfile}' ports/common/models/placements/*.env | sort -u); do
+        cp -Rc "ports/common/models/$a" "$ENVR/models/" 2>/dev/null || cp -R "ports/common/models/$a" "$ENVR/models/"
+        [ -d "ports/common/textures/$a" ] && { cp -Rc "ports/common/textures/$a" "$ENVR/textures/" 2>/dev/null ||
+            cp -R "ports/common/textures/$a" "$ENVR/textures/"; }
+    done
+    [ -f ports/common/models/env/thirdparty/CREDITS.tsv ] &&
+        cp ports/common/models/env/thirdparty/CREDITS.tsv "$APP/Contents/Resources/Licenses/ThirdPartyModels.tsv"
+fi
+
 VERSION=$(git log -1 --format=%cd --date=format:%Y.%m.%d 2>/dev/null || echo 1.0)
 cat > "$APP/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
