@@ -715,8 +715,14 @@ fragment float4 compfs(QO in [[stage_in]], constant FXU &u [[buffer(0)]],
       float2 rp = 70.0 / float2(ring.get_width(), ring.get_height());
       for (int k = 0; k < 8; k++) {
         float a = float(k) * 0.7854 + 0.2;
-        float yq = dot(pow(ring.sample(ls, in.uv + float2(cos(a), sin(a)) * rp).rgb, 2.2), lw) * mix(1.0, 0.6, wet) * mix(1.0, 0.7, puddle);
-        if (abs(yq - y0) < 0.5 * y0 + 0.01) { ya += yq; na += 1.0; } }
+        /* a tap on another surface (a car, a tree, the sky) is not this
+           road.  The car reads zero here, and the old absolute margin let
+           it in at night, where the road's own brightness is below the
+           margin: eight dark copies of the car round it on the lit road */
+        float2 tq = in.uv + float2(cos(a), sin(a)) * rp;
+        if (!is_geo(gp.sample(ns, tq).w)) continue;
+        float yq = dot(pow(ring.sample(ls, tq).rgb, 2.2), lw) * mix(1.0, 0.6, wet) * mix(1.0, 0.7, puddle);
+        if (abs(yq - y0) < 0.5 * y0) { ya += yq; na += 1.0; } }
       ytone = mix(ya / na, y0, 0.3); }
     float y = dot(lin, lw), yb = dot(pow(cbl, 2.2), lw);
     /* painted markings are white or yellow: bright, and blue lowest */
