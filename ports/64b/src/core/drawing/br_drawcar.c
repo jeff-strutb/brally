@@ -383,7 +383,7 @@ BrSpanVolume g_BrFrameHull;
 /* 64-bit core: declared once, in br_globals.h or its struct's header */    /* 0x102735B0 */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */  /* 0x10273600 */
 
-#define BR_CAR_SPAN(x, y) BrSpanTestPoint(*(int32_t *)&(x), *(int32_t *)&(y))
+#define BR_CAR_SPAN(x, y) BrSpanTestPoint((x), (y))
 
 /* WHAT IT DOES: decide, once per car per frame, whether that car will be
  * drawn at all and in which pass -- solid, see-through, or not at all -- and
@@ -541,7 +541,7 @@ void BrCarDrawBody(void *pCar)
 
     /* 0x1000C004 -- the canned setup list, then the model's texture command. */
     put(0x06000000u, br_addr32(&BrG_0AA838));
-    BrGfxEmitTexCmd(5, *(const void *const *)((const unsigned char *)BrG_6C3308 +
+    BrGfxEmitTexCmd(5, BR_AT32(const void *, (const unsigned char *)BrG_6C3308 +
                                                BR_MODEL_OFF_TEXRECS));
 
     /* 0x1000C035 -- pipe sync, two-cycle, and the move-word run that primes
@@ -1608,7 +1608,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
          * pushed [esp+0x30].  Passing pLights here made the angles call
          * overwrite the look-at pair and left the second block unwritten --
          * found by the live oracle (tools/t3live.py) on a real race frame. */
-        BrLightDirsAndAngles(&g_BrDrawCombined, (BrLightPair *)specMem, pSkyAng,
+        BrLightDirsAndAngles(&g_BrDrawCombined, (BrLightPair *)br_ptr32(specMem), pSkyAng,
             pCam[12], pCam[13], pCam[14],
             pCarF[12] + eyeScale, pCarF[13],
             pCarF[14] + atOffset,
@@ -1798,7 +1798,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     {
         uint8_t iTex = *(const uint8_t *)((const unsigned char *)BrG_6C3308 + 0x811B);
         const unsigned char *pTexRecs =
-            *(const unsigned char *const *)((const unsigned char *)BrG_6C3308 + 0x8014);
+            BR_AT32(const unsigned char *, (const unsigned char *)BrG_6C3308 + 0x8014);
         /* Orig reads the 0x100ABAA0 mode-change flag DIRECTLY (cmp dword
          * [0x100abaa0],ebp); the port routed it through the BrBootGlobal_ABAA0
          * wrapper, which cannot inline across TUs at /O2.  g_AC300 is that flag. */
@@ -1853,7 +1853,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         if (dot > 0.0) {
             /* 0xB2CB -- glass pass. */
             BrGfxEmitTexCmd(6,
-                *(const void *const *)((const unsigned char *)BrG_6C3308 + 0x8014));
+                BR_AT32(const void *, (const unsigned char *)BrG_6C3308 + 0x8014));
             put(0xE7000000u, 0);
             put(0xBA001402u, 0x00100000u);
             put(0xB900031Du, g_BrDrawModeBase | g_BrDrawRenderMode);
@@ -1883,7 +1883,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
 
     /* 0xB4AA -- detail pass. */
     BrGfxEmitTexCmd(3,
-        *(const void *const *)((const unsigned char *)BrG_6C3308 + 0x8014));
+        BR_AT32(const void *, (const unsigned char *)BrG_6C3308 + 0x8014));
     put(0xE7000000u, 0);
     put(0xBA001402u, 0x00100000u);
     put(0xB900031Du, g_BrDrawModeBase | g_BrDrawRenderMode);
