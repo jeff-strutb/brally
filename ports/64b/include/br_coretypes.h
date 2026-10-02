@@ -160,10 +160,16 @@ typedef void (*PhaseEnterFn)(struct Phase *);
 
 typedef struct PwSeg { BrVec2 a, b; int f10; } PwSeg;
 
+/* A node of the track's path ring: a record in the loaded track image, so
+ * its links are the file's 32-bit addresses (rebased by BrTrackFixupSegRec
+ * to br_addr32 values); read them through BR_PTR32. */
 typedef struct BrAiPathNode {
-    struct BrAiPathNode *pNext;  /* +0x00 */
-    struct BrAiPathNode *pSib;   /* +0x04 */
-    uint8_t   a08[0x14 - 0x08];
+    uint32_t  aNext;             /* +0x00  BrAiPathNode */
+    uint32_t  aSib;              /* +0x04  BrAiPathNode */
+    uint32_t  a08, a0C;          /* +0x08 */
+    uint8_t   f10;               /* +0x10 */
+    uint8_t   f11;               /* +0x11  cleared by 0x10061660 */
+    uint8_t   f12[2];            /* +0x12 */
     uint16_t  count;             /* +0x14 */
     uint16_t  flags;             /* +0x16  bit 0 = skip this node          */
     uint8_t   a18[0x40 - 0x18];

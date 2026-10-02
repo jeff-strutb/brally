@@ -387,9 +387,9 @@ void BR_THISCALL1 BrCtlAiBody(BrAiCar *pCar)
             t -= pNode->aPt[i].arc - pNode->aPt[i + 1].arc;
             i++;
             if (i == pNode->count) {
-                pNode = pNode->pNext;
+                pNode = BR_PTR32(BrAiPathNode *, pNode->aNext);
                 while (pNode->flags & 1)
-                    pNode = pNode->pSib;
+                    pNode = BR_PTR32(BrAiPathNode *, pNode->aSib);
                 i = 0;
             }
         } while (t >= 0.0f);

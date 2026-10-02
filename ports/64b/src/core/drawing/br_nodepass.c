@@ -51,9 +51,9 @@ void BrNodeMarkPass(BrNode *pNode)
             if (f11 == 2 && (g_Br0B380C == 3 || g_Br0B380C == 9)) {
                 pNode->f11 = 0;
             }
-            BrNodeMarkPass(pNode->f00);
+            BrNodeMarkPass(BR_PTR32(BrNode *, pNode->aNext));
         }
-        pNode = pNode->f04;
+        pNode = BR_PTR32(BrNode *, pNode->aSib);
     }
 }
 
@@ -65,11 +65,11 @@ void BrNodeClearMarkPass(BrNode *pNode)
 {
     while (pNode != NULL) {
         if (pNode->flags & BR_NODE_FLAG_MARK) {
-            BrNode *pChild = pNode->f00;
+            BrNode *pChild = BR_PTR32(BrNode *, pNode->aNext);
             pNode->flags = (uint16_t)(pNode->flags & 0x7FFFu);
             BrNodeClearMarkPass(pChild);
         }
-        pNode = pNode->f04;
+        pNode = BR_PTR32(BrNode *, pNode->aSib);
     }
 }
 

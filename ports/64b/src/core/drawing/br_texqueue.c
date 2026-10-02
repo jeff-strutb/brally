@@ -46,12 +46,12 @@ typedef int (*funcptr)();
  * texture re-download ring at 0x118EC998, wrapping the write index at 0x100. */
 /* @implements 0x1006E1D0 glide BrTexQueuePush */
 
-void BrTexQueuePush(int param_1,int param_2)
+void BrTexQueuePush(int param_1, void *param_2)
 
 {
   WaitForSingleObject(g_br18AA0A0,0xffffffff);
-  *(int *)(&DAT_118ec998 + g_br18A9878 * 8) = param_1;
-  *(int *)(&DAT_118ec99c + g_br18A9878 * 8) = param_2;
+  g_aBrTexQueue[g_br18A9878].id = param_1;
+  g_aBrTexQueue[g_br18A9878].pPix = param_2;
   g_br18A9878 = g_br18A9878 + 1;
   if (g_br18A9878 >= 0x100) {
     g_br18A9878 = 0;
@@ -69,8 +69,7 @@ void BrTexQueuePop(void)
 {
   WaitForSingleObject(g_br18AA0A0,0xffffffff);
   if (g_br18AA098 != g_br18A9878) {
-    (*DAT_118ed1d0)(*(int *)(&DAT_118ec998 + g_br18AA098 * 8),
-                    *(int *)(&DAT_118ec99c + g_br18AA098 * 8));
+    DAT_118ed1d0(g_aBrTexQueue[g_br18AA098].id, (int *)g_aBrTexQueue[g_br18AA098].pPix);
     g_br18AA098 = g_br18AA098 + 1;
     if (g_br18AA098 >= 0x100) {
       g_br18AA098 = 0;

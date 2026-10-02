@@ -354,7 +354,7 @@ int32_t BrRallyMain(void *hInstance, void *hPrevInstance,
         strcat((*(char (*)[])&g_navArg), "BossRally.cfg");
 
         path.psz = (*(char (*)[])&g_navArg);
-        BrCtrlCfgReadFile((*(uint8_t (*)[])&g_BrCtrlCfg), path);    /* 0x1001CD12 */
+        BrCtrlCfgReadFile((*(uint8_t (*)[])&g_BrCtrlCfg), path.psz);    /* 0x1001CD12 */
 
         if (BrWindowCreate() != 0) {           /* 0x1001CD17 */
             BrDPlayBootInit();                 /* 0x1001CD20 */

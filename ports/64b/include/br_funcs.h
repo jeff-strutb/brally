@@ -71,7 +71,6 @@ struct BrMenuItem;
 struct BrModelView;
 struct BrNameList;
 struct BrNetState;
-struct BrNode;
 struct BrObj29D4;
 struct BrObjA9D008;
 struct BrObjHeader;
@@ -468,7 +467,7 @@ void BrCarSlotLoad(int, void *, int);
 #pragma pop_macro("BrCarSlotLoad")
 #pragma push_macro("BrCarSlotSetup_1006FCE0")
 #undef BrCarSlotSetup_1006FCE0
-void BrCarSlotSetup_1006FCE0(void *, int, int);
+void BrCarSlotSetup_1006FCE0(void *, int, void *);
 #pragma pop_macro("BrCarSlotSetup_1006FCE0")
 #pragma push_macro("BrCarStartInit_1005E7B0")
 #undef BrCarStartInit_1005E7B0
@@ -2494,7 +2493,7 @@ void * BrModelLoad(void *, const char *);
 #pragma pop_macro("BrModelLoad")
 #pragma push_macro("BrModelSlotApply")
 #undef BrModelSlotApply
-int BrModelSlotApply(struct BrDriverCar *, int);
+void BrModelSlotApply(struct BrDriverCar *, struct BrDriver *);
 #pragma pop_macro("BrModelSlotApply")
 #pragma push_macro("BrModelSwap")
 #undef BrModelSwap
@@ -2730,11 +2729,11 @@ void BrNodeChainReset_1000F460(void);
 #pragma pop_macro("BrNodeChainReset_1000F460")
 #pragma push_macro("BrNodeClearMarkPass")
 #undef BrNodeClearMarkPass
-void BrNodeClearMarkPass(struct BrNode *);
+void BrNodeClearMarkPass(struct BrAiPathNode *);
 #pragma pop_macro("BrNodeClearMarkPass")
 #pragma push_macro("BrNodeMarkPass")
 #undef BrNodeMarkPass
-void BrNodeMarkPass(struct BrNode *);
+void BrNodeMarkPass(struct BrAiPathNode *);
 #pragma pop_macro("BrNodeMarkPass")
 #pragma push_macro("BrNodeRunMarkPass")
 #undef BrNodeRunMarkPass
@@ -3432,6 +3431,10 @@ int BrRaceDifficultySet(int);
 #undef BrRaceDriverAnim
 void BrRaceDriverAnim(struct BrDriver *);
 #pragma pop_macro("BrRaceDriverAnim")
+#pragma push_macro("BrRaceGateStep")
+#undef BrRaceGateStep
+void BrRaceGateStep(struct BrDriver *);
+#pragma pop_macro("BrRaceGateStep")
 #pragma push_macro("BrRaceDriverPost")
 #undef BrRaceDriverPost
 void BrRaceDriverPost(void *);
@@ -4518,7 +4521,7 @@ void BrTexQueuePop(void);
 #pragma pop_macro("BrTexQueuePop")
 #pragma push_macro("BrTexQueuePush")
 #undef BrTexQueuePush
-void BrTexQueuePush(int, int);
+void BrTexQueuePush(int, void *);
 #pragma pop_macro("BrTexQueuePush")
 #pragma push_macro("BrTexResample")
 #undef BrTexResample
@@ -5270,7 +5273,7 @@ void BrWheelSuspensionSetZ(struct BrCarBody *);
 #pragma pop_macro("BrWheelSuspensionSetZ")
 #pragma push_macro("BrWindowCreate")
 #undef BrWindowCreate
-int BrWindowCreate(const struct BrWindowOps *);
+int BrWindowCreate(void);
 #pragma pop_macro("BrWindowCreate")
 #pragma push_macro("BrWindowEarStartup")
 #undef BrWindowEarStartup

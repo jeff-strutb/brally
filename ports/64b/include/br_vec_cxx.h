@@ -110,5 +110,6 @@ static inline void BrVec3Zero(float * a0) { BrVec3Zero((struct BrVec3 *)a0); }
  * callers pass them whatever the call site had; C accepts that through an
  * unprototyped declaration, C++ needs the arguments taken and ignored. */
 static inline int BrPodNop(int, ...) { return BrPodNop(); }
+static inline int BrPodNop(const volatile void *, ...) { return BrPodNop(); }
 #endif
 #endif

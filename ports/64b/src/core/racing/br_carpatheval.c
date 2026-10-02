@@ -105,10 +105,10 @@ void BR_THISCALL1 BrCarPathEval(BrDriverCar *pCar)
     iSeg = param_1->iPt.v;
     local_64 = iSeg + 1;
     if (local_64 == pNode6->count) {
-      pNode10 = pNode6->pNext;
+      pNode10 = BR_PTR32(BrAiPathNode *, pNode6->aNext);
       bVar4 = (unsigned char)pNode10->flags;
       while ((bVar4 & 1) != 0) {
-        pNode10 = pNode10->pSib;
+        pNode10 = BR_PTR32(BrAiPathNode *, pNode10->aSib);
         bVar4 = (unsigned char)pNode10->flags;
       }
       local_64 = 0;

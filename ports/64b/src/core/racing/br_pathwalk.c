@@ -94,7 +94,7 @@ void BrPathWalk(PwNode *pNode, float dist)
     (*(int *)&DAT_10b1cea4) = 0;
     for (;;) {
         while (pNode != 0 && ((*(unsigned short *)&((BrAiPathNode *)(pNode))->flags) & 1) != 0)
-            pNode = (*(struct PwNode * *)&((BrAiPathNode *)(pNode))->pSib);
+            pNode = BR_PTR32(struct PwNode *, ((BrAiPathNode *)(pNode))->aSib);
         if (pNode == 0)
             return;
         for (i = 0; i < (*(unsigned short *)&((BrAiPathNode *)(pNode))->count); i++) {
@@ -128,7 +128,7 @@ void BrPathWalk(PwNode *pNode, float dist)
                 }
             }
         }
-        pNode = (*(struct PwNode * *)&((BrAiPathNode *)(pNode))->pNext);
+        pNode = BR_PTR32(struct PwNode *, ((BrAiPathNode *)(pNode))->aNext);
     }
 }
 
@@ -157,7 +157,7 @@ void BrRacePathAdvance(RcNode *pNode, int index, float ratio, float dist)
          * separate `if (pNode == 0) return` before it; with one, VC5 rotates
          * the node loop (+15 B, a second epilogue). */
         while (pNode != 0 && (pNode->flags & 1) != 0)
-            pNode = pNode->pSib;
+            pNode = BR_PTR32(BrAiPathNode *, pNode->aSib);
         if (pNode == 0)                 /* 0x1005ED11 */
             return;
 
@@ -187,7 +187,7 @@ void BrRacePathAdvance(RcNode *pNode, int index, float ratio, float dist)
             ratio = 1.0f;               /* 0x1005ED59 */
         }
 
-        pNode = pNode->pNext;           /* 0x1005ED67 */
+        pNode = BR_PTR32(BrAiPathNode *, pNode->aNext);           /* 0x1005ED67 */
         index = 0;
     }
 }

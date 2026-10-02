@@ -38,13 +38,11 @@ public:
 extern "C" {
 /* 64-bit core: g_cur is defined once, in br_globals.c */
 /* 64-bit core: g_active is defined once, in br_globals.c */
-int (*(int *)&DAT_105ccb68[19]), (*(int *)&DAT_105ccb68[18]), BrGbiRectG_A7514, g_scrW4, BrGbiRectG_A7518, (*(int *)&g_brRaceCueBase);
 /* 64-bit core: g_vidMode is defined once, in br_globals.c */
 /* 64-bit core: g_demoFlag is defined once, in br_globals.c */
 /* 64-bit core: g_time is defined once, in br_globals.c */
 /* 64-bit core: g_mode is defined once, in br_globals.c */
 /* 64-bit core: g_b3014 is defined once, in br_globals.c */
-int g_226e7c, g_226e80;
 /* 64-bit core: g_b71530 is defined once, in br_globals.c */
 /* 64-bit core: g_b71534 is defined once, in br_globals.c */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */

@@ -93,37 +93,11 @@ extern "C" {  /* BR_CLINK_BEGIN: every original function has C linkage */
  * positional names.
  * ===================================================================== */
 
-/* +0x4C onwards: an array of 0x28-byte records.  Only two fields are read
- * by this packet.  f18 DECREASES along the array -- 0x10065B20 forms
- * pts[i].f18 - pts[i+1].f18 and treats it as a non-negative segment
- * length. */
-typedef struct BrPathPoint {
-    BrVec3  pos;                 /* +0x00 */
-    float   f0C, f10, f14;       /* +0x0C */
-    float   f18;                 /* +0x18  distance-remaining style scalar */
-    uint8_t f1C[0x28 - 0x1C];    /* +0x1C */
-} BrPathPoint;                   /* 0x28 */
-
 #define BR_NODE_FLAG_SKIP  0x0001u   /* bit 0 of the +0x16 word */
 #define BR_NODE_FLAG_MARK  0x8000u   /* bit 15, set by 0x10061660 */
 
-/* DEVIATION: the two leading pointers are 4 bytes in the 32-bit original,
- * so on a 64-bit host every offset after them shifts.  Nothing here overlays
- * this struct on foreign memory, and `pts` is a flexible array member so the
- * point stride stays sizeof(BrPathPoint) whatever the pointer width is.
- * The comments keep the ORIGINAL offsets. */
-typedef struct BrNode BrNode;
-struct BrNode {
-    BrNode  *f00;                /* +0x00 */
-    BrNode  *f04;                /* +0x04 */
-    uint8_t  f08[0x11 - 0x08];   /* +0x08 */
-    uint8_t  f11;                /* +0x11  cleared by 0x10061660 */
-    uint8_t  f12[0x14 - 0x12];   /* +0x12 */
-    uint16_t count;              /* +0x14  number of point records */
-    uint16_t flags;              /* +0x16 */
-    uint8_t  f18[0x4C - 0x18];   /* +0x18 */
-    BrPathPoint pts[];           /* +0x4C  `count` + 1 records, see below */
-};
+/* The node this packet walks is the track's path node (br_coretypes.h). */
+typedef struct BrAiPathNode BrNode;
 
 /* =====================================================================
  * The 2D segment table walked alongside the path (0x106C7CE0)

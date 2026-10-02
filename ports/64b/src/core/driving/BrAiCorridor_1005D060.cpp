@@ -183,14 +183,14 @@ unsigned Car5D060::Scan(int depth, int mid, Node5D060 *pNode)
 
 tail:
     if (++mid == (*(unsigned short *)&((BrAiPathNode *)(pNode))->count)) {
-        pNode = (*(Node5D060 * *)&((BrAiPathNode *)(pNode))->pNext);
+        pNode = BR_PTR32(Node5D060 *, ((BrAiPathNode *)(pNode))->aNext);
         if (pNode == 0)
             pNode = (Node5D060 *)(BR_PTR32(Node5D060 *, g_brTrkHdr.aPathRoot));
         if (pNode != 0) {
             next = depth + 1;
             do {
                 ret |= Scan(next, 0, pNode);
-                pNode = (*(Node5D060 * *)&((BrAiPathNode *)(pNode))->pSib);
+                pNode = BR_PTR32(Node5D060 *, ((BrAiPathNode *)(pNode))->aSib);
             } while (pNode != 0);
         }
     } else {

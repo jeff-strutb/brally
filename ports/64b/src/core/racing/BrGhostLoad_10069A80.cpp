@@ -75,7 +75,6 @@ extern "C" {
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 extern float DAT_10077bec;                   /* option B's scale           */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-extern int   DAT_105bc8e4, DAT_105bc8e8, DAT_105bc8ec;  /* its tail dwords */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
@@ -128,6 +127,7 @@ bool BrGhostLoad(char *path, int arg)
     FILE        *fp;
     unsigned int len;
     unsigned int checksum;
+    uint32_t     cb;    /* the original reuses `path` as this byte count */
 
     fp = fopen(path, DAT_1007b0e0);
     if (fp == 0)
@@ -135,51 +135,52 @@ bool BrGhostLoad(char *path, int arg)
 
     if (fread(DAT_117a6188, 1, 4, fp) != 4)
         { fclose(fp); goto fail; }
-    if (strncmp(DAT_117a6188, (*(char (*)[])&DAT_100b51e4[960]), 4) != 0)
+    if (strncmp((const char *)DAT_117a6188, (*(char (*)[])&DAT_100b51e4[960]), 4) != 0)
         { fclose(fp); goto fail; }
     if (fread(&len, 4, 1, fp) != 1)
         { fclose(fp); goto fail; }
 
     if (len >= 0xc) {
-        path = (char *)len;
+        cb = len;
     } else {
-        if (len != 0 || fread(&path, 1, 4, fp) != 4)
+        if (len != 0 || fread(&cb, 1, 4, fp) != 4)
             { fclose(fp); goto fail; }
     }
-    path -= 4;
+    cb -= 4;
     if (fread(&checksum, 1, 4, fp) != 4)
         { fclose(fp); goto fail; }
     if (len < 0xc) {
-        path -= 4;
+        cb -= 4;
         if (fread(&(*(int *)&g_brTime5C24), 1, 4, fp) != 4)
             { fclose(fp); goto fail; }
-        path -= 4;
+        cb -= 4;
         if (fread(&g_brTime5C20, 1, 4, fp) != 4)
             { fclose(fp); goto fail; }
     }
-    path -= 0x10;
-    if (fread((g_aBrRaceBeginRec[0]), 1, 0x10, fp) != 0x10)
+    cb -= 0x10;
+    if (fread(g_aBrRaceBeginRec, 1, 0x10, fp) != 0x10)
         { fclose(fp); goto fail; }
-    if (fread(BrReplayGetBuf2(), 1, (size_t)path, fp) != (size_t)path)
+    if (fread(BrReplayGetBuf2(), 1, cb, fp) != cb)
         { fclose(fp); goto fail; }
     {
-        unsigned int sum = FUN_10001000(0, 0, 0);
+        unsigned int sum = (unsigned int)BrAdler32(0, 0, 0);
         if (len < 0xc) {
-            sum = FUN_10001000(sum, &(*(int *)&g_brTime5C24), 4);
-            sum = FUN_10001000(sum, &g_brTime5C20, 4);
+            sum = (unsigned int)BrAdler32(sum, (const unsigned char *)&g_brTime5C24, 4);
+            sum = (unsigned int)BrAdler32(sum, (const unsigned char *)&g_brTime5C20, 4);
         }
-        sum = FUN_10001000(sum, (g_aBrRaceBeginRec[0]), 0x10);
-        sum = FUN_10001000(sum, BrReplayGetBuf2(), (size_t)path);
+        sum = (unsigned int)BrAdler32(sum, g_aBrRaceBeginRec, 0x10);
+        sum = (unsigned int)BrAdler32(sum, (const unsigned char *)BrReplayGetBuf2(), (unsigned int)cb);
         if (checksum == sum)
             goto install;
     }
 fail:
     *(float *)&g_brTime5C20 = 0.0f;
-    *(int *)(g_aBrRaceBeginRec[0]) = -1;
+    *(int *)g_aBrRaceBeginRec = -1;
     *(float *)&(*(int *)&g_brTime5C24) = 0.0f;
-    DAT_105bc8e4 = -1;
-    DAT_105bc8e8 = -1;
-    DAT_105bc8ec = -1;
+    /* the header's three tail dwords */
+    *(int32_t *)&g_aBrRaceBeginRec[4] = -1;
+    *(int32_t *)&g_aBrRaceBeginRec[8] = -1;
+    *(int32_t *)&g_aBrRaceBeginRec[12] = -1;
     return (char)arg != 0;
 install:
     {
@@ -187,13 +188,13 @@ install:
         unsigned int count;
 
         (*(int *)&g_brRace5BC8D8) = 0x10;
-        count = BrReplayCountFromBytes((size_t)path);
+        count = BrReplayCountFromBytes(cb);
         if (len >= 0xc) {
             (*(int *)&g_brTime5C24) = 0;
             *(float *)&g_brTime5C20 = (float)((int)count - 0xcc) * DAT_10077bec;
         }
-        *(unsigned short *)((*(BrSelInM * *)&g_aBrRaceCar[0].pEquip) + 0xf2) |= (unsigned short)(1 << (g_aBrRaceBeginRec[0])[0]);
-        *(unsigned short *)((*(BrSelInM * *)&g_aBrRaceCar[0].pEquip) + 0xf0) |= (unsigned short)(1 << (g_aBrRaceBeginRec[0])[1]);
+        *(unsigned short *)(g_aBrRaceCar[0].pEquip + 0xf2) |= (unsigned short)(1 << g_aBrRaceBeginRec[0]);
+        *(unsigned short *)(g_aBrRaceCar[0].pEquip + 0xf0) |= (unsigned short)(1 << g_aBrRaceBeginRec[1]);
         fseek(fp, 0, 2);
         n = ftell(fp);
         fseek(fp, n - 0x98, 0);

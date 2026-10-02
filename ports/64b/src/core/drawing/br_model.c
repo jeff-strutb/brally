@@ -132,41 +132,40 @@ void BrMakeEnemyCarColorPanels(unsigned char *pCar)
 /* WHAT IT DOES: apply texture slots from one model record to another, including optional extra slots when enabled. */
 /* @implements 0x1005F220 glide BrModelSlotApply */
 
-int BrModelSlotApply(BrDriverCar *param_1,int param_2)
+void BrModelSlotApply(BrDriverCar *param_1, BrDriver *param_2)
 
 {
+  const uint8_t *m = (const uint8_t *)param_1->pModel;
+  void **aptex = param_2->aptex;
   int iVar1;
   int iVar2;
-  
+
   iVar2 = 0;
-  iVar1 = *(int *)(((char *)param_1->pModel) + 0x7c);
+  iVar1 = *(const int32_t *)(m + 0x7c);
   if (0 < iVar1) {
     do {
-      BrTexQueuePush(*(int *)(((char *)param_1->pModel) + 4 + iVar2 * 4),
-                   *(int *)(*(int *)(param_2 + 0x78) + iVar2 * 4));
+      BrTexQueuePush(*(const int32_t *)(m + 4 + iVar2 * 4), aptex[iVar2]);
       iVar2 = iVar2 + 1;
     } while (iVar2 < iVar1);
   }
-  iVar2 = BR_LP64_PTR_AS_INT(param_1->pModel);
-  if ((*(int *)(*(int *)(iVar2 + 0x8014) + 4 + (unsigned int)*(unsigned char *)(iVar2 + 0x811b) * 0x24) != 0) &&
+  if ((*(const uint32_t *)(BR_AT32(const uint8_t *, m + 0x8014) + 4 + (unsigned int)m[0x811b] * 0x24) != 0) &&
      ((*(int *)&g_AC300) == 0)) {
-    if (*(int *)(iVar2 + 0x84) != 0) {
-      BrTexQueuePush(*(int *)(iVar2 + 0x84),*(int *)(*(int *)(param_2 + 0x78) + iVar1 * 4));
+    if (*(const int32_t *)(m + 0x84) != 0) {
+      BrTexQueuePush(*(const int32_t *)(m + 0x84), aptex[iVar1]);
     }
-    iVar2 = *(int *)(((char *)param_1->pModel) + 0x88);
+    iVar2 = *(const int32_t *)(m + 0x88);
     if (iVar2 != 0) {
-      BrTexQueuePush(iVar2,*(int *)(*(int *)(param_2 + 0x78) + 4 + iVar1 * 4));
+      BrTexQueuePush(iVar2, aptex[iVar1 + 1]);
     }
-    iVar2 = *(int *)(((char *)param_1->pModel) + 0x8c);
+    iVar2 = *(const int32_t *)(m + 0x8c);
     if (iVar2 != 0) {
-      BrTexQueuePush(iVar2,*(int *)(*(int *)(param_2 + 0x78) + 8 + iVar1 * 4));
+      BrTexQueuePush(iVar2, aptex[iVar1 + 2]);
     }
-    iVar2 = *(int *)(((char *)param_1->pModel) + 0x90);
+    iVar2 = *(const int32_t *)(m + 0x90);
     if (iVar2 != 0) {
-      BrTexQueuePush(iVar2,*(int *)(*(int *)(param_2 + 0x78) + 0xc + iVar1 * 4));
+      BrTexQueuePush(iVar2, aptex[iVar1 + 3]);
     }
   }
-  return;
 }
 
 

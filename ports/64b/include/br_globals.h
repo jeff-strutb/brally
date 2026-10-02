@@ -4440,7 +4440,7 @@ extern int DAT_105bc8dc;  /* 0x105BC8DC */
 #pragma pop_macro("DAT_105bc8dc")
 #pragma push_macro("g_aBrRaceBeginRec")
 #undef g_aBrRaceBeginRec
-extern uint8_t g_aBrRaceBeginRec[8];  /* 0x105BC8E0 */
+extern uint8_t g_aBrRaceBeginRec[0x10];  /* 0x105BC8E0, the 0x10-byte ghost header */
 #pragma pop_macro("g_aBrRaceBeginRec")
 #pragma push_macro("g_5BC8E8")
 #undef g_5BC8E8
@@ -7406,14 +7406,9 @@ extern uint32_t DAT_118ec98c;  /* 0x118EC98C */
 #undef g_br18A9878
 extern int32_t g_br18A9878;  /* 0x118EC990 */
 #pragma pop_macro("g_br18A9878")
-#pragma push_macro("DAT_118ec998")
-#undef DAT_118ec998
-extern char DAT_118ec998;  /* 0x118EC998 */
-#pragma pop_macro("DAT_118ec998")
-#pragma push_macro("DAT_118ec99c")
-#undef DAT_118ec99c
-extern char DAT_118ec99c;  /* 0x118EC99C */
-#pragma pop_macro("DAT_118ec99c")
+/* The texture re-download ring BrTexQueuePush/Pop share: (id, pixels). */
+typedef struct BrTexQueueEnt { int32_t id; void *pPix; } BrTexQueueEnt;
+extern BrTexQueueEnt g_aBrTexQueue[0x100];  /* 0x118EC998 */
 #pragma push_macro("BrGbiRectG_18ED198")
 #undef BrGbiRectG_18ED198
 extern int BrGbiRectG_18ED198;  /* 0x118ED198 */
@@ -7464,7 +7459,7 @@ extern funcptr DAT_118ed1cc;  /* 0x118ED1CC */
 #pragma pop_macro("DAT_118ed1cc")
 #pragma push_macro("DAT_118ed1d0")
 #undef DAT_118ed1d0
-extern funcptr DAT_118ed1d0;  /* 0x118ED1D0 */
+extern void (*DAT_118ed1d0)(int, int *);  /* 0x118ED1D0 */
 #pragma pop_macro("DAT_118ed1d0")
 #pragma push_macro("DAT_118ed1d4")
 #undef DAT_118ed1d4

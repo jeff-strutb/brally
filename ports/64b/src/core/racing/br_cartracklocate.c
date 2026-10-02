@@ -52,7 +52,7 @@ unsigned int BR_THISCALL1 BrCarTrackLocate(BrDriverCar *param_1)
   float fVar3;
   float fVar4;
   float fVar5;
-  int iVar6;
+  BrAiPathNode *iVar6;
   float fVar7;
   float fVar8;
   float fVar9;
@@ -60,22 +60,24 @@ unsigned int BR_THISCALL1 BrCarTrackLocate(BrDriverCar *param_1)
   float fVar16;
   int bVar11;
   BrAiPathNode *iVar12;
-  BrAiPathNode *iVar13;
+  int iVar13;
+  const BrAiPathPt *pPt;
   float *pfVar14;
   int iVar15;
   float local_34;
-  BrAiPathNode *local_30;
+  int local_30;
   int local_3c;
   float local_18[3];
   float local_c[3];
   unsigned char local_46;
   unsigned char local_45;
+  const uint32_t *aSeg = BR_PTR32(const uint32_t *, g_brTrkHdr.aSegList);
 
   local_3c = -1;
   fVar3 = param_1->pos.x;
   fVar4 = param_1->pos.y;
   fVar5 = param_1->pos.z;
-  iVar1 = ((void *)&param_1->pos.x);
+  iVar1 = &param_1->pos;
   local_46 = param_1->f29BC;
   local_45 = param_1->f29BD;
   local_30 = 0;
@@ -89,15 +91,14 @@ unsigned int BR_THISCALL1 BrCarTrackLocate(BrDriverCar *param_1)
   fVar7 = param_1->fFF4 -
           (float)param_1->lapB * BR_PTR32(BrAiPathNode *, g_brTrkHdr.aPathRoot)->aPt[0].arc;
   if (bVar11) {
-    iVar12 = *(int *)&param_1->pNode + *(int *)&param_1->iPt * 0x28;
-    iVar12 = BrSeg2SideTest(iVar12 + 0x40, iVar12 + 0x58, ((void *)&param_1->posPrev.x), iVar1);
-    if (((iVar12 == 0) &&
-         (iVar12 = *(int *)&param_1->pNode + *(int *)&param_1->iPt * 0x28,
-          iVar12 = BrSeg2SideTest(iVar12 + 0x68, iVar12 + 0x80, ((void *)&param_1->posPrev.x), iVar1), iVar12 == 0)) &&
-        ((float)BrVec3Dist(iVar1, *(int *)&param_1->pNode + 0x4c + *(int *)&param_1->iPt * 0x28) <
-         DAT_10077c30)) {
-      iVar12 = *(int *)&param_1->pNode;
-      local_3c = *(int *)&param_1->iPt;
+    pPt = &param_1->pNode.p->aPt[param_1->iPt.v];
+    if ((BrSeg2SideTest((const BrVec2 *)&pPt[0].left, (const BrVec2 *)&pPt[0].right,
+                        (const BrVec2 *)&param_1->posPrev, (const BrVec2 *)iVar1) == 0 &&
+         BrSeg2SideTest((const BrVec2 *)&pPt[1].left, (const BrVec2 *)&pPt[1].right,
+                        (const BrVec2 *)&param_1->posPrev, (const BrVec2 *)iVar1) == 0) &&
+        (float)BrVec3Dist(iVar1, &pPt[0].centre) < DAT_10077c30) {
+      iVar12 = param_1->pNode.p;
+      local_3c = (int)param_1->iPt.v;
       goto LAB_found;
     }
   }
@@ -106,21 +107,21 @@ unsigned int BR_THISCALL1 BrCarTrackLocate(BrDriverCar *param_1)
   iVar12 = BR_PTR32(BrAiPathNode *, g_brTrkHdr.aPathRoot);
   if (0 < g_brTrkHdr.cSegList) {
     do {
+      iVar6 = BR_PTR32(BrAiPathNode *, aSeg[iVar13]);
       if ((((((param_1->f140 < (*(int *)&g_brRaceNEntrant)) || ((*(int *)&g_brRaceRules.mode) == 2)) ||
-             ((*(unsigned char *)(*(int *)(DAT_106eed50 + iVar13 * 4) + 0x16) & 1) == 0)) &&
-            ((iVar6 = *(int *)(DAT_106eed50 + iVar13 * 4), local_46 >= *(unsigned char *)(iVar6 + 0x10) &&
-              (local_46 <= *(unsigned char *)(iVar6 + 0x12))))) &&
-           ((local_45 >= *(unsigned char *)(iVar6 + 0x11) && (local_45 <= *(unsigned char *)(iVar6 + 0x13))))) &&
+             (iVar6->flags & 1) == 0) &&
+            (local_46 >= iVar6->f10 && local_46 <= iVar6->f12[0])) &&
+           (local_45 >= iVar6->f11 && local_45 <= iVar6->f12[1])) &&
           ((bVar11 == 0 ||
-            (((*(float *)(iVar12 + 100) - *(float *)(iVar6 + 100)) - fVar7 <= DAT_10077c34 &&
-              (fVar7 - (*(float *)(iVar12 + 100) -
-                        *(float *)(iVar6 + 100 + (unsigned int)*(unsigned short *)(iVar6 + 0x14) * 0x28)) <=
-               DAT_10077c34)))))) {
+            (((iVar12->aPt[0].arc - iVar6->aPt[0].arc) - fVar7 <= DAT_10077c34 &&
+              (fVar7 - (iVar12->aPt[0].arc - iVar6->aPt[iVar6->count].arc)) <= DAT_10077c34))))) {
         iVar15 = 0;
-        uVar2 = *(unsigned short *)(iVar6 + 0x14);
+        uVar2 = iVar6->count;
         if (uVar2 != 0) {
-          pfVar14 = (float *)(iVar6 + 0x54);
+          pfVar14 = &iVar6->aPt[0].centre.z;
           do {
+            /* pfVar14 walks the points' centre.z, stride 10 floats:
+             * [-5] left.x  [-4] left.y  [-2..0] centre  [1] right.x  [2] right.y */
             fVar9 = pfVar14[-2] - fVar3;
             fVar8 = pfVar14[-1] - fVar4;
             fVar10 = *pfVar14 - fVar5;
@@ -129,7 +130,7 @@ unsigned int BR_THISCALL1 BrCarTrackLocate(BrDriverCar *param_1)
               local_18[2] = 0.0f;
               local_18[0] = pfVar14[-4] - pfVar14[2];
               local_18[1] = pfVar14[1] - pfVar14[-5];
-              BrVec3Sub(local_c, iVar1, (int)(pfVar14 + -2));
+              BrVec3Sub(local_c, iVar1, (const BrVec3 *)(pfVar14 + -2));
               if (DAT_10077c38 <= (float)BrVec3Dot(local_18, local_c)) {
                 local_3c = iVar15;
                 local_34 = fVar8;
@@ -148,25 +149,24 @@ unsigned int BR_THISCALL1 BrCarTrackLocate(BrDriverCar *param_1)
   if (local_3c == -1) {
     return 0;
   }
-  iVar12 = *(int *)(DAT_106eed50 + local_30 * 4);
+  iVar12 = BR_PTR32(BrAiPathNode *, aSeg[local_30]);
 LAB_found:
-  local_18[0] = *(float *)(iVar12 + 0x44 + local_3c * 0x28) -
-                *(float *)(iVar12 + 0x5c + local_3c * 0x28);
-  iVar13 = iVar12 + local_3c * 0x28;
-  local_18[1] = *(float *)(iVar13 + 0x58) - *(float *)(iVar13 + 0x40);
+  pPt = &iVar12->aPt[local_3c];
+  local_18[0] = pPt->left.y - pPt->right.y;
+  local_18[1] = pPt->right.x - pPt->left.x;
   local_18[2] = 0.0f;
   br_dl_normalise(local_18);
-  BrVec3Sub(local_c, iVar1, iVar13 + 0x4c);
+  BrVec3Sub(local_c, iVar1, &pPt->centre);
   fVar16 = BrVec3Dot(local_18, local_c);
   fVar3 = (float)((float)(param_1->lapB + 1) * BR_PTR32(BrAiPathNode *, g_brTrkHdr.aPathRoot)->aPt[0].arc -
-                  *(float *)(iVar13 + 100) + fVar16 - param_1->fFF4);
+                  pPt->arc + fVar16 - param_1->fFF4);
   if ((bVar11 == 0) || ((fVar3 > DAT_10077c3c && (fVar3 < DAT_10077c34)))) {
     param_1->fFF4 = fVar3 + param_1->fFF4;
   }
   param_1->f0F94 = local_18[0];
   param_1->f0F9C = local_18[2];
-  *(int *)&param_1->pNode = iVar12;
-  *(int *)&param_1->iPt = local_3c;
+  param_1->pNode.p = iVar12;
+  param_1->iPt.v = (uint32_t)local_3c;
   param_1->f0F98 = local_18[1];
   return 1;
 }

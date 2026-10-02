@@ -89,7 +89,7 @@ static int32_t s_cEarStartupBodies;
 #include <windows.h>
 
 /* @implements 0x10019670 glide BrWindowCreate */
-int BrWindowCreate(const BrWindowOps *pOps)
+int BrWindowCreate(void)
 {
     WNDCLASSA wc;
     void     *hInst = (*(void * *)&s_args);
@@ -151,11 +151,6 @@ int BrWindowCreate(const BrWindowOps *pOps)
 /* FUN_10017910: prototype in br_funcs.h */
 /* FUN_1006d280: prototype in br_funcs.h */
 /* The resolved _EAR_DLL_* entry points -- all __stdcall. */
-extern int (__stdcall *(*(int (**)(int))&DAT_104b1658))(int);       /* AAA_Validate@4   */
-extern int (__stdcall *(*(int (**)(void *))&DAT_104b1634))(void *);    /* AssignHwnd@4     */
-extern int (__stdcall *(*(int (**)(int))&DAT_104b1668))(int);       /* InitializeEar@4  */
-extern int (__stdcall *(*(int (**)(void))&DAT_104b166c))(void);      /* GetLastError@0   */
-extern int (__stdcall *(*(int (**)(void))&DAT_104b1650))(void);      /* ShowLastError@0  */
 
 /* RESIDUE (11 masked diffs, T3a): esi/edi/ebx role rotation only --
  * orig homes hWnd in esi, MessageBoxA in edi, exit in ebx; we get the

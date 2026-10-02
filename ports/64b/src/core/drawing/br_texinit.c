@@ -266,7 +266,7 @@ void BrTexInit(void)
     (*(void (**)(void))&g_pfn18ED1C4) = BrTex3dCreate;
     (*(void (**)(void))&g_pfn18AA0B0) = BrGbiBlit;
     (*(void (**)(void))&DAT_118ed1cc) = BrTex3dMakeCurrent;
-    (*(void (**)(void))&DAT_118ed1d0) = BrTex3dReDownload;
+    DAT_118ed1d0 = BrTex3dReDownload;
     DAT_118ed1d4 = BrTexSlotFetchPixels;
     (*(void (**)(void))&g_BrGfxSubmit) = BrTex3dReconvert;
     (*(void (**)(void))&g_pfn18AA0C4) = BrGbiTexScanRun;

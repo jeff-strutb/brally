@@ -20,7 +20,6 @@
  *     (short) -- the original's `movzx ax, al`;
  *   - pCar is re-read through `this` for every statement (it is a member). */
 
-struct BrVec3 { float x, y, z; };
 
 class Car_623E0 {
 public:

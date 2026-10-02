@@ -1231,7 +1231,7 @@ int g_5BC88C;  /* 0x105BC88C */
 int32_t DAT_105bc8d0[2];  /* 0x105BC8D0 */
 int32_t g_brRace5BC8D8;  /* 0x105BC8D8 */
 int DAT_105bc8dc;  /* 0x105BC8DC */
-uint8_t g_aBrRaceBeginRec[8];  /* 0x105BC8E0 */
+uint8_t g_aBrRaceBeginRec[0x10];  /* 0x105BC8E0 */
 int g_5BC8E8;  /* 0x105BC8E8 */
 int g_5BC8EC;  /* 0x105BC8EC */
 int32_t DAT_105bc8f0[2];  /* 0x105BC8F0 */
@@ -2078,8 +2078,7 @@ void (*g_brTexSlot18AA0D0)(void);  /* 0x118AA0D0 */
 int BrGbiRectG_18EC988;  /* 0x118EC988 */
 uint32_t DAT_118ec98c;  /* 0x118EC98C */
 int32_t g_br18A9878;  /* 0x118EC990 */
-char DAT_118ec998;  /* 0x118EC998 */
-char DAT_118ec99c;  /* 0x118EC99C */
+BrTexQueueEnt g_aBrTexQueue[0x100];  /* 0x118EC998 */
 int BrGbiRectG_18ED198;  /* 0x118ED198 */
 uint32_t (*g_pfn18AA084)(uint32_t, uint32_t, void *);  /* 0x118ED19C */
 int DAT_118ed1a0;  /* 0x118ED1A0 */
@@ -2094,7 +2093,7 @@ int (*g_18ED1C0)(int, int, int, int, int, int, int, int);  /* 0x118ED1C0 */
 BrGbiBlitFn g_pfn18ED1C4;  /* 0x118ED1C4 */
 BrGbiTexCreateFn g_pfn18AA0B0;  /* 0x118ED1C8 */
 funcptr DAT_118ed1cc;  /* 0x118ED1CC */
-funcptr DAT_118ed1d0;  /* 0x118ED1D0 */
+void (*DAT_118ed1d0)(int, int *);  /* 0x118ED1D0 */
 void (*DAT_118ed1d4)(void);  /* 0x118ED1D4 */
 void (*g_BrGfxSubmit)(uint32_t);  /* 0x118ED1D8 */
 void (*g_pfn18AA0C4)(void *);  /* 0x118ED1DC */
