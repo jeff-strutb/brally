@@ -105,7 +105,7 @@
 void br_tex3d_end(uint8_t *p)
 {
     if (g_brTexScanRunEnd == 0)
-        g_brTexScanRunEnd = (int)p;
+        g_brTexScanRunEnd = (BrGfxWords *)p;
 }
 #define br_tex3d_end3(pTex, p, ppEnd) br_tex3d_end(p)
 
@@ -385,9 +385,8 @@ int BrTexTileUnpack(unsigned int *param_1)
 void BrTex3dRecCopyHead(int param_1,int param_2)
 
 {
-  *(int *)(DAT_106b7aa0 + param_1 * 0x2b4) = *(int *)(DAT_106b7aa0 + param_2 * 0x2b4);
-  *(int *)(DAT_106b7aa0 + 4 + param_1 * 0x2b4) =
-       *(int *)(DAT_106b7aa0 + 4 + param_2 * 0x2b4);
+  DAT_106b7aa0[param_1].hTex = DAT_106b7aa0[param_2].hTex;
+  DAT_106b7aa0[param_1].req.fTmu2 = DAT_106b7aa0[param_2].req.fTmu2;
   return;
 }
 
@@ -397,7 +396,7 @@ void BrTex3dRecCopyHead(int param_1,int param_2)
 void BrTex3dRecSet278(int param_1,int param_2)
 
 {
-  *(int *)(DAT_106b7aa0 + 0x278 + param_1 * 0x2b4) = param_2;
+  DAT_106b7aa0[param_1].req.f274 = param_2;
   return;
 }
 
@@ -515,7 +514,7 @@ void BrTex3dReDownload(int param_1,int *param_2)
 
 {
   if (param_1 != DAT_10697a4c) {
-    BrTex3dDownloadAt(*(int *)(DAT_106b7aa0 + param_1 * 0x2b4),param_2);
+    BrTex3dDownloadAt(DAT_106b7aa0[param_1].hTex,param_2);
   }
   return;
 }
@@ -527,10 +526,10 @@ void BrTex3dReDownload(int param_1,int *param_2)
 void BrTex3dReconvert(int param_1)
 
 {
-  int uVar1;
+  unsigned short *uVar1;
   
-  uVar1 = FUN_10027b60(DAT_106b7aa0 + 4 + param_1 * 0x2b4);
-  (*DAT_118ed1d0)(param_1,uVar1);
+  uVar1 = FUN_10027b60(&DAT_106b7aa0[param_1].req);
+  (*DAT_118ed1d0)(param_1,(int *)uVar1);
   return;
 }
 
@@ -582,57 +581,54 @@ void BrTex3dReconvert(int param_1)
 int * BrTexSlotFetchPixels(int param_1,int *param_2)
 
 {
-  int iVar1;
-  int iVar2;
+  BrTexReq272 *r = &DAT_106b7aa0[param_1].req;
+  void *pBmp;
   int *puVar3;
+  int iVar2;
   int iStack_c;
   int iStack_8;
   int iStack_4;
 
-  iVar1 = DAT_106b7aa0 + 4 + param_1 * 0x2b4;
-  /* The bitmap-handle test is read off iVar1, NOT off a second
-   * table+index expression: with the base+index written twice VC5 CSEs it
-   * into a register of its own (`lea eax,[ecx+eax*4]`, one instruction the
-   * original does not have) and every register role downstream follows. */
-  if (*(int *)(iVar1 + 0x268) != 0) {
+  /* The bitmap-handle test is read off the record, NOT off a second
+   * table+index expression (see the dossier above). */
+  if (r->f268 != 0) {
     puVar3 = &(*(int *)&DAT_1186c988);
-    iVar2 = FUN_10059fe0(*(int *)(iVar1 + 0x26c),*(int *)(iVar1 + 0x270),
-                         *(int *)(iVar1 + 0x274));
-    if (iVar2 != 0) {
-      BrBmpRect4Get(*(int *)(iVar1 + 0x26c),*(int *)(iVar1 + 0x270),&iStack_4,&param_1,
-                    &iStack_8,&iStack_c);
+    pBmp = FUN_10059fe0(r->f26c, r->f270, r->f274);
+    if (pBmp != 0) {
+      /* the crop rectangle: the second word lands in param_1, as in the
+       * original, which also returns it below when the decode fails */
+      BrBmpRect4Get(r->f26c, r->f270, &iStack_4, &param_1, &iStack_8, &iStack_c);
       if ((((iStack_4 == 0) && (param_1 == 0)) && (iStack_8 == 0)) && (iStack_c == 0))
       {
         iStack_4 = 0;
-        param_1 = *(int *)(iVar1 + 0x2a0) << 1;
+        param_1 = r->w2a0 << 1;
         iStack_8 = 0;
-        iStack_c = *(int *)(iVar1 + 0x2a4) << 1;
+        iStack_c = r->h2a4 << 1;
       }
-      iVar2 = FUN_1005a500(iVar2,iStack_4,param_1,iStack_8,iStack_c,&(*(int *)&DAT_1186c988),
-                           *(int *)(iVar1 + 0x2a0) << 1,*(int *)(iVar1 + 0x2a4) << 1);
+      iVar2 = FUN_1005a500((const unsigned char *)pBmp, iStack_4, param_1, iStack_8, iStack_c,
+                           (unsigned char *)&DAT_1186c988, r->w2a0 << 1, r->h2a4 << 1);
       if (iVar2 != 0) {
-        BrTexRgbaToArgb1555(&(*(int *)&DAT_1186c988),&(*(int *)&DAT_1186c988),
-                            *(int *)(iVar1 + 0x2a4) * *(int *)(iVar1 + 0x2a0) * 0x10);
-        iVar2 = *(int *)(iVar1 + 0x2a0) * 2;
-        if ((iVar2 != *(int *)(iVar1 + 8)) ||
-           (*(int *)(iVar1 + 0x2a4) * 2 != *(int *)(iVar1 + 0xc))) {
-          BrTexResample(&(*(int *)&DAT_105e1828),*(int *)(iVar1 + 8),*(int *)(iVar1 + 0xc),&(*(int *)&DAT_1186c988),
-                       iVar2,*(int *)(iVar1 + 0x2a4) << 1,*(int *)(iVar1 + 0x10));
+        BrTexRgbaToArgb1555((unsigned short *)&DAT_1186c988, (unsigned char *)&DAT_1186c988,
+                            r->h2a4 * r->w2a0 * 0x10);
+        iVar2 = r->w2a0 * 2;
+        if ((iVar2 != r->w) || (r->h2a4 * 2 != r->h)) {
+          BrTexResample((char *)&DAT_105e1828, r->w, r->h, (char *)&DAT_1186c988,
+                        iVar2, r->h2a4 << 1, r->fmt);
           puVar3 = &(*(int *)&DAT_105e1828);
         }
-        DAT_10697a60 = *(int *)(iVar1 + 0x29c);
+        DAT_10697a60 = r->cb29c;
         *param_2 = DAT_10697a60;
         return puVar3;
       }
     }
   }
   else {
-    puVar3 = (int *)FUN_10027b60(iVar1);
+    puVar3 = (int *)FUN_10027b60(r);
     *param_2 = DAT_10697a60;
     return puVar3;
   }
   *param_2 = DAT_10697a60;
-  return (int *)param_1;
+  return (int *)(intptr_t)param_1;
 }
 
 /* WHAT IT DOES: make the Glide texture from a filled BrTexReq272 -- skip
@@ -699,31 +695,34 @@ int BrTex3dRecInstall(int *pReq, int hTex)
   int      idx;
   unsigned int shift;
   float    f;
+  BrTexRecEnt *e;
+  const BrTexReq272 *q = (const BrTexReq272 *)pReq;
 
   idx = br_tex3d_append();
-  memcpy((void *)(DAT_106b7aa0 + 4 + idx * 0x2b4), pReq, 0xaa * 4);
-  *(int *)(DAT_106b7aa0 + idx * 0x2b4) = hTex;
-  *(float *)(DAT_106b7aa0 + 0x2ac + idx * 0x2b4) = 1.0f;
-  *(float *)(DAT_106b7aa0 + 0x2b0 + idx * 0x2b4) = 1.0f;
-  *(float *)(DAT_106b7aa0 + 0x2ac + idx * 0x2b4) *= 1.0f / 32.0f;
-  *(float *)(DAT_106b7aa0 + 0x2b0 + idx * 0x2b4) *= 1.0f / 32.0f;
-  *(float *)(DAT_106b7aa0 + 0x2ac + idx * 0x2b4) /= (float)*(int *)(DAT_106b7aa0 + 0x44 + idx * 0x2b4);
-  *(float *)(DAT_106b7aa0 + 0x2b0 + idx * 0x2b4) /= (float)*(int *)(DAT_106b7aa0 + 0x48 + idx * 0x2b4);
-  *(float *)(DAT_106b7aa0 + 0x2ac + idx * 0x2b4) *= 256.0f;
-  *(float *)(DAT_106b7aa0 + 0x2b0 + idx * 0x2b4) *= 256.0f;
+  e = &DAT_106b7aa0[idx];
+  memcpy(&e->req, pReq, sizeof(BrTexReq272));
+  e->hTex = hTex;
+  e->scaleS = 1.0f;
+  e->scaleT = 1.0f;
+  e->scaleS *= 1.0f / 32.0f;
+  e->scaleT *= 1.0f / 32.0f;
+  e->scaleS /= (float)e->req.wPow;
+  e->scaleT /= (float)e->req.hPow;
+  e->scaleS *= 256.0f;
+  e->scaleT *= 256.0f;
 
-  shift = pReq[pReq[0x16] * 0x10 + 0x22];
+  shift = (unsigned int)q->lv[q->iLevel][10];
   if (shift != 0) {
-    float *p = (float *)(DAT_106b7aa0 + 0x2ac + idx * 0x2b4);
+    float *p = &e->scaleS;
     if (shift <= 10)
       f = (float)(0x400 >> shift) * (1.0f / 1024.0f);
     else
       f = (float)(1 << (0x10 - shift));
     *p = f * *p;
   }
-  shift = pReq[pReq[0x16] * 0x10 + 0x23];
+  shift = (unsigned int)q->lv[q->iLevel][11];
   if (shift != 0) {
-    float *p = (float *)(DAT_106b7aa0 + 0x2b0 + idx * 0x2b4);
+    float *p = &e->scaleT;
     if (shift <= 10)
       f = (float)(0x400 >> shift) * (1.0f / 1024.0f);
     else
@@ -741,13 +740,13 @@ int BrTex3dRecInstall(int *pReq, int hTex)
  * spelling below is what makes every store live. */
 /* @implements 0x100272F0 glide BrTex3dCreate */
 
-int BrTex3dCreate(int param_1,int param_2,int param_3,int param_4,int param_5,
+int BrTex3dCreate(const void *param_1,const void *param_2,int param_3,int param_4,int param_5,
                  int param_6,int param_7,int param_8,int param_9,
                  int param_10,int param_11,int param_12,int param_13,int param_14,
                  int param_15)
 {
   int iVar2;
-  int uVar3;
+  unsigned short *uVar3;
   int iVar4;
   int iVar5;
   BrTexReq272 r;
@@ -796,8 +795,8 @@ int BrTex3dCreate(int param_1,int param_2,int param_3,int param_4,int param_5,
   _DAT_106b7aa4 = 0;
   r.fmt = BrTexFormatCode(r.lv[r.iLevel][1],r.lv[r.iLevel][0],0);
   r.cbTotal = FUN_10024df0(r.fmt) * iVar5 * iVar4;
-  r.p1 = param_1;
-  r.p2 = param_2;
+  r.p1 = (unsigned char *)param_1;
+  r.p2 = (unsigned char *)param_2;
   r.p8 = param_8;
   r.p9 = param_9;
   r.fClampS = (unsigned int)(param_10 != 0);
@@ -810,7 +809,7 @@ int BrTex3dCreate(int param_1,int param_2,int param_3,int param_4,int param_5,
   r.f260 = DAT_118ed1a0;
   r.cb29c = r.cbTotal;
   uVar3 = FUN_10027b60(&r);
-  return FUN_10027710(&r,uVar3);
+  return FUN_10027710((int *)&r,(int *)uVar3);
 }
 
 /* WHAT IT DOES: build a texture-creation request for a BLANK texture of the given size
@@ -822,7 +821,7 @@ int BrTex3dCreate(int param_1,int param_2,int param_3,int param_4,int param_5,
 int BrTex3dCreateBlank(int * param_1,int param_2,int param_3,int param_4)
 {
   int iVar2;
-  int uVar3;
+  unsigned short *uVar3;
   int iVar4;
   int iVar5;
   BrTexReq272 r;
@@ -858,7 +857,7 @@ int BrTex3dCreateBlank(int * param_1,int param_2,int param_3,int param_4)
   r.f5c = 1;
   r.fmt = param_4;
   r.cbTotal = FUN_10024df0(param_4) * iVar5 * iVar4;
-  r.p1 = param_1;
+  r.p1 = (unsigned char *)param_1;
   r.p2 = 0;
   r.p8 = 0;
   r.p9 = 0;
@@ -877,7 +876,7 @@ int BrTex3dCreateBlank(int * param_1,int param_2,int param_3,int param_4)
    * eax, and its callers (BrFontRegisterPages's two font sheets, ...) store
    * it.  Written `void` it matched all the same -- the value was already in
    * eax -- but said nothing was returned. */
-  return FUN_10027710(&r,uVar3);
+  return FUN_10027710((int *)&r,(int *)uVar3);
 }
 
 /* WHAT IT DOES: build a one-tile texture descriptor on the stack (same BrTexReq272
@@ -984,6 +983,7 @@ int BrTex3dRegister(void)
   unsigned short b;
   int id;
   int sMask;
+  unsigned short *pix;
   int h;
   int tMask;
   int w;
@@ -1154,7 +1154,7 @@ int BrTex3dRegister(void)
     r.w = wCur;
     r.h = hCur;
   }
-  if (((*(int *)&s_level) > 1) && BrKeyTableFind(r.p1,&r.w,&r.h)) {
+  if (((*(int *)&s_level) > 1) && BrKeyTableFind(br_addr32(r.p1),(uint32_t *)&r.w,(uint32_t *)&r.h)) {
     BrTexShiftFromSize(&r.aspect1,r.w,r.h);
     FUN_100275c0(&r.f20,r.w,r.h);
     d = r.aspect1 - DAT_106b7ab0;
@@ -1167,9 +1167,9 @@ int BrTex3dRegister(void)
      * so the & 2 test above compiles as the orig's test byte [f260],2 */
     r.f260 |= 0x80;
   }
-  sMask = FUN_10027b60(&r);
-  id = FUN_10027710(&r,sMask);
-  if (*(int *)(DAT_106b7aa0 + 0x26c + id * 0x2b4)) {
+  pix = FUN_10027b60(&r);
+  id = FUN_10027710((int *)&r,(int *)pix);
+  if (DAT_106b7aa0[id].req.f268) {
     slot = BrBmpGetHandle();
     if ((slot >= 0) && (slot < 8)) {
       (*(int (*)[])&g_BrX1829850)[slot] = id;
@@ -1181,23 +1181,23 @@ int BrTex3dRegister(void)
         BrPendListAdd(id);
       }
     }
-    else if (BrDevRecMatch(r.p2)) {
+    else if (BrDevRecMatch(br_addr32(r.p2))) {
       a = *(unsigned short *)r.p2;
       b = ((unsigned short *)r.p2)[1];
       *(unsigned short *)r.p2 = 0xffff;
       ((unsigned short *)r.p2)[1] = 0xffff;
-      sMask = FUN_10027b60(&r);
-      (*DAT_118ed1d0)(id,sMask);
+      pix = FUN_10027b60(&r);
+      (*DAT_118ed1d0)(id,(int *)pix);
       /* the seed crc is its own statement: the orig makes the inner call
        * BEFORE loading sMask/cbTotal for the outer one (both sites) */
       wCur = BrAdler32(0,0,0);
-      hCur = BrAdler32(wCur,sMask,r.cbTotal);
+      hCur = BrAdler32(wCur,(const unsigned char *)pix,r.cbTotal);
       *(unsigned short *)r.p2 = a;
       ((unsigned short *)r.p2)[1] = b;
-      sMask = FUN_10027b60(&r);
-      (*DAT_118ed1d0)(id,sMask);
+      pix = FUN_10027b60(&r);
+      (*DAT_118ed1d0)(id,(int *)pix);
       wCur = BrAdler32(0,0,0);
-      if (BrAdler32(wCur,sMask,r.cbTotal) != hCur) {
+      if (BrAdler32(wCur,(const unsigned char *)pix,r.cbTotal) != hCur) {
         BrPendListAdd(id);
       }
     }
@@ -1212,21 +1212,21 @@ int BrTex3dRegister(void)
  * make path skips dedup. Installed in hook slot 0x118ED19C. */
 /* @implements 0x100298C0 glide FUN_100298c0 */
 
-void FUN_100298c0(int param_1,int param_2,int param_3)
+void FUN_100298c0(int param_1,const void *param_2,const void *param_3)
 {
-  int uVar1;
+  unsigned short *uVar1;
   int w;
-  int *h;
+  int h;
   int z;
   BrTexReq272 r;
   int flag;
 
   g_18ED1B4 = 1;
-  memcpy(&r, (void *)(DAT_106b7aa0 + 4 + param_1 * 0x2b4), 0xaa * 4);
+  memcpy(&r, &DAT_106b7aa0[param_1].req, sizeof r);
   /* param_2 first (edx), param_3 second (eax); flag load forces p2
    * stored before p1. Byte-order stores invert the hoist. */
-  r.p1 = param_2;
-  r.p2 = param_3;
+  r.p1 = (unsigned char *)param_2;
+  r.p2 = (unsigned char *)param_3;
   flag = r.f268;
   z = 0;
   if (flag != z) {
@@ -1240,7 +1240,7 @@ void FUN_100298c0(int param_1,int param_2,int param_3)
     r.f268 = z;
   }
   uVar1 = FUN_10027b60(&r);
-  FUN_10027710(&r, uVar1);
+  FUN_10027710((int *)&r, (int *)uVar1);
   g_18ED1B4 = z;
   return;
 }
@@ -1283,8 +1283,8 @@ int br_tex3d_append(void)
   if (DAT_10697a58 >= max) {
     nmax = max + 0x100;
     DAT_10697a5c = nmax;
-    DAT_106b7aa0 = (int)BrChkRealloc((void *)DAT_106b7aa0, nmax * 0x2b4,
-                                     (int)s_AppendTexture__atdb_100a9e6c);
+    DAT_106b7aa0 = (BrTexRecEnt *)BrChkRealloc(DAT_106b7aa0, nmax * sizeof(BrTexRecEnt),
+                                     s_AppendTexture__atdb_100a9e6c);
   }
   DAT_10697a58++;
   return (int)DAT_10697a58 - 1;
@@ -1392,7 +1392,7 @@ int BrTexRgbaToArgb1555(unsigned short *dst, unsigned char *src, int count)
             k = k - 1;
         } while (k != 0);
     }
-    return (int)dst - (int)start;
+    return (int)((char *)dst - (char *)start);
 }
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
@@ -1419,7 +1419,9 @@ int BrTexRgbaToArgb1555(unsigned short *dst, unsigned char *src, int count)
  * 0xC-byte mip levels, as this routine reads them. */
 typedef struct { int pix, pal, f08; } BrTexLv;
 typedef struct { short f00; unsigned short n; int f04; int f08; BrTexLv lv[1]; } BrTexDesc;
-typedef struct BrTexRec { int key; int f04; BrTexDesc *pDesc; int pad0c[5]; unsigned flags; } BrTexRec;
+/* an .rca record, as loaded: its first three words are 32-bit addresses
+ * BrRcaFixupRecord rebased (key: the texels; pDesc: the descriptor) */
+typedef struct BrTexRec { uint32_t key; uint32_t f04; uint32_t pDesc; int pad0c[5]; unsigned flags; } BrTexRec;
 void BrTexInstallRecords(BrTexRec *pRecs, int n)
 {
     BrTexRec *pRec;
@@ -1431,14 +1433,15 @@ void BrTexInstallRecords(BrTexRec *pRecs, int n)
     int pal;
     int w;
     for (i = 0, pRec = pRecs; i < n; i++, pRec++) {
+        BrTexDesc *d = BR_PTR32(BrTexDesc *, pRec->pDesc);
         if (pRec->key != 0 && (pRec->flags & 0x100000) != 0) {
-            if (pRec->pDesc->n != 2 || pRec->pDesc->f08 != -1) {
+            if (d->n != 2 || d->f08 != -1) {
                 for (idx = 0; idx < DAT_10697a58; idx++)
-                    if (*(int *)(DAT_106b7aa0 + 0x4c + idx * 0x2b4) == pRec->key) break;
-                for (lv = 0, w = 3; lv < pRec->pDesc->n; lv++, w += 3) {
-                    memcpy(&r, (void *)(DAT_106b7aa0 + 4 + idx * 0x2b4), 0x2a8);
-                    r.p1 = ((int *)pRec->pDesc)[w] + g_brRcaBlob;
-                    pal = ((int *)pRec->pDesc)[w + 1];
+                    if (DAT_106b7aa0[idx].req.p1 == BR_PTR32(unsigned char *, pRec->key)) break;
+                for (lv = 0, w = 3; lv < d->n; lv++, w += 3) {
+                    memcpy(&r, &DAT_106b7aa0[idx].req, sizeof r);
+                    r.p1 = ((int *)d)[w] + g_brRcaBlob;
+                    pal = ((int *)d)[w + 1];
                     if (pal > 0) {
                         r.p2 = pal + g_brRcaBlob;
                         memcpy((*(void * *)&DAT_100a9e58), (void *)r.p2, 0x200);
@@ -1446,7 +1449,7 @@ void BrTexInstallRecords(BrTexRec *pRecs, int n)
                     _DAT_106b7aa8 = 0;
                     _DAT_106b7aa4 = 0;
                     v = FUN_10027b60(&r);
-                    ((int *)pRec->pDesc)[w] = FUN_10027710(&r, v) | idx << 16;
+                    ((int *)d)[w] = FUN_10027710(&r, v) | idx << 16;
                 }
             }
         }
@@ -1482,40 +1485,24 @@ void BrTexInstallRecords(BrTexRec *pRecs, int n)
 void BrTex3dFreeAll(void)
 {
     unsigned int i;
-    int off;
-    char *base;
-    int slot;
     int k;
-    void *p;
 
-    k = 4;
     BrMutexCloseAA0A0();
-    i = 0;
-    off = 0;
-    base = (char *)DAT_106b7aa0;
-    if (DAT_10697a58 > 0) {
-        do {
-            if (*(int *)(base + off + 0x26c) != 0) {
-                slot = off + 0x280;
-                k = 4;
-                do {
-                    p = *(void **)(base + slot);
-                    if (p != 0) {
-                        free(p);
-                        *(int *)(DAT_106b7aa0 + slot) = 0;
-                        base = (char *)DAT_106b7aa0;
-                    }
-                    slot += 4;
-                    k--;
-                } while (k != 0);
+    for (i = 0; i < (unsigned int)DAT_10697a58; i++) {
+        BrTexReq272 *r = &DAT_106b7aa0[i].req;
+        if (r->f268 != 0) {
+            /* the expanded mip levels the bitmap-sourced texture owns */
+            for (k = 0; k < 4; k++) {
+                if (r->apMip[k] != 0) {
+                    free(r->apMip[k]);
+                    r->apMip[k] = 0;
+                }
             }
-            i++;
-            off += 0x2b4;
-        } while (i < DAT_10697a58);
+        }
     }
     DAT_10697a58 = 0;
     DAT_10697a5c = 0;
-    free(base);
+    free(DAT_106b7aa0);
     DAT_106b7aa0 = 0;
 }
 

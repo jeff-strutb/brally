@@ -56,26 +56,21 @@ int FUN_10027a70(int *pReq)
    * form is the same as statements before the loop.  2026-09-13. */
   n = DAT_10697a58;
   q = pReq;
-  p = (int *)DAT_106b7aa0;
-  p += 0x14;
   one = 1;
-  for (i = 0; i < n; i++, p += 0xad) {
-    if (p[-1] == q[0x12]) {
-      if (*p == q[0x13]) {
-        if (p[0x86] != one) {
+  for (i = 0; i < n; i++) {
+    const BrTexReq272 *pr = &DAT_106b7aa0[i].req, *qr = (const BrTexReq272 *)q;
+    if (pr->p1 == qr->p1) {
+      if (pr->p2 == qr->p2) {
+        if (pr->f264 != one) {
           return (int)i;
         }
-        if (q[0x99] != one) {
+        if (qr->f264 != one) {
           return (int)i;
         }
-        if (((char *)p)[0x244] == ((char *)q)[0x290] &&
-            ((char *)p)[0x245] == ((char *)q)[0x291] &&
-            ((char *)p)[0x246] == ((char *)q)[0x292] &&
-            ((char *)p)[0x247] == ((char *)q)[0x293] &&
-            ((char *)p)[0x248] == ((char *)q)[0x294] &&
-            ((char *)p)[0x249] == ((char *)q)[0x295] &&
-            ((char *)p)[0x24a] == ((char *)q)[0x296] &&
-            ((char *)p)[0x24b] == ((char *)q)[0x297]) {
+        if (pr->b290 == qr->b290 && pr->b291 == qr->b291 &&
+            pr->b292 == qr->b292 && pr->b293 == qr->b293 &&
+            pr->b294 == qr->b294 && pr->b295 == qr->b295 &&
+            pr->b296 == qr->b296 && pr->b297 == qr->b297) {
           return (int)i;
         }
       }

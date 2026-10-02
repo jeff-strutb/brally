@@ -1366,7 +1366,7 @@ BR_GLOBAL_EXTENT(int32_t, g_brTexScan575414, , 0x14);  /* 0x106B7A7C */
 int32_t g_brTexScanMaxTile;  /* 0x106B7A94 */
 void *g_brTexScanSrcSeen;  /* 0x106B7A98 */
 BrGfxWords *g_brTexScanRunEnd;  /* 0x106B7A9C */
-void *DAT_106b7aa0;  /* 0x106B7AA0 */
+BrTexRecEnt *DAT_106b7aa0;  /* 0x106B7AA0  the texture table */
 int _DAT_106b7aa4;  /* 0x106B7AA4 */
 int _DAT_106b7aa8;  /* 0x106B7AA8 */
 int DAT_106b7aac;  /* 0x106B7AAC */

@@ -4887,7 +4887,7 @@ extern void *g_brTexScanSrcSeen;  /* 0x106B7A98 */
 #pragma pop_macro("g_brTexScanSrcSeen")
 #pragma push_macro("DAT_106b7aa0")
 #undef DAT_106b7aa0
-extern void *DAT_106b7aa0;  /* 0x106B7AA0 */
+extern BrTexRecEnt *DAT_106b7aa0;  /* 0x106B7AA0  the texture table */
 #pragma pop_macro("DAT_106b7aa0")
 #pragma push_macro("_DAT_106b7aa4")
 #undef _DAT_106b7aa4

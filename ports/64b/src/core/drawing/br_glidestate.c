@@ -310,8 +310,8 @@ void BrTex3dMakeCurrent(int param_1)
   int iVar1;
 
   if (param_1 != (*(int *)&s_g5E1808)) {
-    FUN_10028420(*(int *)(DAT_106b7aa0 + param_1 * 0x2b4));
-    iVar1 = *(int *)(DAT_106b7aa0 + 4 + param_1 * 0x2b4);
+    FUN_10028420(DAT_106b7aa0[param_1].hTex);
+    iVar1 = (int)DAT_106b7aa0[param_1].req.fTmu2;
     if ((*(int *)&s_g5E1820) != iVar1) {
       switch (iVar1) {
       case 1:
@@ -321,22 +321,17 @@ void BrTex3dMakeCurrent(int param_1)
       default:
         grTexCombine(0,1,0,1,0,0,0);
       }
-      (*(int *)&s_g5E1820) = *(int *)(DAT_106b7aa0 + 4 + param_1 * 0x2b4);
+      (*(int *)&s_g5E1820) = (int)DAT_106b7aa0[param_1].req.fTmu2;
     }
-    DAT_118ed1a4 = *(float *)(DAT_106b7aa0 + 0x2ac + param_1 * 0x2b4);
-    DAT_118ed1a8 = *(float *)(DAT_106b7aa0 + 0x2b0 + param_1 * 0x2b4);
-    BrGbiRectG_18ED198 =
-         *(int *)(*(int *)(DAT_106b7aa0 + 0x5c + param_1 * 0x2b4) * 0x40 + DAT_106b7aa0 + 0x94 +
-                  param_1 * 0x2b4);
-    BrGbiRectG_186C950 =
-         *(int *)(*(int *)(DAT_106b7aa0 + 0x5c + param_1 * 0x2b4) * 0x40 + DAT_106b7aa0 + 0x98 +
-                  param_1 * 0x2b4);
-    BrGbiRectG_186C954 =
-         *(int *)(*(int *)(DAT_106b7aa0 + 0x5c + param_1 * 0x2b4) * 0x40 + DAT_106b7aa0 + 0x9c +
-                  param_1 * 0x2b4);
-    BrGbiRectG_18EC988 =
-         *(int *)(*(int *)(DAT_106b7aa0 + 0x5c + param_1 * 0x2b4) * 0x40 + DAT_106b7aa0 + 0xa0 +
-                  param_1 * 0x2b4);
+    DAT_118ed1a4 = DAT_106b7aa0[param_1].scaleS;
+    DAT_118ed1a8 = DAT_106b7aa0[param_1].scaleT;
+    {
+      const BrTexReq272 *r = &DAT_106b7aa0[param_1].req;
+      BrGbiRectG_18ED198 = r->lv[r->iLevel][12];
+      BrGbiRectG_186C950 = r->lv[r->iLevel][13];
+      BrGbiRectG_186C954 = r->lv[r->iLevel][14];
+      BrGbiRectG_18EC988 = r->lv[r->iLevel][15];
+    }
     (*(int *)&s_g5E1808) = param_1;
   }
   return;

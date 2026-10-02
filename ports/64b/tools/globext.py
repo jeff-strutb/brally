@@ -36,7 +36,7 @@ import viewmerge as vm  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 GLOBALS_C = 'ports/64b/src/core/data/br_globals.c'
-DEF = re.compile(r'^(?!\s)(?!#)(?!typedef)(?!extern)(?!static)(?P<decl>[^;{}()\n=]*?(?:\(\s*\*\s*(?P<fn>\w+)\s*\)[^;{}=\n]*|\b(?P<name>\w+)\s*(?P<dims>(?:\[[^\]]*\])*)))\s*;\s*/\*\s*0x(?P<va>[0-9A-Fa-f]{8})\b[^\n]*$', re.M)
+DEF = re.compile(r'^(?!\s)(?!#)(?!typedef)(?!extern)(?!static)(?P<decl>[^;{}()\n=]*?(?:\(\s*\*\s*(?P<fn>\w+)\s*(?:\[[^\]]*\])*\s*\)[^;{}=\n]*|\b(?P<name>\w+)\s*(?P<dims>(?:\[[^\]]*\])*)))\s*;\s*/\*\s*0x(?P<va>[0-9A-Fa-f]{8})\b[^\n]*$', re.M)
 PADDED = re.compile(r'^BR_GLOBAL_EXTENT\((?P<type>.*?), (?P<name>\w+), (?P<dims>[^,]*), (?P<pad>0x[0-9A-F]+)\);\s*/\*\s*0x(?P<va>[0-9A-Fa-f]{8})', re.M)
 
 

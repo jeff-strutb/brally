@@ -130,6 +130,9 @@ class Types:
                 self.typedefs[d['name']] = ty
 
     def split_array(self, t):
+        f = re.match(r'^(.*?)\(\*((?:\[\d+\])+)\)\s*(\(.*\))$', t.strip())
+        if f:                     # an array of function pointers: R (*[N])(A)
+            return '%s(*)%s' % (f.group(1), f.group(3)), [int(x) for x in re.findall(r'\[(\d+)\]', f.group(2))]
         m = re.match(r'^(.*?)\s*((?:\[\d+\])+)$', t.strip())
         if not m:
             return t.strip(), []
@@ -186,6 +189,9 @@ def cast_to_ptr(qt):
     qt = re.sub(r'\s+', ' ', qt).strip()
     m = re.match(r'^(.*?)\s*((?:\[\d+\])+)$', qt)
     base, dims = (m.group(1), m.group(2)) if m else (qt, '')
+    f = re.match(r'^(.*?)\(\*((?:\[\d+\])+)\)\s*(\(.*\))$', qt)
+    if f:                                  # array of function pointers
+        return '(%s(*(*)%s)%s)' % (f.group(1), f.group(2), f.group(3))
     if '(*' in base:                       # function pointer: one more level
         return '(%s)' % base.replace('(*', '(**', 1) if not dims else None
     return '(%s (*)%s)' % (base, dims) if dims else '(%s *)' % base

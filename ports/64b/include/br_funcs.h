@@ -4443,7 +4443,7 @@ void BrSwapVec3Array(void *, int);
 #pragma pop_macro("BrSwapVec3Array")
 #pragma push_macro("BrTex3dCreate")
 #undef BrTex3dCreate
-int BrTex3dCreate(int, int, int, int, int, int, int, int, int, int, int, int, int, int, int);
+int BrTex3dCreate(const void *, const void *, int, int, int, int, int, int, int, int, int, int, int, int, int);
 #pragma pop_macro("BrTex3dCreate")
 #pragma push_macro("BrTex3dCreateBlank")
 #undef BrTex3dCreateBlank
@@ -5616,7 +5616,7 @@ void FUN_10028420(unsigned int);
 #pragma pop_macro("FUN_10028420")
 #pragma push_macro("FUN_100298c0")
 #undef FUN_100298c0
-void FUN_100298c0(int, int, int);
+void FUN_100298c0(int, const void *, const void *);
 #pragma pop_macro("FUN_100298c0")
 #pragma push_macro("FUN_1002a490")
 #undef FUN_1002a490

@@ -74,6 +74,16 @@ typedef struct BrTexReq272 {
     int h2a4;                                /* +0x02A4 */
 } BrTexReq272;
 
+/* 0x106B7AA0 -> the texture table: one entry per texture, 0x2B4 bytes in
+ * the original -- the Glide slot, the request it was made from, and the two
+ * texture-coordinate scales the triangle emitters read. */
+typedef struct BrTexRecEnt {
+    int32_t     hTex;     /* +0x000 */
+    BrTexReq272 req;      /* +0x004 */
+    float       scaleS;   /* +0x2AC */
+    float       scaleT;   /* +0x2B0 */
+} BrTexRecEnt;
+
 struct Metric12 {
     short          advance;     /* +0x00 -- signed: the pen advance is movsx'd */
     unsigned short height;      /* +0x02 */

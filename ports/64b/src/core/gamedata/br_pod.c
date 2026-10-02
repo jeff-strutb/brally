@@ -13,6 +13,7 @@
  */
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
+#include "br_podarc.h"   /* BrPodArc */
 #include "br_pod.h"
 
 #include "br_path.h"
@@ -65,7 +66,7 @@ typedef struct { const char *psz; } BrPodSetNameArg;
 void BR_THISCALL1 BrPodSetName(void *pThis, BrPodSetNameArg a)
 {
     if (a.psz != NULL)
-        strcpy((char *)pThis + 0x20, a.psz);
+        strcpy(((BrPodArc *)pThis)->szName, a.psz);
 }
 
 /* -- Ghidra-matched functions --------------------------- */
