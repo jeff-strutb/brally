@@ -1561,7 +1561,7 @@ int DAT_106ed570;  /* 0x106ED570 */
 int DAT_106ed588;  /* 0x106ED588 */
 uint8_t DAT_106ed590[64];  /* 0x106ED590 */
 int DAT_106ed5d0;  /* 0x106ED5D0 */
-void * g_apBr6ED5E8[16];  /* 0x106ED5E8 */
+int32_t g_aiBrSlotCar[16];  /* 0x106ED5E8  the car each slot holds */
 int DAT_106ed628;  /* 0x106ED628 */
 BrEntRec g_aBrEntRecs[6432];  /* 0x106ED630 */
 BrEnt g_aBrEnts[16];  /* 0x106ED708 */

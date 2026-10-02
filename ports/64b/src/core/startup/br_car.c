@@ -23,15 +23,15 @@
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x100BCDD0 */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */                          /* 0x106ED5E8 */
 
-void BrCarSlotLoad(int i, void *pArg, int flag)
+void BrCarSlotLoad(int i, int iCar, int flag)
 {
     /* GOTCHA: flag != 0 means "do not load", not "load". */
     if (flag == 0)
-        BrSub10037740((unsigned char *)(*(const unsigned char (*)[])&g_ab0C12A0) + i * 0x15F88, pArg);
+        BrSub10037740((unsigned char *)(*(const unsigned char (*)[])&g_ab0C12A0) + i * 0x15F88, iCar);
     else
         BrLogPrint("LoadCar()");
 
     BrNop_1002EBCC();
-    g_apBr6ED5E8[i] = pArg;
+    g_aiBrSlotCar[i] = iCar;
 }
 

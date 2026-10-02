@@ -43,12 +43,12 @@
 extern int (__cdecl *_imp__memcmp)(const void *, const void *, unsigned int);
 #define BR_MEMCMP_IMP (*_imp__memcmp)
 
-void BrSub10037740(void *pCar, void *pArg)
+void BrSub10037740(void *pCar, int iCar)
 {
     int  saved;
     char szMsg[0x100];
     char szPath[0x400];
-    int  idx = (int)pArg;
+    int  idx = iCar;
 
     (*(int *)((char *)&BrImgTintState + 0x4)) = idx;
     if (pCar != (void *)&(g_ab0C12A0[0])) {

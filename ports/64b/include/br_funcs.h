@@ -463,11 +463,11 @@ void BrCarRespawn_1005C6D0(void *);
 #pragma pop_macro("BrCarRespawn_1005C6D0")
 #pragma push_macro("BrCarSlotLoad")
 #undef BrCarSlotLoad
-void BrCarSlotLoad(int, void *, int);
+void BrCarSlotLoad(int, int, int);
 #pragma pop_macro("BrCarSlotLoad")
 #pragma push_macro("BrCarSlotSetup_1006FCE0")
 #undef BrCarSlotSetup_1006FCE0
-void BrCarSlotSetup_1006FCE0(void *, int, void *);
+void BrCarSlotSetup_1006FCE0(void *, int, int);
 #pragma pop_macro("BrCarSlotSetup_1006FCE0")
 #pragma push_macro("BrCarStartInit_1005E7B0")
 #undef BrCarStartInit_1005E7B0
@@ -4181,7 +4181,7 @@ void BrSub10032520(void);
 #pragma pop_macro("BrSub10032520")
 #pragma push_macro("BrSub10037740")
 #undef BrSub10037740
-void BrSub10037740(void *, void *);
+void BrSub10037740(void *, int);
 #pragma pop_macro("BrSub10037740")
 #pragma push_macro("BrSub1003C150")
 #undef BrSub1003C150

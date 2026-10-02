@@ -5618,10 +5618,10 @@ extern uint8_t DAT_106ed590[];  /* 0x106ED590 */
 #undef DAT_106ed5d0
 extern int DAT_106ed5d0;  /* 0x106ED5D0 */
 #pragma pop_macro("DAT_106ed5d0")
-#pragma push_macro("g_apBr6ED5E8")
-#undef g_apBr6ED5E8
-extern void * g_apBr6ED5E8[16];  /* 0x106ED5E8 */
-#pragma pop_macro("g_apBr6ED5E8")
+#pragma push_macro("g_aiBrSlotCar")
+#undef g_aiBrSlotCar
+extern int32_t g_aiBrSlotCar[16];  /* 0x106ED5E8  the car each slot holds */
+#pragma pop_macro("g_aiBrSlotCar")
 #pragma push_macro("DAT_106ed628")
 #undef DAT_106ed628
 extern int DAT_106ed628;  /* 0x106ED628 */
