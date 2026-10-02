@@ -4,6 +4,7 @@
  * track gets the warning put on screen. Filed out of slice6_76.c's
  * Ghidra-matched section.
  */
+#include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "br_race.h"   /* br_globals: its objects */
 #include <stddef.h>
 #include "slice3_41.h"
@@ -27,7 +28,7 @@ void __fastcall FUN_1006eb00(BrDriverCar *param_1)
   char *iVar1;
   int iVar2;
   
-  if (g_pBrRaceLapRec != 0) {
+  if (BR_PTR32(BrAiPathNode *, g_brTrkHdr.aPathRoot) != 0) {
     if ((param_1->lap < g_CBE8) && (param_1->fF7C == 0) &&
         ((double)BrVec3Dot((const BrVec3 *)&param_1->f0F94, param_1) < _DAT_10077c40)) {
       iVar1 = BrStrGet(0xf3);

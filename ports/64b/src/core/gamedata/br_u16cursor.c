@@ -6,8 +6,9 @@
  */
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
+#include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "slice1_01.h"
-#include "slice2_11.h"   /* g_pBrU16QueueTable -- BrU16QueuePop's table */
+#include "slice2_11.h"   /* BR_PTR32(const uint16_t *, g_brTrkHdr.aQueue) -- BrU16QueuePop's table */
 
 /* ---------------------------------------------------------------------------
  * 0x10002EF0 -- read one u16 through a cursor and advance it.
@@ -48,7 +49,7 @@ uint16_t BrU16CursorNext(BrU16Cursor *pCur)
         packed = ((uint32_t)rem + 0xFFFFu) << 16 | ((uint32_t)pos + 1u);
         pCur->pos       = (uint16_t)packed;
         pCur->remaining = (uint16_t)(packed >> 16);
-        return g_br6C7C68[pos];
+        return BR_PTR32(const uint16_t *, g_brTrkHdr.aGridItems)[pos];
     }
     return 0;
 }
@@ -86,7 +87,7 @@ uint16_t BrU16QueuePop(void *pQ)
         packed = ((uint32_t)hi + 0xFFFFu) << 16 | ((uint32_t)lo + 1u);
         q[0] = (uint16_t)packed;
         q[1] = (uint16_t)(packed >> 16);
-        return g_pBrU16QueueTable[lo];
+        return BR_PTR32(const uint16_t *, g_brTrkHdr.aQueue)[lo];
     }
     return 0;
 }

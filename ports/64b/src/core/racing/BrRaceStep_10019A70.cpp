@@ -34,6 +34,7 @@
  *
  * @t4-pass 0x10019A70 1 2026-09-15 probes 14 bytes 10944 insns 2913 regions 65 rows 682 census no  (region-1 register grind: the idx-reuses-eax prologue scheduler tie-break; cache-removal lever -- re-reading g_0B3858 snapped zero->ebp; delta/count reorder; inf[1] single-read; #pragma intrinsic(memcpy) so copies inline as rep movsd; delta/count/idx declaration permutations. FIRSTDIV held +0xD -- colouring wall.)
  * @t4-pass 0x10019A70 2 2026-09-15 probes 11 bytes 10944 insns 2913 regions 65 rows 682 census yes  (write-slot census + 4-variant sweep confirm the residue is register allocation/scheduling, not missing/wrong code -- the A5 oracle proves same-in/same-out incl. the g_226A44 branch fix; numbers unmoved.) */
+#include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "br_mat.h"   /* br_globals: its objects */
 #include "br_race.h"   /* br_globals: its objects */
 #include "br_racebegin.h"   /* br_globals: its objects */
@@ -540,11 +541,11 @@ extern "C" void BrRaceStep(void)
             int  cnt;
             (*(int *)&g_brRaceBeginAirArmed) = 0; (*(int *)&g_brRaceBeginAirTrigger) = 0; (*(int *)&g_brRaceBeginAirplane) = 0; g_pBrRaceFlyAim = 0;
             g_pBrRaceFlyPos = 0; g_brRaceBeginPathT = 0; g_brRaceBeginPathSeg = 0; (*(int *)&g_brRaceBeginPathIdx) = 0; (*(int *)&g_brRaceBeginPathLen) = 0;
-            BrPodNop(&g_0A9840, (*(int *)&g_brRaceBeginSpecialsN));
+            BrPodNop(&g_0A9840, g_brTrkHdr.nSpecial);
             (*(int *)&g_brRaceBeginFxCount) = 0;
-            cnt = (*(int *)&g_brRaceBeginSpecialsN);
+            cnt = g_brTrkHdr.nSpecial;
             if (cnt > 0) {
-                char *e = (char*)&(*(int *)&g_aBrRaceSpecial);     /* 0x106eee3c */
+                char *e = (char*)&(*(int *)&g_brTrkHdr.aSpecial);     /* 0x106eee3c */
                 int   i = 0;
                 do {
                     int          arg = 0;
@@ -564,7 +565,7 @@ extern "C" void BrRaceStep(void)
                 Lskip:
                     i++;
                     e += 0xc;
-                } while (i < (*(int *)&g_brRaceBeginSpecialsN));
+                } while (i < g_brTrkHdr.nSpecial);
             }
             {
                 int sel;                        /* 0x1001a3a6 */
@@ -575,7 +576,7 @@ extern "C" void BrRaceStep(void)
                 }
                 if (sel != 0) {
                     float m[3];
-                    int  *row = (int*)((char*)g_BrDrawTrackFlags + (sel + sel * 20) * 4);
+                    int  *row = (int*)((char*)BR_PTR32(void *, g_brTrkHdr.aInstances) + (sel + sel * 20) * 4);
                     m[0] = 1.0f; m[1] = 0.0f; m[2] = 0.0f;
                     BrVec3TransformDivW(&m[0], &m[0], row);   /* in place: both leas are [esp+0x2c] */
                     g_brRaceBeginPathScale = BrVec3Length((const struct BrVec3 *)(&m[0]));
@@ -1099,8 +1100,8 @@ Lb171:  /* 0x1001b171 merge */
         }
     }
 Lb365:  /* 0x1001b365 */
-    if ((*(int *)&g_brRaceBeginSpecialsN) > 0) {
-        char *e = (char*)&(*(int *)&g_aBrRaceSpecial);
+    if (g_brTrkHdr.nSpecial > 0) {
+        char *e = (char*)&(*(int *)&g_brTrkHdr.aSpecial);
         int   b = 0;
         do {
             int sw = (signed char)((*(char *)((char*)((e)) + ((8)))));
@@ -1116,9 +1117,9 @@ Lb365:  /* 0x1001b365 */
                     BrMat4RotateAxis((struct BrMat4 *)(&(*(int *)&g_brRaceSpecialM)), ((*(int  *)((char*)((e)) + ((4))))), 0, 0x3f800000, 0);
                 Lb_emit: /* 0x1001b3b8 */
                     {
-                        int  *m = (int*)((char*)g_BrDrawTrackFlags + ((*(int  *)((char*)((e)) + ((0))))) * 84);
+                        int  *m = (int*)((char*)BR_PTR32(void *, g_brTrkHdr.aInstances) + ((*(int  *)((char*)((e)) + ((0))))) * 84);
                         BrMat4Mul((const struct BrMat4 *)(&(*(int *)&g_brRaceSpecialM)), (const struct BrMat4 *)(m), (struct BrMat4 *)(m));
-                        m = (int*)((char*)g_BrDrawTrackFlags + ((*(int  *)((char*)((e)) + ((0))))) * 84);
+                        m = (int*)((char*)BR_PTR32(void *, g_brTrkHdr.aInstances) + ((*(int  *)((char*)((e)) + ((0))))) * 84);
                         *(unsigned short*)((char*)m + 0x4c) &= 0xdfff;
                     }
                     break;
@@ -1171,7 +1172,7 @@ Lb365:  /* 0x1001b365 */
                             lerpT = g_brRaceBeginPathT / g_brRaceBeginPathSeg;
                             lerpBits = *(int*)&lerpT;
                             lerpT = *(float*)&lerpBits;
-                            char *row   = (char*)g_BrDrawTrackFlags + (*(int *)&g_brRaceBeginAirplane) * 84;
+                            char *row   = (char*)BR_PTR32(void *, g_brTrkHdr.aInstances) + (*(int *)&g_brRaceBeginAirplane) * 84;
                             /* 0x1001b670: the interpolated position lands in v2c
                              * (lea [esp+0x38] under three pushes) */
                             BrVec3Lerp(v2c, (char*)g_pBrRaceFlyPos + (*(int *)&g_brRaceBeginPathIdx) * 12,
@@ -1203,7 +1204,7 @@ Lb365:  /* 0x1001b365 */
             }
             b++;
             e += 0xc;
-        } while (b < (*(int *)&g_brRaceBeginSpecialsN));
+        } while (b < g_brTrkHdr.nSpecial);
     }
 Lb887:  /* 0x1001b887 */
     if ((*(int *)&g_BrCarCount) > 0) {
@@ -1218,14 +1219,14 @@ Lb887:  /* 0x1001b887 */
             int   drv    = *(int*)&(*(int *)&BrG_6C1628[4]);
             int   active = (((intptr_t)(g_aBrRaceCar[drv].pMatA)));
             if ((*(int *)&g_brRaceBeginAirplane) != 0 && (*(int *)&g_brRaceBeginAirArmed) != 0) {
-                int *m = (int*)((char*)g_BrDrawTrackFlags + (*(int *)&g_brRaceBeginAirplane) * 84 + 0x30);
+                int *m = (int*)((char*)BR_PTR32(void *, g_brTrkHdr.aInstances) + (*(int *)&g_brRaceBeginAirplane) * 84 + 0x30);
                 BrSndNearestOfferTrack((*(int *)&g_brRaceBeginAirplane), (const struct BrVec3 *)(m), active);
             }
             if (active != 0) {                    /* 0x1001b918 */
                 char *s = (char*)&(g_aBrRaceBeginFx[0]);
                 int   j = 0;
                 while (j < (*(int *)&g_brRaceBeginFxCount)) {
-                    int *m = (int*)((char*)g_BrDrawTrackFlags + *(int*)s * 84 + 0x30);
+                    int *m = (int*)((char*)BR_PTR32(void *, g_brTrkHdr.aInstances) + *(int*)s * 84 + 0x30);
                     BrSndNearestOfferDefault((*(int *)&g_brRaceBeginAirplane), (const struct BrVec3 *)(m), active);
                     j++;
                     s += 4;

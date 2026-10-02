@@ -5,6 +5,7 @@
  * Called once per frame from BrFrameDrive via FUN_1006ec30(0, 0, eye, ...). */
 
 
+#include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "br_collrespsolve.h"   /* br_globals: its objects */
 #include <stdint.h>
 #include "br_vec.h"
@@ -51,7 +52,7 @@ int FUN_1006ec30(BrVec3 *pPosOut, BrVec3 *pNormOut, const BrVec3 *pEye, uint16_t
     uint16_t fVal;
     short cell;
 
-    dt = DAT_106eed14 - DAT_106eed10;
+    dt = g_brTrkHdr.fZMax - g_brTrkHdr.fZMin;
     bestNearDist = dt * dt - (-1.0f);
 
     bestFarNorm.x = 0.0f;
@@ -122,41 +123,41 @@ int FUN_1006ec30(BrVec3 *pPosOut, BrVec3 *pNormOut, const BrVec3 *pEye, uint16_t
                 }
 
                 fIdx = (int)(short)pP->tri;
-                fVal = g_pBrCollTriIdx[fIdx * 4 + 3] + 1;
+                fVal = BR_PTR32(const uint16_t *, g_brTrkHdr.aFaces)[fIdx * 4 + 3] + 1;
                 pNearIds[0] = fVal;
 
                 if (dist < 5.0f) {
-                    unsigned int ci = (unsigned int)DAT_106eed68[(int)(short)pP->tri];
-                    if (DAT_106eed64[ci] != 0) {
+                    unsigned int ci = (unsigned int)BR_PTR32(const uint16_t *, g_brTrkHdr.aU16List90)[(int)(short)pP->tri];
+                    if (BR_PTR32(const uint16_t *, g_brTrkHdr.aU16List8C)[ci] != 0) {
                         do {
                             if (farCount < 32) {
                                 pFarIds[farCount] = pFarIds[0];
                                 farCount++;
                             }
-                            pFarIds[0] = DAT_106eed64[ci];
+                            pFarIds[0] = BR_PTR32(const uint16_t *, g_brTrkHdr.aU16List8C)[ci];
                             ci++;
-                        } while (DAT_106eed64[ci] != 0);
+                        } while (BR_PTR32(const uint16_t *, g_brTrkHdr.aU16List8C)[ci] != 0);
                     }
                 }
             } else {
                 if (nearCount < 32) {
                     fIdx = (int)(short)pP->tri;
-                    fVal = g_pBrCollTriIdx[fIdx * 4 + 3] + 1;
+                    fVal = BR_PTR32(const uint16_t *, g_brTrkHdr.aFaces)[fIdx * 4 + 3] + 1;
                     pNearIds[nearCount] = fVal;
                     nearCount++;
 
                     if (dist < 5.0f) {
-                        unsigned int ci = (unsigned int)DAT_106eed68[(int)(short)pP->tri];
-                        if (DAT_106eed64[ci] != 0) {
+                        unsigned int ci = (unsigned int)BR_PTR32(const uint16_t *, g_brTrkHdr.aU16List90)[(int)(short)pP->tri];
+                        if (BR_PTR32(const uint16_t *, g_brTrkHdr.aU16List8C)[ci] != 0) {
                             uint16_t *pDst = &pFarIds[farCount];
                             do {
                                 if (farCount < 32) {
-                                    *pDst = DAT_106eed64[ci];
+                                    *pDst = BR_PTR32(const uint16_t *, g_brTrkHdr.aU16List8C)[ci];
                                     farCount++;
                                     pDst++;
                                 }
                                 ci++;
-                            } while (DAT_106eed64[ci] != 0);
+                            } while (BR_PTR32(const uint16_t *, g_brTrkHdr.aU16List8C)[ci] != 0);
                         }
                     }
                 }
@@ -168,7 +169,7 @@ int FUN_1006ec30(BrVec3 *pPosOut, BrVec3 *pNormOut, const BrVec3 *pEye, uint16_t
             if (dist < bestFarDist) {
                 short tri = pP->tri;
                 fIdx = (int)tri;
-                fVal = g_pBrCollTriIdx[fIdx * 4 + 3] + 1;
+                fVal = BR_PTR32(const uint16_t *, g_brTrkHdr.aFaces)[fIdx * 4 + 3] + 1;
                 farFaceVal = (int)fVal;
 
                 if (dist > -1.0f) {
@@ -200,19 +201,19 @@ int FUN_1006ec30(BrVec3 *pPosOut, BrVec3 *pNormOut, const BrVec3 *pEye, uint16_t
         }
     } else {
         unsigned int ci = (unsigned short)farFaceIdx;
-        ci = (unsigned int)DAT_106eed68[ci];
-        if (DAT_106eed64[ci] != 0) {
+        ci = (unsigned int)BR_PTR32(const uint16_t *, g_brTrkHdr.aU16List90)[ci];
+        if (BR_PTR32(const uint16_t *, g_brTrkHdr.aU16List8C)[ci] != 0) {
             uint16_t *pDst = &pFarIds[farCount];
             while (1) {
                 if (farCount >= 32) {
-                    pFarIds[31] = DAT_106eed64[ci];
+                    pFarIds[31] = BR_PTR32(const uint16_t *, g_brTrkHdr.aU16List8C)[ci];
                     break;
                 }
-                *pDst = DAT_106eed64[ci];
+                *pDst = BR_PTR32(const uint16_t *, g_brTrkHdr.aU16List8C)[ci];
                 farCount++;
                 pDst++;
                 ci++;
-                if (DAT_106eed64[ci] == 0)
+                if (BR_PTR32(const uint16_t *, g_brTrkHdr.aU16List8C)[ci] == 0)
                     break;
             }
         }

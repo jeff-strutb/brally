@@ -8,6 +8,7 @@
 #ifndef __cplusplus
 #include <stdbool.h>
 #endif
+struct BrTrkHdr;
 struct BrRaceCtl;
 struct BrUiPage_;
 struct BoundsNode;
@@ -1889,11 +1890,11 @@ void BrGlSetCombine(unsigned int, unsigned int);
 #pragma pop_macro("BrGlSetCombine")
 #pragma push_macro("BrGlTrackFixupAll")
 #undef BrGlTrackFixupAll
-void BrGlTrackFixupAll(int *);
+void BrGlTrackFixupAll(struct BrTrkHdr *);
 #pragma pop_macro("BrGlTrackFixupAll")
 #pragma push_macro("BrGlTrackFixupCmds")
 #undef BrGlTrackFixupCmds
-int BrGlTrackFixupCmds(int *);
+void BrGlTrackFixupCmds(struct BrTrkHdr *);
 #pragma pop_macro("BrGlTrackFixupCmds")
 #pragma push_macro("BrGlTrackHdrRead")
 #undef BrGlTrackHdrRead
@@ -4629,7 +4630,7 @@ int BrToggleOnce_C050(int);
 #pragma pop_macro("BrToggleOnce_C050")
 #pragma push_macro("BrTrackFixupAllRec54")
 #undef BrTrackFixupAllRec54
-int BrTrackFixupAllRec54(int *);
+void BrTrackFixupAllRec54(struct BrTrkHdr *);
 #pragma pop_macro("BrTrackFixupAllRec54")
 #pragma push_macro("BrTrackFixupRec54")
 #undef BrTrackFixupRec54
@@ -4637,11 +4638,11 @@ void BrTrackFixupRec54(void *);
 #pragma pop_macro("BrTrackFixupRec54")
 #pragma push_macro("BrTrackFixupSegList")
 #undef BrTrackFixupSegList
-int BrTrackFixupSegList(int *);
+void BrTrackFixupSegList(struct BrTrkHdr *);
 #pragma pop_macro("BrTrackFixupSegList")
 #pragma push_macro("BrTrackFixupSegRec")
 #undef BrTrackFixupSegRec
-int BrTrackFixupSegRec(int);
+void BrTrackFixupSegRec(uint8_t *);
 #pragma pop_macro("BrTrackFixupSegRec")
 #pragma push_macro("BrTrackLoad")
 #undef BrTrackLoad
@@ -4653,7 +4654,7 @@ void BrTrackLoadHandling(int);
 #pragma pop_macro("BrTrackLoadHandling")
 #pragma push_macro("BrTrackSetF08FromMax")
 #undef BrTrackSetF08FromMax
-void BrTrackSetF08FromMax(int *);
+void BrTrackSetF08FromMax(struct BrTrkHdr *);
 #pragma pop_macro("BrTrackSetF08FromMax")
 #pragma push_macro("BrTrackSurfaceSet")
 #undef BrTrackSurfaceSet
@@ -4661,7 +4662,7 @@ void BrTrackSurfaceSet(int);
 #pragma pop_macro("BrTrackSurfaceSet")
 #pragma push_macro("BrTrackSwapAllVec3")
 #undef BrTrackSwapAllVec3
-int BrTrackSwapAllVec3(int *);
+void BrTrackSwapAllVec3(struct BrTrkHdr *);
 #pragma pop_macro("BrTrackSwapAllVec3")
 #pragma push_macro("BrTrackSwapRec28")
 #undef BrTrackSwapRec28

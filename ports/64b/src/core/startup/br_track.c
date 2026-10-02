@@ -7,6 +7,7 @@
 /* The original is /MD: CRT calls go through the import
  * table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
+#include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "br_collrespsolve.h"   /* br_globals: its objects */
 #include "br_coretypes.h"   /* br_globals: its objects */
 #include <stdint.h>
@@ -44,30 +45,29 @@
  * and rebase each, then fix up the record it points at. */
 /* @implements 0x10031910 glide BrTrackFixupSegList */
 
-int BrTrackFixupSegList(int *param_1)
+void BrTrackFixupSegList(BrTrkHdr *h)
 
 {
   char uVar1;
-  int *puVar3;
+  uint32_t *puVar3;
   int iVar4;
 
-  puVar3 = *(int **)(((int *)((char *)(param_1) + (0x78))));
+  puVar3 = BR_PTR32(uint32_t *, h->aSegList);
   iVar4 = 0;
-  if (0 < *(int *)(((int *)((char *)(param_1) + (0x7c))))) {
+  if (0 < h->cSegList) {
     do {
-      uVar1 = *(char *)((int)puVar3 + 3);
-      *(char *)((int)puVar3 + 3) = *(char *)puVar3;
+      uVar1 = *((char *)puVar3 + 3);
+      *((char *)puVar3 + 3) = *(char *)puVar3;
       *(char *)puVar3 = uVar1;
-      uVar1 = *(char *)((int)puVar3 + 2);
-      *(char *)((int)puVar3 + 2) = *(char *)((int)puVar3 + 1);
-      *(char *)((int)puVar3 + 1) = uVar1;
+      uVar1 = *((char *)puVar3 + 2);
+      *((char *)puVar3 + 2) = *((char *)puVar3 + 1);
+      *((char *)puVar3 + 1) = uVar1;
       BrSegPtrFixup(puVar3);
-      BrTrackFixupSegRec(*puVar3);
+      BrTrackFixupSegRec(BR_PTR32(uint8_t *, *puVar3));
       puVar3 = puVar3 + 1;
       iVar4 = iVar4 + 1;
-    } while (iVar4 < *(int *)(((int *)((char *)(param_1) + (0x7c)))));
+    } while (iVar4 < h->cSegList);
   }
-  return;
 }
 
 
@@ -99,7 +99,7 @@ int BrTrackSwapRec28(char *param_1)
  * count says. */
 /* @implements 0x10031960 glide BrTrackFixupSegRec */
 
-int BrTrackFixupSegRec(int param_1)
+void BrTrackFixupSegRec(uint8_t *param_1)
 
 {
   char uVar1;
@@ -160,22 +160,21 @@ int BrTrackFixupSegRec(int param_1)
 /* WHAT IT DOES: walk an array of Vec3s in a track struct and byte-swap each one. */
 /* @implements 0x10031A80 glide BrTrackSwapAllVec3 */
 
-int BrTrackSwapAllVec3(int *param_1)
+void BrTrackSwapAllVec3(BrTrkHdr *h)
 
 {
   char *iVar1;
   int iVar2;
-  
-  iVar1 = *(int *)(((int *)((char *)(param_1) + (0x84))));
+
+  iVar1 = BR_PTR32(char *, h->aPayload);
   iVar2 = 0;
-  if (0 < *(int *)(((int *)((char *)(param_1) + (0x88))))) {
+  if (0 < h->cPayload) {
     do {
       BrSwapVec3(iVar1);
       iVar1 = iVar1 + 0xc;
       iVar2 = iVar2 + 1;
-    } while (iVar2 < *(int *)(((int *)((char *)(param_1) + (0x88)))));
+    } while (iVar2 < h->cPayload);
   }
-  return;
 }
 
 /* WHAT IT DOES: byte-swap the track header's command directory: the count
@@ -187,7 +186,7 @@ int BrTrackSwapAllVec3(int *param_1)
  * The port body is BrTrackFixupCmds in slice2_20.c. */
 /* @implements 0x10032190 glide BrGlTrackFixupCmds */
 
-int BrGlTrackFixupCmds(int *param_1)
+void BrGlTrackFixupCmds(BrTrkHdr *h)
 
 {
   char t;
@@ -197,6 +196,7 @@ int BrGlTrackFixupCmds(int *param_1)
   int i;
   int k;
   char *pVtx;
+  uint8_t *param_1 = (uint8_t *)h;   /* the header by byte offset: all of it is 32-bit fields */
 
   /* Every record field is an expression of the counter (the REC macros),
    * not a pointer local: with a `p = base + i*12` local VC5 proves the byte
@@ -230,7 +230,7 @@ int BrGlTrackFixupCmds(int *param_1)
         BrSegPtrFixup((uint32_t *)&((*(int *)(param_1 + 0x164 + i * 0xc + ((0))))));
         ((*(int *)(param_1 + 0x164 + i * 0xc + ((4))))) = (((((*(unsigned char *)(param_1 + 0x164 + i * 0xc + ((5))))) | (unsigned int)((*(unsigned char *)(param_1 + 0x164 + i * 0xc + ((4))))) << 8) << 8 | ((*(unsigned char *)(param_1 + 0x164 + i * 0xc + ((6)))))) << 8) | ((*(unsigned char *)(param_1 + 0x164 + i * 0xc + ((7)))));
         nVerts = ((*(int *)(param_1 + 0x164 + i * 0xc + ((4)))));
-        pVtx = ((*(int *)(param_1 + 0x164 + i * 0xc + ((0)))));
+        pVtx = BR_AT32(char *, param_1 + 0x164 + i * 0xc);
         if (0 < nVerts) {
           k = nVerts;
           do {
@@ -244,7 +244,7 @@ int BrGlTrackFixupCmds(int *param_1)
         t = ((*(char *)(param_1 + 0x164 + i * 0xc + ((0))))); u = ((*(char *)(param_1 + 0x164 + i * 0xc + ((3))))); ((*(char *)(param_1 + 0x164 + i * 0xc + ((3))))) = t; ((*(char *)(param_1 + 0x164 + i * 0xc + ((0))))) = u;
         t = ((*(char *)(param_1 + 0x164 + i * 0xc + ((1))))); u = ((*(char *)(param_1 + 0x164 + i * 0xc + ((2))))); ((*(char *)(param_1 + 0x164 + i * 0xc + ((2))))) = t; ((*(char *)(param_1 + 0x164 + i * 0xc + ((1))))) = u;
         BrSegPtrFixup((uint32_t *)&((*(int *)(param_1 + 0x164 + i * 0xc + ((0))))));
-        pVtx = ((*(int *)(param_1 + 0x164 + i * 0xc + ((0)))));
+        pVtx = BR_AT32(char *, param_1 + 0x164 + i * 0xc);
         if (0 < nVerts) {
           k = nVerts;
           do {
@@ -272,7 +272,6 @@ int BrGlTrackFixupCmds(int *param_1)
 #undef REC
 #undef RECU
 #undef RECD
-  return;
 }
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
@@ -306,7 +305,7 @@ void BrTrackSurfaceSet(int param_1)
   case 0xc:
     g_brCrPlane.pDrvT1 = (const float *)&g_aBrCarPhysDrvT1A[0];
     g_brCrPlane.pDrvT2 = (const float *)&g_aBrCarPhysDrvT2A[0];
-    g_pBrCarPhysGrip = (int)&(g_aBrCarPhysGripA[0]);
+    g_pBrCarPhysGrip = (const float *)&g_aBrCarPhysGripA[0];
     (*(int *)&DAT_100b5170) = 0x3f800000;
     return;
   case 5:
@@ -316,7 +315,7 @@ void BrTrackSurfaceSet(int param_1)
   default:
     g_brCrPlane.pDrvT1 = (const float *)&g_aBrCarPhysDrvT1B[0];
     g_brCrPlane.pDrvT2 = (const float *)&g_aBrCarPhysDrvT2B[0];
-    g_pBrCarPhysGrip = (int)&(g_aBrCarPhysGripB[0]);
+    g_pBrCarPhysGrip = (const float *)&g_aBrCarPhysGripB[0];
     (*(int *)&DAT_100b5170) = 0x3f666666;
     return;
   }
@@ -347,7 +346,7 @@ void BrTexCopyRecords(void *pvTable, int cRecords)
      * array. ebx stays loop-invariant. */
     uint8_t *pTable;
     uint8_t *pWalk;
-    int32_t  adj;
+    intptr_t adj;
     int      n;
 
     if (cRecords <= 0)
@@ -356,10 +355,10 @@ void BrTexCopyRecords(void *pvTable, int cRecords)
     pTable = (uint8_t *)pvTable;
     adj    = -8;
     pWalk  = pTable + 8;
-    adj   -= (int32_t)(uint32_t)pTable;
+    adj   -= (intptr_t)pTable;
     n      = cRecords;
     do {
-        uint8_t  *pDst = *(uint8_t **)(void *)(pWalk - 8);
+        uint8_t  *pDst = BR_AT32(uint8_t *, (pWalk - 8));
         uint32_t  uFlags;
         uint8_t  *pDesc;
         uint32_t  cb;
@@ -371,7 +370,7 @@ void BrTexCopyRecords(void *pvTable, int cRecords)
         if ((uFlags & 0x00100000u) == 0)
             goto next;
 
-        pDesc = *(uint8_t **)(void *)pWalk;
+        pDesc = BR_AT32(uint8_t *, pWalk);
         if (*(uint16_t *)(void *)(pDesc + 2) != 2)
             goto next;
         if (*(int32_t *)(void *)(pDesc + 8) != -1)
@@ -384,7 +383,7 @@ void BrTexCopyRecords(void *pvTable, int cRecords)
         memcpy(pDst, g_brRcaBlob + *(uint32_t *)(void *)(pDesc + 0x0C),
                cb);
 
-        pDst = *(uint8_t **)(void *)(pWalk - 4);
+        pDst = BR_AT32(uint8_t *, (pWalk - 4));
         if (pDst == 0)
             goto next;
 
@@ -393,11 +392,10 @@ void BrTexCopyRecords(void *pvTable, int cRecords)
             uint32_t uSel;
             uint32_t cbPal;
 
-            pDesc  = *(uint8_t **)(void *)pWalk;
-            pFlags = (char *)g_brLoadTexFlags;
+            pDesc  = BR_AT32(uint8_t *, pWalk);
+            pFlags = (char *)BR_PTR32(uint8_t *, g_brTrkHdr.aSections);
             pFlags += adj;
-            uSel    = *(uint32_t *)(void *)(pFlags + (int32_t)(uint32_t)pWalk
-                                            + 0x20);
+            uSel    = *(uint32_t *)(void *)(pFlags + (intptr_t)pWalk + 0x20);
             uSel   &= 0x0F000000u;
             cbPal   = (uSel == 0x01000000u) ? 0x20u : 0x200u;
             memcpy(pDst,
@@ -432,7 +430,7 @@ void BrInit220B20(void)
  * BrTrackFixupList60 / BrTrackFixupAllRec54. */
 /* @implements 0x10031660 glide BrTrackSetF08FromMax */
 
-void BrTrackSetF08FromMax(int *param_1)
+void BrTrackSetF08FromMax(BrTrkHdr *h)
 
 {
   int iMax;
@@ -440,35 +438,33 @@ void BrTrackSetF08FromMax(int *param_1)
   int i;
 
   iMax = 0;
-  nEntry = *(unsigned short *)(*(int *)(((int *)((char *)(param_1) + (0x24)))) + 0x2000);
+  nEntry = BR_PTR32(const uint16_t *, h->aGridStart)[0x1000];
   for (i = 1; i < nEntry; i = i + 1) {
-    if ((*(unsigned short **)(((int *)((char *)(param_1) + (0x20)))))[i] > iMax) {
-      iMax = (*(unsigned short **)(((int *)((char *)(param_1) + (0x20)))))[i];
+    if (BR_PTR32(const uint16_t *, h->aGridItems)[i] > iMax) {
+      iMax = BR_PTR32(const uint16_t *, h->aGridItems)[i];
     }
   }
-  *(int *)(((int *)((char *)(param_1) + (8)))) = iMax + 1;
-  return;
+  h->cFaces = iMax + 1;
 }
 
 /* WHAT IT DOES: walk an array of 0x54-byte track records and fixup each one. */
 /* @implements 0x100316A0 glide BrTrackFixupAllRec54 */
 
-int BrTrackFixupAllRec54(int *param_1)
+void BrTrackFixupAllRec54(BrTrkHdr *h)
 
 {
   char *iVar1;
   int iVar2;
-  
-  iVar1 = *(int *)(((int *)((char *)(param_1) + (0x60))));
+
+  iVar1 = BR_PTR32(char *, h->aInstances);
   iVar2 = 0;
-  if (0 < *(int *)(((int *)((char *)(param_1) + (100))))) {
+  if (0 < h->cInstances) {
     do {
       BrTrackFixupRec54(iVar1);
       iVar1 = iVar1 + 0x54;
       iVar2 = iVar2 + 1;
-    } while (iVar2 < *(int *)(((int *)((char *)(param_1) + (100)))));
+    } while (iVar2 < h->cInstances);
   }
-  return;
 }
 
 /* BrSwapVec3Array: prototype in br_funcs.h */
@@ -491,26 +487,27 @@ int BrTrackFixupAllRec54(int *param_1)
  * fixup hooks, and the per-record, segment-list and Vec3 fixups. */
 /* @implements 0x100314D0 glide BrGlTrackFixupAll */
 
-void BrGlTrackFixupAll(int *param_1)
+void BrGlTrackFixupAll(BrTrkHdr *h)
 
 {
   short sVar1;
-  char *iVar2;
-  short *psVar3;
+  int iVar2;
+  unsigned short *psVar3;
   unsigned short *puVar4;
+  unsigned short *pList;
   int iMax2;
   int iMax1;
-  char *i;
+  int i;
 
-  BrSwapVec3Array(*(int *)(param_1 + 0x14),*(int *)(param_1 + 0x10));
-  BrRcaFixupArray(*(int *)(param_1 + 0x1c),*(int *)(param_1 + 0x18));
-  BrSwapU16Array(*(int *)(param_1 + 0x24),0x1001);
-  BrSwapU16Array(*(int *)(param_1 + 0x20),
-                 *(unsigned short *)(*(int *)(param_1 + 0x24) + 0x2000));
+  BrSwapVec3Array(BR_PTR32(void *, h->aVertices), h->cVertices);
+  BrRcaFixupArray(BR_PTR32(void *, h->aSections), h->cSections);
+  BrSwapU16Array(BR_PTR32(void *, h->aGridStart), 0x1001);
+  BrSwapU16Array(BR_PTR32(void *, h->aGridItems),
+                 BR_PTR32(unsigned short *, h->aGridStart)[0x1000]);
   iMax1 = 0;
-  iVar2 = *(unsigned short *)(*(int *)(param_1 + 0x24) + 0x2000) - 1;
+  iVar2 = BR_PTR32(unsigned short *, h->aGridStart)[0x1000] - 1;
   if (1 <= iVar2) {
-    puVar4 = (unsigned short *)(*(int *)(param_1 + 0x20) + iVar2 * 2);
+    puVar4 = BR_PTR32(unsigned short *, h->aGridItems) + iVar2;
     i = iVar2;
     do {
       if (*puVar4 > iMax1) {
@@ -520,10 +517,10 @@ void BrGlTrackFixupAll(int *param_1)
       i = i + -1;
     } while (i != 0);
   }
-  BrSwapU16Array(*(int *)(param_1 + 0x90),iMax1 + 1);
+  BrSwapU16Array(BR_PTR32(void *, h->aU16List90), iMax1 + 1);
   iMax2 = 0;
   if (1 <= iMax1) {
-    puVar4 = (unsigned short *)(*(int *)(param_1 + 0x90) + iMax1 * 2);
+    puVar4 = BR_PTR32(unsigned short *, h->aU16List90) + iMax1;
     do {
       if (*puVar4 > iMax2) {
         iMax2 = *puVar4;
@@ -532,32 +529,31 @@ void BrGlTrackFixupAll(int *param_1)
       iMax1 = iMax1 - 1;
     } while (iMax1 != 0);
   }
-  iVar2 = *(int *)(param_1 + 0x8c);
-  psVar3 = (short *)(iVar2 + iMax2 * 2);
-  sVar1 = *(short *)(iVar2 + iMax2 * 2);
+  pList = BR_PTR32(unsigned short *, h->aU16List8C);
+  psVar3 = pList + iMax2;
+  sVar1 = (short)pList[iMax2];
   while (sVar1 != 0) {
     psVar3 = psVar3 + 1;
     iMax2 = iMax2 + 1;
-    sVar1 = *psVar3;
+    sVar1 = (short)*psVar3;
   }
-  BrSwapU16Array(iVar2,iMax2);
-  BrTrackSetF08FromMax(param_1);
-  BrSwapU16x4Array(*(int *)(param_1 + 0xc),*(int *)(param_1 + 8));
-  BrF3DListFixup(*(int *)(param_1 + 0x50));
+  BrSwapU16Array(pList, iMax2);
+  BrTrackSetF08FromMax(h);
+  BrSwapU16x4Array(BR_PTR32(void *, h->aFaces), h->cFaces);
+  BrF3DListFixup(BR_PTR32(struct BrGfxWords *, h->aDl50));
   BrFontSetRenderDst(4);
   if (DAT_104b15e8 == 3) {
-    BrTexCopyRecords(*(void **)(param_1 + 0x1c),*(int *)(param_1 + 0x18));
+    BrTexCopyRecords(BR_PTR32(void *, h->aSections), h->cSections);
   }
-  (*(*(int (**)())&g_pfn18AA0C4))(*(int *)(param_1 + 0x50));
-  BrTrackFixupAllRec54(param_1);
+  g_pfn18AA0C4(BR_PTR32(void *, h->aDl50));
+  BrTrackFixupAllRec54(h);
   BrFontSetRenderDst(1);
-  (*(*(int (**)())&DAT_118ed1e4))(*(int *)(param_1 + 0x1c),*(int *)(param_1 + 0x18));
-  BrSwapU16Array(*(int *)(param_1 + 0x6c),0x1001);
-  BrSwapU16Array(*(int *)(param_1 + 0x68),
-                 *(unsigned short *)(*(int *)(param_1 + 0x6c) + 0x2000));
-  BrTrackFixupSegList(param_1);
-  BrTrackSwapAllVec3(param_1);
-  return;
+  DAT_118ed1e4(BR_PTR32(struct BrTexRec *, h->aSections), h->cSections);
+  BrSwapU16Array(BR_PTR32(void *, h->aGrid16), 0x1001);
+  BrSwapU16Array(BR_PTR32(void *, h->aQueue),
+                 BR_PTR32(unsigned short *, h->aGrid16)[0x1000]);
+  BrTrackFixupSegList(h);
+  BrTrackSwapAllVec3(h);
 }
 
 
@@ -648,21 +644,23 @@ void BrTrackLoad(int param_1)
   char local_400 [1024];
 
   BrTrackLoadHandling(param_1);
-  (*(int *)&g_brKeyBias) = 0x80025c00 - (int)DAT_106eff08;
-  BrSegSetBases(0x80025c00, (unsigned int)DAT_106eff08);
+  /* the image's own 32-bit window first, so the bias is taken in it */
+  br_addr32_window(g_abBrTrkImage);
+  g_brKeyBias = 0x80025c00 - br_addr32(g_abBrTrkImage);
+  BrSegSetBases(0x80025c00, g_abBrTrkImage);
   BrSegSetFlag(1);
   strcpy(local_400, s_tracks__100b74c0);
   strcat(local_400, (&PTR_s_desert_trk_100b78c0)[param_1]);
   uVar3 = BrChkFReadOpen(local_400);
   iVar6 = BrChkFileSize(uVar3);
-  BrGlTrackHdrRead(&DAT_106eecd8, uVar3);
+  BrGlTrackHdrRead(&g_brTrkHdr, uVar3);
   if (4000000 < iVar6) {
     printf(DAT_100aa3a4, param_1, iVar6, 4000000);
     exit(1);
   }
-  BrChkFRead(&DAT_106f0138, 1, iVar6 + -0x230, uVar3);
+  BrChkFRead(g_abBrTrkImage + 0x230, 1, iVar6 + -0x230, uVar3);
   BrChkFClose(uVar3);
-  BrGlTrackFixupCmds(&DAT_106eecd8);
+  BrGlTrackFixupCmds(&g_brTrkHdr);
   BrFileReadInto(&DAT_118ed1f0, (&PTR_s_cargfx_skytexdesert_lut4_100bb30c)[param_1 * 0x5f], 0x20);
   BrFileReadInto(&DAT_118eda10, (&PTR_s_cargfx_skytexdesert_lut4_100bb30c)[param_1 * 0x5f] + 0x20,
                -1);
@@ -671,30 +669,30 @@ void BrTrackLoad(int param_1)
                -1);
   BrSub10073AC0();
   BrSub10073B00();
-  _DAT_106ec77c = (int)DAT_106eff08 - DAT_106eecdc;
-  (*(unsigned char * *)&g_brRcaBlob) = DAT_106eff08 + DAT_106eecd8;
-  BrGlTrackFixupAll(&DAT_106eecd8);
+  _DAT_106ec77c = g_abBrTrkImage - g_brTrkHdr.cbHeader;
+  g_brRcaBlob = g_abBrTrkImage + g_brTrkHdr.heapOff;
+  BrGlTrackFixupAll(&g_brTrkHdr);
   _DAT_100aa02c = -1;
   DAT_100aa030 = -1;
-  for (iVar6 = 0; iVar6 < g_BrSpanCount; iVar6++) {
+  for (iVar6 = 0; iVar6 < g_brTrkHdr.cInstances; iVar6++) {
       local_40c.x = 1.0f;
       local_40c.y = 0.0f;
       local_40c.z = 0.0f;
-      BrMtxXfmDir3((int *)&local_40c, (int *)&local_40c, (int)&((BrTrkInst *)g_BrDrawTrackFlags)[iVar6]);
+      BrMtxXfmDir3((int *)&local_40c, (int *)&local_40c, (int)&((BrTrkInst *)BR_PTR32(void *, g_brTrkHdr.aInstances))[iVar6]);
       fVar11 = BrVec3Length((int *)&local_40c);
       if (fVar11 != _DAT_10077528) {
         fVar11 = _DAT_10077524 / fVar11;
-        if (fVar11 * ((BrTrkInst *)g_BrDrawTrackFlags)[iVar6].m[0] == _DAT_10077524 && ((BrTrkInst *)g_BrDrawTrackFlags)[iVar6].m[5] * fVar11 == _DAT_10077524 && ((BrTrkInst *)g_BrDrawTrackFlags)[iVar6].m[10] * fVar11 == _DAT_10077524)
-          ((BrTrkInst *)g_BrDrawTrackFlags)[iVar6].f20 = 1;
-        ((BrTrkInst *)g_BrDrawTrackFlags)[iVar6].fInvScale = fVar11;
+        if (fVar11 * ((BrTrkInst *)BR_PTR32(void *, g_brTrkHdr.aInstances))[iVar6].m[0] == _DAT_10077524 && ((BrTrkInst *)BR_PTR32(void *, g_brTrkHdr.aInstances))[iVar6].m[5] * fVar11 == _DAT_10077524 && ((BrTrkInst *)BR_PTR32(void *, g_brTrkHdr.aInstances))[iVar6].m[10] * fVar11 == _DAT_10077524)
+          ((BrTrkInst *)BR_PTR32(void *, g_brTrkHdr.aInstances))[iVar6].f20 = 1;
+        ((BrTrkInst *)BR_PTR32(void *, g_brTrkHdr.aInstances))[iVar6].fInvScale = fVar11;
       }
   }
-  if (0x800 < g_BrSpanCount) {
-    printf(DAT_100aa378, g_BrSpanCount, 0x800);
+  if (0x800 < g_brTrkHdr.cInstances) {
+    printf(DAT_100aa378, g_brTrkHdr.cInstances, 0x800);
     exit(1);
   }
-  if (DAT_106eecdc != 0x230) {
-    printf(DAT_100aa348, DAT_106eecdc, 0x230);
+  if (g_brTrkHdr.cbHeader != 0x230) {
+    printf(DAT_100aa348, g_brTrkHdr.cbHeader, 0x230);
     exit(1);
   }
   BrNodeRunMarkPass();

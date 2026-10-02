@@ -130,6 +130,7 @@
  *     into the shared induction, identical output.
  * ------------------------------------------------------------------------
  */
+#include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "br_race.h"   /* br_globals: its objects */
 #include <stdint.h>
 #include <string.h>      /* memcpy (intrinsic under /O2: inline rep movsd)  */
@@ -675,7 +676,7 @@ stepped:
             do {
                 if (g_aBrRaceDriver[iDrv].pCar != 0
                     && g_aBrRaceDriver[iDrv].pCar != pCar) {
-                    lap = (*(BrAiPathNode * *)&g_pBrRaceLapRec)->aPt[0].arc;
+                    lap = BR_PTR32(BrAiPathNode *, g_brTrkHdr.aPathRoot)->aPt[0].arc;
                     d = g_aBrRaceDriver[iDrv].pCar->fFF4 - pCar->fFF4;
                     while (d > lap)
                         d -= lap;

@@ -9,6 +9,7 @@
  * sites are `fild [esp]` in orig.
  */
 
+#include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "br_coretypes.h"   /* br_globals: its objects */
 #include "br_race.h"   /* br_globals: its objects */
 #include "br_vec.h"   /* br_globals: its objects */
@@ -107,7 +108,7 @@ void BR_THISCALL1 BrRaceGridPlace(uint8_t *pDrv)
         else
             t = idx * 0x226;
         ((*(float *)((uint8_t *)((pDrv)) + ((0x50))))) = (float)t;
-        BrPathWalk(g_pBrRaceLapRec, ((*(float *)((uint8_t *)((pDrv)) + ((0x50))))));
+        BrPathWalk(BR_PTR32(BrAiPathNode *, g_brTrkHdr.aPathRoot), ((*(float *)((uint8_t *)((pDrv)) + ((0x50))))));
         ((*(int32_t *)((uint8_t *)((pDrv)) + ((0x00))))) = (*(int32_t *)&g_brRacePathPos);
         ((*(int32_t *)((uint8_t *)((pDrv)) + ((0x04))))) = (*(int32_t *)((char *)&g_brRacePathPos + 0x4));
         ((*(int32_t *)((uint8_t *)((pDrv)) + ((0x08))))) = (*(int32_t *)((char *)&g_brRacePathPos + 0x8));

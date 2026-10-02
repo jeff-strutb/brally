@@ -920,6 +920,7 @@
 
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
+#include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "br_coretypes.h"   /* br_globals: its objects */
 #include "br_mat.h"   /* br_globals: its objects */
 #include "br_race.h"   /* br_globals: its objects */
@@ -1307,7 +1308,7 @@ void BrSceneDlBuild(struct BrViewRect *param_1, int param_2, unsigned char *para
             }
             if (i < base) {
                 idx = (*(uint16_t (*)[])&g_BrVisSpans)[i];
-                pObj = (float *)(g_BrDrawTrackFlags + idx * 0x54);
+                pObj = (float *)(BR_PTR32(void *, g_brTrkHdr.aInstances) + idx * 0x54);
                 if ((uint16_t)(*(uint16_t *)(pObj + 0x12) & DAT_10396eb4) == 0 &&
                     (DAT_10396eac == 0 || idx != (uint32_t)DAT_10396ea8) &&
                     (DAT_1035f7e0 & *(uint16_t *)(pObj + 0x13)) == 0) {
@@ -1322,7 +1323,7 @@ void BrSceneDlBuild(struct BrViewRect *param_1, int param_2, unsigned char *para
                 }
             } else {
                 idx = (*(uint16_t (*)[])&g_BrVisSpans)[nTotal - i];
-                pObj = (float *)(g_BrDrawTrackFlags + idx * 0x54);
+                pObj = (float *)(BR_PTR32(void *, g_brTrkHdr.aInstances) + idx * 0x54);
 draw:
                 if ((*((uint8_t *)pObj + 0x4d) & 0x20) != 0) {
                     float fMax, fMin, scale;
@@ -1382,8 +1383,8 @@ draw:
                     if (fMax > DAT_10077238 || fMin < DAT_10077240) {
                         if (i == 1) {
                             char *pName;
-                            if (DAT_106eed34 != 0) {
-                                pName = *(char **)(DAT_106eed34 + idx * 4);
+                            if (g_brTrkHdr.aNames != 0) {
+                                pName = BR_PTR32(char *, BR_PTR32(const uint32_t *, g_brTrkHdr.aNames)[idx]);
                             } else {
                                 pName = DAT_100a5ea0;
                             }

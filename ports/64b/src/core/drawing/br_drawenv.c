@@ -5,8 +5,9 @@
  * x87emu verification.  The mechanical put() sections and the guard
  * logic are transcribed from the Glide asm at 10010000.asm line 6936.
  */
+#include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "br_drawenv.h"
-#include "br_drawcar.h"     /* g_BrDrawWheelAlt, g_BrDrawTrackFlags,
+#include "br_drawcar.h"     /* g_BrDrawWheelAlt, BR_PTR32(void *, g_brTrkHdr.aInstances),
                              * g_BrDrawCombined, g_BrDrawScale, TK_* */
 #include "slice1_05.h"      /* BrRdpSetCombineLERP, BrGfxWords        */
 #include "slice2_14.h"      /* g_BrFpsScreenW/H                       */

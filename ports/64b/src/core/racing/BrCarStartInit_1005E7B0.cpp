@@ -1,3 +1,4 @@
+#include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "br_race.h"   /* br_globals: its objects */
 #include "slice3_41.h"   /* BrDriverCar, the canonical record */
 /* WHAT IT DOES: the entrant's start-of-race pass on a freshly constructed
@@ -184,22 +185,22 @@ void Car5E7B0::StartInit()
         }
     }
 
-    c1 = BrCosF(DAT_106eed24);
-    s1 = BrSinF(DAT_106eed24);
-    c2 = BrCosF(DAT_106eed24 - (-1.5707964f));
-    s2 = BrSinF(DAT_106eed24 - (-1.5707964f));
+    c1 = BrCosF(g_brTrkHdr.startYaw);
+    s1 = BrSinF(g_brTrkHdr.startYaw);
+    c2 = BrCosF(g_brTrkHdr.startYaw - (-1.5707964f));
+    s2 = BrSinF(g_brTrkHdr.startYaw - (-1.5707964f));
 
     c2 = c2 * (local_10 - 0.5f) * 3.0f;
     s1 = s1 * (local_14 - (-1.0f)) * 8.0f;
-    m_1006F680((DAT_106eed18 - c2) -
+    m_1006F680((g_brTrkHdr.startPos.x - c2) -
                c1 * (local_14 - (-1.0f)) * 8.0f,
-           (DAT_106eed1c - s2 * (local_10 - 0.5f) * 3.0f) -
+           (g_brTrkHdr.startPos.y - s2 * (local_10 - 0.5f) * 3.0f) -
                s1,
-           DAT_106eed20 - (-0.1f));
+           g_brTrkHdr.startPos.z - (-0.1f));
 
     (*(float *)&((BrDriverCar *)(this))->fFF4) = (local_14 - (-0.5f)) * (-8.0f);
 
-    m_1006F720(DAT_106eed24);
+    m_1006F720(g_brTrkHdr.startYaw);
 
     (*(float *)&((BrDriverCar *)(this))->posPrev.x) = (*(float *)&((BrDriverCar *)(this))->pos.x);
     (*(float *)&((BrDriverCar *)(this))->posPrev.y) = (*(float *)&((BrDriverCar *)(this))->pos.y);
@@ -214,7 +215,7 @@ void Car5E7B0::StartInit()
 
     m_1006FA10(0.0f, 0.0f, 0.0f);
 
-    if (g_pBrRaceLapRec != 0) {
+    if (BR_PTR32(BrAiPathNode *, g_brTrkHdr.aPathRoot) != 0) {
         (*(float *)&((BrDriverCar *)(this))->tRun) = 0.0f;
         (*(float *)&((BrDriverCar *)(this))->tFinal) = 0.0f;
         (*(float *)&((BrDriverCar *)(this))->tBest) = 0.0f;
@@ -223,10 +224,10 @@ void Car5E7B0::StartInit()
             sVar1 = 0;
         (*(float *)&((BrDriverCar *)(this))->fFF0) = *(float *)((*(char * (*)[])&g_apBrRaceDiff)[(*(int *)&g_Br0B380C)] +
                            ((*(int *)&((BrDriverCar *)(this))->f0E64) * 3 + sVar1) * 0x1c + 0x44);
-        ((BrDriverCar *)(this))->pNode.p = (struct BrAiPathNode *)g_pBrRaceLapRec;
+        ((BrDriverCar *)(this))->pNode.p = (struct BrAiPathNode *)BR_PTR32(BrAiPathNode *, g_brTrkHdr.aPathRoot);
         (*(int *)&((BrDriverCar *)(this))->iPt.v) = 0;
-        BrVec3Direction((struct BrVec3 *)(&(*(float *)&((BrDriverCar *)(this))->f0F94)), (const struct BrVec3 *)((const float *)(g_pBrRaceLapRec + 0x4c)),(const struct BrVec3 *)(
-                        (const float *)(g_pBrRaceLapRec + 0x74)));
+        BrVec3Direction((struct BrVec3 *)(&(*(float *)&((BrDriverCar *)(this))->f0F94)), (const struct BrVec3 *)((const float *)((char *)BR_PTR32(void *, g_brTrkHdr.aPathRoot) + 0x4c)),(const struct BrVec3 *)(
+                        (const float *)((char *)BR_PTR32(void *, g_brTrkHdr.aPathRoot) + 0x74)));
     } else {
         (*(float *)&((BrDriverCar *)(this))->f0F94) = 1.0f;
         (*(float *)&((BrDriverCar *)(this))->f0F98) = 0.0f;

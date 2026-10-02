@@ -1,3 +1,4 @@
+#include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "br_race.h"   /* br_globals: its objects */
 #include "slice3_41.h"   /* BrDriverCar, the canonical record */
 /* WHAT IT DOES: per-frame control step for one car from its input record:
@@ -243,9 +244,9 @@ hold:
     if ((*(int *)&g_BrCamHold2) == 0) {
 scan:
     best = 16777216.0f;
-    if (DAT_106eed60 > 0) {
-        p = DAT_106eed5c + 2;
-        n = DAT_106eed60;
+    if (g_brTrkHdr.cPayload > 0) {
+        p = BR_PTR32(float *, g_brTrkHdr.aPayload) + 2;
+        n = g_brTrkHdr.cPayload;
         do {
             dz = (*(float *)&((BrDriverCar *)(this))->pos.z) - p[0];
             dx2 = SQ(((BrDriverCar *)(this))->pos.x - p[-2]);

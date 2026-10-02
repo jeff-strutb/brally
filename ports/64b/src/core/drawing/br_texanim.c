@@ -1,3 +1,4 @@
+#include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "slice1_05.h"   /* br_globals: its objects */
 /* br_texanim.c -- drawing: per-frame texture animation.
  *
@@ -21,7 +22,7 @@
 /* BrScratchRingAlloc: prototype in br_funcs.h */
 /* BrStubTrue: prototype in br_funcs.h */
 
-#define REC(i)  (g_brLoadTexFlags + (i) * 0x24)
+#define REC(i)  (BR_PTR32(uint8_t *, g_brTrkHdr.aSections) + (i) * 0x24)
 
 /* WHAT IT DOES: advance every animated texture one frame. For each live
  * record whose descriptor is a key list, take the frame clock modulo the
@@ -47,7 +48,7 @@ void BrTexAnimStep(void)
   unsigned int g;
 
   e = ((*(int *)((char *)&g_aBrEntRecs + 0x80)) != 0) && ((*(int *)&g_Br0B380C) != 2) && ((*(int *)&g_Br0B380C) != 8);
-  for (f = 0; f < DAT_106eecf0; f = f + 1) {
+  for (f = 0; f < g_brTrkHdr.cSections; f = f + 1) {
     if (*(int *)REC(f) == 0) continue;
     if ((unsigned char)((*(unsigned int *)(REC(f) + 0x20) >> 0x14) & 1) != 0) {
       b = *(int *)(((*(int *)(REC((f)) + 8))) + 8 + (*(unsigned short *)(((*(int *)(REC((f)) + 8))) + 2) - 1) * 0xc) - *(int *)(((*(int *)(REC((f)) + 8))) + 8);

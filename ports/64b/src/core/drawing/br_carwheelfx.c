@@ -14,6 +14,7 @@
  */
 #define BrSpanTestPoint BrSpanTestPoint_port
 #define BrPfxReset      BrPfxReset_port
+#include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "slice3_41.h"   /* BrDriverCar */
 #include "slice1_05.h"   /* g_aBrEntRecs */
 #include "br_vec.h"
@@ -97,7 +98,7 @@ static const unsigned aWheelOff[4] = { 0x994u, 0x57Cu, 0x370u, 0x788u };
 /* Glide's globals: 0x106EED38 the track face records (84 bytes each),
  * 0x106ED6B0/B4 two words in the pointer-free span the inventory gives
  * g_aBrEntRecs, 0x100B3014 the selection, 0x106E9D8C the frame step. */
-#define DAT_106eed38 ((unsigned char *)g_BrDrawTrackFlags)
+#define DAT_106eed38 ((unsigned char *)BR_PTR32(void *, g_brTrkHdr.aInstances))
 #define DAT_106ed6b0 (*(int32_t *)((char *)&g_aBrEntRecs + 0x80))
 #define DAT_106ed6b4 (*(int32_t *)((char *)&g_aBrEntRecs + 0x84))
 #define DAT_100b3014 g_Br0B380C

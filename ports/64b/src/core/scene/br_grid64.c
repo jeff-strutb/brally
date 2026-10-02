@@ -12,6 +12,7 @@
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
 #define BrGrid64Sample BrGrid64Sample_port
+#include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "slice1_01.h"
 #undef BrGrid64Sample
 /* 64-bit core: declared once, in br_globals.h or its struct's header */      /* 0x106EECFC */
@@ -35,7 +36,7 @@
  * but reproduced with the mask below rather than assumed away.
  *
  * DEVIATION (port arm only): the grid base was the global at 0x106C7C6C; the
- * port arm takes it as a parameter.  The matching arm reads g_pBrGrid64
+ * port arm takes it as a parameter.  The matching arm reads BR_PTR32(const uint16_t *, g_brTrkHdr.aGridStart)
  * exactly where the original does.
  *
  * Byte-exact 2026-09-04 (Glide 0x10003120, 170 B), three source facts:
@@ -69,8 +70,8 @@ uint32_t BrGrid64Sample(float x, float y)
     row = (unsigned char)(int)(y * 0.03125f);
     col = (unsigned char)(int)(x * 0.03125f);
     idx = (unsigned short)((row << 6) + col);
-    t0 = g_pBrGrid64[idx];
-    t1 = g_pBrGrid64[(unsigned short)(idx + 1)];
+    t0 = BR_PTR32(const uint16_t *, g_brTrkHdr.aGridStart)[idx];
+    t1 = BR_PTR32(const uint16_t *, g_brTrkHdr.aGridStart)[(unsigned short)(idx + 1)];
     /* Literally `t1 + t0*65535`, shifted up 16 -- the low 16 bits of that
      * sum are (t1 - t0) mod 65536, which is the per-cell step. */
     return ((t1 + t0 * 65535u) << 16) | t0;
@@ -95,7 +96,7 @@ unsigned int BrGrid16Pair(int a, int b)
     y  = (unsigned char)b;
     i  = (y << 6) + x;
     i2 = i + 1;
-    lo = g_pBrGrid16[i];
-    hi = g_pBrGrid16[i2];
+    lo = BR_PTR32(unsigned short *, g_brTrkHdr.aGrid16)[i];
+    hi = BR_PTR32(unsigned short *, g_brTrkHdr.aGrid16)[i2];
     return ((hi + lo * 0xFFFF) << 16) | lo;
 }

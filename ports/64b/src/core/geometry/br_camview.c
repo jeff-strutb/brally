@@ -16,6 +16,7 @@
 #define BrPtrListContains BrPtrListContains_port
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
+#include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "br_mat.h"   /* br_globals: its objects */
 #include "br_race.h"   /* br_globals: its objects */
 #include "slice2_17.h"
@@ -302,7 +303,7 @@ void FUN_10011d20(void)
 {
   BrMat4 m;
   
-  if (((*(int *)&DAT_105ccb68[4]) != 0) && (g_pBrRaceLapRec != 0)) {
+  if (((*(int *)&DAT_105ccb68[4]) != 0) && (BR_PTR32(BrAiPathNode *, g_brTrkHdr.aPathRoot) != 0)) {
     m.m[0][3] = 0.0f;
     m.m[1][3] = 0.0f;
     m.m[2][3] = 0.0f;
@@ -310,12 +311,12 @@ void FUN_10011d20(void)
     m.m[2][0] = 0.0f;
     m.m[2][1] = 0.0f;
     m.m[2][2] = 1.0f;
-    BrVec3Direction((BrVec3 *)m.m[1], (BrVec3 *)(g_pBrRaceLapRec + 0x4c), (BrVec3 *)(g_pBrRaceLapRec + 0x58));
+    BrVec3Direction((BrVec3 *)m.m[1], (BrVec3 *)((char *)BR_PTR32(void *, g_brTrkHdr.aPathRoot) + 0x4c), (BrVec3 *)((char *)BR_PTR32(void *, g_brTrkHdr.aPathRoot) + 0x58));
     BrVec3Cross((BrVec3 *)m.m[0], (BrVec3 *)m.m[1], (BrVec3 *)m.m[2]);
     BrVec3Cross((BrVec3 *)m.m[1], (BrVec3 *)m.m[2], (BrVec3 *)m.m[0]);
-    m.m[3][0] = *(float *)(g_pBrRaceLapRec + 0x4c);
-    m.m[3][1] = *(float *)(g_pBrRaceLapRec + 0x50);
-    m.m[3][2] = (*(float *)(g_pBrRaceLapRec + 0x54) + g_brRaceFade) - _DAT_10077284;
+    m.m[3][0] = *(float *)((char *)BR_PTR32(void *, g_brTrkHdr.aPathRoot) + 0x4c);
+    m.m[3][1] = *(float *)((char *)BR_PTR32(void *, g_brTrkHdr.aPathRoot) + 0x50);
+    m.m[3][2] = (*(float *)((char *)BR_PTR32(void *, g_brTrkHdr.aPathRoot) + 0x54) + g_brRaceFade) - _DAT_10077284;
     BrVec3MulAdd((BrVec3 *)m.m[3], (BrVec3 *)m.m[3], (BrVec3 *)m.m[0], -0.3f);
     BrVec3MulAdd((BrVec3 *)m.m[3], (BrVec3 *)m.m[3], (BrVec3 *)m.m[1], -0.6f);
     { BrDlCmd *pEmit_ = (*(BrDlCmd * *)&g_BrGfxPtr)++; pEmit_->op = 0x1060040; pEmit_->arg = (int)&(DAT_100a9ec0[0]); }

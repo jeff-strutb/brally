@@ -1,3 +1,4 @@
+#include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "br_coretypes.h"   /* br_globals: its objects */
 #include "br_mat.h"   /* br_globals: its objects */
 #include "br_vec.h"   /* br_globals: its objects */
@@ -136,7 +137,7 @@ void BrEnvEmit(void)
   if ((*(int *)((char *)&g_aBrEntRecs + 0x80)) || (*(int *)((char *)&g_aBrEntRecs + 0x84))) {
     iVar11 = (*(int *)&g_BrEnvFlagCount);
     for (iVar15 = 0; iVar15 < iVar11; iVar15++) {
-      if ((*(unsigned char *)(g_BrDrawTrackFlags + 0x4c + (unsigned int)(&(g_BrEnvFlagIndices[0]))[iVar15] * 0x54) & 0x10) != 0) {
+      if ((*(unsigned char *)(BR_PTR32(void *, g_brTrkHdr.aInstances) + 0x4c + (unsigned int)(&(g_BrEnvFlagIndices[0]))[iVar15] * 0x54) & 0x10) != 0) {
         return;
       }
     }

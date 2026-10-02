@@ -291,12 +291,12 @@ void BrRcaFixup(void *pvFile)
     BR_SWAP4(pFile + 0x8014);  BrSegPtrFixup((uint32_t *)(pFile + 0x8014));
 
     /* [+0x14] is a table of [+0x10] records, stride 0x24. */
-    BrRcaFixupArray(*(void **)(pFile + 0x8014), *(int *)(pFile + 0x8010));
+    BrRcaFixupArray(BR_AT32(void *, (pFile + 0x8014)), *(int *)(pFile + 0x8010));
 
     {
         /* Patch four u16s in the record selected by the byte at +0x11A. */
-        uint8_t *pDesc = *(uint8_t **)(*(uint8_t **)(pFile + 0x8014)
-                                       + pFile[0x811A] * 0x24 + 4);
+        uint8_t *pDesc = BR_AT32(uint8_t *, (BR_AT32(uint8_t *, pFile + 0x8014)
+                                       + pFile[0x811A] * 0x24 + 4));
 
         if (pDesc != NULL) {
             uint8_t *q = pDesc + 0x18;
@@ -318,10 +318,10 @@ void BrRcaFixup(void *pvFile)
         for (i = 0; i < 10; ++i) {
             BR_SWAP4(p);
             BrSegPtrFixup((uint32_t *)p);
-            if (BrPtrListContains(*(void **)p) == 0) {
-                BrF3DListFixup(*(void **)p);
+            if (BrPtrListContains(BR_AT32(void *, p)) == 0) {
+                BrF3DListFixup(BR_AT32(void *, p));
                 BrFontSetRenderDst(2);
-                g_pfn18AA0C4(*(void **)p);
+                g_pfn18AA0C4(BR_AT32(void *, p));
             }
             p += 4;
         }
@@ -352,10 +352,10 @@ void BrRcaFixup(void *pvFile)
         for (i = 0; i < 3; ++i) {
             BR_SWAP4(p);
             BrSegPtrFixup((uint32_t *)p);
-            if (BrPtrListContains(*(void **)p) == 0) {
-                BrF3DListFixup(*(void **)p);
+            if (BrPtrListContains(BR_AT32(void *, p)) == 0) {
+                BrF3DListFixup(BR_AT32(void *, p));
                 BrFontSetRenderDst(2);
-                g_pfn18AA0C4(*(void **)p);
+                g_pfn18AA0C4(BR_AT32(void *, p));
             }
             p += 4;
         }
@@ -370,12 +370,12 @@ void BrRcaFixup(void *pvFile)
         /* Records 6, 3 and 5 of the same table, by byte offset.  The table
          * pointer is re-read from the image each time: the calls in between
          * are allowed to move it. */
-        g_pfn18AA0C8(*(uint8_t **)(pFile + 0x8014) + 0xD8, 0);
-        g_pfn18AA0C8(*(uint8_t **)(pFile + 0x8014) + 0x6C, 0);
-        g_pfn18AA0C8(*(uint8_t **)(pFile + 0x8014) + 0xB4, 0);
+        g_pfn18AA0C8(BR_AT32(uint8_t *, (pFile + 0x8014)) + 0xD8, 0);
+        g_pfn18AA0C8(BR_AT32(uint8_t *, (pFile + 0x8014)) + 0x6C, 0);
+        g_pfn18AA0C8(BR_AT32(uint8_t *, (pFile + 0x8014)) + 0xB4, 0);
 
-        pRec  = *(uint8_t **)(pFile + 0x8014) + pFile[0x811B] * 0x24;
-        pDesc = *(uint8_t **)(pRec + 4);
+        pRec  = BR_AT32(uint8_t *, (pFile + 0x8014)) + pFile[0x811B] * 0x24;
+        pDesc = BR_AT32(uint8_t *, (pRec + 4));
 
         if (pDesc != NULL && (*(int *)&g_AC300) == 0) {
             /* The handle is read BEFORE the call and re-read after: the

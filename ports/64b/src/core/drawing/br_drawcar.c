@@ -60,6 +60,7 @@
 /* Header is (const void *, void *).  Original is a 4x4 int copy
  * (`mov ebp,[ecx+eax]` / `mov [eax],ebp`, not fld/fstp). */
 #define BrGuMtxStore BrGuMtxStore_port
+#include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "br_coretypes.h"   /* br_globals: its objects */
 #include "br_mat.h"   /* br_globals: its objects */
 #include "br_race.h"   /* br_globals: its objects */
@@ -1365,7 +1366,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         uint32_t k = car->aNearIds[0];
         /* Read the flags global inline -- a hoisted pointer local occupies
          * edx and rotates the whole function's register assignment. */
-        if (((const unsigned char *)g_BrDrawTrackFlags)[k * 84 + 0x4C] & 0x10) {
+        if (((const unsigned char *)BR_PTR32(void *, g_brTrkHdr.aInstances))[k * 84 + 0x4C] & 0x10) {
             flag290C = 1;
             car->i2714 = 1;
         }

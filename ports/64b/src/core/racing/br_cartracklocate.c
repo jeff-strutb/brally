@@ -5,6 +5,7 @@
  * and picking the nearest segment whose facing agrees; on a hit, update the
  * car's cell/segment record and along-track progress and return 1, else 0.
  */
+#include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "br_race.h"   /* br_globals: its objects */
 #include "br_match.h"      /* BR_THISCALL1 -- thiscall via __fastcall on VC5 */
 #include "slice3_41.h"
@@ -86,7 +87,7 @@ unsigned int BR_THISCALL1 BrCarTrackLocate(BrDriverCar *param_1)
     bVar11 = 0;
   }
   fVar7 = param_1->fFF4 -
-          (float)param_1->lapB * *(float *)(g_pBrRaceLapRec + 100);
+          (float)param_1->lapB * BR_PTR32(BrAiPathNode *, g_brTrkHdr.aPathRoot)->aPt[0].arc;
   if (bVar11) {
     iVar12 = *(int *)&param_1->pNode + *(int *)&param_1->iPt * 0x28;
     iVar12 = BrSeg2SideTest(iVar12 + 0x40, iVar12 + 0x58, ((void *)&param_1->posPrev.x), iVar1);
@@ -101,9 +102,9 @@ unsigned int BR_THISCALL1 BrCarTrackLocate(BrDriverCar *param_1)
     }
   }
   iVar13 = 0;
-  local_34 = (DAT_106eed04 - DAT_106eed00) * (DAT_106eed04 - DAT_106eed00);
-  iVar12 = g_pBrRaceLapRec;
-  if (0 < DAT_106eed54) {
+  local_34 = (g_brTrkHdr.f02C - g_brTrkHdr.f028) * (g_brTrkHdr.f02C - g_brTrkHdr.f028);
+  iVar12 = BR_PTR32(BrAiPathNode *, g_brTrkHdr.aPathRoot);
+  if (0 < g_brTrkHdr.cSegList) {
     do {
       if ((((((param_1->f140 < (*(int *)&g_brRaceNEntrant)) || ((*(int *)&g_brRaceRules.mode) == 2)) ||
              ((*(unsigned char *)(*(int *)(DAT_106eed50 + iVar13 * 4) + 0x16) & 1) == 0)) &&
@@ -137,12 +138,12 @@ unsigned int BR_THISCALL1 BrCarTrackLocate(BrDriverCar *param_1)
             }
             iVar15 = iVar15 + 1;
             pfVar14 = pfVar14 + 10;
-            iVar12 = g_pBrRaceLapRec;
+            iVar12 = BR_PTR32(BrAiPathNode *, g_brTrkHdr.aPathRoot);
           } while (iVar15 < (int)(unsigned int)uVar2);
         }
       }
       iVar13 = iVar13 + 1;
-    } while (iVar13 < DAT_106eed54);
+    } while (iVar13 < g_brTrkHdr.cSegList);
   }
   if (local_3c == -1) {
     return 0;
@@ -157,7 +158,7 @@ LAB_found:
   br_dl_normalise(local_18);
   BrVec3Sub(local_c, iVar1, iVar13 + 0x4c);
   fVar16 = BrVec3Dot(local_18, local_c);
-  fVar3 = (float)((float)(param_1->lapB + 1) * *(float *)(g_pBrRaceLapRec + 100) -
+  fVar3 = (float)((float)(param_1->lapB + 1) * BR_PTR32(BrAiPathNode *, g_brTrkHdr.aPathRoot)->aPt[0].arc -
                   *(float *)(iVar13 + 100) + fVar16 - param_1->fFF4);
   if ((bVar11 == 0) || ((fVar3 > DAT_10077c3c && (fVar3 < DAT_10077c34)))) {
     param_1->fFF4 = fVar3 + param_1->fFF4;

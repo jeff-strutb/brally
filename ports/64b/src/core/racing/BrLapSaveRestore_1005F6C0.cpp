@@ -37,6 +37,7 @@
 /* @implements 0x1005F6C0 glide BrLapSaveRestore
  * @cpp_symbol ?LapSaveRestore@BrCar@@QAEXXZ */
 #define _CRTIMP __declspec(dllimport)
+#include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "br_race.h"   /* br_globals: its objects */
 #include <stdint.h>
 #include "slice3_41.h"
@@ -130,7 +131,7 @@ void BrCar::LapSaveRestore()
   char local_ac[12];
   float local_a0[40];
 
-  local_d4.f = *(float *)(g_pBrRaceLapRec + 100);
+  local_d4.f = BR_PTR32(BrAiPathNode *, g_brTrkHdr.aPathRoot)->aPt[0].arc;
   local_d0 = 0;
   if ((*(int *)&g_brRaceNDriver) <= 0) {
   } else {

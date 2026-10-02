@@ -29,6 +29,8 @@ void     br_addr32_window(const void *base);
 }
 #endif
 #define BR_PTR32(T, a)  ((T)br_ptr32((uint32_t)(a)))
+/* The address held in the 4-byte field at pv, as a host pointer. */
+#define BR_AT32(T, pv)  ((T)br_ptr32(*(const uint32_t *)(const void *)(pv)))
 #ifdef __cplusplus
 }  /* BR_CLINK_END */
 #endif

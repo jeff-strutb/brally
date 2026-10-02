@@ -7,6 +7,7 @@
 /* The original is /MD: CRT calls go through the import
  * table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
+#include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "slice2_13.h"   /* br_globals: its objects */
 #include <stdint.h>
 
@@ -35,11 +36,11 @@ void BrObjSelCycle(void)
     if ((((intptr_t)(g_BrDPlay.os.pfnSetEvent))) != 0) {
         for (;;) {
             DAT_10396ea8 = DAT_10396ea8 + (((intptr_t)(g_BrDPlay.os.pfnSetEvent)));
-            if (DAT_10396ea8 >= g_BrSpanCount) {
+            if (DAT_10396ea8 >= g_brTrkHdr.cInstances) {
                 DAT_10396ea8 = 0;
             }
             if (DAT_10396ea8 < 0) {
-                DAT_10396ea8 = g_BrSpanCount - 1;
+                DAT_10396ea8 = g_brTrkHdr.cInstances - 1;
             }
             if (DAT_10396ea8 == 0) break;
             i = 0;

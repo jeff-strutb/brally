@@ -8,6 +8,7 @@
  * Filed out of the address batch slice3_40.c, with that file's preamble.
  */
 
+#include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "br_coretypes.h"   /* br_globals: its objects */
 #include "br_race.h"   /* br_globals: its objects */
 #include "br_vec.h"   /* br_globals: its objects */
@@ -101,9 +102,9 @@ void BrPathWalk(PwNode *pNode, float dist)
             if (!(dist > seg)) {
                 BrVec3Lerp(&g_brRacePathPos, &(*(PwPoint *)&((BrAiPathNode *)(pNode))->aPt[i + 1]).centre,
                            &(*(PwPoint *)&((BrAiPathNode *)(pNode))->aPt[i]).centre, dist / seg);
-                if ((*(int *)&g_brRaceNGate) != 0) {
-                    k = ((*(int *)&DAT_10b1ca20) + 1) % (*(int *)&g_brRaceNGate);
-                    if (BrSeg2Intersect(&(*(PwSeg (*)[])&g_aBrRaceGate)[k].b, &(*(PwSeg (*)[])&g_aBrRaceGate)[k].a,
+                if (g_brTrkHdr.nGate != 0) {
+                    k = ((*(int *)&DAT_10b1ca20) + 1) % g_brTrkHdr.nGate;
+                    if (BrSeg2Intersect(&(*(PwSeg (*)[])&g_brTrkHdr.aGate)[k].b, &(*(PwSeg (*)[])&g_brTrkHdr.aGate)[k].a,
                                         (const BrVec2 *)&(*(PwPoint *)&((BrAiPathNode *)(pNode))->aPt[i]).centre,
                                         (const BrVec2 *)&g_brRacePathPos) != 0) {
                         (*(int *)&DAT_10b1ca20)++;
@@ -116,9 +117,9 @@ void BrPathWalk(PwNode *pNode, float dist)
                 return;
             }
             dist -= seg;
-            if ((*(int *)&g_brRaceNGate) != 0) {
-                k = ((*(int *)&DAT_10b1ca20) + 1) % (*(int *)&g_brRaceNGate);
-                if (BrSeg2Intersect(&(*(PwSeg (*)[])&g_aBrRaceGate)[k].b, &(*(PwSeg (*)[])&g_aBrRaceGate)[k].a,
+            if (g_brTrkHdr.nGate != 0) {
+                k = ((*(int *)&DAT_10b1ca20) + 1) % g_brTrkHdr.nGate;
+                if (BrSeg2Intersect(&(*(PwSeg (*)[])&g_brTrkHdr.aGate)[k].b, &(*(PwSeg (*)[])&g_brTrkHdr.aGate)[k].a,
                                     (const BrVec2 *)&(*(PwPoint *)&((BrAiPathNode *)(pNode))->aPt[i]).centre,
                                     (const BrVec2 *)&(*(PwPoint *)&((BrAiPathNode *)(pNode))->aPt[i + 1]).centre) != 0) {
                     (*(int *)&DAT_10b1ca20)++;

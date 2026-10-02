@@ -183,8 +183,8 @@ void BrRcaFixupRecord(void *pRec)
             int      entry = 0;
 
             BrSegPtrFixup((uint32_t *)(void *)(r + 8));
-            BrRcaSwapMesh(*(void **)(void *)(r + 8));
-            mesh = *(uint8_t **)(void *)(r + 8);
+            BrRcaSwapMesh(BR_AT32(void *, (r + 8)));
+            mesh = BR_AT32(uint8_t *, (r + 8));
             if (*(uint16_t *)(mesh + 2) == 2
                 && *(uint32_t *)(mesh + 8) == 0xFFFFFFFFu)
                 entry = 1;
@@ -195,22 +195,22 @@ void BrRcaFixupRecord(void *pRec)
             if (entry == 0) {
                 uint32_t n = *(uint32_t *)(r + 0x20) & 0x0003FFFFu;
                 if (n != 0 && off0 != 0xFFFFFFFFu)
-                    memcpy(*(void **)(void *)r, g_brRcaBlob + off0, n);
+                    memcpy(BR_AT32(void *, r), g_brRcaBlob + off0, n);
             }
-            if (*(void **)(void *)(r + 4) != NULL
+            if (BR_AT32(void *, (r + 4)) != NULL
                 && off1 != 0xFFFFFFFFu) {
                 uint32_t len =
                     ((*(uint32_t *)(r + 0x20) & 0x0F000000u) == 0x01000000u)
                         ? 0x20u : 0x200u;
-                memcpy(*(void **)(void *)(r + 4), g_brRcaBlob + off1, len);
+                memcpy(BR_AT32(void *, (r + 4)), g_brRcaBlob + off1, len);
             }
         } else {
             /* +0x08 is a 12-bit index scaled by 32 rather than a pointer. */
             uint32_t src = (*(uint32_t *)(r + 8) & 0xFFFu) << 5;
-            if (*(void **)(void *)(r + 4) != NULL) {
+            if (BR_AT32(void *, (r + 4)) != NULL) {
                 uint32_t len = ((flags & 0x0F000000u) == 0x01000000u)
                                    ? 0x20u : 0x200u;
-                memcpy(*(void **)(void *)(r + 4), g_brRcaBlob + src, len);
+                memcpy(BR_AT32(void *, (r + 4)), g_brRcaBlob + src, len);
             }
         }
     }

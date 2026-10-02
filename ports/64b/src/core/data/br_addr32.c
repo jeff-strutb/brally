@@ -13,13 +13,17 @@ static int       s_nNext = BR_A32_FIRST;
 
 static int window_of(uintptr_t a)
 {
-    int i;
+    int i, best = 0;
 
-    /* the first window that holds the address: one address, one value */
+    /* the window whose base is nearest below the address: a block given its
+     * own window by br_addr32_window keeps every address inside it on that
+     * window, even when an older, aligned window also covers the block --
+     * and could end in the middle of it */
     for (i = BR_A32_FIRST; i < s_nNext; i++)
-        if (s_aWindow[i] <= a && a - s_aWindow[i] < BR_A32_SPAN)
-            return i;
-    return 0;
+        if (s_aWindow[i] <= a && a - s_aWindow[i] < BR_A32_SPAN
+            && (best == 0 || s_aWindow[i] > s_aWindow[best]))
+            best = i;
+    return best;
 }
 
 /* A loaded block's own window: every address inside it is an offset from

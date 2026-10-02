@@ -42,6 +42,7 @@
 
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
+#include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "br_coretypes.h"   /* br_globals: its objects */
 #include "br_mat.h"   /* br_globals: its objects */
 #include "br_vec.h"   /* br_globals: its objects */
@@ -210,7 +211,7 @@ void BrObjDlBuild(struct BrViewRect * pRects, int idx, uint32_t cls, int bLit, u
 
     pVtx = DAT_1035faec;
     pDL  = (*(uint32_t * *)&DAT_1035f7d8);
-    pRec = (char *)(g_BrDrawTrackFlags + idx * 0x54);
+    pRec = (char *)(BR_PTR32(void *, g_brTrkHdr.aInstances) + idx * 0x54);
     pCmd = *(uint32_t **)(pRec + 0x44);
 
     if (cls == 0 || g_BrCamera == g_pBr63Race + 0x2890 ||

@@ -90,6 +90,7 @@ extern "C" {  /* BR_CLINK_BEGIN: every original function has C linkage */
 #include <stdint.h>
 
 #include "br_vec.h"
+#include "br_trkhdr.h"   /* BrRaceGate, g_brTrkHdr */
 #include "slice2_21.h"   /* BrVec2, BrSeg2Intersect -- 0x1003BA70 */
 #include "slice3_41.h"   /* BrDriver, BrDriverCar, BR_RACE_LAPTIME_MAX */
 
@@ -97,19 +98,7 @@ extern "C" {  /* BR_CLINK_BEGIN: every original function has C linkage */
  * The gate ring
  * ========================================================================== */
 
-/* Glide 0x106EED70, stride 0x14. The two posts are handed to BrSeg2Intersect,
- * which reads only offsets 0 and 4 of each of its four arguments -- so the
- * gate is genuinely a 2-D segment and the driver's Z is never consulted.
- *
- * `tAward` is read once, to be printed ("moved ahead one gate, getting %f
- * seconds"). NOTHING in 0x1005FF00 applies it. Either the award is applied by
- * the checkpoint-timer code elsewhere, or the message outlived the feature;
- * this module does not guess which. */
-typedef struct BrRaceGate {
-    BrVec2 postA;     /* +0x00 */
-    BrVec2 postB;     /* +0x08 */
-    float  tAward;    /* +0x10 */
-} BrRaceGate;
+/* BrRaceGate: br_trkhdr.h -- the ring is part of the loaded track header. */
 
 /* ==========================================================================
  * The globals 0x1005FF00 reads, gathered
@@ -200,11 +189,8 @@ void BrRaceStoreToCar(BrDriver *pDrv);
 
 /* 0x106EED48 holds a POINTER (`mov eax,[0x106EED48]; test eax,eax;
  * fld [eax+0x64]`), so the lap length is a FIELD of the object, not a
- * standalone float.  br_ai.h pins the pointer as track header +0x70. */
-typedef struct BrRaceLapRec {
-    uint8_t _pad00[0x64];
-    float   fLapLength;                 /* +0x64 */
-} BrRaceLapRec;
+ * standalone float: the object is the path ring root node (track header
+ * +0x70, g_brTrkHdr.aPathRoot) and +0x64 is its aPt[0].arc. */
 
 /* 0x10AF2094 -> the two per-track record tables, both indexed by the chosen
  * track (0x100B3014).  Best lap at +0xB0, best total at +0x10C. */
@@ -320,14 +306,6 @@ extern BrRaceRules g_brRaceRules;  /* 0x100A9354 */
 #undef g_apBrRaceDiff
 extern BrRaceDiffRec * g_apBrRaceDiff[];  /* 0x100BCAB0 */
 #pragma pop_macro("g_apBrRaceDiff")
-#pragma push_macro("g_pBrRaceLapRec")
-#undef g_pBrRaceLapRec
-extern BrRaceLapRec *g_pBrRaceLapRec;  /* 0x106EED48 */
-#pragma pop_macro("g_pBrRaceLapRec")
-#pragma push_macro("g_aBrRaceGate")
-#undef g_aBrRaceGate
-extern const BrRaceGate g_aBrRaceGate[];  /* 0x106EED70 */
-#pragma pop_macro("g_aBrRaceGate")
 #ifdef __cplusplus
 }
 #endif

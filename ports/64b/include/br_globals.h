@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include "br_coretypes.h"
 #include "br_podarc.h"
+struct BrTexRec;
 
 struct BrCtl;
 struct BrPaceNote;
@@ -5637,146 +5638,10 @@ extern uint32_t g_brPendDropped;  /* 0x106EECD0 */
 #undef g_6C7C44
 extern uint32_t g_6C7C44;  /* 0x106EECD4 */
 #pragma pop_macro("g_6C7C44")
-#pragma push_macro("DAT_106eecd8")
-#undef DAT_106eecd8
-extern int DAT_106eecd8;  /* 0x106EECD8 */
-#pragma pop_macro("DAT_106eecd8")
-#pragma push_macro("DAT_106eecdc")
-#undef DAT_106eecdc
-extern int DAT_106eecdc;  /* 0x106EECDC */
-#pragma pop_macro("DAT_106eecdc")
-#pragma push_macro("g_pBrCollTriIdx")
-#undef g_pBrCollTriIdx
-extern const uint16_t *g_pBrCollTriIdx;  /* 0x106EECE4 */
-#pragma pop_macro("g_pBrCollTriIdx")
-#pragma push_macro("DAT_106eecf0")
-#undef DAT_106eecf0
-extern int DAT_106eecf0;  /* 0x106EECF0 */
-#pragma pop_macro("DAT_106eecf0")
-#pragma push_macro("g_brLoadTexFlags")
-#undef g_brLoadTexFlags
-extern uint8_t *g_brLoadTexFlags;  /* 0x106EECF4 */
-#pragma pop_macro("g_brLoadTexFlags")
-#pragma push_macro("g_br6C7C68")
-#undef g_br6C7C68
-extern const uint16_t *g_br6C7C68;  /* 0x106EECF8 */
-#pragma pop_macro("g_br6C7C68")
-#pragma push_macro("g_pBrGrid64")
-#undef g_pBrGrid64
-extern const uint16_t *g_pBrGrid64;  /* 0x106EECFC */
-#pragma pop_macro("g_pBrGrid64")
-#pragma push_macro("DAT_106eed00")
-#undef DAT_106eed00
-extern float DAT_106eed00;  /* 0x106EED00 */
-#pragma pop_macro("DAT_106eed00")
-#pragma push_macro("DAT_106eed04")
-#undef DAT_106eed04
-extern float DAT_106eed04;  /* 0x106EED04 */
-#pragma pop_macro("DAT_106eed04")
-#pragma push_macro("DAT_106eed10")
-#undef DAT_106eed10
-extern float DAT_106eed10;  /* 0x106EED10 */
-#pragma pop_macro("DAT_106eed10")
-#pragma push_macro("DAT_106eed14")
-#undef DAT_106eed14
-extern float DAT_106eed14;  /* 0x106EED14 */
-#pragma pop_macro("DAT_106eed14")
-#pragma push_macro("DAT_106eed18")
-#undef DAT_106eed18
-extern float DAT_106eed18;  /* 0x106EED18 */
-#pragma pop_macro("DAT_106eed18")
-#pragma push_macro("DAT_106eed1c")
-#undef DAT_106eed1c
-extern float DAT_106eed1c;  /* 0x106EED1C */
-#pragma pop_macro("DAT_106eed1c")
-#pragma push_macro("DAT_106eed20")
-#undef DAT_106eed20
-extern float DAT_106eed20;  /* 0x106EED20 */
-#pragma pop_macro("DAT_106eed20")
-#pragma push_macro("DAT_106eed24")
-#undef DAT_106eed24
-extern float DAT_106eed24;  /* 0x106EED24 */
-#pragma pop_macro("DAT_106eed24")
-#pragma push_macro("DAT_106eed28")
-#undef DAT_106eed28
-extern void *DAT_106eed28;  /* 0x106EED28 */
-#pragma pop_macro("DAT_106eed28")
-#pragma push_macro("DAT_106eed34")
-#undef DAT_106eed34
-extern void *DAT_106eed34;  /* 0x106EED34 */
-#pragma pop_macro("DAT_106eed34")
-#pragma push_macro("g_BrDrawTrackFlags")
-#undef g_BrDrawTrackFlags
-extern void *g_BrDrawTrackFlags;  /* 0x106EED38 */
-#pragma pop_macro("g_BrDrawTrackFlags")
-#pragma push_macro("g_BrSpanCount")
-#undef g_BrSpanCount
-extern int g_BrSpanCount;  /* 0x106EED3C */
-#pragma pop_macro("g_BrSpanCount")
-#pragma push_macro("g_pBrU16QueueTable")
-#undef g_pBrU16QueueTable
-extern const uint16_t *g_pBrU16QueueTable;  /* 0x106EED40 */
-#pragma pop_macro("g_pBrU16QueueTable")
-#pragma push_macro("g_pBrGrid16")
-#undef g_pBrGrid16
-extern unsigned short *g_pBrGrid16;  /* 0x106EED44 */
-#pragma pop_macro("g_pBrGrid16")
-#pragma push_macro("DAT_106eed50")
-#undef DAT_106eed50
-extern void *DAT_106eed50;  /* 0x106EED50 */
-#pragma pop_macro("DAT_106eed50")
-#pragma push_macro("DAT_106eed54")
-#undef DAT_106eed54
-extern int DAT_106eed54;  /* 0x106EED54 */
-#pragma pop_macro("DAT_106eed54")
-#pragma push_macro("DAT_106eed58")
-#undef DAT_106eed58
-extern unsigned char DAT_106eed58;  /* 0x106EED58 */
-#pragma pop_macro("DAT_106eed58")
-#pragma push_macro("DAT_106eed59")
-#undef DAT_106eed59
-extern unsigned char DAT_106eed59;  /* 0x106EED59 */
-#pragma pop_macro("DAT_106eed59")
-#pragma push_macro("DAT_106eed5a")
-#undef DAT_106eed5a
-extern unsigned char DAT_106eed5a;  /* 0x106EED5A */
-#pragma pop_macro("DAT_106eed5a")
-#pragma push_macro("DAT_106eed5c")
-#undef DAT_106eed5c
-extern float *DAT_106eed5c;  /* 0x106EED5C */
-#pragma pop_macro("DAT_106eed5c")
-#pragma push_macro("DAT_106eed60")
-#undef DAT_106eed60
-extern int DAT_106eed60;  /* 0x106EED60 */
-#pragma pop_macro("DAT_106eed60")
-#pragma push_macro("DAT_106eed64")
-#undef DAT_106eed64
-extern const uint16_t *DAT_106eed64;  /* 0x106EED64 */
-#pragma pop_macro("DAT_106eed64")
-#pragma push_macro("DAT_106eed68")
-#undef DAT_106eed68
-extern const uint16_t *DAT_106eed68;  /* 0x106EED68 */
-#pragma pop_macro("DAT_106eed68")
-#pragma push_macro("g_brRaceNGate")
-#undef g_brRaceNGate
-extern int32_t g_brRaceNGate;  /* 0x106EEE38 */
-#pragma pop_macro("g_brRaceNGate")
-#pragma push_macro("g_brRaceBeginSpecialsN")
-#undef g_brRaceBeginSpecialsN
-extern int32_t g_brRaceBeginSpecialsN;  /* 0x106EEEFC */
-#pragma pop_macro("g_brRaceBeginSpecialsN")
 #pragma push_macro("DAT_106eef08")
 #undef DAT_106eef08
 extern char DAT_106eef08;  /* 0x106EEF08 */
 #pragma pop_macro("DAT_106eef08")
-#pragma push_macro("DAT_106eff08")
-#undef DAT_106eff08
-extern unsigned char DAT_106eff08[];  /* 0x106EFF08 */
-#pragma pop_macro("DAT_106eff08")
-#pragma push_macro("DAT_106f0138")
-#undef DAT_106f0138
-extern int DAT_106f0138;  /* 0x106F0138 */
-#pragma pop_macro("DAT_106f0138")
 #pragma push_macro("g_uPoolFree")
 #undef g_uPoolFree
 extern uint16_t g_uPoolFree;  /* 0x10A99BA8 */
@@ -7619,7 +7484,7 @@ extern void (*g_pfn18AA0C8)(void *, int);  /* 0x118ED1E0 */
 #pragma pop_macro("g_pfn18AA0C8")
 #pragma push_macro("DAT_118ed1e4")
 #undef DAT_118ed1e4
-extern void (*DAT_118ed1e4)(void);  /* 0x118ED1E4 */
+extern void (*DAT_118ed1e4)(struct BrTexRec *, int);  /* 0x118ED1E4 */
 #pragma pop_macro("DAT_118ed1e4")
 #pragma push_macro("g_18ED1E8")
 #undef g_18ED1E8

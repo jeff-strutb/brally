@@ -10,6 +10,7 @@
  * the camera, records the light in a four-deep history, and clamps every
  * driver's projected screen box to the current view rectangle.
  */
+#include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "br_coretypes.h"   /* br_globals: its objects */
 #include "br_mat.h"   /* br_globals: its objects */
 #include "br_vec.h"   /* br_globals: its objects */
@@ -219,7 +220,7 @@ done:
     }
     qsort(g_BrVisCells, n, 4, BrQsortCmpS2);
 
-    FUN_100597f0(g_BrSpanPending, g_BrSpanCount, -1);
+    FUN_100597f0(g_BrSpanPending, g_brTrkHdr.cInstances, -1);
     g_BrVisSpanCount = 0;
     g_BrVisFirstNear = -1;
     g_BrVisFirstFar  = -1;
@@ -242,7 +243,7 @@ done:
 
         row = ((unsigned char *)pd)[-1];
         if (g_brRaceBeginAirplane != 0 && g_BrSpanPending[g_brRaceBeginAirplane] != 0
-            && (pPos = &(*(BrSpanRec * *)&g_BrDrawTrackFlags)[g_brRaceBeginAirplane].pos,
+            && (pPos = &BR_PTR32(BrSpanRec *, g_brTrkHdr.aInstances)[g_brRaceBeginAirplane].pos,
                 BrSpanTestPoint(pPos->x, pPos->y))) {
             g_BrVisSpans[g_BrVisSpanCount] = (unsigned short)g_brRaceBeginAirplane;
             g_BrVisSpanCount++;
@@ -299,7 +300,7 @@ done:
     /* Environment flags of the flagged spans. */
     (*(unsigned short *)&DAT_10396eb4) = 0;
     for (k = 0; k < g_BrEnvFlagCount; k++)
-        (*(unsigned short *)&DAT_10396eb4) |= (*(BrSpanRec * *)&g_BrDrawTrackFlags)[g_BrEnvFlagIndices[k]].envFlags;
+        (*(unsigned short *)&DAT_10396eb4) |= BR_PTR32(BrSpanRec *, g_brTrkHdr.aInstances)[g_BrEnvFlagIndices[k]].envFlags;
 
     /* The frame's light. */
     fx = g_BrCamera->dir.x;

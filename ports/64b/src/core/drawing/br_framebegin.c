@@ -17,6 +17,7 @@
  */
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
+#include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "br_coretypes.h"   /* br_globals: its objects */
 #include "br_vec.h"   /* br_globals: its objects */
 #include "slice1_05.h"   /* br_globals: its objects */
@@ -488,7 +489,7 @@ void BrFrameFogEmit(void)
             DAT_106ed568 = 0x401;
         }
     } else if ((*(int *)((char *)&g_aBrEntRecs + 0x78)) != 0) {
-        i = (int)(((*(BrFogCam * *)&g_pBr63Race)->f38 - DAT_106eed10) / (DAT_106eed14 - DAT_106eed10) * DAT_100774c0);
+        i = (int)(((*(BrFogCam * *)&g_pBr63Race)->f38 - g_brTrkHdr.fZMin) / (g_brTrkHdr.fZMax - g_brTrkHdr.fZMin) * DAT_100774c0);
         if (i < 0)
             i = 0;
         else if (i > 0xFF)
@@ -498,13 +499,13 @@ void BrFrameFogEmit(void)
                 z = (*(BrFogSrc * *)&g_BrCamera)->f30 * DAT_100774c8 * (((*(BrFogSrc * *)&g_BrCamera)->f34 - DAT_100774c4) * DAT_100774cc);
             else
                 z = 0;
-            (*(unsigned char *)&BrG_6C0260) = (unsigned char)(int)((float)DAT_106eed58 * (DAT_100774b4 - z) + DAT_100774d0 * z);
-            (*(unsigned char *)&BrG_6C1614) = (unsigned char)(int)((float)DAT_106eed59 * (DAT_100774b4 - z) + DAT_100774d0 * z);
-            (*(unsigned char *)&BrG_6C0200) = (unsigned char)(int)((float)DAT_106eed5a * (DAT_100774b4 - z) + DAT_100774d0 * z);
+            (*(unsigned char *)&BrG_6C0260) = (unsigned char)(int)((float)g_brTrkHdr.rgba[0] * (DAT_100774b4 - z) + DAT_100774d0 * z);
+            (*(unsigned char *)&BrG_6C1614) = (unsigned char)(int)((float)g_brTrkHdr.rgba[1] * (DAT_100774b4 - z) + DAT_100774d0 * z);
+            (*(unsigned char *)&BrG_6C0200) = (unsigned char)(int)((float)g_brTrkHdr.rgba[2] * (DAT_100774b4 - z) + DAT_100774d0 * z);
         } else {
-            (*(unsigned char *)&BrG_6C0260) = DAT_106eed58;
-            (*(unsigned char *)&BrG_6C1614) = DAT_106eed59;
-            (*(unsigned char *)&BrG_6C0200) = DAT_106eed5a;
+            (*(unsigned char *)&BrG_6C0260) = g_brTrkHdr.rgba[0];
+            (*(unsigned char *)&BrG_6C1614) = g_brTrkHdr.rgba[1];
+            (*(unsigned char *)&BrG_6C0200) = g_brTrkHdr.rgba[2];
         }
         (*(unsigned char *)&g_BrDrawByte78) = (unsigned char)i;
         if ((*(int *)&g_brRaceNEntrant) == 2) {

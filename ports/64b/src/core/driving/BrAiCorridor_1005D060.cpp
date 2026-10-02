@@ -44,6 +44,7 @@
  * file, or adding an "O2 Gi" TU that sorts before it, can flip it: re-run
  * the serial chain.  The later "O2 Gi" rows (0x10054730, 0x10044860) still
  * match with this TU in the chain. */
+#include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "br_coretypes.h"   /* br_globals: its objects */
 #include "br_race.h"   /* br_globals: its objects */
 #include "br_vec.h"   /* br_globals: its objects */
@@ -121,7 +122,7 @@ unsigned Car5D060::Scan(int depth, int mid, Node5D060 *pNode)
     Vec5D060 *pC;
 
     if (pNode == 0) {
-        pNode = (Node5D060 *)((*(Node5D060 * *)&g_pBrRaceLapRec));
+        pNode = (Node5D060 *)(BR_PTR32(Node5D060 *, g_brTrkHdr.aPathRoot));
         mid = 0;
     }
     if (depth == 0) {
@@ -184,7 +185,7 @@ tail:
     if (++mid == (*(unsigned short *)&((BrAiPathNode *)(pNode))->count)) {
         pNode = (*(Node5D060 * *)&((BrAiPathNode *)(pNode))->pNext);
         if (pNode == 0)
-            pNode = (Node5D060 *)((*(Node5D060 * *)&g_pBrRaceLapRec));
+            pNode = (Node5D060 *)(BR_PTR32(Node5D060 *, g_brTrkHdr.aPathRoot));
         if (pNode != 0) {
             next = depth + 1;
             do {

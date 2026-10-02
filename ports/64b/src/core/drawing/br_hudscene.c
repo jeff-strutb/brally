@@ -42,6 +42,7 @@
  */
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
+#include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "br_coretypes.h"   /* br_globals: its objects */
 #include "br_mat.h"   /* br_globals: its objects */
 #include "br_vec.h"   /* br_globals: its objects */
@@ -859,7 +860,7 @@ int BrSceneUsePlainClear(void)
         goto yes;
     if ((*(int *)((char *)&g_aBrEntRecs + 0x84)) != 0)
         goto yes;
-    if (DAT_106eed28 == 0)
+    if (g_brTrkHdr.aDl50 == 0)
         goto yes;
     if ((*(int *)&g_brRaceNEntrant) != 2)
         return 0;
@@ -975,7 +976,7 @@ void BrSceneSetupFrame(const BrHudView *aViews)
     BrSsfEmit(0xF5100000u, 0x07000000u);
     BrSsfEmit(0xF50001F0u, 0x06000000u);
     BrSsfEmit(0xF5000100u, 0x05000000u);
-    BrSsfEmit(0x06000000u, DAT_106eed28);
+    BrSsfEmit(0x06000000u, g_brTrkHdr.aDl50);
     BrSsfEmit(0xE7000000u, 0);
     BrSsfEmit(0xBA001402u, 0);
     BrSsfEmit(0xB7000000u, 0x00020205u);
@@ -1142,7 +1143,7 @@ void BrWeatherStepLightning(void)
         DAT_100a718c = 3;
         (DAT_104abb60[0]) = (float)(BrRandom() & 0x7FF);
         DAT_104abb64 = (float)(BrRandom() & 0x7FF);
-        DAT_104abb68 = (*(int *)&DAT_106eed10);
+        DAT_104abb68 = (*(int *)&g_brTrkHdr.fZMin);
     }
 }
 

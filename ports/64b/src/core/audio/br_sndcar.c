@@ -8,6 +8,7 @@
 #define _CRTIMP __declspec(dllimport)
 
 
+#include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "br_sfxsrc.h"   /* br_globals: its objects */
 #include "slice2_24.h"   /* br_globals: its objects */
 #include <stdint.h>
@@ -192,7 +193,7 @@ LAB_10061526:
     fVar10 = BR_K_00778D8;
   }
   if (pCar->f140 == 0) {
-    g_184C454 = (*(unsigned char *)(g_BrDrawTrackFlags + 0x4c +
+    g_184C454 = (*(unsigned char *)(BR_PTR32(void *, g_brTrkHdr.aInstances) + 0x4c +
                      (unsigned int)pCar->aNearIds[0] * 0x54) & 0x10)
                     ? 11000 : 0;
   }

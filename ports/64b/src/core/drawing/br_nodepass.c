@@ -11,6 +11,7 @@
  * looks redundant has already been shown elsewhere in this module to move
  * VC5's register allocation (see br_rdpmode.c).
  */
+#include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "br_race.h"   /* br_globals: its objects */
 #include <string.h>
 
@@ -80,6 +81,6 @@ void BrNodeClearMarkPass(BrNode *pNode)
 void BrNodeRunMarkPass(void)
 {
     /* the root is re-read from the global between the two calls */
-    BrNodeMarkPass(g_pBrRaceLapRec);
-    BrNodeClearMarkPass(g_pBrRaceLapRec);
+    BrNodeMarkPass(BR_PTR32(BrAiPathNode *, g_brTrkHdr.aPathRoot));
+    BrNodeClearMarkPass(BR_PTR32(BrAiPathNode *, g_brTrkHdr.aPathRoot));
 }

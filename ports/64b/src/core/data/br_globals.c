@@ -10,6 +10,7 @@
 #include "br_mat.h"
 #include "br_phase.h"
 #include "br_race.h"
+#include "br_trkhdr.h"
 #include "br_racebegin.h"
 #include "br_sfxsrc.h"
 #include "br_slots.h"
@@ -1568,45 +1569,8 @@ uint32_t g_brRace6EECC8;  /* 0x106EECC8 */
 BrDevCtx *g_brP6EECCC;  /* 0x106EECCC */
 uint32_t g_brPendDropped;  /* 0x106EECD0 */
 uint32_t g_6C7C44;  /* 0x106EECD4 */
-int DAT_106eecd8;  /* 0x106EECD8 */
-int DAT_106eecdc;  /* 0x106EECDC */
-const uint16_t *g_pBrCollTriIdx;  /* 0x106EECE4 */
-int DAT_106eecf0;  /* 0x106EECF0 */
-uint8_t *g_brLoadTexFlags;  /* 0x106EECF4 */
-const uint16_t *g_br6C7C68;  /* 0x106EECF8 */
-const uint16_t *g_pBrGrid64;  /* 0x106EECFC */
-float DAT_106eed00;  /* 0x106EED00 */
-float DAT_106eed04;  /* 0x106EED04 */
-float DAT_106eed10;  /* 0x106EED10 */
-float DAT_106eed14;  /* 0x106EED14 */
-float DAT_106eed18;  /* 0x106EED18 */
-float DAT_106eed1c;  /* 0x106EED1C */
-float DAT_106eed20;  /* 0x106EED20 */
-float DAT_106eed24;  /* 0x106EED24 */
-void *DAT_106eed28;  /* 0x106EED28 */
-void *DAT_106eed34;  /* 0x106EED34 */
-void *g_BrDrawTrackFlags;  /* 0x106EED38 */
-int g_BrSpanCount;  /* 0x106EED3C */
-const uint16_t *g_pBrU16QueueTable;  /* 0x106EED40 */
-unsigned short *g_pBrGrid16;  /* 0x106EED44 */
-BrRaceLapRec *g_pBrRaceLapRec;  /* 0x106EED48 */
-void *DAT_106eed50;  /* 0x106EED50 */
-int DAT_106eed54;  /* 0x106EED54 */
-unsigned char DAT_106eed58;  /* 0x106EED58 */
-unsigned char DAT_106eed59;  /* 0x106EED59 */
-unsigned char DAT_106eed5a;  /* 0x106EED5A */
-float *DAT_106eed5c;  /* 0x106EED5C */
-int DAT_106eed60;  /* 0x106EED60 */
-const uint16_t *DAT_106eed64;  /* 0x106EED64 */
-const uint16_t *DAT_106eed68;  /* 0x106EED68 */
-const BrRaceGate g_aBrRaceGate[200];  /* 0x106EED70 */
-int32_t g_brRaceNGate;  /* 0x106EEE38 */
-BrRaceSpecial g_aBrRaceSpecial[16];  /* 0x106EEE3C */
-int32_t g_brRaceBeginSpecialsN;  /* 0x106EEEFC */
 char DAT_106eef08;  /* 0x106EEF08 */
 BrKeyEnt g_aBrKeyEnts[64];  /* 0x106EEF0C */
-unsigned char DAT_106eff08[560];  /* 0x106EFF08 */
-int DAT_106f0138;  /* 0x106F0138 */
 uint16_t g_uPoolFree;  /* 0x10A99BA8 */
 uint16_t g_uPoolHead;  /* 0x10A99BB0 */
 BrPoolNode g_aPoolNodes[288];  /* 0x10A99BB8 */
@@ -2135,7 +2099,7 @@ void (*DAT_118ed1d4)(void);  /* 0x118ED1D4 */
 void (*g_BrGfxSubmit)(uint32_t);  /* 0x118ED1D8 */
 void (*g_pfn18AA0C4)(void *);  /* 0x118ED1DC */
 void (*g_pfn18AA0C8)(void *, int);  /* 0x118ED1E0 */
-void (*DAT_118ed1e4)(void);  /* 0x118ED1E4 */
+void (*DAT_118ed1e4)(struct BrTexRec *, int);  /* 0x118ED1E4 */
 int (*g_18ED1E8)();  /* 0x118ED1E8 */
 int DAT_118ed1f0;  /* 0x118ED1F0 */
 int DAT_118ed210;  /* 0x118ED210 */
@@ -2194,3 +2158,6 @@ int DAT_118ef178;  /* 0x118EF178 */
 int DAT_118ef17c;  /* 0x118EF17C */
 int DAT_118ef180;  /* 0x118EF180 */
 int (*_imp__memcmp)(const void *, const void *, unsigned int);  /* 0x118F05AC */
+
+BrTrkHdr g_brTrkHdr;  /* 0x106EECD8 */
+uint8_t g_abBrTrkImage[BR_TRK_IMAGE_MAX];  /* 0x106EFF08 */

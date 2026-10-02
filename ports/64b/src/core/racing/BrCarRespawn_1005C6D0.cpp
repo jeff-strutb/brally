@@ -1,3 +1,4 @@
+#include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "br_race.h"   /* br_globals: its objects */
 #include "slice3_44.h"   /* BrRbBody, the canonical record */
 #include "slice3_41.h"   /* BrDriverCar, the canonical record */
@@ -113,7 +114,7 @@ void Car5C6D0::Respawn()
     float *d;
     float *s;
 
-    if (((*(int *)&((BrDriverCar *)(this))->aBody[0].f01F8) < 0) || ((*(float *)&((BrDriverCar *)(this))->pos.z) < DAT_106eed10 - DAT_10077898)) {
+    if (((*(int *)&((BrDriverCar *)(this))->aBody[0].f01F8) < 0) || ((*(float *)&((BrDriverCar *)(this))->pos.z) < g_brTrkHdr.fZMin - DAT_10077898)) {
         Sub5E6A0();
         Sub5BCC0();
         if ((*(int *)&g_brRaceRules.mode) == 2)

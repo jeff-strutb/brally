@@ -5,6 +5,7 @@
  * car's own update callback, and -- when the recorded path is active -- step the
  * keyframe cursor and interpolate the along-path time.
  */
+#include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "br_coretypes.h"   /* br_globals: its objects */
 #include "br_race.h"   /* br_globals: its objects */
 #include "br_sfxsrc.h"   /* br_globals: its objects */
@@ -140,7 +141,7 @@ void BR_THISCALL1 BrGhostPlaybackStep(BrDriver *param_1)
         *(unsigned int *)&param_1->f0C.y = *(unsigned int *)&param_1->f00.y;
         *(unsigned int *)&param_1->f0C.z = *(unsigned int *)&param_1->f00.z;
         iVar1 = *(unsigned int *)&(*(int32_t *)&param_1->pPathNode) /* BR_LP64_SCALAR_IN_PTR */ + *(unsigned int *)&param_1->f2C * 0x28;
-        fVar4 = (((float)((int)*(unsigned int *)&param_1->f44 + 1) * *(float *)(g_pBrRaceLapRec + 100) - param_1->f50) -
+        fVar4 = (((float)((int)*(unsigned int *)&param_1->f44 + 1) * BR_PTR32(BrAiPathNode *, g_brTrkHdr.aPathRoot)->aPt[0].arc - param_1->f50) -
                  iVar1->aWheel[1].m[0][3]) /
                 (iVar1->aWheel[0].m[2][1] - iVar1->aWheel[1].m[0][3]);
         /* a dword per driver record (stride 0x2B68 = 0xADA ints): 0x100622A0

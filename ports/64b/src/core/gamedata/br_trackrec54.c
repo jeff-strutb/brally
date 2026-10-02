@@ -214,8 +214,8 @@ void BrTrackFixupRec54(void *pvRec)
     *(uint16_t *)(p + 0x50) = (uint16_t)((p[0x50] << 8) | p[0x51]);
     *(uint16_t *)(p + 0x52) = (uint16_t)((p[0x52] << 8) | p[0x53]);
 
-    BrF3DListFixup(*(void **)(void *)(p + 0x44));
+    BrF3DListFixup(BR_AT32(void *, (p + 0x44)));
     BrDlOwnerFixup(p);
     BrFontSetRenderDst(1);
-    g_pfn18AA0C4(*(void **)(void *)(p + 0x44));
+    g_pfn18AA0C4(BR_AT32(void *, (p + 0x44)));
 }

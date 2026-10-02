@@ -13,7 +13,7 @@
  *
  * The 2-byte residue below fell to the pairwise DECLARATION-ORDER tie-break
  * (docs/VC5-IDIOMS.md, first seen on 0x100250D0's imul): name BOTH add
- * operands -- `(nGates = g_brRaceNGate)` inside the modulus and
+ * operands -- `(nGates = g_brTrkHdr.nGate)` inside the modulus and
  * `(gate = pDrv->f4C) < 0` in the conjunction, then `gate + nGates` -- and
  * declare `gate` BEFORE `nGates`.  The later-declared symbol is the
  * two-operand destination.  Measured (11 compiles, one lever): with the
@@ -32,17 +32,17 @@
  *     ours    add eax, ecx      /  mov dword ptr [ebp+0x4c], eax
  *
  * Every byte before and after is equal, both registers hold the same values
- * (ecx is the divisor CSE of `pDrv->f48 % g_brRaceNGate` from orig+0x17d,
+ * (ecx is the divisor CSE of `pDrv->f48 % g_brTrkHdr.nGate` from orig+0x17d,
  * eax is the `pDrv->f4C` CSE from the `< 0` test at orig+0x18d), and both
  * are dead after the add. It is purely which of the two VC5 picks as the
  * two-operand destination.
  *
  * SPELLINGS PROVEN DEAD, all at 2,538 bytes / 720 instructions / 2 diffs:
- *   - `pDrv->f4C += g_brRaceNGate;`
- *   - `pDrv->f4C = g_brRaceNGate + pDrv->f4C;`   (global first)
- *   - `pDrv->f4C = pDrv->f4C + g_brRaceNGate;`   (field first)
+ *   - `pDrv->f4C += g_brTrkHdr.nGate;`
+ *   - `pDrv->f4C = g_brTrkHdr.nGate + pDrv->f4C;`   (global first)
+ *   - `pDrv->f4C = pDrv->f4C + g_brTrkHdr.nGate;`   (field first)
  *   - a named temp seeded from the global and accumulated into
- *     (`int32_t n = g_brRaceNGate; n += pDrv->f4C; pDrv->f4C = n;`)
+ *     (`int32_t n = g_brTrkHdr.nGate; n += pDrv->f4C; pDrv->f4C = n;`)
  *   - re-reading the field into the `gate` local first and adding that
  *   - the nested-if guard instead of the `&&` conjunction kept below
  *   - a named local as the add's second operand, assigned inside the
@@ -70,6 +70,7 @@
  * matching arm and quoted as comments in the port arm. They are the clearest
  * statement of intent anywhere in this function.
  */
+#include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "slice3_41.h"   /* br_globals: its objects */
 #include "br_race.h"
 #include "br_crt.h"     /* BrFtolTrunc -- 0x1007C8A0 / MSVCRT _ftol */
@@ -248,10 +249,10 @@ __declspec(dllimport) int __cdecl sprintf(char *pDst, const char *pFmt, ...);
     do {                                                                      \
         pDrv->f40 -= 1;                                                       \
         pDrv->f44 -= 1;                                                       \
-        pDrv->f48 -= g_brRaceNGate;                                           \
-        pDrv->f4C -= g_brRaceNGate;                                           \
-        if (g_pBrRaceLapRec != NULL)                                          \
-            pDrv->f50 -= g_pBrRaceLapRec->fLapLength;                         \
+        pDrv->f48 -= g_brTrkHdr.nGate;                                           \
+        pDrv->f4C -= g_brTrkHdr.nGate;                                           \
+        if (BR_PTR32(BrAiPathNode *, g_brTrkHdr.aPathRoot) != NULL)                                          \
+            pDrv->f50 -= BR_PTR32(BrAiPathNode *, g_brTrkHdr.aPathRoot)->aPt[0].arc;                         \
     } while (0)
 
 /* WHAT IT DOES: run one car's race logic for a frame: which gate it is
@@ -274,7 +275,7 @@ void BR_THISCALL1 BrRaceGateStep(BrDriver *pDrv)
     const char  *pszMsg;
     short        iWeather;
 
-    nGates = g_brRaceNGate;                     /* 0x1005FF08 */
+    nGates = g_brTrkHdr.nGate;                     /* 0x1005FF08 */
     if (nGates == 0)                            /* 0x1005FF0F */
         return;
 
@@ -297,7 +298,7 @@ void BR_THISCALL1 BrRaceGateStep(BrDriver *pDrv)
         pDrv->f30 = pCar->tRun;
         pDrv->f34 = pCar->tBest;
         pDrv->f50 = pCar->fFF4;
-        nGates = g_brRaceNGate;                 /* 0x1005FF8E */
+        nGates = g_brTrkHdr.nGate;                 /* 0x1005FF8E */
     }
 
     /* The floor-modulus, and the two arms are an if/ELSE producing one
@@ -314,7 +315,7 @@ void BR_THISCALL1 BrRaceGateStep(BrDriver *pDrv)
     tLap = (float)BrFtolArg(pDrv->f30 * BR_RACE_K100) * BR_RACE_K001;
 
     /* ---- did it cross the gate it is standing on? (backwards) ---------- */
-    if (BrSeg2Intersect(&g_aBrRaceGate[iCur].postB, &g_aBrRaceGate[iCur].postA,
+    if (BrSeg2Intersect(&g_brTrkHdr.aGate[iCur].postB, &g_brTrkHdr.aGate[iCur].postA,
                         (const BrVec2 *)&pDrv->f0C,
                         (const BrVec2 *)&pDrv->f00) != 0) {
         BrPodNop();
@@ -330,12 +331,12 @@ void BR_THISCALL1 BrRaceGateStep(BrDriver *pDrv)
          * (the count re-read here, as at 0x1005FF8E): unnamed, VC5 keeps
          * the field's register as the add destination; named, the later-
          * declared `nGates` is the destination, which is the original. */
-        if (iCur == pDrv->f48 % (nGates = g_brRaceNGate)   /* 0x10060089 */
+        if (iCur == pDrv->f48 % (nGates = g_brTrkHdr.nGate)   /* 0x10060089 */
             && (gate = pDrv->f4C) < 0) {                   /* 0x10060090 */
             pDrv->f4C = gate + nGates;                     /* 0x10060097 */
             pDrv->f44 += 1;
-            if (g_pBrRaceLapRec != NULL)           /* 0x100600A0 */
-                pDrv->f50 += g_pBrRaceLapRec->fLapLength;
+            if (BR_PTR32(BrAiPathNode *, g_brTrkHdr.aPathRoot) != NULL)           /* 0x100600A0 */
+                pDrv->f50 += BR_PTR32(BrAiPathNode *, g_brTrkHdr.aPathRoot)->aPt[0].arc;
             BrPodNop();
         }
         pDrv->f4C -= 1;                         /* 0x100600C3, both arms */
@@ -343,7 +344,7 @@ void BR_THISCALL1 BrRaceGateStep(BrDriver *pDrv)
     }
 
     /* ---- did it cross the next one? (forwards) ------------------------- */
-    if (BrSeg2Intersect(&g_aBrRaceGate[iNext].postB, &g_aBrRaceGate[iNext].postA,
+    if (BrSeg2Intersect(&g_brTrkHdr.aGate[iNext].postB, &g_brTrkHdr.aGate[iNext].postA,
                         (const BrVec2 *)&pDrv->f0C,
                         (const BrVec2 *)&pDrv->f00) == 0)
         goto tail;                              /* 0x100600EE */

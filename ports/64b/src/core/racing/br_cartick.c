@@ -1,3 +1,4 @@
+#include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "br_race.h"   /* br_globals: its objects */
 #include "slice3_41.h"
 /* br_cartick.c -- racing.
@@ -72,7 +73,7 @@ void __fastcall BrCarTickMessages(BrDriverCar *pCar)
 /* @implements 0x1006EBC0 glide BrCarTickGridCell */
 void __fastcall BrCarTickGridCell(BrDriverCar *pCar)
 {
-    if (g_pBrRaceLapRec != 0) {
+    if (BR_PTR32(BrAiPathNode *, g_brTrkHdr.aPathRoot) != 0) {
         /* Inline arguments, not two locals: a precomputed fy would have to
          * live across the first call and VC5 spills it (+7 B).  The position
          * reads are VOLATILE: that is what keeps `fld y; fmul k` together

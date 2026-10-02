@@ -190,9 +190,9 @@ void BrModelSwap(void *pImage)
      * palindrome. */
     if (BrLd32(pHdr + 4) != 0) {
         int32_t iItem;
-#define PBLOCK (*(unsigned char **)(void *)(pHdr + 4))
+#define PBLOCK (BR_AT32(unsigned char *, (pHdr + 4)))
 #define PSLOT  (PBLOCK + 4 + 4 * (size_t)iItem)
-#define PITEM  (*(unsigned char **)(void *)PSLOT)
+#define PITEM  (BR_AT32(unsigned char *, PSLOT))
 
         BrRev4(pHdr + 4);
         g_BrModelFixup((uint32_t *)(pHdr + 4));
@@ -237,7 +237,7 @@ void BrModelSwap(void *pImage)
                  iLeaf < (int32_t)BrLd32(PITEM + 0x0C);
                  iLeaf++, off += 4) {
                 int32_t j;
-#define PLEAF (*(unsigned char **)(void *)(PITEM + off))
+#define PLEAF (BR_AT32(unsigned char *, (PITEM + off)))
 
                 BrRev4(PITEM + off);
                 g_BrModelFixup((uint32_t *)(PITEM + off));
@@ -280,10 +280,10 @@ void BrModelSwap(void *pImage)
         BrRev4(pRec + 0x0A);
         BrRev4(pRec + 0x0E);
 
-        v = BrLd32(pRec - 0x02);
+        v = BR_AT32(struct BrGfxWords *, pRec - 0x02);
         BrF3DListFixup(v);
         BrFontSetRenderDst(8);
-        (*(void (**)(uint32_t))&g_pfn18AA0C4)(BrLd32(pRec - 0x02));
+        g_pfn18AA0C4(BR_AT32(void *, pRec - 0x02));
     }
 }
 #undef BrRev4

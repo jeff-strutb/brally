@@ -217,6 +217,7 @@ extern "C" {  /* BR_CLINK_BEGIN: every original function has C linkage */
 #endif
 
 #include <stdint.h>
+#include "br_trkhdr.h"   /* BrRaceSpecial */
 
 /* For BrDriverCar / BrDriver and the race globals this arm shares with the
  * per-frame one.  This module is a continuation of br_racestep.c -- it is a
@@ -360,24 +361,7 @@ extern uint8_t  g_aBrRaceBeginRecHdr[BR_RACEBEGIN_MAXREC][BR_RACEBEGIN_HDR_LEN];
  * these and 0x10019980 walks the same list decrementing +0x00.  What the
  * schedule IS is not established -- see BrRaceCueLayout. */
 #define BR_RACEBEGIN_CUE_MAX  8
-/* 0x106EEE3C, stride 0xC -- the track's "specials" list, walked at
- * 0x1001A31A.  The kind byte at +0x08 is read with `movsx`, has 3 subtracted
- * from it and indexes the five-entry table at 0x1001C664; anything outside
- * 3..7 is skipped by the `ja` at 0x1001A324. */
-typedef struct BrRaceSpecial {
-    union {                                  /* +0x0000 */
-        int32_t f00;  /* the value every arm stores ... */
-        int32_t iObj;  /* ... read as an index into the 0x54-byte records */
-    };
-    union {                                  /* +0x0004 */
-        int32_t f04;
-        float angle;  /* degrees */
-    };
-    union {                                  /* +0x0008 */
-        int32_t kind;  /* read as a signed byte */
-        int8_t axis;
-    };
-} BrRaceSpecial;
+/* BrRaceSpecial: br_trkhdr.h -- the list is part of the loaded track header. */
 
 #define BR_RACEBEGIN_SPECIAL_AIRPLANE   3   /* -> 0x1001A353 */
 #define BR_RACEBEGIN_SPECIAL_PATHLEFT   4   /* -> 0x1001A32D */
@@ -750,10 +734,6 @@ extern "C" {
 #undef g_aBrRaceCue
 extern BrRaceCue g_aBrRaceCue[8];  /* 0x100A5EB0 */
 #pragma pop_macro("g_aBrRaceCue")
-#pragma push_macro("g_aBrRaceSpecial")
-#undef g_aBrRaceSpecial
-extern BrRaceSpecial g_aBrRaceSpecial[];  /* 0x106EEE3C */
-#pragma pop_macro("g_aBrRaceSpecial")
 #ifdef __cplusplus
 }
 #endif
