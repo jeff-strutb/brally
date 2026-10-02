@@ -262,12 +262,12 @@ void BrCarPhysDriveMatch(struct BrRbBody *param_1, float param_2, float *param_3
     iVar9 = (int)((*(unsigned int *)&local_80 & 0xff) + 1 +
                   (*(unsigned int *)&local_3c & 0xff)) >> 1;
     iVar10 = (iVar9 + (int)(short)local_6c) * 4;
-    local_3c = *(float *)((*(int *)((char *)&g_brCrPlane + 0x18)) +
+    local_3c = *(float *)((const char *)g_brCrPlane.pDrvT1 +
                          ((int)(short)local_6c +
                           (unsigned int)*(unsigned char *)(param_1 + 0x1fd) * 0x18 +
                           iVar9) * 4);
     local_84 = *(int *)(&(*(char *)&g_aBrCarPhysDrvT3) + iVar10);
-    fVar7 = *(float *)(DAT_11778820 + iVar10);
+    fVar7 = *(float *)((const char *)g_brCrPlane.pDrvT2 + iVar10);
     /* !! `speed` (fVar8 - fVar2 above) survives the clamp: the original keeps
      * it on the x87 stack (`fld st(2)` at +0x484 clamps a COPY) and tests
      * THAT against `hold` at +0x4FE.  Reusing one variable for the clamped
@@ -447,11 +447,11 @@ void BrCarPhysDriveMatch(struct BrRbBody *param_1, float param_2, float *param_3
     else {
       iVar9 = (int)((local_1c & 0xff) + 1 + (*(unsigned int *)&local_38 & 0xff)) >> 1;
       iVar10 = (iVar9 + (int)(short)local_6c) * 4;
-      local_38 = *(float *)((*(int *)((char *)&g_brCrPlane + 0x18)) +
+      local_38 = *(float *)((const char *)g_brCrPlane.pDrvT1 +
                            (iVar9 + (unsigned int)*(unsigned char *)(param_1 + 0x1fd) * 0x18 +
                             (int)(short)local_6c) * 4);
       local_84 = *(int *)(&(*(char *)&g_aBrCarPhysDrvT3) + iVar10);
-      local_80 = *(float *)(DAT_11778820 + iVar10);
+      local_80 = *(float *)((const char *)g_brCrPlane.pDrvT2 + iVar10);
       /* as the front axle: the grip factor chain stays unrounded */
       {
         double r;

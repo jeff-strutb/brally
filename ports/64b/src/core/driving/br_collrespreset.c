@@ -107,14 +107,15 @@ void BrCollRespReset(void)
   int i;
   int j;
 
-  DAT_11778828 = 0;
-  (*(int *)((char *)&g_brCrPlane + 0x10)) = 0;
-  DAT_1177882c = 0;
-  (*(int *)((char *)&g_brCrPlane + 0x14)) = 0;
-  DAT_11778830 = 0;
-  DAT_11778838 = 0;
-  DAT_11778834 = 0;
-  DAT_1177883c = 0;
+  /* the original clears these as dwords */
+  g_brCrPlane.aCellAge[0] = 0;
+  *(uint32_t *)&g_brCrPlane.aCellCount[0] = 0;
+  g_brCrPlane.aCellAge[1] = 0;
+  *(uint32_t *)&g_brCrPlane.aCellCount[2] = 0;
+  g_brCrPlane.aCellAge[2] = 0;
+  *(uint32_t *)&g_brCrPlane.aCellKey[0] = 0;
+  g_brCrPlane.aCellAge[3] = 0;
+  *(uint32_t *)&g_brCrPlane.aCellKey[2] = 0;
   for (i = 0; i < 4; i++) {
     for (j = 0; j < 150; j++) {
       (*(float *)&((BrCollPlane *)&((*(BrCollPlaneZ (*)[4][150])&DAT_11773698)[i][j]))->nx) = 0;
@@ -132,7 +133,7 @@ void BrCollRespReset(void)
   }
   (*(void * *)&g_pBrCollRespList) = 0;
   (*(void * *)&g_pBrCrCursor) = 0;
-  DAT_11778840 = 0;
+  g_brCrPlane.cellTick = 0;
 }
 
 

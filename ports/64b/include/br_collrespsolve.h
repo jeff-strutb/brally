@@ -35,8 +35,18 @@ typedef struct BrCrPlaneState {
                         *   mode (==2 is the box-face path), WRITTEN AS FLOAT in
                         *   the tail (scaled by ext.z).  One dword, two types:
                         *   load-bearing, do not split it. */
-    BrVec3   out;      /* 0x117781A0 / A4 / A8 -- the plane normal scaled by the
-                        *   signed plane distance (arg3 - dot(a, normal)). */
+    /* 64-bit core: the rest of the 0x117787F0..0x11778843 block, so that every
+     * name the original gives an address in it is one object at one place.
+     * (The port lane had put a 'plane distance' vector at +0x10, on top of
+     * the cell counts; nothing reads it and it is gone.) */
+    uint16_t aCellCount[4];   /* 0x11778800  planes per collision-grid cell */
+    const float *pDrvT1;      /* 0x11778808  the car-drive table br_track.c sets */
+    uint8_t  pad0C[0x14];     /* 0x1177880C */
+    const float *pDrvT2;      /* 0x11778820  the second drive table */
+    uint32_t pad24;           /* 0x11778824 */
+    uint32_t aCellAge[4];     /* 0x11778828  last-use tick per cached cell */
+    uint16_t aCellKey[4];     /* 0x11778838  the cell each slot caches */
+    uint32_t cellTick;        /* 0x11778840 */
 } BrCrPlaneState;
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */

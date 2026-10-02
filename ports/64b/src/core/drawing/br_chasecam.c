@@ -304,7 +304,7 @@ void __fastcall FUN_10001510(BrDriverCar *car, char *cam, BrCamV3 *prev)
 
     for (c = 0; c < nCells; c++) {
         pPlane = (*(BrCamPlane (*)[][150])&DAT_11773698)[cells[c]];
-        pEnd = pPlane + (*(unsigned short (*)[])((char *)&g_brCrPlane + 0x10))[cells[c]];
+        pEnd = pPlane + g_brCrPlane.aCellCount[cells[c]];
         for (; pPlane != pEnd; pPlane++) {
 
             denom = BrVec3Dot(&dir, pPlane);
@@ -330,7 +330,7 @@ void __fastcall FUN_10001510(BrDriverCar *car, char *cam, BrCamV3 *prev)
     tBest = 1.0f;
     for (c = 0; c < nCells; c++) {
         pPlane = (*(BrCamPlane (*)[][150])&DAT_11773698)[cells[c]];
-        pEnd = pPlane + (*(unsigned short (*)[])((char *)&g_brCrPlane + 0x10))[cells[c]];
+        pEnd = pPlane + g_brCrPlane.aCellCount[cells[c]];
         for (; pPlane != pEnd; pPlane++) {
 
             denom = BrVec3Dot(&dir, pPlane);

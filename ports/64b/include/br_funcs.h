@@ -50,7 +50,6 @@ struct BrDpSess;
 struct BrDriver;
 struct BrDriverCar;
 struct BrEarOps;
-struct BrEnt;
 struct BrEntCar;
 struct BrGameObj;
 struct BrGameObjCD;

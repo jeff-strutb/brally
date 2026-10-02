@@ -304,8 +304,8 @@ void BrTrackSurfaceSet(int param_1)
   case 9:
   case 10:
   case 0xc:
-    (*(int *)((char *)&g_brCrPlane + 0x18)) = (int)&(g_aBrCarPhysDrvT1A[0]);
-    DAT_11778820 = (int)&(g_aBrCarPhysDrvT2A[0]);
+    g_brCrPlane.pDrvT1 = (const float *)&g_aBrCarPhysDrvT1A[0];
+    g_brCrPlane.pDrvT2 = (const float *)&g_aBrCarPhysDrvT2A[0];
     g_pBrCarPhysGrip = (int)&(g_aBrCarPhysGripA[0]);
     (*(int *)&DAT_100b5170) = 0x3f800000;
     return;
@@ -314,8 +314,8 @@ void BrTrackSurfaceSet(int param_1)
   case 0xd:
   case 0xe:
   default:
-    (*(int *)((char *)&g_brCrPlane + 0x18)) = (int)&(g_aBrCarPhysDrvT1B[0]);
-    DAT_11778820 = (int)&(g_aBrCarPhysDrvT2B[0]);
+    g_brCrPlane.pDrvT1 = (const float *)&g_aBrCarPhysDrvT1B[0];
+    g_brCrPlane.pDrvT2 = (const float *)&g_aBrCarPhysDrvT2B[0];
     g_pBrCarPhysGrip = (int)&(g_aBrCarPhysGripB[0]);
     (*(int *)&DAT_100b5170) = 0x3f666666;
     return;

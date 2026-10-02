@@ -902,7 +902,7 @@ int BrCollRespBroadPhase(const BrRbBodyFull *pBody, const BrMat4 *pMatBox)
     int    count, i, n = 0;
 
     cell  = BrCollGridCellAcquire(pBody->m.m[3][0], pBody->m.m[3][1]);
-    count = (*(uint16_t (*)[4])((char *)&g_brCrPlane + 0x10))[cell];
+    count = g_brCrPlane.aCellCount[cell];
     /* pP is the loop's OWN induction variable, stepped in the for clause.
      * Recomputing it from the index inside the body (`pP = &grid[cell][i]`)
      * makes VC5 bias its pointer register to the middle field (+0x14) and

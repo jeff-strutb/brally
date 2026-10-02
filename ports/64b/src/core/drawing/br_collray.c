@@ -78,7 +78,7 @@ int FUN_1006ec30(BrVec3 *pPosOut, BrVec3 *pNormOut, const BrVec3 *pEye, uint16_t
 
     cell = BrCollGridCellAcquire(pEye->x, pEye->y);
     pP = DAT_11773698[cell];
-    pEnd = pP + (*(uint16_t (*)[4])((char *)&g_brCrPlane + 0x10))[cell];
+    pEnd = pP + g_brCrPlane.aCellCount[cell];
 
     for (; pP != pEnd; pP++) {
         float t;

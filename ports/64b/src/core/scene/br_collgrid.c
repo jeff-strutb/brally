@@ -82,21 +82,21 @@ short BrCollGridCellAcquire(float x, float y)
     unsigned short cur[2], tri, n;
     int key, i, victim;
 
-    ++DAT_11778840;
+    ++g_brCrPlane.cellTick;
     key = (int)x / 32 + ((int)y / 32 << 6);
     best = 0x40000000u;
     for (i = 0; i < 4; i++) {
-        if (DAT_11778838[i] == (short)key) {
-            DAT_11778828[i] = DAT_11778840;
+        if (g_brCrPlane.aCellKey[i] == (short)key) {
+            g_brCrPlane.aCellAge[i] = g_brCrPlane.cellTick;
             return (short)i;
         }
-        if (DAT_11778828[i] < best) {
+        if (g_brCrPlane.aCellAge[i] < best) {
             victim = i;
-            best = DAT_11778828[i];
+            best = g_brCrPlane.aCellAge[i];
         }
     }
-    DAT_11778838[victim] = (unsigned short)key;
-    DAT_11778828[victim] = DAT_11778840;
+    g_brCrPlane.aCellKey[victim] = (unsigned short)key;
+    g_brCrPlane.aCellAge[victim] = g_brCrPlane.cellTick;
     n = 0;
     p = (float *)(DAT_11773698 + victim * 0x12C0);
     packed = ((BrGridSampleG)BrGrid64Sample)(x, y);
@@ -126,6 +126,6 @@ short BrCollGridCellAcquire(float x, float y)
             p += 8;
         }
     }
-    (*(int *)((char *)&g_brCrPlane + 0x10))[victim] = n;
+    g_brCrPlane.aCellCount[victim] = n;
     return (short)victim;
 }

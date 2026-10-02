@@ -7241,38 +7241,6 @@ extern int32_t g_BrReplayCursor[8];  /* 0x11773670 */
 #undef g_pBrCarPhysGrip
 extern const float *g_pBrCarPhysGrip;  /* 0x11773690 */
 #pragma pop_macro("g_pBrCarPhysGrip")
-#pragma push_macro("DAT_11778820")
-#undef DAT_11778820
-extern int DAT_11778820;  /* 0x11778820 */
-#pragma pop_macro("DAT_11778820")
-#pragma push_macro("DAT_11778828")
-#undef DAT_11778828
-extern float DAT_11778828;  /* 0x11778828 */
-#pragma pop_macro("DAT_11778828")
-#pragma push_macro("DAT_1177882c")
-#undef DAT_1177882c
-extern float DAT_1177882c;  /* 0x1177882C */
-#pragma pop_macro("DAT_1177882c")
-#pragma push_macro("DAT_11778830")
-#undef DAT_11778830
-extern float DAT_11778830;  /* 0x11778830 */
-#pragma pop_macro("DAT_11778830")
-#pragma push_macro("DAT_11778834")
-#undef DAT_11778834
-extern float DAT_11778834;  /* 0x11778834 */
-#pragma pop_macro("DAT_11778834")
-#pragma push_macro("DAT_11778838")
-#undef DAT_11778838
-extern int DAT_11778838;  /* 0x11778838 */
-#pragma pop_macro("DAT_11778838")
-#pragma push_macro("DAT_1177883c")
-#undef DAT_1177883c
-extern int DAT_1177883c;  /* 0x1177883C */
-#pragma pop_macro("DAT_1177883c")
-#pragma push_macro("DAT_11778840")
-#undef DAT_11778840
-extern int DAT_11778840;  /* 0x11778840 */
-#pragma pop_macro("DAT_11778840")
 #pragma push_macro("g_brRaceBeginMirrorOff")
 #undef g_brRaceBeginMirrorOff
 extern int32_t g_brRaceBeginMirrorOff;  /* 0x11778848 */

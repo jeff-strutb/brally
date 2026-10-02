@@ -2032,14 +2032,6 @@ const BrCollPlane *g_pBrCrCurPlane;  /* 0x1177819C */
 BrVec3 g_brCrPlaneOut;  /* 0x117781A0 */
 BrCollRespNode s_aNode[200];  /* 0x117781B0 */
 BrCrPlaneState g_brCrPlane;  /* 0x117787F0 */
-int DAT_11778820;  /* 0x11778820 */
-float DAT_11778828;  /* 0x11778828 */
-float DAT_1177882c;  /* 0x1177882C */
-float DAT_11778830;  /* 0x11778830 */
-float DAT_11778834;  /* 0x11778834 */
-int DAT_11778838;  /* 0x11778838 */
-int DAT_1177883c;  /* 0x1177883C */
-int DAT_11778840;  /* 0x11778840 */
 BrCollRespNode *g_pBrCrCursor;  /* 0x11778844 */
 int32_t g_brRaceBeginMirrorOff;  /* 0x11778848 */
 uint8_t g_aBrRaceBeginRecIn[8];  /* 0x11778850 */

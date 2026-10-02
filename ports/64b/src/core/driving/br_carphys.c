@@ -465,7 +465,7 @@ float BrWheelGroundProbe(BrCarBody *pBody, BrCarBody *pWheel)
     /* the cell's plane records, one BrCollPlane each (0x20 bytes in the
      * original, so `pPl += 8` floats there); counts are words at 0x11778800 */
     pPl = (const float *)&DAT_11773698[cell][0];
-    for (n = (*(uint16_t (*)[4])((char *)&g_brCrPlane + 0x10))[cell]; n > 0;
+    for (n = g_brCrPlane.aCellCount[cell]; n > 0;
          n--, pPl = (const float *)((const BrCollPlane *)pPl + 1)) {
         float d = BrCrPlaneDist(pPl, pPl[3], world);
 
@@ -719,7 +719,7 @@ float BrGroundProbeZ(const float *pPoint)
     dir[2] = -1.0f;
     cell = BrCollGridCellAcquire(pPoint[0], pPoint[1]);
     pPl = (const float *)&DAT_11773698[cell][0];
-    for (n = (*(uint16_t (*)[4])((char *)&g_brCrPlane + 0x10))[cell]; n > 0;
+    for (n = g_brCrPlane.aCellCount[cell]; n > 0;
          n--, pPl = (const float *)((const BrCollPlane *)pPl + 1)) {
         float d = BrCrPlaneDist(pPl, pPl[3], pPoint);
 
