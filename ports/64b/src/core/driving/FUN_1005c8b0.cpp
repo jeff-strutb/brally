@@ -428,3 +428,41 @@ extern "C" void FUN_1005c8b0(void *self)
     ((class Car5C8B0 *)self)->Step();
 }
 /* end of C entry points */
+
+/* Methods of the local classes above that other files define: each is
+ * the function at its original address, reached through its C entry. */
+/* 0x1002F640: the original calls BrBitLatchTake by address */
+void In5C8B0::Ack(unsigned int a1)
+{
+    BrBitLatchTake((struct BrBitLatch *)this, (unsigned int)a1);
+}
+
+/* 0x1005D3C0: the original calls BrCarPathEval by address */
+void Car5C8B0::Sub5D3C0()
+{
+    BrCarPathEval((struct BrDriverCar *)this);
+}
+
+/* 0x10001C90: the original calls BrVec3Predict by address */
+void Car5C8B0::Sub1C90()
+{
+    BrVec3Predict((struct BrDriverCar *)this);
+}
+
+/* 0x1006F170: the original calls BrCarStep by address */
+void Car5C8B0::Poll6F170()
+{
+    BrCarStep((struct BrDriverCar *)this);
+}
+
+/* 0x1006FA10: the original calls BrEntSetVel by address */
+void Car5C8B0::SetVel(float a1, float a2, float a3)
+{
+    BrEntSetVel((struct BrEntCar *)this, (float)a1, (float)a2, (float)a3);
+}
+
+/* 0x1005C6D0: the original calls BrCarRespawn_1005C6D0 by address */
+void Car5C8B0::Respawn()
+{
+    BrCarRespawn_1005C6D0((void *)this);
+}

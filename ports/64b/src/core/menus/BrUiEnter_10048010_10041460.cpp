@@ -49,7 +49,7 @@ int BrPhase41E::Enter()
     if (this->f28 & 1) {
         if (this->f1C & 0x100000) {
             if (this->item.name != 0) {
-                this->item.i4();
+                (BR_VFN(&(this->item), 4, int (*)(void *)))(&(this->item));
             }
             return 1;
         }

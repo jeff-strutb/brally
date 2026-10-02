@@ -104,3 +104,41 @@ extern "C" void BrRaceDriverPost(void *self)
     ((class Driver_623E0 *)self)->m_100623E0();
 }
 /* end of C entry points */
+
+/* Methods of the local classes above that other files define: each is
+ * the function at its original address, reached through its C entry. */
+/* 0x1000C4E0: the original calls BrRippleApply_1000C4E0 by address */
+void Car_623E0::m_1000C4E0(const float * a1, short a2)
+{
+    BrRippleApply_1000C4E0((void *)this, (const float *)a1, (short)a2);
+}
+
+/* 0x1006E9E0: the original calls BrCarTickClocks by address */
+void Car_623E0::m_1006E9E0()
+{
+    BrCarTickClocks((struct BrDriverCar *)this);
+}
+
+/* 0x1006EA70: the original calls BrCarTickMessages by address */
+void Car_623E0::m_1006EA70()
+{
+    BrCarTickMessages((struct BrDriverCar *)this);
+}
+
+/* 0x1006EB00: the original calls FUN_1006eb00 by address */
+void Car_623E0::m_1006EB00()
+{
+    FUN_1006eb00((struct BrDriverCar *)this);
+}
+
+/* 0x1006EBC0: the original calls BrCarTickGridCell by address */
+void Car_623E0::m_1006EBC0()
+{
+    BrCarTickGridCell((struct BrDriverCar *)this);
+}
+
+/* 0x1005FF00: the original calls BrRaceGateStep by address */
+void Driver_623E0::m_1005FF00()
+{
+    BrRaceGateStep((struct BrDriver *)this);
+}

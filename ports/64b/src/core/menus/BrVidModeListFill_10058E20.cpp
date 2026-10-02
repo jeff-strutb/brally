@@ -130,8 +130,8 @@ take:
         }
 
         if ((*(Ctl58E20 * *)&DAT_10ac5d44) != 0) {
-            (*(Ctl58E20 * *)&DAT_10ac5d44)->m3838.s4(sz, 0, 1, &DAT_100aacc8, 1);
-            (*(Ctl58E20 * *)&DAT_10ac5d44)->m3838.s10(pM, 0x14, idx);
+            (BR_VFN(&((*(Ctl58E20 * *)&DAT_10ac5d44)->m3838), 4, void (*)(void *, char *, int, int, void *, int)))(&((*(Ctl58E20 * *)&DAT_10ac5d44)->m3838), sz, 0, 1, &DAT_100aacc8, 1);
+            (BR_VFN(&((*(Ctl58E20 * *)&DAT_10ac5d44)->m3838), 10, void (*)(void *, void *, int, int)))(&((*(Ctl58E20 * *)&DAT_10ac5d44)->m3838), pM, 0x14, idx);
         }
         pM = pM->pNext;
         idx = idx + 1;

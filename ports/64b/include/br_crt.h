@@ -39,6 +39,11 @@ static inline void br_vdelete(void *p)
 
 /* C++ `new Class`: operator new, then the class's constructor if the
  * allocation succeeded (the original's constructors are C functions here). */
+/* The function in slot `slot` of the object's vtable (the original's MSVC
+ * layout, lifted as data): a virtual call the original made through the
+ * vtable, kept as one where clang would call the class's method directly. */
+#define BR_VFN(obj, slot, FnT) ((FnT)((*(void *const *const *)(obj))[slot]))
+
 static inline void *br_new_obj(size_t cb, void *(*ctor)(void *))
 {
     void *p = BrOperatorNew(cb);

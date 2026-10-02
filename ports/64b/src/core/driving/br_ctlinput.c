@@ -414,11 +414,11 @@ LAB_1005b7f2:
       if ((pCar->f0E58 <= pCar->fE70) ||
          (((**(unsigned int * *)&pCar->pCtl & 0x100000) == 0 ||
           ((**(unsigned int * *)&pCar->pCtl & 0x20000) != 0)))) goto LAB_1005b92f;
-      BrBitLatchTake(pCar->pCtl, 0, 0x100000);
+      BrBitLatchTake(pCar->pCtl, 0x100000);
       iVar9 = pCar->fE70 + 1;
     }
     else {
-      BrBitLatchTake(pCar->pCtl, 0, 0x200000);
+      BrBitLatchTake(pCar->pCtl, 0x200000);
       iVar9 = pCar->fE70 + -1;
     }
     pCar->fE70 = iVar9;

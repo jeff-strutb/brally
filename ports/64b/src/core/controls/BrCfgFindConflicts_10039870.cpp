@@ -96,3 +96,17 @@ int BrCfgFindConflicts(int kind)
 
     return found;
 }
+
+/* Methods of the local classes above that other files define: each is
+ * the function at its original address, reached through its C entry. */
+/* 0x10062C30: the original calls BrFn10069BC0 by address */
+int Cfg39870::GetA(int a1, unsigned int a2)
+{
+    return (int)BrFn10069BC0((void *)this, (int32_t)a1, (uint32_t)a2);
+}
+
+/* 0x10062CA0: the original calls BrFn10069C30 by address */
+char Cfg39870::GetB(int a1, unsigned int a2)
+{
+    return (char)BrFn10069C30((void *)this, (int32_t)a1, (uint32_t)a2);
+}

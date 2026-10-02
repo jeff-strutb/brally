@@ -130,3 +130,11 @@ void BrCarStateEncodeDelta(BrBitStream *pBs, const BrCarState *pCur, const BrCar
     pBs->WriteBits(pCur->f98 != 0.0f, 1);
     pBs->WriteBits(pCur->f9C != 0.0f, 1);
 }
+
+/* Methods of the local classes above that other files define: each is
+ * the function at its original address, reached through its C entry. */
+/* 0x1006D0B0: the original calls BrBitStreamWriteBits_1006D0B0 by address */
+void BrBitStream::WriteBits(unsigned int a1, unsigned int a2)
+{
+    BrBitStreamWriteBits_1006D0B0((void *)this, (unsigned int)a1, (unsigned int)a2);
+}

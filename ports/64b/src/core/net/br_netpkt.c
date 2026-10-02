@@ -38,7 +38,7 @@
  * slice1_09.c defines for its own definition of this function. */
 typedef struct { unsigned int v; } BrPktU24Arg;
 /* BrObjClear: prototype in br_funcs.h */
-void __fastcall   BrBitStreamWriteU24(void *pBs, BrPktU24Arg v); /* 0x1006D000 */
+/* BrBitStreamWriteU24: prototype in br_funcs.h */
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */    /* 0x10226A64 */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x1021CE40 */
@@ -51,7 +51,7 @@ void BrNetPktStamp(void *pPkt)
     WaitForSingleObject(g_hBrNetMutex, 0xffffffff);
     g_brNetPktTick = BrTicks30FromMs();
     tick.v = (unsigned int)g_brNetPktTick;
-    BrBitStreamWriteU24(pPkt, tick);
+    BrBitStreamWriteU24(pPkt, tick.v);
     ReleaseMutex(g_hBrNetMutex);
 }
 
@@ -84,13 +84,13 @@ void BrNetPktStamp(void *pPkt)
  * is thiscall on the stream, taking only `this`. */
 typedef union { unsigned char b; unsigned int u; } BrU8Arg;
 /* BrCountedTotal: prototype in br_funcs.h */
-void __fastcall BrBitStreamWriteU8(void *pBs, BrU8Arg v); /* 0x1006CFA0 */
+/* BrBitStreamWriteU8: prototype in br_funcs.h */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */                    /* 0x11849E68 */
 
 /* BrNetWriteTag20: prototype in br_funcs.h */
 
 typedef struct { unsigned int v; } BrU32Arg;
-void __fastcall BrBitStreamWriteU32(void *pBs, BrU32Arg v); /* 0x1006D050 */
+/* BrBitStreamWriteU32: prototype in br_funcs.h */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 
 /* WHAT IT DOES: write one player record onto an outgoing bitstream if it

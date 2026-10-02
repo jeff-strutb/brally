@@ -113,9 +113,9 @@ int BrItemSetSelTime_1003A420(Obj3A420 *pObj)
     pLabel = pObj->m2B5C.szName;
     strcpy(pLabel, _strupr(szTime));
 
-    pObj->m2B5C.s1();
+    (BR_VFN(&(pObj->m2B5C), 1, void (*)(void *)))(&(pObj->m2B5C));
     if (pLabel != 0)
-        pObj->m2B5C.s4();
+        (BR_VFN(&(pObj->m2B5C), 4, void (*)(void *)))(&(pObj->m2B5C));
 
     return 1;
 }

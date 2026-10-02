@@ -101,9 +101,9 @@ int BrItemSetTotal_1003AA10(Obj3AA10 *pObj)
     pLabel = pObj->m2B5C.szName;
     strcpy(pLabel, _strupr(szNum));
 
-    pObj->m2B5C.s2();
+    (BR_VFN(&(pObj->m2B5C), 2, void (*)(void *)))(&(pObj->m2B5C));
     if (pLabel != 0)
-        pObj->m2B5C.s11();
+        (BR_VFN(&(pObj->m2B5C), 11, void (*)(void *)))(&(pObj->m2B5C));
 
     return 1;
 }

@@ -1048,7 +1048,7 @@ Lb887:  /* 0x1001b887 */
                 }
                 if (!skip) {
                     if (DAT_105bc8dc != 0 || ((uint8_t)pCtl->ctl & 0x10) == 0)   /* 0x1001bdbf */
-                        BrBitLatchTake((BrBitLatch *)pCtl, 0, 0xc010);       /* 0x1001bdca */
+                        BrBitLatchTake((BrBitLatch *)pCtl, 0xc010);       /* 0x1001bdca */
                     if ((unsigned)DAT_105bc8dc <= 5) {                          /* 0x1001bddc */
                         switch (DAT_105bc8dc) {        /* jmp [.. 0x1001c688] */
                         case 0:  /* 0x1001bdec */
@@ -1115,7 +1115,7 @@ Lb887:  /* 0x1001b887 */
             if (BrFadeIsClosing() != 0) goto Lc13d;
             for (k = 0; k < 2; k++) {             /* 0x1001c0e0: the two entity records */
                 if ((*(int *)&g_BrX18ABAD0) & 0x4000) {
-                    BrBitLatchTake((BrBitLatch *)&g_aBrEnts[k], 0, 0xc010);
+                    BrBitLatchTake((BrBitLatch *)&g_aBrEnts[k], 0xc010);
                     (*(int *)&g_brRaceBeginMovieDone) = 1; DAT_105ccb68[12] = 1; DAT_105ccb68[9] = 0;
                     BrFadeSetTargetA(0, 0x3e4ccccd);
                     BrFadeSetTarget(0, 0x3e4ccccd);
@@ -1135,8 +1135,8 @@ Lb887:  /* 0x1001b887 */
                 }
                 BrFadeSetTargetA(0, 0x3e4ccccd);      /* 0x1001c09c */
                 BrFadeSetTargetB(0, 0x3e4ccccd);
-                BrBitLatchTake((BrBitLatch *)g_aBrRaceCar[0].pCtl, 0, 0x4000);
-                BrBitLatchTake((BrBitLatch *)g_aBrRaceCar[1].pCtl, 0, 0x4000);
+                BrBitLatchTake((BrBitLatch *)g_aBrRaceCar[0].pCtl, 0x4000);
+                BrBitLatchTake((BrBitLatch *)g_aBrRaceCar[1].pCtl, 0x4000);
             }
             /* else 0x1001c051: a counting loop with no effect */
         }

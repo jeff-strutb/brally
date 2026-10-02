@@ -94,7 +94,7 @@ int BrUiText1003F760(Obj38CA0 *pObj)
 
     strcpy(pObj->m2B5C.szName, s);
 
-    pObj->m2B5C.s1();
+    (BR_VFN(&(pObj->m2B5C), 1, void (*)(void *)))(&(pObj->m2B5C));
     Br85ItemApply((struct BrCtl85 *)(pObj), 0);
 
     return 1;

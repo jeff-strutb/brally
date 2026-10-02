@@ -78,7 +78,7 @@ typedef struct BrPeerMsg {
  * the buffer lands at +0x10. That is what makes BrBitStreamAtEnd work on a
  * read-only stream: "end" means the read cursor has caught up with the write
  * cursor, and for a pre-filled buffer the write cursor is the payload size. */
-void         BrBitStreamInit(BrBitStream *pBs, void *pBuf, int nBytes);
+/* BrBitStreamInit: prototype in br_funcs.h */
 
 /* 0x10073F20  align the WRITE cursor: if writeBit != 0, zero it and step
  * writeByte. (The read-side twin is 0x10073D20 / BrObjConsumeFlag.) */
@@ -86,7 +86,7 @@ void         BrBitStreamInit(BrBitStream *pBs, void *pBuf, int nBytes);
 
 /* 0x10073BA0  align the read cursor, then advance it by n BYTES.
  * n is not range-checked. */
-void         BrBitStreamSkipBytes(BrBitStream *pBs, int n);
+/* BrBitStreamSkipBytes: prototype in br_funcs.h */
 
 /* 0x10073BC0  align, then read one byte. */
 /* BrBitStreamReadU8: prototype in br_funcs.h */
@@ -112,11 +112,11 @@ void         BrBitStreamSkipBytes(BrBitStream *pBs, int n);
 /* BrBitStreamAtEnd: prototype in br_funcs.h */
 
 /* 0x10073D60  align the write cursor, then write the low byte of v. */
-void          BrBitStreamWriteU8(BrBitStream *pBs, unsigned int v);
+/* BrBitStreamWriteU8: prototype in br_funcs.h */
 /* 0x10073DC0  align, then write bits 23..0 of v big-endian (3 bytes). */
-void          BrBitStreamWriteU24(BrBitStream *pBs, unsigned int v);
+/* BrBitStreamWriteU24: prototype in br_funcs.h */
 /* 0x10073E10  align, then write v big-endian (4 bytes). */
-void          BrBitStreamWriteU32(BrBitStream *pBs, unsigned int v);
+/* BrBitStreamWriteU32: prototype in br_funcs.h */
 
 /* ------------------------------------------------------------------ */
 /* Float math                                                          */

@@ -278,10 +278,10 @@ typedef struct BrUiGlobals {
 extern void BrFn1003D210(int32_t a, int32_t b, int32_t c);
 
 /* XSLICE 0x10069BC0  (__thiscall on the object at 0x10B4DF30) */
-extern int32_t BrFn10069BC0(void *pThis, int32_t kind, uint32_t key);
+/* BrFn10069BC0: prototype in br_funcs.h */
 
 /* XSLICE 0x10069C30  (__thiscall on the object at 0x10B4DF30; returns a byte) */
-extern uint8_t BrFn10069C30(void *pThis, int32_t kind, uint32_t key);
+/* BrFn10069C30: prototype in br_funcs.h */
 
 /* ==========================================================================
  * 0x1003E010 / 0x1003E040 -- constant stores

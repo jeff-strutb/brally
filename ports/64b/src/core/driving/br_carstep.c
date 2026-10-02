@@ -17,7 +17,7 @@
 /* BrCarSub1005A7A0: prototype in br_funcs.h */
 /* BrCarWheelSteerStep_1005ACE0: prototype in br_funcs.h */
 /* BrCarNetSendState: prototype in br_funcs.h */
-void  BR_THISCALL1 BrEntSetPos(unsigned char *pCar, float x, float y, float z);
+/* BrEntSetPos: prototype in br_funcs.h */
 /* BrEntSetVel: prototype in br_funcs.h */
 /* BrEntSetAngVel: prototype in br_funcs.h */
 /* BrEntSetOrientation: prototype in br_funcs.h */
@@ -110,7 +110,7 @@ void BR_THISCALL1 BrCarStep(BrDriverCar *pCar)
       puVar1[2] = 0x3f800000;
       BrVec3Cross(&pCar->right.x, puVar1, &pCar->fwd.x);
       BrVec3Cross(puVar1, &pCar->fwd.x, &pCar->right.x);
-      BrBitLatchTake(pCar->pCtl, 0, 0x10);
+      BrBitLatchTake(pCar->pCtl, 0x10);
     }
   } else {
     *(int *)&pCar->sz100C[20] =

@@ -389,7 +389,7 @@ BrWndResult __stdcall BrWndProc(void *hWnd, uint32_t uMsg, BrWParam wParam, BrLP
     if (pHook != 0 && pHook[0x68 / 4] != 0) {
         BrSub100590D0(g_obj400, hWnd, uMsg, (uint32_t)wParam, (int32_t)lParam);
         if ((*(int32_t *)&g_guardA) != 0)
-            BrWmAppHook35A30(hWnd, uMsg, (uint32_t)wParam, (int32_t)lParam);
+            BrWmAppHook35A30(hWnd, uMsg, (uintptr_t)wParam, (intptr_t)lParam);
     }
 
     iMode = (*(int32_t *)&DAT_1007b074);

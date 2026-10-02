@@ -75,3 +75,11 @@ extern "C" void Ctl58D40_fn(void *self)
     ((class Ctl58D40 *)self)->Rebuild();
 }
 /* end of C entry points */
+
+/* Methods of the local classes above that other files define: each is
+ * the function at its original address, reached through its C entry. */
+/* 0x10058D00: the original calls BrBoundsInsert_10058D00 by address */
+void Node::Append(Node * a1)
+{
+    BrBoundsInsert_10058D00((void *)this, (struct BoundsNode *)a1);
+}

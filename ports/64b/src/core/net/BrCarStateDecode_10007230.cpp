@@ -133,3 +133,11 @@ void BrCarStateDecode(BrCarState *pDst, BrBitReader *pReader)
     pDst->f98 = pReader->ReadBits(1) ? BR_ONE_128 : 0.0f;
     pDst->f9C = pReader->ReadBits(1) ? BR_ONE_128 : 0.0f;
 }
+
+/* Methods of the local classes above that other files define: each is
+ * the function at its original address, reached through its C entry. */
+/* 0x1006CED0: the original calls BrBitStreamReadBits by address */
+uint32_t BrBitReader::ReadBits(unsigned int a1)
+{
+    return (uint32_t)BrBitStreamReadBits((void *)this, (int)a1);
+}

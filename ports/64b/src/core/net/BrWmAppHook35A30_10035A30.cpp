@@ -40,11 +40,11 @@ extern "C" {
 /* BrTick36510: prototype in br_funcs.h */
 }
 
-__declspec(dllimport) int __stdcall ImpA(int);
-__declspec(dllimport) int __stdcall ImpB(int);
-__declspec(dllimport) int __stdcall ImpC(int);
+/* The three imports (IAT 0x118F0454, 0x118F0450, 0x118F04C0) are
+ * KERNEL32 GlobalHandle, GlobalUnlock and GlobalFree: lParam is a locked
+ * GlobalAlloc block that this message hands over. */
 
-int __stdcall BrWmAppHook35A30(char * hwnd, unsigned int msg, int wp, int lp)
+int __stdcall BrWmAppHook35A30(char * hwnd, unsigned int msg, uintptr_t wp, intptr_t lp)
 {
     GameObjS *p;
 
@@ -53,10 +53,10 @@ int __stdcall BrWmAppHook35A30(char * hwnd, unsigned int msg, int wp, int lp)
         p = g_pGame;
         if (p != 0) {
             Sel *s = &p->sel;
-            s->s4(lp, 0, 1, &g_selArg, 1);
+            s->s4((int)lp, 0, 1, &g_selArg, 1);
         }
-        ImpB(ImpA(lp));
-        ImpC(ImpA(lp));
+        GlobalUnlock(GlobalHandle((LPCVOID)lp));
+        GlobalFree(GlobalHandle((LPCVOID)lp));
         break;
     case 0x113:
         if (g_brPAA29D4)

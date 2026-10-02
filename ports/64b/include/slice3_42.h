@@ -179,7 +179,7 @@ BrCtrlCfg *BrCtrlCfgCopy(BrCtrlCfg *pThis, const BrCtrlCfg *pSrc);
  *
  * GOTCHA: the selector is dispatched as 1/2/3 with everything else falling
  * through to profile 0 -- so 0, 4, -1 and 99 all reset profile 0. */
-void BrCtrlCfgLoadDefaults(BrCtrlCfg *pThis, int32_t profile);
+/* BrCtrlCfgLoadDefaults: prototype in br_funcs.h */
 
 /* 0x10069B10  __thiscall: bind `action` in `profile` to (hi, lo).
  *
@@ -199,7 +199,7 @@ void BrCtrlCfgLoadDefaults(BrCtrlCfg *pThis, int32_t profile);
  *
  * Returns slot 0 of profile `kind` (dispatched 1/2/3, else 0), action `key`,
  * masked with 0xFF00: the device class, NOT shifted down. */
-int32_t BrFn10069BC0(void *pThis, int32_t kind, uint32_t key);
+/* BrFn10069BC0: prototype in br_funcs.h */
 
 /* 0x10069C30  __thiscall.  Name and signature from slice2_23.h.
  *
@@ -211,7 +211,7 @@ int32_t BrFn10069BC0(void *pThis, int32_t kind, uint32_t key);
  * GOTCHA: that asymmetry is real.  Entry 0x8000 answers 0x80 while entry
  * 0x0100 answers 0x00, so a caller cannot reconstruct the entry from the two
  * getters without knowing the class first. */
-uint8_t BrFn10069C30(void *pThis, int32_t kind, uint32_t key);
+/* BrFn10069C30: prototype in br_funcs.h */
 
 /* =====================================================================
  * 3. Replay recorder

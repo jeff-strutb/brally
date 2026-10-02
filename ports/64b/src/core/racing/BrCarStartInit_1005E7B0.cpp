@@ -280,3 +280,41 @@ extern "C" void BrCarStartInit_1005E7B0(void *self)
     ((class Car5E7B0 *)self)->StartInit();
 }
 /* end of C entry points */
+
+/* Methods of the local classes above that other files define: each is
+ * the function at its original address, reached through its C entry. */
+/* 0x1006FD90: the original calls BrEntReset by address */
+void Car5E7B0::m_1006FD90()
+{
+    BrEntReset((void *)this);
+}
+
+/* 0x1005E6A0: the original calls BrCarInitTables by address */
+void Car5E7B0::m_1005E6A0()
+{
+    BrCarInitTables((struct BrDriverCar *)this);
+}
+
+/* 0x1005E780: the original calls BrCarClear29C8 by address */
+void Car5E7B0::m_1005E780()
+{
+    BrCarClear29C8((struct BrDriverCar *)this);
+}
+
+/* 0x1006F680: the original calls BrEntSetPos by address */
+void Car5E7B0::m_1006F680(float a1, float a2, float a3)
+{
+    BrEntSetPos((struct BrEntCar *)this, (float)a1, (float)a2, (float)a3);
+}
+
+/* 0x1006F720: the original calls BrEntSetHeading by address */
+void Car5E7B0::m_1006F720(float a1)
+{
+    BrEntSetHeading((struct BrEntCar *)this, (float)a1);
+}
+
+/* 0x1006FA10: the original calls BrEntSetVel by address */
+void Car5E7B0::m_1006FA10(float a1, float a2, float a3)
+{
+    BrEntSetVel((struct BrEntCar *)this, (float)a1, (float)a2, (float)a3);
+}

@@ -50,11 +50,9 @@ public:
 class GameUi;
 /* BrOptFn10057C10: prototype in br_funcs.h */
 #define EnterFn ((void (*)(Phase *))BrOptFn10057C10)
-/* HookFn was a stand-in; the original calls Opt3DF80::Leave (?Leave@Opt3DF80@@YAHPAVGameObj3DF80@@@Z).  Declared under
- * its real symbol so the relocation resolves by name. */
-class GameObj3DF80;
-namespace Opt3DF80 { int Leave(GameObj3DF80 *); }
-#define HookFn ((void (*)(Phase *))Opt3DF80::Leave)
+/* HookFn: the original installs Opt3DF80::Leave, the function at
+ * 0x1003DF80 (BrOptFn10044A30). */
+#define HookFn ((void (*)(Phase *))BrOptFn10044A30)
 
 class Ctl3D930 {
 public:

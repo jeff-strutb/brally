@@ -59,3 +59,11 @@ extern "C" int Ctl71FC0_fn(void *self)
     return ((class Ctl71FC0 *)self)->Activate();
 }
 /* end of C entry points */
+
+/* Methods of the local classes above that other files define: each is
+ * the function at its original address, reached through its C entry. */
+/* 0x10059350: the original calls BrDInputDeviceCreate_10059350 by address */
+void DiDev::Init(void * a1)
+{
+    BrDInputDeviceCreate_10059350((void *)this, (void *)a1);
+}

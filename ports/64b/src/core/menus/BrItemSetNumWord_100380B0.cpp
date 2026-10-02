@@ -65,9 +65,9 @@ int BrItemSetNumWord_100380B0(Obj380B0 *pObj)
 
     _itoa(g_brVal40F8[g_brIdx5C04], s, 10);
 
-    pObj->m2B5C.s2();
+    (BR_VFN(&(pObj->m2B5C), 2, void (*)(void *)))(&(pObj->m2B5C));
     if (s != 0)
-        pObj->m2B5C.s11();
+        (BR_VFN(&(pObj->m2B5C), 11, void (*)(void *)))(&(pObj->m2B5C));
 
     return 1;
 }

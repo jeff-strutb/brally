@@ -46,3 +46,11 @@ extern "C" void BrBoundsInsert_10058D00(void *self, BoundsNode * pNode)
     ((class BoundsNode *)self)->Insert(pNode);
 }
 /* end of C entry points */
+
+/* Methods of the local classes above that other files define: each is
+ * the function at its original address, reached through its C entry. */
+/* 0x10058CC0: the original calls BrBoundsFits_10058CC0 by address */
+int BoundsNode::Fits(BoundsNode * a1)
+{
+    return (int)BrBoundsFits_10058CC0((int)this, (int *)a1);
+}

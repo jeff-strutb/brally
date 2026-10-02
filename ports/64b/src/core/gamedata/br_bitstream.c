@@ -108,14 +108,13 @@ void BR_THISCALL1 BrBitStreamAlignWrite(BrBitStream *pBs)
  * +0x0 (len 8); no N64 twin. */
 typedef struct { void *p; } BrBitStreamInitBuf;
 typedef struct { int n; }   BrBitStreamInitLen;
-BrBitStream * __fastcall BrBitStreamInit(BrBitStream *pBs, BrBitStreamInitBuf pBuf,
-                                         BrBitStreamInitLen nBytes)
+BrBitStream * __fastcall BrBitStreamInit(BrBitStream *pBs, void *pBuf, int nBytes)
 {
     pBs->writeBit  = 0;
     pBs->readBit   = 0;
     pBs->readByte  = 0;
-    pBs->writeByte = nBytes.n;
-    pBs->pBuf      = (unsigned char *)pBuf.p;
+    pBs->writeByte = nBytes;
+    pBs->pBuf      = (unsigned char *)pBuf;
     return pBs;
 }
 
@@ -125,10 +124,10 @@ BrBitStream * __fastcall BrBitStreamInit(BrBitStream *pBs, BrBitStreamInitBuf pB
 /* @implements 0x10073BA0 d3d BrBitStreamSkipBytes */
 /* @n64 0x8023FF34 located */
 typedef struct { int n; } BrBitStreamSkipArg;
-void __fastcall BrBitStreamSkipBytes(BrBitStream *pBs, BrBitStreamSkipArg n)
+void __fastcall BrBitStreamSkipBytes(BrBitStream *pBs, int n)
 {
     BrBitStreamAlignRead(pBs);
-    pBs->readByte += n.n;
+    pBs->readByte += n;
 }
 
 /* 0x10073BC0  __thiscall.
@@ -355,10 +354,10 @@ int BR_THISCALL1 BrBitStreamAtEnd(const BrBitStream *pBs)
  * boundary first. */
 /* @implements 0x10073D60 d3d BrBitStreamWriteU8 */
 typedef struct { unsigned int v; } BrBitStreamByteArg;
-void __fastcall BrBitStreamWriteU8(BrBitStream *pBs, BrBitStreamByteArg v)
+void __fastcall BrBitStreamWriteU8(BrBitStream *pBs, unsigned int v)
 {
     BrBitStreamAlignWrite(pBs);
-    pBs->pBuf[pBs->writeByte] = (unsigned char)v.v;
+    pBs->pBuf[pBs->writeByte] = (unsigned char)v;
     pBs->writeByte++;
 }
 
@@ -384,7 +383,7 @@ void __fastcall BrBitStreamWriteU8(BrBitStream *pBs, BrBitStreamByteArg v)
  * original's `mov ax,` is a WORD load and an int local destroys it; a
  * `unsigned char hi` value local costs 3 (55 B). */
 typedef struct { unsigned short v; } BrBitStreamWordArg;
-void __fastcall BrBitStreamWriteU16(BrBitStream *pBs, BrBitStreamWordArg v)
+void __fastcall BrBitStreamWriteU16(BrBitStream *pBs, unsigned short v)
 {
     unsigned char *pb;
     int            w;
@@ -392,9 +391,9 @@ void __fastcall BrBitStreamWriteU16(BrBitStream *pBs, BrBitStreamWordArg v)
     BrBitStreamAlignWrite(pBs);
     pb = pBs->pBuf;
     w  = pBs->writeByte;
-    pb[w] = (unsigned char)(v.v >> 8);
+    pb[w] = (unsigned char)(v >> 8);
     pBs->writeByte++;
-    pBs->pBuf[pBs->writeByte] = (unsigned char)v.v;
+    pBs->pBuf[pBs->writeByte] = (unsigned char)v;
     pBs->writeByte++;
 }
 
@@ -405,9 +404,9 @@ void __fastcall BrBitStreamWriteU16(BrBitStream *pBs, BrBitStreamWordArg v)
 /* thiscall.  Size-exact (70) but register-walled on the first pair:
  * original loads writeByte into edx and pBuf into edi; VC5 swaps them.
  * Naming writeByte first dropped below orig size. */
-void __fastcall BrBitStreamWriteU24(BrBitStream *pBs, BrBitStreamByteArg v)
+void __fastcall BrBitStreamWriteU24(BrBitStream *pBs, unsigned int v)
 {
-    unsigned int x = v.v;
+    unsigned int x = v;
     BrBitStreamAlignWrite(pBs);
     pBs->pBuf[pBs->writeByte] = (unsigned char)(x >> 16);
     pBs->writeByte++;
@@ -427,11 +426,8 @@ void __fastcall BrBitStreamWriteU24(BrBitStream *pBs, BrBitStreamByteArg v)
 /* @implements 0x1006AB60 glide BrObjResetMsgHdr */
 void BrObjResetMsgHdr(BrBitStream *pBs)
 {
-    BrBitStreamByteArg a;
-
     BrObjClear(pBs);
-    a.v = (unsigned int)(*(int *)&DAT_1184c070);
-    BrBitStreamWriteU24(pBs, a);
+    BrBitStreamWriteU24(pBs, (unsigned int)(*(int *)&DAT_1184c070));
 }
 
 /* 0x10073E10  big-endian 32-bit. */
@@ -445,9 +441,9 @@ void BrObjResetMsgHdr(BrBitStream *pBs)
  * Every later store keeps the plain `pBs->pBuf[pBs->writeByte]` form, which is
  * index-first and already matched -- so the local goes on the FIRST store
  * only.  See the WriteU16 note for the rest of the rule. */
-void __fastcall BrBitStreamWriteU32(BrBitStream *pBs, BrBitStreamByteArg v)
+void __fastcall BrBitStreamWriteU32(BrBitStream *pBs, unsigned int v)
 {
-    unsigned int   x = v.v;
+    unsigned int   x = v;
     unsigned char *pb;
 
     BrBitStreamAlignWrite(pBs);

@@ -42,20 +42,19 @@ typedef struct { uint32_t v; } BrCtrlKeyArg;
  * before scaling -- `(key + 28*k) * 3` over one flat table -- rather than
  * indexing a profile and then a row, which is why each arm adds its own
  * literal to `key`. */
-int32_t BR_THISCALL1 BrFn10069BC0(void *pThis, BrCtrlKindArg kind,
-                                  BrCtrlKeyArg key)
+int32_t BR_THISCALL1 BrFn10069BC0(void *pThis, int32_t kind, uint32_t key)
 {
     const BrCtrlCfg *pCfg = (const BrCtrlCfg *)pThis;
 
-    switch (kind.v) {
+    switch (kind) {
     case 1:
-        return (int32_t)(pCfg->profile[0].e[key.v + 0x1C][0] & 0xFF00u);
+        return (int32_t)(pCfg->profile[0].e[key + 0x1C][0] & 0xFF00u);
     case 2:
-        return (int32_t)(pCfg->profile[0].e[key.v + 0x38][0] & 0xFF00u);
+        return (int32_t)(pCfg->profile[0].e[key + 0x38][0] & 0xFF00u);
     case 3:
-        return (int32_t)(pCfg->profile[0].e[key.v + 0x54][0] & 0xFF00u);
+        return (int32_t)(pCfg->profile[0].e[key + 0x54][0] & 0xFF00u);
     }
-    return (int32_t)(pCfg->profile[0].e[key.v][0] & 0xFF00u);
+    return (int32_t)(pCfg->profile[0].e[key][0] & 0xFF00u);
 }
 
 /* 0x10069C30 -- name fixed by the XSLICE declaration in slice2_23.h. */
@@ -74,27 +73,26 @@ int32_t BR_THISCALL1 BrFn10069BC0(void *pThis, BrCtrlKindArg kind,
  * the test skipped. VC5 cross-jumps the tails of arms 2 and 3 by itself (arm 3
  * ends in a `jmp` into arm 2) and leaves arm 1 with its own copy -- that is
  * the compiler's layout, not a difference in how the three are spelled. */
-uint8_t BR_THISCALL1 BrFn10069C30(void *pThis, BrCtrlKindArg kind,
-                                  BrCtrlKeyArg key)
+uint8_t BR_THISCALL1 BrFn10069C30(void *pThis, int32_t kind, uint32_t key)
 {
     const BrCtrlCfg *pCfg = (const BrCtrlCfg *)pThis;
 
-    switch (kind.v) {
+    switch (kind) {
     case 1: {
-        const uint16_t v = pCfg->profile[0].e[key.v + 0x1C][0];
+        const uint16_t v = pCfg->profile[0].e[key + 0x1C][0];
         if (v >= 0x8000u) return (uint8_t)(v >> 8);
         return (uint8_t)v;
     }
     case 2: {
-        const uint16_t v = pCfg->profile[0].e[key.v + 0x38][0];
+        const uint16_t v = pCfg->profile[0].e[key + 0x38][0];
         if (v >= 0x8000u) return (uint8_t)(v >> 8);
         return (uint8_t)v;
     }
     case 3: {
-        const uint16_t v = pCfg->profile[0].e[key.v + 0x54][0];
+        const uint16_t v = pCfg->profile[0].e[key + 0x54][0];
         if (v >= 0x8000u) return (uint8_t)(v >> 8);
         return (uint8_t)v;
     }
     }
-    return (uint8_t)pCfg->profile[0].e[key.v][0];
+    return (uint8_t)pCfg->profile[0].e[key][0];
 }

@@ -98,3 +98,29 @@ extern "C" int BrCtrlCfgReadFile(void *self, const char * pszPath)
     return ((class BrCtrlCfg_10062B00_10008D60 *)self)->m_10063060(pszPath);
 }
 /* end of C entry points */
+
+/* Methods of the local classes above that other files define: each is
+ * the function at its original address, reached through its C entry. */
+/* 0x10062B00: the original calls BrCtrlCfgCtor by address */
+BrCtrlCfg_10062B00_10008D60::BrCtrlCfg_10062B00_10008D60()
+{
+    BrCtrlCfgCtor((struct BrCtrlCfg *)this);
+}
+
+/* 0x10008D60: the original calls BrPodNop by address */
+BrCtrlCfg_10062B00_10008D60::~BrCtrlCfg_10062B00_10008D60()
+{
+    BrPodNop();
+}
+
+/* 0x10062E50: the original calls BrRec874Copy_10062E50 by address */
+void BrCtrlCfg_10062B00_10008D60::m_10062E50(BrCtrlCfg_10062B00_10008D60 * a1)
+{
+    BrRec874Copy_10062E50((void *)this, (struct Rec62E50 *)a1);
+}
+
+/* 0x10062D00: the original calls BrCtrlCfgInit by address */
+void BrCtrlCfg_10062B00_10008D60::m_10062D00()
+{
+    BrCtrlCfgInit((struct BrCtrlCfg *)this);
+}

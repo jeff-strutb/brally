@@ -114,7 +114,7 @@ int BrItemSetModeLabel_100393C0(Obj393C0 *pObj)
 
         strcpy((*(char (*)[1025])&((BrTextBox *)&(pObj->m2B5C))->sz[0]), BrStrGet(0x1C));
 
-        pObj->m2B5C.s1();
+        (BR_VFN(&(pObj->m2B5C), 1, void (*)(void *)))(&(pObj->m2B5C));
         Br85ItemApply((struct BrCtl85 *)(pObj), 0);
 
         (*(float *)&((BrTextBox *)&(pObj->m2B5C))->y) = (*(float *)&((BrTextBox *)&(pObj->m2B5C))->y) - DAT_1007762c;
@@ -141,7 +141,7 @@ int BrItemSetModeLabel_100393C0(Obj393C0 *pObj)
 have:
     strcpy((*(char (*)[1025])&((BrTextBox *)&(pObj->m2B5C))->sz[0]), s);
 
-    pObj->m2B5C.s1();
+    (BR_VFN(&(pObj->m2B5C), 1, void (*)(void *)))(&(pObj->m2B5C));
     Br85ItemApply((struct BrCtl85 *)(pObj), 0);
 
     return 1;

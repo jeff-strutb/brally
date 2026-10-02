@@ -66,7 +66,7 @@ int BrItemSetLabelState_10037E60(Obj37E60 *pObj)
 
     strcpy(pObj->m2B5C.szName, pStr);
 
-    pObj->m2B5C.s1();
+    (BR_VFN(&(pObj->m2B5C), 1, void (*)(void *)))(&(pObj->m2B5C));
 
     return 1;
 }

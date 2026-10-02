@@ -154,6 +154,18 @@ struct _MMCKINFO;
 #ifdef __cplusplus
 extern "C" {
 #endif
+/* thiscall entries whose definitions take scalars (the MSVC lane passes
+ * one-field structs, which the C calling conventions pass the same way) */
+struct BrBitStream *BrBitStreamInit(struct BrBitStream *, void *, int);
+void BrBitStreamSkipBytes(struct BrBitStream *, int);
+void BrBitStreamWriteU8(struct BrBitStream *, unsigned int);
+void BrBitStreamWriteU16(struct BrBitStream *, unsigned short);
+void BrBitStreamWriteU24(struct BrBitStream *, unsigned int);
+void BrBitStreamWriteU32(struct BrBitStream *, unsigned int);
+int32_t BrFn10069BC0(void *, int32_t, uint32_t);
+uint8_t BrFn10069C30(void *, int32_t, uint32_t);
+void BrCtrlCfgLoadDefaults(struct BrCtrlCfg *, int32_t);
+void BrEntSetPos(struct BrEntCar *, float, float, float);
 #pragma push_macro("Br85ItemApply")
 #undef Br85ItemApply
 int Br85ItemApply(struct BrCtl85 *, short);
@@ -252,7 +264,7 @@ void BrBitEdgeSplit(struct BrBitPair *);
 #pragma pop_macro("BrBitEdgeSplit")
 #pragma push_macro("BrBitLatchTake")
 #undef BrBitLatchTake
-void BrBitLatchTake(struct BrBitLatch *, void *, unsigned int);
+void BrBitLatchTake(struct BrBitLatch *, unsigned int);
 #pragma pop_macro("BrBitLatchTake")
 #pragma push_macro("BrBitStreamAlignWrite")
 #undef BrBitStreamAlignWrite
@@ -5286,7 +5298,7 @@ int BrWindowEarStartup(void *);
 #pragma pop_macro("BrWindowEarStartup")
 #pragma push_macro("BrWmAppHook35A30")
 #undef BrWmAppHook35A30
-int BrWmAppHook35A30(char *, unsigned int, int, int);
+int BrWmAppHook35A30(char *, unsigned int, uintptr_t, intptr_t);
 #pragma pop_macro("BrWmAppHook35A30")
 #pragma push_macro("BrWmHook36130")
 #undef BrWmHook36130

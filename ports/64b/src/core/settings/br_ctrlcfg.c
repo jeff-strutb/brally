@@ -61,10 +61,9 @@ BrCtrlCfg *BrCtrlCfgInitGlobal(void)
  * falling to the default arm.
  *
  * Thiscall: pThis in ecx, the profile number at [esp+4], `ret 4`. */
-void __fastcall BrCtrlCfgLoadDefaults(BrCtrlCfg *pThis,
-                                      BrCtrlProfileArg profile)
+void __fastcall BrCtrlCfgLoadDefaults(BrCtrlCfg *pThis, int32_t profile)
 {
-    switch (profile.v) {
+    switch (profile) {
     case 1:
         pThis->profile[1] = g_BrCtrlDefaults[1];
         break;

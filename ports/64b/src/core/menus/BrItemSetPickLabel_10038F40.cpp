@@ -152,7 +152,7 @@ int BrItemSetPickLabel_10038F40(Obj38F40 *pObj)
 
             strcpy((*(char (*)[1025])&((BrTextBox *)&(pObj->m2B5C))->sz[0]), BrStrGet(0xB0));
 
-            pObj->m2B5C.s1();
+            (BR_VFN(&(pObj->m2B5C), 1, void (*)(void *)))(&(pObj->m2B5C));
             Br85ItemApply((struct BrCtl85 *)(pObj), 0);
 
             (*(float *)&((BrTextBox *)&(pObj->m2B5C))->y) = save;
@@ -161,7 +161,7 @@ int BrItemSetPickLabel_10038F40(Obj38F40 *pObj)
         strcpy((*(char (*)[1025])&((BrTextBox *)&(pObj->m2B5C))->sz[0]), szName);
     }
 
-    pObj->m2B5C.s1();
+    (BR_VFN(&(pObj->m2B5C), 1, void (*)(void *)))(&(pObj->m2B5C));
     Br85ItemApply((struct BrCtl85 *)(pObj), 0);
 
     return 1;

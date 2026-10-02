@@ -90,9 +90,9 @@ int BrItemSetTitle_1003A910(Obj3A910 *pObj)
     pLabel = pObj->m2B5C.szName;
     strcpy(pLabel, szTmp);
 
-    pObj->m2B5C.s1();
+    (BR_VFN(&(pObj->m2B5C), 1, void (*)(void *)))(&(pObj->m2B5C));
     if (pLabel != 0)
-        pObj->m2B5C.s4();
+        (BR_VFN(&(pObj->m2B5C), 4, void (*)(void *)))(&(pObj->m2B5C));
 
     return 1;
 }

@@ -243,7 +243,21 @@ int BrCtlBindingToItem(Obj39620 *pObj)
     } else {
         strcpy(pObj->m2B5C.szName, BrStrGet(0xB2));
     }
-    pObj->m2B5C.s1();
+    (BR_VFN(&(pObj->m2B5C), 1, void (*)(void *)))(&(pObj->m2B5C));
     Br85ItemApply((struct BrCtl85 *)(pObj), 0);
     return 1;
+}
+
+/* Methods of the local classes above that other files define: each is
+ * the function at its original address, reached through its C entry. */
+/* 0x10062C30: the original calls BrFn10069BC0 by address */
+int Cfg39620::GetA(int a1, unsigned int a2)
+{
+    return (int)BrFn10069BC0((void *)this, (int32_t)a1, (uint32_t)a2);
+}
+
+/* 0x10062CA0: the original calls BrFn10069C30 by address */
+char Cfg39620::GetB(int a1, unsigned int a2)
+{
+    return (char)BrFn10069C30((void *)this, (int32_t)a1, (uint32_t)a2);
 }

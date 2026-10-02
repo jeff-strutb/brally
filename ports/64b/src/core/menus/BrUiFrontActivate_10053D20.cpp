@@ -128,3 +128,11 @@ extern "C" int BrUiFrontActivate(void *self)
     return ((class Phase53D20 *)self)->Activate();
 }
 /* end of C entry points */
+
+/* Methods of the local classes above that other files define: each is
+ * the function at its original address, reached through its C entry. */
+/* 0x10059280: the original calls BrFn10060210 by address */
+int BrDlg53::Create(void * a1)
+{
+    return (int)BrFn10060210();
+}

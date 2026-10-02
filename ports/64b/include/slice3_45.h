@@ -136,7 +136,7 @@ typedef struct BrEntCar {
  * GOTCHA: mat0's translation row is one of the five. mat0 and `matrix` are
  * different matrices and only `matrix` is regenerated; mat0's upper 3x3 is
  * whatever BrEntSetHeading last left there. */
-void BrEntSetPos(BrEntCar *pE, float x, float y, float z);
+/* BrEntSetPos: prototype in br_funcs.h */
 
 /* 0x100764C0  __thiscall, `ret 4`. Set the orientation from ONE angle
  * (radians) about Z, as both a matrix and a quaternion.

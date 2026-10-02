@@ -50,7 +50,7 @@ extern "C" {
 
 int BrUiPoll1003EBE0(Obj381D0 *pObj)
 {
-    int row = pObj->m3838.s8(g_5BD8);
+    int row = (BR_VFN(&(pObj->m3838), 8, int (*)(void *, int)))(&(pObj->m3838), g_5BD8);
 
     if (row >= 0)
         g_5BD8 = row;
