@@ -46,7 +46,7 @@ void BrSub1003E3A0(void)
     int v;
 
     v = (*(int (*)[])&g_aBrAC520)[g_brKind5D64];
-    (*(int *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ = v;
+    (*(int *)&g_BrCtrlCfg.active) = v;
     switch (v) {
     case 1:  (*(void * *)&g_BrPadModeBytes) = (*(unsigned char (*)[])&g_BrCtrlCfg) + 0xa8; break;
     case 2:  (*(void * *)&g_BrPadModeBytes) = (*(unsigned char (*)[])&g_BrCtrlCfg) + 0x150; break;

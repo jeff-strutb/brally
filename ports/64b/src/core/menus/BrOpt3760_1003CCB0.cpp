@@ -54,7 +54,7 @@ int BrOpt3760(GameObj *pGame)
 {
     (*(int *)&((BrPhase_ *)((*(GameSub * *)&((BrUiCtl_ *)(pGame))->pOwner)))->f68) = 0;
     (*(GameSub * *)&((BrUiCtl_ *)(pGame))->pOwner)->s6(0);
-    if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0)
+    if ((*(int *)&g_brRaceRules.mode) == 0)
         g_CBE8 = 3;
     BrOptSave();
     (*(Nav *)&g_BrCtrlCfg).m(&g_navArg);

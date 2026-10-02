@@ -142,7 +142,7 @@ void BrCar::LapSaveRestore()
         if ((iVar10 != (int)pCar) && (iVar10->f140 < (*(int *)&g_brRaceNEntrant))) {
           *pfVar12 = 1e+10f;
         }
-        else if ((((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0) &&
+        else if ((((*(int *)&g_brRaceRules.mode) == 0) &&
                  (iVar10->f140 >= (*(int *)&g_brRaceNEntrant))) &&
                 (((*(unsigned char *)(((char *)iVar10->pProfile) + 0x68) & 2) != 0 &&
                  ((iVar10->b29AF == 2 &&
@@ -161,7 +161,7 @@ void BrCar::LapSaveRestore()
           *pfVar12 = local_d8 * local_d8 + BrVec3Dist((const struct BrVec3 *)(pCar + 0x30), (const struct BrVec3 *)(&iVar10->pos.x));
         }
       }
-      else if ((((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0) && (piVar14->f64 >= (*(int *)&g_brRaceNEntrant))) &&
+      else if ((((*(int *)&g_brRaceRules.mode) == 0) && (piVar14->f64 >= (*(int *)&g_brRaceNEntrant))) &&
               ((*(unsigned char *)&piVar14->f68 & 2) != 0)) {
         *pfVar12 = 1e+09f;
       }

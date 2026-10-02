@@ -22,7 +22,7 @@
 /* @implements 0x10078E10 d3d BrFfbSetDirection */
 void BrFfbSetDirection(int32_t dir)
 {
-    if ((*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ != 1 && (*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ != 2) {
+    if ((*(int32_t *)&g_BrCtrlCfg.active) != 1 && (*(int32_t *)&g_BrCtrlCfg.active) != 2) {
         return;
     }
     if ((*(int32_t *)&DAT_10b71540) == 0) {
@@ -44,7 +44,7 @@ void BrFfbSetDirection(int32_t dir)
 /* @implements 0x10078E50 d3d BrFfbSetDurationLong */
 void BrFfbSetDurationLong(void)
 {
-    if ((*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ != 1 && (*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ != 2) {
+    if ((*(int32_t *)&g_BrCtrlCfg.active) != 1 && (*(int32_t *)&g_BrCtrlCfg.active) != 2) {
         return;
     }
     if ((*(int32_t *)&DAT_10b71540) == 0) {
@@ -64,7 +64,7 @@ void BrFfbSetDurationLong(void)
 /* @implements 0x10078E90 d3d BrFfbSetDurationShort */
 void BrFfbSetDurationShort(void)
 {
-    if ((*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ != 1 && (*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ != 2) {
+    if ((*(int32_t *)&g_BrCtrlCfg.active) != 1 && (*(int32_t *)&g_BrCtrlCfg.active) != 2) {
         return;
     }
     if ((*(int32_t *)&DAT_10b71540) == 0) {
@@ -92,17 +92,17 @@ void BrFfbSetDurationShort(void)
 
 void BrFfbReprobe(void)
 {
-    int32_t nSavedMode = (*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */;   /* esi */
+    int32_t nSavedMode = (*(int32_t *)&g_BrCtrlCfg.active);   /* esi */
     int32_t nSavedExcl = (*(int32_t *)&DAT_10b71540);   /* edi */
 
-    (*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ = 2;
+    (*(int32_t *)&g_BrCtrlCfg.active) = 2;
     (*(void * *)&g_BrPadModeBytes) = (*(unsigned char (*)[4][168])&g_BrCtrlCfg)[2];
     (*(int32_t *)&DAT_10b71540) = 1;
 
     (void)BrFfbInit();
     BrExt_10079550();
 
-    (*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ = nSavedMode;
+    (*(int32_t *)&g_BrCtrlCfg.active) = nSavedMode;
 
     switch (nSavedMode) {
     default:

@@ -101,7 +101,7 @@ void BrRankAssign(void)
   if ((*(int *)&g_brRaceNet) != 0) {
     iVar7 = 0;
     if (0 < (*(int *)&g_BrCarCount)) {
-      puVar5 = &(*(int *)((char *)&g_aBrRaceCar + 0xFF8)) /* BR_LP64_BYTE_VIEW */;
+      puVar5 = &(*(int *)&g_aBrRaceCar[0].fFF8);
       do {
         uVar1 = BrNetGetA102212D0(puVar5[-0x3ad]);
         *puVar5 = uVar1;

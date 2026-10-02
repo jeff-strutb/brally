@@ -91,9 +91,9 @@ void BrRaceSelFromMenu(void)
     int            i;
 
     memset(p, 0, sizeof(int32_t) * 0x46);
-    p->mode = (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */;
-    if ((*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0) {
-        pRec = (*(uint8_t * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */;
+    p->mode = (*(int32_t *)&g_brRaceRules.mode);
+    if ((*(int32_t *)&g_brRaceRules.mode) == 0) {
+        pRec = (*(uint8_t * *)&g_aBrRaceCar[0].pEquip);
         p->b4 = pRec[4];
         p->b5 = pRec[5];
         p->rec0 = *(int32_t *)pRec;
@@ -110,7 +110,7 @@ void BrRaceSelFromMenu(void)
         memcpy(g_aBrA9DBD8, pRec, sizeof(int32_t) * 0x53);
         g_brRaceNEntrant = 1;
         BrCarDamageTick();
-        memcpy((*(int32_t (*)[83])&DAT_10ac5a48), (*(uint8_t * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */, sizeof(int32_t) * 0x53);
+        memcpy((*(int32_t (*)[83])&DAT_10ac5a48), (*(uint8_t * *)&g_aBrRaceCar[0].pEquip), sizeof(int32_t) * 0x53);
         BrSelLookup();
     }
     BrSessionReinitVideo();

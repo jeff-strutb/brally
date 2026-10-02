@@ -79,7 +79,7 @@ void BrCarDamageTick(void)
     int  j;
     unsigned char *pb;
 
-    if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 0)
+    if ((*(int *)&g_brRaceRules.mode) != 0)
         return;
     if (DAT_105ccb60 == 0)
         return;
@@ -87,7 +87,7 @@ void BrCarDamageTick(void)
     if ((*(int *)&g_brRaceNEntrant) <= 0)
         return;
 
-    p = &(*(int *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */;
+    p = &(*(int *)&g_aBrRaceCar[0].pEquip);
     do {
         unsigned char  *car = (unsigned char *)*p;
         int             sum = 0;

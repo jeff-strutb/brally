@@ -690,11 +690,11 @@ void BrGlSetCombine(unsigned w0, unsigned w1)
     /* The decal arm is the `if`: the original falls through into it and
      * jumps (je) to the clear arm. */
     if (BrGbiRectG_5CDA04 != 0) {
-        if ((*(void * *)((char *)&g_brGbi0A79F0 + 0x10)) /* BR_LP64_BYTE_VIEW */ == (void *)BrDlVtxLit)
-            (*(void * *)((char *)&g_brGbi0A79F0 + 0x10)) /* BR_LP64_BYTE_VIEW */ = (void *)BrDlVtxLitDecal;
+        if ((*(void * *)&g_brGbi0A79F0[4]) == (void *)BrDlVtxLit)
+            (*(void * *)&g_brGbi0A79F0[4]) = (void *)BrDlVtxLitDecal;
     } else {
-        if ((*(void * *)((char *)&g_brGbi0A79F0 + 0x10)) /* BR_LP64_BYTE_VIEW */ == (void *)BrDlVtxLitDecal)
-            (*(void * *)((char *)&g_brGbi0A79F0 + 0x10)) /* BR_LP64_BYTE_VIEW */ = (void *)BrDlVtxLit;
+        if ((*(void * *)&g_brGbi0A79F0[4]) == (void *)BrDlVtxLitDecal)
+            (*(void * *)&g_brGbi0A79F0[4]) = (void *)BrDlVtxLit;
     }
 }
 

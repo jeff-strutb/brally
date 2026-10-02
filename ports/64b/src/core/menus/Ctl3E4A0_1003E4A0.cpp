@@ -40,7 +40,7 @@ public:
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define g_mode (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */
+#define g_mode (*(int *)&g_brRaceRules.mode)
 
 /* EnterFn was a stand-in; the original calls BrPhaseEnterPlaceholder_1004B430 (?BrPhaseEnterPlaceholder_1004B430@@YAHPAVGameUi@@@Z).  Declared under
  * its real symbol so the relocation resolves by name. */

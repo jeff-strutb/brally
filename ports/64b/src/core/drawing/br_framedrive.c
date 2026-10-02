@@ -289,10 +289,10 @@ void BrFrameDraw(int iSlot)
     int        wMir, hMir, xMir, yMir;
 
     off    = iSlot * BR_SLOT_STRIDE;
-    pCars  = (*(uint8_t (*)[])((char *)&g_aBrSnap + 0xA08)) /* BR_LP64_BYTE_VIEW */ + off;
-    pHdr   = (*(uint8_t (*)[])((char *)&g_aBrSnap + 0x4)) /* BR_LP64_BYTE_VIEW */ + off;
-    aViews = (BrHudView *)((*(uint8_t (*)[])((char *)&g_aBrSnap + 0x2C088)) /* BR_LP64_BYTE_VIEW */ + off);
-    BrRecHdrLatch_10010F80((*(uint8_t (*)[])((char *)&g_aBrSnap + 0x2C0E4)) /* BR_LP64_BYTE_VIEW */ + off);
+    pCars  = (*(uint8_t (*)[])&g_aBrSnap[0].car[0].fwd.x) + off;
+    pHdr   = (*(uint8_t (*)[])&g_aBrSnap[0].drv) + off;
+    aViews = (BrHudView *)((*(uint8_t (*)[])&g_aBrSnap[0].tailA.a[0]) + off);
+    BrRecHdrLatch_10010F80((*(uint8_t (*)[])&g_aBrSnap[0].tailC.a[0]) + off);
     BrFadeTick();
     BrFrameBeginRec(aViews);
     BrPodNop();
@@ -487,7 +487,7 @@ void BrFrameDraw(int iSlot)
         BrFpsReadout();
 
         /* The split-screen captions, by game mode. */
-        if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 5) {
+        if ((*(int *)&g_brRaceRules.mode) == 5) {
             BrTextFlag358Clear();
             BrSet_10019270();
             BrSetGlobal_ABB30(0x28);
@@ -495,13 +495,13 @@ void BrFrameDraw(int iSlot)
                 BrTextDraw(BrStrGet(0xF0), g_scrW4 / 2, (*(int *)&g_brRaceCueBase) - 0x1E);
             else
                 BrTextDraw(BrStrGet(0xF1), g_scrW4 / 2, (*(int *)&g_brRaceCueBase) - 0x1E);
-        } else if (DAT_100aa024 != 0 && (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 4) {
+        } else if (DAT_100aa024 != 0 && (*(int *)&g_brRaceRules.mode) != 4) {
             if ((*(int *)&DAT_105ccb68[8]) != 0) {
                 BrTextFlag358Clear();
                 BrSub_10019280();
                 BrSetGlobal_ABB30(0xF);
                 BrTextDraw(BrStrGet(0xF2), 0x1C, 0x20);
-                if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 6)
+                if ((*(int *)&g_brRaceRules.mode) == 6)
                     BrHudDrawEntrants(aViews, pCars);
                 BrSub_10019290();
                 BrTextDraw(BrStrGet(0xF4), g_scrW4 - 0x1C,
@@ -527,7 +527,7 @@ void BrFrameDraw(int iSlot)
          * this under a bare `if (DAT_100aa024 != 0)` lets VC5 fold both
          * tests away; making it a separate statement keeps them but loses
          * the cross-jump (three duplicated calls). */
-        } else if (DAT_100aa024 != 0 && (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4
+        } else if (DAT_100aa024 != 0 && (*(int *)&g_brRaceRules.mode) == 4
                    && g_5bc760 == 0) {
             BrTextFlag358Clear();
             BrSetGlobal_ABB30(0xF);
@@ -596,7 +596,7 @@ void BrFrameDraw(int iSlot)
                 DAT_105bc8dc == 3 ? DAT_100a6b64 : DAT_100a6b60, (*(int *)&g_brItemIconCount));
         BrTextDraw(DAT_10396f28, x, y);
         y += 0x14;
-        if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0) {
+        if ((*(int *)&g_brRaceRules.mode) == 0) {
             if (DAT_105bc8dc == 4)
                 psz = BrStrGet(0x103);
             else
@@ -617,34 +617,34 @@ void BrFrameDraw(int iSlot)
     }
 
     /* Attract mode: the text list, or a credits page once its timer runs. */
-    if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4 && g_5bc760 == 2) {
+    if ((*(int *)&g_brRaceRules.mode) == 4 && g_5bc760 == 2) {
         BrHudTextListDraw(aViews);
-    } else if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4 && g_5bc760 == 1
-               && (*(const char * (*)[][8])((char *)&g_brRaceRules + 0x14)) /* BR_LP64_BYTE_VIEW */[(*(int *)&g_brRaceBeginSeqIdx)][0] != 0
+    } else if ((*(int *)&g_brRaceRules.mode) == 4 && g_5bc760 == 1
+               && (*(const char * (*)[][8])&g_brRaceRules.pfLapLength)[(*(int *)&g_brRaceBeginSeqIdx)][0] != 0
                && g_brRaceBeginSeqT > kF72A0) {
         BrTextFlag358Clear();
         BrSet_10019270();
         BrTextSetColors(0xff, 0xff, 0xff, 0xff, 0xff, 0xff);
         for (n = 0; n < 6; n++) {
-            if ((*(const char * (*)[][8])((char *)&g_brRaceRules + 0x14)) /* BR_LP64_BYTE_VIEW */[(*(int *)&g_brRaceBeginSeqIdx)][2 + n] == 0)
+            if ((*(const char * (*)[][8])&g_brRaceRules.pfLapLength)[(*(int *)&g_brRaceBeginSeqIdx)][2 + n] == 0)
                 break;
         }
         y = (*(int *)&g_brRaceCueBase) / 2 - (n * 40) / 4 + 10;
-        if ((*(const char * (*)[][8])((char *)&g_brRaceRules + 0x14)) /* BR_LP64_BYTE_VIEW */[(*(int *)&g_brRaceBeginSeqIdx)][0][0] == 0)
+        if ((*(const char * (*)[][8])&g_brRaceRules.pfLapLength)[(*(int *)&g_brRaceBeginSeqIdx)][0][0] == 0)
             y -= 5;
         for (n--; n >= 0; n--) {
-            if ((*(const char * (*)[][8])((char *)&g_brRaceRules + 0x14)) /* BR_LP64_BYTE_VIEW */[(*(int *)&g_brRaceBeginSeqIdx)][2 + n][0] == '`') {
+            if ((*(const char * (*)[][8])&g_brRaceRules.pfLapLength)[(*(int *)&g_brRaceBeginSeqIdx)][2 + n][0] == '`') {
                 BrSetGlobal_ABB30(0xF);
-                BrTextDraw((*(const char * (*)[][8])((char *)&g_brRaceRules + 0x14)) /* BR_LP64_BYTE_VIEW */[(*(int *)&g_brRaceBeginSeqIdx)][2 + n] + 1,
+                BrTextDraw((*(const char * (*)[][8])&g_brRaceRules.pfLapLength)[(*(int *)&g_brRaceBeginSeqIdx)][2 + n] + 1,
                            g_scrW4 / 2, (n * 40) / 2 + y);
             } else {
                 BrSetGlobal_ABB30(0x14);
-                BrTextDraw((*(const char * (*)[][8])((char *)&g_brRaceRules + 0x14)) /* BR_LP64_BYTE_VIEW */[(*(int *)&g_brRaceBeginSeqIdx)][2 + n],
+                BrTextDraw((*(const char * (*)[][8])&g_brRaceRules.pfLapLength)[(*(int *)&g_brRaceBeginSeqIdx)][2 + n],
                            g_scrW4 / 2, (n * 40) / 2 + y);
             }
         }
         BrSetGlobal_ABB30(0xF);
-        BrTextDraw((*(const char * (*)[][8])((char *)&g_brRaceRules + 0x14)) /* BR_LP64_BYTE_VIEW */[(*(int *)&g_brRaceBeginSeqIdx)][0], g_scrW4 / 2, y - 0x14);
+        BrTextDraw((*(const char * (*)[][8])&g_brRaceRules.pfLapLength)[(*(int *)&g_brRaceBeginSeqIdx)][0], g_scrW4 / 2, y - 0x14);
     }
 
     BrFadeDrawBars();

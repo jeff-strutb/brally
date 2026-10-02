@@ -77,7 +77,7 @@ void BrMainLoopRun(void)
 {
     BrMsg msg;
 
-    ShowWindow((*(void * *)&g_brOwner5BC72C), (*(int32_t *)((char *)&s_args + 0xC)) /* BR_LP64_BYTE_VIEW */);      /* 0x10019744 */
+    ShowWindow((*(void * *)&g_brOwner5BC72C), (*(int32_t *)&s_args.nCmdShow));      /* 0x10019744 */
     UpdateWindow((*(void * *)&g_brOwner5BC72C));                  /* 0x10019751 */
     SetFocus((*(void * *)&g_brOwner5BC72C));                      /* 0x1001975D */
 

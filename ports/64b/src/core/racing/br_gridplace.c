@@ -67,7 +67,7 @@ void BR_THISCALL1 BrRaceGridPlace(uint8_t *pDrv)
     /* Orig: xor edi,edi; sub eax,edi / je zero; dec / je; sub eax,5 / je.
      * Subtract the live zero so the test is `sub` not `cmp`.  Zero arm last. */
     z = 0;
-    mode = (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */;
+    mode = (*(int32_t *)&g_brRaceRules.mode);
     mode = mode - z;
     if (mode != 0) {
         mode = mode - 1;
@@ -127,7 +127,7 @@ void BR_THISCALL1 BrRaceGridPlace(uint8_t *pDrv)
         w = (int16_t)(*(int32_t *)&DAT_104b15e8) - 1;
         if (w > 2 || w < 0)
             w = 0;
-        t = (*(int32_t *)((char *)&g_aBrRaceCar + 0xE64)) /* BR_LP64_BYTE_VIEW */ * 3 + (int32_t)w;
+        t = (*(int32_t *)&g_aBrRaceCar[0].f0E64) * 3 + (int32_t)w;
         ((*(int32_t *)((uint8_t *)((pDrv)) + ((0x3c))))) = (*(int32_t * (*)[])&g_apBrRaceDiff)[g_Br0B380C][t * 7 + 0x11];
         /* orig: [ecx + edx*4 + 0x44] with edx = t*7 (lea x8-x), so
          * offset 0x44/4 = 17 = 0x11, yes t*7+17. */

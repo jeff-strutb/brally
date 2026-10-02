@@ -118,23 +118,23 @@ install:
 
         if (BrPairBufReset() == 0)
             return 0;
-        if ((*(int * *)&g_aBrRaceCar[0].pEquip) == NULL || (*(int * *)((char *)&g_aBrRaceCar + 0x39F4)) /* BR_LP64_BYTE_VIEW */ == NULL)
+        if ((*(int * *)&g_aBrRaceCar[0].pEquip) == NULL || (*(int * *)&g_aBrRaceCar[1].pEquip) == NULL)
             return 0;
         memcpy((*(int * *)&g_aBrRaceCar[0].pEquip), DAT_117a6188, 0x53 * 4);
-        memcpy((*(int * *)((char *)&g_aBrRaceCar + 0x39F4)) /* BR_LP64_BYTE_VIEW */, DAT_117a6188, 0x53 * 4);
+        memcpy((*(int * *)&g_aBrRaceCar[1].pEquip), DAT_117a6188, 0x53 * 4);
         fseek(fp, 0, 2);
         n = ftell(fp);
         fseek(fp, n - 0x94, 0);
-        fread(&(*(int *)((char *)&g_aBrRaceCar + 0x2AD0)) /* BR_LP64_BYTE_VIEW */, 4, 1, fp);
-        fread(&(*(int *)((char *)&g_aBrRaceCar + 0x2AD4)) /* BR_LP64_BYTE_VIEW */, 4, 1, fp);
-        fread(&(*(int *)((char *)&g_aBrRaceCar + 0x2AD8)) /* BR_LP64_BYTE_VIEW */, 4, 1, fp);
-        fread(&(*(int *)((char *)&g_aBrRaceCar + 0x2ADC)) /* BR_LP64_BYTE_VIEW */, 4, 1, fp);
-        fread(&(*(int *)((char *)&g_aBrRaceCar + 0x2AE0)) /* BR_LP64_BYTE_VIEW */, 4, 1, fp);
+        fread(&(*(int *)&g_aBrRaceCar[0].sz2ABC[20]), 4, 1, fp);
+        fread(&(*(int *)&g_aBrRaceCar[0].sz2ABC[24]), 4, 1, fp);
+        fread(&(*(int *)&g_aBrRaceCar[0].sz2ABC[28]), 4, 1, fp);
+        fread(&(*(int *)&g_aBrRaceCar[0].sz2ABC[32]), 4, 1, fp);
+        fread(&(*(int *)&g_aBrRaceCar[0].sz2ABC[36]), 4, 1, fp);
         fseek(fp, 0, 2);
         n = ftell(fp);
         fseek(fp, n - 0x80, 0);
-        fread((*(char (*)[])((char *)&g_aBrRaceCar + 0x2AE8)) /* BR_LP64_BYTE_VIEW */, 1, 0x80, fp);
-        memcpy((*(char (*)[])((char *)&g_aBrRaceCar + 0x5650)) /* BR_LP64_BYTE_VIEW */, (*(char (*)[])((char *)&g_aBrRaceCar + 0x2AE8)) /* BR_LP64_BYTE_VIEW */, 0x80);
+        fread((*(char (*)[])&g_aBrRaceCar[0].sz2ABC[44]), 1, 0x80, fp);
+        memcpy((*(char (*)[])&g_aBrRaceCar[1].sz2ABC[44]), (*(char (*)[])&g_aBrRaceCar[0].sz2ABC[44]), 0x80);
     } else {
         int  save[5];
         int *p;
@@ -146,7 +146,7 @@ install:
         save[3] = p[0x41];
         save[4] = p[0x42];
         memcpy((*(int * *)&g_aBrRaceCar[0].pEquip), DAT_117a6188, 0x53 * 4);
-        memcpy((*(int * *)((char *)&g_aBrRaceCar + 0x39F4)) /* BR_LP64_BYTE_VIEW */, DAT_117a6188, 0x53 * 4);
+        memcpy((*(int * *)&g_aBrRaceCar[1].pEquip), DAT_117a6188, 0x53 * 4);
         (*(int * *)&g_aBrRaceCar[((*(int *)&DAT_105ccb68[23]) ^ 1)].pEquip)[0x3e] = save[0];
         (*(int * *)&g_aBrRaceCar[((*(int *)&DAT_105ccb68[23]) ^ 1)].pEquip)[0x3f] = save[1];
         (*(int * *)&g_aBrRaceCar[((*(int *)&DAT_105ccb68[23]) ^ 1)].pEquip)[0x40] = save[2];

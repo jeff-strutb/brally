@@ -192,22 +192,22 @@ install:
             (*(int *)&g_brTime5C24) = 0;
             *(float *)&g_brTime5C20 = (float)((int)count - 0xcc) * DAT_10077bec;
         }
-        *(unsigned short *)((*(BrSelInM * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */ + 0xf2) |= (unsigned short)(1 << (g_aBrRaceBeginRec[0])[0]);
-        *(unsigned short *)((*(BrSelInM * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */ + 0xf0) |= (unsigned short)(1 << (g_aBrRaceBeginRec[0])[1]);
+        *(unsigned short *)((*(BrSelInM * *)&g_aBrRaceCar[0].pEquip) + 0xf2) |= (unsigned short)(1 << (g_aBrRaceBeginRec[0])[0]);
+        *(unsigned short *)((*(BrSelInM * *)&g_aBrRaceCar[0].pEquip) + 0xf0) |= (unsigned short)(1 << (g_aBrRaceBeginRec[0])[1]);
         fseek(fp, 0, 2);
         n = ftell(fp);
         fseek(fp, n - 0x98, 0);
-        fread(&(*(int *)((char *)&g_aBrRaceCar + 0x2AD0)) /* BR_LP64_BYTE_VIEW */, 4, 1, fp);
-        fread(&(*(int *)((char *)&g_aBrRaceCar + 0x2AD4)) /* BR_LP64_BYTE_VIEW */, 4, 1, fp);
-        fread(&(*(int *)((char *)&g_aBrRaceCar + 0x2AD8)) /* BR_LP64_BYTE_VIEW */, 4, 1, fp);
-        fread(&(*(int *)((char *)&g_aBrRaceCar + 0x2ADC)) /* BR_LP64_BYTE_VIEW */, 4, 1, fp);
-        fread(&(*(int *)((char *)&g_aBrRaceCar + 0x2AE0)) /* BR_LP64_BYTE_VIEW */, 4, 1, fp);
-        fread(&(*(int *)((char *)&g_aBrRaceCar + 0x2AE4)) /* BR_LP64_BYTE_VIEW */, 4, 1, fp);
+        fread(&(*(int *)&g_aBrRaceCar[0].sz2ABC[20]), 4, 1, fp);
+        fread(&(*(int *)&g_aBrRaceCar[0].sz2ABC[24]), 4, 1, fp);
+        fread(&(*(int *)&g_aBrRaceCar[0].sz2ABC[28]), 4, 1, fp);
+        fread(&(*(int *)&g_aBrRaceCar[0].sz2ABC[32]), 4, 1, fp);
+        fread(&(*(int *)&g_aBrRaceCar[0].sz2ABC[36]), 4, 1, fp);
+        fread(&(*(int *)&g_aBrRaceCar[0].sz2ABC[40]), 4, 1, fp);
         fseek(fp, 0, 2);
         n = ftell(fp);
         fseek(fp, n - 0x80, 0);
-        fread((*(char (*)[])((char *)&g_aBrRaceCar + 0x2AE8)) /* BR_LP64_BYTE_VIEW */, 1, 0x80, fp);
-        memcpy((*(char (*)[])((char *)&g_aBrRaceCar + 0x5650)) /* BR_LP64_BYTE_VIEW */, (*(char (*)[])((char *)&g_aBrRaceCar + 0x2AE8)) /* BR_LP64_BYTE_VIEW */, 0x80);
+        fread((*(char (*)[])&g_aBrRaceCar[0].sz2ABC[44]), 1, 0x80, fp);
+        memcpy((*(char (*)[])&g_aBrRaceCar[1].sz2ABC[44]), (*(char (*)[])&g_aBrRaceCar[0].sz2ABC[44]), 0x80);
         fclose(fp);
         return true;
     }

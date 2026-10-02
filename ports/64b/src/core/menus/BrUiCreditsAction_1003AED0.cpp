@@ -47,7 +47,7 @@ public:
 int BrUiCreditsAction_1003AED0(GameObj *pGame)
 {
     BrExt_100419D0(g_strA);
-    (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = 4;
+    (*(int *)&g_brRaceRules.mode) = 4;
     if (g_5D98 != 0) {
         g_5bc760 = 2;
         g_5BF4 = 0;

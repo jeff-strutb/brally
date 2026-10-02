@@ -178,8 +178,8 @@ int FUN_100703d0(void)
   int iVar1;
   int *puVar2;
   
-  (*(int *)((char *)&g_brFfb + 0x4)) /* BR_LP64_BYTE_VIEW */ = (*(int *)((char *)&g_brFfb + 0x4)) /* BR_LP64_BYTE_VIEW */ + 1;
-  if ((*(int *)((char *)&g_brFfb + 0x4)) /* BR_LP64_BYTE_VIEW */ == 1) {
+  (*(int *)&g_brFfb.pEffectSpring) = (*(int *)&g_brFfb.pEffectSpring) + 1;
+  if ((*(int *)&g_brFfb.pEffectSpring) == 1) {
     (*(int *)&g_brInKeyCur) = 1;
     (*(int *)&g_brInKeyPrev) = 0;
     puVar2 = &(*(int *)&g_brInKeys);
@@ -276,7 +276,7 @@ BrWndResult BrOnActivateApp(void *hWnd, BrWParam wParam, BrLParam lParam)
             BrSndTableClear();
             (*(int32_t *)&DAT_105bc8dc) = 0;
             if (g_brRaceNet != 0 && g_brRaceTick != 0 &&
-                (DAT_105ccb68[8]) == 0 && (*(int32_t *)((char *)&g_aBrRaceCar + 0xFA8)) /* BR_LP64_BYTE_VIEW */ < (*(int32_t *)&g_CBE8)) {
+                (DAT_105ccb68[8]) == 0 && (*(int32_t *)&g_aBrRaceCar[0].lap) < (*(int32_t *)&g_CBE8)) {
                 BrNetLockSetIfZero22AAF4();
                 BrNetBeaconTick();
             } else {

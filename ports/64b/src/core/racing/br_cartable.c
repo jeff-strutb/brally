@@ -197,7 +197,7 @@ void BrCarTableRemove(const void *pOwner)
 
     {
     int arg = 0;
-    esi = (*(unsigned char (*)[])((char *)&g_aBrRaceCar + 0xF08)) /* BR_LP64_BYTE_VIEW */;
+    esi = (*(unsigned char (*)[])&g_aBrRaceCar[0].pfnControl);
     do {
         if (*(uint32_t *)(esi - 0xDC4) == (uint32_t)pOwner) {
             int n;
@@ -210,7 +210,7 @@ void BrCarTableRemove(const void *pOwner)
             n = g_brRaceNDriver;
             if (n > 0) {
                 car = esi - 0xF08;
-                slot = (*(unsigned char (*)[])((char *)&g_aBrRaceDriver + 0x60)) /* BR_LP64_BYTE_VIEW */;
+                slot = (*(unsigned char (*)[])&g_aBrRaceDriver[0].pCar);
                 do {
                     if (*(uint32_t *)slot == (uint32_t)car)
                         *(uint32_t *)slot = 0;
@@ -294,7 +294,7 @@ void BrCarStateRestore(void)
 {
     int i;
 
-    if ((*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0 && (*(int32_t *)&DAT_105ccb60) != 0) {
+    if ((*(int32_t *)&g_brRaceRules.mode) == 0 && (*(int32_t *)&DAT_105ccb60) != 0) {
         for (i = 0; i < g_brRaceNEntrant; ++i) {
             BrStandBlk **pp = ((BrStandBlk **)&g_aBrRaceCar[i].pEquip);
 

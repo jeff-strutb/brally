@@ -247,8 +247,8 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
     uint32_t       dt;
     int32_t        df;
 
-    if ((*(int32_t *)((char *)&g_brFfb + 0x8)) /* BR_LP64_BYTE_VIEW */ < 0x7FFF)
-        (*(int32_t *)((char *)&g_brFfb + 0x8)) /* BR_LP64_BYTE_VIEW */++;
+    if ((*(int32_t *)&g_brFfb.pEffectSquare) < 0x7FFF)
+        (*(int32_t *)&g_brFfb.pEffectSquare)++;
     flags = 0;
 
     /* ---- keyboard --------------------------------------------------- */
@@ -277,7 +277,7 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
     g_brInKeys[g_brInKeyCur][0] = 0;
 
     /* ---- joystick --------------------------------------------------- */
-    if ((*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ == 1 || (*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ == 2) {
+    if ((*(int32_t *)&g_BrCtrlCfg.active) == 1 || (*(int32_t *)&g_BrCtrlCfg.active) == 2) {
         g_brInJoyPrev = (*(int32_t *)&DAT_118eebd0);
         (*(int32_t *)&DAT_118eebd0) = ((*(int32_t *)&DAT_118eebd0) - 1) & 1;
         (*(BrInDiDev * *)&g_brFfb)->pVtbl->Poll((*(BrInDiDev * *)&g_brFfb));
@@ -303,7 +303,7 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
             (*(BrInMouse (*)[])&g_18ABD38)[cur].ax = ms.lX + *pPrevAx;
             (*(BrInMouse (*)[])&g_18ABD38)[cur].ay = ms.lY + *pPrevAx;
             (*(BrInMouse (*)[])&g_18ABD38)[cur].az = ms.lZ + *pPrevAx;
-            g = (*(int32_t *)((char *)&g_aBrRaceCar + 0xE98)) /* BR_LP64_BYTE_VIEW */;
+            g = (*(int32_t *)&g_aBrRaceCar[0].fE98);
             if (g < 0)
                 g = 0;
             else if (g > 7)
@@ -349,7 +349,7 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
     /* ---- Escape: pause, or leave -------------------------------------- */
     if (BrInputJustPressed(15)) {
         if (g_brRaceNet != 0 && g_brRaceTick != 0 && (DAT_105ccb68[8]) == 0 &&
-            (*(int32_t *)((char *)&g_aBrRaceCar + 0xFA8)) /* BR_LP64_BYTE_VIEW */ < (*(int32_t *)&g_CBE8)) {
+            (*(int32_t *)&g_aBrRaceCar[0].lap) < (*(int32_t *)&g_CBE8)) {
             BrNetLockSetIfZero22AAF4();
         } else {
             (*(int32_t *)&DAT_10226a50) = 1;
@@ -384,9 +384,9 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
         (g_brInKeys[g_brInKeyCur][0x58] & 0x80) != 0)
         BrCdTrackNext();
 
-    if ((GetAsyncKeyState(0x46) & 1) && (*(int32_t *)((char *)&g_brFfb + 0x8)) /* BR_LP64_BYTE_VIEW */ > 15)
+    if ((GetAsyncKeyState(0x46) & 1) && (*(int32_t *)&g_brFfb.pEffectSquare) > 15)
         g_BrFpsGuard = (g_BrFpsGuard == 0);
-    if ((GetAsyncKeyState(0x50) & 1) && (*(int32_t *)((char *)&g_brFfb + 0x8)) /* BR_LP64_BYTE_VIEW */ > 15)
+    if ((GetAsyncKeyState(0x50) & 1) && (*(int32_t *)&g_brFfb.pEffectSquare) > 15)
         (*(int32_t *)&DAT_118eeee0) = ((*(int32_t *)&DAT_118eeee0) == 0);
 
     /* ---- the non-race screens ------------------------------------------ */
@@ -410,7 +410,7 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
 
     /* ---- in the race ------------------------------------------------- */
     if (BrInputJustPressed(0x10)) {
-        if (g_BrX06909B4 == 0 && (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 4 && (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 5)
+        if (g_BrX06909B4 == 0 && (*(int32_t *)&g_brRaceRules.mode) != 4 && (*(int32_t *)&g_brRaceRules.mode) != 5)
             (*(int32_t *)&DAT_118eeee4) = 1;
         if (g_brRaceNet != 0) {
             if (g_brRace18EEED8 == 0) {
@@ -419,7 +419,7 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
             }
         } else {
             g_brRaceTick = 1;
-            if ((*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 2)
+            if ((*(int32_t *)&g_brRaceRules.mode) == 2)
                 BrSet_1006AA90();
         }
     }
@@ -427,7 +427,7 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
         flags |= 0x8000;
 
     *pAxis0 = 0;
-    if ((*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 4 && (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 5) {
+    if ((*(int32_t *)&g_brRaceRules.mode) != 4 && (*(int32_t *)&g_brRaceRules.mode) != 5) {
         w = *(const uint16_t *)(const void *)g_BrPadModeBytes;
         if (w & 0x8000) {
             switch (w & 0xFF00) {
@@ -614,7 +614,7 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
         flags |= 0x10;
         *pAxis1 = -0x50;
     }
-    if ((*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 4 && (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 5) {
+    if ((*(int32_t *)&g_brRaceRules.mode) != 4 && (*(int32_t *)&g_brRaceRules.mode) != 5) {
         if (BrInputIsDown(0)) flags |= 1;
         if (BrInputIsDown(1)) flags |= 2;
     }
@@ -631,11 +631,11 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
 
     /* ---- benchmark: time 440 frames, print the rate, leave ------------ */
     if ((*(int32_t *)&g_demoFlag) != 0) {
-        if ((*(int32_t *)((char *)&g_brFfb + 0x8)) /* BR_LP64_BYTE_VIEW */ == 1) {
+        if ((*(int32_t *)&g_brFfb.pEffectSquare) == 1) {
             g_br118EEE18 = BrSub10075020();
             g_br118EEE8C = BrGetFlag_AB4F0();
         }
-        if ((*(int32_t *)((char *)&g_brFfb + 0x8)) /* BR_LP64_BYTE_VIEW */ == 0x1B9) {
+        if ((*(int32_t *)&g_brFfb.pEffectSquare) == 0x1B9) {
             now = BrSub10075020();
             dt = now - g_br118EEE18;
             g_br118EEE18 = now;
@@ -645,11 +645,11 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
             BrLogPrint(buf);
         }
         GetAsyncKeyState(0x1B);
-        if ((*(int32_t *)((char *)&g_brFfb + 0x8)) /* BR_LP64_BYTE_VIEW */ == 1) {
+        if ((*(int32_t *)&g_brFfb.pEffectSquare) == 1) {
             g_BrFpsGuard = 1;
             flags = 0x400;
         } else {
-            flags = ((*(int32_t *)((char *)&g_brFfb + 0x8)) /* BR_LP64_BYTE_VIEW */ < 60) ? 0 : 4;
+            flags = ((*(int32_t *)&g_brFfb.pEffectSquare) < 60) ? 0 : 4;
         }
     }
     (*(int32_t *)&g_BrX18ABAD0) = flags;
@@ -837,12 +837,12 @@ typedef int (__stdcall *CC_std_1)();   /* COM method: this + arguments */
 void BrDiKeyboardShutdown(void)
 
 {
-  (*(int *)((char *)&g_brFfb + 0x4)) /* BR_LP64_BYTE_VIEW */ = (*(int *)((char *)&g_brFfb + 0x4)) /* BR_LP64_BYTE_VIEW */ + -1;
-  if ((*(int *)((char *)&g_brFfb + 0x4)) /* BR_LP64_BYTE_VIEW */ < 0) {
-    (*(int *)((char *)&g_brFfb + 0x4)) /* BR_LP64_BYTE_VIEW */ = 0;
+  (*(int *)&g_brFfb.pEffectSpring) = (*(int *)&g_brFfb.pEffectSpring) + -1;
+  if ((*(int *)&g_brFfb.pEffectSpring) < 0) {
+    (*(int *)&g_brFfb.pEffectSpring) = 0;
     return;
   }
-  if (((*(int *)((char *)&g_brFfb + 0x4)) /* BR_LP64_BYTE_VIEW */ == 0) && ((*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0)) != (int *)0x0)) {
+  if (((*(int *)&g_brFfb.pEffectSpring) == 0) && ((*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0)) != (int *)0x0)) {
     (*(CC_std_1 *)(*(int *)((*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0))) + 32))((*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0)));
     (*(CC_std_1 *)(*(int *)((*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0))) + 8))((*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0)));
     (*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0)) = (int *)0x0;

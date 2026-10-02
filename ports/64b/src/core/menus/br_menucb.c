@@ -134,7 +134,7 @@ static BrMenuState g_menu = {
  * by their DAT_ names (the image gate resolves those from the address they
  * spell).  pSt is always &g_menu, so pSt->x and g_menu.x name the same object. */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define MENU_g0AA010 (*(uint32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */
+#define MENU_g0AA010 (*(uint32_t *)&g_brRaceRules.mode)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 #define MENU_g0AC648 (*(uint32_t *)&g_brIdx0ABDE8)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
@@ -202,7 +202,7 @@ static BrMenuState g_menu = {
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 #define MENU_gAA33E4 (*(uint32_t *)&DAT_10ac6744)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define MENU_gACEE50 (*(int32_t *)((char *)&g_aBrRaceCar + 0xFA8)) /* BR_LP64_BYTE_VIEW */
+#define MENU_gACEE50 (*(int32_t *)&g_aBrRaceCar[0].lap)
 
 /* =====================================================================
  * 2. The caption tables
@@ -347,7 +347,7 @@ int32_t BrMenuLeaveTo2(void)
 /* @implements 0x10041B50 d3d BrMenuAutoSaveName */
 void BrMenuAutoSaveName(void)
 {
-    uint8_t *p = (*(uint8_t * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */;
+    uint8_t *p = (*(uint8_t * *)&g_aBrRaceCar[0].pEquip);
     char    *pszName = "AutoSave.brf";
 
     /* One pointer, 0x10ACED34.  The port used to thread a separate
@@ -366,9 +366,9 @@ void BrMenuAutoSaveName(void)
          * re-reads 0x10ACED34 between them, which is why the pointer is
          * refetched here even though nothing can have changed it. */
         memset(p + 0x06, 0, 6 * 4);
-        p = (*(uint8_t * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */;
+        p = (*(uint8_t * *)&g_aBrRaceCar[0].pEquip);
         memset(p + 0x1E, 0, 0xC * 4);
-        p = (*(uint8_t * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */;
+        p = (*(uint8_t * *)&g_aBrRaceCar[0].pEquip);
         memset(p + 0x50, 0, 0x18 * 4);
     }
     BrMenuSub100709A0();

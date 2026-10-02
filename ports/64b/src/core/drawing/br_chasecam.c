@@ -146,7 +146,7 @@ void __fastcall FUN_100018f0(BrDriverCar *param_1, void *pCam, float param_3)
   if ((*(int *)&DAT_105ccb68[8]) != 0) {
     BrVec3Scale((void *)dst, &param_1->fwd.x, 11.0f);
   }
-  else if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 5) {
+  else if ((*(int *)&g_brRaceRules.mode) == 5) {
     BrVec3Scale((void *)dst, &param_1->right.x, -11.0f);
     BrVec3MulAddTo((void *)dst, &param_1->fwd.x, -13.0f);
   }
@@ -202,7 +202,7 @@ void __fastcall BrCamChaseZoomStep(BrDriverCar *pCam)
     *(int *)&pCam->f28E4   = *(int *)&pCam->pos.y;
 
     d = BrVec3Length(&pCam->aBody[0].rb.st.angVel.x);
-    if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 5) {
+    if ((*(int *)&g_brRaceRules.mode) == 5) {
         return;
     }
 

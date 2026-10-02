@@ -138,7 +138,7 @@ unsigned Car5D060::Scan(int depth, int mid, Node5D060 *pNode)
         *pC = (*(Pt5D060 *)&((BrAiPathNode *)(pNode))->aPt[mid]).centre;
         BrVec3Lerp((struct BrVec3 *)(&(*(Vec5D060 (*)[])&g_aScanInsetB)[depth]), (const struct BrVec3 *)(&(*(Pt5D060 *)&((BrAiPathNode *)(pNode))->aPt[mid]).right), (const struct BrVec3 *)(&(*(Pt5D060 *)&((BrAiPathNode *)(pNode))->aPt[mid]).left), 0.2f);
         BrVec3Midpoint((struct BrVec3 *)(&(*(Vec5D060 (*)[])&g_aScanMidB)[depth]), (const struct BrVec3 *)(&(*(Vec5D060 (*)[])&g_aScanInsetB)[depth]), (const struct BrVec3 *)(pC));
-        BrVec3Midpoint((struct BrVec3 *)(&(*(Vec5D060 (*)[])((char *)&g_aBrRaceCar + 0x2B67C)) /* BR_LP64_BYTE_VIEW */[depth]), (const struct BrVec3 *)(&(*(Vec5D060 (*)[])&g_aScanInsetA)[depth]), (const struct BrVec3 *)(pC));
+        BrVec3Midpoint((struct BrVec3 *)(&(*(Vec5D060 (*)[])&g_aBrRaceCar[15].sz2ABC[168])[depth]), (const struct BrVec3 *)(&(*(Vec5D060 (*)[])&g_aScanInsetA)[depth]), (const struct BrVec3 *)(pC));
         midPt.x = ((*(Pt5D060 *)&((BrAiPathNode *)(pNode))->aPt[mid]).left.x + (*(Pt5D060 *)&((BrAiPathNode *)(pNode))->aPt[mid]).right.x) * DAT_100778cc;
         midPt.y = ((*(Pt5D060 *)&((BrAiPathNode *)(pNode))->aPt[mid]).right.y + (*(Pt5D060 *)&((BrAiPathNode *)(pNode))->aPt[mid]).left.y) * DAT_100778cc;
 

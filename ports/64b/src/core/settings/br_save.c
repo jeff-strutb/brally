@@ -125,7 +125,7 @@ char BrMenuSub100709A0(void)
   unsigned long sum;
 
   sum = BrAdler32(0, 0, 0);
-  sum = BrAdler32(sum, (*(unsigned char * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */, 0x200);
+  sum = BrAdler32(sum, (*(unsigned char * *)&g_aBrRaceCar[0].pEquip), 0x200);
   fp = fopen(DAT_117a6030, DAT_1007b600);
   if (fp == NULL) {
     return 0;
@@ -138,7 +138,7 @@ char BrMenuSub100709A0(void)
     fclose(fp);
     return 0;
   }
-  if (fwrite((*(unsigned char * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */, 1, 0x200, fp) != 0x200) {
+  if (fwrite((*(unsigned char * *)&g_aBrRaceCar[0].pEquip), 1, 0x200, fp) != 0x200) {
     fclose(fp);
     return 0;
   }
@@ -147,7 +147,7 @@ char BrMenuSub100709A0(void)
   fwrite(&(*(int *)&DAT_100abdf0), 4, 1, fp);
   fwrite(&g_brSel0ABDF4, 4, 1, fp);
   fwrite(&(*(int *)&g_i0AC65C), 4, 1, fp);
-  if (fwrite((*(unsigned char (*)[])((char *)&g_aBrRaceCar + 0x2AE8)) /* BR_LP64_BYTE_VIEW */, 1, 0x80, fp) != 0x80) {
+  if (fwrite((*(unsigned char (*)[])&g_aBrRaceCar[0].sz2ABC[44]), 1, 0x80, fp) != 0x80) {
     fclose(fp);
     return 0;
   }

@@ -86,7 +86,7 @@ void BR_THISCALL1 BrGhostPlaybackStep(BrDriver *param_1)
 
   if (((*(int *)&g_brRaceNet) == 0) || (*(unsigned int *)&param_1->pCar != 0)) {
     iVar1 = *(unsigned int *)&param_1->pCar;
-    if ((iVar1 != 0) && ((*(void * *)&iVar1->pfnControl == (void *)BrCtlAi && ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 5)))) {
+    if ((iVar1 != 0) && ((*(void * *)&iVar1->pfnControl == (void *)BrCtlAi && ((*(int *)&g_brRaceRules.mode) != 5)))) {
       **(unsigned int * *)&iVar1->pCtl = **(unsigned int * *)&iVar1->pCtl & 0xf000000;
       *(int *)(*(int *)(*(unsigned int *)&param_1->pCar + 0x29c0) + 0x20) = 0;
     }
@@ -114,7 +114,7 @@ void BR_THISCALL1 BrGhostPlaybackStep(BrDriver *param_1)
         if (iVar1 != 0) {
           if (*(char *)&iVar1->b29AF == '\x02') {
             iVar1->f29B0 = iVar1->f29B0 - g_brRaceFlyStep * DAT_10077a0c;
-            if (((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 2) && (*(unsigned int *)&param_1->f64 != 0)) {
+            if (((*(int *)&g_brRaceRules.mode) == 2) && (*(unsigned int *)&param_1->f64 != 0)) {
               if (*(float *)(*(unsigned int *)&param_1->pCar + 0x29b0) > DAT_10077a10) {
                 *(int *)(*(unsigned int *)&param_1->pCar + 0x29b0) = 0x3ec00000;
               }
@@ -165,12 +165,12 @@ void BR_THISCALL1 BrGhostPlaybackStep(BrDriver *param_1)
         BrVec3ScaleBy(&param_1->f18, DAT_100778f8 / g_brRaceFlyStep);
         BrRaceGateStep((BrDriver *)&param_1->f00.x);
       } else if (iVar1 != 0) {
-        if (((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 0) || ((int)*(unsigned int *)&param_1->f64 < (*(int *)&g_brRaceNEntrant))) {
+        if (((*(int *)&g_brRaceRules.mode) != 0) || ((int)*(unsigned int *)&param_1->f64 < (*(int *)&g_brRaceNEntrant))) {
           **(unsigned int * *)&iVar1->pCtl = 0xc0000;
           *(unsigned char *)(*(int *)(*(unsigned int *)&param_1->pCar + 0x29c0) + 0x24) = 0x81;
           *(int *)(*(int *)(*(unsigned int *)&param_1->pCar + 0x29c0) + 0x20) = 0xbf800000;
         }
-        if (((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0) && ((*(int *)&g_brRaceNEntrant) <= (int)*(unsigned int *)&param_1->f64)) {
+        if (((*(int *)&g_brRaceRules.mode) == 0) && ((*(int *)&g_brRaceNEntrant) <= (int)*(unsigned int *)&param_1->f64)) {
           *(unsigned char *)(*(unsigned int *)&param_1->pCar + 0x29af) = 2;
           *(float *)(*(unsigned int *)&param_1->pCar + 0x29b0) = *(float *)(*(unsigned int *)&param_1->pCar + 0x29b0) - g_brRaceFlyStep;
           if (*(float *)(*(unsigned int *)&param_1->pCar + 0x29b0) < DAT_100778d8) {

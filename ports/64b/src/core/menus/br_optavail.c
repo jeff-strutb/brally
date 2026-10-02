@@ -88,7 +88,7 @@ int32_t BrOptAvailB(uint32_t n)
         && ((*(int32_t *)&DAT_10ac5b38) & 0x8000) != 0)
         idx -= 16;
 
-    if ((*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0) {
+    if ((*(int32_t *)&g_brRaceRules.mode) == 0) {
         if ((*(int32_t *)&g_5BF4) != 0) {
             if (idx == 15)
                 idx = 11;
@@ -105,7 +105,7 @@ int32_t BrOptAvailB(uint32_t n)
         return (int32_t)((1u << idx) & (uint32_t)DAT_10ac58f0);
     }
 
-    if ((*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 6) {
+    if ((*(int32_t *)&g_brRaceRules.mode) == 6) {
         if (idx == 15)
             idx = 7;            /* 7 here, 11 everywhere else */
         if (g_br6EE1D8_fLowAlways != 0 && idx <= 15)
@@ -113,7 +113,7 @@ int32_t BrOptAvailB(uint32_t n)
         return (int32_t)((1u << idx) & (uint32_t)(*(int32_t *)&g_br0AB3E8));
     }
 
-    if ((*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 2 && idx == (*(int32_t *)((char *)&g_aBrRaceCar + 0x2ADC)) /* BR_LP64_BYTE_VIEW */)
+    if ((*(int32_t *)&g_brRaceRules.mode) == 2 && idx == (*(int32_t *)&g_aBrRaceCar[0].sz2ABC[32]))
         return 1;
 
     if (idx == 15)

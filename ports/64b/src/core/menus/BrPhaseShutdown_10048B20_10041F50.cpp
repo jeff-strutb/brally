@@ -125,7 +125,7 @@ void __stdcall BrPhaseShutdown_10048B20(int bPartial)
         (*(int *)&g_AC300) = 0;
         g_brPAA29B8 = 0;
         BrFontTexFreeAll();
-        p = &(*(int *)((char *)&g_img + 0x4)) /* BR_LP64_BYTE_VIEW */;
+        p = &(*(int *)&g_img[0].path);
         do {
             if (*(void **)p != 0)
                 operator delete(*(void **)p);

@@ -159,7 +159,7 @@ void BrExt_1005FBC0(int32_t a)
     (*(int32_t *)&g_7b324) = (*(int32_t *)&DAT_10ac5b44);
     (*(int32_t *)&g_7b32c) = (*(int32_t *)&DAT_10ac5b48);
     (*(int32_t *)&g_7b328) = (*(int32_t *)&DAT_10ac5b4c);
-    (*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ = (*(int32_t *)&DAT_10ac5b50);
+    (*(int32_t *)&g_BrCtrlCfg.active) = (*(int32_t *)&DAT_10ac5b50);
 
     /* `dec/je` three times: 1, 2, 3 select records 1, 2, 3 and EVERYTHING
      * else -- including 0 -- selects record 0. A SWITCH, not an if-else-if
@@ -290,8 +290,8 @@ void BrRaceSettingsCommit(void)
   DAT_10ac5b44 = g_7b324;
   DAT_10ac5b48 = g_7b32c;
   DAT_10ac5b4c = g_7b328;
-  DAT_10ac5b50 = (*(int *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */;
-  if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0) {
+  DAT_10ac5b50 = (*(int *)&g_BrCtrlCfg.active);
+  if ((*(int *)&g_brRaceRules.mode) == 0) {
     (*(int *)&g_Br0B380C) = (*(unsigned char (*)[][12][2])&g_aBr0B3820)[(g_aBrAA26F4[0])][(g_aBrAA26F4[1])][0];
     g_226e80 = (*(unsigned char (*)[][12][2])&g_aBr0B3820)[(g_aBrAA26F4[0])][(g_aBrAA26F4[1])][1];
   }

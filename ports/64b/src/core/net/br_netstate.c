@@ -305,9 +305,9 @@ void BrNetBeaconTick(void)
   n = (*(int *)&g_br22AAF4);
   ReleaseMutex((void *)g_brH22AF04);
   if (n != 0 && (*(int *)&g_brRaceNet) != 0 && (*(int *)&g_brRaceTick) != 0 && (*(int *)&DAT_105ccb68[8]) == 0
-      && (*(int *)((char *)&g_aBrRaceCar + 0xFA8)) /* BR_LP64_BYTE_VIEW */ < g_CBE8) {
-    ((BrNetSend4AD0Int)BrNetSend4AD0)(g_brP277B40, g_id, g_226e7c, (*(unsigned char *)((char *)&g_aBrRaceCar + 0x29AC)) /* BR_LP64_BYTE_VIEW */,
-                  (*(unsigned char *)((char *)&g_aBrRaceCar + 0x29AD)) /* BR_LP64_BYTE_VIEW */, (*(unsigned char *)((char *)&g_aBrRaceCar + 0x29AE)) /* BR_LP64_BYTE_VIEW */, (*(int *)&g_br277B48), g_aBrCfgPlayerName,
+      && (*(int *)&g_aBrRaceCar[0].lap) < g_CBE8) {
+    ((BrNetSend4AD0Int)BrNetSend4AD0)(g_brP277B40, g_id, g_226e7c, (*(unsigned char *)&g_aBrRaceCar[0].f29AC),
+                  (*(unsigned char *)&g_aBrRaceCar[0].f29AD), (*(unsigned char *)&g_aBrRaceCar[0].f29AE), (*(int *)&g_br277B48), g_aBrCfgPlayerName,
                   (BrNetSlotGetF02C(g_id) & ~0x40) | 0x80, 0);
   }
 }
@@ -339,7 +339,7 @@ void BrNetSlotBroadcastTick(void)
     ReleaseMutex((void *)g_brH220DDC);
     if (n != 0) {
         ((BrNetSend4AD0Int)BrNetSend4AD0)(g_brP277B40, g_id, g_226e7c,
-                      (*(unsigned char *)((char *)&g_aBrRaceCar + 0x29AC)) /* BR_LP64_BYTE_VIEW */, (*(unsigned char *)((char *)&g_aBrRaceCar + 0x29AD)) /* BR_LP64_BYTE_VIEW */, (*(unsigned char *)((char *)&g_aBrRaceCar + 0x29AE)) /* BR_LP64_BYTE_VIEW */,
+                      (*(unsigned char *)&g_aBrRaceCar[0].f29AC), (*(unsigned char *)&g_aBrRaceCar[0].f29AD), (*(unsigned char *)&g_aBrRaceCar[0].f29AE),
                       (*(int *)&g_br277B48), g_aBrCfgPlayerName,
                       (BrNetSlotGetF02C(g_id) & ~0x80) | 0x40, 0);
     }
@@ -551,7 +551,7 @@ char *BrNetSlotName(int param_1)
 
 {
   WaitForSingleObject((HANDLE)(&(*(int *)&g_aBrNetSlot))[param_1 * 0x25e],0xffffffff);
-  strcpy(DAT_10226628, &(*(char *)((char *)&g_aBrNetSlot + 0x570)) /* BR_LP64_BYTE_VIEW */ + param_1 * 0x978);
+  strcpy(DAT_10226628, &(*(char *)&g_aBrNetSlot[0].szName[0]) + param_1 * 0x978);
   ReleaseMutex((HANDLE)(&(*(int *)&g_aBrNetSlot))[param_1 * 0x25e]);
   return DAT_10226628;
 }

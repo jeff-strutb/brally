@@ -130,7 +130,7 @@ int BrItemSetPickLabel_10038F40(Obj38F40 *pObj)
     } else {
         int k;
 
-        if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0) {
+        if ((*(int *)&g_brRaceRules.mode) == 0) {
             if (DAT_10ac5c00 != 0) {
                 strcpy(szName, BrStrGet(g_brTblABAA8[
                     (*(unsigned char (*)[])&g_aBr0B3820)[(g_brIdx5C04 + (*(char *)&DAT_10ac5c10) * 12) * 2]]));

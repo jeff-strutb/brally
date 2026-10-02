@@ -80,11 +80,11 @@ int BrAppStateSetMode(void)
         (*(int *)&BrGlNavLast6748) = BrSub10075020();
     }
     if (g_demoFlag != 0) {
-        (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = 1;
+        (*(int *)&g_brRaceRules.mode) = 1;
         (*(int *)&g_Br0B380C) = 2;
         g_226e7c = 5;
         g_226e80 = 0;
-        (*(int *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ = 0;
+        (*(int *)&g_BrCtrlCfg.active) = 0;
         (*(int * *)&g_BrPadModeBytes) = (*(int (*)[])&g_BrCtrlCfg);
         g_7b320 = 1;
         g_7b328 = 1;
@@ -103,7 +103,7 @@ int BrAppStateSetMode(void)
             if ((*(int *)&BrGlNavLast6748) + 0x15f90 < BrSub10075020()) {
                 (*(Phase * *)&g_brPAA29B8)->f68 = 0;
                 (*(Phase * *)&g_brPAA29B8)->v6(0);
-                (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = 4;
+                (*(int *)&g_brRaceRules.mode) = 4;
                 g_5bc760 = 0;
                 return 1;
             }

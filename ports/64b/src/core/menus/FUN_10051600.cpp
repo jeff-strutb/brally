@@ -234,7 +234,7 @@ int FUN_10051600(GameUi *parent)
     char       bad;
 
     (*(short *)&((BrPhase_ *)(parent))->iPage) = 0;
-    (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = 6;
+    (*(int *)&g_brRaceRules.mode) = 6;
     BrOptSave();
     BrSub1003E510();
     (*(int (*)[1])&((BrPhase_ *)(parent))->aFlags[0])[(*(unsigned short *)&((BrPhase_ *)(parent))->nPages)] = 1;

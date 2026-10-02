@@ -67,7 +67,7 @@ void BrSub1003E510(void)
     BrSub1003E3A0();
     (*(int32_t *)&g_7b320) = g_i0AC65C;
 
-    if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 6)
+    if ((*(int *)&g_brRaceRules.mode) == 6)
         BrSub10044540();
 
     /* ---- Br61AdvanceTrack, inline ----
@@ -91,7 +91,7 @@ void BrSub1003E510(void)
     (*(int32_t *)&g_7b328) = g_aBrAC4B0[(*(int32_t *)&DAT_100abdf0)];
     (*(int32_t *)&g_7b324) = g_aBrAC518[(*(int32_t *)&DAT_10ac5d60)];
 
-    if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 0) {
+    if ((*(int *)&g_brRaceRules.mode) != 0) {
         /* ---- Br61AdvanceCar, inline ---- */
         start = (*(int32_t *)&g_brIdx0ABDE8);
         if (BrInputBitHeld((*(int32_t *)&g_brIdx0ABDE8)) == 0) {

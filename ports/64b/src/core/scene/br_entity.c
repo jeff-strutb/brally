@@ -121,7 +121,7 @@ uint32_t BrEntityCountActive(void)
     /* Orig `test edx,edx; jle ret`: skip the countdown, do not early-return
      * (that duplicates `ret`). */
     if (n > 0) {
-        p = (*(unsigned char (*)[])((char *)&g_aBrRaceCar + 0xF08)) /* BR_LP64_BYTE_VIEW */;
+        p = (*(unsigned char (*)[])&g_aBrRaceCar[0].pfnControl);
         do {
             if (*(int32_t *)p != 0)
                 ++c;
@@ -167,24 +167,24 @@ void BrEntGfxRebindAll(void)
       if (g_aBrRaceCar[local_8].b29AF == 2) {
         for (local_c = 0; local_c < 10; local_c = local_c + 1) {
           BrDlRecolor(*(int *)
-                        (*(int *)(&(*(char *)((char *)&g_aBrRaceCar + 0x29C4)) /* BR_LP64_BYTE_VIEW */ + local_8 * 0x2b68) + 0x8018 + local_10 * 0x28 +
+                        (*(int *)(&(*(char *)&g_aBrRaceCar[0].pModel) + local_8 * 0x2b68) + 0x8018 + local_10 * 0x28 +
                         local_c * 4),&DAT_100aa128);
         }
         for (local_c = 0; local_c < 3; local_c = local_c + 1) {
           BrDlRecolor(*(int *)
-                        (*(int *)(&(*(char *)((char *)&g_aBrRaceCar + 0x29C4)) /* BR_LP64_BYTE_VIEW */ + local_8 * 0x2b68) + 0x80bc + local_10 * 0xc +
+                        (*(int *)(&(*(char *)&g_aBrRaceCar[0].pModel) + local_8 * 0x2b68) + 0x80bc + local_10 * 0xc +
                         local_c * 4),&DAT_100aa1e8);
         }
       }
       else {
         for (local_c = 0; local_c < 10; local_c = local_c + 1) {
           BrDlRecolor(*(int *)
-                        (*(int *)(&(*(char *)((char *)&g_aBrRaceCar + 0x29C4)) /* BR_LP64_BYTE_VIEW */ + local_8 * 0x2b68) + 0x8018 + local_10 * 0x28 +
+                        (*(int *)(&(*(char *)&g_aBrRaceCar[0].pModel) + local_8 * 0x2b68) + 0x8018 + local_10 * 0x28 +
                         local_c * 4),&(*(int *)&g_BrDlTableA));
         }
         for (local_c = 0; local_c < 3; local_c = local_c + 1) {
           BrDlRecolor(*(int *)
-                        (*(int *)(&(*(char *)((char *)&g_aBrRaceCar + 0x29C4)) /* BR_LP64_BYTE_VIEW */ + local_8 * 0x2b68) + 0x80bc + local_10 * 0xc +
+                        (*(int *)(&(*(char *)&g_aBrRaceCar[0].pModel) + local_8 * 0x2b68) + 0x80bc + local_10 * 0xc +
                         local_c * 4),&(*(int *)&g_BrDlTableA));
         }
       }

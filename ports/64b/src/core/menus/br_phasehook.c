@@ -65,7 +65,7 @@
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 #define BR26_AA29B0  (*(BrPhase * *)&DAT_10ac5d08)
-#define BR26_0AA010  (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */
+#define BR26_0AA010  (*(int32_t *)&g_brRaceRules.mode)
 typedef void (BR_THISCALL1 *Br26F1C)(BrEntSub *);
 /* Slot 0 thiscall with one stack arg: edx must be a LIVE value (the
  * vtbl) so the site is `push 1; call [edx]`, not `xor edx,edx` and not
@@ -91,7 +91,7 @@ int BrPhaseHook_10045050(void *pArg)
     (void)CtlE660_fn((BrPhaseCtx *)pArg);
     (*(int32_t *)&DAT_100abaa4) = 1;
     (*(BrPhase * *)&DAT_10ac5d0c)->pfnHook = BrUiHook89_10046CD0;
-    (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = 0;
+    (*(int32_t *)&g_brRaceRules.mode) = 0;
     return 1;
 }
 
@@ -103,7 +103,7 @@ int BrPhaseHook_10045090(void *pArg)
 {
     Ctl3F130_fn(pArg);
     (*(BrPhase * *)&DAT_10ac5d08)->pfnHook = BrOpt6DC0;
-    (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = 0;
+    (*(int32_t *)&g_brRaceRules.mode) = 0;
     return 1;
 }
 
@@ -131,6 +131,6 @@ int BrPhaseHook_100450C0(void *pArg)
 int BrPhaseDispatch_100450F0(void *pArg)
 {
     (*(BrPhase * *)&g_brUipAA29F4)->pfnHook(pArg);
-    (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = 0;
+    (*(int32_t *)&g_brRaceRules.mode) = 0;
     return 0;
 }

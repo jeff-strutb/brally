@@ -59,7 +59,7 @@ int BrItemSetLabelState_10037E60(Obj37E60 *pObj)
 {
     char *pStr;
 
-    if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0 && (*(int *)&g_a220B20) == 0)
+    if ((*(int *)&g_brRaceRules.mode) == 0 && (*(int *)&g_a220B20) == 0)
         pStr = BrStrGet(0x51);
     else
         pStr = BrStrGet(0x0C);

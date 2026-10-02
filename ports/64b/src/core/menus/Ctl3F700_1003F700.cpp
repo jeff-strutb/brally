@@ -46,7 +46,7 @@ public:
 #define g_slot g_5C64
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define g_mode (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */
+#define g_mode (*(int *)&g_brRaceRules.mode)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
@@ -80,8 +80,8 @@ int Ctl3F700::Activate()
     g_mode = 2;
     BrSub1003E680();
     p = g_slot;
-    (*(int *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */ = 0;
-    (*(int *)((char *)&g_aBrRaceCar + 0x2ADC)) /* BR_LP64_BYTE_VIEW */ = 1;
+    (*(int *)&g_aBrRaceCar[0].pEquip) = 0;
+    (*(int *)&g_aBrRaceCar[0].sz2ABC[32]) = 1;
     g_mode = 2;
     DAT_100abaa4 = 1;
     (g_aBrRaceBeginRec[0]) = (char)0xFF;

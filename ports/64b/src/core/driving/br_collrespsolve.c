@@ -744,7 +744,7 @@ int BrCrRespWalk(BrCarBody *pBody, const BrMat4 *pMatBox)
         cnt++;
         planeD = nrm.x * aV[0] + nrm.y * aV[1] + nrm.z * aV[2];
         g_brCrPlane.modeFC = 0;
-        if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4) {
+        if ((*(int *)&g_brRaceRules.mode) == 4) {
             if (((nrm.x < BrCrK_Zero) ? -nrm.x : nrm.x) <= BrCrK_Flat
                 && ((nrm.y < BrCrK_Zero) ? -nrm.y : nrm.y) <= BrCrK_Flat
                 && ((nrm.z < BrCrK_Zero) ? -nrm.z : nrm.z) <= BrCrK_Flat) {

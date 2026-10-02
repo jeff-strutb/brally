@@ -168,8 +168,8 @@ void Car5E7B0::StartInit()
 
     m_1006FD90();
 
-    if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 2 || (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4 ||
-        ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 3 && (*(int *)&g_brRaceNEntrant) == 1) || (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0) {
+    if ((*(int *)&g_brRaceRules.mode) == 2 || (*(int *)&g_brRaceRules.mode) == 4 ||
+        ((*(int *)&g_brRaceRules.mode) == 3 && (*(int *)&g_brRaceNEntrant) == 1) || (*(int *)&g_brRaceRules.mode) == 0) {
         m_1006FCB0((*(int *)&((BrDriverCar *)(this))->f140));
         local_14 = 0.0f;
         local_10 = 0.5f;
@@ -238,8 +238,8 @@ void Car5E7B0::StartInit()
     (*(float *)&((BrDriverCar *)(this))->lapBest) = 0.0f;
     (*(int *)&((BrDriverCar *)(this))->gateHi) = 0;
 
-    if ((*(int *)&((BrDriverCar *)(this))->f140) < (*(int *)&g_brRaceNEntrant) || (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 1 || (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 2 ||
-        (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4 || (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 6) {
+    if ((*(int *)&((BrDriverCar *)(this))->f140) < (*(int *)&g_brRaceNEntrant) || (*(int *)&g_brRaceRules.mode) == 1 || (*(int *)&g_brRaceRules.mode) == 2 ||
+        (*(int *)&g_brRaceRules.mode) == 4 || (*(int *)&g_brRaceRules.mode) == 6) {
         (*(int *)&((BrDriverCar *)(this))->lapB) = -1;
         (*(int *)&((BrDriverCar *)(this))->gate) = -1;
     } else {

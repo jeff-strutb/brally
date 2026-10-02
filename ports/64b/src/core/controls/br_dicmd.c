@@ -108,7 +108,7 @@ void BrFfbCommitDuration(void)
 {
     BrDiObj *pEff;
 
-    if ((*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ != 1 && (*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ != 2) {
+    if ((*(int32_t *)&g_BrCtrlCfg.active) != 1 && (*(int32_t *)&g_BrCtrlCfg.active) != 2) {
         return;
     }
     if ((*(int32_t *)&DAT_10b71540) == 0) {

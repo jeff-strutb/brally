@@ -64,6 +64,6 @@ void BrNetSendFlush(void)
     /* Orig pushes the ADDRESS of g_brP277B40 and of g_brPB4E2E8 (offset,
      * not the pointer those globals hold). */
     BrNetSend4AD0(&g_brP277B40, g_id, (*(int32_t *)&g_226e7c),
-                  (*(uint8_t (*)[3])((char *)&g_aBrRaceCar + 0x29AC)) /* BR_LP64_BYTE_VIEW */[0], (*(uint8_t (*)[3])((char *)&g_aBrRaceCar + 0x29AC)) /* BR_LP64_BYTE_VIEW */[1], (*(uint8_t (*)[3])((char *)&g_aBrRaceCar + 0x29AC)) /* BR_LP64_BYTE_VIEW */[2],
+                  (*(uint8_t (*)[3])&g_aBrRaceCar[0].f29AC)[0], (*(uint8_t (*)[3])&g_aBrRaceCar[0].f29AC)[1], (*(uint8_t (*)[3])&g_aBrRaceCar[0].f29AC)[2],
                   g_br277B48, (char *)&g_aBrCfgPlayerName, 3, 0);
 }

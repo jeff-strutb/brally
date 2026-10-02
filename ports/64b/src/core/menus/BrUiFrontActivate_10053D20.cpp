@@ -92,24 +92,24 @@ int Phase53D20::Activate()
         (*(unsigned char *)&g_aBrAA26F4[1]) = 0;
     }
 
-    if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4 && g_5bc760 == 2 && g_5BF4 != 0) {
+    if ((*(int *)&g_brRaceRules.mode) == 4 && g_5bc760 == 2 && g_5BF4 != 0) {
         CtlF340_fn();
-        (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = 0;
+        (*(int *)&g_brRaceRules.mode) = 0;
         m = (*(int *)&g_a220B20);
     }
 
-    if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0 && (m == 0 || m == 5)) {
+    if ((*(int *)&g_brRaceRules.mode) == 0 && (m == 0 || m == 5)) {
         if (BrSeasonApply() == 0) {
             return 0;
         }
         CtlF340_fn();
         BrMenuAutoSaveName();
         g_5BF4 = 1;
-    } else if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 6) {
+    } else if ((*(int *)&g_brRaceRules.mode) == 6) {
         DAT_10ac5bd0 = 1;
         Fn3DD20();
         DAT_10ac5bd0 = 0;
-    } else if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 2) {
+    } else if ((*(int *)&g_brRaceRules.mode) == 2) {
         DAT_10ac5bd0 = 1;
         BrMenuLeaveTo2();
         DAT_10ac5bd0 = 0;

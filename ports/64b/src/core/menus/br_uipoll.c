@@ -146,7 +146,7 @@ void BrUiFn1003DFC0(BrStartupState *pState, void *pB4DF30)
     (*(int32_t *)&g_7b324) = 1;
     (*(int32_t *)&g_7b32c) = 2;
     (*(int32_t *)&g_7b328) = 1;
-    (*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ = 0;
+    (*(int32_t *)&g_BrCtrlCfg.active) = 0;
     (*(void * *)&g_BrPadModeBytes) = (*(unsigned char (*)[])&g_BrCtrlCfg);
     (*(int32_t *)&g_7b320) = 1;
 }

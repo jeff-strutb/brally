@@ -282,8 +282,8 @@ extern "C" void BrRaceStep(void)
     int now   = BrSub10075020();
     int delta = now - (*(int *)&DAT_105ccb68[10]);
     (*(int *)&DAT_105ccb68[10])  = now;
-    int idx   = (*(int *)((char *)&g_brRaceRules + 0x8)) /* BR_LP64_BYTE_VIEW */;
-    int count = (*(int *)((char *)&g_brRaceRules + 0x4)) /* BR_LP64_BYTE_VIEW */;
+    int idx   = (*(int *)&g_brRaceRules.nLaps);
+    int count = (*(int *)&g_brRaceRules.nGates);
 
     /* region 1: frame-delta ring buffer (0x10019A70-0x10019AE4) */
     if (idx < 0) {
@@ -295,8 +295,8 @@ extern "C" void BrRaceStep(void)
         }
     }
     if (++(*(int *)&g_brRaceClockCount) == 0) (*(int *)&DAT_105ccb68[5]) = 0; else (*(int *)&DAT_105ccb68[5]) += delta;
-    (*(int *)((char *)&g_brRaceRules + 0x8)) /* BR_LP64_BYTE_VIEW */ = ++idx;                       /* store idx+1 unconditionally (0x1001a acf) */
-    if (idx >= count) { idx = 0; (*(int *)((char *)&g_brRaceRules + 0x8)) /* BR_LP64_BYTE_VIEW */ = idx; }   /* then conditionally re-store 0 */
+    (*(int *)&g_brRaceRules.nLaps) = ++idx;                       /* store idx+1 unconditionally (0x1001a acf) */
+    if (idx >= count) { idx = 0; (*(int *)&g_brRaceRules.nLaps) = idx; }   /* then conditionally re-store 0 */
     g_BrFpsSamplesA[idx] = delta;
 
     /* region 2: first-frame init gate (0x10019AE4) */
@@ -310,7 +310,7 @@ extern "C" void BrRaceStep(void)
             (*(int (**)())&DAT_10b7352c)();
             g_18ED1E8();
             (*(int (**)())&PTR_FUN_100b849c)();
-            BrTrackLoadHandling((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 5 ? 0xc : (*(int *)&g_Br0B380C));
+            BrTrackLoadHandling((*(int *)&g_brRaceRules.mode) == 5 ? 0xc : (*(int *)&g_Br0B380C));
             BrFontTexInitAll();
             (*(int (**)())&DAT_10b73528)();
             BrFlagInit_1002B950();
@@ -320,10 +320,10 @@ extern "C" void BrRaceStep(void)
         BrFrameBeginRec(&(BrG_6C1628[0]));
         BrStore_1003BD40(0x7b);
         (*(int *)&DAT_105ccb68[9]) = 0;
-        if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 1 && (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 6 && (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 2) g_CBE8 = 3;
+        if ((*(int *)&g_brRaceRules.mode) != 1 && (*(int *)&g_brRaceRules.mode) != 6 && (*(int *)&g_brRaceRules.mode) != 2) g_CBE8 = 3;
         (*(int *)&g_brRaceBeginMirrorOff) = 0;
-        if ((unsigned)(*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ > 6) goto Ldefault;
-        switch ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */) {
+        if ((unsigned)(*(int *)&g_brRaceRules.mode) > 6) goto Ldefault;
+        switch ((*(int *)&g_brRaceRules.mode)) {
         case 0:     /* 0x10019bc8 */
             (*(int *)&g_brRaceNDriver) = 0x14; (*(int *)&g_BrCarCount) = 3;
             ((Obj*)&(*(Driver (*)[])&g_aBrRaceCar))->m_1006FD50(g_226e7c);
@@ -331,8 +331,8 @@ extern "C" void BrRaceStep(void)
         case 1:     /* 0x10019bf1 */
             (*(int *)&g_brRaceNDriver) = 2; (*(int *)&g_BrCarCount) = 2;
             ((Obj*)&(*(Driver (*)[])&g_aBrRaceCar))->m_1006FD50(g_226e7c);
-            ((Obj*)&(*(Driver (*)[])((char *)&g_aBrRaceCar + 0x2B68)) /* BR_LP64_BYTE_VIEW */)->m_1006FD50(g_226e7c);
-            (*(int *)((char *)&g_aBrRaceCar + 0x551C)) /* BR_LP64_BYTE_VIEW */ = 0;
+            ((Obj*)&(*(Driver (*)[])&g_aBrRaceCar[1].fwd.x))->m_1006FD50(g_226e7c);
+            (*(int *)&g_aBrRaceCar[1].i29B4) = 0;
             goto Lcf3;
         case 6:     /* 0x10019c2a */
             if ((*(int *)&DAT_105ccb68[8]) != 0) goto Lcfb;
@@ -344,9 +344,9 @@ extern "C" void BrRaceStep(void)
                 BrNetReset();
                 BrNetSetF10220DD0();
                 BrNetOpenAnnounce();
-                (*(int *)((char *)&g_aBrRaceCar + 0x144)) /* BR_LP64_BYTE_VIEW */ = BrGetGlobal_94294();
-                strcpy((*(char (*)[])((char *)&g_aBrRaceCar + 0x148)) /* BR_LP64_BYTE_VIEW */, g_aBrCfgPlayerName);
-                BrNetSlotSetName((*(int *)((char *)&g_aBrRaceCar + 0x144)) /* BR_LP64_BYTE_VIEW */, g_aBrCfgPlayerName);
+                (*(int *)&g_aBrRaceCar[0].iNetPlayer) = BrGetGlobal_94294();
+                strcpy((*(char (*)[])&g_aBrRaceCar[0].szName[0]), g_aBrCfgPlayerName);
+                BrNetSlotSetName((*(int *)&g_aBrRaceCar[0].iNetPlayer), g_aBrCfgPlayerName);
             }
             while (BrDPlayGetCurrentPlayers() > (unsigned)(*(int *)&g_BrCarCount)) {
                 int r = BrNetStackPop();
@@ -355,14 +355,14 @@ extern "C" void BrRaceStep(void)
             goto Lcf3;
         case 5:     /* 0x10019d87 */
             (*(int *)&g_brRaceNEntrant) = 1; (*(int *)&g_brRaceNDriver) = 1; (*(int *)&g_BrCarCount) = 1;
-            (*(int *)&DAT_105ccb68[9]) = 0; (*(int *)&DAT_105ccb68[8]) = 0; (*(int *)((char *)&g_aBrRaceCar + 0xE88)) /* BR_LP64_BYTE_VIEW */ = 0;
-            (*(int *)((char *)&g_aBrRaceCar + 0x2734)) /* BR_LP64_BYTE_VIEW */ = (int)&(*(int *)((char *)&g_aBrRaceCar + 0x2780)) /* BR_LP64_BYTE_VIEW */; (*(int *)&g_BrCamHold2) = 0;
+            (*(int *)&DAT_105ccb68[9]) = 0; (*(int *)&DAT_105ccb68[8]) = 0; (*(int *)&g_aBrRaceCar[0].fE88) = 0;
+            (*(int *)&g_aBrRaceCar[0].pMatA) = (int)&(*(int *)&g_aBrRaceCar[0].aSnap[1].m[0][0]); (*(int *)&g_BrCamHold2) = 0;
             goto La213;
         case 4:     /* 0x10019dc0 */
         {
-            int *pd0 = *(int**)&(*(Driver (*)[])((char *)&g_aBrRaceCar + 0x29C0)) /* BR_LP64_BYTE_VIEW */;
+            int *pd0 = *(int**)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl);
             DAT_104b15e8 = 1; (*(int *)&g_brRaceNEntrant) = 1; (*(int *)&g_brRaceNDriver) = 1; (*(int *)&g_BrCarCount) = 1;
-            (*(int *)&DAT_105ccb68[9]) = 0; (*(int *)((char *)&g_aBrRaceCar + 0xE88)) /* BR_LP64_BYTE_VIEW */ = 0;
+            (*(int *)&DAT_105ccb68[9]) = 0; (*(int *)&g_aBrRaceCar[0].fE88) = 0;
             ((*(int  *)((char*)((pd0)) + ((0x44))))) = (int)&(*(int *)&g_aBrRaceBeginRec);
             {
                 int which = g_5bc760;                 /* 0x10019df1 */
@@ -387,19 +387,19 @@ extern "C" void BrRaceStep(void)
             }
         Le63:                                         /* 0x10019e63 */
             {
-                int  *pObj  = *(int**)&(*(Driver (*)[])((char *)&g_aBrRaceCar + 0x29C0)) /* BR_LP64_BYTE_VIEW */;
+                int  *pObj  = *(int**)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl);
                 char *pInfo;
                 ((*(int  *)((char*)((pObj)) + ((0x2c))))) = 0;
                 ((*(int  *)((char*)((pObj)) + ((0x30))))) = 0;
-                (*(char *)((char *)&g_aBrRaceCar + 0x29AC)) /* BR_LP64_BYTE_VIEW */ = (char)0xff; (*(char *)((char *)&g_aBrRaceCar + 0x29AD)) /* BR_LP64_BYTE_VIEW */ = (char)0xff; (*(char *)((char *)&g_aBrRaceCar + 0x29AE)) /* BR_LP64_BYTE_VIEW */ = (char)0xff;
+                (*(char *)&g_aBrRaceCar[0].f29AC) = (char)0xff; (*(char *)&g_aBrRaceCar[0].f29AD) = (char)0xff; (*(char *)&g_aBrRaceCar[0].f29AE) = (char)0xff;
                 pInfo = (char*)((*(int  *)((char*)((pObj)) + ((0x44)))));
                 (*(int *)&g_Br0B380C) = (signed char)pInfo[0];
-                (*(int *)((char *)&g_aBrRaceCar + 0x29A4)) /* BR_LP64_BYTE_VIEW */ = (signed char)pInfo[1];
+                (*(int *)&g_aBrRaceCar[0].f29A4) = (signed char)pInfo[1];
                 ((Obj*)&(*(Driver (*)[])&g_aBrRaceCar))->m_1006FD50((signed char)pInfo[1]);
-                (*(int *)((char *)&g_aBrRaceCar + 0xE98)) /* BR_LP64_BYTE_VIEW */ = (signed char)pInfo[2];
-                (*(int *)((char *)&g_aBrRaceCar + 0xE9C)) /* BR_LP64_BYTE_VIEW */ = (signed char)pInfo[3];
-                (*(int *)((char *)&g_aBrRaceCar + 0xE90)) /* BR_LP64_BYTE_VIEW */ = (signed char)pInfo[4];
-                (*(int *)((char *)&g_aBrRaceCar + 0xE94)) /* BR_LP64_BYTE_VIEW */ = (signed char)pInfo[5];
+                (*(int *)&g_aBrRaceCar[0].fE98) = (signed char)pInfo[2];
+                (*(int *)&g_aBrRaceCar[0].fE9C) = (signed char)pInfo[3];
+                (*(int *)&g_aBrRaceCar[0].fE90) = (signed char)pInfo[4];
+                (*(int *)&g_aBrRaceCar[0].fE94) = (signed char)pInfo[5];
                 ((*(char *)((char*)((pObj)) + ((0x25))))) = pInfo[6];
                 g_226e80 = (signed char)pInfo[7];
                 DAT_104b15e8 = (signed char)pInfo[7];
@@ -413,33 +413,33 @@ extern "C" void BrRaceStep(void)
             (*(int *)&g_brRaceBeginRecArmed) = 1;
             (*(int *)&g_brRaceNDriver) = (*(int *)&g_brRaceNEntrant) + 1;
             (*(int *)&g_BrCarCount) = (*(int *)&g_brRaceNEntrant) + 1;
-            ((*(int  *)((char*)((*(int**)&(*(Driver (*)[])((char *)&g_aBrRaceCar + 0x29C0)) /* BR_LP64_BYTE_VIEW */[(*(int *)&g_brRaceNEntrant)])) + ((0x44))))) = (int)&(*(int *)&g_aBrRaceBeginRecIn);
+            ((*(int  *)((char*)((*(int**)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl)[(*(int *)&g_brRaceNEntrant)])) + ((0x44))))) = (int)&(*(int *)&g_aBrRaceBeginRecIn);
             BrPodNop(&g_0A9884, (*(int *)&g_brRace5BC8D8));
-            memcpy((void*)((*(int  *)((char*)((*(int**)&(*(Driver (*)[])((char *)&g_aBrRaceCar + 0x29C0)) /* BR_LP64_BYTE_VIEW */[(*(int *)&g_brRaceNEntrant)])) + ((0x44))))), &(*(int *)&g_aBrRaceBeginRec), (*(int *)&g_brRace5BC8D8));
+            memcpy((void*)((*(int  *)((char*)((*(int**)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl)[(*(int *)&g_brRaceNEntrant)])) + ((0x44))))), &(*(int *)&g_aBrRaceBeginRec), (*(int *)&g_brRace5BC8D8));
             {
-                char *inf = (char*)((*(int  *)((char*)((*(int**)&(*(Driver (*)[])((char *)&g_aBrRaceCar + 0x29C0)) /* BR_LP64_BYTE_VIEW */[(*(int *)&g_brRaceNEntrant)])) + ((0x44)))));
+                char *inf = (char*)((*(int  *)((char*)((*(int**)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl)[(*(int *)&g_brRaceNEntrant)])) + ((0x44)))));
                 int v1 = (signed char)inf[1];
                 g_aBrRaceCar[(*(int *)&g_brRaceNEntrant)].f29A4 = v1;
                 ((Obj *)&g_aBrRaceCar[(*(int *)&g_brRaceNEntrant)].fwd.x)->m_1006FD50(v1);
             }
             BrReplayRewind();
             {
-                char *inf = (char*)((*(int  *)((char*)((*(int**)&(*(Driver (*)[])((char *)&g_aBrRaceCar + 0x29C0)) /* BR_LP64_BYTE_VIEW */[(*(int *)&g_brRaceNEntrant)])) + ((0x44)))));
+                char *inf = (char*)((*(int  *)((char*)((*(int**)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl)[(*(int *)&g_brRaceNEntrant)])) + ((0x44)))));
                 if ((signed char)inf[0] == (*(int *)&g_Br0B380C) &&
                     (signed char)inf[7] == g_226e80) {          /* 0x1001a02b */
                     BrPodNop(&g_0A9878, (signed char)inf[0]);
-                    ((*(int  *)((char*)((*(int**)&(*(Driver (*)[])((char *)&g_aBrRaceCar + 0x29C0)) /* BR_LP64_BYTE_VIEW */[(*(int *)&g_brRaceNEntrant)])) + ((0x48))))) = 8;
+                    ((*(int  *)((char*)((*(int**)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl)[(*(int *)&g_brRaceNEntrant)])) + ((0x48))))) = 8;
                     BrPodNop(&g_0A9868, (*(int *)&g_brRace5BC8D8));
-                    ((*(int  *)((char*)((*(int**)&(*(Driver (*)[])((char *)&g_aBrRaceCar + 0x29C0)) /* BR_LP64_BYTE_VIEW */[(*(int *)&g_brRaceNEntrant)])) + ((0x4c))))) = (*(int *)&g_brRace5BC8D8);
+                    ((*(int  *)((char*)((*(int**)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl)[(*(int *)&g_brRaceNEntrant)])) + ((0x4c))))) = (*(int *)&g_brRace5BC8D8);
                 } else {                                        /* 0x1001a09c */
                     BrPodNop(&g_0A9850, (signed char)inf[0], (*(int *)&g_Br0B380C));
-                    ((*(int  *)((char*)((*(int**)&(*(Driver (*)[])((char *)&g_aBrRaceCar + 0x29C0)) /* BR_LP64_BYTE_VIEW */[(*(int *)&g_brRaceNEntrant)])) + ((0x44))))) = 0;
+                    ((*(int  *)((char*)((*(int**)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl)[(*(int *)&g_brRaceNEntrant)])) + ((0x44))))) = 0;
                     (*(int *)&g_BrCarCount) = 1; (*(int *)&g_brRaceNDriver) = 1;
                 }
             }
             /* 0x1001a0d9 .. 0x1001a1ec: per-driver display-list build loop */
             if ((*(int *)&g_brRaceNEntrant) > 0) {
-                char *base = (char*)&(*(Driver (*)[])((char *)&g_aBrRaceCar + 0x29C0)) /* BR_LP64_BYTE_VIEW */;     /* eax -> driver[i] */
+                char *base = (char*)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl);     /* eax -> driver[i] */
                 int   off  = 0x2c;                 /* ecx */
                 int   val  = (int)&g_1787850;      /* esi = 0x11787850 */
                 int   i    = 0;                    /* edi */
@@ -514,7 +514,7 @@ extern "C" void BrRaceStep(void)
         {
             int i;
             for (i = 0; i < (*(int *)&g_brRaceNEntrant); i++) {
-                int *p = *(int**)&(*(Driver (*)[])((char *)&g_aBrRaceCar + 0x29C0)) /* BR_LP64_BYTE_VIEW */[i];
+                int *p = *(int**)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl)[i];
                 ((*(int  *)((char*)((p)) + ((0x44))))) = 0; ((*(int  *)((char*)((p)) + ((0x2c))))) = 0; ((*(int  *)((char*)((p)) + ((0x30))))) = 0;
             }
         }
@@ -523,19 +523,19 @@ extern "C" void BrRaceStep(void)
         goto La213;
 
     La213:  /* 0x1001a213 -- common tail after the state switch */
-        if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 5) {
+        if ((*(int *)&g_brRaceRules.mode) == 5) {
             (*(int *)&g_brRaceBeginDifficulty) = 0;
         } else {
             (*(int *)&g_brRaceBeginDifficulty) = (((*(int  *)((char*)((*(int**)((char*)&(g_apBrRaceDiff[0]) + (*(int *)&g_Br0B380C) * 4))) + ((4))))) >> 4) & 1;
         }
         BrRaceDifficultySet(DAT_104b15e8);
-        if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 4 && (*(int *)&DAT_105ccb68[8]) == 0) {
+        if ((*(int *)&g_brRaceRules.mode) != 4 && (*(int *)&DAT_105ccb68[8]) == 0) {
             BrPodNop();
             BrPodNop();
         }
         FUN_10061310();
         if ((*(int *)&DAT_105ccb68[8]) != 0) goto La430;
-        BrTrackLoad((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 5 ? 0xc : (*(int *)&g_Br0B380C));
+        BrTrackLoad((*(int *)&g_brRaceRules.mode) == 5 ? 0xc : (*(int *)&g_Br0B380C));
         if ((*(int *)&DAT_105ccb68[8]) != 0) goto La430;
         {
             int  cnt;
@@ -591,13 +591,13 @@ extern "C" void BrRaceStep(void)
         (*(int *)&g_brRaceBegin6E8720) = ((*(int *)&BrG_6C1628[4]) == 0);
 
         /* 0x1001a462: wheel/tyre + camera-mode setup */
-        if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4) {
-            (*(int *)((char *)&g_aBrRaceCar + 0x2734)) /* BR_LP64_BYTE_VIEW */ = (int)&(*(int *)((char *)&g_aBrRaceCar + 0x2780)) /* BR_LP64_BYTE_VIEW */;
+        if ((*(int *)&g_brRaceRules.mode) == 4) {
+            (*(int *)&g_aBrRaceCar[0].pMatA) = (int)&(*(int *)&g_aBrRaceCar[0].aSnap[1].m[0][0]);
             (*(int *)&g_BrCamHold2) = 0xb4;
             goto La58d;
         }
         if ((*(int *)&g_brRaceNEntrant) > 0) {                     /* 0x1001a485 tyre loop */
-            char *b = (char*)&(*(int *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */;
+            char *b = (char*)&(*(int *)&g_aBrRaceCar[0].pEquip);
             int   i = 0;
             do {
                 int *p, *q;
@@ -606,7 +606,7 @@ extern "C" void BrRaceStep(void)
                 p = *(int**)b; *(int*)(b + 0x04) = ((*(int  *)((char*)((p)) + ((0x100)))));
                 p = *(int**)b; *(int*)(b + 0x0c) = ((*(int  *)((char*)((p)) + ((0xf8)))));
                 q = *(int**)(b + 0x1b34);
-                if ((*(int *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ == 1 || (*(int *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ == 2 || (*(int *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ == 3)
+                if ((*(int *)&g_BrCtrlCfg.active) == 1 || (*(int *)&g_BrCtrlCfg.active) == 2 || (*(int *)&g_BrCtrlCfg.active) == 3)
                     ((*(char *)((char*)((q)) + ((0x25))))) = 5;
                 else
                     ((*(char *)((char*)((q)) + ((0x25))))) = 2;
@@ -616,14 +616,14 @@ extern "C" void BrRaceStep(void)
         }
         {
             int ecx = (*(int *)&g_brRaceNEntrant);                 /* 0x1001a4f1 */
-            if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 2) {
-                int *p = *(int**)&(*(int *)((char *)&g_aBrRaceCar + 0x5528)) /* BR_LP64_BYTE_VIEW */;
+            if ((*(int *)&g_brRaceRules.mode) == 2) {
+                int *p = *(int**)&(*(int *)&g_aBrRaceCar[1].pCtl);
                 if (((*(int  *)((char*)((p)) + ((0x44))))) != 0) {
                     char *inf = (char*)((*(int  *)((char*)((p)) + ((0x44)))));
-                    (*(int *)((char *)&g_aBrRaceCar + 0x3A00)) /* BR_LP64_BYTE_VIEW */ = (signed char)inf[2];
-                    (*(int *)((char *)&g_aBrRaceCar + 0x3A04)) /* BR_LP64_BYTE_VIEW */ = (signed char)inf[3];
-                    (*(int *)((char *)&g_aBrRaceCar + 0x39F8)) /* BR_LP64_BYTE_VIEW */ = (signed char)inf[4];
-                    (*(int *)((char *)&g_aBrRaceCar + 0x39FC)) /* BR_LP64_BYTE_VIEW */ = (signed char)inf[5];
+                    (*(int *)&g_aBrRaceCar[1].fE98) = (signed char)inf[2];
+                    (*(int *)&g_aBrRaceCar[1].fE9C) = (signed char)inf[3];
+                    (*(int *)&g_aBrRaceCar[1].fE90) = (signed char)inf[4];
+                    (*(int *)&g_aBrRaceCar[1].fE94) = (signed char)inf[5];
                     ((*(char *)((char*)((p)) + ((0x25))))) = inf[6];
                     goto La58d;
                 }
@@ -647,11 +647,11 @@ extern "C" void BrRaceStep(void)
         if ((*(int *)&DAT_105ccb68[8]) != 0) goto La973;
         DAT_105ccb60 = 0;
         if ((*(int *)&g_BrCarCount) > 0) {                     /* 0x1001a5ba callback-wiring loop */
-            char *s = (char*)&(*(int *)((char *)&g_aBrRaceCar + 0xF08)) /* BR_LP64_BYTE_VIEW */;
+            char *s = (char*)&(*(int *)&g_aBrRaceCar[0].pfnControl);
             int   i = 0;
             do {
                 int n  = (*(int *)&g_brRaceNEntrant);
-                int st = (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */;
+                int st = (*(int *)&g_brRaceRules.mode);
                 *(int*)(s + 0x1aa8) = 0x3f800000;
                 if (i < n) {
                     *(int*)s = (int)&BrCtlHuman;
@@ -684,7 +684,7 @@ extern "C" void BrRaceStep(void)
             ((Obj*)&(*(Driver (*)[])&g_aBrRaceCar))->m_1006FCB0(0);
             ((Obj*)&(*(Driver (*)[])&g_aBrRaceCar))->m_1005E7B0();
             ((Obj*)&(*(Driver (*)[])&g_aBrRaceCar))->m_10001CF0();
-            (*(float *)((char *)&g_aBrRaceCar + 0x2774)) /* BR_LP64_BYTE_VIEW */ = (*(float *)((char *)&g_aBrRaceCar + 0x2774)) /* BR_LP64_BYTE_VIEW */ - g_0773B0;
+            (*(float *)&g_aBrRaceCar[0].aSnap[0].m[3][2]) = (*(float *)&g_aBrRaceCar[0].aSnap[0].m[3][2]) - g_0773B0;
         }
         loc14 = 0;                              /* 0x1001a6a0 */
         if (g_brMode0AA8B4 > 0) {
@@ -780,7 +780,7 @@ extern "C" void BrRaceStep(void)
         loc14 = (*(int *)&g_brRaceNEntrant);
     La97c:  /* 0x1001a97c */
         {
-            int sel = ((*(int *)&DAT_105ccb68[8]) != 0) ? 4 : (((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 5) ? 4 : 0);
+            int sel = ((*(int *)&DAT_105ccb68[8]) != 0) ? 4 : (((*(int *)&g_brRaceRules.mode) == 5) ? 4 : 0);
             g_brRaceLightT = *(float*)((char*)&g_0A957C + sel * 8);
             (*(int *)&g_brRaceLights) = *(int*)((char*)&g_0A9578 + sel * 8);
             (*(int *)&g_brRaceScript) = sel;
@@ -821,12 +821,12 @@ extern "C" void BrRaceStep(void)
             BrReplayRewind();
         } else {
             BrReplayReset();                     /* 0x1001aaf5 */
-            if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4) BrSet_1006AA90();
+            if ((*(int *)&g_brRaceRules.mode) == 4) BrSet_1006AA90();
             if ((*(char *)&DAT_100bb2e0) != 0) {                /* 0x1001ab0e */
                 int c = g_5bc760;
                 int arg;
-                if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4 && c == 2)      arg = 0xc;
-                else if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4 && c == 1) arg = 0xd;
+                if ((*(int *)&g_brRaceRules.mode) == 4 && c == 2)      arg = 0xc;
+                else if ((*(int *)&g_brRaceRules.mode) == 4 && c == 1) arg = 0xd;
                 else                              arg = BrCdTrackRandom();
                 BrCdTrackPlay(arg);
                 BrCdVolumeSet((unsigned char)(*(char *)&DAT_100bb2e0));
@@ -850,7 +850,7 @@ extern "C" void BrRaceStep(void)
         int   i = 0;
         do { ((Obj*)s)->m_10060A30(); i++; s += 0x2b68; } while (i < (*(int *)&g_brRaceNEntrant));
     }
-    if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 4 && (*(int *)&g_BrX06909B4) == 0)      /* 0x1001abd0 */
+    if ((*(int *)&g_brRaceRules.mode) != 4 && (*(int *)&g_BrX06909B4) == 0)      /* 0x1001abd0 */
         (*(int *)&g_brRaceBeginMirrorOff) ^= 1;
     BrFrameClockStep();
     (*(int *)&g_brRaceHudA) = 0;
@@ -859,21 +859,21 @@ extern "C" void BrRaceStep(void)
     if ((*(int *)&g_brRaceLights) < 3) {                       /* 0x1001ac00 */
         if ((*(int *)&g_brRaceTick) != 0) {                  /* 0x1001ac0f: je ac42 skips when ==0 */
             if ((*(int *)&g_brRaceNEntrant) > 0) {
-                char *p = (char*)&(*(int *)((char *)&g_aBrRaceCar + 0x1008)) /* BR_LP64_BYTE_VIEW */;
+                char *p = (char*)&(*(int *)&g_aBrRaceCar[0].f1008);
                 int   c = (*(int *)&g_brRaceNEntrant);
                 do { *(int*)(p - 4) = 0; *(int*)p = 0x3c23d70a; p += 0x2b68; }
                 while (--c);
             }
         } else if ((*(int *)&g_brRaceNet) == 0 || (*(int *)&g_brRace18EEED8) == 0) {   /* 0x1001ac8c */
             if ((*(int *)&g_brRaceNEntrant) > 0) {
-                char *s = (char*)&(*(int *)((char *)&g_aBrRaceCar + 0x1008)) /* BR_LP64_BYTE_VIEW */;
+                char *s = (char*)&(*(int *)&g_aBrRaceCar[0].f1008);
                 int   i = 0;
                 do { *(int*)(s - 4) = BrStrGet(0xee); *(int*)s = 0x3c23d70a;
                      i++; s += 0x2b68; } while (i < (*(int *)&g_brRaceNEntrant));
             }
         } else {                              /* 0x1001ac52 */
             if ((*(int *)&g_brRaceNEntrant) > 0) {
-                char *s = (char*)&(*(int *)((char *)&g_aBrRaceCar + 0x1008)) /* BR_LP64_BYTE_VIEW */;
+                char *s = (char*)&(*(int *)&g_aBrRaceCar[0].f1008);
                 int   i = 0;
                 do { *(int*)(s - 4) = BrStrGet(0xed); *(int*)s = 0x3c23d70a;
                      i++; s += 0x2b68; } while (i < (*(int *)&g_brRaceNEntrant));
@@ -881,14 +881,14 @@ extern "C" void BrRaceStep(void)
         }
         (*(int *)&DAT_105ccb68[4]) = 1;                         /* 0x1001acc4 */
         if ((*(int *)&g_brRaceNDriver) > 0) {
-            char *s = (char*)&(*(int *)((char *)&g_aBrRaceDriver + 0x68)) /* BR_LP64_BYTE_VIEW */;
+            char *s = (char*)&(*(int *)&g_aBrRaceDriver[0].f68);
             int   i = 0;
             do {
                 int *c;
                 *(int*)s |= 1;
                 c = *(int**)(s - 8);
                 if (c != 0 && ((*(int  *)((char*)((c)) + ((0x140))))) < (*(int *)&g_brRaceNEntrant)) {
-                    if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 1 || (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 6) {   /* 0x1001ad17 */
+                    if ((*(int *)&g_brRaceRules.mode) == 1 || (*(int *)&g_brRaceRules.mode) == 6) {   /* 0x1001ad17 */
                         short dx = (short)(DAT_104b15e8 - 1);
                         int   e, base;
                         if (dx > 2 || dx < 0) dx = 0;
@@ -922,7 +922,7 @@ extern "C" void BrRaceStep(void)
         if ((*(int *)&g_brRaceLights) == 3) {                  /* 0x1001addd */
             (*(int *)&g_brRaceHudA) = 1; (*(int *)&DAT_105ccb68[4]) = 1;
             if ((*(int *)&g_brRaceNDriver) > 0) {
-                char *p = (char*)&(*(int *)((char *)&g_aBrRaceDriver + 0x68)) /* BR_LP64_BYTE_VIEW */;
+                char *p = (char*)&(*(int *)&g_aBrRaceDriver[0].f68);
                 int   c = (*(int *)&g_brRaceNDriver);
                 do { *(int*)p &= 0xfffffffe; p += 0x80; } while (--c);
             }
@@ -933,21 +933,21 @@ extern "C" void BrRaceStep(void)
             goto Lb0cd;
         } else if ((*(int *)&g_brRaceLights) == 4) {           /* 0x1001ae38 */
             loc14 = 1;
-            if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4) {              /* 0x1001ae54 */
+            if ((*(int *)&g_brRaceRules.mode) == 4) {              /* 0x1001ae54 */
                 int c = g_5bc760;
                 if (c == 2) {
-                    if ((*(float *)((char *)&g_aBrRaceCar + 0xFEC)) /* BR_LP64_BYTE_VIEW */ > g_0773B8) goto Lae_a1;
+                    if ((*(float *)&g_aBrRaceCar[0].tFinal) > g_0773B8) goto Lae_a1;
                     goto Lae89;
                 }
-                if ((*(float *)((char *)&g_aBrRaceCar + 0xFEC)) /* BR_LP64_BYTE_VIEW */ > g_0773BC) goto Lae_a1;
+                if ((*(float *)&g_aBrRaceCar[0].tFinal) > g_0773BC) goto Lae_a1;
             }
         Lae89:  /* 0x1001ae89 */
             /* 0x1001ae8c `jne 0x1001aee2`: every mode but 5 skips the check
              * below entirely -- it is NOT a fall-through into Lae_a1.  Mode 5
              * reaches it only on an ordered greater-than (`test ah,0x41 /
              * jne` at 0x1001ae9f: less, equal and unordered all skip). */
-            if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 5) goto Laee2;
-            if (!((*(float *)((char *)&g_aBrRaceCar + 0xFEC)) /* BR_LP64_BYTE_VIEW */ > g_0773C0)) goto Laee2;
+            if ((*(int *)&g_brRaceRules.mode) != 5) goto Laee2;
+            if (!((*(float *)&g_aBrRaceCar[0].tFinal) > g_0773C0)) goto Laee2;
         Lae_a1: /* 0x1001aea1 */
             if (BrFadeIsClosing() == 0) {
                 BrFadeSetTarget(0, 0x3e4ccccd);
@@ -961,14 +961,14 @@ extern "C" void BrRaceStep(void)
                 do {
                     if ((((*(char *)(((char *)&g_aBrRaceDriver[i].f68) + ((0))))) & 2) != 0) {
                         int handled = 0;
-                        if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 2) {              /* 0x1001af07 */
-                            int *pd = *(int**)&(*(Driver (*)[])((char *)&g_aBrRaceCar + 0x29C0)) /* BR_LP64_BYTE_VIEW */[i];
+                        if ((*(int *)&g_brRaceRules.mode) == 2) {              /* 0x1001af07 */
+                            int *pd = *(int**)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl)[i];
                             if (((*(int  *)((char*)((pd)) + ((i * 4 + 0x2c))))) != 0) {
                                 if (i == 0) {             /* 0x1001af38 */
                                     int  e8 = (*(int *)&g_brRace5BC8D8);
                                     int  clx = (signed char)(*(int *)&g_aBrRaceBeginRec);
-                                    if (!((*(int *)((char *)&g_aBrRaceCar + 0xFF8)) /* BR_LP64_BYTE_VIEW */ != 0 && clx == (*(int *)&g_Br0B380C) && e8 > 8)) {
-                                        int *p0 = *(int**)&(*(Driver (*)[])((char *)&g_aBrRaceCar + 0x29C0)) /* BR_LP64_BYTE_VIEW */;
+                                    if (!((*(int *)&g_aBrRaceCar[0].fFF8) != 0 && clx == (*(int *)&g_Br0B380C) && e8 > 8)) {
+                                        int *p0 = *(int**)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl);
                                         int  s34 = ((*(int  *)((char*)((p0)) + ((0x34)))));
                                         int *q;
                                         BrPodNop((char *)((char *)((char *)((char *)(&g_0A97A8)))), 0, s34, e8, (s34 < e8),
@@ -977,25 +977,25 @@ extern "C" void BrRaceStep(void)
                                         (*(int *)&g_brRace5BC8D8) = 0x10;
                                         /* 0x1001afad: q IS the pointer at driver0+0x2c
                                          * (mov eax,[edx+0x2c]; mov ecx,[eax]) */
-                                        q = (int*)((*(int  *)((char*)((*(int**)&(*(Driver (*)[])((char *)&g_aBrRaceCar + 0x29C0)) /* BR_LP64_BYTE_VIEW */)) + ((0x2c)))));
+                                        q = (int*)((*(int  *)((char*)((*(int**)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl))) + ((0x2c)))));
                                         (*(int *)&g_aBrRaceBeginRec) = q[0];
                                         (*(int *)&g_aBrRaceBeginRec[4]) = q[1];
                                         g_5BC8E8 = 0; g_5BC8EC = 0;
-                                        (*(int *)((char *)&g_aBrRaceCar + 0xFFC)) /* BR_LP64_BYTE_VIEW */ = BrStrGet(0xef);
-                                        (*(int *)((char *)&g_aBrRaceCar + 0x1000)) /* BR_LP64_BYTE_VIEW */ = 0x3f800000;
-                                        BrTimeFormat(&(*(int *)((char *)&g_aBrRaceCar + 0x100C)) /* BR_LP64_BYTE_VIEW */, (*(float *)((char *)&g_aBrRaceCar + 0xFEC)) /* BR_LP64_BYTE_VIEW */);
-                                        (*(int *)((char *)&g_aBrRaceCar + 0x1004)) /* BR_LP64_BYTE_VIEW */ = (int)&(*(int *)((char *)&g_aBrRaceCar + 0x100C)) /* BR_LP64_BYTE_VIEW */;
-                                        (*(int *)((char *)&g_aBrRaceCar + 0x1008)) /* BR_LP64_BYTE_VIEW */ = 0x3f800000;
+                                        (*(int *)&g_aBrRaceCar[0].pszBanner) = BrStrGet(0xef);
+                                        (*(int *)&g_aBrRaceCar[0].f1000) = 0x3f800000;
+                                        BrTimeFormat(&(*(int *)&g_aBrRaceCar[0].sz100C[0]), (*(float *)&g_aBrRaceCar[0].tFinal));
+                                        (*(int *)&g_aBrRaceCar[0].psz1004) = (int)&(*(int *)&g_aBrRaceCar[0].sz100C[0]);
+                                        (*(int *)&g_aBrRaceCar[0].f1008) = 0x3f800000;
                                         (*(int *)&g_brRaceBeginRecArmed) = 1;
                                     }
                                 }
-                                ((*(int  *)((char*)((*(int**)&(*(Driver (*)[])((char *)&g_aBrRaceCar + 0x29C0)) /* BR_LP64_BYTE_VIEW */[i])) + ((i * 4 + 0x2c))))) = 0;   /* 0x1001b01b */
+                                ((*(int  *)((char*)((*(int**)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl)[i])) + ((i * 4 + 0x2c))))) = 0;   /* 0x1001b01b */
                                 handled = 1;
                             }
                         }
                         if (!handled &&                    /* 0x1001b03a */
-                            ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 1 || (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 6) && (*(int *)&g_brRaceNEntrant) > 0) {
-                            int *pd = *(int**)&(*(Driver (*)[])((char *)&g_aBrRaceCar + 0x29C0)) /* BR_LP64_BYTE_VIEW */[i];
+                            ((*(int *)&g_brRaceRules.mode) == 1 || (*(int *)&g_brRaceRules.mode) == 6) && (*(int *)&g_brRaceNEntrant) > 0) {
+                            int *pd = *(int**)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl)[i];
                             int  off = 0x3c;
                             int  j = 0;
                             do {
@@ -1012,7 +1012,7 @@ extern "C" void BrRaceStep(void)
             if (loc14 != 0) goto Lb0f8;                    /* 0x1001b092 */
             goto Lb171;
         } else if ((*(int *)&g_brRaceLights) == 5) {           /* 0x1001b09d */
-            int st = (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */;
+            int st = (*(int *)&g_brRaceRules.mode);
             if (st == 2 || st == 1 || st == 0 || st == 6)
                 if ((*(int *)&DAT_105ccb68[8]) == 0) BrCarStateSave();
             goto Lb0f8;
@@ -1064,7 +1064,7 @@ Lb171:  /* 0x1001b171 merge */
         int   i = 0;
         do { ((Obj*)s)->m_100623E0(); i++; s += 0x80; } while (i < (*(int *)&g_brRaceNDriver));
     }
-    if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0 && (*(int *)&g_brRaceNEntrant) > 0) {          /* 0x1001b22d */
+    if ((*(int *)&g_brRaceRules.mode) == 0 && (*(int *)&g_brRaceNEntrant) > 0) {          /* 0x1001b22d */
         char *s = (char*)&(*(Driver (*)[])&g_aBrRaceCar);
         int   i = 0;
         do { ((Obj*)s)->m_1005F6C0(); i++; s += 0x2b68; } while (i < (*(int *)&g_brRaceNEntrant));
@@ -1081,7 +1081,7 @@ Lb171:  /* 0x1001b171 merge */
             if ((*(int *)&g_Br0B380C) == 2 || (*(int *)&g_Br0B380C) == 8) goto Lb365;
         }
         if ((*(int *)&g_brRaceNEntrant) > 0) {
-            char *s   = (char*)&(*(int *)((char *)&g_aBrRaceCar + 0x294C)) /* BR_LP64_BYTE_VIEW */;
+            char *s   = (char*)&(*(int *)&g_aBrRaceCar[0].gotHit);
             int   edx = 0;
             int   rem = (*(int *)&g_brRaceNEntrant);
             do {
@@ -1090,7 +1090,7 @@ Lb171:  /* 0x1001b171 merge */
                 for (a = 0; a < c; a++) {
                     if (*(int*)(s - 0x19a4) == (*(int *)&g_brRaceBeginCamMinus1)) {
                         unsigned short w =
-                            *(unsigned short*)((char*)&(*(int *)((char *)&g_aBrRaceCar + 0x290C)) /* BR_LP64_BYTE_VIEW */ + (a + edx) * 2);
+                            *(unsigned short*)((char*)&(*(int *)&g_aBrRaceCar[0].aNearIds[0]) + (a + edx) * 2);
                         if ((int)w == (*(int *)&g_brRaceBeginAirTrigger)) { (*(int *)&g_brRaceBeginAirArmed) = 1; break; }
                     }
                 }
@@ -1240,7 +1240,7 @@ Lb887:  /* 0x1001b887 */
     BrRaceHudFrame();
     loc18 = BrSnapPickSlot();
     {                                             /* 0x1001b990 deep-copy loop */
-        char *obase = (char*)&(*(char (*)[])((char *)&g_aBrSnap + 0xA08)) /* BR_LP64_BYTE_VIEW */ + 188656 * loc18;
+        char *obase = (char*)&(*(char (*)[])&g_aBrSnap[0].car[0].fwd.x) + 188656 * loc18;
         int   doff  = 0;
         int   ct    = (*(int *)&g_BrCarCount); if (ct == 0) ct = 1;
         int   k     = 0;
@@ -1248,24 +1248,24 @@ Lb887:  /* 0x1001b887 */
             char *out = obase + doff;
             int   a;
             memcpy(out, (char*)&(*(Driver (*)[])&g_aBrRaceCar) + doff, 11112);      /* rep movsd 0xada */
-            a = *(int*)((char*)&(*(int *)((char *)&g_aBrRaceCar + 0x2734)) /* BR_LP64_BYTE_VIEW */ + doff);             /* active-model fixup */
+            a = *(int*)((char*)&(*(int *)&g_aBrRaceCar[0].pMatA) + doff);             /* active-model fixup */
             if (a != 0) {
                 int fx = 0;
-                if      (a == (int)((char*)&(*(int *)((char *)&g_aBrRaceCar + 0x273C)) /* BR_LP64_BYTE_VIEW */ + doff)) fx = (int)(out + 0x273C);
-                else if (a == (int)((char*)&(*(int *)((char *)&g_aBrRaceCar + 0x2890)) /* BR_LP64_BYTE_VIEW */ + doff)) fx = (int)(out + 0x2890);
-                else if (a == (int)((char*)&(*(int *)((char *)&g_aBrRaceCar + 0x2780)) /* BR_LP64_BYTE_VIEW */ + doff)) fx = (int)(out + 0x2780);
-                else if (a == (int)((char*)&(*(int *)((char *)&g_aBrRaceCar + 0x27C4)) /* BR_LP64_BYTE_VIEW */ + doff)) fx = (int)(out + 0x27C4);
-                else if (a == (int)((char*)&(*(int *)((char *)&g_aBrRaceCar + 0x2808)) /* BR_LP64_BYTE_VIEW */ + doff)) fx = (int)(out + 0x2808);
+                if      (a == (int)((char*)&(*(int *)&g_aBrRaceCar[0].aSnap[0].m[0][0]) + doff)) fx = (int)(out + 0x273C);
+                else if (a == (int)((char*)&(*(int *)&g_aBrRaceCar[0].aSnap[5].m[0][0]) + doff)) fx = (int)(out + 0x2890);
+                else if (a == (int)((char*)&(*(int *)&g_aBrRaceCar[0].aSnap[1].m[0][0]) + doff)) fx = (int)(out + 0x2780);
+                else if (a == (int)((char*)&(*(int *)&g_aBrRaceCar[0].aSnap[2].m[0][0]) + doff)) fx = (int)(out + 0x27C4);
+                else if (a == (int)((char*)&(*(int *)&g_aBrRaceCar[0].aSnap[3].m[0][0]) + doff)) fx = (int)(out + 0x2808);
                 *(int*)(out + 0x2734) = fx;
             }
-            a = *(int*)((char*)&(*(int *)((char *)&g_aBrRaceCar + 0x2738)) /* BR_LP64_BYTE_VIEW */ + doff);
+            a = *(int*)((char*)&(*(int *)&g_aBrRaceCar[0].pMatB) + doff);
             if (a != 0) {
                 int fx = 0;
-                if      (a == (int)((char*)&(*(int *)((char *)&g_aBrRaceCar + 0x273C)) /* BR_LP64_BYTE_VIEW */ + doff)) fx = (int)(out + 0x273C);
-                else if (a == (int)((char*)&(*(int *)((char *)&g_aBrRaceCar + 0x2890)) /* BR_LP64_BYTE_VIEW */ + doff)) fx = (int)(out + 0x2890);
-                else if (a == (int)((char*)&(*(int *)((char *)&g_aBrRaceCar + 0x2780)) /* BR_LP64_BYTE_VIEW */ + doff)) fx = (int)(out + 0x2780);
-                else if (a == (int)((char*)&(*(int *)((char *)&g_aBrRaceCar + 0x27C4)) /* BR_LP64_BYTE_VIEW */ + doff)) fx = (int)(out + 0x27C4);
-                else if (a == (int)((char*)&(*(int *)((char *)&g_aBrRaceCar + 0x2808)) /* BR_LP64_BYTE_VIEW */ + doff)) fx = (int)(out + 0x2808);
+                if      (a == (int)((char*)&(*(int *)&g_aBrRaceCar[0].aSnap[0].m[0][0]) + doff)) fx = (int)(out + 0x273C);
+                else if (a == (int)((char*)&(*(int *)&g_aBrRaceCar[0].aSnap[5].m[0][0]) + doff)) fx = (int)(out + 0x2890);
+                else if (a == (int)((char*)&(*(int *)&g_aBrRaceCar[0].aSnap[1].m[0][0]) + doff)) fx = (int)(out + 0x2780);
+                else if (a == (int)((char*)&(*(int *)&g_aBrRaceCar[0].aSnap[2].m[0][0]) + doff)) fx = (int)(out + 0x27C4);
+                else if (a == (int)((char*)&(*(int *)&g_aBrRaceCar[0].aSnap[3].m[0][0]) + doff)) fx = (int)(out + 0x2808);
                 *(int*)(out + 0x2738) = fx;
             }
             k++;
@@ -1273,7 +1273,7 @@ Lb887:  /* 0x1001b887 */
         }
     }
     if ((*(int *)&g_brRaceNDriver) > 0) {                           /* 0x1001bb2a record-copy loop */
-        char *src = (char*)&(*(char (*)[])((char *)&g_aBrRaceDriver + 0x60)) /* BR_LP64_BYTE_VIEW */;
+        char *src = (char*)&(*(char (*)[])&g_aBrRaceDriver[0].pCar);
         char *dst = (char*)&(*(char (*)[])((char *)&g_aBrSnap + 0x64)) /* BR_LP64_BYTE_VIEW */ + 188656 * loc18;
         int   n   = (*(int *)&g_brRaceNDriver);
         do {
@@ -1281,15 +1281,15 @@ Lb887:  /* 0x1001b887 */
             memcpy(dst - 0x60, src - 0x60, 0x80);         /* rep movsd 0x20 */
             if (v != 0) {                                 /* re-index self pointer */
                 int di = (v - (int)&(*(Driver (*)[])&g_aBrRaceCar)) / 0x2b68;   /* magic /0x2b68 */
-                *(int*)dst = (int)((char*)&(*(char (*)[])((char *)&g_aBrSnap + 0xA08)) /* BR_LP64_BYTE_VIEW */ + 188656 * loc18 + di * 0x2b68);
+                *(int*)dst = (int)((char*)&(*(char (*)[])&g_aBrSnap[0].car[0].fwd.x) + 188656 * loc18 + di * 0x2b68);
             }
             src += 0x80;
             dst += 0x80;
         } while (--n);
     }
     /* 0x1001bbcd: camera-state snapshot + fixup */
-    memcpy((char*)&(*(char (*)[])((char *)&g_aBrSnap + 0x2C088)) /* BR_LP64_BYTE_VIEW */ + 188656 * loc18, &(BrG_6C1628[0]), 0x16 * 4);   /* rep movsd 0x16 */
-    BrPfxSaveState((char*)&(*(char (*)[])((char *)&g_aBrSnap + 0x2C088)) /* BR_LP64_BYTE_VIEW */ + 188656 * loc18 + 0x5c);
+    memcpy((char*)&(*(char (*)[])&g_aBrSnap[0].tailA.a[0]) + 188656 * loc18, &(BrG_6C1628[0]), 0x16 * 4);   /* rep movsd 0x16 */
+    BrPfxSaveState((char*)&(*(char (*)[])&g_aBrSnap[0].tailA.a[0]) + 188656 * loc18 + 0x5c);
     if ((*(int *)&g_brRaceBeginLimitOn) == 0) goto Lc583;                /* 0x1001bc04 -> replay-advance */
     g_5BCAF0 = BrSub10075020();                    /* 0x1001bc16 */
     g_5BC76C = 0;
@@ -1329,7 +1329,7 @@ Lb887:  /* 0x1001b887 */
         /* 0x1001bd72: g_5CCB5C != 2 main path */
         if ((*(int *)&g_BrX06909B4) == 0) goto Lc024;
         if ((*(int *)&g_brRaceNEntrant) > 0) {                       /* 0x1001bd7a per-driver replay */
-            char *s = (char*)&(*(Driver (*)[])((char *)&g_aBrRaceCar + 0x29C0)) /* BR_LP64_BYTE_VIEW */;
+            char *s = (char*)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl);
             int   i = 0;
             do {                                  /* loop top 0x1001bd94 */
                 int f = (*(int *)&g_BrX18ABAD0);
@@ -1361,7 +1361,7 @@ Lb887:  /* 0x1001b887 */
                             (*(int *)&DAT_105ccb68[9]) = 0; (*(int *)&DAT_105ccb68[12]) = 1;
                             if ((*(char *)&DAT_100bb2e0) != 0) { BrCdResume();
                                                  BrCdVolumeSet((unsigned char)(*(char *)&DAT_100bb2e0)); }
-                            if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 6) { BrDPlayMsg6SendSelf(); BrNetClearF10220DD0(); }
+                            if ((*(int *)&g_brRaceRules.mode) == 6) { BrDPlayMsg6SendSelf(); BrNetClearF10220DD0(); }
                             break;
                         case 5:  /* 0x1001bedf */
                             loc10 = 1; (*(int *)&g_BrX06909B4) = 1; DAT_105bc8dc = 1;
@@ -1403,7 +1403,7 @@ Lb887:  /* 0x1001b887 */
         BrNetSlotBroadcastTick();
         goto Lc13d;
     Lc024:  /* 0x1001c024 */
-        if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4 || (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 5) {     /* 0x1001c02c */
+        if ((*(int *)&g_brRaceRules.mode) == 4 || (*(int *)&g_brRaceRules.mode) == 5) {     /* 0x1001c02c */
             if (BrFadeIsClosing() != 0) goto Lc13d;
             {                                     /* 0x1001c0e0 particle-mute loop */
                 char *p = (char*)&(*(char (*)[])&g_aBrEnts);
@@ -1415,7 +1415,7 @@ Lb887:  /* 0x1001b887 */
                         BrFadeSetTarget(0, 0x3e4ccccd);
                     }
                     p += 0x15c;
-                } while (p < (char*)&(*(char (*)[])((char *)&g_aBrEnts + 0x2B8)) /* BR_LP64_BYTE_VIEW */);
+                } while (p < (char*)&(*(char (*)[])&g_aBrEnts[2].pad000[0]));
             }
             goto Lc13d;
         }
@@ -1431,8 +1431,8 @@ Lb887:  /* 0x1001b887 */
                 }
                 BrFadeSetTargetA(0, 0x3e4ccccd);      /* 0x1001c09c */
                 BrFadeSetTargetB(0, 0x3e4ccccd);
-                ((Obj*)*(int**)&(*(Driver (*)[])((char *)&g_aBrRaceCar + 0x29C0)) /* BR_LP64_BYTE_VIEW */)->m_1002F640(0x4000);
-                ((Obj*)*(int**)&(*(int *)((char *)&g_aBrRaceCar + 0x5528)) /* BR_LP64_BYTE_VIEW */)->m_1002F640(0x4000);
+                ((Obj*)*(int**)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl))->m_1002F640(0x4000);
+                ((Obj*)*(int**)&(*(int *)&g_aBrRaceCar[1].pCtl))->m_1002F640(0x4000);
             } else {                              /* 0x1001c051 no-op scan */
                 int a = 0;
                 do { a++; } while (a < (*(int *)&g_brRaceNEntrant));
@@ -1440,11 +1440,11 @@ Lb887:  /* 0x1001b887 */
         }
         goto Lc13d;
     Lc13d:  /* 0x1001c13d */
-        if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4) {
+        if ((*(int *)&g_brRaceRules.mode) == 4) {
             if (g_5bc760 == 2) BrRaceCueRewind();
-            if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4 && g_5bc760 == 1) {   /* 0x1001c158 lap-time gate */
+            if ((*(int *)&g_brRaceRules.mode) == 4 && g_5bc760 == 1) {   /* 0x1001c158 lap-time gate */
                 int slot = (*(int *)&g_brRaceBeginSeqIdx) << 5;
-                if (*(int*)((char*)&(*(int *)((char *)&g_brRaceRules + 0x14)) /* BR_LP64_BYTE_VIEW */ + slot) != 0) {
+                if (*(int*)((char*)&(*(int *)&g_brRaceRules.pfLapLength) + slot) != 0) {
                     g_brRaceBeginSeqT = g_brRaceBeginSeqT + g_brRaceFlyStep;  /* 0x1001c179 x87 timer */
                     if (g_brRaceBeginSeqT > *(float*)((char*)&g_0A936C + slot)) {
                         g_brRaceBeginSeqT = 0.0f;
@@ -1455,7 +1455,7 @@ Lb887:  /* 0x1001b887 */
         }
         if (BrFadeIsClosing() != 0 && BrFadeIsSettled() != 0) {   /* 0x1001c1ad */
             {                                     /* 0x1001c1c7 shift-copy all drivers */
-                char *s = (char*)&(*(Driver (*)[])((char *)&g_aBrRaceCar + 0x29C0)) /* BR_LP64_BYTE_VIEW */;
+                char *s = (char*)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl);
                 do {
                     if ((*(int *)&g_brRaceNEntrant) > 0) {
                         int off = 0x3c;
@@ -1491,11 +1491,11 @@ Lb887:  /* 0x1001b887 */
                 {                                 /* 0x1001c261 leader min-search */
                     int  n   = (*(int *)&g_brRaceNEntrant);
                     int  mx;
-                    (*(int *)&DAT_105ccb68[2]) = PI(*(int**)&(*(Driver (*)[])((char *)&g_aBrRaceCar + 0x29C0)) /* BR_LP64_BYTE_VIEW */, 0x34);
+                    (*(int *)&DAT_105ccb68[2]) = PI(*(int**)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl), 0x34);
                     (*(int *)&g_brRaceBeginBestCar) = 0;
                     mx = (*(int *)&DAT_105ccb68[2]);
                     if (n > 1) {
-                        char *b   = (char*)&(*(int *)((char *)&g_aBrRaceCar + 0x5528)) /* BR_LP64_BYTE_VIEW */;
+                        char *b   = (char*)&(*(int *)&g_aBrRaceCar[1].pCtl);
                         int   off = 0x38;
                         int   i   = 1;
                         do {
@@ -1505,7 +1505,7 @@ Lb887:  /* 0x1001b887 */
                         } while (i < n);
                     }
                     if (n > 0) {                  /* 0x1001c2bd gather leader deltas */
-                        char *s  = (char*)&(*(Driver (*)[])((char *)&g_aBrRaceCar + 0x29C0)) /* BR_LP64_BYTE_VIEW */;
+                        char *s  = (char*)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl);
                         int   ea = (*(int *)&g_brRaceBeginBestCar) * 4 + 0x2c;
                         int   eb = (*(int *)&g_brRaceBeginBestCar) * 4 + 0x34;
                         int   k  = 0;
@@ -1518,7 +1518,7 @@ Lb887:  /* 0x1001b887 */
                         } while (k < n);
                     }
                     if ((*(int *)&g_brRaceNEntrant) > 0) {           /* 0x1001c305 report + clear */
-                        char *b   = (char*)&(*(Driver (*)[])((char *)&g_aBrRaceCar + 0x29C0)) /* BR_LP64_BYTE_VIEW */;
+                        char *b   = (char*)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl);
                         int   off = 0x2c;
                         int   j   = 0;
                         do {
@@ -1538,9 +1538,9 @@ Lb887:  /* 0x1001b887 */
         Lc372:  /* 0x1001c372 */
             BrNop_1002CB3F();
             (*(int *)&g_brRaceBeginDifficulty) = 0;
-            if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 5) {
-                if (*(char*)((char*)*(int**)&(*(int *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */ + 4) != 0) {   /* 0x1001c387 */
-                    (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = 0;
+            if ((*(int *)&g_brRaceRules.mode) == 5) {
+                if (*(char*)((char*)*(int**)&(*(int *)&g_aBrRaceCar[0].pEquip) + 4) != 0) {   /* 0x1001c387 */
+                    (*(int *)&g_brRaceRules.mode) = 0;
                     BrSelLookup();
                     g_17A613C = 1;
                     BrGameStepSet((void*)&BrSetMode5);
@@ -1550,7 +1550,7 @@ Lb887:  /* 0x1001b887 */
                 goto Lc45c_0;
             }
             {                                     /* 0x1001c3b9 mode dispatch */
-                int st = (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */, c = g_5bc760;
+                int st = (*(int *)&g_brRaceRules.mode), c = g_5bc760;
                 if (st == 4 && c == 2) goto Lc44d;
                 if (DAT_105ccb60 != 0 &&
                     (st == 2 || st == 1 || st == 0 || st == 6)) {
@@ -1580,7 +1580,7 @@ Lb887:  /* 0x1001b887 */
         Lc475:  /* 0x1001c475 */
             g_17A5F20 = 1;
             {
-                char *s = (char*)&(*(Driver (*)[])((char *)&g_aBrRaceCar + 0x29C0)) /* BR_LP64_BYTE_VIEW */;
+                char *s = (char*)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl);
                 do { PI(*(int**)s, 0x44) = 0; s += 0x2b68; } while (s < (char*)&g_B1F248);
             }
         }
@@ -1603,11 +1603,11 @@ Lb887:  /* 0x1001b887 */
                 (*(int *)&g_BrX06909B4) = prev;
             }
         }
-        if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 6) FUN_10006460();        /* 0x1001c4e3 */
+        if ((*(int *)&g_brRaceRules.mode) == 6) FUN_10006460();        /* 0x1001c4e3 */
         {                                         /* 0x1001c4f1 HUD update */
-            int flag = (((*(int  *)((char*)((*(int**)&(*(int *)((char *)&g_aBrRaceCar + 0x168)) /* BR_LP64_BYTE_VIEW */)) + ((0x1b4))))) == 0 &&
-                        ((*(int  *)((char*)((*(int**)&(*(int *)((char *)&g_aBrRaceCar + 0x16C)) /* BR_LP64_BYTE_VIEW */)) + ((0x1b4))))) == 0) ? 0 : 1;
-            BrFfbUpdateSpring((unsigned char)(*(char *)((char *)&g_aBrRaceCar + 0x36D)) /* BR_LP64_BYTE_VIEW */, flag, (*(int *)((char *)&g_aBrRaceCar + 0xE90)) /* BR_LP64_BYTE_VIEW */);
+            int flag = (((*(int  *)((char*)((*(int**)&(*(int *)&g_aBrRaceCar[0].aBody[0].rb.child[0]))) + ((0x1b4))))) == 0 &&
+                        ((*(int  *)((char*)((*(int**)&(*(int *)&g_aBrRaceCar[0].aBody[0].rb.child[1]))) + ((0x1b4))))) == 0) ? 0 : 1;
+            BrFfbUpdateSpring((unsigned char)(*(char *)&g_aBrRaceCar[0].aBody[0].f0209), flag, (*(int *)&g_aBrRaceCar[0].fE90));
         }
         if ((*(int *)&DAT_100b51e4[1036]) != 0 && (*(int *)&g_BrX06909B4) == 0) FUN_1006bdd0();   /* 0x1001c52a */
         if ((*(int *)&DAT_105ccb68[8]) != 0) BrReplaySeek();        /* 0x1001c543 */

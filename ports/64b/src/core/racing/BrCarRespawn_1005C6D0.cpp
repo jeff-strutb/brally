@@ -116,7 +116,7 @@ void Car5C6D0::Respawn()
     if (((*(int *)&((BrDriverCar *)(this))->aBody[0].f01F8) < 0) || ((*(float *)&((BrDriverCar *)(this))->pos.z) < DAT_106eed10 - DAT_10077898)) {
         Sub5E6A0();
         Sub5BCC0();
-        if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 2)
+        if ((*(int *)&g_brRaceRules.mode) == 2)
             SetPos(*(float *)(((intptr_t)((BrDriverCar *)(this))->pNode.p) + (*(int *)&((BrDriverCar *)(this))->iPt.v) * 0x28 + 0x4C),
                    *(float *)(((intptr_t)((BrDriverCar *)(this))->pNode.p) + ((*(int *)&((BrDriverCar *)(this))->iPt.v) + 2) * 0x28),
                    *(float *)(((intptr_t)((BrDriverCar *)(this))->pNode.p) + 0x54 + (*(int *)&((BrDriverCar *)(this))->iPt.v) * 0x28) - DAT_1007789c);

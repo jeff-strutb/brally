@@ -221,8 +221,8 @@ int BrJoyScanAny(int *param_1)
   unsigned char auStack_110 [272];
 
   if ((*(int * *)&g_brFfb) == (int *)0x0) {
-    (*(int *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ = 2;
-    (*(int * *)&g_BrPadModeBytes) = &(*(int *)((char *)&g_BrCtrlCfg + 0x150)) /* BR_LP64_BYTE_VIEW */;
+    (*(int *)&g_BrCtrlCfg.active) = 2;
+    (*(int * *)&g_BrPadModeBytes) = &(*(int *)&g_BrCtrlCfg.profile[2].e[0][0]);
     BrFfbInit();
     if ((*(int * *)&g_brFfb) == (int *)0x0) {
       return 1;

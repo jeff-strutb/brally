@@ -62,9 +62,9 @@ int Ctl3E370::Activate()
 {
     Phase *p;
 
-    (*(int *)&g_brTime5C24) = (*(int *)((char *)&g_aBrRaceCar + 0xFE4)) /* BR_LP64_BYTE_VIEW */;
+    (*(int *)&g_brTime5C24) = (*(int *)&g_aBrRaceCar[0].tBest);
     p = g_slot;
-    (*(int *)&g_brTime5C20) = (*(int *)((char *)&g_aBrRaceCar + 0xFEC)) /* BR_LP64_BYTE_VIEW */;
+    (*(int *)&g_brTime5C20) = (*(int *)&g_aBrRaceCar[0].tFinal);
     if (p == 0) {
         p = new Phase;
         g_slot = p;

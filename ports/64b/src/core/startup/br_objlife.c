@@ -175,7 +175,7 @@ void __fastcall BrRaceSaveLastLapInfo(BrDriverCar *param_1)
     int *pRec;
     int off;
 
-    if ((*(int *)&DAT_105ccb68[8]) != 0 || (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 2 || (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4)
+    if ((*(int *)&DAT_105ccb68[8]) != 0 || (*(int *)&g_brRaceRules.mode) == 2 || (*(int *)&g_brRaceRules.mode) == 4)
         return;
     if (param_1->f140 >= (*(int *)&g_brRaceNEntrant))
         return;
@@ -190,7 +190,7 @@ void __fastcall BrRaceSaveLastLapInfo(BrDriverCar *param_1)
     n = 0;
     if ((*(int *)&g_brRaceNEntrant) > 0) {
         off = 0;
-        pRec = &(*(int *)((char *)&g_aBrRaceCar + 0x29C0)) /* BR_LP64_BYTE_VIEW */;
+        pRec = &(*(int *)&g_aBrRaceCar[0].pCtl);
         do {
             *(int *)(*pRec + 0x34 + param_1->f140 * 4) = 0;
             pRec += 0xada;

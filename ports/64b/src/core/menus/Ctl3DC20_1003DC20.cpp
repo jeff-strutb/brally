@@ -38,7 +38,7 @@ public:
 #define g_slot g_5CAC
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define g_mode (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */
+#define g_mode (*(int *)&g_brRaceRules.mode)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */

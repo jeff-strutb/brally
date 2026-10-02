@@ -565,7 +565,7 @@ int BrInputBitHeld(int code)
         return 0;
     if (DAT_10ac5c50 != 0)
         return 1;
-    if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0) {
+    if ((*(int *)&g_brRaceRules.mode) == 0) {
         if (g_5BF4 != 0)
             return (1 << code) & (*(unsigned short *)((char *)&DAT_10ac5b38 + 0x2));
         return (1 << code) & (*(int *)&DAT_10ac40a0);

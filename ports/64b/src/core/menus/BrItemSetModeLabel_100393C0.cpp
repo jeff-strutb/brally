@@ -126,7 +126,7 @@ int BrItemSetModeLabel_100393C0(Obj393C0 *pObj)
      * RESIDUE 2 bytes: k lands in eax where the original has ecx. */
     {
         int k;
-        if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0) {
+        if ((*(int *)&g_brRaceRules.mode) == 0) {
             if (DAT_10ac5c00 != 0) {
                 s = BrStrGet((*(int (*)[])&g_aBrAC3B0)[
                         (*(unsigned char (*)[])&g_aBr0B3820[1])[(g_brIdx5C04 + (*(char *)&DAT_10ac5c10) * 12) * 2]]);

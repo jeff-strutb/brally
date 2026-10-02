@@ -263,7 +263,7 @@ int BrPhaseEnterPlaceholder_1004A580(GameUi *parent)
     (*(short *)&((BrUiPage_ *)(cont))->cSel) += 1;
     fx = (float)(*(int *)&g_hot2);
     fy = (float)(*(int *)((char *)&g_hot2 + 0x4));
-    if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0) {
+    if ((*(int *)&g_brRaceRules.mode) == 0) {
         p = new BrCtl;
         (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
         bad = (p == 0);

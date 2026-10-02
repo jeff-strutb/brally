@@ -204,7 +204,7 @@ void BrFfbUpdateSpring(int32_t up, int32_t enable, int32_t decay)
     int32_t bound;
     BrDiObj *pEff;
 
-    if ((*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ != 1 && (*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ != 2) {
+    if ((*(int32_t *)&g_BrCtrlCfg.active) != 1 && (*(int32_t *)&g_BrCtrlCfg.active) != 2) {
         return;
     }
     if ((*(int32_t *)&DAT_10b71540) == 0) {
@@ -478,7 +478,7 @@ int32_t BrFfbInit(void)
     BrDbgSink pfnDbg;
     int32_t ret;
 
-    ret = (*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */;
+    ret = (*(int32_t *)&g_BrCtrlCfg.active);
     if (ret != 0) {
         g_brFfb.initCount += 1;
         if (g_brFfb.initCount == 1) {
@@ -570,7 +570,7 @@ failDword:
                 /* NOTE: initCount stays raised. See slice1_10.h. */
                 return 0;
             }
-            ret = (*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */;
+            ret = (*(int32_t *)&g_BrCtrlCfg.active);
         }
     }
     return ret;

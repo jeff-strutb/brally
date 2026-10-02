@@ -331,12 +331,12 @@ BR31_HOOK_F4(BrPhaseHook_100458E0, BrPhaseLeaveNamed_10046BF0)
 
 int BrPhaseHook_10045AA0(void *pArg)
 {
-    (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = 0;
+    (*(int *)&g_brRaceRules.mode) = 0;
     BrSub1003E680();
-    (*(void * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */ = 0;
+    (*(void * *)&g_aBrRaceCar[0].pEquip) = 0;
     Ctl3F130_fn(pArg);
     *(void **)((*(char * *)&DAT_10ac5d08) + 8) = (void *)BrOpt6D70;
-    (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = 0;
+    (*(int *)&g_brRaceRules.mode) = 0;
     BrSub1003E510();
     return 1;
 }
@@ -419,7 +419,7 @@ int BrPhaseHook_10046380(void *pArg)
     (void)CtlE660_fn((BrPhaseCtx *)pArg);
     (*(int32_t *)&DAT_100abaa4) = 1;
     (*(BrPhase * *)&DAT_10ac5d0c)->pfnHook = BrOpt6D20;
-    (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = 2;
+    (*(int32_t *)&g_brRaceRules.mode) = 2;
     return 1;
 }
 

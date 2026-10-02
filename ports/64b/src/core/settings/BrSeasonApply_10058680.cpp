@@ -168,25 +168,25 @@ int BrSeasonApply(void)
     (*(int *)&DAT_10ac5c1c) = sum;
 
     st.i = *(int *)(*(unsigned char (*)[])&g_aBrAA26F4);
-    if (st.b[1] == z && (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 5 && (*(int *)&g_a220B20) == z) {
+    if (st.b[1] == z && (*(int *)&g_brRaceRules.mode) != 5 && (*(int *)&g_a220B20) == z) {
         cur = st.b[0];
         if (cur <= (*(unsigned char *)&g_aBrA9DBD8[1]) && (cur != z || !((*(unsigned char *)&g_aBrA9DBD8[1]) > (unsigned char)z))) {
-            (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = z;
+            (*(int *)&g_brRaceRules.mode) = z;
             DAT_10ac5c0c = ret;
             for (i = 0; i < 4; i++) {
                 (*(unsigned char (*)[])&g_aBrAA26F4)[i + 2 + (*(int *)(*(unsigned char (*)[])&g_aBrAA26F4) & 0xff) * 4] = z;
                 *(unsigned short *)((*(unsigned char (*)[])&g_aBrAA26F4) + 0x1a + (i + (*(int *)(*(unsigned char (*)[])&g_aBrAA26F4) & 0xff) * 4) * 2) = z;
                 *(int *)((*(unsigned char (*)[])&g_aBrAA26F4) + 0x4c + (i + (*(int *)(*(unsigned char (*)[])&g_aBrAA26F4) & 0xff) * 4) * 4) = z;
-                *(unsigned char *)(i + *(unsigned char *)((*(int *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */ + 4) * 4 + 6 + (*(int *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */) = z;
-                *(unsigned char *)(i + *(unsigned char *)((*(int *)((char *)&g_aBrRaceCar + 0x39F4)) /* BR_LP64_BYTE_VIEW */ + 4) * 4 + 6 + (*(int *)((char *)&g_aBrRaceCar + 0x39F4)) /* BR_LP64_BYTE_VIEW */) = z;
-                *(unsigned short *)((*(int *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */ + 0x1e + (i + *(unsigned char *)((*(int *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */ + 4) * 4) * 2) = z;
-                *(unsigned short *)((*(int *)((char *)&g_aBrRaceCar + 0x39F4)) /* BR_LP64_BYTE_VIEW */ + 0x1e + (i + *(unsigned char *)((*(int *)((char *)&g_aBrRaceCar + 0x39F4)) /* BR_LP64_BYTE_VIEW */ + 4) * 4) * 2) = z;
-                *(int *)((*(int *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */ + (i + 0x14 + *(unsigned char *)((*(int *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */ + 4) * 4) * 4) = z;
-                *(int *)((*(int *)((char *)&g_aBrRaceCar + 0x39F4)) /* BR_LP64_BYTE_VIEW */ + (i + 0x14 + *(unsigned char *)((*(int *)((char *)&g_aBrRaceCar + 0x39F4)) /* BR_LP64_BYTE_VIEW */ + 4) * 4) * 4) = z;
+                *(unsigned char *)(i + *(unsigned char *)((*(int *)&g_aBrRaceCar[0].pEquip) + 4) * 4 + 6 + (*(int *)&g_aBrRaceCar[0].pEquip)) = z;
+                *(unsigned char *)(i + *(unsigned char *)((*(int *)&g_aBrRaceCar[1].pEquip) + 4) * 4 + 6 + (*(int *)&g_aBrRaceCar[1].pEquip)) = z;
+                *(unsigned short *)((*(int *)&g_aBrRaceCar[0].pEquip) + 0x1e + (i + *(unsigned char *)((*(int *)&g_aBrRaceCar[0].pEquip) + 4) * 4) * 2) = z;
+                *(unsigned short *)((*(int *)&g_aBrRaceCar[1].pEquip) + 0x1e + (i + *(unsigned char *)((*(int *)&g_aBrRaceCar[1].pEquip) + 4) * 4) * 2) = z;
+                *(int *)((*(int *)&g_aBrRaceCar[0].pEquip) + (i + 0x14 + *(unsigned char *)((*(int *)&g_aBrRaceCar[0].pEquip) + 4) * 4) * 4) = z;
+                *(int *)((*(int *)&g_aBrRaceCar[1].pEquip) + (i + 0x14 + *(unsigned char *)((*(int *)&g_aBrRaceCar[1].pEquip) + 4) * 4) * 4) = z;
             }
             goto done;
         }
-        (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = 5;
+        (*(int *)&g_brRaceRules.mode) = 5;
         if (cur == z && (*(unsigned char *)&g_aBrA9DBD8[1]) > (unsigned char)z) {
             if ((*(int *)((char *)&g_a220B20 + 0xC)) < 5)
                 DAT_10ac5c08 = ret;

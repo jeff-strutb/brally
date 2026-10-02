@@ -1171,8 +1171,8 @@ void BrSceneDlBuild(struct BrViewRect *param_1, int param_2, unsigned char *para
         if (bSolo) {
             DAT_1035f7e0 = 0x800;
         }
-        if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 1 && (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 6 &&
-            ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 5 || *(char *)(*(int *)(param_4 + 0xe8c) + 4) != '\0')) {
+        if ((*(int *)&g_brRaceRules.mode) != 1 && (*(int *)&g_brRaceRules.mode) != 6 &&
+            ((*(int *)&g_brRaceRules.mode) != 5 || *(char *)(*(int *)(param_4 + 0xe8c) + 4) != '\0')) {
             DAT_1035f7e0 = DAT_1035f7e0 | 0x4000;
         }
         if ((*(int *)((char *)&g_aBrEntRecs + 0x78)) != 0 &&

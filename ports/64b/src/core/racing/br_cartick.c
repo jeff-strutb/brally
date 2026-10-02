@@ -26,13 +26,13 @@
 void __fastcall BrCarTickClocks(BrDriverCar *pCar)
 {
     if ((((*(unsigned char *)(((((((char *)pCar->pProfile))))) + ((0x68))))) & 3) == 0) {
-        if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 3) {
+        if ((*(int *)&g_brRaceRules.mode) == 3) {
             ((pCar->tRun)) += g_brRaceFlyStep;
             return;
         }
         ((pCar->tFinal)) += g_brRaceFlyStep;
         ((pCar->tRun)) += g_brRaceFlyStep;
-        if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 1 || (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 6) {
+        if ((*(int *)&g_brRaceRules.mode) == 1 || (*(int *)&g_brRaceRules.mode) == 6) {
             /* Written out, not `-=`: on a volatile operand `-=` loads the
              * volatile first and emits fsubr; this form keeps `fld x; fsub dt`. */
             ((pCar->fFF0)) = ((pCar->fFF0)) - g_brRaceFlyStep;

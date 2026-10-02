@@ -254,7 +254,7 @@ void BrGlRaceStart(void)
   g_brRace6EC760 = (*(int32_t *)&g_brItemIconCount);
   g_brRace6E9A34 = g_brRaceB71A6C;
   BrSub100770C0();
-  (*(int *)&g_brRaceTick) = (unsigned int)((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4);
+  (*(int *)&g_brRaceTick) = (unsigned int)((*(int *)&g_brRaceRules.mode) == 4);
   g_brRace18EEED8 = 0;
   (*(int *)&DAT_105ccb68[6]) = 0;
   FUN_1002dec3();
@@ -263,10 +263,10 @@ void BrGlRaceStart(void)
   BrEntSlotsReset();
   BrNop_1002E136();
   BrCursorPairSet(0);
-  if (((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 1) || ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 6)) {
-    *(unsigned short *)((*(int *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */ + 0xf2) = 0xffff;
-    *(unsigned short *)((*(int *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */ + 0xf0) = 0xffff;
-    *(unsigned short *)((*(int *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */ + 0xf4) = 0xffff;
+  if (((*(int *)&g_brRaceRules.mode) == 1) || ((*(int *)&g_brRaceRules.mode) == 6)) {
+    *(unsigned short *)((*(int *)&g_aBrRaceCar[0].pEquip) + 0xf2) = 0xffff;
+    *(unsigned short *)((*(int *)&g_aBrRaceCar[0].pEquip) + 0xf0) = 0xffff;
+    *(unsigned short *)((*(int *)&g_aBrRaceCar[0].pEquip) + 0xf4) = 0xffff;
   }
   BrRaceEntrantCountSet(1);
   BrGameStepSet(BrPodNop);
@@ -288,18 +288,18 @@ void BrGlRaceStart(void)
   while (BrSaveLoad(2,1) == 0) {
   }
   BrUiVolumeApply();
-  if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0) {
+  if ((*(int *)&g_brRaceRules.mode) == 0) {
     BrSelLookup();
     (*(int *)&g_brRaceNEntrant) = 1;
   }
-  else if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 2) {
+  else if ((*(int *)&g_brRaceRules.mode) == 2) {
     (*(int *)&g_brRaceNEntrant) = 1;
   }
   (*(int32_t *)&DAT_104b15e8) = g_226e80;
-  *(int *)((*(int *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */ + 0xf8) = g_7b320;
-  *(int *)((*(int *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */ + 0xfc) = g_7b324;
-  *(int *)((*(int *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */ + 0x104) = g_7b328;
-  *(int *)((*(int *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */ + 0x100) = g_7b32c;
+  *(int *)((*(int *)&g_aBrRaceCar[0].pEquip) + 0xf8) = g_7b320;
+  *(int *)((*(int *)&g_aBrRaceCar[0].pEquip) + 0xfc) = g_7b324;
+  *(int *)((*(int *)&g_aBrRaceCar[0].pEquip) + 0x104) = g_7b328;
+  *(int *)((*(int *)&g_aBrRaceCar[0].pEquip) + 0x100) = g_7b32c;
   BrPodNop();
   BrPodNop();
   BrPodNop();

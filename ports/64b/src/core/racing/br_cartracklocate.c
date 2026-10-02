@@ -105,7 +105,7 @@ unsigned int BR_THISCALL1 BrCarTrackLocate(BrDriverCar *param_1)
   iVar12 = g_pBrRaceLapRec;
   if (0 < DAT_106eed54) {
     do {
-      if ((((((param_1->f140 < (*(int *)&g_brRaceNEntrant)) || ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 2)) ||
+      if ((((((param_1->f140 < (*(int *)&g_brRaceNEntrant)) || ((*(int *)&g_brRaceRules.mode) == 2)) ||
              ((*(unsigned char *)(*(int *)(DAT_106eed50 + iVar13 * 4) + 0x16) & 1) == 0)) &&
             ((iVar6 = *(int *)(DAT_106eed50 + iVar13 * 4), local_46 >= *(unsigned char *)(iVar6 + 0x10) &&
               (local_46 <= *(unsigned char *)(iVar6 + 0x12))))) &&

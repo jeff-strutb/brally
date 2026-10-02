@@ -446,7 +446,7 @@ LAB_1005b7f2:
   }
 LAB_1005b92f:
   local[4] = DAT_10077780;
-  if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 1) {
+  if ((*(int *)&g_brRaceRules.mode) == 1) {
     if (pCar->fFF8 == 0) goto LAB_1005b9e9;
     local[5] = DAT_10077780;
     if (0 < (*(int *)&g_brRaceNDriver)) {
@@ -477,7 +477,7 @@ LAB_1005b92f:
     if (dX < DAT_10077780) goto LAB_1005b9e9;
     if (dX <= DAT_10077860) goto LAB_have_x;
   }
-  else if ((((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 6) || (pCar->fFF8 == 0)) ||
+  else if ((((*(int *)&g_brRaceRules.mode) != 6) || (pCar->fFF8 == 0)) ||
           (local[4] = DAT_10077864, pCar->fFF8 == 1)) {
     goto LAB_1005b9e9;
   }

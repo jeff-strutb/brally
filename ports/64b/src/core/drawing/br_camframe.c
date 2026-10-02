@@ -54,7 +54,7 @@ void __fastcall BrCamFrameInitB(BrDriverCar *p)
     BrVec3        *pPos;
     BrCamFrame    *pSel;
 
-    pSel = ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 5) ? (BrCamFrame *)&p->aSnap[1]
+    pSel = ((*(int *)&g_brRaceRules.mode) == 5) ? (BrCamFrame *)&p->aSnap[1]
                                  : (BrCamFrame *)&p->aSnap[0];
     *(BrCamFrame * *)&p->pMatA  = pSel;
     *(BrCamFrame * *)&p->pMatB = pSel;

@@ -97,17 +97,17 @@ void __fastcall BrRaceCarPickIndex(BrDriverCar *pCar)
   int i;
   short m;
 
-  lvl = (*(unsigned char * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */[4];
+  lvl = (*(unsigned char * *)&g_aBrRaceCar[0].pEquip)[4];
   cl = lvl;
   if (cl > 3) cl = 3;
   pos = pCar->f140;
   if (pos < (*(int *)&g_brRaceNEntrant)) {
-    if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0) {
+    if ((*(int *)&g_brRaceRules.mode) == 0) {
       arg.n = (*(char (*)[2])&g_brStages[lvl].f0C)[0];
       BrEntitySetIndex(pCar, arg);
     }
-  } else if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 1 || (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 6) {
-    pCar->f29A8 = (*(int *)((char *)&g_aBrRaceCar + 0x29A8)) /* BR_LP64_BYTE_VIEW */;
+  } else if ((*(int *)&g_brRaceRules.mode) == 1 || (*(int *)&g_brRaceRules.mode) == 6) {
+    pCar->f29A8 = (*(int *)&g_aBrRaceCar[0].f29A8);
   } else {
     m = DAT_100b3024[cl].mask;
     for (i = 0; i < 16; i++) {
@@ -158,7 +158,7 @@ void __fastcall BrRaceCarReset(BrDriverCar *pCar)
     idx = (int)(pCar - (*(unsigned char (*)[])&g_aBrRaceCar)) / (int)BR_CAR_STRIDE;
     pCar->f140 = idx;
 
-    if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 6) {
+    if ((*(int *)&g_brRaceRules.mode) != 6) {
         /* Three int-typed locals: the original zero-extends all three
          * bytes into registers before any store. */
         int c2 = (*(unsigned char (*)[])&g_aBr0B37D0)[idx * 3 + 2];

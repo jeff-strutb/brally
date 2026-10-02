@@ -88,7 +88,7 @@ void FUN_10061310(void)
   BrSndBankClear();
   iVar2 = 0;
   if ((*(int *)&g_BrCarCount) > 0) {
-    puVar3 = &(*(int *)((char *)&g_aBrRaceCar + 0x29A8)) /* BR_LP64_BYTE_VIEW */;
+    puVar3 = &(*(int *)&g_aBrRaceCar[0].f29A8);
     do {
       BrSndBankSetCar(iVar2,*puVar3);
       iVar2 = iVar2 + 1;

@@ -157,15 +157,15 @@ void BR_THISCALL1 BrSndCarStep(BrDriverCar *pCar)
   }
   local_24 = 0;
   if (g_brMode0AA8B4 == 1) {
-    iVar8 = *(int *)((char *)&(*(int *)((char *)&g_aBrRaceCar + 0x2734)) /* BR_LP64_BYTE_VIEW */ + local_4);
+    iVar8 = *(int *)((char *)&(*(int *)&g_aBrRaceCar[0].pMatA) + local_4);
     if (pCar->fF78 != 0) goto LAB_10061526;
-    iVar3 = *(int *)((char *)&(*(int *)((char *)&g_aBrRaceCar + 0xF78)) /* BR_LP64_BYTE_VIEW */ + local_4);
+    iVar3 = *(int *)((char *)&(*(int *)&g_aBrRaceCar[0].fF78) + local_4);
 LAB_j10061524:
     if (iVar3 != 0) goto LAB_10061526;
   }
   else {
     iVar8 = BR_LP64_PTR_AS_INT(pCar->pMatA);
-    if ((pCar->fF78 == 0) && (*(int *)((char *)&(*(int *)((char *)&g_aBrRaceCar + 0xF78)) /* BR_LP64_BYTE_VIEW */ + local_4) == 0)) {
+    if ((pCar->fF78 == 0) && (*(int *)((char *)&(*(int *)&g_aBrRaceCar[0].fF78) + local_4) == 0)) {
       iVar3 = g_aBrRaceCar[(*(int *)&g_brRaceBegin6E8720)].fF78;
       goto LAB_j10061524;
     }
@@ -475,7 +475,7 @@ LAB_10061dc3:
     }
   }
   if (g_brMode0AA8B4 == 1) {
-    iVar6 = *(int *)((char *)&(*(int *)((char *)&g_aBrRaceCar + 0x2734)) /* BR_LP64_BYTE_VIEW */ + local_4) + 0x30;
+    iVar6 = *(int *)((char *)&(*(int *)&g_aBrRaceCar[0].pMatA) + local_4) + 0x30;
     *local_10 = *(int *)iVar6;
     local_10[1] = *(int *)(iVar6 + 4);
     local_10[2] = *(int *)(iVar6 + 8);

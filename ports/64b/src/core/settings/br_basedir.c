@@ -155,20 +155,20 @@ void FUN_10007f40(char *param_1)
         g_226e80 = atoi(line + 14);
       }
       else if (strncmp(line, s_gameMode__1007b494, 9) == 0) {
-        (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = atoi(line + 9);
+        (*(int *)&g_brRaceRules.mode) = atoi(line + 9);
       }
       else if (strncmp(line, s_ReadJoystick__1007b484, 13) == 0) {
         n = atoi(line + 13);
-        (*(int *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ = n;
+        (*(int *)&g_BrCtrlCfg.active) = n;
         switch (n) {
         case 1:
-          (*(int * *)&g_BrPadModeBytes) = &(*(int *)((char *)&g_BrCtrlCfg + 0xA8)) /* BR_LP64_BYTE_VIEW */;
+          (*(int * *)&g_BrPadModeBytes) = &(*(int *)&g_BrCtrlCfg.profile[1].e[0][0]);
           break;
         case 2:
-          (*(int * *)&g_BrPadModeBytes) = &(*(int *)((char *)&g_BrCtrlCfg + 0x150)) /* BR_LP64_BYTE_VIEW */;
+          (*(int * *)&g_BrPadModeBytes) = &(*(int *)&g_BrCtrlCfg.profile[2].e[0][0]);
           break;
         case 3:
-          (*(int * *)&g_BrPadModeBytes) = &(*(int *)((char *)&g_BrCtrlCfg + 0x1F8)) /* BR_LP64_BYTE_VIEW */;
+          (*(int * *)&g_BrPadModeBytes) = &(*(int *)&g_BrCtrlCfg.profile[3].e[0][0]);
           break;
         default:
           (*(int * *)&g_BrPadModeBytes) = &(*(int *)&g_BrCtrlCfg);
@@ -253,21 +253,21 @@ void FUN_10007f40(char *param_1)
       }
       p = strstr(param_1, s_gameMode__1007b494);
       if (p != 0) {
-        (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = atoi(p + strlen(s_gameMode__1007b494));
+        (*(int *)&g_brRaceRules.mode) = atoi(p + strlen(s_gameMode__1007b494));
       }
       p = strstr(param_1, s_ReadJoystick__1007b484);
       if (p != 0) {
         n = atoi(p + strlen(s_ReadJoystick__1007b484));
-        (*(int *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ = n;
+        (*(int *)&g_BrCtrlCfg.active) = n;
         switch (n) {
         case 1:
-          (*(int * *)&g_BrPadModeBytes) = &(*(int *)((char *)&g_BrCtrlCfg + 0xA8)) /* BR_LP64_BYTE_VIEW */;
+          (*(int * *)&g_BrPadModeBytes) = &(*(int *)&g_BrCtrlCfg.profile[1].e[0][0]);
           break;
         case 2:
-          (*(int * *)&g_BrPadModeBytes) = &(*(int *)((char *)&g_BrCtrlCfg + 0x150)) /* BR_LP64_BYTE_VIEW */;
+          (*(int * *)&g_BrPadModeBytes) = &(*(int *)&g_BrCtrlCfg.profile[2].e[0][0]);
           break;
         case 3:
-          (*(int * *)&g_BrPadModeBytes) = &(*(int *)((char *)&g_BrCtrlCfg + 0x1F8)) /* BR_LP64_BYTE_VIEW */;
+          (*(int * *)&g_BrPadModeBytes) = &(*(int *)&g_BrCtrlCfg.profile[3].e[0][0]);
           break;
         default:
           (*(int * *)&g_BrPadModeBytes) = &(*(int *)&g_BrCtrlCfg);

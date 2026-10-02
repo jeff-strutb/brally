@@ -752,11 +752,11 @@ stepped:
                 BrVec3MulAddTo(&pCar->aBody[0].rb.st.vel, &pCar->lateral, -f);
                 BrVec3MulAddTo(&pCar->aBody[0].rb.st.vel, &pCar->pathUp, t3);
             }
-            if ((*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0) {
+            if ((*(int32_t *)&g_brRaceRules.mode) == 0) {
                 BrVec3ScaleBy(&pCar->aBody[0].rb.st.vel,
                               g_aBrAiDiffScale[pCar->pProfile->f74
-                                  + ((*(BrAiMenuRec * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */->b4 * 4 + (*(BrAiMenuRec * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */->b5) * 2]);
-            } else if ((*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 1 || (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 6) {
+                                  + ((*(BrAiMenuRec * *)&g_aBrRaceCar[0].pEquip)->b4 * 4 + (*(BrAiMenuRec * *)&g_aBrRaceCar[0].pEquip)->b5) * 2]);
+            } else if ((*(int32_t *)&g_brRaceRules.mode) == 1 || (*(int32_t *)&g_brRaceRules.mode) == 6) {
                 w = (short)(*(int32_t *)&DAT_104b15e8) - 1;
                 if (w > 2 || w < 0)
                     w = 0;

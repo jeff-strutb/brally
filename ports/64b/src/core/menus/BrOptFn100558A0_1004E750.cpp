@@ -205,7 +205,7 @@ int BrOptFn100558A0(GameUi *parent)
     char       bad;
 
     (*(short *)&((BrPhase_ *)(parent))->iPage) = 0;
-    (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = 6;
+    (*(int *)&g_brRaceRules.mode) = 6;
     (*(int (*)[1])&((BrPhase_ *)(parent))->aFlags[0])[(*(unsigned short *)&((BrPhase_ *)(parent))->nPages)] = 1;
     cont = new Page04E750;
     (*(Page04E750 * (*)[22])&((BrPhase_ *)(parent))->aPages[0])[(*(unsigned short *)&((BrPhase_ *)(parent))->nPages)] = cont;

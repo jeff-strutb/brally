@@ -595,7 +595,7 @@ int BrOptCycleAA2A0C(void)
 
     (g_aBrB4E710[6]) = v;
     v = g_aBrAC520[v];
-    (*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ = v;
+    (*(int32_t *)&g_BrCtrlCfg.active) = v;
 
     switch (v) {
     default:

@@ -104,7 +104,7 @@ void BrReplayAdvance(void)
      * cmp esi,4; jne; mov ecx,1` then `test ecx,ecx / jle`. A helper call
      * is the extra `call` in the bag. */
     n = 8;
-    if ((*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 2 || (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4)
+    if ((*(int32_t *)&g_brRaceRules.mode) == 2 || (*(int32_t *)&g_brRaceRules.mode) == 4)
         n = 1;
 
     /* orig `test ecx,ecx; jle` THEN `mov eax,&count; mov edx,ecx`. Setup
@@ -119,7 +119,7 @@ void BrReplayAdvance(void)
         } while (--left);
     }
 
-    if ((*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 2 || (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4) {
+    if ((*(int32_t *)&g_brRaceRules.mode) == 2 || (*(int32_t *)&g_brRaceRules.mode) == 4) {
         /* orig: eax=count[1], ecx=cursor[1], `dec eax; cmp ecx,eax; jge;
          * mov eax,ecx; inc eax; store`.  The `mov eax,ecx` copy comes from
          * RE-READING the cursor global in the store: VC5 CSEs the reload
@@ -289,7 +289,7 @@ void BrReplayReset(void)
 
     /* Open-coded: two callers keep BrReplayActiveCount from inlining. */
     n = 8;
-    if ((*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 2 || (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4)
+    if ((*(int32_t *)&g_brRaceRules.mode) == 2 || (*(int32_t *)&g_brRaceRules.mode) == 4)
         n = 1;
 
     /* The `test ecx,ecx / jle` guard is dead (n is 1 or 8) but is kept as the

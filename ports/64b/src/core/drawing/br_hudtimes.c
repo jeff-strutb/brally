@@ -116,7 +116,7 @@ void BrSub_10017290(BrHudView *aViews)
     BrSetGlobal_ABB30(0x0F);
 
     /* `cmp eax,6 / ja` -- unsigned, so a negative mode also falls out. */
-    mode = (uint32_t)(*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */;
+    mode = (uint32_t)(*(int32_t *)&g_brRaceRules.mode);
     if (mode > 6u) {
         return;
     }

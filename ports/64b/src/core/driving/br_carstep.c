@@ -168,13 +168,13 @@ void BR_THISCALL1 BrCarStep(BrDriverCar *pCar)
       }
     }
     if (((*(int *)&DAT_105ccb68[8]) == 0) &&
-        ((((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 2 || (pCar->f140 != 1)) ||
+        ((((*(int *)&g_brRaceRules.mode) != 2 || (pCar->f140 != 1)) ||
           (pCar->pCtl->pHdr == 0)))) {
-      if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4) {
+      if ((*(int *)&g_brRaceRules.mode) == 4) {
         if ((pCar->f140 == 0) &&
             (pCar->pCtl->pHdr != 0))
           goto LAB_net;
-      } else if ((((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 5) && ((*(int *)&g_brRaceTick) == 0)) &&
+      } else if ((((*(int *)&g_brRaceRules.mode) != 5) && ((*(int *)&g_brRaceTick) == 0)) &&
                  (0x5a < *(int *)&pCar->aBody[2].rb.f1B4))
         goto LAB_net;
       BrCarPhysStep(pCar);

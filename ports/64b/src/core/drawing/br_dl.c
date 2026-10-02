@@ -505,35 +505,35 @@ side:
     /* ---- 0x1001FE0D: install, do not return ------------------------- */
     if ((geo & 1u) != 0) {
         if ((geo & 0x20000u) != 0) {
-            (*(void * *)((char *)&g_brGbi0A79F0 + 0x10)) /* BR_LP64_BYTE_VIEW */ = (*(int32_t *)&BrGbiRectG_5CDA04) ? (void *)BrDlVtxLitDecal
+            (*(void * *)&g_brGbi0A79F0[4]) = (*(int32_t *)&BrGbiRectG_5CDA04) ? (void *)BrDlVtxLitDecal
                                           : (void *)BrDlVtxLit;
         } else {
-            (*(void * *)((char *)&g_brGbi0A79F0 + 0x10)) /* BR_LP64_BYTE_VIEW */ = (void *)BrDlCmdVtx;
+            (*(void * *)&g_brGbi0A79F0[4]) = (void *)BrDlCmdVtx;
         }
         if ((geo & 0x40000u) != 0) {
             /* Assigned then overridden -- the original stores the LIN
              * routine unconditionally and replaces it. */
-            (*(void * *)((char *)&g_brGbi0A79F0 + 0x10)) /* BR_LP64_BYTE_VIEW */ = (void *)BrDlVtxGenLin;
+            (*(void * *)&g_brGbi0A79F0[4]) = (void *)BrDlVtxGenLin;
             if ((geo & 0x80000u) == 0)
-                (*(void * *)((char *)&g_brGbi0A79F0 + 0x10)) /* BR_LP64_BYTE_VIEW */ = (void *)BrDlVtxGen;
+                (*(void * *)&g_brGbi0A79F0[4]) = (void *)BrDlVtxGen;
         }
         if ((geo & 0x200u) != 0) {
-            (*(void * *)((char *)&g_brGbi0A79F0 + 0x2FC)) /* BR_LP64_BYTE_VIEW */ = (void *)BrDlCmdTri1;
-            (*(void * *)((char *)&g_brGbi0A79F0 + 0x2C4)) /* BR_LP64_BYTE_VIEW */ = (void *)BrDlCmdTri2;
+            (*(void * *)&g_brGbi0A79F0[191]) = (void *)BrDlCmdTri1;
+            (*(void * *)&g_brGbi0A79F0[177]) = (void *)BrDlCmdTri2;
         } else {
-            (*(void * *)((char *)&g_brGbi0A79F0 + 0x2FC)) /* BR_LP64_BYTE_VIEW */ = (void *)BrDlCmdTri1FlatZ;
-            (*(void * *)((char *)&g_brGbi0A79F0 + 0x2C4)) /* BR_LP64_BYTE_VIEW */ = (void *)BrDlCmdTri2FlatZ;
+            (*(void * *)&g_brGbi0A79F0[191]) = (void *)BrDlCmdTri1FlatZ;
+            (*(void * *)&g_brGbi0A79F0[177]) = (void *)BrDlCmdTri2FlatZ;
         }
     } else {
-        (*(void * *)((char *)&g_brGbi0A79F0 + 0x10)) /* BR_LP64_BYTE_VIEW */ = (void *)BrDlVtxNoZLit;
+        (*(void * *)&g_brGbi0A79F0[4]) = (void *)BrDlVtxNoZLit;
         if ((geo & 0x20000u) == 0)
-            (*(void * *)((char *)&g_brGbi0A79F0 + 0x10)) /* BR_LP64_BYTE_VIEW */ = (void *)BrDlVtxNoZ;
+            (*(void * *)&g_brGbi0A79F0[4]) = (void *)BrDlVtxNoZ;
         if ((geo & 0x200u) != 0) {
-            (*(void * *)((char *)&g_brGbi0A79F0 + 0x2FC)) /* BR_LP64_BYTE_VIEW */ = (void *)BrDlCmdTri1NoZ;
-            (*(void * *)((char *)&g_brGbi0A79F0 + 0x2C4)) /* BR_LP64_BYTE_VIEW */ = (void *)BrDlCmdTri2NoZ;
+            (*(void * *)&g_brGbi0A79F0[191]) = (void *)BrDlCmdTri1NoZ;
+            (*(void * *)&g_brGbi0A79F0[177]) = (void *)BrDlCmdTri2NoZ;
         } else {
-            (*(void * *)((char *)&g_brGbi0A79F0 + 0x2FC)) /* BR_LP64_BYTE_VIEW */ = (void *)BrDlCmdTri1Flat;
-            (*(void * *)((char *)&g_brGbi0A79F0 + 0x2C4)) /* BR_LP64_BYTE_VIEW */ = (void *)BrDlCmdTri2Flat;
+            (*(void * *)&g_brGbi0A79F0[191]) = (void *)BrDlCmdTri1Flat;
+            (*(void * *)&g_brGbi0A79F0[177]) = (void *)BrDlCmdTri2Flat;
         }
     }
 }

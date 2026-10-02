@@ -51,7 +51,7 @@ int BrNetOpenAnnounce(void)
     g_id = -1;
     while (g_id == -1) {
         r = BrNetSend4900(&g_brP277B40, g_id,
-                         (*(unsigned char *)((char *)&g_aBrRaceCar + 0x29AC)) /* BR_LP64_BYTE_VIEW */, (*(unsigned char *)((char *)&g_aBrRaceCar + 0x29AD)) /* BR_LP64_BYTE_VIEW */, (*(unsigned char *)((char *)&g_aBrRaceCar + 0x29AE)) /* BR_LP64_BYTE_VIEW */,
+                         (*(unsigned char *)&g_aBrRaceCar[0].f29AC), (*(unsigned char *)&g_aBrRaceCar[0].f29AD), (*(unsigned char *)&g_aBrRaceCar[0].f29AE),
                          &(*(int *)&g_aBrCfgPlayerName), 0);
         result = r != -1;
         t0 = BrSub10075020();
@@ -59,10 +59,10 @@ int BrNetOpenAnnounce(void)
             g_id = 0;        /* the host is always slot 0 */
             BrPalFetch();
             BrNetSend4900(&g_brP277B40, g_id,
-                         (*(unsigned char *)((char *)&g_aBrRaceCar + 0x29AC)) /* BR_LP64_BYTE_VIEW */, (*(unsigned char *)((char *)&g_aBrRaceCar + 0x29AD)) /* BR_LP64_BYTE_VIEW */, (*(unsigned char *)((char *)&g_aBrRaceCar + 0x29AE)) /* BR_LP64_BYTE_VIEW */,
+                         (*(unsigned char *)&g_aBrRaceCar[0].f29AC), (*(unsigned char *)&g_aBrRaceCar[0].f29AD), (*(unsigned char *)&g_aBrRaceCar[0].f29AE),
                          &(*(int *)&g_aBrCfgPlayerName), 0x10);
             BrNetSend4AD0(&g_brP277B40, g_id, g_226e7c,
-                         (*(unsigned char *)((char *)&g_aBrRaceCar + 0x29AC)) /* BR_LP64_BYTE_VIEW */, (*(unsigned char *)((char *)&g_aBrRaceCar + 0x29AD)) /* BR_LP64_BYTE_VIEW */, (*(unsigned char *)((char *)&g_aBrRaceCar + 0x29AE)) /* BR_LP64_BYTE_VIEW */,
+                         (*(unsigned char *)&g_aBrRaceCar[0].f29AC), (*(unsigned char *)&g_aBrRaceCar[0].f29AD), (*(unsigned char *)&g_aBrRaceCar[0].f29AE),
                          (*(int *)&g_br277B48), &(*(int *)&g_aBrCfgPlayerName), 2, 0x10);
         }
         /* The inner while's rotated ENTRY test is the original's mid-loop

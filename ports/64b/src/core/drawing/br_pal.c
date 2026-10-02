@@ -57,7 +57,7 @@ void BrPalFetch(const uint8_t *pTable, int32_t index, uint8_t aOut[3])
     i2 = (*(int32_t *)&g_id);
     b1 = g_aBr0B37D0[i1 * 3 + 1];
     b0 = g_aBr0B37D0[i2 * 3];
-    (*(uint8_t (*)[3])((char *)&g_aBrRaceCar + 0x29AC)) /* BR_LP64_BYTE_VIEW */[2] = (uint8_t)b2;
-    (*(uint8_t (*)[3])((char *)&g_aBrRaceCar + 0x29AC)) /* BR_LP64_BYTE_VIEW */[1] = (uint8_t)b1;
-    (*(uint8_t (*)[3])((char *)&g_aBrRaceCar + 0x29AC)) /* BR_LP64_BYTE_VIEW */[0] = (uint8_t)b0;
+    (*(uint8_t (*)[3])&g_aBrRaceCar[0].f29AC)[2] = (uint8_t)b2;
+    (*(uint8_t (*)[3])&g_aBrRaceCar[0].f29AC)[1] = (uint8_t)b1;
+    (*(uint8_t (*)[3])&g_aBrRaceCar[0].f29AC)[0] = (uint8_t)b0;
 }

@@ -604,7 +604,7 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
                 DAT_1021cdb0 = pkt.m_1006CE00();
                 DAT_10226a40 = pkt.m_1006CE00();
                 DAT_10226a3c = pkt.m_1006CE00();
-                FUN_10004900(pNet, slot, (*(char *)((char *)&g_aBrRaceCar + 0x29AC)) /* BR_LP64_BYTE_VIEW */, (*(char *)((char *)&g_aBrRaceCar + 0x29AD)) /* BR_LP64_BYTE_VIEW */, (*(char *)((char *)&g_aBrRaceCar + 0x29AE)) /* BR_LP64_BYTE_VIEW */, &(g_aBrCfgPlayerName[0]), 0x10);
+                FUN_10004900(pNet, slot, (*(char *)&g_aBrRaceCar[0].f29AC), (*(char *)&g_aBrRaceCar[0].f29AD), (*(char *)&g_aBrRaceCar[0].f29AE), &(g_aBrCfgPlayerName[0]), 0x10);
                 FUN_10004dc0(slot, 2);
                 break;
 

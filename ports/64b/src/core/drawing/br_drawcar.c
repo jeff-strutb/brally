@@ -1682,7 +1682,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     if (car->b29AF == 2) {
         g_BrDrawModeBase = 0x011049D8u;
         put(0xFA000000u, ((uint32_t)g_BrDrawFogAlpha & 0xFF));
-        if ((*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 2) {
+        if ((*(int32_t *)&g_brRaceRules.mode) == 2) {
             void *p = car->pProfile;
             if (p != 0 &&
                 *(const int32_t *)((const unsigned char *)p + 0x64) != 0 &&

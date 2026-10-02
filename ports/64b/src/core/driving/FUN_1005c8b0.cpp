@@ -234,7 +234,7 @@ void Car5C8B0::Step()
             goto scan;
         goto flags;
     }
-    if (((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4 || (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 5 || (*(int *)&DAT_105ccb68[8]) != 0) && MINE)
+    if (((*(int *)&g_brRaceRules.mode) == 4 || (*(int *)&g_brRaceRules.mode) == 5 || (*(int *)&DAT_105ccb68[8]) != 0) && MINE)
         goto hold;
     if (MINE)
         (*(int *)&g_BrCamHold2) = 0;
@@ -345,7 +345,7 @@ flags:
             *(int *)&(*(float *)&((BrDriverCar *)(this))->f2720) = 0x3f800000;
     }
 
-    if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 5) {
+    if ((*(int *)&g_brRaceRules.mode) == 5) {
         BrVec3MulAddTo((struct BrVec3 *)(&(*(float *)&((BrDriverCar *)(this))->pos.x)), (const struct BrVec3 *)(this), 15.0f);
         Sub5D3C0();
         vecA[0] = (*(float (*)[3])&((BrDriverCar *)(this))->tangent)[0];

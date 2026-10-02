@@ -131,7 +131,7 @@ void BrSub_100173F0(BrHudView *aViews, BrDriverCar * a2)
 
     (void)a2;
 
-    if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 3)
+    if ((*(int *)&g_brRaceRules.mode) == 3)
         return;
 
     x = aViews[0].x + 0x10;

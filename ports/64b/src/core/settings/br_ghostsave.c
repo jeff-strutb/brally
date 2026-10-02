@@ -105,7 +105,7 @@ char BrGhostSave(void)
     fwrite(&g_brSel0ABDF4, 4, 1, fp);
     fwrite(&(*(int *)&g_i0AC65C), 4, 1, fp);
     fwrite(&DAT_100abdf8, 4, 1, fp);
-    if (fwrite((*(char (*)[])((char *)&g_aBrRaceCar + 0x2AE8)) /* BR_LP64_BYTE_VIEW */, 1, 0x80, fp) != 0x80) {
+    if (fwrite((*(char (*)[])&g_aBrRaceCar[0].sz2ABC[44]), 1, 0x80, fp) != 0x80) {
         fclose(fp);
         return 0;
     }

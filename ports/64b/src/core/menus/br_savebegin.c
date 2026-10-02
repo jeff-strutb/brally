@@ -143,7 +143,7 @@ int BrSaveBeginRallySeason(int pList, int *pIdx)
     unsigned short *pw;
 
     g_5C38 = 0;
-    (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = 0;
+    (*(int *)&g_brRaceRules.mode) = 0;
     BrSub1003E680();
     (*(int *)&DAT_105ccb68[23]) = 0;
     strcpy(g_aBrAA2518, g_aBr39B720);
@@ -159,7 +159,7 @@ int BrSaveBeginRallySeason(int pList, int *pIdx)
     strcpy(DAT_117a6030, szPath);
     if (BrSaveLoad(4, 1) == 0)
         FUN_100378c0(7);
-    p = (*(int * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */;
+    p = (*(int * *)&g_aBrRaceCar[0].pEquip);
     memcpy(DAT_10ac5a48, p, 0x53 * 4);
     g_5C38 = 1;
     nRace = p[0];
@@ -168,11 +168,11 @@ int BrSaveBeginRallySeason(int pList, int *pIdx)
     g_brIdx5C04 = cnt;
     g_brIdx5BFC = cnt;
     (*(char *)&DAT_10ac5c10) = ((char *)p)[4];
-    (*(int *)&DAT_10ac5d60) = (*(int *)((char *)&g_aBrRaceCar + 0x2AD0)) /* BR_LP64_BYTE_VIEW */;
-    (*(int *)&DAT_100abdec) = (*(int *)((char *)&g_aBrRaceCar + 0x2AD4)) /* BR_LP64_BYTE_VIEW */;
-    (*(int *)&DAT_100abdf0) = (*(int *)((char *)&g_aBrRaceCar + 0x2AD8)) /* BR_LP64_BYTE_VIEW */;
-    g_brSel0ABDF4 = (*(int *)((char *)&g_aBrRaceCar + 0x2ADC)) /* BR_LP64_BYTE_VIEW */;
-    (*(int *)&g_i0AC65C) = (*(int *)((char *)&g_aBrRaceCar + 0x2AE0)) /* BR_LP64_BYTE_VIEW */;
+    (*(int *)&DAT_10ac5d60) = (*(int *)&g_aBrRaceCar[0].sz2ABC[20]);
+    (*(int *)&DAT_100abdec) = (*(int *)&g_aBrRaceCar[0].sz2ABC[24]);
+    (*(int *)&DAT_100abdf0) = (*(int *)&g_aBrRaceCar[0].sz2ABC[28]);
+    g_brSel0ABDF4 = (*(int *)&g_aBrRaceCar[0].sz2ABC[32]);
+    (*(int *)&g_i0AC65C) = (*(int *)&g_aBrRaceCar[0].sz2ABC[36]);
     g_5BF4 = 1;
     BrOptSave();
     BrSub1003E510();
@@ -219,7 +219,7 @@ int BrSaveBeginTimeAttack(int pList, int *pIdx)
     int  iSel;
     signed char cTrack;
 
-    (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = 2;
+    (*(int *)&g_brRaceRules.mode) = 2;
     DAT_10ac5c40 = 0;
     (*(int *)&DAT_105ccb68[23]) = 0;
     BrSub1003E680();
@@ -233,26 +233,26 @@ int BrSaveBeginTimeAttack(int pList, int *pIdx)
     if (cTrack < 0)
         return 0;
     iSel = cTrack;
-    (*(int *)&DAT_100abdf0) = (*(int *)((char *)&g_aBrRaceCar + 0x2AD8)) /* BR_LP64_BYTE_VIEW */;
-    (*(int *)&DAT_100abdec) = (*(int *)((char *)&g_aBrRaceCar + 0x2AD4)) /* BR_LP64_BYTE_VIEW */;
-    (*(int *)&g_i0AC65C) = (*(int *)((char *)&g_aBrRaceCar + 0x2AE0)) /* BR_LP64_BYTE_VIEW */;
-    g_brSel0ABDF4 = (*(int *)((char *)&g_aBrRaceCar + 0x2ADC)) /* BR_LP64_BYTE_VIEW */;
+    (*(int *)&DAT_100abdf0) = (*(int *)&g_aBrRaceCar[0].sz2ABC[28]);
+    (*(int *)&DAT_100abdec) = (*(int *)&g_aBrRaceCar[0].sz2ABC[24]);
+    (*(int *)&g_i0AC65C) = (*(int *)&g_aBrRaceCar[0].sz2ABC[36]);
+    g_brSel0ABDF4 = (*(int *)&g_aBrRaceCar[0].sz2ABC[32]);
     (*(int *)&g_brRaceNEntrant) = 1;
     g_brIdx0ABDE8 = iSel;
     DAT_10ac5d58 = (*(signed char *)&g_aBrRaceBeginRec[7]);
-    (*(int *)&DAT_10ac5d60) = (*(int *)((char *)&g_aBrRaceCar + 0x2AD0)) /* BR_LP64_BYTE_VIEW */;
-    DAT_100abdf8 = (*(int *)((char *)&g_aBrRaceCar + 0x2AE4)) /* BR_LP64_BYTE_VIEW */;
-    g_CBE8 = (*(int *)((char *)&g_aBrRaceCar + 0x2AE4)) /* BR_LP64_BYTE_VIEW */;
-    memcpy(DAT_10ac5a48, (*(int * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */, 0x53 * 4);
+    (*(int *)&DAT_10ac5d60) = (*(int *)&g_aBrRaceCar[0].sz2ABC[20]);
+    DAT_100abdf8 = (*(int *)&g_aBrRaceCar[0].sz2ABC[40]);
+    g_CBE8 = (*(int *)&g_aBrRaceCar[0].sz2ABC[40]);
+    memcpy(DAT_10ac5a48, (*(int * *)&g_aBrRaceCar[0].pEquip), 0x53 * 4);
     (*(int *)&g_Br0B380C) = (*(int (*)[])&g_aBrAC4D8)[iSel];
-    g_CBE8 = (*(int *)((char *)&g_aBrRaceCar + 0x2AE4)) /* BR_LP64_BYTE_VIEW */;
-    g_7b320 = (*(int *)((char *)&g_aBrRaceCar + 0x2AE0)) /* BR_LP64_BYTE_VIEW */;
+    g_CBE8 = (*(int *)&g_aBrRaceCar[0].sz2ABC[40]);
+    g_7b320 = (*(int *)&g_aBrRaceCar[0].sz2ABC[36]);
     DAT_10ac5c40 = 1;
-    g_226e7c = (*(int (*)[])&g_aBrAC420)[(*(int *)((char *)&g_aBrRaceCar + 0x2ADC)) /* BR_LP64_BYTE_VIEW */];
+    g_226e7c = (*(int (*)[])&g_aBrAC420)[(*(int *)&g_aBrRaceCar[0].sz2ABC[32])];
     g_226e80 = (*(int (*)[])&g_aBrAC4C0)[(*(signed char *)&g_aBrRaceBeginRec[7])];
-    g_7b32c = (*(int (*)[])&g_aBrAC4A0)[(*(int *)((char *)&g_aBrRaceCar + 0x2AD4)) /* BR_LP64_BYTE_VIEW */];
-    g_7b328 = (*(int (*)[])&g_aBrAC4B0)[(*(int *)((char *)&g_aBrRaceCar + 0x2AD8)) /* BR_LP64_BYTE_VIEW */];
-    g_7b324 = (*(int (*)[])&g_aBrAC518)[(*(int *)((char *)&g_aBrRaceCar + 0x2AD0)) /* BR_LP64_BYTE_VIEW */];
+    g_7b32c = (*(int (*)[])&g_aBrAC4A0)[(*(int *)&g_aBrRaceCar[0].sz2ABC[24])];
+    g_7b328 = (*(int (*)[])&g_aBrAC4B0)[(*(int *)&g_aBrRaceCar[0].sz2ABC[28])];
+    g_7b324 = (*(int (*)[])&g_aBrAC518)[(*(int *)&g_aBrRaceCar[0].sz2ABC[20])];
     BrRaceSettingsCommit();
     g_5BF4 = 1;
     return 1;
@@ -304,7 +304,7 @@ void BrSaveResumeAutoSave(void)
     int   i;
     unsigned short *pw;
 
-    (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = 0;
+    (*(int *)&g_brRaceRules.mode) = 0;
     BrSub1003E680();
     (*(int *)&DAT_105ccb68[23]) = 0;
     strcpy(g_aBrAA2518, g_aBr39B720);
@@ -316,7 +316,7 @@ void BrSaveResumeAutoSave(void)
         strcpy(DAT_117a6030, szPath);
         if (BrSaveLoad(4, 1) == 0)
             FUN_100378c0(7);
-        p = (*(int * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */;
+        p = (*(int * *)&g_aBrRaceCar[0].pEquip);
         memcpy(DAT_10ac5a48, p, 0x53 * 4);
         g_5C38 = 1;
         nRace = p[0];
@@ -325,11 +325,11 @@ void BrSaveResumeAutoSave(void)
         g_brIdx5C04 = cnt;
         g_brIdx5BFC = cnt;
         (*(char *)&DAT_10ac5c10) = ((char *)p)[4];
-        (*(int *)&DAT_10ac5d60) = (*(int *)((char *)&g_aBrRaceCar + 0x2AD0)) /* BR_LP64_BYTE_VIEW */;
-        (*(int *)&DAT_100abdec) = (*(int *)((char *)&g_aBrRaceCar + 0x2AD4)) /* BR_LP64_BYTE_VIEW */;
-        (*(int *)&DAT_100abdf0) = (*(int *)((char *)&g_aBrRaceCar + 0x2AD8)) /* BR_LP64_BYTE_VIEW */;
-        g_brSel0ABDF4 = (*(int *)((char *)&g_aBrRaceCar + 0x2ADC)) /* BR_LP64_BYTE_VIEW */;
-        (*(int *)&g_i0AC65C) = (*(int *)((char *)&g_aBrRaceCar + 0x2AE0)) /* BR_LP64_BYTE_VIEW */;
+        (*(int *)&DAT_10ac5d60) = (*(int *)&g_aBrRaceCar[0].sz2ABC[20]);
+        (*(int *)&DAT_100abdec) = (*(int *)&g_aBrRaceCar[0].sz2ABC[24]);
+        (*(int *)&DAT_100abdf0) = (*(int *)&g_aBrRaceCar[0].sz2ABC[28]);
+        g_brSel0ABDF4 = (*(int *)&g_aBrRaceCar[0].sz2ABC[32]);
+        (*(int *)&g_i0AC65C) = (*(int *)&g_aBrRaceCar[0].sz2ABC[36]);
         g_5BF4 = 1;
         BrOptSave();
         BrSub1003E510();

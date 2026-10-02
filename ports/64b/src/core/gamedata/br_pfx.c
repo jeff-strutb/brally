@@ -66,7 +66,7 @@ void BrPfxReset(void)
     (*(uint16_t *)((char *)&g_aPfxRec + 0x1FFC)) = 0;
     g_iPfxFree = 1;
     if (n > 0) {
-        int32_t *car = (*(int32_t (*)[])((char *)&g_aBrRaceCar + 0x105C)) /* BR_LP64_BYTE_VIEW */;
+        int32_t *car = (*(int32_t (*)[])&g_aBrRaceCar[0].f105C);
         do {
             *car = 0;
             car = (int32_t *)((unsigned char *)car + 0x2B68);

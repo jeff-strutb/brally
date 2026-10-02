@@ -75,7 +75,7 @@ typedef struct BrSelInM {
 
 void BrSelLookup(void)
 {
-    BrSelInM *p = (*(BrSelInM * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */;
+    BrSelInM *p = (*(BrSelInM * *)&g_aBrRaceCar[0].pEquip);
     int idx = p->f04 * 12 + p->f05;
     unsigned char t;
     int a;
