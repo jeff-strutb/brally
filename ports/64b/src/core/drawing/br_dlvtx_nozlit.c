@@ -183,7 +183,7 @@ const uint8_t *BrDlVtxNoZLit(const uint8_t *p)
     }
 
     w0 = *(const uint32_t *)p;
-    pSrc = *(const BrDlSrcVtx **)(p + 4);
+    pSrc = BR_AT32(const BrDlSrcVtx *, p + 4);
     v0 = (w0 >> 16) & 0xFF;
     pV = &g_aBrDlVtxPool[v0];
     pVc = pV;

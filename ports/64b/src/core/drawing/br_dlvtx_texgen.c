@@ -184,7 +184,7 @@ const uint8_t *BrDlVtxGen(const uint8_t *p)
     }
 
     w0 = *(const uint32_t *)p;
-    pSrc = *(const BrDlSrcVtxT **)(p + 4);
+    pSrc = BR_AT32(const BrDlSrcVtxT *, p + 4);
     v0 = (w0 >> 16) & 0xFF;
     pV = &g_aBrDlVtxPool[v0];
     n  = (w0 >> 10) & 0x3F;

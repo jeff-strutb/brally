@@ -116,7 +116,7 @@ const uint8_t *BrDlVtxGenLin(const uint8_t *p)
 
     {
         uint32_t w0 = *(const uint32_t *)p;
-        const BrDlSrcVtxG *pSrc = *(const BrDlSrcVtxG **)(p + 4);
+        const BrDlSrcVtxG *pSrc = BR_AT32(const BrDlSrcVtxG *, p + 4);
         int v0 = (w0 >> 16) & 0xFF;
         int n  = (w0 >> 10) & 0x3F;
         BrDlVtx *pV = &g_aBrDlVtxPool[v0];

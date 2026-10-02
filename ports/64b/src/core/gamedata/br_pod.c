@@ -74,7 +74,7 @@ void BR_THISCALL1 BrPodSetName(void *pThis, BrPodSetNameArg a)
 /* @implements 0x10008D50 glide BrPodIdentity */
 /* @n64 0x80268560 located */
 
-int __fastcall BrPodIdentity(unsigned char * param_1)
+unsigned char * __fastcall BrPodIdentity(unsigned char * param_1)
 
 {
   return param_1;

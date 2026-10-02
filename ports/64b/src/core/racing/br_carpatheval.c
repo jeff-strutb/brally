@@ -62,12 +62,12 @@ void BR_THISCALL1 BrCarPathEval(BrDriverCar *pCar)
   BrAiPathNode *pNode6;
   float fVar7;
   float fVar8;
-  unsigned int iSeg;
+  int iSeg;            /* may be -1: the original indexes aPt[-1] */
   BrAiPathNode *pNode10;
   float fVar11;
   float fVar12;
   float fVar13;
-  unsigned int local_64;
+  int local_64;
   BrVec3 *pPos;
   BrVec3 *pTan;
   BrVec3 *pLat;

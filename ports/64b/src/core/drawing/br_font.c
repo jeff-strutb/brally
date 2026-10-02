@@ -490,18 +490,18 @@ void BrTextEmitString(const char *psz)
     if (scale < BR_FONT_LARGE_MIN) {                /* 0x10015B67 */
         cell    = BR_FONT_SMALL_CELL;
         pOff    = g_aBrFontOffSmall;
-        hRampA  = (uint32_t)g_aBrFontRampSmallA;
-        hRampB  = (uint32_t)g_aBrFontRampSmallB;
+        hRampA  = br_addr32(g_aBrFontRampSmallA);
+        hRampB  = br_addr32(g_aBrFontRampSmallB);
         hPage   = (*(uint32_t *)&DAT_1184c46c);
-        vaBlock = (uint32_t)g_aBrFontBlockSmall;
+        vaBlock = br_addr32(g_aBrFontBlockSmall);
         stride  = 0x280u;
     } else {
         cell    = BR_FONT_LARGE_CELL;
         pOff    = g_aBrFontOffLarge;
-        hRampA  = (uint32_t)g_aBrFontRampLargeA;
-        hRampB  = (uint32_t)g_aBrFontRampLargeB;
+        hRampA  = br_addr32(g_aBrFontRampLargeA);
+        hRampB  = br_addr32(g_aBrFontRampLargeB);
         hPage   = (*(uint32_t *)&DAT_1184c47c);
-        vaBlock = (uint32_t)g_aBrFontBlockLarge;
+        vaBlock = br_addr32(g_aBrFontBlockLarge);
         stride  = 0xA00u;
     }
 
@@ -1048,8 +1048,8 @@ int BrFontTexInitAll(void)
 int BrFontTexCreatePair(void)
 
 {
-  g_BrEnvTexLookup = (*(*(funcptr *)&g_pfn18AA0B0))(&g_BrEnvBitmap,0,0x40,0x40,1,4,0,0,1,1,0,0,1,0);
-  _DAT_1184c464 = (*(*(funcptr *)&g_pfn18AA0B0))(&DAT_104b05c8,0,0x40,0x40,1,4,0,0,1,1,0,0,1,0);
+  g_BrEnvTexLookup[0] = (uint32_t)(*(*(funcptr *)&g_pfn18AA0B0))(&g_BrEnvBitmap,0,0x40,0x40,1,4,0,0,1,1,0,0,1,0);
+  _DAT_1184c464 = (uint32_t)(*(*(funcptr *)&g_pfn18AA0B0))(&DAT_104b05c8,0,0x40,0x40,1,4,0,0,1,1,0,0,1,0);
   return;
 }
 

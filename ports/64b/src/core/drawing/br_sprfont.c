@@ -472,7 +472,7 @@ char __fastcall FUN_10054390(int *param_1)
         return 1;
       }
       (*(VT1 *)(*param_1 + 4))(param_1);
-      if (*(short *)((int)param_1 + 0x40a) < *(short *)((int)param_1 + 0x41c)) {
+      if (*(short *)((char *)param_1 + 0x40a) < *(short *)((char *)param_1 + 0x41c)) {
         sprintf((char *)param_1 + 9, DAT_100acb44, (char *)param_1 + 9, (int)cVar1);
       }
     }

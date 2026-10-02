@@ -78,13 +78,13 @@ void CtrlCfg62B80::Assign(int profile, int action, int key, int mod)
 
     n = 2;
     p = base + action * 3;
-    def -= (int)base;
+    def -= (intptr_t)base;
     *p = (unsigned short)((unsigned char)(mod ^ key) ^ key);
     do {
         p = p + 1;
         k = 0x1c;
         do {
-            v = *(unsigned short *)(def + (int)p);
+            v = *(unsigned short *)(def + (intptr_t)p);
             i = 0;
             *p = v;
             for (q = base; i < 0x1c; i++, q += 3) {

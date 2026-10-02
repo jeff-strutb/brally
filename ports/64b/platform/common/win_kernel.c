@@ -37,12 +37,38 @@ static void kinit(void)
     }
 }
 
+/* Handles are small numbers, as on Windows (whose handles always fit in 32
+ * bits): the game keeps them in 32-bit fields of its records. A handle is
+ * (slot + 1) * 4 in a table of objects. */
+#define KMAX 4096
+static kobj *s_ktab[KMAX];
+static int   s_kn;
+
 static kobj *knew(int type)
 {
     kobj *o = (kobj *)calloc(1, sizeof *o);
     kinit();
     o->type = type;
     return o;
+}
+
+static HANDLE khandle(kobj *o)
+{
+    int i;
+    host_mutex_lock(s_k);
+    i = s_kn < KMAX ? s_kn++ : -1;
+    if (i >= 0)
+        s_ktab[i] = o;
+    host_mutex_unlock(s_k);
+    return i < 0 ? NULL : (HANDLE)(uintptr_t)((i + 1) * 4);
+}
+
+static kobj *kget(HANDLE h)
+{
+    uint32_t v = (uint32_t)(uintptr_t)h;
+    if (v == 0 || (v & 3) != 0 || v / 4 > (uint32_t)s_kn)
+        return NULL;
+    return s_ktab[v / 4 - 1];
 }
 
 HANDLE WINAPI CreateEventA(LPSECURITY_ATTRIBUTES sa, BOOL manual, BOOL initial, LPCSTR name)
@@ -52,7 +78,7 @@ HANDLE WINAPI CreateEventA(LPSECURITY_ATTRIBUTES sa, BOOL manual, BOOL initial, 
     (void)name;
     o->manual = manual;
     o->signaled = initial;
-    return o;
+    return khandle(o);
 }
 
 HANDLE WINAPI CreateMutexA(LPSECURITY_ATTRIBUTES sa, BOOL owned, LPCSTR name)
@@ -64,12 +90,12 @@ HANDLE WINAPI CreateMutexA(LPSECURITY_ATTRIBUTES sa, BOOL owned, LPCSTR name)
         o->owner = host_thread_self();
         o->depth = 1;
     }
-    return o;
+    return khandle(o);
 }
 
 BOOL WINAPI SetEvent(HANDLE h)
 {
-    kobj *o = (kobj *)h;
+    kobj *o = kget(h);
     if (!o || o->type != K_EVENT)
         return FALSE;
     host_mutex_lock(s_k);
@@ -81,7 +107,7 @@ BOOL WINAPI SetEvent(HANDLE h)
 
 BOOL WINAPI ReleaseMutex(HANDLE h)
 {
-    kobj *o = (kobj *)h;
+    kobj *o = kget(h);
     BOOL ok = FALSE;
     if (!o || o->type != K_MUTEX)
         return FALSE;
@@ -128,24 +154,24 @@ DWORD WINAPI WaitForMultipleObjects(DWORD n, const HANDLE *h, BOOL all, DWORD ms
     kinit();
     /* an invalid handle fails the wait at once, as on Windows */
     for (i = 0; i < n; i++) {
-        kobj *o = (kobj *)h[i];
+        kobj *o = kget(h[i]);
         if (!o || (o->type != K_EVENT && o->type != K_MUTEX && o->type != K_THREAD))
             return WAIT_FAILED;
     }
     host_mutex_lock(s_k);
     for (;;) {
         if (all) {
-            for (i = 0; i < n && ktake((kobj *)h[i], 0); i++)
+            for (i = 0; i < n && ktake(kget(h[i]), 0); i++)
                 ;
             if (i == n) {
                 for (i = 0; i < n; i++)
-                    ktake((kobj *)h[i], 1);
+                    ktake(kget(h[i]), 1);
                 r = WAIT_OBJECT_0;
                 break;
             }
         } else {
             for (i = 0; i < n; i++)
-                if (ktake((kobj *)h[i], 1))
+                if (ktake(kget(h[i]), 1))
                     break;
             if (i < n) {
                 r = WAIT_OBJECT_0 + i;
@@ -199,9 +225,12 @@ HANDLE WINAPI CreateThread(LPSECURITY_ATTRIBUTES sa, SIZE_T stack, LPTHREAD_STAR
         free(o);
         return NULL;
     }
-    if (id)
-        *id = (DWORD)(uintptr_t)o;
-    return o;
+    {
+        HANDLE hT = khandle(o);
+        if (id)
+            *id = (DWORD)(uintptr_t)hT;
+        return hT;
+    }
 }
 
 void WINAPI ExitThread(DWORD code)
@@ -214,7 +243,7 @@ BOOL WINAPI CloseHandle(HANDLE h)
 {
     /* Objects stay allocated: a thread may still signal one that the game
      * has closed, and the game creates few of them. */
-    return h != NULL;
+    return kget(h) != NULL;
 }
 
 void WINAPI Sleep(DWORD ms)

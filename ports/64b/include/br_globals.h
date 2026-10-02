@@ -6938,12 +6938,9 @@ extern void *BrSndG18290FC;  /* 0x1184C45C */
 #pragma pop_macro("BrSndG18290FC")
 #pragma push_macro("g_BrEnvTexLookup")
 #undef g_BrEnvTexLookup
-extern uint32_t *g_BrEnvTexLookup;  /* 0x1184C460 */
+extern uint32_t g_BrEnvTexLookup[2];  /* 0x1184C460 */
 #pragma pop_macro("g_BrEnvTexLookup")
-#pragma push_macro("_DAT_1184c464")
-#undef _DAT_1184c464
-extern int _DAT_1184c464;  /* 0x1184C464 */
-#pragma pop_macro("_DAT_1184c464")
+#define _DAT_1184c464 (g_BrEnvTexLookup[1])  /* 0x1184C464 */
 #pragma push_macro("DAT_1184c468")
 #undef DAT_1184c468
 extern unsigned int DAT_1184c468;  /* 0x1184C468 */

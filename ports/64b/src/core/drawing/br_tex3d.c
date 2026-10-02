@@ -1312,7 +1312,7 @@ void br_tex3d_seam(BrGfxWords * p)
   if (id != -1) {
     start = (int *)g_brTexScanRunStart;
     *start = (id & 0xffffff) | 0xdc000000;
-    start[1] = (g_brTexScanRunEnd - g_brTexScanRunStart) >> 3;
+    start[1] = (int)(g_brTexScanRunEnd - g_brTexScanRunStart);   /* commands, not bytes */
   }
   (*(int *)&g_brTexScanState) = 0;
   return;

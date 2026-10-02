@@ -67,7 +67,7 @@ const uint32_t *BrDlCmdVtx(const uint32_t *p)
     /* 64-bit core: declared once, in br_globals.h or its struct's header */
 
     w0 = p[0];
-    pSrc = (const BrDlSrcVtx *)p[1];
+    pSrc = BR_PTR32(const BrDlSrcVtx *, p[1]);
     v0 = (w0 >> 16) & 0xFF;
     pV = &g_aBrDlVtxPool[v0];
     pFirst = pV;

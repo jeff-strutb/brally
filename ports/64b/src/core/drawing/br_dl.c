@@ -1193,7 +1193,7 @@ unsigned int * BrDlOpDispatch1(unsigned int *param_1)
 unsigned int * BrDlOpDispatch2(unsigned int *param_1)
 
 {
-  (*DAT_118ed1d0)(*param_1 & 0xffffff,param_1[1]);
+  (*DAT_118ed1d0)(*param_1 & 0xffffff, (int *)br_ptr32(param_1[1]));
   return param_1 + 2;
 }
 

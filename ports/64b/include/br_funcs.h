@@ -3339,7 +3339,7 @@ int BrPhaseTick_100488C0(void *);
 #pragma pop_macro("BrPhaseTick_100488C0")
 #pragma push_macro("BrPodIdentity")
 #undef BrPodIdentity
-int BrPodIdentity(unsigned char *);
+unsigned char *BrPodIdentity(unsigned char *);
 #pragma pop_macro("BrPodIdentity")
 #pragma push_macro("BrPodNop")
 #undef BrPodNop
@@ -5343,15 +5343,15 @@ void BrWrap_10071610(void);
 #pragma pop_macro("BrWrap_10071610")
 #pragma push_macro("BrWrap_10072A70")
 #undef BrWrap_10072A70
-void BrWrap_10072A70(void *, int, int);
+void BrWrap_10072A70(int, int, int);
 #pragma pop_macro("BrWrap_10072A70")
 #pragma push_macro("BrWrap_10072B10")
 #undef BrWrap_10072B10
-void BrWrap_10072B10(void *, int, int);
+void BrWrap_10072B10(int, int, int);
 #pragma pop_macro("BrWrap_10072B10")
 #pragma push_macro("BrWrap_10072B80")
 #undef BrWrap_10072B80
-void BrWrap_10072B80(void *, int, int);
+void BrWrap_10072B80(int, int, int);
 #pragma pop_macro("BrWrap_10072B80")
 #pragma push_macro("BrX1002C2C0")
 #undef BrX1002C2C0

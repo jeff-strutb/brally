@@ -31,14 +31,14 @@ void BrDispatch_100025C0(void *p)
  * as 2*index. */
 /* @implements 0x10072B80 d3d BrWrap_10072B80 */
 /* @n64 0x80242880 located */
-void BrWrap_10072B80(void *a, int b, int c)
+void BrWrap_10072B80(int a, int b, int c)
 {
     FUN_1006baa0(a, b + b, c);
 }
 
 /* WHAT IT DOES: the same table write, with an extra "1" meaning in use. */
 /* @implements 0x10072B10 d3d BrWrap_10072B10 */
-void BrWrap_10072B10(void *a, int b, int c)
+void BrWrap_10072B10(int a, int b, int c)
 {
     BrSndVoiceConfigure(a, b + b, c, 1);
 }
@@ -46,7 +46,7 @@ void BrWrap_10072B10(void *a, int b, int c)
 /* WHAT IT DOES: the same table write, with the packed index forced to 1. */
 /* @implements 0x10072A70 d3d BrWrap_10072A70 */
 /* @n64 0x80240240 located */
-void BrWrap_10072A70(void *a, int b, int c)
+void BrWrap_10072A70(int a, int b, int c)
 {
     BrSndVoiceConfigure(a, 1, b, c);
 }

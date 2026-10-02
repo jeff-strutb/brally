@@ -1973,8 +1973,7 @@ BrSndVoice g_BrSndPrimary;  /* 0x1184C2A8 */
 int g_184C454;  /* 0x1184C454 */
 LPDIRECTSOUND BrSndPDS;  /* 0x1184C458 */
 void *BrSndG18290FC;  /* 0x1184C45C */
-uint32_t *g_BrEnvTexLookup;  /* 0x1184C460 */
-int _DAT_1184c464;  /* 0x1184C464 */
+uint32_t g_BrEnvTexLookup[2];  /* 0x1184C460: env-map texture id per section */
 unsigned int DAT_1184c468;  /* 0x1184C468 */
 int DAT_1184c46c;  /* 0x1184C46C */
 int DAT_1184c470;  /* 0x1184C470 */

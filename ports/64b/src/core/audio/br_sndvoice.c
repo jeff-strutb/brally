@@ -153,7 +153,7 @@ int BrSndChanSetRatio(int iSlot, int64_t ratio)
 
 {
   if ((((*(int32_t *)&DAT_100b51e4[1036]) != 0) && ((*(struct BrDSound * *)&BrSndPDS) != 0)) && (BrSndG18290FC != 0)) {
-    if (BrSndBufSetVolume((int)g_apBrSfxChanVoice[iSlot],
+    if (BrSndBufSetVolume((struct BrSndVoice *)g_apBrSfxChanVoice[iSlot],
                           (unsigned int)((double)ratio * g_aBrSfxChanRate[iSlot]
                                          * DAT_10077c00)) != 0) {
       g_aBrSfxChanApplied[iSlot].ratio = ratio;
