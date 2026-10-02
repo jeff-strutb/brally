@@ -433,9 +433,9 @@ void BrSndNearestCommit(void)
                                g_brStages[28 + (g_BrSndNearest.f84)].f08);
         }
 
-        if (g_aBrRaceCar[(BrG_6C1628[4])].fF78 == 0 &&
+        if (g_aBrRaceCar[g_aBrView[0].iCar].fF78 == 0 &&
             ((*(int32_t *)&g_brMode0AA8B4) == 1 ||
-             g_aBrRaceCar[g_brRaceBegin6E8720].fF78 == 0)) {
+             g_aBrRaceCar[g_aBrView[1].iCar].fF78 == 0)) {
             (*(int64_t *)((char *)&g_aBrSfxChan + 0x50)) = (int64_t)(ratio * BR_K_00779E4 * BR_K_00779E8);
             packed = ((int32_t)(gainA * (float)vol) << 16)
                    + (int32_t)(gainB * (float)vol);

@@ -33,7 +33,7 @@
  * commands every frame opens with -- scissor, blend and combine setup,
  * geometry switches, the identity matrix and the viewport. */
 /* @implements 0x10032873 d3d BrFrameBeginRec */
-void BrFrameBeginRec(int32_t *pRec)
+void BrFrameBeginRec(BrView *pRec)
 {
     BrFrameBeginDl(pRec, 0);
 }
@@ -46,7 +46,7 @@ void BrFrameBeginRec(int32_t *pRec)
 /* @implements 0x10032886 d3d BrFrameBeginHiRes */
 void BrFrameBeginHiRes(void)
 {
-    BrFrameBeginDl(BrG_6C1628, 1);
+    BrFrameBeginDl(g_aBrView, 1);
 }
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
@@ -108,7 +108,7 @@ typedef struct BrDlCmd { int op; int arg; } BrDlCmd;
   p_->op = (c); \
   p_->arg = (a); }
 
-void BrFrameBeginDl(int *param_1,int param_2)
+void BrFrameBeginDl(BrView *param_1,int param_2)
 {
   if (param_2 ^ (*(int *)((char *)&g_aBrEntRecs + 0x44))) {
     (*(int *)((char *)&g_aBrEntRecs + 0x40)) = 1;
@@ -117,20 +117,20 @@ void BrFrameBeginDl(int *param_1,int param_2)
   BrPodNop();
   switch (g_brMode0AA8B4) {
   case 1:
-    *param_1 = 0;
-    param_1[1] = 0;
-    param_1[2] = BrGbiRectG_A7514;
-    param_1[3] = BrGbiRectG_A7518;
+    param_1[0].rect[0] = 0;
+    param_1[0].rect[1] = 0;
+    param_1[0].rect[2] = BrGbiRectG_A7514;
+    param_1[0].rect[3] = BrGbiRectG_A7518;
     break;
   case 2:
-    param_1[0x16] = 8;
-    param_1[0x17] = ((*(int *)&g_brRaceCueBase) >> 1) + 1;
-    param_1[0x18] = g_scrW4 + -0x60;
-    param_1[0x19] = ((*(int *)&g_brRaceCueBase) >> 1) + -8;
-    *param_1 = 8;
-    param_1[1] = 8;
-    param_1[2] = g_scrW4 + -0x60;
-    param_1[3] = ((*(int *)&g_brRaceCueBase) >> 1) + -8;
+    param_1[1].rect[0] = 8;
+    param_1[1].rect[1] = ((*(int *)&g_brRaceCueBase) >> 1) + 1;
+    param_1[1].rect[2] = g_scrW4 + -0x60;
+    param_1[1].rect[3] = ((*(int *)&g_brRaceCueBase) >> 1) + -8;
+    param_1[0].rect[0] = 8;
+    param_1[0].rect[1] = 8;
+    param_1[0].rect[2] = g_scrW4 + -0x60;
+    param_1[0].rect[3] = ((*(int *)&g_brRaceCueBase) >> 1) + -8;
     break;
   }
   BrRenderCountersReset();

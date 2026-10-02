@@ -9,6 +9,7 @@
 #include <stdbool.h>
 #endif
 struct BrTrkHdr;
+struct BrView;
 struct BrRaceCtl;
 struct BrUiPage_;
 struct BoundsNode;
@@ -1613,7 +1614,7 @@ void BrFpsReadout(void);
 #pragma pop_macro("BrFpsReadout")
 #pragma push_macro("BrFrameBeginDl")
 #undef BrFrameBeginDl
-void BrFrameBeginDl(int *, int);
+void BrFrameBeginDl(struct BrView *, int);
 #pragma pop_macro("BrFrameBeginDl")
 #pragma push_macro("BrFrameBeginHiRes")
 #undef BrFrameBeginHiRes
@@ -1621,7 +1622,7 @@ void BrFrameBeginHiRes(void);
 #pragma pop_macro("BrFrameBeginHiRes")
 #pragma push_macro("BrFrameBeginRec")
 #undef BrFrameBeginRec
-void BrFrameBeginRec(int *);
+void BrFrameBeginRec(struct BrView *);
 #pragma pop_macro("BrFrameBeginRec")
 #pragma push_macro("BrFrameClockStep")
 #undef BrFrameClockStep

@@ -5358,14 +5358,10 @@ extern int32_t g_6C161C;  /* 0x106E86AC */
 #undef DAT_106e86b0
 extern int DAT_106e86b0;  /* 0x106E86B0 */
 #pragma pop_macro("DAT_106e86b0")
-#pragma push_macro("BrG_6C1628")
-#undef BrG_6C1628
-extern int32_t BrG_6C1628[26];  /* 0x106E86B8 */
-#pragma pop_macro("BrG_6C1628")
-#pragma push_macro("g_brRaceBegin6E8720")
-#undef g_brRaceBegin6E8720
-extern int32_t g_brRaceBegin6E8720;  /* 0x106E8720 */
-#pragma pop_macro("g_brRaceBegin6E8720")
+#pragma push_macro("g_aBrView")
+#undef g_aBrView
+extern BrView g_aBrView[2];  /* 0x106E86B8 */
+#pragma pop_macro("g_aBrView")
 #pragma push_macro("DAT_106e8818")
 #undef DAT_106e8818
 extern char DAT_106e8818;  /* 0x106E8818 */

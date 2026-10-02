@@ -178,6 +178,16 @@ typedef struct BrAiPathNode {
 
 typedef struct { float m[16]; } BrDlMtx;
 
+/* 0x106E86B8, stride 0x58: one per screen view, two in split screen.
+ * BrFrameBeginDl sets the rectangle, the race start sets the car each view
+ * follows, and the race start's texture pass keeps the view's handles. */
+typedef struct BrView {
+    int32_t rect[4];          /* +0x00  x, y, w, h */
+    int32_t iCar;             /* +0x10  the car this view follows */
+    int32_t ahTex[16];        /* +0x14 */
+    int32_t hTexB;            /* +0x54 */
+} BrView;
+
 /* BrSnap: slice3_41.h (it embeds whole cars) */
 
 typedef struct BrSndBankCarSlot {

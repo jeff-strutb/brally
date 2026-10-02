@@ -203,7 +203,7 @@ extern "C" {
 }
 
 #define SQ(a) ((a) * (a))
-#define MINE (((BrDriverCar *)(this))->f140 == (*(int *)&BrG_6C1628[4]) || (g_brMode0AA8B4 > 1 && ((BrDriverCar *)(this))->f140 == g_brMode0AA8B4))
+#define MINE (((BrDriverCar *)(this))->f140 == g_aBrView[0].iCar || (g_brMode0AA8B4 > 1 && ((BrDriverCar *)(this))->f140 == g_aBrView[1].iCar))
 
 void Car5C8B0::Step()
 {

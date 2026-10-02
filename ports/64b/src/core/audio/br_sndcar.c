@@ -149,7 +149,7 @@ void BR_THISCALL1 BrSndCarStep(BrDriverCar *pCar)
 
   iVar6 = pCar->f140;
   iVar9 = iVar6 << 1;
-  local_4 = (*(int *)&BrG_6C1628[4]) * 0x2b68;
+  local_4 = g_aBrView[0].iCar * 0x2b68;
   if (((*(int *)&g_BrX06909B4) != 0) || (pCar->pProfile == 0)) {
     (&(*(int *)((char *)&g_aBrSfxChan + 0x14)))[iVar6 * 0xc] = 0;
     (&(*(int *)((char *)&g_aBrSfxChan + 0x8)))[iVar6 * 0xc] = 0;
@@ -167,7 +167,7 @@ LAB_j10061524:
   else {
     iVar8 = BR_LP64_PTR_AS_INT(pCar->pMatA);
     if ((pCar->fF78 == 0) && (*(int *)((char *)&(*(int *)&g_aBrRaceCar[0].fF78) + local_4) == 0)) {
-      iVar3 = g_aBrRaceCar[(*(int *)&g_brRaceBegin6E8720)].fF78;
+      iVar3 = g_aBrRaceCar[g_aBrView[1].iCar].fF78;
       goto LAB_j10061524;
     }
 LAB_10061526:

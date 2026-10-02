@@ -195,10 +195,10 @@ LAB_net:
                 pCar->aBody[0].rb.st.vel.x * pCar->aBody[0].rb.st.vel.x) * DAT_10077c78;
   }
   if (((*(int *)&g_brRaceNet) == 0) && (iVar5 = 0, 0 < g_brMode0AA8B4)) {
-    piVar6 = &(*(int *)&BrG_6C1628[4]);
+    piVar6 = &g_aBrView[0].iCar;
     while (pCar->f140 != *piVar6) {
       iVar5 = iVar5 + 1;
-      piVar6 = piVar6 + 0x16;
+      piVar6 = &g_aBrView[iVar5].iCar;
       if (g_brMode0AA8B4 <= iVar5) {
         return;
       }
