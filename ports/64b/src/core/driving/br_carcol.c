@@ -149,22 +149,22 @@ void BrCarCarCollide(void)
                 ext.z = 1.0f;
                 BrMat4ToMat3Transposed(&mB, &((BrColCar *)g_aBrRaceDriver[j].pCar)->mat);
                 BrMat4ToMat3(&mA, &((BrColCar *)g_aBrRaceDriver[i].pCar)->mat);
-                FUN_1006dd20(&mR, &mB, &mA);
+                BrMat3Mul(&mR, &mB, &mA);
                 dd.x = pa->pos.x - pb->pos.x;
                 dd.y = pa->pos.y - pb->pos.y;
                 dd.z = pa->pos.z - pb->pos.z;
                 BrMat3MulVec3(&t, &mA, &dd);
-                if (FUN_10068900(&mR, &t, &ext, &ext) == 0)
+                if (BrObbOverlap(&mR, &t, &ext, &ext) == 0)
                     return;
                 BrVec3Normalise(&d);
                 dotA = d.x * pa->vel.x + d.y * pa->vel.y + d.z * pa->vel.z;
                 dotB = d.x * pb->vel.x + d.z * pb->vel.z + d.y * pb->vel.y;
-                s    = (dotB + dotA) * _DAT_10077ac8;
+                s    = (dotB + dotA) * BrCrK_Half;
                 imp.x = s * d.x;
                 imp.y = s * d.y;
                 imp.z = s * d.z;
                 x = s - dotA;
-                if (x < _DAT_10077a78)
+                if (x < BrCrK_Zero)
                     x = -x;
                 if (x > _DAT_10077ab8)
                     x = _DAT_10077ab8;
@@ -174,9 +174,9 @@ void BrCarCarCollide(void)
                     ((BrColCar *)g_aBrRaceDriver[j].pCar)->hitTone = tone;
                 }
                 ((BrColCar *)g_aBrRaceDriver[i].pCar)->hitAge = 0;
-                sd.x = d.x * _DAT_10077a80;
-                sd.y = d.y * _DAT_10077a80;
-                sd.z = d.z * _DAT_10077a80;
+                sd.x = d.x * DAT_10077a80;
+                sd.y = d.y * DAT_10077a80;
+                sd.z = d.z * DAT_10077a80;
                 t.x  = sd.x * _DAT_10077be0;
                 t.y  = sd.y * _DAT_10077be0;
                 t.z  = sd.z * _DAT_10077be0;
@@ -185,7 +185,7 @@ void BrCarCarCollide(void)
                 pa->vel.y = pa->vel.y - imp.y;
                 pa->vel.z = pa->vel.z - imp.z;
                 memcpy(&((BrColCar *)g_aBrRaceDriver[i].pCar)->save, &((BrColCar *)g_aBrRaceDriver[i].pCar)->st, sizeof(BrColState));
-                FUN_10065c80(((BrColCar *)g_aBrRaceDriver[i].pCar)->body, &dd, &d, 0, 0.45f);
+                BrCrImpulseSolve(((BrColCar *)g_aBrRaceDriver[i].pCar)->body, &dd, &d, 0, 0.45f);
                 memcpy(&((BrColCar *)g_aBrRaceDriver[i].pCar)->st, &((BrColCar *)g_aBrRaceDriver[i].pCar)->save, sizeof(BrColState));
                 ((BrColCar *)g_aBrRaceDriver[i].pCar)->save.vel.x = imp.x + ((BrColCar *)g_aBrRaceDriver[i].pCar)->save.vel.x;
                 ((BrColCar *)g_aBrRaceDriver[i].pCar)->save.vel.y = imp.y + ((BrColCar *)g_aBrRaceDriver[i].pCar)->save.vel.y;
@@ -207,7 +207,7 @@ void BrCarCarCollide(void)
                 /* the second car is pushed along the REVERSED normal (sd = -d):
                  * 0x100693C3 lea edx,[esp+0x50] (whole-image run, FFB wheel
                  * frame 1410 -- the live oracle's captures never collided) */
-                FUN_10065c80(((BrColCar *)g_aBrRaceDriver[j].pCar)->body, &dd, &sd, 0, 0.45f);
+                BrCrImpulseSolve(((BrColCar *)g_aBrRaceDriver[j].pCar)->body, &dd, &sd, 0, 0.45f);
                 memcpy(&((BrColCar *)g_aBrRaceDriver[j].pCar)->st, &((BrColCar *)g_aBrRaceDriver[j].pCar)->save, sizeof(BrColState));
                 ((BrColCar *)g_aBrRaceDriver[j].pCar)->save.vel.x = imp.x + ((BrColCar *)g_aBrRaceDriver[j].pCar)->save.vel.x;
                 ((BrColCar *)g_aBrRaceDriver[j].pCar)->save.vel.y = imp.y + ((BrColCar *)g_aBrRaceDriver[j].pCar)->save.vel.y;

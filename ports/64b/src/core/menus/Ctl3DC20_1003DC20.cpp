@@ -34,10 +34,10 @@ public:
 
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define g_slot DAT_10ac5cac
+#define g_slot g_5CAC
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define g_mode DAT_100a9360
+#define g_mode (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
@@ -65,29 +65,29 @@ int Ctl3DC20::Activate()
     if (p == 0) {
         p = new Phase;
         g_slot = p;
-        g_cur = (Phase *)((BrOptObj *)(p));
+        (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(p));
         if (p == 0)
             return 0;
         p->pfnEnter = EnterFn;
         g_slot->pfnEnter(g_slot);
-        g_cur->f0C = 1;
-        g_cur->f68 = 1;
+        (*(Phase * *)&g_brPAA29B8)->f0C = 1;
+        (*(Phase * *)&g_brPAA29B8)->f68 = 1;
     } else {
-        g_cur = (Phase *)((BrOptObj *)(p));
+        (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(p));
     }
     g_mode = 6;
     if (g_host != 0) {
         if (g_inited == 0) {
             if (g_kind == 2 || g_kind == 3)
-                HostStart();
-            HostInit();
+                BrTimerStart1003C230();
+            BrSub1003C150();
             g_inited = 1;
-            HostGo();
+            BrSub1003CDA0();
             return 1;
         }
     }
     if (g_host != 0)
-        HostGo();
+        BrSub1003CDA0();
     return 1;
 }
 

@@ -222,12 +222,12 @@ void BrTex3dExpand(unsigned short *param_1, int param_2, int param_3, unsigned c
                                     for (local_38 = 0; (int)local_38 < 4; local_38 = local_38 + 1) {
                                         if ((int)param_1 >= iVar17) break;
                                         bVar11 = *(unsigned char *)param_9;
-                                        uVar4 = FUN_100271f0(*(unsigned short *)(param_5 + (unsigned int)(bVar11 >> 4) * 2));
+                                        uVar4 = BrTex3dTexel(*(unsigned short *)(param_5 + (unsigned int)(bVar11 >> 4) * 2));
                                         *puVar21 = uVar4;
                                         iVar22 = iVar22 + 2;
                                         puVar21 = puVar21 + 1;
                                         if (iVar22 >= cbMax) return;
-                                        uVar4 = FUN_100271f0(*(unsigned short *)(param_5 + (bVar11 & 0xf) * 2));
+                                        uVar4 = BrTex3dTexel(*(unsigned short *)(param_5 + (bVar11 & 0xf) * 2));
                                         *puVar21 = uVar4;
                                         iVar22 = iVar22 + 2;
                                         puVar21 = puVar21 + 1;
@@ -239,12 +239,12 @@ void BrTex3dExpand(unsigned short *param_1, int param_2, int param_3, unsigned c
                                     for (local_38 = 0; (int)local_38 < 4; local_38 = local_38 + 1) {
                                         if ((int)param_1 >= iVar17) break;
                                         bVar11 = *(unsigned char *)param_9;
-                                        uVar4 = FUN_100271f0(*(unsigned short *)(param_5 + (unsigned int)(bVar11 >> 4) * 2));
+                                        uVar4 = BrTex3dTexel(*(unsigned short *)(param_5 + (unsigned int)(bVar11 >> 4) * 2));
                                         *puVar21 = uVar4;
                                         iVar22 = iVar22 + 2;
                                         puVar21 = puVar21 + 1;
                                         if (iVar22 >= cbMax) return;
-                                        uVar4 = FUN_100271f0(*(unsigned short *)(param_5 + (bVar11 & 0xf) * 2));
+                                        uVar4 = BrTex3dTexel(*(unsigned short *)(param_5 + (bVar11 & 0xf) * 2));
                                         *puVar21 = uVar4;
                                         iVar22 = iVar22 + 2;
                                         puVar21 = puVar21 + 1;
@@ -258,13 +258,13 @@ void BrTex3dExpand(unsigned short *param_1, int param_2, int param_3, unsigned c
                                 for (param_1 = (unsigned short *)0x0; (int)param_1 < iVar17;) {
                                     bVar11 = *(unsigned char *)param_9;
                                     pal = *(unsigned short *)(param_5 + (unsigned int)(bVar11 >> 4) * 2);
-                                    uVar4 = FUN_100271f0(pal);
+                                    uVar4 = BrTex3dTexel(pal);
                                     *puVar21 = uVar4;
                                     iVar22 = iVar22 + 2;
                                     puVar21 = puVar21 + 1;
                                     if (iVar22 >= cbMax) return;
                                     pal = *(unsigned short *)(param_5 + (bVar11 & 0xf) * 2);
-                                    uVar4 = FUN_100271f0(pal);
+                                    uVar4 = BrTex3dTexel(pal);
                                     *puVar21 = uVar4;
                                     iVar22 = iVar22 + 2;
                                     puVar21 = puVar21 + 1;
@@ -599,7 +599,7 @@ void BrTex3dExpand(unsigned short *param_1, int param_2, int param_3, unsigned c
                                     pbVar12 = pbVar12 + 4;
                                     for (local_34 = 0; local_34 < 4; local_34 = local_34 + 1) {
                                         if (iVar16 >= iVar15) break;
-                                        uVar4 = FUN_100271f0(*(unsigned short *)(param_5 + (unsigned int)*pbVar12 * 2));
+                                        uVar4 = BrTex3dTexel(*(unsigned short *)(param_5 + (unsigned int)*pbVar12 * 2));
                                         *puVar21 = uVar4;
                                         iVar22 = iVar22 + 2;
                                         puVar21 = puVar21 + 1;
@@ -611,7 +611,7 @@ void BrTex3dExpand(unsigned short *param_1, int param_2, int param_3, unsigned c
                                     pbVar12 = pbVar12 + -8;
                                     for (local_34 = 0; local_34 < 4; local_34 = local_34 + 1) {
                                         if (iVar16 >= iVar15) break;
-                                        uVar4 = FUN_100271f0(*(unsigned short *)(param_5 + (unsigned int)*pbVar12 * 2));
+                                        uVar4 = BrTex3dTexel(*(unsigned short *)(param_5 + (unsigned int)*pbVar12 * 2));
                                         *puVar21 = uVar4;
                                         iVar22 = iVar22 + 2;
                                         puVar21 = puVar21 + 1;
@@ -628,7 +628,7 @@ void BrTex3dExpand(unsigned short *param_1, int param_2, int param_3, unsigned c
                             iVar16 = iVar15;
                             if (0 < iVar15) {
                                 do {
-                                    uVar4 = FUN_100271f0(*(unsigned short *)(param_5 + (unsigned int)*pbVar12 * 2));
+                                    uVar4 = BrTex3dTexel(*(unsigned short *)(param_5 + (unsigned int)*pbVar12 * 2));
                                     *puVar21 = uVar4;
                                     iVar22 = iVar22 + 2;
                                     puVar21 = puVar21 + 1;
@@ -950,7 +950,7 @@ void BrTex3dExpand(unsigned short *param_1, int param_2, int param_3, unsigned c
                     if ((param_22 & local_44) != 0) {
                         if (0 < (int)uVar14) {
                             while (1) {
-                                uVar4 = FUN_100271f0(*(unsigned short *)(pbVar12 + 4));
+                                uVar4 = BrTex3dTexel(*(unsigned short *)(pbVar12 + 4));
                                 *puVar21 = uVar4;
                                 puVar21 = puVar21 + 1;
                                 pbVar12 = pbVar12 + 2;
@@ -958,7 +958,7 @@ void BrTex3dExpand(unsigned short *param_1, int param_2, int param_3, unsigned c
                                 param_9 = param_9 + 1;
                                 if (param_9 >= (int)uVar14) break;
                                 if (iVar22 >= cbMax) return;
-                                uVar4 = FUN_100271f0(*(unsigned short *)(pbVar12 + 4));
+                                uVar4 = BrTex3dTexel(*(unsigned short *)(pbVar12 + 4));
                                 *puVar21 = uVar4;
                                 puVar21 = puVar21 + 1;
                                 pbVar12 = pbVar12 + 2;
@@ -966,7 +966,7 @@ void BrTex3dExpand(unsigned short *param_1, int param_2, int param_3, unsigned c
                                 param_9 = param_9 + 1;
                                 if (param_9 >= (int)uVar14) break;
                                 if (iVar22 >= cbMax) return;
-                                uVar4 = FUN_100271f0(*(unsigned short *)(pbVar12 + -4));
+                                uVar4 = BrTex3dTexel(*(unsigned short *)(pbVar12 + -4));
                                 *puVar21 = uVar4;
                                 puVar21 = puVar21 + 1;
                                 pbVar12 = pbVar12 + 2;
@@ -974,7 +974,7 @@ void BrTex3dExpand(unsigned short *param_1, int param_2, int param_3, unsigned c
                                 param_9 = param_9 + 1;
                                 if (param_9 >= (int)uVar14) break;
                                 if (iVar22 >= cbMax) return;
-                                uVar4 = FUN_100271f0(*(unsigned short *)(pbVar12 + -4));
+                                uVar4 = BrTex3dTexel(*(unsigned short *)(pbVar12 + -4));
                                 *puVar21 = uVar4;
                                 puVar21 = puVar21 + 1;
                                 pbVar12 = pbVar12 + 2;
@@ -989,7 +989,7 @@ void BrTex3dExpand(unsigned short *param_1, int param_2, int param_3, unsigned c
                     } else {
                         if (0 < (int)uVar14) {
                             do {
-                                uVar4 = FUN_100271f0(*(unsigned short *)pbVar12);
+                                uVar4 = BrTex3dTexel(*(unsigned short *)pbVar12);
                                 *puVar21 = uVar4;
                                 iVar22 = iVar22 + 2;
                                 puVar21 = puVar21 + 1;

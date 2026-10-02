@@ -192,7 +192,7 @@ int BrOptFn10057C10(GameUi *parent)
     p->w1E20C = 3;
     p->s34((char *)(BrStrGet(100)), 1, 1, (char *)(&DAT_100aaca8));
     cont->w14 += 1;
-    if (DAT_10226a48 == 2) {
+    if ((*(int *)&g_brRaceNet) == 2) {
     p = new BrCtl;
     cont->a18[cont->w14] = p;
     bad = (p == 0);
@@ -202,7 +202,7 @@ int BrOptFn10057C10(GameUi *parent)
     p->pfn0C = (CtlFn)BrPhaseTick_100474B0;
     p->pfn08 = (CtlFn)FUN_1003c430;
     p->w1E20C = 3;
-    p->s34((char *)(BrStrGet(0x1b)), 1, 1, (char *)(&DAT_100aabe8));
+    p->s34((char *)(BrStrGet(0x1b)), 1, 1, (char *)(&(*(char *)&g_hot0)));
     cont->w14 += 1;
     cont->w344 += 1;
 
@@ -215,7 +215,7 @@ int BrOptFn10057C10(GameUi *parent)
     p->pfn0C = (CtlFn)BrSub10047360;
     p->pfn08 = (CtlFn)BrOptCycleAA2A00;
     p->w1E20C = 3;
-    p->s34((char *)(BrStrGet(0x1c)), 1, 1, (char *)(&DAT_100aabe8));
+    p->s34((char *)(BrStrGet(0x1c)), 1, 1, (char *)(&(*(char *)&g_hot0)));
     cont->w14 += 1;
     cont->w344 += 1;
     p = new BrCtl;
@@ -227,7 +227,7 @@ int BrOptFn10057C10(GameUi *parent)
     p->pfn0C = (CtlFn)BrSub10047360;
     p->pfn08 = (CtlFn)BrOptCycleBD3E0;
     p->w1E20C = 3;
-    p->s34((char *)(BrStrGet(0x1d)), 1, 1, (char *)(&DAT_100aabe8));
+    p->s34((char *)(BrStrGet(0x1d)), 1, 1, (char *)(&(*(char *)&g_hot0)));
     cont->w14 += 1;
     cont->w344 += 1;
 
@@ -240,7 +240,7 @@ int BrOptFn10057C10(GameUi *parent)
     p->pfn0C = (CtlFn)BrSub10047360;
     p->pfn08 = (CtlFn)BrOptCycleAA2A18;
     p->w1E20C = 3;
-    p->s34((char *)(BrStrGet(0x65)), 1, 1, (char *)(&DAT_100aabe8));
+    p->s34((char *)(BrStrGet(0x65)), 1, 1, (char *)(&(*(char *)&g_hot0)));
     cont->w14 += 1;
     cont->w344 += 1;
     }
@@ -252,13 +252,13 @@ int BrOptFn10057C10(GameUi *parent)
         FUN_100378c0(4);
     p->s38(parent, cont->f338, cont->f33C - DAT_10077658, 0x102001, 2, 5, 1, -1);
     p->pfn0C = (CtlFn)BrSub10047360;
-    p->pfn08 = (CtlFn)BrOptOpen2954;
+    p->pfn08 = (CtlFn)Ctl3DC20_fn;
     p->pfn18 = (CtlFn)BrOpt37D0;
     p->w1E20C = 3;
-    if (g_brAA2884 != 0)
-        p->s34((char *)(BrStrGet(0x66)), 1, 1, (char *)(&DAT_100aabe8));
+    if (g_host != 0)
+        p->s34((char *)(BrStrGet(0x66)), 1, 1, (char *)(&(*(char *)&g_hot0)));
     else
-        p->s34((char *)(BrStrGet(0x1E)), 1, 1, (char *)(&DAT_100aabe8));
+        p->s34((char *)(BrStrGet(0x1E)), 1, 1, (char *)(&(*(char *)&g_hot0)));
     cont->w14 += 1;
     cont->w344 += 1;
     p = new BrCtl;
@@ -269,11 +269,11 @@ int BrOptFn10057C10(GameUi *parent)
     p->s38(parent, cont->f338, cont->f33C - DAT_1007765c, 0x102001, 2, 5, 1, -1);
     p->pfn0C = (CtlFn)BrSub10047360;
     p->w1E20C = 3;
-    if (DAT_10ac4090 != 0)
-        p->s34((char *)(BrStrGet(0x67)), 1, 1, (char *)(&DAT_100aabe8));
+    if (g_guardB != 0)
+        p->s34((char *)(BrStrGet(0x67)), 1, 1, (char *)(&(*(char *)&g_hot0)));
     else
-        p->s34((char *)(BrStrGet(0x0C)), 1, 1, (char *)(&DAT_100aabe8));
-    DAT_10ac5d10 = (BrCtl *)((struct Phase *)((BrCtl *)((struct Phase *)(p))));
+        p->s34((char *)(BrStrGet(0x0C)), 1, 1, (char *)(&(*(char *)&g_hot0)));
+    (*(BrCtl * *)&g_29B8) = (BrCtl *)((struct Phase *)((BrCtl *)((struct Phase *)(p))));
     cont->w14 += 1;
     cont->w344 += 1;
     p = new BrCtl;
@@ -292,9 +292,9 @@ int BrOptFn10057C10(GameUi *parent)
     if (bad)
         FUN_100378c0(4);
     p->s38(parent, cont->f338, 275.0f, 0x101001, 2, 5, 1, -1);
-    p->pfn04 = (CtlFn)FUN_100393c0;
+    p->pfn04 = (CtlFn)BrItemSetModeLabel_100393C0;
     p->w1E20C = 3;
-    p->s34((char *)(&DAT_100acad8), 1, 1, (char *)(&DAT_100aac58));
+    p->s34((char *)(&(g_strA[0])), 1, 1, (char *)(&DAT_100aac58));
     cont->w14 += 1;
     p = new BrCtl;
     cont->a18[cont->w14] = p;
@@ -312,9 +312,9 @@ int BrOptFn10057C10(GameUi *parent)
     if (bad)
         FUN_100378c0(4);
     p->s38(parent, cont->f338, 152.0f, 0x101001, 2, 5, 1, -1);
-    p->pfn04 = (CtlFn)FUN_10038f40;
+    p->pfn04 = (CtlFn)BrItemSetPickLabel_10038F40;
     p->w1E20C = 3;
-    p->s34((char *)(&DAT_100acad8), 1, 1, (char *)(&DAT_100aac48));
+    p->s34((char *)(&(g_strA[0])), 1, 1, (char *)(&DAT_100aac48));
     cont->w14 += 1;
     p = new BrCtl;
     cont->a18[cont->w14] = p;

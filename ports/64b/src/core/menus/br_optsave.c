@@ -68,16 +68,16 @@
 
 void BrOptSave(void)
 {
-    g_aBrB4E710[0]  = g_br0AC648;
-    g_aBrB4E710[1]  = g_brAA2A00;
-    g_aBrB4E710[2]  = g_brAA2A08;
-    g_aBrB4E710[3]  = g_br0AC64C;
-    g_aBrB4E710[4]  = g_br0AC650;
-    g_aBrB4E710[5]  = g_br0AC654;
-    g_aBrB4E710[6]  = g_brAA2A0C;
-    g_aBrB4E710[7]  = g_br0AC658;
-    g_aBrB4E710[8]  = g_brAA2A10;
-    g_aBrB4E710[9]  = g_brAA2A14;
-    g_aBrB4E710[10] = g_br0AC65C;
-    g_aBrB4E710[11] = g_brAA2A18;
+    g_aBrB4E710[0]  = (*(int32_t *)&g_brIdx0ABDE8);
+    g_aBrB4E710[1]  = (*(int32_t *)&DAT_10ac5d58);
+    g_aBrB4E710[2]  = (*(int32_t *)&DAT_10ac5d60);
+    g_aBrB4E710[3]  = (*(int32_t *)&DAT_100abdec);
+    g_aBrB4E710[4]  = (*(int32_t *)&DAT_100abdf0);
+    g_aBrB4E710[5]  = (*(int32_t *)&g_brSel0ABDF4);
+    g_aBrB4E710[6]  = (*(int32_t *)&g_brKind5D64);
+    g_aBrB4E710[7]  = (*(int32_t *)&DAT_100abdf8);
+    g_aBrB4E710[8]  = (*(int32_t *)&DAT_10ac5d68);
+    g_aBrB4E710[9]  = (*(int32_t *)&DAT_10ac5d6c);
+    g_aBrB4E710[10] = g_i0AC65C;
+    g_aBrB4E710[11] = (*(int32_t *)&DAT_10ac5d70);
 }

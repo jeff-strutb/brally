@@ -36,18 +36,18 @@ extern int BrOptCycleAA2A24(void);   /* 0x100436B0 */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 int32_t BrUiOptHook_100436B0(BrUiCtl_ *pCtl)
 {int v;  int s5;
-if (DAT_10ac6734) {
-        s5 = DAT_10ac5d7c; v = s5 + 1;
-        DAT_10ac5d7c = v;
+if ((*(int *)&g_act1)) {
+        s5 = g_brSel5D7C; v = s5 + 1;
+        g_brSel5D7C = v;
         if (v > 1) {
-            DAT_10ac5d7c = 0;
+            g_brSel5D7C = 0;
         }
     }
-    else if (DAT_10ac6730) {
-        v = DAT_10ac5d7c;
+    else if ((*(int *)&g_act0)) {
+        v = g_brSel5D7C;
         v = v - 1;
-        DAT_10ac5d7c = v;
+        g_brSel5D7C = v;
         if (v < 0) {
-            DAT_10ac5d7c = 1;
+            g_brSel5D7C = 1;
         }
-    }v = DAT_10ac5d7c;DAT_10b7153c = DAT_100abce0[v];return 1;}
+    }v = g_brSel5D7C;(*(int *)&g_BrDrawReflectEnable) = DAT_100abce0[v];return 1;}

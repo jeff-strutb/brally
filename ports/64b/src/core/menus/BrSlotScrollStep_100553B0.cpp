@@ -188,15 +188,15 @@ int Ctl553B0::Step(int *pArg)
     if ((i18 & 0x18) != 0)
         return 0;
 
-    if ((i18 & 0x80000) != 0 && g_pBrAC61E0->f2C == 0 && g_pBrAC61E0->f30 == 0) {
+    if ((i18 & 0x80000) != 0 && (*(BrPad553B0 * *)&g_pBrAA2E80)->f2C == 0 && (*(BrPad553B0 * *)&g_pBrAA2E80)->f30 == 0) {
         i1a9b4 = 0;
         i18 = i18 & 0xFFF7FFFD;
     } else if ((i18 & 0x80000) != 0
-               && (g_pBrAC61E0->f2C != 0 || g_pBrAC61E0->f30 != 0)) {
+               && ((*(BrPad553B0 * *)&g_pBrAA2E80)->f2C != 0 || (*(BrPad553B0 * *)&g_pBrAA2E80)->f30 != 0)) {
         int now;
 
         i18 |= 0x22;
-        now = BrFn1006E280();
+        now = BrSub10075020();
         g_brAC5DB4 = g_brAC5DB4 + (now - g_brAC5DB8);
         g_brAC5DB8 = now;
         if (g_brAC5DB4 < 60)
@@ -215,11 +215,11 @@ int Ctl553B0::Step(int *pArg)
                 ratio = (float)(wCount - 1) / f1a9d0;
 
             if (i1a9b8 != 0) {
-                float v = (float)(g_pBrAC5DD8->f00 - i1a98c);
+                float v = (float)((*(BrTime553B0 * *)&BrGlNavThis5DD8)->f00 - i1a98c);
 
                 if (i1a9b4 == 0)
                     g_brAC5DBC = v;
-                f1a9ac = v + (float)g_pBrAC5DD8->f00 - g_brAC5DBC;
+                f1a9ac = v + (float)(*(BrTime553B0 * *)&BrGlNavThis5DD8)->f00 - g_brAC5DBC;
                 if (f1a9ac < f1a9c0)
                     f1a9ac = f1a9c0;
                 else if (f1a9ac > f1a9c4)
@@ -229,11 +229,11 @@ int Ctl553B0::Step(int *pArg)
                 if ((int)wCount - 1 > 0)
                     w1a92e = (short)(int)((f1a9ac - f1a9c0) * ratio);
             } else if (i1a9bc != 0) {
-                float w = (float)g_pBrAC5DD8->f04 - (float)g_pBrAC5DD8->f10;
+                float w = (float)(*(BrTime553B0 * *)&BrGlNavThis5DD8)->f04 - (float)(*(BrTime553B0 * *)&BrGlNavThis5DD8)->f10;
 
                 if (i1a9b4 == 0)
-                    g_brAC5DC0 = (float)g_pBrAC5DD8->f04 - (float)i1a990;
-                f1a9b0 = w + (float)g_pBrAC5DD8->f04 - g_brAC5DC0;
+                    g_brAC5DC0 = (float)(*(BrTime553B0 * *)&BrGlNavThis5DD8)->f04 - (float)i1a990;
+                f1a9b0 = w + (float)(*(BrTime553B0 * *)&BrGlNavThis5DD8)->f04 - g_brAC5DC0;
                 if (f1a9b0 < f1a9c8)
                     f1a9b0 = f1a9c8;
                 else if (f1a9b0 > f1a9cc)
@@ -342,15 +342,15 @@ int Ctl553B0::Step(int *pArg)
             i18 = i18 & 0xFFFFFEFF;
         }
 
-        if (BrFn10037720() == 0)
+        if (BrInputAnyActive() == 0)
             continue;
-        BrFn10037710();
+        BrFn1003E070();
         if ((p[-4] & 0x10) != 0)
             continue;
 
         *pArg = i;
-        BrFn1006BA60(1, 0x200020);
-        g_brAC5BAC = 1;
+        BrSub10072AF0(1, 0x200020);
+        g_track = 1;
         if (pfn04 != 0)
             pfn04(this, pArg);
     }

@@ -54,7 +54,7 @@ void Ctl58D40::Rebuild()
     }
     /* esi walks the .h of each pair ([esi]=h, [esi-4]=w) up to &g_tab[7].h */
     for (d = &(*(int *)&g_BrCharMapImage[98 + 0].ch); d < &(*(int *)&g_BrCharMapImage[98 + 7].ch); d += 2) {
-        if (d[-1] * d[0] * 6 > (g_mem << 20))
+        if (d[-1] * d[0] * 6 > ((*(int *)&BrGlHwParamB) << 20))
             continue;
         n = new Node;
         n->w = d[-1];

@@ -183,7 +183,7 @@ int BrPhaseEnterPlaceholder_1004A580(GameUi *parent)
     p->pfn0C = (CtlFn)BrSub10047360;
     p->pfn08 = (CtlFn)BrOptCycleTrack;
     p->w1E20C = 3;
-    p->s34((char *)(BrStrGet(0x14)), 1, 1, (char *)(&DAT_100aabe8));
+    p->s34((char *)(BrStrGet(0x14)), 1, 1, (char *)(&(*(char *)&g_hot0)));
     cont->w14 += 1;
     cont->w344 += 1;
     p = new BrCtl;
@@ -195,7 +195,7 @@ int BrPhaseEnterPlaceholder_1004A580(GameUi *parent)
     p->pfn0C = (CtlFn)BrSub10047360;
     p->pfn08 = (CtlFn)BrOptCycleAC64C;
     p->w1E20C = 3;
-    p->s34((char *)(BrStrGet(0x15)), 1, 1, (char *)(&DAT_100aabe8));
+    p->s34((char *)(BrStrGet(0x15)), 1, 1, (char *)(&(*(char *)&g_hot0)));
     cont->w14 += 1;
     cont->w344 += 1;
     p = new BrCtl;
@@ -207,7 +207,7 @@ int BrPhaseEnterPlaceholder_1004A580(GameUi *parent)
     p->pfn0C = (CtlFn)BrSub10047360;
     p->pfn08 = (CtlFn)BrOptCycleAC650;
     p->w1E20C = 3;
-    p->s34((char *)(BrStrGet(0x16)), 1, 1, (char *)(&DAT_100aabe8));
+    p->s34((char *)(BrStrGet(0x16)), 1, 1, (char *)(&(*(char *)&g_hot0)));
     cont->w14 += 1;
     cont->w344 += 1;
     p = new BrCtl;
@@ -219,7 +219,7 @@ int BrPhaseEnterPlaceholder_1004A580(GameUi *parent)
     p->pfn0C = (CtlFn)BrSub10047360;
     p->pfn08 = (CtlFn)BrOptCycleAC65C;
     p->w1E20C = 3;
-    p->s34((char *)(BrStrGet(0x17)), 1, 1, (char *)(&DAT_100aabe8));
+    p->s34((char *)(BrStrGet(0x17)), 1, 1, (char *)(&(*(char *)&g_hot0)));
     cont->w14 += 1;
     cont->w344 += 1;
     p = new BrCtl;
@@ -231,7 +231,7 @@ int BrPhaseEnterPlaceholder_1004A580(GameUi *parent)
     p->pfn0C = (CtlFn)BrSub10047360;
     p->pfn08 = (CtlFn)BrOptCycleAA2A08;
     p->w1E20C = 3;
-    p->s34((char *)(BrStrGet(0x18)), 1, 1, (char *)(&DAT_100aabe8));
+    p->s34((char *)(BrStrGet(0x18)), 1, 1, (char *)(&(*(char *)&g_hot0)));
     cont->w14 += 1;
     cont->w344 += 1;
     p = new BrCtl;
@@ -243,7 +243,7 @@ int BrPhaseEnterPlaceholder_1004A580(GameUi *parent)
     p->pfn0C = (CtlFn)BrSub10047360;
     p->pfn08 = (CtlFn)BrOpt3760;
     p->w1E20C = 3;
-    p->s34((char *)(BrStrGet(0x19)), 1, 1, (char *)(&DAT_100aabe8));
+    p->s34((char *)(BrStrGet(0x19)), 1, 1, (char *)(&(*(char *)&g_hot0)));
     cont->w14 += 1;
     cont->w344 += 1;
     p = new BrCtl;
@@ -253,15 +253,15 @@ int BrPhaseEnterPlaceholder_1004A580(GameUi *parent)
         FUN_100378c0(4);
     p->s38(parent, cont->f338, cont->f33C - DAT_10077660, 0x102001, 2, 5, 1, -1);
     p->pfn0C = (CtlFn)BrSub10047360;
-    p->pfn08 = (CtlFn)FUN_1003f980;
+    p->pfn08 = (CtlFn)BrOpt64E0;
     p->w1E20C = 3;
-    p->s34((char *)(BrStrGet(0xc)), 1, 1, (char *)(&DAT_100aabe8));
-    DAT_10ac5d0c = p;
+    p->s34((char *)(BrStrGet(0xc)), 1, 1, (char *)(&(*(char *)&g_hot0)));
+    (*(BrCtl * *)&DAT_10ac5d0c) = p;
     cont->w14 += 1;
     cont->w344 += 1;
-    fx = (float)DAT_100aabc8;
-    fy = (float)DAT_100aabcc;
-    if (g_br0AA010 == 0) {
+    fx = (float)(*(int *)&g_hot2);
+    fy = (float)(*(int *)((char *)&g_hot2 + 0x4));
+    if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0) {
         p = new BrCtl;
         cont->a18[cont->w14] = p;
         bad = (p == 0);
@@ -348,7 +348,7 @@ int BrPhaseEnterPlaceholder_1004A580(GameUi *parent)
     p->s38(parent, cont->f338, 137.0f, 0x101001, 2, 5, 1, -1);
     p->pfn04 = (CtlFn)BrUiText1003F760;
     p->w1E20C = 3;
-    p->s34((char *)(&DAT_100acad8), 1, 1, (char *)(&DAT_100aac08));
+    p->s34((char *)(&(g_strA[0])), 1, 1, (char *)(&DAT_100aac08));
     cont->w14 += 1;
     p = new BrCtl;
     cont->a18[cont->w14] = p;
@@ -366,9 +366,9 @@ int BrPhaseEnterPlaceholder_1004A580(GameUi *parent)
     if (bad)
         FUN_100378c0(4);
     p->s38(parent, cont->f338, 123.0f, 0x101001, 2, 5, 1, -1);
-    p->pfn04 = (CtlFn)BrUiText1003F7F0;
+    p->pfn04 = (CtlFn)BrUiText3F7F0;
     p->w1E20C = 3;
-    p->s34((char *)(&DAT_100acad8), 1, 1, &DAT_100aac38);
+    p->s34((char *)(&(g_strA[0])), 1, 1, &DAT_100aac38);
     cont->w14 += 1;
     p = new BrCtl;
     cont->a18[cont->w14] = p;
@@ -386,9 +386,9 @@ int BrPhaseEnterPlaceholder_1004A580(GameUi *parent)
     if (bad)
         FUN_100378c0(4);
     p->s38(parent, cont->f338, 181.0f, 0x101001, 2, 5, 1, -1);
-    p->pfn04 = (CtlFn)BrUiText1003F990;
+    p->pfn04 = (CtlFn)BrUiText3F990;
     p->w1E20C = 3;
-    p->s34((char *)(&DAT_100acad8), 1, 1, &DAT_100aac28);
+    p->s34((char *)(&(g_strA[0])), 1, 1, &DAT_100aac28);
     cont->w14 += 1;
     p = new BrCtl;
     cont->a18[cont->w14] = p;
@@ -406,9 +406,9 @@ int BrPhaseEnterPlaceholder_1004A580(GameUi *parent)
     if (bad)
         FUN_100378c0(4);
     p->s38(parent, cont->f338, 262.0f, 0x101001, 2, 5, 1, -1);
-    p->pfn04 = (CtlFn)FUN_10038da0;
+    p->pfn04 = (CtlFn)BrUiText3F860;
     p->w1E20C = 3;
-    p->s34((char *)(&DAT_100acad8), 1, 1, (char *)(&DAT_100aac18));
+    p->s34((char *)(&(g_strA[0])), 1, 1, (char *)(&DAT_100aac18));
     cont->w14 += 1;
     return 1;
 }

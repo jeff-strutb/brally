@@ -60,26 +60,26 @@ void FUN_10061310(void)
   int *puVar3;
   int v;
   
-  if ((DAT_10b71530 == 1) || (DAT_10b71530 == 2)) {
+  if (((*(int *)((char *)&(*(int *)&g_BrCtrlCfg) + 0x2A0)) /* BR_LP64_BYTE_VIEW */ == 1) || ((*(int *)((char *)&(*(int *)&g_BrCtrlCfg) + 0x2A0)) /* BR_LP64_BYTE_VIEW */ == 2)) {
     v = BrFfbInit();
-    DAT_10b71530 = v;
+    (*(int *)((char *)&(*(int *)&g_BrCtrlCfg) + 0x2A0)) /* BR_LP64_BYTE_VIEW */ = v;
     switch (v) {
     case 1:
-      DAT_10b71534 = (int)&DAT_10b71338;
+      g_BrPadModeBytes = (int)&(*(int *)((char *)&(*(int *)&g_BrCtrlCfg) + 0xA8)) /* BR_LP64_BYTE_VIEW */;
       break;
     case 2:
-      DAT_10b71534 = (int)&DAT_10b713e0;
+      g_BrPadModeBytes = (int)&(*(int *)((char *)&(*(int *)&g_BrCtrlCfg) + 0x150)) /* BR_LP64_BYTE_VIEW */;
       break;
     case 3:
-      DAT_10b71534 = (int)&DAT_10b71488;
+      g_BrPadModeBytes = (int)&(*(int *)((char *)&(*(int *)&g_BrCtrlCfg) + 0x1F8)) /* BR_LP64_BYTE_VIEW */;
       break;
     default:
-      DAT_10b71534 = (int)&g_BrCtrlCfg;
+      g_BrPadModeBytes = (int)&(*(int *)&g_BrCtrlCfg);
       break;
     }
   }
   iVar2 = 0;
-  piVar1 = &DAT_100b32b0;
+  piVar1 = &(DAT_100b32b0[0]);
   do {
     *piVar1 = iVar2;
     piVar1 = piVar1 + 6;
@@ -87,21 +87,21 @@ void FUN_10061310(void)
   } while ((int)piVar1 < 0x100b3508);
   BrSndBankClear();
   iVar2 = 0;
-  if (DAT_100b2f04 > 0) {
-    puVar3 = &DAT_10af3bb0;
+  if ((*(int *)&g_BrCarCount) > 0) {
+    puVar3 = &(*(int *)((char *)&g_aBrRaceCar + 0x29A8)) /* BR_LP64_BYTE_VIEW */;
     do {
       BrSndBankSetCar(iVar2,*puVar3);
       iVar2 = iVar2 + 1;
       puVar3 = puVar3 + 0xada;
-    } while (iVar2 < DAT_100b2f04);
+    } while (iVar2 < (*(int *)&g_BrCarCount));
   }
-  FUN_1006c290(1);
-  BrSfxSrcPlaySilent(0,DAT_100b32b0,DAT_100b32bc,DAT_100b32c0);
-  if (DAT_100b2f04 > 1) {
-    BrSfxSrcPlaySilent(2,DAT_100b32b0,DAT_100b32bc,DAT_100b32c0);
+  BrSfxBankLoad(1);
+  BrSfxSrcPlaySilent(0,(DAT_100b32b0[0]),(DAT_100b32bc[0]),(DAT_100b32c0[0]));
+  if ((*(int *)&g_BrCarCount) > 1) {
+    BrSfxSrcPlaySilent(2,(DAT_100b32b0[0]),(DAT_100b32bc[0]),(DAT_100b32c0[0]));
   }
-  if (DAT_100b2f04 > 2) {
-    BrSfxSrcPlaySilent(4,DAT_100b32b0,DAT_100b32bc,DAT_100b32c0);
+  if ((*(int *)&g_BrCarCount) > 2) {
+    BrSfxSrcPlaySilent(4,(DAT_100b32b0[0]),(DAT_100b32bc[0]),(DAT_100b32c0[0]));
   }
   return;
 }

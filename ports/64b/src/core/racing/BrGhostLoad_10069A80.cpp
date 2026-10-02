@@ -135,7 +135,7 @@ bool BrGhostLoad(char *path, int arg)
 
     if (fread(DAT_117a6188, 1, 4, fp) != 4)
         { fclose(fp); goto fail; }
-    if (strncmp(DAT_117a6188, DAT_100b55a4, 4) != 0)
+    if (strncmp(DAT_117a6188, (*(char (*)[])&DAT_100b51e4[960]), 4) != 0)
         { fclose(fp); goto fail; }
     if (fread(&len, 4, 1, fp) != 1)
         { fclose(fp); goto fail; }
@@ -151,32 +151,32 @@ bool BrGhostLoad(char *path, int arg)
         { fclose(fp); goto fail; }
     if (len < 0xc) {
         path -= 4;
-        if (fread(&DAT_10ac5c24, 1, 4, fp) != 4)
+        if (fread(&(*(int *)&g_brTime5C24), 1, 4, fp) != 4)
             { fclose(fp); goto fail; }
         path -= 4;
-        if (fread(&DAT_10ac5c20, 1, 4, fp) != 4)
+        if (fread(&g_brTime5C20, 1, 4, fp) != 4)
             { fclose(fp); goto fail; }
     }
     path -= 0x10;
-    if (fread(DAT_105bc8e0, 1, 0x10, fp) != 0x10)
+    if (fread((g_aBrRaceBeginRec[0]), 1, 0x10, fp) != 0x10)
         { fclose(fp); goto fail; }
     if (fread(BrReplayGetBuf2(), 1, (size_t)path, fp) != (size_t)path)
         { fclose(fp); goto fail; }
     {
         unsigned int sum = FUN_10001000(0, 0, 0);
         if (len < 0xc) {
-            sum = FUN_10001000(sum, &DAT_10ac5c24, 4);
-            sum = FUN_10001000(sum, &DAT_10ac5c20, 4);
+            sum = FUN_10001000(sum, &(*(int *)&g_brTime5C24), 4);
+            sum = FUN_10001000(sum, &g_brTime5C20, 4);
         }
-        sum = FUN_10001000(sum, DAT_105bc8e0, 0x10);
+        sum = FUN_10001000(sum, (g_aBrRaceBeginRec[0]), 0x10);
         sum = FUN_10001000(sum, BrReplayGetBuf2(), (size_t)path);
         if (checksum == sum)
             goto install;
     }
 fail:
-    *(float *)&DAT_10ac5c20 = 0.0f;
-    *(int *)DAT_105bc8e0 = -1;
-    *(float *)&DAT_10ac5c24 = 0.0f;
+    *(float *)&g_brTime5C20 = 0.0f;
+    *(int *)(g_aBrRaceBeginRec[0]) = -1;
+    *(float *)&(*(int *)&g_brTime5C24) = 0.0f;
     DAT_105bc8e4 = -1;
     DAT_105bc8e8 = -1;
     DAT_105bc8ec = -1;
@@ -186,28 +186,28 @@ install:
         long         n;
         unsigned int count;
 
-        DAT_105bc8d8 = 0x10;
+        (*(int *)&g_brRace5BC8D8) = 0x10;
         count = BrReplayCountFromBytes((size_t)path);
         if (len >= 0xc) {
-            DAT_10ac5c24 = 0;
-            *(float *)&DAT_10ac5c20 = (float)((int)count - 0xcc) * DAT_10077bec;
+            (*(int *)&g_brTime5C24) = 0;
+            *(float *)&g_brTime5C20 = (float)((int)count - 0xcc) * DAT_10077bec;
         }
-        *(unsigned short *)(DAT_10af2094 + 0xf2) |= (unsigned short)(1 << DAT_105bc8e0[0]);
-        *(unsigned short *)(DAT_10af2094 + 0xf0) |= (unsigned short)(1 << DAT_105bc8e0[1]);
+        *(unsigned short *)((*(BrSelInM * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */ + 0xf2) |= (unsigned short)(1 << (g_aBrRaceBeginRec[0])[0]);
+        *(unsigned short *)((*(BrSelInM * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */ + 0xf0) |= (unsigned short)(1 << (g_aBrRaceBeginRec[0])[1]);
         fseek(fp, 0, 2);
         n = ftell(fp);
         fseek(fp, n - 0x98, 0);
-        fread(&DAT_10af3cd8, 4, 1, fp);
-        fread(&DAT_10af3cdc, 4, 1, fp);
-        fread(&DAT_10af3ce0, 4, 1, fp);
-        fread(&DAT_10af3ce4, 4, 1, fp);
-        fread(&DAT_10af3ce8, 4, 1, fp);
-        fread(&DAT_10af3cec, 4, 1, fp);
+        fread(&(*(int *)((char *)&g_aBrRaceCar + 0x2AD0)) /* BR_LP64_BYTE_VIEW */, 4, 1, fp);
+        fread(&(*(int *)((char *)&g_aBrRaceCar + 0x2AD4)) /* BR_LP64_BYTE_VIEW */, 4, 1, fp);
+        fread(&(*(int *)((char *)&g_aBrRaceCar + 0x2AD8)) /* BR_LP64_BYTE_VIEW */, 4, 1, fp);
+        fread(&(*(int *)((char *)&g_aBrRaceCar + 0x2ADC)) /* BR_LP64_BYTE_VIEW */, 4, 1, fp);
+        fread(&(*(int *)((char *)&g_aBrRaceCar + 0x2AE0)) /* BR_LP64_BYTE_VIEW */, 4, 1, fp);
+        fread(&(*(int *)((char *)&g_aBrRaceCar + 0x2AE4)) /* BR_LP64_BYTE_VIEW */, 4, 1, fp);
         fseek(fp, 0, 2);
         n = ftell(fp);
         fseek(fp, n - 0x80, 0);
-        fread(DAT_10af3cf0, 1, 0x80, fp);
-        memcpy(DAT_10af6858, DAT_10af3cf0, 0x80);
+        fread((*(char (*)[])((char *)&g_aBrRaceCar + 0x2AE8)) /* BR_LP64_BYTE_VIEW */, 1, 0x80, fp);
+        memcpy((*(char (*)[])((char *)&g_aBrRaceCar + 0x5650)) /* BR_LP64_BYTE_VIEW */, (*(char (*)[])((char *)&g_aBrRaceCar + 0x2AE8)) /* BR_LP64_BYTE_VIEW */, 0x80);
         fclose(fp);
         return true;
     }

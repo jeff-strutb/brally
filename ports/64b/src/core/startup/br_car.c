@@ -27,11 +27,11 @@ void BrCarSlotLoad(int i, void *pArg, int flag)
 {
     /* GOTCHA: flag != 0 means "do not load", not "load". */
     if (flag == 0)
-        BrSub10037740((unsigned char *)g_hudSpriteTable + i * 0x15F88, pArg);
+        BrSub10037740((unsigned char *)(*(const unsigned char (*)[])&g_ab0C12A0) + i * 0x15F88, pArg);
     else
         BrLogPrint("LoadCar()");
 
-    BrSub1003551B();
+    BrNop_1002EBCC();
     g_apBr6ED5E8[i] = pArg;
 }
 

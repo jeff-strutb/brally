@@ -87,10 +87,10 @@ int BrItemSetSelTime_1003A420(Obj3A420 *pObj)
 
     memset(szTime, 0, sizeof(szTime));
 
-    if (g_brSel5C28 == 3)
+    if ((*(int *)&DAT_10ac5c28) == 3)
         t = g_brTime5C20;
     else
-        t = g_brFTbl58F8[g_brSel5C28];
+        t = g_brFTbl58F8[(*(int *)&DAT_10ac5c28)];
 
     if (t <= g_f077624) {
         strcpy(szTime, g_szBrDashes);

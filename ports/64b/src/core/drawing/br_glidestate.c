@@ -44,14 +44,14 @@
 void FUN_10023aa0(void)
 
 {
-  if (DAT_106ed6a8 != 0) {
-    if (BrG_6C6624 != 0) {
+  if ((*(int *)((char *)&g_aBrEntRecs + 0x78)) != 0) {
+    if ((*(int *)((char *)&g_aBrEntRecs + 0x84)) != 0) {
       guFogGenerateLinear(&DAT_105d1718,-100.0f,300.0f);
     }
-    else if (DAT_106ed6b0 != 0) {
+    else if ((*(int *)((char *)&g_aBrEntRecs + 0x80)) != 0) {
       guFogGenerateLinear(&DAT_105d1718,-100.0f,300.0f);
     }
-    else if (BrG_6C661C != 0) {
+    else if ((*(int *)((char *)&g_aBrEntRecs + 0x7C)) != 0) {
       guFogGenerateLinear(&DAT_105d1718,60.0f,200.0f);
     }
     else {
@@ -107,10 +107,10 @@ void BrFramePresent(BrGfxWords *pCmd)
     int now, delta, count, gate;
 
     grAlphaCombine(3, 8, 1, 1, 0);
-    DAT_105d17a8 = 4;
-    DAT_105d1758 = 0;
-    DAT_105ccfd4 = 4;
-    DAT_105ccfe4 = 0;
+    (*(int *)&BrGlBlendSrcRGB) = 4;
+    (*(int *)&BrGlBlendDstRGB) = 0;
+    (*(int *)&BrGlBlendSrcA) = 4;
+    (*(int *)&BrGlBlendDstA) = 0;
     grAlphaBlendFunction(4, 0, 4, 0);
     grDepthMask(1);
     DAT_105ccfe8 = 0;
@@ -120,24 +120,24 @@ void BrFramePresent(BrGfxWords *pCmd)
     /* Build a one-item list in place: the text draw appends its commands
      * through the shared cursor, then we cap it with the end marker and run
      * the local list. */
-    DAT_106e7710 = aList;
+    (*(BrGfxWords * *)&g_BrGfxPtr) = aList;
     BrSetGlobal_ABB30(0x14);
-    BrTextDraw(&DAT_118ee590, 0, 0x3c);
+    BrTextDraw(&(DAT_118ee590[0]), 0, 0x3c);
     {
-        BrGfxWords *p = DAT_106e7710++;
+        BrGfxWords *p = (*(BrGfxWords * *)&g_BrGfxPtr)++;
         p->w0 = 0xB8000000u;
         p->w1 = 0;
     }
     BrGbiRun(aList);
 
-    (*DAT_106b7ab8)();
+    (*BrGlFlipHook)();
 
     now = BrSub10075020();
     delta = now - DAT_105d17dc;
     DAT_105d17dc = now;
     DAT_105d17e0 = delta;
-    count = g_BrFpsCountB;
-    gate = g_BrFpsGateB;
+    count = (*(int *)&g_BrFpsCountB);
+    gate = (*(int *)&g_BrFpsGateB);
     if (gate < 0) {
         gate = 0;
         if (count > 0) {
@@ -149,9 +149,9 @@ void BrFramePresent(BrGfxWords *pCmd)
         }
     }
     ++gate;
-    g_BrFpsGateB = gate;
+    (*(int *)&g_BrFpsGateB) = gate;
     if (gate >= count) {
-        g_BrFpsGateB = gate = 0;
+        (*(int *)&g_BrFpsGateB) = gate = 0;
     }
     (&g_BrFpsSamplesB)[gate] = delta;
 }
@@ -188,7 +188,7 @@ void FUN_1001dfb0(void)
   int uVar3;
   int uVar4;
   
-  grClipWindow(0,0,g_BrFpsScreenW,g_BrFpsScreenH);
+  grClipWindow(0,0,BrGbiRectG_A7514,BrGbiRectG_A7518);
   grDepthBufferMode(2);
   grDepthBufferFunction(7);
   grDepthMask(1);
@@ -198,12 +198,12 @@ void FUN_1001dfb0(void)
   grAlphaTestFunction(7);
   grAlphaTestReferenceValue(0x80);
   grTexFilterMode(0,0,0);
-  if (1 < DAT_105ccbd0) {
+  if (1 < (*(int *)&DAT_105ccb68[26])) {
     grTexFilterMode(1,0,0);
   }
   grConstantColorValue(0xffffffff);
   grColorCombine(1,0,0,2,0);
-  if (1 < DAT_105ccbd0) {
+  if (1 < (*(int *)&DAT_105ccb68[26])) {
     grTexCombine(1, 1, 0, 1, 0, 0, 0);
     grTexCombine(0, 3, 8, 3, 8, 0, 0);
   }
@@ -309,10 +309,10 @@ void BrTex3dMakeCurrent(int param_1)
 {
   int iVar1;
 
-  if (param_1 != DAT_105e1808) {
+  if (param_1 != (*(int *)&s_g5E1808)) {
     FUN_10028420(*(int *)(DAT_106b7aa0 + param_1 * 0x2b4));
     iVar1 = *(int *)(DAT_106b7aa0 + 4 + param_1 * 0x2b4);
-    if (DAT_105e1820 != iVar1) {
+    if ((*(int *)&s_g5E1820) != iVar1) {
       switch (iVar1) {
       case 1:
         grTexCombine(1,1,0,1,0,0,0);
@@ -321,23 +321,23 @@ void BrTex3dMakeCurrent(int param_1)
       default:
         grTexCombine(0,1,0,1,0,0,0);
       }
-      DAT_105e1820 = *(int *)(DAT_106b7aa0 + 4 + param_1 * 0x2b4);
+      (*(int *)&s_g5E1820) = *(int *)(DAT_106b7aa0 + 4 + param_1 * 0x2b4);
     }
-    _DAT_118ed1a4 = *(float *)(DAT_106b7aa0 + 0x2ac + param_1 * 0x2b4);
-    _DAT_118ed1a8 = *(float *)(DAT_106b7aa0 + 0x2b0 + param_1 * 0x2b4);
-    _DAT_118ed198 =
+    DAT_118ed1a4 = *(float *)(DAT_106b7aa0 + 0x2ac + param_1 * 0x2b4);
+    DAT_118ed1a8 = *(float *)(DAT_106b7aa0 + 0x2b0 + param_1 * 0x2b4);
+    BrGbiRectG_18ED198 =
          *(int *)(*(int *)(DAT_106b7aa0 + 0x5c + param_1 * 0x2b4) * 0x40 + DAT_106b7aa0 + 0x94 +
                   param_1 * 0x2b4);
-    _DAT_1186c950 =
+    BrGbiRectG_186C950 =
          *(int *)(*(int *)(DAT_106b7aa0 + 0x5c + param_1 * 0x2b4) * 0x40 + DAT_106b7aa0 + 0x98 +
                   param_1 * 0x2b4);
-    _DAT_1186c954 =
+    BrGbiRectG_186C954 =
          *(int *)(*(int *)(DAT_106b7aa0 + 0x5c + param_1 * 0x2b4) * 0x40 + DAT_106b7aa0 + 0x9c +
                   param_1 * 0x2b4);
-    _DAT_118ec988 =
+    BrGbiRectG_18EC988 =
          *(int *)(*(int *)(DAT_106b7aa0 + 0x5c + param_1 * 0x2b4) * 0x40 + DAT_106b7aa0 + 0xa0 +
                   param_1 * 0x2b4);
-    DAT_105e1808 = param_1;
+    (*(int *)&s_g5E1808) = param_1;
   }
   return;
 }

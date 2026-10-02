@@ -108,7 +108,7 @@ int Ctl550E0::Paint(int sel)
             }
             if (i18 & 0x2000000) {
                 int x = x1a93c - 0x13;
-                if (FUN_10051580(aItem[n].f434) != 0)
+                if (BrSlotsFindById(aItem[n].f434) != 0)
                     Draw(0x8b, (float)x, (float)y);
                 else
                     Draw(0x8a, (float)x, (float)y);

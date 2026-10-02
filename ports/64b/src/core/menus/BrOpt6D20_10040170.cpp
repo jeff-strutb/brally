@@ -49,11 +49,11 @@ int BrOpt6D20(GameObj *pGame)
     Phase *pObj;
 
     pGame->pSub->s7();
-    pObj = (Phase *)(g_cur);
+    pObj = (Phase *)((*(Phase * *)&g_brPAA29B8));
     if (pObj != 0)
         pObj->f00(1);
     g_5C6C = 0;
-    g_5D0C = 0;
-    g_cur = (Phase *)((BrOptObj *)(g_5CB4));
+    DAT_10ac5d0c = 0;
+    (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(g_5CB4));
     return 0;
 }

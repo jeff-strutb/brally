@@ -22,7 +22,7 @@ void BrDPlayMsg6SendSelf(void)
 
 {
   if ((g_brPA9D008 != 0) && (*(int *)(g_brPA9D008 + 8) != 0)) {
-    FUN_10037130(g_brPA9D008,*(int *)(g_brPA9D008 + 8));
+    BrSub1003DA90(g_brPA9D008,*(int *)(g_brPA9D008 + 8));
   }
   return;
 }

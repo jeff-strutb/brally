@@ -119,27 +119,27 @@ int UiPage::Frame()
                 if (r == -1)
                     return 0;
             }
-            if (s20() != 0 && DAT_10ac5c30 == 0) {
+            if (s20() != 0 && g_5C30 == 0) {
                 if (f1C & 0x400000) {
-                    if (g_pBrAA2E80->f2C != 0 || g_pBrAA2E80->f30 != 0)
+                    if ((*(GameCtl * *)&g_pBrAA2E80)->f2C != 0 || (*(GameCtl * *)&g_pBrAA2E80)->f30 != 0)
                         w1E20C = w2A42;
                 }
                 if (f1C & 2) {
                     if (pfn08) {
                         if (pfn08 == (int (*)(UiPage *))BrOpt3760) {
                             BrSub10072AF0(2, 0x200020);
-                            g_brAA2854 = 2;
+                            g_track = 2;
                         } else if (pfn08 != (int (*)(UiPage *))FUN_1003c240) {
                             BrSub10072AF0(1, 0x200020);
-                            g_brAA2854 = 1;
+                            g_track = 1;
                         }
                         if (pfn08(this) == 0)
                             return 0;
                         if (pfn08 == (int (*)(UiPage *))FUN_1003c240) {
                             BrSub10072AF0(1, 0x200020);
-                            g_brAA2854 = 1;
+                            g_track = 1;
                         }
-                        g_brAA33E4 = 0;
+                        DAT_10ac6744 = 0;
                     }
                     f1C &= ~2u;
                 } else {

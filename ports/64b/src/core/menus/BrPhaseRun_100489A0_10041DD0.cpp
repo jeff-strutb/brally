@@ -71,8 +71,8 @@ int BrPhase41::Run()
     int i;
 
     if (this->done == 0) {
-        FUN_10037920();
-        g_BrCtrlCfg.Save(&DAT_10b72f48);
+        BrOptSave();
+        (*(BrCtrlCfg41 *)&g_BrCtrlCfg).Save(&g_navArg);
         this->idx = 0;
         this->f18(0);
         return 0;
@@ -81,14 +81,14 @@ int BrPhase41::Run()
     this->s1();
 
     {
-        BrPhase41 *pSave = g_brPhaseAA2904;
-        g_brPhaseAA2904 = (BrPhase41 *)((BrOptObj *)(DAT_10ac5c60));
-        DAT_10ac5c58->Hand();
-        g_brPhaseAA2904 = (BrPhase41 *)((BrOptObj *)((struct Ph *)((BrOptObj *)(pSave))));
+        BrPhase41 *pSave = (*(BrPhase41 * *)&g_brPAA29B8);
+        (*(BrPhase41 * *)&g_brPAA29B8) = (BrPhase41 *)((BrOptObj *)((*(BrPhase41 * *)&g_2908)));
+        (*(BrPhase41 * *)&g_obj400)->Hand();
+        (*(BrPhase41 * *)&g_brPAA29B8) = (BrPhase41 *)((BrOptObj *)((struct Ph *)((BrOptObj *)(pSave))));
     }
 
     BrDikPollAndEdge();
-    DAT_10ac5bc0 = (g_brPhaseAA2904 == DAT_10ac5c60);
+    g_bc0 = ((*(BrPhase41 * *)&g_brPAA29B8) == (*(BrPhase41 * *)&g_2908));
 
     this->idx = 0;
     for (i = 0; i < this->count; i++) {
@@ -107,8 +107,8 @@ int BrPhase41::Run()
     this->s2();
 
     if (this->done == 0) {
-        FUN_10037920();
-        g_BrCtrlCfg.Save(&DAT_10b72f48);
+        BrOptSave();
+        (*(BrCtrlCfg41 *)&g_BrCtrlCfg).Save(&g_navArg);
         this->idx = 0;
         this->f18(0);
         return 0;

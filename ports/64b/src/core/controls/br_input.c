@@ -169,13 +169,13 @@ void BrOnActivate(BrWParam wParam)
     uint32_t hi;
 
     lo = (uint32_t)wParam;
-    g_brActivateGate1 = lo;
+    (*(uint32_t *)&DAT_105bc740) = lo;
     lo &= 0xFFFFu;
     hi = (uint32_t)wParam >> 16;
-    g_brActivateGate2 = lo;
-    g_brActivateGate3 = hi;
+    (*(uint32_t *)&DAT_105bc744) = lo;
+    (*(uint32_t *)&DAT_105bc748) = hi;
     if (lo == 0u || hi != 0u)
-        BrOnActivateTail();
+        BrPodNop();
 }
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
@@ -207,37 +207,37 @@ int FUN_100703d0(void)
   int iVar1;
   int *puVar2;
   
-  DAT_118eeef0 = DAT_118eeef0 + 1;
-  if (DAT_118eeef0 == 1) {
-    DAT_118eebf0 = 1;
-    DAT_118ee9cc = 0;
-    puVar2 = &DAT_118ee9d0;
+  (*(int *)((char *)&g_brFfb + 0x4)) /* BR_LP64_BYTE_VIEW */ = (*(int *)((char *)&g_brFfb + 0x4)) /* BR_LP64_BYTE_VIEW */ + 1;
+  if ((*(int *)((char *)&g_brFfb + 0x4)) /* BR_LP64_BYTE_VIEW */ == 1) {
+    (*(int *)&g_brInKeyCur) = 1;
+    (*(int *)&g_brInKeyPrev) = 0;
+    puVar2 = &(*(int *)&g_brInKeys);
     for (iVar1 = 0x80; iVar1 != 0; iVar1 = iVar1 + -1) {
       *puVar2 = 0;
       puVar2 = puVar2 + 1;
     }
-    puVar2 = &DAT_118eebf8;
+    puVar2 = &(*(int *)&g_brInJoy);
     for (iVar1 = 0x88; iVar1 != 0; iVar1 = iVar1 + -1) {
       *puVar2 = 0;
       puVar2 = puVar2 + 1;
     }
-    DAT_118eee94 = 0;
+    (*(int *)&g_brInJoyPrev) = 0;
     DAT_118eebd0 = 1;
     BrSub100770C0();
-    iVar1 = (*(CC_std_4 *)(*(int *)(DAT_118eee88) + 12))(DAT_118eee88,&DAT_10078718,&g_pBrDik18ABDD0,0);
+    iVar1 = (*(CC_std_4 *)(*(int *)((*(int * *)&g_pBr18ABD70)) + 12))((*(int * *)&g_pBr18ABD70),&DAT_10078718,&(*(int * *)&g_pBrDik18ABDD0),0);
     if (iVar1 < 0) {
       return 0;
     }
-    iVar1 = (*(CC_std_2 *)(*(int *)(g_pBrDik18ABDD0) + 44))(g_pBrDik18ABDD0,&DAT_10073ae0);
+    iVar1 = (*(CC_std_2 *)(*(int *)((*(int * *)&g_pBrDik18ABDD0)) + 44))((*(int * *)&g_pBrDik18ABDD0),&DAT_10073ae0);
     if (iVar1 < 0) {
       return 0;
     }
-    iVar1 = (*(CC_std_3 *)(*(int *)(g_pBrDik18ABDD0) + 52))(g_pBrDik18ABDD0,g_brP680584,6);
+    iVar1 = (*(CC_std_3 *)(*(int *)((*(int * *)&g_pBrDik18ABDD0)) + 52))((*(int * *)&g_pBrDik18ABDD0),g_brOwner5BC72C,6);
     if (iVar1 < 0) {
       return 0;
     }
-    if (g_pBrDik18ABDD0 != (int *)0x0) {
-      (*(CC_std_1 *)(*(int *)(g_pBrDik18ABDD0) + 28))(g_pBrDik18ABDD0);
+    if ((*(int * *)&g_pBrDik18ABDD0) != (int *)0x0) {
+      (*(CC_std_1 *)(*(int *)((*(int * *)&g_pBrDik18ABDD0)) + 28))((*(int * *)&g_pBrDik18ABDD0));
     }
   }
   return 1;
@@ -296,37 +296,37 @@ int FUN_100703d0(void)
 /* @implements 0x10019350 glide BrOnActivateApp */
 BrWndResult BrOnActivateApp(void *hWnd, BrWParam wParam, BrLParam lParam)
 {
-    g_brActivateGate1 = (uint32_t)wParam;
+    (*(uint32_t *)&DAT_105bc740) = (uint32_t)wParam;
     if (wParam == 0) {
-        if (g_br105CCB5C == 0 && g_br105CCB88 == 0) {
-            BrSub100609F0();
-            BrSub10002EB0();
-            BrSub1006BD70();
-            BrSub10061440();
-            g_br105BC8DC = 0;
-            if (g_br10226A48 != 0 && g_br10226A44 != 0 &&
-                g_br105CCB88 == 0 && g_br10AF21B0 < g_br100BCBE8) {
-                BrSub10004F50();
-                BrSub10005330();
+        if (g_BrX06909B4 == 0 && (DAT_105ccb68[8]) == 0) {
+            BrWrap_10067980();
+            BrCdPause();
+            BrSndBankMute();
+            BrSndTableClear();
+            (*(int32_t *)&DAT_105bc8dc) = 0;
+            if (g_brRaceNet != 0 && g_brRaceTick != 0 &&
+                (DAT_105ccb68[8]) == 0 && (*(int32_t *)((char *)&g_aBrRaceCar + 0xFA8)) /* BR_LP64_BYTE_VIEW */ < (*(int32_t *)&g_CBE8)) {
+                BrNetLockSetIfZero22AAF4();
+                BrNetBeaconTick();
             } else {
-                g_br105CCB5C = 1;
+                g_BrX06909B4 = 1;
             }
         }
-        BrOnActivateTail();
-        BrSub1007296C();
-        g_br100A9354 = 1;
+        BrPodNop();
+        grSstWinClose();
+        (*(int32_t *)&g_brRaceRules) = 1;
         InvalidateRect(hWnd, 0, 0);
     }
-    if (g_brActivateGate1 != 0) {
-        if (g_br100A9354 == 1 && g_brActivateGate3 == 0) {
-            if (BrSetVideoMode(g_brAppModeW, g_brAppModeH) == 0) {
-                MessageBoxA(hWnd, BrStrId(0x129), 0, 0);
+    if ((*(uint32_t *)&DAT_105bc740) != 0) {
+        if ((*(int32_t *)&g_brRaceRules) == 1 && (*(uint32_t *)&DAT_105bc748) == 0) {
+            if (BrGlideResOpen((*(int32_t *)&BrGbiRectG_A7514), (*(int32_t *)&BrGbiRectG_A7518)) == 0) {
+                MessageBoxA(hWnd, BrStrGet(0x129), 0, 0);
                 PostMessageA(hWnd, 0x10, 0, 0);
             }
-            g_br100A9354 = 2;
+            (*(int32_t *)&g_brRaceRules) = 2;
         }
-        BrOnActivateTail();
-        BrSub10019A40();
+        BrPodNop();
+        BrRaceClockReset();
     }
     return DefWindowProcA(hWnd, 0x1C, (uint32_t)wParam, (int32_t)lParam);
 }
@@ -413,31 +413,31 @@ BrWndResult BrOnSysCommand(void *hWnd, BrWParam wParam, BrLParam lParam)
 BrWndResult __stdcall BrWndProc(void *hWnd, uint32_t uMsg, BrWParam wParam, BrLParam lParam)
 {
     int32_t iMode;
-    int32_t *pHook = (int32_t *)g_br10AC5C5C;
+    int32_t *pHook = (int32_t *)g_brPAA29B8;
 
     if (pHook != 0 && pHook[0x68 / 4] != 0) {
-        BrSub100590D0(g_br10AC5C58, hWnd, uMsg, (uint32_t)wParam, (int32_t)lParam);
-        if (g_br10AC408C != 0)
-            BrSub10035A30(hWnd, uMsg, (uint32_t)wParam, (int32_t)lParam);
+        BrSub100590D0(g_obj400, hWnd, uMsg, (uint32_t)wParam, (int32_t)lParam);
+        if ((*(int32_t *)&g_guardA) != 0)
+            BrWmAppHook35A30(hWnd, uMsg, (uint32_t)wParam, (int32_t)lParam);
     }
 
-    iMode = g_brAudioMode;
+    iMode = (*(int32_t *)&DAT_1007b074);
     if (iMode == 2) {
-        if ((int32_t)uMsg == g_brEarMsg) {
+        if ((int32_t)uMsg == (*(int32_t *)&DAT_104b1620)) {
             if (lParam == 2) {
-                if ((int32_t)wParam == BrGet1021C788())
-                    BrSub10002CF0();
+                if ((int32_t)wParam == BrGetGlobal_1C788())
+                    BrCdTrackNextWrap();
             }
             return 0;
         }
         if (uMsg == 0x219u) {
             if (wParam == 0x8000u) {
-                BrSub10002580();
-                BrSub10002AF0(1);
+                BrCdEarChannelOpen();
+                BrCdTrackPlay(1);
             }
             if (wParam == 0x8001u || wParam == 0x8003u || wParam == 0x8004u) {
-                BrSub10002F70();
-                BrSub10002760();
+                BrCdStop();
+                BrCdMaybeClose();
             }
             return 1;
         }
@@ -450,10 +450,10 @@ BrWndResult __stdcall BrWndProc(void *hWnd, uint32_t uMsg, BrWParam wParam, BrLP
      * does.  Returning DefWindowProcA from the case pushes the constant 6. */
     switch (uMsg) {
     case 1:
-        g_brhWnd = hWnd;
+        (*(void * *)&g_brOwner5BC72C) = hWnd;
         return 0;
     case 2:
-        BrSub100325B0(0);
+        BrExt_10038F30(0);
         PostQuitMessage(0);
         break;
     case 0x1C:
@@ -465,10 +465,10 @@ BrWndResult __stdcall BrWndProc(void *hWnd, uint32_t uMsg, BrWParam wParam, BrLP
         return BrOnSysCommand(hWnd, wParam, lParam);
     case 0x3B9:
         if (iMode == 1) {
-            if (lParam == (BrLParam)g_br1021C770 &&
+            if (lParam == (BrLParam)(*(int32_t *)&g_220C40) &&
                 wParam == 1 &&
-                g_br105CCB5C == 0)
-                BrSub10002830();
+                g_BrX06909B4 == 0)
+                FUN_10002830();
             return 0;
         }
         break;
@@ -510,7 +510,7 @@ void BrPadPackButtons(unsigned char *out)
     unsigned char a[4];
     unsigned char b[4];
 
-    flags = FUN_100706d0(a, b);
+    flags = BrInputPoll(a, b);
     out[2] = a[0];
     out[3] = b[0];
     *(unsigned short *)out = 0;
@@ -563,10 +563,10 @@ int BrInputLatchUpdate(void)
   
   iVar1 = 0;
   do {
-    *(unsigned int *)((int)&DAT_10ac6730 + iVar1) = (unsigned int)(*(int *)((int)&DAT_10ac66e8 + iVar1) == 0);
-    *(unsigned int *)((int)&DAT_10ac66e8 + iVar1) = *(unsigned int *)((int)&DAT_10ac6720 + iVar1);
-    *(unsigned int *)((int)&DAT_10ac6730 + iVar1) =
-         *(unsigned int *)((int)&DAT_10ac6730 + iVar1) & *(unsigned int *)((int)&DAT_10ac6720 + iVar1);
+    *(unsigned int *)((int)&g_act0 + iVar1) = (unsigned int)(*(int *)((int)&DAT_10ac66e8 + iVar1) == 0);
+    *(unsigned int *)((int)&DAT_10ac66e8 + iVar1) = *(unsigned int *)((int)&BrGlNavEdge6720 + iVar1);
+    *(unsigned int *)((int)&g_act0 + iVar1) =
+         *(unsigned int *)((int)&g_act0 + iVar1) & *(unsigned int *)((int)&BrGlNavEdge6720 + iVar1);
     iVar1 = iVar1 + 4;
   } while (iVar1 < 0x10);
   return;
@@ -620,35 +620,35 @@ int BrInputPollPressed(void)
     int i;
     int *p;
 
-    if (DAT_10ac61e0 == 0 || DAT_10ac61e0->pDev == 0)
+    if ((*(BrDIPollRec * *)&g_pBrAA2E80) == 0 || (*(BrDIPollRec * *)&g_pBrAA2E80)->pDev == 0)
         return -1;
 
-    memset(&DAT_10ac6720, 0, 16);
+    memset(&BrGlNavEdge6720, 0, 16);
 
     /* Re-read the device: the clear may alias it as far as the compiler
      * knows, so this is a second load, not the tested one. */
-    pDev = DAT_10ac61e0->pDev;
+    pDev = (*(BrDIPollRec * *)&g_pBrAA2E80)->pDev;
     hr = pDev->lpVtbl->GetDeviceState(pDev, 0x10, &st);
     /* 0x8007001E only -- any other failure is left alone. */
     if (hr != 0 && hr == 0x8007001E) {
-        pDev = DAT_10ac61e0->pDev;
+        pDev = (*(BrDIPollRec * *)&g_pBrAA2E80)->pDev;
         pDev->lpVtbl->Acquire(pDev);
     }
 
     if (st.rgbButtons[0] & 0x80)
-        ((int *)&DAT_10ac6720)[0] = 1;
+        ((int *)&BrGlNavEdge6720)[0] = 1;
     if (st.rgbButtons[1] & 0x80)
-        ((int *)&DAT_10ac6720)[1] = 1;
+        ((int *)&BrGlNavEdge6720)[1] = 1;
     if (st.rgbButtons[2] & 0x80)
-        ((int *)&DAT_10ac6720)[2] = 1;
+        ((int *)&BrGlNavEdge6720)[2] = 1;
     if (st.rgbButtons[3] & 0x80)
-        ((int *)&DAT_10ac6720)[3] = 1;
+        ((int *)&BrGlNavEdge6720)[3] = 1;
 
     BrInputLatchUpdate();
 
     i = 0;
-    for (p = (int *)&DAT_10ac6730;
-         (ptrdiff_t)p < (ptrdiff_t)((int *)&DAT_10ac6730 + 4);
+    for (p = (int *)&g_act0;
+         (ptrdiff_t)p < (ptrdiff_t)((int *)&g_act0 + 4);
          p++, i++) {
         if (*p != 0)
             return i;
@@ -732,58 +732,58 @@ int32_t __stdcall BrSub100590D0(struct Obj400 * iArg, void *hWnd, uint32_t uMsg,
     r = 1;
     switch (uMsg) {
     case 6:
-        g_BrAA33E0 = (wParam == 0);
+        (*(int32_t *)&g_BrAA33E0) = (wParam == 0);
         goto user;
     case 0x102:
-        if (DAT_10ac5b9c != 0)
+        if (BrGlNavOff5B9C != 0)
             break;
-        if (DAT_10ac66b0 & 0x80)
+        if ((*(unsigned char *)&g_BrDikState[200]) & 0x80)
             break;
-        if (DAT_10ac66b8 & 0x80)
+        if ((*(unsigned char *)&g_BrDikState[208]) & 0x80)
             break;
-        if (DAT_10ac66b3 & 0x80)
+        if ((*(unsigned char *)&g_BrDikState[203]) & 0x80)
             break;
-        if (DAT_10ac66b5 & 0x80)
+        if ((*(unsigned char *)&g_BrDikState[205]) & 0x80)
             break;
-        g_brAA33E4 = wParam;
+        (*(int32_t *)&DAT_10ac6744) = wParam;
         break;
     case 0x111:
         if ((uint16_t)wParam != 0x9C41u)
             break;
-        g_brAA33E4 = 0x1B;
+        (*(int32_t *)&DAT_10ac6744) = 0x1B;
         break;
     case 0x112:
         r = DefWindowProcA(hWnd, 0x112, wParam, lParam);
         if (IsWindow(hWnd) == 0)
             break;
-        if (g_pBrAC61E0 == 0)
+        if (g_pBrAA2E80 == 0)
             break;
-        BrSub10060750(g_pBrAC61E0, *(BrSub10060750Arg *)&hWnd);
+        BrSub10060750(g_pBrAA2E80, *(BrSub10060750Arg *)&hWnd);
         break;
     case 0x211:
     case 0x231:
-        g_BrAA33E0 = 1;
-        if (g_pBrAC61E0 == 0)
+        (*(int32_t *)&g_BrAA33E0) = 1;
+        if (g_pBrAA2E80 == 0)
             break;
-        BrSub10060750(g_pBrAC61E0, *(BrSub10060750Arg *)&hWnd);
+        BrSub10060750(g_pBrAA2E80, *(BrSub10060750Arg *)&hWnd);
         break;
     case 0x212:
     case 0x232:
         if (GetActiveWindow() == hWnd) {
             b = IsIconic(hWnd);
-            g_BrAA33E0 = 0;
+            (*(int32_t *)&g_BrAA33E0) = 0;
             if (b == 0)
                 goto post;
         }
-        g_BrAA33E0 = 1;
+        (*(int32_t *)&g_BrAA33E0) = 1;
     post:
         PostMessageA(hWnd, 0x400, 0, 0);
         break;
     case 0x400:
     user:
-        if (g_pBrAC61E0 == 0)
+        if (g_pBrAA2E80 == 0)
             break;
-        BrSub10060750(g_pBrAC61E0, *(BrSub10060750Arg *)&hWnd);
+        BrSub10060750(g_pBrAA2E80, *(BrSub10060750Arg *)&hWnd);
         break;
     default:
         break;
@@ -804,8 +804,8 @@ int BrDiAcquire(void)
 {
   int iVar1;
   
-  if (DAT_118eeeec != (int *)0x0) {
-    iVar1 = (*(CC_std_1 *)(*(int *)(DAT_118eeeec) + 28))(DAT_118eeeec);
+  if ((*(int * *)&g_brFfb) != (int *)0x0) {
+    iVar1 = (*(CC_std_1 *)(*(int *)((*(int * *)&g_brFfb)) + 28))((*(int * *)&g_brFfb));
     return (iVar1 >= 0);
   }
   return 0;

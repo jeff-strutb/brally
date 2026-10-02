@@ -288,7 +288,7 @@ void BrScenePropsDraw(const BrPropList *pList, const BrMat4 *pViewMtx)
              (((g_s17.f6C3364 ^ g_s17.f6C1174) ? 0x1000u : 0x2000u)
               | 0x000A0205u));
 
-    pLights = BrX10069530();
+    pLights = BrPool32Alloc();
     BrLightDirsFromLookAt(BRS17_LIGHTMTX, (BrLightPair *)pLights,
                           0.0f, -1.0f, 15.0f,
                           0.0f,  0.0f,  0.0f,
@@ -296,8 +296,8 @@ void BrScenePropsDraw(const BrPropList *pList, const BrMat4 *pViewMtx)
     s17_emit(0x03840010u, s17_ptrword(pLights));
     s17_emit(0x03820010u, s17_ptrword((unsigned char *)pLights + 0x10));
 
-    pMtx = BrX10069490();
-    BrMat4Copy(pViewMtx, (BrMat4 *)pMtx);     /* SOURCE first -- br_mat.h */
+    pMtx = BrSub_10069490();
+    BrGuMtxStore(pViewMtx, (BrMat4 *)pMtx);     /* SOURCE first -- br_mat.h */
     s17_emit(0x01040040u, s17_ptrword(pMtx));
 
     s17_emit(0xBB000001u, 0xFFFFFFFFu);
@@ -335,10 +335,10 @@ void BrScenePropsDraw(const BrPropList *pList, const BrMat4 *pViewMtx)
             s17_emit(0xE8000000u, 0);
 
             {
-                void *pItemMtx = BrX10069490();
+                void *pItemMtx = BrSub_10069490();
 
                 BrMat4Translate(BRS17_TRANSMTX, it->x, it->y, it->z);
-                BrMat4Copy(BRS17_TRANSMTX, (BrMat4 *)pItemMtx);
+                BrGuMtxStore(BRS17_TRANSMTX, (BrMat4 *)pItemMtx);
                 s17_emit(0x01040040u, s17_ptrword(pItemMtx));
             }
 

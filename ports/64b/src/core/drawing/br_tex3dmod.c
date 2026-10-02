@@ -46,7 +46,7 @@ void BrTex3dMipModulate(BrTexReq272 *param_1, unsigned short *param_2)
     int y, x;
     unsigned short *pSrc;
     unsigned short *pDst;
-    FUN_10024490(DAT_105e1828, param_1->w2a0,
+    BrTexResample(DAT_105e1828, param_1->w2a0,
                  param_1->h2a4,
                  param_2 + param_1->w2a0 * param_1->h2a4,
                  param_1->w2a0 / 2, param_1->h2a4 / 2,

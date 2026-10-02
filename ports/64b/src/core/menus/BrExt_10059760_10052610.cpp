@@ -174,9 +174,9 @@ int BrExt_10059760(GameUi *parent)
         FUN_100378c0(4);
     p->s38(parent, cont->f338, cont->f33C, 0x102001, 2, 5, 1, -1);
     p->pfn0C = (CtlFn)BrSub10047360;
-    p->pfn08 = (CtlFn)BrPhaseActivate_10046260;
+    p->pfn08 = (CtlFn)Ctl3F700_fn;
     p->w1E20C = 3;
-    p->s34((char *)(BrStrGet(0x6b)), 1, 1, (char *)(&DAT_100aabe8));
+    p->s34((char *)(BrStrGet(0x6b)), 1, 1, (char *)(&(*(char *)&g_hot0)));
     cont->w14 += 1;
     cont->w344 += 1;
     p = new BrCtl;
@@ -186,9 +186,9 @@ int BrExt_10059760(GameUi *parent)
         FUN_100378c0(4);
     p->s38(parent, cont->f338, cont->f33C - DAT_10077648, 0x102001, 2, 5, 1, -1);
     p->pfn0C = (CtlFn)BrSub10047360;
-    p->pfn08 = (CtlFn)BrPhaseActivate_10044D00;
+    p->pfn08 = (CtlFn)Ctl3E250_fn;
     p->w1E20C = 3;
-    p->s34((char *)(BrStrGet(0x6c)), 1, 1, (char *)(&DAT_100aabe8));
+    p->s34((char *)(BrStrGet(0x6c)), 1, 1, (char *)(&(*(char *)&g_hot0)));
     cont->w14 += 1;
     cont->w344 += 1;
     p = new BrCtl;
@@ -200,7 +200,7 @@ int BrExt_10059760(GameUi *parent)
     p->pfn0C = (CtlFn)BrSub10047360;
     p->pfn08 = (CtlFn)BrPhaseLeave_10044C70;
     p->w1E20C = 3;
-    p->s34((char *)(BrStrGet(0xc)), 1, 1, (char *)(&DAT_100aabe8));
+    p->s34((char *)(BrStrGet(0xc)), 1, 1, (char *)(&(*(char *)&g_hot0)));
     cont->w14 += 1;
     cont->w344 += 1;
     p = new BrCtl;

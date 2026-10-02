@@ -104,7 +104,7 @@ char BrSaveLoad(int mode, int arg)
         return (char)BrSub69DC0(arg);
 
     if (mode == 2 || mode == 3) {
-        path  = DAT_100b55d8;
+        path  = (*(char (*)[])&DAT_100b51e4[1012]);
         count = 0x100;
     } else {
         path  = (char *)arg;
@@ -139,11 +139,11 @@ char BrSaveLoad(int mode, int arg)
         int equip[5];
 
         memcpy(equip, DAT_117a6188, 0x14);
-        (*(int * *)&g_aBrRaceCar[DAT_105ccbc4].pEquip)[0x3e] = equip[0];
-        (*(int * *)&g_aBrRaceCar[DAT_105ccbc4].pEquip)[0x3f] = equip[1];
-        (*(int * *)&g_aBrRaceCar[DAT_105ccbc4].pEquip)[0x40] = equip[2];
-        (*(int * *)&g_aBrRaceCar[DAT_105ccbc4].pEquip)[0x41] = equip[3];
-        (*(int * *)&g_aBrRaceCar[DAT_105ccbc4].pEquip)[0x42] = equip[4];
+        (*(int * *)&g_aBrRaceCar[(*(int *)&DAT_105ccb68[23])].pEquip)[0x3e] = equip[0];
+        (*(int * *)&g_aBrRaceCar[(*(int *)&DAT_105ccb68[23])].pEquip)[0x3f] = equip[1];
+        (*(int * *)&g_aBrRaceCar[(*(int *)&DAT_105ccb68[23])].pEquip)[0x40] = equip[2];
+        (*(int * *)&g_aBrRaceCar[(*(int *)&DAT_105ccb68[23])].pEquip)[0x41] = equip[3];
+        (*(int * *)&g_aBrRaceCar[(*(int *)&DAT_105ccb68[23])].pEquip)[0x42] = equip[4];
     }
     BrPodNop();
     fclose(fp);

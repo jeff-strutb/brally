@@ -42,10 +42,10 @@ public:
 
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define g_slot DAT_10ac5c64
+#define g_slot g_5C64
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define g_mode DAT_100a9360
+#define g_mode (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
@@ -77,31 +77,31 @@ int Ctl3F700::Activate()
     Phase *p;
 
     g_mode = 2;
-    ResetBuf();
+    BrSub1003E680();
     p = g_slot;
-    g_AF2094 = 0;
-    g_AF3CE4 = 1;
+    (*(int *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */ = 0;
+    (*(int *)((char *)&g_aBrRaceCar + 0x2ADC)) /* BR_LP64_BYTE_VIEW */ = 1;
     g_mode = 2;
-    g_0ABAA4 = 1;
-    g_5BC8E0 = (char)0xFF;
+    DAT_100abaa4 = 1;
+    (g_aBrRaceBeginRec[0]) = (char)0xFF;
     if (p == 0) {
-        g_0ABAA4 = 1;
+        DAT_100abaa4 = 1;
         p = new Phase;
         g_slot = p;
-        g_cur = (Phase *)((BrOptObj *)(p));
+        (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(p));
         if (p == 0)
             return 0;
         p->pfnEnter = EnterFn;
         g_slot->pfnEnter(g_slot);
-        g_cur->f0C = 1;
-        g_cur->f68 = 1;
-        Fn08D60();
-        Fn37660();
-        Fn37B20();
+        (*(Phase * *)&g_brPAA29B8)->f0C = 1;
+        (*(Phase * *)&g_brPAA29B8)->f68 = 1;
+        BrPodNop();
+        BrUiFn1003DFC0();
+        BrSub1003E510();
         g_hookObj->pfnHook = HookFn;
         return 1;
     } else {
-        g_cur = (Phase *)((BrOptObj *)(p));
+        (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(p));
         return 1;
     }
 }

@@ -71,7 +71,7 @@ void __fastcall BrEntSetMatrix(BrEntCar *pE, int _edx_unused, const BrMat4 *pSrc
     /* `rep movsd` of 16 dwords. */
     memcpy(&pE->mat0, pSrc, sizeof(BrMat4));
 
-    BrSub100765E0(pSrc, &pE->st.quat);
+    BrQuatFromMatrix(pSrc, &pE->st.quat);
 
     pE->stB.quat.f00 = pE->st.quat.f00;
     pE->stB.quat.f04 = pE->st.quat.f04;
@@ -142,7 +142,7 @@ void __fastcall BrEntSetOrientation(BrEntCar *pE, int _edx_unused,
         q.f08 = 0.0f;
         q.f0C = sn;
     }
-    BrSub10074090(&pE->st.quat, &pE->st.quat, &q);
+    BrQuatMul(&pE->st.quat, &pE->st.quat, &q);
 
     {
         float sn = BrSinF(h2);
@@ -151,7 +151,7 @@ void __fastcall BrEntSetOrientation(BrEntCar *pE, int _edx_unused,
         q.f08 = sn;
         q.f0C = 0.0f;
     }
-    BrSub10074090(&pE->st.quat, &pE->st.quat, &q);
+    BrQuatMul(&pE->st.quat, &pE->st.quat, &q);
 
     {
         float sn = BrSinF(h3);
@@ -160,7 +160,7 @@ void __fastcall BrEntSetOrientation(BrEntCar *pE, int _edx_unused,
         q.f08 = 0.0f;
         q.f0C = 0.0f;
     }
-    BrSub10074090(&pE->st.quat, &pE->st.quat, &q);
+    BrQuatMul(&pE->st.quat, &pE->st.quat, &q);
 
     BrVec4Normalise(&pE->st.quat);
 

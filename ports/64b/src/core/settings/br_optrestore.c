@@ -45,39 +45,39 @@ void BrSub1003E3A0(void)
 {
     int v;
 
-    v = DAT_100abcc0[DAT_10ac5d64];
-    DAT_10b71530 = v;
+    v = (*(int (*)[])&g_aBrAC520)[g_brKind5D64];
+    (*(int *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ = v;
     switch (v) {
-    case 1:  DAT_10b71534 = DAT_10b71290 + 0xa8; break;
-    case 2:  DAT_10b71534 = DAT_10b71290 + 0x150; break;
-    case 3:  DAT_10b71534 = DAT_10b71290 + 0x1f8; break;
-    default: DAT_10b71534 = DAT_10b71290; break;
+    case 1:  (*(void * *)&g_BrPadModeBytes) = (*(unsigned char (*)[])&g_BrCtrlCfg) + 0xa8; break;
+    case 2:  (*(void * *)&g_BrPadModeBytes) = (*(unsigned char (*)[])&g_BrCtrlCfg) + 0x150; break;
+    case 3:  (*(void * *)&g_BrPadModeBytes) = (*(unsigned char (*)[])&g_BrCtrlCfg) + 0x1f8; break;
+    default: (*(void * *)&g_BrPadModeBytes) = (*(unsigned char (*)[])&g_BrCtrlCfg); break;
     }
-    DAT_10ac5d74 = DAT_10b71540 == 0;
-    DAT_10ac5d78 = DAT_10b71538 == 0;
-    DAT_10ac5d7c = DAT_10b7153c == 0;
-    DAT_10ac5d80 = DAT_10b71b00 == 0;
-    strcpy(DAT_10ac3e80, DAT_10b71544);
-    FUN_10008d60();
-    DAT_100abde8 = DAT_10b71a70;
-    DAT_10ac5d58 = DAT_10b71a74;
-    DAT_10ac5d60 = DAT_10b71a78;
-    DAT_100abdec = DAT_10b71a7c;
-    DAT_100abdf0 = DAT_10b71a80;
-    DAT_100abdf4 = DAT_10b71a84;
-    DAT_10ac5d64 = DAT_10b71a88;
-    if (DAT_10b71a88 == 1)
-        DAT_10ac5d64 = 2;
+    g_brSel5D74 = DAT_10b71540 == 0;
+    (*(int *)&DAT_10ac5d78) = DAT_10b71538 == 0;
+    g_brSel5D7C = (*(int *)&g_BrDrawReflectEnable) == 0;
+    g_brSel5D80 = DAT_10b71b00 == 0;
+    strcpy(g_aBrA9CDF0, DAT_10b71544);
+    BrPodNop();
+    g_brIdx0ABDE8 = (g_aBrB4E710[0]);
+    DAT_10ac5d58 = (*(int *)&g_aBrB4E710[1]);
+    (*(int *)&DAT_10ac5d60) = (*(int *)&g_aBrB4E710[2]);
+    (*(int *)&DAT_100abdec) = (*(int *)&g_aBrB4E710[3]);
+    (*(int *)&DAT_100abdf0) = (*(int *)&g_aBrB4E710[4]);
+    g_brSel0ABDF4 = (*(int *)&g_aBrB4E710[5]);
+    g_brKind5D64 = (*(int *)&g_aBrB4E710[6]);
+    if ((*(int *)&g_aBrB4E710[6]) == 1)
+        g_brKind5D64 = 2;
     /* statement order decides which of edx/ecx each setting lands in */
-    DAT_100abdf8 = DAT_10b71a8c;
-    DAT_100aab84 |= (unsigned short)DAT_10b71a90;
-    DAT_10ac5d6c = DAT_10b71a94;
-    DAT_100abdfc = DAT_10b71a98;
-    DAT_10ac5d70 = DAT_10b71a9c;
-    DAT_10ac5d68 = DAT_10b71a90;
+    DAT_100abdf8 = (*(int *)&g_aBrB4E710[7]);
+    DAT_100aab84 |= (unsigned short)(*(int *)&g_aBrB4E710[8]);
+    DAT_10ac5d6c = (*(int *)&g_aBrB4E710[9]);
+    (*(int *)&g_i0AC65C) = (*(int *)&g_aBrB4E710[10]);
+    DAT_10ac5d70 = (*(int *)&g_aBrB4E710[11]);
+    DAT_10ac5d68 = (*(int *)&g_aBrB4E710[8]);
     {
         int t = DAT_100aab8c;
-        t |= DAT_10b71a94;
+        t |= (*(int *)&g_aBrB4E710[9]);
         DAT_100aab8c = t;
     }
 }

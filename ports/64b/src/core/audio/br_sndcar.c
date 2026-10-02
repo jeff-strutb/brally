@@ -148,25 +148,25 @@ void BR_THISCALL1 BrSndCarStep(BrDriverCar *pCar)
 
   iVar6 = pCar->f140;
   iVar9 = iVar6 << 1;
-  local_4 = DAT_106e86c8 * 0x2b68;
-  if ((DAT_105ccb5c != 0) || (pCar->pProfile == 0)) {
-    (&DAT_118eef54)[iVar6 * 0xc] = 0;
-    (&DAT_118eef48)[iVar6 * 0xc] = 0;
-    (&DAT_118eef4c)[iVar6 * 0xc] = 0;
+  local_4 = (*(int *)&BrG_6C1628[4]) * 0x2b68;
+  if (((*(int *)&g_BrX06909B4) != 0) || (pCar->pProfile == 0)) {
+    (&(*(int *)((char *)&g_aBrSfxChan + 0x14)))[iVar6 * 0xc] = 0;
+    (&(*(int *)((char *)&g_aBrSfxChan + 0x8)))[iVar6 * 0xc] = 0;
+    (&(*(int *)((char *)&g_aBrSfxChan + 0xC)))[iVar6 * 0xc] = 0;
     return;
   }
   local_24 = 0;
-  if (DAT_100aa044 == 1) {
-    iVar8 = *(int *)((char *)&DAT_10af393c + local_4);
+  if (g_brMode0AA8B4 == 1) {
+    iVar8 = *(int *)((char *)&(*(int *)((char *)&g_aBrRaceCar + 0x2734)) /* BR_LP64_BYTE_VIEW */ + local_4);
     if (pCar->fF78 != 0) goto LAB_10061526;
-    iVar3 = *(int *)((char *)&DAT_10af2180 + local_4);
+    iVar3 = *(int *)((char *)&(*(int *)((char *)&g_aBrRaceCar + 0xF78)) /* BR_LP64_BYTE_VIEW */ + local_4);
 LAB_j10061524:
     if (iVar3 != 0) goto LAB_10061526;
   }
   else {
     iVar8 = BR_LP64_PTR_AS_INT(pCar->pMatA);
-    if ((pCar->fF78 == 0) && (*(int *)((char *)&DAT_10af2180 + local_4) == 0)) {
-      iVar3 = g_aBrRaceCar[DAT_106e8720].fF78;
+    if ((pCar->fF78 == 0) && (*(int *)((char *)&(*(int *)((char *)&g_aBrRaceCar + 0xF78)) /* BR_LP64_BYTE_VIEW */ + local_4) == 0)) {
+      iVar3 = g_aBrRaceCar[(*(int *)&g_brRaceBegin6E8720)].fF78;
       goto LAB_j10061524;
     }
 LAB_10061526:
@@ -192,21 +192,21 @@ LAB_10061526:
     fVar10 = BR_K_00778D8;
   }
   if (pCar->f140 == 0) {
-    DAT_1184c454 = (*(unsigned char *)(DAT_106eed38 + 0x4c +
+    g_184C454 = (*(unsigned char *)(g_BrDrawTrackFlags + 0x4c +
                      (unsigned int)pCar->aNearIds[0] * 0x54) & 0x10)
                     ? 11000 : 0;
   }
   if (local_24 == 0) {
     local_20 = iVar9 * 24;
-    *(__int64 *)((char *)&DAT_118eef48 + local_20) =
+    *(__int64 *)((char *)&(*(int *)((char *)&g_aBrSfxChan + 0x8)) + local_20) =
         (__int64)(fVar10 * BR_K_00779E4 * BR_K_00779E8);
     local_8 = (float)local_1c;
     iVar4 = (int)(local_8 * local_14);
     iVar5 = (int)(local_8 * local_18);
-    *(int *)((char *)&DAT_118eef54 + local_20) = iVar4 + iVar5 * 0x10000;
+    *(int *)((char *)&(*(int *)((char *)&g_aBrSfxChan + 0x14)) + local_20) = iVar4 + iVar5 * 0x10000;
   }
   local_20 = pCar->f0F68;
-  if ((((*(int *)&g_aBrSfxChan[1 + iVar9].ratio) | (&DAT_118eef64)[iVar9 * 6]) == 0) ||
+  if ((((*(int *)&g_aBrSfxChan[1 + iVar9].ratio) | (&(*(int *)((char *)&g_aBrSfxChan + 0x24)))[iVar9 * 6]) == 0) ||
      ((pCar->aBody[0].f0209 == '\0' && (local_20 >= 4) && (local_20 <= 7)))) {
     pCar->f0F68 = 0;
     pCar->f0F6C = 0;
@@ -219,13 +219,13 @@ LAB_10061526:
     iVar4 = (int)(fVar10 * local_8);
     *(int *)&local_28 = iVar6 + iVar4 * 0x10000;
     if (*(unsigned char *)&pCar->aBody[0].f01FE < 0xab) {
-      BrSndPlaySimple(0x11, *(int *)&local_28);
+      BrSub10072AF0(0x11, *(int *)&local_28);
     }
     else if (*(unsigned char *)&pCar->aBody[0].f01FE < 0xd5) {
-      BrSndPlaySimple(0x10, *(int *)&local_28);
+      BrSub10072AF0(0x10, *(int *)&local_28);
     }
     else {
-      BrSndPlaySimple(1, *(int *)&local_28);
+      BrSub10072AF0(1, *(int *)&local_28);
     }
     BrFfbSetDurationShort();
     BrFfbCommitDuration();
@@ -238,13 +238,13 @@ LAB_10061526:
     iVar4 = (int)(fVar10 * local_c);
     *(int *)&local_28 = iVar6 + iVar4 * 0x10000;
     if (pCar->aBody[0].f01FF < 0xab) {
-      BrSndPlaySimple(0x13, *(int *)&local_28);
+      BrSub10072AF0(0x13, *(int *)&local_28);
     }
     else if (pCar->aBody[0].f01FF < 0xd5) {
-      BrSndPlaySimple(0x12, *(int *)&local_28);
+      BrSub10072AF0(0x12, *(int *)&local_28);
     }
     else {
-      BrSndPlaySimple(2, *(int *)&local_28);
+      BrSub10072AF0(2, *(int *)&local_28);
     }
     BrFfbCommitDuration();
     BrFfbSetDurationShort();
@@ -256,7 +256,7 @@ LAB_10061526:
     iVar6 = (int)(fVar10 * local_8);
     iVar4 = (int)(fVar10 * local_c);
     *(int *)&local_28 = iVar6 + iVar4 * 0x10000;
-    BrSndPlaySimple(3, *(int *)&local_28);
+    BrSub10072AF0(3, *(int *)&local_28);
   }
   pCar->aBody[0].f0208 = 0;
   if (0x7f < *(unsigned char *)&pCar->aBody[0].f0202) {
@@ -267,7 +267,7 @@ LAB_10061526:
     }
     iVar4 = iVar4 * 0x10001;
     *(int *)&local_28 = iVar4;
-    BrSndPlaySimple(0x14, iVar4);
+    BrSub10072AF0(0x14, iVar4);
   }
   pCar->aBody[0].f0202 = 0;
   if (0x7f < *(unsigned char *)&pCar->aBody[0].f0203) {
@@ -278,7 +278,7 @@ LAB_10061526:
     }
     iVar4 = iVar4 * 0x10001;
     *(int *)&local_28 = iVar4;
-    BrSndPlaySimple(0x15, iVar4);
+    BrSub10072AF0(0x15, iVar4);
   }
   pCar->aBody[0].f0203 = 0;
   if (0x7f < *(unsigned char *)&pCar->aBody[0].f0204) {
@@ -289,7 +289,7 @@ LAB_10061526:
     }
     iVar4 = iVar4 * 0x10001;
     *(int *)&local_28 = iVar4;
-    BrSndPlaySimple(0x16, iVar4);
+    BrSub10072AF0(0x16, iVar4);
   }
   pCar->aBody[0].f0204 = 0;
   if (0x7f < *(unsigned char *)&pCar->aBody[0].f0205) {
@@ -300,7 +300,7 @@ LAB_10061526:
     }
     iVar4 = iVar4 * 0x10001;
     *(int *)&local_28 = iVar4;
-    BrSndPlaySimple(0x17, iVar4);
+    BrSub10072AF0(0x17, iVar4);
   }
   pCar->aBody[0].f0205 = 0;
   if (0x7f < *(unsigned char *)&pCar->aBody[0].f0206) {
@@ -312,10 +312,10 @@ LAB_10061526:
       BrPodNop();
     }
     if (0x7f < *(unsigned char *)&pCar->aBody[0].f0207) {
-      FUN_1006baf0(0x18, pCar->f140, *(int *)&local_28);
+      BrWrap_10072B80(0x18, pCar->f140, *(int *)&local_28);
     }
     else {
-      FUN_1006ba80(0x18, pCar->f140, *(int *)&local_28);
+      BrWrap_10072B10(0x18, pCar->f140, *(int *)&local_28);
     }
   }
   else if (0x7f < *(unsigned char *)&pCar->aBody[0].f0207) {
@@ -355,7 +355,7 @@ LAB_10061526:
       case 0:
       case 3:
         iVar8 = pCar->f140;
-        if ((iVar8 < DAT_100b3858) && (DAT_117a5f08[iVar8] == 0)) {
+        if ((iVar8 < (*(int *)&g_brRaceNEntrant)) && (DAT_117a5f08[iVar8] == 0)) {
           DAT_117a5f18[iVar8] = 0;
           DAT_117a5f0c[pCar->f140] = 0;
           DAT_117a5f10[pCar->f140] = 1;
@@ -367,7 +367,7 @@ LAB_10061526:
         break;
       case 1:
         iVar8 = pCar->f140;
-        if ((iVar8 < DAT_100b3858) && (DAT_117a5f08[iVar8] == 0)) {
+        if ((iVar8 < (*(int *)&g_brRaceNEntrant)) && (DAT_117a5f08[iVar8] == 0)) {
           DAT_117a5f18[iVar8] = 0;
           DAT_117a5f0c[pCar->f140] = 0;
           DAT_117a5f10[pCar->f140] = 1;
@@ -379,7 +379,7 @@ LAB_10061526:
         break;
       case 2:
         iVar8 = pCar->f140;
-        if ((iVar8 < DAT_100b3858) && (DAT_117a5f08[iVar8] == 0)) {
+        if ((iVar8 < (*(int *)&g_brRaceNEntrant)) && (DAT_117a5f08[iVar8] == 0)) {
           DAT_117a5f18[iVar8] = 0;
           DAT_117a5f0c[pCar->f140] = 0;
           DAT_117a5f10[pCar->f140] = 1;
@@ -451,9 +451,9 @@ LAB_10061dc3:
   iVar6 = pCar->f0F68;
   if (iVar6 == 0) {
     if (iVar9 == 0) {
-      DAT_118eef6c = 0;
-      DAT_118eef60 = 0;
-      DAT_118eef64 = 0;
+      (*(int *)((char *)&g_aBrSfxChan + 0x2C)) = 0;
+      (*(int *)((char *)&g_aBrSfxChan + 0x20)) = 0;
+      (*(int *)((char *)&g_aBrSfxChan + 0x24)) = 0;
     }
   }
   else {
@@ -467,15 +467,15 @@ LAB_10061dc3:
     }
     if ((local_24 == 0) && (iVar9 == 0)) {
       iVar4 = pCar->f0F6C * local_1c >> 7;
-      *(__int64 *)&DAT_118eef60 = (__int64)(local_28 * BR_K_00779E4 * BR_K_00779E8);
+      *(__int64 *)&(*(int *)((char *)&g_aBrSfxChan + 0x20)) = (__int64)(local_28 * BR_K_00779E4 * BR_K_00779E8);
       fVar10 = (float)iVar4;
       iVar6 = (int)(fVar10 * local_18);
       iVar9 = (int)(fVar10 * local_14);
-      DAT_118eef6c = iVar6 * 0x10000 + iVar9;
+      (*(int *)((char *)&g_aBrSfxChan + 0x2C)) = iVar6 * 0x10000 + iVar9;
     }
   }
-  if (DAT_100aa044 == 1) {
-    iVar6 = *(int *)((char *)&DAT_10af393c + local_4) + 0x30;
+  if (g_brMode0AA8B4 == 1) {
+    iVar6 = *(int *)((char *)&(*(int *)((char *)&g_aBrRaceCar + 0x2734)) /* BR_LP64_BYTE_VIEW */ + local_4) + 0x30;
     *local_10 = *(int *)iVar6;
     local_10[1] = *(int *)(iVar6 + 4);
     local_10[2] = *(int *)(iVar6 + 8);

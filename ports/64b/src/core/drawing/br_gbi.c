@@ -134,7 +134,7 @@
 /* @implements 0x1001EB10 glide BrGbiSet0A79E8 */
 BrGfxWords *BrGbiSet0A79E8(BrGfxWords *pCmd)
 {
-    g_brGbi0A79E8 = pCmd->w1;
+    (*(uint32_t *)&BrGbiRectG_A9A54) = pCmd->w1;
     return pCmd + 1;
 }
 
@@ -146,7 +146,7 @@ BrGfxWords *BrGbiSet0A79E8(BrGfxWords *pCmd)
 /* @implements 0x1001EB30 glide BrGbiSet4C5174 */
 BrGfxWords *BrGbiSet4C5174(BrGfxWords *pCmd)
 {
-    g_brGbi4C5174 = pCmd->w1;
+    (*(uint32_t *)&BrGbiRectG_5D17C4) = pCmd->w1;
     return pCmd + 1;
 }
 
@@ -164,9 +164,9 @@ BrGfxWords *BrGbiClearGeometryMode(BrGfxWords *pCmd)
      * which for a local copy is the mask, so it emits `and ecx,eax` and an
      * extra load. Reading the global once and updating it in place pins the
      * accumulator to the global's own value -- `and eax,ecx`. */
-    DAT_105d17cc = DAT_105d17c8;
-    DAT_105d17c8 &= ~(int)pCmd->w1;
-    BrGbiGeoModeChanged();
+    DAT_105d17cc = BrGbiRectG_5D17C8;
+    BrGbiRectG_5D17C8 &= ~(int)pCmd->w1;
+    BrDlVtxRoutine();
     return pCmd + 1;
 }
 
@@ -179,9 +179,9 @@ BrGfxWords *BrGbiSetGeometryMode(BrGfxWords *pCmd)
 {
     /* In place on the global -- see BrGbiClearGeometryMode above. Here it is
      * also what folds the command word into the memory operand of the `or`. */
-    DAT_105d17cc = DAT_105d17c8;
-    DAT_105d17c8 |= (int)pCmd->w1;
-    BrGbiGeoModeChanged();
+    DAT_105d17cc = BrGbiRectG_5D17C8;
+    BrGbiRectG_5D17C8 |= (int)pCmd->w1;
+    BrDlVtxRoutine();
     return pCmd + 1;
 }
 
@@ -268,8 +268,8 @@ BrGfxWords *BrGbiSet4C1694(BrGfxWords *pCmd)
      * register for both the store and the call argument. */
     uint32_t w1 = pCmd->w1;
 
-    g_brGbi4C1694 = w1;
-    BrGbiCall10020FA0(w1);
+    BrGlRectMode = w1;
+    BrGlGbiCall(w1);
     return pCmd + 1;
 }
 
@@ -290,7 +290,7 @@ BrGfxWords *BrGbiDispatch10020F50(BrGfxWords *pCmd)
      * arms to the bottom but not the default into the middle. */
     switch (sel) {
     case 0:
-        return BrGbiCall100243D0(pCmd);
+        return br_dl_skip(pCmd);
     case 3:
         return BrGbiSet4C1694(pCmd);
     default:
@@ -458,9 +458,9 @@ BrGfxWords *BrGbiCall10024260(BrGfxWords *pCmd)
     /* Address-taken so height occupies its own slot (`push ecx` / [esp])
      * and the last scale is `fsubr [esp]`, not `fsubp st(1)`. */
     pH = &cyScreen;
-    *pH = (float)DAT_100a7518;
+    *pH = (float)(*(int32_t *)&BrGbiRectG_A7518);
     DAT_105ccd48 = (float)pVp[0] * 0.25f;
-    g_br4BC198   = (float)pVp[1] * 0.25f;
+    DAT_105ccfdc   = (float)pVp[1] * 0.25f;
     DAT_105cd9f8 = (float)pVp[4] * 0.25f;
     DAT_105cd9fc = *pH - (float)pVp[5] * 0.25f;
     return pCmd;

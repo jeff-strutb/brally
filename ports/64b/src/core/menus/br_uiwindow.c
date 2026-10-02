@@ -61,7 +61,7 @@ void BrSub10060260(void *pThis)
     (void)pThis;
     {
         BrSub603A0Arg arg;
-        arg.p = g_brP680584;
-        ((BrSub603A0ThisCall)BrSub100603A0)((void *)g_pBrAA2E80, arg);
+        arg.p = g_brOwner5BC72C;
+        ((BrSub603A0ThisCall)BrGlNavPoll)((void *)g_pBrAA2E80, arg);
     }
 }

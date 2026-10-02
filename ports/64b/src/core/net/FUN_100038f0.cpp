@@ -238,9 +238,9 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, char * nMode)
     if (bGo) {
         pkt.m_1006CDD0();
         (*(int *)tb) = pkt.m_1006CE50();
-        WaitForSingleObject(DAT_10226a64, 0xffffffff);
-        DAT_1021ce40 = FUN_100037d0();
-        ReleaseMutex(DAT_10226a64);
+        WaitForSingleObject(g_hBrNetMutex, 0xffffffff);
+        g_brNetPktTick = FUN_100037d0();
+        ReleaseMutex(g_hBrNetMutex);
         while (!pkt.m_1006CF80()) {
             cmd = pkt.m_1006CE00();
             slot = cmd & 0xf;
@@ -265,11 +265,11 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, char * nMode)
                 if (kind == 4)
                     DAT_10226a2c = pkt.m_1006CE50();
                 WaitForSingleObject(((g_aBrNetSlot[slot].hMutex)), 0xffffffff);
-                if (slot != (unsigned)DAT_1007b264) {
+                if (slot != (unsigned)g_id) {
                     if (((g_aBrNetSlot[slot].f02C)) != (int)b0 && kind == 2) {
                         WaitForSingleObject(DAT_10226a5c, 0xffffffff);
                         DAT_1021c904 += 1;
-                        DAT_1021c8c0[DAT_1021c904] = slot;
+                        (*(unsigned int (*)[])&DAT_1021c8c0)[DAT_1021c904] = slot;
                         ReleaseMutex(DAT_10226a5c);
                         ((g_aBrNetSlot[slot].f008)) = 0;
                         memset((&g_aBrNetSlot[slot].f00C[0]), 0, 8 * sizeof(unsigned));
@@ -293,29 +293,29 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, char * nMode)
                         ((g_aBrNetSlot[slot].f974)) = 0;
                     }
                 }
-                if (slot == (unsigned)DAT_1007b264) {
+                if (slot == (unsigned)g_id) {
                     if (kind == 3) {
-                        WaitForSingleObject(DAT_1021ce54, 0xffffffff);
+                        WaitForSingleObject(g_brH221324, 0xffffffff);
                         DAT_102265d8 = 0;
-                        ReleaseMutex(DAT_1021ce54);
+                        ReleaseMutex(g_brH221324);
                     }
-                    if (slot == (unsigned)DAT_1007b264) {
+                    if (slot == (unsigned)g_id) {
                         if (b0 & 0x80) {
-                            WaitForSingleObject(DAT_10226a34, 0xffffffff);
-                            DAT_10226624 = 0;
-                            ReleaseMutex(DAT_10226a34);
+                            WaitForSingleObject(g_brH22AF04, 0xffffffff);
+                            (*(int *)&g_br22AAF4) = 0;
+                            ReleaseMutex(g_brH22AF04);
                             DAT_10226a50 = 1;
                         }
                         if (b0 & 0x40) {
                             if (DAT_10226a50 != 0)
                                 DAT_10226a50 = 0;
-                            if (DAT_105ccb5c != 0)
-                                DAT_105ccb80 = 1;
-                            WaitForSingleObject(DAT_1021c90c, 0xffffffff);
+                            if ((*(int *)&g_BrX06909B4) != 0)
+                                (*(int *)&DAT_105ccb68[6]) = 1;
+                            WaitForSingleObject(g_brH220DDC, 0xffffffff);
                             DAT_1021ce44 = 0;
-                            ReleaseMutex(DAT_1021c90c);
+                            ReleaseMutex(g_brH220DDC);
                         }
-                        if (slot == (unsigned)DAT_1007b264 && kind == 4) {
+                        if (slot == (unsigned)g_id && kind == 4) {
                             unsigned now;
 
                             WaitForSingleObject(DAT_1021c81c, 0xffffffff);
@@ -376,7 +376,7 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, char * nMode)
                     (&g_aBrNetSlot[slot].f00C[0])[best] = (*(int *)tb);
                     (&g_aBrNetSlot[slot].f038[0])[((g_aBrNetSlot[slot].f55C))] = 0x40;
                     sub_10007230(&(&g_aBrNetSlot[slot].cars[0])[((g_aBrNetSlot[slot].f55C))], &pkt);
-                    d = (DAT_1021ce40 - (*(int *)tb)) * 2;
+                    d = (g_brNetPktTick - (*(int *)tb)) * 2;
                     ((g_aBrNetSlot[slot].f974)) = (d % 3) * 0x21 + (d / 3) * 100;
                     ReleaseMutex(((g_aBrNetSlot[slot].hMutex)));
                 } else {
@@ -391,9 +391,9 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, char * nMode)
                 case 0x60000000:
                 case 0x60000001:
                     szName[0] = 0;
-                    if (DAT_100b2f04 > 0) {
+                    if ((*(int *)&g_BrCarCount) > 0) {
                         pPeer = g_aBrRaceCar;
-                        for (i = 0; i < DAT_100b2f04; i++, pPeer++) {
+                        for (i = 0; i < (*(int *)&g_BrCarCount); i++, pPeer++) {
                             if (nMode == FUN_10006060(pPeer->iNetPlayer)) {
                                 psz = FUN_100061e0(pPeer->iNetPlayer);
                                 strcpy(szName, psz);
@@ -433,12 +433,12 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, char * nMode)
 
                 case 0x60000004:
                     pHdr = pkt.m_1006D190();
-                    if (pHdr->f04 == FUN_10006060(DAT_1007b264)) {
+                    if (pHdr->f04 == FUN_10006060(g_id)) {
                         FUN_100099d0();
                         DAT_10ac5bec = 1;
-                        if (DAT_100b2f04 > 0) {
+                        if ((*(int *)&g_BrCarCount) > 0) {
                             pPeer = g_aBrRaceCar;
-                            for (i = 0; i < DAT_100b2f04; i++, pPeer++) {
+                            for (i = 0; i < (*(int *)&g_BrCarCount); i++, pPeer++) {
                                 if (nMode == FUN_10006060(pPeer->iNetPlayer)) {
                                     psz = FUN_100061e0(pPeer->iNetPlayer);
                                     strcpy(szName, psz);
@@ -454,15 +454,15 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, char * nMode)
                 case 0x60000006:
                     pHdr = pkt.m_1006D190();
                     if (pHdr->f04 == nMode) {
-                        if (DAT_100b2f04 > 0) {
+                        if ((*(int *)&g_BrCarCount) > 0) {
                             pPeer = g_aBrRaceCar;
-                            for (i = 0; i < DAT_100b2f04; i++, pPeer++) {
+                            for (i = 0; i < (*(int *)&g_BrCarCount); i++, pPeer++) {
                                 if (nMode == FUN_10006060(pPeer->iNetPlayer)) {
                                     if (FUN_10004d80(pPeer->iNetPlayer) & 0x3f) {
-                                        WaitForSingleObject(DAT_10226a60, 0xffffffff);
-                                        DAT_1021ce48 += 1;
-                                        DAT_1021cdb8[DAT_1021ce48] = pPeer->iNetPlayer;
-                                        ReleaseMutex(DAT_10226a60);
+                                        WaitForSingleObject(g_h1022AF30, 0xffffffff);
+                                        (*(int *)&g_i10221318) += 1;
+                                        g_a10221288[(*(int *)&g_i10221318)] = pPeer->iNetPlayer;
+                                        ReleaseMutex(g_h1022AF30);
                                         FUN_10004dc0(i, 0);
                                         psz = FUN_100061e0(pPeer->iNetPlayer);
                                         strcpy(szName, psz);
@@ -479,9 +479,9 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, char * nMode)
                 case 0x60000007:
                     pHdr = pkt.m_1006D190();
                     if (pHdr->f04 == nMode) {
-                        if (DAT_100b2f04 > 0) {
+                        if ((*(int *)&g_BrCarCount) > 0) {
                             pPeer = g_aBrRaceCar;
-                            for (i = 0; i < DAT_100b2f04; i++, pPeer++) {
+                            for (i = 0; i < (*(int *)&g_BrCarCount); i++, pPeer++) {
                                 if (nMode == FUN_10006060(pPeer->iNetPlayer)) {
                                     psz = FUN_100061e0(pPeer->iNetPlayer);
                                     strcpy(szName, psz);
@@ -497,9 +497,9 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, char * nMode)
                 case 0x60000008:
                     pHdr = pkt.m_1006D190();
                     if (nMode == 1) {
-                        if (DAT_100b2f04 > 0) {
+                        if ((*(int *)&g_BrCarCount) > 0) {
                             pPeer = g_aBrRaceCar;
-                            for (i = 0; i < DAT_100b2f04; i++, pPeer++) {
+                            for (i = 0; i < (*(int *)&g_BrCarCount); i++, pPeer++) {
                                 if (pHdr->f04 == FUN_10006060(pPeer->iNetPlayer)) {
                                     int k = pHdr->f08;
 
@@ -562,7 +562,7 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, char * nMode)
                     BrCarStateLerp(&(&g_aBrNetSlot[slot].cars[0])[((g_aBrNetSlot[slot].f55C))], frac,
                                    &(&g_aBrNetSlot[slot].cars[0])[iPrev], &(&g_aBrNetSlot[slot].cars[0])[iNew]);
                     sub_10007750(&(&g_aBrNetSlot[slot].cars[0])[((g_aBrNetSlot[slot].f55C))], &(&g_aBrNetSlot[slot].cars[0])[iNew], &pkt);
-                    d = (DAT_1021ce40 - (*(int *)tb)) * 2;
+                    d = (g_brNetPktTick - (*(int *)tb)) * 2;
                     ((g_aBrNetSlot[slot].f974)) = (d % 3) * 0x21 + (d / 3) * 100;
                     ReleaseMutex(((g_aBrNetSlot[slot].hMutex)));
                 } else {
@@ -585,7 +585,7 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, char * nMode)
                 ((g_aBrNetSlot[slot].f970)) = b;
                 ((g_aBrNetSlot[slot].f974)) = c;
                 ReleaseMutex(((g_aBrNetSlot[slot].hMutex)));
-                if (slot == (unsigned)DAT_1007b264) {
+                if (slot == (unsigned)g_id) {
                     FUN_10004c80(pNet, (*(int *)tb));
                     FUN_10003810((*(int *)tb), a, b, c);
                 }
@@ -595,16 +595,16 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, char * nMode)
             case 0xe0:
                 if (nMode != 1)
                     goto done;
-                DAT_1007b264 = slot;
+                g_id = slot;
                 FUN_10004d30();
-                DAT_1021cdf8 = pkt.m_1006CE00();
-                DAT_100b3014 = pkt.m_1006CE00();
-                DAT_10226e80 = pkt.m_1006CE00();
+                (*(int *)&g_brCfgPlayers) = pkt.m_1006CE00();
+                (*(int *)&g_Br0B380C) = pkt.m_1006CE00();
+                g_226e80 = pkt.m_1006CE00();
                 DAT_1021ce50 = pkt.m_1006CE20();
                 DAT_1021cdb0 = pkt.m_1006CE00();
                 DAT_10226a40 = pkt.m_1006CE00();
                 DAT_10226a3c = pkt.m_1006CE00();
-                FUN_10004900(pNet, slot, DAT_10af3bb4, DAT_10af3bb5, DAT_10af3bb6, &DAT_10b71648, 0x10);
+                FUN_10004900(pNet, slot, (*(char *)((char *)&g_aBrRaceCar + 0x29AC)) /* BR_LP64_BYTE_VIEW */, (*(char *)((char *)&g_aBrRaceCar + 0x29AD)) /* BR_LP64_BYTE_VIEW */, (*(char *)((char *)&g_aBrRaceCar + 0x29AE)) /* BR_LP64_BYTE_VIEW */, &(g_aBrCfgPlayerName[0]), 0x10);
                 FUN_10004dc0(slot, 2);
                 break;
 

@@ -131,72 +131,72 @@ int BrSeasonApply(void)
 
     z = 0;
     ret = 1;
-    if (DAT_1021c650 == z) {
-        src = (int *)(&DAT_1021c650);
+    if ((*(int *)&g_a220B20) == z) {
+        src = (int *)(&(*(int *)&g_a220B20));
         dst = &DAT_10ac5928;
         for (n = 0x46; n != 0; n--) {
             *dst++ = *src++;
         }
     }
-    DAT_10226e80 = DAT_1021c664;
-    DAT_10ac5c10 = (char)DAT_1021c654;
-    DAT_10ac5bf8 = DAT_1021c65c;
-    DAT_100b3014 = DAT_1021c660;
-    DAT_10ac5c18 = DAT_1021c668;
-    DAT_10ac5a40[DAT_1021c658] = (char)DAT_1021c66c + 1;
-    DAT_10ac5bfc = DAT_1021c658;
-    DAT_10ac40f8[DAT_10ac5bfc] = DAT_1021c670;
-    DAT_10ac5c20 = DAT_1021c674;
-    sprintf(DAT_10ac5870, DAT_100a6b84, DAT_1021c65c + 1);
-    sprintf(DAT_10ac46a0, DAT_100a6b84, DAT_10ac5bfc + 1);
+    g_226e80 = (*(int *)((char *)&g_a220B20 + 0x14));
+    (*(char *)&DAT_10ac5c10) = (char)(*(int *)((char *)&g_a220B20 + 0x4));
+    g_brPhase5BF8 = (*(int *)((char *)&g_a220B20 + 0xC));
+    (*(int *)&g_Br0B380C) = (*(int *)((char *)&g_a220B20 + 0x10));
+    DAT_10ac5c18 = (*(int *)((char *)&g_a220B20 + 0x18));
+    g_brVal5A40[(*(int *)((char *)&g_a220B20 + 0x8))] = (char)(*(int *)((char *)&g_a220B20 + 0x1C)) + 1;
+    g_brIdx5BFC = (*(int *)((char *)&g_a220B20 + 0x8));
+    (*(unsigned short (*)[])&g_brVal40F8)[g_brIdx5BFC] = (*(unsigned short *)((char *)&g_a220B20 + 0x20));
+    (*(int *)&g_brTime5C20) = (*(int *)((char *)&g_a220B20 + 0x24));
+    sprintf(g_aBrAA2518, g_szBrFmt6B84, (*(int *)((char *)&g_a220B20 + 0xC)) + 1);
+    sprintf(DAT_10ac46a0, g_szBrFmt6B84, g_brIdx5BFC + 1);
 
-    stage = DAT_10ac5c10;
-    src = &DAT_1021c678;
-    dst = (int *)(&DAT_10ac58f8);
+    stage = (*(char *)&DAT_10ac5c10);
+    src = &(*(int *)((char *)&g_a220B20 + 0x28));
+    dst = (int *)(&(g_brFTbl58F8[0]));
     for (n = 0xc; n != 0; n--) {
         *dst++ = *src++;
     }
 
-    w = (unsigned short *)(DAT_10ac5a4c + 0x1a) + stage * 4;
+    w = (unsigned short *)((*(unsigned char (*)[])&g_aBrAA26F4) + 0x1a) + stage * 4;
     sum = 0;
     n = 4;
     do {
         sum += *w++;
         n--;
     } while (n != 0);
-    DAT_10ac5c1c = sum;
+    (*(int *)&DAT_10ac5c1c) = sum;
 
-    st.i = *(int *)DAT_10ac5a4c;
-    if (st.b[1] == z && DAT_100a9360 != 5 && DAT_1021c650 == z) {
+    st.i = *(int *)(*(unsigned char (*)[])&g_aBrAA26F4);
+    if (st.b[1] == z && (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 5 && (*(int *)&g_a220B20) == z) {
         cur = st.b[0];
-        if (cur <= DAT_10ac4c64 && (cur != z || !(DAT_10ac4c64 > (unsigned char)z))) {
-            DAT_100a9360 = z;
+        if (cur <= (*(unsigned char *)&g_aBrA9DBD8[1]) && (cur != z || !((*(unsigned char *)&g_aBrA9DBD8[1]) > (unsigned char)z))) {
+            (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = z;
             DAT_10ac5c0c = ret;
             for (i = 0; i < 4; i++) {
-                DAT_10ac5a4c[i + 2 + (*(int *)DAT_10ac5a4c & 0xff) * 4] = z;
-                *(unsigned short *)(DAT_10ac5a4c + 0x1a + (i + (*(int *)DAT_10ac5a4c & 0xff) * 4) * 2) = z;
-                *(int *)(DAT_10ac5a4c + 0x4c + (i + (*(int *)DAT_10ac5a4c & 0xff) * 4) * 4) = z;
-                *(unsigned char *)(i + *(unsigned char *)(DAT_10af2094 + 4) * 4 + 6 + DAT_10af2094) = z;
-                *(unsigned char *)(i + *(unsigned char *)(DAT_10af4bfc + 4) * 4 + 6 + DAT_10af4bfc) = z;
-                *(unsigned short *)(DAT_10af2094 + 0x1e + (i + *(unsigned char *)(DAT_10af2094 + 4) * 4) * 2) = z;
-                *(unsigned short *)(DAT_10af4bfc + 0x1e + (i + *(unsigned char *)(DAT_10af4bfc + 4) * 4) * 2) = z;
-                *(int *)(DAT_10af2094 + (i + 0x14 + *(unsigned char *)(DAT_10af2094 + 4) * 4) * 4) = z;
-                *(int *)(DAT_10af4bfc + (i + 0x14 + *(unsigned char *)(DAT_10af4bfc + 4) * 4) * 4) = z;
+                (*(unsigned char (*)[])&g_aBrAA26F4)[i + 2 + (*(int *)(*(unsigned char (*)[])&g_aBrAA26F4) & 0xff) * 4] = z;
+                *(unsigned short *)((*(unsigned char (*)[])&g_aBrAA26F4) + 0x1a + (i + (*(int *)(*(unsigned char (*)[])&g_aBrAA26F4) & 0xff) * 4) * 2) = z;
+                *(int *)((*(unsigned char (*)[])&g_aBrAA26F4) + 0x4c + (i + (*(int *)(*(unsigned char (*)[])&g_aBrAA26F4) & 0xff) * 4) * 4) = z;
+                *(unsigned char *)(i + *(unsigned char *)((*(int *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */ + 4) * 4 + 6 + (*(int *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */) = z;
+                *(unsigned char *)(i + *(unsigned char *)((*(int *)((char *)&g_aBrRaceCar + 0x39F4)) /* BR_LP64_BYTE_VIEW */ + 4) * 4 + 6 + (*(int *)((char *)&g_aBrRaceCar + 0x39F4)) /* BR_LP64_BYTE_VIEW */) = z;
+                *(unsigned short *)((*(int *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */ + 0x1e + (i + *(unsigned char *)((*(int *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */ + 4) * 4) * 2) = z;
+                *(unsigned short *)((*(int *)((char *)&g_aBrRaceCar + 0x39F4)) /* BR_LP64_BYTE_VIEW */ + 0x1e + (i + *(unsigned char *)((*(int *)((char *)&g_aBrRaceCar + 0x39F4)) /* BR_LP64_BYTE_VIEW */ + 4) * 4) * 2) = z;
+                *(int *)((*(int *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */ + (i + 0x14 + *(unsigned char *)((*(int *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */ + 4) * 4) * 4) = z;
+                *(int *)((*(int *)((char *)&g_aBrRaceCar + 0x39F4)) /* BR_LP64_BYTE_VIEW */ + (i + 0x14 + *(unsigned char *)((*(int *)((char *)&g_aBrRaceCar + 0x39F4)) /* BR_LP64_BYTE_VIEW */ + 4) * 4) * 4) = z;
             }
             goto done;
         }
-        DAT_100a9360 = 5;
-        if (cur == z && DAT_10ac4c64 > (unsigned char)z) {
-            if (DAT_1021c65c < 5)
+        (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = 5;
+        if (cur == z && (*(unsigned char *)&g_aBrA9DBD8[1]) > (unsigned char)z) {
+            if ((*(int *)((char *)&g_a220B20 + 0xC)) < 5)
                 DAT_10ac5c08 = ret;
             BrExt_1005FBC0(z);
         } else {
             BrExt_1005FBC0(ret);
         }
-        if (DAT_1021c654 < 4 && DAT_1021c65c < ret)
+        if ((*(int *)((char *)&g_a220B20 + 0x4)) < 4 && (*(int *)((char *)&g_a220B20 + 0xC)) < ret)
             DAT_10ac5c08 = ret;
-        DAT_10ac5c5c->f68 = z;
-        DAT_10ac5c5c->s6(z);
+        (*(Ui5C5C * *)&g_brPAA29B8)->f68 = z;
+        (*(Ui5C5C * *)&g_brPAA29B8)->s6(z);
         ret = z;
     }
 done:

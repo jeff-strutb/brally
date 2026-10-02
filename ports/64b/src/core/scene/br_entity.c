@@ -91,11 +91,11 @@ static void BrMat4IdentityLocal(BrMat4 *pM)
 void __fastcall BrEntityBindAux(void *pThis, int _edx_unused)
 {
     BrDriverCar *p  = (BrDriverCar *)pThis;
-    int  idx = (int)(p - &DAT_10af1208);      /* the car's index in the car table */
+    int  idx = (int)(p - &(*(char *)&g_aBrRaceCar));      /* the car's index in the car table */
 
     (void)_edx_unused;
     p->pCtl =
-        &DAT_106ed708 + idx * BR_ENTITY_AUX_STRIDE;
+        &(*(char *)&g_aBrEnts) + idx * BR_ENTITY_AUX_STRIDE;
     BrMat4IdentityLocal((BrMat4 *)(void *)(p + BR_ENTITY_OFF_MATRIX));
 }
 
@@ -116,14 +116,14 @@ void __fastcall BrEntityBindAux(void *pThis, int _edx_unused)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 uint32_t BrEntityCountActive(void)
 {
-    int32_t n = DAT_100b2f04;
+    int32_t n = g_BrCarCount;
     uint32_t c = 0;
     unsigned char *p;
 
     /* Orig `test edx,edx; jle ret`: skip the countdown, do not early-return
      * (that duplicates `ret`). */
     if (n > 0) {
-        p = DAT_10af2110;
+        p = (*(unsigned char (*)[])((char *)&g_aBrRaceCar + 0xF08)) /* BR_LP64_BYTE_VIEW */;
         do {
             if (*(int32_t *)p != 0)
                 ++c;
@@ -162,32 +162,32 @@ void BrEntGfxRebindAll(void)
   int local_8;
   int local_c;
   
-  DAT_106ed6fc = 0;
-  for (local_8 = 0; local_8 < DAT_100b2f04; local_8 = local_8 + 1) {
+  (*(int *)((char *)&g_aBrEntRecs + 0xCC)) = 0;
+  for (local_8 = 0; local_8 < g_BrCarCount; local_8 = local_8 + 1) {
     int local_10;
     for (local_10 = 0; local_10 < 3; local_10 = local_10 + 1) {
       if (g_aBrRaceCar[local_8].b29AF == 2) {
         for (local_c = 0; local_c < 10; local_c = local_c + 1) {
-          FUN_1002d864(*(int *)
-                        (*(int *)(&DAT_10af3bcc + local_8 * 0x2b68) + 0x8018 + local_10 * 0x28 +
+          BrDlRecolor(*(int *)
+                        (*(int *)(&(*(char *)((char *)&g_aBrRaceCar + 0x29C4)) /* BR_LP64_BYTE_VIEW */ + local_8 * 0x2b68) + 0x8018 + local_10 * 0x28 +
                         local_c * 4),&DAT_100aa128);
         }
         for (local_c = 0; local_c < 3; local_c = local_c + 1) {
-          FUN_1002d864(*(int *)
-                        (*(int *)(&DAT_10af3bcc + local_8 * 0x2b68) + 0x80bc + local_10 * 0xc +
+          BrDlRecolor(*(int *)
+                        (*(int *)(&(*(char *)((char *)&g_aBrRaceCar + 0x29C4)) /* BR_LP64_BYTE_VIEW */ + local_8 * 0x2b68) + 0x80bc + local_10 * 0xc +
                         local_c * 4),&DAT_100aa1e8);
         }
       }
       else {
         for (local_c = 0; local_c < 10; local_c = local_c + 1) {
-          FUN_1002d864(*(int *)
-                        (*(int *)(&DAT_10af3bcc + local_8 * 0x2b68) + 0x8018 + local_10 * 0x28 +
-                        local_c * 4),&DAT_100aa068);
+          BrDlRecolor(*(int *)
+                        (*(int *)(&(*(char *)((char *)&g_aBrRaceCar + 0x29C4)) /* BR_LP64_BYTE_VIEW */ + local_8 * 0x2b68) + 0x8018 + local_10 * 0x28 +
+                        local_c * 4),&(*(int *)&g_BrDlTableA));
         }
         for (local_c = 0; local_c < 3; local_c = local_c + 1) {
-          FUN_1002d864(*(int *)
-                        (*(int *)(&DAT_10af3bcc + local_8 * 0x2b68) + 0x80bc + local_10 * 0xc +
-                        local_c * 4),&DAT_100aa068);
+          BrDlRecolor(*(int *)
+                        (*(int *)(&(*(char *)((char *)&g_aBrRaceCar + 0x29C4)) /* BR_LP64_BYTE_VIEW */ + local_8 * 0x2b68) + 0x80bc + local_10 * 0xc +
+                        local_c * 4),&(*(int *)&g_BrDlTableA));
         }
       }
     }

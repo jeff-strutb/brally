@@ -128,7 +128,7 @@ static BrSceneEnv   g_scene;
 static BrWeather    g_weather;
 static BrRdpRegs    g_regs;
 
-BrGfxOut     *BrGfxGetOut(void)   { return &g_out; }
+BrGfxOut     *BrGfxGetOut(void)   { return &g_BrGfxPtr; }
 BrScreenInfo *BrScreenGet(void)   { return &g_screen; }
 BrHudEnv     *BrHudGetEnv(void)   { return &g_hud; }
 
@@ -139,35 +139,35 @@ BrHudEnv     *BrHudGetEnv(void)   { return &g_hud; }
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 #define HUD_f0BD3F4 DAT_100bcbfc
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define HUD_f22AF1C DAT_10226a4c
+#define HUD_f22AF1C g_brRaceBegin226A4C
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define HUD_f6909B4 DAT_105ccb5c
+#define HUD_f6909B4 g_BrX06909B4
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define HUD_f6C0684 DAT_106e7714
+#define HUD_f6C0684 (*(int32_t *)&g_scrW4)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define HUD_f6C299C DAT_106e9a2c
+#define HUD_f6C299C g_brRaceCueBase
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define HUD_f6C65EC DAT_106ed67c
+#define HUD_f6C65EC (*(int32_t *)((char *)&g_aBrEntRecs + 0x4C))
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define HUD_cCars DAT_100b2f04
+#define HUD_cCars g_BrCarCount
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* declared as the split list below does */
-#define HUD_pRace (*(BrRace **)&DAT_106e9d88)
+#define HUD_pRace (*(BrRace **)&(*(unsigned char * *)&g_pBr63Race))
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 #define HUD_aQuads DAT_104ab508
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 #define HUD_aLastSeq DAT_100a6b68
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define HUD_pszCentre DAT_104abb20
+#define HUD_pszCentre (*(const char * *)&DAT_104abb20)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 #define HUD_szGap DAT_104ab708
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define SCR_cx DAT_100a7514
+#define SCR_cx (*(int32_t *)&BrGbiRectG_A7514)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define SCR_cy DAT_100a7518
+#define SCR_cy (*(int32_t *)&BrGbiRectG_A7518)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define SCR_cViews DAT_100aa044
+#define SCR_cViews (*(int32_t *)&g_brMode0AA8B4)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define SCR_iView DAT_106ec798
+#define SCR_iView g_BrEnvSection
 BrSceneEnv   *BrSceneGetEnv(void) { return &g_scene; }
 BrWeather    *BrWeatherGet(void)  { return &g_weather; }
 BrRdpRegs    *BrRdpGetRegs(void)  { return &g_regs; }
@@ -211,8 +211,8 @@ static __inline uint32_t BrGfxAddr(const void *p)
 /* The original's allocation idiom: read the cursor, bump it by 8, write. */
 static __inline BrGfxCmd *BrGfxAlloc(void)
 {
-    BrGfxCmd *p = g_out.pCur;
-    g_out.pCur = p + 1;
+    BrGfxCmd *p = g_BrGfxPtr.pCur;
+    g_BrGfxPtr.pCur = p + 1;
     return p;
 }
 
@@ -232,7 +232,7 @@ static __inline BrHudView *BrHudViewAt(BrHudView *aViews, int32_t i)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x100BCDD0 -- an ARRAY */
 static __inline const BrHudSprite *BrHudSpriteAt(int32_t i)
 {
-    return (const BrHudSprite *)(g_hudSpriteTable
+    return (const BrHudSprite *)((*(const uint8_t (*)[])&g_ab0C12A0)
                                  + (size_t)(uint32_t)i * BR_HUDSPRITE_STRIDE);
 }
 
@@ -325,7 +325,7 @@ void BrHudDrawDial(BrHudView *aViews)
 
     /* 10016B68-10016BA0: the two globals are converted to float and handed to
      * 0x1003407D, whose result is discarded -- it is called for effect. */
-    BrSub_1003407D((float)HUD_f6C0684, (float)HUD_f6C299C);
+    BrCamMatrixSetupOrtho((float)HUD_f6C0684, (float)HUD_f6C299C);
 
     x = SCR_cx - pSpr->e4 - 0x10;               /* 10016BB1 */
     y = BrHudViewAt(aViews, SCR_iView)->y
@@ -341,7 +341,7 @@ void BrHudDrawDial(BrHudView *aViews)
         int32_t v, iFrame;
 
         p = BrGfxAlloc();
-        BrSub_1002F900(p, 0, 0, 0, 0x3EB, 0, 0, 0, 0x3EB,
+        BrRdpSetCombineLERP(p, 0, 0, 0, 0x3EB, 0, 0, 0, 0x3EB,
                           0, 0, 0, 0x3EB, 0, 0, 0, 0x3EB);
         BrGfxEmit(0xB900031Du, 0x0C184240u);
         BrGfxEmit(0xB900031Du, 0x0C193078u);
@@ -528,7 +528,7 @@ void BrHudDrawDial(BrHudView *aViews)
     p->w0 = 0xBA001402u;
     p->w1 = 0u;
     p = BrGfxAlloc();
-    BrSub_1002F900(p, 0, 0, 0, 0x3EC, 0, 0, 0, 0x3EC,
+    BrRdpSetCombineLERP(p, 0, 0, 0, 0x3EC, 0, 0, 0, 0x3EC,
                       0, 0, 0, 0x3EC, 0, 0, 0, 0x3EC);
 
     BrGfxEmit(0xB900031Du, 0x00552048u);
@@ -554,7 +554,7 @@ void BrHudDrawViewCentreText(const BrHudView *aViews)
     const BrHudView *pView;
     int32_t big, small_, x, yy;
 
-    if (BrSub_1002B2A0() != 0)
+    if (BrFadeIsClosing() != 0)
         return;
 
     if (SCR_cViews == 1) { big = 0x1E; small_ = 0x14; }
@@ -565,12 +565,12 @@ void BrHudDrawViewCentreText(const BrHudView *aViews)
     x  = pView->x + pView->w / 2;       /* cdq/sub/sar 1: truncates toward 0 */
     yy = pView->y + pView->h / 3 + 0x18;/* magic 0x55555556: signed /3       */
 
-    BrSub_10019270();
+    BrSet_10019270();
 
     if (HUD_pszCentre == NULL)
         return;
 
-    BrSub_100192F0(small_);
+    BrSetGlobal_ABB30(small_);
 
     /* (big*3)/16, signed, truncating -- 5 for 0x1E, 3 for 0x14. */
     BrTextDraw(HUD_pszCentre, x, yy + (big * 3) / 16);
@@ -592,7 +592,7 @@ void BrHudDrawViewMessage(const BrHudView *aViews)
 
     if (HUD_f6909B4 != 0)
         return;
-    if (BrSub_1002B2A0() != 0)
+    if (BrFadeIsClosing() != 0)
         return;
 
     if (SCR_cViews == 1) { big = 0x1E; small_ = 0x14; }
@@ -603,19 +603,19 @@ void BrHudDrawViewMessage(const BrHudView *aViews)
     x  = pView->x + pView->w / 2;
     yy = pView->y + pView->h / 3;
 
-    BrSub_10019270();
+    BrSet_10019270();
 
     if (HUD_pRace->psz0FFC != NULL) {
         /* GOTCHA: this branch sizes the text with `big`, the other with
          * `small_`; they are not the same number. */
-        BrSub_100192F0(big);
+        BrSetGlobal_ABB30(big);
         BrTextDraw(HUD_pRace->psz0FFC, x, yy + big / 4);
         return;
     }
     if (HUD_pRace->psz1004 == NULL)
         return;
 
-    BrSub_100192F0(small_);
+    BrSetGlobal_ABB30(small_);
     BrTextDraw(HUD_pRace->psz1004, x, yy + (big * 3) / 16);
 }
 
@@ -677,7 +677,7 @@ const char *BrHudFormatGapString(const BrCar *aCars, int iCar)
     /* 10017C9E: C0|C3 -- f <= 0 or unordered -> the empty string. */
     if (f > kF300) {
         HUD_szGap[0] = '+';
-        BrSub_100020D0(&HUD_szGap[1], f);
+        BrTimeFormat(&HUD_szGap[1], f);
     } else {
         HUD_szGap[0] = '\0';
     }
@@ -770,10 +770,10 @@ void BrHudDraw(BrHudView *aViews, BrDriverCar * a2)
 
     BrHudDrawDial(aViews);
     BrSub_10017290(aViews);
-    BrHudDrawSplitList(aViews);
+    BrHudDrawSplitTimes(aViews);
     BrSub_100173F0(aViews, a2);
     BrHudDrawViewMessage(aViews);
-    BrSub_10019260();
+    BrTextFlag358Clear();
     BrSub_10019290();
 
     /* f0ADF60 selects miles: the number is scaled by 0.6213712 and the unit
@@ -802,7 +802,7 @@ void BrHudDraw(BrHudView *aViews, BrDriverCar * a2)
     x -= 0x1E;
     y -= pSpr->e5;
 
-    BrSub_100192F0(0x14);
+    BrSetGlobal_ABB30(0x14);
 
     /* 10015433: `y -= 3` sits in BOTH arms (hoisting it above the if merges
      * the two into one pre-branch sub, -2 insns), and the km arm passes
@@ -820,7 +820,7 @@ void BrHudDraw(BrHudView *aViews, BrDriverCar * a2)
         BrTextDraw(g_hud.szText, x - 3, y);
     }
 
-    BrSub_100192F0(0x0F);
+    BrSetGlobal_ABB30(0x0F);
     BrSub_10019280();
 
     /* 10015462: the unit string comes from BrStrGet (the one-argument
@@ -847,15 +847,15 @@ void BrHudDraw(BrHudView *aViews, BrDriverCar * a2)
 
 int BrSceneUsePlainClear(void)
 {
-    if (DAT_106ed6ac != 0)
+    if ((*(int *)((char *)&g_aBrEntRecs + 0x7C)) != 0)
         goto yes;
-    if (DAT_106ed6b0 != 0)
+    if ((*(int *)((char *)&g_aBrEntRecs + 0x80)) != 0)
         goto yes;
-    if (DAT_106ed6b4 != 0)
+    if ((*(int *)((char *)&g_aBrEntRecs + 0x84)) != 0)
         goto yes;
     if (DAT_106eed28 == 0)
         goto yes;
-    if (DAT_100b3858 != 2)
+    if ((*(int *)&g_brRaceNEntrant) != 2)
         return 0;
 yes:
     return 1;
@@ -897,7 +897,7 @@ typedef struct BrSceneCam { int32_t pad[12]; int32_t f30, f34; float f38; } BrSc
 
 static __inline BrGfxCmd *BrSsfAlloc(void)
 {
-    return DAT_106e7710++;
+    return (*(BrGfxCmd * *)&g_BrGfxPtr)++;
 }
 
 /* N64-style: take the slot, write the opcode, THEN evaluate the operand. */
@@ -914,54 +914,54 @@ void BrSceneSetupFrame(const BrHudView *aViews)
     BrSsfEmit(0xBC001404u, 0xFFFF);
     BrSsfEmit(0xBC001C04u, 0xFFFF);
 
-    if (DAT_106ed698 != 0)
+    if ((*(int *)((char *)&g_aBrEntRecs + 0x68)) != 0)
         return;
 
     if (BrSceneUsePlainClear()) {
         if (DAT_100a718c > 0 && (DAT_100a718c & 1) != 0) {
-            pView = &aViews[DAT_106ec798];
-            BrSub_10031688(pView->x, pView->y, pView->w, pView->h,
-                           ((DAT_106e72f0 + 0x50) * 3) >> 2,
-                           (DAT_106e86a4 * 3 + 0xF8) >> 2,
-                           ((DAT_106e7290 + 0x55) * 3) >> 2);
+            pView = &aViews[g_BrEnvSection];
+            BrGfxFillRect(pView->x, pView->y, pView->w, pView->h,
+                           (((*(unsigned char *)&BrG_6C0260) + 0x50) * 3) >> 2,
+                           ((*(unsigned char *)&BrG_6C1614) * 3 + 0xF8) >> 2,
+                           (((*(unsigned char *)&BrG_6C0200) + 0x55) * 3) >> 2);
         } else {
-            pView = &aViews[DAT_106ec798];
-            BrSub_10031688(pView->x, pView->y, pView->w, pView->h,
-                           DAT_106e72f0, DAT_106e86a4, DAT_106e7290);
+            pView = &aViews[g_BrEnvSection];
+            BrGfxFillRect(pView->x, pView->y, pView->w, pView->h,
+                           (*(unsigned char *)&BrG_6C0260), (*(unsigned char *)&BrG_6C1614), (*(unsigned char *)&BrG_6C0200));
         }
         return;
     }
 
-    BrSub_10031140(&DAT_106e78f0, DAT_106ed520->f30, DAT_106ed520->f34,
-                   DAT_106ed520->f38 * kF34C);
+    BrMat4Translate(&g_BrDrawCombined, (*(BrSceneCam * *)&g_BrCamera)->f30, (*(BrSceneCam * *)&g_BrCamera)->f34,
+                   (*(BrSceneCam * *)&g_BrCamera)->f38 * kF34C);
     pDst = BrSub_10069490();
-    BrMat4Copy(&DAT_106e78f0, pDst);
+    BrGuMtxStore(&g_BrDrawCombined, pDst);
 
-    BrSsfEmit(0x01030040u, DAT_106ea360);
+    BrSsfEmit(0x01030040u, g_BrMtxSlot);
     BrSsfEmit(0x01040040u, (uint32_t)pDst);
     BrSsfEmit(0xE7000000u, 0);
     BrSsfEmit(0xBA001402u, 0);
 
-    if (DAT_106ed6a8 != 0) {
+    if ((*(int *)((char *)&g_aBrEntRecs + 0x78)) != 0) {
         p = BrSsfAlloc();
-        BrSub_1002F900(p, 0, 0, 0, 0x3E9, 0, 0, 0, 0x3EC,
+        BrRdpSetCombineLERP(p, 0, 0, 0, 0x3E9, 0, 0, 0, 0x3EC,
                           0, 0, 0, 0x3E9, 0, 0, 0, 0x3EC);
         BrSsfEmit(0xFB000000u,
-                    ((((DAT_106e72f0 << 8) | DAT_106e86a4) << 8) | DAT_106e7290) << 8
-                    | DAT_106b7c78);
+                    (((((*(unsigned char *)&BrG_6C0260) << 8) | (*(unsigned char *)&BrG_6C1614)) << 8) | (*(unsigned char *)&BrG_6C0200)) << 8
+                    | (*(unsigned char *)&g_BrDrawByte78));
     } else {
         p = BrSsfAlloc();
-        BrSub_1002F900(p, 0, 0, 0, 0x3E9, 0, 0, 0, 0x3EC,
+        BrRdpSetCombineLERP(p, 0, 0, 0, 0x3E9, 0, 0, 0, 0x3EC,
                           0, 0, 0, 0x3E9, 0, 0, 0, 0x3EC);
     }
 
     BrSsfEmit(0xB900031Du, 0x0F0A4200u);
-    BrSsfEmit(0xBA000C02u, DAT_106e72e8);
+    BrSsfEmit(0xBA000C02u, (*(int *)&g_BrEnvOthermode));
     BrSsfEmit(0xB6000000u, 0x000F0205u);
-    if (DAT_106ed6a8 != 0)
+    if ((*(int *)((char *)&g_aBrEntRecs + 0x78)) != 0)
         BrSsfEmit(0xB7000000u, 0x00010000u);
-    BrSsfEmit(0xB7000000u, (DAT_106ea3f4 ^ DAT_106e8204) ? 0x1000 : 0x2000);
-    BrSsfEmit(0xB6000000u, (DAT_106ea3f4 ^ DAT_106e8204) ? 0x2000 : 0x1000);
+    BrSsfEmit(0xB7000000u, ((*(int *)&g_brRaceBeginDifficulty) ^ (*(int *)&BrG_6C1174)) ? 0x1000 : 0x2000);
+    BrSsfEmit(0xB6000000u, ((*(int *)&g_brRaceBeginDifficulty) ^ (*(int *)&BrG_6C1174)) ? 0x2000 : 0x1000);
     BrSsfEmit(0xBA001001u, 0);
     BrSsfEmit(0xBB000001u, 0xFFFFFFFFu);
     BrSsfEmit(0xB6000000u, 0x000C0000u);
@@ -987,7 +987,7 @@ void BrSceneSetupFrame(const BrHudView *aViews)
  * different original variables. */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */                                              /* cParticles */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* aParticles */
-#define WX_cParticles DAT_104add38
+#define WX_cParticles g_BrEnvSegCount
 #define WX_aParticles DAT_104add50
 
 /* WHAT IT DOES: scatters the rain or snow to random positions, which is what
@@ -1033,12 +1033,12 @@ void BrWeatherRandomiseParticles(void)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* windAngle */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* windGain */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* windX Y Z */
-#define WS_windX DAT_104add40
-#define WS_windY DAT_104add44
-#define WS_windZ DAT_104add48
+#define WS_windX (*(float *)&g_vPfxDrift)
+#define WS_windY (*(float *)((char *)&g_vPfxDrift + 0x4))
+#define WS_windZ (*(float *)((char *)&g_vPfxDrift + 0x8))
 #define WS_windAngle DAT_104b15ec
 #define WS_windGain DAT_100a7188
-#define WS_dt DAT_106e9d8c
+#define WS_dt g_brRaceFlyStep
 
 /* WHAT IT DOES: drifts the wind on by one frame. Both its direction and its
  * strength wander randomly rather than being set anywhere -- the direction
@@ -1121,7 +1121,7 @@ void BrWeatherStepLightning(void)
     int n = DAT_100a718c;
 
     if (n >= 0) {
-        DAT_104add3c = DAT_104add3c - DAT_106e9d8c * DAT_1007731c;
+        DAT_104add3c = DAT_104add3c - g_brRaceFlyStep * DAT_1007731c;
         if (n > 0) {
             DAT_100a718c = n - 1;
             return;
@@ -1134,9 +1134,9 @@ void BrWeatherStepLightning(void)
     if ((int)(BrRandom() & 0xFFFF) < 0x80) {
         DAT_104add3c = 0;
         DAT_100a718c = 3;
-        DAT_104abb60 = (float)(BrRandom() & 0x7FF);
+        (DAT_104abb60[0]) = (float)(BrRandom() & 0x7FF);
         DAT_104abb64 = (float)(BrRandom() & 0x7FF);
-        DAT_104abb68 = DAT_106eed10;
+        DAT_104abb68 = (*(int *)&DAT_106eed10);
     }
 }
 
@@ -1197,11 +1197,11 @@ void BrWeatherStepParticles(void)
     int iView;
 
     BrWeatherStepWind();
-    if (DAT_106ed6b4 != 0)
+    if ((*(int *)((char *)&g_aBrEntRecs + 0x84)) != 0)
         BrWeatherStepLightning();
 
-    DAT_104add38 = 0x200 / DAT_100aa044;
-    for (iView = 0; iView < DAT_100aa044; iView++) {
+    g_BrEnvSegCount = 0x200 / (*(int32_t *)&g_brMode0AA8B4);
+    for (iView = 0; iView < (*(int32_t *)&g_brMode0AA8B4); iView++) {
         short (*pl)[3] = DAT_104add50[iView];
         const BrCamBlock *pBlk = (*(const BrCamBlock * *)&g_aBrRaceCar[iView].pMatA);
         BrVec3 pos, d;
@@ -1219,13 +1219,13 @@ void BrWeatherStepParticles(void)
             DAT_104abe70[1].z = pos.z;
             DAT_104b15f4 = 1;
         }
-        if (DAT_106ed6b0 == 0 && DAT_106ed6b4 == 0)
+        if ((*(int *)((char *)&g_aBrEntRecs + 0x80)) == 0 && (*(int *)((char *)&g_aBrEntRecs + 0x84)) == 0)
             return;
 
         dx = (float)(pos.x - DAT_104abe70[iView].x);
         dy = (float)(pos.y - DAT_104abe70[iView].y);
         dz = (float)(pos.z - DAT_104abe70[iView].z);
-        DAT_104b15c8 = sqrt(dx * dx + dy * dy + dz * dz) / DAT_106e9d8c;
+        DAT_104b15c8 = sqrt(dx * dx + dy * dy + dz * dz) / g_brRaceFlyStep;
         if (DAT_104b15c8 > DAT_10077328) {
             DAT_104ad6e8 = (float)sqrt(DAT_104b15c8 * DAT_1007732c) * DAT_10077328 / DAT_104b15c8;
             DAT_104b15c8 = DAT_104ad6e8 * DAT_104b15c8;
@@ -1236,15 +1236,15 @@ void BrWeatherStepParticles(void)
             DAT_104ad6e8 = 1.0f;
         }
 
-        if (DAT_106ed6b0 != 0) {
-            dz -= DAT_106e9d8c * DAT_10077318;
+        if ((*(int *)((char *)&g_aBrEntRecs + 0x80)) != 0) {
+            dz -= g_brRaceFlyStep * DAT_10077318;
         } else {
             d.x = dx;
             d.y = dy;
             d.z = dz;
-            t = DAT_106e9d8c + DAT_106e9d8c;
-            DAT_104b15d0[iView].x = BrWxCos(DAT_104b15ec) * DAT_100a7188 * DAT_106e9d8c;
-            DAT_104b15d0[iView].y = BrWxSin(DAT_104b15ec) * DAT_100a7188 * DAT_106e9d8c;
+            t = g_brRaceFlyStep + g_brRaceFlyStep;
+            DAT_104b15d0[iView].x = BrWxCos(DAT_104b15ec) * DAT_100a7188 * g_brRaceFlyStep;
+            DAT_104b15d0[iView].y = BrWxSin(DAT_104b15ec) * DAT_100a7188 * g_brRaceFlyStep;
             DAT_104b15d0[iView].z = t;
             dx += DAT_104b15d0[iView].x;
             dy += DAT_104b15d0[iView].y;
@@ -1253,11 +1253,11 @@ void BrWeatherStepParticles(void)
             BrVec3AddTo(&DAT_104b15d0[iView], &d);
         }
 
-        if (DAT_106ed6b0 != 0) {
+        if ((*(int *)((char *)&g_aBrEntRecs + 0x80)) != 0) {
             j0 = ((float)(BrRandom() & 0xFFFF) * DAT_10077300 - DAT_10077304)
-                 * DAT_106e9d8c * DAT_10077334;
+                 * g_brRaceFlyStep * DAT_10077334;
             j1 = ((float)(BrRandom() & 0xFFFF) * DAT_10077300 - DAT_10077304)
-                 * DAT_106e9d8c * DAT_10077334;
+                 * g_brRaceFlyStep * DAT_10077334;
         } else {
             j1 = 0.0f;
             j0 = 0.0f;
@@ -1272,7 +1272,7 @@ void BrWeatherStepParticles(void)
         R1 = (int)(j0 * DAT_10077338);
         R2 = (int)(j1 * DAT_10077338);
 
-        for (i = 0; i < DAT_104add38; i++) {
+        for (i = 0; i < g_BrEnvSegCount; i++) {
             if (cx != 0) {
                 pl[i][0] += (short)D0;
                 cx--;
@@ -1451,14 +1451,14 @@ void BrHudDrawSplitTimes(const unsigned char *pLayout)
     if (DAT_100bcbf8 == 0) {
         return;
     }
-    x   = DAT_100a7514 - 16;
-    sel = (DAT_100aa044 == 1) ? 30 : 0;
-    y   = *(const int *)(pLayout + DAT_106ec798 * 0x58 + 4) + 20;
+    x   = (*(int32_t *)&BrGbiRectG_A7514) - 16;
+    sel = ((*(int32_t *)&g_brMode0AA8B4) == 1) ? 30 : 0;
+    y   = *(const int *)(pLayout + g_BrEnvSection * 0x58 + 4) + 20;
     BrTextFlag358Clear();
     BrSub_10019290();
     BrSetGlobal_ABB30(15);
     i = 0;
-    if (*(int *)(DAT_106e9d88 + 0xfa8) > 0) {
+    if (*(int *)((*(unsigned char * *)&g_pBr63Race) + 0xfa8) > 0) {
         /* Both per-line values are written as expressions of i, NOT as
          * named locals bumped each pass: VC5 strength-reduces them into
          * induction temps (edi = 0xFB4 + 4i, ebx = sel + y + 37 + 15i), and
@@ -1467,11 +1467,11 @@ void BrHudDrawSplitTimes(const unsigned char *pLayout)
          * named `k`/`y` locals the same values are the BASE, two SIB bytes
          * off.  The rank is `i + 1` with i bumped after the call. */
         do {
-            BrHudDrawSplitLine(DAT_100a6b80, i + 1,
-                               ((float *)(DAT_106e9d88 + 0xfb4))[i], x,
+            BrHudDrawSplitLine(g_aBr63Prefix, i + 1,
+                               ((float *)((*(unsigned char * *)&g_pBr63Race) + 0xfb4))[i], x,
                                sel + y + 37 + i * 15);
             i++;
-        } while (i < *(int *)(DAT_106e9d88 + 0xfa8));
+        } while (i < *(int *)((*(unsigned char * *)&g_pBr63Race) + 0xfa8));
     }
 }
 

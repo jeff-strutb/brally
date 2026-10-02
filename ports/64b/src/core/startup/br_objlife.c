@@ -48,7 +48,7 @@ void BrExt_10035585(void *p, int a, int b) { (void)p; (void)a; (void)b; }
 void BrFlagInit_1002B950(void)
 {
     g_67D550 = 0;
-    g_0A81C8 = 0x104B16E8u;  /* Glide VA */
+    DAT_100a751c = 0x104B16E8u;  /* Glide VA */
 }
 
 /* WHAT IT DOES: turn on the gate that skips "part 2", dispatch slot 4. */
@@ -56,7 +56,7 @@ void BrFlagInit_1002B950(void)
 void BrFlagInit_1002F690(void)
 {
     g_AC300 = 1;
-    g_690A14 = 4;
+    (*(uint32_t *)&DAT_105ccb68[21]) = 4;
 }
 
 /* WHAT IT DOES: install a constructor and a destructor for a heap object. */
@@ -73,8 +73,8 @@ void BrFlagInit_1002F690(void)
 /* @n64 0x80200000 located */
 int BrInstall_1001BAE0(void)
 {
-    g_690A24 = (uint32_t)(uintptr_t)&BrExt_1001BAD0;
-    g_690A28 = (uint32_t)(uintptr_t)&BrExt_10008B80;
+    (*(uint32_t *)&g_aBrTexSlot[192996]) = (uint32_t)(uintptr_t)&BrExt_1001BAD0;
+    (*(uint32_t *)&g_aBrTexSlot[193000]) = (uint32_t)(uintptr_t)&BrPodNop;
     return 1;
 }
 
@@ -82,7 +82,7 @@ int BrInstall_1001BAE0(void)
 /* @d3donly 0x1002F6E0 BrSet_1002F6E0 -- glide twin 0x1001CDA0 COMDAT-folded onto br_boot.c:BrAppStateEnterRun */
 int BrSet_1002F6E0(void)
 {
-    g_690A14 = 2;
+    (*(uint32_t *)&DAT_105ccb68[21]) = 2;
     return 1;
 }
 
@@ -90,21 +90,21 @@ int BrSet_1002F6E0(void)
 /* @implements 0x10067980 d3d BrWrap_10067980 */
 void BrWrap_10067980(void)
 {
-    BrExt_10067880(&g_0B3A68, (void *)(uintptr_t)0x10B1CBA8, 0x40);  /* Glide VA */
+    BrVarSave(&g_0B3A68, (void *)(uintptr_t)0x10B1CBA8, 0x40);  /* Glide VA */
 }
 
 /* WHAT IT DOES: bind that 64-byte buffer without filling it. */
 /* @implements 0x100679A0 d3d BrWrap_100679A0 */
 void BrWrap_100679A0(void)
 {
-    BrExt_10067900(&g_0B3A68, (void *)(uintptr_t)0x10B1CBA8);  /* Glide VA */
+    BrVarLoad(&g_0B3A68, (void *)(uintptr_t)0x10B1CBA8);  /* Glide VA */
 }
 
 /* WHAT IT DOES: bind the same kind of buffer inside the caller's object. */
 /* @implements 0x10067960 d3d BrWrap_10067960 */
 void BrWrap_10067960(void *p)
 {
-    BrExt_10067900(&g_0B39B0, (char *)p + 0x7080);
+    BrVarLoad(&g_0B39B0, (char *)p + 0x7080);
 }
 
 /* WHAT IT DOES: fill that per-object block (about 90 KB). */
@@ -112,7 +112,7 @@ void BrWrap_10067960(void *p)
 /* @n64 0x8022AED8 located */
 void BrWrap_10067940(void *p)
 {
-    BrExt_10067880(&g_0B39B0, (char *)p + 0x7080, 0x15F88);
+    BrVarSave(&g_0B39B0, (char *)p + 0x7080, 0x15F88);
 }
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x105CCB88  suppresses the save while set   */
@@ -179,11 +179,11 @@ void __fastcall BrRaceSaveLastLapInfo(BrDriverCar *param_1)
     int *pRec;
     int off;
 
-    if (g_brFlag6909E0 != 0 || g_br0AA010 == 2 || g_br0AA010 == 4)
+    if ((*(int *)&DAT_105ccb68[8]) != 0 || (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 2 || (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4)
         return;
-    if (param_1->f140 >= g_brRaceNEntrant)
+    if (param_1->f140 >= (*(int *)&g_brRaceNEntrant))
         return;
-    if (param_1->lap != g_br100BCBE8 - 1 && g_br100BCBE8 > 1)
+    if (param_1->lap != g_CBE8 - 1 && g_CBE8 > 1)
         return;
     if (BrReplayIsOn() != 0)
         return;
@@ -192,20 +192,20 @@ void __fastcall BrRaceSaveLastLapInfo(BrDriverCar *param_1)
     BrSet_1006AA90();
 
     n = 0;
-    if (g_brRaceNEntrant > 0) {
+    if ((*(int *)&g_brRaceNEntrant) > 0) {
         off = 0;
-        pRec = &DAT_10af3bc8;
+        pRec = &(*(int *)((char *)&g_aBrRaceCar + 0x29C0)) /* BR_LP64_BYTE_VIEW */;
         do {
             *(int *)(*pRec + 0x34 + param_1->f140 * 4) = 0;
             pRec += 0xada;
             *(int *)(pRec[-0xada] + 0x3c + param_1->f140 * 4) = 0x3840;
             ++n;
             *(char **)(pRec[-0xada] + 0x2c + param_1->f140 * 4) =
-                &DAT_102066c8 + off + param_1->f140 * -0x15f88;
+                &(*(char *)&g_2066C8) + off + param_1->f140 * -0x15f88;
             off += 0x3840;
-        } while (n < g_brRaceNEntrant);
+        } while (n < (*(int *)&g_brRaceNEntrant));
     }
-    BrWrap_10067940(&DAT_102066c8 + param_1->f140 * -0x15f88);
+    BrWrap_10067940(&(*(char *)&g_2066C8) + param_1->f140 * -0x15f88);
 }
 
 /* WHAT IT DOES: destroy the array of 16 C++ objects that 0x100715E0
@@ -213,7 +213,7 @@ void __fastcall BrRaceSaveLastLapInfo(BrDriverCar *param_1)
 /* @implements 0x10071610 d3d BrWrap_10071610 */
 void BrWrap_10071610(void)
 {
-    BrExt_1007F560(&g_1826BD0, 0x214, 0x10, BrExt_10008B80);
+    BrEhVecDtor(&(*(uint32_t *)&g_aBrPeerMsg), 0x214, 0x10, BrPodNop);
 }
 
 /* WHAT IT DOES: construct that array of 16 objects in place. */
@@ -221,7 +221,7 @@ void BrWrap_10071610(void)
 /* @n64 0x80214A3C located */
 void BrWrap_100715E0(void)
 {
-    BrExt_1007F680(&g_1826BD0, 0x214, 0x10, BrExt_10073B40, BrExt_10008B80);
+    BrEhVecCtor(&(*(uint32_t *)&g_aBrPeerMsg), 0x214, 0x10, FUN_1006cd80, BrPodNop);
 }
 
 /* WHAT IT DOES: register that destructor with atexit so the array is
@@ -229,7 +229,7 @@ void BrWrap_100715E0(void)
 /* @implements 0x1006A570 glide BrAtexit_10071600 */
 void BrAtexit_10071600(void)
 {
-    BrExt_1007E8B0(BrWrap_10071610);
+    BrCrtAtExit(BrWrap_10071610);
 }
 
 /* The two fixed global objects the wrappers below hand to their class
@@ -244,32 +244,32 @@ void BrAtexit_10071600(void)
  * initializer the compiler emits for a C++ global; BrObjLifeInit calls it
  * and then registers the matching destructor (below) with atexit. */
 /* @implements 0x10032500 glide BrSub10032500 */
-void BrSub10032500(void){ BrSub10008760(&g_AC0810); }
+void BrSub10032500(void){ BrObj87Ctor(&g_brModelMgr); }
 
 /* WHAT IT DOES: arrange for one object's destructor to run at process exit. */
 /* @implements 0x10032510 glide BrAtexit_10038EA0 */
 void BrAtexit_10038EA0(void)
 {
-    BrExt_1007E8B0(BrExt_10038EB0);
+    BrCrtAtExit(BrSub10032520);
 }
 
 /* WHAT IT DOES: destroys the g_AC0810 object at process exit -- the atexit
  * handler BrAtexit_10038EA0 registers. Pairs with BrSub10032500 above. */
 /* @implements 0x10032520 glide BrSub10032520 */
-void BrSub10032520(void){ BrObj87Dtor(&g_AC0810); }
+void BrSub10032520(void){ BrObj87Dtor(&g_brModelMgr); }
 
 /* WHAT IT DOES: the same atexit registration for a different object. */
 /* @implements 0x10062AE0 glide BrAtexit_10069A70 */
 void BrAtexit_10069A70(void)
 {
-    BrExt_1007E8B0(BrExt_10069A80);
+    BrCrtAtExit(BrSub10062AF0);
 }
 
 /* WHAT IT DOES: destroys the global object at g_B71290 at process exit --
  * the atexit handler BrAtexit_10069A70 registers; that object's destructor
  * is the +4 sub-object's (0x10008D60, an empty body). */
 /* @implements 0x10062AF0 glide BrSub10062AF0 */
-void BrSub10062AF0(void){ BrSub10008D60(); }
+void BrSub10062AF0(void){ BrPodNop(); }
 
 void BrWrap_1003DAE0(void)
 {
@@ -281,13 +281,13 @@ void BrWrap_1003DAE0(void)
 
 void BrTableCopySlot_10024AB0(int dst, int src)
 {
-    struct Rec { char pad[696]; } *p = (struct Rec *)g_57543C;
+    struct Rec { char pad[696]; } *p = (struct Rec *)(*(uint32_t * *)&g_brTex57543C);
     *(uint32_t *)&p[dst] = *(uint32_t *)&p[src];
 }
 
 void BrTableSetField_10025800(int idx, uint32_t v)
 {
-    struct Rec { char pad[696]; } *p = (struct Rec *)g_57543C;
+    struct Rec { char pad[696]; } *p = (struct Rec *)(*(uint32_t * *)&g_brTex57543C);
     *(uint32_t *)((char *)&p[idx] + 0x27C) = v;
 }
 
@@ -349,7 +349,7 @@ int br_dl_clip_reset();
  * unused: the sizes are read from the globals. */
 /* @implements 0x1001DD80 glide BrGlideResOpen */
 
-#define BR_TRY_RES(W,H,R) if (DAT_100a7514 == (W) && DAT_100a7518 == (H)) { if (grSstWinOpen(0,(R),0,2,1,2,1) == 0) return 0; } else
+#define BR_TRY_RES(W,H,R) if (BrGbiRectG_A7514 == (W) && BrGbiRectG_A7518 == (H)) { if (grSstWinOpen(0,(R),0,2,1,2,1) == 0) return 0; } else
 
 int BrGlideResOpen(int param_1,int param_2)
 
@@ -385,25 +385,25 @@ int BrGlideResSet(int param_1,int param_2,int param_3,int param_4)
   int iVar1;
   int uVar2;
   
-  if ((param_1 == DAT_100a7514) && (param_2 == DAT_100a7518)) {
-    DAT_106e7714 = param_1;
-    DAT_100a7514 = param_1;
-    DAT_106e9a2c = param_2;
-    DAT_100a7518 = param_2;
+  if ((param_1 == BrGbiRectG_A7514) && (param_2 == BrGbiRectG_A7518)) {
+    g_scrW4 = param_1;
+    BrGbiRectG_A7514 = param_1;
+    (*(int *)&g_brRaceCueBase) = param_2;
+    BrGbiRectG_A7518 = param_2;
     FUN_1001dfb0();
     return 1;
   }
   grSstWinClose();
-  DAT_106e7714 = param_1;
-  DAT_100a7514 = param_1;
-  DAT_106e9a2c = param_2;
-  DAT_100a7518 = param_2;
+  g_scrW4 = param_1;
+  BrGbiRectG_A7514 = param_1;
+  (*(int *)&g_brRaceCueBase) = param_2;
+  BrGbiRectG_A7518 = param_2;
   iVar1 = BrGlideResOpen(param_1,param_2);
   if (iVar1 == 0) {
-    DAT_106e7714 = 0x280;
-    DAT_100a7514 = 0x280;
-    DAT_106e9a2c = 0x1e0;
-    DAT_100a7518 = 0x1e0;
+    g_scrW4 = 0x280;
+    BrGbiRectG_A7514 = 0x280;
+    (*(int *)&g_brRaceCueBase) = 0x1e0;
+    BrGbiRectG_A7518 = 0x1e0;
     uVar2 = BrGlideResOpen(0x280,0x1e0);
     return uVar2;
   }
@@ -416,7 +416,7 @@ int BrGlideResSet(int param_1,int param_2,int param_3,int param_4)
 int BrObjLifeInit(void)
 
 {
-  FUN_10032500();
+  BrSub10032500();
   BrAtexit_10038EA0();
   return;
 }
@@ -465,7 +465,7 @@ void BrRenderModeStart(int param_1,int param_2,int param_3,int param_4,
   if (DAT_10b73644 != 0) {
     BrPodNop();
     (*DAT_10b7352c)();
-    (*DAT_118ed1e8)();
+    (*(*(funcptr *)&g_18ED1E8))();
   }
   BrRenderStateSet(param_1);
   BrGlideResSet(param_2,param_3,param_4,param_5);

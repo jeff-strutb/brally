@@ -185,14 +185,14 @@ void Car5E7B0::StartInit()
 
     m_1006FD90();
 
-    if (DAT_100a9360 == 2 || DAT_100a9360 == 4 ||
-        (DAT_100a9360 == 3 && DAT_100b3858 == 1) || DAT_100a9360 == 0) {
+    if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 2 || (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4 ||
+        ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 3 && (*(int *)&g_brRaceNEntrant) == 1) || (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0) {
         m_1006FCB0(f140);
         local_14 = 0.0f;
         local_10 = 0.5f;
     } else {
         m_1006FCB0(f140);
-        if (DAT_10226a48 != 0) {
+        if ((*(int *)&g_brRaceNet) != 0) {
             local_14 = (float)(f144 >> 1);
             local_10 = (float)(~f144 & 1);
         } else {
@@ -231,32 +231,32 @@ void Car5E7B0::StartInit()
 
     m_1006FA10(0.0f, 0.0f, 0.0f);
 
-    if (DAT_106eed48 != 0) {
+    if (g_pBrRaceLapRec != 0) {
         fFB0 = 0.0f;
         fFEC = 0.0f;
         fFE4 = 0.0f;
         sVar1 = (short)DAT_104b15e8 - 1;
         if (sVar1 > 2 || sVar1 < 0)
             sVar1 = 0;
-        fFF0 = *(float *)(PTR_PTR_100bcab0[DAT_100b3014] +
+        fFF0 = *(float *)((*(char * (*)[])&g_apBrRaceDiff)[(*(int *)&g_Br0B380C)] +
                            (fE64 * 3 + sVar1) * 0x1c + 0x44);
-        fF8C = DAT_106eed48;
+        fF8C = g_pBrRaceLapRec;
         fF90 = 0;
-        BrVec3Direction((struct BrVec3 *)(&fF94), (const struct BrVec3 *)((const float *)(DAT_106eed48 + 0x4c)),(const struct BrVec3 *)(
-                        (const float *)(DAT_106eed48 + 0x74)));
+        BrVec3Direction((struct BrVec3 *)(&fF94), (const struct BrVec3 *)((const float *)(g_pBrRaceLapRec + 0x4c)),(const struct BrVec3 *)(
+                        (const float *)(g_pBrRaceLapRec + 0x74)));
     } else {
         fF94 = 1.0f;
         fF98 = 0.0f;
         fF9C = 0.0f;
     }
 
-    fFF8 = DAT_100b2f00 - f140 - 1;
+    fFF8 = (*(int *)&g_brRaceNDriver) - f140 - 1;
     fFA8x = 0.0f;
     fFE8 = 0.0f;
     fFA0 = 0;
 
-    if (f140 < DAT_100b3858 || DAT_100a9360 == 1 || DAT_100a9360 == 2 ||
-        DAT_100a9360 == 4 || DAT_100a9360 == 6) {
+    if (f140 < (*(int *)&g_brRaceNEntrant) || (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 1 || (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 2 ||
+        (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4 || (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 6) {
         fFAC = -1;
         fFA4 = -1;
     } else {

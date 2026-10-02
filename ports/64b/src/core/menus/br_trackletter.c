@@ -23,7 +23,7 @@ int BrMenuSetTrackLetter(int param_1)
     int none;
     short *slot;
 
-    sel = DAT_10ac5a48;
+    sel = (DAT_10ac5a48[0]);
     slot = (short *)(param_1 + 0x1e20c);
     none = -1;
     if (sel > 0) {
@@ -42,12 +42,12 @@ int BrMenuSetTrackLetter(int param_1)
             break;
         }
     }
-    if (DAT_10ac5a48 == 0) {
+    if ((DAT_10ac5a48[0]) == 0) {
         /* THE `- 1` IS IN THE ORIGINAL, not a simplification to undo: it
          * emits `dec eax` for the subtraction and then a `sub eax, 0` to open
          * the case chain at zero, which is the instruction our `case 1:`
          * spelling was missing.  Same behaviour either way. */
-        switch ((DAT_10ac5a4c & 0xff) - 1) {
+        switch (((*(int *)&g_aBrAA26F4) & 0xff) - 1) {
         case 0:
             *slot = 0x48;
             break;

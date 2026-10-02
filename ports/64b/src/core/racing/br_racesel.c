@@ -91,14 +91,14 @@ void BrRaceSelFromMenu(void)
     int            i;
 
     memset(p, 0, sizeof(int32_t) * 0x46);
-    p->mode = g_brRaceMode;
-    if (g_brRaceMode == 0) {
-        pRec = g_pBrMenuACED34;
+    p->mode = (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */;
+    if ((*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0) {
+        pRec = (*(uint8_t * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */;
         p->b4 = pRec[4];
         p->b5 = pRec[5];
         p->rec0 = *(int32_t *)pRec;
-        p->track = g_brCfgChosenTrack;
-        p->weather = g_brCarPhysWeather;
+        p->track = g_Br0B380C;
+        p->weather = (*(int32_t *)&DAT_104b15e8);
         for (i = 0; i < 1; i++) {
             p->e[i].f00 = g_aBrRaceCar[i].lap;
             sel = g_aBrRaceCar[i].pEquip[p->b4 * 4 + p->b5 + 6];
@@ -109,8 +109,8 @@ void BrRaceSelFromMenu(void)
         }
         memcpy(g_aBrA9DBD8, pRec, sizeof(int32_t) * 0x53);
         g_brRaceNEntrant = 1;
-        BrSub1001CA30();
-        memcpy(g_aBrAA26F0, g_pBrMenuACED34, sizeof(int32_t) * 0x53);
+        BrCarDamageTick();
+        memcpy((*(int32_t (*)[83])&DAT_10ac5a48), (*(uint8_t * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */, sizeof(int32_t) * 0x53);
         BrSelLookup();
     }
     BrSessionReinitVideo();

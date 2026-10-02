@@ -289,17 +289,17 @@ void BrFrameDraw(int iSlot)
     int        wMir, hMir, xMir, yMir;
 
     off    = iSlot * BR_SLOT_STRIDE;
-    pCars  = DAT_10397950 + off;
-    pHdr   = DAT_10396f4c + off;
-    aViews = (BrHudView *)(DAT_103c2fd0 + off);
-    BrRecHdrLatch_10010F80(DAT_103c302c + off);
+    pCars  = (*(uint8_t (*)[])((char *)&g_aBrSnap + 0xA08)) /* BR_LP64_BYTE_VIEW */ + off;
+    pHdr   = (*(uint8_t (*)[])((char *)&g_aBrSnap + 0x4)) /* BR_LP64_BYTE_VIEW */ + off;
+    aViews = (BrHudView *)((*(uint8_t (*)[])((char *)&g_aBrSnap + 0x2C088)) /* BR_LP64_BYTE_VIEW */ + off);
+    BrRecHdrLatch_10010F80((*(uint8_t (*)[])((char *)&g_aBrSnap + 0x2C0E4)) /* BR_LP64_BYTE_VIEW */ + off);
     BrFadeTick();
     BrFrameBeginRec(aViews);
     BrPodNop();
     BrViewBuffersRebase();
     BrPodNop();
 
-    if (DAT_100a64b8 == 0 && DAT_106ed698 == 0) {
+    if (DAT_100a64b8 == 0 && (*(int *)((char *)&g_aBrEntRecs + 0x68)) == 0) {
         if (aViews->w < 0x130)
             BrGfxFillRect(aViews->x + aViews->w, 8, 0x130 - aViews->w, 0xe0,
                           0, 0, 0);
@@ -308,12 +308,12 @@ void BrFrameDraw(int iSlot)
         if (DAT_100a64b8 != 0)
             DAT_100a64b8 = DAT_100a64b8 - 1;
     }
-    if (g_brCViews != DAT_100a64bc) {
+    if (g_brMode0AA8B4 != DAT_100a64bc) {
         DAT_100a64b8 = 2;
-        DAT_100a64bc = g_brCViews;
+        DAT_100a64bc = g_brMode0AA8B4;
     }
 
-    for (i = 0; i < g_brCViews; i++) {
+    for (i = 0; i < g_brMode0AA8B4; i++) {
         /* pV BEFORE the trace call: assigned after it (any spelling, see
          * the site-1 dead list) VC5 folds the first read into
          * `[ebp+eax*8+0x10]`; assigned before, the call clobbers the
@@ -322,38 +322,38 @@ void BrFrameDraw(int iSlot)
          * 4501 -> 4500 B, regnorm 1+1 -> 0+0. */
         pV = &aViews[i];
         BrPodNop();
-        DAT_106e9d88 = pCars + pV->iCar * BR_CAR_STRIDE;
-        DAT_106ed520 = ((*(BrCamObj **)(((DAT_106e9d88)) + 0x2734)));
-        g_brIView = i;
-        FUN_1006ec30(0, 0, DAT_106ed520->pos, DAT_106ed528, DAT_106e8a18,
+        (*(uint8_t * *)&g_pBr63Race) = pCars + pV->iCar * BR_CAR_STRIDE;
+        (*(BrCamObj * *)&g_BrCamera) = ((*(BrCamObj **)((((*(uint8_t * *)&g_pBr63Race))) + 0x2734)));
+        (*(int *)&g_BrEnvSection) = i;
+        FUN_1006ec30(0, 0, (*(BrCamObj * *)&g_BrCamera)->pos, (*(uint8_t (*)[])&g_BrEnvFlagIndices), (*(uint8_t (*)[])&g_BrEnvFlagCount),
                      DAT_106ed590, DAT_106b7ac4, DAT_106e728c, DAT_106ec780);
         BrDlRectCmdEmit(pV->x, pV->y, pV->w, pV->h, 1);
-        if (g_brCViews > 1) {
-            BrCamFrustumBuild(DAT_106ed520, DAT_106ed520->fov * kF7290,
+        if (g_brMode0AA8B4 > 1) {
+            BrCamFrustumBuild((*(BrCamObj * *)&g_BrCamera), (*(BrCamObj * *)&g_BrCamera)->fov * kF7290,
                               DAT_100aa040 * kF728C, (float)pV->w, (float)pV->h);
-            BrCamMatrixSetup(DAT_106ed520, DAT_106ed520->fov * kF7290,
+            BrCamMatrixSetup((*(BrCamObj * *)&g_BrCamera), (*(BrCamObj * *)&g_BrCamera)->fov * kF7290,
                              DAT_100aa040 * kF728C, (float)pV->w, (float)pV->h);
         } else {
-            BrCamFrustumBuild(DAT_106ed520, DAT_106ed520->fov, DAT_100aa040,
+            BrCamFrustumBuild((*(BrCamObj * *)&g_BrCamera), (*(BrCamObj * *)&g_BrCamera)->fov, DAT_100aa040,
                               (float)pV->w, (float)pV->h);
-            BrCamMatrixSetup(DAT_106ed520, DAT_106ed520->fov, DAT_100aa040,
+            BrCamMatrixSetup((*(BrCamObj * *)&g_BrCamera), (*(BrCamObj * *)&g_BrCamera)->fov, DAT_100aa040,
                              (float)pV->w, (float)pV->h);
         }
-        FUN_1002af17();
-        FUN_1002b480();
+        BrFrameFogEmit();
+        BrFrameTintSetup();
         BrPodNop();
         BrSceneSetupFrame(aViews);
         BrSceneAccumReset();
         BrSpanBuildHull();
-        DAT_10273688 = (DAT_106ed6ac != 0) + 1;
-        for (k = 0; k < g_BrCarCount; k++)
+        (*(int *)&g_BrDrawRefIndex) = ((*(int *)((char *)&g_aBrEntRecs + 0x7C)) != 0) + 1;
+        for (k = 0; k < (*(int *)&g_BrCarCount); k++)
             BrCarVisibilityUpdate(pCars + k * BR_CAR_STRIDE);
         BrSceneDlBuild(aViews, 0, pHdr, pCars);
-        if (DAT_106ed6b0 == 0 || DAT_100b3014 == 2 || DAT_100b3014 == 8) {
-            FUN_1002af17();
-            FUN_1002b480();
+        if ((*(int *)((char *)&g_aBrEntRecs + 0x80)) == 0 || (*(int *)&g_Br0B380C) == 2 || (*(int *)&g_Br0B380C) == 8) {
+            BrFrameFogEmit();
+            BrFrameTintSetup();
             BrPodNop();
-            for (k = 0; k < g_brRaceNDriver; k++) {
+            for (k = 0; k < (*(int *)&g_brRaceNDriver); k++) {
                 pCar = ((*(BrDriverCar **)(((pHdr)) + 0x60 + ((k)) * 0x80)));
                 if (pCar != 0 && ((pCar->b29AF)) != 2)
                     BrCarDrawVehicle(pCar, 0);
@@ -365,11 +365,11 @@ void BrFrameDraw(int iSlot)
         BrPodNop();
         FUN_10011d20();
         BrSceneDlBuild(aViews, 1, pHdr, pCars);
-        if (DAT_106ed6b0 != 0 && DAT_100b3014 != 2 && DAT_100b3014 != 8) {
-            FUN_1002af17();
-            FUN_1002b480();
+        if ((*(int *)((char *)&g_aBrEntRecs + 0x80)) != 0 && (*(int *)&g_Br0B380C) != 2 && (*(int *)&g_Br0B380C) != 8) {
+            BrFrameFogEmit();
+            BrFrameTintSetup();
             BrPodNop();
-            for (k = 0; k < g_brRaceNDriver; k++) {
+            for (k = 0; k < (*(int *)&g_brRaceNDriver); k++) {
                 pCar = ((*(BrDriverCar **)(((pHdr)) + 0x60 + ((k)) * 0x80)));
                 if (pCar != 0 && ((pCar->b29AF)) != 2)
                     BrCarDrawVehicle(pCar, 0);
@@ -379,13 +379,13 @@ void BrFrameDraw(int iSlot)
             FUN_10011650(aViews);
         }
         BrPodNop();
-        for (k = 0; k < g_brRaceNDriver; k++) {
+        for (k = 0; k < (*(int *)&g_brRaceNDriver); k++) {
             pCar = ((*(BrDriverCar **)(((pHdr)) + 0x60 + ((k)) * 0x80)));
             if (pCar != 0)
                 BrCarDrawBody(pCar);
         }
         BrPodNop();
-        for (k = 0; k < g_brRaceNDriver; k++) {
+        for (k = 0; k < (*(int *)&g_brRaceNDriver); k++) {
             pCar = ((*(BrDriverCar **)(((pHdr)) + 0x60 + ((k)) * 0x80)));
             if (pCar != 0 && ((pCar->b29AF)) == 2)
                 BrCarDrawVehicle(pCar, 0);
@@ -402,8 +402,8 @@ void BrFrameDraw(int iSlot)
         /* The rear-view mirror: single view, the car's first camera active
          * and a mirror size selected.  The scene is drawn again into a
          * strip along the top through the car's second camera. */
-        if (DAT_106ed520 == (BrCamObj *)(DAT_106e9d88 + 0x27C4)
-            && g_brCViews == 1 && DAT_100aa018 != 0) {
+        if ((*(BrCamObj * *)&g_BrCamera) == (BrCamObj *)((*(uint8_t * *)&g_pBr63Race) + 0x27C4)
+            && g_brMode0AA8B4 == 1 && DAT_100aa018 != 0) {
             if (DAT_100aa018 == 1)
                 wMir = pV->w / 4;
             else if (DAT_100aa018 == 2)
@@ -421,30 +421,30 @@ void BrFrameDraw(int iSlot)
             hMir = wMir >> 2;
             xMir = ((pV->w - wMir) >> 1) + pV->x;
             yMir = pV->h / 16 + pV->y;
-            pCamSave = DAT_106ed520;
-            ((*(BrCamObj **)(((DAT_106e9d88)) + 0x2734))) = (BrCamObj *)(DAT_106e9d88 + 0x2890);
-            DAT_106ed520 = ((*(BrCamObj **)(((DAT_106e9d88)) + 0x2734)));
+            pCamSave = (*(BrCamObj * *)&g_BrCamera);
+            ((*(BrCamObj **)((((*(uint8_t * *)&g_pBr63Race))) + 0x2734))) = (BrCamObj *)((*(uint8_t * *)&g_pBr63Race) + 0x2890);
+            (*(BrCamObj * *)&g_BrCamera) = ((*(BrCamObj **)((((*(uint8_t * *)&g_pBr63Race))) + 0x2734)));
             BrDlRectCmdEmit(xMir, yMir, -wMir, hMir, 1);
             BrNop_1002AB94();
-            BrCamFrustumBuild(DAT_106ed520, DAT_106ed520->fov,
+            BrCamFrustumBuild((*(BrCamObj * *)&g_BrCamera), (*(BrCamObj * *)&g_BrCamera)->fov,
                               DAT_100aa040 * kF7298, (float)wMir, (float)hMir);
-            BrCamMatrixSetup(DAT_106ed520, DAT_106ed520->fov,
+            BrCamMatrixSetup((*(BrCamObj * *)&g_BrCamera), (*(BrCamObj * *)&g_BrCamera)->fov,
                              DAT_100aa040 * kF729C, (float)wMir, (float)hMir);
-            FUN_1002af17();
-            FUN_1002b480();
+            BrFrameFogEmit();
+            BrFrameTintSetup();
             BrPodNop();
             BrSceneSetupFrame(aViews);
             BrSceneAccumReset();
             BrSpanBuildHull();
             BrPodNop();
-            for (k = 0; k < g_BrCarCount; k++)
+            for (k = 0; k < (*(int *)&g_BrCarCount); k++)
                 BrCarVisibilityUpdate(pCars + k * BR_CAR_STRIDE);
             BrSceneDlBuild(aViews, 0, pHdr, pCars);
-            if (DAT_106ed6b0 == 0 || DAT_100b3014 == 2 || DAT_100b3014 == 8) {
-                FUN_1002af17();
-                FUN_1002b480();
+            if ((*(int *)((char *)&g_aBrEntRecs + 0x80)) == 0 || (*(int *)&g_Br0B380C) == 2 || (*(int *)&g_Br0B380C) == 8) {
+                BrFrameFogEmit();
+                BrFrameTintSetup();
                 BrPodNop();
-                for (k = 0; k < g_brRaceNDriver; k++) {
+                for (k = 0; k < (*(int *)&g_brRaceNDriver); k++) {
                     pCar = ((*(BrDriverCar **)(((pHdr)) + 0x60 + ((k)) * 0x80)));
                     if (pCar != 0 && ((pCar->b29AF)) != 2)
                         BrCarDrawVehicle(pCar, 0);
@@ -454,32 +454,32 @@ void BrFrameDraw(int iSlot)
                 FUN_10011650(aViews);
             }
             BrSceneDlBuild(aViews, 1, pHdr, pCars);
-            if (DAT_106ed6b0 != 0 && DAT_100b3014 != 2 && DAT_100b3014 != 8) {
-                FUN_1002af17();
-                FUN_1002b480();
+            if ((*(int *)((char *)&g_aBrEntRecs + 0x80)) != 0 && (*(int *)&g_Br0B380C) != 2 && (*(int *)&g_Br0B380C) != 8) {
+                BrFrameFogEmit();
+                BrFrameTintSetup();
                 BrPodNop();
-                for (k = 0; k < g_brRaceNDriver; k++) {
+                for (k = 0; k < (*(int *)&g_brRaceNDriver); k++) {
                     pCar = ((*(BrDriverCar **)(((pHdr)) + 0x60 + ((k)) * 0x80)));
                     if (pCar != 0 && ((pCar->b29AF)) != 2)
                         BrCarDrawVehicle(pCar, 0);
                 }
             }
             BrPodNop();
-            for (k = 0; k < g_brRaceNDriver; k++) {
+            for (k = 0; k < (*(int *)&g_brRaceNDriver); k++) {
                 pCar = ((*(BrDriverCar **)(((pHdr)) + 0x60 + ((k)) * 0x80)));
                 if (pCar != 0)
                     BrCarDrawBody(pCar);
             }
             BrPodNop();
-            for (k = 0; k < g_brRaceNDriver; k++) {
+            for (k = 0; k < (*(int *)&g_brRaceNDriver); k++) {
                 pCar = ((*(BrDriverCar **)(((pHdr)) + 0x60 + ((k)) * 0x80)));
                 if (pCar != 0 && ((pCar->b29AF)) == 2)
                     BrCarDrawVehicle(pCar, 0);
             }
             BrFadeDrawSprite(aViews, g_4B16A0 + g_4B16AC);
             BrPodNop();
-            ((*(BrCamObj **)(((DAT_106e9d88)) + 0x2734))) = pCamSave;
-            DAT_106ed520 = pCamSave;
+            ((*(BrCamObj **)((((*(uint8_t * *)&g_pBr63Race))) + 0x2734))) = pCamSave;
+            (*(BrCamObj * *)&g_BrCamera) = pCamSave;
             BrDlRectCmdEmit(pV->x, pV->y, pV->w, pV->h, 1);
             BrDlBorderEmit(xMir, yMir, wMir, hMir);
         }
@@ -487,37 +487,37 @@ void BrFrameDraw(int iSlot)
         BrFpsReadout();
 
         /* The split-screen captions, by game mode. */
-        if (DAT_100a9360 == 5) {
+        if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 5) {
             BrTextFlag358Clear();
             BrSet_10019270();
             BrSetGlobal_ABB30(0x28);
             if (*(char *)(pCars->pEquip + 4) != 0)
-                BrTextDraw(BrStrGet(0xF0), DAT_106e7714 / 2, DAT_106e9a2c - 0x1E);
+                BrTextDraw(BrStrGet(0xF0), g_scrW4 / 2, (*(int *)&g_brRaceCueBase) - 0x1E);
             else
-                BrTextDraw(BrStrGet(0xF1), DAT_106e7714 / 2, DAT_106e9a2c - 0x1E);
-        } else if (DAT_100aa024 != 0 && DAT_100a9360 != 4) {
-            if (DAT_105ccb88 != 0) {
+                BrTextDraw(BrStrGet(0xF1), g_scrW4 / 2, (*(int *)&g_brRaceCueBase) - 0x1E);
+        } else if (DAT_100aa024 != 0 && (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 4) {
+            if ((*(int *)&DAT_105ccb68[8]) != 0) {
                 BrTextFlag358Clear();
                 BrSub_10019280();
                 BrSetGlobal_ABB30(0xF);
                 BrTextDraw(BrStrGet(0xF2), 0x1C, 0x20);
-                if (DAT_100a9360 == 6)
-                    FUN_10014e00(aViews, pCars);
+                if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 6)
+                    BrHudDrawEntrants(aViews, pCars);
                 BrSub_10019290();
-                BrTextDraw(BrStrGet(0xF4), DAT_106e7714 - 0x1C,
-                           DAT_106e9a2c - 0x18);
-            } else if (DAT_106ed520 != (BrCamObj *)(DAT_106e9d88 + 0x2808)) {
+                BrTextDraw(BrStrGet(0xF4), g_scrW4 - 0x1C,
+                           (*(int *)&g_brRaceCueBase) - 0x18);
+            } else if ((*(BrCamObj * *)&g_BrCamera) != (BrCamObj *)((*(uint8_t * *)&g_pBr63Race) + 0x2808)) {
                 /* The original's branch is `je` into the message arm, so
                  * the HUD arm is the FALLTHROUGH: the test is `!=` and
                  * this arm comes first in the source. */
                 BrPodNop();
                 BrDlScreenRectEmit(pV->x, pV->y, pV->w, pV->h, 1);
                 BrHudDraw(aViews, pCars);
-                FUN_10014e00(aViews, pCars);
+                BrHudDrawEntrants(aViews, pCars);
                 BrPodNop();
-                if (DAT_106ed520 != (BrCamObj *)(DAT_106e9d88 + 0x27C4))
+                if ((*(BrCamObj * *)&g_BrCamera) != (BrCamObj *)((*(uint8_t * *)&g_pBr63Race) + 0x27C4))
                     BrPodNop();
-            } else if ((*(uint8_t **)(DAT_106e9d88 + 0xF00))[0x68] & 2) {
+            } else if ((*(uint8_t **)((*(uint8_t * *)&g_pBr63Race) + 0xF00))[0x68] & 2) {
                 BrHudDrawViewMessage(aViews);
             }
         /* Both conditions are COMPOUND and both name the same two globals:
@@ -527,30 +527,30 @@ void BrFrameDraw(int iSlot)
          * this under a bare `if (DAT_100aa024 != 0)` lets VC5 fold both
          * tests away; making it a separate statement keeps them but loses
          * the cross-jump (three duplicated calls). */
-        } else if (DAT_100aa024 != 0 && DAT_100a9360 == 4
-                   && g_brRaceBeginStage == 0) {
+        } else if (DAT_100aa024 != 0 && (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4
+                   && g_5bc760 == 0) {
             BrTextFlag358Clear();
             BrSetGlobal_ABB30(0xF);
             BrSub_10019290();
-            BrTextDraw(BrStrGet(0xF4), DAT_106e7714 - 0x1C,
-                       DAT_106e9a2c - 0x18);
+            BrTextDraw(BrStrGet(0xF4), g_scrW4 - 0x1C,
+                       (*(int *)&g_brRaceCueBase) - 0x18);
         }
         BrNop_1002C509();
         BrHudDrawViewCentreText(aViews);
     }
 
     BrNop_1002AB8F();
-    BrSub_1003289F(0, 0, DAT_106e7714, DAT_106e9a2c);
+    BrSub_1003289F(0, 0, g_scrW4, (*(int *)&g_brRaceCueBase));
 
     /* The pause menu. */
-    if (DAT_105ccb5c == 2) {
+    if ((*(int *)&g_BrX06909B4) == 2) {
         x = (aViews->w >> 1) + aViews->x;
         BrPodNop();           /* 0.33f as its bits: a 4-byte push */
         BrTextFlag358Clear();
         BrSet_10019270();
         BrSetGlobal_ABB30(0x28);
-        BrTextDraw(BrStrGet(0xF5), x, (DAT_106e9a2c * 5) / 16);
-        y = (DAT_106e9a2c * 5) / 11;
+        BrTextDraw(BrStrGet(0xF5), x, ((*(int *)&g_brRaceCueBase) * 5) / 16);
+        y = ((*(int *)&g_brRaceCueBase) * 5) / 11;
         BrSetGlobal_ABB30(0x14);
         BrTextDraw(BrStrGet(0xF6), x, y);
         y += 0x28;
@@ -565,14 +565,14 @@ void BrFrameDraw(int iSlot)
         else
             psz = BrStrGet(0xFA);
         BrTextDraw(psz, x, y);
-    } else if (DAT_105ccb5c != 0) {
+    } else if ((*(int *)&g_BrX06909B4) != 0) {
         x = (aViews->w >> 1) + aViews->x;
         BrPodNop();
         BrTextFlag358Clear();
         BrSet_10019270();
         BrSetGlobal_ABB30(0x28);
-        BrTextDraw(BrStrGet(0xF5), x, (DAT_106e9a2c * 5) / 16);
-        y = (DAT_106e9a2c * 5) / 11;
+        BrTextDraw(BrStrGet(0xF5), x, ((*(int *)&g_brRaceCueBase) * 5) / 16);
+        y = ((*(int *)&g_brRaceCueBase) * 5) / 11;
         BrSetGlobal_ABB30(0x14);
         if (DAT_105bc8dc == 0)
             psz = BrStrGet(0xFB);
@@ -580,7 +580,7 @@ void BrFrameDraw(int iSlot)
             psz = BrStrGet(0xFC);
         BrTextDraw(psz, x, y);
         y += 0x14;
-        if (g_brRaceNet == 0) {
+        if ((*(int *)&g_brRaceNet) == 0) {
             if (DAT_105bc8dc == 1)
                 psz = BrStrGet(0xFF);
             else
@@ -589,14 +589,14 @@ void BrFrameDraw(int iSlot)
         }
         y += 0x14;
         sprintf(DAT_10396f28, BrStrGet(0x101),
-                DAT_105bc8dc == 2 ? DAT_100a6b64 : DAT_100a6b60, g_brB4E70C);
+                DAT_105bc8dc == 2 ? DAT_100a6b64 : DAT_100a6b60, (*(int *)&g_brRaceB71A6C));
         BrTextDraw(DAT_10396f28, x, y);
         y += 0x14;
         sprintf(DAT_10396f28, BrStrGet(0x102),
-                DAT_105bc8dc == 3 ? DAT_100a6b64 : DAT_100a6b60, g_brB4E708);
+                DAT_105bc8dc == 3 ? DAT_100a6b64 : DAT_100a6b60, (*(int *)&g_brItemIconCount));
         BrTextDraw(DAT_10396f28, x, y);
         y += 0x14;
-        if (DAT_100a9360 == 0) {
+        if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0) {
             if (DAT_105bc8dc == 4)
                 psz = BrStrGet(0x103);
             else
@@ -617,44 +617,44 @@ void BrFrameDraw(int iSlot)
     }
 
     /* Attract mode: the text list, or a credits page once its timer runs. */
-    if (DAT_100a9360 == 4 && g_brRaceBeginStage == 2) {
+    if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4 && g_5bc760 == 2) {
         BrHudTextListDraw(aViews);
-    } else if (DAT_100a9360 == 4 && g_brRaceBeginStage == 1
-               && DAT_100a9368[DAT_105bc768][0] != 0
-               && DAT_105bc884 > kF72A0) {
+    } else if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4 && g_5bc760 == 1
+               && (*(const char * (*)[][8])((char *)&g_brRaceRules + 0x14)) /* BR_LP64_BYTE_VIEW */[(*(int *)&g_brRaceBeginSeqIdx)][0] != 0
+               && g_brRaceBeginSeqT > kF72A0) {
         BrTextFlag358Clear();
         BrSet_10019270();
         BrTextSetColors(0xff, 0xff, 0xff, 0xff, 0xff, 0xff);
         for (n = 0; n < 6; n++) {
-            if (DAT_100a9368[DAT_105bc768][2 + n] == 0)
+            if ((*(const char * (*)[][8])((char *)&g_brRaceRules + 0x14)) /* BR_LP64_BYTE_VIEW */[(*(int *)&g_brRaceBeginSeqIdx)][2 + n] == 0)
                 break;
         }
-        y = DAT_106e9a2c / 2 - (n * 40) / 4 + 10;
-        if (DAT_100a9368[DAT_105bc768][0][0] == 0)
+        y = (*(int *)&g_brRaceCueBase) / 2 - (n * 40) / 4 + 10;
+        if ((*(const char * (*)[][8])((char *)&g_brRaceRules + 0x14)) /* BR_LP64_BYTE_VIEW */[(*(int *)&g_brRaceBeginSeqIdx)][0][0] == 0)
             y -= 5;
         for (n--; n >= 0; n--) {
-            if (DAT_100a9368[DAT_105bc768][2 + n][0] == '`') {
+            if ((*(const char * (*)[][8])((char *)&g_brRaceRules + 0x14)) /* BR_LP64_BYTE_VIEW */[(*(int *)&g_brRaceBeginSeqIdx)][2 + n][0] == '`') {
                 BrSetGlobal_ABB30(0xF);
-                BrTextDraw(DAT_100a9368[DAT_105bc768][2 + n] + 1,
-                           DAT_106e7714 / 2, (n * 40) / 2 + y);
+                BrTextDraw((*(const char * (*)[][8])((char *)&g_brRaceRules + 0x14)) /* BR_LP64_BYTE_VIEW */[(*(int *)&g_brRaceBeginSeqIdx)][2 + n] + 1,
+                           g_scrW4 / 2, (n * 40) / 2 + y);
             } else {
                 BrSetGlobal_ABB30(0x14);
-                BrTextDraw(DAT_100a9368[DAT_105bc768][2 + n],
-                           DAT_106e7714 / 2, (n * 40) / 2 + y);
+                BrTextDraw((*(const char * (*)[][8])((char *)&g_brRaceRules + 0x14)) /* BR_LP64_BYTE_VIEW */[(*(int *)&g_brRaceBeginSeqIdx)][2 + n],
+                           g_scrW4 / 2, (n * 40) / 2 + y);
             }
         }
         BrSetGlobal_ABB30(0xF);
-        BrTextDraw(DAT_100a9368[DAT_105bc768][0], DAT_106e7714 / 2, y - 0x14);
+        BrTextDraw((*(const char * (*)[][8])((char *)&g_brRaceRules + 0x14)) /* BR_LP64_BYTE_VIEW */[(*(int *)&g_brRaceBeginSeqIdx)][0], g_scrW4 / 2, y - 0x14);
     }
 
     BrFadeDrawBars();
-    if (DAT_106ed6bc >= 2) {
-        BrDlRectCmdEmit(0, 0, DAT_106e7714, DAT_106e9a2c, 1);
+    if ((*(int *)((char *)&g_aBrEntRecs + 0x8C)) >= 2) {
+        BrDlRectCmdEmit(0, 0, g_scrW4, (*(int *)&g_brRaceCueBase), 1);
         BrPodNop();
     }
     BrPodNop();
-    FUN_1002cb49();
+    BrTexAnimStep();
     BrPodNop();
-    FUN_1002cee9();
+    BrFrameEnd();
 }
 

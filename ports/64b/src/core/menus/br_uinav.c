@@ -255,19 +255,19 @@ int BR_THISCALL1 BrUiNavCtlHit_10047A60(BrUiCtl_ *pCtl)
 
     if (!(pCtl->flags1C & 8)) {
         if (pCtl->flags1C & 0x10) {
-            if (g_wAA286C == g_wAA2870) {
-                g_wAA286C += g_w0AB3DC;
-                BrUiNavPageSelectGlide(pCtl->pOwner->pCur);
+            if (BrGlNavCur5BC4 == g_wAA2870) {
+                BrGlNavCur5BC4 += (*(uint16_t *)&BrGlNavStepAB7C);
+                BrUiPageSelect_100484F0(pCtl->pOwner->pCur);
             }
             ++g_wAA2870;
             return 0;
         }
 
-        if ((pCtl->flags1C & 0x80000) && BrIsAnyActiveGlide() == 0) {
+        if ((pCtl->flags1C & 0x80000) && BrInputAnyActive() == 0) {
             pCtl->flags1C &= 0xFFF7FFFD;
         }
 
-        pCur = g_navCursor;
+        pCur = (*(int32_t * *)&BrGlNavThis5DD8);
         if (g_hot0.l <= pCur[0] && g_hot0.r >= pCur[0] &&
             g_hot0.t <= pCur[1] && g_hot0.b >= pCur[1]) {
             fHot = 1;
@@ -282,7 +282,7 @@ int BR_THISCALL1 BrUiNavCtlHit_10047A60(BrUiCtl_ *pCtl)
             fCurrent = 0;
         } else {
             fHot = 0;
-            if (g_hot0.t + (int16_t)g_wAA286C * 19 == g_hot0.t + (int16_t)g_wAA2870 * 19)
+            if (g_hot0.t + (int16_t)BrGlNavCur5BC4 * 19 == g_hot0.t + (int16_t)g_wAA2870 * 19)
                 fCurrent = 1;
         }
         ++g_wAA2870;
@@ -290,18 +290,18 @@ int BR_THISCALL1 BrUiNavCtlHit_10047A60(BrUiCtl_ *pCtl)
 
         /* y through the cursor global, not the local (see above). */
         if ((pCtl->rcLeft <= pCur[0] && pCtl->rcRight >= pCur[0] &&
-             pCtl->rcTop <= g_navCursor[1] && pCtl->rcBottom >= g_navCursor[1]) ||
+             pCtl->rcTop <= (*(int32_t * *)&BrGlNavThis5DD8)[1] && pCtl->rcBottom >= (*(int32_t * *)&BrGlNavThis5DD8)[1]) ||
             fCurrent != 0) {
             if (fCurrent && (g_act0 != 0 || g_act1 != 0 || g_act2 != 0 || g_act3 != 0))
                 return 1;
 
             if (pCtl->flags1C & 0x40000) {
-                if (g_pAA2E80->f2C != 0 || g_pAA2E80->f30 != 0)
+                if ((*(BrObj2C * *)&g_pBrAA2E80)->f2C != 0 || (*(BrObj2C * *)&g_pBrAA2E80)->f30 != 0)
                     pCtl->flags1C |= 0x80002;
                 else
                     pCtl->flags1C &= ~2;
-            } else if ((g_actOverride == 0 && (g_act5 != 0 || g_act6 != 0)) ||
-                       BrIsAnyActiveGlide() != 0) {
+            } else if (((*(int32_t *)&g_5BB4) == 0 && ((g_BrDikEdge[28]) != 0 || (g_BrDikEdge[156]) != 0)) ||
+                       BrInputAnyActive() != 0) {
                 pCtl->flags1C |= 2;
             } else {
                 pCtl->flags1C &= ~2;
@@ -950,11 +950,11 @@ void __fastcall BrGlNavPoll(BrGlNavRec *pNav, int _edx_unused, int _unused)
     if (BrGlNavOff5B9C != 0)
         return;
 
-    t = BrGlNavTimeNow();
-    BrGlNavAccum6710 += t - BrGlNavTick670C;
-    BrGlNavTick670C = t;
-    if (BrGlNavAccum6710 > 0x78)
-        BrGlNavT6708 = 1;
+    t = BrSub10075020();
+    (g_BrAA3398[6]) += t - (g_BrAA3398[5]);
+    (g_BrAA3398[5]) = t;
+    if ((g_BrAA3398[6]) > 0x78)
+        (g_BrAA3398[4]) = 1;
 
     if (pNav->pDev == 0)
         return;
@@ -1005,67 +1005,67 @@ void __fastcall BrGlNavPoll(BrGlNavRec *pNav, int _edx_unused, int _unused)
             pNav->iIdle4C = 1;
     }
 
-    if (BrGlNavKey5F3C != 0)
-        BrGlNavKeyLeft();
-    if (BrGlNavKey5F40 != 0)
-        BrGlNavKeyRight();
+    if ((g_BrDikEdge[87]) != 0)
+        BrCdTrackPrev();
+    if ((g_BrDikEdge[88]) != 0)
+        BrCdTrackNext();
 
-    if (BrGlNavT6708 != 0) {
-        if (BrGlNavKey66B0 & 0x80) {
-            BrGlNavF66F8 = 1;
+    if ((g_BrAA3398[4]) != 0) {
+        if ((g_BrDikState[200]) & 0x80) {
+            (g_BrAA3398[0]) = 1;
             BrGlNavStepAB7C = -1;
-            BrGlNavAccum6710 = 0;
+            (g_BrAA3398[6]) = 0;
         }
-        if (BrGlNavKey66B8 & 0x80) {
-            BrGlNavF66FC = 1;
+        if ((g_BrDikState[208]) & 0x80) {
+            (g_BrAA3398[1]) = 1;
             BrGlNavStepAB7C = 1;
-            BrGlNavAccum6710 = 0;
+            (g_BrAA3398[6]) = 0;
         }
     }
     {
         int32_t f;
-        if (BrGlNavK610C != 0) {
+        if ((g_BrDikEdge[203]) != 0) {
             f = 1;
             BrGlNavStepAB7C = -1;
-            BrGlNavAccum6710 = 0;
+            (g_BrAA3398[6]) = 0;
         } else {
-            f = BrGlNavF6700;
+            f = (g_BrAA3398[2]);
         }
-        if (BrGlNavK6114 != 0) {
-            BrGlNavF6704 = 1;
+        if ((g_BrDikEdge[205]) != 0) {
+            (g_BrAA3398[3]) = 1;
             BrGlNavStepAB7C = 1;
-            BrGlNavAccum6710 = 0;
+            (g_BrAA3398[6]) = 0;
         }
         if (f != 0) {
             pNav->ab[0] = 1;
             pNav->iIdle4C = 0;
-            BrGlNavT6708 = 0;
+            (g_BrAA3398[4]) = 0;
         }
-        if (BrGlNavF6704 != 0) {
+        if ((g_BrAA3398[3]) != 0) {
             pNav->ab[1] = 1;
             pNav->iIdle4C = 0;
-            BrGlNavT6708 = 0;
+            (g_BrAA3398[4]) = 0;
         }
     }
-    if (BrGlNavT6708 != 0) {
-        if (BrGlNavF66F8 != 0) {
+    if ((g_BrAA3398[4]) != 0) {
+        if ((g_BrAA3398[0]) != 0) {
             --BrGlNavCur5BC4;
-            BrGlNavT6708 = 0;
+            (g_BrAA3398[4]) = 0;
         }
-        if (BrGlNavF66FC != 0) {
+        if ((g_BrAA3398[1]) != 0) {
             ++BrGlNavCur5BC4;
-            BrGlNavT6708 = 0;
+            (g_BrAA3398[4]) = 0;
         }
     }
-    BrGlNavF6704 = 0;
-    BrGlNavF6700 = 0;
-    BrGlNavF66FC = 0;
-    BrGlNavF66F8 = 0;
+    (g_BrAA3398[3]) = 0;
+    (g_BrAA3398[2]) = 0;
+    (g_BrAA3398[1]) = 0;
+    (g_BrAA3398[0]) = 0;
 
     if (pNav->x != pNav->xPrev || pNav->y != pNav->yPrev ||
         pNav->ab[0] != pNav->abPrev[0] || pNav->ab[1] != pNav->abPrev[1] ||
         pNav->ab[2] != pNav->abPrev[2] || pNav->ab[3] != pNav->abPrev[3])
-        BrGlNavLast6748 = BrGlNavTimeNow();
+        BrGlNavLast6748 = BrSub10075020();
 
     pNav->xPrev = pNav->x;
     pNav->yPrev = pNav->y;
@@ -1121,6 +1121,6 @@ void __fastcall BrGlNavPoll(BrGlNavRec *pNav, int _edx_unused, int _unused)
     }
 
     BrGlNavThis5DD8 = pNav;
-    BrGlNavTail();
+    BrInputLatchUpdate();
 }
 

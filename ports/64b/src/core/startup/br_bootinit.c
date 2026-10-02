@@ -45,19 +45,19 @@ void BrBootColdInitRun(void)
     BrPodSetNameArg a;
 
     a.psz = "BossRally.pod";
-    BrPodSetName(g_AC0810, a);
-    BrPodOpen(g_AC0810);
+    BrPodSetName(g_brModelMgr, a);
+    BrPodOpen(g_brModelMgr);
     BrRenderModeRestart(3);
-    FUN_1006c990("splash.img", 0x2ac7e58b);
+    BrImgShowFullScreen("splash.img", 0x2ac7e58b);
     BrLiveryLoadDamage();
-    FUN_10071fc0();
+    Ctl71FC0_fn();
     FUN_100703d0();
-    if (g_brCdEnabled != 0) {
-        BrDispatch_100025C0(DAT_105bc72c);
+    if (DAT_1007b074 != 0) {
+        BrDispatch_100025C0((*(void * *)&g_brOwner5BC72C));
         BrUiVolumeApply();
         BrCdTrackPlay(2);
     }
-    if (DAT_100b55f0 != 0) {
-        FUN_1006c4d0();
+    if ((*(int *)&DAT_100b51e4[1036]) != 0) {
+        BrSndDevOpen();
     }
 }

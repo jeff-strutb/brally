@@ -43,7 +43,7 @@ int BrNetSend4AD0(void *dest, int a1, int a2, unsigned char r,
     int seen;
     int r0;
 
-    InitPkt(&pkt);
+    BrNetPktStamp(&pkt);
     pkt.PutByte((unsigned char)(g_id | a9));
     pkt.PutByte((unsigned char)a1);
     pkt.PutByte((unsigned char)a8);
@@ -67,7 +67,7 @@ int BrNetSend4AD0(void *dest, int a1, int a2, unsigned char r,
         }
     }
     if ((a8 & 0x3F) == 4)
-        pkt.Put24(g_226A2C);
+        pkt.Put24((*(int *)&DAT_10226a2c));
     r0 = SendPkt(dest, &pkt);
     return r0;
 }

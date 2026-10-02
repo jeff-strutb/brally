@@ -81,21 +81,21 @@ int BrUiText1003F760(Obj38CA0 *pObj)
 {
     char *s;
 
-    if (g_brPhase5C5C == g_brRoot5CBC && g_brFlag5C40 == 0) {
-        s = BrStrByIndex(0x14);
+    if (g_brPAA29B8 == DAT_10ac5cbc && DAT_10ac5c40 == 0) {
+        s = BrStrGet(0x14);
     } else {
         int k = g_brSel0ABDF4;
 
         if (k > 0xF)
             k -= 0x10;
 
-        s = BrStrByIndex(g_brTblABB08[k]);
+        s = BrStrGet((*(int (*)[])&g_aBrAC368)[k]);
     }
 
     strcpy(pObj->m2B5C.szName, s);
 
     pObj->m2B5C.s1();
-    BrItemApply_10038380((struct BrCtl85 *)(pObj), 0);
+    Br85ItemApply((struct BrCtl85 *)(pObj), 0);
 
     return 1;
 }

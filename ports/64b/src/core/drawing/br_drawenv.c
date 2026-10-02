@@ -41,16 +41,16 @@
 
 static void env_put(uint32_t w0, uint32_t w1)
 {
-    uint32_t *p = BrG_6C0680;
-    BrG_6C0680 += 2;
+    uint32_t *p = g_BrGfxPtr;
+    g_BrGfxPtr += 2;
     p[0] = w0;
     p[1] = w1;
 }
 
 static BrGfxWords *env_put_slot(void)
 {
-    BrGfxWords *p = (BrGfxWords *)BrG_6C0680;
-    BrG_6C0680 += 2;
+    BrGfxWords *p = (BrGfxWords *)g_BrGfxPtr;
+    g_BrGfxPtr += 2;
     return p;
 }
 

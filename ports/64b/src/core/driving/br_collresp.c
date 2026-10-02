@@ -232,10 +232,10 @@ typedef struct BrTipView {
 /* The sign select: the global zero when the coordinate is zero, else the
  * positive or negative scale.  The equality test comes first. */
 /* Absolute value as the original spells it: the argument is read twice. */
-#define BR_TIP_ABS(v) ((v) < DAT_10077a78 ? -(v) : (v))
+#define BR_TIP_ABS(v) ((v) < BrCrK_Zero ? -(v) : (v))
 
-#define BR_TIP_SIGN(x) ((x) == DAT_10077a78 ? DAT_10077a78 \
-                        : ((x) > DAT_10077a78 ? DAT_10077a7c : DAT_10077a80))
+#define BR_TIP_SIGN(x) ((x) == BrCrK_Zero ? BrCrK_Zero \
+                        : ((x) > BrCrK_Zero ? DAT_10077a7c : DAT_10077a80))
 
 /* Matching transcription 2026-09-13 (replaces the loop-form port in the
  * matching build): 1782/1782 B, 512/512 insns, register-blind multiset 0+0,
@@ -319,60 +319,60 @@ int BrCollRespTipKick(BrTipView *pBody)
     if (pBody->child[0]->f1B4 != 0) {
         pW = pBody->child[0];
         count++;
-        p.x = (pBody->f1DC * DAT_10077ac8) * BR_TIP_SIGN(pW->f78.x);
-        p.y = (pBody->f1E0 * DAT_10077ac8) * BR_TIP_SIGN(pW->f78.y);
-        p.z = (double)pBody->f1E8 - pBody->f1E4 * DAT_10077ac8;
+        p.x = (pBody->f1DC * BrCrK_Half) * BR_TIP_SIGN(pW->f78.x);
+        p.y = (pBody->f1E0 * BrCrK_Half) * BR_TIP_SIGN(pW->f78.y);
+        p.z = (double)pBody->f1E8 - pBody->f1E4 * BrCrK_Half;
         BrMat4TransformPoint(&w, pM, &p);
         pN = (BrVec3 *)&pW->hit.nx;
-        if (BrPlaneEval(pN, pW->hit.d, &w) < DAT_10077a78)
-            t = -BrPlaneEval(pN, pW->hit.d, &w);
+        if (BrCrPlaneDist(pN, pW->hit.d, &w) < BrCrK_Zero)
+            t = -BrCrPlaneDist(pN, pW->hit.d, &w);
         else
-            t = BrPlaneEval(pN, pW->hit.d, &w);
+            t = BrCrPlaneDist(pN, pW->hit.d, &w);
         if (DAT_10077b70 >= t)
             best = t;
     }
     if (pBody->child[1]->f1B4 != 0) {
         pW = pBody->child[1];
         count++;
-        p.x = (pBody->f1DC * DAT_10077ac8) * BR_TIP_SIGN(pW->f78.x);
-        p.y = (pBody->f1E0 * DAT_10077ac8) * BR_TIP_SIGN(pW->f78.y);
-        p.z = (double)pBody->f1E8 - pBody->f1E4 * DAT_10077ac8;
+        p.x = (pBody->f1DC * BrCrK_Half) * BR_TIP_SIGN(pW->f78.x);
+        p.y = (pBody->f1E0 * BrCrK_Half) * BR_TIP_SIGN(pW->f78.y);
+        p.z = (double)pBody->f1E8 - pBody->f1E4 * BrCrK_Half;
         BrMat4TransformPoint(&w, pM, &p);
         pN = (BrVec3 *)&pW->hit.nx;
-        if (BrPlaneEval(pN, pW->hit.d, &w) < DAT_10077a78)
-            t = -BrPlaneEval(pN, pW->hit.d, &w);
+        if (BrCrPlaneDist(pN, pW->hit.d, &w) < BrCrK_Zero)
+            t = -BrCrPlaneDist(pN, pW->hit.d, &w);
         else
-            t = BrPlaneEval(pN, pW->hit.d, &w);
+            t = BrCrPlaneDist(pN, pW->hit.d, &w);
         if (best >= t)
             best = t;
     }
     if (pBody->child[2]->f1B4 != 0) {
         pW = pBody->child[2];
         count++;
-        p.x = (pBody->f1DC * DAT_10077ac8) * BR_TIP_SIGN(pW->f78.x);
-        p.y = (pBody->f1E0 * DAT_10077ac8) * BR_TIP_SIGN(pW->f78.y);
-        p.z = (double)pBody->f1E8 - pBody->f1E4 * DAT_10077ac8;
+        p.x = (pBody->f1DC * BrCrK_Half) * BR_TIP_SIGN(pW->f78.x);
+        p.y = (pBody->f1E0 * BrCrK_Half) * BR_TIP_SIGN(pW->f78.y);
+        p.z = (double)pBody->f1E8 - pBody->f1E4 * BrCrK_Half;
         BrMat4TransformPoint(&w, pM, &p);
         pN = (BrVec3 *)&pW->hit.nx;
-        if (BrPlaneEval(pN, pW->hit.d, &w) < DAT_10077a78)
-            t = -BrPlaneEval(pN, pW->hit.d, &w);
+        if (BrCrPlaneDist(pN, pW->hit.d, &w) < BrCrK_Zero)
+            t = -BrCrPlaneDist(pN, pW->hit.d, &w);
         else
-            t = BrPlaneEval(pN, pW->hit.d, &w);
+            t = BrCrPlaneDist(pN, pW->hit.d, &w);
         if (best >= t)
             best = t;
     }
     if (pBody->child[3]->f1B4 != 0) {
         pW = pBody->child[3];
         count++;
-        p.x = (pBody->f1DC * DAT_10077ac8) * BR_TIP_SIGN(pW->f78.x);
-        p.y = (pBody->f1E0 * DAT_10077ac8) * BR_TIP_SIGN(pW->f78.y);
-        p.z = (double)pBody->f1E8 - pBody->f1E4 * DAT_10077ac8;
+        p.x = (pBody->f1DC * BrCrK_Half) * BR_TIP_SIGN(pW->f78.x);
+        p.y = (pBody->f1E0 * BrCrK_Half) * BR_TIP_SIGN(pW->f78.y);
+        p.z = (double)pBody->f1E8 - pBody->f1E4 * BrCrK_Half;
         BrMat4TransformPoint(&w, pM, &p);
         pN = (BrVec3 *)&pW->hit.nx;
-        if (BrPlaneEval(pN, pW->hit.d, &w) < DAT_10077a78)
-            t = -BrPlaneEval(pN, pW->hit.d, &w);
+        if (BrCrPlaneDist(pN, pW->hit.d, &w) < BrCrK_Zero)
+            t = -BrCrPlaneDist(pN, pW->hit.d, &w);
         else
-            t = BrPlaneEval(pN, pW->hit.d, &w);
+            t = BrCrPlaneDist(pN, pW->hit.d, &w);
         if (best >= t)
             best = t;
     }
@@ -391,7 +391,7 @@ int BrCollRespTipKick(BrTipView *pBody)
       + pBody->hit.ny * pBody->m.m[0][1];
     p.x = 0.0f;
     p.y = 0.1f;
-    if (s <= DAT_10077a78)
+    if (s <= BrCrK_Zero)
         p.y = -0.1f;
     p.z = 0.0f;
     BrPodNop();
@@ -916,7 +916,7 @@ int BrCrTest(const float aV[9], const BrVec3 *pN)
 void BrCollRespListReset(void)
 {
     g_pBrCollRespList = NULL;
-    s_iNode           = 0;
+    g_pBrCrCursor           = 0;
 }
 
 /* The original's allocator is a POINTER bump cursor (0x11778844), not the
@@ -998,12 +998,12 @@ int BrCollRespBroadPhase(const BrRbBodyFull *pBody, const BrMat4 *pMatBox)
     int    count, i, n = 0;
 
     cell  = BrCollGridCellAcquire(pBody->m.m[3][0], pBody->m.m[3][1]);
-    count = DAT_11778800[cell];
+    count = (*(uint16_t (*)[4])((char *)&g_brCrPlane + 0x10))[cell];
     /* pP is the loop's OWN induction variable, stepped in the for clause.
      * Recomputing it from the index inside the body (`pP = &grid[cell][i]`)
      * makes VC5 bias its pointer register to the middle field (+0x14) and
      * spend a `lea eax,[esi-0x14]` on every push -- 10 B, 6 regions. */
-    if (g_brCollRespWalkBack) {
+    if ((*(int *)&g_brRaceBeginMirrorOff)) {
         pP = &DAT_11773698[cell][count - 1];
         for (i = count - 1; i >= 0; --i, --pP) {
             BR_CR_GATHER_ONE(pP);

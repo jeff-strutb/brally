@@ -20,13 +20,13 @@ void BrQuatFromMatrix(float *m, float *q)
     /* Each guard is written `expr >= threshold` so the >= arm falls through
      * and the < arm is the branch target -- the original's layout (the
      * opposite spelling swaps every arm and inverts je/jne). */
-    if (*m >= g_077C38) {
+    if (*m >= DAT_10077c38) {
         /* The compared sum survives on the x87 stack into this arm's first
          * component (`fcom`, then `fadd st(1)`); a recomputed
          * `*m + m[10] + m[5]` would pop-compare and reload instead. */
         float s = m[10] + m[5];
 
-        if (s >= g_077C38) {
+        if (s >= DAT_10077c38) {
             q[0] = *m + s - g_077C4C;
             q[1] = m[6] - m[9];
             q[2] = m[8] - m[2];
@@ -38,7 +38,7 @@ void BrQuatFromMatrix(float *m, float *q)
             q[3] = m[2] + m[8];
         }
     } else {
-        if (m[5] - m[10] >= g_077C38) {
+        if (m[5] - m[10] >= DAT_10077c38) {
             q[0] = m[8] - m[2];
             q[1] = m[4] + m[1];
             q[2] = (m[5] - (*m - g_077C50)) - m[10];

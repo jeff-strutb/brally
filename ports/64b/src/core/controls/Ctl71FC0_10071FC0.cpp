@@ -41,15 +41,15 @@ int Ctl71FC0::Activate()
 {
     DiDev *p;
 
-    if (++g_refcount != 1)
+    if (++g_BrDInputUsers != 1)
         return 1;
-    if (DirectInputCreateA(g_hinst, 0x500, &g_pDI, 0) < 0) {
-        MessageBoxA((HWND)g_hwnd, GetStr(0x127), GetStr(0x126), 0x10);
+    if (DirectInputCreateA(g_brhInstance2, 0x500, &(*(void * *)&g_pBr18ABD70), 0) < 0) {
+        MessageBoxA((HWND)(*(void * *)&g_brOwner5BC72C), BrStrGet(0x127), BrStrGet(0x126), 0x10);
         return 0;
     }
     p = new DiDev;
-    g_obj = p;
-    p->Init(g_hwnd);
+    (*(DiDev * *)&g_pBrAA2E80) = p;
+    p->Init((*(void * *)&g_brOwner5BC72C));
     return 1;
 }
 

@@ -31,7 +31,7 @@ public:
 
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define g_slot DAT_10ac5cb0
+#define g_slot g_5CB0
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 
@@ -55,21 +55,21 @@ int Ctl3D140::Activate()
 {
     Phase *p;
 
-    ResetBuf(&g_buf);
+    BrExt_100419D0(&(g_strA[0]));
     PrepFn();
     p = g_slot;
     if (p == 0) {
         p = new Phase;
         g_slot = p;
-        g_cur = (Phase *)((BrOptObj *)(p));
+        (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(p));
         if (p == 0)
             return 0;
         p->pfnEnter = EnterFn;
         g_slot->pfnEnter(g_slot);
-        g_cur->f0C = 1;
-        g_cur->f68 = 1;
+        (*(Phase * *)&g_brPAA29B8)->f0C = 1;
+        (*(Phase * *)&g_brPAA29B8)->f68 = 1;
     } else {
-        g_cur = (Phase *)((BrOptObj *)(p));
+        (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(p));
     }
     return 1;
 }

@@ -73,7 +73,7 @@ int __stdcall BrNetEnumSessionCb(void *pDesc, void *pUnused, unsigned flags,
 
         ((BrDpList *)(pBase + 0x3838))->AddRow(
             *(long *)((char *)pDesc + 0x30), kind, (long)flags,
-            &DAT_100aabe8, 1);
+            &(*(int *)&g_hot0), 1);
 
         pMem = GlobalLock(GlobalAlloc(0x42u, 0x10u));
         if (pMem == 0)
@@ -86,6 +86,6 @@ int __stdcall BrNetEnumSessionCb(void *pDesc, void *pUnused, unsigned flags,
         /* The original materialises this only on the skip path. */
         pMem = (void *)(uintptr_t)flags;
     }
-    FUN_100361a0(pMem, (void *)&FUN_10036130, pCtx, 0);
+    FUN_100361a0(pMem, (void *)&BrWmHook36130, pCtx, 0);
     return 1;
 }

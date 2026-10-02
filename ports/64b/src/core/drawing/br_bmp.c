@@ -304,7 +304,7 @@ void * BrBmpToRgba32(int param_1)
   iVar1 = *(int *)(param_1 + 4);
   pvVar1 = malloc(iVar1 * *(int *)(param_1 + 8) * 4);
   if (pvVar1 != (void *)0x0) {
-    FUN_10059f70(pvVar1,*(int *)(param_1 + 0x14),*(int *)(param_1 + 4),
+    BrBmpWiden24ToRgba(pvVar1,*(int *)(param_1 + 0x14),*(int *)(param_1 + 4),
                  *(int *)(param_1 + 8),*(int *)(param_1 + 0xc));
     DAT_10ac67c4 = *(int *)(param_1 + 4);
     DAT_10ac67c8 = *(int *)(param_1 + 8);
@@ -364,7 +364,7 @@ void FUN_1005a080(int param_1, int param_2)
         if (BrChkFileExists(buf) != 0) {
           pMem = (void *)BrBmpLoadRgba(buf);
           if (p->apBmp[0] != 0 && pMem != 0) {
-            FUN_1005a280(p->apBmp[0], DAT_10ac67c4, DAT_10ac67c8, pMem);
+            BrImgMulByMask(p->apBmp[0], DAT_10ac67c4, DAT_10ac67c8, pMem);
             free(pMem);
           }
         }
@@ -374,7 +374,7 @@ void FUN_1005a080(int param_1, int param_2)
             p->apBmp[nCopy] = pMem;
             if (pMem != 0) {
               memcpy(pMem, p->apBmp[0], DAT_10ac67c8 * DAT_10ac67c4 * 4);
-              FUN_1005a300(nCopy, p->apBmp[nCopy], DAT_10ac67c4, DAT_10ac67c8);
+              BrImgMulByTexture(nCopy, p->apBmp[nCopy], DAT_10ac67c4, DAT_10ac67c8);
             }
           }
         }

@@ -185,12 +185,12 @@ void BrMat4LookAt(BrMat4 *pM,
 
 static void s17_pack_dirs(const BrMat4 *pM, BrLightPair *pLights)
 {
-    pLights->dir0[0] = BrPackNormalByte((double)pM->m[0][0]);
-    pLights->dir0[1] = BrPackNormalByte((double)pM->m[1][0]);
-    pLights->dir0[2] = BrPackNormalByte((double)pM->m[2][0]);
-    pLights->dir1[0] = BrPackNormalByte((double)pM->m[0][1]);
-    pLights->dir1[1] = BrPackNormalByte((double)pM->m[1][1]);
-    pLights->dir1[2] = BrPackNormalByte((double)pM->m[2][1]);
+    pLights->dir0[0] = FUN_1002a490((double)pM->m[0][0]);
+    pLights->dir0[1] = FUN_1002a490((double)pM->m[1][0]);
+    pLights->dir0[2] = FUN_1002a490((double)pM->m[2][0]);
+    pLights->dir1[0] = FUN_1002a490((double)pM->m[0][1]);
+    pLights->dir1[1] = FUN_1002a490((double)pM->m[1][1]);
+    pLights->dir1[2] = FUN_1002a490((double)pM->m[2][1]);
 }
 
 /* dot(column c of pM, v), in the original's summation order:
@@ -268,12 +268,12 @@ void BrLightDirsAndAngles(BrMat4 *pM, BrLightPair *pLights,
 #define v L.v
 
     BrMat4LookAt(pM, xEye, yEye, zEye, xAt, yAt, zAt, xUp, yUp, zUp);
-    pLights->dir0[0] = BrPackNormalByte((double)pM->m[0][0]);
-    pLights->dir0[1] = BrPackNormalByte((double)pM->m[1][0]);
-    pLights->dir0[2] = BrPackNormalByte((double)pM->m[2][0]);
-    pLights->dir1[0] = BrPackNormalByte((double)pM->m[0][1]);
-    pLights->dir1[1] = BrPackNormalByte((double)pM->m[1][1]);
-    pLights->dir1[2] = BrPackNormalByte((double)pM->m[2][1]);
+    pLights->dir0[0] = FUN_1002a490((double)pM->m[0][0]);
+    pLights->dir0[1] = FUN_1002a490((double)pM->m[1][0]);
+    pLights->dir0[2] = FUN_1002a490((double)pM->m[2][0]);
+    pLights->dir1[0] = FUN_1002a490((double)pM->m[0][1]);
+    pLights->dir1[1] = FUN_1002a490((double)pM->m[1][1]);
+    pLights->dir1[2] = FUN_1002a490((double)pM->m[2][1]);
 
     v.x = (double)xA; v.y = (double)yA; v.z = (double)zA;
     BrVec3dNormalise(&v);
@@ -320,7 +320,7 @@ void FUN_10011d20(void)
 {
   BrMat4 m;
   
-  if ((DAT_105ccb78 != 0) && (BrG_6C7CB8 != 0)) {
+  if (((*(int *)&DAT_105ccb68[4]) != 0) && (g_pBrRaceLapRec != 0)) {
     m.m[0][3] = 0.0f;
     m.m[1][3] = 0.0f;
     m.m[2][3] = 0.0f;
@@ -328,18 +328,18 @@ void FUN_10011d20(void)
     m.m[2][0] = 0.0f;
     m.m[2][1] = 0.0f;
     m.m[2][2] = 1.0f;
-    BrVec3Direction((BrVec3 *)m.m[1], (BrVec3 *)(BrG_6C7CB8 + 0x4c), (BrVec3 *)(BrG_6C7CB8 + 0x58));
+    BrVec3Direction((BrVec3 *)m.m[1], (BrVec3 *)(g_pBrRaceLapRec + 0x4c), (BrVec3 *)(g_pBrRaceLapRec + 0x58));
     BrVec3Cross((BrVec3 *)m.m[0], (BrVec3 *)m.m[1], (BrVec3 *)m.m[2]);
     BrVec3Cross((BrVec3 *)m.m[1], (BrVec3 *)m.m[2], (BrVec3 *)m.m[0]);
-    m.m[3][0] = *(float *)(BrG_6C7CB8 + 0x4c);
-    m.m[3][1] = *(float *)(BrG_6C7CB8 + 0x50);
-    m.m[3][2] = (*(float *)(BrG_6C7CB8 + 0x54) + _DAT_105bc764) - _DAT_10077284;
+    m.m[3][0] = *(float *)(g_pBrRaceLapRec + 0x4c);
+    m.m[3][1] = *(float *)(g_pBrRaceLapRec + 0x50);
+    m.m[3][2] = (*(float *)(g_pBrRaceLapRec + 0x54) + g_brRaceFade) - _DAT_10077284;
     BrVec3MulAdd((BrVec3 *)m.m[3], (BrVec3 *)m.m[3], (BrVec3 *)m.m[0], -0.3f);
     BrVec3MulAdd((BrVec3 *)m.m[3], (BrVec3 *)m.m[3], (BrVec3 *)m.m[1], -0.6f);
-    { BrDlCmd *pEmit_ = DAT_106e7710++; pEmit_->op = 0x1060040; pEmit_->arg = (int)&DAT_100a9ec0; }
-    { BrDlCmd *pEmit_ = DAT_106e7710++; pEmit_->op = 0x1030040; pEmit_->arg = br_addr32(DAT_106ea360); }
-    BrMat4Scale(&DAT_106e78f0, 0.0009765625f, 0.0009765625f, 0.0009765625f);
-    BrMat4Mul(&DAT_106e78f0, &m, &m);   /* m = view * m (slice1_05's A, B, out order) */
+    { BrDlCmd *pEmit_ = (*(BrDlCmd * *)&g_BrGfxPtr)++; pEmit_->op = 0x1060040; pEmit_->arg = (int)&(DAT_100a9ec0[0]); }
+    { BrDlCmd *pEmit_ = (*(BrDlCmd * *)&g_BrGfxPtr)++; pEmit_->op = 0x1030040; pEmit_->arg = br_addr32(g_BrMtxSlot); }
+    BrMat4Scale(&g_BrDrawCombined, 0.0009765625f, 0.0009765625f, 0.0009765625f);
+    BrMat4Mul(&g_BrDrawCombined, &m, &m);   /* m = view * m (slice1_05's A, B, out order) */
     BrScenePropsDraw((const BrPropList *)DAT_105bcaec, &m);
   }
   return;

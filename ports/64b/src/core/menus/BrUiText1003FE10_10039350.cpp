@@ -59,10 +59,10 @@ extern "C" {
 
 int BrUiText1003FE10(Obj39350 *pObj)
 {
-    strcpy(pObj->m2B5C.szName, BrStrByIndex(g_brTblABBB0[g_brSel5D7C]));
+    strcpy(pObj->m2B5C.szName, BrStrGet(g_brTblABBB0[g_brSel5D7C]));
 
     pObj->m2B5C.s1();
-    BrItemApply_10038380((struct BrCtl85 *)(pObj), 0);
+    Br85ItemApply((struct BrCtl85 *)(pObj), 0);
 
     return 1;
 }

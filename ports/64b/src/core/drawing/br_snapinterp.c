@@ -86,8 +86,8 @@ void    BrFrameDrawView(int32_t iView);     /* 0x10011FA0  the frame driver     
 
 #define BR_SNAP_BLEND   5                   /* the slot the frame driver draws */
 
-#define FROMCAR  g_aBrSnap[g_brSnapFrom].car[i]
-#define TOCAR    g_aBrSnap[g_brSnapTo].car[i]
+#define FROMCAR  g_aBrSnap[(*(int32_t *)&g_brRbB4FC)].car[i]
+#define TOCAR    g_aBrSnap[(*(int32_t *)&g_brRb6F44)].car[i]
 #define OUTCAR   g_aBrSnap[BR_SNAP_BLEND].car[i]
 #define LERP(f)  OUTCAR.f = (TOCAR.f - FROMCAR.f) * t + FROMCAR.f
 
@@ -141,18 +141,18 @@ int32_t BrSnapInterpDraw(int32_t force)
     BrSnapMtx *pB;
     BrSnapMtx *p;
 
-    if (g_brSnapCur >= 0 && g_brSnapPrev >= 0) {
-        if (g_brSnapTo >= 0) {
-            delta = g_aBrSnap[g_brSnapCur].stamp - g_aBrSnap[g_brSnapTo].stamp;
+    if ((*(int32_t *)&g_brRbB4EC) >= 0 && (*(int32_t *)&g_brRbB500) >= 0) {
+        if ((*(int32_t *)&g_brRb6F44) >= 0) {
+            delta = g_aBrSnap[(*(int32_t *)&g_brRbB4EC)].stamp - g_aBrSnap[(*(int32_t *)&g_brRb6F44)].stamp;
         } else {
             delta = 0;
         }
-        g_brSnapTo = g_brSnapCur;
-        g_brSnapFrom = g_brSnapPrev;
+        (*(int32_t *)&g_brRb6F44) = (*(int32_t *)&g_brRbB4EC);
+        (*(int32_t *)&g_brRbB4FC) = (*(int32_t *)&g_brRbB500);
 
         /* How far car 0's camera matrix moved between the two snapshots. */
-        pA = g_aBrSnap[g_brSnapCur].car[0].pMatA;
-        pB = g_aBrSnap[g_brSnapPrev].car[0].pMatA;
+        pA = g_aBrSnap[(*(int32_t *)&g_brRbB4EC)].car[0].pMatA;
+        pB = g_aBrSnap[(*(int32_t *)&g_brRbB500)].car[0].pMatA;
         dx = pA->m[3][0] - pB->m[3][0];
         dy = pA->m[3][1] - pB->m[3][1];
         dz = pA->m[3][2] - pB->m[3][2];
@@ -164,10 +164,10 @@ int32_t BrSnapInterpDraw(int32_t force)
             t = 1.0f;
         } else if (force != 0) {
             t = 1.0f;
-        } else if (g_brSnapT0 == 0) {
+        } else if ((*(int32_t *)&g_brRbB4F4) == 0) {
             t = 0.0f;
         } else {
-            t = (float)(uint32_t)(now - g_brSnapT0) * 0.03f + g_brSnapOrigin - delta;
+            t = (float)(uint32_t)(now - (*(int32_t *)&g_brRbB4F4)) * 0.03f + (*(float *)&g_brRb6F24) - delta;
             if (delta == 0 && t > 1.0f) {
                 reset = 0;
             }
@@ -178,35 +178,35 @@ int32_t BrSnapInterpDraw(int32_t force)
                 t = 1.0f;
             }
         }
-        if (g_brCfgInterpolate == 0) {
+        if ((*(int32_t *)&DAT_100a5eac) == 0) {
             t = 1.0f;
             reset = 1;
         }
 
         if (reset) {
-            g_aBrSnapLocked[0] = 0;
-            g_aBrSnapLocked[1] = 0;
-            g_aBrSnapLocked[2] = 0;
-            g_aBrSnapLocked[3] = 0;
-            g_aBrSnapLocked[4] = 0;
-            g_brSnapOrigin = t;
-            g_brSnapT0 = now;
-            g_aBrSnapLocked[g_brSnapTo] = 1;
-            g_aBrSnapLocked[g_brSnapFrom] = 1;
+            (*(int32_t (*)[5])&g_aBrRbPerCar)[0] = 0;
+            (*(int32_t (*)[5])&g_aBrRbPerCar)[1] = 0;
+            (*(int32_t (*)[5])&g_aBrRbPerCar)[2] = 0;
+            (*(int32_t (*)[5])&g_aBrRbPerCar)[3] = 0;
+            (*(int32_t (*)[5])&g_aBrRbPerCar)[4] = 0;
+            (*(float *)&g_brRb6F24) = t;
+            (*(int32_t *)&g_brRbB4F4) = now;
+            (*(int32_t (*)[5])&g_aBrRbPerCar)[(*(int32_t *)&g_brRb6F44)] = 1;
+            (*(int32_t (*)[5])&g_aBrRbPerCar)[(*(int32_t *)&g_brRbB4FC)] = 1;
 
             /* Driver records: copied, with the car pointer re-targeted. */
             n = g_brRaceNDriver;
             for (j = 0; j < n; j++) {
-                g_aBrSnap[BR_SNAP_BLEND].drv[j] = g_aBrSnap[g_brSnapFrom].drv[j];
-                if (g_aBrSnap[g_brSnapFrom].drv[j].pCar != NULL) {
+                g_aBrSnap[BR_SNAP_BLEND].drv[j] = g_aBrSnap[(*(int32_t *)&g_brRbB4FC)].drv[j];
+                if (g_aBrSnap[(*(int32_t *)&g_brRbB4FC)].drv[j].pCar != NULL) {
                     g_aBrSnap[BR_SNAP_BLEND].drv[j].pCar =
-                        &g_aBrSnap[BR_SNAP_BLEND].car[g_aBrSnap[g_brSnapFrom].drv[j].pCar
-                                                      - g_aBrSnap[g_brSnapFrom].car];
+                        &g_aBrSnap[BR_SNAP_BLEND].car[g_aBrSnap[(*(int32_t *)&g_brRbB4FC)].drv[j].pCar
+                                                      - g_aBrSnap[(*(int32_t *)&g_brRbB4FC)].car];
                 }
             }
 
             /* Car records: copied, pointers re-targeted, matrices blended. */
-            for (i = 0; i < (g_brRaceNCar ? g_brRaceNCar : 1); i++) {
+            for (i = 0; i < (g_BrCarCount ? g_BrCarCount : 1); i++) {
                 OUTCAR = FROMCAR;
 
                 p = FROMCAR.pMatA;
@@ -285,12 +285,12 @@ int32_t BrSnapInterpDraw(int32_t force)
             }
 
             /* The scene tail travels unblended. */
-            g_aBrSnap[BR_SNAP_BLEND].tailA = g_aBrSnap[g_brSnapFrom].tailA;
-            g_aBrSnap[BR_SNAP_BLEND].tailB = g_aBrSnap[g_brSnapFrom].tailB;
-            g_aBrSnap[BR_SNAP_BLEND].tailC = g_aBrSnap[g_brSnapFrom].tailC;
+            g_aBrSnap[BR_SNAP_BLEND].tailA = g_aBrSnap[(*(int32_t *)&g_brRbB4FC)].tailA;
+            g_aBrSnap[BR_SNAP_BLEND].tailB = g_aBrSnap[(*(int32_t *)&g_brRbB4FC)].tailB;
+            g_aBrSnap[BR_SNAP_BLEND].tailC = g_aBrSnap[(*(int32_t *)&g_brRbB4FC)].tailC;
 
             BrFrameDrawView(BR_SNAP_BLEND);
-            g_brSnapFrames++;
+            (*(int32_t *)&g_brRbB4F0)++;
             ret = 1;
         }
     }
@@ -387,7 +387,7 @@ void BrRaceBeginResetOnce(void)
     int i;
 
     if (g_brRbInited == 0) {
-        g_brRaceBeginLimitOn = 1;
+        (*(int *)&g_brRaceBeginLimitOn) = 1;
         g_brRbB4FC = -1;
         memset(g_aBrRbPerCar, 0, sizeof(g_aBrRbPerCar));
         g_brRb6F44 = -1;
@@ -396,7 +396,7 @@ void BrRaceBeginResetOnce(void)
         g_brRbB500 = -1;
         g_brRbB4F0 = g_brRbB4F4 = g_brRb6F24 = 0;
         for (i = 0; i < 5; i++)
-            g_aBrRbCar[i].f0 = 0.0f;
+            (*(BrRbCar (*)[5])&g_aBrSnap)[i].f0 = 0.0f;
         g_brRbInited = 1;
     }
 }
@@ -451,9 +451,9 @@ int BrSnapPickSlot(void)
 
     chosen = -1;
     best = 0xffffffffu;
-    cur = DAT_104ab4e8;
+    cur = g_brRbB4E8;
     for (i = 0; i < 5; i++) {
-        if (g_aBrSnapLocked[i] == 0 && i != cur && best >= (unsigned int)g_aBrSnap[i].stamp) {
+        if ((*(int32_t (*)[5])&g_aBrRbPerCar)[i] == 0 && i != cur && best >= (unsigned int)g_aBrSnap[i].stamp) {
             chosen = i;
             best = (unsigned int)g_aBrSnap[i].stamp;
         }
@@ -463,9 +463,9 @@ int BrSnapPickSlot(void)
     } else {
         prev = 0;
     }
-    DAT_104ab500 = DAT_104ab4ec;
-    DAT_104ab4ec = cur;
-    DAT_104ab4e8 = chosen;
+    g_brRbB500 = g_brRbB4EC;
+    g_brRbB4EC = cur;
+    g_brRbB4E8 = chosen;
     g_aBrSnap[chosen].stamp = prev + 1;
     return chosen;   /* the picked slot; callers (BrRaceStep) use it */
 }

@@ -70,15 +70,15 @@ unsigned int BrGhostPickBlend(float *param_1, int param_2)
 
   iVar4 = param_2;
   pfVar3 = param_1;
-  ahWait[0] = DAT_10226a64;
+  ahWait[0] = (*(HANDLE *)&g_hBrNetMutex);
   ahWait[1] = (HANDLE)g_aBrNetSlot[param_2].hMutex;
   puVar2 = (&g_aBrNetSlot[param_2].hMutex);
   WaitForMultipleObjects(2, ahWait, 1, 0xffffffff);
-  if (param_2 != DAT_1007b264) {
+  if (param_2 != g_id) {
     if ((int)((int *)puVar2)[0x156] < 2) {
       param_1[0x1f] = 400.0f;
       ReleaseMutex((HANDLE)*puVar2);
-      ReleaseMutex(DAT_10226a64);
+      ReleaseMutex((*(HANDLE *)&g_hBrNetMutex));
       return 0;
     }
     iVar5 = 0;
@@ -133,11 +133,11 @@ unsigned int BrGhostPickBlend(float *param_1, int param_2)
       v3[0] = *(float *)&puVar2[iVar9 * 0x28 + 0x1a];   /* the stored float, copied as a dword */
       v3[1] = *(float *)&puVar2[iVar9 * 0x28 + 0x1b];   /* the stored float, copied as a dword */
       v3[2] = *(float *)&puVar2[iVar9 * 0x28 + 0x1c];   /* the stored float, copied as a dword */
-      fVar12 = BrVec3Length_100682C0(v3);
+      fVar12 = BrGroundProbeZ(v3);
       v3[0] = pfVar3[4];
       v3[1] = pfVar3[5];
       v3[2] = pfVar3[6];
-      fVar13 = BrVec3Length_100682C0(v3);
+      fVar13 = BrGroundProbeZ(v3);
     } else {
       ((int *)puVar2)[0x158] = iVar9;
       if ((((unsigned int)((int *)puVar2)[3 + iVar9] < (unsigned int)(((int *)puVar2)[0x159] + 1)) &&
@@ -155,11 +155,11 @@ unsigned int BrGhostPickBlend(float *param_1, int param_2)
         v3[0] = *(float *)&puVar2[iVar9 * 0x28 + 0x1a];   /* the stored float, copied as a dword */
         v3[1] = *(float *)&puVar2[iVar9 * 0x28 + 0x1b];   /* the stored float, copied as a dword */
         v3[2] = *(float *)&puVar2[iVar9 * 0x28 + 0x1c];   /* the stored float, copied as a dword */
-        fVar12 = BrVec3Length_100682C0(v3);
+        fVar12 = BrGroundProbeZ(v3);
         v3[0] = pfVar3[4];
         v3[1] = pfVar3[5];
         v3[2] = pfVar3[6];
-        fVar13 = BrVec3Length_100682C0(v3);
+        fVar13 = BrGroundProbeZ(v3);
       } else {
         ((int *)puVar2)[0x15a] = 0;
         ((int *)puVar2)[0x15b] = 0;
@@ -174,36 +174,36 @@ unsigned int BrGhostPickBlend(float *param_1, int param_2)
         v3[0] = *(float *)&puVar2[iVar9 * 0x28 + 0x1a];   /* the stored float, copied as a dword */
         v3[1] = *(float *)&puVar2[iVar9 * 0x28 + 0x1b];   /* the stored float, copied as a dword */
         v3[2] = *(float *)&puVar2[iVar9 * 0x28 + 0x1c];   /* the stored float, copied as a dword */
-        fVar12 = BrVec3Length_100682C0(v3);
+        fVar12 = BrGroundProbeZ(v3);
         v3[0] = pfVar3[4];
         v3[1] = pfVar3[5];
         v3[2] = pfVar3[6];
-        fVar13 = BrVec3Length_100682C0(v3);
+        fVar13 = BrGroundProbeZ(v3);
       }
     }
     pfVar3[6] = (fVar12 - fVar13) + pfVar3[6];
   }
 LAB_done:
   ReleaseMutex((HANDLE)*puVar2);
-  ReleaseMutex(DAT_10226a64);
-  BrAngleWrap_10005C40(pfVar3);
+  ReleaseMutex((*(HANDLE *)&g_hBrNetMutex));
+  BrCarClampUnit(pfVar3);
   pfVar10 = pfVar3 + 1;
-  BrAngleWrap_10005C40(pfVar10);
+  BrCarClampUnit(pfVar10);
   pfVar11 = pfVar3 + 2;
-  BrAngleWrap_10005C40(pfVar11);
+  BrCarClampUnit(pfVar11);
   pfVar1 = pfVar3 + 3;
-  BrAngleWrap_10005C40(pfVar1);
+  BrCarClampUnit(pfVar1);
   if (*pfVar3 + *pfVar10 + *pfVar1 + *pfVar11 == DAT_100770b0) {
     *pfVar3 = 1.0f;
     *pfVar10 = 0.0f;
     *pfVar11 = 0.0f;
     *pfVar1 = 0.0f;
   } else {
-    BrQuatNormalise_1006D410(pfVar3);
+    BrVec4Normalise(pfVar3);
   }
-  BrAngleWrap_10005C70(pfVar3 + 4);
-  BrAngleWrap_10005C70(pfVar3 + 5);
-  BrAngleWrap_10005CA0(pfVar3 + 6);
+  BrCarClampPosXY(pfVar3 + 4);
+  BrCarClampPosXY(pfVar3 + 5);
+  BrCarClampPosZ(pfVar3 + 6);
   return 1;
 }
 

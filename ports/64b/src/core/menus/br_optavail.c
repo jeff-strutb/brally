@@ -82,38 +82,38 @@ int32_t BrOptAvailB(uint32_t n)
 {
     int32_t idx = (int32_t)n;
 
-    if (g_br6EE1DC_fRebaseB != 0 && idx > 15)
+    if ((*(int32_t *)&DAT_10ac5c4c) != 0 && idx > 15)
         idx -= 16;
-    if (g_br6EE184_fAlt != 0 && idx > 15
-        && (g_br6EE0C8_maskPair & 0x8000) != 0)
+    if ((*(int32_t *)&g_5BF4) != 0 && idx > 15
+        && ((*(int32_t *)&DAT_10ac5b38) & 0x8000) != 0)
         idx -= 16;
 
-    if (g_br0A9360_mode == 0) {
-        if (g_br6EE184_fAlt != 0) {
+    if ((*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0) {
+        if ((*(int32_t *)&g_5BF4) != 0) {
             if (idx == 15)
                 idx = 11;
             if (g_br6EE1D8_fLowAlways != 0 && idx <= 15)
                 return 1;
             /* `and esi,0xFFFF` -- the LOW half of the same dword */
             return (int32_t)((1u << idx)
-                             & ((uint32_t)g_br6EE0C8_maskPair & 0xFFFFu));
+                             & ((uint32_t)(*(int32_t *)&DAT_10ac5b38) & 0xFFFFu));
         }
         if (idx == 15)
             idx = 11;
         if (g_br6EE1D8_fLowAlways != 0 && idx <= 15)
             return 1;
-        return (int32_t)((1u << idx) & (uint32_t)g_br6EDE80_maskB);
+        return (int32_t)((1u << idx) & (uint32_t)DAT_10ac58f0);
     }
 
-    if (g_br0A9360_mode == 6) {
+    if ((*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 6) {
         if (idx == 15)
             idx = 7;            /* 7 here, 11 everywhere else */
         if (g_br6EE1D8_fLowAlways != 0 && idx <= 15)
             return 1;
-        return (int32_t)((1u << idx) & (uint32_t)g_brAAB88_maskB6);
+        return (int32_t)((1u << idx) & (uint32_t)(*(int32_t *)&g_br0AB3E8));
     }
 
-    if (g_br0A9360_mode == 2 && idx == g_brAF3CE4_nAlwaysB)
+    if ((*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 2 && idx == (*(int32_t *)((char *)&g_aBrRaceCar + 0x2ADC)) /* BR_LP64_BYTE_VIEW */)
         return 1;
 
     if (idx == 15)
@@ -121,5 +121,5 @@ int32_t BrOptAvailB(uint32_t n)
     if (g_br6EE1D8_fLowAlways != 0 && idx <= 15)
         return 1;
     /* movsx: SIGN-extended, unlike the zero-extended masks above. */
-    return (int32_t)((1u << idx) & (uint32_t)(int32_t)g_brAAB84_maskBDef);
+    return (int32_t)((1u << idx) & (uint32_t)(int32_t)(*(int16_t *)&DAT_100aab84));
 }

@@ -137,7 +137,7 @@ float *BrVtxExpand(const void *pVerts, int count)
             o[7] = (float)*(const signed char *)(p - 2) * DAT_100773a0;
 
             DAT_100a751c = DAT_100a751c + 8;
-            DAT_105b96f8 = DAT_105b96f8 + 1;
+            (*(int *)&g_67D550) = (*(int *)&g_67D550) + 1;
         } while (--count != 0);
     }
     return pStart;
@@ -160,13 +160,13 @@ float *BrVtxExpand(const void *pVerts, int count)
 
 void BrVtxCacheInsert(void *pSrc, int count, float *pOut)
 {
-    int n = DAT_105b76f4;
+    int n = (*(int *)&g_brRca67B54C);
 
     if (n < 0x800) {
         g_aBrVtxCache[n].pSrc  = pSrc;
         g_aBrVtxCache[n].count = count;
         g_aBrVtxCache[n].pOut  = pOut;
-        DAT_105b76f4 = n + 1;
+        (*(int *)&g_brRca67B54C) = n + 1;
     }
 }
 
@@ -191,7 +191,7 @@ void BrVtxCacheResolve(uint32_t *pW1, int count)
     if (count == 0)                 /* not `count <= 0` */
         return;
 
-    n = DAT_105b76f4;
+    n = (*(int *)&g_brRca67B54C);
     for (i = 0; i < n; ++i) {
         if (g_aBrVtxCache[i].pSrc == pSrc && g_aBrVtxCache[i].count == count) {
             *pW1 = br_addr32(g_aBrVtxCache[i].pOut);
@@ -274,11 +274,11 @@ void BrF3DTri2Fixup(void *pCmd)
 
 void BrPtrListAdd(void *pv)
 {
-    int n = DAT_105b76f0;
+    int n = (*(int *)&g_brRca67B548);
 
     if (n < 0x800) {
         DAT_105b76f8[n] = pv;       /* silently dropped when full */
-        DAT_105b76f0 = n + 1;
+        (*(int *)&g_brRca67B548) = n + 1;
     }
 }
 
@@ -311,9 +311,9 @@ int BrPtrListContains(const void *pv)
     if (pv == NULL)
         return 1;                    /* NULL short-circuits to "present" */
 
-    n = g_br67B548;
+    n = (*(int *)&g_brRca67B548);
     for (i = 0; i < n; ++i)
-        if (g_br67B550[i] == pv)
+        if (DAT_105b76f8[i] == pv)
             return 1;
 
     return 0;

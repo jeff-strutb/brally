@@ -25,11 +25,11 @@
  * reads the fields used here as the separate globals they are, by their
  * DAT_ names -- which the image gate resolves from the address they spell. */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define S17_PGFX DAT_106e7710
+#define S17_PGFX g_BrGfxPtr
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define S17_SCREENW DAT_106e7714
+#define S17_SCREENW g_scrW4
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define S17_SCREENH DAT_106e9a2c
+#define S17_SCREENH (*(int *)&g_brRaceCueBase)
 #undef BrPtrListContains
 
 #include <math.h>
@@ -212,8 +212,8 @@ void BrGfxClearScreen(int r, int g, int b)
     p5 = (unsigned int *)S17_PGFX;
     S17_PGFX = S17_PGFX + 2;
     p5[0] = 0xE1000000u
-          | ((((DAT_106e7714 << DAT_106ed674) - 1) & 0xFFF) << 12)
-          | (((DAT_106e9a2c << DAT_106ed674) - 1) & 0xFFF);
+          | ((((g_scrW4 << (*(int *)((char *)&g_aBrEntRecs + 0x44))) - 1) & 0xFFF) << 12)
+          | ((((*(int *)&g_brRaceCueBase) << (*(int *)((char *)&g_aBrEntRecs + 0x44))) - 1) & 0xFFF);
     p5[1] = 0;
 
     p6 = (unsigned int *)S17_PGFX;
@@ -241,7 +241,7 @@ void BrGfxFillRect(int ulx, int uly, int w, int h, int r, int g, int b)
     unsigned short c;
     unsigned int *p1, *p2, *p3, *p4, *p5, *p6, *p7;
 
-    if (DAT_106ed674 != 0) {
+    if ((*(int *)((char *)&g_aBrEntRecs + 0x44)) != 0) {
         ulx = ulx << 1;
         uly = uly << 1;
         w = w << 1;
@@ -276,8 +276,8 @@ void BrGfxFillRect(int ulx, int uly, int w, int h, int r, int g, int b)
     p5 = (unsigned int *)S17_PGFX;
     S17_PGFX = S17_PGFX + 2;
     p5[0] = 0xE1000000u
-          | (((((ulx + w) << DAT_106ed674) - 1) & 0xFFF) << 12)
-          | ((((uly + h) << DAT_106ed674) - 1) & 0xFFF);
+          | (((((ulx + w) << (*(int *)((char *)&g_aBrEntRecs + 0x44))) - 1) & 0xFFF) << 12)
+          | ((((uly + h) << (*(int *)((char *)&g_aBrEntRecs + 0x44))) - 1) & 0xFFF);
     p5[1] = ((ulx & 0xFFF) << 12) | (uly & 0xFFF);
 
     p6 = (unsigned int *)S17_PGFX;

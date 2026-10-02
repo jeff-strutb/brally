@@ -125,29 +125,29 @@ unsigned Car5D060::Scan(int depth, int mid, Node5D060 *pNode)
     Vec5D060 *pC;
 
     if (pNode == 0) {
-        pNode = (Node5D060 *)(DAT_106eed48);
+        pNode = (Node5D060 *)((*(Node5D060 * *)&g_pBrRaceLapRec));
         mid = 0;
     }
     if (depth == 0) {
         DAT_10ac680c = 0;
-        DAT_10b1ca18 = 0;
+        (*(int *)&g_brAiScanFlag18) = 0;
         DAT_10b1cf08 = 0;
         DAT_10b1cf0c = 0;
     } else {
         if (depth > 8 || (pNode->flags & 1))
             return 0;
 
-        BrVec3Lerp((struct BrVec3 *)(&DAT_10b1cb3c[depth]), (const struct BrVec3 *)(&pNode->aPt[mid].left), (const struct BrVec3 *)(&pNode->aPt[mid].right), 0.2f);
-        pC = &DAT_10b1ca7c[depth];
+        BrVec3Lerp((struct BrVec3 *)(&(*(Vec5D060 (*)[])&g_aScanInsetA)[depth]), (const struct BrVec3 *)(&pNode->aPt[mid].left), (const struct BrVec3 *)(&pNode->aPt[mid].right), 0.2f);
+        pC = &(*(Vec5D060 (*)[])&g_aScanCentre)[depth];
         *pC = pNode->aPt[mid].centre;
-        BrVec3Lerp((struct BrVec3 *)(&DAT_10b1cadc[depth]), (const struct BrVec3 *)(&pNode->aPt[mid].right), (const struct BrVec3 *)(&pNode->aPt[mid].left), 0.2f);
-        BrVec3Midpoint((struct BrVec3 *)(&DAT_10b1c8e4[depth]), (const struct BrVec3 *)(&DAT_10b1cadc[depth]), (const struct BrVec3 *)(pC));
-        BrVec3Midpoint((struct BrVec3 *)(&DAT_10b1c884[depth]), (const struct BrVec3 *)(&DAT_10b1cb3c[depth]), (const struct BrVec3 *)(pC));
+        BrVec3Lerp((struct BrVec3 *)(&(*(Vec5D060 (*)[])&g_aScanInsetB)[depth]), (const struct BrVec3 *)(&pNode->aPt[mid].right), (const struct BrVec3 *)(&pNode->aPt[mid].left), 0.2f);
+        BrVec3Midpoint((struct BrVec3 *)(&(*(Vec5D060 (*)[])&g_aScanMidB)[depth]), (const struct BrVec3 *)(&(*(Vec5D060 (*)[])&g_aScanInsetB)[depth]), (const struct BrVec3 *)(pC));
+        BrVec3Midpoint((struct BrVec3 *)(&(*(Vec5D060 (*)[])((char *)&g_aBrRaceCar + 0x2B67C)) /* BR_LP64_BYTE_VIEW */[depth]), (const struct BrVec3 *)(&(*(Vec5D060 (*)[])&g_aScanInsetA)[depth]), (const struct BrVec3 *)(pC));
         midPt.x = (pNode->aPt[mid].left.x + pNode->aPt[mid].right.x) * DAT_100778cc;
         midPt.y = (pNode->aPt[mid].right.y + pNode->aPt[mid].left.y) * DAT_100778cc;
 
-        pA = DAT_10b1caf4;
-        pB = DAT_10b1cb54;
+        pA = (*(Vec5D060 (*)[])&g_aScanHitA);
+        pB = (*(Vec5D060 (*)[])&g_aScanHitB);
         for (level = 1; level < depth - 1; level++, pA++, pB++) {
             if (BrSeg2Intersect((const struct BrVec2 *)(&pos), (const struct BrVec2 *)(&midPt), (const struct BrVec2 *)(pA), (const struct BrVec2 *)(pB)) == 0) {
                 DAT_10b1cf0c = 1;
@@ -157,29 +157,29 @@ unsigned Car5D060::Scan(int depth, int mid, Node5D060 *pNode)
 
         if (depth > DAT_10ac680c) {
             DAT_10ac680c = depth;
-            DAT_10ac67d4 = (Node5D060 *)((BrAiPathNode *)(pNode));
-            DAT_10b1c888 = mid;
+            (*(Node5D060 * *)&g_pBrAiScanBestNode) = (Node5D060 *)((BrAiPathNode *)(pNode));
+            (*(int *)&g_brAiScanBestPt) = mid;
             if (depth > 2) {
-                if (BrSeg2Intersect((const struct BrVec2 *)(&pos), (const struct BrVec2 *)(&DAT_10b1caa0), (const struct BrVec2 *)(&DAT_10b1c8fc), (const struct BrVec2 *)(&DAT_10b1caf4[0])) != 0) {
-                    DAT_10b1cbe8 = 0;
+                if (BrSeg2Intersect((const struct BrVec2 *)(&pos), (const struct BrVec2 *)(&(*(Vec5D060 *)&g_brAiScanProbe)), (const struct BrVec2 *)(&(*(Vec5D060 *)&g_brAiScanEndA)), (const struct BrVec2 *)(&(*(Vec5D060 (*)[])&g_aScanHitA)[0])) != 0) {
+                    (*(int *)&g_brAiBiasPos) = 0;
                     DAT_10b1cf04 = 1;
-                } else if (BrSeg2Intersect((const struct BrVec2 *)(&pos), (const struct BrVec2 *)(&DAT_10b1caa0), (const struct BrVec2 *)(&DAT_10b1c89c), (const struct BrVec2 *)(&DAT_10b1cb54[0])) != 0) {
-                    DAT_10b1cbe8 = 1;
+                } else if (BrSeg2Intersect((const struct BrVec2 *)(&pos), (const struct BrVec2 *)(&(*(Vec5D060 *)&g_brAiScanProbe)), (const struct BrVec2 *)(&DAT_10b1c89c), (const struct BrVec2 *)(&(*(Vec5D060 (*)[])&g_aScanHitB)[0])) != 0) {
+                    (*(int *)&g_brAiBiasPos) = 1;
                     DAT_10b1cf04 = 0;
                 } else {
-                    DAT_10b1cbe8 = 0;
+                    (*(int *)&g_brAiBiasPos) = 0;
                     DAT_10b1cf04 = 0;
                 }
             } else {
-                DAT_10b1cbe8 = 0;
+                (*(int *)&g_brAiBiasPos) = 0;
                 DAT_10b1cf04 = 0;
             }
             ret = 1;
             DAT_10b1ce88 = *pC;
-            DAT_10af11f8 = DAT_10b1ca7c[1 + (depth >> 1)];
-            memcpy(DAT_10b1c9b8, &DAT_10b1cadc[1], depth * sizeof(Vec5D060));
-            memcpy(DAT_10b1ca28, &DAT_10b1ca7c[1], depth * sizeof(Vec5D060));
-            memcpy(DAT_10b1c958, &DAT_10b1cb3c[1], depth * sizeof(Vec5D060));
+            DAT_10af11f8 = (*(Vec5D060 (*)[])&g_aScanCentre)[1 + (depth >> 1)];
+            memcpy((*(Vec5D060 (*)[])&g_aBrAiScanA), &(*(Vec5D060 (*)[])&g_aScanInsetB)[1], depth * sizeof(Vec5D060));
+            memcpy((*(Vec5D060 (*)[])&g_aBrAiScanB), &(*(Vec5D060 (*)[])&g_aScanCentre)[1], depth * sizeof(Vec5D060));
+            memcpy((*(Vec5D060 (*)[])&g_aScanOut3), &(*(Vec5D060 (*)[])&g_aScanInsetA)[1], depth * sizeof(Vec5D060));
             DAT_10b1ca1c = depth;
         }
     }
@@ -188,7 +188,7 @@ tail:
     if (++mid == pNode->count) {
         pNode = pNode->pNext;
         if (pNode == 0)
-            pNode = (Node5D060 *)(DAT_106eed48);
+            pNode = (Node5D060 *)((*(Node5D060 * *)&g_pBrRaceLapRec));
         if (pNode != 0) {
             next = depth + 1;
             do {

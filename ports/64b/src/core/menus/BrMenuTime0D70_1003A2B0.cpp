@@ -74,8 +74,8 @@ int BrMenuTime0D70_1003A2B0(Obj3A2B0 *pObj)
 
     memset(szTime, 0, sizeof(szTime));
 
-    if (DAT_10ac5bf4 == 0) goto dash;
-    t = DAT_10ac5af8[DAT_100b3028[(DAT_10ac5c04 + 12 * DAT_10ac5c10) * 2]];
+    if (g_5BF4 == 0) goto dash;
+    t = DAT_10ac5af8[(*(unsigned char (*)[])&g_aBr0B3820)[(g_brIdx5C04 + 12 * (*(signed char *)&DAT_10ac5c10)) * 2]];
     if (t <= g_f077624) {
  dash:
         strcpy(szTime, g_szBrDashes);

@@ -108,13 +108,13 @@ int BrItemSetModeLabel_100393C0(Obj393C0 *pObj)
 {
     char *s;
 
-    if (DAT_10ac5c5c == DAT_10ac5cbc && DAT_10ac5c40 == 0) {
+    if (g_brPAA29B8 == DAT_10ac5cbc && DAT_10ac5c40 == 0) {
         pObj->m2B5C.f414 = pObj->m2B5C.f414 - DAT_10077628;
 
-        strcpy(pObj->m2B5C.szName, BrStrByIndex(0x1C));
+        strcpy(pObj->m2B5C.szName, BrStrGet(0x1C));
 
         pObj->m2B5C.s1();
-        BrItemApply_10038380((struct BrCtl85 *)(pObj), 0);
+        Br85ItemApply((struct BrCtl85 *)(pObj), 0);
 
         pObj->m2B5C.f414 = pObj->m2B5C.f414 - DAT_1007762c;
         return 1;
@@ -125,23 +125,23 @@ int BrItemSetModeLabel_100393C0(Obj393C0 *pObj)
      * RESIDUE 2 bytes: k lands in eax where the original has ecx. */
     {
         int k;
-        if (DAT_100a9360 == 0) {
+        if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0) {
             if (DAT_10ac5c00 != 0) {
-                s = BrStrByIndex(DAT_100abb50[
-                        DAT_100b3029[(DAT_10ac5c04 + DAT_10ac5c10 * 12) * 2]]);
+                s = BrStrGet((*(int (*)[])&g_aBrAC3B0)[
+                        (*(unsigned char (*)[])&g_aBr0B3820[1])[(g_brIdx5C04 + (*(char *)&DAT_10ac5c10) * 12) * 2]]);
                 goto have;
             }
-            k = DAT_100b3029[(DAT_10ac5bfc + DAT_10ac5c10 * 12) * 2];
+            k = (*(unsigned char (*)[])&g_aBr0B3820[1])[(g_brIdx5BFC + (*(char *)&DAT_10ac5c10) * 12) * 2];
         } else {
             k = DAT_10ac5d58;
         }
-        s = BrStrByIndex(DAT_100abb50[k]);
+        s = BrStrGet((*(int (*)[])&g_aBrAC3B0)[k]);
     }
 have:
     strcpy(pObj->m2B5C.szName, s);
 
     pObj->m2B5C.s1();
-    BrItemApply_10038380((struct BrCtl85 *)(pObj), 0);
+    Br85ItemApply((struct BrCtl85 *)(pObj), 0);
 
     return 1;
 }

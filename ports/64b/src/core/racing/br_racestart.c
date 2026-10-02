@@ -128,7 +128,7 @@ void BrRaceEntrantCountSet(int32_t n, BrGameStepFn pfnNullStep)
 {
     (void)pfnNullStep;
     g_brRaceNEntrant = n;
-    BrGameStepSet(BrRaceNullStep);
+    BrGameStepSet(BrPodNop);
 }
 
 /* ==========================================================================
@@ -146,7 +146,7 @@ void BrRaceStart(const BrRaceStartOps *pOps,
     }
 
     /* 0x100628B0 / 0x100628BD.  Two plain copies. */
-    g_brRace6EC760 = g_brRaceB71A68;
+    g_brRace6EC760 = (*(int32_t *)&g_brItemIconCount);
     g_brRace6E9A34 = g_brRaceB71A6C;
 
     /* 0x100628C8. */
@@ -157,12 +157,12 @@ void BrRaceStart(const BrRaceStartOps *pOps,
     /* 0x100628CD .. 0x100628DC.  `cmp eax,4 ; sete dl` with edx zeroed, so
      * the result is strictly 0 or 1 -- not the mode value.  br_racestep.h
      * cites this site independently. */
-    mode = g_brCfgGameMode;
+    mode = (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */;
     g_brRaceTick = (mode == BR_RACESTART_TICK_MODE) ? 1 : 0;
 
     /* 0x100628E2 / 0x100628E8.  Both from the zeroed esi. */
     g_brRace18EEED8 = 0;
-    g_brRace5CCB80 = 0;
+    (DAT_105ccb68[6]) = 0;
 
     /* 0x100628EE / 0x100628F3 / 0x100628F8.  The last two are empty. */
     if (hooked(BR_RACESTART_1002DEC3, pOps->pfn1002DEC3 != NULL)) {
@@ -195,7 +195,7 @@ void BrRaceStart(const BrRaceStartOps *pOps,
     /* 0x1006290D.  The mode is RELOADED from the global here; nothing above
      * writes it, so the value is the same, but the reload is what makes the
      * two tests independent readings in the listing. */
-    mode = g_brCfgGameMode;
+    mode = (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */;
 
     /* 0x1006291A .. 0x1006294F.  Three 16-bit stores of 0xFFFF, and the
      * ORDER is +0xF2, +0xF0, +0xF4 -- not ascending.  The record pointer is
@@ -222,12 +222,12 @@ void BrRaceStart(const BrRaceStartOps *pOps,
     /* 0x10062965 .. 0x10062992.  Note g_brCarPhysWeather is set to 1 here
      * and overwritten from the config below; both writes are the
      * original's. */
-    g_brRace6ED6DC = 0;
+    (*(int32_t *)((char *)&g_aBrEntRecs + 0xAC)) = 0;
     g_brRaceB71288 = 0;
-    g_brRaceNCar = BR_RACESTART_NCAR;
+    g_BrCarCount = BR_RACESTART_NCAR;
     g_brRaceNEntrant = BR_RACESTART_NENTRANT;
-    g_brCarPhysWeather = BR_RACESTART_WEATHER_INIT;
-    g_brRace4ABB20 = 0;
+    (*(int32_t *)&DAT_104b15e8) = BR_RACESTART_WEATHER_INIT;
+    DAT_104abb20 = 0;
     g_brRace4ABB24 = 0;
 
     /* 0x1006299C.  The race step goes in.  br_gamestep.h: the race is not a
@@ -281,7 +281,7 @@ void BrRaceStart(const BrRaceStartOps *pOps,
 
     /* 0x10062A01 .. 0x10062A1A.  Mode 0 falls THROUGH into the mode-2 arm's
      * store, so 0 and 2 share it and every other mode skips it. */
-    mode = g_brCfgGameMode;
+    mode = (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */;
     if (mode == 0) {
         if (hooked(BR_RACESTART_SELLOOKUP, pOps->pfnSelLookup != NULL)) {
             pOps->pfnSelLookup(pOps->pUser);
@@ -292,7 +292,7 @@ void BrRaceStart(const BrRaceStartOps *pOps,
     }
 
     /* 0x10062A1C .. 0x10062A77. */
-    g_brCarPhysWeather = g_brCfgChosenWeather;
+    (*(int32_t *)&DAT_104b15e8) = (*(int32_t *)&g_226e80);
 
     if (hooked(BR_RACESTART_EQUIPRECORD, pOps->pfnEquipRecord != NULL)) {
         pRec = pOps->pfnEquipRecord(pOps->pUser);
@@ -306,13 +306,13 @@ void BrRaceStart(const BrRaceStartOps *pOps,
              * (SuspensionType) goes to +0x104 and 0x1007B32C (TireType) to
              * +0x100, per 0x10062A5B/0x10062A60 and 0x10062A6B/0x10062A71. */
             put_u32le(pRec, BR_RACESTART_OFF_HANDLING,
-                      (uint32_t)g_brCfgHandlingType);
+                      (uint32_t)(*(int32_t *)&g_7b320));
             put_u32le(pRec, BR_RACESTART_OFF_TRANSMISSION,
-                      (uint32_t)g_brCfgTransmission);
+                      (uint32_t)(*(int32_t *)&g_7b324));
             put_u32le(pRec, BR_RACESTART_OFF_SUSPENSION,
-                      (uint32_t)g_brCfgSuspensionType);
+                      (uint32_t)(*(int32_t *)&g_7b328));
             put_u32le(pRec, BR_RACESTART_OFF_TIRE,
-                      (uint32_t)g_brCfgTireType);
+                      (uint32_t)(*(int32_t *)&g_7b32c));
         }
     }
 
@@ -382,27 +382,27 @@ void BrRaceStartResetForTest(void)
 int BrRaceDifficultySet(int param_1)
 
 {
-  DAT_106ed6b0 = 0;
-  BrG_6C6624 = 0;
-  BrG_6C661C = 0;
+  (*(int *)((char *)&g_aBrEntRecs + 0x80)) = 0;
+  (*(int *)((char *)&g_aBrEntRecs + 0x84)) = 0;
+  (*(int *)((char *)&g_aBrEntRecs + 0x7C)) = 0;
   switch(param_1) {
   case 0:
-    DAT_106ed6a8 = 0;
+    (*(int *)((char *)&g_aBrEntRecs + 0x78)) = 0;
     return;
   case 1:
-    DAT_106ed6a8 = 1;
+    (*(int *)((char *)&g_aBrEntRecs + 0x78)) = 1;
     return;
   case 2:
-    DAT_106ed6a8 = 1;
-    BrG_6C6624 = 1;
+    (*(int *)((char *)&g_aBrEntRecs + 0x78)) = 1;
+    (*(int *)((char *)&g_aBrEntRecs + 0x84)) = 1;
     return;
   case 3:
-    DAT_106ed6a8 = 1;
-    DAT_106ed6b0 = 1;
+    (*(int *)((char *)&g_aBrEntRecs + 0x78)) = 1;
+    (*(int *)((char *)&g_aBrEntRecs + 0x80)) = 1;
     return;
   case 4:
-    DAT_106ed6a8 = 1;
-    BrG_6C661C = 1;
+    (*(int *)((char *)&g_aBrEntRecs + 0x78)) = 1;
+    (*(int *)((char *)&g_aBrEntRecs + 0x7C)) = 1;
   }
   return;
 }
@@ -413,8 +413,8 @@ int BrRaceDifficultySet(int param_1)
 int BrRaceDifficultyApply(int param_1)
 
 {
-  FUN_100627b0(param_1);
-  FUN_1002db88();
+  BrRaceDifficultySet(param_1);
+  BrEntGfxRebindAll();
   return;
 }
 
@@ -430,8 +430,8 @@ void BrEntSlotsReset(void)
   int i;
 
   for (i = 0; i < 16; i++) {
-    FUN_1005c560(&g_aBrRaceCar[i]);
-    BrEntInit_1002F680(&g_aBrEnts[i]);
+    BrRaceCarReset(&g_aBrRaceCar[i]);
+    BrEntInit(&g_aBrEnts[i]);
   }
 }
 
@@ -482,34 +482,34 @@ void BrEntSlotsReset(void)
 void BrGlRaceStart(void)
 
 {
-  g_brRace6EC760 = g_brRaceB71A68;
+  g_brRace6EC760 = (*(int32_t *)&g_brItemIconCount);
   g_brRace6E9A34 = g_brRaceB71A6C;
-  FUN_100703a0();
-  DAT_10226a44 = (unsigned int)(DAT_100a9360 == 4);
+  BrSub100770C0();
+  (*(int *)&g_brRaceTick) = (unsigned int)((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4);
   g_brRace18EEED8 = 0;
-  DAT_105ccb80 = 0;
+  (*(int *)&DAT_105ccb68[6]) = 0;
   FUN_1002dec3();
   BrNop_1002E334();
   BrNop_1002E2E3();
   BrEntSlotsReset();
   BrNop_1002E136();
   BrCursorPairSet(0);
-  if ((DAT_100a9360 == 1) || (DAT_100a9360 == 6)) {
-    *(unsigned short *)(DAT_10af2094 + 0xf2) = 0xffff;
-    *(unsigned short *)(DAT_10af2094 + 0xf0) = 0xffff;
-    *(unsigned short *)(DAT_10af2094 + 0xf4) = 0xffff;
+  if (((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 1) || ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 6)) {
+    *(unsigned short *)((*(int *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */ + 0xf2) = 0xffff;
+    *(unsigned short *)((*(int *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */ + 0xf0) = 0xffff;
+    *(unsigned short *)((*(int *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */ + 0xf4) = 0xffff;
   }
-  FUN_10062850(1);
+  BrRaceEntrantCountSet(1);
   BrGameStepSet(BrPodNop);
-  g_brRace6ED6DC = 0;
+  (*(int32_t *)((char *)&g_aBrEntRecs + 0xAC)) = 0;
   g_brRaceB71288 = 0;
-  DAT_100b2f04 = 2;
-  DAT_100b3858 = 1;
-  g_brCarPhysWeather = 1;
+  (*(int *)&g_BrCarCount) = 2;
+  (*(int *)&g_brRaceNEntrant) = 1;
+  (*(int32_t *)&DAT_104b15e8) = 1;
   DAT_104abb20 = 0;
-  DAT_104abb24 = 0.0f;
-  BrGameStepSet(BrRaceStep_10019A70);
-  DAT_105bc8d8 = 8;
+  (*(float *)&g_brRace4ABB24) = 0.0f;
+  BrGameStepSet(BrRaceStep);
+  (*(int *)&g_brRace5BC8D8) = 8;
   BrRaceSub1002F6C0();
   BrPodNop();
   while (BrSaveLoad(0,1) == 0) {
@@ -519,18 +519,18 @@ void BrGlRaceStart(void)
   while (BrSaveLoad(2,1) == 0) {
   }
   BrUiVolumeApply();
-  if (DAT_100a9360 == 0) {
+  if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0) {
     BrSelLookup();
-    DAT_100b3858 = 1;
+    (*(int *)&g_brRaceNEntrant) = 1;
   }
-  else if (DAT_100a9360 == 2) {
-    DAT_100b3858 = 1;
+  else if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 2) {
+    (*(int *)&g_brRaceNEntrant) = 1;
   }
-  g_brCarPhysWeather = DAT_10226e80;
-  *(int *)(DAT_10af2094 + 0xf8) = DAT_1007b320;
-  *(int *)(DAT_10af2094 + 0xfc) = DAT_1007b324;
-  *(int *)(DAT_10af2094 + 0x104) = DAT_1007b328;
-  *(int *)(DAT_10af2094 + 0x100) = DAT_1007b32c;
+  (*(int32_t *)&DAT_104b15e8) = g_226e80;
+  *(int *)((*(int *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */ + 0xf8) = g_7b320;
+  *(int *)((*(int *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */ + 0xfc) = g_7b324;
+  *(int *)((*(int *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */ + 0x104) = g_7b328;
+  *(int *)((*(int *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */ + 0x100) = g_7b32c;
   BrPodNop();
   BrPodNop();
   BrPodNop();

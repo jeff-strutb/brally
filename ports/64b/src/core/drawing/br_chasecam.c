@@ -123,7 +123,7 @@ void __fastcall FUN_100018f0(BrDriverCar *param_1, int _edx_unused, int param_2,
     dst = param_2 + 0x30;
     BrVec3MulAdd((void *)dst, &param_1->pos.x, &param_1->up.x, 2.4f);
     s = -11.0f;
-    if (DAT_100aa044 != 1) {
+    if (g_brMode0AA8B4 != 1) {
       s = -19.8f;
     }
     BrVec3MulAdd((void *)dst, (void *)dst, &param_1->fwd.x, s);
@@ -134,17 +134,17 @@ void __fastcall FUN_100018f0(BrDriverCar *param_1, int _edx_unused, int param_2,
   BrVec3Sub(tmp, (void *)dst, &param_1->pos.x);
   len = BrVec3Length(tmp);
   if (len != _DAT_10077000) {
-    if (DAT_100aa044 == 1) {
+    if (g_brMode0AA8B4 == 1) {
       BrVec3ScaleBy(tmp, _DAT_10077018 / len);
     }
     else {
       BrVec3ScaleBy(tmp, _DAT_1007701c / len);
     }
   }
-  if (DAT_105ccb88 != 0) {
+  if ((*(int *)&DAT_105ccb68[8]) != 0) {
     BrVec3Scale((void *)dst, &param_1->fwd.x, 11.0f);
   }
-  else if (g_br0AA010 == 5) {
+  else if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 5) {
     BrVec3Scale((void *)dst, &param_1->right.x, -11.0f);
     BrVec3MulAddTo((void *)dst, &param_1->fwd.x, -13.0f);
   }
@@ -191,7 +191,7 @@ void __fastcall BrCamChaseZoomStep(BrDriverCar *pCam)
     float v;
 
     if (pCam->fF7C != 0) {
-        BrSub10034660(&pCam->f28E0, &pCam->pos.x, &pCam->up.x, 1.1f);
+        BrVec3MulAdd(&pCam->f28E0, &pCam->pos.x, &pCam->up.x, 1.1f);
         return;
     }
 
@@ -199,8 +199,8 @@ void __fastcall BrCamChaseZoomStep(BrDriverCar *pCam)
     *(int *)&pCam->f28E0   = *(int *)&pCam->pos.x;
     *(int *)&pCam->f28E4   = *(int *)&pCam->pos.y;
 
-    d = BrSub100347F0(&pCam->aBody[0].rb.st.angVel.x);
-    if (DAT_100a9360 == 5) {
+    d = BrVec3Length(&pCam->aBody[0].rb.st.angVel.x);
+    if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 5) {
         return;
     }
 
@@ -286,32 +286,32 @@ void __fastcall FUN_10001510(BrDriverCar *car, int _edx_unused, char *cam, BrCam
     int         nCells, c;
     float       len, tBest, denom, t, dist;
 
-    DAT_100bcdcc = 0;
-    cells[0] = FUN_100686d0(car->f28E0, car->f28E4);
+    (*(int *)&g_BrCamDemo) = 0;
+    cells[0] = BrCollGridCellAcquire(car->f28E0, car->f28E4);
     pPos = (BrCamV3 *)(cam + 0x30);
-    cells[1] = FUN_100686d0(pPos->x, *(float *)(cam + 0x34));
+    cells[1] = BrCollGridCellAcquire(pPos->x, *(float *)(cam + 0x34));
     nCells = (cells[0] != cells[1]) + 1;
 
-    FUN_10034560(&dir, pPos, pAnchor);
+    BrVec3Sub(&dir, pPos, pAnchor);
     pBest = 0;
-    len = FUN_100347f0(&dir);
+    len = BrVec3Length(&dir);
     if (len != _DAT_10077000)
         tBest = (len - _DAT_10077004) / len;
     else
         tBest = 1.0f;
 
     for (c = 0; c < nCells; c++) {
-        pPlane = DAT_11773698[cells[c]];
-        pEnd = pPlane + DAT_11778800[cells[c]];
+        pPlane = (*(BrCamPlane (*)[][150])&DAT_11773698)[cells[c]];
+        pEnd = pPlane + (*(unsigned short (*)[])((char *)&g_brCrPlane + 0x10))[cells[c]];
         for (; pPlane != pEnd; pPlane++) {
 
-            denom = FUN_10034310(&dir, pPlane);
+            denom = BrVec3Dot(&dir, pPlane);
             if (denom < _DAT_10077000) {
-                FUN_10034560(&toV0, pPlane->pV0, pAnchor);
-                t = FUN_10034310(&toV0, pPlane) / denom;
+                BrVec3Sub(&toV0, pPlane->pV0, pAnchor);
+                t = BrVec3Dot(&toV0, pPlane) / denom;
                 if (t > _DAT_10077000 && t < tBest) {
-                    FUN_10034660(&hit, pAnchor, &dir, t);
-                    if (FUN_10034fc0(&hit, pPlane->pV0, pPlane->pV1, pPlane->pV2, pPlane)) {
+                    BrVec3MulAdd(&hit, pAnchor, &dir, t);
+                    if (BrTriContainsPoint(&hit, pPlane->pV0, pPlane->pV1, pPlane->pV2, pPlane)) {
                         tBest = t;
                         pBest = pPlane;
                         hitOut = hit;
@@ -323,21 +323,21 @@ void __fastcall FUN_10001510(BrDriverCar *car, int _edx_unused, char *cam, BrCam
     if (pBest == 0)
         return;
 
-    FUN_10034560(&dir, pPos, prev);
+    BrVec3Sub(&dir, pPos, prev);
     pBest = 0;
     tBest = 1.0f;
     for (c = 0; c < nCells; c++) {
-        pPlane = DAT_11773698[cells[c]];
-        pEnd = pPlane + DAT_11778800[cells[c]];
+        pPlane = (*(BrCamPlane (*)[][150])&DAT_11773698)[cells[c]];
+        pEnd = pPlane + (*(unsigned short (*)[])((char *)&g_brCrPlane + 0x10))[cells[c]];
         for (; pPlane != pEnd; pPlane++) {
 
-            denom = FUN_10034310(&dir, pPlane);
+            denom = BrVec3Dot(&dir, pPlane);
             if (denom < _DAT_10077000) {
-                FUN_10034560(&toV0, pPlane->pV0, prev);
-                t = FUN_10034310(&toV0, pPlane) / denom;
+                BrVec3Sub(&toV0, pPlane->pV0, prev);
+                t = BrVec3Dot(&toV0, pPlane) / denom;
                 if (t > _DAT_10077000 && t < tBest) {
-                    FUN_10034660(&hit, prev, &dir, t);
-                    if (FUN_10034fc0(&hit, pPlane->pV0, pPlane->pV1, pPlane->pV2, pPlane)) {
+                    BrVec3MulAdd(&hit, prev, &dir, t);
+                    if (BrTriContainsPoint(&hit, pPlane->pV0, pPlane->pV1, pPlane->pV2, pPlane)) {
                         tBest = t;
                         pBest = pPlane;
                         hitOut = hit;
@@ -349,17 +349,17 @@ void __fastcall FUN_10001510(BrDriverCar *car, int _edx_unused, char *cam, BrCam
     if (pBest == 0)
         return;
 
-    dist = FUN_10034760(pPos, pAnchor);
-    FUN_10034660(pPos, &hitOut, pBest, 0.3f);
+    dist = BrVec3Dist(pPos, pAnchor);
+    BrVec3MulAdd(pPos, &hitOut, pBest, 0.3f);
     {
         BrCamV3 v;
-        FUN_10034560(&v, pPos, pAnchor);
-        len = FUN_100347f0(&v);
+        BrVec3Sub(&v, pPos, pAnchor);
+        len = BrVec3Length(&v);
         if (dist < len && len != _DAT_10077000) {
-            FUN_10034390(&v, dist / len);
-            FUN_100345c0(pPos, pAnchor, &v);
+            BrVec3ScaleBy(&v, dist / len);
+            BrVec3Add(pPos, pAnchor, &v);
         }
     }
-    DAT_100bcdcc = 1;
+    (*(int *)&g_BrCamDemo) = 1;
 }
 

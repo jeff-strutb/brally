@@ -56,11 +56,11 @@ int BrUiNavHook_10046C90(Ctl400E0 *pCtl)
 {
     pCtl->p2AE8->s7();
 
-    if (g_brPhase5C5C != 0)
-        delete g_brPhase5C5C;
+    if ((*(Phase400E0 * *)&g_brPAA29B8) != 0)
+        delete (*(Phase400E0 * *)&g_brPAA29B8);
 
-    g_brPending5C74 = 0;
-    g_brPhase5C5C = (Phase400E0 *)((BrOptObj *)((Phase400E0 *)((BrOptObj *)(g_brRoot5C60))));
+    g_5C74 = 0;
+    (*(Phase400E0 * *)&g_brPAA29B8) = (Phase400E0 *)((BrOptObj *)((Phase400E0 *)((BrOptObj *)((*(Phase400E0 * *)&g_2908)))));
 
     return 0;
 }

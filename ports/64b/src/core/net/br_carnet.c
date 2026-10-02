@@ -43,8 +43,8 @@ void BrCarNetSendState(BrCar *pCar)
 {
     BrCarState state;   /* the original's 0xA0-byte stack buffer */
 
-    BrSub100607B0(&state, pCar);
-    BrNetCarStateSend(&state);
+    BrCarRecordToState(&state, pCar);
+    FUN_100054a0(&state);
     /* GOTCHA: BrNetCarStateSend's int result is discarded here. */
 }
 
@@ -62,10 +62,10 @@ int32_t BrCarPredictRemote(BrCar *pCar, int32_t slot)
 {
     BrCarState state;   /* the original's 0xA0-byte stack buffer */
 
-    if (slot == BrSub10005D30()) {
+    if (slot == BrGetGlobal_94294()) {
         return 1;
     }
-    if (BrG_6909B4 != 0) {
+    if (g_BrX06909B4 != 0) {
         return 1;
     }
     /* The LAST test is written in POSITIVE form -- `if (ok) { work; return 1; }
@@ -75,8 +75,8 @@ int32_t BrCarPredictRemote(BrCar *pCar, int32_t slot)
      * four exits are emitted in full, as the original has them. See
      * docs/VC5-IDIOMS.md, "the last test's polarity decides whether VC5
      * tail-merges the earlier returns". */
-    if (BrNetSlotPredictOrig(&state, slot)) {
-        BrCarApplyState(pCar, &state);
+    if (BrGhostPickBlend(&state, slot)) {
+        BrCarGhostApply_10059A80(pCar, &state);
         BrCarBuildMatrices(pCar);
         return 1;
     }
@@ -144,7 +144,7 @@ void BrCarRecordToState(BrCarState *pDst, BrCar *pCar)
     fNeg = ((*(float    *)(((void *)((((uint8_t *)(void *)((pCar)))) + ((0xE68))))))) < DAT_10077770;
     pDst->f74 = (float)fNeg;
 
-    pDst->f78 = (((*(int32_t  *)(((void *)((((uint8_t *)(void *)((pCar)))) + ((0xFA8))))))) == g_brLapBound)
+    pDst->f78 = (((*(int32_t  *)(((void *)((((uint8_t *)(void *)((pCar)))) + ((0xFA8))))))) == (*(int32_t *)&g_CBE8))
                     ? DAT_10077774 : ((*(float    *)(((void *)((((uint8_t *)(void *)((pCar)))) + ((0xFF4)))))));
     ST_RAW(pDst, f7C) = ((*(int32_t  *)(((void *)((((uint8_t *)(void *)((pCar)))) + ((0xE24)))))));
 

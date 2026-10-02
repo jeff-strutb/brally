@@ -73,7 +73,7 @@ void BrNetPeerPump(void)
 
     didAny = 0;
     for (i = 0; i < BR_PEERS; i++) {
-        h1[0] = (HANDLE)DAT_11849e60;
+        h1[0] = (HANDLE)g_hBrSndWake86;
         h1[1] = g_aBrPeer71[i].hMutex;
         wr = WaitForMultipleObjects(2, h1, 0, 0xffffffff);
         if (wr == 0) {
@@ -83,12 +83,12 @@ void BrNetPeerPump(void)
         if (st >= 1) {
             didAny = 1;
             if (st == 1) {
-                BrNetWriteRaceOpts(g_1826BD0[i], i);
+                BrNetWriteRaceOpts((*(unsigned char (*)[16][532])&g_aBrPeerMsg)[i], i);
             }
             else {
                 for (j = 0; j < BR_PEERS; j++) {
                     BrPeerRec *pj = &g_aBrPeer71[j];
-                    h2[0] = (HANDLE)DAT_11849e60;
+                    h2[0] = (HANDLE)g_hBrSndWake86;
                     h2[1] = pj->hMutex;
                     wr = WaitForMultipleObjects(2, h2, 0, 0xffffffff);
                     if (wr == 0) {
@@ -114,33 +114,33 @@ void BrNetPeerPump(void)
                     }
                     ReleaseMutex(g_aBr178FEF8[i][j].hMutex);
                     if (changed) {
-                        BrNetWritePlayerRec(g_1826BD0[i], j, st2, id,
+                        BrNetWritePlayerRec((*(unsigned char (*)[16][532])&g_aBrPeerMsg)[i], j, st2, id,
                                             b4, b5, b6, name,
                                             pj->f004);
                     }
                     ReleaseMutex(pj->hMutex);
                 }
             }
-            BrNetWriteTag20(g_1826BD0[i], i);
+            BrNetWriteTag20((*(unsigned char (*)[16][532])&g_aBrPeerMsg)[i], i);
             {
             /* Tested and passed by index, stored through p: all-pointer
              * moves the outer walker's anchor to +0x95C, all-index to +0x964. */
             BrPeerRec *p = &g_aBrPeer71[i];
-            if ((unsigned int)DAT_1184c070 >
+            if ((unsigned int)(*(int *)&DAT_1184c070) >
                     (unsigned int)(g_aBrPeer71[i].f95C + 1000) &&
                 DAT_117b3250 == 0 &&
-                BrSub1006AFA0(g_1826BD0[i], i, g_aBrPeer71[i].f960, g_aBrPeer71[i].f964) != 0) {
-                p->f95C = DAT_1184c070;
+                BrNetWriteTagC0((*(unsigned char (*)[16][532])&g_aBrPeerMsg)[i], i, g_aBrPeer71[i].f960, g_aBrPeer71[i].f964) != 0) {
+                p->f95C = (*(int *)&DAT_1184c070);
                 for (k = 0; k < BR_PEERS; k++) {
                     if (i != k) {
-                        h3[0] = (HANDLE)DAT_11849e60;
+                        h3[0] = (HANDLE)g_hBrSndWake86;
                         h3[1] = g_aBrPeer71[k].hMutex;
                         wr = WaitForMultipleObjects(2, h3, 0, 0xffffffff);
                         if (wr == 0) {
                             ExitThread(0);
                         }
                         if ((g_aBrPeer71[k].f02C & 0x3f) >= 1 &&
-                            BrSub1006AFA0(g_1826BD0[i], k,
+                            BrNetWriteTagC0((*(unsigned char (*)[16][532])&g_aBrPeerMsg)[i], k,
                                           g_aBrPeer71[k].f960,
                                           g_aBrPeer71[k].f964) == 0) {
                             k = BR_PEERS;

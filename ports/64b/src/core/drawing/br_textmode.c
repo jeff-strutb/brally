@@ -27,15 +27,15 @@ void BrClear_10019250(void)
 /* @n64 0x8022F4CC located */
 void BrSet_10019270(void)
 {
-    g_4B035C = 2;
+    (*(uint8_t *)&DAT_104abb44) = 2;
 }
 
 /* WHAT IT DOES: wipe two 128-byte scratch tables used by a later pass. */
 /* @implements 0x1000F620 d3d BrClearTables_1000F620 */
 void BrClearTables_1000F620(void)
 {
-    memset(&g_364308, 0, 0x80);
-    memset(&g_363F68, 0, 0x80);
+    memset(&(DAT_1035faf0[0]), 0, 0x80);
+    memset(&(DAT_1035f750[0]), 0, 0x80);
 }
 
 /* WHAT IT DOES: rewind a two-word cursor so the next read starts at the
@@ -54,14 +54,14 @@ void BrNodeChainReset_1000F460(void)
 {
     /* prev is zeroed BEFORE the cursor is materialised (xor ecx,ecx first). */
     uint32_t prev = 0;
-    uint32_t *p = &g_2E5E98;
+    uint32_t *p = &(*(uint32_t *)((char *)&(*(uint32_t *)&g_2E54C0) + 0x9D8)) /* BR_LP64_BYTE_VIEW */;
 
     do {
         *p = prev;
         prev = (uint32_t)(uintptr_t)p;
         p = (uint32_t *)((char *)p - 0x28);
-    } while ((int)(uintptr_t)p >= (int)(uintptr_t)&g_2E54C0);
-    g_2E5ECC = prev;
+    } while ((int)(uintptr_t)p >= (int)(uintptr_t)&(*(uint32_t *)&g_2E54C0));
+    g_pBrLerpFree = prev;
 }
 
 /* One camera's viewport record, 0x58 bytes; only the rectangle is read. */
@@ -132,15 +132,15 @@ void FUN_1000c9e0(BrVisView *pView, const void *pPt, int n, short *pMin,
     float sy, fhh, r, sx, x0, rad, fhw;
     float *pv = v;
 
-    vx = pView[g_brIView].x;
-    vy = pView[g_brIView].y;
-    vw = pView[g_brIView].w;
-    vh = pView[g_brIView].h;
+    vx = pView[g_BrEnvSection].x;
+    vy = pView[g_BrEnvSection].y;
+    vw = pView[g_BrEnvSection].w;
+    vh = pView[g_BrEnvSection].h;
     cx = vx + (vw >> 1);
     fhw = (float)(vw >> 1);
     cy = vy + (vh >> 1);
     fhh = (float)(vh >> 1);
-    BrMat4TransformPoint4(v, pPt, DAT_106e9a38);
+    BrMat4TransformPoint4(v, pPt, (*(float (*)[16])&g_BrCurMat));
     if (pv[3] > 0.001f || pv[3] < -0.001f) {
         r = 1.0f / pv[3];
         sx = r * pv[0];
@@ -192,15 +192,15 @@ void BrViewBuffersRebase(void)
   /* ABSOLUTE base addresses (add ecx,imm32, no reloc) -- the same
    * absolute-address spelling br_scenedl.c proved for its row transforms;
    * a symbol base emits lea reg,[reg+disp32] instead. */
-  DAT_1035f7d8 = 0x1035fba8 + DAT_106ed67c * 80000;
-  DAT_102e16b0 = 0x1035fba8 + DAT_106ed67c * 80000;
+  DAT_1035f7d8 = 0x1035fba8 + (*(int *)((char *)&g_aBrEntRecs + 0x4C)) * 80000;
+  DAT_102e16b0 = 0x1035fba8 + (*(int *)((char *)&g_aBrEntRecs + 0x4C)) * 80000;
   /* RESIDUE (4B): the 32000 product's last lea lands in edx and folds the
    * base add into a lea (orig keeps ecx and a plain add) -- coalescing
    * residue; temp-binding and addend order probed, both no better. */
-  DAT_1035faec = 0x103874a8 + DAT_106ed67c * 32000;
-  DAT_1035fba4 = 0x103874a8 + DAT_106ed67c * 32000;
-  DAT_102e16ac = 0x102e1710 + DAT_106ed67c * 0x3e800;
-  DAT_1035f7dc = 0x102e1710 + DAT_106ed67c * 0x3e800;
+  DAT_1035faec = 0x103874a8 + (*(int *)((char *)&g_aBrEntRecs + 0x4C)) * 32000;
+  DAT_1035fba4 = 0x103874a8 + (*(int *)((char *)&g_aBrEntRecs + 0x4C)) * 32000;
+  DAT_102e16ac = 0x102e1710 + (*(int *)((char *)&g_aBrEntRecs + 0x4C)) * 0x3e800;
+  DAT_1035f7dc = 0x102e1710 + (*(int *)((char *)&g_aBrEntRecs + 0x4C)) * 0x3e800;
   return;
 }
 /* 64-bit core: declared once, in br_globals.h or its struct's header */

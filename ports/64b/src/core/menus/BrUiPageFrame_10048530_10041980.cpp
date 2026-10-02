@@ -65,7 +65,7 @@ int Phase32F::Frame()
 
     if (f04) f04();
     if (f0C) f0C();
-    DAT_10ac5bc8 = 0;
+    (*(unsigned short *)&g_wAA2870) = 0;
     Adv();
 
     for (i = 0; i < f14; ++i) {
@@ -82,12 +82,12 @@ int Phase32F::Frame()
             if (p->pfn04)
                 p->pfn04(p);
             if (p->f1C & 0x10) {
-                if (DAT_10ac5bc4 == DAT_10ac5bc8) {
-                    DAT_10ac5bc4 = (unsigned short)(DAT_10ac5bc4
-                                                    + DAT_100aab7c);
+                if ((*(unsigned short *)&BrGlNavCur5BC4) == (*(unsigned short *)&g_wAA2870)) {
+                    (*(unsigned short *)&BrGlNavCur5BC4) = (unsigned short)((*(unsigned short *)&BrGlNavCur5BC4)
+                                                    + (*(unsigned short *)&BrGlNavStepAB7C));
                     Adv();
                 }
-                DAT_10ac5bc8 = DAT_10ac5bc8 + 1;
+                (*(unsigned short *)&g_wAA2870) = (*(unsigned short *)&g_wAA2870) + 1;
             }
             if (!(p->f1C & 0x10))
                 goto latch;
@@ -110,7 +110,7 @@ int Phase32F::Frame()
             if (p->pfn18(p) == 0)
                 goto fail;
         }
-        if ((p->f1C & 0x20) && DAT_10ac5c30 == 0 && (p->f1C & 0x2000)) {
+        if ((p->f1C & 0x20) && g_5C30 == 0 && (p->f1C & 0x2000)) {
             UiCtx *c = f340;
             if (c->fBC != i) {
                 c->fBC = (unsigned short)i;

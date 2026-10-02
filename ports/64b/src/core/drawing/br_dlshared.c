@@ -68,28 +68,28 @@ unsigned char *BrDlsTileSizeDecode(unsigned char *p)
     int uls, ult, lrs, lrt;
 
     uls = (*(unsigned *)p >> 12) & 0xFFF;
-    DAT_118ed198 = uls;
+    BrGbiRectG_18ED198 = uls;
     if (uls >= 0x800) {
         uls -= 0x1000;
-        DAT_118ed198 = uls;
+        BrGbiRectG_18ED198 = uls;
     }
     ult = *(unsigned *)p & 0xFFF;
-    DAT_1186c950 = ult;
+    BrGbiRectG_186C950 = ult;
     if (ult >= 0x800) {
         ult -= 0x1000;
-        DAT_1186c950 = ult;
+        BrGbiRectG_186C950 = ult;
     }
     lrs = (*(unsigned *)(p + 4) >> 12) & 0xFFF;
-    DAT_1186c954 = lrs;
+    BrGbiRectG_186C954 = lrs;
     if (lrs >= 0x800) {
         lrs -= 0x1000;
-        DAT_1186c954 = lrs;
+        BrGbiRectG_186C954 = lrs;
     }
     lrt = *(unsigned *)(p + 4) & 0xFFF;
-    DAT_118ec988 = lrt;
+    BrGbiRectG_18EC988 = lrt;
     if (lrt >= 0x800) {
         lrt -= 0x1000;
-        DAT_118ec988 = lrt;
+        BrGbiRectG_18EC988 = lrt;
     }
     DAT_1186c958 = (lrs - uls + 4) >> 2;
     DAT_118ed1ac = (lrt - ult + 4) >> 2;
@@ -137,7 +137,7 @@ unsigned char *BrDlsTileRectE4(unsigned char *p)
     v &= 0xFFF;
     u = v;
     v = tile;
-    FUN_100215c0(ulx, u, lrx, lry, v);
+    BrGbiCall10021560(ulx, u, lrx, lry, v);
     p += 4;
     p += 4;
     return p;
@@ -155,7 +155,7 @@ unsigned char *BrDlsTileRectE3(unsigned char *p)
 
     w1 = *(unsigned *)(p + 4);
     w0 = *(unsigned *)p;
-    FUN_100215c0((w1 >> 10) & 0x3FFC, (w1 & 0xFFF) << 2,
+    BrGbiCall10021560((w1 >> 10) & 0x3FFC, (w1 & 0xFFF) << 2,
                  (w0 >> 10) & 0x3FFC, (w0 & 0xFFF) << 2, (w1 >> 24) & 7);
     return p + 8;
 }

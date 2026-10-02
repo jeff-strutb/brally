@@ -143,26 +143,26 @@ int BrEarLoad(int usePds)
     if (DAT_104b1664 == (FARPROC)0) {
         DAT_104b1658 = GetProcAddress(DAT_104b160c, s__EAR_DLL_AAA_Validate_4_100a74cc);
         DAT_104b1634 = GetProcAddress(DAT_104b160c, s__EAR_DLL_AssignHwnd_4_100a74b4);
-        DAT_104b162c = GetProcAddress(DAT_104b160c, s__EAR_DLL_ChangeChannelControl_8_100a7494);
-        DAT_104b1628 = GetProcAddress(DAT_104b160c, s__EAR_DLL_ClearChannel_8_100a747c);
+        (*(FARPROC *)&DAT_104b162c) = GetProcAddress(DAT_104b160c, s__EAR_DLL_ChangeChannelControl_8_100a7494);
+        (*(FARPROC *)&g_pfn575480) = GetProcAddress(DAT_104b160c, s__EAR_DLL_ClearChannel_8_100a747c);
         DAT_104b1608 = GetProcAddress(DAT_104b160c, s__EAR_DLL_EarInactive_0_100a7464);
         DAT_104b165c = GetProcAddress(DAT_104b160c, s__EAR_DLL_GetEventStatus_8_100a7448);
         DAT_104b166c = GetProcAddress(DAT_104b160c, s__EAR_DLL_GetLastError_0_100a7430);
         DAT_104b15f8 = GetProcAddress(DAT_104b160c, s__EAR_DLL_GetVersion_0_100a7418);
         DAT_104b1668 = GetProcAddress(DAT_104b160c, s__EAR_DLL_InitializeEar_4_100a73fc);
-        DAT_104b1614 = GetProcAddress(DAT_104b160c, s__EAR_DLL_MixEvent_4_100a73e8);
+        (*(FARPROC *)&g_pfn57546C) = GetProcAddress(DAT_104b160c, s__EAR_DLL_MixEvent_4_100a73e8);
         DAT_104b1630 = GetProcAddress(DAT_104b160c, s__EAR_DLL_MoveEvent_4_100a73d0);
         DAT_104b1674 = GetProcAddress(DAT_104b160c, s__EAR_DLL_RegisterBank_8_100a73b8);
-        DAT_104b1648 = GetProcAddress(DAT_104b160c, s__EAR_DLL_RegisterChannel_16_100a739c);
+        (*(FARPROC *)&DAT_104b1648) = GetProcAddress(DAT_104b160c, s__EAR_DLL_RegisterChannel_16_100a739c);
         DAT_104b1654 = GetProcAddress(DAT_104b160c, s__EAR_DLL_RegisterEnvironment_4_100a737c);
-        DAT_104b1678 = GetProcAddress(DAT_104b160c, s__EAR_DLL_RegisterMatrix_4_100a7360);
+        (*(FARPROC *)&DAT_104b1678) = GetProcAddress(DAT_104b160c, s__EAR_DLL_RegisterMatrix_4_100a7360);
         DAT_104b1670 = GetProcAddress(DAT_104b160c, s__EAR_DLL_RegisterPreset_8_100a7344);
         DAT_104b163c = GetProcAddress(DAT_104b160c, s__EAR_DLL_ResetEar_0_100a7330);
-        DAT_104b15fc = GetProcAddress(DAT_104b160c, s__EAR_DLL_SetAttenuationLevel_8_100a7310);
+        (*(FARPROC *)&g_575454) = GetProcAddress(DAT_104b160c, s__EAR_DLL_SetAttenuationLevel_8_100a7310);
         DAT_104b1660 = GetProcAddress(DAT_104b160c, s__EAR_DLL_SetUserDistanceUnit_8_100a72f0);
         DAT_104b1650 = GetProcAddress(DAT_104b160c, s__EAR_DLL_ShowLastError_0_100a72d4);
         DAT_104b1600 = GetProcAddress(DAT_104b160c, s__EAR_DLL_ShutDownBank_4_100a72bc);
-        DAT_104b1618 = GetProcAddress(DAT_104b160c, s__EAR_DLL_ShutDownChannel_4_100a72a0);
+        (*(FARPROC *)&g_575470) = GetProcAddress(DAT_104b160c, s__EAR_DLL_ShutDownChannel_4_100a72a0);
         DAT_104b161c = GetProcAddress(DAT_104b160c, s__EAR_DLL_ShutDownEar_0_100a7288);
         DAT_104b164c = GetProcAddress(DAT_104b160c, s__EAR_DLL_ShutDownEnvironment_4_100a7268);
         DAT_104b1640 = GetProcAddress(DAT_104b160c, s__EAR_DLL_ShutDownEvent_8_100a724c);
@@ -183,24 +183,24 @@ int BrEarLoad(int usePds)
             (DAT_104b1664 == (FARPROC)0) |
             (DAT_104b15f8 == (FARPROC)0) |
             (DAT_104b166c == (FARPROC)0) |
-            (DAT_104b1614 == (FARPROC)0) |
+            ((*(FARPROC *)&g_pfn57546C) == (FARPROC)0) |
             (DAT_104b1668 == (FARPROC)0) |
             (DAT_104b1674 == (FARPROC)0) |
             (DAT_104b1630 == (FARPROC)0) |
             (DAT_104b1654 == (FARPROC)0) |
-            (DAT_104b1648 == (FARPROC)0) |
+            ((*(FARPROC *)&DAT_104b1648) == (FARPROC)0) |
             (DAT_104b1670 == (FARPROC)0) |
-            (DAT_104b1678 == (FARPROC)0) |
-            (DAT_104b15fc == (FARPROC)0) |
+            ((*(FARPROC *)&DAT_104b1678) == (FARPROC)0) |
+            ((*(FARPROC *)&g_575454) == (FARPROC)0) |
             (DAT_104b163c == (FARPROC)0) |
             (DAT_104b1650 == (FARPROC)0) |
             (DAT_104b1660 == (FARPROC)0) |
-            (DAT_104b1618 == (FARPROC)0) |
+            ((*(FARPROC *)&g_575470) == (FARPROC)0) |
             (DAT_104b1600 == (FARPROC)0) |
             (DAT_104b1634 == (FARPROC)0) |
             (DAT_104b1658 == (FARPROC)0) |
-            (DAT_104b1628 == (FARPROC)0) |
-            (DAT_104b162c == (FARPROC)0) |
+            ((*(FARPROC *)&g_pfn575480) == (FARPROC)0) |
+            ((*(FARPROC *)&DAT_104b162c) == (FARPROC)0) |
             (DAT_104b165c == (FARPROC)0) |
             (DAT_104b1608 == (FARPROC)0)) {
             return 0;

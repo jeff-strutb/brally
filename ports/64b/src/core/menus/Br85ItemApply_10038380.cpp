@@ -61,12 +61,12 @@ int Br85ItemApply(BrCtl85 *pCtl, short index)
     }
 
     if ((char)pRow->box.b5() <= 0 || (pCtl->flags1C & 2) != 0) {
-        if (DAT_10ac5bb4 == 0) {
-            g_brAA28D8     = 0;
+        if (g_5BB4 == 0) {
+            g_5C30     = 0;
             pRow->editing  = 0;
             pCtl->flags1C &= ~2;
         }
-        FUN_10037710();
+        BrFn1003E070();
         if (pCtl->pfn10 != 0) {
             pCtl->pfn10(pCtl);
         }

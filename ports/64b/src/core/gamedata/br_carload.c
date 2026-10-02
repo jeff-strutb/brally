@@ -50,11 +50,11 @@ void BrSub10037740(void *pCar, void *pArg)
     char szPath[0x400];
     int  idx = (int)pArg;
 
-    DAT_10ac67a4 = idx;
-    if (pCar != (void *)&DAT_100bcdd0) {
-        saved = DAT_100b8498;
-        if (DAT_100b8498 == 0)
-            DAT_100b8498 = 1;
+    (*(int *)((char *)&BrImgTintState + 0x4)) = idx;
+    if (pCar != (void *)&(g_ab0C12A0[0])) {
+        saved = (*(int *)&s_level);
+        if ((*(int *)&s_level) == 0)
+            (*(int *)&s_level) = 1;
         FUN_1005a080(idx, 0);
     } else {
         FUN_1005a080(idx, 1);
@@ -62,7 +62,7 @@ void BrSub10037740(void *pCar, void *pArg)
 
     DAT_10ac67c0 = 0;
     strcpy(szPath, DAT_100b7900);
-    strcat(szPath, DAT_100b7d00[idx]);
+    strcat(szPath, (BrSfxCarCode[1])[idx]);
     strcat(szPath, DAT_100aa310);
 
     BrFileReadInto(pCar, szPath, -1);
@@ -72,10 +72,10 @@ void BrSub10037740(void *pCar, void *pArg)
         BrLogPrint(szMsg);
     }
 
-    BrSub10030770(pCar);
+    BrRcaFixup(pCar);
 
-    if (pCar != (void *)&DAT_100bcdd0)
-        DAT_100b8498 = saved;
+    if (pCar != (void *)&(g_ab0C12A0[0]))
+        (*(int *)&s_level) = saved;
 }
 
 /* ==========================================================================
@@ -226,7 +226,7 @@ void BrRcaFixupRecord(void *pRec)
             }
         }
     }
-    BrGbiCall10075330();
+    BrNop6E590();
 }
 
 

@@ -54,8 +54,8 @@ typedef long (__stdcall *BrDiSetPropFn)(BrDiObj *, uint32_t, const void *);
  * the original never had. */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x118EEF04 */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x118EEF14 */
-#define BR_FFB_SPRING g_brFfbEffectSpring
-#define BR_FFB_SQUARE g_brFfbEffectSquare
+#define BR_FFB_SPRING (*(BrDiObj * *)&DAT_118eef04)
+#define BR_FFB_SQUARE (*(BrDiObj * *)&DAT_118eef14)
 
 /* 0x10078C30 */
 /* WHAT IT DOES: tells Windows what range of numbers one axis of a controller
@@ -108,16 +108,16 @@ void BrFfbCommitDuration(void)
 {
     BrDiObj *pEff;
 
-    if (g_brB4E1D0 != 1 && g_brB4E1D0 != 2) {
+    if ((*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ != 1 && (*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ != 2) {
         return;
     }
-    if (g_brB4E1E0 == 0) {
+    if ((*(int32_t *)&DAT_10b71540) == 0) {
         return;
     }
-    if (g_br18ABDBC == 0) {
+    if ((*(int32_t *)&DAT_118eeed4) == 0) {
         return;
     }
-    if (g_brFlag6909E0 != 0) {
+    if ((*(int *)&DAT_105ccb68[8]) != 0) {
         return;
     }
     g_brDiEffSquare.dwDuration = (uint32_t)g_br0BD438;

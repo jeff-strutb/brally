@@ -54,7 +54,7 @@ void __fastcall BrCamFrameInitB(BrDriverCar *p)
     BrVec3        *pPos;
     BrCamFrame    *pSel;
 
-    pSel = (g_brMode0AA010 == 5) ? (BrCamFrame *)&p->aSnap[1]
+    pSel = ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 5) ? (BrCamFrame *)&p->aSnap[1]
                                  : (BrCamFrame *)&p->aSnap[0];
     *(BrCamFrame * *)&p->pMatA  = pSel;
     *(BrCamFrame * *)&p->pMatB = pSel;
@@ -64,7 +64,7 @@ void __fastcall BrCamFrameInitB(BrDriverCar *p)
      * (32 diff bytes of shifted encodings, same instructions). */
     pPos = &((BrCamFrame *)&p->aSnap[1])->f30;
     BrVec3MulAdd(pPos, &pF->f30, &pF->f20, 4.0f);
-    if (g_brFlag6909E0 != 0)
+    if ((*(int *)&DAT_105ccb68[8]) != 0)
         BrVec3MulAddTo(pPos, &pF->f00, 10.0f);
     BrVec3SubFrom(pPos, &pF->f00);
 

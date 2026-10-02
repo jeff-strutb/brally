@@ -63,7 +63,7 @@ int BrItemSetNumWord_100380B0(Obj380B0 *pObj)
 {
     char *s = pObj->m2B5C.szName;
 
-    _itoa(g_brVal40F8[g_brSel5C04], s, 10);
+    _itoa(g_brVal40F8[g_brIdx5C04], s, 10);
 
     pObj->m2B5C.s2();
     if (s != 0)

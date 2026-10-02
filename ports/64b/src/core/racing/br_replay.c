@@ -38,7 +38,7 @@
 /* `mov ecx,8; cmp eax,2; je L; cmp eax,4; jne M; L: mov ecx,1` */
 static int BrReplayActiveCount(void)
 {
-    if (g_BrX0AA010 == 2 || g_BrX0AA010 == 4)
+    if ((*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 2 || (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4)
         return 1;
     return 8;
 }
@@ -108,7 +108,7 @@ void BrReplayAdvance(void)
      * cmp esi,4; jne; mov ecx,1` then `test ecx,ecx / jle`. A helper call
      * is the extra `call` in the bag. */
     n = 8;
-    if (g_BrX0AA010 == 2 || g_BrX0AA010 == 4)
+    if ((*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 2 || (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4)
         n = 1;
 
     /* orig `test ecx,ecx; jle` THEN `mov eax,&count; mov edx,ecx`. Setup
@@ -123,7 +123,7 @@ void BrReplayAdvance(void)
         } while (--left);
     }
 
-    if (g_BrX0AA010 == 2 || g_BrX0AA010 == 4) {
+    if ((*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 2 || (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4) {
         /* orig: eax=count[1], ecx=cursor[1], `dec eax; cmp ecx,eax; jge;
          * mov eax,ecx; inc eax; store`.  The `mov eax,ecx` copy comes from
          * RE-READING the cursor global in the store: VC5 CSEs the reload
@@ -155,14 +155,14 @@ void BrReplayApply(BrDriverCar *pCar, int32_t iPlayer)
     pSlot = &g_BrReplayBuf[((uint32_t)iPlayer << 16)
                            + (uint32_t)g_BrReplayCursor[iPlayer]];
 
-    BrCarStateUnpack(&state, &pSlot->rec);
+    BrFixDecodeRecord_10007AA0(&state, &pSlot->rec);
 
     /* orig `mov edx,[car+0xFF4]; mov [state.f78],edx` -- dword copy, not
      * fld/fstp. Unpack leaves f78 alone. */
     *(int32_t *)&state.f78 = ((*(int32_t *)&pCar->fFF4));
-    BrCarRecordFromState(pCar, &state);
+    BrCarGhostApply_10059A80(pCar, &state);
 
-    if (g_BrX06909E0 == 2) {
+    if ((DAT_105ccb68[8]) == 2) {
         /* orig `xor al,al` then nine `mov [esi+off],al`. 0x364/0x365 skipped;
          * 0x36C is written third. */
         z = 0;
@@ -195,7 +195,7 @@ void BrReplayApply(BrDriverCar *pCar, int32_t iPlayer)
      * fields to float locals first, `-car + state`, and a past-the-end
      * `pc[-3..-1]` pointer. */
     if (g_BrReplayCursor[iPlayer] < g_BrReplayCount[iPlayer] - 2) {
-        BrCarStateUnpack(&state, &pSlot[1].rec);
+        BrFixDecodeRecord_10007AA0(&state, &pSlot[1].rec);
 
         ((*(float *)(void *)((unsigned char *)((pCar)) + ((BR_S42_CAR_OFF_VEL + 0))))) =
             (state.f10
@@ -236,29 +236,29 @@ void BrReplaySeek(void)
      * register-blind residue falls 6+6 -> 2+2.  Re-reading is the same value
      * on every path: each arm writes the local and the global together. */
     if (bits & 0x00200000u) {
-        g_BrX06909E0 = 3; state = 3; step = 1;
+        (DAT_105ccb68[8]) = 3; state = 3; step = 1;
     } else if (bits & 0x00400000u) {
-        g_BrX06909E0 = 3; state = 3; step = -1;
+        (DAT_105ccb68[8]) = 3; state = 3; step = -1;
     } else {
-        state = g_BrX06909E0;
+        state = (DAT_105ccb68[8]);
     }
 
     /* The second pair is tested unconditionally and overrides the first. */
     if (bits & 0x00800000u) {
-        g_BrX06909E0 = 3; state = 3; step = 10;
+        (DAT_105ccb68[8]) = 3; state = 3; step = 10;
     } else if (bits & 0x01000000u) {
-        g_BrX06909E0 = 3; state = 3; step = -10;
+        (DAT_105ccb68[8]) = 3; state = 3; step = -10;
     }
 
     if (bits & 0x00100000u) {
-        g_BrX06909E0 = 1; state = 1;
+        (DAT_105ccb68[8]) = 1; state = 1;
     }
 
-    state = g_BrX06909E0;
+    state = (DAT_105ccb68[8]);
     if (state == 1) {
         step = 1;                   /* `mov esi,eax` with eax == 1 */
     } else if (state == 3 && step == 0) {
-        g_BrX06909E0 = 2;
+        (DAT_105ccb68[8]) = 2;
     }
 
     /* THE CURSOR IS A COMPOUND ASSIGNMENT ON THE GLOBAL, AND THE CLAMP
@@ -293,7 +293,7 @@ void BrReplayReset(void)
 
     /* Open-coded: two callers keep BrReplayActiveCount from inlining. */
     n = 8;
-    if (g_BrX0AA010 == 2 || g_BrX0AA010 == 4)
+    if ((*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 2 || (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4)
         n = 1;
 
     /* The `test ecx,ecx / jle` guard is dead (n is 1 or 8) but is kept as the

@@ -45,7 +45,7 @@ void BrCarBuildMatrices(BrCar *pCar)
 {
     uint8_t *pSub;
 
-    BrSub1006F4A0((((void *)((((uint8_t *)(void *)((pCar)))) + ((0x164))))));
+    BrWheelSuspensionSetZ((((void *)((((uint8_t *)(void *)((pCar)))) + ((0x164))))));
 
     /* Orig unrolls the four sub-object pointers at +0x168..+0x174. */
     pSub = (uint8_t *)BR_CAR_SUBPTR(pCar, 0);

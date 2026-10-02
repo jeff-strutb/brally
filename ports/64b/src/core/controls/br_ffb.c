@@ -22,16 +22,16 @@
 /* @implements 0x10078E10 d3d BrFfbSetDirection */
 void BrFfbSetDirection(int32_t dir)
 {
-    if (g_brB4E1D0 != 1 && g_brB4E1D0 != 2) {
+    if ((*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ != 1 && (*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ != 2) {
         return;
     }
-    if (g_brB4E1E0 == 0) {
+    if ((*(int32_t *)&DAT_10b71540) == 0) {
         return;
     }
-    if (g_br18ABDBC == 0) {
+    if ((*(int32_t *)&DAT_118eeed4) == 0) {
         return;
     }
-    if (g_brFlag6909E0 != 0) {
+    if ((*(int *)&DAT_105ccb68[8]) != 0) {
         return;
     }
     g_br0BD430[0] = dir;
@@ -44,16 +44,16 @@ void BrFfbSetDirection(int32_t dir)
 /* @implements 0x10078E50 d3d BrFfbSetDurationLong */
 void BrFfbSetDurationLong(void)
 {
-    if (g_brB4E1D0 != 1 && g_brB4E1D0 != 2) {
+    if ((*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ != 1 && (*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ != 2) {
         return;
     }
-    if (g_brB4E1E0 == 0) {
+    if ((*(int32_t *)&DAT_10b71540) == 0) {
         return;
     }
-    if (g_br18ABDBC == 0) {
+    if ((*(int32_t *)&DAT_118eeed4) == 0) {
         return;
     }
-    if (g_brFlag6909E0 != 0) {
+    if ((*(int *)&DAT_105ccb68[8]) != 0) {
         return;
     }
     g_br0BD438 = 0x3D090;   /* 250000 us */
@@ -64,16 +64,16 @@ void BrFfbSetDurationLong(void)
 /* @implements 0x10078E90 d3d BrFfbSetDurationShort */
 void BrFfbSetDurationShort(void)
 {
-    if (g_brB4E1D0 != 1 && g_brB4E1D0 != 2) {
+    if ((*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ != 1 && (*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ != 2) {
         return;
     }
-    if (g_brB4E1E0 == 0) {
+    if ((*(int32_t *)&DAT_10b71540) == 0) {
         return;
     }
-    if (g_br18ABDBC == 0) {
+    if ((*(int32_t *)&DAT_118eeed4) == 0) {
         return;
     }
-    if (g_brFlag6909E0 != 0) {
+    if ((*(int *)&DAT_105ccb68[8]) != 0) {
         return;
     }
     g_br0BD438 = 0x1E848;   /* 125000 us */
@@ -92,34 +92,34 @@ void BrFfbSetDurationShort(void)
 
 void BrFfbReprobe(void)
 {
-    int32_t nSavedMode = g_brB4E1D0;   /* esi */
-    int32_t nSavedExcl = g_brB4E1E0;   /* edi */
+    int32_t nSavedMode = (*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */;   /* esi */
+    int32_t nSavedExcl = (*(int32_t *)&DAT_10b71540);   /* edi */
 
-    g_brB4E1D0 = 2;
-    g_brB4E1D4 = g_aBrB4DF30[2];
-    g_brB4E1E0 = 1;
+    (*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ = 2;
+    (*(void * *)&g_BrPadModeBytes) = (*(unsigned char (*)[4][168])&g_BrCtrlCfg)[2];
+    (*(int32_t *)&DAT_10b71540) = 1;
 
     (void)BrFfbInit();
     BrExt_10079550();
 
-    g_brB4E1D0 = nSavedMode;
+    (*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ = nSavedMode;
 
     switch (nSavedMode) {
     default:
-        g_brB4E1D4 = g_aBrB4DF30[0];
-        g_brB4E1E0 = nSavedExcl;
+        (*(void * *)&g_BrPadModeBytes) = (*(unsigned char (*)[4][168])&g_BrCtrlCfg)[0];
+        (*(int32_t *)&DAT_10b71540) = nSavedExcl;
         return;
     case 3:
-        g_brB4E1D4 = g_aBrB4DF30[3];
-        g_brB4E1E0 = nSavedExcl;
+        (*(void * *)&g_BrPadModeBytes) = (*(unsigned char (*)[4][168])&g_BrCtrlCfg)[3];
+        (*(int32_t *)&DAT_10b71540) = nSavedExcl;
         return;
     case 2:
-        g_brB4E1D4 = g_aBrB4DF30[2];
-        g_brB4E1E0 = nSavedExcl;
+        (*(void * *)&g_BrPadModeBytes) = (*(unsigned char (*)[4][168])&g_BrCtrlCfg)[2];
+        (*(int32_t *)&DAT_10b71540) = nSavedExcl;
         return;
     case 1:
-        g_brB4E1E0 = nSavedExcl;
-        g_brB4E1D4 = g_aBrB4DF30[1];
+        (*(int32_t *)&DAT_10b71540) = nSavedExcl;
+        (*(void * *)&g_BrPadModeBytes) = (*(unsigned char (*)[4][168])&g_BrCtrlCfg)[1];
         return;
     }
 }

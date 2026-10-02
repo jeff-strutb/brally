@@ -75,10 +75,10 @@ int BrUiBootPreLoopGate(void)
     for (; n != 0; n--) {
         *q++ = 0;
     }
-    g_cLoaded = 0;
+    (*(unsigned short *)&DAT_10ac5c2c) = 0;
     g_wAC5D50 = 0;
     g_wAC5D54 = 0;
-    Tables64Clear();
+    BrMenuSub1005FF30();
     p = (char *)operator new(0x104);
     g_img[0].path = p;
     strcpy(p, "images\\work1a.bmp");
@@ -532,23 +532,23 @@ int BrUiBootPreLoopGate(void)
     } while ((int)q < (int)((char *)g_rec + 0x2D8));
 
     ph = new Phase;
-    g_phaseRoot = ph;
-    g_phaseCur = (Phase *)((BrOptObj *)(ph));
+    g_2908 = ph;
+    (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(ph));
     if (ph == 0) {
         return 0;
     }
-    ph->pfnEnter = (void *)PhaseEnter;
+    ph->pfnEnter = (void *)BrUiRootEnter_100425E0;
 
     if (g_obj400 == 0) {
         ob = new Obj400;
         g_obj400 = ob;
         if (ob == 0) {
-            ErrShow(1);
+            FUN_100378c0(1);
         }
     }
 
-    strcpy(g_season, "c:\\RallySeason.dat");
-    strcpy(g_ghost, "c:\\RallyGhost.dat");
-    RectTablesInit();
+    strcpy(DAT_117a6030, "c:\\RallySeason.dat");
+    strcpy(DAT_117a5f28, "c:\\RallyGhost.dat");
+    BrSprFontRectInit_1005F800();
     return 1;
 }

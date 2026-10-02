@@ -73,11 +73,11 @@ int Phase53D20::Activate()
 {
     int m;
 
-    FUN_100379b0();
+    BrSub1003E3A0();
     if (fBuilt == 0) {
         FUN_100583c0();
-        if (DAT_10ac5c58->Create(g_brP680584) == 0) {
-            BrMsgBoxAA(g_brP680584, 0, BrStrGet(0xAB));
+        if ((*(BrDlg53 * *)&g_obj400)->Create((*(void * *)&g_brOwner5BC72C)) == 0) {
+            BrMsgBoxAA((*(void * *)&g_brOwner5BC72C), 0, BrStrGet(0xAB));
             exit(1);
         }
         pfnEnter(this);
@@ -85,37 +85,37 @@ int Phase53D20::Activate()
         f68    = 1;
     }
 
-    m = g_a220B20;
+    m = (*(int *)&g_a220B20);
     if (m == 5) {
-        DAT_10ac5bfc = 0;
-        memset(DAT_10ac46a0, 0, 0x20);
-        DAT_10ac5a4d = 0;
+        g_brIdx5BFC = 0;
+        memset((*(int (*)[8])&DAT_10ac46a0), 0, 0x20);
+        (*(unsigned char *)&g_aBrAA26F4[1]) = 0;
     }
 
-    if (DAT_100a9360 == 4 && DAT_105bc760 == 2 && DAT_10ac5bf4 != 0) {
-        BrPhaseActivate_10045EA0();
-        DAT_100a9360 = 0;
-        m = g_a220B20;
+    if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4 && g_5bc760 == 2 && g_5BF4 != 0) {
+        CtlF340_fn();
+        (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = 0;
+        m = (*(int *)&g_a220B20);
     }
 
-    if (DAT_100a9360 == 0 && (m == 0 || m == 5)) {
-        if (FUN_10058680() == 0) {
+    if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0 && (m == 0 || m == 5)) {
+        if (BrSeasonApply() == 0) {
             return 0;
         }
-        BrPhaseActivate_10045EA0();
+        CtlF340_fn();
         BrMenuAutoSaveName();
-        DAT_10ac5bf4 = 1;
-    } else if (DAT_100a9360 == 6) {
+        g_5BF4 = 1;
+    } else if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 6) {
         DAT_10ac5bd0 = 1;
-        BrPhaseActivate_100447D0();
+        Fn3DD20();
         DAT_10ac5bd0 = 0;
-    } else if (DAT_100a9360 == 2) {
+    } else if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 2) {
         DAT_10ac5bd0 = 1;
         BrMenuLeaveTo2();
         DAT_10ac5bd0 = 0;
     }
 
-    if (DAT_10ac4090 != 0 && DAT_10ac5da8 == 0) {
+    if (g_guardB != 0 && DAT_10ac5da8 == 0) {
         DAT_10ac5da8 = 1;
         BrOpt41A0();
     }

@@ -661,9 +661,9 @@ void br_dl_light_vertex(const BrDlLvIn *pIn, BrDlLvOut *pOut)
             BR_DL_LV_PUN(pOut->c[2], DAT_105ce230);
         }
     } else {
-        BR_DL_LV_PUN(pOut->c[0], DAT_105d17a4);
-        BR_DL_LV_PUN(pOut->c[1], DAT_105d17b4);
-        BR_DL_LV_PUN(pOut->c[2], DAT_105ce2d0);
+        BR_DL_LV_PUN(pOut->c[0], BrGbiRectG_5D17A4);
+        BR_DL_LV_PUN(pOut->c[1], BrGbiRectG_5D17B4);
+        BR_DL_LV_PUN(pOut->c[2], BrGbiRectG_5CE2D0);
     }
 }
 /* The port helper below keeps its BrDl signature under another name. */
@@ -789,69 +789,69 @@ void BrDlVtxRoutine(void)
      * copy until the install), the cull mode is an if/else of two calls,
      * and the cull-side store is shared through a goto. */
 
-    if (((g_brDlGeoOld ^ g_brDlGeoNew) & 0x10000u) != 0) {
-        if ((g_brDlGeoNew & 0x10000u) != 0)
-            BrGlSetCullMode(2);
+    if ((((*(uint32_t *)&DAT_105d17cc) ^ (*(uint32_t *)&BrGbiRectG_5D17C8)) & 0x10000u) != 0) {
+        if (((*(uint32_t *)&BrGbiRectG_5D17C8) & 0x10000u) != 0)
+            grFogMode(2);
         else
-            BrGlSetCullMode(0);
+            grFogMode(0);
     }
-    if (((g_brDlGeoOld ^ g_brDlGeoNew) & 0x3000u) != 0) {
+    if ((((*(uint32_t *)&DAT_105d17cc) ^ (*(uint32_t *)&BrGbiRectG_5D17C8)) & 0x3000u) != 0) {
         int32_t m = 0;
 
         g_brDlCullMode = m;
-        if ((g_brDlGeoNew & 0x1000u) != 0)
+        if (((*(uint32_t *)&BrGbiRectG_5D17C8) & 0x1000u) != 0)
             m = 2;
-        else if ((g_brDlGeoNew & 0x2000u) != 0)
+        else if (((*(uint32_t *)&BrGbiRectG_5D17C8) & 0x2000u) != 0)
             m = 1;
         else
             goto side;
         g_brDlCullMode = m;      /* one store, shared by both set arms */
 side:
-        BrGlSetCullSide(m);
+        grCullMode(m);
     }
-    if (((g_brDlGeoOld ^ g_brDlGeoNew) & 1u) != 0) {
-        if ((g_brDlGeoNew & 1u) != 0) {
-            g_brDlDepthFn = 1;
-            BrGlSetDepthFn(1);
+    if ((((*(uint32_t *)&DAT_105d17cc) ^ (*(uint32_t *)&BrGbiRectG_5D17C8)) & 1u) != 0) {
+        if (((*(uint32_t *)&BrGbiRectG_5D17C8) & 1u) != 0) {
+            (*(int32_t *)&BrGlDepthFuncShadow) = 1;
+            grDepthBufferFunction(1);
         } else {
-            g_brDlDepthFn = 7;
-            BrGlSetDepthFn(7);
+            (*(int32_t *)&BrGlDepthFuncShadow) = 7;
+            grDepthBufferFunction(7);
         }
     }
-    geo = g_brDlGeoNew;
+    geo = (*(uint32_t *)&BrGbiRectG_5D17C8);
 
     /* ---- 0x1001FE0D: install, do not return ------------------------- */
     if ((geo & 1u) != 0) {
         if ((geo & 0x20000u) != 0) {
-            g_pBrDlVtxSlot = g_brDlFogSel ? (void *)BrDlVtxLitDecal
+            (*(void * *)((char *)&g_brGbi0A79F0 + 0x10)) /* BR_LP64_BYTE_VIEW */ = (*(int32_t *)&BrGbiRectG_5CDA04) ? (void *)BrDlVtxLitDecal
                                           : (void *)BrDlVtxLit;
         } else {
-            g_pBrDlVtxSlot = (void *)BrDlVtxPlain;
+            (*(void * *)((char *)&g_brGbi0A79F0 + 0x10)) /* BR_LP64_BYTE_VIEW */ = (void *)BrDlCmdVtx;
         }
         if ((geo & 0x40000u) != 0) {
             /* Assigned then overridden -- the original stores the LIN
              * routine unconditionally and replaces it. */
-            g_pBrDlVtxSlot = (void *)BrDlVtxGenLin;
+            (*(void * *)((char *)&g_brGbi0A79F0 + 0x10)) /* BR_LP64_BYTE_VIEW */ = (void *)BrDlVtxGenLin;
             if ((geo & 0x80000u) == 0)
-                g_pBrDlVtxSlot = (void *)BrDlVtxGen;
+                (*(void * *)((char *)&g_brGbi0A79F0 + 0x10)) /* BR_LP64_BYTE_VIEW */ = (void *)BrDlVtxGen;
         }
         if ((geo & 0x200u) != 0) {
-            g_pBrDlTri1Slot = (void *)BrDlTri1Z;
-            g_pBrDlTri2Slot = (void *)BrDlTri2Z;
+            (*(void * *)((char *)&g_brGbi0A79F0 + 0x2FC)) /* BR_LP64_BYTE_VIEW */ = (void *)BrDlCmdTri1;
+            (*(void * *)((char *)&g_brGbi0A79F0 + 0x2C4)) /* BR_LP64_BYTE_VIEW */ = (void *)BrDlCmdTri2;
         } else {
-            g_pBrDlTri1Slot = (void *)BrDlTri1ZFlat;
-            g_pBrDlTri2Slot = (void *)BrDlTri2ZFlat;
+            (*(void * *)((char *)&g_brGbi0A79F0 + 0x2FC)) /* BR_LP64_BYTE_VIEW */ = (void *)BrDlCmdTri1FlatZ;
+            (*(void * *)((char *)&g_brGbi0A79F0 + 0x2C4)) /* BR_LP64_BYTE_VIEW */ = (void *)BrDlCmdTri2FlatZ;
         }
     } else {
-        g_pBrDlVtxSlot = (void *)BrDlVtxNoZLit;
+        (*(void * *)((char *)&g_brGbi0A79F0 + 0x10)) /* BR_LP64_BYTE_VIEW */ = (void *)BrDlVtxNoZLit;
         if ((geo & 0x20000u) == 0)
-            g_pBrDlVtxSlot = (void *)BrDlVtxNoZ;
+            (*(void * *)((char *)&g_brGbi0A79F0 + 0x10)) /* BR_LP64_BYTE_VIEW */ = (void *)BrDlVtxNoZ;
         if ((geo & 0x200u) != 0) {
-            g_pBrDlTri1Slot = (void *)BrDlTri1NoZ;
-            g_pBrDlTri2Slot = (void *)BrDlTri2NoZ;
+            (*(void * *)((char *)&g_brGbi0A79F0 + 0x2FC)) /* BR_LP64_BYTE_VIEW */ = (void *)BrDlCmdTri1NoZ;
+            (*(void * *)((char *)&g_brGbi0A79F0 + 0x2C4)) /* BR_LP64_BYTE_VIEW */ = (void *)BrDlCmdTri2NoZ;
         } else {
-            g_pBrDlTri1Slot = (void *)BrDlTri1NoZFlat;
-            g_pBrDlTri2Slot = (void *)BrDlTri2NoZFlat;
+            (*(void * *)((char *)&g_brGbi0A79F0 + 0x2FC)) /* BR_LP64_BYTE_VIEW */ = (void *)BrDlCmdTri1Flat;
+            (*(void * *)((char *)&g_brGbi0A79F0 + 0x2C4)) /* BR_LP64_BYTE_VIEW */ = (void *)BrDlCmdTri2Flat;
         }
     }
 }
@@ -1174,10 +1174,10 @@ static void br_dl_clip_reset(BrDl *pDl)
         c = a;
         a -= 0x28;
     } while (a >= 0x105ccff0);
-    DAT_105cda00 = c;
+    g_pClipFree = c;
     DAT_105ccfe8 = 0;
     DAT_100a9a50 = 1;
-    DAT_105d17d4 = 0;
+    (*(int *)&BrGlBlendLatch) = 0;
 }
 
 /* The seven planes in 0x1001EE70's CALL order. */
@@ -1579,12 +1579,12 @@ static const uint8_t *br_dl_fillF6(const uint8_t *p)
 
     w1 = *(const unsigned *)(p + 4);
     w0 = *(const unsigned *)p;
-    H = DAT_100a7518;
+    H = BrGbiRectG_A7518;
     uly = ((int)(w1 << 20) >> 22) & 0x3FF;
     lry = ((int)(w0 << 20) >> 22) & 0x3FF;
     lrx = ((int)(w0 << 8) >> 22) & 0x3FF;
     ulx = ((int)(w1 << 8) >> 22) & 0x3FF;
-    FUN_1001e380(ulx, H - lry - 1, lrx + 1, H - uly);
+    BrGlRectFill(ulx, H - lry - 1, lrx + 1, H - uly);
     return p + 8;
 }
 
@@ -1599,12 +1599,12 @@ static const uint8_t *br_dl_fillE1(const uint8_t *p)
 
     w1 = *(const unsigned *)(p + 4);
     w0 = *(const unsigned *)p;
-    H = DAT_100a7518;
+    H = BrGbiRectG_A7518;
     uly = (int)(w1 << 20) >> 20;
     lry = (int)(w0 << 20) >> 20;
     lrx = (int)(w0 << 8) >> 20;
     ulx = (int)(w1 << 8) >> 20;
-    FUN_1001e380(ulx, H - lry - 1, lrx + 1, H - uly);
+    BrGlRectFill(ulx, H - lry - 1, lrx + 1, H - uly);
     return p + 8;
 }
 
@@ -1697,17 +1697,17 @@ static const uint8_t *br_dl_scissorE2(const uint8_t *p)
 {
     int H, ulx, uly, lrx, lry, maxY, minY;
 
-    H = DAT_100a7518;
+    H = BrGbiRectG_A7518;
     ulx = (int)((*(const unsigned *)p >> 12) & 0xFFFu);
-    DAT_105d17bc = ulx;
+    (*(int *)&BrGlClipMinX) = ulx;
     uly = (int)(*(const unsigned *)p & 0xFFFu);
     maxY = H - uly;
-    DAT_105ccfe0 = maxY;
+    (*(int *)&BrGlClipMaxY) = maxY;
     lrx = (int)((*(const unsigned *)(p + 4) >> 12) & 0xFFFu);
-    DAT_105d17b8 = lrx;
+    (*(int *)&BrGlClipMaxX) = lrx;
     lry = (int)(*(const unsigned *)(p + 4) & 0xFFFu);
     minY = H - lry;
-    DAT_105d17c0 = minY;
+    (*(int *)&BrGlClipMinY) = minY;
     grClipWindow(ulx, minY, lrx, maxY);
     return p + 8;
 }
@@ -1722,17 +1722,17 @@ static const uint8_t *br_dl_scissorED(const uint8_t *p)
 {
     int H, ulx, uly, lrx, lry, maxY, minY;
 
-    H = DAT_100a7518;
+    H = BrGbiRectG_A7518;
     ulx = (int)((*(const unsigned *)p >> 14) & 0x3FFu);
-    DAT_105d17bc = ulx;
+    (*(int *)&BrGlClipMinX) = ulx;
     uly = (int)((*(const unsigned *)p >> 2) & 0x3FFu);
     maxY = H - uly;
-    DAT_105ccfe0 = maxY;
+    (*(int *)&BrGlClipMaxY) = maxY;
     lrx = (int)((*(const unsigned *)(p + 4) >> 14) & 0x3FFu);
-    DAT_105d17b8 = lrx;
+    (*(int *)&BrGlClipMaxX) = lrx;
     lry = (int)((*(const unsigned *)(p + 4) >> 2) & 0x3FFu);
     minY = H - lry;
-    DAT_105d17c0 = minY;
+    (*(int *)&BrGlClipMinY) = minY;
     grClipWindow(ulx, minY, lrx, maxY);
     return p + 8;
 }
@@ -1806,18 +1806,18 @@ static const uint8_t *br_dl_fillcolour(const uint8_t *p)
     unsigned w;
 
     w = *(const unsigned *)(p + 4);
-    DAT_105ccd40 = (unsigned char)(((w >> 8) & 0xF8) | ((w >> 13) & 7));
+    (*(unsigned char *)&BrGlFillR) = (unsigned char)(((w >> 8) & 0xF8) | ((w >> 13) & 7));
     w = *(const unsigned *)(p + 4);
-    DAT_105ccfd8 = (unsigned char)(((w >> 3) & 0xF8) | ((w >> 8) & 7));
+    (*(unsigned char *)&BrGlFillG) = (unsigned char)(((w >> 3) & 0xF8) | ((w >> 8) & 7));
 
     {
         unsigned char c = (unsigned char)(*(const unsigned char *)(p + 4) & 0xFE);
         unsigned char d = (unsigned char)((*(const unsigned *)(p + 4) >> 3) & 7);
-        DAT_105d17a0 = (unsigned char)((unsigned char)(c << 2) | d);
+        (*(unsigned char *)&BrGlFillB) = (unsigned char)((unsigned char)(c << 2) | d);
     }
 
     w = *(const unsigned *)(p + 4);
-    DAT_105ce208 = (unsigned char)((w & 1) ? 0xFFu : 0);
+    (*(unsigned char *)&BrGlFillA) = (unsigned char)((w & 1) ? 0xFFu : 0);
     return p + 8;
 }
 
@@ -1894,9 +1894,9 @@ static const uint8_t *br_dl_env(const uint8_t *p)
 {
     const float k = 1.0f / 255.0f;    /* 0x10077400 == 0x3B808081 exactly */
 
-    DAT_105ccd44 = (float)(*(const uint32_t *)(p + 4) >> 24) * k;
-    DAT_105cd9f4 = (float)((*(const uint32_t *)(p + 4) >> 16) & 0xFFu) * k;
-    DAT_105cccf8 = (float)((*(const uint32_t *)(p + 4) >> 8) & 0xFFu) * k;
+    BrGbiRectG_5CCD44 = (float)(*(const uint32_t *)(p + 4) >> 24) * k;
+    BrGbiRectG_5CD9F4 = (float)((*(const uint32_t *)(p + 4) >> 16) & 0xFFu) * k;
+    BrGbiRectG_5CCCF8 = (float)((*(const uint32_t *)(p + 4) >> 8) & 0xFFu) * k;
     DAT_105ccc74 = (float)(*(const uint32_t *)(p + 4) & 0xFFu) * k;
     return p + 8;
 }
@@ -2254,7 +2254,7 @@ void BrDlRectCmdEmit(int param_1,int param_2,int param_3,int param_4,int param_5
   int *puVar1;
   int local_c;
   
-  DAT_106ed6e4 = DAT_106ed6e4 + 1 & 0x1f;
+  (*(int *)((char *)&g_aBrEntRecs + 0xB4)) = (*(int *)((char *)&g_aBrEntRecs + 0xB4)) + 1 & 0x1f;
   if (param_5 != 0) {
     if (param_3 < 0) {
       local_c = -param_3;
@@ -2262,46 +2262,46 @@ void BrDlRectCmdEmit(int param_1,int param_2,int param_3,int param_4,int param_5
     else {
       local_c = param_3;
     }
-    FUN_1002bf50(param_1,param_2,local_c,param_4);
+    BrSub_1003289F(param_1,param_2,local_c,param_4);
   }
-  if (DAT_106ed674 != 0) {
+  if ((*(int *)((char *)&g_aBrEntRecs + 0x44)) != 0) {
     param_1 = param_1 << 1;
     param_2 = param_2 << 1;
     param_3 = param_3 << 1;
     param_4 = param_4 << 1;
   }
   if (param_3 < 0) {
-    if (DAT_106ea3f4 != 0) {
-      *(short *)(&DAT_106e8818 + DAT_106ed6e4 * 0x10) = (short)(param_3 * -2);
+    if ((*(int *)&g_brRaceBeginDifficulty) != 0) {
+      *(short *)(&DAT_106e8818 + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10) = (short)(param_3 * -2);
     }
     else {
-      *(short *)(&DAT_106e8818 + DAT_106ed6e4 * 0x10) = (short)(param_3 << 1);
+      *(short *)(&DAT_106e8818 + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10) = (short)(param_3 << 1);
     }
     param_3 = -param_3;
-    DAT_106e8204 = 1;
+    (*(int *)&BrG_6C1174) = 1;
   }
   else {
-    if (DAT_106ea3f4 != 0) {
-      *(short *)(&DAT_106e8818 + DAT_106ed6e4 * 0x10) = (short)(param_3 * -2);
+    if ((*(int *)&g_brRaceBeginDifficulty) != 0) {
+      *(short *)(&DAT_106e8818 + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10) = (short)(param_3 * -2);
     }
     else {
-      *(short *)(&DAT_106e8818 + DAT_106ed6e4 * 0x10) = (short)(param_3 << 1);
+      *(short *)(&DAT_106e8818 + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10) = (short)(param_3 << 1);
     }
-    DAT_106e8204 = 0;
+    (*(int *)&BrG_6C1174) = 0;
   }
-  *(short *)(&DAT_106e881a + DAT_106ed6e4 * 0x10) = (short)(param_4 << 1);
-  *(short *)(&DAT_106e881c + DAT_106ed6e4 * 0x10) = 0x1ff;
-  *(short *)(&DAT_106e881e + DAT_106ed6e4 * 0x10) = 0;
-  *(short *)(&DAT_106e8820 + DAT_106ed6e4 * 0x10) = (short)((param_1 * 2 + param_3) * 2);
-  *(short *)(&DAT_106e8822 + DAT_106ed6e4 * 0x10) = (short)((param_2 * 2 + param_4) * 2);
-  *(short *)(&DAT_106e8824 + DAT_106ed6e4 * 0x10) = 0x1ff;
-  *(short *)(&DAT_106e8826 + DAT_106ed6e4 * 0x10) = 0;
-  puVar1 = DAT_106e7710;
-  DAT_106e7710 = DAT_106e7710 + 2;
+  *(short *)(&DAT_106e881a + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10) = (short)(param_4 << 1);
+  *(short *)(&DAT_106e881c + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10) = 0x1ff;
+  *(short *)(&DAT_106e881e + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10) = 0;
+  *(short *)(&DAT_106e8820 + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10) = (short)((param_1 * 2 + param_3) * 2);
+  *(short *)(&DAT_106e8822 + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10) = (short)((param_2 * 2 + param_4) * 2);
+  *(short *)(&DAT_106e8824 + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10) = 0x1ff;
+  *(short *)(&DAT_106e8826 + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10) = 0;
+  puVar1 = (*(int * *)&g_BrGfxPtr);
+  (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2;
   *puVar1 = 0x3800010;
-  puVar1[1] = (int)(&DAT_106e8818 + DAT_106ed6e4 * 0x10);
-  _DAT_106ed368 = (int)*(short *)(&DAT_106e881c + DAT_106ed6e4 * 0x10);
-  _DAT_106ed648 = (int)*(short *)(&DAT_106e8824 + DAT_106ed6e4 * 0x10);
+  puVar1[1] = (int)(&DAT_106e8818 + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10);
+  DAT_106ed368 = (int)*(short *)(&DAT_106e881c + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10);
+  (*(int *)((char *)&g_aBrEntRecs + 0x18)) = (int)*(short *)(&DAT_106e8824 + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10);
   return;
 }
 
@@ -2336,10 +2336,10 @@ void BrDlScreenRectEmit(int param_1,int param_2,int param_3,int param_4,int para
   int *puVar1;
   int local_10;
   
-  DAT_106ed6e4 = DAT_106ed6e4 + 1 & 0x1f;
+  (*(int *)((char *)&g_aBrEntRecs + 0xB4)) = (*(int *)((char *)&g_aBrEntRecs + 0xB4)) + 1 & 0x1f;
   if (param_5 != 0) {
-    puVar2 = DAT_106e7710;
-    DAT_106e7710 = DAT_106e7710 + 2;
+    puVar2 = (*(int * *)&g_BrGfxPtr);
+    (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2;
     *puVar2 = 0xe7000000;
     puVar2[1] = 0;
     if (param_3 < 0) {
@@ -2348,29 +2348,29 @@ void BrDlScreenRectEmit(int param_1,int param_2,int param_3,int param_4,int para
     else {
       local_10 = param_3;
     }
-    FUN_1002bf50(param_1,param_2,local_10,param_4);
+    BrSub_1003289F(param_1,param_2,local_10,param_4);
   }
-  if (DAT_106ed674 != 0) {
+  if ((*(int *)((char *)&g_aBrEntRecs + 0x44)) != 0) {
     param_1 = param_1 << 1;
     param_2 = param_2 << 1;
     param_3 = param_3 << 1;
     param_4 = param_4 << 1;
   }
-  DAT_106e8204 = 0;
-  *(short *)(&DAT_106e8818 + DAT_106ed6e4 * 0x10) = (short)(DAT_100a7514 << 1);
-  *(short *)(&DAT_106e881a + DAT_106ed6e4 * 0x10) = (short)(DAT_100a7518 << 1);
-  *(short *)(&DAT_106e881c + DAT_106ed6e4 * 0x10) = 0x1ff;
-  *(short *)(&DAT_106e881e + DAT_106ed6e4 * 0x10) = 0;
-  *(short *)(&DAT_106e8820 + DAT_106ed6e4 * 0x10) = (short)(DAT_100a7514 / 2 << 2);
-  *(short *)(&DAT_106e8822 + DAT_106ed6e4 * 0x10) = (short)(DAT_100a7518 / 2 << 2);
-  *(short *)(&DAT_106e8824 + DAT_106ed6e4 * 0x10) = 0x1ff;
-  *(short *)(&DAT_106e8826 + DAT_106ed6e4 * 0x10) = 0;
-  puVar1 = DAT_106e7710;
-  DAT_106e7710 = DAT_106e7710 + 2;
+  (*(int *)&BrG_6C1174) = 0;
+  *(short *)(&DAT_106e8818 + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10) = (short)(BrGbiRectG_A7514 << 1);
+  *(short *)(&DAT_106e881a + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10) = (short)(BrGbiRectG_A7518 << 1);
+  *(short *)(&DAT_106e881c + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10) = 0x1ff;
+  *(short *)(&DAT_106e881e + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10) = 0;
+  *(short *)(&DAT_106e8820 + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10) = (short)(BrGbiRectG_A7514 / 2 << 2);
+  *(short *)(&DAT_106e8822 + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10) = (short)(BrGbiRectG_A7518 / 2 << 2);
+  *(short *)(&DAT_106e8824 + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10) = 0x1ff;
+  *(short *)(&DAT_106e8826 + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10) = 0;
+  puVar1 = (*(int * *)&g_BrGfxPtr);
+  (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2;
   *puVar1 = 0x3800010;
-  puVar1[1] = (int)(&DAT_106e8818 + DAT_106ed6e4 * 0x10);
-  _DAT_106ed368 = (int)*(short *)(&DAT_106e881c + DAT_106ed6e4 * 0x10);
-  _DAT_106ed648 = (int)*(short *)(&DAT_106e8824 + DAT_106ed6e4 * 0x10);
+  puVar1[1] = (int)(&DAT_106e8818 + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10);
+  DAT_106ed368 = (int)*(short *)(&DAT_106e881c + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10);
+  (*(int *)((char *)&g_aBrEntRecs + 0x18)) = (int)*(short *)(&DAT_106e8824 + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10);
   return;
 }
 
@@ -2393,12 +2393,12 @@ void BrDlRectCmdFlush(void)
 {
   int *puVar1;
   
-  puVar1 = DAT_106e7710;
-  DAT_106e7710 = DAT_106e7710 + 2;
+  puVar1 = (*(int * *)&g_BrGfxPtr);
+  (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2;
   *puVar1 = 0x3800010;
-  puVar1[1] = (int)(&DAT_106e8818 + DAT_106ed6e4 * 0x10);
-  _DAT_106ed368 = (int)*(short *)(&DAT_106e881c + DAT_106ed6e4 * 0x10);
-  _DAT_106ed648 = (int)*(short *)(&DAT_106e8824 + DAT_106ed6e4 * 0x10);
+  puVar1[1] = (int)(&DAT_106e8818 + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10);
+  DAT_106ed368 = (int)*(short *)(&DAT_106e881c + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10);
+  (*(int *)((char *)&g_aBrEntRecs + 0x18)) = (int)*(short *)(&DAT_106e8824 + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10);
   return;
 }
 
@@ -2415,28 +2415,28 @@ void BrDlBorderEmit(unsigned int param_1,unsigned int param_2,int param_3,int pa
 
 {
   short v;
-  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xe7000000; p_[1] = 0; }
-  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xb900031d; p_[1] = 0xf0a4000; }
-  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xba001402; p_[1] = 0x300000; }
+  { int *p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xe7000000; p_[1] = 0; }
+  { int *p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xb900031d; p_[1] = 0xf0a4000; }
+  { int *p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xba001402; p_[1] = 0x300000; }
   v = 1;
-  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xf7000000; p_[1] = v | v << 16; }
-  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xf8000000; p_[1] = 0xff; }
-  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = (param_1 + param_3 & 0xfff) << 0xc | 0xe1000000 | param_2 - 1 & 0xfff; p_[1] = (param_1 - 1 & 0xfff) << 0xc | param_2 - 2 & 0xfff; }
-  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = (param_1 + param_3 & 0xfff) << 0xc | 0xe1000000 | param_2 + 1 + param_4 & 0xfff; p_[1] = (param_1 - 1 & 0xfff) << 0xc | param_2 + param_4 & 0xfff; }
-  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = (param_1 - 1 & 0xfff) << 0xc | 0xe1000000 | param_2 + param_4 & 0xfff; p_[1] = (param_1 - 2 & 0xfff) << 0xc | param_2 - 1 & 0xfff; }
-  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = (param_1 + 1 + param_3 & 0xfff) << 0xc | 0xe1000000 | param_2 + param_4 & 0xfff; p_[1] = (param_1 + param_3 & 0xfff) << 0xc | param_2 - 1 & 0xfff; }
-  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xe7000000; p_[1] = 0; }
-  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xb900031d; p_[1] = 0x55004240; }
-  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xba001402; p_[1] = 0; }
-  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xf8000000; p_[1] = 0xff; }
-  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = (param_1 + param_3 & 0xfff) << 0xc | 0xe1000000 | param_2 + 1 & 0xfff; p_[1] = (param_1 & 0xfff) << 0xc | param_2 & 0xfff; }
-  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = (param_1 + param_3 & 0xfff) << 0xc | 0xe1000000 | param_2 + param_4 & 0xfff; p_[1] = (param_1 & 0xfff) << 0xc | (param_2 - 1) + param_4 & 0xfff; }
-  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = (param_1 + 1 & 0xfff) << 0xc | 0xe1000000 | param_2 + param_4 & 0xfff; p_[1] = (param_1 & 0xfff) << 0xc | param_2 & 0xfff; }
-  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = (param_1 + param_3 & 0xfff) << 0xc | 0xe1000000 | param_2 + param_4 & 0xfff; p_[1] = ((param_1 - 1) + param_3 & 0xfff) << 0xc | param_2 & 0xfff; }
-  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = (param_1 + 3 + param_3 & 0xfff) << 0xc | 0xe1000000 | param_2 - 2 & 0xfff; p_[1] = (param_1 - 3 & 0xfff) << 0xc | param_2 - 3 & 0xfff; }
-  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = (param_1 + 3 + param_3 & 0xfff) << 0xc | 0xe1000000 | param_2 + 3 + param_4 & 0xfff; p_[1] = (param_1 - 3 & 0xfff) << 0xc | param_2 + 2 + param_4 & 0xfff; }
-  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = (param_1 - 2 & 0xfff) << 0xc | 0xe1000000 | param_2 + 3 + param_4 & 0xfff; p_[1] = (param_1 - 3 & 0xfff) << 0xc | param_2 - 3 & 0xfff; }
-  { int *p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = (param_1 + 3 + param_3 & 0xfff) << 0xc | 0xe1000000 | param_2 + 3 + param_4 & 0xfff; p_[1] = (param_1 + 2 + param_3 & 0xfff) << 0xc | param_2 - 3 & 0xfff; }
+  { int *p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xf7000000; p_[1] = v | v << 16; }
+  { int *p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xf8000000; p_[1] = 0xff; }
+  { int *p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = (param_1 + param_3 & 0xfff) << 0xc | 0xe1000000 | param_2 - 1 & 0xfff; p_[1] = (param_1 - 1 & 0xfff) << 0xc | param_2 - 2 & 0xfff; }
+  { int *p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = (param_1 + param_3 & 0xfff) << 0xc | 0xe1000000 | param_2 + 1 + param_4 & 0xfff; p_[1] = (param_1 - 1 & 0xfff) << 0xc | param_2 + param_4 & 0xfff; }
+  { int *p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = (param_1 - 1 & 0xfff) << 0xc | 0xe1000000 | param_2 + param_4 & 0xfff; p_[1] = (param_1 - 2 & 0xfff) << 0xc | param_2 - 1 & 0xfff; }
+  { int *p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = (param_1 + 1 + param_3 & 0xfff) << 0xc | 0xe1000000 | param_2 + param_4 & 0xfff; p_[1] = (param_1 + param_3 & 0xfff) << 0xc | param_2 - 1 & 0xfff; }
+  { int *p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xe7000000; p_[1] = 0; }
+  { int *p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xb900031d; p_[1] = 0x55004240; }
+  { int *p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xba001402; p_[1] = 0; }
+  { int *p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xf8000000; p_[1] = 0xff; }
+  { int *p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = (param_1 + param_3 & 0xfff) << 0xc | 0xe1000000 | param_2 + 1 & 0xfff; p_[1] = (param_1 & 0xfff) << 0xc | param_2 & 0xfff; }
+  { int *p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = (param_1 + param_3 & 0xfff) << 0xc | 0xe1000000 | param_2 + param_4 & 0xfff; p_[1] = (param_1 & 0xfff) << 0xc | (param_2 - 1) + param_4 & 0xfff; }
+  { int *p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = (param_1 + 1 & 0xfff) << 0xc | 0xe1000000 | param_2 + param_4 & 0xfff; p_[1] = (param_1 & 0xfff) << 0xc | param_2 & 0xfff; }
+  { int *p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = (param_1 + param_3 & 0xfff) << 0xc | 0xe1000000 | param_2 + param_4 & 0xfff; p_[1] = ((param_1 - 1) + param_3 & 0xfff) << 0xc | param_2 & 0xfff; }
+  { int *p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = (param_1 + 3 + param_3 & 0xfff) << 0xc | 0xe1000000 | param_2 - 2 & 0xfff; p_[1] = (param_1 - 3 & 0xfff) << 0xc | param_2 - 3 & 0xfff; }
+  { int *p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = (param_1 + 3 + param_3 & 0xfff) << 0xc | 0xe1000000 | param_2 + 3 + param_4 & 0xfff; p_[1] = (param_1 - 3 & 0xfff) << 0xc | param_2 + 2 + param_4 & 0xfff; }
+  { int *p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = (param_1 - 2 & 0xfff) << 0xc | 0xe1000000 | param_2 + 3 + param_4 & 0xfff; p_[1] = (param_1 - 3 & 0xfff) << 0xc | param_2 - 3 & 0xfff; }
+  { int *p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = (param_1 + 3 + param_3 & 0xfff) << 0xc | 0xe1000000 | param_2 + 3 + param_4 & 0xfff; p_[1] = (param_1 + 2 + param_3 & 0xfff) << 0xc | param_2 - 3 & 0xfff; }
   return;
 }
 

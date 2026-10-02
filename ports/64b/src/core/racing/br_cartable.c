@@ -168,22 +168,22 @@ static unsigned char *s17_car(int i)
 typedef struct BrS17CarRec { unsigned char b[BR_CAR_STRIDE]; } BrS17CarRec;
 typedef struct { int n; } BrS17EntArg;
 typedef void (__fastcall *BrS17EntSetFn)(void *pThis, BrS17EntArg a0);
-#define BR_S17_CARS ((BrS17CarRec *)DAT_10af1208)
+#define BR_S17_CARS ((BrS17CarRec *)(*(unsigned char (*)[])&g_aBrRaceCar))
 void BrCarTableAdd(void *pOwner)
 {
     BrS17EntArg a;
 
-    a.n = BrX10005DE0(pOwner,
-                      &BR_S17_CARS[DAT_100b2f04].b[BR_CAR_OFF_RGB + 0],
-                      &BR_S17_CARS[DAT_100b2f04].b[BR_CAR_OFF_RGB + 1],
-                      &BR_S17_CARS[DAT_100b2f04].b[BR_CAR_OFF_RGB + 2]);
-    ((BrS17EntSetFn)BrX10076AE0)(&BR_S17_CARS[DAT_100b2f04], a);
-    strcpy((char *)&BR_S17_CARS[DAT_100b2f04].b[BR_CAR_OFF_NAME],
-           BrX10005E70(pOwner));
-    BrX10068260(DAT_100b2f04,
-                *(uint32_t *)&BR_S17_CARS[DAT_100b2f04].b[BR_CAR_OFF_TAG]);
-    *(void **)&BR_S17_CARS[DAT_100b2f04++].b[BR_CAR_OFF_OWNER] = pOwner;
-    DAT_100b2f00++;
+    a.n = BrNetSlotGetF030(pOwner,
+                      &BR_S17_CARS[g_BrCarCount].b[BR_CAR_OFF_RGB + 0],
+                      &BR_S17_CARS[g_BrCarCount].b[BR_CAR_OFF_RGB + 1],
+                      &BR_S17_CARS[g_BrCarCount].b[BR_CAR_OFF_RGB + 2]);
+    ((BrS17EntSetFn)BrEntitySetIndex)(&BR_S17_CARS[g_BrCarCount], a);
+    strcpy((char *)&BR_S17_CARS[g_BrCarCount].b[BR_CAR_OFF_NAME],
+           BrNetSlotName(pOwner));
+    BrSfxCarBankInit(g_BrCarCount,
+                *(uint32_t *)&BR_S17_CARS[g_BrCarCount].b[BR_CAR_OFF_TAG]);
+    *(void **)&BR_S17_CARS[g_BrCarCount++].b[BR_CAR_OFF_OWNER] = pOwner;
+    g_brRaceNDriver++;
 }
 
 /* 0x1002F230 */
@@ -206,12 +206,12 @@ void BrCarTableRemove(const void *pOwner)
     unsigned char *esi;
 
     /* xor ebx,ebx is before the jle: i must be live on the early-out. */
-    if (DAT_100b2f04 <= 0)
+    if (g_BrCarCount <= 0)
         return;
 
     {
     int arg = 0;
-    esi = DAT_10af2110;
+    esi = (*(unsigned char (*)[])((char *)&g_aBrRaceCar + 0xF08)) /* BR_LP64_BYTE_VIEW */;
     do {
         if (*(uint32_t *)(esi - 0xDC4) == (uint32_t)pOwner) {
             int n;
@@ -221,10 +221,10 @@ void BrCarTableRemove(const void *pOwner)
             *(uint32_t *)esi = 0;
             BrX10072580(arg);
 
-            n = DAT_100b2f00;
+            n = g_brRaceNDriver;
             if (n > 0) {
                 car = esi - 0xF08;
-                slot = DAT_10af0858;
+                slot = (*(unsigned char (*)[])((char *)&g_aBrRaceDriver + 0x60)) /* BR_LP64_BYTE_VIEW */;
                 do {
                     if (*(uint32_t *)slot == (uint32_t)car)
                         *(uint32_t *)slot = 0;
@@ -237,7 +237,7 @@ void BrCarTableRemove(const void *pOwner)
         ++i;
         arg += 2;
         esi += BR_CAR_STRIDE;
-    } while (i < DAT_100b2f04);
+    } while (i < g_BrCarCount);
     }
 }
 
@@ -264,7 +264,7 @@ void BrCarStateSave(void)
 {
     int i;
 
-    for (i = 0; i < DAT_100b3858; ++i) {
+    for (i = 0; i < g_brRaceNEntrant; ++i) {
         int k;
 
         DAT_105bc770[i] = g_aBrRaceCar[i].fFF8;
@@ -272,12 +272,12 @@ void BrCarStateSave(void)
         DAT_105ccb68[i] = (*(int32_t *)&g_aBrRaceCar[i].tBest);
         DAT_105bc8f0[i] = g_aBrRaceCar[i].lapBest;
         DAT_105bc758[i] = g_aBrRaceCar[i].lap;
-        for (k = 0; k < DAT_100bcbe8; k++)
+        for (k = 0; k < (*(int32_t *)&g_CBE8); k++)
             DAT_105ccaf8[i * 12 + k] =
-                *(int32_t *)(DAT_10af1208 + i * 0x2B68 + 0xFB4 + k * 4);
+                *(int32_t *)((*(unsigned char (*)[])&g_aBrRaceCar) + i * 0x2B68 + 0xFB4 + k * 4);
     }
 
-    DAT_105ccb60 = 1;
+    (*(int32_t *)&DAT_105ccb60) = 1;
 }
 
 /* 0x1002F320 */
@@ -308,25 +308,25 @@ void BrCarStateRestore(void)
 {
     int i;
 
-    if (DAT_100a9360 == 0 && DAT_105ccb60 != 0) {
-        for (i = 0; i < DAT_100b3858; ++i) {
+    if ((*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0 && (*(int32_t *)&DAT_105ccb60) != 0) {
+        for (i = 0; i < g_brRaceNEntrant; ++i) {
             BrStandBlk **pp = ((BrStandBlk **)&g_aBrRaceCar[i].pEquip);
 
-            (*pp)->pts[(*pp)->row][(*pp)->col] = DAT_100a9560[DAT_105bc770[i]];
+            (*pp)->pts[(*pp)->row][(*pp)->col] = (*(signed char (*)[])&g_tblBrA9560)[DAT_105bc770[i]];
             (*pp)->place[(*pp)->row][(*pp)->col] = (uint8_t)DAT_105bc770[i];
             {
                 int32_t t = DAT_105bc8d0[i];
                 (*pp)->tot[(*pp)->row][(*pp)->col] = t;
             }
-            FUN_10008d60();
+            BrPodNop();
         }
     }
 
-    for (i = 0; i < DAT_100b3858; ++i) {
+    for (i = 0; i < g_brRaceNEntrant; ++i) {
         int k;
 
-        for (k = 0; k < DAT_100bcbe8; k++)
-            *(int32_t *)(DAT_10af1208 + i * 0x2B68 + 0xFB4 + k * 4) =
+        for (k = 0; k < (*(int32_t *)&g_CBE8); k++)
+            *(int32_t *)((*(unsigned char (*)[])&g_aBrRaceCar) + i * 0x2B68 + 0xFB4 + k * 4) =
                 DAT_105ccaf8[i * 12 + k];
         g_aBrRaceCar[i].lap = DAT_105bc758[i];
         g_aBrRaceCar[i].lapBest = DAT_105bc8f0[i];

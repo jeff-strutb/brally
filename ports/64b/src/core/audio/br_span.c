@@ -23,8 +23,8 @@
 int BrSpanContains(int param_1,int param_2)
 
 {
-  if ((((param_2 >= DAT_10ac2c5c) && (param_2 <= DAT_10ac2c54)) &&
-      (param_1 >= (int)(&DAT_10ac2c60)[param_2])) && (param_1 <= (int)(&DAT_10ac2d60)[param_2])) {
+  if ((((param_2 >= g_BrVisRowLo) && (param_2 <= g_BrVisRowHi)) &&
+      (param_1 >= (int)(&(g_BrVisColLo[0]))[param_2])) && (param_1 <= (int)(&(g_BrVisColHi[0]))[param_2])) {
     return 1;
   }
   return 0;
@@ -51,11 +51,11 @@ void BrSpanExtend(int param_1,int param_2)
   if (param_2 >= 0x40) {
     param_2 = 0x3f;
   }
-  if (param_1 < (int)(&DAT_10ac2c60)[param_2]) {
-    (&DAT_10ac2c60)[param_2] = param_1;
+  if (param_1 < (int)(&(g_BrVisColLo[0]))[param_2]) {
+    (&(g_BrVisColLo[0]))[param_2] = param_1;
   }
-  if (param_1 > (int)(&DAT_10ac2d60)[param_2]) {
-    (&DAT_10ac2d60)[param_2] = param_1;
+  if (param_1 > (int)(&(g_BrVisColHi[0]))[param_2]) {
+    (&(g_BrVisColHi[0]))[param_2] = param_1;
   }
   return;
 }
@@ -78,19 +78,19 @@ void BrSpanAddLineG(float x0, float y0, float x1, float y1)
     int lo, hi, row, rowEnd, col, i;
     float dy, y, x;
 
-    BrSpanExtend(BrFtolTrunc(x0 * 0.03125f), BrFtolTrunc(y0 * 0.03125f));
-    BrSpanExtend(BrFtolTrunc(x1 * 0.03125f), BrFtolTrunc(y1 * 0.03125f));
-    lo = BrFtolTrunc(x0 * 0.03125f);
-    hi = BrFtolTrunc(x1 * 0.03125f);
+    BrSpanExtend(BrFtolArg(x0 * 0.03125f), BrFtolArg(y0 * 0.03125f));
+    BrSpanExtend(BrFtolArg(x1 * 0.03125f), BrFtolArg(y1 * 0.03125f));
+    lo = BrFtolArg(x0 * 0.03125f);
+    hi = BrFtolArg(x1 * 0.03125f);
     if (lo > hi) {
         hi ^= lo;
         lo ^= hi;
         hi ^= lo;
     }
-    if (lo < DAT_10ac2c58)
-        DAT_10ac2c58 = lo;
-    if (hi > DAT_10ac2c50)
-        DAT_10ac2c50 = hi;
+    if (lo < (*(int *)&g_brSpanColLo))
+        (*(int *)&g_brSpanColLo) = lo;
+    if (hi > (*(int *)&g_brSpanColHi))
+        (*(int *)&g_brSpanColHi) = hi;
     if (y0 > y1) {
         float t;
         t = x0; x0 = x1; x1 = t;
@@ -99,12 +99,12 @@ void BrSpanAddLineG(float x0, float y0, float x1, float y1)
     dy = y1 - y0;
     if (dy == 0.0f)
         return;
-    row = BrFtolTrunc(y0 * 0.03125f);
-    rowEnd = BrFtolTrunc(y1 * 0.03125f);
-    if (row < DAT_10ac2c5c)
-        DAT_10ac2c5c = row;
-    if (rowEnd > DAT_10ac2c54)
-        DAT_10ac2c54 = rowEnd;
+    row = BrFtolArg(y0 * 0.03125f);
+    rowEnd = BrFtolArg(y1 * 0.03125f);
+    if (row < g_BrVisRowLo)
+        g_BrVisRowLo = row;
+    if (rowEnd > g_BrVisRowHi)
+        g_BrVisRowHi = rowEnd;
     for (i = row; i <= rowEnd; i++) {
         y = (float)i * 32.0f;
         if (y < y0)
@@ -112,7 +112,7 @@ void BrSpanAddLineG(float x0, float y0, float x1, float y1)
         if (y > y1)
             continue;
         x = ((x1 - x0) * (y - y0)) / dy + x0;
-        col = BrFtolTrunc(x * 0.03125f);
+        col = BrFtolArg(x * 0.03125f);
         BrSpanExtend(col, i - 1);
         BrSpanExtend(col, i);
         if (x <= (float)col * 32.0f) {

@@ -141,7 +141,7 @@ int Slots54A30::Add(const char *pszName, int flags, char kind,
         if (row >= 100)
             row = (short)(wCount - 1);
 
-        if (_stricmp((((char *)this + ((row)) * BR_SLOT)) + 0x35, g_szBr396F08) == 0)
+        if (_stricmp((((char *)this + ((row)) * BR_SLOT)) + 0x35, g_aBr39B720) == 0)
             return 0;
 
         w1a92e++;

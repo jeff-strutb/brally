@@ -35,12 +35,12 @@ void BrHudTextListDraw(int *param_1)
   BrTextFlag358Clear();
   BrSet_10019270();
   BrSub_1003289F(*param_1,param_1[1],param_1[2],param_1[3]);
-  if (DAT_100a5ebc != 0) {
-    piVar2 = &DAT_100a5eb0;
+  if ((*(int *)((char *)&g_aBrRaceCue + 0xC)) != 0) {
+    piVar2 = &(*(int *)&g_aBrRaceCue);
     do {
-      if ((*piVar2 > -0x50) && (*piVar2 < DAT_106e9a2c + 0x28)) {
+      if ((*piVar2 > -0x50) && (*piVar2 < (*(int *)&g_brRaceCueBase) + 0x28)) {
         BrSetGlobal_ABB30(piVar2[1]);
-        BrTextDraw((const char *)piVar2[3],DAT_106e7714 / 2,*piVar2);
+        BrTextDraw((const char *)piVar2[3],g_scrW4 / 2,*piVar2);
       }
       iVar1 = piVar2[7];
       piVar2 = piVar2 + 4;

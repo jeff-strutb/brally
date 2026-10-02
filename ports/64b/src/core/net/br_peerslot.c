@@ -52,9 +52,9 @@ uint32_t BrSub100714D0(int index)
     /* GOTCHA: the original reloads hMutex for ReleaseMutex rather than
      * reusing the wait's handle, so the three field accesses stay as three
      * indexings of the global. Caching the handle would drop a load. */
-    WaitForSingleObject(g_aBrPeer71[index].hMutex, (unsigned long)-1);
-    v = g_aBrPeer71[index].f02C;
-    ReleaseMutex(g_aBrPeer71[index].hMutex);
+    WaitForSingleObject((*(Br71Peer (*)[])&g_aBrPeer71)[index].hMutex, (unsigned long)-1);
+    v = (*(Br71Peer (*)[])&g_aBrPeer71)[index].f02C;
+    ReleaseMutex((*(Br71Peer (*)[])&g_aBrPeer71)[index].hMutex);
     return v;
 }
 
@@ -95,9 +95,9 @@ int32_t BrSub10071510(int32_t i)
     void    *h;
     int32_t  v;
 
-    WaitForSingleObject(g_aBr178FEF8[i].hMutex, (unsigned long)-1);
-    h = g_aBr178FEF8[i].hMutex;
-    v = g_aBr178FEF8[i].f2C;
+    WaitForSingleObject((*(Br71510Rec (*)[1])&g_aBr178FEF8)[i].hMutex, (unsigned long)-1);
+    h = (*(Br71510Rec (*)[1])&g_aBr178FEF8)[i].hMutex;
+    v = (*(Br71510Rec (*)[1])&g_aBr178FEF8)[i].f2C;
     ReleaseMutex(h);
     return v;
 }
@@ -174,27 +174,27 @@ int32_t BrNetPeerSendPass(void **ppDp)
     BrNetSendBs *pBs;
 
     for (i = 0; i < 16; i++) {
-        h[0] = DAT_11849e60;
-        h[1] = g_aBrPeer71[i].hMutex;
+        h[0] = g_hBrSndWake86;
+        h[1] = (*(Br71Peer (*)[])&g_aBrPeer71)[i].hMutex;
         if (WaitForMultipleObjects(2, h, 0, (unsigned long)-1) == 0)
             ExitThread(0);
         /* `and ecx,0x3f; cmp cl,1; jl` -- a SIGNED compare, so the status word
          * is an int here (br_peer.c's `cmp cl,5; jge` is the same shape). */
-        if ((g_aBrPeer71[i].f02C & 0x3F) >= 1) {
-            pBs = &g_aBrNetSendBs[i];
+        if (((*(Br71Peer (*)[])&g_aBrPeer71)[i].f02C & 0x3F) >= 1) {
+            pBs = &(*(BrNetSendBs (*)[16])&g_aBrPeerMsg)[i];
             if (BrCountedTotal(pBs) > 3) {
                 if (i == 0) {
-                    BrSub10003580(ppDp,
-                                  BrStateGetField10(&g_aBrNetSendBs[0]),
-                                  BrCountedTotal(&g_aBrNetSendBs[0]), 1);
-                } else if (BrDPlayRawSend(*ppDp, 1, g_aBrPeer71[i].f004, 0,
+                    FUN_100038f0(ppDp,
+                                  BrStateGetField10(&(*(BrNetSendBs (*)[16])&g_aBrPeerMsg)[0]),
+                                  BrCountedTotal(&(*(BrNetSendBs (*)[16])&g_aBrPeerMsg)[0]), 1);
+                } else if (BrDPlayRawSend(*ppDp, 1, (*(Br71Peer (*)[])&g_aBrPeer71)[i].f004, 0,
                                           BrStateGetField10(pBs),
                                           BrCountedTotal(pBs)) != 0) {
                     result = -1;
                 }
             }
         }
-        ReleaseMutex(g_aBrPeer71[i].hMutex);
+        ReleaseMutex((*(Br71Peer (*)[])&g_aBrPeer71)[i].hMutex);
     }
     return result;
 }

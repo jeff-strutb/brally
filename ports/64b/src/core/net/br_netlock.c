@@ -30,8 +30,8 @@
 int32_t BrNetLockSetIfZero221314(void)
 {
     WaitForSingleObject(g_brH220DDC, (unsigned long)-1);
-    if (g_br221314 == 0) {
-        g_br221314 = 1;
+    if ((*(int32_t *)&DAT_1021ce44) == 0) {
+        (*(int32_t *)&DAT_1021ce44) = 1;
     }
     ReleaseMutex(g_brH220DDC);
     return 1;
@@ -61,7 +61,7 @@ int32_t BrNetStackPop221288(void)
 
     WaitForSingleObject(g_h1022AF30, (unsigned long)-1);
     if (g_i10221318 >= 0) {
-        v = g_a10221288[g_i10221318];
+        v = (*(int32_t (*)[])&g_a10221288)[g_i10221318];
         g_i10221318 = g_i10221318 - 1;
     } else {
         v = -1;

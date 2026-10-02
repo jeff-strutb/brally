@@ -88,7 +88,7 @@ void FUN_100378c0(int iErr)
 
   if (iErr <= 8) {
     pText = BrStrGet(DAT_100abe00[iErr].idText);
-    MessageBoxA((void *)g_brP680584, pText + 1, BrStrGet(0xaa), 0);
+    MessageBoxA((void *)g_brOwner5BC72C, pText + 1, BrStrGet(0xaa), 0);
     if (DAT_100abe00[iErr].fFatal != 0) {
       exit(1);
     }

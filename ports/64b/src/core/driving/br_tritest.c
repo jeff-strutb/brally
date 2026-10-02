@@ -66,20 +66,20 @@ int16_t FUN_100656F0(BrTriRec *pT, float *pP)
     int r;
 
     a0 = pT->n[0];
-    if (pT->n[0] < _DAT_10077a78) {
+    if (pT->n[0] < BrCrK_Zero) {
         a0 = -a0;
     }
     a1 = pT->n[1];
-    if (pT->n[1] < _DAT_10077a78) {
+    if (pT->n[1] < BrCrK_Zero) {
         a1 = -a1;
     }
     if (a0 > a1) {
         a0 = pT->n[0];
-        if (pT->n[0] < _DAT_10077a78) {
+        if (pT->n[0] < BrCrK_Zero) {
             a0 = -a0;
         }
         a1 = pT->n[2];
-        if (pT->n[2] < _DAT_10077a78) {
+        if (pT->n[2] < BrCrK_Zero) {
             a1 = -a1;
         }
         if (a0 > a1) {
@@ -89,11 +89,11 @@ int16_t FUN_100656F0(BrTriRec *pT, float *pP)
         }
     } else {
         a0 = pT->n[1];
-        if (pT->n[1] < _DAT_10077a78) {
+        if (pT->n[1] < BrCrK_Zero) {
             a0 = -a0;
         }
         a1 = pT->n[2];
-        if (pT->n[2] < _DAT_10077a78) {
+        if (pT->n[2] < BrCrK_Zero) {
             a1 = -a1;
         }
         if (a0 > a1) {
@@ -114,32 +114,32 @@ int16_t FUN_100656F0(BrTriRec *pT, float *pP)
     c1 = pT->pC[i1] - pT->pA[i1];
     c2 = pT->pC[i2] - pT->pA[i2];
 
-    if (b1 == _DAT_10077a78) {
+    if (b1 == BrCrK_Zero) {
         u = d1 / c1;
-        if (u < _DAT_10077a78) {
+        if (u < BrCrK_Zero) {
             goto out;
         }
-        if (u > _DAT_10077a7c) {
+        if (u > DAT_10077a7c) {
             goto out;
         }
         /* The second coordinate is written out twice and CSEd -- a named
          * local gets homed to a slot the original does not have. */
-        if ((d2 - u * c2) / b2 < _DAT_10077a78
-            || u + (d2 - u * c2) / b2 > _DAT_10077a7c) {
+        if ((d2 - u * c2) / b2 < BrCrK_Zero
+            || u + (d2 - u * c2) / b2 > DAT_10077a7c) {
             goto zero_out;
         }
         r = 1;
         goto out;
     }
     u = (d2 * b1 - d1 * b2) / (c2 * b1 - c1 * b2);
-    if (u < _DAT_10077a78) {
+    if (u < BrCrK_Zero) {
         goto out;
     }
-    if (u > _DAT_10077a7c) {
+    if (u > DAT_10077a7c) {
         goto out;
     }
-    if ((d1 - u * c1) / b1 < _DAT_10077a78
-        || u + (d1 - u * c1) / b1 > _DAT_10077a7c) {
+    if ((d1 - u * c1) / b1 < BrCrK_Zero
+        || u + (d1 - u * c1) / b1 > DAT_10077a7c) {
         goto zero_out;
     }
     r = 1;

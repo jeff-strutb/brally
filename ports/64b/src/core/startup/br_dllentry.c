@@ -24,7 +24,7 @@
 int BrEhArrayUnwindFilter(int *param_1)
 {
   if (*(int *)*param_1 == -0x1f928c9d) {
-    func_0x10074aec();
+    abort();
   }
   return 0;
 }
@@ -62,7 +62,7 @@ BrOnExitFn BrCrtOnExit(BrOnExitFn pfn)
   if (DAT_118ef180 == -1) {
     return _onexit(pfn);
   }
-  return __dllonexit(pfn,&DAT_118ef180,&DAT_118ef17c);
+  return dllonexit(pfn,&DAT_118ef180,&DAT_118ef17c);
 }
 
 /* WHAT IT DOES: the CRT's atexit -- 0x100745B0 wrapped, returning 0 or -1. */

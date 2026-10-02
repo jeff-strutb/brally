@@ -19,7 +19,7 @@
 int BrGetGlobal_94294(void)
 
 {
-  return g_br094294;
+  return g_id;
 }
 
 /* ---- from slice2_18.c ---------------------------------------------- */

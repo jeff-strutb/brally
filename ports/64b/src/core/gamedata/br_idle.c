@@ -31,7 +31,7 @@ void BrIdleLoop_1002DE04(void)
   for (;;) {
     BrStubTrue();
     BrStubTrue();
-    DAT_106ed700 = DAT_106ed700 + 1 & 0xf;
+    (*(int *)((char *)&g_aBrEntRecs + 0xD0)) = (*(int *)((char *)&g_aBrEntRecs + 0xD0)) + 1 & 0xf;
   }
 }
 

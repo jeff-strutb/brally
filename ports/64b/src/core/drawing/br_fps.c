@@ -61,16 +61,16 @@ void BrFpsReadout(void)
 
     /* Each accumulator runs even when count <= 0 (divides by the 0.0f
      * seed). Samples are a table at a fixed address, added as unsigned. */
-    if (g_BrFpsGateA == 0) {
+    if ((*(int32_t *)((char *)&g_brRaceRules + 0x8)) /* BR_LP64_BYTE_VIEW */ == 0) {
         float sum = 0.0f;
-        int n = g_BrFpsCountA;
+        int n = (*(int32_t *)((char *)&g_brRaceRules + 0x4)) /* BR_LP64_BYTE_VIEW */;
         if (n > 0) {
             int32_t *p = (int32_t *)&g_BrFpsSamplesA;
             do {
                 sum += (unsigned)*p++;
             } while (--n);
         }
-        g_BrFpsValueA = ((float)g_BrFpsCountA * 1000.0f) / sum;
+        g_BrFpsValueA = ((float)(*(int32_t *)((char *)&g_brRaceRules + 0x4)) /* BR_LP64_BYTE_VIEW */ * 1000.0f) / sum;
     }
 
     if (g_BrFpsGateB == 0) {
@@ -86,9 +86,9 @@ void BrFpsReadout(void)
     }
 
     sprintf(buf, "%6.2f FPS", (double)g_BrFpsValueB);
-    BrTextSetSize(0x0F);
-    BrTextAlignCentre();
-    BrTextDraw(buf, g_BrFpsScreenW / 2, g_BrFpsScreenH - 10);
+    BrSetGlobal_ABB30(0x0F);
+    BrSet_10019270();
+    BrTextDraw(buf, (*(int32_t *)&BrGbiRectG_A7514) / 2, (*(int32_t *)&BrGbiRectG_A7518) - 10);
 }
 
 /* -- Ghidra-matched functions --------------------------- */
@@ -101,7 +101,7 @@ void BrFpsReadout(void)
 int BrThunk11D10(void)
 
 {
-  FUN_1006e590();
+  BrNop6E590();
   return;
 }
 

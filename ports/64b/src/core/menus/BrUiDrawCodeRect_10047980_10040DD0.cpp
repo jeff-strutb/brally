@@ -49,7 +49,7 @@ extern "C" {
 
 int Draw40DD0::DrawRect(void *pRect)
 {
-    BrDraw10058380((int)f03C, (int)f040, w1E20C, pRect,
+    BrSprFontDraw((int)f03C, (int)f040, w1E20C, pRect,
                    g_aBrUiSprite[w1E20C].fBlit);
 
     return 1;

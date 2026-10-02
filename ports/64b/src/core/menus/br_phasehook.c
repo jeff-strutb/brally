@@ -64,8 +64,8 @@
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define BR26_AA29B0  g_brAA29B0
-#define BR26_0AA010  g_br0AA010
+#define BR26_AA29B0  (*(BrPhase * *)&DAT_10ac5d08)
+#define BR26_0AA010  (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */
 typedef void (BR_THISCALL1 *Br26F1C)(BrEntSub *);
 /* Slot 0 thiscall with one stack arg: edx must be a LIVE value (the
  * vtbl) so the site is `push 1; call [edx]`, not `xor edx,edx` and not
@@ -87,11 +87,11 @@ int BrPhaseHook_10045050(void *pArg)
 {
     /* Orig is one-arg cdecl; it pushes that arg at Activate_45110, which
      * ignores it. */
-    g_br0AC304 = 0;
-    (void)BrPhaseActivate_10045110((BrPhaseCtx *)pArg);
-    g_br0AC304 = 1;
-    g_brAA29B4->pfnHook = BrExt_10046CD0;
-    g_br0AA010 = 0;
+    (*(int32_t *)&DAT_100abaa4) = 0;
+    (void)CtlE660_fn((BrPhaseCtx *)pArg);
+    (*(int32_t *)&DAT_100abaa4) = 1;
+    (*(BrPhase * *)&DAT_10ac5d0c)->pfnHook = BrUiHook89_10046CD0;
+    (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = 0;
     return 1;
 }
 
@@ -101,9 +101,9 @@ int BrPhaseHook_10045050(void *pArg)
 /* @implements 0x10045090 d3d BrPhaseHook_10045090 */
 int BrPhaseHook_10045090(void *pArg)
 {
-    BrExt_10045C90(pArg);
-    g_brAA29B0->pfnHook = BrExt_10046DC0;
-    g_br0AA010 = 0;
+    Ctl3F130_fn(pArg);
+    (*(BrPhase * *)&DAT_10ac5d08)->pfnHook = BrOpt6DC0;
+    (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = 0;
     return 1;
 }
 
@@ -114,10 +114,10 @@ int BrPhaseHook_10045090(void *pArg)
 /* @implements 0x100450C0 d3d BrPhaseHook_100450C0 */
 int BrPhaseHook_100450C0(void *pArg)
 {
-    BrExt_10041BD0();
-    BrExt_10045C90(pArg);
+    BrSaveResumeAutoSave();
+    Ctl3F130_fn(pArg);
 
-    BR26_AA29B0->pfnHook = BrExt_10046DC0;
+    BR26_AA29B0->pfnHook = BrOpt6DC0;
     BR26_0AA010 = 0;
     return 1;
 }
@@ -130,7 +130,7 @@ int BrPhaseHook_100450C0(void *pArg)
 /* @n64 0x80241F88 located */
 int BrPhaseDispatch_100450F0(void *pArg)
 {
-    g_brAA29F4->pfnHook(pArg);
-    g_br0AA010 = 0;
+    (*(BrPhase * *)&g_brUipAA29F4)->pfnHook(pArg);
+    (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = 0;
     return 0;
 }

@@ -51,13 +51,13 @@ int BrSub10046400(GameObj *pGame)
     Phase *pObj;
 
     pGame->pSub->s7();
-    pObj = (Phase *)(g_cur);
+    pObj = (Phase *)((*(Phase * *)&g_brPAA29B8));
     if (pObj != 0)
         pObj->f00(1);
     g_5CAC = 0;
-    g_5D3C = 0;
-    g_5D38 = 0;
+    g_brPAA29E4 = 0;
+    g_pGame = 0;
     g_5BB4 = 0;
-    g_cur = (Phase *)((BrOptObj *)(g_5CA8));
+    (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)((*(Phase * *)&g_brPAA2950)));
     return 0;
 }

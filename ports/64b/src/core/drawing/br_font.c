@@ -409,11 +409,11 @@ done:
 void BrFontRegisterPages(void)
 {
     int sum;
-    DAT_1184c47c = FUN_10027fb0(&DAT_1007b618, 0x40, 0x40, 4);
-    sum = FUN_10001000(0, 0, 0);
-    sum = FUN_10001000(sum, &DAT_1007b618, 0x21C00);
-    DAT_1184c46c = FUN_10027fb0(&DAT_1009d218, 0x20, 0x20, 4);
-    FUN_10001000(sum, &DAT_1009d218, 0x8700);
+    DAT_1184c47c = BrTex3dCreateBlank(&(*(int *)&g_aBrFontBlockLarge), 0x40, 0x40, 4);
+    sum = BrAdler32(0, 0, 0);
+    sum = BrAdler32(sum, &(*(int *)&g_aBrFontBlockLarge), 0x21C00);
+    DAT_1184c46c = BrTex3dCreateBlank(&(*(int *)&g_aBrFontBlockSmall), 0x20, 0x20, 4);
+    BrAdler32(sum, &(*(int *)&g_aBrFontBlockSmall), 0x8700);
 }
 
 /* 0x10073820 (D3D).  Four loops of 27, 26, 27, 26 over the two offset tables, in
@@ -730,8 +730,8 @@ void BrTextEmitInit(BrTextEmit *pSt, const BrFont *pFont,
  * A MACRO for the reason br_drawcar.c records: MSVC 5.0 will not inline a
  * static with more than one caller, and 43 calls is 43 too many. */
 #define put(w0_, w1_)                                                    \
-    do { uint32_t *p_ = BrG_6C0680;                                      \
-         BrG_6C0680 += 2;                                                \
+    do { uint32_t *p_ = g_BrGfxPtr;                                      \
+         g_BrGfxPtr += 2;                                                \
          p_[0] = (w0_);                                                  \
          p_[1] = (w1_); } while (0)
 
@@ -744,8 +744,8 @@ void BrTextEmitInit(BrTextEmit *pSt, const BrFont *pFont,
 /* The combine command's slot, taken as an argument expression so the cursor
  * advance is duplicated into both arms of the ramp test. */
 #define BR_PUT_SLOT()                                                    \
-    (pCombine = (struct BrGfxWords *)BrG_6C0680,                         \
-     BrG_6C0680 += 2, pCombine)
+    (pCombine = (struct BrGfxWords *)g_BrGfxPtr,                         \
+     g_BrGfxPtr += 2, pCombine)
 
 /* The colour packer, inlined at four sites.  The FIRST component is not
  * masked, so a value above 255 bleeds upward and is shifted out. */
@@ -831,18 +831,18 @@ void BrTextEmitString(const char *psz)
     int32_t        penX, top, cell, scale;
     uint32_t       r, b;        /* `g` is scoped INSIDE the %x arm */
 
-    scale = g_brFontScale;                          /* 0x10015B16 */
-    penX  = g_brFontX;                              /* 0x10015B1D */
-    top   = g_brFontY - (30 * g_brFontScale) / 40;  /* 0x10015B23 */
+    scale = (*(int32_t *)&DAT_104abb30);                          /* 0x10015B16 */
+    penX  = (*(int32_t *)&DAT_104abb28);                              /* 0x10015B1D */
+    top   = (*(int32_t *)&DAT_104abb2c) - (30 * (*(int32_t *)&DAT_104abb30)) / 40;  /* 0x10015B23 */
     /* scale and penX doubled from the GLOBALS, top from the local.  penX is
      * in ebp in both builds and the original writes `mov edi,[x] / mov
      * ebp,edi` then `lea ebp,[edi+edi]` -- the global's load kept alive for
      * a second read -- where `penX <<= 1` is `shl ebp,1`.  The N64 twin's
      * `sll` off the locals is IDO's copy propagation, not the source. */
-    if (g_brFontHiRes != 0) {                       /* 0x10015B4F */
+    if ((*(int32_t *)((char *)&g_aBrEntRecs + 0x44)) != 0) {                       /* 0x10015B4F */
         top   <<= 1;
-        scale = g_brFontScale * 2;
-        penX  = g_brFontX * 2;
+        scale = (*(int32_t *)&DAT_104abb30) * 2;
+        penX  = (*(int32_t *)&DAT_104abb28) * 2;
     }
 
     if (scale < BR_FONT_LARGE_MIN) {                /* 0x10015B67 */
@@ -850,7 +850,7 @@ void BrTextEmitString(const char *psz)
         pOff    = g_aBrFontOffSmall;
         hRampA  = (uint32_t)g_aBrFontRampSmallA;
         hRampB  = (uint32_t)g_aBrFontRampSmallB;
-        hPage   = g_brFontTexSmall;
+        hPage   = (*(uint32_t *)&DAT_1184c46c);
         vaBlock = (uint32_t)g_aBrFontBlockSmall;
         stride  = 0x280u;
     } else {
@@ -858,7 +858,7 @@ void BrTextEmitString(const char *psz)
         pOff    = g_aBrFontOffLarge;
         hRampA  = (uint32_t)g_aBrFontRampLargeA;
         hRampB  = (uint32_t)g_aBrFontRampLargeB;
-        hPage   = g_brFontTexLarge;
+        hPage   = (*(uint32_t *)&DAT_1184c47c);
         vaBlock = (uint32_t)g_aBrFontBlockLarge;
         stride  = 0xA00u;
     }
@@ -875,7 +875,7 @@ void BrTextEmitString(const char *psz)
      * because cdecl evaluates right to left, its `add eax,8` / `mov [cur],eax`
      * land between the pushes.  Hoisting it above the `if` lets VC5 hoist the
      * six common pushes with it and cross-jump the arms down to one. */
-    if (g_brFontAltRamp != 0) {
+    if ((*(char *)&g_4B0360) != 0) {
         BrRdpSetCombineLERP(BR_PUT_SLOT(),          /* 0x10015C87 */
                             1003, 1005, 1002, 1005,
                             0,    0,    0,    1001,
@@ -890,7 +890,7 @@ void BrTextEmitString(const char *psz)
     }
 
     put(0xB900031Du, 0x0C184240u);                  /* 0x10015CA2 */
-    put(0xBA000C02u, g_brFont6E72E8);
+    put(0xBA000C02u, g_BrEnvOthermode);
     put(0xBA000E02u, 0u);
     put(0xBA001301u, 0u);
     put(0xBA001001u, 0u);
@@ -902,15 +902,15 @@ void BrTextEmitString(const char *psz)
     /* The shading ramp: SETTILE(load tile 7) / SETTIMG / LOADBLOCK /
      * SETTILE(render tile 1) / SETTILESIZE. */
     put(0xF51001B0u, 0x07000000u);                  /* 0x10015D9A */
-    put(0xFD100000u, (g_brFontAltRamp != 0) ? hRampB : hRampA);
+    put(0xFD100000u, ((*(char *)&g_4B0360) != 0) ? hRampB : hRampA);
     put(0xF3000000u, 0x0713F000u);
     put(0xF56803B0u, 0x01098030u);
     put(0xF2002002u, 0x0101E09Eu);
 
-    if (g_brFontUserColour != 0) {                  /* 0x10015E29 */
-        put(0xFB000000u, BR_PACK(g_brFontEnvR, g_brFontEnvG, g_brFontEnvB));
-        put(0xFA00FFFFu, BR_PACK(g_brFontPrimR, g_brFontPrimG, g_brFontPrimB));
-    } else if (g_brFontAltColour != 0) {            /* 0x10015EC7 */
+    if ((*(int32_t *)&DAT_104abb4c) != 0) {                  /* 0x10015E29 */
+        put(0xFB000000u, BR_PACK((*(int32_t *)&DAT_100a6c68), (*(int32_t *)&DAT_100a6c6c), (*(int32_t *)&DAT_100a6c70)));
+        put(0xFA00FFFFu, BR_PACK((*(int32_t *)&DAT_104abb50), (*(int32_t *)&DAT_104abb54), (*(int32_t *)&DAT_104abb58)));
+    } else if ((*(char *)&g_br4B0358) != 0) {            /* 0x10015EC7 */
         put(0xFB000000u, 0xFF7F00FFu);
         put(0xFA00FFFFu, 0xFFFF7FFFu);
     } else {
@@ -1158,15 +1158,15 @@ int32_t BrFontMeasure(const char *psz, int32_t scale)
     /* The doubling is spelled on `scale` before `s` takes its value: VC5 gives
      * a self-doubling `s <<= 1` an `add R,R`, where the original has `shl R,1`.
      * `scale` is dead here either way -- both arms below overwrite it. */
-    if (DAT_106ed674 != 0)
+    if ((*(int *)((char *)&g_aBrEntRecs + 0x44)) != 0)
         scale = scale << 1;
     s = scale;
     if (s < BR_FONT_LARGE_MIN) {
         scale = BR_FONT_SMALL_CELL;
-        pOff = DAT_100a5a58;
+        pOff = (*(int (*)[])&g_aBrFontOffSmall);
     } else {
         scale = BR_FONT_LARGE_CELL;
-        pOff = DAT_100a5978;
+        pOff = (*(int (*)[])&g_aBrFontOffLarge);
     }
 
     /* THE CHARACTER IS CACHED IN A LOCAL and every test reads the local.  The
@@ -1203,7 +1203,7 @@ int32_t BrFontMeasure(const char *psz, int32_t scale)
         psz++;
     }
 
-    if (DAT_106ed674 != 0)
+    if ((*(int *)((char *)&g_aBrEntRecs + 0x44)) != 0)
         total >>= 1;
     return total;
 }
@@ -1457,7 +1457,7 @@ typedef uint32_t (*BrSub10073980Fn)(void *pSrc, int a2, int w, int h,
 
 void BrSub10073980(void)
 {
-    g_1829108 = g_18AA0B0(g_0B9CB0, 0, 0x20, 0x40, 0, 4,
+    DAT_1184c468 = (*(BrSub10073980Fn *)&(*(funcptr *)&g_pfn18AA0B0))(g_0B9CB0, 0, 0x20, 0x40, 0, 4,
                           0, 0, 0, 0, 0, 0, 1, 0);
 }
 
@@ -1481,8 +1481,8 @@ void BrSub10073980(void)
 int BrFontTexCreate(void)
 
 {
-  DAT_1184c470 = (*g_pfn18AA0B0)(&DAT_100ba2d0,0,0x40,0x40,1,4,0,0,1,1,0xf,0xf,1,0);
-  DAT_1184c478 = DAT_1184c470;
+  DAT_1184c470 = (*(*(funcptr *)&g_pfn18AA0B0))(&DAT_100ba2d0,0,0x40,0x40,1,4,0,0,1,1,0xf,0xf,1,0);
+  (*(int *)&g_BrEnvTexDefault) = DAT_1184c470;
   return;
 }
 
@@ -1492,7 +1492,7 @@ int BrFontTexCreate(void)
 int BrFontTexCreateAlt(void)
 
 {
-  DAT_1184c484 = FUN_10027fb0(&DAT_100b64b0,0x40,0x40,2);
+  DAT_1184c484 = BrTex3dCreateBlank(&DAT_100b64b0,0x40,0x40,2);
   return;
 }
 
@@ -1507,10 +1507,10 @@ void BrFontTexFreeAll(void)
 
   iVar2 = 0;
   if ((unsigned short)DAT_10ac5c2c > 0) {
-    piVar1 = &DAT_10ac53e8;
+    piVar1 = &(*(int *)&g_img);
     do {
       if (*piVar1 != 0) {
-        FUN_10001190(*piVar1);
+        BrSurfFree(*piVar1);
         *piVar1 = 0;
       }
       iVar2 = iVar2 + 1;
@@ -1518,7 +1518,7 @@ void BrFontTexFreeAll(void)
     } while (iVar2 < (int)(DAT_10ac5c2c & 0xffff));
   }
   if (DAT_10ac5d84 != 0) {
-    FUN_10001190(DAT_10ac5d84);
+    BrSurfFree(DAT_10ac5d84);
     DAT_10ac5d84 = 0;
   }
   return;
@@ -1547,7 +1547,7 @@ int BrSprFontDraw(int param_1,int param_2,unsigned int param_3,int *param_4,
                  int param_5)
 
 {
-  BrUiSprClip(DAT_10ac5d84,param_1,param_2,(*(int *)&g_img[((param_3 & 0xffff))]),param_4,param_5)
+  BrUiSprBlit(DAT_10ac5d84,param_1,param_2,(*(int *)&g_img[((param_3 & 0xffff))]),param_4,param_5)
   ;
   return;
 }
@@ -1576,13 +1576,13 @@ int BrFontSetRenderDst(int param_1)
 int BrFontTexInitAll(void)
 
 {
-  FUN_1006c750();
+  BrFontTexCreate();
   BrFontRegisterPages();
-  FUN_1006c800();
+  BrFontTexCreateAlt();
   BrSub10073980();
   BrSub100739B0();
-  FUN_1006c880();
-  FUN_1006c8b0();
+  BrFontTexCreateFlat();
+  BrFontTexCreatePair();
   return;
 }
 
@@ -1598,8 +1598,8 @@ int BrFontTexInitAll(void)
 int BrFontTexCreatePair(void)
 
 {
-  _DAT_1184c460 = (*g_pfn18AA0B0)(&DAT_104af5c8,0,0x40,0x40,1,4,0,0,1,1,0,0,1,0);
-  _DAT_1184c464 = (*g_pfn18AA0B0)(&DAT_104b05c8,0,0x40,0x40,1,4,0,0,1,1,0,0,1,0);
+  g_BrEnvTexLookup = (*(*(funcptr *)&g_pfn18AA0B0))(&g_BrEnvBitmap,0,0x40,0x40,1,4,0,0,1,1,0,0,1,0);
+  _DAT_1184c464 = (*(*(funcptr *)&g_pfn18AA0B0))(&DAT_104b05c8,0,0x40,0x40,1,4,0,0,1,1,0,0,1,0);
   return;
 }
 
@@ -1613,7 +1613,7 @@ int BrFontTexCreatePair(void)
 int BrFontTexCreateFlat(void)
 
 {
-  DAT_1184c480 = (*g_pfn18AA0B0)(&DAT_100b84a8,0,0x40,0x40,0,4,0,0,0,0,0,0,0,0);
+  (*(int *)&g_BrDrawReflectTexB) = (*(*(funcptr *)&g_pfn18AA0B0))(&DAT_100b84a8,0,0x40,0x40,0,4,0,0,0,0,0,0,0,0);
   return;
 }
 

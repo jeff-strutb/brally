@@ -37,12 +37,12 @@ void BrLightDirsFromLookAt(BrMat4 *pM, BrLightPair *pLights,
     /* Orig inlines the six pack calls (186 B). A static helper stays a
      * CALL and the body collapses to 75 B. */
     BrMat4LookAt(pM, xEye, yEye, zEye, xAt, yAt, zAt, xUp, yUp, zUp);
-    pLights->dir0[0] = BrPackNormalByte((double)pM->m[0][0]);
-    pLights->dir0[1] = BrPackNormalByte((double)pM->m[1][0]);
-    pLights->dir0[2] = BrPackNormalByte((double)pM->m[2][0]);
-    pLights->dir1[0] = BrPackNormalByte((double)pM->m[0][1]);
-    pLights->dir1[1] = BrPackNormalByte((double)pM->m[1][1]);
-    pLights->dir1[2] = BrPackNormalByte((double)pM->m[2][1]);
+    pLights->dir0[0] = FUN_1002a490((double)pM->m[0][0]);
+    pLights->dir0[1] = FUN_1002a490((double)pM->m[1][0]);
+    pLights->dir0[2] = FUN_1002a490((double)pM->m[2][0]);
+    pLights->dir1[0] = FUN_1002a490((double)pM->m[0][1]);
+    pLights->dir1[1] = FUN_1002a490((double)pM->m[1][1]);
+    pLights->dir1[2] = FUN_1002a490((double)pM->m[2][1]);
 }
 
 

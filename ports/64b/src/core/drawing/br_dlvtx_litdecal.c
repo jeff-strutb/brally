@@ -125,23 +125,23 @@ const uint8_t *BrDlVtxLitDecal(const uint8_t *p)
             else
                 m = NULL;
 
-            DAT_105ce210 = (float)DAT_105ccc78[0].col[0];
-            DAT_105ce214 = (float)DAT_105ccc78[0].col[1];
-            DAT_105ce218 = (float)DAT_105ccc78[0].col[2];
-            fy = (float)DAT_105ccc78[0].dir[1];
-            fz = (float)DAT_105ccc78[0].dir[2];
-            fx = (float)DAT_105ccc78[0].dir[0];
+            DAT_105ce210 = (float)(*(BrDlLight (*)[2])&DAT_105ccc78)[0].col[0];
+            DAT_105ce214 = (float)(*(BrDlLight (*)[2])&DAT_105ccc78)[0].col[1];
+            DAT_105ce218 = (float)(*(BrDlLight (*)[2])&DAT_105ccc78)[0].col[2];
+            fy = (float)(*(BrDlLight (*)[2])&DAT_105ccc78)[0].dir[1];
+            fz = (float)(*(BrDlLight (*)[2])&DAT_105ccc78)[0].dir[2];
+            fx = (float)(*(BrDlLight (*)[2])&DAT_105ccc78)[0].dir[0];
             /* The direction is converted once into three FLOAT locals (stored to
              * [esp+0x14/0x18/0x1c]); each row's association is read off the x87 trace. */
             DAT_105ce21c = (m[1] * fy + m[2] * fz + m[0] * fx) / DAT_10077420;
             DAT_105ce220 = (m[4] * fx + m[6] * fz + m[5] * fy) / DAT_10077420;
             DAT_105ce224 = ((m[10] * fz + m[9] * fy) + m[8] * fx) / DAT_10077420;
 
-            FUN_100344D0(&DAT_105ce21c);
+            br_dl_normalise(&DAT_105ce21c);
 
-            DAT_105ce228 = (float)DAT_105ccc78[1].col[0];
-            DAT_105ce22c = (float)DAT_105ccc78[1].col[1];
-            DAT_105ce230 = (float)DAT_105ccc78[1].col[2];
+            DAT_105ce228 = (float)(*(BrDlLight (*)[2])&DAT_105ccc78)[1].col[0];
+            DAT_105ce22c = (float)(*(BrDlLight (*)[2])&DAT_105ccc78)[1].col[1];
+            DAT_105ce230 = (float)(*(BrDlLight (*)[2])&DAT_105ccc78)[1].col[2];
         }
         DAT_105d17d0 = 1;
     }
@@ -149,7 +149,7 @@ const uint8_t *BrDlVtxLitDecal(const uint8_t *p)
     w0 = *(const uint32_t *)p;
     pSrc = *(const BrDlSrcVtxL **)(p + 4);
     v0 = (w0 >> 16) & 0xFF;
-    pV = &DAT_105ce318[v0];
+    pV = &g_aBrDlVtxPool[v0];
     pVc = pV;
     n  = (w0 >> 10) & 0x3F;
 
@@ -176,18 +176,18 @@ const uint8_t *BrDlVtxLitDecal(const uint8_t *p)
                 pV[i].n2 = DAT_105ce230;
             }
         } else {
-            pV[i].n0 = DAT_105d17a4;
-            pV[i].n1 = DAT_105d17b4;
-            pV[i].n2 = DAT_105ce2d0;
+            pV[i].n0 = BrGbiRectG_5D17A4;
+            pV[i].n1 = BrGbiRectG_5D17B4;
+            pV[i].n2 = BrGbiRectG_5CE2D0;
         }
         pV[i].n0 = DAT_105ccd44 * pV[i].n0;
         pV[i].n1 = DAT_105cd9f4 * pV[i].n1;
         pV[i].n2 = DAT_105cccf8 * pV[i].n2;
 
-        oc = FUN_10022120(&pV[i].f40);
+        oc = BrDlsClipCodes(&pV[i].f40);
         pV[i].outcode = oc;
         if (oc == 0)
-            FUN_10022070(pVc, &pV[i].f40, pV[i].n0, pV[i].n1, pV[i].n2);
+            br_dl_project(pVc, &pV[i].f40, pV[i].n0, pV[i].n1, pV[i].n2);
         pSrc++;
         pVc++;
     }

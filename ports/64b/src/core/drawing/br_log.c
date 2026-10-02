@@ -107,16 +107,16 @@ void BrLogPrint(const void *p)
     int aDl[0x2000];
 
     BrClearFlag_AB504();
-    DAT_106e7710 = aDl;
+    (*(int * *)&g_BrGfxPtr) = aDl;
     BrTextFlag358Clear();
     BrSet_10019270();
     BrSetGlobal_ABB30(0x14);
 
-    BrTextDraw((const char *)p, DAT_100a7514 / 2, 0xDC);
+    BrTextDraw((const char *)p, BrGbiRectG_A7514 / 2, 0xDC);
 
     {
-        int *p_ = DAT_106e7710;
-        DAT_106e7710 = DAT_106e7710 + 2;
+        int *p_ = (*(int * *)&g_BrGfxPtr);
+        (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2;
         p_[0] = (int)0xB8000000;          /* G_ENDDL */
         p_[1] = 0;
     }
@@ -124,7 +124,7 @@ void BrLogPrint(const void *p)
 
     for (;;) {
         if (GetAsyncKeyState(0x1B) != 0)
-            BrSub100325B0(1);
+            BrExt_10038F30(1);
         Sleep(1);
     }
 }
@@ -151,7 +151,7 @@ void FUN_1006ff50(char *param_1)
 {
   if (strstr(DAT_118ee590, param_1) == 0) {
     strcat(DAT_118ee590, param_1);
-    strcat(DAT_118ee590, DAT_100acad8);
+    strcat(DAT_118ee590, g_strA);
   }
 }
 

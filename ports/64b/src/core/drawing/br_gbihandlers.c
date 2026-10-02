@@ -343,33 +343,33 @@ BrGfxWords *BrGbiMatrix(BrGfxWords *pCmd)
             if (top == 10)
                 top = 0;
             DAT_100a9a50 = ++top;
-            dst = &DAT_105ccd50[top - 1];
+            dst = &(*(BrMat4 (*)[])&DAT_105ccd50)[top - 1];
             memcpy(dst, pIn, 64);
             DAT_105d17d0 = 0;
         } else {
-            dst = &DAT_105ccd50[DAT_100a9a50 - 1];
+            dst = &(*(BrMat4 (*)[])&DAT_105ccd50)[DAT_100a9a50 - 1];
             memcpy(dst, pIn, 64);
             DAT_105d17d0 = 0;
         }
     } else {
-        cur = DAT_100a9a50 != 0 ? &DAT_105ccd50[DAT_100a9a50 - 1] : NULL;
+        cur = DAT_100a9a50 != 0 ? &(*(BrMat4 (*)[])&DAT_105ccd50)[DAT_100a9a50 - 1] : NULL;
         BrMat4Mul(pIn, cur, &tmp);
         if ((pCmd->w0 & 0x40000u) != 0) {
             top = DAT_100a9a50;
             if (top == 10)
                 top = 0;
             DAT_100a9a50 = ++top;
-            dst = &DAT_105ccd50[top - 1];
+            dst = &(*(BrMat4 (*)[])&DAT_105ccd50)[top - 1];
             memcpy(dst, &tmp, 64);
             DAT_105d17d0 = 0;
         } else {
-            dst = &DAT_105ccd50[DAT_100a9a50 - 1];
+            dst = &(*(BrMat4 (*)[])&DAT_105ccd50)[DAT_100a9a50 - 1];
             memcpy(dst, &tmp, 64);
             DAT_105d17d0 = 0;
         }
     }
-    cur = DAT_100a9a50 != 0 ? &DAT_105ccd50[DAT_100a9a50 - 1] : NULL;
-    BrMat4Mul(cur, &DAT_105ccd00, &DAT_105d1760);
+    cur = DAT_100a9a50 != 0 ? &(*(BrMat4 (*)[])&DAT_105ccd50)[DAT_100a9a50 - 1] : NULL;
+    BrMat4Mul(cur, &DAT_105ccd00, &(*(BrMat4 *)&DAT_105d1760));
     return pCmd + 1;
 }
 
@@ -565,7 +565,7 @@ BrGfxWords *BrGbiMoveMem(BrGfxWords *pCmd)
 /* @implements 0x10023900 glide BrGbiMoveMemMatrix */
 BrGfxWords *BrGbiMoveMemMatrix(BrGfxWords *pCmd)
 {
-    memcpy(&DAT_105d1760, (const void *)pCmd->w1, 64);
+    memcpy(&(*(BrMat4 *)&DAT_105d1760), (const void *)pCmd->w1, 64);
     return pCmd + 1;
 }
 
@@ -583,8 +583,8 @@ const void *BrGbiTexScanData(BrGbiTexScan *pSt, uint32_t addr)
 /* 0x10029E80  G_TEXTURE */
 void BrGbiTexScanTexture(const BrGfxWords *pCmd)
 {
-    g_brTexScan5553E8 = (int32_t)((pCmd->w0 >> 8)  & 7u);
-    g_brTexScan5553E0 = (int32_t)((pCmd->w0 >> 11) & 7u);
+    g_brTex5553E8 = (int32_t)((pCmd->w0 >> 8)  & 7u);
+    g_brTex5553E0 = (int32_t)((pCmd->w0 >> 11) & 7u);
 }
 
 /* 0x10029EB0  G_SETTIMG */
@@ -914,29 +914,29 @@ void BrFadeDrawSprite(const uint32_t *pRecs, float alpha)
     if (alpha > 0.7f)
         alpha = 0.7f;
 
-    p = DAT_106e7710++;
+    p = (*(BrGfxWords * *)&g_BrGfxPtr)++;
     p->w0 = 0xE7000000u;
     p->w1 = 0;
 
-    p = DAT_106e7710++;
+    p = (*(BrGfxWords * *)&g_BrGfxPtr)++;
     p->w0 = 0xBA001402u;
     p->w1 = 0;
 
-    p = DAT_106e7710++;
+    p = (*(BrGfxWords * *)&g_BrGfxPtr)++;
     p->w0 = 0xB900031Du;
     p->w1 = 0x00504340u;
 
-    BrRdpSetCombineLERP(DAT_106e7710++,
+    BrRdpSetCombineLERP((*(BrGfxWords * *)&g_BrGfxPtr)++,
                         0, 0, 0, 0x3EB,
                         0, 0, 0, 0x3EB,
                         0, 0, 0, 0x3EB,
                         0, 0, 0, 0x3EB);
 
-    p = DAT_106e7710++;
+    p = (*(BrGfxWords * *)&g_BrGfxPtr)++;
     p->w0 = 0xFA000000u;
     p->w1 = (uint32_t)(int)(alpha * 255.0f) | 0xFFFFFF00u;
 
-    p = DAT_106e7710++;
+    p = (*(BrGfxWords * *)&g_BrGfxPtr)++;
     p->w0 = 0xBA000602u;
     p->w1 = 0xC0u;
 
@@ -952,8 +952,8 @@ void BrFadeDrawSprite(const uint32_t *pRecs, float alpha)
         uint32_t s, d, b, a;
 
         recs = pRecs;
-        p = DAT_106e7710++;
-        idx = DAT_106ec798;
+        p = (*(BrGfxWords * *)&g_BrGfxPtr)++;
+        idx = (*(int *)&g_BrEnvSection);
         pr = (const BrFadeRect *)recs + idx;
         /* RESIDUE, T3a, 2 bytes, DO NOT RE-PROBE. /O2 canonicalizes y1+y0 to
          * load y0 first; orig loads +0xC then +4, so its accumulator is y1 and
@@ -975,22 +975,22 @@ void BrFadeDrawSprite(const uint32_t *pRecs, float alpha)
         b += a;
         p->w0 = 0xE1000000u | ((b << 12) & 0xFFF000u) | (s & 0xFFFu);
 
-        idx = DAT_106ec798;
+        idx = (*(int *)&g_BrEnvSection);
         pr = (const BrFadeRect *)recs + idx;
         p->w1 = ((pr->x0 & 0xFFFu) << 12) | (pr->y0 & 0xFFFu);
     }
 
-    BrRdpSetCombineLERP(DAT_106e7710++,
+    BrRdpSetCombineLERP((*(BrGfxWords * *)&g_BrGfxPtr)++,
                         0, 0, 0, 0x3EB,
                         0, 0, 0, 0x3EB,
                         0, 0, 0, 0x3E8,
                         0, 0, 0, 0x3E8);
 
-    p = DAT_106e7710++;
+    p = (*(BrGfxWords * *)&g_BrGfxPtr)++;
     p->w0 = 0xE7000000u;
     p->w1 = 0;
 
-    p = DAT_106e7710++;
+    p = (*(BrGfxWords * *)&g_BrGfxPtr)++;
     p->w0 = 0xBA000602u;
-    p->w1 = (uint32_t)DAT_106e7718;
+    p->w1 = (uint32_t)(*(int *)&BrG_6C0688);
 }

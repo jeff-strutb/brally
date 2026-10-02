@@ -746,18 +746,18 @@ int BrCrRespWalk(BrCarBody *pBody, const BrMat4 *pMatBox)
         cnt++;
         planeD = nrm.x * aV[0] + nrm.y * aV[1] + nrm.z * aV[2];
         g_brCrPlane.modeFC = 0;
-        if (g_br0AA010 == 4) {
+        if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4) {
             if (((nrm.x < BrCrK_Zero) ? -nrm.x : nrm.x) <= BrCrK_Flat
                 && ((nrm.y < BrCrK_Zero) ? -nrm.y : nrm.y) <= BrCrK_Flat
                 && ((nrm.z < BrCrK_Zero) ? -nrm.z : nrm.z) <= BrCrK_Flat) {
                 if (((planeD < BrCrK_Zero) ? -planeD : planeD) < BrCrK_Half) {
-                    BrExt_10008D60();
+                    BrPodNop();
                     spin = 0;
                     g_brCrPlane.modeFC = 2;
                 }
             } else {
                 g_brCrPlane.modeFC = 1;
-                BrExt_10008D60();
+                BrPodNop();
                 spin = 1;
                 /* The cold arm sets the flag ITSELF and jumps PAST the join's
                  * assignment of it -- the original's `mov edi,1` inside the
@@ -776,7 +776,7 @@ int BrCrRespWalk(BrCarBody *pBody, const BrMat4 *pMatBox)
         }
         flag = 1;
 LAB_join:
-        BrExt_10008D60();
+        BrPodNop();
 
         /* All three products are NAMED and computed up front: the original
          * reloads planeD from its slot three times in a row and homes each
@@ -813,7 +813,7 @@ LAB_join:
         if (((pBody->rb.m.m[2][2])) > BrCrK_Half)
             flag = 0;
         if (flag)
-            BrExt_10008D60();
+            BrPodNop();
 
         if (g_brCrPlane.modeFC != 1)
             r = BR_CR_IMPULSE(pBody, &g_brCrPlane.normal, g_pBrCrCurPlane, flag, 0.0f);

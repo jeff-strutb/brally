@@ -93,23 +93,23 @@ const uint8_t *BrDlVtxGenLin(const uint8_t *p)
             else
                 m = NULL;
 
-            DAT_105ce210 = (float)(int)(DAT_105ccc78 & 0xff);
-            DAT_105ce214 = (float)(int)((DAT_105ccc78 >> 8) & 0xff);
-            DAT_105ce218 = (float)(int)(unsigned)DAT_105ccc7a;
+            DAT_105ce210 = (float)(int)((*(uint32_t *)&DAT_105ccc78) & 0xff);
+            DAT_105ce214 = (float)(int)(((*(uint32_t *)&DAT_105ccc78) >> 8) & 0xff);
+            DAT_105ce218 = (float)(int)(unsigned)(*(uint8_t *)&(*(uint32_t *)&DAT_105ccc78)[2]);
 
-            dx = (float)(int)DAT_105ccc80;
-            dy = (float)(int)DAT_105ccc81;
-            dz = (float)(int)DAT_105ccc82;
+            dx = (float)(int)(*(int8_t *)&(*(uint32_t *)&DAT_105ccc78)[8]);
+            dy = (float)(int)(*(int8_t *)&(*(uint32_t *)&DAT_105ccc78)[9]);
+            dz = (float)(int)(*(int8_t *)&(*(uint32_t *)&DAT_105ccc78)[10]);
 
             DAT_105ce21c = ((m[1] * dy + m[0] * dx) + m[2] * dz) / DAT_10077420;
             DAT_105ce220 = ((m[5] * dy + m[4] * dx) + m[6] * dz) / DAT_10077420;
             DAT_105ce224 = ((m[9] * dy + m[8] * dx) + m[10] * dz) / DAT_10077420;
 
-            FUN_100344D0(&DAT_105ce21c);
+            br_dl_normalise(&DAT_105ce21c);
 
-            DAT_105ce228 = (float)(int)(DAT_105ccc88 & 0xff);
-            DAT_105ce22c = (float)(int)((DAT_105ccc88 >> 8) & 0xff);
-            DAT_105ce230 = (float)(int)(unsigned)DAT_105ccc8a;
+            DAT_105ce228 = (float)(int)((*(uint32_t *)&(*(uint32_t *)&DAT_105ccc78)[16]) & 0xff);
+            DAT_105ce22c = (float)(int)(((*(uint32_t *)&(*(uint32_t *)&DAT_105ccc78)[16]) >> 8) & 0xff);
+            DAT_105ce230 = (float)(int)(unsigned)(*(uint8_t *)&(*(uint32_t *)&DAT_105ccc78)[18]);
         }
         DAT_105d17d0 = 1;
     }
@@ -119,7 +119,7 @@ const uint8_t *BrDlVtxGenLin(const uint8_t *p)
         const BrDlSrcVtxG *pSrc = *(const BrDlSrcVtxG **)(p + 4);
         int v0 = (w0 >> 16) & 0xFF;
         int n  = (w0 >> 10) & 0x3F;
-        BrDlVtx *pV = &DAT_105ce318[v0];
+        BrDlVtx *pV = &g_aBrDlVtxPool[v0];
 
         if (n > 0) {
             int i;
@@ -149,7 +149,7 @@ const uint8_t *BrDlVtxGenLin(const uint8_t *p)
                 td.y = (m[1] * pSrc->n0 + m[9] * pSrc->n2) + m[5] * pSrc->n1;
                 td.z = (m[2] * pSrc->n0 + m[10] * pSrc->n2) + m[6] * pSrc->n1;
 
-                FUN_100344D0(&td);
+                br_dl_normalise(&td);
 
                 look1 = DAT_105ce2d8 + 8;
                 look2 = DAT_105ce2dc + 8;
@@ -167,10 +167,10 @@ const uint8_t *BrDlVtxGenLin(const uint8_t *p)
                 dotX_128 = dotX / DAT_10077420;
                 dotY_128 = dotY / DAT_10077420;
 
-                asin_val = (float)FUN_10074600((double)dotX_128);
+                asin_val = (float)asin((double)dotX_128);
 
                 texDimA = (float)DAT_1186c958;
-                texOffB = (float)DAT_118ed198;
+                texOffB = (float)BrGbiRectG_18ED198;
                 pV->s = (dotY_128 * texDimA - DAT_10077424 - texOffB * DAT_1007742c) / DAT_118ed1a4;
 
                 /* The latitude is its own FLOAT: the original rounds
@@ -185,16 +185,16 @@ const uint8_t *BrDlVtxGenLin(const uint8_t *p)
                 lat = asin_val / DAT_10077428;
                 latBits = *(int32_t *)&lat;
                 texDimC = (float)DAT_118ed1ac;
-                texOffD = (float)DAT_1186c950;
+                texOffD = (float)BrGbiRectG_186C950;
                 pV->t = (*(float *)&latBits * texDimC - DAT_10077424 - texOffD * DAT_1007742c) / DAT_118ed1a8;
 
-                FUN_10022AC0(pSrc, &pV->f40);
+                br_dl_light_vertex(pSrc, &pV->f40);
 
-                oc = FUN_10022120(&pV->f40);
+                oc = BrDlsClipCodes(&pV->f40);
                 pV->outcode = oc;
 
                 if (oc == 0) {
-                    FUN_10022070(pV, &pV->f40, pV->n0, pV->n1, pV->n2);
+                    br_dl_project(pV, &pV->f40, pV->n0, pV->n1, pV->n2);
                 }
 
                 pSrc++;

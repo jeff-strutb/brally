@@ -153,13 +153,13 @@ void BrExt_1005FBC0(int32_t a)
 {
     int32_t v;
 
-    g_brAA28B8 = (int8_t)DAT_10ac5a4c;
-    g_brAA28A0 = g_aBrAA26F0[0];
-    g_brAA28A4 = (int32_t)DAT_10ac5a4d;     /* movzx: byte 1, zero-extended */
-    g_br094354 = g_brAA27EC;
-    g_br09435C = g_brAA27F0;
-    g_br094358 = g_brAA27F4;
-    g_brB4E1D0 = g_brAA27F8;
+    (*(int8_t *)&DAT_10ac5c10) = (int8_t)(g_aBrAA26F4[0]);
+    (*(int32_t *)&g_brPhase5BF8) = (*(int32_t (*)[83])&(DAT_10ac5a48[0]))[0];
+    (*(int32_t *)&g_brIdx5BFC) = (int32_t)(g_aBrAA26F4[1]);     /* movzx: byte 1, zero-extended */
+    (*(int32_t *)&g_7b324) = (*(int32_t *)&DAT_10ac5b44);
+    (*(int32_t *)&g_7b32c) = (*(int32_t *)&DAT_10ac5b48);
+    (*(int32_t *)&g_7b328) = (*(int32_t *)&DAT_10ac5b4c);
+    (*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ = (*(int32_t *)&DAT_10ac5b50);
 
     /* `dec/je` three times: 1, 2, 3 select records 1, 2, 3 and EVERYTHING
      * else -- including 0 -- selects record 0. A SWITCH, not an if-else-if
@@ -189,19 +189,19 @@ void BrExt_1005FBC0(int32_t a)
      * last, the byte store second, the block-base store fifth) -- every one
      * 288 B at register-blind 1+1; VC5 reschedules the seven stores to the
      * same 1,6,4,5,2,3,7 order whatever the source order. */
-    v = g_brAA27F8;
+    v = (*(int32_t *)&DAT_10ac5b50);
     switch (v) {
     case 1:
-        g_brB4E1D4 = &g_aBrB4DF30[1];
+        (*(void * *)&g_BrPadModeBytes) = &(*(unsigned char (*)[4][168])&g_BrCtrlCfg)[1];
         break;
     case 2:
-        g_brB4E1D4 = &g_aBrB4DF30[2];
+        (*(void * *)&g_BrPadModeBytes) = &(*(unsigned char (*)[4][168])&g_BrCtrlCfg)[2];
         break;
     case 3:
-        g_brB4E1D4 = &g_aBrB4DF30[3];
+        (*(void * *)&g_BrPadModeBytes) = &(*(unsigned char (*)[4][168])&g_BrCtrlCfg)[3];
         break;
     default:
-        g_brB4E1D4 = &g_aBrB4DF30[0];
+        (*(void * *)&g_BrPadModeBytes) = &(*(unsigned char (*)[4][168])&g_BrCtrlCfg)[0];
         break;
     }
 
@@ -211,10 +211,10 @@ void BrExt_1005FBC0(int32_t a)
      * pointer in esi and issues `call esi` twice. And the format is the
      * literal, not the `g_pszBr0A73C4` pointer variable: the original pushes
      * the string's address as an immediate, which a pointer read cannot be. */
-    sprintf(g_aBrAA2518, "%d", g_brAA28A0 + 1);
-    sprintf(g_aBrA9D618, "%d", g_brAA28A4 + 1);
+    sprintf(g_aBrAA2518, "%d", (*(int32_t *)&g_brPhase5BF8) + 1);
+    sprintf(DAT_10ac46a0, "%d", (*(int32_t *)&g_brIdx5BFC) + 1);
 
-    g_brAA28AC = g_brAA28A4;
+    (*(int32_t *)&g_brIdx5C04) = (*(int32_t *)&g_brIdx5BFC);
 
     if (a != 0) {
         /* movsx: the index byte is SIGNED, so a byte >= 0x80 indexes
@@ -224,8 +224,8 @@ void BrExt_1005FBC0(int32_t a)
          * which it can only do if the base is part of the address
          * expression.  An int `base` added to the array afterwards costs a
          * second lea. */
-        const unsigned char *pHw = (const unsigned char *)g_aBrAA26F0
-                                 + (int32_t)g_brAA28B8 * BR63_AA270E_STRIDE
+        const unsigned char *pHw = (const unsigned char *)(*(int32_t (*)[83])&(DAT_10ac5a48[0]))
+                                 + (int32_t)(*(int8_t *)&DAT_10ac5c10) * BR63_AA270E_STRIDE
                                  + BR63_AA270E_OFF;
         uint32_t sum  = 0;
         int      i;
@@ -238,7 +238,7 @@ void BrExt_1005FBC0(int32_t a)
             memcpy(&hw, pHw + i * (int)sizeof hw, sizeof hw);
             sum += hw;
         }
-        g_brAA28C4 = (int32_t)sum;
+        DAT_10ac5c1c = (int32_t)sum;
     }
 
     /* GOTCHA: 0x10AA2A10 takes the LOW half of the 0x10AA27E0 dword and
@@ -246,8 +246,8 @@ void BrExt_1005FBC0(int32_t a)
      * half is read as its OWN 16-bit global (`mov dx, word ptr [0x10ac5b3a]`,
      * i.e. the dword's address + 2), not as a shift of the dword -- a `>> 16`
      * costs a shr and a register copy and misses the `xor`. */
-    g_brAA2A10 |= (int32_t)(g_brAA27E0 & 0xFFFFu);
-    g_brAA2A14 |= (int32_t)DAT_10ac5b3a;
+    (*(int32_t *)&DAT_10ac5d68) |= (int32_t)((*(uint32_t *)&DAT_10ac5b38) & 0xFFFFu);
+    (*(int32_t *)&DAT_10ac5d6c) |= (int32_t)(*(uint16_t *)((char *)&DAT_10ac5b38 + 0x2));
 }
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */            /* the menu's picks (g_br094354..5C)   */
@@ -284,17 +284,17 @@ void BrExt_1005FBC0(int32_t a)
 /* @implements 0x10058A30 glide BrRaceSettingsCommit */
 void BrRaceSettingsCommit(void)
 {
-  DAT_10ac5a48 = DAT_10ac5bf8;
-  DAT_10ac5a4c = (unsigned char)DAT_10ac5c10;
-  DAT_10ac5a4d = (unsigned char)DAT_10ac5bfc;
-  DAT_10ac5b44 = DAT_1007b324;
-  DAT_10ac5b48 = DAT_1007b32c;
-  DAT_10ac5b4c = DAT_1007b328;
-  DAT_10ac5b50 = DAT_10b71530;
-  if (DAT_100a9360 == 0) {
-    DAT_100b3014 = DAT_100b3028[DAT_10ac5a4c][DAT_10ac5a4d][0];
-    DAT_10226e80 = DAT_100b3028[DAT_10ac5a4c][DAT_10ac5a4d][1];
+  (DAT_10ac5a48[0]) = g_brPhase5BF8;
+  (g_aBrAA26F4[0]) = (unsigned char)DAT_10ac5c10;
+  (g_aBrAA26F4[1]) = (unsigned char)g_brIdx5BFC;
+  DAT_10ac5b44 = g_7b324;
+  DAT_10ac5b48 = g_7b32c;
+  DAT_10ac5b4c = g_7b328;
+  DAT_10ac5b50 = (*(int *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */;
+  if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0) {
+    (*(int *)&g_Br0B380C) = (*(unsigned char (*)[][12][2])&g_aBr0B3820)[(g_aBrAA26F4[0])][(g_aBrAA26F4[1])][0];
+    g_226e80 = (*(unsigned char (*)[][12][2])&g_aBr0B3820)[(g_aBrAA26F4[0])][(g_aBrAA26F4[1])][1];
   }
   DAT_10ac5d68 |= DAT_10ac5b38 & 0xffff;
-  DAT_10ac5d6c |= DAT_10ac5b3a;
+  DAT_10ac5d6c |= (*(uint16_t *)((char *)&DAT_10ac5b38 + 0x2));
 }

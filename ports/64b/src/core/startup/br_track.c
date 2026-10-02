@@ -314,20 +314,20 @@ void BrTrackSurfaceSet(int param_1)
   case 9:
   case 10:
   case 0xc:
-    DAT_11778808 = (int)&DAT_100b4c30;
-    DAT_11778820 = (int)&DAT_100b4e70;
-    DAT_11773690 = (int)&DAT_100b4f30;
-    DAT_100b5170 = 0x3f800000;
+    (*(int *)((char *)&g_brCrPlane + 0x18)) = (int)&(g_aBrCarPhysDrvT1A[0]);
+    DAT_11778820 = (int)&(g_aBrCarPhysDrvT2A[0]);
+    g_pBrCarPhysGrip = (int)&(g_aBrCarPhysGripA[0]);
+    (*(int *)&DAT_100b5170) = 0x3f800000;
     return;
   case 5:
   case 0xb:
   case 0xd:
   case 0xe:
   default:
-    DAT_11778808 = (int)&DAT_100b4d50;
-    DAT_11778820 = (int)&DAT_100b4ed0;
-    DAT_11773690 = (int)&DAT_100b5050;
-    DAT_100b5170 = 0x3f666666;
+    (*(int *)((char *)&g_brCrPlane + 0x18)) = (int)&(g_aBrCarPhysDrvT1B[0]);
+    DAT_11778820 = (int)&(g_aBrCarPhysDrvT2B[0]);
+    g_pBrCarPhysGrip = (int)&(g_aBrCarPhysGripB[0]);
+    (*(int *)&DAT_100b5170) = 0x3f666666;
     return;
   }
 }
@@ -391,7 +391,7 @@ void BrTexCopyRecords(void *pvTable, int cRecords)
         if (cb == 0)
             goto next;
 
-        memcpy(pDst, g_brLoadTexBase + *(uint32_t *)(void *)(pDesc + 0x0C),
+        memcpy(pDst, g_brRcaBlob + *(uint32_t *)(void *)(pDesc + 0x0C),
                cb);
 
         pDst = *(uint8_t **)(void *)(pWalk - 4);
@@ -411,7 +411,7 @@ void BrTexCopyRecords(void *pvTable, int cRecords)
             uSel   &= 0x0F000000u;
             cbPal   = (uSel == 0x01000000u) ? 0x20u : 0x200u;
             memcpy(pDst,
-                   g_brLoadTexBase + *(uint32_t *)(void *)(pDesc + 0x10),
+                   g_brRcaBlob + *(uint32_t *)(void *)(pDesc + 0x10),
                    cbPal);
         }
     next:
@@ -424,9 +424,9 @@ void BrTexCopyRecords(void *pvTable, int cRecords)
 /* @implements 0x10039000 d3d BrInit220B20 */
 void BrInit220B20(void)
 {
-    memset(g_a220B20, 0, sizeof(uint32_t) * 0x46);
-    g_a220B20[0] = 8;
-    BrSub10035BD1();
+    memset((*(uint32_t (*)[70])&g_a220B20), 0, sizeof(uint32_t) * 0x46);
+    (*(uint32_t (*)[70])&g_a220B20)[0] = 8;
+    BrSessionReinitVideo();
 }
 
 
@@ -558,10 +558,10 @@ void BrGlTrackFixupAll(int *param_1)
   if (DAT_104b15e8 == 3) {
     BrTexCopyRecords(*(void **)(param_1 + 0x1c),*(int *)(param_1 + 0x18));
   }
-  (*DAT_118ed1dc)(*(int *)(param_1 + 0x50));
+  (*(*(int (**)())&g_pfn18AA0C4))(*(int *)(param_1 + 0x50));
   BrTrackFixupAllRec54(param_1);
   BrFontSetRenderDst(1);
-  (*DAT_118ed1e4)(*(int *)(param_1 + 0x1c),*(int *)(param_1 + 0x18));
+  (*(*(int (**)())&DAT_118ed1e4))(*(int *)(param_1 + 0x1c),*(int *)(param_1 + 0x18));
   BrSwapU16Array(*(int *)(param_1 + 0x6c),0x1001);
   BrSwapU16Array(*(int *)(param_1 + 0x68),
                  *(unsigned short *)(*(int *)(param_1 + 0x6c) + 0x2000));
@@ -657,58 +657,58 @@ void BrTrackLoad(int param_1)
   struct { float x; float y; float z; } local_40c;
   char local_400 [1024];
 
-  FUN_10031140(param_1);
-  DAT_10ac080c = 0x80025c00 - (int)DAT_106eff08;
-  FUN_10018a10(0x80025c00, (unsigned int)DAT_106eff08);
-  FUN_10018a40(1);
+  BrTrackLoadHandling(param_1);
+  (*(int *)&g_brKeyBias) = 0x80025c00 - (int)DAT_106eff08;
+  BrSegSetBases(0x80025c00, (unsigned int)DAT_106eff08);
+  BrSegSetFlag(1);
   strcpy(local_400, s_tracks__100b74c0);
   strcat(local_400, (&PTR_s_desert_trk_100b78c0)[param_1]);
-  uVar3 = FUN_10003320(local_400);
-  iVar6 = FUN_100032d0(uVar3);
-  FUN_10031b80(&DAT_106eecd8, uVar3);
+  uVar3 = BrChkFReadOpen(local_400);
+  iVar6 = BrChkFileSize(uVar3);
+  BrGlTrackHdrRead(&DAT_106eecd8, uVar3);
   if (4000000 < iVar6) {
     printf(DAT_100aa3a4, param_1, iVar6, 4000000);
     exit(1);
   }
-  FUN_100034c0(&DAT_106f0138, 1, iVar6 + -0x230, uVar3);
-  FUN_100035e0(uVar3);
-  FUN_10032190(&DAT_106eecd8);
-  FUN_10030f50(&DAT_118ed1f0, (&PTR_s_cargfx_skytexdesert_lut4_100bb30c)[param_1 * 0x5f], 0x20);
-  FUN_10030f50(&DAT_118eda10, (&PTR_s_cargfx_skytexdesert_lut4_100bb30c)[param_1 * 0x5f] + 0x20,
+  BrChkFRead(&DAT_106f0138, 1, iVar6 + -0x230, uVar3);
+  BrChkFClose(uVar3);
+  BrGlTrackFixupCmds(&DAT_106eecd8);
+  BrFileReadInto(&DAT_118ed1f0, (&PTR_s_cargfx_skytexdesert_lut4_100bb30c)[param_1 * 0x5f], 0x20);
+  BrFileReadInto(&DAT_118eda10, (&PTR_s_cargfx_skytexdesert_lut4_100bb30c)[param_1 * 0x5f] + 0x20,
                -1);
-  FUN_10030f50(&DAT_118ee210, (&PTR_s_cargfx_skytexdesertn_lut4_100bb314)[param_1 * 0x5f], 0x20);
-  FUN_10030f50(&DAT_118ed210, (&PTR_s_cargfx_skytexdesertn_lut4_100bb314)[param_1 * 0x5f] + 0x20,
+  BrFileReadInto(&DAT_118ee210, (&PTR_s_cargfx_skytexdesertn_lut4_100bb314)[param_1 * 0x5f], 0x20);
+  BrFileReadInto(&DAT_118ed210, (&PTR_s_cargfx_skytexdesertn_lut4_100bb314)[param_1 * 0x5f] + 0x20,
                -1);
-  FUN_1006c910();
-  FUN_1006c950();
+  BrSub10073AC0();
+  BrSub10073B00();
   _DAT_106ec77c = (int)DAT_106eff08 - DAT_106eecdc;
-  DAT_106b7c7c = DAT_106eff08 + DAT_106eecd8;
-  FUN_100314d0(&DAT_106eecd8);
+  (*(unsigned char * *)&g_brRcaBlob) = DAT_106eff08 + DAT_106eecd8;
+  BrGlTrackFixupAll(&DAT_106eecd8);
   _DAT_100aa02c = -1;
   DAT_100aa030 = -1;
-  for (iVar6 = 0; iVar6 < DAT_106eed3c; iVar6++) {
+  for (iVar6 = 0; iVar6 < g_BrSpanCount; iVar6++) {
       local_40c.x = 1.0f;
       local_40c.y = 0.0f;
       local_40c.z = 0.0f;
-      FUN_10034a70((int *)&local_40c, (int *)&local_40c, (int)&((BrTrkInst *)DAT_106eed38)[iVar6]);
-      fVar11 = FUN_100347f0((int *)&local_40c);
+      BrMtxXfmDir3((int *)&local_40c, (int *)&local_40c, (int)&((BrTrkInst *)g_BrDrawTrackFlags)[iVar6]);
+      fVar11 = BrVec3Length((int *)&local_40c);
       if (fVar11 != _DAT_10077528) {
         fVar11 = _DAT_10077524 / fVar11;
-        if (fVar11 * ((BrTrkInst *)DAT_106eed38)[iVar6].m[0] == _DAT_10077524 && ((BrTrkInst *)DAT_106eed38)[iVar6].m[5] * fVar11 == _DAT_10077524 && ((BrTrkInst *)DAT_106eed38)[iVar6].m[10] * fVar11 == _DAT_10077524)
-          ((BrTrkInst *)DAT_106eed38)[iVar6].f20 = 1;
-        ((BrTrkInst *)DAT_106eed38)[iVar6].fInvScale = fVar11;
+        if (fVar11 * ((BrTrkInst *)g_BrDrawTrackFlags)[iVar6].m[0] == _DAT_10077524 && ((BrTrkInst *)g_BrDrawTrackFlags)[iVar6].m[5] * fVar11 == _DAT_10077524 && ((BrTrkInst *)g_BrDrawTrackFlags)[iVar6].m[10] * fVar11 == _DAT_10077524)
+          ((BrTrkInst *)g_BrDrawTrackFlags)[iVar6].f20 = 1;
+        ((BrTrkInst *)g_BrDrawTrackFlags)[iVar6].fInvScale = fVar11;
       }
   }
-  if (0x800 < DAT_106eed3c) {
-    printf(DAT_100aa378, DAT_106eed3c, 0x800);
+  if (0x800 < g_BrSpanCount) {
+    printf(DAT_100aa378, g_BrSpanCount, 0x800);
     exit(1);
   }
   if (DAT_106eecdc != 0x230) {
     printf(DAT_100aa348, DAT_106eecdc, 0x230);
     exit(1);
   }
-  FUN_1005a780();
-  FUN_10069530(param_1);
+  BrNodeRunMarkPass();
+  BrTrackSurfaceSet(param_1);
 }
 
 /* FUN_10031030: prototype in br_funcs.h */
@@ -726,7 +726,7 @@ void BrTrackLoadHandling(int iTrack)
 {
   char szPath[1024];
 
-  sprintf(szPath, DAT_100aa340, s_tracks__100b74c0,
+  sprintf(szPath, g_szBrFmtSS, s_tracks__100b74c0,
           (&PTR_s_desert_trk_100b78c0)[iTrack]);
   strcpy(strrchr(szPath, '.'), DAT_100aa338);
   FUN_10031030(szPath);

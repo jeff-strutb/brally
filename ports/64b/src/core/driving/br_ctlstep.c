@@ -45,7 +45,7 @@
 /* @implements 0x1005D050 glide BrCtlHuman */
 void BrCtlHuman(BrCar *pCar)
 {
-    BrCtlHumanBody(pCar);
+    FUN_1005c8b0(pCar);
 }
 
 /* WHAT IT DOES: drive one car from the computer opponent's logic for this

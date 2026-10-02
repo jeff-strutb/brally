@@ -74,30 +74,30 @@ int FUN_100583c0(void)
   BrVt0 pfn;
 
   if (DAT_10ac5d84 == 0) {
-    DAT_10ac5d84 = BrSurfNew(DAT_100a7514, DAT_100a7518);
+    DAT_10ac5d84 = BrSurfNew(BrGbiRectG_A7514, BrGbiRectG_A7518);
     if (DAT_10ac5d84 == 0) {
       BrFontFreeAndExit();
       return;
     }
   }
   if (DAT_10ac5dc4 != 0) {
-    DAT_10ac53e8 = BrBmpLoadSurface(s_images_loading_bmp_100ad71c, 0, 0);
-    if (DAT_10ac53ec != 0 && DAT_10ac53e8 == 0) {
+    (*(int *)&g_img) = BrBmpLoadSurface(s_images_loading_bmp_100ad71c, 0, 0);
+    if ((*(int *)((char *)&g_img + 0x4)) /* BR_LP64_BYTE_VIEW */ != 0 && (*(int *)&g_img) == 0) {
       sprintf(buf, s_DDraw_DoInit__loading_bmp_failed_100ad6f0);
       BrFontFreeAndExit();
       return;
     }
-    pfn = *(BrVt0 *)(*(int *)DAT_10ac5c5c + 0x20);
-    pfn(DAT_10ac5c5c);
-    BrSprFontDraw(0, 0, 0, (int)&DAT_100aad0c, DAT_100aad1c);
-    pfn = *(BrVt0 *)(*(int *)DAT_10ac5c5c + 0x14);
-    pfn(DAT_10ac5c5c);
-    if (DAT_10ac53e8 != 0) {
-      BrSurfFree(DAT_10ac53e8);
-      DAT_10ac53e8 = 0;
+    pfn = *(BrVt0 *)(*(int *)g_brPAA29B8 + 0x20);
+    pfn(g_brPAA29B8);
+    BrSprFontDraw(0, 0, 0, (int)&(*(int *)&g_aBrUiSprite[4]), (*(int *)&g_aBrUiSprite[20]));
+    pfn = *(BrVt0 *)(*(int *)g_brPAA29B8 + 0x14);
+    pfn(g_brPAA29B8);
+    if ((*(int *)&g_img) != 0) {
+      BrSurfFree((*(int *)&g_img));
+      (*(int *)&g_img) = 0;
     }
   }
-  p = &DAT_10ac53ec;
+  p = &(*(int *)((char *)&g_img + 0x4)) /* BR_LP64_BYTE_VIEW */;
   DAT_10ac5dc4 = DAT_10ac5dc4 + 1;
   i = 0;
   for (;;) {

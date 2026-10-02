@@ -127,24 +127,24 @@ int BrOpt3810(GameObj *pGame)
     int i;
 
     if (DAT_10ac5bec != 0) {
-        if (DAT_10ac4090 != 0) {
+        if (g_guardB != 0) {
             pGame->pSub->f68 = 0;
             pGame->pSub->s6(0);
-            BrExt8F30(0);
+            BrExt_10038F30(0);
         } else {
             BrSub10046400(pGame);
-            if (DAT_10ac5ca8 != 0) {
-                DAT_10ac5ca8->v7();
-                DAT_10ac5ca8 = 0;
+            if ((*(Phase8 * *)&g_brPAA2950) != 0) {
+                (*(Phase8 * *)&g_brPAA2950)->v7();
+                (*(Phase8 * *)&g_brPAA2950) = 0;
             }
-            g_cur = (Phase8 *)((BrOptObj *)(g_2948));
-            Fn355F0();
+            (*(Phase8 * *)&g_brPAA29B8) = (Phase8 *)((BrOptObj *)(g_2948));
+            BrExt_1003BF60();
             DAT_10ac5bf0 = 1;
-            if (g_brAA287C == 0 || g_brAA287C == 1)
+            if (DAT_10ac5bd4 == 0 || DAT_10ac5bd4 == 1)
                 FUN_100356b0();
-            if (g_brAA287C == 2 || g_brAA287C == 3) {
-                if (DAT_10ac5d30 != 0)
-                    DAT_10ac5d30->f1C &= ~0x10;
+            if (DAT_10ac5bd4 == 2 || DAT_10ac5bd4 == 3) {
+                if ((*(Wnd * *)&g_brPAA29D8) != 0)
+                    (*(Wnd * *)&g_brPAA29D8)->f1C &= ~0x10;
             }
             DAT_10ac5bec = 0;
             return 0;
@@ -153,9 +153,9 @@ int BrOpt3810(GameObj *pGame)
 
     if (DAT_10ac5be8 != 0) {
         BrSub10046400(pGame);
-        if (DAT_10ac5ca8 != 0) {
-            DAT_10ac5ca8->v7();
-            DAT_10ac5ca8 = 0;
+        if ((*(Phase8 * *)&g_brPAA2950) != 0) {
+            (*(Phase8 * *)&g_brPAA2950)->v7();
+            (*(Phase8 * *)&g_brPAA2950) = 0;
         }
         CtlD620(0);
         Ctl3D930(0);
@@ -164,13 +164,13 @@ int BrOpt3810(GameObj *pGame)
         return 0;
     }
 
-    if (g_brAA2884 != 0) {
+    if (g_host != 0) {
         pDesc = 0;
         if (g_brP277B40 != 0)
             FUN_10036740(g_brP277B40, (void **)(&pDesc));
         if (pDesc != 0) {
             for (i = 0; i < 8; ++i) {
-                if (g_aBrAA2538[i].id == g_brPA9D008->f08) {
+                if (g_aBrAA2538[i].id == (*(NetHost * *)&g_brPA9D008)->f08) {
                     g_aBrAA2538[i].a = (pDesc->dwCurrentPlayers > 1) ? 1 : 0;
                     break;
                 }
@@ -182,14 +182,14 @@ int BrOpt3810(GameObj *pGame)
         }
     }
 
-    if (g_brAA288C != 0) {
-        Fn7920();
-        g_nav.m(&g_navArg);
+    if (DAT_10ac5be4 != 0) {
+        BrOptSave();
+        (*(Nav *)&g_BrCtrlCfg).m(&g_navArg);
         pGame->pSub->f68 = 0;
         pGame->pSub->s6(0);
-        DAT_10ac5bb4 = 0;
+        g_5BB4 = 0;
         BrSub10072AF0(2, 0x200020);
-        g_brAA2854 = 2;
+        g_track = 2;
         return 0;
     }
     return 1;

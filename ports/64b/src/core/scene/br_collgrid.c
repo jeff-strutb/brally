@@ -101,7 +101,7 @@ int BrCollGridBind(const BrTrack *pTrack)
     g_pBrGrid64       = (const uint16_t *)(const void *)
                         (pTrack->pbImage + offStart);
 
-    g_pBrCollGrid      = s_aPlane;
+    g_BrFx1750338      = s_aPlane;
     g_pBrCollGridCount = s_aCount;
 
     BrCollGridInvalidate();
@@ -116,7 +116,7 @@ void BrCollGridRelease(void)
     g_pBrTriTable     = NULL;
     g_pBrGrid64       = NULL;
 
-    g_pBrCollGrid      = NULL;
+    g_BrFx1750338      = NULL;
     g_pBrCollGridCount = NULL;
 
     BrCollGridInvalidate();
@@ -134,7 +134,7 @@ int BrCollGridLoaded(int *pCells, int *pPlanes)
     }
     if (pCells  != NULL) *pCells  = cells;
     if (pPlanes != NULL) *pPlanes = planes;
-    return (g_pBrCollGrid != NULL);
+    return (g_BrFx1750338 != NULL);
 }
 
 /* 0x100686D0 (D3D twin 0x1006F720, port body in slice6_73.c) */
@@ -218,6 +218,6 @@ short BrCollGridCellAcquire(float x, float y)
             p += 8;
         }
     }
-    DAT_11778800[victim] = n;
+    (*(int *)((char *)&g_brCrPlane + 0x10))[victim] = n;
     return (short)victim;
 }

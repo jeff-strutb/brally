@@ -71,11 +71,11 @@ int FUN_10023d70(int *pOutA, int *pOutB, int *pReq)
         goto fail;
 
     DAT_10ac67c0 = DAT_10ac67c0 + 1;
-    hBmp = FUN_10059fe0(DAT_10ac67a4, DAT_10ac67c0, 0);
+    hBmp = FUN_10059fe0((*(int *)((char *)&BrImgTintState + 0x4)), DAT_10ac67c0, 0);
     if (hBmp == 0)
         goto fail;
 
-    FUN_1005a020(DAT_10ac67a4, DAT_10ac67c0, &x0, &y0, &x1, &x2);
+    BrBmpRect4Get((*(int *)((char *)&BrImgTintState + 0x4)), DAT_10ac67c0, &x0, &y0, &x1, &x2);
     if (x0 == 0 && y0 == 0 && x1 == 0 && x2 == 0) {
         x1 = 0;
         y0 = pReq[0x2a0 / 4] << 1;
@@ -85,8 +85,8 @@ int FUN_10023d70(int *pOutA, int *pOutB, int *pReq)
 
     wPow = pReq[0x2a0 / 4];
     hPow = pReq[0x2a4 / 4];
-    if (wPow == pReq[8 / 4] && hPow == pReq[0xc / 4] && DAT_100b8498 <= 0) {
-        if (FUN_1005a500(hBmp, x0, y0, x1, x2, &DAT_1186c988,
+    if (wPow == pReq[8 / 4] && hPow == pReq[0xc / 4] && (*(int *)&s_level) <= 0) {
+        if (FUN_1005a500(hBmp, x0, y0, x1, x2, &(*(int *)&DAT_1186c988),
                          wPow * 2, hPow * 2) == 0)
             return 1;
         hPow = pReq[0xc / 4] << 1;
@@ -94,37 +94,37 @@ int FUN_10023d70(int *pOutA, int *pOutB, int *pReq)
         pReq[8 / 4] = wPow;
         pReq[0xc / 4] = hPow;
         pReq[0x3c / 4] = pReq[0x3c / 4] << 2;
-        FUN_100242e0((void *)((uint8_t *)pReq + 0x1c), wPow, hPow);
+        BrTexShiftFromSize((void *)((uint8_t *)pReq + 0x1c), wPow, hPow);
         pReq[0x18 / 4] = pReq[0x1c / 4];
         *pOutA = *pOutA << 1;
         *pOutB = *pOutB << 1;
         pReq[0x268 / 4] = 1;
-        pReq[0x26c / 4] = DAT_10ac67a4;
+        pReq[0x26c / 4] = (*(int *)((char *)&BrImgTintState + 0x4));
         pReq[0x270 / 4] = DAT_10ac67c0;
         pReq[0x274 / 4] = 0;
-        pReq[0x278 / 4] = FUN_1005a630(hBmp, x0, y0, x1, x2);
-        FUN_10023cb0(&DAT_1186c988, &DAT_1186c988,
+        pReq[0x278 / 4] = BrImgRegionHasKey(hBmp, x0, y0, x1, x2);
+        BrTexRgbaToArgb1555(&(*(int *)&DAT_1186c988), &(*(int *)&DAT_1186c988),
                      pReq[0x2a4 / 4] * pReq[0x2a0 / 4] * 0x10);
         pReq[0x28c / 4] = pReq[0x2a4 / 4] * pReq[0x2a0 / 4] * 8;
-        if (FUN_1005a070() >= 0) {
+        if (BrBmpGetHandle() >= 0) {
             pSlot = pReq + 0x288 / 4;
             i = 3;
             do {
-                unsigned char *h = FUN_10059fe0(DAT_10ac67a4, DAT_10ac67c0, i);
+                unsigned char *h = FUN_10059fe0((*(int *)((char *)&BrImgTintState + 0x4)), DAT_10ac67c0, i);
                 if (h == 0) {
                     *pSlot = 0;
                 } else {
-                    if (FUN_1005a500(h, x0, y0, x1, x2, &DAT_1186c988,
+                    if (FUN_1005a500(h, x0, y0, x1, x2, &(*(int *)&DAT_1186c988),
                                      pReq[0x2a0 / 4] << 1,
                                      pReq[0x2a4 / 4] << 1) != 0) {
-                        FUN_10023cb0(&DAT_1186c988, &DAT_1186c988,
+                        BrTexRgbaToArgb1555(&(*(int *)&DAT_1186c988), &(*(int *)&DAT_1186c988),
                                      pReq[0x2a4 / 4] * pReq[0x2a0 / 4] * 0x10);
                         pReq[0x28c / 4] =
                             pReq[0x2a4 / 4] * pReq[0x2a0 / 4] * 8;
                     }
                     pBuf = malloc((uint32_t)pReq[0x28c / 4]);
                     *pSlot = (int)pBuf;
-                    memcpy(pBuf, &DAT_1186c988, (uint32_t)pReq[0x28c / 4]);
+                    memcpy(pBuf, &(*(int *)&DAT_1186c988), (uint32_t)pReq[0x28c / 4]);
                 }
                 i = i - 1;
                 pSlot = pSlot - 1;
@@ -139,40 +139,40 @@ int FUN_10023d70(int *pOutA, int *pOutB, int *pReq)
             i = i - 1;
         } while (i != 0);
     } else {
-        if (FUN_1005a500(hBmp, x0, y0, x1, x2, &DAT_105e1828,
+        if (FUN_1005a500(hBmp, x0, y0, x1, x2, &(*(int *)&DAT_105e1828),
                          wPow << 1, pReq[0x2a4 / 4] << 1) == 0)
             return 1;
         pReq[0x268 / 4] = 1;
-        pReq[0x26c / 4] = DAT_10ac67a4;
+        pReq[0x26c / 4] = (*(int *)((char *)&BrImgTintState + 0x4));
         pReq[0x270 / 4] = DAT_10ac67c0;
         pReq[0x274 / 4] = 0;
-        pReq[0x278 / 4] = FUN_1005a630(hBmp, x0, y0, x1, x2);
-        FUN_10023cb0(&DAT_105e1828, &DAT_105e1828,
+        pReq[0x278 / 4] = BrImgRegionHasKey(hBmp, x0, y0, x1, x2);
+        BrTexRgbaToArgb1555(&(*(int *)&DAT_105e1828), &(*(int *)&DAT_105e1828),
                      pReq[0x2a4 / 4] * pReq[0x2a0 / 4] * 0x10);
         pReq[0x28c / 4] = pReq[0xc / 4] * pReq[8 / 4] * 2;
-        FUN_10024490(&DAT_1186c988, pReq[8 / 4], pReq[0xc / 4], &DAT_105e1828,
+        BrTexResample(&(*(int *)&DAT_1186c988), pReq[8 / 4], pReq[0xc / 4], &(*(int *)&DAT_105e1828),
                      pReq[0x2a0 / 4] << 1, pReq[0x2a4 / 4] << 1, pReq[0x10 / 4]);
-        if (FUN_1005a070() >= 0) {
+        if (BrBmpGetHandle() >= 0) {
             pSlot = pReq + 0x288 / 4;
             i = 3;
             do {
-                unsigned char *h = FUN_10059fe0(DAT_10ac67a4, DAT_10ac67c0, i);
+                unsigned char *h = FUN_10059fe0((*(int *)((char *)&BrImgTintState + 0x4)), DAT_10ac67c0, i);
                 if (h == 0) {
                     *pSlot = 0;
                 } else {
-                    if (FUN_1005a500(h, x0, y0, x1, x2, &DAT_105e1828,
+                    if (FUN_1005a500(h, x0, y0, x1, x2, &(*(int *)&DAT_105e1828),
                                      pReq[0x2a0 / 4] << 1,
                                      pReq[0x2a4 / 4] << 1) != 0) {
-                        FUN_10023cb0(&DAT_105e1828, &DAT_105e1828,
+                        BrTexRgbaToArgb1555(&(*(int *)&DAT_105e1828), &(*(int *)&DAT_105e1828),
                                      pReq[0x2a4 / 4] * pReq[0x2a0 / 4] * 0x10);
                         pReq[0x28c / 4] = pReq[0xc / 4] * pReq[8 / 4] * 2;
-                        FUN_10024490(&DAT_1186c988, pReq[8 / 4], pReq[0xc / 4],
-                                     &DAT_105e1828, pReq[0x2a0 / 4] << 1,
+                        BrTexResample(&(*(int *)&DAT_1186c988), pReq[8 / 4], pReq[0xc / 4],
+                                     &(*(int *)&DAT_105e1828), pReq[0x2a0 / 4] << 1,
                                      pReq[0x2a4 / 4] << 1, pReq[0x10 / 4]);
                     }
                     pBuf = malloc((uint32_t)pReq[0x28c / 4]);
                     *pSlot = (int)pBuf;
-                    memcpy(pBuf, &DAT_1186c988, (uint32_t)pReq[0x28c / 4]);
+                    memcpy(pBuf, &(*(int *)&DAT_1186c988), (uint32_t)pReq[0x28c / 4]);
                 }
                 i = i - 1;
                 pSlot = pSlot - 1;
@@ -190,7 +190,7 @@ int FUN_10023d70(int *pOutA, int *pOutB, int *pReq)
 
     pBuf = malloc((uint32_t)pReq[0x28c / 4]);
     pReq[0x27c / 4] = (int)pBuf;
-    memcpy(pBuf, &DAT_1186c988, (uint32_t)pReq[0x28c / 4]);
+    memcpy(pBuf, &(*(int *)&DAT_1186c988), (uint32_t)pReq[0x28c / 4]);
     return 1;
 fail:
     return 0;

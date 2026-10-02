@@ -59,108 +59,108 @@ int BrObbOverlap(const float *m, const float *t, const float *a, const float *b)
     float c;
     int   ok;
 
-    if (m[0] < _DAT_10077a78)
+    if (m[0] < BrCrK_Zero)
         am0 = -m[0];
     else
         am0 = m[0];
     am1 = m[1];
-    if (m[1] < _DAT_10077a78)
+    if (m[1] < BrCrK_Zero)
         am1 = -am1;
     am2 = m[2];
-    if (m[2] < _DAT_10077a78)
+    if (m[2] < BrCrK_Zero)
         am2 = -am2;
     am3 = m[3];
-    if (m[3] < _DAT_10077a78)
+    if (m[3] < BrCrK_Zero)
         am3 = -am3;
     am4 = m[4];
-    if (m[4] < _DAT_10077a78)
+    if (m[4] < BrCrK_Zero)
         am4 = -am4;
     am5 = m[5];
-    if (m[5] < _DAT_10077a78)
+    if (m[5] < BrCrK_Zero)
         am5 = -am5;
     am6 = m[6];
-    if (m[6] < _DAT_10077a78)
+    if (m[6] < BrCrK_Zero)
         am6 = -am6;
     am7 = m[7];
-    if (m[7] < _DAT_10077a78)
+    if (m[7] < BrCrK_Zero)
         am7 = -am7;
     am8 = m[8];
-    if (m[8] < _DAT_10077a78)
+    if (m[8] < BrCrK_Zero)
         am8 = -am8;
 
     at0 = t[0];
-    if (t[0] < _DAT_10077a78)
+    if (t[0] < BrCrK_Zero)
         at0 = -at0;
     ok = 1;
     ok &= at0 <= b[0] * am0 + am2 * b[2] + am1 * b[1] + a[0];
 
     c = t[1] * m[3] + m[0] * t[0] + m[6] * t[2];
-    if (c < _DAT_10077a78)
+    if (c < BrCrK_Zero)
         c = -c;
     ok &= c <= a[0] * am0 + am6 * a[2] + am3 * a[1] + b[0];
 
     at1 = t[1];
-    if (t[1] < _DAT_10077a78)
+    if (t[1] < BrCrK_Zero)
         at1 = -at1;
     ok &= at1 <= b[0] * am3 + am5 * b[2] + am4 * b[1] + a[1];
 
     at2 = t[2];
-    if (t[2] < _DAT_10077a78)
+    if (t[2] < BrCrK_Zero)
         at2 = -at2;
     ok &= at2 <= b[0] * am6 + am8 * b[2] + am7 * b[1] + a[2];
 
     c = t[1] * m[4] + m[7] * t[2] + t[0] * m[1];
-    if (c < _DAT_10077a78)
+    if (c < BrCrK_Zero)
         c = -c;
     ok &= c <= a[0] * am1 + am7 * a[2] + am4 * a[1] + b[1];
 
     c = t[1] * m[5] + m[8] * t[2] + t[0] * m[2];
-    if (c < _DAT_10077a78)
+    if (c < BrCrK_Zero)
         c = -c;
     ok &= c <= a[0] * am2 + am8 * a[2] + am5 * a[1] + b[2];
 
     c = t[2] * m[3] - m[6] * t[1];
-    if (c < _DAT_10077a78)
+    if (c < BrCrK_Zero)
         c = -c;
     ok &= c <= am1 * b[2] + am3 * a[2] + am6 * a[1] + am2 * b[1];
 
     c = t[2] * m[4] - m[7] * t[1];
-    if (c < _DAT_10077a78)
+    if (c < BrCrK_Zero)
         c = -c;
     ok &= c <= b[0] * am2 + am0 * b[2] + am4 * a[2] + am7 * a[1];
 
     c = t[2] * m[5] - m[8] * t[1];
-    if (c < _DAT_10077a78)
+    if (c < BrCrK_Zero)
         c = -c;
     ok &= c <= b[0] * am1 + am5 * a[2] + am8 * a[1] + am0 * b[1];
 
     c = t[0] * m[6] - m[0] * t[2];
-    if (c < _DAT_10077a78)
+    if (c < BrCrK_Zero)
         c = -c;
     ok &= c <= a[0] * am6 + am4 * b[2] + am0 * a[2] + am5 * b[1];
 
     c = t[0] * m[7] - t[2] * m[1];
-    if (c < _DAT_10077a78)
+    if (c < BrCrK_Zero)
         c = -c;
     ok &= c <= b[0] * am5 + a[0] * am7 + am3 * b[2] + am1 * a[2];
 
     c = t[0] * m[8] - t[2] * m[2];
-    if (c < _DAT_10077a78)
+    if (c < BrCrK_Zero)
         c = -c;
     ok &= c <= b[0] * am4 + a[0] * am8 + am2 * a[2] + am3 * b[1];
 
     c = m[0] * t[1] - t[0] * m[3];
-    if (c < _DAT_10077a78)
+    if (c < BrCrK_Zero)
         c = -c;
     ok &= c <= a[0] * am3 + am7 * b[2] + am0 * a[1] + am8 * b[1];
 
     c = t[1] * m[1] - t[0] * m[4];
-    if (c < _DAT_10077a78)
+    if (c < BrCrK_Zero)
         c = -c;
     ok &= c <= b[0] * am8 + a[0] * am4 + am6 * b[2] + am1 * a[1];
 
     c = t[1] * m[2] - t[0] * m[5];
-    if (c < _DAT_10077a78)
+    if (c < BrCrK_Zero)
         c = -c;
     ok &= c <= b[0] * am7 + a[0] * am5 + am2 * a[1] + am6 * b[1];
 

@@ -20,9 +20,9 @@
  * names the ones used here as the globals they are (config/globals_glide.csv),
  * so each relocation resolves to its own variable. */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x10AC5BD8 */
-#define BR73_NAA2880 g_brUinAA2880
+#define BR73_NAA2880 (*(int32_t *)&g_5BD8)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x10AC5D2C */
-#define BR73_APJOINBLOB g_brUiapJoinBlob
+#define BR73_APJOINBLOB (*(void *const * *)&g_brPAA29D4)
 
 /* ==========================================================================
  * 0x1003D030 -- the 16-byte join blob
@@ -61,7 +61,7 @@ int32_t BrSub1003CFC0(uint8_t **ppGuid)
 {
     int32_t n;
 
-    n = g_brAA287C;
+    n = (*(int32_t *)&DAT_10ac5bd4);
     *ppGuid = (uint8_t *)g_aBrNetSession[n].guid;
     return 0;
 }
@@ -211,7 +211,7 @@ int BrNetSessionHost(void *pIface, char *pHost, int *pRec)
     int  vt;
     int  hr;
 
-    if (DAT_10ac4090 == 0) {
+    if (g_guardB == 0) {
         if (pIface == 0) {
             return (int)0x88770082;
         }
@@ -222,8 +222,8 @@ int BrNetSessionHost(void *pIface, char *pHost, int *pRec)
         desc.guidA[2] = DAT_10077508;
         desc.guidA[3] = DAT_1007750c;
         desc.flags = (*(int *)(pHost + 0xc8) != 0 ? 0x100 : 0) + 0x40;
-        desc.user1 = DAT_100b3014;
-        desc.user2 = DAT_10226e80;
+        desc.user1 = (*(int *)&g_Br0B380C);
+        desc.user2 = g_226e80;
         desc.size = 0x50;
         desc.maxPlayers = 8;
         desc.pszName = (int)pHost;
@@ -243,7 +243,7 @@ int BrNetSessionHost(void *pIface, char *pHost, int *pRec)
         rec[3] = 1;
         rec[4] = *(int *)(pHost + 0xc8);
         name[0] = 0x10;
-        name[2] = (int)DAT_10b71648;
+        name[2] = (int)g_aBrCfgPlayerName;
         hr = (*(BrDpCreatePlayerFn *)(vt + 0x18))
                  (pIface, &id, name, rec[1], 0, 0, 0x100);
         if (hr < 0) {

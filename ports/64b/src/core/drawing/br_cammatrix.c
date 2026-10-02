@@ -96,10 +96,10 @@ void BrCamMatrixSetupFixed(float a1, float a2)
                  512.0f, 384.0f,    0.0f,
                    0.0f,   1.0f,    0.0f);
 
-    BrMat4Perspective7(&g_BrProjMatFixed, &g_BrPerspNorm,
+    BrMat4Perspective7(&g_BrDrawScale, &g_BrPerspNorm,
                        45.0f, 1.3333334f, 10.0f, 2000.0f, 1.0f);
 
-    BrMat4Mul(&g_BrViewMat, &g_BrProjMatFixed, &g_BrCurMat);
+    BrMat4Mul(&g_BrViewMat, &g_BrDrawScale, &g_BrCurMat);
 
     {
         uint32_t *p_ = g_BrGfxPtr;

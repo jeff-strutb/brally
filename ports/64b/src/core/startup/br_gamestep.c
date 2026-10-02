@@ -175,22 +175,22 @@ void BrFrameClockStep(void)
 {
     int now;
 
-    if (DAT_106ed6d8 != 0) {
+    if ((*(int *)((char *)&g_aBrEntRecs + 0xA8)) != 0) {
         DAT_106ec740 += DAT_100ad7c0 * 0x1FCA055 / 1000000000;
-        DAT_106e7294 = FUN_10059f00();
+        DAT_106e7294 = BrTickAdd_10078C10();
     } else if (DAT_106ec740 != 0) {
-        now = FUN_10059f00();
+        now = BrTickAdd_10078C10();
         DAT_106ec740 += (unsigned int)(now - DAT_106e7294);
         DAT_106e7294 = now;
     } else {
-        DAT_106e7294 = FUN_10059f00();
+        DAT_106e7294 = BrTickAdd_10078C10();
         DAT_106ec740 = (unsigned int)DAT_106e7294;
     }
-    DAT_106ed588 = DAT_106ec768;
-    DAT_106ec768 = (unsigned int)(DAT_106ec740 * 1000000 / DAT_100ad7c0) / 1000;
+    (*(unsigned int *)&DAT_106ed588) = (*(unsigned int *)&DAT_106ec768);
+    (*(unsigned int *)&DAT_106ec768) = (unsigned int)(DAT_106ec740 * 1000000 / DAT_100ad7c0) / 1000;
     BrPadTranslateAll();
-    FUN_10008d60();
-    FUN_10008d60();
+    BrPodNop();
+    BrPodNop();
     /* The delta is widened by PARTS -- low dword stored, high dword an
      * immediate zero (`mov dword ptr [ebp-8], 0`) -- the LARGE_INTEGER
      * spelling, and the conversion is a SIGNED 64-bit `fild qword` (VC5 has
@@ -200,10 +200,10 @@ void BrFrameClockStep(void)
      * (match_sweep's Odp shape). */
     {
         BrFrameClockTicks t;
-        t.u.lo = DAT_106ec768 - DAT_106ed588;
+        t.u.lo = (*(unsigned int *)&DAT_106ec768) - (*(unsigned int *)&DAT_106ed588);
         t.u.hi = 0;
-        DAT_106e9d8c = (float)t.q / DAT_100774f0;
+        g_brRaceFlyStep = (float)t.q / DAT_100774f0;
     }
-    DAT_106b7ac0 = DAT_106ec768 - DAT_106ed588;
+    (*(unsigned int *)&DAT_106b7ac0) = (*(unsigned int *)&DAT_106ec768) - (*(unsigned int *)&DAT_106ed588);
 }
 

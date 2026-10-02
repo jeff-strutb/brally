@@ -32,7 +32,7 @@ public:
 
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define g_slot DAT_10ac5cec
+#define g_slot (*(Phase * *)&g_5CEC)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 
 /* EnterFn / TailFn were stand-ins; the original calls FUN_100469b0
@@ -57,15 +57,15 @@ int Ctl3E9B0::Activate()
     if (p == 0) {
         p = new Phase;
         g_slot = p;
-        g_cur = (Phase *)((BrOptObj *)(p));
+        (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(p));
         if (p == 0)
             return 0;
         p->pfnEnter = EnterFn;
         g_slot->pfnEnter(g_slot);
-        g_cur->f0C = 1;
-        g_cur->f68 = 1;
+        (*(Phase * *)&g_brPAA29B8)->f0C = 1;
+        (*(Phase * *)&g_brPAA29B8)->f68 = 1;
     } else {
-        g_cur = (Phase *)((BrOptObj *)(p));
+        (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(p));
     }
     TailFn();
     return 1;

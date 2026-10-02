@@ -47,10 +47,10 @@
 void BrUiSelAInc(void)
 
 {
-  if (g_brB4E70C < 9) {
-    g_brB4E70C = g_brB4E70C + 1;
+  if (g_brRaceB71A6C < 9) {
+    g_brRaceB71A6C = g_brRaceB71A6C + 1;
   }
-  DAT_100bb2e0 = (&DAT_100ad770)[g_brB4E70C * 4];
+  DAT_100bb2e0 = (&DAT_100ad770)[g_brRaceB71A6C * 4];
   return;
 }
 
@@ -60,10 +60,10 @@ void BrUiSelAInc(void)
 void BrUiSelADec(void)
 
 {
-  if (0 < g_brB4E70C) {
-    g_brB4E70C = g_brB4E70C + -1;
+  if (0 < g_brRaceB71A6C) {
+    g_brRaceB71A6C = g_brRaceB71A6C + -1;
   }
-  DAT_100bb2e0 = (&DAT_100ad770)[g_brB4E70C * 4];
+  DAT_100bb2e0 = (&DAT_100ad770)[g_brRaceB71A6C * 4];
   return;
 }
 
@@ -74,10 +74,10 @@ void BrUiSelADec(void)
 void BrUiSelBInc(void)
 
 {
-  if (g_brB4E708 < 9) {
-    g_brB4E708 = g_brB4E708 + 1;
+  if ((*(int *)&g_brItemIconCount) < 9) {
+    (*(int *)&g_brItemIconCount) = (*(int *)&g_brItemIconCount) + 1;
   }
-  DAT_100bb2e8 = (&DAT_100ad798)[g_brB4E708 * 4];
+  (*(unsigned char *)&BrSndMasterVolume) = (&DAT_100ad798)[(*(int *)&g_brItemIconCount) * 4];
   return;
 }
 
@@ -87,10 +87,10 @@ void BrUiSelBInc(void)
 void BrUiSelBDec(void)
 
 {
-  if (0 < g_brB4E708) {
-    g_brB4E708 = g_brB4E708 + -1;
+  if (0 < (*(int *)&g_brItemIconCount)) {
+    (*(int *)&g_brItemIconCount) = (*(int *)&g_brItemIconCount) + -1;
   }
-  DAT_100bb2e8 = (&DAT_100ad798)[g_brB4E708 * 4];
+  (*(unsigned char *)&BrSndMasterVolume) = (&DAT_100ad798)[(*(int *)&g_brItemIconCount) * 4];
   return;
 }
 /* Declared here with a BYTE parameter, which is not how slice1_01.c defines
@@ -110,9 +110,9 @@ void BrUiSelBDec(void)
 void BrUiVolumeApply(void)
 
 {
-  DAT_100bb2e0 = (&DAT_100ad770)[g_brB4E70C * 4];
+  DAT_100bb2e0 = (&DAT_100ad770)[g_brRaceB71A6C * 4];
   BrCdVolumeSet(DAT_100bb2e0);
-  DAT_100bb2e8 = (&DAT_100ad798)[g_brB4E708 * 4];
+  (*(unsigned char *)&BrSndMasterVolume) = (&DAT_100ad798)[(*(int *)&g_brItemIconCount) * 4];
   return;
 }
 

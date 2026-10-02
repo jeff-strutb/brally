@@ -113,12 +113,12 @@ int BrItemSetRemaining_1003AB00(Obj3AB00 *pObj)
 
     memset(szNum, 0, sizeof(szNum));
 
-    if (g_brMode5BF4 == 0)
+    if (g_5BF4 == 0)
         v = g_brStages[0].f08;
     else
-        v = g_brStages[g_brSel5C10].f08;
+        v = g_brStages[(*(char *)&DAT_10ac5c10)].f08;
 
-    v -= g_brUsed5C1C;
+    v -= (*(int *)&DAT_10ac5c1c);
     if (v < 0)
         v = 0;
 

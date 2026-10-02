@@ -130,20 +130,20 @@ void BrCar::LapSaveRestore()
   char local_ac[12];
   float local_a0[40];
 
-  local_d4.f = *(float *)(DAT_106eed48 + 100);
+  local_d4.f = *(float *)(g_pBrRaceLapRec + 100);
   local_d0 = 0;
-  if (DAT_100b2f00 <= 0) {
+  if ((*(int *)&g_brRaceNDriver) <= 0) {
   } else {
     pfVar12 = local_a0;
     piVar14 = g_aBrRaceDriver;   /* the walker addresses whole driver records */
     do {
       iVar10 = *(int *)&piVar14->pCar;
       if (iVar10 != 0) {
-        if ((iVar10 != (int)pCar) && (iVar10->f140 < DAT_100b3858)) {
+        if ((iVar10 != (int)pCar) && (iVar10->f140 < (*(int *)&g_brRaceNEntrant))) {
           *pfVar12 = 1e+10f;
         }
-        else if (((DAT_100a9360 == 0) &&
-                 (iVar10->f140 >= DAT_100b3858)) &&
+        else if ((((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0) &&
+                 (iVar10->f140 >= (*(int *)&g_brRaceNEntrant))) &&
                 (((*(unsigned char *)(((char *)iVar10->pProfile) + 0x68) & 2) != 0 &&
                  ((iVar10->b29AF == 2 &&
                   (iVar10->f29B0 == 0.0f)))))) {
@@ -161,7 +161,7 @@ void BrCar::LapSaveRestore()
           *pfVar12 = local_d8 * local_d8 + BrVec3Dist((const struct BrVec3 *)(pCar + 0x30), (const struct BrVec3 *)(&iVar10->pos.x));
         }
       }
-      else if (((DAT_100a9360 == 0) && (piVar14->f64 >= DAT_100b3858)) &&
+      else if ((((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0) && (piVar14->f64 >= (*(int *)&g_brRaceNEntrant))) &&
               ((*(unsigned char *)&piVar14->f68 & 2) != 0)) {
         *pfVar12 = 1e+09f;
       }
@@ -180,9 +180,9 @@ void BrCar::LapSaveRestore()
       local_d0 = local_d0 + 1;
       piVar14 = piVar14 + 1;
       pfVar12 = pfVar12 + 2;
-    } while (local_d0 < DAT_100b2f00);
+    } while (local_d0 < (*(int *)&g_brRaceNDriver));
   }
-  if (DAT_100b2f00 <= 1) {
+  if ((*(int *)&g_brRaceNDriver) <= 1) {
   } else {
     iVar10 = *(int *)(pCar + 0x140);
     local_d8 = local_a0[iVar10 * 2];
@@ -190,7 +190,7 @@ void BrCar::LapSaveRestore()
     *(int *)(local_a0 + 1) = iVar10;
     local_a0[0] = local_d8;
     *(int *)(local_a0 + iVar10 * 2 + 1) = 0;
-    qsort(local_a0 + 2, DAT_100b2f00 - 1, 8, BrRankCmpKey);
+    qsort(local_a0 + 2, (*(int *)&g_brRaceNDriver) - 1, 8, BrRankCmpKey);
   }
   iVar10 = 0;
   local_c0 = iVar10;
@@ -199,13 +199,13 @@ void BrCar::LapSaveRestore()
     bVar8 = 1;
     local_d0 = 0;
     local_d4.i = 0;
-    if (DAT_100b2f00 <= 0) {
+    if ((*(int *)&g_brRaceNDriver) <= 0) {
     } else {
       do {
         puVar16 = ((int *)&g_aBrRaceDriver[(*(int *)(local_a0 + local_d0 * 2 + 1))].f00.x);
         if (puVar16[0x1d] == iVar10) {
           iVar13 = puVar16[0x19];
-          iVar6 = DAT_100b3858;
+          iVar6 = (*(int *)&g_brRaceNEntrant);
           if (iVar13 < iVar6) {
           } else if (local_d4.i < 1) {
             local_d4.i = local_d4.i + 1;
@@ -257,19 +257,19 @@ LAB_save:
           }
         }
         local_d0 = local_d0 + 1;
-      } while (local_d0 < DAT_100b2f00);
+      } while (local_d0 < (*(int *)&g_brRaceNDriver));
     }
     if (bVar8) {
-      (&local_cc)[iVar11] = (int)(&DAT_10af1208 + (iVar10 + DAT_100b3858) * 0xada);
+      (&local_cc)[iVar11] = (int)(&(*(int *)&g_aBrRaceCar) + (iVar10 + (*(int *)&g_brRaceNEntrant)) * 0xada);
       iVar11 = iVar11 + 1;
     }
     local_d0 = 0;
     while (iVar11 != 0) {
       {
-        if (local_d0 >= DAT_100b2f00) break;
+        if (local_d0 >= (*(int *)&g_brRaceNDriver)) break;
         puVar16 = ((int *)&g_aBrRaceDriver[(*(int *)(local_a0 + local_d0 * 2 + 1))].f00.x);
         if (((puVar16[0x1d] == iVar10) &&
-            (!(puVar16[0x19] < DAT_100b3858))) &&
+            (!(puVar16[0x19] < (*(int *)&g_brRaceNEntrant)))) &&
            (((*((unsigned char *)puVar16 + 0x68) & 2) == 0 &&
             (puVar16[0x18] == 0)))) {
           iVar11 = iVar11 + -1;
@@ -322,9 +322,9 @@ LAB_save:
           pfVar1 = &pfVar7->right.x;
           BrVec3Midpoint((struct BrVec3 *)(pfVar1), local_b8, local_ac);
           BrVec3Cross((struct BrVec3 *)(&pfVar7->up.x), (const struct BrVec3 *)(&pfVar7->fwd.x), (const struct BrVec3 *)(pfVar1));
-          BrVec3NormaliseGuard(&pfVar7->up.x);
+          br_dl_normalise(&pfVar7->up.x);
           BrVec3Cross((struct BrVec3 *)(pfVar1), (const struct BrVec3 *)(&pfVar7->up.x), (const struct BrVec3 *)(&pfVar7->fwd.x));
-          BrVec3NormaliseGuard(pfVar1);
+          br_dl_normalise(pfVar1);
           V3Copy(&pfVar7->f0F94, &pfVar7->fwd.x);
           ((BrCar *)&pfVar7->fwd.x)->SetMatrix(&pfVar7->fwd.x);
           if ((*(unsigned char *)(((char *)pfVar7->pProfile) + 0x68) & 1) != 0) {
@@ -356,7 +356,7 @@ LAB_save:
           *(int *)&pfVar7->f0E20 = 0;
           iVar10 = local_c0;
         }
-        *(int *)(pCar + 0xeb0 + local_d0 * 4) = (int)(&DAT_10af07f8 + *(int *)(local_a0 + local_d0 * 2 + 1) * 0x20);
+        *(int *)(pCar + 0xeb0 + local_d0 * 4) = (int)(&(*(int *)&g_aBrRaceDriver) + *(int *)(local_a0 + local_d0 * 2 + 1) * 0x20);
         local_d0 = local_d0 + 1;
       }
     }

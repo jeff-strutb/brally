@@ -56,16 +56,16 @@ extern "C" {
 
 int Ui55330::HitTest(Rect55330 *pRect)
 {
-    if (pRect->x0 > g_AC5DD8->x || pRect->x1 < g_AC5DD8->x ||
-        pRect->y0 > g_AC5DD8->y || pRect->y1 < g_AC5DD8->y)
+    if (pRect->x0 > (*(Point55330 * *)&BrGlNavThis5DD8)->x || pRect->x1 < (*(Point55330 * *)&BrGlNavThis5DD8)->x ||
+        pRect->y0 > (*(Point55330 * *)&BrGlNavThis5DD8)->y || pRect->y1 < (*(Point55330 * *)&BrGlNavThis5DD8)->y)
         return 0;
 
     if (f18 & 0x40000) {
-        if (g_AC61E0->f2C != 0 || g_AC61E0->f30 != 0)
+        if ((*(Grab55330 * *)&g_pBrAA2E80)->f2C != 0 || (*(Grab55330 * *)&g_pBrAA2E80)->f30 != 0)
             f18 |= 0x80002;
         else
             f18 &= ~2;
-    } else if (Fn10037720() != 0) {
+    } else if (BrInputAnyActive() != 0) {
         f18 |= 2;
     } else {
         f18 &= ~2;

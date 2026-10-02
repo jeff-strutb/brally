@@ -79,15 +79,15 @@ void BrCarDamageTick(void)
     int  j;
     unsigned char *pb;
 
-    if (DAT_100a9360 != 0)
+    if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 0)
         return;
     if (DAT_105ccb60 == 0)
         return;
     i = 0;
-    if (DAT_100b3858 <= 0)
+    if ((*(int *)&g_brRaceNEntrant) <= 0)
         return;
 
-    p = &DAT_10af2094;
+    p = &(*(int *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */;
     do {
         unsigned char  *car = (unsigned char *)*p;
         int             sum = 0;
@@ -104,14 +104,14 @@ void BrCarDamageTick(void)
             car[5] = 0;
             car = (unsigned char *)*p;
             if (sum >= g_brStages[(car[4])].f08) {
-                *(unsigned short *)(car + 0xf0) |= DAT_100b301c[car[4]].flag;
+                *(unsigned short *)(car + 0xf0) |= (*(BrDmgStage (*)[])((char *)&g_brStages + 0x4))[car[4]].flag;
                 car = (unsigned char *)*p;
                 car[4]++;
                 car = (unsigned char *)*p;
                 if (car[4] == 6) {
                     unsigned short w;
 
-                    n = DAT_100b3094;
+                    n = (*(int *)&g_aBr0B3820[108]);
 
                     for (pb = car + 0x1a, j = 0; j < n; j++, pb++) {
                         if (*pb != 0)
@@ -151,14 +151,14 @@ state:
 
         car = (unsigned char *)*p;
         *(unsigned short *)(car + 0xf2) |=
-            (unsigned short)(1 << (DAT_100b3028[car[4] * 12 + car[5]].lo
+            (unsigned short)(1 << ((*(BrDmgBit (*)[])&g_aBr0B3820)[car[4] * 12 + car[5]].lo
                                    + ((*(int *)car & 1) ? 6 : 0)));
         car = (unsigned char *)*p;
         *(unsigned short *)(car + 0xf4) |=
-            (unsigned short)(1 << DAT_100b3028[car[4] * 12 + car[5]].hi);
+            (unsigned short)(1 << (*(BrDmgBit (*)[])&g_aBr0B3820)[car[4] * 12 + car[5]].hi);
 
         i++;
         p += 0xada;
-    } while (i < DAT_100b3858);
+    } while (i < (*(int *)&g_brRaceNEntrant));
 }
 

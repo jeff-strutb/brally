@@ -115,17 +115,17 @@ typedef int            int32_t;
  * x87 operand selection sees the same section offsets. */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* the output matrix */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* the sprite matrix */
-#define OUTM(k)  (DAT_106e78f0[k])
-#define SPRM(k)  (DAT_106e7930[k])
+#define OUTM(k)  ((*(float (*)[16])&g_BrDrawCombined)[k])
+#define SPRM(k)  ((*(float (*)[16])&g_BrDrawScale)[k])
 
 /* The eight-byte display-list append through the GLOBAL cursor. */
 #define EMIT(W0, W1) \
-    { uint32_t *p_ = DAT_106e7710; DAT_106e7710 += 2; \
+    { uint32_t *p_ = g_BrGfxPtr; g_BrGfxPtr += 2; \
       p_[0] = (uint32_t)(W0); p_[1] = (uint32_t)(W1); }
 
 /* An advanced slot handed to the combiner builder. */
 #define EMIT_SLOT(S) \
-    { (S) = DAT_106e7710; DAT_106e7710 += 2; }
+    { (S) = g_BrGfxPtr; g_BrGfxPtr += 2; }
 
 /* Copy the command being walked through, both words, unchanged. */
 #define COPY2() \
@@ -133,7 +133,7 @@ typedef int            int32_t;
 
 /* Hand one triangle word's three corners to the software clipper. */
 #define CLIPTRI(W) \
-    FUN_1000dc00(pRec, pObj + 0xb0, pObj + 0xab, \
+    BrPolyClipTri(pRec, pObj + 0xb0, pObj + 0xab, \
                  pVtxBase + ((W) & 0x1f) * 8, \
                  pVtxBase + (((W) >> 8) & 0x1f) * 8, \
                  pVtxBase + (((W) >> 16) & 0x1f) * 8, pObjBase)
@@ -209,11 +209,11 @@ void BrObjDlBuild(struct BrViewRect * pRects, int idx, uint32_t cls, int bLit, u
     uint8_t   clip[32];
 
     pVtx = DAT_1035faec;
-    pDL  = DAT_1035f7d8;
-    pRec = (char *)(DAT_106eed38 + idx * 0x54);
+    pDL  = (*(uint32_t * *)&DAT_1035f7d8);
+    pRec = (char *)(g_BrDrawTrackFlags + idx * 0x54);
     pCmd = *(uint32_t **)(pRec + 0x44);
 
-    if (cls == 0 || DAT_106ed520 == DAT_106e9d88 + 0x2890 ||
+    if (cls == 0 || g_BrCamera == g_pBr63Race + 0x2890 ||
         (pRec[0x4d] & 2) != 0 || DAT_10b71538 == 0) {
         EMIT(0xbb001001, 0xffffffff);
         EMIT(0xe8000000, 0);
@@ -227,10 +227,10 @@ void BrObjDlBuild(struct BrViewRect * pRects, int idx, uint32_t cls, int bLit, u
         EMIT(0xe8000000, 0);
         EMIT(0xfa001700, 0xff0000ff);
         EMIT(0x06000000, pCmd);
-        EMIT((DAT_1184c470 & 0xffffff) | 0xdc000000, 1);
+        EMIT(((*(uint32_t *)&DAT_1184c470) & 0xffffff) | 0xdc000000, 1);
         EMIT(0xba001001, 0);
         EMIT(0xfa001700, 0xff0000ff);
-        if (bLit != 0 && DAT_106ed6ac == 0 && DAT_106ed6b4 == 0) {
+        if (bLit != 0 && (*(int *)((char *)&g_aBrEntRecs + 0x7C)) == 0 && (*(int *)((char *)&g_aBrEntRecs + 0x84)) == 0) {
             EMIT(0xb900031d, 0x504b50);
         } else {
             EMIT(0xb900031d, 0x504f50);
@@ -244,13 +244,13 @@ void BrObjDlBuild(struct BrViewRect * pRects, int idx, uint32_t cls, int bLit, u
         EMIT(0xba000602, 0xc0);
         EMIT(0x06000000, pDL);
         EMIT(0xe7000000, 0);
-        if (DAT_106ed69c == 0) {
-            pRect = (int *)(pRects + DAT_106ec798 * 0x58);
+        if ((*(int *)((char *)&g_aBrEntRecs + 0x6C)) == 0) {
+            pRect = (int *)(pRects + (*(int *)&g_BrEnvSection) * 0x58);
             BrSub_1003289F(pRect[0], pRect[1], pRect[2], pRect[3]);
         }
-        EMIT(0xba000602, DAT_106e7718);
+        EMIT(0xba000602, BrG_6C0688);
         EMIT(0xf9000000, 0);
-        if (DAT_106ed6a8 != 0) {
+        if ((*(int *)((char *)&g_aBrEntRecs + 0x78)) != 0) {
             EMIT(0xb7000000, 0x30004);
         } else {
             EMIT(0xb7000000, 0x20004);
@@ -279,9 +279,9 @@ void BrObjDlBuild(struct BrViewRect * pRects, int idx, uint32_t cls, int bLit, u
              * drew nothing (live oracle, benchmark flythrough). */
             pCmd = pCmdStart;
             if ((cls & 1) != 0 &&
-                ((DAT_106ed520 != DAT_106e9d88 + 0x273c &&
-                  DAT_106ed520 != DAT_106e9d88 + 0x27c4) ||
-                 *(int *)(DAT_106e9d88 + 0x140) != i)) {
+                ((g_BrCamera != g_pBr63Race + 0x273c &&
+                  g_BrCamera != g_pBr63Race + 0x27c4) ||
+                 *(int *)(g_pBr63Race + 0x140) != i)) {
                 if (DAT_10396eb0 != 0) {
                     BrNodeChainReset_1000F460();
                 }
@@ -289,9 +289,9 @@ void BrObjDlBuild(struct BrViewRect * pRects, int idx, uint32_t cls, int bLit, u
                 pDL[1] = 0;
                 pDL += 2;
                 pDL[0] = 0xfb000000;
-                pDL[1] = (FUN_10018990(pObj[0] * DAT_100771f4) & 0xff) |
-                         ((((DAT_106e72f0 << 8) | DAT_106e86a4) << 8 |
-                           DAT_106e7290) << 8);
+                pDL[1] = (BrFtolArg(pObj[0] * DAT_100771f4) & 0xff) |
+                         ((((BrG_6C0260 << 8) | BrG_6C1614) << 8 |
+                           BrG_6C0200) << 8);
                 pObjBase = pObj - 0x9cc;
                 pDL += 2;
 
@@ -303,7 +303,7 @@ void BrObjDlBuild(struct BrViewRect * pRects, int idx, uint32_t cls, int bLit, u
                     DAT_1035fb78.y = pObj[-0x9c3];
                 }
                 DAT_1035fb78.z = DAT_100771f8;
-                sx = FUN_10034840(&DAT_1035fb78);
+                sx = BrVec3LenXY(&DAT_1035fb78);
                 /* The original's clamp stores its 0.5 with the length call's
                  * argument still pushed, so it lands four bytes off -- in
                  * k's slot, which is recomputed below -- and the length stays
@@ -312,16 +312,16 @@ void BrObjDlBuild(struct BrViewRect * pRects, int idx, uint32_t cls, int bLit, u
                 if (sx < DAT_100771fc) {
                     k = 0.5f;
                 }
-                len2 = FUN_10034840(&pObj[-0x9c8]);
+                len2 = BrVec3LenXY(&pObj[-0x9c8]);
                 if (len2 < DAT_100771fc) {
                     len2 = DAT_100771fc;
                 }
                 pTex = *(int *)((char *)pObj + 0x294);
                 sx = (DAT_10077200 / *(float *)(pTex + 0x80e0)) / sx;
                 sy = (DAT_10077204 / *(float *)(pTex + 0x80e4)) / len2;
-                FUN_100344d0(&DAT_1035fb78);
+                br_dl_normalise(&DAT_1035fb78);
 
-                memcpy(DAT_106e78f0, pRec, 0x40);
+                memcpy((*(float (*)[16])&g_BrDrawCombined), pRec, 0x40);
 
                 OUTM(12) = OUTM(12) - pObj[-0x9c0];
                 SPRM(0)  = DAT_1035fb78.x * sx;
@@ -341,7 +341,7 @@ void BrObjDlBuild(struct BrViewRect * pRects, int idx, uint32_t cls, int bLit, u
                 SPRM(7)  = 0.0f;
                 SPRM(11) = 0.0f;
                 SPRM(15) = 1.0f;
-                FUN_10034af0(DAT_106e78f0, DAT_106e78f0, DAT_106e7930);
+                BrMtxMul((*(float (*)[16])&g_BrDrawCombined), (*(float (*)[16])&g_BrDrawCombined), (*(float (*)[16])&g_BrDrawScale));
 
                 k = OUTM(3) + OUTM(7) + OUTM(11) + OUTM(15);
                 if (k == DAT_100771f8) {
@@ -358,17 +358,17 @@ void BrObjDlBuild(struct BrViewRect * pRects, int idx, uint32_t cls, int bLit, u
                 OUTM(9)  = k * OUTM(9);
                 OUTM(13) = k * OUTM(13);
 
-                if (DAT_106ed69c == 0) {
-                    pSave = DAT_106e7710;
-                    DAT_106e7710 = pDL;
+                if ((*(int *)((char *)&g_aBrEntRecs + 0x6C)) == 0) {
+                    pSave = g_BrGfxPtr;
+                    g_BrGfxPtr = pDL;
                     BrSub_1003289F(*(short *)((char *)pObj + 0x26c),
                                    *(short *)((char *)pObj + 0x272),
                                    *(short *)((char *)pObj + 0x270) -
                                        *(short *)((char *)pObj + 0x26c),
                                    *(short *)((char *)pObj + 0x26e) -
                                        *(short *)((char *)pObj + 0x272));
-                    pDL = DAT_106e7710;
-                    DAT_106e7710 = pSave;
+                    pDL = g_BrGfxPtr;
+                    g_BrGfxPtr = pSave;
                 }
 
                 while ((((char *)pDL - (char *)DAT_102e16b0) & ~3) <= 0x13800) {
@@ -396,7 +396,7 @@ void BrObjDlBuild(struct BrViewRect * pRects, int idx, uint32_t cls, int bLit, u
                             goto nextObj;
                         }
                         if (n > 32) {
-                            FUN_1002f26b(DAT_100a5da8);
+                            BrLogSet(DAT_100a5da8);
                         }
                         c2 = *pCmd++;
                         *pDL++ = (uint32_t)pVtx;
@@ -428,7 +428,7 @@ void BrObjDlBuild(struct BrViewRect * pRects, int idx, uint32_t cls, int bLit, u
                         }
                         break;
                     case 0xb1:
-                        if (DAT_106ed69c != 0) {
+                        if ((*(int *)((char *)&g_aBrEntRecs + 0x6C)) != 0) {
                             COPY2();
                             break;
                         }
@@ -470,7 +470,7 @@ void BrObjDlBuild(struct BrViewRect * pRects, int idx, uint32_t cls, int bLit, u
                     case 0xb8:
                         goto walkDone;
                     case 0xbf:
-                        if (DAT_106ed69c != 0) {
+                        if ((*(int *)((char *)&g_aBrEntRecs + 0x6C)) != 0) {
                             COPY2();
                             break;
                         }
@@ -509,7 +509,7 @@ void BrObjDlBuild(struct BrViewRect * pRects, int idx, uint32_t cls, int bLit, u
         pDL += 2;
         BrPodNop();
     }
-    DAT_1035f7d8 = pDL;
+    (*(uint32_t * *)&DAT_1035f7d8) = pDL;
     DAT_1035faec = pVtx;
 }
 

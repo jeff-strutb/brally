@@ -173,7 +173,7 @@ int FUN_1004abe0(GameUi *parent)
         FUN_100378c0(4);
     p->s38(parent, cont->f338 - DAT_10077628, cont->f33C - DAT_10077670,
            0x22001, 2, 5, 0, 0x50);
-    p->p1E210 = &DAT_10ac4ad8;
+    p->p1E210 = &(*(char *)&g_aBrSprRectC);
     p->f2968 = 1;
     p->f296C = 1;
     for (i = 0; i < 15; i++) {
@@ -184,7 +184,7 @@ int FUN_1004abe0(GameUi *parent)
         p->a2978[i] = 0x3c;
         p->w2A40[i] = 0x51;
     }
-    p->pfn08 = (CtlFn)BrSub10040600;
+    p->pfn08 = (CtlFn)BrPhaseLeave_100471B0;
     p->w1E20C = 0x50;
     p->f054 = (int)cont->f33C;
     p->f050 = (int)cont->f338;

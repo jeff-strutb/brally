@@ -67,7 +67,7 @@ extern "C" {
 
 void Driver_623E0::m_100623E0()
 {
-    if (g_brRacePaused != 0 || pCar == 0)
+    if ((*(int *)&g_BrX06909B4) != 0 || pCar == 0)
         return;
 
     if (pCar->skidLen != 0) {
@@ -91,7 +91,7 @@ void Driver_623E0::m_100623E0()
     pCar->m_1006EBC0();
 
     BrVec3Sub(&pCar->vel, &pCar->pos, &pCar->posPrev);
-    BrVec3ScaleBy(&pCar->vel, 1.0f / g_brRaceStepDt);
+    BrVec3ScaleBy(&pCar->vel, 1.0f / g_brRaceFlyStep);
     pCar->f2718 = BrAtan2(pCar->p2734[0], pCar->p2734[1]);
 
     if (pCar->fF04 != 0)

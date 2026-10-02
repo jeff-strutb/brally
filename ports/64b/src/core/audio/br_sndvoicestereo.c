@@ -34,7 +34,7 @@ int BrSndVoiceSetLR(BrSndVoice * pVoice, unsigned int levels)
   int lo;
   int hi;
 
-  if ((DAT_100b55f0 != 0) && (DAT_1184c458 != 0) && (DAT_1184c45c != 0)) {
+  if (((*(int *)&DAT_100b51e4[1036]) != 0) && ((*(int *)&BrSndPDS) != 0) && (BrSndG18290FC != 0)) {
     if (pVoice == 0)
       goto RET0;
     hi = levels >> 0x10;

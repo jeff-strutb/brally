@@ -96,12 +96,12 @@ extern "C" int BrVidModeListFill(void)
     char       sz[80];
 
     Ctl58D40_fn(0);
-    if (DAT_10ac5dcc == 0) {
+    if (g_count == 0) {
         return 0;
     }
     idx   = 0;
     found = 0;
-    pM = (VideoMode *)(DAT_10ac5dc8);
+    pM = (VideoMode *)((*(VideoMode * *)&g_head));
     while (pM != 0) {
         w   = pM->w;
         h   = pM->h;
@@ -120,19 +120,19 @@ extern "C" int BrVidModeListFill(void)
                 && DAT_10b71a50 == zd) {
 take:
                 found = 1;
-                DAT_10ac5bbc = idx;
-                DAT_10ac5d88 = idx;
+                _DAT_10ac5bbc = idx;
+                (*(int *)&g_iAA2A30) = idx;
             }
         }
 
         if (found == 0 && w == 0x280 && h == 0x1E0 && zd == 0x10) {
-            DAT_10ac5bbc = idx;
-            DAT_10ac5d88 = idx;
+            _DAT_10ac5bbc = idx;
+            (*(int *)&g_iAA2A30) = idx;
         }
 
-        if (DAT_10ac5d44 != 0) {
-            DAT_10ac5d44->m3838.s4(sz, 0, 1, &DAT_100aacc8, 1);
-            DAT_10ac5d44->m3838.s10(pM, 0x14, idx);
+        if ((*(Ctl58E20 * *)&DAT_10ac5d44) != 0) {
+            (*(Ctl58E20 * *)&DAT_10ac5d44)->m3838.s4(sz, 0, 1, &DAT_100aacc8, 1);
+            (*(Ctl58E20 * *)&DAT_10ac5d44)->m3838.s10(pM, 0x14, idx);
         }
         pM = pM->pNext;
         idx = idx + 1;

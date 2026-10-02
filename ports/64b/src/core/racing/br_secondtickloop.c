@@ -33,10 +33,10 @@ void BrSecondTickLoop(void)
       DAT_1184c070 = BrDelta_100713A0();
       if (DAT_1184c070 < DAT_11849ea8) break;
       FUN_1006a650();
-      FUN_1006a7e0();
+      BrNetPeerRank();
       BrNetPeerMsgReset();
-      FUN_1006ab80();
-      FUN_1006b0e0(&g_brP277B40);
+      BrNetPeerPump();
+      BrNetPeerSendPass(&g_brP277B40);
       DAT_11849ea8 = DAT_11849ea8 + 1000;
     }
     Sleep(DAT_11849ea8 - DAT_1184c070);

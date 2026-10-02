@@ -57,17 +57,17 @@ char BrGhostSave(void)
     int          cb;
     FILE        *fp;
 
-    sum = FUN_10001000(0, 0, 0);
-    sum = FUN_10001000(sum, &DAT_10ac5c24, 4);
-    sum = FUN_10001000(sum, &DAT_10ac5c20, 4);
-    sum = FUN_10001000(sum, DAT_105bc8e0, 0x10);
-    sum = FUN_10001000(sum, BrReplayGetBuf(), BrReplayGetSize());
-    cb  = BrReplayGetSize() + 0xc + DAT_105bc8d8;
+    sum = BrAdler32(0, 0, 0);
+    sum = BrAdler32(sum, &(*(int *)&g_brTime5C24), 4);
+    sum = BrAdler32(sum, &(*(int *)&g_brTime5C20), 4);
+    sum = BrAdler32(sum, (*(char (*)[])&g_aBrRaceBeginRec), 0x10);
+    sum = BrAdler32(sum, BrReplayGetBuf(), BrReplayGetSize());
+    cb  = BrReplayGetSize() + 0xc + (*(int *)&g_brRace5BC8D8);
     fp  = fopen(DAT_117a5f28, DAT_1007b600);
     if (fp == 0) {
         return 0;
     }
-    if (fwrite(DAT_100b55a4, 1, 4, fp) != 4) {
+    if (fwrite((*(char (*)[])&DAT_100b51e4[960]), 1, 4, fp) != 4) {
         fclose(fp);
         return 0;
     }
@@ -83,15 +83,15 @@ char BrGhostSave(void)
         fclose(fp);
         return 0;
     }
-    if (fwrite(&DAT_10ac5c24, 4, 1, fp) != 1) {
+    if (fwrite(&(*(int *)&g_brTime5C24), 4, 1, fp) != 1) {
         fclose(fp);
         return 0;
     }
-    if (fwrite(&DAT_10ac5c20, 4, 1, fp) != 1) {
+    if (fwrite(&(*(int *)&g_brTime5C20), 4, 1, fp) != 1) {
         fclose(fp);
         return 0;
     }
-    if (fwrite(DAT_105bc8e0, 1, DAT_105bc8d8, fp) != (unsigned int)DAT_105bc8d8) {
+    if (fwrite((*(char (*)[])&g_aBrRaceBeginRec), 1, (*(int *)&g_brRace5BC8D8), fp) != (unsigned int)(*(int *)&g_brRace5BC8D8)) {
         fclose(fp);
         return 0;
     }
@@ -99,13 +99,13 @@ char BrGhostSave(void)
         fclose(fp);
         return 0;
     }
-    fwrite(&DAT_10ac5d60, 4, 1, fp);
-    fwrite(&DAT_100abdec, 4, 1, fp);
-    fwrite(&DAT_100abdf0, 4, 1, fp);
-    fwrite(&DAT_100abdf4, 4, 1, fp);
-    fwrite(&DAT_100abdfc, 4, 1, fp);
+    fwrite(&(*(int *)&DAT_10ac5d60), 4, 1, fp);
+    fwrite(&(*(int *)&DAT_100abdec), 4, 1, fp);
+    fwrite(&(*(int *)&DAT_100abdf0), 4, 1, fp);
+    fwrite(&g_brSel0ABDF4, 4, 1, fp);
+    fwrite(&(*(int *)&g_i0AC65C), 4, 1, fp);
     fwrite(&DAT_100abdf8, 4, 1, fp);
-    if (fwrite(DAT_10af3cf0, 1, 0x80, fp) != 0x80) {
+    if (fwrite((*(char (*)[])((char *)&g_aBrRaceCar + 0x2AE8)) /* BR_LP64_BYTE_VIEW */, 1, 0x80, fp) != 0x80) {
         fclose(fp);
         return 0;
     }

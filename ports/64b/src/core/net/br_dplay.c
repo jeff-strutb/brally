@@ -73,9 +73,9 @@ BrDPlayState *BrDPlayGetState(void)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 #define DPS_hQuit DAT_10273344
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define DPS_pDPGlobal DAT_10273328
+#define DPS_pDPGlobal (*(BrDPlay4Obj * *)&(*(void * *)&g_brP277B40))
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define DPS_fLog DAT_100abaa0
+#define DPS_fLog (*(int32_t *)&g_AC300)
 
 /* DirectPlay's Win32 imports are stdcall IAT calls (FF 15). The portable
  * BrDPlayOs function-pointer table is cdecl and cannot emit that sequence. */
@@ -136,8 +136,8 @@ void BrDPlaySysMsgDispatch(void *pv1, const BrDPlaySysMsg *pMsg,
         return;
     case 5:                         /* DPSYS_DESTROYPLAYERORGROUP */
         if (DPS_fLog == 0) {
-            BrSub10071480(pMsg->f08);
-            BrSub10005FE0(pMsg->f08);
+            BrNetPeerMsgCancel(pMsg->f08);
+            BrNetDropMatching(pMsg->f08);
         }
         return;
     case 0x21:                      /* DPSYS_DELETEPLAYERFROMGROUP */
@@ -151,7 +151,7 @@ void BrDPlaySysMsgDispatch(void *pv1, const BrDPlaySysMsg *pMsg,
     case 0x103:                     /* DPSYS_SETPLAYERORGROUPNAME */
         return;
     case 0x107:                     /* DPSYS_CHAT */
-        BrSub100360F0(pv1, pMsg->f0C, pMsg->f10, pMsg->f08, idTo);
+        FUN_1002f790(pv1, pMsg->f0C, pMsg->f10, pMsg->f08, idTo);
         return;
     }
 }
@@ -253,7 +253,7 @@ void BrDPlaySysMsgLog(BrDPlayCtx *pCtx, const BrDPlaySysMsg *pMsg,
             }
             break;
         case 0x104:
-            BrSub1003CE80();
+            BrNetSessionApply();
             break;
         }
         if (pszB != NULL) {
@@ -309,7 +309,7 @@ int32_t BrDPlayPump(BrDPlayCtx *pCtx)
                     BrDPlaySysMsgLog(pCtx, (const BrDPlaySysMsg *)pvBuf,
                                      cbBuf, 0u, idTo);
                 else
-                    BrSub1000BAF0(pCtx, pvBuf, cbBuf, idFrom, idTo);
+                    BrDpAppMsgHandle(pCtx, pvBuf, cbBuf, idFrom, idTo);
             }
         }
         if (hr < 0)
@@ -365,10 +365,10 @@ int BrComHolderRelease(void)
   int uVar2;
   
   uVar2 = 0;
-  if (((g_brPA9D008 != (int *)0x0) && (piVar1 = (int *)*g_brPA9D008, piVar1 != (int *)0x0)) &&
-     (g_brPA9D008[2] != 0)) {
-    uVar2 = (*(CC_std_2 *)(*(int *)(piVar1) + 36))(piVar1,g_brPA9D008[2]);
-    g_brPA9D008[2] = 0;
+  if ((((*(int * *)&g_brPA9D008) != (int *)0x0) && (piVar1 = (int *)*(*(int * *)&g_brPA9D008), piVar1 != (int *)0x0)) &&
+     ((*(int * *)&g_brPA9D008)[2] != 0)) {
+    uVar2 = (*(CC_std_2 *)(*(int *)(piVar1) + 36))(piVar1,(*(int * *)&g_brPA9D008)[2]);
+    (*(int * *)&g_brPA9D008)[2] = 0;
   }
   return uVar2;
 }
@@ -497,7 +497,7 @@ uint32_t BrDPlayGetCurrentPlayers(void)
     void    *pv = NULL;
     uint32_t n;
 
-    if (BrSub1003D0B0(DPS_pDPGlobal, &pv) < 0)
+    if (FUN_10036740(DPS_pDPGlobal, &pv) < 0)
         return 0xFFFFu;
 
     n = *(uint32_t *)((char *)pv + 0x2C);
@@ -537,7 +537,7 @@ int BrDpCreateIface(BrIUnk **out)
 
     a = 0;
     b = 0;
-    hr = FUN_10072960(0, &a, 0, 0, 0);
+    hr = DirectPlayCreate(0, &a, 0, 0, 0);
     /* Early-out, not an enclosing `if (hr >= 0)` block: that shape flips
      * the first branch to jl where the original has jge (cracked 2026-09-09,
      * the only residue row). */
@@ -549,7 +549,7 @@ int BrDpCreateIface(BrIUnk **out)
     }
     a->vt->Release(a);
     a = 0;
-    FUN_10036f40(DAT_105bc72c, b);
+    FUN_10036f40(g_brOwner5BC72C, b);
     *out = b;
     return 0;
 fail:
@@ -597,11 +597,11 @@ int BrNetSessionApply(void)
     char *pszName;
 
     pDesc = 0;
-    if (g_brP277B40 == 0) {
+    if ((*(void * *)&g_brP277B40) == 0) {
         return (int)0x88770082;
     }
     memset(desc, 0, 0x50);
-    r = FUN_10036740(g_brP277B40, &pDesc);
+    r = FUN_10036740((*(void * *)&g_brP277B40), &pDesc);
     if (r < 0) {
         if (pDesc != 0) {
             GlobalUnlock(GlobalHandle(pDesc));
@@ -609,32 +609,32 @@ int BrNetSessionApply(void)
         }
         return r;
     }
-    DAT_100abde8 = *(int *)((char *)pDesc + 0x40);
-    DAT_100b3014 = DAT_100abde8;
+    g_brIdx0ABDE8 = *(int *)((char *)pDesc + 0x40);
+    (*(int *)&g_Br0B380C) = g_brIdx0ABDE8;
     DAT_10ac5d58 = *(int *)((char *)pDesc + 0x44);
-    DAT_10226e80 = DAT_10ac5d58;
+    g_226e80 = DAT_10ac5d58;
     DAT_10ac5d70 = *(int *)((char *)pDesc + 0x48);
-    DAT_100bcbe8 = *(int *)((char *)pDesc + 0x4c);
-    DAT_100abdf8 = DAT_100bcbe8;
+    g_CBE8 = *(int *)((char *)pDesc + 0x4c);
+    DAT_100abdf8 = g_CBE8;
     BrSub10044540();
-    start = DAT_100abdf4;
-    if (BrOptAvailB(DAT_100abdf4) == 0) {
+    start = g_brSel0ABDF4;
+    if (BrOptAvailB(g_brSel0ABDF4) == 0) {
         for (;;) {
-            DAT_100abdf4 = DAT_100abdf4 + 1;
-            if (DAT_100abdf4 > 0x1f) {
-                DAT_100abdf4 = 0;
+            g_brSel0ABDF4 = g_brSel0ABDF4 + 1;
+            if (g_brSel0ABDF4 > 0x1f) {
+                g_brSel0ABDF4 = 0;
             }
-            if (DAT_100abdf4 == start) {
+            if (g_brSel0ABDF4 == start) {
                 break;
             }
-            if (BrOptAvailB(DAT_100abdf4) != 0) {
+            if (BrOptAvailB(g_brSel0ABDF4) != 0) {
                 break;
             }
         }
     }
     pszName = *(char **)((char *)pDesc + 0x30);
     if (pszName != 0) {
-        strcpy(DAT_10ac40a8, pszName);
+        strcpy((*(char (*)[])&DAT_10ac40a8), pszName);
     }
     GlobalUnlock(GlobalHandle(pDesc));
     GlobalFree(GlobalHandle(pDesc));

@@ -247,113 +247,113 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
     uint32_t       dt;
     int32_t        df;
 
-    if (g_brInputFrame < 0x7FFF)
-        g_brInputFrame++;
+    if ((*(int32_t *)((char *)&g_brFfb + 0x8)) /* BR_LP64_BYTE_VIEW */ < 0x7FFF)
+        (*(int32_t *)((char *)&g_brFfb + 0x8)) /* BR_LP64_BYTE_VIEW */++;
     flags = 0;
 
     /* ---- keyboard --------------------------------------------------- */
     g_brInKeyPrev = g_brInKeyCur;
     g_brInKeyCur = (g_brInKeyCur - 1) & 1;
-    hr = g_pBrDik18ABDD0->pVtbl->GetDeviceState(g_pBrDik18ABDD0, 0x100u,
+    hr = (*(BrInDiDev * *)&g_pBrDik18ABDD0)->pVtbl->GetDeviceState((*(BrInDiDev * *)&g_pBrDik18ABDD0), 0x100u,
                                                 g_brInKeys[g_brInKeyCur]);
     if (hr < 0) {
         if (hr == BR_DIERR_NOTACQUIRED) {
-            hr = g_pBrDik18ABDD0->pVtbl->Acquire(g_pBrDik18ABDD0);
+            hr = (*(BrInDiDev * *)&g_pBrDik18ABDD0)->pVtbl->Acquire((*(BrInDiDev * *)&g_pBrDik18ABDD0));
             if (hr < 0) {
-                g_brInputLast = 0;
+                (*(int32_t *)&g_BrX18ABAD0) = 0;
                 return 0;
             }
-            hr = g_pBrDik18ABDD0->pVtbl->GetDeviceState(g_pBrDik18ABDD0, 0x100u,
+            hr = (*(BrInDiDev * *)&g_pBrDik18ABDD0)->pVtbl->GetDeviceState((*(BrInDiDev * *)&g_pBrDik18ABDD0), 0x100u,
                                                         g_brInKeys[g_brInKeyCur]);
             if (hr < 0) {
-                g_brInputLast = 0;
+                (*(int32_t *)&g_BrX18ABAD0) = 0;
                 return 0;
             }
         } else {
-            g_brInputLast = 0;
+            (*(int32_t *)&g_BrX18ABAD0) = 0;
             return 0;
         }
     }
     g_brInKeys[g_brInKeyCur][0] = 0;
 
     /* ---- joystick --------------------------------------------------- */
-    if (g_brB4E1D0 == 1 || g_brB4E1D0 == 2) {
-        g_brInJoyPrev = g_brInJoyCur;
-        g_brInJoyCur = (g_brInJoyCur - 1) & 1;
-        g_pBrInJoyDev->pVtbl->Poll(g_pBrInJoyDev);
-        hr = g_pBrInJoyDev->pVtbl->GetDeviceState(g_pBrInJoyDev, 0x110u,
-                                                  &g_brInJoy[g_brInJoyCur]);
+    if ((*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ == 1 || (*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ == 2) {
+        g_brInJoyPrev = (*(int32_t *)&DAT_118eebd0);
+        (*(int32_t *)&DAT_118eebd0) = ((*(int32_t *)&DAT_118eebd0) - 1) & 1;
+        (*(BrInDiDev * *)&g_brFfb)->pVtbl->Poll((*(BrInDiDev * *)&g_brFfb));
+        hr = (*(BrInDiDev * *)&g_brFfb)->pVtbl->GetDeviceState((*(BrInDiDev * *)&g_brFfb), 0x110u,
+                                                  &g_brInJoy[(*(int32_t *)&DAT_118eebd0)]);
         if (hr != 0) {
             if (hr == BR_DIERR_NOTACQUIRED)
                 BrDiAcquire();
-            memset(g_brInJoy[g_brInJoyCur].rgbButtons, 0, 0x80);
+            memset(g_brInJoy[(*(int32_t *)&DAT_118eebd0)].rgbButtons, 0, 0x80);
         }
     }
 
     /* ---- mouse ------------------------------------------------------ */
-    g_brInMousePrev = g_brInMouseCur;
-    g_brInMouseCur = (g_brInMouseCur - 1) & 1;
-    if (g_pBrInDiRoot != 0 && g_pBrInDiRoot->pMouse != 0) {
+    g_brInMousePrev = (*(int32_t *)&g_18ABD80);
+    (*(int32_t *)&g_18ABD80) = ((*(int32_t *)&g_18ABD80) - 1) & 1;
+    if ((*(BrInDiRoot * *)&g_pBrAA2E80) != 0 && (*(BrInDiRoot * *)&g_pBrAA2E80)->pMouse != 0) {
         BrInMouseState ms;
-        hr = g_pBrInDiRoot->pMouse->pVtbl->GetDeviceState(g_pBrInDiRoot->pMouse,
+        hr = (*(BrInDiRoot * *)&g_pBrAA2E80)->pMouse->pVtbl->GetDeviceState((*(BrInDiRoot * *)&g_pBrAA2E80)->pMouse,
                                                           0x10u, &ms);
         if (hr == 0) {
-            int32_t *pPrevAx = &g_brInMouse[g_brInMousePrev].ax;
-            cur = g_brInMouseCur;
-            g_brInMouse[cur].ax = ms.lX + *pPrevAx;
-            g_brInMouse[cur].ay = ms.lY + *pPrevAx;
-            g_brInMouse[cur].az = ms.lZ + *pPrevAx;
-            g = g_brMouseSens;
+            int32_t *pPrevAx = &(*(BrInMouse (*)[])&g_18ABD38)[g_brInMousePrev].ax;
+            cur = (*(int32_t *)&g_18ABD80);
+            (*(BrInMouse (*)[])&g_18ABD38)[cur].ax = ms.lX + *pPrevAx;
+            (*(BrInMouse (*)[])&g_18ABD38)[cur].ay = ms.lY + *pPrevAx;
+            (*(BrInMouse (*)[])&g_18ABD38)[cur].az = ms.lZ + *pPrevAx;
+            g = (*(int32_t *)((char *)&g_aBrRaceCar + 0xE98)) /* BR_LP64_BYTE_VIEW */;
             if (g < 0)
                 g = 0;
             else if (g > 7)
                 g = 7;
             div = g_brMouseDivTable[g];
-            g_brInMouse[cur].x = (g_brInMouse[cur].ax << 7) / div;
-            g_brInMouse[cur].y = (g_brInMouse[cur].ay << 7) / div;
-            g_brInMouse[cur].z = (g_brInMouse[cur].az << 7) / div;
-            if (g_brInMouse[cur].x < -0x80) {
-                g_brInMouse[cur].x = -0x80;
-                g_brInMouse[cur].ax = -div;
-            } else if (g_brInMouse[cur].x > 0x80) {
-                g_brInMouse[cur].x = 0x80;
-                g_brInMouse[cur].ax = div;
+            (*(BrInMouse (*)[])&g_18ABD38)[cur].x = ((*(BrInMouse (*)[])&g_18ABD38)[cur].ax << 7) / div;
+            (*(BrInMouse (*)[])&g_18ABD38)[cur].y = ((*(BrInMouse (*)[])&g_18ABD38)[cur].ay << 7) / div;
+            (*(BrInMouse (*)[])&g_18ABD38)[cur].z = ((*(BrInMouse (*)[])&g_18ABD38)[cur].az << 7) / div;
+            if ((*(BrInMouse (*)[])&g_18ABD38)[cur].x < -0x80) {
+                (*(BrInMouse (*)[])&g_18ABD38)[cur].x = -0x80;
+                (*(BrInMouse (*)[])&g_18ABD38)[cur].ax = -div;
+            } else if ((*(BrInMouse (*)[])&g_18ABD38)[cur].x > 0x80) {
+                (*(BrInMouse (*)[])&g_18ABD38)[cur].x = 0x80;
+                (*(BrInMouse (*)[])&g_18ABD38)[cur].ax = div;
             }
-            if (g_brInMouse[cur].y < -0x80) {
-                g_brInMouse[cur].y = -0x80;
-                g_brInMouse[cur].ay = -div;
-            } else if (g_brInMouse[cur].y > 0x80) {
-                g_brInMouse[cur].y = 0x80;
-                g_brInMouse[cur].ay = div;
+            if ((*(BrInMouse (*)[])&g_18ABD38)[cur].y < -0x80) {
+                (*(BrInMouse (*)[])&g_18ABD38)[cur].y = -0x80;
+                (*(BrInMouse (*)[])&g_18ABD38)[cur].ay = -div;
+            } else if ((*(BrInMouse (*)[])&g_18ABD38)[cur].y > 0x80) {
+                (*(BrInMouse (*)[])&g_18ABD38)[cur].y = 0x80;
+                (*(BrInMouse (*)[])&g_18ABD38)[cur].ay = div;
             }
-            if (g_brInMouse[cur].z < -0x80) {
-                g_brInMouse[cur].z = -0x80;
-                g_brInMouse[cur].az = -div;
-            } else if (g_brInMouse[cur].z > 0x80) {
-                g_brInMouse[cur].z = 0x80;
-                g_brInMouse[cur].az = div;
+            if ((*(BrInMouse (*)[])&g_18ABD38)[cur].z < -0x80) {
+                (*(BrInMouse (*)[])&g_18ABD38)[cur].z = -0x80;
+                (*(BrInMouse (*)[])&g_18ABD38)[cur].az = -div;
+            } else if ((*(BrInMouse (*)[])&g_18ABD38)[cur].z > 0x80) {
+                (*(BrInMouse (*)[])&g_18ABD38)[cur].z = 0x80;
+                (*(BrInMouse (*)[])&g_18ABD38)[cur].az = div;
             }
-            g_brInMouse[cur].buttons[0] = ms.rgbButtons[0];
-            g_brInMouse[cur].buttons[1] = ms.rgbButtons[1];
-            g_brInMouse[cur].buttons[2] = ms.rgbButtons[2];
-            g_brInMouse[cur].buttons[3] = ms.rgbButtons[3];
+            (*(BrInMouse (*)[])&g_18ABD38)[cur].buttons[0] = ms.rgbButtons[0];
+            (*(BrInMouse (*)[])&g_18ABD38)[cur].buttons[1] = ms.rgbButtons[1];
+            (*(BrInMouse (*)[])&g_18ABD38)[cur].buttons[2] = ms.rgbButtons[2];
+            (*(BrInMouse (*)[])&g_18ABD38)[cur].buttons[3] = ms.rgbButtons[3];
         } else {
             if (hr == BR_DIERR_NOTACQUIRED)
-                g_pBrInDiRoot->pMouse->pVtbl->Acquire(g_pBrInDiRoot->pMouse);
-            memset(g_brInMouse[g_brInMouseCur].buttons, 0, 4);
+                (*(BrInDiRoot * *)&g_pBrAA2E80)->pMouse->pVtbl->Acquire((*(BrInDiRoot * *)&g_pBrAA2E80)->pMouse);
+            memset((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].buttons, 0, 4);
         }
     } else {
-        memset(&g_brInMouse[g_brInMouseCur], 0, sizeof(BrInMouse));
+        memset(&(*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)], 0, sizeof(BrInMouse));
     }
 
     /* ---- Escape: pause, or leave -------------------------------------- */
     if (BrInputJustPressed(15)) {
-        if (g_br10226A48 != 0 && g_br10226A44 != 0 && g_br105CCB88 == 0 &&
-            g_br10AF21B0 < g_br100BCBE8) {
-            BrSub10004F50();
+        if (g_brRaceNet != 0 && g_brRaceTick != 0 && (DAT_105ccb68[8]) == 0 &&
+            (*(int32_t *)((char *)&g_aBrRaceCar + 0xFA8)) /* BR_LP64_BYTE_VIEW */ < (*(int32_t *)&g_CBE8)) {
+            BrNetLockSetIfZero22AAF4();
         } else {
-            g_br10226A50 = 1;
-            g_brInputLast = 0x4000;
+            (*(int32_t *)&DAT_10226a50) = 1;
+            (*(int32_t *)&g_BrX18ABAD0) = 0x4000;
             return 0x4000;
         }
     }
@@ -364,19 +364,19 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
         g_br100BCBF0 = (g_br100BCBF0 == 0);
     if ((g_brInKeys[g_brInKeyPrev][0x40] & 0x80) == 0 &&
         (g_brInKeys[g_brInKeyCur][0x40] & 0x80) != 0)
-        g_br100BCBF4 = (g_br100BCBF4 == 0);
+        g_br0BCBF4 = (g_br0BCBF4 == 0);
     if ((g_brInKeys[g_brInKeyPrev][0x41] & 0x80) == 0 &&
         (g_brInKeys[g_brInKeyCur][0x41] & 0x80) != 0)
-        g_br100BCBF8 = (g_br100BCBF8 == 0);
+        (*(int32_t *)&DAT_100bcbf8) = ((*(int32_t *)&DAT_100bcbf8) == 0);
     if ((g_brInKeys[g_brInKeyPrev][0x42] & 0x80) == 0 &&
         (g_brInKeys[g_brInKeyCur][0x42] & 0x80) != 0)
-        g_br100BCBFC = (g_br100BCBFC == 0);
+        DAT_100bcbfc = (DAT_100bcbfc == 0);
     if ((g_brInKeys[g_brInKeyPrev][0x43] & 0x80) == 0 &&
         (g_brInKeys[g_brInKeyCur][0x43] & 0x80) != 0)
         g_br100BCC00 = (g_br100BCC00 == 0);
     if ((g_brInKeys[g_brInKeyPrev][0x44] & 0x80) == 0 &&
         (g_brInKeys[g_brInKeyCur][0x44] & 0x80) != 0)
-        g_br100BCC04 = (g_br100BCC04 == 0);
+        (*(int32_t *)&DAT_100bcc04) = ((*(int32_t *)&DAT_100bcc04) == 0);
     if ((g_brInKeys[g_brInKeyPrev][0x57] & 0x80) == 0 &&
         (g_brInKeys[g_brInKeyCur][0x57] & 0x80) != 0)
         BrCdTrackPrev();
@@ -384,14 +384,14 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
         (g_brInKeys[g_brInKeyCur][0x58] & 0x80) != 0)
         BrCdTrackNext();
 
-    if ((GetAsyncKeyState(0x46) & 1) && g_brInputFrame > 15)
+    if ((GetAsyncKeyState(0x46) & 1) && (*(int32_t *)((char *)&g_brFfb + 0x8)) /* BR_LP64_BYTE_VIEW */ > 15)
         g_BrFpsGuard = (g_BrFpsGuard == 0);
-    if ((GetAsyncKeyState(0x50) & 1) && g_brInputFrame > 15)
-        g_br118EEEE0 = (g_br118EEEE0 == 0);
+    if ((GetAsyncKeyState(0x50) & 1) && (*(int32_t *)((char *)&g_brFfb + 0x8)) /* BR_LP64_BYTE_VIEW */ > 15)
+        (*(int32_t *)&DAT_118eeee0) = ((*(int32_t *)&DAT_118eeee0) == 0);
 
     /* ---- the non-race screens ------------------------------------------ */
-    if (g_br105CCB88 != 0) {
-        if (g_br105CCB88 == 2) {
+    if ((DAT_105ccb68[8]) != 0) {
+        if ((DAT_105ccb68[8]) == 2) {
             if (BrInputJustPressed(8))  flags |= 0x100;
             if (BrInputJustPressed(9))  flags |= 0x200;
             if (BrInputJustPressed(10)) flags |= 0x400;
@@ -404,80 +404,80 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
         if (BrInputIsDown(0x19))      flags |= 0x1000000;
         if (BrInputJustPressed(0x1A)) flags |= 0x200000;
         if (BrInputJustPressed(0x1B)) flags |= 0x400000;
-        g_brInputLast = flags;
+        (*(int32_t *)&g_BrX18ABAD0) = flags;
         return flags;
     }
 
     /* ---- in the race ------------------------------------------------- */
     if (BrInputJustPressed(0x10)) {
-        if (g_br105CCB5C == 0 && g_brCfgGameMode != 4 && g_brCfgGameMode != 5)
-            g_br118EEEE4 = 1;
-        if (g_br10226A48 != 0) {
+        if (g_BrX06909B4 == 0 && (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 4 && (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 5)
+            (*(int32_t *)&DAT_118eeee4) = 1;
+        if (g_brRaceNet != 0) {
             if (g_brRace18EEED8 == 0) {
-                BrSub10004F20();
+                BrNetLockSet22AAA8();
                 g_brRace18EEED8 = 1;
             }
         } else {
-            g_br10226A44 = 1;
-            if (g_brCfgGameMode == 2)
-                BrSub10063A40();
+            g_brRaceTick = 1;
+            if ((*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 2)
+                BrSet_1006AA90();
         }
     }
     if (BrInputJustPressed(14))
         flags |= 0x8000;
 
     *pAxis0 = 0;
-    if (g_brCfgGameMode != 4 && g_brCfgGameMode != 5) {
+    if ((*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 4 && (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 5) {
         w = *(const uint16_t *)(const void *)g_BrPadModeBytes;
         if (w & 0x8000) {
             switch (w & 0xFF00) {
             case 0x8000:
-                if (g_brInJoy[g_brInJoyCur].lX < 0)
-                    *pAxis0 = BR_AXIS_SCALE(g_brInJoy[g_brInJoyCur].lX);
+                if (g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lX < 0)
+                    *pAxis0 = BR_AXIS_SCALE(g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lX);
                 break;
             case 0x8100:
-                if (g_brInJoy[g_brInJoyCur].lX > 0)
-                    *pAxis0 = BR_AXIS_SCALE_NEG(g_brInJoy[g_brInJoyCur].lX);
+                if (g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lX > 0)
+                    *pAxis0 = BR_AXIS_SCALE_NEG(g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lX);
                 break;
             case 0x8200:
-                if (g_brInJoy[g_brInJoyCur].lY < 0)
-                    *pAxis0 = BR_AXIS_SCALE(g_brInJoy[g_brInJoyCur].lY);
+                if (g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lY < 0)
+                    *pAxis0 = BR_AXIS_SCALE(g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lY);
                 break;
             case 0x8300:
-                if (g_brInJoy[g_brInJoyCur].lY > 0)
-                    *pAxis0 = BR_AXIS_SCALE_NEG(g_brInJoy[g_brInJoyCur].lY);
+                if (g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lY > 0)
+                    *pAxis0 = BR_AXIS_SCALE_NEG(g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lY);
                 break;
             case 0x8400:
-                if (g_brInJoy[g_brInJoyCur].lZ < 0)
-                    *pAxis0 = BR_AXIS_SCALE(g_brInJoy[g_brInJoyCur].lZ);
+                if (g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lZ < 0)
+                    *pAxis0 = BR_AXIS_SCALE(g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lZ);
                 break;
             case 0x8500:
-                if (g_brInJoy[g_brInJoyCur].lZ > 0)
-                    *pAxis0 = BR_AXIS_SCALE_NEG(g_brInJoy[g_brInJoyCur].lZ);
+                if (g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lZ > 0)
+                    *pAxis0 = BR_AXIS_SCALE_NEG(g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lZ);
                 break;
             case 0x8600:
-                if (g_brInMouse[g_brInMouseCur].x < 0)
-                    *pAxis0 = BR_AXIS_SCALE(g_brInMouse[g_brInMouseCur].x);
+                if ((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].x < 0)
+                    *pAxis0 = BR_AXIS_SCALE((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].x);
                 break;
             case 0x8700:
-                if (g_brInMouse[g_brInMouseCur].x > 0)
-                    *pAxis0 = BR_AXIS_SCALE_NEG(g_brInMouse[g_brInMouseCur].x);
+                if ((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].x > 0)
+                    *pAxis0 = BR_AXIS_SCALE_NEG((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].x);
                 break;
             case 0x8800:
-                if (g_brInMouse[g_brInMouseCur].y < 0)
-                    *pAxis0 = BR_AXIS_SCALE(g_brInMouse[g_brInMouseCur].y);
+                if ((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].y < 0)
+                    *pAxis0 = BR_AXIS_SCALE((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].y);
                 break;
             case 0x8900:
-                if (g_brInMouse[g_brInMouseCur].y > 0)
-                    *pAxis0 = BR_AXIS_SCALE_NEG(g_brInMouse[g_brInMouseCur].y);
+                if ((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].y > 0)
+                    *pAxis0 = BR_AXIS_SCALE_NEG((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].y);
                 break;
             case 0x8A00:
-                if (g_brInMouse[g_brInMouseCur].z < 0)
-                    *pAxis0 = BR_AXIS_SCALE(g_brInMouse[g_brInMouseCur].z);
+                if ((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].z < 0)
+                    *pAxis0 = BR_AXIS_SCALE((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].z);
                 break;
             case 0x8B00:
-                if (g_brInMouse[g_brInMouseCur].z > 0)
-                    *pAxis0 = BR_AXIS_SCALE_NEG(g_brInMouse[g_brInMouseCur].z);
+                if ((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].z > 0)
+                    *pAxis0 = BR_AXIS_SCALE_NEG((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].z);
                 break;
             }
         }
@@ -485,65 +485,65 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
         if (w & 0x8000) {
             switch (w & 0xFF00) {
             case 0x8000:
-                if (g_brInJoy[g_brInJoyCur].lX < 0)
-                    *pAxis0 = BR_AXIS_SCALE_NEG(g_brInJoy[g_brInJoyCur].lX);
+                if (g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lX < 0)
+                    *pAxis0 = BR_AXIS_SCALE_NEG(g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lX);
                 break;
             case 0x8100:
-                if (g_brInJoy[g_brInJoyCur].lX > 0)
-                    *pAxis0 = BR_AXIS_SCALE(g_brInJoy[g_brInJoyCur].lX);
+                if (g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lX > 0)
+                    *pAxis0 = BR_AXIS_SCALE(g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lX);
                 break;
             case 0x8200:
-                if (g_brInJoy[g_brInJoyCur].lY < 0)
-                    *pAxis0 = BR_AXIS_SCALE_NEG(g_brInJoy[g_brInJoyCur].lY);
+                if (g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lY < 0)
+                    *pAxis0 = BR_AXIS_SCALE_NEG(g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lY);
                 break;
             case 0x8300:
-                if (g_brInJoy[g_brInJoyCur].lY > 0)
-                    *pAxis0 = BR_AXIS_SCALE(g_brInJoy[g_brInJoyCur].lY);
+                if (g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lY > 0)
+                    *pAxis0 = BR_AXIS_SCALE(g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lY);
                 break;
             case 0x8400:
-                if (g_brInJoy[g_brInJoyCur].lZ < 0)
-                    *pAxis0 = BR_AXIS_SCALE_NEG(g_brInJoy[g_brInJoyCur].lZ);
+                if (g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lZ < 0)
+                    *pAxis0 = BR_AXIS_SCALE_NEG(g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lZ);
                 break;
             case 0x8500:
-                if (g_brInJoy[g_brInJoyCur].lZ > 0)
-                    *pAxis0 = BR_AXIS_SCALE(g_brInJoy[g_brInJoyCur].lZ);
+                if (g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lZ > 0)
+                    *pAxis0 = BR_AXIS_SCALE(g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lZ);
                 break;
             case 0x8600:
-                if (g_brInMouse[g_brInMouseCur].x < 0)
-                    *pAxis0 = BR_AXIS_SCALE_NEG(g_brInMouse[g_brInMouseCur].x);
+                if ((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].x < 0)
+                    *pAxis0 = BR_AXIS_SCALE_NEG((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].x);
                 break;
             case 0x8700:
-                if (g_brInMouse[g_brInMouseCur].x > 0)
-                    *pAxis0 = BR_AXIS_SCALE(g_brInMouse[g_brInMouseCur].x);
+                if ((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].x > 0)
+                    *pAxis0 = BR_AXIS_SCALE((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].x);
                 break;
             case 0x8800:
-                if (g_brInMouse[g_brInMouseCur].y < 0)
-                    *pAxis0 = BR_AXIS_SCALE_NEG(g_brInMouse[g_brInMouseCur].y);
+                if ((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].y < 0)
+                    *pAxis0 = BR_AXIS_SCALE_NEG((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].y);
                 break;
             case 0x8900:
-                if (g_brInMouse[g_brInMouseCur].y > 0)
-                    *pAxis0 = BR_AXIS_SCALE(g_brInMouse[g_brInMouseCur].y);
+                if ((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].y > 0)
+                    *pAxis0 = BR_AXIS_SCALE((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].y);
                 break;
             case 0x8A00:
-                if (g_brInMouse[g_brInMouseCur].z < 0)
-                    *pAxis0 = BR_AXIS_SCALE_NEG(g_brInMouse[g_brInMouseCur].z);
+                if ((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].z < 0)
+                    *pAxis0 = BR_AXIS_SCALE_NEG((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].z);
                 break;
             case 0x8B00:
-                if (g_brInMouse[g_brInMouseCur].z > 0)
-                    *pAxis0 = BR_AXIS_SCALE(g_brInMouse[g_brInMouseCur].z);
+                if ((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].z > 0)
+                    *pAxis0 = BR_AXIS_SCALE((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].z);
                 break;
             }
         }
     }
 
     /* ---- paused ------------------------------------------------------ */
-    if (g_br105CCB5C != 0) {
+    if (g_BrX06909B4 != 0) {
         if (BrInputJustPressed(12)) flags |= 0x1000;
         if (BrInputJustPressed(13)) flags |= 0x2000;
         if (BrInputJustPressed(0))  flags |= 1;
         if (BrInputJustPressed(1))  flags |= 2;
         if (BrInputJustPressed(2))  flags |= 4;
-        g_brInputLast = flags;
+        (*(int32_t *)&g_BrX18ABAD0) = flags;
         return flags;
     }
 
@@ -558,52 +558,52 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
     if (w & 0x8000) {
         switch (w & 0xFF00) {
         case 0x8000:
-            if (g_brInJoy[g_brInJoyCur].lX < 0)
-                *pAxis1 = BR_AXIS_SCALE_NEG(g_brInJoy[g_brInJoyCur].lX);
+            if (g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lX < 0)
+                *pAxis1 = BR_AXIS_SCALE_NEG(g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lX);
             break;
         case 0x8100:
-            if (g_brInJoy[g_brInJoyCur].lX > 0)
-                *pAxis1 = BR_AXIS_SCALE(g_brInJoy[g_brInJoyCur].lX);
+            if (g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lX > 0)
+                *pAxis1 = BR_AXIS_SCALE(g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lX);
             break;
         case 0x8200:
-            if (g_brInJoy[g_brInJoyCur].lY < 0)
-                *pAxis1 = BR_AXIS_SCALE_NEG(g_brInJoy[g_brInJoyCur].lY);
+            if (g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lY < 0)
+                *pAxis1 = BR_AXIS_SCALE_NEG(g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lY);
             break;
         case 0x8300:
-            if (g_brInJoy[g_brInJoyCur].lY > 0)
-                *pAxis1 = BR_AXIS_SCALE(g_brInJoy[g_brInJoyCur].lY);
+            if (g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lY > 0)
+                *pAxis1 = BR_AXIS_SCALE(g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lY);
             break;
         case 0x8400:
-            if (g_brInJoy[g_brInJoyCur].lZ < 0)
-                *pAxis1 = BR_AXIS_SCALE_NEG(g_brInJoy[g_brInJoyCur].lZ);
+            if (g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lZ < 0)
+                *pAxis1 = BR_AXIS_SCALE_NEG(g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lZ);
             break;
         case 0x8500:
-            if (g_brInJoy[g_brInJoyCur].lZ > 0)
-                *pAxis1 = BR_AXIS_SCALE(g_brInJoy[g_brInJoyCur].lZ);
+            if (g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lZ > 0)
+                *pAxis1 = BR_AXIS_SCALE(g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lZ);
             break;
         case 0x8600:
-            if (g_brInMouse[g_brInMouseCur].x < 0)
-                *pAxis1 = BR_AXIS_SCALE_NEG(g_brInMouse[g_brInMouseCur].x);
+            if ((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].x < 0)
+                *pAxis1 = BR_AXIS_SCALE_NEG((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].x);
             break;
         case 0x8700:
-            if (g_brInMouse[g_brInMouseCur].x > 0)
-                *pAxis1 = BR_AXIS_SCALE(g_brInMouse[g_brInMouseCur].x);
+            if ((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].x > 0)
+                *pAxis1 = BR_AXIS_SCALE((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].x);
             break;
         case 0x8800:
-            if (g_brInMouse[g_brInMouseCur].y < 0)
-                *pAxis1 = BR_AXIS_SCALE_NEG(g_brInMouse[g_brInMouseCur].y);
+            if ((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].y < 0)
+                *pAxis1 = BR_AXIS_SCALE_NEG((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].y);
             break;
         case 0x8900:
-            if (g_brInMouse[g_brInMouseCur].y > 0)
-                *pAxis1 = BR_AXIS_SCALE(g_brInMouse[g_brInMouseCur].y);
+            if ((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].y > 0)
+                *pAxis1 = BR_AXIS_SCALE((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].y);
             break;
         case 0x8A00:
-            if (g_brInMouse[g_brInMouseCur].z < 0)
-                *pAxis1 = BR_AXIS_SCALE_NEG(g_brInMouse[g_brInMouseCur].z);
+            if ((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].z < 0)
+                *pAxis1 = BR_AXIS_SCALE_NEG((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].z);
             break;
         case 0x8B00:
-            if (g_brInMouse[g_brInMouseCur].z > 0)
-                *pAxis1 = BR_AXIS_SCALE(g_brInMouse[g_brInMouseCur].z);
+            if ((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].z > 0)
+                *pAxis1 = BR_AXIS_SCALE((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].z);
             break;
         }
     }
@@ -614,7 +614,7 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
         flags |= 0x10;
         *pAxis1 = -0x50;
     }
-    if (g_brCfgGameMode != 4 && g_brCfgGameMode != 5) {
+    if ((*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 4 && (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 5) {
         if (BrInputIsDown(0)) flags |= 1;
         if (BrInputIsDown(1)) flags |= 2;
     }
@@ -630,12 +630,12 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
     if (BrInputIsDown(7))         flags |= 0x80;
 
     /* ---- benchmark: time 440 frames, print the rate, leave ------------ */
-    if (g_brCfgRunBenchmark != 0) {
-        if (g_brInputFrame == 1) {
+    if ((*(int32_t *)&g_demoFlag) != 0) {
+        if ((*(int32_t *)((char *)&g_brFfb + 0x8)) /* BR_LP64_BYTE_VIEW */ == 1) {
             g_br118EEE18 = BrSub10075020();
             g_br118EEE8C = BrGetFlag_AB4F0();
         }
-        if (g_brInputFrame == 0x1B9) {
+        if ((*(int32_t *)((char *)&g_brFfb + 0x8)) /* BR_LP64_BYTE_VIEW */ == 0x1B9) {
             now = BrSub10075020();
             dt = now - g_br118EEE18;
             g_br118EEE18 = now;
@@ -645,14 +645,14 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
             BrLogPrint(buf);
         }
         GetAsyncKeyState(0x1B);
-        if (g_brInputFrame == 1) {
+        if ((*(int32_t *)((char *)&g_brFfb + 0x8)) /* BR_LP64_BYTE_VIEW */ == 1) {
             g_BrFpsGuard = 1;
             flags = 0x400;
         } else {
-            flags = (g_brInputFrame < 60) ? 0 : 4;
+            flags = ((*(int32_t *)((char *)&g_brFfb + 0x8)) /* BR_LP64_BYTE_VIEW */ < 60) ? 0 : 4;
         }
     }
-    g_brInputLast = flags;
+    (*(int32_t *)&g_BrX18ABAD0) = flags;
     return flags;
 }
 
@@ -676,46 +676,46 @@ uint8_t BrInputIsDown(int32_t action)
         r = (uint8_t)(g_brInKeys[g_brInKeyCur][b[0]] & 0x80u);
         break;
     case 0x0100:
-        r = (uint8_t)(g_brInJoy[g_brInJoyCur].rgbButtons[b[0]] & 0x80u);
+        r = (uint8_t)(g_brInJoy[(*(int32_t *)&DAT_118eebd0)].rgbButtons[b[0]] & 0x80u);
         break;
     case 0x0300:
-        r = (uint8_t)(g_brInMouse[g_brInMouseCur].buttons[b[0]] & 0x80u);
+        r = (uint8_t)((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].buttons[b[0]] & 0x80u);
         break;
     case 0x8000:
-        if (g_brInJoy[g_brInJoyCur].lX < -50) r = 0x80;
+        if (g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lX < -50) r = 0x80;
         break;
     case 0x8100:
-        if (g_brInJoy[g_brInJoyCur].lX > 50) r = 0x80;
+        if (g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lX > 50) r = 0x80;
         break;
     case 0x8200:
-        if (g_brInJoy[g_brInJoyCur].lY < -50) r = 0x80;
+        if (g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lY < -50) r = 0x80;
         break;
     case 0x8300:
-        if (g_brInJoy[g_brInJoyCur].lY > 50) r = 0x80;
+        if (g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lY > 50) r = 0x80;
         break;
     case 0x8400:
-        if (g_brInJoy[g_brInJoyCur].lZ < -50) r = 0x80;
+        if (g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lZ < -50) r = 0x80;
         break;
     case 0x8500:
-        if (g_brInJoy[g_brInJoyCur].lZ > 50) r = 0x80;
+        if (g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lZ > 50) r = 0x80;
         break;
     case 0x8600:
-        if (g_brInMouse[g_brInMouseCur].x < -50) r = 0x80;
+        if ((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].x < -50) r = 0x80;
         break;
     case 0x8700:
-        if (g_brInMouse[g_brInMouseCur].x > 50) r = 0x80;
+        if ((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].x > 50) r = 0x80;
         break;
     case 0x8800:
-        if (g_brInMouse[g_brInMouseCur].y < -50) r = 0x80;
+        if ((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].y < -50) r = 0x80;
         break;
     case 0x8900:
-        if (g_brInMouse[g_brInMouseCur].y > 50) r = 0x80;
+        if ((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].y > 50) r = 0x80;
         break;
     case 0x8A00:
-        if (g_brInMouse[g_brInMouseCur].z < -50) r = 0x80;
+        if ((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].z < -50) r = 0x80;
         break;
     case 0x8B00:
-        if (g_brInMouse[g_brInMouseCur].z > 50) r = 0x80;
+        if ((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].z > 50) r = 0x80;
         break;
     }
     if ((*(const uint16_t *)(const void *)(b + 2) & 0xFF00) == 0)
@@ -762,57 +762,57 @@ uint8_t BrInputJustPressed(int32_t action)
         r = BrInEdge(g_brInKeys[g_brInKeyPrev][b[0]], g_brInKeys[g_brInKeyCur][b[0]]);
         break;
     case 0x0100:
-        r = BrInEdge(g_brInJoy[g_brInJoyPrev].rgbButtons[b[0]], g_brInJoy[g_brInJoyCur].rgbButtons[b[0]]);
+        r = BrInEdge(g_brInJoy[g_brInJoyPrev].rgbButtons[b[0]], g_brInJoy[(*(int32_t *)&DAT_118eebd0)].rgbButtons[b[0]]);
         break;
     case 0x0300:
-        r = BrInEdge(g_brInMouse[g_brInMousePrev].buttons[b[0]], g_brInMouse[g_brInMouseCur].buttons[b[0]]);
+        r = BrInEdge((*(BrInMouse (*)[])&g_18ABD38)[g_brInMousePrev].buttons[b[0]], (*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].buttons[b[0]]);
         break;
     case 0x8000:
-        if (g_brInJoy[g_brInJoyPrev].lX >= -50 && g_brInJoy[g_brInJoyCur].lX < -50)
+        if (g_brInJoy[g_brInJoyPrev].lX >= -50 && g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lX < -50)
             r = 0x80;
         break;
     case 0x8100:
-        if (g_brInJoy[g_brInJoyPrev].lX <= 50 && g_brInJoy[g_brInJoyCur].lX > 50)
+        if (g_brInJoy[g_brInJoyPrev].lX <= 50 && g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lX > 50)
             r = 0x80;
         break;
     case 0x8200:
-        if (g_brInJoy[g_brInJoyPrev].lY >= -50 && g_brInJoy[g_brInJoyCur].lY < -50)
+        if (g_brInJoy[g_brInJoyPrev].lY >= -50 && g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lY < -50)
             r = 0x80;
         break;
     case 0x8300:
-        if (g_brInJoy[g_brInJoyPrev].lY <= 50 && g_brInJoy[g_brInJoyCur].lY > 50)
+        if (g_brInJoy[g_brInJoyPrev].lY <= 50 && g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lY > 50)
             r = 0x80;
         break;
     case 0x8400:
-        if (g_brInJoy[g_brInJoyPrev].lZ >= -50 && g_brInJoy[g_brInJoyCur].lZ < -50)
+        if (g_brInJoy[g_brInJoyPrev].lZ >= -50 && g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lZ < -50)
             r = 0x80;
         break;
     case 0x8500:
-        if (g_brInJoy[g_brInJoyPrev].lZ <= 50 && g_brInJoy[g_brInJoyCur].lZ > 50)
+        if (g_brInJoy[g_brInJoyPrev].lZ <= 50 && g_brInJoy[(*(int32_t *)&DAT_118eebd0)].lZ > 50)
             r = 0x80;
         break;
     case 0x8600:
-        if (g_brInMouse[g_brInMousePrev].x >= -50 && g_brInMouse[g_brInMouseCur].x < -50)
+        if ((*(BrInMouse (*)[])&g_18ABD38)[g_brInMousePrev].x >= -50 && (*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].x < -50)
             r = 0x80;
         break;
     case 0x8700:
-        if (g_brInMouse[g_brInMousePrev].x <= 50 && g_brInMouse[g_brInMouseCur].x > 50)
+        if ((*(BrInMouse (*)[])&g_18ABD38)[g_brInMousePrev].x <= 50 && (*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].x > 50)
             r = 0x80;
         break;
     case 0x8800:
-        if (g_brInMouse[g_brInMousePrev].y >= -50 && g_brInMouse[g_brInMouseCur].y < -50)
+        if ((*(BrInMouse (*)[])&g_18ABD38)[g_brInMousePrev].y >= -50 && (*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].y < -50)
             r = 0x80;
         break;
     case 0x8900:
-        if (g_brInMouse[g_brInMousePrev].y <= 50 && g_brInMouse[g_brInMouseCur].y > 50)
+        if ((*(BrInMouse (*)[])&g_18ABD38)[g_brInMousePrev].y <= 50 && (*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].y > 50)
             r = 0x80;
         break;
     case 0x8A00:
-        if (g_brInMouse[g_brInMousePrev].z >= -50 && g_brInMouse[g_brInMouseCur].z < -50)
+        if ((*(BrInMouse (*)[])&g_18ABD38)[g_brInMousePrev].z >= -50 && (*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].z < -50)
             r = 0x80;
         break;
     case 0x8B00:
-        if (g_brInMouse[g_brInMousePrev].z <= 50 && g_brInMouse[g_brInMouseCur].z > 50)
+        if ((*(BrInMouse (*)[])&g_18ABD38)[g_brInMousePrev].z <= 50 && (*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].z > 50)
             r = 0x80;
         break;
     }
@@ -837,15 +837,15 @@ typedef int (__stdcall *CC_std_1)();   /* COM method: this + arguments */
 void BrDiKeyboardShutdown(void)
 
 {
-  DAT_118eeef0 = DAT_118eeef0 + -1;
-  if (DAT_118eeef0 < 0) {
-    DAT_118eeef0 = 0;
+  (*(int *)((char *)&g_brFfb + 0x4)) /* BR_LP64_BYTE_VIEW */ = (*(int *)((char *)&g_brFfb + 0x4)) /* BR_LP64_BYTE_VIEW */ + -1;
+  if ((*(int *)((char *)&g_brFfb + 0x4)) /* BR_LP64_BYTE_VIEW */ < 0) {
+    (*(int *)((char *)&g_brFfb + 0x4)) /* BR_LP64_BYTE_VIEW */ = 0;
     return;
   }
-  if ((DAT_118eeef0 == 0) && (DAT_118eeee8 != (int *)0x0)) {
-    (*(CC_std_1 *)(*(int *)(DAT_118eeee8) + 32))(DAT_118eeee8);
-    (*(CC_std_1 *)(*(int *)(DAT_118eeee8) + 8))(DAT_118eeee8);
-    DAT_118eeee8 = (int *)0x0;
+  if (((*(int *)((char *)&g_brFfb + 0x4)) /* BR_LP64_BYTE_VIEW */ == 0) && ((*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0)) != (int *)0x0)) {
+    (*(CC_std_1 *)(*(int *)((*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0))) + 32))((*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0)));
+    (*(CC_std_1 *)(*(int *)((*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0))) + 8))((*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0)));
+    (*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0)) = (int *)0x0;
   }
   return;
 }

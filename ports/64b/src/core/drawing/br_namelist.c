@@ -63,12 +63,12 @@ BrNameList *__fastcall BrNameListInit(BrNameList *pThis, int _edx_unused)
     int   n;
 
     (void)_edx_unused;
-    pThis->pVtbl = (const void *)&DAT_10077750;
+    pThis->pVtbl = (const void *)&PTR_FUN_10077750;
     memset(d, 0, sizeof(pThis->asz));
 
     n = BR_NAMELIST_COUNT;
     do {
-        strcpy(d, DAT_10396f08);
+        strcpy(d, g_aBr39B720);
         d += BR_NAMELIST_STRIDE;
     } while (--n != 0);
 
@@ -127,13 +127,13 @@ uint32_t __fastcall BrSub1005CB40(BrSub1005CB40Obj *pThis, BrSub1005CB40Arg arg)
     scratch = 0xFFFFFFFFu;
     pVtbl = pThis->pVtbl;
     pVtbl->f08((void *)pThis, arg);
-    if (g_AA28D8 == 0) {
-        if (g_AA2858 == 0) {
+    if ((*(int32_t *)&g_5C30) == 0) {
+        if ((*(int32_t *)&DAT_10ac5bb0) == 0) {
             out.p = &scratch;
             pVtbl->f1C((void *)pThis, out);
         }
     }
-    ++g_AA2870;
+    ++g_wAA2870;
     return scratch;
 }
 
@@ -165,7 +165,7 @@ void * __fastcall BrVt55A10DeleteDtor(void *param_1,int _edx_unused,unsigned cha
 {
   BrVtInit55A30((int *)param_1);
   if ((param_2 & 1) != 0) {
-    operator_delete(param_1);
+    BrOperatorDelete(param_1);
   }
   return param_1;
 }

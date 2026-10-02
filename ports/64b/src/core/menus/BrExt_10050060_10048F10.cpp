@@ -222,11 +222,11 @@ int BrExt_10050060(GameUi *parent)
     char       bad;
 
     g_brGate5BA0 = 1;
-    g_brRoot5C60->pTable->s1((char *)(&s_RallySeason_BRF_100acb20));
+    (*(Root48F10 * *)&g_2908)->pTable->s1((char *)(&(s_RallySeason_BRF[0])));
     g_brGate5BA0 = 0;
 
     parent->w12 = 0;
-    g_i0AB3F4 = -1;
+    g_AB94 = -1;
     parent->a6C[parent->w10] = 1;
 
     cont = new Page48F10;
@@ -267,13 +267,13 @@ int BrExt_10050060(GameUi *parent)
     p->pfn04 = (CtlFn)BrUiHook85_1003EB10;
     p->f1E1F4 = 1;
     p->m3838.s5(0x40001, &DAT_100aac78, 5, 0, -1);
-    p->m3838.pfn04 = (int (*)(void))FUN_1003b580;
-    p->m3838.f14 = (int)FUN_1003b350;
+    p->m3838.pfn04 = (int (*)(void))BrSaveProbeRallySeason;
+    p->m3838.f14 = (int)BrSaveNameCommitRallySeason;
     {
         int off = 0;
 
         do {
-            char *psz = &g_brRoot5C60->pTable->aRecs[off];
+            char *psz = &(*(Root48F10 * *)&g_2908)->pTable->aRecs[off];
 
             if (psz != 0)
                 p->m3838.s4(psz, 0, 1, &DAT_100aac78, 0);
@@ -293,7 +293,7 @@ int BrExt_10050060(GameUi *parent)
     p->pfn08 = (CtlFn)BrPhaseDispatch_100450F0;
     p->pfn04 = (CtlFn)BrMenuFlags18D0;
     p->w1E20C = 2;
-    p->s34((char *)(BrStrGet(0x1E)), 1, 0, (char *)(&DAT_100aabe8));
+    p->s34((char *)(BrStrGet(0x1E)), 1, 0, (char *)(&(*(char *)&g_hot0)));
     cont->w14 += 1;
     cont->w344 += 1;
 
@@ -306,8 +306,8 @@ int BrExt_10050060(GameUi *parent)
     p->pfn0C = (CtlFn)BrSub10047360;
     p->pfn08 = (CtlFn)BrUiHook81_10046EB0;
     p->w1E20C = 3;
-    p->s34((char *)(BrStrGet(0x0C)), 1, 1, (char *)(&DAT_100aabe8));
-    g_AA29F4 = (BrCtl *)((BrUiCtl_ *)((BrCtl *)((BrUiCtl_ *)(p))));
+    p->s34((char *)(BrStrGet(0x0C)), 1, 1, (char *)(&(*(char *)&g_hot0)));
+    (*(BrCtl * *)&g_brUipAA29F4) = (BrCtl *)((BrUiCtl_ *)((BrCtl *)((BrUiCtl_ *)(p))));
     cont->w14 += 1;
     cont->w344 += 1;
 
@@ -337,7 +337,7 @@ int BrExt_10050060(GameUi *parent)
     p->s38(parent, 330.0f, 97.0f, 0x5001, 2, 5, 1, -1);
     p->pfn04 = (CtlFn)BrMenuText0A50;
     p->w1E20C = 5;
-    p->s34(&DAT_10396f08, 1, 3, (char *)(&DAT_100aac08));
+    p->s34(&(g_aBr39B720[0]), 1, 3, (char *)(&DAT_100aac08));
     cont->w14 += 1;
 
     p = new BrCtl;
@@ -358,7 +358,7 @@ int BrExt_10050060(GameUi *parent)
     p->s38(parent, 440.0f, 129.0f, 0x5001, 2, 5, 1, -1);
     p->pfn04 = (CtlFn)BrMenuText0AC0;
     p->w1E20C = 5;
-    p->s34(&DAT_10396f08, 1, 3, &DAT_100aac28);
+    p->s34(&(g_aBr39B720[0]), 1, 3, &DAT_100aac28);
     cont->w14 += 1;
 
     p = new BrCtl;
@@ -379,7 +379,7 @@ int BrExt_10050060(GameUi *parent)
     p->s38(parent, 440.0f, 224.0f, 0x5001, 2, 5, 1, -1);
     p->pfn04 = (CtlFn)BrMenuText1300;
     p->w1E20C = 0x34;
-    p->s34(&DAT_10396f08, 1, 4, (char *)(&DAT_100aac18));
+    p->s34(&(g_aBr39B720[0]), 1, 4, (char *)(&DAT_100aac18));
     cont->w14 += 1;
 
     parent->a6C[parent->w10] = 0;
@@ -406,7 +406,7 @@ int BrExt_10050060(GameUi *parent)
     p->pfn14 = (CtlFn)BrUiHook85_1003E7A0;
     p->w1E20C = 3;
     p->s34((char *)(BrStrGet(0x3A)), 1, 1, &DAT_100aabd8);
-    g_brCtl5D18 = p;
+    (*(BrCtl * *)&DAT_10ac5d18) = p;
     cont->w14 += 1;
 
     return 1;

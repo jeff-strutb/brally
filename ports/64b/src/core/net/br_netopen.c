@@ -48,28 +48,28 @@ int BrNetOpenAnnounce(void)
     int          r;
     unsigned int t0;
 
-    DAT_1007b264 = -1;
-    while (DAT_1007b264 == -1) {
-        r = FUN_10004900(&DAT_10273328, DAT_1007b264,
-                         DAT_10af3bb4, DAT_10af3bb5, DAT_10af3bb6,
-                         &DAT_10b71648, 0);
+    g_id = -1;
+    while (g_id == -1) {
+        r = BrNetSend4900(&g_brP277B40, g_id,
+                         (*(unsigned char *)((char *)&g_aBrRaceCar + 0x29AC)) /* BR_LP64_BYTE_VIEW */, (*(unsigned char *)((char *)&g_aBrRaceCar + 0x29AD)) /* BR_LP64_BYTE_VIEW */, (*(unsigned char *)((char *)&g_aBrRaceCar + 0x29AE)) /* BR_LP64_BYTE_VIEW */,
+                         &(*(int *)&g_aBrCfgPlayerName), 0);
         result = r != -1;
         t0 = BrSub10075020();
         if (DAT_10273334 != 0) {
-            DAT_1007b264 = 0;        /* the host is always slot 0 */
-            FUN_10004d30();
-            FUN_10004900(&DAT_10273328, DAT_1007b264,
-                         DAT_10af3bb4, DAT_10af3bb5, DAT_10af3bb6,
-                         &DAT_10b71648, 0x10);
-            FUN_10004ad0(&DAT_10273328, DAT_1007b264, DAT_10226e7c,
-                         DAT_10af3bb4, DAT_10af3bb5, DAT_10af3bb6,
-                         DAT_10273330, &DAT_10b71648, 2, 0x10);
+            g_id = 0;        /* the host is always slot 0 */
+            BrPalFetch();
+            BrNetSend4900(&g_brP277B40, g_id,
+                         (*(unsigned char *)((char *)&g_aBrRaceCar + 0x29AC)) /* BR_LP64_BYTE_VIEW */, (*(unsigned char *)((char *)&g_aBrRaceCar + 0x29AD)) /* BR_LP64_BYTE_VIEW */, (*(unsigned char *)((char *)&g_aBrRaceCar + 0x29AE)) /* BR_LP64_BYTE_VIEW */,
+                         &(*(int *)&g_aBrCfgPlayerName), 0x10);
+            BrNetSend4AD0(&g_brP277B40, g_id, g_226e7c,
+                         (*(unsigned char *)((char *)&g_aBrRaceCar + 0x29AC)) /* BR_LP64_BYTE_VIEW */, (*(unsigned char *)((char *)&g_aBrRaceCar + 0x29AD)) /* BR_LP64_BYTE_VIEW */, (*(unsigned char *)((char *)&g_aBrRaceCar + 0x29AE)) /* BR_LP64_BYTE_VIEW */,
+                         (*(int *)&g_br277B48), &(*(int *)&g_aBrCfgPlayerName), 2, 0x10);
         }
         /* The inner while's rotated ENTRY test is the original's mid-loop
          * slot check (jump-threaded straight to the epilogue); the deadline
          * `t0 + 2000` is written IN the loop so the invariant add lands in
          * the preheader (`add esi,0x7d0` between entry test and head). */
-        while (DAT_1007b264 == -1) {
+        while (g_id == -1) {
             if (BrSub10075020() >= t0 + 2000) {
                 break;
             }

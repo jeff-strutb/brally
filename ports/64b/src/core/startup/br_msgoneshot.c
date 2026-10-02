@@ -27,12 +27,12 @@ void FUN_10006460(void)
 {
     WaitForSingleObject((void *)DAT_10226a54, 0xffffffff);
     if (DAT_10226a28 >= 0) {
-        FUN_1006ba60(DAT_10226a28, 0x200020);
+        BrSub10072AF0(DAT_10226a28, 0x200020);
         DAT_10226a28 = -1;
     }
     if (DAT_10226a38 != 0) {
-        DAT_104abb20 = &DAT_1021c9b0;
-        DAT_104abb24 = 0x40400000;
+        (*(unsigned char * *)&DAT_104abb20) = &(DAT_1021c9b0[0]);
+        (*(int *)&g_brRace4ABB24) = 0x40400000;
         DAT_10226a38 = 0;
     }
     ReleaseMutex((void *)DAT_10226a54);

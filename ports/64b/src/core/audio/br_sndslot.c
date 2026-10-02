@@ -29,8 +29,8 @@
 int FUN_1006baa0(int param_1,int param_2,int param_3)
 
 {
-  if (((BrSndG0B5DE8 != 0) && (BrSndPDS != 0)) && (BrSndG18290FC != 0)) {
-    return FUN_1006b790(DAT_100b55f8[param_2 + param_1 * 0x12], param_3) != 0;
+  if ((((*(int *)&DAT_100b51e4[1036]) != 0) && ((*(int *)&BrSndPDS) != 0)) && (BrSndG18290FC != 0)) {
+    return BrSndVoiceSetLR(BrSndVoices[param_2 + param_1 * 0x12], param_3) != 0;
   }
   return 1;
 }
@@ -66,8 +66,8 @@ int BrSndSetVolumePairF(int param_1,int param_2,float param_3)
 int FUN_1006b6e0(int param_1,int param_2,int param_3)
 
 {
-  if (((BrSndG0B5DE8 != 0) && (BrSndPDS != 0)) && (BrSndG18290FC != 0)) {
-    return BrSndBufSetVolume(DAT_100b55f8[param_2 + param_1 * 0x12], param_3) != 0;
+  if ((((*(int *)&DAT_100b51e4[1036]) != 0) && ((*(int *)&BrSndPDS) != 0)) && (BrSndG18290FC != 0)) {
+    return BrSndBufSetVolume(BrSndVoices[param_2 + param_1 * 0x12], param_3) != 0;
   }
   return 1;
 }
@@ -91,9 +91,9 @@ int FUN_1006bb10(int param_1,int param_2)
 {
   BrSndVoice *iVar1;
 
-  if ((((BrSndG0B5DE8 != 0) && (BrSndPDS != 0)) && (BrSndG18290FC != 0)) &&
-     (iVar1 = DAT_100b55f8[param_1 * 0x12 + param_2 * 2], iVar1 != 0)) {
-    return FUN_1006b4c0(iVar1) == 0;
+  if (((((*(int *)&DAT_100b51e4[1036]) != 0) && ((*(int *)&BrSndPDS) != 0)) && (BrSndG18290FC != 0)) &&
+     (iVar1 = BrSndVoices[param_1 * 0x12 + param_2 * 2], iVar1 != 0)) {
+    return BrSndVoiceBufStop(iVar1) == 0;
   }
   return 1;
 }

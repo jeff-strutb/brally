@@ -69,9 +69,9 @@ void BrHudDrawEntrants(int *pScr, BrDriverCar *cars)
         BrSub_10019280();
         x     = pScr[0] + 0x10;
         yBase = pScr[1] + 0x1d;
-        if (DAT_10226a48 != 0 && g_brRaceNCar != 0) {
+        if ((*(int *)&g_brRaceNet) != 0 && (*(int *)&g_BrCarCount) != 0) {
             i = 0;
-            if (g_brRaceNCar > 0) {
+            if ((*(int *)&g_BrCarCount) > 0) {
                 do {
                     car = cars + i;
                     if (cars[i].pfnControl != 0) {
@@ -87,7 +87,7 @@ void BrHudDrawEntrants(int *pScr, BrDriverCar *cars)
                         if (DAT_118eeee0 != 0) {
                             c2 = 0x20;
                             c1 = 0x20;
-                            if (DAT_10226a48 > 1) {
+                            if ((*(int *)&g_brRaceNet) > 1) {
                                 v = BrSub100714D0(car->iNetPlayer) & 0x3f;
                                 if (v < 3) {
                                     c2 = 0x2a;
@@ -101,7 +101,7 @@ void BrHudDrawEntrants(int *pScr, BrDriverCar *cars)
                                 sprintf(buf, s___11_s__dms__c_c_100a6c18, ((void *)&car->szName[0]),
                                         BrNetSlotGetF974(car->iNetPlayer), c1, c2);
                             } else if ((*(unsigned char *)(((char *)car->pProfile) + 0x68) & 1) == 0
-                                       && g_brRaceReplay == 0) {
+                                       && (*(int *)&DAT_105ccb68[8]) == 0) {
                                 sprintf(buf, s___x_02x_02x_02x_s__s__dms__c_c_100a6bf8,
                                         (unsigned)car->f29AC,
                                         (unsigned)car->f29AD,
@@ -122,7 +122,7 @@ void BrHudDrawEntrants(int *pScr, BrDriverCar *cars)
                             if (isLocal != 0) {
                                 sprintf(buf, s___11_s_100a6bd4, ((void *)&car->szName[0]));
                             } else if ((*(unsigned char *)(((char *)car->pProfile) + 0x68) & 1) == 0
-                                       && g_brRaceReplay == 0) {
+                                       && (*(int *)&DAT_105ccb68[8]) == 0) {
                                 sprintf(buf, s___x_02x_02x_02x_s__s_100a6bbc,
                                         (unsigned)car->f29AC,
                                         (unsigned)car->f29AD,
@@ -145,7 +145,7 @@ void BrHudDrawEntrants(int *pScr, BrDriverCar *cars)
                         BrTextDraw(buf, x + 0x10, car->fFF8 * 0x10 + 0x14 + yBase);
                     }
                     i++;
-                } while (i < g_brRaceNCar);
+                } while (i < (*(int *)&g_BrCarCount));
             }
         }
     }

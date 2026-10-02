@@ -50,10 +50,10 @@ int BrOpt3F50(GameObj *pGame)
 
     g_mode = 2;
     pGame->pSub->s7();
-    pObj = (Phase *)(g_cur);
+    pObj = (Phase *)((*(Phase * *)&g_brPAA29B8));
     if (pObj != 0)
         pObj->f00(1);
     g_298C = 0;
-    g_cur = (Phase *)((BrOptObj *)(g_2948));
+    (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)((*(Phase * *)&g_2948)));
     return 0;
 }

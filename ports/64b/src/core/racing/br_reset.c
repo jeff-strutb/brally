@@ -26,13 +26,13 @@
 void BrReset_1002E13B(void)
 
 {
-  DAT_106ec740 = 0;
-  DAT_106ec744 = 0;
+  (*(int *)&DAT_106ec740) = 0;
+  (*(int *)((char *)&(*(int *)&DAT_106ec740) + 0x4)) = 0;
   DAT_106e7294 = 0;
   DAT_106ec768 = 0;
   DAT_106ed588 = DAT_106ec768;
   DAT_106b7ac0 = 0;
-  DAT_106e9d8c = 0;
+  (*(int *)&g_brRaceFlyStep) = 0;
   return;
 }
 

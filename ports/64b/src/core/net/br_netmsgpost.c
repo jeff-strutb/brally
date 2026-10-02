@@ -26,10 +26,10 @@
 void FUN_100038a0(char *param_1)
 
 {
-  WaitForSingleObject(DAT_10226a54, 0xffffffff);
+  WaitForSingleObject((*(HANDLE *)&DAT_10226a54), 0xffffffff);
   strcpy(DAT_1021c9b0, param_1);
   DAT_10226a38 = 1;
-  ReleaseMutex(DAT_10226a54);
+  ReleaseMutex((*(HANDLE *)&DAT_10226a54));
   return;
 }
 

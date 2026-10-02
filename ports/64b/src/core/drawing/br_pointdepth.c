@@ -38,10 +38,10 @@ float BrPointDepthFrac(const BrVec3 *pV)
     float f;
     float v[4];
 
-    if (DAT_106ed6a8 == 0) {
+    if ((*(int *)((char *)&g_aBrEntRecs + 0x78)) == 0) {
         return 0.0f;
     }
-    BrMat4TransformPoint4(v, pV, DAT_106e9a38);
+    BrMat4TransformPoint4(v, pV, (*(float (*)[16])&g_BrCurMat));
     v[2] = v[2] / v[3];
     f = (v[2] * (float)DAT_106e9d84 + (float)DAT_106e86a8) * (1.0f / 255.0f);
     if (f < 0.0f) {

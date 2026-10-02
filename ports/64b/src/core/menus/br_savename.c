@@ -82,31 +82,31 @@ int BrSaveNameCommitRallySeason(int pList, int code)
     char szNum[4];
     char szPath[260];
 
-    if (DAT_10ac5bf4 == 0)
+    if (g_5BF4 == 0)
         return 0;
     /* Cancelled arm as the `if`, commit as the `else`: the lone if/else is
      * laid failure-first (`jne` to the commit), which is how the original
      * has the -1 arm inline and the commit as the jump target. */
     if (code == -1) {
-        if (DAT_10ac4100 != NULL)
-            strcpy((char *)pList + DAT_100aab94 * 0x438 + 0x35, DAT_10ac4100);
+        if (g_aBrA9D078 != NULL)
+            strcpy((char *)pList + g_AB94 * 0x438 + 0x35, g_aBrA9D078);
     } else {
-        if ((char *)pList + DAT_100aab94 * 0x438 + 0x35 != NULL) {
+        if ((char *)pList + g_AB94 * 0x438 + 0x35 != NULL) {
             strcpy(szPath, s_RallySeason_100acb00);
-            _itoa(DAT_100aab94, szNum, 10);
+            _itoa(g_AB94, szNum, 10);
             strcat(szPath, szNum);
             strcat(szPath, s_brf_100acaf8);
             strcpy(DAT_117a6030, szPath);
-            strcpy((char *)*(int *)(DAT_10ac5c60 + 0xc0) + DAT_100aab94 * 0x104 + 4,
-                   (char *)pList + DAT_100aab94 * 0x438 + 0x35);
-            strcpy((*(char (*)[128])&g_aBrRaceCar[0].sz2ABC[44]), (char *)pList + DAT_100aab94 * 0x438 + 0x35);
+            strcpy((char *)*(int *)(g_2908 + 0xc0) + g_AB94 * 0x104 + 4,
+                   (char *)pList + g_AB94 * 0x438 + 0x35);
+            strcpy((*(char (*)[128])&g_aBrRaceCar[0].sz2ABC[44]), (char *)pList + g_AB94 * 0x438 + 0x35);
             if (((char *)(*(int * *)&g_aBrRaceCar[0].pEquip))[4] == 0 && ((char *)(*(int * *)&g_aBrRaceCar[0].pEquip))[5] == 0) {
                 memset((char *)(*(int * *)&g_aBrRaceCar[0].pEquip) + 6, 0, 6 * 4);
                 memset((char *)(*(int * *)&g_aBrRaceCar[0].pEquip) + 0x1e, 0, 12 * 4);
                 memset((char *)(*(int * *)&g_aBrRaceCar[0].pEquip) + 0x50, 0, 24 * 4);
             }
             BrMenuSub100709A0();
-            DAT_10ac5c3c = 1;
+            g_5C3C = 1;
         }
     }
     return 1;
@@ -125,20 +125,20 @@ int BrSaveNameCommitTimeAttack(int pList, int code)
     char szPath[260];
 
     if (code == -1) {
-        if (DAT_10ac4100 != NULL)
-            strcpy((char *)pList + DAT_100aab94 * 0x438 + 0x35, DAT_10ac4100);
+        if (g_aBrA9D078 != NULL)
+            strcpy((char *)pList + g_AB94 * 0x438 + 0x35, g_aBrA9D078);
     } else {
-        if ((char *)pList + DAT_100aab94 * 0x438 + 0x35 != NULL) {
+        if ((char *)pList + g_AB94 * 0x438 + 0x35 != NULL) {
             strcpy(szPath, s_TimeAttack_100acb14);
-            _itoa(DAT_100aab94, szNum, 10);
+            _itoa(g_AB94, szNum, 10);
             strcat(szPath, szNum);
             strcat(szPath, s_grf_100acb0c);
             strcpy(DAT_117a5f28, szPath);
-            strcpy((char *)*(int *)(DAT_10ac5c60 + 0xc4) + DAT_100aab94 * 0x104 + 4,
-                   (char *)pList + DAT_100aab94 * 0x438 + 0x35);
-            strcpy((*(char (*)[128])&g_aBrRaceCar[0].sz2ABC[44]), (char *)pList + DAT_100aab94 * 0x438 + 0x35);
-            FUN_10069de0();
-            DAT_10ac5c44 = 1;
+            strcpy((char *)*(int *)(g_2908 + 0xc4) + g_AB94 * 0x104 + 4,
+                   (char *)pList + g_AB94 * 0x438 + 0x35);
+            strcpy((*(char (*)[128])&g_aBrRaceCar[0].sz2ABC[44]), (char *)pList + g_AB94 * 0x438 + 0x35);
+            BrGhostSave();
+            (*(int *)&g_brUinAA28EC) = 1;
         }
     }
     return 1;

@@ -52,8 +52,8 @@ int BrDInputShutdown(void)
     void *pRec;
     BrDIVtbl *vt;
 
-    if (--g_BrDInputUsers == 0 && g_pDInput != 0) {
-        pRec = g_pBrAC61E0;
+    if (--g_BrDInputUsers == 0 && (*(BrDI * *)&g_pBr18ABD70) != 0) {
+        pRec = (*(void * *)&g_pBrAA2E80);
         if (pRec != 0) {
             BrNavRelease_10059320(pRec);
             BrOperatorDelete(pRec);
@@ -63,10 +63,10 @@ int BrDInputShutdown(void)
          * between `push eax` and `call [ecx+8]`, the way the original has
          * it. Writing the call as one `g_pDInput->lpVtbl->Release(...)`
          * expression keeps the store in source order and costs 8 bytes. */
-        vt = g_pDInput->lpVtbl;
-        g_pBrAC61E0 = 0;
-        vt->Release(g_pDInput);
-        g_pDInput = 0;
+        vt = (*(BrDI * *)&g_pBr18ABD70)->lpVtbl;
+        (*(void * *)&g_pBrAA2E80) = 0;
+        vt->Release((*(BrDI * *)&g_pBr18ABD70));
+        (*(BrDI * *)&g_pBr18ABD70) = 0;
     }
     return 1;
 }
@@ -99,10 +99,10 @@ void BrExt_10079550(void)
       (*(CC_std_1 *)(*(int *)(DAT_118eef04) + 8))(DAT_118eef04);
       DAT_118eef04 = (int *)0x0;
     }
-    if (DAT_118eeeec != (int *)0x0) {
-      (*(CC_std_1 *)(*(int *)(DAT_118eeeec) + 32))(DAT_118eeeec);
-      (*(CC_std_1 *)(*(int *)(DAT_118eeeec) + 8))(DAT_118eeeec);
-      DAT_118eeeec = (int *)0x0;
+    if ((*(int * *)&g_brFfb) != (int *)0x0) {
+      (*(CC_std_1 *)(*(int *)((*(int * *)&g_brFfb)) + 32))((*(int * *)&g_brFfb));
+      (*(CC_std_1 *)(*(int *)((*(int * *)&g_brFfb)) + 8))((*(int * *)&g_brFfb));
+      (*(int * *)&g_brFfb) = (int *)0x0;
     }
   }
   return;

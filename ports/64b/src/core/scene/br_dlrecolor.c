@@ -51,8 +51,8 @@ int BrDlRecolor(unsigned int *param_1,int * param_2)
   int e;
 
   e = 0;
-  c = (BrG_6C661C == 0) && (BrG_6C6624 == 0);
-  a = DAT_106ed6a8 + 1 + (c == 0);
+  c = ((*(int *)((char *)&g_aBrEntRecs + 0x7C)) == 0) && ((*(int *)((char *)&g_aBrEntRecs + 0x84)) == 0);
+  a = (*(int *)((char *)&g_aBrEntRecs + 0x78)) + 1 + (c == 0);
   b = 0;
   if (param_1 != 0) {
     for (;; param_1 = param_1 + 2) {
@@ -81,7 +81,7 @@ int BrDlRecolor(unsigned int *param_1,int * param_2)
             }
           }
         }
-        if ((DAT_106ed6b0 != 0) && (DAT_106ed6fc != 0)) {
+        if (((*(int *)((char *)&g_aBrEntRecs + 0x80)) != 0) && ((*(int *)((char *)&g_aBrEntRecs + 0xCC)) != 0)) {
           for (d = 0; d < 2; d = d + 1) {
             if ((*param_1 == *(unsigned int *)(&DAT_100aa058 + d * 8)) &&
                (param_1[1] == *(unsigned int *)(&DAT_100aa05c + d * 8))) {
@@ -97,12 +97,12 @@ int BrDlRecolor(unsigned int *param_1,int * param_2)
         }
         break;
       case 0xfa:
-        if ((b) && (DAT_106ed6b0 != 0)) {
+        if ((b) && ((*(int *)((char *)&g_aBrEntRecs + 0x80)) != 0)) {
           param_1[1] = 0x60789000;
         }
         break;
       case 0xfb:
-        if ((b) && (DAT_106ed6b0 != 0)) {
+        if ((b) && ((*(int *)((char *)&g_aBrEntRecs + 0x80)) != 0)) {
           param_1[1] = 0x8c9ca800;
         }
         break;
@@ -112,7 +112,7 @@ int BrDlRecolor(unsigned int *param_1,int * param_2)
     }
   }
 done:
-  DAT_106ed6fc = 0;
+  (*(int *)((char *)&g_aBrEntRecs + 0xCC)) = 0;
   return e;
 out:
   goto done;

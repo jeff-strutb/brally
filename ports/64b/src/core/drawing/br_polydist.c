@@ -77,7 +77,7 @@ double BrGetFieldFloat(int param_1)
 double BrGetFieldFloatSubC(int param_1)
 
 {
-  return (double)_DAT_1007720c - (double)*(float *)(param_1 + 0xc);
+  return (double)DAT_1007720c - (double)*(float *)(param_1 + 0xc);
 }
 
 /* WHAT IT DOES: return (constant at 0x1007720C) minus the float at +0x10, as double. */
@@ -86,7 +86,7 @@ double BrGetFieldFloatSubC(int param_1)
 double BrGetFieldFloatSub10(int param_1)
 
 {
-  return (double)_DAT_1007720c - (double)*(float *)(param_1 + 0x10);
+  return (double)DAT_1007720c - (double)*(float *)(param_1 + 0x10);
 }
 
 /* ==========================================================================
@@ -134,9 +134,9 @@ void BrPolyClipTri(float *pM, BrScrPt *aOut, int *aFlags, const BrScrPt *pV0,
 
     list.pHead = NULL;
 
-    n0 = g_2E5ECC;
+    n0 = g_pBrLerpFree;
     if (n0 != NULL)
-        g_2E5ECC = n0->pNext;
+        g_pBrLerpFree = n0->pNext;
     pSrc = (const BrScrPt *)iV2;
     n0->pData = &n0->data[0];
     n0->pData[0] = pSrc->f00;
@@ -149,9 +149,9 @@ void BrPolyClipTri(float *pM, BrScrPt *aOut, int *aFlags, const BrScrPt *pV0,
     n0->pNext  = list.pHead;
     list.pHead = n0;
 
-    n1 = g_2E5ECC;
+    n1 = g_pBrLerpFree;
     if (n1 != NULL)
-        g_2E5ECC = n1->pNext;
+        g_pBrLerpFree = n1->pNext;
     n1->pData = &n1->data[0];
     n1->pData[0] = pV1->f00;
     n1->pData[1] = pV1->f04;
@@ -163,9 +163,9 @@ void BrPolyClipTri(float *pM, BrScrPt *aOut, int *aFlags, const BrScrPt *pV0,
     n1->pNext  = list.pHead;
     list.pHead = n1;
 
-    n2 = g_2E5ECC;
+    n2 = g_pBrLerpFree;
     if (n2 != NULL)
-        g_2E5ECC = n2->pNext;
+        g_pBrLerpFree = n2->pNext;
     n2->pData = &n2->data[0];
     n2->pData[0] = pV0->f00;
     n2->pData[1] = pV0->f04;
@@ -204,8 +204,8 @@ void BrPolyClipTri(float *pM, BrScrPt *aOut, int *aFlags, const BrScrPt *pV0,
 
             list.pHead = p->pNext;
             if (p >= &g_2E54C0[0] && p < &g_2E54C0[64]) {
-                p->pNext = g_2E5ECC;
-                g_2E5ECC = p;
+                p->pNext = g_pBrLerpFree;
+                g_pBrLerpFree = p;
             }
         }
     } else {
@@ -221,8 +221,8 @@ void BrPolyClipTri(float *pM, BrScrPt *aOut, int *aFlags, const BrScrPt *pV0,
             BrScrPtKeepNearest(pM, aOut, aFlags, 3, p->pData,
                                BR_POLY_CLIP_MAX, BR_POLY_CLIP_MAX, pRef);
             if (p >= &g_2E54C0[0] && p < &g_2E54C0[64]) {
-                p->pNext = g_2E5ECC;
-                g_2E5ECC = p;
+                p->pNext = g_pBrLerpFree;
+                g_pBrLerpFree = p;
             }
         }
     }

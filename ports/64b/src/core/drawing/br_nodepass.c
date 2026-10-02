@@ -47,7 +47,7 @@ void BrNodeMarkPass(BrNode *pNode)
             /* set the mark BEFORE recursing -- this is the cycle guard */
             pNode->flags = (uint16_t)(pNode->flags | BR_NODE_FLAG_MARK);
 
-            if (f11 == 2 && (BrG_0B380C == 3 || BrG_0B380C == 9)) {
+            if (f11 == 2 && (g_Br0B380C == 3 || g_Br0B380C == 9)) {
                 pNode->f11 = 0;
             }
             BrNodeMarkPass(pNode->f00);
@@ -80,6 +80,6 @@ void BrNodeClearMarkPass(BrNode *pNode)
 void BrNodeRunMarkPass(void)
 {
     /* the root is re-read from the global between the two calls */
-    BrNodeMarkPass(BrG_6C7CB8);
-    BrNodeClearMarkPass(BrG_6C7CB8);
+    BrNodeMarkPass(g_pBrRaceLapRec);
+    BrNodeClearMarkPass(g_pBrRaceLapRec);
 }

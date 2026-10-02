@@ -246,9 +246,9 @@ static BrRaceCtl *ctl_of(BrDriverCar *pCar)
 
 static BrDriverCar *car_at(int32_t i)
 {
-    if (g_pBrRaceCar == NULL || i < 0)
+    if (g_aBrRaceCar == NULL || i < 0)
         return NULL;
-    return &g_pBrRaceCar[i];
+    return &g_aBrRaceCar[i];
 }
 
 /* ==========================================================================
@@ -268,13 +268,13 @@ static BrDriverCar *car_at(int32_t i)
 /* BrExt_10032E40: prototype in br_funcs.h */
 void BrRaceHudFrame(void)
 {
-    if (g_brRacePaused != 0)
+    if (g_BrX06909B4 != 0)
         return;
-    BrExt_10008D60();
-    BrExt_10019840();
-    BrExt_10008D60();
-    BrExt_10032E40();
-    BrExt_10008D60();
+    BrPodNop();
+    BrS17DrawGated();
+    BrPodNop();
+    BrCarTrailStep();
+    BrPodNop();
 }
 
 /* ==========================================================================
@@ -292,8 +292,8 @@ void BrRaceEnterOutro(void)
     /* 0x10019900 / 0x1002C390: push 0x10019A70, then the two stores, then
      * cdecl call 0x1002E317 / 0x10034C66 and add esp,4. */
     g_brRaceRules.mode = 4;
-    g_brRaceBeginStage = 2;
-    BrGameStepSet(BrRaceStepFrame);
+    (*(int32_t *)&g_5bc760) = 2;
+    BrGameStepSet(BrRaceStep);
 }
 
 /* ==========================================================================
@@ -326,7 +326,7 @@ void BrRaceCueLayout(void)
     int32_t  t, len, three;
 
     t = g_brRaceCueBase;
-    if (g_brRaceCueArmed == 0)
+    if ((*(int32_t *)((char *)&g_aBrRaceCue + 0xC)) == 0)
         return;
     /* esi walks from record[0].len, not the record base: start is [esi-4],
      * gap [esi+4], and after +0x10 the terminator is [esi+8] = next.next. */
@@ -355,7 +355,7 @@ void BrRaceCueRewind(void)
 {
     BrRaceCue *p;
 
-    if (g_brRaceCueArmed == 0)
+    if ((*(int32_t *)((char *)&g_aBrRaceCue + 0xC)) == 0)
         return;
     p = g_aBrRaceCue;
     do {
@@ -399,7 +399,7 @@ void BrRaceCarCtlOutro(BrDriverCar *pCar)
                       * BR_RACEBEGIN_MPS_TO_MPH;
     }
 
-    BrCarCtlChain_1006F170(pCar);
+    BrCarStep(pCar);
 }
 
 /* ==========================================================================
@@ -424,9 +424,9 @@ void BrRaceDriverReset(void)
     i = 0;
     if (n <= 0)
         return;
-    p = DAT_10af07f8;
+    p = g_aBrRaceDriver;
     do {
-        FUN_1005f530(p);
+        BrDriverAssetsFree(p);
         i++;
         p++;
     } while (i < g_brRaceNDriver);
@@ -444,14 +444,14 @@ void BrRaceDriverReset(void)
 /* FUN_1006e360: prototype in br_funcs.h */
 void BrRaceClockReset(void)
 {
-    FUN_1006e3f0(&DAT_105bc858);                      /* 0x10019A45 */
+    br86_timer_restart(&(*(int *)&g_br6806B0));                      /* 0x10019A45 */
 
     /* 0x10019A4A.  -1, not 0: the clock's own `inc` then `je` is what turns
      * this into "clear the accumulator on the NEXT frame". */
     g_brRaceClockCount   = -1;
     g_brRaceBeginLimitOn = 1;                         /* 0x10019A54 */
 
-    FUN_1006e360();                                   /* 0x10019A5E, tail jmp */
+    BrTimeUpdate();                                   /* 0x10019A5E, tail jmp */
 }
 
 /* ==========================================================================
@@ -475,10 +475,10 @@ int BrRaceStepClock(void)
     /* 0x10019A82/0x10019A90: the delta is taken against the PREVIOUS stamp
      * and the stamp is replaced in the same breath.  Unsigned, so a wrap of
      * the millisecond counter still yields the right difference. */
-    dt = now - g_brRaceClockLast;
-    g_brRaceClockLast = now;                          /* 0x10019A84 */
+    dt = now - (*(uint32_t *)&DAT_105ccb68[10]);
+    (*(uint32_t *)&DAT_105ccb68[10]) = now;                          /* 0x10019A84 */
 
-    i   = g_brRaceClockCursor;                        /* 0x10019A89 */
+    i   = (*(int32_t *)((char *)&g_brRaceRules + 0x8)) /* BR_LP64_BYTE_VIEW */;                        /* 0x10019A89 */
     len = g_brRaceClockLen;                           /* 0x10019A92 */
 
     if (i < 0) {                                      /* 0x10019A9A `jge` */
@@ -493,7 +493,7 @@ int BrRaceStepClock(void)
              * process primes every slot with one measurement instead of
              * leaving the ring full of zeroes. */
             for (k = 0; k < n; ++k)
-                g_aBrRaceClockRing[k] = dt;
+                g_BrFpsSamplesA[k] = dt;
             i = len;                                  /* 0x10019AAD */
         }
     }
@@ -503,19 +503,19 @@ int BrRaceStepClock(void)
      * set it to -1. */
     ++g_brRaceClockCount;
     if (g_brRaceClockCount == 0)
-        g_brRaceClockAccum = 0;                       /* 0x10019AC6 */
+        (*(uint32_t *)&DAT_105ccb68[5]) = 0;                       /* 0x10019AC6 */
     else
-        g_brRaceClockAccum += dt;                     /* 0x10019ABE */
+        (*(uint32_t *)&DAT_105ccb68[5]) += dt;                     /* 0x10019ABE */
 
     ++i;                                              /* 0x10019ACC */
     if (i >= len)                                     /* 0x10019ACD `jl`     */
         i = 0;                                        /* 0x10019AD6 */
-    g_brRaceClockCursor = i;
+    (*(int32_t *)((char *)&g_brRaceRules + 0x8)) /* BR_LP64_BYTE_VIEW */ = i;
     if (i >= 0 && i < BR_RACEBEGIN_CLOCK_MAX)         /* DEVIATION: bounded  */
-        g_aBrRaceClockRing[i] = dt;                   /* 0x10019ADD */
+        g_BrFpsSamplesA[i] = dt;                   /* 0x10019ADD */
 
     /* 0x10019AE4 / 0x10019AF8.  Non-zero substate takes the per-frame arm. */
-    return (g_brRaceSubstate == 0);
+    return ((DAT_105ccb68[11]) == 0);
 }
 
 /* ==========================================================================
@@ -564,23 +564,23 @@ static void begin_clear_ctl(void)
 /* 0x10019CF3 -- where the mode-0, mode-1 and mode-6 arms all land. */
 static void begin_tail_0163(void)
 {
-    if (g_brRaceReplay != 0) {                        /* 0x10019CF9 */
+    if ((DAT_105ccb68[8]) != 0) {                        /* 0x10019CF9 */
         begin_replay_reset();
     } else {
         begin_clear_ctl();
     }
     /* 0x10019D70: the flag is set to "not replaying", which on this path is
      * the same test that was just taken. */
-    g_brRaceBeginFade = (g_brRaceReplay == 0);
+    (DAT_105ccb68[9]) = ((DAT_105ccb68[8]) == 0);
 }
 
 /* mode 0 -- 0x10019BC8 */
 static void begin_mode0(void)
 {
     g_brRaceNDriver = 0x14;                           /* 0x10019BD3, 20 */
-    g_brRaceNCar    = 3;                              /* 0x10019BDD */
+    g_BrCarCount    = 3;                              /* 0x10019BDD */
     if (OP(BR_RB_CARMODELSET, pfnCarModelSet))        /* 0x10019BE7 */
-        g_brRaceBeginOps.pfnCarModelSet(car_at(0), g_brCfgChosenCar);
+        g_brRaceBeginOps.pfnCarModelSet(car_at(0), (*(int32_t *)&g_226e7c));
     begin_tail_0163();
 }
 
@@ -588,22 +588,22 @@ static void begin_mode0(void)
 static void begin_mode1(void)
 {
     g_brRaceNDriver = 2;                              /* 0x10019BF7 */
-    g_brRaceNCar    = 2;                              /* 0x10019C03 */
+    g_BrCarCount    = 2;                              /* 0x10019C03 */
     if (OP(BR_RB_CARMODELSET, pfnCarModelSet)) {
-        g_brRaceBeginOps.pfnCarModelSet(car_at(0), g_brCfgChosenCar); /* 0x10019C09 */
+        g_brRaceBeginOps.pfnCarModelSet(car_at(0), (*(int32_t *)&g_226e7c)); /* 0x10019C09 */
         /* 0x10019C1A pushes 0x10AF3D70 == 0x10AF1208 + 0x2B68 == car[1]. */
-        g_brRaceBeginOps.pfnCarModelSet(car_at(1), g_brCfgChosenCar);
+        g_brRaceBeginOps.pfnCarModelSet(car_at(1), (*(int32_t *)&g_226e7c));
     }
-    g_brRaceBeginAF6724 = 0;                          /* 0x10019C1F */
+    (*(int32_t *)((char *)&g_aBrRaceCar + 0x551C)) /* BR_LP64_BYTE_VIEW */ = 0;                          /* 0x10019C1F */
     begin_tail_0163();
 }
 
 /* mode 6 -- 0x10019C2A, the networked arm */
 static void begin_mode6(void)
 {
-    if (g_brRaceReplay != 0) {                        /* 0x10019C30 */
+    if ((DAT_105ccb68[8]) != 0) {                        /* 0x10019C30 */
         begin_replay_reset();
-        g_brRaceBeginFade = (g_brRaceReplay == 0);
+        (DAT_105ccb68[9]) = ((DAT_105ccb68[8]) == 0);
         return;
     }
 
@@ -612,37 +612,37 @@ static void begin_mode6(void)
      * set -- the `je` goes to the pair of ones. */
     if (g_brRaceBegin226A4C == 0) {
         g_brRaceNDriver = 1;                          /* 0x10019C53 */
-        g_brRaceNCar    = 1;
+        g_BrCarCount    = 1;
     } else {
         g_brRaceNDriver = 0;                          /* 0x10019C45 */
-        g_brRaceNCar    = 0;
+        g_BrCarCount    = 0;
     }
 
     if (OP(BR_RB_CARMODELSET, pfnCarModelSet))        /* 0x10019C6A */
-        g_brRaceBeginOps.pfnCarModelSet(car_at(0), g_brCfgChosenCar);
+        g_brRaceBeginOps.pfnCarModelSet(car_at(0), (*(int32_t *)&g_226e7c));
 
     if (g_brRaceNet != 0) {                           /* 0x10019C6F */
         if (OP(BR_RB_NETOPEN, pfnNetOpen))            /* 0x10019C77..0x10019C86 */
             g_brRaceBeginOps.pfnNetOpen();
         if (OP(BR_RB_NETSESSION, pfnNetSession))
-            g_pBrRaceBeginSession = g_brRaceBeginOps.pfnNetSession();
+            (*(void * *)((char *)&g_aBrRaceCar + 0x144)) /* BR_LP64_BYTE_VIEW */ = g_brRaceBeginOps.pfnNetSession();
 
         /* 0x10019C90..0x10019CB7: an inlined strcpy of the name at
          * 0x10B71648 into 0x10AF1350, unbounded in the original (`repne
          * scasb` then `rep movsd`).  DEVIATION: bounded here. */
         {
-            size_t n = strlen(g_aBrRaceBeginName);
-            if (n >= sizeof(g_aBrRaceBeginNameCopy))
-                n = sizeof(g_aBrRaceBeginNameCopy) - 1u;
-            memcpy(g_aBrRaceBeginNameCopy, g_aBrRaceBeginName, n);
-            g_aBrRaceBeginNameCopy[n] = '\0';
+            size_t n = strlen(g_aBrCfgPlayerName);
+            if (n >= sizeof((*(char (*)[64])((char *)&g_aBrRaceCar + 0x148)) /* BR_LP64_BYTE_VIEW */))
+                n = sizeof((*(char (*)[64])((char *)&g_aBrRaceCar + 0x148)) /* BR_LP64_BYTE_VIEW */) - 1u;
+            memcpy((*(char (*)[64])((char *)&g_aBrRaceCar + 0x148)) /* BR_LP64_BYTE_VIEW */, g_aBrCfgPlayerName, n);
+            (*(char (*)[64])((char *)&g_aBrRaceCar + 0x148)) /* BR_LP64_BYTE_VIEW */[n] = '\0';
         }
 
         /* 0x10019C9F pushes the NAME and 0x10019CBE pushes the SESSION, so
          * cdecl order is (session, name). */
         if (OP(BR_RB_NETNAME, pfnNetName))            /* 0x10019CBF */
-            g_brRaceBeginOps.pfnNetName(g_pBrRaceBeginSession,
-                                        g_aBrRaceBeginName);
+            g_brRaceBeginOps.pfnNetName((*(void * *)((char *)&g_aBrRaceCar + 0x144)) /* BR_LP64_BYTE_VIEW */,
+                                        g_aBrCfgPlayerName);
     }
 
     /* 0x10019CC7.  The compare is `jae`/`jb`, i.e. UNSIGNED, against the
@@ -650,7 +650,7 @@ static void begin_mode6(void)
      * loop would not run.  Both spellings are the original's. */
     if (OP(BR_RB_NETCOUNT, pfnNetCount)) {
         uint32_t cPlayers = g_brRaceBeginOps.pfnNetCount();
-        while ((uint32_t)g_brRaceNCar < cPlayers) {
+        while ((uint32_t)g_BrCarCount < cPlayers) {
             int32_t iPlayer = -1;
             if (OP(BR_RB_NETNEXT, pfnNetNext))        /* 0x10019CD4 */
                 iPlayer = g_brRaceBeginOps.pfnNetNext();
@@ -676,14 +676,14 @@ static void begin_mode5(void)
 {
     g_brRaceNEntrant    = 1;                          /* 0x10019D87 */
     g_brRaceNDriver     = 1;                          /* 0x10019D8D */
-    g_brRaceNCar        = 1;                          /* 0x10019D93 */
-    g_brRaceBeginFade   = 0;                          /* 0x10019D99 */
-    g_brRaceReplay      = 0;                          /* 0x10019D9F */
-    g_brRaceBeginLights = 0;                          /* 0x10019DA5 */
+    g_BrCarCount        = 1;                          /* 0x10019D93 */
+    (DAT_105ccb68[9])   = 0;                          /* 0x10019D99 */
+    (DAT_105ccb68[8])      = 0;                          /* 0x10019D9F */
+    (*(int32_t *)((char *)&g_aBrRaceCar + 0xE88)) /* BR_LP64_BYTE_VIEW */ = 0;                          /* 0x10019DA5 */
     /* 0x10019DAB stores the address 0x10AF3988 into 0x10AF393C.  Both are
      * render-side objects with no host model; the store is recorded and the
      * port keeps only the fact that the slot became non-NULL. */
-    g_brRaceBeginB1CF10 = 0;                          /* 0x10019DB5 */
+    g_BrCamHold2 = 0;                          /* 0x10019DB5 */
 }
 
 /* mode 4 -- 0x10019DC0, the cutscene arm.  This is the READ end of the
@@ -693,36 +693,36 @@ static void begin_mode4(void)
     BrDriverCar *pCar = car_at(0);
     BrRaceCtl   *pCtl = ctl_of(pCar);
 
-    g_brCarPhysWeather  = 1;                          /* 0x10019DC6 */
+    (*(int32_t *)&DAT_104b15e8)  = 1;                          /* 0x10019DC6 */
     g_brRaceNEntrant    = 1;                          /* 0x10019DCC */
     g_brRaceNDriver     = 1;                          /* 0x10019DD2 */
-    g_brRaceNCar        = 1;                          /* 0x10019DD8 */
-    g_brRaceBeginFade   = 0;                          /* 0x10019DDE */
-    g_brRaceBeginLights = 0;                          /* 0x10019DE4 */
+    g_BrCarCount        = 1;                          /* 0x10019DD8 */
+    (DAT_105ccb68[9])   = 0;                          /* 0x10019DDE */
+    (*(int32_t *)((char *)&g_aBrRaceCar + 0xE88)) /* BR_LP64_BYTE_VIEW */ = 0;                          /* 0x10019DE4 */
 
     if (pCtl != NULL)
         pCtl->pHdr = g_aBrRaceBeginRec;               /* 0x10019DEA */
 
     /* 0x10019DF1: `sub eax,0 / je / dec / je / dec / jne`, i.e. a three-way
      * on the stage with everything else falling past the movie entirely. */
-    if (g_brRaceBeginStage == 0) {                    /* 0x10019E25 */
-        const char *psz = (g_brRaceBeginIntroSide == 0)
+    if ((*(int32_t *)&g_5bc760) == 0) {                    /* 0x10019E25 */
+        const char *psz = ((DAT_105ccb68[13]) == 0)
                           ? "RallyIntro1.dat"         /* 0x10019E2F */
                           : "RallyIntro2.dat";        /* 0x10019E36 */
         if (OP(BR_RB_PLAYMOVIE, pfnPlayMovie))
             g_brRaceBeginOps.pfnPlayMovie(psz, 0);
         /* 0x10019E48: the side alternates, 0 and 1. */
-        ++g_brRaceBeginIntroSide;
-        if (g_brRaceBeginIntroSide > 1)               /* 0x10019E50 `jle` */
-            g_brRaceBeginIntroSide = 0;
+        ++(DAT_105ccb68[13]);
+        if ((DAT_105ccb68[13]) > 1)               /* 0x10019E50 `jle` */
+            (DAT_105ccb68[13]) = 0;
         goto played;
     }
-    if (g_brRaceBeginStage == 1) {                    /* 0x10019E15 */
+    if ((*(int32_t *)&g_5bc760) == 1) {                    /* 0x10019E15 */
         if (OP(BR_RB_PLAYMOVIE, pfnPlayMovie))
             g_brRaceBeginOps.pfnPlayMovie("RallyCredits.dat", 0);
         goto played;
     }
-    if (g_brRaceBeginStage == 2) {                    /* 0x10019E00 */
+    if ((*(int32_t *)&g_5bc760) == 2) {                    /* 0x10019E00 */
         BrRaceCueLayout();
         if (OP(BR_RB_PLAYMOVIE, pfnPlayMovie))
             g_brRaceBeginOps.pfnPlayMovie("RallyOutro.dat", 0);
@@ -748,7 +748,7 @@ after:
     if (pCtl != NULL && pCtl->pHdr != NULL) {
         const uint8_t *h = pCtl->pHdr;
 
-        g_brCfgChosenTrack = (int8_t)h[BR_RACEBEGIN_HDR_TRACK];    /* 0x10019E94 */
+        g_Br0B380C = (int8_t)h[BR_RACEBEGIN_HDR_TRACK];    /* 0x10019E94 */
 
         if (pCar != NULL)
             pCar->f29A4 = (int8_t)h[BR_RACEBEGIN_HDR_CARMODEL];    /* 0x10019EA7 */
@@ -764,8 +764,8 @@ after:
         }
         pCtl->b25 = h[BR_RACEBEGIN_HDR_EQUIP5];                    /* 0x10019EF0 */
 
-        g_brCfgChosenWeather = (int8_t)h[BR_RACEBEGIN_HDR_WEATHER];/* 0x10019EFF */
-        g_brCarPhysWeather   = g_brCfgChosenWeather;               /* 0x10019F04 */
+        (*(int32_t *)&g_226e80) = (int8_t)h[BR_RACEBEGIN_HDR_WEATHER];/* 0x10019EFF */
+        (*(int32_t *)&DAT_104b15e8)   = (*(int32_t *)&g_226e80);               /* 0x10019F04 */
     }
 }
 
@@ -779,12 +779,12 @@ static void begin_mode2(void)
     int32_t      i;
 
     if (OP(BR_RB_CARMODELSET, pfnCarModelSet))        /* 0x10019F1A */
-        g_brRaceBeginOps.pfnCarModelSet(car_at(0), g_brCfgChosenCar);
+        g_brRaceBeginOps.pfnCarModelSet(car_at(0), (*(int32_t *)&g_226e7c));
 
-    g_brRaceBeginFade   = 0;                          /* 0x10019F2A */
+    (DAT_105ccb68[9])   = 0;                          /* 0x10019F2A */
     g_brRaceBeginRecArmed = 1;                        /* 0x10019F30 */
     g_brRaceNDriver     = iSlot + 1;                  /* 0x10019F39 */
-    g_brRaceNCar        = iSlot + 1;                  /* 0x10019F3E */
+    g_BrCarCount        = iSlot + 1;                  /* 0x10019F3E */
 
     pSlot = car_at(iSlot);
     pCtl  = ctl_of(pSlot);
@@ -802,7 +802,7 @@ static void begin_mode2(void)
     /* 0x10019FA8: `rep movsd`/`rep movsb` of [0x105BC8D8] BYTES from
      * 0x105BC8E0 into the slot's header. */
     if (pCtl != NULL && pCtl->pHdr != NULL) {
-        size_t n = (size_t)((g_brRaceBeginRecLen < 0) ? 0 : g_brRaceBeginRecLen);
+        size_t n = (size_t)((g_brRace5BC8D8 < 0) ? 0 : g_brRace5BC8D8);
         if (n > sizeof(g_aBrRaceBeginRec))
             n = sizeof(g_aBrRaceBeginRec);            /* DEVIATION: bounded  */
         memcpy(pCtl->pHdr, g_aBrRaceBeginRec, n);
@@ -820,17 +820,17 @@ static void begin_mode2(void)
 
     /* 0x1001A018: the two acceptance tests -- the track and the weather. */
     if (pCtl != NULL && pCtl->pHdr != NULL &&
-        (int8_t)pCtl->pHdr[BR_RACEBEGIN_HDR_TRACK] == g_brCfgChosenTrack &&
-        (int8_t)pCtl->pHdr[BR_RACEBEGIN_HDR_WEATHER] == g_brCfgChosenWeather) {
+        (int8_t)pCtl->pHdr[BR_RACEBEGIN_HDR_TRACK] == g_Br0B380C &&
+        (int8_t)pCtl->pHdr[BR_RACEBEGIN_HDR_WEATHER] == (*(int32_t *)&g_226e80)) {
         trace();                                      /* 0x1001A031 "TRACK=" */
         pCtl->f48 = BR_RACEBEGIN_REC_LEN0;            /* 0x1001A058 */
         trace();                                      /* 0x1001A06B "PLAYLIMIT" */
-        pCtl->f4C = g_brRaceBeginRecLen;              /* 0x1001A097 */
+        pCtl->f4C = g_brRace5BC8D8;              /* 0x1001A097 */
     } else {
         trace();                                      /* 0x1001A0A3 "WRONG TRACK" */
         if (pCtl != NULL)
             pCtl->pHdr = NULL;                        /* 0x1001A0CA */
-        g_brRaceNCar    = 1;                          /* 0x1001A0CD */
+        g_BrCarCount    = 1;                          /* 0x1001A0CD */
         g_brRaceNDriver = 1;                          /* 0x1001A0D3 */
     }
 
@@ -853,7 +853,7 @@ static void begin_mode2(void)
         pRec = g_aBrRaceBeginRecHdr[i];
         pC->apRec[i] = pRec;                          /* 0x1001A104 */
 
-        pRec[BR_RACEBEGIN_HDR_TRACK] = (uint8_t)g_brCfgChosenTrack;  /* 0x1001A11F */
+        pRec[BR_RACEBEGIN_HDR_TRACK] = (uint8_t)g_Br0B380C;  /* 0x1001A11F */
         /* 0x1001A127 reads car+0x29A8 -- the APPLIED model, not the
          * requested one at +0x29A4 that the reader writes. */
         pRec[BR_RACEBEGIN_HDR_CARMODEL] =
@@ -871,7 +871,7 @@ static void begin_mode2(void)
             pRec[BR_RACEBEGIN_HDR_SUSP]     = pEq[BR_RACEBEGIN_EQ_SUSP];     /* 0x1001A195 */
             pRec[BR_RACEBEGIN_HDR_EQUIP5]   = pEq[BR_RACEBEGIN_EQ_FIFTH];    /* 0x1001A1AE */
         }
-        pRec[BR_RACEBEGIN_HDR_WEATHER] = (uint8_t)g_brCfgChosenWeather;      /* 0x1001A1C1 */
+        pRec[BR_RACEBEGIN_HDR_WEATHER] = (uint8_t)(*(int32_t *)&g_226e80);      /* 0x1001A1C1 */
 
         pC->aLen[i] = BR_RACEBEGIN_REC_LEN0;          /* 0x1001A1CA */
         pC->aCap[i] = BR_RACEBEGIN_REC_CAP;           /* 0x1001A1D8 */
@@ -882,10 +882,10 @@ static void begin_mode2(void)
 static void begin_mode_default(void)
 {
     if (OP(BR_RB_CARMODELSET, pfnCarModelSet))        /* 0x1001A1F9 */
-        g_brRaceBeginOps.pfnCarModelSet(car_at(0), g_brCfgChosenCar);
-    g_brRaceBeginFade = 0;                            /* 0x1001A203 */
+        g_brRaceBeginOps.pfnCarModelSet(car_at(0), (*(int32_t *)&g_226e7c));
+    (DAT_105ccb68[9]) = 0;                            /* 0x1001A203 */
     g_brRaceNDriver   = g_brRaceNEntrant;             /* 0x1001A209 */
-    g_brRaceNCar      = g_brRaceNEntrant;             /* 0x1001A20E */
+    g_BrCarCount      = g_brRaceNEntrant;             /* 0x1001A20E */
 }
 
 /* ==========================================================================
@@ -900,8 +900,8 @@ static void begin_specials(void)
     g_brRaceBeginAirArmed   = 0;                      /* 0x1001A2B4 */
     g_brRaceBeginAirTrigger = 0;                      /* 0x1001A2C0 */
     g_brRaceBeginAirplane   = 0;                      /* 0x1001A2C6 */
-    g_brRaceBeginPathRight  = 0;                      /* 0x1001A2CC */
-    g_brRaceBeginPathLeft   = 0;                      /* 0x1001A2D2 */
+    g_pBrRaceFlyAim  = 0;                      /* 0x1001A2CC */
+    g_pBrRaceFlyPos   = 0;                      /* 0x1001A2D2 */
     g_brRaceBeginPathT      = 0.0f;                   /* 0x1001A2D8 */
     g_brRaceBeginPathSeg    = 0.0f;                   /* 0x1001A2E2 */
     g_brRaceBeginPathIdx    = 0;                      /* 0x1001A2EC */
@@ -943,10 +943,10 @@ static void begin_specials(void)
         switch (e.kind) {
         case BR_RACEBEGIN_SPECIAL_PATHLEFT:           /* 0x1001A32D */
             g_brRaceBeginPathLen  = e.f04;
-            g_brRaceBeginPathLeft = e.f00;
+            g_pBrRaceFlyPos = e.f00;
             break;
         case BR_RACEBEGIN_SPECIAL_PATHRIGHT:          /* 0x1001A344 */
-            g_brRaceBeginPathRight = e.f00;
+            g_pBrRaceFlyAim = e.f00;
             break;
         case BR_RACEBEGIN_SPECIAL_AIRPLANE:           /* 0x1001A353 */
             g_brRaceBeginAirplane = e.f00;
@@ -972,8 +972,8 @@ static void begin_specials(void)
     /* 0x1001A3A6.  The airplane needs its trigger AND both paths; any one
      * missing takes it out. */
     if (g_brRaceBeginAirTrigger == 0 ||
-        g_brRaceBeginPathLeft   == 0 ||
-        g_brRaceBeginPathRight  == 0) {
+        g_pBrRaceFlyPos   == 0 ||
+        g_pBrRaceFlyAim  == 0) {
         g_brRaceBeginAirplane = 0;                    /* 0x1001A3C0 */
         return;                                       /* 0x1001A3CE, via eax == 0 */
     }
@@ -1008,7 +1008,7 @@ static void begin_controllers(void)
                                                        * different address and
                                                        * is not modelled      */
 
-    for (i = 0; i < g_brRaceNCar; ++i) {              /* 0x1001A5A0/0x1001A657 */
+    for (i = 0; i < g_BrCarCount; ++i) {              /* 0x1001A5A0/0x1001A657 */
         BrDriverCar *pCar = car_at(i);
         int32_t      mode = g_brRaceRules.mode;
 
@@ -1060,7 +1060,7 @@ static void begin_controllers(void)
 
     /* 0x1001A65F.  An EMPTY field takes this arm -- and note it reads the
      * count AFTER the loop, so a loop that ran leaves the same value. */
-    if (g_brRaceNCar == 0) {
+    if (g_BrCarCount == 0) {
         BrDriverCar *pCar = car_at(0);
         /* 0x1001A663 `rep stosd` with ecx == 0x57E2 == 22498 DWORDS ==
          * 89992 bytes -- exactly one car image slot.  DWORDS, not bytes. */
@@ -1076,8 +1076,8 @@ static void begin_controllers(void)
         if (OP(BR_RB_10001CF0, pfn10001CF0))          /* 0x1001A689 */
             g_brRaceBeginOps.pfn10001CF0(pCar);
         /* 0x1001A68E: `fld / fsub -1.0 / fstp`, i.e. += 1. */
-        g_brRaceBeginAF397C =
-            (float)((double)g_brRaceBeginAF397C - BR_RACEBEGIN_AF397C_STEP);
+        (*(float *)((char *)&g_aBrRaceCar + 0x2774)) /* BR_LP64_BYTE_VIEW */ =
+            (float)((double)(*(float *)((char *)&g_aBrRaceCar + 0x2774)) /* BR_LP64_BYTE_VIEW */ - BR_RACEBEGIN_AF397C_STEP);
     }
 }
 
@@ -1086,7 +1086,7 @@ static void begin_paint(void)
 {
     int32_t k;
 
-    for (k = 0; k < g_brRaceBeginNTexSet; ++k) {      /* 0x1001A6AD/0x1001A96B */
+    for (k = 0; k < (*(int32_t *)&g_brMode0AA8B4); ++k) {      /* 0x1001A6AD/0x1001A96B */
         uint8_t *pImg = NULL;
         uint8_t *pHdr;
         int32_t  hdrOff;
@@ -1096,7 +1096,7 @@ static void begin_paint(void)
         /* 0x1001A6C9 reads the slot index out of 0x106E86C8 + 0x58*k - 4 and
          * multiplies by 89992 -- the same `lea` chain as 0x10019D00. */
         if (OP(BR_RB_CARIMAGE, pfnCarImage))
-            pImg = g_brRaceBeginOps.pfnCarImage(g_brRaceBegin6E86C8);
+            pImg = g_brRaceBeginOps.pfnCarImage((BrG_6C1628[4]));
         if (pImg == NULL) {
             /* 0x1001A94B still runs on this path in the original; the
              * handle slots are reset whatever the image was. */
@@ -1107,7 +1107,7 @@ static void begin_paint(void)
 
         /* 0x1001A6E1: the weather picks which of the two headers inside the
          * image the textures are described by. */
-        hdrOff = (g_brCarPhysWeather == BR_RACEBEGIN_WEATHER_FAR)
+        hdrOff = ((*(int32_t *)&DAT_104b15e8) == BR_RACEBEGIN_WEATHER_FAR)
                  ? BR_RACEBEGIN_HDR_OFF_FAR            /* 0x1001A6EB */
                  : BR_RACEBEGIN_HDR_OFF_NEAR;          /* 0x1001A6F3 */
         pHdr = pImg + hdrOff;
@@ -1224,7 +1224,7 @@ static void begin_paint(void)
 /* 0x1001AA5E..0x1001AB6F -- what happens after the substate is raised. */
 static void begin_assets(void)
 {
-    if (g_brRaceReplay == 0) {                        /* 0x1001AA64 */
+    if ((DAT_105ccb68[8]) == 0) {                        /* 0x1001AA64 */
         /* 0x1001AA66: 0x105BCAEC is seeded with 0x105BCAF8, the destination,
          * and the loader is given (dst, name, buf). */
         if (OP(BR_RB_BLOBLOAD, pfnBlobLoad))          /* 0x1001AA7F */
@@ -1238,23 +1238,23 @@ static void begin_assets(void)
     if (OP(BR_RB_10063DD0, pfn10063DD0))              /* 0x1001AA9B */
         g_brRaceBeginOps.pfn10063DD0();
 
-    g_brRacePaused        = 0;                        /* 0x1001AAA5 */
-    g_brRaceBeginRamped   = 0;                        /* 0x1001AAAD */
+    g_BrX06909B4        = 0;                        /* 0x1001AAA5 */
+    (DAT_105ccb68[12])   = 0;                        /* 0x1001AAAD */
     g_brRaceBeginSeq888   = -1;                       /* 0x1001AAB3 */
     g_brRaceBeginSeqT     = 0.0f;                     /* 0x1001AABD */
     g_brRaceBeginSeqIdx   = 0;                        /* 0x1001AAC7 */
-    g_brRaceBeginDrawn    = 1;                        /* 0x1001AACD */
+    (*(int32_t *)((char *)&g_aBrEntRecs + 0xA8))    = 1;                        /* 0x1001AACD */
 
-    if (g_brRaceReplay == 0) {                        /* 0x1001AAD3 */
+    if ((DAT_105ccb68[8]) == 0) {                        /* 0x1001AAD3 */
         if (OP(BR_RB_1002E13B, pfn1002E13B))          /* 0x1001AAD5 */
             g_brRaceBeginOps.pfn1002E13B();
         if (OP(BR_RB_10060E30, pfn10060E30))          /* 0x1001AADA */
             g_brRaceBeginOps.pfn10060E30();
     }
 
-    g_brRaceBeginActive = 0;                          /* 0x1001AAE4 */
+    (*(int32_t *)((char *)&g_aBrEntRecs + 0x54)) = 0;                          /* 0x1001AAE4 */
 
-    if (g_brRaceReplay != 0) {                        /* 0x1001AAEC */
+    if ((DAT_105ccb68[8]) != 0) {                        /* 0x1001AAEC */
         if (OP(BR_RB_10063B60, pfn10063B60))          /* 0x1001AAEE */
             g_brRaceBeginOps.pfn10063B60();
     } else {
@@ -1273,9 +1273,9 @@ static void begin_assets(void)
             int32_t music = 0xBF;   /* 0x100BB2E0's shipped value */
             if (music != 0) {
                 int32_t id;
-                if (mode == 4 && g_brRaceBeginStage == 2)
+                if (mode == 4 && (*(int32_t *)&g_5bc760) == 2)
                     id = BR_RACEBEGIN_OUTRO_TRACK;    /* 0x1001AB28 */
-                else if (mode == 4 && g_brRaceBeginStage == 1)
+                else if (mode == 4 && (*(int32_t *)&g_5bc760) == 1)
                     id = BR_RACEBEGIN_CREDIT_TRACK;   /* 0x1001AB35 */
                 else {
                     id = 0;
@@ -1313,12 +1313,12 @@ void BrRaceStepBegin(void)
 {
     int32_t mode;
 
-    g_brRaceBeginActive = 1;                          /* 0x10019AFF */
+    (*(int32_t *)((char *)&g_aBrEntRecs + 0x54)) = 1;                          /* 0x10019AFF */
     trace();                                          /* 0x10019B05 */
     if (OP(BR_RB_1000CB80, pfn1000CB80))              /* 0x10019B0D */
         g_brRaceBeginOps.pfn1000CB80();
 
-    if (g_brRaceReplay == 0) {                        /* 0x10019B12 */
+    if ((DAT_105ccb68[8]) == 0) {                        /* 0x10019B12 */
         trace();                                      /* 0x10019B1A */
         trace();                                      /* 0x10019B1F */
         if (OP(BR_RB_SLOT_B7352C, pfnSlotB7352C))     /* 0x10019B24 */
@@ -1333,7 +1333,7 @@ void BrRaceStepBegin(void)
         if (OP(BR_RB_TRACKHANDLING, pfnTrackHandling))    /* 0x10019B4B */
             g_brRaceBeginOps.pfnTrackHandling(
                 (g_brRaceRules.mode == 5) ? BR_RACEBEGIN_MODE5_TRACK
-                                          : g_brCfgChosenTrack);
+                                          : g_Br0B380C);
         if (OP(BR_RB_1006E030, pfn1006E030))          /* 0x10019B53 */
             g_brRaceBeginOps.pfn1006E030();
         if (OP(BR_RB_SLOT_B73528, pfnSlotB73528))     /* 0x10019B58 */
@@ -1350,7 +1350,7 @@ void BrRaceStepBegin(void)
         g_brRaceBeginOps.pfn100353C0(BR_RACEBEGIN_100353C0_ARG);
 
     mode = g_brRaceRules.mode;                        /* 0x10019B8D */
-    g_brRaceBeginFade = 0;                            /* 0x10019B97 */
+    (DAT_105ccb68[9]) = 0;                            /* 0x10019B97 */
 
     /* 0x10019B9D: modes 1, 6 and 2 keep whatever the camera setting was;
      * everything else is forced to 3.  0x100BCBE8 is br_race.h's. */
@@ -1381,27 +1381,27 @@ void BrRaceStepBegin(void)
     } else {
         int32_t d = 0;
         if (OP(BR_RB_DIFFICULTY, pfnDifficulty))      /* 0x1001A234 */
-            d = g_brRaceBeginOps.pfnDifficulty(g_brCfgChosenTrack);
+            d = g_brRaceBeginOps.pfnDifficulty(g_Br0B380C);
         /* 0x1001A23B: bit 4 of the record's +0x04. */
         g_brRaceBeginDifficulty = (d >> 4) & 1;
     }
 
     if (OP(BR_RB_100627B0, pfn100627B0))              /* 0x1001A24F */
-        g_brRaceBeginOps.pfn100627B0(g_brCarPhysWeather);
+        g_brRaceBeginOps.pfn100627B0((*(int32_t *)&DAT_104b15e8));
 
-    if (g_brRaceRules.mode != 4 && g_brRaceReplay == 0) {   /* 0x1001A25C */
+    if (g_brRaceRules.mode != 4 && (DAT_105ccb68[8]) == 0) {   /* 0x1001A25C */
         trace();                                      /* 0x1001A269 */
         trace();                                      /* 0x1001A26E */
     }
     if (OP(BR_RB_10061310, pfn10061310))              /* 0x1001A273 */
         g_brRaceBeginOps.pfn10061310();
 
-    if (g_brRaceReplay == 0) {                        /* 0x1001A27F */
+    if ((DAT_105ccb68[8]) == 0) {                        /* 0x1001A27F */
         if (OP(BR_RB_TRACKLOAD, pfnTrackLoad))        /* 0x1001A299 */
             g_brRaceBeginOps.pfnTrackLoad(
                 (g_brRaceRules.mode == 5) ? BR_RACEBEGIN_MODE5_TRACK
-                                          : g_brCfgChosenTrack);
-        if (g_brRaceReplay == 0) {                    /* 0x1001A2A6 */
+                                          : g_Br0B380C);
+        if ((DAT_105ccb68[8]) == 0) {                    /* 0x1001A2A6 */
             begin_specials();
             /* 0x1001A41C: the camera index, one less than 0x100BCBE8. */
             g_brRaceBeginCamMinus1 = -1;
@@ -1410,16 +1410,16 @@ void BrRaceStepBegin(void)
 
     /* 0x1001A430.  Note the flags: the `jne` at 0x1001A43C is still reading
      * the `cmp eax, ebp` at 0x1001A428, which compared the REPLAY flag. */
-    g_brRaceBeginNTexSet = (g_brRaceReplay != 0) ? 1 : g_brRaceNEntrant;
+    (*(int32_t *)&g_brMode0AA8B4) = ((DAT_105ccb68[8]) != 0) ? 1 : g_brRaceNEntrant;
 
     /* 0x1001A44A: `neg / sbb / and` is "the best car if replaying, else 0",
      * and 0x1001A45A's `sete` reads that same result. */
-    g_brRaceBegin6E86C8 = (g_brRaceReplay != 0) ? g_brRaceBeginBestCar : 0;
-    g_brRaceBegin6E8720 = (g_brRaceBegin6E86C8 == 0);
+    (BrG_6C1628[4]) = ((DAT_105ccb68[8]) != 0) ? g_brRaceBeginBestCar : 0;
+    g_brRaceBegin6E8720 = ((BrG_6C1628[4]) == 0);
 
     if (g_brRaceRules.mode == 4) {                    /* 0x1001A467 */
         /* 0x1001A46C stores the address 0x10AF3988; no host model. */
-        g_brRaceBeginB1CF10 = 0xB4;                   /* 0x1001A476 */
+        g_BrCamHold2 = 0xB4;                   /* 0x1001A476 */
     } else {
         int32_t i;
         int32_t iCar = 0;
@@ -1461,10 +1461,10 @@ void BrRaceStepBegin(void)
                                                        * == 0x10AF3BC8 + 0x2B68 */
             BrRaceCtl   *pOc  = ctl_of(pOpp);
             if (pOc != NULL && pOc->pHdr != NULL) {
-                g_aBrRaceBeginLink[2] = (int8_t)pOc->pHdr[2];   /* 0x1001A50F */
-                g_aBrRaceBeginLink[3] = (int8_t)pOc->pHdr[3];   /* 0x1001A51C */
-                g_aBrRaceBeginLink[0] = (int8_t)pOc->pHdr[4];   /* 0x1001A529 */
-                g_aBrRaceBeginLink[1] = (int8_t)pOc->pHdr[5];   /* 0x1001A536 */
+                (*(int32_t (*)[4])((char *)&g_aBrRaceCar + 0x39F8)) /* BR_LP64_BYTE_VIEW */[2] = (int8_t)pOc->pHdr[2];   /* 0x1001A50F */
+                (*(int32_t (*)[4])((char *)&g_aBrRaceCar + 0x39F8)) /* BR_LP64_BYTE_VIEW */[3] = (int8_t)pOc->pHdr[3];   /* 0x1001A51C */
+                (*(int32_t (*)[4])((char *)&g_aBrRaceCar + 0x39F8)) /* BR_LP64_BYTE_VIEW */[0] = (int8_t)pOc->pHdr[4];   /* 0x1001A529 */
+                (*(int32_t (*)[4])((char *)&g_aBrRaceCar + 0x39F8)) /* BR_LP64_BYTE_VIEW */[1] = (int8_t)pOc->pHdr[5];   /* 0x1001A536 */
                 pOc->b25 = pOc->pHdr[6];                        /* 0x1001A542 */
                 goto tail;
             }
@@ -1472,7 +1472,7 @@ void BrRaceStepBegin(void)
 
         /* 0x1001A547: every car past the entrant count gets the defaults.
          * The cursor is the one the loop above left behind. */
-        for (; iCar < g_brRaceNCar; ++iCar) {
+        for (; iCar < g_BrCarCount; ++iCar) {
             BrDriverCar *pCar = car_at(iCar);
             BrRaceCtl   *pCtl = ctl_of(pCar);
             if (pCar != NULL) {
@@ -1487,7 +1487,7 @@ void BrRaceStepBegin(void)
     }
 
 tail:
-    if (g_brRaceReplay == 0) {                        /* 0x1001A593 */
+    if ((DAT_105ccb68[8]) == 0) {                        /* 0x1001A593 */
         begin_controllers();
         begin_paint();
     } else {
@@ -1506,7 +1506,7 @@ tail:
          * replay path is exactly that case, so no ordinary fixture separates
          * them.  It is the same class of error as the `[esp+N]` pair at
          * 0x1001A3F6 -- a displacement is not an identity. */
-        s_cReplayPaintSkipped += (g_brRaceNEntrant >= g_brRaceBeginNTexSet);
+        s_cReplayPaintSkipped += (g_brRaceNEntrant >= (*(int32_t *)&g_brMode0AA8B4));
     }
 
     /* 0x1001A97C..0x1001AA5E is the SCRIPT SEED, and br_racestep.c already
@@ -1517,11 +1517,11 @@ tail:
 
     /* 0x1001A9EF..0x1001AA4F, which BrRaceStepInit does not cover. */
     if (OP(BR_RB_10062830, pfn10062830))              /* 0x1001A9F5 */
-        g_brRaceBeginOps.pfn10062830(g_brCarPhysWeather);
+        g_brRaceBeginOps.pfn10062830((*(int32_t *)&DAT_104b15e8));
 
     /* 0x1001A9FA: an unset 0x106ED6AC plus track 0 or 6 takes the airplane
      * out.  0x106ED6AC has no host model, and .bss says zero. */
-    if (g_brCfgChosenTrack == 0 || g_brCfgChosenTrack == 6)
+    if (g_Br0B380C == 0 || g_Br0B380C == 6)
         g_brRaceBeginAirplane = 0;                    /* 0x1001AA16 */
 
     if (OP(BR_RB_RAMP_A, pfnRampA))                   /* 0x1001AA26 */

@@ -114,8 +114,8 @@ float BrRaceTruncHundredths(float t)
 {
     /* `fld [ebp+0x30] / fmul 100.0 / push / fstp [esp] / call 0x10018990`,
      * then `fild [esp+0x18] / fmul 0.01`. 0x10018990 is a two-instruction
-     * thunk onto MSVCRT `_ftol`, which is br_crt.h's BrFtolTrunc. */
-    int32_t n = BrFtolTrunc(t * BR_RACE_K100);
+     * thunk onto MSVCRT `_ftol`, which is br_crt.h's BrFtolArg. */
+    int32_t n = BrFtolArg(t * BR_RACE_K100);
     return (float)n * BR_RACE_K001;
 }
 
@@ -300,7 +300,7 @@ __declspec(dllimport) int __cdecl sprintf(char *pDst, const char *pFmt, ...);
 #define BR_RACE_RECORD_LAP()                                                  \
     do {                                                                      \
         if (pCar != NULL) {                                                   \
-            BrExt_10008D60("veh->lapTimeFinal[%d]=%f\n", pDrv->f40, tLap);    \
+            BrPodNop("veh->lapTimeFinal[%d]=%f\n", pDrv->f40, tLap);    \
             pCar->aLapTime[pDrv->f40] = tLap;                                 \
         }                                                                     \
         pDrv->f30 -= tLap;                                                    \
@@ -377,19 +377,19 @@ void BR_THISCALL1 BrRaceGateStep(BrDriver *pDrv)
     iCur  = q % nGates;                         /* 0x1005FFAC */
     iNext = (iCur + 1) % nGates;                /* 0x1005FFBE */
 
-    tLap = (float)BrFtolTrunc(pDrv->f30 * BR_RACE_K100) * BR_RACE_K001;
+    tLap = (float)BrFtolArg(pDrv->f30 * BR_RACE_K100) * BR_RACE_K001;
 
     /* ---- did it cross the gate it is standing on? (backwards) ---------- */
     if (BrSeg2Intersect(&g_aBrRaceGate[iCur].postB, &g_aBrRaceGate[iCur].postA,
                         (const BrVec2 *)&pDrv->f0C,
                         (const BrVec2 *)&pDrv->f00) != 0) {
-        BrExt_10008D60();
+        BrPodNop();
         if (iCur == 0)                          /* 0x10060026 */
             pDrv->f44 -= 1;
 
         /* The predicate is built ONLY to be printed; the branch below then
          * recomputes the modulus from memory and tests that. */
-        BrExt_10008D60();
+        BrPodNop();
 
         /* ONE conjunction, which is what the line above prints: the two
          * `jne`/`jge` go to the same target.  Both add operands are NAMED
@@ -402,7 +402,7 @@ void BR_THISCALL1 BrRaceGateStep(BrDriver *pDrv)
             pDrv->f44 += 1;
             if (g_pBrRaceLapRec != NULL)           /* 0x100600A0 */
                 pDrv->f50 += g_pBrRaceLapRec->fLapLength;
-            BrExt_10008D60();
+            BrPodNop();
         }
         pDrv->f4C -= 1;                         /* 0x100600C3, both arms */
         goto tail;
@@ -414,18 +414,18 @@ void BR_THISCALL1 BrRaceGateStep(BrDriver *pDrv)
                         (const BrVec2 *)&pDrv->f00) == 0)
         goto tail;                              /* 0x100600EE */
 
-    BrExt_10008D60();
+    BrPodNop();
     pDrv->f4C += 1;                             /* 0x10060113 */
 
     if (pDrv->f4C > pDrv->f48) {                /* 0x10060119, `jle` */
         pDrv->f48 = pDrv->f4C;
         /* Read, printed, never applied. */
-        BrExt_10008D60();
+        BrPodNop();
 
         if (iNext != 0)                         /* 0x1006013D */
             goto positions;
 
-        if (pDrv->f40 < g_brRaceNLap) {         /* 0x1006014D, `jge` */
+        if (pDrv->f40 < (*(int32_t *)&g_CBE8)) {         /* 0x1006014D, `jge` */
             pszMsg = NULL;                      /* 0x1006015E */
 
             /* ---- the best lap, 0x10060155 --------------------------- */
@@ -434,10 +434,10 @@ void BR_THISCALL1 BrRaceGateStep(BrDriver *pDrv)
                 if (pDrv->f64 < g_brRaceNEntrant) {
                     pDrv->pCar->lapBest = pDrv->f40;     /* 0x1006018D */
                     if (BR_FCOM_EQ0(
-                            g_pBrRaceRecords->aBestLap[g_brCfgChosenTrack])
+                            (*(BrRaceRecords * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */->aBestLap[g_Br0B380C])
                         || pDrv->f34
-                             < g_pBrRaceRecords->aBestLap[g_brCfgChosenTrack]) {
-                        g_pBrRaceRecords->aBestLap[g_brCfgChosenTrack]
+                             < (*(BrRaceRecords * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */->aBestLap[g_Br0B380C]) {
+                        (*(BrRaceRecords * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */->aBestLap[g_Br0B380C]
                             = pDrv->f34;                 /* 0x100601DA */
                         pszMsg = BrStrGet(0x109);
                     } else if (pDrv->f40 != 0) {         /* 0x100601C7 */
@@ -450,14 +450,14 @@ void BR_THISCALL1 BrRaceGateStep(BrDriver *pDrv)
             pDrv->f40 += 1;                     /* 0x10060226 */
             pDrv->f44 = pDrv->f40;
 
-            if (g_brRaceMode == BR_RACE_MODE_WRAP) {     /* 0x10060232 */
+            if ((*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == BR_RACE_MODE_WRAP) {     /* 0x10060232 */
                 if (pDrv->f40 == 1) {
-                    BrExt_10008D60();
+                    BrPodNop();
                     BR_RACE_WRAP_UNWIND();
                 }
             } else if (pCar != NULL) {          /* 0x1006029A */
-                BrExt_10008D60();
-                if (pDrv->f40 == g_brRaceNLap - 1)       /* 0x100602BA */
+                BrPodNop();
+                if (pDrv->f40 == (*(int32_t *)&g_CBE8) - 1)       /* 0x100602BA */
                     strcpy(pCar->sz100C, BrStrGet(0x10B));
                 else
                     sprintf(pCar->sz100C, BrStrGet(0x10C), pDrv->f40 + 1);
@@ -471,7 +471,7 @@ void BR_THISCALL1 BrRaceGateStep(BrDriver *pDrv)
         }
 
         /* ---- THE FINISH CONDITION, 0x1006033B ------------------------- */
-        if (pDrv->f40 == g_brRaceNLap) {
+        if (pDrv->f40 == (*(int32_t *)&g_CBE8)) {
             pDrv->f68 |= BR_RACE_FINISHED;      /* 0x1006034E, before the
                                                  * car test -- a driver with
                                                  * no car still finishes */
@@ -480,20 +480,20 @@ void BR_THISCALL1 BrRaceGateStep(BrDriver *pDrv)
                 pCar->tFinal = pCar->tFinal - pDrv->f30;
                 pDrv->f30    = BR_RACE_KZERO;
                 pCar->fFF8   = g_brRaceNFinished;
-                if (g_brRaceMode == 6)                   /* 0x1006038D */
+                if ((*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 6)                   /* 0x1006038D */
                     pCar->pszBanner = (char *)"";
                 else
                     pCar->pszBanner = (char *)BrStrGet(
                         g_aBrRacePlaceMsg[g_brRaceNFinished]);
                 pCar->f1000 = 5.0f;                      /* 0x100603BA */
 
-                if (pDrv->f64 < g_brRaceNEntrant && g_brRaceNLap == 3) {
+                if (pDrv->f64 < g_brRaceNEntrant && (*(int32_t *)&g_CBE8) == 3) {
                     if (BR_FCOM_EQ0(
-                            g_pBrRaceRecords->aBestTotal[g_brCfgChosenTrack])
+                            (*(BrRaceRecords * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */->aBestTotal[g_Br0B380C])
                         || !(pCar->tFinal
-                             >= g_pBrRaceRecords->aBestTotal[
-                                    g_brCfgChosenTrack])) {
-                        g_pBrRaceRecords->aBestTotal[g_brCfgChosenTrack]
+                             >= (*(BrRaceRecords * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */->aBestTotal[
+                                    g_Br0B380C])) {
+                        (*(BrRaceRecords * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */->aBestTotal[g_Br0B380C]
                             = pCar->tFinal;              /* 0x10060417 */
                         pCar->f1000 = 1.5f;
                         pCar->psz1004 = (char *)BrStrGet(0x121);
@@ -509,22 +509,22 @@ void BR_THISCALL1 BrRaceGateStep(BrDriver *pDrv)
 
     positions:
         /* ---- the standings pass, 0x1006044B --------------------------- */
-        iMode = g_brRaceMode;
+        iMode = (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */;
         if (iMode == 1 || iMode == 6 || iMode == 2) {
             if (pDrv->f64 >= g_brRaceNEntrant)  /* 0x1006046D */
                 goto tail;
-            if (g_brRaceReplay == 0)            /* 0x1006047A */
+            if ((DAT_105ccb68[8]) == 0)            /* 0x1006047A */
                 BrSfxSrcBeep();
 
             /* dGap is DELIBERATELY not initialised: when the field has one
              * car, or when no entrant beats the running best, the original
              * reads the slot as it stands (0x100604A8 / 0x100604D1 both
              * `fld [esp+0x18]` with nothing having written it). */
-            if (g_brRaceMode == 1) {            /* 0x10060481 */
+            if ((*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 1) {            /* 0x10060481 */
                 dGap = g_aBrRaceCar[0].fFF4 - g_aBrRaceCar[1].fFF4;
             } else {
                 iBest = 0xFF;                   /* 0x1006049E */
-                for (i = 1; i < g_brRaceNCar; i++) {
+                for (i = 1; i < g_BrCarCount; i++) {
                     if (iBest > g_aBrRaceCar[i].fFF8) {
                         dGap  = g_aBrRaceCar[0].fFF4 - g_aBrRaceCar[i].fFF4;
                         iBest = g_aBrRaceCar[i].fFF8;
@@ -558,14 +558,14 @@ void BR_THISCALL1 BrRaceGateStep(BrDriver *pDrv)
 
                 /* The weather row, clamped BY A 16-BIT SIGNED COMPARE --
                  * br_carphys.h records the same shape. */
-                iWeather = (short)(g_brCarPhysWeather - 1);   /* 0x100605AE */
+                iWeather = (short)((*(int32_t *)&DAT_104b15e8) - 1);   /* 0x100605AE */
                 if (iWeather > 2 || iWeather < 0)
                     iWeather = 0;
-                pc->fFF0 = g_apBrRaceDiff[g_brCfgChosenTrack]->aAward[
-                               (g_brRaceDiffRow * 3 + iWeather) * 7 + iNext]
+                pc->fFF0 = g_apBrRaceDiff[g_Br0B380C]->aAward[
+                               ((*(int32_t *)((char *)&g_aBrRaceCar + 0xE64)) /* BR_LP64_BYTE_VIEW */ * 3 + iWeather) * 7 + iNext]
                            + pc->fFF0;
 
-                if (!BR_FCOM_EQ0(pc->tFinal) && g_brRaceNCar > 1) {
+                if (!BR_FCOM_EQ0(pc->tFinal) && g_BrCarCount > 1) {
                     sprintf(pc->sz100C, "%%ry");         /* 0x10060623 */
                     BrTimeFormat(pc->sz100C + 3, fRatio);
                     if (pc->fFF8 != 0) {                 /* 0x1006064C */
@@ -597,10 +597,10 @@ void BR_THISCALL1 BrRaceGateStep(BrDriver *pDrv)
             if (pDrv->f64 < g_brRaceNEntrant) {
                 pDrv->pCar->lapBest = pDrv->f40;         /* 0x10060737 */
                 if (BR_FCOM_EQ0(
-                        g_pBrRaceRecords->aBestLap[g_brCfgChosenTrack])
+                        (*(BrRaceRecords * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */->aBestLap[g_Br0B380C])
                     || pDrv->f34
-                         < g_pBrRaceRecords->aBestLap[g_brCfgChosenTrack]) {
-                    g_pBrRaceRecords->aBestLap[g_brCfgChosenTrack] = tLap;
+                         < (*(BrRaceRecords * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */->aBestLap[g_Br0B380C]) {
+                    (*(BrRaceRecords * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */->aBestLap[g_Br0B380C] = tLap;
                     pszMsg = BrStrGet(0x109);            /* 0x10060780 */
                 } else if (pDrv->f40 != 0) {
                     pszMsg = BrStrGet(0x10A);
@@ -612,7 +612,7 @@ void BR_THISCALL1 BrRaceGateStep(BrDriver *pDrv)
         pDrv->f40 = pDrv->f44;                  /* 0x100607CF -- assignment,
                                                  * not an increment */
         if (pCar != NULL) {                     /* 0x100607CD */
-            BrExt_10008D60();
+            BrPodNop();
             sprintf(pCar->sz100C, BrStrGet(0x10C), pDrv->f40 + 1);
             pCar->pszBanner  = (char *)pCar->sz100C;         /* 0x1006080F */
             pCar->f1000 = 1.0f;
@@ -623,11 +623,11 @@ void BR_THISCALL1 BrRaceGateStep(BrDriver *pDrv)
         }
     }
 
-    BrExt_10008D60();
+    BrPodNop();
 
     /* NOTE, and it is the original's: this arm has NO finish test. */
-    if (g_brRaceMode == BR_RACE_MODE_WRAP && pDrv->f40 == 1) {
-        BrExt_10008D60();
+    if ((*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == BR_RACE_MODE_WRAP && pDrv->f40 == 1) {
+        BrPodNop();
         BR_RACE_WRAP_UNWIND();                  /* 0x10060860 */
     }
 

@@ -203,7 +203,7 @@ int BrOptFn100558A0(GameUi *parent)
     char       bad;
 
     parent->w12 = 0;
-    g_br0AA010 = 6;
+    (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = 6;
     parent->a6C[parent->w10] = 1;
     cont = new Page04E750;
     parent->a14[parent->w10] = cont;
@@ -240,7 +240,7 @@ int BrOptFn100558A0(GameUi *parent)
     p->pfn0C = (CtlFn)BrUiHook85_10044030;
     p->pfn08 = (CtlFn)BrHook_10044010;
     p->w1E20C = 3;
-    p->s34((char *)(BrStrGet(0x55)), 1, 1, (char *)(&DAT_100aabe8));
+    p->s34((char *)(BrStrGet(0x55)), 1, 1, (char *)(&(*(char *)&g_hot0)));
     cont->w14 += 1;
     cont->w344 += 1;
     p = new BrCtl;
@@ -252,7 +252,7 @@ int BrOptFn100558A0(GameUi *parent)
     p->pfn0C = (CtlFn)BrUiHook85_10044070;
     p->pfn08 = (CtlFn)BrUiHook85_10044050;
     p->w1E20C = 3;
-    p->s34((char *)(BrStrGet(0x56)), 1, 1, (char *)(&DAT_100aabe8));
+    p->s34((char *)(BrStrGet(0x56)), 1, 1, (char *)(&(*(char *)&g_hot0)));
     cont->w14 += 1;
     cont->w344 += 1;
     p = new BrCtl;
@@ -264,7 +264,7 @@ int BrOptFn100558A0(GameUi *parent)
     p->pfn0C = (CtlFn)BrUiHook85_100440B0;
     p->pfn08 = (CtlFn)BrUiHook85_10044090;
     p->w1E20C = 3;
-    p->s34((char *)(BrStrGet(0x57)), 1, 1, (char *)(&DAT_100aabe8));
+    p->s34((char *)(BrStrGet(0x57)), 1, 1, (char *)(&(*(char *)&g_hot0)));
     cont->w14 += 1;
     cont->w344 += 1;
     p = new BrCtl;
@@ -274,9 +274,9 @@ int BrOptFn100558A0(GameUi *parent)
         FUN_100378c0(4);
     p->s38(parent, cont->f338, cont->f33C - DAT_1007765c, 0x102001, 2, 5, 1, -1);
     p->pfn0C = (CtlFn)BrSub10047360;
-    p->pfn08 = (CtlFn)BrUiHook81_100463C0;
+    p->pfn08 = (CtlFn)BrOpt63C0;
     p->w1E20C = 3;
-    p->s34((char *)(BrStrGet(0xc)), 1, 1, (char *)(&DAT_100aabe8));
+    p->s34((char *)(BrStrGet(0xc)), 1, 1, (char *)(&(*(char *)&g_hot0)));
     cont->w14 += 1;
     cont->w344 += 1;
     p = new BrCtl;
@@ -293,7 +293,7 @@ int BrOptFn100558A0(GameUi *parent)
         FUN_100378c0(4);
     p->s38(parent, 130.0f, 336.0f, 0x100009, 2, 5, 1, -1);
     p->w1E20C = 0x34;
-    p->s34((char *)(BrStrGet(0x59)), 1, 4, (char *)(&DAT_100aabe8));
+    p->s34((char *)(BrStrGet(0x59)), 1, 4, (char *)(&(*(char *)&g_hot0)));
     cont->w14 += 1;
     p = new BrCtl;
     cont->a18[cont->w14] = p;
@@ -302,7 +302,7 @@ int BrOptFn100558A0(GameUi *parent)
         FUN_100378c0(4);
     p->s38(parent, 130.0f, 374.0f, 0x100009, 2, 5, 1, -1);
     p->w1E20C = 3;
-    p->s34((char *)(BrStrGet(0x5a)), 1, 1, (char *)(&DAT_100aabe8));
+    p->s34((char *)(BrStrGet(0x5a)), 1, 1, (char *)(&(*(char *)&g_hot0)));
     cont->w14 += 1;
     p = new BrCtl;
     cont->a18[cont->w14] = p;
@@ -321,7 +321,7 @@ int BrOptFn100558A0(GameUi *parent)
     p->pfn04 = (CtlFn)Br85TextReadBack;
     p->pfn10 = (CtlFn)BrStubTrue;
     p->w1E20C = 3;
-    p->s34(&DAT_10396f08, 1, 1, (char *)(&DAT_100aabe8));
+    p->s34(&(g_aBr39B720[0]), 1, 1, (char *)(&(*(char *)&g_hot0)));
     p->m2B5C.s1();
     p->f050 = 0x9b;
     p->m2B5C.a424[0] = 0x9b;
@@ -341,7 +341,7 @@ int BrOptFn100558A0(GameUi *parent)
         FUN_100378c0(4);
     p->s38(parent, 130.0f, 412.0f, 0x100009, 2, 5, 1, -1);
     p->w1E20C = 3;
-    p->s34((char *)(BrStrGet(0x5b)), 1, 1, (char *)(&DAT_100aabe8));
+    p->s34((char *)(BrStrGet(0x5b)), 1, 1, (char *)(&(*(char *)&g_hot0)));
     cont->w14 += 1;
     p = new BrCtl;
     cont->a18[cont->w14] = p;
@@ -360,7 +360,7 @@ int BrOptFn100558A0(GameUi *parent)
     p->pfn04 = (CtlFn)BrUiHook85_1003F0B0;
     p->pfn10 = (CtlFn)BrStubTrue;
     p->w1E20C = 3;
-    p->s34(&DAT_10396f08, 1, 1, (char *)(&DAT_100aabe8));
+    p->s34(&(g_aBr39B720[0]), 1, 1, (char *)(&(*(char *)&g_hot0)));
     p->m2B5C.s1();
     p->f050 = 0x9b;
     p->m2B5C.a424[0] = 0x9b;
@@ -396,9 +396,9 @@ int BrOptFn100558A0(GameUi *parent)
     if (bad)
         FUN_100378c0(4);
     p->s38(parent, cont->f338, 160.0f, 0x101001, 2, 5, 1, -1);
-    p->pfn04 = (CtlFn)BrUiText1003FC40;
+    p->pfn04 = (CtlFn)BrUiText3FC40;
     p->w1E20C = 3;
-    p->s34((char *)(&DAT_100acad8), 1, 1, (char *)(&DAT_100aac48));
+    p->s34((char *)(&(g_strA[0])), 1, 1, (char *)(&DAT_100aac48));
     cont->w14 += 1;
 
     return 1;

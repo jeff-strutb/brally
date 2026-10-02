@@ -161,12 +161,12 @@ static void s17_stf(unsigned char *p, float v)
 /* FUN_100385e0: prototype in br_funcs.h */
 void *BrScratchRingAlloc(void)
 {
-    if (DAT_106ed66c == BR_SCRATCH_DEPTH)
-        FUN_100385e0();
+    if ((*(int *)((char *)&g_aBrEntRecs + 0x3C)) == BR_SCRATCH_DEPTH)
+        BrStubTrue();
     else
-        DAT_106ed66c = DAT_106ed66c + 1;
-    DAT_106ed668 = (DAT_106ed668 + 1) % BR_SCRATCH_SLOTS;
-    return DAT_106e9a80 + DAT_106ed668 * BR_SCRATCH_STRIDE;
+        (*(int *)((char *)&g_aBrEntRecs + 0x3C)) = (*(int *)((char *)&g_aBrEntRecs + 0x3C)) + 1;
+    (*(int *)((char *)&g_aBrEntRecs + 0x38)) = ((*(int *)((char *)&g_aBrEntRecs + 0x38)) + 1) % BR_SCRATCH_SLOTS;
+    return DAT_106e9a80 + (*(int *)((char *)&g_aBrEntRecs + 0x38)) * BR_SCRATCH_STRIDE;
 }
 
 /* 0x100311E4 */
@@ -181,8 +181,8 @@ void *BrScratchRingAlloc(void)
 /* FUN_100385e0: prototype in br_funcs.h */
 void BrScratchRingDrain(void)
 {
-    while (DAT_106ed66c != 0) {
-        FUN_100385e0();
-        DAT_106ed66c = DAT_106ed66c - 1;
+    while ((*(int *)((char *)&g_aBrEntRecs + 0x3C)) != 0) {
+        BrStubTrue();
+        (*(int *)((char *)&g_aBrEntRecs + 0x3C)) = (*(int *)((char *)&g_aBrEntRecs + 0x3C)) - 1;
     }
 }

@@ -119,7 +119,7 @@ void Car5C6D0::Respawn()
     if ((f35C < 0) || (f38 < DAT_106eed10 - DAT_10077898)) {
         Sub5E6A0();
         Sub5BCC0();
-        if (DAT_100a9360 == 2)
+        if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 2)
             SetPos(*(float *)(fF8C + fF90 * 0x28 + 0x4C),
                    *(float *)(fF8C + (fF90 + 2) * 0x28),
                    *(float *)(fF8C + 0x54 + fF90 * 0x28) - DAT_1007789c);
@@ -128,7 +128,7 @@ void Car5C6D0::Respawn()
                        - (float)f140 * DAT_100778a0,
                    *(float *)(fF8C + (fF90 + 2) * 0x28),
                    *(float *)(fF8C + 0x54 + fF90 * 0x28) - DAT_1007789c);
-        SetHeading((float)BrAtan2_10034E30(fF94, fF98));
+        SetHeading((float)BrAtan2(fF94, fF98));
         SetVel(0.0f, 0.0f, 0.0f);
         SetAngVel(0.0f, 0.0f, 0.0f);
         p168->pPlane = 0;

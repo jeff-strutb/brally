@@ -397,13 +397,13 @@ void BR_THISCALL1 BrCtlAiBody(BrAiCar *pCar)
 
         /* The corridor scan, and its own aim suggestion. */
         if (BR_AI_SCAN(pCar, 0, idx, node) != 0) {
-            BrVec3Midpoint(&g_brAiScanAim, &g_brAiScanAim, &g_brAiScanPt);
+            BrVec3Midpoint(&(*(BrVec3 *)&DAT_10b1ce88), &(*(BrVec3 *)&DAT_10b1ce88), &(*(BrVec3 *)&DAT_10af11f8));
             if (pCar->aim.x == 0.0f && pCar->aim.y == 0.0f
                 && pCar->aim.z == 0.0f)
-                pCar->aim = g_brAiScanAim;
+                pCar->aim = (*(BrVec3 *)&DAT_10b1ce88);
             else
-                BrVec3Lerp(&pCar->aim, &pCar->aim, &g_brAiScanAim,
-                           g_brAiBlend - -0.5f);
+                BrVec3Lerp(&pCar->aim, &pCar->aim, &(*(BrVec3 *)&DAT_10b1ce88),
+                           g_brRaceFlyStep - -0.5f);
         }
         BrVec3Lerp(&pCar->aim, &pCar->aim, &vTarget, 0.4f);   /* rule 11 */
 
@@ -424,9 +424,9 @@ void BR_THISCALL1 BrCtlAiBody(BrAiCar *pCar)
         BrVec3Sub(&pCar->lateral, &pCar->pNode.p->aPt[pCar->iPt.v].left,
                   &pCar->pNode.p->aPt[pCar->iPt.v].right);
         BrVec3Cross(&pCar->pathUp, &pCar->tangent, &pCar->lateral);
-        BrVec3NormaliseGuard(&pCar->pathUp);
+        br_dl_normalise(&pCar->pathUp);
         BrVec3Cross(&pCar->lateral, &pCar->pathUp, &pCar->tangent);
-        BrVec3NormaliseGuard(&pCar->lateral);
+        br_dl_normalise(&pCar->lateral);
 
         /* 2. the signed line offset, and the heading term */
         BrVec3Sub(&pCar->d, &pCar->pos, &pCar->pNode.p->aPt[pCar->iPt.v].centre);
@@ -435,7 +435,7 @@ void BR_THISCALL1 BrCtlAiBody(BrAiCar *pCar)
         mag = 0.0f;
         heading = BrVec3Dot(&pCar->fwd, &pCar->lateral);
         g_brAiBiasPos = 0;
-        g_brAiBiasNeg = 0;
+        (*(int32_t *)&DAT_10b1cf04) = 0;
         if (offset < 0.0f)
             absOffset = -offset;
         else
@@ -452,23 +452,23 @@ void BR_THISCALL1 BrCtlAiBody(BrAiCar *pCar)
             if (offset > 0.0f) {
                 if (heading > -0.05) {
                     g_brAiBiasPos = 0;
-                    g_brAiBiasNeg = 1;
+                    (*(int32_t *)&DAT_10b1cf04) = 1;
                     mag = (absOffset - limit) / absOffset
                           * (heading * -0.2f) - -0.03f;
                 } else if (heading < -0.15) {
                     g_brAiBiasPos = 1;
-                    g_brAiBiasNeg = 0;
+                    (*(int32_t *)&DAT_10b1cf04) = 0;
                     mag = (absOffset - limit) / absOffset
                           * (heading * -0.3f) - -0.1f;
                 }
             } else if (heading < 0.05) {
                 g_brAiBiasPos = 1;
-                g_brAiBiasNeg = 0;
+                (*(int32_t *)&DAT_10b1cf04) = 0;
                 mag = (absOffset - limit) / absOffset
                       * (heading * 0.2f) - -0.03f;
             } else if (heading > 0.15) {
                 g_brAiBiasPos = 0;
-                g_brAiBiasNeg = 1;
+                (*(int32_t *)&DAT_10b1cf04) = 1;
                 mag = (absOffset - limit) / absOffset
                       * (heading * 0.3f) - -0.1f;
             }
@@ -483,19 +483,19 @@ void BR_THISCALL1 BrCtlAiBody(BrAiCar *pCar)
             if (sVel != 0 || sFwd != 0) {
                 if (sVel != 0 && sVel + sFwd == 0) {
                     if (sVel == 1 && sAux == 1) {
-                        g_brAiBiasNeg = 0;
+                        (*(int32_t *)&DAT_10b1cf04) = 0;
                         g_brAiBiasPos = 1;
                     } else if (sVel == -1 && sAux == -1) {
-                        g_brAiBiasNeg = 1;
+                        (*(int32_t *)&DAT_10b1cf04) = 1;
                         g_brAiBiasPos = 0;
                     }
                     mag = 0.1f;
                 } else if (sVel != 0 && sVel == sFwd) {
                     if (sVel == 1 && sAux == 1) {
-                        g_brAiBiasNeg = 1;
+                        (*(int32_t *)&DAT_10b1cf04) = 1;
                         g_brAiBiasPos = 0;
                     } else if (sVel == -1 && sAux == -1) {
-                        g_brAiBiasNeg = 0;
+                        (*(int32_t *)&DAT_10b1cf04) = 0;
                         g_brAiBiasPos = 1;
                     }
                     mag = 0.4f;
@@ -503,10 +503,10 @@ void BR_THISCALL1 BrCtlAiBody(BrAiCar *pCar)
                     if (sAux != 0 || sVel != 0) {
                         if (sAux == sFwd) {
                             if (sAux == 1) {
-                                g_brAiBiasNeg = 1;
+                                (*(int32_t *)&DAT_10b1cf04) = 1;
                                 g_brAiBiasPos = 0;
                             } else if (sAux == -1) {
-                                g_brAiBiasNeg = 0;
+                                (*(int32_t *)&DAT_10b1cf04) = 0;
                                 g_brAiBiasPos = 1;
                             }
                             mag = 0.5f;
@@ -522,7 +522,7 @@ void BR_THISCALL1 BrCtlAiBody(BrAiCar *pCar)
 ladder:
         /* 8. the throttle ladder */
         scale = 1.0f;
-        if (g_brAiScanN > 0) {
+        if ((*(int32_t *)&DAT_10ac680c) > 0) {
             /* TWO INDUCTIONS, and the second is a NAMED POINTER.  The
              * original walks a byte offset for the three `level - 1` terms
              * (strength-reduced from the indexing) AND a separate pointer
@@ -541,7 +541,7 @@ ladder:
                 BrVec3Sub(&vA, &g_aBrAiScanA[level - 1], &g_aBrAiScanB[level - 1]);
                 BrVec3Sub(&vB, pB, &g_aBrAiScanB[level - 1]);
                 BrVec3Cross(&vN, &vB, &vA);
-                BrVec3NormaliseGuard(&vN);
+                br_dl_normalise(&vN);
                 q = BrVec3Dot(&pCar->f1024, &vN);
                 tq = BrVec3Dot(&pCar->f1024, &vA) * 0.03f;
                 if (tq > q)
@@ -565,7 +565,7 @@ ladder:
                     break;
                 }
                 pB++;
-            } while (level++ < g_brAiScanN);
+            } while (level++ < (*(int32_t *)&DAT_10ac680c));
         }
 
         /* 6. the aim error, scaled and clamped */
@@ -590,7 +590,7 @@ ladder:
                     lat = lat - mag * lat;
                 else
                     lat = lat - -0.2f;
-            } else if (g_brAiBiasNeg != 0) {
+            } else if ((*(int32_t *)&DAT_10b1cf04) != 0) {
                 if (lat < -k)
                     lat = (mag - -1.0f) * lat;
                 else
@@ -604,7 +604,7 @@ ladder:
                     lat = (mag - -1.0f) * lat;
                 else
                     lat = lat - -0.2f;
-            } else if (g_brAiBiasNeg != 0) {
+            } else if ((*(int32_t *)&DAT_10b1cf04) != 0) {
                 if (lat > k)
                     lat = lat - mag * lat;
                 else
@@ -667,7 +667,7 @@ reverse:
 stepped:
 
         /* 10. the overtaking pass */
-        BrCtlAiLineStep(pCar);
+        BrCarPathEval(pCar);
         iBest = -1;
         best = 90.0f;
         add = 0.0f;
@@ -676,7 +676,7 @@ stepped:
             do {
                 if (g_aBrRaceDriver[iDrv].pCar != 0
                     && g_aBrRaceDriver[iDrv].pCar != pCar) {
-                    lap = g_pBrAiPathRoot->aPt[0].arc;
+                    lap = (*(BrAiPathNode * *)&g_pBrRaceLapRec)->aPt[0].arc;
                     d = g_aBrRaceDriver[iDrv].pCar->fFF4 - pCar->fFF4;
                     while (d > lap)
                         d -= lap;
@@ -752,12 +752,12 @@ stepped:
                 BrVec3MulAddTo(&pCar->aBody[0].rb.st.vel, &pCar->lateral, -f);
                 BrVec3MulAddTo(&pCar->aBody[0].rb.st.vel, &pCar->pathUp, t3);
             }
-            if (g_brRaceMode == 0) {
+            if ((*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0) {
                 BrVec3ScaleBy(&pCar->aBody[0].rb.st.vel,
                               g_aBrAiDiffScale[pCar->pProfile->f74
-                                  + (g_pBrMenuRec->b4 * 4 + g_pBrMenuRec->b5) * 2]);
-            } else if (g_brRaceMode == 1 || g_brRaceMode == 6) {
-                w = (short)g_brCarPhysWeather - 1;
+                                  + ((*(BrAiMenuRec * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */->b4 * 4 + (*(BrAiMenuRec * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */->b5) * 2]);
+            } else if ((*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 1 || (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 6) {
+                w = (short)(*(int32_t *)&DAT_104b15e8) - 1;
                 if (w > 2 || w < 0)
                     w = 0;
                 if (w == 2)
@@ -772,6 +772,6 @@ stepped:
     len = BrVec3Length(&pCar->aBody[0].rb.st.angVel);
     if (len > 1.0f && (*(int32_t *)&pCar->aBody[1].rb.f1B4) != 0)
         BrVec3ScaleBy(&pCar->aBody[0].rb.st.angVel, 1.0f / len);
-    BrCarCtlChain_1006F170(pCar);
-    BrCtlAiRespawn(pCar);
+    BrCarStep(pCar);
+    BrCarRespawn_1005C6D0(pCar);
 }

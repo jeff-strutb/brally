@@ -63,14 +63,14 @@ static void BrPathCountCrossing(const BrVec3 *pA, const BrVec3 *pB)
     if (modulus == 0) {
         return;          /* the original guards the idiv, not the table */
     }
-    idx = (BrPathCrossCount + 1) % modulus;
+    idx = ((*(int32_t *)((char *)&g_aBrRaceCar + 0x84B8)) /* BR_LP64_BYTE_VIEW */ + 1) % modulus;
 
     /* GOTCHA: the record's SECOND point is the FIRST argument. */
     if (BrSeg2Intersect(&BrPathSegs[idx].b, &BrPathSegs[idx].a,
                         BR_XY(pA), BR_XY(pB)) != 0) {
-        ++BrPathCrossCount;
+        ++(*(int32_t *)((char *)&g_aBrRaceCar + 0x84B8)) /* BR_LP64_BYTE_VIEW */;
         if (idx == 0) {
-            ++BrPathWrapCount;
+            ++(*(int32_t *)((char *)&g_aBrRaceCar + 0x893C)) /* BR_LP64_BYTE_VIEW */;
         }
     }
 }
@@ -106,8 +106,8 @@ void BrPathWalk(PwNode *pNode, float dist)
 {
     int i, k;
 
-    DAT_10b1ca20 = 0;
-    DAT_10b1cea4 = 0;
+    (*(int *)&DAT_10b1ca20) = 0;
+    (*(int *)&DAT_10b1cea4) = 0;
     for (;;) {
         while (pNode != 0 && (pNode->flags & 1) != 0)
             pNode = pNode->pSib;
@@ -116,31 +116,31 @@ void BrPathWalk(PwNode *pNode, float dist)
         for (i = 0; i < pNode->count; i++) {
             float seg = pNode->pts[i].arc - pNode->pts[i + 1].arc;
             if (!(dist > seg)) {
-                BrVec3Lerp(&DAT_10b1ce98, &pNode->pts[i + 1].centre,
+                BrVec3Lerp(&g_brRacePathPos, &pNode->pts[i + 1].centre,
                            &pNode->pts[i].centre, dist / seg);
-                if (DAT_106eee38 != 0) {
-                    k = (DAT_10b1ca20 + 1) % DAT_106eee38;
-                    if (BrSeg2Intersect(&DAT_106eed70[k].b, &DAT_106eed70[k].a,
+                if ((*(int *)&g_brRaceNGate) != 0) {
+                    k = ((*(int *)&DAT_10b1ca20) + 1) % (*(int *)&g_brRaceNGate);
+                    if (BrSeg2Intersect(&(*(PwSeg (*)[])&g_aBrRaceGate)[k].b, &(*(PwSeg (*)[])&g_aBrRaceGate)[k].a,
                                         (const BrVec2 *)&pNode->pts[i].centre,
-                                        (const BrVec2 *)&DAT_10b1ce98) != 0) {
-                        DAT_10b1ca20++;
+                                        (const BrVec2 *)&g_brRacePathPos) != 0) {
+                        (*(int *)&DAT_10b1ca20)++;
                         if (k == 0)
-                            DAT_10b1cea4++;
+                            (*(int *)&DAT_10b1cea4)++;
                     }
                 }
-                DAT_10b1cbec = pNode;
-                DAT_10af07f0 = i;
+                (*(PwNode * *)&g_brRacePathNode) = pNode;
+                (*(int *)&(*(int *)&g_brRacePathIndex)) = i;
                 return;
             }
             dist -= seg;
-            if (DAT_106eee38 != 0) {
-                k = (DAT_10b1ca20 + 1) % DAT_106eee38;
-                if (BrSeg2Intersect(&DAT_106eed70[k].b, &DAT_106eed70[k].a,
+            if ((*(int *)&g_brRaceNGate) != 0) {
+                k = ((*(int *)&DAT_10b1ca20) + 1) % (*(int *)&g_brRaceNGate);
+                if (BrSeg2Intersect(&(*(PwSeg (*)[])&g_aBrRaceGate)[k].b, &(*(PwSeg (*)[])&g_aBrRaceGate)[k].a,
                                     (const BrVec2 *)&pNode->pts[i].centre,
                                     (const BrVec2 *)&pNode->pts[i + 1].centre) != 0) {
-                    DAT_10b1ca20++;
+                    (*(int *)&DAT_10b1ca20)++;
                     if (k == 0)
-                        DAT_10b1cea4++;
+                        (*(int *)&DAT_10b1cea4)++;
                 }
             }
         }
@@ -194,7 +194,7 @@ void BrRacePathAdvance(RcNode *pNode, int index, float ratio, float dist)
                            &(*(RcPoint (*)[1])&pNode->aPt[0].left.x)[index + 1].centre,
                            &g_brRacePathPos, dist / avail);
                 g_brRacePathNode  = pNode;      /* 0x10B1CBEC */
-                g_brRacePathIndex = index;      /* 0x10AF07F0 */
+                (*(int *)&g_brRacePathIndex) = index;      /* 0x10AF07F0 */
                 return;
             }
 

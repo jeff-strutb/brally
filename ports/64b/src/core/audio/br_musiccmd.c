@@ -21,10 +21,10 @@
 /* @implements 0x100025C0 d3d BrDispatch_100025C0 */
 void BrDispatch_100025C0(void *p)
 {
-    if (g_0940A4 == 1)
-        BrExt_10002660(p);
+    if ((*(uint32_t *)&DAT_1007b074) == 1)
+        FUN_10002980(p);
     else
-        BrExt_100025F0(p);
+        BrCdStartup(p);
 }
 
 /* WHAT IT DOES: write a value into a sound table, packing the row index
@@ -33,14 +33,14 @@ void BrDispatch_100025C0(void *p)
 /* @n64 0x80242880 located */
 void BrWrap_10072B80(void *a, int b, int c)
 {
-    BrExt_10072B30(a, b + b, c);
+    FUN_1006baa0(a, b + b, c);
 }
 
 /* WHAT IT DOES: the same table write, with an extra "1" meaning in use. */
 /* @implements 0x10072B10 d3d BrWrap_10072B10 */
 void BrWrap_10072B10(void *a, int b, int c)
 {
-    BrExt_10072A90(a, b + b, c, 1);
+    BrSndVoiceConfigure(a, b + b, c, 1);
 }
 
 /* WHAT IT DOES: the same table write, with the packed index forced to 1. */
@@ -48,7 +48,7 @@ void BrWrap_10072B10(void *a, int b, int c)
 /* @n64 0x80240240 located */
 void BrWrap_10072A70(void *a, int b, int c)
 {
-    BrExt_10072A90(a, 1, b, c);
+    BrSndVoiceConfigure(a, 1, b, c);
 }
 
 /* -- Ghidra-matched functions --------------------------- */
@@ -70,7 +70,7 @@ int BrSndBufSetPan(BrSndVoice *param_1,int param_2)
 
 {
   param_1->f18 = param_2;
-  FUN_1006b970(param_1);
+  BrSndVoiceBufStart(param_1);
   return;
 }
 
@@ -83,10 +83,10 @@ int BrSndVoiceConfigure(int param_1,int param_2,int param_3,int param_4)
   BrSndVoice *uVar1;
   int iVar2;
   
-  if (((BrSndG0B5DE8 != 0) && (BrSndPDS != 0)) && (BrSndG18290FC != 0)) {
-    uVar1 = (&DAT_100b55f8)[param_2 + param_1 * 0x12];
-    iVar2 = FUN_1006b790(uVar1,param_3);
-    if ((iVar2 != 0) && (iVar2 = FUN_1006b950(uVar1,param_4), iVar2 == 0)) {
+  if ((((*(int *)&DAT_100b51e4[1036]) != 0) && ((*(int *)&BrSndPDS) != 0)) && (BrSndG18290FC != 0)) {
+    uVar1 = (&(BrSndVoices[0]))[param_2 + param_1 * 0x12];
+    iVar2 = BrSndVoiceSetLR(uVar1,param_3);
+    if ((iVar2 != 0) && (iVar2 = BrSndBufSetPan(uVar1,param_4), iVar2 == 0)) {
       return 1;
     }
     return 0;
@@ -106,7 +106,7 @@ int BrSndBufStopAll(int param_1)
   piVar2 = (int *)(param_1 + 0x1a8);
   iVar1 = *(int *)(param_1 + 0x1a8);
   while (iVar1 != 0) {
-    FUN_1006b4c0(iVar1);
+    BrSndVoiceBufStop(iVar1);
     piVar2 = (int *)(*piVar2 + 0x1a8);
     iVar1 = *piVar2;
   }
@@ -126,7 +126,7 @@ int BrSndBufFreeAll(int param_1)
   pMem = *(int **)(param_1 + 0x1a8);
   *(int *)(param_1 + 0x1a8) = 0;
   while (pMem != (int *)0x0) {
-    FUN_1006b490(pMem);
+    BrSndVoiceBufRelease(pMem);
     pvVar2 = GlobalHandle((LPCVOID)pMem[2]);
     GlobalUnlock(pvVar2);
     pvVar2 = GlobalHandle((LPCVOID)pMem[2]);
@@ -160,6 +160,6 @@ void BrSub10072AF0(int a, int b)
 {
     /* BrSndPlayGroup(a, b, 0) == BrSndPlayEx(a, 1, b, 0). The two callers
      * discard the result. */
-    (void)BrSndPlayGroup((int32_t)a, (uint32_t)b, 0);
+    (void)BrWrap_10072A70((int32_t)a, (uint32_t)b, 0);
 }
 

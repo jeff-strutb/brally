@@ -52,15 +52,15 @@ int BrPhaseLeave_10044AE0(GameObj *pGame)
     Phase *pObj;
 
     pGame->pSub->s7();
-    pObj = (Phase *)(g_cur);
+    pObj = (Phase *)((*(Phase * *)&g_brPAA29B8));
     if (pObj != 0)
         pObj->f00(1);
-    g_5CA0 = 0;
-    g_5D10 = 0;
-    g_5D30 = 0;
-    g_5D2C = 0;
+    g_2948 = 0;
+    g_29B8 = 0;
+    g_brPAA29D8 = 0;
+    g_brPAA29D4 = 0;
     g_5BD8 = 0;
-    g_cur = (Phase *)((BrOptObj *)(g_5C98));
-    Fn55F0();
+    (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(g_5C98));
+    BrExt_1003BF60();
     return 0;
 }

@@ -143,9 +143,9 @@ void BrCarTrailStep(void)
     BrTrailRec  *r;
     BrTrailOfs  *o;
 
-    iScale = (int)(g_BrFrameDelta * g_BrTrailScaleK);
-    step   = (int)(g_BrFrameDelta * g_BrTrailStepK * g_BrTrailFixK);
-    if (g_brRacePaused != 0 || g_brRaceReplay == 2)
+    iScale = (int)(g_brRaceFlyStep * g_BrTrailScaleK);
+    step   = (int)(g_brRaceFlyStep * g_BrTrailStepK * g_BrTrailFixK);
+    if (g_BrX06909B4 != 0 || (DAT_105ccb68[8]) == 2)
         return;
     for (i = 0; i < g_brRaceNDriver; i++) {
         car = (BrTrailCar *)g_aBrRaceDriver[i].pCar;
@@ -172,8 +172,8 @@ void BrCarTrailStep(void)
             if (*pl != 0) {
                 switch (*ps) {
                 case 4:
-                    if (g_BrTrackKind == 2 || g_BrTrackKind == 8) {
-                        if (g_BrDrawWheelAlt == 0) {
+                    if (g_Br0B380C == 2 || g_Br0B380C == 8) {
+                        if ((*(int32_t *)((char *)&g_aBrEntRecs + 0x80)) == 0) {
                             car->rec[kk].v[0].c.x = 50.0f;
                             car->rec[kk].v[0].c.y = 100.0f;
                             car->rec[kk].v[0].c.z = 95.0f;
@@ -188,7 +188,7 @@ void BrCarTrailStep(void)
                             c0[9] = 235.0f;
                             c0[10] = 195.0f;
                         }
-                    } else if (g_BrTrackKind == 3 || g_BrTrackKind == 9) {
+                    } else if (g_Br0B380C == 3 || g_Br0B380C == 9) {
                         car->rec[kk].v[0].c.x = 16.0f;
                         car->rec[kk].v[0].c.y = 16.0f;
                         car->rec[kk].v[0].c.z = 0.0f;
@@ -203,7 +203,7 @@ void BrCarTrailStep(void)
                         c0[9] = 96.0f;
                         c0[10] = 64.0f;
                     }
-                    if (g_BrTrailNight != 0) {
+                    if ((*(int32_t *)((char *)&g_aBrEntRecs + 0x84)) != 0) {
                         x = car->rec[kk].v[0].c.x; y = car->rec[kk].v[0].c.y; z = car->rec[kk].v[0].c.z;
                         car->rec[kk].v[0].c.x = g_BrTrailNightBaseK - x * g_BrTrailNightMulK;
                         car->rec[kk].v[0].c.y = g_BrTrailNightBaseK - y * g_BrTrailNightMulK;
@@ -212,7 +212,7 @@ void BrCarTrailStep(void)
                         c0[8]  = g_BrTrailNightBaseK - x * g_BrTrailNightMulK;
                         c0[9]  = g_BrTrailNightBaseK - y * g_BrTrailNightMulK;
                         c0[10] = g_BrTrailNightBaseK - z * g_BrTrailNightMulK;
-                    } else if (g_BrTrailDim != 0) {
+                    } else if ((*(int32_t *)((char *)&g_aBrEntRecs + 0x7C)) != 0) {
                         x = car->rec[kk].v[0].c.x; y = car->rec[kk].v[0].c.y; z = car->rec[kk].v[0].c.z;
                         car->rec[kk].v[0].c.x = x * g_BrTrailDimK;
                         car->rec[kk].v[0].c.y = y * g_BrTrailDimK;
@@ -224,7 +224,7 @@ void BrCarTrailStep(void)
                     }
                     break;
                 case 3:
-                    if (g_BrTrailNight != 0) {
+                    if ((*(int32_t *)((char *)&g_aBrEntRecs + 0x84)) != 0) {
                         car->rec[kk].v[0].c.x = 100.0f;
                         car->rec[kk].v[0].c.y = 104.0f;
                         car->rec[kk].v[0].c.z = 108.0f;

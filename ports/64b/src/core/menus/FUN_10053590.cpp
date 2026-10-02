@@ -154,9 +154,9 @@ int FUN_10053590(GameUi *parent)
     BrCtl     *p;
     char       bad;
 
-    g_brRoot5C60->pTableC4->s1(&s_TimeAttack__GRF_100acb34);
+    (*(Root053590 * *)&g_2908)->pTableC4->s1(&s_TimeAttack__GRF_100acb34);
     parent->w12 = 0;
-    g_i0AB3F4 = 0xffffffff;
+    g_AB94 = 0xffffffff;
     DAT_10ac5c40 = 0;
     parent->a6C[parent->w10] = 1;
     cont = new Page053590;
@@ -194,13 +194,13 @@ int FUN_10053590(GameUi *parent)
     p->pfn04 = (CtlFn)FUN_10038250;
     p->f1E1F4 = 1;
     p->m3838.s5(0x40001, &DAT_100aac78, 5, 0, -1);
-    p->m3838.pfn04 = (int (*)(void))FUN_1003bca0;
-    p->m3838.f14 = (int)FUN_1003bac0;
+    p->m3838.pfn04 = (int (*)(void))BrSaveProbeTimeAttack;
+    p->m3838.f14 = (int)BrSaveNameCommitTimeAttack;
     {
         int off = 0;
 
         do {
-            char *psz = &g_brRoot5C60->pTableC4->aRecs[off];
+            char *psz = &(*(Root053590 * *)&g_2908)->pTableC4->aRecs[off];
 
             if (psz != 0)
                 p->m3838.s4(psz, 0, 1, &DAT_100aac78, 0);
@@ -216,9 +216,9 @@ int FUN_10053590(GameUi *parent)
         FUN_100378c0(4);
     p->s38(parent, cont->f338, cont->f33C - DAT_10077658, 0x102001, 2, 5, 1, -1);
     p->pfn0C = (CtlFn)BrSub10047360;
-    p->pfn08 = (CtlFn)BrPhaseLeave_10044F00;
+    p->pfn08 = (CtlFn)BrOpt4F00;
     p->w1E20C = 3;
-    p->s34((char *)(BrStrGet(0x1e)), 1, 1, (char *)(&DAT_100aabe8));
+    p->s34((char *)(BrStrGet(0x1e)), 1, 1, (char *)(&(*(char *)&g_hot0)));
     cont->w14 += 1;
     cont->w344 += 1;
     p = new BrCtl;
@@ -227,9 +227,9 @@ int FUN_10053590(GameUi *parent)
     if (bad)
         FUN_100378c0(4);
     p->s38(parent, 440.0f, 208.0f, 0x101001, 2, 5, 1, -1);
-    p->pfn04 = (CtlFn)BrMenuTime1040;
+    p->pfn04 = (CtlFn)BrItemSetLapTime_1003A580;
     p->w1E20C = 0x34;
-    p->s34((char *)(&DAT_100acad8), 1, 4, (char *)(&DAT_100aac18));
+    p->s34((char *)(&(g_strA[0])), 1, 4, (char *)(&DAT_100aac18));
     cont->w14 += 1;
     p = new BrCtl;
     cont->a18[cont->w14] = p;
@@ -246,9 +246,9 @@ int FUN_10053590(GameUi *parent)
     if (bad)
         FUN_100378c0(4);
     p->s38(parent, 440.0f, 240.0f, 0x101001, 2, 5, 1, -1);
-    p->pfn04 = (CtlFn)BrMenuTime1180;
+    p->pfn04 = (CtlFn)BrItemSetBestTime_1003A6D0;
     p->w1E20C = 0x34;
-    p->s34((char *)(&DAT_100acad8), 1, 4, (char *)(&DAT_100aac18));
+    p->s34((char *)(&(g_strA[0])), 1, 4, (char *)(&DAT_100aac18));
     cont->w14 += 1;
     p = new BrCtl;
     cont->a18[cont->w14] = p;

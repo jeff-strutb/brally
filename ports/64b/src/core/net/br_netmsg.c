@@ -34,7 +34,7 @@ int32_t BrSub1003D950(BrOptUi *pUi, int a)
     void        *pArg;
     int32_t      aPacket[2];
 
-    if (pUi == NULL || (pObj = aSlot[0]) == NULL || g_brAA288C != 0) {
+    if (pUi == NULL || (pObj = aSlot[0]) == NULL || DAT_10ac5be4 != 0) {
         return 0;
     }
     pArg = aSlot[2];
@@ -45,7 +45,7 @@ int32_t BrSub1003D950(BrOptUi *pUi, int a)
     /* (pObj, pArg, 0, 1, &packet, 8) -- IDirectPlay4A::Send through
      * slice1_03.h's critical-section wrapper. The original discards the
      * HRESULT. */
-    return BrComCallLocked68((BrComObj *)pObj, pArg,
+    return BrDPlayRawSend((BrComObj *)pObj, pArg,
                              (void *)(uintptr_t)0u,
                              (void *)(uintptr_t)1u,
                              aPacket,
@@ -64,12 +64,12 @@ int32_t BrSub1003D9A0(BrOptUi *pUi, int a)
     void        *pObj;
     int32_t      aPacket[2];
 
-    if (pUi == NULL || (pObj = aSlot[0]) == NULL || g_brAA288C != 0) {
+    if (pUi == NULL || (pObj = aSlot[0]) == NULL || DAT_10ac5be4 != 0) {
         return 0;
     }
     aPacket[0] = (int32_t)0x60000005u;
     aPacket[1] = (int32_t)a;
-    return BrComCallLocked68((BrComObj *)pObj, aSlot[2],
+    return BrDPlayRawSend((BrComObj *)pObj, aSlot[2],
                              (void *)(uintptr_t)0u,
                              (void *)(uintptr_t)1u,
                              aPacket,
@@ -90,7 +90,7 @@ int32_t BrSub1003DA90(BrOptUi *pUi, int a)
     }
     aPacket[0] = (int32_t)0x60000006u;
     aPacket[1] = (int32_t)a;
-    return BrComCallLocked68((BrComObj *)pObj, aSlot[2],
+    return BrDPlayRawSend((BrComObj *)pObj, aSlot[2],
                              (void *)(uintptr_t)0u,
                              (void *)(uintptr_t)1u,
                              aPacket,
@@ -111,11 +111,11 @@ int32_t BrSub1003D9F0(struct BrOptUi *pUi)
     void        *pObj;
     int32_t      aPacket[2];
 
-    if (pUi == NULL || (pObj = aSlot[0]) == NULL || g_brAA288C != 0) {
+    if (pUi == NULL || (pObj = aSlot[0]) == NULL || DAT_10ac5be4 != 0) {
         return 0;
     }
     aPacket[0] = (int32_t)0x60000003u;
-    return BrComCallLocked68((BrComObj *)pObj, aSlot[2],
+    return BrDPlayRawSend((BrComObj *)pObj, aSlot[2],
                              (void *)(uintptr_t)0u,
                              (void *)(uintptr_t)1u,
                              aPacket,
@@ -135,12 +135,12 @@ int32_t BrSub1003DA40(BrOptUi *pUi, int a)
     void        *pObj;
     int32_t      aPacket[2];
 
-    if (pUi == NULL || (pObj = aSlot[0]) == NULL || g_brAA288C != 0) {
+    if (pUi == NULL || (pObj = aSlot[0]) == NULL || DAT_10ac5be4 != 0) {
         return 0;
     }
     aPacket[0] = (int32_t)0x60000004u;
     aPacket[1] = (int32_t)a;
-    return BrComCallLocked68((BrComObj *)pObj, aSlot[2],
+    return BrDPlayRawSend((BrComObj *)pObj, aSlot[2],
                              (void *)(uintptr_t)0u,
                              (void *)(uintptr_t)1u,
                              aPacket,
@@ -167,7 +167,7 @@ int32_t BrExt_1003DB00(struct BrObjA9D008 *pObj, void *p)
     }
     aPacket[0] = (int32_t)0x60000007u;
     aPacket[1] = (int32_t)(uintptr_t)p;
-    return BrComCallLocked68((struct BrComObj *)pIface, aSlot[2],
+    return BrDPlayRawSend((struct BrComObj *)pIface, aSlot[2],
                              (void *)(uintptr_t)0u,
                              (void *)(uintptr_t)1u,
                              aPacket,

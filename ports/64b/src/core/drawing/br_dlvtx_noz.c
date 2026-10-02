@@ -54,7 +54,7 @@
 typedef struct { float x, y, z, s, t, n0, n1, n2; } BrDlSrcVtx;
 
 /* The quarter-pixel snap: round to nearest through the x87. */
-#define SNAP(f_, t) do { t = (f_) * DAT_10077408; l = br_fistp(t); t = (float)l; (f_) = t * DAT_1007740c; } while (0)
+#define SNAP(f_, t) do { t = (f_) * BrGbiRectK_FIXED; l = br_fistp(t); t = (float)l; (f_) = t * DAT_1007740c; } while (0)
 
 /* WHAT IT DOES: loads a batch of model vertices, moves each one from model
  * space into clip space through the combined matrix, works out which edges
@@ -102,7 +102,7 @@ const uint32_t *BrDlVtxNoZ(const uint32_t *p)
     w0 = p[0];
     pSrc = (const BrDlSrcVtx *)p[1];
     v0 = (w0 >> 16) & 0xFF;
-    pV = &DAT_105ce318[v0];
+    pV = &g_aBrDlVtxPool[v0];
     pFirst = pV;
     n = (w0 >> 10) & 0x3F;
     for (i = 0; i < n; i++) {

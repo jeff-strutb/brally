@@ -155,8 +155,8 @@ int Hud54730::Layout(int a1, int *r, short a3, short a4, short a5)
     w1a934 = '.';
     w1a938 = ':';
 
-    dx = g_brVp0AB194 - g_brVp0AB18C;
-    dy = g_brVp0AB198 - g_brVp0AB190;
+    dx = (*(int *)&g_aBrUiSprite[1164]) - (*(int *)&g_aBrUiSprite[1156]);
+    dy = (*(int *)&g_aBrUiSprite[1168]) - (*(int *)&g_aBrUiSprite[1160]);
     if (dx < 0)
         dx = 0;
     if (dy < 0)
@@ -180,11 +180,11 @@ int Hud54730::Layout(int a1, int *r, short a3, short a4, short a5)
     } else if (i1a9bc != 0) {
         i1a94c = r[2] + 3;
         i1a950 = r[1];
-        i1a954 = g_brVp0AB194 + i1a94c;
-        i1a958 = g_brVp0AB198 + i1a950;
+        i1a954 = (*(int *)&g_aBrUiSprite[1164]) + i1a94c;
+        i1a958 = (*(int *)&g_aBrUiSprite[1168]) + i1a950;
         i1a95c = r[2] + 3;
-        i1a960 = r[3] - g_brVp0AB168;
-        i1a964 = g_brVp0AB164 + i1a94c;
+        i1a960 = r[3] - (*(int *)&g_aBrUiSprite[1120]);
+        i1a964 = (*(int *)&g_aBrUiSprite[1116]) + i1a94c;
         i1a968 = r[3];
 
         f1a9ac = (float)i1a94c;

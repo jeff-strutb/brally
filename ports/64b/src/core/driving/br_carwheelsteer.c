@@ -63,46 +63,46 @@ void __fastcall BrCarWheelSteerStep_1005ACE0(BrDriverCar *pCar)
     BrMat4_ rot, rot2, rot3;
     float  *pf = &pCar->fwd.x;
 
-    if (DAT_105ccb88 != 0) {
-        FUN_10063ca0(pCar);
-        FUN_1005ac60(pCar);
-    } else if (DAT_100a9360 == 2 && ((pCar->f140)) == 1 &&
+    if ((*(int *)&DAT_105ccb68[8]) != 0) {
+        BrReplayApplyCar(pCar);
+        BrCarBuildMatrices(pCar);
+    } else if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 2 && ((pCar->f140)) == 1 &&
                ((BR_LP64_PTR_AS_INT(pCar->pCtl->pHdr))) != 0) {
-        FUN_10063ca0(pCar);
-        FUN_1005ac60(pCar);
-    } else if (DAT_100a9360 == 4 && ((pCar->f140)) == 0 &&
+        BrReplayApplyCar(pCar);
+        BrCarBuildMatrices(pCar);
+    } else if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4 && ((pCar->f140)) == 0 &&
                ((BR_LP64_PTR_AS_INT(pCar->pCtl->pHdr))) != 0) {
-        FUN_10063b80(pCar, 1);
-        FUN_1005ac60(pCar);
+        BrReplayApply(pCar, 1);
+        BrCarBuildMatrices(pCar);
     } else {
-        FUN_10063a60(pCar);
+        BrReplayRecord(pCar);
     }
 
-    FUN_1002a590(&rot, pf[0x338 / 4], 1.0f, 0.0f, 0.0f);
-    FUN_10029d70(&rot, (const BrMat4_ *)&pCar->aBody[0].rb.m.m[0], (BrMat4_ *)&pCar->fwd.x);
+    BrMat4RotateAxis(&rot, pf[0x338 / 4], 1.0f, 0.0f, 0.0f);
+    BrMat4Mul(&rot, (const BrMat4_ *)&pCar->aBody[0].rb.m.m[0], (BrMat4_ *)&pCar->fwd.x);
     pf[0x464 / 4] = pf[0x464 / 4] - DAT_1007778c;
     pf[0x670 / 4] = pf[0x670 / 4] - DAT_1007778c;
     pf[0x87c / 4] = pf[0x87c / 4] - DAT_1007778c;
     pf[0xa88 / 4] = pf[0xa88 / 4] - DAT_1007778c;
 
-    FUN_1002a590(&rot, pf[0x544 / 4], 0.0f, 1.0f, 0.0f);
-    FUN_10029d70(&rot, (const BrMat4_ *)&pCar->aBody[0].rb.m.m[0], (BrMat4_ *)&pCar->aWheel[2].m[0]);
+    BrMat4RotateAxis(&rot, pf[0x544 / 4], 0.0f, 1.0f, 0.0f);
+    BrMat4Mul(&rot, (const BrMat4_ *)&pCar->aBody[0].rb.m.m[0], (BrMat4_ *)&pCar->aWheel[2].m[0]);
     BrMat4TransformPoint((BrVec3_ *)&pCar->aWheel[2].m[3], (const BrMat4_ *)&pCar->aBody[0].rb.m.m[0], (const BrVec3_ *)&pCar->aBody[1].rb.m.m[3]);
 
-    FUN_1002a590(&rot, pf[0x95c / 4], 0.0f, 1.0f, 0.0f);
-    FUN_10029d70(&rot, (const BrMat4_ *)&pCar->aBody[0].rb.m.m[0], (BrMat4_ *)&pCar->aWheel[3].m[0]);
+    BrMat4RotateAxis(&rot, pf[0x95c / 4], 0.0f, 1.0f, 0.0f);
+    BrMat4Mul(&rot, (const BrMat4_ *)&pCar->aBody[0].rb.m.m[0], (BrMat4_ *)&pCar->aWheel[3].m[0]);
     BrMat4TransformPoint((BrVec3_ *)&pCar->aWheel[3].m[3], (const BrMat4_ *)&pCar->aBody[0].rb.m.m[0], (const BrVec3_ *)&pCar->aBody[3].rb.m.m[3]);
 
-    FUN_1002a590(&rot3, pf[0x750 / 4], 0.0f, 1.0f, 0.0f);
-    FUN_1002a590(&rot2, pf[0x73c / 4] * DAT_10077790, 0.0f, 0.0f, 1.0f);
-    FUN_10029d70(&rot3, &rot2, &rot);
-    FUN_10029d70(&rot, (const BrMat4_ *)&pCar->aBody[0].rb.m.m[0], (BrMat4_ *)&pCar->aWheel[1].m[0]);
+    BrMat4RotateAxis(&rot3, pf[0x750 / 4], 0.0f, 1.0f, 0.0f);
+    BrMat4RotateAxis(&rot2, pf[0x73c / 4] * DAT_10077790, 0.0f, 0.0f, 1.0f);
+    BrMat4Mul(&rot3, &rot2, &rot);
+    BrMat4Mul(&rot, (const BrMat4_ *)&pCar->aBody[0].rb.m.m[0], (BrMat4_ *)&pCar->aWheel[1].m[0]);
     BrMat4TransformPoint((BrVec3_ *)&pCar->aWheel[1].m[3], (const BrMat4_ *)&pCar->aBody[0].rb.m.m[0], (const BrVec3_ *)&pCar->aBody[2].rb.m.m[3]);
 
-    FUN_1002a590(&rot3, pf[0xb68 / 4], 0.0f, 1.0f, 0.0f);
-    FUN_1002a590(&rot2, pf[0xb54 / 4] * DAT_10077790, 0.0f, 0.0f, 1.0f);
-    FUN_10029d70(&rot3, &rot2, &rot);
-    FUN_10029d70(&rot, (const BrMat4_ *)&pCar->aBody[0].rb.m.m[0], (BrMat4_ *)&pCar->aWheel[0].m[0]);
+    BrMat4RotateAxis(&rot3, pf[0xb68 / 4], 0.0f, 1.0f, 0.0f);
+    BrMat4RotateAxis(&rot2, pf[0xb54 / 4] * DAT_10077790, 0.0f, 0.0f, 1.0f);
+    BrMat4Mul(&rot3, &rot2, &rot);
+    BrMat4Mul(&rot, (const BrMat4_ *)&pCar->aBody[0].rb.m.m[0], (BrMat4_ *)&pCar->aWheel[0].m[0]);
     BrMat4TransformPoint((BrVec3_ *)&pCar->aWheel[0].m[3], (const BrMat4_ *)&pCar->aBody[0].rb.m.m[0], (const BrVec3_ *)&pCar->aBody[4].rb.m.m[3]);
 
     pf[0x464 / 4] = pf[0x464 / 4] - 0.254f;

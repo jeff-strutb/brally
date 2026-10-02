@@ -38,7 +38,7 @@ public:
 extern "C" {
 /* 64-bit core: g_cur is defined once, in br_globals.c */
 /* 64-bit core: g_active is defined once, in br_globals.c */
-int g_scrW2, g_scrH2, g_scrW3, g_scrW4, g_scrH3, g_scrH4;
+int (*(int *)&DAT_105ccb68[19]), (*(int *)&DAT_105ccb68[18]), BrGbiRectG_A7514, g_scrW4, BrGbiRectG_A7518, (*(int *)&g_brRaceCueBase);
 /* 64-bit core: g_vidMode is defined once, in br_globals.c */
 /* 64-bit core: g_demoFlag is defined once, in br_globals.c */
 /* 64-bit core: g_time is defined once, in br_globals.c */
@@ -61,54 +61,54 @@ int BrAppStateSetMode(void)
 {
     int w, h;
 
-    if (g_cur == 0 && g_active == 0) {
+    if ((*(Phase * *)&g_brPAA29B8) == 0 && (*(int *)&g_AC300) == 0) {
         w = 0x280;
         h = 0x1e0;
-        g_scrW2 = w;
-        g_scrH2 = h;
-        g_scrW3 = w;
+        (*(int *)&DAT_105ccb68[19]) = w;
+        (*(int *)&DAT_105ccb68[18]) = h;
+        BrGbiRectG_A7514 = w;
         g_scrW4 = w;
-        g_scrH3 = h;
-        g_scrH4 = h;
-        Fn6C460();
-        g_vidMode = 3;
+        BrGbiRectG_A7518 = h;
+        (*(int *)&g_brRaceCueBase) = h;
+        BrSndBankFree();
+        (*(int *)&DAT_105ccb68[21]) = 3;
         return 1;
     }
-    if (g_cur == 0 && g_active != 0) {
-        Fn6C290(0);
-        Fn56260();
-        g_time = Fn6E280();
+    if ((*(Phase * *)&g_brPAA29B8) == 0 && (*(int *)&g_AC300) != 0) {
+        BrSfxBankLoad(0);
+        BrUiBootPreLoopGate();
+        (*(int *)&BrGlNavLast6748) = BrSub10075020();
     }
     if (g_demoFlag != 0) {
-        g_mode = 1;
-        g_b3014 = 2;
+        (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = 1;
+        (*(int *)&g_Br0B380C) = 2;
         g_226e7c = 5;
         g_226e80 = 0;
-        g_b71530 = 0;
-        g_b71534 = g_b71290Obj;
+        (*(int *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ = 0;
+        (*(int * *)&g_BrPadModeBytes) = (*(int (*)[])&g_BrCtrlCfg);
         g_7b320 = 1;
         g_7b328 = 1;
         g_7b32c = 2;
         g_7b324 = 1;
-        g_active = 0;
-        g_vidMode = 3;
+        (*(int *)&g_AC300) = 0;
+        (*(int *)&DAT_105ccb68[21]) = 3;
         return 1;
     }
-    if (g_cur->f0C == 0)
-        g_cur->v4();
+    if ((*(Phase * *)&g_brPAA29B8)->f0C == 0)
+        (*(Phase * *)&g_brPAA29B8)->v4();
     else
-        g_cur->v3();
-    if (g_cur != 0 && g_active != 0) {
+        (*(Phase * *)&g_brPAA29B8)->v3();
+    if ((*(Phase * *)&g_brPAA29B8) != 0 && (*(int *)&g_AC300) != 0) {
         if (g_bc0 != 0) {
-            if (g_time + 0x15f90 < Fn6E280()) {
-                g_cur->f68 = 0;
-                g_cur->v6(0);
-                g_mode = 4;
+            if ((*(int *)&BrGlNavLast6748) + 0x15f90 < BrSub10075020()) {
+                (*(Phase * *)&g_brPAA29B8)->f68 = 0;
+                (*(Phase * *)&g_brPAA29B8)->v6(0);
+                (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = 4;
                 g_5bc760 = 0;
                 return 1;
             }
         } else {
-            g_time = Fn6E280();
+            (*(int *)&BrGlNavLast6748) = BrSub10075020();
         }
     }
     return 1;

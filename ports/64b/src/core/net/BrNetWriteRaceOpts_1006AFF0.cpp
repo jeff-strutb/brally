@@ -35,13 +35,13 @@ int BrNetWriteRaceOpts(BrBitStream *pBs, unsigned char kind)
 {
     if (pBs->CountedTotal() + 9 <= 0x100) {
         pBs->WriteU8((unsigned char)(kind | 0xe0));
-        pBs->WriteU8(DAT_1021cdf8);
-        pBs->WriteU8(DAT_100b3014);
-        pBs->WriteU8(DAT_10226e80);
-        pBs->WriteU16(DAT_1021ce50);
-        pBs->WriteU8(DAT_1021cdb0);
-        pBs->WriteU8(DAT_10226a40);
-        pBs->WriteU8(DAT_10226a3c);
+        pBs->WriteU8((*(unsigned char *)&g_brCfgPlayers));
+        pBs->WriteU8((*(unsigned char *)&g_Br0B380C));
+        pBs->WriteU8((*(unsigned char *)&g_226e80));
+        pBs->WriteU16((*(unsigned short *)&DAT_1021ce50));
+        pBs->WriteU8((*(unsigned char *)&DAT_1021cdb0));
+        pBs->WriteU8((*(unsigned char *)&DAT_10226a40));
+        pBs->WriteU8((*(unsigned char *)&DAT_10226a3c));
         return 1;
     }
     return 0;

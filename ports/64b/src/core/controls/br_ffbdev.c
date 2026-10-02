@@ -208,16 +208,16 @@ void BrFfbUpdateSpring(int32_t up, int32_t enable, int32_t decay)
     int32_t bound;
     BrDiObj *pEff;
 
-    if (g_brB4E1D0 != 1 && g_brB4E1D0 != 2) {
+    if ((*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ != 1 && (*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ != 2) {
         return;
     }
-    if (g_brB4E1E0 == 0) {
+    if ((*(int32_t *)&DAT_10b71540) == 0) {
         return;
     }
-    if (g_br18ABDBC == 0) {
+    if ((*(int32_t *)&DAT_118eeed4) == 0) {
         return;
     }
-    if (g_brFlag6909E0 != 0) {
+    if ((*(int *)&DAT_105ccb68[8]) != 0) {
         return;
     }
 
@@ -435,7 +435,7 @@ int32_t BR_STDCALL BrFfbEnumDevice(const void *pDevInst, void *pvRef)
 
         pDev = g_brFfb.pDevice;
         /* pvRef is an integer cooperative level, not a pointer. */
-        if (BrDiDev(pDev)->pfnSetCooperativeLevel(pDev, g_brP680584,
+        if (BrDiDev(pDev)->pfnSetCooperativeLevel(pDev, (*(void * *)&g_brOwner5BC72C),
                 (uint32_t)(uintptr_t)pvRef) < 0) {
             BR_DBG_OUT(kBrErrCoopLevel);
         } else {
@@ -482,13 +482,13 @@ int32_t BrFfbInit(void)
     BrDbgSink pfnDbg;
     int32_t ret;
 
-    ret = g_brB4E1D0;
+    ret = (*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */;
     if (ret != 0) {
         g_brFfb.initCount += 1;
         if (g_brFfb.initCount == 1) {
             pfnDbg = BR_DBG_SINK;
 
-            if (g_brB4E1E0 != 0 &&
+            if ((*(int32_t *)&DAT_10b71540) != 0 &&
                 BrDiRoot(g_pBr18ABD70)->pfnEnumDevices(g_pBr18ABD70, 4u,
                     BrFfbEnumDevice, (void *)(uintptr_t)5u, 0x101u) == 0 &&
                 g_brFfb.pDevice != NULL) {
@@ -508,7 +508,7 @@ int32_t BrFfbInit(void)
                 pDev = g_brFfb.pDevice;
                 pVtbl = BrDiDev(pDev);
 
-                g_br18ABDBC = 1;
+                (*(int32_t *)&DAT_118eeed4) = 1;
 
                 d.dwSize       = 0x14u;
                 d.dwHeaderSize = 0x10u;
@@ -527,7 +527,7 @@ int32_t BrFfbInit(void)
                 (void)BrDiRoot(g_pBr18ABD70)->pfnEnumDevices(g_pBr18ABD70, 4u,
                          BrFfbEnumDevice, (void *)(uintptr_t)6u, 1u);
                 (void)BrDiAcquire();
-                g_br18ABDBC = 0;
+                (*(int32_t *)&DAT_118eeed4) = 0;
             }
 
             pDev = g_brFfb.pDevice;
@@ -574,7 +574,7 @@ failDword:
                 /* NOTE: initCount stays raised. See slice1_10.h. */
                 return 0;
             }
-            ret = g_brB4E1D0;
+            ret = (*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */;
         }
     }
     return ret;

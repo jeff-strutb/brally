@@ -86,7 +86,7 @@ void BrSfxSrcTableInit(void)
  */
 static int sfx_off(void)
 {
-    return (BrSndG0B5DE8 == 0 || BrSndPDS == NULL || BrSndG18290FC == NULL);
+    return ((*(int *)&DAT_100b51e4[1036]) == 0 || BrSndPDS == NULL || BrSndG18290FC == NULL);
 }
 
 static int chan_ok(int ch)
@@ -116,14 +116,14 @@ int BrSfxChanStart(int group, int ch, int32_t loop)
 {
     BrSndVoice *pVoice;
 
-    if (BrSndG0B5DE8 != 0 && BrSndPDS != NULL && BrSndG18290FC != NULL) {
+    if ((*(int *)&DAT_100b51e4[1036]) != 0 && BrSndPDS != NULL && BrSndG18290FC != NULL) {
         pVoice = BrSndVoices[group * 18 + ch];
-        if (pVoice != NULL && BrSndVoiceSetLoopAndStart(pVoice, loop) == 0) {
+        if (pVoice != NULL && BrSndBufSetPan(pVoice, loop) == 0) {
             /* f0C zero-extended to 64 bits, * 2^32, / the channel's rate */
             g_aBrSfxChan[ch].ratio =
                 (int64_t)((double)(int64_t)(uint32_t)pVoice->f0C
                           * 4294967296.0 / g_aBrSfxChanRate[ch]);
-            g_apBrSfxChanVoice[ch] = pVoice;
+            (*(BrSndVoice * (*)[15])&g_apBrSfxChanVoice)[ch] = pVoice;
             g_aBrSfxChanApplied[ch].ratio = g_aBrSfxChan[ch].ratio;
             return 1;
         }
@@ -134,7 +134,7 @@ int BrSfxChanStart(int group, int ch, int32_t loop)
 
 void BrSfxSrcChannelsReset(void)
 {
-    memset(g_apBrSfxChanVoice,  0, sizeof g_apBrSfxChanVoice);
+    memset((*(BrSndVoice * (*)[15])&g_apBrSfxChanVoice),  0, sizeof (*(BrSndVoice * (*)[15])&g_apBrSfxChanVoice));
     memset(g_aBrSfxChanRate,    0, sizeof g_aBrSfxChanRate);
     memset(g_aBrSfxChan,        0, sizeof g_aBrSfxChan);
     memset(g_aBrSfxChanApplied, 0, sizeof g_aBrSfxChanApplied);
@@ -157,9 +157,9 @@ void BrSfxSrcStart(short ch, int group, int32_t f0C, int32_t loop,
     g_aBrSfxChan[c].group  = group;
     g_aBrSfxChan[c].f10    = 0;
     g_aBrSfxChan[c].packed = packed;
-    if (BrSfxChanBind(group, c) != 0) {
+    if (BrSndChanBind(group, c) != 0) {
         BrSfxChanSetLoop(c, loop);
-        BrSfxChanSetLevels(c, packed);
+        BrSndVoiceSetFreq(c, packed);
         BrSfxChanStart(group, c, loop);
     }
 }
@@ -195,13 +195,13 @@ int BrSfxSrcPlaySilent(int ch, int group, int32_t f0C, int32_t loop)
  * for three, two and one. */
 /* @implements 0x10067D80 d3d BrSfxSrcBeep */
 /* @n64 0x8022B3C4 exact */
-void BrSfxSrcBeep(void)  { BrSfxSrcTrigger(BR_SFXSRC_BEEP);  }   /* push 0x0D */
+void BrSfxSrcBeep(void)  { BrSfxBankPlay(BR_SFXSRC_BEEP);  }   /* push 0x0D */
 /* WHAT IT DOES: plays the second of the game's two beeps -- the one used for
  * the "go" at the end of the race countdown, where the first three steps use
  * the ordinary beep. */
 /* @implements 0x10060E00 glide BrSfxSrcBeep2 */
 /* @n64 0x8022B3E4 exact */
-void BrSfxSrcBeep2(void) { BrSfxSrcTrigger(BR_SFXSRC_BEEP2); }   /* push 0x0E */
+void BrSfxSrcBeep2(void) { BrSfxBankPlay(BR_SFXSRC_BEEP2); }   /* push 0x0E */
 
 /* @n64 0x80264E0C located */
 void BrSfxSrcRaceCountdown(int iStep)
@@ -244,8 +244,8 @@ int BrSndVoiceSetFreq(int param_1,int param_2)
 {
   int iVar1;
   
-  if (((BrSndG0B5DE8 != 0) && (BrSndPDS != 0)) && (BrSndG18290FC != 0)) {
-    iVar1 = FUN_1006b790((&g_aBrSndBankVoice)[param_1],param_2);
+  if ((((*(int *)&DAT_100b51e4[1036]) != 0) && (BrSndPDS != 0)) && (BrSndG18290FC != 0)) {
+    iVar1 = BrSndVoiceSetLR((&((*(BrSndVoice * (*)[15])&g_apBrSfxChanVoice)[0]))[param_1],param_2);
     if (iVar1 != 0) {
       (*(int *)&g_aBrSfxChanApplied[param_1].packed) = param_2;
       return 1;
@@ -261,7 +261,7 @@ int BrSndVoiceSetFreq(int param_1,int param_2)
 int BrThunk6E580(void)
 
 {
-  FUN_1006e590();
+  BrNop6E590();
   return;
 }
 

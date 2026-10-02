@@ -35,7 +35,7 @@ public:
 
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define g_slot DAT_10ac5c74
+#define g_slot g_5C74
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 
@@ -57,25 +57,25 @@ int Ctl3ED90::Activate()
 {
     Phase *p;
 
-    if (CdCheck() != 0) {
-        ResetBuf(&g_buf);
+    if (FUN_1003ee90() != 0) {
+        BrExt_100419D0(&(g_strA[0]));
         p = g_slot;
         if (p == 0) {
             p = new Phase;
             g_slot = p;
-            g_cur = p;
+            (*(Phase * *)&g_brPAA29B8) = p;
             if (p == 0)
                 return 0;
             p->pfnEnter = EnterFn;
             g_slot->pfnEnter(g_slot);
-            g_cur->f0C = 1;
-            g_cur->f68 = 1;
+            (*(Phase * *)&g_brPAA29B8)->f0C = 1;
+            (*(Phase * *)&g_brPAA29B8)->f68 = 1;
         } else {
-            g_cur = p;
+            (*(Phase * *)&g_brPAA29B8) = p;
         }
         return 1;
     }
-    ResetBuf(GetStr(0xD));
+    BrExt_100419D0(BrStrGet(0xD));
     return 0;
 }
 

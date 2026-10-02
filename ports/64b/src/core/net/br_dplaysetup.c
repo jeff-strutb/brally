@@ -79,61 +79,61 @@ int BrDPlayCreate(void)
   BrObj29D4 *iVar4;
   char local_400[1024];
 
-  lstrcpyA((LPSTR)&DAT_10ac3e80, (LPCSTR)&DAT_10396f08);
-  lstrcpyA((LPSTR)&DAT_10ac3f88, (LPCSTR)&DAT_10396f08);
+  lstrcpyA((LPSTR)&g_aBrA9CDF0, (LPCSTR)&g_aBr39B720);
+  lstrcpyA((LPSTR)&DAT_10ac3f88, (LPCSTR)&g_aBr39B720);
   memset(&DAT_10b71aa0, 0, 32);
   memset(&DAT_10b71ac0, 0, 64);
   for (i = 0; i < 16; i++) {
     g_aBrNetSession[i].pPayload = 0;
   }
 
-  iVar4 = BrDPlayStartup(GetModuleHandleA((LPCSTR)0x0), &g_brP277B40);
+  iVar4 = BrDPlayStartup(GetModuleHandleA((LPCSTR)0x0), &(*(int * *)&g_brP277B40));
   if (iVar4 < 0) {
     return 0;
   }
-  iVar4 = FUN_10032320(&g_brP277B40);
+  iVar4 = BrDpLobbyConnect(&(*(int * *)&g_brP277B40));
   if (iVar4 == -0x7788fbd2) {
-    g_brP277B40 = 0;
-    iVar4 = FUN_10035bb0(&g_brP277B40);
+    (*(int * *)&g_brP277B40) = 0;
+    iVar4 = BrComCreateInstance(&(*(int * *)&g_brP277B40));
     if (iVar4 < 0) {
       sprintf(local_400, s_Could_not_create_DirectPlay_obje_100aa4d8, iVar4);
-      FUN_10037260(FUN_1006d280(0x12b), iVar4);
+      BrNetErrMsgBox(BrStrGet(0x12b), iVar4);
       return 0;
     }
   } else {
     if (iVar4 < 0) {
-      FUN_10037260(FUN_1006d280(0x12a), iVar4);
+      BrNetErrMsgBox(BrStrGet(0x12a), iVar4);
       exit(1);
     }
     if (DAT_10273334 != 0) {
-      DAT_10226a48 = 2;
-      DAT_10ac5bdc = 1;
+      (*(int *)&g_brRaceNet) = 2;
+      g_host = 1;
     } else {
-      DAT_10226a48 = 1;
-      DAT_10ac5bdc = 0;
+      (*(int *)&g_brRaceNet) = 1;
+      g_host = 0;
     }
-    DAT_10ac4090 = 1;
+    g_guardB = 1;
   }
-  iVar4 = DAT_10ac4090;
-  DAT_10ac4098 = (int)&g_brP277B40;
+  iVar4 = g_guardB;
+  g_brPA9D008 = (int)&(*(int * *)&g_brP277B40);
   if (iVar4 == 0) {
-    (*(CC_std_5 *)(*(int *)g_brP277B40 + 0x8c))(
-        g_brP277B40, (int)&DAT_10077500, (int)FUN_10035ac0, DAT_105bc72c, 0);
+    (*(CC_std_5 *)(*(int *)(*(int * *)&g_brP277B40) + 0x8c))(
+        (*(int * *)&g_brP277B40), (int)&DAT_10077500, (int)FUN_10035ac0, g_brOwner5BC72C, 0);
     iVar4 = FUN_10036e50(&DAT_10ac3068);
     if (iVar4 < 0) {
       return 0;
     }
   } else {
-    iVar4 = DAT_10ac5d2c;
+    iVar4 = g_brPAA29D4;
     DAT_10ac5bf0 = 0;
     if (iVar4 != 0) {
-      iVar4 = FUN_10036300(g_brP277B40);
+      iVar4 = BrNetEnumSessionsStart((*(int * *)&g_brP277B40));
       if (iVar4 < 0) {
         return 0;
       }
     }
-    DAT_10ac306c = SetTimer((HWND)DAT_105bc72c, 1, 1000, (TIMERPROC)0x0);
-    DAT_10ac408c = 1;
+    DAT_10ac306c = SetTimer((HWND)g_brOwner5BC72C, 1, 1000, (TIMERPROC)0x0);
+    g_guardA = 1;
   }
   return 1;
 }
@@ -162,19 +162,19 @@ void BrExt_1003BF60(void)
 
 {
   BrSub100586A0();
-  KillTimer(g_brP680584,DAT_10ac306c);
-  if (g_brAA2884 != 0) {
+  KillTimer(g_brOwner5BC72C,DAT_10ac306c);
+  if (g_host != 0) {
     BrSndThreadStop();
   }
-  FUN_10035be0();
-  if (((g_brAA287C != 2) && (g_brAA287C != 3)) && (DAT_10ac5d30 != 0)) {
-    *(char *)(DAT_10ac5d30 + 0x2b64) = 0;
-    *(unsigned int *)(DAT_10ac5d30 + 0x1c) = *(unsigned int *)(DAT_10ac5d30 + 0x1c) & 0xffffffef;
+  BrDpShutdown();
+  if (((DAT_10ac5bd4 != 2) && (DAT_10ac5bd4 != 3)) && (g_brPAA29D8 != 0)) {
+    *(char *)(g_brPAA29D8 + 0x2b64) = 0;
+    *(unsigned int *)(g_brPAA29D8 + 0x1c) = *(unsigned int *)(g_brPAA29D8 + 0x1c) & 0xffffffef;
   }
-  DAT_10ac408c = 0;
-  g_brAA2884 = 0;
-  DAT_10226a48 = 0;
-  g_brAA2888 = 0;
+  g_guardA = 0;
+  g_host = 0;
+  (*(int *)&g_brRaceNet) = 0;
+  g_inited = 0;
   return;
 }
 
@@ -198,7 +198,7 @@ void FUN_10035660(void)
 {
   char local_104 [260];
   
-  FUN_10005f50();
+  BrNetShutdown();
   BrGlobalFreeAll();
   sprintf(local_104,s_DirectPlay_interface_final_insta_100aa514,DAT_10ac4094);
   OutputDebugStringA(local_104);
@@ -234,19 +234,19 @@ void FUN_100356b0(void)
   
   local_408[0] = 0;
   local_408[1] = 0;
-  KillTimer(g_brP680584,DAT_10ac306c);
-  FUN_10035be0();
-  iVar1 = FUN_10036b20(local_408,local_408 + 1);
+  KillTimer(g_brOwner5BC72C,DAT_10ac306c);
+  BrDpShutdown();
+  iVar1 = BrDpAddressBuild(local_408,local_408 + 1);
   if (local_408[0] != 0) {
-    iVar1 = BrComCreateInstance(&g_brP277B40);
+    iVar1 = BrComCreateInstance(&(*(int * *)&g_brP277B40));
     DAT_10ac4094 = DAT_10ac4094 + 1;
-    if ((((iVar1 >= 0)) && (g_brP277B40 != (int *)0x0)) &&
-       (iVar1 = (*(CC_std_3 *)(*(int *)(g_brP277B40) + 152))(g_brP277B40,local_408[0],0), (iVar1 >= 0))) {
-      if ((g_brAA287C != 2) && (g_brAA287C != 3)) {
-        if ((g_brPAA29D4 != 0) && (iVar1 = FUN_10036300(g_brP277B40), iVar1 < 0))
+    if ((((iVar1 >= 0)) && ((*(int * *)&g_brP277B40) != (int *)0x0)) &&
+       (iVar1 = (*(CC_std_3 *)(*(int *)((*(int * *)&g_brP277B40)) + 152))((*(int * *)&g_brP277B40),local_408[0],0), (iVar1 >= 0))) {
+      if ((DAT_10ac5bd4 != 2) && (DAT_10ac5bd4 != 3)) {
+        if ((g_brPAA29D4 != 0) && (iVar1 = BrNetEnumSessionsStart((*(int * *)&g_brP277B40)), iVar1 < 0))
         goto LAB_100357b5;
-        DAT_10ac306c = SetTimer(g_brP680584,1,1000,(TIMERPROC)0x0);
-        DAT_10ac408c = 1;
+        DAT_10ac306c = SetTimer(g_brOwner5BC72C,1,1000,(TIMERPROC)0x0);
+        g_guardA = 1;
       }
       if (DAT_1027332c != (HANDLE)0x0) {
         return;
@@ -288,15 +288,15 @@ void BrSub1003C150(void)
   int local_4cc [51];
   char local_400 [1024];
   
-  if (g_brP277B40 != 0) {
+  if ((*(int * *)&g_brP277B40) != 0) {
     memset(local_4cc, 0, 204);
     FUN_100367c0(local_4cc);
-    iVar2 = FUN_10035c50(g_brP277B40,local_4cc,g_brPA9D008);
+    iVar2 = BrNetSessionHost((*(int * *)&g_brP277B40),local_4cc,g_brPA9D008);
     if (iVar2 < 0) {
       sprintf(local_400,s_Could_not_host_session_because_o_100aa580,iVar2);
       return;
     }
-    DAT_10226a48 = 2;
+    (*(int *)&g_brRaceNet) = 2;
     BrSub10071550();
     BrNetMutexInit();
   }
@@ -316,8 +316,8 @@ int BrTimerStart1003C230(void)
 
 {
   FUN_100356b0();
-  DAT_10ac306c = SetTimer(g_brP680584,1,1000,(TIMERPROC)0x0);
-  DAT_10ac408c = 1;
+  DAT_10ac306c = SetTimer(g_brOwner5BC72C,1,1000,(TIMERPROC)0x0);
+  g_guardA = 1;
   return 1;
 }
 
@@ -352,8 +352,8 @@ int FUN_100361a0(int * param_1,char * param_2,char * param_3,int param_4)
   for (i = 0; i < BR_SLOT_COUNT; i++) {
     g_aBrAA2538[i].b = 0;
   }
-  if (g_brP277B40 != (int *)0x0) {
-    uVar3 = (*(CC_std_5 *)(*(int *)(g_brP277B40) + 48))(g_brP277B40,param_1,param_2,param_3,param_4);
+  if ((*(int * *)&g_brP277B40) != (int *)0x0) {
+    uVar3 = (*(CC_std_5 *)(*(int *)((*(int * *)&g_brP277B40)) + 48))((*(int * *)&g_brP277B40),param_1,param_2,param_3,param_4);
   }
   BrSlotsResetIfBZero();
   uVar2 = BrSlotsFindById(*(int *)(g_brPA9D008 + 8));
@@ -492,7 +492,7 @@ int BrDpAddressBuild(int *param_1, unsigned int *param_2)
 
   pMem = 0;
   local_50 = 0;
-  iVar2 = FUN_10036650(&local_4c);
+  iVar2 = BrSub1003CFC0(&local_4c);
   if (0 <= iVar2) {
     if (memcmp(local_4c, DAT_10078898, 0x10) == 0) {
       aElem[0].g = DAT_10078978;
@@ -506,12 +506,12 @@ int BrDpAddressBuild(int *param_1, unsigned int *param_2)
         aElem[1].pv = DAT_10ac3f88;
         iVar6 = 2;
       }
-      pcVar7 = DAT_10ac3e80;
+      pcVar7 = g_aBrA9CDF0;
       if (pcVar7 != 0) {
         aElem[iVar6].g = DAT_10078998;
-        iVar3 = lstrlenA(DAT_10ac3e80);
+        iVar3 = lstrlenA(g_aBrA9CDF0);
         aElem[iVar6].cb = iVar3 + 1;
-        aElem[iVar6].pv = DAT_10ac3e80;
+        aElem[iVar6].pv = g_aBrA9CDF0;
         iVar6 = iVar6 + 1;
       }
     }
@@ -521,14 +521,14 @@ int BrDpAddressBuild(int *param_1, unsigned int *param_2)
       aElem[0].pv = DAT_10078878;
       uVar5 = strlen(DAT_10b71ac0);
       if (uVar5 <= 1) {
-        lstrcpyA(DAT_10b71ac0, DAT_10396f08);
+        lstrcpyA(DAT_10b71ac0, g_aBr39B720);
       }
       aElem[1].g = DAT_100789d8;
       aElem[1].cb = lstrlenA(DAT_10b71ac0) + 1;
       aElem[1].pv = DAT_10b71ac0;
       uVar5 = strlen(DAT_10b71aa0);
       if (uVar5 <= 1) {
-        lstrcpyA(DAT_10b71aa0, DAT_10396f08);
+        lstrcpyA(DAT_10b71aa0, g_aBr39B720);
       }
       aElem[2].g = DAT_100789f8;
       aElem[2].cb = lstrlenA(DAT_10b71aa0) + 1;
@@ -601,7 +601,7 @@ int FUN_10036f40(HWND param_1, void *param_2)
   void *pObj;
   int *vt;
   
-  pObj = g_brP277B40;
+  pObj = (*(int * *)&g_brP277B40);
   vt = *(int **)pObj;
   pMem = 0;
   size = 0;
@@ -613,7 +613,7 @@ int FUN_10036f40(HWND param_1, void *param_2)
       hr = (int)0x8007000e;
     }
     else {
-      pObj = g_brP277B40;
+      pObj = (*(int * *)&g_brP277B40);
       vt = *(int **)pObj;
       hr = (*(COM4 *)((char *)vt + 0x48))(pObj, 0, pMem, &size);
       if (hr >= 0) {

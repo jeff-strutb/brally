@@ -29,12 +29,12 @@ int Phase32F::Adv()
     unsigned short lim;
 
     lim = w344;
-    if ((short)DAT_10ac5bc4 >= lim) {
-        DAT_10ac5bc4 = 0;
-    } else if ((short)DAT_10ac5bc4 < 0) {
-        DAT_10ac5bc4 = (unsigned short)(lim - 1);
+    if ((short)(*(unsigned short *)&BrGlNavCur5BC4) >= lim) {
+        (*(unsigned short *)&BrGlNavCur5BC4) = 0;
+    } else if ((short)(*(unsigned short *)&BrGlNavCur5BC4) < 0) {
+        (*(unsigned short *)&BrGlNavCur5BC4) = (unsigned short)(lim - 1);
     }
-    w346 = (short)DAT_10ac5bc4;
+    w346 = (short)(*(unsigned short *)&BrGlNavCur5BC4);
     return 1;
 }
 

@@ -63,7 +63,7 @@ void * __fastcall BrObj546F0DeleteDtor(void *param_1,int _edx_unused,unsigned ch
 {
   BrObj54710Dtor(param_1);
   if ((param_2 & 1) != 0) {
-    operator_delete(param_1);
+    BrOperatorDelete(param_1);
   }
   return param_1;
 }

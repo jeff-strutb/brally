@@ -40,7 +40,7 @@ extern "C" {
 
 int BrOpt37D0(BrGameObjCD *pObj)
 {
-    if (DAT_10ac5bec != 0 && DAT_10ac4090 != 0) {
+    if (DAT_10ac5bec != 0 && g_guardB != 0) {
         pObj->pSub->f68 = 0;
         pObj->pSub->f18(0);
         BrExt_10038F30(0);

@@ -58,7 +58,7 @@ int __stdcall BrWmHook36130(int a1, int a2, Rec36130 *a3, unsigned int a4, int a
 {
     GameObjS *p;
 
-    p = (GameObjS *)(g_pGame2);
+    p = (GameObjS *)((*(GameObjS * *)&g_brPAA29E4));
     if (p == 0)
         return (int)p;
     if (a4 & 0x200)
@@ -67,7 +67,7 @@ int __stdcall BrWmHook36130(int a1, int a2, Rec36130 *a3, unsigned int a4, int a
         Sel *s = &p->sel;
         s->s4(a3->f8, 0, 1, &g_selArg2, 1);
     }
-    g_pGame2->slots[g_pGame2->wIdx].f0 = a1;
-    BrTick36080(a1);
+    (*(GameObjS * *)&g_brPAA29E4)->slots[(*(GameObjS * *)&g_brPAA29E4)->wIdx].f0 = a1;
+    BrSlotMark(a1);
     return 1;
 }

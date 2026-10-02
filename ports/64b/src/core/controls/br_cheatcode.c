@@ -111,7 +111,7 @@ void BrCheatCodeScan(void)
         do {
             len = strlen(s);
             for (i = 0; i < len; i++) {
-                if (e->text[i] != g_aBrKeyRing[(i - len + pos) & 0x1f].ch)
+                if (e->text[i] != (*(BrKeyRec (*)[32])&g_aBrA9E150)[(i - len + pos) & 0x1f].ch)
                     goto next;
             }
             e->fn();

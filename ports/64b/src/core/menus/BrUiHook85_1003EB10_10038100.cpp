@@ -31,14 +31,14 @@ extern "C" {
 
 int Hook(GameObj85 *pObj)
 {
-    int r = pObj->m3838.s8(DAT_100aab94);
+    int r = pObj->m3838.s8(g_AB94);
 
     if (r >= 0)
-        DAT_100aab94 = r;
+        g_AB94 = r;
     else
-        r = DAT_100aab94;
+        r = g_AB94;
 
-    if (DAT_10ac5c30 != 0 && r >= 0)
+    if (g_5C30 != 0 && r >= 0)
         pObj->m3838.s9(r);
     return 1;
 }

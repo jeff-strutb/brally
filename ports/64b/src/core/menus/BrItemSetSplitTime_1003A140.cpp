@@ -122,9 +122,9 @@ int BrItemSetSplitTime_1003A140(Obj3A140 *pObj)
 
     memset(szTime, 0, sizeof(szTime));
 
-    if (g_brMode5BF4 != 0) {
+    if (g_5BF4 != 0) {
         t = g_brFTbl5B54[
-                g_brMap3028[(g_brIdx5C04 + g_brSel5C10 * 12) * 2]];
+                (*(unsigned char (*)[])&g_aBr0B3820)[(g_brIdx5C04 + (*(char *)&DAT_10ac5c10) * 12) * 2]];
 
         if (t <= g_f077624) {
             strcpy(szTime, g_szBrDashes);

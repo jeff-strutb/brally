@@ -86,7 +86,7 @@
 int BR_STDCALL BrUiDrawIndex_100479D0(int32_t code, int32_t x, int32_t y)
 {
     /* code * 24 bytes in the original: one 24-byte sprite record */
-    BrSub1005F5A0(x, y, code,
+    BrSprFontDraw(x, y, code,
                   &g_aBrUiSprite[code].rect[0],
                   g_aBrUiSprite[code].fBlit);
     return 1;
@@ -153,7 +153,7 @@ void __fastcall BrUiInit_10047FB0(BrUiObj *pObj, void *_edx,
 void *__fastcall BrUiPageDelete_100484C0(BrUiPage *pThis, int _edx_unused,
                                          unsigned char nFlags)
 {
-    FUN_10041930(pThis);
+    BrVtInit41930(pThis);
     if ((nFlags & 1) != 0) {
         BrOperatorDelete(pThis);
     }
@@ -167,7 +167,7 @@ void *__fastcall BrUiPageDelete_100484C0(BrUiPage *pThis, int _edx_unused,
 void *__fastcall BrPhaseDelete_10048850(BrPhaseFull *pThis, int _edx_unused,
                                         unsigned char nFlags)
 {
-    FUN_10041cc0(pThis);
+    BrPhaseDtor_10048870(pThis);
     if ((nFlags & 1) != 0) {
         BrOperatorDelete(pThis);
     }
@@ -212,10 +212,10 @@ int __fastcall BrVtInit41930(const void **param_1)
 int BrMenuCallback41DB0(void)
 
 {
-  FUN_100014e0(DAT_10ac5d84);
+  BrGlideLfbWrite(DAT_10ac5d84);
                     
                     
-  (*DAT_106b7ab8)();
+  (*(*(funcptr *)&BrGlFlipHook))();
   return;
 }
 

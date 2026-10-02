@@ -196,7 +196,7 @@ void BrCarGfxReadColour(BrRgbSink *pSink, const BrCarGfx *pCar)
             y.v = ((pw[0] >> 8) & 0xF8) | ((pw[0] >> 13) & 7);
             z.v = ((pw[0] >> 3) & 0xF8) | ((pw[0] >>  8) & 7);
             b.v = ((pw[0] << 2) & 0xF8) | ((pw[0] >>  3) & 7);
-            BrRgbSinkSet3(pSink, y);
+            BrRgbSinkSet(pSink, y);
         }
     }
 }

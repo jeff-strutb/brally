@@ -244,7 +244,7 @@ int32_t BrUiHook85_1003E980(BrUiCtl_ *pCtl)
 
     Br85Msg(pfn, pCtl, 0x74, x, y);
 
-    for (i = 0u; i < (uint32_t)g_brB4E708; i++) {
+    for (i = 0u; i < (uint32_t)(*(int32_t *)&g_brItemIconCount); i++) {
         Br85Msg(pfn, pCtl, 0x75, x, y);
         x += 0x0C;
     }
@@ -301,7 +301,7 @@ int32_t BrUiHook85_1003E950(BrUiCtl_ *pCtl)
      * already exactly right.  Every attempt above changed the branch. */
     uint16_t c = 0x68;
 
-    if (g_br0AB3D8 == 0)
+    if ((*(int32_t *)((char *)&g_brBindAAAD4 + 0xA4)) == 0)
         c = 0x69;
 
     pCtl->aStepId[0] = c;      /* +0x2A40, a WORD store */
@@ -320,12 +320,12 @@ int32_t BrUiHook85_1003EA40(BrUiCtl_ *pCtl)
      * `fild dword` -- the sum is 32-bit wraparound, read back SIGNED. */
     int32_t v;
 
-    if (g_br0AB3D8 != 0) {
-        v = g_brB4E708 * 8 + 0x4A;
+    if ((*(int32_t *)((char *)&g_brBindAAAD4 + 0xA4)) != 0) {
+        v = (*(int32_t *)&g_brItemIconCount) * 8 + 0x4A;
         pCtl->x = (float)v;    /* +0x3C */
         return 1;
     }
-    v = g_brB4E70C * 8 + 0x4A;
+    v = g_brRaceB71A6C * 8 + 0x4A;
     pCtl->x = (float)v;
     return 1;
 }
@@ -338,7 +338,7 @@ int32_t BrUiHook85_10040930(BrUiCtl_ *pCtl)
      * translation unit is not linkable, and br_sprfont.c set the precedent
      * when it restated 0x100408C0's 51-byte table for the same reason. */
     static const int8_t k_AC62C[4] = { 0x45, 0x44, 0x43, 0x46 };
-    uint32_t i = (uint32_t)g_brAA287C;
+    uint32_t i = (uint32_t)(*(int32_t *)&DAT_10ac5bd4);
 
     /* DEVIATION: the original's `movsx cx,[eax+0x100AC62C]` is unbounded and a
      * mode outside 0..3 reads whatever follows the table.  Bounded here, the
@@ -360,17 +360,17 @@ int32_t BrUiHook85_10040930(BrUiCtl_ *pCtl)
 int32_t BrUiHook85_1003EB10(BrUiCtl_ *pCtl)
 {
     BrTextList *pList = &pCtl->list;
-    int32_t     v     = Br85ListSel(pList, g_br0AB3F4);
+    int32_t     v     = Br85ListSel(pList, (*(int32_t *)&g_AB94));
 
     if (v >= 0) {
-        g_br0AB3F4 = v;
+        (*(int32_t *)&g_AB94) = v;
     } else {
         /* The original RELOADS the global on this arm, so `v` below is the
          * old value and not the negative answer. */
-        v = g_br0AB3F4;
+        v = (*(int32_t *)&g_AB94);
     }
 
-    if (g_brAA28D8 != 0 && v >= 0) {
+    if (g_5C30 != 0 && v >= 0) {
         Br85ListAck(pList, v);
     }
     return 1;
@@ -519,8 +519,8 @@ int32_t BrUiHook85_100418D0(BrUiCtl_ *pCtl)
 /* @implements 0x10042AC0 d3d BrUiHook85_10042AC0 */
 int32_t BrUiHook85_10042AC0(BrUiCtl_ *pCtl)
 {
-    if (g_brAA28D8 == 0) {
-        g_brAA28D8 = 1;
+    if (g_5C30 == 0) {
+        g_5C30 = 1;
         /* `xor ecx,ecx / test edx,edx / sete cl / store` -- the result is
          * exactly 0 or 1, never the complement of a wider value. */
         pCtl->aText[0].f420 = (pCtl->aText[0].f420 == 0u) ? 1u : 0u;
@@ -609,24 +609,24 @@ int32_t BrUiHook85_100466C0(BrUiCtl_ *pCtl)
  * reads the argument, so this is the same behaviour either way. */
 int32_t BrUiHook85_10044010(BrUiCtl_ *pCtl)
 {
-    g_brAA287C = 0;
-    (void)BrOptOpen2948(pCtl);
+    (*(int32_t *)&DAT_10ac5bd4) = 0;
+    (void)Ctl3D3C0_fn(pCtl);
     return 1;
 }
 /* WHAT IT DOES: chooses the second play mode and opens the next screen. */
 /* @implements 0x10044050 d3d BrUiHook85_10044050 */
 int32_t BrUiHook85_10044050(BrUiCtl_ *pCtl)
 {
-    g_brAA287C = 1;
-    (void)BrOptOpen2948(pCtl);
+    (*(int32_t *)&DAT_10ac5bd4) = 1;
+    (void)Ctl3D3C0_fn(pCtl);
     return 1;
 }
 /* WHAT IT DOES: chooses the third play mode and opens the next screen. */
 /* @implements 0x10044090 d3d BrUiHook85_10044090 */
 int32_t BrUiHook85_10044090(BrUiCtl_ *pCtl)
 {
-    g_brAA287C = 2;
-    (void)BrOptOpen2948(pCtl);
+    (*(int32_t *)&DAT_10ac5bd4) = 2;
+    (void)Ctl3D3C0_fn(pCtl);
     return 1;
 }
 
@@ -639,24 +639,24 @@ int32_t BrUiHook85_10044090(BrUiCtl_ *pCtl)
  * through Br85ModeKind pushes the mode as a second argument. */
 int32_t BrUiHook85_10044030(BrUiCtl_ *pCtl)
 {
-    g_brAA287C = 0;
-    (void)BrSprFontKindHook_10047360(pCtl);
+    (*(int32_t *)&DAT_10ac5bd4) = 0;
+    (void)BrSub10047360(pCtl);
     return 1;
 }
 /* WHAT IT DOES: the same for the second play mode's menu entry. */
 /* @implements 0x10044070 d3d BrUiHook85_10044070 */
 int32_t BrUiHook85_10044070(BrUiCtl_ *pCtl)
 {
-    g_brAA287C = 1;
-    (void)BrSprFontKindHook_10047360(pCtl);
+    (*(int32_t *)&DAT_10ac5bd4) = 1;
+    (void)BrSub10047360(pCtl);
     return 1;
 }
 /* WHAT IT DOES: the same for the third play mode's menu entry. */
 /* @implements 0x100440B0 d3d BrUiHook85_100440B0 */
 int32_t BrUiHook85_100440B0(BrUiCtl_ *pCtl)
 {
-    g_brAA287C = 2;
-    (void)BrSprFontKindHook_10047360(pCtl);
+    (*(int32_t *)&DAT_10ac5bd4) = 2;
+    (void)BrSub10047360(pCtl);
     return 1;
 }
 
@@ -757,10 +757,10 @@ int BrInputBitHeld(int code)
         return 0;
     if (DAT_10ac5c50 != 0)
         return 1;
-    if (DAT_100a9360 == 0) {
-        if (DAT_10ac5bf4 != 0)
-            return (1 << code) & DAT_10ac5b3a;
-        return (1 << code) & DAT_10ac40a0;
+    if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0) {
+        if (g_5BF4 != 0)
+            return (1 << code) & (*(unsigned short *)((char *)&DAT_10ac5b38 + 0x2));
+        return (1 << code) & (*(int *)&DAT_10ac40a0);
     }
     if ((DAT_10ac5c54 != 0) && ((code == 0xe) || (code == 0xd)))
         return 1;
@@ -834,25 +834,25 @@ int FUN_1003c240(void)
 {
   int dir;
   
-  dir = DAT_10ac6734;
-  g_br0AB3D8 = 1;
+  dir = (*(int *)&g_act1);
+  (*(int32_t *)((char *)&g_brBindAAAD4 + 0xA4)) = 1;
   if (dir != 0) {
-    g_brB4E708 = g_brB4E708 + 1;
-    if (g_brB4E708 > 9) {
-      g_brB4E708 = 0;
-      FUN_10059e00();
+    (*(int32_t *)&g_brItemIconCount) = (*(int32_t *)&g_brItemIconCount) + 1;
+    if ((*(int32_t *)&g_brItemIconCount) > 9) {
+      (*(int32_t *)&g_brItemIconCount) = 0;
+      BrUiVolumeApply();
       return 1;
     }
   }
   else {
-    if (DAT_10ac6730 != 0) {
-      g_brB4E708 = g_brB4E708 - 1;
-      if (g_brB4E708 < 0) {
-        g_brB4E708 = 9;
+    if ((*(int *)&g_act0) != 0) {
+      (*(int32_t *)&g_brItemIconCount) = (*(int32_t *)&g_brItemIconCount) - 1;
+      if ((*(int32_t *)&g_brItemIconCount) < 0) {
+        (*(int32_t *)&g_brItemIconCount) = 9;
       }
     }
   }
-  FUN_10059e00();
+  BrUiVolumeApply();
   return 1;
 }
 
@@ -873,25 +873,25 @@ int FUN_1003c2b0(void)
 {
   int dir;
 
-  dir = DAT_10ac6734;
-  g_br0AB3D8 = 0;
+  dir = (*(int *)&g_act1);
+  (*(int32_t *)((char *)&g_brBindAAAD4 + 0xA4)) = 0;
   if (dir != 0) {
-    g_brB4E70C = g_brB4E70C + 1;
-    if (g_brB4E70C > 9) {
-      g_brB4E70C = 0;
-      FUN_10059e00();
+    g_brRaceB71A6C = g_brRaceB71A6C + 1;
+    if (g_brRaceB71A6C > 9) {
+      g_brRaceB71A6C = 0;
+      BrUiVolumeApply();
       return 1;
     }
   }
   else {
-    if (DAT_10ac6730 != 0) {
-      g_brB4E70C = g_brB4E70C - 1;
-      if (g_brB4E70C < 0) {
-        g_brB4E70C = 9;
+    if ((*(int *)&g_act0) != 0) {
+      g_brRaceB71A6C = g_brRaceB71A6C - 1;
+      if (g_brRaceB71A6C < 0) {
+        g_brRaceB71A6C = 9;
       }
     }
   }
-  FUN_10059e00();
+  BrUiVolumeApply();
   return 1;
 }
 
@@ -912,21 +912,21 @@ int FUN_1003c2b0(void)
 int FUN_1003cae0(void)
 
 {
-  if (DAT_10ac6734 != 0) {
-    DAT_10ac5d74 = DAT_10ac5d74 + 1;
-    if (DAT_10ac5d74 > 1) {
-      DAT_10ac5d74 = 0;
+  if ((*(int *)&g_act1) != 0) {
+    g_brSel5D74 = g_brSel5D74 + 1;
+    if (g_brSel5D74 > 1) {
+      g_brSel5D74 = 0;
     }
   }
   else {
-    if (DAT_10ac6730 != 0) {
-      DAT_10ac5d74 = DAT_10ac5d74 - 1;
-      if (DAT_10ac5d74 < 0) {
-        DAT_10ac5d74 = 1;
+    if ((*(int *)&g_act0) != 0) {
+      g_brSel5D74 = g_brSel5D74 - 1;
+      if (g_brSel5D74 < 0) {
+        g_brSel5D74 = 1;
       }
     }
   }
-  DAT_10b71540 = DAT_100abcd0[DAT_10ac5d74];
+  DAT_10b71540 = DAT_100abcd0[g_brSel5D74];
   return 1;
 }
 
@@ -945,21 +945,21 @@ int FUN_1003cae0(void)
 int FUN_1003cba0(void)
 
 {
-  if (DAT_10ac6734 != 0) {
-    DAT_10ac5d78 = DAT_10ac5d78 + 1;
-    if (DAT_10ac5d78 > 1) {
-      DAT_10ac5d78 = 0;
+  if ((*(int *)&g_act1) != 0) {
+    (*(int *)&DAT_10ac5d78) = (*(int *)&DAT_10ac5d78) + 1;
+    if ((*(int *)&DAT_10ac5d78) > 1) {
+      (*(int *)&DAT_10ac5d78) = 0;
     }
   }
   else {
-    if (DAT_10ac6730 != 0) {
-      DAT_10ac5d78 = DAT_10ac5d78 - 1;
-      if (DAT_10ac5d78 < 0) {
-        DAT_10ac5d78 = 1;
+    if ((*(int *)&g_act0) != 0) {
+      (*(int *)&DAT_10ac5d78) = (*(int *)&DAT_10ac5d78) - 1;
+      if ((*(int *)&DAT_10ac5d78) < 0) {
+        (*(int *)&DAT_10ac5d78) = 1;
       }
     }
   }
-  DAT_10b71538 = DAT_100abcd8[DAT_10ac5d78];
+  DAT_10b71538 = DAT_100abcd8[(*(int *)&DAT_10ac5d78)];
   return 1;
 }
 
@@ -978,21 +978,21 @@ int FUN_1003cba0(void)
 int FUN_1003cb40(void)
 
 {
-  if (DAT_10ac6734 != 0) {
-    DAT_10ac5d80 = DAT_10ac5d80 + 1;
-    if (DAT_10ac5d80 > 1) {
-      DAT_10ac5d80 = 0;
+  if ((*(int *)&g_act1) != 0) {
+    g_brSel5D80 = g_brSel5D80 + 1;
+    if (g_brSel5D80 > 1) {
+      g_brSel5D80 = 0;
     }
   }
   else {
-    if (DAT_10ac6730 != 0) {
-      DAT_10ac5d80 = DAT_10ac5d80 - 1;
-      if (DAT_10ac5d80 < 0) {
-        DAT_10ac5d80 = 1;
+    if ((*(int *)&g_act0) != 0) {
+      g_brSel5D80 = g_brSel5D80 - 1;
+      if (g_brSel5D80 < 0) {
+        g_brSel5D80 = 1;
       }
     }
   }
-  DAT_10b71b00 = DAT_100abce8[DAT_10ac5d80];
+  DAT_10b71b00 = DAT_100abce8[g_brSel5D80];
   return 1;
 }
 
@@ -1025,48 +1025,48 @@ int FUN_1003c430(void)
   int iVar6;
   int k;
   
-  if (DAT_10ac6734 != 0) {
-    DAT_100abde8 = DAT_100abde8 + 1;
+  if ((*(int *)&g_act1) != 0) {
+    g_brIdx0ABDE8 = g_brIdx0ABDE8 + 1;
     k = (DAT_10ac5c54 ? 3 : 0) + 0xb;
-    if (DAT_100abde8 > k) {
-      DAT_100abde8 = 0;
+    if (g_brIdx0ABDE8 > k) {
+      g_brIdx0ABDE8 = 0;
     }
-    iVar6 = DAT_100abde8;
-    iVar2 = FUN_100387f0(DAT_100abde8);
+    iVar6 = g_brIdx0ABDE8;
+    iVar2 = BrInputBitHeld(g_brIdx0ABDE8);
     while (iVar2 == 0) {
-      DAT_100abde8 = DAT_100abde8 + 1;
+      g_brIdx0ABDE8 = g_brIdx0ABDE8 + 1;
       k = (DAT_10ac5c54 ? 3 : 0) + 0xb;
-      if (DAT_100abde8 > k) {
-        DAT_100abde8 = 0;
+      if (g_brIdx0ABDE8 > k) {
+        g_brIdx0ABDE8 = 0;
       }
-      else if (DAT_100abde8 == iVar6) break;
-      iVar2 = FUN_100387f0(DAT_100abde8);
+      else if (g_brIdx0ABDE8 == iVar6) break;
+      iVar2 = BrInputBitHeld(g_brIdx0ABDE8);
     }
   }
-  else if (DAT_10ac6730 != 0) {
-    DAT_100abde8 = DAT_100abde8 - 1;
-    if (DAT_100abde8 < 0) {
-      DAT_100abde8 = (DAT_10ac5c54 ? 3 : 0) + 0xb;
+  else if ((*(int *)&g_act0) != 0) {
+    g_brIdx0ABDE8 = g_brIdx0ABDE8 - 1;
+    if (g_brIdx0ABDE8 < 0) {
+      g_brIdx0ABDE8 = (DAT_10ac5c54 ? 3 : 0) + 0xb;
     }
-    iVar6 = DAT_100abde8;
-    iVar2 = FUN_100387f0(DAT_100abde8);
+    iVar6 = g_brIdx0ABDE8;
+    iVar2 = BrInputBitHeld(g_brIdx0ABDE8);
     while (iVar2 == 0) {
-      DAT_100abde8 = DAT_100abde8 - 1;
-      if (DAT_100abde8 < 0) {
-        DAT_100abde8 = (DAT_10ac5c54 ? 3 : 0) + 0xb;
+      g_brIdx0ABDE8 = g_brIdx0ABDE8 - 1;
+      if (g_brIdx0ABDE8 < 0) {
+        g_brIdx0ABDE8 = (DAT_10ac5c54 ? 3 : 0) + 0xb;
       }
-      else if (DAT_100abde8 == iVar6) break;
-      iVar2 = FUN_100387f0(DAT_100abde8);
+      else if (g_brIdx0ABDE8 == iVar6) break;
+      iVar2 = BrInputBitHeld(g_brIdx0ABDE8);
     }
   }
-  g_Br0B380C = (&DAT_100abc78)[DAT_100abde8];
+  (*(int *)&g_Br0B380C) = (&(g_aBrAC4D8[0]))[g_brIdx0ABDE8];
   if (g_brP277B40 != 0) {
-    sprintf(DAT_10ac4db0, (char *)BrStrGet(0xb8), (char *)BrStrGet(DAT_100abaa8[g_Br0B380C]));
-    if ((PTR_PTR_100bcab0[g_Br0B380C][4] & 0x10) != 0) {
-      strcat(DAT_10ac4db0, (char *)BrStrGet(0xb0));
+    sprintf(g_szBrName4DB0, (char *)BrStrGet(0xb8), (char *)BrStrGet(g_brTblABAA8[(*(int *)&g_Br0B380C)]));
+    if (((*(char * (*)[])&g_apBrRaceDiff)[(*(int *)&g_Br0B380C)][4] & 0x10) != 0) {
+      strcat(g_szBrName4DB0, (char *)BrStrGet(0xb0));
     }
-    FUN_100368a0(g_brP680584, g_brPA9D008, 1);
-    strcpy(DAT_10ac4db0, DAT_10396f08);
+    FUN_100368a0(g_brOwner5BC72C, g_brPA9D008, 1);
+    strcpy(g_szBrName4DB0, g_aBr39B720);
   }
   return 1;
 }

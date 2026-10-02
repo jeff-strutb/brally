@@ -326,10 +326,10 @@ void BrRcaFixup(void *pvFile)
     uint8_t *p;
     int i, j;
 
-    BrSegSetBasesG(0x803C8000u, pFile + 0x8000);
+    BrSegSetBases(0x803C8000u, pFile + 0x8000);
     BrSegSetFlag(0);
 
-    g_p6C7C3C = pFile;
+    (*(void * *)&g_brP6EECCC) = pFile;
     *(uint32_t *)(pFile + 0x7C) = 0;
 
     BR_LD32BE(pFile + 0x8000);
@@ -340,7 +340,7 @@ void BrRcaFixup(void *pvFile)
     BR_SWAP4(pFile + 0x8014);  BrSegPtrFixup((uint32_t *)(pFile + 0x8014));
 
     /* [+0x14] is a table of [+0x10] records, stride 0x24. */
-    BrSwapRec24Array(*(void **)(pFile + 0x8014), *(int *)(pFile + 0x8010));
+    BrRcaFixupArray(*(void **)(pFile + 0x8014), *(int *)(pFile + 0x8010));
 
     {
         /* Patch four u16s in the record selected by the byte at +0x11A. */
@@ -350,7 +350,7 @@ void BrRcaFixup(void *pvFile)
         if (pDesc != NULL) {
             uint8_t *q = pDesc + 0x18;
             for (i = 0; i < 4; ++i) {
-                if (g_i6C661C == 0 && g_i6C6624 == 0)
+                if ((*(int *)((char *)&g_aBrEntRecs + 0x7C)) == 0 && (*(int *)((char *)&g_aBrEntRecs + 0x84)) == 0)
                     q[1] |= 1;
                 else
                     *(uint16_t *)q &= 0xFEFF;
@@ -367,9 +367,9 @@ void BrRcaFixup(void *pvFile)
         for (i = 0; i < 10; ++i) {
             BR_SWAP4(p);
             BrSegPtrFixup((uint32_t *)p);
-            if (BrDlIsRegistered(*(void **)p) == 0) {
-                BrDlRegister(*(void **)p);
-                BrSub10074DC0(2);
+            if (BrPtrListContains(*(void **)p) == 0) {
+                BrF3DListFixup(*(void **)p);
+                BrFontSetRenderDst(2);
                 g_pfn18AA0C4(*(void **)p);
             }
             p += 4;
@@ -401,16 +401,16 @@ void BrRcaFixup(void *pvFile)
         for (i = 0; i < 3; ++i) {
             BR_SWAP4(p);
             BrSegPtrFixup((uint32_t *)p);
-            if (BrDlIsRegistered(*(void **)p) == 0) {
-                BrDlRegister(*(void **)p);
-                BrSub10074DC0(2);
+            if (BrPtrListContains(*(void **)p) == 0) {
+                BrF3DListFixup(*(void **)p);
+                BrFontSetRenderDst(2);
                 g_pfn18AA0C4(*(void **)p);
             }
             p += 4;
         }
     }
 
-    BrSub10074DC0(2);
+    BrFontSetRenderDst(2);
 
     {
         uint8_t *pRec;
@@ -426,7 +426,7 @@ void BrRcaFixup(void *pvFile)
         pRec  = *(uint8_t **)(pFile + 0x8014) + pFile[0x811B] * 0x24;
         pDesc = *(uint8_t **)(pRec + 4);
 
-        if (pDesc != NULL && g_i0AC300 == 0) {
+        if (pDesc != NULL && (*(int *)&g_AC300) == 0) {
             /* The handle is read BEFORE the call and re-read after: the
              * callee is allowed to replace it, and both values are used. */
             uint32_t hOld = *(uint32_t *)pRec;
@@ -434,7 +434,7 @@ void BrRcaFixup(void *pvFile)
             g_pfn18AA0C8(pRec, 1);
             *(uint32_t *)(pFile + 0x80) = *(uint32_t *)pRec;
 
-            if (g_i6C661C == 0 && g_i6C6624 == 0) {
+            if ((*(int *)((char *)&g_aBrEntRecs + 0x7C)) == 0 && (*(int *)((char *)&g_aBrEntRecs + 0x84)) == 0) {
                 *(uint16_t *)(pDesc + 0x1E) = 0x0190;
                 *(uint16_t *)(pDesc + 0x14) = 0x01A0;
             } else {
@@ -528,11 +528,11 @@ void BrRcaLoadCar(void *pvDest, size_t cbDest, int iCar)
     g_i10AA3444 = iCar;
 
     /* Identity test against the static scratch buffer, not a content test. */
-    fPreview = ((uint8_t *)pvDest == g_ab0C12A0);
+    fPreview = ((uint8_t *)pvDest == (*(uint8_t (*)[])&g_ab0C12A0));
     if (!fPreview) {
-        fSaved = g_i0B8C90;
+        fSaved = (*(int *)&g_brTex0B8C90);
         if (fSaved == 0)
-            g_i0B8C90 = 1;
+            (*(int *)&g_brTex0B8C90) = 1;
     }
     BrSub10061010(iCar, fPreview ? 1 : 0);
 
@@ -563,7 +563,7 @@ void BrRcaLoadCar(void *pvDest, size_t cbDest, int iCar)
     BrRcaFixup(pvDest);
 
     if (!fPreview)
-        g_i0B8C90 = fSaved;
+        (*(int *)&g_brTex0B8C90) = fSaved;
 }
 
 /* ==========================================================================
@@ -859,24 +859,24 @@ void BrGlTrackHdrRead(void *pvHdr, FILE **ppFile)
     }
     *(uint32_t *)(h + 0x160) =
         ((((uint32_t)h[0x160] << 8 | h[0x161]) << 8 | h[0x162]) << 8) | h[0x163];
-    BrGlFixupAt(p0C);
-    BrGlFixupAt(p14);
-    BrGlFixupAt(p1C);
-    BrGlFixupAt(p20);
-    BrGlFixupAt(p24);
-    BrGlFixupAt(p50);
-    BrGlFixupAt(p54);
-    BrGlFixupAt(p58);
-    BrGlFixupAt(p5C);
-    BrGlFixupAt(p60);
-    BrGlFixupAt(p68);
-    BrGlFixupAt(p6C);
-    BrGlFixupAt(p70);
-    BrGlFixupAt(p74);
-    BrGlFixupAt(p78);
-    BrGlFixupAt(p84);
-    BrGlFixupAt(p8C);
-    BrGlFixupAt(p90);
-    BrGlFixupAt(p94);
+    BrSegPtrFixup(p0C);
+    BrSegPtrFixup(p14);
+    BrSegPtrFixup(p1C);
+    BrSegPtrFixup(p20);
+    BrSegPtrFixup(p24);
+    BrSegPtrFixup(p50);
+    BrSegPtrFixup(p54);
+    BrSegPtrFixup(p58);
+    BrSegPtrFixup(p5C);
+    BrSegPtrFixup(p60);
+    BrSegPtrFixup(p68);
+    BrSegPtrFixup(p6C);
+    BrSegPtrFixup(p70);
+    BrSegPtrFixup(p74);
+    BrSegPtrFixup(p78);
+    BrSegPtrFixup(p84);
+    BrSegPtrFixup(p8C);
+    BrSegPtrFixup(p90);
+    BrSegPtrFixup(p94);
 }
 #undef h

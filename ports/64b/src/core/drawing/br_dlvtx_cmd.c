@@ -37,7 +37,7 @@ typedef struct { float x, y, z, s, t, n0, n1, n2; } BrDlSrcVtx;
 
 /* The quarter-pixel snap: round to nearest through the x87, via the global
  * scratch int. */
-#define SNAPG(f_, t) do { t = (f_) * DAT_10077408; DAT_105ce310 = br_fistp(t); t = (float)DAT_105ce310; (f_) = t * DAT_1007740c; } while (0)
+#define SNAPG(f_, t) do { t = (f_) * BrGbiRectK_FIXED; (DAT_105ce2e8[10]) = br_fistp(t); t = (float)(DAT_105ce2e8[10]); (f_) = t * DAT_1007740c; } while (0)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 
 /* WHAT IT DOES: loads a batch of model corner points into the renderer's
@@ -69,7 +69,7 @@ const uint32_t *BrDlCmdVtx(const uint32_t *p)
     w0 = p[0];
     pSrc = (const BrDlSrcVtx *)p[1];
     v0 = (w0 >> 16) & 0xFF;
-    pV = &DAT_105ce318[v0];
+    pV = &g_aBrDlVtxPool[v0];
     pFirst = pV;
     n = (w0 >> 10) & 0x3F;
     for (i = 0; i < n; i++) {

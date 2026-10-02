@@ -50,7 +50,7 @@ void BrNetSendFlush(void)
 
     /* Orig: WaitForSingleObject(h, INFINITE); reload h; load flag; ReleaseMutex(h). */
     WaitForSingleObject(g_brH221324, 0xffffffffu);
-    flag = (uint32_t)g_br22AAA8;
+    flag = (uint32_t)(*(int32_t *)&DAT_102265d8);
     ReleaseMutex(g_brH221324);
     if (flag == 0) {
         return;
@@ -63,7 +63,7 @@ void BrNetSendFlush(void)
 
     /* Orig pushes the ADDRESS of g_brP277B40 and of g_brPB4E2E8 (offset,
      * not the pointer those globals hold). */
-    BrNetSend4760(&g_brP277B40, g_br094294, g_br22B34C,
-                  g_brAD0854[0], g_brAD0854[1], g_brAD0854[2],
-                  g_br277B48, (char *)&g_brPB4E2E8, 3, 0);
+    BrNetSend4AD0(&g_brP277B40, g_id, (*(int32_t *)&g_226e7c),
+                  (*(uint8_t (*)[3])((char *)&g_aBrRaceCar + 0x29AC)) /* BR_LP64_BYTE_VIEW */[0], (*(uint8_t (*)[3])((char *)&g_aBrRaceCar + 0x29AC)) /* BR_LP64_BYTE_VIEW */[1], (*(uint8_t (*)[3])((char *)&g_aBrRaceCar + 0x29AC)) /* BR_LP64_BYTE_VIEW */[2],
+                  g_br277B48, (char *)&g_aBrCfgPlayerName, 3, 0);
 }

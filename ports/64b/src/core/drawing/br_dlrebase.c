@@ -124,19 +124,19 @@ void BrDlOwnerFixup(BrDlOwner *pOwner)
      * four bytes of frame. */
     int32_t want;
 
-    g_Br6C666C = 0;
+    (*(int32_t *)((char *)&g_aBrEntRecs + 0xCC)) = 0;
 
     want = (g_Br0B380C == 2 || g_Br0B380C == 8) ? 0 : 1;
 
     if ((pOwner->flags & 4u) == 0)
-        g_Br6C666C = want;
+        (*(int32_t *)((char *)&g_aBrEntRecs + 0xCC)) = want;
 
     /* Compound `|=`, not a read-modify-write through a widening cast: the
      * original reads the halfword straight into cx and ors the low byte
      * (`mov cx,[eax+0x4c]; or cl,8`).  Spelling it as
      * `flags = (uint16_t)(flags | 8u)` adds the `xor edx,edx` zero-extension
      * the original does not have. */
-    if (BrSub100341B3(pOwner->pDl, g_BrDlTableA))
+    if (BrDlRecolor(pOwner->pDl, g_BrDlTableA))
         pOwner->flags |= 8u;
 }
 

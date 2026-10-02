@@ -44,8 +44,8 @@ void FUN_1006a650(void)
   int i;
 
   for (i = 0; i < 16; i++) {
-    pPeer = &g_aBrPeer71[i];
-    h1[0] = (HANDLE)DAT_11849e60;
+    pPeer = &(*(int *)&g_aBrPeer71)[i];
+    h1[0] = (HANDLE)g_hBrSndWake86;
     h1[1] = pPeer->hMutex;
     wr = WaitForMultipleObjects(2, h1, 0, 0xffffffff);
     if (wr == 0) {
@@ -66,9 +66,9 @@ void FUN_1006a650(void)
 
   /* each peer, and the diagonal of the history grid beside it */
   for (i = 0; ; i++) {
-    pPeer = &g_aBrPeer71[i];
-    pAlt = &g_aBr178FEF8[i][i];
-    h1[0] = (HANDLE)DAT_11849e60;
+    pPeer = &(*(int *)&g_aBrPeer71)[i];
+    pAlt = &(*(int *)&g_aBr178FEF8)[i][i];
+    h1[0] = (HANDLE)g_hBrSndWake86;
     h1[1] = pPeer->hMutex;
     wr = WaitForMultipleObjects(2, h1, 0, 0xffffffff);
     if (wr == 0) {
@@ -78,7 +78,7 @@ void FUN_1006a650(void)
     skip = ((st & 0x3f) == 3);
     ReleaseMutex(pPeer->hMutex);
     if (skip) {
-      h2[0] = (HANDLE)DAT_11849e60;
+      h2[0] = (HANDLE)g_hBrSndWake86;
       h2[1] = pAlt->hMutex;
       wr = WaitForMultipleObjects(2, h2, 0, 0xffffffff);
       if (wr == 0) {
@@ -94,8 +94,8 @@ void FUN_1006a650(void)
     if (i + 1 >= 16) {
       t = 4;
       for (i = 0; i < 16; i++) {
-        pPeer = &g_aBrPeer71[i];
-        h2[0] = (HANDLE)DAT_11849e60;
+        pPeer = &(*(int *)&g_aBrPeer71)[i];
+        h2[0] = (HANDLE)g_hBrSndWake86;
         h2[1] = pPeer->hMutex;
         wr = WaitForMultipleObjects(2, h2, 0, 0xffffffff);
         if (wr == 0) {
@@ -104,7 +104,7 @@ void FUN_1006a650(void)
         if ((pPeer->f02C & 0x3f) == 3) {
           pPeer->f02C = t;
           DAT_117b3250 = 1;
-          DAT_1184c074 = DAT_1184c070 + 3000;
+          (*(int *)&DAT_1184c074) = (*(int *)&DAT_1184c070) + 3000;
         }
         ReleaseMutex(pPeer->hMutex);
       }
@@ -131,9 +131,9 @@ int BrNetPeerMutexInit(void)
   g_178FEE8 = BrSub10075020();
   DAT_117b324c = BrDelta_100713A0();
   for (i = 0; i < 16; i++) {
-    g_aBrPeer71[i].hMutex = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+    (*(int *)&g_aBrPeer71)[i].hMutex = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
     for (j = 0; j < 16; j++) {
-      g_aBr178FEF8[j][i].hMutex = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+      (*(int *)&g_aBr178FEF8)[j][i].hMutex = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
     }
   }
   FUN_1006a330();
@@ -152,11 +152,11 @@ int BrNetPeerMsgCancel(int id)
   int i;
 
   for (i = 0; i < 16; i++) {
-    WaitForSingleObject(g_aBrPeer71[i].hMutex,0xffffffff);
-    if ((g_aBrPeer71[i].f004 == id) && ((g_aBrPeer71[i].f02C & 0x3f) < 5)) {
-      g_aBrPeer71[i].f02C = 0;
+    WaitForSingleObject((*(int *)&g_aBrPeer71)[i].hMutex,0xffffffff);
+    if (((*(int *)&g_aBrPeer71)[i].f004 == id) && (((*(int *)&g_aBrPeer71)[i].f02C & 0x3f) < 5)) {
+      (*(int *)&g_aBrPeer71)[i].f02C = 0;
     }
-    ReleaseMutex(g_aBrPeer71[i].hMutex);
+    ReleaseMutex((*(int *)&g_aBrPeer71)[i].hMutex);
   }
   return;
 }
@@ -180,8 +180,8 @@ int BrNetPeerMsgCancel(int id)
 /* @implements 0x1006A4C0 glide BrSub10071550 */
 int32_t BrSub10071550(void)
 {
-    BrSub10071560();
-    BrSub10071630();
+    BrNetPeerMutexInit();
+    BrSecondTickStart();
     return 1;
 }
 
@@ -207,13 +207,13 @@ void BrNetPeerMsgReset(void)
   HANDLE h[2];
 
   for (i = 0; i < 16; i++) {
-    h[0] = (HANDLE)DAT_11849e60;
-    h[1] = g_aBrPeer71[i].hMutex;
+    h[0] = (HANDLE)g_hBrSndWake86;
+    h[1] = (*(int *)&g_aBrPeer71)[i].hMutex;
     if (WaitForMultipleObjects(2, h, 0, 0xffffffff) == 0) {
       ExitThread(0);
     }
     BrObjResetMsgHdr(&g_aBrPeerMsg[i].bs);
-    ReleaseMutex(g_aBrPeer71[i].hMutex);
+    ReleaseMutex((*(int *)&g_aBrPeer71)[i].hMutex);
   }
 }
 

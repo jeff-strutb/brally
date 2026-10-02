@@ -33,7 +33,7 @@ public:
 
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define g_slot DAT_10ac5ca0
+#define g_slot (*(Phase * *)&g_2948)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
@@ -63,15 +63,15 @@ int Ctl3D3C0::Activate()
     if (p == 0) {
         p = new Phase;
         g_slot = (Phase *)((struct Phase8 *)(p));
-        g_cur = (Phase *)((BrOptObj *)(p));
+        (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(p));
         if (p == 0)
             return 0;
         p->pfnEnter = EnterFn;
         g_slot->pfnEnter(g_slot);
-        g_cur->f0C = 1;
-        g_cur->f68 = 1;
+        (*(Phase * *)&g_brPAA29B8)->f0C = 1;
+        (*(Phase * *)&g_brPAA29B8)->f68 = 1;
     } else {
-        g_cur = (Phase *)((BrOptObj *)(p));
+        (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(p));
     }
     if (g_guardA == 0 && g_guardB == 0 && (g_mode == 0 || g_mode == 1))
         NetFn();

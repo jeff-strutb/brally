@@ -59,26 +59,26 @@ extern "C" {
 
 int BrPhaseLeave_10046FD0(Ctl40420 *pCtl)
 {
-    if (g_brPanel5C8C != 0) {
-        g_brPanel5C8C->s7();
-        g_brPanel5C8C = 0;
+    if ((*(Sub2AE8_40420 * *)&g_5C8C) != 0) {
+        (*(Sub2AE8_40420 * *)&g_5C8C)->s7();
+        (*(Sub2AE8_40420 * *)&g_5C8C) = 0;
     }
-    if (g_brPanel5C90 != 0) {
-        g_brPanel5C90->s7();
-        g_brPanel5C90 = 0;
+    if ((*(Sub2AE8_40420 * *)&g_5C90) != 0) {
+        (*(Sub2AE8_40420 * *)&g_5C90)->s7();
+        (*(Sub2AE8_40420 * *)&g_5C90) = 0;
     }
-    if (g_brPanel5C94 != 0) {
-        g_brPanel5C94->s7();
-        g_brPanel5C94 = 0;
+    if ((*(Sub2AE8_40420 * *)&g_5C94) != 0) {
+        (*(Sub2AE8_40420 * *)&g_5C94)->s7();
+        (*(Sub2AE8_40420 * *)&g_5C94) = 0;
     }
 
     pCtl->p2AE8->s7();
 
-    if (g_brPhase5C5C != 0)
-        delete g_brPhase5C5C;
+    if ((*(Phase40420 * *)&g_brPAA29B8) != 0)
+        delete (*(Phase40420 * *)&g_brPAA29B8);
 
-    g_brPending5CCC = 0;
-    g_brPhase5C5C = (Phase40420 *)((BrOptObj *)((Phase40420 *)((BrOptObj *)(g_brRoot5C60))));
+    g_brPhaseAA2974 = 0;
+    (*(Phase40420 * *)&g_brPAA29B8) = (Phase40420 *)((BrOptObj *)((Phase40420 *)((BrOptObj *)((*(Phase40420 * *)&g_2908)))));
 
     return 0;
 }

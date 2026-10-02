@@ -67,28 +67,28 @@ void BR_THISCALL1 BrRaceGridPlace(uint8_t *pDrv)
     /* Orig: xor edi,edi; sub eax,edi / je zero; dec / je; sub eax,5 / je.
      * Subtract the live zero so the test is `sub` not `cmp`.  Zero arm last. */
     z = 0;
-    mode = g_brRaceMode;
+    mode = (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */;
     mode = mode - z;
     if (mode != 0) {
         mode = mode - 1;
         if (mode != 0) {
             mode = mode - 5;
             if (mode != 0)
-                cap = DAT_100b2f04;
+                cap = g_BrCarCount;
             else
                 cap = 9999;
         } else
             cap = 2;
     } else
-        cap = DAT_100b3858;
+        cap = g_brRaceNEntrant;
 
-    idx = (int32_t)(pDrv - DAT_10af07f8) >> 7;
+    idx = (int32_t)(pDrv - (*(uint8_t (*)[])&g_aBrRaceDriver)) >> 7;
     ((*(int32_t *)((uint8_t *)((pDrv)) + ((0x64))))) = idx;
-    ((*(uint8_t *)((uint8_t *)((pDrv)) + ((0x5c))))) = DAT_100b2fd8[idx * 3];
-    ((*(uint8_t *)((uint8_t *)((pDrv)) + ((0x5d))))) = DAT_100b2fd8[idx * 3 + 1];
-    ((*(uint8_t *)((uint8_t *)((pDrv)) + ((0x5e))))) = DAT_100b2fd8[idx * 3 + 2];
+    ((*(uint8_t *)((uint8_t *)((pDrv)) + ((0x5c))))) = g_aBr0B37D0[idx * 3];
+    ((*(uint8_t *)((uint8_t *)((pDrv)) + ((0x5d))))) = g_aBr0B37D0[idx * 3 + 1];
+    ((*(uint8_t *)((uint8_t *)((pDrv)) + ((0x5e))))) = g_aBr0B37D0[idx * 3 + 2];
     ((*(int32_t *)((uint8_t *)((pDrv)) + ((0x68))))) = z;
-    nLive = DAT_100b3858 + 0xd;
+    nLive = g_brRaceNEntrant + 0xd;
     if (idx < nLive)
         ((*(int32_t *)((uint8_t *)((pDrv)) + ((0x74))))) = z;
     else
@@ -101,18 +101,18 @@ void BR_THISCALL1 BrRaceGridPlace(uint8_t *pDrv)
     } else {
         ((*(int32_t *)((uint8_t *)((pDrv)) + ((0x60))))) = z;
         if (((*(int32_t *)((uint8_t *)((pDrv)) + ((0x74))))) == 1)
-            t = (idx - DAT_100b3858) * 600 + -0x1e50;
-        else if (DAT_100b3014 == 2 || DAT_100b3014 == 8)
+            t = (idx - g_brRaceNEntrant) * 600 + -0x1e50;
+        else if (g_Br0B380C == 2 || g_Br0B380C == 8)
             t = idx * 0x208;
         else
             t = idx * 0x226;
         ((*(float *)((uint8_t *)((pDrv)) + ((0x50))))) = (float)t;
-        BrPathWalk(DAT_106eed48, ((*(float *)((uint8_t *)((pDrv)) + ((0x50))))));
-        ((*(int32_t *)((uint8_t *)((pDrv)) + ((0x00))))) = DAT_10b1ce98;
-        ((*(int32_t *)((uint8_t *)((pDrv)) + ((0x04))))) = DAT_10b1ce9c;
-        ((*(int32_t *)((uint8_t *)((pDrv)) + ((0x08))))) = DAT_10b1cea0;
-        ((*(int32_t *)((uint8_t *)((pDrv)) + ((0x28))))) = DAT_10b1cbec;
-        ((*(int32_t *)((uint8_t *)((pDrv)) + ((0x2c))))) = DAT_10af07f0;
+        BrPathWalk(g_pBrRaceLapRec, ((*(float *)((uint8_t *)((pDrv)) + ((0x50))))));
+        ((*(int32_t *)((uint8_t *)((pDrv)) + ((0x00))))) = (*(int32_t *)&g_brRacePathPos);
+        ((*(int32_t *)((uint8_t *)((pDrv)) + ((0x04))))) = (*(int32_t *)((char *)&g_brRacePathPos + 0x4));
+        ((*(int32_t *)((uint8_t *)((pDrv)) + ((0x08))))) = (*(int32_t *)((char *)&g_brRacePathPos + 0x8));
+        ((*(int32_t *)((uint8_t *)((pDrv)) + ((0x28))))) = g_brRacePathNode;
+        ((*(int32_t *)((uint8_t *)((pDrv)) + ((0x2c))))) = (*(int32_t *)&g_brRacePathIndex);
         ((*(int32_t *)((uint8_t *)((pDrv)) + ((0x4c))))) = DAT_10b1ca20;
         ((*(int32_t *)((uint8_t *)((pDrv)) + ((0x48))))) = DAT_10b1ca20;
         ((*(int32_t *)((uint8_t *)((pDrv)) + ((0x44))))) = DAT_10b1cea4;
@@ -124,18 +124,18 @@ void BR_THISCALL1 BrRaceGridPlace(uint8_t *pDrv)
         ((*(int32_t *)((uint8_t *)((pDrv)) + ((0x30))))) = z;
         ((*(int32_t *)((uint8_t *)((pDrv)) + ((0x38))))) = z;
         ((*(int32_t *)((uint8_t *)((pDrv)) + ((0x34))))) = z;
-        w = (int16_t)DAT_104b15e8 - 1;
+        w = (int16_t)(*(int32_t *)&DAT_104b15e8) - 1;
         if (w > 2 || w < 0)
             w = 0;
-        t = DAT_10af206c * 3 + (int32_t)w;
-        ((*(int32_t *)((uint8_t *)((pDrv)) + ((0x3c))))) = DAT_100bcab0[DAT_100b3014][t * 7 + 0x11];
+        t = (*(int32_t *)((char *)&g_aBrRaceCar + 0xE64)) /* BR_LP64_BYTE_VIEW */ * 3 + (int32_t)w;
+        ((*(int32_t *)((uint8_t *)((pDrv)) + ((0x3c))))) = (*(int32_t * (*)[])&g_apBrRaceDiff)[g_Br0B380C][t * 7 + 0x11];
         /* orig: [ecx + edx*4 + 0x44] with edx = t*7 (lea x8-x), so
          * offset 0x44/4 = 17 = 0x11, yes t*7+17. */
-        ((*(int32_t *)((uint8_t *)((pDrv)) + ((0x54))))) = DAT_100b2f00 - ((*(int32_t *)((uint8_t *)((pDrv)) + ((0x64))))) - 1;
+        ((*(int32_t *)((uint8_t *)((pDrv)) + ((0x54))))) = g_brRaceNDriver - ((*(int32_t *)((uint8_t *)((pDrv)) + ((0x64))))) - 1;
     }
 
-    if (((*(int32_t *)((uint8_t *)((pDrv)) + ((0x64))))) >= DAT_100b3858)
-        FUN_1005edc0(pDrv);
+    if (((*(int32_t *)((uint8_t *)((pDrv)) + ((0x64))))) >= g_brRaceNEntrant)
+        BrMakeEnemyCarColorPanels(pDrv);
     else {
         ((*(int32_t *)((uint8_t *)((pDrv)) + ((0x78))))) = z;
         ((*(int32_t *)((uint8_t *)((pDrv)) + ((0x7c))))) = z;

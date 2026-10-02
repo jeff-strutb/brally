@@ -81,10 +81,10 @@ int BrItemSetTotal_1003AA10(Obj3AA10 *pObj)
 
     memset(szNum, 0, sizeof(szNum));
 
-    if (g_brMode5BF4 == 0) {
+    if (g_5BF4 == 0) {
         strcpy(szNum, g_szBr0ACA50);
     } else {
-        unsigned short *p = g_brTbl5A66[g_brSel5C10].w;
+        unsigned short *p = (*(BrRow8 (*)[])&g_aBrAA270E)[(*(char *)&DAT_10ac5c10)].w;
         int             i;
 
         for (i = 4; i != 0; i--) {

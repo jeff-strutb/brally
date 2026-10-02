@@ -192,10 +192,10 @@ int FUN_1004fea0(GameUi *parent)
     p->pfn04 = (CtlFn)BrUiPoll1003EB90;
     p->f1E1F4 = 1;
     p->m3838.s5(0x40001, &DAT_100aac88, 3, 0, -1);
-    g_brPAA29D4 = (BrCtl *)((BrObj29D4 *)(p));
+    (*(BrCtl * *)&g_brPAA29D4) = (BrCtl *)((BrObj29D4 *)(p));
     cont->w14 += 1;
     cont->w344 += 1;
-    if (g_brAA287C == 2) {
+    if (DAT_10ac5bd4 == 2) {
     p = new BrCtl;
     cont->a18[cont->w14] = p;
     bad = (p == 0);
@@ -203,9 +203,9 @@ int FUN_1004fea0(GameUi *parent)
         FUN_100378c0(4);
     p->s38(parent, cont->f338, cont->f33C - DAT_10077650, 0x102001, 2, 5, 1, -1);
     p->pfn0C = (CtlFn)BrSub10047360;
-    p->pfn08 = (CtlFn)FUN_1003d2f0;
+    p->pfn08 = (CtlFn)Ctl3D2F0_fn;
     p->w1E20C = 3;
-    p->s34((char *)(BrStrGet(0x5e)), 1, 1, (char *)(&DAT_100aabe8));
+    p->s34((char *)(BrStrGet(0x5e)), 1, 1, (char *)(&(*(char *)&g_hot0)));
     cont->w14 += 1;
     cont->w344 += 1;
     }
@@ -215,7 +215,7 @@ int FUN_1004fea0(GameUi *parent)
     bad = (p == 0);
     if (bad)
         FUN_100378c0(4);
-    if (g_brAA287C == 2 || g_brAA287C == 3)
+    if (DAT_10ac5bd4 == 2 || DAT_10ac5bd4 == 3)
         flags = 0x102001;
     else
         flags = 0x102011;
@@ -223,12 +223,12 @@ int FUN_1004fea0(GameUi *parent)
     p->pfn0C = (CtlFn)BrSub10047360;
     p->pfn08 = (CtlFn)BrOptOpen2950A;
     p->w1E20C = 2;
-    if (g_brAA287C == 2 || g_brAA287C == 3)
+    if (DAT_10ac5bd4 == 2 || DAT_10ac5bd4 == 3)
         flags = 1;
     else
         flags = 0;
-    p->s34((char *)(BrStrGet(0x60)), 1, flags, (char *)(&DAT_100aabe8));
-    DAT_10ac5d30 = (BrCtl *)((struct FlagObj *)((BrCtl *)((struct FlagObj *)(p))));
+    p->s34((char *)(BrStrGet(0x60)), 1, flags, (char *)(&(*(char *)&g_hot0)));
+    (*(BrCtl * *)&g_brPAA29D8) = (BrCtl *)((struct FlagObj *)((BrCtl *)((struct FlagObj *)(p))));
     cont->w14 += 1;
     cont->w344 += 1;
     p = new BrCtl;
@@ -238,9 +238,9 @@ int FUN_1004fea0(GameUi *parent)
         FUN_100378c0(4);
     p->s38(parent, cont->f338, cont->f33C - DAT_10077658, 0x102001, 2, 5, 1, -1);
     p->pfn0C = (CtlFn)BrSub10047360;
-    p->pfn08 = (CtlFn)BrOptOpen294C;
+    p->pfn08 = (CtlFn)CtlD620_fn;
     p->w1E20C = 3;
-    p->s34((char *)(BrStrGet(0x61)), 1, 1, (char *)(&DAT_100aabe8));
+    p->s34((char *)(BrStrGet(0x61)), 1, 1, (char *)(&(*(char *)&g_hot0)));
     cont->w14 += 1;
     cont->w344 += 1;
     p = new BrCtl;
@@ -252,7 +252,7 @@ int FUN_1004fea0(GameUi *parent)
     p->pfn0C = (CtlFn)BrSub10047360;
     p->pfn08 = (CtlFn)BrPhaseLeave_10044AE0;
     p->w1E20C = 3;
-    p->s34((char *)(BrStrGet(0xc)), 1, 1, (char *)(&DAT_100aabe8));
+    p->s34((char *)(BrStrGet(0xc)), 1, 1, (char *)(&(*(char *)&g_hot0)));
     cont->w14 += 1;
     cont->w344 += 1;
     p = new BrCtl;

@@ -174,19 +174,19 @@ const uint8_t *BrDlVtxGen(const uint8_t *p)
     if (!DAT_105d17d0) {
         if (DAT_105ccfd0 != 0) {
             m = DAT_100a9a50 ? DAT_105ccd50[DAT_100a9a50 - 1].m : NULL;
-            dx = (float)DAT_105ccc78[0].dir[0];
-            dy = (float)DAT_105ccc78[0].dir[1];
-            dz = (float)DAT_105ccc78[0].dir[2];
-            DAT_105ce210 = (float)DAT_105ccc78[0].col[0];
-            DAT_105ce214 = (float)DAT_105ccc78[0].col[1];
-            DAT_105ce218 = (float)DAT_105ccc78[0].col[2];
+            dx = (float)(*(BrDlLight (*)[2])&DAT_105ccc78)[0].dir[0];
+            dy = (float)(*(BrDlLight (*)[2])&DAT_105ccc78)[0].dir[1];
+            dz = (float)(*(BrDlLight (*)[2])&DAT_105ccc78)[0].dir[2];
+            DAT_105ce210 = (float)(*(BrDlLight (*)[2])&DAT_105ccc78)[0].col[0];
+            DAT_105ce214 = (float)(*(BrDlLight (*)[2])&DAT_105ccc78)[0].col[1];
+            DAT_105ce218 = (float)(*(BrDlLight (*)[2])&DAT_105ccc78)[0].col[2];
             DAT_105ce21c = ((m[1] * dy + m[2] * dz) + m[0] * dx) / DAT_10077420;
             DAT_105ce220 = ((m[4] * dx + m[6] * dz) + m[5] * dy) / DAT_10077420;
             DAT_105ce224 = ((m[8] * dx + m[10] * dz) + m[9] * dy) / DAT_10077420;
-            FUN_100344D0(&DAT_105ce21c);
-            DAT_105ce228 = (float)DAT_105ccc78[1].col[0];
-            DAT_105ce22c = (float)DAT_105ccc78[1].col[1];
-            DAT_105ce230 = (float)DAT_105ccc78[1].col[2];
+            br_dl_normalise(&DAT_105ce21c);
+            DAT_105ce228 = (float)(*(BrDlLight (*)[2])&DAT_105ccc78)[1].col[0];
+            DAT_105ce22c = (float)(*(BrDlLight (*)[2])&DAT_105ccc78)[1].col[1];
+            DAT_105ce230 = (float)(*(BrDlLight (*)[2])&DAT_105ccc78)[1].col[2];
         }
         DAT_105d17d0 = 1;
     }
@@ -194,7 +194,7 @@ const uint8_t *BrDlVtxGen(const uint8_t *p)
     w0 = *(const uint32_t *)p;
     pSrc = *(const BrDlSrcVtxT **)(p + 4);
     v0 = (w0 >> 16) & 0xFF;
-    pV = &DAT_105ce318[v0];
+    pV = &g_aBrDlVtxPool[v0];
     n  = (w0 >> 10) & 0x3F;
 
     pVc = pV;
@@ -215,7 +215,7 @@ const uint8_t *BrDlVtxGen(const uint8_t *p)
         td.y = (m[1] * pn[-1] + m[9] * pn[1]) + m[5] * pn[0];
         td.z = (m[2] * pn[-1] + m[10] * pn[1]) + m[6] * pn[0];
 
-        FUN_100344D0(&td);
+        br_dl_normalise(&td);
 
         pf = &pV[i].f40;
         look1 = DAT_105ce2d8 + 8;
@@ -223,16 +223,16 @@ const uint8_t *BrDlVtxGen(const uint8_t *p)
 
         dotX_128 = ((td.x * (float)(signed char)look1[0] + (float)(signed char)look1[2] * td.z) + (float)(signed char)look1[1] * td.y) / DAT_10077420;
         pV[i].s = (((td.x * (float)(signed char)look2[0] + (float)(signed char)look2[2] * td.z) + (float)(signed char)look2[1] * td.y) / DAT_10077420
-                   * (float)DAT_1186c958 - DAT_10077424 - (float)DAT_118ed198) / DAT_118ed1a4;
-        pV[i].t = (dotX_128 * (float)DAT_118ed1ac - DAT_10077424 - (float)DAT_1186c950) / DAT_118ed1a8;
+                   * (float)DAT_1186c958 - DAT_10077424 - (float)BrGbiRectG_18ED198) / DAT_118ed1a4;
+        pV[i].t = (dotX_128 * (float)DAT_118ed1ac - DAT_10077424 - (float)BrGbiRectG_186C950) / DAT_118ed1a8;
 
-        FUN_10022AC0(pSrc, pf);
+        br_dl_light_vertex(pSrc, pf);
 
-        oc = FUN_10022120(pf);
+        oc = BrDlsClipCodes(pf);
         pV[i].outcode = oc;
 
         if (oc == 0) {
-            FUN_10022070(pVc, pf, pV[i].n0, pV[i].n1, pV[i].n2);
+            br_dl_project(pVc, pf, pV[i].n0, pV[i].n1, pV[i].n2);
         }
         pSrc++;
         pVc++;

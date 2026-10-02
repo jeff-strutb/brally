@@ -62,15 +62,15 @@ int BrUiText1003FCB0(Obj391F0 *pObj)
 {
     char *s;
 
-    if (g_brFlag8EEED4 != 0)
-        s = BrStrByIndex(g_brTblABBA0[g_brSel5D74]);
+    if (DAT_118eeed4 != 0)
+        s = BrStrGet(g_brTblABBA0[g_brSel5D74]);
     else
-        s = BrStrByIndex(0x74);
+        s = BrStrGet(0x74);
 
     strcpy(pObj->m2B5C.szName, s);
 
     pObj->m2B5C.s1();
-    BrItemApply_10038380((struct BrCtl85 *)(pObj), 0);
+    Br85ItemApply((struct BrCtl85 *)(pObj), 0);
 
     return 1;
 }

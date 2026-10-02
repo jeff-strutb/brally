@@ -23,7 +23,7 @@ int BrInputOrPlaybackActive(void)
   
   iVar1 = BrFn1005FFD0();
   if (iVar1 < 0) {
-    iVar1 = FUN_10037720();
+    iVar1 = BrInputAnyActive();
     if (iVar1 == 0) {
       return 0;
     }

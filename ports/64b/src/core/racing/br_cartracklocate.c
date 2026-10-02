@@ -79,14 +79,14 @@ unsigned int BR_THISCALL1 BrCarTrackLocate(BrDriverCar *param_1)
   local_45 = param_1->f29BD;
   local_30 = 0;
   bVar11 = 1;
-  if (((((DAT_100b3014 == 3) || (DAT_100b3014 == 9)) && (0x38 <= local_46)) &&
+  if ((((((*(int *)&g_Br0B380C) == 3) || ((*(int *)&g_Br0B380C) == 9)) && (0x38 <= local_46)) &&
        ((local_46 <= 0x3a && (0x17 <= local_45)))) && (local_45 <= 0x1b)) {
     local_46 = 0x39;
     local_45 = 0x19;
     bVar11 = 0;
   }
   fVar7 = param_1->fFF4 -
-          (float)param_1->lapB * *(float *)(DAT_106eed48 + 100);
+          (float)param_1->lapB * *(float *)(g_pBrRaceLapRec + 100);
   if (bVar11) {
     iVar12 = *(int *)&param_1->pNode + *(int *)&param_1->iPt * 0x28;
     iVar12 = BrSeg2SideTest(iVar12 + 0x40, iVar12 + 0x58, ((void *)&param_1->posPrev.x), iVar1);
@@ -102,10 +102,10 @@ unsigned int BR_THISCALL1 BrCarTrackLocate(BrDriverCar *param_1)
   }
   iVar13 = 0;
   local_34 = (DAT_106eed04 - DAT_106eed00) * (DAT_106eed04 - DAT_106eed00);
-  iVar12 = DAT_106eed48;
+  iVar12 = g_pBrRaceLapRec;
   if (0 < DAT_106eed54) {
     do {
-      if ((((((param_1->f140 < DAT_100b3858) || (DAT_100a9360 == 2)) ||
+      if ((((((param_1->f140 < (*(int *)&g_brRaceNEntrant)) || ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 2)) ||
              ((*(unsigned char *)(*(int *)(DAT_106eed50 + iVar13 * 4) + 0x16) & 1) == 0)) &&
             ((iVar6 = *(int *)(DAT_106eed50 + iVar13 * 4), local_46 >= *(unsigned char *)(iVar6 + 0x10) &&
               (local_46 <= *(unsigned char *)(iVar6 + 0x12))))) &&
@@ -137,7 +137,7 @@ unsigned int BR_THISCALL1 BrCarTrackLocate(BrDriverCar *param_1)
             }
             iVar15 = iVar15 + 1;
             pfVar14 = pfVar14 + 10;
-            iVar12 = DAT_106eed48;
+            iVar12 = g_pBrRaceLapRec;
           } while (iVar15 < (int)(unsigned int)uVar2);
         }
       }
@@ -157,7 +157,7 @@ LAB_found:
   br_dl_normalise(local_18);
   BrVec3Sub(local_c, iVar1, iVar13 + 0x4c);
   fVar16 = BrVec3Dot(local_18, local_c);
-  fVar3 = (float)((float)(param_1->lapB + 1) * *(float *)(DAT_106eed48 + 100) -
+  fVar3 = (float)((float)(param_1->lapB + 1) * *(float *)(g_pBrRaceLapRec + 100) -
                   *(float *)(iVar13 + 100) + fVar16 - param_1->fFF4);
   if ((bVar11 == 0) || ((fVar3 > DAT_10077c3c && (fVar3 < DAT_10077c34)))) {
     param_1->fFF4 = fVar3 + param_1->fFF4;

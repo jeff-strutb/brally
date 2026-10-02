@@ -25,8 +25,8 @@
 int BrClearFlag_AB504(void)
 
 {
-  if (DAT_104ab504 != 0) {
-    DAT_104ab504 = 0;
+  if (g_brRbInited != 0) {
+    g_brRbInited = 0;
   }
   return;
 }
@@ -37,7 +37,7 @@ int BrClearFlag_AB504(void)
 int BrGetFlag_AB4F0(void)
 
 {
-  return DAT_104ab4f0;
+  return g_brRbB4F0;
 }
 
 

@@ -18,8 +18,8 @@
 int BrToggleOnce_BFF0(int param_1)
 
 {
-  if (g_brAA28D8 == 0) {
-    g_brAA28D8 = 1;
+  if (g_5C30 == 0) {
+    g_5C30 = 1;
     *(unsigned int *)(param_1 + 0x2f7c) = (unsigned int)(*(int *)(param_1 + 0x2f7c) == 0);
   }
   return 1;
@@ -34,8 +34,8 @@ int BrToggleOnce_BFF0(int param_1)
 int BrToggleOnce_C050(int param_1)
 
 {
-  if (g_brAA28D8 == 0) {
-    g_brAA28D8 = 1;
+  if (g_5C30 == 0) {
+    g_5C30 = 1;
     *(unsigned int *)(param_1 + 0x2f7c) = (unsigned int)(*(int *)(param_1 + 0x2f7c) == 0);
   }
   return 1;

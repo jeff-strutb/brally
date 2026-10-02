@@ -21,14 +21,14 @@ void BrExt_1002A640(void) {}
 /* @n64 0x8021C6B8 located */
 void BrSet_1006AA90(void)
 {
-    g_1750308 = 1;
+    (*(uint32_t *)&(*(int *)&g_BrReplayOn)) = 1;
 }
 
 /* WHAT IT DOES: is replay recording on? */
 /* @d3donly 0x1006AAA0 BrGet_1006AAA0 -- exists in BRGlide only as folded/duplicated stubs; no unique twin locatable by bytes */
 uint32_t BrGet_1006AAA0(void)
 {
-    return g_1750308;
+    return (*(uint32_t *)&(*(int *)&g_BrReplayOn));
 }
 
 /* WHAT IT DOES: remember how many players the replay should record.  If
@@ -38,7 +38,7 @@ void BrMode_1006A990(uint32_t n)
 {
     g_B502E4 = n;
     if (--n == 0) {
-        g_690A20 = (uint32_t)(uintptr_t)&BrInstall_1001BAE0;
+        (*(uint32_t *)&g_aBrTexSlot[192992]) = (uint32_t)(uintptr_t)&BrInstall_1001BAE0;
         g_B501C8 = (uint32_t)(uintptr_t)&BrExt_10024460;
         g_0B8C94 = (uint32_t)(uintptr_t)&BrExt_1002A640;
     }
@@ -85,7 +85,7 @@ int64_t BrTickAdd_10078C10(void)
 /* @n64 0x80242954 located */
 int BrDelta_100713A0(void)
 {
-    return BrExt_10075020() - (int)g_178FEE8;
+    return BrSub10075020() - (int)(*(uint32_t *)&g_178FEE8);
 }
 
 /* -- Ghidra-matched functions --------------------------- */
@@ -99,7 +99,7 @@ int BrDelta_100713A0(void)
 int BrReplayIsOn(void)
 
 {
-  return g_BrReplayOn;
+  return (*(int *)&g_BrReplayOn);
 }
 
 /* WHAT IT DOES: set the app mode to 5 (return to menu) and call the mode-change handler. */
@@ -108,8 +108,8 @@ int BrReplayIsOn(void)
 int BrSetMode5(void)
 
 {
-  g_a220B20 = 5;
-  FUN_1002f282();
+  (*(int *)&g_a220B20) = 5;
+  BrSessionReinitVideo();
   return;
 }
 
@@ -121,7 +121,7 @@ int BrSetMode5(void)
 char * BrReplayGetBuf(void)
 
 {
-  return &DAT_10b73668;
+  return &(*(int *)&g_BrReplayBuf);
 }
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
@@ -132,7 +132,7 @@ char * BrReplayGetBuf(void)
 char * BrReplayGetBuf2(void)
 
 {
-  return &DAT_10cf3668;
+  return &(*(int *)&g_BrReplayBuf[1572864]);
 }
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
@@ -146,6 +146,6 @@ unsigned int BrReplayCountFromBytes(unsigned int cb)
 {
   /* mov eax,edx; shr eax,4 -- the quotient is copied into EAX because the
    * assignment's value is also RETURNED. */
-  return DAT_10b7364c = cb / 0x18;
+  return (*(unsigned int *)&g_BrReplayCount[1]) = cb / 0x18;
 }
 

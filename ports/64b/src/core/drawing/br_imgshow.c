@@ -54,30 +54,30 @@ void BrImgShowFullScreen(const char *pszName, unsigned int key)
     unsigned int seed;
     float x0, y0, x1, y1, s1, t1;
 
-    fp = FUN_10003320(pszName);
-    FUN_100034c0(&cx, 4, 1, fp);
-    FUN_100034c0(&cy, 4, 1, fp);
+    fp = BrChkFReadOpen(pszName);
+    BrChkFRead(&cx, 4, 1, fp);
+    BrChkFRead(&cy, 4, 1, fp);
     cb = cx * cy * 2;
-    FUN_100034c0(DAT_1184c488, 4, 1, fp);
-    FUN_100034c0(DAT_1184c488, cb, 1, fp);
-    FUN_100035e0(fp);
+    BrChkFRead(DAT_1184c488, 4, 1, fp);
+    BrChkFRead(DAT_1184c488, cb, 1, fp);
+    BrChkFClose(fp);
     if (key != 0) {
-        seed = FUN_10001000(0, 0, 0);
-        if (FUN_10001000(seed, DAT_1184c488, cb) != key)
+        seed = BrAdler32(0, 0, 0);
+        if (BrAdler32(seed, DAT_1184c488, cb) != key)
             exit(1);
     }
 
     FUN_100281c0();
     hTex = FUN_10028200(0, 3, 0x80, 0x20, 0xB, 2, 0, 0, 3, 0, 0, 0, 0, 0, 0);
-    FUN_100283c0(hTex, DAT_1184c488);
+    BrTex3dDownloadAt(hTex, DAT_1184c488);
     FUN_10028420(hTex);
     grTexCombine(0, 1, 0, 1, 0, 0, 0);
     grColorCombine(3, 8, 1, 1, 0);
 
-    x0 = (float)((DAT_100a7514 - 0x100) / 2);
+    x0 = (float)((BrGbiRectG_A7514 - 0x100) / 2);
     if (x0 < 0.0f)
         x0 = 0.0f;
-    y0 = (float)((DAT_100a7518 - 0x100) / 2);
+    y0 = (float)((BrGbiRectG_A7518 - 0x100) / 2);
     if (y0 < 0.0f)
         y0 = 0.0f;
     y1 = (float)cy + y0 - 1.0f;
@@ -122,15 +122,15 @@ void BrImgShowFullScreen(const char *pszName, unsigned int key)
     d.g = 255.0f;
     d.b = 255.0f;
 
-    grClipWindow(0, 0, DAT_100a7514, DAT_100a7518);
+    grClipWindow(0, 0, BrGbiRectG_A7514, BrGbiRectG_A7518);
     grBufferClear(0, 0, 0xFFFF);
     grDrawTriangle(&a, &b, &c);
     grDrawTriangle(&b, &d, &c);
-    DAT_106b7ab8();
-    grClipWindow(0, 0, DAT_100a7514, DAT_100a7518);
+    (*(void (**)(void))&BrGlFlipHook)();
+    grClipWindow(0, 0, BrGbiRectG_A7514, BrGbiRectG_A7518);
     grBufferClear(0, 0, 0xFFFF);
     grDrawTriangle(&a, &b, &c);
     grDrawTriangle(&b, &d, &c);
-    DAT_106b7ab8();
+    (*(void (**)(void))&BrGlFlipHook)();
     FUN_100281c0();
 }

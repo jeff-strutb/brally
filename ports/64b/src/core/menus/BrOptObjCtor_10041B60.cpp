@@ -68,10 +68,10 @@ OptObj41B60::OptObj41B60()
 
     pC0 = new NameList55;
     if (pC0 == 0)
-        Br73Err(6);
+        FUN_100378c0(6);
     pC4 = new NameList55;
     if (pC4 == 0)
-        Br73Err(6);
+        FUN_100378c0(6);
 
     for (i = 0; i < 100; i++) {
         sprintf(pC0->asz[i], BrStrGet(0xBE), i);

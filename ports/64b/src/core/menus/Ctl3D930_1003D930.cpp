@@ -35,12 +35,12 @@ public:
 
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define g_slot DAT_10ac5ca8
+#define g_slot (*(Phase * *)&g_brPAA2950)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define g_kind DAT_10226a48
+#define g_kind (*(int *)&g_brRaceNet)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 #define g_flag DAT_10ac5bf0
 
@@ -71,17 +71,17 @@ int Ctl3D930::Activate()
     if (p == 0) {
         p = new Phase;
         g_slot = p;
-        g_cur = (Phase *)((BrOptObj *)(p));
+        (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(p));
         if (p == 0)
             return 0;
         p->pfnEnter = EnterFn;
         g_slot->pfnEnter(g_slot);
-        g_cur->f0C = 1;
-        g_cur->f68 = 1;
+        (*(Phase * *)&g_brPAA29B8)->f0C = 1;
+        (*(Phase * *)&g_brPAA29B8)->f68 = 1;
     } else {
-        g_cur = (Phase *)((BrOptObj *)(p));
+        (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(p));
     }
-    g_hookOwner->pfnHook = HookFn;
+    g_29B8->pfnHook = HookFn;
     return 1;
 }
 

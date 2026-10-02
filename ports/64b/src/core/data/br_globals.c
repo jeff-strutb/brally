@@ -741,8 +741,8 @@ int32_t g_i0AC65C;  /* 0x100ABDFC */
 int DAT_100abe40;  /* 0x100ABE40 */
 short g_ABE44;  /* 0x100ABE44 */
 BrCheatEntry g_aBrCheatCode[16];  /* 0x100ABE48 */
-Metric12 g_BrGlyphFontA12[95];  /* 0x100ABE84 */
-Metric12B g_BrGlyphFontB12[95];  /* 0x100AC2FC */
+Metric12 (*(BrGlyphMetric12 (*)[])&g_BrGlyphFontA12)[95];  /* 0x100ABE84 */
+Metric12B (*(BrGlyphMetric12 (*)[])&g_BrGlyphFontB12)[95];  /* 0x100AC2FC */
 const int32_t g_aBrAC308[168];  /* 0x100AC308 */
 const int32_t g_aBrAC530[2];  /* 0x100AC530 */
 const int32_t g_aBrAC538[2];  /* 0x100AC538 */
@@ -750,7 +750,7 @@ const int32_t g_aBrAC540[2];  /* 0x100AC540 */
 const int32_t g_aBrAC548[44];  /* 0x100AC548 */
 BrCharMapEntry g_BrCharMapImage[784];  /* 0x100AC5F8 */
 BrGlyphMetric g_BrGlyphFontA[95];  /* 0x100AC6E4 */
-Dim g_tab[7];  /* 0x100AC908 */
+Dim (*(struct Dim (*)[7])&g_tab)[7];  /* 0x100AC908 */
 char DAT_100ac9c8[132];  /* 0x100AC9C8 */
 char DAT_100aca4c;  /* 0x100ACA4C */
 char g_szBr0ACA50[124];  /* 0x100ACA50 */

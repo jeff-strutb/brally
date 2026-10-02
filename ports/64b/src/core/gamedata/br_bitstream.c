@@ -430,7 +430,7 @@ void BrObjResetMsgHdr(BrBitStream *pBs)
     BrBitStreamByteArg a;
 
     BrObjClear(pBs);
-    a.v = (unsigned int)DAT_1184c070;
+    a.v = (unsigned int)(*(int *)&DAT_1184c070);
     BrBitStreamWriteU24(pBs, a);
 }
 

@@ -79,21 +79,21 @@ int Input59350::CreateDevice(void *hWnd)
 {
     int hr;
 
-    hr = g_pDInput->lpVtbl->CreateDevice(g_pDInput, g_DeviceGuid, &pDev, 0);
+    hr = (*(DI * *)&g_pBr18ABD70)->lpVtbl->CreateDevice((*(DI * *)&g_pBr18ABD70), g_DeviceGuid, &pDev, 0);
     if (hr < 0) {
-        BrDInputReport(hWnd, hr, BrDInputErrLine(0xAC));
+        BrMsgBoxAA(hWnd, hr, BrStrGet(0xAC));
         return 0;
     }
 
     hr = pDev->lpVtbl->SetDataFormat(pDev, g_DataFormat);
     if (hr < 0) {
-        BrDInputReportTwin(hWnd, hr, BrDInputErrLine(0xAD));
+        BrMsgBoxAA(hWnd, hr, BrStrGet(0xAD));
         return 0;
     }
 
     hr = pDev->lpVtbl->SetCooperativeLevel(pDev, hWnd, 5);
     if (hr < 0) {
-        BrDInputReport(hWnd, hr, BrDInputErrLine(0xAE));
+        BrMsgBoxAA(hWnd, hr, BrStrGet(0xAE));
         return 0;
     }
 

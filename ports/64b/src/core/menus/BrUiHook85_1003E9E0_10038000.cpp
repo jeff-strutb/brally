@@ -35,7 +35,7 @@ int BrUiHook85_1003E9E0(BrIconItem *pItem)
     x = (int)pItem->x;
     y = (int)pItem->y + 0x13;
     pItem->s5(0x74, x, y);
-    for (i = 0; i < g_brB4E70C; i++)
+    for (i = 0; i < (*(unsigned int *)&g_brRaceB71A6C); i++)
         pItem->s5(0x75, x + i * 0xc, y);
     return 1;
 }

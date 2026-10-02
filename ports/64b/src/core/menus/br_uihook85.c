@@ -50,9 +50,9 @@ int BrUiFn1003EEF0(struct BrCtl85 *param_1)
   if (strlen(pcVar5) != 0) {
     *(unsigned int *)(DAT_10ac5d00 + 0x1c) = *(unsigned int *)(DAT_10ac5d00 + 0x1c) & 0xffffffef;
   }
-  iVar2 = _stricmp(DAT_10b71648,pcVar5);
+  iVar2 = _stricmp(g_aBrCfgPlayerName,pcVar5);
   if (iVar2 != 0) {
-    strcpy(DAT_10b71648, pcVar5);
+    strcpy(g_aBrCfgPlayerName, pcVar5);
   }
   return 1;
 }
@@ -154,9 +154,9 @@ int BrUiFn1003F110(struct BrCtl85 *param_1)
   int iVar2;
   
   Br85ItemApply(param_1,0);
-  iVar2 = _stricmp(DAT_10ac4db0,(char *)(param_1 + 0x2b65));
+  iVar2 = _stricmp(g_szBrName4DB0,(char *)(param_1 + 0x2b65));
   if (iVar2 != 0) {
-    strcpy(DAT_10ac4db0, (char *)(param_1 + 0x2b65));
+    strcpy(g_szBrName4DB0, (char *)(param_1 + 0x2b65));
   }
   return 1;
 }
@@ -198,10 +198,10 @@ int BrUiFn1003F170(int param_1)
 
     strcpy(g_szBrName4DB0, pText);
 
-    BrFn1003D210_glide(g_brOwner5BC72C, g_brSlot4098, 0);
+    FUN_100368a0(g_brOwner5BC72C, g_brPA9D008, 0);
 
-    strcpy(g_szBrName4DB0, g_szBrEmpty396F08);
-    strcpy(pText, g_szBrEmpty396F08);
+    strcpy(g_szBrName4DB0, g_aBr39B720);
+    strcpy(pText, g_aBr39B720);
 
     return 1;
 }
@@ -227,9 +227,9 @@ int BrUiFn1003F210(struct BrCtl85 *param_1)
   if (strlen(pcVar5) != 0) {
     *(unsigned int *)(DAT_10ac5d14 + 0x1c) = *(unsigned int *)(DAT_10ac5d14 + 0x1c) & 0xffffffef;
   }
-  iVar2 = _stricmp(DAT_10ac40a8,pcVar5);
+  iVar2 = _stricmp((*(char (*)[])&DAT_10ac40a8),pcVar5);
   if (iVar2 != 0) {
-    strcpy(DAT_10ac40a8, pcVar5);
+    strcpy((*(char (*)[])&DAT_10ac40a8), pcVar5);
   }
   return 1;
 }

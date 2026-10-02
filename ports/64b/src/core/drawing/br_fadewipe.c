@@ -251,7 +251,7 @@ int BrFadeRelease(void)
 {
   DAT_104b1688 = DAT_104b1688 + -1;
   if (DAT_104b1688 == 0) {
-    (*DAT_104b161c)();
+    (*(*(void (**)(void))&DAT_104b161c))();
   }
   return 1;
 }
@@ -275,8 +275,8 @@ int BrFadeRelease(void)
 /* @implements 0x10017F30 glide BrFadeLatch */
 void BrFadeLatch(void)
 {
-  DAT_104b16a8 = DAT_100a7514;
-  DAT_104b16a4 = DAT_100a7518;
+  (*(int *)&g_brFadePos2) = BrGbiRectG_A7514;
+  (*(int *)&g_brFadeA4) = BrGbiRectG_A7518;
 }
 
 /* The 0x3EB / 0x3E8 / 0 token soup both emit paths hand to
@@ -376,7 +376,7 @@ static uint32_t br16_bar_w0(int32_t top, int32_t width, int32_t shift)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */      /* bars   */
 /* BrFadeIsShut: prototype in br_funcs.h */
 
-#define BR16_ALLOC()  (DAT_106e7710++)
+#define BR16_ALLOC()  ((*(BrGfxWords * *)&g_BrGfxPtr)++)
 #define BR16_BAR_W0(top_, width_, shift_)                                  \
     (0xE1000000u                                                           \
      | ((((((uint32_t)(top_) << (shift_)) + 0xFFFFFu)) << 12) & 0xFFF000u)  \
@@ -406,7 +406,7 @@ void BrFadeDrawBars(void)
      * BR16_FEQU macro spells that out as `!(a < b || a > b)` and costs a
      * SECOND fcomp; it is the right model for the reader and the wrong one
      * for the bytes. */
-    if (DAT_104b16c0 == 1.0f)
+    if ((*(float *)&g_brCursor575518) == 1.0f)
         return;
 
     p = BR16_ALLOC(); p->w0 = 0xE7000000u; p->w1 = 0;
@@ -424,8 +424,8 @@ void BrFadeDrawBars(void)
          * through a named double: a helper taking a double PUSHES it on the C
          * stack (sub esp / fstp qword / add esp), and a bare
          * `(int)(double)intexpr` is folded away entirely. */
-        double   dx = (double)(DAT_106e9a2c << DAT_106ed674);
-        double   dy = (double)(DAT_106e7714 << DAT_106ed674);
+        double   dx = (double)(g_brRaceCueBase << (*(int32_t *)((char *)&g_aBrEntRecs + 0x44)));
+        double   dy = (double)((*(int32_t *)&g_scrW4) << (*(int32_t *)((char *)&g_aBrEntRecs + 0x44)));
         uint32_t x  = (uint32_t)(int32_t)dx & 0xFFFu;
         uint32_t y  = (uint32_t)(int32_t)dy & 0xFFFu;
         p->w1 = x | (y << 12);
@@ -437,11 +437,11 @@ void BrFadeDrawBars(void)
      * register and compares register to register, where the memory operand
      * spelling gives `cmp [g],reg`.  Naming the other two tests' operands is
      * inert -- VC5 folds them straight back to memory. */
-    v = DAT_104b16b0;
+    v = g_brFadePos;
     if (v != 0) {
         /* Dead store in the original: the aPos2 entry for the INVERTED parity
          * goes to a stack local nothing ever reads. */
-        dead = DAT_104b1698[DAT_106ed67c ^ 1];
+        dead = g_brFadePosHist[(*(int32_t *)((char *)&g_aBrEntRecs + 0x4C)) ^ 1];
 
         if (BrFadeIsShut())
             DAT_100a7510 = 3;
@@ -458,30 +458,30 @@ void BrFadeDrawBars(void)
         p->w1 = 0;
         /* pos2 comes from the local, not a re-read: the original keeps it
          * in a callee-saved register across BrFadeIsShut. */
-        p->w0 = BR16_BAR_W0(v, DAT_106e9a2c, DAT_106ed674);
+        p->w0 = BR16_BAR_W0(v, g_brRaceCueBase, (*(int32_t *)((char *)&g_aBrEntRecs + 0x44)));
     }
 
     /* Both counters are read ONCE and the decrement writes the local back:
      * the original loads bars into a register, tests it against the zero it
      * keeps in a callee-saved register, and decrements the copy.  `bars -= 1`
      * on the global re-reads it and compares against memory instead. */
-    ps = DAT_104b16a8;
-    if (ps < DAT_106e7714) {
+    ps = (*(int *)&g_brFadePos2);
+    if (ps < (*(int32_t *)&g_scrW4)) {
         n = DAT_100a7510;
         if (n != 0) {
             p = BR16_ALLOC();
             DAT_100a7510 = n - 1;
-            p->w0 = BR16_BAR_W0(DAT_106e7714, DAT_106e9a2c, DAT_106ed674);
+            p->w0 = BR16_BAR_W0((*(int32_t *)&g_scrW4), g_brRaceCueBase, (*(int32_t *)((char *)&g_aBrEntRecs + 0x44)));
             top = ps;
-            p->w1 = (uint32_t)(((uint32_t)top << DAT_106ed674) & 0xFFFu) << 12;
+            p->w1 = (uint32_t)(((uint32_t)top << (*(int32_t *)((char *)&g_aBrEntRecs + 0x44))) & 0xFFFu) << 12;
         }
-    } else if (DAT_104b16c0 == 0.0f && (n = DAT_100a7510) != 0) {
+    } else if ((*(float *)&g_brCursor575518) == 0.0f && (n = DAT_100a7510) != 0) {
         p = BR16_ALLOC();
         DAT_100a7510 = n - 1;
-        p->w0 = BR16_BAR_W0(DAT_106e7714, DAT_106e9a2c, DAT_106ed674);
+        p->w0 = BR16_BAR_W0((*(int32_t *)&g_scrW4), g_brRaceCueBase, (*(int32_t *)((char *)&g_aBrEntRecs + 0x44)));
         /* top is still 0 here: the same expression, and the same four
          * instructions the original spends on it. */
-        p->w1 = (uint32_t)(((uint32_t)top << DAT_106ed674) & 0xFFFu) << 12;
+        p->w1 = (uint32_t)(((uint32_t)top << (*(int32_t *)((char *)&g_aBrEntRecs + 0x44))) & 0xFFFu) << 12;
     }
 
     p = BR16_ALLOC(); p->w1 = 0; p->w0 = 0xE7000000u;
@@ -586,19 +586,19 @@ static void br16_ramp_step(float *pCur, float tgt, float rate, float dt,
 void BrFadeTick(void)
 {
     if (g_brFadeKick == 0) {
-        if (g_brFadeValue != g_brFadeTarget) {
-        g_brFadeValue = g_brFadeRate * g_brFadeDt + g_brFadeValue;
-        if (g_brFadeRate < 0.0f) {
-            if (!(g_brFadeValue >= g_brFadeTarget))
-                g_brFadeValue = g_brFadeTarget;
+        if ((*(float *)&g_brCursor575518) != (*(float *)&g_brCursor575510)) {
+        (*(float *)&g_brCursor575518) = DAT_104b16bc * g_brRaceFlyStep + (*(float *)&g_brCursor575518);
+        if (DAT_104b16bc < 0.0f) {
+            if (!((*(float *)&g_brCursor575518) >= (*(float *)&g_brCursor575510)))
+                (*(float *)&g_brCursor575518) = (*(float *)&g_brCursor575510);
         } else {
             /* overshoot INCLUDES equality: this is what lets the bounce
              * fire when the wipe lands exactly on its target */
-            if (g_brFadeValue >= g_brFadeTarget) {
-                g_brFadeValue = g_brFadeTarget;
+            if ((*(float *)&g_brCursor575518) >= (*(float *)&g_brCursor575510)) {
+                (*(float *)&g_brCursor575518) = (*(float *)&g_brCursor575510);
                 if (g_brFadeBounce != 0) {
-                    g_brFadeRate   = -g_brFadeRate;
-                    g_brFadeTarget = 0.0f;
+                    DAT_104b16bc   = -DAT_104b16bc;
+                    (*(float *)&g_brCursor575510) = 0.0f;
                     g_brFadeBounce = 0;
                 }
             }
@@ -628,31 +628,31 @@ void BrFadeTick(void)
      * give the two names views of it, which means touching slice2_16.h --
      * a serialised header edit, so it is left for a session that owns
      * that header. */
-    g_brFadePos2Hist[g_brFadeParity] = g_brFadePos2;
-    g_brFadePosHist[g_brFadeParity]  = g_brFadePos;
+    g_brFadePos2Hist[(*(int32_t *)((char *)&g_aBrEntRecs + 0x4C))] = g_brFadePos2;
+    g_brFadePosHist[(*(int32_t *)((char *)&g_aBrEntRecs + 0x4C))]  = g_brFadePos;
     g_brFadeB4 = 0;
-    g_brFadeA4 = g_brFadeWidth;
+    g_brFadeA4 = g_brRaceCueBase;
 
-    if (g_brFadeRate > 0.0f) {
-        int32_t v = (int32_t)(g_brFadeSpan * g_brFadeValue);
+    if (DAT_104b16bc > 0.0f) {
+        int32_t v = (int32_t)((*(int32_t *)&g_scrW4) * (*(float *)&g_brCursor575518));
         g_brFadePos  = 0;
         g_brFadePos2 = (v + 3) & ~3;
-    } else if (!(g_brFadeRate >= 0.0f)) {
-        int32_t v = (int32_t)(g_brFadeSpan * g_brFadeValue);
-        int32_t step = ((g_brFadeSpan - v - g_brFadePos) + 3) & ~3;
+    } else if (!(DAT_104b16bc >= 0.0f)) {
+        int32_t v = (int32_t)((*(int32_t *)&g_scrW4) * (*(float *)&g_brCursor575518));
+        int32_t step = (((*(int32_t *)&g_scrW4) - v - g_brFadePos) + 3) & ~3;
         g_brFadePos2 += step;
         g_brFadePos  += step;
-        if (g_brFadePos2 > g_brFadeSpan)
-            g_brFadePos2 = g_brFadeSpan;
+        if (g_brFadePos2 > (*(int32_t *)&g_scrW4))
+            g_brFadePos2 = (*(int32_t *)&g_scrW4);
     } else {
         g_brFadePos  = 0;
-        g_brFadePos2 = g_brFadeSpan;
+        g_brFadePos2 = (*(int32_t *)&g_scrW4);
     }
 
     if (g_brFadeKickA == 0) {
         if (g_brFadeCurA != g_brFadeTgtA) {
-        g_brFadeCurA = g_brFadeRateA * g_brFadeDt + g_brFadeCurA;
-        if (g_brFadeRateA < 0.0f) {
+        g_brFadeCurA = DAT_104b16c8 * g_brRaceFlyStep + g_brFadeCurA;
+        if (DAT_104b16c8 < 0.0f) {
             if (!(g_brFadeCurA >= g_brFadeTgtA))
                 g_brFadeCurA = g_brFadeTgtA;
         } else {
@@ -668,8 +668,8 @@ void BrFadeTick(void)
 
     if (g_brFadeKickB == 0) {
         if (g_brFadeCurB != g_brFadeTgtB) {
-        g_brFadeCurB = g_brFadeRateB * g_brFadeDt + g_brFadeCurB;
-        if (g_brFadeRateB < 0.0f) {
+        g_brFadeCurB = DAT_104b16c4 * g_brRaceFlyStep + g_brFadeCurB;
+        if (DAT_104b16c4 < 0.0f) {
             if (!(g_brFadeCurB >= g_brFadeTgtB))
                 g_brFadeCurB = g_brFadeTgtB;
         } else {

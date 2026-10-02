@@ -45,7 +45,7 @@ int BrNetSend4900(void *dest, int a1, int a2, int a3, int a4,
     pkt.Put24(0);
     pkt.PutByte((unsigned char)((g_id & 0xf) | flags | 0xE0));
     pkt.PutByte((unsigned char)a1);
-    pkt.PutByte(g_226E7C);
+    pkt.PutByte((*(unsigned char *)&g_226e7c));
     pkt.PutByte((unsigned char)a2);
     pkt.PutByte((unsigned char)a3);
     pkt.PutByte((unsigned char)a4);

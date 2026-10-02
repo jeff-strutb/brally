@@ -34,11 +34,11 @@ extern "C" {
 
 int BrCtrlCfgReloadPreset(void)
 {
-    switch (g_brCtrlPreset) {
-    case 0: g_brCtrlCfgObj.LoadPreset(0); return 1;
-    case 1: g_brCtrlCfgObj.LoadPreset(1); return 1;
-    case 2: g_brCtrlCfgObj.LoadPreset(2); return 1;
-    case 3: g_brCtrlCfgObj.LoadPreset(3); break;
+    switch (g_brKind5D64) {
+    case 0: (*(CtrlCfg *)&g_BrCtrlCfg).LoadPreset(0); return 1;
+    case 1: (*(CtrlCfg *)&g_BrCtrlCfg).LoadPreset(1); return 1;
+    case 2: (*(CtrlCfg *)&g_BrCtrlCfg).LoadPreset(2); return 1;
+    case 3: (*(CtrlCfg *)&g_BrCtrlCfg).LoadPreset(3); break;
     }
     return 1;
 }

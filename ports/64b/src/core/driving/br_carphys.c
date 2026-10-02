@@ -31,10 +31,10 @@
  */
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#define BrCarPhysTyre BrCarPhysTyre_port   /* header keeps the port signature */
+#define BrCarPhysTyre BrCarPhysTyre   /* header keeps the port signature */
 #define BrCarPhysStep BrCarPhysStep_port   /* ditto: the original is __fastcall (pCar in ecx) */
 #define BrCarPhysAdvance BrCarPhysAdvance_port /* ditto: the original is 2-arg */
-#define BrCrRespWalk BrCrRespWalk_portproto    /* ditto: the original is 2-arg */
+#define BrCrRespWalk BrCrRespWalk    /* ditto: the original is 2-arg */
 #define BrCollRespTipKick BrCollRespTipKick_portproto /* ditto: original is 1-arg */
 #include "br_vec.h"   /* br_globals: its objects */
 #include "slice1_08.h"   /* br_globals: its objects */
@@ -256,20 +256,20 @@ void BrCarPhysSpring(BrRbBodyFull *pBody)
             v                        = DAT_10077bd8;
             *(int32_t *)&pWheel->f1B4 = 0;
         }
-        if (v > DAT_10077a78) {
-            v = DAT_10077a78;
+        if (v > BrCrK_Zero) {
+            v = BrCrK_Zero;
         }
         v = v - DAT_10077bd8;
-        if (!(v >= DAT_10077a78)) {
-            v = DAT_10077a78;
+        if (!(v >= BrCrK_Zero)) {
+            v = BrCrK_Zero;
         }
 
         /* The sign triple, inline: `test ah,0x40` for the equal arm (VC5
          * float == reads C3 alone, so NaN lands there too), then
          * `test ah,0x41` for strictly-greater. */
-        if (v == DAT_10077a78) {
-            s = DAT_10077a78;
-        } else if (v > DAT_10077a78) {
+        if (v == BrCrK_Zero) {
+            s = BrCrK_Zero;
+        } else if (v > BrCrK_Zero) {
             s = DAT_10077a7c;
         } else {
             s = DAT_10077a80;
@@ -421,7 +421,7 @@ void BrCarPhysSelectCar(int32_t iCar)
  * compares, so 0x10001 answers row 0 and not row 0x10000. */
 static int BrCpWeatherRow(void)
 {
-    int16_t w = (int16_t)(g_brCarPhysWeather - 1);
+    int16_t w = (int16_t)((*(int32_t *)&DAT_104b15e8) - 1);
 
     if (w > 2 || w < 0) {
         return 0;
@@ -795,7 +795,7 @@ float BrWheelGroundProbe(BrCarBody *pBody, BrCarBody *pWheel)
     *(int *)&pWheel->rb.pPlane = 0;
     cell = BrCollGridCellAcquire(world[0], world[1]);
     pPl = (const float *)(DAT_11773698 + cell * 0x12C0);
-    for (n = DAT_11778800[cell]; n > 0; n--, pPl += 8) {
+    for (n = (*(int *)((char *)&g_brCrPlane + 0x10))[cell]; n > 0; n--, pPl += 8) {
         float d = BrCrPlaneDist(pPl, pPl[3], world);
 
         if (!(d > -2.0) || !(d < 2.0))
@@ -959,7 +959,7 @@ void BrCarPhysTyre(BrTyreView *pBody, BrTyreView *pWheel, float *pA,
         *pA = *pA - q * -0.5f;
         dot = ((v.x * c.x) + (v.y * c.y)) + (v.z * c.z);
         if (*pB != 0) {
-            row = (short)(g_brCarPhysWeather - 1);
+            row = (short)((*(int32_t *)&DAT_104b15e8) - 1);
             if (row > 2 || row < 0)
                 row = 0;
             row = row * 8;
@@ -1049,7 +1049,7 @@ float BrGroundProbeZ(const float *pPoint)
     dir[2] = -1.0f;
     cell = BrCollGridCellAcquire(pPoint[0], pPoint[1]);
     pPl = (const float *)(DAT_11773698 + cell * 0x12C0);
-    for (n = DAT_11778800[cell]; n > 0; n--, pPl += 8) {
+    for (n = (*(int *)((char *)&g_brCrPlane + 0x10))[cell]; n > 0; n--, pPl += 8) {
         float d = BrCrPlaneDist(pPl, pPl[3], pPoint);
 
         if (!(d > -2.0) || !(d < 2.0))
@@ -1072,7 +1072,7 @@ float BrGroundProbeZ(const float *pPoint)
     return best;
 }
 
-#define BrCarPhysTyre BrCarPhysTyre_port
+#define BrCarPhysTyre BrCarPhysTyre
 
 void BrCarPhysDrive(BrCarPhys *pCar, float dt)
 {
@@ -1520,8 +1520,8 @@ void BrCarPhysAdvance(BrCarPhys *pCar)
 typedef struct { int d[17]; } BrCpStateImage;      /* 0x44-byte rigid state */
 
 
-#define BrCpSign(v) ((v) == _DAT_10077780 ? _DAT_10077780 : \
-                     (v) > _DAT_10077780 ? _DAT_10077784 : _DAT_10077788)
+#define BrCpSign(v) ((v) == DAT_10077780 ? DAT_10077780 : \
+                     (v) > DAT_10077780 ? DAT_10077784 : DAT_10077788)
 /* WHAT IT DOES: advances one car's rigid-body physics by a single frame.
  * It hangs the wheel force lists off the body, zeroes the per-wheel forces,
  * then runs the force generators in order -- spring, the four tyre passes
@@ -1582,12 +1582,12 @@ void __fastcall BrCarPhysStep(BrDriverCar *pCar)
     pCar->aBody[0].rb.angAccel.x = 0.0f;
     pCar->aBody[0].rb.angAccel.y = 0.0f;
     pCar->aBody[0].rb.angAccel.z = 0.0f;
-    FUN_10064210(pBody);
+    BrRbAccumAll(pBody);
 
     pState = (char *)&pCar->aBody[0].rb.st.pos.x;
     BrCpIntegrateVelocity((BrRbState *)pState, (BrRbBodyFull *)pBody, BR_PHYS_DT);
     BrCarPhysDriveMatch((int)pBody, BR_PHYS_DT, &pCar->f0E7C, &pCar->f0E74, (char *)&pCar->f0E80, (char *)&pCar->f0E78);
-    FUN_1006d530(pState);
+    BrRbQuatDerivative(pState);
 
     *(char * *)&pCar->aBody[0].rb.pForces = &pCar->f0C20;
     ((*(char **)(((((*(char * *)&pCar->aBody[0].rb.child[((0))])))) + 0x18))) = 0;
@@ -1603,7 +1603,7 @@ void __fastcall BrCarPhysStep(BrDriverCar *pCar)
     pCar->aBody[0].rb.angAccel.x = 0.0f;
     pCar->aBody[0].rb.angAccel.y = 0.0f;
     pCar->aBody[0].rb.angAccel.z = 0.0f;
-    FUN_10064210(pBody);
+    BrRbAccumAll(pBody);
 
     *(BrCpStateImage *)&pCar->aBody[0].rb.st2.pos.x = *(BrCpStateImage *)pState;
     BrCpIntegrateVelocity(&pCar->aBody[0].rb.st2, (BrRbBodyFull *)pBody, BR_PHYS_DT);
@@ -1623,8 +1623,8 @@ void __fastcall BrCarPhysStep(BrDriverCar *pCar)
     } while (--k != 0);
 
     *(BrCpStateImage *)&pCar->aBody[0].rb.st1.pos.x = *(BrCpStateImage *)&pCar->aBody[0].rb.st.pos.x;
-    FUN_1006d530((char *)&pCar->aBody[0].rb.st1.pos.x);
-    FUN_1006d530((char *)&pCar->aBody[0].rb.st1.pos.x);
+    BrRbQuatDerivative((char *)&pCar->aBody[0].rb.st1.pos.x);
+    BrRbQuatDerivative((char *)&pCar->aBody[0].rb.st1.pos.x);
     BrCarPhysAdvance(pCar, pBody);
     *(BrCpStateImage *)&pCar->aBody[0].rb.st.pos.x = *(BrCpStateImage *)&pCar->aBody[0].rb.st2.pos.x;
     BrWheelSuspensionSetZ((BrRbBodyFull *)pBody);
@@ -1913,7 +1913,7 @@ void BrCarPhysAdvance(BrDriverCar *pCar, BrCarBody *pBody)
     float   h;
 
     g_pBrCollRespList = NULL;
-    g_pBrCrCursor = DAT_117781b0;
+    g_pBrCrCursor = s_aNode;
     g_brCrPlane.normal.x = 0.0f;
     g_brCrPlane.normal.y = 0.0f;
     g_brCrPlane.normal.z = 0.0f;
@@ -2019,7 +2019,7 @@ void BrCarPhysDrag(BrRbBodyFull *pBody, BrRbForce *pNode)
     s3 = *(signed char *)&pBody->child[3]->pad1A0[0];
 
     if (BrSqrtF(vx * vx + vy * vy + vz * vz) > BR_CP_DRAG_SPEED
-        && g_brCarPhysWeather != 3
+        && (*(int32_t *)&DAT_104b15e8) != 3
         && (s0 == BR_CP_DRAG_SURFACE || s1 == BR_CP_DRAG_SURFACE
             || s2 == BR_CP_DRAG_SURFACE || s3 == BR_CP_DRAG_SURFACE)) {
         d.x = pBody->st.vel.x * BR_CP_DRAG_K2;

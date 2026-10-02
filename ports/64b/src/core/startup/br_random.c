@@ -21,8 +21,8 @@
 /* 64-bit core: declared once, in br_globals.h or its struct's header */ /* 0x10AC3060 -- Glide RNG state, separate from D3D's */
 int BrRandom(void)
 {
-    uint32_t s = (uint32_t)g_brAC3060;
+    uint32_t s = (uint32_t)(*(int32_t *)&g_A9BFD0);
     s = (s * 16807u) & 0x07FFFFFFu;
-    g_brAC3060 = (int32_t)s;
+    (*(int32_t *)&g_A9BFD0) = (int32_t)s;
     return (int)s;
 }

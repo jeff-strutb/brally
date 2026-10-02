@@ -87,7 +87,7 @@ uint16_t *FUN_10027b60(BrTexReq272 * rec)
     if ((*(unsigned int *)&rec->f260 & 2)
         && (*(unsigned int *)&rec->f260 & 0x80)) {
         rec->aspect0 = rec->aspect1;
-        BrTex3dModulate(rec, DAT_1186c988);
+        BrTex3dMipModulate(rec, DAT_1186c988);
     }
     if (rec->w2a0 != rec->w
         || rec->h2a4 != rec->h) {

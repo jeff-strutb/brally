@@ -272,7 +272,7 @@ void BrGbiSolidTexBuild(void)
     uint8_t  fill;
     uint8_t *p;
 
-    fill = (DAT_10226e80 == 2 || DAT_10226e80 == 3) ? 0x20u : 0x80u;
+    fill = (g_226e80 == 2 || g_226e80 == 3) ? 0x20u : 0x80u;
     /* Orig: eax = &texels[1], write [eax-1]..[eax+2], add 4, jl &texels[17].
      * Pointer compare is unsigned (jb); orig is signed (jl). */
     p = DAT_105e1810 + 1;
@@ -321,10 +321,10 @@ void BrGbiTexScanRun(BrGfxWords *pCmd)
         return;
 
     DAT_106b7ab0 = 0;
-    DAT_106b7a94 = 0;
+    (*(int *)&g_brTexScanMaxTile) = 0;
     DAT_106b7aac = 0;
-    DAT_105e17fc = 0;
-    DAT_106b7a9c = 0;
+    (*(int *)&g_brTexScanState) = 0;
+    g_brTexScanRunEnd = 0;
 
     for (;;) {
         uint32_t w0 = pCmd->w0;         /* eax, reused by the 0xFC arm */

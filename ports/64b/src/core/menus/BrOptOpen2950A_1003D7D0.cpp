@@ -41,7 +41,7 @@ public:
 
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define g_slot DAT_10ac5ca4
+#define g_slot g_294C
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 
 /* EnterFn was a stand-in; the original calls BrOptFn100575F0 (?BrOptFn100575F0@@YAHPAVGameUi@@@Z).  Declared under
@@ -63,15 +63,15 @@ int CtlD620::Activate()
     if (p == 0) {
         p = new Phase;
         g_slot = p;
-        g_cur = (Phase *)((BrOptObj *)(p));
+        (*(Phase * *)&(*(OptObj41B60 * *)&g_brPAA29B8)) = (Phase *)((BrOptObj *)(p));
         if (p == 0)
             return 0;
         p->pfnEnter = EnterFn;
         g_slot->pfnEnter(g_slot);
-        g_cur->f0C = 1;
-        g_cur->f68 = 1;
+        (*(Phase * *)&(*(OptObj41B60 * *)&g_brPAA29B8))->f0C = 1;
+        (*(Phase * *)&(*(OptObj41B60 * *)&g_brPAA29B8))->f68 = 1;
     } else {
-        g_cur = (Phase *)((BrOptObj *)(p));
+        (*(Phase * *)&(*(OptObj41B60 * *)&g_brPAA29B8)) = (Phase *)((BrOptObj *)(p));
     }
     return 1;
 }
@@ -168,19 +168,19 @@ int BrOptOpen2950A(void *pUnused)
 {
     OptObj41B60 *p;
 
-    g_brAA2884 = 0;
-    g_brAA2898 = 0;
+    g_host = 0;
+    DAT_10ac5bf0 = 0;
 
-    if (g_brAA2878 == 0) {
-        if (g_brAA287C == 2 || g_brAA287C == 3) {
-            g_brAA2898 = 1;
-            if (g_brAA287C == 2 && strlen(g_aBrA9CDF0) < 7)
+    if (DAT_10ac5bd0 == 0) {
+        if (DAT_10ac5bd4 == 2 || DAT_10ac5bd4 == 3) {
+            DAT_10ac5bf0 = 1;
+            if (DAT_10ac5bd4 == 2 && strlen(g_aBrA9CDF0) < 7)
                 goto done;
-            if (g_brPAA29D8 != 0 && g_brPAA29D4->w1E164 > 0) {
+            if ((*(void * *)&g_brPAA29D8) != 0 && (*(Screen5D2C * *)&g_brPAA29D4)->w1E164 > 0) {
                 if (BrSub1003C260() != 0)
                     goto open;
             } else {
-                BrSub1003C1E0();
+                BrTimerStart();
             }
             goto done;
         } else {
@@ -189,20 +189,20 @@ int BrOptOpen2950A(void *pUnused)
         }
     }
 open:
-    if (g_brPAA2950 == 0) {
+    if ((*(OptObj41B60 * *)&g_brPAA2950) == 0) {
         p = new OptObj41B60;
-        g_brPAA2950 = (OptObj41B60 *)((struct Phase *)((OptObj41B60 *)((struct Phase *)(p))));
-        g_brPAA29B8 = (OptObj41B60 *)((BrOptObj *)(p));
+        (*(OptObj41B60 * *)&g_brPAA2950) = (OptObj41B60 *)((struct Phase *)((OptObj41B60 *)((struct Phase *)(p))));
+        (*(OptObj41B60 * *)&g_brPAA29B8) = (OptObj41B60 *)((BrOptObj *)(p));
         if (p == 0)
             return 0;
         p->pfnOpen = BrOptFn10057C10;
-        g_brPAA2950->pfnOpen(g_brPAA2950);
-        g_brPAA29B8->f00C = 1;
-        g_brPAA29B8->f068 = 1;
+        (*(OptObj41B60 * *)&g_brPAA2950)->pfnOpen((*(OptObj41B60 * *)&g_brPAA2950));
+        (*(OptObj41B60 * *)&g_brPAA29B8)->f00C = 1;
+        (*(OptObj41B60 * *)&g_brPAA29B8)->f068 = 1;
     } else {
-        g_brPAA29B8 = (OptObj41B60 *)((BrOptObj *)(g_brPAA2950));
+        (*(OptObj41B60 * *)&g_brPAA29B8) = (OptObj41B60 *)((BrOptObj *)((*(OptObj41B60 * *)&g_brPAA2950)));
     }
-    g_brPAA2A18->pfnTick = BrOptFn10044970;
+    (*(PhaseCtx5D10 * *)&g_29B8)->pfnTick = BrPhaseLeave_10044970;
 done:
     return 1;
 }

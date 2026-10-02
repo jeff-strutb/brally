@@ -84,12 +84,12 @@ void BrMainLoopRun(void)
 {
     BrMsg msg;
 
-    ShowWindow(DAT_105bc72c, DAT_105bc73c);      /* 0x10019744 */
-    UpdateWindow(DAT_105bc72c);                  /* 0x10019751 */
-    SetFocus(DAT_105bc72c);                      /* 0x1001975D */
+    ShowWindow((*(void * *)&g_brOwner5BC72C), (*(int32_t *)((char *)&s_args + 0xC)) /* BR_LP64_BYTE_VIEW */);      /* 0x10019744 */
+    UpdateWindow((*(void * *)&g_brOwner5BC72C));                  /* 0x10019751 */
+    SetFocus((*(void * *)&g_brOwner5BC72C));                      /* 0x1001975D */
 
-    if (DAT_1007b074 == 2) {                     /* 0x10019763 */
-        BrWindowEarStartup(DAT_105bc72c);        /* 0x10019773, cdecl */
+    if ((*(int32_t *)&DAT_1007b074) == 2) {                     /* 0x10019763 */
+        BrWindowEarStartup((*(void * *)&g_brOwner5BC72C));        /* 0x10019773, cdecl */
     }
 
     for (;;) {

@@ -18,8 +18,8 @@
 /* The original's allocation idiom: read the cursor, bump it by 8, write. */
 static __inline unsigned int *BrPanelDlAlloc(void)
 {
-    unsigned int *p = DAT_106e7710;
-    DAT_106e7710 += 2;
+    unsigned int *p = (*(unsigned int * *)&g_BrGfxPtr);
+    (*(unsigned int * *)&g_BrGfxPtr) += 2;
     return p;
 }
 
@@ -72,20 +72,20 @@ void BrPanelDlBuild(short *param_1)
     int           local_8;
     int           local_4;
 
-    if (DAT_106ed6b0 == 0 || DAT_100b3014 == 2 || DAT_100b3014 == 8) {
+    if ((*(int *)((char *)&g_aBrEntRecs + 0x80)) == 0 || (*(int *)&g_Br0B380C) == 2 || (*(int *)&g_Br0B380C) == 8) {
         p = BrPanelDlAlloc(); p[0] = 0xe7000000; p[1] = 0;
         p = BrPanelDlAlloc(); p[0] = 0xba001402; p[1] = 0x100000;
         p = BrPanelDlAlloc();
-        FUN_1001cf90(p, 0, 0, 0, 0x3ec, 0x3e9, 0, 0x3ec, 0, 0, 0, 0, 1000, 0, 0, 0, 1000);
+        BrRdpSetCombineLERP(p, 0, 0, 0, 0x3ec, 0x3e9, 0, 0x3ec, 0, 0, 0, 0, 1000, 0, 0, 0, 1000);
         p = BrPanelDlAlloc(); p[0] = 0xb900031d; p[1] = 0xc184a50;
         p = BrPanelDlAlloc(); p[0] = 0xb7000000; p[1] = 4;
         p = BrPanelDlAlloc(); p[0] = 0xb6000000; p[1] = 0x23000;
-        p = BrPanelDlAlloc(); p[0] = 0x1030040;  p[1] = br_addr32(DAT_106ea360);
+        p = BrPanelDlAlloc(); p[0] = 0x1030040;  p[1] = br_addr32(g_BrMtxSlot);
         p = BrPanelDlAlloc(); p[0] = (DAT_1184c468 & 0xffffff) | 0xdc000000; p[1] = 1;
         p = BrPanelDlAlloc(); p[0] = 0xf2002002; p[1] = 0x7e0fe;
         p = BrPanelDlAlloc(); p[0] = 0xbb000001; p[1] = 0xffffffff;
         local_4 = 0;
-        if (DAT_100b2f00 > 0) {
+        if ((*(int *)&g_brRaceNDriver) > 0) {
             local_14 = (int *)((int)param_1 + 0x60);
             do {
                 iVar1 = *local_14;
@@ -121,7 +121,7 @@ void BrPanelDlBuild(short *param_1)
                 }
                 local_4++;
                 local_14 += 0x20;
-            } while (local_4 < DAT_100b2f00);
+            } while (local_4 < (*(int *)&g_brRaceNDriver));
         }
         p = BrPanelDlAlloc(); p[0] = 0xb7000000; p[1] = 0x2000;
     }

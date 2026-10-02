@@ -75,14 +75,14 @@ void BrSpanBuildHull(void)
     int32_t i, col, lo, hi;
 
     g_brSpanColHi  = 0;
-    g_brSpanRowHiG = 0;
+    (*(int32_t *)&g_BrVisRowHi) = 0;
     g_brSpanColLo  = 0x3F;
-    g_brSpanRowLoG = 0x3F;
+    (*(int32_t *)&g_BrVisRowLo) = 0x3F;
 
     for (i = 0; i < 64; i++) g_aBrSpanRowHi[i] = 0;
     for (i = 0; i < 64; i++) g_aBrSpanRowLo[i] = 64;
-    for (i = 0; i < 64; i++) g_aBrSpanMax[i]   = 0;
-    for (i = 0; i < 64; i++) g_aBrSpanMin[i]   = 64;
+    for (i = 0; i < 64; i++) (*(int32_t (*)[64])&g_BrVisColHi)[i]   = 0;
+    for (i = 0; i < 64; i++) (*(int32_t (*)[64])&g_BrVisColLo)[i]   = 64;
 
     BR_SPAN_EDGE(0, 1);
     BR_SPAN_EDGE(0, 2);
@@ -98,16 +98,16 @@ void BrSpanBuildHull(void)
     BR_SPAN_EDGE(4, 1);
 
     if (g_brSpanColLo  < 0)  g_brSpanColLo  = 0;
-    if (g_brSpanRowLoG < 0)  g_brSpanRowLoG = 0;
+    if ((*(int32_t *)&g_BrVisRowLo) < 0)  (*(int32_t *)&g_BrVisRowLo) = 0;
     if (g_brSpanColHi  >= 64) g_brSpanColHi  = 0x3F;
-    if (g_brSpanRowHiG >= 64) g_brSpanRowHiG = 0x3F;
+    if ((*(int32_t *)&g_BrVisRowHi) >= 64) (*(int32_t *)&g_BrVisRowHi) = 0x3F;
 
     for (col = g_brSpanColLo; col <= g_brSpanColHi; col++) {
-        lo = g_brSpanRowLoG;
-        while (col < g_aBrSpanMin[lo] || col > g_aBrSpanMax[lo])
+        lo = (*(int32_t *)&g_BrVisRowLo);
+        while (col < (*(int32_t (*)[64])&g_BrVisColLo)[lo] || col > (*(int32_t (*)[64])&g_BrVisColHi)[lo])
             lo++;
-        hi = g_brSpanRowHiG;
-        while (col < g_aBrSpanMin[hi] || col > g_aBrSpanMax[hi])
+        hi = (*(int32_t *)&g_BrVisRowHi);
+        while (col < (*(int32_t (*)[64])&g_BrVisColLo)[hi] || col > (*(int32_t (*)[64])&g_BrVisColHi)[hi])
             hi--;
         g_aBrSpanRowLo[col] = lo;
         g_aBrSpanRowHi[col] = hi;

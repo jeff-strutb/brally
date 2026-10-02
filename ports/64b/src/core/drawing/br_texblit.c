@@ -61,7 +61,7 @@ int FUN_1002e5b9(int param_1,int param_2,int param_3,int param_4)
   param_2 = param_2;
   for (s.row = 0; s.row < param_4; s.row = s.row + 1) {
     s.dest = 0;
-    FUN_100746b4(&s.len,(void *)(param_3 + s.src),4);
+    memcpy(&s.len,(void *)(param_3 + s.src),4);
     s.src = s.src + 4;
     s.end = s.src + s.len;
     while (s.src < s.end) {
@@ -162,7 +162,7 @@ flush:
       i = e;
       if (e >= srcLen) {
         f = d - (j + 4);
-        FUN_100746b4(dst + j,&f,4);
+        memcpy(dst + j,&f,4);
         g = g + 1;
         src = src + 1;
         if (g >= stride) {

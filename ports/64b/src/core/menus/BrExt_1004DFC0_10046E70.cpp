@@ -238,7 +238,7 @@ int BrExt_1004DFC0(GameUi *parent)
     p->pfn04 = (CtlFn)BrUiHook85_1003EE20;
     p->f1E1F4 = 1;
     {
-        int k = g_brSel5D8C;
+        int k = g_5D8C;
 
         if (k >= 0) {
             if (k > 11)
@@ -251,7 +251,7 @@ int BrExt_1004DFC0(GameUi *parent)
         (p->m3838.**(CfgPmf *)(vt + 0x14))(0x40001, &DAT_100aace8, 4, k, -1);
         add = *(AddPmf *)(vt + 0x10);
     }
-    p->m3838.pfn04 = (int (*)(void))FUN_100476C0;
+    p->m3838.pfn04 = (int (*)(void))BrUiHook85_1004E810;
     {
         char **pp = g_aBrNames0B81D0;
 
@@ -260,13 +260,13 @@ int BrExt_1004DFC0(GameUi *parent)
             pp++;
         } while ((uintptr_t)pp < (uintptr_t)&g_aBrNames0B81D0[12]);
     }
-    if (g_brSel5D8C < 0)
+    if (g_5D8C < 0)
         p->f1E1E8 = p->f1E200;
-    else if (g_brSel5D8C > 11)
+    else if (g_5D8C > 11)
         p->f1E1E8 = p->f1E204;
     else
         p->f1E1E8 = p->f1E200
-                  - ((p->f1E204 - p->f1E200) * g_brSel5D8C) * DAT_1007766c;
+                  - ((p->f1E204 - p->f1E200) * g_5D8C) * DAT_1007766c;
     p->f1E1C8 = (int)p->f1E1E8;
     p->f1E1D0 = p->f1E1C8 + 0x10;
     cont->w14 += 1;
@@ -281,7 +281,7 @@ int BrExt_1004DFC0(GameUi *parent)
     p->pfn0C = (CtlFn)BrSub10047360;
     p->pfn08 = (CtlFn)FUN_1003c240;
     p->w1E20C = 3;
-    p->s34((char *)(BrStrGet(0x2E)), 1, 1, (char *)(&DAT_100aabe8));
+    p->s34((char *)(BrStrGet(0x2E)), 1, 1, (char *)(&(*(char *)&g_hot0)));
     cont->w14 += 1;
     cont->w344 += 1;
 
@@ -294,7 +294,7 @@ int BrExt_1004DFC0(GameUi *parent)
     p->pfn0C = (CtlFn)BrSub10047360;
     p->pfn08 = (CtlFn)FUN_1003c2b0;
     p->w1E20C = 3;
-    p->s34((char *)(BrStrGet(0x2F)), 1, 1, (char *)(&DAT_100aabe8));
+    p->s34((char *)(BrStrGet(0x2F)), 1, 1, (char *)(&(*(char *)&g_hot0)));
     cont->w14 += 1;
     cont->w344 += 1;
 
@@ -307,8 +307,8 @@ int BrExt_1004DFC0(GameUi *parent)
     p->pfn0C = (CtlFn)BrSub10047360;
     p->pfn08 = (CtlFn)BrPhaseLeave_100466C0;
     p->w1E20C = 3;
-    p->s34((char *)(BrStrGet(0x0C)), 1, 1, (char *)(&DAT_100aabe8));
-    g_AA29C8 = (BrCtl *)((BrUiCtl_ *)((BrCtl *)((BrUiCtl_ *)(p))));
+    p->s34((char *)(BrStrGet(0x0C)), 1, 1, (char *)(&(*(char *)&g_hot0)));
+    (*(BrCtl * *)&g_brUipAA29C8) = (BrCtl *)((BrUiCtl_ *)((BrCtl *)((BrUiCtl_ *)(p))));
     cont->w14 += 1;
     cont->w344 += 1;
 
@@ -344,7 +344,7 @@ int BrExt_1004DFC0(GameUi *parent)
     if (bad)
         FUN_100378c0(4);
     p->s38(parent, 339.0f, 90.0f, 0x102001, 2, 5, 1, -1);
-    p->pfn04 = (CtlFn)FUN_10037fa0;
+    p->pfn04 = (CtlFn)BrItemDrawIconRow;
     p->w1E20C = 3;
     p->s34((char *)(BrStrGet(0x2E)), 1, 1, (char *)(&DAT_100aac08));
     cont->w14 += 1;

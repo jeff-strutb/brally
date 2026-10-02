@@ -70,7 +70,7 @@ int __fastcall BrPodWriteOpen(void *pThis, int _edx, const char *pszPath)
     g_BrPodFile = pFile;
     fseek(pFile, 0x10, 0);
     memset(g_BrPodDir, 0, sizeof g_BrPodDir);
-    g_BrPodCount = 0;
+    (*(uint32_t *)&g_BrPodCount) = 0;
     return 0;
 }
 
@@ -88,9 +88,9 @@ void __fastcall BrPodWriteAdd(void *pThis, int _edx, const char *pszName,
     BrPodWriteEntry *pEnt;
     void            *pStream;
 
-    pEnt = &g_BrPodDir[g_BrPodCount];
+    pEnt = &g_BrPodDir[(*(uint32_t *)&g_BrPodCount)];
     pStream = (char *)pThis + 4;
-    g_BrPodCount++;
+    (*(uint32_t *)&g_BrPodCount)++;
     pEnt->offData = 0;
 
     {
@@ -114,7 +114,7 @@ void __fastcall BrPodWriteAdd(void *pThis, int _edx, const char *pszName,
         pEnt->b09     = b09;
     }
 
-    BrFileWriteCheckedT(pStream, (int)pvData, g_BrPodFile);
+    BrFileWriteChecked(pStream, (int)pvData, g_BrPodFile);
 }
 
 /* 0x10008AA0 */
@@ -132,16 +132,16 @@ void __fastcall BrPodWriteClose(void *pThis)
     /* `mov esi, ecx` must survive ftell; this+4 is added AFTER the call. */
     offDir = (uint32_t)ftell(g_BrPodFile);
     pThis  = (char *)pThis + 4;
-    cbDir  = g_BrPodCount * (uint32_t)sizeof(BrPodWriteEntry);
-    BrFileWriteCheckedT(pThis, (int)cbDir, g_BrPodFile);
+    cbDir  = (*(uint32_t *)&g_BrPodCount) * (uint32_t)sizeof(BrPodWriteEntry);
+    BrFileWriteChecked(pThis, (int)cbDir, g_BrPodFile);
 
     aHdr[0] = 'P';
     aHdr[1] = 'O';
     aHdr[2] = 'D';
     *(uint32_t *)(aHdr + 4)  = BR_POD_WRITER_MAGIC_EXTRA;
-    *(uint32_t *)(aHdr + 8)  = g_BrPodCount;
+    *(uint32_t *)(aHdr + 8)  = (*(uint32_t *)&g_BrPodCount);
     *(uint32_t *)(aHdr + 12) = offDir;
     fseek(g_BrPodFile, 0, 0);
-    BrFileWriteCheckedT(pThis, (int)g_BrPodFile, g_BrPodFile);
+    BrFileWriteChecked(pThis, (int)g_BrPodFile, g_BrPodFile);
     fclose(g_BrPodFile);
 }

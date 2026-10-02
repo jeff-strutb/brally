@@ -226,7 +226,7 @@ done:
     g_BrVisFirstMid  = -1;
     r    = (int)(g_BrCamDist * g_BrVisRangeRecip);
     thr2 = (-3 - r) * (-3 - r);
-    thr = (g_brRaceReplay != 0 && g_BrCamera == (BrCamera *)((unsigned char *)g_BrPlayerCar + 0x2808)) ? 9 : 1;
+    thr = ((DAT_105ccb68[8]) != 0 && g_BrCamera == (BrCamera *)((unsigned char *)(*(BrPlayerCar * *)&g_pBr63Race) + 0x2808)) ? 9 : 1;
 
     col = g_BrVisCells[0].col;
     if (col != 0xFF) {
@@ -242,7 +242,7 @@ done:
 
         row = ((unsigned char *)pd)[-1];
         if (g_brRaceBeginAirplane != 0 && g_BrSpanPending[g_brRaceBeginAirplane] != 0
-            && (pPos = &g_BrDrawTrackFlags[g_brRaceBeginAirplane].pos,
+            && (pPos = &(*(BrSpanRec * *)&g_BrDrawTrackFlags)[g_brRaceBeginAirplane].pos,
                 BrSpanTestPoint(pPos->x, pPos->y))) {
             g_BrVisSpans[g_BrVisSpanCount] = (unsigned short)g_brRaceBeginAirplane;
             g_BrVisSpanCount++;
@@ -297,9 +297,9 @@ done:
     }
 
     /* Environment flags of the flagged spans. */
-    g_BrVisEnvFlags = 0;
+    (*(unsigned short *)&DAT_10396eb4) = 0;
     for (k = 0; k < g_BrEnvFlagCount; k++)
-        g_BrVisEnvFlags |= g_BrDrawTrackFlags[g_BrEnvFlagIndices[k]].envFlags;
+        (*(unsigned short *)&DAT_10396eb4) |= (*(BrSpanRec * *)&g_BrDrawTrackFlags)[g_BrEnvFlagIndices[k]].envFlags;
 
     /* The frame's light. */
     fx = g_BrCamera->dir.x;
@@ -307,13 +307,13 @@ done:
     if (fx == g_BrZeroD && fy == g_BrZeroD)
         fx = 0.0001f;
     g_BrVisLights = BrPool32Alloc();
-    BrLightDirsFromLookAt(&g_BrDrawCombined, g_BrVisLights,
+    BrLightDirsFromLookAt(&(*(int *)&g_BrDrawCombined), g_BrVisLights,
                           fx * g_BrVisEyeScale, fy * g_BrVisEyeScale, 0.0f,
                           0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
-    if (g_BrVisLightFromCar != 0) {
-        g_BrVisLightDir.x = g_BrPlayerCar->pos.x - g_BrPlayerCar->vel.x * g_BrVisVelScale;
-        g_BrVisLightDir.y = g_BrPlayerCar->pos.y - g_BrPlayerCar->vel.y * g_BrVisVelScale;
-        g_BrVisLightDir.z = g_BrPlayerCar->pos.z - g_BrPlayerCar->vel.z * g_BrVisVelScale;
+    if ((*(int *)((char *)&g_aBrEntRecs + 0x7C)) != 0) {
+        g_BrVisLightDir.x = (*(BrPlayerCar * *)&g_pBr63Race)->pos.x - (*(BrPlayerCar * *)&g_pBr63Race)->vel.x * g_BrVisVelScale;
+        g_BrVisLightDir.y = (*(BrPlayerCar * *)&g_pBr63Race)->pos.y - (*(BrPlayerCar * *)&g_pBr63Race)->vel.y * g_BrVisVelScale;
+        g_BrVisLightDir.z = (*(BrPlayerCar * *)&g_pBr63Race)->pos.z - (*(BrPlayerCar * *)&g_pBr63Race)->vel.z * g_BrVisVelScale;
     } else {
         g_BrVisLightDir = g_BrVisLightDefault;
     }
@@ -336,22 +336,22 @@ done:
             pMax = &pDrv->f29A0;
             pMin = &pDrv->f299C;
             FUN_1000c9e0(pView, &pt, 8, pMin, pMax);
-            if (*pMin < pView[g_brIView].x)
-                *pMin = (short)pView[g_brIView].x;
-            if (*pMax < pView[g_brIView].x)
-                *pMax = (short)pView[g_brIView].x;
-            if (pDrv->f299E < pView[g_brIView].y)
-                pDrv->f299E = (short)pView[g_brIView].y;
-            if (pDrv->f29A2 < pView[g_brIView].y)
-                pDrv->f29A2 = (short)pView[g_brIView].y;
-            if (*pMin > pView[g_brIView].w + pView[g_brIView].x)
-                *pMin = (short)(pView[g_brIView].w + pView[g_brIView].x);
-            if (pDrv->f29A0 > pView[g_brIView].w + pView[g_brIView].x)
-                pDrv->f29A0 = (short)(pView[g_brIView].w + pView[g_brIView].x);
-            if (pDrv->f299E > pView[g_brIView].y + pView[g_brIView].h)
-                pDrv->f299E = (short)(pView[g_brIView].y + pView[g_brIView].h);
-            if (pDrv->f29A2 > pView[g_brIView].y + pView[g_brIView].h)
-                pDrv->f29A2 = (short)(pView[g_brIView].y + pView[g_brIView].h);
+            if (*pMin < pView[(*(int *)&g_BrEnvSection)].x)
+                *pMin = (short)pView[(*(int *)&g_BrEnvSection)].x;
+            if (*pMax < pView[(*(int *)&g_BrEnvSection)].x)
+                *pMax = (short)pView[(*(int *)&g_BrEnvSection)].x;
+            if (pDrv->f299E < pView[(*(int *)&g_BrEnvSection)].y)
+                pDrv->f299E = (short)pView[(*(int *)&g_BrEnvSection)].y;
+            if (pDrv->f29A2 < pView[(*(int *)&g_BrEnvSection)].y)
+                pDrv->f29A2 = (short)pView[(*(int *)&g_BrEnvSection)].y;
+            if (*pMin > pView[(*(int *)&g_BrEnvSection)].w + pView[(*(int *)&g_BrEnvSection)].x)
+                *pMin = (short)(pView[(*(int *)&g_BrEnvSection)].w + pView[(*(int *)&g_BrEnvSection)].x);
+            if (pDrv->f29A0 > pView[(*(int *)&g_BrEnvSection)].w + pView[(*(int *)&g_BrEnvSection)].x)
+                pDrv->f29A0 = (short)(pView[(*(int *)&g_BrEnvSection)].w + pView[(*(int *)&g_BrEnvSection)].x);
+            if (pDrv->f299E > pView[(*(int *)&g_BrEnvSection)].y + pView[(*(int *)&g_BrEnvSection)].h)
+                pDrv->f299E = (short)(pView[(*(int *)&g_BrEnvSection)].y + pView[(*(int *)&g_BrEnvSection)].h);
+            if (pDrv->f29A2 > pView[(*(int *)&g_BrEnvSection)].y + pView[(*(int *)&g_BrEnvSection)].h)
+                pDrv->f29A2 = (short)(pView[(*(int *)&g_BrEnvSection)].y + pView[(*(int *)&g_BrEnvSection)].h);
         }
     }
 }

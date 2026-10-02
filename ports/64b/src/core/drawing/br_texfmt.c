@@ -162,7 +162,7 @@ void BrTexSizeShift(int size, int *pOut1, int *pOut2)
         if ((size & ~0x3FF) != 0) {
             /* IAT sprintf; the message carries size-1, not the argument. */
             sprintf(buf, "ERROR: unhandled texture size: %d", size);
-            BrX10035BBA(buf);
+            BrLogSet(buf);
             /* *pOut2 is deliberately left untouched on this path. */
         } else if ((size & ~0x1FF) != 0) {
             *pOut2 = 10;

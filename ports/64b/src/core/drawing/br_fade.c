@@ -171,9 +171,9 @@
 void FUN_10014cb0(void)
 
 {
-  if ((_DAT_104abb24 != kF300_S_S537) &&
-     (_DAT_104abb24 = _DAT_104abb24 - DAT_106e9d8c, _DAT_104abb24 <= kF300_S_S537)) {
-    _DAT_104abb24 = 0.0;
+  if (((*(float *)&g_brRace4ABB24) != (*(float *)&kF300)) &&
+     ((*(float *)&g_brRace4ABB24) = (*(float *)&g_brRace4ABB24) - g_brRaceFlyStep, (*(float *)&g_brRace4ABB24) <= (*(float *)&kF300))) {
+    (*(float *)&g_brRace4ABB24) = 0.0;
     DAT_104abb20 = 0;
   }
   return;
@@ -220,25 +220,25 @@ void FUN_10014cb0(void)
 
 void BrFadeSetTarget(float v, float dur)
 {
-    DAT_104b16cc = 1;
-    if (!(v < DAT_104b16c0) && v != DAT_10077370) {
-        DAT_104b16b8 = v;
+    (*(int *)&g_brFadeKick) = 1;
+    if (!(v < (*(float *)&g_brCursor575518)) && v != DAT_10077370) {
+        (*(float *)&g_brCursor575510) = v;
         DAT_104b16bc = DAT_10077380 / dur;
         return;
     }
-    if (DAT_104b16c0 != DAT_10077380 && DAT_104b16bc > DAT_10077388) {
-        DAT_104b16d8 = 1;
+    if ((*(float *)&g_brCursor575518) != DAT_10077380 && DAT_104b16bc > DAT_10077388) {
+        (*(int *)&g_brFadeBounce) = 1;
         return;
     }
-    DAT_104b16b8 = v;
+    (*(float *)&g_brCursor575510) = v;
     DAT_104b16bc = DAT_10077390 / dur;
 }
 
 void BrFadeSetTargetA(float v, float dur)
 {
-    DAT_104b16d4 = 1;
-    DAT_100a7508 = v;
-    if (v - DAT_100a750c < DAT_10077370 || v == DAT_10077370)
+    (*(int *)&g_brFadeKickA) = 1;
+    g_brFadeTgtA = v;
+    if (v - g_brFadeCurA < DAT_10077370 || v == DAT_10077370)
         DAT_104b16c8 = DAT_10077390 / dur;
     else
         DAT_104b16c8 = DAT_10077380 / dur;
@@ -246,9 +246,9 @@ void BrFadeSetTargetA(float v, float dur)
 
 void BrFadeSetTargetB(float v, float dur)
 {
-    DAT_104b16d0 = 1;
-    DAT_100a7500 = v;
-    if (v - DAT_100a7504 < DAT_10077370 || v == DAT_10077370)
+    (*(int *)&g_brFadeKickB) = 1;
+    g_brFadeTgtB = v;
+    if (v - g_brFadeCurB < DAT_10077370 || v == DAT_10077370)
         DAT_104b16c4 = DAT_10077390 / dur;
     else
         DAT_104b16c4 = DAT_10077380 / dur;
@@ -258,7 +258,7 @@ int BrFadeIsClosing(void)
 {
     if (!(DAT_104b16bc >= DAT_10077370))
         goto yes;
-    if (DAT_104b16d8 == 0)
+    if ((*(int *)&g_brFadeBounce) == 0)
         return 0;
 yes:
     return 1;
@@ -266,9 +266,9 @@ yes:
 
 int BrFadeIsSettled(void)
 {
-    if (DAT_104b16c0 != DAT_104b16b8)
+    if ((*(float *)&g_brCursor575518) != (*(float *)&g_brCursor575510))
         goto no;
-    if (DAT_104b16d8 == 0)
+    if ((*(int *)&g_brFadeBounce) == 0)
         return 1;
 no:
     return 0;
@@ -278,9 +278,9 @@ int BrFadeIsShut(void)
 {
     if (DAT_104b16bc >= DAT_10077370)
         goto no;
-    if (DAT_104b16c0 != DAT_10077370)
+    if ((*(float *)&g_brCursor575518) != DAT_10077370)
         goto no;
-    if (DAT_104b16d8 == 0)
+    if ((*(int *)&g_brFadeBounce) == 0)
         return 1;
 no:
     return 0;

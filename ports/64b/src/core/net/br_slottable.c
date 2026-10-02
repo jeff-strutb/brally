@@ -36,7 +36,7 @@ void BrSub100586A0(void)
 
     nZero = 0;
     p = (int32_t *)((char *)g_aBrAA2538 + 4);
-    g_brAA288C = nZero;
+    DAT_10ac5be4 = nZero;
     nEmpty = -1;
     do {
         p[-1] = nEmpty;

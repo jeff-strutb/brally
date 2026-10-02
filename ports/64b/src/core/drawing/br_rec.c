@@ -24,9 +24,9 @@ void BrRecHdrLatch_10010F80(unsigned char *param_1)
 
 {
   DAT_10396f04 = (struct BrPaceNote *)(param_1 + 8);
-  DAT_10396efc = *(short *)(param_1 + 2);
-  DAT_10396ef8 = *(short *)(param_1 + 4);
-  DAT_10396f00 = *(short *)(param_1 + 6);
+  (*(short *)&DAT_10396efc) = *(short *)(param_1 + 2);
+  (*(short *)&DAT_10396ef8) = *(short *)(param_1 + 4);
+  (*(short *)&DAT_10396f00) = *(short *)(param_1 + 6);
   return;
 }
 

@@ -102,7 +102,7 @@ int BrNetEnumSessionsStart(void *pIface)
     if (DAT_10ac5bf0 != 0) {
         r = (*(BrDpEnumSessionsFn *)(*(int *)p + 0x34))
                 (p, desc, 0, (void *)BrNetEnumSessionCb,
-                 g_brP680584, 0x91);
+                 (*(void * *)&g_brOwner5BC72C), 0x91);
     } else {
         /* The bytes prove a real reload of the argument slot here; a plain
          * read is value-numbered back to the register copy (as VC5 always
@@ -111,18 +111,18 @@ int BrNetEnumSessionsStart(void *pIface)
         r = (int)*(void *volatile *)&pIface;
     }
     /* The join helper gets the enumerated session id -- desc+8. */
-    FUN_100361a0(&desc[2], (void *)FUN_10036130, g_brP680584, 0);
+    FUN_100361a0(&desc[2], (void *)BrWmHook36130, (*(void * *)&g_brOwner5BC72C), 0);
     DAT_10ac5bcc = 0;
 
-    if (DAT_10ac5d30 != 0
-        && *(unsigned short *)(DAT_10ac5d2c + 0x1e164) > 0u
-        && (*(unsigned char *)(DAT_10ac5d2c + DAT_10ac5bd8 * 0x438
+    if (g_brPAA29D8 != 0
+        && *(unsigned short *)(g_brPAA29D4 + 0x1e164) > 0u
+        && (*(unsigned char *)(g_brPAA29D4 + g_5BD8 * 0x438
                                + 0x3868) & 0x10) == 0) {
-        *(unsigned int *)(DAT_10ac5d30 + 0x1c) &= 0xffffffef;
-        *(unsigned char *)(DAT_10ac5d30 + 0x2b64) = 1;
+        *(unsigned int *)(g_brPAA29D8 + 0x1c) &= 0xffffffef;
+        *(unsigned char *)(g_brPAA29D8 + 0x2b64) = 1;
         return r;
     }
-    *(unsigned int *)(DAT_10ac5d30 + 0x1c) |= 0x10;
-    *(unsigned char *)(DAT_10ac5d30 + 0x2b64) = 0;
+    *(unsigned int *)(g_brPAA29D8 + 0x1c) |= 0x10;
+    *(unsigned char *)(g_brPAA29D8 + 0x2b64) = 0;
     return r;
 }

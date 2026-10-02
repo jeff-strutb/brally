@@ -24,11 +24,11 @@
 void BrSecondTickStart(void)
 
 {
-  DAT_11849e60 = (int)CreateEventA((LPSECURITY_ATTRIBUTES)0x0,0,0,(LPCSTR)0x0);
-  DAT_1184c07c = (int)CreateThread((LPSECURITY_ATTRIBUTES)0x0,0,(LPTHREAD_START_ROUTINE)BrSecondTickLoop,
+  g_hBrSndWake86 = (int)CreateEventA((LPSECURITY_ATTRIBUTES)0x0,0,0,(LPCSTR)0x0);
+  g_hBrSndThread86 = (int)CreateThread((LPSECURITY_ATTRIBUTES)0x0,0,(LPTHREAD_START_ROUTINE)BrSecondTickLoop,
                               (LPVOID)0x0,0,(LPDWORD)&DAT_11849e64);
   DAT_11849ea8 = 1000;
-  DAT_1184c078 = 1;
+  (*(int *)&g_fBrSndThread86) = 1;
   return;
 }
 

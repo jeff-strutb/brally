@@ -106,7 +106,7 @@ void BrTexInitResetForTest(void)
     s_cInstalled = 0;
     s_texmem = 0;
     s_level  = -1;
-    g_brTexTmuCount = 0;
+    (DAT_105ccb68[26]) = 0;
     g_brTexLowThreshold = 0;
     g_brTexSysMem = 0;
 }
@@ -276,31 +276,31 @@ void BrTexInit(void)
 {
     int span;
 
-    DAT_118ed1bc = FUN_10023d20;
-    DAT_118ed1c0 = FUN_10024e60;
-    DAT_118ed1c4 = FUN_100272f0;
-    DAT_118ed1c8 = FUN_10027f00;
-    DAT_118ed1cc = FUN_100284e0;
-    DAT_118ed1d0 = FUN_100285e0;
-    DAT_118ed1d4 = FUN_10028620;
-    DAT_118ed1d8 = FUN_100287e0;
-    DAT_118ed1dc = FUN_10028820;
-    DAT_118ed1e0 = FUN_100297f0;
-    DAT_118ed19c = FUN_100298c0;
-    DAT_118ed1e4 = FUN_100299a0;
-    DAT_118ed1e8 = FUN_10029cd0;
+    (*(void (**)(void))&g_BrDrawModelDlHook) = BrTex3dRecCopyHead;
+    (*(void (**)(void))&g_18ED1C0) = BrTex3dExpandInto;
+    (*(void (**)(void))&g_pfn18ED1C4) = BrTex3dCreate;
+    (*(void (**)(void))&g_pfn18AA0B0) = BrGbiBlit;
+    (*(void (**)(void))&DAT_118ed1cc) = BrTex3dMakeCurrent;
+    (*(void (**)(void))&DAT_118ed1d0) = BrTex3dReDownload;
+    DAT_118ed1d4 = BrTexSlotFetchPixels;
+    (*(void (**)(void))&g_BrGfxSubmit) = BrTex3dReconvert;
+    (*(void (**)(void))&g_pfn18AA0C4) = BrGbiTexScanRun;
+    (*(void (**)(void))&g_pfn18AA0C8) = BrGbiTexCreate;
+    (*(void (**)(void))&g_pfn18AA084) = FUN_100298c0;
+    DAT_118ed1e4 = BrTexInstallRecords;
+    (*(void (**)(void))&g_18ED1E8) = BrTex3dFreeAll;
 
     FUN_100281c0();
 
     {
         int z = 0;
-        int hi = FUN_10072a1a(z);
-        span = hi - FUN_10072a14(z);
+        int hi = grTexMaxAddress(z);
+        span = hi - grTexMinAddress(z);
     }
     s_texmem = (uint32_t)span;
-    if (g_brTexTmuCount > 1) {
-        int hi = FUN_10072a1a(1);
-        span = hi - FUN_10072a14(1);
+    if ((DAT_105ccb68[26]) > 1) {
+        int hi = grTexMaxAddress(1);
+        span = hi - grTexMinAddress(1);
         s_texmem = s_texmem + (uint32_t)span;
     }
 
@@ -310,15 +310,15 @@ void BrTexInit(void)
 
     {
         void *pFree = DAT_106b7aa0;
-        DAT_10697a58 = 0;
-        DAT_10697a5c = 0;
+        (*(int *)&DAT_10697a58) = 0;
+        (*(int *)&DAT_10697a5c) = 0;
         free(pFree);
     }
     DAT_106b7aa0 = 0;
     DAT_10697a50 = 0;
     DAT_10697a48 = 0;
-    DAT_106b7a7c = 0;
+    (*(int *)&g_brTexScan575414) = 0;
 
-    FUN_10029c70();
-    FUN_1006e180();
+    BrGbiSolidTexBuild();
+    BrMutexCreateAA0A0();
 }

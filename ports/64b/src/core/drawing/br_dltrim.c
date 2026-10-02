@@ -137,8 +137,8 @@ void NAME ARGS                                                              \
             list.pHead = pN->pNext;                                         \
             if ((unsigned long)pN >= BR_TRIM_POOL_LO &&                     \
                 (unsigned long)pN <  BR_TRIM_POOL_HI) {                     \
-                pN->pNext = DAT_105cda00;                                   \
-                DAT_105cda00 = pN;                                          \
+                pN->pNext = g_pClipFree;                                   \
+                g_pClipFree = pN;                                          \
             }                                                               \
         }                                                                   \
     } else {                                                                \
@@ -160,16 +160,16 @@ void NAME ARGS                                                              \
             BR_TRIM_SNAP(pV->y, SNAPDST, SNAPPRE, invW);                    \
             pV->tmu1[2] = pV->oow;                                          \
             pV->tmu0[2] = pV->oow;                                          \
-            invW = ((pN->f10) * g_brDlTexScaleS) * pV->oow;                 \
+            invW = ((pN->f10) * DAT_118ed1a4) * pV->oow;                 \
             pV->tmu1[0] = invW;                                             \
             pV->tmu0[0] = invW;                                             \
-            invW = ((pN->f14) * g_brDlTexScaleT) * pV->oow;                 \
+            invW = ((pN->f14) * DAT_118ed1a8) * pV->oow;                 \
             pV->tmu1[1] = invW;                                             \
             pV->tmu0[1] = invW;                                             \
             if ((unsigned long)pN >= BR_TRIM_POOL_LO &&                     \
                 (unsigned long)pN <  BR_TRIM_POOL_HI) {                     \
-                pN->pNext = DAT_105cda00;                                   \
-                DAT_105cda00 = pN;                                          \
+                pN->pNext = g_pClipFree;                                   \
+                g_pClipFree = pN;                                          \
             }                                                               \
         }                                                                   \
         if (list.cVerts == 3) {                                             \
@@ -257,7 +257,7 @@ BR_TRIM_BODY(BrDlClipTriNoZ, BR_TRIM_ARGS_VTX,
 /* @implements 0x10020190 glide BrDlClipTriFlatZ */
 BR_TRIM_BODY(BrDlClipTriFlatZ, BR_TRIM_ARGS_FLAT,
              BR_TRIM_COLDECL_FLAT, BR_TRIM_COLLOAD_FLAT, BR_TRIM_Z_KEEP,
-             DAT_105ce310, BR_TRIM_GLOBAL_SNAP, BR_TRIM_GLOBAL_INIT, tmp)
+             (*(int32_t *)&DAT_105ce2e8[10]), BR_TRIM_GLOBAL_SNAP, BR_TRIM_GLOBAL_INIT, tmp)
 
 /* WHAT IT DOES: trims one Gouraud-coloured triangle against the screen edges
  * and the near/far planes with the depth buffer ON, carrying each corner's
@@ -266,5 +266,5 @@ BR_TRIM_BODY(BrDlClipTriFlatZ, BR_TRIM_ARGS_FLAT,
 /* @implements 0x1001EE70 glide BrDlClipTriZ */
 BR_TRIM_BODY(BrDlClipTriZ, BR_TRIM_ARGS_VTX,
              BR_TRIM_COLDECL_VTX, BR_TRIM_COLLOAD_VTX, BR_TRIM_Z_KEEP,
-             DAT_105ce310, BR_TRIM_GLOBAL_SNAP, BR_TRIM_GLOBAL_INIT, tmp)
+             (*(int32_t *)&DAT_105ce2e8[10]), BR_TRIM_GLOBAL_SNAP, BR_TRIM_GLOBAL_INIT, tmp)
 

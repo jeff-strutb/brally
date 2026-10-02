@@ -12,7 +12,7 @@
 int BrThunk5C440(void)
 
 {
-  FUN_1006e590();
+  BrNop6E590();
   return;
 }
 

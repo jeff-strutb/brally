@@ -56,7 +56,7 @@ BrTextBox *__fastcall BrTextBoxInit(BrTextBox *pBox)
 {
     char *p = (char *)pBox;
 
-    *(void **)p = (void *)&DAT_100776f0;
+    *(void **)p = (void *)&PTR_FUN_100776f0;
     memset(p + 9, 0, 0x400);
     *(int *)(p + 0x418) = 0;
     *(int *)(p + 0x414) = 0;
@@ -84,7 +84,7 @@ BrTextBox *__fastcall BrTextBoxInit(BrTextBox *pBox)
 typedef struct { uint32_t v; } BrTextBoxDeleteFlags;
 BrTextBox *BR_THISCALL1 BrTextBoxDeleteDtor(BrTextBox *pBox, BrTextBoxDeleteFlags flags)
 {
-    BrTextBoxDtor(pBox);
+    BrVtInit53EE0(pBox);
     if (flags.v & 1u) {
         BrOperatorDelete(pBox);
     }
@@ -136,9 +136,9 @@ LAB_spaceA:
                 width = width + BR_GLYPH_SPACE_ADVANCE;
             }
         } else {
-            adv = (int16_t)g_BrGlyphFontA12[k].advance;
+            adv = (int16_t)(*(BrGlyphMetric12 (*)[])&g_BrGlyphFontA12)[k].advance;
             if (adv == -1 ||
-                ((h = (int16_t)g_BrGlyphFontA12[k].height),
+                ((h = (int16_t)(*(BrGlyphMetric12 (*)[])&g_BrGlyphFontA12)[k].height),
                  (uint16_t)h == BR_GLYPH_NONE)) goto LAB_spaceA;
             width = width + adv;
             if (maxH < h) {
@@ -176,15 +176,15 @@ void BR_THISCALL1 BrTextBoxMeasureB(BrTextBox *pBox)
             return;
         }
         if (c < '!' || c > '~' ||
-            (int16_t)g_BrGlyphFontA12[k].advance == -1 ||
-            (int16_t)g_BrGlyphFontA12[k].height == -1) {
+            (int16_t)(*(BrGlyphMetric12 (*)[])&g_BrGlyphFontA12)[k].advance == -1 ||
+            (int16_t)(*(BrGlyphMetric12 (*)[])&g_BrGlyphFontA12)[k].height == -1) {
             if (c == ' ') {
                 width = width + BR_GLYPH_SPACE_ADVANCE;
             }
         } else {
-            width = width + (int16_t)(g_BrGlyphFontB12[k].advance - 4);
-            if (maxH < (int16_t)g_BrGlyphFontB12[k].height) {
-                maxH = (int16_t)g_BrGlyphFontB12[k].height;
+            width = width + (int16_t)((*(BrGlyphMetric12 (*)[])&g_BrGlyphFontB12)[k].advance - 4);
+            if (maxH < (int16_t)(*(BrGlyphMetric12 (*)[])&g_BrGlyphFontB12)[k].height) {
+                maxH = (int16_t)(*(BrGlyphMetric12 (*)[])&g_BrGlyphFontB12)[k].height;
             }
         }
         i = i + 1;

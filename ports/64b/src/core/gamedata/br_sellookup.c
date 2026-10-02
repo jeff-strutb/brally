@@ -75,14 +75,14 @@ typedef struct BrSelInM {
 
 void BrSelLookup(void)
 {
-    BrSelInM *p = DAT_10af2094;
+    BrSelInM *p = (*(BrSelInM * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */;
     int idx = p->f04 * 12 + p->f05;
     unsigned char t;
     int a;
 
-    t = DAT_100b3028[idx * 2];
+    t = (*(unsigned char (*)[])&g_aBr0B3820)[idx * 2];
     a = t;
-    DAT_100b3014 = a;
+    (*(int *)&g_Br0B380C) = a;
 
     t = p->f00;
     if (t & 1) {
@@ -90,10 +90,10 @@ void BrSelLookup(void)
             a += 6;
         else
             a -= 6;
-        DAT_100b3014 = a;
+        (*(int *)&g_Br0B380C) = a;
     }
 
     /* recomputed, so the fold above cannot leak into the second lookup */
     idx = p->f04 * 12 + p->f05;
-    DAT_104b15e8 = DAT_100b3029[idx * 2];
+    DAT_104b15e8 = (*(unsigned char (*)[])&g_aBr0B3820[1])[idx * 2];
 }

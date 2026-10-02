@@ -471,9 +471,9 @@ void BrGlRectFill(int32_t x1, int32_t y1, int32_t x2, int32_t y2)
     if (y2 > BrGlClipMaxY) y2 = BrGlClipMaxY;
 
     if (BrGlCombineW0 == 0xFCFFFFFFu && BrGlCombineW1 == 0xFFFDF6FBu) {
-        bR = (uint8_t)(int32_t)BrGlPrimR;
-        bG = (uint8_t)(int32_t)BrGlPrimG;
-        bB = (uint8_t)(int32_t)BrGlPrimB;
+        bR = (uint8_t)(int32_t)BrGbiRectG_5D17A4;
+        bG = (uint8_t)(int32_t)BrGbiRectG_5D17B4;
+        bB = (uint8_t)(int32_t)BrGbiRectG_5CE2D0;
         bA = (uint8_t)(int32_t)BrGlPrimA;
     } else {
         bR = BrGlFillR;
@@ -738,22 +738,22 @@ void BrGlInstall(void)
     grSstSelect(0);
     switch (BrGlHwType) {
     default:
-        BrGlHwParamA = 1;
+        (DAT_105ccb68[26]) = 1;
         BrGlHwParamB = 2;
         break;
     case 1:
-        BrGlHwParamA = BrGlHwCfgE4;
+        (DAT_105ccb68[26]) = BrGlHwCfgE4;
         BrGlHwParamB = BrGlHwCfgE0;
         break;
     case 0:
     case 3:
-        BrGlHwParamA = BrGlHwCfgE8;
+        (DAT_105ccb68[26]) = BrGlHwCfgE8;
         BrGlHwParamB = BrGlHwCfgE0;
         if (BrGlHwCfgEC != 0)
             BrGlHwParamB = BrGlHwCfgE0 + BrGlHwCfgE0;
         break;
     }
-    BrGl_1001DD80(BrGlScreenW, BrGlScreenH);
+    BrGlideResOpen((*(int32_t *)&BrGbiRectG_A7514), (*(int32_t *)&BrGbiRectG_A7518));
     return;
 }
 
@@ -787,7 +787,7 @@ void BrGlInstall(void)
 /* @implements 0x1001E7A0 glide BrGlSetCombine */
 void BrGlSetCombine(unsigned w0, unsigned w1)
 {
-    BrGlCombineDecal = 0;
+    BrGbiRectG_5CDA04 = 0;
     if (w0 == 0xFCFFFFFFu && w1 == 0xFFFCF87Cu) {
         grColorCombine(3, 8, 1, 1, 0);
     } else if (w0 == 0xFCFFFFFFu && w1 == 0xFFFE793Cu) {
@@ -803,11 +803,11 @@ void BrGlSetCombine(unsigned w0, unsigned w1)
         grConstantColorValue(0xFFFFFFFF);
         grColorCombine(3, 8, 1, 2, 0);
     } else if (w0 == 0xFC127E08u && w1 == 0xF3FFF2F8u) {
-        if (DAT_106ed6ac != 0 || DAT_106ed6b4 != 0)
+        if ((*(int *)((char *)&g_aBrEntRecs + 0x7C)) != 0 || (*(int *)((char *)&g_aBrEntRecs + 0x84)) != 0)
             grColorCombine(7, 4, 1, 1, 0);
     } else if (w0 == 0xFC317E02u && (w1 == 0x5FFEF3FAu || w1 == 0x51FEF3FAu)) {
         grColorCombine(3, 1, 0, 1, 0);
-        BrGlCombineDecal = 1;
+        BrGbiRectG_5CDA04 = 1;
     } else if (w0 == 0xFC127FFFu && w1 == 0xFFFFF838u) {
         grConstantColorValue(0);
         grColorCombine(3, 8, 1, 2, 0);
@@ -817,12 +817,12 @@ void BrGlSetCombine(unsigned w0, unsigned w1)
 
     /* The decal arm is the `if`: the original falls through into it and
      * jumps (je) to the clear arm. */
-    if (BrGlCombineDecal != 0) {
-        if (BrGlDlSlot04 == (void *)BrDlLightSetup_10021C70)
-            BrGlDlSlot04 = (void *)BrDlLightSetup_100221D0;
+    if (BrGbiRectG_5CDA04 != 0) {
+        if ((*(void * *)((char *)&g_brGbi0A79F0 + 0x10)) /* BR_LP64_BYTE_VIEW */ == (void *)BrDlVtxLit)
+            (*(void * *)((char *)&g_brGbi0A79F0 + 0x10)) /* BR_LP64_BYTE_VIEW */ = (void *)BrDlVtxLitDecal;
     } else {
-        if (BrGlDlSlot04 == (void *)BrDlLightSetup_100221D0)
-            BrGlDlSlot04 = (void *)BrDlLightSetup_10021C70;
+        if ((*(void * *)((char *)&g_brGbi0A79F0 + 0x10)) /* BR_LP64_BYTE_VIEW */ == (void *)BrDlVtxLitDecal)
+            (*(void * *)((char *)&g_brGbi0A79F0 + 0x10)) /* BR_LP64_BYTE_VIEW */ = (void *)BrDlVtxLit;
     }
 }
 

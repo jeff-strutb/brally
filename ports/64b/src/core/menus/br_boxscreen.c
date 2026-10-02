@@ -218,14 +218,14 @@ extern void FUN_1003a860(void); extern void FUN_1003a910(void);
 #define pH73_p10041670  BR73H(FUN_1003abd0)
 #define pH73_p100417B0  BR73H(FUN_1003ad10)
 #define pH73_p10041710  BR73H(FUN_1003ac70)
-#define pS73_p0AB448    ((const void *)&DAT_100aabe8)
-#define pS73_p0AB458    ((const void *)&DAT_100aabf8)
-#define pS73_p0AB468    ((const void *)&DAT_100aac08)
-#define pS73_p0AB478    ((const void *)&DAT_100aac18)
-#define pS73_p0AB4F8    ((const void *)&DAT_100aac98)
-#define pS73_p0AB508    ((const void *)&DAT_100aaca8)
-#define g73_n0AB428     DAT_100aabc8
-#define g73_n0AB42C     DAT_100aabcc
+#define pS73_p0AB448    ((const void *)&(*(unsigned char *)&g_hot0))
+#define pS73_p0AB458    ((const void *)&(*(unsigned char *)&DAT_100aabf8))
+#define pS73_p0AB468    ((const void *)&(*(unsigned char *)&DAT_100aac08))
+#define pS73_p0AB478    ((const void *)&(*(unsigned char *)&DAT_100aac18))
+#define pS73_p0AB4F8    ((const void *)&(*(unsigned char *)&DAT_100aac98))
+#define pS73_p0AB508    ((const void *)&(*(unsigned char *)&DAT_100aaca8))
+#define g73_n0AB428     (*(int32_t *)&g_hot2)
+#define g73_n0AB42C     (*(int32_t *)((char *)&g_hot2 + 0x4))
 
 /* WHAT IT DOES: lays out the largest of the menu screens -- twenty controls,
  * three of them drawn boxes that share a left edge because only the first

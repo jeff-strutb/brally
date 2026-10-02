@@ -18,7 +18,7 @@
 int BrGetTimerState(void)
 
 {
-  return g_br18AB118_S_S1499;
+  return (*(int *)&DAT_118ee230);
 }
 
 
@@ -37,7 +37,7 @@ void __fastcall br86_timer_restart(int *param_1)
 {
   int uVar1;
   
-  if (g_br86HasPerf_S_S1437 != 0) {
+  if ((*(int *)&g_br86HasPerf) != 0) {
     QueryPerformanceCounter((LARGE_INTEGER *)(param_1 + 2));
     param_1[4] = *param_1;
     param_1[5] = param_1[1];
@@ -121,10 +121,10 @@ int BrTimerStart(void)
 
 {
   FUN_100356b0();
-  DAT_10ac306c = SetTimer(g_brP680584,1,1000,(TIMERPROC)0x0);
-  DAT_10ac408c = 1;
+  DAT_10ac306c = SetTimer(g_brOwner5BC72C,1,1000,(TIMERPROC)0x0);
+  g_guardA = 1;
   if (g_brPAA29D4 != 0) {
-    FUN_10036300(g_brP277B40);
+    BrNetEnumSessionsStart(g_brP277B40);
   }
   return 1;
 }
@@ -157,10 +157,10 @@ int BrTimerStart(void)
 /* @implements 0x10075150 d3d BrSub10075150 */
 void BrSub10075150(void)
 {
-    if (++g_br18AB12C > 2)              /* `cmp eax,2 / jle` -- signed */
-        g_br18AB12C = 0;
-    g_br18AB118 += g_br0BBAC8[g_br18AB12C];
-    g_br18AB134++;
+    if (++(*(int32_t *)&DAT_118ee244) > 2)              /* `cmp eax,2 / jle` -- signed */
+        (*(int32_t *)&DAT_118ee244) = 0;
+    (*(int32_t *)&DAT_118ee230) += g_br0BBAC8[(*(int32_t *)&DAT_118ee244)];
+    (*(int32_t *)&DAT_118ee24c)++;
 }
 
 /* BrSub10075020: prototype in br_funcs.h */

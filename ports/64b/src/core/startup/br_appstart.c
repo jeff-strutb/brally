@@ -159,7 +159,7 @@ void BrAppQueryTotalPhys(void)
     }
 
     /* 0x10007F26/0x10007F2A: mov ecx,[esp+8] / mov [0x10226E78],ecx */
-    g_brAppTotalPhysBytes = aStatus[BR_MEMSTATUS_TOTALPHYS];
+    g_brTexSysMem = aStatus[BR_MEMSTATUS_TOTALPHYS];
 }
 
 /* ==========================================================================
@@ -286,9 +286,9 @@ void BrAppCfgBuildIniPath(void)
 static void cfg_select_input_device(int32_t nJoystick)
 {
     if (nJoystick >= 1 && nJoystick <= 3) {
-        g_iBrCfgInputDevice = nJoystick;
+        g_BrPadModeBytes = nJoystick;
     } else {
-        g_iBrCfgInputDevice = 0;
+        g_BrPadModeBytes = 0;
     }
 }
 
@@ -377,32 +377,32 @@ void BrAppCfgParseIni(void)
             g_brRaceNet = atoi(aLine + 12);                 /* 0x10226A48 */
 
         } else if (strncmp(aLine, "chosenTrack=", 12) == 0) {
-            g_brCfgChosenTrack = atoi(aLine + 12);
+            g_Br0B380C = atoi(aLine + 12);
 
         } else if (strncmp(aLine, "chosenCar=", 10) == 0) {
-            g_brCfgChosenCar = atoi(aLine + 10);
+            (*(int32_t *)&g_226e7c) = atoi(aLine + 10);
 
         } else if (strncmp(aLine, "chosenWeather=", 14) == 0) {
-            g_brCfgChosenWeather = atoi(aLine + 14);
+            (*(int32_t *)&g_226e80) = atoi(aLine + 14);
 
         } else if (strncmp(aLine, "gameMode=", 9) == 0) {
-            g_brCfgGameMode = atoi(aLine + 9);
+            (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = atoi(aLine + 9);
 
         } else if (strncmp(aLine, "ReadJoystick=", 13) == 0) {
-            g_brCfgReadJoystick = atoi(aLine + 13);
-            cfg_select_input_device(g_brCfgReadJoystick);
+            (*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ = atoi(aLine + 13);
+            cfg_select_input_device((*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */);
 
         } else if (strncmp(aLine, "HandlingType=", 13) == 0) {
-            g_brCfgHandlingType = atoi(aLine + 13);
+            (*(int32_t *)&g_7b320) = atoi(aLine + 13);
 
         } else if (strncmp(aLine, "SuspensionType=", 15) == 0) {
-            g_brCfgSuspensionType = atoi(aLine + 15);
+            (*(int32_t *)&g_7b328) = atoi(aLine + 15);
 
         } else if (strncmp(aLine, "TireType=", 9) == 0) {
-            g_brCfgTireType = atoi(aLine + 9);
+            (*(int32_t *)&g_7b32c) = atoi(aLine + 9);
 
         } else if (strncmp(aLine, "TransmissionType=", 17) == 0) {
-            g_brCfgTransmission = atoi(aLine + 17);
+            (*(int32_t *)&g_7b324) = atoi(aLine + 17);
 
         } else if (strncmp(aLine, "TrackDir=", 9) == 0) {
             cfg_set_dir(g_aBrCfgTrackDir, sizeof g_aBrCfgTrackDir, aLine + 9);
@@ -414,23 +414,23 @@ void BrAppCfgParseIni(void)
             cfg_set_dir(g_aBrCfgSfxDir, sizeof g_aBrCfgSfxDir, aLine + 7);
 
         } else if (strncmp(aLine, "Interpolate=", 12) == 0) {
-            g_brCfgInterpolate = atoi(aLine + 12);
+            (*(int32_t *)&DAT_100a5eac) = atoi(aLine + 12);
 
         } else if (strncmp(aLine, "SpeedSensitive=", 15) == 0) {
-            g_brCfgSpeedSensitive = atoi(aLine + 15);
+            (*(int32_t *)&DAT_100b2e6c) = atoi(aLine + 15);
 
         } else if (strncmp(aLine, "D3DDrawCarShadow=", 17) == 0) {
             /* 0x1000834A neg / sbb / inc -- the flag is INVERTED. */
-            g_brCfgD3DCarShadow = (atoi(aLine + 17) == 0) ? 1 : 0;
+            (*(int32_t *)&DAT_10396eb0) = (atoi(aLine + 17) == 0) ? 1 : 0;
 
         } else if (strncmp(aLine, "RunBenchmark=", 13) == 0) {
-            g_brCfgRunBenchmark = atoi(aLine + 13);
+            (*(int32_t *)&g_demoFlag) = atoi(aLine + 13);
 
         } else if (strncmp(aLine, "PlayMusic=", 10) == 0) {
-            g_brCfgPlayMusic = atoi(aLine + 10);
+            (*(int32_t *)&DAT_1007b074) = atoi(aLine + 10);
 
         } else if (strncmp(aLine, "PlaySFX=", 8) == 0) {
-            BrSndG0B5DE8 = atoi(aLine + 8);                 /* 0x100B55F0 */
+            (*(int32_t *)&DAT_100b51e4[1036]) = atoi(aLine + 8);                 /* 0x100B55F0 */
         }
     }
 
@@ -490,48 +490,48 @@ void BrAppCfgParseCmdLine(const char *pszCmdLine)
 
     p = strstr(pszCmdLine, "chosenTrack=");
     if (p != NULL) {
-        g_brCfgChosenTrack = atoi(p + 12);
+        g_Br0B380C = atoi(p + 12);
     }
 
     p = strstr(pszCmdLine, "chosenCar=");
     if (p != NULL) {
-        g_brCfgChosenCar = atoi(p + 10);
+        (*(int32_t *)&g_226e7c) = atoi(p + 10);
     }
 
     p = strstr(pszCmdLine, "chosenWeather=");
     if (p != NULL) {
-        g_brCfgChosenWeather = atoi(p + 14);
+        (*(int32_t *)&g_226e80) = atoi(p + 14);
     }
 
     p = strstr(pszCmdLine, "gameMode=");
     if (p != NULL) {
-        g_brCfgGameMode = atoi(p + 9);
+        (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = atoi(p + 9);
     }
 
     p = strstr(pszCmdLine, "ReadJoystick=");
     if (p != NULL) {
-        g_brCfgReadJoystick = atoi(p + 13);
-        cfg_select_input_device(g_brCfgReadJoystick);
+        (*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ = atoi(p + 13);
+        cfg_select_input_device((*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */);
     }
 
     p = strstr(pszCmdLine, "HandlingType=");
     if (p != NULL) {
-        g_brCfgHandlingType = atoi(p + 13);
+        (*(int32_t *)&g_7b320) = atoi(p + 13);
     }
 
     p = strstr(pszCmdLine, "SuspensionType=");
     if (p != NULL) {
-        g_brCfgSuspensionType = atoi(p + 15);
+        (*(int32_t *)&g_7b328) = atoi(p + 15);
     }
 
     p = strstr(pszCmdLine, "TireType=");
     if (p != NULL) {
-        g_brCfgTireType = atoi(p + 9);
+        (*(int32_t *)&g_7b32c) = atoi(p + 9);
     }
 
     p = strstr(pszCmdLine, "TransmissionType=");
     if (p != NULL) {
-        g_brCfgTransmission = atoi(p + 17);
+        (*(int32_t *)&g_7b324) = atoi(p + 17);
     }
 
     p = strstr(pszCmdLine, "cPlayers=");
@@ -541,17 +541,17 @@ void BrAppCfgParseCmdLine(const char *pszCmdLine)
 
     p = strstr(pszCmdLine, "bcar=");
     if (p != NULL) {
-        g_brCfgBenchCar = atoi(p + 5);
+        (*(int32_t *)&DAT_1021ce50) = atoi(p + 5);
     }
 
     p = strstr(pszCmdLine, "btire=");
     if (p != NULL) {
-        g_brCfgBenchTire = atoi(p + 6);
+        (*(int32_t *)&DAT_10226a40) = atoi(p + 6);
     }
 
     p = strstr(pszCmdLine, "bsuspension=");
     if (p != NULL) {
-        g_brCfgBenchSuspension = atoi(p + 12);
+        (*(int32_t *)&DAT_10226a3c) = atoi(p + 12);
     }
 }
 
@@ -576,31 +576,31 @@ void BrAppCfgResetForTest(void)
     memcpy(g_aBrCfgCarDir,   "cars/",   sizeof "cars/");
     memcpy(g_aBrCfgSfxDir,   "sfx/",    sizeof "sfx/");
 
-    g_brCfgChosenTrack     = 2;
-    g_brCfgChosenCar       = 0;
-    g_brCfgChosenWeather   = 0;
-    g_brCfgGameMode        = 1;
-    g_brCfgReadJoystick    = 0;
-    g_brCfgHandlingType    = 1;
-    g_brCfgSuspensionType  = 1;
-    g_brCfgTireType        = 2;
-    g_brCfgTransmission    = 1;
-    g_brCfgInterpolate     = 1;
-    g_brCfgSpeedSensitive  = 1;
-    g_brCfgD3DCarShadow    = 0;
-    g_brCfgRunBenchmark    = 0;
-    g_brCfgPlayMusic       = 2;
+    g_Br0B380C     = 2;
+    (*(int32_t *)&g_226e7c)       = 0;
+    (*(int32_t *)&g_226e80)   = 0;
+    (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */        = 1;
+    (*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */    = 0;
+    (*(int32_t *)&g_7b320)    = 1;
+    (*(int32_t *)&g_7b328)  = 1;
+    (*(int32_t *)&g_7b32c)        = 2;
+    (*(int32_t *)&g_7b324)    = 1;
+    (*(int32_t *)&DAT_100a5eac)     = 1;
+    (*(int32_t *)&DAT_100b2e6c)  = 1;
+    (*(int32_t *)&DAT_10396eb0)    = 0;
+    (*(int32_t *)&g_demoFlag)    = 0;
+    (*(int32_t *)&DAT_1007b074)       = 2;
     g_brCfgPlayers         = 0;
-    g_brCfgBenchCar        = 0;
-    g_brCfgBenchTire       = 0;
-    g_brCfgBenchSuspension = 0;
+    (*(int32_t *)&DAT_1021ce50)        = 0;
+    (*(int32_t *)&DAT_10226a40)       = 0;
+    (*(int32_t *)&DAT_10226a3c) = 0;
 
-    g_iBrCfgInputDevice    = 0;
-    g_brAppTotalPhysBytes  = 0;
+    g_BrPadModeBytes    = 0;
+    g_brTexSysMem  = 0;
 
     /* The two this module writes but does not own. */
     g_brRaceNet            = 0;
-    BrSndG0B5DE8           = 1;
+    (*(int32_t *)&DAT_100b51e4[1036])           = 1;
 }
 
 /* -- Ghidra-matched functions --------------------------- */
@@ -617,7 +617,7 @@ int BrMemoryQuery(void)
   
   local_20.dwLength = 0x20;
   GlobalMemoryStatus(&local_20);
-  DAT_10226e78 = local_20.dwTotalPhys;
+  (*(int *)&g_brTexSysMem) = local_20.dwTotalPhys;
   return;
 }
 

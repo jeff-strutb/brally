@@ -34,11 +34,11 @@ int BrNetWriteTag20(BrBitStream *pBs, unsigned char kind)
 
     if (pBs->CountedTotal() + 9 <= 0x100) {
         pBs->WriteU8((unsigned char)(kind | 0x20));
-        p = DAT_11849e68;
+        p = (*(unsigned char (*)[])&g_aBrPeerOrder);
         do {
             pBs->WriteU8((unsigned char)((p[4] << 4) | p[0]));
             p += 8;
-        } while ((uintptr_t)p < (uintptr_t)&DAT_11849e68[0x40]);
+        } while ((uintptr_t)p < (uintptr_t)&(*(unsigned char (*)[])&g_aBrPeerOrder)[0x40]);
         return 1;
     }
     return 0;

@@ -57,7 +57,7 @@
 /* @implements 0x1003DA90 glide BrSub10044540 */
 void BrSub10044540(void)
 {
-    int32_t n = g_brAA2A18;
+    int32_t n = (*(int32_t *)&DAT_10ac5d70);
 
     if (g_brAA2A44 == n) {
         return;
@@ -67,14 +67,14 @@ void BrSub10044540(void)
     /* One unsigned cmp-4/ja plus a 0..4 jump table; case 4 is in the table,
      * default (>4) writes the case-0 pair in reverse store order. */
     switch (n) {
-    case 0:  g_br0AB3E8 = 0x102;  g_br0AC654 = 1;    break;
-    case 1:  g_br0AB3E8 = 0x81;   g_br0AC654 = 0;    break;
-    case 2:  g_br0AB3E8 = 0x4050; g_br0AC654 = 6;    break;
-    case 3:  g_br0AB3E8 = 0x202C; g_br0AC654 = 3;    break;
-    case 4:  g_br0AB3E8 = 0x1E00; g_br0AC654 = 0x0B; break;
+    case 0:  (*(int32_t *)&g_br0AB3E8) = 0x102;  (*(int32_t *)&g_brSel0ABDF4) = 1;    break;
+    case 1:  (*(int32_t *)&g_br0AB3E8) = 0x81;   (*(int32_t *)&g_brSel0ABDF4) = 0;    break;
+    case 2:  (*(int32_t *)&g_br0AB3E8) = 0x4050; (*(int32_t *)&g_brSel0ABDF4) = 6;    break;
+    case 3:  (*(int32_t *)&g_br0AB3E8) = 0x202C; (*(int32_t *)&g_brSel0ABDF4) = 3;    break;
+    case 4:  (*(int32_t *)&g_br0AB3E8) = 0x1E00; (*(int32_t *)&g_brSel0ABDF4) = 0x0B; break;
     default:
-        g_br0AC654 = 1;
-        g_br0AB3E8 = 0x102;
+        (*(int32_t *)&g_brSel0ABDF4) = 1;
+        (*(int32_t *)&g_br0AB3E8) = 0x102;
         break;
     }
 }

@@ -59,10 +59,10 @@ int BrItemSetLabelState_10037E60(Obj37E60 *pObj)
 {
     char *pStr;
 
-    if (g_brFlag0A9360 == 0 && g_brFlag21C650 == 0)
-        pStr = BrStrByIndex(0x51);
+    if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0 && (*(int *)&g_a220B20) == 0)
+        pStr = BrStrGet(0x51);
     else
-        pStr = BrStrByIndex(0x0C);
+        pStr = BrStrGet(0x0C);
 
     strcpy(pObj->m2B5C.szName, pStr);
 

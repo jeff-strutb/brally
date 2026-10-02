@@ -50,7 +50,7 @@ void BrS17Release(void)
 /* @implements 0x10019820 glide BrS17RegisterAtExit */
 int BrS17RegisterAtExit(void)
 {
-    return BrXAtExit(BrX1002C2C0);
+    return BrCrtAtExit(BrX1002C2C0);
 }
 
 

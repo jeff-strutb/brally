@@ -134,49 +134,49 @@ void BrSub_100173F0(BrHudView *aViews, BrDriverCar * a2)
 
     (void)a2;
 
-    if (g_br0AA010 == 3)
+    if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 3)
         return;
 
     x = aViews[0].x + 0x10;
 
-    if (g_br0BD3E8 != 0) {
-        if (g_pBrHudRace->cSplits < g_br0BD3E0 || g_brCViews == 1) {
+    if (g_br100BCBF0 != 0) {
+        if ((*(Br70Race * *)&g_pBr63Race)->cSplits < (*(int32_t *)&g_CBE8) || (*(int32_t *)&g_brMode0AA8B4) == 1) {
             const char *pszTag;
-            y = aViews[g_brIView].y + 5;
-            if (g_pBrHudRace->cSplits < g_br0BD3E0) {
-                if (g_brCViews == 2)
+            y = aViews[g_BrEnvSection].y + 5;
+            if ((*(Br70Race * *)&g_pBr63Race)->cSplits < (*(int32_t *)&g_CBE8)) {
+                if ((*(int32_t *)&g_brMode0AA8B4) == 2)
                     pszTag = "L";
                 else
                     pszTag = BrStrGet(BR70_STR_LAP_LONG);
                 sprintf(szBuf, "%%y1%s%d/%d", pszTag,
-                        g_pBrHudRace->cSplits + 1, g_br0BD3E0);
+                        (*(Br70Race * *)&g_pBr63Race)->cSplits + 1, (*(int32_t *)&g_CBE8));
             } else {
                 sprintf(szBuf, BrStrGet(BR70_STR_LAP_DONE));
             }
-            BrSub_10019260();
+            BrTextFlag358Clear();
             BrSub_10019280();
-            BrSub_100192F0(0xF);
+            BrSetGlobal_ABB30(0xF);
             y += 0xF;
             BrTextDraw(szBuf, x, y);
         }
     }
 
-    if (g_br0BD3F8 == 0)
+    if (g_br100BCC00 == 0)
         return;
-    if (g_brF22AF1C != 0)
+    if (g_brRaceBegin226A4C != 0)
         return;
 
     x -= 2;
-    y = aViews[g_brIView].y + aViews[g_brIView].h - 0xC;
+    y = aViews[g_BrEnvSection].y + aViews[g_BrEnvSection].h - 0xC;
 
     BrSub_10019240();
     BrSub_10019280();
     BrTextSetColors(0xFF, 0xF0, 0x7D, 0xFF, 0x78, 0);
 
-    sprintf(szBuf, "%d", g_pBrHudRace->pos + 1);
+    sprintf(szBuf, "%d", (*(Br70Race * *)&g_pBr63Race)->pos + 1);
 
     nudge = 0;
-    pos = g_pBrHudRace->pos;
+    pos = (*(Br70Race * *)&g_pBr63Race)->pos;
     switch (pos - nudge) {
     case 0:
         pszSuffix = BrStrGet(BR70_STR_POS_0);
@@ -195,19 +195,19 @@ void BrSub_100173F0(BrHudView *aViews, BrDriverCar * a2)
         break;
     }
 
-    if (g_brCViews == 1) {
-        BrSub_100192F0(0x28);
-        w = BrSub_100193C0(szBuf, 0x28);
+    if ((*(int32_t *)&g_brMode0AA8B4) == 1) {
+        BrSetGlobal_ABB30(0x28);
+        w = BrFontMeasure(szBuf, 0x28);
         BrTextDraw(szBuf, x - 1, y - 1);
-        BrSub_100192F0(0x14);
+        BrSetGlobal_ABB30(0x14);
         BrTextDraw(pszSuffix, w + nudge + x + 3, y - 0xF);
     } else {
-        BrSub_100192F0(0x1A);
-        w = BrSub_100193C0(szBuf, 0x1A);
+        BrSetGlobal_ABB30(0x1A);
+        w = BrFontMeasure(szBuf, 0x1A);
         BrTextDraw(szBuf, x, y);
-        BrSub_100192F0(0xD);
+        BrSetGlobal_ABB30(0xD);
         BrTextDraw(pszSuffix, (2 * nudge) / 3 + w + x + 3, y - 0xA);
     }
 
-    BrSub_10019250();
+    BrClear_10019250();
 }

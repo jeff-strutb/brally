@@ -43,7 +43,7 @@ typedef char chk_sub[(unsigned)&((GameObj *)0)->pSub == 0x2AE8 ? 1 : -1];
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define g_mode DAT_100a9360
+#define g_mode (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */
 
 int BrOpt4F00(GameObj *pGame)
 {
@@ -54,7 +54,7 @@ int BrOpt4F00(GameObj *pGame)
     if (pObj != 0)
         pObj->f00(1);
     g_5CC0 = 0;
-    g_cur = (Phase *)((BrOptObj *)(g_5CB4));
+    (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(g_5CB4));
     g_mode = 2;
     return 0;
 }

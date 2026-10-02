@@ -183,7 +183,7 @@ void BrPolyClipPlane(BrPolyList *pList, BrPolyDistFn pfnDist)
             } else {
                 /* entering: splice in the crossing, keep pCur */
                 float       t    = dPrev / (dPrev - dCur);
-                BrLerpNode *pNew = BrLerpNodeAlloc(pPrev, pCur, t);
+                BrLerpNode *pNew = BrVertLerp8(pPrev, pCur, t);
 
                     pNew->pNext = pOut->pNext;
                     pOut->pNext = pNew;
@@ -203,7 +203,7 @@ void BrPolyClipPlane(BrPolyList *pList, BrPolyDistFn pfnDist)
                 pCur->pNext = pRecycle;
                 pRecycle    = pCur;
 
-                pNew = BrLerpNodeAlloc(pCur, pPrev, t);
+                pNew = BrVertLerp8(pCur, pPrev, t);
                     pNew->pNext = pOut->pNext;
                     pOut->pNext = pNew;
                     pOut        = pNew;

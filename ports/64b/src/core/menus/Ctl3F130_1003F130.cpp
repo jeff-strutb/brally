@@ -32,10 +32,10 @@ public:
 
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define g_slot DAT_10ac5c84
+#define g_slot (*(Phase * *)&g_brPhaseAA292C)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define g_slot2 DAT_10ac5ccc
+#define g_slot2 (*(Phase * *)&g_brPhaseAA2974)
 
 /* EnterFn was a stand-in; the original calls FUN_100498a0 (?FUN_100498a0@@YAHPAVGameUi@@@Z).  Declared under
  * its real symbol so the relocation resolves by name. */
@@ -64,13 +64,13 @@ int Ctl3F130::Activate()
     if (p == 0) {
         p = new Phase;
         g_slot = (Phase *)((struct Ph *)(p));
-        g_cur = (Phase *)((BrOptObj *)(p));
+        (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(p));
         if (p == 0)
             return 0;
         p->pfnEnter = EnterFn;
         g_slot->pfnEnter(g_slot);
-        g_cur->f0C = one;
-        g_cur->f68 = one;
+        (*(Phase * *)&g_brPAA29B8)->f0C = one;
+        (*(Phase * *)&g_brPAA29B8)->f68 = one;
         q = new Phase;
         g_slot2 = (Phase *)((struct Ph *)(q));
         if (q == 0)
@@ -79,7 +79,7 @@ int Ctl3F130::Activate()
         g_slot2->pfnEnter(g_slot2);
         g_slot2->f0C = one;
     } else {
-        g_cur = (Phase *)((BrOptObj *)(p));
+        (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(p));
     }
     return one;
 }

@@ -20,8 +20,8 @@
 int BrRacePosIconSet(int param_1)
 
 {
-  if (0 < DAT_10ac5a48) {
-    switch(DAT_10ac5a48) {
+  if (0 < (DAT_10ac5a48[0])) {
+    switch((DAT_10ac5a48[0])) {
     case 1:
       *(short *)(param_1 + 0x1e20c) = 0x73;
       break;
@@ -41,8 +41,8 @@ int BrRacePosIconSet(int param_1)
       *(short *)(param_1 + 0x1e20c) = 0xffff;
     }
   }
-  if (DAT_10ac5a48 == 0) {
-    switch(DAT_10ac5a4c & 0xff) {
+  if ((DAT_10ac5a48[0]) == 0) {
+    switch((*(int *)&g_aBrAA26F4) & 0xff) {
     case 1:
       *(short *)(param_1 + 0x1e20c) = 0x47;
       return 1;
@@ -75,10 +75,10 @@ int BrRacePosIconSet(int param_1)
 int BrRaceIconLookup(int param_1)
 
 {
-  if ((g_brPhaseAA2904 == DAT_10ac5cbc) && (DAT_10ac5c40 == 0)) {
+  if ((g_brPAA29B8 == DAT_10ac5cbc) && (DAT_10ac5c40 == 0)) {
     return 0xfffffffe;
   }
-  *(short *)(param_1 + 0x1e20c) = *(short *)(DAT_100abdf4 * 4 + 0x100abd48);
+  *(short *)(param_1 + 0x1e20c) = *(short *)(g_brSel0ABDF4 * 4 + 0x100abd48);
   return 1;
 }
 

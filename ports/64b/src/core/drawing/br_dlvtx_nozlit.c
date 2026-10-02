@@ -185,7 +185,7 @@ const uint8_t *BrDlVtxNoZLit(const uint8_t *p)
     w0 = *(const uint32_t *)p;
     pSrc = *(const BrDlSrcVtx **)(p + 4);
     v0 = (w0 >> 16) & 0xFF;
-    pV = &DAT_105ce318[v0];
+    pV = &g_aBrDlVtxPool[v0];
     pVc = pV;
     n  = (w0 >> 10) & 0x3F;
 
@@ -212,9 +212,9 @@ const uint8_t *BrDlVtxNoZLit(const uint8_t *p)
                 pV[i].n2 = DAT_105ce230;
             }
         } else {
-            pV[i].n0 = DAT_105d17a4;
-            pV[i].n1 = DAT_105d17b4;
-            pV[i].n2 = DAT_105ce2d0;
+            pV[i].n0 = BrGbiRectG_5D17A4;
+            pV[i].n1 = BrGbiRectG_5D17B4;
+            pV[i].n2 = BrGbiRectG_5CE2D0;
         }
 
         pf = &pV[i].f40;

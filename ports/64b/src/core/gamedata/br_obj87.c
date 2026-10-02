@@ -23,7 +23,7 @@ void * __fastcall BrObj87A0DeleteDtor(void *param_1,int _edx_unused,unsigned cha
 {
   BrObj87Dtor(param_1);
   if ((param_2 & 1) != 0) {
-    operator_delete(param_1);
+    BrOperatorDelete(param_1);
   }
   return param_1;
 }
@@ -69,6 +69,6 @@ void __fastcall BrObj87Dtor(void *pThis)
 {
     int **p = (int **)pThis;
     *p = (int *)&BrObj87Vtbl;
-    BrSub10008D60();
+    BrPodNop();
 }
 

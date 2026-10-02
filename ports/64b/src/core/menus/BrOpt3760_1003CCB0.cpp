@@ -53,10 +53,10 @@ int BrOpt3760(GameObj *pGame)
 {
     pGame->pSub->f68 = 0;
     pGame->pSub->s6(0);
-    if (g_9360 == 0)
+    if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0)
         g_CBE8 = 3;
-    Fn7920();
-    g_nav.m(&g_navArg);
-    FnB0B0();
+    BrOptSave();
+    (*(Nav *)&g_BrCtrlCfg).m(&g_navArg);
+    BrMenuAutoSaveName();
     return 0;
 }

@@ -21,11 +21,11 @@
  * reads the fields used here as the separate globals they are, by their
  * DAT_ names -- which the image gate resolves from the address they spell. */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define S17_PGFX DAT_106e7710
+#define S17_PGFX g_BrGfxPtr
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define S17_F6909B0 DAT_105ccb58
+#define S17_F6909B0 (*(int *)&g_brRaceHudA)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define S17_F6C2CFC DAT_106e9d8c
+#define S17_F6C2CFC (*(int *)&g_brRaceFlyStep)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 #define S17_F680944 DAT_105bcaec
 #undef BrPtrListContains
@@ -170,7 +170,7 @@ void BrS17DrawGated(void)
             saved = S17_F6C2CFC;
             S17_F6C2CFC = 0;
         }
-        BrX1003563A(S17_F680944);
+        BrAnimUpdate(S17_F680944);
         if (S17_F6909B0 == -1)
             S17_F6C2CFC = saved;
     }

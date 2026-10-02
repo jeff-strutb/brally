@@ -192,37 +192,37 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, char * idFrom, 
             if ((flags & 0x3f) == 4)
                 pkt.m_1006CE50();
 
-            WaitForSingleObject(((*(void * *)((char *)&(DAT_117a9b88) + soff))), 0xffffffff);
-            if ((((*(int *)((char *)&(DAT_117a9bb4) + soff))) & 0x3f) == 0)
+            WaitForSingleObject(((*(void * *)((char *)&(g_aBrPeer71) + soff))), 0xffffffff);
+            if ((((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x2C))) + soff))) & 0x3f) == 0)
                 goto c0_rel;
-            if (idFrom != ((*(int *)((char *)&(DAT_117a9b8c) + soff))))
+            if (idFrom != ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x4))) + soff))))
                 goto c0_rel;
             if (b10 != 0) {
                 roff = (slot * 0x10 + b0) * 0x96c;
-                WaitForSingleObject(((*(void * *)((char *)&(DAT_117b3258) + roff))), 0xffffffff);
-                if (ts >= ((*(unsigned *)((char *)&(DAT_117b3260) + roff)))) {
+                WaitForSingleObject(((*(void * *)((char *)&(g_aBr178FEF8) + roff))), 0xffffffff);
+                if (ts >= ((*(unsigned *)((char *)&((*(unsigned int *)((char *)&g_aBr178FEF8 + 0x8))) + roff)))) {
                     if (slot == b0) {
                         if (flags & 0x40) {
                             flags &= 0x3f;
-                            ((*(int *)((char *)&(DAT_117a9bb4) + soff))) &= 0xffffff3f;
+                            ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x2C))) + soff))) &= 0xffffff3f;
                         }
                         if (slot == b0 && (flags & 0x80)) {
                             flags &= 0x3f;
-                            ((*(int *)((char *)&(DAT_117a9bb4) + soff))) &= 0xffffff3f;
+                            ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x2C))) + soff))) &= 0xffffff3f;
                         }
                     }
-                    ((*(unsigned *)((char *)&(DAT_117b3260) + roff))) = ts;
-                    ((*(int *)((char *)&(DAT_117b3284) + roff)))      = flags;
-                    ((*(int *)((char *)&(DAT_117b3288) + roff)))      = nib;
-                    (((char *)((char *)&(DAT_117b328c) + roff)))[0]  = ca;
-                    (((char *)((char *)&(DAT_117b328d) + roff)))[0]  = cb;
-                    (((char *)((char *)&(DAT_117b328e) + roff)))[0]  = cc;
-                    ((*(int *)((char *)&(DAT_117b325c) + roff)))      = id;
+                    ((*(unsigned *)((char *)&((*(unsigned int *)((char *)&g_aBr178FEF8 + 0x8))) + roff))) = ts;
+                    ((*(int *)((char *)&((*(int *)((char *)&g_aBr178FEF8 + 0x2C))) + roff)))      = flags;
+                    ((*(int *)((char *)&((*(int *)((char *)&g_aBr178FEF8 + 0x30))) + roff)))      = nib;
+                    (((char *)((char *)&((*(char *)((char *)&g_aBr178FEF8 + 0x34))) + roff)))[0]  = ca;
+                    (((char *)((char *)&((*(char *)((char *)&g_aBr178FEF8 + 0x35))) + roff)))[0]  = cb;
+                    (((char *)((char *)&((*(char *)((char *)&g_aBr178FEF8 + 0x36))) + roff)))[0]  = cc;
+                    ((*(int *)((char *)&((*(int *)((char *)&g_aBr178FEF8 + 0x4))) + roff)))      = id;
                     if (hasName)
-                        strcpy((((char *)((char *)&(DAT_117b37b4) + roff))), name);
+                        strcpy((((char *)((char *)&((*(char *)((char *)&g_aBr178FEF8 + 0x55C))) + roff))), name);
                 }
-                ReleaseMutex(((*(void * *)((char *)&(DAT_117b3258) + roff))));
-                ReleaseMutex(((*(void * *)((char *)&(DAT_117a9b88) + soff))));
+                ReleaseMutex(((*(void * *)((char *)&(g_aBr178FEF8) + roff))));
+                ReleaseMutex(((*(void * *)((char *)&(g_aBrPeer71) + soff))));
                 break;
             }
             if (slot == b0) {
@@ -230,10 +230,10 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, char * idFrom, 
                     bStart = 1;
                 if (flags & 0x80)
                     bReturn = 1;
-                ((*(int *)((char *)&(DAT_117a9bb4) + soff))) = flags;
+                ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x2C))) + soff))) = flags;
             }
         c0_rel:
-            ReleaseMutex(((*(void * *)((char *)&(DAT_117a9b88) + soff))));
+            ReleaseMutex(((*(void * *)((char *)&(g_aBrPeer71) + soff))));
             break;
         }
 
@@ -241,37 +241,37 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, char * idFrom, 
             int      best, cur;
             unsigned bestT;
 
-            WaitForSingleObject(((*(void * *)((char *)&(DAT_117a9b88) + soff))), 0xffffffff);
-            if ((((*(int *)((char *)&(DAT_117a9bb4) + soff))) & 0x3f) < 2)
+            WaitForSingleObject(((*(void * *)((char *)&(g_aBrPeer71) + soff))), 0xffffffff);
+            if ((((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x2C))) + soff))) & 0x3f) < 2)
                 goto c4_rel;
-            if (idFrom != ((*(int *)((char *)&(DAT_117a9b8c) + soff))))
+            if (idFrom != ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x4))) + soff))))
                 goto c4_rel;
-            cur = ((*(int *)((char *)&(DAT_117aa0e0) + soff)));
-            if (ts <= (((unsigned *)((char *)&(DAT_117a9b94) + soff)))[cur]) {
+            cur = ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff)));
+            if (ts <= (((unsigned *)((char *)&((*(unsigned int (*)[])((char *)&g_aBrPeer71 + 0xC))) + soff)))[cur]) {
                 sub_10007230(&scratch, &pkt);
-                ReleaseMutex(((*(void * *)((char *)&(DAT_117a9b88) + soff))));
+                ReleaseMutex(((*(void * *)((char *)&(g_aBrPeer71) + soff))));
                 break;
             }
             best  = 0;
             bestT = 0xffffffff;
             for (i = 0; i < 8; i++) {
-                if ((((unsigned *)((char *)&(DAT_117a9b94) + soff)))[i] <= bestT) {
+                if ((((unsigned *)((char *)&((*(unsigned int (*)[])((char *)&g_aBrPeer71 + 0xC))) + soff)))[i] <= bestT) {
                     best  = i;
-                    bestT = (((unsigned *)((char *)&(DAT_117a9b94) + soff)))[i];
+                    bestT = (((unsigned *)((char *)&((*(unsigned int (*)[])((char *)&g_aBrPeer71 + 0xC))) + soff)))[i];
                 }
             }
-            ((*(int *)((char *)&(DAT_117aa0e0) + soff))) = best;
-            (((unsigned *)((char *)&(DAT_117a9b94) + soff)))[best] = ts;
-            (((int *)((char *)&(DAT_117a9bc0) + soff)))[((*(int *)((char *)&(DAT_117aa0e0) + soff)))] = 0x40;
-            sub_10007230(&(((BrCarState *)((char *)&(DAT_117a9be0) + soff)))[((*(int *)((char *)&(DAT_117aa0e0) + soff)))], &pkt);
-            if (((*(int *)((char *)&(DAT_117aa4f0) + soff))) != 0)
+            ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff))) = best;
+            (((unsigned *)((char *)&((*(unsigned int (*)[])((char *)&g_aBrPeer71 + 0xC))) + soff)))[best] = ts;
+            (((int *)((char *)&((*(int (*)[])((char *)&g_aBrPeer71 + 0x38))) + soff)))[((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff)))] = 0x40;
+            sub_10007230(&(((BrCarState *)((char *)&((*(BrCarState (*)[])((char *)&g_aBrPeer71 + 0x58))) + soff)))[((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff)))], &pkt);
+            if (((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x968))) + soff))) != 0)
                 goto c4_rel;
-            if (*(float *)((char *)&(((BrCarState *)((char *)&(DAT_117a9be0) + soff)))[((*(int *)((char *)&(DAT_117aa0e0) + soff)))] + 0x78)
+            if (*(float *)((char *)&(((BrCarState *)((char *)&((*(BrCarState (*)[])((char *)&g_aBrPeer71 + 0x58))) + soff)))[((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff)))] + 0x78)
                     < DAT_1007751c)
                 goto c4_rel;
-            ((*(int *)((char *)&(DAT_117aa4f0) + soff))) = sub_1006A310();
+            ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x968))) + soff))) = sub_1006A310();
         c4_rel:
-            ReleaseMutex(((*(void * *)((char *)&(DAT_117a9b88) + soff))));
+            ReleaseMutex(((*(void * *)((char *)&(g_aBrPeer71) + soff))));
             break;
         }
 
@@ -289,56 +289,56 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, char * idFrom, 
             unsigned bestT, tNew, tPrev;
             float    frac;
 
-            WaitForSingleObject(((*(void * *)((char *)&(DAT_117a9b88) + soff))), 0xffffffff);
-            if ((((*(int *)((char *)&(DAT_117a9bb4) + soff))) & 0x3f) < 2)
+            WaitForSingleObject(((*(void * *)((char *)&(g_aBrPeer71) + soff))), 0xffffffff);
+            if ((((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x2C))) + soff))) & 0x3f) < 2)
                 goto c8_rel;
-            if (idFrom != ((*(int *)((char *)&(DAT_117a9b8c) + soff))))
+            if (idFrom != ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x4))) + soff))))
                 goto c8_rel;
-            cur = ((*(int *)((char *)&(DAT_117aa0e0) + soff)));
-            if (ts <= (((unsigned *)((char *)&(DAT_117a9b94) + soff)))[cur]) {
+            cur = ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff)));
+            if (ts <= (((unsigned *)((char *)&((*(unsigned int (*)[])((char *)&g_aBrPeer71 + 0xC))) + soff)))[cur]) {
                 sub_10007750(&scratch2, &scratch2, &pkt);
                 goto c8_rel;
             }
             best  = 0;
             bestT = 0xffffffff;
             for (i = 0; i < 8; i++) {
-                if ((((unsigned *)((char *)&(DAT_117a9b94) + soff)))[i] <= bestT) {
-                    bestT = (((unsigned *)((char *)&(DAT_117a9b94) + soff)))[i];
+                if ((((unsigned *)((char *)&((*(unsigned int (*)[])((char *)&g_aBrPeer71 + 0xC))) + soff)))[i] <= bestT) {
+                    bestT = (((unsigned *)((char *)&((*(unsigned int (*)[])((char *)&g_aBrPeer71 + 0xC))) + soff)))[i];
                     best  = i;
                 }
             }
             iNew = 0;
             tNew = 0;
             for (i = 0; i < 8; i++) {
-                if ((((int *)((char *)&(DAT_117a9bc0) + soff)))[i] == 0x40 && tNew < (((unsigned *)((char *)&(DAT_117a9b94) + soff)))[i]) {
+                if ((((int *)((char *)&((*(int (*)[])((char *)&g_aBrPeer71 + 0x38))) + soff)))[i] == 0x40 && tNew < (((unsigned *)((char *)&((*(unsigned int (*)[])((char *)&g_aBrPeer71 + 0xC))) + soff)))[i]) {
                     iNew = i;
-                    tNew = (((unsigned *)((char *)&(DAT_117a9b94) + soff)))[i];
+                    tNew = (((unsigned *)((char *)&((*(unsigned int (*)[])((char *)&g_aBrPeer71 + 0xC))) + soff)))[i];
                 }
             }
             iPrev = 0;
             tPrev = 0;
             for (i = 0; i < 8; i++) {
-                if ((((int *)((char *)&(DAT_117a9bc0) + soff)))[i] == 0x40 && tPrev < (((unsigned *)((char *)&(DAT_117a9b94) + soff)))[i]
+                if ((((int *)((char *)&((*(int (*)[])((char *)&g_aBrPeer71 + 0x38))) + soff)))[i] == 0x40 && tPrev < (((unsigned *)((char *)&((*(unsigned int (*)[])((char *)&g_aBrPeer71 + 0xC))) + soff)))[i]
                         && i != iNew) {
                     iPrev = i;
-                    tPrev = (((unsigned *)((char *)&(DAT_117a9b94) + soff)))[i];
+                    tPrev = (((unsigned *)((char *)&((*(unsigned int (*)[])((char *)&g_aBrPeer71 + 0xC))) + soff)))[i];
                 }
             }
-            d = (((unsigned *)((char *)&(DAT_117a9b94) + soff)))[iNew] - (((unsigned *)((char *)&(DAT_117a9b94) + soff)))[iPrev];
+            d = (((unsigned *)((char *)&((*(unsigned int (*)[])((char *)&g_aBrPeer71 + 0xC))) + soff)))[iNew] - (((unsigned *)((char *)&((*(unsigned int (*)[])((char *)&g_aBrPeer71 + 0xC))) + soff)))[iPrev];
             if (d == 0)
                 frac = 1.0f;
             else
-                frac = (float)(unsigned)(ts - (((unsigned *)((char *)&(DAT_117a9b94) + soff)))[iPrev]) / d;
-            ((*(int *)((char *)&(DAT_117aa0e0) + soff))) = best;
-            (((unsigned *)((char *)&(DAT_117a9b94) + soff)))[best] = ts;
-            (((int *)((char *)&(DAT_117a9bc0) + soff)))[((*(int *)((char *)&(DAT_117aa0e0) + soff)))] = 0x80;
-            sub_10007D50(&(((BrCarState *)((char *)&(DAT_117a9be0) + soff)))[((*(int *)((char *)&(DAT_117aa0e0) + soff)))], frac,
-                           &(((BrCarState *)((char *)&(DAT_117a9be0) + soff)))[iPrev],
-                           &(((BrCarState *)((char *)&(DAT_117a9be0) + soff)))[iNew]);
-            sub_10007750(&(((BrCarState *)((char *)&(DAT_117a9be0) + soff)))[((*(int *)((char *)&(DAT_117aa0e0) + soff)))],
-                                  &(((BrCarState *)((char *)&(DAT_117a9be0) + soff)))[iNew], &pkt);
+                frac = (float)(unsigned)(ts - (((unsigned *)((char *)&((*(unsigned int (*)[])((char *)&g_aBrPeer71 + 0xC))) + soff)))[iPrev]) / d;
+            ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff))) = best;
+            (((unsigned *)((char *)&((*(unsigned int (*)[])((char *)&g_aBrPeer71 + 0xC))) + soff)))[best] = ts;
+            (((int *)((char *)&((*(int (*)[])((char *)&g_aBrPeer71 + 0x38))) + soff)))[((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff)))] = 0x80;
+            sub_10007D50(&(((BrCarState *)((char *)&((*(BrCarState (*)[])((char *)&g_aBrPeer71 + 0x58))) + soff)))[((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff)))], frac,
+                           &(((BrCarState *)((char *)&((*(BrCarState (*)[])((char *)&g_aBrPeer71 + 0x58))) + soff)))[iPrev],
+                           &(((BrCarState *)((char *)&((*(BrCarState (*)[])((char *)&g_aBrPeer71 + 0x58))) + soff)))[iNew]);
+            sub_10007750(&(((BrCarState *)((char *)&((*(BrCarState (*)[])((char *)&g_aBrPeer71 + 0x58))) + soff)))[((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff)))],
+                                  &(((BrCarState *)((char *)&((*(BrCarState (*)[])((char *)&g_aBrPeer71 + 0x58))) + soff)))[iNew], &pkt);
         c8_rel:
-            ReleaseMutex(((*(void * *)((char *)&(DAT_117a9b88) + soff))));
+            ReleaseMutex(((*(void * *)((char *)&(g_aBrPeer71) + soff))));
             break;
         }
 
@@ -346,13 +346,13 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, char * idFrom, 
             int b   = pkt.m_1006CE50();
             int now = sub_1006A310();
 
-            WaitForSingleObject(((*(void * *)((char *)&(DAT_117a9b88) + soff))), 0xffffffff);
-            if ((((*(int *)((char *)&(DAT_117a9bb4) + soff))) & 0x3f) != 0 && idFrom == ((*(int *)((char *)&(DAT_117a9b8c) + soff)))
+            WaitForSingleObject(((*(void * *)((char *)&(g_aBrPeer71) + soff))), 0xffffffff);
+            if ((((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x2C))) + soff))) & 0x3f) != 0 && idFrom == ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x4))) + soff)))
                     && b10 != 0) {
-                ((*(int *)((char *)&(DAT_117aa4e8) + soff))) = b;
-                ((*(int *)((char *)&(DAT_117aa4ec) + soff))) = now - b;
+                ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x960))) + soff))) = b;
+                ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x964))) + soff))) = now - b;
             }
-            ReleaseMutex(((*(void * *)((char *)&(DAT_117a9b88) + soff))));
+            ReleaseMutex(((*(void * *)((char *)&(g_aBrPeer71) + soff))));
             break;
         }
 
@@ -378,10 +378,10 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, char * idFrom, 
                 if (j == -1)
                     break;
                 soff = j * 0x96c;
-                WaitForSingleObject(((*(void * *)((char *)&(DAT_117a9b88) + soff))), 0xffffffff);
-                ((*(int *)((char *)&(DAT_117a9b8c) + soff))) = idFrom;
-                pRing = (((int *)((char *)&(DAT_117a9bc0) + soff)));
-                pCar  = (((BrCarState *)((char *)&(DAT_117a9be0) + soff)));
+                WaitForSingleObject(((*(void * *)((char *)&(g_aBrPeer71) + soff))), 0xffffffff);
+                ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x4))) + soff))) = idFrom;
+                pRing = (((int *)((char *)&((*(int (*)[])((char *)&g_aBrPeer71 + 0x38))) + soff)));
+                pCar  = (((BrCarState *)((char *)&((*(BrCarState (*)[])((char *)&g_aBrPeer71 + 0x58))) + soff)));
                 k = 8;
                 do {
                     pRing[-0xb] = 0;    /* timestamp ring entry (kind ring - 0x2c) */
@@ -391,32 +391,32 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, char * idFrom, 
                     pCar++;
                     k--;
                 } while (k != 0);
-                ((*(int *)((char *)&(DAT_117a9bb4) + soff))) = 1;
-                ((*(int *)((char *)&(DAT_117aa0e0) + soff))) = 0;
-                ((*(int *)((char *)&(DAT_117aa4e4) + soff))) = sub_1006A310();
+                ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x2C))) + soff))) = 1;
+                ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff))) = 0;
+                ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x95C))) + soff))) = sub_1006A310();
                 roff = j * 0x10 * 0x96c;
                 m = 0x10;
                 do {
-                    WaitForSingleObject(((*(void * *)((char *)&(DAT_117b3258) + roff))), 0xffffffff);
-                    ((*(unsigned *)((char *)&(DAT_117b3260) + roff))) = 0;
-                    ((*(int *)((char *)&(DAT_117b3284) + roff)))      = 0;
-                    ReleaseMutex(((*(void * *)((char *)&(DAT_117b3258) + roff))));
+                    WaitForSingleObject(((*(void * *)((char *)&(g_aBr178FEF8) + roff))), 0xffffffff);
+                    ((*(unsigned *)((char *)&((*(unsigned int *)((char *)&g_aBr178FEF8 + 0x8))) + roff))) = 0;
+                    ((*(int *)((char *)&((*(int *)((char *)&g_aBr178FEF8 + 0x2C))) + roff)))      = 0;
+                    ReleaseMutex(((*(void * *)((char *)&(g_aBr178FEF8) + roff))));
                     roff += 0x96c;
                     m--;
                 } while (m != 0);
-                ReleaseMutex(((*(void * *)((char *)&(DAT_117a9b88) + soff))));
+                ReleaseMutex(((*(void * *)((char *)&(g_aBrPeer71) + soff))));
             } else {
-                WaitForSingleObject(((*(void * *)((char *)&(DAT_117a9b88) + soff))), 0xffffffff);
-                if ((((*(int *)((char *)&(DAT_117a9bb4) + soff))) & 0x3f) != 0 && idFrom == ((*(int *)((char *)&(DAT_117a9b8c) + soff)))
+                WaitForSingleObject(((*(void * *)((char *)&(g_aBrPeer71) + soff))), 0xffffffff);
+                if ((((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x2C))) + soff))) & 0x3f) != 0 && idFrom == ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x4))) + soff)))
                         && slot == b0) {
-                    ((*(int *)((char *)&(DAT_117a9bb8) + soff)))     = nib;
-                    (((char *)((char *)&(DAT_117a9bbc) + soff)))[0] = ca;
-                    (((char *)((char *)&(DAT_117a9bbd) + soff)))[0] = cb;
-                    (((char *)((char *)&(DAT_117a9bbe) + soff)))[0] = cc;
-                    strcpy((((char *)((char *)&(DAT_117aa0e4) + soff))), name);
-                    ((*(int *)((char *)&(DAT_117a9bb4) + soff))) = 2;
+                    ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x30))) + soff)))     = nib;
+                    (((char *)((char *)&((*(char *)((char *)&g_aBrPeer71 + 0x34))) + soff)))[0] = ca;
+                    (((char *)((char *)&((*(char *)((char *)&g_aBrPeer71 + 0x35))) + soff)))[0] = cb;
+                    (((char *)((char *)&((*(char *)((char *)&g_aBrPeer71 + 0x36))) + soff)))[0] = cc;
+                    strcpy((((char *)((char *)&((*(char *)((char *)&g_aBrPeer71 + 0x55C))) + soff))), name);
+                    ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x2C))) + soff))) = 2;
                 }
-                ReleaseMutex(((*(void * *)((char *)&(DAT_117a9b88) + soff))));
+                ReleaseMutex(((*(void * *)((char *)&(g_aBrPeer71) + soff))));
             }
             break;
         }
@@ -428,7 +428,7 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, char * idFrom, 
 
     if (bReturn) {
         int *pst;
-        for (pst = &DAT_117a9bb4; (char *)pst < (char *)&DAT_117a9bb4 + 0x10 * 0x96c;
+        for (pst = &(*(int *)((char *)&g_aBrPeer71 + 0x2C)); (char *)pst < (char *)&(*(int *)((char *)&g_aBrPeer71 + 0x2C)) + 0x10 * 0x96c;
                 pst = (int *)((char *)pst + 0x96c)) {
             void    *h = *(void **)((char *)pst - 0x2c);
             unsigned s;
@@ -442,7 +442,7 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, char * idFrom, 
     }
     if (bStart) {
         int *pst;
-        for (pst = &DAT_117a9bb4; (char *)pst < (char *)&DAT_117a9bb4 + 0x10 * 0x96c;
+        for (pst = &(*(int *)((char *)&g_aBrPeer71 + 0x2C)); (char *)pst < (char *)&(*(int *)((char *)&g_aBrPeer71 + 0x2C)) + 0x10 * 0x96c;
                 pst = (int *)((char *)pst + 0x96c)) {
             void    *h = *(void **)((char *)pst - 0x2c);
             unsigned s;

@@ -74,7 +74,7 @@ void Rip0C4E0::Apply(const float *pDir, short mag)
     float *pVtx;
     int   n;
 
-    deg = (int)(BrAtan2_10034E30(pDir[0], pDir[1]) * 57.2957763671875f);
+    deg = (int)(BrAtan2(pDir[0], pDir[1]) * 57.2957763671875f);
 
     if (deg >= 0x14 && deg < 0x154) {
         if (deg < 0x32) {
@@ -98,8 +98,8 @@ void Rip0C4E0::Apply(const float *pDir, short mag)
 
     mag <<= 2;
 
-    BrFn1005A4E0(b29ac, b29ad, b29ae);
-    BrFn1006E0A0(oct, a2a70, a2a90);
+    BrImgTintSetScale(b29ac, b29ad, b29ae);
+    BrTexDetailBumpNeighbour(oct, a2a70, a2a90);
 
     if (w29c8[oct] >= g_ABE44)
         return;

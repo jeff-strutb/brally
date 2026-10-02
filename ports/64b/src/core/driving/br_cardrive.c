@@ -131,65 +131,65 @@ void BrCarPhysDriveMatch(struct BrRbBody *param_1, float param_2, float *param_3
     *(int *)(*(int *)(param_1 + 0x10) + 0x1b4) = g.ran;
   }
   iVar5 = *(int *)(param_1 + 0xc);
-  if (*(float *)(iVar5 + 0x1d0) < _DAT_10077a78) {
+  if (*(float *)(iVar5 + 0x1d0) < BrCrK_Zero) {
     fVar1 = -*(float *)(iVar5 + 0x1d0);
   } else {
     fVar1 = *(float *)(iVar5 + 0x1d0);
   }
-  if (*(float *)(iVar5 + 0x1c4) == _DAT_10077a78) {
-    fVar7 = _DAT_10077a78;
-  } else if (*(float *)(iVar5 + 0x1c4) > _DAT_10077a78) {
-    fVar7 = _DAT_10077a7c;
+  if (*(float *)(iVar5 + 0x1c4) == BrCrK_Zero) {
+    fVar7 = BrCrK_Zero;
+  } else if (*(float *)(iVar5 + 0x1c4) > BrCrK_Zero) {
+    fVar7 = DAT_10077a7c;
   } else {
-    fVar7 = _DAT_10077a80;
+    fVar7 = DAT_10077a80;
   }
-  fVar1 = fVar7 * fVar1 * _DAT_10077a84;
+  fVar1 = fVar7 * fVar1 * DAT_10077a84;
   fVar1 = fVar1 / *(float *)(iVar5 + 0x1c8);
   iVar9 = *(int *)(param_1 + 4);
-  if (*(float *)(iVar9 + 0x1d0) < _DAT_10077a78) {
+  if (*(float *)(iVar9 + 0x1d0) < BrCrK_Zero) {
     fVar2 = -*(float *)(iVar9 + 0x1d0);
   } else {
     fVar2 = *(float *)(iVar9 + 0x1d0);
   }
-  if (*(float *)(iVar9 + 0x1c4) == _DAT_10077a78) {
-    fVar6 = _DAT_10077a78;
-  } else if (*(float *)(iVar9 + 0x1c4) > _DAT_10077a78) {
-    fVar6 = _DAT_10077a7c;
+  if (*(float *)(iVar9 + 0x1c4) == BrCrK_Zero) {
+    fVar6 = BrCrK_Zero;
+  } else if (*(float *)(iVar9 + 0x1c4) > BrCrK_Zero) {
+    fVar6 = DAT_10077a7c;
   } else {
-    fVar6 = _DAT_10077a80;
+    fVar6 = DAT_10077a80;
   }
-  fVar2 = fVar6 * fVar2 * _DAT_10077a84;
+  fVar2 = fVar6 * fVar2 * DAT_10077a84;
   fVar2 = fVar2 / *(float *)(iVar9 + 0x1c8);
   fVar8 = *(float *)(param_1 + 0x2c) * _DAT_10077a88;
   local_88 = (fVar1 / fVar8) * param_2 * param_2;
   local_8c = (fVar2 / fVar8) * param_2 * param_2;
-  if (local_88 < _DAT_10077a78) {
+  if (local_88 < BrCrK_Zero) {
     fVar1 = -local_88;
   } else {
     fVar1 = local_88;
   }
-  if (fVar1 > _DAT_10077a7c) {
-    if (local_88 == _DAT_10077a78) {
-      fVar1 = _DAT_10077a78;
-    } else if (local_88 > _DAT_10077a78) {
-      fVar1 = _DAT_10077a7c;
+  if (fVar1 > DAT_10077a7c) {
+    if (local_88 == BrCrK_Zero) {
+      fVar1 = BrCrK_Zero;
+    } else if (local_88 > BrCrK_Zero) {
+      fVar1 = DAT_10077a7c;
     } else {
-      fVar1 = _DAT_10077a80;
+      fVar1 = DAT_10077a80;
     }
     local_88 = fVar1 * _DAT_10077a8c;
   }
-  if (local_8c < _DAT_10077a78) {
+  if (local_8c < BrCrK_Zero) {
     fVar1 = -local_8c;
   } else {
     fVar1 = local_8c;
   }
-  if (fVar1 > _DAT_10077a7c) {
-    if (local_8c == _DAT_10077a78) {
-      fVar1 = _DAT_10077a78;
-    } else if (local_8c > _DAT_10077a78) {
-      fVar1 = _DAT_10077a7c;
+  if (fVar1 > DAT_10077a7c) {
+    if (local_8c == BrCrK_Zero) {
+      fVar1 = BrCrK_Zero;
+    } else if (local_8c > BrCrK_Zero) {
+      fVar1 = DAT_10077a7c;
     } else {
-      fVar1 = _DAT_10077a80;
+      fVar1 = DAT_10077a80;
     }
     local_8c = fVar1 * _DAT_10077a8c;
   }
@@ -218,25 +218,25 @@ void BrCarPhysDriveMatch(struct BrRbBody *param_1, float param_2, float *param_3
     *param_5 = '\0';
   }
   else {
-    if (vA[1] < _DAT_10077a78) {
+    if (vA[1] < BrCrK_Zero) {
       fVar1 = -vA[1];
     } else {
       fVar1 = vA[1];
     }
-    if (*param_3 < _DAT_10077a78) {
+    if (*param_3 < BrCrK_Zero) {
       fVar7 = -*param_3;
     } else {
       fVar7 = *param_3;
     }
     g.ran = 1;
     *(int *)&hold = 0x45FA0000;
-    if (local_88 < _DAT_10077a78) {
+    if (local_88 < BrCrK_Zero) {
       fVar2 = -local_88;
     } else {
       fVar2 = local_88;
     }
     if (!(fVar2 > _DAT_10077a98)) {
-      if (local_8c < _DAT_10077a78) {
+      if (local_8c < BrCrK_Zero) {
         fVar2 = -local_8c;
       } else {
         fVar2 = local_8c;
@@ -245,7 +245,7 @@ void BrCarPhysDriveMatch(struct BrRbBody *param_1, float param_2, float *param_3
       fVar2 = (float)local_84 * _DAT_10077aa4;
     }
     else {
-      if (local_8c < _DAT_10077a78) {
+      if (local_8c < BrCrK_Zero) {
         fVar2 = -local_8c;
       } else {
         fVar2 = local_8c;
@@ -262,11 +262,11 @@ void BrCarPhysDriveMatch(struct BrRbBody *param_1, float param_2, float *param_3
     iVar9 = (int)((*(unsigned int *)&local_80 & 0xff) + 1 +
                   (*(unsigned int *)&local_3c & 0xff)) >> 1;
     iVar10 = (iVar9 + (int)(short)local_6c) * 4;
-    local_3c = *(float *)(DAT_11778808 +
+    local_3c = *(float *)((*(int *)((char *)&g_brCrPlane + 0x18)) +
                          ((int)(short)local_6c +
                           (unsigned int)*(unsigned char *)(param_1 + 0x1fd) * 0x18 +
                           iVar9) * 4);
-    local_84 = *(int *)(&DAT_100b5178 + iVar10);
+    local_84 = *(int *)(&(*(char *)&g_aBrCarPhysDrvT3) + iVar10);
     fVar7 = *(float *)(DAT_11778820 + iVar10);
     /* !! `speed` (fVar8 - fVar2 above) survives the clamp: the original keeps
      * it on the x87 stack (`fld st(2)` at +0x484 clamps a COPY) and tests
@@ -290,13 +290,13 @@ void BrCarPhysDriveMatch(struct BrRbBody *param_1, float param_2, float *param_3
       r = *(float *)&local_84 / r;
       r = r * local_3c * _DAT_10077aac;
       local_80 = (float)r;
-      if (*(float *)(*(int *)(param_1 + 0xc) + 0x1c0) == _DAT_10077a78) {
+      if (*(float *)(*(int *)(param_1 + 0xc) + 0x1c0) == BrCrK_Zero) {
         r = r * _DAT_10077ab0;
         local_80 = (float)r;
       }
       bits = *(int *)&local_80;
       local_80 = *(float *)&bits;
-      if ((r < _DAT_10077a78 ? -r : r) > _DAT_10077a7c) {
+      if ((r < BrCrK_Zero ? -r : r) > DAT_10077a7c) {
         local_80 = 1.0f;
       }
     }
@@ -322,28 +322,28 @@ void BrCarPhysDriveMatch(struct BrRbBody *param_1, float param_2, float *param_3
     }
     else {
       g.sideForce = 0.0f;
-      vA[1] = _DAT_10077a78;
+      vA[1] = BrCrK_Zero;
     }
-    if (vA[0] < _DAT_10077a78) {
+    if (vA[0] < BrCrK_Zero) {
       fVar1 = -vA[0];
     } else {
       fVar1 = vA[0];
     }
-    if (fVar1 > _DAT_10077a7c) {
+    if (fVar1 > DAT_10077a7c) {
       fVar1 = vA[1] / vA[0];
-      if (fVar1 < _DAT_10077a78) {
+      if (fVar1 < BrCrK_Zero) {
         fVar1 = -fVar1;
       }
       if (fVar1 > _DAT_10077a88) {
         *(unsigned char *)(param_1 + 0x209) = 0x80;
       }
     } else {
-      if (vA[1] < _DAT_10077a78) {
+      if (vA[1] < BrCrK_Zero) {
         fVar1 = -vA[1];
       } else {
         fVar1 = vA[1];
       }
-      if (fVar1 > _DAT_10077a7c) {
+      if (fVar1 > DAT_10077a7c) {
         *(unsigned char *)(param_1 + 0x209) = 0x80;
       } else {
         *(unsigned char *)(param_1 + 0x209) = 0;
@@ -351,25 +351,25 @@ void BrCarPhysDriveMatch(struct BrRbBody *param_1, float param_2, float *param_3
     }
     fVar2 = vA[0];
     vA[0] = vA[0] - local_8c;
-    if (vA[0] < _DAT_10077a78) {
+    if (vA[0] < BrCrK_Zero) {
       fVar1 = -vA[0];
     } else {
       fVar1 = vA[0];
     }
     if (fVar1 > _DAT_10077ac0) {
-      if (vA[0] == _DAT_10077a78) {
-        fVar1 = _DAT_10077a78;
-      } else if (vA[0] > _DAT_10077a78) {
-        fVar1 = _DAT_10077a7c;
+      if (vA[0] == BrCrK_Zero) {
+        fVar1 = BrCrK_Zero;
+      } else if (vA[0] > BrCrK_Zero) {
+        fVar1 = DAT_10077a7c;
       } else {
-        fVar1 = _DAT_10077a80;
+        fVar1 = DAT_10077a80;
       }
-      if (fVar2 == _DAT_10077a78) {
-        fVar7 = _DAT_10077a78;
-      } else if (fVar2 > _DAT_10077a78) {
-        fVar7 = _DAT_10077a7c;
+      if (fVar2 == BrCrK_Zero) {
+        fVar7 = BrCrK_Zero;
+      } else if (fVar2 > BrCrK_Zero) {
+        fVar7 = DAT_10077a7c;
       } else {
-        fVar7 = _DAT_10077a80;
+        fVar7 = DAT_10077a80;
       }
       if (fVar1 != fVar7) {
         vA[0] = 0.0f;
@@ -416,7 +416,7 @@ void BrCarPhysDriveMatch(struct BrRbBody *param_1, float param_2, float *param_3
     pt[2] = 0;
     lat[1] = vB[1] - fVar1;
     lat[2] = lat[2] - vB[2];
-    if (!(*param_4 < _DAT_10077a78)) {
+    if (!(*param_4 < BrCrK_Zero)) {
       local_8c = *param_4;
     }
     else {
@@ -425,7 +425,7 @@ void BrCarPhysDriveMatch(struct BrRbBody *param_1, float param_2, float *param_3
     vB[0] = fVar7;
     vB[1] = fVar1;
     fVar11 = BrSqrtF(lat[2] * lat[2] + lat[1] * lat[1] + lat[0] * lat[0]);
-    if (local_88 < _DAT_10077a78) {
+    if (local_88 < BrCrK_Zero) {
       local_88 = -local_88;
     }
     local_88 = (float)(int)(local_88 > _DAT_10077a98);
@@ -447,10 +447,10 @@ void BrCarPhysDriveMatch(struct BrRbBody *param_1, float param_2, float *param_3
     else {
       iVar9 = (int)((local_1c & 0xff) + 1 + (*(unsigned int *)&local_38 & 0xff)) >> 1;
       iVar10 = (iVar9 + (int)(short)local_6c) * 4;
-      local_38 = *(float *)(DAT_11778808 +
+      local_38 = *(float *)((*(int *)((char *)&g_brCrPlane + 0x18)) +
                            (iVar9 + (unsigned int)*(unsigned char *)(param_1 + 0x1fd) * 0x18 +
                             (int)(short)local_6c) * 4);
-      local_84 = *(int *)(&DAT_100b5178 + iVar10);
+      local_84 = *(int *)(&(*(char *)&g_aBrCarPhysDrvT3) + iVar10);
       local_80 = *(float *)(DAT_11778820 + iVar10);
       /* as the front axle: the grip factor chain stays unrounded */
       {
@@ -467,13 +467,13 @@ void BrCarPhysDriveMatch(struct BrRbBody *param_1, float param_2, float *param_3
         r = *(float *)&local_84 / r;
         r = r * local_38 * _DAT_10077aac;
         local_80 = (float)r;
-        if (*(float *)(*(int *)(param_1 + 0xc) + 0x1c0) == _DAT_10077a78) {
+        if (*(float *)(*(int *)(param_1 + 0xc) + 0x1c0) == BrCrK_Zero) {
           r = r * _DAT_10077ab0;
           local_80 = (float)r;
         }
         bits = *(int *)&local_80;
         local_80 = *(float *)&bits;
-        if ((r < _DAT_10077a78 ? -r : r) > _DAT_10077a7c) {
+        if ((r < BrCrK_Zero ? -r : r) > DAT_10077a7c) {
           local_80 = 1.0f;
         }
       }
@@ -496,7 +496,7 @@ void BrCarPhysDriveMatch(struct BrRbBody *param_1, float param_2, float *param_3
     }
   }
   if (g.ran != 0) {
-    svB[0] = (vA[0] + vB[0]) * _DAT_10077ac8;
+    svB[0] = (vA[0] + vB[0]) * BrCrK_Half;
     /* The original `fst`s the yaw-rate quotient and goes on from the x87
      * register: the lateral term below uses the UNROUNDED quotient, not the
      * float just stored.  The double models that register.  Live oracle,
@@ -515,22 +515,22 @@ void BrCarPhysDriveMatch(struct BrRbBody *param_1, float param_2, float *param_3
     BrMat4MulVec3Transposed((void *)(param_1 + 0x84), iVar5, wld);
   }
   fVar1 = g.sideForce;
-  if (g.sideForce < _DAT_10077a78) {
+  if (g.sideForce < BrCrK_Zero) {
     fVar1 = -g.sideForce;
   }
-  if (fVar1 > _DAT_10077ac8) {
-    if (g.sideForce == _DAT_10077a78) {
-      fVar1 = _DAT_10077a78;
-    } else if (g.sideForce > _DAT_10077a78) {
-      fVar1 = _DAT_10077a7c;
+  if (fVar1 > BrCrK_Half) {
+    if (g.sideForce == BrCrK_Zero) {
+      fVar1 = BrCrK_Zero;
+    } else if (g.sideForce > BrCrK_Zero) {
+      fVar1 = DAT_10077a7c;
     } else {
-      fVar1 = _DAT_10077a80;
+      fVar1 = DAT_10077a80;
     }
-    g.sideForce = fVar1 * _DAT_10077ac8;
+    g.sideForce = fVar1 * BrCrK_Half;
   }
-  fVar1 = (g.sideForce + g.sideForce) * _DAT_10077ad0;
+  fVar1 = (g.sideForce + g.sideForce) * DAT_10077ad0;
   fVar7 = *(float *)(param_1 + 0x1d4) - fVar1;
-  if (fVar7 < _DAT_10077a78) {
+  if (fVar7 < BrCrK_Zero) {
     fVar7 = -fVar7;
   }
   if (!(fVar7 < _DAT_10077ad4)) {

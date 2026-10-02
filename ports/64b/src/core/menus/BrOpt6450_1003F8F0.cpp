@@ -49,11 +49,11 @@ int BrOpt6450(GameObj *pGame)
     Phase *pObj;
 
     pGame->pSub->s7();
-    pObj = (Phase *)(g_cur);
+    pObj = (Phase *)((*(Phase * *)&g_brPAA29B8));
     if (pObj != 0)
         pObj->f00(1);
     g_5C64 = 0;
-    g_5D04 = 0;
-    g_cur = (Phase *)((BrOptObj *)(g_5C60));
+    g_hookObj = 0;
+    (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(g_2908));
     return 0;
 }

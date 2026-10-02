@@ -56,7 +56,7 @@ extern "C" {  /* BR_CLINK_BEGIN: every original function has C linkage */
  * this header and slice2_19.h spell it as g_BrAnimDt. .bss in the original,
  * so 0 at boot is the original's own value. */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define g_BrAnimDt g_f6C2CFC
+#define g_BrAnimDt g_brRaceFlyStep
 
 /* 0x100B380C -- a mode selector.  WARNING: this one address already carries
  * THREE names in port/include (BrG_0B380C in slice2_18.h, g_br0B380C in

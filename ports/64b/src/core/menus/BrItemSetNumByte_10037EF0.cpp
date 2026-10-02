@@ -63,7 +63,7 @@ int BrItemSetNumByte_10037EF0(Obj37EF0 *pObj)
 {
     char *s = pObj->m2B5C.szName;
 
-    _itoa(g_brVal5A40[g_brSel5C04], s, 10);
+    _itoa(g_brVal5A40[g_brIdx5C04], s, 10);
 
     pObj->m2B5C.s2();
     if (s != 0)

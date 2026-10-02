@@ -100,7 +100,7 @@ int Tween41180::Step()
     if (f3818 == 0)
         return 1;
 
-    now = BrSub1006E280();
+    now = BrSub10075020();
 
     if (f3828 <= 0)
         f3828 = now;

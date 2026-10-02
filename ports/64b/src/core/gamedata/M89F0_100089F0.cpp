@@ -37,7 +37,7 @@ int Tbl8900::M89F0(unsigned i)
 
     if (i >= count)
         BrLogFatalPrintf(s_err, i);
-    p = BrAlloc74572(v4(i));
+    p = BrOperatorNew(v4(i));
     v5(i, p);
     return p;
 }

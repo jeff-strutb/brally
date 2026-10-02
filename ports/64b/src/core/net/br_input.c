@@ -26,10 +26,10 @@
 int BrInputAnyActive(void)
 
 {
-  if (((((DAT_10ac6730 == 0) && (DAT_10ac6734 == 0)) && (DAT_10ac6738 == 0)) && (DAT_10ac673c == 0))
-     && ((DAT_10ac5bb4 != 0 ||
-         (((DAT_10ac5e50 == 0 && (DAT_10ac6050 == 0)) &&
-          ((DAT_10ac610c == 0 && (DAT_10ac6114 == 0)))))))) {
+  if (((((g_act0 == 0) && ((*(int *)&g_act1) == 0)) && ((*(int *)&g_act2) == 0)) && ((*(int *)&g_act3) == 0))
+     && ((g_5BB4 != 0 ||
+         ((((*(int *)&g_BrDikEdge[28]) == 0 && ((*(int *)&g_BrDikEdge[156]) == 0)) &&
+          (((*(int *)&g_BrDikEdge[203]) == 0 && ((*(int *)&g_BrDikEdge[205]) == 0)))))))) {
     return 0;
   }
   return 1;

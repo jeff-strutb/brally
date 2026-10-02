@@ -87,7 +87,7 @@ int Slots54E20::Delete(int idx)
     int i;
 
     if (idx >= 0) {
-        strcpy(recs[idx].szName, g_szBr396F08);
+        strcpy(recs[idx].szName, g_aBr39B720);
         recs[idx].bUsed = 0;
         recs[idx].w41C = 0;
         recs[idx].w40C = 0;
@@ -111,7 +111,7 @@ int Slots54E20::Delete(int idx)
 
     idx = wCount - 1;
     if (idx > 0) {
-        strcpy(recs[idx].szName, g_szBr396F08);
+        strcpy(recs[idx].szName, g_aBr39B720);
         recs[idx].bUsed = 0;
         recs[idx].w41C = 0;
         recs[idx].w40C = 0;

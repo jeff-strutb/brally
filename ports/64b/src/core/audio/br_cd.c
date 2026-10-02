@@ -33,7 +33,7 @@
 /* @implements 0x10002440 d3d BrCdMaybeClose */
 int BrCdMaybeClose(void)
 {
-    if (g_0940A4 != 0) {
+    if (DAT_1007b074 != 0) {
         if (g_220CD0 != 0) {
             if (g_220C3C != 0) {
                 int h = g_0940A8;
@@ -61,7 +61,7 @@ int BrCdMaybeClose(void)
 /* @implements 0x10002A20 d3d BrCdVolumeScale */
 int BrCdVolumeScale(int vol)
 {
-    if (g_0940A4 != 0) {
+    if (DAT_1007b074 != 0) {
         if (g_220CD0 != 0) {
             if (g_220C3C != 0) {
                 g_575454(g_0940A8, (10000 * (vol & 0xFF)) / 255);
@@ -75,7 +75,7 @@ int BrCdVolumeScale(int vol)
 /* @implements 0x10002AE0 d3d BrCdMciPause */
 int BrCdMciPause(void)
 {
-    if (g_0940A4) {
+    if (DAT_1007b074) {
         if (g_220CD0) {
             int media = g_220C3C;
             g_220CD8 = 1;
@@ -109,12 +109,12 @@ int BrCdTrackGetEar(void)
 {
     /* Two success tests share one fail-out (`je` to `xor eax,eax / ret`).
      * Early `return 0` inverts the branches. */
-    if (g_brCdEnabled != 0) {
-        if (g_brCdPlaying != 0) {
+    if (DAT_1007b074 != 0) {
+        if (g_220CD0 != 0) {
             /* `neg eax / sbb eax, eax / and eax, ecx` -- a mask built from
              * g_brCdMediaOk and ANDed with the track, not a branch.  The
              * track is loaded either way. */
-            return (g_brCdMediaOk != 0) ? g_brCdTrackCur : 0;
+            return (g_220C3C != 0) ? g_brCdTrackCur : 0;
         }
     }
     return 0;
@@ -145,8 +145,8 @@ int BrCdTrackPrev(void)
 {
   int iVar1;
 
-  if ((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) {
-    iVar1 = FUN_10002c50();
+  if ((DAT_1007b074 != 0) && (g_220CD0 != 0)) {
+    iVar1 = BrCdTrackGet();
     g_brCdTrackCur = iVar1 + -1;
     if (iVar1 + -1 < g_brCdTrackFirst) {
       g_brCdTrackCur = g_brCdTrackFirst;
@@ -162,7 +162,7 @@ int BrCdTrackPrev(void)
 int BrCdTrackGet(void)
 
 {
-  if (g_brCdEnabled == 1) {
+  if (DAT_1007b074 == 1) {
     FUN_100027e0();
     return;
   }
@@ -177,7 +177,7 @@ int BrCdTrackGet(void)
 int BrCdVolumeSet(int param_1)
 
 {
-  if (g_brCdEnabled == 1) {
+  if (DAT_1007b074 == 1) {
     BrCdEnableApply(param_1);
     return;
   }
@@ -193,7 +193,7 @@ int BrCdTrackResume(void)
 {
   int uVar1;
 
-  if (((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) && (g_brCdMediaOk != 0)) {
+  if (((DAT_1007b074 != 0) && (g_220CD0 != 0)) && (g_220C3C != 0)) {
     uVar1 = BrCdTrackPlay(g_brCdTrackCur);
     return uVar1;
   }
@@ -245,8 +245,8 @@ extern int (__stdcall *DAT_104b162c)(int, int);     /* 0x104B162C */
 /* @implements 0x10002ED0 glide BrCdPauseMsg */
 static int BrCdPauseMsg(void)
 {
-  if (((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) && (g_brCdMediaOk != 0)) {
-    return (*DAT_104b162c)(g_br0940A8,4) != 0;
+  if (((DAT_1007b074 != 0) && (g_220CD0 != 0)) && (g_220C3C != 0)) {
+    return (*DAT_104b162c)(g_0940A8,4) != 0;
   }
   return 1;
 }
@@ -257,7 +257,7 @@ static int BrCdPauseMsg(void)
 /* @implements 0x10002EB0 glide BrCdPause */
 int BrCdPause(void)
 {
-  if (g_brCdEnabled == 1) {
+  if (DAT_1007b074 == 1) {
     return BrCdMciPause();
   }
   return BrCdPauseMsg();
@@ -269,8 +269,8 @@ int BrCdPause(void)
 /* @implements 0x10002F30 glide BrCdResumeMsg */
 static int BrCdResumeMsg(void)
 {
-  if (((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) && (g_brCdMediaOk != 0)) {
-    return (*DAT_104b162c)(g_br0940A8,0xc) != 0;
+  if (((DAT_1007b074 != 0) && (g_220CD0 != 0)) && (g_220C3C != 0)) {
+    return (*DAT_104b162c)(g_0940A8,0xc) != 0;
   }
   return 1;
 }
@@ -279,7 +279,7 @@ static int BrCdResumeMsg(void)
 /* @implements 0x10002F10 glide BrCdResume */
 int BrCdResume(void)
 {
-  if (g_brCdEnabled == 1) {
+  if (DAT_1007b074 == 1) {
     return BrCdTrackResume();
   }
   return BrCdResumeMsg();
@@ -295,7 +295,7 @@ int BrCdResume(void)
  * 0x104B1628 is the message-transport CLEAR-channel entry (the pause/resume
  * twins use 0x104B162C with a command); its result is normalised with
  * `neg/sbb/inc`, which is what `== 0` compiles to. */
-extern int (__stdcall *DAT_104b1628)(int, int);     /* 0x104B1628 */
+extern int (__stdcall *(*(int (**)(int, int))&g_pfn575480))(int, int);     /* 0x104B1628 */
 
 /* WHAT IT DOES: tell the CD drive to stop the music outright, and report
  * whether it agreed (the transport answers 0 on success).  With the disc
@@ -303,8 +303,8 @@ extern int (__stdcall *DAT_104b1628)(int, int);     /* 0x104B1628 */
 /* @implements 0x10002F90 glide BrCdStopMsg */
 static int BrCdStopMsg(void)
 {
-  if (((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) && (g_brCdMediaOk != 0)) {
-    return (*DAT_104b1628)(g_br0940A8,0) == 0;
+  if (((DAT_1007b074 != 0) && (g_220CD0 != 0)) && (g_220C3C != 0)) {
+    return (*(*(int (**)(int, int))&g_pfn575480))(g_0940A8,0) == 0;
   }
   return 1;
 }
@@ -314,7 +314,7 @@ static int BrCdStopMsg(void)
 /* @implements 0x10002FD0 glide BrCdMciStop */
 static int BrCdMciStop(void)
 {
-  if (((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) && (g_brCdMediaOk != 0)) {
+  if (((DAT_1007b074 != 0) && (g_220CD0 != 0)) && (g_220C3C != 0)) {
     if (mciSendCommandA((unsigned long)g_220C40, 0x808u, 0, 0)) {
       mciSendCommandA((unsigned long)g_220C40, 0x804u, 0, 0);
       return 0;
@@ -328,7 +328,7 @@ static int BrCdMciStop(void)
 /* @implements 0x10002F70 glide BrCdStop */
 int BrCdStop(void)
 {
-  if (g_brCdEnabled == 1) {
+  if (DAT_1007b074 == 1) {
     return BrCdMciStop();
   }
   return BrCdStopMsg();
@@ -374,16 +374,16 @@ static int BrCdStopReleaseMsg(void)
 {
   int r;
 
-  if (g_brCdEnabled == 0) {
+  if (DAT_1007b074 == 0) {
     return 1;
   }
-  g_brCdPlaying = g_brCdPlaying - 1;
-  if (g_brCdMediaOk == 0) {
+  g_220CD0 = g_220CD0 - 1;
+  if (g_220C3C == 0) {
     r = 1;
   } else {
-    r = (*DAT_104b1628)(g_br0940A8, 0) == 0;
+    r = (*(*(int (**)(int, int))&g_pfn575480))(g_0940A8, 0) == 0;
   }
-  if (g_brCdPlaying == 0) {
+  if (g_220CD0 == 0) {
     BrFadeRelease();
   }
   return r;
@@ -425,13 +425,13 @@ static int BrCdStopReleaseMci(void)
   MCIERROR e1, e2;
   int r;
 
-  if (g_brCdEnabled == 0) {
+  if (DAT_1007b074 == 0) {
     return 1;
   }
-  g_brCdPlaying = g_brCdPlaying - 1;
+  g_220CD0 = g_220CD0 - 1;
   e1 = mciSendCommandA((unsigned long)g_220C40, 0x808u, 0, 0);
   r = (e1 ? -1 : 0) + 1;
-  if (g_brCdPlaying != 0) {
+  if (g_220CD0 != 0) {
     return r;
   }
   e2 = mciSendCommandA((unsigned long)g_220C40, 0x804u, 0, 0);
@@ -444,7 +444,7 @@ static int BrCdStopReleaseMci(void)
 /* @implements 0x10003030 glide BrCdStopRelease */
 int BrCdStopRelease(void)
 {
-  if (g_brCdEnabled == 1) {
+  if (DAT_1007b074 == 1) {
     return BrCdStopReleaseMci();
   }
   return BrCdStopReleaseMsg();
@@ -458,7 +458,7 @@ int BrCdTrackNext(void)
 {
   int iVar1;
 
-  if ((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) {
+  if ((DAT_1007b074 != 0) && (g_220CD0 != 0)) {
     iVar1 = BrCdTrackGet();
     g_brCdTrackCur = iVar1 + 1;
     if (iVar1 + 1 > g_brCdTrackLast) {
@@ -477,7 +477,7 @@ int BrCdTrackNextWrap(void)
 {
   int iVar1;
 
-  if ((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) {
+  if ((DAT_1007b074 != 0) && (g_220CD0 != 0)) {
     iVar1 = BrCdTrackGet();
     g_brCdTrackCur = iVar1 + 1;
     if (iVar1 + 1 > g_brCdTrackLast) {
@@ -525,10 +525,10 @@ int BrCdTrackRandom(void)
 int BrCdTrackRequest(int param_1)
 
 {
-  if ((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) {
+  if ((DAT_1007b074 != 0) && (g_220CD0 != 0)) {
     g_220CD8 = 1;
     g_brCdTrackCur = param_1;
-    if ((g_brCdMediaOk != 0) && (DAT_1021c80c != '\0')) {
+    if ((g_220C3C != 0) && (DAT_1021c80c != '\0')) {
       PostMessageA(DAT_1021c77c,0x3b9,1,g_220C40);
     }
   }
@@ -591,7 +591,7 @@ int FUN_10002980(char * param_1)
   MCI_OPEN_PARMS open;
   CHAR buf[1024];
 
-  if ((g_brCdEnabled != 0) && (g_brCdPlaying = g_brCdPlaying + 1, g_brCdPlaying == 1)) {
+  if ((DAT_1007b074 != 0) && (g_220CD0 = g_220CD0 + 1, g_220CD0 == 1)) {
     DAT_1021c77c = param_1;
     _Seed = BrSub10075020();
     srand(_Seed);
@@ -599,7 +599,7 @@ int FUN_10002980(char * param_1)
     g_brCdTrackFirst = 0;
     g_brCdTrackLast = 0;
     g_220CD8 = 0;
-    g_brCdMediaOk = 0;
+    g_220C3C = 0;
     open.lpstrDeviceType = s_cdaudio_1007b094;
     MVar1 = mciSendCommandA(0, MCI_OPEN, MCI_OPEN_TYPE, (DWORD)&open);
     if (MVar1 != 0) {
@@ -622,7 +622,7 @@ int FUN_10002980(char * param_1)
     }
     g_brCdTrackFirst = 2;
     g_brCdTrackLast = status.dwReturn;
-    g_brCdMediaOk = 1;
+    g_220C3C = 1;
   }
   return 1;
 }
@@ -650,7 +650,7 @@ int FUN_100027e0(void)
   } _fr;
 
 
-  if (((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) && (g_brCdMediaOk != 0)) {
+  if (((DAT_1007b074 != 0) && (g_220CD0 != 0)) && (g_220C3C != 0)) {
     _fr.local_8 = 8;
     mciSendCommandA(g_220C40,0x814,0x100,(unsigned long)_fr.local_10);
     return _fr.local_c;
@@ -708,7 +708,7 @@ MCIERROR FUN_10002870(HWND param_1,unsigned char param_2)
 int FUN_10002830(void)
 
 {
-  if (((g_brCdEnabled != 0) && (g_brCdPlaying != 0)) && (g_brCdMediaOk != 0)) {
+  if (((DAT_1007b074 != 0) && (g_220CD0 != 0)) && (g_220C3C != 0)) {
     return FUN_10002870(DAT_1021c77c,(unsigned char)g_brCdTrackCur) == 0;
   }
   return 1;
@@ -723,7 +723,7 @@ int FUN_10002830(void)
 int BrGetGlobal_1C788(void)
 
 {
-  return DAT_1021c788;
+  return (*(int *)((char *)&g_brEarEvent + 0x8));
 }
 
 /* 0x10002580 -- the EAR-DLL CD channel state block at 0x1021C778, one
@@ -790,40 +790,40 @@ extern int (__stdcall *DAT_104b1678)(int);                  /* 0x104B1678 */
 /* @implements 0x10002580 glide BrCdEarChannelOpen */
 int BrCdEarChannelOpen(void)
 {
-    if (g_brCdEnabled != 0 && g_brCdPlaying != 0 && g_brCdMediaOk == 0) {
-        if ((*DAT_104b1648)(g_br0940A8, 6, 10000, 5) != 0) {
+    if (DAT_1007b074 != 0 && g_220CD0 != 0 && g_220C3C == 0) {
+        if ((*DAT_104b1648)(g_0940A8, 6, 10000, 5) != 0) {
             if (DAT_1021c778 == 0)
                 (*DAT_104b1678)(1);
             DAT_1021c7d0 = 0;
             DAT_1021c7e0 = 4;
             DAT_1021c7e4 = 0;
             DAT_1021c7d4 = 0;
-            DAT_1021c7a8 = 4;
+            (*(uint16_t *)((char *)&g_brEarEvent + 0x28)) = 4;
             DAT_1021c7e8 = 0;
             DAT_1021c7d8 = 0;
             DAT_1021c778 = 1;
-            DAT_1021c780 = 0x80;
-            DAT_1021c784 = 0;
-            DAT_1021c788 = 0;
-            DAT_1021c790 = 0;
-            DAT_1021c792 = 10000;
-            DAT_1021c794 = 10000;
-            DAT_1021c798 = 0;
-            DAT_1021c79c = 0;
-            DAT_1021c7a0 = 0;
-            DAT_1021c7a4 = 0;
-            DAT_1021c7aa = 0;
-            DAT_1021c7ac = 0;
-            DAT_1021c7b0 = 0;
-            DAT_1021c7be = 10000;
-            DAT_1021c7c0 = 10000;
-            DAT_1021c7c2 = 0;
+            (*(uint16_t *)&g_brEarEvent) = 0x80;
+            (*(int *)((char *)&g_brEarEvent + 0x4)) = 0;
+            (*(int *)((char *)&g_brEarEvent + 0x8)) = 0;
+            (*(uint16_t *)((char *)&g_brEarEvent + 0x10)) = 0;
+            (*(uint16_t *)((char *)&g_brEarEvent + 0x12)) = 10000;
+            (*(int *)((char *)&g_brEarEvent + 0x14)) = 10000;
+            (*(int *)((char *)&g_brEarEvent + 0x18)) = 0;
+            (*(int *)((char *)&g_brEarEvent + 0x1C)) = 0;
+            (*(int *)((char *)&g_brEarEvent + 0x20)) = 0;
+            (*(int *)((char *)&g_brEarEvent + 0x24)) = 0;
+            (*(uint16_t *)((char *)&g_brEarEvent + 0x2A)) = 0;
+            (*(int *)((char *)&g_brEarEvent + 0x2C)) = 0;
+            (*(int *)((char *)&g_brEarEvent + 0x30)) = 0;
+            (*(uint16_t *)((char *)&g_brEarEvent + 0x3E)) = 10000;
+            (*(uint16_t *)((char *)&g_brEarEvent + 0x40)) = 10000;
+            (*(uint16_t *)((char *)&g_brEarEvent + 0x42)) = 0;
             DAT_1021c7c4 = 0;
             DAT_1021c7c6 = 0;
             DAT_1021c7c8 = 0;
-            DAT_1021c7bc = 0;
-            DAT_1021c7b4 = 0;
-            DAT_1021c7b8 = 1;
+            (*(uint16_t *)((char *)&g_brEarEvent + 0x3C)) = 0;
+            (*(int *)((char *)&g_brEarEvent + 0x34)) = 0;
+            (*(int *)((char *)&g_brEarEvent + 0x38)) = 1;
             DAT_1021c7cc = 0;
             DAT_1021c7ce = 0;
             DAT_1021c7ec = 0;
@@ -835,15 +835,15 @@ int BrCdEarChannelOpen(void)
             DAT_1021c7fa = 9000;
             DAT_1021c7fc = 10000;
             DAT_1021c7dc = 0;
-            DAT_1021c782 = 30;
-            DAT_1021c78e = 1;
-            DAT_1021c78c = (uint16_t)g_br0940A8;
-            g_brCdTrackFirst = (*DAT_104b162c)(g_br0940A8, 0x10000020);
-            g_brCdTrackLast = (*DAT_104b162c)(g_br0940A8, 0x10000040);
-            g_brCdMediaOk = 1;
+            (*(uint16_t *)((char *)&g_brEarEvent + 0x2)) = 30;
+            (*(uint16_t *)((char *)&g_brEarEvent + 0xE)) = 1;
+            (*(uint16_t *)((char *)&g_brEarEvent + 0xC)) = (uint16_t)g_0940A8;
+            g_brCdTrackFirst = (*DAT_104b162c)(g_0940A8, 0x10000020);
+            g_brCdTrackLast = (*DAT_104b162c)(g_0940A8, 0x10000040);
+            g_220C3C = 1;
             return 1;
         }
-        g_brCdMediaOk = 0;
+        g_220C3C = 0;
     }
     return 1;
 }

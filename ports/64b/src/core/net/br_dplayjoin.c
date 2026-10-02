@@ -61,40 +61,40 @@ int BrSub1003C260(void)
     char          szMsg[0x400];
     int           hr;
 
-    if (DAT_10273328 == 0)
+    if (g_brP277B40 == 0)
         return 0;
 
-    if (DAT_10ac5d30 == 0)
+    if (g_brPAA29D8 == 0)
         return 1;
-    if (*(unsigned short *)(DAT_10ac5d2c + 0x1E164) <= 0u)
+    if (*(unsigned short *)((*(char * *)&g_brPAA29D4) + 0x1E164) <= 0u)
         return 1;
 
-    if (DAT_10ac4090 == 0) {
+    if (g_guardB == 0) {
         hr = BrSub1003D030(aJoin);
         if (hr >= 0) {
             memset(szName, 0, sizeof(szName));
             cbName = 0xC8;
             GetUserNameA(szName, &cbName);
 
-            hr = BrSub1003C740(DAT_10273328, aJoin, szName, DAT_10ac4098);
+            hr = BrDpSessionJoin(g_brP277B40, aJoin, szName, g_brPA9D008);
             if (hr == (int)0x88770820) {
-                if (BrSub100385E0() == 0)
+                if (BrStubTrue() == 0)
                     return 0;
-                hr = BrSub1003C740(DAT_10273328, aJoin, szName,
-                                   DAT_10ac4098);
+                hr = BrDpSessionJoin(g_brP277B40, aJoin, szName,
+                                   g_brPA9D008);
             }
         }
         if (hr < 0) {
-            BrSub100355F0();
-            BrSub100356B0();
+            BrExt_1003BF60();
+            FUN_100356b0();
             sprintf(szMsg, DAT_100aa5b0, hr);
             return 0;
         }
     }
 
-    DAT_10226a48 = 1;
-    BrSub10005B10();
-    BrSub1003CE80();
+    (*(int *)&g_brRaceNet) = 1;
+    BrNetMutexInit();
+    BrNetSessionApply();
     return 1;
 }
 
@@ -139,17 +139,17 @@ int BrDpShutdown(void)
   void *pObj;
 
   BrSub1003D070();
-  pObj = (void *)g_brSlot4098[0];
+  pObj = (void *)(*(int * *)&g_brPA9D008)[0];
   if (pObj != 0) {
-    if (g_brSlot4098[2] != 0) {
-      (*(BrDpCall2 *)(*(char **)pObj + 0x24))(pObj, g_brSlot4098[2]);  /* DestroyPlayer */
-      g_brSlot4098[2] = 0;
+    if ((*(int * *)&g_brPA9D008)[2] != 0) {
+      (*(BrDpCall2 *)(*(char **)pObj + 0x24))(pObj, (*(int * *)&g_brPA9D008)[2]);  /* DestroyPlayer */
+      (*(int * *)&g_brPA9D008)[2] = 0;
     }
-    pObj = (void *)g_brSlot4098[0];
+    pObj = (void *)(*(int * *)&g_brPA9D008)[0];
     (*(BrDpCall1 *)(*(char **)pObj + 0x10))(pObj);                     /* Close */
-    pObj = (void *)g_brSlot4098[0];
+    pObj = (void *)(*(int * *)&g_brPA9D008)[0];
     (*(BrDpCall1 *)(*(char **)pObj + 0x08))(pObj);                     /* Release */
-    g_brSlot4098[0] = 0;
+    (*(int * *)&g_brPA9D008)[0] = 0;
   }
   g_brP277B40 = 0;
   DAT_10ac4094 = DAT_10ac4094 - 1;
@@ -315,7 +315,7 @@ int BrDpSessionJoin(void *pDp, DWORD *pGuidInstance, BrDpLogin *pLogin,
     if (hr >= 0) {
         memset(&name, 0, sizeof(name));
         name.dwSize        = sizeof(name);
-        name.lpszShortName = DAT_10b71648;
+        name.lpszShortName = g_aBrCfgPlayerName;
         name.lpszLongName  = NULL;
         hr = FUN_10036740(pDp, (void **)&pDesc);
         if (hr >= 0) {
@@ -323,7 +323,7 @@ int BrDpSessionJoin(void *pDp, DWORD *pGuidInstance, BrDpLogin *pLogin,
                 hr = (int)0x88770028;   /* DPERR_SESSIONFULL-class refusal */
             } else {
                 dwFlags = 0;
-                if (DAT_10226a4c != 0)
+                if ((*(int *)&g_brRaceBegin226A4C) != 0)
                     dwFlags = 0x200;
                 save.pDp = pSess->pDp;
                 save.f0C = pSess->f0C;
@@ -340,13 +340,13 @@ int BrDpSessionJoin(void *pDp, DWORD *pGuidInstance, BrDpLogin *pLogin,
                     pSess->f10 = save.f10;
                 } else {
                     pSess->idPlayer = id;
-                    DAT_100abde8 = pDesc->dwUser1;
-                    DAT_10226e80 = pDesc->dwUser2;
-                    DAT_10ac5d70 = pDesc->dwUser3;
-                    DAT_100abdf8 = pDesc->dwUser4;
-                    DAT_100b3014 = DAT_100abde8;
-                    DAT_100bcbe8 = DAT_100abdf8;
-                    DAT_10ac5d58 = DAT_10226e80;
+                    (*(DWORD *)&g_brIdx0ABDE8) = pDesc->dwUser1;
+                    (*(DWORD *)&g_226e80) = pDesc->dwUser2;
+                    (*(DWORD *)&DAT_10ac5d70) = pDesc->dwUser3;
+                    (*(DWORD *)&DAT_100abdf8) = pDesc->dwUser4;
+                    (*(DWORD *)&g_Br0B380C) = (*(DWORD *)&g_brIdx0ABDE8);
+                    (*(DWORD *)&g_CBE8) = (*(DWORD *)&DAT_100abdf8);
+                    (*(DWORD *)&DAT_10ac5d58) = (*(DWORD *)&g_226e80);
                     memcpy(DAT_10ac40a8, pDesc->lpszSessionName,
                            sizeof(DAT_10ac40a8));
                     h = GlobalHandle(pDesc);
@@ -496,7 +496,7 @@ int BrDpLobbyConnect(int *param_1)
                                 } else {
                                     param_1[3] = 0;
                                 }
-                                strcpy(DAT_10b71648,
+                                strcpy(g_aBrCfgPlayerName,
                                        *(char **)(*(int *)((int)pMem + 0xc) + 8));
                                 pcVar6 = *(char **)(*(int *)((int)pMem + 8) + 0x30);
                                 if (pcVar6 != (char *)0x0) {

@@ -53,29 +53,29 @@
 void BrPfxReset(void)
 {
     int i = 1;
-    unsigned char *p = DAT_10ac0c84;
+    unsigned char *p = (*(unsigned char (*)[])((char *)&g_aPfxRec + 0x3C));
     int32_t n;
 
     do {
         *(uint16_t *)p = (uint16_t)(i + 1);
         ++i;
         p += 0x20;
-    } while ((int)p < (int)DAT_10ac2c64);
+    } while ((int)p < (int)(*(unsigned char (*)[])&g_BrVisColLo[1]));
 
-    n = DAT_100b2f04;
-    DAT_10ac2c44 = 0;
-    DAT_10ac0c38 = 1;
+    n = g_BrCarCount;
+    (*(uint16_t *)((char *)&g_aPfxRec + 0x1FFC)) = 0;
+    g_iPfxFree = 1;
     if (n > 0) {
-        int32_t *car = DAT_10af2264;
+        int32_t *car = (*(int32_t (*)[])((char *)&g_aBrRaceCar + 0x105C)) /* BR_LP64_BYTE_VIEW */;
         do {
             *car = 0;
             car = (int32_t *)((unsigned char *)car + 0x2B68);
             --n;
         } while (n != 0);
     }
-    DAT_10ac0c40 = 0;
-    DAT_10ac0c3c = 0;
-    DAT_10ac0c44 = 0;
+    (*(uint16_t *)&g_iPfxHeadB0) = 0;
+    (*(uint16_t *)&g_iPfxHeadAC) = 0;
+    (*(uint16_t *)&g_iPfxHeadB4) = 0;
 }
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */        /* 0x106E9D8C */
@@ -108,7 +108,7 @@ void __fastcall BrCarPfxSpawn(struct BrDriverCar *pCar)
     if (((pCar->f1030)) <= 40.0f)    /* 0x100775B0 */
         return;
 
-    rate = g_fPfxDt * 0.5f - ((pCar->f1030)) * -0.0006600660271942616f;
+    rate = g_brRaceFlyStep * 0.5f - ((pCar->f1030)) * -0.0006600660271942616f;
 
     for (i = 0; i < 4; i++) {
         unsigned char *aW[4];
@@ -136,16 +136,16 @@ void __fastcall BrCarPfxSpawn(struct BrDriverCar *pCar)
         if (*(signed char *)&pW->rb.f01A0 <= 0 || *(signed char *)&pW->rb.f01A0 > 3)
             continue;
 
-        iRec = (unsigned)*(int32_t *)&DAT_10ac0c38 & 0xFFFFu;
+        iRec = (unsigned)*(int32_t *)&g_iPfxFree & 0xFFFFu;
         if (iRec == 0)
             continue;
         g_iPfxFree = g_aPfxRec[iRec].iNext;
         if (*(signed char *)&pW->rb.f01A0 != 3) {
-            g_aPfxRec[iRec].iNext = DAT_10ac0c3c;
-            DAT_10ac0c3c = (uint16_t)iRec;
+            g_aPfxRec[iRec].iNext = (*(uint16_t *)&g_iPfxHeadAC);
+            (*(uint16_t *)&g_iPfxHeadAC) = (uint16_t)iRec;
         } else {
-            g_aPfxRec[iRec].iNext = DAT_10ac0c44;
-            DAT_10ac0c44 = (uint16_t)iRec;
+            g_aPfxRec[iRec].iNext = (*(uint16_t *)&g_iPfxHeadB4);
+            (*(uint16_t *)&g_iPfxHeadB4) = (uint16_t)iRec;
         }
 
         pVel = &g_aPfxRec[iRec].vel;
@@ -243,7 +243,7 @@ void BrPfxUpdateB0(void)
      * for a literal (the original's 0.3f sits at 0x1007758C).  With an extern
      * it swapped the two operand addresses -- the product is the same, but the
      * relocations named the wrong object at each site. */
-    float k = g_fPfxDt * 0.3f;
+    float k = g_brRaceFlyStep * 0.3f;
     uint16_t *piLink;
     unsigned iRec;
     int iNext;
@@ -259,12 +259,12 @@ void BrPfxUpdateB0(void)
         scale = (float)((int)g_aPfxRec[iRec].f1F * (int)g_aPfxRec[iRec].f1E)
               * kPfxRecip;
 
-        g_aPfxRec[iRec].pos.x = (g_aPfxRec[iRec].vel.x * scale) * g_fPfxDt
+        g_aPfxRec[iRec].pos.x = (g_aPfxRec[iRec].vel.x * scale) * g_brRaceFlyStep
                               + g_vPfxDrift.x + g_aPfxRec[iRec].pos.x;
-        g_aPfxRec[iRec].pos.y = ((g_aPfxRec[iRec].vel.y * scale) * g_fPfxDt
+        g_aPfxRec[iRec].pos.y = ((g_aPfxRec[iRec].vel.y * scale) * g_brRaceFlyStep
                               + g_vPfxDrift.y) + g_aPfxRec[iRec].pos.y;
         g_aPfxRec[iRec].pos.z = ((scale * g_aPfxRec[iRec].vel.z - kPfxNeg0_8)
-                              * g_fPfxDt + g_vPfxDrift.z) + g_aPfxRec[iRec].pos.z;
+                              * g_brRaceFlyStep + g_vPfxDrift.z) + g_aPfxRec[iRec].pos.z;
 
         g_aPfxRec[iRec].f1E = (uint8_t)(int32_t)
             (kPfx5_7375 / (g_aPfxRec[iRec].age * g_aPfxRec[iRec].age));
@@ -358,7 +358,7 @@ void BrPfxUpdateB0(void)
 /* @implements 0x100339C0 glide BrPfxUpdateB4AC */
 void BrPfxUpdateB4AC(void)
 {
-    float k = g_fPfxDt * kPfx0_7;
+    float k = g_brRaceFlyStep * kPfx0_7;
     int pass;
 
     for (pass = 0; pass < 2; pass++) {
@@ -383,16 +383,16 @@ void BrPfxUpdateB4AC(void)
             scale = (float)((int)g_aPfxRec[iRec].f1F * (int)g_aPfxRec[iRec].f1E)
                   * kPfxRecip;
 
-            g_aPfxRec[iRec].pos.x = ((g_aPfxRec[iRec].vel.x * scale) * g_fPfxDt
+            g_aPfxRec[iRec].pos.x = ((g_aPfxRec[iRec].vel.x * scale) * g_brRaceFlyStep
                                   + g_vPfxDrift.x) + g_aPfxRec[iRec].pos.x;
-            g_aPfxRec[iRec].pos.y = ((g_aPfxRec[iRec].vel.y * scale) * g_fPfxDt
+            g_aPfxRec[iRec].pos.y = ((g_aPfxRec[iRec].vel.y * scale) * g_brRaceFlyStep
                                   + g_vPfxDrift.y) + g_aPfxRec[iRec].pos.y;
             g_aPfxRec[iRec].pos.z = ((scale * g_aPfxRec[iRec].vel.z - kPfxNeg0_8)
-                                  * g_fPfxDt + g_vPfxDrift.z)
+                                  * g_brRaceFlyStep + g_vPfxDrift.z)
                                   + g_aPfxRec[iRec].pos.z;
 
             g_aPfxRec[iRec].vel.z = g_aPfxRec[iRec].vel.z
-                                  - g_fPfxDt * kPfx19_62;
+                                  - g_brRaceFlyStep * kPfx19_62;
 
             g_aPfxRec[iRec].f1E =
                 (uint8_t)(int32_t)(kPfx102 / g_aPfxRec[iRec].age);
@@ -465,9 +465,9 @@ void BrPfxTick(void)
         DAT_10ac2c48 = 1;
     }
 
-    if (DAT_106ed6b0 != 0) {
+    if ((*(int *)((char *)&g_aBrEntRecs + 0x80)) != 0) {
         BrPfxUpdateB0();
-        for (i = 0; i < DAT_100b2f00; i++) {
+        for (i = 0; i < (*(int *)&g_brRaceNDriver); i++) {
             if (g_aBrRaceDriver[i].pCar != 0) {
                 BrCarSub9020(g_aBrRaceDriver[i].pCar);
                 BrCarWheelFx(g_aBrRaceDriver[i].pCar);
@@ -476,9 +476,9 @@ void BrPfxTick(void)
         return;
     }
 
-    if (DAT_106ed6ac == 0 && DAT_106ed6b4 == 0) {
+    if ((*(int *)((char *)&g_aBrEntRecs + 0x7C)) == 0 && (*(int *)((char *)&g_aBrEntRecs + 0x84)) == 0) {
         BrPfxUpdateB4AC();
-        for (i = 0; i < DAT_100b2f00; i++) {
+        for (i = 0; i < (*(int *)&g_brRaceNDriver); i++) {
             if (g_aBrRaceDriver[i].pCar != 0) {
                 BrCarPfxSpawn(g_aBrRaceDriver[i].pCar);
                 BrCarWheelFx(g_aBrRaceDriver[i].pCar);
@@ -487,7 +487,7 @@ void BrPfxTick(void)
         return;
     }
 
-    for (i = 0; i < DAT_100b2f00; i++) {
+    for (i = 0; i < (*(int *)&g_brRaceNDriver); i++) {
         if (g_aBrRaceDriver[i].pCar != 0)
             BrCarWheelFx(g_aBrRaceDriver[i].pCar);
     }
@@ -501,9 +501,9 @@ void BrPfxTick(void)
 /* @implements 0x10033C90 glide BrPfxSaveState */
 void BrPfxSaveState(short *pOut)
 {
-    pOut[0] = (short)DAT_10ac0c38;
-    pOut[1] = DAT_10ac0c40;
-    pOut[2] = (short)DAT_10ac0c3c;
-    pOut[3] = (short)DAT_10ac0c44;
+    pOut[0] = (short)g_iPfxFree;
+    pOut[1] = (*(uint16_t *)&g_iPfxHeadB0);
+    pOut[2] = (short)(*(uint16_t *)&g_iPfxHeadAC);
+    pOut[3] = (short)(*(uint16_t *)&g_iPfxHeadB4);
     memcpy(pOut + 4, g_aPfxRec, 8192);
 }

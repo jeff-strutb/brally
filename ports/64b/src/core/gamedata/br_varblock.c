@@ -64,7 +64,7 @@ void BrVarSave(const BrVarBlock *pTable, void *pDst, int32_t cbAvail)
         sprintf(szMsg,
                 "VAR SAVE OVERFLOW (%d avail, %d used)",
                 (int)cbAvail, (int)cbUsed);
-        BrFatal(szMsg);
+        BrLogSet(szMsg);
     }
 }
 

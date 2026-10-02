@@ -40,7 +40,7 @@ typedef char chk_sub[(unsigned)&((GameObj *)0)->pSub == 0x2AE8 ? 1 : -1];
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define g_5C84 DAT_10ac5c84
+#define g_5C84 (*(Phase * *)&g_brPhaseAA292C)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 
@@ -50,16 +50,16 @@ int BrPhaseLeave_10046F60(GameObj *pGame)
     Phase *pOld;
 
     pGame->pSub->s7();
-    pObj = (Phase *)(g_cur);
+    pObj = (Phase *)((*(Phase * *)&g_brPAA29B8));
     if (pObj != 0)
         pObj->f00(1);
     pOld = (Phase *)(g_5C84);
-    g_cur = 0;
-    g_5CCC = 0;
+    (*(Phase * *)&g_brPAA29B8) = 0;
+    g_brPhaseAA2974 = 0;
     if (pOld != 0) {
         pOld->f00(1);
         g_5C84 = 0;
     }
-    g_cur = (Phase *)((BrOptObj *)(g_5C60));
+    (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(g_2908));
     return 0;
 }

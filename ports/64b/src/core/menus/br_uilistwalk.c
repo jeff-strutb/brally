@@ -51,7 +51,7 @@ void BrSub1003C9B0(void)
     unsigned  i;
     unsigned  n;
 
-    pObj = g_brPAA29E4;
+    pObj = (*(uint8_t * *)&g_brPAA29E4);
     if (pObj == NULL) {
         return;
     }
@@ -59,7 +59,7 @@ void BrSub1003C9B0(void)
     for (i = 0; i < n; i++) {
         uint8_t *pSub;
         BrC9B0Arg a;
-        pObj = g_brPAA29E4;
+        pObj = (*(uint8_t * *)&g_brPAA29E4);
         pSub = pObj + 0x3838;
         a.i = (int)i;
         (*(BrC9B0Vtbl **)pSub)->f2C(pSub, a);

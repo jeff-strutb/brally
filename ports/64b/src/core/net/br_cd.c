@@ -96,11 +96,11 @@ int BrCdStartup(char * param_1)
   unsigned int _Seed;
   int uVar1;
   
-  if (g_brCdEnabled == 0) {
+  if (DAT_1007b074 == 0) {
     return 1;
   }
-  g_brCdPlaying = g_brCdPlaying + 1;
-  if (g_brCdPlaying != 1) {
+  g_220CD0 = g_220CD0 + 1;
+  if (g_220CD0 != 1) {
     return 1;
   }
   _Seed = BrSub10075020();
@@ -109,9 +109,9 @@ int BrCdStartup(char * param_1)
   g_brCdTrackFirst = 0;
   g_brCdTrackLast = 0;
   BrWindowEarStartup(param_1);
-  g_brCdMediaOk = 0;
+  g_220C3C = 0;
   DAT_1021c778 = 0;
-  uVar1 = FUN_10002580();
+  uVar1 = BrCdEarChannelOpen();
   return uVar1;
 }
 

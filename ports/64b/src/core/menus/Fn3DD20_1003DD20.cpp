@@ -48,14 +48,14 @@ public:
 
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define g_slot DAT_10ac5cac
+#define g_slot g_5CAC
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define g_flag DAT_10ac408c
+#define g_flag g_guardA
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define g_mode DAT_100a9360
+#define g_mode (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: g_obj_10AC4098 is defined once, in br_globals.c */
 
@@ -88,60 +88,60 @@ int Fn3DD20(void)
 
     one = 1;
     g_flag = one;
-    ResetSlots();
+    BrSub100586A0();
 
     if (g_host != 0) {
         item = 0;
-        host = g_pHost;
+        host = (*(void * *)&g_brP277B40);
         if (host != 0)
-            GetDesc(host, (void **)(&item));
+            FUN_10036740(host, (void **)(&item));
         if (item != 0) {
             item->f04 &= ~0x20;
-            host = g_pHost;
+            host = (*(void * *)&g_brP277B40);
             ((Host_f7C)(*(void ***)host)[0x1F])(host, item, 0);
         }
     }
 
-    ActivateD140(0);
-    ActivateD220(0);
-    ActivateD3C0(0);
+    Ctl3D140_fn(0);
+    CtlD220_fn(0);
+    Ctl3D3C0_fn(0);
     if (g_host != 0) {
-        ActivateD620(0);
-        ActivateD930(0);
+        CtlD620_fn(0);
+        Ctl3D930_fn(0);
     } else {
-        ActivateD7D0(0);
+        BrOptOpen2950A(0);
     }
 
     p = g_slot;
     if (p == 0) {
         p = new Phase;
         g_slot = p;
-        g_cur = (Phase *)((BrOptObj *)(p));
+        (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(p));
         if (p == 0)
             return 0;
         p->pfnEnter = EnterFn;
         g_slot->pfnEnter(g_slot);
-        g_cur->f0C = one;
-        g_cur->f68 = one;
+        (*(Phase * *)&g_brPAA29B8)->f0C = one;
+        (*(Phase * *)&g_brPAA29B8)->f68 = one;
     } else {
-        g_cur = (Phase *)((BrOptObj *)(p));
+        (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(p));
     }
 
     h = g_host;
     g_mode = 6;
     if (h != 0) {
         if (g_inited == 0) {
-            HostFirst();
+            BrSub1003C150();
             g_inited = one;
             goto after_host;
         }
     }
     if (h != 0)
-        HostAgain();
+        BrSub1003CDA0();
 after_host:
     ;
 
-    if (g_obj_10AC4098 != 0 && g_obj_10AC4098->f08 != 0)
-        ObjHook((struct BrObjA9D008 *)(g_obj_10AC4098), g_obj_10AC4098->f08);
+    if ((*(Obj * *)&g_brPA9D008) != 0 && (*(Obj * *)&g_brPA9D008)->f08 != 0)
+        BrExt_1003DB00((struct BrObjA9D008 *)((*(Obj * *)&g_brPA9D008)), (*(Obj * *)&g_brPA9D008)->f08);
     return one;
 }

@@ -76,22 +76,22 @@ int32_t BrSub1003CDA0(void)
     BrDpObj *pDP;
     int32_t hr;
 
-    pDP = (BrDpObj *)DAT_10273328;
+    pDP = (BrDpObj *)(*(void * *)&g_brP277B40);
     if (pDP == NULL) {
         return (int32_t)0x88770082;      /* 0x10036444 */
     }
 
-    hr = BrDpGetSessionDesc(pDP, &pDesc);                /* 0x10036453 */
+    hr = FUN_10036740(pDP, &pDesc);                /* 0x10036453 */
     if (hr >= 0) {
-        pDesc->dwUser1 = DAT_100b3014;                   /* 0x1003646A */
-        pDesc->dwUser2 = DAT_10226e80;                   /* 0x10036477 */
-        pDesc->dwUser3 = DAT_10ac5d70;                   /* 0x10036484 */
-        pDesc->dwUser4 = DAT_100abdf8;                   /* 0x10036490 */
+        pDesc->dwUser1 = g_Br0B380C;                   /* 0x1003646A */
+        pDesc->dwUser2 = (*(int32_t *)&g_226e80);                   /* 0x10036477 */
+        pDesc->dwUser3 = (*(int32_t *)&DAT_10ac5d70);                   /* 0x10036484 */
+        pDesc->dwUser4 = (*(int32_t *)&DAT_100abdf8);                   /* 0x10036490 */
 
-        BrDpRefreshSettings();                           /* 0x10036493 */
+        BrSub10044540();                           /* 0x10036493 */
 
         /* The original RE-READS the object here rather than reusing it. */
-        pDP = (BrDpObj *)DAT_10273328;                   /* 0x10036498 */
+        pDP = (BrDpObj *)(*(void * *)&g_brP277B40);                   /* 0x10036498 */
         hr = pDP->pVtbl->SetSessionDesc(pDP, pDesc, 0u); /* 0x100364A7 */
     }
 

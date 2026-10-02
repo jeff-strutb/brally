@@ -500,7 +500,7 @@ void BrRbInitInertia(BrRbBody *pB)
         pB->inertia.m[4] = (x * x + z * z) * pB->mass * BR_K_ONE_TWELFTH;
         pB->inertia.m[8] = (x * x + y * y) * pB->mass * BR_K_ONE_TWELFTH;
 
-        BrGbiCall10075330();
+        BrNop6E590();
     }
 
     if (pB->mode != 2) {

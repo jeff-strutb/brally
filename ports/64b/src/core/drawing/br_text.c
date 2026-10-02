@@ -78,7 +78,7 @@ void BrTextDraw(const char *psz, int x, int y)
     const char *s = psz;    /* homed in esi before the switch */
     int *p_;
 
-    { p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2;
+    { p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2;
       *p_ = 0xb6000000; p_[1] = 1; }
 
     switch ((int)DAT_104abb44) {
@@ -184,7 +184,7 @@ int BrSetGlobal_ABB30(int param_1)
 /* @n64 0x8022F504 located */
 void BrSub_10019290(void)
 {
-    g_br4B035C = 1;
+    DAT_104abb44 = 1;
 }
 
 /* The original is /MD: CRT calls go through the import table (FF 15). */
@@ -207,7 +207,7 @@ void BrSub_10019290(void)
 /* @implements 0x10016840 glide BrSub_10019280 */
 void BrSub_10019280(void)
 {
-    g_br4B035C = 0;
+    DAT_104abb44 = 0;
 }
 
 /* The original is /MD: CRT calls go through the import table (FF 15). */
@@ -231,5 +231,5 @@ void BrSub_10019280(void)
 /* @n64 0x8022F520 located */
 void BrSub_10019240(void)
 {
-    g_br4B0360 = 1u;
+    g_4B0360 = 1u;
 }

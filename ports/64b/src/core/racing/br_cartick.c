@@ -26,16 +26,16 @@
 void __fastcall BrCarTickClocks(BrDriverCar *pCar)
 {
     if ((((*(unsigned char *)(((((((char *)pCar->pProfile))))) + ((0x68))))) & 3) == 0) {
-        if (g_br0AA010 == 3) {
-            ((pCar->tRun)) += g_f6C2CFC;
+        if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 3) {
+            ((pCar->tRun)) += g_brRaceFlyStep;
             return;
         }
-        ((pCar->tFinal)) += g_f6C2CFC;
-        ((pCar->tRun)) += g_f6C2CFC;
-        if (g_br0AA010 == 1 || g_br0AA010 == 6) {
+        ((pCar->tFinal)) += g_brRaceFlyStep;
+        ((pCar->tRun)) += g_brRaceFlyStep;
+        if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 1 || (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 6) {
             /* Written out, not `-=`: on a volatile operand `-=` loads the
              * volatile first and emits fsubr; this form keeps `fld x; fsub dt`. */
-            ((pCar->fFF0)) = ((pCar->fFF0)) - g_f6C2CFC;
+            ((pCar->fFF0)) = ((pCar->fFF0)) - g_brRaceFlyStep;
             if (((pCar->fFF0)) < 0.0f)
                 ((pCar->fFF0)) = 0.0f;
         }
@@ -50,14 +50,14 @@ void __fastcall BrCarTickClocks(BrDriverCar *pCar)
 void __fastcall BrCarTickMessages(BrDriverCar *pCar)
 {
     if (((pCar->f1000)) != 0.0f) {
-        ((pCar->f1000)) = ((pCar->f1000)) - g_f6C2CFC;  /* not -=: volatile */
+        ((pCar->f1000)) = ((pCar->f1000)) - g_brRaceFlyStep;  /* not -=: volatile */
         if (((pCar->f1000)) <= 0.0f) {
             ((pCar->f1000)) = 0.0f;
             pCar->pszBanner = 0;
         }
     }
     else if (((pCar->f1008)) != 0.0f) {
-        ((pCar->f1008)) = ((pCar->f1008)) - g_f6C2CFC;  /* not -=: volatile */
+        ((pCar->f1008)) = ((pCar->f1008)) - g_brRaceFlyStep;  /* not -=: volatile */
         if (((pCar->f1008)) <= 0.0f) {
             ((pCar->f1008)) = 0.0f;
             pCar->psz1004 = 0;
@@ -72,19 +72,19 @@ void __fastcall BrCarTickMessages(BrDriverCar *pCar)
 /* @implements 0x1006EBC0 glide BrCarTickGridCell */
 void __fastcall BrCarTickGridCell(BrDriverCar *pCar)
 {
-    if (BrG_6C7CB8 != 0) {
+    if (g_pBrRaceLapRec != 0) {
         /* Inline arguments, not two locals: a precomputed fy would have to
          * live across the first call and VC5 spills it (+7 B).  The position
          * reads are VOLATILE: that is what keeps `fld y; fmul k` together
          * ahead of the first call's `add esp,4 / mov [cx],al` instead of
          * letting the scheduler slot those two between them (11 diff B). */
-        ((pCar->f29BC)) = (unsigned char)BrFtolTrunc((pCar->pos.x) * 0.03125f);
-        ((pCar->f29BD)) = (unsigned char)BrFtolTrunc((pCar->pos.y) * 0.03125f);
+        ((pCar->f29BC)) = (unsigned char)BrFtolArg((pCar->pos.x) * 0.03125f);
+        ((pCar->f29BD)) = (unsigned char)BrFtolArg((pCar->pos.y) * 0.03125f);
         if (((pCar->f29BC)) >= 0x40)
             ((pCar->f29BC)) = 0x3f;
         if (((pCar->f29BD)) >= 0x40)
             ((pCar->f29BD)) = 0x3f;
-        FUN_1006e5c0(pCar);
+        BrCarTrackLocate(pCar);
     }
 }
 

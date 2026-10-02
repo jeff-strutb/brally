@@ -70,20 +70,20 @@ int BrItemSetTitle_1003A910(Obj3A910 *pObj)
     char  szTmp[128];
     char *pLabel;
 
-    sprintf(g_szBrText5870, g_szBrFmt6B84, g_brPhase5BF8 + 1);
+    sprintf(g_aBrAA2518, g_szBrFmt6B84, g_brPhase5BF8 + 1);
 
     switch (g_brPhase5BF8 + 1) {
     case 1:
-        sprintf(szTmp, g_szBrFmtSS, g_szBrText5870, BrStrByIndex(0xB3));
+        sprintf(szTmp, g_szBrFmtSS, g_aBrAA2518, BrStrGet(0xB3));
         break;
     case 2:
-        sprintf(szTmp, g_szBrFmtSS, g_szBrText5870, BrStrByIndex(0xB4));
+        sprintf(szTmp, g_szBrFmtSS, g_aBrAA2518, BrStrGet(0xB4));
         break;
     case 3:
-        sprintf(szTmp, g_szBrFmtSS, g_szBrText5870, BrStrByIndex(0xB5));
+        sprintf(szTmp, g_szBrFmtSS, g_aBrAA2518, BrStrGet(0xB5));
         break;
     default:
-        sprintf(szTmp, g_szBrFmtSS, g_szBrText5870, BrStrByIndex(0xB6));
+        sprintf(szTmp, g_szBrFmtSS, g_aBrAA2518, BrStrGet(0xB6));
         break;
     }
 

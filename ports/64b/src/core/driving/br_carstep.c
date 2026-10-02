@@ -92,7 +92,7 @@ void BR_THISCALL1 BrCarStep(BrDriverCar *pCar)
 
   if (pCar->fF7C != 0) {
     BrVec3Scale(local_c, &pCar->fwd.x,
-                pCar->aimFwd * DAT_106e9d8c * DAT_10077c60);
+                pCar->aimFwd * g_brRaceFlyStep * DAT_10077c60);
     BrVec3AddTo(&pCar->pos.x, local_c);
     BrEntSetPos(pCar, pCar->pos.x, pCar->pos.y,
                 pCar->pos.z);
@@ -100,9 +100,9 @@ void BR_THISCALL1 BrCarStep(BrDriverCar *pCar)
     BrEntSetAngVel(pCar, 0.0f, 0.0f, 0.0f);
     *(int *)&pCar->f0E24 = 0;
     BrEntSetOrientation(pCar,
-                        pCar->f2720 * DAT_106e9d8c * DAT_10077c64,
-                        pCar->f2724 * DAT_106e9d8c * DAT_10077c64,
-                        pCar->f272C * DAT_106e9d8c * DAT_10077c64);
+                        pCar->f2720 * g_brRaceFlyStep * DAT_10077c64,
+                        pCar->f2724 * g_brRaceFlyStep * DAT_10077c64,
+                        pCar->f272C * g_brRaceFlyStep * DAT_10077c64);
     if ((**(unsigned char * *)&pCar->pCtl & 0x10) != 0) {
       int *puVar1 = (int *)&pCar->up.x;
       *puVar1 = 0;
@@ -114,7 +114,7 @@ void BR_THISCALL1 BrCarStep(BrDriverCar *pCar)
     }
   } else {
     *(int *)&pCar->sz100C[20] =
-        BrCollRayCast_1006EC30(&pCar->pos.x, &pCar->up.x, &pCar->pos.x, &pCar->aNearIds[0],
+        FUN_1006ec30(&pCar->pos.x, &pCar->up.x, &pCar->pos.x, &pCar->aNearIds[0],
                                &pCar->gotHit, &pCar->aFarIds[0], &pCar->farCount,
                                &pCar->fHitDist, &pCar->iHitFace);
     *(int *)&pCar->aBody[0].rb.child[1]->f1C0 = 0;
@@ -167,25 +167,25 @@ void BR_THISCALL1 BrCarStep(BrDriverCar *pCar)
         pCar->aBody[0].rb.child[3]->f1D0 = -pCar->f0E6C;
       }
     }
-    if ((DAT_105ccb88 == 0) &&
-        (((DAT_100a9360 != 2 || (pCar->f140 != 1)) ||
+    if (((*(int *)&DAT_105ccb68[8]) == 0) &&
+        ((((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 2 || (pCar->f140 != 1)) ||
           (pCar->pCtl->pHdr == 0)))) {
-      if (DAT_100a9360 == 4) {
+      if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4) {
         if ((pCar->f140 == 0) &&
             (pCar->pCtl->pHdr != 0))
           goto LAB_net;
-      } else if (((DAT_100a9360 != 5) && (DAT_10226a44 == 0)) &&
+      } else if ((((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 5) && ((*(int *)&g_brRaceTick) == 0)) &&
                  (0x5a < *(int *)&pCar->aBody[2].rb.f1B4))
         goto LAB_net;
-      BrCarSub1005A7A0(pCar);
+      BrCarPhysStep(pCar);
     }
   }
 LAB_net:
-  if (DAT_10226a48 == 0) {
-    if (DAT_105ccb88 == 0) {
+  if ((*(int *)&g_brRaceNet) == 0) {
+    if ((*(int *)&DAT_105ccb68[8]) == 0) {
       BrCarWheelSteerStep_1005ACE0(pCar);
     }
-  } else if ((*(void * *)&pCar->pfnControl == (void *)BrCtlHuman) && (DAT_105ccb88 == 0)) {
+  } else if ((*(void * *)&pCar->pfnControl == (void *)BrCtlHuman) && ((*(int *)&DAT_105ccb68[8]) == 0)) {
     BrCarNetSendState(pCar);
   }
   if (*(int *)&pCar->aBody[2].rb.f1B4 != 0) {
@@ -194,12 +194,12 @@ LAB_net:
                 pCar->aBody[0].rb.st.vel.y * pCar->aBody[0].rb.st.vel.y +
                 pCar->aBody[0].rb.st.vel.x * pCar->aBody[0].rb.st.vel.x) * DAT_10077c78;
   }
-  if ((DAT_10226a48 == 0) && (iVar5 = 0, 0 < DAT_100aa044)) {
-    piVar6 = &DAT_106e86c8;
+  if (((*(int *)&g_brRaceNet) == 0) && (iVar5 = 0, 0 < g_brMode0AA8B4)) {
+    piVar6 = &(*(int *)&BrG_6C1628[4]);
     while (pCar->f140 != *piVar6) {
       iVar5 = iVar5 + 1;
       piVar6 = piVar6 + 0x16;
-      if (DAT_100aa044 <= iVar5) {
+      if (g_brMode0AA8B4 <= iVar5) {
         return;
       }
     }

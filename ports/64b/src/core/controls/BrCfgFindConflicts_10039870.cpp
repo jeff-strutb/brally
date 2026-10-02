@@ -61,10 +61,10 @@ int BrCfgFindConflicts(int kind)
         char bI;
         int  j;
 
-        g_brFlag4648[i] = 0;
+        g_brTbl4648[i] = 0;
 
-        aI = g_brCfgB71290.GetA(kind, g_brBindAAAD4[i].key);
-        bI = g_brCfgB71290.GetB(kind, g_brBindAAAD4[i].key);
+        aI = (*(Cfg39870 *)&g_BrCtrlCfg).GetA(kind, g_brBindAAAD4[i].key);
+        bI = (*(Cfg39870 *)&g_BrCtrlCfg).GetB(kind, g_brBindAAAD4[i].key);
 
         if (i + 1 >= 21)
             continue;
@@ -78,8 +78,8 @@ int BrCfgFindConflicts(int kind)
                            || g_brBindAAAD4[j].key == 0x0E))
                 continue;
 
-            aJ = g_brCfgB71290.GetA(kind, g_brBindAAAD4[j].key);
-            bJ = g_brCfgB71290.GetB(kind, g_brBindAAAD4[j].key);
+            aJ = (*(Cfg39870 *)&g_BrCtrlCfg).GetA(kind, g_brBindAAAD4[j].key);
+            bJ = (*(Cfg39870 *)&g_BrCtrlCfg).GetB(kind, g_brBindAAAD4[j].key);
 
             if (aI == 0 && bI == 0)
                 continue;
@@ -89,8 +89,8 @@ int BrCfgFindConflicts(int kind)
                 continue;
 
             found = 1;
-            g_brFlag4648[j] = 1;
-            g_brFlag4648[i] = 1;
+            g_brTbl4648[j] = 1;
+            g_brTbl4648[i] = 1;
         }
     }
 

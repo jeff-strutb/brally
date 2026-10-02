@@ -67,11 +67,11 @@ extern "C" {
 
 extern "C" void BrExt_10038F30(int a)
 {
-    Phase *p = g_brPhaseAA2904;
+    Phase *p = (*(Phase * *)&g_brPAA29B8);
 
-    if (p != 0 && g_AC300 != 0) {
+    if (p != 0 && (*(int *)&g_AC300) != 0) {
         p->f68 = 0;
-        g_brPhaseAA2904->f18(0);
+        (*(Phase * *)&g_brPAA29B8)->f18(0);
     }
 
     BrRaceDriverReset();
@@ -83,31 +83,31 @@ extern "C" void BrExt_10038F30(int a)
 
     BrExt_10079550();
     BrDiKeyboardShutdown();
-    FUN_100720a0();
+    BrDInputShutdown();
     FUN_1006c6a0();
 
-    if (DAT_10226a48 != 0) {
-        FUN_10005f50(1);
+    if ((*(int *)&g_brRaceNet) != 0) {
+        BrNetShutdown(1);
     }
 
     FUN_10035660();
     BrExt_1003BF60();
 
-    if (g_brCdEnabled != 0) {
-        FUN_10003030();
+    if (DAT_1007b074 != 0) {
+        BrCdStopRelease();
     }
 
     BrPodNop();
 
-    if (DAT_118ed1e8 != 0) {
-        (*DAT_118ed1e8)();
+    if ((*(funcptr *)&g_18ED1E8) != 0) {
+        (*(*(funcptr *)&g_18ED1E8))();
     }
-    if (DAT_106b7abc != 0) {
-        (*DAT_106b7abc)();
+    if ((*(funcptr *)&BrGlFlipHook2) != 0) {
+        (*(*(funcptr *)&BrGlFlipHook2))();
     }
 
     FUN_1005a6a0();
-    g_AC0810.Reset();
+    g_brModelMgr.Reset();
     BrFadeRelease();
     BrStrResFree();
     CoUninitialize();

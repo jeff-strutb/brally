@@ -98,23 +98,23 @@ void BrRankAssign(void)
   int iVar7;
   int local_a0 [40];
 
-  if (DAT_10226a48 != 0) {
+  if ((*(int *)&g_brRaceNet) != 0) {
     iVar7 = 0;
-    if (0 < DAT_100b2f04) {
-      puVar5 = &DAT_10af2200;
+    if (0 < (*(int *)&g_BrCarCount)) {
+      puVar5 = &(*(int *)((char *)&g_aBrRaceCar + 0xFF8)) /* BR_LP64_BYTE_VIEW */;
       do {
         uVar1 = BrNetGetA102212D0(puVar5[-0x3ad]);
         *puVar5 = uVar1;
         iVar7 = iVar7 + 1;
         puVar5 = puVar5 + 0xada;
-      } while (iVar7 < DAT_100b2f04);
+      } while (iVar7 < (*(int *)&g_BrCarCount));
       return;
     }
   }
   else {
     _NumOfElements = 0;
     iVar7 = 0;
-    if (0 < DAT_100b2f00) {
+    if (0 < (*(int *)&g_brRaceNDriver)) {
       piVar2 = local_a0;
       piVar4 = g_aBrRaceDriver;   /* the walker addresses whole driver records */
       do {
@@ -133,7 +133,7 @@ void BrRankAssign(void)
         }
         iVar7 = iVar7 + 1;
         piVar4 = piVar4 + 1;
-      } while (iVar7 < DAT_100b2f00);
+      } while (iVar7 < (*(int *)&g_brRaceNDriver));
     }
     if (_NumOfElements != 0) {
       qsort(local_a0,_NumOfElements,8,BrRankCmpKey);
@@ -143,10 +143,10 @@ void BrRankAssign(void)
       piVar2 = local_a0 + 1;
       do {
         if (g_aBrRaceDriver[(*piVar2)].pCar != 0) {
-          (g_aBrRaceDriver[(*piVar2)].pCar)->fFF8 = DAT_100b2f00 - iVar7 - 1;
+          (g_aBrRaceDriver[(*piVar2)].pCar)->fFF8 = (*(int *)&g_brRaceNDriver) - iVar7 - 1;
         }
         else {
-          g_aBrRaceDriver[(*piVar2)].f54 = DAT_100b2f00 - iVar7 - 1;
+          g_aBrRaceDriver[(*piVar2)].f54 = (*(int *)&g_brRaceNDriver) - iVar7 - 1;
         }
         iVar7 = iVar7 + 1;
         piVar2 = piVar2 + 2;

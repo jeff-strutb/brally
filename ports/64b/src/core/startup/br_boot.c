@@ -61,11 +61,11 @@
 /* @implements 0x1001CD70 glide BrAppStateColdInit */
 int32_t BrAppStateColdInit(void)
 {
-    BrBootFrontier_10032530();
-    BrBootFrontier_1006C290(0);      /* set 0 == the front-end bank */
-    BrBootFrontier_10058AF0();
+    BrBootColdInitRun();
+    BrSfxBankLoad(0);      /* set 0 == the front-end bank */
+    BrCtlNameInit();
 
-    g_brAppState = BR_APP_SET_MODE;  /* 4 */
+    (DAT_105ccb68[21]) = BR_APP_SET_MODE;  /* 4 */
     return 1;
 }
 
@@ -83,7 +83,7 @@ int32_t BrAppStateColdInit(void)
 /* @implements 0x1001CDA0 glide BrAppStateEnterRun */
 int32_t BrAppStateEnterRun(void)
 {
-    g_brAppState = BR_APP_RUN;       /* 2 */
+    (DAT_105ccb68[21]) = BR_APP_RUN;       /* 2 */
     return 1;
 }
 
@@ -106,7 +106,7 @@ int32_t BrAppStateEnterRun(void)
 /* @implements 0x1001CDB0 glide BrAppStateRun */
 int32_t BrAppStateRun(void)
 {
-    ++g_brAppFrame;
+    ++(DAT_105ccb68[20]);
     /* 0x1002E324 IS BrGameStepInvoke, and it was ported before this module
      * existed. My first draft of br_boot.c gave it a frontier entry -- i.e.
      * declared the game's frame dispatcher missing while a correct
@@ -154,15 +154,15 @@ int32_t BrAppStateRun(void)
 
 int32_t BrAppStateLoading(void)
 {
-    BrBootFrontier_10063970(3,
-                            DAT_10b71a48,
-                            DAT_10b71a4c,
-                            DAT_10b71a50,
-                            DAT_10b71a54);
-    BrBootFrontier_1006C990("loading.img", 0);   /* 0x100A9924 */
-    BrBootFrontier_100628B0();
+    BrRenderModeStart(3,
+                            (*(int32_t *)&DAT_10b71a48),
+                            (*(int32_t *)&DAT_10b71a4c),
+                            (*(int32_t *)&DAT_10b71a50),
+                            (*(int32_t *)&DAT_10b71a54));
+    BrImgShowFullScreen("loading.img", 0);   /* 0x100A9924 */
+    BrGlRaceStart();
 
-    g_brAppState = BR_APP_ENTER_RUN;             /* 1 */
+    (DAT_105ccb68[21]) = BR_APP_ENTER_RUN;             /* 1 */
     return 1;
 }
 
@@ -240,17 +240,17 @@ int32_t BrAppStateLoading(void)
 
 int32_t BrAppFrame(void)
 {
-    return s_apfnAppState[g_brAppState]();
+    return s_apfnAppState[(DAT_105ccb68[21])]();
 }
 
 void BrAppResetForTest(void)
 {
-    g_brAppState    = BR_APP_COLD_INIT;
-    g_brAppFrame    = 0;
-    g_brAppExitCode = 0;
+    (DAT_105ccb68[21])    = BR_APP_COLD_INIT;
+    (DAT_105ccb68[20])    = 0;
+    (DAT_105ccb68[22]) = 0;
     g_brAppContinue = 1;
-    g_brAppModeW    = 0;
-    g_brAppModeH    = 0;
+    (*(int32_t *)&BrGbiRectG_A7514)    = 0;
+    (*(int32_t *)&BrGbiRectG_A7518)    = 0;
     /* 0x105BC730..73C too. They are module globals and this function's job is
      * load-time state; without it, "CoInitialize failed so the argument stores
      * never ran" is indistinguishable from "a previous test left them set",
@@ -326,7 +326,7 @@ int32_t BrRallyMain(void *hInstance, void *hPrevInstance,
     int32_t dxPlatform;
     BrCfgPathArg path;
 
-    g_brAppExitCode = 0;                       /* 0x1001CC03 */
+    (DAT_105ccb68[22]) = 0;                       /* 0x1001CC03 */
 
     /* 0x1001CC11..0x1001CC19. Failure jumps STRAIGHT to the CoUninitialize
      * tail, skipping even the argument stores -- hence the wrapped body
@@ -358,16 +358,16 @@ int32_t BrRallyMain(void *hInstance, void *hPrevInstance,
         BrMemoryQuery();                       /* 0x1001CCA0 */
         BrBaseDirInit();                       /* 0x1001CCA5 */
         BrStrResLoad();                        /* 0x1001CCAA */
-        BrCmdLineParse(pszCmdLine);            /* 0x1001CCAF, arg3 in esi */
+        FUN_10007f40(pszCmdLine);            /* 0x1001CCAF, arg3 in esi */
 
         /* 0x1001CCB5..0x1001CD0D -- MSVC's inlined strcpy then strcat:
          * `or ecx,-1; repne scasb; not ecx; sub edi,ecx; shr ecx,2;
          * rep movsd; and ecx,3; rep movsb` twice over. */
-        strcpy(DAT_10b72f48, DAT_10b73540);
-        strcat(DAT_10b72f48, "BossRally.cfg");
+        strcpy((*(char (*)[])&g_navArg), g_aBrCfgBaseDir);
+        strcat((*(char (*)[])&g_navArg), "BossRally.cfg");
 
-        path.psz = DAT_10b72f48;
-        BrCfgReadFileT(DAT_10b71290, path);    /* 0x1001CD12 */
+        path.psz = (*(char (*)[])&g_navArg);
+        BrCtrlCfgReadFile((*(uint8_t (*)[])&g_BrCtrlCfg), path);    /* 0x1001CD12 */
 
         if (BrWindowCreate() != 0) {           /* 0x1001CD17 */
             BrDPlayBootInit();                 /* 0x1001CD20 */
@@ -378,5 +378,5 @@ int32_t BrRallyMain(void *hInstance, void *hPrevInstance,
     }
 
     CoUninitialize();                          /* 0x1001CD33 */
-    return g_brAppExitCode;                    /* 0x1001CD39 */
+    return (DAT_105ccb68[22]);                    /* 0x1001CD39 */
 }

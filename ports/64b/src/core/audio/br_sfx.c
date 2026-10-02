@@ -438,9 +438,9 @@ int BrSndVoiceIsPlaying(int param_1)
 {
   int uVar1;
 
-  if (((BrSndG0B5DE8 != 0) && (BrSndPDS != 0)) && (BrSndG18290FC != 0)) {
-    if ((&g_aBrSndBankVoice)[param_1] != 0) {
-      uVar1 = BrSndVoiceBufIsPlaying((BrSfxVoice *)(&g_aBrSndBankVoice)[param_1]);
+  if ((((*(int *)&DAT_100b51e4[1036]) != 0) && ((*(int *)&BrSndPDS) != 0)) && (BrSndG18290FC != 0)) {
+    if ((&(g_apBrSfxChanVoice[0]))[param_1] != 0) {
+      uVar1 = BrSndVoiceBufIsPlaying((BrSfxVoice *)(&(g_apBrSfxChanVoice[0]))[param_1]);
       return uVar1;
     }
     return 0;
@@ -497,7 +497,7 @@ int BrSfxCarBankInit(int param_1,int param_2)
 {
   BrSndBankSetCar(param_1,param_2);
   BrSfxCarBankLoad(param_1);
-  BrSfxSrcPlaySilent(param_1 * 2,DAT_100b32b0,DAT_100b32bc,DAT_100b32c0);
+  BrSfxSrcPlaySilent(param_1 * 2,(DAT_100b32b0[0]),(DAT_100b32bc[0]),(DAT_100b32c0[0]));
   return;
 }
 
@@ -558,7 +558,7 @@ int BrSfxBankLoad(int iSet)
     struct BrSndVoice *v;
 
     ok = 1;
-    if ((BrSndG0B5DE8 == 0) || (BrSndPDS == 0) || (BrSndG18290FC == 0)) {
+    if (((*(int *)&DAT_100b51e4[1036]) == 0) || ((*(int *)&BrSndPDS) == 0) || (BrSndG18290FC == 0)) {
         return 1;
     }
     if (iSet == 0) {
@@ -573,9 +573,9 @@ int BrSfxBankLoad(int iSet)
                 if (v == 0)
                     ok = v;
             } else {
-                DAT_100b55f8[i] = 0;
-                DAT_100b5cb8[i] = 0;
-                DAT_100b5d00[i] = 0;
+                BrSndVoices[i] = 0;
+                (BrSndVoices[432])[i] = 0;
+                (BrSndVoices[450])[i] = 0;
             }
         }
     }
@@ -585,11 +585,11 @@ int BrSfxBankLoad(int iSet)
                 strcpy(buf, g_aBrCfgSfxDir);
                 strcat(buf, ppName[row]);
                 v = BrSndVoiceLoad(buf);
-                DAT_100b55f8[row * 18 + cLeft] = v;
+                BrSndVoices[row * 18 + cLeft] = v;
                 if (v == 0)
                     ok = v;
             } else {
-                DAT_100b55f8[row * 18 + cLeft] = 0;
+                BrSndVoices[row * 18 + cLeft] = 0;
             }
         }
     }
@@ -619,31 +619,31 @@ int BrSfxCarBankLoad(int iCar)
 
     i2 = iCar * 2;
     ok = 1;
-    if ((BrSndG0B5DE8 == 0) || (BrSndPDS == 0) || (BrSndG18290FC == 0)
+    if (((*(int *)&DAT_100b51e4[1036]) == 0) || ((*(int *)&BrSndPDS) == 0) || (BrSndG18290FC == 0)
         || (code = ((int *)g_0B6540)[i2]) == 0) {
-        DAT_100b55f8[i2] = 0;
-        DAT_100b5cb8[i2] = 0;
-        DAT_100b5d00[i2] = 0;
+        BrSndVoices[i2] = 0;
+        (BrSndVoices[432])[i2] = 0;
+        (BrSndVoices[450])[i2] = 0;
     } else {
         strcpy(buf, g_aBrCfgSfxDir);
         strcat(buf, BrSfxCarCode[code]);
         strcat(buf, DAT_100b64a8);
         v = BrSndVoiceLoad(buf);
-        DAT_100b55f8[i2] = v;
+        BrSndVoices[i2] = v;
         if (v == 0)
             ok = 0;
         strcpy(buf, g_aBrCfgSfxDir);
         strcat(buf, BrSfxCarCode[((int *)g_0B6C00)[i2]]);
         strcat(buf, DAT_100b64a0);
         v = BrSndVoiceLoad(buf);
-        DAT_100b5cb8[i2] = v;
+        (BrSndVoices[432])[i2] = v;
         if (v == 0)
             ok = 0;
         strcpy(buf, g_aBrCfgSfxDir);
         strcat(buf, BrSfxCarCode[((int *)g_0B6C48)[i2]]);
         strcat(buf, DAT_100b6498);
         v = BrSndVoiceLoad(buf);
-        DAT_100b5d00[i2] = v;
+        (BrSndVoices[450])[i2] = v;
         if (v == 0)
             ok = 0;
     }

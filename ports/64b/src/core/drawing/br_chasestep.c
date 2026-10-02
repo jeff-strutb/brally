@@ -190,7 +190,7 @@ void __fastcall BrCamChaseStep(BrCamCar *car)
     car->prev.x = car->last.x;
     car->prev.y = car->last.y;
     car->prev.z = car->last.z;
-    k    = ((g_brRaceReplay != 0) ? _DAT_10077058 : _DAT_1007705c) * _DAT_10077064;
+    k    = (((DAT_105ccb68[8]) != 0) ? _DAT_10077058 : _DAT_1007705c) * _DAT_10077064;
     lift = k * car->spin;
     s60  = car->speed * _DAT_10077060;
     if ((s60 - lift) + car->height > _DAT_10077068) {
@@ -208,7 +208,7 @@ void __fastcall BrCamChaseStep(BrCamCar *car)
         prevArg.p = &prev;
         FUN_10001510(car, camArg, prevArg);
         if (g_BrCamDemo != 0) {
-            if (g_brRaceReplay != 0) {
+            if ((DAT_105ccb68[8]) != 0) {
                 g_BrCamHold = 0x1E;
                 if (car->pTarget == car->cam) {
                     car->pTarget = &car->frame;

@@ -48,12 +48,12 @@ void Ui54070::Tick(int a, int b)
 {
     int now;
 
-    now = FnE280();
+    now = BrSub10075020();
     g_5DAC += now - g_5DB0;
     g_5DB0 = now;
     if (g_5DAC >= 0x78) {
         g_5DAC = 0;
-        s6(g_C17C, a, b, f08);
+        s6((*(short *)((char *)&(*(BrGlyphMetric12 (*)[])&g_BrGlyphFontA12) + 0x2F8)), a, b, f08);
     }
 }
 

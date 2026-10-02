@@ -45,8 +45,8 @@ int32_t BrWindowEarStartupBodies(void)         { return s_cEarStartupBodies; }
 /* @n64 0x8022F530 located */
 void BrWindowResetForTest(void)
 {
-    g_brhWnd            = NULL;
-    g_brhInstance       = NULL;
+    (*(void * *)&g_brOwner5BC72C)            = NULL;
+    (*(void * *)&s_args)       = NULL;
     g_brhInstance2      = NULL;
     s_iAudioBackend     = 0;
     s_iEarDllSelect     = 0;
@@ -85,7 +85,7 @@ void BrWindowDescribe(BrWindowDesc *pDesc)
                                              /* S+0x04 is BrWndProc, 0x10019688 */
     pDesc->cbClsExtra   = 0;                 /* S+0x08, 0x10019690 */
     pDesc->cbWndExtra   = 0;                 /* S+0x0C, 0x10019698 */
-    pDesc->hInstance    = g_brhInstance;     /* S+0x10, 0x100196A0 */
+    pDesc->hInstance    = (*(void * *)&s_args);     /* S+0x10, 0x100196A0 */
     pDesc->idIcon       = 0x65;              /* S+0x14, LoadIconA */
     pDesc->idCursor     = 0x7F00;            /* S+0x18, IDC_ARROW */
     pDesc->idStockBrush = 4;                 /* S+0x1C, GetStockObject(4) */
@@ -107,8 +107,8 @@ void BrWindowDescribe(BrWindowDesc *pDesc)
      * into eax, then pushes edx BEFORE eax -- so cx is 0x100A7514 (width) and
      * cy is 0x100A7518 (height), which is br_boot.c's g_brAppModeW/H. Reused,
      * never redefined: one address, one owner. */
-    pDesc->cx = g_brAppModeW;
-    pDesc->cy = g_brAppModeH;
+    pDesc->cx = (*(int32_t *)&BrGbiRectG_A7514);
+    pDesc->cy = (*(int32_t *)&BrGbiRectG_A7518);
     /* hWndParent, hMenu and lpParam are all 0 (0x100196F7, 0x100196FA,
      * 0x100196FC) and hInstance is [0x105BC730] again (0x100196E6). */
 }
@@ -130,7 +130,7 @@ void BrWindowDescribe(BrWindowDesc *pDesc)
 int BrWindowCreate(const BrWindowOps *pOps)
 {
     WNDCLASSA wc;
-    void     *hInst = g_brhInstance;
+    void     *hInst = (*(void * *)&s_args);
     HWND      hWnd;
 
     (void)pOps;
@@ -150,8 +150,8 @@ int BrWindowCreate(const BrWindowOps *pOps)
     RegisterClassA(&wc);
 
     hWnd = CreateWindowExA(0x40000, "BossRally", "Boss Rally", 0x80C20000u,
-                           0, 0, g_brAppModeW, g_brAppModeH,
-                           NULL, NULL, (HINSTANCE)g_brhInstance, NULL);
+                           0, 0, (*(int32_t *)&BrGbiRectG_A7514), (*(int32_t *)&BrGbiRectG_A7518),
+                           NULL, NULL, (HINSTANCE)(*(void * *)&s_args), NULL);
     return hWnd != NULL;
 }
 
@@ -190,11 +190,11 @@ int BrWindowCreate(const BrWindowOps *pOps)
 /* FUN_10017910: prototype in br_funcs.h */
 /* FUN_1006d280: prototype in br_funcs.h */
 /* The resolved _EAR_DLL_* entry points -- all __stdcall. */
-extern int (__stdcall *DAT_104b1658)(int);       /* AAA_Validate@4   */
-extern int (__stdcall *DAT_104b1634)(void *);    /* AssignHwnd@4     */
-extern int (__stdcall *DAT_104b1668)(int);       /* InitializeEar@4  */
-extern int (__stdcall *DAT_104b166c)(void);      /* GetLastError@0   */
-extern int (__stdcall *DAT_104b1650)(void);      /* ShowLastError@0  */
+extern int (__stdcall *(*(int (**)(int))&DAT_104b1658))(int);       /* AAA_Validate@4   */
+extern int (__stdcall *(*(int (**)(void *))&DAT_104b1634))(void *);    /* AssignHwnd@4     */
+extern int (__stdcall *(*(int (**)(int))&DAT_104b1668))(int);       /* InitializeEar@4  */
+extern int (__stdcall *(*(int (**)(void))&DAT_104b166c))(void);      /* GetLastError@0   */
+extern int (__stdcall *(*(int (**)(void))&DAT_104b1650))(void);      /* ShowLastError@0  */
 
 /* RESIDUE (11 masked diffs, T3a): esi/edi/ebx role rotation only --
  * orig homes hWnd in esi, MessageBoxA in edi, exit in ebx; we get the
@@ -207,22 +207,22 @@ int32_t BrWindowEarStartup(void *hWnd, const BrEarOps *pOps)
     if (++s_cEarStartupCalls != 1)
         return 1;
 
-    if (FUN_10017910(DAT_100a74fc) == 0) {
-        MessageBoxA((HWND)hWnd, FUN_1006d280(0xFE), FUN_1006d280(0xFD), 0x10);
+    if (BrEarLoad(DAT_100a74fc) == 0) {
+        MessageBoxA((HWND)hWnd, BrStrGet(0xFE), BrStrGet(0xFD), 0x10);
         exit(1);
         /* VC5 has no noreturn: the original falls through into the
          * validate call, and so does this. */
     }
 
-    DAT_104b1658(0x9BE9C9);
-    DAT_104b1634(hWnd);
-    if (DAT_104b1668(0) == 0) {
-        if (DAT_104b166c() == 3) {
-            MessageBoxA((HWND)hWnd, FUN_1006d280(0x12E), FUN_1006d280(0xFD),
+    (*(int (**)(int))&DAT_104b1658)(0x9BE9C9);
+    (*(int (**)(void *))&DAT_104b1634)(hWnd);
+    if ((*(int (**)(int))&DAT_104b1668)(0) == 0) {
+        if ((*(int (**)(void))&DAT_104b166c)() == 3) {
+            MessageBoxA((HWND)hWnd, BrStrGet(0x12E), BrStrGet(0xFD),
                         0x10);
             exit(1);
         } else {
-            DAT_104b1650();
+            (*(int (**)(void))&DAT_104b1650)();
             exit(1);
         }
     }

@@ -51,7 +51,7 @@ void BrCarGhostApply_10059A80(BrDriverCar *pCar, const float *pRec)
     ((pCar->aBody[0].rb.st.pos.y)) = pRec[5];
     ((pCar->aBody[0].rb.st.pos.z)) = pRec[6];
 
-    FUN_10062640(((void *)&pCar->aBody[0].rb.m.m[0]), pRec);
+    BrMat4FromCarState(((void *)&pCar->aBody[0].rb.m.m[0]), pRec);
 
     ((pCar->aBody[0].rb.st.vel.x)) = pRec[7];
     ((pCar->aBody[0].rb.st.vel.y)) = pRec[8];
@@ -106,7 +106,7 @@ void BrCarGhostApply_10059A80(BrDriverCar *pCar, const float *pRec)
     ((*(unsigned char *)&pCar->aBody[0].f0205)) = (unsigned char)(int)pRec[0x26];
     ((*(unsigned char *)&pCar->aBody[0].f0206)) = (unsigned char)(int)pRec[0x27];
 
-    FUN_1006d530((void *)block);
+    BrRbQuatDerivative((void *)block);
 
     memcpy(&pCar->aBody[0].rb.st1.pos.x, (const void *)block, 0x44);
     memcpy(&pCar->aBody[0].rb.st2.pos.x,   (const void *)block, 0x44);

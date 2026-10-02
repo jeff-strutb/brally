@@ -46,10 +46,10 @@ int BrDPlayRawSend(void *pIface, uint32_t idFrom, uint32_t idTo,
 {
     BrDpSend6 send;
     int r;
-    EnterCriticalSection(&DAT_10273310);
+    EnterCriticalSection(&(g_BrDPlayCrit[0]));
     send = *(BrDpSend6 *)(*(unsigned char **)pIface + 0x68);
     r = send(pIface, idFrom, idTo, flags, pData, cbData);
-    LeaveCriticalSection(&DAT_10273310);
+    LeaveCriticalSection(&(g_BrDPlayCrit[0]));
     return r;
 }
 

@@ -129,11 +129,11 @@ void BrDpAppMsgHandle(int *pNet, int *pMsg, int a3, char *idFrom, int a5)
         case 0x60000002:
             if (idFrom == 1) {
                 i = 0;
-                p = &DAT_10ac5890;
-                while ((uintptr_t)p < (uintptr_t)&DAT_10ac5890 + 0x60) {
+                p = &(*(int *)&g_aBrAA2538);
+                while ((uintptr_t)p < (uintptr_t)&(*(int *)&g_aBrAA2538) + 0x60) {
                     if (*p == -1) {
-                        (&DAT_10ac5890)[i * 3] = 1;
-                        (&DAT_10ac5894)[i * 3] = 1;
+                        (&(*(int *)&g_aBrAA2538))[i * 3] = 1;
+                        (&(*(int *)((char *)&g_aBrAA2538 + 0x4)))[i * 3] = 1;
                         sprintf(szDbg, s_Host_set_ready_message_received__100a5bc8, 1);
                         OutputDebugStringA(szDbg);
                         break;
@@ -142,7 +142,7 @@ void BrDpAppMsgHandle(int *pNet, int *pMsg, int a3, char *idFrom, int a5)
                     i++;
                 }
             } else {
-                p = &DAT_10ac5894;
+                p = &(*(int *)((char *)&g_aBrAA2538 + 0x4));
                 do {
                     if (p[-1] == idFrom) {
                         *p = pMsg[1];
@@ -150,23 +150,23 @@ void BrDpAppMsgHandle(int *pNet, int *pMsg, int a3, char *idFrom, int a5)
                         OutputDebugStringA(szDbg);
                     }
                     p += 3;
-                } while ((uintptr_t)p < (uintptr_t)&DAT_10ac5894 + 0x60);
+                } while ((uintptr_t)p < (uintptr_t)&(*(int *)((char *)&g_aBrAA2538 + 0x4)) + 0x60);
             }
             break;
         case 0x60000005:
             v = pMsg[1];
             if (v == 4) {
-                FUN_1006ba60(4, 0x200020);
-                DAT_10ac5bac = v;
+                BrSub10072AF0(4, 0x200020);
+                g_track = v;
             } else if (v == 5) {
-                FUN_1006ba60(5, 0x200020);
-                DAT_10ac5bac = v;
+                BrSub10072AF0(5, 0x200020);
+                g_track = v;
             } else if (v == 6) {
-                FUN_1006ba60(6, 0x200020);
-                DAT_10ac5bac = v;
+                BrSub10072AF0(6, 0x200020);
+                g_track = v;
             } else if (v == 7) {
-                FUN_1006ba60(7, 0x200020);
-                DAT_10ac5bac = v;
+                BrSub10072AF0(7, 0x200020);
+                g_track = v;
             }
             break;
         case 0x60000003:
@@ -196,14 +196,14 @@ void BrDpAppMsgHandle(int *pNet, int *pMsg, int a3, char *idFrom, int a5)
                 v = pMsg[2];
                 if (v >= 0 && v < 8) {
                     sprintf(szLine, s_finished__s_100a5b50, PTR_s_First__100aa3e8[v]);
-                    BrChatLineFinishTwin(*pNet, pMsg[1], szLine, (LPCVOID *)&pText, 1);
+                    FUN_10036a30(*pNet, pMsg[1], szLine, (LPCVOID *)&pText, 1);
                 }
             }
             break;
         }
         if (pText != 0) {
-            if (DAT_105bc72c != (HWND)0) {
-                PostMessageA(DAT_105bc72c, 0x501, 0, pText);
+            if (g_brOwner5BC72C != (HWND)0) {
+                PostMessageA(g_brOwner5BC72C, 0x501, 0, pText);
                 return;
             }
             GlobalUnlock(GlobalHandle((LPCVOID)pText));

@@ -49,7 +49,7 @@ void BrDikPollAndEdge(void)
 void BrFn1003E070(void)
 {
     BrMenuSub1005FF60();
-    BrMenuSub1005FFF0();
+    BrInputLatchUpdate();
 }
 
 /* ==========================================================================
@@ -142,7 +142,7 @@ void BrSub100770C0(void)
 {
     int i;
 
-    g_18ABAD4 = 0;
+    (*(int *)&g_brInMousePrev) = 0;
     g_18ABD80 = 1;
     for (i = 0; i < 14; ++i)
         g_18ABD38[i] = 0;
@@ -184,7 +184,7 @@ void BR_THISCALL1 BrSub10060750(BrDevSlot *pSlot, BrSub10060750Arg unused)
     (void)unused;
 
     if (pIface != NULL) {
-        live = g_brPhaseAA2904->f0C;
+        live = (*(BrSub10060750Phase * *)&g_brPAA29B8)->f0C;
         if (live != 0) {
             flag = g_BrAA33E0;
             if (flag != 0) {
@@ -220,16 +220,16 @@ int BrJoyScanAny(int *param_1)
   int iVar1;
   unsigned char auStack_110 [272];
 
-  if (DAT_118eeeec == (int *)0x0) {
-    DAT_10b71530 = 2;
-    DAT_10b71534 = &DAT_10b713e0;
-    FUN_100724c0();
-    if (DAT_118eeeec == (int *)0x0) {
+  if ((*(int * *)&g_brFfb) == (int *)0x0) {
+    (*(int *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ = 2;
+    (*(int * *)&g_BrPadModeBytes) = &(*(int *)((char *)&g_BrCtrlCfg + 0x150)) /* BR_LP64_BYTE_VIEW */;
+    BrFfbInit();
+    if ((*(int * *)&g_brFfb) == (int *)0x0) {
       return 1;
     }
   }
-  (*(CC_std_1 *)(*(int *)(DAT_118eeeec) + 100))((int)DAT_118eeeec);
-  iVar1 = (*(CC_std_3 *)(*(int *)(DAT_118eeeec) + 36))((int)DAT_118eeeec,0x110,(int)auStack_110);
+  (*(CC_std_1 *)(*(int *)((*(int * *)&g_brFfb)) + 100))((int)(*(int * *)&g_brFfb));
+  iVar1 = (*(CC_std_3 *)(*(int *)((*(int * *)&g_brFfb)) + 36))((int)(*(int * *)&g_brFfb),0x110,(int)auStack_110);
   if ((iVar1 != 0) && (iVar1 == -0x7ff8ffe2)) {
     BrDiAcquire();
   }

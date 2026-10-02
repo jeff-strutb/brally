@@ -32,19 +32,19 @@ void BrObjSelCycle(void)
     int       i;
     uint16_t *p;
 
-    if (DAT_10273308 != 0) {
+    if ((*(int *)((char *)&g_BrDPlay + 0x4)) /* BR_LP64_BYTE_VIEW */ != 0) {
         for (;;) {
-            DAT_10396ea8 = DAT_10396ea8 + DAT_10273308;
-            if (DAT_10396ea8 >= DAT_106eed3c) {
+            DAT_10396ea8 = DAT_10396ea8 + (*(int *)((char *)&g_BrDPlay + 0x4)) /* BR_LP64_BYTE_VIEW */;
+            if (DAT_10396ea8 >= g_BrSpanCount) {
                 DAT_10396ea8 = 0;
             }
             if (DAT_10396ea8 < 0) {
-                DAT_10396ea8 = DAT_106eed3c - 1;
+                DAT_10396ea8 = g_BrSpanCount - 1;
             }
             if (DAT_10396ea8 == 0) break;
             i = 0;
             if (0 < DAT_1035fb9c) {
-                p = DAT_1035e710;
+                p = (*(uint16_t (*)[])&g_BrVisSpans);
                 do {
                     if (DAT_10396ea8 == *p) goto LAB_selDone;
                     i = i + 1;
@@ -53,7 +53,7 @@ void BrObjSelCycle(void)
             }
         }
 LAB_selDone: ;
-        DAT_10273308 = 0;
+        (*(int *)((char *)&g_BrDPlay + 0x4)) /* BR_LP64_BYTE_VIEW */ = 0;
     }
 }
 

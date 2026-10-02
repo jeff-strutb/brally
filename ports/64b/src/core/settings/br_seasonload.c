@@ -104,10 +104,10 @@ char BrSeasonLoad(int mode, int arg)
         if (fp == NULL)
             return (char)arg != 0;
         if (fread(DAT_117a6188, 1, 4, fp) == 4
-            && strncmp((char *)DAT_117a6188, DAT_100b559c, 4) == 0
+            && strncmp((char *)DAT_117a6188, (*(char (*)[])&DAT_100b51e4[952]), 4) == 0
             && fread(&sum, 1, 4, fp) == 4
             && fread(DAT_117a6188, 1, 0x200, fp) == 0x200
-            && sum == FUN_10001000(FUN_10001000(0, 0, 0), DAT_117a6188, 0x200))
+            && sum == BrAdler32(BrAdler32(0, 0, 0), DAT_117a6188, 0x200))
             goto install;
         fclose(fp);
         return (char)arg != 0;
@@ -118,40 +118,40 @@ install:
 
         if (BrPairBufReset() == 0)
             return 0;
-        if ((*(int * *)&g_aBrRaceCar[0].pEquip) == NULL || DAT_10af4bfc == NULL)
+        if ((*(int * *)&g_aBrRaceCar[0].pEquip) == NULL || (*(int * *)((char *)&g_aBrRaceCar + 0x39F4)) /* BR_LP64_BYTE_VIEW */ == NULL)
             return 0;
         memcpy((*(int * *)&g_aBrRaceCar[0].pEquip), DAT_117a6188, 0x53 * 4);
-        memcpy(DAT_10af4bfc, DAT_117a6188, 0x53 * 4);
+        memcpy((*(int * *)((char *)&g_aBrRaceCar + 0x39F4)) /* BR_LP64_BYTE_VIEW */, DAT_117a6188, 0x53 * 4);
         fseek(fp, 0, 2);
         n = ftell(fp);
         fseek(fp, n - 0x94, 0);
-        fread(&DAT_10af3cd8, 4, 1, fp);
-        fread(&DAT_10af3cdc, 4, 1, fp);
-        fread(&DAT_10af3ce0, 4, 1, fp);
-        fread(&DAT_10af3ce4, 4, 1, fp);
-        fread(&DAT_10af3ce8, 4, 1, fp);
+        fread(&(*(int *)((char *)&g_aBrRaceCar + 0x2AD0)) /* BR_LP64_BYTE_VIEW */, 4, 1, fp);
+        fread(&(*(int *)((char *)&g_aBrRaceCar + 0x2AD4)) /* BR_LP64_BYTE_VIEW */, 4, 1, fp);
+        fread(&(*(int *)((char *)&g_aBrRaceCar + 0x2AD8)) /* BR_LP64_BYTE_VIEW */, 4, 1, fp);
+        fread(&(*(int *)((char *)&g_aBrRaceCar + 0x2ADC)) /* BR_LP64_BYTE_VIEW */, 4, 1, fp);
+        fread(&(*(int *)((char *)&g_aBrRaceCar + 0x2AE0)) /* BR_LP64_BYTE_VIEW */, 4, 1, fp);
         fseek(fp, 0, 2);
         n = ftell(fp);
         fseek(fp, n - 0x80, 0);
-        fread(DAT_10af3cf0, 1, 0x80, fp);
-        memcpy(DAT_10af6858, DAT_10af3cf0, 0x80);
+        fread((*(char (*)[])((char *)&g_aBrRaceCar + 0x2AE8)) /* BR_LP64_BYTE_VIEW */, 1, 0x80, fp);
+        memcpy((*(char (*)[])((char *)&g_aBrRaceCar + 0x5650)) /* BR_LP64_BYTE_VIEW */, (*(char (*)[])((char *)&g_aBrRaceCar + 0x2AE8)) /* BR_LP64_BYTE_VIEW */, 0x80);
     } else {
         int  save[5];
         int *p;
 
-        p = (*(int * *)&g_aBrRaceCar[(DAT_105ccbc4 ^ 1)].pEquip);
+        p = (*(int * *)&g_aBrRaceCar[((*(int *)&DAT_105ccb68[23]) ^ 1)].pEquip);
         save[0] = p[0x3e];
         save[1] = p[0x3f];
         save[2] = p[0x40];
         save[3] = p[0x41];
         save[4] = p[0x42];
         memcpy((*(int * *)&g_aBrRaceCar[0].pEquip), DAT_117a6188, 0x53 * 4);
-        memcpy(DAT_10af4bfc, DAT_117a6188, 0x53 * 4);
-        (*(int * *)&g_aBrRaceCar[(DAT_105ccbc4 ^ 1)].pEquip)[0x3e] = save[0];
-        (*(int * *)&g_aBrRaceCar[(DAT_105ccbc4 ^ 1)].pEquip)[0x3f] = save[1];
-        (*(int * *)&g_aBrRaceCar[(DAT_105ccbc4 ^ 1)].pEquip)[0x40] = save[2];
-        (*(int * *)&g_aBrRaceCar[(DAT_105ccbc4 ^ 1)].pEquip)[0x41] = save[3];
-        (*(int * *)&g_aBrRaceCar[(DAT_105ccbc4 ^ 1)].pEquip)[0x42] = save[4];
+        memcpy((*(int * *)((char *)&g_aBrRaceCar + 0x39F4)) /* BR_LP64_BYTE_VIEW */, DAT_117a6188, 0x53 * 4);
+        (*(int * *)&g_aBrRaceCar[((*(int *)&DAT_105ccb68[23]) ^ 1)].pEquip)[0x3e] = save[0];
+        (*(int * *)&g_aBrRaceCar[((*(int *)&DAT_105ccb68[23]) ^ 1)].pEquip)[0x3f] = save[1];
+        (*(int * *)&g_aBrRaceCar[((*(int *)&DAT_105ccb68[23]) ^ 1)].pEquip)[0x40] = save[2];
+        (*(int * *)&g_aBrRaceCar[((*(int *)&DAT_105ccb68[23]) ^ 1)].pEquip)[0x41] = save[3];
+        (*(int * *)&g_aBrRaceCar[((*(int *)&DAT_105ccb68[23]) ^ 1)].pEquip)[0x42] = save[4];
     }
     if (mode != 0)
         fclose(fp);

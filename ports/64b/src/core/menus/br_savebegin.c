@@ -142,12 +142,12 @@ int BrSaveBeginRallySeason(int pList, int *pIdx)
     int   i;
     unsigned short *pw;
 
-    DAT_10ac5c38 = 0;
-    DAT_100a9360 = 0;
+    g_5C38 = 0;
+    (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = 0;
     BrSub1003E680();
-    DAT_105ccbc4 = 0;
-    strcpy(DAT_10ac5870, DAT_10396f08);
-    strcpy(DAT_10ac46a0, DAT_10396f08);
+    (*(int *)&DAT_105ccb68[23]) = 0;
+    strcpy(g_aBrAA2518, g_aBr39B720);
+    strcpy(DAT_10ac46a0, g_aBr39B720);
     strcpy(szPath, s_RallySeason_100acb00);
     _itoa(*pIdx, szNum, 10);
     strcat(szPath, szNum);
@@ -157,38 +157,38 @@ int BrSaveBeginRallySeason(int pList, int *pIdx)
         return 0;
     fclose(fp);
     strcpy(DAT_117a6030, szPath);
-    if (BrSub10071130(4, 1) == 0)
+    if (BrSaveLoad(4, 1) == 0)
         FUN_100378c0(7);
-    p = DAT_10af2094;
+    p = (*(int * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */;
     memcpy(DAT_10ac5a48, p, 0x53 * 4);
-    DAT_10ac5c38 = 1;
+    g_5C38 = 1;
     nRace = p[0];
-    DAT_10ac5bf8 = nRace;
+    g_brPhase5BF8 = nRace;
     cnt = ((unsigned char *)p)[5];
-    DAT_10ac5c04 = cnt;
-    DAT_10ac5bfc = cnt;
-    DAT_10ac5c10 = ((char *)p)[4];
-    DAT_10ac5d60 = DAT_10af3cd8;
-    DAT_100abdec = DAT_10af3cdc;
-    DAT_100abdf0 = DAT_10af3ce0;
-    DAT_100abdf4 = DAT_10af3ce4;
-    DAT_100abdfc = DAT_10af3ce8;
-    DAT_10ac5bf4 = 1;
+    g_brIdx5C04 = cnt;
+    g_brIdx5BFC = cnt;
+    (*(char *)&DAT_10ac5c10) = ((char *)p)[4];
+    (*(int *)&DAT_10ac5d60) = (*(int *)((char *)&g_aBrRaceCar + 0x2AD0)) /* BR_LP64_BYTE_VIEW */;
+    (*(int *)&DAT_100abdec) = (*(int *)((char *)&g_aBrRaceCar + 0x2AD4)) /* BR_LP64_BYTE_VIEW */;
+    (*(int *)&DAT_100abdf0) = (*(int *)((char *)&g_aBrRaceCar + 0x2AD8)) /* BR_LP64_BYTE_VIEW */;
+    g_brSel0ABDF4 = (*(int *)((char *)&g_aBrRaceCar + 0x2ADC)) /* BR_LP64_BYTE_VIEW */;
+    (*(int *)&g_i0AC65C) = (*(int *)((char *)&g_aBrRaceCar + 0x2AE0)) /* BR_LP64_BYTE_VIEW */;
+    g_5BF4 = 1;
     BrOptSave();
     BrSub1003E510();
-    k = DAT_10ac5c10;
+    k = (*(char *)&DAT_10ac5c10);
     sum = 0;
-    pw = &DAT_10ac5a66[k * 4];
+    pw = &(*(unsigned short (*)[])&g_aBrAA270E)[k * 4];
     for (i = 0; i < 4; i++)
         sum += pw[i];
-    DAT_10ac5c1c = sum;
-    DAT_10ac5a40 = DAT_10ac5a4e[k];
-    for (i = 0; i < DAT_10ac5bfc; i++)
-        ((char *)&DAT_10ac5a40)[i] += 1;
-    DAT_10ac40f8 = *(int *)pw;
-    DAT_10ac40fc = *(int *)(pw + 2);
-    sprintf(DAT_10ac5870, DAT_100a6b84, nRace + 1);
-    sprintf(DAT_10ac46a0, DAT_100a6b84, cnt + 1);
+    (*(int *)&DAT_10ac5c1c) = sum;
+    (*(int *)&g_brVal5A40) = (*(int (*)[])&g_aBrAA26F6)[k];
+    for (i = 0; i < g_brIdx5BFC; i++)
+        ((char *)&(*(int *)&g_brVal5A40))[i] += 1;
+    (*(int *)&g_brVal40F8) = *(int *)pw;
+    (*(int *)&DAT_10ac40fc) = *(int *)(pw + 2);
+    sprintf(g_aBrAA2518, g_szBrFmt6B84, nRace + 1);
+    sprintf(DAT_10ac46a0, g_szBrFmt6B84, cnt + 1);
     return 1;
 }
 
@@ -219,42 +219,42 @@ int BrSaveBeginTimeAttack(int pList, int *pIdx)
     int  iSel;
     signed char cTrack;
 
-    DAT_100a9360 = 2;
+    (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = 2;
     DAT_10ac5c40 = 0;
-    DAT_105ccbc4 = 0;
+    (*(int *)&DAT_105ccb68[23]) = 0;
     BrSub1003E680();
     strcpy(szPath, s_TimeAttack_100acb14);
     _itoa(*pIdx, szNum, 10);
     strcat(szPath, szNum);
     strcat(szPath, s_grf_100acb0c);
     strcpy(DAT_117a5f28, szPath);
-    BrSub10071130(1, 1);
-    cTrack = DAT_105bc8e0;
+    BrSaveLoad(1, 1);
+    cTrack = (g_aBrRaceBeginRec[0]);
     if (cTrack < 0)
         return 0;
     iSel = cTrack;
-    DAT_100abdf0 = DAT_10af3ce0;
-    DAT_100abdec = DAT_10af3cdc;
-    DAT_100abdfc = DAT_10af3ce8;
-    DAT_100abdf4 = DAT_10af3ce4;
-    DAT_100b3858 = 1;
-    DAT_100abde8 = iSel;
-    DAT_10ac5d58 = DAT_105bc8e7;
-    DAT_10ac5d60 = DAT_10af3cd8;
-    DAT_100abdf8 = DAT_10af3cec;
-    DAT_100bcbe8 = DAT_10af3cec;
-    memcpy(DAT_10ac5a48, DAT_10af2094, 0x53 * 4);
-    DAT_100b3014 = DAT_100abc78[iSel];
-    DAT_100bcbe8 = DAT_10af3cec;
-    DAT_1007b320 = DAT_10af3ce8;
+    (*(int *)&DAT_100abdf0) = (*(int *)((char *)&g_aBrRaceCar + 0x2AD8)) /* BR_LP64_BYTE_VIEW */;
+    (*(int *)&DAT_100abdec) = (*(int *)((char *)&g_aBrRaceCar + 0x2AD4)) /* BR_LP64_BYTE_VIEW */;
+    (*(int *)&g_i0AC65C) = (*(int *)((char *)&g_aBrRaceCar + 0x2AE0)) /* BR_LP64_BYTE_VIEW */;
+    g_brSel0ABDF4 = (*(int *)((char *)&g_aBrRaceCar + 0x2ADC)) /* BR_LP64_BYTE_VIEW */;
+    (*(int *)&g_brRaceNEntrant) = 1;
+    g_brIdx0ABDE8 = iSel;
+    DAT_10ac5d58 = (*(signed char *)&g_aBrRaceBeginRec[7]);
+    (*(int *)&DAT_10ac5d60) = (*(int *)((char *)&g_aBrRaceCar + 0x2AD0)) /* BR_LP64_BYTE_VIEW */;
+    DAT_100abdf8 = (*(int *)((char *)&g_aBrRaceCar + 0x2AE4)) /* BR_LP64_BYTE_VIEW */;
+    g_CBE8 = (*(int *)((char *)&g_aBrRaceCar + 0x2AE4)) /* BR_LP64_BYTE_VIEW */;
+    memcpy(DAT_10ac5a48, (*(int * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */, 0x53 * 4);
+    (*(int *)&g_Br0B380C) = (*(int (*)[])&g_aBrAC4D8)[iSel];
+    g_CBE8 = (*(int *)((char *)&g_aBrRaceCar + 0x2AE4)) /* BR_LP64_BYTE_VIEW */;
+    g_7b320 = (*(int *)((char *)&g_aBrRaceCar + 0x2AE0)) /* BR_LP64_BYTE_VIEW */;
     DAT_10ac5c40 = 1;
-    DAT_10226e7c = DAT_100abbc0[DAT_10af3ce4];
-    DAT_10226e80 = DAT_100abc60[DAT_105bc8e7];
-    DAT_1007b32c = DAT_100abc40[DAT_10af3cdc];
-    DAT_1007b328 = DAT_100abc50[DAT_10af3ce0];
-    DAT_1007b324 = DAT_100abcb8[DAT_10af3cd8];
+    g_226e7c = (*(int (*)[])&g_aBrAC420)[(*(int *)((char *)&g_aBrRaceCar + 0x2ADC)) /* BR_LP64_BYTE_VIEW */];
+    g_226e80 = (*(int (*)[])&g_aBrAC4C0)[(*(signed char *)&g_aBrRaceBeginRec[7])];
+    g_7b32c = (*(int (*)[])&g_aBrAC4A0)[(*(int *)((char *)&g_aBrRaceCar + 0x2AD4)) /* BR_LP64_BYTE_VIEW */];
+    g_7b328 = (*(int (*)[])&g_aBrAC4B0)[(*(int *)((char *)&g_aBrRaceCar + 0x2AD8)) /* BR_LP64_BYTE_VIEW */];
+    g_7b324 = (*(int (*)[])&g_aBrAC518)[(*(int *)((char *)&g_aBrRaceCar + 0x2AD0)) /* BR_LP64_BYTE_VIEW */];
     BrRaceSettingsCommit();
-    DAT_10ac5bf4 = 1;
+    g_5BF4 = 1;
     return 1;
 }
 
@@ -304,48 +304,48 @@ void BrSaveResumeAutoSave(void)
     int   i;
     unsigned short *pw;
 
-    DAT_100a9360 = 0;
+    (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = 0;
     BrSub1003E680();
-    DAT_105ccbc4 = 0;
-    strcpy(DAT_10ac5870, DAT_10396f08);
-    strcpy(DAT_10ac46a0, DAT_10396f08);
-    strcpy(szPath, s_AutoSave_brf_100acae8);
+    (*(int *)&DAT_105ccb68[23]) = 0;
+    strcpy(g_aBrAA2518, g_aBr39B720);
+    strcpy(DAT_10ac46a0, g_aBr39B720);
+    strcpy(szPath, s_AutoSave_brf);
     fp = fopen(szPath, DAT_100ac9c8);
     if (fp != NULL) {
         fclose(fp);
         strcpy(DAT_117a6030, szPath);
-        if (BrSub10071130(4, 1) == 0)
+        if (BrSaveLoad(4, 1) == 0)
             FUN_100378c0(7);
-        p = DAT_10af2094;
+        p = (*(int * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */;
         memcpy(DAT_10ac5a48, p, 0x53 * 4);
-        DAT_10ac5c38 = 1;
+        g_5C38 = 1;
         nRace = p[0];
-        DAT_10ac5bf8 = nRace;
+        g_brPhase5BF8 = nRace;
         cnt = ((unsigned char *)p)[5];
-        DAT_10ac5c04 = cnt;
-        DAT_10ac5bfc = cnt;
-        DAT_10ac5c10 = ((char *)p)[4];
-        DAT_10ac5d60 = DAT_10af3cd8;
-        DAT_100abdec = DAT_10af3cdc;
-        DAT_100abdf0 = DAT_10af3ce0;
-        DAT_100abdf4 = DAT_10af3ce4;
-        DAT_100abdfc = DAT_10af3ce8;
-        DAT_10ac5bf4 = 1;
+        g_brIdx5C04 = cnt;
+        g_brIdx5BFC = cnt;
+        (*(char *)&DAT_10ac5c10) = ((char *)p)[4];
+        (*(int *)&DAT_10ac5d60) = (*(int *)((char *)&g_aBrRaceCar + 0x2AD0)) /* BR_LP64_BYTE_VIEW */;
+        (*(int *)&DAT_100abdec) = (*(int *)((char *)&g_aBrRaceCar + 0x2AD4)) /* BR_LP64_BYTE_VIEW */;
+        (*(int *)&DAT_100abdf0) = (*(int *)((char *)&g_aBrRaceCar + 0x2AD8)) /* BR_LP64_BYTE_VIEW */;
+        g_brSel0ABDF4 = (*(int *)((char *)&g_aBrRaceCar + 0x2ADC)) /* BR_LP64_BYTE_VIEW */;
+        (*(int *)&g_i0AC65C) = (*(int *)((char *)&g_aBrRaceCar + 0x2AE0)) /* BR_LP64_BYTE_VIEW */;
+        g_5BF4 = 1;
         BrOptSave();
         BrSub1003E510();
-        k = DAT_10ac5c10;
+        k = (*(char *)&DAT_10ac5c10);
         sum = 0;
-        pw = &DAT_10ac5a66[k * 4];
+        pw = &(*(unsigned short (*)[])&g_aBrAA270E)[k * 4];
         for (i = 0; i < 4; i++)
             sum += pw[i];
-        DAT_10ac5c1c = sum;
-        DAT_10ac5a40 = DAT_10ac5a4e[k];
-        for (i = 0; i < DAT_10ac5bfc; i++)
-            ((char *)&DAT_10ac5a40)[i] += 1;
-        DAT_10ac40f8 = *(int *)pw;
-        DAT_10ac40fc = *(int *)(pw + 2);
-        sprintf(DAT_10ac5870, DAT_100a6b84, nRace + 1);
-        sprintf(DAT_10ac46a0, DAT_100a6b84, cnt + 1);
+        (*(int *)&DAT_10ac5c1c) = sum;
+        (*(int *)&g_brVal5A40) = (*(int (*)[])&g_aBrAA26F6)[k];
+        for (i = 0; i < g_brIdx5BFC; i++)
+            ((char *)&(*(int *)&g_brVal5A40))[i] += 1;
+        (*(int *)&g_brVal40F8) = *(int *)pw;
+        (*(int *)&DAT_10ac40fc) = *(int *)(pw + 2);
+        sprintf(g_aBrAA2518, g_szBrFmt6B84, nRace + 1);
+        sprintf(DAT_10ac46a0, g_szBrFmt6B84, cnt + 1);
     }
 }
 

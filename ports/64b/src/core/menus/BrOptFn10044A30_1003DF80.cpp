@@ -56,31 +56,31 @@ int Leave(GameObj3DF80 *pObj)
 {
     int v;
 
-    if (DAT_10ac4090 != 0) {
+    if (g_guardB != 0) {
         pObj->p2AE8->s6(0);
-        BrSub100325B0(0);
+        BrExt_10038F30(0);
     }
     pObj->p2AE8->s7();
 
-    if (DAT_10ac5c5c != 0)
-        delete DAT_10ac5c5c;
+    if ((*(CurPhase * *)&g_brPAA29B8) != 0)
+        delete (*(CurPhase * *)&g_brPAA29B8);
 
-    DAT_10ac5ca8 = 0;
-    DAT_10ac5c5c = (CurPhase *)((BrOptObj *)(DAT_10ac5ca4));
-    BrSub100355F0();
+    g_brPAA2950 = 0;
+    (*(CurPhase * *)&g_brPAA29B8) = (CurPhase *)((BrOptObj *)((*(CurPhase * *)&g_294C)));
+    BrExt_1003BF60();
 
     v = DAT_10ac5bd4;
     if (v == 0 || v == 1) {
-        if (DAT_10ac4090 == 0) {
-            BrSub100356B0();
+        if (g_guardB == 0) {
+            FUN_100356b0();
             v = DAT_10ac5bd4;
         }
     }
     if (v == 2 || v == 3) {
-        D30Obj *d = DAT_10ac5d30;
+        D30Obj *d = (*(D30Obj * *)&g_brPAA29D8);
         if (d != 0) {
             d->f1C = d->f1C & ~0x10u;
-            DAT_10ac5d30->b2B64 = 0;
+            (*(D30Obj * *)&g_brPAA29D8)->b2B64 = 0;
         }
     }
     return 0;

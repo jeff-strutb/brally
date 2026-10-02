@@ -55,7 +55,7 @@
 
 int32_t BrUiHook87_1003F5E0(BrUiCtl_ *pCtl)
 {
-    switch (DAT_10ac5d70) {
+    switch ((*(unsigned int *)&DAT_10ac5d70)) {
     case 0u: ((*(unsigned short *)((char *)((pCtl)) + 0x1E20C))) = 0x56u; return 1;
     case 1u: ((*(unsigned short *)((char *)((pCtl)) + 0x1E20C))) = 0x57u; return 1;
     case 2u: ((*(unsigned short *)((char *)((pCtl)) + 0x1E20C))) = 0x59u; return 1;
@@ -72,7 +72,7 @@ int32_t BrUiHook87_1003F5E0(BrUiCtl_ *pCtl)
 /* @implements 0x1003F680 d3d BrUiHook87_1003F680 */
 int32_t BrUiHook87_1003F680(BrUiCtl_ *pCtl)
 {
-    switch (DAT_10ac5d70) {
+    switch ((*(unsigned int *)&DAT_10ac5d70)) {
     case 0u: ((*(unsigned short *)((char *)((pCtl)) + 0x1E20C))) = 0xFFFFu; return 1;
     case 1u: ((*(unsigned short *)((char *)((pCtl)) + 0x1E20C))) = 0x58u; return 1;
     case 2u: ((*(unsigned short *)((char *)((pCtl)) + 0x1E20C))) = 0x5Au; return 1;

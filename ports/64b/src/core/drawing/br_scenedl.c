@@ -1034,15 +1034,15 @@ typedef int            int32_t;
 /* 64-bit core: declared once, in br_globals.h or its struct's header */    /* view matrix row 3 */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* the output matrix */
 typedef struct BrObjXlat { float tx, ty, tz, tw; } BrObjXlat;
-#define OUTM(k)  (DAT_106e78f0[k])
+#define OUTM(k)  ((*(float (*)[16])&g_BrDrawCombined)[k])
 /* !! The logger reads the view matrix DIRECTLY and the row block reads
  * term 1 through pView: that split closes the two logger argument
  * regions (0x11d3/0x11eb).  A raw symbol and a pointer-local read
  * are different operands to VC5; the original uses each where this
  * does.  Measured -- do not collapse the two spellings into one. */
-#define VIEW(k)  (DAT_106e9a38[k])
+#define VIEW(k)  ((*(float (*)[16])&g_BrCurMat)[k])
 
-#define VIEWS(k) (DAT_106e9a38[k])   /* symbol spelling, scale block */
+#define VIEWS(k) ((*(float (*)[16])&g_BrCurMat)[k])   /* symbol spelling, scale block */
 
 static __inline void BrRowScale8(float *d, float *sr, float k)
 {
@@ -1078,12 +1078,12 @@ typedef struct BrWheelRec {
 
 /* The eight-byte display-list append, inlined at every site. */
 #define EMIT(W0, W1) \
-    { uint32_t *p_ = DAT_106e7710; DAT_106e7710 += 2; \
+    { uint32_t *p_ = g_BrGfxPtr; g_BrGfxPtr += 2; \
       p_[0] = (uint32_t)(W0); p_[1] = (uint32_t)(W1); }
 
 /* An advanced-slot handed to the combiner builder. */
 #define EMIT_SLOT(S) \
-    { (S) = DAT_106e7710; DAT_106e7710 += 2; }
+    { (S) = g_BrGfxPtr; g_BrGfxPtr += 2; }
 
 /* The same append through the trail-batch's own cursor. */
 #define TEMIT(W0, W1) \
@@ -1132,9 +1132,9 @@ void BrSceneDlBuild(struct BrViewRect *param_1, int param_2, unsigned char *para
     int      cursor[32];
 
     bTexLoaded = 0;
-    if (DAT_106ed6ac == 0) {
+    if ((*(int *)((char *)&g_aBrEntRecs + 0x7C)) == 0) {
         bSolo = 1;
-        if (DAT_106ed6b4 != 0) {
+        if ((*(int *)((char *)&g_aBrEntRecs + 0x84)) != 0) {
             bSolo = 0;
         }
     } else {
@@ -1142,7 +1142,7 @@ void BrSceneDlBuild(struct BrViewRect *param_1, int param_2, unsigned char *para
     }
     if (param_2 == 0) {
         i = 0;
-        if (0 < DAT_100b2f04) {
+        if (0 < (*(int *)&g_BrCarCount)) {
             uint32_t *p = (uint32_t *)(param_4 + 0x2a00);
             do {
                 p[-1] = 0x44800000;
@@ -1159,25 +1159,25 @@ void BrSceneDlBuild(struct BrViewRect *param_1, int param_2, unsigned char *para
                 p[-9] = 0;
                 i = i + 1;
                 p = p + 0xada;
-            } while (i < DAT_100b2f04);
+            } while (i < (*(int *)&g_BrCarCount));
         }
-        FUN_1000e320(param_1, param_3, param_4);
-        DAT_1035fb9c = DAT_1035fb8c;
-        base = DAT_1035fb8c;
+        BrSceneVisPrepare(param_1, param_3, param_4);
+        DAT_1035fb9c = g_BrVisSpanCount;
+        base = g_BrVisSpanCount;
         DAT_1035fb74 = -1;
         cHead = -1;
-        DAT_1035f7d0 = BrFloat12MaxAbs(DAT_106e9a38);
+        DAT_1035f7d0 = BrFloat12MaxAbs((*(float (*)[16])&g_BrCurMat));
         DAT_1035f7e0 = 0;
         if (bSolo) {
             DAT_1035f7e0 = 0x800;
         }
-        if (DAT_100a9360 != 1 && DAT_100a9360 != 6 &&
-            (DAT_100a9360 != 5 || *(char *)(*(int *)(param_4 + 0xe8c) + 4) != '\0')) {
+        if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 1 && (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 6 &&
+            ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 5 || *(char *)(*(int *)(param_4 + 0xe8c) + 4) != '\0')) {
             DAT_1035f7e0 = DAT_1035f7e0 | 0x4000;
         }
-        if (DAT_106ed6a8 != 0 &&
-            (DAT_106ed6b0 != 0 || DAT_106ed6b4 != 0 || DAT_106ed6ac != 0) &&
-            DAT_100b3014 != 2 && DAT_100b3014 != 8) {
+        if ((*(int *)((char *)&g_aBrEntRecs + 0x78)) != 0 &&
+            ((*(int *)((char *)&g_aBrEntRecs + 0x80)) != 0 || (*(int *)((char *)&g_aBrEntRecs + 0x84)) != 0 || (*(int *)((char *)&g_aBrEntRecs + 0x7C)) != 0) &&
+            (*(int *)&g_Br0B380C) != 2 && (*(int *)&g_Br0B380C) != 8) {
             DAT_1035f7e0 = DAT_1035f7e0 | 0x20;
         }
         DAT_102e0c9c = 0x1000;
@@ -1186,29 +1186,29 @@ void BrSceneDlBuild(struct BrViewRect *param_1, int param_2, unsigned char *para
     }
     BrPodNop();
     DAT_1035fb84 = 0xc8000000;
-    if (DAT_106ed6a8 == 0) {
+    if ((*(int *)((char *)&g_aBrEntRecs + 0x78)) == 0) {
         DAT_1035fb84 = 0xc080000;
     }
     DAT_1035fb88 = 0x112038;
-    EMIT(0x1030040, DAT_106ea360);
+    EMIT(0x1030040, g_BrMtxSlot);
     EMIT(0x1060040, DAT_100a9ec0);
-    EMIT(0xbc00000e, DAT_106e770c);
-    EMIT(0x3840010, DAT_1035fba0);
-    EMIT(0x3820010, DAT_1035fba0 + 0x10);
+    EMIT(0xbc00000e, g_BrPerspNorm);
+    EMIT(0x3840010, g_BrVisLights);
+    EMIT(0x3820010, g_BrVisLights + 0x10);
     EMIT(0xbc000002, 0x80000040);
-    EMIT(0x3860010, DAT_100a5cb0 + DAT_1035fb70 * 0x18);
-    EMIT(0x3880010, DAT_100a5ca8 + DAT_1035fb70 * 0x18);
-    EMIT(0xbc00000a, DAT_106ecb40);
-    EMIT(0xbc00040a, DAT_106ecb40);
-    EMIT(0xbc00200a, DAT_106e9a78);
-    EMIT(0xbc00240a, DAT_106e9a78);
+    EMIT(0x3860010, DAT_100a5cb0 + g_BrVisLightHistIdx * 0x18);
+    EMIT(0x3880010, (*(uint8_t (*)[])&g_BrVisLightHist) + g_BrVisLightHistIdx * 0x18);
+    EMIT(0xbc00000a, (*(uint32_t *)&DAT_106ecb40));
+    EMIT(0xbc00040a, (*(uint32_t *)&DAT_106ecb40));
+    EMIT(0xbc00200a, (*(uint32_t *)&DAT_106e9a78));
+    EMIT(0xbc00240a, (*(uint32_t *)&DAT_106e9a78));
     EMIT(0xe7000000, 0);
     EMIT(0xba001301, 0x80000);
     EMIT(0xba000903, 0xc00);
     EMIT(0xba000801, 0);
     EMIT(0xb9000002, 1);
-    EMIT(0xba000602, DAT_106e7718);
-    EMIT(0xba000402, DAT_106e79b0);
+    EMIT(0xba000602, BrG_6C0688);
+    EMIT(0xba000402, (*(uint32_t *)&DAT_106e79b0));
     EMIT(0xba001402, 0);
     EMIT(0xf9000000, 0);
     EMIT(0xba001402, 0x100000);
@@ -1221,30 +1221,30 @@ void BrSceneDlBuild(struct BrViewRect *param_1, int param_2, unsigned char *para
     EMIT(0xba001102, 0);
     EMIT(0xba001001, DAT_100aa00c != 0 ? 0x10000 : 0);
     EMIT(0xba000e02, 0);
-    EMIT(0xba000c02, DAT_106e72e8);
+    EMIT(0xba000c02, g_BrEnvOthermode);
     EMIT(0xbc000006, 0);
     EMIT(0xb6000000, 0x853200);
-    EMIT(0xb7000000, ((DAT_106ea3f4 ^ DAT_106e8204) ? 0x1000 : 0x2000) |
+    EMIT(0xb7000000, (((*(int *)&g_brRaceBeginDifficulty) ^ (*(int *)&BrG_6C1174)) ? 0x1000 : 0x2000) |
                      (DAT_100aa010 != 0 ? 0x200 : 0) |
-                     (DAT_106ed6a8 != 0 ? 0x10000 : 0) | 0xa0005);
+                     ((*(int *)((char *)&g_aBrEntRecs + 0x78)) != 0 ? 0x10000 : 0) | 0xa0005);
     BrDlRectCmdFlush();
-    EMIT(0x1030040, DAT_106ea360);
-    EMIT(0xbc00000e, DAT_106e770c);
+    EMIT(0x1030040, g_BrMtxSlot);
+    EMIT(0xbc00000e, g_BrPerspNorm);
     EMIT(0x1060040, DAT_100a9ec0);
     EMIT(0xbc000002, 0x80000040);
-    EMIT(0x3860010, DAT_100a5cb0 + DAT_1035fb70 * 0x18);
-    EMIT(0x3880010, DAT_100a5ca8 + DAT_1035fb70 * 0x18);
-    EMIT(0xbc00000a, DAT_106ecb40);
-    EMIT(0xbc00040a, DAT_106ecb40);
-    EMIT(0xbc00200a, DAT_106e9a78);
-    EMIT(0xbc00240a, DAT_106e9a78);
-    FUN_1002af17();
-    FUN_1002af17();
+    EMIT(0x3860010, DAT_100a5cb0 + g_BrVisLightHistIdx * 0x18);
+    EMIT(0x3880010, (*(uint8_t (*)[])&g_BrVisLightHist) + g_BrVisLightHistIdx * 0x18);
+    EMIT(0xbc00000a, (*(uint32_t *)&DAT_106ecb40));
+    EMIT(0xbc00040a, (*(uint32_t *)&DAT_106ecb40));
+    EMIT(0xbc00200a, (*(uint32_t *)&DAT_106e9a78));
+    EMIT(0xbc00240a, (*(uint32_t *)&DAT_106e9a78));
+    BrFrameFogEmit();
+    BrFrameFogEmit();
     EMIT(0xf9000000, 0);
     EMIT(0xb6000000, 0x53200);
-    EMIT(0xb7000000, ((DAT_106ea3f4 ^ DAT_106e8204) ? 0x1000 : 0x2000) |
+    EMIT(0xb7000000, (((*(int *)&g_brRaceBeginDifficulty) ^ (*(int *)&BrG_6C1174)) ? 0x1000 : 0x2000) |
                      (DAT_100aa010 != 0 ? 0x200 : 0) |
-                     (DAT_106ed6a8 != 0 ? 0x10000 : 0) | 0xa0005);
+                     ((*(int *)((char *)&g_aBrEntRecs + 0x78)) != 0 ? 0x10000 : 0) | 0xa0005);
     EMIT(0xe7000000, 0);
     EMIT(0xba001402, 0x100000);
     EMIT(0xb900031d, DAT_1035fb88 | DAT_1035fb84);
@@ -1257,8 +1257,8 @@ void BrSceneDlBuild(struct BrViewRect *param_1, int param_2, unsigned char *para
     EMIT(0xba001102, 0);
     EMIT(0xba001001, DAT_100aa00c != 0 ? 0x10000 : 0);
     EMIT(0xba000e02, 0);
-    EMIT(0xba000c02, DAT_106e72e8);
-    if (DAT_100aa044 == 1) {
+    EMIT(0xba000c02, g_BrEnvOthermode);
+    if (g_brMode0AA8B4 == 1) {
         EMIT(0xbc000404, 1);
         EMIT(0xbc000c04, 1);
         EMIT(0xbc001404, 0xffff);
@@ -1278,19 +1278,19 @@ void BrSceneDlBuild(struct BrViewRect *param_1, int param_2, unsigned char *para
     if (param_2 != 0) {
         cHead = DAT_1035fb74;
         base = DAT_1035fb9c;
-        DAT_1035fb8c = DAT_1035fb74 + 1 + DAT_1035fb9c;
+        g_BrVisSpanCount = DAT_1035fb74 + 1 + DAT_1035fb9c;
         i = DAT_1035fb9c;
     } else {
-        FUN_10008f90();
+        BrObjSelCycle();
         i = 0;
     }
-    if (i < DAT_1035fb8c) {
+    if (i < g_BrVisSpanCount) {
         nTotal = cHead + base;
         firstVis = 1 - base;
-        pDst = DAT_1035e710 + cHead;
+        pDst = (*(uint16_t (*)[])&g_BrVisSpans) + cHead;
         do {
-            if (i == DAT_1035f7d4 || i == DAT_102e170c) {
-                if (DAT_100aa044 == 1) {
+            if (i == g_BrVisFirstNear || i == g_BrVisFirstFar) {
+                if (g_brMode0AA8B4 == 1) {
                     EMIT(0xbc000404, 1);
                     EMIT(0xbc000c04, 1);
                     EMIT(0xbc001404, 0xffff);
@@ -1301,28 +1301,28 @@ void BrSceneDlBuild(struct BrViewRect *param_1, int param_2, unsigned char *para
                     EMIT(0xbc001404, 0xfffa);
                     EMIT(0xbc001c04, 0xfffa);
                 }
-                if (i == DAT_102e170c) {
+                if (i == g_BrVisFirstFar) {
                     EMIT(0xb7000000, 0x800000);
                 }
             }
             if (i < base) {
-                idx = DAT_1035e710[i];
-                pObj = (float *)(DAT_106eed38 + idx * 0x54);
+                idx = (*(uint16_t (*)[])&g_BrVisSpans)[i];
+                pObj = (float *)(g_BrDrawTrackFlags + idx * 0x54);
                 if ((uint16_t)(*(uint16_t *)(pObj + 0x12) & DAT_10396eb4) == 0 &&
                     (DAT_10396eac == 0 || idx != (uint32_t)DAT_10396ea8) &&
                     (DAT_1035f7e0 & *(uint16_t *)(pObj + 0x13)) == 0) {
                     if ((*(uint16_t *)(pObj + 0x13) & 8) == 0) goto draw;
-                    if (DAT_102e0ca0 == 0x1000 && i > DAT_102e16a8) {
+                    if (DAT_102e0ca0 == 0x1000 && i > g_BrVisFirstMid) {
                         DAT_102e0ca0 = firstVis + nTotal;
                     }
                     cHead = cHead + 1;
                     pDst = pDst + 1;
                     nTotal = nTotal + 1;
-                    *pDst = DAT_1035e710[i];
+                    *pDst = (*(uint16_t (*)[])&g_BrVisSpans)[i];
                 }
             } else {
-                idx = DAT_1035e710[nTotal - i];
-                pObj = (float *)(DAT_106eed38 + idx * 0x54);
+                idx = (*(uint16_t (*)[])&g_BrVisSpans)[nTotal - i];
+                pObj = (float *)(g_BrDrawTrackFlags + idx * 0x54);
 draw:
                 if ((*((uint8_t *)pObj + 0x4d) & 0x20) != 0) {
                     float fMax, fMin, scale;
@@ -1335,7 +1335,7 @@ draw:
                      * over all 24 permutations: exactly two outcomes, keyed
                      * on pTw's position alone.  The symbol INDEX is an x87
                      * scheduler tie-break -- see docs/VC5-IDIOMS.md. */
-                    float *pView = DAT_106e9a38;
+                    float *pView = (*(float (*)[16])&g_BrCurMat);
                     float *pPos = pObj + 0xc;
                     float *pTy = pObj + 0xd;
                     float *pTz = pObj + 0xe;
@@ -1344,15 +1344,15 @@ draw:
                         bTexLoaded = 1;
                         EMIT(0x1020040, DAT_100a9ec0);
                     }
-                    OUTM(12) = ((pView[0] * pPos[0] + DAT_106e9a68[0] * pTw[0]) + DAT_106e9a58[0] * pTz[0]) + DAT_106e9a48[0] * pTy[0];
-                    OUTM(13) = ((pView[1] * pPos[0] + DAT_106e9a68[1] * pTw[0]) + DAT_106e9a58[1] * pTz[0]) + DAT_106e9a48[1] * pTy[0];
-                    OUTM(14) = ((pView[2] * pPos[0] + DAT_106e9a68[2] * pTw[0]) + DAT_106e9a58[2] * pTz[0]) + DAT_106e9a48[2] * pTy[0];
-                    OUTM(15) = ((pView[3] * pPos[0] + DAT_106e9a68[3] * pTw[0]) + DAT_106e9a58[3] * pTz[0]) + DAT_106e9a48[3] * pTy[0];
+                    OUTM(12) = ((pView[0] * pPos[0] + (*(float (*)[4])((char *)&g_BrCurMat + 0x30))[0] * pTw[0]) + (*(float (*)[4])((char *)&g_BrCurMat + 0x20))[0] * pTz[0]) + (*(float (*)[4])((char *)&g_BrCurMat + 0x10))[0] * pTy[0];
+                    OUTM(13) = ((pView[1] * pPos[0] + (*(float (*)[4])((char *)&g_BrCurMat + 0x30))[1] * pTw[0]) + (*(float (*)[4])((char *)&g_BrCurMat + 0x20))[1] * pTz[0]) + (*(float (*)[4])((char *)&g_BrCurMat + 0x10))[1] * pTy[0];
+                    OUTM(14) = ((pView[2] * pPos[0] + (*(float (*)[4])((char *)&g_BrCurMat + 0x30))[2] * pTw[0]) + (*(float (*)[4])((char *)&g_BrCurMat + 0x20))[2] * pTz[0]) + (*(float (*)[4])((char *)&g_BrCurMat + 0x10))[2] * pTy[0];
+                    OUTM(15) = ((pView[3] * pPos[0] + (*(float (*)[4])((char *)&g_BrCurMat + 0x30))[3] * pTw[0]) + (*(float (*)[4])((char *)&g_BrCurMat + 0x20))[3] * pTz[0]) + (*(float (*)[4])((char *)&g_BrCurMat + 0x10))[3] * pTy[0];
                     scale = *pObj;
-                    BrRowScale8(DAT_106e78f0, DAT_106e9a38, scale);
-                    BrRowScale4(DAT_106e78f0 + 8, DAT_106e9a58, scale);
+                    BrRowScale8((*(float (*)[16])&g_BrDrawCombined), (*(float (*)[16])&g_BrCurMat), scale);
+                    BrRowScale4((*(float (*)[16])&g_BrDrawCombined) + 8, (*(float (*)[4])((char *)&g_BrCurMat + 0x20)), scale);
                     {
-                    float *pM = BrMtxPoolAlloc();
+                    float *pM = BrSub_10069490();
                     fMax = 0.0f;
                     fMin = 0.0f;
                     if (OUTM(12) >= DAT_100771f8) {
@@ -1418,35 +1418,35 @@ draw:
                     EMIT(0x39c0010, pM + 0xc);
                     }
                 } else {
-                    float *pM = BrMtxPoolAlloc();
+                    float *pM = BrSub_10069490();
                     BrGuMtxStore(pObj, pM);
                     EMIT(0x1020040, pM);
                     bTexLoaded = 0;
                 }
                 if ((*(uint16_t *)(pObj + 0x13) & 0x4a4) != 0) {
                     if ((*(uint16_t *)(pObj + 0x13) & 0x400) != 0) {
-                        if (DAT_106ed6ac == 0 || (*(uint16_t *)(pObj + 0x13) & 0x100) == 0) {
+                        if ((*(int *)((char *)&g_aBrEntRecs + 0x7C)) == 0 || (*(uint16_t *)(pObj + 0x13) & 0x100) == 0) {
                             EMIT(0xbc00000a, 0);
                             EMIT(0xbc00040a, 0);
                         } else {
-                            EMIT(0xbc00000a, DAT_106ecb40 >> 1 & 0x7f7f7f00);
-                            EMIT(0xbc00040a, DAT_106ecb40 >> 1 & 0x7f7f7f00);
+                            EMIT(0xbc00000a, (*(uint32_t *)&DAT_106ecb40) >> 1 & 0x7f7f7f00);
+                            EMIT(0xbc00040a, (*(uint32_t *)&DAT_106ecb40) >> 1 & 0x7f7f7f00);
                         }
-                        EMIT(0xbc00200a, DAT_106e79e0[*((uint8_t *)pObj + 0x4c) & 3]);
-                        EMIT(0xbc00240a, DAT_106e79e0[*((uint8_t *)pObj + 0x4c) & 3]);
+                        EMIT(0xbc00200a, (*(uint32_t (*)[])&DAT_106e79e0)[*((uint8_t *)pObj + 0x4c) & 3]);
+                        EMIT(0xbc00240a, (*(uint32_t (*)[])&DAT_106e79e0)[*((uint8_t *)pObj + 0x4c) & 3]);
                     }
                     if ((*(uint16_t *)(pObj + 0x13) & 4) != 0) {
                         EMIT(0xb6000000, 0x3000);
                     }
-                    if ((*(uint16_t *)(pObj + 0x13) & 0x20) != 0 && DAT_106ed6a8 != 0 &&
-                        DAT_106ed6ac == 0 && DAT_106ed6b0 == 0 && DAT_106ed6b4 == 0) {
+                    if ((*(uint16_t *)(pObj + 0x13) & 0x20) != 0 && (*(int *)((char *)&g_aBrEntRecs + 0x78)) != 0 &&
+                        (*(int *)((char *)&g_aBrEntRecs + 0x7C)) == 0 && (*(int *)((char *)&g_aBrEntRecs + 0x80)) == 0 && (*(int *)((char *)&g_aBrEntRecs + 0x84)) == 0) {
                         EMIT(0xb6000000, 0x10000);
                     }
                     if ((*(uint16_t *)(pObj + 0x13) & 0x80) != 0 && DAT_100aa010 != 0) {
                         EMIT(0xb6000000, 0x200);
                     }
                 }
-                if (i > DAT_102e16a8 && i < DAT_102e0ca0) {
+                if (i > g_BrVisFirstMid && i < DAT_102e0ca0) {
                     EMIT(0xbb001001, 0xffffffff);
                     EMIT(0xe8000000, 0);
                     EMIT(0x6000000, *(uint32_t *)(pObj + 0x11));
@@ -1454,36 +1454,36 @@ draw:
                     DAT_106e7734 = DAT_106e7734 + *(uint16_t *)((char *)pObj + 0x4e);
                     DAT_106e86a0 = DAT_106e86a0 + *(uint16_t *)((char *)pObj + 0x52);
                 } else {
-                    FUN_1000cba0(param_1, idx, DAT_10386ca8[idx], param_2, param_4);
+                    BrObjDlBuild(param_1, idx, (*(uint8_t (*)[])&g_BrSpanPending)[idx], param_2, param_4);
                 }
                 if ((*(uint16_t *)(pObj + 0x13) & 0x4a4) != 0) {
                     if ((*(uint16_t *)(pObj + 0x13) & 0x80) != 0 && DAT_100aa010 != 0) {
                         EMIT(0xb7000000, 0x200);
                     }
                     if ((*((uint8_t *)pObj + 0x4d) & 4) != 0) {
-                        EMIT(0xbc00000a, DAT_106ecb40);
-                        EMIT(0xbc00040a, DAT_106ecb40);
-                        EMIT(0xbc00200a, DAT_106e9a78);
-                        EMIT(0xbc00240a, DAT_106e9a78);
+                        EMIT(0xbc00000a, (*(uint32_t *)&DAT_106ecb40));
+                        EMIT(0xbc00040a, (*(uint32_t *)&DAT_106ecb40));
+                        EMIT(0xbc00200a, (*(uint32_t *)&DAT_106e9a78));
+                        EMIT(0xbc00240a, (*(uint32_t *)&DAT_106e9a78));
                     }
                     if ((*(uint16_t *)(pObj + 0x13) & 4) != 0) {
-                        EMIT(0xb7000000, ((DAT_106ea3f4 ^ DAT_106e8204) ? 0x1000 : 0x2000));
+                        EMIT(0xb7000000, (((*(int *)&g_brRaceBeginDifficulty) ^ (*(int *)&BrG_6C1174)) ? 0x1000 : 0x2000));
                     }
-                    if (DAT_106ed6a8 != 0 && DAT_106ed6ac == 0 && DAT_106ed6b0 == 0 &&
-                        DAT_106ed6b4 == 0 && (*(uint16_t *)(pObj + 0x13) & 0x20) != 0) {
+                    if ((*(int *)((char *)&g_aBrEntRecs + 0x78)) != 0 && (*(int *)((char *)&g_aBrEntRecs + 0x7C)) == 0 && (*(int *)((char *)&g_aBrEntRecs + 0x80)) == 0 &&
+                        (*(int *)((char *)&g_aBrEntRecs + 0x84)) == 0 && (*(uint16_t *)(pObj + 0x13) & 0x20) != 0) {
                         EMIT(0xb7000000, 0x10000);
                     }
                 }
             }
             i = i + 1;
-        } while (i < DAT_1035fb8c);
+        } while (i < g_BrVisSpanCount);
     }
     if (param_2 != 0) {
-        pT = DAT_1035f7d8;
+        pT = (*(uint32_t * *)&DAT_1035f7d8);
         EMIT(0x6000000, pT);
         TEMIT(0x1060040, DAT_100a9ec0);
-        TEMIT((DAT_1184c470 & 0xffffff) | 0xdc000000, 1);
-        if (DAT_106ed6ac == 0 && DAT_106ed6b4 == 0) {
+        TEMIT(((*(uint32_t *)&DAT_1184c470) & 0xffffff) | 0xdc000000, 1);
+        if ((*(int *)((char *)&g_aBrEntRecs + 0x7C)) == 0 && (*(int *)((char *)&g_aBrEntRecs + 0x84)) == 0) {
             TEMIT(0xb900031d, 0x504b50);
         } else {
             TEMIT(0xb900031d, 0x504f50);
@@ -1499,14 +1499,14 @@ draw:
                                 0, 0, 0, 0x3e9);
         }
         iCar = 0;
-        if (0 < DAT_100b2f04) {
+        if (0 < (*(int *)&g_BrCarCount)) {
             int negCar0;
             pCar = (int *)(param_4 + 0x29e0);
             negCar0 = -(param_4 + 0x29e0);
             do {
                 if (DAT_10396eb0 != 0 && pCar[-1] != 0 && pCar[0] != 0 &&
                     pCar[1] != 0 && pCar[2] != 0) {
-                    TEMIT((DAT_1184c470 & 0xffffff) | 0xdc000000, 1);
+                    TEMIT(((*(uint32_t *)&DAT_1184c470) & 0xffffff) | 0xdc000000, 1);
                     TEMIT(0x400107f, DAT_1035faec);
                     {
                     int *pW = pCar + 4;
@@ -1514,7 +1514,7 @@ draw:
                     do {
                         BrCopy8Words(DAT_1035faec, pW);
                         pW = pW + 8;
-                        DAT_1035faec[2] = DAT_1035faec[2] - DAT_10077218;
+                        DAT_1035faec[2] = DAT_1035faec[2] - g_BrVisRangeRecip;
                         DAT_1035faec = DAT_1035faec + 8;
                         pDst = (uint16_t *)((int)pDst - 1);
                     } while (pDst != (uint16_t *)0);
@@ -1526,7 +1526,7 @@ draw:
                     iWheel = 0;
                     do {
                         int cls;
-                        if (DAT_10226e80 == 2 || DAT_10226e80 == 3) {
+                        if (g_226e80 == 2 || g_226e80 == 3) {
                             if ((iWheel != 0 ||
                                  (pCar[-0xa1e] == 0 || *(int *)(pCar[-0xa1e] + 0x1b4) == 0)) &&
                                 (iWheel != 1 ||
@@ -1670,7 +1670,7 @@ no_mark:
                 }
                 iCar = iCar + 1;
                 pCar = pCar + 0xada;
-            } while (iCar < DAT_100b2f04);
+            } while (iCar < (*(int *)&g_BrCarCount));
         }
         if (DAT_10b71b00 != 0) {
             int again;
@@ -1678,7 +1678,7 @@ no_mark:
             TEMIT((DAT_118ec98c & 0xffffff) | 0xdc000000, 1);
             {
             int c2 = 0;
-            if (0 < DAT_100b2f04) {
+            if (0 < (*(int *)&g_BrCarCount)) {
                 uint8_t *pA = active;
                 int rb;
                 do {
@@ -1703,14 +1703,14 @@ no_mark:
                     } while (iw2 < 4);
                     c2 = c2 + 1;
                     pA = pA + 4;
-                } while (c2 < DAT_100b2f04);
+                } while (c2 < (*(int *)&g_BrCarCount));
             }
             }
             do {
                 int dCar, dw, dring;
                 again = 0;
                 dCar = 0;
-                if (0 < DAT_100b2f04) {
+                if (0 < (*(int *)&g_BrCarCount)) {
                     int rowBase = 0;
                     uint8_t *pA = active;
                     do {
@@ -1733,9 +1733,9 @@ no_mark:
                                         if (ds == *(int *)((char *)DAT_1035f750 + dring)) goto dead;
                                         if ((DAT_10273690[ds + row].flags & 0x8000000) ==
                                             0x8000000 &&
-                                            ((DAT_10386ca8[DAT_10273690[dh + row].flags &
+                                            (((*(uint8_t (*)[])&g_BrSpanPending)[DAT_10273690[dh + row].flags &
                                                            0xf7ffffff] & 0x80) == 0 ||
-                                             (DAT_10386ca8[DAT_10273690[ds + row].flags &
+                                             ((*(uint8_t (*)[])&g_BrSpanPending)[DAT_10273690[ds + row].flags &
                                                            0xf7ffffff] & 0x80) == 0)) {
                                             if (DAT_1035f7dc + 0x20 >=
                                                 (uint32_t *)(DAT_102e16ac + 0x3e800))
@@ -1799,12 +1799,12 @@ next:;
                         dCar = dCar + 1;
                         rowBase = rowBase + 2000;
                         pA = pA + 4;
-                    } while (dCar < DAT_100b2f04);
+                    } while (dCar < (*(int *)&g_BrCarCount));
                 }
             } while (again);
 full:
             TEMIT(0xb7000000,
-                  ((DAT_106ea3f4 ^ DAT_106e8204) ? 0x1000 : 0x2000));
+                  (((*(int *)&g_brRaceBeginDifficulty) ^ (*(int *)&BrG_6C1174)) ? 0x1000 : 0x2000));
         }
         TEMIT(0xf9000000, 0);
         TEMIT(0xb900031d, 0);
@@ -1817,12 +1817,12 @@ full:
                                 0x3e8, 0, 0x3ec, 0,
                                 0, 0, 0, 0x3e8);
         }
-        TEMIT(0xba000602, DAT_106e7718);
+        TEMIT(0xba000602, BrG_6C0688);
         TEMIT(0xbd000000, 0);
         pT[0] = 0xb8000000;
         pT[1] = 0;
         pT = pT + 4;
-        DAT_1035f7d8 = pT;
+        (*(uint32_t * *)&DAT_1035f7d8) = pT;
     }
     if (param_2 == 0) {
         if (DAT_102e0ca0 == 0x1000) {

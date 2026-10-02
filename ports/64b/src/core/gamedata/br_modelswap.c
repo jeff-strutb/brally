@@ -172,7 +172,7 @@ void *BrModelDerefDirect(uint32_t slot);
  * BrModelVtxResolve == BrVtxCacheResolve, g_BrGfxSubmitB is a fn-ptr global:
  *   BrModelVtxResolve(uint32_t *pSlot, int n);  0x10018E10
  *   /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define g_BrModelFixup BrModelFixupDirect
+#define g_BrModelFixup BrSegPtrFixup
 #define g_BrModelDeref BrModelDerefDirect
 void BrModelSwap(void *pImage)
 {
@@ -212,7 +212,7 @@ void BrModelSwap(void *pImage)
             g_BrModelFixup((uint32_t *)(PITEM + 0x04));
 
             /* The vertex-cache resolve is handed the SLOT, not the value. */
-            BrModelVtxResolve((uint32_t *)(PITEM + 0x04),
+            BrVtxCacheResolve((uint32_t *)(PITEM + 0x04),
                               (int)BrLd32(PITEM + 0x00));
 
             BrRev4(PITEM + 0x08);
@@ -282,8 +282,8 @@ void BrModelSwap(void *pImage)
 
         v = BrLd32(pRec - 0x02);
         BrF3DListFixup(v);
-        BrSub10074DC0(8);
-        g_BrGfxSubmitB(BrLd32(pRec - 0x02));
+        BrFontSetRenderDst(8);
+        (*(void (**)(uint32_t))&g_pfn18AA0C4)(BrLd32(pRec - 0x02));
     }
 }
 #undef BrRev4

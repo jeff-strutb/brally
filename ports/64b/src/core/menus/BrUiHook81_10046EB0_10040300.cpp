@@ -46,7 +46,7 @@ typedef char chk_sub[(unsigned)&((GameObj *)0)->pSub == 0x2AE8 ? 1 : -1];
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define g_5C84 DAT_10ac5c8c
+#define g_5C84 g_5C8C
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
@@ -61,16 +61,16 @@ int BrUiHook81_10046EB0(GameObj *pGame)
     Phase *pObj;
 
     pGame->pSub->s7();
-    pObj = (Phase *)(g_cur);
+    pObj = (Phase *)((*(Phase * *)&g_brPAA29B8));
     if (pObj != 0)
         pObj->f00(1);
     g_5C80 = 0;
-    g_5D18 = 0;
+    DAT_10ac5d18 = 0;
     g_5D24 = 0;
     g_5C3C = 0;
-    strcpy(g_bufA, g_srcStr);
+    strcpy(g_aBrAA2518, g_aBr39B720);
     g_AB94 = -1;
-    strcpy(g_bufB, g_srcStr);
-    g_cur = (Phase *)((BrOptObj *)(g_5C84));
+    strcpy(DAT_10ac46a0, g_aBr39B720);
+    (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(g_5C84));
     return 0;
 }

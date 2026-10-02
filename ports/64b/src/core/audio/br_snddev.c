@@ -51,13 +51,13 @@ int BrSndDevOpen(void)
     DSBUFFERDESC dsbd;
     HRESULT      hr;
 
-    if (BrSndG0B5DE8 == 0)
+    if ((*(int *)&DAT_100b51e4[1036]) == 0)
         return 1;
     BrSndG18290FC++;
     if (BrSndG18290FC != 1)
         return 1;
 
-    memset(g_aBrSndBankVoice, 0, sizeof(g_aBrSndBankVoice));
+    memset((*(void * (*)[15])&g_apBrSfxChanVoice), 0, sizeof((*(void * (*)[15])&g_apBrSfxChanVoice)));
     BrSndBankClear();
     if (acmMetrics(NULL, ACM_METRIC_MAX_SIZE_FORMAT, &cbFormat) != 0)
         return 0;

@@ -60,10 +60,10 @@ int __stdcall BrWmAppHook35A30(char * hwnd, unsigned int msg, int wp, int lp)
         ImpC(ImpA(lp));
         break;
     case 0x113:
-        if (g_timerOn)
-            BrTick36300(g_timerArg);
-        if (g_netHold == 0)
-            BrTick36510();
+        if (g_brPAA29D4)
+            BrNetEnumSessionsStart(g_brP277B40);
+        if (g_host == 0)
+            BrNetSessionApply();
         break;
     }
     return 0;

@@ -32,7 +32,7 @@ int UiPage::CheckOther()
 {
     UiPage *p;
 
-    p = DAT_10ac5d18;
+    p = (*(UiPage * *)&DAT_10ac5d18);
     if (p != 0 && p->f2AE8->f70 == 1) {
         if (this != p) {
             DAT_10ac5bb0 = 1;

@@ -76,12 +76,12 @@ void *BrPool16Alloc(void)
 {
     int32_t c = BrG_B01C48;
     if (c < 20) {
-        uint8_t *p = &BrG_B02190[(BrG_6C65EC * 21 + c) * 16];
+        uint8_t *p = &BrG_B02190[((*(int32_t *)((char *)&g_aBrEntRecs + 0x4C)) * 21 + c) * 16];
         BrG_B01C48 = ++c;
         return p;
     }
     BrG_B01C48 = ++c;
-    return &BrG_B022D0[BrG_6C65EC * 21 * 16];
+    return &BrG_B022D0[(*(int32_t *)((char *)&g_aBrEntRecs + 0x4C)) * 21 * 16];
 }
 
 /* Glide 0x100625A0 == D3D 0x10069530 (shared.csv pair).  Tagged on the Glide
@@ -103,12 +103,12 @@ void *BrPool32Alloc(void)
 {
     int32_t c = BrG_B01C44;
     if (c < 20) {
-        uint8_t *p = &BrG_B01C50[(BrG_6C65EC * 21 + c) * 32];
+        uint8_t *p = &BrG_B01C50[((*(int32_t *)((char *)&g_aBrEntRecs + 0x4C)) * 21 + c) * 32];
         BrG_B01C44 = ++c;
         return p;
     }
     BrG_B01C44 = ++c;
-    return &BrG_B01ED0[BrG_6C65EC * 21 * 32];
+    return &BrG_B01ED0[(*(int32_t *)((char *)&g_aBrEntRecs + 0x4C)) * 21 * 32];
 }
 
 /* Glide 0x100625F0: XOR EAX,EAX / MOV [BrG_B01C40],EAX /
@@ -151,10 +151,10 @@ BrMat4 *BrSub_10069490(void)
 {
     int32_t c = BrG_B01C40;
     if (c < 256) {
-        uint8_t *p = &BrG_AF9BC0[(BrG_6C65EC * 257 + c) * 64];
+        uint8_t *p = &BrG_AF9BC0[((*(int32_t *)((char *)&g_aBrEntRecs + 0x4C)) * 257 + c) * 64];
         BrG_B01C40 = ++c;
         return (BrMat4 *)p;
     }
     BrG_B01C40 = ++c;
-    return (BrMat4 *)&BrG_AFDBC0[BrG_6C65EC * 257 * 64];
+    return (BrMat4 *)&BrG_AFDBC0[(*(int32_t *)((char *)&g_aBrEntRecs + 0x4C)) * 257 * 64];
 }

@@ -74,8 +74,8 @@ int BrSaveProbeRallySeason(int pList, int *pIdx)
      * mid-return is "semantically redundant" (VC5-IDIOMS) and pins all four
      * callee-saved pushes in the prologue; without it edi/esi/ebp sink past
      * this early-out exactly as the original has them (+3 pops otherwise). */
-    DAT_10ac5d24 = pList;
-    DAT_100aab94 = n;
+    g_5D24 = pList;
+    g_AB94 = n;
     if ((char *)pList + n * 0x438 + 0x35 != NULL) {
         strcpy(szPath, s_RallySeason_100acb00);
         _itoa(n, szNum, 10);
@@ -110,8 +110,8 @@ int BrSaveProbeTimeAttack(int pList, int *pIdx)
     int   n = *pIdx;
     FILE *fp;
 
-    DAT_10ac5d28 = pList;
-    DAT_100aab94 = n;
+    g_brPAA29D0 = pList;
+    g_AB94 = n;
     if ((char *)pList + n * 0x438 + 0x35 != NULL) {
         strcpy(szPath, s_TimeAttack_100acb14);
         _itoa(n, szNum, 10);
@@ -194,12 +194,12 @@ int __stdcall BrSaveSlotNameSet_10055C50(const char *pKey, const char *pName)
     char             szNum[32];
     char            *pRec;
 
-    if (g_brSeasonMode != 0) {
+    if (g_brGate5BA0 != 0) {
         strcpy(szNum, pKey + strlen(s_RallySeason_100acb00));
-        pRec = g_brRootPhase->pSeason[atoi(szNum)].szName;
+        pRec = (*(BrRoot55C50 * *)&g_2908)->pSeason[atoi(szNum)].szName;
     } else {
         strcpy(szNum, pKey + strlen(s_TimeAttack_100acb14));
-        pRec = g_brRootPhase->pTimeAttack[atoi(szNum)].szName;
+        pRec = (*(BrRoot55C50 * *)&g_2908)->pTimeAttack[atoi(szNum)].szName;
     }
 
     strcpy(pRec, pName);

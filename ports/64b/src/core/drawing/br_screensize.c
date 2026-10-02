@@ -49,7 +49,7 @@
 void THUNK_1001E200(void)
 
 {
-  DAT_105ccfe0 = g_BrFpsScreenH;
+  (*(int *)&BrGlClipMaxY) = BrGbiRectG_A7518;
   return;
 }
 
@@ -64,7 +64,7 @@ void THUNK_1001E200(void)
 void THUNK_1001E1E0(void)
 
 {
-  DAT_105d17b8 = g_BrFpsScreenW;
+  (*(int *)&BrGlClipMaxX) = BrGbiRectG_A7514;
   return;
 }
 
@@ -80,7 +80,7 @@ void THUNK_1001E1E0(void)
 void THUNK_1001E220(void)
 
 {
-  _DAT_105ccd48 = (float)(g_BrFpsScreenW / 2);
+  DAT_105ccd48 = (float)(BrGbiRectG_A7514 / 2);
   return;
 }
 
@@ -96,7 +96,7 @@ void THUNK_1001E220(void)
 void THUNK_1001E250(void)
 
 {
-  _DAT_105ccfdc = (float)(g_BrFpsScreenH / 2);
+  DAT_105ccfdc = (float)(BrGbiRectG_A7518 / 2);
   return;
 }
 
@@ -112,7 +112,7 @@ void THUNK_1001E250(void)
 void THUNK_1001E280(void)
 
 {
-  _DAT_105cd9f8 = (float)(g_BrFpsScreenW / 2);
+  DAT_105cd9f8 = (float)(BrGbiRectG_A7514 / 2);
   return;
 }
 
@@ -128,7 +128,7 @@ void THUNK_1001E280(void)
 void THUNK_1001E2B0(void)
 
 {
-  _DAT_105cd9fc = (float)(g_BrFpsScreenH / 2);
+  DAT_105cd9fc = (float)(BrGbiRectG_A7518 / 2);
   return;
 }
 
@@ -160,11 +160,11 @@ int32_t __stdcall BrFn10060210(void *pUnused)
 
     (void)pUnused;   /* never read by the original */
 
-    g_BrAA33B8 = g_Br0A81C0;
-    g_pBrAA2E80->x = g_Br0A81C0 / 2;   /* cdq/sub/sar: toward zero */
+    BrGlNavMaxX = (*(int32_t *)&BrGbiRectG_A7514);
+    g_pBrAA2E80->x = (*(int32_t *)&BrGbiRectG_A7514) / 2;   /* cdq/sub/sar: toward zero */
 
-    g_BrAA33B4 = g_Br0A81C4;
-    g_pBrAA2E80->y = g_Br0A81C4 / 2;
+    BrGlNavMaxY = (*(int32_t *)&BrGbiRectG_A7518);
+    g_pBrAA2E80->y = (*(int32_t *)&BrGbiRectG_A7518) / 2;
 
     for (i = 0; i < 7; ++i) {
         g_BrAA3398[i] = 0;

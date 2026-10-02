@@ -249,10 +249,10 @@ static void br_dlcmd_tri(BrDlCmd *pS, int i0, int i1, int i2)
     do {                                                            \
         BR_DL_PUN(V(i).tmu1[2], V(i).oow);                          \
         BR_DL_PUN(V(i).tmu0[2], V(i).oow);                          \
-        (u_) = V(i).s * g_brDlTexScaleS * V(i).oow;                 \
+        (u_) = V(i).s * DAT_118ed1a4 * V(i).oow;                 \
         BR_DL_PUN(V(i).tmu1[0], (u_));                              \
         BR_DL_PUN(V(i).tmu0[0], (u_));                              \
-        (u_) = V(i).t * g_brDlTexScaleT * V(i).oow;                 \
+        (u_) = V(i).t * DAT_118ed1a8 * V(i).oow;                 \
         BR_DL_PUN(V(i).tmu1[1], (u_));                              \
         BR_DL_PUN(V(i).tmu0[1], (u_));                              \
     } while (0)
@@ -261,7 +261,7 @@ static void br_dlcmd_tri(BrDlCmd *pS, int i0, int i1, int i2)
     do {                                                                \
         if ((V(ia).outcode & (V(ib).outcode & V(ic).outcode)) == 0) {    \
             if ((V(ib).outcode | V(ic).outcode | V(ia).outcode) != 0) {  \
-                BrDlClipTri(&V(ia), &V(ib), &V(ic));                     \
+                BrDlClipTriZ(&V(ia), &V(ib), &V(ic));                     \
             } else {                                                     \
                 BR_DLCMD_FINISH_VTX(ia, u_);                             \
                 BR_DLCMD_FINISH_VTX(ib, u_);                             \
@@ -294,10 +294,10 @@ void BrDlVtxFinishTex(BrDlVtx *v, const BrDlClipSt *pSt)
 
     BR_DL_PUN(v->tmu1[2], v->oow);
     BR_DL_PUN(v->tmu0[2], v->oow);
-    u = pSt->s * g_brDlTexScaleS * v->oow;
+    u = pSt->s * DAT_118ed1a4 * v->oow;
     BR_DL_PUN(v->tmu1[0], u);
     BR_DL_PUN(v->tmu0[0], u);
-    u = pSt->t * g_brDlTexScaleT * v->oow;
+    u = pSt->t * DAT_118ed1a8 * v->oow;
     BR_DL_PUN(v->tmu1[1], u);
     BR_DL_PUN(v->tmu0[1], u);
 }
@@ -402,10 +402,10 @@ void BrDlVtxFinishTex(BrDlVtx *v, const BrDlClipSt *pSt)
         BR_DL_PUN(w_, V(i).oow);                                    \
         BR_DL_PUN(pv_->tmu1[2], w_);                                \
         BR_DL_PUN(pv_->tmu0[2], w_);                                \
-        (u_) = V(i).s * g_brDlTexScaleS * pv_->oow;                 \
+        (u_) = V(i).s * DAT_118ed1a4 * pv_->oow;                 \
         BR_DL_PUN(pv_->tmu1[0], (u_));                              \
         BR_DL_PUN(pv_->tmu0[0], (u_));                              \
-        (u_) = V(i).t * g_brDlTexScaleT * pv_->oow;                 \
+        (u_) = V(i).t * DAT_118ed1a8 * pv_->oow;                 \
         BR_DL_PUN(pv_->tmu1[1], (u_));                              \
         BR_DL_PUN(pv_->tmu0[1], (u_));                              \
     } while (0)
@@ -581,7 +581,7 @@ void BrDlTriFlatNoZ(int i0, int i1, int i2)
     do {                                                                \
         if ((V(ia).outcode & (V(ib).outcode & V(ic).outcode)) == 0) {    \
             if ((V(ib).outcode | V(ic).outcode | V(ia).outcode) != 0) {  \
-                BrDlClipTri(&V(ia), &V(ib), &V(ic));                     \
+                BrDlClipTriZ(&V(ia), &V(ib), &V(ic));                     \
             } else {                                                     \
                 BR_DLCMD_FINISH_VTX_I(ia, u_);                           \
                 BR_DLCMD_FINISH_VTX_I(ib, u_);                           \
@@ -681,11 +681,11 @@ const uint8_t *BrDlCmdTri1NoZ(const uint8_t *p)
         BR_DL_PUN(w_, V(i).oow);                                    \
         BR_DL_PUN(pv_->tmu1[2], w_);                                \
         BR_DL_PUN(pv_->tmu0[2], w_);                                \
-        ts_ = V(i).s * g_brDlTexScaleS;                             \
+        ts_ = V(i).s * DAT_118ed1a4;                             \
         (u_) = ts_ * pv_->oow;                                      \
         BR_DL_PUN(pv_->tmu1[0], (u_));                              \
         BR_DL_PUN(pv_->tmu0[0], (u_));                              \
-        ts_ = V(i).t * g_brDlTexScaleT;                             \
+        ts_ = V(i).t * DAT_118ed1a8;                             \
         (u_) = ts_ * pv_->oow;                                      \
         BR_DL_PUN(pv_->tmu1[1], (u_));                              \
         BR_DL_PUN(pv_->tmu0[1], (u_));                              \
@@ -932,10 +932,10 @@ const uint8_t *BrDlCmdFogColour(BrDlCmd *pS, const uint8_t *p)
 int br_dl_prim(int param_1)
 
 {
-  DAT_105d17a4 = (float)(*(unsigned int *)(param_1 + 4) >> 0x18);
-  DAT_105d17b4 = (float)(*(unsigned int *)(param_1 + 4) >> 0x10 & 0xff);
-  DAT_105ce2d0 = (float)(*(unsigned int *)(param_1 + 4) >> 8 & 0xff);
-  _DAT_105cd9f0 = (float)(*(unsigned int *)(param_1 + 4) & 0xff);
+  BrGbiRectG_5D17A4 = (float)(*(unsigned int *)(param_1 + 4) >> 0x18);
+  BrGbiRectG_5D17B4 = (float)(*(unsigned int *)(param_1 + 4) >> 0x10 & 0xff);
+  BrGbiRectG_5CE2D0 = (float)(*(unsigned int *)(param_1 + 4) >> 8 & 0xff);
+  BrGlPrimA = (float)(*(unsigned int *)(param_1 + 4) & 0xff);
   grConstantColorValue(*(int *)(param_1 + 4));
   return param_1 + 8;
 }
@@ -1024,10 +1024,10 @@ const uint8_t *BrDlCmdSetCombine(BrDlCmd *pS, const uint8_t *p)
     int w0, w1;
 
     w0 = *(const int *)(const void *)p;
-    DAT_105d17ac = w0;
+    (*(int *)&BrGlCombineW0) = w0;
     w1 = *(const int *)(const void *)(p + 4);
-    DAT_105d17b0 = w1;
-    FUN_1001e7a0(w0, w1);
+    (*(int *)&BrGlCombineW1) = w1;
+    BrGlSetCombine(w0, w1);
     return p + 8;
 }
 

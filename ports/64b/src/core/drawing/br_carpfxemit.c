@@ -94,41 +94,41 @@ void __fastcall BrCarSub9020(struct BrDriverCar *pCar)
     pe24 = &p->f0E24;
     acc = ((float)(BrRandom() & 0x1FFF) * 1.52587890625e-05f
            - *pe24 * -0.001f
-           - (-1.0f)) * DAT_106e9d8c[0]
+           - (-1.0f)) * (*(float (*)[])&g_brRaceFlyStep)[0]
           + p->f105C;
 
     p->f105C = acc;
     if (acc > 0.25f) {
-        idx = (unsigned int)DAT_10ac0c38 & 0xFFFFu;
+        idx = (unsigned int)(*(int *)&g_iPfxFree) & 0xFFFFu;
         if (idx != 0) {
             f2  = *pe24 * 0.001f;
             off = (int)idx << 5;
             *(int *)&p->f105C = 0;
 
-            *(unsigned short *)&DAT_10ac0c38 = *(unsigned short *)(&DAT_10ac0c64 + off);
-            *(unsigned short *)(&DAT_10ac0c64 + off) = DAT_10ac0c40;
-            DAT_10ac0c40 = (unsigned short)idx;
+            *(unsigned short *)&(*(int *)&g_iPfxFree) = *(unsigned short *)(&(*(char *)((char *)&g_aPfxRec + 0x1C)) + off);
+            *(unsigned short *)(&(*(char *)((char *)&g_aPfxRec + 0x1C)) + off) = (*(unsigned short *)&g_iPfxHeadB0);
+            (*(unsigned short *)&g_iPfxHeadB0) = (unsigned short)idx;
 
-            BrVec3Scale((BrVec3 *)(void *)(&DAT_10ac0c54 + off),
+            BrVec3Scale((BrVec3 *)(void *)(&(*(char *)((char *)&g_aPfxRec + 0xC)) + off),
                         (const BrVec3 *)&p->fwd.x,
                         -1.5f - f2);
-            BrSub10034560(&local, &p->aWheel[2].m[3], &p->fwd.x);
-            BrSub10034660(&local, &local, &p->up.x, 0.2f);
-            BrSub10034660(&local, &local, &p->right.x, 0.2f);
+            BrVec3Sub(&local, &p->aWheel[2].m[3], &p->fwd.x);
+            BrVec3MulAdd(&local, &local, &p->up.x, 0.2f);
+            BrVec3MulAdd(&local, &local, &p->right.x, 0.2f);
 
             g = (float)(BrRandom() & 0xFFFF) * 1.5259021893143654e-05f;
-            BrSub10034560(&DAT_10ac0c48 + off, p + 0x1060, &local);
-            BrSub10034660(&DAT_10ac0c48 + off, &local,
-                          &DAT_10ac0c48 + off, g * g);
+            BrVec3Sub(&(*(char *)&g_aPfxRec) + off, p + 0x1060, &local);
+            BrVec3MulAdd(&(*(char *)&g_aPfxRec) + off, &local,
+                          &(*(char *)&g_aPfxRec) + off, g * g);
 
             *(BrVec3 *)(p + 0x1060) = local;
 
             t = f2 * 0.1f - (-1.0f);
-            *(float *)(&DAT_10ac0c60 + off) = t * 0.15f;
-            *(char *)(&DAT_10ac0c66 + off) =
-                (char)(int)(1.0f / (BrSub100347F0(&p->f1024.x) + t)
+            *(float *)(&(*(char *)((char *)&g_aPfxRec + 0x18)) + off) = t * 0.15f;
+            *(char *)(&(*(char *)((char *)&g_aPfxRec + 0x1E)) + off) =
+                (char)(int)(1.0f / (BrVec3Length(&p->f1024.x) + t)
                             * 255.0f);
-            *(unsigned char *)(&DAT_10ac0c67 + off) = 0xFF;
+            *(unsigned char *)(&(*(char *)((char *)&g_aPfxRec + 0x1F)) + off) = 0xFF;
         }
     }
 }

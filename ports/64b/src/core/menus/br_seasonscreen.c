@@ -159,17 +159,17 @@ extern void FUN_1003ec50(void); extern void FUN_10039d20(void);
 #define pH_p10041300  BR72H(FUN_1003a860)
 #define pH_p100413B0  BR72H(FUN_1003a910)
 #define pH_p10040B30  BR72H(FUN_1003a070)
-#define pE_p0AB448    ((const void *)&DAT_100aabe8)
-#define pE_p0AB458    ((const void *)&DAT_100aabf8)
-#define pE_p0AB478    ((const void *)&DAT_100aac18)
-#define pE_p0AB4A8    ((const void *)&DAT_100aac48)
-#define pE_p0AB4B8    ((const void *)&DAT_100aac58)
-#define pE_p0AB4F8    ((const void *)&DAT_100aac98)
-#define pE_p0AB508    ((const void *)&DAT_100aaca8)
-#define pE_p0AD300    ((const void *)&DAT_100acad8)
-#define pE_p39B720    ((const void *)&DAT_10396f08)
-#define pE_nAB428     DAT_100aabc8
-#define pE_nAB42C     DAT_100aabcc
+#define pE_p0AB448    ((const void *)&(*(unsigned char *)&g_hot0))
+#define pE_p0AB458    ((const void *)&(*(unsigned char *)&DAT_100aabf8))
+#define pE_p0AB478    ((const void *)&(*(unsigned char *)&DAT_100aac18))
+#define pE_p0AB4A8    ((const void *)&(*(unsigned char *)&DAT_100aac48))
+#define pE_p0AB4B8    ((const void *)&(*(unsigned char *)&DAT_100aac58))
+#define pE_p0AB4F8    ((const void *)&(*(unsigned char *)&DAT_100aac98))
+#define pE_p0AB508    ((const void *)&(*(unsigned char *)&DAT_100aaca8))
+#define pE_p0AD300    ((const void *)&(g_strA[0]))
+#define pE_p39B720    ((const void *)&(g_aBr39B720[0]))
+#define pE_nAB428     (*(int32_t *)&g_hot2)
+#define pE_nAB42C     (*(int32_t *)((char *)&g_hot2 + 0x4))
 
 /* WHAT IT DOES: builds the season-progress screen the player sees between
  * championship rounds (the full description is with the dossier at the head

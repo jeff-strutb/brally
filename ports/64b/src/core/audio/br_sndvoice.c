@@ -115,13 +115,13 @@ int BrX10072580(int a0)
     struct BrSndVoice *pVoice;
 
     /* Nested so /O2 shares one `mov eax, 1 / ret` epilogue (`je` to it). */
-    if (BrSndG0B5DE8 != 0) {
-        if (BrSndPDS != NULL) {
+    if ((*(int32_t *)&DAT_100b51e4[1036]) != 0) {
+        if ((*(struct BrDSound * *)&BrSndPDS) != NULL) {
             if (BrSndG18290FC != NULL) {
                 /* No bounds check on a0 in the original.  Preserved. */
-                pVoice = (struct BrSndVoice *)g_aBrSndBankVoice[a0];
+                pVoice = (struct BrSndVoice *)(g_apBrSfxChanVoice[0])[a0];
                 if (pVoice != NULL)
-                    return BrSndVoiceStop(pVoice) == 0;
+                    return BrSndVoiceBufStop(pVoice) == 0;
             }
         }
     }
@@ -152,8 +152,8 @@ int BrX10072580(int a0)
 int BrSndChanSetRatio(int iSlot, int64_t ratio)
 
 {
-  if (((BrSndG0B5DE8 != 0) && (BrSndPDS != 0)) && (BrSndG18290FC != 0)) {
-    if (BrSndBufSetVolume((int)g_aBrSndBankVoice[iSlot],
+  if ((((*(int32_t *)&DAT_100b51e4[1036]) != 0) && ((*(struct BrDSound * *)&BrSndPDS) != 0)) && (BrSndG18290FC != 0)) {
+    if (BrSndBufSetVolume((int)(g_apBrSfxChanVoice[0])[iSlot],
                           (unsigned int)((double)ratio * g_aBrSfxChanRate[iSlot]
                                          * DAT_10077c00)) != 0) {
       g_aBrSfxChanApplied[iSlot].ratio = ratio;
@@ -176,14 +176,14 @@ int BrSndChanSetRatio(int iSlot, int64_t ratio)
 int BrSndThreadStop(void)
 
 {
-  if (DAT_1184c078 != 0) {
-    SetEvent(DAT_11849e60);
-    WaitForSingleObject(DAT_1184c07c,0xffffffff);
-    CloseHandle(DAT_1184c07c);
-    DAT_1184c07c = (HANDLE)0x0;
-    CloseHandle(DAT_11849e60);
-    DAT_11849e60 = (HANDLE)0x0;
-    DAT_1184c078 = 0;
+  if ((*(int *)&g_fBrSndThread86) != 0) {
+    SetEvent(g_hBrSndWake86);
+    WaitForSingleObject(g_hBrSndThread86,0xffffffff);
+    CloseHandle(g_hBrSndThread86);
+    g_hBrSndThread86 = (HANDLE)0x0;
+    CloseHandle(g_hBrSndWake86);
+    g_hBrSndWake86 = (HANDLE)0x0;
+    (*(int *)&g_fBrSndThread86) = 0;
   }
   return;
 }
@@ -278,10 +278,10 @@ int BrSndBankFree(void)
   int *pRow;
   int  cGroups;
 
-  if (BrSndG0B5DE8 == 0) {
+  if ((*(int32_t *)&DAT_100b51e4[1036]) == 0) {
     return 1;
   }
-  if (BrSndPDS == 0) {
+  if ((*(struct BrDSound * *)&BrSndPDS) == 0) {
     return 1;
   }
   if (BrSndG18290FC == 0) {
@@ -291,13 +291,13 @@ int BrSndBankFree(void)
   BrSndBufFreeAll((int)&DAT_1184c2a8);
   cGroups = DAT_1184c260;
   if (0 < cGroups) {
-    pRow = DAT_100b55f8;
+    pRow = BrSndVoices;
     do {
       memset(pRow, 0, 60);
       pRow = pRow + 0x12;
     } while (--cGroups != 0);
   }
-  memset(g_aBrSndBankVoice, 0, sizeof(g_aBrSndBankVoice));
+  memset((g_apBrSfxChanVoice[0]), 0, sizeof((g_apBrSfxChanVoice[0])));
   return 1;
 }
 
@@ -316,13 +316,13 @@ int BrSndChanBind(int iGroup, int iSlot)
 {
   BrSndVoice *pVoice;
 
-  if (((BrSndG0B5DE8 != 0) && (BrSndPDS != 0)) && (BrSndG18290FC != 0)) {
-    g_aBrSfxChanRate[iSlot] = ((double *)DAT_100b55f8)[iGroup * 9 + 8];
-    if (g_aBrSndBankVoice[iSlot] != 0) {
+  if ((((*(int32_t *)&DAT_100b51e4[1036]) != 0) && ((*(struct BrDSound * *)&BrSndPDS) != 0)) && (BrSndG18290FC != 0)) {
+    g_aBrSfxChanRate[iSlot] = ((double *)BrSndVoices)[iGroup * 9 + 8];
+    if ((g_apBrSfxChanVoice[0])[iSlot] != 0) {
       BrX10072580(iSlot);
     }
-    pVoice = DAT_100b55f8[iGroup * 0x12 + iSlot];
-    g_aBrSndBankVoice[iSlot] = (void *)pVoice;
+    pVoice = BrSndVoices[iGroup * 0x12 + iSlot];
+    (g_apBrSfxChanVoice[0])[iSlot] = (void *)pVoice;
     return pVoice != 0;
   }
   return 1;
@@ -337,9 +337,9 @@ int BrSndChanBind(int iGroup, int iSlot)
 int BrSfxChanSetLoop(int iSlot, int loop)
 
 {
-  if (((BrSndG0B5DE8 != 0) && (BrSndPDS != 0)) && (BrSndG18290FC != 0)) {
-    if (g_aBrSndBankVoice[iSlot] != 0) {
-      ((BrSndVoice *)g_aBrSndBankVoice[iSlot])->f18 = loop;
+  if ((((*(int32_t *)&DAT_100b51e4[1036]) != 0) && ((*(struct BrDSound * *)&BrSndPDS) != 0)) && (BrSndG18290FC != 0)) {
+    if ((g_apBrSfxChanVoice[0])[iSlot] != 0) {
+      ((BrSndVoice *)(g_apBrSfxChanVoice[0])[iSlot])->f18 = loop;
       return 1;
     }
     return 0;
@@ -396,16 +396,16 @@ int BrSndBankMute(void)
   void **ppVoice;
   BrSndVoice *pVoice;
 
-  if (BrSndG0B5DE8 == 0) {
+  if ((*(int32_t *)&DAT_100b51e4[1036]) == 0) {
     return 1;
   }
-  if (BrSndPDS == 0) {
+  if ((*(struct BrDSound * *)&BrSndPDS) == 0) {
     return 1;
   }
   if (BrSndG18290FC == 0) {
     return 1;
   }
-  ppVoice = g_aBrSndBankVoice;
+  ppVoice = (g_apBrSfxChanVoice[0]);
   do {
     pVoice = (BrSndVoice *)*ppVoice;
     if (pVoice != 0) {
@@ -415,7 +415,7 @@ int BrSndBankMute(void)
         (pVoice->pBuf, 0);
     }
     ppVoice = ppVoice + 1;
-  } while ((uintptr_t)ppVoice < (uintptr_t)&g_aBrSndBankVoice[BR_SND_BANK_VOICES]);
+  } while ((uintptr_t)ppVoice < (uintptr_t)&(g_apBrSfxChanVoice[0])[BR_SND_BANK_VOICES]);
   return 1;
 }
 
@@ -452,48 +452,48 @@ int FUN_1006bdd0(void)
 
   z = 0;
   i = 0;
-  p = &DAT_100b5d00;
+  p = &(BrSndVoices[450]);
   off = 0;
   do {
-    if (DAT_1184c454 != z) {
-      v = DAT_100b55f8[i];
-      if (v != z && v == (&DAT_1184c268)[i]) {
+    if (g_184C454 != z) {
+      v = BrSndVoices[i];
+      if (v != z && v == (&(g_apBrSfxChanVoice[0]))[i]) {
         BrSndChanBind(0x19, i);
         BrSfxChanSetLoop(i, 1);
-        BrSndChanSetRatio(i, *(__int64 *)((char *)&DAT_118eef48 + off));
-        BrSndVoiceSetFreq(i, *(int *)((char *)&DAT_118eef54 + off));
+        BrSndChanSetRatio(i, *(__int64 *)((char *)&(*(int *)((char *)&g_aBrSfxChan + 0x8)) + off));
+        BrSndVoiceSetFreq(i, *(int *)((char *)&(*(int *)((char *)&g_aBrSfxChan + 0x14)) + off));
         BrSfxChanStart(0x19, i, 1);
       }
     } else {
       v = *p;
-      if (v != z && v == (&DAT_1184c268)[i]) {
+      if (v != z && v == (&(g_apBrSfxChanVoice[0]))[i]) {
         BrSndChanBind(z, i);
         BrSfxChanSetLoop(i, 1);
-        BrSndChanSetRatio(i, *(__int64 *)((char *)&DAT_118eef48 + off));
-        BrSndVoiceSetFreq(i, *(int *)((char *)&DAT_118eef54 + off));
+        BrSndChanSetRatio(i, *(__int64 *)((char *)&(*(int *)((char *)&g_aBrSfxChan + 0x8)) + off));
+        BrSndVoiceSetFreq(i, *(int *)((char *)&(*(int *)((char *)&g_aBrSfxChan + 0x14)) + off));
         BrSfxChanStart(z, i, 1);
       }
     }
-    a = *(int *)((char *)&DAT_118eef40 + off);
-    if (*(int *)((char *)&DAT_1184c080 + off) != a) {
-      *(int *)((char *)&DAT_1184c080 + off) = a;
+    a = *(int *)((char *)&(*(int *)&g_aBrSfxChan) + off);
+    if (*(int *)((char *)&(*(int *)&g_aBrSfxChanApplied) + off) != a) {
+      *(int *)((char *)&(*(int *)&g_aBrSfxChanApplied) + off) = a;
     }
-    if (*(__int64 *)((char *)&DAT_1184c088 + off)
-        != *(__int64 *)((char *)&DAT_118eef48 + off)) {
-      BrSndChanSetRatio(i, *(__int64 *)((char *)&DAT_118eef48 + off));
+    if (*(__int64 *)((char *)&(*(int64_t (*)[])((char *)&g_aBrSfxChanApplied + 0x8)) + off)
+        != *(__int64 *)((char *)&(*(int *)((char *)&g_aBrSfxChan + 0x8)) + off)) {
+      BrSndChanSetRatio(i, *(__int64 *)((char *)&(*(int *)((char *)&g_aBrSfxChan + 0x8)) + off));
     }
-    a = *(int *)((char *)&DAT_118eef54 + off);
-    if (*(int *)((char *)&DAT_1184c094 + off) != a) {
+    a = *(int *)((char *)&(*(int *)((char *)&g_aBrSfxChan + 0x14)) + off);
+    if (*(int *)((char *)&(*(int *)((char *)&g_aBrSfxChanApplied + 0x14)) + off) != a) {
       BrSndVoiceSetFreq(i, a);
     }
-    a = *(int *)((char *)&DAT_118eef48 + off);
-    c = *(int *)((char *)&DAT_118eef4c + off);
+    a = *(int *)((char *)&(*(int *)((char *)&g_aBrSfxChan + 0x8)) + off);
+    c = *(int *)((char *)&(*(int *)((char *)&g_aBrSfxChan + 0xC)) + off);
     if ((a | c) != 0) {
-      if (FUN_1006bf50(i) == 0) {
-        *(int *)((char *)&DAT_118eef48 + off) = z;
-        *(int *)((char *)&DAT_1184c088 + off) = z;
-        *(int *)((char *)&DAT_118eef4c + off) = z;
-        *(int *)((char *)&DAT_1184c08c + off) = z;
+      if (BrSndVoiceIsPlaying(i) == 0) {
+        *(int *)((char *)&(*(int *)((char *)&g_aBrSfxChan + 0x8)) + off) = z;
+        *(int *)((char *)&(*(int64_t (*)[])((char *)&g_aBrSfxChanApplied + 0x8)) + off) = z;
+        *(int *)((char *)&(*(int *)((char *)&g_aBrSfxChan + 0xC)) + off) = z;
+        *(int *)((char *)&(*(int *)((char *)&g_aBrSfxChanApplied + 0xC)) + off) = z;
       }
     }
     p = p + 1;
@@ -509,7 +509,7 @@ int FUN_1006bdd0(void)
 int BrSndBufSetVolume(BrSndVoice *param_1,int param_2)
 
 {
-  if (((BrSndG0B5DE8 != 0) && (BrSndPDS != 0)) && (BrSndG18290FC != 0)) {
+  if ((((*(int32_t *)&DAT_100b51e4[1036]) != 0) && ((*(struct BrDSound * *)&BrSndPDS) != 0)) && (BrSndG18290FC != 0)) {
     if (param_1 != 0) {
       *(int *)&param_1->f0C = param_2;
       BrSndVoiceApplyFreq(param_1);

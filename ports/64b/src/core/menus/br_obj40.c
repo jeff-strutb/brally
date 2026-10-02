@@ -20,9 +20,9 @@
 
 void * __fastcall BrObj40CF0DeleteDtor(void *param_1,int _edx_unused,unsigned char param_2)
 {
-  FUN_10040d10(param_1);
+  BrCtl_fn(param_1);
   if ((param_2 & 1) != 0) {
-    operator_delete(param_1);
+    BrOperatorDelete(param_1);
   }
   return param_1;
 }

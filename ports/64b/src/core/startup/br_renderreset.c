@@ -22,15 +22,15 @@
  * reads the fields used here as the separate globals they are, by their
  * DAT_ names -- which the image gate resolves from the address they spell. */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define S17_PGFX DAT_106e7710
+#define S17_PGFX g_BrGfxPtr
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define S17_SCREENW DAT_106e7714
+#define S17_SCREENW g_scrW4
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define S17_SCREENH DAT_106e9a2c
+#define S17_SCREENH (*(int *)&g_brRaceCueBase)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define S17_DEFAULTW DAT_100a7514
+#define S17_DEFAULTW BrGbiRectG_A7514
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define S17_DEFAULTH DAT_100a7518
+#define S17_DEFAULTH BrGbiRectG_A7518
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 #define S17_F6C32CC DAT_106ea35c
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
@@ -38,7 +38,7 @@
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 #define S17_F6C1178 DAT_106e8208
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define S17_F6C161C DAT_106e86ac
+#define S17_F6C161C (*(int *)&g_6C161C)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 #define S17_F6C1610 DAT_106e86a0
 /* 64-bit core: declared once, in br_globals.h or its struct's header */

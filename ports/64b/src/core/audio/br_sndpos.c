@@ -205,7 +205,7 @@ void BrSndNearestInvalidate(void)
 /* @n64 0x8022B428 located */
 void BrSndNearestReset(void)
 {
-    g_BrSndAA3470 = -1;
+    (*(int32_t *)&g_BrSndAA3470) = -1;
 
     g_BrSndNearest.pos.x = 0.0f;
     g_BrSndNearest.pos.y = 0.0f;
@@ -300,7 +300,7 @@ void BrSndNearestOfferTrack(int32_t f8C, const BrVec3 *pPos,
     float   f98 = BR_SND_DEFAULT_HZ;
     int32_t f9C = 0x80;
 
-    switch (g_brCfgChosenTrack) {
+    switch (g_Br0B380C) {
     case 2:
     case 8:
         f84 = 0;
@@ -388,23 +388,23 @@ void BrSndNearestCommit(void)
     float   gainA;
     int32_t packed;
 
-    if (DAT_100b2f04 == 0)
+    if (g_BrCarCount == 0)
         return;
-    if (DAT_10af2108[0x68] & 1)
+    if ((*(uint8_t * *)((char *)&g_aBrRaceCar + 0xF00)) /* BR_LP64_BYTE_VIEW */[0x68] & 1)
         return;
 
-    if (g_BrSndAA3470 != -1) {
-        if (DAT_118eef90 != 0)
+    if ((*(int32_t *)&g_BrSndAA3470) != -1) {
+        if ((*(int64_t *)((char *)&g_aBrSfxChan + 0x50)) != 0)
             return;
-        g_BrSndAA3470     = -1;
+        (*(int32_t *)&g_BrSndAA3470)     = -1;
         g_BrSndNearest.f90 = -1;
         g_BrSndNearest.fA0 = 0;
     }
 
     if (g_BrSndNearest.f8C == -1) {
-        DAT_118eef9c = 0;
-        DAT_118eef98 = 0;
-        DAT_118eef90 = 0;
+        (*(uint32_t *)((char *)&g_aBrSfxChan + 0x5C)) = 0;
+        (*(int32_t *)((char *)&g_aBrSfxChan + 0x58)) = 0;
+        (*(int64_t *)((char *)&g_aBrSfxChan + 0x50)) = 0;
     } else if (g_BrSndNearest.f8C == g_BrSndNearest.f90 &&
                g_BrSndNearest.pObj == g_BrSndNearest.pObjPrev) {
         /* `fcomp 0.0f` + `test ah,1`: C0, so a NaN base frequency takes the
@@ -433,15 +433,15 @@ void BrSndNearestCommit(void)
                                g_brStages[28 + (g_BrSndNearest.f84)].f08);
         }
 
-        if (g_aBrRaceCar[DAT_106e86c8].fF78 == 0 &&
-            (DAT_100aa044 == 1 ||
-             g_aBrRaceCar[DAT_106e8720].fF78 == 0)) {
-            DAT_118eef90 = (int64_t)(ratio * BR_K_00779E4 * BR_K_00779E8);
+        if (g_aBrRaceCar[(BrG_6C1628[4])].fF78 == 0 &&
+            ((*(int32_t *)&g_brMode0AA8B4) == 1 ||
+             g_aBrRaceCar[g_brRaceBegin6E8720].fF78 == 0)) {
+            (*(int64_t *)((char *)&g_aBrSfxChan + 0x50)) = (int64_t)(ratio * BR_K_00779E4 * BR_K_00779E8);
             packed = ((int32_t)(gainA * (float)vol) << 16)
                    + (int32_t)(gainB * (float)vol);
-            if (DAT_118eef9c == 0)
+            if ((*(uint32_t *)((char *)&g_aBrSfxChan + 0x5C)) == 0)
                 packed = (packed >> 1) & 0x7FFF7FFF;
-            DAT_118eef9c = packed;
+            (*(uint32_t *)((char *)&g_aBrSfxChan + 0x5C)) = packed;
         }
 
         /* pos -> posPrev is a struct copy (three loads, then three stores);
@@ -454,7 +454,7 @@ void BrSndNearestCommit(void)
         g_BrSndNearest.objPosPrev.z = g_BrSndNearest.pObj->m[3][2];
     } else {
         g_BrSndNearest.fA0 = 0;
-        DAT_118eef9c = (DAT_118eef9c >> 1) & 0x7FFF7FFFu;
+        (*(uint32_t *)((char *)&g_aBrSfxChan + 0x5C)) = ((*(uint32_t *)((char *)&g_aBrSfxChan + 0x5C)) >> 1) & 0x7FFF7FFFu;
     }
 
     g_BrSndNearest.f88      = g_BrSndNearest.f84;

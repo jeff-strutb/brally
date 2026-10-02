@@ -204,7 +204,7 @@ extern "C" {
 }
 
 #define SQ(a) ((a) * (a))
-#define MINE (f140 == DAT_106e86c8 || (DAT_100aa044 > 1 && f140 == DAT_106e8720_100AA044))
+#define MINE (f140 == (*(int *)&BrG_6C1628[4]) || (g_brMode0AA8B4 > 1 && f140 == g_brMode0AA8B4))
 
 void Car5C8B0::Step()
 {
@@ -219,7 +219,7 @@ void Car5C8B0::Step()
     float   *pA, *pB, *pV;
     int      ext;
 
-    if (DAT_106ea3f4 != 0)
+    if ((*(int *)&g_brRaceBeginDifficulty) != 0)
         p29C0->f20 = -p29C0->f20;
     if (p29C0->f20 > DAT_100778a4) {
         d = (p29C0->f20 - DAT_100778a4) * DAT_100778a8;
@@ -232,17 +232,17 @@ void Car5C8B0::Step()
     }
 
     if ((pF00->b68 & 2) && MINE) {
-        if (DAT_10b1cf10 == 0)
+        if ((*(int *)&g_BrCamHold2) == 0)
             goto scan;
         goto flags;
     }
-    if ((DAT_100a9360 == 4 || DAT_100a9360 == 5 || DAT_105ccb88 != 0) && MINE)
+    if (((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4 || (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 5 || (*(int *)&DAT_105ccb68[8]) != 0) && MINE)
         goto hold;
     if (MINE)
-        DAT_10b1cf10 = 0;
+        (*(int *)&g_BrCamHold2) = 0;
     goto flags;
 hold:
-    if (DAT_10b1cf10 == 0) {
+    if ((*(int *)&g_BrCamHold2) == 0) {
 scan:
     best = 16777216.0f;
     if (DAT_106eed60 > 0) {
@@ -272,19 +272,19 @@ scan:
     } else {
         if (p2734 == f2808) {
             fF78 = 1;
-            if (DAT_10b1cf18 == 0 && DAT_10b1cf14 == 0)
+            if (DAT_10b1cf18 == 0 && (*(int *)&g_BrCamHold) == 0)
                 p2734 = f2780;
             else
                 p2734 = f273C;
-            DAT_10b1cf10 = 0x3c;
+            (*(int *)&g_BrCamHold2) = 0x3c;
             DAT_10b1cf18 = (DAT_10b1cf18 == 0);
         }
     }
     } else {
-        DAT_10b1cf10--;
+        (*(int *)&g_BrCamHold2)--;
     }
     if (p29C0->flags & 0xf000000)
-        DAT_10b1cf10 = 0x1c2;
+        (*(int *)&g_BrCamHold2) = 0x1c2;
 
 flags:
     if (p29C0->flags & 0x1000000) {
@@ -302,7 +302,7 @@ flags:
         fF78 = 1;
         p29C0->Ack(0x4000000);
     }
-    if (DAT_100aa044 == 1 && (p29C0->flags & 0x8000000)) {
+    if (g_brMode0AA8B4 == 1 && (p29C0->flags & 0x8000000)) {
         p2734 = f27C4;
         fF78 = 1;
         p29C0->Ack(0x8000000);
@@ -347,13 +347,13 @@ flags:
             *(int *)&f2720 = 0x3f800000;
     }
 
-    if (DAT_100a9360 == 5) {
-        FUN_100346a0((struct BrVec3 *)(&f30), (const struct BrVec3 *)(this), 15.0f);
+    if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 5) {
+        BrVec3MulAddTo((struct BrVec3 *)(&f30), (const struct BrVec3 *)(this), 15.0f);
         Sub5D3C0();
         vecA[0] = fF24[0];
         vecA[1] = fF24[1];
         vecA[2] = fF24[2];
-        FUN_100346a0((struct BrVec3 *)(&f30), (const struct BrVec3 *)(this), -15.0f);
+        BrVec3MulAddTo((struct BrVec3 *)(&f30), (const struct BrVec3 *)(this), -15.0f);
         Sub5D3C0();
         p29C0->flags &= 0xf0c0ffff;
         if (fFF4 < DAT_100778c4) {
@@ -371,52 +371,52 @@ flags:
                 p29C0->flags |= 0x80000;
             }
         }
-        fE20 = FUN_10034310(vecA, f10) * DAT_100778dc;
+        fE20 = BrVec3Dot(vecA, f10) * DAT_100778dc;
         b[0] = b[0] - fF4C * DAT_100778e0;
         b[1] = b[1] - fF50 * DAT_100778e0;
         SetVel(b[0], b[1], b[2]);
     }
 
-    if (DAT_118eebe8 & 0x10000)
+    if ((*(unsigned int *)&g_BrX18ABAD0) & 0x10000)
         b366 = 0x80;
-    if (DAT_118eebe8 & 0x20000)
+    if ((*(unsigned int *)&g_BrX18ABAD0) & 0x20000)
         b367 = 0x80;
-    if (DAT_118eebe8 & 0x40000)
+    if ((*(unsigned int *)&g_BrX18ABAD0) & 0x40000)
         b368 = 0x80;
-    if (DAT_118eebe8 & 0x80000)
+    if ((*(unsigned int *)&g_BrX18ABAD0) & 0x80000)
         b369 = 0x80;
-    if (DAT_118eebe8 & 0x80)
+    if ((*(unsigned int *)&g_BrX18ABAD0) & 0x80)
         b36A = 0x80;
     Poll6F170();
 
     if (fF7C == 0) {
-        FUN_100345c0(b, &f30, this);
-        FUN_100345f0(b, f10);
+        BrVec3Add(b, &f30, this);
+        BrVec3AddTo(b, f10);
         pB = f1044;
         pA = f1038;
-        FUN_100345c0(tmpC, pA, pB);
+        BrVec3Add(tmpC, pA, pB);
         vecA[0] = f1050[0];
         pV = f1050;
         vecA[1] = pV[1];
         vecA[2] = pV[2];
-        FUN_10034560((struct BrVec3 *)(pV), (const struct BrVec3 *)(pA), b);
-        r = FUN_100347f0((const struct BrVec3 *)(pV));
+        BrVec3Sub((struct BrVec3 *)(pV), (const struct BrVec3 *)(pA), b);
+        r = BrVec3Length((const struct BrVec3 *)(pV));
         if (r != DAT_100778d8)
-            FUN_10034390((struct BrVec3 *)(pV), (r / (r - DAT_100778e4)) / r);
-        dy = FUN_10034760((const struct BrVec3 *)(pV), vecA);
-        dy = FUN_10002570(dy);
-        v = dy / (FUN_100347f0((const struct BrVec3 *)(pB)) - DAT_100778e4);
+            BrVec3ScaleBy((struct BrVec3 *)(pV), (r / (r - DAT_100778e4)) / r);
+        dy = BrVec3Dist((const struct BrVec3 *)(pV), vecA);
+        dy = BrSqrtF(dy);
+        v = dy / (BrVec3Length((const struct BrVec3 *)(pB)) - DAT_100778e4);
         if (v > DAT_100778e8)
-            FUN_1002de6b(f140, v + v);
+            BrAccumAddClamp(f140, v + v);
         pA[0] = b[0];
         pA[1] = b[1];
         pA[2] = b[2];
-        FUN_10034560((struct BrVec3 *)(pB), (const struct BrVec3 *)(pA), tmpC);
+        BrVec3Sub((struct BrVec3 *)(pB), (const struct BrVec3 *)(pA), tmpC);
         f1044[2] = f1044[2] - DAT_100778f0;
     }
 
     if (DAT_118eeee4 != 0) {
-        if (!(pF00->b68 & 3) && DAT_105ccb88 == 0)
+        if (!(pF00->b68 & 3) && (*(int *)&DAT_105ccb68[8]) == 0)
             f35C = -1;
         DAT_118eeee4 = 0;
     }

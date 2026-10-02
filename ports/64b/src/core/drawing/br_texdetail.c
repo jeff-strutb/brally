@@ -63,7 +63,7 @@ void FUN_1006e130(int param_1,int param_2,int param_3)
       iVar2 = iVar2 + 1;
       *(int *)(param_3 + (param_1 * 4)) = iVar2;
       BrTex3dRecSet278(*(int *)(param_2 + (param_1 * 4)),iVar2);
-      (*DAT_118ed1d8)(*(int *)(param_2 + (param_1 * 4)));
+      (*(*(funcptr *)&g_BrGfxSubmit))(*(int *)(param_2 + (param_1 * 4)));
     }
   }
   return;

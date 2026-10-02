@@ -27,9 +27,9 @@ void *BrVertLerp8(void *pA, void *pB, float t)
   float *a;
   float *b;
 
-  pNode = DAT_102e16b4;
+  pNode = (*(void * *)&g_pBrLerpFree);
   if (pNode != 0)
-    DAT_102e16b4 = *(void **)pNode;
+    (*(void * *)&g_pBrLerpFree) = *(void **)pNode;
   pDst = pNode + 2;
   *(float **)((char *)pNode + 4) = pDst;
 
@@ -142,8 +142,8 @@ void BrPointProjectXY(float *v)
     y = v[1];
     z = v[2];
 
-    v[3] = x * g_BrDrawCombined[0][0] + y * g_BrDrawCombined[1][0]
-         + z * g_BrDrawCombined[2][0] + g_BrDrawCombined[3][0];
-    v[4] = x * g_BrDrawCombined[0][1] + y * g_BrDrawCombined[1][1]
-         + z * g_BrDrawCombined[2][1] + g_BrDrawCombined[3][1];
+    v[3] = x * (*(float (*)[4][4])&g_BrDrawCombined)[0][0] + y * (*(float (*)[4][4])&g_BrDrawCombined)[1][0]
+         + z * (*(float (*)[4][4])&g_BrDrawCombined)[2][0] + (*(float (*)[4][4])&g_BrDrawCombined)[3][0];
+    v[4] = x * (*(float (*)[4][4])&g_BrDrawCombined)[0][1] + y * (*(float (*)[4][4])&g_BrDrawCombined)[1][1]
+         + z * (*(float (*)[4][4])&g_BrDrawCombined)[2][1] + (*(float (*)[4][4])&g_BrDrawCombined)[3][1];
 }

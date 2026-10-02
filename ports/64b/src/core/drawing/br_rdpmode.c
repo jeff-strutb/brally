@@ -138,37 +138,37 @@ void FUN_100119c0(BrHudView * param_1, short *param_2)
 {
   int *p_;
 
-  { p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xe7000000; p_[1] = 0; }
-  { p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xba001402; p_[1] = 0; }
-  { p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xbb000001; p_[1] = 0xffffffff; }
-  { p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xba000c02; p_[1] = DAT_106e72e8; }
-  p_ = DAT_106e7710;
-  DAT_106e7710 = DAT_106e7710 + 2;
+  { p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xe7000000; p_[1] = 0; }
+  { p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xba001402; p_[1] = 0; }
+  { p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xbb000001; p_[1] = 0xffffffff; }
+  { p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xba000c02; p_[1] = (*(int *)&g_BrEnvOthermode); }
+  p_ = (*(int * *)&g_BrGfxPtr);
+  (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2;
   BrRdpSetCombineLERP((BrGfxWords *)p_, 0, 0, 0, 0x3eb, 0x3e9, 0, 0x3eb, 0, 0, 0, 0, 0x3eb, 0x3e9, 0, 0x3eb, 0);
-  { p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = DAT_1184c478 & 0xffffff | 0xdc000000; p_[1] = 1; }
-  { p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xfd900000; p_[1] = (int)&DAT_100ba2d0; }
-  { p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xf5900000; p_[1] = 0x7018060; }
-  { p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xe6000000; p_[1] = 0; }
-  { p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xf3000000; p_[1] = 0x77ff100; }
-  { p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xe7000000; p_[1] = 0; }
-  { p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xf5881000; p_[1] = 0x18060; }
-  { p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xf2000000; p_[1] = 0xfc0fc; }
-  { p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xba000e02; p_[1] = 0; }
-  { p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xba001301; p_[1] = 0; }
-  { p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xb9000201; p_[1] = 4; }
-  { p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xba000602; p_[1] = 0xc0; }
-  if (DAT_106ed6b0 != 0) {
-    { p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xba000402; p_[1] = 0x80; }
-    { p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xb900031d; p_[1] = 0x504b50; }
-    FUN_10011300(param_1, DAT_10396efc & 0xffff, 0xe0, 0xe0, 0xff);
+  { p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = (*(int *)&g_BrEnvTexDefault) & 0xffffff | 0xdc000000; p_[1] = 1; }
+  { p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xfd900000; p_[1] = (int)&DAT_100ba2d0; }
+  { p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xf5900000; p_[1] = 0x7018060; }
+  { p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xe6000000; p_[1] = 0; }
+  { p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xf3000000; p_[1] = 0x77ff100; }
+  { p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xe7000000; p_[1] = 0; }
+  { p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xf5881000; p_[1] = 0x18060; }
+  { p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xf2000000; p_[1] = 0xfc0fc; }
+  { p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xba000e02; p_[1] = 0; }
+  { p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xba001301; p_[1] = 0; }
+  { p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xb9000201; p_[1] = 4; }
+  { p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xba000602; p_[1] = 0xc0; }
+  if ((*(int *)((char *)&g_aBrEntRecs + 0x80)) != 0) {
+    { p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xba000402; p_[1] = 0x80; }
+    { p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xb900031d; p_[1] = 0x504b50; }
+    BrPaceNoteEmit_10011300(param_1, DAT_10396efc & 0xffff, 0xe0, 0xe0, 0xff);
   }
-  { p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xe7000000; p_[1] = 0; }
-  { p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xba001301; p_[1] = 0x80000; }
-  { p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xb9000201; p_[1] = 0; }
-  { p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xba000602; p_[1] = DAT_106e7718; }
-  { p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xba000402; p_[1] = DAT_106e79b0; }
-  { p_ = DAT_106e7710; DAT_106e7710 = DAT_106e7710 + 2; *p_ = 0xb9000002; p_[1] = 1; }
-  FUN_10010fb0(param_2);
+  { p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xe7000000; p_[1] = 0; }
+  { p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xba001301; p_[1] = 0x80000; }
+  { p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xb9000201; p_[1] = 0; }
+  { p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xba000602; p_[1] = (*(int *)&BrG_6C0688); }
+  { p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xba000402; p_[1] = DAT_106e79b0; }
+  { p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xb9000002; p_[1] = 1; }
+  BrPanelDlBuild(param_2);
 }
 
 
@@ -192,8 +192,8 @@ void FUN_100119c0(BrHudView * param_1, short *param_2)
 /* One two-word display-list command at the cursor, cursor advanced. */
 #define BR_EMIT(c, a)                                                          \
   {                                                                            \
-    int *p_ = DAT_106e7710;                                                    \
-    DAT_106e7710 = DAT_106e7710 + 2;                                           \
+    int *p_ = (*(int * *)&g_BrGfxPtr);                                                    \
+    (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2;                                           \
     p_[0] = (c);                                                               \
     p_[1] = (a);                                                               \
   }
@@ -208,12 +208,12 @@ void FUN_10011650(BrHudView * param_1)
   int *p_;
 
   BR_EMIT(0xb900031d, 0x504240)
-  p_ = DAT_106e7710;
-  DAT_106e7710 = DAT_106e7710 + 2;
+  p_ = (*(int * *)&g_BrGfxPtr);
+  (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2;
   BrRdpSetCombineLERP((BrGfxWords *)p_, 0, 0, 0, 0x3eb, 0x3e9, 0, 0x3eb, 0, 0, 0, 0,
                0x3eb, 0x3e9, 0, 0x3eb, 0);
   BR_EMIT(DAT_1184c484 & 0xffffff | 0xdc000000, 1)
-  BrMtxInvert(&DAT_106e78f0, (const BrMat4 *)DAT_106ed520);
+  BrMtxInvert(&g_BrDrawCombined, (const BrMat4 *)g_BrCamera);
   g_BrDrawScale.m[0][0] = 0.0f;
   g_BrDrawScale.m[0][1] = 0.0f;
   g_BrDrawScale.m[0][2] = -1.0f;
@@ -230,33 +230,33 @@ void FUN_10011650(BrHudView * param_1)
   g_BrDrawScale.m[3][1] = 0.0f;
   g_BrDrawScale.m[3][2] = 0.0f;
   g_BrDrawScale.m[3][3] = 1.0f;
-  BrMtxMul(&DAT_106e78f0, &DAT_106e78f0, &DAT_106e7930);
-  memcpy(&DAT_106e7930, &DAT_106e78f0, 0x40);
-  BrMtxMul(&DAT_10396eb8, &DAT_106e78f0, &DAT_106e72a8);
+  BrMtxMul(&g_BrDrawCombined, &g_BrDrawCombined, &g_BrDrawScale);
+  memcpy(&g_BrDrawScale, &g_BrDrawCombined, 0x40);
+  BrMtxMul(&DAT_10396eb8, &g_BrDrawCombined, &g_BrProjMat);
   BR_EMIT(0xb9000201, 4)
   BR_EMIT(0xba000602, 0xc0)
-  if (DAT_106ed6ac == 0) {
-    switch (DAT_100b3014) {
+  if ((*(int *)((char *)&g_aBrEntRecs + 0x7C)) == 0) {
+    switch ((*(int *)&g_Br0B380C)) {
     case 4:
     case 10:
-      FUN_10011300(param_1, DAT_10396ef8 & 0xffff, 0x70, 0x58, 0x38);
-      FUN_10011300(param_1, DAT_10396f00 & 0xffff, 0x70, 0x68, 0x58);
+      BrPaceNoteEmit_10011300(param_1, DAT_10396ef8 & 0xffff, 0x70, 0x58, 0x38);
+      BrPaceNoteEmit_10011300(param_1, DAT_10396f00 & 0xffff, 0x70, 0x68, 0x58);
       break;
     case 1:
     case 7:
-      FUN_10011300(param_1, DAT_10396ef8 & 0xffff, 0x60, 0x54, 0x38);
-      FUN_10011300(param_1, DAT_10396f00 & 0xffff, 0x60, 0x5c, 0x50);
+      BrPaceNoteEmit_10011300(param_1, DAT_10396ef8 & 0xffff, 0x60, 0x54, 0x38);
+      BrPaceNoteEmit_10011300(param_1, DAT_10396f00 & 0xffff, 0x60, 0x5c, 0x50);
       break;
     default:
-      FUN_10011300(param_1, DAT_10396ef8 & 0xffff, 0xa0, 0x88, 0x60);
-      FUN_10011300(param_1, DAT_10396f00 & 0xffff, 0x70, 0x68, 0x58);
+      BrPaceNoteEmit_10011300(param_1, DAT_10396ef8 & 0xffff, 0xa0, 0x88, 0x60);
+      BrPaceNoteEmit_10011300(param_1, DAT_10396f00 & 0xffff, 0x70, 0x68, 0x58);
       break;
     }
   }
   BR_EMIT(0xe7000000, 0)
   BR_EMIT(0xba001301, 0x80000)
   BR_EMIT(0xb9000201, 0)
-  BR_EMIT(0xba000602, DAT_106e7718)
+  BR_EMIT(0xba000602, (*(int *)&BrG_6C0688))
   BR_EMIT(0xba000402, DAT_106e79b0)
   BR_EMIT(0xb9000002, 1)
 }

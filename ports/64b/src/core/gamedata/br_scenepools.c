@@ -103,6 +103,6 @@ void FUN_1002dec3(void)
 next:
     ;
   }
-  DAT_106ed6e0 = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+  (*(int *)((char *)&g_aBrEntRecs + 0xB0)) = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
   return;
 }

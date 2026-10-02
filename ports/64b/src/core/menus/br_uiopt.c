@@ -48,8 +48,8 @@
  * then an intrinsic strcpy (repne scasb + rep movsd/movsb). */
 static __inline void BrOptFlushMessage(void)
 {
-    BrSub1003D210(g_brP680584, g_brPA9D008, 1);
-    strcpy(g_aBrA9DD28, g_aBr39B720);        /* DEVIATION: rep movsb */
+    FUN_100368a0(g_brOwner5BC72C, g_brPA9D008, 1);
+    strcpy(g_szBrName4DB0, g_aBr39B720);        /* DEVIATION: rep movsb */
 }
 
 /* KERNEL32 IAT used verbatim by BrOpt3A00 (0x1003CF50) / BrOpt3810. */
@@ -63,8 +63,8 @@ static __inline void BrOptFlushMessage(void)
 /* @implements 0x100437B0 d3d BrOpt37B0 */
 int BrOpt37B0(void)
 {
-    if (g_brPA9D008->f08 != g_br0AB3E0)
-        BrSub1003DA40(g_brPA9D008, g_br0AB3E0);
+    if (g_brPA9D008->f08 != (*(int32_t *)&g_brRec0AAB80))
+        BrSub1003DA40(g_brPA9D008, (*(int32_t *)&g_brRec0AAB80));
     return 1;
 }
 
@@ -87,20 +87,20 @@ int BrOpt3A00(void)
     typedef long (__stdcall *FnSetDesc)(BrDPlay *, BrDPSessionDesc *, uint32_t);
 
     pDesc = NULL;
-    BrSub1003D0B0(g_brP277B40, &pDesc);
+    FUN_10036740(g_brP277B40, &pDesc);
     if (pDesc == NULL)
         return 1;
 
     if (pDesc->dwCurrentPlayers <= 1) {
         /* orig does Unlock/Free HERE and returns -- not a jump to the
          * shared tail (that tail is only the players>1 arms). */
-        strcpy(g_aBrA9DD28, BrStrGet(BR_OPT_STR_TOOFEW));
-        BrSub1003D210(g_brP680584, g_brPA9D008, 1);
-        strcpy(g_aBrA9DD28, g_aBr39B720);
+        strcpy(g_szBrName4DB0, BrStrGet(BR_OPT_STR_TOOFEW));
+        FUN_100368a0(g_brOwner5BC72C, g_brPA9D008, 1);
+        strcpy(g_szBrName4DB0, g_aBr39B720);
         GlobalUnlock(GlobalHandle(pDesc));
         GlobalFree(GlobalHandle(pDesc));
         return 1;
-    } else if (g_brAA2884 != 0) {
+    } else if (g_host != 0) {
         fAllReady = 1;
         /* orig `cmp eax, &g_aBrAA2538[8]; jl` -- signed pointer compare. */
         for (pSlot = g_aBrAA2538;
@@ -115,14 +115,14 @@ int BrOpt3A00(void)
         }
         if (fAllReady) {
             BrSub1003D9F0(g_brPA9D008);
-            g_brAA288C = 1;
+            DAT_10ac5be4 = 1;
             pDesc->dwFlags |= 0x20;
             ((FnSetDesc)g_brP277B40->pVtbl->pfnSetSessionDesc)(
                 g_brP277B40, pDesc, 0);
         } else {
-            strcpy(g_aBrA9DD28, BrStrGet(BR_OPT_STR_NOTREADY));
-            BrSub1003D210(g_brP680584, g_brPA9D008, 1);
-            strcpy(g_aBrA9DD28, g_aBr39B720);
+            strcpy(g_szBrName4DB0, BrStrGet(BR_OPT_STR_NOTREADY));
+            FUN_100368a0(g_brOwner5BC72C, g_brPA9D008, 1);
+            strcpy(g_szBrName4DB0, g_aBr39B720);
         }
     } else {
         BrSub1003D950(g_brPA9D008, BrSub10058700());
@@ -150,8 +150,8 @@ int BrOpt3FA0(BrGameObj *pGame)
     BrOptObj *p;
 
     ((Slot6)pGame->pSub->pVtbl->pfnSlot6)(pGame->pSub, pGame->pSub->pVtbl, 1);
-    p = DAT_10ac5c60;
-    DAT_10ac5c5c = p;
+    p = g_2908;
+    g_brPAA29B8 = p;
     return 0;
 }
 
@@ -176,13 +176,13 @@ void BrOpt41A0(void)
     typedef long (__stdcall *BrOptSetSessFn)(BrDPlay *, BrDPSessionDesc *, uint32_t);
     typedef struct { void *aSlots[31]; BrOptSetSessFn pfnSetSessionDesc; } BrOptDPlayVtblStd;
 
-    g_brAA287C = 1;
+    DAT_10ac5bd4 = 1;
     BrSub100586A0();
 
-    if (g_brAA2884 != 0) {
+    if (g_host != 0) {
         pDesc = NULL;
         if (g_brP277B40 != NULL)
-            BrSub1003D0B0(g_brP277B40, &pDesc);
+            FUN_10036740(g_brP277B40, &pDesc);
         if (pDesc != NULL) {
             pDesc->dwFlags &= ~0x20u;    /* clear DPSESSION_JOINDISABLED */
             ((const BrOptDPlayVtblStd *)g_brP277B40->pVtbl)
@@ -190,26 +190,26 @@ void BrOpt41A0(void)
         }
     }
 
-    BrSub10043BF0(NULL);
-    BrOptOpen2940(NULL);
-    BrOptOpen2948(NULL);
+    Ctl3D140_fn(NULL);
+    CtlD220_fn(NULL);
+    Ctl3D3C0_fn(NULL);
 
-    if (g_brAA2884 != 0) {
-        BrOptOpen294C(NULL);
-        BrOptOpen2950B(NULL);
+    if (g_host != 0) {
+        CtlD620_fn(NULL);
+        Ctl3D930_fn(NULL);
     } else {
-        BrSub1003CE80();
+        BrNetSessionApply();
         BrOptOpen2950A(NULL);
     }
 
-    if (g_brAA2884 != 0) {
-        if (g_brAA2888 == 0) {
+    if (g_host != 0) {
+        if (g_inited == 0) {
             BrSub1003C150();
-            g_brAA2888 = 1;
+            g_inited = 1;
             return;
         }
     }
     /* Second test of 0x10AA2884: original keeps eax live and re-tests at 0x10044267. */
-    if (g_brAA2884 != 0)
+    if (g_host != 0)
         BrSub1003CDA0();
 }

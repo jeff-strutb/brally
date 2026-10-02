@@ -59,19 +59,19 @@ int BrOpt44C0(GameObj *pGame)
     FlagObj *pFlag;
 
     pGame->pSub->s7();
-    pObj = (Phase *)(g_cur);
+    pObj = (Phase *)((*(Phase * *)&g_brPAA29B8));
     if (pObj != 0)
         pObj->f00(1);
-    pFlag = g_29D8;
+    pFlag = (*(FlagObj * *)&g_brPAA29D8);
     g_294C = 0;
     g_29B8 = 0;
-    g_cur = (Phase *)((BrOptObj *)(g_2948));
+    (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)((*(Phase * *)&g_2948)));
     if (pFlag != 0)
         pFlag->f1C &= ~0x10;
-    if ((g_mode == 0 || g_mode == 1) && g_A9D000 == 0) {
-        FnBF60();
-        g_AA2898 = 1;
-        FnC020();
+    if ((g_mode == 0 || g_mode == 1) && g_guardB == 0) {
+        BrExt_1003BF60();
+        DAT_10ac5bf0 = 1;
+        FUN_100356b0();
     }
     return 0;
 }

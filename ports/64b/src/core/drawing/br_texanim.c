@@ -21,7 +21,7 @@
 /* BrScratchRingAlloc: prototype in br_funcs.h */
 /* BrStubTrue: prototype in br_funcs.h */
 
-#define REC(i)  (DAT_106eecf4 + (i) * 0x24)
+#define REC(i)  (g_brLoadTexFlags + (i) * 0x24)
 
 /* WHAT IT DOES: advance every animated texture one frame. For each live
  * record whose descriptor is a key list, take the frame clock modulo the
@@ -46,14 +46,14 @@ void BrTexAnimStep(void)
   int f;
   unsigned int g;
 
-  e = (DAT_106ed6b0 != 0) && (BrG_0B380C != 2) && (BrG_0B380C != 8);
+  e = ((*(int *)((char *)&g_aBrEntRecs + 0x80)) != 0) && ((*(int *)&g_Br0B380C) != 2) && ((*(int *)&g_Br0B380C) != 8);
   for (f = 0; f < DAT_106eecf0; f = f + 1) {
     if (*(int *)REC(f) == 0) continue;
     if ((unsigned char)((*(unsigned int *)(REC(f) + 0x20) >> 0x14) & 1) != 0) {
       b = *(int *)(((*(int *)(REC((f)) + 8))) + 8 + (*(unsigned short *)(((*(int *)(REC((f)) + 8))) + 2) - 1) * 0xc) - *(int *)(((*(int *)(REC((f)) + 8))) + 8);
       g = DAT_106ec768 - (DAT_106ec768 / b) * b;
       if ((*(unsigned short *)(((*(int *)(REC((f)) + 8))) + 2) == 2) && (*(int *)(((*(int *)(REC((f)) + 8))) + 8) == -1)) continue;
-      if ((BrG_6909B4 != 0) || (DAT_105ccb88 == 2)) continue;
+      if (((*(int *)&g_BrX06909B4) != 0) || ((*(int *)&DAT_105ccb68[8]) == 2)) continue;
       if ((e) && (((*(unsigned int *)(REC(f) + 0x20) >> 0x18) & 0xf) == 0xb)) {
         c = 1;
       }
@@ -66,7 +66,7 @@ void BrTexAnimStep(void)
       d = *(int *)(((*(int *)(REC((f)) + 8))) + 0xc + c * 0xc);
       a = *(int *)(((*(int *)(REC((f)) + 8))) + 0x10 + c * 0xc);
       if (((*(unsigned int *)(REC(f) + 0x20) & 0x3ffff) != 0) && (d != -1)) {
-        (*DAT_118ed1bc)((d >> 0x10) & 0xffff, d & 0xffff);
+        (*(*(int (**)())&g_BrDrawModelDlHook))((d >> 0x10) & 0xffff, d & 0xffff);
       }
 upload:
       if ((*(int *)(REC(f) + 4) != 0) && (a != -1)) {
@@ -80,13 +80,13 @@ upload:
       }
     }
     else {
-      if (DAT_100aa030 != DAT_106ed6b0) {
+      if (DAT_100aa030 != (*(int *)((char *)&g_aBrEntRecs + 0x80))) {
         a = (*(unsigned int *)(REC(f) + 8) & 0xfff) << 5;
         goto upload;
       }
     }
   }
-  DAT_100aa030 = DAT_106ed6b0;
+  DAT_100aa030 = (*(int *)((char *)&g_aBrEntRecs + 0x80));
   return;
 }
 

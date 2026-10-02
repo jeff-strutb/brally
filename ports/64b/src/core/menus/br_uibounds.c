@@ -83,7 +83,7 @@
  * `!= 0` keeps EAX alive so VC5 /O2 emits neg/sbb/neg rather than a tail jmp. */
 int BrExt_1007AC00(void)
 {
-    return BrSub1007A940() != 0;
+    return BrVidModeListFill() != 0;
 }
 
 /* -- Ghidra-matched functions --------------------------- */

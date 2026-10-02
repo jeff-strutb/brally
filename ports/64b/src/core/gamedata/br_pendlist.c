@@ -59,7 +59,7 @@ typedef char br06_assert_namelist[
 /* @implements 0x10037030 d3d BrPendListAdd */
 void BrPendListAdd(BrPendList *pList, void *pItem, uint32_t *pcDropped)
 {
-    BrPendCtx *p = g_brPendCtx;
+    BrPendCtx *p = (*(BrPendCtx * *)&g_brP6EECCC);
     int32_t n = p->count;
 
     if (n < BR_PENDLIST_MAX) {
@@ -69,7 +69,7 @@ void BrPendListAdd(BrPendList *pList, void *pItem, uint32_t *pcDropped)
          * instruction -- the original loads the ctx into ecx (6-byte form)
          * and the count into eax; every spelling probed (direct derefs, CSE
          * count, cached p) loads ctx into eax.  30 masked diff bytes. */
-        g_brPendCtx->count++;
+        (*(BrPendCtx * *)&g_brP6EECCC)->count++;
     } else {
         g_brPendDropped++;
         p->count++;

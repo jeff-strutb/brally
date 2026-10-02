@@ -41,7 +41,7 @@
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 uint32_t BrHookTakeA(BrHooks *pH, const void *pSrc)
 {
-    FUN_10030f40();
+    BrArm_100378A0();
     return DAT_106e79c8;
 }
 
@@ -53,6 +53,6 @@ uint32_t BrHookTakeA(BrHooks *pH, const void *pSrc)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 uint32_t BrHookTakeB(BrHooks *pH, const void *pSrc)
 {
-    FUN_10030f40();
+    BrArm_100378A0();
     return DAT_106ea390;
 }

@@ -160,22 +160,22 @@ void BrPhase31SetCtx(BrPhaseCtx *pBase, BrPhaseCtx31 *pExt)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 
-#  define BR31_AA28F0   g_brAA28F0
+#  define BR31_AA28F0   g_br6EE1D8_fLowAlways
 #  define BR31_AA28F4   g_brAA28F4
 #  define BR31_AA28F8   g_brAA28F8
-#  define BR31_AA28FC   g_brAA28FC
-#  define BR31_AA2854   g_brAA2854
-#  define BR31_AA28A4   g_brAA28A4
-#  define BR31_A9D618   g_aBrA9D618
+#  define BR31_AA28FC   (*(int32_t *)&DAT_10ac5c54)
+#  define BR31_AA2854   (*(int32_t *)&g_track)
+#  define BR31_AA28A4   (*(int32_t *)&g_brIdx5BFC)
+#  define BR31_A9D618   DAT_10ac46a0
 #  define BR31_AA2A40   g_brAA2A40
-#  define BR31_0AC6A4   g_br0AC6A4
-#  define BR31_AA33E4   g_brAA33E4
-#  define BR31_AA2AD4   g_brAA2AD4
-#  define BR31_AA26F5   g_brAA26F5
+#  define BR31_0AC6A4   (*(uint16_t *)&g_ABE44)
+#  define BR31_AA33E4   (*(int32_t *)&DAT_10ac6744)
+#  define BR31_AA2AD4   (g_BrDikEdge[21])
+#  define BR31_AA26F5   (g_aBrAA26F4[1])
 #  define BR31_AA29C8   g_brAA29C8
-#  define BR31_AA29F4   g_brAA29F4
-#  define BR31_AA2970   g_brAA2970
-#  define BR31_AA2A48   g_brAA2A48
+#  define BR31_AA29F4   (*(BrPhase * *)&g_brUipAA29F4)
+#  define BR31_AA2970   (*(BrPhase * *)&DAT_10ac5cc8)
+#  define BR31_AA2A48   (*(int32_t *)&g_brKeyRingPos)
 #  define BR31_A9E150   g_aBrA9E150
 
 /* Slot +0x1C is 1-arg thiscall. Slot +0x00 is thiscall with one stack arg:
@@ -351,7 +351,7 @@ static int32_t Br31Thunk_10044CB0(void *pEntity);
 #define BR31_HOOK_F4(fn, leave)                                   \
     int fn(void *pArg)                                            \
     {                                                             \
-        (void)BrPhaseActivate_10045BC0();          /* ignores pArg */ \
+        (void)CtlF060_fn();          /* ignores pArg */ \
         (void)pArg;                                               \
         g_pBase->pAA29F4->pfnHook = (leave);                        \
         return 1;                                                 \
@@ -399,13 +399,13 @@ BR31_HOOK_F4(BrPhaseHook_100458E0, BrPhaseLeaveNamed_10046BF0)
 
 int BrPhaseHook_10045AA0(void *pArg)
 {
-    DAT_100a9360 = 0;
-    BrSub10037C90();
-    DAT_10af2094 = 0;
-    BrSub1003F130(pArg);
-    *(void **)(DAT_10ac5d08 + 8) = (void *)BrOpt6D70;
-    DAT_100a9360 = 0;
-    BrSub10037B20();
+    (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = 0;
+    BrSub1003E680();
+    (*(void * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */ = 0;
+    Ctl3F130_fn(pArg);
+    *(void **)((*(char * *)&DAT_10ac5d08) + 8) = (void *)BrOpt6D70;
+    (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = 0;
+    BrSub1003E510();
     return 1;
 }
 
@@ -483,11 +483,11 @@ int BrPhaseHook_10046380(void *pArg)
 {
     /* Orig is one-arg cdecl; it pushes that arg at Activate_45110, which
      * ignores it. Same shape as BrPhaseHook_10045050, n0AA010 = 2. */
-    g_br0AC304 = 0;
-    (void)BrPhaseActivate_10045110((BrPhaseCtx *)pArg);
-    g_br0AC304 = 1;
-    g_brAA29B4->pfnHook = BrPhaseLeave_10046D20;
-    g_br0AA010 = 2;
+    (*(int32_t *)&DAT_100abaa4) = 0;
+    (void)CtlE660_fn((BrPhaseCtx *)pArg);
+    (*(int32_t *)&DAT_100abaa4) = 1;
+    (*(BrPhase * *)&DAT_10ac5d0c)->pfnHook = BrOpt6D20;
+    (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = 2;
     return 1;
 }
 
@@ -559,7 +559,7 @@ BR31_LEAVE(BrPhaseLeave_10046C90, g_pBase->pAA2908,
            g_pExt->pAA291C = NULL;)
 BR31_LEAVE(BrExt_10046CD0,        g_pExt->pAA2930,
            g_pBase->pAA2914 = NULL; g_pBase->pAA29B4 = NULL;)
-BR31_LEAVE(BrPhaseLeave_10046D20, g_pBase->pAA295C,
+BR31_LEAVE(BrOpt6D20, g_pBase->pAA295C,
            g_pBase->pAA2914 = NULL; g_pBase->pAA29B4 = NULL;)
 BR31_LEAVE(BrPhaseLeave_10046D70, g_pExt->pAA291C,
            g_pExt->pAA292C = NULL; g_pBase->pAA29B0 = NULL;
@@ -658,10 +658,10 @@ BR31_LEAVE_NAMED(BrPhaseLeaveNamed_10046EB0, g_pExt->pAA2934)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x10AA2974 -- g_pExt->pAA2974       */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x10AA292C -- g_pExt->pAA292C       */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x10AA293C -- g_pExt->pAA293C       */
-#define BR31_GOTO_CUR    g_brPhaseAA2904
-#define BR31_GOTO_2974   g_brPhaseAA2974
-#define BR31_GOTO_292C   g_brPhaseAA292C
-#define BR31_GOTO_293C   g_brPhaseAA293C
+#define BR31_GOTO_CUR    (*(BrPhase_ * *)&g_brPAA29B8)
+#define BR31_GOTO_2974   (*(BrPhase_ * *)&g_brPhaseAA2974)
+#define BR31_GOTO_292C   (*(BrPhase_ * *)&g_brPhaseAA292C)
+#define BR31_GOTO_293C   (*(BrPhase_ * *)&g_5C94)
 
 /* WHAT IT DOES: switches straight to one particular screen without closing
  * anything down first -- a jump, not a leave. */
@@ -704,18 +704,18 @@ int32_t BrPhaseLeave_10047120(void *pEntity)
     BrGameObj *pObj = (BrGameObj *)pEntity;
     BrPhase *p;
 
-    BrExt_10045C90(pEntity);
-    if (g_brAA26F0 > 0 && g_brAA26F4 == 0 && g_brAA26F5 == 0) {
+    Ctl3F130_fn(pEntity);
+    if ((DAT_10ac5a48[0]) > 0 && (g_aBrAA26F4[0]) == 0 && (g_aBrAA26F4[1]) == 0) {
         memset(g_aBrAA26F6, 0, 24);
         memset(g_aBrAA270E, 0, 48);
         memset(g_aBrAA2740, 0, 96);
     }
-    g_brAA28C4 = 0;
+    DAT_10ac5c1c = 0;
     ((const Br31SubVtblMatch *)pObj->pSub->pVtbl)->pfnSlot7(pObj->pSub);
-    p = g_brAA296C;
+    p = (*(BrPhase * *)&DAT_10ac5cc4);
     if (p != 0)
         (void)((const Br31PhaseVtblMatch *)p->pVtbl)->f00(p, p->pVtbl, 1);
-    g_brAA296C = 0;
+    (*(BrPhase * *)&DAT_10ac5cc4) = 0;
     return 0;
 }
 
@@ -728,7 +728,7 @@ int32_t BrPhaseLeave_100471B0(void *pEntity)
     BrGameObj *pObj = (BrGameObj *)pEntity;
     BrPhase *p;
 
-    BrExt_10045C90(pEntity);
+    Ctl3F130_fn(pEntity);
     ((const Br31SubVtblMatch *)pObj->pSub->pVtbl)->pfnSlot7(pObj->pSub);
     p = BR31_AA2970;
     if (p != NULL)
@@ -748,30 +748,30 @@ int32_t BrPhaseLeave_10047290(void *pEntity)
     BrPhase *p;
 
     BrExt_1005FBC0(1);
-    p = g_brAA2934;
+    p = (*(BrPhase * *)&g_5C8C);
     if (p != 0) {
         ((const Br31PhaseVtblF1C *)p->pVtbl)->f1C(p);
-        g_brAA2934 = 0;
+        (*(BrPhase * *)&g_5C8C) = 0;
     }
-    p = g_brAA2938;
+    p = (*(BrPhase * *)&g_5C90);
     if (p != 0) {
         ((const Br31PhaseVtblF1C *)p->pVtbl)->f1C(p);
-        g_brAA2938 = 0;
+        (*(BrPhase * *)&g_5C90) = 0;
     }
-    if (g_brAA28B0 != 0) {
-        BrExt_10043260(pEntity);
-        g_brAA28B0 = 0;
-    } else if (g_brAA28B4 != 0) {
-        BrExt_10043330(pEntity);
-        g_brAA28B4 = 0;
+    if ((*(int32_t *)&DAT_10ac5c08) != 0) {
+        CtlC7B0_fn(pEntity);
+        (*(int32_t *)&DAT_10ac5c08) = 0;
+    } else if ((*(int32_t *)&DAT_10ac5c0c) != 0) {
+        CtlC880_fn(pEntity);
+        (*(int32_t *)&DAT_10ac5c0c) = 0;
     } else {
-        BrExt_10045C90(pEntity);
+        Ctl3F130_fn(pEntity);
     }
     ((const Br31SubVtblMatch *)pObj->pSub->pVtbl)->pfnSlot7(pObj->pSub);
-    p = g_brAA293C;
+    p = (*(BrPhase * *)&g_5C94);
     if (p != 0)
         (void)((const Br31PhaseVtblMatch *)p->pVtbl)->f00(p, p->pVtbl, 1);
-    g_brAA293C = 0;
+    (*(BrPhase * *)&g_5C94) = 0;
     return 0;
 }
 
@@ -787,7 +787,7 @@ int32_t BrPhaseLeave_10047290(void *pEntity)
 /* @implements 0x100471F0 d3d BrPhaseGuard_100471F0 */
 int BrPhaseGuard_100471F0(void *pEntity)
 {
-    if (BrExt_1003E0E0() != 0) {
+    if (BrInputOrPlaybackActive() != 0) {
         BrPhaseLeave_10047120(pEntity);
         return -1;
     }
@@ -804,8 +804,8 @@ int BrPhaseEdit_10047210(void *pArg)
 {
     if (BR31_AA2AD4 != 0) {
         (void)BrExt_10041A00(pArg);
-    } else if (BrExt_1003E0E0() != 0) {
-        (void)BrExt_10041AC0(pArg);
+    } else if (BrInputOrPlaybackActive() != 0) {
+        (void)BrMenuCopyTrackName(pArg);
     } else {
         return 1;                   /* nAA33E4 is NOT cleared on this path */
     }
@@ -821,7 +821,7 @@ int BrPhaseEdit_10047250(void *pArg)
 {
     if (BR31_AA2AD4 != 0) {
         (void)BrExt_10042410(pArg);
-    } else if (BrExt_1003E0E0() != 0) {
+    } else if (BrInputOrPlaybackActive() != 0) {
         (void)BrExt_100424D0(pArg);
     } else {
         return 1;
@@ -912,8 +912,8 @@ int BrSub10047360(BrGoM47360 *p)
         return 0;
     if (p->f3850 & 0x01000000)
         return 0;
-    if (g_brAA284C) {
-        BrObjAA2E80 *q = g_brAA2E80;
+    if (g_nAA284C) {
+        BrObjAA2E80 *q = (*(BrObjAA2E80 * *)&g_pBrAA2E80);
         if (q->f2C || q->f30 || q->f34 || q->f38) {
             p->state = 4;
             return 1;
@@ -988,7 +988,7 @@ void BrPhaseKeyPush_10047610(void)
     if (BR31_AA2A48 >= 32)                  /* wraps AFTER the store */
         BR31_AA2A48 = 0;
 
-    BrExt_10047660();
+    BrCheatCodeScan();
     BR31_AA33E4 = 0;
 }
 
@@ -1001,7 +1001,7 @@ void BrPhaseKeyPush_10047610(void)
 void BrPhaseMode_100474D0(void)
 {
     BR31_AA28F0 = 1;
-    BrExt_10072AF0(2, 0x00200020u);
+    BrSub10072AF0(2, 0x00200020u);
     BR31_AA2854 = 2;
 }
 
@@ -1011,7 +1011,7 @@ void BrPhaseMode_100474D0(void)
 void BrPhaseMode_10047500(void)
 {
     BR31_AA28F8 = 1;
-    BrExt_10072AF0(2, 0x00200020u);
+    BrSub10072AF0(2, 0x00200020u);
     BR31_AA2854 = 2;
 }
 
@@ -1021,7 +1021,7 @@ void BrPhaseMode_10047500(void)
 void BrPhaseMode_10047530(void)
 {
     BR31_AA28FC = 1;
-    BrExt_10072AF0(2, 0x00200020u);
+    BrSub10072AF0(2, 0x00200020u);
     BR31_AA2854 = 2;
 }
 
@@ -1032,7 +1032,7 @@ void BrPhaseMode_10047530(void)
 void BrPhaseMode_10047560(void)
 {
     BR31_0AC6A4 = 0x7FFF;
-    BrExt_10072AF0(3, 0x00200020u);
+    BrSub10072AF0(3, 0x00200020u);
     BR31_AA2854 = 3;
 }
 
@@ -1042,7 +1042,7 @@ void BrPhaseMode_10047560(void)
 void BrPhaseMode_10047590(void)
 {
     BR31_AA2A40 = 1;
-    BrExt_10072AF0(2, 0x00200020u);
+    BrSub10072AF0(2, 0x00200020u);
     BR31_AA2854 = 2;
 }
 
@@ -1052,7 +1052,7 @@ void BrPhaseMode_10047590(void)
 void BrPhaseMode_100475C0(void)
 {
     BR31_AA28F4 = 1;
-    BrExt_10072AF0(2, 0x00200020u);
+    BrSub10072AF0(2, 0x00200020u);
     BR31_AA2854 = 2;
 }
 
@@ -1073,8 +1073,8 @@ void BrPhaseMode_100475C0(void)
 int BrPhaseActivate_1003ED70(struct CtlF060 *param_1)
 
 {
-  BrPhaseActivate_10045BC0(param_1);
-  *(char **)(g_AA29F4 + 8) = (char *)FUN_10040040;
+  CtlF060_fn(param_1);
+  *(char **)(g_brUipAA29F4 + 8) = (char *)FUN_10040040;
   return 1;
 }
 

@@ -75,16 +75,16 @@ int Phase32T::Tick()
         DAT_10ac5da4 = DAT_10ac5da4 + 1;
     }
     if (go)
-        DAT_10ac5d8c = BrCdTrackGet() - 2;
+        g_5D8C = BrCdTrackGet() - 2;
 
-    PhaseHolder *pSaved = DAT_10ac5c5c;
-    PhaseHolder *pCur   = DAT_10ac5c60;
-    DAT_10ac5c5c = (PhaseHolder *)((BrOptObj *)(pCur));
+    PhaseHolder *pSaved = (*(PhaseHolder * *)&g_brPAA29B8);
+    PhaseHolder *pCur   = (*(PhaseHolder * *)&g_2908);
+    (*(PhaseHolder * *)&g_brPAA29B8) = (PhaseHolder *)((BrOptObj *)(pCur));
     PhaseInner *p = pCur->f14->p334;
-    p->f3C = (float)DAT_10ac61e0->i0;
-    p->f40 = (float)DAT_10ac61e0->i4;
+    p->f3C = (float)(*(BrTickPair * *)&g_pBrAA2E80)->i0;
+    p->f40 = (float)(*(BrTickPair * *)&g_pBrAA2E80)->i4;
     p->s3();
-    DAT_10ac5c5c = (PhaseHolder *)((BrOptObj *)(pSaved));
+    (*(PhaseHolder * *)&g_brPAA29B8) = (PhaseHolder *)((BrOptObj *)(pSaved));
     if (DAT_10ac5bcc == 0)
         v5();
     return 1;

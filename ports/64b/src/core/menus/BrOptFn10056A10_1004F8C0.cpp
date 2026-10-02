@@ -225,7 +225,7 @@ int BrOptFn10056A10(GameUi *parent)
         FUN_100378c0(4);
     p->s38(parent, cont->f338, cont->f33C, 0x100009, 2, 5, 1, -1);
     p->w1E20C = 0x34;
-    p->s34((char *)(BrStrGet(0x5e)), 1, 4, (char *)(&DAT_100aabe8));
+    p->s34((char *)(BrStrGet(0x5e)), 1, 4, (char *)(&(*(char *)&g_hot0)));
     cont->w14 += 1;
     p = new BrCtl;
     cont->a18[cont->w14] = p;
@@ -244,8 +244,8 @@ int BrOptFn10056A10(GameUi *parent)
     p->pfn04 = (CtlFn)BrCarNameCommit;
     p->pfn10 = (CtlFn)BrUiFn1003F020;
     p->w1E20C = 3;
-    p->s34(&DAT_10396f08, 1, 1, (char *)(&DAT_100aabe8));
-    strcpy(p->m2B5C.szName, &DAT_10ac3e80);
+    p->s34(&(g_aBr39B720[0]), 1, 1, (char *)(&(*(char *)&g_hot0)));
+    strcpy(p->m2B5C.szName, &(g_aBrA9CDF0[0]));
     p->m2B5C.s1();
     p->f050 = 0x9b;
     p->m2B5C.a424[0] = 0x9b;
@@ -267,8 +267,8 @@ int BrOptFn10056A10(GameUi *parent)
     p->pfn0C = (CtlFn)BrSub10047360;
     p->pfn08 = (CtlFn)BrOpt3F50;
     p->w1E20C = 2;
-    p->s34((char *)(BrStrGet(0x1e)), 1, 0, (char *)(&DAT_100aabe8));
-    DAT_10ac5d40 = p;
+    p->s34((char *)(BrStrGet(0x1e)), 1, 0, (char *)(&(*(char *)&g_hot0)));
+    (*(BrCtl * *)&DAT_10ac5d40) = p;
     cont->w14 += 1;
     cont->w344 += 1;
     p = new BrCtl;
@@ -278,9 +278,9 @@ int BrOptFn10056A10(GameUi *parent)
         FUN_100378c0(4);
     p->s38(parent, cont->f338, cont->f33C - DAT_1007765c, 0x102001, 2, 5, 1, -1);
     p->pfn0C = (CtlFn)BrSub10047360;
-    p->pfn08 = (CtlFn)BrPhaseLeave_10044B40;
+    p->pfn08 = (CtlFn)BrOpt4B40;
     p->w1E20C = 3;
-    p->s34((char *)(BrStrGet(0xc)), 1, 1, (char *)(&DAT_100aabe8));
+    p->s34((char *)(BrStrGet(0xc)), 1, 1, (char *)(&(*(char *)&g_hot0)));
     cont->w14 += 1;
     cont->w344 += 1;
     p = new BrCtl;

@@ -49,10 +49,10 @@ typedef char chk_sub[(unsigned)&((GameObj *)0)->pSub == 0x2AE8 ? 1 : -1];
 
 int BrOpt3710(GameObj *pGame)
 {
-    Fn7920();
-    g_nav.m(&g_navArg);
+    BrOptSave();
+    (*(Nav *)&g_BrCtrlCfg).m(&g_navArg);
     pGame->pSub->s6(0);
-    Fn9A40((struct BrDPlayCtx *)(g_4098));
-    Fn25B0(0);
+    BrDPlayShutdown((struct BrDPlayCtx *)(g_brPA9D008));
+    BrExt_10038F30(0);
     return 1;
 }

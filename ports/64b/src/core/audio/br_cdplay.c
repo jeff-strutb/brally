@@ -34,11 +34,11 @@
 /* @implements 0x100027C0 d3d BrCdTrackPlay */
 void BrCdTrackPlay(int track)
 {
-    if (g_brCdEnabled == 1) {
-        BrSub10002870(track);
+    if (DAT_1007b074 == 1) {
+        BrCdTrackRequest(track);
         return;
     }
-    BrSub100027F0(track);
+    BrCdPlayClamped(track);
 }
 
 /* ==========================================================================
@@ -78,8 +78,8 @@ void BrCdTrackPlay(int track)
 /* @implements 0x100027F0 d3d BrCdPlayClamped */
 int BrCdPlayClamped(int track)
 {
-    if (g_brCdEnabled) {
-        if (g_brCdPlaying) {
+    if (DAT_1007b074) {
+        if (g_220CD0) {
             if (track < g_brCdTrackFirst) {
                 track = g_brCdTrackFirst;
             }
@@ -87,8 +87,8 @@ int BrCdPlayClamped(int track)
                 track = g_brCdTrackLast;
             }
             g_brCdTrackCur = track;
-            if (g_brCdMediaOk) {
-                g_pfn575480(g_br0940A8, 0);
+            if (g_220C3C) {
+                g_pfn575480(g_0940A8, 0);
                 g_brEarEvent.flags  = 0x100;
                 g_brEarEvent.track  = track;
                 g_brEarEvent.word42 = 0;

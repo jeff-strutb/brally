@@ -14,7 +14,7 @@
  * address as an IMMEDIATE, so the matching build needs a function symbol,
  * not a pointer variable.  The port keeps the variable. */
 /* BrRaceStep_10019A70: prototype in br_funcs.h */
-#define BR_PAD_RACE_STEP ((const void *)BrRaceStep_10019A70)
+#define BR_PAD_RACE_STEP ((const void *)BrRaceStep)
 
 /* 0x1002F380  __thiscall (one arg in ecx -- BR_THISCALL1 is exact) */
 /* WHAT IT DOES: turns one frame of raw controller readings into what the game
@@ -67,7 +67,7 @@ void BR_THISCALL1 BrPadTranslate(BrPad *pPad)
     if (w & 0x0004u) pPad->buttons |= BR_PAD_CDOWN;
     if (w & 0x0002u) pPad->buttons |= BR_PAD_CLEFT;
 
-    if (BrHookIsCurrent(BR_PAD_RACE_STEP)) {
+    if (BrGameStepIs(BR_PAD_RACE_STEP)) {
         if (pPad->buttons & BR_PAD_L) pPad->buttons |= BR_PAD_L_ALT;
         if (pPad->buttons & BR_PAD_R) pPad->buttons |= BR_PAD_R_ALT;
 
@@ -120,7 +120,7 @@ void BR_THISCALL1 BrPadTranslate(BrPad *pPad)
         int      i;
         for (i = 2; i > 0; --i, ++p) {
             if (*(p - 2) != 0) {
-                if (*p < *(p + 2) && g_br5CCB5C == 0)
+                if (*p < *(p + 2) && g_BrX06909B4 == 0)
                     *p += 2;
             }
         }
@@ -192,8 +192,8 @@ void BrPadTranslateAll(void)
   int i;
   BrPadFrameBegin();
   for (i = 0; i < 1; i++) {
-    BrPadTranslate((BrPad *)((char *)&DAT_106ed708 + i*0x15c));
-    BrBitEdgeSplit((BrBitPair *)((char *)&DAT_106ed708 + i*0x15c));
+    BrPadTranslate((BrPad *)((char *)&(*(char *)&g_aBrEnts) + i*0x15c));
+    BrBitEdgeSplit((BrBitPair *)((char *)&(*(char *)&g_aBrEnts) + i*0x15c));
   }
 }
 
@@ -206,7 +206,7 @@ void BrPadFrameInit(void)
 {
   if (DAT_106ec778 == 0) {
     DAT_106ec778 = 1;
-    _DAT_100b5598 = 0;
+    (*(unsigned short *)&DAT_100b51e4[948]) = 0;
     BrStubTrue();
   }
   return;
@@ -221,8 +221,8 @@ void BrPadFrameBegin(void)
 {
   BrPadFrameInit();
   BrStubTrue();
-  FUN_10059e70(&DAT_106ed630);
-  _DAT_100b5598 = 1;
+  BrPadPackButtons(&(*(int *)&g_aBrEntRecs));
+  (*(unsigned short *)&DAT_100b51e4[948]) = 1;
   DAT_106ec778 = 0;
   return;
 }

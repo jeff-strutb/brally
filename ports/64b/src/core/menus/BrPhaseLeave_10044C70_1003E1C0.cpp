@@ -57,11 +57,11 @@ int BrPhaseLeave_10044C70(Ctl3E1C0 *pCtl)
 {
     pCtl->p2AE8->s7();
 
-    if (g_brPhase5C5C != 0)
-        delete g_brPhase5C5C;
+    if ((*(Phase3E1C0 * *)&g_brPAA29B8) != 0)
+        delete (*(Phase3E1C0 * *)&g_brPAA29B8);
 
-    g_brPending5CB4 = 0;
-    g_brPhase5C5C = (Phase3E1C0 *)((BrOptObj *)((Phase3E1C0 *)((BrOptObj *)(g_brNext5C60))));
+    g_5CB4 = 0;
+    (*(Phase3E1C0 * *)&g_brPAA29B8) = (Phase3E1C0 *)((BrOptObj *)((Phase3E1C0 *)((BrOptObj *)((*(Phase3E1C0 * *)&g_2908)))));
 
     return 0;
 }

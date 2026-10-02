@@ -59,67 +59,67 @@ extern "C" int BrCtrlBindPoll_10039990(void)
     int  r;
     int  i;
 
-    if (DAT_10ac5b9c != 0) {
-        r = BrDikScan_10059040(buf);
+    if ((*(int *)&BrGlNavOff5B9C) != 0) {
+        r = BrFn1005FFD0(buf);
         DAT_100abe40 = r;
         if (r == -1 && DAT_10ac5d90 != 0) {
             DAT_10ac6744 = 0;
-            DAT_10ac5c30 = 0;
-            DAT_10ac5b9c = 0;
+            g_5C30 = 0;
+            (*(int *)&BrGlNavOff5B9C) = 0;
             DAT_10ac5d90 = 0;
             return 1;
         }
-        switch (DAT_10ac5d64) {
+        switch (g_brKind5D64) {
         case 0:
             if (r >= 0) {
                 DAT_10ac5d90 = 1;
-                v = g_Cfg_10B71290.Query(0, DAT_100aaad4[DAT_10ac5b98 * 2]);
-                g_Cfg_10B71290.Assign(0, DAT_100aaad4[DAT_10ac5b98 * 2], v, DAT_100abe40);
+                v = (*(Cfg39990 *)&g_BrCtrlCfg).Query(0, (*(int (*)[])&g_brBindAAAD4)[g_brSel5B98 * 2]);
+                (*(Cfg39990 *)&g_BrCtrlCfg).Assign(0, (*(int (*)[])&g_brBindAAAD4)[g_brSel5B98 * 2], v, DAT_100abe40);
             }
-            DAT_10ac5ba8 = BrCtrlConflicts_10039870(0);
+            DAT_10ac5ba8 = BrCfgFindConflicts(0);
             break;
         case 1:
             if (r == -1)
-                r = BrInputPollButton_100704E0(&v);
+                r = BrJoyScanAny(&v);
             else
                 v = 0;
             if (r >= 0) {
                 DAT_10ac5d90 = 1;
                 DAT_100abe40 = r;
-                g_Cfg_10B71290.Assign(1, DAT_100aaad4[DAT_10ac5b98 * 2], v, r);
+                (*(Cfg39990 *)&g_BrCtrlCfg).Assign(1, (*(int (*)[])&g_brBindAAAD4)[g_brSel5B98 * 2], v, r);
             }
-            DAT_10ac5ba8 = BrCtrlConflicts_10039870(1);
+            DAT_10ac5ba8 = BrCfgFindConflicts(1);
             break;
         case 2:
             if (r == -1)
-                r = BrInputPollButton_100704E0(&v);
+                r = BrJoyScanAny(&v);
             else
                 v = 0;
             if (r >= 0) {
                 DAT_10ac5d90 = 1;
                 DAT_100abe40 = r;
-                g_Cfg_10B71290.Assign(2, DAT_100aaad4[DAT_10ac5b98 * 2], v, r);
+                (*(Cfg39990 *)&g_BrCtrlCfg).Assign(2, (*(int (*)[])&g_brBindAAAD4)[g_brSel5B98 * 2], v, r);
             }
-            DAT_10ac5ba8 = BrCtrlConflicts_10039870(2);
+            DAT_10ac5ba8 = BrCfgFindConflicts(2);
             break;
         case 3:
             if (r == -1) {
-                r = BrInputPollPressed_100705F0();
+                r = BrInputPollPressed();
                 v = 0x300;
             } else {
                 v = 0;
             }
             if (r >= 0) {
                 DAT_100abe40 = r;
-                g_Cfg_10B71290.Assign(3, DAT_100aaad4[DAT_10ac5b98 * 2], v, r);
+                (*(Cfg39990 *)&g_BrCtrlCfg).Assign(3, (*(int (*)[])&g_brBindAAAD4)[g_brSel5B98 * 2], v, r);
                 DAT_10ac5d94 = 1;
             }
-            DAT_10ac5ba8 = BrCtrlConflicts_10039870(3);
+            DAT_10ac5ba8 = BrCfgFindConflicts(3);
             if (DAT_10ac5d94 != 0) {
-                BrInputPollPressed_100705F0();
+                BrInputPollPressed();
                 {
                     int *p;
-                    for (p = &DAT_10ac6720; (int)p < (int)(&DAT_10ac6720 + 4); p++) {
+                    for (p = &(*(int *)&BrGlNavEdge6720); (int)p < (int)(&(*(int *)&BrGlNavEdge6720) + 4); p++) {
                         if (*p != 0)
                             return 1;
                     }

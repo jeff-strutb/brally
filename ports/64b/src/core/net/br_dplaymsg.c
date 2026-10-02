@@ -75,7 +75,7 @@ int FUN_100368a0(HWND param_1, int *param_2, int param_3)
 
   pMem = 0;
   local_4 = 0;
-  if (param_2 == 0 || *param_2 == 0 || g_brAA288C != 0) {
+  if (param_2 == 0 || *param_2 == 0 || DAT_10ac5be4 != 0) {
     return 0;
   }
   hMem = GlobalAlloc(0x42, 0xc9);
@@ -84,7 +84,7 @@ int FUN_100368a0(HWND param_1, int *param_2, int param_3)
     result = 0x8007000e;
   }
   else {
-    strcpy((char *)lpString, DAT_10ac4db0);
+    strcpy((char *)lpString, g_szBrName4DB0);
     result = FUN_10036a30(*param_2, param_2[2], lpString, &local_4, param_3);
     if (result >= 0) {
       PostMessageA(param_1, 0x501, 0, (LPARAM)local_4);
@@ -427,8 +427,8 @@ unknown:
 void FUN_100367c0(char *param_1)
 
 {
-  if (strlen((char *)&DAT_10ac40a8) > 1) {
-    strcpy(param_1, (char *)&DAT_10ac40a8);
+  if (strlen((char *)&(DAT_10ac40a8[0])) > 1) {
+    strcpy(param_1, (char *)&(DAT_10ac40a8[0]));
   }
   *(int *)(param_1 + 0xc8) = 0;
   return;

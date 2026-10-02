@@ -61,8 +61,8 @@ void BrAppMsgDispatch(void *pv1, const BrAppMsg *pMsg, void *pv3, void *pv4,
     case 3u:
         return;
     case 5u:
-        if (DAT_100abaa0 == 0)
-            BrSub10005FE0((uint32_t)pMsg->f08);
+        if ((*(int32_t *)&g_AC300) == 0)
+            BrNetDropMatching((uint32_t)pMsg->f08);
         return;
     case 0x21:
         return;
@@ -75,7 +75,7 @@ void BrAppMsgDispatch(void *pv1, const BrAppMsg *pMsg, void *pv3, void *pv4,
     case 0x103:
         return;
     case 0x107:
-        BrSub10003580(pv1, pMsg->f0C, pMsg->f10, pMsg->f08);
+        FUN_100038f0(pv1, pMsg->f0C, pMsg->f10, pMsg->f08);
         return;
     }
 }

@@ -58,7 +58,7 @@ int BrPeerFind(uint32_t id)
         return 0;
 
     for (i = 1; i < BR_PEER_COUNT; ++i) {
-        const BrPeer *p = &g_aBrPeers[i];
+        const BrPeer *p = &(*(BrPeer (*)[16])&g_aBrPeer71)[i];
         uint32_t idv, st;
 
         WaitForSingleObject((void *)(uintptr_t)p->hMutex, 0xFFFFFFFFu);
@@ -71,7 +71,7 @@ int BrPeerFind(uint32_t id)
     }
 
     for (i = 1; i < BR_PEER_COUNT; ++i) {
-        const BrPeer *p = &g_aBrPeers[i];
+        const BrPeer *p = &(*(BrPeer (*)[16])&g_aBrPeer71)[i];
         uint32_t st;
 
         WaitForSingleObject((void *)(uintptr_t)p->hMutex, 0xFFFFFFFFu);

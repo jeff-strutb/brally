@@ -140,15 +140,15 @@ void BrUiFn1003DFC0(BrStartupState *pState, void *pB4DF30)
 {
     (void)pState;
     (void)pB4DF30;
-    DAT_100b3014 = 0;
-    DAT_10226e80 = 0;
-    DAT_10226e7c = 0;
-    DAT_1007b324 = 1;
-    DAT_1007b32c = 2;
-    DAT_1007b328 = 1;
-    DAT_10b71530 = 0;
-    DAT_10b71534 = DAT_10b71290;
-    DAT_1007b320 = 1;
+    g_Br0B380C = 0;
+    (*(int32_t *)&g_226e80) = 0;
+    (*(int32_t *)&g_226e7c) = 0;
+    (*(int32_t *)&g_7b324) = 1;
+    (*(int32_t *)&g_7b32c) = 2;
+    (*(int32_t *)&g_7b328) = 1;
+    (*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ = 0;
+    (*(void * *)&g_BrPadModeBytes) = (*(unsigned char (*)[])&g_BrCtrlCfg);
+    (*(int32_t *)&g_7b320) = 1;
 }
 
 /* ==========================================================================
@@ -167,7 +167,7 @@ void BrUiFn1003E010(BrUiGlobals *pG)
     int v;
     (void)pG;
     v = 0x102;
-    DAT_10ac5b38 = (int16_t)v;
+    (*(int16_t *)&DAT_10ac5b38) = (int16_t)v;
     DAT_10ac58f0 = v;
 }
 
@@ -180,7 +180,7 @@ void BrUiFn1003E040(BrUiGlobals *pG)
     int v;
     (void)pG;
     v = 0x37;
-    DAT_10ac5b3a = (int16_t)v;
+    (*(int16_t *)((char *)&(*(int16_t *)&DAT_10ac5b38) + 0x2)) = (int16_t)v;
     DAT_10ac40a0 = v;
 }
 
@@ -221,9 +221,9 @@ int32_t BrUiPoll1003EAE0(BrUiObj *pObj, BrUiGlobals *pG)
 {
     int32_t r;
     (void)pG;
-    BR23_SEL_OFFER(pObj, r, g_i0AB3F4);
+    BR23_SEL_OFFER(pObj, r, (*(int32_t *)&g_AB94));
     if (r >= 0) {
-        g_i0AB3F4 = r;
+        (*(int32_t *)&g_AB94) = r;
     }
     return 1;
 }
@@ -237,7 +237,7 @@ int32_t BrUiPoll1003EBC0(BrUiObj *pObj, BrUiGlobals *pG)
     int32_t r;
     (void)pG;
     /* The answer is thrown away -- there is no store-back here. */
-    BR23_SEL_OFFER(pObj, r, g_iAA2880);
+    BR23_SEL_OFFER(pObj, r, (*(int32_t *)&g_5BD8));
     (void)r;
     return 1;
 }
@@ -250,9 +250,9 @@ int32_t BrUiPoll1003EC80(BrUiObj *pObj, BrUiGlobals *pG)
 {
     int32_t r;
     (void)pG;
-    BR23_SEL_OFFER(pObj, r, g_iAA2840);
+    BR23_SEL_OFFER(pObj, r, (*(int32_t *)&g_brSel5B98));
     if (r >= 0)
-        g_iAA2840 = r;
+        (*(int32_t *)&g_brSel5B98) = r;
     return 1;
 }
 
@@ -278,9 +278,9 @@ int32_t BrUiPoll1003EB60(BrUiObj *pObj, BrUiGlobals *pG)
 {
     int32_t r;
     (void)pG;
-    BR23_SEL_OFFER(pObj, r, g_iAA28AC);
+    BR23_SEL_OFFER(pObj, r, (*(int32_t *)&g_brIdx5C04));
     if (r >= 0)
-        g_iAA28AC = r;
+        (*(int32_t *)&g_brIdx5C04) = r;
     return 1;
 }
 
@@ -291,9 +291,9 @@ int32_t BrUiPoll1003EB90(BrUiObj *pObj, BrUiGlobals *pG)
 {
     int32_t r;
     (void)pG;
-    BR23_SEL_OFFER(pObj, r, g_iAA2880);
+    BR23_SEL_OFFER(pObj, r, (*(int32_t *)&g_5BD8));
     if (r >= 0)
-        g_iAA2880 = r;
+        (*(int32_t *)&g_5BD8) = r;
     return 1;
 }
 
@@ -322,7 +322,7 @@ int FUN_100382d0(struct GameObj *param_1)
   int d;
   int idx;
 
-  idx = DAT_10ac5d88;
+  idx = (*(int *)&g_iAA2A30);
   puVar1 = *(int **)(DAT_10ac5d44 + 0x1de48 + idx * 8);
   b = puVar1[1];
   c = puVar1[2];
@@ -333,6 +333,6 @@ int FUN_100382d0(struct GameObj *param_1)
   DAT_10b71a4c = b;
   DAT_10b71a50 = c;
   DAT_10b71a54 = d;
-  FUN_1003fac0(param_1);
+  BrOpt6670(param_1);
   return 0;
 }

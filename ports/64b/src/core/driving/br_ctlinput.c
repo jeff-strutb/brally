@@ -121,7 +121,7 @@ void BR_THISCALL1 BrCtlInputApply(BrDriverCar *pCar)
   int l1Bits, limBits;     /* float images (32-bit int on every target) */
 
   fVar1 = *(float *)(*(unsigned char * *)&pCar->pCtl + 0x20);
-  if (((DAT_10b71534[0] & 0x8000) == 0) && ((DAT_10b71534[3] & 0x8000) == 0)) {
+  if ((((*(unsigned short * *)&g_BrPadModeBytes)[0] & 0x8000) == 0) && (((*(unsigned short * *)&g_BrPadModeBytes)[3] & 0x8000) == 0)) {
     if (fVar1 > DAT_10077780) {
       local[0] = fVar1 - DAT_10077798;
       if (local[0] >= DAT_10077780) goto LAB_keep_stick;
@@ -426,7 +426,7 @@ LAB_1005b7f2:
   else {
     local[2] = 6000.0f;
     local[4] = DAT_10077844;
-    if (((DAT_10b71534[6] & 0x8000) != 0) &&
+    if ((((*(unsigned short * *)&g_BrPadModeBytes)[6] & 0x8000) != 0) &&
        (local[5] = *(float *)(*(unsigned char * *)&pCar->pCtl + 0x1c),
         DAT_1007784c < local[5])) {
       local[2] = DAT_10077844 - local[5] * DAT_10077850;
@@ -446,12 +446,12 @@ LAB_1005b7f2:
   }
 LAB_1005b92f:
   local[4] = DAT_10077780;
-  if (DAT_100a9360 == 1) {
+  if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 1) {
     if (pCar->fFF8 == 0) goto LAB_1005b9e9;
     local[5] = DAT_10077780;
-    if (0 < DAT_100b2f00) {
+    if (0 < (*(int *)&g_brRaceNDriver)) {
       piVar8 = g_aBrRaceDriver;   /* the walker addresses whole driver records */
-      iVar9 = DAT_100b2f00;
+      iVar9 = (*(int *)&g_brRaceNDriver);
       do {
         iVar4 = piVar8->pCar;
         if (iVar4 == 0) {
@@ -477,7 +477,7 @@ LAB_1005b92f:
     if (dX < DAT_10077780) goto LAB_1005b9e9;
     if (dX <= DAT_10077860) goto LAB_have_x;
   }
-  else if (((DAT_100a9360 != 6) || (pCar->fFF8 == 0)) ||
+  else if ((((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 6) || (pCar->fFF8 == 0)) ||
           (local[4] = DAT_10077864, pCar->fFF8 == 1)) {
     goto LAB_1005b9e9;
   }
@@ -496,7 +496,7 @@ LAB_have_x:
     dAcc = DAT_10077780;
   }
   dM = DAT_1007786c;
-  if (((DAT_10b71534[6] & 0x8000) != 0) && (DAT_10077780 < ((float *)puVar5)[7])) {
+  if ((((*(unsigned short * *)&g_BrPadModeBytes)[6] & 0x8000) != 0) && (DAT_10077780 < ((float *)puVar5)[7])) {
     dM = (double)((float *)puVar5)[7] * DAT_1007786c;
   }
   local[4] = (float)dAcc;
@@ -543,7 +543,7 @@ LAB_have_x:
   if (DAT_10077884 < pCar->f0E24) {
     pCar->f0E24 = 8000.0f;
   }
-  if (((DAT_10b71534[6] & 0x8000) != 0) && (iVar9 == 0)) {
+  if ((((*(unsigned short * *)&g_BrPadModeBytes)[6] & 0x8000) != 0) && (iVar9 == 0)) {
     local[4] = ((float *)puVar5)[7] * DAT_10077884;
     if (((float *)puVar5)[7] * DAT_10077884 < DAT_10077880) {
       local[4] = DAT_10077880;

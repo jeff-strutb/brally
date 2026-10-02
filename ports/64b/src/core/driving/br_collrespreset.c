@@ -108,30 +108,30 @@ void BrCollRespReset(void)
   int j;
 
   DAT_11778828 = 0;
-  DAT_11778800 = 0;
+  (*(int *)((char *)&g_brCrPlane + 0x10)) = 0;
   DAT_1177882c = 0;
-  DAT_11778804 = 0;
+  (*(int *)((char *)&g_brCrPlane + 0x14)) = 0;
   DAT_11778830 = 0;
   DAT_11778838 = 0;
   DAT_11778834 = 0;
   DAT_1177883c = 0;
   for (i = 0; i < 4; i++) {
     for (j = 0; j < 150; j++) {
-      DAT_11773698[i][j].nx = 0;
-      DAT_11773698[i][j].ny = 0;
-      DAT_11773698[i][j].nz = 0;
-      DAT_11773698[i][j].d = 0;
-      DAT_11773698[i][j].pV0 = 0;
-      DAT_11773698[i][j].pV1 = 0;
-      DAT_11773698[i][j].pV2 = 0;
+      (*(BrCollPlaneZ (*)[4][150])&DAT_11773698)[i][j].nx = 0;
+      (*(BrCollPlaneZ (*)[4][150])&DAT_11773698)[i][j].ny = 0;
+      (*(BrCollPlaneZ (*)[4][150])&DAT_11773698)[i][j].nz = 0;
+      (*(BrCollPlaneZ (*)[4][150])&DAT_11773698)[i][j].d = 0;
+      (*(BrCollPlaneZ (*)[4][150])&DAT_11773698)[i][j].pV0 = 0;
+      (*(BrCollPlaneZ (*)[4][150])&DAT_11773698)[i][j].pV1 = 0;
+      (*(BrCollPlaneZ (*)[4][150])&DAT_11773698)[i][j].pV2 = 0;
     }
   }
   for (i = 0; i < 200; i++) {
-    DAT_117781b0[i].pPlane = 0;
-    DAT_117781b0[i].pNext = 0;
+    (*(BrCollNodeZ (*)[200])&s_aNode)[i].pPlane = 0;
+    (*(BrCollNodeZ (*)[200])&s_aNode)[i].pNext = 0;
   }
-  DAT_11778198 = 0;
-  DAT_11778844 = 0;
+  (*(void * *)&g_pBrCollRespList) = 0;
+  (*(void * *)&g_pBrCrCursor) = 0;
   DAT_11778840 = 0;
 }
 

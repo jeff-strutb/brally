@@ -125,35 +125,35 @@ int BrItemSetPickLabel_10038F40(Obj38F40 *pObj)
 {
     char szName[128];
 
-    if (g_brPhase5C5C == g_brRoot5CBC && g_brFlag5C40 == 0) {
-        strcpy(pObj->m2B5C.szName, BrStrByIndex(0x1B));
+    if (g_brPAA29B8 == DAT_10ac5cbc && DAT_10ac5c40 == 0) {
+        strcpy(pObj->m2B5C.szName, BrStrGet(0x1B));
     } else {
         int k;
 
-        if (g_brFlag0A9360 == 0) {
-            if (g_brFlag5C00 != 0) {
-                strcpy(szName, BrStrByIndex(g_brTblABAA8[
-                    g_brMap3028[(g_brIdx5C04 + g_brSel5C10 * 12) * 2]]));
-                k = g_brMap3028[(g_brIdx5C04 + g_brSel5C10 * 12) * 2];
+        if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0) {
+            if (DAT_10ac5c00 != 0) {
+                strcpy(szName, BrStrGet(g_brTblABAA8[
+                    (*(unsigned char (*)[])&g_aBr0B3820)[(g_brIdx5C04 + (*(char *)&DAT_10ac5c10) * 12) * 2]]));
+                k = (*(unsigned char (*)[])&g_aBr0B3820)[(g_brIdx5C04 + (*(char *)&DAT_10ac5c10) * 12) * 2];
             } else {
-                strcpy(szName, BrStrByIndex(g_brTblABAA8[
-                    g_brMap3028[(g_brIdx5BFC + g_brSel5C10 * 12) * 2]]));
-                k = g_brMap3028[(g_brIdx5BFC + g_brSel5C10 * 12) * 2];
+                strcpy(szName, BrStrGet(g_brTblABAA8[
+                    (*(unsigned char (*)[])&g_aBr0B3820)[(g_brIdx5BFC + (*(char *)&DAT_10ac5c10) * 12) * 2]]));
+                k = (*(unsigned char (*)[])&g_aBr0B3820)[(g_brIdx5BFC + (*(char *)&DAT_10ac5c10) * 12) * 2];
             }
         } else {
-            strcpy(szName, BrStrByIndex(g_brTblABAA8[g_brIdx0ABDE8]));
+            strcpy(szName, BrStrGet(g_brTblABAA8[g_brIdx0ABDE8]));
             k = g_brIdx0ABDE8;
         }
 
-        if (g_brTblBCAB0[k]->f04 & 0x10) {
+        if ((*(BrDesc38F40 * (*)[])&g_apBrRaceDiff)[k]->f04 & 0x10) {
             float save = pObj->f040;
 
             pObj->m2B5C.f414 = 130.0f;
 
-            strcpy(pObj->m2B5C.szName, BrStrByIndex(0xB0));
+            strcpy(pObj->m2B5C.szName, BrStrGet(0xB0));
 
             pObj->m2B5C.s1();
-            BrItemApply_10038380((struct BrCtl85 *)(pObj), 0);
+            Br85ItemApply((struct BrCtl85 *)(pObj), 0);
 
             pObj->m2B5C.f414 = save;
         }
@@ -162,7 +162,7 @@ int BrItemSetPickLabel_10038F40(Obj38F40 *pObj)
     }
 
     pObj->m2B5C.s1();
-    BrItemApply_10038380((struct BrCtl85 *)(pObj), 0);
+    Br85ItemApply((struct BrCtl85 *)(pObj), 0);
 
     return 1;
 }

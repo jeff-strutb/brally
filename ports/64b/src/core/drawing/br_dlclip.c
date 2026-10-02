@@ -210,8 +210,8 @@ void NAME(BrClipList *pList)                                                  \
     while (pTmp != NULL) {                                                    \
         if ((unsigned long)pTmp >= BR_CLIP_POOL_LO &&                         \
             (unsigned long)pTmp <  BR_CLIP_POOL_HI) {                         \
-            pTmp->pNext = DAT_105cda00;                                       \
-            DAT_105cda00 = pTmp;                                              \
+            pTmp->pNext = g_pClipFree;                                       \
+            g_pClipFree = pTmp;                                              \
         }                                                                     \
         pNew = pDead;                                                         \
         if (pDead != NULL)                                                    \

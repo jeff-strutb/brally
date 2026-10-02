@@ -81,7 +81,7 @@ extern "C" {
 }
 
 #define EMIT(W0, W1) \
-    { uint32_t_ *p_ = DAT_106e7710; DAT_106e7710 += 2; \
+    { uint32_t_ *p_ = (*(uint32_t_ * *)&g_BrGfxPtr); (*(uint32_t_ * *)&g_BrGfxPtr) += 2; \
       p_[0] = (uint32_t_)(W0); p_[1] = (uint32_t_)(W1); }
 
 extern "C"
@@ -97,14 +97,14 @@ void BrPaceNoteEmit_10011300(struct BrHudView * pViewport, uint32_t_ n, int r, u
     unsigned u0, u1;
     float halfW, halfH; /* declared after pt[]: see the header */
 
-    pRect = (int *)(pViewport + DAT_106ec798 * 0x58);
+    pRect = (int *)(pViewport + (*(int *)&g_BrEnvSection) * 0x58);
     x = pRect[0]; y = pRect[1]; w = pRect[2]; h = pRect[3];
     cx    = (x * 2 + w) * 2;
     cy    = (y * 2 + h) * 2;
     halfW = (float)(w * 2);
     halfH = (float)(h * 2);
     while (n != 0) {
-        BrMat4TransformPoint4(pt, DAT_10396f04[n].pos, &DAT_10396eb8);
+        BrMat4TransformPoint4(pt, DAT_10396f04[n].pos, &(*(float *)&DAT_10396eb8));
         if (pt[3] > _DAT_1007725c || pt[3] < _DAT_10077260) {
             invW  = _DAT_10077264 / pt[3];
             pt[2] = invW * pt[2];
@@ -131,8 +131,8 @@ void BrPaceNoteEmit_10011300(struct BrHudView * pViewport, uint32_t_ n, int r, u
                                 EMIT(0xde000000, *(uint32_t_ *)&invW);
                                 EMIT(0xdf000000, *(uint32_t_ *)&pt[2]);
                                 {
-                                    uint32_t_ *p_ = DAT_106e7710;
-                                    DAT_106e7710 += 2;
+                                    uint32_t_ *p_ = (*(uint32_t_ * *)&g_BrGfxPtr);
+                                    (*(uint32_t_ * *)&g_BrGfxPtr) += 2;
                                     s  = (short)((ix + ex) >> 2);
                                     u0 = (s > 0) ? s : 0;
                                     s  = (short)((iy + ey) >> 2);

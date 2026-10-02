@@ -51,12 +51,12 @@ extern "C" {
 
 int BrUiPoll1003EBE0(Obj381D0 *pObj)
 {
-    int row = pObj->m3838.s8(g_brRow5BD8);
+    int row = pObj->m3838.s8(g_5BD8);
 
     if (row >= 0)
-        g_brRow5BD8 = row;
+        g_5BD8 = row;
     else
-        row = g_brRow5BD8;
+        row = g_5BD8;
 
     g_brRec0AAB80 = *(int *)&pObj->aRows[row];
 

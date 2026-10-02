@@ -86,7 +86,7 @@ void BR_THISCALL1 BrSub10062C50(void *pCar)
     ((*(uint32_t *)&p->aBody[0].rb.st.angVel.z)) = 0;
     BrRbBuildMatrix(&p->aBody[0].rb.m.m[0], &p->aBody[0].rb.st.pos.x);
 
-    ((p->aBody[0].rb.f1B8)) = (_DAT_10077864 - (float)(int32_t)((*(uint32_t *)&p->fE94)) * _DAT_1007788c)
+    ((p->aBody[0].rb.f1B8)) = (DAT_10077864 - (float)(int32_t)((*(uint32_t *)&p->fE94)) * _DAT_1007788c)
                    * _DAT_10077890;
     ((*(uint32_t *)&p->aBody[0].rb.f1BC)) = 0xc53b8000;          /* -3000.0f */
     ((*(uint32_t *)&p->aBody[1].rb.f1D8)) = 0;

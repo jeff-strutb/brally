@@ -67,7 +67,7 @@ void BrNetPeerRank(void)
 
         n = 0;
         for (i = BR_PEERS - 1; i >= 0; i--) {
-            ah[0] = DAT_11849e60;
+            ah[0] = g_hBrSndWake86;
             ah[1] = g_aBrPeer71[i].hMutex;
             if (WaitForMultipleObjects(2, ah, 0, INFINITE) == 0)
                 ExitThread(0);
@@ -85,12 +85,12 @@ void BrNetPeerRank(void)
             for (k = n - 1; k >= 0; k--) {
                 BrPeerRec *p = &g_aBrPeer71[g_aBrPeerRank[k].idx];
 
-                ah[0] = DAT_11849e60;
+                ah[0] = g_hBrSndWake86;
                 ah[1] = p->hMutex;
                 if (WaitForMultipleObjects(2, ah, 0, INFINITE) == 0)
                     ExitThread(0);
                 if ((p->f02C & 0x3f) >= 2 && (p->f02C & 0x3f) < 5 && p->f968 != 0) {
-                    FUN_100371f0(g_brSlot4098, p->f004, DAT_11849e58);
+                    FUN_100371f0((*(int * *)&g_brPA9D008), p->f004, DAT_11849e58);
                     p->f02C = DAT_11849e58 + 5;
                     DAT_11849e58 = DAT_11849e58 + 1;
                 }
@@ -107,13 +107,13 @@ void BrNetPeerRank(void)
         j = BR_PEERS - 1;
         for (i = BR_PEERS - 1; i >= 0; i--) {
             p = &g_aBrPeer71[i];
-            ah[0] = DAT_11849e60;
+            ah[0] = g_hBrSndWake86;
             ah[1] = g_aBrPeer71[i].hMutex;
             if (WaitForMultipleObjects(2, ah, 0, INFINITE) == 0)
                 ExitThread(0);
             if ((p->f02C & 0x3f) >= 2 && (p->f02C & 0x3f) < 5 &&
                 p->aSub[p->f558].time >= BR_K_00077BF0) {
-                FUN_100371f0(g_brSlot4098, p->f004, DAT_11849e58);
+                FUN_100371f0((*(int * *)&g_brPA9D008), p->f004, DAT_11849e58);
                 p->f02C = DAT_11849e58 + 5;
                 DAT_11849e58 = DAT_11849e58 + 1;
             }

@@ -217,8 +217,8 @@ static int32_t br_tex3d_register(BrTex3d *pTex)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 void br_tex3d_end(uint8_t *p)
 {
-    if (DAT_106b7a9c == 0)
-        DAT_106b7a9c = (int)p;
+    if (g_brTexScanRunEnd == 0)
+        g_brTexScanRunEnd = (int)p;
 }
 #define br_tex3d_end3(pTex, p, ppEnd) br_tex3d_end(p)
 
@@ -907,8 +907,8 @@ typedef struct BrTexTile40 {
 int BrTexTileUnpack(unsigned int *param_1)
 
 {
-  _DAT_10697a50 = *param_1 >> 8 & 7;
-  _DAT_10697a48 = *param_1 >> 0xb & 7;
+  DAT_10697a50 = *param_1 >> 8 & 7;
+  DAT_10697a48 = *param_1 >> 0xb & 7;
   return;
 }
 
@@ -991,7 +991,7 @@ int BrTex3dMipChainLoad(char *param_1,char *param_2,BrTexReq272 *param_3)
   local_8 = DAT_106b7ab0;
   if (DAT_106b7ab0 < param_3->f5c) {
     do {
-      FUN_10024490(param_1,iVar3,iVar4,param_2,iVar5,iVar6,param_3->fmt);
+      BrTexResample(param_1,iVar3,iVar4,param_2,iVar5,iVar6,param_3->fmt);
       iVar2 = iVar4 * iVar3 * iVar1;
       local_c = local_c + iVar2;
       param_1 = param_1 + iVar2;
@@ -1030,7 +1030,7 @@ void BrTex3dDownloadAt(unsigned int param_1,int *param_2)
 {
   BrTexSlot *slot;
 
-  if (param_1 < (unsigned int)DAT_105d17ec) {
+  if (param_1 < (unsigned int)(*(int *)&DAT_105d17ec)) {
     slot = &g_aBrTexSlot[param_1];
     if (slot->bLive != 0) {
       slot->info.data = param_2;
@@ -1129,7 +1129,7 @@ int * BrTexSlotFetchPixels(int param_1,int *param_2)
    * into a register of its own (`lea eax,[ecx+eax*4]`, one instruction the
    * original does not have) and every register role downstream follows. */
   if (*(int *)(iVar1 + 0x268) != 0) {
-    puVar3 = &DAT_1186c988;
+    puVar3 = &(*(int *)&DAT_1186c988);
     iVar2 = FUN_10059fe0(*(int *)(iVar1 + 0x26c),*(int *)(iVar1 + 0x270),
                          *(int *)(iVar1 + 0x274));
     if (iVar2 != 0) {
@@ -1142,17 +1142,17 @@ int * BrTexSlotFetchPixels(int param_1,int *param_2)
         iStack_8 = 0;
         iStack_c = *(int *)(iVar1 + 0x2a4) << 1;
       }
-      iVar2 = FUN_1005a500(iVar2,iStack_4,param_1,iStack_8,iStack_c,&DAT_1186c988,
+      iVar2 = FUN_1005a500(iVar2,iStack_4,param_1,iStack_8,iStack_c,&(*(int *)&DAT_1186c988),
                            *(int *)(iVar1 + 0x2a0) << 1,*(int *)(iVar1 + 0x2a4) << 1);
       if (iVar2 != 0) {
-        BrTexRgbaToArgb1555(&DAT_1186c988,&DAT_1186c988,
+        BrTexRgbaToArgb1555(&(*(int *)&DAT_1186c988),&(*(int *)&DAT_1186c988),
                             *(int *)(iVar1 + 0x2a4) * *(int *)(iVar1 + 0x2a0) * 0x10);
         iVar2 = *(int *)(iVar1 + 0x2a0) * 2;
         if ((iVar2 != *(int *)(iVar1 + 8)) ||
            (*(int *)(iVar1 + 0x2a4) * 2 != *(int *)(iVar1 + 0xc))) {
-          FUN_10024490(&DAT_105e1828,*(int *)(iVar1 + 8),*(int *)(iVar1 + 0xc),&DAT_1186c988,
+          BrTexResample(&(*(int *)&DAT_105e1828),*(int *)(iVar1 + 8),*(int *)(iVar1 + 0xc),&(*(int *)&DAT_1186c988),
                        iVar2,*(int *)(iVar1 + 0x2a4) << 1,*(int *)(iVar1 + 0x10));
-          puVar3 = &DAT_105e1828;
+          puVar3 = &(*(int *)&DAT_105e1828);
         }
         DAT_10697a60 = *(int *)(iVar1 + 0x29c);
         *param_2 = DAT_10697a60;
@@ -1190,9 +1190,9 @@ int FUN_10027710(int *param_1,int *param_2)
   } _fr;
 
   piVar1 = param_1;
-  if ((DAT_118ed1b4 != 0) || (iVar2 = FUN_10027a70(param_1), iVar2 == -1)) {
+  if ((g_18ED1B4 != 0) || (iVar2 = FUN_10027a70(param_1), iVar2 == -1)) {
     iVar2 = FUN_10023d70(_fr.local_24,&param_1,piVar1);
-    puVar3 = &DAT_1186c988;
+    puVar3 = &(*(int *)&DAT_1186c988);
     if (iVar2 == 0) {
       puVar3 = param_2;
     }
@@ -1206,7 +1206,7 @@ int FUN_10027710(int *param_1,int *param_2)
           *puVar3 = 0x800f800f;
           puVar3 = puVar3 + 1;
         }
-        FUN_100283c0(DAT_10697a4c,_fr.local_20);
+        BrTex3dDownloadAt(DAT_10697a4c,_fr.local_20);
         FUN_1006ff50(s_Out_of_tex_mem__100a9e5c);
         return DAT_10697a4c;
       }
@@ -1215,7 +1215,7 @@ int FUN_10027710(int *param_1,int *param_2)
                            piVar1[3],piVar1[4],piVar1[5],piVar1[6],piVar1[7],piVar1[8],piVar1[9],
                            piVar1[10],piVar1[0xb],piVar1[0xc],piVar1[0xd],piVar1[0xe]);
     }
-    FUN_100283c0(iVar2,puVar3);
+    BrTex3dDownloadAt(iVar2,puVar3);
     iVar2 = BrTex3dRecInstall(piVar1,iVar2);
   }
   return iVar2;
@@ -1286,9 +1286,9 @@ int BrTex3dCreate(int param_1,int param_2,int param_3,int param_4,int param_5,
   int *iVar5;
   BrTexReq272 r;
   
-  iVar4 = 1 << FUN_10027290(param_3);
-  iVar5 = 1 << FUN_10027290(param_4);
-  r.fTmu2 = (unsigned int)(1 < DAT_105ccbd0);
+  iVar4 = 1 << BrGbiSizeShift(param_3);
+  iVar5 = 1 << BrGbiSizeShift(param_4);
+  r.fTmu2 = (unsigned int)(1 < (*(int *)&DAT_105ccb68[26]));
   r.h2a4 = param_4;
   r.h = param_4;
   r.lod = 3;
@@ -1297,13 +1297,13 @@ int BrTex3dCreate(int param_1,int param_2,int param_3,int param_4,int param_5,
   r.wPow = iVar4;
   r.hPow = iVar5;
   r.f14 = 0;
-  FUN_100242e0(&r.aspect0,iVar4,iVar5);
+  BrTexShiftFromSize(&r.aspect0,iVar4,iVar5);
   r.aspect1 = r.aspect0;
   r.iLevel = 0;
   r.lv[0][3] = 0;
-  iVar2 = FUN_10027290(param_3);
+  iVar2 = BrGbiSizeShift(param_3);
   r.lv[r.iLevel][8] = iVar2;
-  iVar2 = FUN_10027290(param_4);
+  iVar2 = BrGbiSizeShift(param_4);
   r.lv[r.iLevel][9] = iVar2;
   r.lv[r.iLevel][2] = param_5;
   r.lv[r.iLevel][1] = param_6;
@@ -1328,7 +1328,7 @@ int BrTex3dCreate(int param_1,int param_2,int param_3,int param_4,int param_5,
   r.b290 = 0;
   _DAT_106b7aa8 = 0;
   _DAT_106b7aa4 = 0;
-  r.fmt = FUN_10027220(r.lv[r.iLevel][1],r.lv[r.iLevel][0],0);
+  r.fmt = BrTexFormatCode(r.lv[r.iLevel][1],r.lv[r.iLevel][0],0);
   r.cbTotal = FUN_10024df0(r.fmt) * iVar5 * iVar4;
   r.p1 = param_1;
   r.p2 = param_2;
@@ -1361,9 +1361,9 @@ int BrTex3dCreateBlank(int * param_1,int param_2,int param_3,int param_4)
   int *iVar5;
   BrTexReq272 r;
   
-  iVar4 = 1 << FUN_10027290(param_2);
-  iVar5 = 1 << FUN_10027290(param_3);
-  r.fTmu2 = (unsigned int)(1 < DAT_105ccbd0);
+  iVar4 = 1 << BrGbiSizeShift(param_2);
+  iVar5 = 1 << BrGbiSizeShift(param_3);
+  r.fTmu2 = (unsigned int)(1 < (*(int *)&DAT_105ccb68[26]));
   r.h2a4 = param_3;
   r.h = param_3;
   r.lod = 3;
@@ -1372,13 +1372,13 @@ int BrTex3dCreateBlank(int * param_1,int param_2,int param_3,int param_4)
   r.wPow = iVar4;
   r.hPow = iVar5;
   r.f14 = 0;
-  FUN_100242e0(&r.aspect0,iVar4,iVar5);
+  BrTexShiftFromSize(&r.aspect0,iVar4,iVar5);
   r.aspect1 = r.aspect0;
   r.iLevel = 0;
   r.lv[0][3] = 0;
-  iVar2 = FUN_10027290(param_2);
+  iVar2 = BrGbiSizeShift(param_2);
   r.lv[r.iLevel][8] = iVar2;
-  iVar2 = FUN_10027290(param_3);
+  iVar2 = BrGbiSizeShift(param_3);
   r.lv[r.iLevel][9] = iVar2;
   r.lv[r.iLevel][2] = param_2;
   r.lv[r.iLevel][1] = 1;
@@ -1433,22 +1433,22 @@ int BrTex3dExpandInto(unsigned short *param_1,unsigned char *param_2,uint8_t *pa
   int *iVar5;
   BrTexReq272 r;
   
-  iVar4 = 1 << FUN_10027290(param_4);
-  iVar5 = 1 << FUN_10027290(param_5);
-  r.fTmu2 = (unsigned int)(1 < DAT_105ccbd0);
+  iVar4 = 1 << BrGbiSizeShift(param_4);
+  iVar5 = 1 << BrGbiSizeShift(param_5);
+  r.fTmu2 = (unsigned int)(1 < (*(int *)&DAT_105ccb68[26]));
   r.h = param_5;
   r.hPow = param_5;
   r.lod = 3;
   r.w = param_4;
   r.wPow = param_4;
   r.f14 = 0;
-  FUN_100242e0(&r.aspect0,iVar4,iVar5);
+  BrTexShiftFromSize(&r.aspect0,iVar4,iVar5);
   r.aspect1 = r.aspect0;
   r.iLevel = 0;
   r.lv[0][3] = 0;
-  uVar2 = FUN_10027290(param_4);
+  uVar2 = BrGbiSizeShift(param_4);
   r.lv[r.iLevel][8] = uVar2;
-  uVar2 = FUN_10027290(param_5);
+  uVar2 = BrGbiSizeShift(param_5);
   _DAT_106b7aa8 = 0;
   _DAT_106b7aa4 = 0;
   r.lv[r.iLevel][9] = uVar2;
@@ -1467,14 +1467,14 @@ int BrTex3dExpandInto(unsigned short *param_1,unsigned char *param_2,uint8_t *pa
   r.b292 = 0;
   r.b291 = 0;
   r.b290 = 0;
-  r.fmt = FUN_10027220(r.lv[r.iLevel][1],r.lv[r.iLevel][0],0);
+  r.fmt = BrTexFormatCode(r.lv[r.iLevel][1],r.lv[r.iLevel][0],0);
   r.cbTotal = FUN_10024df0(r.fmt) * iVar5 * iVar4;
   r.p1 = param_2;
   r.p2 = param_3;
   r.f260 = DAT_118ed1a0;
   r.p8 = 0;
   r.p9 = 0;
-  FUN_100250d0(param_1,r.cbTotal,r.lv[r.iLevel][1],param_2,param_3,
+  BrTex3dExpand(param_1,r.cbTotal,r.lv[r.iLevel][1],param_2,param_3,
                r.lv[r.iLevel][0],0,0,r.iLevel,r.f5c,&r.lv[0][0],DAT_118ed1a0,
                r.f264,r.b290,r.b291,r.b292,r.b293,r.b294,r.b295,r.b296,r.b297,
                r.f298);
@@ -1535,7 +1535,7 @@ int BrTex3dRegister(void)
    * field-offset order.  Ghidra's f264-first / b292-first order rotates
    * the first three stores. */
   r.p1 = DAT_105d17f0;
-  r.p2 = DAT_106b7a98;
+  r.p2 = g_brTexScanSrcSeen;
   r.f264 = DAT_106b7aac;
   r.b290 = DAT_105e1800;
   r.b291 = DAT_1066182c;
@@ -1555,50 +1555,50 @@ int BrTex3dRegister(void)
    * (orig edx).  1 and h are one web (orig ebp): materialize 1 first so
    * fTmu2 is cmp-reg not cmp-imm. */
   r.iLevel = DAT_106b7ab0;
-  if (DAT_106b7a94 < DAT_106b7ab0) {
-    DAT_106b7a94 = DAT_106b7ab0;
+  if ((*(int *)&g_brTexScanMaxTile) < DAT_106b7ab0) {
+    (*(int *)&g_brTexScanMaxTile) = DAT_106b7ab0;
   }
   h = 1;
-  r.fTmu2 = (unsigned int)(DAT_105ccbd0 > h);
+  r.fTmu2 = (unsigned int)((*(int *)&DAT_105ccb68[26]) > h);
   r.lod = 3;
-  sMask = DAT_10697840[DAT_106b7ab0].maskS;
+  sMask = (*(BrTexTile40 (*)[])&g_brTexScanTiles)[DAT_106b7ab0].maskS;
   w = h << sMask;
   r.w = w;
   r.wPow = w;
-  tMask = DAT_10697840[DAT_106b7ab0].maskT;
+  tMask = (*(BrTexTile40 (*)[])&g_brTexScanTiles)[DAT_106b7ab0].maskT;
   h = h << tMask;
   r.h = h;
   r.hPow = h;
-  if (DAT_106b7a94 > DAT_106b7ab0) {
+  if ((*(int *)&g_brTexScanMaxTile) > DAT_106b7ab0) {
     w = tMask;
     j = DAT_106b7ab0 + 1;
-    for (; j <= DAT_106b7a94; j++) {
+    for (; j <= (*(int *)&g_brTexScanMaxTile); j++) {
       sMask = sMask - 1;
-      if ((DAT_10697840[j].maskS != sMask) ||
-          (w = w - 1, DAT_10697840[j].maskT != w)) {
-        DAT_106b7a94 = j - 1;
+      if (((*(BrTexTile40 (*)[])&g_brTexScanTiles)[j].maskS != sMask) ||
+          (w = w - 1, (*(BrTexTile40 (*)[])&g_brTexScanTiles)[j].maskT != w)) {
+        (*(int *)&g_brTexScanMaxTile) = j - 1;
         break;
       }
     }
   }
-  w = DAT_10697840[DAT_106b7ab0].mirrorS;
-  hCur = DAT_10697840[DAT_106b7ab0].mirrorT;
+  w = (*(BrTexTile40 (*)[])&g_brTexScanTiles)[DAT_106b7ab0].mirrorS;
+  hCur = (*(BrTexTile40 (*)[])&g_brTexScanTiles)[DAT_106b7ab0].mirrorT;
   if (w) {
     r.w = r.w * 2;
   }
   if (hCur) {
     r.h = h * 2;
   }
-  r.fmt = FUN_10027220(DAT_10697840[DAT_106b7ab0].siz,
-                       DAT_10697840[DAT_106b7ab0].fmt, DAT_106b7aac);
+  r.fmt = BrTexFormatCode((*(BrTexTile40 (*)[])&g_brTexScanTiles)[DAT_106b7ab0].siz,
+                       (*(BrTexTile40 (*)[])&g_brTexScanTiles)[DAT_106b7ab0].fmt, DAT_106b7aac);
   r.aspect0 = 8;
   r.aspect1 = 8;
   r.f14 = 2;
-  r.fClampS = (unsigned int)(DAT_10697840[r.iLevel].clampS != 0);
+  r.fClampS = (unsigned int)((*(BrTexTile40 (*)[])&g_brTexScanTiles)[r.iLevel].clampS != 0);
   r.f20 = 3;
-  r.fClampT = (unsigned int)(DAT_10697840[r.iLevel].clampT != 0);
-  wReal = (DAT_10697840[r.iLevel].lrs - DAT_10697840[r.iLevel].uls + 4) >> 2;
-  hReal = (DAT_10697840[r.iLevel].lrt - DAT_10697840[r.iLevel].ult + 4) >> 2;
+  r.fClampT = (unsigned int)((*(BrTexTile40 (*)[])&g_brTexScanTiles)[r.iLevel].clampT != 0);
+  wReal = ((*(BrTexTile40 (*)[])&g_brTexScanTiles)[r.iLevel].lrs - (*(BrTexTile40 (*)[])&g_brTexScanTiles)[r.iLevel].uls + 4) >> 2;
+  hReal = ((*(BrTexTile40 (*)[])&g_brTexScanTiles)[r.iLevel].lrt - (*(BrTexTile40 (*)[])&g_brTexScanTiles)[r.iLevel].ult + 4) >> 2;
   if (wReal != r.wPow) {
     if (wReal == r.w) {
       r.wPow = wReal;
@@ -1615,13 +1615,13 @@ int BrTex3dRegister(void)
       r.fClampT = 0;
     }
   }
-  FUN_100242e0(&r.aspect1,r.w,r.h);
+  BrTexShiftFromSize(&r.aspect1,r.w,r.h);
   h = (FUN_100275c0(&r.f20,r.w,r.h) == 0);
-  d = DAT_106b7a94 - DAT_106b7ab0;
-  FUN_100242e0(&r.aspect0,r.w >> d,r.h >> d);
-  if (DAT_100b8498 > 1) {
+  d = (*(int *)&g_brTexScanMaxTile) - DAT_106b7ab0;
+  BrTexShiftFromSize(&r.aspect0,r.w >> d,r.h >> d);
+  if ((*(int *)&s_level) > 1) {
     r.aspect0 = r.aspect1;
-    DAT_106b7a94 = DAT_106b7ab0;
+    (*(int *)&g_brTexScanMaxTile) = DAT_106b7ab0;
   }
   r.f2c = 1;
   r.f30 = 1;
@@ -1632,8 +1632,8 @@ int BrTex3dRegister(void)
     cb = 0x80000;
   }
   r.cbTotal = cb;
-  memcpy(r.lv,DAT_10697840,0x200);
-  r.f5c = DAT_106b7a94 + 1;
+  memcpy(r.lv,(*(BrTexTile40 (*)[])&g_brTexScanTiles),0x200);
+  r.f5c = (*(int *)&g_brTexScanMaxTile) + 1;
   r.p8 = w;
   r.p9 = hCur;
   r.f298 = 1;
@@ -1650,19 +1650,19 @@ int BrTex3dRegister(void)
   if (h || w || hCur) {
     wCur = r.w;
     hCur = r.h;
-    if (w && (DAT_100b8498 > 1)) {
+    if (w && ((*(int *)&s_level) > 1)) {
       wCur = wCur / 2;
-      FUN_100242e0(&r.aspect1,wCur,hCur);
+      BrTexShiftFromSize(&r.aspect1,wCur,hCur);
       h = (FUN_100275c0(&r.f20,wCur,hCur) == 0);
       d = r.aspect1 - DAT_106b7ab0;
-      r.aspect0 = d + DAT_106b7a94;
+      r.aspect0 = d + (*(int *)&g_brTexScanMaxTile);
     }
-    if (r.p9 && (DAT_100b8498 > 1)) {
+    if (r.p9 && ((*(int *)&s_level) > 1)) {
       hCur = hCur / 2;
-      FUN_100242e0(&r.aspect1,wCur,hCur);
+      BrTexShiftFromSize(&r.aspect1,wCur,hCur);
       h = (FUN_100275c0(&r.f20,wCur,hCur) == 0);
       d = r.aspect1 - DAT_106b7ab0;
-      r.aspect0 = d + DAT_106b7a94;
+      r.aspect0 = d + (*(int *)&g_brTexScanMaxTile);
     }
     if (h) {
       id = r.w;
@@ -1670,29 +1670,29 @@ int BrTex3dRegister(void)
       if (r.w >= r.h) {
         if (r.w > 1) {
           id = r.w / 2;
-          FUN_100242e0(&r.aspect1,id,sMask);
+          BrTexShiftFromSize(&r.aspect1,id,sMask);
           FUN_100275c0(&r.f20,id,sMask);
           d = r.aspect1 - DAT_106b7ab0;
-          r.aspect0 = d + DAT_106b7a94;
+          r.aspect0 = d + (*(int *)&g_brTexScanMaxTile);
         }
       }
       else if (r.h > 1) {
         sMask = r.h / 2;
-        FUN_100242e0(&r.aspect1,id,sMask);
+        BrTexShiftFromSize(&r.aspect1,id,sMask);
         FUN_100275c0(&r.f20,id,sMask);
         d = r.aspect1 - DAT_106b7ab0;
-        r.aspect0 = d + DAT_106b7a94;
+        r.aspect0 = d + (*(int *)&g_brTexScanMaxTile);
       }
-      FUN_10029290(&wCur,&hCur,r.aspect1,r.f20);
+      BrTexSizeFromShiftAspect(&wCur,&hCur,r.aspect1,r.f20);
     }
     r.w = wCur;
     r.h = hCur;
   }
-  if ((DAT_100b8498 > 1) && FUN_10030fd0(r.p1,&r.w,&r.h)) {
-    FUN_100242e0(&r.aspect1,r.w,r.h);
+  if (((*(int *)&s_level) > 1) && BrKeyTableFind(r.p1,&r.w,&r.h)) {
+    BrTexShiftFromSize(&r.aspect1,r.w,r.h);
     FUN_100275c0(&r.f20,r.w,r.h);
     d = r.aspect1 - DAT_106b7ab0;
-      r.aspect0 = d + DAT_106b7a94;
+      r.aspect0 = d + (*(int *)&g_brTexScanMaxTile);
   }
   r.f260 = DAT_118ed1a0;
   r.cb29c = r.cbTotal;
@@ -1704,18 +1704,18 @@ int BrTex3dRegister(void)
   sMask = FUN_10027b60(&r);
   id = FUN_10027710(&r,sMask);
   if (*(int *)(DAT_106b7aa0 + 0x26c + id * 0x2b4)) {
-    slot = FUN_1005a070();
+    slot = BrBmpGetHandle();
     if ((slot >= 0) && (slot < 8)) {
-      DAT_1186c968[slot] = id;
+      (*(int (*)[])&g_BrX1829850)[slot] = id;
     }
   }
   if (r.f260 & 2) {
     if (r.f268) {
       if (r.f278) {
-        FUN_100306d0(id);
+        BrPendListAdd(id);
       }
     }
-    else if (FUN_10030710(r.p2)) {
+    else if (BrDevRecMatch(r.p2)) {
       a = *(unsigned short *)r.p2;
       b = ((unsigned short *)r.p2)[1];
       *(unsigned short *)r.p2 = 0xffff;
@@ -1724,15 +1724,15 @@ int BrTex3dRegister(void)
       (*DAT_118ed1d0)(id,sMask);
       /* the seed crc is its own statement: the orig makes the inner call
        * BEFORE loading sMask/cbTotal for the outer one (both sites) */
-      wCur = FUN_10001000(0,0,0);
-      hCur = FUN_10001000(wCur,sMask,r.cbTotal);
+      wCur = BrAdler32(0,0,0);
+      hCur = BrAdler32(wCur,sMask,r.cbTotal);
       *(unsigned short *)r.p2 = a;
       ((unsigned short *)r.p2)[1] = b;
       sMask = FUN_10027b60(&r);
       (*DAT_118ed1d0)(id,sMask);
-      wCur = FUN_10001000(0,0,0);
-      if (FUN_10001000(wCur,sMask,r.cbTotal) != hCur) {
-        FUN_100306d0(id);
+      wCur = BrAdler32(0,0,0);
+      if (BrAdler32(wCur,sMask,r.cbTotal) != hCur) {
+        BrPendListAdd(id);
       }
     }
   }
@@ -1755,7 +1755,7 @@ void FUN_100298c0(int param_1,int param_2,int param_3)
   BrTexReq272 r;
   int flag;
 
-  DAT_118ed1b4 = 1;
+  g_18ED1B4 = 1;
   memcpy(&r, (void *)(DAT_106b7aa0 + 4 + param_1 * 0x2b4), 0xaa * 4);
   /* param_2 first (edx), param_3 second (eax); flag load forces p2
    * stored before p1. Byte-order stores invert the hoist. */
@@ -1769,13 +1769,13 @@ void FUN_100298c0(int param_1,int param_2,int param_3)
     r.w = w;
     r.h = h;
     r.cbTotal = r.cbTotal / 4;
-    FUN_100242e0(&r.aspect1, w, h);
+    BrTexShiftFromSize(&r.aspect1, w, h);
     r.aspect0 = r.aspect1;
     r.f268 = z;
   }
   uVar1 = FUN_10027b60(&r);
   FUN_10027710(&r, uVar1);
-  DAT_118ed1b4 = z;
+  g_18ED1B4 = z;
   return;
 }
 
@@ -1834,19 +1834,19 @@ void br_tex3d_seam(BrGfxWords * p)
   int id;
   int *start;
 
-  if (DAT_105e17fc == 0) {
+  if ((*(int *)&g_brTexScanState) == 0) {
     return;
   }
-  if (DAT_106b7a9c == 0) {
-    DAT_106b7a9c = p;
+  if (g_brTexScanRunEnd == 0) {
+    g_brTexScanRunEnd = p;
   }
-  id = FUN_10028BB0();
+  id = BrTex3dRegister();
   if (id != -1) {
-    start = (int *)DAT_10697a64;
+    start = (int *)g_brTexScanRunStart;
     *start = (id & 0xffffff) | 0xdc000000;
-    start[1] = (DAT_106b7a9c - DAT_10697a64) >> 3;
+    start[1] = (g_brTexScanRunEnd - g_brTexScanRunStart) >> 3;
   }
-  DAT_105e17fc = 0;
+  (*(int *)&g_brTexScanState) = 0;
   return;
 }
 
@@ -1971,11 +1971,11 @@ void BrTexInstallRecords(BrTexRec *pRecs, int n)
                     if (*(int *)(DAT_106b7aa0 + 0x4c + idx * 0x2b4) == pRec->key) break;
                 for (lv = 0, w = 3; lv < pRec->pDesc->n; lv++, w += 3) {
                     memcpy(&r, (void *)(DAT_106b7aa0 + 4 + idx * 0x2b4), 0x2a8);
-                    r.p1 = ((int *)pRec->pDesc)[w] + DAT_106b7c7c;
+                    r.p1 = ((int *)pRec->pDesc)[w] + g_brRcaBlob;
                     pal = ((int *)pRec->pDesc)[w + 1];
                     if (pal > 0) {
-                        r.p2 = pal + DAT_106b7c7c;
-                        memcpy(PTR_DAT_100a9e58, (void *)r.p2, 0x200);
+                        r.p2 = pal + g_brRcaBlob;
+                        memcpy((*(void * *)&DAT_100a9e58), (void *)r.p2, 0x200);
                     }
                     _DAT_106b7aa8 = 0;
                     _DAT_106b7aa4 = 0;
@@ -2023,7 +2023,7 @@ void BrTex3dFreeAll(void)
     void *p;
 
     k = 4;
-    FUN_1006e1a0();
+    BrMutexCloseAA0A0();
     i = 0;
     off = 0;
     base = (char *)DAT_106b7aa0;

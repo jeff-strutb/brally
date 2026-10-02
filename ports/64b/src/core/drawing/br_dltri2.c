@@ -44,10 +44,10 @@ typedef struct BrDlClipSt {
         BR_DL_PUN(w_, V(i).oow);                                    \
         BR_DL_PUN(pv_->tmu1[2], w_);                                \
         BR_DL_PUN(pv_->tmu0[2], w_);                                \
-        (u_) = V(i).s * g_brDlTexScaleS * pv_->oow;                 \
+        (u_) = V(i).s * DAT_118ed1a4 * pv_->oow;                 \
         BR_DL_PUN(pv_->tmu1[0], (u_));                              \
         BR_DL_PUN(pv_->tmu0[0], (u_));                              \
-        (u_) = V(i).t * g_brDlTexScaleT * pv_->oow;                 \
+        (u_) = V(i).t * DAT_118ed1a8 * pv_->oow;                 \
         BR_DL_PUN(pv_->tmu1[1], (u_));                              \
         BR_DL_PUN(pv_->tmu0[1], (u_));                              \
     } while (0)
@@ -63,11 +63,11 @@ typedef struct BrDlClipSt {
         BR_DL_PUN(w_, V(i).oow);                                    \
         BR_DL_PUN(pv_->tmu1[2], w_);                                \
         BR_DL_PUN(pv_->tmu0[2], w_);                                \
-        ts_ = V(i).s * g_brDlTexScaleS;                             \
+        ts_ = V(i).s * DAT_118ed1a4;                             \
         (u_) = ts_ * pv_->oow;                                      \
         BR_DL_PUN(pv_->tmu1[0], (u_));                              \
         BR_DL_PUN(pv_->tmu0[0], (u_));                              \
-        ts_ = V(i).t * g_brDlTexScaleT;                             \
+        ts_ = V(i).t * DAT_118ed1a8;                             \
         (u_) = ts_ * pv_->oow;                                      \
         BR_DL_PUN(pv_->tmu1[1], (u_));                              \
         BR_DL_PUN(pv_->tmu0[1], (u_));                              \
@@ -77,7 +77,7 @@ typedef struct BrDlClipSt {
     do {                                                                \
         if ((V(ia).outcode & (V(ib).outcode & V(ic).outcode)) == 0) {    \
             if ((V(ib).outcode | V(ic).outcode | V(ia).outcode) != 0) {  \
-                BrDlClipTri(&V(ia), &V(ib), &V(ic));                     \
+                BrDlClipTriZ(&V(ia), &V(ib), &V(ic));                     \
             } else {                                                     \
                 BR_DLCMD_FINISH_VTX_I_N(ia, u_);                         \
                 BR_DLCMD_FINISH_VTX_I_N(ib, u_);                         \
@@ -99,11 +99,11 @@ typedef struct BrDlClipSt {
         BR_DL_PUN(w_, pv_->oow);                                    \
         BR_DL_PUN(pv_->tmu1[2], w_);                                \
         BR_DL_PUN(pv_->tmu0[2], w_);                                \
-        ts_ = V(i).s * g_brDlTexScaleS;                             \
+        ts_ = V(i).s * DAT_118ed1a4;                             \
         (u_) = ts_ * pv_->oow;                                      \
         BR_DL_PUN(pv_->tmu1[0], (u_));                              \
         BR_DL_PUN(pv_->tmu0[0], (u_));                              \
-        ts_ = V(i).t * g_brDlTexScaleT;                             \
+        ts_ = V(i).t * DAT_118ed1a8;                             \
         (u_) = ts_ * pv_->oow;                                      \
         BR_DL_PUN(pv_->tmu1[1], (u_));                              \
         BR_DL_PUN(pv_->tmu0[1], (u_));                              \
@@ -113,7 +113,7 @@ typedef struct BrDlClipSt {
     do {                                                                \
         if ((V(ia).outcode & (V(ib).outcode & V(ic).outcode)) == 0) {    \
             if ((V(ib).outcode | V(ic).outcode | V(ia).outcode) != 0) {  \
-                BrDlClipTri(&V(ia), &V(ib), &V(ic));                     \
+                BrDlClipTriZ(&V(ia), &V(ib), &V(ic));                     \
             } else {                                                     \
                 BR_DLCMD_FINISH_VTX_I_N(ia, u_);                         \
                 BR_DLCMD_FINISH_VTX_I_N2(ib, u_);                        \

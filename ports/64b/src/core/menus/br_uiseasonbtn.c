@@ -49,8 +49,8 @@
 int32_t BrUiHook84_100457C0(BrUiCtl_ *pCtl)
 {
     /* Orig pushes the unused pCtl, then stores +0x08 unguarded. */
-    ((int32_t (*)(BrUiCtl_ *))BrUiHook81Activate_100451E0)(pCtl);
-    BR73_PAA29C8->pfn08 = BrUiHook84_10046830;
+    ((int32_t (*)(BrUiCtl_ *))Ctl3E730_fn)(pCtl);
+    BR73_PAA29C8->pfn08 = BrOpt6830;
     return 1;
 }
 
@@ -63,7 +63,7 @@ int32_t BrUiHook84_100457E0(BrUiCtl_ *pCtl)
 {
     /* Orig pushes the unused pCtl, then stores +0x08 unguarded -- the same
      * pair of defects as 0x100457C0 above. */
-    ((int32_t (*)(BrUiCtl_ *))BrUiHook81Activate_10045BC0)(pCtl);
+    ((int32_t (*)(BrUiCtl_ *))CtlF060_fn)(pCtl);
     BR73_PAA29F4->pfn08 = BrUiHook84_10046870;
     return 1;
 }

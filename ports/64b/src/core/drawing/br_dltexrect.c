@@ -152,10 +152,10 @@ void BrGbiCall10021560(int lrs, int lrt, int uls, int ult, int tile)
     v[2].node.f14 = vt0;
 
     if ((BrGbiRectG_5D17C8 & 0x1000) != 0) {
-        BrGbiCall1001D420(&v[3], &v[0], &v[1]);
-        BrGbiCall1001D420(&v[0], &v[2], &v[1]);
+        BrDlClipTriZ(&v[3], &v[0], &v[1]);
+        BrDlClipTriZ(&v[0], &v[2], &v[1]);
     } else {
-        BrGbiCall1001D420(&v[1], &v[0], &v[3]);
-        BrGbiCall1001D420(&v[1], &v[2], &v[0]);
+        BrDlClipTriZ(&v[1], &v[0], &v[3]);
+        BrDlClipTriZ(&v[1], &v[2], &v[0]);
     }
 }

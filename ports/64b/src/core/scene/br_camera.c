@@ -23,15 +23,15 @@ void BrCamFrustumBuild(const BrCamBasis *pCam, float a2, float a3,
 
     /* Braced: /Od otherwise peepholes `a = ...; b = a * ...` into one x87
      * chain (fst keeps a on the stack); the original stores and reloads. */
-    { a = BrSub10002240(a2) * a3; }
+    { a = BrSinF(a2) * a3; }
     { b = a * a5 / a4; }
     if (g_BrCamMode == 2)
         b = b / g_BrK08F514;
 
-    BrVec3Copy(&g_BrCamEye, &pCam->eye);
+    BrVec3Copy(&(*(BrVec3 *)&g_aBrSpanPt), &pCam->eye);
 
     /* out = a + b*s, so centre = eye + fwd*a3. */
-    BrVec3MulAdd(&g_BrCamCentre, &g_BrCamEye, &pCam->fwd, a3);
+    BrVec3MulAdd(&g_BrCamCentre, &(*(BrVec3 *)&g_aBrSpanPt), &pCam->fwd, a3);
 
     BrVec3Scale(&g_BrCamExtentR, &pCam->right, a);
     BrVec3Scale(&g_BrCamExtentU, &pCam->up,    b);
@@ -51,10 +51,10 @@ void BrCamFrustumBuild(const BrCamBasis *pCam, float a2, float a3,
     BrVec3SubFrom (&g_BrCamCorner2, &g_BrCamExtentU); /* C - R - U */
 
     /* (c - eye)*0.75 + eye, in the original's order. */
-    BrVec3Lerp(&g_BrCamCorner1, &g_BrCamCorner1, &g_BrCamEye, 0.75f);
-    BrVec3Lerp(&g_BrCamCorner2, &g_BrCamCorner2, &g_BrCamEye, 0.75f);
-    BrVec3Lerp(&g_BrCamCorner0, &g_BrCamCorner0, &g_BrCamEye, 0.75f);
-    BrVec3Lerp(&g_BrCamCorner3, &g_BrCamCorner3, &g_BrCamEye, 0.75f);
+    BrVec3Lerp(&g_BrCamCorner1, &g_BrCamCorner1, &(*(BrVec3 *)&g_aBrSpanPt), 0.75f);
+    BrVec3Lerp(&g_BrCamCorner2, &g_BrCamCorner2, &(*(BrVec3 *)&g_aBrSpanPt), 0.75f);
+    BrVec3Lerp(&g_BrCamCorner0, &g_BrCamCorner0, &(*(BrVec3 *)&g_aBrSpanPt), 0.75f);
+    BrVec3Lerp(&g_BrCamCorner3, &g_BrCamCorner3, &(*(BrVec3 *)&g_aBrSpanPt), 0.75f);
 
     g_BrCamDist  = a3;
     g_BrCamFovIn = a2;

@@ -47,7 +47,7 @@ extern "C" {
 int Draw40D80::Draw()
 {
     if (w1E20C >= 0) {
-        BrDraw10058380((int)f03C, (int)f040, (*(short *)&g_aBrUiSprite[w1E20C].iImage),
+        BrSprFontDraw((int)f03C, (int)f040, (*(short *)&g_aBrUiSprite[w1E20C].iImage),
                        (*(int (*)[4])&g_aBrUiSprite[w1E20C].rect[0]),
                        g_aBrUiSprite[w1E20C].fBlit);
     }

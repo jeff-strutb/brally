@@ -64,14 +64,14 @@
 static float Br63RaceFloat(uint32_t off)
 {
     float f;
-    memcpy(&f, (const unsigned char *)BrG_6C2CF8 + off, sizeof f);
+    memcpy(&f, (const unsigned char *)(*(void * *)&g_pBr63Race) + off, sizeof f);
     return f;
 }
 
 static int32_t Br63RaceInt(uint32_t off)
 {
     int32_t v;
-    memcpy(&v, (const unsigned char *)BrG_6C2CF8 + off, sizeof v);
+    memcpy(&v, (const unsigned char *)(*(void * *)&g_pBr63Race) + off, sizeof v);
     return v;
 }
 
@@ -114,44 +114,44 @@ void BrSub_10017290(BrHudView *aViews)
         return;
     }
 
-    x  = g_brScreenCx - 0x10;
+    x  = (*(int32_t *)&BrGbiRectG_A7514) - 0x10;
     /* `dec/neg/sbb/and 0xFFFFFFE2/add 0x1E`: 0x1E when cViews == 1, else 0. */
-    dy = (g_brCViews == 1) ? 0x1E : 0;
-    y  = aViews[g_brIView].y + 0x14;
+    dy = ((*(int32_t *)&g_brMode0AA8B4) == 1) ? 0x1E : 0;
+    y  = aViews[g_BrEnvSection].y + 0x14;
 
-    BrSub_10019260();
+    BrTextFlag358Clear();
     BrSub_10019290();
-    BrSub_100192F0(0x0F);
+    BrSetGlobal_ABB30(0x0F);
 
     /* `cmp eax,6 / ja` -- unsigned, so a negative mode also falls out. */
-    mode = (uint32_t)g_brHudMode;
+    mode = (uint32_t)(*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */;
     if (mode > 6u) {
         return;
     }
 
     switch (mode) {
     case 0u: case 1u: case 2u: case 6u:
-        if (g_brCViews == 1) {
-            BrHudDrawTimeEntryW(BrStrGet(BR63_STR_10017290_A),
+        if ((*(int32_t *)&g_brMode0AA8B4) == 1) {
+            BrHudDrawTimeEntry(BrStrGet(BR63_STR_10017290_A),
                                 g_aBr63Prefix, g_pBr63Race->timeC, x, y);
         }
         /* `>=`, not `<`: the original's `jl` leaves the B arm INLINE and
          * jumps to the C arm, so B is the then-branch. */
-        if (g_pBr63Race->cLaps >= g_brLapBound) {
-            BrHudDrawTimeEntryW(BrStrGet(BR63_STR_10017290_B),
+        if (g_pBr63Race->cLaps >= (*(int32_t *)&g_CBE8)) {
+            BrHudDrawTimeEntry(BrStrGet(BR63_STR_10017290_B),
                                 g_aBr63Prefix, g_pBr63Race->timeB, x, y + dy);
         } else {
-            BrHudDrawTimeEntryW(BrStrGet(BR63_STR_10017290_C),
+            BrHudDrawTimeEntry(BrStrGet(BR63_STR_10017290_C),
                                 g_aBr63Prefix, g_pBr63Race->timeA, x, y + dy);
         }
         break;
 
     case 3u:
-        if (g_brCViews == 1) {
-            BrHudDrawTimeEntryW(BrStrGet(BR63_STR_10017290_B),
+        if ((*(int32_t *)&g_brMode0AA8B4) == 1) {
+            BrHudDrawTimeEntry(BrStrGet(BR63_STR_10017290_B),
                                 g_aBr63Prefix, g_pBr63Race->timeB, x, y);
         }
-        BrHudDrawTimeEntryW(BrStrGet(BR63_STR_10017290_C),
+        BrHudDrawTimeEntry(BrStrGet(BR63_STR_10017290_C),
                             g_aBr63Prefix, g_pBr63Race->timeA, x, y + dy);
         break;
 

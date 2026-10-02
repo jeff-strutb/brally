@@ -129,8 +129,8 @@ static const char g_szBrGrfExt[]     = ".grf";
  * then an intrinsic strcpy (repne scasb + rep movsd/movsb). */
 static __inline void BrOptFlushMessage(void)
 {
-    BrSub1003D210(g_brP680584, g_brPA9D008, 1);
-    strcpy(g_aBrA9DD28, g_aBr39B720);        /* DEVIATION: rep movsb */
+    FUN_100368a0((*(void * *)&g_brOwner5BC72C), g_brPA9D008, 1);
+    strcpy(g_szBrName4DB0, g_aBr39B720);        /* DEVIATION: rep movsb */
 }
 
 /* The screen-object install sequence shared by 0x10043260, 0x10043330,
@@ -198,12 +198,12 @@ static __inline int32_t BrOptCycle(int32_t *pv, int32_t max)
 {
     int32_t v;
 
-    if (g_brAA33D4 != 0) {
+    if (g_act1 != 0) {
         v = *pv + 1;
         *pv = v;
         if (v > max)
             *pv = 0;
-    } else if (g_brAA33D0 != 0) {
+    } else if (g_act0 != 0) {
         /* load / --v / store, NOT `v = *pv - 1`: that spelling emits
          * lea/test/jge where the original has dec/jns (the store between
          * them leaves flags intact). */
@@ -238,9 +238,9 @@ int BrOptBeginTimeAttack(void *pUnused, const int32_t *pIndex)
 
     (void)pUnused;      /* the first argument is never read by the original */
 
-    g_br0AA010  = 2;
+    (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */  = 2;
     g_brAA28E8  = 0;
-    g_br690A18  = 0;
+    (*(int32_t *)&g_aBrTexSlot[192984])  = 0;
     BrSub1003E680();
 
     strcpy(pszName, g_szBrTimeAttack);          /* DEVIATION: rep movsb */
@@ -253,35 +253,35 @@ int BrOptBeginTimeAttack(void *pUnused, const int32_t *pIndex)
 
     /* movsx + `jge`: the byte at 0x10680738 is SIGNED and a negative value
      * aborts the whole restore. */
-    if (g_br680738 < 0)
+    if ((*(signed char *)&g_aBrTexSlot[126712]) < 0)
         return 0;
 
-    iSel = (int32_t)g_br680738;
+    iSel = (int32_t)(*(signed char *)&g_aBrTexSlot[126712]);
 
-    g_br0AC650 = g_brAD0980;
-    g_br0AC64C = g_brAD097C;
-    g_br0AC65C = g_brAD0988;
-    g_br0AC654 = g_brAD0984;
-    g_br0B4050 = 1;
-    g_br0AC648 = iSel;
-    g_brAA2A00 = (int32_t)g_br68073F;   /* movsx: also SIGNED */
-    g_brAA2A08 = g_brAD0978;
-    g_br0AC658 = g_brAD098C;
-    g_br0BD3E0 = g_brAD098C;
+    (*(int32_t *)&DAT_100abdf0) = g_brAD0980;
+    (*(int32_t *)&DAT_100abdec) = g_brAD097C;
+    g_i0AC65C = g_brAD0988;
+    (*(int32_t *)&g_brSel0ABDF4) = g_brAD0984;
+    BrG_0B4050 = 1;
+    (*(int32_t *)&g_brIdx0ABDE8) = iSel;
+    (*(int32_t *)&DAT_10ac5d58) = (int32_t)(*(signed char *)&g_aBrTexSlot[126719]);   /* movsx: also SIGNED */
+    (*(int32_t *)&DAT_10ac5d60) = g_brAD0978;
+    (*(int32_t *)&DAT_100abdf8) = g_brAD098C;
+    (*(int32_t *)&g_CBE8) = g_brAD098C;
 
     /* `rep movsd` of 0x53 dwords FROM the pointer held in 0x10ACED34. */
-    memcpy(g_aBrAA26F0, g_brPACED34,
+    memcpy((*(int32_t (*)[83])&DAT_10ac5a48), g_brPACED34,
            BR_OPT_AA26F0_COUNT * sizeof(int32_t));  /* DEVIATION: rep movsd */
 
-    g_br0B380C = g_aBrAC4D8[iSel];
-    g_br0BD3E0 = g_brAD098C;            /* stored twice by the original */
-    g_br094350 = g_brAD0988;
+    g_Br0B380C = g_aBrAC4D8[iSel];
+    (*(int32_t *)&g_CBE8) = g_brAD098C;            /* stored twice by the original */
+    (*(int32_t *)&g_7b320) = g_brAD0988;
     g_brAA28E8 = 1;
-    g_br22B34C = g_aBrAC420[g_brAD0984];
-    g_br22B350 = g_aBrAC4C0[(int32_t)g_br68073F];
-    g_br09435C = g_aBrAC4A0[g_brAD097C];
-    g_br094358 = g_aBrAC4B0[g_brAD0980];
-    g_br094354 = g_aBrAC518[g_brAD0978];
+    (*(int32_t *)&g_226e7c) = g_aBrAC420[g_brAD0984];
+    (*(int32_t *)&g_226e80) = g_aBrAC4C0[(int32_t)(*(signed char *)&g_aBrTexSlot[126719])];
+    (*(int32_t *)&g_7b32c) = g_aBrAC4A0[g_brAD097C];
+    (*(int32_t *)&g_7b328) = g_aBrAC4B0[g_brAD0980];
+    (*(int32_t *)&g_7b324) = g_aBrAC518[g_brAD0978];
 
     BrSub1005FCF0();
     g_brAA289C = 1;
@@ -297,8 +297,8 @@ int BrOptBeginTimeAttack(void *pUnused, const int32_t *pIndex)
  * most once per clear of that global. The return value is 1 either way. */
 static int BrOptToggle2F7C(BrGameObj *pGame)
 {
-    if (g_brAA28D8 == 0) {
-        g_brAA28D8   = 1;
+    if ((*(int32_t *)&g_5C30) == 0) {
+        (*(int32_t *)&g_5C30)   = 1;
         pGame->f2F7C = (pGame->f2F7C == 0) ? 1 : 0;
     }
     return 1;
@@ -324,16 +324,16 @@ int BrOptToggle2F7C_C(BrGameObj *pGame) { return BrOptToggle2F7C(pGame); }
  * callee-saved registers. */
 static __inline int32_t BrOptTrackStepUp(void)
 {
-    if (++g_br0AC654 > BR_OPT_TRACK_MAX)
-        g_br0AC654 = 0;
-    return g_br0AC654;
+    if (++(*(int32_t *)&g_brSel0ABDF4) > BR_OPT_TRACK_MAX)
+        (*(int32_t *)&g_brSel0ABDF4) = 0;
+    return (*(int32_t *)&g_brSel0ABDF4);
 }
 
 static __inline int32_t BrOptTrackStepDown(void)
 {
-    if (--g_br0AC654 < 0)
-        g_br0AC654 = BR_OPT_TRACK_MAX;
-    return g_br0AC654;
+    if (--(*(int32_t *)&g_brSel0ABDF4) < 0)
+        (*(int32_t *)&g_brSel0ABDF4) = BR_OPT_TRACK_MAX;
+    return (*(int32_t *)&g_brSel0ABDF4);
 }
 
 /* WHAT IT DOES: moves the track selection on to the next track the player
@@ -347,38 +347,38 @@ int BrOptCycleTrack(void)
 {
     int32_t v, vStart;
 
-    if (g_brAA33D4 != 0) {
+    if (g_act1 != 0) {
         v = BrOptTrackStepUp();
         vStart = v;
-        if (BrSub1003F320(v) == 0) {
+        if (BrOptAvailB(v) == 0) {
             for (;;) {
                 v = BrOptTrackStepUp();
                 /* Unlike 0x10042EE0's loop, the wrap path here still runs
                  * the full-circle test. */
                 if (v == vStart)
                     break;
-                if (BrSub1003F320(v) != 0) {
-                    v = g_br0AC654;
+                if (BrOptAvailB(v) != 0) {
+                    v = (*(int32_t *)&g_brSel0ABDF4);
                     break;
                 }
             }
         } else {
-            v = g_br0AC654;
+            v = (*(int32_t *)&g_brSel0ABDF4);
         }
-    } else if (g_brAA33D0 != 0) {
+    } else if (g_act0 != 0) {
         v = BrOptTrackStepDown();
         vStart = v;
-                if (BrSub1003F320(v) != 0) {
-                    v = g_br0AC654;
+                if (BrOptAvailB(v) != 0) {
+                    v = (*(int32_t *)&g_brSel0ABDF4);
                     break;
                 } else {
-            v = g_br0AC654;
+            v = (*(int32_t *)&g_brSel0ABDF4);
         }
     } else {
-        v = g_br0AC654;
+        v = (*(int32_t *)&g_brSel0ABDF4);
     }
 
-    g_br22B34C = g_aBrAC420[v];
+    (*(int32_t *)&g_226e7c) = g_aBrAC420[v];
 
     if (g_brP277B40 != NULL) {
         /* 32 tracks, 16 names: indices 0x10..0x1F reuse the first sixteen
@@ -388,7 +388,7 @@ int BrOptCycleTrack(void)
             v -= 0x10;
         /* sprintf itself through the /MD import, not the BrSprintf
          * wrapper -- the original's `call dword ptr [sprintf]`. */
-        sprintf(g_aBrA9DD28, BrStrGet(BR_OPT_STR_TRACK),
+        sprintf(g_szBrName4DB0, BrStrGet(BR_OPT_STR_TRACK),
                 BrStrGet((int)g_aBrAC368[v]));
         BrOptFlushMessage();
     }
@@ -410,21 +410,21 @@ int BrOptCycleAC65C(void)
      * byte-exact twins at 0x1003CAE0/0x1003CB40/0x1003CBA0/0x1003CC00):
      * through the BrOptCycle helper the counter lands in ecx and the
      * `mov eax,1` hoists above the table read, one byte long (2026-09-09). */
-    if (g_brAA33D4 != 0) {
-        g_br0AC65C = g_br0AC65C + 1;
-        if (g_br0AC65C > BR_OPT_AC65C_MAX) {
-            g_br0AC65C = 0;
+    if (g_act1 != 0) {
+        g_i0AC65C = g_i0AC65C + 1;
+        if (g_i0AC65C > BR_OPT_AC65C_MAX) {
+            g_i0AC65C = 0;
         }
     }
     else {
-        if (g_brAA33D0 != 0) {
-            g_br0AC65C = g_br0AC65C - 1;
-            if (g_br0AC65C < 0) {
-                g_br0AC65C = BR_OPT_AC65C_MAX;
+        if (g_act0 != 0) {
+            g_i0AC65C = g_i0AC65C - 1;
+            if (g_i0AC65C < 0) {
+                g_i0AC65C = BR_OPT_AC65C_MAX;
             }
         }
     }
-    g_br094350 = g_br0AC65C;
+    (*(int32_t *)&g_7b320) = g_i0AC65C;
     return 1;
 }
 
@@ -432,8 +432,8 @@ int BrOptCycleAC65C(void)
  * where neither input is set -- contrast 0x10044600. */
 int BrOptCycleB4E708(void)
 {
-    g_br0AB3D8 = 1;
-    (void)BrOptCycle(&g_brB4E708, BR_OPT_B4E708_MAX);
+    (*(int32_t *)((char *)&g_brBindAAAD4 + 0xA4)) = 1;
+    (void)BrOptCycle(&(*(int32_t *)&g_brItemIconCount), BR_OPT_B4E708_MAX);
     BrSub10060D90();
     return 1;
 }
@@ -441,8 +441,8 @@ int BrOptCycleB4E708(void)
 /* 0x10042D60. Same as above but clears 0x100AB3D8 instead of setting it. */
 int BrOptCycleB4E70C(void)
 {
-    g_br0AB3D8 = 0;
-    (void)BrOptCycle(&g_brB4E70C, BR_OPT_B4E70C_MAX);
+    (*(int32_t *)((char *)&g_brBindAAAD4 + 0xA4)) = 0;
+    (void)BrOptCycle(&g_brRaceB71A6C, BR_OPT_B4E70C_MAX);
     BrSub10060D90();
     return 1;
 }
@@ -458,21 +458,21 @@ int BrOptCycleAC64C(void)
      * byte-exact twins at 0x1003CAE0/0x1003CB40/0x1003CBA0/0x1003CC00):
      * through the BrOptCycle helper the counter lands in ecx and the
      * `mov eax,1` hoists above the table read, one byte long (2026-09-09). */
-    if (g_brAA33D4 != 0) {
-        g_br0AC64C = g_br0AC64C + 1;
-        if (g_br0AC64C > BR_OPT_AC64C_MAX) {
-            g_br0AC64C = 0;
+    if (g_act1 != 0) {
+        (*(int32_t *)&DAT_100abdec) = (*(int32_t *)&DAT_100abdec) + 1;
+        if ((*(int32_t *)&DAT_100abdec) > BR_OPT_AC64C_MAX) {
+            (*(int32_t *)&DAT_100abdec) = 0;
         }
     }
     else {
-        if (g_brAA33D0 != 0) {
-            g_br0AC64C = g_br0AC64C - 1;
-            if (g_br0AC64C < 0) {
-                g_br0AC64C = BR_OPT_AC64C_MAX;
+        if (g_act0 != 0) {
+            (*(int32_t *)&DAT_100abdec) = (*(int32_t *)&DAT_100abdec) - 1;
+            if ((*(int32_t *)&DAT_100abdec) < 0) {
+                (*(int32_t *)&DAT_100abdec) = BR_OPT_AC64C_MAX;
             }
         }
     }
-    g_br09435C = g_aBrAC4A0[g_br0AC64C];
+    (*(int32_t *)&g_7b32c) = g_aBrAC4A0[(*(int32_t *)&DAT_100abdec)];
     return 1;
 }
 
@@ -486,21 +486,21 @@ int BrOptCycleAC650(void)
      * byte-exact twins at 0x1003CAE0/0x1003CB40/0x1003CBA0/0x1003CC00):
      * through the BrOptCycle helper the counter lands in ecx and the
      * `mov eax,1` hoists above the table read, one byte long (2026-09-09). */
-    if (g_brAA33D4 != 0) {
-        g_br0AC650 = g_br0AC650 + 1;
-        if (g_br0AC650 > BR_OPT_AC650_MAX) {
-            g_br0AC650 = 0;
+    if (g_act1 != 0) {
+        (*(int32_t *)&DAT_100abdf0) = (*(int32_t *)&DAT_100abdf0) + 1;
+        if ((*(int32_t *)&DAT_100abdf0) > BR_OPT_AC650_MAX) {
+            (*(int32_t *)&DAT_100abdf0) = 0;
         }
     }
     else {
-        if (g_brAA33D0 != 0) {
-            g_br0AC650 = g_br0AC650 - 1;
-            if (g_br0AC650 < 0) {
-                g_br0AC650 = BR_OPT_AC650_MAX;
+        if (g_act0 != 0) {
+            (*(int32_t *)&DAT_100abdf0) = (*(int32_t *)&DAT_100abdf0) - 1;
+            if ((*(int32_t *)&DAT_100abdf0) < 0) {
+                (*(int32_t *)&DAT_100abdf0) = BR_OPT_AC650_MAX;
             }
         }
     }
-    g_br094358 = g_aBrAC4B0[g_br0AC650];
+    (*(int32_t *)&g_7b328) = g_aBrAC4B0[(*(int32_t *)&DAT_100abdf0)];
     return 1;
 }
 
@@ -514,21 +514,21 @@ int BrOptCycleAA2A08(void)
      * byte-exact twins at 0x1003CAE0/0x1003CB40/0x1003CBA0/0x1003CC00):
      * through the BrOptCycle helper the counter lands in ecx and the
      * `mov eax,1` hoists above the table read, one byte long (2026-09-09). */
-    if (g_brAA33D4 != 0) {
-        g_brAA2A08 = g_brAA2A08 + 1;
-        if (g_brAA2A08 > BR_OPT_AA2A08_MAX) {
-            g_brAA2A08 = 0;
+    if (g_act1 != 0) {
+        (*(int32_t *)&DAT_10ac5d60) = (*(int32_t *)&DAT_10ac5d60) + 1;
+        if ((*(int32_t *)&DAT_10ac5d60) > BR_OPT_AA2A08_MAX) {
+            (*(int32_t *)&DAT_10ac5d60) = 0;
         }
     }
     else {
-        if (g_brAA33D0 != 0) {
-            g_brAA2A08 = g_brAA2A08 - 1;
-            if (g_brAA2A08 < 0) {
-                g_brAA2A08 = BR_OPT_AA2A08_MAX;
+        if (g_act0 != 0) {
+            (*(int32_t *)&DAT_10ac5d60) = (*(int32_t *)&DAT_10ac5d60) - 1;
+            if ((*(int32_t *)&DAT_10ac5d60) < 0) {
+                (*(int32_t *)&DAT_10ac5d60) = BR_OPT_AA2A08_MAX;
             }
         }
     }
-    g_br094354 = g_aBrAC518[g_brAA2A08];
+    (*(int32_t *)&g_7b324) = g_aBrAC518[(*(int32_t *)&DAT_10ac5d60)];
     return 1;
 }
 
@@ -541,7 +541,7 @@ int BrOptCycleAA2A08(void)
  * a function here rather than a value hoisted out of the loop. */
 static int32_t BrOptCarMax(void)
 {
-    return (g_brAA28FC != 0) ? BR_OPT_AC648_MAX_EXTRA : BR_OPT_AC648_MAX_BASE;
+    return ((*(int32_t *)&DAT_10ac5c54) != 0) ? BR_OPT_AC648_MAX_EXTRA : BR_OPT_AC648_MAX_BASE;
 }
 
 int BrOptCycleCar(void)
@@ -549,21 +549,21 @@ int BrOptCycleCar(void)
     int32_t v, vStart, iVal;
     const BrRec2A8 *pRec;
 
-    if (g_brAA33D4 != 0) {
-        v = g_br0AC648 + 1;
-        g_br0AC648 = v;
+    if (g_act1 != 0) {
+        v = (*(int32_t *)&g_brIdx0ABDE8) + 1;
+        (*(int32_t *)&g_brIdx0ABDE8) = v;
         if (v > BrOptCarMax()) {
             v = 0;
-            g_br0AC648 = 0;
+            (*(int32_t *)&g_brIdx0ABDE8) = 0;
         }
         vStart = v;
         if (BrSub1003F2B0(v) == 0) {
             for (;;) {
-                v = g_br0AC648 + 1;
-                g_br0AC648 = v;
+                v = (*(int32_t *)&g_brIdx0ABDE8) + 1;
+                (*(int32_t *)&g_brIdx0ABDE8) = v;
                 if (v > BrOptCarMax()) {
                     v = 0;
-                    g_br0AC648 = 0;
+                    (*(int32_t *)&g_brIdx0ABDE8) = 0;
                     /* GOTCHA: the wrap path JUMPS PAST the full-circle test
                      * (0x10042F4A -> 0x10042F54), so an entry that is
                      * rejected and sits at index 0 gets probed twice.
@@ -575,22 +575,22 @@ int BrOptCycleCar(void)
                     break;
             }
         }
-        v = g_br0AC648;
-    } else if (g_brAA33D0 != 0) {
-        v = g_br0AC648 - 1;
-        g_br0AC648 = v;
+        v = (*(int32_t *)&g_brIdx0ABDE8);
+    } else if (g_act0 != 0) {
+        v = (*(int32_t *)&g_brIdx0ABDE8) - 1;
+        (*(int32_t *)&g_brIdx0ABDE8) = v;
         if (v < 0) {
             v = BrOptCarMax();
-            g_br0AC648 = v;
+            (*(int32_t *)&g_brIdx0ABDE8) = v;
         }
         vStart = v;
         if (BrSub1003F2B0(v) == 0) {
             for (;;) {
-                v = g_br0AC648 - 1;
-                g_br0AC648 = v;
+                v = (*(int32_t *)&g_brIdx0ABDE8) - 1;
+                (*(int32_t *)&g_brIdx0ABDE8) = v;
                 if (v < 0) {
                     v = BrOptCarMax();
-                    g_br0AC648 = v;
+                    (*(int32_t *)&g_brIdx0ABDE8) = v;
                     /* same asymmetry as the increment path */
                 } else if (v == vStart) {
                     break;
@@ -599,22 +599,22 @@ int BrOptCycleCar(void)
                     break;
             }
         }
-        v = g_br0AC648;
+        v = (*(int32_t *)&g_brIdx0ABDE8);
     } else {
-        v = g_br0AC648;
+        v = (*(int32_t *)&g_brIdx0ABDE8);
     }
 
     iVal = g_aBrAC4D8[v];
-    g_br0B380C = iVal;
+    g_Br0B380C = iVal;
 
     if (g_brP277B40 != NULL) {
         /* NOTE the index: 0x100AC308 is indexed by the table VALUE, not by
          * the option index. */
-        BrSprintf(g_aBrA9DD28, BrStrGet(BR_OPT_STR_CAR),
+        BrSprintf(g_szBrName4DB0, BrStrGet(BR_OPT_STR_CAR),
                   BrStrGet((int)g_aBrAC308[iVal]));
-        pRec = g_aBrBD2A8[g_br0B380C];
+        pRec = g_aBrBD2A8[g_Br0B380C];
         if ((pRec->f04 & 0x10) != 0)
-            strcat(g_aBrA9DD28, BrStrGet(BR_OPT_STR_LOCKED));  /* DEVIATION */
+            strcat(g_szBrName4DB0, BrStrGet(BR_OPT_STR_LOCKED));  /* DEVIATION */
         BrOptFlushMessage();
     }
     return 1;
@@ -657,37 +657,37 @@ int BrOptCycleBD3E0(void)
      * the shared wrap on its own leaves the hoisted load.  Also probed
      * dead: `v = g - 1` for the decrement (emits lea/test/jge for the
      * original's dec/jns). */
-    if (g_brAA33D4 != 0) {
-        v = g_br0BD3E0 + 1;
-        g_br0BD3E0 = v;
+    if (g_act1 != 0) {
+        v = (*(int32_t *)&g_CBE8) + 1;
+        (*(int32_t *)&g_CBE8) = v;
         if (v > BR_OPT_BD3E0_MAX) {
             v = BR_OPT_BD3E0_MIN;        /* wraps to 1, NOT to 0 */
             goto BR_WRAP;
         }
-    } else if (g_brAA33D0 == 0) {
-        v = g_br0BD3E0;
+    } else if (g_act0 == 0) {
+        v = (*(int32_t *)&g_CBE8);
     } else {
-        v = g_br0BD3E0;
+        v = (*(int32_t *)&g_CBE8);
         /* load / --v / store, NOT `v = g - 1`: see BrOptCycle above. */
         --v;
-        g_br0BD3E0 = v;
+        (*(int32_t *)&g_CBE8) = v;
         if (v < BR_OPT_BD3E0_MIN) {
             v = BR_OPT_BD3E0_MAX;
 BR_WRAP:
-            g_br0BD3E0 = v;
+            (*(int32_t *)&g_CBE8) = v;
         }
     }
 
     /* The gate read before the store, as in 0x10043180 below: that is what
      * puts `mov ecx,[gate]` ahead of `mov [g_0AC658],eax` at 0x1003C648. */
     pGate = g_brP277B40;
-    g_br0AC658 = v;
+    (*(int32_t *)&DAT_100abdf8) = v;
 
     if (pGate != NULL) {
         /* _itoa and sprintf through the /MD imports, not the wrappers --
          * the original's `call dword ptr [__imp__itoa]` / `[__imp_sprintf]`. */
         _itoa(v, aNum, 10);
-        sprintf(g_aBrA9DD28, BrStrGet(BR_OPT_STR_BD3E0), aNum);
+        sprintf(g_szBrName4DB0, BrStrGet(BR_OPT_STR_BD3E0), aNum);
         BrOptFlushMessage();
     }
     return 1;
@@ -718,19 +718,19 @@ BR_WRAP:
 /* @implements 0x10043180 d3d BrOptCycleAA2A00 */
 int BrOptCycleAA2A00(void)
 {
-    if (g_brAA33D4 != 0) {
-        g_brAA2A00 = g_brAA2A00 + 1;
-        if (g_brAA2A00 > BR_OPT_AA2A00_MAX)
-            g_brAA2A00 = 0;
+    if (g_act1 != 0) {
+        (*(int32_t *)&DAT_10ac5d58) = (*(int32_t *)&DAT_10ac5d58) + 1;
+        if ((*(int32_t *)&DAT_10ac5d58) > BR_OPT_AA2A00_MAX)
+            (*(int32_t *)&DAT_10ac5d58) = 0;
     }
     else {
-        if (g_brAA33D0 != 0) {
-            g_brAA2A00 = g_brAA2A00 - 1;
-            if (g_brAA2A00 < 0)
-                g_brAA2A00 = BR_OPT_AA2A00_MAX;
+        if (g_act0 != 0) {
+            (*(int32_t *)&DAT_10ac5d58) = (*(int32_t *)&DAT_10ac5d58) - 1;
+            if ((*(int32_t *)&DAT_10ac5d58) < 0)
+                (*(int32_t *)&DAT_10ac5d58) = BR_OPT_AA2A00_MAX;
         }
     }
-    g_br22B350 = g_aBrAC4C0[g_brAA2A00];
+    (*(int32_t *)&g_226e80) = g_aBrAC4C0[(*(int32_t *)&DAT_10ac5d58)];
     if (g_brP277B40 != NULL) {
         /* Indexed by the table VALUE, and re-read from the global rather
          * than kept in a local: VC5 CSEs the reload back into eax, which is
@@ -738,8 +738,8 @@ int BrOptCycleAA2A00(void)
          * gate's own load above the table lookup. */
         /* sprintf through the /MD import, not the BrSprintf wrapper --
          * the original's `call dword ptr [sprintf]`, as 0x10042A70 above. */
-        sprintf(g_aBrA9DD28, BrStrGet(BR_OPT_STR_AA2A00),
-                BrStrGet((int)g_aBrAC3B0[g_br22B350]));
+        sprintf(g_szBrName4DB0, BrStrGet(BR_OPT_STR_AA2A00),
+                BrStrGet((int)g_aBrAC3B0[(*(int32_t *)&g_226e80)]));
         BrOptFlushMessage();
     }
     return 1;
@@ -790,37 +790,37 @@ int BrOptCycleAA2A0C(void)
 {
     int32_t v;
 
-    if (g_brAA33D4 != 0) {
-        g_brAA2A0C = g_brAA2A0C + 1;
-        if (g_brAA2A0C >= BR_OPT_AA2A0C_MAX + 1)
-            g_brAA2A0C = 0;
-        if (g_brAA2A0C == 1)            /* stepping up skips 1 -> 2 */
-            g_brAA2A0C = 2;
-    } else if (g_brAA33D0 != 0) {
-        g_brAA2A0C = g_brAA2A0C - 1;
-        if (g_brAA2A0C < 0)
-            g_brAA2A0C = BR_OPT_AA2A0C_MAX;
-        if (g_brAA2A0C == 1)            /* stepping down skips 1 -> 0 */
-            g_brAA2A0C = 0;
+    if (g_act1 != 0) {
+        (*(int32_t *)&g_brKind5D64) = (*(int32_t *)&g_brKind5D64) + 1;
+        if ((*(int32_t *)&g_brKind5D64) >= BR_OPT_AA2A0C_MAX + 1)
+            (*(int32_t *)&g_brKind5D64) = 0;
+        if ((*(int32_t *)&g_brKind5D64) == 1)            /* stepping up skips 1 -> 2 */
+            (*(int32_t *)&g_brKind5D64) = 2;
+    } else if (g_act0 != 0) {
+        (*(int32_t *)&g_brKind5D64) = (*(int32_t *)&g_brKind5D64) - 1;
+        if ((*(int32_t *)&g_brKind5D64) < 0)
+            (*(int32_t *)&g_brKind5D64) = BR_OPT_AA2A0C_MAX;
+        if ((*(int32_t *)&g_brKind5D64) == 1)            /* stepping down skips 1 -> 0 */
+            (*(int32_t *)&g_brKind5D64) = 0;
     }
-    v = g_brAA2A0C;
+    v = (*(int32_t *)&g_brKind5D64);
 
-    g_brB4E728 = v;
+    (g_aBrB4E710[6]) = v;
     v = g_aBrAC520[v];
-    g_brB4E1D0 = v;
+    (*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ = v;
 
     switch (v) {
     default:
-        g_brB4E1D4 = g_aBrB4DF30[0];
+        (*(void * *)&g_BrPadModeBytes) = (*(unsigned char (*)[4][168])&g_BrCtrlCfg)[0];
         return 1;
     case 3:
-        g_brB4E1D4 = g_aBrB4DF30[3];
+        (*(void * *)&g_BrPadModeBytes) = (*(unsigned char (*)[4][168])&g_BrCtrlCfg)[3];
         return 1;
     case 2:
-        g_brB4E1D4 = g_aBrB4DF30[2];
+        (*(void * *)&g_BrPadModeBytes) = (*(unsigned char (*)[4][168])&g_BrCtrlCfg)[2];
         return 1;
     case 1:
-        g_brB4E1D4 = g_aBrB4DF30[1];
+        (*(void * *)&g_BrPadModeBytes) = (*(unsigned char (*)[4][168])&g_BrCtrlCfg)[1];
         return 1;
     }
 }
@@ -831,7 +831,7 @@ int BrOptCycleAA2A0C(void)
 
 int BrOptCycleAA2A1C(void)
 {
-    g_brB4E1E0 = g_aBrAC530[BrOptCycle(&g_brAA2A1C, 1)];
+    (*(int32_t *)&DAT_10b71540) = g_aBrAC530[BrOptCycle(&g_brAA2A1C, 1)];
     return 1;
 }
 
@@ -922,16 +922,16 @@ int BrOptOpen298C(BrGameObj *pUnused)
  * two globals belonging to the screen being closed. */
 /* BrOpt3FC0: the placed body is BrOpt3FC0_1003D510.cpp */
 
-int BrOpt4010(BrGameObj *pGame) { g_brAA287C = 0; BrOptOpen2948(pGame); return 1; }
+int BrOpt4010(BrGameObj *pGame) { (*(int32_t *)&DAT_10ac5bd4) = 0; BrOptOpen2948(pGame); return 1; }
 /* WHAT IT DOES: records the first play mode as the one under the cursor and
  * refreshes how that menu entry is drawn -- the highlight, not the choice. */
-int BrOpt4030(BrGameObj *pGame) { g_brAA287C = 0; BrSub10047360(pGame); return 1; }
-int BrOpt4050(BrGameObj *pGame) { g_brAA287C = 1; BrOptOpen2948(pGame); return 1; }
-int BrOpt4070(BrGameObj *pGame) { g_brAA287C = 1; BrSub10047360(pGame); return 1; }
+int BrOpt4030(BrGameObj *pGame) { (*(int32_t *)&DAT_10ac5bd4) = 0; BrSub10047360(pGame); return 1; }
+int BrOpt4050(BrGameObj *pGame) { (*(int32_t *)&DAT_10ac5bd4) = 1; BrOptOpen2948(pGame); return 1; }
+int BrOpt4070(BrGameObj *pGame) { (*(int32_t *)&DAT_10ac5bd4) = 1; BrSub10047360(pGame); return 1; }
 /* WHAT IT DOES: chooses the third play mode and opens the screen that follows
  * it. */
-int BrOpt4090(BrGameObj *pGame) { g_brAA287C = 2; BrOptOpen2948(pGame); return 1; }
-int BrOpt40B0(BrGameObj *pGame) { g_brAA287C = 2; BrSub10047360(pGame); return 1; }
+int BrOpt4090(BrGameObj *pGame) { (*(int32_t *)&DAT_10ac5bd4) = 2; BrOptOpen2948(pGame); return 1; }
+int BrOpt40B0(BrGameObj *pGame) { (*(int32_t *)&DAT_10ac5bd4) = 2; BrSub10047360(pGame); return 1; }
 
 /* ==========================================================================
  * 0x100440D0 .. 0x100446D0
@@ -979,22 +979,22 @@ int BrOptCycleAA2A18(void)
      * directly, the corpus-proven form of the plain cyclers above (a `v`
      * temp turns the down-arm's `dec` into `lea eax,[ecx-1]; test`); and
      * sprintf through the /MD import, as 0x10042A70. */
-    if (g_brAA33D4 != 0) {
-        g_brAA2A18 = g_brAA2A18 + 1;
-        if (g_brAA2A18 >= BR_OPT_AA2A18_MAX + 1)
-            g_brAA2A18 = 0;
+    if (g_act1 != 0) {
+        (*(int32_t *)&DAT_10ac5d70) = (*(int32_t *)&DAT_10ac5d70) + 1;
+        if ((*(int32_t *)&DAT_10ac5d70) >= BR_OPT_AA2A18_MAX + 1)
+            (*(int32_t *)&DAT_10ac5d70) = 0;
         BrSub10044540();
     }
-    else if (g_brAA33D0 != 0) {
-        g_brAA2A18 = g_brAA2A18 - 1;
-        if (g_brAA2A18 < 0)
-            g_brAA2A18 = BR_OPT_AA2A18_MAX;
+    else if (g_act0 != 0) {
+        (*(int32_t *)&DAT_10ac5d70) = (*(int32_t *)&DAT_10ac5d70) - 1;
+        if ((*(int32_t *)&DAT_10ac5d70) < 0)
+            (*(int32_t *)&DAT_10ac5d70) = BR_OPT_AA2A18_MAX;
         BrSub10044540();
     }
 
     if (g_brP277B40 != NULL) {
-        sprintf(g_aBrA9DD28, BrStrGet(BR_OPT_STR_AA2A18),
-                BrStrGet((int)g_aBrAC3C8[g_brAA2A18]));
+        sprintf(g_szBrName4DB0, BrStrGet(BR_OPT_STR_AA2A18),
+                BrStrGet((int)g_aBrAC3C8[(*(int32_t *)&DAT_10ac5d70)]));
         BrOptFlushMessage();
     }
     return 1;

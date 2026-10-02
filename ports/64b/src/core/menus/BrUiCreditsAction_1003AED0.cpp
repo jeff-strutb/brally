@@ -45,13 +45,13 @@ typedef char chk_sub[(unsigned)&((GameObj *)0)->pSub == 0x2AE8 ? 1 : -1];
 
 int BrUiCreditsAction_1003AED0(GameObj *pGame)
 {
-    FnAF30(g_strA);
-    g_9360 = 4;
+    BrExt_100419D0(g_strA);
+    (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = 4;
     if (g_5D98 != 0) {
-        g_C760 = 2;
+        g_5bc760 = 2;
         g_5BF4 = 0;
     } else {
-        g_C760 = 1;
+        g_5bc760 = 1;
     }
     pGame->pSub->f68 = 0;
     pGame->pSub->s6(0);

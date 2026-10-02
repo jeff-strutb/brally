@@ -162,75 +162,75 @@ BrMenuState *BrMenuGetState(void)
  * by their DAT_ names (the image gate resolves those from the address they
  * spell).  pSt is always &g_menu, so pSt->x and g_menu.x name the same object. */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define MENU_g0AA010 DAT_100a9360
+#define MENU_g0AA010 (*(uint32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define MENU_g0AC648 DAT_100abde8
+#define MENU_g0AC648 (*(uint32_t *)&g_brIdx0ABDE8)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 #define MENU_g0AC64C DAT_100abdec
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 #define MENU_g0AC650 DAT_100abdf0
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define MENU_g0BD3E0 DAT_100bcbe8
+#define MENU_g0BD3E0 (*(int32_t *)&g_CBE8)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 #define MENU_g1782CD0 DAT_117a6030
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define MENU_g18ABDBC DAT_118eeed4
+#define MENU_g18ABDBC (*(uint32_t *)&DAT_118eeed4)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define MENU_g220B24 DAT_1021c654
+#define MENU_g220B24 (*(uint32_t *)((char *)&g_a220B20 + 0x4))
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 #define MENU_gA9D618 DAT_10ac46a0
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define MENU_gAA2518 DAT_10ac5870
+#define MENU_gAA2518 g_aBrAA2518
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define MENU_gAA2844 DAT_10ac5b9c
+#define MENU_gAA2844 (*(uint32_t *)&BrGlNavOff5B9C)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define MENU_gAA287C DAT_10ac5bd4
+#define MENU_gAA287C (*(uint32_t *)&DAT_10ac5bd4)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* declared as the rest of the file does */
-#define MENU_gAA289C (*(uint32_t *)&DAT_10ac5bf4)
+#define MENU_gAA289C (*(uint32_t *)&(*(int32_t *)&g_5BF4))
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* declared as the rest of the file does */
-#define MENU_gAA28A0 (*(uint32_t *)&DAT_10ac5bf8)
+#define MENU_gAA28A0 (*(uint32_t *)&g_brPhase5BF8)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define MENU_gAA28A4 DAT_10ac5bfc
+#define MENU_gAA28A4 (*(uint32_t *)&g_brIdx5BFC)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define MENU_gAA28A8 DAT_10ac5c00
+#define MENU_gAA28A8 (*(uint8_t *)&DAT_10ac5c00)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* declared as the rest of the file does */
-#define MENU_gAA28AC (*(uint32_t *)&DAT_10ac5c04)
+#define MENU_gAA28AC (*(uint32_t *)&(*(int32_t *)&g_brIdx5C04))
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* declared as the rest of the file does */
-#define MENU_gAA28B8 (*(uint8_t *)&DAT_10ac5c10)
+#define MENU_gAA28B8 (*(uint8_t *)&(*(int8_t *)&DAT_10ac5c10))
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 #define MENU_gAA28C4 DAT_10ac5c1c
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 #define MENU_gAA28D0 DAT_10ac5c28
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define MENU_gAA28D8 DAT_10ac5c30
+#define MENU_gAA28D8 (*(uint32_t *)&g_5C30)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define MENU_gAA28E0 DAT_10ac5c38
+#define MENU_gAA28E0 (*(uint32_t *)&g_5C38)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define MENU_gAA28E4 DAT_10ac5c3c
+#define MENU_gAA28E4 (*(uint32_t *)&g_5C3C)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define MENU_gAA28E8 DAT_10ac5c40
+#define MENU_gAA28E8 (*(uint32_t *)&DAT_10ac5c40)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define MENU_gAA2904 DAT_10ac5c5c
+#define MENU_gAA2904 g_brPAA29B8
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 #define MENU_gAA2964 DAT_10ac5cbc
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define MENU_gAA2A00 DAT_10ac5d58
+#define MENU_gAA2A00 (*(uint32_t *)&DAT_10ac5d58)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 #define MENU_gAA2A08 DAT_10ac5d60
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define MENU_gAA2A0C DAT_10ac5d64
+#define MENU_gAA2A0C (*(uint32_t *)&g_brKind5D64)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define MENU_gAA2A1C DAT_10ac5d74
+#define MENU_gAA2A1C (*(uint32_t *)&g_brSel5D74)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 #define MENU_gAA2A20 DAT_10ac5d78
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define MENU_gAA2A24 DAT_10ac5d7c
+#define MENU_gAA2A24 (*(uint32_t *)&g_brSel5D7C)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define MENU_gAA2A28 DAT_10ac5d80
+#define MENU_gAA2A28 (*(uint32_t *)&g_brSel5D80)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define MENU_gAA33E4 DAT_10ac6744
+#define MENU_gAA33E4 (*(uint32_t *)&DAT_10ac6744)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define MENU_gACEE50 DAT_10af21b0
+#define MENU_gACEE50 (*(int32_t *)((char *)&g_aBrRaceCar + 0xFA8)) /* BR_LP64_BYTE_VIEW */
 
 /* =====================================================================
  * 2. The caption tables
@@ -404,7 +404,7 @@ int32_t BrMenuEnter(void)
         MENU_gAA33E4 = 0;
         BrMenuSub1005FF30();
         BrMenuSub1005FF60();
-        BrMenuSub1005FFF0();
+        BrInputLatchUpdate();
     }
     return 1;
 }
@@ -417,8 +417,8 @@ int32_t BrMenuLeaveTo2(void)
     BrMenuState *pSt = &g_menu;
 
     if (MENU_gACEE50 >= MENU_g0BD3E0) {
-        BrMenuSub10044B90(0);
-        BrMenuSub10044E20(0);
+        Ctl3E0E0_fn(0);
+        Ctl3E370_fn(0);
     }
     MENU_g0AA010 = 2;
     return 1;
@@ -430,7 +430,7 @@ int32_t BrMenuLeaveTo2(void)
 /* @implements 0x10041B50 d3d BrMenuAutoSaveName */
 void BrMenuAutoSaveName(void)
 {
-    uint8_t *p = g_pBrMenuACED34;
+    uint8_t *p = (*(uint8_t * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */;
     char    *pszName = "AutoSave.brf";
 
     /* One pointer, 0x10ACED34.  The port used to thread a separate
@@ -449,9 +449,9 @@ void BrMenuAutoSaveName(void)
          * re-reads 0x10ACED34 between them, which is why the pointer is
          * refetched here even though nothing can have changed it. */
         memset(p + 0x06, 0, 6 * 4);
-        p = g_pBrMenuACED34;
+        p = (*(uint8_t * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */;
         memset(p + 0x1E, 0, 0xC * 4);
-        p = g_pBrMenuACED34;
+        p = (*(uint8_t * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */;
         memset(p + 0x50, 0, 0x18 * 4);
     }
     BrMenuSub100709A0();
@@ -930,7 +930,7 @@ int32_t BrMenuText0B30(BrMenuItem *pItem)
     sprintf(MENU_gA9D618, "%d", (int)(MENU_gAA28A4 + 1u));
 
     psz = pItem->text.sz;
-    strcpy(psz, BrStringById(0x37));
+    strcpy(psz, BrStrGet(0x37));
     strcat(psz, pszSp);
     strcat(psz, MENU_gA9D618);
 
@@ -982,11 +982,11 @@ int32_t BrMenuTime0C00(BrMenuItem *pItem)
     char sz[32];                       /* the original's local is 0x20, zeroed */
 
     memset(sz, 0, sizeof sz);
-    if (DAT_10ac5bf4 != 0) {
+    if ((*(int32_t *)&g_5BF4) != 0) {
         /* the stage-byte lookup, inline: table[(bias + 12*stage) * 2] */
-        uint32_t i = (&DAT_100b3028)[
-            (DAT_10ac5c04 + 12 * (int32_t)DAT_10ac5c10) * 2];
-        float    t = (&DAT_10ac5b54)[i];
+        uint32_t i = (&(g_aBr0B3820[0]))[
+            ((*(int32_t *)&g_brIdx5C04) + 12 * (int32_t)(*(int8_t *)&DAT_10ac5c10)) * 2];
+        float    t = (&(g_brFTbl5B54[0]))[i];
 
         if (t > 0.0f) {
             /* the lap formatter, inline -- the same spelling as
@@ -1078,11 +1078,11 @@ int32_t BrMenuText1300(BrMenuItem *pItem)
     if (MENU_gAA289C != 0)
         e = (int32_t)(int8_t)MENU_gAA28B8;
 
-    if (strlen(BrStringById(g_brStages[e].f00)) == 0)
+    if (strlen(BrStrGet(g_brStages[e].f00)) == 0)
         return 0;
 
     psz = pItem->text.sz;
-    strcpy(psz, BrStrUpr(BrStringById(g_brStages[e].f00)));
+    strcpy(psz, BrStrUpr(BrStrGet(g_brStages[e].f00)));
 
     {
         const BrMenuTextVtbl *pVtbl = pItem->text.pVtbl;

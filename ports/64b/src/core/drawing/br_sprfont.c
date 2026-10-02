@@ -235,7 +235,7 @@ int __fastcall BrSprFontGlyphA_1005B730(BrTextBox *pBox, BrGlyphI16 iGlyph,
         sheet = 4;
     } else if (k == 4) {
         sheet = 0x34;
-    }FUN_10058380((int)x.v, (int)y.v, sheet, g_aBrSprRectA[iGlyph.v],
+    }BrSprFontDraw((int)x.v, (int)y.v, sheet, g_aBrSprRectA[iGlyph.v],
                  g_aBrUiSprite[sheet].fBlit);return 1;}
 
 /* WHAT IT DOES: draw one character of the SECOND sprite font at the given
@@ -246,7 +246,7 @@ int __fastcall BrSprFontGlyphA_1005B730(BrTextBox *pBox, BrGlyphI16 iGlyph,
 int BR_STDCALL BrSprFontGlyphB_1005B7A0(short iGlyph, float x, float y,
                                        int unused)
 {
-    FUN_10058380((int)x, (int)y, 5, g_aBrSprRectB[iGlyph],
+    BrSprFontDraw((int)x, (int)y, 5, g_aBrSprRectB[iGlyph],
                  g_aBrUiSprite[5].fBlit);
     return 1;
 }
@@ -514,49 +514,49 @@ char __fastcall FUN_10054390(int *param_1)
 {
   char cVar1;
   
-  if (DAT_10ac5bb4 != 0) {
-    if (DAT_10ac5ecc != 0) {
-      FUN_10037040(g_brPA9D008, 4);
-      FUN_1006ba60(4, 0x200020);
-      g_brAA2854 = 4;
+  if (g_5BB4 != 0) {
+    if ((*(int *)&g_BrDikEdge[59]) != 0) {
+      BrSub1003D9A0(g_brPA9D008, 4);
+      BrSub10072AF0(4, 0x200020);
+      g_track = 4;
     }
-    else if (DAT_10ac5ed0 != 0) {
-      FUN_10037040(g_brPA9D008, 5);
-      FUN_1006ba60(5, 0x200020);
-      g_brAA2854 = 5;
+    else if ((*(int *)&g_BrDikEdge[60]) != 0) {
+      BrSub1003D9A0(g_brPA9D008, 5);
+      BrSub10072AF0(5, 0x200020);
+      g_track = 5;
     }
-    else if (DAT_10ac5ed4 != 0) {
-      FUN_10037040(g_brPA9D008, 6);
-      FUN_1006ba60(6, 0x200020);
-      g_brAA2854 = 6;
+    else if ((*(int *)&g_BrDikEdge[61]) != 0) {
+      BrSub1003D9A0(g_brPA9D008, 6);
+      BrSub10072AF0(6, 0x200020);
+      g_track = 6;
     }
-    else if (DAT_10ac5ed8 != 0) {
-      FUN_10037040(g_brPA9D008, 7);
-      FUN_1006ba60(7, 0x200020);
-      g_brAA2854 = 7;
+    else if ((*(int *)&g_BrDikEdge[62]) != 0) {
+      BrSub1003D9A0(g_brPA9D008, 7);
+      BrSub10072AF0(7, 0x200020);
+      g_track = 7;
     }
   }
-  if (DAT_10ac5de4 != 0) {
-    g_brAA33E4 = 0;
+  if ((*(int *)&g_BrDikEdge[1]) != 0) {
+    DAT_10ac6744 = 0;
     return (char)0xff;
   }
-  if ((DAT_10ac5e50 != 0) || (DAT_10ac6050 != 0) ||
-      (FUN_10037720() != 0 && DAT_10ac5bb4 == 0)) {
+  if (((*(int *)&g_BrDikEdge[28]) != 0) || ((*(int *)&g_BrDikEdge[156]) != 0) ||
+      (BrInputAnyActive() != 0 && g_5BB4 == 0)) {
     if (strlen((char *)param_1 + 9) != 0) {
-      g_brAA33E4 = 0;
+      DAT_10ac6744 = 0;
       return 0;
     }
   }
-  if (g_brAA33E4 != 0) {
-    if (g_brAA33E4 == 8) {
+  if (DAT_10ac6744 != 0) {
+    if (DAT_10ac6744 == 8) {
       if (strlen((char *)param_1 + 9) != 0) {
         ((char *)param_1)[8 + strlen((char *)param_1 + 9)] = 0;
-        g_brAA33E4 = 0;
+        DAT_10ac6744 = 0;
         return 1;
       }
     }
     else {
-      cVar1 = FUN_10054360(g_brAA33E4);
+      cVar1 = BrCharMapLookup(DAT_10ac6744);
       if (cVar1 == 0) {
         return 1;
       }
@@ -566,6 +566,6 @@ char __fastcall FUN_10054390(int *param_1)
       }
     }
   }
-  g_brAA33E4 = 0;
+  DAT_10ac6744 = 0;
   return 1;
 }

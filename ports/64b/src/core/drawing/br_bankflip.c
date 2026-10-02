@@ -164,10 +164,10 @@ void BrS17BankFlip(void)
     unsigned char *buf;
 
     for (i = 0; i < 3; ++i)
-        FUN_10008d60();
+        BrPodNop();
 
     DAT_105b9718 ^= 1;
-    DAT_105b9720 = FUN_10059f00();
+    DAT_105b9720 = BrTickAdd_10078C10();
     DAT_105b9724 = 0;
 
     bank = DAT_105b9718;

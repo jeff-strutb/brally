@@ -442,7 +442,7 @@ typedef struct BrAnimSet {
 /* 0x106C2CFC -- ALIAS RESOLVED. slice2_20.c calls this g_f6C2CFC. Storage in
  * port/src/br_data.c; .bss in the original, so it really does start at 0. */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define g_BrAnimDt g_f6C2CFC   /* 0x106C2CFC  seconds advanced per call */
+#define g_BrAnimDt g_brRaceFlyStep   /* 0x106C2CFC  seconds advanced per call */
 
 /* 0x10035585  For every track in the set: flags = (flags | orBits) & ~andArg.
  *

@@ -62,7 +62,7 @@ int Slots549A0::Poll(int idx)
     c = pRec->s5();
 
     if (c <= 0) {
-        g_brAA28D8 = 0;
+        g_5C30 = 0;
         *(int *)(p + 0x44C) = 0;
 
         if (pfn != 0) {

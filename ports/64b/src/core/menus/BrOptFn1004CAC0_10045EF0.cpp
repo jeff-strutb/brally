@@ -260,10 +260,10 @@ int BrOptFn1004CAC0(GameUi *parent)
     p->m3838.s5(0x40001, &DAT_100aac78, 5, 0, -1);
     for (pe = g_aKeyEnt0AAAD0; (int)pe < (int)(g_aKeyEnt0AAAD0 + 21); pe++) {
         flags = 0;
-        if (DAT_10ac5d64 == 3
+        if (g_brKind5D64 == 3
             && (pe == &g_aKeyEnt0AAAD0[0] || pe == &g_aKeyEnt0AAAD0[1])) {
             flags = 0x10;
-            DAT_10ac5b98 = 2;
+            g_brSel5B98 = 2;
         }
         if (BrStrGet(pe->id) != 0)
             p->m3838.s4((char *)(BrStrGet(pe->id)), flags, 1, &DAT_100aac78, 0);
@@ -278,9 +278,9 @@ int BrOptFn1004CAC0(GameUi *parent)
     p->s38(parent, cont->f338, cont->f33C - DAT_10077658, 0x102001, 2, 5, 1, -1);
     p->pfn0C = (CtlFn)BrSub10047360;
     p->pfn08 = (CtlFn)BrMenuEnter;
-    p->pfn18 = (CtlFn)FUN_10039990;
+    p->pfn18 = (CtlFn)BrCtrlBindPoll_10039990;
     p->w1E20C = 3;
-    p->s34((char *)(BrStrGet(0x27)), 1, 1, (char *)(&DAT_100aabe8));
+    p->s34((char *)(BrStrGet(0x27)), 1, 1, (char *)(&(*(char *)&g_hot0)));
     cont->w14 += 1;
     cont->w344 += 1;
     p = new BrCtl;
@@ -290,10 +290,10 @@ int BrOptFn1004CAC0(GameUi *parent)
         FUN_100378c0(4);
     p->s38(parent, cont->f338, cont->f33C - DAT_1007765c, 0x102001, 2, 5, 1, -1);
     p->pfn0C = (CtlFn)BrSub10047360;
-    p->pfn08 = (CtlFn)BrPhaseLeave_10046560;
+    p->pfn08 = (CtlFn)BrOpt6560;
     p->w1E20C = 3;
-    p->s34((char *)(BrStrGet(0xc)), 1, 1, (char *)(&DAT_100aabe8));
-    g_AA29C8 = (BrCtl *)((BrUiCtl_ *)((BrCtl *)((BrUiCtl_ *)(p))));
+    p->s34((char *)(BrStrGet(0xc)), 1, 1, (char *)(&(*(char *)&g_hot0)));
+    (*(BrCtl * *)&g_brUipAA29C8) = (BrCtl *)((BrUiCtl_ *)((BrCtl *)((BrUiCtl_ *)(p))));
     cont->w14 += 1;
     cont->w344 += 1;
     p = new BrCtl;
@@ -311,7 +311,7 @@ int BrOptFn1004CAC0(GameUi *parent)
     p->s38(parent, cont->f338, 135.0f, 0x101001, 2, 5, 1, -1);
     p->pfn04 = (CtlFn)BrUiText1003F8D0;
     p->w1E20C = 3;
-    p->s34((char *)(&DAT_100acad8), 1, 1, &DAT_100aac28);
+    p->s34((char *)(&(g_strA[0])), 1, 1, &DAT_100aac28);
     cont->w14 += 1;
     p = new BrCtl;
     cont->a18[cont->w14] = p;
@@ -338,11 +338,11 @@ int BrOptFn1004CAC0(GameUi *parent)
     if (bad)
         FUN_100378c0(4);
     p->s38(parent, cont->f338, 100.0f, 0x101001, 2, 5, 1, -1);
-    p->pfn04 = (CtlFn)FUN_10039620;
+    p->pfn04 = (CtlFn)BrCtlBindingToItem;
     p->w1E20C = 3;
-    p->s34((char *)(&DAT_100acad8), 1, 1, &DAT_100aac68);
+    p->s34((char *)(&(g_strA[0])), 1, 1, &DAT_100aac68);
     cont->w14 += 1;
-    DAT_10ac5ba8 = BrCfgFindConflicts(DAT_100abcc0[DAT_10ac5d64]);
+    DAT_10ac5ba8 = BrCfgFindConflicts((*(int (*)[])&g_aBrAC520)[g_brKind5D64]);
 
     return 1;
 }

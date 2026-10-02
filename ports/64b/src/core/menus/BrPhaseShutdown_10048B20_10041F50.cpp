@@ -113,64 +113,64 @@ void __stdcall BrPhaseShutdown_10048B20(int bPartial)
     PodObj *pPod;
 
     deadline = 0;
-    if (g_brAA2854 == 2)
+    if (g_track == 2)
         deadline = 0x11da;
-    else if (g_brAA2854 == 3)
+    else if (g_track == 3)
         deadline = 0x604;
     deadline += BrSub10075020();
     while (BrSub10075020() < deadline)
         Sleep(0);
 
     if (bPartial == 0) {
-        g_AC300 = 0;
-        g_brPhaseAA2904 = 0;
+        (*(int *)&g_AC300) = 0;
+        g_brPAA29B8 = 0;
         BrFontTexFreeAll();
-        p = &DAT_10ac53ec;
+        p = &(*(int *)((char *)&g_img + 0x4)) /* BR_LP64_BYTE_VIEW */;
         do {
             if (*(void **)p != 0)
                 operator delete(*(void **)p);
             *p = 0;
             p += 2;
-        } while ((uintptr_t)p < (uintptr_t)&DAT_10ac5874);
+        } while ((uintptr_t)p < (uintptr_t)&(*(int *)&g_aBrAA2518[4]));
     }
 
-    if (DAT_10ac5c98 != 0) {
-        DAT_10ac5c98->v7();
-        delete DAT_10ac5c98;
-        DAT_10ac5c98 = 0;
-        DAT_10ac408c = 0;
+    if ((*(Ph * *)&g_5C98) != 0) {
+        (*(Ph * *)&g_5C98)->v7();
+        delete (*(Ph * *)&g_5C98);
+        (*(Ph * *)&g_5C98) = 0;
+        g_guardA = 0;
     }
 
-    if (DAT_10ac5c64 != 0) {
-        DAT_10ac5c64->v7();
-        delete DAT_10ac5c64;
-        DAT_10ac5c64 = 0;
-        DAT_10ac5d04 = 0;
+    if ((*(Ph * *)&g_5C64) != 0) {
+        (*(Ph * *)&g_5C64)->v7();
+        delete (*(Ph * *)&g_5C64);
+        (*(Ph * *)&g_5C64) = 0;
+        g_hookObj = 0;
     }
 
-    if (DAT_10ac5c68 != 0) {
-        DAT_10ac5c68->v7();
-        delete DAT_10ac5c68;
-        DAT_10ac5c68 = 0;
+    if ((*(Ph * *)&g_5C68) != 0) {
+        (*(Ph * *)&g_5C68)->v7();
+        delete (*(Ph * *)&g_5C68);
+        (*(Ph * *)&g_5C68) = 0;
     }
 
-    if (DAT_10ac5c6c != 0) {
-        DAT_10ac5c6c->v7();
-        delete DAT_10ac5c6c;
-        DAT_10ac5c6c = 0;
+    if ((*(Ph * *)&g_5C6C) != 0) {
+        (*(Ph * *)&g_5C6C)->v7();
+        delete (*(Ph * *)&g_5C6C);
+        (*(Ph * *)&g_5C6C) = 0;
         DAT_10ac5d0c = 0;
     }
 
-    if (DAT_10ac5c70 != 0) {
-        DAT_10ac5c70->v7();
-        delete DAT_10ac5c70;
-        DAT_10ac5c70 = 0;
+    if ((*(Ph * *)&g_5C70) != 0) {
+        (*(Ph * *)&g_5C70)->v7();
+        delete (*(Ph * *)&g_5C70);
+        (*(Ph * *)&g_5C70) = 0;
     }
 
-    if (DAT_10ac5c74 != 0) {
-        DAT_10ac5c74->v7();
-        delete DAT_10ac5c74;
-        DAT_10ac5c74 = 0;
+    if ((*(Ph * *)&g_5C74) != 0) {
+        (*(Ph * *)&g_5C74)->v7();
+        delete (*(Ph * *)&g_5C74);
+        (*(Ph * *)&g_5C74) = 0;
     }
 
     if (DAT_10ac5c78 != 0) {
@@ -180,56 +180,56 @@ void __stdcall BrPhaseShutdown_10048B20(int bPartial)
         DAT_10ac5d00 = 0;
     }
 
-    if (DAT_10ac5c7c != 0) {
-        DAT_10ac5c7c->v7();
-        delete DAT_10ac5c7c;
-        DAT_10ac5c7c = 0;
+    if ((*(Ph * *)&g_5C7C) != 0) {
+        (*(Ph * *)&g_5C7C)->v7();
+        delete (*(Ph * *)&g_5C7C);
+        (*(Ph * *)&g_5C7C) = 0;
     }
 
-    if (DAT_10ac5c80 != 0) {
-        DAT_10ac5c80->v7();
-        delete DAT_10ac5c80;
-        DAT_10ac5c80 = 0;
+    if ((*(Ph * *)&g_5C80) != 0) {
+        (*(Ph * *)&g_5C80)->v7();
+        delete (*(Ph * *)&g_5C80);
+        (*(Ph * *)&g_5C80) = 0;
         DAT_10ac5d18 = 0;
-        DAT_10ac5d24 = 0;
-        g_AA29F4 = 0;
+        g_5D24 = 0;
+        g_brUipAA29F4 = 0;
     }
 
     if (g_brPhaseAA292C != 0) {
         g_brPhaseAA292C->v7();
         delete g_brPhaseAA292C;
         g_brPhaseAA292C = 0;
-        g_brAA29B0 = 0;
+        DAT_10ac5d08 = 0;
     }
 
-    if (DAT_10ac5c88 != 0) {
-        DAT_10ac5c88->v7();
-        delete DAT_10ac5c88;
-        DAT_10ac5c88 = 0;
+    if ((*(Ph * *)&g_5C88) != 0) {
+        (*(Ph * *)&g_5C88)->v7();
+        delete (*(Ph * *)&g_5C88);
+        (*(Ph * *)&g_5C88) = 0;
     }
 
-    if (DAT_10ac5c8c != 0) {
-        DAT_10ac5c8c->v7();
-        delete DAT_10ac5c8c;
-        DAT_10ac5c8c = 0;
+    if ((*(Ph * *)&g_5C8C) != 0) {
+        (*(Ph * *)&g_5C8C)->v7();
+        delete (*(Ph * *)&g_5C8C);
+        (*(Ph * *)&g_5C8C) = 0;
     }
 
-    if (DAT_10ac5c90 != 0) {
-        DAT_10ac5c90->v7();
-        delete DAT_10ac5c90;
-        DAT_10ac5c90 = 0;
+    if ((*(Ph * *)&g_5C90) != 0) {
+        (*(Ph * *)&g_5C90)->v7();
+        delete (*(Ph * *)&g_5C90);
+        (*(Ph * *)&g_5C90) = 0;
     }
 
-    if (g_brPhaseAA293C != 0) {
-        g_brPhaseAA293C->v7();
-        delete g_brPhaseAA293C;
-        g_brPhaseAA293C = 0;
+    if ((*(Ph * *)&g_5C94) != 0) {
+        (*(Ph * *)&g_5C94)->v7();
+        delete (*(Ph * *)&g_5C94);
+        (*(Ph * *)&g_5C94) = 0;
     }
 
-    if (DAT_10ac5c98 != 0) {
-        DAT_10ac5c98->v7();
-        delete DAT_10ac5c98;
-        DAT_10ac5c98 = 0;
+    if ((*(Ph * *)&g_5C98) != 0) {
+        (*(Ph * *)&g_5C98)->v7();
+        delete (*(Ph * *)&g_5C98);
+        (*(Ph * *)&g_5C98) = 0;
     }
 
     if (DAT_10ac5c9c != 0) {
@@ -238,55 +238,55 @@ void __stdcall BrPhaseShutdown_10048B20(int bPartial)
         DAT_10ac5c9c = 0;
     }
 
-    if (DAT_10ac5ca0 != 0) {
-        DAT_10ac5ca0->v7();
-        delete DAT_10ac5ca0;
-        DAT_10ac5ca0 = 0;
-        DAT_10ac5d10 = 0;
-        DAT_10ac5d30 = 0;
+    if ((*(Ph * *)&g_2948) != 0) {
+        (*(Ph * *)&g_2948)->v7();
+        delete (*(Ph * *)&g_2948);
+        (*(Ph * *)&g_2948) = 0;
+        g_29B8 = 0;
+        g_brPAA29D8 = 0;
         g_brPAA29D4 = 0;
-        g_iAA2880 = 0;
+        g_5BD8 = 0;
     }
 
-    if (DAT_10ac5ca4 != 0) {
-        DAT_10ac5ca4->v7();
-        delete DAT_10ac5ca4;
-        DAT_10ac5ca4 = 0;
-        DAT_10ac5d10 = 0;
+    if ((*(Ph * *)&g_294C) != 0) {
+        (*(Ph * *)&g_294C)->v7();
+        delete (*(Ph * *)&g_294C);
+        (*(Ph * *)&g_294C) = 0;
+        g_29B8 = 0;
     }
 
-    if (DAT_10ac5ca8 != 0) {
-        DAT_10ac5ca8->v7();
-        delete DAT_10ac5ca8;
-        DAT_10ac5ca8 = 0;
+    if ((*(Ph * *)&g_brPAA2950) != 0) {
+        (*(Ph * *)&g_brPAA2950)->v7();
+        delete (*(Ph * *)&g_brPAA2950);
+        (*(Ph * *)&g_brPAA2950) = 0;
     }
 
-    if (DAT_10ac5cac != 0) {
-        DAT_10ac5cac->v7();
-        delete DAT_10ac5cac;
-        DAT_10ac5cac = 0;
+    if (g_5CAC != 0) {
+        g_5CAC->v7();
+        delete g_5CAC;
+        g_5CAC = 0;
         g_brPAA29E4 = 0;
-        DAT_10ac5d38 = 0;
+        g_pGame = 0;
     }
 
-    if (DAT_10ac5cb0 != 0) {
-        DAT_10ac5cb0->v7();
-        delete DAT_10ac5cb0;
-        DAT_10ac5cb0 = 0;
+    if ((*(Ph * *)&g_5CB0) != 0) {
+        (*(Ph * *)&g_5CB0)->v7();
+        delete (*(Ph * *)&g_5CB0);
+        (*(Ph * *)&g_5CB0) = 0;
         DAT_10ac5d00 = 0;
     }
 
-    if (DAT_10ac5ce4 != 0) {
-        DAT_10ac5ce4->v7();
-        delete DAT_10ac5ce4;
-        DAT_10ac5ce4 = 0;
+    if ((*(Ph * *)&g_298C) != 0) {
+        (*(Ph * *)&g_298C)->v7();
+        delete (*(Ph * *)&g_298C);
+        (*(Ph * *)&g_298C) = 0;
         DAT_10ac5d40 = 0;
     }
 
-    if (DAT_10ac5cb4 != 0) {
-        DAT_10ac5cb4->v7();
-        delete DAT_10ac5cb4;
-        DAT_10ac5cb4 = 0;
+    if ((*(Ph * *)&g_5CB4) != 0) {
+        (*(Ph * *)&g_5CB4)->v7();
+        delete (*(Ph * *)&g_5CB4);
+        (*(Ph * *)&g_5CB4) = 0;
     }
 
     if (DAT_10ac5cb8 != 0) {
@@ -295,18 +295,18 @@ void __stdcall BrPhaseShutdown_10048B20(int bPartial)
         DAT_10ac5cb8 = 0;
     }
 
-    if (DAT_10ac5cbc != 0) {
-        DAT_10ac5cbc->v7();
-        delete DAT_10ac5cbc;
-        DAT_10ac5cbc = 0;
+    if ((*(Ph * *)&DAT_10ac5cbc) != 0) {
+        (*(Ph * *)&DAT_10ac5cbc)->v7();
+        delete (*(Ph * *)&DAT_10ac5cbc);
+        (*(Ph * *)&DAT_10ac5cbc) = 0;
     }
 
-    if (DAT_10ac5cc0 != 0) {
-        DAT_10ac5cc0->v7();
-        delete DAT_10ac5cc0;
-        DAT_10ac5cc0 = 0;
+    if ((*(Ph * *)&g_5CC0) != 0) {
+        (*(Ph * *)&g_5CC0)->v7();
+        delete (*(Ph * *)&g_5CC0);
+        (*(Ph * *)&g_5CC0) = 0;
         DAT_10ac5d1c = 0;
-        DAT_10ac5d28 = 0;
+        g_brPAA29D0 = 0;
     }
 
     if (DAT_10ac5cc4 != 0) {
@@ -315,10 +315,10 @@ void __stdcall BrPhaseShutdown_10048B20(int bPartial)
         DAT_10ac5cc4 = 0;
     }
 
-    if (g_brAA2970 != 0) {
-        g_brAA2970->v7();
-        delete g_brAA2970;
-        g_brAA2970 = 0;
+    if ((*(Ph * *)&DAT_10ac5cc8) != 0) {
+        (*(Ph * *)&DAT_10ac5cc8)->v7();
+        delete (*(Ph * *)&DAT_10ac5cc8);
+        (*(Ph * *)&DAT_10ac5cc8) = 0;
     }
 
     if (g_brPhaseAA2974 != 0) {
@@ -327,28 +327,28 @@ void __stdcall BrPhaseShutdown_10048B20(int bPartial)
         g_brPhaseAA2974 = 0;
     }
 
-    if (DAT_10ac5cd4 != 0) {
-        DAT_10ac5cd4->v7();
-        delete DAT_10ac5cd4;
-        DAT_10ac5cd4 = 0;
+    if ((*(Ph * *)&g_5CD4) != 0) {
+        (*(Ph * *)&g_5CD4)->v7();
+        delete (*(Ph * *)&g_5CD4);
+        (*(Ph * *)&g_5CD4) = 0;
     }
 
-    if (DAT_10ac5cd8 != 0) {
-        DAT_10ac5cd8->v7();
-        delete DAT_10ac5cd8;
-        DAT_10ac5cd8 = 0;
+    if ((*(Ph * *)&g_5CD8) != 0) {
+        (*(Ph * *)&g_5CD8)->v7();
+        delete (*(Ph * *)&g_5CD8);
+        (*(Ph * *)&g_5CD8) = 0;
     }
 
-    if (DAT_10ac5cdc != 0) {
-        DAT_10ac5cdc->v7();
-        delete DAT_10ac5cdc;
-        DAT_10ac5cdc = 0;
+    if ((*(Ph * *)&g_5CDC) != 0) {
+        (*(Ph * *)&g_5CDC)->v7();
+        delete (*(Ph * *)&g_5CDC);
+        (*(Ph * *)&g_5CDC) = 0;
     }
 
-    if (DAT_10ac5ce0 != 0) {
-        DAT_10ac5ce0->v7();
-        delete DAT_10ac5ce0;
-        DAT_10ac5ce0 = 0;
+    if ((*(Ph * *)&g_5CE0) != 0) {
+        (*(Ph * *)&g_5CE0)->v7();
+        delete (*(Ph * *)&g_5CE0);
+        (*(Ph * *)&g_5CE0) = 0;
     }
 
     if (DAT_10ac5ce8 != 0) {
@@ -358,31 +358,31 @@ void __stdcall BrPhaseShutdown_10048B20(int bPartial)
         DAT_10ac5d48 = 0;
     }
 
-    if (DAT_10ac5cec != 0) {
-        DAT_10ac5cec->v7();
-        delete DAT_10ac5cec;
-        DAT_10ac5cec = 0;
+    if ((*(Ph * *)&g_5CEC) != 0) {
+        (*(Ph * *)&g_5CEC)->v7();
+        delete (*(Ph * *)&g_5CEC);
+        (*(Ph * *)&g_5CEC) = 0;
         DAT_10ac5d44 = 0;
     }
 
-    if (DAT_10ac5cf0 != 0) {
-        DAT_10ac5cf0->v7();
-        delete DAT_10ac5cf0;
-        DAT_10ac5cf0 = 0;
+    if ((*(Ph * *)&g_5CF0) != 0) {
+        (*(Ph * *)&g_5CF0)->v7();
+        delete (*(Ph * *)&g_5CF0);
+        (*(Ph * *)&g_5CF0) = 0;
     }
 
     if (bPartial == 0) {
-        if (DAT_10ac5c60 != 0) {
-            DAT_10ac5c60->v7();
-            delete DAT_10ac5c60;
-            DAT_10ac5c60 = 0;
+        if ((*(Ph * *)&g_2908) != 0) {
+            (*(Ph * *)&g_2908)->v7();
+            delete (*(Ph * *)&g_2908);
+            (*(Ph * *)&g_2908) = 0;
         }
-        pPod = (PodObj *)(DAT_10ac5c58);
+        pPod = (PodObj *)((*(PodObj * *)&g_obj400));
         if (pPod != 0) {
             pPod->m();
             operator delete(pPod);
-            DAT_10ac5c58 = 0;
+            (*(PodObj * *)&g_obj400) = 0;
         }
-        FUN_10058a30();
+        BrRaceSettingsCommit();
     }
 }

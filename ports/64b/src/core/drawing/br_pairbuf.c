@@ -58,17 +58,17 @@ int BrPairBufReset(BrPairBuf *pBuf)
 {
     uint32_t *p;
 
-    p = g_brPairA;
+    p = (*(uint32_t * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */;
     if (p == NULL) {
         p = g_brPairStaticA;
-        g_brPairA = p;
+        (*(uint32_t * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */ = p;
     }
     memset(p, 0, BR_PAIRBUF_DWORDS * sizeof(uint32_t));
 
-    p = g_brPairB;
+    p = (*(uint32_t * *)((char *)&g_aBrRaceCar + 0x39F4)) /* BR_LP64_BYTE_VIEW */;
     if (p == NULL) {
         p = g_brPairStaticB;
-        g_brPairB = p;
+        (*(uint32_t * *)((char *)&g_aBrRaceCar + 0x39F4)) /* BR_LP64_BYTE_VIEW */ = p;
     }
     memset(p, 0, BR_PAIRBUF_DWORDS * sizeof(uint32_t));
 

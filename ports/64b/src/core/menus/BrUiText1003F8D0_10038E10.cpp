@@ -62,19 +62,19 @@ extern "C" {
 
 int BrUiText1003F8D0(Obj38E10 *pObj)
 {
-    if (g_brFlag5BA8 != 0) {
-        strcpy(pObj->m2B5C.szName, BrStrByIndex(0xAF));
+    if (DAT_10ac5ba8 != 0) {
+        strcpy(pObj->m2B5C.szName, BrStrGet(0xAF));
 
         if (g_brTbl4648[g_brSel5B98] != 0)
             pObj->m2B5C.b008 = 4;
         else
             pObj->m2B5C.b008 = 1;
     } else {
-        strcpy(pObj->m2B5C.szName, g_szBr0ACAD8);
+        strcpy(pObj->m2B5C.szName, g_strA);
     }
 
     pObj->m2B5C.s1();
-    BrItemApply_10038380((struct BrCtl85 *)(pObj), 0);
+    Br85ItemApply((struct BrCtl85 *)(pObj), 0);
 
     return 1;
 }

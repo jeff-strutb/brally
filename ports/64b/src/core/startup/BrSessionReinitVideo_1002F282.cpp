@@ -41,21 +41,21 @@ extern "C" {
 
 void BrSessionReinitVideo(void)
 {
-    if ((DAT_106ec760 != DAT_10b71a68) || (DAT_106e9a34 != DAT_10b71a6c)) {
-        DAT_10b71290.Set(&DAT_10b72f48);
+    if (((*(int *)&g_brRace6EC760) != (*(int *)&g_brItemIconCount)) || ((*(int *)&g_brRace6E9A34) != (*(int *)&g_brRaceB71A6C))) {
+        (*(Save1290 *)&g_BrCtrlCfg).Set(&g_navArg);
     }
-    FUN_1006c460();
-    FUN_10072840();
-    if (DAT_10226a48 != 0) {
-        if (DAT_10226a48 > 1) {
-            FUN_1006a320();
+    BrSndBankFree();
+    BrExt_10079550();
+    if ((*(int *)&g_brRaceNet) != 0) {
+        if ((*(int *)&g_brRaceNet) > 1) {
+            FUN_1006a330();
         }
-        FUN_10005cd0();
+        BrNetReset();
     }
-    FUN_1001cd50();
-    CloseHandle(DAT_106ed6e0);
-    DAT_106ed6e0 = 0;
-    FUN_10063970(3, 0x280, 0x1e0, 0x10, 0);
+    BrFlagInit_1002F690();
+    CloseHandle((*(HANDLE *)((char *)&g_aBrEntRecs + 0xB0)));
+    (*(HANDLE *)((char *)&g_aBrEntRecs + 0xB0)) = 0;
+    BrRenderModeStart(3, 0x280, 0x1e0, 0x10, 0);
     FUN_1005a420();
 }
 }

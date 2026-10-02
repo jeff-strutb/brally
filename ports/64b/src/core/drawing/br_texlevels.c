@@ -34,7 +34,7 @@
 /* @implements 0x10031030 glide FUN_10031030 */
 void FUN_10031030(char *pszPath)
 {char buf[0x400];  int s30;
-DAT_10ac0808 = 0;DAT_1186c960 = 0x200000;if (FUN_10003680(pszPath) == 0) {
+(*(int *)&g_brKeyCount) = 0;(*(int *)&g_brTexLowThreshold) = 0x200000;if (BrChkFileExists(pszPath) == 0) {
     BrTexChooseLevel();
     return;
   }{
@@ -42,26 +42,26 @@ DAT_10ac0808 = 0;DAT_1186c960 = 0x200000;if (FUN_10003680(pszPath) == 0) {
     char *ok;
     int off;
 
-    fp = FUN_10003320(pszPath);
-    ok = FUN_10003530(buf, 0x400, fp);
+    fp = BrChkFReadOpen(pszPath);
+    ok = BrChkFReadLine(buf, 0x400, fp);
     if (ok != 0) {
       int (__cdecl *scan)(const char *, const char *, ...) = sscanf;
-      scan(buf, DAT_100aa334, &DAT_1186c960);
-      ok = FUN_10003530(buf, 0x400, fp);
+      scan(buf, DAT_100aa334, &(*(int *)&g_brTexLowThreshold));
+      ok = BrChkFReadLine(buf, 0x400, fp);
       while (ok != 0) {
-        off = DAT_10ac0808 * 0x10;
+        off = (*(int *)&g_brKeyCount) * 0x10;
         scan(buf, s__u__x__d__d_100aa328,
                &DAT_106eef08 + off,
                &DAT_106eef08 + off + 4,
                &DAT_106eef08 + off + 8,
                &DAT_106eef08 + off + 12);
-        s30 = DAT_10ac0808; DAT_10ac0808 = s30 + 1;
-        if (DAT_10ac0808 >= 0x100) {
+        s30 = (*(int *)&g_brKeyCount); (*(int *)&g_brKeyCount) = s30 + 1;
+        if ((*(int *)&g_brKeyCount) >= 0x100) {
           break;
         }
-        ok = FUN_10003530(buf, 0x400, fp);
+        ok = BrChkFReadLine(buf, 0x400, fp);
       }
     }
-    FUN_100035e0(fp);
+    BrChkFClose(fp);
   }BrTexChooseLevel();}
 

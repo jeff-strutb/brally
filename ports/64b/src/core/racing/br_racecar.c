@@ -97,17 +97,17 @@ void __fastcall BrRaceCarPickIndex(BrDriverCar *pCar)
   int i;
   short m;
 
-  lvl = DAT_10af2094[4];
+  lvl = (*(unsigned char * *)((char *)&g_aBrRaceCar + 0xE8C)) /* BR_LP64_BYTE_VIEW */[4];
   cl = lvl;
   if (cl > 3) cl = 3;
   pos = pCar->f140;
-  if (pos < DAT_100b3858) {
-    if (DAT_100a9360 == 0) {
+  if (pos < (*(int *)&g_brRaceNEntrant)) {
+    if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0) {
       arg.n = (*(char (*)[2])&g_brStages[lvl].f0C)[0];
       BrEntitySetIndex(pCar, arg);
     }
-  } else if (DAT_100a9360 == 1 || DAT_100a9360 == 6) {
-    pCar->f29A8 = DAT_10af3bb0;
+  } else if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 1 || (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 6) {
+    pCar->f29A8 = (*(int *)((char *)&g_aBrRaceCar + 0x29A8)) /* BR_LP64_BYTE_VIEW */;
   } else {
     m = DAT_100b3024[cl].mask;
     for (i = 0; i < 16; i++) {
@@ -115,11 +115,11 @@ void __fastcall BrRaceCarPickIndex(BrDriverCar *pCar)
       m >>= 1;
     }
     if (i == 16) i = 5;
-    if (pos > DAT_100b3858) {
+    if (pos > (*(int *)&g_brRaceNEntrant)) {
       arg.n = i;
       BrEntitySetIndex(pCar, arg);
     } else {
-      arg.n = (*(char (*)[2])&g_brStages[lvl].f0C)[pos - DAT_100b3858];
+      arg.n = (*(char (*)[2])&g_brStages[lvl].f0C)[pos - (*(int *)&g_brRaceNEntrant)];
       BrEntitySetIndex(pCar, arg);
     }
   }
@@ -154,23 +154,23 @@ void __fastcall BrRaceCarReset(BrDriverCar *pCar)
     int idx;
     int i;
 
-    FUN_1006ff00(&pCar->fwd.x);
-    idx = (int)(pCar - DAT_10af1208) / (int)BR_CAR_STRIDE;
+    BrEntityBindAux(&pCar->fwd.x);
+    idx = (int)(pCar - (*(unsigned char (*)[])&g_aBrRaceCar)) / (int)BR_CAR_STRIDE;
     pCar->f140 = idx;
 
-    if (DAT_100a9360 != 6) {
+    if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ != 6) {
         /* Three int-typed locals: the original zero-extends all three
          * bytes into registers before any store. */
-        int c2 = DAT_100b2fd8[idx * 3 + 2];
-        int c1 = DAT_100b2fd8[idx * 3 + 1];
-        int c0 = DAT_100b2fd8[idx * 3];
+        int c2 = (*(unsigned char (*)[])&g_aBr0B37D0)[idx * 3 + 2];
+        int c1 = (*(unsigned char (*)[])&g_aBr0B37D0)[idx * 3 + 1];
+        int c0 = (*(unsigned char (*)[])&g_aBr0B37D0)[idx * 3];
         pCar->f29AD = (unsigned char)c1;
         pCar->f29AC = (unsigned char)c0;
         pCar->f29AE = (unsigned char)c2;
     }
 
     if (idx < 2) {
-        pCar->pEquip = &DAT_10b1cbf0[idx * 0x14c];
+        pCar->pEquip = &(*(unsigned char (*)[])&g_brPairStaticA)[idx * 0x14c];
         **(int * *)&pCar->pEquip = 0;
         (pCar->pEquip)[4] = 0;
         (pCar->pEquip)[5] = 0;
