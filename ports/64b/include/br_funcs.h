@@ -3711,11 +3711,11 @@ char BrSaveLoad(int, int);
 #pragma pop_macro("BrSaveLoad")
 #pragma push_macro("BrSaveNameCommitRallySeason")
 #undef BrSaveNameCommitRallySeason
-int BrSaveNameCommitRallySeason(int, int);
+int BrSaveNameCommitRallySeason(void *, int);
 #pragma pop_macro("BrSaveNameCommitRallySeason")
 #pragma push_macro("BrSaveNameCommitTimeAttack")
 #undef BrSaveNameCommitTimeAttack
-int BrSaveNameCommitTimeAttack(int, int);
+int BrSaveNameCommitTimeAttack(void *, int);
 #pragma pop_macro("BrSaveNameCommitTimeAttack")
 #pragma push_macro("BrSaveNextName_10055F40")
 #undef BrSaveNextName_10055F40

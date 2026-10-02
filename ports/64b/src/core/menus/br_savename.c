@@ -1,3 +1,5 @@
+#include "br_ui.h"
+#include "slice1_06.h"
 /* br_savename.c -- menus: finish (or cancel) the in-place rename of a save
  * slot the player has just typed a name into.
  *
@@ -77,7 +79,7 @@ struct BrSaveStage {
  * has its three tables wiped, the save is written and the list is marked
  * dirty.  Reports 1. */
 /* @implements 0x1003B350 glide BrSaveNameCommitRallySeason */
-int BrSaveNameCommitRallySeason(int pList, int code)
+int BrSaveNameCommitRallySeason(void *pList, int code)
 {
     char szNum[4];
     char szPath[260];
@@ -89,17 +91,17 @@ int BrSaveNameCommitRallySeason(int pList, int code)
      * has the -1 arm inline and the commit as the jump target. */
     if (code == -1) {
         if (g_aBrA9D078 != NULL)
-            strcpy((char *)pList + g_AB94 * 0x438 + 0x35, g_aBrA9D078);
+            strcpy(((BrTextList *)pList)->aItems[g_AB94].sz, g_aBrA9D078);
     } else {
-        if ((char *)pList + g_AB94 * 0x438 + 0x35 != NULL) {
+        if (((BrTextList *)pList)->aItems[g_AB94].sz != NULL) {
             strcpy(szPath, s_RallySeason_100acb00);
             _itoa(g_AB94, szNum, 10);
             strcat(szPath, szNum);
             strcat(szPath, s_brf_100acaf8);
             strcpy(DAT_117a6030, szPath);
-            strcpy((char *)*(int *)(g_2908 + 0xc0) + g_AB94 * 0x104 + 4,
-                   (char *)pList + g_AB94 * 0x438 + 0x35);
-            strcpy((*(char (*)[128])&g_aBrRaceCar[0].sz2ABC[44]), (char *)pList + g_AB94 * 0x438 + 0x35);
+            strcpy(((BrNameList *)((BrPhase_ *)g_2908)->fC0)->asz[g_AB94],
+                   ((BrTextList *)pList)->aItems[g_AB94].sz);
+            strcpy((*(char (*)[128])&g_aBrRaceCar[0].sz2ABC[44]), ((BrTextList *)pList)->aItems[g_AB94].sz);
             if (((char *)(*(int * *)&g_aBrRaceCar[0].pEquip))[4] == 0 && ((char *)(*(int * *)&g_aBrRaceCar[0].pEquip))[5] == 0) {
                 memset((char *)(*(int * *)&g_aBrRaceCar[0].pEquip) + 6, 0, 6 * 4);
                 memset((char *)(*(int * *)&g_aBrRaceCar[0].pEquip) + 0x1e, 0, 12 * 4);
@@ -119,24 +121,24 @@ int BrSaveNameCommitRallySeason(int pList, int code)
  * save header, the ghost save is written and the list is marked dirty.
  * Reports 1. */
 /* @implements 0x1003BAC0 glide BrSaveNameCommitTimeAttack */
-int BrSaveNameCommitTimeAttack(int pList, int code)
+int BrSaveNameCommitTimeAttack(void *pList, int code)
 {
     char szNum[4];
     char szPath[260];
 
     if (code == -1) {
         if (g_aBrA9D078 != NULL)
-            strcpy((char *)pList + g_AB94 * 0x438 + 0x35, g_aBrA9D078);
+            strcpy(((BrTextList *)pList)->aItems[g_AB94].sz, g_aBrA9D078);
     } else {
-        if ((char *)pList + g_AB94 * 0x438 + 0x35 != NULL) {
+        if (((BrTextList *)pList)->aItems[g_AB94].sz != NULL) {
             strcpy(szPath, s_TimeAttack_100acb14);
             _itoa(g_AB94, szNum, 10);
             strcat(szPath, szNum);
             strcat(szPath, s_grf_100acb0c);
             strcpy(DAT_117a5f28, szPath);
-            strcpy((char *)*(int *)(g_2908 + 0xc4) + g_AB94 * 0x104 + 4,
-                   (char *)pList + g_AB94 * 0x438 + 0x35);
-            strcpy((*(char (*)[128])&g_aBrRaceCar[0].sz2ABC[44]), (char *)pList + g_AB94 * 0x438 + 0x35);
+            strcpy(((BrNameList *)((BrPhase_ *)g_2908)->fC4)->asz[g_AB94],
+                   ((BrTextList *)pList)->aItems[g_AB94].sz);
+            strcpy((*(char (*)[128])&g_aBrRaceCar[0].sz2ABC[44]), ((BrTextList *)pList)->aItems[g_AB94].sz);
             BrGhostSave();
             (*(int *)&g_brUinAA28EC) = 1;
         }

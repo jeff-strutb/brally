@@ -1,3 +1,4 @@
+#include "br_ui.h"
 /* br_uihook85.c -- menus: the "85" family of front-end control hooks.
  *
  * The small hook functions the 0x10038xxx block of the original installs into
@@ -46,9 +47,9 @@ int BrUiFn1003EEF0(struct BrCtl85 *param_1)
   char *pcVar5;
   
   Br85ItemApply(param_1,0);
-  pcVar5 = (char *)(param_1 + 0x2b65);
+  pcVar5 = ((BrUiCtl_ *)param_1)->aText[0].sz;
   if (strlen(pcVar5) != 0) {
-    *(unsigned int *)(DAT_10ac5d00 + 0x1c) = *(unsigned int *)(DAT_10ac5d00 + 0x1c) & 0xffffffef;
+    ((BrUiCtl_ *)DAT_10ac5d00)->flags1C &= 0xffffffef;
   }
   iVar2 = _stricmp(g_aBrCfgPlayerName,pcVar5);
   if (iVar2 != 0) {
@@ -69,8 +70,8 @@ int BrUiFn1003EF60(int param_1)
 
 {
   
-  if (strlen((char *)(param_1 + 0x2b65)) != 0) {
-    *(unsigned int *)(DAT_10ac5d00 + 0x1c) = *(unsigned int *)(DAT_10ac5d00 + 0x1c) & 0xffffffef;
+  if (strlen(((BrUiCtl_ *)param_1)->aText[0].sz) != 0) {
+    ((BrUiCtl_ *)DAT_10ac5d00)->flags1C &= 0xffffffef;
   }
   return 1;
 }
@@ -88,8 +89,8 @@ int BrUiFn1003F020(int param_1)
 
 {
   
-  if (strlen((char *)(param_1 + 0x2b65)) != 0) {
-    *(unsigned int *)(DAT_10ac5d40 + 0x1c) = *(unsigned int *)(DAT_10ac5d40 + 0x1c) & 0xffffffef;
+  if (strlen(((BrUiCtl_ *)param_1)->aText[0].sz) != 0) {
+    ((BrUiCtl_ *)DAT_10ac5d40)->flags1C &= 0xffffffef;
   }
   return 1;
 }
@@ -110,9 +111,9 @@ int Br85TextReadBack(struct BrCtl85 *param_1)
   int iVar2;
   
   Br85ItemApply(param_1,0);
-  iVar2 = _stricmp(DAT_10b71aa0,(char *)(param_1 + 0x2b65));
+  iVar2 = _stricmp(DAT_10b71aa0,((BrUiCtl_ *)param_1)->aText[0].sz);
   if (iVar2 != 0) {
-    strcpy(DAT_10b71aa0, (char *)(param_1 + 0x2b65));
+    strcpy(DAT_10b71aa0, ((BrUiCtl_ *)param_1)->aText[0].sz);
   }
   return 1;
 }
@@ -132,9 +133,9 @@ int BrUiHook85_1003F0B0(struct BrCtl85 *param_1)
   int iVar2;
   
   Br85ItemApply(param_1,0);
-  iVar2 = _stricmp(DAT_10b71ac0,(char *)(param_1 + 0x2b65));
+  iVar2 = _stricmp(DAT_10b71ac0,((BrUiCtl_ *)param_1)->aText[0].sz);
   if (iVar2 != 0) {
-    strcpy(DAT_10b71ac0, (char *)(param_1 + 0x2b65));
+    strcpy(DAT_10b71ac0, ((BrUiCtl_ *)param_1)->aText[0].sz);
   }
   return 1;
 }
@@ -154,9 +155,9 @@ int BrUiFn1003F110(struct BrCtl85 *param_1)
   int iVar2;
   
   Br85ItemApply(param_1,0);
-  iVar2 = _stricmp(g_szBrName4DB0,(char *)(param_1 + 0x2b65));
+  iVar2 = _stricmp(g_szBrName4DB0,((BrUiCtl_ *)param_1)->aText[0].sz);
   if (iVar2 != 0) {
-    strcpy(g_szBrName4DB0, (char *)(param_1 + 0x2b65));
+    strcpy(g_szBrName4DB0, ((BrUiCtl_ *)param_1)->aText[0].sz);
   }
   return 1;
 }
@@ -194,7 +195,7 @@ int BrUiFn1003F110(struct BrCtl85 *param_1)
 /* @implements 0x100386B0 glide BrUiFn1003F170 */
 int BrUiFn1003F170(int param_1)
 {
-    char *pText = (char *)(param_1 + 0x2b65);
+    char *pText = ((BrUiCtl_ *)param_1)->aText[0].sz;
 
     strcpy(g_szBrName4DB0, pText);
 
@@ -223,9 +224,9 @@ int BrUiFn1003F210(struct BrCtl85 *param_1)
   char *pcVar5;
   
   Br85ItemApply(param_1,0);
-  pcVar5 = (char *)(param_1 + 0x2b65);
+  pcVar5 = ((BrUiCtl_ *)param_1)->aText[0].sz;
   if (strlen(pcVar5) != 0) {
-    *(unsigned int *)(DAT_10ac5d14 + 0x1c) = *(unsigned int *)(DAT_10ac5d14 + 0x1c) & 0xffffffef;
+    ((BrUiCtl_ *)DAT_10ac5d14)->flags1C &= 0xffffffef;
   }
   iVar2 = _stricmp((*(char (*)[])&DAT_10ac40a8),pcVar5);
   if (iVar2 != 0) {
@@ -245,8 +246,8 @@ int BrUiFn1003F280(int param_1)
 
 {
   
-  if (strlen((char *)(param_1 + 0x2b65)) != 0) {
-    *(unsigned int *)(DAT_10ac5d14 + 0x1c) = *(unsigned int *)(DAT_10ac5d14 + 0x1c) & 0xffffffef;
+  if (strlen(((BrUiCtl_ *)param_1)->aText[0].sz) != 0) {
+    ((BrUiCtl_ *)DAT_10ac5d14)->flags1C &= 0xffffffef;
   }
   return 1;
 }

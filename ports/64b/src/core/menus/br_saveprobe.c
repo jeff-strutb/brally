@@ -1,3 +1,4 @@
+#include "br_ui.h"
 /* br_saveprobe.c -- menus: "does this save slot already have a file?" probes
  * for the two record lists that own an in-place name edit.
  *
@@ -126,7 +127,7 @@ int BrSaveProbeTimeAttack(int pList, int *pIdx)
     if (missing)
         BrExt_10042410(DAT_10ac5d1c);
     else
-        *(int *)(*(int *)(DAT_10ac5d1c + 0x2ae8) + 0x70) = 1;
+        ((BrUiCtl_ *)DAT_10ac5d1c)->pOwner->aFlags[1] = 1;   /* ctl+0x2AE8 -> phase+0x70 */
     return 1;
 }
 
