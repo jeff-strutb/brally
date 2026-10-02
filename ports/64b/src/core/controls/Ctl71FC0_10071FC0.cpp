@@ -47,7 +47,7 @@ int Ctl71FC0::Activate()
         MessageBoxA((HWND)(*(void * *)&g_brOwner5BC72C), BrStrGet(0x127), BrStrGet(0x126), 0x10);
         return 0;
     }
-    p = new DiDev;
+    p = ((DiDev *)br_new_obj(sizeof(DiDev), (void *(*)(void *))FUN_100592f0));
     (*(DiDev * *)&g_pBrAA2E80) = p;
     p->Init((*(void * *)&g_brOwner5BC72C));
     return 1;

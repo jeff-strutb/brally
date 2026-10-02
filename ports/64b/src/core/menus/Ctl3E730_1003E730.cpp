@@ -55,7 +55,7 @@ int Ctl3E730::Activate()
     BrExt_100419D0(&(g_strA[0]));
     p = g_slot;
     if (p == 0) {
-        p = new Phase;
+        p = ((Phase *)br_new_obj(sizeof(Phase), (void *(*)(void *))BrOptObjCtor));
         g_slot = p;
         (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(p));
         if (p == 0)

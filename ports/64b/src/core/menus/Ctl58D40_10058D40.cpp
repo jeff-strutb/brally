@@ -56,7 +56,7 @@ void Ctl58D40::Rebuild()
     for (d = &(*(int *)&g_BrCharMapImage[98 + 0].ch); d < &(*(int *)&g_BrCharMapImage[98 + 7].ch); d += 2) {
         if (d[-1] * d[0] * 6 > ((*(int *)&BrGlHwParamB) << 20))
             continue;
-        n = new Node;
+        n = ((Node *)br_new_obj(sizeof(Node), (void *(*)(void *))FUN_10058c70));
         n->w = d[-1];
         n->h = d[0];
         n->f8 = 0x10;

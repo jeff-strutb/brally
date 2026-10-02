@@ -63,7 +63,7 @@ int Ctl3F130::Activate()
     p = (Phase *)(g_slot);
     one = 1;
     if (p == 0) {
-        p = new Phase;
+        p = ((Phase *)br_new_obj(sizeof(Phase), (void *(*)(void *))BrOptObjCtor));
         g_slot = (Phase *)((struct Ph *)(p));
         (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(p));
         if (p == 0)
@@ -72,7 +72,7 @@ int Ctl3F130::Activate()
         (*(PhaseEnterFn *)&((BrPhase_ *)(g_slot))->pfnEnter)(g_slot);
         (*(int *)&((BrPhase_ *)((*(Phase * *)&g_brPAA29B8)))->f0C) = one;
         (*(int *)&((BrPhase_ *)((*(Phase * *)&g_brPAA29B8)))->f68) = one;
-        q = new Phase;
+        q = ((Phase *)br_new_obj(sizeof(Phase), (void *(*)(void *))BrOptObjCtor));
         g_slot2 = (Phase *)((struct Ph *)(q));
         if (q == 0)
             return 0;

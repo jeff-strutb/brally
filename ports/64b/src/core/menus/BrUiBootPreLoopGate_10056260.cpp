@@ -532,7 +532,7 @@ int BrUiBootPreLoopGate(void)
         q += 3;
     } while ((int)q < (int)((char *)g_rec + 0x2D8));
 
-    ph = new Phase;
+    ph = ((Phase *)br_new_obj(sizeof(Phase), (void *(*)(void *))BrOptObjCtor));
     g_2908 = ph;
     (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(ph));
     if (ph == 0) {
@@ -541,7 +541,7 @@ int BrUiBootPreLoopGate(void)
     (*(void * *)&((BrPhase_ *)(ph))->pfnEnter) = (void *)BrUiRootEnter_100425E0;
 
     if (g_obj400 == 0) {
-        ob = new Obj400;
+        ob = ((Obj400 *)br_new_obj(sizeof(Obj400), (void *(*)(void *))BrPodIdentity));
         g_obj400 = ob;
         if (ob == 0) {
             FUN_100378c0(1);

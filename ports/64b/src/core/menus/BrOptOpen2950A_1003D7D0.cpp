@@ -62,7 +62,7 @@ int CtlD620::Activate()
 
     p = g_slot;
     if (p == 0) {
-        p = new Phase;
+        p = ((Phase *)br_new_obj(sizeof(Phase), (void *(*)(void *))BrOptObjCtor));
         g_slot = p;
         (*(Phase * *)&(*(OptObj41B60 * *)&g_brPAA29B8)) = (Phase *)((BrOptObj *)(p));
         if (p == 0)
@@ -191,7 +191,7 @@ int BrOptOpen2950A(void *pUnused)
     }
 open:
     if ((*(OptObj41B60 * *)&g_brPAA2950) == 0) {
-        p = new OptObj41B60;
+        p = ((OptObj41B60 *)br_new_obj(sizeof(OptObj41B60), (void *(*)(void *))BrOptObjCtor));
         (*(OptObj41B60 * *)&g_brPAA2950) = (OptObj41B60 *)((struct Phase *)((OptObj41B60 *)((struct Phase *)(p))));
         (*(OptObj41B60 * *)&g_brPAA29B8) = (OptObj41B60 *)((BrOptObj *)(p));
         if (p == 0)

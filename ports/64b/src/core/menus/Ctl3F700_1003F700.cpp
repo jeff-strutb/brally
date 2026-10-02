@@ -87,7 +87,7 @@ int Ctl3F700::Activate()
     (g_aBrRaceBeginRec[0]) = (char)0xFF;
     if (p == 0) {
         DAT_100abaa4 = 1;
-        p = new Phase;
+        p = ((Phase *)br_new_obj(sizeof(Phase), (void *(*)(void *))BrOptObjCtor));
         g_slot = p;
         (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(p));
         if (p == 0)

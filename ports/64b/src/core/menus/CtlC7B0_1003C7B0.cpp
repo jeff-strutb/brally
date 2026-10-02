@@ -58,7 +58,7 @@ int CtlC7B0::Activate()
 
     p = (Phase *)(g_slot);
     if (p == 0) {
-        p = new Phase;
+        p = ((Phase *)br_new_obj(sizeof(Phase), (void *(*)(void *))BrOptObjCtor));
         g_slot = (Phase *)((struct Ph *)(p));
         (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(p));
         if (p == 0)

@@ -24,6 +24,13 @@ extern "C" {  /* BR_CLINK_BEGIN: every original function has C linkage */
  * platform/src/br_crt.c). */
 void   *BrOperatorNew(size_t cb);            /* 0x1007DFE0 operator new    */
 void    BrOperatorDelete(void *p);           /* 0x1007DE40 operator delete */
+/* C++ `new Class`: operator new, then the class's constructor if the
+ * allocation succeeded (the original's constructors are C functions here). */
+static inline void *br_new_obj(size_t cb, void *(*ctor)(void *))
+{
+    void *p = BrOperatorNew(cb);
+    return p != 0 ? ctor(p) : 0;
+}
 int32_t BrFtolTrunc(float f);                /* 0x1007C8A0 __ftol          */
 #define operator_delete BrOperatorDelete
 
