@@ -56,6 +56,7 @@
  */
 #define _CRTIMP __declspec(dllimport)
 #include "br_race.h"   /* br_globals: its objects */
+#include "slice3_39.h"   /* BrTextBox, the canonical record */
 #include "slice2_25.h"   /* br_globals: its objects */
 #include <string.h>
 
@@ -126,7 +127,7 @@ int BrItemSetPickLabel_10038F40(Obj38F40 *pObj)
     char szName[128];
 
     if (g_brPAA29B8 == DAT_10ac5cbc && DAT_10ac5c40 == 0) {
-        strcpy(pObj->m2B5C.szName, BrStrGet(0x1B));
+        strcpy((*(char (*)[1025])&((BrTextBox *)&(pObj->m2B5C))->sz[0]), BrStrGet(0x1B));
     } else {
         int k;
 
@@ -148,17 +149,17 @@ int BrItemSetPickLabel_10038F40(Obj38F40 *pObj)
         if ((*(BrDesc38F40 * (*)[])&g_apBrRaceDiff)[k]->f04 & 0x10) {
             float save = pObj->f040;
 
-            pObj->m2B5C.f414 = 130.0f;
+            (*(float *)&((BrTextBox *)&(pObj->m2B5C))->y) = 130.0f;
 
-            strcpy(pObj->m2B5C.szName, BrStrGet(0xB0));
+            strcpy((*(char (*)[1025])&((BrTextBox *)&(pObj->m2B5C))->sz[0]), BrStrGet(0xB0));
 
             pObj->m2B5C.s1();
             Br85ItemApply((struct BrCtl85 *)(pObj), 0);
 
-            pObj->m2B5C.f414 = save;
+            (*(float *)&((BrTextBox *)&(pObj->m2B5C))->y) = save;
         }
 
-        strcpy(pObj->m2B5C.szName, szName);
+        strcpy((*(char (*)[1025])&((BrTextBox *)&(pObj->m2B5C))->sz[0]), szName);
     }
 
     pObj->m2B5C.s1();

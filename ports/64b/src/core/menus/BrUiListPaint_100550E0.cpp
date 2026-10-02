@@ -21,6 +21,7 @@
  * select; a `?:` argument instead hoists `mov eax,0x2f` above the loads).
  */
 #include <string.h>
+#include "slice3_39.h"   /* BrTextList, the canonical record */
 /* FUN_10051580: prototype in br_funcs.h */
 
 class Item550E0 {
@@ -88,51 +89,51 @@ int Ctl550E0::Paint(int sel)
     int y = 0;
     int i;
 
-    if (w1a936 >= 0)
-        Draw(w1a936, f24, f28);
+    if ((*(short *)&((BrTextList *)(this))->f1A936) >= 0)
+        Draw((*(short *)&((BrTextList *)(this))->f1A936), (*(float *)&((BrTextList *)(this))->f24), (*(float *)&((BrTextList *)(this))->f28));
 
-    if ((i18 & 0x1000000) == 0 && sel >= 0 && (aItem[sel].f004 & 0x10) == 0)
-        aItem[sel].b008 = 4;
+    if (((*(int *)&((BrTextList *)(this))->f18) & 0x1000000) == 0 && sel >= 0 && ((*(int *)&((BrTextBox *)&((*(Item550E0 *)&((BrTextList *)(this))->aItems[sel])))->f04) & 0x10) == 0)
+        (*(char *)&((BrTextBox *)&((*(Item550E0 *)&((BrTextList *)(this))->aItems[sel])))->f08) = 4;
 
-    for (i = 0; i < wVisible; i++) {
-        int n = i + w1a92e;
-        if (n >= 0 && n < wCount) {
-            if (aItem[n].szName != 0) {
-                aItem[n].s1();
-                aItem[n].x0 = x1a93c;
-                aItem[n].x1 = x1a944;
-                y = y1a940 + i * 0x13;
-                aItem[n].y0 = y;
-                aItem[n].y1 = y + 0x12;
-                aItem[n].s3((float)x1a93c, (float)y);
+    for (i = 0; i < (*(unsigned short *)&((BrTextList *)(this))->f1A930); i++) {
+        int n = i + (*(short *)&((BrTextList *)(this))->f1A92E);
+        if (n >= 0 && n < (*(unsigned short *)&((BrTextList *)(this))->count)) {
+            if ((*(char (*)[1051])&((BrTextBox *)&((*(Item550E0 *)&((BrTextList *)(this))->aItems[n])))->sz[0]) != 0) {
+                (*(Item550E0 *)&((BrTextList *)(this))->aItems[n]).s1();
+                (*(int *)&((BrTextBox *)&((*(Item550E0 *)&((BrTextList *)(this))->aItems[n])))->left) = (*(int *)&((BrTextList *)(this))->f1A93C);
+                (*(int *)&((BrTextBox *)&((*(Item550E0 *)&((BrTextList *)(this))->aItems[n])))->right) = (*(int *)&((BrTextList *)(this))->f1A944);
+                y = (*(int *)&((BrTextList *)(this))->f1A940) + i * 0x13;
+                (*(int *)&((BrTextBox *)&((*(Item550E0 *)&((BrTextList *)(this))->aItems[n])))->f428) = y;
+                (*(int *)&((BrTextBox *)&((*(Item550E0 *)&((BrTextList *)(this))->aItems[n])))->f430) = y + 0x12;
+                (*(Item550E0 *)&((BrTextList *)(this))->aItems[n]).s3((float)(*(int *)&((BrTextList *)(this))->f1A93C), (float)y);
             }
-            if (i18 & 0x2000000) {
-                int x = x1a93c - 0x13;
-                if (BrSlotsFindById(aItem[n].f434) != 0)
+            if ((*(int *)&((BrTextList *)(this))->f18) & 0x2000000) {
+                int x = (*(int *)&((BrTextList *)(this))->f1A93C) - 0x13;
+                if (BrSlotsFindById((*(int *)&((BrTextBox *)&((*(Item550E0 *)&((BrTextList *)(this))->aItems[n])))->f434)) != 0)
                     Draw(0x8b, (float)x, (float)y);
                 else
                     Draw(0x8a, (float)x, (float)y);
             }
         }
     }
-    if ((i18 & 0x200000) == 0) {
-        short s = w1a932;
+    if (((*(int *)&((BrTextList *)(this))->f18) & 0x200000) == 0) {
+        short s = (*(short *)&((BrTextList *)(this))->f1A932);
         if (s > 0) {
-            if (f1a99c != 0)
-                Draw(0x2f, (float)x1a94c, (float)y1a950);
+            if ((*(int *)&((BrTextList *)(this))->f1A99C[0]) != 0)
+                Draw(0x2f, (float)(*(int *)&((BrTextList *)(this))->f1A94C), (float)(*(int *)&((BrTextList *)(this))->f1A950));
             else
-                Draw(s, (float)x1a94c, (float)y1a950);
+                Draw(s, (float)(*(int *)&((BrTextList *)(this))->f1A94C), (float)(*(int *)&((BrTextList *)(this))->f1A950));
         }
-        s = w1a934;
+        s = (*(short *)&((BrTextList *)(this))->f1A934);
         if (s > 0) {
-            if (f1a9a0 != 0)
-                Draw(0x2d, (float)x1a95c, (float)y1a960);
+            if ((*(int *)&((BrTextList *)(this))->f1A99C[1]) != 0)
+                Draw(0x2d, (float)(*(int *)&((BrTextList *)(this))->f1A95C), (float)(*(int *)&((BrTextList *)(this))->f1A960));
             else
-                Draw(s, (float)x1a95c, (float)y1a960);
+                Draw(s, (float)(*(int *)&((BrTextList *)(this))->f1A95C), (float)(*(int *)&((BrTextList *)(this))->f1A960));
         }
-        s = w1a938;
+        s = (*(short *)&((BrTextList *)(this))->f1A938);
         if (s > 0)
-            Draw(s, f1a9ac, f1a9b0);
+            Draw(s, (*(float *)&((BrTextList *)(this))->f1A99C[4]), (*(float *)&((BrTextList *)(this))->f1A99C[5]));
     }
     return 1;
 }

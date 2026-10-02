@@ -1,4 +1,6 @@
 #include "br_race.h"   /* br_globals: its objects */
+#include "br_phase.h"   /* BrPhase_, the canonical record */
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 #include "slice3_42.h"   /* br_globals: its objects */
 /* WHAT IT DOES: leave this page and go back, setting the return mode first
  * so the parent knows where the player came from. */
@@ -51,8 +53,8 @@ typedef char chk_sub[(unsigned)&((GameObj *)0)->pSub == 0x2AE8 ? 1 : -1];
 
 int BrOpt3760(GameObj *pGame)
 {
-    pGame->pSub->f68 = 0;
-    pGame->pSub->s6(0);
+    (*(int *)&((BrPhase_ *)((*(GameSub * *)&((BrUiCtl_ *)(pGame))->pOwner)))->f68) = 0;
+    (*(GameSub * *)&((BrUiCtl_ *)(pGame))->pOwner)->s6(0);
     if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 0)
         g_CBE8 = 3;
     BrOptSave();

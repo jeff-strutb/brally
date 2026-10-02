@@ -1,3 +1,4 @@
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 /* WHAT IT DOES: apply one row of a menu to the screen: lay it out, and when
  * it is being edited also handle the caret and the text the player is
  * typing. The shared workhorse behind the label hooks around it. */
@@ -51,28 +52,28 @@ int Br85ItemApply(BrCtl85 *pCtl, short index)
 {
     BrCtl85 *pRow = (BrCtl85 *)((char *)pCtl + index * 1080);
 
-    pRow->box.b1();
+    (*(class BrBox85 *)&((BrUiCtl_ *)(pRow))->aText[0]).b1();
 
-    if (pRow->editing == 0) {
-        if (pRow->box.name != 0) {
-            pRow->box.b4();
+    if ((*(int *)&((BrUiCtl_ *)(pRow))->aText[0].f420) == 0) {
+        if ((*(class BrBox85 *)&((BrUiCtl_ *)(pRow))->aText[0]).name != 0) {
+            (*(class BrBox85 *)&((BrUiCtl_ *)(pRow))->aText[0]).b4();
         }
         return 0;
     }
 
-    if ((char)pRow->box.b5() <= 0 || (pCtl->flags1C & 2) != 0) {
+    if ((char)(*(class BrBox85 *)&((BrUiCtl_ *)(pRow))->aText[0]).b5() <= 0 || ((*(int *)&((BrUiCtl_ *)(pCtl))->flags1C) & 2) != 0) {
         if (g_5BB4 == 0) {
             g_5C30     = 0;
-            pRow->editing  = 0;
-            pCtl->flags1C &= ~2;
+            (*(int *)&((BrUiCtl_ *)(pRow))->aText[0].f420)  = 0;
+            (*(int *)&((BrUiCtl_ *)(pCtl))->flags1C) &= ~2;
         }
         BrFn1003E070();
-        if (pCtl->pfn10 != 0) {
-            pCtl->pfn10(pCtl);
+        if ((*(int (**)(struct BrCtl85 *))&((BrUiCtl_ *)(pCtl))->pfn10) != 0) {
+            (*(int (**)(struct BrCtl85 *))&((BrUiCtl_ *)(pCtl))->pfn10)(pCtl);
         }
     }
 
-    pRow->box.b4();
+    (*(class BrBox85 *)&((BrUiCtl_ *)(pRow))->aText[0]).b4();
     return 1;
 }
 }

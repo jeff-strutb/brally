@@ -52,9 +52,9 @@ uint32_t BrSub100714D0(int index)
     /* GOTCHA: the original reloads hMutex for ReleaseMutex rather than
      * reusing the wait's handle, so the three field accesses stay as three
      * indexings of the global. Caching the handle would drop a load. */
-    WaitForSingleObject((*(Br71Peer (*)[])&g_aBrPeer71)[index].hMutex, (unsigned long)-1);
-    v = (*(Br71Peer (*)[])&g_aBrPeer71)[index].f02C;
-    ReleaseMutex((*(Br71Peer (*)[])&g_aBrPeer71)[index].hMutex);
+    WaitForSingleObject((*(void * *)&((BrPeerRec *)&((*(Br71Peer (*)[])&g_aBrPeer71)[index]))->hMutex), (unsigned long)-1);
+    v = (*(int32_t *)&((BrPeerRec *)&((*(Br71Peer (*)[])&g_aBrPeer71)[index]))->f02C);
+    ReleaseMutex((*(void * *)&((BrPeerRec *)&((*(Br71Peer (*)[])&g_aBrPeer71)[index]))->hMutex));
     return v;
 }
 
@@ -175,26 +175,26 @@ int32_t BrNetPeerSendPass(void **ppDp)
 
     for (i = 0; i < 16; i++) {
         h[0] = g_hBrSndWake86;
-        h[1] = (*(Br71Peer (*)[])&g_aBrPeer71)[i].hMutex;
+        h[1] = (*(void * *)&((BrPeerRec *)&((*(Br71Peer (*)[])&g_aBrPeer71)[i]))->hMutex);
         if (WaitForMultipleObjects(2, h, 0, (unsigned long)-1) == 0)
             ExitThread(0);
         /* `and ecx,0x3f; cmp cl,1; jl` -- a SIGNED compare, so the status word
          * is an int here (br_peer.c's `cmp cl,5; jge` is the same shape). */
-        if (((*(Br71Peer (*)[])&g_aBrPeer71)[i].f02C & 0x3F) >= 1) {
+        if (((*(int32_t *)&((BrPeerRec *)&((*(Br71Peer (*)[])&g_aBrPeer71)[i]))->f02C) & 0x3F) >= 1) {
             pBs = &(*(BrNetSendBs (*)[16])&g_aBrPeerMsg)[i];
             if (BrCountedTotal(pBs) > 3) {
                 if (i == 0) {
                     FUN_100038f0(ppDp,
                                   BrStateGetField10(&(*(BrNetSendBs (*)[16])&g_aBrPeerMsg)[0]),
                                   BrCountedTotal(&(*(BrNetSendBs (*)[16])&g_aBrPeerMsg)[0]), 1);
-                } else if (BrDPlayRawSend(*ppDp, 1, (*(Br71Peer (*)[])&g_aBrPeer71)[i].f004, 0,
+                } else if (BrDPlayRawSend(*ppDp, 1, (*(uint32_t *)&((BrPeerRec *)&((*(Br71Peer (*)[])&g_aBrPeer71)[i]))->f004), 0,
                                           BrStateGetField10(pBs),
                                           BrCountedTotal(pBs)) != 0) {
                     result = -1;
                 }
             }
         }
-        ReleaseMutex((*(Br71Peer (*)[])&g_aBrPeer71)[i].hMutex);
+        ReleaseMutex((*(void * *)&((BrPeerRec *)&((*(Br71Peer (*)[])&g_aBrPeer71)[i]))->hMutex));
     }
     return result;
 }

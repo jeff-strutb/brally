@@ -1,4 +1,5 @@
 #include "br_race.h"   /* br_globals: its objects */
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 #include "slice2_25.h"   /* br_globals: its objects */
 /* WHAT IT DOES: leave this menu page: run its leave routine, destroy the
  * page object, and make its parent current again. One of a family that
@@ -49,7 +50,7 @@ int BrOpt4F00(GameObj *pGame)
 {
     Phase *pObj;
 
-    pGame->pSub->s7();
+    (*(GameSub * *)&((BrUiCtl_ *)(pGame))->pOwner)->s7();
     pObj = g_5CC0;
     if (pObj != 0)
         pObj->f00(1);

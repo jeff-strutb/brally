@@ -26,6 +26,7 @@
  */
 #define _CRTIMP __declspec(dllimport)
 #include <string.h>
+#include "slice3_39.h"   /* BrTextList, the canonical record */
 
 /* The object embedded at record+0x2C. */
 class Item54A30 {
@@ -98,74 +99,74 @@ int Slots54A30::Add(const char *pszName, int flags, char kind,
     if (pszName == 0)
         return 0;
 
-    if (wCount >= 100) {
+    if ((*(unsigned short *)&((BrTextList *)(this))->count) >= 100) {
         s11(0);
-        wCount = 99;
+        (*(unsigned short *)&((BrTextList *)(this))->count) = 99;
     }
 
     if (bPlain != 0) {
-        strcpy((((char *)this + ((wCount)) * BR_SLOT)) + 0x35, pszName);
+        strcpy((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x35, pszName);
     } else {
-        strncpy((((char *)this + ((wCount)) * BR_SLOT)) + 0x35, pszName, 10);
-        strcat((((char *)this + ((wCount)) * BR_SLOT)) + 0x35, g_szBrAC5DD0);
+        strncpy((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x35, pszName, 10);
+        strcat((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x35, g_szBrAC5DD0);
     }
 
-    *(int *)((((char *)this + ((wCount)) * BR_SLOT)) + 0x30) |= flags;
-    *((((char *)this + ((wCount)) * BR_SLOT)) + 0x34) = kind;
-    *(short *)((((char *)this + ((wCount)) * BR_SLOT)) + 0x448) = 0;
-    *(short *)(((char *)this + ((wCount + 1)) * BR_SLOT)) = 0;
-    *(short *)((((char *)this + ((wCount)) * BR_SLOT)) + 0x436) = 0;
-    *(int *)((((char *)this + ((wCount)) * BR_SLOT)) + 0x450) = pRect[0];
-    *(int *)((((char *)this + ((wCount)) * BR_SLOT)) + 0x458) = pRect[2];
-    *(int *)((((char *)this + ((wCount)) * BR_SLOT)) + 0x454) = (int)f20 + 19 * wCount;
-    *(int *)((((char *)this + ((wCount)) * BR_SLOT)) + 0x45C) = *(int *)((((char *)this + ((wCount)) * BR_SLOT)) + 0x454) + 0x12;
-    *(float *)((((char *)this + ((wCount)) * BR_SLOT)) + 0x43C) = (float)pRect[0];
-    *(float *)((((char *)this + ((wCount)) * BR_SLOT)) + 0x440) =
-        (float)*(int *)((((char *)this + ((wCount)) * BR_SLOT)) + 0x454);
-    *(int *)((((char *)this + ((wCount)) * BR_SLOT)) + 0x444) = 0;
-    *(int *)((((char *)this + ((wCount)) * BR_SLOT)) + 0x44C) = 0;
+    *(int *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x30) |= flags;
+    *((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x34) = kind;
+    *(short *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x448) = 0;
+    *(short *)(((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count) + 1)) * BR_SLOT)) = 0;
+    *(short *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x436) = 0;
+    *(int *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x450) = pRect[0];
+    *(int *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x458) = pRect[2];
+    *(int *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x454) = (int)(*(float *)&((BrTextList *)(this))->f20) + 19 * (*(unsigned short *)&((BrTextList *)(this))->count);
+    *(int *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x45C) = *(int *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x454) + 0x12;
+    *(float *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x43C) = (float)pRect[0];
+    *(float *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x440) =
+        (float)*(int *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x454);
+    *(int *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x444) = 0;
+    *(int *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x44C) = 0;
 
     if (kind == 3)
-        ((Item54A30 *)((((char *)this + ((wCount)) * BR_SLOT)) + 0x2C))->s2();
+        ((Item54A30 *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x2C))->s2();
     else
-        ((Item54A30 *)((((char *)this + ((wCount)) * BR_SLOT)) + 0x2C))->s1();
+        ((Item54A30 *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x2C))->s1();
 
-    *(short *)((((char *)this + ((wCount)) * BR_SLOT)) + 0x448) =
-        (short)(*(int *)((((char *)this + ((wCount)) * BR_SLOT)) + 0x458)
-                - *(int *)((((char *)this + ((wCount)) * BR_SLOT)) + 0x450) - 0x10);
+    *(short *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x448) =
+        (short)(*(int *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x458)
+                - *(int *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x450) - 0x10);
 
-    wCount++;
+    (*(unsigned short *)&((BrTextList *)(this))->count)++;
 
-    if ((i18 & 0x800000) != 0) {
-        row = (short)(w1a930 + w1a92e);
+    if (((*(int *)&((BrTextList *)(this))->f18) & 0x800000) != 0) {
+        row = (short)((*(short *)&((BrTextList *)(this))->f1A930) + (*(short *)&((BrTextList *)(this))->f1A92E));
         if (row >= 100)
-            row = (short)(wCount - 1);
+            row = (short)((*(unsigned short *)&((BrTextList *)(this))->count) - 1);
 
         if (_stricmp((((char *)this + ((row)) * BR_SLOT)) + 0x35, g_aBr39B720) == 0)
             return 0;
 
-        w1a92e++;
-        if ((int)w1a92e >= (int)wCount)
-            w1a92e = (short)(wCount - 1);
+        (*(short *)&((BrTextList *)(this))->f1A92E)++;
+        if ((int)(*(short *)&((BrTextList *)(this))->f1A92E) >= (int)(*(unsigned short *)&((BrTextList *)(this))->count))
+            (*(short *)&((BrTextList *)(this))->f1A92E) = (short)((*(unsigned short *)&((BrTextList *)(this))->count) - 1);
 
-        if (pfn0C != 0)
-            pfn0C();
+        if ((*(void (**)(void))&((BrTextList *)(this))->f0C) != 0)
+            (*(void (**)(void))&((BrTextList *)(this))->f0C)();
 
         /* `d <= 0` on an unsigned, not `d == 0`: the original's test is
          * `cmp ax,si / ja`, an unsigned RELATIONAL against the shared zero
          * register. The equality spelling gives `jne` and is the whole
          * one-byte residue this function had left. */
-        d = (unsigned short)(wCount - 1);
+        d = (unsigned short)((*(unsigned short *)&((BrTextList *)(this))->count) - 1);
         if (d <= 0)
             d = 1;
-        f1a9b0 = f1a9b0 + f1a9d0 / (float)d;
-        if (f1a9b0 < f1a9c8)
-            f1a9b0 = f1a9c8;
-        else if (f1a9b0 > f1a9cc)
-            f1a9b0 = f1a9cc;
+        (*(float *)&((BrTextList *)(this))->f1A99C[5]) = (*(float *)&((BrTextList *)(this))->f1A99C[5]) + (*(float *)&((BrTextList *)(this))->f1A99C[13]) / (float)d;
+        if ((*(float *)&((BrTextList *)(this))->f1A99C[5]) < (*(float *)&((BrTextList *)(this))->f1A99C[11]))
+            (*(float *)&((BrTextList *)(this))->f1A99C[5]) = (*(float *)&((BrTextList *)(this))->f1A99C[11]);
+        else if ((*(float *)&((BrTextList *)(this))->f1A99C[5]) > (*(float *)&((BrTextList *)(this))->f1A99C[12]))
+            (*(float *)&((BrTextList *)(this))->f1A99C[5]) = (*(float *)&((BrTextList *)(this))->f1A99C[12]);
 
-        i1a990 = (int)f1a9b0;
-        i1a998 = i1a990 + 0x10;
+        (*(int *)&((BrTextList *)(this))->f1A990) = (int)(*(float *)&((BrTextList *)(this))->f1A99C[5]);
+        (*(int *)&((BrTextList *)(this))->f1A998) = (*(int *)&((BrTextList *)(this))->f1A990) + 0x10;
     }
 
     return 1;

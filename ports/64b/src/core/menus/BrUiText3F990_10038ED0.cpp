@@ -10,6 +10,7 @@
  */
 #define _CRTIMP __declspec(dllimport)
 #include "br_coretypes.h"   /* br_globals: its objects */
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 #include <string.h>
 
 class Item {
@@ -40,8 +41,8 @@ extern "C" char *DAT_100abaf8[1];   /* the original global; was a per-file stand
 
 int BrUiText3F990(GameObj *pGame)
 {
-    strcpy(pGame->text, BrStrGet(g_tab[g_idx]));
-    pGame->item.i1();
+    strcpy((*(char (*)[256])&((BrUiCtl_ *)(pGame))->aText[0].sz[0]), BrStrGet(g_tab[g_idx]));
+    (*(class Item *)&((BrUiCtl_ *)(pGame))->aText[0]).i1();
     Br85ItemApply((struct BrCtl85 *)(pGame), 0);
     return 1;
 }

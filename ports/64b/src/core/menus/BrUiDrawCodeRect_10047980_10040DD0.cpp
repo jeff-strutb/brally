@@ -1,4 +1,5 @@
 #include "br_uispr.h"   /* br_globals: its objects */
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 /* WHAT IT DOES: draw the code-entry row into a caller-supplied rectangle
  * rather than its own. */
 /* @implements 0x10040DD0 glide BrUiDrawCodeRect_10047980
@@ -49,8 +50,8 @@ extern "C" {
 
 int Draw40DD0::DrawRect(void *pRect)
 {
-    BrSprFontDraw((int)f03C, (int)f040, w1E20C, pRect,
-                   g_aBrUiSprite[w1E20C].fBlit);
+    BrSprFontDraw((int)(*(float *)&((BrUiCtl_ *)(this))->x), (int)(*(float *)&((BrUiCtl_ *)(this))->y), (*(short *)&((BrUiCtl_ *)(this))->w1E20C), pRect,
+                   g_aBrUiSprite[(*(short *)&((BrUiCtl_ *)(this))->w1E20C)].fBlit);
 
     return 1;
 }

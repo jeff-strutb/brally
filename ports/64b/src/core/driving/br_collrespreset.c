@@ -117,13 +117,13 @@ void BrCollRespReset(void)
   DAT_1177883c = 0;
   for (i = 0; i < 4; i++) {
     for (j = 0; j < 150; j++) {
-      (*(BrCollPlaneZ (*)[4][150])&DAT_11773698)[i][j].nx = 0;
-      (*(BrCollPlaneZ (*)[4][150])&DAT_11773698)[i][j].ny = 0;
-      (*(BrCollPlaneZ (*)[4][150])&DAT_11773698)[i][j].nz = 0;
-      (*(BrCollPlaneZ (*)[4][150])&DAT_11773698)[i][j].d = 0;
-      (*(BrCollPlaneZ (*)[4][150])&DAT_11773698)[i][j].pV0 = 0;
-      (*(BrCollPlaneZ (*)[4][150])&DAT_11773698)[i][j].pV1 = 0;
-      (*(BrCollPlaneZ (*)[4][150])&DAT_11773698)[i][j].pV2 = 0;
+      (*(float *)&((BrCollPlane *)&((*(BrCollPlaneZ (*)[4][150])&DAT_11773698)[i][j]))->nx) = 0;
+      (*(float *)&((BrCollPlane *)&((*(BrCollPlaneZ (*)[4][150])&DAT_11773698)[i][j]))->ny) = 0;
+      (*(float *)&((BrCollPlane *)&((*(BrCollPlaneZ (*)[4][150])&DAT_11773698)[i][j]))->nz) = 0;
+      (*(float *)&((BrCollPlane *)&((*(BrCollPlaneZ (*)[4][150])&DAT_11773698)[i][j]))->d) = 0;
+      (*(void * *)&((BrCollPlane *)&((*(BrCollPlaneZ (*)[4][150])&DAT_11773698)[i][j]))->pV0) = 0;
+      (*(void * *)&((BrCollPlane *)&((*(BrCollPlaneZ (*)[4][150])&DAT_11773698)[i][j]))->pV1) = 0;
+      (*(void * *)&((BrCollPlane *)&((*(BrCollPlaneZ (*)[4][150])&DAT_11773698)[i][j]))->pV2) = 0;
     }
   }
   for (i = 0; i < 200; i++) {

@@ -26,6 +26,7 @@
  *     test ah,0x40 (C3)    taken -> "equal or unordered"
  */
 #include "br_collrespsolve.h"   /* br_globals: its objects */
+#include "br_cartypes.h"   /* BrCarBody, the canonical record */
 #include <math.h>
 #include <stddef.h>
 #include <string.h>
@@ -310,69 +311,69 @@ int BrCollRespTipKick(BrTipView *pBody)
     float      vn;
     float      s;
 
-    pM = &pBody->m;
-    pState = &pBody->state;
+    pM = &(*(struct BrMat4 *)&((BrCarBody *)(pBody))->rb.m);
+    pState = &(*(struct BrRbState *)&((BrCarBody *)(pBody))->rb.st1);
     BrRbBuildMatrix(pM, pState);
     count = 0;
     best = 100.0f;
 
-    if (pBody->child[0]->f1B4 != 0) {
-        pW = pBody->child[0];
+    if ((*(int32_t *)&((BrCarBody *)((*(struct BrTipView * (*)[4])&((BrCarBody *)(pBody))->rb.child)[0]))->rb.f1B4) != 0) {
+        pW = (*(struct BrTipView * (*)[4])&((BrCarBody *)(pBody))->rb.child)[0];
         count++;
-        p.x = (pBody->f1DC * BrCrK_Half) * BR_TIP_SIGN(pW->f78.x);
-        p.y = (pBody->f1E0 * BrCrK_Half) * BR_TIP_SIGN(pW->f78.y);
-        p.z = (double)pBody->f1E8 - pBody->f1E4 * BrCrK_Half;
+        p.x = ((*(float *)&((BrCarBody *)(pBody))->f01DC) * BrCrK_Half) * BR_TIP_SIGN((*(BrVec3 *)&((BrCarBody *)(pW))->rb.st).x);
+        p.y = ((*(float *)&((BrCarBody *)(pBody))->f01E0) * BrCrK_Half) * BR_TIP_SIGN((*(BrVec3 *)&((BrCarBody *)(pW))->rb.st).y);
+        p.z = (double)(*(float *)&((BrCarBody *)(pBody))->f01E8) - (*(float *)&((BrCarBody *)(pBody))->f01E4) * BrCrK_Half;
         BrMat4TransformPoint(&w, pM, &p);
-        pN = (BrVec3 *)&pW->hit.nx;
-        if (BrCrPlaneDist(pN, pW->hit.d, &w) < BrCrK_Zero)
-            t = -BrCrPlaneDist(pN, pW->hit.d, &w);
+        pN = (BrVec3 *)&(*(struct BrGroundHit *)&((BrCarBody *)(pW))->rb.pPlane).nx;
+        if (BrCrPlaneDist(pN, (*(struct BrGroundHit *)&((BrCarBody *)(pW))->rb.pPlane).d, &w) < BrCrK_Zero)
+            t = -BrCrPlaneDist(pN, (*(struct BrGroundHit *)&((BrCarBody *)(pW))->rb.pPlane).d, &w);
         else
-            t = BrCrPlaneDist(pN, pW->hit.d, &w);
+            t = BrCrPlaneDist(pN, (*(struct BrGroundHit *)&((BrCarBody *)(pW))->rb.pPlane).d, &w);
         if (DAT_10077b70 >= t)
             best = t;
     }
-    if (pBody->child[1]->f1B4 != 0) {
-        pW = pBody->child[1];
+    if ((*(int32_t *)&((BrCarBody *)((*(struct BrTipView * (*)[4])&((BrCarBody *)(pBody))->rb.child)[1]))->rb.f1B4) != 0) {
+        pW = (*(struct BrTipView * (*)[4])&((BrCarBody *)(pBody))->rb.child)[1];
         count++;
-        p.x = (pBody->f1DC * BrCrK_Half) * BR_TIP_SIGN(pW->f78.x);
-        p.y = (pBody->f1E0 * BrCrK_Half) * BR_TIP_SIGN(pW->f78.y);
-        p.z = (double)pBody->f1E8 - pBody->f1E4 * BrCrK_Half;
+        p.x = ((*(float *)&((BrCarBody *)(pBody))->f01DC) * BrCrK_Half) * BR_TIP_SIGN((*(BrVec3 *)&((BrCarBody *)(pW))->rb.st).x);
+        p.y = ((*(float *)&((BrCarBody *)(pBody))->f01E0) * BrCrK_Half) * BR_TIP_SIGN((*(BrVec3 *)&((BrCarBody *)(pW))->rb.st).y);
+        p.z = (double)(*(float *)&((BrCarBody *)(pBody))->f01E8) - (*(float *)&((BrCarBody *)(pBody))->f01E4) * BrCrK_Half;
         BrMat4TransformPoint(&w, pM, &p);
-        pN = (BrVec3 *)&pW->hit.nx;
-        if (BrCrPlaneDist(pN, pW->hit.d, &w) < BrCrK_Zero)
-            t = -BrCrPlaneDist(pN, pW->hit.d, &w);
+        pN = (BrVec3 *)&(*(struct BrGroundHit *)&((BrCarBody *)(pW))->rb.pPlane).nx;
+        if (BrCrPlaneDist(pN, (*(struct BrGroundHit *)&((BrCarBody *)(pW))->rb.pPlane).d, &w) < BrCrK_Zero)
+            t = -BrCrPlaneDist(pN, (*(struct BrGroundHit *)&((BrCarBody *)(pW))->rb.pPlane).d, &w);
         else
-            t = BrCrPlaneDist(pN, pW->hit.d, &w);
+            t = BrCrPlaneDist(pN, (*(struct BrGroundHit *)&((BrCarBody *)(pW))->rb.pPlane).d, &w);
         if (best >= t)
             best = t;
     }
-    if (pBody->child[2]->f1B4 != 0) {
-        pW = pBody->child[2];
+    if ((*(int32_t *)&((BrCarBody *)((*(struct BrTipView * (*)[4])&((BrCarBody *)(pBody))->rb.child)[2]))->rb.f1B4) != 0) {
+        pW = (*(struct BrTipView * (*)[4])&((BrCarBody *)(pBody))->rb.child)[2];
         count++;
-        p.x = (pBody->f1DC * BrCrK_Half) * BR_TIP_SIGN(pW->f78.x);
-        p.y = (pBody->f1E0 * BrCrK_Half) * BR_TIP_SIGN(pW->f78.y);
-        p.z = (double)pBody->f1E8 - pBody->f1E4 * BrCrK_Half;
+        p.x = ((*(float *)&((BrCarBody *)(pBody))->f01DC) * BrCrK_Half) * BR_TIP_SIGN((*(BrVec3 *)&((BrCarBody *)(pW))->rb.st).x);
+        p.y = ((*(float *)&((BrCarBody *)(pBody))->f01E0) * BrCrK_Half) * BR_TIP_SIGN((*(BrVec3 *)&((BrCarBody *)(pW))->rb.st).y);
+        p.z = (double)(*(float *)&((BrCarBody *)(pBody))->f01E8) - (*(float *)&((BrCarBody *)(pBody))->f01E4) * BrCrK_Half;
         BrMat4TransformPoint(&w, pM, &p);
-        pN = (BrVec3 *)&pW->hit.nx;
-        if (BrCrPlaneDist(pN, pW->hit.d, &w) < BrCrK_Zero)
-            t = -BrCrPlaneDist(pN, pW->hit.d, &w);
+        pN = (BrVec3 *)&(*(struct BrGroundHit *)&((BrCarBody *)(pW))->rb.pPlane).nx;
+        if (BrCrPlaneDist(pN, (*(struct BrGroundHit *)&((BrCarBody *)(pW))->rb.pPlane).d, &w) < BrCrK_Zero)
+            t = -BrCrPlaneDist(pN, (*(struct BrGroundHit *)&((BrCarBody *)(pW))->rb.pPlane).d, &w);
         else
-            t = BrCrPlaneDist(pN, pW->hit.d, &w);
+            t = BrCrPlaneDist(pN, (*(struct BrGroundHit *)&((BrCarBody *)(pW))->rb.pPlane).d, &w);
         if (best >= t)
             best = t;
     }
-    if (pBody->child[3]->f1B4 != 0) {
-        pW = pBody->child[3];
+    if ((*(int32_t *)&((BrCarBody *)((*(struct BrTipView * (*)[4])&((BrCarBody *)(pBody))->rb.child)[3]))->rb.f1B4) != 0) {
+        pW = (*(struct BrTipView * (*)[4])&((BrCarBody *)(pBody))->rb.child)[3];
         count++;
-        p.x = (pBody->f1DC * BrCrK_Half) * BR_TIP_SIGN(pW->f78.x);
-        p.y = (pBody->f1E0 * BrCrK_Half) * BR_TIP_SIGN(pW->f78.y);
-        p.z = (double)pBody->f1E8 - pBody->f1E4 * BrCrK_Half;
+        p.x = ((*(float *)&((BrCarBody *)(pBody))->f01DC) * BrCrK_Half) * BR_TIP_SIGN((*(BrVec3 *)&((BrCarBody *)(pW))->rb.st).x);
+        p.y = ((*(float *)&((BrCarBody *)(pBody))->f01E0) * BrCrK_Half) * BR_TIP_SIGN((*(BrVec3 *)&((BrCarBody *)(pW))->rb.st).y);
+        p.z = (double)(*(float *)&((BrCarBody *)(pBody))->f01E8) - (*(float *)&((BrCarBody *)(pBody))->f01E4) * BrCrK_Half;
         BrMat4TransformPoint(&w, pM, &p);
-        pN = (BrVec3 *)&pW->hit.nx;
-        if (BrCrPlaneDist(pN, pW->hit.d, &w) < BrCrK_Zero)
-            t = -BrCrPlaneDist(pN, pW->hit.d, &w);
+        pN = (BrVec3 *)&(*(struct BrGroundHit *)&((BrCarBody *)(pW))->rb.pPlane).nx;
+        if (BrCrPlaneDist(pN, (*(struct BrGroundHit *)&((BrCarBody *)(pW))->rb.pPlane).d, &w) < BrCrK_Zero)
+            t = -BrCrPlaneDist(pN, (*(struct BrGroundHit *)&((BrCarBody *)(pW))->rb.pPlane).d, &w);
         else
-            t = BrCrPlaneDist(pN, pW->hit.d, &w);
+            t = BrCrPlaneDist(pN, (*(struct BrGroundHit *)&((BrCarBody *)(pW))->rb.pPlane).d, &w);
         if (best >= t)
             best = t;
     }
@@ -383,12 +384,12 @@ int BrCollRespTipKick(BrTipView *pBody)
     if (best > DAT_10077b78)
         return 0;
     BrRbVelAtPoint(&w, (const BrRbBodyFull *)pBody, &p);
-    vn = (pW->hit.nx * w.x + pW->hit.ny * w.y) + pW->hit.nz * w.z;
+    vn = ((*(struct BrGroundHit *)&((BrCarBody *)(pW))->rb.pPlane).nx * w.x + (*(struct BrGroundHit *)&((BrCarBody *)(pW))->rb.pPlane).ny * w.y) + (*(struct BrGroundHit *)&((BrCarBody *)(pW))->rb.pPlane).nz * w.z;
     BrPodNop();
     if (BR_TIP_ABS(vn) > DAT_10077af4)
         return 0;
-    s = pBody->hit.nx * pM->m[0][0] + pBody->hit.nz * pBody->m.m[0][2]
-      + pBody->hit.ny * pBody->m.m[0][1];
+    s = (*(struct BrGroundHit *)&((BrCarBody *)(pBody))->rb.pPlane).nx * pM->m[0][0] + (*(struct BrGroundHit *)&((BrCarBody *)(pBody))->rb.pPlane).nz * (*(struct BrMat4 *)&((BrCarBody *)(pBody))->rb.m).m[0][2]
+      + (*(struct BrGroundHit *)&((BrCarBody *)(pBody))->rb.pPlane).ny * (*(struct BrMat4 *)&((BrCarBody *)(pBody))->rb.m).m[0][1];
     p.x = 0.0f;
     p.y = 0.1f;
     if (s <= BrCrK_Zero)
@@ -396,9 +397,9 @@ int BrCollRespTipKick(BrTipView *pBody)
     p.z = 0.0f;
     BrPodNop();
     BrMat4MulVec3Transposed(&w, pM, &p);
-    pBody->state.angVel.x = pBody->state.angVel.x - w.x * DAT_10077a84;
-    pBody->state.angVel.y = pBody->state.angVel.y - w.y * DAT_10077a84;
-    pBody->state.angVel.z = pBody->state.angVel.z - w.z * DAT_10077a84;
+    (*(struct BrRbState *)&((BrCarBody *)(pBody))->rb.st1).angVel.x = (*(struct BrRbState *)&((BrCarBody *)(pBody))->rb.st1).angVel.x - w.x * DAT_10077a84;
+    (*(struct BrRbState *)&((BrCarBody *)(pBody))->rb.st1).angVel.y = (*(struct BrRbState *)&((BrCarBody *)(pBody))->rb.st1).angVel.y - w.y * DAT_10077a84;
+    (*(struct BrRbState *)&((BrCarBody *)(pBody))->rb.st1).angVel.z = (*(struct BrRbState *)&((BrCarBody *)(pBody))->rb.st1).angVel.z - w.z * DAT_10077a84;
     BrRbQuatDerivative(pState);
     return 1;
 }

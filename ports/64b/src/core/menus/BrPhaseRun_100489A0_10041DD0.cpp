@@ -1,4 +1,5 @@
 #include "slice2_25.h"   /* br_globals: its objects */
+#include "br_phase.h"   /* BrPhase_, the canonical record */
 #include "slice3_42.h"   /* br_globals: its objects */
 /* WHAT IT DOES: run the phase to completion: on the first pass it saves the
  * control configuration and restarts, and afterwards it steps normally. This
@@ -70,10 +71,10 @@ int BrPhase41::Run()
 {
     int i;
 
-    if (this->done == 0) {
+    if ((*(int *)&((BrPhase_ *)(this))->f68) == 0) {
         BrOptSave();
         (*(BrCtrlCfg41 *)&g_BrCtrlCfg).Save(&g_navArg);
-        this->idx = 0;
+        (*(unsigned short *)&((BrPhase_ *)(this))->iPage) = 0;
         this->f18(0);
         return 0;
     }
@@ -90,15 +91,15 @@ int BrPhase41::Run()
     BrDikPollAndEdge();
     g_bc0 = ((*(BrPhase41 * *)&g_brPAA29B8) == (*(BrPhase41 * *)&g_2908));
 
-    this->idx = 0;
-    for (i = 0; i < this->count; i++) {
-        this->cur = this->items[i];
-        if (this->cur == 0) {
+    (*(unsigned short *)&((BrPhase_ *)(this))->iPage) = 0;
+    for (i = 0; i < (*(unsigned short *)&((BrPhase_ *)(this))->nPages); i++) {
+        (*(BrPhaseItem41 * *)&((BrPhase_ *)(this))->pCur) = (*(BrPhaseItem41 * (*)[20])&((BrPhase_ *)(this))->aPages)[i];
+        if ((*(BrPhaseItem41 * *)&((BrPhase_ *)(this))->pCur) == 0) {
             return 0;
         }
-        this->idx = (unsigned short)i;
-        if (this->flags[i] != 0) {
-            if (this->cur->i1() == 0) {
+        (*(unsigned short *)&((BrPhase_ *)(this))->iPage) = (unsigned short)i;
+        if ((*(int (*)[1])&((BrPhase_ *)(this))->aFlags[0])[i] != 0) {
+            if ((*(BrPhaseItem41 * *)&((BrPhase_ *)(this))->pCur)->i1() == 0) {
                 return 0;
             }
         }
@@ -106,10 +107,10 @@ int BrPhase41::Run()
 
     this->s2();
 
-    if (this->done == 0) {
+    if ((*(int *)&((BrPhase_ *)(this))->f68) == 0) {
         BrOptSave();
         (*(BrCtrlCfg41 *)&g_BrCtrlCfg).Save(&g_navArg);
-        this->idx = 0;
+        (*(unsigned short *)&((BrPhase_ *)(this))->iPage) = 0;
         this->f18(0);
         return 0;
     }

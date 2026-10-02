@@ -1,3 +1,4 @@
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 /* WHAT IT DOES: cancel an animated move and snap the item back to where it
  * began. */
 /* @implements 0x10041160 glide BrUiTweenReset_10047D10
@@ -43,10 +44,10 @@ typedef char chk_f3824_41160[(unsigned)&((Tween41160 *)0)->f3824 == 0x3824 ? 1 :
 
 int Tween41160::Reset()
 {
-    f3818 = 1;
-    f03C = f030;
-    f040 = f034;
-    f044 = f038;
+    (*(int *)&((BrUiCtl_ *)(this))->twActive) = 1;
+    (*(int *)&((BrUiCtl_ *)(this))->x) = (*(int *)&((BrUiCtl_ *)(this))->fTweenX);
+    (*(int *)&((BrUiCtl_ *)(this))->y) = (*(int *)&((BrUiCtl_ *)(this))->fTweenY);
+    (*(int *)&((BrUiCtl_ *)(this))->f44) = (*(int *)&((BrUiCtl_ *)(this))->fTweenZ);
 
     return 1;
 }

@@ -11,6 +11,7 @@
  */
 #define _CRTIMP __declspec(dllimport)
 #include "slice2_25.h"   /* br_globals: its objects */
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 #include <string.h>
 
 class GameSub {
@@ -51,7 +52,7 @@ int BrPhaseLeaveNamed_10046E10(GameObj *pGame)
 {
     Phase *pObj;
 
-    pGame->pSub->s7();
+    (*(GameSub * *)&((BrUiCtl_ *)(pGame))->pOwner)->s7();
     pObj = (Phase *)((*(Phase * *)&g_brPAA29B8));
     if (pObj != 0)
         pObj->f00(1);

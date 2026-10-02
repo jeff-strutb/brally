@@ -80,15 +80,15 @@ int BrNetSendCarStateDelta(void *pState, float * ref)
 
         pSlot = &(*(NetSlot (*)[])&g_aBrNetSlot)[id];
         h[0] = g_hBrNetMutex;
-        h[1] = pSlot->hMutex;
+        h[1] = (*(void * *)&((BrNetSlot *)(pSlot))->hMutex);
         WaitForMultipleObjects(2, h, 1, 0xFFFFFFFF);
         g_brNetPktTick = BrTicks30FromMs((struct BrBitStream *)());
-        if (++pSlot->idx >= 8)
-            pSlot->idx = 0;
-        pSlot->stamp[pSlot->idx] = g_brNetPktTick;
-        pSlot->kind[pSlot->idx] = 0x80;
-        pSlot->data[pSlot->idx] = *(const CarStateBlob *)pState;
-        ReleaseMutex(pSlot->hMutex);
+        if (++(*(int *)&((BrNetSlot *)(pSlot))->f55C) >= 8)
+            (*(int *)&((BrNetSlot *)(pSlot))->f55C) = 0;
+        (*(int (*)[8])&((BrNetSlot *)(pSlot))->f00C)[(*(int *)&((BrNetSlot *)(pSlot))->f55C)] = g_brNetPktTick;
+        (*(int (*)[8])&((BrNetSlot *)(pSlot))->f038)[(*(int *)&((BrNetSlot *)(pSlot))->f55C)] = 0x80;
+        (*(CarStateBlob *)&((BrNetSlot *)(pSlot))->cars[pSlot->idx]) = *(const CarStateBlob *)pState;
+        ReleaseMutex((*(void * *)&((BrNetSlot *)(pSlot))->hMutex));
         ReleaseMutex(g_hBrNetMutex);
     }
     {

@@ -1,4 +1,5 @@
 #include "br_uispr.h"   /* br_globals: its objects */
+#include "slice3_39.h"   /* BrTextList, the canonical record */
 /* WHAT IT DOES: lay the heads-up display out for a given rectangle -- stores
  * the corners and works out the offsets every HUD element is positioned
  * from. */
@@ -137,23 +138,23 @@ int Hud54730::Layout(int a1, int *r, short a3, short a4, short a5)
     int dx;
     int dy;
 
-    f1c = (float)r[0];
-    f20 = (float)r[1];
+    (*(float *)&((BrTextList *)(this))->f1C) = (float)r[0];
+    (*(float *)&((BrTextList *)(this))->f20) = (float)r[1];
 
-    i1a93c = r[0];
-    i1a940 = r[1];
-    i1a944 = r[2];
-    i1a948 = r[3];
+    (*(int *)&((BrTextList *)(this))->f1A93C) = r[0];
+    (*(int *)&((BrTextList *)(this))->f1A940) = r[1];
+    (*(int *)&((BrTextList *)(this))->f1A944) = r[2];
+    (*(int *)&((BrTextList *)(this))->f1A948) = r[3];
 
-    i18 = a1;
+    (*(int *)&((BrTextList *)(this))->f18) = a1;
 
-    w1a930 = a3;
-    w1a92e = a4;
-    w1a936 = a5;
+    (*(short *)&((BrTextList *)(this))->f1A930) = a3;
+    (*(short *)&((BrTextList *)(this))->f1A92E) = a4;
+    (*(short *)&((BrTextList *)(this))->f1A936) = a5;
 
-    w1a932 = '0';
-    w1a934 = '.';
-    w1a938 = ':';
+    (*(short *)&((BrTextList *)(this))->f1A932) = '0';
+    (*(short *)&((BrTextList *)(this))->f1A934) = '.';
+    (*(short *)&((BrTextList *)(this))->f1A938) = ':';
 
     dx = (*(int *)&g_aBrUiSprite[1164]) - (*(int *)&g_aBrUiSprite[1156]);
     dy = (*(int *)&g_aBrUiSprite[1168]) - (*(int *)&g_aBrUiSprite[1160]);
@@ -162,44 +163,44 @@ int Hud54730::Layout(int a1, int *r, short a3, short a4, short a5)
     if (dy < 0)
         dy = 0;
 
-    if (i1a9b8 != 0) {
-        i1a96c = r[0];
-        i1a970 = r[3] + 3;
-        i1a974 = i1a96c + dx;
-        i1a978 = i1a970 + dy;
-        i1a97c = r[2] - dx;
-        i1a980 = r[3] + 3;
-        i1a984 = dx + i1a97c;
-        i1a988 = i1a980 + dy;
+    if ((*(int *)&((BrTextList *)(this))->f1A99C[7]) != 0) {
+        (*(int *)&((BrTextList *)(this))->f1A96C) = r[0];
+        (*(int *)&((BrTextList *)(this))->f1A970) = r[3] + 3;
+        (*(int *)&((BrTextList *)(this))->f1A974) = (*(int *)&((BrTextList *)(this))->f1A96C) + dx;
+        (*(int *)&((BrTextList *)(this))->f1A978) = (*(int *)&((BrTextList *)(this))->f1A970) + dy;
+        (*(int *)&((BrTextList *)(this))->f1A97C) = r[2] - dx;
+        (*(int *)&((BrTextList *)(this))->f1A980) = r[3] + 3;
+        (*(int *)&((BrTextList *)(this))->f1A984) = dx + (*(int *)&((BrTextList *)(this))->f1A97C);
+        (*(int *)&((BrTextList *)(this))->f1A988) = (*(int *)&((BrTextList *)(this))->f1A980) + dy;
 
-        f1a9ac = (float)i1a974 - (-1.0f);
-        f1a9b0 = (float)i1a970;
-        f1a9d0 = (float)(i1a97c - dx) - f1a9ac;
-        f1a9c0 = (float)(i1a974 + 1);
-        f1a9c4 = (float)(i1a97c - dx);
-    } else if (i1a9bc != 0) {
-        i1a94c = r[2] + 3;
-        i1a950 = r[1];
-        i1a954 = (*(int *)&g_aBrUiSprite[1164]) + i1a94c;
-        i1a958 = (*(int *)&g_aBrUiSprite[1168]) + i1a950;
-        i1a95c = r[2] + 3;
-        i1a960 = r[3] - (*(int *)&g_aBrUiSprite[1120]);
-        i1a964 = (*(int *)&g_aBrUiSprite[1116]) + i1a94c;
-        i1a968 = r[3];
+        (*(float *)&((BrTextList *)(this))->f1A99C[4]) = (float)(*(int *)&((BrTextList *)(this))->f1A974) - (-1.0f);
+        (*(float *)&((BrTextList *)(this))->f1A99C[5]) = (float)(*(int *)&((BrTextList *)(this))->f1A970);
+        (*(float *)&((BrTextList *)(this))->f1A99C[13]) = (float)((*(int *)&((BrTextList *)(this))->f1A97C) - dx) - (*(float *)&((BrTextList *)(this))->f1A99C[4]);
+        (*(float *)&((BrTextList *)(this))->f1A99C[9]) = (float)((*(int *)&((BrTextList *)(this))->f1A974) + 1);
+        (*(float *)&((BrTextList *)(this))->f1A99C[10]) = (float)((*(int *)&((BrTextList *)(this))->f1A97C) - dx);
+    } else if ((*(int *)&((BrTextList *)(this))->f1A99C[8]) != 0) {
+        (*(int *)&((BrTextList *)(this))->f1A94C) = r[2] + 3;
+        (*(int *)&((BrTextList *)(this))->f1A950) = r[1];
+        (*(int *)&((BrTextList *)(this))->f1A954) = (*(int *)&g_aBrUiSprite[1164]) + (*(int *)&((BrTextList *)(this))->f1A94C);
+        (*(int *)&((BrTextList *)(this))->f1A958) = (*(int *)&g_aBrUiSprite[1168]) + (*(int *)&((BrTextList *)(this))->f1A950);
+        (*(int *)&((BrTextList *)(this))->f1A95C) = r[2] + 3;
+        (*(int *)&((BrTextList *)(this))->f1A960) = r[3] - (*(int *)&g_aBrUiSprite[1120]);
+        (*(int *)&((BrTextList *)(this))->f1A964) = (*(int *)&g_aBrUiSprite[1116]) + (*(int *)&((BrTextList *)(this))->f1A94C);
+        (*(int *)&((BrTextList *)(this))->f1A968) = r[3];
 
-        f1a9ac = (float)i1a94c;
-        f1a9b0 = (float)i1a958 - (-1.0f);
-        f1a9d0 = (float)(i1a960 - dy) - f1a9b0;
-        f1a9c8 = (float)(i1a958 + 1);
-        f1a9cc = (float)(i1a960 - dy);
+        (*(float *)&((BrTextList *)(this))->f1A99C[4]) = (float)(*(int *)&((BrTextList *)(this))->f1A94C);
+        (*(float *)&((BrTextList *)(this))->f1A99C[5]) = (float)(*(int *)&((BrTextList *)(this))->f1A958) - (-1.0f);
+        (*(float *)&((BrTextList *)(this))->f1A99C[13]) = (float)((*(int *)&((BrTextList *)(this))->f1A960) - dy) - (*(float *)&((BrTextList *)(this))->f1A99C[5]);
+        (*(float *)&((BrTextList *)(this))->f1A99C[11]) = (float)((*(int *)&((BrTextList *)(this))->f1A958) + 1);
+        (*(float *)&((BrTextList *)(this))->f1A99C[12]) = (float)((*(int *)&((BrTextList *)(this))->f1A960) - dy);
     }
 
-    i1a98c = (int)f1a9ac;
-    i1a990 = (int)f1a9b0;
-    dx += i1a98c;
-    dy += i1a990;
-    i1a994 = dx;
-    i1a998 = dy;
+    (*(int *)&((BrTextList *)(this))->f1A98C) = (int)(*(float *)&((BrTextList *)(this))->f1A99C[4]);
+    (*(int *)&((BrTextList *)(this))->f1A990) = (int)(*(float *)&((BrTextList *)(this))->f1A99C[5]);
+    dx += (*(int *)&((BrTextList *)(this))->f1A98C);
+    dy += (*(int *)&((BrTextList *)(this))->f1A990);
+    (*(int *)&((BrTextList *)(this))->f1A994) = dx;
+    (*(int *)&((BrTextList *)(this))->f1A998) = dy;
 
     return 1;
 }

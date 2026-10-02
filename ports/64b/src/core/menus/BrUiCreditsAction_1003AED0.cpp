@@ -1,4 +1,6 @@
 #include "br_race.h"   /* br_globals: its objects */
+#include "br_phase.h"   /* BrPhase_, the canonical record */
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 /* WHAT IT DOES: start the credits rolling: sets the mode that plays them and
  * closes the page that launched them. */
 /* @implements 0x1003AED0 glide BrUiCreditsAction_1003AED0
@@ -53,7 +55,7 @@ int BrUiCreditsAction_1003AED0(GameObj *pGame)
     } else {
         g_5bc760 = 1;
     }
-    pGame->pSub->f68 = 0;
-    pGame->pSub->s6(0);
+    (*(int *)&((BrPhase_ *)((*(GameSub * *)&((BrUiCtl_ *)(pGame))->pOwner)))->f68) = 0;
+    (*(GameSub * *)&((BrUiCtl_ *)(pGame))->pOwner)->s6(0);
     return 0;
 }

@@ -1,4 +1,6 @@
 #include "br_slots.h"   /* br_globals: its objects */
+#include "br_phase.h"   /* BrPhase_, the canonical record */
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 #include "slice2_25.h"   /* br_globals: its objects */
 #include "slice3_42.h"   /* br_globals: its objects */
 /* WHAT IT DOES: leave this page if a session is live, and otherwise open the
@@ -128,8 +130,8 @@ int BrOpt3810(GameObj *pGame)
 
     if (DAT_10ac5bec != 0) {
         if (g_guardB != 0) {
-            pGame->pSub->f68 = 0;
-            pGame->pSub->s6(0);
+            (*(int *)&((BrPhase_ *)((*(GameSub * *)&((BrUiCtl_ *)(pGame))->pOwner)))->f68) = 0;
+            (*(GameSub * *)&((BrUiCtl_ *)(pGame))->pOwner)->s6(0);
             BrExt_10038F30(0);
         } else {
             BrSub10046400(pGame);
@@ -144,7 +146,7 @@ int BrOpt3810(GameObj *pGame)
                 FUN_100356b0();
             if (DAT_10ac5bd4 == 2 || DAT_10ac5bd4 == 3) {
                 if ((*(Wnd * *)&g_brPAA29D8) != 0)
-                    (*(Wnd * *)&g_brPAA29D8)->f1C &= ~0x10;
+                    (*(unsigned int *)&((BrUiCtl_ *)((*(Wnd * *)&g_brPAA29D8)))->flags1C) &= ~0x10;
             }
             DAT_10ac5bec = 0;
             return 0;
@@ -185,8 +187,8 @@ int BrOpt3810(GameObj *pGame)
     if (DAT_10ac5be4 != 0) {
         BrOptSave();
         (*(Nav *)&g_BrCtrlCfg).m(&g_navArg);
-        pGame->pSub->f68 = 0;
-        pGame->pSub->s6(0);
+        (*(int *)&((BrPhase_ *)((*(GameSub * *)&((BrUiCtl_ *)(pGame))->pOwner)))->f68) = 0;
+        (*(GameSub * *)&((BrUiCtl_ *)(pGame))->pOwner)->s6(0);
         g_5BB4 = 0;
         BrSub10072AF0(2, 0x200020);
         g_track = 2;

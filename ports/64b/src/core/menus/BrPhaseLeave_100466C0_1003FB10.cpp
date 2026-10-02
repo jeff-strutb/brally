@@ -1,4 +1,5 @@
 #include "slice2_25.h"   /* br_globals: its objects */
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 #include "slice3_42.h"   /* br_globals: its objects */
 /* WHAT IT DOES: leave this menu page: run its leave routine, destroy the
  * page object, and make its parent current again. One of a family that
@@ -56,7 +57,7 @@ int BrPhaseLeave_100466C0(GameObj *pGame)
 {
     Phase *pObj;
 
-    pGame->pSub->s7();
+    (*(GameSub * *)&((BrUiCtl_ *)(pGame))->pOwner)->s7();
     pObj = (Phase *)((*(Phase * *)&g_brPAA29B8));
     if (pObj != 0)
         pObj->f00(1);

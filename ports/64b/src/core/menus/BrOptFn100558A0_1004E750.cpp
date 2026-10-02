@@ -14,6 +14,9 @@
  */
 #define _CRTIMP __declspec(dllimport)
 #include "br_coretypes.h"   /* br_globals: its objects */
+#include "slice3_39.h"   /* BrTextBox, the canonical record */
+#include "br_phase.h"   /* BrPhase_, the canonical record */
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 #include "br_race.h"   /* br_globals: its objects */
 #include <string.h>
 
@@ -202,204 +205,204 @@ int BrOptFn100558A0(GameUi *parent)
     BrCtl     *p;
     char       bad;
 
-    parent->w12 = 0;
+    (*(short *)&((BrPhase_ *)(parent))->iPage) = 0;
     (*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = 6;
-    parent->a6C[parent->w10] = 1;
+    (*(int (*)[1])&((BrPhase_ *)(parent))->aFlags[0])[(*(unsigned short *)&((BrPhase_ *)(parent))->nPages)] = 1;
     cont = new Page04E750;
-    parent->a14[parent->w10] = cont;
+    (*(Page04E750 * (*)[22])&((BrPhase_ *)(parent))->aPages[0])[(*(unsigned short *)&((BrPhase_ *)(parent))->nPages)] = cont;
     bad = (cont == 0);
     if (bad)
         FUN_100378c0(4);
-    parent->w10 += 1;
-    cont->f340 = parent;
-    cont->f10 = 0;
-    cont->f338 = 195.0f;
-    cont->f33C = 130.0f;
+    (*(unsigned short *)&((BrPhase_ *)(parent))->nPages) += 1;
+    (*(GameUi * *)&((BrUiPage_ *)(cont))->pOwner) = parent;
+    (*(int *)&((BrUiPage_ *)(cont))->f10) = 0;
+    (*(float *)&((BrUiPage_ *)(cont))->fX) = 195.0f;
+    (*(float *)&((BrUiPage_ *)(cont))->fY) = 130.0f;
     p = new BrCtl;
-    cont->a18[cont->w14] = p;
+    (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
     bad = (p == 0);
     if (bad)
         FUN_100378c0(4);
     p->s38(parent, 0, 0, 9, 2, 5, 0, 0);
-    cont->w14 += 1;
+    (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
     p = new BrCtl;
-    cont->a18[cont->w14] = p;
+    (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
     bad = (p == 0);
     if (bad)
         FUN_100378c0(4);
-    p->s38(parent, cont->f338, 10.0f, 0x100009, 2, 5, 1, -1);
-    p->w1E20C = 3;
+    p->s38(parent, (*(float *)&((BrUiPage_ *)(cont))->fX), 10.0f, 0x100009, 2, 5, 1, -1);
+    (*(unsigned short *)&((BrUiCtl_ *)(p))->w1E20C) = 3;
     p->s34((char *)(BrStrGet(0x54)), 1, 1, (char *)(&DAT_100aaca8));
-    cont->w14 += 1;
+    (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
     p = new BrCtl;
-    cont->a18[cont->w14] = p;
+    (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
     bad = (p == 0);
     if (bad)
         FUN_100378c0(4);
-    p->s38(parent, cont->f338, cont->f33C, 0x102001, 2, 5, 1, -1);
-    p->pfn0C = (CtlFn)BrUiHook85_10044030;
-    p->pfn08 = (CtlFn)BrHook_10044010;
-    p->w1E20C = 3;
+    p->s38(parent, (*(float *)&((BrUiPage_ *)(cont))->fX), (*(float *)&((BrUiPage_ *)(cont))->fY), 0x102001, 2, 5, 1, -1);
+    (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn0C) = (CtlFn)BrUiHook85_10044030;
+    (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn08) = (CtlFn)BrHook_10044010;
+    (*(unsigned short *)&((BrUiCtl_ *)(p))->w1E20C) = 3;
     p->s34((char *)(BrStrGet(0x55)), 1, 1, (char *)(&(*(char *)&g_hot0)));
-    cont->w14 += 1;
-    cont->w344 += 1;
+    (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
+    (*(short *)&((BrUiPage_ *)(cont))->cSel) += 1;
     p = new BrCtl;
-    cont->a18[cont->w14] = p;
+    (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
     bad = (p == 0);
     if (bad)
         FUN_100378c0(4);
-    p->s38(parent, cont->f338, cont->f33C - DAT_10077648, 0x102001, 2, 5, 1, -1);
-    p->pfn0C = (CtlFn)BrUiHook85_10044070;
-    p->pfn08 = (CtlFn)BrUiHook85_10044050;
-    p->w1E20C = 3;
+    p->s38(parent, (*(float *)&((BrUiPage_ *)(cont))->fX), (*(float *)&((BrUiPage_ *)(cont))->fY) - DAT_10077648, 0x102001, 2, 5, 1, -1);
+    (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn0C) = (CtlFn)BrUiHook85_10044070;
+    (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn08) = (CtlFn)BrUiHook85_10044050;
+    (*(unsigned short *)&((BrUiCtl_ *)(p))->w1E20C) = 3;
     p->s34((char *)(BrStrGet(0x56)), 1, 1, (char *)(&(*(char *)&g_hot0)));
-    cont->w14 += 1;
-    cont->w344 += 1;
+    (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
+    (*(short *)&((BrUiPage_ *)(cont))->cSel) += 1;
     p = new BrCtl;
-    cont->a18[cont->w14] = p;
+    (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
     bad = (p == 0);
     if (bad)
         FUN_100378c0(4);
-    p->s38(parent, cont->f338, cont->f33C - DAT_1007764c, 0x102001, 2, 5, 1, -1);
-    p->pfn0C = (CtlFn)BrUiHook85_100440B0;
-    p->pfn08 = (CtlFn)BrUiHook85_10044090;
-    p->w1E20C = 3;
+    p->s38(parent, (*(float *)&((BrUiPage_ *)(cont))->fX), (*(float *)&((BrUiPage_ *)(cont))->fY) - DAT_1007764c, 0x102001, 2, 5, 1, -1);
+    (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn0C) = (CtlFn)BrUiHook85_100440B0;
+    (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn08) = (CtlFn)BrUiHook85_10044090;
+    (*(unsigned short *)&((BrUiCtl_ *)(p))->w1E20C) = 3;
     p->s34((char *)(BrStrGet(0x57)), 1, 1, (char *)(&(*(char *)&g_hot0)));
-    cont->w14 += 1;
-    cont->w344 += 1;
+    (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
+    (*(short *)&((BrUiPage_ *)(cont))->cSel) += 1;
     p = new BrCtl;
-    cont->a18[cont->w14] = p;
+    (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
     bad = (p == 0);
     if (bad)
         FUN_100378c0(4);
-    p->s38(parent, cont->f338, cont->f33C - DAT_1007765c, 0x102001, 2, 5, 1, -1);
-    p->pfn0C = (CtlFn)BrSub10047360;
-    p->pfn08 = (CtlFn)BrOpt63C0;
-    p->w1E20C = 3;
+    p->s38(parent, (*(float *)&((BrUiPage_ *)(cont))->fX), (*(float *)&((BrUiPage_ *)(cont))->fY) - DAT_1007765c, 0x102001, 2, 5, 1, -1);
+    (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn0C) = (CtlFn)BrSub10047360;
+    (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn08) = (CtlFn)BrOpt63C0;
+    (*(unsigned short *)&((BrUiCtl_ *)(p))->w1E20C) = 3;
     p->s34((char *)(BrStrGet(0xc)), 1, 1, (char *)(&(*(char *)&g_hot0)));
-    cont->w14 += 1;
-    cont->w344 += 1;
+    (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
+    (*(short *)&((BrUiPage_ *)(cont))->cSel) += 1;
     p = new BrCtl;
-    cont->a18[cont->w14] = p;
+    (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
     bad = (p == 0);
     if (bad)
         FUN_100378c0(4);
     p->s38(parent, 95.0f, 317.0f, 9, 2, 5, 0, 0x67);
-    cont->w14 += 1;
+    (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
     p = new BrCtl;
-    cont->a18[cont->w14] = p;
+    (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
     bad = (p == 0);
     if (bad)
         FUN_100378c0(4);
     p->s38(parent, 130.0f, 336.0f, 0x100009, 2, 5, 1, -1);
-    p->w1E20C = 0x34;
+    (*(unsigned short *)&((BrUiCtl_ *)(p))->w1E20C) = 0x34;
     p->s34((char *)(BrStrGet(0x59)), 1, 4, (char *)(&(*(char *)&g_hot0)));
-    cont->w14 += 1;
+    (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
     p = new BrCtl;
-    cont->a18[cont->w14] = p;
+    (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
     bad = (p == 0);
     if (bad)
         FUN_100378c0(4);
     p->s38(parent, 130.0f, 374.0f, 0x100009, 2, 5, 1, -1);
-    p->w1E20C = 3;
+    (*(unsigned short *)&((BrUiCtl_ *)(p))->w1E20C) = 3;
     p->s34((char *)(BrStrGet(0x5a)), 1, 1, (char *)(&(*(char *)&g_hot0)));
-    cont->w14 += 1;
+    (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
     p = new BrCtl;
-    cont->a18[cont->w14] = p;
+    (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
     bad = (p == 0);
     if (bad)
         FUN_100378c0(4);
     p->s38(parent, 155.0f, 393.0f, 9, 2, 5, 0, 0x39);
-    cont->w14 += 1;
+    (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
     p = new BrCtl;
-    cont->a18[cont->w14] = p;
+    (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
     bad = (p == 0);
     if (bad)
         FUN_100378c0(4);
     p->s38(parent, 155.0f, 393.0f, 0x200001, 2, 5, 1, -1);
-    p->pfn08 = (CtlFn)BrUiHook85_10042AC0;
-    p->pfn04 = (CtlFn)Br85TextReadBack;
-    p->pfn10 = (CtlFn)BrStubTrue;
-    p->w1E20C = 3;
+    (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn08) = (CtlFn)BrUiHook85_10042AC0;
+    (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn04) = (CtlFn)Br85TextReadBack;
+    (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn10) = (CtlFn)BrStubTrue;
+    (*(unsigned short *)&((BrUiCtl_ *)(p))->w1E20C) = 3;
     p->s34(&(g_aBr39B720[0]), 1, 1, (char *)(&(*(char *)&g_hot0)));
-    p->m2B5C.s1();
-    p->f050 = 0x9b;
-    p->m2B5C.a424[0] = 0x9b;
-    p->f058 = 0x15b;
-    p->m2B5C.a424[2] = 0x15b;
-    p->f054 = 0x189;
-    p->m2B5C.a424[1] = 0x189;
-    p->f05C = 0x199;
-    p->m2B5C.a424[3] = 0x199;
-    p->m2B5C.w41C = (short)(p->m2B5C.a424[2] - p->m2B5C.a424[0]) - 0x10;
-    cont->w14 += 1;
-    cont->w344 += 1;
+    (*(class Item2B5C *)&((BrUiCtl_ *)(p))->aText[0]).s1();
+    (*(int *)&((BrUiCtl_ *)(p))->rcLeft) = 0x9b;
+    (*(int (*)[4])&((BrTextBox *)&((*(class Item2B5C *)&((BrUiCtl_ *)(p))->aText[0])))->left)[0] = 0x9b;
+    (*(int *)&((BrUiCtl_ *)(p))->rcRight) = 0x15b;
+    (*(int (*)[4])&((BrTextBox *)&((*(class Item2B5C *)&((BrUiCtl_ *)(p))->aText[0])))->left)[2] = 0x15b;
+    (*(int *)&((BrUiCtl_ *)(p))->rcTop) = 0x189;
+    (*(int (*)[4])&((BrTextBox *)&((*(class Item2B5C *)&((BrUiCtl_ *)(p))->aText[0])))->left)[1] = 0x189;
+    (*(int *)&((BrUiCtl_ *)(p))->rcBottom) = 0x199;
+    (*(int (*)[4])&((BrTextBox *)&((*(class Item2B5C *)&((BrUiCtl_ *)(p))->aText[0])))->left)[3] = 0x199;
+    (*(short *)&((BrTextBox *)&((*(class Item2B5C *)&((BrUiCtl_ *)(p))->aText[0])))->f41C) = (short)((*(int (*)[4])&((BrTextBox *)&((*(class Item2B5C *)&((BrUiCtl_ *)(p))->aText[0])))->left)[2] - (*(int (*)[4])&((BrTextBox *)&((*(class Item2B5C *)&((BrUiCtl_ *)(p))->aText[0])))->left)[0]) - 0x10;
+    (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
+    (*(short *)&((BrUiPage_ *)(cont))->cSel) += 1;
     p = new BrCtl;
-    cont->a18[cont->w14] = p;
+    (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
     bad = (p == 0);
     if (bad)
         FUN_100378c0(4);
     p->s38(parent, 130.0f, 412.0f, 0x100009, 2, 5, 1, -1);
-    p->w1E20C = 3;
+    (*(unsigned short *)&((BrUiCtl_ *)(p))->w1E20C) = 3;
     p->s34((char *)(BrStrGet(0x5b)), 1, 1, (char *)(&(*(char *)&g_hot0)));
-    cont->w14 += 1;
+    (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
     p = new BrCtl;
-    cont->a18[cont->w14] = p;
+    (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
     bad = (p == 0);
     if (bad)
         FUN_100378c0(4);
     p->s38(parent, 155.0f, 431.0f, 9, 2, 5, 0, 0x39);
-    cont->w14 += 1;
+    (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
     p = new BrCtl;
-    cont->a18[cont->w14] = p;
+    (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
     bad = (p == 0);
     if (bad)
         FUN_100378c0(4);
     p->s38(parent, 155.0f, 431.0f, 0x200001, 2, 5, 1, -1);
-    p->pfn08 = (CtlFn)BrUiHook85_10042AC0;
-    p->pfn04 = (CtlFn)BrUiHook85_1003F0B0;
-    p->pfn10 = (CtlFn)BrStubTrue;
-    p->w1E20C = 3;
+    (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn08) = (CtlFn)BrUiHook85_10042AC0;
+    (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn04) = (CtlFn)BrUiHook85_1003F0B0;
+    (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn10) = (CtlFn)BrStubTrue;
+    (*(unsigned short *)&((BrUiCtl_ *)(p))->w1E20C) = 3;
     p->s34(&(g_aBr39B720[0]), 1, 1, (char *)(&(*(char *)&g_hot0)));
-    p->m2B5C.s1();
-    p->f050 = 0x9b;
-    p->m2B5C.a424[0] = 0x9b;
-    p->f058 = 0x15b;
-    p->m2B5C.a424[2] = 0x15b;
-    p->f054 = 0x1af;
-    p->m2B5C.a424[1] = 0x1af;
-    p->f05C = 0x1bf;
-    p->m2B5C.a424[3] = 0x1bf;
-    p->m2B5C.w41C = (short)(p->m2B5C.a424[2] - p->m2B5C.a424[0]) - 0x10;
-    cont->w14 += 1;
-    cont->w344 += 1;
+    (*(class Item2B5C *)&((BrUiCtl_ *)(p))->aText[0]).s1();
+    (*(int *)&((BrUiCtl_ *)(p))->rcLeft) = 0x9b;
+    (*(int (*)[4])&((BrTextBox *)&((*(class Item2B5C *)&((BrUiCtl_ *)(p))->aText[0])))->left)[0] = 0x9b;
+    (*(int *)&((BrUiCtl_ *)(p))->rcRight) = 0x15b;
+    (*(int (*)[4])&((BrTextBox *)&((*(class Item2B5C *)&((BrUiCtl_ *)(p))->aText[0])))->left)[2] = 0x15b;
+    (*(int *)&((BrUiCtl_ *)(p))->rcTop) = 0x1af;
+    (*(int (*)[4])&((BrTextBox *)&((*(class Item2B5C *)&((BrUiCtl_ *)(p))->aText[0])))->left)[1] = 0x1af;
+    (*(int *)&((BrUiCtl_ *)(p))->rcBottom) = 0x1bf;
+    (*(int (*)[4])&((BrTextBox *)&((*(class Item2B5C *)&((BrUiCtl_ *)(p))->aText[0])))->left)[3] = 0x1bf;
+    (*(short *)&((BrTextBox *)&((*(class Item2B5C *)&((BrUiCtl_ *)(p))->aText[0])))->f41C) = (short)((*(int (*)[4])&((BrTextBox *)&((*(class Item2B5C *)&((BrUiCtl_ *)(p))->aText[0])))->left)[2] - (*(int (*)[4])&((BrTextBox *)&((*(class Item2B5C *)&((BrUiCtl_ *)(p))->aText[0])))->left)[0]) - 0x10;
+    (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
+    (*(short *)&((BrUiPage_ *)(cont))->cSel) += 1;
     p = new BrCtl;
-    cont->a18[cont->w14] = p;
+    (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
     bad = (p == 0);
     if (bad)
         FUN_100378c0(4);
     p->s38(parent, 80.0f, 46.0f, 9, 2, 5, 0, 7);
-    cont->w14 += 1;
+    (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
     p = new BrCtl;
-    cont->a18[cont->w14] = p;
+    (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
     bad = (p == 0);
     if (bad)
         FUN_100378c0(4);
     p->s38(parent, 339.0f, 61.0f, 1, 2, 5, 1, 0x45);
-    p->pfn04 = (CtlFn)BrMenuCap0930;
-    p->w2AB6[0] = (short)(cont->w14 + 1);
-    p->w2AB4 += 1;
-    cont->w14 += 1;
+    (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn04) = (CtlFn)BrMenuCap0930;
+    (*(short (*)[25])&((BrUiCtl_ *)(p))->aChild)[0] = (short)((*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) + 1);
+    (*(short *)&((BrUiCtl_ *)(p))->cChild) += 1;
+    (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
     p = new BrCtl;
-    cont->a18[cont->w14] = p;
+    (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
     bad = (p == 0);
     if (bad)
         FUN_100378c0(4);
-    p->s38(parent, cont->f338, 160.0f, 0x101001, 2, 5, 1, -1);
-    p->pfn04 = (CtlFn)BrUiText3FC40;
-    p->w1E20C = 3;
+    p->s38(parent, (*(float *)&((BrUiPage_ *)(cont))->fX), 160.0f, 0x101001, 2, 5, 1, -1);
+    (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn04) = (CtlFn)BrUiText3FC40;
+    (*(unsigned short *)&((BrUiCtl_ *)(p))->w1E20C) = 3;
     p->s34((char *)(&(g_strA[0])), 1, 1, (char *)(&DAT_100aac48));
-    cont->w14 += 1;
+    (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
 
     return 1;
 }

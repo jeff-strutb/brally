@@ -1,3 +1,4 @@
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 /* WHAT IT DOES: advance the page's timed step sequence -- accumulates real
  * elapsed time and moves to the next step once this one's duration has
  * passed. */
@@ -41,27 +42,27 @@ int UiPage::TickSteps()
 {
     int now;
 
-    if (f2968 == 0)
+    if ((*(int *)&((BrUiCtl_ *)(this))->f2968) == 0)
         return 1;
     now = BrSub10075020();
-    f2974 += now - f2970;
-    f2970 = now;
-    if (f296C != 0) {
-        if (f2974 <= a2978[w128])
+    (*(int *)&((BrUiCtl_ *)(this))->f2974) += now - (*(int *)&((BrUiCtl_ *)(this))->f2970);
+    (*(int *)&((BrUiCtl_ *)(this))->f2970) = now;
+    if ((*(int *)&((BrUiCtl_ *)(this))->f296C) != 0) {
+        if ((*(int *)&((BrUiCtl_ *)(this))->f2974) <= (*(int (*)[950])&((BrUiCtl_ *)(this))->aStepMs[0])[(*(short *)&((BrUiCtl_ *)(this))->wStep)])
             return 1;
-        f2974 = 0;
-        f1C |= 0x100;
-        f3850 |= 0x100;
-        ++w128;
-        if (a2978[w128] > 0)
+        (*(int *)&((BrUiCtl_ *)(this))->f2974) = 0;
+        (*(unsigned int *)&((BrUiCtl_ *)(this))->flags1C) |= 0x100;
+        (*(int *)&((BrUiCtl_ *)(this))->list.f18) |= 0x100;
+        ++(*(short *)&((BrUiCtl_ *)(this))->wStep);
+        if ((*(int (*)[950])&((BrUiCtl_ *)(this))->aStepMs[0])[(*(short *)&((BrUiCtl_ *)(this))->wStep)] > 0)
             return 1;
-        w128 = 0;
+        (*(short *)&((BrUiCtl_ *)(this))->wStep) = 0;
         return 1;
     }
-    if (f2974 > 0x3c) {
-        f2974 = 0;
-        f1C |= 0x100;
-        f3850 |= 0x100;
+    if ((*(int *)&((BrUiCtl_ *)(this))->f2974) > 0x3c) {
+        (*(int *)&((BrUiCtl_ *)(this))->f2974) = 0;
+        (*(unsigned int *)&((BrUiCtl_ *)(this))->flags1C) |= 0x100;
+        (*(int *)&((BrUiCtl_ *)(this))->list.f18) |= 0x100;
     }
     return 1;
 }

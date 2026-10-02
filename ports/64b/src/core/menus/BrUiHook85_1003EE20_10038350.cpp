@@ -1,3 +1,4 @@
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 /* WHAT IT DOES: highlight-sync for a page whose valid rows are 0 to 11 --
  * anything outside that range is treated as 'nothing selected' rather than
  * clamped. */
@@ -42,7 +43,7 @@ int BrUiHook85_1003EE20(GameObj *pGame)
     v = g_5D8C;
     if (v < 0 || v >= 12)
         v = -1;
-    r = pGame->sel.t8(v);
+    r = (*(class Sel *)&((BrUiCtl_ *)(pGame))->list).t8(v);
     if (r >= 0)
         g_5D8C = r;
     return 1;

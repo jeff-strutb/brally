@@ -1,3 +1,4 @@
+#include "br_ui.h"   /* BrUiPage_, the canonical record */
 /* WHAT IT DOES: run one frame of a page: its two optional callbacks, the
  * selection wrap, then every child page in turn. */
 /* @implements 0x10041980 glide BrUiPageFrame_10048530
@@ -63,25 +64,25 @@ int Phase32F::Frame()
 {
     int i;
 
-    if (f04) f04();
-    if (f0C) f0C();
+    if ((*(void (**)(void))&((BrUiPage_ *)(this))->pfn04)) (*(void (**)(void))&((BrUiPage_ *)(this))->pfn04)();
+    if ((*(void (**)(void))&((BrUiPage_ *)(this))->pfn0C)) (*(void (**)(void))&((BrUiPage_ *)(this))->pfn0C)();
     (*(unsigned short *)&g_wAA2870) = 0;
     Adv();
 
-    for (i = 0; i < f14; ++i) {
-        UiPage *p = a18[i];
+    for (i = 0; i < (*(unsigned short *)&((BrUiPage_ *)(this))->cCtl); ++i) {
+        UiPage *p = (*(UiPage * (*)[202])&((BrUiPage_ *)(this))->apCtl[0])[i];
 
         if (p == 0)
             goto fail;
-        if (p->pfn14) {
-            if (p->pfn14(p) == 0)
+        if ((*(int (**)(UiPage *))&((BrUiCtl_ *)(p))->pfn14)) {
+            if ((*(int (**)(UiPage *))&((BrUiCtl_ *)(p))->pfn14)(p) == 0)
                 goto fail;
         }
-        if (p->f1C & 0x1000) {
+        if ((*(unsigned int *)&((BrUiCtl_ *)(p))->flags1C) & 0x1000) {
             p->s1();
-            if (p->pfn04)
-                p->pfn04(p);
-            if (p->f1C & 0x10) {
+            if ((*(int (**)(UiPage *))&((BrUiCtl_ *)(p))->pfn04))
+                (*(int (**)(UiPage *))&((BrUiCtl_ *)(p))->pfn04)(p);
+            if ((*(unsigned int *)&((BrUiCtl_ *)(p))->flags1C) & 0x10) {
                 if ((*(unsigned short *)&BrGlNavCur5BC4) == (*(unsigned short *)&g_wAA2870)) {
                     (*(unsigned short *)&BrGlNavCur5BC4) = (unsigned short)((*(unsigned short *)&BrGlNavCur5BC4)
                                                     + (*(unsigned short *)&BrGlNavStepAB7C));
@@ -89,39 +90,39 @@ int Phase32F::Frame()
                 }
                 (*(unsigned short *)&g_wAA2870) = (*(unsigned short *)&g_wAA2870) + 1;
             }
-            if (!(p->f1C & 0x10))
+            if (!((*(unsigned int *)&((BrUiCtl_ *)(p))->flags1C) & 0x10))
                 goto latch;
         }
-        if (p->f1C & 0x800)
+        if ((*(unsigned int *)&((BrUiCtl_ *)(p))->flags1C) & 0x800)
             goto latch;
         if (p->s3() == 0) {
             DAT_10ac5c00 = 0;
             goto fail;
         }
-        if ((p->f1C & 0x6000)
-            && (f340->fBC == i || (p->f1C & 0x4000))) {
-            if (p->w2AB4 > 0) {
+        if (((*(unsigned int *)&((BrUiCtl_ *)(p))->flags1C) & 0x6000)
+            && ((*(UiCtx * *)&((BrUiPage_ *)(this))->pOwner)->fBC == i || ((*(unsigned int *)&((BrUiCtl_ *)(p))->flags1C) & 0x4000))) {
+            if ((*(short *)&((BrUiCtl_ *)(p))->cChild) > 0) {
                 int j;
-                for (j = 0; j < p->w2AB4; ++j)
-                    a18[p->w2AB6[j]]->s3();
+                for (j = 0; j < (*(short *)&((BrUiCtl_ *)(p))->cChild); ++j)
+                    (*(UiPage * (*)[202])&((BrUiPage_ *)(this))->apCtl[0])[(*(short (*)[1])&((BrUiCtl_ *)(p))->aChild[0])[j]]->s3();
             }
         }
-        if (p->pfn18) {
-            if (p->pfn18(p) == 0)
+        if ((*(int (**)(UiPage *))&((BrUiCtl_ *)(p))->pfn18)) {
+            if ((*(int (**)(UiPage *))&((BrUiCtl_ *)(p))->pfn18)(p) == 0)
                 goto fail;
         }
-        if ((p->f1C & 0x20) && g_5C30 == 0 && (p->f1C & 0x2000)) {
-            UiCtx *c = f340;
+        if (((*(unsigned int *)&((BrUiCtl_ *)(p))->flags1C) & 0x20) && g_5C30 == 0 && ((*(unsigned int *)&((BrUiCtl_ *)(p))->flags1C) & 0x2000)) {
+            UiCtx *c = (*(UiCtx * *)&((BrUiPage_ *)(this))->pOwner);
             if (c->fBC != i) {
                 c->fBC = (unsigned short)i;
-                memset((char *)f340 + 0x6C, 0, 0x50);
-                f340->f6C = 1;
+                memset((char *)(*(UiCtx * *)&((BrUiPage_ *)(this))->pOwner) + 0x6C, 0, 0x50);
+                (*(UiCtx * *)&((BrUiPage_ *)(this))->pOwner)->f6C = 1;
             }
         }
     latch:;
     }
 
-    if (f08) f08();
+    if ((*(void (**)(void))&((BrUiPage_ *)(this))->pfn08)) (*(void (**)(void))&((BrUiPage_ *)(this))->pfn08)();
     return 1;
 
 fail:

@@ -1,4 +1,5 @@
 #include "br_race.h"   /* br_globals: its objects */
+#include "slice3_41.h"   /* BrDriverCar, the canonical record */
 /* WHAT IT DOES: per-frame control step for one car from its input record:
  * squares the steering axis into +0x2720 with a dead zone (optionally
  * mirrored), then -- when the car is the local player's, or in the
@@ -204,7 +205,7 @@ extern "C" {
 }
 
 #define SQ(a) ((a) * (a))
-#define MINE (f140 == (*(int *)&BrG_6C1628[4]) || (g_brMode0AA8B4 > 1 && f140 == g_brMode0AA8B4))
+#define MINE (((BrDriverCar *)(this))->f140 == (*(int *)&BrG_6C1628[4]) || (g_brMode0AA8B4 > 1 && ((BrDriverCar *)(this))->f140 == g_brMode0AA8B4))
 
 void Car5C8B0::Step()
 {
@@ -220,18 +221,18 @@ void Car5C8B0::Step()
     int      ext;
 
     if ((*(int *)&g_brRaceBeginDifficulty) != 0)
-        p29C0->f20 = -p29C0->f20;
-    if (p29C0->f20 > DAT_100778a4) {
-        d = (p29C0->f20 - DAT_100778a4) * DAT_100778a8;
-        f2720 = -(d * d);
-    } else if (p29C0->f20 < DAT_100778ac) {
-        d = (p29C0->f20 - DAT_100778ac) * DAT_100778a8;
-        f2720 = d * d;
+        (*(In5C8B0 * *)&((BrDriverCar *)(this))->pCtl)->f20 = -(*(In5C8B0 * *)&((BrDriverCar *)(this))->pCtl)->f20;
+    if ((*(In5C8B0 * *)&((BrDriverCar *)(this))->pCtl)->f20 > DAT_100778a4) {
+        d = ((*(In5C8B0 * *)&((BrDriverCar *)(this))->pCtl)->f20 - DAT_100778a4) * DAT_100778a8;
+        (*(float *)&((BrDriverCar *)(this))->f2720) = -(d * d);
+    } else if ((*(In5C8B0 * *)&((BrDriverCar *)(this))->pCtl)->f20 < DAT_100778ac) {
+        d = ((*(In5C8B0 * *)&((BrDriverCar *)(this))->pCtl)->f20 - DAT_100778ac) * DAT_100778a8;
+        (*(float *)&((BrDriverCar *)(this))->f2720) = d * d;
     } else {
-        *(int *)&f2720 = 0;
+        *(int *)&(*(float *)&((BrDriverCar *)(this))->f2720) = 0;
     }
 
-    if ((pF00->b68 & 2) && MINE) {
+    if (((*(Drv5C8B0 * *)&((BrDriverCar *)(this))->pProfile)->b68 & 2) && MINE) {
         if ((*(int *)&g_BrCamHold2) == 0)
             goto scan;
         goto flags;
@@ -249,9 +250,9 @@ scan:
         p = DAT_106eed5c + 2;
         n = DAT_106eed60;
         do {
-            dz = f38 - p[0];
-            dx2 = SQ(f30 - p[-2]);
-            dy2 = SQ(f34 - p[-1]);
+            dz = (*(float *)&((BrDriverCar *)(this))->pos.z) - p[0];
+            dx2 = SQ(((BrDriverCar *)(this))->pos.x - p[-2]);
+            dy2 = SQ(((BrDriverCar *)(this))->pos.y - p[-1]);
             if (dz <= DAT_10077898 && dz * dz + dy2 + dx2 < best) {
                 b[0] = p[-2];
                 b[1] = p[-1];
@@ -263,19 +264,19 @@ scan:
         } while (n != 0);
     }
     if (best < DAT_100778b4) {
-        if (p2734 != f2808 || f2838 != b[0] || f283C != b[1] || f2840 != b[2])
-            fF78 = 1;
-        f2838 = b[0];
-        f283C = b[1];
-        f2840 = b[2];
-        p2734 = f2808;
+        if ((*(float * *)&((BrDriverCar *)(this))->pMatA) != (*(float (*)[3])&((BrDriverCar *)(this))->aSnap[3].m[0][0]) || (*(float *)&((BrDriverCar *)(this))->aSnap[3].m[3][0]) != b[0] || (*(float *)&((BrDriverCar *)(this))->aSnap[3].m[3][1]) != b[1] || (*(float *)&((BrDriverCar *)(this))->aSnap[3].m[3][2]) != b[2])
+            (*(int *)&((BrDriverCar *)(this))->fF78) = 1;
+        (*(float *)&((BrDriverCar *)(this))->aSnap[3].m[3][0]) = b[0];
+        (*(float *)&((BrDriverCar *)(this))->aSnap[3].m[3][1]) = b[1];
+        (*(float *)&((BrDriverCar *)(this))->aSnap[3].m[3][2]) = b[2];
+        (*(float * *)&((BrDriverCar *)(this))->pMatA) = (*(float (*)[3])&((BrDriverCar *)(this))->aSnap[3].m[0][0]);
     } else {
-        if (p2734 == f2808) {
-            fF78 = 1;
+        if ((*(float * *)&((BrDriverCar *)(this))->pMatA) == (*(float (*)[3])&((BrDriverCar *)(this))->aSnap[3].m[0][0])) {
+            (*(int *)&((BrDriverCar *)(this))->fF78) = 1;
             if (DAT_10b1cf18 == 0 && (*(int *)&g_BrCamHold) == 0)
-                p2734 = f2780;
+                (*(float * *)&((BrDriverCar *)(this))->pMatA) = (*(float (*)[3])&((BrDriverCar *)(this))->aSnap[1].m[0][0]);
             else
-                p2734 = f273C;
+                (*(float * *)&((BrDriverCar *)(this))->pMatA) = (*(float (*)[3])&((BrDriverCar *)(this))->aSnap[0].m[0][0]);
             (*(int *)&g_BrCamHold2) = 0x3c;
             DAT_10b1cf18 = (DAT_10b1cf18 == 0);
         }
@@ -283,120 +284,120 @@ scan:
     } else {
         (*(int *)&g_BrCamHold2)--;
     }
-    if (p29C0->flags & 0xf000000)
+    if ((*(In5C8B0 * *)&((BrDriverCar *)(this))->pCtl)->flags & 0xf000000)
         (*(int *)&g_BrCamHold2) = 0x1c2;
 
 flags:
-    if (p29C0->flags & 0x1000000) {
-        p2734 = f273C;
-        fF78 = 1;
-        p29C0->Ack(0x1000000);
+    if ((*(In5C8B0 * *)&((BrDriverCar *)(this))->pCtl)->flags & 0x1000000) {
+        (*(float * *)&((BrDriverCar *)(this))->pMatA) = (*(float (*)[3])&((BrDriverCar *)(this))->aSnap[0].m[0][0]);
+        (*(int *)&((BrDriverCar *)(this))->fF78) = 1;
+        (*(In5C8B0 * *)&((BrDriverCar *)(this))->pCtl)->Ack(0x1000000);
     }
-    if (p29C0->flags & 0x2000000) {
+    if ((*(In5C8B0 * *)&((BrDriverCar *)(this))->pCtl)->flags & 0x2000000) {
         Sub1C90();
-        fF78 = 1;
-        p29C0->Ack(0x2000000);
+        (*(int *)&((BrDriverCar *)(this))->fF78) = 1;
+        (*(In5C8B0 * *)&((BrDriverCar *)(this))->pCtl)->Ack(0x2000000);
     }
-    if (p29C0->flags & 0x4000000) {
-        p2734 = f2780;
-        fF78 = 1;
-        p29C0->Ack(0x4000000);
+    if ((*(In5C8B0 * *)&((BrDriverCar *)(this))->pCtl)->flags & 0x4000000) {
+        (*(float * *)&((BrDriverCar *)(this))->pMatA) = (*(float (*)[3])&((BrDriverCar *)(this))->aSnap[1].m[0][0]);
+        (*(int *)&((BrDriverCar *)(this))->fF78) = 1;
+        (*(In5C8B0 * *)&((BrDriverCar *)(this))->pCtl)->Ack(0x4000000);
     }
-    if (g_brMode0AA8B4 == 1 && (p29C0->flags & 0x8000000)) {
-        p2734 = f27C4;
-        fF78 = 1;
-        p29C0->Ack(0x8000000);
+    if (g_brMode0AA8B4 == 1 && ((*(In5C8B0 * *)&((BrDriverCar *)(this))->pCtl)->flags & 0x8000000)) {
+        (*(float * *)&((BrDriverCar *)(this))->pMatA) = (*(float (*)[3])&((BrDriverCar *)(this))->aSnap[2].m[0][0]);
+        (*(int *)&((BrDriverCar *)(this))->fF78) = 1;
+        (*(In5C8B0 * *)&((BrDriverCar *)(this))->pCtl)->Ack(0x8000000);
     }
 
-    if (p29C0->f1C > DAT_100778b8) {
-        d = (p29C0->f1C - DAT_100778b8) * DAT_100778bc;
-        f2728 = d * d;
-    } else if (p29C0->f1C < DAT_100778c0) {
-        d = (p29C0->f1C - DAT_100778c0) * DAT_100778bc;
-        f2728 = -(d * d);
+    if ((*(In5C8B0 * *)&((BrDriverCar *)(this))->pCtl)->f1C > DAT_100778b8) {
+        d = ((*(In5C8B0 * *)&((BrDriverCar *)(this))->pCtl)->f1C - DAT_100778b8) * DAT_100778bc;
+        (*(float *)&((BrDriverCar *)(this))->aimFwd) = d * d;
+    } else if ((*(In5C8B0 * *)&((BrDriverCar *)(this))->pCtl)->f1C < DAT_100778c0) {
+        d = ((*(In5C8B0 * *)&((BrDriverCar *)(this))->pCtl)->f1C - DAT_100778c0) * DAT_100778bc;
+        (*(float *)&((BrDriverCar *)(this))->aimFwd) = -(d * d);
     } else {
-        *(int *)&f2728 = 0;
+        *(int *)&(*(float *)&((BrDriverCar *)(this))->aimFwd) = 0;
     }
-    ext = fF7C;
+    ext = (*(int *)&((BrDriverCar *)(this))->fF7C);
     if (ext != 0)
-        *(int *)&f272C = 0;
-    if (p29C0->flags & 0x8000) {
+        *(int *)&(*(float *)&((BrDriverCar *)(this))->f272C) = 0;
+    if ((*(In5C8B0 * *)&((BrDriverCar *)(this))->pCtl)->flags & 0x8000) {
         if (ext == 0)
-            *(int *)&f2728 = 0x3f800000;
+            *(int *)&(*(float *)&((BrDriverCar *)(this))->aimFwd) = 0x3f800000;
     } else {
         if (ext != 0) {
-            int t = *(int *)&f2728;
-            *(int *)&f2728 = 0;
-            *(int *)&f2724 = t;
+            int t = *(int *)&(*(float *)&((BrDriverCar *)(this))->aimFwd);
+            *(int *)&(*(float *)&((BrDriverCar *)(this))->aimFwd) = 0;
+            *(int *)&(*(float *)&((BrDriverCar *)(this))->f2724) = t;
         }
     }
-    if (p29C0->flags & 8)
-        *(int *)&f2728 = 0x3f800000;
-    if (p29C0->flags & 2)
-        *(int *)&f2728 = 0xbf800000;
-    if (p29C0->flags & 1) {
+    if ((*(In5C8B0 * *)&((BrDriverCar *)(this))->pCtl)->flags & 8)
+        *(int *)&(*(float *)&((BrDriverCar *)(this))->aimFwd) = 0x3f800000;
+    if ((*(In5C8B0 * *)&((BrDriverCar *)(this))->pCtl)->flags & 2)
+        *(int *)&(*(float *)&((BrDriverCar *)(this))->aimFwd) = 0xbf800000;
+    if ((*(In5C8B0 * *)&((BrDriverCar *)(this))->pCtl)->flags & 1) {
         if (ext != 0)
-            *(int *)&f272C = 0x3f800000;
+            *(int *)&(*(float *)&((BrDriverCar *)(this))->f272C) = 0x3f800000;
         else
-            *(int *)&f2720 = 0xbf800000;
+            *(int *)&(*(float *)&((BrDriverCar *)(this))->f2720) = 0xbf800000;
     }
-    if (p29C0->flags & 4) {
+    if ((*(In5C8B0 * *)&((BrDriverCar *)(this))->pCtl)->flags & 4) {
         if (ext != 0)
-            *(int *)&f272C = 0xbf800000;
+            *(int *)&(*(float *)&((BrDriverCar *)(this))->f272C) = 0xbf800000;
         else
-            *(int *)&f2720 = 0x3f800000;
+            *(int *)&(*(float *)&((BrDriverCar *)(this))->f2720) = 0x3f800000;
     }
 
     if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 5) {
-        BrVec3MulAddTo((struct BrVec3 *)(&f30), (const struct BrVec3 *)(this), 15.0f);
+        BrVec3MulAddTo((struct BrVec3 *)(&(*(float *)&((BrDriverCar *)(this))->pos.x)), (const struct BrVec3 *)(this), 15.0f);
         Sub5D3C0();
-        vecA[0] = fF24[0];
-        vecA[1] = fF24[1];
-        vecA[2] = fF24[2];
-        BrVec3MulAddTo((struct BrVec3 *)(&f30), (const struct BrVec3 *)(this), -15.0f);
+        vecA[0] = (*(float (*)[3])&((BrDriverCar *)(this))->tangent)[0];
+        vecA[1] = (*(float (*)[3])&((BrDriverCar *)(this))->tangent)[1];
+        vecA[2] = (*(float (*)[3])&((BrDriverCar *)(this))->tangent)[2];
+        BrVec3MulAddTo((struct BrVec3 *)(&(*(float *)&((BrDriverCar *)(this))->pos.x)), (const struct BrVec3 *)(this), -15.0f);
         Sub5D3C0();
-        p29C0->flags &= 0xf0c0ffff;
-        if (fFF4 < DAT_100778c4) {
-            BrVec3Scale(b, fF24, 27.0f);
+        (*(In5C8B0 * *)&((BrDriverCar *)(this))->pCtl)->flags &= 0xf0c0ffff;
+        if ((*(float *)&((BrDriverCar *)(this))->fFF4) < DAT_100778c4) {
+            BrVec3Scale(b, (*(float (*)[3])&((BrDriverCar *)(this))->tangent), 27.0f);
         } else {
-            BrVec3Scale(b, fF24, (DAT_100778c8 - fFF4) * DAT_100778cc);
-            if (fFF4 > DAT_100778d0) {
-                p29C0->flags |= 0x40000;
-                if (fFF4 > DAT_100778d4) {
+            BrVec3Scale(b, (*(float (*)[3])&((BrDriverCar *)(this))->tangent), (DAT_100778c8 - (*(float *)&((BrDriverCar *)(this))->fFF4)) * DAT_100778cc);
+            if ((*(float *)&((BrDriverCar *)(this))->fFF4) > DAT_100778d0) {
+                (*(In5C8B0 * *)&((BrDriverCar *)(this))->pCtl)->flags |= 0x40000;
+                if ((*(float *)&((BrDriverCar *)(this))->fFF4) > DAT_100778d4) {
                     b[2] = 0.0f;
                     b[1] = 0.0f;
                     b[0] = 0.0f;
                 }
             } else {
-                p29C0->flags |= 0x80000;
+                (*(In5C8B0 * *)&((BrDriverCar *)(this))->pCtl)->flags |= 0x80000;
             }
         }
-        fE20 = BrVec3Dot(vecA, f10) * DAT_100778dc;
-        b[0] = b[0] - fF4C * DAT_100778e0;
-        b[1] = b[1] - fF50 * DAT_100778e0;
+        (*(float *)&((BrDriverCar *)(this))->f0E20) = BrVec3Dot(vecA, (*(float (*)[3])&((BrDriverCar *)(this))->right)) * DAT_100778dc;
+        b[0] = b[0] - (*(float *)&((BrDriverCar *)(this))->d.x) * DAT_100778e0;
+        b[1] = b[1] - (*(float *)&((BrDriverCar *)(this))->d.y) * DAT_100778e0;
         SetVel(b[0], b[1], b[2]);
     }
 
     if ((*(unsigned int *)&g_BrX18ABAD0) & 0x10000)
-        b366 = 0x80;
+        (*(char *)&((BrDriverCar *)(this))->aBody[0].f0202) = 0x80;
     if ((*(unsigned int *)&g_BrX18ABAD0) & 0x20000)
-        b367 = 0x80;
+        (*(char *)&((BrDriverCar *)(this))->aBody[0].f0203) = 0x80;
     if ((*(unsigned int *)&g_BrX18ABAD0) & 0x40000)
-        b368 = 0x80;
+        (*(char *)&((BrDriverCar *)(this))->aBody[0].f0204) = 0x80;
     if ((*(unsigned int *)&g_BrX18ABAD0) & 0x80000)
-        b369 = 0x80;
+        (*(char *)&((BrDriverCar *)(this))->aBody[0].f0205) = 0x80;
     if ((*(unsigned int *)&g_BrX18ABAD0) & 0x80)
-        b36A = 0x80;
+        (*(char *)&((BrDriverCar *)(this))->aBody[0].f0206) = 0x80;
     Poll6F170();
 
-    if (fF7C == 0) {
-        BrVec3Add(b, &f30, this);
-        BrVec3AddTo(b, f10);
-        pB = f1044;
-        pA = f1038;
+    if ((*(int *)&((BrDriverCar *)(this))->fF7C) == 0) {
+        BrVec3Add(b, &(*(float *)&((BrDriverCar *)(this))->pos.x), this);
+        BrVec3AddTo(b, (*(float (*)[3])&((BrDriverCar *)(this))->right));
+        pB = (*(float (*)[3])&((BrDriverCar *)(this))->f1040[1]);
+        pA = (*(float (*)[3])&((BrDriverCar *)(this))->f1038[0]);
         BrVec3Add(tmpC, pA, pB);
-        vecA[0] = f1050[0];
-        pV = f1050;
+        vecA[0] = (*(float (*)[3])&((BrDriverCar *)(this))->f1050[0])[0];
+        pV = (*(float (*)[3])&((BrDriverCar *)(this))->f1050[0]);
         vecA[1] = pV[1];
         vecA[2] = pV[2];
         BrVec3Sub((struct BrVec3 *)(pV), (const struct BrVec3 *)(pA), b);
@@ -407,17 +408,17 @@ flags:
         dy = BrSqrtF(dy);
         v = dy / (BrVec3Length((const struct BrVec3 *)(pB)) - DAT_100778e4);
         if (v > DAT_100778e8)
-            BrAccumAddClamp(f140, v + v);
+            BrAccumAddClamp((*(int *)&((BrDriverCar *)(this))->f140), v + v);
         pA[0] = b[0];
         pA[1] = b[1];
         pA[2] = b[2];
         BrVec3Sub((struct BrVec3 *)(pB), (const struct BrVec3 *)(pA), tmpC);
-        f1044[2] = f1044[2] - DAT_100778f0;
+        (*(float (*)[3])&((BrDriverCar *)(this))->f1040[1])[2] = (*(float (*)[3])&((BrDriverCar *)(this))->f1040[1])[2] - DAT_100778f0;
     }
 
     if (DAT_118eeee4 != 0) {
-        if (!(pF00->b68 & 3) && (*(int *)&DAT_105ccb68[8]) == 0)
-            f35C = -1;
+        if (!((*(Drv5C8B0 * *)&((BrDriverCar *)(this))->pProfile)->b68 & 3) && (*(int *)&DAT_105ccb68[8]) == 0)
+            (*(int *)&((BrDriverCar *)(this))->aBody[0].f01F8) = -1;
         DAT_118eeee4 = 0;
     }
     Respawn();

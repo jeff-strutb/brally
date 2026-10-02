@@ -46,6 +46,7 @@
  */
 #define _CRTIMP __declspec(dllimport)
 #include "br_race.h"   /* br_globals: its objects */
+#include "slice3_39.h"   /* BrTextBox, the canonical record */
 #include "slice2_25.h"   /* br_globals: its objects */
 #include <string.h>
 
@@ -109,14 +110,14 @@ int BrItemSetModeLabel_100393C0(Obj393C0 *pObj)
     char *s;
 
     if (g_brPAA29B8 == DAT_10ac5cbc && DAT_10ac5c40 == 0) {
-        pObj->m2B5C.f414 = pObj->m2B5C.f414 - DAT_10077628;
+        (*(float *)&((BrTextBox *)&(pObj->m2B5C))->y) = (*(float *)&((BrTextBox *)&(pObj->m2B5C))->y) - DAT_10077628;
 
-        strcpy(pObj->m2B5C.szName, BrStrGet(0x1C));
+        strcpy((*(char (*)[1025])&((BrTextBox *)&(pObj->m2B5C))->sz[0]), BrStrGet(0x1C));
 
         pObj->m2B5C.s1();
         Br85ItemApply((struct BrCtl85 *)(pObj), 0);
 
-        pObj->m2B5C.f414 = pObj->m2B5C.f414 - DAT_1007762c;
+        (*(float *)&((BrTextBox *)&(pObj->m2B5C))->y) = (*(float *)&((BrTextBox *)&(pObj->m2B5C))->y) - DAT_1007762c;
         return 1;
     }
 
@@ -138,7 +139,7 @@ int BrItemSetModeLabel_100393C0(Obj393C0 *pObj)
         s = BrStrGet((*(int (*)[])&g_aBrAC3B0)[k]);
     }
 have:
-    strcpy(pObj->m2B5C.szName, s);
+    strcpy((*(char (*)[1025])&((BrTextBox *)&(pObj->m2B5C))->sz[0]), s);
 
     pObj->m2B5C.s1();
     Br85ItemApply((struct BrCtl85 *)(pObj), 0);

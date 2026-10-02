@@ -1,4 +1,5 @@
 #include "br_uispr.h"   /* br_globals: its objects */
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 /* WHAT IT DOES: draw the code-entry row currently selected, using that row's
  * stored rectangle and colour. Draws nothing when no row is selected. */
 /* @implements 0x10040D80 glide BrUiDrawCode_10047930
@@ -46,10 +47,10 @@ extern "C" {
 
 int Draw40D80::Draw()
 {
-    if (w1E20C >= 0) {
-        BrSprFontDraw((int)f03C, (int)f040, (*(short *)&g_aBrUiSprite[w1E20C].iImage),
-                       (*(int (*)[4])&g_aBrUiSprite[w1E20C].rect[0]),
-                       g_aBrUiSprite[w1E20C].fBlit);
+    if ((*(short *)&((BrUiCtl_ *)(this))->w1E20C) >= 0) {
+        BrSprFontDraw((int)(*(float *)&((BrUiCtl_ *)(this))->x), (int)(*(float *)&((BrUiCtl_ *)(this))->y), (*(short *)&g_aBrUiSprite[(*(short *)&((BrUiCtl_ *)(this))->w1E20C)].iImage),
+                       (*(int (*)[4])&g_aBrUiSprite[(*(short *)&((BrUiCtl_ *)(this))->w1E20C)].rect[0]),
+                       g_aBrUiSprite[(*(short *)&((BrUiCtl_ *)(this))->w1E20C)].fBlit);
     }
 
     return 1;

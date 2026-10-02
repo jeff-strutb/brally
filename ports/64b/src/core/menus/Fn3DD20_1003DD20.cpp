@@ -1,4 +1,5 @@
 #include "br_race.h"   /* br_globals: its objects */
+#include "br_phase.h"   /* BrPhase_, the canonical record */
 #include "slice2_25.h"   /* br_globals: its objects */
 /* WHAT IT DOES: populate the session list -- asks the host for its
  * description if this machine is hosting, otherwise fills the list from what
@@ -119,10 +120,10 @@ int Fn3DD20(void)
         (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(p));
         if (p == 0)
             return 0;
-        p->pfnEnter = EnterFn;
+        (*(PhaseEnterFn *)&((BrPhase_ *)(p))->pfnEnter) = EnterFn;
         g_slot->pfnEnter(g_slot);
-        (*(Phase * *)&g_brPAA29B8)->f0C = one;
-        (*(Phase * *)&g_brPAA29B8)->f68 = one;
+        (*(int *)&((BrPhase_ *)((*(Phase * *)&g_brPAA29B8)))->f0C) = one;
+        (*(int *)&((BrPhase_ *)((*(Phase * *)&g_brPAA29B8)))->f68) = one;
     } else {
         (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(p));
     }

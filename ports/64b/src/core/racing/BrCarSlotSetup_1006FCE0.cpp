@@ -24,6 +24,7 @@
  */
 #define _CRTIMP __declspec(dllimport)
 #include <string.h>
+#include "slice3_41.h"   /* BrDriverCar, the canonical record */
 
 class Car6FCE0 {
 public:
@@ -54,11 +55,11 @@ void Car6FCE0::SlotSetup(int slot, int a)
 {
     int i;
 
-    BrImgTintSetScale(b29AC, b29AD, b29AE);
+    BrImgTintSetScale((*(unsigned char *)&((BrDriverCar *)(this))->f29AC), (*(unsigned char *)&((BrDriverCar *)(this))->f29AD), (*(unsigned char *)&((BrDriverCar *)(this))->f29AE));
     BrCarSlotLoad(slot, a, 0);
-    BrSub10074E20((unsigned int *)(&f2A70));
+    BrSub10074E20((unsigned int *)(&(*(int *)&((BrDriverCar *)(this))->f2A70)));
     for (i = 0; i < 8; i++)
-        a2A90[i] = 0;
+        (*(int (*)[8])&((BrDriverCar *)(this))->f2A90[0])[i] = 0;
     Bind(slot);
 }
 

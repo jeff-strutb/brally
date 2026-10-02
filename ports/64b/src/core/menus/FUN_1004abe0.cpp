@@ -1,3 +1,5 @@
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
+#include "br_phase.h"   /* BrPhase_, the canonical record */
 /* WHAT IT DOES: build one menu page: creates the page container, adds every
  * control on it in turn, and reports failure if any of them could not be
  * made. One of a family of page builders, each laying out its own screen,
@@ -138,60 +140,60 @@ int FUN_1004abe0(GameUi *parent)
     char      bad;
     int       i;
 
-    parent->w12 = 0;
-    parent->a6C[parent->w10] = 1;
+    (*(short *)&((BrPhase_ *)(parent))->iPage) = 0;
+    (*(int (*)[1])&((BrPhase_ *)(parent))->aFlags[0])[(*(unsigned short *)&((BrPhase_ *)(parent))->nPages)] = 1;
     cont = new PageABE0;
-    parent->a14[parent->w10] = cont;
+    (*(PageABE0 * (*)[22])&((BrPhase_ *)(parent))->aPages[0])[(*(unsigned short *)&((BrPhase_ *)(parent))->nPages)] = cont;
     bad = (cont == 0);
     if (bad)
         FUN_100378c0(4);
-    parent->w10 += 1;
-    cont->f340 = parent;
-    cont->f10 = 0;
-    cont->f338 = 195.0f;
-    cont->f33C = 130.0f;
+    (*(unsigned short *)&((BrPhase_ *)(parent))->nPages) += 1;
+    (*(GameUi * *)&((BrUiPage_ *)(cont))->pOwner) = parent;
+    (*(int *)&((BrUiPage_ *)(cont))->f10) = 0;
+    (*(float *)&((BrUiPage_ *)(cont))->fX) = 195.0f;
+    (*(float *)&((BrUiPage_ *)(cont))->fY) = 130.0f;
     p = new BrCtl;
-    cont->a18[cont->w14] = p;
+    (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
     bad = (p == 0);
     if (bad)
         FUN_100378c0(4);
     p->s38(parent, 0, 0, 9, 2, 5, 0, 0);
-    cont->w14 += 1;
+    (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
     p = new BrCtl;
-    cont->a18[cont->w14] = p;
+    (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
     bad = (p == 0);
     if (bad)
         FUN_100378c0(4);
-    p->s38(parent, cont->f338, 10.0f, 0x100009, 2, 5, 1, -1);
-    p->w1E20C = 3;
+    p->s38(parent, (*(float *)&((BrUiPage_ *)(cont))->fX), 10.0f, 0x100009, 2, 5, 1, -1);
+    (*(unsigned short *)&((BrUiCtl_ *)(p))->w1E20C) = 3;
     p->s34((char *)(BrStrGet(0x43)), 1, 1, &DAT_100aabd8);
-    cont->w14 += 1;
+    (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
     p = new BrCtl;
-    cont->a18[cont->w14] = p;
+    (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
     bad = (p == 0);
     if (bad)
         FUN_100378c0(4);
-    p->s38(parent, cont->f338 - DAT_10077628, cont->f33C - DAT_10077670,
+    p->s38(parent, (*(float *)&((BrUiPage_ *)(cont))->fX) - DAT_10077628, (*(float *)&((BrUiPage_ *)(cont))->fY) - DAT_10077670,
            0x22001, 2, 5, 0, 0x50);
-    p->p1E210 = &(*(char *)&g_aBrSprRectC);
-    p->f2968 = 1;
-    p->f296C = 1;
+    (*(void * *)&((BrUiCtl_ *)(p))->p1E210) = &(*(char *)&g_aBrSprRectC);
+    (*(int *)&((BrUiCtl_ *)(p))->f2968) = 1;
+    (*(int *)&((BrUiCtl_ *)(p))->f296C) = 1;
     for (i = 0; i < 15; i++) {
-        p->a2978[i] = 0x3c;
-        p->w2A40[i] = 0x50;
+        (*(int (*)[24])&((BrUiCtl_ *)(p))->aStepMs[0])[i] = 0x3c;
+        (*(short (*)[24])&((BrUiCtl_ *)(p))->aStepId[0])[i] = 0x50;
     }
     for (i = 15; i < 24; i++) {
-        p->a2978[i] = 0x3c;
-        p->w2A40[i] = 0x51;
+        (*(int (*)[24])&((BrUiCtl_ *)(p))->aStepMs[0])[i] = 0x3c;
+        (*(short (*)[24])&((BrUiCtl_ *)(p))->aStepId[0])[i] = 0x51;
     }
-    p->pfn08 = (CtlFn)BrPhaseLeave_100471B0;
-    p->w1E20C = 0x50;
-    p->f054 = (int)cont->f33C;
-    p->f050 = (int)cont->f338;
-    p->f058 = (int)cont->f338 + 0x80;
-    p->f05C = (int)cont->f33C + 0x80;
-    cont->w14 += 1;
-    cont->w344 += 1;
+    (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn08) = (CtlFn)BrPhaseLeave_100471B0;
+    (*(unsigned short *)&((BrUiCtl_ *)(p))->w1E20C) = 0x50;
+    (*(int *)&((BrUiCtl_ *)(p))->rcTop) = (int)(*(float *)&((BrUiPage_ *)(cont))->fY);
+    (*(int *)&((BrUiCtl_ *)(p))->rcLeft) = (int)(*(float *)&((BrUiPage_ *)(cont))->fX);
+    (*(int *)&((BrUiCtl_ *)(p))->rcRight) = (int)(*(float *)&((BrUiPage_ *)(cont))->fX) + 0x80;
+    (*(int *)&((BrUiCtl_ *)(p))->rcBottom) = (int)(*(float *)&((BrUiPage_ *)(cont))->fY) + 0x80;
+    (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
+    (*(short *)&((BrUiPage_ *)(cont))->cSel) += 1;
 
     return 1;
 }

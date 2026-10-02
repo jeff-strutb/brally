@@ -1,3 +1,4 @@
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 /* WHAT IT DOES: keep this page's highlighted row in step with the stored
  * selection: ask the selector where the highlight has moved to, remember it
  * if it moved, and scroll the list to it. */
@@ -31,7 +32,7 @@ extern "C" {
 
 int Hook(GameObj85 *pObj)
 {
-    int r = pObj->m3838.s8(g_AB94);
+    int r = (*(class Emb3838 *)&((BrUiCtl_ *)(pObj))->list).s8(g_AB94);
 
     if (r >= 0)
         g_AB94 = r;
@@ -39,6 +40,6 @@ int Hook(GameObj85 *pObj)
         r = g_AB94;
 
     if (g_5C30 != 0 && r >= 0)
-        pObj->m3838.s9(r);
+        (*(class Emb3838 *)&((BrUiCtl_ *)(pObj))->list).s9(r);
     return 1;
 }

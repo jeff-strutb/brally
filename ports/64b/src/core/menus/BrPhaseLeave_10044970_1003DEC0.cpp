@@ -1,4 +1,5 @@
 #include "slice2_25.h"   /* br_globals: its objects */
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 /* WHAT IT DOES: leave this menu page: run its leave routine, destroy the
  * page object, and make its parent current again. One of a family that
  * differ only in which parent they return to and which state flags they
@@ -70,7 +71,7 @@ int Leave(GameObj3DEC0 *pObj)
     g_brPAA2950 = 0;
     (*(CurPhase * *)&g_brPAA29B8) = (CurPhase *)((BrOptObj *)((*(CurPhase * *)&g_2948)));
     if ((*(D30Obj * *)&g_brPAA29D8) != 0)
-        (*(D30Obj * *)&g_brPAA29D8)->f1C = (*(D30Obj * *)&g_brPAA29D8)->f1C & ~0x10u;
+        (*(unsigned int *)&((BrUiCtl_ *)((*(D30Obj * *)&g_brPAA29D8)))->flags1C) = (*(unsigned int *)&((BrUiCtl_ *)((*(D30Obj * *)&g_brPAA29D8)))->flags1C) & ~0x10u;
 
     BrExt_1003BF60();
     DAT_10ac5bf0 = 1;
@@ -84,7 +85,7 @@ int Leave(GameObj3DEC0 *pObj)
     }
     if (v == 2 || v == 3) {
         if ((*(D30Obj * *)&g_brPAA29D8) != 0)
-            (*(D30Obj * *)&g_brPAA29D8)->f1C = (*(D30Obj * *)&g_brPAA29D8)->f1C & ~0x10u;
+            (*(unsigned int *)&((BrUiCtl_ *)((*(D30Obj * *)&g_brPAA29D8)))->flags1C) = (*(unsigned int *)&((BrUiCtl_ *)((*(D30Obj * *)&g_brPAA29D8)))->flags1C) & ~0x10u;
     }
     return 0;
 }

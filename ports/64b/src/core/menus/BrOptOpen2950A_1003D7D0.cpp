@@ -3,6 +3,7 @@
  * and open its lobby). */
 #define _CRTIMP __declspec(dllimport)
 #include "slice2_25.h"   /* br_globals: its objects */
+#include "br_phase.h"   /* BrPhase_, the canonical record */
 #include <string.h>
 
 /* WHAT IT DOES: open this menu page: create its object the first time it is
@@ -66,8 +67,8 @@ int CtlD620::Activate()
         (*(Phase * *)&(*(OptObj41B60 * *)&g_brPAA29B8)) = (Phase *)((BrOptObj *)(p));
         if (p == 0)
             return 0;
-        p->pfnEnter = EnterFn;
-        g_slot->pfnEnter(g_slot);
+        (*(PhaseEnterFn *)&((BrPhase_ *)(p))->pfnEnter) = EnterFn;
+        (*(PhaseEnterFn *)&((BrPhase_ *)(g_slot))->pfnEnter)(g_slot);
         (*(Phase * *)&(*(OptObj41B60 * *)&g_brPAA29B8))->f0C = 1;
         (*(Phase * *)&(*(OptObj41B60 * *)&g_brPAA29B8))->f68 = 1;
     } else {
@@ -195,10 +196,10 @@ open:
         (*(OptObj41B60 * *)&g_brPAA29B8) = (OptObj41B60 *)((BrOptObj *)(p));
         if (p == 0)
             return 0;
-        p->pfnOpen = BrOptFn10057C10;
-        (*(OptObj41B60 * *)&g_brPAA2950)->pfnOpen((*(OptObj41B60 * *)&g_brPAA2950));
-        (*(OptObj41B60 * *)&g_brPAA29B8)->f00C = 1;
-        (*(OptObj41B60 * *)&g_brPAA29B8)->f068 = 1;
+        (*(int (**)(OptObj41B60 *))&((BrPhase_ *)(p))->pfnEnter) = BrOptFn10057C10;
+        (*(int (**)(OptObj41B60 *))&((BrPhase_ *)((*(OptObj41B60 * *)&g_brPAA2950)))->pfnEnter)((*(OptObj41B60 * *)&g_brPAA2950));
+        (*(int *)&((BrPhase_ *)((*(OptObj41B60 * *)&g_brPAA29B8)))->f0C) = 1;
+        (*(int *)&((BrPhase_ *)((*(OptObj41B60 * *)&g_brPAA29B8)))->f68) = 1;
     } else {
         (*(OptObj41B60 * *)&g_brPAA29B8) = (OptObj41B60 *)((BrOptObj *)((*(OptObj41B60 * *)&g_brPAA2950)));
     }

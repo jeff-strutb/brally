@@ -109,19 +109,19 @@ void BrPathWalk(PwNode *pNode, float dist)
     (*(int *)&DAT_10b1ca20) = 0;
     (*(int *)&DAT_10b1cea4) = 0;
     for (;;) {
-        while (pNode != 0 && (pNode->flags & 1) != 0)
-            pNode = pNode->pSib;
+        while (pNode != 0 && ((*(unsigned short *)&((BrAiPathNode *)(pNode))->flags) & 1) != 0)
+            pNode = (*(struct PwNode * *)&((BrAiPathNode *)(pNode))->pSib);
         if (pNode == 0)
             return;
-        for (i = 0; i < pNode->count; i++) {
-            float seg = pNode->pts[i].arc - pNode->pts[i + 1].arc;
+        for (i = 0; i < (*(unsigned short *)&((BrAiPathNode *)(pNode))->count); i++) {
+            float seg = (*(PwPoint *)&((BrAiPathNode *)(pNode))->aPt[i]).arc - (*(PwPoint *)&((BrAiPathNode *)(pNode))->aPt[i + 1]).arc;
             if (!(dist > seg)) {
-                BrVec3Lerp(&g_brRacePathPos, &pNode->pts[i + 1].centre,
-                           &pNode->pts[i].centre, dist / seg);
+                BrVec3Lerp(&g_brRacePathPos, &(*(PwPoint *)&((BrAiPathNode *)(pNode))->aPt[i + 1]).centre,
+                           &(*(PwPoint *)&((BrAiPathNode *)(pNode))->aPt[i]).centre, dist / seg);
                 if ((*(int *)&g_brRaceNGate) != 0) {
                     k = ((*(int *)&DAT_10b1ca20) + 1) % (*(int *)&g_brRaceNGate);
                     if (BrSeg2Intersect(&(*(PwSeg (*)[])&g_aBrRaceGate)[k].b, &(*(PwSeg (*)[])&g_aBrRaceGate)[k].a,
-                                        (const BrVec2 *)&pNode->pts[i].centre,
+                                        (const BrVec2 *)&(*(PwPoint *)&((BrAiPathNode *)(pNode))->aPt[i]).centre,
                                         (const BrVec2 *)&g_brRacePathPos) != 0) {
                         (*(int *)&DAT_10b1ca20)++;
                         if (k == 0)
@@ -136,15 +136,15 @@ void BrPathWalk(PwNode *pNode, float dist)
             if ((*(int *)&g_brRaceNGate) != 0) {
                 k = ((*(int *)&DAT_10b1ca20) + 1) % (*(int *)&g_brRaceNGate);
                 if (BrSeg2Intersect(&(*(PwSeg (*)[])&g_aBrRaceGate)[k].b, &(*(PwSeg (*)[])&g_aBrRaceGate)[k].a,
-                                    (const BrVec2 *)&pNode->pts[i].centre,
-                                    (const BrVec2 *)&pNode->pts[i + 1].centre) != 0) {
+                                    (const BrVec2 *)&(*(PwPoint *)&((BrAiPathNode *)(pNode))->aPt[i]).centre,
+                                    (const BrVec2 *)&(*(PwPoint *)&((BrAiPathNode *)(pNode))->aPt[i + 1]).centre) != 0) {
                     (*(int *)&DAT_10b1ca20)++;
                     if (k == 0)
                         (*(int *)&DAT_10b1cea4)++;
                 }
             }
         }
-        pNode = pNode->pNext;
+        pNode = (*(struct PwNode * *)&((BrAiPathNode *)(pNode))->pNext);
     }
 }
 

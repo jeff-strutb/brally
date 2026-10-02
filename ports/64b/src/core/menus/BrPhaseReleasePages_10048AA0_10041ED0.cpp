@@ -1,3 +1,4 @@
+#include "br_phase.h"   /* BrPhase_, the canonical record */
 /* WHAT IT DOES: release every control on every page this phase owns -- 200
  * slots per page, cleared and nulled. */
 /* @implements 0x10041ED0 glide BrPhaseReleasePages_10048AA0
@@ -39,13 +40,13 @@ void Phase32P::ReleasePages()
 {
     int i;
 
-    for (i = 0; i < f10; ++i) {
-        Page *p = a14[i];
+    for (i = 0; i < (*(unsigned short *)&((BrPhase_ *)(this))->nPages); ++i) {
+        Page *p = (*(Page * (*)[20])&((BrPhase_ *)(this))->aPages)[i];
         int k;
 
         for (k = 0; k < 200; ++k) {
-            delete p->m[k];
-            p->m[k] = 0;
+            delete (*(PageMember * (*)[200])&((BrPhase_ *)(p))->aPages[1])[k];
+            (*(PageMember * (*)[200])&((BrPhase_ *)(p))->aPages[1])[k] = 0;
         }
         delete p;
     }

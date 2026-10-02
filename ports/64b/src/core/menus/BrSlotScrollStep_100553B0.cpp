@@ -185,17 +185,17 @@ int Ctl553B0::Step(int *pArg)
 
     bWrapped = 0;
 
-    if ((i18 & 0x18) != 0)
+    if (((*(int *)&((BrTextList *)(this))->f18) & 0x18) != 0)
         return 0;
 
-    if ((i18 & 0x80000) != 0 && (*(BrPad553B0 * *)&g_pBrAA2E80)->f2C == 0 && (*(BrPad553B0 * *)&g_pBrAA2E80)->f30 == 0) {
-        i1a9b4 = 0;
-        i18 = i18 & 0xFFF7FFFD;
-    } else if ((i18 & 0x80000) != 0
+    if (((*(int *)&((BrTextList *)(this))->f18) & 0x80000) != 0 && (*(BrPad553B0 * *)&g_pBrAA2E80)->f2C == 0 && (*(BrPad553B0 * *)&g_pBrAA2E80)->f30 == 0) {
+        (*(int *)&((BrTextList *)(this))->f1A99C[6]) = 0;
+        (*(int *)&((BrTextList *)(this))->f18) = (*(int *)&((BrTextList *)(this))->f18) & 0xFFF7FFFD;
+    } else if (((*(int *)&((BrTextList *)(this))->f18) & 0x80000) != 0
                && ((*(BrPad553B0 * *)&g_pBrAA2E80)->f2C != 0 || (*(BrPad553B0 * *)&g_pBrAA2E80)->f30 != 0)) {
         int now;
 
-        i18 |= 0x22;
+        (*(int *)&((BrTextList *)(this))->f18) |= 0x22;
         now = BrSub10075020();
         g_brAC5DB4 = g_brAC5DB4 + (now - g_brAC5DB8);
         g_brAC5DB8 = now;
@@ -205,98 +205,98 @@ int Ctl553B0::Step(int *pArg)
         bWrapped = 1;
     }
 
-    if ((s6(&i1a98c) != 0 || i1a9b4 != 0) && (i18 & 0x200000) == 0) {
-        if ((i18 & 2) == 0)
+    if ((s6(&(*(int *)&((BrTextList *)(this))->f1A98C)) != 0 || (*(int *)&((BrTextList *)(this))->f1A99C[6]) != 0) && ((*(int *)&((BrTextList *)(this))->f18) & 0x200000) == 0) {
+        if (((*(int *)&((BrTextList *)(this))->f18) & 2) == 0)
             return 1;
 
-            if (wCount <= 1)
-                ratio = 1.0f / f1a9d0;
+            if ((*(unsigned short *)&((BrTextList *)(this))->count) <= 1)
+                ratio = 1.0f / (*(float *)&((BrTextList *)(this))->f1A99C[13]);
             else
-                ratio = (float)(wCount - 1) / f1a9d0;
+                ratio = (float)((*(unsigned short *)&((BrTextList *)(this))->count) - 1) / (*(float *)&((BrTextList *)(this))->f1A99C[13]);
 
-            if (i1a9b8 != 0) {
-                float v = (float)((*(BrTime553B0 * *)&BrGlNavThis5DD8)->f00 - i1a98c);
+            if ((*(int *)&((BrTextList *)(this))->f1A99C[7]) != 0) {
+                float v = (float)((*(BrTime553B0 * *)&BrGlNavThis5DD8)->f00 - (*(int *)&((BrTextList *)(this))->f1A98C));
 
-                if (i1a9b4 == 0)
+                if ((*(int *)&((BrTextList *)(this))->f1A99C[6]) == 0)
                     g_brAC5DBC = v;
-                f1a9ac = v + (float)(*(BrTime553B0 * *)&BrGlNavThis5DD8)->f00 - g_brAC5DBC;
-                if (f1a9ac < f1a9c0)
-                    f1a9ac = f1a9c0;
-                else if (f1a9ac > f1a9c4)
-                    f1a9ac = f1a9c4;
-                i1a98c = (int)f1a9ac;
-                i1a994 = (int)f1a9ac + 0x10;
-                if ((int)wCount - 1 > 0)
-                    w1a92e = (short)(int)((f1a9ac - f1a9c0) * ratio);
-            } else if (i1a9bc != 0) {
+                (*(float *)&((BrTextList *)(this))->f1A99C[4]) = v + (float)(*(BrTime553B0 * *)&BrGlNavThis5DD8)->f00 - g_brAC5DBC;
+                if ((*(float *)&((BrTextList *)(this))->f1A99C[4]) < (*(float *)&((BrTextList *)(this))->f1A99C[9]))
+                    (*(float *)&((BrTextList *)(this))->f1A99C[4]) = (*(float *)&((BrTextList *)(this))->f1A99C[9]);
+                else if ((*(float *)&((BrTextList *)(this))->f1A99C[4]) > (*(float *)&((BrTextList *)(this))->f1A99C[10]))
+                    (*(float *)&((BrTextList *)(this))->f1A99C[4]) = (*(float *)&((BrTextList *)(this))->f1A99C[10]);
+                (*(int *)&((BrTextList *)(this))->f1A98C) = (int)(*(float *)&((BrTextList *)(this))->f1A99C[4]);
+                (*(int *)&((BrTextList *)(this))->f1A994) = (int)(*(float *)&((BrTextList *)(this))->f1A99C[4]) + 0x10;
+                if ((int)(*(unsigned short *)&((BrTextList *)(this))->count) - 1 > 0)
+                    (*(short *)&((BrTextList *)(this))->f1A92E) = (short)(int)(((*(float *)&((BrTextList *)(this))->f1A99C[4]) - (*(float *)&((BrTextList *)(this))->f1A99C[9])) * ratio);
+            } else if ((*(int *)&((BrTextList *)(this))->f1A99C[8]) != 0) {
                 float w = (float)(*(BrTime553B0 * *)&BrGlNavThis5DD8)->f04 - (float)(*(BrTime553B0 * *)&BrGlNavThis5DD8)->f10;
 
-                if (i1a9b4 == 0)
-                    g_brAC5DC0 = (float)(*(BrTime553B0 * *)&BrGlNavThis5DD8)->f04 - (float)i1a990;
-                f1a9b0 = w + (float)(*(BrTime553B0 * *)&BrGlNavThis5DD8)->f04 - g_brAC5DC0;
-                if (f1a9b0 < f1a9c8)
-                    f1a9b0 = f1a9c8;
-                else if (f1a9b0 > f1a9cc)
-                    f1a9b0 = f1a9cc;
-                i1a990 = (int)f1a9b0;
-                i1a998 = (int)f1a9b0 + 0x10;
-                if ((int)wCount - 1 > 0)
-                    w1a92e = (short)(int)((f1a9b0 - f1a9c8) * ratio);
+                if ((*(int *)&((BrTextList *)(this))->f1A99C[6]) == 0)
+                    g_brAC5DC0 = (float)(*(BrTime553B0 * *)&BrGlNavThis5DD8)->f04 - (float)(*(int *)&((BrTextList *)(this))->f1A990);
+                (*(float *)&((BrTextList *)(this))->f1A99C[5]) = w + (float)(*(BrTime553B0 * *)&BrGlNavThis5DD8)->f04 - g_brAC5DC0;
+                if ((*(float *)&((BrTextList *)(this))->f1A99C[5]) < (*(float *)&((BrTextList *)(this))->f1A99C[11]))
+                    (*(float *)&((BrTextList *)(this))->f1A99C[5]) = (*(float *)&((BrTextList *)(this))->f1A99C[11]);
+                else if ((*(float *)&((BrTextList *)(this))->f1A99C[5]) > (*(float *)&((BrTextList *)(this))->f1A99C[12]))
+                    (*(float *)&((BrTextList *)(this))->f1A99C[5]) = (*(float *)&((BrTextList *)(this))->f1A99C[12]);
+                (*(int *)&((BrTextList *)(this))->f1A990) = (int)(*(float *)&((BrTextList *)(this))->f1A99C[5]);
+                (*(int *)&((BrTextList *)(this))->f1A998) = (int)(*(float *)&((BrTextList *)(this))->f1A99C[5]) + 0x10;
+                if ((int)(*(unsigned short *)&((BrTextList *)(this))->count) - 1 > 0)
+                    (*(short *)&((BrTextList *)(this))->f1A92E) = (short)(int)(((*(float *)&((BrTextList *)(this))->f1A99C[5]) - (*(float *)&((BrTextList *)(this))->f1A99C[11])) * ratio);
             }
 
-        if (pfn10 != 0)
-            pfn10();
-        i1a9b4 = 1;
+        if ((*(void (**)(void))&((BrTextList *)(this))->f10) != 0)
+            (*(void (**)(void))&((BrTextList *)(this))->f10)();
+        (*(int *)&((BrTextList *)(this))->f1A99C[6]) = 1;
         return 1;
     }
 
-    if (s6(&i1a94c) != 0 && (i18 & 0x200000) == 0) {
-        if ((i18 & 2) != 0) {
-            i1a99c = 1;
-            w1a92e--;
-            if (w1a92e < 0)
-                w1a92e = 0;
-            if (pfn08 != 0)
-                pfn08();
+    if (s6(&(*(int *)&((BrTextList *)(this))->f1A94C)) != 0 && ((*(int *)&((BrTextList *)(this))->f18) & 0x200000) == 0) {
+        if (((*(int *)&((BrTextList *)(this))->f18) & 2) != 0) {
+            (*(int *)&((BrTextList *)(this))->f1A99C[0]) = 1;
+            (*(short *)&((BrTextList *)(this))->f1A92E)--;
+            if ((*(short *)&((BrTextList *)(this))->f1A92E) < 0)
+                (*(short *)&((BrTextList *)(this))->f1A92E) = 0;
+            if ((*(void (**)(void))&((BrTextList *)(this))->f08) != 0)
+                (*(void (**)(void))&((BrTextList *)(this))->f08)();
 
-            d = (unsigned short)(wCount - 1);
+            d = (unsigned short)((*(unsigned short *)&((BrTextList *)(this))->count) - 1);
             if (d <= 0)
                 d = 1;
-            f1a9b0 = f1a9b0 - f1a9d0 / (float)d;
-            if (f1a9b0 < f1a9c8)
-                f1a9b0 = f1a9c8;
-            else if (f1a9b0 > f1a9cc)
-                f1a9b0 = f1a9cc;
-            i1a990 = (int)f1a9b0;
-            i1a998 = (int)f1a9b0 + 0x10;
+            (*(float *)&((BrTextList *)(this))->f1A99C[5]) = (*(float *)&((BrTextList *)(this))->f1A99C[5]) - (*(float *)&((BrTextList *)(this))->f1A99C[13]) / (float)d;
+            if ((*(float *)&((BrTextList *)(this))->f1A99C[5]) < (*(float *)&((BrTextList *)(this))->f1A99C[11]))
+                (*(float *)&((BrTextList *)(this))->f1A99C[5]) = (*(float *)&((BrTextList *)(this))->f1A99C[11]);
+            else if ((*(float *)&((BrTextList *)(this))->f1A99C[5]) > (*(float *)&((BrTextList *)(this))->f1A99C[12]))
+                (*(float *)&((BrTextList *)(this))->f1A99C[5]) = (*(float *)&((BrTextList *)(this))->f1A99C[12]);
+            (*(int *)&((BrTextList *)(this))->f1A990) = (int)(*(float *)&((BrTextList *)(this))->f1A99C[5]);
+            (*(int *)&((BrTextList *)(this))->f1A998) = (int)(*(float *)&((BrTextList *)(this))->f1A99C[5]) + 0x10;
             return 1;
         }
-        i1a99c = 0;
+        (*(int *)&((BrTextList *)(this))->f1A99C[0]) = 0;
         return 1;
     }
 
-    if (s6(&i1a95c) != 0 && (i18 & 0x200000) == 0) {
-        if ((i18 & 2) != 0) {
-            w1a92e++;
-            i1a9a0 = 1;
-            if ((int)w1a92e >= (int)wCount)
-                w1a92e = (short)(wCount - 1);
-            if (pfn0C != 0)
-                pfn0C();
+    if (s6(&(*(int *)&((BrTextList *)(this))->f1A95C)) != 0 && ((*(int *)&((BrTextList *)(this))->f18) & 0x200000) == 0) {
+        if (((*(int *)&((BrTextList *)(this))->f18) & 2) != 0) {
+            (*(short *)&((BrTextList *)(this))->f1A92E)++;
+            (*(int *)&((BrTextList *)(this))->f1A99C[1]) = 1;
+            if ((int)(*(short *)&((BrTextList *)(this))->f1A92E) >= (int)(*(unsigned short *)&((BrTextList *)(this))->count))
+                (*(short *)&((BrTextList *)(this))->f1A92E) = (short)((*(unsigned short *)&((BrTextList *)(this))->count) - 1);
+            if ((*(void (**)(void))&((BrTextList *)(this))->f0C) != 0)
+                (*(void (**)(void))&((BrTextList *)(this))->f0C)();
 
-            d = (unsigned short)(wCount - 1);
+            d = (unsigned short)((*(unsigned short *)&((BrTextList *)(this))->count) - 1);
             if (d <= 0)
                 d = 1;
-            f1a9b0 = f1a9d0 / (float)d + f1a9b0;
-            if (f1a9b0 < f1a9c8)
-                f1a9b0 = f1a9c8;
-            else if (f1a9b0 > f1a9cc)
-                f1a9b0 = f1a9cc;
-            i1a990 = (int)f1a9b0;
-            i1a998 = (int)f1a9b0 + 0x10;
+            (*(float *)&((BrTextList *)(this))->f1A99C[5]) = (*(float *)&((BrTextList *)(this))->f1A99C[13]) / (float)d + (*(float *)&((BrTextList *)(this))->f1A99C[5]);
+            if ((*(float *)&((BrTextList *)(this))->f1A99C[5]) < (*(float *)&((BrTextList *)(this))->f1A99C[11]))
+                (*(float *)&((BrTextList *)(this))->f1A99C[5]) = (*(float *)&((BrTextList *)(this))->f1A99C[11]);
+            else if ((*(float *)&((BrTextList *)(this))->f1A99C[5]) > (*(float *)&((BrTextList *)(this))->f1A99C[12]))
+                (*(float *)&((BrTextList *)(this))->f1A99C[5]) = (*(float *)&((BrTextList *)(this))->f1A99C[12]);
+            (*(int *)&((BrTextList *)(this))->f1A990) = (int)(*(float *)&((BrTextList *)(this))->f1A99C[5]);
+            (*(int *)&((BrTextList *)(this))->f1A998) = (int)(*(float *)&((BrTextList *)(this))->f1A99C[5]) + 0x10;
             return 1;
         }
-        i1a9a0 = 0;
+        (*(int *)&((BrTextList *)(this))->f1A99C[1]) = 0;
         return 1;
     }
 
@@ -304,11 +304,11 @@ int Ctl553B0::Step(int *pArg)
     if (bWrapped != 0)
         return 0;
 
-    iEnd = (int)w1a930 + (int)w1a92e;
+    iEnd = (int)(*(unsigned short *)&((BrTextList *)(this))->f1A930) + (int)(*(short *)&((BrTextList *)(this))->f1A92E);
     if (iEnd > 100)
         iEnd = 100;
 
-    for (i = w1a92e; i < iEnd; i++) {
+    for (i = (*(short *)&((BrTextList *)(this))->f1A92E); i < iEnd; i++) {
         p = (((char *)this + ((i)) * BR_SLOT)) + 0x34;
 
         if ((p[-4] & 0x10) != 0) {
@@ -321,10 +321,10 @@ int Ctl553B0::Step(int *pArg)
         }
 
         bAny = 1;
-        if ((i18 & 0x1000000) != 0)
+        if (((*(int *)&((BrTextList *)(this))->f18) & 0x1000000) != 0)
             continue;
 
-        if ((i18 & 0x100) != 0) {
+        if (((*(int *)&((BrTextList *)(this))->f18) & 0x100) != 0) {
             switch (p[0]) {
             case 0:
                 p[0] = 1;
@@ -339,7 +339,7 @@ int Ctl553B0::Step(int *pArg)
                 p[0] = 0;
                 break;
             }
-            i18 = i18 & 0xFFFFFEFF;
+            (*(int *)&((BrTextList *)(this))->f18) = (*(int *)&((BrTextList *)(this))->f18) & 0xFFFFFEFF;
         }
 
         if (BrInputAnyActive() == 0)
@@ -351,12 +351,12 @@ int Ctl553B0::Step(int *pArg)
         *pArg = i;
         BrSub10072AF0(1, 0x200020);
         g_track = 1;
-        if (pfn04 != 0)
-            pfn04(this, pArg);
+        if ((*(void (**)(void *, int *))&((BrTextList *)(this))->f04) != 0)
+            (*(void (**)(void *, int *))&((BrTextList *)(this))->f04)(this, pArg);
     }
 
     if (bAny == 0) {
-        i18 = i18 & 0xFFFFFFDD;
+        (*(int *)&((BrTextList *)(this))->f18) = (*(int *)&((BrTextList *)(this))->f18) & 0xFFFFFFDD;
         return 0;
     }
     return 1;

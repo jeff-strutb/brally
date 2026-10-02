@@ -1,3 +1,4 @@
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 /* WHAT IT DOES: highlight-sync for another page, with its own stored index
  * and its own scroll-to call. */
 /* @implements 0x10038250 glide FUN_10038250
@@ -42,12 +43,12 @@ int FUN_10038250(GameObj *pGame)
 {
     int r;
 
-    r = pGame->sel.t8(g_AB94);
+    r = (*(class Sel *)&((BrUiCtl_ *)(pGame))->list).t8(g_AB94);
     if (r >= 0)
         g_AB94 = r;
     else
         r = g_AB94;
     if (g_5C30 != 0 && r >= 0)
-        pGame->sel.t9(r);
+        (*(class Sel *)&((BrUiCtl_ *)(pGame))->list).t9(r);
     return 1;
 }

@@ -31,6 +31,7 @@
  */
 #define _CRTIMP __declspec(dllimport)
 #include <string.h>
+#include "slice3_39.h"   /* BrTextBox, the canonical record */
 
 struct BrEnt54E20 {
     int a;
@@ -87,44 +88,44 @@ int Slots54E20::Delete(int idx)
     int i;
 
     if (idx >= 0) {
-        strcpy(recs[idx].szName, g_aBr39B720);
-        recs[idx].bUsed = 0;
-        recs[idx].w41C = 0;
-        recs[idx].w40C = 0;
-        recs[idx].w40A = 0;
-        memset(recs[idx].a424, 0, sizeof(recs[idx].a424));
-        recs[idx].f410 = 0;
-        recs[idx].f414 = 0;
-        recs[idx].f418 = 0;
-        recs[idx].f420 = 0;
-        recs[idx].f434 = 0;
-        memset(&ents[idx], 0, sizeof(ents[idx]));
+        strcpy((*(char (*)[1025])&((BrTextBox *)&((*(BrSlot54E20 *)&((BrTextList *)(this))->aItems[idx])))->sz[0]), g_aBr39B720);
+        (*(char *)&((BrTextBox *)&((*(BrSlot54E20 *)&((BrTextList *)(this))->aItems[idx])))->f08) = 0;
+        (*(short *)&((BrTextBox *)&((*(BrSlot54E20 *)&((BrTextList *)(this))->aItems[idx])))->f41C) = 0;
+        (*(short *)&((BrTextBox *)&((*(BrSlot54E20 *)&((BrTextList *)(this))->aItems[idx])))->height) = 0;
+        (*(short *)&((BrTextBox *)&((*(BrSlot54E20 *)&((BrTextList *)(this))->aItems[idx])))->width) = 0;
+        memset((*(int (*)[4])&((BrTextBox *)&((*(BrSlot54E20 *)&((BrTextList *)(this))->aItems[idx])))->left), 0, sizeof((*(int (*)[4])&((BrTextBox *)&((*(BrSlot54E20 *)&((BrTextList *)(this))->aItems[idx])))->left)));
+        (*(int *)&((BrTextBox *)&((*(BrSlot54E20 *)&((BrTextList *)(this))->aItems[idx])))->x) = 0;
+        (*(int *)&((BrTextBox *)&((*(BrSlot54E20 *)&((BrTextList *)(this))->aItems[idx])))->y) = 0;
+        (*(int *)&((BrTextBox *)&((*(BrSlot54E20 *)&((BrTextList *)(this))->aItems[idx])))->f418) = 0;
+        (*(int *)&((BrTextBox *)&((*(BrSlot54E20 *)&((BrTextList *)(this))->aItems[idx])))->f420) = 0;
+        (*(int *)&((BrTextBox *)&((*(BrSlot54E20 *)&((BrTextList *)(this))->aItems[idx])))->f434) = 0;
+        memset(&(*(BrEnt54E20 *)&((BrTextList *)(this))->aBlobs[idx]), 0, sizeof((*(BrEnt54E20 *)&((BrTextList *)(this))->aBlobs[idx])));
     }
 
-    if (idx + 1 != wCount) {
-        for (i = idx + 1; i <= wCount - 1; i++) {
-            recs[i - 1] = recs[i];
-            if (ents[i].b != 0 && ents[i].a > 0)
-                s10(ents[i].b, ents[i].a, i - 1);
+    if (idx + 1 != (*(unsigned short *)&((BrTextList *)(this))->count)) {
+        for (i = idx + 1; i <= (*(unsigned short *)&((BrTextList *)(this))->count) - 1; i++) {
+            (*(BrSlot54E20 *)&((BrTextList *)(this))->aItems[i - 1]) = (*(BrSlot54E20 *)&((BrTextList *)(this))->aItems[i]);
+            if ((*(BrEnt54E20 *)&((BrTextList *)(this))->aBlobs[i]).b != 0 && (*(BrEnt54E20 *)&((BrTextList *)(this))->aBlobs[i]).a > 0)
+                s10((*(BrEnt54E20 *)&((BrTextList *)(this))->aBlobs[i]).b, (*(BrEnt54E20 *)&((BrTextList *)(this))->aBlobs[i]).a, i - 1);
         }
     }
 
-    idx = wCount - 1;
+    idx = (*(unsigned short *)&((BrTextList *)(this))->count) - 1;
     if (idx > 0) {
-        strcpy(recs[idx].szName, g_aBr39B720);
-        recs[idx].bUsed = 0;
-        recs[idx].w41C = 0;
-        recs[idx].w40C = 0;
-        recs[idx].w40A = 0;
-        memset(recs[idx].a424, 0, sizeof(recs[idx].a424));
-        recs[idx].f410 = 0;
-        recs[idx].f414 = 0;
-        recs[idx].f418 = 0;
-        recs[idx].f420 = 0;
-        memset(&ents[idx], 0, sizeof(ents[idx]));
+        strcpy((*(char (*)[1025])&((BrTextBox *)&((*(BrSlot54E20 *)&((BrTextList *)(this))->aItems[idx])))->sz[0]), g_aBr39B720);
+        (*(char *)&((BrTextBox *)&((*(BrSlot54E20 *)&((BrTextList *)(this))->aItems[idx])))->f08) = 0;
+        (*(short *)&((BrTextBox *)&((*(BrSlot54E20 *)&((BrTextList *)(this))->aItems[idx])))->f41C) = 0;
+        (*(short *)&((BrTextBox *)&((*(BrSlot54E20 *)&((BrTextList *)(this))->aItems[idx])))->height) = 0;
+        (*(short *)&((BrTextBox *)&((*(BrSlot54E20 *)&((BrTextList *)(this))->aItems[idx])))->width) = 0;
+        memset((*(int (*)[4])&((BrTextBox *)&((*(BrSlot54E20 *)&((BrTextList *)(this))->aItems[idx])))->left), 0, sizeof((*(int (*)[4])&((BrTextBox *)&((*(BrSlot54E20 *)&((BrTextList *)(this))->aItems[idx])))->left)));
+        (*(int *)&((BrTextBox *)&((*(BrSlot54E20 *)&((BrTextList *)(this))->aItems[idx])))->x) = 0;
+        (*(int *)&((BrTextBox *)&((*(BrSlot54E20 *)&((BrTextList *)(this))->aItems[idx])))->y) = 0;
+        (*(int *)&((BrTextBox *)&((*(BrSlot54E20 *)&((BrTextList *)(this))->aItems[idx])))->f418) = 0;
+        (*(int *)&((BrTextBox *)&((*(BrSlot54E20 *)&((BrTextList *)(this))->aItems[idx])))->f420) = 0;
+        memset(&(*(BrEnt54E20 *)&((BrTextList *)(this))->aBlobs[idx]), 0, sizeof((*(BrEnt54E20 *)&((BrTextList *)(this))->aBlobs[idx])));
     }
 
-    wCount--;
+    (*(unsigned short *)&((BrTextList *)(this))->count)--;
     return 1;
 }
 

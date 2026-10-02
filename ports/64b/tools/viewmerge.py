@@ -125,12 +125,36 @@ def tsize(t, sizes):
             'uint64_t': 8}.get(t2)
 
 
+PTR_TYPEDEFS = set()
+
+
+def load_ptr_typedefs(f, extra):
+    """Typedef names that are pointers (data or function), from the
+    preprocessed file, so a layout's `BrHookFn_ pfn` counts as a pointer."""
+    p = run(FLAGS + extra + lang(f) + ['-E', '-P', f])
+    txt = re.sub(r'\s+', ' ', p.stdout)
+    for m in re.finditer(r'typedef ([^;{}]*?);', txt):
+        body = m.group(1)
+        fm = re.search(r'\(\s*(?:__\w+\s+|__attribute__\(\(\w+\)\)\s*)*\*\s*(\w+)\s*\)\s*\(', body)
+        if fm:
+            PTR_TYPEDEFS.add(fm.group(1))
+            continue
+        pm = re.match(r'^(.*?)\s*(\w+)$', body.strip())
+        if pm:
+            t, n = pm.group(1).strip(), pm.group(2)
+            if t.endswith('*') or t.split()[-1:] and t.split()[-1] in PTR_TYPEDEFS:
+                PTR_TYPEDEFS.add(n)
+
+
 def is_ptr(t):
-    t = t.strip()
-    return t.endswith('*') or '(*)' in t
+    t = re.sub(r'^(const |volatile )+', '', t.strip())
+    b, dims = array_dims(t)
+    if dims:
+        t = b
+    return t.endswith('*') or '(*)' in t or t in PTR_TYPEDEFS
 
 
-def resolve(recs, sizes, canon, off):
+def resolve(recs, sizes, canon, off, want=None):
     """Path expression and leaf type of the canonical field at byte offset
     `off` (relative to the record start).  Returns (path, leaf_type, rem)
     where rem is a byte offset left inside a scalar, or None."""
@@ -157,6 +181,10 @@ def resolve(recs, sizes, canon, off):
         path += ('.' if path else '') + n
         base, dims = array_dims(t)
         rel = off - o
+        if want is not None and rel == 0 and tsize(t, sizes) == want:
+            return path, t, 0         # the whole field the view names
+        if want == 'record' and rel == 0 and not dims and children(entries, chosen):
+            return path, t, 0         # an embedded object the view names
         if dims:
             esz = tsize(base, sizes)
             if esz is None or esz == 0:
@@ -172,8 +200,12 @@ def resolve(recs, sizes, canon, off):
             bname = re.sub(r'^(const |struct |union |class )+', '', base)
             if rel == 0 and bname not in recs:
                 return path, base, 0
+            if want is not None and rel == 0 and esz == want:
+                return path, base, 0
+            if want == 'record' and rel == 0 and bname in recs:
+                return path, base, 0
             if bname in recs:
-                sub = resolve(recs, sizes, bname, rel)
+                sub = resolve(recs, sizes, bname, rel, want)
                 if sub is None:
                     return None
                 return path + '.' + sub[0], sub[1], sub[2]
@@ -184,6 +216,15 @@ def resolve(recs, sizes, canon, off):
         return path, t, rel
 
 
+def want_of(t, recs, sizes):
+    """What a view field asks to be matched against: a whole embedded
+    object ('record') or a field of its own size."""
+    b, dims = array_dims(t)
+    if not dims and not is_ptr(t) and re.sub(r'^(const |struct |union |class )+', '', t.strip()) in recs:
+        return 'record'
+    return tsize(t, sizes)
+
+
 # -------------------------------------------------------------------- AST
 def ast(f, extra):
     p = run(FLAGS + extra + lang(f) + ['-fsyntax-only', '-Xclang', '-ast-dump=json', f])
@@ -191,6 +232,7 @@ def ast(f, extra):
 
 
 CUR = {'file': None}
+SUBSCRIPT = {}
 
 
 def note_file(n):
@@ -235,6 +277,7 @@ def main():
     f, view, canon = args[0], args[1], args[2]
     base = int(args[3], 0) if len(args) > 3 else 0
     os.chdir(ROOT)
+    load_ptr_typedefs(f, extra)
     recs, sizes = layouts(f, extra)
     if view not in recs or canon not in recs:
         sys.exit('layout missing: view %s %s, canon %s %s' % (view, view in recs, canon, canon in recs))
@@ -259,11 +302,39 @@ def main():
 
     edits, notes = [], []
 
+    def flat(loc):
+        """A location as written in this file: a macro argument's spelling,
+        else the macro use."""
+        if 'spellingLoc' in loc and loc.get('isMacroArgExpansion'):
+            return loc['spellingLoc']
+        if 'expansionLoc' in loc:
+            return loc['expansionLoc']
+        return loc
+
+    def norm_range(r):
+        if not r:
+            return r
+        return {'begin': flat(r.get('begin', {})), 'end': flat(r.get('end', {}))}
+
     def loc_ok(r):
         b, e = r.get('begin', {}), r.get('end', {})
-        if 'spellingLoc' in b or 'expansionLoc' in b or 'spellingLoc' in e or 'expansionLoc' in e:
-            return False
+        for loc in (b, e):
+            if 'file' in loc and os.path.abspath(loc['file']) != fpath:
+                return False
         return 'offset' in b and 'offset' in e
+
+    def find_subs(n, parent):
+        if n.get('kind') == 'ArraySubscriptExpr':
+            base, idxn = n['inner'][0], n['inner'][1]
+            b = base
+            while b.get('kind') in ('ImplicitCastExpr', 'ParenExpr') and b.get('inner'):
+                b = b['inner'][0]
+            r, ir = norm_range(n.get('range', {})), norm_range(idxn.get('range', {}))
+            if b.get('kind') == 'MemberExpr' and loc_ok(r) and loc_ok(ir):
+                SUBSCRIPT[id(b)] = (r['begin']['offset'], r['end']['offset'] + r['end'].get('tokLen', 0),
+                                    ir['begin']['offset'], ir['end']['offset'] + ir['end'].get('tokLen', 0))
+    walk(tree, find_subs)
+    CUR['file'] = None
 
     def visit(n, parent):
         k = n.get('kind')
@@ -271,21 +342,29 @@ def main():
             return
         if k == 'MemberExpr' and n.get('referencedMemberDecl') in ids:
             name = ids[n['referencedMemberDecl']]
-            r = n.get('range', {})
+            r = norm_range(n.get('range', {}))
             if not loc_ok(r):
-                notes.append('MACRO %s line %s' % (name, r.get('begin', {}).get('expansionLoc', {}).get('line')))
+                notes.append('MACRO %s line %s' % (name, r.get('begin', {}).get('line')))
                 return
             b0 = r['begin']['offset']
             e0 = r['end']['offset'] + r['end'].get('tokLen', 0)
             inner = n['inner'][0]
-            ir = inner.get('range', {})
-            if not loc_ok(ir):
-                notes.append('MACRO base of %s' % name)
-                return
-            ib = ir['begin']['offset']
-            ie = ir['end']['offset'] + ir['end'].get('tokLen', 0)
+            implicit_this = inner.get('kind') == 'CXXThisExpr' and inner.get('implicit')
+            if implicit_this:
+                ib = ie = None
+            else:
+                ir = norm_range(inner.get('range', {}))
+                if not loc_ok(ir):
+                    notes.append('MACRO base of %s' % name)
+                    return
+                ib = ir['begin']['offset']
+                ie = ir['end']['offset'] + ir['end'].get('tokLen', 0)
+            if text[e0 - len(name):e0] != name or (ib is not None and not (b0 <= ib < ie <= e0)):
+                if text[e0 - len(name):e0] != name and 'expansionLoc' in json.dumps(n.get('range', {})):
+                    notes.append('MACRO %s line %d' % (name, text.count('\n', 0, b0) + 1))
+                return                      # compiler-generated (implicit copy etc.)
             vo, vt = vfields[name]
-            res = resolve(recs, sizes, canon, base + vo)
+            res = resolve(recs, sizes, canon, base + vo, want_of(vt, recs, sizes))
             line = text.count('\n', 0, b0) + 1
             if res is None:
                 notes.append('NOFIT %s @0x%X line %d' % (name, base + vo, line))
@@ -295,10 +374,29 @@ def main():
                 notes.append('KIND %s (%s) -> %s (%s) line %d' % (name, vt, path, leaf, line))
             arrow = n.get('isArrow')
             obj = '((%s *)(%s))' % (canon, '%s') if arrow else '((%s *)&(%s))' % (canon, '%s')
+            if implicit_this:
+                obj = '((%s *)(this))' % canon
             if rem:
                 expr = '(*(%s)((char *)&%s->%s + %d))' % (ptr_to(vt), obj, path, rem)
             else:
                 expr = '(*(%s)&%s->%s)' % (ptr_to(vt), obj, path)
+            sub = SUBSCRIPT.get(id(n))
+            vb, vdims = array_dims(vt)
+            vbn = re.sub(r'^(const |struct |union |class )+', '', vb or '')
+            lb, ldims = array_dims(leaf)
+            if sub is not None and vdims and len(vdims) == 1 and vbn in recs and \
+                    (path.endswith('[0]') or ldims):
+                # an element of an array of records: index the canonical array
+                sb, se, xb, xe = sub
+                arr = path if ldims else path[:-3]
+                if arrow:
+                    eexpr = '(*(%s *)&((%s *)(%s))->%s[%s])' % (vb, canon, '%s', arr, '%s')
+                else:
+                    eexpr = '(*(%s *)&((%s *)&(%s))->%s[%s])' % (vb, canon, '%s', arr, '%s')
+                if implicit_this:
+                    eexpr = '(*(%s *)&((%s *)(this))->%s[%s])' % (vb, canon, arr, '%s')
+                edits.append((sb, se, ib, ie, eexpr, name, xb, xe))
+                return
             edits.append((b0, e0, ib, ie, expr, name))
         elif k in ('VarDecl', 'FieldDecl') and re.search(r'\b%s\b(?!\s*\*)' % re.escape(view),
                                                           (n.get('type') or {}).get('qualType', '')):
@@ -311,7 +409,8 @@ def main():
 
     def render(start, end):
         out, pos = [], start
-        for (b0, e0, ib, ie, expr, name) in sorted(edits):
+        for ed in sorted(edits):
+            b0, e0, ib, ie, expr, name = ed[:6]
             if b0 < pos or e0 > end or (b0, e0) == (start, end):
                 continue
             # outermost only: skip if contained in another edit inside range
@@ -319,7 +418,14 @@ def main():
                    and (b1, e1) != (start, end) for (b1, e1, *_r) in edits):
                 continue
             out.append(text[pos:b0])
-            out.append(expr % render(ib, ie))
+            if len(ed) == 8:
+                xb, xe = ed[6], ed[7]
+                if ib is None:
+                    out.append(expr % render(xb, xe))
+                else:
+                    out.append(expr % (render(ib, ie), render(xb, xe)))
+            else:
+                out.append(expr % render(ib, ie) if ib is not None else expr)
             pos = e0
         out.append(text[pos:end])
         return ''.join(out)

@@ -1,3 +1,4 @@
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 /* WHAT IT DOES: advance an animated move by however much real time has
  * passed since the last frame, and report when it has arrived. Time-based
  * rather than per-frame, so the animation runs at the same speed regardless
@@ -97,26 +98,26 @@ int Tween41180::Step()
     int doneY = 0;
     int now;
 
-    if (f3818 == 0)
+    if ((*(int *)&((BrUiCtl_ *)(this))->twActive) == 0)
         return 1;
 
     now = BrSub10075020();
 
-    if (f3828 <= 0)
-        f3828 = now;
+    if ((*(int *)&((BrUiCtl_ *)(this))->twTick) <= 0)
+        (*(int *)&((BrUiCtl_ *)(this))->twTick) = now;
 
-    f382C += now - f3828;
-    f3828 = now;
+    (*(int *)&((BrUiCtl_ *)(this))->twMs) += now - (*(int *)&((BrUiCtl_ *)(this))->twTick);
+    (*(int *)&((BrUiCtl_ *)(this))->twTick) = now;
 
-    if (f3804 != 0) {
-        switch (b380C) {
+    if ((*(int *)&((BrUiCtl_ *)(this))->twXOn) != 0) {
+        switch ((*(char *)&((BrUiCtl_ *)(this))->twXDir)) {
         case -1: {
-            float v = f030 - s10(f382C);
+            float v = (*(float *)&((BrUiCtl_ *)(this))->fTweenX) - s10((*(int *)&((BrUiCtl_ *)(this))->twMs));
 
-            f03C = v;
-            if (v <= f3810) {
+            (*(float *)&((BrUiCtl_ *)(this))->x) = v;
+            if (v <= (*(float *)&((BrUiCtl_ *)(this))->twXEnd)) {
                 doneX = 1;
-                f03C = f3810;
+                (*(float *)&((BrUiCtl_ *)(this))->x) = (*(float *)&((BrUiCtl_ *)(this))->twXEnd);
             }
             break;
         }
@@ -124,12 +125,12 @@ int Tween41180::Step()
             doneX = 1;
             break;
         case 1: {
-            float v = s10(f382C) + f030;
+            float v = s10((*(int *)&((BrUiCtl_ *)(this))->twMs)) + (*(float *)&((BrUiCtl_ *)(this))->fTweenX);
 
-            f03C = v;
-            if (v >= f3810) {
+            (*(float *)&((BrUiCtl_ *)(this))->x) = v;
+            if (v >= (*(float *)&((BrUiCtl_ *)(this))->twXEnd)) {
                 doneX = 1;
-                f03C = f3810;
+                (*(float *)&((BrUiCtl_ *)(this))->x) = (*(float *)&((BrUiCtl_ *)(this))->twXEnd);
             }
             break;
         }
@@ -138,15 +139,15 @@ int Tween41180::Step()
         doneX = 1;
     }
 
-    if (f3808 != 0) {
-        switch (b380D) {
+    if ((*(int *)&((BrUiCtl_ *)(this))->twYOn) != 0) {
+        switch ((*(char *)&((BrUiCtl_ *)(this))->twYDir)) {
         case -1: {
-            float v = f034 - s10(f382C);
+            float v = (*(float *)&((BrUiCtl_ *)(this))->fTweenY) - s10((*(int *)&((BrUiCtl_ *)(this))->twMs));
 
-            f040 = v;
-            if (v <= f3814) {
+            (*(float *)&((BrUiCtl_ *)(this))->y) = v;
+            if (v <= (*(float *)&((BrUiCtl_ *)(this))->twYEnd)) {
                 doneY = 1;
-                f040 = f3814;
+                (*(float *)&((BrUiCtl_ *)(this))->y) = (*(float *)&((BrUiCtl_ *)(this))->twYEnd);
             }
             break;
         }
@@ -154,12 +155,12 @@ int Tween41180::Step()
             doneY = 1;
             break;
         case 1: {
-            float v = s10(f382C) + f034;
+            float v = s10((*(int *)&((BrUiCtl_ *)(this))->twMs)) + (*(float *)&((BrUiCtl_ *)(this))->fTweenY);
 
-            f040 = v;
-            if (v >= f3814) {
+            (*(float *)&((BrUiCtl_ *)(this))->y) = v;
+            if (v >= (*(float *)&((BrUiCtl_ *)(this))->twYEnd)) {
                 doneY = 1;
-                f040 = f3814;
+                (*(float *)&((BrUiCtl_ *)(this))->y) = (*(float *)&((BrUiCtl_ *)(this))->twYEnd);
             }
             break;
         }
@@ -169,8 +170,8 @@ int Tween41180::Step()
     }
 
     if (doneX && doneY) {
-        f382C = 0;
-        f3818 = 0;
+        (*(int *)&((BrUiCtl_ *)(this))->twMs) = 0;
+        (*(int *)&((BrUiCtl_ *)(this))->twActive) = 0;
     }
 
     return 1;

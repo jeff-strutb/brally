@@ -14,6 +14,7 @@
  */
 #define _CRTIMP __declspec(dllimport)
 #include "slice2_25.h"   /* br_globals: its objects */
+#include "br_phase.h"   /* BrPhase_, the canonical record */
 #include <windows.h>
 #include <objbase.h>
 #include <stdlib.h>
@@ -70,7 +71,7 @@ extern "C" void BrExt_10038F30(int a)
     Phase *p = (*(Phase * *)&g_brPAA29B8);
 
     if (p != 0 && (*(int *)&g_AC300) != 0) {
-        p->f68 = 0;
+        (*(int *)&((BrPhase_ *)(p))->f68) = 0;
         (*(Phase * *)&g_brPAA29B8)->f18(0);
     }
 

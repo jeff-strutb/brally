@@ -905,17 +905,17 @@ int BrSub10047360(BrGoM47360 *p)
 {
     unsigned int flags;
 
-    flags = p->flags;
+    flags = (*(unsigned int *)&((BrUiCtl_ *)(p))->flags1C);
     if (flags & 0x10)
         return 0;
     if (flags & 0x01000000)
         return 0;
-    if (p->f3850 & 0x01000000)
+    if ((*(unsigned int *)&((BrUiCtl_ *)(p))->list.f18) & 0x01000000)
         return 0;
     if (g_nAA284C) {
         BrObjAA2E80 *q = (*(BrObjAA2E80 * *)&g_pBrAA2E80);
         if (q->f2C || q->f30 || q->f34 || q->f38) {
-            p->state = 4;
+            (*(unsigned char *)&((BrUiCtl_ *)(p))->aText[0].f08) = 4;
             return 1;
         }
     }
@@ -925,16 +925,16 @@ int BrSub10047360(BrGoM47360 *p)
      * duplicates that tail (clear 0x100, store the flags, return 1) into
      * every arm.  Written as five self-contained arms instead, the switch
      * value is kept alive past the dispatch and every register rotates. */
-    p->count++;
-    switch (p->count) {
-    case 2:  p->state = 0; break;
-    case 3:  p->state = 1; break;
-    case 4:  p->state = 2; break;
-    case 52: p->state = 4; break;
-    default: p->count = 2; break;
+    (*(short *)&((BrUiCtl_ *)(p))->w1E20C)++;
+    switch ((*(short *)&((BrUiCtl_ *)(p))->w1E20C)) {
+    case 2:  (*(unsigned char *)&((BrUiCtl_ *)(p))->aText[0].f08) = 0; break;
+    case 3:  (*(unsigned char *)&((BrUiCtl_ *)(p))->aText[0].f08) = 1; break;
+    case 4:  (*(unsigned char *)&((BrUiCtl_ *)(p))->aText[0].f08) = 2; break;
+    case 52: (*(unsigned char *)&((BrUiCtl_ *)(p))->aText[0].f08) = 4; break;
+    default: (*(short *)&((BrUiCtl_ *)(p))->w1E20C) = 2; break;
     }
     flags &= ~0x100u;
-    p->flags = flags;
+    (*(unsigned int *)&((BrUiCtl_ *)(p))->flags1C) = flags;
     return 1;
 }
 

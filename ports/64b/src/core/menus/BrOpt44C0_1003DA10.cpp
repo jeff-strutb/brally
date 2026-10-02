@@ -1,4 +1,5 @@
 #include "br_race.h"   /* br_globals: its objects */
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 #include "slice2_25.h"   /* br_globals: its objects */
 /* WHAT IT DOES: leave this page, return to the parent, and clear a flag bit
  * on a related object so the option it guarded becomes available again. */
@@ -58,7 +59,7 @@ int BrOpt44C0(GameObj *pGame)
     Phase *pObj;
     FlagObj *pFlag;
 
-    pGame->pSub->s7();
+    (*(GameSub * *)&((BrUiCtl_ *)(pGame))->pOwner)->s7();
     pObj = (Phase *)((*(Phase * *)&g_brPAA29B8));
     if (pObj != 0)
         pObj->f00(1);

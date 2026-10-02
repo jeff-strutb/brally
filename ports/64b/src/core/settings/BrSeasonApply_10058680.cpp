@@ -60,6 +60,7 @@
  */
 #define _CRTIMP __declspec(dllimport)
 #include "br_coretypes.h"   /* br_globals: its objects */
+#include "br_phase.h"   /* BrPhase_, the canonical record */
 #include "br_race.h"   /* br_globals: its objects */
 #include "slice2_25.h"   /* br_globals: its objects */
 #include "slice3_41.h"   /* br_globals: its objects */
@@ -195,7 +196,7 @@ int BrSeasonApply(void)
         }
         if ((*(int *)((char *)&g_a220B20 + 0x4)) < 4 && (*(int *)((char *)&g_a220B20 + 0xC)) < ret)
             DAT_10ac5c08 = ret;
-        (*(Ui5C5C * *)&g_brPAA29B8)->f68 = z;
+        (*(int *)&((BrPhase_ *)((*(Ui5C5C * *)&g_brPAA29B8)))->f68) = z;
         (*(Ui5C5C * *)&g_brPAA29B8)->s6(z);
         ret = z;
     }

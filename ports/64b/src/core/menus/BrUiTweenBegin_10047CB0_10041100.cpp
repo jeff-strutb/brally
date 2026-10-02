@@ -1,3 +1,4 @@
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 /* WHAT IT DOES: begin an animated move: works out the per-step increment
  * from the distance and the number of steps, and remembers where the item
  * started. */
@@ -42,11 +43,11 @@ typedef char chk_f3824_41100[(unsigned)&((Tween41100 *)0)->f3824 == 0x3824 ? 1 :
 
 int Tween41100::Begin(int nSteps)
 {
-    f3824 = (f3820 - f381C) / nSteps;
+    (*(float *)&((BrUiCtl_ *)(this))->twRate) = ((*(float *)&((BrUiCtl_ *)(this))->twHi) - (*(float *)&((BrUiCtl_ *)(this))->twLo)) / nSteps;
 
-    f030 = f03C;
-    f034 = f040;
-    f038 = f044;
+    (*(int *)&((BrUiCtl_ *)(this))->fTweenX) = (*(int *)&((BrUiCtl_ *)(this))->x);
+    (*(int *)&((BrUiCtl_ *)(this))->fTweenY) = (*(int *)&((BrUiCtl_ *)(this))->y);
+    (*(int *)&((BrUiCtl_ *)(this))->fTweenZ) = (*(int *)&((BrUiCtl_ *)(this))->f44);
 
     return 1;
 }

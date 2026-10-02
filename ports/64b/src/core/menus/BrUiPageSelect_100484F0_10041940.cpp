@@ -1,3 +1,4 @@
+#include "br_ui.h"   /* BrUiPage_, the canonical record */
 /* WHAT IT DOES: wrap the page's selection index back into range, at both
  * ends, so moving past the last entry lands on the first. */
 /* @implements 0x10041940 glide BrUiPageSelect_100484F0
@@ -28,13 +29,13 @@ int Phase32F::Adv()
 {
     unsigned short lim;
 
-    lim = w344;
+    lim = (*(unsigned short *)&((BrUiPage_ *)(this))->cSel);
     if ((short)(*(unsigned short *)&BrGlNavCur5BC4) >= lim) {
         (*(unsigned short *)&BrGlNavCur5BC4) = 0;
     } else if ((short)(*(unsigned short *)&BrGlNavCur5BC4) < 0) {
         (*(unsigned short *)&BrGlNavCur5BC4) = (unsigned short)(lim - 1);
     }
-    w346 = (short)(*(unsigned short *)&BrGlNavCur5BC4);
+    (*(short *)&((BrUiPage_ *)(this))->iSel) = (short)(*(unsigned short *)&BrGlNavCur5BC4);
     return 1;
 }
 

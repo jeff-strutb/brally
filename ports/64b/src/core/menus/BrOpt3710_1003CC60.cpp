@@ -1,4 +1,5 @@
 #include "slice2_25.h"   /* br_globals: its objects */
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 #include "slice3_42.h"   /* br_globals: its objects */
 /* WHAT IT DOES: leave this page, refresh the navigation bar and re-enter the
  * parent page. */
@@ -51,7 +52,7 @@ int BrOpt3710(GameObj *pGame)
 {
     BrOptSave();
     (*(Nav *)&g_BrCtrlCfg).m(&g_navArg);
-    pGame->pSub->s6(0);
+    (*(GameSub * *)&((BrUiCtl_ *)(pGame))->pOwner)->s6(0);
     BrDPlayShutdown((struct BrDPlayCtx *)(g_brPA9D008));
     BrExt_10038F30(0);
     return 1;

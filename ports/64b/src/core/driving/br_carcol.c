@@ -131,15 +131,15 @@ void BrCarCarCollide(void)
 
     for (i = 0; i < g_brRaceNDriver; i++) {
         a = ((BrColCar *)g_aBrRaceDriver[i].pCar);
-        if (a == 0 || a->state == 2)
+        if (a == 0 || (*(unsigned char *)&((BrDriverCar *)(a))->b29AF) == 2)
             continue;
-        a->hitAge = a->hitAge + 1;
-        pa = &((BrColCar *)g_aBrRaceDriver[i].pCar)->st;
+        (*(unsigned char *)&((BrDriverCar *)(a))->aBody[0]._pad0201) = (*(unsigned char *)&((BrDriverCar *)(a))->aBody[0]._pad0201) + 1;
+        pa = &(*(struct BrColState *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[i].pCar)))->aBody[0].rb.st);
         for (j = i + 1; j < g_brRaceNDriver; j++) {
             b = ((BrColCar *)g_aBrRaceDriver[j].pCar);
-            if (b == 0 || b->state == 2)
+            if (b == 0 || (*(unsigned char *)&((BrDriverCar *)(b))->b29AF) == 2)
                 continue;
-            pb  = &b->st;
+            pb  = &(*(struct BrColState *)&((BrDriverCar *)(b))->aBody[0].rb.st);
             d.x = pa->pos.x - pb->pos.x;
             d.y = pa->pos.y - pb->pos.y;
             d.z = pa->pos.z - pb->pos.z;
@@ -147,8 +147,8 @@ void BrCarCarCollide(void)
                 ext.x = 2.5f;
                 ext.y = 1.0f;
                 ext.z = 1.0f;
-                BrMat4ToMat3Transposed(&mB, &((BrColCar *)g_aBrRaceDriver[j].pCar)->mat);
-                BrMat4ToMat3(&mA, &((BrColCar *)g_aBrRaceDriver[i].pCar)->mat);
+                BrMat4ToMat3Transposed(&mB, &(*(struct BrMat4 *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[j].pCar)))->aBody[0].rb.m));
+                BrMat4ToMat3(&mA, &(*(struct BrMat4 *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[i].pCar)))->aBody[0].rb.m));
                 BrMat3Mul(&mR, &mB, &mA);
                 dd.x = pa->pos.x - pb->pos.x;
                 dd.y = pa->pos.y - pb->pos.y;
@@ -168,60 +168,60 @@ void BrCarCarCollide(void)
                     x = -x;
                 if (x > _DAT_10077ab8)
                     x = _DAT_10077ab8;
-                if (((BrColCar *)g_aBrRaceDriver[i].pCar)->hitAge > 0x28) {
+                if ((*(unsigned char *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[i].pCar)))->aBody[0]._pad0201) > 0x28) {
                     tone = (unsigned char)(int)(_DAT_10077b34 - x * _DAT_10077b30);
-                    ((BrColCar *)g_aBrRaceDriver[i].pCar)->hitTone = tone;
-                    ((BrColCar *)g_aBrRaceDriver[j].pCar)->hitTone = tone;
+                    (*(unsigned char *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[i].pCar)))->aBody[0].f01FE) = tone;
+                    (*(unsigned char *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[j].pCar)))->aBody[0].f01FE) = tone;
                 }
-                ((BrColCar *)g_aBrRaceDriver[i].pCar)->hitAge = 0;
+                (*(unsigned char *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[i].pCar)))->aBody[0]._pad0201) = 0;
                 sd.x = d.x * DAT_10077a80;
                 sd.y = d.y * DAT_10077a80;
                 sd.z = d.z * DAT_10077a80;
                 t.x  = sd.x * _DAT_10077be0;
                 t.y  = sd.y * _DAT_10077be0;
                 t.z  = sd.z * _DAT_10077be0;
-                BrMat4MulVec3(&dd, &((BrColCar *)g_aBrRaceDriver[i].pCar)->mat, &t);
+                BrMat4MulVec3(&dd, &(*(struct BrMat4 *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[i].pCar)))->aBody[0].rb.m), &t);
                 pa->vel.x = pa->vel.x - imp.x;
                 pa->vel.y = pa->vel.y - imp.y;
                 pa->vel.z = pa->vel.z - imp.z;
-                memcpy(&((BrColCar *)g_aBrRaceDriver[i].pCar)->save, &((BrColCar *)g_aBrRaceDriver[i].pCar)->st, sizeof(BrColState));
-                BrCrImpulseSolve(((BrColCar *)g_aBrRaceDriver[i].pCar)->body, &dd, &d, 0, 0.45f);
-                memcpy(&((BrColCar *)g_aBrRaceDriver[i].pCar)->st, &((BrColCar *)g_aBrRaceDriver[i].pCar)->save, sizeof(BrColState));
-                ((BrColCar *)g_aBrRaceDriver[i].pCar)->save.vel.x = imp.x + ((BrColCar *)g_aBrRaceDriver[i].pCar)->save.vel.x;
-                ((BrColCar *)g_aBrRaceDriver[i].pCar)->save.vel.y = imp.y + ((BrColCar *)g_aBrRaceDriver[i].pCar)->save.vel.y;
-                ((BrColCar *)g_aBrRaceDriver[i].pCar)->save.vel.z = imp.z + ((BrColCar *)g_aBrRaceDriver[i].pCar)->save.vel.z;
-                ((BrColCar *)g_aBrRaceDriver[i].pCar)->velOut.x = ((BrColCar *)g_aBrRaceDriver[i].pCar)->save.vel.x;
-                ((BrColCar *)g_aBrRaceDriver[i].pCar)->velOut.y = ((BrColCar *)g_aBrRaceDriver[i].pCar)->save.vel.y;
-                ((BrColCar *)g_aBrRaceDriver[i].pCar)->velOut.z = ((BrColCar *)g_aBrRaceDriver[i].pCar)->save.vel.z;
+                memcpy(&(*(struct BrColState *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[i].pCar)))->aBody[0].rb.st2), &(*(struct BrColState *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[i].pCar)))->aBody[0].rb.st), sizeof(BrColState));
+                BrCrImpulseSolve((*(unsigned char (*)[120])&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[i].pCar)))->aBody[0].rb.f00), &dd, &d, 0, 0.45f);
+                memcpy(&(*(struct BrColState *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[i].pCar)))->aBody[0].rb.st), &(*(struct BrColState *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[i].pCar)))->aBody[0].rb.st2), sizeof(BrColState));
+                (*(struct BrColState *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[i].pCar)))->aBody[0].rb.st2).vel.x = imp.x + (*(struct BrColState *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[i].pCar)))->aBody[0].rb.st2).vel.x;
+                (*(struct BrColState *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[i].pCar)))->aBody[0].rb.st2).vel.y = imp.y + (*(struct BrColState *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[i].pCar)))->aBody[0].rb.st2).vel.y;
+                (*(struct BrColState *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[i].pCar)))->aBody[0].rb.st2).vel.z = imp.z + (*(struct BrColState *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[i].pCar)))->aBody[0].rb.st2).vel.z;
+                (*(struct BrVec3 *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[i].pCar)))->aBody[0].rb.st1.vel).x = (*(struct BrColState *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[i].pCar)))->aBody[0].rb.st2).vel.x;
+                (*(struct BrVec3 *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[i].pCar)))->aBody[0].rb.st1.vel).y = (*(struct BrColState *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[i].pCar)))->aBody[0].rb.st2).vel.y;
+                (*(struct BrVec3 *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[i].pCar)))->aBody[0].rb.st1.vel).z = (*(struct BrColState *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[i].pCar)))->aBody[0].rb.st2).vel.z;
                 pa->vel.x = imp.x + pa->vel.x;
                 pa->vel.y = imp.y + pa->vel.y;
                 pa->vel.z = imp.z + pa->vel.z;
                 t.x = d.x * _DAT_10077be0;
                 t.y = d.y * _DAT_10077be0;
                 t.z = d.z * _DAT_10077be0;
-                BrMat4MulVec3(&dd, &((BrColCar *)g_aBrRaceDriver[j].pCar)->mat, &t);
+                BrMat4MulVec3(&dd, &(*(struct BrMat4 *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[j].pCar)))->aBody[0].rb.m), &t);
                 pb->vel.x = pb->vel.x - imp.x;
                 pb->vel.y = pb->vel.y - imp.y;
                 pb->vel.z = pb->vel.z - imp.z;
-                memcpy(&((BrColCar *)g_aBrRaceDriver[j].pCar)->save, &((BrColCar *)g_aBrRaceDriver[j].pCar)->st, sizeof(BrColState));
+                memcpy(&(*(struct BrColState *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[j].pCar)))->aBody[0].rb.st2), &(*(struct BrColState *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[j].pCar)))->aBody[0].rb.st), sizeof(BrColState));
                 /* the second car is pushed along the REVERSED normal (sd = -d):
                  * 0x100693C3 lea edx,[esp+0x50] (whole-image run, FFB wheel
                  * frame 1410 -- the live oracle's captures never collided) */
-                BrCrImpulseSolve(((BrColCar *)g_aBrRaceDriver[j].pCar)->body, &dd, &sd, 0, 0.45f);
-                memcpy(&((BrColCar *)g_aBrRaceDriver[j].pCar)->st, &((BrColCar *)g_aBrRaceDriver[j].pCar)->save, sizeof(BrColState));
-                ((BrColCar *)g_aBrRaceDriver[j].pCar)->save.vel.x = imp.x + ((BrColCar *)g_aBrRaceDriver[j].pCar)->save.vel.x;
-                ((BrColCar *)g_aBrRaceDriver[j].pCar)->save.vel.y = imp.y + ((BrColCar *)g_aBrRaceDriver[j].pCar)->save.vel.y;
-                ((BrColCar *)g_aBrRaceDriver[j].pCar)->save.vel.z = imp.z + ((BrColCar *)g_aBrRaceDriver[j].pCar)->save.vel.z;
-                ((BrColCar *)g_aBrRaceDriver[j].pCar)->velOut.x = ((BrColCar *)g_aBrRaceDriver[j].pCar)->save.vel.x;
-                ((BrColCar *)g_aBrRaceDriver[j].pCar)->velOut.y = ((BrColCar *)g_aBrRaceDriver[j].pCar)->save.vel.y;
-                ((BrColCar *)g_aBrRaceDriver[j].pCar)->velOut.z = ((BrColCar *)g_aBrRaceDriver[j].pCar)->save.vel.z;
+                BrCrImpulseSolve((*(unsigned char (*)[120])&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[j].pCar)))->aBody[0].rb.f00), &dd, &sd, 0, 0.45f);
+                memcpy(&(*(struct BrColState *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[j].pCar)))->aBody[0].rb.st), &(*(struct BrColState *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[j].pCar)))->aBody[0].rb.st2), sizeof(BrColState));
+                (*(struct BrColState *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[j].pCar)))->aBody[0].rb.st2).vel.x = imp.x + (*(struct BrColState *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[j].pCar)))->aBody[0].rb.st2).vel.x;
+                (*(struct BrColState *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[j].pCar)))->aBody[0].rb.st2).vel.y = imp.y + (*(struct BrColState *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[j].pCar)))->aBody[0].rb.st2).vel.y;
+                (*(struct BrColState *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[j].pCar)))->aBody[0].rb.st2).vel.z = imp.z + (*(struct BrColState *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[j].pCar)))->aBody[0].rb.st2).vel.z;
+                (*(struct BrVec3 *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[j].pCar)))->aBody[0].rb.st1.vel).x = (*(struct BrColState *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[j].pCar)))->aBody[0].rb.st2).vel.x;
+                (*(struct BrVec3 *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[j].pCar)))->aBody[0].rb.st1.vel).y = (*(struct BrColState *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[j].pCar)))->aBody[0].rb.st2).vel.y;
+                (*(struct BrVec3 *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[j].pCar)))->aBody[0].rb.st1.vel).z = (*(struct BrColState *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[j].pCar)))->aBody[0].rb.st2).vel.z;
                 pb->vel.x = imp.x + pb->vel.x;
                 pb->vel.y = imp.y + pb->vel.y;
                 pb->vel.z = imp.z + pb->vel.z;
                 if (g_brRaceNet != 0) {
-                    ((BrColCar *)g_aBrRaceDriver[i].pCar)->velOut.x = pa->vel.x;
-                    ((BrColCar *)g_aBrRaceDriver[i].pCar)->velOut.y = pa->vel.y;
-                    ((BrColCar *)g_aBrRaceDriver[i].pCar)->velOut.z = pa->vel.z;
+                    (*(struct BrVec3 *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[i].pCar)))->aBody[0].rb.st1.vel).x = pa->vel.x;
+                    (*(struct BrVec3 *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[i].pCar)))->aBody[0].rb.st1.vel).y = pa->vel.y;
+                    (*(struct BrVec3 *)&((BrDriverCar *)(((BrColCar *)g_aBrRaceDriver[i].pCar)))->aBody[0].rb.st1.vel).z = pa->vel.z;
                 }
             }
         }

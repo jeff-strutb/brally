@@ -1,4 +1,5 @@
 #include "br_race.h"   /* br_globals: its objects */
+#include "br_phase.h"   /* BrPhase_, the canonical record */
 #include "slice2_25.h"   /* br_globals: its objects */
 #include "slice3_41.h"   /* br_globals: its objects */
 /* WHAT IT DOES: open this menu page: create its object the first time it is
@@ -91,14 +92,14 @@ int Ctl3F700::Activate()
         (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(p));
         if (p == 0)
             return 0;
-        p->pfnEnter = EnterFn;
-        g_slot->pfnEnter(g_slot);
-        (*(Phase * *)&g_brPAA29B8)->f0C = 1;
-        (*(Phase * *)&g_brPAA29B8)->f68 = 1;
+        (*(PhaseEnterFn *)&((BrPhase_ *)(p))->pfnEnter) = EnterFn;
+        (*(PhaseEnterFn *)&((BrPhase_ *)(g_slot))->pfnEnter)(g_slot);
+        (*(int *)&((BrPhase_ *)((*(Phase * *)&g_brPAA29B8)))->f0C) = 1;
+        (*(int *)&((BrPhase_ *)((*(Phase * *)&g_brPAA29B8)))->f68) = 1;
         BrPodNop();
         BrUiFn1003DFC0();
         BrSub1003E510();
-        g_hookObj->pfnHook = HookFn;
+        (*(PhaseHookFn *)&((BrPhase_ *)(g_hookObj))->pfnHook) = HookFn;
         return 1;
     } else {
         (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(p));

@@ -30,6 +30,7 @@
  */
 #define _CRTIMP __declspec(dllimport)
 #include <stdio.h>
+#include "slice3_39.h"   /* BrTextBox, the canonical record */
 #include <string.h>
 
 class Item438K {
@@ -94,7 +95,7 @@ int BrMenuTime0D70_1003A2B0(Obj3A2B0 *pObj)
     if (strlen(szTime) == 0)
         return 0;
 
-    pLabel = pObj->m2B5C.szName;
+    pLabel = (*(char (*)[1025])&((BrTextBox *)&(pObj->m2B5C))->sz[0]);
     strcpy(pLabel, _strupr(szTime));
 
     pObj->m2B5C.s1();

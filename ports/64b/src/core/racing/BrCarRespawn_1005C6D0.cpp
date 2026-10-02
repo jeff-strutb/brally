@@ -1,4 +1,5 @@
 #include "br_race.h"   /* br_globals: its objects */
+#include "slice3_41.h"   /* BrDriverCar, the canonical record */
 /* WHAT IT DOES: respawn the car at its current track node when it has been
  * flagged for reset (+0x35C negative) or its last-progress timestamp (+0x38)
  * has fallen behind the reset window.  Re-inits the car tables, snaps the
@@ -116,47 +117,47 @@ void Car5C6D0::Respawn()
     float *d;
     float *s;
 
-    if ((f35C < 0) || (f38 < DAT_106eed10 - DAT_10077898)) {
+    if (((*(int *)&((BrDriverCar *)(this))->aBody[0].f01F8) < 0) || ((*(float *)&((BrDriverCar *)(this))->pos.z) < DAT_106eed10 - DAT_10077898)) {
         Sub5E6A0();
         Sub5BCC0();
         if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 2)
-            SetPos(*(float *)(fF8C + fF90 * 0x28 + 0x4C),
-                   *(float *)(fF8C + (fF90 + 2) * 0x28),
-                   *(float *)(fF8C + 0x54 + fF90 * 0x28) - DAT_1007789c);
+            SetPos(*(float *)((*(int *)&((BrDriverCar *)(this))->pNode.p) + (*(int *)&((BrDriverCar *)(this))->iPt.v) * 0x28 + 0x4C),
+                   *(float *)((*(int *)&((BrDriverCar *)(this))->pNode.p) + ((*(int *)&((BrDriverCar *)(this))->iPt.v) + 2) * 0x28),
+                   *(float *)((*(int *)&((BrDriverCar *)(this))->pNode.p) + 0x54 + (*(int *)&((BrDriverCar *)(this))->iPt.v) * 0x28) - DAT_1007789c);
         else
-            SetPos(*(float *)(fF8C + fF90 * 0x28 + 0x4C)
-                       - (float)f140 * DAT_100778a0,
-                   *(float *)(fF8C + (fF90 + 2) * 0x28),
-                   *(float *)(fF8C + 0x54 + fF90 * 0x28) - DAT_1007789c);
-        SetHeading((float)BrAtan2(fF94, fF98));
+            SetPos(*(float *)((*(int *)&((BrDriverCar *)(this))->pNode.p) + (*(int *)&((BrDriverCar *)(this))->iPt.v) * 0x28 + 0x4C)
+                       - (float)(*(int *)&((BrDriverCar *)(this))->f140) * DAT_100778a0,
+                   *(float *)((*(int *)&((BrDriverCar *)(this))->pNode.p) + ((*(int *)&((BrDriverCar *)(this))->iPt.v) + 2) * 0x28),
+                   *(float *)((*(int *)&((BrDriverCar *)(this))->pNode.p) + 0x54 + (*(int *)&((BrDriverCar *)(this))->iPt.v) * 0x28) - DAT_1007789c);
+        SetHeading((float)BrAtan2((*(float *)&((BrDriverCar *)(this))->f0F94), (*(float *)&((BrDriverCar *)(this))->f0F98)));
         SetVel(0.0f, 0.0f, 0.0f);
         SetAngVel(0.0f, 0.0f, 0.0f);
-        p168->pPlane = 0;
-        p168->f1B4 = 0;
-        p168->b1A0 = 2;
-        p16C->pPlane = 0;
-        p16C->f1B4 = 0;
-        p16C->b1A0 = 2;
-        p174->pPlane = 0;
-        p174->f1B4 = 0;
-        p174->b1A0 = 2;
-        p170->pPlane = 0;
-        p170->f1B4 = 0;
-        p170->b1A0 = 2;
-        fEA0 = 0.0f;
-        fEA4 = 0.0f;
-        fEA8 = 0.0f;
-        fEAC = 0xffffff4c;
-        f35C = 0;
-        b29AF = 2;
-        f29B0 = 0x3dcccccd;
-        Chase(f2780, 1.0f);
-        d = f28EC;
-        s = f27B0;
+        (*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[0])->pPlane = 0;
+        (*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[0])->f1B4 = 0;
+        (*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[0])->b1A0 = 2;
+        (*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[1])->pPlane = 0;
+        (*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[1])->f1B4 = 0;
+        (*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[1])->b1A0 = 2;
+        (*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[3])->pPlane = 0;
+        (*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[3])->f1B4 = 0;
+        (*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[3])->b1A0 = 2;
+        (*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[2])->pPlane = 0;
+        (*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[2])->f1B4 = 0;
+        (*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[2])->b1A0 = 2;
+        (*(float *)&((BrDriverCar *)(this))->cHoldFwd) = 0.0f;
+        (*(float *)&((BrDriverCar *)(this))->cHoldRev) = 0.0f;
+        (*(float *)&((BrDriverCar *)(this))->cRevRun) = 0.0f;
+        (*(int *)&((BrDriverCar *)(this))->cFwdRun) = 0xffffff4c;
+        (*(int *)&((BrDriverCar *)(this))->aBody[0].f01F8) = 0;
+        (*(unsigned char *)&((BrDriverCar *)(this))->b29AF) = 2;
+        (*(int *)&((BrDriverCar *)(this))->f29B0) = 0x3dcccccd;
+        Chase((*(float (*)[3])&((BrDriverCar *)(this))->aSnap[1].m[0][0]), 1.0f);
+        d = (*(float (*)[3])&((BrDriverCar *)(this))->f28EC[0]);
+        s = (*(float (*)[3])&((BrDriverCar *)(this))->aSnap[1].m[3][0]);
         d[0] = s[0];
         d[1] = s[1];
         d[2] = s[2];
-        fF78 = 1;
+        (*(int *)&((BrDriverCar *)(this))->fF78) = 1;
     }
 }
 

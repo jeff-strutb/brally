@@ -1,4 +1,5 @@
 #include "br_coretypes.h"   /* br_globals: its objects */
+#include "br_phase.h"   /* BrPhase_, the canonical record */
 #include "slice2_25.h"   /* br_globals: its objects */
 /* WHAT IT DOES: prepare the front end before its main loop starts: clears
  * the image table and the load counters so the first page starts from a
@@ -537,7 +538,7 @@ int BrUiBootPreLoopGate(void)
     if (ph == 0) {
         return 0;
     }
-    ph->pfnEnter = (void *)BrUiRootEnter_100425E0;
+    (*(void * *)&((BrPhase_ *)(ph))->pfnEnter) = (void *)BrUiRootEnter_100425E0;
 
     if (g_obj400 == 0) {
         ob = new Obj400;

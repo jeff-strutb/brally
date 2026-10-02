@@ -1,4 +1,5 @@
 #include "slice2_25.h"   /* br_globals: its objects */
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 /* WHAT IT DOES: leave this menu page: run its leave routine, destroy the
  * page object, and make its parent current again. One of a family that
  * differ only in which parent they return to and which state flags they
@@ -38,7 +39,7 @@ extern "C" {
 
 int Hook(GameObj89 *pObj)
 {
-    pObj->p2AE8->s7();
+    (*(Sub2AE8b * *)&((BrUiCtl_ *)(pObj))->pOwner)->s7();
 
     if ((*(CurPhase89 * *)&g_brPAA29B8) != 0)
         delete (*(CurPhase89 * *)&g_brPAA29B8);

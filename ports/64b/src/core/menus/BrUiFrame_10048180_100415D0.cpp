@@ -1,4 +1,6 @@
 #include "slice3_39.h"   /* br_globals: its objects */
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
+#include "br_phase.h"   /* BrPhase_, the canonical record */
 /* WHAT IT DOES: run one frame of a menu page: gives its pre-hook first
  * refusal (which can end the page early with a sentinel), then updates the
  * page's sub-mode and its controls. The per-frame step of the front end,
@@ -106,73 +108,73 @@ int UiPage::Frame()
     int r;
     int i;
 
-    saved = w128;
-    if (!(f1C & 0x10)) {
+    saved = (*(unsigned short *)&((BrUiCtl_ *)(this))->wStep);
+    if (!((*(unsigned int *)&((BrUiCtl_ *)(this))->flags1C) & 0x10)) {
         if (s3C() == 0) {
-            if (f3818 != 0)
+            if ((*(int *)&((BrUiCtl_ *)(this))->twActive) != 0)
                 s30();
             s04();
-            if (pfn04) {
-                r = pfn04(this);
+            if ((*(int (**)(UiPage *))&((BrUiCtl_ *)(this))->pfn04)) {
+                r = (*(int (**)(UiPage *))&((BrUiCtl_ *)(this))->pfn04)(this);
                 if (r == -2)
                     return 1;
                 if (r == -1)
                     return 0;
             }
             if (s20() != 0 && g_5C30 == 0) {
-                if (f1C & 0x400000) {
+                if ((*(unsigned int *)&((BrUiCtl_ *)(this))->flags1C) & 0x400000) {
                     if ((*(GameCtl * *)&g_pBrAA2E80)->f2C != 0 || (*(GameCtl * *)&g_pBrAA2E80)->f30 != 0)
-                        w1E20C = w2A42;
+                        (*(unsigned short *)&((BrUiCtl_ *)(this))->w1E20C) = (*(short *)&((BrUiCtl_ *)(this))->aStepId[1]);
                 }
-                if (f1C & 2) {
-                    if (pfn08) {
-                        if (pfn08 == (int (*)(UiPage *))BrOpt3760) {
+                if ((*(unsigned int *)&((BrUiCtl_ *)(this))->flags1C) & 2) {
+                    if ((*(int (**)(UiPage *))&((BrUiCtl_ *)(this))->pfn08)) {
+                        if ((*(int (**)(UiPage *))&((BrUiCtl_ *)(this))->pfn08) == (int (*)(UiPage *))BrOpt3760) {
                             BrSub10072AF0(2, 0x200020);
                             g_track = 2;
-                        } else if (pfn08 != (int (*)(UiPage *))FUN_1003c240) {
+                        } else if ((*(int (**)(UiPage *))&((BrUiCtl_ *)(this))->pfn08) != (int (*)(UiPage *))FUN_1003c240) {
                             BrSub10072AF0(1, 0x200020);
                             g_track = 1;
                         }
-                        if (pfn08(this) == 0)
+                        if ((*(int (**)(UiPage *))&((BrUiCtl_ *)(this))->pfn08)(this) == 0)
                             return 0;
-                        if (pfn08 == (int (*)(UiPage *))FUN_1003c240) {
+                        if ((*(int (**)(UiPage *))&((BrUiCtl_ *)(this))->pfn08) == (int (*)(UiPage *))FUN_1003c240) {
                             BrSub10072AF0(1, 0x200020);
                             g_track = 1;
                         }
                         DAT_10ac6744 = 0;
                     }
-                    f1C &= ~2u;
+                    (*(unsigned int *)&((BrUiCtl_ *)(this))->flags1C) &= ~2u;
                 } else {
-                    if (pfn0C)
-                        pfn0C(this);
+                    if ((*(int (**)(UiPage *))&((BrUiCtl_ *)(this))->pfn0C))
+                        (*(int (**)(UiPage *))&((BrUiCtl_ *)(this))->pfn0C)(this);
                 }
-                if ((f1C & 0x10000) && w2AB4 > 0) {
-                    for (i = 0; i < w2AB4; ++i) {
-                        f2AE8->f64->a18[w2AB6[i]]->f1C |= 0x20000;
-                        f2AE8->f64->a18[w2AB6[i]]->w128 = saved;
-                        f2AE8->f64->a18[w2AB6[i]]->f2974 = 0;
-                        f2AE8->f64->a18[w2AB6[i]]->f2970 = 0;
-                        f58 += f2AE8->f64->a18[w2AB6[i]]->w48;
-                        f2AE8->f64->a18[w2AB6[i]]->s0C();
-                        f2AE8->f64->a18[w2AB6[i]]->f1C &= ~0x20000u;
+                if (((*(unsigned int *)&((BrUiCtl_ *)(this))->flags1C) & 0x10000) && (*(short *)&((BrUiCtl_ *)(this))->cChild) > 0) {
+                    for (i = 0; i < (*(short *)&((BrUiCtl_ *)(this))->cChild); ++i) {
+                        (*(unsigned int *)&((BrUiCtl_ *)((*(PageTab * *)&((BrPhase_ *)((*(UiCont * *)&((BrUiCtl_ *)(this))->pOwner)))->pCur)->a18[(*(short (*)[25])&((BrUiCtl_ *)(this))->aChild)[i]]))->flags1C) |= 0x20000;
+                        (*(unsigned short *)&((BrUiCtl_ *)((*(PageTab * *)&((BrPhase_ *)((*(UiCont * *)&((BrUiCtl_ *)(this))->pOwner)))->pCur)->a18[(*(short (*)[25])&((BrUiCtl_ *)(this))->aChild)[i]]))->wStep) = saved;
+                        (*(int *)&((BrUiCtl_ *)((*(PageTab * *)&((BrPhase_ *)((*(UiCont * *)&((BrUiCtl_ *)(this))->pOwner)))->pCur)->a18[(*(short (*)[25])&((BrUiCtl_ *)(this))->aChild)[i]]))->f2974) = 0;
+                        (*(int *)&((BrUiCtl_ *)((*(PageTab * *)&((BrPhase_ *)((*(UiCont * *)&((BrUiCtl_ *)(this))->pOwner)))->pCur)->a18[(*(short (*)[25])&((BrUiCtl_ *)(this))->aChild)[i]]))->f2970) = 0;
+                        (*(int *)&((BrUiCtl_ *)(this))->rcRight) += (*(short *)&((BrUiCtl_ *)((*(PageTab * *)&((BrPhase_ *)((*(UiCont * *)&((BrUiCtl_ *)(this))->pOwner)))->pCur)->a18[(*(short (*)[25])&((BrUiCtl_ *)(this))->aChild)[i]]))->w48);
+                        (*(PageTab * *)&((BrPhase_ *)((*(UiCont * *)&((BrUiCtl_ *)(this))->pOwner)))->pCur)->a18[(*(short (*)[25])&((BrUiCtl_ *)(this))->aChild)[i]]->s0C();
+                        (*(unsigned int *)&((BrUiCtl_ *)((*(PageTab * *)&((BrPhase_ *)((*(UiCont * *)&((BrUiCtl_ *)(this))->pOwner)))->pCur)->a18[(*(short (*)[25])&((BrUiCtl_ *)(this))->aChild)[i]]))->flags1C) &= ~0x20000u;
                     }
                     s08();
                     return 1;
                 }
             } else {
-                if (f1C & 0x400000)
-                    w1E20C = w2A40;
-                if (!(f1C & 4) && !(f1C & 0x20000)) {
-                    w128 = 0;
-                    if ((f1C & 0x100000) && !(f1C & 0x10) && pfn0C != 0) {
-                        w1E20C = 3;
-                        b2B64 = 1;
+                if ((*(unsigned int *)&((BrUiCtl_ *)(this))->flags1C) & 0x400000)
+                    (*(unsigned short *)&((BrUiCtl_ *)(this))->w1E20C) = (*(short *)&((BrUiCtl_ *)(this))->aStepId[0]);
+                if (!((*(unsigned int *)&((BrUiCtl_ *)(this))->flags1C) & 4) && !((*(unsigned int *)&((BrUiCtl_ *)(this))->flags1C) & 0x20000)) {
+                    (*(unsigned short *)&((BrUiCtl_ *)(this))->wStep) = 0;
+                    if (((*(unsigned int *)&((BrUiCtl_ *)(this))->flags1C) & 0x100000) && !((*(unsigned int *)&((BrUiCtl_ *)(this))->flags1C) & 0x10) && (*(int (**)(UiPage *))&((BrUiCtl_ *)(this))->pfn0C) != 0) {
+                        (*(unsigned short *)&((BrUiCtl_ *)(this))->w1E20C) = 3;
+                        (*(char *)&((BrUiCtl_ *)(this))->aText[0].f08) = 1;
                         s08();
                         return 1;
                     }
                 } else {
-                    if (pfn0C)
-                        pfn0C(this);
+                    if ((*(int (**)(UiPage *))&((BrUiCtl_ *)(this))->pfn0C))
+                        (*(int (**)(UiPage *))&((BrUiCtl_ *)(this))->pfn0C)(this);
                 }
             }
             s08();

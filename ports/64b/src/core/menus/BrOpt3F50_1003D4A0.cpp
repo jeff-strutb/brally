@@ -1,4 +1,5 @@
 #include "br_race.h"   /* br_globals: its objects */
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 #include "slice2_25.h"   /* br_globals: its objects */
 /* WHAT IT DOES: leave this page and return to a specific parent, setting the
  * mode that tells the parent what happened. */
@@ -49,7 +50,7 @@ int BrOpt3F50(GameObj *pGame)
     Phase *pObj;
 
     g_mode = 2;
-    pGame->pSub->s7();
+    (*(GameSub * *)&((BrUiCtl_ *)(pGame))->pOwner)->s7();
     pObj = (Phase *)((*(Phase * *)&g_brPAA29B8));
     if (pObj != 0)
         pObj->f00(1);

@@ -1,4 +1,5 @@
 #include "slice2_25.h"   /* br_globals: its objects */
+#include "br_phase.h"   /* BrPhase_, the canonical record */
 /* WHAT IT DOES: open this menu page: create its object the first time it is
  * asked for, run its enter routine and make it the current page. One of a
  * family of near-identical page openers -- each owns its own page slot, and
@@ -73,17 +74,17 @@ int Ctl3F410::Activate()
         (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(p));
         if (p == 0)
             return 0;
-        p->pfnEnter = EnterFn;
-        g_slot->pfnEnter(g_slot);
-        (*(Phase * *)&g_brPAA29B8)->f0C = one;
-        (*(Phase * *)&g_brPAA29B8)->f68 = one;
+        (*(PhaseEnterFn *)&((BrPhase_ *)(p))->pfnEnter) = EnterFn;
+        (*(PhaseEnterFn *)&((BrPhase_ *)(g_slot))->pfnEnter)(g_slot);
+        (*(int *)&((BrPhase_ *)((*(Phase * *)&g_brPAA29B8)))->f0C) = one;
+        (*(int *)&((BrPhase_ *)((*(Phase * *)&g_brPAA29B8)))->f68) = one;
         q = new Phase;
         g_slot2 = q;
         if (q == 0)
             return 0;
-        q->pfnEnter = Enter2Fn;
-        g_slot2->pfnEnter(g_slot2);
-        g_slot2->f0C = one;
+        (*(PhaseEnterFn *)&((BrPhase_ *)(q))->pfnEnter) = Enter2Fn;
+        (*(PhaseEnterFn *)&((BrPhase_ *)(g_slot2))->pfnEnter)(g_slot2);
+        (*(int *)&((BrPhase_ *)(g_slot2))->f0C) = one;
     } else {
         (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(p));
     }

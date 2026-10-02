@@ -1,4 +1,6 @@
 #include "slice2_25.h"   /* br_globals: its objects */
+#include "br_ui.h"   /* BrUiPage_, the canonical record */
+#include "br_phase.h"   /* BrPhase_, the canonical record */
 #include "slice3_39.h"   /* br_globals: its objects */
 /* WHAT IT DOES: tick a phase, deciding on this frame whether its periodic
  * work is due -- every frame in one mode, and otherwise once every 120
@@ -80,7 +82,7 @@ int Phase32T::Tick()
     PhaseHolder *pSaved = (*(PhaseHolder * *)&g_brPAA29B8);
     PhaseHolder *pCur   = (*(PhaseHolder * *)&g_2908);
     (*(PhaseHolder * *)&g_brPAA29B8) = (PhaseHolder *)((BrOptObj *)(pCur));
-    PhaseInner *p = pCur->f14->p334;
+    PhaseInner *p = (*(PhaseInner * *)&((BrUiPage_ *)((*(PhaseHolder2 * *)&((BrPhase_ *)(pCur))->aPages[0])))->apCtl[199]);
     p->f3C = (float)(*(BrTickPair * *)&g_pBrAA2E80)->i0;
     p->f40 = (float)(*(BrTickPair * *)&g_pBrAA2E80)->i4;
     p->s3();
