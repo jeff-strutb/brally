@@ -16,7 +16,6 @@ struct Obj400;
 struct Ph;
 struct Phase;
 struct Phase8;
-struct Vec5D060;
 
 #ifdef __cplusplus
 extern "C" {
@@ -6931,7 +6930,7 @@ extern uint32_t g_brRacePathIndex;  /* 0x10AF07F0 */
 #pragma pop_macro("g_brRacePathIndex")
 #pragma push_macro("DAT_10af11f8")
 #undef DAT_10af11f8
-extern struct Vec5D060 DAT_10af11f8;  /* 0x10AF11F8 */
+extern struct BrVec3 DAT_10af11f8;  /* 0x10AF11F8 */
 #pragma pop_macro("DAT_10af11f8")
 #pragma push_macro("g_brAiScanBestPt")
 #undef g_brAiScanBestPt
@@ -6939,7 +6938,7 @@ extern int32_t g_brAiScanBestPt;  /* 0x10B1C888 */
 #pragma pop_macro("g_brAiScanBestPt")
 #pragma push_macro("DAT_10b1c89c")
 #undef DAT_10b1c89c
-extern struct Vec5D060 DAT_10b1c89c;  /* 0x10B1C89C */
+extern struct BrVec3 DAT_10b1c89c;  /* 0x10B1C89C */
 #pragma pop_macro("DAT_10b1c89c")
 #pragma push_macro("g_brAiScanFlag18")
 #undef g_brAiScanFlag18
@@ -6967,7 +6966,7 @@ extern uint32_t g_brPairStaticB[83];  /* 0x10B1CD3C */
 #pragma pop_macro("g_brPairStaticB")
 #pragma push_macro("DAT_10b1ce88")
 #undef DAT_10b1ce88
-extern struct Vec5D060 DAT_10b1ce88;  /* 0x10B1CE88 */
+extern struct BrVec3 DAT_10b1ce88;  /* 0x10B1CE88 */
 #pragma pop_macro("DAT_10b1ce88")
 #pragma push_macro("DAT_10b1cea4")
 #undef DAT_10b1cea4

@@ -21,6 +21,7 @@
 
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
+#include "slice1_05.h"   /* g_aBrEntRecs */
 #include "slice1_05.h"   /* br_globals: its objects */
 #include "slice1_06.h"   /* br_globals: its objects */
 #include <string.h>

@@ -390,7 +390,7 @@ typedef struct BrUi51990Ctx {
 
 extern const BrUi51990Ctx *g_pBrUi51990Ctx;
 
-void BrOptFn10051990(struct BrOptObj *pThis);
+void BrOptFn10051990(struct BrPhase_ *pThis);
 
 /* ==========================================================================
  * NOT IMPLEMENTED -- see the report

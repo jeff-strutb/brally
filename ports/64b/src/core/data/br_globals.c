@@ -741,8 +741,8 @@ int32_t g_i0AC65C;  /* 0x100ABDFC */
 int DAT_100abe40;  /* 0x100ABE40 */
 short g_ABE44;  /* 0x100ABE44 */
 BrCheatEntry g_aBrCheatCode[16];  /* 0x100ABE48 */
-Metric12 (*(BrGlyphMetric12 (*)[])&g_BrGlyphFontA12)[95];  /* 0x100ABE84 */
-Metric12B (*(BrGlyphMetric12 (*)[])&g_BrGlyphFontB12)[95];  /* 0x100AC2FC */
+Metric12 g_BrGlyphFontA12[95];  /* 0x100ABE84 */
+Metric12B g_BrGlyphFontB12[95];  /* 0x100AC2FC */
 const int32_t g_aBrAC308[168];  /* 0x100AC308 */
 const int32_t g_aBrAC530[2];  /* 0x100AC530 */
 const int32_t g_aBrAC538[2];  /* 0x100AC538 */
@@ -750,7 +750,7 @@ const int32_t g_aBrAC540[2];  /* 0x100AC540 */
 const int32_t g_aBrAC548[44];  /* 0x100AC548 */
 BrCharMapEntry g_BrCharMapImage[784];  /* 0x100AC5F8 */
 BrGlyphMetric g_BrGlyphFontA[95];  /* 0x100AC6E4 */
-Dim (*(struct Dim (*)[7])&g_tab)[7];  /* 0x100AC908 */
+Dim g_tab[7];  /* 0x100AC908 */
 char DAT_100ac9c8[132];  /* 0x100AC9C8 */
 char DAT_100aca4c;  /* 0x100ACA4C */
 char g_szBr0ACA50[124];  /* 0x100ACA50 */
@@ -1927,10 +1927,10 @@ int32_t g_brAD098C;  /* 0x10AD098C */
 unsigned char g_brAD0990[128];  /* 0x10AD0990 */
 uint32_t g_brRacePathIndex;  /* 0x10AF07F0 */
 BrDriver g_aBrRaceDriver[20];  /* 0x10AF07F8 */
-struct Vec5D060 DAT_10af11f8;  /* 0x10AF11F8 */
+struct BrVec3 DAT_10af11f8;  /* 0x10AF11F8 */
 BrDriverCar g_aBrRaceCar[16];  /* 0x10AF1208 */
 int32_t g_brAiScanBestPt;  /* 0x10B1C888 */
-struct Vec5D060 DAT_10b1c89c;  /* 0x10B1C89C */
+struct BrVec3 DAT_10b1c89c;  /* 0x10B1C89C */
 BrVec3 g_aScanMidB[2];  /* 0x10B1C8E4 */
 BrVec3 g_brAiScanEndA;  /* 0x10B1C8FC */
 BrVec3 g_aScanOut3[8];  /* 0x10B1C958 */
@@ -1949,7 +1949,7 @@ int32_t g_brAiBiasPos;  /* 0x10B1CBE8 */
 RcNode *g_brRacePathNode;  /* 0x10B1CBEC */
 uint32_t g_brPairStaticA[83];  /* 0x10B1CBF0 */
 uint32_t g_brPairStaticB[83];  /* 0x10B1CD3C */
-struct Vec5D060 DAT_10b1ce88;  /* 0x10B1CE88 */
+struct BrVec3 DAT_10b1ce88;  /* 0x10B1CE88 */
 BrVec3 g_brRacePathPos;  /* 0x10B1CE98 */
 int32_t DAT_10b1cea4;  /* 0x10B1CEA4 */
 BrSndNearest g_BrSndNearest;  /* 0x10B1CEB8 */

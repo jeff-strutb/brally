@@ -50,11 +50,7 @@
 #include "slice3_41.h"   /* br_globals: its objects */
 #include <string.h>
 
-struct Vec5D060 {
-    float x, y, z;
-
-    Vec5D060 &operator=(const Vec5D060 &o) { x = o.x; y = o.y; z = o.z; return *this; }
-};
+typedef struct BrVec3 Vec5D060;   /* x, y, z */
 
 struct Pt5D060 {
     Vec5D060 left;                      /* +0x00 */

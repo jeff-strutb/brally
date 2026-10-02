@@ -21,6 +21,7 @@
  * with the shapes the bytes show. */
 #define BrSub100088B0 BrSub100088B0_cdecl
 #define BrSegSetBases BrSegSetBases_cdecl
+#include "slice1_05.h"   /* g_aBrEntRecs */
 #include "slice2_19.h"
 #undef BrSub100088B0
 #undef BrSegSetBases

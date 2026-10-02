@@ -339,9 +339,12 @@ typedef struct BrCarGfx {
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define g_Br0AC300 g_i0AC300
-#define g_Br6C661C g_i6C661C
-#define g_Br6C6624 g_i6C6624
+/* Glide 0x100ABAA0, 0x106ED6AC, 0x106ED6B4 (the D3D build's 0x100AC300,
+ * 0x106C661C, 0x106C6624).  The last two sit inside the pointer-free span
+ * the inventory gives g_aBrEntRecs, so they are byte views of it. */
+#define g_Br0AC300 g_AC300
+#define g_Br6C661C (*(int32_t *)((char *)&g_aBrEntRecs + 0x7C))
+#define g_Br6C6624 (*(int32_t *)((char *)&g_aBrEntRecs + 0x84))
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x118AA0C0 */
 /* 0x118AA0C4 -- ALIAS FOUND, NOT RESOLVED. slice2_20.c declares the same
  * address as `void (*g_pfn18AA0C4)(void *pv)`. The two disagree about the
