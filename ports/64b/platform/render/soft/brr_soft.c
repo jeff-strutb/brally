@@ -149,6 +149,14 @@ void brr_close(void)
 uint32_t brr_texture(uint32_t id, const uint8_t *px, int w, int h)
 {
     stex *t;
+    if (id == 0) {                 /* reuse a freed slot first */
+        uint32_t i;
+        for (i = 0; i < s_ntex; i++)
+            if (!s_tex[i].px && !s_tex[i].w) {
+                id = i + 1;
+                break;
+            }
+    }
     if (id == 0 || id > s_ntex) {
         stex *n = (stex *)realloc(s_tex, (s_ntex + 1) * sizeof *s_tex);
         if (!n)
@@ -172,6 +180,7 @@ void brr_texture_free(uint32_t id)
     if (id && id <= s_ntex) {
         free(s_tex[id - 1].px);
         s_tex[id - 1].px = NULL;
+        s_tex[id - 1].w = s_tex[id - 1].h = 0;
     }
 }
 
@@ -475,14 +484,37 @@ void brr_draw(const brr_state *st, const brr_vertex *v, int n)
             const char *e = getenv("BRR_DUMP");
             dump = e ? atol(e) : -1;
         }
+        if (dump >= 0 && (long)s_frame == dump && st->texture && st->texture <= s_ntex) {
+            /* and each texture it uses, once, as BRR_DUMP_<id>.png */
+            static unsigned char seen[8192];
+            const stex *t = &s_tex[st->texture - 1];
+            if (st->texture < sizeof seen && !seen[st->texture] && t->px) {
+                char path[64];
+                uint32_t *keep = s_col;
+                int kw = s_w, kh = s_h;
+                uint32_t *c = (uint32_t *)malloc((size_t)t->w * (size_t)t->h * 4);
+                int k;
+                seen[st->texture] = 1;
+                if (c) {
+                    for (k = 0; k < t->w * t->h; k++)   /* alpha as grey, so a glyph sheet reads */
+                        c[k] = 0xFF000000u | (uint32_t)t->px[k * 4 + 3] * 0x010101u;
+                    s_col = c; s_w = t->w; s_h = t->h;
+                    snprintf(path, sizeof path, "build/portable/BRR_DUMP_%u.png", st->texture);
+                    write_png(path);
+                    s_col = keep; s_w = kw; s_h = kh;
+                    free(c);
+                }
+            }
+        }
         if (dump >= 0 && (long)s_frame == dump)
             for (i = 0; i + 2 < n; i += 3)
                 fprintf(stderr, "brr: tri dm%d df%d dk%d tex %u cc %d/%d/%d/%d ac %d/%d/%d/%d blend %d/%d const %08X clip %d,%d-%d,%d"
-                        " | %.1f,%.1f z%.3f w%.4f c%.0f/%.0f/%.0f/%.0f | %.1f,%.1f | %.1f,%.1f\n",
+                        " twh %dx%d st %.3f,%.3f %.3f,%.3f %.3f,%.3f | %.1f,%.1f z%.3f w%.4f c%.0f/%.0f/%.0f/%.0f | %.1f,%.1f | %.1f,%.1f\n",
                         st->depth_mode, st->depth_fn, st->depth_mask, st->texture, st->cc_fn, st->cc_factor, st->cc_local, st->cc_other,
                         st->ac_fn, st->ac_factor, st->ac_local, st->ac_other,
                         st->blend_rgb_src, st->blend_rgb_dst, st->constant,
                         st->clip_x0, st->clip_y0, st->clip_x1, st->clip_y1,
+                        st->tex_w, st->tex_h, v[i].s, v[i].t, v[i+1].s, v[i+1].t, v[i+2].s, v[i+2].t,
                         v[i].x, v[i].y, v[i].z, v[i].oow, v[i].r, v[i].g, v[i].b, v[i].a,
                         v[i + 1].x, v[i + 1].y, v[i + 2].x, v[i + 2].y);
     }

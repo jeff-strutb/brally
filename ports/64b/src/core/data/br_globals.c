@@ -472,14 +472,14 @@ char DAT_1007b584[0x1C];  /* 0x1007B584 */
 char s__s_is_not_a_valid_POD_file_1007b5a0[28];  /* 0x1007B5A0 */
 char DAT_1007b5bc[68];  /* 0x1007B5BC */
 char DAT_1007b600[24];  /* 0x1007B600 */
-uint8_t g_aBrFontBlockLarge[82080];  /* 0x1007B618 */
+uint8_t g_aBrFontBlockLarge[54 * 0xA00];  /* 0x1007B618: 54 glyph strips of 64x40, up to the small sheet */
 BrUiCtlVtbl_ g_brUiCtlVtbl_1008F6B8;  /* 0x1008F6B8 */
 BrUiPageVtbl BrUiPageVtbl_1008F6F8;  /* 0x1008F6F8 */
 BR_GLOBAL_EXTENT(BrPhaseFullVtbl, BrPhaseVtbl_1008F700, , 0x4);  /* 0x1008F700 */
 BrTextBoxVtbl g_BrTextBoxVtbl;  /* 0x1008F728 */
 BR_GLOBAL_EXTENT(BrTextListVtbl *, g_pBrTextListVtbl, , 0x4B3C);  /* 0x1008F758 */
 BR_GLOBAL_EXTENT(int, g_brNetSendCount, , 0x8F7C);  /* 0x10094298 */
-uint8_t g_aBrFontBlockSmall[34527];  /* 0x1009D218 */
+uint8_t g_aBrFontBlockSmall[54 * 0x280];  /* 0x1009D218: 54 glyph strips of 32x20 */
 signed char DAT_100a58f7[33];  /* 0x100A58F7 */
 signed char g_aBrFontClass[96];  /* 0x100A5918 */
 int32_t g_aBrFontOffLarge[56];  /* 0x100A5978 */

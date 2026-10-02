@@ -1,10 +1,12 @@
 /* glide.c: Glide 2 for the game, over the renderer interface (brr.h).
  *
  * The board answers as a Voodoo Graphics with one TMU and 4 MB on each of
- * the frame buffer and the TMU. Texture memory is a map from (TMU, start
- * address) to the texture last downloaded there, decoded to RGBA8 once, at
- * download; grTexSource selects one by address, exactly as the game's own
- * texture manager addresses the board. */
+ * the frame buffer and the TMU. Texture memory is modelled as the card has
+ * it: a download copies bytes to TMU memory, and grTexSource interprets the
+ * bytes at its address with the format and size IT is given -- the game
+ * downloads with one description and sources with another (the large font
+ * page). A decoded RGBA8 copy is cached per (address, format, size) and
+ * dropped when a download overwrites its bytes. */
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -211,23 +213,13 @@ FxU32 grTexTextureMemRequired(FxU32 evenOdd, GrTexInfo *info)
 FxU32 grTexMinAddress(GrChipID_t tmu) { (void)tmu; return 0; }
 FxU32 grTexMaxAddress(GrChipID_t tmu) { (void)tmu; return TMU_RAM - 8; }
 
-typedef struct ptex { FxU32 addr; uint32_t id; int w, h; struct ptex *next; } ptex;
-static ptex *s_tex[64];
+static uint8_t s_tmem[TMU_RAM];
 
-static ptex *tex_at(FxU32 addr, int make)
-{
-    ptex **pp = &s_tex[(addr >> 3) & 63], *t;
-    for (t = *pp; t; t = t->next)
-        if (t->addr == addr)
-            return t;
-    if (!make)
-        return NULL;
-    t = (ptex *)calloc(1, sizeof *t);
-    t->addr = addr;
-    t->next = *pp;
-    *pp = t;
-    return t;
-}
+/* a decoded texture: the bytes [start, end) read as fmt at w x h */
+typedef struct ptex { FxU32 start, end; GrTextureFormat_t fmt; int w, h; uint32_t id; } ptex;
+#define PTEX_MAX 2048
+static ptex s_tex[PTEX_MAX];
+static int s_ntex;
 
 static void decode(GrTextureFormat_t f, const uint8_t *src, uint8_t *dst, int n)
 {
@@ -279,34 +271,89 @@ static void decode(GrTextureFormat_t f, const uint8_t *src, uint8_t *dst, int n)
     }
 }
 
+/* the current source, re-read before a draw when a download changed its
+ * bytes: the card samples memory, so a texture rewritten in place while
+ * bound draws with its new contents */
+static FxU32 s_src_start;
+static GrTexInfo s_src_info;
+static int s_src_set, s_src_dirty;
+
+static void tex_resolve(void);
+
 void grTexDownloadMipMap(GrChipID_t tmu, FxU32 start, FxU32 evenOdd, GrTexInfo *info)
 {
-    ptex *t;
-    int w, h;
-    uint8_t *rgba;
+    FxU32 n, end;
+    int i;
     (void)evenOdd;
-    if (tmu != 0 || !info || !info->data)
+    if (tmu != 0 || !info || !info->data || start >= TMU_RAM)
         return;
-    dims(info->largeLod, info->aspectRatio, &w, &h);
-    rgba = (uint8_t *)malloc((size_t)w * (size_t)h * 4);
-    decode(info->format, (const uint8_t *)info->data, rgba, w * h);   /* the largest level */
-    t = tex_at(start, 1);
-    t->id = brr_texture(t->id, rgba, w, h);
-    t->w = w;
-    t->h = h;
-    free(rgba);
+    n = mem_required(info->smallLod, info->largeLod, info->aspectRatio, info->format);
+    if (start + n > TMU_RAM)
+        n = TMU_RAM - start;
+    memcpy(s_tmem + start, info->data, n);
+    end = start + n;
+    /* anything decoded from the bytes just overwritten is stale */
+    for (i = 0; i < s_ntex; i++)
+        if (s_tex[i].id && s_tex[i].start < end && start < s_tex[i].end) {
+            if (s_tex[i].id == s_st.texture)
+                s_src_dirty = 1;
+            brr_texture_free(s_tex[i].id);
+            s_tex[i] = s_tex[--s_ntex];
+            i--;
+        }
 }
 
 void grTexSource(GrChipID_t tmu, FxU32 start, FxU32 evenOdd, GrTexInfo *info)
 {
-    ptex *t;
     (void)evenOdd;
     if (tmu != 0)
         return;
-    t = tex_at(start, 0);
-    s_st.texture = t ? t->id : 0;
-    if (info)
-        dims(info->largeLod, info->aspectRatio, &s_st.tex_w, &s_st.tex_h);
+    s_st.texture = 0;
+    s_src_set = 0;
+    if (!info || start >= TMU_RAM)
+        return;
+    s_src_start = start;
+    s_src_info = *info;
+    s_src_set = 1;
+    tex_resolve();
+}
+
+static void tex_resolve(void)
+{
+    int i, w, h;
+    FxU32 n, start = s_src_start;
+    uint8_t *rgba;
+    const GrTexInfo *info = &s_src_info;
+    s_src_dirty = 0;
+    s_st.texture = 0;
+    dims(info->largeLod, info->aspectRatio, &w, &h);
+    s_st.tex_w = w;
+    s_st.tex_h = h;
+    for (i = 0; i < s_ntex; i++)
+        if (s_tex[i].start == start && s_tex[i].fmt == info->format && s_tex[i].w == w && s_tex[i].h == h) {
+            s_st.texture = s_tex[i].id;
+            return;
+        }
+    n = (FxU32)(w * h * texel_bytes(info->format));
+    if (start + n > TMU_RAM)
+        return;
+    rgba = (uint8_t *)malloc((size_t)w * (size_t)h * 4);
+    if (!rgba)
+        return;
+    decode(info->format, s_tmem + start, rgba, w * h);     /* the largest level */
+    if (s_ntex == PTEX_MAX) {
+        brr_texture_free(s_tex[0].id);
+        s_tex[0] = s_tex[--s_ntex];
+    }
+    s_tex[s_ntex].start = start;
+    s_tex[s_ntex].end = start + mem_required(info->smallLod, info->largeLod, info->aspectRatio, info->format);
+    s_tex[s_ntex].fmt = info->format;
+    s_tex[s_ntex].w = w;
+    s_tex[s_ntex].h = h;
+    s_tex[s_ntex].id = brr_texture(0, rgba, w, h);
+    s_st.texture = s_tex[s_ntex].id;
+    s_ntex++;
+    free(rgba);
 }
 
 /* ---- drawing ------------------------------------------------------------------------------ */
@@ -331,6 +378,8 @@ void grDrawTriangle(const GrVertex *a, const GrVertex *b, const GrVertex *c)
     vert(&v[0], a);
     vert(&v[1], b);
     vert(&v[2], c);
+    if (s_src_dirty && s_src_set)
+        tex_resolve();
     brr_draw(&s_st, v, 3);
 }
 
@@ -340,7 +389,11 @@ void grDrawPolygonVertexList(int n, const GrVertex vl[])
     int i, k = 0;
     for (i = 1; i + 1 < n; i++) {
         if (k == 3 * 64) {
-            brr_draw(&s_st, v, k);
+            if (s_src_dirty && s_src_set)
+                tex_resolve();
+            if (s_src_dirty && s_src_set)
+            tex_resolve();
+        brr_draw(&s_st, v, k);
             k = 0;
         }
         vert(&v[k++], &vl[0]);
