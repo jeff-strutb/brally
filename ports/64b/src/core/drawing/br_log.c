@@ -61,9 +61,8 @@ typedef struct { void *p; } BrModelLoadArg;
  * below. It ignores the argument it is given and reads the stored one
  * instead. */
 /* @implements 0x10035BA7 d3d BrLogEmit */
-void BrLogEmit(void *ignored)
+void BrLogEmit(void)
 {
-    (void)ignored;
     BrLogPrint(g_BrLogArg);
 }
 
@@ -75,7 +74,7 @@ void BrLogEmit(void *ignored)
 void BrLogSet(void *p)
 {
     g_BrLogArg = p;
-    BrLogEmit(NULL);
+    BrLogEmit();
 }
 
 /* ==========================================================================

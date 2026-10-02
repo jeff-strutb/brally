@@ -41,7 +41,7 @@
  * number -- every menu caption, button label and message comes through here.
  * A number that is not in the table gives nothing back rather than an error. */
 /* @implements 0x10074030 d3d BrStrGet */
-const char *BrStrGet(int id)
+char *BrStrGet(int id)
 {
     /* br_bits.h's BrHandleLookup IS this function with the table address
      * turned into an argument; the original INLINES it here (byte shape:

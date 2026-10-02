@@ -733,6 +733,7 @@ const int8_t k_AC634[4];  /* 0x100ABDD4 */
 const int8_t k_AC638[4];  /* 0x100ABDD8 */
 const uint32_t k_AC640[2];  /* 0x100ABDE0 */
 int g_brIdx0ABDE8;  /* 0x100ABDE8 */
+int32_t DAT_100abae8[26];  /* 0x100ABAE8 */
 uint32_t DAT_100abdec;  /* 0x100ABDEC */
 uint32_t DAT_100abdf0;  /* 0x100ABDF0 */
 int g_brSel0ABDF4;  /* 0x100ABDF4 */

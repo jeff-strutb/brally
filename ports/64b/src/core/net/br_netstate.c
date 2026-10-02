@@ -73,11 +73,10 @@
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 
-int BrNetReset(BrNetState *pNet)
+int BrNetReset(void)
 {
     int i;
 
-    (void)pNet;
 
     /* every player slot, under its own mutex */
     for (i = 0; i < 16; i++) {

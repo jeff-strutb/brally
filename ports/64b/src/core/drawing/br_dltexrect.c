@@ -64,7 +64,7 @@
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 
-void BrGbiCall10021560(int lrs, int lrt, int uls, int ult, int tile)
+void BrGbiCall10021560(int lrs, int lrt, int uls, int ult)
 {
     BrGbiRectVert v[4];
     float cy, w2, h2;
@@ -72,7 +72,6 @@ void BrGbiCall10021560(int lrs, int lrt, int uls, int ult, int tile)
     float xLrs, xUls, yLrt, yUlt;
     float u0, u1, vt0, vt1;
 
-    (void)tile;
 
     fLrs = (float)(unsigned int)lrs / BrGbiRectK_FIXED;
 

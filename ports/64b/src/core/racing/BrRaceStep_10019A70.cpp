@@ -270,7 +270,6 @@ extern int (*g_18ED1E8)();
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 
-extern int (*(*(int (**)(int, int, int, int, int, int, int, int, int, int, int, int, int, int, int))&g_pfn18ED1C4))(int,int,int,int,int,int,int,int,int,int,int,int,int,int,int);
 extern int (*g_18ED1C0)(int,int,int,int,int,int,int,int);
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* sub_1006D280: prototype in br_funcs.h */

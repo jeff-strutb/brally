@@ -192,9 +192,8 @@ static __inline BrGfxWords *put_slot(void)
 /* WHAT IT DOES: nothing.  It is a hook the shipped build left empty -- the
  * game hands it a finished transform and it returns immediately. */
 /* @implements 0x1002A9F2 glide BrGuMtxHookNop */
-void BrGuMtxHookNop(const BrMat4 *pM)
+void BrGuMtxHookNop(void)
 {
-    (void)pM;
 }
 
 /* ------------------------------------------------------------------ *
@@ -272,7 +271,7 @@ void BrGuMtxStore(const int pSrc[4][4], int pDst[4][4])
  * steer and spin independently of the body. Called once per car per frame,
  * right after the body. */
 /* @implements 0x10009C10 glide BrCarDrawWheels */
-void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel)
+void BrCarDrawWheels(const BrCarView *pCar)
 {
     /* The original takes ONE argument -- the raw 0x2B68 car record -- reads
      * the model from the global above rather than from a second argument,
@@ -287,7 +286,6 @@ void BrCarDrawWheels(const BrCarView *pCar, const BrModelView *pModel)
     BrMat4       *pSlot;
     int           pass;
 
-    (void)pModel;
 
     /* 0x10009C19 -- the gate, read once and from the model, not per pass */
     if (BR_WHEEL_MDL(0x80BCu) == 0)
@@ -1406,7 +1404,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         (int (*)[4])g_BrCarMtxSlot[car->f140]);
 
     BrMat4Mul(&g_BrDrawWorld, &g_BrCurMat, &g_BrDrawCombined);
-    BrGuMtxHookNop(&g_BrDrawCombined);
+    BrGuMtxHookNop();
 
     pSlot = BrSub_10069490();
     g_BrCarLightSlot[car->f140] = (uint32_t)pSlot;
@@ -1722,7 +1720,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
 
     /* 0xACCA -- early wheel call (class 2 only).  Orig: push ebx; call; add esp,4. */
     if (car->b29AF == 2)
-        BrCarDrawWheels((const BrCarView *)car, NULL);
+        BrCarDrawWheels((const BrCarView *)car);
 
     /* 0xACE3 -- four light MOVEMEMs (unconditional, +0x10/+0x20/+0x30). */
     put(0x039E0010u, g_BrCarLightSlot[*(int32_t *)(car + BR_CAR_OFF_ICAR)]);
@@ -2065,7 +2063,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
 
     /* 0xBDE8 -- late wheel call (non-class 2). */
     if (car->b29AF != 2)
-        BrCarDrawWheels((const BrCarView *)car, NULL);
+        BrCarDrawWheels((const BrCarView *)car);
 
     /* 0xBE14 -- final: sync, combiner, render mode. */
     put(0xE7000000u, 0);

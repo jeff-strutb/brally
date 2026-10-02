@@ -119,7 +119,7 @@ typedef struct Br70Race {
 /* 64-bit core: declared once, in br_globals.h or its struct's header */    /* 0x10226A4C */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x106E9D88 */
 
-void BrSub_100173F0(BrHudView *aViews, BrDriverCar * a2)
+void BrSub_100173F0(BrHudView *aViews)
 {
     char    szBuf[BR70_173F0_BUF];
     int     w;
@@ -129,7 +129,6 @@ void BrSub_100173F0(BrHudView *aViews, BrDriverCar * a2)
     int32_t pos;
     const char *pszSuffix;
 
-    (void)a2;
 
     if ((*(int *)&g_brRaceRules.mode) == 3)
         return;

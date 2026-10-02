@@ -54,11 +54,10 @@ typedef void(__fastcall *BrSub603A0ThisCall)(void *pThis, BrSub603A0Arg arg);
  * declared parameter has no counterpart in the original and is DISCARDED --
  * both operands come from globals. */
 /* @implements 0x10060260 d3d BrSub10060260 */
-void BrSub10060260(void *pThis)
+void BrSub10060260(void)
 {
     /* Both operands come from globals.  The declared parameter has no
      * counterpart in the original and is discarded -- see the header. */
-    (void)pThis;
     {
         BrSub603A0Arg arg;
         arg.p = g_brOwner5BC72C;

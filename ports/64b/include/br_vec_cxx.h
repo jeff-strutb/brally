@@ -106,5 +106,9 @@ static inline void BrVec3SubFrom(float * a0, const struct BrVec3 * a1) { BrVec3S
 static inline void BrVec3SubFrom(struct BrVec3 * a0, const float * a1) { BrVec3SubFrom(a0, (const struct BrVec3 *)a1); }
 static inline void BrVec3SubFrom(float * a0, const float * a1) { BrVec3SubFrom((struct BrVec3 *)a0, (const struct BrVec3 *)a1); }
 static inline void BrVec3Zero(float * a0) { BrVec3Zero((struct BrVec3 *)a0); }
+/* The original's empty stubs (0x10008D60 and its twins) are cdecl, and
+ * callers pass them whatever the call site had; C accepts that through an
+ * unprototyped declaration, C++ needs the arguments taken and ignored. */
+static inline int BrPodNop(int, ...) { return BrPodNop(); }
 #endif
 #endif

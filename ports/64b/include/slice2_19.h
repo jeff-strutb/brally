@@ -689,7 +689,7 @@ int BrRet1_10035B87(void);
  * a literal 0. Both are preserved so call sites transcribe unchanged. */
 /* BrLogEmit: prototype in br_funcs.h */
 
-/* 0x10035BBA  g_BrLogArg = p, then BrLogEmit(NULL). */
+/* 0x10035BBA  g_BrLogArg = p, then BrLogEmit(). */
 /* BrLogSet: prototype in br_funcs.h */
 
 /* 0x10035C70  Copy three consecutive floats, DESTINATION FIRST.

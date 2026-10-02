@@ -646,7 +646,7 @@ int BrInputPollPressed(void)
  * definition in br_dik.c. */
 #include "br_match.h"
 typedef struct { void *v; } BrSub10060750Arg;
-extern void BR_THISCALL1 BrSub10060750(BrObj2C *pDev, BrSub10060750Arg unused);
+extern void BR_THISCALL1 BrSub10060750(BrObj2C *pDev);
 
 /* 64-bit core: declared by the platform headers */
 /* 64-bit core: declared by the platform headers */
@@ -729,14 +729,14 @@ int32_t __stdcall BrSub100590D0(struct Obj400 * iArg, void *hWnd, uint32_t uMsg,
             break;
         if (g_pBrAA2E80 == 0)
             break;
-        BrSub10060750(g_pBrAA2E80, *(BrSub10060750Arg *)&hWnd);
+        BrSub10060750(g_pBrAA2E80);
         break;
     case 0x211:
     case 0x231:
         (*(int32_t *)&g_BrAA33E0) = 1;
         if (g_pBrAA2E80 == 0)
             break;
-        BrSub10060750(g_pBrAA2E80, *(BrSub10060750Arg *)&hWnd);
+        BrSub10060750(g_pBrAA2E80);
         break;
     case 0x212:
     case 0x232:
@@ -754,7 +754,7 @@ int32_t __stdcall BrSub100590D0(struct Obj400 * iArg, void *hWnd, uint32_t uMsg,
     user:
         if (g_pBrAA2E80 == 0)
             break;
-        BrSub10060750(g_pBrAA2E80, *(BrSub10060750Arg *)&hWnd);
+        BrSub10060750(g_pBrAA2E80);
         break;
     default:
         break;

@@ -777,7 +777,7 @@ void BrHudDraw(BrHudView *aViews, BrDriverCar * a2)
     BrHudDrawDial(aViews);
     BrSub_10017290(aViews);
     BrHudDrawSplitTimes(aViews);
-    BrSub_100173F0(aViews, a2);
+    BrSub_100173F0(aViews);
     BrHudDrawViewMessage(aViews);
     BrTextFlag358Clear();
     BrSub_10019290();

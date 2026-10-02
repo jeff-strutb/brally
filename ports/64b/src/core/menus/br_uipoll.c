@@ -115,11 +115,10 @@ typedef char br23_assert_item[
  * corresponds to. */
 /* @implements 0x10037F40 glide BrUiFn1003E920 */
 /* @implements 0x1003E920 d3d BrUiFn1003E920 */
-int32_t BrUiFn1003E920(BrUiObj *pObj, BrUiGlobals *pG)
+int32_t BrUiFn1003E920(BrUiObj *pObj)
 {
     /* Orig: lea 11*g+0x3D, fild, fstp [pObj+0x3c]. BrUiStF is an extern CALL. */
     int32_t v = g_i0AC65C * 11 + 0x3D;
-    (void)pG;
     *(float *)(pObj + BR_UI_OFF_F3C) = (float)v;
     return 1;
 }
@@ -136,10 +135,8 @@ int32_t BrUiFn1003E920(BrUiObj *pObj, BrUiGlobals *pG)
  * nothing off the stack.  `xor eax,eax` / `mov ecx,1` feed the 0/1 stores;
  * 2 and the 0x10B4DF30 pointer are imm32.  The port's pState/pB4DF30
  * arguments are the matching-build's DAT_ symbols. */
-void BrUiFn1003DFC0(BrStartupState *pState, void *pB4DF30)
+void BrUiFn1003DFC0(void)
 {
-    (void)pState;
-    (void)pB4DF30;
     g_Br0B380C = 0;
     (*(int32_t *)&g_226e80) = 0;
     (*(int32_t *)&g_226e7c) = 0;
@@ -162,10 +159,9 @@ void BrUiFn1003DFC0(BrStartupState *pState, void *pB4DF30)
 /* @implements 0x1003E010 d3d BrUiFn1003E010 */
 /* Orig materialises 0x102 in eax, stores ax as word then eax as dword.
  * Link-stage jmp+nop preamble is stripped by match_sweep. */
-void BrUiFn1003E010(BrUiGlobals *pG)
+void BrUiFn1003E010(void)
 {
     int v;
-    (void)pG;
     v = 0x102;
     (*(int16_t *)&DAT_10ac5b38) = (int16_t)v;
     DAT_10ac58f0 = v;
@@ -175,10 +171,9 @@ void BrUiFn1003E010(BrUiGlobals *pG)
  * into two more session settings. Again the meaning of the values was not
  * established. */
 /* @implements 0x1003E040 d3d BrUiFn1003E040 */
-void BrUiFn1003E040(BrUiGlobals *pG)
+void BrUiFn1003E040(void)
 {
     int v;
-    (void)pG;
     v = 0x37;
     (*(int16_t *)((char *)&(*(int16_t *)&DAT_10ac5b38) + 0x2)) = (int16_t)v;
     DAT_10ac40a0 = v;
@@ -206,10 +201,9 @@ void BrUiFn1003E040(BrUiGlobals *pG)
  * list has no answer. Several near-identical hooks follow, differing only
  * in which setting they store into. */
 /* @implements 0x1003EAE0 d3d BrUiPoll1003EAE0 */
-int32_t BrUiPoll1003EAE0(BrUiObj *pObj, BrUiGlobals *pG)
+int32_t BrUiPoll1003EAE0(BrUiObj *pObj)
 {
     int32_t r;
-    (void)pG;
     BR23_SEL_OFFER(pObj, r, (*(int32_t *)&g_AB94));
     if (r >= 0) {
         (*(int32_t *)&g_AB94) = r;
@@ -221,10 +215,9 @@ int32_t BrUiPoll1003EAE0(BrUiObj *pObj, BrUiGlobals *pG)
  * throws the answer away -- there is no store-back at all, so this hook only
  * has whatever effect the asking itself has. */
 /* @implements 0x1003EBC0 d3d BrUiPoll1003EBC0 */
-int32_t BrUiPoll1003EBC0(BrUiObj *pObj, BrUiGlobals *pG)
+int32_t BrUiPoll1003EBC0(BrUiObj *pObj)
 {
     int32_t r;
-    (void)pG;
     /* The answer is thrown away -- there is no store-back here. */
     BR23_SEL_OFFER(pObj, r, (*(int32_t *)&g_5BD8));
     (void)r;
@@ -235,10 +228,9 @@ int32_t BrUiPoll1003EBC0(BrUiObj *pObj, BrUiGlobals *pG)
  * setting. */
 /* @implements 0x100382A0 glide BrUiPoll1003EC80 */
 /* @implements 0x1003EC80 d3d BrUiPoll1003EC80 */
-int32_t BrUiPoll1003EC80(BrUiObj *pObj, BrUiGlobals *pG)
+int32_t BrUiPoll1003EC80(BrUiObj *pObj)
 {
     int32_t r;
-    (void)pG;
     BR23_SEL_OFFER(pObj, r, (*(int32_t *)&g_brSel5B98));
     if (r >= 0)
         (*(int32_t *)&g_brSel5B98) = r;
@@ -249,10 +241,9 @@ int32_t BrUiPoll1003EC80(BrUiObj *pObj, BrUiGlobals *pG)
  * setting. */
 /* @implements 0x10038320 glide BrUiPoll1003EDF0 */
 /* @implements 0x1003EDF0 d3d BrUiPoll1003EDF0 */
-int32_t BrUiPoll1003EDF0(BrUiObj *pObj, BrUiGlobals *pG)
+int32_t BrUiPoll1003EDF0(BrUiObj *pObj)
 {
     int32_t r;
-    (void)pG;
     BR23_SEL_OFFER(pObj, r, g_iAA2A30);
     if (r >= 0)
         g_iAA2A30 = r;
@@ -263,10 +254,9 @@ int32_t BrUiPoll1003EDF0(BrUiObj *pObj, BrUiGlobals *pG)
  * of a per-player table is current. */
 /* @implements 0x10038150 glide BrUiPoll1003EB60 */
 /* @implements 0x1003EB60 d3d BrUiPoll1003EB60 */
-int32_t BrUiPoll1003EB60(BrUiObj *pObj, BrUiGlobals *pG)
+int32_t BrUiPoll1003EB60(BrUiObj *pObj)
 {
     int32_t r;
-    (void)pG;
     BR23_SEL_OFFER(pObj, r, (*(int32_t *)&g_brIdx5C04));
     if (r >= 0)
         (*(int32_t *)&g_brIdx5C04) = r;
@@ -276,10 +266,9 @@ int32_t BrUiPoll1003EB60(BrUiObj *pObj, BrUiGlobals *pG)
 /* WHAT IT DOES: the same, storing into a different setting again. */
 /* @implements 0x10038180 glide BrUiPoll1003EB90 */
 /* @implements 0x1003EB90 d3d BrUiPoll1003EB90 */
-int32_t BrUiPoll1003EB90(BrUiObj *pObj, BrUiGlobals *pG)
+int32_t BrUiPoll1003EB90(BrUiObj *pObj)
 {
     int32_t r;
-    (void)pG;
     BR23_SEL_OFFER(pObj, r, (*(int32_t *)&g_5BD8));
     if (r >= 0)
         (*(int32_t *)&g_5BD8) = r;

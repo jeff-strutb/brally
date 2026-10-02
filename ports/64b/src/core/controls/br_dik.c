@@ -175,13 +175,12 @@ typedef struct {
 /* WHAT IT DOES: tell a device slot's object to show or hide itself,
  * depending on whether the current screen is live and a related flag. */
 /* @implements 0x10060750 d3d BrSub10060750 */
-void BR_THISCALL1 BrSub10060750(BrDevSlot *pSlot, BrSub10060750Arg unused)
+void BR_THISCALL1 BrSub10060750(BrDevSlot *pSlot)
 {
     BrSub10060750Iface *pIface = (BrSub10060750Iface *)pSlot->pIface;
     uint32_t            live;
     uint32_t            flag;
 
-    (void)unused;
 
     if (pIface != NULL) {
         live = (*(BrSub10060750Phase * *)&g_brPAA29B8)->f0C;

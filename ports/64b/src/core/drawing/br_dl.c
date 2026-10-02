@@ -127,7 +127,7 @@
 
 
 /* 0x10023B10's free-list threading; defined with the rest of the clipper. */
-void br_dl_clip_reset(BrDl *pDl);
+void br_dl_clip_reset(void);
 
 /* ==================================================================== */
 /* addressing -- see the header on why this is a table and not a cast    */
@@ -672,12 +672,11 @@ static BrClipVert s_aClipSeed[3];                 /* the three &vtx->f40 */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-static void br_dl_clip_reset(BrDl *pDl)
+static void br_dl_clip_reset(void)
 {
     int a;
     int c;
 
-    (void)pDl;
     DAT_10b73530 = ((void (*)(void *))BrFramePresent);
     DAT_10b73534 = ((funcptr)FUN_10023aa0);
     DAT_10b7352c = ((funcptr)BrPodNop);

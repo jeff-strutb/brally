@@ -313,7 +313,7 @@ typedef int (*funcptr)();
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* BrPodNop: prototype in br_funcs.h */
 /* BrTexInit: prototype in br_funcs.h */
-int br_dl_clip_reset();
+int br_dl_clip_reset(void);
 /* BrGlInstall: prototype in br_funcs.h */
 
 /* WHAT IT DOES: map the current width/height globals to a Glide resolution constant and

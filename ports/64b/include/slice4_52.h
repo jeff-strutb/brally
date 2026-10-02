@@ -131,7 +131,7 @@ struct BrUiScreen *BrUiScreenCtor(struct BrUiScreen *pThis);
  * 0x10060260  BrSub10060260
  * ==========================================================================
  *
- * SIGNATURE NOTE: slice3_32.h declares this `void BrSub10060260(void *pThis)`
+ * SIGNATURE NOTE: slice3_32.h declares this `void BrSub10060260()`
  * and comments it "thiscall", and slice3_32.c passes `pG->pAA2900`.  The
  * original takes NO argument at all: it loads `this` from *0x10AA2E80 and the
  * one stack argument from *0x10680584, both inside the function.  The

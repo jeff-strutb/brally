@@ -2676,6 +2676,7 @@ extern const uint32_t k_AC640[2];  /* 0x100ABDE0 */
 #undef g_brIdx0ABDE8
 extern int g_brIdx0ABDE8;  /* 0x100ABDE8 */
 #pragma pop_macro("g_brIdx0ABDE8")
+extern int32_t DAT_100abae8[26];  /* 0x100ABAE8  string ids, one per mode; up to 0x100ABB50 */
 #pragma push_macro("DAT_100abdec")
 #undef DAT_100abdec
 extern uint32_t DAT_100abdec;  /* 0x100ABDEC */

@@ -134,7 +134,7 @@ unsigned char *BrDlsTileRectE4(unsigned char *p)
     v &= 0xFFF;
     u = v;
     v = tile;
-    BrGbiCall10021560(ulx, u, lrx, lry, v);
+    BrGbiCall10021560(ulx, u, lrx, lry);
     p += 4;
     p += 4;
     return p;
@@ -153,7 +153,7 @@ unsigned char *BrDlsTileRectE3(unsigned char *p)
     w1 = *(unsigned *)(p + 4);
     w0 = *(unsigned *)p;
     BrGbiCall10021560((w1 >> 10) & 0x3FFC, (w1 & 0xFFF) << 2,
-                 (w0 >> 10) & 0x3FFC, (w0 & 0xFFF) << 2, (w1 >> 24) & 7);
+                 (w0 >> 10) & 0x3FFC, (w0 & 0xFFF) << 2);
     return p + 8;
 }
 
