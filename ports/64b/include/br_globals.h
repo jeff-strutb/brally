@@ -6495,7 +6495,7 @@ extern struct Phase *g_294C;  /* 0x10AC5CA4 */
 #pragma pop_macro("g_294C")
 #pragma push_macro("g_5CAC")
 #undef g_5CAC
-extern int g_5CAC;  /* 0x10AC5CAC */
+extern struct Phase *g_5CAC;  /* 0x10AC5CAC */
 #pragma pop_macro("g_5CAC")
 #pragma push_macro("g_5CB0")
 #undef g_5CB0

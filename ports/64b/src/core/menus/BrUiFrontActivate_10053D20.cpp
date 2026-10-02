@@ -93,7 +93,7 @@ int Phase53D20::Activate()
     }
 
     if ((*(int *)&g_brRaceRules.mode) == 4 && g_5bc760 == 2 && g_5BF4 != 0) {
-        CtlF340_fn();
+        CtlF340_fn(NULL);   /* a thiscall that never reads this */
         (*(int *)&g_brRaceRules.mode) = 0;
         m = (*(int *)&g_a220B20);
     }
@@ -102,7 +102,7 @@ int Phase53D20::Activate()
         if (BrSeasonApply() == 0) {
             return 0;
         }
-        CtlF340_fn();
+        CtlF340_fn(NULL);   /* a thiscall that never reads this */
         BrMenuAutoSaveName();
         g_5BF4 = 1;
     } else if ((*(int *)&g_brRaceRules.mode) == 6) {

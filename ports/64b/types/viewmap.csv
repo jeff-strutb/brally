@@ -84,3 +84,7 @@ BrCollPlaneZ,BrCollPlane,
 BrTipView,BrCarBody,
 Phase,,ports/64b/src/core/startup/BrAppStateSetMode_1001CE20.cpp
 Whl5C6D0,BrRbBody,
+PhaseCtx5D10,BrPhase_,
+GameObj3DEC0,BrUiCtl_,
+Screen5D2C,BrUiCtl_,
+GameObj3DF80,BrUiCtl_,

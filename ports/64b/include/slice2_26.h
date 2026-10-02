@@ -439,7 +439,7 @@ int BrPhaseActivate_10045520(BrPhaseCtx *pCtx);
  * nAA2898 = 1, and -- when nAA287C is 0 or 1 and nA9D000 is clear -- calls
  * BrExt_1003C020 and RE-READS nAA287C, so a mode changed by that call is what
  * the 2/3 test below sees. Always returns 0. */
-int BrPhaseLeave_10044970(BrPhaseCtx *pCtx, void *pEntity);
+/* BrPhaseLeave_10044970: prototype in br_funcs.h */
 
 /* 0x10044A30  The twin of 0x10044970: leaves to 0x10AA294C, does NOT touch
  * nAA2898 and does NOT clear the 0x10 flag bit up front, and on the 2/3 path

@@ -115,7 +115,7 @@ int Fn3DD20(void)
 
     p = g_slot;
     if (p == 0) {
-        p = ((Phase *)br_new_obj(sizeof(Phase), (void *(*)(void *))BrOptObjCtor));
+        p = ((Phase *)br_new_obj(sizeof(BrPhase_), (void *(*)(void *))BrOptObjCtor));
         g_slot = p;
         (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(p));
         if (p == 0)

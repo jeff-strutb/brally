@@ -532,7 +532,7 @@ int BrUiBootPreLoopGate(void)
         q += 3;
     } while ((int)q < (int)((char *)g_rec + 0x2D8));
 
-    ph = ((Phase *)br_new_obj(sizeof(Phase), (void *(*)(void *))BrOptObjCtor));
+    ph = ((Phase *)br_new_obj(sizeof(BrPhase_), (void *(*)(void *))BrOptObjCtor));
     g_2908 = ph;
     (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(ph));
     if (ph == 0) {

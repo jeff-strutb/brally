@@ -262,7 +262,7 @@ void __stdcall BrPhaseShutdown_10048B20(int bPartial)
     }
 
     if (g_5CAC != 0) {
-        g_5CAC->v7();
+        ((Ph *)g_5CAC)->v7();
         br_vdelete(g_5CAC);
         g_5CAC = 0;
         g_brPAA29E4 = 0;

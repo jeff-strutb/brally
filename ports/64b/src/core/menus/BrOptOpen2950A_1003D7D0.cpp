@@ -3,6 +3,7 @@
  * and open its lobby). */
 #define _CRTIMP __declspec(dllimport)
 #include "slice2_25.h"   /* br_globals: its objects */
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 #include "br_phase.h"   /* BrPhase_, the canonical record */
 #include <string.h>
 
@@ -62,17 +63,17 @@ int CtlD620::Activate()
 
     p = g_slot;
     if (p == 0) {
-        p = ((Phase *)br_new_obj(sizeof(Phase), (void *(*)(void *))BrOptObjCtor));
+        p = ((Phase *)br_new_obj(sizeof(BrPhase_), (void *(*)(void *))BrOptObjCtor));
         g_slot = p;
-        (*(Phase * *)&(*(OptObj41B60 * *)&g_brPAA29B8)) = (Phase *)((BrOptObj *)(p));
+        (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(p));
         if (p == 0)
             return 0;
         (*(PhaseEnterFn *)&((BrPhase_ *)(p))->pfnEnter) = EnterFn;
         (*(PhaseEnterFn *)&((BrPhase_ *)(g_slot))->pfnEnter)(g_slot);
-        (*(Phase * *)&(*(OptObj41B60 * *)&g_brPAA29B8))->f0C = 1;
-        (*(Phase * *)&(*(OptObj41B60 * *)&g_brPAA29B8))->f68 = 1;
+        (*(int *)&((BrPhase_ *)((*(Phase * *)&g_brPAA29B8)))->f0C) = 1;
+        (*(int *)&((BrPhase_ *)((*(Phase * *)&g_brPAA29B8)))->f68) = 1;
     } else {
-        (*(Phase * *)&(*(OptObj41B60 * *)&g_brPAA29B8)) = (Phase *)((BrOptObj *)(p));
+        (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(p));
     }
     return 1;
 }
@@ -177,7 +178,7 @@ int BrOptOpen2950A(void *pUnused)
             DAT_10ac5bf0 = 1;
             if (DAT_10ac5bd4 == 2 && strlen(g_aBrA9CDF0) < 7)
                 goto done;
-            if ((*(void * *)&g_brPAA29D8) != 0 && (*(Screen5D2C * *)&g_brPAA29D4)->w1E164 > 0) {
+            if ((*(void * *)&g_brPAA29D8) != 0 && (*(unsigned short *)&((BrUiCtl_ *)((*(Screen5D2C * *)&g_brPAA29D4)))->list.count) > 0) {
                 if (BrSub1003C260() != 0)
                     goto open;
             } else {
@@ -191,19 +192,19 @@ int BrOptOpen2950A(void *pUnused)
     }
 open:
     if ((*(OptObj41B60 * *)&g_brPAA2950) == 0) {
-        p = ((OptObj41B60 *)br_new_obj(sizeof(OptObj41B60), (void *(*)(void *))BrOptObjCtor));
+        p = ((OptObj41B60 *)br_new_obj(sizeof(BrPhase_), (void *(*)(void *))BrOptObjCtor));
         (*(OptObj41B60 * *)&g_brPAA2950) = (OptObj41B60 *)((struct Phase *)((OptObj41B60 *)((struct Phase *)(p))));
         (*(OptObj41B60 * *)&g_brPAA29B8) = (OptObj41B60 *)((BrOptObj *)(p));
         if (p == 0)
             return 0;
-        (*(int (**)(OptObj41B60 *))&((BrPhase_ *)(p))->pfnEnter) = BrOptFn10057C10;
+        (*(int (**)(OptObj41B60 *))&((BrPhase_ *)(p))->pfnEnter) = (int (*)(OptObj41B60 *))BrOptFn10057C10;
         (*(int (**)(OptObj41B60 *))&((BrPhase_ *)((*(OptObj41B60 * *)&g_brPAA2950)))->pfnEnter)((*(OptObj41B60 * *)&g_brPAA2950));
         (*(int *)&((BrPhase_ *)((*(OptObj41B60 * *)&g_brPAA29B8)))->f0C) = 1;
         (*(int *)&((BrPhase_ *)((*(OptObj41B60 * *)&g_brPAA29B8)))->f68) = 1;
     } else {
         (*(OptObj41B60 * *)&g_brPAA29B8) = (OptObj41B60 *)((BrOptObj *)((*(OptObj41B60 * *)&g_brPAA2950)));
     }
-    (*(PhaseCtx5D10 * *)&g_29B8)->pfnTick = BrPhaseLeave_10044970;
+    (*(int (**)(void *))&((BrPhase_ *)((*(PhaseCtx5D10 * *)&g_29B8)))->pfnHook) = BrPhaseLeave_10044970;
 done:
     return 1;
 }

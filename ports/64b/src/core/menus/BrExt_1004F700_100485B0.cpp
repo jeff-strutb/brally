@@ -228,7 +228,7 @@ int BrExt_1004F700(GameUi *parent)
     (*(Root0485B0 * *)&g_2908)->pTable->s1(s_RallySeason_BRF);
     g_brGate5BA0 = 0;
     (*(int (*)[1])&((BrPhase_ *)(parent))->aFlags[0])[(*(unsigned short *)&((BrPhase_ *)(parent))->nPages)] = 1;
-    cont = ((Page0485B0 *)br_new_obj(sizeof(Page0485B0), (void *(*)(void *))BrUiPageCtor_10048470));
+    cont = ((Page0485B0 *)br_new_obj(sizeof(BrUiPage_), (void *(*)(void *))BrUiPageCtor_10048470));
     (*(Page0485B0 * (*)[22])&((BrPhase_ *)(parent))->aPages[0])[(*(unsigned short *)&((BrPhase_ *)(parent))->nPages)] = cont;
     bad = (cont == 0);
     if (bad)
@@ -238,14 +238,14 @@ int BrExt_1004F700(GameUi *parent)
     (*(int *)&((BrUiPage_ *)(cont))->f10) = 0;
     (*(float *)&((BrUiPage_ *)(cont))->fX) = 195.0f;
     (*(float *)&((BrUiPage_ *)(cont))->fY) = 130.0f;
-    p = ((BrCtl *)br_new_obj(sizeof(BrCtl), (void *(*)(void *))BrMenuObjCtor_10040B10));
+    p = ((BrCtl *)br_new_obj(sizeof(BrUiCtl_), (void *(*)(void *))BrMenuObjCtor_10040B10));
     (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
     bad = (p == 0);
     if (bad)
         FUN_100378c0(4);
     p->s38(parent, 0, 0, 9, 2, 5, 0, 0);
     (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
-    p = ((BrCtl *)br_new_obj(sizeof(BrCtl), (void *(*)(void *))BrMenuObjCtor_10040B10));
+    p = ((BrCtl *)br_new_obj(sizeof(BrUiCtl_), (void *(*)(void *))BrMenuObjCtor_10040B10));
     (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
     bad = (p == 0);
     if (bad)
@@ -254,7 +254,7 @@ int BrExt_1004F700(GameUi *parent)
     (*(unsigned short *)&((BrUiCtl_ *)(p))->w1E20C) = 3;
     p->s34((char *)(BrStrGet(0x34)), 1, 1, (char *)(&DAT_100aaca8));
     (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
-    p = ((BrCtl *)br_new_obj(sizeof(BrCtl), (void *(*)(void *))BrMenuObjCtor_10040B10));
+    p = ((BrCtl *)br_new_obj(sizeof(BrUiCtl_), (void *(*)(void *))BrMenuObjCtor_10040B10));
     (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
     bad = (p == 0);
     if (bad)
@@ -277,7 +277,7 @@ int BrExt_1004F700(GameUi *parent)
     }
     (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
     (*(short *)&((BrUiPage_ *)(cont))->cSel) += 1;
-    p = ((BrCtl *)br_new_obj(sizeof(BrCtl), (void *(*)(void *))BrMenuObjCtor_10040B10));
+    p = ((BrCtl *)br_new_obj(sizeof(BrUiCtl_), (void *(*)(void *))BrMenuObjCtor_10040B10));
     (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
     bad = (p == 0);
     if (bad)
@@ -296,7 +296,7 @@ int BrExt_1004F700(GameUi *parent)
         exists = 0;
     else
         fclose(fp);
-    p = ((BrCtl *)br_new_obj(sizeof(BrCtl), (void *(*)(void *))BrMenuObjCtor_10040B10));
+    p = ((BrCtl *)br_new_obj(sizeof(BrUiCtl_), (void *(*)(void *))BrMenuObjCtor_10040B10));
     (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
     bad = (p == 0);
     if (bad)
@@ -314,7 +314,7 @@ int BrExt_1004F700(GameUi *parent)
     }
     (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
     (*(short *)&((BrUiPage_ *)(cont))->cSel) += 1;
-    p = ((BrCtl *)br_new_obj(sizeof(BrCtl), (void *(*)(void *))BrMenuObjCtor_10040B10));
+    p = ((BrCtl *)br_new_obj(sizeof(BrUiCtl_), (void *(*)(void *))BrMenuObjCtor_10040B10));
     (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
     bad = (p == 0);
     if (bad)
@@ -326,14 +326,14 @@ int BrExt_1004F700(GameUi *parent)
     p->s34((char *)(BrStrGet(0xc)), 1, 1, (char *)(&(*(char *)&g_hot0)));
     (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
     (*(short *)&((BrUiPage_ *)(cont))->cSel) += 1;
-    p = ((BrCtl *)br_new_obj(sizeof(BrCtl), (void *(*)(void *))BrMenuObjCtor_10040B10));
+    p = ((BrCtl *)br_new_obj(sizeof(BrUiCtl_), (void *(*)(void *))BrMenuObjCtor_10040B10));
     (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
     bad = (p == 0);
     if (bad)
         FUN_100378c0(4);
     p->s38(parent, 80.0f, 46.0f, 9, 2, 5, 0, 6);
     (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
-    p = ((BrCtl *)br_new_obj(sizeof(BrCtl), (void *(*)(void *))BrMenuObjCtor_10040B10));
+    p = ((BrCtl *)br_new_obj(sizeof(BrUiCtl_), (void *(*)(void *))BrMenuObjCtor_10040B10));
     (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
     bad = (p == 0);
     if (bad)
@@ -342,7 +342,7 @@ int BrExt_1004F700(GameUi *parent)
     (*(unsigned short *)&((BrUiCtl_ *)(p))->w1E20C) = 3;
     p->s34((char *)(BrStrGet(0x36)), 1, 1, (char *)(&DAT_100aac08));
     (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
-    p = ((BrCtl *)br_new_obj(sizeof(BrCtl), (void *(*)(void *))BrMenuObjCtor_10040B10));
+    p = ((BrCtl *)br_new_obj(sizeof(BrUiCtl_), (void *(*)(void *))BrMenuObjCtor_10040B10));
     (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
     bad = (p == 0);
     if (bad)
@@ -352,7 +352,7 @@ int BrExt_1004F700(GameUi *parent)
     (*(unsigned short *)&((BrUiCtl_ *)(p))->w1E20C) = 5;
     p->s34(&(g_aBr39B720[0]), 1, 3, (char *)(&DAT_100aac08));
     (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
-    p = ((BrCtl *)br_new_obj(sizeof(BrCtl), (void *(*)(void *))BrMenuObjCtor_10040B10));
+    p = ((BrCtl *)br_new_obj(sizeof(BrUiCtl_), (void *(*)(void *))BrMenuObjCtor_10040B10));
     (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
     bad = (p == 0);
     if (bad)
@@ -361,7 +361,7 @@ int BrExt_1004F700(GameUi *parent)
     (*(unsigned short *)&((BrUiCtl_ *)(p))->w1E20C) = 3;
     p->s34((char *)(BrStrGet(0x37)), 1, 1, &DAT_100aac28);
     (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
-    p = ((BrCtl *)br_new_obj(sizeof(BrCtl), (void *(*)(void *))BrMenuObjCtor_10040B10));
+    p = ((BrCtl *)br_new_obj(sizeof(BrUiCtl_), (void *(*)(void *))BrMenuObjCtor_10040B10));
     (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
     bad = (p == 0);
     if (bad)
@@ -371,7 +371,7 @@ int BrExt_1004F700(GameUi *parent)
     (*(unsigned short *)&((BrUiCtl_ *)(p))->w1E20C) = 5;
     p->s34(&(g_aBr39B720[0]), 1, 3, &DAT_100aac28);
     (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
-    p = ((BrCtl *)br_new_obj(sizeof(BrCtl), (void *(*)(void *))BrMenuObjCtor_10040B10));
+    p = ((BrCtl *)br_new_obj(sizeof(BrUiCtl_), (void *(*)(void *))BrMenuObjCtor_10040B10));
     (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
     bad = (p == 0);
     if (bad)
@@ -380,7 +380,7 @@ int BrExt_1004F700(GameUi *parent)
     (*(unsigned short *)&((BrUiCtl_ *)(p))->w1E20C) = 3;
     p->s34((char *)(BrStrGet(0x38)), 1, 1, (char *)(&DAT_100aac18));
     (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
-    p = ((BrCtl *)br_new_obj(sizeof(BrCtl), (void *(*)(void *))BrMenuObjCtor_10040B10));
+    p = ((BrCtl *)br_new_obj(sizeof(BrUiCtl_), (void *(*)(void *))BrMenuObjCtor_10040B10));
     (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
     bad = (p == 0);
     if (bad)

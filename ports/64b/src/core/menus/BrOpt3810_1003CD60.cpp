@@ -72,11 +72,6 @@ public:
     int f08;
 };
 
-struct BrSlot {
-    int id;
-    int a;
-    int b;
-};
 
 struct DPSess {
     char pad[0x2C];

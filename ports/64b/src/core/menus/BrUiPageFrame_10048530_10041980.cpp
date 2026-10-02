@@ -57,7 +57,7 @@ extern "C" {
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-void *memset(void *, int, unsigned int);
+#include <string.h>
 }
 
 int Phase32F::Frame()

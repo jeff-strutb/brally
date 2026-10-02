@@ -48,7 +48,7 @@ extern "C" {
 
 int Draw40DD0::DrawRect(void *pRect)
 {
-    BrSprFontDraw((int)(*(float *)&((BrUiCtl_ *)(this))->x), (int)(*(float *)&((BrUiCtl_ *)(this))->y), (*(short *)&((BrUiCtl_ *)(this))->w1E20C), pRect,
+    BrSprFontDraw((int)(*(float *)&((BrUiCtl_ *)(this))->x), (int)(*(float *)&((BrUiCtl_ *)(this))->y), (*(short *)&((BrUiCtl_ *)(this))->w1E20C), (int *)pRect,
                    g_aBrUiSprite[(*(short *)&((BrUiCtl_ *)(this))->w1E20C)].fBlit);
 
     return 1;

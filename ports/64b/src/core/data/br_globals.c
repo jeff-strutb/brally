@@ -1811,7 +1811,7 @@ struct Ph *DAT_10ac5c9c;  /* 0x10AC5C9C */
 struct Phase8 *g_2948;  /* 0x10AC5CA0 */
 struct Phase *g_294C;  /* 0x10AC5CA4 */
 BrOptObj *g_brPAA2950;  /* 0x10AC5CA8 */
-int g_5CAC;  /* 0x10AC5CAC */
+struct Phase *g_5CAC;  /* 0x10AC5CAC */
 struct Phase *g_5CB0;  /* 0x10AC5CB0 */
 struct Phase *g_5CB4;  /* 0x10AC5CB4 */
 struct Ph *DAT_10ac5cb8;  /* 0x10AC5CB8 */
