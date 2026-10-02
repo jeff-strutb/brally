@@ -53,8 +53,9 @@ extern "C" {
 /* BrSub100356B0: prototype in br_funcs.h */
 }
 
-int Leave(GameObj3DF80 *pObj)
+extern "C" int BrOptFn10044A30(void *pObj_)
 {
+    GameObj3DF80 *pObj = (GameObj3DF80 *)pObj_;
     int v;
 
     if (g_guardB != 0) {

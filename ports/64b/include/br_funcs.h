@@ -1123,6 +1123,9 @@ const unsigned char * BrDlVtxNoZLit(const unsigned char *);
 struct BrDriverCar;
 void BrCarWheelFx(struct BrDriverCar *);
 int BrPhaseLeave_10044970(void *);
+unsigned BrAiScanCorridor(void *, int, int, void *);
+int BrUiHook89_10046CD0(void *);
+int BrOptFn10044A30(void *);
 struct BrTexRec;
 void BrTexInstallRecords(struct BrTexRec *, int);
 #pragma pop_macro("BrDlsClipCodes")

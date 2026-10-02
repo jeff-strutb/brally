@@ -543,7 +543,7 @@ extern void BrSub1006A4A0(void *pThis, void *pArg);
  * 0xC8 bytes, established by its own `operator new` literal and by its
  * constructor's last store landing on +0xC4. */
 /* BrOptFn10044970: prototype in br_funcs.h */
-/* XSLICE 0x10044A30 */ extern int32_t BrOptFn10044A30(void *pEntity);
+/* BrOptFn10044A30 (0x1003DF80): prototype in br_funcs.h */
 
 /* KERNEL32 imports, used verbatim by 0x10043810 and 0x10043A00 to dispose of
  * the session descriptor DirectPlay handed back. Supplied by the platform

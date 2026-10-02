@@ -141,11 +141,6 @@ extern BrUiCtl_  * BR_THISCALL1 FUN_10040b10(BrUiCtl_ *);
  * port scaffolding the image never initialises.  Three hooks recur in BOTH
  * builders with identical glide values (p10043FA0, p10041300, p100413B0),
  * which pins the sequence mapping independently. */
-extern void FUN_10039f30(void); extern void FUN_10039f60(void);
-extern void FUN_100406e0(void); extern void FUN_10040530(void);
-extern void FUN_1003ed30(void); extern void FUN_1003ed10(void);
-extern void FUN_1003abd0(void); extern void FUN_1003ad10(void);
-extern void FUN_1003ac70(void);
 extern void FUN_100407b0(void); extern void FUN_1003d4f0(void);
 extern void FUN_1003a860(void); extern void FUN_1003a910(void);
 /* 64-bit core: declared once, in br_globals.h or its struct's header */

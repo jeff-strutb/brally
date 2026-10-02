@@ -236,10 +236,10 @@ typedef struct BrAiMenuRec {
  * register-eligible -- a float for the constant (pushed as an immediate),
  * one-member structs for the two loads -- which leaves edx alone and has
  * the callee clean its own 12 bytes, exactly as thiscall does. */
-uint32_t __fastcall BrAiScanCorridor(BrAiCar *pCar, float a, BrAiIdxArg idx,
-                                     BrAiNodeArg node);   /* 0x1005D060 */
+/* 0x1005D060 is Car::Scan(depth, mid, node), a thiscall; the C++ lane
+ * defines it, with this C entry. */
 #define BR_AI_SCAN(pCar, a, idx, node) \
-    BrAiScanCorridor((pCar), (float)(a), (idx), (node))
+    BrAiScanCorridor((pCar), (int)(a), (int)(idx).v, (node).p)
 /* BrVec3Predict: prototype in br_funcs.h */
 /* BrCtlAiLineStep: prototype in br_funcs.h */
 /* BrCarCtlChain_1006F170: prototype in br_funcs.h */
@@ -287,8 +287,7 @@ uint32_t __fastcall BrAiScanCorridor(BrAiCar *pCar, float a, BrAiIdxArg idx,
  * registers and edx naturally free.  Probes tried here: field-pointer vs
  * inline aPt[mid] access (inert, VC5 folds +0x40 either way); dropping the
  * `mid` local for in-place midArg.v (paid, RAW -16).  Dead in C lane. */
-uint32_t __fastcall BrAiScanCorridor(BrAiCar *pCar, float a,
-                                     BrAiIdxArg midArg, BrAiNodeArg nodeArg);
+
 
 /* WHAT IT DOES: drive one computer-controlled car for this frame. It walks
  * the car's waypoint cursor ahead by a speed-scaled lookahead, smooths the

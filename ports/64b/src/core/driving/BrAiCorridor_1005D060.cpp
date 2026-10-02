@@ -197,3 +197,9 @@ tail:
     }
     return ret;
 }
+
+/* C entry point */
+extern "C" unsigned BrAiScanCorridor(void *self, int depth, int mid, void *pNode)
+{
+    return ((Car5D060 *)self)->Scan(depth, mid, (Node5D060 *)pNode);
+}

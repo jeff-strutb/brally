@@ -100,7 +100,7 @@ void BrSub1003E680(void)
     sprintf(DAT_10ac46a0, "%d", g_brIdx5BFC + 1);
     BrPairBufReset();
     g_5BF4 = 0;
-    memset(DAT_10ac5a48, 0, sizeof DAT_10ac5a48);
+    memset(DAT_10ac5a48, 0, 0x53 * sizeof DAT_10ac5a48[0]);   /* int[0x53] in the original */
     memset((*(int (*)[83])&g_aBrA9DBD8), 0, sizeof (*(int (*)[83])&g_aBrA9DBD8));
     memset((*(int (*)[70])&g_a220B20), 0, sizeof (*(int (*)[70])&g_a220B20));
     (*(unsigned short *)&DAT_10ac5b38) = 0x102;

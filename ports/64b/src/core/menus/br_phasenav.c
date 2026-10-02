@@ -271,36 +271,8 @@ static int32_t Br31Thunk_10044CB0(void *pEntity);
  * 0x10045780-0x100458E0 -- the twelve HOOK installers
  * ========================================================================== */
 
-#define BR31_HOOK_C8(fn, leave)                                   \
-    int fn(void *pArg)                                            \
-    {                                                             \
-        (void)BrPhaseActivate_100451E0(g_pBase);   /* ignores pArg */ \
-        (void)pArg;                                               \
-        g_pExt->pAA29C8->pfnHook = (leave);                         \
-        return 1;                                                 \
-    }
-
-#define BR31_HOOK_F4(fn, leave)                                   \
-    int fn(void *pArg)                                            \
-    {                                                             \
-        (void)CtlF060_fn();          /* ignores pArg */ \
-        (void)pArg;                                               \
-        g_pBase->pAA29F4->pfnHook = (leave);                        \
-        return 1;                                                 \
-    }
-
-BR31_HOOK_C8(BrPhaseHook_10045780, BrPhaseLeave_10046750)
-BR31_HOOK_F4(BrPhaseHook_100457A0, BrPhaseLeaveNamed_10046790)
-BR31_HOOK_C8(BrPhaseHook_100457C0, BrPhaseLeave_10046830)
-BR31_HOOK_F4(BrPhaseHook_100457E0, BrPhaseLeaveNamed_10046870)
-BR31_HOOK_C8(BrPhaseHook_10045800, BrPhaseLeave_10046910)
-BR31_HOOK_F4(BrPhaseHook_10045820, BrPhaseLeaveNamed_10046950)
-BR31_HOOK_C8(BrPhaseHook_10045840, BrPhaseLeave_100469F0)
-BR31_HOOK_F4(BrPhaseHook_10045860, BrPhaseLeaveNamed_10046A30)
-BR31_HOOK_C8(BrPhaseHook_10045880, BrPhaseLeave_10046AD0)
-BR31_HOOK_F4(BrPhaseHook_100458A0, BrPhaseLeaveNamed_10046B10)
-BR31_HOOK_C8(BrPhaseHook_100458C0, BrPhaseLeave_10046BB0)
-BR31_HOOK_F4(BrPhaseHook_100458E0, BrPhaseLeaveNamed_10046BF0)
+/* (the port-only D3D hook installers 0x10045780..0x100458E0 that stood here are
+ * gone; Glide's are the BrHook_ functions in br_menuact.c) */
 
 /* ==========================================================================
  * ACTIVATE routines
@@ -436,19 +408,7 @@ int BrPhaseHook_10046380(void *pArg)
  * on the +0x08 slot's result and returns 0 itself when it is zero. The macro
  * used to generate `void` and the value was lost for the whole family.
  * Verified one address at a time; the instruction is listed in slice3_31.h. */
-#define BR31_LEAVE(fn, next, clears)                    \
-    int32_t fn(void *pEntity)                           \
-    {                                                   \
-        BrPhase *pNext;                                 \
-        Br31LeavePrologue(pEntity);                     \
-        pNext = (next);                                 \
-        clears                                          \
-        BR_PHASE_CUR = pNext;                       \
-        return 0;                                       \
-    }
 
-BR31_LEAVE(BrPhaseLeave_100463C0, g_pExt->pAA2958,
-           g_pBase->pAA2940 = NULL;)
 
 /* 0x10046400 -- pre-declared by slice2_25.h. */
 /* WHAT IT DOES: leaves a screen, forgetting it and clearing three counters
@@ -457,54 +417,6 @@ BR31_LEAVE(BrPhaseLeave_100463C0, g_pExt->pAA2958,
 /* @n64 0x80264A60 located */
 /* BrSub10046400: prototype in br_funcs.h */
 
-BR31_LEAVE(BrPhaseLeave_10046450, g_pBase->pAA2908,
-           g_pBase->pAA290C = NULL; g_pExt->pAA29AC = NULL;)
-BR31_LEAVE(BrPhaseLeave_100464A0, g_pBase->pAA2908,
-           g_pExt->pAA2910 = NULL;)
-BR31_LEAVE(BrPhaseLeave_100464E0, g_pBase->pAA290C,
-           g_pBase->pAA2914 = NULL;)
-BR31_LEAVE(BrPhaseLeave_10046520, g_pBase->pAA2908,
-           g_pBase->pAA2918 = NULL;)
-BR31_LEAVE(BrPhaseLeave_100465A0, g_pBase->pAA2918,
-           g_pBase->pAA297C = NULL;)
-BR31_LEAVE(BrPhaseLeave_100465E0, g_pBase->pAA2918,
-           g_pBase->pAA2980 = NULL;)
-BR31_LEAVE(BrPhaseLeave_10046620, g_pBase->pAA2980,
-           g_pBase->pAA2990 = NULL; g_pExt->nAA29F0 = 0;)
-BR31_LEAVE(BrPhaseLeave_10046670, g_pBase->pAA2980,
-           g_pBase->pAA2994 = NULL; g_pExt->nAA29EC = 0;)
-BR31_LEAVE(BrPhaseLeave_10046710, g_pBase->pAA2918,
-           g_pBase->pAA2988 = NULL;)
-BR31_LEAVE(BrPhaseLeave_10046750, g_pExt->pAA292C,
-           g_pBase->pAA2918 = NULL;)
-BR31_LEAVE(BrPhaseLeave_10046830, g_pExt->pAA2930,
-           g_pBase->pAA2918 = NULL;)
-BR31_LEAVE(BrPhaseLeave_10046910, g_pExt->pAA2934,
-           g_pBase->pAA2918 = NULL;)
-BR31_LEAVE(BrPhaseLeave_100469F0, g_pExt->pAA2938,
-           g_pBase->pAA2918 = NULL;)
-BR31_LEAVE(BrPhaseLeave_10046AD0, g_pExt->pAA293C,
-           g_pBase->pAA2918 = NULL;)
-BR31_LEAVE(BrPhaseLeave_10046BB0, g_pBase->pAA2914,
-           g_pBase->pAA2918 = NULL;)
-BR31_LEAVE(BrPhaseLeave_10046C90, g_pBase->pAA2908,
-           g_pExt->pAA291C = NULL;)
-BR31_LEAVE(BrExt_10046CD0,        g_pExt->pAA2930,
-           g_pBase->pAA2914 = NULL; g_pBase->pAA29B4 = NULL;)
-BR31_LEAVE(BrOpt6D20, g_pBase->pAA295C,
-           g_pBase->pAA2914 = NULL; g_pBase->pAA29B4 = NULL;)
-BR31_LEAVE(BrPhaseLeave_10046D70, g_pExt->pAA291C,
-           g_pExt->pAA292C = NULL; g_pBase->pAA29B0 = NULL;
-           g_pExt->pAA2974 = NULL;)
-BR31_LEAVE(BrExt_10046DC0,        g_pExt->pAA2924,
-           g_pExt->pAA292C = NULL; g_pBase->pAA29B0 = NULL;
-           g_pExt->pAA2974 = NULL;)
-BR31_LEAVE(BrPhaseLeave_10047060, g_pExt->pAA292C,
-           g_pExt->pAA2930 = NULL;)
-BR31_LEAVE(BrPhaseLeave_100470A0, g_pExt->pAA2934,
-           g_pExt->pAA2938 = NULL;)
-BR31_LEAVE(BrPhaseLeave_100470E0, g_pExt->pAA2938,
-           g_pExt->pAA293C = NULL;)
 
 /* The two LEAVE routines with a tail the macro cannot carry. Both put the
  * tail call AFTER the repoint of pAA2904. */
@@ -533,24 +445,7 @@ BR31_LEAVE(BrPhaseLeave_100470E0, g_pExt->pAA2938,
  * nothing between there and the `ret` touches eax. So the value is 0 by
  * accident of the compiler's scheduling rather than by an explicit store, and
  * it is 0 all the same. */
-#define BR31_LEAVE_NAMED(fn, next)                      \
-    int32_t fn(void *pEntity)                           \
-    {                                                   \
-        BrPhase *pNext;                                 \
-        Br31LeavePrologue(pEntity);                     \
-        Br31ResetName();                                \
-        pNext = (next);                                 \
-        BR_PHASE_CUR = pNext;                       \
-        return 0;                                       \
-    }
 
-BR31_LEAVE_NAMED(BrPhaseLeaveNamed_10046790, g_pExt->pAA292C)
-BR31_LEAVE_NAMED(BrPhaseLeaveNamed_10046870, g_pExt->pAA2930)
-BR31_LEAVE_NAMED(BrPhaseLeaveNamed_10046950, g_pExt->pAA2934)
-BR31_LEAVE_NAMED(BrPhaseLeaveNamed_10046A30, g_pExt->pAA2938)
-BR31_LEAVE_NAMED(BrPhaseLeaveNamed_10046B10, g_pExt->pAA293C)
-BR31_LEAVE_NAMED(BrPhaseLeaveNamed_10046BF0, g_pBase->pAA2914)
-BR31_LEAVE_NAMED(BrPhaseLeaveNamed_10046EB0, g_pExt->pAA2934)
 
 /* 0x10046E10 -- clears a different set of globals from the other seven. */
 /* WHAT IT DOES: leaves a screen and resets the name being edited back to the

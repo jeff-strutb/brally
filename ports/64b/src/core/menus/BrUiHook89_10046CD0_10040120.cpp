@@ -37,8 +37,9 @@ extern "C" {
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 }
 
-int Hook(GameObj89 *pObj)
+extern "C" int BrUiHook89_10046CD0(void *pObj_)
 {
+    GameObj89 *pObj = (GameObj89 *)pObj_;
     (*(Sub2AE8b * *)&((BrUiCtl_ *)(pObj))->pOwner)->s7();
 
     if ((*(CurPhase89 * *)&g_brPAA29B8) != 0)
