@@ -134,7 +134,6 @@ public:
 
     void StartInit();                /* 0x1005E7B0 -- defined here       */
     void m_1006FD90();                 /* 0x1006FD90 BrEntReset            */
-    void m_1006FCB0(int slot);             /* 0x1006FCB0 grid bind */
     void m_1005E6A0();                 /* 0x1005E6A0 BrCarInitTables       */
     void m_1005E780();                 /* 0x1005E780                       */
     void m_1006F680(float x, float y, float z); /* 0x1006F680 SetPos */
@@ -171,11 +170,11 @@ void Car5E7B0::StartInit()
 
     if ((*(int *)&g_brRaceRules.mode) == 2 || (*(int *)&g_brRaceRules.mode) == 4 ||
         ((*(int *)&g_brRaceRules.mode) == 3 && (*(int *)&g_brRaceNEntrant) == 1) || (*(int *)&g_brRaceRules.mode) == 0) {
-        m_1006FCB0((*(int *)&((BrDriverCar *)(this))->f140));
+        BrCarSlotBind_1006FCB0(this, (*(int *)&((BrDriverCar *)(this))->f140));
         local_14 = 0.0f;
         local_10 = 0.5f;
     } else {
-        m_1006FCB0((*(int *)&((BrDriverCar *)(this))->f140));
+        BrCarSlotBind_1006FCB0(this, (*(int *)&((BrDriverCar *)(this))->f140));
         if ((*(int *)&g_brRaceNet) != 0) {
             local_14 = (float)((*(int *)&((BrDriverCar *)(this))->iNetPlayer) >> 1);
             local_10 = (float)(~(*(int *)&((BrDriverCar *)(this))->iNetPlayer) & 1);

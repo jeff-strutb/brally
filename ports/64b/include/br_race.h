@@ -114,16 +114,26 @@ extern "C" {  /* BR_CLINK_BEGIN: every original function has C linkage */
  * is pinned at zero (see BR_RACE_MODE_WRAP below). */
 #define BR_RACE_MODE_WRAP  3
 
+/* One card of the credits roll (0x100A9368, stride 0x20): its title, how
+ * long it stays up, and up to six lines. */
+typedef struct BrCreditCard {
+    const char *pszTitle;        /* +0x00  NULL ends the roll */
+    float       t;               /* +0x04  seconds on screen  */
+    const char *apszLine[6];     /* +0x08  NULL ends the card */
+} BrCreditCard;
+
+#define BR_CREDIT_CARDS 15
+
+/* 0x100A9354 -- the frame-rate ring's bookkeeping, the game mode and the
+ * credits roll.  (The name is historical: the port lane once gathered the
+ * gate-step inputs under it.) */
 typedef struct BrRaceRules {
-    const BrRaceGate *aGates;    /* 0x106EED70                              */
-    int32_t           nGates;    /* 0x106EEE38 -- zero makes the step a nop */
-    int32_t           nLaps;     /* 0x100BCBE8 -- the finish condition      */
-    int32_t           mode;      /* 0x100A9360                              */
-    int32_t           nFinished; /* 0x118EE588 -- next finishing position   */
-    /* 0x106EED48 -> +0x64: the length of one lap, in the same units as the
-     * driver's +0x50 progress key. NULL models the original's NULL pointer
-     * test, on which the whole progress fixup is skipped. */
-    const float      *pfLapLength;
+    int32_t      f00;            /* +0x00 */
+    int32_t      nFpsSamples;    /* +0x04  length of the frame-delta ring */
+    int32_t      iFpsSample;     /* +0x08  its write index; 0 = the ring just wrapped */
+    int32_t      mode;           /* +0x0C  0x100A9360, the game mode */
+    int32_t      f10;            /* +0x10 */
+    BrCreditCard aCard[BR_CREDIT_CARDS]; /* +0x14 */
 } BrRaceRules;
 
 /* ==========================================================================

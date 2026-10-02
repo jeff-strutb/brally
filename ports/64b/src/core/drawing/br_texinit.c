@@ -262,7 +262,7 @@ void BrTexInit(void)
     int span;
 
     (*(void (**)(void))&g_BrDrawModelDlHook) = BrTex3dRecCopyHead;
-    (*(void (**)(void))&g_18ED1C0) = BrTex3dExpandInto;
+    g_18ED1C0 = BrTex3dExpandInto;
     (*(void (**)(void))&g_pfn18ED1C4) = BrTex3dCreate;
     (*(void (**)(void))&g_pfn18AA0B0) = BrGbiBlit;
     (*(void (**)(void))&DAT_118ed1cc) = BrTex3dMakeCurrent;

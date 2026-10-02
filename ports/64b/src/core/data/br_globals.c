@@ -584,11 +584,7 @@ BR_GLOBAL_EXTENT(int32_t, g_brTex0A7E08, , 0x3B4);  /* 0x100A7E08 */
 int32_t BrG_0A81C0;  /* 0x100A81C0 */
 BR_GLOBAL_EXTENT(int32_t, BrG_0A81C4, , 0x118C);  /* 0x100A81C4 */
 BrRaceRules g_brRaceRules;  /* 0x100A9354 */
-BR_GLOBAL_EXTENT(float, g_0A936C, , 0x1D8);  /* 0x100A936C */
-BR_GLOBAL_EXTENT(float, g_0A9548, , 0x14);  /* 0x100A9548 */
 const signed char g_tblBrA9560[24];  /* 0x100A9560 */
-int g_0A9578;  /* 0x100A9578 */
-BR_GLOBAL_EXTENT(float, g_0A957C, , 0x38);  /* 0x100A957C */
 int g_0A95B8[108];  /* 0x100A95B8 */
 char g_0A9768[36];  /* 0x100A9768 */
 char g_0A978C[28];  /* 0x100A978C */
@@ -1232,21 +1228,19 @@ BrVec3 g_brRaceFlyDirPrev;  /* 0x105BC7EC */
 BrVec3 g_brRaceFlyDirCur;  /* 0x105BC7F8 */
 BrVec3 g_brRaceFlyDirNext;  /* 0x105BC804 */
 int32_t g_brRaceBeginBestCar;  /* 0x105BC810 */
-BR_GLOBAL_EXTENT(int, g_5BC814, , 0x40);  /* 0x105BC814 */
+void *g_apBrRaceLeaderRec[17];  /* 0x105BC814  [1..n]: each entrant's record of the leader */
 BR_GLOBAL_EXTENT(unsigned char, g_br6806B0, [36], 0x4);  /* 0x105BC858 */
 float g_brRaceLightT;  /* 0x105BC880 */
 float g_brRaceBeginSeqT;  /* 0x105BC884 */
 int32_t g_brRaceBeginSeq888;  /* 0x105BC888 */
-BR_GLOBAL_EXTENT(int, g_5BC88C, , 0x40);  /* 0x105BC88C */
+int32_t g_aBrRaceLeaderLen[17];  /* 0x105BC88C */
 int32_t DAT_105bc8d0[2];  /* 0x105BC8D0 */
 int32_t g_brRace5BC8D8;  /* 0x105BC8D8 */
 int DAT_105bc8dc;  /* 0x105BC8DC */
 uint8_t g_aBrRaceBeginRec[0x10];  /* 0x105BC8E0 */
-int g_5BC8E8;  /* 0x105BC8E8 */
-int g_5BC8EC;  /* 0x105BC8EC */
 int32_t DAT_105bc8f0[2];  /* 0x105BC8F0 */
 BR_GLOBAL_EXTENT(int32_t, g_brRaceLights, , 0x4);  /* 0x105BC8F8 */
-BR_GLOBAL_EXTENT(int32_t *, g_BrFpsSamplesA, , 0x1DC);  /* 0x105BC900 */
+int32_t g_aBrFpsSamples[120];  /* 0x105BC900 */
 int32_t g_brRaceBeginMovieDone;  /* 0x105BCAE0 */
 int32_t g_brRaceClockCount;  /* 0x105BCAE4 */
 int32_t g_brRaceBeginFxCount;  /* 0x105BCAE8 */
@@ -1979,7 +1973,7 @@ char g_aBrDevName1B0C[9][36];  /* 0x10B71B0C */
 BrCfgRec39580 g_aBrCtlNameJoy[134];  /* 0x10B71C70 */
 char g_aBrDevName1C74[133][36];  /* 0x10B71C74 */
 BR_GLOBAL_EXTENT(int, g_navArg, , 0x3FC);  /* 0x10B72F48 */
-BR_GLOBAL_EXTENT(int32_t *, g_BrFpsSamplesB, , 0x1DC);  /* 0x10B73348 */
+int32_t g_aBrFpsSamplesB[120];  /* 0x10B73348 */
 funcptr DAT_10b73528;  /* 0x10B73528 */
 funcptr DAT_10b7352c;  /* 0x10B7352C */
 void (*DAT_10b73530)(void *);  /* 0x10B73530 */
@@ -2098,7 +2092,7 @@ int32_t g_br18AA098;  /* 0x118ED1B0 */
 int g_18ED1B4;  /* 0x118ED1B4 */
 void *g_br18AA0A0;  /* 0x118ED1B8 */
 void (*g_BrDrawModelDlHook)(uint32_t, uint32_t);  /* 0x118ED1BC */
-int (*g_18ED1C0)(int, int, int, int, int, int, int, int);  /* 0x118ED1C0 */
+int (*g_18ED1C0)(unsigned short *, unsigned char *, unsigned char *, int, int, int, int, int);  /* 0x118ED1C0 */
 BrGbiBlitFn g_pfn18ED1C4;  /* 0x118ED1C4 */
 BrGbiTexCreateFn g_pfn18AA0B0;  /* 0x118ED1C8 */
 funcptr DAT_118ed1cc;  /* 0x118ED1CC */

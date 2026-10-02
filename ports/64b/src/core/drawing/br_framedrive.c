@@ -622,31 +622,31 @@ void BrFrameDraw(int iSlot)
     if ((*(int *)&g_brRaceRules.mode) == 4 && g_5bc760 == 2) {
         BrHudTextListDraw(aViews);
     } else if ((*(int *)&g_brRaceRules.mode) == 4 && g_5bc760 == 1
-               && (*(const char * (*)[][8])&g_brRaceRules.pfLapLength)[(*(int *)&g_brRaceBeginSeqIdx)][0] != 0
+               && g_brRaceRules.aCard[(*(int *)&g_brRaceBeginSeqIdx)].pszTitle != 0
                && g_brRaceBeginSeqT > kF72A0) {
         BrTextFlag358Clear();
         BrSet_10019270();
         BrTextSetColors(0xff, 0xff, 0xff, 0xff, 0xff, 0xff);
         for (n = 0; n < 6; n++) {
-            if ((*(const char * (*)[][8])&g_brRaceRules.pfLapLength)[(*(int *)&g_brRaceBeginSeqIdx)][2 + n] == 0)
+            if (g_brRaceRules.aCard[(*(int *)&g_brRaceBeginSeqIdx)].apszLine[n] == 0)
                 break;
         }
         y = (*(int *)&g_brRaceCueBase) / 2 - (n * 40) / 4 + 10;
-        if ((*(const char * (*)[][8])&g_brRaceRules.pfLapLength)[(*(int *)&g_brRaceBeginSeqIdx)][0][0] == 0)
+        if (g_brRaceRules.aCard[(*(int *)&g_brRaceBeginSeqIdx)].pszTitle[0] == 0)
             y -= 5;
         for (n--; n >= 0; n--) {
-            if ((*(const char * (*)[][8])&g_brRaceRules.pfLapLength)[(*(int *)&g_brRaceBeginSeqIdx)][2 + n][0] == '`') {
+            if (g_brRaceRules.aCard[(*(int *)&g_brRaceBeginSeqIdx)].apszLine[n][0] == '`') {
                 BrSetGlobal_ABB30(0xF);
-                BrTextDraw((*(const char * (*)[][8])&g_brRaceRules.pfLapLength)[(*(int *)&g_brRaceBeginSeqIdx)][2 + n] + 1,
+                BrTextDraw(g_brRaceRules.aCard[(*(int *)&g_brRaceBeginSeqIdx)].apszLine[n] + 1,
                            g_scrW4 / 2, (n * 40) / 2 + y);
             } else {
                 BrSetGlobal_ABB30(0x14);
-                BrTextDraw((*(const char * (*)[][8])&g_brRaceRules.pfLapLength)[(*(int *)&g_brRaceBeginSeqIdx)][2 + n],
+                BrTextDraw(g_brRaceRules.aCard[(*(int *)&g_brRaceBeginSeqIdx)].apszLine[n],
                            g_scrW4 / 2, (n * 40) / 2 + y);
             }
         }
         BrSetGlobal_ABB30(0xF);
-        BrTextDraw((*(const char * (*)[][8])&g_brRaceRules.pfLapLength)[(*(int *)&g_brRaceBeginSeqIdx)][0], g_scrW4 / 2, y - 0x14);
+        BrTextDraw(g_brRaceRules.aCard[(*(int *)&g_brRaceBeginSeqIdx)].pszTitle, g_scrW4 / 2, y - 0x14);
     }
 
     BrFadeDrawBars();

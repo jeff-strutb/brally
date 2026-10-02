@@ -44,309 +44,111 @@
 #include "slice2_16.h"   /* br_globals: its objects */
 #include "slice3_41.h"   /* br_globals: its objects */
 #include "slice3_42.h"   /* br_globals: its objects */
+#include "br_racestep.h"   /* g_aBrRaceLightScript, g_aBrRaceBeepT */
+#include "br_bits.h"   /* BrBitLatch, the control block's first word */
 #include <stdint.h>
 #include <string.h>
 #pragma intrinsic(memcpy)   /* original inlines the copies as rep movsd, not a call */
 
-/* ---- opaque per-driver arrays (0x2b68 = 11112-byte stride) ---- */
-typedef struct { char _[0x2b68]; } Driver;
-/* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x10AF3BC8 */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x10AF1208 (parallel this-ptr array) */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x10AF3D70 */
+/* The 64-bit core addresses every record by type: the cars (BrDriverCar),
+ * the drivers (BrDriver), each car's control block (BrRaceCtl through
+ * pCtl), the screen views (BrView), the loaded track header (g_brTrkHdr)
+ * and the replay snapshot (BrSnap).  The original's thiscall member calls
+ * are the C entries of the functions at those addresses. */
 
-/* catch-all class for thiscall member callees (this in ecx, no vtable) */
-struct Obj {
-    int  m_1006FD50(int);   /* 0x1006FD50(this, int)  callee-clean */
-    int  m_1005C490();
-    int  m_1006FCE0(int, int);
-    int  m_1005E7B0();
-    int  m_1006FCB0(int);
-    int  m_10001CF0();
-    int  m_1005F310();
-    int  m_10060A30();
-    int  m_10061430();
-    int  m_10061F60();
-    int  m_100623A0();
-    int  m_100623E0();
-    int  m_1005F6C0();
-    int  m_10061470();
-    int  m_100634B0(int);
-    int  m_1002F640(int);
-};
+/* one car-slot record in the 0x100BCDD0 area (BrCarSlotLoad fills them) */
+#define BR_CAR_SLOT_SIZE 0x15F88
+#define BR_CAR_SLOT(k)   (&g_ab0C12A0[(k) * BR_CAR_SLOT_SIZE])
 
-
-/* ---- cdecl callees (extern "C" = unmangled; (...) = polymorphic arity) ---- */
-extern "C" {
-/* sub_1006E280: prototype in br_funcs.h */
-/* sub_10008D60: prototype in br_funcs.h */
-/* sub_1000CB80: prototype in br_funcs.h */
-/* sub_10031140: prototype in br_funcs.h */
-/* sub_1006E030: prototype in br_funcs.h */
-/* sub_100189C0: prototype in br_funcs.h */
-/* sub_1002BF24: prototype in br_funcs.h */
-/* sub_100353C0: prototype in br_funcs.h */
-    int sub_1006FD50(...);          /* also seen as thiscall; see Obj */
-/* sub_100609D0: prototype in br_funcs.h */
-/* sub_10005CD0: prototype in br_funcs.h */
-/* sub_10006400: prototype in br_funcs.h */
-/* sub_10004E00: prototype in br_funcs.h */
-/* sub_100060A0: prototype in br_funcs.h */
-/* sub_10006250: prototype in br_funcs.h */
-/* sub_10009BA0: prototype in br_funcs.h */
-/* sub_100060B0: prototype in br_funcs.h */
-/* sub_1001C6A0: prototype in br_funcs.h */
-/* sub_10019930: prototype in br_funcs.h */
-/* sub_10069A80: prototype in br_funcs.h */
-/* sub_10063B60: prototype in br_funcs.h */
-/* sub_100627B0: prototype in br_funcs.h */
-/* sub_10061310: prototype in br_funcs.h */
-/* sub_100311C0: prototype in br_funcs.h */
-/* sub_10034870: prototype in br_funcs.h */
-/* sub_100347F0: prototype in br_funcs.h */
-/* sub_1005D050: prototype in br_funcs.h */
-/* sub_100199A0: prototype in br_funcs.h */
-/* sub_1005E690: prototype in br_funcs.h */
-/* sub_10062830: prototype in br_funcs.h */
-/* sub_100181A0: prototype in br_funcs.h */
-/* sub_10018230: prototype in br_funcs.h */
-/* sub_10018290: prototype in br_funcs.h */
-/* sub_10030270: prototype in br_funcs.h */
-/* sub_1002ECAC: prototype in br_funcs.h */
-/* sub_10033B50: prototype in br_funcs.h */
-/* sub_10063DD0: prototype in br_funcs.h */
-/* sub_1002E13B: prototype in br_funcs.h */
-/* sub_10060E30: prototype in br_funcs.h */
-/* sub_10063A00: prototype in br_funcs.h */
-/* sub_10063A40: prototype in br_funcs.h */
-/* sub_10002C00: prototype in br_funcs.h */
-/* sub_10002AF0: prototype in br_funcs.h */
-/* sub_10002D30: prototype in br_funcs.h */
-/* sub_10013E80: prototype in br_funcs.h */
-/* sub_10019A40: prototype in br_funcs.h */
-/* sub_10006100: prototype in br_funcs.h */
-/* sub_1001C7A0: prototype in br_funcs.h */
-/* sub_1002E186: prototype in br_funcs.h */
-/* sub_10060E00: prototype in br_funcs.h */
-/* sub_10060DF0: prototype in br_funcs.h */
-/* sub_1001C810: prototype in br_funcs.h */
-/* sub_1005C450: prototype in br_funcs.h */
-/* sub_10018310: prototype in br_funcs.h */
-/* sub_100023F0: prototype in br_funcs.h */
-/* sub_1005F580: prototype in br_funcs.h */
-/* sub_10033BB0: prototype in br_funcs.h */
-/* sub_10016C90: prototype in br_funcs.h */
-/* sub_1002A590: prototype in br_funcs.h */
-/* sub_10029D70: prototype in br_funcs.h */
-/* sub_10060E10: prototype in br_funcs.h */
-/* sub_100611F0: prototype in br_funcs.h */
-/* sub_10061280: prototype in br_funcs.h */
-/* sub_10060F40: prototype in br_funcs.h */
-/* sub_10019890: prototype in br_funcs.h */
-/* sub_10013F20: prototype in br_funcs.h */
-/* sub_10033C90: prototype in br_funcs.h */
-/* sub_10004F90: prototype in br_funcs.h */
-/* sub_10005400: prototype in br_funcs.h */
-/* sub_10019980: prototype in br_funcs.h */
-/* sub_10018340: prototype in br_funcs.h */
-/* sub_1006B4F0: prototype in br_funcs.h */
-/* sub_10060A10: prototype in br_funcs.h */
-/* sub_10002F10: prototype in br_funcs.h */
-/* sub_100609F0: prototype in br_funcs.h */
-/* sub_10002EB0: prototype in br_funcs.h */
-/* sub_1006BD70: prototype in br_funcs.h */
-/* sub_10061440: prototype in br_funcs.h */
-/* sub_10006460: prototype in br_funcs.h */
-/* sub_10072210: prototype in br_funcs.h */
-/* sub_1006BDD0: prototype in br_funcs.h */
-/* sub_10063CC0: prototype in br_funcs.h */
-/* sub_10063AD0: prototype in br_funcs.h */
-/* sub_10014CB0: prototype in br_funcs.h */
-/* sub_1006E3B0: prototype in br_funcs.h */
-/* sub_100064D0: prototype in br_funcs.h */
-/* sub_1006E360: prototype in br_funcs.h */
-/* sub_1002CB3F: prototype in br_funcs.h */
-/* sub_1001C9D0: prototype in br_funcs.h */
-/* sub_10019900: prototype in br_funcs.h */
-/* sub_1001C890: prototype in br_funcs.h */
-/* sub_100325B0: prototype in br_funcs.h */
-/* sub_1002E317: prototype in br_funcs.h */
-/* sub_10019A10: prototype in br_funcs.h */
-/* sub_10013F00: prototype in br_funcs.h */
-/* sub_1006A070: prototype in br_funcs.h */
-/* sub_10002460: prototype in br_funcs.h */
-/* sub_10032680: prototype in br_funcs.h */
-/* sub_1006C460: prototype in br_funcs.h */
-/* sub_10037180: prototype in br_funcs.h */
-/* sub_10006430: prototype in br_funcs.h */
-/* sub_10059E50: prototype in br_funcs.h */
-/* sub_10059DE0: prototype in br_funcs.h */
-/* sub_10059E30: prototype in br_funcs.h */
-/* sub_10059DC0: prototype in br_funcs.h */
-/* sub_100131E0: prototype in br_funcs.h */
-/* sub_100346D0: prototype in br_funcs.h */
-/* sub_10034760: prototype in br_funcs.h */
-/* sub_10034560: prototype in br_funcs.h */
-/* sub_100344D0: prototype in br_funcs.h */
-/* sub_10034620: prototype in br_funcs.h */
-/* sub_100342B0: prototype in br_funcs.h */
-/* sub_10034390: prototype in br_funcs.h */
+/* the track's 0x54-byte instance records (matrix first) */
+static float *BrRaceInst(int i)
+{
+    return (float *)((char *)BR_PTR32(void *, g_brTrkHdr.aInstances) + i * 0x54);
 }
 
-/* ---- indirect-call function pointers ---- */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-extern int (*g_18ED1E8)();
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-
-/* ---- data globals used so far ---- */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */               /* address-taken (push &g_6E86B8) */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */             /* string source (inlined strcpy) */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */             /* string dest */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */               /* 0x102066C8 base */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* case 5 / case 4 */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* La213 tail */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 0x1001a462 wheel/tyre/camera + callback loop */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* init-tail 0x1001a97c */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* per-frame tail 0x1001ab93 */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* state-4 limiter */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* merge tail 0x1001b1c9 */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-
-extern int (*g_18ED1C0)(int,int,int,int,int,int,int,int);
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* sub_1006D280: prototype in br_funcs.h */
-/* sub_10008EF0: prototype in br_funcs.h */
+/* a snapshot copy of a car's model-matrix pointer: the same matrix of the
+ * copied car, or 0 when it points at none of the five the original tests */
+static BrSnapMtx *BrRaceSnapMat(const BrDriverCar *src, BrDriverCar *dst, const BrSnapMtx *p)
+{
+    if (p == &src->aSnap[0]) return &dst->aSnap[0];
+    if (p == &src->aSnap[5]) return &dst->aSnap[5];
+    if (p == &src->aSnap[1]) return &dst->aSnap[1];
+    if (p == &src->aSnap[2]) return &dst->aSnap[2];
+    if (p == &src->aSnap[3]) return &dst->aSnap[3];
+    return 0;
+}
 
 extern "C" void BrRaceStep(void)
 {
-    int loc10, loc14, loc18, loc1c;     /* esp+0x10/14/18/1c render-loop state */
+    int loc10, loc14, loc18;
     int now   = BrSub10075020();
-    int delta = now - (*(int *)&DAT_105ccb68[10]);
-    (*(int *)&DAT_105ccb68[10])  = now;
-    int idx   = (*(int *)&g_brRaceRules.nLaps);
-    int count = (*(int *)&g_brRaceRules.nGates);
+    int delta = now - DAT_105ccb68[10];
+    DAT_105ccb68[10]  = now;
+    int idx   = g_brRaceRules.iFpsSample;
+    int count = g_brRaceRules.nFpsSamples;
 
     /* region 1: frame-delta ring buffer (0x10019A70-0x10019AE4) */
     if (idx < 0) {
         idx = 0;
         if (count > 0) {
             int i;
-            for (i = 0; i < count; i++) g_BrFpsSamplesA[i] = delta;
+            for (i = 0; i < count; i++) g_aBrFpsSamples[i] = delta;
             idx = count;
         }
     }
-    if (++(*(int *)&g_brRaceClockCount) == 0) (*(int *)&DAT_105ccb68[5]) = 0; else (*(int *)&DAT_105ccb68[5]) += delta;
-    (*(int *)&g_brRaceRules.nLaps) = ++idx;                       /* store idx+1 unconditionally (0x1001a acf) */
-    if (idx >= count) { idx = 0; (*(int *)&g_brRaceRules.nLaps) = idx; }   /* then conditionally re-store 0 */
-    g_BrFpsSamplesA[idx] = delta;
+    if (++(*(int *)&g_brRaceClockCount) == 0) DAT_105ccb68[5] = 0; else DAT_105ccb68[5] += delta;
+    g_brRaceRules.iFpsSample = ++idx;                       /* store idx+1 unconditionally (0x1001aacf) */
+    if (idx >= count) { idx = 0; g_brRaceRules.iFpsSample = idx; }   /* then conditionally re-store 0 */
+    g_aBrFpsSamples[idx] = delta;
 
     /* region 2: first-frame init gate (0x10019AE4) */
-    if ((*(int *)&DAT_105ccb68[11]) == 0) {
+    if (DAT_105ccb68[11] == 0) {
         (*(int *)((char *)&g_aBrEntRecs + 0x54)) = 1;
         BrPodNop(1);
         BrClearTables_1000F620();
-        if ((*(int *)&DAT_105ccb68[8]) == 0) {
+        if (DAT_105ccb68[8] == 0) {
             BrPodNop();
             BrPodNop();
             (*(int (**)())&DAT_10b7352c)();
             g_18ED1E8();
             (*(int (**)())&PTR_FUN_100b849c)();
-            BrTrackLoadHandling((*(int *)&g_brRaceRules.mode) == 5 ? 0xc : (*(int *)&g_Br0B380C));
+            BrTrackLoadHandling(g_brRaceRules.mode == 5 ? 0xc : (*(int *)&g_Br0B380C));
             BrFontTexInitAll();
             (*(int (**)())&DAT_10b73528)();
             BrFlagInit_1002B950();
         }
-        BrFrameBeginRec(&(BrG_6C1628[0]));
+        BrFrameBeginRec(&g_aBrView[0]);
         BrPodNop(1);
-        BrFrameBeginRec(&(BrG_6C1628[0]));
+        BrFrameBeginRec(&g_aBrView[0]);
         BrStore_1003BD40(0x7b);
-        (*(int *)&DAT_105ccb68[9]) = 0;
-        if ((*(int *)&g_brRaceRules.mode) != 1 && (*(int *)&g_brRaceRules.mode) != 6 && (*(int *)&g_brRaceRules.mode) != 2) g_CBE8 = 3;
+        DAT_105ccb68[9] = 0;
+        if (g_brRaceRules.mode != 1 && g_brRaceRules.mode != 6 && g_brRaceRules.mode != 2) g_CBE8 = 3;
         (*(int *)&g_brRaceBeginMirrorOff) = 0;
-        if ((unsigned)(*(int *)&g_brRaceRules.mode) > 6) goto Ldefault;
-        switch ((*(int *)&g_brRaceRules.mode)) {
+        if ((unsigned)g_brRaceRules.mode > 6) goto Ldefault;
+        switch (g_brRaceRules.mode) {
         case 0:     /* 0x10019bc8 */
             (*(int *)&g_brRaceNDriver) = 0x14; (*(int *)&g_BrCarCount) = 3;
-            ((Obj*)&(*(Driver (*)[])&g_aBrRaceCar))->m_1006FD50(g_226e7c);
+            BrEntitySetIndex(&g_aBrRaceCar[0], g_226e7c);
             goto Lcf3;
         case 1:     /* 0x10019bf1 */
             (*(int *)&g_brRaceNDriver) = 2; (*(int *)&g_BrCarCount) = 2;
-            ((Obj*)&(*(Driver (*)[])&g_aBrRaceCar))->m_1006FD50(g_226e7c);
-            ((Obj*)&(*(Driver (*)[])&g_aBrRaceCar[1].fwd.x))->m_1006FD50(g_226e7c);
-            (*(int *)&g_aBrRaceCar[1].i29B4) = 0;
+            BrEntitySetIndex(&g_aBrRaceCar[0], g_226e7c);
+            BrEntitySetIndex(&g_aBrRaceCar[1], g_226e7c);
+            g_aBrRaceCar[1].i29B4 = 0;
             goto Lcf3;
         case 6:     /* 0x10019c2a */
-            if ((*(int *)&DAT_105ccb68[8]) != 0) goto Lcfb;
+            if (DAT_105ccb68[8] != 0) goto Lcfb;
             (*(int *)&g_brRaceNEntrant) = 1;
             if ((*(int *)&g_brRaceBegin226A4C) == 0) { (*(int *)&g_brRaceNDriver) = 1; (*(int *)&g_BrCarCount) = 1; }
             else               { (*(int *)&g_brRaceNDriver) = 0; (*(int *)&g_BrCarCount) = 0; }
-            ((Obj*)&(*(Driver (*)[])&g_aBrRaceCar))->m_1006FD50(g_226e7c);
+            BrEntitySetIndex(&g_aBrRaceCar[0], g_226e7c);
             if ((*(int *)&g_brRaceNet) != 0) {
                 BrNetReset();
                 BrNetSetF10220DD0();
                 BrNetOpenAnnounce();
-                (*(int *)&g_aBrRaceCar[0].iNetPlayer) = BrGetGlobal_94294();
-                strcpy((*(char (*)[])&g_aBrRaceCar[0].szName[0]), g_aBrCfgPlayerName);
-                BrNetSlotSetName((*(int *)&g_aBrRaceCar[0].iNetPlayer), g_aBrCfgPlayerName);
+                g_aBrRaceCar[0].iNetPlayer = BrGetGlobal_94294();
+                strcpy(g_aBrRaceCar[0].szName, g_aBrCfgPlayerName);
+                BrNetSlotSetName(g_aBrRaceCar[0].iNetPlayer, g_aBrCfgPlayerName);
             }
             while (BrDPlayGetCurrentPlayers() > (unsigned)(*(int *)&g_BrCarCount)) {
                 int r = BrNetStackPop();
@@ -355,15 +157,15 @@ extern "C" void BrRaceStep(void)
             goto Lcf3;
         case 5:     /* 0x10019d87 */
             (*(int *)&g_brRaceNEntrant) = 1; (*(int *)&g_brRaceNDriver) = 1; (*(int *)&g_BrCarCount) = 1;
-            (*(int *)&DAT_105ccb68[9]) = 0; (*(int *)&DAT_105ccb68[8]) = 0; (*(int *)&g_aBrRaceCar[0].fE88) = 0;
-            g_aBrRaceCar[0].pMatA = (BrSnapMtx *)(intptr_t)((int)&(*(int *)&g_aBrRaceCar[0].aSnap[1].m[0][0])); (*(int *)&g_BrCamHold2) = 0;
+            DAT_105ccb68[9] = 0; DAT_105ccb68[8] = 0; g_aBrRaceCar[0].fE88 = 0;
+            g_aBrRaceCar[0].pMatA = &g_aBrRaceCar[0].aSnap[1]; (*(int *)&g_BrCamHold2) = 0;
             goto La213;
         case 4:     /* 0x10019dc0 */
         {
-            int *pd0 = *(int**)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl);
+            BrRaceCtl *pd0 = g_aBrRaceCar[0].pCtl;
             DAT_104b15e8 = 1; (*(int *)&g_brRaceNEntrant) = 1; (*(int *)&g_brRaceNDriver) = 1; (*(int *)&g_BrCarCount) = 1;
-            (*(int *)&DAT_105ccb68[9]) = 0; (*(int *)&g_aBrRaceCar[0].fE88) = 0;
-            ((*(int  *)((char*)((pd0)) + ((0x44))))) = (int)&(*(int *)&g_aBrRaceBeginRec);
+            DAT_105ccb68[9] = 0; g_aBrRaceCar[0].fE88 = 0;
+            pd0->pHdr = g_aBrRaceBeginRec;
             {
                 int which = g_5bc760;                 /* 0x10019df1 */
                 if (which == 0) goto Lintro;
@@ -372,35 +174,35 @@ extern "C" void BrRaceStep(void)
                 goto Le63;
             Loutro:                                   /* 0x10019e00 */
                 BrRaceCueLayout();
-                BrGhostLoad("RallyOutro.dat", 0);
+                BrGhostLoad((char *)"RallyOutro.dat", 0);
                 goto Le58;
             Lcredits:                                 /* 0x10019e15 */
-                BrGhostLoad("RallyCredits.dat", 0);
+                BrGhostLoad((char *)"RallyCredits.dat", 0);
                 goto Le58;
             Lintro:                                   /* 0x10019e25 */
-                BrGhostLoad((*(int *)&DAT_105ccb68[13]) ? "RallyIntro2.dat" : "RallyIntro1.dat", 0);
-                { int nv = (*(int *)&DAT_105ccb68[13]) + 1;
-                  if (nv <= 1) (*(int *)&DAT_105ccb68[13]) = nv; else (*(int *)&DAT_105ccb68[13]) = 0; }
+                BrGhostLoad((char *)(DAT_105ccb68[13] ? "RallyIntro2.dat" : "RallyIntro1.dat"), 0);
+                { int nv = DAT_105ccb68[13] + 1;
+                  if (nv <= 1) DAT_105ccb68[13] = nv; else DAT_105ccb68[13] = 0; }
             Le58:                                     /* 0x10019e58 */
                 BrReplayRewind();
                 (*(int *)&g_brRaceBeginMovieDone) = 0;
             }
         Le63:                                         /* 0x10019e63 */
             {
-                int  *pObj  = *(int**)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl);
-                char *pInfo;
-                ((*(int  *)((char*)((pObj)) + ((0x2c))))) = 0;
-                ((*(int  *)((char*)((pObj)) + ((0x30))))) = 0;
-                (*(char *)&g_aBrRaceCar[0].f29AC) = (char)0xff; (*(char *)&g_aBrRaceCar[0].f29AD) = (char)0xff; (*(char *)&g_aBrRaceCar[0].f29AE) = (char)0xff;
-                pInfo = (char*)((*(int  *)((char*)((pObj)) + ((0x44)))));
+                BrRaceCtl     *pObj = g_aBrRaceCar[0].pCtl;
+                const uint8_t *pInfo;
+                pObj->apRec[0] = 0;
+                pObj->apRec[1] = 0;
+                g_aBrRaceCar[0].f29AC = 0xff; g_aBrRaceCar[0].f29AD = 0xff; g_aBrRaceCar[0].f29AE = 0xff;
+                pInfo = pObj->pHdr;
                 (*(int *)&g_Br0B380C) = (signed char)pInfo[0];
-                (*(int *)&g_aBrRaceCar[0].f29A4) = (signed char)pInfo[1];
-                ((Obj*)&(*(Driver (*)[])&g_aBrRaceCar))->m_1006FD50((signed char)pInfo[1]);
-                (*(int *)&g_aBrRaceCar[0].fE98) = (signed char)pInfo[2];
-                (*(int *)&g_aBrRaceCar[0].fE9C) = (signed char)pInfo[3];
-                (*(int *)&g_aBrRaceCar[0].fE90) = (signed char)pInfo[4];
-                (*(int *)&g_aBrRaceCar[0].fE94) = (signed char)pInfo[5];
-                ((*(char *)((char*)((pObj)) + ((0x25))))) = pInfo[6];
+                g_aBrRaceCar[0].f29A4 = (signed char)pInfo[1];
+                BrEntitySetIndex(&g_aBrRaceCar[0], (signed char)pInfo[1]);
+                g_aBrRaceCar[0].fE98 = (signed char)pInfo[2];
+                g_aBrRaceCar[0].fE9C = (signed char)pInfo[3];
+                g_aBrRaceCar[0].fE90 = (signed char)pInfo[4];
+                g_aBrRaceCar[0].fE94 = (signed char)pInfo[5];
+                pObj->b25 = pInfo[6];
                 g_226e80 = (signed char)pInfo[7];
                 DAT_104b15e8 = (signed char)pInfo[7];
             }
@@ -408,105 +210,82 @@ extern "C" void BrRaceStep(void)
         }
         case 2:                 /* 0x10019f0e */
         {
-            ((Obj*)&(*(Driver (*)[])&g_aBrRaceCar))->m_1006FD50(g_226e7c);
-            (*(int *)&DAT_105ccb68[9]) = 0;
+            int nE;
+            BrEntitySetIndex(&g_aBrRaceCar[0], g_226e7c);
+            DAT_105ccb68[9] = 0;
             (*(int *)&g_brRaceBeginRecArmed) = 1;
             (*(int *)&g_brRaceNDriver) = (*(int *)&g_brRaceNEntrant) + 1;
             (*(int *)&g_BrCarCount) = (*(int *)&g_brRaceNEntrant) + 1;
-            ((*(int  *)((char*)((*(int**)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl)[(*(int *)&g_brRaceNEntrant)])) + ((0x44))))) = (int)&(*(int *)&g_aBrRaceBeginRecIn);
+            nE = (*(int *)&g_brRaceNEntrant);
+            g_aBrRaceCar[nE].pCtl->pHdr = g_aBrRaceBeginRecIn;
             BrPodNop(&g_0A9884, (*(int *)&g_brRace5BC8D8));
-            memcpy((void*)((*(int  *)((char*)((*(int**)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl)[(*(int *)&g_brRaceNEntrant)])) + ((0x44))))), &(*(int *)&g_aBrRaceBeginRec), (*(int *)&g_brRace5BC8D8));
+            memcpy(g_aBrRaceCar[nE].pCtl->pHdr, g_aBrRaceBeginRec, (*(int *)&g_brRace5BC8D8));
             {
-                char *inf = (char*)((*(int  *)((char*)((*(int**)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl)[(*(int *)&g_brRaceNEntrant)])) + ((0x44)))));
+                const uint8_t *inf = g_aBrRaceCar[nE].pCtl->pHdr;
                 int v1 = (signed char)inf[1];
-                g_aBrRaceCar[(*(int *)&g_brRaceNEntrant)].f29A4 = v1;
-                ((Obj *)&g_aBrRaceCar[(*(int *)&g_brRaceNEntrant)].fwd.x)->m_1006FD50(v1);
+                g_aBrRaceCar[nE].f29A4 = v1;
+                BrEntitySetIndex(&g_aBrRaceCar[nE], v1);
             }
             BrReplayRewind();
             {
-                char *inf = (char*)((*(int  *)((char*)((*(int**)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl)[(*(int *)&g_brRaceNEntrant)])) + ((0x44)))));
+                nE = (*(int *)&g_brRaceNEntrant);
+                const uint8_t *inf = g_aBrRaceCar[nE].pCtl->pHdr;
                 if ((signed char)inf[0] == (*(int *)&g_Br0B380C) &&
                     (signed char)inf[7] == g_226e80) {          /* 0x1001a02b */
                     BrPodNop(&g_0A9878, (signed char)inf[0]);
-                    ((*(int  *)((char*)((*(int**)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl)[(*(int *)&g_brRaceNEntrant)])) + ((0x48))))) = 8;
+                    g_aBrRaceCar[nE].pCtl->f48 = 8;
                     BrPodNop(&g_0A9868, (*(int *)&g_brRace5BC8D8));
-                    ((*(int  *)((char*)((*(int**)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl)[(*(int *)&g_brRaceNEntrant)])) + ((0x4c))))) = (*(int *)&g_brRace5BC8D8);
+                    g_aBrRaceCar[nE].pCtl->f4C = (*(int *)&g_brRace5BC8D8);
                 } else {                                        /* 0x1001a09c */
                     BrPodNop(&g_0A9850, (signed char)inf[0], (*(int *)&g_Br0B380C));
-                    ((*(int  *)((char*)((*(int**)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl)[(*(int *)&g_brRaceNEntrant)])) + ((0x44))))) = 0;
+                    g_aBrRaceCar[nE].pCtl->pHdr = 0;
                     (*(int *)&g_BrCarCount) = 1; (*(int *)&g_brRaceNDriver) = 1;
                 }
             }
-            /* 0x1001a0d9 .. 0x1001a1ec: per-driver display-list build loop */
+            /* 0x1001a0d9 .. 0x1001a1ec: each entrant's ghost-record header,
+             * in its own 0xF000-byte buffer at 0x11787850 */
             if ((*(int *)&g_brRaceNEntrant) > 0) {
-                char *base = (char*)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl);     /* eax -> driver[i] */
-                int   off  = 0x2c;                 /* ecx */
-                int   val  = (int)&g_1787850;      /* esi = 0x11787850 */
-                int   i    = 0;                    /* edi */
+                int i = 0;
                 do {
-                    int *pd; char *q, *f;
-                    pd = *(int**)base;
+                    BrDriverCar *pc = &g_aBrRaceCar[i];
+                    uint8_t     *q;
+                    pc->pCtl->apRec[i] = (uint8_t *)g_1787850 + i * 0xf000;
+                    q = (uint8_t *)pc->pCtl->apRec[i];
+                    q[0] = (uint8_t)(*(int *)&g_Br0B380C);
+                    q[1] = *(uint8_t *)&pc->f29A8;
+                    q[2] = pc->pEquip[0xf8];
+                    q[3] = pc->pEquip[0xfc];
+                    q[4] = pc->pEquip[0x100];
+                    q[5] = pc->pEquip[0x104];
+                    q[6] = pc->pEquip[0x108];
+                    q[7] = (uint8_t)g_226e80;
+                    pc->pCtl->aLen[i] = 8;
+                    pc->pCtl->aCap[i] = 0xde5c;
                     i++;
-                    base += 0x2b68;
-                    *(int*)((char*)pd + off) = val;
-                    pd = *(int**)(base - 0x2b68);
-                    val += 0xf000;
-                    q = (char*)*(int*)((char*)pd + off);
-                    off += 4;
-                    q[0] = (char)(*(int *)&g_Br0B380C);
-                    pd = *(int**)(base - 0x2b68);
-                    q  = (char*)*(int*)((char*)pd + off - 4);
-                    q[1] = *(char*)(base - 0x2b80);
-                    pd = *(int**)(base - 0x2b68);
-                    f  = (char*)*(int*)(base - 0x469c);
-                    q  = (char*)*(int*)((char*)pd + off - 4);
-                    q[2] = f[0xf8];
-                    pd = *(int**)(base - 0x2b68);
-                    f  = (char*)*(int*)(base - 0x469c);
-                    q  = (char*)*(int*)((char*)pd + off - 4);
-                    q[3] = f[0xfc];
-                    pd = *(int**)(base - 0x2b68);
-                    f  = (char*)*(int*)(base - 0x469c);
-                    q  = (char*)*(int*)((char*)pd + off - 4);
-                    q[4] = f[0x100];
-                    pd = *(int**)(base - 0x2b68);
-                    f  = (char*)*(int*)(base - 0x469c);
-                    q  = (char*)*(int*)((char*)pd + off - 4);
-                    q[5] = f[0x104];
-                    pd = *(int**)(base - 0x2b68);
-                    f  = (char*)*(int*)(base - 0x469c);
-                    q  = (char*)*(int*)((char*)pd + off - 4);
-                    q[6] = f[0x108];
-                    pd = *(int**)(base - 0x2b68);
-                    q  = (char*)*(int*)((char*)pd + off - 4);
-                    q[7] = (char)g_226e80;
-                    pd = *(int**)(base - 0x2b68);
-                    *(int*)((char*)pd + off + 4) = 8;
-                    pd = *(int**)(base - 0x2b68);
-                    *(int*)((char*)pd + off + 0xc) = 0xde5c;
                 } while (i < (*(int *)&g_brRaceNEntrant));
             }
             goto La213;
         }
         default: Ldefault:      /* 0x1001a1ee (== case 3) */
         case 3:
-            ((Obj*)&(*(Driver (*)[])&g_aBrRaceCar))->m_1006FD50(g_226e7c);
-            (*(int *)&DAT_105ccb68[9]) = 0;
+            BrEntitySetIndex(&g_aBrRaceCar[0], g_226e7c);
+            DAT_105ccb68[9] = 0;
             (*(int *)&g_brRaceNDriver) = (*(int *)&g_brRaceNEntrant);
             (*(int *)&g_BrCarCount) = (*(int *)&g_brRaceNEntrant);
             goto La213;
         }
 
     Lcf3:   /* 0x10019cf3 */
-        if ((*(int *)&DAT_105ccb68[8]) == 0) goto Ld39;
+        if (DAT_105ccb68[8] == 0) goto Ld39;
     Lcfb:   /* 0x10019cfb */
         {
             int a = (*(int *)&g_brRaceBeginBestCar);
-            BrWrap_10067960((char*)&g_2066C8 - a * 89992);
-            {
-                int p = (int)&(*(int *)((char *)&g_aBrSfxChan + 0x10));        /* 0x10019d23 zero loop (signed cmp) */
-                do { *(int*)(p + 4) = 0; *(int*)p = 0; p += 0x18; }
-                while (p < (int)&g_18EF0B8);
+            int c;
+            /* 0x102066C8 is car slot 15 */
+            BrWrap_10067960(BR_CAR_SLOT(15 - a));
+            for (c = 0; c < 15; c++) {           /* 0x10019d23 zero loop */
+                g_aBrSfxChan[c].packed = 0;
+                g_aBrSfxChan[c].f10 = 0;
             }
         }
         goto Ld70;
@@ -514,49 +293,52 @@ extern "C" void BrRaceStep(void)
         {
             int i;
             for (i = 0; i < (*(int *)&g_brRaceNEntrant); i++) {
-                int *p = *(int**)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl)[i];
-                ((*(int  *)((char*)((p)) + ((0x44))))) = 0; ((*(int  *)((char*)((p)) + ((0x2c))))) = 0; ((*(int  *)((char*)((p)) + ((0x30))))) = 0;
+                BrRaceCtl *p = g_aBrRaceCar[i].pCtl;
+                p->pHdr = 0; p->apRec[0] = 0; p->apRec[1] = 0;
             }
         }
     Ld70:   /* 0x10019d70 */
-        (*(int *)&DAT_105ccb68[9]) = ((*(int *)&DAT_105ccb68[8]) == 0);
+        DAT_105ccb68[9] = (DAT_105ccb68[8] == 0);
         goto La213;
 
     La213:  /* 0x1001a213 -- common tail after the state switch */
-        if ((*(int *)&g_brRaceRules.mode) == 5) {
+        if (g_brRaceRules.mode == 5) {
             (*(int *)&g_brRaceBeginDifficulty) = 0;
         } else {
-            (*(int *)&g_brRaceBeginDifficulty) = (((*(int  *)((char*)((*(int**)((char*)&(g_apBrRaceDiff[0]) + (*(int *)&g_Br0B380C) * 4))) + ((4))))) >> 4) & 1;
+            (*(int *)&g_brRaceBeginDifficulty) =
+                ((*(const int32_t *)((const char *)g_apBrRaceDiff[(*(int *)&g_Br0B380C)] + 4)) >> 4) & 1;
         }
         BrRaceDifficultySet(DAT_104b15e8);
-        if ((*(int *)&g_brRaceRules.mode) != 4 && (*(int *)&DAT_105ccb68[8]) == 0) {
+        if (g_brRaceRules.mode != 4 && DAT_105ccb68[8] == 0) {
             BrPodNop();
             BrPodNop();
         }
         FUN_10061310();
-        if ((*(int *)&DAT_105ccb68[8]) != 0) goto La430;
-        BrTrackLoad((*(int *)&g_brRaceRules.mode) == 5 ? 0xc : (*(int *)&g_Br0B380C));
-        if ((*(int *)&DAT_105ccb68[8]) != 0) goto La430;
+        if (DAT_105ccb68[8] != 0) goto La430;
+        BrTrackLoad(g_brRaceRules.mode == 5 ? 0xc : (*(int *)&g_Br0B380C));
+        if (DAT_105ccb68[8] != 0) goto La430;
         {
-            int  cnt;
+            int cnt;
             (*(int *)&g_brRaceBeginAirArmed) = 0; (*(int *)&g_brRaceBeginAirTrigger) = 0; (*(int *)&g_brRaceBeginAirplane) = 0; g_pBrRaceFlyAim = 0;
             g_pBrRaceFlyPos = 0; g_brRaceBeginPathT = 0; g_brRaceBeginPathSeg = 0; (*(int *)&g_brRaceBeginPathIdx) = 0; (*(int *)&g_brRaceBeginPathLen) = 0;
             BrPodNop(&g_0A9840, g_brTrkHdr.nSpecial);
             (*(int *)&g_brRaceBeginFxCount) = 0;
             cnt = g_brTrkHdr.nSpecial;
             if (cnt > 0) {
-                char *e = (char*)&(*(int *)&g_brTrkHdr.aSpecial);     /* 0x106eee3c */
-                int   i = 0;
+                const BrRaceSpecial *e = g_brTrkHdr.aSpecial;
+                int i = 0;
                 do {
                     int          arg = 0;
                     const char  *str = 0;
-                    switch ((signed char)((*(char *)((char*)((e)) + ((8))))) - 3) {   /* jmp [.. 0x1001c664] */
-                    case 0:  arg = ((*(int  *)((char*)((e)) + ((0))))); (*(int *)&g_brRaceBeginAirplane) = arg; str = (char*)&g_0A97F8; break;
-                    case 1:  (*(int *)&g_brRaceBeginPathLen) = ((*(int  *)((char*)((e)) + ((4))))); arg = ((*(int  *)((char*)((e)) + ((0))))); g_pBrRaceFlyPos = arg;
+                    switch ((signed char)e->axis - 3) {   /* jmp [.. 0x1001c664] */
+                    case 0:  arg = e->f00; (*(int *)&g_brRaceBeginAirplane) = arg; str = (char*)&g_0A97F8; break;
+                    /* kinds 4 and 5 hold the addresses BrGlTrackFixupCmds rebased */
+                    case 1:  (*(int *)&g_brRaceBeginPathLen) = e->f04; arg = e->f00;
+                             g_pBrRaceFlyPos = BR_PTR32(BrVec3 *, e->f00);
                              str = (char*)&g_0A9824; break;
-                    case 2:  arg = ((*(int  *)((char*)((e)) + ((0))))); g_pBrRaceFlyAim = arg; str = (char*)&g_0A9808; break;
-                    case 3:  arg = ((*(int  *)((char*)((e)) + ((0))))); (*(int *)&g_brRaceBeginAirTrigger) = arg; str = (char*)&g_0A97E0; break;
-                    case 4:  { int c = (*(int *)&g_brRaceBeginFxCount); arg = ((*(int  *)((char*)((e)) + ((0)))));
+                    case 2:  arg = e->f00; g_pBrRaceFlyAim = BR_PTR32(BrVec3 *, e->f00); str = (char*)&g_0A9808; break;
+                    case 3:  arg = e->f00; (*(int *)&g_brRaceBeginAirTrigger) = arg; str = (char*)&g_0A97E0; break;
+                    case 4:  { int c = (*(int *)&g_brRaceBeginFxCount); arg = e->f00;
                                g_aBrRaceBeginFx[c] = arg;
                                (*(int *)&g_brRaceBeginFxCount) = c + 1; str = (char*)&g_0A97D0; } break;
                     default: goto Lskip;
@@ -564,7 +346,7 @@ extern "C" void BrRaceStep(void)
                     BrPodNop(str, arg);
                 Lskip:
                     i++;
-                    e += 0xc;
+                    e++;
                 } while (i < g_brTrkHdr.nSpecial);
             }
             {
@@ -576,9 +358,9 @@ extern "C" void BrRaceStep(void)
                 }
                 if (sel != 0) {
                     float m[3];
-                    int  *row = (int*)((char*)BR_PTR32(void *, g_brTrkHdr.aInstances) + (sel + sel * 20) * 4);
                     m[0] = 1.0f; m[1] = 0.0f; m[2] = 0.0f;
-                    BrVec3TransformDivW(&m[0], &m[0], row);   /* in place: both leas are [esp+0x2c] */
+                    /* in place: both leas are [esp+0x2c] */
+                    BrVec3TransformDivW(&m[0], &m[0], (const float (*)[4])BrRaceInst(sel));
                     g_brRaceBeginPathScale = BrVec3Length((const struct BrVec3 *)(&m[0]));
                 }
             }
@@ -586,128 +368,118 @@ extern "C" void BrRaceStep(void)
         }
     La430:  /* 0x1001a430 */
         g_brMode0AA8B4 = 1;
-        if ((*(int *)&DAT_105ccb68[8]) == 0) g_brMode0AA8B4 = (*(int *)&g_brRaceNEntrant);
-        (*(int *)&BrG_6C1628[4]) = (*(int *)&DAT_105ccb68[8]) ? (*(int *)&g_brRaceBeginBestCar) : 0;
-        (*(int *)&g_brRaceBegin6E8720) = ((*(int *)&BrG_6C1628[4]) == 0);
+        if (DAT_105ccb68[8] == 0) g_brMode0AA8B4 = (*(int *)&g_brRaceNEntrant);
+        g_aBrView[0].iCar = DAT_105ccb68[8] ? (*(int *)&g_brRaceBeginBestCar) : 0;
+        g_aBrView[1].iCar = (g_aBrView[0].iCar == 0);
 
         /* 0x1001a462: wheel/tyre + camera-mode setup */
-        if ((*(int *)&g_brRaceRules.mode) == 4) {
-            g_aBrRaceCar[0].pMatA = (BrSnapMtx *)(intptr_t)((int)&(*(int *)&g_aBrRaceCar[0].aSnap[1].m[0][0]));
+        if (g_brRaceRules.mode == 4) {
+            g_aBrRaceCar[0].pMatA = &g_aBrRaceCar[0].aSnap[1];
             (*(int *)&g_BrCamHold2) = 0xb4;
             goto La58d;
         }
         if ((*(int *)&g_brRaceNEntrant) > 0) {                     /* 0x1001a485 tyre loop */
-            char *b = (char*)&(*(int *)&g_aBrRaceCar[0].pEquip);
-            int   i = 0;
+            int i = 0;
             do {
-                int *p, *q;
-                p = *(int**)b; *(int*)(b + 0x10) = ((*(int  *)((char*)((p)) + ((0xfc)))));
-                p = *(int**)b; *(int*)(b + 0x08) = ((*(int  *)((char*)((p)) + ((0x104)))));
-                p = *(int**)b; *(int*)(b + 0x04) = ((*(int  *)((char*)((p)) + ((0x100)))));
-                p = *(int**)b; *(int*)(b + 0x0c) = ((*(int  *)((char*)((p)) + ((0xf8)))));
-                q = *(int**)(b + 0x1b34);
+                BrDriverCar *pc = &g_aBrRaceCar[i];
+                pc->fE9C = *(const int32_t *)(pc->pEquip + 0xfc);
+                pc->fE94 = *(const int32_t *)(pc->pEquip + 0x104);
+                pc->fE90 = *(const int32_t *)(pc->pEquip + 0x100);
+                pc->fE98 = *(const int32_t *)(pc->pEquip + 0xf8);
                 if ((*(int *)&g_BrCtrlCfg.active) == 1 || (*(int *)&g_BrCtrlCfg.active) == 2 || (*(int *)&g_BrCtrlCfg.active) == 3)
-                    ((*(char *)((char*)((q)) + ((0x25))))) = 5;
+                    pc->pCtl->b25 = 5;
                 else
-                    ((*(char *)((char*)((q)) + ((0x25))))) = 2;
+                    pc->pCtl->b25 = 2;
                 i++;
-                b += 0x2b68;
             } while (i < (*(int *)&g_brRaceNEntrant));
         }
         {
             int ecx = (*(int *)&g_brRaceNEntrant);                 /* 0x1001a4f1 */
-            if ((*(int *)&g_brRaceRules.mode) == 2) {
-                int *p = *(int**)&(*(int *)&g_aBrRaceCar[1].pCtl);
-                if (((*(int  *)((char*)((p)) + ((0x44))))) != 0) {
-                    char *inf = (char*)((*(int  *)((char*)((p)) + ((0x44)))));
-                    (*(int *)&g_aBrRaceCar[1].fE98) = (signed char)inf[2];
-                    (*(int *)&g_aBrRaceCar[1].fE9C) = (signed char)inf[3];
-                    (*(int *)&g_aBrRaceCar[1].fE90) = (signed char)inf[4];
-                    (*(int *)&g_aBrRaceCar[1].fE94) = (signed char)inf[5];
-                    ((*(char *)((char*)((p)) + ((0x25))))) = inf[6];
+            if (g_brRaceRules.mode == 2) {
+                BrRaceCtl *p = g_aBrRaceCar[1].pCtl;
+                if (p->pHdr != 0) {
+                    const uint8_t *inf = p->pHdr;
+                    g_aBrRaceCar[1].fE98 = (signed char)inf[2];
+                    g_aBrRaceCar[1].fE9C = (signed char)inf[3];
+                    g_aBrRaceCar[1].fE90 = (signed char)inf[4];
+                    g_aBrRaceCar[1].fE94 = (signed char)inf[5];
+                    p->b25 = inf[6];
                     goto La58d;
                 }
             }
             /* 0x1001a547 */
             if (ecx < (*(int *)&g_BrCarCount)) {
                 do {
-                    char *e = ((char *)&g_aBrRaceCar[ecx].fE94);
-                    int  *q;
-                    *(int*)(e + 8) = 1;
-                    *(int*)(e) = 1;
-                    *(int*)(e - 4) = 2;
-                    *(int*)(e + 4) = 0;
-                    q = *(int**)(e + 0x1b2c);
+                    BrDriverCar *pc = &g_aBrRaceCar[ecx];
+                    pc->fE9C = 1;
+                    pc->fE94 = 1;
+                    pc->fE90 = 2;
+                    pc->fE98 = 0;
                     ecx++;
-                    ((*(char *)((char*)((q)) + ((0x25))))) = 0;
+                    pc->pCtl->b25 = 0;
                 } while (ecx < (*(int *)&g_BrCarCount));
             }
         }
     La58d:  /* 0x1001a58d */
-        if ((*(int *)&DAT_105ccb68[8]) != 0) goto La973;
+        if (DAT_105ccb68[8] != 0) goto La973;
         DAT_105ccb60 = 0;
         if ((*(int *)&g_BrCarCount) > 0) {                     /* 0x1001a5ba callback-wiring loop */
-            char *s = (char*)&(*(int *)&g_aBrRaceCar[0].pfnControl);
-            int   i = 0;
+            int i = 0;
             do {
+                BrDriverCar *pc = &g_aBrRaceCar[i];
                 int n  = (*(int *)&g_brRaceNEntrant);
-                int st = (*(int *)&g_brRaceRules.mode);
-                *(int*)(s + 0x1aa8) = 0x3f800000;
+                int st = g_brRaceRules.mode;
+                pc->f29B0 = 1.0f;
                 if (i < n) {
-                    *(int*)s = (int)&BrCtlHuman;
+                    pc->pfnControl = BrCtlHuman;
                 } else if (st == 2) {
-                    *(int*)s = (int)&BrCtlHuman;
-                    ((*(char *)((char*)((s)) + ((0x1aa7))))) = (char)st;
-                    *(int*)(s + 0x1aa8) = 0x3ec00000;
+                    pc->pfnControl = BrCtlHuman;
+                    pc->b29AF = (uint8_t)st;
+                    pc->f29B0 = 0.375f;                    /* 0x3ec00000 */
                     goto Lwire_after;
                 } else if (st == 6) {
-                    *(int*)s = (int)&BrRaceCarCtlOutro;
+                    pc->pfnControl = BrRaceCarCtlOutro;
                 } else {
-                    ((Obj*)(s - 0xf08))->m_1005C490();
-                    *(int*)s = (int)&BrCtlAi;
+                    BrRaceCarPickIndex(pc);
+                    pc->pfnControl = BrCtlAi;
                 }
-                ((*(char *)((char*)((s)) + ((0x1aa7))))) = 0;              /* 0x1001a612 */
-            Lwire_after:                        /* 0x1001a619 */
-                if (*(int*)(s - 0x80) == 0)
-                    ((Obj*)(s - 0xf08))->m_1006FCE0(i, *(int*)(s + 0x1aa0));
-                ((Obj*)(s - 0xf08))->m_1005E7B0();
-                *(int*)(s + 0x74)  = 0;
-                *(int*)(s + 0xf4)  = 0;
-                *(int*)(s + 0xfc)  = 0;
+                pc->b29AF = 0;                             /* 0x1001a612 */
+            Lwire_after:                                   /* 0x1001a619 */
+                if (pc->fE88 == 0)
+                    BrCarSlotSetup_1006FCE0(pc, i, pc->f29A8);
+                BrCarStartInit_1005E7B0(pc);
+                pc->fF7C = 0;
+                pc->pszBanner = 0;
+                pc->psz1004 = 0;
                 i++;
-                s += 0x2b68;
             } while (i < (*(int *)&g_BrCarCount));
         }
         if ((*(int *)&g_BrCarCount) == 0) {                    /* 0x1001a65f */
-            int j;
-            for (j = 0; j < 0x57e2; j++) ((int*)&(*(int *)&g_ab0C12A0))[j] = 0;
-            ((Obj*)&(*(Driver (*)[])&g_aBrRaceCar))->m_1006FCB0(0);
-            ((Obj*)&(*(Driver (*)[])&g_aBrRaceCar))->m_1005E7B0();
-            ((Obj*)&(*(Driver (*)[])&g_aBrRaceCar))->m_10001CF0();
-            (*(float *)&g_aBrRaceCar[0].aSnap[0].m[3][2]) = (*(float *)&g_aBrRaceCar[0].aSnap[0].m[3][2]) - g_0773B0;
+            memset(BR_CAR_SLOT(0), 0, BR_CAR_SLOT_SIZE);
+            BrCarSlotBind_1006FCB0(&g_aBrRaceCar[0], 0);
+            BrCarStartInit_1005E7B0(&g_aBrRaceCar[0]);
+            BrCamChaseStep((struct BrCamCar *)&g_aBrRaceCar[0]);
+            g_aBrRaceCar[0].aSnap[0].m[3][2] = g_aBrRaceCar[0].aSnap[0].m[3][2] - g_0773B0;
         }
         loc14 = 0;                              /* 0x1001a6a0 */
         if (g_brMode0AA8B4 > 0) {
-            loc1c = (int)&(DAT_100a6b68[0]);
-            loc10 = (int)&(*(int *)&BrG_6C1628[5]);
-            do {                                /* 0x1001a6c5 outer render loop */
-                int   ix  = *(int*)(loc10 - 4);
-                char *s   = (char*)&(*(int *)&g_ab0C12A0) + ix * 89992;   /* [edx*8+g_0BCDD0] */
-                char *b   = (DAT_104b15e8 == 4) ? s + 0x300 : s + 0x100;
-                int   a   = (signed char)((*(char *)((char*)((s)) + ((0xe4)))));
-                int   d   = (signed char)((*(char *)((char*)((s)) + ((0xe5)))));
-                char  kind;
-                *(int*)loc10 = (*(int (**)(int, int, int, int, int, int, int, int, int, int, int, int, int, int, int))&g_pfn18ED1C4)((int)(s + 0x500), (int)b, a, d, a,
-                                       1, 2, 0, 0, 1, 1, 0, 0, 0, 0);
-                kind = ((*(char *)((char*)((s)) + ((0xdb)))));
+            do {                                /* 0x1001a6c5 render loop, one pass per view */
+                BrView  *pv = &g_aBrView[loc14];
+                uint8_t *s  = BR_CAR_SLOT(pv->iCar);
+                uint8_t *b  = (DAT_104b15e8 == 4) ? s + 0x300 : s + 0x100;
+                int      a  = (signed char)s[0xe4];
+                int      d  = (signed char)s[0xe5];
+                char     kind;
+                pv->ahTex[0] = (int32_t)g_pfn18ED1C4((uintptr_t)(s + 0x500), (uintptr_t)b, a, d, a,
+                                                     1, 2, 0, 0, 1, 1, 0, 0, 0, 0);
+                kind = (char)s[0xdb];
                 if (kind == 1 || kind == 2) {          /* 0x1001a743 */
-                    char *ep = (char*)loc10 + 4;
-                    char *w  = b + 0x1fe;
+                    uint8_t *w = b + 0x1fe;
+                    int      k;
                     g_18ED1B4 = 1;
-                    loc18 = 0xf;
-                    do {                               /* 0x1001a75e */
+                    for (k = 1; k < 16; k++) {         /* 0x1001a75e, 15 passes */
                         int a2, d2;
-                        char k2 = ((*(char *)((char*)((s)) + ((0xdb)))));
+                        char k2 = (char)s[0xdb];
                         if (k2 == 1) {                 /* 0x1001a768 attr repack */
                             unsigned int av = *(unsigned short*)w;
                             unsigned int cv = av;
@@ -722,57 +494,49 @@ extern "C" void BrRaceStep(void)
                         } else if (k2 == 2) {          /* 0x1001a793 */
                             *(unsigned short*)w &= 0xfeff;
                         }
-                        a2 = (signed char)((*(char *)((char*)((s)) + ((0xe4)))));
-                        d2 = (signed char)((*(char *)((char*)((s)) + ((0xe5)))));
-                        *(int*)ep = (*(int (**)(int, int, int, int, int, int, int, int, int, int, int, int, int, int, int))&g_pfn18ED1C4)((int)(s + 0x500), (int)b, a2, d2, a2,
-                                              1, 2, 0, 0, 1, 1, 0, 0, 0, 0);
-                        ep += 4;
-                        w  -= 2;
-                    } while (--loc18 != 0);
+                        a2 = (signed char)s[0xe4];
+                        d2 = (signed char)s[0xe5];
+                        pv->ahTex[k] = (int32_t)g_pfn18ED1C4((uintptr_t)(s + 0x500), (uintptr_t)b, a2, d2, a2,
+                                                             1, 2, 0, 0, 1, 1, 0, 0, 0, 0);
+                        w -= 2;
+                    }
                     g_18ED1B4 = 0;
                 }
                 {                                      /* 0x1001a7f0 */
-                    int a3 = (signed char)((*(char *)((char*)((s)) + ((0xe8)))));
-                    int c3 = (signed char)((*(char *)((char*)((s)) + ((0xe9)))));
-                    int d3 = (signed char)((*(char *)((char*)((s)) + ((0xe4)))));
-                    int e3 = (signed char)((*(char *)((char*)((s)) + ((0xe5)))));
-                    char *dst;
-                    int   sz;
-                    ((*(int  *)((char*)((loc10)) + ((0x40))))) = (*(int (**)(int, int, int, int, int, int, int, int, int, int, int, int, int, int, int))&g_pfn18ED1C4)((int)(d3 * e3 + s + 0x500), (int)b,
-                                                a3, c3, a3, 1, 2, 0, 0, 1, 1,
-                                                0, 0, 1, 0);
+                    int a3 = (signed char)s[0xe8];
+                    int c3 = (signed char)s[0xe9];
+                    int d3 = (signed char)s[0xe4];
+                    int e3 = (signed char)s[0xe5];
+                    uint8_t *dst;
+                    int      sz;
+                    pv->hTexB = (int32_t)g_pfn18ED1C4((uintptr_t)(s + d3 * e3 + 0x500), (uintptr_t)b,
+                                                      a3, c3, a3, 1, 2, 0, 0, 1, 1,
+                                                      0, 0, 1, 0);
                     /* 0x1001a847: memmove of the emitted span */
-                    sz  = ((signed char)((*(char *)((char*)((s)) + ((0xd8))))) + 2)
-                          * (signed char)((*(char *)((char*)((s)) + ((0xe8))))) * (signed char)((*(char *)((char*)((s)) + ((0xe9)))));
+                    sz  = ((signed char)s[0xd8] + 2) * (signed char)s[0xe8] * (signed char)s[0xe9];
                     dst = s - sz + 0x8000;
-                    memmove(dst,
-                            (signed char)((*(char *)((char*)((s)) + ((0xe4))))) * (signed char)((*(char *)((char*)((s)) + ((0xe5)))))
-                                + s + 0x500,
-                            sz);
+                    memmove(dst, s + (signed char)s[0xe4] * (signed char)s[0xe5] + 0x500, sz);
                     loc18 = 0;
-                    if ((signed char)((*(char *)((char*)((s)) + ((0xd8))))) + 2 > 0) {
-                        char *ep = s + 0x500;
+                    if ((signed char)s[0xd8] + 2 > 0) {
+                        uint8_t *ep = s + 0x500;
                         do {                           /* 0x1001a8ab */
-                            int aa = (signed char)((*(char *)((char*)((s)) + ((0xe8)))));
-                            int cc = (signed char)((*(char *)((char*)((s)) + ((0xe9)))));
-                            int r  = g_18ED1C0((int)ep, (int)dst, (int)b,
-                                               aa, cc, aa, 1, 2);
+                            int aa = (signed char)s[0xe8];
+                            int cc = (signed char)s[0xe9];
+                            int r  = g_18ED1C0((unsigned short *)ep, dst, b, aa, cc, aa, 1, 2);
                             ep += r;
-                            ((*(int  *)((char*)((s)) + ((0xfc))))) = r;
-                            if ((unsigned)ep > (unsigned)dst)
+                            *(int32_t *)(s + 0xfc) = r;
+                            if (ep > dst)
                                 BrLogPrint(BrStrGet(0x12c));
-                            dst += (signed char)((*(char *)((char*)((s)) + ((0xe8))))) * (signed char)((*(char *)((char*)((s)) + ((0xe9)))));
+                            dst += (signed char)s[0xe8] * (signed char)s[0xe9];
                             if ((unsigned)(ep - s) > 0x8000)
                                 BrLogPrint(BrStrGet(0x12d));
                             loc18++;
-                        } while (loc18 < (signed char)((*(char *)((char*)((s)) + ((0xd8))))) + 2);
+                        } while (loc18 < (signed char)s[0xd8] + 2);
                     }
                 }
                 /* 0x1001a93e */
-                *(int*)loc1c = 0xffffffff;
-                loc1c += 4;
+                DAT_100a6b68[loc14] = (int32_t)0xffffffff;
                 loc14++;
-                loc10 += 0x58;
             } while (loc14 < g_brMode0AA8B4);
         }
         goto La97c;
@@ -780,17 +544,16 @@ extern "C" void BrRaceStep(void)
         loc14 = (*(int *)&g_brRaceNEntrant);
     La97c:  /* 0x1001a97c */
         {
-            int sel = ((*(int *)&DAT_105ccb68[8]) != 0) ? 4 : (((*(int *)&g_brRaceRules.mode) == 5) ? 4 : 0);
-            g_brRaceLightT = *(float*)((char*)&g_0A957C + sel * 8);
-            (*(int *)&g_brRaceLights) = *(int*)((char*)&g_0A9578 + sel * 8);
+            int sel = (DAT_105ccb68[8] != 0) ? 4 : ((g_brRaceRules.mode == 5) ? 4 : 0);
+            g_brRaceLightT = g_aBrRaceLightScript[sel].dur;
+            (*(int *)&g_brRaceLights) = g_aBrRaceLightScript[sel].state;
             (*(int *)&g_brRaceScript) = sel;
         }
-        if ((*(int *)&DAT_105ccb68[8]) == 0) {
+        if (DAT_105ccb68[8] == 0) {
             (*(int *)&g_brRaceNFinished) = 0;
             if ((*(int *)&g_brRaceNDriver) > 0) {                 /* 0x1001a9d3 */
-                char *s = (char*)&(*(int *)&g_aBrRaceDriver);
-                int   i = 0;
-                do { ((Obj*)s)->m_1005F310(); i++; s += 0x80; } while (i < (*(int *)&g_brRaceNDriver));
+                int i = 0;
+                do { BrRaceGridPlace((unsigned char *)&g_aBrRaceDriver[i]); i++; } while (i < (*(int *)&g_brRaceNDriver));
             }
         }
         BrRaceDifficultyApply(DAT_104b15e8);                 /* 0x1001a9ef */
@@ -801,32 +564,32 @@ extern "C" void BrRaceStep(void)
         BrFadeSetTarget(0x3f800000, 0x3e4ccccd);   /* 0x1001aa1c */
         BrFadeSetTargetA(0x3f800000, 0x3e4ccccd);
         BrFadeSetTargetB(0x3f800000, 0x3e4ccccd);
-        (*(int *)&DAT_105ccb68[11]) = 1;                           /* 0x1001aa5e */
-        if ((*(int *)&DAT_105ccb68[8]) == 0) {                    /* 0x1001aa66 */
-            DAT_105bcaec = (int)&g_5BCAF8;
+        DAT_105ccb68[11] = 1;                           /* 0x1001aa5e */
+        if (DAT_105ccb68[8] == 0) {                    /* 0x1001aa66 */
+            DAT_105bcaec = (void *)&g_5BCAF8;
             BrModelLoad(&g_5BCAF8, "misc\\modelLights.blob");   /* a third argument the original never reads */
-            BrAnimSetOnce(DAT_105bcaec);
+            BrAnimSetOnce((struct BrAnimSet *)DAT_105bcaec);
         }
         BrPfxReset();                         /* 0x1001aa96 */
         BrCollRespReset();
         (*(int *)&g_BrX06909B4) = 0;
-        (*(int *)&DAT_105ccb68[12]) = 0;
+        DAT_105ccb68[12] = 0;
         (*(int *)&g_brRaceBeginSeq888) = 0xffffffff;
         g_brRaceBeginSeqT = 0;
         (*(int *)&g_brRaceBeginSeqIdx) = 0;
         (*(int *)((char *)&g_aBrEntRecs + 0xA8)) = 1;
-        if ((*(int *)&DAT_105ccb68[8]) == 0) { BrReset_1002E13B(); BrSndNearestReset(); }
+        if (DAT_105ccb68[8] == 0) { BrReset_1002E13B(); BrSndNearestReset(); }
         (*(int *)((char *)&g_aBrEntRecs + 0x54)) = 0;                           /* 0x1001aadf */
-        if ((*(int *)&DAT_105ccb68[8]) != 0) {
+        if (DAT_105ccb68[8] != 0) {
             BrReplayRewind();
         } else {
             BrReplayReset();                     /* 0x1001aaf5 */
-            if ((*(int *)&g_brRaceRules.mode) == 4) BrSet_1006AA90();
+            if (g_brRaceRules.mode == 4) BrSet_1006AA90();
             if ((*(char *)&DAT_100bb2e0) != 0) {                /* 0x1001ab0e */
                 int c = g_5bc760;
                 int arg;
-                if ((*(int *)&g_brRaceRules.mode) == 4 && c == 2)      arg = 0xc;
-                else if ((*(int *)&g_brRaceRules.mode) == 4 && c == 1) arg = 0xd;
+                if (g_brRaceRules.mode == 4 && c == 2)      arg = 0xc;
+                else if (g_brRaceRules.mode == 4 && c == 1) arg = 0xd;
                 else                              arg = BrCdTrackRandom();
                 BrCdTrackPlay(arg);
                 BrCdVolumeSet((unsigned char)(*(char *)&DAT_100bb2e0));
@@ -839,168 +602,158 @@ extern "C" void BrRaceStep(void)
     else {                                      /* 0x1001ab71 (g_5CCB94 != 0) */
         if ((*(int *)&g_brRaceNet) != 0) {
             int r = BrNetStackPop221288();
-            if (r >= 0 && (*(int *)&DAT_105ccb68[8]) == 0) BrCarTableRemove(r);
+            if (r >= 0 && DAT_105ccb68[8] == 0) BrCarTableRemove(r);
         }
     }
 
     /* 0x1001ab93: per-frame tail (merge point) */
     g_17A5F20 = 0;
     if ((*(int *)&g_brRaceLights) == 4 && (*(int *)&g_brRaceNEntrant) > 0) {
-        char *s = (char*)&(*(Driver (*)[])&g_aBrRaceCar);
-        int   i = 0;
-        do { ((Obj*)s)->m_10060A30(); i++; s += 0x2b68; } while (i < (*(int *)&g_brRaceNEntrant));
+        int i = 0;
+        do { BrRaceSaveLastLapInfo(&g_aBrRaceCar[i]); i++; } while (i < (*(int *)&g_brRaceNEntrant));
     }
-    if ((*(int *)&g_brRaceRules.mode) != 4 && (*(int *)&g_BrX06909B4) == 0)      /* 0x1001abd0 */
+    if (g_brRaceRules.mode != 4 && (*(int *)&g_BrX06909B4) == 0)      /* 0x1001abd0 */
         (*(int *)&g_brRaceBeginMirrorOff) ^= 1;
     BrFrameClockStep();
     (*(int *)&g_brRaceHudA) = 0;
     loc10 = (*(int *)&g_BrX06909B4);
-    (*(int *)&DAT_105ccb68[4]) = 0;
+    DAT_105ccb68[4] = 0;
     if ((*(int *)&g_brRaceLights) < 3) {                       /* 0x1001ac00 */
         if ((*(int *)&g_brRaceTick) != 0) {                  /* 0x1001ac0f: je ac42 skips when ==0 */
-            if ((*(int *)&g_brRaceNEntrant) > 0) {
-                char *p = (char*)&(*(int *)&g_aBrRaceCar[0].f1008);
-                int   c = (*(int *)&g_brRaceNEntrant);
-                do { *(int*)(p - 4) = 0; *(int*)p = 0x3c23d70a; p += 0x2b68; }
-                while (--c);
+            int i;
+            for (i = 0; i < (*(int *)&g_brRaceNEntrant); i++) {
+                g_aBrRaceCar[i].psz1004 = 0; g_aBrRaceCar[i].f1008 = 0.01f;   /* 0x3c23d70a */
             }
         } else if ((*(int *)&g_brRaceNet) == 0 || (*(int *)&g_brRace18EEED8) == 0) {   /* 0x1001ac8c */
-            if ((*(int *)&g_brRaceNEntrant) > 0) {
-                char *s = (char*)&(*(int *)&g_aBrRaceCar[0].f1008);
-                int   i = 0;
-                do { *(int*)(s - 4) = BrStrGet(0xee); *(int*)s = 0x3c23d70a;
-                     i++; s += 0x2b68; } while (i < (*(int *)&g_brRaceNEntrant));
+            int i;
+            for (i = 0; i < (*(int *)&g_brRaceNEntrant); i++) {
+                g_aBrRaceCar[i].psz1004 = BrStrGet(0xee); g_aBrRaceCar[i].f1008 = 0.01f;
             }
         } else {                              /* 0x1001ac52 */
-            if ((*(int *)&g_brRaceNEntrant) > 0) {
-                char *s = (char*)&(*(int *)&g_aBrRaceCar[0].f1008);
-                int   i = 0;
-                do { *(int*)(s - 4) = BrStrGet(0xed); *(int*)s = 0x3c23d70a;
-                     i++; s += 0x2b68; } while (i < (*(int *)&g_brRaceNEntrant));
+            int i;
+            for (i = 0; i < (*(int *)&g_brRaceNEntrant); i++) {
+                g_aBrRaceCar[i].psz1004 = BrStrGet(0xed); g_aBrRaceCar[i].f1008 = 0.01f;
             }
         }
-        (*(int *)&DAT_105ccb68[4]) = 1;                         /* 0x1001acc4 */
+        DAT_105ccb68[4] = 1;                         /* 0x1001acc4 */
         if ((*(int *)&g_brRaceNDriver) > 0) {
-            char *s = (char*)&(*(int *)&g_aBrRaceDriver[0].f68);
-            int   i = 0;
+            int i = 0;
             do {
-                int *c;
-                *(int*)s |= 1;
-                c = *(int**)(s - 8);
-                if (c != 0 && ((*(int  *)((char*)((c)) + ((0x140))))) < (*(int *)&g_brRaceNEntrant)) {
-                    if ((*(int *)&g_brRaceRules.mode) == 1 || (*(int *)&g_brRaceRules.mode) == 6) {   /* 0x1001ad17 */
+                BrDriver    *pd = &g_aBrRaceDriver[i];
+                BrDriverCar *c;
+                pd->f68 |= 1;
+                c = pd->pCar;
+                if (c != 0 && c->f140 < (*(int *)&g_brRaceNEntrant)) {
+                    if (g_brRaceRules.mode == 1 || g_brRaceRules.mode == 6) {   /* 0x1001ad17 */
                         short dx = (short)(DAT_104b15e8 - 1);
-                        int   e, base;
+                        int   e;
                         if (dx > 2 || dx < 0) dx = 0;
-                        e = ((*(int  *)((char*)((c)) + ((0xe64))))) * 3 + dx;
-                        base = *(int*)((char*)&(g_apBrRaceDiff[0]) + (*(int *)&g_Br0B380C) * 4);
-                        ((*(int  *)((char*)((c)) + ((0xff0))))) = *(int*)(base + (e * 7) * 4 + 0x44);
+                        e = c->f0E64 * 3 + dx;
+                        *(int32_t *)&c->fFF0 = *(const int32_t *)((const char *)g_apBrRaceDiff[(*(int *)&g_Br0B380C)] + (e * 7) * 4 + 0x44);
                     }
-                    ((*(int  *)((char*)((c)) + ((0x1000))))) = 0x3f800000;     /* 0x1001ad56 */
+                    c->f1000 = 1.0f;                       /* 0x1001ad56 */
                     if ((*(int *)&g_brRaceLights) == 0) {            /* 0x1001adac */
                         (*(int *)&g_brRaceHudA) = -1;                /* ebx = -1 (0x10019ae9 `or ebx,-1`), NOT 1 */
-                        (*(int *)&DAT_105ccb68[3]) = 0;
+                        DAT_105ccb68[3] = 0;
                     } else if ((*(int *)&g_brRaceLights) == 2) {     /* 0x1001ad6e */
-                        int k = (*(int *)&DAT_105ccb68[3]);
+                        int k = DAT_105ccb68[3];
                         (*(int *)&g_brRaceHudA) = 1;
-                        if (*(float*)((char*)&g_0A9548 + k * 4) > g_brRaceLightT) {
+                        if (g_aBrRaceBeepT[k] > g_brRaceLightT) {
                             k++;
-                            (*(int *)&DAT_105ccb68[3]) = k;
+                            DAT_105ccb68[3] = k;
                             if (k == 4) BrSfxSrcBeep2();
                             else        BrSfxSrcBeep();
                         }
                     }
                 }
                 i++;
-                s += 0x80;
             } while (i < (*(int *)&g_brRaceNDriver));
         }
         g_brRaceFade = 0.0f;                       /* 0x1001adcc */
         goto Lb0cd;
     }
-    else {                                    /* 0x1001addb: g_5BC8F8 >= 3 */
+    else {                                    /* 0x1001addb: lights >= 3 */
         if ((*(int *)&g_brRaceLights) == 3) {                  /* 0x1001addd */
-            (*(int *)&g_brRaceHudA) = 1; (*(int *)&DAT_105ccb68[4]) = 1;
-            if ((*(int *)&g_brRaceNDriver) > 0) {
-                char *p = (char*)&(*(int *)&g_aBrRaceDriver[0].f68);
-                int   c = (*(int *)&g_brRaceNDriver);
-                do { *(int*)p &= 0xfffffffe; p += 0x80; } while (--c);
+            (*(int *)&g_brRaceHudA) = 1; DAT_105ccb68[4] = 1;
+            {
+                int i;
+                for (i = 0; i < (*(int *)&g_brRaceNDriver); i++) g_aBrRaceDriver[i].f68 &= 0xfffffffe;
             }
             { int k = (*(int *)&g_brRaceScript);
-              float t = *(float*)((char*)&g_0A957C + k * 8);
+              float t = g_aBrRaceLightScript[k].dur;
               float a = (t - g_brRaceLightT) / t;
               g_brRaceFade = a * a * g_0773B4; }
             goto Lb0cd;
         } else if ((*(int *)&g_brRaceLights) == 4) {           /* 0x1001ae38 */
             loc14 = 1;
-            if ((*(int *)&g_brRaceRules.mode) == 4) {              /* 0x1001ae54 */
+            if (g_brRaceRules.mode == 4) {              /* 0x1001ae54 */
                 int c = g_5bc760;
                 if (c == 2) {
-                    if ((*(float *)&g_aBrRaceCar[0].tFinal) > g_0773B8) goto Lae_a1;
+                    if (g_aBrRaceCar[0].tFinal > g_0773B8) goto Lae_a1;
                     goto Lae89;
                 }
-                if ((*(float *)&g_aBrRaceCar[0].tFinal) > g_0773BC) goto Lae_a1;
+                if (g_aBrRaceCar[0].tFinal > g_0773BC) goto Lae_a1;
             }
         Lae89:  /* 0x1001ae89 */
             /* 0x1001ae8c `jne 0x1001aee2`: every mode but 5 skips the check
              * below entirely -- it is NOT a fall-through into Lae_a1.  Mode 5
              * reaches it only on an ordered greater-than (`test ah,0x41 /
              * jne` at 0x1001ae9f: less, equal and unordered all skip). */
-            if ((*(int *)&g_brRaceRules.mode) != 5) goto Laee2;
-            if (!((*(float *)&g_aBrRaceCar[0].tFinal) > g_0773C0)) goto Laee2;
+            if (g_brRaceRules.mode != 5) goto Laee2;
+            if (!(g_aBrRaceCar[0].tFinal > g_0773C0)) goto Laee2;
         Lae_a1: /* 0x1001aea1 */
             if (BrFadeIsClosing() == 0) {
                 BrFadeSetTarget(0, 0x3e4ccccd);
                 BrFadeSetTargetA(0, 0x3e4ccccd);
-                (*(int *)&DAT_105ccb68[12]) = 1; (*(int *)&DAT_105ccb68[8]) = 0; (*(int *)&DAT_105ccb68[9]) = 0;
+                DAT_105ccb68[12] = 1; DAT_105ccb68[8] = 0; DAT_105ccb68[9] = 0;
                 loc14 = 0;
             }
         Laee2:  /* 0x1001aee2 */
             if ((*(int *)&g_brRaceNEntrant) > 0) {
                 int i = 0;
                 do {
-                    if ((((*(char *)(((char *)&g_aBrRaceDriver[i].f68) + ((0))))) & 2) != 0) {
+                    if ((g_aBrRaceDriver[i].f68 & 2) != 0) {
                         int handled = 0;
-                        if ((*(int *)&g_brRaceRules.mode) == 2) {              /* 0x1001af07 */
-                            int *pd = *(int**)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl)[i];
-                            if (((*(int  *)((char*)((pd)) + ((i * 4 + 0x2c))))) != 0) {
+                        if (g_brRaceRules.mode == 2) {              /* 0x1001af07 */
+                            BrRaceCtl *pd = g_aBrRaceCar[i].pCtl;
+                            if (pd->apRec[i] != 0) {
                                 if (i == 0) {             /* 0x1001af38 */
                                     int  e8 = (*(int *)&g_brRace5BC8D8);
-                                    int  clx = (signed char)(*(int *)&g_aBrRaceBeginRec);
-                                    if (!((*(int *)&g_aBrRaceCar[0].fFF8) != 0 && clx == (*(int *)&g_Br0B380C) && e8 > 8)) {
-                                        int *p0 = *(int**)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl);
-                                        int  s34 = ((*(int  *)((char*)((p0)) + ((0x34)))));
-                                        int *q;
-                                        BrPodNop((char *)((char *)((char *)((char *)(&g_0A97A8)))), 0, s34, e8, (s34 < e8),
-                                                     clx, (*(int *)&g_Br0B380C), (clx != (*(int *)&g_Br0B380C)),
-                                                     e8, 8, (e8 <= 8));
+                                    int  clx = (signed char)g_aBrRaceBeginRec[0];
+                                    if (!(g_aBrRaceCar[0].fFF8 != 0 && clx == (*(int *)&g_Br0B380C) && e8 > 8)) {
+                                        BrRaceCtl     *p0  = g_aBrRaceCar[0].pCtl;
+                                        int            s34 = p0->aLen[0];
+                                        const int32_t *q;
+                                        BrPodNop(&g_0A97A8, 0, s34, e8, (s34 < e8),
+                                                 clx, (*(int *)&g_Br0B380C), (clx != (*(int *)&g_Br0B380C)),
+                                                 e8, 8, (e8 <= 8));
                                         (*(int *)&g_brRace5BC8D8) = 0x10;
-                                        /* 0x1001afad: q IS the pointer at driver0+0x2c
-                                         * (mov eax,[edx+0x2c]; mov ecx,[eax]) */
-                                        q = (int*)((*(int  *)((char*)((*(int**)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl))) + ((0x2c)))));
-                                        (*(int *)&g_aBrRaceBeginRec) = q[0];
-                                        (*(int *)&g_aBrRaceBeginRec[4]) = q[1];
-                                        g_5BC8E8 = 0; g_5BC8EC = 0;
-                                        (((intptr_t)(g_aBrRaceCar[0].pszBanner))) = BrStrGet(0xef);
-                                        (*(int *)&g_aBrRaceCar[0].f1000) = 0x3f800000;
-                                        BrTimeFormat(&(*(int *)&g_aBrRaceCar[0].sz100C[0]), (*(float *)&g_aBrRaceCar[0].tFinal));
-                                        g_aBrRaceCar[0].psz1004 = (char *)(intptr_t)((int)&(*(int *)&g_aBrRaceCar[0].sz100C[0]));
-                                        (*(int *)&g_aBrRaceCar[0].f1008) = 0x3f800000;
+                                        /* 0x1001afad: q IS the record car 0's control block
+                                         * points at (mov eax,[edx+0x2c]; mov ecx,[eax]) */
+                                        q = (const int32_t *)p0->apRec[0];
+                                        *(int32_t *)&g_aBrRaceBeginRec[0] = q[0];
+                                        *(int32_t *)&g_aBrRaceBeginRec[4] = q[1];
+                                        *(int32_t *)&g_aBrRaceBeginRec[8] = 0;
+                                        *(int32_t *)&g_aBrRaceBeginRec[12] = 0;
+                                        g_aBrRaceCar[0].pszBanner = BrStrGet(0xef);
+                                        g_aBrRaceCar[0].f1000 = 1.0f;
+                                        BrTimeFormat(g_aBrRaceCar[0].sz100C, g_aBrRaceCar[0].tFinal);
+                                        g_aBrRaceCar[0].psz1004 = g_aBrRaceCar[0].sz100C;
+                                        g_aBrRaceCar[0].f1008 = 1.0f;
                                         (*(int *)&g_brRaceBeginRecArmed) = 1;
                                     }
                                 }
-                                ((*(int  *)((char*)((*(int**)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl)[i])) + ((i * 4 + 0x2c))))) = 0;   /* 0x1001b01b */
+                                g_aBrRaceCar[i].pCtl->apRec[i] = 0;   /* 0x1001b01b */
                                 handled = 1;
                             }
                         }
                         if (!handled &&                    /* 0x1001b03a */
-                            ((*(int *)&g_brRaceRules.mode) == 1 || (*(int *)&g_brRaceRules.mode) == 6) && (*(int *)&g_brRaceNEntrant) > 0) {
-                            int *pd = *(int**)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl)[i];
-                            int  off = 0x3c;
-                            int  j = 0;
+                            (g_brRaceRules.mode == 1 || g_brRaceRules.mode == 6) && (*(int *)&g_brRaceNEntrant) > 0) {
+                            BrRaceCtl *pd = g_aBrRaceCar[i].pCtl;
+                            int        j = 0;
                             do {
-                                *(int*)((char*)pd + off) = *(int*)((char*)pd + off - 8);
-                                off += 4; j++;
+                                pd->aCap[j] = pd->aLen[j];
+                                j++;
                             } while (j < (*(int *)&g_brRaceNEntrant));
                         }
                     } else {
@@ -1012,18 +765,18 @@ extern "C" void BrRaceStep(void)
             if (loc14 != 0) goto Lb0f8;                    /* 0x1001b092 */
             goto Lb171;
         } else if ((*(int *)&g_brRaceLights) == 5) {           /* 0x1001b09d */
-            int st = (*(int *)&g_brRaceRules.mode);
+            int st = g_brRaceRules.mode;
             if (st == 2 || st == 1 || st == 0 || st == 6)
-                if ((*(int *)&DAT_105ccb68[8]) == 0) BrCarStateSave();
+                if (DAT_105ccb68[8] == 0) BrCarStateSave();
             goto Lb0f8;
         } else if ((*(int *)&g_brRaceLights) == 6) {           /* 0x1001b0c8 */
             goto Lb0cd;
         } else if ((*(int *)&g_brRaceLights) == 7) {           /* 0x1001b127 */
-            if ((*(int *)&DAT_105ccb68[12]) == 0) {
+            if (DAT_105ccb68[12] == 0) {
                 BrFadeSetTargetA(0, 0x3e4ccccd);
-                if ((*(int *)&DAT_105ccb68[9]) == 0) BrFadeSetTargetB(0, 0x3e4ccccd);
+                if (DAT_105ccb68[9] == 0) BrFadeSetTargetB(0, 0x3e4ccccd);
                 BrFadeSetTarget(0, 0x3e4ccccd);
-                (*(int *)&DAT_105ccb68[12]) = 1;
+                DAT_105ccb68[12] = 1;
             }
             goto Lb171;
         } else goto Lb171;
@@ -1036,42 +789,27 @@ Lb0f8:  /* 0x1001b0f8 step advance */
     if ((*(int *)&g_brRaceTick) == 0) goto Lb171;
     {
         int k = ++(*(int *)&g_brRaceScript);
-        g_brRaceLightT = *(float*)((char*)&g_0A957C + k * 8);
-        (*(int *)&g_brRaceLights) = *(int*)((char*)&g_0A9578 + k * 8);
+        g_brRaceLightT = g_aBrRaceLightScript[k].dur;
+        (*(int *)&g_brRaceLights) = g_aBrRaceLightScript[k].state;
     }
 Lb171:  /* 0x1001b171 merge */
-    BrPodNop((struct BrMat4 *)((struct BrMat4 *)((struct BrMat4 *)((struct BrMat4 *)(0)))), 0, 0, 0xc8, 0xff);
+    BrPodNop((struct BrMat4 *)0, 0, 0, 0xc8, 0xff);
     BrZeroRegions();
-    if ((*(int *)&g_BrCarCount) > 0) {
-        char *s = (char*)&(*(Driver (*)[])&g_aBrRaceCar);
-        int   i = 0;
-        do { ((Obj*)s)->m_10061430(); i++; s += 0x2b68; } while (i < (*(int *)&g_BrCarCount));
-    }
-    if ((*(int *)&g_brRaceNDriver) > 0) {
-        char *s = (char*)&(*(int *)&g_aBrRaceDriver);
-        int   i = 0;
-        do { ((Obj*)s)->m_10061F60(); i++; s += 0x80; } while (i < (*(int *)&g_brRaceNDriver));
-    }
-    if (!((*(int *)&g_brRaceNet) == 0 && (*(int *)&DAT_105ccb68[8]) == 0)) {      /* 0x1001b1d9 */
-        if ((*(int *)&g_brRaceNDriver) > 0) {
-            char *s = (char*)&(*(int *)&g_aBrRaceDriver);
-            int   i = 0;
-            do { ((Obj*)s)->m_100623A0(); i++; s += 0x80; } while (i < (*(int *)&g_brRaceNDriver));
+    {
+        int i;
+        for (i = 0; i < (*(int *)&g_BrCarCount); i++) BrRaceCarPre(&g_aBrRaceCar[i]);
+        for (i = 0; i < (*(int *)&g_brRaceNDriver); i++) BrGhostPlaybackStep(&g_aBrRaceDriver[i]);
+        if (!((*(int *)&g_brRaceNet) == 0 && DAT_105ccb68[8] == 0)) {      /* 0x1001b1d9 */
+            for (i = 0; i < (*(int *)&g_brRaceNDriver); i++) BrRaceDriverAnim(&g_aBrRaceDriver[i]);
         }
-    }
-    if ((*(int *)&g_brRaceNDriver) > 0) {                           /* 0x1001b20b */
-        char *s = (char*)&(*(int *)&g_aBrRaceDriver);
-        int   i = 0;
-        do { ((Obj*)s)->m_100623E0(); i++; s += 0x80; } while (i < (*(int *)&g_brRaceNDriver));
-    }
-    if ((*(int *)&g_brRaceRules.mode) == 0 && (*(int *)&g_brRaceNEntrant) > 0) {          /* 0x1001b22d */
-        char *s = (char*)&(*(Driver (*)[])&g_aBrRaceCar);
-        int   i = 0;
-        do { ((Obj*)s)->m_1005F6C0(); i++; s += 0x2b68; } while (i < (*(int *)&g_brRaceNEntrant));
+        for (i = 0; i < (*(int *)&g_brRaceNDriver); i++) BrRaceDriverPost(&g_aBrRaceDriver[i]);   /* 0x1001b20b */
+        if (g_brRaceRules.mode == 0) {                                                       /* 0x1001b22d */
+            for (i = 0; i < (*(int *)&g_brRaceNEntrant); i++) BrLapSaveRestore(&g_aBrRaceCar[i]);
+        }
     }
     BrRankAssign();                               /* 0x1001b25c */
     if ((*(int *)&g_BrX06909B4) != 0) goto Lb887;
-    if ((*(int *)&DAT_105ccb68[8]) == 2) goto Lb887;
+    if (DAT_105ccb68[8] == 2) goto Lb887;
     BrPodNop(0, 0x80, 0x80, 0, 0xff);
     BrPfxTick();
     BrPodNop(0, 0, 0xff, 0xff, 0xff);
@@ -1081,52 +819,48 @@ Lb171:  /* 0x1001b171 merge */
             if ((*(int *)&g_Br0B380C) == 2 || (*(int *)&g_Br0B380C) == 8) goto Lb365;
         }
         if ((*(int *)&g_brRaceNEntrant) > 0) {
-            char *s   = (char*)&(*(int *)&g_aBrRaceCar[0].gotHit);
-            int   edx = 0;
-            int   rem = (*(int *)&g_brRaceNEntrant);
+            int k = 0;
             do {
-                int c = *(int*)s;
+                const BrDriverCar *pc = &g_aBrRaceCar[k];
+                int c = pc->gotHit;
                 int a;
                 for (a = 0; a < c; a++) {
-                    if (*(int*)(s - 0x19a4) == (*(int *)&g_brRaceBeginCamMinus1)) {
-                        unsigned short w =
-                            *(unsigned short*)((char*)&(*(int *)&g_aBrRaceCar[0].aNearIds[0]) + (a + edx) * 2);
-                        if ((int)w == (*(int *)&g_brRaceBeginAirTrigger)) { (*(int *)&g_brRaceBeginAirArmed) = 1; break; }
+                    if (pc->lap == (*(int *)&g_brRaceBeginCamMinus1)) {
+                        if ((int)pc->aNearIds[a] == (*(int *)&g_brRaceBeginAirTrigger)) { (*(int *)&g_brRaceBeginAirArmed) = 1; break; }
                     }
                 }
-                edx += 0x15b4;
-                s += 0x2b68;
-            } while (--rem);
+                k++;
+            } while (k < (*(int *)&g_brRaceNEntrant));
         }
     }
 Lb365:  /* 0x1001b365 */
     if (g_brTrkHdr.nSpecial > 0) {
-        char *e = (char*)&(*(int *)&g_brTrkHdr.aSpecial);
-        int   b = 0;
+        const BrRaceSpecial *e = g_brTrkHdr.aSpecial;
+        int b = 0;
         do {
-            int sw = (signed char)((*(char *)((char*)((e)) + ((8)))));
+            int sw = (signed char)e->axis;
             if ((unsigned)sw <= 3) {                /* jmp [.. 0x1001c678] */
                 switch (sw) {
                 case 0:  /* 0x1001b393 */
-                    BrMat4RotateAxis(&(*(int *)&g_brRaceSpecialM), ((*(int  *)((char*)((e)) + ((4))))), 0, 0, 0x3f800000);
+                    BrMat4RotateAxis(&g_brRaceSpecialM, e->angle, 0.0f, 0.0f, 1.0f);
                     goto Lb_emit;
                 case 1:  /* 0x1001b3a0 */
-                    BrMat4RotateAxis((struct BrMat4 *)(&(*(int *)&g_brRaceSpecialM)), ((*(int  *)((char*)((e)) + ((4))))), 0x3f800000, 0, 0);
+                    BrMat4RotateAxis(&g_brRaceSpecialM, e->angle, 1.0f, 0.0f, 0.0f);
                     goto Lb_emit;
                 case 2:  /* 0x1001b3ad */
-                    BrMat4RotateAxis((struct BrMat4 *)(&(*(int *)&g_brRaceSpecialM)), ((*(int  *)((char*)((e)) + ((4))))), 0, 0x3f800000, 0);
+                    BrMat4RotateAxis(&g_brRaceSpecialM, e->angle, 0.0f, 1.0f, 0.0f);
                 Lb_emit: /* 0x1001b3b8 */
                     {
-                        int  *m = (int*)((char*)BR_PTR32(void *, g_brTrkHdr.aInstances) + ((*(int  *)((char*)((e)) + ((0))))) * 84);
-                        BrMat4Mul((const struct BrMat4 *)(&(*(int *)&g_brRaceSpecialM)), (const struct BrMat4 *)(m), (struct BrMat4 *)(m));
-                        m = (int*)((char*)BR_PTR32(void *, g_brTrkHdr.aInstances) + ((*(int  *)((char*)((e)) + ((0))))) * 84);
+                        float *m = BrRaceInst(e->iObj);
+                        BrMat4Mul(&g_brRaceSpecialM, (const struct BrMat4 *)m, (struct BrMat4 *)m);
+                        m = BrRaceInst(e->iObj);
                         *(unsigned short*)((char*)m + 0x4c) &= 0xdfff;
                     }
                     break;
                 case 3:  /* 0x1001b403 */
                     if ((*(int *)&g_brRaceBeginAirplane) == 0 || (*(int *)&g_brRaceBeginAirArmed) == 0) break;
                     {
-                        float v20[3], v2c[3], v38[3];
+                        BrVec3 v20, v2c, v38;
                         float dt = ((*(int *)&g_Br0B380C) == 1 || (*(int *)&g_Br0B380C) == 7)
                                    ? g_brRaceFlyStep * g_brRaceFlySpeedB    /* 0x1001b436 */
                                    : g_brRaceFlyStep * g_brRaceFlySpeedA;   /* 0x1001b428 */
@@ -1139,162 +873,136 @@ Lb365:  /* 0x1001b365 */
                                 wi = (*(int *)&g_brRaceBeginPathIdx) + 1;
                                 (*(int *)&g_brRaceBeginPathIdx) = wi;
                                 if (wi >= (*(int *)&g_brRaceBeginPathLen)) { ended = 1; break; }
-                                BrVec3Midpoint(v2c, (char*)g_pBrRaceFlyPos + wi * 12 - 0xc,
-                                                  (char*)g_pBrRaceFlyAim + wi * 12 - 0xc);
-                                BrVec3Midpoint(v20, (char*)g_pBrRaceFlyPos + wi * 12,
-                                                  (char*)g_pBrRaceFlyAim + wi * 12);
-                                g_brRaceBeginPathSeg = BrVec3Dist(v2c, v20);
-                                BrVec3Sub((struct BrVec3 *)(&(*(float *)&g_brRaceFlyDirCur)), v20, v2c);
-                                br_dl_normalise(&(*(float *)&g_brRaceFlyDirCur));
+                                BrVec3Midpoint(&v2c, &g_pBrRaceFlyPos[wi - 1], &g_pBrRaceFlyAim[wi - 1]);
+                                BrVec3Midpoint(&v20, &g_pBrRaceFlyPos[wi], &g_pBrRaceFlyAim[wi]);
+                                g_brRaceBeginPathSeg = BrVec3Dist(&v2c, &v20);
+                                BrVec3Sub(&g_brRaceFlyDirCur, &v20, &v2c);
+                                br_dl_normalise(&g_brRaceFlyDirCur);
                                 if ((*(int *)&g_brRaceBeginPathIdx) < 2) {         /* 0x1001b525 */
-                                    (*(float *)&g_brRaceFlyDirPrev) = (*(float *)&g_brRaceFlyDirCur); (*(float *)((char *)&g_brRaceFlyDirPrev + 0x4)) = (*(float *)((char *)&g_brRaceFlyDirCur + 0x4)); (*(float *)((char *)&g_brRaceFlyDirPrev + 0x8)) = (*(float *)((char *)&g_brRaceFlyDirCur + 0x8));
+                                    g_brRaceFlyDirPrev = g_brRaceFlyDirCur;
                                 } else {                    /* 0x1001b549 */
-                                    BrVec3Midpoint(v38, (char*)g_pBrRaceFlyPos + ((*(int *)&g_brRaceBeginPathIdx) - 2) * 12,
-                                                      (char*)g_pBrRaceFlyAim + ((*(int *)&g_brRaceBeginPathIdx) - 2) * 12);
-                                    BrVec3Sub((struct BrVec3 *)(&(*(float *)&g_brRaceFlyDirPrev)), v2c, v38);
-                                    br_dl_normalise(&(*(float *)&g_brRaceFlyDirPrev));
+                                    int p = (*(int *)&g_brRaceBeginPathIdx) - 2;
+                                    BrVec3Midpoint(&v38, &g_pBrRaceFlyPos[p], &g_pBrRaceFlyAim[p]);
+                                    BrVec3Sub(&g_brRaceFlyDirPrev, &v2c, &v38);
+                                    br_dl_normalise(&g_brRaceFlyDirPrev);
                                 }
                                 if ((*(int *)&g_brRaceBeginPathIdx) + 1 == (*(int *)&g_brRaceBeginPathLen)) {   /* 0x1001b5a8 */
-                                    (*(float *)&g_brRaceFlyDirNext) = (*(float *)&g_brRaceFlyDirCur); (*(float *)((char *)&g_brRaceFlyDirNext + 0x4)) = (*(float *)((char *)&g_brRaceFlyDirCur + 0x4)); (*(float *)((char *)&g_brRaceFlyDirNext + 0x8)) = (*(float *)((char *)&g_brRaceFlyDirCur + 0x8));
+                                    g_brRaceFlyDirNext = g_brRaceFlyDirCur;
                                 } else {                    /* 0x1001b5ca: the NEXT point, wi+1 (eax from 0x1001b5a1) */
-                                    BrVec3Midpoint(v38, (char*)g_pBrRaceFlyPos + ((*(int *)&g_brRaceBeginPathIdx) + 1) * 12,
-                                                      (char*)g_pBrRaceFlyAim + ((*(int *)&g_brRaceBeginPathIdx) + 1) * 12);
-                                    BrVec3Sub((struct BrVec3 *)(&(*(float *)&g_brRaceFlyDirNext)), v38, v20);
-                                    br_dl_normalise(&(*(float *)&g_brRaceFlyDirNext));
+                                    int n = (*(int *)&g_brRaceBeginPathIdx) + 1;
+                                    BrVec3Midpoint(&v38, &g_pBrRaceFlyPos[n], &g_pBrRaceFlyAim[n]);
+                                    BrVec3Sub(&g_brRaceFlyDirNext, &v38, &v20);
+                                    br_dl_normalise(&g_brRaceFlyDirNext);
                                 }
                             } while (g_brRaceBeginPathT > g_brRaceBeginPathSeg);   /* 0x1001b619 */
                             if (ended) (*(int *)&g_brRaceBeginAirplane) = 0;         /* 0x1001b632 */
                         }
                         if ((*(int *)&g_brRaceBeginAirplane) != 0) {                /* 0x1001b64a transform+emit */
-                            float lerpT;
-                            int   lerpBits;
+                            float  lerpT;
+                            int    lerpBits;
+                            int    wi = (*(int *)&g_brRaceBeginPathIdx);
+                            float *row;
+                            BrVec3 *r0, *r1, *r2;
                             /* 0x1001b665: stored, and every use reads the float */
                             lerpT = g_brRaceBeginPathT / g_brRaceBeginPathSeg;
                             lerpBits = *(int*)&lerpT;
                             lerpT = *(float*)&lerpBits;
-                            char *row   = (char*)BR_PTR32(void *, g_brTrkHdr.aInstances) + (*(int *)&g_brRaceBeginAirplane) * 84;
+                            row = BrRaceInst((*(int *)&g_brRaceBeginAirplane));
+                            r0 = (BrVec3 *)&row[0];         /* the matrix rows */
+                            r1 = (BrVec3 *)&row[4];
+                            r2 = (BrVec3 *)&row[8];
                             /* 0x1001b670: the interpolated position lands in v2c
                              * (lea [esp+0x38] under three pushes) */
-                            BrVec3Lerp(v2c, (char*)g_pBrRaceFlyPos + (*(int *)&g_brRaceBeginPathIdx) * 12,
-                                              (char*)g_pBrRaceFlyPos + (*(int *)&g_brRaceBeginPathIdx) * 12 - 0xc, lerpT);
-                            BrVec3Lerp(v20, (char*)g_pBrRaceFlyAim + (*(int *)&g_brRaceBeginPathIdx) * 12,
-                                              (char*)g_pBrRaceFlyAim + (*(int *)&g_brRaceBeginPathIdx) * 12 - 0xc, lerpT);
-                            BrVec3Midpoint((struct BrVec3 *)(row + 0x30), v2c, v20);
+                            BrVec3Lerp(&v2c, &g_pBrRaceFlyPos[wi], &g_pBrRaceFlyPos[wi - 1], lerpT);
+                            BrVec3Lerp(&v20, &g_pBrRaceFlyAim[wi], &g_pBrRaceFlyAim[wi - 1], lerpT);
+                            BrVec3Midpoint((BrVec3 *)&row[12], &v2c, &v20);
                             /* 0x1001b6c6: [esp+0x20] under three pushes is the
                              * lerpT slot, not v20 -- the heading blends on t */
                             if (lerpT > g_brRaceFlyBlendA)
-                                BrVec3Lerp((struct BrVec3 *)(row), (const struct BrVec3 *)(&(*(float *)&g_brRaceFlyDirNext)), (const struct BrVec3 *)(&(*(float *)&g_brRaceFlyDirCur)), lerpT - g_brRaceFlyBlendA);
+                                BrVec3Lerp(r0, &g_brRaceFlyDirNext, &g_brRaceFlyDirCur, lerpT - g_brRaceFlyBlendA);
                             else                            /* 0x1001b708 */
-                                BrVec3Lerp((struct BrVec3 *)(row), (const struct BrVec3 *)(&(*(float *)&g_brRaceFlyDirCur)), (const struct BrVec3 *)(&(*(float *)&g_brRaceFlyDirPrev)), lerpT - g_brRaceFlyBlendB);
-                            br_dl_normalise(row);
+                                BrVec3Lerp(r0, &g_brRaceFlyDirCur, &g_brRaceFlyDirPrev, lerpT - g_brRaceFlyBlendB);
+                            br_dl_normalise(r0);
                             /* 0x1001b774 -> 0x1001b799: the forward difference goes
                              * into the first cross product UNnormalised */
-                            BrVec3Sub((struct BrVec3 *)(row + 0x20), v2c, v20);
-                            BrVec3Cross((struct BrVec3 *)(row + 0x10), (const struct BrVec3 *)(row), (const struct BrVec3 *)(row + 0x20));
-                            br_dl_normalise(row + 0x10);
-                            BrVec3Cross((struct BrVec3 *)(row + 0x20), (const struct BrVec3 *)(row + 0x10), (const struct BrVec3 *)(row));
-                            br_dl_normalise(row + 0x20);
-                            BrVec3ScaleBy((struct BrVec3 *)(row), g_brRaceBeginPathScale);
-                            BrVec3ScaleBy((struct BrVec3 *)(row + 0x20), -g_brRaceBeginPathScale);
-                            BrVec3ScaleBy((struct BrVec3 *)(row + 0x10), g_brRaceBeginPathScale);
+                            BrVec3Sub(r2, &v2c, &v20);
+                            BrVec3Cross(r1, r0, r2);
+                            br_dl_normalise(r1);
+                            BrVec3Cross(r2, r1, r0);
+                            br_dl_normalise(r2);
+                            BrVec3ScaleBy(r0, g_brRaceBeginPathScale);
+                            BrVec3ScaleBy(r2, -g_brRaceBeginPathScale);
+                            BrVec3ScaleBy(r1, g_brRaceBeginPathScale);
                         }
                     }
                     break;
                 }
             }
             b++;
-            e += 0xc;
+            e++;
         } while (b < g_brTrkHdr.nSpecial);
     }
 Lb887:  /* 0x1001b887 */
-    if ((*(int *)&g_BrCarCount) > 0) {
-        char *s = (char*)&(*(Driver (*)[])&g_aBrRaceCar);
-        int   i = 0;
-        do { ((Obj*)s)->m_10061470(); i++; s += 0x2b68; } while (i < (*(int *)&g_BrCarCount));
+    {
+        int i;
+        for (i = 0; i < (*(int *)&g_BrCarCount); i++) BrSndCarStep(&g_aBrRaceCar[i]);
     }
     BrSndNearestInvalidate();                               /* 0x1001b8ae */
-    loc1c = 0;
-    if (g_brMode0AA8B4 > 0) {                           /* 0x1001b8c9 leader-attach loop */
-        do {
-            int   drv    = *(int*)&(*(int *)&BrG_6C1628[4]);
-            int   active = (((intptr_t)(g_aBrRaceCar[drv].pMatA)));
-            if ((*(int *)&g_brRaceBeginAirplane) != 0 && (*(int *)&g_brRaceBeginAirArmed) != 0) {
-                int *m = (int*)((char*)BR_PTR32(void *, g_brTrkHdr.aInstances) + (*(int *)&g_brRaceBeginAirplane) * 84 + 0x30);
-                BrSndNearestOfferTrack((*(int *)&g_brRaceBeginAirplane), (const struct BrVec3 *)(m), active);
-            }
-            if (active != 0) {                    /* 0x1001b918 */
-                char *s = (char*)&(g_aBrRaceBeginFx[0]);
-                int   j = 0;
-                while (j < (*(int *)&g_brRaceBeginFxCount)) {
-                    int *m = (int*)((char*)BR_PTR32(void *, g_brTrkHdr.aInstances) + *(int*)s * 84 + 0x30);
-                    BrSndNearestOfferDefault((*(int *)&g_brRaceBeginAirplane), (const struct BrVec3 *)(m), active);
-                    j++;
-                    s += 4;
+    {
+        int v = 0;
+        if (g_brMode0AA8B4 > 0) {                           /* 0x1001b8c9 leader-attach loop */
+            do {
+                /* every pass reads the FIRST view's car */
+                const BrMat4 *active = (const BrMat4 *)g_aBrRaceCar[g_aBrView[0].iCar].pMatA;
+                if ((*(int *)&g_brRaceBeginAirplane) != 0 && (*(int *)&g_brRaceBeginAirArmed) != 0) {
+                    BrSndNearestOfferTrack((*(int *)&g_brRaceBeginAirplane),
+                                           (const BrVec3 *)&BrRaceInst((*(int *)&g_brRaceBeginAirplane))[12], active);
                 }
-            }
-            BrPodNop((short *)((short *)((short *)((short *)(active)))));                 /* 0x1001b954 */
-            loc1c++;
-        } while (loc1c < g_brMode0AA8B4);
+                if (active != 0) {                    /* 0x1001b918 */
+                    int j;
+                    for (j = 0; j < (*(int *)&g_brRaceBeginFxCount); j++) {
+                        BrSndNearestOfferDefault((*(int *)&g_brRaceBeginAirplane),
+                                                 (const BrVec3 *)&BrRaceInst(g_aBrRaceBeginFx[j])[12], active);
+                    }
+                }
+                BrPodNop((const void *)active);                 /* 0x1001b954 */
+                v++;
+            } while (v < g_brMode0AA8B4);
+        }
     }
     BrSndNearestCommit();                               /* 0x1001b977 */
     BrRaceHudFrame();
     loc18 = BrSnapPickSlot();
     {                                             /* 0x1001b990 deep-copy loop */
-        char *obase = (char*)&(*(char (*)[])&g_aBrSnap[0].car[0].fwd.x) + 188656 * loc18;
-        int   doff  = 0;
-        int   ct    = (*(int *)&g_BrCarCount); if (ct == 0) ct = 1;
-        int   k     = 0;
-        while (k < ct) {
-            char *out = obase + doff;
-            int   a;
-            memcpy(out, (char*)&(*(Driver (*)[])&g_aBrRaceCar) + doff, 11112);      /* rep movsd 0xada */
-            a = *(int*)((char*)&(*(int *)&g_aBrRaceCar[0].pMatA) + doff);             /* active-model fixup */
-            if (a != 0) {
-                int fx = 0;
-                if      (a == (int)((char*)&(*(int *)&g_aBrRaceCar[0].aSnap[0].m[0][0]) + doff)) fx = (int)(out + 0x273C);
-                else if (a == (int)((char*)&(*(int *)&g_aBrRaceCar[0].aSnap[5].m[0][0]) + doff)) fx = (int)(out + 0x2890);
-                else if (a == (int)((char*)&(*(int *)&g_aBrRaceCar[0].aSnap[1].m[0][0]) + doff)) fx = (int)(out + 0x2780);
-                else if (a == (int)((char*)&(*(int *)&g_aBrRaceCar[0].aSnap[2].m[0][0]) + doff)) fx = (int)(out + 0x27C4);
-                else if (a == (int)((char*)&(*(int *)&g_aBrRaceCar[0].aSnap[3].m[0][0]) + doff)) fx = (int)(out + 0x2808);
-                *(int*)(out + 0x2734) = fx;
-            }
-            a = *(int*)((char*)&(*(int *)&g_aBrRaceCar[0].pMatB) + doff);
-            if (a != 0) {
-                int fx = 0;
-                if      (a == (int)((char*)&(*(int *)&g_aBrRaceCar[0].aSnap[0].m[0][0]) + doff)) fx = (int)(out + 0x273C);
-                else if (a == (int)((char*)&(*(int *)&g_aBrRaceCar[0].aSnap[5].m[0][0]) + doff)) fx = (int)(out + 0x2890);
-                else if (a == (int)((char*)&(*(int *)&g_aBrRaceCar[0].aSnap[1].m[0][0]) + doff)) fx = (int)(out + 0x2780);
-                else if (a == (int)((char*)&(*(int *)&g_aBrRaceCar[0].aSnap[2].m[0][0]) + doff)) fx = (int)(out + 0x27C4);
-                else if (a == (int)((char*)&(*(int *)&g_aBrRaceCar[0].aSnap[3].m[0][0]) + doff)) fx = (int)(out + 0x2808);
-                *(int*)(out + 0x2738) = fx;
-            }
-            k++;
-            doff += 0x2b68;
+        BrSnap *ps = &g_aBrSnap[loc18];
+        int     ct = (*(int *)&g_BrCarCount); if (ct == 0) ct = 1;
+        int     k;
+        for (k = 0; k < ct; k++) {
+            BrDriverCar *out = &ps->car[k];
+            memcpy(out, &g_aBrRaceCar[k], sizeof(BrDriverCar));      /* rep movsd 0xada */
+            if (g_aBrRaceCar[k].pMatA != 0)                          /* active-model fixup */
+                out->pMatA = BrRaceSnapMat(&g_aBrRaceCar[k], out, g_aBrRaceCar[k].pMatA);
+            if (g_aBrRaceCar[k].pMatB != 0)
+                out->pMatB = BrRaceSnapMat(&g_aBrRaceCar[k], out, g_aBrRaceCar[k].pMatB);
         }
-    }
-    if ((*(int *)&g_brRaceNDriver) > 0) {                           /* 0x1001bb2a record-copy loop */
-        char *src = (char*)&(*(char (*)[])&g_aBrRaceDriver[0].pCar);
-        char *dst = (char*)&(*(char (*)[])((char *)&g_aBrSnap + 0x64)) /* BR_LP64_BYTE_VIEW */ + 188656 * loc18;
-        int   n   = (*(int *)&g_brRaceNDriver);
-        do {
-            int v = *(int*)src;
-            memcpy(dst - 0x60, src - 0x60, 0x80);         /* rep movsd 0x20 */
-            if (v != 0) {                                 /* re-index self pointer */
-                int di = (v - (int)&(*(Driver (*)[])&g_aBrRaceCar)) / 0x2b68;   /* magic /0x2b68 */
-                *(int*)dst = (int)((char*)&(*(char (*)[])&g_aBrSnap[0].car[0].fwd.x) + 188656 * loc18 + di * 0x2b68);
+        if ((*(int *)&g_brRaceNDriver) > 0) {                       /* 0x1001bb2a record-copy loop */
+            int d;
+            for (d = 0; d < (*(int *)&g_brRaceNDriver); d++) {
+                BrDriverCar *v = g_aBrRaceDriver[d].pCar;
+                memcpy(&ps->drv[d], &g_aBrRaceDriver[d], sizeof(BrDriver));   /* rep movsd 0x20 */
+                if (v != 0)                                                   /* re-index the car */
+                    ps->drv[d].pCar = &ps->car[v - g_aBrRaceCar];
             }
-            src += 0x80;
-            dst += 0x80;
-        } while (--n);
+        }
+        /* 0x1001bbcd: the first view's record, then the particle state */
+        memcpy(&ps->tailA, &g_aBrView[0], 0x16 * 4);   /* rep movsd 0x16 */
+        BrPfxSaveState((short *)&ps->tailC);
     }
-    /* 0x1001bbcd: camera-state snapshot + fixup */
-    memcpy((char*)&(*(char (*)[])&g_aBrSnap[0].tailA.a[0]) + 188656 * loc18, &(BrG_6C1628[0]), 0x16 * 4);   /* rep movsd 0x16 */
-    BrPfxSaveState((char*)&(*(char (*)[])&g_aBrSnap[0].tailA.a[0]) + 188656 * loc18 + 0x5c);
     if ((*(int *)&g_brRaceBeginLimitOn) == 0) goto Lc583;                /* 0x1001bc04 -> replay-advance */
     g_5BCAF0 = BrSub10075020();                    /* 0x1001bc16 */
     g_5BC76C = 0;
     (*(int *)&g_brRaceBeginLimitOn) = 0;
-    (*(int *)&DAT_105ccb68[14]) = 0;
+    DAT_105ccb68[14] = 0;
     GhostBody:  /* 0x1001bc37 */
         if ((*(int *)&g_BrX06909B4) == 2) {                      /* 0x1001bc44 */
             int f = (*(int *)&g_BrX18ABAD0);
@@ -1303,7 +1011,7 @@ Lb887:  /* 0x1001b887 */
                     BrFadeSetTarget(0, 0x3e4ccccd);
                     BrFadeSetTargetA(0, 0x3e4ccccd);
                     BrFadeSetTargetB(0, 0x3e4ccccd);
-                    (*(int *)&DAT_105ccb68[9]) = 0; (*(int *)&DAT_105ccb68[12]) = 2;
+                    DAT_105ccb68[9] = 0; DAT_105ccb68[12] = 2;
                 } else if (DAT_105bc8dc == 1) {       /* 0x1001bc5e */
                     if ((*(int *)&g_brRaceNet) != 0 && (*(int *)&g_brRaceTick) != 0) {
                         BrNetLockSetIfZero221314();
@@ -1317,8 +1025,8 @@ Lb887:  /* 0x1001b887 */
             f = (*(int *)&g_BrX18ABAD0);                         /* 0x1001bcdb */
             if (f & 0x1000) DAT_105bc8dc = 1 - DAT_105bc8dc;
             if (f & 0x2000) DAT_105bc8dc = 1 - DAT_105bc8dc;
-            if ((*(int *)&DAT_105ccb68[6]) == 0) goto Lc002;
-            (*(int *)&DAT_105ccb68[6]) = 0;                          /* 0x1001bd1b */
+            if (DAT_105ccb68[6] == 0) goto Lc002;
+            DAT_105ccb68[6] = 0;                          /* 0x1001bd1b */
             BrFadeSetTargetA(0x3f800000, 0x3e4ccccd);
             BrFadeSetTargetB(0x3f800000, 0x3e4ccccd);
             g_5CCB64 = 2; loc10 = 0;
@@ -1329,9 +1037,9 @@ Lb887:  /* 0x1001b887 */
         /* 0x1001bd72: g_5CCB5C != 2 main path */
         if ((*(int *)&g_BrX06909B4) == 0) goto Lc024;
         if ((*(int *)&g_brRaceNEntrant) > 0) {                       /* 0x1001bd7a per-driver replay */
-            char *s = (char*)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl);
-            int   i = 0;
+            int i = 0;
             do {                                  /* loop top 0x1001bd94 */
+                BrRaceCtl *pCtl = g_aBrRaceCar[i].pCtl;
                 int f = (*(int *)&g_BrX18ABAD0);
                 int skip = 0;
                 if (!(f & 0x8000)) {              /* 0x1001bd99 gate */
@@ -1339,8 +1047,8 @@ Lb887:  /* 0x1001b887 */
                         skip = 1;
                 }
                 if (!skip) {
-                    if (DAT_105bc8dc != 0 || (*(char*)*(int**)s & 0x10) == 0)   /* 0x1001bdbf */
-                        ((Obj*)*(int**)s)->m_1002F640(0xc010);              /* 0x1001bdca */
+                    if (DAT_105bc8dc != 0 || ((uint8_t)pCtl->ctl & 0x10) == 0)   /* 0x1001bdbf */
+                        BrBitLatchTake((BrBitLatch *)pCtl, 0, 0xc010);       /* 0x1001bdca */
                     if ((unsigned)DAT_105bc8dc <= 5) {                          /* 0x1001bddc */
                         switch (DAT_105bc8dc) {        /* jmp [.. 0x1001c688] */
                         case 0:  /* 0x1001bdec */
@@ -1351,17 +1059,17 @@ Lb887:  /* 0x1001b887 */
                             break;
                         case 1:  /* 0x1001be39 */
                             BrFadeSetTarget(0, 0x3e4ccccd);
-                            (*(int *)&DAT_105ccb68[12]) = 0; (*(int *)&DAT_105ccb68[9]) = 0; (*(int *)&DAT_105ccb68[11]) = 0;
+                            DAT_105ccb68[12] = 0; DAT_105ccb68[9] = 0; DAT_105ccb68[11] = 0;
                             BrRaceDriverReset(); (*(int *)&g_brRaceTick) = 0; BrSndBankFree(); BrClearFlag_AB504();
                             break;
                         case 4:  /* 0x1001be73 */
                             BrFadeSetTarget(0, 0x3e4ccccd);
                             BrFadeSetTargetA(0, 0x3e4ccccd);
                             BrFadeSetTargetB(0, 0x3e4ccccd);
-                            (*(int *)&DAT_105ccb68[9]) = 0; (*(int *)&DAT_105ccb68[12]) = 1;
+                            DAT_105ccb68[9] = 0; DAT_105ccb68[12] = 1;
                             if ((*(char *)&DAT_100bb2e0) != 0) { BrCdResume();
                                                  BrCdVolumeSet((unsigned char)(*(char *)&DAT_100bb2e0)); }
-                            if ((*(int *)&g_brRaceRules.mode) == 6) { BrDPlayMsg6SendSelf(); BrNetClearF10220DD0(); }
+                            if (g_brRaceRules.mode == 6) { BrDPlayMsg6SendSelf(); BrNetClearF10220DD0(); }
                             break;
                         case 5:  /* 0x1001bedf */
                             loc10 = 1; (*(int *)&g_BrX06909B4) = 1; DAT_105bc8dc = 1;
@@ -1371,8 +1079,8 @@ Lb887:  /* 0x1001b887 */
                     }
                 }
                 /* 0x1001befc tail */
-                if ((*(int *)&DAT_105ccb68[6]) != 0) {
-                    (*(int *)&DAT_105ccb68[6]) = 0;
+                if (DAT_105ccb68[6] != 0) {
+                    DAT_105ccb68[6] = 0;
                     BrFadeSetTargetA(0x3f800000, 0x3e4ccccd);
                     BrFadeSetTargetB(0x3f800000, 0x3e4ccccd);
                     g_5CCB64 = 2; loc10 = 0;
@@ -1395,7 +1103,6 @@ Lb887:  /* 0x1001b887 */
                     else if (DAT_105bc8dc == 3) BrUiSelAInc();
                 }
                 i++;
-                s += 0x2b68;
             } while (i < (*(int *)&g_brRaceNEntrant));
         }
     Lc002:  /* 0x1001c002 */
@@ -1403,50 +1110,45 @@ Lb887:  /* 0x1001b887 */
         BrNetSlotBroadcastTick();
         goto Lc13d;
     Lc024:  /* 0x1001c024 */
-        if ((*(int *)&g_brRaceRules.mode) == 4 || (*(int *)&g_brRaceRules.mode) == 5) {     /* 0x1001c02c */
+        if (g_brRaceRules.mode == 4 || g_brRaceRules.mode == 5) {     /* 0x1001c02c */
+            int k;
             if (BrFadeIsClosing() != 0) goto Lc13d;
-            {                                     /* 0x1001c0e0 particle-mute loop */
-                char *p = (char*)&(*(char (*)[])&g_aBrEnts);
-                do {
-                    if ((*(int *)&g_BrX18ABAD0) & 0x4000) {
-                        ((Obj*)p)->m_1002F640(0xc010);
-                        (*(int *)&g_brRaceBeginMovieDone) = 1; (*(int *)&DAT_105ccb68[12]) = 1; (*(int *)&DAT_105ccb68[9]) = 0;
-                        BrFadeSetTargetA(0, 0x3e4ccccd);
-                        BrFadeSetTarget(0, 0x3e4ccccd);
-                    }
-                    p += 0x15c;
-                } while (p < (char*)&(*(char (*)[])&g_aBrEnts[2].pad000[0]));
+            for (k = 0; k < 2; k++) {             /* 0x1001c0e0: the two entity records */
+                if ((*(int *)&g_BrX18ABAD0) & 0x4000) {
+                    BrBitLatchTake((BrBitLatch *)&g_aBrEnts[k], 0, 0xc010);
+                    (*(int *)&g_brRaceBeginMovieDone) = 1; DAT_105ccb68[12] = 1; DAT_105ccb68[9] = 0;
+                    BrFadeSetTargetA(0, 0x3e4ccccd);
+                    BrFadeSetTarget(0, 0x3e4ccccd);
+                }
             }
             goto Lc13d;
         }
         if ((*(int *)&g_brRaceNEntrant) > 0) {                       /* 0x1001c03b */
             if (DAT_10226a50 != 0) {                  /* 0x1001c05f */
-                int b88 = (*(int *)&DAT_105ccb68[8]);
+                int b88 = DAT_105ccb68[8];
                 DAT_10226a50 = 0;
                 if (b88 != 0) {
                     BrFadeSetTarget(0, 0x3e4ccccd);
-                    (*(int *)&DAT_105ccb68[9]) = 0; (*(int *)&DAT_105ccb68[12]) = 1;
+                    DAT_105ccb68[9] = 0; DAT_105ccb68[12] = 1;
                 } else {                          /* 0x1001c08e */
                     loc10 = 1; DAT_105bc8dc = 0;
                 }
                 BrFadeSetTargetA(0, 0x3e4ccccd);      /* 0x1001c09c */
                 BrFadeSetTargetB(0, 0x3e4ccccd);
-                ((Obj*)*(int**)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl))->m_1002F640(0x4000);
-                ((Obj*)*(int**)&(*(int *)&g_aBrRaceCar[1].pCtl))->m_1002F640(0x4000);
-            } else {                              /* 0x1001c051 no-op scan */
-                int a = 0;
-                do { a++; } while (a < (*(int *)&g_brRaceNEntrant));
+                BrBitLatchTake((BrBitLatch *)g_aBrRaceCar[0].pCtl, 0, 0x4000);
+                BrBitLatchTake((BrBitLatch *)g_aBrRaceCar[1].pCtl, 0, 0x4000);
             }
+            /* else 0x1001c051: a counting loop with no effect */
         }
         goto Lc13d;
     Lc13d:  /* 0x1001c13d */
-        if ((*(int *)&g_brRaceRules.mode) == 4) {
+        if (g_brRaceRules.mode == 4) {
             if (g_5bc760 == 2) BrRaceCueRewind();
-            if ((*(int *)&g_brRaceRules.mode) == 4 && g_5bc760 == 1) {   /* 0x1001c158 lap-time gate */
-                int slot = (*(int *)&g_brRaceBeginSeqIdx) << 5;
-                if (*(int*)((char*)&(*(int *)&g_brRaceRules.pfLapLength) + slot) != 0) {
+            if (g_brRaceRules.mode == 4 && g_5bc760 == 1) {   /* 0x1001c158 credits-card timer */
+                const BrCreditCard *pc = &g_brRaceRules.aCard[(*(int *)&g_brRaceBeginSeqIdx)];
+                if (pc->pszTitle != 0) {
                     g_brRaceBeginSeqT = g_brRaceBeginSeqT + g_brRaceFlyStep;  /* 0x1001c179 x87 timer */
-                    if (g_brRaceBeginSeqT > *(float*)((char*)&g_0A936C + slot)) {
+                    if (g_brRaceBeginSeqT > pc->t) {
                         g_brRaceBeginSeqT = 0.0f;
                         (*(int *)&g_brRaceBeginSeqIdx)++;
                     }
@@ -1454,81 +1156,66 @@ Lb887:  /* 0x1001b887 */
             }
         }
         if (BrFadeIsClosing() != 0 && BrFadeIsSettled() != 0) {   /* 0x1001c1ad */
-            {                                     /* 0x1001c1c7 shift-copy all drivers */
-                char *s = (char*)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl);
-                do {
-                    if ((*(int *)&g_brRaceNEntrant) > 0) {
-                        int off = 0x3c;
-                        int j   = 0;
+            int k;
+            for (k = 0; k < 16; k++) {            /* 0x1001c1c7 shift-copy, every car slot */
+                if ((*(int *)&g_brRaceNEntrant) > 0) {
+                    BrRaceCtl *c = g_aBrRaceCar[k].pCtl;
+                    int        j = 0;
+                    do {
+                        c->aCap[j] = c->aLen[j];
+                        j++;
+                    } while (j < (*(int *)&g_brRaceNEntrant));
+                }
+            }
+            g_184C454 = 0;                        /* 0x1001c201 */
+            for (k = 0; k < 15; k++) {            /* 0x1001c207 sound-channel reset */
+                g_aBrSfxChan[k].packed = 0; g_aBrSfxChan[k].f10 = 0;
+                g_aBrSfxChan[k].ratio = 0;
+                /* the original stores the address of the empty group at
+                 * 0x118EEF2C; its 32-bit form is the same token */
+                g_aBrSfxChan[k].group = (int32_t)br_addr32(&g_18EEF2C);
+                BrX10072580(k);
+            }
+            (*(int *)((char *)&g_aBrEntRecs + 0xA8)) = 0;                         /* 0x1001c236 finalize dispatch */
+            if (DAT_105ccb68[12] != 0) {
+                /* 0x1001c249: `je` -- the race-end path runs when the flag is CLEAR */
+                if (DAT_105ccb68[9] == 0) goto Lc372;
+                if (DAT_105ccb68[8] != 0) goto Lc368;
+                {                                 /* 0x1001c261 leader min-search */
+                    int n = (*(int *)&g_brRaceNEntrant);
+                    int mx;
+                    DAT_105ccb68[2] = g_aBrRaceCar[0].pCtl->aLen[0];
+                    (*(int *)&g_brRaceBeginBestCar) = 0;
+                    mx = DAT_105ccb68[2];
+                    if (n > 1) {
+                        int i = 1;
                         do {
-                            int *c = *(int**)s;
-                            *(int*)((char*)c + off) = *(int*)((char*)c + off - 8);
-                            off += 4;
+                            int v = g_aBrRaceCar[i].pCtl->aLen[i];
+                            if (v < mx) { mx = v; (*(int *)&g_brRaceBeginBestCar) = i; DAT_105ccb68[2] = v; }
+                            i++;
+                        } while (i < n);
+                    }
+                    if (n > 0) {                  /* 0x1001c2bd gather leader records */
+                        int best = (*(int *)&g_brRaceBeginBestCar);
+                        int k2 = 0;
+                        do {
+                            BrRaceCtl *d = g_aBrRaceCar[k2].pCtl;
+                            /* 0x1001c2dc: `inc ecx` before the stores -- slots 1..n */
+                            k2++;
+                            g_apBrRaceLeaderRec[k2] = d->apRec[best];
+                            g_aBrRaceLeaderLen[k2] = d->aLen[best];
+                        } while (k2 < n);
+                    }
+                    if ((*(int *)&g_brRaceNEntrant) > 0) {           /* 0x1001c305 report + clear */
+                        int j = 0;
+                        do {
+                            BrRaceCtl *c = g_aBrRaceCar[j].pCtl;
+                            BrPodNop(&g_0A978C, 0, j, &c->aLen[0]);
+                            c->apRec[j] = 0;
                             j++;
                         } while (j < (*(int *)&g_brRaceNEntrant));
                     }
-                    s += 0x2b68;
-                } while (s < (char*)&g_B1F248);
-            }
-            g_184C454 = 0;                        /* 0x1001c201 */
-            {                                     /* 0x1001c207 fog/particle reset */
-                char *p = (char*)&(*(int *)((char *)&g_aBrSfxChan + 0x10));
-                int   i = 0;
-                do {
-                    *(int*)(p + 4) = 0; *(int*)p = 0;
-                    *(int*)(p - 8) = 0; *(int*)(p - 4) = 0;
-                    *(int*)(p - 0x10) = (int)&g_18EEF2C;
-                    BrX10072580(i);
-                    p += 0x18;
-                    i++;
-                } while (p < (char*)&g_18EF0B8);
-            }
-            (*(int *)((char *)&g_aBrEntRecs + 0xA8)) = 0;                         /* 0x1001c236 finalize dispatch */
-            if ((*(int *)&DAT_105ccb68[12]) != 0) {
-                /* 0x1001c249: `je` -- the race-end path runs when the flag is CLEAR */
-                if ((*(int *)&DAT_105ccb68[9]) == 0) goto Lc372;
-                if ((*(int *)&DAT_105ccb68[8]) != 0) goto Lc368;
-                {                                 /* 0x1001c261 leader min-search */
-                    int  n   = (*(int *)&g_brRaceNEntrant);
-                    int  mx;
-                    (*(int *)&DAT_105ccb68[2]) = PI(*(int**)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl), 0x34);
-                    (*(int *)&g_brRaceBeginBestCar) = 0;
-                    mx = (*(int *)&DAT_105ccb68[2]);
-                    if (n > 1) {
-                        char *b   = (char*)&(*(int *)&g_aBrRaceCar[1].pCtl);
-                        int   off = 0x38;
-                        int   i   = 1;
-                        do {
-                            int v = PI(*(int**)b, off);
-                            if (v < mx) { mx = v; (*(int *)&g_brRaceBeginBestCar) = i; (*(int *)&DAT_105ccb68[2]) = v; }
-                            i++; off += 4; b += 0x2b68;
-                        } while (i < n);
-                    }
-                    if (n > 0) {                  /* 0x1001c2bd gather leader deltas */
-                        char *s  = (char*)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl);
-                        int   ea = (*(int *)&g_brRaceBeginBestCar) * 4 + 0x2c;
-                        int   eb = (*(int *)&g_brRaceBeginBestCar) * 4 + 0x34;
-                        int   k  = 0;
-                        do {
-                            int *d = *(int**)s;
-                            /* 0x1001c2dc: `inc ecx` before the stores -- slots 1..n */
-                            k++; s += 0x2b68;
-                            *(int*)((char*)&g_5BC814 + k * 4) = PI(d, ea);
-                            *(int*)((char*)&g_5BC88C + k * 4) = PI(d, eb);
-                        } while (k < n);
-                    }
-                    if ((*(int *)&g_brRaceNEntrant) > 0) {           /* 0x1001c305 report + clear */
-                        char *b   = (char*)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl);
-                        int   off = 0x2c;
-                        int   j   = 0;
-                        do {
-                            int *c = *(int**)b;
-                            BrPodNop(&g_0A978C, 0, j, (int)((char*)c + 0x34));
-                            *(int*)((char*)(*(int**)b) + off) = 0;
-                            j++; off += 4;
-                        } while (j < (*(int *)&g_brRaceNEntrant));
-                    }
-                    BrPodNop(&g_0A9768, (*(int *)&g_brRaceBeginBestCar), (*(int *)&DAT_105ccb68[2]));   /* 0x1001c351 */
+                    BrPodNop(&g_0A9768, (*(int *)&g_brRaceBeginBestCar), DAT_105ccb68[2]);   /* 0x1001c351 */
                     goto Lc45c_1;
                 }
             }
@@ -1538,51 +1225,48 @@ Lb887:  /* 0x1001b887 */
         Lc372:  /* 0x1001c372 */
             BrNop_1002CB3F();
             (*(int *)&g_brRaceBeginDifficulty) = 0;
-            if ((*(int *)&g_brRaceRules.mode) == 5) {
-                if (*(char*)((char*)*(int**)&(*(int *)&g_aBrRaceCar[0].pEquip) + 4) != 0) {   /* 0x1001c387 */
-                    (*(int *)&g_brRaceRules.mode) = 0;
+            if (g_brRaceRules.mode == 5) {
+                if (g_aBrRaceCar[0].pEquip[4] != 0) {   /* 0x1001c387 */
+                    g_brRaceRules.mode = 0;
                     BrSelLookup();
                     g_17A613C = 1;
-                    BrGameStepSet((void*)&BrSetMode5);
+                    BrGameStepSet((void (*)(void))BrSetMode5);
                     goto Lc45c_0;
                 }
                 BrRaceEnterOutro();                   /* 0x1001c3af */
                 goto Lc45c_0;
             }
             {                                     /* 0x1001c3b9 mode dispatch */
-                int st = (*(int *)&g_brRaceRules.mode), c = g_5bc760;
+                int st = g_brRaceRules.mode, c = g_5bc760;
                 if (st == 4 && c == 2) goto Lc44d;
                 if (DAT_105ccb60 != 0 &&
                     (st == 2 || st == 1 || st == 0 || st == 6)) {
                     BrCarStateRestore();               /* 0x1001c3e8 */
-                    BrGameStepSet((void*)&BrRaceSelFromMenu);
+                    BrGameStepSet(BrRaceSelFromMenu);
                     goto Lc45c_0;
                 }
                 if (st == 4) {                    /* 0x1001c3f4: both tests under st == 4 */
                     if (c == 1) goto Lc44d;
                     if (c == 0 && (*(int *)&g_brRaceBeginMovieDone) == 0) goto Lc44d;
                 }
-                if ((*(int *)&DAT_105ccb68[12]) != 2) goto Lc44d;
+                if (DAT_105ccb68[12] != 2) goto Lc44d;
                 if (!((*(int *)&g_brRace6EC760) == (*(int *)&g_brItemIconCount) && (*(int *)&g_brRace6E9A34) == (*(int *)&g_brRaceB71A6C)))   /* 0x1001c417 */
-                    ((Obj*)&(*(int *)&g_BrCtrlCfg))->m_100634B0((int)&g_navArg);
+                    BrGlCfgSave(&g_BrCtrlCfg, (const char *)&g_navArg);
                 BrExt_10038F30(0);                  /* 0x1001c444 */
             }
         Lc44d:  /* 0x1001c44d */
-            BrGameStepSet((void*)&BrInit220B20);
+            BrGameStepSet(BrInit220B20);
         Lc45c_0:  /* 0x1001c45c, newB88 == 0 */
-            (*(int *)&DAT_105ccb68[8]) = 0; (*(int *)&DAT_105ccb68[11]) = 0;
+            DAT_105ccb68[8] = 0; DAT_105ccb68[11] = 0;
             BrRaceDriverReset();
             BrClearFlag_AB504();
             goto Lc475;
         Lc45c_1:  /* 0x1001c45c, newB88 == 1 */
-            (*(int *)&DAT_105ccb68[8]) = 1; (*(int *)&DAT_105ccb68[11]) = 0;
+            DAT_105ccb68[8] = 1; DAT_105ccb68[11] = 0;
             BrClearFlag_AB504();
         Lc475:  /* 0x1001c475 */
             g_17A5F20 = 1;
-            {
-                char *s = (char*)&(*(Driver (*)[])&g_aBrRaceCar[0].pCtl);
-                do { PI(*(int**)s, 0x44) = 0; s += 0x2b68; } while (s < (char*)&g_B1F248);
-            }
+            for (k = 0; k < 16; k++) g_aBrRaceCar[k].pCtl->pHdr = 0;
         }
         /* 0x1001c494: shared tail (both gate arms reach here) */
         {
@@ -1603,14 +1287,14 @@ Lb887:  /* 0x1001b887 */
                 (*(int *)&g_BrX06909B4) = prev;
             }
         }
-        if ((*(int *)&g_brRaceRules.mode) == 6) FUN_10006460();        /* 0x1001c4e3 */
-        {                                         /* 0x1001c4f1 HUD update */
-            int flag = (((*(int  *)((char*)((*(int**)&(*(int *)&g_aBrRaceCar[0].aBody[0].rb.child[0]))) + ((0x1b4))))) == 0 &&
-                        ((*(int  *)((char*)((*(int**)&(*(int *)&g_aBrRaceCar[0].aBody[0].rb.child[1]))) + ((0x1b4))))) == 0) ? 0 : 1;
-            BrFfbUpdateSpring((unsigned char)(*(char *)&g_aBrRaceCar[0].aBody[0].f0209), flag, (*(int *)&g_aBrRaceCar[0].fE90));
+        if (g_brRaceRules.mode == 6) FUN_10006460();        /* 0x1001c4e3 */
+        {                                         /* 0x1001c4f1 force-feedback spring */
+            int flag = (*(int *)&g_aBrRaceCar[0].aBody[0].rb.child[0]->f1B4 == 0 &&
+                        *(int *)&g_aBrRaceCar[0].aBody[0].rb.child[1]->f1B4 == 0) ? 0 : 1;
+            BrFfbUpdateSpring((unsigned char)g_aBrRaceCar[0].aBody[0].f0209, flag, g_aBrRaceCar[0].fE90);
         }
         if ((*(int *)&DAT_100b51e4[1036]) != 0 && (*(int *)&g_BrX06909B4) == 0) FUN_1006bdd0();   /* 0x1001c52a */
-        if ((*(int *)&DAT_105ccb68[8]) != 0) BrReplaySeek();        /* 0x1001c543 */
+        if (DAT_105ccb68[8] != 0) BrReplaySeek();        /* 0x1001c543 */
         else               BrReplayAdvance();
         FUN_10014cb0();
         BrSub10075150();
@@ -1621,20 +1305,20 @@ Lb887:  /* 0x1001b887 */
         return;                                   /* 0x1001c57b epilogue */
 
     Lc583:  /* 0x1001c583 replay-advance clock (after the ret; forward-goto only) */
-        g_5BCAF0 += ((int*)&g_0A95B8)[g_5BC76C];
+        g_5BCAF0 += g_0A95B8[g_5BC76C];
         { int nx = g_5BC76C + 1; g_5BC76C = (nx <= 2) ? nx : 0; }
-        (*(int *)&DAT_105ccb68[14])++;
-        if ((*(int *)&DAT_105ccb68[14]) > 3) {                       /* 0x1001c5c7 */
+        DAT_105ccb68[14]++;
+        if (DAT_105ccb68[14] > 3) {                       /* 0x1001c5c7 */
             if (BrSnapInterpDraw(1) == 0) goto GhostBody;
-            (*(int *)&DAT_105ccb68[14]) = 0;
-            (*(int *)&DAT_105ccb68[15]) = BrSub10075020();
+            DAT_105ccb68[14] = 0;
+            DAT_105ccb68[15] = BrSub10075020();
             goto GhostBody;
         }
         {                                         /* 0x1001c5ee time-sync loop */
             int t, esi = 1, ba4;
             t = BrSub10075020();
         Lc5f3:
-            ba4 = (*(int *)&DAT_105ccb68[15]);
+            ba4 = DAT_105ccb68[15];
         Lc5f9:
             if ((unsigned)t >= (unsigned)g_5BCAF0 &&
                 (unsigned)t <= (unsigned)(ba4 + 0x14d)) goto GhostBody;
@@ -1648,9 +1332,8 @@ Lb887:  /* 0x1001b887 */
             /* 0x1001c637: the fresh time is both the stored and the cached
              * frame stamp (mov ecx,eax); re-testing against the stale stamp
              * never passes and draws forever */
-            (*(int *)&DAT_105ccb68[14]) = 0;
-            (*(int *)&DAT_105ccb68[15]) = ba4 = t;
+            DAT_105ccb68[14] = 0;
+            DAT_105ccb68[15] = ba4 = t;
             goto Lc5f9;
         }
 }
-

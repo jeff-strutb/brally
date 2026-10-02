@@ -61,23 +61,23 @@ void BrFpsReadout(void)
 
     /* Each accumulator runs even when count <= 0 (divides by the 0.0f
      * seed). Samples are a table at a fixed address, added as unsigned. */
-    if ((*(int32_t *)&g_brRaceRules.nLaps) == 0) {
+    if (g_brRaceRules.iFpsSample == 0) {
         float sum = 0.0f;
-        int n = (*(int32_t *)&g_brRaceRules.nGates);
+        int n = g_brRaceRules.nFpsSamples;
         if (n > 0) {
-            int32_t *p = (int32_t *)&g_BrFpsSamplesA;
+            int32_t *p = g_aBrFpsSamples;
             do {
                 sum += (unsigned)*p++;
             } while (--n);
         }
-        g_BrFpsValueA = ((float)(*(int32_t *)&g_brRaceRules.nGates) * 1000.0f) / sum;
+        g_BrFpsValueA = ((float)g_brRaceRules.nFpsSamples * 1000.0f) / sum;
     }
 
     if (g_BrFpsGateB == 0) {
         float sum = 0.0f;
         int n = g_BrFpsCountB;
         if (n > 0) {
-            int32_t *p = (int32_t *)&g_BrFpsSamplesB;
+            int32_t *p = g_aBrFpsSamplesB;
             do {
                 sum += (unsigned)*p++;
             } while (--n);

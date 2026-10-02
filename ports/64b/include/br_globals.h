@@ -2073,26 +2073,10 @@ extern int32_t BrG_0A81C0;  /* 0x100A81C0 */
 #undef BrG_0A81C4
 extern int32_t BrG_0A81C4;  /* 0x100A81C4 */
 #pragma pop_macro("BrG_0A81C4")
-#pragma push_macro("g_0A936C")
-#undef g_0A936C
-extern float g_0A936C;  /* 0x100A936C */
-#pragma pop_macro("g_0A936C")
-#pragma push_macro("g_0A9548")
-#undef g_0A9548
-extern float g_0A9548;  /* 0x100A9548 */
-#pragma pop_macro("g_0A9548")
 #pragma push_macro("g_tblBrA9560")
 #undef g_tblBrA9560
 extern const signed char g_tblBrA9560[];  /* 0x100A9560 */
 #pragma pop_macro("g_tblBrA9560")
-#pragma push_macro("g_0A9578")
-#undef g_0A9578
-extern int g_0A9578;  /* 0x100A9578 */
-#pragma pop_macro("g_0A9578")
-#pragma push_macro("g_0A957C")
-#undef g_0A957C
-extern float g_0A957C;  /* 0x100A957C */
-#pragma pop_macro("g_0A957C")
 #pragma push_macro("g_0A95B8")
 #undef g_0A95B8
 extern int g_0A95B8[];  /* 0x100A95B8 */
@@ -4402,10 +4386,10 @@ extern float g_brRaceBeginPathSeg;  /* 0x105BC7E8 */
 #undef g_brRaceBeginBestCar
 extern int32_t g_brRaceBeginBestCar;  /* 0x105BC810 */
 #pragma pop_macro("g_brRaceBeginBestCar")
-#pragma push_macro("g_5BC814")
-#undef g_5BC814
-extern int g_5BC814;  /* 0x105BC814 */
-#pragma pop_macro("g_5BC814")
+#pragma push_macro("g_apBrRaceLeaderRec")
+#undef g_apBrRaceLeaderRec
+extern void *g_apBrRaceLeaderRec[17];  /* 0x105BC814 */
+#pragma pop_macro("g_apBrRaceLeaderRec")
 #pragma push_macro("g_br6806B0")
 #undef g_br6806B0
 extern unsigned char g_br6806B0[36];  /* 0x105BC858 */
@@ -4422,10 +4406,10 @@ extern float g_brRaceBeginSeqT;  /* 0x105BC884 */
 #undef g_brRaceBeginSeq888
 extern int32_t g_brRaceBeginSeq888;  /* 0x105BC888 */
 #pragma pop_macro("g_brRaceBeginSeq888")
-#pragma push_macro("g_5BC88C")
-#undef g_5BC88C
-extern int g_5BC88C;  /* 0x105BC88C */
-#pragma pop_macro("g_5BC88C")
+#pragma push_macro("g_aBrRaceLeaderLen")
+#undef g_aBrRaceLeaderLen
+extern int32_t g_aBrRaceLeaderLen[17];  /* 0x105BC88C */
+#pragma pop_macro("g_aBrRaceLeaderLen")
 #pragma push_macro("DAT_105bc8d0")
 #undef DAT_105bc8d0
 extern int32_t DAT_105bc8d0[];  /* 0x105BC8D0 */
@@ -4442,14 +4426,6 @@ extern int DAT_105bc8dc;  /* 0x105BC8DC */
 #undef g_aBrRaceBeginRec
 extern uint8_t g_aBrRaceBeginRec[0x10];  /* 0x105BC8E0, the 0x10-byte ghost header */
 #pragma pop_macro("g_aBrRaceBeginRec")
-#pragma push_macro("g_5BC8E8")
-#undef g_5BC8E8
-extern int g_5BC8E8;  /* 0x105BC8E8 */
-#pragma pop_macro("g_5BC8E8")
-#pragma push_macro("g_5BC8EC")
-#undef g_5BC8EC
-extern int g_5BC8EC;  /* 0x105BC8EC */
-#pragma pop_macro("g_5BC8EC")
 #pragma push_macro("DAT_105bc8f0")
 #undef DAT_105bc8f0
 extern int32_t DAT_105bc8f0[];  /* 0x105BC8F0 */
@@ -4458,10 +4434,10 @@ extern int32_t DAT_105bc8f0[];  /* 0x105BC8F0 */
 #undef g_brRaceLights
 extern int32_t g_brRaceLights;  /* 0x105BC8F8 */
 #pragma pop_macro("g_brRaceLights")
-#pragma push_macro("g_BrFpsSamplesA")
-#undef g_BrFpsSamplesA
-extern int32_t *g_BrFpsSamplesA;  /* 0x105BC900 */
-#pragma pop_macro("g_BrFpsSamplesA")
+#pragma push_macro("g_aBrFpsSamples")
+#undef g_aBrFpsSamples
+extern int32_t g_aBrFpsSamples[120];  /* 0x105BC900 */
+#pragma pop_macro("g_aBrFpsSamples")
 #pragma push_macro("g_brRaceBeginMovieDone")
 #undef g_brRaceBeginMovieDone
 extern int32_t g_brRaceBeginMovieDone;  /* 0x105BCAE0 */
@@ -7030,10 +7006,10 @@ extern char g_aBrDevName1C74[][36];  /* 0x10B71C74 */
 #undef g_navArg
 extern int g_navArg;  /* 0x10B72F48 */
 #pragma pop_macro("g_navArg")
-#pragma push_macro("g_BrFpsSamplesB")
-#undef g_BrFpsSamplesB
-extern int32_t *g_BrFpsSamplesB;  /* 0x10B73348 */
-#pragma pop_macro("g_BrFpsSamplesB")
+#pragma push_macro("g_aBrFpsSamplesB")
+#undef g_aBrFpsSamplesB
+extern int32_t g_aBrFpsSamplesB[120];  /* 0x10B73348 */
+#pragma pop_macro("g_aBrFpsSamplesB")
 #pragma push_macro("DAT_10b73528")
 #undef DAT_10b73528
 extern funcptr DAT_10b73528;  /* 0x10B73528 */
@@ -7447,7 +7423,7 @@ extern void (*g_BrDrawModelDlHook)(uint32_t, uint32_t);  /* 0x118ED1BC */
 #pragma pop_macro("g_BrDrawModelDlHook")
 #pragma push_macro("g_18ED1C0")
 #undef g_18ED1C0
-extern int (*g_18ED1C0)(int, int, int, int, int, int, int, int);  /* 0x118ED1C0 */
+extern int (*g_18ED1C0)(unsigned short *, unsigned char *, unsigned char *, int, int, int, int, int);  /* 0x118ED1C0 */
 #pragma pop_macro("g_18ED1C0")
 #pragma push_macro("DAT_118ed1cc")
 #undef DAT_118ed1cc

@@ -144,7 +144,7 @@ void BrFramePresent(BrGfxWords *pCmd)
             /* First frame: seed every slot with this delta. */
             int i;
             for (i = 0; i < count; ++i)
-                (&g_BrFpsSamplesB)[i] = delta;
+                g_aBrFpsSamplesB[i] = delta;
             gate = count;
         }
     }
@@ -153,7 +153,7 @@ void BrFramePresent(BrGfxWords *pCmd)
     if (gate >= count) {
         (*(int *)&g_BrFpsGateB) = gate = 0;
     }
-    (&g_BrFpsSamplesB)[gate] = delta;
+    g_aBrFpsSamplesB[gate] = delta;
 }
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */

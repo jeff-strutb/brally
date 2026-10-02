@@ -466,6 +466,10 @@ void BrCarRespawn_1005C6D0(void *);
 #undef BrCarSlotLoad
 void BrCarSlotLoad(int, int, int);
 #pragma pop_macro("BrCarSlotLoad")
+#pragma push_macro("BrCarSlotBind_1006FCB0")
+#undef BrCarSlotBind_1006FCB0
+void BrCarSlotBind_1006FCB0(void *, int);
+#pragma pop_macro("BrCarSlotBind_1006FCB0")
 #pragma push_macro("BrCarSlotSetup_1006FCE0")
 #undef BrCarSlotSetup_1006FCE0
 void BrCarSlotSetup_1006FCE0(void *, int, int);
