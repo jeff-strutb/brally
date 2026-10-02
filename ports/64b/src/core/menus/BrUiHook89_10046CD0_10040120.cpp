@@ -21,7 +21,7 @@ public:
 
 class CurPhase89 {
 public:
-    virtual ~CurPhase89();
+    virtual void *ScalarDtor_(unsigned);   /* slot 0: the scalar deleting destructor */
 };
 
 class GameObj89 {
@@ -42,7 +42,7 @@ int Hook(GameObj89 *pObj)
     (*(Sub2AE8b * *)&((BrUiCtl_ *)(pObj))->pOwner)->s7();
 
     if ((*(CurPhase89 * *)&g_brPAA29B8) != 0)
-        delete (*(CurPhase89 * *)&g_brPAA29B8);
+        br_vdelete((*(CurPhase89 * *)&g_brPAA29B8));
 
     g_5C6C = 0;
     DAT_10ac5d0c = 0;

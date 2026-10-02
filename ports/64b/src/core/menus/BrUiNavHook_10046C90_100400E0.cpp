@@ -35,7 +35,7 @@ public:
 
 class Phase400E0 {
 public:
-    virtual ~Phase400E0();
+    virtual void *ScalarDtor_(unsigned);   /* slot 0: the scalar deleting destructor */
 };
 
 class Ctl400E0 {
@@ -56,7 +56,7 @@ int BrUiNavHook_10046C90(Ctl400E0 *pCtl)
     pCtl->p2AE8->s7();
 
     if ((*(Phase400E0 * *)&g_brPAA29B8) != 0)
-        delete (*(Phase400E0 * *)&g_brPAA29B8);
+        br_vdelete((*(Phase400E0 * *)&g_brPAA29B8));
 
     g_5C74 = 0;
     (*(Phase400E0 * *)&g_brPAA29B8) = (Phase400E0 *)((BrOptObj *)((Phase400E0 *)((BrOptObj *)((*(Phase400E0 * *)&g_2908)))));

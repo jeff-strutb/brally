@@ -1,4 +1,5 @@
-#include "br_phase.h"   /* BrPhase_, the canonical record */
+#include "br_phase.h"
+#include "br_ui.h"   /* BrPhase_, the canonical record */
 /* WHAT IT DOES: release every control on every page this phase owns -- 200
  * slots per page, cleared and nulled. */
 /* @implements 0x10041ED0 glide BrPhaseReleasePages_10048AA0
@@ -12,12 +13,12 @@
  */
 class PageMember {
 public:
-    virtual ~PageMember();
+    virtual void *ScalarDtor_(unsigned);   /* slot 0: the scalar deleting destructor */
 };
 
 class Page {
 public:
-    virtual ~Page();
+    virtual void *ScalarDtor_(unsigned);   /* slot 0: the scalar deleting destructor */
     char pad[0x14];             /* +0x04 */
     PageMember *m[200];         /* +0x18 */
 };
@@ -45,10 +46,10 @@ void Phase32P::ReleasePages()
         int k;
 
         for (k = 0; k < 200; ++k) {
-            delete (*(PageMember * (*)[200])&((BrPhase_ *)(p))->aPages[1])[k];
-            (*(PageMember * (*)[200])&((BrPhase_ *)(p))->aPages[1])[k] = 0;
+            br_vdelete(((BrUiPage_ *)(p))->apCtl[k]);
+            ((BrUiPage_ *)(p))->apCtl[k] = 0;
         }
-        delete p;
+        br_vdelete(p);
     }
     (*(unsigned short *)&BrGlNavCur5BC4) = 0;
 }

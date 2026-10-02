@@ -48,7 +48,7 @@ void Ctl58D40::Rebuild()
 
     p = g_head;
     if (p != 0) {
-        delete p;
+        br_vdelete(p);
         g_head = 0;
         g_count = 0;
     }

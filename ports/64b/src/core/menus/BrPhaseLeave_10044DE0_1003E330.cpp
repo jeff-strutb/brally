@@ -36,7 +36,7 @@ public:
 
 class Phase3E330 {
 public:
-    virtual ~Phase3E330();
+    virtual void *ScalarDtor_(unsigned);   /* slot 0: the scalar deleting destructor */
 };
 
 class Ctl3E330 {
@@ -57,7 +57,7 @@ int BrPhaseLeave_10044DE0(Ctl3E330 *pCtl)
     pCtl->p2AE8->s7();
 
     if ((*(Phase3E330 * *)&g_brPAA29B8) != 0)
-        delete (*(Phase3E330 * *)&g_brPAA29B8);
+        br_vdelete((*(Phase3E330 * *)&g_brPAA29B8));
 
     DAT_10ac5cbc = 0;
     (*(Phase3E330 * *)&g_brPAA29B8) = (Phase3E330 *)((BrOptObj *)((Phase3E330 *)((BrOptObj *)((*(Phase3E330 * *)&g_5CB4)))));

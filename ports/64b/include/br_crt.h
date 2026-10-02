@@ -24,6 +24,19 @@ extern "C" {  /* BR_CLINK_BEGIN: every original function has C linkage */
  * platform/src/br_crt.c). */
 void   *BrOperatorNew(size_t cb);            /* 0x1007DFE0 operator new    */
 void    BrOperatorDelete(void *p);           /* 0x1007DE40 operator delete */
+/* The CRT's exit-handler registration (the platform runs them at exit). */
+typedef int (*BrCrtOnExitFn)(void);
+BrCrtOnExitFn dllonexit(BrCrtOnExitFn pfn, void *pBegin, void *pEnd);
+
+/* C++ `delete p` on the original's classes: the scalar deleting destructor in
+ * vtable slot 0, flag 1 (Itanium's vtables put destructors elsewhere, so the
+ * call is made explicitly). */
+static inline void br_vdelete(void *p)
+{
+    if (p != 0)
+        ((void *(*)(void *, unsigned))(*(void *const **)p)[0])(p, 1);
+}
+
 /* C++ `new Class`: operator new, then the class's constructor if the
  * allocation succeeded (the original's constructors are C functions here). */
 static inline void *br_new_obj(size_t cb, void *(*ctor)(void *))

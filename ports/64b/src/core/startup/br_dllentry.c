@@ -91,18 +91,12 @@ typedef void (__fastcall *PDtor)(void *);
 void __stdcall
 BrEhVecDtor(void *ptr, unsigned size, int count, PDtor dtor)
 {
-    int success = 0;
-
+    /* 64-bit core: the game throws no C++ exceptions, so the unwind arm the
+     * original wraps this in never runs; the loop is the whole behaviour. */
     ptr = (char *)ptr + size * count;
-    __try {
-        while (--count >= 0) {
-            ptr = (char *)ptr - size;
-            dtor(ptr);
-        }
-        success = 1;
-    } __finally {
-        if (!success)
-            BrEhArrayUnwind(ptr, size, count, dtor);
+    while (--count >= 0) {
+        ptr = (char *)ptr - size;
+        dtor(ptr);
     }
 }
 
@@ -117,14 +111,11 @@ typedef void (__fastcall *PDtor)(void *);
 void __stdcall
 BrEhArrayUnwind(void *ptr, unsigned size, int count, PDtor dtor)
 {
-    __try {
-        for (;;) {
-            --count;
-            if (count < 0)
-                break;
-            dtor(ptr = (char *)ptr - size);
-        }
-    } __except (BrEhArrayUnwindFilter((int *)GetExceptionInformation())) {
+    for (;;) {
+        --count;
+        if (count < 0)
+            break;
+        dtor(ptr = (char *)ptr - size);
     }
 }
 
@@ -140,17 +131,11 @@ typedef void (__fastcall *PCtor)(void *);
 void __stdcall
 BrEhVecCtor(void *ptr, unsigned size, int count, PCtor ctor, PDtor dtor)
 {
-    int success = 0;
     int i;
 
-    __try {
-        for (i = 0; i < count; i++) {
-            ctor(ptr);
-            ptr = (char *)ptr + size;
-        }
-        success = 1;
-    } __finally {
-        if (!success)
-            BrEhArrayUnwind(ptr, size, i, dtor);
+    (void)dtor;
+    for (i = 0; i < count; i++) {
+        ctor(ptr);
+        ptr = (char *)ptr + size;
     }
 }

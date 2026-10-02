@@ -22,6 +22,7 @@
 
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
+#include "br_vtables.h"
 #include "br_coretypes.h"   /* br_globals: its objects */
 #include <string.h>
 
@@ -212,8 +213,9 @@ int BrStubFalse(void)
 int __fastcall BrVtInit53EE0(const void **param_1)
 
 {
-  *param_1 = &PTR_FUN_100776f0;
-  return;
+  /* the text box's destructor: its vtable back to its own class's */
+  *param_1 = g_brVtbl_100776F0;
+  return 0;
 }
 
 

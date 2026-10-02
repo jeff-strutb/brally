@@ -209,7 +209,7 @@ void __fastcall BrRaceSaveLastLapInfo(BrDriverCar *param_1)
 /* @implements 0x10071610 d3d BrWrap_10071610 */
 void BrWrap_10071610(void)
 {
-    BrEhVecDtor(&(*(uint32_t *)&g_aBrPeerMsg), 0x214, 0x10, BrPodNop);
+    BrEhVecDtor(g_aBrPeerMsg, sizeof g_aBrPeerMsg[0], 0x10, (void (*)(void *))BrPodNop);
 }
 
 /* WHAT IT DOES: construct that array of 16 objects in place. */
@@ -217,7 +217,7 @@ void BrWrap_10071610(void)
 /* @n64 0x80214A3C located */
 void BrWrap_100715E0(void)
 {
-    BrEhVecCtor(&(*(uint32_t *)&g_aBrPeerMsg), 0x214, 0x10, FUN_1006cd80, BrPodNop);
+    BrEhVecCtor(g_aBrPeerMsg, sizeof g_aBrPeerMsg[0], 0x10, (void (*)(void *))FUN_1006cd80, (void (*)(void *))BrPodNop);
 }
 
 /* WHAT IT DOES: register that destructor with atexit so the array is

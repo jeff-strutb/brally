@@ -14,6 +14,8 @@ extern "C" {
 extern void *const g_brVtbl_10077680[];   /* UI control (BrUiCtl_) */
 extern void *const g_brVtbl_10077720[];   /* text list (BrTextList) */
 extern void *const g_brVtbl_100776C8[];   /* phase (BrPhase_) */
+extern void *const g_brVtbl_100776C0[];   /* UI page (BrUiPage_) */
+extern void *const g_brVtbl_100776F0[];   /* text box (BrTextBox) */
 
 #ifdef __cplusplus
 }

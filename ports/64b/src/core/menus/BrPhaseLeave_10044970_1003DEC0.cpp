@@ -27,7 +27,7 @@ public:
 
 class CurPhase {
 public:
-    virtual ~CurPhase();
+    virtual void *ScalarDtor_(unsigned);   /* slot 0: the scalar deleting destructor */
 };
 
 class D30Obj {
@@ -66,7 +66,7 @@ int Leave(GameObj3DEC0 *pObj)
     pObj->p2AE8->s7();
 
     if ((*(CurPhase * *)&g_brPAA29B8) != 0)
-        delete (*(CurPhase * *)&g_brPAA29B8);
+        br_vdelete((*(CurPhase * *)&g_brPAA29B8));
 
     g_brPAA2950 = 0;
     (*(CurPhase * *)&g_brPAA29B8) = (CurPhase *)((BrOptObj *)((*(CurPhase * *)&g_2948)));

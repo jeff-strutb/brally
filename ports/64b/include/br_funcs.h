@@ -4875,7 +4875,7 @@ int BrUiOptHook_100436B0(struct BrUiCtl_ *);
 #pragma pop_macro("BrUiOptHook_100436B0")
 #pragma push_macro("BrUiPageCtor_10048470")
 #undef BrUiPageCtor_10048470
-int * BrUiPageCtor_10048470(int *);
+struct BrUiPage_ * BrUiPageCtor_10048470(struct BrUiPage_ *);
 #pragma pop_macro("BrUiPageCtor_10048470")
 #pragma push_macro("BrUiPageDelete_100484C0")
 #undef BrUiPageDelete_100484C0

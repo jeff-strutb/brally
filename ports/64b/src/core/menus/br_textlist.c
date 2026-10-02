@@ -23,6 +23,8 @@
 
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
+#include "slice3_39.h"
+#include "br_vtables.h"
 #include "br_uispr.h"   /* br_globals: its objects */
 #include <string.h>
 
@@ -76,9 +78,11 @@ void * __fastcall BrObj546F0DeleteDtor(void *param_1,unsigned char param_2)
 int __fastcall BrObj54710Dtor(void *param_1)
 
 {
-  *(int *)param_1 = (int)&PTR_FUN_10077720;
-  BrEhVecDtor((int)param_1 + 0x2c,0x438,100,(int)BrVtInit53EE0);
-  return;
+  BrTextList *l = (BrTextList *)param_1;
+
+  l->pVtbl = (const BrTextListVtbl *)g_brVtbl_10077720;
+  BrEhVecDtor(l->aItems, sizeof l->aItems[0], BR_TEXTLIST_ITEMS, (void (*)(void *))BrVtInit53EE0);
+  return 0;
 }
 
 /* WHAT IT DOES: stdcall stub taking three words and returning 0. */

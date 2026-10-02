@@ -20,7 +20,7 @@
  */
 class Ph {
 public:
-    virtual ~Ph();
+    virtual void *ScalarDtor_(unsigned);   /* slot 0: the scalar deleting destructor */
     virtual void v1();
     virtual void v2();
     virtual void v3();
@@ -136,59 +136,59 @@ void __stdcall BrPhaseShutdown_10048B20(int bPartial)
 
     if ((*(Ph * *)&g_5C98) != 0) {
         (*(Ph * *)&g_5C98)->v7();
-        delete (*(Ph * *)&g_5C98);
+        br_vdelete((*(Ph * *)&g_5C98));
         (*(Ph * *)&g_5C98) = 0;
         g_guardA = 0;
     }
 
     if ((*(Ph * *)&g_5C64) != 0) {
         (*(Ph * *)&g_5C64)->v7();
-        delete (*(Ph * *)&g_5C64);
+        br_vdelete((*(Ph * *)&g_5C64));
         (*(Ph * *)&g_5C64) = 0;
         g_hookObj = 0;
     }
 
     if ((*(Ph * *)&g_5C68) != 0) {
         (*(Ph * *)&g_5C68)->v7();
-        delete (*(Ph * *)&g_5C68);
+        br_vdelete((*(Ph * *)&g_5C68));
         (*(Ph * *)&g_5C68) = 0;
     }
 
     if ((*(Ph * *)&g_5C6C) != 0) {
         (*(Ph * *)&g_5C6C)->v7();
-        delete (*(Ph * *)&g_5C6C);
+        br_vdelete((*(Ph * *)&g_5C6C));
         (*(Ph * *)&g_5C6C) = 0;
         DAT_10ac5d0c = 0;
     }
 
     if ((*(Ph * *)&g_5C70) != 0) {
         (*(Ph * *)&g_5C70)->v7();
-        delete (*(Ph * *)&g_5C70);
+        br_vdelete((*(Ph * *)&g_5C70));
         (*(Ph * *)&g_5C70) = 0;
     }
 
     if ((*(Ph * *)&g_5C74) != 0) {
         (*(Ph * *)&g_5C74)->v7();
-        delete (*(Ph * *)&g_5C74);
+        br_vdelete((*(Ph * *)&g_5C74));
         (*(Ph * *)&g_5C74) = 0;
     }
 
     if (DAT_10ac5c78 != 0) {
         DAT_10ac5c78->v7();
-        delete DAT_10ac5c78;
+        br_vdelete(DAT_10ac5c78);
         DAT_10ac5c78 = 0;
         DAT_10ac5d00 = 0;
     }
 
     if ((*(Ph * *)&g_5C7C) != 0) {
         (*(Ph * *)&g_5C7C)->v7();
-        delete (*(Ph * *)&g_5C7C);
+        br_vdelete((*(Ph * *)&g_5C7C));
         (*(Ph * *)&g_5C7C) = 0;
     }
 
     if ((*(Ph * *)&g_5C80) != 0) {
         (*(Ph * *)&g_5C80)->v7();
-        delete (*(Ph * *)&g_5C80);
+        br_vdelete((*(Ph * *)&g_5C80));
         (*(Ph * *)&g_5C80) = 0;
         DAT_10ac5d18 = 0;
         g_5D24 = 0;
@@ -197,50 +197,50 @@ void __stdcall BrPhaseShutdown_10048B20(int bPartial)
 
     if (g_brPhaseAA292C != 0) {
         g_brPhaseAA292C->v7();
-        delete g_brPhaseAA292C;
+        br_vdelete(g_brPhaseAA292C);
         g_brPhaseAA292C = 0;
         DAT_10ac5d08 = 0;
     }
 
     if ((*(Ph * *)&g_5C88) != 0) {
         (*(Ph * *)&g_5C88)->v7();
-        delete (*(Ph * *)&g_5C88);
+        br_vdelete((*(Ph * *)&g_5C88));
         (*(Ph * *)&g_5C88) = 0;
     }
 
     if ((*(Ph * *)&g_5C8C) != 0) {
         (*(Ph * *)&g_5C8C)->v7();
-        delete (*(Ph * *)&g_5C8C);
+        br_vdelete((*(Ph * *)&g_5C8C));
         (*(Ph * *)&g_5C8C) = 0;
     }
 
     if ((*(Ph * *)&g_5C90) != 0) {
         (*(Ph * *)&g_5C90)->v7();
-        delete (*(Ph * *)&g_5C90);
+        br_vdelete((*(Ph * *)&g_5C90));
         (*(Ph * *)&g_5C90) = 0;
     }
 
     if ((*(Ph * *)&g_5C94) != 0) {
         (*(Ph * *)&g_5C94)->v7();
-        delete (*(Ph * *)&g_5C94);
+        br_vdelete((*(Ph * *)&g_5C94));
         (*(Ph * *)&g_5C94) = 0;
     }
 
     if ((*(Ph * *)&g_5C98) != 0) {
         (*(Ph * *)&g_5C98)->v7();
-        delete (*(Ph * *)&g_5C98);
+        br_vdelete((*(Ph * *)&g_5C98));
         (*(Ph * *)&g_5C98) = 0;
     }
 
     if (DAT_10ac5c9c != 0) {
         DAT_10ac5c9c->v7();
-        delete DAT_10ac5c9c;
+        br_vdelete(DAT_10ac5c9c);
         DAT_10ac5c9c = 0;
     }
 
     if ((*(Ph * *)&g_2948) != 0) {
         (*(Ph * *)&g_2948)->v7();
-        delete (*(Ph * *)&g_2948);
+        br_vdelete((*(Ph * *)&g_2948));
         (*(Ph * *)&g_2948) = 0;
         g_29B8 = 0;
         g_brPAA29D8 = 0;
@@ -250,20 +250,20 @@ void __stdcall BrPhaseShutdown_10048B20(int bPartial)
 
     if ((*(Ph * *)&g_294C) != 0) {
         (*(Ph * *)&g_294C)->v7();
-        delete (*(Ph * *)&g_294C);
+        br_vdelete((*(Ph * *)&g_294C));
         (*(Ph * *)&g_294C) = 0;
         g_29B8 = 0;
     }
 
     if ((*(Ph * *)&g_brPAA2950) != 0) {
         (*(Ph * *)&g_brPAA2950)->v7();
-        delete (*(Ph * *)&g_brPAA2950);
+        br_vdelete((*(Ph * *)&g_brPAA2950));
         (*(Ph * *)&g_brPAA2950) = 0;
     }
 
     if (g_5CAC != 0) {
         g_5CAC->v7();
-        delete g_5CAC;
+        br_vdelete(g_5CAC);
         g_5CAC = 0;
         g_brPAA29E4 = 0;
         g_pGame = 0;
@@ -271,39 +271,39 @@ void __stdcall BrPhaseShutdown_10048B20(int bPartial)
 
     if ((*(Ph * *)&g_5CB0) != 0) {
         (*(Ph * *)&g_5CB0)->v7();
-        delete (*(Ph * *)&g_5CB0);
+        br_vdelete((*(Ph * *)&g_5CB0));
         (*(Ph * *)&g_5CB0) = 0;
         DAT_10ac5d00 = 0;
     }
 
     if ((*(Ph * *)&g_298C) != 0) {
         (*(Ph * *)&g_298C)->v7();
-        delete (*(Ph * *)&g_298C);
+        br_vdelete((*(Ph * *)&g_298C));
         (*(Ph * *)&g_298C) = 0;
         DAT_10ac5d40 = 0;
     }
 
     if ((*(Ph * *)&g_5CB4) != 0) {
         (*(Ph * *)&g_5CB4)->v7();
-        delete (*(Ph * *)&g_5CB4);
+        br_vdelete((*(Ph * *)&g_5CB4));
         (*(Ph * *)&g_5CB4) = 0;
     }
 
     if (DAT_10ac5cb8 != 0) {
         DAT_10ac5cb8->v7();
-        delete DAT_10ac5cb8;
+        br_vdelete(DAT_10ac5cb8);
         DAT_10ac5cb8 = 0;
     }
 
     if ((*(Ph * *)&DAT_10ac5cbc) != 0) {
         (*(Ph * *)&DAT_10ac5cbc)->v7();
-        delete (*(Ph * *)&DAT_10ac5cbc);
+        br_vdelete((*(Ph * *)&DAT_10ac5cbc));
         (*(Ph * *)&DAT_10ac5cbc) = 0;
     }
 
     if ((*(Ph * *)&g_5CC0) != 0) {
         (*(Ph * *)&g_5CC0)->v7();
-        delete (*(Ph * *)&g_5CC0);
+        br_vdelete((*(Ph * *)&g_5CC0));
         (*(Ph * *)&g_5CC0) = 0;
         DAT_10ac5d1c = 0;
         g_brPAA29D0 = 0;
@@ -311,70 +311,70 @@ void __stdcall BrPhaseShutdown_10048B20(int bPartial)
 
     if (DAT_10ac5cc4 != 0) {
         DAT_10ac5cc4->v7();
-        delete DAT_10ac5cc4;
+        br_vdelete(DAT_10ac5cc4);
         DAT_10ac5cc4 = 0;
     }
 
     if ((*(Ph * *)&DAT_10ac5cc8) != 0) {
         (*(Ph * *)&DAT_10ac5cc8)->v7();
-        delete (*(Ph * *)&DAT_10ac5cc8);
+        br_vdelete((*(Ph * *)&DAT_10ac5cc8));
         (*(Ph * *)&DAT_10ac5cc8) = 0;
     }
 
     if (g_brPhaseAA2974 != 0) {
         g_brPhaseAA2974->v7();
-        delete g_brPhaseAA2974;
+        br_vdelete(g_brPhaseAA2974);
         g_brPhaseAA2974 = 0;
     }
 
     if ((*(Ph * *)&g_5CD4) != 0) {
         (*(Ph * *)&g_5CD4)->v7();
-        delete (*(Ph * *)&g_5CD4);
+        br_vdelete((*(Ph * *)&g_5CD4));
         (*(Ph * *)&g_5CD4) = 0;
     }
 
     if ((*(Ph * *)&g_5CD8) != 0) {
         (*(Ph * *)&g_5CD8)->v7();
-        delete (*(Ph * *)&g_5CD8);
+        br_vdelete((*(Ph * *)&g_5CD8));
         (*(Ph * *)&g_5CD8) = 0;
     }
 
     if ((*(Ph * *)&g_5CDC) != 0) {
         (*(Ph * *)&g_5CDC)->v7();
-        delete (*(Ph * *)&g_5CDC);
+        br_vdelete((*(Ph * *)&g_5CDC));
         (*(Ph * *)&g_5CDC) = 0;
     }
 
     if ((*(Ph * *)&g_5CE0) != 0) {
         (*(Ph * *)&g_5CE0)->v7();
-        delete (*(Ph * *)&g_5CE0);
+        br_vdelete((*(Ph * *)&g_5CE0));
         (*(Ph * *)&g_5CE0) = 0;
     }
 
     if (DAT_10ac5ce8 != 0) {
         DAT_10ac5ce8->v7();
-        delete DAT_10ac5ce8;
+        br_vdelete(DAT_10ac5ce8);
         DAT_10ac5ce8 = 0;
         DAT_10ac5d48 = 0;
     }
 
     if ((*(Ph * *)&g_5CEC) != 0) {
         (*(Ph * *)&g_5CEC)->v7();
-        delete (*(Ph * *)&g_5CEC);
+        br_vdelete((*(Ph * *)&g_5CEC));
         (*(Ph * *)&g_5CEC) = 0;
         DAT_10ac5d44 = 0;
     }
 
     if ((*(Ph * *)&g_5CF0) != 0) {
         (*(Ph * *)&g_5CF0)->v7();
-        delete (*(Ph * *)&g_5CF0);
+        br_vdelete((*(Ph * *)&g_5CF0));
         (*(Ph * *)&g_5CF0) = 0;
     }
 
     if (bPartial == 0) {
         if ((*(Ph * *)&g_2908) != 0) {
             (*(Ph * *)&g_2908)->v7();
-            delete (*(Ph * *)&g_2908);
+            br_vdelete((*(Ph * *)&g_2908));
             (*(Ph * *)&g_2908) = 0;
         }
         pPod = (PodObj *)((*(PodObj * *)&g_obj400));

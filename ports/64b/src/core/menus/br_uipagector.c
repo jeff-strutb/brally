@@ -1,3 +1,6 @@
+#include "br_ui.h"
+#include "br_vtables.h"
+#include <string.h>
 /* br_uipagector.c -- menus: the menu page constructor.
  *
  * 0x100418C0, the compiler-emitted constructor for the front-end page class:
@@ -37,23 +40,21 @@ int FUN_100776c0();
  * table and clears every field, including the 800-byte entry array. The
  * compiler-emitted constructor for the page class. */
 /* @implements 0x100418C0 glide BrUiPageCtor_10048470 */
-int * __fastcall BrUiPageCtor_10048470(int *param_1)
-
+struct BrUiPage_ *BrUiPageCtor_10048470(struct BrUiPage_ *p)
 {
-  
-  param_1[4] = 0;
-  *(short *)(param_1 + 5) = 0;
-  param_1[0xce] = 0;
-  param_1[0xcf] = 0;
-  *param_1 = (int)&PTR_FUN_100776c0;   /* the page vtable */
-  param_1[1] = 0;
-  param_1[2] = 0;
-  param_1[3] = 0;
-  memset(param_1 + 6, 0, 800);
-  param_1[0xd0] = 0;
-  *(short *)(param_1 + 0xd1) = 0;
-  *(short *)((int)param_1 + 0x346) = 0;
-  return param_1;
+    p->f10 = 0;
+    p->cCtl = 0;
+    p->fX = 0;
+    p->fY = 0;
+    p->pVtbl = (const BrUiPageVtbl_ *)g_brVtbl_100776C0;   /* the page vtable */
+    p->pfn04 = 0;
+    p->pfn08 = 0;
+    p->pfn0C = 0;
+    memset(p->apCtl, 0, sizeof p->apCtl);
+    p->pOwner = 0;
+    p->cSel = 0;
+    p->iSel = 0;
+    return p;
 }
 
 
