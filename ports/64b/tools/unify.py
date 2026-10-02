@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """One definition per original global; every other name an alias of it.
 
-Input: build/portable/globals.csv (globals.py). For each original address
+Input: ports/64b/types/globals.csv (globals.py). For each original address
 the decompiled files reach under several names or types, this chooses the
 canonical object -- the largest declaration, preferring a pointer over an
 integer, a struct or array over a scalar, a descriptive name over DAT_ -- and
@@ -132,7 +132,7 @@ def score(r):
 
 def main():
     os.chdir(ROOT)
-    rows = [r for r in csv.DictReader(open('build/portable/globals.csv')) if r['va']]
+    rows = [r for r in csv.DictReader(open('ports/64b/types/globals.csv')) if r['va']]
     by = collections.defaultdict(list)
     for r in rows:
         by[int(r['va'], 16)].append(r)
@@ -510,7 +510,7 @@ def write(plan, hdr_for):
         fh.write('\n'.join(global_decls) + '\n')
         fh.write('#ifdef __cplusplus\n}\n#endif\n\n')
         fh.write('/* The other names the decompiled files used for these objects are\n'
-                 ' * defined per file (build/portable/alias/<file>.h), each with the type\n'
+                 ' * defined per file (ports/64b/alias/<file>.h), each with the type\n'
                  ' * that file gave it. */\n')
         fh.write('\n#endif\n')
     for h in set(list(struct_decls) + [os.path.join(INC, x) for x in os.listdir(INC) if x.endswith('.h')]):
@@ -577,7 +577,7 @@ def purge_decls(unified):
 
 
 def alias_headers(plan, macros):
-    """build/portable/alias/<file>.h: every alias name a core file uses,
+    """ports/64b/alias/<file>.h: every alias name a core file uses,
     defined with the type THAT file (or a header it includes) declared."""
     exprs = collections.defaultdict(dict)     # name -> {type: expr}
     canon_t = {}
@@ -589,13 +589,13 @@ def alias_headers(plan, macros):
     # self-referential macro (never re-expanded) gives it that view
     for va, c, aliases in plan:
         exprs[c['name']].setdefault(norm(c['type']), c['name'])
-    rows0 = [r for r in csv.DictReader(open('build/portable/globals.csv')) if r['va']]
+    rows0 = [r for r in csv.DictReader(open('ports/64b/types/globals.csv')) if r['va']]
     plan_by_name = {c['name']: c for va, c, al in plan}
     for r in rows0:
         nm, t = r['name'], norm(r['type'])
         if nm in plan_by_name and t not in exprs[nm]:
             exprs[nm][t] = alias_expr(plan_by_name[nm], t, 0)
-    rows = [r for r in csv.DictReader(open('build/portable/globals.csv')) if r['va']]
+    rows = [r for r in csv.DictReader(open('ports/64b/types/globals.csv')) if r['va']]
     # files whose code was retyped to the canonical object: their own view goes
     retired = set()
     rp = os.path.join(ROOT, 'ports/64b/types/views_retired.csv')
@@ -621,7 +621,7 @@ def alias_headers(plan, macros):
             if not re.search(r'^extern[^;]*\b%s\b' % re.escape(r['name']), hdr_text[f], re.M):
                 continue
             hdr[os.path.basename(f)].setdefault(r['name'], norm(r['type']))
-    outdir = os.path.join(ROOT, 'build/portable/alias')
+    outdir = os.path.join(ROOT, 'ports/64b/alias')
     os.makedirs(outdir, exist_ok=True)
     for old in glob.glob(os.path.join(outdir, '*.h')):
         os.remove(old)
@@ -684,7 +684,7 @@ def scalarize_array_uses(macros, plan):
             for nm, at, ex in aliases:
                 if macros.get(nm) == c['name'] or macros.get(nm, '').startswith('('):
                     pass
-    rows = [r for r in csv.DictReader(open('build/portable/globals.csv')) if r['va']]
+    rows = [r for r in csv.DictReader(open('ports/64b/types/globals.csv')) if r['va']]
     want = collections.defaultdict(set)
     for r in rows:
         nm = r['name']
@@ -783,7 +783,7 @@ def add_home_includes(homes):
             p = os.path.join(dp, fn)
             s = open(p, encoding='latin-1').read()
             rel = os.path.relpath(p, ROOT)
-            al = os.path.join(ROOT, 'build/portable/alias', rel[len('ports/64b/src/core/'):].replace('/', '__') + '.h')
+            al = os.path.join(ROOT, 'ports/64b/alias', rel[len('ports/64b/src/core/'):].replace('/', '__') + '.h')
             # the objects' headers go ahead of the first top-level #include,
             # so every use in the file sees them; recomputed from what the
             # code names (an alias line counts only when the code uses it)
@@ -856,7 +856,7 @@ def stmt_span(text, pos):
 
 
 def remove_decls(unified):
-    rows = [r for r in csv.DictReader(open('build/portable/globals.csv')) if r['name'] in unified and r['line']]
+    rows = [r for r in csv.DictReader(open('ports/64b/types/globals.csv')) if r['name'] in unified and r['line']]
     by = collections.defaultdict(set)
     for r in rows:
         if r['decl_file'].startswith('ports/64b/') and '/platform/' not in r['decl_file'] \

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Correct the global inventory's addresses from the original's relocations.
 
-build/portable/globals.csv takes an address from the 32-bit lane's symbol
+ports/64b/types/globals.csv takes an address from the 32-bit lane's symbol
 map, which mixes verified placements with addresses copied from header
 comments -- some of them the D3D build's. build/wasm/sites.csv is the
 ground truth: every relocation in every placed Glide function, with the
@@ -32,7 +32,7 @@ def main():
         va = int(r['va'], 16)
         per_file[(r['src'], r['name'])].add(va)
         anywhere[r['name']].add(va)
-    p = 'build/portable/globals.csv'
+    p = 'ports/64b/types/globals.csv'
     rows = list(csv.DictReader(open(p)))
     # initialised file-private objects (types/private_globals.csv): their
     # file keeps them; they are no global

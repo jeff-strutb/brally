@@ -11,7 +11,7 @@ lists, for every file-scope variable any core file declares:
     file defines it, and which files declare it.
 
 Usage: globals.py [--jobs N]
-Output: build/portable/globals.csv, and a summary on stdout
+Output: ports/64b/types/globals.csv, and a summary on stdout
 """
 import argparse
 import collections
@@ -145,7 +145,7 @@ def main():
         e['tus'].add(r['tu'])
         if e['va'] is None and va is not None:
             e['va'] = va
-    outp = os.path.join(ROOT, 'build', 'portable', 'globals.csv')
+    outp = os.path.join(ROOT, 'ports', '64b', 'types', 'globals.csv')
     with open(outp, 'w', newline='') as fh:
         w = csv.writer(fh)
         w.writerow(['va', 'name', 'type', 'size32', 'storage', 'defines', 'decl_file', 'line', 'tus'])

@@ -26,7 +26,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.a
 def main():
     os.chdir(ROOT)
     va_of = {}
-    for r in csv.DictReader(open('build/portable/globals.csv')):
+    for r in csv.DictReader(open('ports/64b/types/globals.csv')):
         if r['va']:
             va_of.setdefault(r['name'], int(r['va'], 16))
     refd = sorted({int(r['va'], 16) for r in csv.DictReader(open('build/wasm/sites.csv'))

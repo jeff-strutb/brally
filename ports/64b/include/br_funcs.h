@@ -4055,7 +4055,7 @@ int BrSndVoiceBufStop(struct BrSndVoice *);
 #pragma pop_macro("BrSndVoiceBufStop")
 #pragma push_macro("BrSndVoiceConfigure")
 #undef BrSndVoiceConfigure
-int BrSndVoiceConfigure(char *, int, int, int);
+int BrSndVoiceConfigure(int, int, int, int);
 #pragma pop_macro("BrSndVoiceConfigure")
 #pragma push_macro("BrSndVoiceCreate")
 #undef BrSndVoiceCreate
@@ -5815,7 +5815,7 @@ int FUN_1006b6e0(int, int, int);
 #pragma pop_macro("FUN_1006b6e0")
 #pragma push_macro("FUN_1006baa0")
 #undef FUN_1006baa0
-int FUN_1006baa0(char *, int, int);
+int FUN_1006baa0(int, int, int);
 #pragma pop_macro("FUN_1006baa0")
 #pragma push_macro("FUN_1006bb10")
 #undef FUN_1006bb10

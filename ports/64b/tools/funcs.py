@@ -8,7 +8,7 @@ The decompiled files call one original function under several names (the
     its address (build/wasm/placement.csv);
   * every other C name a file uses for that address (build/wasm/sites.csv)
     becomes `#define ALIAS CANONICAL` in that file's alias header
-    (build/portable/alias/<file>.h, appended to what unify.py wrote);
+    (ports/64b/alias/<file>.h, appended to what unify.py wrote);
   * a body defined under an alias name -- a stand-in stub -- is removed, so
     the real function is the only one that links;
   * C++ method names that the original resolved to a C function (thiscall
@@ -102,7 +102,7 @@ def main():
         if s != o and not DRY:
             open(f, 'w', encoding='latin-1').write(s)
     # alias headers
-    outdir = 'build/portable/alias'
+    outdir = 'ports/64b/alias'
     os.makedirs(outdir, exist_ok=True)
     n = 0
     for f, amap in per_file.items():

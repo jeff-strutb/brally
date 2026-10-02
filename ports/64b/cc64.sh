@@ -8,7 +8,7 @@ case "$f" in
   *)     X="-x c -std=gnu89";;
 esac
 AL=
-[ -f "$OUT/alias/$n.h" ] && AL="-include $OUT/alias/$n.h"
+[ -f "ports/64b/alias/$n.h" ] && AL="-include ports/64b/alias/$n.h"
 if $CC $CFLAGS $AL $X -c "$f" -o "$OUT/obj/$n.o" 2> "$OUT/obj/$n.err"; then
   echo "OK $f"
 else

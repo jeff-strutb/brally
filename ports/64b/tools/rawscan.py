@@ -41,7 +41,7 @@ def flags_for(f):
     """The build's flags for one core file, its alias header included."""
     rel = os.path.relpath(os.path.join(ROOT, f), ROOT)
     key = rel[len('ports/64b/src/core/'):].replace('/', '__') if rel.startswith('ports/64b/src/core/') else None
-    al = os.path.join(ROOT, 'build/portable/alias', (key or '') + '.h')
+    al = os.path.join(ROOT, 'ports/64b/alias', (key or '') + '.h')
     return FLAGS + (['-include', al] if key and os.path.exists(al) else [])
 
 

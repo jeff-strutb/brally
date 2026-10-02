@@ -26,7 +26,7 @@
 /* @implements 0x1006BAA0 glide FUN_1006baa0 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
-int FUN_1006baa0(char * param_1,int param_2,int param_3)
+int FUN_1006baa0(int param_1,int param_2,int param_3)
 
 {
   if (((BrSndG0B5DE8 != 0) && (BrSndPDS != 0)) && (BrSndG18290FC != 0)) {

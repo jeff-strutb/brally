@@ -50,7 +50,7 @@ def load_tables():
                 continue
             tabs.append((int(m.group(4), 16), m.group(2), m.group(1).strip(), [int(d, 0) for d in dims]))
     va_of = {}
-    for r in csv.DictReader(open(os.path.join(ROOT, 'build/portable/globals.csv'))):
+    for r in csv.DictReader(open(os.path.join(ROOT, 'ports/64b/types/globals.csv'))):
         if r['va']:
             va_of.setdefault(r['name'], int(r['va'], 16))
     return tabs, va_of

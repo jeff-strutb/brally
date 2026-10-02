@@ -47,7 +47,7 @@ def probe(f, exprs):
     s = open(os.path.join(ROOT, f), encoding='latin-1').read()
     src = s + '\n' + ''.join('char __br_probe_%d[(%s) + 1];\n' % (i, e) for i, e in enumerate(exprs))
     key = f[len('ports/64b/src/core/'):].replace('/', '__')
-    al = os.path.join(ROOT, 'build/portable/alias', key + '.h')
+    al = os.path.join(ROOT, 'ports/64b/alias', key + '.h')
     lang = ['-x', 'c++', '-std=c++98'] if f.endswith('.cpp') else ['-x', 'c', '-std=gnu89']
     cmd = ['clang'] + recspec.I686 + recspec.FLAGS + ['-include', 'ports/64b/include/br_globals.h',
                                                       '-include', 'ports/64b/include/br_funcs.h']

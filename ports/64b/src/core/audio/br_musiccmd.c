@@ -77,7 +77,7 @@ int BrSndBufSetPan(BrSndVoice *param_1,int param_2)
 /* WHAT IT DOES: set frequency and pan on a voice within a bank, checking that DirectSound is ready. */
 /* @implements 0x1006BA00 glide BrSndVoiceConfigure */
 
-int BrSndVoiceConfigure(char * param_1,int param_2,int param_3,int param_4)
+int BrSndVoiceConfigure(int param_1,int param_2,int param_3,int param_4)
 
 {
   BrSndVoice *uVar1;

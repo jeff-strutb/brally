@@ -22,7 +22,7 @@ OV = os.path.join(ROOT, 'ports/64b/types/globals_override.csv')
 
 def main():
     os.chdir(ROOT)
-    rows = [r for r in csv.DictReader(open('build/portable/globals.csv')) if r['va']]
+    rows = [r for r in csv.DictReader(open('ports/64b/types/globals.csv')) if r['va']]
     va_of = {}
     for r in rows:
         va_of.setdefault(r['name'], r['va'])

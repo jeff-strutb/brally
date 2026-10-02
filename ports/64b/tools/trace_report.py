@@ -6,7 +6,7 @@ runs of build/wasm_trace/brally):
   build/wasm_trace/trace_sites.csv   site -> object, code offset, kind, width
   build/wasm_trace/trace.bin         per-site counts, address samples, values
   build/wasm_trace/obj/*.o           line tables (DWARF) of each object
-Address maps: build/portable/globals.csv (original globals by address).
+Address maps: ports/64b/types/globals.csv (original globals by address).
 
 Output build/portable/trace/:
   sites.csv     one row per executed load/store: source file:line:col,
@@ -127,7 +127,7 @@ def main():
     import recspec
     import rewrite
     size_of = {}
-    for r in csv.DictReader(open('build/portable/globals.csv')):
+    for r in csv.DictReader(open('ports/64b/types/globals.csv')):
         if r['va'] and r['size32']:
             size_of[r['name']] = max(size_of.get(r['name'], 0), int(r['size32']))
     canon = []          # (va, end, name, elem record or None, elem size)

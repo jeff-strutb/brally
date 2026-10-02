@@ -15,7 +15,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.a
 def main():
     os.chdir(ROOT)
     objs = collections.defaultdict(lambda: {'size': 0, 'names': set()})
-    for r in csv.DictReader(open('build/portable/globals.csv')):
+    for r in csv.DictReader(open('ports/64b/types/globals.csv')):
         if not r['va']:
             continue
         va = int(r['va'], 16)
