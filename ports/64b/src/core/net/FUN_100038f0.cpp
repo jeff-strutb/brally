@@ -202,7 +202,7 @@ void  FUN_10003810(int, int, int, unsigned);
 }
 
 
-extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, char * nMode)
+extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
 {
     BrNetPacket pkt(pBuf, nBytes);
     int        bGo;

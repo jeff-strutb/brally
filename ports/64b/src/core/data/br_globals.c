@@ -1843,7 +1843,7 @@ BrObj29D4 *g_brPAA29D4;  /* 0x10AC5D2C */
 BrOptFlagObj *g_brPAA29D8;  /* 0x10AC5D30 */
 struct GameObjS *g_pGame;  /* 0x10AC5D38 */
 struct BrCtl *g_brPAA29E4;  /* 0x10AC5D3C */
-void *DAT_10ac5d40;  /* 0x10AC5D40 */
+struct BrUiCtl_ *DAT_10ac5d40;  /* 0x10AC5D40 */
 void *DAT_10ac5d44;  /* 0x10AC5D44 */
 int DAT_10ac5d48;  /* 0x10AC5D48 */
 BrUiCtl_ *g_brUipAA29F4;  /* 0x10AC5D4C */

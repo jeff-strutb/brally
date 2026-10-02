@@ -103,7 +103,7 @@ typedef struct BrUiTwCurve {
     float twrate;
 } BrUiTwCurve;
 
-float __fastcall BrUiTweenCurve_10047CE0(BrUiTwCurve *p, int _edx, int n)
+float __fastcall BrUiTweenCurve_10047CE0(BrUiTwCurve *p, int n)
 {
     float x;
     n = n * n;
@@ -121,14 +121,12 @@ float __fastcall BrUiTweenCurve_10047CE0(BrUiTwCurve *p, int _edx, int n)
 /* @implements 0x10047FB0 d3d BrUiInit_10047FB0 */
 /* Orig is thiscall / ret 0x20. BR_THISCALL1 is 1-arg only; a dummy edx
  * slot keeps pPhase on the stack (no xor edx,edx: the param is unused). */
-void __fastcall BrUiInit_10047FB0(BrUiObj *pObj, void *_edx,
+void __fastcall BrUiInit_10047FB0(BrUiObj *pObj,
                                    BrPhaseFull *pPhase, float f3C, float f40,
                                    uint32_t nOr1C, uint32_t nOr24, uint32_t nOr28,
                                    uint32_t n2968, int16_t wCode)
 {
     unsigned char *p = (unsigned char *)pObj;
-
-    (void)_edx;
     *(BrPhaseFull **)(void *)(p + 0x2AE8) = pPhase;
     *(uint32_t *)(void *)(p + 0x1C) |= nOr1C;
     *(uint32_t *)(void *)(p + 0x24) |= nOr24;
@@ -150,7 +148,7 @@ void __fastcall BrUiInit_10047FB0(BrUiObj *pObj, void *_edx,
  * (BR_THISCALL1 idiom, as BrVt55A10DeleteDtor); byte-typed flags give the
  * `test byte [esp+8],1`; the dtor body is thiscall too (ECX copy-prop). */
 /* FUN_10041930: prototype in br_funcs.h */
-void *__fastcall BrUiPageDelete_100484C0(BrUiPage *pThis, int _edx_unused,
+void *__fastcall BrUiPageDelete_100484C0(BrUiPage *pThis,
                                          unsigned char nFlags)
 {
     BrVtInit41930(pThis);
@@ -164,7 +162,7 @@ void *__fastcall BrUiPageDelete_100484C0(BrUiPage *pThis, int _edx_unused,
  * address either way -- the standard C++ deleting destructor shape. */
 /* @implements 0x10048850 d3d BrPhaseDelete_10048850 */
 /* FUN_10041cc0: prototype in br_funcs.h */
-void *__fastcall BrPhaseDelete_10048850(BrPhaseFull *pThis, int _edx_unused,
+void *__fastcall BrPhaseDelete_10048850(BrPhaseFull *pThis,
                                         unsigned char nFlags)
 {
     BrPhaseDtor_10048870(pThis);

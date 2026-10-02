@@ -18,7 +18,7 @@
  * unused EDX slot (BR_THISCALL1 idiom). */
 /* @implements 0x10040CF0 glide BrObj40CF0DeleteDtor */
 
-void * __fastcall BrObj40CF0DeleteDtor(void *param_1,int _edx_unused,unsigned char param_2)
+void * __fastcall BrObj40CF0DeleteDtor(void *param_1,unsigned char param_2)
 {
   BrCtl_fn(param_1);
   if ((param_2 & 1) != 0) {

@@ -119,7 +119,7 @@ int BrX10072580(int a0)
         if ((*(struct BrDSound * *)&BrSndPDS) != NULL) {
             if (BrSndG18290FC != NULL) {
                 /* No bounds check on a0 in the original.  Preserved. */
-                pVoice = (struct BrSndVoice *)(g_apBrSfxChanVoice[0])[a0];
+                pVoice = (struct BrSndVoice *)g_apBrSfxChanVoice[a0];
                 if (pVoice != NULL)
                     return BrSndVoiceBufStop(pVoice) == 0;
             }
@@ -153,7 +153,7 @@ int BrSndChanSetRatio(int iSlot, int64_t ratio)
 
 {
   if ((((*(int32_t *)&DAT_100b51e4[1036]) != 0) && ((*(struct BrDSound * *)&BrSndPDS) != 0)) && (BrSndG18290FC != 0)) {
-    if (BrSndBufSetVolume((int)(g_apBrSfxChanVoice[0])[iSlot],
+    if (BrSndBufSetVolume((int)g_apBrSfxChanVoice[iSlot],
                           (unsigned int)((double)ratio * g_aBrSfxChanRate[iSlot]
                                          * DAT_10077c00)) != 0) {
       g_aBrSfxChanApplied[iSlot].ratio = ratio;
@@ -233,23 +233,19 @@ int BrSndVoiceBufStop(BrSndVoice * param_1)
 /* WHAT IT DOES: call IDirectSoundBuffer::SetPan with a computed pan value. */
 /* @implements 0x1006B400 glide BrSndVoiceApplyPan */
 
-void BrSndVoiceApplyPan(BrSndLoadVoice * param_1)
+int BrSndVoiceApplyPan(BrSndVoice * param_1)
 
 {
-  dsbuf_fn2 fn = *(dsbuf_fn2 *)(**(int * *)&param_1->pBuf + 0x40);
-  fn(param_1->pBuf, (param_1->f10 + -400) * 10);
-  return;
+  return param_1->pBuf->pVtbl->SetPan(param_1->pBuf, (param_1->f10 + -400) * 10);
 }
 
 /* WHAT IT DOES: call IDirectSoundBuffer::SetFrequency from the voice struct. */
 /* @implements 0x1006B420 glide BrSndVoiceApplyFreq */
 
-void BrSndVoiceApplyFreq(BrSndVoice *param_1)
+int BrSndVoiceApplyFreq(BrSndVoice *param_1)
 
 {
-  dsbuf_fn2 fn = *(dsbuf_fn2 *)(**(int * *)&param_1->pBuf + 0x44);
-  fn(param_1->pBuf, *(int *)&param_1->f0C);
-  return;
+  return param_1->pBuf->pVtbl->SetFrequency(param_1->pBuf, param_1->f0C);
 }
 
 /* br_musiccmd.c -- 0x1006BB60 and 0x1006BB90, the two list walkers. */
@@ -297,7 +293,7 @@ int BrSndBankFree(void)
       pRow = pRow + 0x12;
     } while (--cGroups != 0);
   }
-  memset((g_apBrSfxChanVoice[0]), 0, sizeof((g_apBrSfxChanVoice[0])));
+  memset(g_apBrSfxChanVoice, 0, sizeof(g_apBrSfxChanVoice));
   return 1;
 }
 
@@ -318,11 +314,11 @@ int BrSndChanBind(int iGroup, int iSlot)
 
   if ((((*(int32_t *)&DAT_100b51e4[1036]) != 0) && ((*(struct BrDSound * *)&BrSndPDS) != 0)) && (BrSndG18290FC != 0)) {
     g_aBrSfxChanRate[iSlot] = ((double *)BrSndVoices)[iGroup * 9 + 8];
-    if ((g_apBrSfxChanVoice[0])[iSlot] != 0) {
+    if (g_apBrSfxChanVoice[iSlot] != 0) {
       BrX10072580(iSlot);
     }
     pVoice = BrSndVoices[iGroup * 0x12 + iSlot];
-    (g_apBrSfxChanVoice[0])[iSlot] = (void *)pVoice;
+    g_apBrSfxChanVoice[iSlot] = (void *)pVoice;
     return pVoice != 0;
   }
   return 1;
@@ -338,8 +334,8 @@ int BrSfxChanSetLoop(int iSlot, int loop)
 
 {
   if ((((*(int32_t *)&DAT_100b51e4[1036]) != 0) && ((*(struct BrDSound * *)&BrSndPDS) != 0)) && (BrSndG18290FC != 0)) {
-    if ((g_apBrSfxChanVoice[0])[iSlot] != 0) {
-      ((BrSndVoice *)(g_apBrSfxChanVoice[0])[iSlot])->f18 = loop;
+    if (g_apBrSfxChanVoice[iSlot] != 0) {
+      ((BrSndVoice *)g_apBrSfxChanVoice[iSlot])->f18 = loop;
       return 1;
     }
     return 0;
@@ -405,7 +401,7 @@ int BrSndBankMute(void)
   if (BrSndG18290FC == 0) {
     return 1;
   }
-  ppVoice = (g_apBrSfxChanVoice[0]);
+  ppVoice = g_apBrSfxChanVoice;
   do {
     pVoice = (BrSndVoice *)*ppVoice;
     if (pVoice != 0) {
@@ -415,7 +411,7 @@ int BrSndBankMute(void)
         (pVoice->pBuf, 0);
     }
     ppVoice = ppVoice + 1;
-  } while ((uintptr_t)ppVoice < (uintptr_t)&(g_apBrSfxChanVoice[0])[BR_SND_BANK_VOICES]);
+  } while ((uintptr_t)ppVoice < (uintptr_t)&g_apBrSfxChanVoice[BR_SND_BANK_VOICES]);
   return 1;
 }
 
@@ -457,7 +453,7 @@ int FUN_1006bdd0(void)
   do {
     if (g_184C454 != z) {
       v = BrSndVoices[i];
-      if (v != z && v == (&(g_apBrSfxChanVoice[0]))[i]) {
+      if (v != z && v == g_apBrSfxChanVoice[i]) {
         BrSndChanBind(0x19, i);
         BrSfxChanSetLoop(i, 1);
         BrSndChanSetRatio(i, *(__int64 *)((char *)&(*(int *)((char *)&g_aBrSfxChan + 0x8)) + off));
@@ -466,7 +462,7 @@ int FUN_1006bdd0(void)
       }
     } else {
       v = *p;
-      if (v != z && v == (&(g_apBrSfxChanVoice[0]))[i]) {
+      if (v != z && v == g_apBrSfxChanVoice[i]) {
         BrSndChanBind(z, i);
         BrSfxChanSetLoop(i, 1);
         BrSndChanSetRatio(i, *(__int64 *)((char *)&(*(int *)((char *)&g_aBrSfxChan + 0x8)) + off));
@@ -524,7 +520,7 @@ int BrSndBufSetVolume(BrSndVoice *param_1,int param_2)
  * headed at `param_1`, clearing the new node's next and its +0x1C word. Returns 0. */
 /* @implements 0x1006B3C0 glide BrSndListAppend */
 
-int BrSndListAppend(LPVOID * param_1,BrSndLoadVoice * param_2)
+int BrSndListAppend(LPVOID * param_1,BrSndVoice * param_2)
 {
   param_2->pNext = 0;
   param_2->f1C = 0;

@@ -74,6 +74,7 @@ extern "C" {
 #endif
 
 void   grGlideInit(void);
+void   grGlideShutdown(void);
 FxBool grSstQueryHardware(GrHwConfiguration *hwconfig);
 void   grSstSelect(int which_sst);
 FxBool grSstWinOpen(void *hWnd, GrScreenResolution_t res, GrScreenRefresh_t ref,
@@ -103,6 +104,8 @@ void   grDepthMask(FxBool mask);
 void   grDrawTriangle(const GrVertex *a, const GrVertex *b, const GrVertex *c);
 void   grDrawPolygonVertexList(int nVerts, const GrVertex vlist[]);
 
+typedef FxI32 GrFogMode_t;
+void   grFogMode(GrFogMode_t mode);
 void   grFogColorValue(GrColor_t fogcolor);
 void   grFogTable(const GrFog_t ft[GR_FOG_TABLE_SIZE]);
 void   guFogGenerateLinear(GrFog_t fogtable[GR_FOG_TABLE_SIZE], float nearZ, float farZ);

@@ -51,3 +51,35 @@ class PE:
                     out.append(self.base + page + (ent & 0xFFF))
             o += bsz
         return out
+
+    def cstr(self, va):
+        o = self.off(va - self.base)
+        return self.d[o:self.d.index(b'\0', o)].decode('latin-1')
+
+    def imports(self):
+        """[(dll, name or '#ordinal', IAT slot VA)] from the import directory."""
+        rva, size = self.dd[1]
+        out = []
+        o = self.off(rva)
+        while True:
+            ilt, _, _, name, iat = struct.unpack_from('<IIIII', self.d, o)
+            if name == 0:
+                break
+            dll = self.cstr(self.base + name)
+            i = 0
+            while True:
+                ent = self.dword(self.base + (ilt or iat) + 4 * i)
+                if ent == 0:
+                    break
+                sym = '#%d' % (ent & 0xFFFF) if ent & 0x80000000 else self.cstr(self.base + ent + 2)
+                out.append((dll, sym, self.base + iat + 4 * i))
+                i += 1
+            o += 20
+        return out
+
+
+if __name__ == '__main__':
+    import sys
+    if sys.argv[1:2] == ['imports']:
+        for dll, sym, slot in PE(sys.argv[2]).imports():
+            print('%s,%s,0x%08X' % (dll, sym, slot))

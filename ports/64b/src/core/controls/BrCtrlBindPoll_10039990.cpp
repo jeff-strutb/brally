@@ -60,7 +60,7 @@ extern "C" int BrCtrlBindPoll_10039990(void)
     int  i;
 
     if ((*(int *)&BrGlNavOff5B9C) != 0) {
-        r = BrFn1005FFD0(buf);
+        r = BrFn1005FFD0();
         DAT_100abe40 = r;
         if (r == -1 && DAT_10ac5d90 != 0) {
             DAT_10ac6744 = 0;

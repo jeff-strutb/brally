@@ -61,7 +61,7 @@ typedef char br06_assert_namelist[
 /* @t4-pass 0x10030FD0 3 2026-09-19 probes 43 bytes 81 insns 28 regions 1 rows 3 census yes  (tools/crank.py) */
 /* @t4-pass 0x10030FD0 4 2026-09-19 probes 43 bytes 81 insns 28 regions 1 rows 3 census yes  (tools/crank.py) */
 /* @implements 0x10037930 d3d BrKeyTableFind */
-int BrKeyTableFind(unsigned char * key, uint32_t *pA, uint32_t *pB)
+int BrKeyTableFind(uint32_t key, uint32_t *pA, uint32_t *pB)
 {
     /* Declaring the count FIRST and biasing the key destructively keeps the
      * key out of eax (count claims it), which turns the old lea back into

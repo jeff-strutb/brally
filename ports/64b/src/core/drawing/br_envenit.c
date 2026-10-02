@@ -223,7 +223,7 @@ void BrEnvEmit(void)
     BrMtxMul(&g_BrDrawCombined, &g_BrDrawCombined, &g_BrDrawScale);
     if ((*(int *)((char *)&g_aBrEntRecs + 0x84))) {
       FUN_100597f0(&g_BrEnvBitmap + (*(int *)&g_BrEnvSection) * 0x1000, 0x1000, 0);
-      BrVec3Project(local_c, (&(*(float *)&DAT_104b15d0)[(*(int *)&g_BrEnvSection)].x), &g_BrDrawCombined);
+      BrVec3Project(local_c, &DAT_104b15d0[g_BrEnvSection].x, &g_BrDrawCombined);
       br_dl_normalise(local_c);
       fVar1 = local_c[0];
       if ((*(int *)&g_brRaceBeginDifficulty) ^ (*(int *)&BrG_6C1174)) {

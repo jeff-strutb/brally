@@ -6614,7 +6614,7 @@ extern struct BrCtl *g_brPAA29E4;  /* 0x10AC5D3C */
 #pragma pop_macro("g_brPAA29E4")
 #pragma push_macro("DAT_10ac5d40")
 #undef DAT_10ac5d40
-extern void *DAT_10ac5d40;  /* 0x10AC5D40 */
+extern struct BrUiCtl_ *DAT_10ac5d40;  /* 0x10AC5D40 */
 #pragma pop_macro("DAT_10ac5d40")
 #pragma push_macro("DAT_10ac5d44")
 #undef DAT_10ac5d44

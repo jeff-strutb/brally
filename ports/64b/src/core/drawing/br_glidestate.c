@@ -130,7 +130,7 @@ void BrFramePresent(BrGfxWords *pCmd)
     }
     BrGbiRun(aList);
 
-    (*BrGlFlipHook)();
+    ((void (*)(void))BrGlFlipHook)();
 
     now = BrSub10075020();
     delta = now - DAT_105d17dc;

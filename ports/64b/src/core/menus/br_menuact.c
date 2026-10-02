@@ -49,7 +49,7 @@ int BrHook_10044010(void *p)
 int BrHook_100457A0(void *p)
 {
     CtlF060_fn(p);
-    (*(uint32_t * *)&g_brUipAA29F4)[2] = (uint32_t)(uintptr_t)&BrMenuResetTrackStr;
+    g_brUipAA29F4->pfn08 = (BrUiCtlHookFn_)&BrMenuResetTrackStr;
     return 1;
 }
 
@@ -58,7 +58,7 @@ int BrHook_100457A0(void *p)
 int BrHook_10045780(void *p)
 {
     Ctl3E730_fn(p);
-    (*(uint32_t * *)&g_brUipAA29C8)[2] = (uint32_t)(uintptr_t)&BrOpt6750;
+    g_brUipAA29C8->pfn08 = (BrUiCtlHookFn_)&BrOpt6750;
     return 1;
 }
 
@@ -67,7 +67,7 @@ int BrHook_10045780(void *p)
 int BrHook_10045800(void *p)
 {
     Ctl3E730_fn(p);
-    (*(uint32_t * *)&g_brUipAA29C8)[2] = (uint32_t)(uintptr_t)&BrOpt6910;
+    g_brUipAA29C8->pfn08 = (BrUiCtlHookFn_)&BrOpt6910;
     return 1;
 }
 
@@ -76,7 +76,7 @@ int BrHook_10045800(void *p)
 int BrHook_10045820(void *p)
 {
     CtlF060_fn(p);
-    (*(uint32_t * *)&g_brUipAA29F4)[2] = (uint32_t)(uintptr_t)&FUN_1003fda0;
+    g_brUipAA29F4->pfn08 = (BrUiCtlHookFn_)&FUN_1003fda0;
     return 1;
 }
 
@@ -85,7 +85,7 @@ int BrHook_10045820(void *p)
 int BrHook_10045840(void *p)
 {
     Ctl3E730_fn(p);
-    (*(uint32_t * *)&g_brUipAA29C8)[2] = (uint32_t)(uintptr_t)&BrOpt69F0;
+    g_brUipAA29C8->pfn08 = (BrUiCtlHookFn_)&BrOpt69F0;
     return 1;
 }
 
@@ -94,7 +94,7 @@ int BrHook_10045840(void *p)
 int BrHook_10045860(void *p)
 {
     CtlF060_fn(p);
-    (*(uint32_t * *)&g_brUipAA29F4)[2] = (uint32_t)(uintptr_t)&FUN_1003fe80;
+    g_brUipAA29F4->pfn08 = (BrUiCtlHookFn_)&FUN_1003fe80;
     return 1;
 }
 
@@ -103,7 +103,7 @@ int BrHook_10045860(void *p)
 int BrHook_100458C0(void *p)
 {
     Ctl3E730_fn(p);
-    (*(uint32_t * *)&g_brUipAA29C8)[2] = (uint32_t)(uintptr_t)&BrOpt6BB0;
+    g_brUipAA29C8->pfn08 = (BrUiCtlHookFn_)&BrOpt6BB0;
     return 1;
 }
 
@@ -121,14 +121,14 @@ int BrHook_100458C0(void *p)
 /* WHAT IT DOES: stores the car's display name if it changed, and clears the
  * "name is a default" bit when the name string is not empty. */
 /* @implements 0x100384C0 glide BrCarNameCommit */
-int BrCarNameCommit(struct BrCtl85 *param_1)
+int BrCarNameCommit(BrUiCtl_ *param_1)
 {
     char *s;
 
-    Br85ItemApply(param_1, 0);
-    s = (char *)(param_1 + 0x2b65);
+    Br85ItemApply((struct BrCtl85 *)param_1, 0);
+    s = param_1->aText[0].sz;
     if (strlen(s) != 0) {
-        *(unsigned int *)(DAT_10ac5d40 + 0x1c) &= ~0x10u;
+        DAT_10ac5d40->flags1C &= ~0x10u;
     }
     if (_stricmp(&(g_aBrA9CDF0[0]), s) != 0) {
         strcpy(&(g_aBrA9CDF0[0]), s);
@@ -144,7 +144,6 @@ int BrCarNameCommit(struct BrCtl85 *param_1)
 /* thiscall with 4 stack args.  __fastcall puts `this` in ecx; the second
  * register-eligible arg is edx.  Passing param_1 (already live in edx as
  * the push temp) rather than literal 0 avoids `xor edx,edx`. */
-typedef int (__fastcall *BrCtlF34)(void *this, int _edx_unused, int, int, int, int);
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x10AC5C5C, the current phase object */
@@ -154,15 +153,13 @@ typedef int (__fastcall *BrCtlF34)(void *this, int _edx_unused, int, int, int, i
  * (0x10AC5C5C)->+0x14, and if that slot is occupied calls vtable +0x34
  * with (text, 1, 1, style 0x100AACF8). */
 /* @implements 0x1003AF30 glide BrExt_100419D0 */
-void BrExt_100419D0(int param_1)
+void BrExt_100419D0(const char *pszText)
 {
-    int *piVar1;
+    BrUiCtl_ *pCtl = g_brPAA29B8->aPages[0]->apCtl[DAT_10ac4c58];
 
-    piVar1 = *(int **)(*(int *)(g_brPAA29B8 + 0x14) + 0x18 + DAT_10ac4c58 * 4);
-    if (piVar1 != (int *)0x0) {
-        (*(BrCtlF34 *)(*(int *)(piVar1) + 52))(piVar1, param_1, param_1, 1, 1, &DAT_100aacf8);
+    if (pCtl != NULL) {
+        pCtl->pVtbl->f34(pCtl, pszText, 1, 1, &DAT_100aacf8);
     }
-    return;
 }
 
 

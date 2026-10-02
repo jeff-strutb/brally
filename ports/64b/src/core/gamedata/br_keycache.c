@@ -34,15 +34,14 @@
 /* Orig is thiscall, one stack arg (the vtbl[1] argument, not the key).
  * vtbl[1](this, arg, &key) is thiscall / ret 8; the search is 16 unrolled
  * dword compares at +0x0C of each 0x4C-byte record. */
-typedef void (__fastcall *BrKeyBuildFn)(BrKeyCache *pThis, int _edx,
-                                        void *pArg, int32_t *pKey);
+typedef void (*BrKeyBuildFn)(BrKeyCache *pThis, void *pArg, int32_t *pKey);
 
 /* WHAT IT DOES: look up a cached entry by asking the cache's own key-
  * building function to turn the argument into a key, then scanning the
  * entries for a match. The cache is a plain linear scan, so it is sized for
  * tens of entries and not thousands. */
 /* @implements 0x10008850 glide BrKeyCacheFind */
-int32_t __fastcall BrKeyCacheFind(BrKeyCache *pCache, int _edx, void *pArg)
+int32_t __fastcall BrKeyCacheFind(BrKeyCache *pCache, void *pArg)
 {
     int32_t          key[16];
     int32_t          i;
@@ -50,8 +49,8 @@ int32_t __fastcall BrKeyCacheFind(BrKeyCache *pCache, int _edx, void *pArg)
     BrKeyCacheEntry *pEnt;
     BrKeyBuildFn     pfn;
 
-    pfn = *(BrKeyBuildFn *)((char *)pCache->pVtbl + 4);
-    pfn(pCache, (int)pArg, pArg, key);
+    pfn = ((BrKeyBuildFn *)pCache->pVtbl)[1];
+    pfn(pCache, pArg, key);
 
     pEnt = pCache->aEntries;
     n    = (uint32_t)pCache->cEntries;

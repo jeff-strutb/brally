@@ -32,13 +32,14 @@
  * by testing for one specific setting rather than for "enabled", so any other
  * setting takes the second route. */
 /* @implements 0x100027C0 d3d BrCdTrackPlay */
-void BrCdTrackPlay(int track)
+int BrCdTrackPlay(int track)
 {
+    /* 64-bit core: returns the path's result, which the original leaves in
+     * eax through its tail calls and BrCdTrackResume reads. */
     if (DAT_1007b074 == 1) {
-        BrCdTrackRequest(track);
-        return;
+        return BrCdTrackRequest(track);
     }
-    BrCdPlayClamped(track);
+    return BrCdPlayClamped(track);
 }
 
 /* ==========================================================================

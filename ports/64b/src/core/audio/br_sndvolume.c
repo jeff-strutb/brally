@@ -12,6 +12,7 @@
 #include <stdint.h>
 
 #include "slice6_76.h"
+#include "slice1_08.h"
 
 /* ==========================================================================
  * 0. Cross-module declarations (see the banner)
@@ -158,21 +159,16 @@ typedef int (__stdcall *dsbuf_fn1)(int);
  * the end-grind. */
 /* @implements 0x1006B440 glide BrSndVoiceApplyVolume */
 
-void BrSndVoiceApplyVolume(BrSndLoadVoice * param_1)
+/* 64-bit core: returns SetVolume's result. The original is declared void
+ * but leaves that HRESULT in eax, and BrSndVoiceSetLR reads it. */
+int BrSndVoiceApplyVolume(BrSndVoice *param_1)
 
 {
-  int       vol;
-  dsbuf_fn2 fn;
+  BrDSBuffer *pBuf = param_1->pBuf;
 
   if (BrSndMasterVolume != 0) {
-    vol = ((*(unsigned int *)(param_1 + 0x14) * BrSndMasterVolume) / 0xff - 400) * 10;
-    fn = *(dsbuf_fn2 *)(**(int **)(param_1 + 0x9c) + 0x3c);
-    fn(*(int *)(param_1 + 0x9c), vol);
-    return;
+    return pBuf->pVtbl->SetVolume(pBuf, (((unsigned int)param_1->f14 * BrSndMasterVolume) / 0xff - 400) * 10);
   }
-  vol = -10000;
-  fn = *(dsbuf_fn2 *)(**(int **)(param_1 + 0x9c) + 0x3c);
-  fn(*(int *)(param_1 + 0x9c), vol);
-  return;
+  return pBuf->pVtbl->SetVolume(pBuf, -10000);
 }
 

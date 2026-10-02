@@ -62,7 +62,7 @@ void BrSub10037740(void *pCar, void *pArg)
 
     DAT_10ac67c0 = 0;
     strcpy(szPath, DAT_100b7900);
-    strcat(szPath, (BrSfxCarCode[1])[idx]);
+    strcat(szPath, (&BrSfxCarCode[1])[idx]);
     strcat(szPath, DAT_100aa310);
 
     BrFileReadInto(pCar, szPath, -1);

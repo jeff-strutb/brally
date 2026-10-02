@@ -84,7 +84,7 @@ void __stdcall BrFileReadChecked(FILE *pFile, void *pvData, unsigned int cbData)
  * game and is reproduced deliberately; do not fix it. */
 /* @implements 0x10008E90 glide BrFileWriteChecked */
 void __stdcall BrFileWriteChecked(FILE *pFile, const void *pvData,
-                                  FILE * cbData)
+                                  unsigned int cbData)
 {
     if (fwrite(pvData, 1, cbData, pFile) != cbData) {
         BrLogFatalPrintf("File read failure");   /* sic -- an fwrite */

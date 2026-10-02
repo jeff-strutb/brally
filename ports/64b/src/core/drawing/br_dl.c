@@ -873,7 +873,7 @@ float BrDlColourScale(const BrDl *pDl)
  * ordering, which is this file's own business. */
 static int32_t br_dl_outcode(const BrDlVtx *pV)
 {
-    return BrDlsClipCodes(pV->cx);
+    return BrDlsClipCodes(&pV->f40);
 }
 
 /* --- 0x10022070, and the identical tail 0x10021BAD..0x10021C48 ---------

@@ -314,7 +314,6 @@ void BrGbiTexScanRun(BrGfxWords *pCmd)
     /* 64-bit core: declared once, in br_globals.h or its struct's header */
     /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* BrTexTileUnpack: prototype in br_funcs.h */
-    extern void br_tex3d_end(BrGfxWords *pCmd);      /* 0x100293D0 */
 /* br_tex3d_seam: prototype in br_funcs.h */
 
     if (pCmd == NULL)

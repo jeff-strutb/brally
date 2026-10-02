@@ -57,7 +57,7 @@ extern void BrGbiStackOverflow(int code);
 /* @implements 0x10001BB0 glide FUN_10001bb0 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
-void __fastcall FUN_10001bb0(int *param_1,int _edx_unused,int *param_2)
+void __fastcall FUN_10001bb0(int *param_1,int *param_2)
 {
   float len;
   BrVec3 local;
@@ -112,7 +112,7 @@ void __fastcall FUN_10001bb0(int *param_1,int _edx_unused,int *param_2)
 /* @implements 0x100018F0 glide FUN_100018f0 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
-void __fastcall FUN_100018f0(BrDriverCar *param_1, int _edx_unused, int param_2, float param_3)
+void __fastcall FUN_100018f0(BrDriverCar *param_1, int param_2, float param_3)
 {
   float tmp[3];
   int dst;
@@ -273,7 +273,7 @@ typedef struct {
  * nearer the anchor than it was, pushed back out to its old distance along
  * the new line.  A flag records that the camera was moved. */
 /* @implements 0x10001510 glide FUN_10001510 */
-void __fastcall FUN_10001510(BrDriverCar *car, int _edx_unused, char *cam, BrCamV3 *prev)
+void __fastcall FUN_10001510(BrDriverCar *car, char *cam, BrCamV3 *prev)
 {
     BrCamV3    *pAnchor = (BrCamV3 *)&car->f28E0;
     BrCamV3    *pPos;

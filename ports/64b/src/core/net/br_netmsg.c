@@ -189,7 +189,7 @@ int32_t BrExt_1003DB00(struct BrObjA9D008 *pObj, void *p)
  * as the caption. */
 /* @implements 0x10037260 glide BrNetErrMsgBox */
 
-void BrNetErrMsgBox(const char *param_1,BrObj29D4 * param_2)
+void BrNetErrMsgBox(const char *param_1,int param_2)
 
 {
   char *uVar1;

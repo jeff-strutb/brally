@@ -500,7 +500,7 @@ void BrGbiLightVertex(const BrGbiLightState *pSt, const float *pSrc, float *pDst
  * one of them was. */
 int BrGbiClipCodes(const float *pVert)
 {
-    return (int)BrDlsClipCodes(pVert[1]);
+    return (int)BrDlsClipCodes(pVert);
 }
 
 /* 0x10024240 */

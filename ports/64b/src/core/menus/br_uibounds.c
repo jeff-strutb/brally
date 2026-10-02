@@ -93,7 +93,7 @@ int BrExt_1007AC00(void)
  * test). Spelled as __fastcall with an unused EDX slot (BR_THISCALL1 idiom). */
 /* @implements 0x10058CC0 glide BrBoundsFits_10058CC0 */
 
-int __fastcall BrBoundsFits_10058CC0(int param_1,int _edx_unused,int *param_2)
+int __fastcall BrBoundsFits_10058CC0(int param_1,int *param_2)
 {
   int *piVar1;
   

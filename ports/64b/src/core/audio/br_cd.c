@@ -295,7 +295,6 @@ int BrCdResume(void)
  * 0x104B1628 is the message-transport CLEAR-channel entry (the pause/resume
  * twins use 0x104B162C with a command); its result is normalised with
  * `neg/sbb/inc`, which is what `== 0` compiles to. */
-extern int (__stdcall *(*(int (**)(int, int))&g_pfn575480))(int, int);     /* 0x104B1628 */
 
 /* WHAT IT DOES: tell the CD drive to stop the music outright, and report
  * whether it agreed (the transport answers 0 on success).  With the disc
@@ -304,7 +303,7 @@ extern int (__stdcall *(*(int (**)(int, int))&g_pfn575480))(int, int);     /* 0x
 static int BrCdStopMsg(void)
 {
   if (((DAT_1007b074 != 0) && (g_220CD0 != 0)) && (g_220C3C != 0)) {
-    return (*(*(int (**)(int, int))&g_pfn575480))(g_0940A8,0) == 0;
+    return g_pfn575480(g_0940A8,0) == 0;
   }
   return 1;
 }

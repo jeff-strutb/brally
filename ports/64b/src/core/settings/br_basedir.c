@@ -138,7 +138,7 @@ void BrBaseDirInit(void)
 void FUN_10007f40(char *param_1)
 {
   char line[256];
-  struct __sFILE **fp;
+  FILE **fp;
   int n;
   char *p;
   char *q;

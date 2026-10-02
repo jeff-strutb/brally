@@ -938,13 +938,11 @@ typedef struct BrGlNavRec {
  * DEAD PROBE: wrapping the `f` block differently (extra scope, a dummy
  * static to defeat the block merge) leaves it at 943/297/0+1.  A fix has to
  * change which value VC5 puts in eax at 0x153, not the zero stores. */
-void __fastcall BrGlNavPoll(BrGlNavRec *pNav, int _edx_unused, int _unused)
+void __fastcall BrGlNavPoll(BrGlNavRec *pNav, int _unused)
 {
     uint8_t aState[0x10];
     int32_t t;
     BrDInDev_ *pDev;
-
-    (void)_edx_unused;
     (void)_unused;
 
     if (BrGlNavOff5B9C != 0)

@@ -24,7 +24,7 @@
  * counted downward from 256. It also reports whether the size was an exact
  * power of two or had to be rounded up. */
 /* @implements 0x100251A0 d3d BrTexShiftFromSize */
-int BrTexShiftFromSize(int *pShift, int a, int * b)
+int BrTexShiftFromSize(int *pShift, int a, int b)
 {
     /* orig is two textually identical signed ladders (`cmp; jg`), one on `a`
      * when a > b and one on `b` otherwise -- not a shared helper. A factored
@@ -228,7 +228,7 @@ int FUN_10024df0(int param_1)
 /* @implements 0x100275C0 glide FUN_100275c0 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
-int FUN_100275c0(int *param_1,int param_2,int * param_3)
+int FUN_100275c0(int *param_1,int param_2,int param_3)
 
 {
   int r;

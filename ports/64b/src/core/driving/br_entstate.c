@@ -64,9 +64,8 @@ static void BrEntMirrorQuat(BrEntCar *pE)
  * quaternion mirror is written out here rather than calling
  * BrEntMirrorQuat: VC5 does not inline the static helper, and the original
  * has the eight dword copies in line. */
-void __fastcall BrEntSetMatrix(BrEntCar *pE, int _edx_unused, const BrMat4 *pSrc)
+void __fastcall BrEntSetMatrix(BrEntCar *pE, const BrMat4 *pSrc)
 {
-    (void)_edx_unused;
 
     /* `rep movsd` of 16 dwords. */
     memcpy(&pE->mat0, pSrc, sizeof(BrMat4));
@@ -92,10 +91,9 @@ void __fastcall BrEntSetMatrix(BrEntCar *pE, int _edx_unused, const BrMat4 *pSrc
  * they agree. Nothing else about the object is disturbed. */
 /* @implements 0x100767A0 d3d BrEntSetVel */
 /* @n64 0x802201C8 located */
-void __fastcall BrEntSetVel(BrEntCar *pE, int _edx_unused, float x, float y,
+void __fastcall BrEntSetVel(BrEntCar *pE, float x, float y,
                             float z)
 {
-    (void)_edx_unused;
 
     pE->st.vel.x = x;
     pE->st.vel.y = y;
@@ -125,15 +123,13 @@ void __fastcall BrEntSetVel(BrEntCar *pE, int _edx_unused, float x, float y,
 /* BrSinF: prototype in br_funcs.h */
 /* BrCosF: prototype in br_funcs.h */
 
-void __fastcall BrEntSetOrientation(BrEntCar *pE, int _edx_unused,
+void __fastcall BrEntSetOrientation(BrEntCar *pE,
                                     float a1, float a2, float a3)
 {
     float h1 = a1 * kBrHalf;
     float h2 = a2 * kBrHalf;
     float h3 = a3 * kBrHalf;
     BrVec4 q;
-
-    (void)_edx_unused;
 
     {
         float sn = BrSinF(h1);
@@ -179,10 +175,9 @@ void __fastcall BrEntSetOrientation(BrEntCar *pE, int _edx_unused,
  * three places the game keeps that figure so they agree. */
 /* @implements 0x100769A0 d3d BrEntSetAngVel */
 /* @n64 0x80220358 located */
-void __fastcall BrEntSetAngVel(BrEntCar *pE, int _edx_unused, float x, float y,
+void __fastcall BrEntSetAngVel(BrEntCar *pE, float x, float y,
                                float z)
 {
-    (void)_edx_unused;
 
     pE->st.angVel.x = x;
     pE->st.angVel.y = y;

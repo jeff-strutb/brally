@@ -88,12 +88,10 @@ static void BrMat4IdentityLocal(BrMat4 *pM)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* entity[0] */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* aux[0], stride 348 */
 
-void __fastcall BrEntityBindAux(void *pThis, int _edx_unused)
+void __fastcall BrEntityBindAux(void *pThis)
 {
     BrDriverCar *p  = (BrDriverCar *)pThis;
     int  idx = (int)(p - &(*(char *)&g_aBrRaceCar));      /* the car's index in the car table */
-
-    (void)_edx_unused;
     p->pCtl =
         &(*(char *)&g_aBrEnts) + idx * BR_ENTITY_AUX_STRIDE;
     BrMat4IdentityLocal((BrMat4 *)(void *)(p + BR_ENTITY_OFF_MATRIX));

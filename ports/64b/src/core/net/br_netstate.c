@@ -504,7 +504,7 @@ int BrNetStackPop(void)
  * bytes in a single locked operation, so the caller sees a consistent
  * snapshot rather than four separately-locked reads that could disagree. */
 /* @implements 0x10006150 glide BrNetSlotGetF030 */
-int BrNetSlotGetF030(char * i, unsigned char *pb34, unsigned char *pb35,
+int BrNetSlotGetF030(int i, unsigned char *pb34, unsigned char *pb35,
                      unsigned char *pb36)
 {
     int v;
@@ -547,7 +547,7 @@ int BrNetGetA102212D0(int param_1)
  * static buffer and return that buffer. Not re-entrant and not safe to hold:
  * the next caller overwrites it. That is the original's design. */
 /* @implements 0x100061E0 glide BrNetSlotName */
-char *BrNetSlotName(char * param_1)
+char *BrNetSlotName(int param_1)
 
 {
   WaitForSingleObject((HANDLE)(&(*(int *)&g_aBrNetSlot))[param_1 * 0x25e],0xffffffff);

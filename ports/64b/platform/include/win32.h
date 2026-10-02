@@ -529,6 +529,13 @@ HRESULT WINAPI CoInitialize(LPVOID);
 void    WINAPI CoUninitialize(void);
 HRESULT WINAPI CoCreateInstance(REFCLSID, LPUNKNOWN, DWORD, REFIID, LPVOID *);
 
+/* ---- DirectX entry points the game imports by name ------------------------ */
+/* Each returns a COM object whose vtable order is the SDK's; the platform
+ * layer implements the objects. */
+HRESULT WINAPI DirectInputCreateA(HINSTANCE, DWORD, LPVOID *, LPUNKNOWN);
+HRESULT WINAPI DirectPlayLobbyCreateA(LPGUID, LPVOID *, LPUNKNOWN, LPVOID, DWORD);   /* DPLAYX #4 */
+#define DirectInputCreate DirectInputCreateA
+
 /* ---- winmm: time, mmio, MCI (the SDK packs mmsystem.h to 1) --------------- */
 DWORD    WINAPI timeGetTime(void);
 MMRESULT WINAPI timeBeginPeriod(UINT);

@@ -80,7 +80,7 @@ typedef void (*BrTexLerpFn)(char *pOut, char *p00, char *p10,
  * The destination step comes before the sample step, and the TU includes
  * <stdio.h> (the symbol-table size sets VC5's scheduling tie-breaks here). */
 /* @implements 0x10024490 glide BrTexResample */
-void BrTexResample(char *pDst, int dw, int dh, char *pSrc, uint8_t * sw, int sh,
+void BrTexResample(char *pDst, int dw, int dh, char *pSrc, int sw, int sh,
                    int mode)
 {
     BrTexLerpFn pfn;

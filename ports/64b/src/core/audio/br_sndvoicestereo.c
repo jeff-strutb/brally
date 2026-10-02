@@ -7,6 +7,7 @@
  * modules (br_sndvoice.c / slice6_76.c) -- so it must declare them int-returning
  * here, which it cannot do in the same translation unit as either definition.
  */
+#include "slice1_08.h"
 
 /* Set when the sound system is up: the DirectSound object, and the two device
  * caps the mixer checks before touching a buffer.  Any of them zero means the
@@ -28,13 +29,13 @@
  * that is not up, or a zero level, reports success without touching the buffer.
  * Fails if either DirectSound call fails. */
 /* @implements 0x1006B790 glide BrSndVoiceSetLR */
-int BrSndVoiceSetLR(BrSndVoice * pVoice, unsigned int levels)
+int BrSndVoiceSetLR(struct BrSndVoice * pVoice, unsigned int levels)
 {
   int iVar1;
   int lo;
   int hi;
 
-  if (((*(int *)&DAT_100b51e4[1036]) != 0) && ((*(int *)&BrSndPDS) != 0) && (BrSndG18290FC != 0)) {
+  if (((*(int *)&DAT_100b51e4[1036]) != 0) && (BrSndPDS != 0) && (BrSndG18290FC != 0)) {
     if (pVoice == 0)
       goto RET0;
     hi = levels >> 0x10;
@@ -44,20 +45,20 @@ int BrSndVoiceSetLR(BrSndVoice * pVoice, unsigned int levels)
     if (0x20 < lo)
       lo = 0x20;
     if (hi > lo) {
-      *(int *)(pVoice + 0x14) = (hi * 400) / 32;
-      *(int *)(pVoice + 0x10) = 400;
+      pVoice->f14 = (hi * 400) / 32;
+      pVoice->f10 = 400;
       if (hi == 0)
         goto APPLY;
       iVar1 = ((lo - hi) * 400) / hi;
     }
     else {
-      *(int *)(pVoice + 0x14) = (lo * 400) / 32;
-      *(int *)(pVoice + 0x10) = 400;
+      pVoice->f14 = (lo * 400) / 32;
+      pVoice->f10 = 400;
       if (lo == 0)
         goto APPLY;
       iVar1 = ((lo - hi) * 400) / lo;
     }
-    *(int *)(pVoice + 0x10) = iVar1 + 400;
+    pVoice->f10 = iVar1 + 400;
 APPLY:
     iVar1 = BrSndVoiceApplyVolume(pVoice);
     if ((iVar1 == 0) && (iVar1 = BrSndVoiceApplyPan(pVoice), iVar1 == 0)) {

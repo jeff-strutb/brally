@@ -59,7 +59,7 @@ typedef int (*funcptr)();
  * unused EDX slot (BR_THISCALL1 idiom). */
 /* @implements 0x100546F0 glide BrObj546F0DeleteDtor */
 
-void * __fastcall BrObj546F0DeleteDtor(void *param_1,int _edx_unused,unsigned char param_2)
+void * __fastcall BrObj546F0DeleteDtor(void *param_1,unsigned char param_2)
 {
   BrObj54710Dtor(param_1);
   if ((param_2 & 1) != 0) {

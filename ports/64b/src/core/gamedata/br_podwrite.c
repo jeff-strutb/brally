@@ -25,8 +25,6 @@
  * stack args so they do not claim edx (BR_THISCALL stack-arg idiom). */
 typedef struct { const char *p; } BrPodStr;
 typedef struct { char *p; }       BrPodDst;
-extern FILE *__fastcall BrPodStreamOpen(void *pStream, int _edx,
-                                        const char *pszPath);
 /* BrPodWriterMakeName: prototype in br_funcs.h */
 /* BrFileWriteCheckedT: prototype in br_funcs.h */
 /* BrLogFatalPrintf: prototype in br_funcs.h */
@@ -55,25 +53,6 @@ static void BrPutU32(uint8_t *p, uint32_t v)
 
 #define BR_POD_DIR_STRIDE 76
 
-/* 0x100089C0 */
-/* WHAT IT DOES: starts writing a POD archive -- the game's own bundle format
- * for its data files. It opens the file, leaves room at the front for a
- * header it can only fill in at the end, and clears the directory it will
- * build up as members are added. */
-/* Not tagged: the Glide match is the C++ member in
- * src/core/gamedata/BrPodWriteOpen_10008BA0.cpp.  This __fastcall copy stays
- * compiled so BrPodWriteAdd below keeps the TU state it matched with. */
-int __fastcall BrPodWriteOpen(void *pThis, int _edx, const char *pszPath)
-{
-    FILE *pFile = BrPodStreamOpen((char *)pThis + 4, _edx, pszPath);
-
-    g_BrPodFile = pFile;
-    fseek(pFile, 0x10, 0);
-    memset(g_BrPodDir, 0, sizeof g_BrPodDir);
-    (*(uint32_t *)&g_BrPodCount) = 0;
-    return 0;
-}
-
 /* 0x10008A00 */
 /* WHAT IT DOES: adds one member file to the archive being written: notes
  * where in the file the data will sit, writes the data, and records the name
@@ -81,7 +60,7 @@ int __fastcall BrPodWriteOpen(void *pThis, int _edx, const char *pszPath)
  * about and then used anyway, and the directory is capped here, which the
  * original did not do. */
 /* @implements 0x10008BE0 glide BrPodWriteAdd */
-void __fastcall BrPodWriteAdd(void *pThis, int _edx, const char *pszName,
+void __fastcall BrPodWriteAdd(void *pThis, const char *pszName,
                               const void *pvData, uint32_t cbData,
                               unsigned char b08, unsigned char b09)
 {
@@ -114,34 +93,6 @@ void __fastcall BrPodWriteAdd(void *pThis, int _edx, const char *pszName,
         pEnt->b09     = b09;
     }
 
-    BrFileWriteChecked(pStream, (int)pvData, g_BrPodFile);
+    BrFileWriteChecked(g_BrPodFile, pvData, cbData);
 }
 
-/* 0x10008AA0 */
-/* WHAT IT DOES: finishes the archive: writes the directory of members at the
- * end, rewinds to the front to fill in the header with the magic word,
- * member count and directory position, and closes the file. */
-/* Not tagged: the Glide match is the C++ member in
- * src/core/gamedata/BrPodWriteClose_10008C80.cpp. */
-void __fastcall BrPodWriteClose(void *pThis)
-{
-    uint32_t offDir;
-    uint32_t cbDir;
-    char     aHdr[16];
-
-    /* `mov esi, ecx` must survive ftell; this+4 is added AFTER the call. */
-    offDir = (uint32_t)ftell(g_BrPodFile);
-    pThis  = (char *)pThis + 4;
-    cbDir  = (*(uint32_t *)&g_BrPodCount) * (uint32_t)sizeof(BrPodWriteEntry);
-    BrFileWriteChecked(pThis, (int)cbDir, g_BrPodFile);
-
-    aHdr[0] = 'P';
-    aHdr[1] = 'O';
-    aHdr[2] = 'D';
-    *(uint32_t *)(aHdr + 4)  = BR_POD_WRITER_MAGIC_EXTRA;
-    *(uint32_t *)(aHdr + 8)  = (*(uint32_t *)&g_BrPodCount);
-    *(uint32_t *)(aHdr + 12) = offDir;
-    fseek(g_BrPodFile, 0, 0);
-    BrFileWriteChecked(pThis, (int)g_BrPodFile, g_BrPodFile);
-    fclose(g_BrPodFile);
-}

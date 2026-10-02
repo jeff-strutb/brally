@@ -157,7 +157,7 @@ int FUN_100368a0(HWND param_1, int *param_2, int param_3)
  * (hMem-first vs hr-first). Spill LOCATION is a VC5 allocator choice not seen to
  * move from C source here.
  * @t4-pass 0x10036A30 1 2026-09-06 probes 4 bytes 227 insns 86 regions 1 rows 1 census no */
-int FUN_10036a30(struct BrDPlayObj *param_1, char *param_2, LPCSTR param_3, LPCVOID *param_4, int param_5)
+int FUN_10036a30(struct BrDPlayObj *param_1, int param_2, LPCSTR param_3, LPCVOID *param_4, int param_5)
 {
     HGLOBAL hMem;
     LPSTR pBuf;
@@ -205,7 +205,7 @@ int FUN_10036a30(struct BrDPlayObj *param_1, char *param_2, LPCSTR param_3, LPCV
 /* @implements 0x100372B0 glide FUN_100372b0 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
-char *FUN_100372b0(BrObj29D4 * hr)
+char *FUN_100372b0(int hr)
 {
   if (hr <= (int)0x80004001) {
     if (hr != (int)0x80004001) {

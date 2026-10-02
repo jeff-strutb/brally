@@ -57,12 +57,10 @@ typedef char br06_assert_namelist[
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 
-BrNameList *__fastcall BrNameListInit(BrNameList *pThis, int _edx_unused)
+BrNameList *__fastcall BrNameListInit(BrNameList *pThis)
 {
     char *d = (char *)pThis->asz;
     int   n;
-
-    (void)_edx_unused;
     pThis->pVtbl = (const void *)&PTR_FUN_10077750;
     memset(d, 0, sizeof(pThis->asz));
 
@@ -161,7 +159,7 @@ int __fastcall BrVtInit55A30(const void **param_1)
  * as __fastcall with an unused EDX slot (BR_THISCALL1 idiom). */
 /* @implements 0x10055A10 glide BrVt55A10DeleteDtor */
 
-void * __fastcall BrVt55A10DeleteDtor(void *param_1,int _edx_unused,unsigned char param_2)
+void * __fastcall BrVt55A10DeleteDtor(void *param_1,unsigned char param_2)
 {
   BrVtInit55A30((int *)param_1);
   if ((param_2 & 1) != 0) {

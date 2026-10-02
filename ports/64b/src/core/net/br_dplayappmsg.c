@@ -108,7 +108,7 @@
 /* @t4-pass 0x10009010 2 2026-09-27 probes 720 bytes 952 insns 289 regions 12 rows 19 census yes  (hand: every declaration order of the six locals with the float-zero entry store) */
 /* @t4-pass 0x10009010 3 2026-09-27 probes 28 bytes 952 insns 289 regions 12 rows 19 census no  (hand: pMsg copy, idFrom for the literal 1s, tail test spellings, /TP /Gi /Ox /Ob2) */
 /* @implements 0x10009010 glide BrDpAppMsgHandle */
-void BrDpAppMsgHandle(int *pNet, int *pMsg, int a3, char *idFrom, int a5)
+void BrDpAppMsgHandle(int *pNet, int *pMsg, int a3, int idFrom, int a5)
 {
     LPARAM  pText;
     char    szDbg[260];

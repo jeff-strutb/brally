@@ -537,7 +537,7 @@ int BrDpCreateIface(BrIUnk **out)
 
     a = 0;
     b = 0;
-    hr = DirectPlayCreate(0, &a, 0, 0, 0);
+    hr = DirectPlayLobbyCreateA(0, (void **)&a, 0, 0, 0);
     /* Early-out, not an enclosing `if (hr >= 0)` block: that shape flips
      * the first branch to jl where the original has jge (cracked 2026-09-09,
      * the only residue row). */

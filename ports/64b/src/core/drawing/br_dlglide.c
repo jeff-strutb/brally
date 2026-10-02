@@ -731,7 +731,7 @@ void BrGlGbiCall(uint32_t w1)
 void BrGlInstall(void)
 {
     BrGlFlipHook  = (void *)BrGlideFlipWait;
-    BrGlFlipHook2 = (void *)BrGl_1001DD70;
+    BrGlFlipHook2 = (void *)grGlideShutdown;   /* 0x1001DD70 is a jump to it */
     grGlideInit();
     if (grSstQueryHardware(BrGlHwConfig) == 0)
         return;

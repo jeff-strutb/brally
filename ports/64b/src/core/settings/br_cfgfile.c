@@ -244,12 +244,10 @@ int BrCtrlCfgFileEncode(unsigned char *pOut, size_t cbOut,
  * short write. Returns zero if it could not open or could not finish, so a
  * half-written file is reported rather than trusted. */
 /* @implements 0x100634B0 glide BrGlCfgSave */
-int __fastcall BrGlCfgSave(void *pThis, int _edx_unused, const char *pszPath)
+int __fastcall BrGlCfgSave(void *pThis, const char *pszPath)
 {
     unsigned char *pBase = (unsigned char *)pThis;
     FILE          *pFile;
-
-    (void)_edx_unused;
     pFile = fopen(pszPath, "wb");
     if (pFile == NULL)
         return 0;

@@ -87,7 +87,7 @@ extern "C" void BrExt_10038F30(int a)
     FUN_1006c6a0();
 
     if ((*(int *)&g_brRaceNet) != 0) {
-        BrNetShutdown(1);
+        BrNetShutdown();
     }
 
     FUN_10035660();

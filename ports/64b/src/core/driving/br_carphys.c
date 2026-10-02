@@ -451,7 +451,7 @@ static int BrCpWeatherRow(void)
 /* BrCosF: prototype in br_funcs.h */
 /* BrSinF: prototype in br_funcs.h */
 
-void BrCarPhysTyre(BrCarPhys *pCar, BrTyreView *iWheel, float *pA,
+void BrCarPhysTyre(BrCarPhys *pCar, int iWheel, float *pA,
                    const uint8_t *pB, float dt)
 {
     BrRbBodyFull      *pBody  = &pCar->body;

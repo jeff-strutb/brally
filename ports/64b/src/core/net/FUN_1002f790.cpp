@@ -149,7 +149,7 @@ void  sub_100038F0(void *pNet, void *pBuf, int nBytes, int nMode, int a5);
  * byte offset is computed once into a local (soff/roff) so the compiler keeps
  * the product in one register across the case, as the original holds in esi. */
 
-extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, char * idFrom, int a5)
+extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int a5)
 {
     BrNetPacket pkt(pBuf, nBytes);
     int      bStart = 0;      /* latched cmd-0 0x40 flag */

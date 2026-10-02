@@ -149,7 +149,6 @@ struct Rec62E50;
 struct Rect55330;
 struct Ui3E7A0;
 struct _MMCKINFO;
-struct __sFILE;
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -315,7 +314,7 @@ void BrBootColdInitRun(void);
 #pragma pop_macro("BrBootColdInitRun")
 #pragma push_macro("BrBoundsFits_10058CC0")
 #undef BrBoundsFits_10058CC0
-int BrBoundsFits_10058CC0(int, int, int *);
+int BrBoundsFits_10058CC0(int, int *);
 #pragma pop_macro("BrBoundsFits_10058CC0")
 #pragma push_macro("BrBoundsInsert_10058D00")
 #undef BrBoundsInsert_10058D00
@@ -407,7 +406,7 @@ void BrCarInitTables(struct BrDriverCar *);
 #pragma pop_macro("BrCarInitTables")
 #pragma push_macro("BrCarNameCommit")
 #undef BrCarNameCommit
-int BrCarNameCommit(struct BrCtl85 *);
+int BrCarNameCommit(struct BrUiCtl_ *);
 #pragma pop_macro("BrCarNameCommit")
 #pragma push_macro("BrCarNetSendState")
 #undef BrCarNetSendState
@@ -447,7 +446,7 @@ void BrCarPhysStep(struct BrDriverCar *);
 #pragma pop_macro("BrCarPhysStep")
 #pragma push_macro("BrCarPhysTyre")
 #undef BrCarPhysTyre
-void BrCarPhysTyre(struct BrTyreView *, struct BrTyreView *, float *, const unsigned char *, float);
+void BrCarPhysTyre(struct BrTyreView *, int, float *, const unsigned char *, float);
 #pragma pop_macro("BrCarPhysTyre")
 #pragma push_macro("BrCarPredictRemote")
 #undef BrCarPredictRemote
@@ -607,7 +606,7 @@ int BrCdTrackNextWrap(void);
 #pragma pop_macro("BrCdTrackNextWrap")
 #pragma push_macro("BrCdTrackPlay")
 #undef BrCdTrackPlay
-void BrCdTrackPlay(int);
+int BrCdTrackPlay(int);
 #pragma pop_macro("BrCdTrackPlay")
 #pragma push_macro("BrCdTrackPrev")
 #undef BrCdTrackPrev
@@ -655,11 +654,11 @@ void * BrChkAlloc(unsigned long, const char *);
 #pragma pop_macro("BrChkAlloc")
 #pragma push_macro("BrChkFClose")
 #undef BrChkFClose
-void BrChkFClose(struct __sFILE **);
+void BrChkFClose(FILE **);
 #pragma pop_macro("BrChkFClose")
 #pragma push_macro("BrChkFRead")
 #undef BrChkFRead
-void * BrChkFRead(void *, unsigned long, unsigned long, struct __sFILE **);
+void * BrChkFRead(void *, unsigned long, unsigned long, FILE **);
 #pragma pop_macro("BrChkFRead")
 #pragma push_macro("BrChkFReadLine")
 #undef BrChkFReadLine
@@ -667,7 +666,7 @@ char * BrChkFReadLine(char *, int, struct BrChkHandle *);
 #pragma pop_macro("BrChkFReadLine")
 #pragma push_macro("BrChkFReadOpen")
 #undef BrChkFReadOpen
-struct __sFILE ** BrChkFReadOpen(const char *);
+FILE ** BrChkFReadOpen(const char *);
 #pragma pop_macro("BrChkFReadOpen")
 #pragma push_macro("BrChkFileExists")
 #undef BrChkFileExists
@@ -675,7 +674,7 @@ int BrChkFileExists(const char *);
 #pragma pop_macro("BrChkFileExists")
 #pragma push_macro("BrChkFileSize")
 #undef BrChkFileSize
-int BrChkFileSize(struct __sFILE **);
+int BrChkFileSize(FILE **);
 #pragma pop_macro("BrChkFileSize")
 #pragma push_macro("BrChkRealloc")
 #undef BrChkRealloc
@@ -943,7 +942,7 @@ int BrDelta_100713A0(void);
 #pragma pop_macro("BrDelta_100713A0")
 #pragma push_macro("BrDevRecMatch")
 #undef BrDevRecMatch
-int BrDevRecMatch(unsigned char *);
+int BrDevRecMatch(unsigned int);
 #pragma pop_macro("BrDevRecMatch")
 #pragma push_macro("BrDiAcquire")
 #undef BrDiAcquire
@@ -1139,7 +1138,7 @@ int BrDpAddressBuild(int *, unsigned int *);
 #pragma pop_macro("BrDpAddressBuild")
 #pragma push_macro("BrDpAppMsgHandle")
 #undef BrDpAppMsgHandle
-void BrDpAppMsgHandle(int *, int *, int, char *, int);
+void BrDpAppMsgHandle(int *, int *, int, int, int);
 #pragma pop_macro("BrDpAppMsgHandle")
 #pragma push_macro("BrDpCreateIface")
 #undef BrDpCreateIface
@@ -1203,7 +1202,7 @@ void BrEntReset(void *);
 #pragma pop_macro("BrEntReset")
 #pragma push_macro("BrEntSetAngVel")
 #undef BrEntSetAngVel
-void BrEntSetAngVel(struct BrEntCar *, int, float, float, float);
+void BrEntSetAngVel(struct BrEntCar *, float, float, float);
 #pragma pop_macro("BrEntSetAngVel")
 #pragma push_macro("BrEntSetHeading")
 #undef BrEntSetHeading
@@ -1211,11 +1210,11 @@ void BrEntSetHeading(struct BrEntCar *, float);
 #pragma pop_macro("BrEntSetHeading")
 #pragma push_macro("BrEntSetMatrix")
 #undef BrEntSetMatrix
-void BrEntSetMatrix(struct BrEntCar *, int, const struct BrMat4 *);
+void BrEntSetMatrix(struct BrEntCar *, const struct BrMat4 *);
 #pragma pop_macro("BrEntSetMatrix")
 #pragma push_macro("BrEntSetOrientation")
 #undef BrEntSetOrientation
-void BrEntSetOrientation(struct BrEntCar *, int, float, float, float);
+void BrEntSetOrientation(struct BrEntCar *, float, float, float);
 #pragma pop_macro("BrEntSetOrientation")
 #pragma push_macro("BrEntSetRecord")
 #undef BrEntSetRecord
@@ -1223,7 +1222,7 @@ void BrEntSetRecord(struct BrEntCar *, void *, int);
 #pragma pop_macro("BrEntSetRecord")
 #pragma push_macro("BrEntSetVel")
 #undef BrEntSetVel
-void BrEntSetVel(struct BrEntCar *, int, float, float, float);
+void BrEntSetVel(struct BrEntCar *, float, float, float);
 #pragma pop_macro("BrEntSetVel")
 #pragma push_macro("BrEntSlotsReset")
 #undef BrEntSlotsReset
@@ -1231,7 +1230,7 @@ void BrEntSlotsReset(void);
 #pragma pop_macro("BrEntSlotsReset")
 #pragma push_macro("BrEntityBindAux")
 #undef BrEntityBindAux
-void BrEntityBindAux(void *, int);
+void BrEntityBindAux(void *);
 #pragma pop_macro("BrEntityBindAux")
 #pragma push_macro("BrEntityCountActive")
 #undef BrEntityCountActive
@@ -1255,7 +1254,7 @@ int BrExt_1003DB00(struct BrObjA9D008 *, void *);
 #pragma pop_macro("BrExt_1003DB00")
 #pragma push_macro("BrExt_100419D0")
 #undef BrExt_100419D0
-void BrExt_100419D0(int);
+void BrExt_100419D0(const char *);
 #pragma pop_macro("BrExt_100419D0")
 #pragma push_macro("BrExt_10041A00")
 #undef BrExt_10041A00
@@ -1335,7 +1334,7 @@ void BrF3DVtxFixup(struct BrGfxWords *);
 #pragma pop_macro("BrF3DVtxFixup")
 #pragma push_macro("BrFChkFRead")
 #undef BrFChkFRead
-int BrFChkFRead(void *, unsigned long, unsigned long, struct __sFILE **);
+int BrFChkFRead(void *, unsigned long, unsigned long, FILE **);
 #pragma pop_macro("BrFChkFRead")
 #pragma push_macro("BrFadeDrawBars")
 #undef BrFadeDrawBars
@@ -1427,15 +1426,15 @@ int BrFileCountMatching(const char *);
 #pragma pop_macro("BrFileCountMatching")
 #pragma push_macro("BrFileCreateChecked")
 #undef BrFileCreateChecked
-struct __sFILE * BrFileCreateChecked(char *);
+FILE * BrFileCreateChecked(char *);
 #pragma pop_macro("BrFileCreateChecked")
 #pragma push_macro("BrFileOpenChecked")
 #undef BrFileOpenChecked
-struct __sFILE * BrFileOpenChecked(char *);
+FILE * BrFileOpenChecked(char *);
 #pragma pop_macro("BrFileOpenChecked")
 #pragma push_macro("BrFileReadChecked")
 #undef BrFileReadChecked
-void BrFileReadChecked(struct __sFILE *, void *, unsigned int);
+void BrFileReadChecked(FILE *, void *, unsigned int);
 #pragma pop_macro("BrFileReadChecked")
 #pragma push_macro("BrFileReadInto")
 #undef BrFileReadInto
@@ -1447,7 +1446,7 @@ int BrFileScanTrailers_10055D40(void *, char *);
 #pragma pop_macro("BrFileScanTrailers_10055D40")
 #pragma push_macro("BrFileWriteChecked")
 #undef BrFileWriteChecked
-void BrFileWriteChecked(struct __sFILE *, const void *, struct __sFILE *);
+void BrFileWriteChecked(FILE *, const void *, unsigned int);
 #pragma pop_macro("BrFileWriteChecked")
 #pragma push_macro("BrFixDecodeRecord_10007AA0")
 #undef BrFixDecodeRecord_10007AA0
@@ -1851,7 +1850,7 @@ char BrGhostSave(void);
 #pragma pop_macro("BrGhostSave")
 #pragma push_macro("BrGlCfgSave")
 #undef BrGlCfgSave
-int BrGlCfgSave(void *, int, const char *);
+int BrGlCfgSave(void *, const char *);
 #pragma pop_macro("BrGlCfgSave")
 #pragma push_macro("BrGlGbiCall")
 #undef BrGlGbiCall
@@ -1863,7 +1862,7 @@ void BrGlInstall(void);
 #pragma pop_macro("BrGlInstall")
 #pragma push_macro("BrGlNavPoll")
 #undef BrGlNavPoll
-void BrGlNavPoll(struct BrGlNavRec *, int, int);
+void BrGlNavPoll(struct BrGlNavRec *, int);
 #pragma pop_macro("BrGlNavPoll")
 #pragma push_macro("BrGlRaceStart")
 #undef BrGlRaceStart
@@ -1887,7 +1886,7 @@ int BrGlTrackFixupCmds(int *);
 #pragma pop_macro("BrGlTrackFixupCmds")
 #pragma push_macro("BrGlTrackHdrRead")
 #undef BrGlTrackHdrRead
-void BrGlTrackHdrRead(void *, struct __sFILE **);
+void BrGlTrackHdrRead(void *, FILE **);
 #pragma pop_macro("BrGlTrackHdrRead")
 #pragma push_macro("BrGlideFlipWait")
 #undef BrGlideFlipWait
@@ -2147,7 +2146,7 @@ int BrJoyScanAny(int *);
 #pragma pop_macro("BrJoyScanAny")
 #pragma push_macro("BrKeyCacheFind")
 #undef BrKeyCacheFind
-int BrKeyCacheFind(struct BrKeyCache *, int, void *);
+int BrKeyCacheFind(struct BrKeyCache *, void *);
 #pragma pop_macro("BrKeyCacheFind")
 #pragma push_macro("BrKeyCacheReset")
 #undef BrKeyCacheReset
@@ -2155,7 +2154,7 @@ void BrKeyCacheReset(struct BrKeyCache *);
 #pragma pop_macro("BrKeyCacheReset")
 #pragma push_macro("BrKeyTableFind")
 #undef BrKeyTableFind
-int BrKeyTableFind(unsigned char *, unsigned int *, unsigned int *);
+int BrKeyTableFind(unsigned int, unsigned int *, unsigned int *);
 #pragma pop_macro("BrKeyTableFind")
 #pragma push_macro("BrLapSaveRestore")
 #undef BrLapSaveRestore
@@ -2515,7 +2514,7 @@ void * BrMutexCreateAA0A0(void);
 #pragma pop_macro("BrMutexCreateAA0A0")
 #pragma push_macro("BrNameListInit")
 #undef BrNameListInit
-struct BrNameList * BrNameListInit(struct BrNameList *, int);
+struct BrNameList * BrNameListInit(struct BrNameList *);
 #pragma pop_macro("BrNameListInit")
 #pragma push_macro("BrNavRelease_10059320")
 #undef BrNavRelease_10059320
@@ -2547,7 +2546,7 @@ int BrNetEnumSessionsStart(void *);
 #pragma pop_macro("BrNetEnumSessionsStart")
 #pragma push_macro("BrNetErrMsgBox")
 #undef BrNetErrMsgBox
-void BrNetErrMsgBox(const char *, struct BrObj29D4 *);
+void BrNetErrMsgBox(const char *, int);
 #pragma pop_macro("BrNetErrMsgBox")
 #pragma push_macro("BrNetGetA102212D0")
 #undef BrNetGetA102212D0
@@ -2667,7 +2666,7 @@ int BrNetSlotGetF02CBiased(int);
 #pragma pop_macro("BrNetSlotGetF02CBiased")
 #pragma push_macro("BrNetSlotGetF030")
 #undef BrNetSlotGetF030
-int BrNetSlotGetF030(char *, unsigned char *, unsigned char *, unsigned char *);
+int BrNetSlotGetF030(int, unsigned char *, unsigned char *, unsigned char *);
 #pragma pop_macro("BrNetSlotGetF030")
 #pragma push_macro("BrNetSlotGetF974")
 #undef BrNetSlotGetF974
@@ -2675,7 +2674,7 @@ int BrNetSlotGetF974(int);
 #pragma pop_macro("BrNetSlotGetF974")
 #pragma push_macro("BrNetSlotName")
 #undef BrNetSlotName
-char * BrNetSlotName(char *);
+char * BrNetSlotName(int);
 #pragma pop_macro("BrNetSlotName")
 #pragma push_macro("BrNetSlotSetF02C")
 #undef BrNetSlotSetF02C
@@ -2787,11 +2786,11 @@ int BrObbOverlap(const float *, const float *, const float *, const float *);
 #pragma pop_macro("BrObbOverlap")
 #pragma push_macro("BrObj40CF0DeleteDtor")
 #undef BrObj40CF0DeleteDtor
-void * BrObj40CF0DeleteDtor(void *, int, unsigned char);
+void * BrObj40CF0DeleteDtor(void *, unsigned char);
 #pragma pop_macro("BrObj40CF0DeleteDtor")
 #pragma push_macro("BrObj546F0DeleteDtor")
 #undef BrObj546F0DeleteDtor
-void * BrObj546F0DeleteDtor(void *, int, unsigned char);
+void * BrObj546F0DeleteDtor(void *, unsigned char);
 #pragma pop_macro("BrObj546F0DeleteDtor")
 #pragma push_macro("BrObj54710Dtor")
 #undef BrObj54710Dtor
@@ -2799,7 +2798,7 @@ int BrObj54710Dtor(void *);
 #pragma pop_macro("BrObj54710Dtor")
 #pragma push_macro("BrObj87A0DeleteDtor")
 #undef BrObj87A0DeleteDtor
-void * BrObj87A0DeleteDtor(void *, int, unsigned char);
+void * BrObj87A0DeleteDtor(void *, unsigned char);
 #pragma pop_macro("BrObj87A0DeleteDtor")
 #pragma push_macro("BrObj87Ctor")
 #undef BrObj87Ctor
@@ -3147,7 +3146,7 @@ int BrPhaseActivate_1003ED70(struct CtlF060 *);
 #pragma pop_macro("BrPhaseActivate_1003ED70")
 #pragma push_macro("BrPhaseDelete_10048850")
 #undef BrPhaseDelete_10048850
-void * BrPhaseDelete_10048850(struct BrPhaseFull *, int, unsigned char);
+void * BrPhaseDelete_10048850(struct BrPhaseFull *, unsigned char);
 #pragma pop_macro("BrPhaseDelete_10048850")
 #pragma push_macro("BrPhaseDispatch_100450F0")
 #undef BrPhaseDispatch_100450F0
@@ -3315,7 +3314,7 @@ void BrPodOpen(void *);
 #pragma pop_macro("BrPodOpen")
 #pragma push_macro("BrPodWriteAdd")
 #undef BrPodWriteAdd
-void BrPodWriteAdd(void *, int, const char *, const void *, unsigned int, unsigned char, unsigned char);
+void BrPodWriteAdd(void *, const char *, const void *, unsigned int, unsigned char, unsigned char);
 #pragma pop_macro("BrPodWriteAdd")
 #pragma push_macro("BrPodWriteClose")
 #undef BrPodWriteClose
@@ -4027,15 +4026,15 @@ int BrSndThreadStop(void);
 #pragma pop_macro("BrSndThreadStop")
 #pragma push_macro("BrSndVoiceApplyFreq")
 #undef BrSndVoiceApplyFreq
-void BrSndVoiceApplyFreq(struct BrSndVoice *);
+int BrSndVoiceApplyFreq(struct BrSndVoice *);
 #pragma pop_macro("BrSndVoiceApplyFreq")
 #pragma push_macro("BrSndVoiceApplyPan")
 #undef BrSndVoiceApplyPan
-void BrSndVoiceApplyPan(struct BrSndVoice *);
+int BrSndVoiceApplyPan(struct BrSndVoice *);
 #pragma pop_macro("BrSndVoiceApplyPan")
 #pragma push_macro("BrSndVoiceApplyVolume")
 #undef BrSndVoiceApplyVolume
-void BrSndVoiceApplyVolume(int *);
+int BrSndVoiceApplyVolume(struct BrSndVoice *);
 #pragma pop_macro("BrSndVoiceApplyVolume")
 #pragma push_macro("BrSndVoiceBufIsPlaying")
 #undef BrSndVoiceBufIsPlaying
@@ -4507,7 +4506,7 @@ void BrTexQueuePush(int, int);
 #pragma pop_macro("BrTexQueuePush")
 #pragma push_macro("BrTexResample")
 #undef BrTexResample
-void BrTexResample(char *, int, int, char *, unsigned char *, int, int);
+void BrTexResample(char *, int, int, char *, int, int, int);
 #pragma pop_macro("BrTexResample")
 #pragma push_macro("BrTexRgbaToArgb1555")
 #undef BrTexRgbaToArgb1555
@@ -4515,7 +4514,7 @@ int BrTexRgbaToArgb1555(unsigned short *, unsigned char *, int);
 #pragma pop_macro("BrTexRgbaToArgb1555")
 #pragma push_macro("BrTexShiftFromSize")
 #undef BrTexShiftFromSize
-int BrTexShiftFromSize(int *, int, int *);
+int BrTexShiftFromSize(int *, int, int);
 #pragma pop_macro("BrTexShiftFromSize")
 #pragma push_macro("BrTexSizeFromShiftAspect")
 #undef BrTexSizeFromShiftAspect
@@ -4847,7 +4846,7 @@ int BrUiHook87_1003F680(struct BrUiCtl_ *);
 #pragma pop_macro("BrUiHook87_1003F680")
 #pragma push_macro("BrUiInit_10047FB0")
 #undef BrUiInit_10047FB0
-void BrUiInit_10047FB0(unsigned char *, void *, struct BrPhaseFull *, float, float, unsigned int, unsigned int, unsigned int, unsigned int, short);
+void BrUiInit_10047FB0(unsigned char *, struct BrPhaseFull *, float, float, unsigned int, unsigned int, unsigned int, unsigned int, short);
 #pragma pop_macro("BrUiInit_10047FB0")
 #pragma push_macro("BrUiListPaint_100550E0")
 #undef BrUiListPaint_100550E0
@@ -4875,7 +4874,7 @@ int * BrUiPageCtor_10048470(int *);
 #pragma pop_macro("BrUiPageCtor_10048470")
 #pragma push_macro("BrUiPageDelete_100484C0")
 #undef BrUiPageDelete_100484C0
-void * BrUiPageDelete_100484C0(struct BrUiPage *, int, unsigned char);
+void * BrUiPageDelete_100484C0(struct BrUiPage *, unsigned char);
 #pragma pop_macro("BrUiPageDelete_100484C0")
 #pragma push_macro("BrUiPageFrame_10048530")
 #undef BrUiPageFrame_10048530
@@ -5015,7 +5014,7 @@ int BrUiTweenBegin_10047CB0(void *, int);
 #pragma pop_macro("BrUiTweenBegin_10047CB0")
 #pragma push_macro("BrUiTweenCurve_10047CE0")
 #undef BrUiTweenCurve_10047CE0
-float BrUiTweenCurve_10047CE0(struct BrUiTwCurve *, int, int);
+float BrUiTweenCurve_10047CE0(struct BrUiTwCurve *, int);
 #pragma pop_macro("BrUiTweenCurve_10047CE0")
 #pragma push_macro("BrUiTweenReset_10047D10")
 #undef BrUiTweenReset_10047D10
@@ -5183,7 +5182,7 @@ void BrViewBuffersRebase(void);
 #pragma pop_macro("BrViewBuffersRebase")
 #pragma push_macro("BrVt55A10DeleteDtor")
 #undef BrVt55A10DeleteDtor
-void * BrVt55A10DeleteDtor(void *, int, unsigned char);
+void * BrVt55A10DeleteDtor(void *, unsigned char);
 #pragma pop_macro("BrVt55A10DeleteDtor")
 #pragma push_macro("BrVt8A70CallPair")
 #undef BrVt8A70CallPair
@@ -5463,11 +5462,11 @@ int CtlF540_fn(void *);
 #pragma pop_macro("CtlF540_fn")
 #pragma push_macro("FUN_100018f0")
 #undef FUN_100018f0
-void FUN_100018f0(struct BrDriverCar *, int, int, float);
+void FUN_100018f0(struct BrDriverCar *, int, float);
 #pragma pop_macro("FUN_100018f0")
 #pragma push_macro("FUN_10001bb0")
 #undef FUN_10001bb0
-void FUN_10001bb0(int *, int, int *);
+void FUN_10001bb0(int *, int *);
 #pragma pop_macro("FUN_10001bb0")
 #pragma push_macro("FUN_100027e0")
 #undef FUN_100027e0
@@ -5491,7 +5490,7 @@ void FUN_100038a0(char *);
 #pragma pop_macro("FUN_100038a0")
 #pragma push_macro("FUN_100038f0")
 #undef FUN_100038f0
-void FUN_100038f0(void *, void *, int, char *);
+void FUN_100038f0(void *, void *, int, int);
 #pragma pop_macro("FUN_100038f0")
 #pragma push_macro("FUN_100054a0")
 #undef FUN_100054a0
@@ -5543,7 +5542,7 @@ int FUN_10024df0(int);
 #pragma pop_macro("FUN_10024df0")
 #pragma push_macro("FUN_100275c0")
 #undef FUN_100275c0
-int FUN_100275c0(int *, int, int *);
+int FUN_100275c0(int *, int, int);
 #pragma pop_macro("FUN_100275c0")
 #pragma push_macro("FUN_10027710")
 #undef FUN_10027710
@@ -5587,7 +5586,7 @@ int FUN_1002e5b9(int, int, int, int);
 #pragma pop_macro("FUN_1002e5b9")
 #pragma push_macro("FUN_1002f790")
 #undef FUN_1002f790
-void FUN_1002f790(void *, void *, int, char *, int);
+void FUN_1002f790(void *, void *, int, int, int);
 #pragma pop_macro("FUN_1002f790")
 #pragma push_macro("FUN_10031030")
 #undef FUN_10031030
@@ -5619,7 +5618,7 @@ int FUN_100368a0(struct HWND__ *, int *, int);
 #pragma pop_macro("FUN_100368a0")
 #pragma push_macro("FUN_10036a30")
 #undef FUN_10036a30
-int FUN_10036a30(struct BrDPlayObj *, char *, const char *, const void * *, int);
+int FUN_10036a30(struct BrDPlayObj *, int, const char *, const void * *, int);
 #pragma pop_macro("FUN_10036a30")
 #pragma push_macro("FUN_10036f40")
 #undef FUN_10036f40
@@ -5631,7 +5630,7 @@ int FUN_100371f0(int *, int, int);
 #pragma pop_macro("FUN_100371f0")
 #pragma push_macro("FUN_100372b0")
 #undef FUN_100372b0
-char * FUN_100372b0(struct BrObj29D4 *);
+char * FUN_100372b0(int);
 #pragma pop_macro("FUN_100372b0")
 #pragma push_macro("FUN_100377a0")
 #undef FUN_100377a0

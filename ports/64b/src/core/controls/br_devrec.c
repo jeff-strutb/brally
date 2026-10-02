@@ -45,7 +45,7 @@ typedef char br06_assert_devrec[
 /* 64-bit core: declared once, in br_globals.h or its struct's header */                      /* 0x106EECCC */
 
 /* @implements 0x10037070 d3d BrDevRecMatch */
-int BrDevRecMatch(unsigned char * value)
+int BrDevRecMatch(uint32_t value)
 {
     int32_t i;
 
