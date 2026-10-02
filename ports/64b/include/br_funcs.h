@@ -682,7 +682,7 @@ void * BrChkRealloc(void *, unsigned long, const char *);
 #pragma pop_macro("BrChkRealloc")
 #pragma push_macro("BrCleanupName_100087D0")
 #undef BrCleanupName_100087D0
-void BrCleanupName_100087D0(void *, char *, char *);
+void BrCleanupName_100087D0(void *, const char *, char *);
 #pragma pop_macro("BrCleanupName_100087D0")
 #pragma push_macro("BrClearFlag_AB504")
 #undef BrClearFlag_AB504
@@ -2478,7 +2478,7 @@ int BrMenuTime0D70_1003A2B0(struct Obj3A2B0 *);
 #pragma pop_macro("BrMenuTime0D70_1003A2B0")
 #pragma push_macro("BrModelLoad")
 #undef BrModelLoad
-void * BrModelLoad(void *, void *);
+void * BrModelLoad(void *, const char *);
 #pragma pop_macro("BrModelLoad")
 #pragma push_macro("BrModelSlotApply")
 #undef BrModelSlotApply
@@ -4474,7 +4474,7 @@ void BrTexCopyRecords(void *, int);
 #pragma pop_macro("BrTexCopyRecords")
 #pragma push_macro("BrTexDetailBumpNeighbour")
 #undef BrTexDetailBumpNeighbour
-void BrTexDetailBumpNeighbour(int, int, int);
+void BrTexDetailBumpNeighbour(int, int *, int *);
 #pragma pop_macro("BrTexDetailBumpNeighbour")
 #pragma push_macro("BrTexFormatCode")
 #undef BrTexFormatCode
@@ -5186,7 +5186,7 @@ void * BrVt55A10DeleteDtor(void *, unsigned char);
 #pragma pop_macro("BrVt55A10DeleteDtor")
 #pragma push_macro("BrVt8A70CallPair")
 #undef BrVt8A70CallPair
-void BrVt8A70CallPair(void *, int);
+void * BrVt8A70CallPair(void *, const char *);
 #pragma pop_macro("BrVt8A70CallPair")
 #pragma push_macro("BrVtInit41930")
 #undef BrVtInit41930
@@ -5462,11 +5462,12 @@ int CtlF540_fn(void *);
 #pragma pop_macro("CtlF540_fn")
 #pragma push_macro("FUN_100018f0")
 #undef FUN_100018f0
-void FUN_100018f0(struct BrDriverCar *, int, float);
+void FUN_100018f0(struct BrDriverCar *, void *, float);
 #pragma pop_macro("FUN_100018f0")
 #pragma push_macro("FUN_10001bb0")
 #undef FUN_10001bb0
-void FUN_10001bb0(int *, int *);
+void FUN_10001bb0(struct BrDriverCar *, float *);
+void FUN_10001510(struct BrDriverCar *, char *, struct BrVec3 *);
 #pragma pop_macro("FUN_10001bb0")
 #pragma push_macro("FUN_100027e0")
 #undef FUN_100027e0
@@ -5834,7 +5835,7 @@ int * FUN_1006cd80(int *);
 #pragma pop_macro("FUN_1006cd80")
 #pragma push_macro("FUN_1006e130")
 #undef FUN_1006e130
-void FUN_1006e130(int, int, int);
+void FUN_1006e130(int, int *, int *);
 #pragma pop_macro("FUN_1006e130")
 #pragma push_macro("FUN_1006eb00")
 #undef FUN_1006eb00
@@ -5870,7 +5871,7 @@ int Fn3DD20(void);
 #pragma pop_macro("Fn3DD20")
 #pragma push_macro("M8930")
 #undef M8930
-int M8930(void *, int);
+int M8930(void *, const char *);
 #pragma pop_macro("M8930")
 #pragma push_macro("M8960")
 #undef M8960
@@ -5882,15 +5883,15 @@ void M8990(void *, unsigned int, void *);
 #pragma pop_macro("M8990")
 #pragma push_macro("M89F0")
 #undef M89F0
-int M89F0(void *, unsigned int);
+void * M89F0(void *, unsigned int);
 #pragma pop_macro("M89F0")
 #pragma push_macro("M8A30")
 #undef M8A30
-int M8A30(void *, unsigned int, int);
+void * M8A30(void *, unsigned int, void *);
 #pragma pop_macro("M8A30")
 #pragma push_macro("M8A90")
 #undef M8A90
-int M8A90(void *, int, int);
+void * M8A90(void *, const char *, void *);
 #pragma pop_macro("M8A90")
 #pragma push_macro("THUNK_1001E1E0")
 #undef THUNK_1001E1E0

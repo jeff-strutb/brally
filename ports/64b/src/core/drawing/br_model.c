@@ -206,14 +206,12 @@ typedef struct { void *p; } BrModelLoadArg;
  * pushes 0 and the loaded block and nothing else.  br_seg.c's matching body
  * already records that its third parameter is the port's own pMap slot, so
  * this call site simply declares the two-argument shape. */
-void *BrModelLoad(void *a1, void *a2)
+void *BrModelLoad(void *pBuf, const char *pszName)
 {
-    BrModelLoadArg x, y;
     void *p;
 
-    x.p = a2;
-    y.p = a1;
-    p = BrSub100088B0(&g_brModelMgr, x, y);
+    /* 0x10008A90 on the archive object: read the named entry into pBuf. */
+    p = M8A90(&g_brModelMgr, pszName, pBuf);
 
     BrSegSetBases(0, p);
     BrModelSwap(p);

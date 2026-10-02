@@ -804,7 +804,7 @@ extern "C" void BrRaceStep(void)
         (*(int *)&DAT_105ccb68[11]) = 1;                           /* 0x1001aa5e */
         if ((*(int *)&DAT_105ccb68[8]) == 0) {                    /* 0x1001aa66 */
             DAT_105bcaec = (int)&g_5BCAF8;
-            BrModelLoad(&g_5BCAF8, "misc\\modelLights.blob", &g_17A5910);
+            BrModelLoad(&g_5BCAF8, "misc\\modelLights.blob");   /* a third argument the original never reads */
             BrAnimSetOnce(DAT_105bcaec);
         }
         BrPfxReset();                         /* 0x1001aa96 */

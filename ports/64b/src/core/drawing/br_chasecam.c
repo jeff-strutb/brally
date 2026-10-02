@@ -57,14 +57,15 @@ extern void BrGbiStackOverflow(int code);
 /* @implements 0x10001BB0 glide FUN_10001bb0 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
-void __fastcall FUN_10001bb0(int *param_1,int *param_2)
+void __fastcall FUN_10001bb0(BrDriverCar *param_1, float *param_2)
 {
   float len;
   BrVec3 local;
   BrVec3 *pFwd;
-  
+
+  /* param_2 is the camera matrix: rows at +0x00, +0x10, +0x20, +0x30 */
   pFwd = (BrVec3 *)param_2;
-  BrVec3Sub(&local, (BrVec3 *)(param_1 + 0xa38), (BrVec3 *)(param_2 + 0xc));
+  BrVec3Sub(&local, (BrVec3 *)&param_1->f28E0, (BrVec3 *)(param_2 + 0xc));
   len = BrVec3Length(&local);
   if (len != _DAT_10077000) {
     BrVec3Div(pFwd, &local, len);
@@ -72,13 +73,13 @@ void __fastcall FUN_10001bb0(int *param_1,int *param_2)
   else {
     len = BrVec3Length(pFwd);
     if (len == _DAT_10077000) {
-      pFwd->x = *(float *)param_1;
-      pFwd->y = *(float *)(param_1 + 1);
-      pFwd->z = *(float *)(param_1 + 2);
+      pFwd->x = param_1->fwd.x;
+      pFwd->y = param_1->fwd.y;
+      pFwd->z = param_1->fwd.z;
     }
   }
-  if (param_1[0x3df] != 0) {
-    BrVec3Cross((BrVec3 *)(param_2 + 4), (BrVec3 *)(param_1 + 8), pFwd);
+  if (param_1->fF7C != 0) {
+    BrVec3Cross((BrVec3 *)(param_2 + 4), &param_1->up, pFwd);
   }
   else {
     local.x = 0.0f;
@@ -112,10 +113,11 @@ void __fastcall FUN_10001bb0(int *param_1,int *param_2)
 /* @implements 0x100018F0 glide FUN_100018f0 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
-void __fastcall FUN_100018f0(BrDriverCar *param_1, int param_2, float param_3)
+void __fastcall FUN_100018f0(BrDriverCar *param_1, void *pCam, float param_3)
 {
+  char *param_2 = (char *)pCam;
   float tmp[3];
-  int dst;
+  char *dst;
   float len;
   float s;
 
@@ -228,7 +230,7 @@ void __fastcall BrCamChaseZoomStep(BrDriverCar *pCam)
     BrVec3MulAddTo((BrVec3 *)&pCam->f28E0, &pCam->fwd, pCam->f28DC);
 }
 
-typedef struct { float x, y, z; } BrCamV3;
+typedef struct BrVec3 BrCamV3;   /* x, y, z */
 typedef struct {
     BrCamV3  n;                 /* +0x00 plane normal     */
     int      f0c;

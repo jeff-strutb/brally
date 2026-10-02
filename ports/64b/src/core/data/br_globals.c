@@ -1678,7 +1678,7 @@ void *BrG_AA3D50;  /* 0x10AA3D50 */
 void *BrG_AA4020;  /* 0x10AA4020 */
 int32_t g_brKeyCount;  /* 0x10AC0808 */
 uint32_t g_brKeyBias;  /* 0x10AC080C */
-void *g_brModelMgr;  /* 0x10AC0810 */
+BrPodArc g_brModelMgr;  /* 0x10AC0810 */
 uint16_t g_iPfxFree;  /* 0x10AC0C38 */
 int32_t g_iPfxHeadAC;  /* 0x10AC0C3C */
 int32_t g_iPfxHeadB0;  /* 0x10AC0C40 */

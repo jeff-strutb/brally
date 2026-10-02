@@ -34,6 +34,15 @@
 /* Orig is thiscall, one stack arg (the vtbl[1] argument, not the key).
  * vtbl[1](this, arg, &key) is thiscall / ret 8; the search is 16 unrolled
  * dword compares at +0x0C of each 0x4C-byte record. */
+#include "br_podarc.h"
+/* BrKeyCache is this file's name for the POD archive object; its layout
+ * must stay the canonical one at every pointer size. */
+#define BR_KC_SAME(f, g) typedef char br_kc_##f[offsetof(BrKeyCache, f) == offsetof(BrPodArc, g) ? 1 : -1]
+BR_KC_SAME(cEntries, cEntries);
+BR_KC_SAME(aEntries, aEntries);
+BR_KC_SAME(pFile, pFile);
+BR_KC_SAME(a020, szName);
+BR_KC_SAME(f420, cbDir);
 typedef void (*BrKeyBuildFn)(BrKeyCache *pThis, void *pArg, int32_t *pKey);
 
 /* WHAT IT DOES: look up a cached entry by asking the cache's own key-

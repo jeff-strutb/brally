@@ -6,6 +6,7 @@
 #define BR_GLOBALS_H
 #include <stdint.h>
 #include "br_coretypes.h"
+#include "br_podarc.h"
 
 struct BrCtl;
 struct BrPaceNote;
@@ -5994,7 +5995,7 @@ extern uint32_t g_brKeyBias;  /* 0x10AC080C */
 #pragma pop_macro("g_brKeyBias")
 #pragma push_macro("g_brModelMgr")
 #undef g_brModelMgr
-extern void *g_brModelMgr;  /* 0x10AC0810 */
+extern BrPodArc g_brModelMgr;  /* 0x10AC0810, the game's POD archive */
 #pragma pop_macro("g_brModelMgr")
 #pragma push_macro("g_iPfxFree")
 #undef g_iPfxFree

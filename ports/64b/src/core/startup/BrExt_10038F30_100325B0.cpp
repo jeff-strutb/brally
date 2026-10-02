@@ -107,7 +107,7 @@ extern "C" void BrExt_10038F30(int a)
     }
 
     FUN_1005a6a0();
-    g_brModelMgr.Reset();
+    BrKeyCacheReset((BrKeyCache *)&g_brModelMgr);
     BrFadeRelease();
     BrStrResFree();
     CoUninitialize();

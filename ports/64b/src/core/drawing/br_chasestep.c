@@ -7,6 +7,8 @@
  * surroundings.
  */
 #include <stdint.h>
+#include "br_vec.h"
+#include "slice3_41.h"   /* BrDriverCar, the canonical record */
 
 
 /* BrVec3: br_vec.h */
@@ -171,96 +173,96 @@ void __fastcall BrCamChaseStep(BrCamCar *car)
     BrVec3 *pUp, *pLook;
     BrCamView *pv;
 
-    prev.x = car->prev.x;
-    prev.y = car->prev.y;
-    prev.z = car->prev.z;
-    len1 = BrVec3Length(&car->v204);
-    len2 = BrVec3Length(&car->vel);
+    prev.x = (*(struct BrVec3 *)&((BrDriverCar *)(car))->aSnap[1].m[3][0]).x;
+    prev.y = (*(struct BrVec3 *)&((BrDriverCar *)(car))->aSnap[1].m[3][0]).y;
+    prev.z = (*(struct BrVec3 *)&((BrDriverCar *)(car))->aSnap[1].m[3][0]).z;
+    len1 = BrVec3Length(&(*(struct BrVec3 *)&((BrDriverCar *)(car))->aBody[0].rb.st.angVel.x));
+    len2 = BrVec3Length(&(*(struct BrVec3 *)&((BrDriverCar *)(car))->aBody[0].rb.st.vel.x));
     spin = len2 * _DAT_10077040;
     speed = (len1 > _DAT_10077044) ? len1 - _DAT_10077044 : _DAT_10077000;
     if (speed > _DAT_10077048)
         speed = _DAT_10077048;
     if (spin > _DAT_10077048)
         spin = 31.415928f;
-    if (speed <= car->speed)
-        speed = car->speed * _DAT_10077050 + speed * _DAT_1007704c;
-    car->speed = speed;
-    car->spin = car->spin * _DAT_10077050 + spin * _DAT_1007704c;
-    car->spin = (_DAT_10077008 - car->height * _DAT_10077054) * car->spin;
-    car->prev.x = car->last.x;
-    car->prev.y = car->last.y;
-    car->prev.z = car->last.z;
+    if (speed <= (*(float *)&((BrDriverCar *)(car))->f28D4))
+        speed = (*(float *)&((BrDriverCar *)(car))->f28D4) * _DAT_10077050 + speed * _DAT_1007704c;
+    (*(float *)&((BrDriverCar *)(car))->f28D4) = speed;
+    (*(float *)&((BrDriverCar *)(car))->f28D8) = (*(float *)&((BrDriverCar *)(car))->f28D8) * _DAT_10077050 + spin * _DAT_1007704c;
+    (*(float *)&((BrDriverCar *)(car))->f28D8) = (_DAT_10077008 - (*(float *)&((BrDriverCar *)(car))->f28F8) * _DAT_10077054) * (*(float *)&((BrDriverCar *)(car))->f28D8);
+    (*(struct BrVec3 *)&((BrDriverCar *)(car))->aSnap[1].m[3][0]).x = (*(struct BrVec3 *)&((BrDriverCar *)(car))->f28EC[0]).x;
+    (*(struct BrVec3 *)&((BrDriverCar *)(car))->aSnap[1].m[3][0]).y = (*(struct BrVec3 *)&((BrDriverCar *)(car))->f28EC[0]).y;
+    (*(struct BrVec3 *)&((BrDriverCar *)(car))->aSnap[1].m[3][0]).z = (*(struct BrVec3 *)&((BrDriverCar *)(car))->f28EC[0]).z;
     k    = (((DAT_105ccb68[8]) != 0) ? _DAT_10077058 : _DAT_1007705c) * _DAT_10077064;
-    lift = k * car->spin;
-    s60  = car->speed * _DAT_10077060;
-    if ((s60 - lift) + car->height > _DAT_10077068) {
-        camArg.p = car->cam;
-        FUN_100018f0(car, camArg, 0.0f);
+    lift = k * (*(float *)&((BrDriverCar *)(car))->f28D8);
+    s60  = (*(float *)&((BrDriverCar *)(car))->f28D4) * _DAT_10077060;
+    if ((s60 - lift) + (*(float *)&((BrDriverCar *)(car))->f28F8) > _DAT_10077068) {
+        camArg.p = (*(unsigned char (*)[48])&((BrDriverCar *)(car))->aSnap[1].m[0][0]);
+        FUN_100018f0((BrDriverCar *)car, camArg.p, 0.0f);
     } else {
-        camArg.p = car->cam;
-        FUN_100018f0(car, camArg, lift - ((car->height + s60) - _DAT_10077068));
+        camArg.p = (*(unsigned char (*)[48])&((BrDriverCar *)(car))->aSnap[1].m[0][0]);
+        FUN_100018f0((BrDriverCar *)car, camArg.p, lift - (((*(float *)&((BrDriverCar *)(car))->f28F8) + s60) - _DAT_10077068));
     }
     BrCamChaseZoomStep((char *)car);
-    car->last.x = car->prev.x;
-    car->last.y = car->prev.y;
-    car->last.z = car->prev.z;
-    if (car->locked == 0) {
+    (*(struct BrVec3 *)&((BrDriverCar *)(car))->f28EC[0]).x = (*(struct BrVec3 *)&((BrDriverCar *)(car))->aSnap[1].m[3][0]).x;
+    (*(struct BrVec3 *)&((BrDriverCar *)(car))->f28EC[0]).y = (*(struct BrVec3 *)&((BrDriverCar *)(car))->aSnap[1].m[3][0]).y;
+    (*(struct BrVec3 *)&((BrDriverCar *)(car))->f28EC[0]).z = (*(struct BrVec3 *)&((BrDriverCar *)(car))->aSnap[1].m[3][0]).z;
+    if ((*(int *)&((BrDriverCar *)(car))->fF7C) == 0) {
         prevArg.p = &prev;
-        FUN_10001510(car, camArg, prevArg);
+        FUN_10001510((BrDriverCar *)car, camArg.p, prevArg.p);
         if (g_BrCamDemo != 0) {
             if ((DAT_105ccb68[8]) != 0) {
                 g_BrCamHold = 0x1E;
-                if (car->pTarget == car->cam) {
-                    car->pTarget = &car->frame;
-                    car->mode    = 2;
+                if ((*(void * *)&((BrDriverCar *)(car))->pMatA) == (*(unsigned char (*)[48])&((BrDriverCar *)(car))->aSnap[1].m[0][0])) {
+                    (*(void * *)&((BrDriverCar *)(car))->pMatA) = &(*(struct BrCamFrame *)&((BrDriverCar *)(car))->aSnap[0].m[0][0]);
+                    (*(int *)&((BrDriverCar *)(car))->fF78)    = 2;
                     g_BrCamHold2 = 0x3C;
                 }
             }
-            if (car->height < _DAT_1007706c) {
-                pH  = &car->height;
+            if ((*(float *)&((BrDriverCar *)(car))->f28F8) < _DAT_1007706c) {
+                pH  = &(*(float *)&((BrDriverCar *)(car))->f28F8);
                 *pH = 0.02f;
-                car->height = 0.05f;
+                (*(float *)&((BrDriverCar *)(car))->f28F8) = 0.05f;
             } else {
-                if ((car->height = car->height - _DAT_10077070) > _DAT_10077074)
-                    car->height = 0.055f;
-                car->height = 0.05f;
+                if (((*(float *)&((BrDriverCar *)(car))->f28F8) = (*(float *)&((BrDriverCar *)(car))->f28F8) - _DAT_10077070) > _DAT_10077074)
+                    (*(float *)&((BrDriverCar *)(car))->f28F8) = 0.055f;
+                (*(float *)&((BrDriverCar *)(car))->f28F8) = 0.05f;
             }
         } else {
             if (g_BrCamHold != 0)
                 g_BrCamHold = g_BrCamHold - 1;
-            if ((car->height = car->height - _DAT_10077078) < _DAT_10077000)
-                car->height = 0.0f;
+            if (((*(float *)&((BrDriverCar *)(car))->f28F8) = (*(float *)&((BrDriverCar *)(car))->f28F8) - _DAT_10077078) < _DAT_10077000)
+                (*(float *)&((BrDriverCar *)(car))->f28F8) = 0.0f;
         }
     }
-    FUN_10001bb0(car, camArg);
-    if (car->locked != 0) {
-        car->frame = *(BrCamFrame *)car;
+    FUN_10001bb0((BrDriverCar *)car, (float *)camArg.p);
+    if ((*(int *)&((BrDriverCar *)(car))->fF7C) != 0) {
+        (*(struct BrCamFrame *)&((BrDriverCar *)(car))->aSnap[0].m[0][0]) = *(BrCamFrame *)car;
     } else {
-        car->frame.m[3][0] = car->pView->f80B8 * car->m[2][0] + car->pView->f80B0 * car->m[0][0] + car->m[3][0];
-        car->frame.m[3][1] = car->pView->f80B8 * car->m[2][1] + car->pView->f80B0 * car->m[0][1] + car->m[3][1];
-        car->frame.m[3][2] = car->pView->f80B8 * car->m[2][2] + car->pView->f80B0 * car->m[0][2] + car->m[3][2];
-        BrVec3MulAddTo((BrVec3 *)&car->frame, (BrVec3 *)car, -20.0f);
-        BrVec3Negate((BrVec3 *)&car->frame, (BrVec3 *)&car->frame);
-        br_dl_normalise((BrVec3 *)&car->frame);
-        pRow = (BrVec3 *)car->frame.m[1];
-        pRow->x = car->m[1][0];
-        pRow->y = car->m[1][1];
-        pRow->z = car->m[1][2];
-        BrVec3Cross((BrVec3 *)car->frame.m[2], (BrVec3 *)&car->frame, pRow);
+        (*(struct BrCamFrame *)&((BrDriverCar *)(car))->aSnap[0].m[0][0]).m[3][0] = (*(BrCamView * *)&((BrDriverCar *)(car))->pModel)->f80B8 * (*(float (*)[4][4])&((BrDriverCar *)(car))->fwd.x)[2][0] + (*(BrCamView * *)&((BrDriverCar *)(car))->pModel)->f80B0 * (*(float (*)[4][4])&((BrDriverCar *)(car))->fwd.x)[0][0] + (*(float (*)[4][4])&((BrDriverCar *)(car))->fwd.x)[3][0];
+        (*(struct BrCamFrame *)&((BrDriverCar *)(car))->aSnap[0].m[0][0]).m[3][1] = (*(BrCamView * *)&((BrDriverCar *)(car))->pModel)->f80B8 * (*(float (*)[4][4])&((BrDriverCar *)(car))->fwd.x)[2][1] + (*(BrCamView * *)&((BrDriverCar *)(car))->pModel)->f80B0 * (*(float (*)[4][4])&((BrDriverCar *)(car))->fwd.x)[0][1] + (*(float (*)[4][4])&((BrDriverCar *)(car))->fwd.x)[3][1];
+        (*(struct BrCamFrame *)&((BrDriverCar *)(car))->aSnap[0].m[0][0]).m[3][2] = (*(BrCamView * *)&((BrDriverCar *)(car))->pModel)->f80B8 * (*(float (*)[4][4])&((BrDriverCar *)(car))->fwd.x)[2][2] + (*(BrCamView * *)&((BrDriverCar *)(car))->pModel)->f80B0 * (*(float (*)[4][4])&((BrDriverCar *)(car))->fwd.x)[0][2] + (*(float (*)[4][4])&((BrDriverCar *)(car))->fwd.x)[3][2];
+        BrVec3MulAddTo((BrVec3 *)&(*(struct BrCamFrame *)&((BrDriverCar *)(car))->aSnap[0].m[0][0]), (BrVec3 *)car, -20.0f);
+        BrVec3Negate((BrVec3 *)&(*(struct BrCamFrame *)&((BrDriverCar *)(car))->aSnap[0].m[0][0]), (BrVec3 *)&(*(struct BrCamFrame *)&((BrDriverCar *)(car))->aSnap[0].m[0][0]));
+        br_dl_normalise((BrVec3 *)&(*(struct BrCamFrame *)&((BrDriverCar *)(car))->aSnap[0].m[0][0]));
+        pRow = (BrVec3 *)(*(struct BrCamFrame *)&((BrDriverCar *)(car))->aSnap[0].m[0][0]).m[1];
+        pRow->x = (*(float (*)[4][4])&((BrDriverCar *)(car))->fwd.x)[1][0];
+        pRow->y = (*(float (*)[4][4])&((BrDriverCar *)(car))->fwd.x)[1][1];
+        pRow->z = (*(float (*)[4][4])&((BrDriverCar *)(car))->fwd.x)[1][2];
+        BrVec3Cross((BrVec3 *)(*(struct BrCamFrame *)&((BrDriverCar *)(car))->aSnap[0].m[0][0]).m[2], (BrVec3 *)&(*(struct BrCamFrame *)&((BrDriverCar *)(car))->aSnap[0].m[0][0]), pRow);
     }
-    BrVec3MulAddTo((car->frame2 = car->frame, (BrVec3 *)car->frame2.m[3]), (BrVec3 *)car, 0.6f);
-    pUp   = &car->up;
-    pLook = &car->look;
+    BrVec3MulAddTo(((*(struct BrCamFrame *)&((BrDriverCar *)(car))->aSnap[2].m[0][0]) = (*(struct BrCamFrame *)&((BrDriverCar *)(car))->aSnap[0].m[0][0]), (BrVec3 *)(*(struct BrCamFrame *)&((BrDriverCar *)(car))->aSnap[2].m[0][0]).m[3]), (BrVec3 *)car, 0.6f);
+    pUp   = &(*(struct BrVec3 *)&((BrDriverCar *)(car))->aSnap[3].m[2][0]);
+    pLook = &(*(struct BrVec3 *)&((BrDriverCar *)(car))->aSnap[3].m[0][0]);
     pUp->x = 0.0f;
     pUp->y = 0.0f;
     pUp->z = 1.0f;
-    pAxZ = car->m[2];
-    BrVec3Add(pLook, (BrVec3 *)car->m[3], (BrVec3 *)pAxZ);
-    BrVec3SubFrom(pLook, &car->eye);
+    pAxZ = (*(float (*)[4][4])&((BrDriverCar *)(car))->fwd.x)[2];
+    BrVec3Add(pLook, (BrVec3 *)(*(float (*)[4][4])&((BrDriverCar *)(car))->fwd.x)[3], (BrVec3 *)pAxZ);
+    BrVec3SubFrom(pLook, &(*(struct BrVec3 *)&((BrDriverCar *)(car))->aSnap[3].m[3][0]));
     dist = BrVec3Length(pLook);
     BrVec3DivBy(pLook, dist);
-    BrVec3Cross(&car->right, pUp, pLook);
-    BrVec3Cross(pUp, pLook, &car->right);
+    BrVec3Cross(&(*(struct BrVec3 *)&((BrDriverCar *)(car))->aSnap[3].m[1][0]), pUp, pLook);
+    BrVec3Cross(pUp, pLook, &(*(struct BrVec3 *)&((BrDriverCar *)(car))->aSnap[3].m[1][0]));
     if (dist <= _DAT_10077008) {
         dist = 0.0f;
     } else if (dist >= _DAT_1007707c) {
@@ -268,25 +270,25 @@ void __fastcall BrCamChaseStep(BrCamCar *car)
     } else {
         dist = dist - _DAT_10077008;
     }
-    car->f2848 = (float)((BrCosF((dist - _DAT_10077008) * _DAT_10077084) * _DAT_1007703c
+    (*(float *)&((BrDriverCar *)(car))->aSnap[3].f40) = (float)((BrCosF((dist - _DAT_10077008) * _DAT_10077084) * _DAT_1007703c
                           - (_DAT_10077088 - dist) * _DAT_1007708c) - _DAT_10077090) * g_BrCamScale;
-    car->frame2.w  = g_BrCamScale;
-    car->f27C0     = g_BrCamScale;
-    car->frame.w   = g_BrCamScale;
-    car->f28D0     = g_BrCamScale;
-    pv = car->pView;
-    car->shifted.x = (pAxZ[0] * pv->f80B8 - car->m[0][0] * pv->f80B4 * _DAT_10077094) + car->m[3][0];
-    car->shifted.y = (car->m[2][1] * pv->f80B8 - pv->f80B4 * car->m[0][1] * _DAT_10077094) + car->m[3][1];
-    car->negX.x    = -car->m[0][0];
-    car->negX.y    = -car->m[0][1];
-    car->negX.z    = -car->m[0][2];
-    car->negY.x    = -car->m[1][0];
-    car->negY.y    = -car->m[1][1];
-    car->negY.z    = -car->m[1][2];
-    car->shifted.z = (car->m[2][2] * pv->f80B8 - pv->f80B4 * car->m[0][2] * _DAT_10077094) + car->m[3][2];
-    car->axZ.x     = pAxZ[0];
-    car->axZ.y     = pAxZ[1];
-    car->axZ.z     = pAxZ[2];
-    car->pTargetPrev = car->pTarget;
+    (*(struct BrCamFrame *)&((BrDriverCar *)(car))->aSnap[2].m[0][0]).w  = g_BrCamScale;
+    (*(float *)&((BrDriverCar *)(car))->aSnap[1].f40)     = g_BrCamScale;
+    (*(struct BrCamFrame *)&((BrDriverCar *)(car))->aSnap[0].m[0][0]).w   = g_BrCamScale;
+    (*(float *)&((BrDriverCar *)(car))->aSnap[5].f40)     = g_BrCamScale;
+    pv = (*(BrCamView * *)&((BrDriverCar *)(car))->pModel);
+    (*(struct BrVec3 *)&((BrDriverCar *)(car))->aSnap[5].m[3][0]).x = (pAxZ[0] * pv->f80B8 - (*(float (*)[4][4])&((BrDriverCar *)(car))->fwd.x)[0][0] * pv->f80B4 * _DAT_10077094) + (*(float (*)[4][4])&((BrDriverCar *)(car))->fwd.x)[3][0];
+    (*(struct BrVec3 *)&((BrDriverCar *)(car))->aSnap[5].m[3][0]).y = ((*(float (*)[4][4])&((BrDriverCar *)(car))->fwd.x)[2][1] * pv->f80B8 - pv->f80B4 * (*(float (*)[4][4])&((BrDriverCar *)(car))->fwd.x)[0][1] * _DAT_10077094) + (*(float (*)[4][4])&((BrDriverCar *)(car))->fwd.x)[3][1];
+    (*(struct BrVec3 *)&((BrDriverCar *)(car))->aSnap[5].m[0][0]).x    = -(*(float (*)[4][4])&((BrDriverCar *)(car))->fwd.x)[0][0];
+    (*(struct BrVec3 *)&((BrDriverCar *)(car))->aSnap[5].m[0][0]).y    = -(*(float (*)[4][4])&((BrDriverCar *)(car))->fwd.x)[0][1];
+    (*(struct BrVec3 *)&((BrDriverCar *)(car))->aSnap[5].m[0][0]).z    = -(*(float (*)[4][4])&((BrDriverCar *)(car))->fwd.x)[0][2];
+    (*(struct BrVec3 *)&((BrDriverCar *)(car))->aSnap[5].m[1][0]).x    = -(*(float (*)[4][4])&((BrDriverCar *)(car))->fwd.x)[1][0];
+    (*(struct BrVec3 *)&((BrDriverCar *)(car))->aSnap[5].m[1][0]).y    = -(*(float (*)[4][4])&((BrDriverCar *)(car))->fwd.x)[1][1];
+    (*(struct BrVec3 *)&((BrDriverCar *)(car))->aSnap[5].m[1][0]).z    = -(*(float (*)[4][4])&((BrDriverCar *)(car))->fwd.x)[1][2];
+    (*(struct BrVec3 *)&((BrDriverCar *)(car))->aSnap[5].m[3][0]).z = ((*(float (*)[4][4])&((BrDriverCar *)(car))->fwd.x)[2][2] * pv->f80B8 - pv->f80B4 * (*(float (*)[4][4])&((BrDriverCar *)(car))->fwd.x)[0][2] * _DAT_10077094) + (*(float (*)[4][4])&((BrDriverCar *)(car))->fwd.x)[3][2];
+    (*(struct BrVec3 *)&((BrDriverCar *)(car))->aSnap[5].m[2][0]).x     = pAxZ[0];
+    (*(struct BrVec3 *)&((BrDriverCar *)(car))->aSnap[5].m[2][0]).y     = pAxZ[1];
+    (*(struct BrVec3 *)&((BrDriverCar *)(car))->aSnap[5].m[2][0]).z     = pAxZ[2];
+    (*(void * *)&((BrDriverCar *)(car))->pMatB) = (*(void * *)&((BrDriverCar *)(car))->pMatA);
 }
 

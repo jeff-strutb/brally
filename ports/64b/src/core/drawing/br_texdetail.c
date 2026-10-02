@@ -52,18 +52,18 @@ void BrSub10074E20(unsigned int *pDst)
 /* @implements 0x1006E130 glide FUN_1006e130 */
 /* auto-filed from ghidra --refine; transforms: ge0 scaletemp */
 
-void FUN_1006e130(int param_1,int param_2,int param_3)
+void FUN_1006e130(int param_1,int *param_2,int *param_3)
 
 {
   int iVar2;
-  
+
   if (((param_1 >= 0)) && (param_1 < 8)) {
-    iVar2 = *(int *)(param_3 + param_1 * 4);
+    iVar2 = param_3[param_1];
     if (iVar2 < 3) {
       iVar2 = iVar2 + 1;
-      *(int *)(param_3 + (param_1 * 4)) = iVar2;
-      BrTex3dRecSet278(*(int *)(param_2 + (param_1 * 4)),iVar2);
-      (*(*(funcptr *)&g_BrGfxSubmit))(*(int *)(param_2 + (param_1 * 4)));
+      param_3[param_1] = iVar2;
+      BrTex3dRecSet278(param_2[param_1],iVar2);
+      (*(*(funcptr *)&g_BrGfxSubmit))(param_2[param_1]);
     }
   }
   return;
@@ -75,7 +75,7 @@ void FUN_1006e130(int param_1,int param_2,int param_3)
  * of them, chosen by rand(), to 0x1006E130 above. Out-of-range i does
  * nothing. */
 /* @implements 0x1006E0A0 glide BrTexDetailBumpNeighbour */
-void BrTexDetailBumpNeighbour(int i, int pTex, int pLevels)
+void BrTexDetailBumpNeighbour(int i, int *pTex, int *pLevels)
 {
     int cand[3];
     int n;
@@ -84,17 +84,17 @@ void BrTexDetailBumpNeighbour(int i, int pTex, int pLevels)
 
     if (i >= 0 && i < 8) {
         n = 0;
-        if (*(int *)(pLevels + i * 4) < 3)
+        if (pLevels[i] < 3)
             cand[n++] = i;
         j = i - 1;
         if (j < 0)
             j += 8;
-        if (*(int *)(pLevels + j * 4) < 3)
+        if (pLevels[j] < 3)
             cand[n++] = j;
         j = i + 1;
         if (j >= 8)
             j -= 8;
-        if (*(int *)(pLevels + j * 4) < 3)
+        if (pLevels[j] < 3)
             cand[n++] = j;
         if (n != 0) {
             /* rand() is called BEFORE any argument is pushed: the pick is a

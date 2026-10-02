@@ -45,12 +45,12 @@ void BrBootColdInitRun(void)
     BrPodSetNameArg a;
 
     a.psz = "BossRally.pod";
-    BrPodSetName(g_brModelMgr, a);
-    BrPodOpen(g_brModelMgr);
+    BrPodSetName(&g_brModelMgr, a);
+    BrPodOpen(&g_brModelMgr);
     BrRenderModeRestart(3);
     BrImgShowFullScreen("splash.img", 0x2ac7e58b);
     BrLiveryLoadDamage();
-    Ctl71FC0_fn();
+    Ctl71FC0_fn(NULL);           /* a thiscall that never reads this */
     FUN_100703d0();
     if (DAT_1007b074 != 0) {
         BrDispatch_100025C0((*(void * *)&g_brOwner5BC72C));

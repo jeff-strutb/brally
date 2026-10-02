@@ -305,12 +305,6 @@ void BrSet_10036020(void)
     g_6C7C38 = 0x80096400u;
 }
 
-/* WHAT IT DOES: remember one pointer a later CRT/error path will read. */
-/* @d3donly 0x10086B80 BrStore_10086B80 -- glide twin 0x100168B0 COMDAT-folded onto slice6_78.c:BrTextSetSize */
-void BrStore_10086B80(uint32_t v)
-{
-    g_18AC2D0 = v;
-}
 
 void BrWrap_10035610(void *p)
 {

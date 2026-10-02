@@ -77,7 +77,7 @@ void __fastcall BrPodWriteAdd(void *pThis, const char *pszName,
         BrPodDst dst;
         src.p = pszName;
         dst.p = pEnt->szName;
-        BrPodWriterMakeName(pStream, src, dst);
+        BrPathBasename((char *)src.p, dst.p);   /* 0x10008D70, a thiscall that never reads this */
     }
 
     if (strlen(pEnt->szName) > 0x40)

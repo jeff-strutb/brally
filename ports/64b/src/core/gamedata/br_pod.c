@@ -64,7 +64,7 @@ void BrPodCleanupName(const char *pszSrc, char *pszDst)
          * overrun; the original would corrupt the destination here. */
         return;
     }
-    BrPodWriterMakeName(NULL, pszSrc, szBase);
+    BrPathBasename((char *)pszSrc, szBase);
 
     /* DEVIATION: bounded up front. The original ran the copy first and only
      * then compared the length against 64, so its check could not prevent the

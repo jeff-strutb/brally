@@ -57,6 +57,7 @@
 typedef unsigned int   uint32_t_;
 typedef unsigned short uint16_t_;
 
+#include "slice2_15.h"   /* BrHudView */
 typedef struct BrPaceNote {
     float         pos[4];     /* +0x00 fed to BrMat4TransformPoint4      */
     float         unk10[2];   /* +0x10                                   */
@@ -97,14 +98,14 @@ void BrPaceNoteEmit_10011300(struct BrHudView * pViewport, uint32_t_ n, int r, u
     unsigned u0, u1;
     float halfW, halfH; /* declared after pt[]: see the header */
 
-    pRect = (int *)(pViewport + (*(int *)&g_BrEnvSection) * 0x58);
+    pRect = (int *)&pViewport[g_BrEnvSection];
     x = pRect[0]; y = pRect[1]; w = pRect[2]; h = pRect[3];
     cx    = (x * 2 + w) * 2;
     cy    = (y * 2 + h) * 2;
     halfW = (float)(w * 2);
     halfH = (float)(h * 2);
     while (n != 0) {
-        BrMat4TransformPoint4(pt, DAT_10396f04[n].pos, &(*(float *)&DAT_10396eb8));
+        BrMat4TransformPoint4(pt, (const BrVec3 *)DAT_10396f04[n].pos, (const float *)&DAT_10396eb8);
         if (pt[3] > _DAT_1007725c || pt[3] < _DAT_10077260) {
             invW  = _DAT_10077264 / pt[3];
             pt[2] = invW * pt[2];
