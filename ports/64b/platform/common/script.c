@@ -188,10 +188,50 @@ static void step(void)
     }
 }
 
+/* BR_DUMP=F:PATH -- at BrAppFrame entry F, write the original's data area
+ * (0x10077000..0x118F0000) as this build holds it: every global whose layout
+ * is the same in both builds, at its original address, the rest zero. The
+ * wasm lane's BR_DUMP writes the same range from the original image, so the
+ * two files compare byte for byte (ports/64b/tools/dumpdiff.py). */
+extern const struct { unsigned va; const void *p; unsigned n; } g_brDumpMap[];
+
+static void dump_window(void)
+{
+    static int init, at = -1;
+    static char path[1024];
+    static unsigned n;
+    n++;
+    if (!init) {
+        const char *e = getenv("BR_DUMP");
+        init = 1;
+        if (e)
+            sscanf(e, "%d:%1023s", &at, path);
+    }
+    if (at >= 0 && (int)n == at) {
+        const unsigned lo = 0x10077000u, hi = 0x118F0000u;
+        unsigned char *img = (unsigned char *)calloc(1, hi - lo);
+        FILE *f;
+        int i;
+        if (!img)
+            return;
+        for (i = 0; g_brDumpMap[i].p; i++)
+            if (g_brDumpMap[i].va >= lo && g_brDumpMap[i].va + g_brDumpMap[i].n <= hi)
+                memcpy(img + (g_brDumpMap[i].va - lo), g_brDumpMap[i].p, g_brDumpMap[i].n);
+        f = fopen(path, "wb");
+        if (f) {
+            fwrite(img, 1, hi - lo, f);
+            fclose(f);
+        }
+        free(img);
+        fprintf(stderr, "dump: frame %u -> %s\n", n, path);
+    }
+}
+
 /* BrAppFrame's entry: one script frame */
 void plat_app_frame(void)
 {
     int i;
+    dump_window();
     if (!s_loaded)
         load();
     if (!s_active)

@@ -144,7 +144,7 @@ void Rip0C4E0::Apply(const float *pDir, short mag)
         for (iInner = 0; iInner < 0xA; iInner++) {
             if (iInner == 9)
                 continue;
-            pCmd = (*(int ** *)&((BrDriverCar *)(this))->pModel)[0x2006 + iOuter * 10 + iInner];
+            pCmd = BR_PTR32(int *, ((const uint32_t *)((BrDriverCar *)(this))->pModel)[0x2006 + iOuter * 10 + iInner]);
             if (pCmd == 0)
                 continue;
 
@@ -158,7 +158,7 @@ void Rip0C4E0::Apply(const float *pDir, short mag)
                     pCmd += 2;
                 } else {
                     pCmd++;
-                    pVtx = (float *)*pCmd;
+                    pVtx = BR_PTR32(float *, *pCmd);
                     n = (int)((w0 >> 10) & 0x3F);
                     pCmd++;
                     while (n--) {

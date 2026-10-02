@@ -177,6 +177,58 @@ class Types:
             return True
         return all(self.ptr_free(ft, seen + (r,)) for _, ft, _, _ in self.r32[r][1])
 
+    def leaves(self, t, o32=0, o64=0, out=None, depth=0):
+        """the pointer-free scalar runs of t: (i386 offset, 64-bit offset,
+        size), adjacent runs merged -- what BR_DUMP can place at the
+        original's addresses for a record that also holds pointers"""
+        if out is None:
+            out = []
+        if depth > 12:
+            return out
+        b, dims = self.split_array(t)
+        if dims:
+            n = 1
+            for d in dims:
+                n *= d
+            e32, e64 = self.size(b, False), self.size(b, True)
+            if not e32 or not e64:
+                return out
+            if self.same_layout(b):
+                self.run(out, o32, o64, e32 * n)
+                return out
+            for i in range(n):
+                self.leaves(b, o32 + i * e32, o64 + i * e64, out, depth + 1)
+            return out
+        if self.is_ptr(b):
+            return out
+        r = self.rec(b)
+        if r is None:
+            s = self.size(b, False)
+            if s and s == self.size(b, True):
+                self.run(out, o32, o64, s)
+            return out
+        if self.same_layout(b):
+            self.run(out, o32, o64, self.size(b, False))
+            return out
+        f32, f64 = self.r32[r][1], self.r64.get(r, (0, []))[1]
+        if self.r32[r][2]:            # a union: its first member
+            f32, f64 = f32[:1], f64[:1]
+        by64 = {}
+        for off, ft, fn, bit in f64:
+            by64.setdefault(fn, off)
+        for off, ft, fn, bit in f32:
+            if bit or fn not in by64:
+                continue
+            self.leaves(ft, o32 + off, o64 + by64[fn], out, depth + 1)
+        return out
+
+    @staticmethod
+    def run(out, o32, o64, n):
+        if out and out[-1][0] + out[-1][2] == o32 and out[-1][1] + out[-1][2] == o64:
+            out[-1] = (out[-1][0], out[-1][1], out[-1][2] + n)
+        else:
+            out.append((o32, o64, n))
+
     def same_layout(self, t):
         s32, s64 = self.size(t, False), self.size(t, True)
         return s32 is not None and s32 == s64 and self.ptr_free(t)
@@ -641,6 +693,34 @@ class Lift:
                 for e in ents:
                     f.write('    (void *)%s,\n' % (e if e else '0'))
                 f.write('};\n\n')
+            # BR_DUMP's map: every global whose layout is the same in both
+            # builds, at its original address (platform/common/script.c)
+            dump = []
+            for gva, size, name, ty in self.syms.g:
+                if ty is None or name is None:
+                    continue
+                try:
+                    ok = self.types.same_layout(ty)
+                except Exception:
+                    ok = False
+                s32 = self.types.size(ty, False) if ok else None
+                if ok and s32:
+                    dump.append((gva, name, 0, 0, s32))
+                elif not ok:
+                    try:
+                        runs = self.types.leaves(ty)
+                    except Exception:
+                        runs = []
+                    for o32, o64, n in runs:
+                        dump.append((gva, name, o32, o64, n))
+            for gva, name, o32, o64, n in dump:
+                if name not in self.syms.used:
+                    f.write('extern char br_sym_%s[] BR_SYM("%s");\n' % (name, name))
+                    self.syms.used.add(name)
+            f.write('const struct { unsigned va; const void *p; unsigned n; } g_brDumpMap[] = {\n')
+            for gva, name, o32, o64, n in dump:
+                f.write('    { 0x%08Xu, br_sym_%s + %d, %du },   /* %s+0x%X */\n' % (gva + o32, name, o64, n, name, o32))
+            f.write('    { 0, 0, 0 }\n};\n\n')
             f.write('void br_data_initterm(void)\n{\n')
             for fn in self.init:
                 f.write('    ((void (*)(void))%s)();\n' % fn)

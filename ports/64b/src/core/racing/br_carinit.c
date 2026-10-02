@@ -45,21 +45,17 @@ void BrCarBuildMatrices(BrCar *pCar)
 {
     uint8_t *pSub;
 
-    BrWheelSuspensionSetZ((((void *)((((uint8_t *)(void *)((pCar)))) + ((0x164))))));
+    BrWheelSuspensionSetZ(&pCar->aBody[0]);
 
     /* Orig unrolls the four sub-object pointers at +0x168..+0x174. */
-    pSub = (uint8_t *)BR_CAR_SUBPTR(pCar, 0);
-    BrRbBuildMatrix((BrMat4 *)(void *)(pSub + BR_CARSUB_MAT),
-                    (const BrRbState *)(void *)(pSub + BR_CARSUB_RB));
-    pSub = (uint8_t *)BR_CAR_SUBPTR(pCar, 1);
-    BrRbBuildMatrix((BrMat4 *)(void *)(pSub + BR_CARSUB_MAT),
-                    (const BrRbState *)(void *)(pSub + BR_CARSUB_RB));
-    pSub = (uint8_t *)BR_CAR_SUBPTR(pCar, 2);
-    BrRbBuildMatrix((BrMat4 *)(void *)(pSub + BR_CARSUB_MAT),
-                    (const BrRbState *)(void *)(pSub + BR_CARSUB_RB));
-    pSub = (uint8_t *)BR_CAR_SUBPTR(pCar, 3);
-    BrRbBuildMatrix((BrMat4 *)(void *)(pSub + BR_CARSUB_MAT),
-                    (const BrRbState *)(void *)(pSub + BR_CARSUB_RB));
+    pSub = (uint8_t *)pCar->aBody[0].rb.child[0];
+    BrRbBuildMatrix(&((BrRbBody *)pSub)->m, &((BrRbBody *)pSub)->st);
+    pSub = (uint8_t *)pCar->aBody[0].rb.child[1];
+    BrRbBuildMatrix(&((BrRbBody *)pSub)->m, &((BrRbBody *)pSub)->st);
+    pSub = (uint8_t *)pCar->aBody[0].rb.child[2];
+    BrRbBuildMatrix(&((BrRbBody *)pSub)->m, &((BrRbBody *)pSub)->st);
+    pSub = (uint8_t *)pCar->aBody[0].rb.child[3];
+    BrRbBuildMatrix(&((BrRbBody *)pSub)->m, &((BrRbBody *)pSub)->st);
 }
 
 /* 0x10065630 */
@@ -75,7 +71,7 @@ void BR_THISCALL1 BrCarInitTables(BrCar *pCar)
 {
     /* float, not double: MSVC then emits `fmul/fsub dword` against .rdata.
      * On x87 the unspilled product still has 53-bit precision until fstp. */
-    float v = ((*(int32_t  *)(((void *)((((uint8_t *)(void *)((pCar)))) + ((0x140))))))) * BR_K_08F9AC;
+    float v = pCar->f140 * BR_K_08F9AC;
     float a1, a2, a3;
     int32_t *p;
     uint8_t *pW;
@@ -151,9 +147,9 @@ void BR_THISCALL1 BrCarInitTables(BrCar *pCar)
  * BR_THISCALL1 is __fastcall with one arg -- ecx = this, identical bytes. */
 void BR_THISCALL1 BrCarClear29C8(BrCar *pCar)
 {
-    ((*(int32_t  *)(((void *)((((uint8_t *)(void *)((pCar)))) + ((0x29C8))))))) = 0;
-    ((*(int32_t  *)(((void *)((((uint8_t *)(void *)((pCar)))) + ((0x29CC))))))) = 0;
-    ((*(int32_t  *)(((void *)((((uint8_t *)(void *)((pCar)))) + ((0x29D0))))))) = 0;
-    ((*(int32_t  *)(((void *)((((uint8_t *)(void *)((pCar)))) + ((0x29D4))))))) = 0;
-    ((*(uint16_t *)(((void *)((((uint8_t *)(void *)((pCar)))) + ((0x29D8))))))) = 0;   /* a WORD, not a dword */
+    pCar->f29C8[0] = 0;
+    pCar->f29C8[1] = 0;
+    pCar->f29D0[0] = 0;
+    pCar->f29D0[1] = 0;
+    pCar->f29D8 = 0;   /* a WORD, not a dword */
 }

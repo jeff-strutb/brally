@@ -184,6 +184,10 @@ extern "C" {  /* BR_CLINK_BEGIN: every original function has C linkage */
  * DEVIATION above for why they are not written through BrRbBodyFull.
  * On a miss NOTHING here is written -- the original leaves the previous
  * frame's values in place and only clears the +0x19C slot. */
+/* pack(4): the hit is overlaid on BrRbBody's pPlane..f01B0, which a 64-bit
+ * build lays out without the 4 bytes of tail padding an 8-aligned struct
+ * would add -- unpacked, a whole-hit store reaches the contact count. */
+#pragma pack(push, 4)
 typedef struct BrGroundHit {
     const BrCollPlane *pPlane;   /* +0x19C in the original (a pointer)   */
     unsigned char      surface;  /* +0x1A0  plane->flags, already & 7    */
@@ -192,6 +196,7 @@ typedef struct BrGroundHit {
     float              nz;       /* +0x1AC                               */
     float              d;        /* +0x1B0                               */
 } BrGroundHit;
+#pragma pack(pop)
 
 /* BrWheelGroundProbe: prototype in br_funcs.h */
 

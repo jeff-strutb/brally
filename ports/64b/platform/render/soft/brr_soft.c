@@ -249,14 +249,16 @@ static rgba texel_at(const stex *t, int x, int y, const brr_state *st)
 {
     rgba c;
     const uint8_t *p;
+    /* wrap by modulo: Glide sizes are powers of two, but a texture the game
+     * built at another size must still never be read outside its pixels */
     if (st->clamp_s)
         x = x < 0 ? 0 : x >= t->w ? t->w - 1 : x;
     else
-        x &= t->w - 1;
+        x = (int)(((long)x % t->w + t->w) % t->w);
     if (st->clamp_t)
         y = y < 0 ? 0 : y >= t->h ? t->h - 1 : y;
     else
-        y &= t->h - 1;
+        y = (int)(((long)y % t->h + t->h) % t->h);
     p = t->px + ((size_t)y * (size_t)t->w + (size_t)x) * 4;
     c.r = p[0] / 255.0f;
     c.g = p[1] / 255.0f;
@@ -271,7 +273,7 @@ static rgba sample(const brr_state *st, float s, float t)
     rgba c = { 1, 1, 1, 1 };
     float u, v, fu, fv;
     int x, y;
-    if (!tx || !tx->px)
+    if (!tx || !tx->px || tx->w <= 0 || tx->h <= 0)
         return c;
     u = s * (float)tx->w;
     v = t * (float)tx->h;
@@ -475,9 +477,9 @@ void brr_draw(const brr_state *st, const brr_vertex *v, int n)
         }
         if (dump >= 0 && (long)s_frame == dump)
             for (i = 0; i + 2 < n; i += 3)
-                fprintf(stderr, "brr: tri tex %u cc %d/%d/%d/%d ac %d/%d/%d/%d blend %d/%d const %08X clip %d,%d-%d,%d"
+                fprintf(stderr, "brr: tri dm%d df%d dk%d tex %u cc %d/%d/%d/%d ac %d/%d/%d/%d blend %d/%d const %08X clip %d,%d-%d,%d"
                         " | %.1f,%.1f z%.3f w%.4f c%.0f/%.0f/%.0f/%.0f | %.1f,%.1f | %.1f,%.1f\n",
-                        st->texture, st->cc_fn, st->cc_factor, st->cc_local, st->cc_other,
+                        st->depth_mode, st->depth_fn, st->depth_mask, st->texture, st->cc_fn, st->cc_factor, st->cc_local, st->cc_other,
                         st->ac_fn, st->ac_factor, st->ac_local, st->ac_other,
                         st->blend_rgb_src, st->blend_rgb_dst, st->constant,
                         st->clip_x0, st->clip_y0, st->clip_x1, st->clip_y1,

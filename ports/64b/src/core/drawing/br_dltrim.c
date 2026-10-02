@@ -95,7 +95,17 @@ typedef struct BrGrVtx {
 #define BR_TRIM_Z_FLATTEN(pv_) ((pv_)->oow = 1.0f / 65535.0f)
 
 /* The clip node overlaid on a pool vertex at +0x40. */
-#define BR_TRIM_NODE(v)  ((BrClipVert *)&(v)->f40)
+/* The original overlays the node on the vertex at +0x40, its `next` in the
+ * 4-byte slot there. A 64-bit `next` does not fit, so the three corners are
+ * copied into seed nodes: the same nine attributes (cx cy cz s t cw n0 n1 n2)
+ * in the same order, and the seeds are outside the pool, so the give-up and
+ * emit loops never recycle them -- as the overlaid vertices never were. */
+#define BR_TRIM_SEED(n_, v_)                                                \
+    do {                                                                    \
+        (n_)->f04 = (v_)->cx; (n_)->f08 = (v_)->cy; (n_)->f0C = (v_)->cz;   \
+        (n_)->f10 = (v_)->s;  (n_)->f14 = (v_)->t;  (n_)->f18 = (v_)->cw;   \
+        (n_)->f1C = (v_)->n0; (n_)->f20 = (v_)->n1; (n_)->f24 = (v_)->n2;   \
+    } while (0)
 
 /* One plane, then "is it still a polygon?" -- the seven are chained with
  * && so the first failure skips the rest. */
@@ -115,10 +125,10 @@ void NAME ARGS                                                              \
     SNAPDECL                                                                \
     COLDECL                                                                 \
                                                                             \
-    pC = BR_TRIM_NODE(c);                                                   \
-    pB = BR_TRIM_NODE(b);                                                   \
-    pA = BR_TRIM_NODE(a);                                                   \
-    c->f40 = 0.0f;                                                          \
+    BrClipVert  seed[3];                                                    \
+    pC = &seed[2]; BR_TRIM_SEED(pC, c);                                     \
+    pB = &seed[1]; BR_TRIM_SEED(pB, b);                                     \
+    pA = &seed[0]; BR_TRIM_SEED(pA, a);                                     \
     pB->pNext = pC;                                                         \
     pA->pNext = pB;                                                         \
     pC->pNext = list.pHead = pA;                                            \

@@ -370,6 +370,16 @@ char *_itoa(int v, char *out, int radix) { return _ltoa(v, out, radix); }
 int _finite(double d) { return isfinite(d); }
 int *_errno(void) { return &errno; }
 
+/* MSVC's rand/srand (one sequence for the process; the game seeds and draws
+ * from one thread) */
+static unsigned int s_holdrand = 1;
+void br_srand(unsigned int seed) { s_holdrand = seed; }
+int br_rand(void)
+{
+    s_holdrand = s_holdrand * 214013u + 2531011u;
+    return (int)((s_holdrand >> 16) & 0x7FFF);
+}
+
 /* ---- exit handlers, operator new/delete, __ftol ------------------------------------ */
 typedef int (*BrCrtOnExitFn)(void);
 static BrCrtOnExitFn s_onexit[64];

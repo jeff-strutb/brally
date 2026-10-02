@@ -1,3 +1,4 @@
+#include <stddef.h>
 /* br_carphys.c -- 0x1005A7A0 and the four force generators it drives.
  *
  * Transcribed from orig/BRGlide.dll:
@@ -501,25 +502,42 @@ float BrWheelGroundProbe(BrCarBody *pBody, BrCarBody *pWheel)
 /* The wheel body as 0x100651A0 reads it: the hit record lives in the WHEEL at
  * +0x19C (plane pointer, surface byte, normal) and the spin state follows. */
 typedef struct BrTyreView {
+    /* BrRbBody's layout, member for member (asserted below), with the
+     * ground hit and the contact count named as the tyre model reads them.
+     * The i386 offsets are in the comments; a padded view at those offsets
+     * misplaces everything after child[] in a 64-bit build. */
     float               f00;              /* 0x000                          */
     struct BrTyreView  *child[4];         /* 0x004                          */
-    unsigned char       pad014[0x18 - 0x14];
+    float               f14;              /* 0x014                          */
     BrRbForce          *pForces;          /* 0x018                          */
-    unsigned char       pad01C[0x2C - 0x1C];
+    int                 mode;             /* 0x01C                          */
+    float               dim[3];           /* 0x020                          */
     float               mass;             /* 0x02C                          */
-    unsigned char       pad030[0xBC - 0x30];
+    BrMat3              inertia;          /* 0x030                          */
+    BrMat3              invInertia;       /* 0x054                          */
+    BrRbState           st;               /* 0x078                          */
     BrMat4              m;                /* 0x0BC                          */
-    unsigned char       pad0FC[0x19C - 0xFC];
+    BrVec3              accel;            /* 0x0FC                          */
+    BrVec3              angAccel;         /* 0x108                          */
+    BrRbState           st1;              /* 0x114                          */
+    BrRbState           st2;              /* 0x158                          */
     BrGroundHit         hit;              /* 0x19C  plane, surface, normal  */
     int32_t             f1B4;             /* 0x1B4  contact count           */
-    unsigned char       pad1B8[0x1C0 - 0x1B8];
+    float               f1B8;             /* 0x1B8                          */
+    float               f1BC;             /* 0x1BC                          */
     float               f1C0;             /* 0x1C0  steer angle             */
     float               f1C4;             /* 0x1C4  spin                    */
     float               f1C8;             /* 0x1C8  radius                  */
     float               f1CC;             /* 0x1CC  drive torque            */
     float               f1D0;             /* 0x1D0                          */
     float               f1D4;             /* 0x1D4  display angle, degrees  */
+    float               f1D8;             /* 0x1D8                          */
 } BrTyreView;
+_Static_assert(sizeof(BrTyreView) == sizeof(BrRbBody), "BrTyreView is BrRbBody");
+_Static_assert(offsetof(BrTyreView, hit) == offsetof(BrRbBody, pPlane), "hit");
+_Static_assert(offsetof(BrTyreView, m) == offsetof(BrRbBody, m), "m");
+_Static_assert(offsetof(BrTyreView, f1B4) == offsetof(BrRbBody, f1B4), "f1B4");
+_Static_assert(offsetof(BrTyreView, f1D4) == offsetof(BrRbBody, f1D4), "f1D4");
 
 
 

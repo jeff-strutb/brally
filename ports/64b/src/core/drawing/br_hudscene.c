@@ -890,7 +890,7 @@ yes:
  *    `lea` instead of `mov/add`;
  *  - the view pointer is formed inside each lightning arm, after the test,
  *    and `(a ^ b) ? K1 : K2` is the `xor/neg/sbb` mask. */
-typedef struct BrSceneCam { int32_t pad[12]; int32_t f30, f34; float f38; } BrSceneCam;
+typedef struct BrSceneCam { int32_t pad[12]; float f30, f34, f38; } BrSceneCam;   /* the camera matrix's translation row */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */          /* the command cursor           */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */          /* lightning counter            */

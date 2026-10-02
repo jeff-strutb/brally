@@ -61,6 +61,17 @@ int   br_access(const char *path, int mode);
 #define access br_access
 #define operator_delete BrOperatorDelete
 
+/* The game's rand() is the MSVC runtime's: a 0..0x7FFF LCG seeded with 1.
+ * The code scales it by 0x8000 (`rand() * n / 0x8000`), so the host's
+ * 31-bit rand() would index past the end of its tables -- and the same
+ * sequence keeps a run in step with the original. */
+int  br_rand(void);
+void br_srand(unsigned int seed);
+#define rand  br_rand
+#define srand br_srand
+#undef  RAND_MAX
+#define RAND_MAX 0x7FFF
+
 /* 0x1007DFE0 -- `operator new`, i.e. _nh_malloc(cb, 1).
  * DOES NOT ZERO. Several modules allocate 0xC8-byte objects here and rely on
  * a constructor to fill them; anything the ctor misses is garbage. */
