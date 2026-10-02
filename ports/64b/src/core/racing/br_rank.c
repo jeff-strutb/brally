@@ -119,7 +119,7 @@ void BrRankAssign(void)
       piVar4 = g_aBrRaceDriver;   /* the walker addresses whole driver records */
       do {
         if ((*(unsigned char *)&piVar4->f68 & 2) == 0) {
-          iVar3 = *(int *)&piVar4->pCar;
+          iVar3 = ((intptr_t)(piVar4->pCar));
           local_a0[_NumOfElements * 2 + 1] = iVar7;
           if (iVar3 != 0) {
             iVar3 = *(int *)&iVar3->fFF4;

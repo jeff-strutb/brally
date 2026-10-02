@@ -80,7 +80,7 @@ int Ctl3F700::Activate()
     g_mode = 2;
     BrSub1003E680();
     p = g_slot;
-    (*(int *)&g_aBrRaceCar[0].pEquip) = 0;
+    g_aBrRaceCar[0].pEquip = (uint8_t *)(intptr_t)(0);
     (*(int *)&g_aBrRaceCar[0].sz2ABC[32]) = 1;
     g_mode = 2;
     DAT_100abaa4 = 1;

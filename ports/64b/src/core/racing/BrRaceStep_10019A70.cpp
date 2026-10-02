@@ -356,7 +356,7 @@ extern "C" void BrRaceStep(void)
         case 5:     /* 0x10019d87 */
             (*(int *)&g_brRaceNEntrant) = 1; (*(int *)&g_brRaceNDriver) = 1; (*(int *)&g_BrCarCount) = 1;
             (*(int *)&DAT_105ccb68[9]) = 0; (*(int *)&DAT_105ccb68[8]) = 0; (*(int *)&g_aBrRaceCar[0].fE88) = 0;
-            (*(int *)&g_aBrRaceCar[0].pMatA) = (int)&(*(int *)&g_aBrRaceCar[0].aSnap[1].m[0][0]); (*(int *)&g_BrCamHold2) = 0;
+            g_aBrRaceCar[0].pMatA = (BrSnapMtx *)(intptr_t)((int)&(*(int *)&g_aBrRaceCar[0].aSnap[1].m[0][0])); (*(int *)&g_BrCamHold2) = 0;
             goto La213;
         case 4:     /* 0x10019dc0 */
         {
@@ -592,7 +592,7 @@ extern "C" void BrRaceStep(void)
 
         /* 0x1001a462: wheel/tyre + camera-mode setup */
         if ((*(int *)&g_brRaceRules.mode) == 4) {
-            (*(int *)&g_aBrRaceCar[0].pMatA) = (int)&(*(int *)&g_aBrRaceCar[0].aSnap[1].m[0][0]);
+            g_aBrRaceCar[0].pMatA = (BrSnapMtx *)(intptr_t)((int)&(*(int *)&g_aBrRaceCar[0].aSnap[1].m[0][0]));
             (*(int *)&g_BrCamHold2) = 0xb4;
             goto La58d;
         }
@@ -981,10 +981,10 @@ extern "C" void BrRaceStep(void)
                                         (*(int *)&g_aBrRaceBeginRec) = q[0];
                                         (*(int *)&g_aBrRaceBeginRec[4]) = q[1];
                                         g_5BC8E8 = 0; g_5BC8EC = 0;
-                                        (*(int *)&g_aBrRaceCar[0].pszBanner) = BrStrGet(0xef);
+                                        (((intptr_t)(g_aBrRaceCar[0].pszBanner))) = BrStrGet(0xef);
                                         (*(int *)&g_aBrRaceCar[0].f1000) = 0x3f800000;
                                         BrTimeFormat(&(*(int *)&g_aBrRaceCar[0].sz100C[0]), (*(float *)&g_aBrRaceCar[0].tFinal));
-                                        (*(int *)&g_aBrRaceCar[0].psz1004) = (int)&(*(int *)&g_aBrRaceCar[0].sz100C[0]);
+                                        g_aBrRaceCar[0].psz1004 = (char *)(intptr_t)((int)&(*(int *)&g_aBrRaceCar[0].sz100C[0]));
                                         (*(int *)&g_aBrRaceCar[0].f1008) = 0x3f800000;
                                         (*(int *)&g_brRaceBeginRecArmed) = 1;
                                     }
@@ -1217,7 +1217,7 @@ Lb887:  /* 0x1001b887 */
     if (g_brMode0AA8B4 > 0) {                           /* 0x1001b8c9 leader-attach loop */
         do {
             int   drv    = *(int*)&(*(int *)&BrG_6C1628[4]);
-            int   active = (*(int *)&g_aBrRaceCar[drv].pMatA);
+            int   active = (((intptr_t)(g_aBrRaceCar[drv].pMatA)));
             if ((*(int *)&g_brRaceBeginAirplane) != 0 && (*(int *)&g_brRaceBeginAirArmed) != 0) {
                 int *m = (int*)((char*)g_BrDrawTrackFlags + (*(int *)&g_brRaceBeginAirplane) * 84 + 0x30);
                 BrSndNearestOfferTrack((*(int *)&g_brRaceBeginAirplane), (const struct BrVec3 *)(m), active);

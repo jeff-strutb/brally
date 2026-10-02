@@ -178,8 +178,8 @@ int FUN_100703d0(void)
   int iVar1;
   int *puVar2;
   
-  (*(int *)&g_brFfb.pEffectSpring) = (*(int *)&g_brFfb.pEffectSpring) + 1;
-  if ((*(int *)&g_brFfb.pEffectSpring) == 1) {
+  g_brFfb.pEffectSpring = (BrDiObj *)(intptr_t)((*(int *)&g_brFfb.pEffectSpring) + 1);
+  if ((((intptr_t)(g_brFfb.pEffectSpring))) == 1) {
     (*(int *)&g_brInKeyCur) = 1;
     (*(int *)&g_brInKeyPrev) = 0;
     puVar2 = &(*(int *)&g_brInKeys);

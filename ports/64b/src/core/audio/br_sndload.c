@@ -277,7 +277,7 @@ int32_t BrWavLoad(const char *pszPath, uint32_t *pnDataBytes,
             *ppFmt = 0;
         }
     } else {
-        *pnDataBytes = *(uint32_t *)&ppFormat;
+        *pnDataBytes = ((intptr_t)(ppFormat));
     }
     if ((HMMIO)pVoice != 0) {
         mmioClose((HMMIO)pVoice, 0);

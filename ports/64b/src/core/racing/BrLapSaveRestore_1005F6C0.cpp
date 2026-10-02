@@ -336,16 +336,16 @@ LAB_save:
                         pfVar7->fwd.y * 50.0f,
                         pfVar7->fwd.z * 50.0f);
           }
-          *(int *)&pfVar7->aBody[0].rb.child[0]->pPlane = 0;
+          pfVar7->aBody[0].rb.child[0]->pPlane = (struct BrCollPlane *)(intptr_t)(0);
           *(int *)&pfVar7->aBody[0].rb.child[0]->f1B4 = 0;
           pfVar7->aBody[0].rb.child[0]->f01A0 = 2;
-          *(int *)&pfVar7->aBody[0].rb.child[1]->pPlane = 0;
+          pfVar7->aBody[0].rb.child[1]->pPlane = (struct BrCollPlane *)(intptr_t)(0);
           *(int *)&pfVar7->aBody[0].rb.child[1]->f1B4 = 0;
           pfVar7->aBody[0].rb.child[1]->f01A0 = 2;
-          *(int *)&pfVar7->aBody[0].rb.child[3]->pPlane = 0;
+          pfVar7->aBody[0].rb.child[3]->pPlane = (struct BrCollPlane *)(intptr_t)(0);
           *(int *)&pfVar7->aBody[0].rb.child[3]->f1B4 = 0;
           pfVar7->aBody[0].rb.child[3]->f01A0 = 2;
-          *(int *)&pfVar7->aBody[0].rb.child[2]->pPlane = 0;
+          pfVar7->aBody[0].rb.child[2]->pPlane = (struct BrCollPlane *)(intptr_t)(0);
           *(int *)&pfVar7->aBody[0].rb.child[2]->f1B4 = 0;
           pfVar7->aBody[0].rb.child[2]->f01A0 = 2;
           pfVar7->cHoldFwd = 0;

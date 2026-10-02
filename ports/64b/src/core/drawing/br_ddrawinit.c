@@ -82,7 +82,7 @@ int FUN_100583c0(void)
   }
   if (DAT_10ac5dc4 != 0) {
     (*(int *)&g_img) = BrBmpLoadSurface(s_images_loading_bmp_100ad71c, 0, 0);
-    if ((*(int *)&g_img[0].path) != 0 && (*(int *)&g_img) == 0) {
+    if ((((intptr_t)(g_img[0].path))) != 0 && (*(int *)&g_img) == 0) {
       sprintf(buf, s_DDraw_DoInit__loading_bmp_failed_100ad6f0);
       BrFontFreeAndExit();
       return;

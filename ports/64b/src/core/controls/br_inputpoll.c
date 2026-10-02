@@ -247,7 +247,7 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
     uint32_t       dt;
     int32_t        df;
 
-    if ((*(int32_t *)&g_brFfb.pEffectSquare) < 0x7FFF)
+    if ((((intptr_t)(g_brFfb.pEffectSquare))) < 0x7FFF)
         (*(int32_t *)&g_brFfb.pEffectSquare)++;
     flags = 0;
 
@@ -384,9 +384,9 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
         (g_brInKeys[g_brInKeyCur][0x58] & 0x80) != 0)
         BrCdTrackNext();
 
-    if ((GetAsyncKeyState(0x46) & 1) && (*(int32_t *)&g_brFfb.pEffectSquare) > 15)
+    if ((GetAsyncKeyState(0x46) & 1) && (((intptr_t)(g_brFfb.pEffectSquare))) > 15)
         g_BrFpsGuard = (g_BrFpsGuard == 0);
-    if ((GetAsyncKeyState(0x50) & 1) && (*(int32_t *)&g_brFfb.pEffectSquare) > 15)
+    if ((GetAsyncKeyState(0x50) & 1) && (((intptr_t)(g_brFfb.pEffectSquare))) > 15)
         (*(int32_t *)&DAT_118eeee0) = ((*(int32_t *)&DAT_118eeee0) == 0);
 
     /* ---- the non-race screens ------------------------------------------ */
@@ -631,11 +631,11 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
 
     /* ---- benchmark: time 440 frames, print the rate, leave ------------ */
     if ((*(int32_t *)&g_demoFlag) != 0) {
-        if ((*(int32_t *)&g_brFfb.pEffectSquare) == 1) {
+        if ((((intptr_t)(g_brFfb.pEffectSquare))) == 1) {
             g_br118EEE18 = BrSub10075020();
             g_br118EEE8C = BrGetFlag_AB4F0();
         }
-        if ((*(int32_t *)&g_brFfb.pEffectSquare) == 0x1B9) {
+        if ((((intptr_t)(g_brFfb.pEffectSquare))) == 0x1B9) {
             now = BrSub10075020();
             dt = now - g_br118EEE18;
             g_br118EEE18 = now;
@@ -645,11 +645,11 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
             BrLogPrint(buf);
         }
         GetAsyncKeyState(0x1B);
-        if ((*(int32_t *)&g_brFfb.pEffectSquare) == 1) {
+        if ((((intptr_t)(g_brFfb.pEffectSquare))) == 1) {
             g_BrFpsGuard = 1;
             flags = 0x400;
         } else {
-            flags = ((*(int32_t *)&g_brFfb.pEffectSquare) < 60) ? 0 : 4;
+            flags = ((((intptr_t)(g_brFfb.pEffectSquare))) < 60) ? 0 : 4;
         }
     }
     (*(int32_t *)&g_BrX18ABAD0) = flags;
@@ -837,12 +837,12 @@ typedef int (__stdcall *CC_std_1)();   /* COM method: this + arguments */
 void BrDiKeyboardShutdown(void)
 
 {
-  (*(int *)&g_brFfb.pEffectSpring) = (*(int *)&g_brFfb.pEffectSpring) + -1;
-  if ((*(int *)&g_brFfb.pEffectSpring) < 0) {
-    (*(int *)&g_brFfb.pEffectSpring) = 0;
+  g_brFfb.pEffectSpring = (BrDiObj *)(intptr_t)((*(int *)&g_brFfb.pEffectSpring) + -1);
+  if ((((intptr_t)(g_brFfb.pEffectSpring))) < 0) {
+    g_brFfb.pEffectSpring = (BrDiObj *)(intptr_t)(0);
     return;
   }
-  if (((*(int *)&g_brFfb.pEffectSpring) == 0) && ((*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0)) != (int *)0x0)) {
+  if (((((intptr_t)(g_brFfb.pEffectSpring))) == 0) && ((*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0)) != (int *)0x0)) {
     (*(CC_std_1 *)(*(int *)((*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0))) + 32))((*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0)));
     (*(CC_std_1 *)(*(int *)((*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0))) + 8))((*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0)));
     (*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0)) = (int *)0x0;

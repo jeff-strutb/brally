@@ -277,7 +277,7 @@ int BrSndVoiceIsPlaying(int param_1)
 {
   int uVar1;
 
-  if ((((*(int *)&DAT_100b51e4[1036]) != 0) && ((*(int *)&BrSndPDS) != 0)) && (BrSndG18290FC != 0)) {
+  if ((((*(int *)&DAT_100b51e4[1036]) != 0) && ((((intptr_t)(BrSndPDS))) != 0)) && (BrSndG18290FC != 0)) {
     if ((&(g_apBrSfxChanVoice[0]))[param_1] != 0) {
       uVar1 = BrSndVoiceBufIsPlaying((BrSfxVoice *)(&(g_apBrSfxChanVoice[0]))[param_1]);
       return uVar1;
@@ -397,7 +397,7 @@ int BrSfxBankLoad(int iSet)
     struct BrSndVoice *v;
 
     ok = 1;
-    if (((*(int *)&DAT_100b51e4[1036]) == 0) || ((*(int *)&BrSndPDS) == 0) || (BrSndG18290FC == 0)) {
+    if (((*(int *)&DAT_100b51e4[1036]) == 0) || ((((intptr_t)(BrSndPDS))) == 0) || (BrSndG18290FC == 0)) {
         return 1;
     }
     if (iSet == 0) {
@@ -458,7 +458,7 @@ int BrSfxCarBankLoad(int iCar)
 
     i2 = iCar * 2;
     ok = 1;
-    if (((*(int *)&DAT_100b51e4[1036]) == 0) || ((*(int *)&BrSndPDS) == 0) || (BrSndG18290FC == 0)
+    if (((*(int *)&DAT_100b51e4[1036]) == 0) || ((((intptr_t)(BrSndPDS))) == 0) || (BrSndG18290FC == 0)
         || (code = ((int *)g_0B6540)[i2]) == 0) {
         BrSndVoices[i2] = 0;
         (&BrSndVoices[432])[i2] = 0;

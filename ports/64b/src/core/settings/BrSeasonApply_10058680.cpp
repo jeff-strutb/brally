@@ -177,12 +177,12 @@ int BrSeasonApply(void)
                 (*(unsigned char (*)[])&g_aBrAA26F4)[i + 2 + (*(int *)(*(unsigned char (*)[])&g_aBrAA26F4) & 0xff) * 4] = z;
                 *(unsigned short *)((*(unsigned char (*)[])&g_aBrAA26F4) + 0x1a + (i + (*(int *)(*(unsigned char (*)[])&g_aBrAA26F4) & 0xff) * 4) * 2) = z;
                 *(int *)((*(unsigned char (*)[])&g_aBrAA26F4) + 0x4c + (i + (*(int *)(*(unsigned char (*)[])&g_aBrAA26F4) & 0xff) * 4) * 4) = z;
-                *(unsigned char *)(i + *(unsigned char *)((*(int *)&g_aBrRaceCar[0].pEquip) + 4) * 4 + 6 + (*(int *)&g_aBrRaceCar[0].pEquip)) = z;
-                *(unsigned char *)(i + *(unsigned char *)((*(int *)&g_aBrRaceCar[1].pEquip) + 4) * 4 + 6 + (*(int *)&g_aBrRaceCar[1].pEquip)) = z;
-                *(unsigned short *)((*(int *)&g_aBrRaceCar[0].pEquip) + 0x1e + (i + *(unsigned char *)((*(int *)&g_aBrRaceCar[0].pEquip) + 4) * 4) * 2) = z;
-                *(unsigned short *)((*(int *)&g_aBrRaceCar[1].pEquip) + 0x1e + (i + *(unsigned char *)((*(int *)&g_aBrRaceCar[1].pEquip) + 4) * 4) * 2) = z;
-                *(int *)((*(int *)&g_aBrRaceCar[0].pEquip) + (i + 0x14 + *(unsigned char *)((*(int *)&g_aBrRaceCar[0].pEquip) + 4) * 4) * 4) = z;
-                *(int *)((*(int *)&g_aBrRaceCar[1].pEquip) + (i + 0x14 + *(unsigned char *)((*(int *)&g_aBrRaceCar[1].pEquip) + 4) * 4) * 4) = z;
+                *(unsigned char *)(i + *(unsigned char *)((((intptr_t)(g_aBrRaceCar[0].pEquip))) + 4) * 4 + 6 + (((intptr_t)(g_aBrRaceCar[0].pEquip)))) = z;
+                *(unsigned char *)(i + *(unsigned char *)((((intptr_t)(g_aBrRaceCar[1].pEquip))) + 4) * 4 + 6 + (((intptr_t)(g_aBrRaceCar[1].pEquip)))) = z;
+                *(unsigned short *)((((intptr_t)(g_aBrRaceCar[0].pEquip))) + 0x1e + (i + *(unsigned char *)((((intptr_t)(g_aBrRaceCar[0].pEquip))) + 4) * 4) * 2) = z;
+                *(unsigned short *)((((intptr_t)(g_aBrRaceCar[1].pEquip))) + 0x1e + (i + *(unsigned char *)((((intptr_t)(g_aBrRaceCar[1].pEquip))) + 4) * 4) * 2) = z;
+                *(int *)((((intptr_t)(g_aBrRaceCar[0].pEquip))) + (i + 0x14 + *(unsigned char *)((((intptr_t)(g_aBrRaceCar[0].pEquip))) + 4) * 4) * 4) = z;
+                *(int *)((((intptr_t)(g_aBrRaceCar[1].pEquip))) + (i + 0x14 + *(unsigned char *)((((intptr_t)(g_aBrRaceCar[1].pEquip))) + 4) * 4) * 4) = z;
             }
             goto done;
         }

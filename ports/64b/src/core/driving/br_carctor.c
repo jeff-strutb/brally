@@ -90,7 +90,7 @@ void BR_THISCALL1 BrSub10062C50(void *pCar)
                    * _DAT_10077890;
     ((*(uint32_t *)&p->aBody[0].rb.f1BC)) = 0xc53b8000;          /* -3000.0f */
     ((*(uint32_t *)&p->aBody[1].rb.f1D8)) = 0;
-    ((*(uint32_t *)&p->aBody[1].rb.pPlane)) = 0;
+    p->aBody[1].rb.pPlane = (struct BrCollPlane *)(intptr_t)(0);
     ((*(uint32_t *)&p->aBody[1].rb.f1C4)) = 0;
     ((*(uint32_t *)&p->aBody[1].rb.mode)) = 2;
     ((*(uint32_t *)&p->aBody[1].rb.mass)) = 0;
@@ -116,7 +116,7 @@ void BR_THISCALL1 BrSub10062C50(void *pCar)
     BrRbBuildMatrix(&p->aBody[1].rb.m.m[0], &p->aBody[1].rb.st.pos.x);
 
     ((*(uint32_t *)&p->aBody[3].rb.f1D8)) = 0;
-    ((*(uint32_t *)&p->aBody[3].rb.pPlane)) = 0;
+    p->aBody[3].rb.pPlane = (struct BrCollPlane *)(intptr_t)(0);
     ((*(uint32_t *)&p->aBody[3].rb.f1C4)) = 0;
     ((*(uint32_t *)&p->aBody[3].rb.mode)) = 2;
     ((*(uint32_t *)&p->aBody[3].rb.mass)) = 0;
@@ -142,7 +142,7 @@ void BR_THISCALL1 BrSub10062C50(void *pCar)
     BrRbBuildMatrix(&p->aBody[3].rb.m.m[0], &p->aBody[3].rb.st.pos.x);
 
     ((*(uint32_t *)&p->aBody[2].rb.f1D8)) = 0;
-    ((*(uint32_t *)&p->aBody[2].rb.pPlane)) = 0;
+    p->aBody[2].rb.pPlane = (struct BrCollPlane *)(intptr_t)(0);
     ((*(uint32_t *)&p->aBody[2].rb.f1C4)) = 0;
     ((*(uint32_t *)&p->aBody[2].rb.mode)) = 2;
     ((*(uint32_t *)&p->aBody[2].rb.mass)) = 0;
@@ -167,7 +167,7 @@ void BR_THISCALL1 BrSub10062C50(void *pCar)
     BrRbBuildMatrix(&p->aBody[2].rb.m.m[0], &p->aBody[2].rb.st.pos.x);
 
     ((*(uint32_t *)&p->aBody[4].rb.f1D8)) = 0;
-    ((*(uint32_t *)&p->aBody[4].rb.pPlane)) = 0;
+    p->aBody[4].rb.pPlane = (struct BrCollPlane *)(intptr_t)(0);
     ((*(uint32_t *)&p->aBody[4].rb.f1C4)) = 0;
     ((*(uint32_t *)&p->aBody[4].rb.mode)) = 2;
     ((*(uint32_t *)&p->aBody[4].rb.mass)) = 0;

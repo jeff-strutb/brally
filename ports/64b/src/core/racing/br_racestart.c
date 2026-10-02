@@ -264,9 +264,9 @@ void BrGlRaceStart(void)
   BrNop_1002E136();
   BrCursorPairSet(0);
   if (((*(int *)&g_brRaceRules.mode) == 1) || ((*(int *)&g_brRaceRules.mode) == 6)) {
-    *(unsigned short *)((*(int *)&g_aBrRaceCar[0].pEquip) + 0xf2) = 0xffff;
-    *(unsigned short *)((*(int *)&g_aBrRaceCar[0].pEquip) + 0xf0) = 0xffff;
-    *(unsigned short *)((*(int *)&g_aBrRaceCar[0].pEquip) + 0xf4) = 0xffff;
+    *(unsigned short *)((((intptr_t)(g_aBrRaceCar[0].pEquip))) + 0xf2) = 0xffff;
+    *(unsigned short *)((((intptr_t)(g_aBrRaceCar[0].pEquip))) + 0xf0) = 0xffff;
+    *(unsigned short *)((((intptr_t)(g_aBrRaceCar[0].pEquip))) + 0xf4) = 0xffff;
   }
   BrRaceEntrantCountSet(1);
   BrGameStepSet(BrPodNop);
@@ -296,10 +296,10 @@ void BrGlRaceStart(void)
     (*(int *)&g_brRaceNEntrant) = 1;
   }
   (*(int32_t *)&DAT_104b15e8) = g_226e80;
-  *(int *)((*(int *)&g_aBrRaceCar[0].pEquip) + 0xf8) = g_7b320;
-  *(int *)((*(int *)&g_aBrRaceCar[0].pEquip) + 0xfc) = g_7b324;
-  *(int *)((*(int *)&g_aBrRaceCar[0].pEquip) + 0x104) = g_7b328;
-  *(int *)((*(int *)&g_aBrRaceCar[0].pEquip) + 0x100) = g_7b32c;
+  *(int *)((((intptr_t)(g_aBrRaceCar[0].pEquip))) + 0xf8) = g_7b320;
+  *(int *)((((intptr_t)(g_aBrRaceCar[0].pEquip))) + 0xfc) = g_7b324;
+  *(int *)((((intptr_t)(g_aBrRaceCar[0].pEquip))) + 0x104) = g_7b328;
+  *(int *)((((intptr_t)(g_aBrRaceCar[0].pEquip))) + 0x100) = g_7b32c;
   BrPodNop();
   BrPodNop();
   BrPodNop();
