@@ -22,6 +22,7 @@
 #define BrSub100088B0 BrSub100088B0_cdecl
 #define BrSegSetBases BrSegSetBases_cdecl
 #include "slice1_05.h"   /* g_aBrEntRecs */
+#include "slice3_41.h"   /* BrDriverCar, the canonical record */
 #include "slice2_19.h"
 #undef BrSub100088B0
 #undef BrSegSetBases
@@ -41,9 +42,9 @@ typedef struct { void *p; } BrModelLoadArg;
 typedef struct { int r, g, b; } BrRgbSinkSetArgs;
 void BR_THISCALL1 BrRgbSinkSet(BrRgbSink *pSink, BrRgbSinkSetArgs a)
 {
-    pSink->r = (unsigned char)a.r;
-    pSink->g = (unsigned char)a.g;
-    pSink->b = (unsigned char)a.b;
+    (*(unsigned char *)&((BrDriverCar *)(pSink))->f29AC) = (unsigned char)a.r;
+    (*(unsigned char *)&((BrDriverCar *)(pSink))->f29AD) = (unsigned char)a.g;
+    (*(unsigned char *)&((BrDriverCar *)(pSink))->f29AE) = (unsigned char)a.b;
 }
 
 /* WHAT IT DOES: repaints a car by writing the chosen colour into the twelve

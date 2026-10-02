@@ -125,26 +125,26 @@ void BrSub_10017290(BrHudView *aViews)
     case 0u: case 1u: case 2u: case 6u:
         if ((*(int32_t *)&g_brMode0AA8B4) == 1) {
             BrHudDrawTimeEntry(BrStrGet(BR63_STR_10017290_A),
-                                g_aBr63Prefix, g_pBr63Race->timeC, x, y);
+                                g_aBr63Prefix, ((BrDriverCar *)g_pBr63Race)->tFinal, x, y);
         }
         /* `>=`, not `<`: the original's `jl` leaves the B arm INLINE and
          * jumps to the C arm, so B is the then-branch. */
-        if (g_pBr63Race->cLaps >= (*(int32_t *)&g_CBE8)) {
+        if (((BrDriverCar *)g_pBr63Race)->lap >= (*(int32_t *)&g_CBE8)) {
             BrHudDrawTimeEntry(BrStrGet(BR63_STR_10017290_B),
-                                g_aBr63Prefix, g_pBr63Race->timeB, x, y + dy);
+                                g_aBr63Prefix, ((BrDriverCar *)g_pBr63Race)->tBest, x, y + dy);
         } else {
             BrHudDrawTimeEntry(BrStrGet(BR63_STR_10017290_C),
-                                g_aBr63Prefix, g_pBr63Race->timeA, x, y + dy);
+                                g_aBr63Prefix, ((BrDriverCar *)g_pBr63Race)->tRun, x, y + dy);
         }
         break;
 
     case 3u:
         if ((*(int32_t *)&g_brMode0AA8B4) == 1) {
             BrHudDrawTimeEntry(BrStrGet(BR63_STR_10017290_B),
-                                g_aBr63Prefix, g_pBr63Race->timeB, x, y);
+                                g_aBr63Prefix, ((BrDriverCar *)g_pBr63Race)->tBest, x, y);
         }
         BrHudDrawTimeEntry(BrStrGet(BR63_STR_10017290_C),
-                            g_aBr63Prefix, g_pBr63Race->timeA, x, y + dy);
+                            g_aBr63Prefix, ((BrDriverCar *)g_pBr63Race)->tRun, x, y + dy);
         break;
 
     default:

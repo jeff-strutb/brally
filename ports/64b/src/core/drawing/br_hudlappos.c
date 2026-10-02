@@ -136,16 +136,16 @@ void BrSub_100173F0(BrHudView *aViews)
     x = aViews[0].x + 0x10;
 
     if (g_br100BCBF0 != 0) {
-        if ((*(Br70Race * *)&g_pBr63Race)->cSplits < (*(int32_t *)&g_CBE8) || (*(int32_t *)&g_brMode0AA8B4) == 1) {
+        if (((BrDriverCar *)g_pBr63Race)->lap < (*(int32_t *)&g_CBE8) || (*(int32_t *)&g_brMode0AA8B4) == 1) {
             const char *pszTag;
             y = aViews[g_BrEnvSection].y + 5;
-            if ((*(Br70Race * *)&g_pBr63Race)->cSplits < (*(int32_t *)&g_CBE8)) {
+            if (((BrDriverCar *)g_pBr63Race)->lap < (*(int32_t *)&g_CBE8)) {
                 if ((*(int32_t *)&g_brMode0AA8B4) == 2)
                     pszTag = "L";
                 else
                     pszTag = BrStrGet(BR70_STR_LAP_LONG);
                 sprintf(szBuf, "%%y1%s%d/%d", pszTag,
-                        (*(Br70Race * *)&g_pBr63Race)->cSplits + 1, (*(int32_t *)&g_CBE8));
+                        ((BrDriverCar *)g_pBr63Race)->lap + 1, (*(int32_t *)&g_CBE8));
             } else {
                 sprintf(szBuf, BrStrGet(BR70_STR_LAP_DONE));
             }
@@ -169,10 +169,10 @@ void BrSub_100173F0(BrHudView *aViews)
     BrSub_10019280();
     BrTextSetColors(0xFF, 0xF0, 0x7D, 0xFF, 0x78, 0);
 
-    sprintf(szBuf, "%d", (*(Br70Race * *)&g_pBr63Race)->pos + 1);
+    sprintf(szBuf, "%d", ((BrDriverCar *)g_pBr63Race)->fFF8 + 1);
 
     nudge = 0;
-    pos = (*(Br70Race * *)&g_pBr63Race)->pos;
+    pos = ((BrDriverCar *)g_pBr63Race)->fFF8;
     switch (pos - nudge) {
     case 0:
         pszSuffix = BrStrGet(BR70_STR_POS_0);
