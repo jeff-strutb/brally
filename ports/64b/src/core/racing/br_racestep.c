@@ -439,8 +439,6 @@ void BrExt_10033BB0(void);           /* 0x10033BB0, the particle tick */
  * below it (0x10AF3B14 indexed in ELEMENTS, stride 0x15B4 == 0x2B68/2 --
  * the same array seen as words, which is why the listing's index arithmetic
  * looks like a second table and is not). */
-#define BR_RS_ENTRANT0   0x10AF3B54
-#define BR_RS_ENTRANT_SZ 0x2B68
 
 /* WHAT IT DOES: the screen-wide effects for one frame of an actually-running
  * race, and the test that arms the fly-past.  Two colour submissions with the

@@ -601,7 +601,7 @@ char g_0A9850[24];  /* 0x100A9850 */
 char g_0A9868[16];  /* 0x100A9868 */
 char g_0A9878[12];  /* 0x100A9878 */
 char g_0A9884[116];  /* 0x100A9884 */
-BR_GLOBAL_EXTENT(int32_t, g_brAppContinue, , 0x34);  /* 0x100A98F8 */
+BR_GLOBAL_EXTENT(int32_t, g_brAppContinue, , 0x4);  /* 0x100A98F8 */
 int32_t (*s_apfnAppState[5])(void);  /* 0x100A9900 */
 uint32_t s17_colAA5D0[4];  /* 0x100A9930 */
 char BrDxMsgCreateSurfaceFailed[28];  /* 0x100A9940 */
@@ -812,9 +812,7 @@ float g_aBrAiDiffScale[48];  /* 0x100B30A8 */
 int32_t g_aBrRacePlaceMsg[20];  /* 0x100B3168 */
 BR_GLOBAL_EXTENT(void *, g_0B39B0, , 0xB4);  /* 0x100B31B8 */
 BR_GLOBAL_EXTENT(void *, g_0B3A68, , 0x3C);  /* 0x100B3270 */
-int DAT_100b32b0[3];  /* 0x100B32B0 */
-int DAT_100b32bc[1];  /* 0x100B32BC */
-int DAT_100b32c0[271];  /* 0x100B32C0 */
+int DAT_100b32b0[275];  /* 0x100B32B0; read also as 0x100B32BC and 0x100B32C0 */
 BR_GLOBAL_EXTENT(int32_t, g_br0B36FC, , 0x12C);  /* 0x100B36FC */
 char s_SAVING_LAST_LAP_INFO_100b382c[24];  /* 0x100B382C */
 char DAT_100b3844[20];  /* 0x100B3844 */
@@ -988,10 +986,7 @@ unsigned int g_BrPodCount;  /* 0x10272E88 */
 BR_GLOBAL_EXTENT(FILE *, g_BrPodFile, , 0x474);  /* 0x10272E8C */
 BrDPlayState g_BrDPlay;  /* 0x10273304 */
 int g_BrDPlayCrit[6];  /* 0x10273310 */
-BrDPlay *g_brP277B40;  /* 0x10273328 */
-HANDLE DAT_1027332c;  /* 0x1027332C */
-int32_t g_br277B48;  /* 0x10273330 */
-BR_GLOBAL_EXTENT(int, DAT_10273334, , 0x4);  /* 0x10273334 */
+BrDPlayCtx g_BrDPlayCtx;  /* 0x10273328 */
 void *DAT_1027333c;  /* 0x1027333C */
 uint32_t DAT_10273340;  /* 0x10273340 */
 void *DAT_10273344;  /* 0x10273344 */
@@ -1024,8 +1019,7 @@ int DAT_102e16bc;  /* 0x102E16BC */
 BR_GLOBAL_EXTENT(int, g_BrVisCarCount, , 0x4);  /* 0x102E16C0 */
 int g_BrVisCarIdx[17];  /* 0x102E16C8 */
 int g_BrVisFirstFar;  /* 0x102E170C */
-BR_GLOBAL_EXTENT(char, DAT_102e1710, , 0x47B7);  /* 0x102E1710 */
-BR_GLOBAL_EXTENT(uint8_t *, BrG_2E5EC8, , 0x78844);  /* 0x102E5EC8 */
+BR_GLOBAL_EXTENT(char, DAT_102e1710, , 0x7CFFF);  /* 0x102E1710 */
 unsigned short g_BrVisSpans[2048];  /* 0x1035E710 */
 float g_BrVisCarDot[16];  /* 0x1035F710 */
 int DAT_1035f750[32];  /* 0x1035F750 */
@@ -1047,10 +1041,7 @@ BrVec3 g_BrVisLightDir;  /* 0x1035FB90 */
 int DAT_1035fb9c;  /* 0x1035FB9C */
 void *g_BrVisLights;  /* 0x1035FBA0 */
 void *DAT_1035fba4;  /* 0x1035FBA4 */
-BR_GLOBAL_EXTENT(char, DAT_1035fba8, , 0x4447);  /* 0x1035FBA8 */
-BR_GLOBAL_EXTENT(uint8_t *, BrG_363FF0, , 0x310);  /* 0x10363FF0 */
-BR_GLOBAL_EXTENT(uint8_t *, BrG_364304, , 0xB4);  /* 0x10364304 */
-BR_GLOBAL_EXTENT(uint8_t *, BrG_3643BC, , 0x228E8);  /* 0x103643BC */
+BR_GLOBAL_EXTENT(char, DAT_1035fba8, , 0x270FF);  /* 0x1035FBA8 */
 unsigned char g_BrSpanPending[2048];  /* 0x10386CA8 */
 BR_GLOBAL_EXTENT(char, DAT_103874a8, , 0xF9FF);  /* 0x103874A8 */
 int DAT_10396ea8;  /* 0x10396EA8 */
@@ -1893,22 +1884,20 @@ BR_GLOBAL_EXTENT(uint32_t, g_brRacePathIndex, , 0x4);  /* 0x10AF07F0 */
 BrDriver g_aBrRaceDriver[20];  /* 0x10AF07F8 */
 BR_GLOBAL_EXTENT(struct BrVec3, DAT_10af11f8, , 0x4);  /* 0x10AF11F8 */
 BrDriverCar g_aBrRaceCar[16];  /* 0x10AF1208 */
-BR_GLOBAL_EXTENT(int32_t, g_brAiScanBestPt, , 0x10);  /* 0x10B1C888 */
-BR_GLOBAL_EXTENT(struct BrVec3, DAT_10b1c89c, , 0x3C);  /* 0x10B1C89C */
-BrVec3 g_aScanMidB[2];  /* 0x10B1C8E4 */
-BR_GLOBAL_EXTENT(BrVec3, g_brAiScanEndA, , 0x50);  /* 0x10B1C8FC */
+int32_t g_brAiScanBestPt;  /* 0x10B1C888 */
+/* the corridor scan's rows: br_vec.h */
+BrVec3 g_aScanMidA[9];     /* row 0x10B1C884 */
+BrVec3 g_aScanMidB[9];     /* row 0x10B1C8E4 */
 BrVec3 g_aScanOut3[8];  /* 0x10B1C958 */
 BrVec3 g_aBrAiScanA[8];  /* 0x10B1C9B8 */
 int32_t g_brAiScanFlag18;  /* 0x10B1CA18 */
 int DAT_10b1ca1c;  /* 0x10B1CA1C */
 BR_GLOBAL_EXTENT(int32_t, DAT_10b1ca20, , 0x4);  /* 0x10B1CA20 */
-BrVec3 g_aBrAiScanB[7];  /* 0x10B1CA28 */
-BrVec3 g_aScanCentre[3];  /* 0x10B1CA7C */
-BR_GLOBAL_EXTENT(BrVec3, g_brAiScanProbe, , 0x30);  /* 0x10B1CAA0 */
-BrVec3 g_aScanInsetB[2];  /* 0x10B1CADC */
-BrVec3 g_aScanHitA[6];  /* 0x10B1CAF4 */
-BrVec3 g_aScanInsetA[2];  /* 0x10B1CB3C */
-BR_GLOBAL_EXTENT(BrVec3, g_aScanHitB, [12], 0x4);  /* 0x10B1CB54 */
+BrVec3 g_aBrAiScanB[8];    /* 0x10B1CA28; [7] lies on the next row's [0] */
+BrVec3 g_aScanCentre[9];   /* row 0x10B1CA7C */
+BrVec3 g_aScanInsetB[9];   /* row 0x10B1CADC */
+BrVec3 g_aScanInsetA[9];   /* row 0x10B1CB3C */
+unsigned char g_abBrVarBlock40[0x40];  /* 0x10B1CBA8 */
 int32_t g_brAiBiasPos;  /* 0x10B1CBE8 */
 RcNode *g_brRacePathNode;  /* 0x10B1CBEC */
 uint32_t g_brPairStaticA[83];  /* 0x10B1CBF0 */

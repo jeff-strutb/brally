@@ -440,7 +440,7 @@ int FUN_1006bdd0(void)
 {
   int z;
   int i;
-  int *p;
+  BrSndVoice **p;
   int off;
   BrSndVoice *v;
   int a;
@@ -495,7 +495,7 @@ int FUN_1006bdd0(void)
     p = p + 1;
     i = i + 1;
     off = off + 0x18;
-  } while ((int)p < 0x100b5d3c);
+  } while (p < &BrSndVoices[465]);
   return 1;
 }
 

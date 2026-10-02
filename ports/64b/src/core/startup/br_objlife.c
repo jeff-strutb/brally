@@ -86,14 +86,14 @@ void BrFlagInit_1002F690(void)
 /* @implements 0x10067980 d3d BrWrap_10067980 */
 void BrWrap_10067980(void)
 {
-    BrVarSave(&g_0B3A68, (void *)(uintptr_t)0x10B1CBA8, 0x40);  /* Glide VA */
+    BrVarSave(&g_0B3A68, g_abBrVarBlock40, 0x40);
 }
 
 /* WHAT IT DOES: bind that 64-byte buffer without filling it. */
 /* @implements 0x100679A0 d3d BrWrap_100679A0 */
 void BrWrap_100679A0(void)
 {
-    BrVarLoad(&g_0B3A68, (void *)(uintptr_t)0x10B1CBA8);  /* Glide VA */
+    BrVarLoad(&g_0B3A68, g_abBrVarBlock40);
 }
 
 /* WHAT IT DOES: bind the same kind of buffer inside the caller's object. */

@@ -194,9 +194,10 @@ struct BrDPlay {
 
 /* 0x10A9D008. Only +0x08 is read (compared against 0x100AB3E0, and matched
  * against the slot ids at 0x10AA2538), so only +0x08 is modelled. */
-typedef struct BrOptUi {
-    int32_t f00, f04;
+typedef struct BrOptUi {      /* the BrDPlayCtx at 0x10273328 */
+    void   *f00, *f04;
     int32_t f08;
+    int32_t f0C, f10;
 } BrOptUi;
 
 /* 0x10AA29D8. Only +0x1C, and only ever `&= ~0x10`. */
@@ -710,10 +711,6 @@ int BrOpt40B0(BrGameObj *pGame);
 #ifdef __cplusplus
 extern "C" {
 #endif
-#pragma push_macro("g_brP277B40")
-#undef g_brP277B40
-extern BrDPlay *g_brP277B40;  /* 0x10273328 */
-#pragma pop_macro("g_brP277B40")
 #pragma push_macro("g_brPAA2908")
 #undef g_brPAA2908
 extern BrOptObj *g_brPAA2908;  /* 0x10AA2908 */

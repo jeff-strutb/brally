@@ -115,7 +115,7 @@ int BrDPlayCreate(void)
     g_guardB = 1;
   }
   iVar4 = g_guardB;
-  g_brPA9D008 = (int)&(*(int * *)&g_brP277B40);
+  g_brPA9D008 = (BrOptUi *)&g_BrDPlayCtx;
   if (iVar4 == 0) {
     (*(CC_std_5 *)&((void **)*(void ***)((*(int * *)&g_brP277B40)))[35])(
         (*(int * *)&g_brP277B40), (int)&DAT_10077500, (int)BrNetSessionStore, g_brOwner5BC72C, 0);
@@ -356,7 +356,7 @@ int FUN_100361a0(void *param_1, void *param_2, void *param_3, int param_4)   /* 
     uVar3 = (*(CC_std_5 *)&((void **)*(void ***)(((*(int * *)&g_brP277B40))))[12])((*(int * *)&g_brP277B40),param_1,param_2,param_3,param_4);
   }
   BrSlotsResetIfBZero();
-  uVar2 = BrSlotsFindById(*(int *)(g_brPA9D008 + 8));
+  uVar2 = BrSlotsFindById(g_brPA9D008->f08);
   BrSub1003D950(g_brPA9D008,uVar2);
   return uVar3;
 }

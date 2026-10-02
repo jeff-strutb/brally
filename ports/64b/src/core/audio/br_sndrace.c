@@ -84,7 +84,7 @@ void FUN_10061310(void)
     *piVar1 = iVar2;
     piVar1 = piVar1 + 6;
     iVar2 = iVar2 + 1;
-  } while ((int)piVar1 < 0x100b3508);
+  } while (piVar1 < &DAT_100b32b0[0] + (0x100b3508 - 0x100b32b0) / 4);
   BrSndBankClear();
   iVar2 = 0;
   if ((*(int *)&g_BrCarCount) > 0) {

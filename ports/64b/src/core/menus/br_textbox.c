@@ -55,19 +55,17 @@
 
 BrTextBox *__fastcall BrTextBoxInit(BrTextBox *pBox)
 {
-    char *p = (char *)pBox;
-
-    *(void **)p = (void *)&PTR_FUN_100776f0;
-    memset(p + 9, 0, 0x400);
-    *(int *)(p + 0x418) = 0;
-    *(int *)(p + 0x414) = 0;
-    *(int *)(p + 0x410) = 0;
-    *(short *)(p + 0x40C) = 0;
-    *(short *)(p + 0x40A) = 0;
-    *(short *)(p + 0x41C) = 0;
-    *(int *)(p + 0x420) = 0;
-    *(int *)(p + 4) = 0;
-    *(unsigned char *)(p + 8) = 1;
+    pBox->pVtbl = (const BrTextBoxVtbl *)g_brVtbl_100776F0;
+    memset(pBox->sz, 0, 0x400);
+    pBox->f418 = 0;
+    pBox->y = 0;
+    pBox->x = 0;
+    pBox->height = 0;
+    pBox->width = 0;
+    pBox->f41C = 0;
+    pBox->f420 = 0;
+    pBox->f04 = 0;
+    pBox->f08 = 1;
     return pBox;
 }
 

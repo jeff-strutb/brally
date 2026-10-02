@@ -50,11 +50,14 @@ def defs(text):
     return out
 
 
-def sizes32(names, open_arrays=()):
+def sizes32(names, open_arrays=(), exprs=None):
     """i686 sizeof of each name; for an array defined with an empty first
-    dimension, the size of one element."""
+    dimension, the size of one element. `exprs` maps a name to the operand
+    to measure instead (a padded global's declared type)."""
+    exprs = exprs or {}
     src = '#include "%s"\n' % GLOBALS_C
-    src += ''.join('const unsigned int __sz_%s = sizeof(%s%s);\n' % (n, n, '[0]' if n in open_arrays else '')
+    src += ''.join('const unsigned int __sz_%s = sizeof(%s);\n'
+                   % (n, exprs.get(n) or n + ('[0]' if n in open_arrays else ''))
                    for n in names)
     p = subprocess.run(['clang', '-target', 'i386-apple-macos10.13', '-I.'] + vm.FLAGS +
                        ['-x', 'c', '-std=gnu89', '-S', '-o', '-', '-'],
@@ -110,6 +113,17 @@ def main():
             ty = decl[:m.start('name') - m.start('decl')].strip()
             edits.append((m.start(), m.end(), 'BR_GLOBAL_EXTENT(%s, %s, %s, 0x%X);  /* 0x%08X */'
                           % (ty, name, m.group('dims'), ext - s, va)))
+    # already padded: the pad follows the extent when a neighbour went away
+    padded = [m for m in PADDED.finditer(text) if not m.group('dims').startswith('[]')]
+    psz = sizes32([m.group('name') for m in padded],
+                  exprs={m.group('name'): '%s%s' % (m.group('type'), m.group('dims')) for m in padded})
+    for m in padded:
+        va, name = int(m.group('va'), 16), m.group('name')
+        if va not in nxt or name not in psz:
+            continue
+        want = nxt[va] - va - psz[name]
+        if want > 0 and want != int(m.group('pad'), 16):
+            edits.append((m.start('pad'), m.end('pad'), '0x%X' % want))
     os.makedirs('build/portable', exist_ok=True)
     open('build/portable/overlaps.txt', 'w').write('\n'.join(over) + '\n')
     print('padded %d, overlapping %d (build/portable/overlaps.txt)' % (len(edits), len(over)))

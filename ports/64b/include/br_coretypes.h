@@ -188,6 +188,22 @@ typedef struct BrAiPathNode {
 
 typedef struct { float m[16]; } BrDlMtx;
 
+/* The 20-byte DirectPlay context 0x1000C5D0 builds and every other routine
+ * of the net layer carries; the game's one lives at 0x10273328 and
+ * 0x10AC4098 points at it.  The original also names its fields as globals. */
+typedef struct BrDPlayCtx {
+    struct BrDPlay4Obj *pDP;  /* +0x00 */
+    void        *hRecvEvent;  /* +0x04 */
+    uint32_t     idPlayer;    /* +0x08 */
+    int32_t      f0C;         /* +0x0C -- non-zero picks 0x1000C000 */
+    int32_t      f10;         /* +0x10 -- written once, never read */
+} BrDPlayCtx;
+extern BrDPlayCtx g_BrDPlayCtx;  /* 0x10273328 */
+#define g_brP277B40  (*(struct BrDPlay **)&g_BrDPlayCtx.pDP)   /* 0x10273328 */
+#define DAT_1027332c (g_BrDPlayCtx.hRecvEvent)                 /* 0x1027332C */
+#define g_br277B48   (*(int32_t *)&g_BrDPlayCtx.idPlayer)      /* 0x10273330 */
+#define DAT_10273334 (g_BrDPlayCtx.f0C)                        /* 0x10273334 */
+
 /* one entry of the error table at 0x100ABE00 */
 typedef struct BrErrEnt {
     int32_t  fFatal;   /* +0x00 -- non-zero: terminate with code 1 */

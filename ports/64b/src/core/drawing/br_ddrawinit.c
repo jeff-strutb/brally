@@ -47,7 +47,7 @@
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 
-typedef void (__fastcall *BrVt0)(int this);
+typedef void (__fastcall *BrVt0)(void *self);
 
 /* WHAT IT DOES: set up the bitmap table the menus draw from. Allocates the
  * off-screen font surface on first call; when the "already inited" flag is
@@ -68,10 +68,9 @@ typedef void (__fastcall *BrVt0)(int this);
 int FUN_100583c0(void)
 {
   char buf[0x100];
-  int *p;
+  Img *p;
   int i;
   struct BrSurf *h;
-  BrVt0 pfn;
 
   if (DAT_10ac5d84 == 0) {
     DAT_10ac5d84 = BrSurfNew(BrGbiRectG_A7514, BrGbiRectG_A7518);
@@ -81,29 +80,27 @@ int FUN_100583c0(void)
     }
   }
   if (DAT_10ac5dc4 != 0) {
-    (*(int *)&g_img) = BrBmpLoadSurface(s_images_loading_bmp_100ad71c, 0, 0);
-    if ((((intptr_t)(g_img[0].path))) != 0 && (*(int *)&g_img) == 0) {
+    g_img[0].surf = BrBmpLoadSurface(s_images_loading_bmp_100ad71c, 0, 0);
+    if (g_img[0].path != 0 && g_img[0].surf == 0) {
       sprintf(buf, s_DDraw_DoInit__loading_bmp_failed_100ad6f0);
       BrFontFreeAndExit();
       return;
     }
-    pfn = *(BrVt0 *)(*(int *)g_brPAA29B8 + 0x20);
-    pfn(g_brPAA29B8);
-    BrSprFontDraw(0, 0, 0, (int)&(*(int *)&g_aBrUiSprite[4]), (*(int *)&g_aBrUiSprite[20]));
-    pfn = *(BrVt0 *)(*(int *)g_brPAA29B8 + 0x14);
-    pfn(g_brPAA29B8);
-    if ((*(int *)&g_img) != 0) {
-      BrSurfFree((*(int *)&g_img));
-      (*(int *)&g_img) = 0;
+    BR_VFN(g_brPAA29B8, 8, BrVt0)(g_brPAA29B8);
+    BrSprFontDraw(0, 0, 0, g_aBrUiSprite[0].rect, g_aBrUiSprite[0].fBlit);
+    BR_VFN(g_brPAA29B8, 5, BrVt0)(g_brPAA29B8);
+    if (g_img[0].surf != 0) {
+      BrSurfFree(g_img[0].surf);
+      g_img[0].surf = 0;
     }
   }
-  p = &(*(int *)&g_img[0].path);
+  p = &g_img[0];
   DAT_10ac5dc4 = DAT_10ac5dc4 + 1;
   i = 0;
   for (;;) {
-    if (*p != 0) {
-      h = (p[-1] = BrBmpLoadSurface((char *)*p, 0, 0));
-      if (*p != 0 && h == 0) {
+    if (p->path != 0) {
+      h = (struct BrSurf *)(p->surf = BrBmpLoadSurface(p->path, 0, 0));
+      if (p->path != 0 && h == 0) {
         sprintf(buf, s_DDraw_DoInit__Bitmap__d_failed_t_100ad6c8, i);
         BrFontFreeAndExit();
         return;
@@ -111,9 +108,9 @@ int FUN_100583c0(void)
       *(short *)&DAT_10ac5c2c = (short)(*(short *)&DAT_10ac5c2c + 1);
       BrSurfSetColourKey(h, 0xff00);
     }
-    p = p + 2;
+    p = p + 1;
     i = i + 1;
-    if ((int)p >= 0x10ac5874) {
+    if (p >= &g_img[145]) {
       break;
     }
   }

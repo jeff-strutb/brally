@@ -18,14 +18,6 @@
 /* MVP matrix, 4x4 row-major at 0x105D1760. */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-#define DAT_105d1770 (*(float *)0x105d1770)
-#define DAT_105d1774 (*(float *)0x105d1774)
-#define DAT_105d1778 (*(float *)0x105d1778)
-#define DAT_105d177c (*(float *)0x105d177c)
-#define DAT_105d1780 (*(float *)0x105d1780)
-#define DAT_105d1784 (*(float *)0x105d1784)
-#define DAT_105d1788 (*(float *)0x105d1788)
-#define DAT_105d178c (*(float *)0x105d178c)
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */          /* fLightCached */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */          /* nLights */

@@ -674,20 +674,19 @@ static BrClipVert s_aClipSeed[3];                 /* the three &vtx->f40 */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 static void br_dl_clip_reset(void)
 {
-    int a;
-    int c;
+    int i;
+    BrClipVert *c;
 
     DAT_10b73530 = ((void (*)(void *))BrFramePresent);
     DAT_10b73534 = ((funcptr)FUN_10023aa0);
     DAT_10b7352c = ((funcptr)BrPodNop);
-    /* xor ecx; mov eax, pool-hi -- c=0 must precede the address load. */
+    /* the free list over the 64-entry pool (0x105CCFF0..0x105CD9C8 in the
+     * original): built from the last entry down, so it starts at entry 0 */
     c = 0;
-    a = 0x105cd9c8;
-    do {
-        *(int *)a = c;
-        c = a;
-        a -= 0x28;
-    } while (a >= 0x105ccff0);
+    for (i = 63; i >= 0; i--) {
+        s_aClipPool[i].pNext = c;
+        c = &s_aClipPool[i];
+    }
     g_pClipFree = c;
     DAT_105ccfe8 = 0;
     DAT_100a9a50 = 1;

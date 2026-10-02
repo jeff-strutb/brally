@@ -237,14 +237,14 @@ extern BrVec3 g_BrCamCentreCopy;  /* 0x106EA3DC */
 #undef g_BrCamExtentR
 extern BrVec3 g_BrCamExtentR;  /* 0x106EC788 */
 #pragma pop_macro("g_BrCamExtentR")
+#pragma push_macro("g_aScanMidA")
+#undef g_aScanMidA
+extern BrVec3 g_aScanMidA[];  /* row 0x10B1C884 */
+#pragma pop_macro("g_aScanMidA")
 #pragma push_macro("g_aScanMidB")
 #undef g_aScanMidB
 extern BrVec3 g_aScanMidB[];  /* 0x10B1C8E4 */
 #pragma pop_macro("g_aScanMidB")
-#pragma push_macro("g_brAiScanEndA")
-#undef g_brAiScanEndA
-extern BrVec3 g_brAiScanEndA;  /* 0x10B1C8FC */
-#pragma pop_macro("g_brAiScanEndA")
 #pragma push_macro("g_aScanOut3")
 #undef g_aScanOut3
 extern BrVec3 g_aScanOut3[];  /* 0x10B1C958 */
@@ -261,26 +261,21 @@ extern BrVec3 g_aBrAiScanB[];  /* 0x10B1CA28 */
 #undef g_aScanCentre
 extern BrVec3 g_aScanCentre[];  /* 0x10B1CA7C */
 #pragma pop_macro("g_aScanCentre")
-#pragma push_macro("g_brAiScanProbe")
-#undef g_brAiScanProbe
-extern BrVec3 g_brAiScanProbe;  /* 0x10B1CAA0 */
-#pragma pop_macro("g_brAiScanProbe")
 #pragma push_macro("g_aScanInsetB")
 #undef g_aScanInsetB
 extern BrVec3 g_aScanInsetB[];  /* 0x10B1CADC */
 #pragma pop_macro("g_aScanInsetB")
-#pragma push_macro("g_aScanHitA")
-#undef g_aScanHitA
-extern BrVec3 g_aScanHitA[];  /* 0x10B1CAF4 */
-#pragma pop_macro("g_aScanHitA")
 #pragma push_macro("g_aScanInsetA")
 #undef g_aScanInsetA
 extern BrVec3 g_aScanInsetA[];  /* 0x10B1CB3C */
 #pragma pop_macro("g_aScanInsetA")
-#pragma push_macro("g_aScanHitB")
-#undef g_aScanHitB
-extern BrVec3 g_aScanHitB[];  /* 0x10B1CB54 */
-#pragma pop_macro("g_aScanHitB")
+/* The corridor scan (0x1005D060) keeps five rows of vertices indexed by
+ * depth 1..8 (base + depth * 12; [0] lies on whatever precedes the row).
+ * The original's other names in that span are [2] of a row. */
+#define g_brAiScanEndA  (g_aScanMidB[2])                         /* 0x10B1C8FC */
+#define g_brAiScanProbe (g_aScanCentre[2])                       /* 0x10B1CAA0 */
+#define g_aScanHitA     (*(BrVec3 (*)[7])&g_aScanInsetB[2])      /* 0x10B1CAF4 */
+#define g_aScanHitB     (*(BrVec3 (*)[7])&g_aScanInsetA[2])      /* 0x10B1CB54 */
 #pragma push_macro("g_brRacePathPos")
 #undef g_brRacePathPos
 extern BrVec3 g_brRacePathPos;  /* 0x10B1CE98 */

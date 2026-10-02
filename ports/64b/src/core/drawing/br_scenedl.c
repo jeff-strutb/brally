@@ -1412,7 +1412,7 @@ draw:
                         OUTM(14) = scale * OUTM(14);
                         OUTM(15) = scale * OUTM(15);
                     }
-                    BrGuMtxStore((float *)0x106e78f0, pM);
+                    BrGuMtxStore((float *)&g_BrDrawCombined, pM);
                     EMIT(0x39e0010, pM);
                     EMIT(0x3980010, pM + 4);
                     EMIT(0x39a0010, pM + 8);

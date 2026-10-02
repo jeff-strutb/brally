@@ -363,10 +363,10 @@ int BrComHolderRelease(void)
   int uVar2;
   
   uVar2 = 0;
-  if ((((*(int * *)&g_brPA9D008) != (int *)0x0) && (piVar1 = (int *)*(*(int * *)&g_brPA9D008), piVar1 != (int *)0x0)) &&
-     ((*(int * *)&g_brPA9D008)[2] != 0)) {
-    uVar2 = (*(CC_std_2 *)&((void **)*(void ***)((piVar1)))[9])(piVar1,(*(int * *)&g_brPA9D008)[2]);
-    (*(int * *)&g_brPA9D008)[2] = 0;
+  if (((g_brPA9D008 != 0) && (piVar1 = (int *)g_brPA9D008->f00, piVar1 != (int *)0x0)) &&
+     (g_brPA9D008->f08 != 0)) {
+    uVar2 = (*(CC_std_2 *)&((void **)*(void ***)((piVar1)))[9])(piVar1,g_brPA9D008->f08);
+    g_brPA9D008->f08 = 0;
   }
   return uVar2;
 }

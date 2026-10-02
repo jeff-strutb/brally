@@ -192,15 +192,15 @@ void BrViewBuffersRebase(void)
   /* ABSOLUTE base addresses (add ecx,imm32, no reloc) -- the same
    * absolute-address spelling br_scenedl.c proved for its row transforms;
    * a symbol base emits lea reg,[reg+disp32] instead. */
-  DAT_1035f7d8 = 0x1035fba8 + (*(int *)((char *)&g_aBrEntRecs + 0x4C)) * 80000;
-  DAT_102e16b0 = 0x1035fba8 + (*(int *)((char *)&g_aBrEntRecs + 0x4C)) * 80000;
+  DAT_1035f7d8 = (int *)((char *)&DAT_1035fba8 + (*(int *)((char *)&g_aBrEntRecs + 0x4C)) * 80000);
+  DAT_102e16b0 = (int *)((char *)&DAT_1035fba8 + (*(int *)((char *)&g_aBrEntRecs + 0x4C)) * 80000);
   /* RESIDUE (4B): the 32000 product's last lea lands in edx and folds the
    * base add into a lea (orig keeps ecx and a plain add) -- coalescing
    * residue; temp-binding and addend order probed, both no better. */
-  DAT_1035faec = 0x103874a8 + (*(int *)((char *)&g_aBrEntRecs + 0x4C)) * 32000;
-  DAT_1035fba4 = 0x103874a8 + (*(int *)((char *)&g_aBrEntRecs + 0x4C)) * 32000;
-  DAT_102e16ac = 0x102e1710 + (*(int *)((char *)&g_aBrEntRecs + 0x4C)) * 0x3e800;
-  DAT_1035f7dc = 0x102e1710 + (*(int *)((char *)&g_aBrEntRecs + 0x4C)) * 0x3e800;
+  DAT_1035faec = (float *)((char *)&DAT_103874a8 + (*(int *)((char *)&g_aBrEntRecs + 0x4C)) * 32000);
+  DAT_1035fba4 = (void *)((char *)&DAT_103874a8 + (*(int *)((char *)&g_aBrEntRecs + 0x4C)) * 32000);
+  DAT_102e16ac = (void *)((char *)&DAT_102e1710 + (*(int *)((char *)&g_aBrEntRecs + 0x4C)) * 0x3e800);
+  DAT_1035f7dc = (uint32_t *)((char *)&DAT_102e1710 + (*(int *)((char *)&g_aBrEntRecs + 0x4C)) * 0x3e800);
   return;
 }
 /* 64-bit core: declared once, in br_globals.h or its struct's header */

@@ -2881,14 +2881,10 @@ extern void *g_0B3A68;  /* 0x100B3270 */
 #undef DAT_100b32b0
 extern int DAT_100b32b0[];  /* 0x100B32B0 */
 #pragma pop_macro("DAT_100b32b0")
-#pragma push_macro("DAT_100b32bc")
-#undef DAT_100b32bc
-extern int DAT_100b32bc[];  /* 0x100B32BC */
-#pragma pop_macro("DAT_100b32bc")
-#pragma push_macro("DAT_100b32c0")
-#undef DAT_100b32c0
-extern int DAT_100b32c0[];  /* 0x100B32C0 */
-#pragma pop_macro("DAT_100b32c0")
+/* 0x100B32BC and 0x100B32C0 are fields of the stride-24 table at
+ * 0x100B32B0, indexed through their own names in the original */
+#define DAT_100b32bc (DAT_100b32b0 + 3)
+#define DAT_100b32c0 (DAT_100b32b0 + 4)
 #pragma push_macro("g_br0B36FC")
 #undef g_br0B36FC
 extern int32_t g_br0B36FC;  /* 0x100B36FC */
@@ -3529,18 +3525,6 @@ extern FILE *g_BrPodFile;  /* 0x10272E8C */
 #undef g_BrDPlayCrit
 extern int g_BrDPlayCrit[6];  /* 0x10273310 */
 #pragma pop_macro("g_BrDPlayCrit")
-#pragma push_macro("DAT_1027332c")
-#undef DAT_1027332c
-extern HANDLE DAT_1027332c;  /* 0x1027332C */
-#pragma pop_macro("DAT_1027332c")
-#pragma push_macro("g_br277B48")
-#undef g_br277B48
-extern int32_t g_br277B48;  /* 0x10273330 */
-#pragma pop_macro("g_br277B48")
-#pragma push_macro("DAT_10273334")
-#undef DAT_10273334
-extern int DAT_10273334;  /* 0x10273334 */
-#pragma pop_macro("DAT_10273334")
 #pragma push_macro("DAT_1027333c")
 #undef DAT_1027333c
 extern void *DAT_1027333c;  /* 0x1027333C */
@@ -3645,10 +3629,6 @@ extern int g_BrVisFirstFar;  /* 0x102E170C */
 #undef DAT_102e1710
 extern char DAT_102e1710;  /* 0x102E1710 */
 #pragma pop_macro("DAT_102e1710")
-#pragma push_macro("BrG_2E5EC8")
-#undef BrG_2E5EC8
-extern uint8_t *BrG_2E5EC8;  /* 0x102E5EC8 */
-#pragma pop_macro("BrG_2E5EC8")
 #pragma push_macro("g_BrVisSpans")
 #undef g_BrVisSpans
 extern unsigned short g_BrVisSpans[];  /* 0x1035E710 */
@@ -3725,18 +3705,6 @@ extern void *DAT_1035fba4;  /* 0x1035FBA4 */
 #undef DAT_1035fba8
 extern char DAT_1035fba8;  /* 0x1035FBA8 */
 #pragma pop_macro("DAT_1035fba8")
-#pragma push_macro("BrG_363FF0")
-#undef BrG_363FF0
-extern uint8_t *BrG_363FF0;  /* 0x10363FF0 */
-#pragma pop_macro("BrG_363FF0")
-#pragma push_macro("BrG_364304")
-#undef BrG_364304
-extern uint8_t *BrG_364304;  /* 0x10364304 */
-#pragma pop_macro("BrG_364304")
-#pragma push_macro("BrG_3643BC")
-#undef BrG_3643BC
-extern uint8_t *BrG_3643BC;  /* 0x103643BC */
-#pragma pop_macro("BrG_3643BC")
 #pragma push_macro("g_BrSpanPending")
 #undef g_BrSpanPending
 extern unsigned char g_BrSpanPending[];  /* 0x10386CA8 */
@@ -6745,10 +6713,11 @@ extern struct BrVec3 DAT_10af11f8;  /* 0x10AF11F8 */
 #undef g_brAiScanBestPt
 extern int32_t g_brAiScanBestPt;  /* 0x10B1C888 */
 #pragma pop_macro("g_brAiScanBestPt")
-#pragma push_macro("DAT_10b1c89c")
-#undef DAT_10b1c89c
-extern struct BrVec3 DAT_10b1c89c;  /* 0x10B1C89C */
-#pragma pop_macro("DAT_10b1c89c")
+#define DAT_10b1c89c (g_aScanMidA[2])  /* 0x10B1C89C, br_vec.h */
+#pragma push_macro("g_abBrVarBlock40")
+#undef g_abBrVarBlock40
+extern unsigned char g_abBrVarBlock40[0x40];  /* 0x10B1CBA8 */
+#pragma pop_macro("g_abBrVarBlock40")
 #pragma push_macro("g_brAiScanFlag18")
 #undef g_brAiScanFlag18
 extern int32_t g_brAiScanFlag18;  /* 0x10B1CA18 */

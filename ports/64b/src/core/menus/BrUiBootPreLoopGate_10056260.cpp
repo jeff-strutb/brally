@@ -71,11 +71,7 @@ int BrUiBootPreLoopGate(void)
     Phase *ph;
     Obj400 *ob;
 
-    n = 0x122;
-    q = (int *)g_img;
-    for (; n != 0; n--) {
-        *q++ = 0;
-    }
+    memset(g_img, 0, sizeof g_img);     /* 0x122 dwords */
     (*(unsigned short *)&DAT_10ac5c2c) = 0;
     g_wAC5D50 = 0;
     g_wAC5D54 = 0;

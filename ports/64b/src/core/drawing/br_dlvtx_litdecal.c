@@ -62,13 +62,9 @@
 #include <dsound.h>
 /* y column and the three colour-scale factors are absolute derefs: that
  * operand kind takes the fld side over the vertex field. */
-#define DAT_105d1770 (*(float *)0x105d1770)
-#define DAT_105d1774 (*(float *)0x105d1774)
-#define DAT_105d1778 (*(float *)0x105d1778)
-#define DAT_105d177c (*(float *)0x105d177c)
-#define DAT_105ccd44 (*(float *)0x105ccd44)
-#define DAT_105cd9f4 (*(float *)0x105cd9f4)
-#define DAT_105cccf8 (*(float *)0x105cccf8)
+#define DAT_105ccd44 BrGbiRectG_5CCD44
+#define DAT_105cd9f4 BrGbiRectG_5CD9F4
+#define DAT_105cccf8 BrGbiRectG_5CCCF8
 /* BrDlMtx: br_coretypes.h */
 typedef struct {
     unsigned char col[4];

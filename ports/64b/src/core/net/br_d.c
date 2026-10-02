@@ -21,8 +21,8 @@
 void BrDPlayMsg6SendSelf(void)
 
 {
-  if ((g_brPA9D008 != 0) && (*(int *)(g_brPA9D008 + 8) != 0)) {
-    BrSub1003DA90(g_brPA9D008,*(int *)(g_brPA9D008 + 8));
+  if ((g_brPA9D008 != 0) && (g_brPA9D008->f08 != 0)) {
+    BrSub1003DA90(g_brPA9D008,g_brPA9D008->f08);
   }
   return;
 }

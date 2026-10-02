@@ -309,15 +309,15 @@ int BrSndVoiceBufIsPlaying(BrSfxVoice *pVoice)
 int BrSndBankClear(void)
 
 {
-  int *puVar1;
-  
-  puVar1 = &g_0B6C00;
-  do {
-    puVar1[-0x1b0] = 0;
-    *puVar1 = 0;
-    puVar1[0x12] = 0;
-    puVar1 = puVar1 + 1;
-  } while ((int)puVar1 < 0x100b6444);
+  int i;
+
+  /* the original walks 0x100B6408 and reaches the other two tables at
+   * -0x6C0 and +0x48 from the same cursor: fifteen dwords of each */
+  for (i = 0; i < 15; i++) {
+    ((int32_t *)g_0B6540)[i] = 0;
+    ((int32_t *)g_0B6C00)[i] = 0;
+    ((int32_t *)g_0B6C48)[i] = 0;
+  }
   return;
 }
 

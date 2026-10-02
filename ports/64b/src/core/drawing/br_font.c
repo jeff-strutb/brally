@@ -952,19 +952,19 @@ int BrFontTexCreateAlt(void)
 void BrFontTexFreeAll(void)
 
 {
-  int *piVar1;
+  Img *piVar1;
   int iVar2;
 
   iVar2 = 0;
   if ((unsigned short)DAT_10ac5c2c > 0) {
-    piVar1 = &(*(int *)&g_img);
+    piVar1 = g_img;
     do {
-      if (*piVar1 != 0) {
-        BrSurfFree(*piVar1);
-        *piVar1 = 0;
+      if (piVar1->surf != 0) {
+        BrSurfFree(piVar1->surf);
+        piVar1->surf = 0;
       }
       iVar2 = iVar2 + 1;
-      piVar1 = piVar1 + 2;
+      piVar1 = piVar1 + 1;
     } while (iVar2 < (int)(DAT_10ac5c2c & 0xffff));
   }
   if (DAT_10ac5d84 != 0) {
@@ -997,7 +997,7 @@ int BrSprFontDraw(int param_1,int param_2,unsigned int param_3,int *param_4,
                  int param_5)
 
 {
-  BrUiSprBlit(DAT_10ac5d84,param_1,param_2,(*(int *)&g_img[((param_3 & 0xffff))]),param_4,param_5)
+  BrUiSprBlit(DAT_10ac5d84,param_1,param_2,g_img[param_3 & 0xffff].surf,param_4,param_5)
   ;
   return;
 }

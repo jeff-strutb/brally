@@ -125,13 +125,11 @@ void __stdcall BrPhaseShutdown_10048B20(int bPartial)
         (*(int *)&g_AC300) = 0;
         g_brPAA29B8 = 0;
         BrFontTexFreeAll();
-        p = &(*(int *)&g_img[0].path);
-        do {
-            if (*(void **)p != 0)
-                operator delete(*(void **)p);
-            *p = 0;
-            p += 2;
-        } while ((uintptr_t)p < (uintptr_t)&(*(int *)&g_aBrAA2518[4]));
+        for (Img *pi = g_img; pi < &g_img[145]; pi++) {   /* to 0x10AC5874 */
+            if (pi->path != 0)
+                operator delete(pi->path);
+            pi->path = 0;
+        }
     }
 
     if ((*(Ph * *)&g_5C98) != 0) {

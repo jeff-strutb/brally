@@ -168,13 +168,7 @@ typedef struct BrDPlay4Obj {
 /* The 20-byte record 0x1000C5D0 builds and every other routine here carries.
  * Only +0x00, +0x04 and +0x08 are ever read; +0x0C selects the dispatcher in
  * 0x1000C170 and +0x10 is only ever zeroed. */
-typedef struct BrDPlayCtx {
-    BrDPlay4Obj *pDP;         /* +0x00 */
-    void        *hRecvEvent;  /* +0x04 */
-    uint32_t     idPlayer;    /* +0x08 */
-    int32_t      f0C;         /* +0x0C -- non-zero picks 0x1000C000 */
-    int32_t      f10;         /* +0x10 -- written once, never read */
-} BrDPlayCtx;
+/* BrDPlayCtx: br_coretypes.h (0x10273328 is one) */
 
 /* A DirectPlay system message, as far as this packet reads one. Offsets 0x20
  * and 0x24 are the DPNAME.lpszShortNameA of DPMSG_CREATEPLAYERORGROUP and

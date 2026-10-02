@@ -3487,7 +3487,7 @@ void BrRaceHudFrame(void);
 #pragma pop_macro("BrRaceHudFrame")
 #pragma push_macro("BrRaceIconLookup")
 #undef BrRaceIconLookup
-int BrRaceIconLookup(int);
+int BrRaceIconLookup(struct BrUiCtl_ *);
 #pragma pop_macro("BrRaceIconLookup")
 #pragma push_macro("BrRacePathAdvance")
 #undef BrRacePathAdvance
@@ -3499,7 +3499,7 @@ int BrRacePosCopy(float *, float *);
 #pragma pop_macro("BrRacePosCopy")
 #pragma push_macro("BrRacePosIconSet")
 #undef BrRacePosIconSet
-int BrRacePosIconSet(int);
+int BrRacePosIconSet(struct BrUiCtl_ *);
 #pragma pop_macro("BrRacePosIconSet")
 #pragma push_macro("BrRaceSaveLastLapInfo")
 #undef BrRaceSaveLastLapInfo

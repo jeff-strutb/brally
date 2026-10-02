@@ -139,17 +139,17 @@ int BrDpShutdown(void)
   void *pObj;
 
   BrSub1003D070();
-  pObj = (void *)(*(int * *)&g_brPA9D008)[0];
+  pObj = g_brPA9D008->f00;
   if (pObj != 0) {
-    if ((*(int * *)&g_brPA9D008)[2] != 0) {
-      (*(BrDpCall2 *)(*(char **)pObj + 0x24))(pObj, (*(int * *)&g_brPA9D008)[2]);  /* DestroyPlayer */
-      (*(int * *)&g_brPA9D008)[2] = 0;
+    if (g_brPA9D008->f08 != 0) {
+      BR_VFN(pObj, 0x24 / 4, BrDpCall2)(pObj, g_brPA9D008->f08);  /* DestroyPlayer */
+      g_brPA9D008->f08 = 0;
     }
-    pObj = (void *)(*(int * *)&g_brPA9D008)[0];
-    (*(BrDpCall1 *)(*(char **)pObj + 0x10))(pObj);                     /* Close */
-    pObj = (void *)(*(int * *)&g_brPA9D008)[0];
-    (*(BrDpCall1 *)(*(char **)pObj + 0x08))(pObj);                     /* Release */
-    (*(int * *)&g_brPA9D008)[0] = 0;
+    pObj = g_brPA9D008->f00;
+    BR_VFN(pObj, 0x10 / 4, BrDpCall1)(pObj);                     /* Close */
+    pObj = g_brPA9D008->f00;
+    BR_VFN(pObj, 0x08 / 4, BrDpCall1)(pObj);                     /* Release */
+    g_brPA9D008->f00 = 0;
   }
   g_brP277B40 = 0;
   DAT_10ac4094 = DAT_10ac4094 - 1;
