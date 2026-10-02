@@ -16,6 +16,11 @@ Remastered vertex follows: its eight nearest among the body, cabin, detail
 and glass lists (not the headlight beams), weighted by a Gaussian of the
 distance (sigma 0.22 m) and normalised.  <mesh>_dent.bin: "RDN1", vertex
 count, the source vertex count, then per vertex u16 index[8], f32 weight[8].
+
+dent_rest.bin is the walk's vertices before any dent, in the game's own units
+(the model's integers, 255 to the metre): "RDR1", count, then f32 xyz each.
+The dents are measured against it, so the car can be switched to Remastered
+after it has already been knocked.
 """
 import os, struct, sys
 import numpy as np
@@ -61,6 +66,8 @@ def main():
     rca, pack = sys.argv[1], sys.argv[2]
     P, use = rest_vertices(rca)
     idx_all = np.nonzero(use)[0]
+    with open(os.path.join(pack, 'dent_rest.bin'), 'wb') as f:
+        f.write(b'RDR1' + struct.pack('<I', len(P)) + (P * 255.0).astype('<f4').tobytes())
     tree = cKDTree(P[idx_all])
     print(f'{len(P)} original vertices in the dent walk, {len(idx_all)} followed')
     for name in ('body', 'glass', 'body_lod1', 'glass_lod1', 'body_lod2', 'glass_lod2'):

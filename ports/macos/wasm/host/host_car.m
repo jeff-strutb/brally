@@ -308,8 +308,13 @@ static rec g_rec[16];
 /* the original model's vertices, in BrRippleApply's walk order, and where
  * they were before the car's first dent; one per model record (car) */
 #define DENT_MAX 512
-typedef struct { u32 model; int n; u32 addr[DENT_MAX]; float rest[DENT_MAX][3]; } dentsrc;
+typedef struct { u32 model; int n, have_rest; u32 addr[DENT_MAX]; float rest[DENT_MAX][3]; } dentsrc;
 static dentsrc g_dsrc[16];
+/* dent_rest.bin (remaster_dent.py): the walk's vertices before any dent, from
+ * the source model, so a car already knocked when Remastered is switched on
+ * is measured against its true shape, not against itself */
+static float *g_rest;
+static int g_nrest;
 static id<MTLBuffer> g_dbuf[3], g_dummy;
 static id<MTLTexture> g_flatn;          /* a flat normal map */
 static float g_mainP[16];
@@ -453,6 +458,18 @@ static void setup(id<MTLDevice> dev)
         !load_mesh(dir, @"proxy", &g_proxy, 0, 1))
         return;
     if (!load_mesh(dir, @"glass", &g_glass, 0, 0)) g_glass.ni = 0;   /* optional: no windows */
+    {
+        NSData *rd = [NSData dataWithContentsOfFile:[dir stringByAppendingPathComponent:@"dent_rest.bin"]];
+        u32 rn;
+        if (rd.length >= 8 && !memcmp(rd.bytes, "RDR1", 4)) {
+            memcpy(&rn, (const u8 *)rd.bytes + 4, 4);
+            if (rn <= DENT_MAX && rd.length >= 8 + (size_t)rn * 12) {
+                g_rest = malloc((size_t)rn * 12);
+                memcpy(g_rest, (const u8 *)rd.bytes + 8, (size_t)rn * 12);
+                g_nrest = (int)rn;
+            }
+        }
+    }
     for (g_nlod = 1; g_nlod < 3; g_nlod++) {          /* optional: the lower levels, sharing level 0's maps */
         NSString *sfx = [NSString stringWithFormat:@"_lod%d", g_nlod];
         mesh *b = &g_bodyl[g_nlod], *w = &g_wheell[g_nlod], *gl = &g_glassl[g_nlod];
@@ -582,10 +599,27 @@ static int dent_update(u32 car, int slot)
     for (i = 0; i < 16 && !d; i++) if (!g_dsrc[i].model) { d = &g_dsrc[i]; d->model = model; d->n = dent_walk(model, d->addr); }
     if (!d || d->n != g_body.dm_src) return 0;
     for (i = 0; i < 8; i++) if (W_LD(s16, car, 0x29C8 + 2 * i)) fresh = 0;   /* the zones' running totals */
+    /* without the source model's shape, only a car seen before its first
+     * dent can be followed (its shape is learnt then) */
+    if (!fresh && !d->have_rest && g_nrest != d->n) return 0;
     out = (float *)g_dbuf[g_rec_serial % 3].contents + (size_t)slot * DENT_MAX * 4;
+    if (!d->have_rest && g_nrest == d->n) {
+        memcpy(d->rest, g_rest, (size_t)d->n * 12);
+        d->have_rest = 1;
+    }
+    if (fresh && getenv("BR_DENTLOG") && g_nrest == d->n) {
+        static int once;
+        float mx = 0;
+        for (i = 0; i < d->n && !once; i++) {
+            int k;
+            for (k = 0; k < 3; k++) { float e = fabsf(W_LD(f32, d->addr[i], 4 * k) - g_rest[3 * i + k]); if (e > mx) mx = e; }
+        }
+        if (!once) fprintf(stderr, "dent: undented car vs dent_rest.bin, largest difference %g\n", mx);
+        once = 1;
+    }
     for (i = 0; i < d->n; i++) {
         float c[3] = { W_LD(f32, d->addr[i], 0), W_LD(f32, d->addr[i], 4), W_LD(f32, d->addr[i], 8) };
-        if (fresh) memcpy(d->rest[i], c, sizeof c);     /* no dent yet: this is its shape */
+        if (fresh && g_nrest != d->n) { memcpy(d->rest[i], c, sizeof c); d->have_rest = 1; }   /* no dent yet: this is its shape */
         out[4 * i] = (c[0] - d->rest[i][0]) / 255.0f;
         out[4 * i + 1] = (c[1] - d->rest[i][1]) / 255.0f;
         out[4 * i + 2] = (c[2] - d->rest[i][2]) / 255.0f;
