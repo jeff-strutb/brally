@@ -381,7 +381,8 @@ double DAT_10077bd0;  /* 0x10077BD0 */
 float DAT_10077bd8;  /* 0x10077BD8 */
 float _DAT_10077bdc;  /* 0x10077BDC */
 float _DAT_10077be0;  /* 0x10077BE0 */
-BR_GLOBAL_EXTENT(int, DAT_10077be4, , 0x18);  /* 0x10077BE4 */
+BR_GLOBAL_EXTENT(int, DAT_10077be4, , 0x4);  /* 0x10077BE4 */
+BR_GLOBAL_EXTENT(float, DAT_10077bec, , 0x10);  /* 0x10077BEC */
 BR_GLOBAL_EXTENT(double, DAT_10077c00, , 0x14);  /* 0x10077C00 */
 BR_GLOBAL_EXTENT(float, _DAT_10077c1c, , 0x10);  /* 0x10077C1C */
 float DAT_10077c30;  /* 0x10077C30 */
@@ -463,7 +464,11 @@ char s_chosenWeather__1007b4a0[16];  /* 0x1007B4A0 */
 char s_chosenCar__1007b4b0[12];  /* 0x1007B4B0 */
 char s_chosenTrack__1007b4bc[16];  /* 0x1007B4BC */
 char s_NetworkPlay__1007b4cc[16];  /* 0x1007B4CC */
-char s_BossRally_ini_1007b4dc[196];  /* 0x1007B4DC */
+char s_BossRally_ini_1007b4dc[0x50];  /* 0x1007B4DC */
+char DAT_1007b52c[0x20];  /* 0x1007B52C */
+char DAT_1007b54c[0x20];  /* 0x1007B54C */
+char DAT_1007b56c[0x18];  /* 0x1007B56C */
+char DAT_1007b584[0x1C];  /* 0x1007B584 */
 char s__s_is_not_a_valid_POD_file_1007b5a0[28];  /* 0x1007B5A0 */
 char DAT_1007b5bc[68];  /* 0x1007B5BC */
 char DAT_1007b600[24];  /* 0x1007B600 */
@@ -745,9 +750,8 @@ uint32_t DAT_100abdec;  /* 0x100ABDEC */
 uint32_t DAT_100abdf0;  /* 0x100ABDF0 */
 int g_brSel0ABDF4;  /* 0x100ABDF4 */
 int DAT_100abdf8;  /* 0x100ABDF8 */
-BR_GLOBAL_EXTENT(int32_t, g_i0AC65C, , 0x40);  /* 0x100ABDFC */
-int DAT_100abe40;  /* 0x100ABE40 */
-BR_GLOBAL_EXTENT(short, g_ABE44, , 0x2);  /* 0x100ABE44 */
+int32_t g_i0AC65C;  /* 0x100ABDFC */
+BrErrEnt DAT_100abe00[BR_ERR_COUNT];  /* 0x100ABE00  the error table; entry 8 is also DAT_100abe40 / g_ABE44 */
 BrCheatEntry g_aBrCheatCode[16];  /* 0x100ABE48 */
 BR_GLOBAL_EXTENT(Metric12, g_BrGlyphFontA12, [95], 0x4);  /* 0x100ABE84 */
 Metric12B g_BrGlyphFontB12[95];  /* 0x100AC2FC */

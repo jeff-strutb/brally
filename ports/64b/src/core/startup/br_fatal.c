@@ -73,7 +73,6 @@ void BrMsgBoxAA(void *hWnd, int unused, const char *pText)
 
 /* 0x100ABE00: the Glide copy of the nine-entry error table (BrErrEnt in
  * slice1_06.h; the D3D twin of this function is 0x1003E260). */
-extern BrErrEnt DAT_100abe00[];
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 
 /* WHAT IT DOES: show one of the game's numbered error messages in a Windows

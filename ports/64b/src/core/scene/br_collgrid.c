@@ -3,6 +3,7 @@
  * See br_collgrid.h for what this corrects in CONVENTIONS.md and for where
  * the five source tables live in the .TRK header.
  */
+#include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "br_collrespsolve.h"   /* br_globals: its objects */
 #include "br_vec.h"   /* br_globals: its objects */
 #include "slice1_08.h"   /* br_globals: its objects */
@@ -72,12 +73,12 @@ short BrCollGridCellAcquire(float x, float y)
     /* 64-bit core: declared once, in br_globals.h or its struct's header */
     /* 64-bit core: declared once, in br_globals.h or its struct's header */
     /* 64-bit core: declared once, in br_globals.h or its struct's header */
-    extern unsigned short *DAT_106eece4;
-    extern unsigned char  *DAT_106eecec;
-    extern unsigned char  *DAT_106eed6c;
     typedef unsigned int  (*BrGridSampleG)(float, float);
     typedef unsigned short (*BrCursorNextG)(unsigned short *);
-    float *p;
+    BrCollPlane *p;
+    const uint16_t *aFace = BR_PTR32(const uint16_t *, g_brTrkHdr.aFaces);
+    BrVec3 *aVtx = BR_PTR32(BrVec3 *, g_brTrkHdr.aVertices);
+    const uint8_t *aKind = BR_PTR32(const uint8_t *, g_brTrkHdr.aFaceKind);
     unsigned int best, packed;
     unsigned short cur[2], tri, n;
     int key, i, victim;
@@ -98,7 +99,7 @@ short BrCollGridCellAcquire(float x, float y)
     g_brCrPlane.aCellKey[victim] = (unsigned short)key;
     g_brCrPlane.aCellAge[victim] = g_brCrPlane.cellTick;
     n = 0;
-    p = (float *)(DAT_11773698 + victim * 0x12C0);
+    p = DAT_11773698[victim];
     packed = ((BrGridSampleG)BrGrid64Sample)(x, y);
     cur[0] = (unsigned short)packed;
     cur[1] = (unsigned short)(packed >> 16);
@@ -106,24 +107,24 @@ short BrCollGridCellAcquire(float x, float y)
         while ((tri = ((BrCursorNextG)BrU16CursorNext)(cur)) != 0) {
             BrVec3 a, b;
 
-            *(float **)(p + 4) = (float *)(DAT_106eecec + DAT_106eece4[tri * 4] * 12);
-            *(float **)(p + 5) = (float *)(DAT_106eecec + DAT_106eece4[tri * 4 + 1] * 12);
-            *(float **)(p + 6) = (float *)(DAT_106eecec + DAT_106eece4[tri * 4 + 2] * 12);
-            *((unsigned char *)(p + 7) + 2) = (unsigned char)(DAT_106eed6c[tri] & 7);
-            *(unsigned short *)(p + 7) = tri;
-            a.x = (*(float **)(p + 5))[0] - (*(float **)(p + 4))[0];
-            a.y = (*(float **)(p + 5))[1] - (*(float **)(p + 4))[1];
-            a.z = (*(float **)(p + 5))[2] - (*(float **)(p + 4))[2];
-            b.x = (*(float **)(p + 6))[0] - (*(float **)(p + 4))[0];
-            b.y = (*(float **)(p + 6))[1] - (*(float **)(p + 4))[1];
-            b.z = (*(float **)(p + 6))[2] - (*(float **)(p + 4))[2];
-            p[0] = a.y * b.z - a.z * b.y;
-            p[1] = a.z * b.x - a.x * b.z;
-            p[2] = a.x * b.y - a.y * b.x;
-            BrVec3Normalise((BrVec3 *)(void *)p);
-            p[3] = -((p[0] * (*(float **)(p + 4))[0] + (*(float **)(p + 4))[1] * p[1]) + (*(float **)(p + 4))[2] * p[2]);
+            p->pV0 = &aVtx[aFace[tri * 4]];
+            p->pV1 = &aVtx[aFace[tri * 4 + 1]];
+            p->pV2 = &aVtx[aFace[tri * 4 + 2]];
+            p->flags = (uint8_t)(aKind[tri] & 7);
+            p->tri = tri;
+            a.x = p->pV1->x - p->pV0->x;
+            a.y = p->pV1->y - p->pV0->y;
+            a.z = p->pV1->z - p->pV0->z;
+            b.x = p->pV2->x - p->pV0->x;
+            b.y = p->pV2->y - p->pV0->y;
+            b.z = p->pV2->z - p->pV0->z;
+            p->nx = a.y * b.z - a.z * b.y;
+            p->ny = a.z * b.x - a.x * b.z;
+            p->nz = a.x * b.y - a.y * b.x;
+            BrVec3Normalise((BrVec3 *)(void *)&p->nx);
+            p->d = -((p->nx * p->pV0->x + p->pV0->y * p->ny) + p->pV0->z * p->nz);
             ++n;
-            p += 8;
+            p++;
         }
     }
     g_brCrPlane.aCellCount[victim] = n;

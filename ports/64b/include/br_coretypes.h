@@ -178,6 +178,12 @@ typedef struct BrAiPathNode {
 
 typedef struct { float m[16]; } BrDlMtx;
 
+/* one entry of the error table at 0x100ABE00 */
+typedef struct BrErrEnt {
+    int32_t  fFatal;   /* +0x00 -- non-zero: terminate with code 1 */
+    uint32_t idText;   /* +0x04 -- string id for the body text     */
+} BrErrEnt;
+
 /* 0x106E86B8, stride 0x58: one per screen view, two in split screen.
  * BrFrameBeginDl sets the rectangle, the race start sets the car each view
  * follows, and the race start's texture pass keeps the view's handles. */

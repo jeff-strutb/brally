@@ -183,20 +183,20 @@ extern "C" {
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 
-int   FUN_100037d0(void);
+/* BrTicks30FromMs: prototype in br_funcs.h */
 /* FUN_10004ad0: prototype in br_funcs.h */
-void  sub_10007230(BrCarState *, BrNetPacket *);            /* 0x10007230 */
-void  sub_10007750(BrCarState *, BrCarState *, BrNetPacket *); /* 0x10007750 */
+/* BrCarStateDecode: prototype in br_funcs.h */
+/* BrCarStateDecodeDelta: prototype in br_funcs.h */
 /* BrCarStateLerp: prototype in br_funcs.h */
-int   FUN_10006060(int);
-char *FUN_100061e0(int);
+/* BrNetSlotGetF004: prototype in br_funcs.h */
+/* BrNetSlotName: prototype in br_funcs.h */
 /* FUN_100038a0: prototype in br_funcs.h */
-void  FUN_100099d0(void);
-unsigned FUN_10004d80(int);
-void  FUN_10004dc0(int, int);
-int   FUN_1006e280(void);
-void  FUN_10004c80(void *, int);
-void  FUN_10003810(int, int, int, unsigned);
+/* BrComHolderRelease: prototype in br_funcs.h */
+/* BrNetSlotGetF02C: prototype in br_funcs.h */
+/* BrNetSlotSetF02C: prototype in br_funcs.h */
+/* BrSub10075020: prototype in br_funcs.h */
+/* Fn04C80: prototype in br_funcs.h */
+/* BrNetPingSync: prototype in br_funcs.h */
 /* FUN_10004d30: prototype in br_funcs.h */
 /* FUN_10004900: prototype in br_funcs.h */
 }
@@ -239,7 +239,7 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
         pkt.m_1006CDD0();
         (*(int *)tb) = pkt.m_1006CE50();
         WaitForSingleObject(g_hBrNetMutex, 0xffffffff);
-        g_brNetPktTick = FUN_100037d0();
+        g_brNetPktTick = BrTicks30FromMs();
         ReleaseMutex(g_hBrNetMutex);
         while (!pkt.m_1006CF80()) {
             cmd = pkt.m_1006CE00();
@@ -319,7 +319,7 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
                             unsigned now;
 
                             WaitForSingleObject(DAT_1021c81c, 0xffffffff);
-                            now = FUN_100037d0();
+                            now = BrTicks30FromMs();
                             x = DAT_10226a2c;
                             DAT_10226a30 = x % 100 / 0x21 + x / 100 * 3;
                             if (DAT_10226a30 > now + 0x5a)
@@ -375,12 +375,12 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
                     ((g_aBrNetSlot[slot].f558)) += 1;
                     (&g_aBrNetSlot[slot].f00C[0])[best] = (*(int *)tb);
                     (&g_aBrNetSlot[slot].f038[0])[((g_aBrNetSlot[slot].f55C))] = 0x40;
-                    sub_10007230(&(&g_aBrNetSlot[slot].cars[0])[((g_aBrNetSlot[slot].f55C))], &pkt);
+                    BrCarStateDecode(&(&g_aBrNetSlot[slot].cars[0])[((g_aBrNetSlot[slot].f55C))], (struct BrBitReader *)&pkt);
                     d = (g_brNetPktTick - (*(int *)tb)) * 2;
                     ((g_aBrNetSlot[slot].f974)) = (d % 3) * 0x21 + (d / 3) * 100;
                     ReleaseMutex(((g_aBrNetSlot[slot].hMutex)));
                 } else {
-                    sub_10007230(&scratch, &pkt);
+                    BrCarStateDecode(&scratch, (struct BrBitReader *)&pkt);
                     ReleaseMutex(((g_aBrNetSlot[slot].hMutex)));
                 }
                 break;
@@ -394,8 +394,8 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
                     if ((*(int *)&g_BrCarCount) > 0) {
                         pPeer = g_aBrRaceCar;
                         for (i = 0; i < (*(int *)&g_BrCarCount); i++, pPeer++) {
-                            if (nMode == FUN_10006060(pPeer->iNetPlayer)) {
-                                psz = FUN_100061e0(pPeer->iNetPlayer);
+                            if (nMode == BrNetSlotGetF004(pPeer->iNetPlayer)) {
+                                psz = BrNetSlotName(pPeer->iNetPlayer);
                                 strcpy(szName, psz);
                                 strcat(szName, DAT_1007b304);
                                 break;
@@ -433,14 +433,14 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
 
                 case 0x60000004:
                     pHdr = pkt.m_1006D190();
-                    if (pHdr->f04 == FUN_10006060(g_id)) {
-                        FUN_100099d0();
+                    if (pHdr->f04 == BrNetSlotGetF004(g_id)) {
+                        BrComHolderRelease();
                         DAT_10ac5bec = 1;
                         if ((*(int *)&g_BrCarCount) > 0) {
                             pPeer = g_aBrRaceCar;
                             for (i = 0; i < (*(int *)&g_BrCarCount); i++, pPeer++) {
-                                if (nMode == FUN_10006060(pPeer->iNetPlayer)) {
-                                    psz = FUN_100061e0(pPeer->iNetPlayer);
+                                if (nMode == BrNetSlotGetF004(pPeer->iNetPlayer)) {
+                                    psz = BrNetSlotName(pPeer->iNetPlayer);
                                     strcpy(szName, psz);
                                     strcat(szName, s_booted_you_from_the_game__1007b2e8);
                                     FUN_100038a0(szName);
@@ -457,14 +457,14 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
                         if ((*(int *)&g_BrCarCount) > 0) {
                             pPeer = g_aBrRaceCar;
                             for (i = 0; i < (*(int *)&g_BrCarCount); i++, pPeer++) {
-                                if (nMode == FUN_10006060(pPeer->iNetPlayer)) {
-                                    if (FUN_10004d80(pPeer->iNetPlayer) & 0x3f) {
+                                if (nMode == BrNetSlotGetF004(pPeer->iNetPlayer)) {
+                                    if (BrNetSlotGetF02C(pPeer->iNetPlayer) & 0x3f) {
                                         WaitForSingleObject(g_h1022AF30, 0xffffffff);
                                         (*(int *)&g_i10221318) += 1;
                                         g_a10221288[(*(int *)&g_i10221318)] = pPeer->iNetPlayer;
                                         ReleaseMutex(g_h1022AF30);
-                                        FUN_10004dc0(i, 0);
-                                        psz = FUN_100061e0(pPeer->iNetPlayer);
+                                        BrNetSlotSetF02C(i, 0);
+                                        psz = BrNetSlotName(pPeer->iNetPlayer);
                                         strcpy(szName, psz);
                                         strcat(szName, s_left_the_race__1007b2d8);
                                         FUN_100038a0(szName);
@@ -482,8 +482,8 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
                         if ((*(int *)&g_BrCarCount) > 0) {
                             pPeer = g_aBrRaceCar;
                             for (i = 0; i < (*(int *)&g_BrCarCount); i++, pPeer++) {
-                                if (nMode == FUN_10006060(pPeer->iNetPlayer)) {
-                                    psz = FUN_100061e0(pPeer->iNetPlayer);
+                                if (nMode == BrNetSlotGetF004(pPeer->iNetPlayer)) {
+                                    psz = BrNetSlotName(pPeer->iNetPlayer);
                                     strcpy(szName, psz);
                                     strcat(szName, s_returned_to_race_lobby__1007b2bc);
                                     FUN_100038a0(szName);
@@ -500,11 +500,11 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
                         if ((*(int *)&g_BrCarCount) > 0) {
                             pPeer = g_aBrRaceCar;
                             for (i = 0; i < (*(int *)&g_BrCarCount); i++, pPeer++) {
-                                if (pHdr->f04 == FUN_10006060(pPeer->iNetPlayer)) {
+                                if (pHdr->f04 == BrNetSlotGetF004(pPeer->iNetPlayer)) {
                                     int k = pHdr->f08;
 
                                     if (k >= 0 && k < 8) {
-                                        psz = FUN_100061e0(pPeer->iNetPlayer);
+                                        psz = BrNetSlotName(pPeer->iNetPlayer);
                                         sprintf(szName, s__s_finished__s_1007b2ac, psz, PTR_s_First__100aa3e8[k]);
                                         FUN_100038a0(szName);
                                     }
@@ -561,12 +561,12 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
                     (&g_aBrNetSlot[slot].f038[0])[((g_aBrNetSlot[slot].f55C))] = 0x80;
                     BrCarStateLerp(&(&g_aBrNetSlot[slot].cars[0])[((g_aBrNetSlot[slot].f55C))], frac,
                                    &(&g_aBrNetSlot[slot].cars[0])[iPrev], &(&g_aBrNetSlot[slot].cars[0])[iNew]);
-                    sub_10007750(&(&g_aBrNetSlot[slot].cars[0])[((g_aBrNetSlot[slot].f55C))], &(&g_aBrNetSlot[slot].cars[0])[iNew], &pkt);
+                    BrCarStateDecodeDelta(&(&g_aBrNetSlot[slot].cars[0])[((g_aBrNetSlot[slot].f55C))], &(&g_aBrNetSlot[slot].cars[0])[iNew], (struct BrBitReader *)&pkt);
                     d = (g_brNetPktTick - (*(int *)tb)) * 2;
                     ((g_aBrNetSlot[slot].f974)) = (d % 3) * 0x21 + (d / 3) * 100;
                     ReleaseMutex(((g_aBrNetSlot[slot].hMutex)));
                 } else {
-                    sub_10007750(&scratch2, &scratch2, &pkt);
+                    BrCarStateDecodeDelta(&scratch2, &scratch2, (struct BrBitReader *)&pkt);
                     ReleaseMutex(((g_aBrNetSlot[slot].hMutex)));
                 }
                 break;
@@ -578,7 +578,7 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
 
                 if (nMode != 1)
                     goto done;
-                a = FUN_1006e280();
+                a = BrSub10075020();
                 b = pkt.m_1006CE50();
                 c = pkt.m_1006CE20();
                 WaitForSingleObject(((g_aBrNetSlot[slot].hMutex)), 0xffffffff);
@@ -586,8 +586,8 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
                 ((g_aBrNetSlot[slot].f974)) = c;
                 ReleaseMutex(((g_aBrNetSlot[slot].hMutex)));
                 if (slot == (unsigned)g_id) {
-                    FUN_10004c80(pNet, (*(int *)tb));
-                    FUN_10003810((*(int *)tb), a, b, c);
+                    Fn04C80(pNet, (*(unsigned int *)tb));
+                    BrNetPingSync((*(int *)tb), a, b, c);
                 }
                 break;
             }
@@ -605,7 +605,7 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
                 DAT_10226a40 = pkt.m_1006CE00();
                 DAT_10226a3c = pkt.m_1006CE00();
                 BrNetSend4900(pNet, slot, (*(char *)&g_aBrRaceCar[0].f29AC), (*(char *)&g_aBrRaceCar[0].f29AD), (*(char *)&g_aBrRaceCar[0].f29AE), &(g_aBrCfgPlayerName[0]), 0x10);
-                FUN_10004dc0(slot, 2);
+                BrNetSlotSetF02C(slot, 2);
                 break;
 
             default:

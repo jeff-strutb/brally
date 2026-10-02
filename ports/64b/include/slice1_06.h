@@ -205,10 +205,7 @@ typedef struct BrPairBuf {
 #define BR_ERR_COUNT       9
 #define BR_ERR_CAPTION_ID  0xAAu   /* the string id used for the caption */
 
-typedef struct BrErrEnt {
-    int32_t  fFatal;   /* +0x00 -- non-zero: terminate with code 1 */
-    uint32_t idText;   /* +0x04 -- string id for the body text     */
-} BrErrEnt;
+/* BrErrEnt: br_coretypes.h (br_globals.h declares the table) */
 
 extern const BrErrEnt g_aBrErrTable[BR_ERR_COUNT];
 

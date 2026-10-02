@@ -292,7 +292,6 @@ void BrGbiTexScanRun(BrGfxWords *pCmd)
      * register tie-break of BrFadeDrawSprite further down this TU. */
     /* 64-bit core: declared once, in br_globals.h or its struct's header */
     /* 64-bit core: declared once, in br_globals.h or its struct's header */
-    extern int32_t DAT_106b7aa8, DAT_106b7aa4;
     /* 64-bit core: declared once, in br_globals.h or its struct's header */
     /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* BrTexTileUnpack: prototype in br_funcs.h */
@@ -352,14 +351,14 @@ void BrGbiTexScanRun(BrGfxWords *pCmd)
             DAT_106b7a78 = (uint8_t)(pCmd->w1 >> 16);
             DAT_10697a40 = (uint8_t)(pCmd->w1 >> 8);
             DAT_10661828 = (uint8_t)pCmd->w1;
-            DAT_106b7aa8 = 1;
+            _DAT_106b7aa8 = 1;
             break;
         case 0xFB:                       /* G_SETENVCOLOR, 0x10028973 */
             DAT_105e1800 = (uint8_t)(pCmd->w1 >> 24);
             DAT_1066182c = (uint8_t)(pCmd->w1 >> 16);
             DAT_105e17f8 = (uint8_t)(pCmd->w1 >> 8);
             DAT_105d17e8 = (uint8_t)pCmd->w1;
-            DAT_106b7aa4 = 1;
+            _DAT_106b7aa4 = 1;
             break;
         case 0xFC:                       /* G_SETCOMBINE, 0x100289AD */
             if (w0 == 0xFC50FE04u && pCmd->w1 == 0x3FFDF3F8u)

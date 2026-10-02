@@ -89,7 +89,7 @@ typedef struct BrTrkHdr {
     int32_t  cPayload;       /* +0x088                                            */
     uint32_t aU16List8C;     /* +0x08C  u16[], zero-terminated                    */
     uint32_t aU16List90;     /* +0x090  u16[]                                     */
-    uint32_t aFacesEnd;      /* +0x094                                            */
+    uint32_t aFaceKind;      /* +0x094  u8 per face: surface bits (low three)     */
     BrRaceGate aGate[BR_TRK_GATE_MAX];          /* +0x098 */
     int32_t  nGate;                              /* +0x160 */
     BrRaceSpecial aSpecial[BR_TRK_SPECIAL_MAX]; /* +0x164 */

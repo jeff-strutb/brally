@@ -11,7 +11,6 @@
 #include <stdio.h>
 #include "br_podarc.h"
 
-extern "C" char DAT_1007b56c[1];
 
 void BrPodArcObj::Read(unsigned i, void *dst)
 {

@@ -137,12 +137,12 @@ extern "C" {
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 
-void  sub_10007230(BrCarState *, BrNetPacket *);                    /* BrCarStateDecode */
-void  sub_10007750(BrCarState *, BrCarState *, BrNetPacket *);      /* BrCarStateDecodeDelta */
-void  sub_10007D50(BrCarState *, float, BrCarState *, BrCarState *);/* BrCarStateLerp */
-unsigned sub_1006A310(void);                                        /* clock */
-int   sub_1002F6D0(int id);                                         /* BrPeerFind */
-void  sub_100038F0(void *pNet, void *pBuf, int nBytes, int nMode, int a5);
+/* BrCarStateDecode: prototype in br_funcs.h */
+/* BrCarStateDecodeDelta: prototype in br_funcs.h */
+/* BrCarStateLerp: prototype in br_funcs.h */
+/* BrDelta_100713A0: prototype in br_funcs.h */
+/* BrPeerFind: prototype in br_funcs.h */
+/* FUN_100038f0: prototype in br_funcs.h */
 }
 
 /* index*0x96C addressing on a per-field global, as the sibling proved.  The
@@ -248,7 +248,7 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int
                 goto c4_rel;
             cur = ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff)));
             if (ts <= (((unsigned *)((char *)&((*(unsigned int (*)[])((char *)&g_aBrPeer71 + 0xC))) + soff)))[cur]) {
-                sub_10007230(&scratch, &pkt);
+                BrCarStateDecode(&scratch, (struct BrBitReader *)&pkt);
                 ReleaseMutex(((*(void * *)((char *)&(g_aBrPeer71) + soff))));
                 break;
             }
@@ -263,13 +263,13 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int
             ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff))) = best;
             (((unsigned *)((char *)&((*(unsigned int (*)[])((char *)&g_aBrPeer71 + 0xC))) + soff)))[best] = ts;
             (((int *)((char *)&((*(int (*)[])((char *)&g_aBrPeer71 + 0x38))) + soff)))[((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff)))] = 0x40;
-            sub_10007230(&(((BrCarState *)((char *)&((*(BrCarState (*)[])((char *)&g_aBrPeer71 + 0x58))) + soff)))[((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff)))], &pkt);
+            BrCarStateDecode(&(((BrCarState *)((char *)&((*(BrCarState (*)[])((char *)&g_aBrPeer71 + 0x58))) + soff)))[((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff)))], (struct BrBitReader *)&pkt);
             if (((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x968))) + soff))) != 0)
                 goto c4_rel;
             if (*(float *)((char *)&(((BrCarState *)((char *)&((*(BrCarState (*)[])((char *)&g_aBrPeer71 + 0x58))) + soff)))[((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff)))] + 0x78)
                     < DAT_1007751c)
                 goto c4_rel;
-            ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x968))) + soff))) = sub_1006A310();
+            ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x968))) + soff))) = BrDelta_100713A0();
         c4_rel:
             ReleaseMutex(((*(void * *)((char *)&(g_aBrPeer71) + soff))));
             break;
@@ -296,7 +296,7 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int
                 goto c8_rel;
             cur = ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff)));
             if (ts <= (((unsigned *)((char *)&((*(unsigned int (*)[])((char *)&g_aBrPeer71 + 0xC))) + soff)))[cur]) {
-                sub_10007750(&scratch2, &scratch2, &pkt);
+                BrCarStateDecodeDelta(&scratch2, &scratch2, (struct BrBitReader *)&pkt);
                 goto c8_rel;
             }
             best  = 0;
@@ -332,11 +332,11 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int
             ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff))) = best;
             (((unsigned *)((char *)&((*(unsigned int (*)[])((char *)&g_aBrPeer71 + 0xC))) + soff)))[best] = ts;
             (((int *)((char *)&((*(int (*)[])((char *)&g_aBrPeer71 + 0x38))) + soff)))[((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff)))] = 0x80;
-            sub_10007D50(&(((BrCarState *)((char *)&((*(BrCarState (*)[])((char *)&g_aBrPeer71 + 0x58))) + soff)))[((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff)))], frac,
+            BrCarStateLerp(&(((BrCarState *)((char *)&((*(BrCarState (*)[])((char *)&g_aBrPeer71 + 0x58))) + soff)))[((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff)))], frac,
                            &(((BrCarState *)((char *)&((*(BrCarState (*)[])((char *)&g_aBrPeer71 + 0x58))) + soff)))[iPrev],
                            &(((BrCarState *)((char *)&((*(BrCarState (*)[])((char *)&g_aBrPeer71 + 0x58))) + soff)))[iNew]);
-            sub_10007750(&(((BrCarState *)((char *)&((*(BrCarState (*)[])((char *)&g_aBrPeer71 + 0x58))) + soff)))[((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff)))],
-                                  &(((BrCarState *)((char *)&((*(BrCarState (*)[])((char *)&g_aBrPeer71 + 0x58))) + soff)))[iNew], &pkt);
+            BrCarStateDecodeDelta(&(((BrCarState *)((char *)&((*(BrCarState (*)[])((char *)&g_aBrPeer71 + 0x58))) + soff)))[((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff)))],
+                                  &(((BrCarState *)((char *)&((*(BrCarState (*)[])((char *)&g_aBrPeer71 + 0x58))) + soff)))[iNew], (struct BrBitReader *)&pkt);
         c8_rel:
             ReleaseMutex(((*(void * *)((char *)&(g_aBrPeer71) + soff))));
             break;
@@ -344,7 +344,7 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int
 
         case 0xc0: {
             int b   = pkt.m_1006CE50();
-            int now = sub_1006A310();
+            int now = BrDelta_100713A0();
 
             WaitForSingleObject(((*(void * *)((char *)&(g_aBrPeer71) + soff))), 0xffffffff);
             if ((((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x2C))) + soff))) & 0x3f) != 0 && idFrom == ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x4))) + soff)))
@@ -374,7 +374,7 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int
 
                 if (DAT_117b3250 != 0)
                     break;
-                j = sub_1002F6D0(idFrom);
+                j = BrPeerFind(idFrom);
                 if (j == -1)
                     break;
                 soff = j * 0x96c;
@@ -393,7 +393,7 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int
                 } while (k != 0);
                 ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x2C))) + soff))) = 1;
                 ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff))) = 0;
-                ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x95C))) + soff))) = sub_1006A310();
+                ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x95C))) + soff))) = BrDelta_100713A0();
                 roff = j * 0x10 * 0x96c;
                 m = 0x10;
                 do {
@@ -458,7 +458,7 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int
     if (idFrom != 1) {
         unsigned char lead = ((unsigned char *)pkt.m_1006D190())[3] & 0xe0;
         if (lead == 0x40 || lead == 0x80 || lead == 0x60)
-            sub_100038F0(pNet, pBuf, nBytes, idFrom, a5);
+            FUN_100038f0(pNet, pBuf, nBytes, idFrom);   /* the fifth argument is never read */
     }
 done:
     ;

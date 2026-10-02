@@ -9,7 +9,6 @@
  */
 #include "br_podarc.h"
 
-extern "C" char DAT_1007b584[1];
 
 void *BrPodArcObj::ReadNew(unsigned i)
 {

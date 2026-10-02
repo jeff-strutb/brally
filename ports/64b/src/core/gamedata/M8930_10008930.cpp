@@ -12,7 +12,6 @@
  */
 #include "br_podarc.h"
 
-extern "C" char DAT_1007b52c[1];   /* "%s not found in pod" style message */
 
 int BrPodArcObj::Lookup(const char *name)
 {

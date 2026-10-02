@@ -156,7 +156,7 @@ const uint8_t *BrDlVtxNoZLit(const uint8_t *p)
     /* 64-bit core: declared once, in br_globals.h or its struct's header */
     /* 64-bit core: declared once, in br_globals.h or its struct's header */
     /* 64-bit core: declared once, in br_globals.h or its struct's header */
-    extern void    FUN_10023760(void *, void *, float, float, float);
+/* BrDlProjectNoZ: prototype in br_funcs.h */
     /* 64-bit core: declared once, in br_globals.h or its struct's header */
     /* 64-bit core: declared once, in br_globals.h or its struct's header */
     /* 64-bit core: declared once, in br_globals.h or its struct's header */
@@ -221,7 +221,7 @@ const uint8_t *BrDlVtxNoZLit(const uint8_t *p)
         oc = BrDlsClipCodes(pf);
         pV[i].outcode = oc;
         if (oc == 0)
-            FUN_10023760(pVc, pf, pV[i].n0, pV[i].n1, pV[i].n2);
+            BrDlProjectNoZ(pVc, pf, pV[i].n0, pV[i].n1, pV[i].n2);
         pSrc++;
         pVc++;
     }

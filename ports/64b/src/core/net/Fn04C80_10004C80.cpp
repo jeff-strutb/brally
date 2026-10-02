@@ -34,13 +34,13 @@ typedef char chk_sz[sizeof(Buf) == 0x214 ? 1 : -1];
 /* BrCountedNetSend: prototype in br_funcs.h */
 #define FinishFn ((int (*)(void *, Buf *))BrCountedNetSend)
 
-int Fn04C80(void *a, void *b)
+int Fn04C80(void *a, unsigned int b)
 {
     Buf obj;
 
     InitFn(&obj);
     obj.PutByte((unsigned char)((g_id & 0xf) | 0xd0));
-    obj.PutVal((unsigned)b);
+    obj.PutVal(b);
     return FinishFn(a, &obj);
 }
 

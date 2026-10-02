@@ -103,9 +103,8 @@ extern "C" {
 
 /* BrSub10046400: prototype in br_funcs.h */
 /* BrExt8F30: prototype in br_funcs.h */
-void CtlD620(int);
-void Ctl3D930(int);
-void Ctl3DC20(int);
+/* CtlD620_fn, Ctl3D930_fn, Ctl3DC20_fn: the page openers at 0x1003D620,
+ * 0x1003D930, 0x1003DC20 (their `this` is unused) */
 /* FUN_10036740: prototype in br_funcs.h */
 /* Fn355F0: prototype in br_funcs.h */
 /* FUN_100356b0: prototype in br_funcs.h */
@@ -153,9 +152,9 @@ int BrOpt3810(GameObj *pGame)
             (*(Phase8 * *)&g_brPAA2950)->v7();
             (*(Phase8 * *)&g_brPAA2950) = 0;
         }
-        CtlD620(0);
-        Ctl3D930(0);
-        Ctl3DC20(0);
+        CtlD620_fn(0);
+        Ctl3D930_fn(0);
+        Ctl3DC20_fn(0);
         DAT_10ac5be8 = 0;
         return 0;
     }

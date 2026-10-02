@@ -2678,18 +2678,17 @@ extern int g_brSel0ABDF4;  /* 0x100ABDF4 */
 #undef DAT_100abdf8
 extern int DAT_100abdf8;  /* 0x100ABDF8 */
 #pragma pop_macro("DAT_100abdf8")
+/* 0x100ABE00, nine {fFatal, idText} entries; the original also reads and
+ * writes entry 8 as two variables of its own */
+extern struct BrErrEnt DAT_100abe00[9];  /* 0x100ABE00 */
+#define DAT_100abe40 (DAT_100abe00[8].fFatal)                 /* 0x100ABE40 */
+#define g_ABE44      (*(short *)&DAT_100abe00[8].idText)      /* 0x100ABE44 */
+extern float DAT_10077bec;  /* 0x10077BEC */
+extern char DAT_1007b52c[], DAT_1007b54c[], DAT_1007b56c[], DAT_1007b584[];  /* 0x1007B52C.. */
 #pragma push_macro("g_i0AC65C")
 #undef g_i0AC65C
 extern int32_t g_i0AC65C;  /* 0x100ABDFC */
 #pragma pop_macro("g_i0AC65C")
-#pragma push_macro("DAT_100abe40")
-#undef DAT_100abe40
-extern int DAT_100abe40;  /* 0x100ABE40 */
-#pragma pop_macro("DAT_100abe40")
-#pragma push_macro("g_ABE44")
-#undef g_ABE44
-extern short g_ABE44;  /* 0x100ABE44 */
-#pragma pop_macro("g_ABE44")
 #pragma push_macro("g_aBrAC308")
 #undef g_aBrAC308
 extern const int32_t g_aBrAC308[];  /* 0x100AC308 */

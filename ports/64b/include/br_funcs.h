@@ -5899,7 +5899,7 @@ void FUN_10074ae6(void);
 #pragma pop_macro("FUN_10074ae6")
 #pragma push_macro("Fn04C80")
 #undef Fn04C80
-int Fn04C80(void *, void *);
+int Fn04C80(void *, unsigned int);
 #pragma pop_macro("Fn04C80")
 #pragma push_macro("Fn3DD20")
 #undef Fn3DD20

@@ -41,9 +41,9 @@
 /* FUN_10035bb0: prototype in br_funcs.h */
 /* FUN_1006d280: prototype in br_funcs.h */
 /* FUN_10037260: prototype in br_funcs.h */
-int FUN_10036e50(int **);
+/* BrDpCreateIface: prototype in br_funcs.h */
 /* FUN_10036300: prototype in br_funcs.h */
-int __stdcall FUN_10035ac0(int, int, int, int, int, int);
+/* BrNetSessionStore: prototype in br_funcs.h */
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
@@ -118,8 +118,8 @@ int BrDPlayCreate(void)
   g_brPA9D008 = (int)&(*(int * *)&g_brP277B40);
   if (iVar4 == 0) {
     (*(CC_std_5 *)&((void **)*(void ***)((*(int * *)&g_brP277B40)))[35])(
-        (*(int * *)&g_brP277B40), (int)&DAT_10077500, (int)FUN_10035ac0, g_brOwner5BC72C, 0);
-    iVar4 = FUN_10036e50(&DAT_10ac3068);
+        (*(int * *)&g_brP277B40), (int)&DAT_10077500, (int)BrNetSessionStore, g_brOwner5BC72C, 0);
+    iVar4 = BrDpCreateIface(&DAT_10ac3068);
     if (iVar4 < 0) {
       return 0;
     }
