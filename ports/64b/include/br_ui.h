@@ -801,7 +801,7 @@ extern "C" {
 #endif
 #pragma push_macro("g_brUiCtlVtbl_1008F6B8")
 #undef g_brUiCtlVtbl_1008F6B8
-extern const BrUiCtlVtbl_ g_brUiCtlVtbl_1008F6B8;  /* 0x1008F6B8 */
+extern BrUiCtlVtbl_ g_brUiCtlVtbl_1008F6B8;  /* 0x1008F6B8 */
 #pragma pop_macro("g_brUiCtlVtbl_1008F6B8")
 #pragma push_macro("g_brUipAA29C8")
 #undef g_brUipAA29C8

@@ -307,15 +307,15 @@ extern "C" {
 #endif
 #pragma push_macro("BrIidIDirectDraw2")
 #undef BrIidIDirectDraw2
-extern const BrDxGuid BrIidIDirectDraw2;  /* 0x10077CB8 */
+extern BrDxGuid BrIidIDirectDraw2;  /* 0x10077CB8 */
 #pragma pop_macro("BrIidIDirectDraw2")
 #pragma push_macro("BrIidIDirectDrawSurface3")
 #undef BrIidIDirectDrawSurface3
-extern const BrDxGuid BrIidIDirectDrawSurface3;  /* 0x10077CF8 */
+extern BrDxGuid BrIidIDirectDrawSurface3;  /* 0x10077CF8 */
 #pragma pop_macro("BrIidIDirectDrawSurface3")
 #pragma push_macro("BrIidIDirectDrawSurface4")
 #undef BrIidIDirectDrawSurface4
-extern const BrDxGuid BrIidIDirectDrawSurface4;  /* 0x10077D08 */
+extern BrDxGuid BrIidIDirectDrawSurface4;  /* 0x10077D08 */
 #pragma pop_macro("BrIidIDirectDrawSurface4")
 #ifdef __cplusplus
 }

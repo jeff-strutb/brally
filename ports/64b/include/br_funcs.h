@@ -154,6 +154,14 @@ struct _MMCKINFO;
 #ifdef __cplusplus
 extern "C" {
 #endif
+/* GBI handlers the dispatch table at 0x100A9A58 holds (br_dl.c) */
+const uint8_t *br_dl_env(const uint8_t *);
+const uint8_t *br_dl_fillE1(const uint8_t *);
+const uint8_t *br_dl_fillF6(const uint8_t *);
+const uint8_t *br_dl_fillcolour(const uint8_t *);
+const uint8_t *br_dl_scissorE2(const uint8_t *);
+const uint8_t *br_dl_scissorED(const uint8_t *);
+
 /* thiscall entries whose definitions take scalars (the MSVC lane passes
  * one-field structs, which the C calling conventions pass the same way) */
 struct BrBitStream *BrBitStreamInit(struct BrBitStream *, void *, int);

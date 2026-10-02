@@ -506,7 +506,7 @@ extern "C" {
 #endif
 #pragma push_macro("g_BrCtrlDefaults")
 #undef g_BrCtrlDefaults
-extern const BrCtrlProfile g_BrCtrlDefaults[4];  /* 0x100B38A0 */
+extern BrCtrlProfile g_BrCtrlDefaults[4];  /* 0x100B38A0 */
 #pragma pop_macro("g_BrCtrlDefaults")
 #pragma push_macro("g_BrCtrlCfg")
 #undef g_BrCtrlCfg

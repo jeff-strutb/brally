@@ -932,15 +932,15 @@ extern "C" {
 #endif
 #pragma push_macro("g_BrTextBoxVtbl")
 #undef g_BrTextBoxVtbl
-extern const BrTextBoxVtbl g_BrTextBoxVtbl;  /* 0x1008F728 */
+extern BrTextBoxVtbl g_BrTextBoxVtbl;  /* 0x1008F728 */
 #pragma pop_macro("g_BrTextBoxVtbl")
 #pragma push_macro("g_pBrTextListVtbl")
 #undef g_pBrTextListVtbl
-extern const BrTextListVtbl *g_pBrTextListVtbl;  /* 0x1008F758 */
+extern BrTextListVtbl *g_pBrTextListVtbl;  /* 0x1008F758 */
 #pragma pop_macro("g_pBrTextListVtbl")
 #pragma push_macro("g_aBrUiStyle")
 #undef g_aBrUiStyle
-extern const BrTextStyle g_aBrUiStyle[21];  /* 0x100AB418 */
+extern BrTextStyle g_aBrUiStyle[21];  /* 0x100AB418 */
 #pragma pop_macro("g_aBrUiStyle")
 #pragma push_macro("g_BrCharMapImage")
 #undef g_BrCharMapImage

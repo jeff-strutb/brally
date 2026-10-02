@@ -818,7 +818,7 @@ static const BrDlClipPlaneFn s_apClipPlane[7] = {
  * list counts rows from the bottom and the screen counts from the top. The
  * whole-pixel twin is br_dl_fillE1. */
 /* @implements 0x1001E320 glide br_dl_fillF6 */
-static const uint8_t *br_dl_fillF6(const uint8_t *p)
+const uint8_t *br_dl_fillF6(const uint8_t *p)
 {
     int H, ulx, uly, lrx, lry;
     unsigned w0, w1;
@@ -838,7 +838,7 @@ static const uint8_t *br_dl_fillF6(const uint8_t *p)
  * whole pixels. Unlike its quarter-pixel twin br_dl_fillF6 these corners are
  * SIGNED, so a corner off the left of the screen really is negative. */
 /* @implements 0x1001E720 glide br_dl_fillE1 */
-static const uint8_t *br_dl_fillE1(const uint8_t *p)
+const uint8_t *br_dl_fillE1(const uint8_t *p)
 {
     int H, ulx, uly, lrx, lry;
     unsigned w0, w1;
@@ -917,7 +917,7 @@ static const uint8_t *br_dl_fillE1(const uint8_t *p)
  * flipping the vertical axis because the game's display list counts down the
  * screen and the renderer counts up. */
 /* @implements 0x1001EBC0 glide br_dl_scissorE2 */
-static const uint8_t *br_dl_scissorE2(const uint8_t *p)
+const uint8_t *br_dl_scissorE2(const uint8_t *p)
 {
     int H, ulx, uly, lrx, lry, maxY, minY;
 
@@ -942,7 +942,7 @@ static const uint8_t *br_dl_scissorE2(const uint8_t *p)
  * and routing both through one decode quietly divides one form's corners by
  * four. */
 /* @implements 0x1001EB50 glide br_dl_scissorED */
-static const uint8_t *br_dl_scissorED(const uint8_t *p)
+const uint8_t *br_dl_scissorED(const uint8_t *p)
 {
     int H, ulx, uly, lrx, lry, maxY, minY;
 
@@ -1014,7 +1014,7 @@ static const uint8_t *br_dl_scissorED(const uint8_t *p)
  * the separate red, green, blue and alpha bytes the renderer holds, widening
  * each 5-bit channel to 8 bits by copying its top bits into the low ones. */
 /* @implements 0x1001E9F0 glide br_dl_fillcolour */
-static const uint8_t *br_dl_fillcolour(const uint8_t *p)
+const uint8_t *br_dl_fillcolour(const uint8_t *p)
 {
     unsigned w;
 
@@ -1100,7 +1100,7 @@ static const uint8_t *br_dl_fillcolour(const uint8_t *p)
  * is /Op's round-to-float on assignment, not a source temp -- at /O2 /Op the
  * form WITHOUT the temp is byte-exact and the form with it is 119 diffs. */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-static const uint8_t *br_dl_env(const uint8_t *p)
+const uint8_t *br_dl_env(const uint8_t *p)
 {
     const float k = 1.0f / 255.0f;    /* 0x10077400 == 0x3B808081 exactly */
 

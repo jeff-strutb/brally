@@ -315,7 +315,7 @@ extern "C" {
 #endif
 #pragma push_macro("g_aBrUiSprite")
 #undef g_aBrUiSprite
-extern const BrUiSprite g_aBrUiSprite[145];  /* 0x100AAD08 */
+extern BrUiSprite g_aBrUiSprite[145];  /* 0x100AAD08 */
 #pragma pop_macro("g_aBrUiSprite")
 #ifdef __cplusplus
 }

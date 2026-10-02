@@ -550,7 +550,7 @@ extern BrLevelRec DAT_100b3024[];  /* 0x100B3024 */
 #pragma pop_macro("DAT_100b3024")
 #pragma push_macro("g_aBrCtlNameKey")
 #undef g_aBrCtlNameKey
-extern const BrCfgRec39580 g_aBrCtlNameKey[120];  /* 0x100B3B40 */
+extern BrCfgRec39580 g_aBrCtlNameKey[120];  /* 0x100B3B40 */
 #pragma pop_macro("g_aBrCtlNameKey")
 #pragma push_macro("g_0B6540")
 #undef g_0B6540

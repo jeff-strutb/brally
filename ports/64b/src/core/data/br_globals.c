@@ -128,7 +128,7 @@ float _DAT_1007726c;  /* 0x1007726C */
 float _DAT_10077270;  /* 0x10077270 */
 BR_GLOBAL_EXTENT(float, _DAT_10077274, , 0xC);  /* 0x10077274 */
 BR_GLOBAL_EXTENT(float, _DAT_10077284, , 0x28);  /* 0x10077284 */
-BR_GLOBAL_EXTENT(const float, kF300, , 0x4C);  /* 0x100772B0 */
+BR_GLOBAL_EXTENT(float, kF300, , 0x4C);  /* 0x100772B0 */
 float DAT_10077300;  /* 0x10077300 */
 BR_GLOBAL_EXTENT(float, DAT_10077304, , 0xC);  /* 0x10077304 */
 float DAT_10077314;  /* 0x10077314 */
@@ -215,14 +215,14 @@ float g_BrTrailStepK;  /* 0x100775A0 */
 float g_BrTrailUnfixK;  /* 0x100775A4 */
 float g_BrTrailNightMulK;  /* 0x100775A8 */
 BR_GLOBAL_EXTENT(float, g_BrTrailNightBaseK, , 0x14);  /* 0x100775AC */
-const float kPfxRecip;  /* 0x100775C4 */
-const float kPfxNeg0_8;  /* 0x100775C8 */
-const float kPfx5_7375;  /* 0x100775CC */
-const float kPfxCell;  /* 0x100775D0 */
-const float kPfx0_7;  /* 0x100775D4 */
-const float kPfx19_62;  /* 0x100775D8 */
-const float kPfx102;  /* 0x100775DC */
-BR_GLOBAL_EXTENT(const float, kPfxNeg30, , 0x40);  /* 0x100775E0 */
+float kPfxRecip;  /* 0x100775C4 */
+float kPfxNeg0_8;  /* 0x100775C8 */
+float kPfx5_7375;  /* 0x100775CC */
+float kPfxCell;  /* 0x100775D0 */
+float kPfx0_7;  /* 0x100775D4 */
+float kPfx19_62;  /* 0x100775D8 */
+float kPfx102;  /* 0x100775DC */
+BR_GLOBAL_EXTENT(float, kPfxNeg30, , 0x40);  /* 0x100775E0 */
 float g_f077624;  /* 0x10077624 */
 float DAT_10077628;  /* 0x10077628 */
 float DAT_1007762c;  /* 0x1007762C */
@@ -367,9 +367,9 @@ double DAT_10077b20;  /* 0x10077B20 */
 BR_GLOBAL_EXTENT(float, DAT_10077b28, , 0x4);  /* 0x10077B28 */
 float _DAT_10077b30;  /* 0x10077B30 */
 float _DAT_10077b34;  /* 0x10077B34 */
-BR_GLOBAL_EXTENT(const float, DAT_10077b38, , 0x4);  /* 0x10077B38 */
-const float DAT_10077b40;  /* 0x10077B40 */
-BR_GLOBAL_EXTENT(const float, DAT_10077b44, , 0x28);  /* 0x10077B44 */
+BR_GLOBAL_EXTENT(float, DAT_10077b38, , 0x4);  /* 0x10077B38 */
+float DAT_10077b40;  /* 0x10077B40 */
+BR_GLOBAL_EXTENT(float, DAT_10077b44, , 0x28);  /* 0x10077B44 */
 BR_GLOBAL_EXTENT(float, DAT_10077b70, , 0x4);  /* 0x10077B70 */
 BR_GLOBAL_EXTENT(double, DAT_10077b78, , 0x8);  /* 0x10077B78 */
 float BrCrK_Flat;  /* 0x10077B88 */
@@ -399,9 +399,9 @@ float DAT_10077c6c;  /* 0x10077C6C */
 float DAT_10077c70;  /* 0x10077C70 */
 float DAT_10077c74;  /* 0x10077C74 */
 BR_GLOBAL_EXTENT(float, DAT_10077c78, , 0x3C);  /* 0x10077C78 */
-BR_GLOBAL_EXTENT(const BrDxGuid, BrIidIDirectDraw2, , 0x30);  /* 0x10077CB8 */
-const BrDxGuid BrIidIDirectDrawSurface3;  /* 0x10077CF8 */
-BR_GLOBAL_EXTENT(const BrDxGuid, BrIidIDirectDrawSurface4, , 0x9F0);  /* 0x10077D08 */
+BR_GLOBAL_EXTENT(BrDxGuid, BrIidIDirectDraw2, , 0x30);  /* 0x10077CB8 */
+BrDxGuid BrIidIDirectDrawSurface3;  /* 0x10077CF8 */
+BR_GLOBAL_EXTENT(BrDxGuid, BrIidIDirectDrawSurface4, , 0x9F0);  /* 0x10077D08 */
 char g_DeviceGuid[16];  /* 0x10078708 */
 BR_GLOBAL_EXTENT(int, DAT_10078718, , 0x10C);  /* 0x10078718 */
 BR_GLOBAL_EXTENT(int, DAT_10078828, , 0x1C);  /* 0x10078828 */
@@ -419,8 +419,8 @@ BR_GLOBAL_EXTENT(BrDpGuid, DAT_10078998, , 0x10);  /* 0x10078998 */
 BR_GLOBAL_EXTENT(BrDpGuid, DAT_100789b8, , 0x10);  /* 0x100789B8 */
 BR_GLOBAL_EXTENT(BrDpGuid, DAT_100789d8, , 0x10);  /* 0x100789D8 */
 BR_GLOBAL_EXTENT(BrDpGuid, DAT_100789f8, , 0x10);  /* 0x100789F8 */
-BR_GLOBAL_EXTENT(const GUID, DAT_10078a18, , 0x10);  /* 0x10078A18 */
-BR_GLOBAL_EXTENT(const GUID, DAT_10078a38, , 0x261C);  /* 0x10078A38 */
+BR_GLOBAL_EXTENT(GUID, DAT_10078a18, , 0x10);  /* 0x10078A18 */
+BR_GLOBAL_EXTENT(GUID, DAT_10078a38, , 0x261C);  /* 0x10078A38 */
 char g_szBrFmtTime[16];  /* 0x1007B064 */
 int DAT_1007b074;  /* 0x1007B074 */
 int g_0940A8;  /* 0x1007B078 */
@@ -473,28 +473,28 @@ char s__s_is_not_a_valid_POD_file_1007b5a0[28];  /* 0x1007B5A0 */
 char DAT_1007b5bc[68];  /* 0x1007B5BC */
 char DAT_1007b600[24];  /* 0x1007B600 */
 uint8_t g_aBrFontBlockLarge[82080];  /* 0x1007B618 */
-const BrUiCtlVtbl_ g_brUiCtlVtbl_1008F6B8;  /* 0x1008F6B8 */
-const BrUiPageVtbl BrUiPageVtbl_1008F6F8;  /* 0x1008F6F8 */
-BR_GLOBAL_EXTENT(const BrPhaseFullVtbl, BrPhaseVtbl_1008F700, , 0x4);  /* 0x1008F700 */
-const BrTextBoxVtbl g_BrTextBoxVtbl;  /* 0x1008F728 */
-BR_GLOBAL_EXTENT(const BrTextListVtbl *, g_pBrTextListVtbl, , 0x4B3C);  /* 0x1008F758 */
+BrUiCtlVtbl_ g_brUiCtlVtbl_1008F6B8;  /* 0x1008F6B8 */
+BrUiPageVtbl BrUiPageVtbl_1008F6F8;  /* 0x1008F6F8 */
+BR_GLOBAL_EXTENT(BrPhaseFullVtbl, BrPhaseVtbl_1008F700, , 0x4);  /* 0x1008F700 */
+BrTextBoxVtbl g_BrTextBoxVtbl;  /* 0x1008F728 */
+BR_GLOBAL_EXTENT(BrTextListVtbl *, g_pBrTextListVtbl, , 0x4B3C);  /* 0x1008F758 */
 BR_GLOBAL_EXTENT(int, g_brNetSendCount, , 0x8F7C);  /* 0x10094298 */
 uint8_t g_aBrFontBlockSmall[34527];  /* 0x1009D218 */
 signed char DAT_100a58f7[33];  /* 0x100A58F7 */
-const signed char g_aBrFontClass[96];  /* 0x100A5918 */
-const int32_t g_aBrFontOffLarge[56];  /* 0x100A5978 */
-const int32_t g_aBrFontOffSmall[58];  /* 0x100A5A58 */
+signed char g_aBrFontClass[96];  /* 0x100A5918 */
+int32_t g_aBrFontOffLarge[56];  /* 0x100A5978 */
+int32_t g_aBrFontOffSmall[58];  /* 0x100A5A58 */
 BR_GLOBAL_EXTENT(int32_t, g_BrDrawReflectFlag, , 0xC);  /* 0x100A5B40 */
 char s_finished__s_100a5b50[16];  /* 0x100A5B50 */
 char s_APPMSG_BOOTPLAYER__received_100a5b60[32];  /* 0x100A5B60 */
 char s_APPMSG_HOSTSTARTED__received_100a5b80[32];  /* 0x100A5B80 */
 char s_APPMSG_PLAYERREADY__Set___d__ID__100a5ba0[40];  /* 0x100A5BA0 */
 char s_Host_set_ready_message_received__100a5bc8[144];  /* 0x100A5BC8 */
-const uint32_t *g_BrDrawRefColors;  /* 0x100A5C58 */
+uint32_t *g_BrDrawRefColors;  /* 0x100A5C58 */
 void *g_0A649C;  /* 0x100A5C5C */
 BR_GLOBAL_EXTENT(void *, g_0A64A0, , 0x14);  /* 0x100A5C60 */
-BR_GLOBAL_EXTENT(const int8_t *, g_BrDrawRefTbl, , 0xC);  /* 0x100A5C78 */
-BR_GLOBAL_EXTENT(const void *, g_BrDrawTexBlob, , 0x1C);  /* 0x100A5C88 */
+BR_GLOBAL_EXTENT(int8_t *, g_BrDrawRefTbl, , 0xC);  /* 0x100A5C78 */
+BR_GLOBAL_EXTENT(void *, g_BrDrawTexBlob, , 0x1C);  /* 0x100A5C88 */
 BrLightHist g_BrVisLightHist[4];  /* 0x100A5CA8 */
 uint8_t DAT_100a5cb0[232];  /* 0x100A5CB0 */
 int DAT_100a5d98[4];  /* 0x100A5D98 */
@@ -504,8 +504,8 @@ char DAT_100a5ea0[8];  /* 0x100A5EA0 */
 int32_t g_brRaceBeginLimitOn;  /* 0x100A5EA8 */
 int DAT_100a5eac;  /* 0x100A5EAC */
 BR_GLOBAL_EXTENT(BrRaceCue, g_aBrRaceCue, [8], 0x140);  /* 0x100A5EB0 */
-BR_GLOBAL_EXTENT(const int32_t, BrTextWidthLarge, [55], 0x4);  /* 0x100A6070 */
-BR_GLOBAL_EXTENT(const int32_t, BrTextWidthSmall, [55], 0x284);  /* 0x100A6150 */
+BR_GLOBAL_EXTENT(int32_t, BrTextWidthLarge, [55], 0x4);  /* 0x100A6070 */
+BR_GLOBAL_EXTENT(int32_t, BrTextWidthSmall, [55], 0x284);  /* 0x100A6150 */
 float g_BrFpsValueA;  /* 0x100A64B0 */
 float g_BrFpsValueB;  /* 0x100A64B4 */
 int DAT_100a64b8;  /* 0x100A64B8 */
@@ -556,10 +556,10 @@ char s__EAR_DLL_RegisterMatrix_4_100a7360[28];  /* 0x100A7360 */
 char s__EAR_DLL_RegisterEnvironment_4_100a737c[32];  /* 0x100A737C */
 char s__EAR_DLL_RegisterChannel_16_100a739c[28];  /* 0x100A739C */
 char s__EAR_DLL_RegisterBank_8_100a73b8[12];  /* 0x100A73B8 */
-const char *g_pszBr0A73C4;  /* 0x100A73C4 */
-BR_GLOBAL_EXTENT(const char *, g_pszBr0A73C8, , 0x4);  /* 0x100A73C8 */
+char *g_pszBr0A73C4;  /* 0x100A73C4 */
+BR_GLOBAL_EXTENT(char *, g_pszBr0A73C8, , 0x4);  /* 0x100A73C8 */
 char s__EAR_DLL_MoveEvent_4_100a73d0[4];  /* 0x100A73D0 */
-BR_GLOBAL_EXTENT(const char *, g_pszBr0A73D4, , 0x10);  /* 0x100A73D4 */
+BR_GLOBAL_EXTENT(char *, g_pszBr0A73D4, , 0x10);  /* 0x100A73D4 */
 char s__EAR_DLL_MixEvent_4_100a73e8[20];  /* 0x100A73E8 */
 char s__EAR_DLL_InitializeEar_4_100a73fc[28];  /* 0x100A73FC */
 char s__EAR_DLL_GetVersion_0_100a7418[24];  /* 0x100A7418 */
@@ -589,7 +589,7 @@ BR_GLOBAL_EXTENT(int32_t, g_brTex0A7E08, , 0x3B4);  /* 0x100A7E08 */
 int32_t BrG_0A81C0;  /* 0x100A81C0 */
 BR_GLOBAL_EXTENT(int32_t, BrG_0A81C4, , 0x118C);  /* 0x100A81C4 */
 BrRaceRules g_brRaceRules;  /* 0x100A9354 */
-const signed char g_tblBrA9560[24];  /* 0x100A9560 */
+signed char g_tblBrA9560[24];  /* 0x100A9560 */
 int g_0A95B8[108];  /* 0x100A95B8 */
 char g_0A9768[36];  /* 0x100A9768 */
 char g_0A978C[28];  /* 0x100A978C */
@@ -605,19 +605,19 @@ char g_0A9868[16];  /* 0x100A9868 */
 char g_0A9878[12];  /* 0x100A9878 */
 char g_0A9884[116];  /* 0x100A9884 */
 BR_GLOBAL_EXTENT(int32_t, g_brAppContinue, , 0x34);  /* 0x100A98F8 */
-int32_t (*const s_apfnAppState[5])(void);  /* 0x100A9900 */
-const uint32_t s17_colAA5D0[4];  /* 0x100A9930 */
-const char BrDxMsgCreateSurfaceFailed[28];  /* 0x100A9940 */
-const char BrDxMsgCoopLevelFailed[28];  /* 0x100A995C */
-const char BrDxMsgQiDDraw2Failed[24];  /* 0x100A9978 */
-const char BrDxMsgCreateDDrawFailed[24];  /* 0x100A9990 */
-const char BrDxMsgLoadDDrawFailed[32];  /* 0x100A99A8 */
-const char BrDxNameDDrawCreate[20];  /* 0x100A99C8 */
-const char BrDxNameDDrawDll[12];  /* 0x100A99DC */
-const char BrDxMsgProcDInputFailed[40];  /* 0x100A99E8 */
-const char BrDxNameDInputCreate[20];  /* 0x100A9A10 */
-const char BrDxMsgLoadDInputFailed[32];  /* 0x100A9A24 */
-const char BrDxNameDInputDll[12];  /* 0x100A9A44 */
+int32_t (*s_apfnAppState[5])(void);  /* 0x100A9900 */
+uint32_t s17_colAA5D0[4];  /* 0x100A9930 */
+char BrDxMsgCreateSurfaceFailed[28];  /* 0x100A9940 */
+char BrDxMsgCoopLevelFailed[28];  /* 0x100A995C */
+char BrDxMsgQiDDraw2Failed[24];  /* 0x100A9978 */
+char BrDxMsgCreateDDrawFailed[24];  /* 0x100A9990 */
+char BrDxMsgLoadDDrawFailed[32];  /* 0x100A99A8 */
+char BrDxNameDDrawCreate[20];  /* 0x100A99C8 */
+char BrDxNameDDrawDll[12];  /* 0x100A99DC */
+char BrDxMsgProcDInputFailed[40];  /* 0x100A99E8 */
+char BrDxNameDInputCreate[20];  /* 0x100A9A10 */
+char BrDxMsgLoadDInputFailed[32];  /* 0x100A9A24 */
+char BrDxNameDInputDll[12];  /* 0x100A9A44 */
 int DAT_100a9a50;  /* 0x100A9A50 */
 float BrGbiRectG_A9A54;  /* 0x100A9A54 */
 BrGbiHandler g_brGbi0A79F0[256];  /* 0x100A9A58 */
@@ -647,7 +647,7 @@ BR_GLOBAL_EXTENT(char, DAT_100aa050, , 0x3);  /* 0x100AA050 */
 BR_GLOBAL_EXTENT(char, DAT_100aa054, , 0x3);  /* 0x100AA054 */
 BR_GLOBAL_EXTENT(char, DAT_100aa058, , 0x3);  /* 0x100AA058 */
 BR_GLOBAL_EXTENT(char, DAT_100aa05c, , 0xB);  /* 0x100AA05C */
-const unsigned char g_BrDlTableA[192];  /* 0x100AA068 */
+unsigned char g_BrDlTableA[192];  /* 0x100AA068 */
 BR_GLOBAL_EXTENT(int, DAT_100aa128, , 0xBC);  /* 0x100AA128 */
 BR_GLOBAL_EXTENT(int, DAT_100aa1e8, , 0xBC);  /* 0x100AA1E8 */
 BR_GLOBAL_EXTENT(int, DAT_100aa2a8, , 0x28);  /* 0x100AA2A8 */
@@ -705,45 +705,45 @@ BR_GLOBAL_EXTENT(char, DAT_100aacc8, , 0xF);  /* 0x100AACC8 */
 BR_GLOBAL_EXTENT(char, DAT_100aacd8, , 0xF);  /* 0x100AACD8 */
 BR_GLOBAL_EXTENT(char, DAT_100aace8, , 0xF);  /* 0x100AACE8 */
 BR_GLOBAL_EXTENT(int, DAT_100aacf8, , 0xC);  /* 0x100AACF8 */
-const BrUiSprite g_aBrUiSprite[145];  /* 0x100AAD08 */
+BrUiSprite g_aBrUiSprite[145];  /* 0x100AAD08 */
 void *g_p0AB3E0;  /* 0x100AB3E0 */
 BR_GLOBAL_EXTENT(int16_t, g_br0AB3E4, , 0x6);  /* 0x100AB3E4 */
 BR_GLOBAL_EXTENT(uint32_t, g_br0AB3EC, , 0x28);  /* 0x100AB3EC */
-BR_GLOBAL_EXTENT(const BrTextStyle, g_aBrUiStyle, [21], 0x454);  /* 0x100AB418 */
+BR_GLOBAL_EXTENT(BrTextStyle, g_aBrUiStyle, [21], 0x454);  /* 0x100AB418 */
 BR_GLOBAL_EXTENT(int32_t, g_BrSprRect46, [4], 0x20);  /* 0x100AB9BC */
 BR_GLOBAL_EXTENT(int32_t, g_BrSprRect48, [4], 0xA4);  /* 0x100AB9EC */
 uint32_t g_AC300;  /* 0x100ABAA0 */
 int DAT_100abaa4;  /* 0x100ABAA4 */
 int g_brTblABAA8[24];  /* 0x100ABAA8 */
-const int32_t g_aBrAC368[18];  /* 0x100ABB08 */
-const int32_t g_aBrAC3B0[6];  /* 0x100ABB50 */
-const int32_t g_aBrAC3C8[6];  /* 0x100ABB68 */
+int32_t g_aBrAC368[18];  /* 0x100ABB08 */
+int32_t g_aBrAC3B0[6];  /* 0x100ABB50 */
+int32_t g_aBrAC3C8[6];  /* 0x100ABB68 */
 int g_brTblABB80[8];  /* 0x100ABB80 */
 int g_brTblABBA0[4];  /* 0x100ABBA0 */
 int g_brTblABBB0[2];  /* 0x100ABBB0 */
 int g_brTblABBB8[2];  /* 0x100ABBB8 */
-const int32_t g_aBrAC420[32];  /* 0x100ABBC0 */
-const int32_t g_aBrAC4A0[4];  /* 0x100ABC40 */
-const int32_t g_aBrAC4B0[4];  /* 0x100ABC50 */
-const int32_t g_aBrAC4C0[6];  /* 0x100ABC60 */
-const int32_t g_aBrAC4D8[16];  /* 0x100ABC78 */
-const int32_t g_aBrAC518[2];  /* 0x100ABCB8 */
-const int32_t g_aBrAC520[4];  /* 0x100ABCC0 */
+int32_t g_aBrAC420[32];  /* 0x100ABBC0 */
+int32_t g_aBrAC4A0[4];  /* 0x100ABC40 */
+int32_t g_aBrAC4B0[4];  /* 0x100ABC50 */
+int32_t g_aBrAC4C0[6];  /* 0x100ABC60 */
+int32_t g_aBrAC4D8[16];  /* 0x100ABC78 */
+int32_t g_aBrAC518[2];  /* 0x100ABCB8 */
+int32_t g_aBrAC520[4];  /* 0x100ABCC0 */
 int DAT_100abcd0[2];  /* 0x100ABCD0 */
 int DAT_100abcd8[2];  /* 0x100ABCD8 */
 int DAT_100abce0[2];  /* 0x100ABCE0 */
 int DAT_100abce8[10];  /* 0x100ABCE8 */
-const uint16_t k_AC570[16];  /* 0x100ABD10 */
-const int8_t k_AC590[8];  /* 0x100ABD30 */
-const int8_t k_AC598[4];  /* 0x100ABD38 */
-const int8_t k_AC59C[4];  /* 0x100ABD3C */
-BR_GLOBAL_EXTENT(const int8_t, k_AC5A0, [4], 0x84);  /* 0x100ABD40 */
-const int8_t k_AC628[4];  /* 0x100ABDC8 */
-const int8_t k_AC62C[4];  /* 0x100ABDCC */
-const int8_t k_AC630[4];  /* 0x100ABDD0 */
-const int8_t k_AC634[4];  /* 0x100ABDD4 */
-BR_GLOBAL_EXTENT(const int8_t, k_AC638, [4], 0x4);  /* 0x100ABDD8 */
-const uint32_t k_AC640[2];  /* 0x100ABDE0 */
+uint16_t k_AC570[16];  /* 0x100ABD10 */
+int8_t k_AC590[8];  /* 0x100ABD30 */
+int8_t k_AC598[4];  /* 0x100ABD38 */
+int8_t k_AC59C[4];  /* 0x100ABD3C */
+BR_GLOBAL_EXTENT(int8_t, k_AC5A0, [4], 0x84);  /* 0x100ABD40 */
+int8_t k_AC628[4];  /* 0x100ABDC8 */
+int8_t k_AC62C[4];  /* 0x100ABDCC */
+int8_t k_AC630[4];  /* 0x100ABDD0 */
+int8_t k_AC634[4];  /* 0x100ABDD4 */
+BR_GLOBAL_EXTENT(int8_t, k_AC638, [4], 0x4);  /* 0x100ABDD8 */
+uint32_t k_AC640[2];  /* 0x100ABDE0 */
 int g_brIdx0ABDE8;  /* 0x100ABDE8 */
 int32_t DAT_100abae8[26];  /* 0x100ABAE8 */
 uint32_t DAT_100abdec;  /* 0x100ABDEC */
@@ -755,11 +755,11 @@ BrErrEnt DAT_100abe00[BR_ERR_COUNT];  /* 0x100ABE00  the error table; entry 8 is
 BrCheatEntry g_aBrCheatCode[16];  /* 0x100ABE48 */
 BR_GLOBAL_EXTENT(Metric12, g_BrGlyphFontA12, [95], 0x4);  /* 0x100ABE84 */
 Metric12B g_BrGlyphFontB12[95];  /* 0x100AC2FC */
-const int32_t g_aBrAC308[168];  /* 0x100AC308 */
-const int32_t g_aBrAC530[2];  /* 0x100AC530 */
-const int32_t g_aBrAC538[2];  /* 0x100AC538 */
-const int32_t g_aBrAC540[2];  /* 0x100AC540 */
-const int32_t g_aBrAC548[44];  /* 0x100AC548 */
+int32_t g_aBrAC308[168];  /* 0x100AC308 */
+int32_t g_aBrAC530[2];  /* 0x100AC530 */
+int32_t g_aBrAC538[2];  /* 0x100AC538 */
+int32_t g_aBrAC540[2];  /* 0x100AC540 */
+int32_t g_aBrAC548[44];  /* 0x100AC548 */
 BrCharMapEntry g_BrCharMapImage[784];  /* 0x100AC5F8 */
 BrGlyphMetric g_BrGlyphFontA[95];  /* 0x100AC6E4 */
 BR_GLOBAL_EXTENT(Dim, g_tab, [7], 0x88);  /* 0x100AC908 */
@@ -810,9 +810,9 @@ int32_t g_Br0B380C;  /* 0x100B3014 */
 BrMenuStage g_brStages[128];  /* 0x100B3018 */
 BrRec24 g_brTbl0B3020[1];  /* 0x100B3020 */
 BrLevelRec DAT_100b3024[1];  /* 0x100B3024 */
-const uint8_t g_aBr0B3820[260];  /* 0x100B3028 */
-const float g_aBrAiDiffScale[48];  /* 0x100B30A8 */
-const int32_t g_aBrRacePlaceMsg[20];  /* 0x100B3168 */
+uint8_t g_aBr0B3820[260];  /* 0x100B3028 */
+float g_aBrAiDiffScale[48];  /* 0x100B30A8 */
+int32_t g_aBrRacePlaceMsg[20];  /* 0x100B3168 */
 BR_GLOBAL_EXTENT(void *, g_0B39B0, , 0xB4);  /* 0x100B31B8 */
 BR_GLOBAL_EXTENT(void *, g_0B3A68, , 0x3C);  /* 0x100B3270 */
 int DAT_100b32b0[3];  /* 0x100B32B0 */
@@ -825,21 +825,21 @@ int32_t g_brRaceNEntrant;  /* 0x100B3858 */
 char s_sizeof_Enemy___d_100b385c[20];  /* 0x100B385C */
 char s_sizeof_Vehicle___d_100b3870[20];  /* 0x100B3870 */
 char s_sizeof_UltraCarHeader___d_100b3884[28];  /* 0x100B3884 */
-const BrCtrlProfile g_BrCtrlDefaults[4];  /* 0x100B38A0 */
-const BrCfgRec39580 g_aBrCtlNameKey[120];  /* 0x100B3B40 */
+BrCtrlProfile g_BrCtrlDefaults[4];  /* 0x100B38A0 */
+BrCfgRec39580 g_aBrCtlNameKey[120];  /* 0x100B3B40 */
 char g_aBrKeyName3B44[35][36];  /* 0x100B3B44 */
 BR_GLOBAL_EXTENT(int32_t, BrG_0B4050, , 0xBCC);  /* 0x100B4050 */
 char BrGlCfgMagic[8];  /* 0x100B4C20 */
 int32_t g_BrFpsCountB;  /* 0x100B4C28 */
 int32_t g_BrFpsGateB;  /* 0x100B4C2C */
-const float g_aBrCarPhysDrvT1A[72];  /* 0x100B4C30 */
-const float g_aBrCarPhysDrvT1B[72];  /* 0x100B4D50 */
-const float g_aBrCarPhysDrvT2A[24];  /* 0x100B4E70 */
-const float g_aBrCarPhysDrvT2B[24];  /* 0x100B4ED0 */
-const float g_aBrCarPhysGripA[72];  /* 0x100B4F30 */
-const float g_aBrCarPhysGripB[72];  /* 0x100B5050 */
+float g_aBrCarPhysDrvT1A[72];  /* 0x100B4C30 */
+float g_aBrCarPhysDrvT1B[72];  /* 0x100B4D50 */
+float g_aBrCarPhysDrvT2A[24];  /* 0x100B4E70 */
+float g_aBrCarPhysDrvT2B[24];  /* 0x100B4ED0 */
+float g_aBrCarPhysGripA[72];  /* 0x100B4F30 */
+float g_aBrCarPhysGripB[72];  /* 0x100B5050 */
 BR_GLOBAL_EXTENT(float, DAT_100b5170, , 0x4);  /* 0x100B5170 */
-BR_GLOBAL_EXTENT(const float, g_aBrCarPhysDrvT3, [24], 0xC);  /* 0x100B5178 */
+BR_GLOBAL_EXTENT(float, g_aBrCarPhysDrvT3, [24], 0xC);  /* 0x100B5178 */
 char DAT_100b51e4[19200];  /* 0x100B51E4 */
 BrSndVoice * BrSndVoices[468];  /* 0x100B55F8 */
 BrSndBankCarSlot g_0B6540[9];  /* 0x100B5D48 */
@@ -854,16 +854,16 @@ BR_GLOBAL_EXTENT(int, DAT_100b64b0, , 0x100C);  /* 0x100B64B0 */
 char s_tracks__100b74c0[1024];  /* 0x100B74C0 */
 BR_GLOBAL_EXTENT(char *, PTR_s_desert_trk_100b78c0, , 0x3C);  /* 0x100B78C0 */
 char DAT_100b7900[1020];  /* 0x100B7900 */
-const char *const BrSfxCarCode[17];  /* 0x100B7CFC */
+char *BrSfxCarCode[17];  /* 0x100B7CFC */
 char g_aBrCfgSfxDir[1024];  /* 0x100B7D40 */
-const char *const g_apszTrackFiles[34];  /* 0x100B80B8 */
+char *g_apszTrackFiles[34];  /* 0x100B80B8 */
 char * DAT_100b8140[26];  /* 0x100B8140 */
 char * DAT_100b81a8[10];  /* 0x100B81A8 */
 BR_GLOBAL_EXTENT(char *, g_aBrNames0B81D0, [12], 0x298);  /* 0x100B81D0 */
 int32_t s_level;  /* 0x100B8498 */
 BR_GLOBAL_EXTENT(funcptr, PTR_FUN_100b849c, , 0x8);  /* 0x100B849C */
 BR_GLOBAL_EXTENT(int, DAT_100b84a8, , 0x4C);  /* 0x100B84A8 */
-const char *const g_apszCarFiles[486];  /* 0x100B84F8 */
+char *g_apszCarFiles[486];  /* 0x100B84F8 */
 int32_t g_brTex0B8C90;  /* 0x100B8C90 */
 BR_GLOBAL_EXTENT(uint32_t, g_0B8C94, , 0x18);  /* 0x100B8C94 */
 unsigned char g_0B94A8[2056];  /* 0x100B8CB0 */
@@ -887,7 +887,7 @@ int DAT_100bcbf8;  /* 0x100BCBF8 */
 int32_t DAT_100bcbfc;  /* 0x100BCBFC */
 int32_t g_br100BCC00;  /* 0x100BCC00 */
 int DAT_100bcc04;  /* 0x100BCC04 */
-BR_GLOBAL_EXTENT(const int32_t, g_brMouseDivTable, [8], 0x4);  /* 0x100BCC08 */
+BR_GLOBAL_EXTENT(int32_t, g_brMouseDivTable, [8], 0x4);  /* 0x100BCC08 */
 int32_t g_br0BD424;  /* 0x100BCC2C */
 int32_t g_br0BD428;  /* 0x100BCC30 */
 int32_t g_br0BD42C;  /* 0x100BCC34 */

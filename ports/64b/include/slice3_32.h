@@ -870,11 +870,11 @@ extern "C" {
 #endif
 #pragma push_macro("BrUiPageVtbl_1008F6F8")
 #undef BrUiPageVtbl_1008F6F8
-extern const BrUiPageVtbl BrUiPageVtbl_1008F6F8;  /* 0x1008F6F8 */
+extern BrUiPageVtbl BrUiPageVtbl_1008F6F8;  /* 0x1008F6F8 */
 #pragma pop_macro("BrUiPageVtbl_1008F6F8")
 #pragma push_macro("BrPhaseVtbl_1008F700")
 #undef BrPhaseVtbl_1008F700
-extern const BrPhaseFullVtbl BrPhaseVtbl_1008F700;  /* 0x1008F700 */
+extern BrPhaseFullVtbl BrPhaseVtbl_1008F700;  /* 0x1008F700 */
 #pragma pop_macro("BrPhaseVtbl_1008F700")
 #ifdef __cplusplus
 }
