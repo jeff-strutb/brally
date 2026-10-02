@@ -384,7 +384,7 @@ typedef struct BrInJoy {
 typedef struct BrInDiDev     BrInDiDev;
 
 typedef char br06_assert_pendlist[
-    (offsetof(BrPendList, count) == BR_PENDLIST_MAX * sizeof(void *)) ? 1 : -1];
+    (offsetof(BrPendList, count) == BR_PENDLIST_MAX * sizeof(int32_t)) ? 1 : -1];
 
 
 
