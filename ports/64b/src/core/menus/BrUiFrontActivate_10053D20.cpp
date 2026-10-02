@@ -18,6 +18,7 @@
  */
 #define _CRTIMP __declspec(dllimport)
 #include "br_coretypes.h"   /* br_globals: its objects */
+#include "br_phase.h"   /* BrPhase_, the canonical record */
 #include "br_race.h"   /* br_globals: its objects */
 #include <stdlib.h>
 #include <string.h>
@@ -74,15 +75,15 @@ int Phase53D20::Activate()
     int m;
 
     BrSub1003E3A0();
-    if (fBuilt == 0) {
+    if ((*(int *)&((BrPhase_ *)(this))->f0C) == 0) {
         FUN_100583c0();
         if ((*(BrDlg53 * *)&g_obj400)->Create((*(void * *)&g_brOwner5BC72C)) == 0) {
             BrMsgBoxAA((*(void * *)&g_brOwner5BC72C), 0, BrStrGet(0xAB));
             exit(1);
         }
-        pfnEnter(this);
-        fBuilt = 1;
-        f68    = 1;
+        (*(int (**)(Phase53D20 *))&((BrPhase_ *)(this))->pfnEnter)(this);
+        (*(int *)&((BrPhase_ *)(this))->f0C) = 1;
+        (*(int *)&((BrPhase_ *)(this))->f68)    = 1;
     }
 
     m = (*(int *)&g_a220B20);

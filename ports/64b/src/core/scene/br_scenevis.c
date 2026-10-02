@@ -271,7 +271,7 @@ done:
 
     /* Cars, ranked by how far ahead of the camera they are (top four). */
     g_BrVisCarCount = 0;
-    pCar = pCars;
+    pCar = (BrDriverCar *)pCars;
     for (i = 0; i < g_BrCarCount; i++, pCar += 1) {
         if (pCar->pfnControl != 0 && g_BrCarVisOpaque[i] != 0) {
             BrVec3Sub(&g_BrVisCarDelta, &pCar->pos, &g_BrCamera->pos);
@@ -292,7 +292,7 @@ done:
     if (g_BrVisCarCount > 4)
         g_BrVisCarCount = 4;
     for (k = 0; k < g_BrVisCarCount; k++) {
-        pCar = pCars + g_BrVisCarIdx[k] * 0x2B68;
+        pCar = (BrDriverCar *)pCars + g_BrVisCarIdx[k];
         for (i = 0; i < pCar->farCount; i++)
             g_BrSpanPending[(&pCar->aFarIds[0])[i]] |= 1 << g_BrVisCarIdx[k];
     }

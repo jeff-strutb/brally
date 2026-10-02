@@ -119,7 +119,7 @@ extern "C" int BrCtrlBindPoll_10039990(void)
                 BrInputPollPressed();
                 {
                     int *p;
-                    for (p = &(*(int *)&BrGlNavEdge6720); (int)p < (int)(&(*(int *)&BrGlNavEdge6720) + 4); p++) {
+                    for (p = &(*(int *)&BrGlNavEdge6720); (char *)p < (char *)(&(*(int *)&BrGlNavEdge6720) + 4); p++) {
                         if (*p != 0)
                             return 1;
                     }

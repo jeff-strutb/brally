@@ -10,6 +10,7 @@
 
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
+#include "dplay.h"
 #include "slice2_25.h"   /* br_globals: its objects */
 #include <stdio.h>
 #include <string.h>
@@ -106,15 +107,16 @@ int BrSub1003C260(void)
 /* WHAT IT DOES: create a COM object via CoCreateInstance and return its interface pointer. */
 /* @implements 0x10035BB0 glide BrComCreateInstance */
 
-int BrComCreateInstance(int *param_1)
+int BrComCreateInstance(void **param_1)
 
 {
   LPVOID local_4;
-  
+  HRESULT hr;
+
   local_4 = (LPVOID)0x0;
-  CoCreateInstance((IID *)&DAT_10078858,(LPUNKNOWN)0x0,1,(IID *)&DAT_10078828,&local_4);
+  hr = CoCreateInstance((IID *)&DAT_10078858,(LPUNKNOWN)0x0,1,(IID *)&DAT_10078828,&local_4);
   *param_1 = local_4;
-  return;
+  return hr;
 }
 
 /* 0x10035BE0 -- the teardown twin of BrComCreateInstance above.  0x10AC4098
@@ -384,8 +386,8 @@ typedef int (__stdcall *BrLobConnectEx)(void *pThis, DWORD dwFlags,
                                         void *riid, void **ppv,
                                         void *pUnk);                 /* +0x3C */
 typedef int (__stdcall *BrDpOpenX)(void *pThis, DWORD *pOut, void *pDesc,
-                                   int a, DWORD b, DWORD c,
-                                   DWORD dwFlags);                   /* +0x18 */
+                                   void *hEvent, void *pData, DWORD cb,
+                                   DWORD dwFlags);                   /* +0x18 CreatePlayer */
 typedef int (__stdcall *BrComRel)(void *pThis);                      /* +0x08 */
 
 /* History of the byte-exact attempts (the 455 B era, before the byte mask
@@ -441,68 +443,65 @@ typedef int (__stdcall *BrComRel)(void *pThis);                      /* +0x08 */
  * pushes differently (same instructions, same registers, same size).
  * Do not reopen before the end-grind. */
 /* @implements 0x10032320 glide BrDpLobbyConnect */
-int BrDpLobbyConnect(int *param_1)
+int BrDpLobbyConnect(BrDPlayCtx *param_1)
 {
-    int          *local_10;
-    int          *local_c;
-    unsigned int  local_8;
-    DWORD         uStack_4;
-    LPVOID        pMem;
-    HGLOBAL       pvVar3;
-    int           iVar2;
-    unsigned int  uVar4;
-    int           flag;
-    char         *pcVar6;
+    void          *local_10;      /* IDirectPlay4A */
+    void          *local_c;       /* IDirectPlayLobby3A */
+    DWORD          local_8;
+    DWORD          uStack_4;
+    DPLCONNECTION *pMem;
+    HGLOBAL        pvVar3;
+    int            iVar2;
+    unsigned int   uVar4;
+    int            flag;
+    char          *pcVar6;
 
-    local_10 = (int *)0x0;
-    local_c = (int *)0x0;
-    pMem = (LPVOID)0x0;
+    local_10 = NULL;
+    local_c = NULL;
+    pMem = NULL;
     iVar2 = CoCreateInstance((IID *)&DAT_10078918, (LPUNKNOWN)0x0, 1,
-                             (IID *)&DAT_10078908, (LPVOID *)&local_c);
+                             (IID *)&DAT_10078908, &local_c);
     if (iVar2 >= 0) {
-        iVar2 = (*(BrLobGetConn *)(*local_c + 0x20))(local_c, 0, 0, &local_8);
+        iVar2 = BR_VFN(local_c, DPL3_GetConnectionSettings, BrLobGetConn)(local_c, 0, 0, &local_8);
         if (iVar2 == (int)0x8877001e) {
             pvVar3 = GlobalAlloc(0x42, local_8);
-            pMem = GlobalLock(pvVar3);
-            if (pMem == (LPVOID)0x0) {
+            pMem = (DPLCONNECTION *)GlobalLock(pvVar3);
+            if (pMem == NULL) {
                 iVar2 = (int)0x8007000e;
             } else {
-                iVar2 = (*(BrLobGetConn *)(*local_c + 0x20))(local_c, 0, pMem,
-                                                             &local_8);
+                iVar2 = BR_VFN(local_c, DPL3_GetConnectionSettings, BrLobGetConn)(local_c, 0, pMem,
+                                                                                  &local_8);
                 if (iVar2 >= 0) {
                     /* The low byte is masked when read and kept in esi across
-                     * the call; the bit is extracted after it (461/461 B,
-                     * regnorm 0+0; residue = where VC5 schedules the and/shr
-                     * among the call's pushes). */
-                    uVar4 = *(unsigned int *)((int)pMem + 4) & 0xff;
-                    *(int *)(*(int *)((int)pMem + 8) + 4) = 0x44;
-                    *(int *)(*(int *)((int)pMem + 8) + 0x28) = 8;
-                    iVar2 = (*(BrLobSetConn *)(*local_c + 0x30))(local_c, 0, 0,
-                                                                 pMem);
+                     * the call; the bit is extracted after it. */
+                    uVar4 = pMem->dwFlags & 0xff;
+                    pMem->lpSessionDesc->dwFlags = 0x44;
+                    pMem->lpSessionDesc->dwMaxPlayers = 8;
+                    iVar2 = BR_VFN(local_c, DPL3_SetConnectionSettings, BrLobSetConn)(local_c, 0, 0,
+                                                                                      pMem);
                     flag = uVar4 >> 1 & 1;
                     if (iVar2 >= 0) {
-                        iVar2 = (*(BrLobConnectEx *)(*local_c + 0x3c))(
-                            local_c, 0, &DAT_10078848, (void **)&local_10, 0);
+                        iVar2 = BR_VFN(local_c, DPL3_ConnectEx, BrLobConnectEx)(
+                            local_c, 0, &DAT_10078848, &local_10, 0);
                         if (iVar2 >= 0) {
-                            iVar2 = (*(BrDpOpenX *)(*local_10 + 0x18))(
-                                local_10, &uStack_4, *(void **)((int)pMem + 0xc),
-                                param_1[1], 0, 0,
+                            iVar2 = BR_VFN(local_10, DP4_CreatePlayer, BrDpOpenX)(
+                                local_10, &uStack_4, pMem->lpPlayerName,
+                                param_1->hRecvEvent, 0, 0,
                                 flag != 0 ? 0x100 : 0);
                             if (iVar2 >= 0) {
-                                *param_1 = (int)local_10;
-                                param_1[2] = uStack_4;
-                                if ((*(unsigned char *)((int)pMem + 4) & 2) != 0) {
-                                    param_1[3] = 1;
+                                param_1->pDP = (struct BrDPlay4Obj *)local_10;
+                                param_1->idPlayer = uStack_4;
+                                if ((pMem->dwFlags & 2) != 0) {
+                                    param_1->f0C = 1;
                                 } else {
-                                    param_1[3] = 0;
+                                    param_1->f0C = 0;
                                 }
-                                strcpy(g_aBrCfgPlayerName,
-                                       *(char **)(*(int *)((int)pMem + 0xc) + 8));
-                                pcVar6 = *(char **)(*(int *)((int)pMem + 8) + 0x30);
+                                strcpy(g_aBrCfgPlayerName, pMem->lpPlayerName->lpszShortNameA);
+                                pcVar6 = pMem->lpSessionDesc->lpszSessionNameA;
                                 if (pcVar6 != (char *)0x0) {
                                     strcpy((char *)DAT_10ac40a8, pcVar6);
                                 }
-                                local_10 = (int *)0x0;
+                                local_10 = NULL;
                             }
                         }
                     }
@@ -510,13 +509,13 @@ int BrDpLobbyConnect(int *param_1)
             }
         }
     }
-    if (local_10 != (int *)0x0) {
-        (*(BrComRel *)(*local_10 + 8))(local_10);
+    if (local_10 != NULL) {
+        BR_VFN(local_10, DP4_Release, BrComRel)(local_10);
     }
-    if (local_c != (int *)0x0) {
-        (*(BrComRel *)(*local_c + 8))(local_c);
+    if (local_c != NULL) {
+        BR_VFN(local_c, DPL3_Release, BrComRel)(local_c);
     }
-    if (pMem != (LPVOID)0x0) {
+    if (pMem != NULL) {
         pvVar3 = GlobalHandle(pMem);
         GlobalUnlock(pvVar3);
         pvVar3 = GlobalHandle(pMem);

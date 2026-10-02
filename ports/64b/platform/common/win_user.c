@@ -495,7 +495,8 @@ LONG WINAPI RegQueryValueExA(HKEY k, LPCSTR n, LPDWORD r, LPDWORD t, LPBYTE d, L
 LONG WINAPI RegCloseKey(HKEY k) { (void)k; return ERROR_SUCCESS; }
 
 /* ---- ole32 -------------------------------------------------------------------------------------- */
-HRESULT plat_dsound_create(REFIID iid, LPVOID *out);    /* dx_sound.c */
+HRESULT plat_dsound_create(REFIID iid, LPVOID *out);    /* dx.c */
+HRESULT plat_dplay_create(REFCLSID clsid, LPVOID *out);  /* dplay.c */
 
 HRESULT WINAPI CoInitialize(LPVOID p) { (void)p; return S_OK; }
 void    WINAPI CoUninitialize(void) {}
@@ -508,6 +509,8 @@ HRESULT WINAPI CoCreateInstance(REFCLSID clsid, LPUNKNOWN outer, DWORD ctx, REFI
         *out = NULL;
     if (!memcmp(clsid, &CLSID_DirectSound, sizeof(GUID)))
         return plat_dsound_create(iid, out);
+    if (plat_dplay_create(clsid, out) == 0)
+        return 0;
     PLOG("CoCreateInstance(%08x-...): not available\n", clsid->Data1);
-    return E_FAIL;      /* DirectPlay: no network */
+    return E_FAIL;
 }

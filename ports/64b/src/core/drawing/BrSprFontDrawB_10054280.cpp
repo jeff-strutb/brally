@@ -44,18 +44,21 @@ public:
     virtual void  s5();
     virtual void  s6();                         /* +0x18 */
     virtual void  s7();                         /* +0x1C */
-    virtual void  s8(short, float, int, int);   /* +0x20 blit one glyph */
-    virtual void  s9(float, int);               /* +0x24 tail */
+    virtual void  s8(short, float, float, int);   /* +0x20 blit one glyph */
+    virtual void  s9(float, float);               /* +0x24 tail */
     virtual float s10();                        /* +0x28 centred pen x */
 
-    unsigned char f04;          /* +0x04 bit 0: pen comes from the vcall */
-    char          pad05[3];
-    char          f08;          /* +0x08 */
-    char          sz[0x407];    /* +0x09 */
-    float         f410;         /* +0x410 */
-    int           f414;         /* +0x414 */
-    char          pad418[8];
-    int           f420;         /* +0x420 */
+    /* BrTextBox's members (slice3_39.h), so the offsets match it */
+    uint32_t      f04;          /* +0x004 bit 0: pen comes from the vcall */
+    uint8_t       f08;          /* +0x008 */
+    char          sz[0x400];    /* +0x009 */
+    int16_t       width;        /* +0x40A */
+    int16_t       height;       /* +0x40C */
+    float         f410;         /* +0x410 x */
+    float         f414;         /* +0x414 y */
+    uint32_t      f418;         /* +0x418 */
+    int16_t       f41C;         /* +0x41C */
+    uint32_t      f420;         /* +0x420 */
 
     void Draw();
 };

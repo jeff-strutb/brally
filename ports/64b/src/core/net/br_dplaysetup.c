@@ -76,7 +76,7 @@ typedef int (__stdcall *CC_std_5)(void *, void *, void *, void *, intptr_t);
 int BrDPlayCreate(void)
 {
   int i;
-  BrObj29D4 *iVar4;
+  int iVar4;
   char local_400[1024];
 
   lstrcpyA((LPSTR)&g_aBrA9CDF0, (LPCSTR)&g_aBr39B720);
@@ -87,14 +87,14 @@ int BrDPlayCreate(void)
     g_aBrNetSession[i].pPayload = 0;
   }
 
-  iVar4 = BrDPlayStartup(GetModuleHandleA((LPCSTR)0x0), &(*(int * *)&g_brP277B40));
+  iVar4 = BrDPlayStartup(GetModuleHandleA((LPCSTR)0x0), &g_BrDPlayCtx);
   if (iVar4 < 0) {
     return 0;
   }
-  iVar4 = BrDpLobbyConnect(&(*(int * *)&g_brP277B40));
+  iVar4 = BrDpLobbyConnect(&g_BrDPlayCtx);
   if (iVar4 == -0x7788fbd2) {
-    (*(int * *)&g_brP277B40) = 0;
-    iVar4 = BrComCreateInstance(&(*(int * *)&g_brP277B40));
+    g_brP277B40 = 0;
+    iVar4 = BrComCreateInstance((void **)&g_brP277B40);
     if (iVar4 < 0) {
       sprintf(local_400, s_Could_not_create_DirectPlay_obje_100aa4d8, iVar4);
       BrNetErrMsgBox(BrStrGet(0x12b), iVar4);
@@ -117,16 +117,16 @@ int BrDPlayCreate(void)
   iVar4 = g_guardB;
   g_brPA9D008 = (BrOptUi *)&g_BrDPlayCtx;
   if (iVar4 == 0) {
-    (*(CC_std_5 *)&((void **)*(void ***)((*(int * *)&g_brP277B40)))[35])(
-        (*(int * *)&g_brP277B40), (void *)&DAT_10077500, (void *)BrNetSessionStore, g_brOwner5BC72C, 0);
+    /* IDirectPlay4A::EnumConnections(&guidApp, callback, hwnd, 0) */
+    BR_VFN(g_brP277B40, 35, CC_std_5)(
+        g_brP277B40, (void *)&DAT_10077500, (void *)BrNetSessionStore, g_brOwner5BC72C, 0);
     iVar4 = BrDpCreateIface(&DAT_10ac3068);
     if (iVar4 < 0) {
       return 0;
     }
   } else {
-    iVar4 = g_brPAA29D4;
     DAT_10ac5bf0 = 0;
-    if (iVar4 != 0) {
+    if (g_brPAA29D4 != 0) {
       iVar4 = BrNetEnumSessionsStart((*(int * *)&g_brP277B40));
       if (iVar4 < 0) {
         return 0;
@@ -238,7 +238,7 @@ void FUN_100356b0(void)
   BrDpShutdown();
   iVar1 = BrDpAddressBuild(local_408,local_408 + 1);
   if (local_408[0] != 0) {
-    iVar1 = BrComCreateInstance(&(*(int * *)&g_brP277B40));
+    iVar1 = BrComCreateInstance((void **)&g_brP277B40);
     DAT_10ac4094 = DAT_10ac4094 + 1;
     if ((((iVar1 >= 0)) && ((*(int * *)&g_brP277B40) != (int *)0x0)) &&
        (iVar1 = (*(CC_std_3 *)&((void **)*(void ***)(((*(int * *)&g_brP277B40))))[38])((*(int * *)&g_brP277B40),local_408[0],0), (iVar1 >= 0))) {

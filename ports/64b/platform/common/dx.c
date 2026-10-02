@@ -176,14 +176,6 @@ HRESULT plat_dsound_create(REFIID iid, LPVOID *out)
     return E_FAIL;
 }
 
-HRESULT WINAPI DirectPlayLobbyCreateA(LPGUID g, LPVOID *out, LPUNKNOWN outer, LPVOID data, DWORD n)
-{
-    (void)g; (void)outer; (void)data; (void)n;
-    if (out)
-        *out = NULL;
-    return E_FAIL;
-}
-
 /* ---- the DLLs the game loads by name ------------------------------------------------------ */
 static const plat_export k_ddraw[] = { { "DirectDrawCreate", (void *)plat_DirectDrawCreate } };
 static const plat_export k_dinput[] = { { "DirectInputCreateA", (void *)plat_DirectInputCreateA_ } };

@@ -165,26 +165,18 @@ void BrEntGfxRebindAll(void)
     for (local_10 = 0; local_10 < 3; local_10 = local_10 + 1) {
       if (g_aBrRaceCar[local_8].b29AF == 2) {
         for (local_c = 0; local_c < 10; local_c = local_c + 1) {
-          BrDlRecolor(*(int *)
-                        (*(int *)(&(*(char *)&g_aBrRaceCar[0].pModel) + local_8 * 0x2b68) + 0x8018 + local_10 * 0x28 +
-                        local_c * 4),&DAT_100aa128);
+          BrDlRecolor(BR_AT32(unsigned int *, (char *)g_aBrRaceCar[local_8].pModel + 0x8018 + local_10 * 0x28 + local_c * 4),&DAT_100aa128);
         }
         for (local_c = 0; local_c < 3; local_c = local_c + 1) {
-          BrDlRecolor(*(int *)
-                        (*(int *)(&(*(char *)&g_aBrRaceCar[0].pModel) + local_8 * 0x2b68) + 0x80bc + local_10 * 0xc +
-                        local_c * 4),&DAT_100aa1e8);
+          BrDlRecolor(BR_AT32(unsigned int *, (char *)g_aBrRaceCar[local_8].pModel + 0x80bc + local_10 * 0xc + local_c * 4),&DAT_100aa1e8);
         }
       }
       else {
         for (local_c = 0; local_c < 10; local_c = local_c + 1) {
-          BrDlRecolor(*(int *)
-                        (*(int *)(&(*(char *)&g_aBrRaceCar[0].pModel) + local_8 * 0x2b68) + 0x8018 + local_10 * 0x28 +
-                        local_c * 4),&(*(int *)&g_BrDlTableA));
+          BrDlRecolor(BR_AT32(unsigned int *, (char *)g_aBrRaceCar[local_8].pModel + 0x8018 + local_10 * 0x28 + local_c * 4),(int *)&g_BrDlTableA);
         }
         for (local_c = 0; local_c < 3; local_c = local_c + 1) {
-          BrDlRecolor(*(int *)
-                        (*(int *)(&(*(char *)&g_aBrRaceCar[0].pModel) + local_8 * 0x2b68) + 0x80bc + local_10 * 0xc +
-                        local_c * 4),&(*(int *)&g_BrDlTableA));
+          BrDlRecolor(BR_AT32(unsigned int *, (char *)g_aBrRaceCar[local_8].pModel + 0x80bc + local_10 * 0xc + local_c * 4),(int *)&g_BrDlTableA);
         }
       }
     }

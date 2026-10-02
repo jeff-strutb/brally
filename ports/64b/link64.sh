@@ -16,11 +16,16 @@ PFLAGS="-O2 ${GFLAG:--g} -std=gnu11 -Wall -Wno-unused-function -ffp-contract=off
 mkdir -p $OUT/plat
 
 ports/64b/build64.sh
+if grep -q '^FAIL' $OUT/compile.txt; then
+  grep '^FAIL' $OUT/compile.txt >&2
+  echo "link64: core TUs failed to compile; not linking" >&2
+  exit 1
+fi
 python3 ports/64b/tools/datalift.py ${DLL:+--dll "$DLL"} >/dev/null
 ports/64b/build64.sh $OUT/gen/br_data.c >/dev/null
 
 SRCS="$P/common/main.c $P/common/crt.c $P/common/win_kernel.c $P/common/win_user.c \
-      $P/common/win_mm.c $P/common/win_rsrc.c $P/common/dx.c $P/common/ear.c $P/common/glide.c \
+      $P/common/win_mm.c $P/common/win_rsrc.c $P/common/dx.c $P/common/dplay.c $P/common/ear.c $P/common/glide.c \
       $P/render/$RENDER/brr_$RENDER.*"
 case "$HOST" in
   null)  SRCS="$SRCS $P/host/posix/host_posix.c $P/host/null/host_null.c";;

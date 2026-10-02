@@ -785,7 +785,7 @@ int BrCollRespTipKick(struct BrTipView *);
 #pragma pop_macro("BrCollRespTipKick")
 #pragma push_macro("BrComCreateInstance")
 #undef BrComCreateInstance
-int BrComCreateInstance(int *);
+int BrComCreateInstance(void **);
 #pragma pop_macro("BrComCreateInstance")
 #pragma push_macro("BrComGetAlloc")
 #undef BrComGetAlloc
@@ -1183,7 +1183,7 @@ int BrDpCreateIface(struct BrIUnk **);
 #pragma pop_macro("BrDpCreateIface")
 #pragma push_macro("BrDpLobbyConnect")
 #undef BrDpLobbyConnect
-int BrDpLobbyConnect(int *);
+int BrDpLobbyConnect(struct BrDPlayCtx *);
 #pragma pop_macro("BrDpLobbyConnect")
 #pragma push_macro("BrDpSessionJoin")
 #undef BrDpSessionJoin
@@ -4147,7 +4147,7 @@ int BrSprFontDraw(int, int, unsigned int, int *, int);
 #pragma pop_macro("BrSprFontDraw")
 #pragma push_macro("BrSprFontDrawAt_100541B0")
 #undef BrSprFontDrawAt_100541B0
-void BrSprFontDrawAt_100541B0(void *, float, int);
+void BrSprFontDrawAt_100541B0(void *, float, float);
 #pragma pop_macro("BrSprFontDrawAt_100541B0")
 #pragma push_macro("BrSprFontDrawB_10054280")
 #undef BrSprFontDrawB_10054280
@@ -5051,7 +5051,7 @@ int BrUiTickSteps_100480A0(void *);
 #pragma pop_macro("BrUiTickSteps_100480A0")
 #pragma push_macro("BrUiTick_10054070")
 #undef BrUiTick_10054070
-void BrUiTick_10054070(void *, int, int);
+void BrUiTick_10054070(void *, float, float);
 #pragma pop_macro("BrUiTick_10054070")
 #pragma push_macro("BrUiTweenBegin_10047CB0")
 #undef BrUiTweenBegin_10047CB0

@@ -101,7 +101,7 @@ int BrOpt3A00(void)
         fAllReady = 1;
         /* orig `cmp eax, &g_aBrAA2538[8]; jl` -- signed pointer compare. */
         for (pSlot = g_aBrAA2538;
-             (int)pSlot < (int)(g_aBrAA2538 + BR_SLOT_COUNT);
+             (char *)pSlot < (char *)(g_aBrAA2538 + BR_SLOT_COUNT);
              pSlot++) {
             if (pSlot->a != 0)
                 continue;

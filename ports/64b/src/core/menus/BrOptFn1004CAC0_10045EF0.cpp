@@ -258,7 +258,7 @@ int BrOptFn1004CAC0(GameUi *parent)
     (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn04) = (CtlFn)BrUiPoll1003EC80;
     (*(int *)&((BrUiCtl_ *)(p))->list.f1A99C[8]) = 1;
     (*(class Sel3838 *)&((BrUiCtl_ *)(p))->list).s5(0x40001, &DAT_100aac78, 5, 0, -1);
-    for (pe = g_aKeyEnt0AAAD0; (int)pe < (int)(g_aKeyEnt0AAAD0 + 21); pe++) {
+    for (pe = g_aKeyEnt0AAAD0; (char *)pe < (char *)(g_aKeyEnt0AAAD0 + 21); pe++) {
         flags = 0;
         if (g_brKind5D64 == 3
             && (pe == &g_aKeyEnt0AAAD0[0] || pe == &g_aKeyEnt0AAAD0[1])) {

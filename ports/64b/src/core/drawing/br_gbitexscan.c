@@ -264,7 +264,7 @@ void BrGbiSolidTexBuild(void)
         p[1]  = fill;
         p[2]  = fill;
         p += 4;
-    } while ((int)p < (int)(DAT_105e1810 + 0x11));
+    } while ((char *)p < (char *)(DAT_105e1810 + 0x11));
 
     DAT_10697a4c = (int)g_pfn18AA0B0(DAT_105e1810, 0u, 4u, 4u, 1u, 4u,
                                     0u, 0u, 1u, 1u, 0u, 0u, 1u, 0u);

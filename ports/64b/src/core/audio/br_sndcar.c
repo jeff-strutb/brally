@@ -1,3 +1,4 @@
+#include <string.h>
 /* br_sndcar.c -- audio.
  *
  * Per-car engine loops and one-shot dispatch, once a frame, thiscall on the
@@ -145,11 +146,13 @@ void BR_THISCALL1 BrSndCarStep(BrDriverCar *pCar)
   int *local_10;
   float local_c;
   float local_8;
-  int local_4;
+  BrDriverCar *pView;         /* 0x10AF1208 + view car * 0x2B68 */
+  BrSnapMtx *pMat;
+  float *pPos;
 
   iVar6 = pCar->f140;
   iVar9 = iVar6 << 1;
-  local_4 = g_aBrView[0].iCar * 0x2b68;
+  pView = &g_aBrRaceCar[g_aBrView[0].iCar];
   if (((*(int *)&g_BrX06909B4) != 0) || (pCar->pProfile == 0)) {
     (&(*(int *)((char *)&g_aBrSfxChan + 0x14)))[iVar6 * 0xc] = 0;
     (&(*(int *)((char *)&g_aBrSfxChan + 0x8)))[iVar6 * 0xc] = 0;
@@ -158,15 +161,15 @@ void BR_THISCALL1 BrSndCarStep(BrDriverCar *pCar)
   }
   local_24 = 0;
   if (g_brMode0AA8B4 == 1) {
-    iVar8 = *(int *)((char *)&(*(int *)&g_aBrRaceCar[0].pMatA) + local_4);
+    pMat = pView->pMatA;
     if (pCar->fF78 != 0) goto LAB_10061526;
-    iVar3 = *(int *)((char *)&(*(int *)&g_aBrRaceCar[0].fF78) + local_4);
+    iVar3 = pView->fF78;
 LAB_j10061524:
     if (iVar3 != 0) goto LAB_10061526;
   }
   else {
-    iVar8 = BR_LP64_PTR_AS_INT(pCar->pMatA);
-    if ((pCar->fF78 == 0) && (*(int *)((char *)&(*(int *)&g_aBrRaceCar[0].fF78) + local_4) == 0)) {
+    pMat = pCar->pMatA;
+    if ((pCar->fF78 == 0) && (pView->fF78 == 0)) {
       iVar3 = g_aBrRaceCar[g_aBrView[1].iCar].fF78;
       goto LAB_j10061524;
     }
@@ -174,10 +177,10 @@ LAB_10061526:
     local_24 = 1;
   }
   local_10 = &pCar->f0F5C;
-  iVar3 = (int)(((void *)&pCar->pos.x));
+  pPos = &pCar->pos.x;
   pCar->f0F74 =
-      BrSndDoppler((void *)iVar3, &pCar->posPrev.x, (char *)iVar8 + 0x30, local_10);
-  BrSndPan((void *)iVar3, (void *)iVar8, &local_18, &local_14, &local_1c, 0);
+      BrSndDoppler(pPos, &pCar->posPrev.x, (char *)pMat + 0x30, local_10);
+  BrSndPan(pPos, pMat, &local_18, &local_14, &local_1c, 0);
   if (pCar->f0E24 > BR_K_00778D8) {
     fVar10 = pCar->f0E24 * BR_K_00778CC;
   }
@@ -214,7 +217,7 @@ LAB_10061526:
     pCar->f0F70 = 0;
   }
   if (0x7f < *(unsigned char *)&pCar->aBody[0].f01FE) {
-    BrSndPan((void *)iVar3, (void *)iVar8, &local_8, &local_c, (int *)&local_28, 0);
+    BrSndPan(pPos, pMat, &local_8, &local_c, (int *)&local_28, 0);
     fVar10 = (float)*(int *)&local_28;
     iVar6 = (int)(fVar10 * local_c);
     iVar4 = (int)(fVar10 * local_8);
@@ -233,7 +236,7 @@ LAB_10061526:
   }
   pCar->aBody[0].f01FE = 0;
   if (0x7f < pCar->aBody[0].f01FF) {
-    BrSndPan((void *)iVar3, (void *)iVar8, &local_c, &local_8, (int *)&local_28, 0);
+    BrSndPan(pPos, pMat, &local_c, &local_8, (int *)&local_28, 0);
     fVar10 = (float)*(int *)&local_28;
     iVar6 = (int)(fVar10 * local_8);
     iVar4 = (int)(fVar10 * local_c);
@@ -252,7 +255,7 @@ LAB_10061526:
   }
   *(char *)&pCar->aBody[0].f01FF = 0;
   if (0x7f < *(unsigned char *)&pCar->aBody[0].f0208) {
-    BrSndPan((void *)iVar3, (void *)iVar8, &local_c, &local_8, (int *)&local_28, 0);
+    BrSndPan(pPos, pMat, &local_c, &local_8, (int *)&local_28, 0);
     fVar10 = (float)*(int *)&local_28;
     iVar6 = (int)(fVar10 * local_8);
     iVar4 = (int)(fVar10 * local_c);
@@ -261,7 +264,7 @@ LAB_10061526:
   }
   pCar->aBody[0].f0208 = 0;
   if (0x7f < *(unsigned char *)&pCar->aBody[0].f0202) {
-    BrSndPan((void *)iVar3, (void *)iVar8, &local_c, &local_8, (int *)&local_28, 0);
+    BrSndPan(pPos, pMat, &local_c, &local_8, (int *)&local_28, 0);
     iVar4 = *(int *)&local_28;
     if (2 < iVar4) {
       iVar4 = 0x20;
@@ -272,7 +275,7 @@ LAB_10061526:
   }
   pCar->aBody[0].f0202 = 0;
   if (0x7f < *(unsigned char *)&pCar->aBody[0].f0203) {
-    BrSndPan((void *)iVar3, (void *)iVar8, &local_c, &local_8, (int *)&local_28, 0);
+    BrSndPan(pPos, pMat, &local_c, &local_8, (int *)&local_28, 0);
     iVar4 = *(int *)&local_28;
     if (2 < iVar4) {
       iVar4 = 0x20;
@@ -283,7 +286,7 @@ LAB_10061526:
   }
   pCar->aBody[0].f0203 = 0;
   if (0x7f < *(unsigned char *)&pCar->aBody[0].f0204) {
-    BrSndPan((void *)iVar3, (void *)iVar8, &local_c, &local_8, (int *)&local_28, 0);
+    BrSndPan(pPos, pMat, &local_c, &local_8, (int *)&local_28, 0);
     iVar4 = *(int *)&local_28;
     if (2 < iVar4) {
       iVar4 = 0x20;
@@ -294,7 +297,7 @@ LAB_10061526:
   }
   pCar->aBody[0].f0204 = 0;
   if (0x7f < *(unsigned char *)&pCar->aBody[0].f0205) {
-    BrSndPan((void *)iVar3, (void *)iVar8, &local_c, &local_8, (int *)&local_28, 0);
+    BrSndPan(pPos, pMat, &local_c, &local_8, (int *)&local_28, 0);
     iVar4 = *(int *)&local_28;
     if (2 < iVar4) {
       iVar4 = 0x20;
@@ -305,7 +308,7 @@ LAB_10061526:
   }
   pCar->aBody[0].f0205 = 0;
   if (0x7f < *(unsigned char *)&pCar->aBody[0].f0206) {
-    BrSndPan((void *)iVar3, (void *)iVar8, &local_c, &local_8, (int *)&local_28, 0);
+    BrSndPan(pPos, pMat, &local_c, &local_8, (int *)&local_28, 0);
     *(int *)&local_28 = *(int *)&local_28 * 0x10001;
     if (pCar->f0F74 >= BR_K_00778D8) {
       BrSndSetVolumePairF(0x18, pCar->f140,
@@ -476,16 +479,10 @@ LAB_10061dc3:
     }
   }
   if (g_brMode0AA8B4 == 1) {
-    iVar6 = *(int *)((char *)&(*(int *)&g_aBrRaceCar[0].pMatA) + local_4) + 0x30;
-    *local_10 = *(int *)iVar6;
-    local_10[1] = *(int *)(iVar6 + 4);
-    local_10[2] = *(int *)(iVar6 + 8);
+    memcpy(local_10, (char *)pView->pMatA + 0x30, 12);
     return;
   }
-  iVar6 = BR_LP64_PTR_AS_INT(pCar->pMatA) + 0x30;
-  *local_10 = *(int *)iVar6;
-  local_10[1] = *(int *)(iVar6 + 4);
-  local_10[2] = *(int *)(iVar6 + 8);
+  memcpy(local_10, (char *)pCar->pMatA + 0x30, 12);
   return;
 }
 

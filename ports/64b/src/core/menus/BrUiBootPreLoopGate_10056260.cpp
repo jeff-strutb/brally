@@ -526,7 +526,7 @@ int BrUiBootPreLoopGate(void)
     do {
         *q = 0;
         q += 3;
-    } while ((int)q < (int)((char *)g_rec + 0x2D8));
+    } while ((char *)q < (char *)g_rec + 0x2D8);
 
     ph = ((Phase *)br_new_obj(sizeof(BrPhase_), (void *(*)(void *))BrOptObjCtor));
     g_2908 = ph;

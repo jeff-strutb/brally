@@ -53,23 +53,23 @@
 void BrPfxReset(void)
 {
     int i = 1;
-    unsigned char *p = (*(unsigned char (*)[])((char *)&g_aPfxRec + 0x3C));
     int32_t n;
 
+    /* the original walks &rec[1].iNext by 0x20 up to 0x10AC2C64 (a later
+     * global's address): records 1..255 */
     do {
-        *(uint16_t *)p = (uint16_t)(i + 1);
+        g_aPfxRec[i].iNext = (uint16_t)(i + 1);
         ++i;
-        p += 0x20;
-    } while ((int)p < (int)(*(unsigned char (*)[])&g_BrVisColLo[1]));
+    } while (i < BR_PFX_RECS);
 
     n = g_BrCarCount;
-    (*(uint16_t *)((char *)&g_aPfxRec + 0x1FFC)) = 0;
+    g_aPfxRec[255].iNext = 0;
     g_iPfxFree = 1;
     if (n > 0) {
-        int32_t *car = (*(int32_t (*)[])&g_aBrRaceCar[0].f105C);
+        BrDriverCar *car = g_aBrRaceCar;
         do {
-            *car = 0;
-            car = (int32_t *)((unsigned char *)car + 0x2B68);
+            car->f105C = 0;
+            car++;
             --n;
         } while (n != 0);
     }

@@ -36,7 +36,7 @@ void BrSlotsResetIfBZero(void)
             p[0]  = nZero;
         }
         p += 3;
-    } while ((int)p < (int)((char *)g_aBrAA2538 + 0x68));
+    } while ((char *)p < (char *)((char *)g_aBrAA2538 + 0x68));
 }
 
 /* WHAT IT DOES: looks a player slot up by its identifier and hands back the
