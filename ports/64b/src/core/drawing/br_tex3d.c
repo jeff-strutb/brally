@@ -961,7 +961,7 @@ int BrTex3dMipChainLoad(char *param_1,char *param_2,BrTexReq272 *param_3)
   int iVar2;
   int iVar3;
   int iVar4;
-  unsigned char *iVar5;
+  int iVar5;
   int iVar6;
   int local_c;
   int local_8;
@@ -1061,7 +1061,7 @@ void BrTex3dReDownload(int param_1,int *param_2)
 void BrTex3dReconvert(int param_1)
 
 {
-  unsigned short *uVar1;
+  int uVar1;
   
   uVar1 = FUN_10027b60(DAT_106b7aa0 + 4 + param_1 * 0x2b4);
   (*DAT_118ed1d0)(param_1,uVar1);
@@ -1116,8 +1116,8 @@ void BrTex3dReconvert(int param_1)
 int * BrTexSlotFetchPixels(int param_1,int *param_2)
 
 {
-  char *iVar1;
-  uint8_t *iVar2;
+  int iVar1;
+  int iVar2;
   int *puVar3;
   int iStack_c;
   int iStack_8;
@@ -1281,9 +1281,9 @@ int BrTex3dCreate(int param_1,int param_2,int param_3,int param_4,int param_5,
                  int param_15)
 {
   int iVar2;
-  int *uVar3;
+  int uVar3;
   int iVar4;
-  int *iVar5;
+  int iVar5;
   BrTexReq272 r;
   
   iVar4 = 1 << BrGbiSizeShift(param_3);
@@ -1356,9 +1356,9 @@ int BrTex3dCreate(int param_1,int param_2,int param_3,int param_4,int param_5,
 int BrTex3dCreateBlank(int * param_1,int param_2,int param_3,int param_4)
 {
   int iVar2;
-  int *uVar3;
+  int uVar3;
   int iVar4;
-  int *iVar5;
+  int iVar5;
   BrTexReq272 r;
   
   iVar4 = 1 << BrGbiSizeShift(param_2);
@@ -1430,7 +1430,7 @@ int BrTex3dExpandInto(unsigned short *param_1,unsigned char *param_2,uint8_t *pa
   int uVar2;
   int iVar3;
   int iVar4;
-  int *iVar5;
+  int iVar5;
   BrTexReq272 r;
   
   iVar4 = 1 << BrGbiSizeShift(param_4);
@@ -1517,7 +1517,7 @@ int BrTex3dRegister(void)
   unsigned short a;
   unsigned short b;
   int id;
-  int *sMask;
+  int sMask;
   int h;
   int tMask;
   int w;
@@ -1528,7 +1528,7 @@ int BrTex3dRegister(void)
   int slot;
   int j;
   int wCur;
-  int *hCur;
+  int hCur;
   BrTexReq272 r;
 
   /* Opening copies: orig stores p1, p2, then f264, then b290..b295 in
@@ -1748,7 +1748,7 @@ int BrTex3dRegister(void)
 
 void FUN_100298c0(int param_1,int param_2,int param_3)
 {
-  int *uVar1;
+  int uVar1;
   int w;
   int *h;
   int z;

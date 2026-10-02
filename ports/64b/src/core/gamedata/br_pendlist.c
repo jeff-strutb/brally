@@ -57,13 +57,13 @@ typedef char br06_assert_namelist[
  * every candidate and score is in build/match/crank.log.
  * Do not reopen before the end-grind. */
 /* @implements 0x10037030 d3d BrPendListAdd */
-void BrPendListAdd(BrPendList *pList, void *pItem, uint32_t *pcDropped)
+void BrPendListAdd(int32_t id)
 {
     BrPendCtx *p = (*(BrPendCtx * *)&g_brP6EECCC);
     int32_t n = p->count;
 
     if (n < BR_PENDLIST_MAX) {
-        p->apItems[n] = pList;
+        p->aItems[n] = id;
         /* Reload 0x106C7C3C before incrementing -- the original does.
          * RESIDUE (0+0 regnorm, T3a): pure eax/ecx rotation from the first
          * instruction -- the original loads the ctx into ecx (6-byte form)

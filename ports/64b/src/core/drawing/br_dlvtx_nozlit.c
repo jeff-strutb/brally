@@ -165,19 +165,19 @@ const uint8_t *BrDlVtxNoZLit(const uint8_t *p)
     if (!DAT_105d17d0) {
         if (DAT_105ccfd0 != 0) {
             m = DAT_100a9a50 ? DAT_105ccd50[DAT_100a9a50 - 1].m : NULL;
-            DAT_105ce210 = (float)DAT_105ccc78[0].col[0];
-            DAT_105ce214 = (float)DAT_105ccc78[0].col[1];
-            dz = (float)DAT_105ccc78[0].dir[2];
-            dx = (float)DAT_105ccc78[0].dir[0];
-            DAT_105ce218 = (float)DAT_105ccc78[0].col[2];
-            dy = (float)DAT_105ccc78[0].dir[1];
+            DAT_105ce210 = (float)((BrDlLight *)DAT_105ccc78)[0].col[0];
+            DAT_105ce214 = (float)((BrDlLight *)DAT_105ccc78)[0].col[1];
+            dz = (float)((BrDlLight *)DAT_105ccc78)[0].dir[2];
+            dx = (float)((BrDlLight *)DAT_105ccc78)[0].dir[0];
+            DAT_105ce218 = (float)((BrDlLight *)DAT_105ccc78)[0].col[2];
+            dy = (float)((BrDlLight *)DAT_105ccc78)[0].dir[1];
             DAT_105ce21c = (m[2] * dz + m[0] * dx + m[1] * dy) / DAT_10077420;
             DAT_105ce220 = (m[6] * dz + m[4] * dx + m[5] * dy) / DAT_10077420;
             DAT_105ce224 = (m[10] * dz + m[8] * dx + m[9] * dy) / DAT_10077420;
-            FUN_100344D0(&DAT_105ce21c);
-            DAT_105ce228 = (float)DAT_105ccc78[1].col[0];
-            DAT_105ce22c = (float)DAT_105ccc78[1].col[1];
-            DAT_105ce230 = (float)DAT_105ccc78[1].col[2];
+            br_dl_normalise((struct BrVec3 *)&DAT_105ce21c);
+            DAT_105ce228 = (float)((BrDlLight *)DAT_105ccc78)[1].col[0];
+            DAT_105ce22c = (float)((BrDlLight *)DAT_105ccc78)[1].col[1];
+            DAT_105ce230 = (float)((BrDlLight *)DAT_105ccc78)[1].col[2];
         }
         DAT_105d17d0 = 1;
     }
@@ -218,7 +218,7 @@ const uint8_t *BrDlVtxNoZLit(const uint8_t *p)
         }
 
         pf = &pV[i].f40;
-        oc = FUN_10022120(pf);
+        oc = BrDlsClipCodes(pf);
         pV[i].outcode = oc;
         if (oc == 0)
             FUN_10023760(pVc, pf, pV[i].n0, pV[i].n1, pV[i].n2);

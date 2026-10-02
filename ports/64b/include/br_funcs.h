@@ -1119,6 +1119,7 @@ int BrDllMain(void *, int, int);
 #pragma push_macro("BrDlsClipCodes")
 #undef BrDlsClipCodes
 int BrDlsClipCodes(const float *);
+const unsigned char * BrDlVtxNoZLit(const unsigned char *);
 #pragma pop_macro("BrDlsClipCodes")
 #pragma push_macro("BrDlsTileRectE3")
 #undef BrDlsTileRectE3
@@ -3118,7 +3119,7 @@ int BrPeerFind(unsigned int);
 #pragma pop_macro("BrPeerFind")
 #pragma push_macro("BrPendListAdd")
 #undef BrPendListAdd
-void BrPendListAdd(struct BrPendList *, void *, unsigned int *);
+void BrPendListAdd(int);
 #pragma pop_macro("BrPendListAdd")
 #pragma push_macro("BrPfxReset")
 #undef BrPfxReset

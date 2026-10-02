@@ -205,14 +205,14 @@ static int32_t BrFtol(double v)
 /* DEVIATION: 32-bit command word from a possibly-64-bit host pointer. */
 static __inline uint32_t BrGfxAddr(const void *p)
 {
-    return (uint32_t)(uintptr_t)p;
+    return br_addr32(p);
 }
 
 /* The original's allocation idiom: read the cursor, bump it by 8, write. */
 static __inline BrGfxCmd *BrGfxAlloc(void)
 {
-    BrGfxCmd *p = g_BrGfxPtr.pCur;
-    g_BrGfxPtr.pCur = p + 1;
+    BrGfxCmd *p = (BrGfxCmd *)g_BrGfxPtr;
+    g_BrGfxPtr = (uint32_t *)(p + 1);
     return p;
 }
 

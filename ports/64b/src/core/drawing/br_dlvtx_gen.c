@@ -95,11 +95,11 @@ const uint8_t *BrDlVtxGenLin(const uint8_t *p)
 
             DAT_105ce210 = (float)(int)((*(uint32_t *)&DAT_105ccc78) & 0xff);
             DAT_105ce214 = (float)(int)(((*(uint32_t *)&DAT_105ccc78) >> 8) & 0xff);
-            DAT_105ce218 = (float)(int)(unsigned)(*(uint8_t *)&(*(uint32_t *)&DAT_105ccc78)[2]);
+            DAT_105ce218 = (float)(int)(unsigned)(*(uint8_t *)&DAT_105ccc78[2]);
 
-            dx = (float)(int)(*(int8_t *)&(*(uint32_t *)&DAT_105ccc78)[8]);
-            dy = (float)(int)(*(int8_t *)&(*(uint32_t *)&DAT_105ccc78)[9]);
-            dz = (float)(int)(*(int8_t *)&(*(uint32_t *)&DAT_105ccc78)[10]);
+            dx = (float)(int)(*(int8_t *)&DAT_105ccc78[8]);
+            dy = (float)(int)(*(int8_t *)&DAT_105ccc78[9]);
+            dz = (float)(int)(*(int8_t *)&DAT_105ccc78[10]);
 
             DAT_105ce21c = ((m[1] * dy + m[0] * dx) + m[2] * dz) / DAT_10077420;
             DAT_105ce220 = ((m[5] * dy + m[4] * dx) + m[6] * dz) / DAT_10077420;
@@ -107,9 +107,9 @@ const uint8_t *BrDlVtxGenLin(const uint8_t *p)
 
             br_dl_normalise(&DAT_105ce21c);
 
-            DAT_105ce228 = (float)(int)((*(uint32_t *)&(*(uint32_t *)&DAT_105ccc78)[16]) & 0xff);
-            DAT_105ce22c = (float)(int)(((*(uint32_t *)&(*(uint32_t *)&DAT_105ccc78)[16]) >> 8) & 0xff);
-            DAT_105ce230 = (float)(int)(unsigned)(*(uint8_t *)&(*(uint32_t *)&DAT_105ccc78)[18]);
+            DAT_105ce228 = (float)(int)((*(uint32_t *)&DAT_105ccc78[16]) & 0xff);
+            DAT_105ce22c = (float)(int)(((*(uint32_t *)&DAT_105ccc78[16]) >> 8) & 0xff);
+            DAT_105ce230 = (float)(int)(unsigned)(*(uint8_t *)&DAT_105ccc78[18]);
         }
         DAT_105d17d0 = 1;
     }

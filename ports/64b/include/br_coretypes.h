@@ -123,7 +123,7 @@ typedef struct KeyEnt KeyEnt;
 
 #define BR_PENDLIST_MAX 30
 typedef struct BrPendList {
-    void    *apItems[BR_PENDLIST_MAX];  /* ctx+0x04 .. ctx+0x78 */
+    int32_t  aItems[BR_PENDLIST_MAX];   /* ctx+0x04 .. ctx+0x78, texture ids */
     int32_t  count;                     /* ctx+0x7C */
 } BrPendList;
 struct FlagObj;
@@ -317,9 +317,11 @@ typedef int (__stdcall *BrEarShutdownChannelFn)(int);
 
 typedef int (__stdcall *BrEarClearChannelFn)(int channel, int flags);
 
+/* Lives inside the loaded track file (0x106EECCC points at it), so its
+ * layout is the file's: the queued items are 32-bit texture ids. */
 typedef struct BrPendCtx {
     uint32_t unused0;
-    void    *apItems[BR_PENDLIST_MAX];
+    int32_t  aItems[BR_PENDLIST_MAX];
     int32_t  count;
 } BrPendCtx;
 

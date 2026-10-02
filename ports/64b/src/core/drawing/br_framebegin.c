@@ -330,9 +330,9 @@ void BrFrameEnd(void)
     rec->f20 = (int *)(((int)DAT_106e9d90 + 15) & ~15);
     rec->f24 = 0x400;
     rec->f30 = DAT_106e79d4 + (*(int *)((char *)&g_aBrEntRecs + 0x4C)) * 0x17700 + 0x200;
-    rec->f34 = (((int)(*(BrDlCmd * *)&g_BrGfxPtr) - (DAT_106e79d4 + (*(int *)((char *)&g_aBrEntRecs + 0x4C)) * 0x17700 + 0x200)) >> 3) << 3;
+    rec->f34 = (((int)((char *)(*(BrDlCmd * *)&g_BrGfxPtr) - ((char *)DAT_106e79d4 + (*(int *)((char *)&g_aBrEntRecs + 0x4C)) * 0x17700 + 0x200))) >> 3) << 3;
 
-    len = ((int)(*(BrDlCmd * *)&g_BrGfxPtr) - (DAT_106e79d4 + (*(int *)((char *)&g_aBrEntRecs + 0x4C)) * 0x17700 + 0x200)) >> 3;
+    len = ((int)((char *)(*(BrDlCmd * *)&g_BrGfxPtr) - ((char *)DAT_106e79d4 + (*(int *)((char *)&g_aBrEntRecs + 0x4C)) * 0x17700 + 0x200))) >> 3;
     if (len > (*(int *)((char *)&g_aBrEntRecs + 0xC0)))
         (*(int *)((char *)&g_aBrEntRecs + 0xC0)) = len;
     len = (DAT_1035f7d8 - DAT_102e16b0) >> 1;
@@ -342,7 +342,7 @@ void BrFrameEnd(void)
     if (len > (*(int *)((char *)&g_aBrEntRecs + 0xBC)))
         (*(int *)((char *)&g_aBrEntRecs + 0xBC)) = len;
 
-    DAT_106e8200 = ((int)(*(BrDlCmd * *)&g_BrGfxPtr) - (DAT_106e79d4 + (*(int *)((char *)&g_aBrEntRecs + 0x4C)) * 0x17700 + 0x200)) >> 3;
+    DAT_106e8200 = ((int)((char *)(*(BrDlCmd * *)&g_BrGfxPtr) - ((char *)DAT_106e79d4 + (*(int *)((char *)&g_aBrEntRecs + 0x4C)) * 0x17700 + 0x200))) >> 3;
     if (DAT_106e8200 > 12000)
         BrLogSet(s_HUGE_GLIST_ERROR_100aa2d4);
     BrPodNop();

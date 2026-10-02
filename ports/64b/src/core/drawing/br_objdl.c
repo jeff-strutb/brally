@@ -245,7 +245,7 @@ void BrObjDlBuild(struct BrViewRect * pRects, int idx, uint32_t cls, int bLit, u
         EMIT(0x06000000, pDL);
         EMIT(0xe7000000, 0);
         if ((*(int *)((char *)&g_aBrEntRecs + 0x6C)) == 0) {
-            pRect = (int *)(pRects + (*(int *)&g_BrEnvSection) * 0x58);
+            pRect = (int *)((char *)pRects + g_BrEnvSection * 0x58);   /* 0x58-byte view rects, no pointers */
             BrSub_1003289F(pRect[0], pRect[1], pRect[2], pRect[3]);
         }
         EMIT(0xba000602, BrG_6C0688);
@@ -390,7 +390,7 @@ void BrObjDlBuild(struct BrViewRect * pRects, int idx, uint32_t cls, int bLit, u
                         *pDL++ = c;
                         n = (c >> 10) & 0x3f;
                         pCmd++;
-                        if ((int)(((int)(char *)pVtx + n * 0x20 - DAT_1035fba4) & ~0x1f) >
+                        if ((int)(((char *)pVtx + n * 0x20 - (char *)DAT_1035fba4) & ~0x1f) >
                             32000) {
                             pDL--;
                             goto nextObj;

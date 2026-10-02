@@ -1744,7 +1744,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
 
     /* 0xACCA -- early wheel call (class 2 only).  Orig: push ebx; call; add esp,4. */
     if (car->b29AF == 2)
-        BrCarDrawWheels(&car->fwd.x);
+        BrCarDrawWheels((const BrCarView *)car, NULL);
 
     /* 0xACE3 -- four light MOVEMEMs (unconditional, +0x10/+0x20/+0x30). */
     put(0x039E0010u, g_BrCarLightSlot[*(int32_t *)(car + BR_CAR_OFF_ICAR)]);
@@ -2087,7 +2087,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
 
     /* 0xBDE8 -- late wheel call (non-class 2). */
     if (car->b29AF != 2)
-        BrCarDrawWheels(&car->fwd.x);
+        BrCarDrawWheels((const BrCarView *)car, NULL);
 
     /* 0xBE14 -- final: sync, combiner, render mode. */
     put(0xE7000000u, 0);

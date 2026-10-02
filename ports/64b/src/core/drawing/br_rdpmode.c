@@ -134,7 +134,7 @@ void BrRdpSetCombineLERP(BrGfxWords *pOut,
 /* @implements 0x100119C0 glide FUN_100119c0 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
-void FUN_100119c0(BrHudView * param_1, short *param_2)
+void FUN_100119c0(struct BrHudView * param_1, short *param_2)
 {
   int *p_;
 
@@ -203,7 +203,7 @@ void FUN_100119c0(BrHudView * param_1, short *param_2)
  * coded axis-swapping matrix that converts the game's coordinate convention
  * into the renderer's. */
 /* @implements 0x10011650 glide FUN_10011650 */
-void FUN_10011650(BrHudView * param_1)
+void FUN_10011650(struct BrHudView * param_1)
 {
   int *p_;
 

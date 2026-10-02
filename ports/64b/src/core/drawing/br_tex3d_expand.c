@@ -73,7 +73,7 @@ void BrTex3dExpand(unsigned short *param_1, int param_2, int param_3, unsigned c
     unsigned short *puVar2;     /* mirror-block read cursor              */
     unsigned char *pbVar12;     /* source cursor within a row            */
     int iVar3;                  /* (int)src base                         */
-    int *iVar5;                  /* current tile record ptr / scratch     */
+    int iVar5;                  /* current tile record ptr / scratch     */
     int iVar10;                 /* tile index (outer loop)               */
     int iVar22;                 /* bytes written so far                  */
     int iVar15, iVar17;         /* rows / columns of the tile            */
