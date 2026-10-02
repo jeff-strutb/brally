@@ -9,6 +9,7 @@
 #include <stdbool.h>
 #endif
 struct BrTrkHdr;
+struct BrGdiBitmap;
 struct BrView;
 struct BrRaceCtl;
 struct BrUiPage_;
@@ -324,7 +325,7 @@ void BrBmpRect4Get(int, int, int *, int *, int *, int *);
 #pragma pop_macro("BrBmpRect4Get")
 #pragma push_macro("BrBmpToRgba32")
 #undef BrBmpToRgba32
-void * BrBmpToRgba32(int);
+void * BrBmpToRgba32(const struct BrGdiBitmap *);
 #pragma pop_macro("BrBmpToRgba32")
 #pragma push_macro("BrBmpWiden24ToRgba")
 #undef BrBmpWiden24ToRgba

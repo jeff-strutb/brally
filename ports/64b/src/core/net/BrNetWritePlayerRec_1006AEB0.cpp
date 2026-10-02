@@ -82,25 +82,25 @@ int BrNetWritePlayerRec(BrBitStream *pBs, unsigned char a, unsigned int flags,
 /* Methods of the local classes above that other files define: each is
  * the function at its original address, reached through its C entry. */
 /* 0x1006D180: the original calls BrCountedTotal by address */
-int BrBitStream::CountedTotal()
+inline int BrBitStream::CountedTotal()
 {
     return (int)BrCountedTotal((const struct BrCounted *)this);
 }
 
 /* 0x1006CFA0: the original calls BrBitStreamWriteU8 by address */
-void BrBitStream::WriteU8(unsigned char a1)
+inline void BrBitStream::WriteU8(unsigned char a1)
 {
     BrBitStreamWriteU8((struct BrBitStream *)this, (unsigned int)a1);
 }
 
 /* 0x1006D000: the original calls BrBitStreamWriteU24 by address */
-void BrBitStream::WriteU24(unsigned int a1)
+inline void BrBitStream::WriteU24(unsigned int a1)
 {
     BrBitStreamWriteU24((struct BrBitStream *)this, (unsigned int)a1);
 }
 
 /* 0x1006D050: the original calls BrBitStreamWriteU32 by address */
-void BrBitStream::WriteU32(unsigned int a1)
+inline void BrBitStream::WriteU32(unsigned int a1)
 {
     BrBitStreamWriteU32((struct BrBitStream *)this, (unsigned int)a1);
 }

@@ -46,7 +46,7 @@ int BrCtrlCfgReloadPreset(void)
 /* Methods of the local classes above that other files define: each is
  * the function at its original address, reached through its C entry. */
 /* 0x10062B10: the original calls BrCtrlCfgLoadDefaults by address */
-void CtrlCfg::LoadPreset(int a1)
+inline void CtrlCfg::LoadPreset(int a1)
 {
     BrCtrlCfgLoadDefaults((struct BrCtrlCfg *)this, (int32_t)a1);
 }

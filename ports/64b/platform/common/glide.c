@@ -1,0 +1,365 @@
+/* glide.c: Glide 2 for the game, over the renderer interface (brr.h).
+ *
+ * The board answers as a Voodoo Graphics with one TMU and 4 MB on each of
+ * the frame buffer and the TMU. Texture memory is a map from (TMU, start
+ * address) to the texture last downloaded there, decoded to RGBA8 once, at
+ * download; grTexSource selects one by address, exactly as the game's own
+ * texture manager addresses the board. */
+#include <math.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "plat.h"
+#include "glide.h"
+#include "brr.h"
+
+#define TMU_RAM   (4u << 20)
+
+static brr_state s_st;
+static int s_w = 640, s_h = 480, s_lower_left, s_cformat;
+static int s_depth_mode;
+
+/* ---- colours: GrColor_t in the format grSstWinOpen chose, to ARGB ----------- */
+static uint32_t argb(GrColor_t c)
+{
+    uint32_t a, r, g, b;
+    switch (s_cformat) {
+    case 1: /* ABGR */ a = c >> 24; b = (c >> 16) & 0xFF; g = (c >> 8) & 0xFF; r = c & 0xFF; break;
+    case 2: /* RGBA */ r = c >> 24; g = (c >> 16) & 0xFF; b = (c >> 8) & 0xFF; a = c & 0xFF; break;
+    case 3: /* BGRA */ b = c >> 24; g = (c >> 16) & 0xFF; r = (c >> 8) & 0xFF; a = c & 0xFF; break;
+    default: return c;
+    }
+    return a << 24 | r << 16 | g << 8 | b;
+}
+
+/* ---- start-up ------------------------------------------------------------------- */
+void grGlideInit(void) {}
+void grGlideShutdown(void) { brr_close(); }
+
+FxBool grSstQueryHardware(GrHwConfiguration *hw)
+{
+    memset(hw, 0, sizeof *hw);
+    hw->num_sst = 1;
+    hw->SSTs[0].type = GR_SSTTYPE_VOODOO;
+    hw->SSTs[0].sstBoard.VoodooConfig.fbRam = 4;
+    hw->SSTs[0].sstBoard.VoodooConfig.fbiRev = 2;
+    hw->SSTs[0].sstBoard.VoodooConfig.nTexelfx = 1;
+    hw->SSTs[0].sstBoard.VoodooConfig.sliDetect = 0;
+    hw->SSTs[0].sstBoard.VoodooConfig.tmuConfig[0].tmuRev = 1;
+    hw->SSTs[0].sstBoard.VoodooConfig.tmuConfig[0].tmuRam = 4;
+    return 1;
+}
+
+void grSstSelect(int which) { (void)which; }
+
+static const short k_res[16][2] = {
+    { 320, 200 }, { 320, 240 }, { 400, 256 }, { 512, 384 }, { 640, 200 }, { 640, 350 },
+    { 640, 400 }, { 640, 480 }, { 800, 600 }, { 960, 720 }, { 856, 480 }, { 512, 256 },
+    { 1024, 768 }, { 1280, 1024 }, { 1600, 1200 }, { 400, 300 }
+};
+
+FxBool grSstWinOpen(void *hwnd, GrScreenResolution_t res, GrScreenRefresh_t ref,
+                    GrColorFormat_t cformat, GrOriginLocation_t org, int ncol, int naux)
+{
+    (void)hwnd; (void)ref; (void)ncol; (void)naux;
+    if (res >= 0 && res < 16) {
+        s_w = k_res[res][0];
+        s_h = k_res[res][1];
+    }
+    s_cformat = cformat;
+    s_lower_left = org == 1;
+    s_st.clip_x0 = 0;
+    s_st.clip_y0 = 0;
+    s_st.clip_x1 = s_w;
+    s_st.clip_y1 = s_h;
+    s_st.blend_rgb_src = 4;     /* GR_BLEND_ONE */
+    s_st.blend_rgb_dst = 0;     /* GR_BLEND_ZERO */
+    s_st.blend_a_src = 4;
+    s_st.blend_a_dst = 0;
+    s_st.atest_fn = 7;          /* GR_CMP_ALWAYS */
+    s_st.depth_fn = 1;          /* GR_CMP_LESS */
+    s_st.depth_mask = 1;
+    return brr_open(s_w, s_h);
+}
+
+void grSstWinClose(void) {}
+
+/* ---- frame ------------------------------------------------------------------------- */
+void grClipWindow(FxU32 x0, FxU32 y0, FxU32 x1, FxU32 y1)
+{
+    s_st.clip_x0 = (int32_t)x0;
+    s_st.clip_x1 = (int32_t)x1;
+    if (s_lower_left) {
+        s_st.clip_y0 = s_h - (int32_t)y1;
+        s_st.clip_y1 = s_h - (int32_t)y0;
+    } else {
+        s_st.clip_y0 = (int32_t)y0;
+        s_st.clip_y1 = (int32_t)y1;
+    }
+}
+
+void grBufferClear(GrColor_t color, GrAlpha_t alpha, FxU16 depth)
+{
+    uint32_t c = (argb(color) & 0x00FFFFFFu) | (uint32_t)alpha << 24;
+    brr_clear(c, depth / 65535.0f, 1, s_st.depth_mode != 0, &s_st);
+}
+
+void grBufferSwap(int interval)
+{
+    (void)interval;
+    brr_present();
+    plat_pump(0);
+}
+
+int grBufferNumPending(void) { return 0; }
+
+/* ---- state ----------------------------------------------------------------------------- */
+void grColorCombine(GrCombineFunction_t f, GrCombineFactor_t fa, GrCombineLocal_t l, GrCombineOther_t o, FxBool inv)
+{
+    s_st.cc_fn = f; s_st.cc_factor = fa; s_st.cc_local = l; s_st.cc_other = o; s_st.cc_invert = inv;
+}
+void grAlphaCombine(GrCombineFunction_t f, GrCombineFactor_t fa, GrCombineLocal_t l, GrCombineOther_t o, FxBool inv)
+{
+    s_st.ac_fn = f; s_st.ac_factor = fa; s_st.ac_local = l; s_st.ac_other = o; s_st.ac_invert = inv;
+}
+void grAlphaBlendFunction(GrAlphaBlendFnc_t rs, GrAlphaBlendFnc_t rd, GrAlphaBlendFnc_t as, GrAlphaBlendFnc_t ad)
+{
+    s_st.blend_rgb_src = rs; s_st.blend_rgb_dst = rd; s_st.blend_a_src = as; s_st.blend_a_dst = ad;
+}
+void grAlphaTestFunction(GrCmpFnc_t f) { s_st.atest_fn = f; }
+void grAlphaTestReferenceValue(GrAlpha_t v) { s_st.atest_ref = v; }
+void grConstantColorValue(GrColor_t v) { s_st.constant = argb(v); }
+void grCullMode(GrCullMode_t m) { s_st.cull = m; }
+void grDepthBufferMode(GrDepthBufferMode_t m) { s_depth_mode = m; s_st.depth_mode = m; }
+void grDepthBufferFunction(GrCmpFnc_t f) { s_st.depth_fn = f; }
+void grDepthMask(FxBool m) { s_st.depth_mask = m; }
+void grFogMode(GrFogMode_t m) { s_st.fog_mode = m; }
+void grFogColorValue(GrColor_t c) { s_st.fog_color = argb(c); }
+void grFogTable(const GrFog_t ft[GR_FOG_TABLE_SIZE]) { memcpy(s_st.fog_table, ft, GR_FOG_TABLE_SIZE); }
+
+/* Glide's table entry i covers w = 2^(3 + i/4) / (8 - i%4) */
+static float fog_w(int i) { return (float)(pow(2.0, 3.0 + (double)(i >> 2)) / (8 - (i & 3))); }
+
+void guFogGenerateLinear(GrFog_t ft[GR_FOG_TABLE_SIZE], float nearZ, float farZ)
+{
+    int i;
+    for (i = 0; i < GR_FOG_TABLE_SIZE; i++) {
+        float f = (fog_w(i) - nearZ) / (farZ - nearZ);
+        ft[i] = (GrFog_t)(f < 0 ? 0 : f > 1 ? 255 : f * 255.0f);
+    }
+}
+
+void grTexCombine(GrChipID_t tmu, GrCombineFunction_t rf, GrCombineFactor_t rfa, GrCombineFunction_t af,
+                  GrCombineFactor_t afa, FxBool ri, FxBool ai)
+{
+    if (tmu != 0)
+        return;
+    s_st.tc_rgb_fn = rf; s_st.tc_rgb_factor = rfa; s_st.tc_alpha_fn = af;
+    s_st.tc_alpha_factor = afa; s_st.tc_rgb_invert = ri; s_st.tc_alpha_invert = ai;
+}
+void grTexFilterMode(GrChipID_t tmu, GrTextureFilterMode_t mn, GrTextureFilterMode_t mg)
+{
+    if (tmu == 0) { s_st.min_filter = mn; s_st.mag_filter = mg; }
+}
+void grTexClampMode(GrChipID_t tmu, GrTextureClampMode_t s, GrTextureClampMode_t t)
+{
+    if (tmu == 0) { s_st.clamp_s = s; s_st.clamp_t = t; }
+}
+void grTexMipMapMode(GrChipID_t tmu, GrMipMapMode_t m, FxBool b) { (void)tmu; (void)m; (void)b; }
+void grTexLodBiasValue(GrChipID_t tmu, float bias) { (void)tmu; (void)bias; }
+
+/* ---- textures ----------------------------------------------------------------------------- */
+static int lod_side(GrLOD_t l) { return 256 >> l; }
+
+static void dims(GrLOD_t lod, GrAspectRatio_t ar, int *w, int *h)
+{
+    int s = lod_side(lod);
+    *w = *h = s;
+    if (ar < 3)
+        *h = s >> (3 - ar);       /* 8x1, 4x1, 2x1 */
+    else if (ar > 3)
+        *w = s >> (ar - 3);       /* 1x2, 1x4, 1x8 */
+    if (*w < 1) *w = 1;
+    if (*h < 1) *h = 1;
+}
+
+static int texel_bytes(GrTextureFormat_t f) { return f >= 8 ? 2 : 1; }
+
+static FxU32 mem_required(GrLOD_t small, GrLOD_t large, GrAspectRatio_t ar, GrTextureFormat_t f)
+{
+    FxU32 n = 0;
+    GrLOD_t l;
+    for (l = large; l <= small; l++) {
+        int w, h;
+        dims(l, ar, &w, &h);
+        n += (FxU32)(w * h * texel_bytes(f));
+    }
+    return (n + 7) & ~7u;
+}
+
+FxU32 grTexCalcMemRequired(GrLOD_t small, GrLOD_t large, GrAspectRatio_t ar, GrTextureFormat_t f)
+{
+    return mem_required(small, large, ar, f);
+}
+
+FxU32 grTexTextureMemRequired(FxU32 evenOdd, GrTexInfo *info)
+{
+    (void)evenOdd;
+    return mem_required(info->smallLod, info->largeLod, info->aspectRatio, info->format);
+}
+
+FxU32 grTexMinAddress(GrChipID_t tmu) { (void)tmu; return 0; }
+FxU32 grTexMaxAddress(GrChipID_t tmu) { (void)tmu; return TMU_RAM - 8; }
+
+typedef struct ptex { FxU32 addr; uint32_t id; int w, h; struct ptex *next; } ptex;
+static ptex *s_tex[64];
+
+static ptex *tex_at(FxU32 addr, int make)
+{
+    ptex **pp = &s_tex[(addr >> 3) & 63], *t;
+    for (t = *pp; t; t = t->next)
+        if (t->addr == addr)
+            return t;
+    if (!make)
+        return NULL;
+    t = (ptex *)calloc(1, sizeof *t);
+    t->addr = addr;
+    t->next = *pp;
+    *pp = t;
+    return t;
+}
+
+static void decode(GrTextureFormat_t f, const uint8_t *src, uint8_t *dst, int n)
+{
+    int i;
+    for (i = 0; i < n; i++, dst += 4) {
+        uint32_t v;
+        switch (f) {
+        case 0:  /* RGB_332 */
+            v = src[i];
+            dst[0] = (uint8_t)((v >> 5) * 255 / 7); dst[1] = (uint8_t)(((v >> 2) & 7) * 255 / 7);
+            dst[2] = (uint8_t)((v & 3) * 255 / 3); dst[3] = 255;
+            break;
+        case 2:  /* ALPHA_8 */
+            dst[0] = dst[1] = dst[2] = 255; dst[3] = src[i];
+            break;
+        case 3:  /* INTENSITY_8 */
+            dst[0] = dst[1] = dst[2] = src[i]; dst[3] = 255;
+            break;
+        case 4:  /* ALPHA_INTENSITY_44 */
+            dst[0] = dst[1] = dst[2] = (uint8_t)((src[i] & 15) * 17); dst[3] = (uint8_t)((src[i] >> 4) * 17);
+            break;
+        case 8:  /* ARGB_8332 */
+            v = (uint32_t)src[2 * i] | (uint32_t)src[2 * i + 1] << 8;
+            dst[0] = (uint8_t)(((v >> 5) & 7) * 255 / 7); dst[1] = (uint8_t)(((v >> 2) & 7) * 255 / 7);
+            dst[2] = (uint8_t)((v & 3) * 255 / 3); dst[3] = (uint8_t)(v >> 8);
+            break;
+        case 10: /* RGB_565 */
+            v = (uint32_t)src[2 * i] | (uint32_t)src[2 * i + 1] << 8;
+            dst[0] = (uint8_t)((v >> 11) * 255 / 31); dst[1] = (uint8_t)(((v >> 5) & 63) * 255 / 63);
+            dst[2] = (uint8_t)((v & 31) * 255 / 31); dst[3] = 255;
+            break;
+        case 11: /* ARGB_1555 */
+            v = (uint32_t)src[2 * i] | (uint32_t)src[2 * i + 1] << 8;
+            dst[0] = (uint8_t)(((v >> 10) & 31) * 255 / 31); dst[1] = (uint8_t)(((v >> 5) & 31) * 255 / 31);
+            dst[2] = (uint8_t)((v & 31) * 255 / 31); dst[3] = (v & 0x8000) ? 255 : 0;
+            break;
+        case 12: /* ARGB_4444 */
+            v = (uint32_t)src[2 * i] | (uint32_t)src[2 * i + 1] << 8;
+            dst[0] = (uint8_t)(((v >> 8) & 15) * 17); dst[1] = (uint8_t)(((v >> 4) & 15) * 17);
+            dst[2] = (uint8_t)((v & 15) * 17); dst[3] = (uint8_t)((v >> 12) * 17);
+            break;
+        case 13: /* ALPHA_INTENSITY_88 */
+            dst[0] = dst[1] = dst[2] = src[2 * i]; dst[3] = src[2 * i + 1];
+            break;
+        default:
+            dst[0] = dst[1] = dst[2] = dst[3] = 255;
+            break;
+        }
+    }
+}
+
+void grTexDownloadMipMap(GrChipID_t tmu, FxU32 start, FxU32 evenOdd, GrTexInfo *info)
+{
+    ptex *t;
+    int w, h;
+    uint8_t *rgba;
+    (void)evenOdd;
+    if (tmu != 0 || !info || !info->data)
+        return;
+    dims(info->largeLod, info->aspectRatio, &w, &h);
+    rgba = (uint8_t *)malloc((size_t)w * (size_t)h * 4);
+    decode(info->format, (const uint8_t *)info->data, rgba, w * h);   /* the largest level */
+    t = tex_at(start, 1);
+    t->id = brr_texture(t->id, rgba, w, h);
+    t->w = w;
+    t->h = h;
+    free(rgba);
+}
+
+void grTexSource(GrChipID_t tmu, FxU32 start, FxU32 evenOdd, GrTexInfo *info)
+{
+    ptex *t;
+    (void)evenOdd;
+    if (tmu != 0)
+        return;
+    t = tex_at(start, 0);
+    s_st.texture = t ? t->id : 0;
+    if (info)
+        dims(info->largeLod, info->aspectRatio, &s_st.tex_w, &s_st.tex_h);
+}
+
+/* ---- drawing ------------------------------------------------------------------------------ */
+static void vert(brr_vertex *o, const GrVertex *v)
+{
+    int big = s_st.tex_w > s_st.tex_h ? s_st.tex_w : s_st.tex_h;
+    float su = big ? 256.0f * (float)s_st.tex_w / (float)big : 256.0f;
+    float sv = big ? 256.0f * (float)s_st.tex_h / (float)big : 256.0f;
+    float w = v->oow != 0.0f ? 1.0f / v->oow : 1.0f;
+    o->x = v->x;
+    o->y = s_lower_left ? (float)s_h - v->y : v->y;
+    o->z = s_depth_mode == 2 ? (v->oow > 0 ? 1.0f - v->oow : 1.0f) : v->ooz / 65535.0f;
+    o->oow = v->oow;
+    o->r = v->r; o->g = v->g; o->b = v->b; o->a = v->a;
+    o->s = v->tmuvtx[0].sow * w / su;
+    o->t = v->tmuvtx[0].tow * w / sv;
+}
+
+void grDrawTriangle(const GrVertex *a, const GrVertex *b, const GrVertex *c)
+{
+    brr_vertex v[3];
+    vert(&v[0], a);
+    vert(&v[1], b);
+    vert(&v[2], c);
+    brr_draw(&s_st, v, 3);
+}
+
+void grDrawPolygonVertexList(int n, const GrVertex vl[])
+{
+    brr_vertex v[3 * 64];
+    int i, k = 0;
+    for (i = 1; i + 1 < n; i++) {
+        if (k == 3 * 64) {
+            brr_draw(&s_st, v, k);
+            k = 0;
+        }
+        vert(&v[k++], &vl[0]);
+        vert(&v[k++], &vl[i]);
+        vert(&v[k++], &vl[i + 1]);
+    }
+    if (k)
+        brr_draw(&s_st, v, k);
+}
+
+FxBool grLfbWriteRegion(GrBuffer_t dst, FxU32 x, FxU32 y, GrLfbSrcFmt_t fmt, FxU32 w, FxU32 h,
+                        FxI32 stride, void *data)
+{
+    (void)dst;
+    if (fmt == 0) {              /* GR_LFB_SRC_FMT_565 */
+        brr_lfb_write((int)x, s_lower_left ? s_h - (int)y - (int)h : (int)y, (int)w, (int)h,
+                      (const uint16_t *)data, stride);
+        return 1;
+    }
+    PLOG("grLfbWriteRegion: format %d not handled\n", fmt);
+    return 0;
+}

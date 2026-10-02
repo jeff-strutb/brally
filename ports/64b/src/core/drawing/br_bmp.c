@@ -136,7 +136,7 @@ uint8_t *BrBmpLoadRgba(const char *pszPath)
     GetObjectA(hbm, 0x18, &bm);
     if (bm.cBitsPixel != 0x18)
         return 0;                 /* orig leaks hbm here */
-    pOut = BrBmpToRgba32((int)&bm);
+    pOut = BrBmpToRgba32(&bm);
     DeleteObject(hbm);
     return (uint8_t *)pOut;
 }
@@ -176,24 +176,24 @@ int BrBmpGetHandle(void)
  * pixels via 0x10059F70, and publish cx/cy in the two globals. NULL if not 24bpp. */
 /* @implements 0x10059F10 glide BrBmpToRgba32 */
 
-void * BrBmpToRgba32(int param_1)
+void * BrBmpToRgba32(const BrGdiBitmap *param_1)
 
 {
   void *pvVar1;
   int iVar1;
   
-  if (*(short *)(param_1 + 0x12) != 0x18) {
+  if (param_1->cBitsPixel != 0x18) {
     return (void *)0x0;
   }
   /* Named width pins imul operand order: orig `mov eax,[esi+4]; imul [esi+8]`.
    * Bare `w * h * 4` commutes to load +8 first (2 displacement diffs). */
-  iVar1 = *(int *)(param_1 + 4);
-  pvVar1 = malloc(iVar1 * *(int *)(param_1 + 8) * 4);
+  iVar1 = param_1->cx;
+  pvVar1 = malloc(iVar1 * param_1->cy * 4);
   if (pvVar1 != (void *)0x0) {
-    BrBmpWiden24ToRgba(pvVar1,*(int *)(param_1 + 0x14),*(int *)(param_1 + 4),
-                 *(int *)(param_1 + 8),*(int *)(param_1 + 0xc));
-    DAT_10ac67c4 = *(int *)(param_1 + 4);
-    DAT_10ac67c8 = *(int *)(param_1 + 8);
+    BrBmpWiden24ToRgba(pvVar1, param_1->pBits, param_1->cx,
+                 param_1->cy, param_1->cbWidthBytes);
+    DAT_10ac67c4 = param_1->cx;
+    DAT_10ac67c8 = param_1->cy;
   }
   return pvVar1;
 }

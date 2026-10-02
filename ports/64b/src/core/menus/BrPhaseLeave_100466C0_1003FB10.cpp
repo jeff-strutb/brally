@@ -70,7 +70,7 @@ int BrPhaseLeave_100466C0(GameObj *pGame)
 /* Methods of the local classes above that other files define: each is
  * the function at its original address, reached through its C entry. */
 /* 0x100634B0: the original calls BrGlCfgSave by address */
-void Nav::m(void * a1)
+inline void Nav::m(void * a1)
 {
     BrGlCfgSave((void *)this, (const char *)a1);
 }

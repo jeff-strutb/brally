@@ -429,6 +429,7 @@ class Lift:
             lifted += 1
         self.pools()
         self.vtables()
+        self.initterm()
         self.write(lifted)
 
     def pools(self):
@@ -459,6 +460,19 @@ class Lift:
         for va, lhs, v in self.pool_refs:
             a, b = merged[bisect.bisect_right(keys, v) - 1]
             self.out.append('    *(void **)&%s = (void *)(k_pool_%08X + %d);' % (lhs, a, v - a))
+
+    def initterm(self):
+        """the C++ static initialisers: the CRT's _initterm table, from the
+        first relocated slot of .data (0x1007B000) while slots relocate"""
+        self.init = []
+        va = 0x1007B004
+        while va in self.relocs:
+            tgt = self.dword(va)
+            if tgt in self.syms.fn:
+                self.init.append(self.syms.sym(self.syms.fn[tgt]))
+            else:
+                self.notes.append('initterm 0x%08X -> 0x%08X: no core function' % (va, tgt))
+            va += 4
 
     def vtables(self):
         """g_brVtbl_<VA>: the function pointers from VA up to the first
@@ -502,6 +516,10 @@ class Lift:
                 for e in ents:
                     f.write('    (void *)%s,\n' % (e if e else '0'))
                 f.write('};\n\n')
+            f.write('void br_data_initterm(void)\n{\n')
+            for fn in self.init:
+                f.write('    ((void (*)(void))%s)();\n' % fn)
+            f.write('}\n\n')
             f.write('void br_data_lift(void)\n{\n')
             for a, b in self.pool:
                 f.write('    memcpy(k_pool_%08X, k_img + 0x%X, %d);\n' % (a, a - LO, b - a))

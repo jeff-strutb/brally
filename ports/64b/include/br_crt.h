@@ -50,6 +50,15 @@ static inline void *br_new_obj(size_t cb, void *(*ctor)(void *))
     return p != 0 ? ctor(p) : 0;
 }
 int32_t BrFtolTrunc(float f);                /* 0x1007C8A0 __ftol          */
+
+/* The C runtime's file names are DOS paths (C:\BOSSRALLY\..., D:\...,
+ * backslashes); the platform maps them to the host's files. */
+FILE *br_fopen(const char *path, const char *mode);
+int   br_rename(const char *from, const char *to);
+int   br_access(const char *path, int mode);
+#define fopen  br_fopen
+#define rename br_rename
+#define access br_access
 #define operator_delete BrOperatorDelete
 
 /* 0x1007DFE0 -- `operator new`, i.e. _nh_malloc(cb, 1).

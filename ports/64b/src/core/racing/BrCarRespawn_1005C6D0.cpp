@@ -168,43 +168,43 @@ extern "C" void BrCarRespawn_1005C6D0(void *self)
 /* Methods of the local classes above that other files define: each is
  * the function at its original address, reached through its C entry. */
 /* 0x1005E6A0: the original calls BrCarInitTables by address */
-void Car5C6D0::Sub5E6A0()
+inline void Car5C6D0::Sub5E6A0()
 {
     BrCarInitTables((struct BrDriverCar *)this);
 }
 
 /* 0x1005BCC0: the original calls BrSub10062C50 by address */
-void Car5C6D0::Sub5BCC0()
+inline void Car5C6D0::Sub5BCC0()
 {
     BrSub10062C50((void *)this);
 }
 
 /* 0x1006F680: the original calls BrEntSetPos by address */
-void Car5C6D0::SetPos(float a1, float a2, float a3)
+inline void Car5C6D0::SetPos(float a1, float a2, float a3)
 {
     BrEntSetPos((struct BrEntCar *)this, (float)a1, (float)a2, (float)a3);
 }
 
 /* 0x1006F720: the original calls BrEntSetHeading by address */
-void Car5C6D0::SetHeading(float a1)
+inline void Car5C6D0::SetHeading(float a1)
 {
     BrEntSetHeading((struct BrEntCar *)this, (float)a1);
 }
 
 /* 0x1006FA10: the original calls BrEntSetVel by address */
-void Car5C6D0::SetVel(float a1, float a2, float a3)
+inline void Car5C6D0::SetVel(float a1, float a2, float a3)
 {
     BrEntSetVel((struct BrEntCar *)this, (float)a1, (float)a2, (float)a3);
 }
 
 /* 0x1006FC10: the original calls BrEntSetAngVel by address */
-void Car5C6D0::SetAngVel(float a1, float a2, float a3)
+inline void Car5C6D0::SetAngVel(float a1, float a2, float a3)
 {
     BrEntSetAngVel((struct BrEntCar *)this, (float)a1, (float)a2, (float)a3);
 }
 
 /* 0x100018F0: the original calls FUN_100018f0 by address */
-void Car5C6D0::Chase(float * a1, float a2)
+inline void Car5C6D0::Chase(float * a1, float a2)
 {
     FUN_100018f0((struct BrDriverCar *)this, (void *)a1, (float)a2);
 }

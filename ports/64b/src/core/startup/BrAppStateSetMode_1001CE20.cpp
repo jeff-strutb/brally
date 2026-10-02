@@ -46,7 +46,6 @@ extern "C" {
 /* 64-bit core: g_b71530 is defined once, in br_globals.c */
 /* 64-bit core: g_b71534 is defined once, in br_globals.c */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-int g_7b320, g_7b324, g_7b328, g_7b32c;
 /* 64-bit core: g_bc0 is defined once, in br_globals.c */
 /* 64-bit core: g_5bc760 is defined once, in br_globals.c */
 /* Fn6C460: prototype in br_funcs.h */

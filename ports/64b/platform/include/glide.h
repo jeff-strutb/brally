@@ -67,7 +67,29 @@ typedef struct GrTexInfo {
 
 /* the hardware description grSstQueryHardware fills: the core keeps it as
  * an opaque block and reads only the board count */
-typedef struct GrHwConfiguration GrHwConfiguration;
+/* grSstQueryHardware's answer, Glide 2.x layout (0x94 bytes) */
+typedef FxI32 GrSstType;
+typedef struct { int tmuRev; int tmuRam; } GrTMUConfig_t;
+typedef struct {
+    int fbRam, fbiRev, nTexelfx;
+    FxBool sliDetect;
+    GrTMUConfig_t tmuConfig[GLIDE_NUM_TMU];
+} GrVoodooConfig_t;
+typedef struct { int fbRam, nTexelfx; GrTMUConfig_t tmuConfig; } GrSst96Config_t;
+typedef struct { int rev; } GrAT3DConfig_t;
+typedef struct GrHwConfiguration {
+    int num_sst;
+    struct {
+        GrSstType type;
+        union {
+            GrVoodooConfig_t VoodooConfig;
+            GrSst96Config_t  SST96Config;
+            GrAT3DConfig_t   AT3DConfig;
+            GrVoodooConfig_t Voodoo2Config;
+        } sstBoard;
+    } SSTs[4];
+} GrHwConfiguration;
+#define GR_SSTTYPE_VOODOO 0
 
 #ifdef __cplusplus
 extern "C" {

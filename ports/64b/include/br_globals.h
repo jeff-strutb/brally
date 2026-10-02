@@ -4485,30 +4485,14 @@ extern int g_5CCB64;  /* 0x105CCB64 */
 #undef DAT_105ccb68
 extern int32_t DAT_105ccb68[];  /* 0x105CCB68 */
 #pragma pop_macro("DAT_105ccb68")
-#pragma push_macro("BrGlHwConfig")
-#undef BrGlHwConfig
-extern uint8_t BrGlHwConfig[1];  /* 0x105CCBD8 */
-#pragma pop_macro("BrGlHwConfig")
-#pragma push_macro("BrGlHwType")
-#undef BrGlHwType
-extern int32_t BrGlHwType;  /* 0x105CCBDC */
-#pragma pop_macro("BrGlHwType")
-#pragma push_macro("BrGlHwCfgE0")
-#undef BrGlHwCfgE0
-extern int32_t BrGlHwCfgE0;  /* 0x105CCBE0 */
-#pragma pop_macro("BrGlHwCfgE0")
-#pragma push_macro("BrGlHwCfgE4")
-#undef BrGlHwCfgE4
-extern int32_t BrGlHwCfgE4;  /* 0x105CCBE4 */
-#pragma pop_macro("BrGlHwCfgE4")
-#pragma push_macro("BrGlHwCfgE8")
-#undef BrGlHwCfgE8
-extern int32_t BrGlHwCfgE8;  /* 0x105CCBE8 */
-#pragma pop_macro("BrGlHwCfgE8")
-#pragma push_macro("BrGlHwCfgEC")
-#undef BrGlHwCfgEC
-extern int32_t BrGlHwCfgEC;  /* 0x105CCBEC */
-#pragma pop_macro("BrGlHwCfgEC")
+/* 0x105CCBD8, grSstQueryHardware's answer; the original names its fields */
+extern GrHwConfiguration BrGlHw;
+#define BrGlHwConfig (&BrGlHw)                                      /* 0x105CCBD8 */
+#define BrGlHwType   (BrGlHw.SSTs[0].type)                          /* 0x105CCBDC */
+#define BrGlHwCfgE0  (BrGlHw.SSTs[0].sstBoard.VoodooConfig.fbRam)   /* 0x105CCBE0 */
+#define BrGlHwCfgE4  (BrGlHw.SSTs[0].sstBoard.VoodooConfig.fbiRev)  /* 0x105CCBE4 */
+#define BrGlHwCfgE8  (BrGlHw.SSTs[0].sstBoard.VoodooConfig.nTexelfx)/* 0x105CCBE8 */
+#define BrGlHwCfgEC  (BrGlHw.SSTs[0].sstBoard.VoodooConfig.sliDetect)/* 0x105CCBEC */
 #pragma push_macro("BrGlHwParamB")
 #undef BrGlHwParamB
 extern int32_t BrGlHwParamB;  /* 0x105CCC6C */

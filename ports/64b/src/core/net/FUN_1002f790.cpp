@@ -467,61 +467,61 @@ done:
 /* Methods of the local classes above that other files define: each is
  * the function at its original address, reached through its C entry. */
 /* 0x1006CDA0: the original calls BrBitStreamInit by address */
-BrNetPacket_1006CDA0_10008D60::BrNetPacket_1006CDA0_10008D60(void * a1, int a2)
+inline BrNetPacket_1006CDA0_10008D60::BrNetPacket_1006CDA0_10008D60(void * a1, int a2)
 {
     BrBitStreamInit((struct BrBitStream *)this, (void *)a1, (int)a2);
 }
 
 /* 0x10008D60: the original calls BrPodNop by address */
-BrNetPacket_1006CDA0_10008D60::~BrNetPacket_1006CDA0_10008D60()
+inline BrNetPacket_1006CDA0_10008D60::~BrNetPacket_1006CDA0_10008D60()
 {
     BrPodNop();
 }
 
 /* 0x1006CDD0: the original calls BrPairReset_10073B90 by address */
-void BrNetPacket_1006CDA0_10008D60::m_1006CDD0()
+inline void BrNetPacket_1006CDA0_10008D60::m_1006CDD0()
 {
     BrPairReset_10073B90((unsigned int *)this);
 }
 
 /* 0x1006CDE0: the original calls BrBitStreamSkipBytes by address */
-void BrNetPacket_1006CDA0_10008D60::m_1006CDE0(int a1)
+inline void BrNetPacket_1006CDA0_10008D60::m_1006CDE0(int a1)
 {
     BrBitStreamSkipBytes((struct BrBitStream *)this, (int)a1);
 }
 
 /* 0x1006CE00: the original calls BrBitStreamReadU8 by address */
-unsigned char BrNetPacket_1006CDA0_10008D60::m_1006CE00()
+inline unsigned char BrNetPacket_1006CDA0_10008D60::m_1006CE00()
 {
     return (unsigned char)BrBitStreamReadU8((struct BrBitStream *)this);
 }
 
 /* 0x1006CE50: the original calls BrBitStreamReadU24 by address */
-int BrNetPacket_1006CDA0_10008D60::m_1006CE50()
+inline int BrNetPacket_1006CDA0_10008D60::m_1006CE50()
 {
     return (int)BrBitStreamReadU24((struct BrBitStream *)this);
 }
 
 /* 0x1006CE80: the original calls BrBitStreamReadS32 by address */
-int BrNetPacket_1006CDA0_10008D60::m_1006CE80()
+inline int BrNetPacket_1006CDA0_10008D60::m_1006CE80()
 {
     return (int)BrBitStreamReadS32((struct BrBitStream *)this);
 }
 
 /* 0x1006CF80: the original calls BrBitStreamAtEnd by address */
-int BrNetPacket_1006CDA0_10008D60::m_1006CF80()
+inline int BrNetPacket_1006CDA0_10008D60::m_1006CF80()
 {
     return (int)BrBitStreamAtEnd((const struct BrBitStream *)this);
 }
 
 /* 0x1006D180: the original calls BrCountedTotal by address */
-int BrNetPacket_1006CDA0_10008D60::m_1006D180()
+inline int BrNetPacket_1006CDA0_10008D60::m_1006D180()
 {
     return (int)BrCountedTotal((const struct BrCounted *)this);
 }
 
 /* 0x1006D190: the original calls BrStateGetField10 by address */
-BrNetHdr * BrNetPacket_1006CDA0_10008D60::m_1006D190()
+inline BrNetHdr * BrNetPacket_1006CDA0_10008D60::m_1006D190()
 {
     return (BrNetHdr *)BrStateGetField10((char *)this);
 }

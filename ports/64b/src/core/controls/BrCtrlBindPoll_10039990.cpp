@@ -136,13 +136,13 @@ extern "C" int BrCtrlBindPoll_10039990(void)
 /* Methods of the local classes above that other files define: each is
  * the function at its original address, reached through its C entry. */
 /* 0x10062C30: the original calls BrFn10069BC0 by address */
-int Cfg39990::Query(int a1, int a2)
+inline int Cfg39990::Query(int a1, int a2)
 {
     return (int)BrFn10069BC0((void *)this, (int32_t)a1, (uint32_t)a2);
 }
 
 /* 0x10062B80: the original calls BrCtrlCfgAssign by address */
-void Cfg39990::Assign(int a1, int a2, int a3, int a4)
+inline void Cfg39990::Assign(int a1, int a2, int a3, int a4)
 {
     BrCtrlCfgAssign((void *)this, (int)a1, (int)a2, (int)a3, (int)a4);
 }

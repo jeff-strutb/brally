@@ -1257,12 +1257,7 @@ int32_t g_BrX06909B4;  /* 0x105CCB5C */
 int DAT_105ccb60;  /* 0x105CCB60 */
 int g_5CCB64;  /* 0x105CCB64 */
 int32_t DAT_105ccb68[9648];  /* 0x105CCB68 */
-BR_GLOBAL_EXTENT(uint8_t, BrGlHwConfig, [1], 0x3);  /* 0x105CCBD8 */
-int32_t BrGlHwType;  /* 0x105CCBDC */
-int32_t BrGlHwCfgE0;  /* 0x105CCBE0 */
-int32_t BrGlHwCfgE4;  /* 0x105CCBE4 */
-int32_t BrGlHwCfgE8;  /* 0x105CCBE8 */
-BR_GLOBAL_EXTENT(int32_t, BrGlHwCfgEC, , 0x7C);  /* 0x105CCBEC */
+GrHwConfiguration BrGlHw;  /* 0x105CCBD8  grSstQueryHardware's answer */
 int32_t BrGlHwParamB;  /* 0x105CCC6C */
 uint32_t BrGlAtestFuncShadow;  /* 0x105CCC70 */
 float DAT_105ccc74;  /* 0x105CCC74 */

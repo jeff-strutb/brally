@@ -75,31 +75,31 @@ int BrNetSend4AD0(void *dest, int a1, int a2, unsigned char r,
 /* Methods of the local classes above that other files define: each is
  * the function at its original address, reached through its C entry. */
 /* 0x1006CD80: the original calls FUN_1006cd80 by address */
-Pkt::Pkt()
+inline Pkt::Pkt()
 {
     FUN_1006cd80((int *)this);
 }
 
 /* 0x10008D60: the original calls BrPodNop by address */
-Pkt::~Pkt()
+inline Pkt::~Pkt()
 {
     BrPodNop();
 }
 
 /* 0x1006CFA0: the original calls BrBitStreamWriteU8 by address */
-void Pkt::PutByte(unsigned char a1)
+inline void Pkt::PutByte(unsigned char a1)
 {
     BrBitStreamWriteU8((struct BrBitStream *)this, (unsigned int)a1);
 }
 
 /* 0x1006D000: the original calls BrBitStreamWriteU24 by address */
-void Pkt::Put24(unsigned int a1)
+inline void Pkt::Put24(unsigned int a1)
 {
     BrBitStreamWriteU24((struct BrBitStream *)this, (unsigned int)a1);
 }
 
 /* 0x1006D050: the original calls BrBitStreamWriteU32 by address */
-void Pkt::Put32(unsigned int a1)
+inline void Pkt::Put32(unsigned int a1)
 {
     BrBitStreamWriteU32((struct BrBitStream *)this, (unsigned int)a1);
 }

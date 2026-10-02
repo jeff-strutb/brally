@@ -128,13 +128,13 @@ extern "C" void BrEntReset(void *self)
 /* Methods of the local classes above that other files define: each is
  * the function at its original address, reached through its C entry. */
 /* 0x1006E5A0: the original calls BrMat4SetLastColumn by address */
-void Mat4M::SetLastColumn()
+inline void Mat4M::SetLastColumn()
 {
     BrMat4SetLastColumn((struct BrMat4 *)this);
 }
 
 /* 0x1006FA10: the original calls BrEntSetVel by address */
-void Ent6FD90::SetVel(float a1, float a2, float a3)
+inline void Ent6FD90::SetVel(float a1, float a2, float a3)
 {
     BrEntSetVel((struct BrEntCar *)this, (float)a1, (float)a2, (float)a3);
 }

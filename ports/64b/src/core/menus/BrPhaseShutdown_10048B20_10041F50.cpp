@@ -390,7 +390,7 @@ void __stdcall BrPhaseShutdown_10048B20(int bPartial)
 /* Methods of the local classes above that other files define: each is
  * the function at its original address, reached through its C entry. */
 /* 0x10008D60: the original calls BrPodNop by address */
-void PodObj::m()
+inline void PodObj::m()
 {
     BrPodNop();
 }

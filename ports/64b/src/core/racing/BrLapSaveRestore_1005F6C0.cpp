@@ -343,31 +343,31 @@ extern "C" void BrLapSaveRestore(void *self)
 /* Methods of the local classes above that other files define: each is
  * the function at its original address, reached through its C entry. */
 /* 0x1005BCC0: the original calls BrSub10062C50 by address */
-void BrCar::Sub10062C50()
+inline void BrCar::Sub10062C50()
 {
     BrSub10062C50((void *)this);
 }
 
 /* 0x1005E6A0: the original calls BrCarInitTables by address */
-void BrCar::InitTables()
+inline void BrCar::InitTables()
 {
     BrCarInitTables((struct BrDriverCar *)this);
 }
 
 /* 0x1006F680: the original calls BrEntSetPos by address */
-void BrCar::SetPos(float a1, float a2, float a3)
+inline void BrCar::SetPos(float a1, float a2, float a3)
 {
     BrEntSetPos((struct BrEntCar *)this, (float)a1, (float)a2, (float)a3);
 }
 
 /* 0x1006FA10: the original calls BrEntSetVel by address */
-void BrCar::SetVel(float a1, float a2, float a3)
+inline void BrCar::SetVel(float a1, float a2, float a3)
 {
     BrEntSetVel((struct BrEntCar *)this, (float)a1, (float)a2, (float)a3);
 }
 
 /* 0x1006F970: the original calls BrEntSetMatrix by address */
-void BrCar::SetMatrix(void * a1)
+inline void BrCar::SetMatrix(void * a1)
 {
     BrEntSetMatrix((struct BrEntCar *)this, (const struct BrMat4 *)a1);
 }
