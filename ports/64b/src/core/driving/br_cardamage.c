@@ -74,7 +74,6 @@ typedef struct BrDmgBit {
 void BrCarDamageTick(void)
 {
     int  i;
-    int *p;
     int  n;
     int  j;
     unsigned char *pb;
@@ -87,9 +86,8 @@ void BrCarDamageTick(void)
     if ((*(int *)&g_brRaceNEntrant) <= 0)
         return;
 
-    p = &(*(int *)&g_aBrRaceCar[0].pEquip);
     do {
-        unsigned char  *car = (unsigned char *)*p;
+        unsigned char  *car = (unsigned char *)g_aBrRaceCar[i].pEquip;
         int             sum = 0;
         int             k   = 4;
         unsigned short *q   = (unsigned short *)(car + 0x1e + car[4] * 8);
@@ -99,15 +97,15 @@ void BrCarDamageTick(void)
         } while (--k != 0);
 
         car[5]++;
-        car = (unsigned char *)*p;
+        car = (unsigned char *)g_aBrRaceCar[i].pEquip;
         if (car[5] == g_brStages[(car[4])].f04) {
             car[5] = 0;
-            car = (unsigned char *)*p;
+            car = (unsigned char *)g_aBrRaceCar[i].pEquip;
             if (sum >= g_brStages[(car[4])].f08) {
                 *(unsigned short *)(car + 0xf0) |= (*(BrDmgStage (*)[])((char *)&g_brStages + 0x4))[car[4]].flag;
-                car = (unsigned char *)*p;
+                car = (unsigned char *)g_aBrRaceCar[i].pEquip;
                 car[4]++;
-                car = (unsigned char *)*p;
+                car = (unsigned char *)g_aBrRaceCar[i].pEquip;
                 if (car[4] == 6) {
                     unsigned short w;
 
@@ -130,7 +128,7 @@ void BrCarDamageTick(void)
                     }
                     *(unsigned short *)(car + 0xf2) = w;
 state:
-                    car = (unsigned char *)*p;
+                    car = (unsigned char *)g_aBrRaceCar[i].pEquip;
                     if (*(int *)car == 0)
                         *(unsigned short *)(car + 0xf0) |= 4 << 8;
                     else if (*(int *)car == 1)
@@ -141,24 +139,23 @@ state:
                         *(unsigned short *)(car + 0xf0) |= 0x50 << 8;
                     else if (*(int *)car == 4)
                         *(unsigned short *)(car + 0xf0) |= 0x80 << 8;
-                    car = (unsigned char *)*p;
+                    car = (unsigned char *)g_aBrRaceCar[i].pEquip;
                     car[4] = 0;
-                    car = (unsigned char *)*p;
+                    car = (unsigned char *)g_aBrRaceCar[i].pEquip;
                     (*(int *)car)++;
                 }
             }
         }
 
-        car = (unsigned char *)*p;
+        car = (unsigned char *)g_aBrRaceCar[i].pEquip;
         *(unsigned short *)(car + 0xf2) |=
             (unsigned short)(1 << ((*(BrDmgBit (*)[])&g_aBr0B3820)[car[4] * 12 + car[5]].lo
                                    + ((*(int *)car & 1) ? 6 : 0)));
-        car = (unsigned char *)*p;
+        car = (unsigned char *)g_aBrRaceCar[i].pEquip;
         *(unsigned short *)(car + 0xf4) |=
             (unsigned short)(1 << (*(BrDmgBit (*)[])&g_aBr0B3820)[car[4] * 12 + car[5]].hi);
 
         i++;
-        p += 0xada;
     } while (i < (*(int *)&g_brRaceNEntrant));
 }
 

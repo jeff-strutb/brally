@@ -209,26 +209,16 @@ extern BrVec3 g_BrCamExtentU;  /* 0x106E7720 */
 #undef g_BrCamCentre
 extern BrVec3 g_BrCamCentre;  /* 0x106E9A20 */
 #pragma pop_macro("g_BrCamCentre")
-#pragma push_macro("g_BrCamCorner0")
-#undef g_BrCamCorner0
-extern BrVec3 g_BrCamCorner0;  /* 0x106EA3AC */
-#pragma pop_macro("g_BrCamCorner0")
-#pragma push_macro("g_BrCamCorner1")
-#undef g_BrCamCorner1
-extern BrVec3 g_BrCamCorner1;  /* 0x106EA3B8 */
-#pragma pop_macro("g_BrCamCorner1")
-#pragma push_macro("g_BrCamCorner2")
-#undef g_BrCamCorner2
-extern BrVec3 g_BrCamCorner2;  /* 0x106EA3C4 */
-#pragma pop_macro("g_BrCamCorner2")
-#pragma push_macro("g_BrCamCorner3")
-#undef g_BrCamCorner3
-extern BrVec3 g_BrCamCorner3;  /* 0x106EA3D0 */
-#pragma pop_macro("g_BrCamCorner3")
-#pragma push_macro("g_BrCamCentreCopy")
-#undef g_BrCamCentreCopy
-extern BrVec3 g_BrCamCentreCopy;  /* 0x106EA3DC */
-#pragma pop_macro("g_BrCamCentreCopy")
+/* 0x106EA3AC: row 1 of g_aBrSpanPt (the hull points), as in the original */
+#define g_BrCamCorner0 (*(BrVec3 *)g_aBrSpanPt[1])
+/* 0x106EA3B8: row 2 of g_aBrSpanPt (the hull points), as in the original */
+#define g_BrCamCorner1 (*(BrVec3 *)g_aBrSpanPt[2])
+/* 0x106EA3C4: row 3 of g_aBrSpanPt (the hull points), as in the original */
+#define g_BrCamCorner2 (*(BrVec3 *)g_aBrSpanPt[3])
+/* 0x106EA3D0: row 4 of g_aBrSpanPt (the hull points), as in the original */
+#define g_BrCamCorner3 (*(BrVec3 *)g_aBrSpanPt[4])
+/* 0x106EA3DC: row 5 of g_aBrSpanPt (the hull points), as in the original */
+#define g_BrCamCentreCopy (*(BrVec3 *)g_aBrSpanPt[5])
 #pragma push_macro("g_BrCamExtentR")
 #undef g_BrCamExtentR
 extern BrVec3 g_BrCamExtentR;  /* 0x106EC788 */

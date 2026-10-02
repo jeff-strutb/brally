@@ -190,14 +190,15 @@ void __fastcall BrRaceSaveLastLapInfo(BrDriverCar *param_1)
     n = 0;
     if ((*(int *)&g_brRaceNEntrant) > 0) {
         off = 0;
-        pRec = &(*(int *)&g_aBrRaceCar[0].pCtl);
         do {
-            *(int *)(*pRec + 0x34 + param_1->f140 * 4) = 0;
-            pRec += 0xada;
-            *(int *)(pRec[-0xada] + 0x3c + param_1->f140 * 4) = 0x3840;
-            ++n;
-            *(char **)(pRec[-0xada] + 0x2c + param_1->f140 * 4) =
+            /* the car's control block: length, capacity and buffer of this
+             * entrant's replay record (pCtl +0x34 / +0x3C / +0x2C) */
+            BrRaceCtl *pc = g_aBrRaceCar[n].pCtl;
+            pc->aLen[param_1->f140] = 0;
+            pc->aCap[param_1->f140] = 0x3840;
+            pc->apRec[param_1->f140] =
                 (char *)&g_ab0C12A0[15 * 0x15F88] + off + param_1->f140 * -0x15f88;
+            ++n;
             off += 0x3840;
         } while (n < (*(int *)&g_brRaceNEntrant));
     }

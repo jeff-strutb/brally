@@ -426,9 +426,9 @@ void BrCarVisibilityUpdate(void *pCar)
         if ((*(int *)((char *)&g_aBrEntRecs + 0x7C)) != 0 || (*(int *)((char *)&g_aBrEntRecs + 0x84)) != 0) {
             BrVec3MulAdd(&probe, pPos, &car->fwd, 6.0f);
             if (BR_CAR_SPAN(probe.x, probe.y) == 0 &&
-                BR_CAR_SPAN(pPos->x, *(float *)(car + BR_CAR_OFF_POS + 4)) == 0)
+                BR_CAR_SPAN(pPos->x, *(float *)((const uint8_t *)(car) + BR_CAR_OFF_POS + 4)) == 0)
                 return;                         /* culled */
-        } else if (BR_CAR_SPAN(pPos->x, *(float *)(car + BR_CAR_OFF_POS + 4)) == 0) {
+        } else if (BR_CAR_SPAN(pPos->x, *(float *)((const uint8_t *)(car) + BR_CAR_OFF_POS + 4)) == 0) {
             return;                             /* culled */
         }
 
@@ -529,15 +529,15 @@ void BrCarDrawBody(void *pCar)
 
     /* 0x1000BF18 -- the two matrices: the car's pooled model matrix pushed as
      * the modelview, the shared projection slot loaded after it. */
-    put(0x01060040u, g_BrCarMtxSlot[*(const int32_t *)(car + BR_CAR_OFF_ICAR)]);
+    put(0x01060040u, g_BrCarMtxSlot[*(const int32_t *)((const uint8_t *)(car) + BR_CAR_OFF_ICAR)]);
     put(0x01030040u, br_addr32(g_BrMtxSlot));
 
     /* 0x1000BF5F -- the four 16-byte blocks of the car's lighting matrix
      * (0x9E/0x98/0x9A/0x9C at +0/+0x10/+0x20/+0x30 of one pooled slot). */
-    put(0x039E0010u, g_BrCarLightSlot[*(const int32_t *)(car + BR_CAR_OFF_ICAR)]);
-    put(0x03980010u, g_BrCarLightSlot[*(const int32_t *)(car + BR_CAR_OFF_ICAR)] + 0x10u);
-    put(0x039A0010u, g_BrCarLightSlot[*(const int32_t *)(car + BR_CAR_OFF_ICAR)] + 0x20u);
-    put(0x039C0010u, g_BrCarLightSlot[*(const int32_t *)(car + BR_CAR_OFF_ICAR)] + 0x30u);
+    put(0x039E0010u, g_BrCarLightSlot[*(const int32_t *)((const uint8_t *)(car) + BR_CAR_OFF_ICAR)]);
+    put(0x03980010u, g_BrCarLightSlot[*(const int32_t *)((const uint8_t *)(car) + BR_CAR_OFF_ICAR)] + 0x10u);
+    put(0x039A0010u, g_BrCarLightSlot[*(const int32_t *)((const uint8_t *)(car) + BR_CAR_OFF_ICAR)] + 0x20u);
+    put(0x039C0010u, g_BrCarLightSlot[*(const int32_t *)((const uint8_t *)(car) + BR_CAR_OFF_ICAR)] + 0x30u);
 
     /* 0x1000C004 -- the canned setup list, then the model's texture command. */
     put(0x06000000u, br_addr32(&BrG_0AA838));
@@ -1501,7 +1501,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     }
 
     /* 0xA556 -- two G_MTX pushes: model and projection. */
-    put(0x01060040u, g_BrCarMtxSlot[*(int32_t *)(car + BR_CAR_OFF_ICAR)]);
+    put(0x01060040u, g_BrCarMtxSlot[*(int32_t *)((const uint8_t *)(car) + BR_CAR_OFF_ICAR)]);
     put(0x01030040u, br_addr32(g_BrMtxSlot));
 
     /* 0xA5A1 -- light-direction computation: build g_BrDrawDir0 and
@@ -1647,8 +1647,8 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         put(0xBC000002u, 0x80000040u);
         /* Both payloads recompute icar*24 from car+0x140 -- the original
          * does NOT reuse dst here (lea edx,[ecx+ecx*2]; lea [edx*8+base]). */
-        put(0x03860010u, br_addr32(&g_BrDrawLights[*(int32_t *)(car + BR_CAR_OFF_ICAR) * 24 + 8]));
-        put(0x03880010u, br_addr32(&g_BrDrawLights[*(int32_t *)(car + BR_CAR_OFF_ICAR) * 24]));
+        put(0x03860010u, br_addr32(&g_BrDrawLights[*(int32_t *)((const uint8_t *)(car) + BR_CAR_OFF_ICAR) * 24 + 8]));
+        put(0x03880010u, br_addr32(&g_BrDrawLights[*(int32_t *)((const uint8_t *)(car) + BR_CAR_OFF_ICAR) * 24]));
     }
 
     /* 0xA9CE -- post-lights header: sync, two-cycle, geom mode. */
@@ -1722,10 +1722,10 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         BrCarDrawWheels((const BrCarView *)car);
 
     /* 0xACE3 -- four light MOVEMEMs (unconditional, +0x10/+0x20/+0x30). */
-    put(0x039E0010u, g_BrCarLightSlot[*(int32_t *)(car + BR_CAR_OFF_ICAR)]);
-    put(0x03980010u, g_BrCarLightSlot[*(int32_t *)(car + BR_CAR_OFF_ICAR)] + 0x10);
-    put(0x039A0010u, g_BrCarLightSlot[*(int32_t *)(car + BR_CAR_OFF_ICAR)] + 0x20);
-    put(0x039C0010u, g_BrCarLightSlot[*(int32_t *)(car + BR_CAR_OFF_ICAR)] + 0x30);
+    put(0x039E0010u, g_BrCarLightSlot[*(int32_t *)((const uint8_t *)(car) + BR_CAR_OFF_ICAR)]);
+    put(0x03980010u, g_BrCarLightSlot[*(int32_t *)((const uint8_t *)(car) + BR_CAR_OFF_ICAR)] + 0x10);
+    put(0x039A0010u, g_BrCarLightSlot[*(int32_t *)((const uint8_t *)(car) + BR_CAR_OFF_ICAR)] + 0x20);
+    put(0x039C0010u, g_BrCarLightSlot[*(int32_t *)((const uint8_t *)(car) + BR_CAR_OFF_ICAR)] + 0x30);
 
     /* 0xAD77 -- TLUT palette load.  Orig stores DL word1 as an address-of-symbol
      * immediate (mov [eax+4], OFFSET g_BrDrawTexBlob), not the pointer's runtime

@@ -92,7 +92,7 @@ void FUN_10061310(void)
     do {
       BrSndBankSetCar(iVar2,*puVar3);
       iVar2 = iVar2 + 1;
-      puVar3 = puVar3 + 0xada;
+      puVar3 = &(*(int *)&g_aBrRaceCar[iVar2].f29A8);   /* next car */
     } while (iVar2 < (*(int *)&g_BrCarCount));
   }
   BrSfxBankLoad(1);

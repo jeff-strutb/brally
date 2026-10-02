@@ -135,7 +135,7 @@ typedef int            int32_t;
 
 /* Hand one triangle word's three corners to the software clipper. */
 #define CLIPTRI(W) \
-    BrPolyClipTri(pRec, pObj + 0xb0, pObj + 0xab, \
+    BrPolyClipTri(pRec, (void *)((char *)&pCarO->f29D8 + 0x18), (void *)((char *)&pCarO->f29D8 + 4), \
                  pVtxBase + ((W) & 0x1f) * 8, \
                  pVtxBase + (((W) >> 8) & 0x1f) * 8, \
                  pVtxBase + (((W) >> 16) & 0x1f) * 8, pObjBase)
@@ -198,7 +198,8 @@ void BrObjDlBuild(struct BrViewRect * pRects, int idx, uint32_t cls, int bLit, u
     float    *pObj;
     float    *pObjBase;
     int      *pRect;
-    int       pTex;
+    const char *pTex;
+    BrDriverCar *pCarO;     /* the car this pass draws (stride: the record) */
     int       i;
     int       n;
     uint32_t  c;
@@ -270,7 +271,8 @@ void BrObjDlBuild(struct BrViewRect * pRects, int idx, uint32_t cls, int bLit, u
         DAT_106e86a0 += *(uint16_t *)(pRec + 0x52) * 3;
 
         pVtxBase = pVtx;
-        pObj     = (float *)(pScene + 0x2730);
+        pCarO    = (BrDriverCar *)pScene;
+        pObj     = &pCarO->f2730;
         pDLMark  = 0;
         i        = 0;
         pCmdStart = pCmd;
@@ -294,15 +296,15 @@ void BrObjDlBuild(struct BrViewRect * pRects, int idx, uint32_t cls, int bLit, u
                 pDL[1] = (BrFtolArg(pObj[0] * DAT_100771f4) & 0xff) |
                          ((((BrG_6C0260 << 8) | BrG_6C1614) << 8 |
                            BrG_6C0200) << 8);
-                pObjBase = pObj - 0x9cc;
+                pObjBase = (float *)pCarO;
                 pDL += 2;
 
                 DAT_1035fb78.x = *pObjBase;
-                DAT_1035fb78.y = pObj[-0x9cb];
-                DAT_1035fb78.z = pObj[-0x9ca];
+                DAT_1035fb78.y = pObjBase[1];
+                DAT_1035fb78.z = pObjBase[2];
                 if (DAT_1035fb78.x == DAT_100771f8 && DAT_1035fb78.y == DAT_100771f8) {
-                    DAT_1035fb78.x = pObj[-0x9c4];
-                    DAT_1035fb78.y = pObj[-0x9c3];
+                    DAT_1035fb78.x = pObjBase[8];
+                    DAT_1035fb78.y = pObjBase[9];
                 }
                 DAT_1035fb78.z = DAT_100771f8;
                 sx = BrVec3LenXY(&DAT_1035fb78);
@@ -314,23 +316,23 @@ void BrObjDlBuild(struct BrViewRect * pRects, int idx, uint32_t cls, int bLit, u
                 if (sx < DAT_100771fc) {
                     k = 0.5f;
                 }
-                len2 = BrVec3LenXY(&pObj[-0x9c8]);
+                len2 = BrVec3LenXY(&pObjBase[4]);
                 if (len2 < DAT_100771fc) {
                     len2 = DAT_100771fc;
                 }
-                pTex = *(int *)((char *)pObj + 0x294);
+                pTex = (const char *)pCarO->pModel;
                 sx = (DAT_10077200 / *(float *)(pTex + 0x80e0)) / sx;
                 sy = (DAT_10077204 / *(float *)(pTex + 0x80e4)) / len2;
                 br_dl_normalise(&DAT_1035fb78);
 
                 memcpy((*(float (*)[16])&g_BrDrawCombined), pRec, 0x40);
 
-                OUTM(12) = OUTM(12) - pObj[-0x9c0];
+                OUTM(12) = OUTM(12) - pObjBase[12];
                 SPRM(0)  = DAT_1035fb78.x * sx;
                 SPRM(4)  = -(-DAT_1035fb78.y * sx);
                 SPRM(8)  = 0.0f;
                 SPRM(12) = 512.0f;
-                OUTM(13) = OUTM(13) - pObj[-0x9bf];
+                OUTM(13) = OUTM(13) - pObjBase[13];
                 SPRM(1)  = -DAT_1035fb78.y * sy;
                 SPRM(5)  = DAT_1035fb78.x * sy;
                 SPRM(9)  = 0.0f;
@@ -363,12 +365,12 @@ void BrObjDlBuild(struct BrViewRect * pRects, int idx, uint32_t cls, int bLit, u
                 if ((*(int *)((char *)&g_aBrEntRecs + 0x6C)) == 0) {
                     pSave = g_BrGfxPtr;
                     g_BrGfxPtr = pDL;
-                    BrSub_1003289F(*(short *)((char *)pObj + 0x26c),
-                                   *(short *)((char *)pObj + 0x272),
-                                   *(short *)((char *)pObj + 0x270) -
-                                       *(short *)((char *)pObj + 0x26c),
-                                   *(short *)((char *)pObj + 0x26e) -
-                                       *(short *)((char *)pObj + 0x272));
+                    BrSub_1003289F(pCarO->f299C,
+                                   pCarO->f29A2,
+                                   pCarO->f29A0 -
+                                       pCarO->f299C,
+                                   pCarO->f299E -
+                                       pCarO->f29A2);
                     pDL = g_BrGfxPtr;
                     g_BrGfxPtr = pSave;
                 }
@@ -502,7 +504,8 @@ void BrObjDlBuild(struct BrViewRect * pRects, int idx, uint32_t cls, int bLit, u
             }
         nextObj:
             i++;
-            pObj += 0xada;
+            pCarO++;
+            pObj = &pCarO->f2730;
             cls = (uint32_t)((int)cls >> 1);
         } while (cls != 0);
 

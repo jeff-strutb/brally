@@ -50,7 +50,7 @@ int __stdcall FUN_10055a40(int _pad_0)
   }
   iVar5 = 0;
   for (;;) {
-    strcpy(acStack_64, (char *)(*(int *)(g_brPAA29B8 + 0xc0) + 4 + iVar5));
+    strcpy(acStack_64, ((char *)g_brPAA29B8->fC0 + 4 + iVar5));
     sVar2 = fwrite(acStack_64,1,100,_File);
     if ((int)sVar2 < 100) {
       FUN_100378c0(7);
@@ -104,7 +104,7 @@ int __stdcall FUN_10055af0(short param_1)
       FUN_100378c0(7);
     }
     pcVar3 = _strupr(acStack_104);
-    strcpy((char *)(*(int *)(g_brPAA29B8 + 0xc0) + 4 + param_1 * 0x104), pcVar3);
+    strcpy(((char *)g_brPAA29B8->fC0 + 4 + param_1 * 0x104), pcVar3);
     fclose(_File);
   }
   return 1;

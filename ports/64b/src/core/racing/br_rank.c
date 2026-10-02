@@ -103,10 +103,10 @@ void BrRankAssign(void)
     if (0 < (*(int *)&g_BrCarCount)) {
       puVar5 = &(*(int *)&g_aBrRaceCar[0].fFF8);
       do {
-        uVar1 = BrNetGetA102212D0(puVar5[-0x3ad]);
+        uVar1 = BrNetGetA102212D0(g_aBrRaceCar[iVar7].iNetPlayer);   /* car +0x144 */
         *puVar5 = uVar1;
         iVar7 = iVar7 + 1;
-        puVar5 = puVar5 + 0xada;
+        puVar5 = &(*(int *)&g_aBrRaceCar[iVar7].fFF8);   /* next car */
       } while (iVar7 < (*(int *)&g_BrCarCount));
       return;
     }

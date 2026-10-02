@@ -1159,7 +1159,7 @@ void BrSceneDlBuild(struct BrViewRect *param_1, int param_2, unsigned char *para
                 p[-8] = 0;
                 p[-9] = 0;
                 i = i + 1;
-                p = p + 0xada;
+                p = (uint32_t *)((char *)&((BrDriverCar *)param_4)[i].f29D8 + 0x28);   /* next car */
             } while (i < (*(int *)&g_BrCarCount));
         }
         BrSceneVisPrepare(param_1, param_3, param_4);

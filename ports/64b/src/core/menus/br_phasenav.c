@@ -871,7 +871,7 @@ int BrPhaseActivate_1003ED70(struct CtlF060 *param_1)
 
 {
   CtlF060_fn(param_1);
-  *(char **)(g_brUipAA29F4 + 8) = (char *)FUN_10040040;
+  g_brUipAA29F4->pfn08 = (BrUiCtlHookFn_)FUN_10040040;   /* ctl +0x08 */
   return 1;
 }
 

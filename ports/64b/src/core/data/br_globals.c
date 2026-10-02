@@ -1475,11 +1475,6 @@ BR_GLOBAL_EXTENT(int, DAT_106ea388, , 0x4);  /* 0x106EA388 */
 BR_GLOBAL_EXTENT(uint32_t, DAT_106ea390, , 0x4);  /* 0x106EA390 */
 BR_GLOBAL_EXTENT(void *, BrG_6C3308, , 0x4);  /* 0x106EA398 */
 float g_aBrSpanPt[6][3];  /* 0x106EA3A0 */
-BrVec3 g_BrCamCorner0;  /* 0x106EA3AC */
-BrVec3 g_BrCamCorner1;  /* 0x106EA3B8 */
-BrVec3 g_BrCamCorner2;  /* 0x106EA3C4 */
-BrVec3 g_BrCamCorner3;  /* 0x106EA3D0 */
-BrVec3 g_BrCamCentreCopy;  /* 0x106EA3DC */
 unsigned char DAT_106ea3e8[4];  /* 0x106EA3E8 */
 BR_GLOBAL_EXTENT(uint8_t, BrG_6C335C, , 0x3);  /* 0x106EA3EC */
 float g_BrCamNear;  /* 0x106EA3F0 */
