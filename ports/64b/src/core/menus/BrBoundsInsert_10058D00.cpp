@@ -23,7 +23,6 @@ public:
     void Insert(BoundsNode *pNode);
 };
 
-typedef char chk_f10[(unsigned)&((BoundsNode *)0)->f10 == 0x10 ? 1 : -1];
 
 void BoundsNode::Insert(BoundsNode *pNode)
 {

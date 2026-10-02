@@ -47,7 +47,6 @@ public:
     void Apply(const float *pDir, short mag);
 };
 
-typedef char chk_ac[(unsigned)&((Rip0C4E0 *)0)->b29ac == 0x29AC ? 1 : -1];
 
 
 

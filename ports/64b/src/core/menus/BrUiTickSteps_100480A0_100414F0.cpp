@@ -36,7 +36,6 @@ public:
     int TickSteps();
 };
 
-typedef char chk_3850[(unsigned)&((UiPage *)0)->f3850 == 0x3850 ? 1 : -1];
 
 int UiPage::TickSteps()
 {

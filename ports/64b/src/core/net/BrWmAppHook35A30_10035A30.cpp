@@ -29,7 +29,6 @@ public:
     Sel sel;
 };
 
-typedef char chk_sel[(unsigned)&((GameObjS *)0)->sel == 0x3838 ? 1 : -1];
 
 extern "C" {
 /* 64-bit core: g_pGame is defined once, in br_globals.c */

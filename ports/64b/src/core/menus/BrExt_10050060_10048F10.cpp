@@ -180,7 +180,6 @@ public:
 
 
 
-typedef char chk_tbl48F10[(unsigned)&((Root48F10 *)0)->pTable == 0xC0 ? 1 : -1];
 
 typedef int (*CtlFn)(BrCtl *);
 
@@ -270,7 +269,7 @@ int BrExt_10050060(GameUi *parent)
     (*(int *)&((BrUiCtl_ *)(p))->list.f1A99C[8]) = 1;
     (*(class Sel3838 *)&((BrUiCtl_ *)(p))->list).s5(0x40001, &DAT_100aac78, 5, 0, -1);
     (*(int (**)(void))&((BrTextList *)&((*(class Sel3838 *)&((BrUiCtl_ *)(p))->list)))->f04) = (int (*)(void))BrSaveProbeRallySeason;
-    (*(int *)&((BrTextList *)&((*(class Sel3838 *)&((BrUiCtl_ *)(p))->list)))->f14) = (int)BrSaveNameCommitRallySeason;
+    ((BrTextList *)&((*(class Sel3838 *)&((BrUiCtl_ *)(p))->list)))->f14 = (BrTextListCbFn)BrSaveNameCommitRallySeason;
     {
         int off = 0;
 

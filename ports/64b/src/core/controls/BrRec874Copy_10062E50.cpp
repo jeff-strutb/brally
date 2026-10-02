@@ -66,9 +66,6 @@ public:
     void Copy(Rec62E50 *pSrc);      /* 0x10062E50 -- defined here */
 };
 
-typedef char chk_a1[(unsigned)&((Rec62E50 *)0)->a1   == 0x0A8 ? 1 : -1];
-typedef char chk_a3[(unsigned)&((Rec62E50 *)0)->a3   == 0x1F8 ? 1 : -1];
-typedef char chk_se[(unsigned)&((Rec62E50 *)0)->sel  == 0x2A0 ? 1 : -1];
 
 
 

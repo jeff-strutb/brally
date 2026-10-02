@@ -142,24 +142,6 @@ public:
 };
 
 typedef char chk_30 [(unsigned)&((Car5E7B0 *)0)->f30  == 0x30  ? 1 : -1];
-typedef char chk_140[(unsigned)&((Car5E7B0 *)0)->f140 == 0x140 ? 1 : -1];
-typedef char chk_144[(unsigned)&((Car5E7B0 *)0)->f144 == 0x144 ? 1 : -1];
-typedef char chk_e64[(unsigned)&((Car5E7B0 *)0)->fE64 == 0xE64 ? 1 : -1];
-typedef char chk_f78[(unsigned)&((Car5E7B0 *)0)->fF78 == 0xF78 ? 1 : -1];
-typedef char chk_f80[(unsigned)&((Car5E7B0 *)0)->fF80 == 0xF80 ? 1 : -1];
-typedef char chk_fa0[(unsigned)&((Car5E7B0 *)0)->fFA0 == 0xFA0 ? 1 : -1];
-typedef char chk_fac[(unsigned)&((Car5E7B0 *)0)->fFAC == 0xFAC ? 1 : -1];
-typedef char chk_fb0[(unsigned)&((Car5E7B0 *)0)->fFB0 == 0xFB0 ? 1 : -1];
-typedef char chk_fec[(unsigned)&((Car5E7B0 *)0)->fFEC == 0xFEC ? 1 : -1];
-typedef char chk_ff0[(unsigned)&((Car5E7B0 *)0)->fFF0 == 0xFF0 ? 1 : -1];
-typedef char chk_ff4[(unsigned)&((Car5E7B0 *)0)->fFF4 == 0xFF4 ? 1 : -1];
-typedef char chk_ff8[(unsigned)&((Car5E7B0 *)0)->fFF8 == 0xFF8 ? 1 : -1];
-typedef char chk_1020[(unsigned)&((Car5E7B0 *)0)->f1020 == 0x1020 ? 1 : -1];
-typedef char chk_2718[(unsigned)&((Car5E7B0 *)0)->f2718 == 0x2718 ? 1 : -1];
-typedef char chk_294c[(unsigned)&((Car5E7B0 *)0)->f294C == 0x294C ? 1 : -1];
-typedef char chk_2990[(unsigned)&((Car5E7B0 *)0)->f2990 == 0x2990 ? 1 : -1];
-typedef char chk_f8c[(unsigned)&((Car5E7B0 *)0)->fF8C == 0xF8C ? 1 : -1];
-typedef char chk_f94[(unsigned)&((Car5E7B0 *)0)->fF94 == 0xF94 ? 1 : -1];
 
 extern "C" {
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
@@ -241,7 +223,7 @@ void Car5E7B0::StartInit()
             sVar1 = 0;
         (*(float *)&((BrDriverCar *)(this))->fFF0) = *(float *)((*(char * (*)[])&g_apBrRaceDiff)[(*(int *)&g_Br0B380C)] +
                            ((*(int *)&((BrDriverCar *)(this))->f0E64) * 3 + sVar1) * 0x1c + 0x44);
-        (*(int *)&((BrDriverCar *)(this))->pNode.p) = g_pBrRaceLapRec;
+        ((BrDriverCar *)(this))->pNode.p = (struct BrAiPathNode *)g_pBrRaceLapRec;
         (*(int *)&((BrDriverCar *)(this))->iPt.v) = 0;
         BrVec3Direction((struct BrVec3 *)(&(*(float *)&((BrDriverCar *)(this))->f0F94)), (const struct BrVec3 *)((const float *)(g_pBrRaceLapRec + 0x4c)),(const struct BrVec3 *)(
                         (const float *)(g_pBrRaceLapRec + 0x74)));

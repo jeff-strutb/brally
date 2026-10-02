@@ -408,9 +408,9 @@ typedef void (*BrTextListCbFn)(void);
 typedef struct BrTextList {
     const BrTextListVtbl *pVtbl;   /* +0x00000 */
     BrTextListCbFn f04;            /* +0x00004  a callback -- see above */
-    uint32_t   f08;                /* +0x00008 */
+    BrTextListCbFn f08;            /* +0x00008  called by 0x100553B0 (scroll up) */
     BrTextListCbFn f0C;            /* +0x0000C  a callback in the original */
-    uint32_t   f10;                /* +0x00010 */
+    BrTextListCbFn f10;            /* +0x00010  called by 0x100553B0 (scroll down) */
     BrTextListCbFn f14;            /* +0x00014  a callback in the original */
     uint32_t   f18;                /* +0x00018  flag word */
 

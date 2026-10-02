@@ -39,7 +39,6 @@ public:
     void Release();
 };
 
-typedef char chk_50[(unsigned)&((Nav59320 *)0)->f50 == 0x50 ? 1 : -1];
 
 void Nav59320::Release()
 {

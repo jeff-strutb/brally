@@ -15,7 +15,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
 HDR = {'BrUiCtl_': 'br_ui.h', 'BrUiPage_': 'br_ui.h', 'BrPhase_': 'br_phase.h',
        'BrTextList': 'slice3_39.h', 'BrTextBox': 'slice3_39.h', 'BrDriverCar': 'slice3_41.h',
        'BrCarBody': 'br_cartypes.h', 'BrAiPathNode': 'br_coretypes.h', 'BrPeerRec': 'br_coretypes.h',
-       'BrNetSlot': 'slice1_02.h', 'BrCollPlane': 'slice1_08.h'}
+       'BrNetSlot': 'slice1_02.h', 'BrCollPlane': 'slice1_08.h', 'BrRbBody': 'slice3_44.h'}
 
 
 def main():

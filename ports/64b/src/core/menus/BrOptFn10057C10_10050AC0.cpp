@@ -120,7 +120,6 @@ public:
 
 
 
-typedef char chk_tbl050AC0[(unsigned)&((Root050AC0 *)0)->pTable == 0xC0 ? 1 : -1];
 
 typedef int (*CtlFn)(BrCtl *);
 

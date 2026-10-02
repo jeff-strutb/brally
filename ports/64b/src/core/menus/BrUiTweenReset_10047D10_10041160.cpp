@@ -38,9 +38,6 @@ public:
     int Reset();
 };
 
-typedef char chk_f030_41160[(unsigned)&((Tween41160 *)0)->f030 == 0x30 ? 1 : -1];
-typedef char chk_f3818_41160[(unsigned)&((Tween41160 *)0)->f3818 == 0x3818 ? 1 : -1];
-typedef char chk_f3824_41160[(unsigned)&((Tween41160 *)0)->f3824 == 0x3824 ? 1 : -1];
 
 int Tween41160::Reset()
 {

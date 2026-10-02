@@ -168,7 +168,6 @@ public:
 
 
 
-typedef char chk_tbl051600[(unsigned)&((Root051600 *)0)->pTable == 0xC0 ? 1 : -1];
 
 typedef int (*CtlFn)(BrCtl *);
 

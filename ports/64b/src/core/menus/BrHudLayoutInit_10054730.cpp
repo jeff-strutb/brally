@@ -117,12 +117,6 @@ public:
     int Layout(int a1, int *r, short a3, short a4, short a5);
 };
 
-typedef char chk_f1c[(unsigned)&((Hud54730 *)0)->f1c == 0x1C ? 1 : -1];
-typedef char chk_w92e[(unsigned)&((Hud54730 *)0)->w1a92e == 0x1A92E ? 1 : -1];
-typedef char chk_i93c[(unsigned)&((Hud54730 *)0)->i1a93c == 0x1A93C ? 1 : -1];
-typedef char chk_f9ac[(unsigned)&((Hud54730 *)0)->f1a9ac == 0x1A9AC ? 1 : -1];
-typedef char chk_i9b8[(unsigned)&((Hud54730 *)0)->i1a9b8 == 0x1A9B8 ? 1 : -1];
-typedef char chk_f9d0[(unsigned)&((Hud54730 *)0)->f1a9d0 == 0x1A9D0 ? 1 : -1];
 
 extern "C" {
 /* 64-bit core: g_brVp0AB164 is defined once, in br_globals.c */

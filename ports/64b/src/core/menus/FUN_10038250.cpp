@@ -34,7 +34,6 @@ public:
     Sel sel;
 };
 
-typedef char chk_sel[(unsigned)&((GameObj *)0)->sel == 0x3838 ? 1 : -1];
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */

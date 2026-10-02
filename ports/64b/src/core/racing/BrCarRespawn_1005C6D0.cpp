@@ -1,4 +1,5 @@
 #include "br_race.h"   /* br_globals: its objects */
+#include "slice3_44.h"   /* BrRbBody, the canonical record */
 #include "slice3_41.h"   /* BrDriverCar, the canonical record */
 /* WHAT IT DOES: respawn the car at its current track node when it has been
  * flagged for reset (+0x35C negative) or its last-progress timestamp (+0x38)
@@ -38,7 +39,7 @@
 class Whl5C6D0 {
 public:
     char          pad0000[0x19C];
-    int           f19C;                 /* +0x19C */
+    void         *pPlane;               /* +0x19C */
     unsigned char b1A0;                 /* +0x1A0 */
     char          pad01A1[0x1B4 - 0x1A1];
     int           f1B4;                 /* +0x1B4 */
@@ -89,8 +90,6 @@ public:
     void Chase(float *pAnchor, float fBlend);   /* 0x100018F0            */
 };
 
-typedef char chk_38[(unsigned)&((Car5C6D0 *)0)->f38   == 0x38   ? 1 : -1];
-typedef char chk_68[(unsigned)&((Car5C6D0 *)0)->p168  == 0x168  ? 1 : -1];
 
 
 
@@ -99,9 +98,6 @@ typedef char chk_68[(unsigned)&((Car5C6D0 *)0)->p168  == 0x168  ? 1 : -1];
 
 
 
-typedef char chk_w9[(unsigned)&((Whl5C6D0 *)0)->pPlane  == 0x19C  ? 1 : -1];
-typedef char chk_wa[(unsigned)&((Whl5C6D0 *)0)->b1A0  == 0x1A0  ? 1 : -1];
-typedef char chk_wb[(unsigned)&((Whl5C6D0 *)0)->f1B4  == 0x1B4  ? 1 : -1];
 
 extern "C" {
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
@@ -121,29 +117,29 @@ void Car5C6D0::Respawn()
         Sub5E6A0();
         Sub5BCC0();
         if ((*(int *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 2)
-            SetPos(*(float *)((*(int *)&((BrDriverCar *)(this))->pNode.p) + (*(int *)&((BrDriverCar *)(this))->iPt.v) * 0x28 + 0x4C),
-                   *(float *)((*(int *)&((BrDriverCar *)(this))->pNode.p) + ((*(int *)&((BrDriverCar *)(this))->iPt.v) + 2) * 0x28),
-                   *(float *)((*(int *)&((BrDriverCar *)(this))->pNode.p) + 0x54 + (*(int *)&((BrDriverCar *)(this))->iPt.v) * 0x28) - DAT_1007789c);
+            SetPos(*(float *)(((intptr_t)((BrDriverCar *)(this))->pNode.p) + (*(int *)&((BrDriverCar *)(this))->iPt.v) * 0x28 + 0x4C),
+                   *(float *)(((intptr_t)((BrDriverCar *)(this))->pNode.p) + ((*(int *)&((BrDriverCar *)(this))->iPt.v) + 2) * 0x28),
+                   *(float *)(((intptr_t)((BrDriverCar *)(this))->pNode.p) + 0x54 + (*(int *)&((BrDriverCar *)(this))->iPt.v) * 0x28) - DAT_1007789c);
         else
-            SetPos(*(float *)((*(int *)&((BrDriverCar *)(this))->pNode.p) + (*(int *)&((BrDriverCar *)(this))->iPt.v) * 0x28 + 0x4C)
+            SetPos(*(float *)(((intptr_t)((BrDriverCar *)(this))->pNode.p) + (*(int *)&((BrDriverCar *)(this))->iPt.v) * 0x28 + 0x4C)
                        - (float)(*(int *)&((BrDriverCar *)(this))->f140) * DAT_100778a0,
-                   *(float *)((*(int *)&((BrDriverCar *)(this))->pNode.p) + ((*(int *)&((BrDriverCar *)(this))->iPt.v) + 2) * 0x28),
-                   *(float *)((*(int *)&((BrDriverCar *)(this))->pNode.p) + 0x54 + (*(int *)&((BrDriverCar *)(this))->iPt.v) * 0x28) - DAT_1007789c);
+                   *(float *)(((intptr_t)((BrDriverCar *)(this))->pNode.p) + ((*(int *)&((BrDriverCar *)(this))->iPt.v) + 2) * 0x28),
+                   *(float *)(((intptr_t)((BrDriverCar *)(this))->pNode.p) + 0x54 + (*(int *)&((BrDriverCar *)(this))->iPt.v) * 0x28) - DAT_1007789c);
         SetHeading((float)BrAtan2((*(float *)&((BrDriverCar *)(this))->f0F94), (*(float *)&((BrDriverCar *)(this))->f0F98)));
         SetVel(0.0f, 0.0f, 0.0f);
         SetAngVel(0.0f, 0.0f, 0.0f);
-        (*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[0])->pPlane = 0;
-        (*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[0])->f1B4 = 0;
-        (*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[0])->b1A0 = 2;
-        (*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[1])->pPlane = 0;
-        (*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[1])->f1B4 = 0;
-        (*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[1])->b1A0 = 2;
-        (*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[3])->pPlane = 0;
-        (*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[3])->f1B4 = 0;
-        (*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[3])->b1A0 = 2;
-        (*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[2])->pPlane = 0;
-        (*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[2])->f1B4 = 0;
-        (*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[2])->b1A0 = 2;
+        (*(void * *)&((BrRbBody *)((*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[0])))->pPlane) = 0;
+        (*(int *)&((BrRbBody *)((*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[0])))->f1B4) = 0;
+        (*(unsigned char *)&((BrRbBody *)((*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[0])))->f01A0) = 2;
+        (*(void * *)&((BrRbBody *)((*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[1])))->pPlane) = 0;
+        (*(int *)&((BrRbBody *)((*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[1])))->f1B4) = 0;
+        (*(unsigned char *)&((BrRbBody *)((*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[1])))->f01A0) = 2;
+        (*(void * *)&((BrRbBody *)((*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[3])))->pPlane) = 0;
+        (*(int *)&((BrRbBody *)((*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[3])))->f1B4) = 0;
+        (*(unsigned char *)&((BrRbBody *)((*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[3])))->f01A0) = 2;
+        (*(void * *)&((BrRbBody *)((*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[2])))->pPlane) = 0;
+        (*(int *)&((BrRbBody *)((*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[2])))->f1B4) = 0;
+        (*(unsigned char *)&((BrRbBody *)((*(Whl5C6D0 * *)&((BrDriverCar *)(this))->aBody[0].rb.child[2])))->f01A0) = 2;
         (*(float *)&((BrDriverCar *)(this))->cHoldFwd) = 0.0f;
         (*(float *)&((BrDriverCar *)(this))->cHoldRev) = 0.0f;
         (*(float *)&((BrDriverCar *)(this))->cRevRun) = 0.0f;

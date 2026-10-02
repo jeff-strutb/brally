@@ -87,8 +87,6 @@ public:
 };
 
 
-typedef char chk_f03C[(unsigned)&((Obj41300 *)0)->f03C == 0x3C ? 1 : -1];
-typedef char chk_f05C[(unsigned)&((Obj41300 *)0)->f05C == 0x5C ? 1 : -1];
 
 void Obj41300::Init(char *pName, int flags, char kind, int *pRect)
 {

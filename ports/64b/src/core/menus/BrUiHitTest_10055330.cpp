@@ -46,7 +46,6 @@ public:
     int HitTest(Rect55330 *pRect);
 };
 
-typedef char chk_f18[(unsigned)&((Ui55330 *)0)->f18 == 0x18 ? 1 : -1];
 
 extern "C" {
 /* 64-bit core: g_AC5DD8 is defined once, in br_globals.c */

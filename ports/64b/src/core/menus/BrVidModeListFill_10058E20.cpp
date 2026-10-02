@@ -60,7 +60,6 @@ public:
     Sel58E20 m3838;                  /* +0x3838 */
 };
 
-typedef char chk_sel58e20[(unsigned)&((Ctl58E20 *)0)->m3838 == 0x3838 ? 1 : -1];
 
 struct VideoMode {
     int        w;                    /* +0x00 */

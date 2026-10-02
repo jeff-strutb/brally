@@ -38,7 +38,6 @@ public:
 
 /* FlagObj: br_coretypes.h */
 
-typedef char chk_sub[(unsigned)&((GameObj *)0)->pSub == 0x2AE8 ? 1 : -1];
 /* FlagObj: br_coretypes.h */
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */

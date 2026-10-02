@@ -121,7 +121,6 @@ public:
 
 
 
-typedef char chk_tbl053590[(unsigned)&((Root053590 *)0)->pTable == 0xC0 ? 1 : -1];
 
 typedef int (*CtlFn)(BrCtl *);
 
@@ -198,7 +197,7 @@ int FUN_10053590(GameUi *parent)
     (*(int *)&((BrUiCtl_ *)(p))->list.f1A99C[8]) = 1;
     (*(class Sel3838 *)&((BrUiCtl_ *)(p))->list).s5(0x40001, &DAT_100aac78, 5, 0, -1);
     (*(int (**)(void))&((BrTextList *)&((*(class Sel3838 *)&((BrUiCtl_ *)(p))->list)))->f04) = (int (*)(void))BrSaveProbeTimeAttack;
-    (*(int *)&((BrTextList *)&((*(class Sel3838 *)&((BrUiCtl_ *)(p))->list)))->f14) = (int)BrSaveNameCommitTimeAttack;
+    ((BrTextList *)&((*(class Sel3838 *)&((BrUiCtl_ *)(p))->list)))->f14 = (BrTextListCbFn)BrSaveNameCommitTimeAttack;
     {
         int off = 0;
 

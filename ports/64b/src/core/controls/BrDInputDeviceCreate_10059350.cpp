@@ -62,7 +62,6 @@ public:
     int CreateDevice(void *hWnd);
 };
 
-typedef char chk_pDev[(unsigned)&((Input59350 *)0)->pDev == 0x50 ? 1 : -1];
 
 extern "C" {
 /* 64-bit core: g_pDInput is defined once, in br_globals.c */

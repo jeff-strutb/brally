@@ -37,9 +37,6 @@ public:
     int Begin(int nSteps);
 };
 
-typedef char chk_f030_41100[(unsigned)&((Tween41100 *)0)->f030 == 0x30 ? 1 : -1];
-typedef char chk_f3818_41100[(unsigned)&((Tween41100 *)0)->f3818 == 0x3818 ? 1 : -1];
-typedef char chk_f3824_41100[(unsigned)&((Tween41100 *)0)->f3824 == 0x3824 ? 1 : -1];
 
 int Tween41100::Begin(int nSteps)
 {

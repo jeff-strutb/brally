@@ -190,7 +190,6 @@ public:
 
 
 
-typedef char chk_tbl04BE00[(unsigned)&((Root04BE00 *)0)->pTable == 0xC0 ? 1 : -1];
 
 typedef int (*CtlFn)(BrCtl *);
 

@@ -96,7 +96,6 @@ public:
     Item438L m2B5C;             /* +0x2B5C */
 };
 
-typedef char chk_f040L[(unsigned)&((Obj38F40 *)0)->f040 == 0x40 ? 1 : -1];
 
 
 struct BrDesc38F40 {

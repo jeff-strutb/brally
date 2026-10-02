@@ -19,140 +19,80 @@
 #include <string.h>
 #include "br_ui.h"   /* BrUiCtl_, the canonical record */
 
-class Item438 {
-    char b[0x438];
-public:
-    Item438();
-    ~Item438();
-};
+#include "br_vtables.h"
 
-class TextList {
-    char b[0x1E20C - 0x3838];
-public:
-    TextList();
-};
-
-class MenuObj40B10 {
-public:
-    virtual void v0();
-
-    int            f004;
-    int            f008;
-    int            f00C;
-    int            f010;
-    int            f014;
-    int            f018;
-    int            f01C;
-    int            f020;
-    int            f024;
-    int            f028;
-    unsigned char  b02C;
-    char           pad02D[3];
-    int            f030;
-    int            f034;
-    int            f038;
-    int            f03C;
-    int            f040;
-    float          f044;
-    short          w048;
-    short          w04A;
-    int            f04C;
-    char           pad050[0x10];
-    int            a060[0x32];
-    short          w128;
-    char           a12A[0x2710];
-    char           pad283A[2];
-    int            a283C[0x32];
-    int            a2904[0x19];
-    int            f2968;
-    int            f296C;
-    int            f2970;
-    int            f2974;
-    int            a2978[0x32];
-    int            a2A40[0x19];
-    int            f2AA4;
-    int            f2AA8;
-    short          w2AAC;
-    char           pad2AAE[6];
-    short          w2AB4;
-    char           a2AB6[0x32];
-    int            f2AE8;
-    int            f2AEC;
-    int            a2AF0[0x19];
-    int            f2B54;
-    int            f2B58;
-    Item438        items[3];        /* +0x2B5C */
-    int            f3804;
-    int            f3808;
-    unsigned char  b380C;
-    unsigned char  b380D;
-    char           pad380E[2];
-    int            f3810;
-    int            f3814;
-    int            f3818;
-    int            f381C;
-    int            f3820;
-    int            f3824;
-    int            f3828;
-    int            f382C;
-    int            f3830;
-    short          w3834;
-    short          w3836;
-    TextList       text;            /* +0x3838 */
-    short          w1E20C;
-    char           pad1E20E[2];
-
-    MenuObj40B10();
-};
-
-
-
-
-
-
-
-MenuObj40B10::MenuObj40B10()
-    : f01C(1), f020(0), f024(0), f028(0), b02C(0xFF),
-      f030(0), f034(0), f038(0), f03C(0), f040(0), f044(0.99f),
-      w048(0), w04A(0), f04C(0),
-      f3804(0), f3808(0), b380C(0), b380D(0),
-      f3810(0), f3814(0), f3818(0), f381C(0), f3820(0), f3824(0),
-      f3828(0), f382C(0), f3830(0), w3834(0), w3836(0),
-      w1E20C(0)
+/* The control constructor.  The C++ lane wrote it as a class whose member
+ * initialisers and embedded objects the compiler laid out at the original
+ * offsets; here every store names the canonical field, in the original's
+ * order: scalars, the three text boxes (0x10074800 runs 0x10053E70 over
+ * them), the tween block, the text list (0x10054610), then the vtable
+ * (0x10077680) and the body. */
+extern "C" void *BrMenuObjCtor_10040B10(void *self)
 {
-    (*(int *)&((BrUiCtl_ *)(this))->pfn04) = 0;
-    (*(int *)&((BrUiCtl_ *)(this))->pfn08) = 0;
-    (*(int *)&((BrUiCtl_ *)(this))->pfn0C) = 0;
-    (*(int *)&((BrUiCtl_ *)(this))->pfn14) = 0;
-    (*(int *)&((BrUiCtl_ *)(this))->pfn18) = 0;
-    (*(int *)&((BrUiCtl_ *)(this))->f2AA4) = 0;
-    (*(int *)&((BrUiCtl_ *)(this))->f2AA8) = 0;
-    (*(short *)&((BrUiCtl_ *)(this))->w2AAC) = 0;
-    (*(short *)&((BrUiCtl_ *)(this))->wStep) = 0;
-    (*(int *)&((BrUiCtl_ *)(this))->f2970) = 0;
-    (*(int *)&((BrUiCtl_ *)(this))->f2974) = 0;
-    (*(int *)&((BrUiCtl_ *)(this))->f2968) = 0;
-    (*(int *)&((BrUiCtl_ *)(this))->f296C) = 0;
-    memset((*(int (*)[25])&((BrUiCtl_ *)(this))->a2904), 0, sizeof((*(int (*)[25])&((BrUiCtl_ *)(this))->a2904)));
-    memset((*(int (*)[50])&((BrUiCtl_ *)(this))->aStepMs), 0, sizeof((*(int (*)[50])&((BrUiCtl_ *)(this))->aStepMs)));
-    memset((*(int (*)[25])&((BrUiCtl_ *)(this))->aStepId), 0xFF, sizeof((*(int (*)[25])&((BrUiCtl_ *)(this))->aStepId)));
-    memset((*(char (*)[10000])&((BrUiCtl_ *)(this))->a012A), 0xFF, sizeof((*(char (*)[10000])&((BrUiCtl_ *)(this))->a012A)));
-    memset((*(int (*)[50])&((BrUiCtl_ *)(this))->a0060), 0, sizeof((*(int (*)[50])&((BrUiCtl_ *)(this))->a0060)));
-    memset((*(int (*)[50])&((BrUiCtl_ *)(this))->a283C), 0, sizeof((*(int (*)[50])&((BrUiCtl_ *)(this))->a283C)));
-    (*(short *)&((BrUiCtl_ *)(this))->cChild) = 0;
-    memset((*(char (*)[50])&((BrUiCtl_ *)(this))->aChild), 0, sizeof((*(char (*)[50])&((BrUiCtl_ *)(this))->aChild)));
-    (*(int *)&((BrUiCtl_ *)(this))->pOwner) = 0;
-    (*(int *)&((BrUiCtl_ *)(this))->f2AEC) = 1;
-    memset((*(int (*)[25])&((BrUiCtl_ *)(this))->a2AF0), 0xFF, sizeof((*(int (*)[25])&((BrUiCtl_ *)(this))->a2AF0)));
-    (*(int *)&((BrUiCtl_ *)(this))->f2B54) = 1;
-    (*(int *)&((BrUiCtl_ *)(this))->f2B58) = 0;
-    (*(int *)&((BrUiCtl_ *)(this))->pfn10) = 0;
-}
+    BrUiCtl_ *c = (BrUiCtl_ *)self;
+    int i;
 
-/* C entry points (generated by ports/64b/tools/methodfwd.py) */
-#include <new>
-extern "C" void * BrMenuObjCtor_10040B10(void *self)
-{
-    return (void *)new (self) MenuObj40B10();
+    c->flags1C = 1;
+    c->f20 = 0;
+    c->flags24 = 0;
+    c->flags28 = 0;
+    c->b2C = 0xFF;
+    c->fTweenX = 0;
+    c->fTweenY = 0;
+    c->fTweenZ = 0;
+    c->x = 0;
+    c->y = 0;
+    c->f44 = 0.99f;
+    c->w48 = 0;
+    c->w4A = 0;
+    c->f4C = 0;
+    for (i = 0; i < BR_UI_CTL_TEXTS; i++)
+        BrTextBoxInit(&c->aText[i]);
+    c->twXOn = 0;
+    c->twYOn = 0;
+    c->twXDir = 0;
+    c->twYDir = 0;
+    c->twXEnd = 0;
+    c->twYEnd = 0;
+    c->twActive = 0;
+    c->twLo = 0;
+    c->twHi = 0;
+    c->twRate = 0;
+    c->twTick = 0;
+    c->twMs = 0;
+    c->f3830 = 0;
+    c->w3834 = 0;
+    c->w3836 = 0;
+    BrTextListInit(&c->list);
+    c->w1E20C = 0;
+    c->pVtbl = (const BrUiCtlVtbl_ *)g_brVtbl_10077680;
+
+    c->pfn04 = 0;
+    c->pfn08 = 0;
+    c->pfn0C = 0;
+    c->pfn14 = 0;
+    c->pfn18 = 0;
+    c->f2AA4 = 0;
+    c->f2AA8 = 0;
+    c->w2AAC = 0;
+    c->wStep = 0;
+    c->f2970 = 0;
+    c->f2974 = 0;
+    c->f2968 = 0;
+    c->f296C = 0;
+    memset(c->a2904, 0, sizeof c->a2904);
+    memset(c->aStepMs, 0, sizeof c->aStepMs);
+    memset(c->aStepId, 0xFF, sizeof c->aStepId);
+    memset(c->a012A, 0xFF, sizeof c->a012A);
+    memset(c->a0060, 0, sizeof c->a0060);
+    memset(c->a283C, 0, sizeof c->a283C);
+    c->cChild = 0;
+    memset(c->aChild, 0, sizeof c->aChild);
+    c->pOwner = 0;
+    c->f2AEC = 1;
+    memset(c->a2AF0, 0xFF, sizeof c->a2AF0);
+    c->f2B54 = 1;
+    c->f2B58 = 0;
+    c->pfn10 = 0;
+    return self;
 }
-/* end of C entry points */

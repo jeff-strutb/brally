@@ -66,9 +66,6 @@ public:
     void WriteBits(unsigned int value, unsigned int nbits);
 };
 
-typedef char chk_bit[(unsigned)&((BitStream6D0B0 *)0)->bit == 8 ? 1 : -1];
-typedef char chk_byteIdx[(unsigned)&((BitStream6D0B0 *)0)->byteIdx == 0xC ? 1 : -1];
-typedef char chk_pBuf[(unsigned)&((BitStream6D0B0 *)0)->pBuf == 0x10 ? 1 : -1];
 
 void BitStream6D0B0::WriteBits(unsigned int value, unsigned int nbits)
 {

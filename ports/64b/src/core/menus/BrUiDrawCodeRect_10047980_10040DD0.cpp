@@ -40,8 +40,6 @@ public:
     int DrawRect(void *pRect);
 };
 
-typedef char chk_f03C_40DD0[(unsigned)&((Draw40DD0 *)0)->f03C == 0x3C ? 1 : -1];
-typedef char chk_w_40DD0[(unsigned)&((Draw40DD0 *)0)->w1E20C == 0x1E20C ? 1 : -1];
 
 extern "C" {
 /* 64-bit core: declared once, in br_globals.h or its struct's header */

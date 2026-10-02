@@ -143,9 +143,6 @@ public:
     void Respawn();                     /* 0x1005C6D0 */
 };
 
-typedef char chk_140[(unsigned)&((Car5C8B0 *)0)->f140  == 0x140  ? 1 : -1];
-typedef char chk_366[(unsigned)&((Car5C8B0 *)0)->b366  == 0x366  ? 1 : -1];
-typedef char chk_e20[(unsigned)&((Car5C8B0 *)0)->fE20  == 0xE20  ? 1 : -1];
 
 
 

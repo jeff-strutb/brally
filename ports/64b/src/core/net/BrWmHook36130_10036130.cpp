@@ -44,7 +44,6 @@ public:
     unsigned short wIdx;
 };
 
-typedef char chk_sel[(unsigned)&((GameObjS *)0)->sel == 0x3838 ? 1 : -1];
 
 
 

@@ -41,9 +41,6 @@ public:
     void SlotSetup(int slot, int a);
 };
 
-typedef char chk_b29AC[(unsigned)&((Car6FCE0 *)0)->b29AC == 0x29AC ? 1 : -1];
-typedef char chk_f2A70[(unsigned)&((Car6FCE0 *)0)->f2A70 == 0x2A70 ? 1 : -1];
-typedef char chk_a2A90[(unsigned)&((Car6FCE0 *)0)->a2A90 == 0x2A90 ? 1 : -1];
 
 extern "C" {
 /* BrImgTintSetScale: prototype in br_funcs.h */

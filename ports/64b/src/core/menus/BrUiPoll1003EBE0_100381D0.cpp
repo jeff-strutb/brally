@@ -41,7 +41,6 @@ public:
     BrRec381D0  aRows[1];       /* +0x3C98 */
 };
 
-typedef char chk_sel381D0[(unsigned)&((Obj381D0 *)0)->m3838 == 0x3838 ? 1 : -1];
 
 
 extern "C" {

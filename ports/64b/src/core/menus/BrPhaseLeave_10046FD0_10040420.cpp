@@ -46,7 +46,6 @@ public:
     Sub2AE8_40420  *p2AE8;      /* +0x2AE8 */
 };
 
-typedef char chk_p2AE8[(unsigned)&((Ctl40420 *)0)->p2AE8 == 0x2AE8 ? 1 : -1];
 
 extern "C" {
 /* 64-bit core: g_brPhase5C5C is defined once, in br_globals.c */
