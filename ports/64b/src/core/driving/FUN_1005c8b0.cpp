@@ -388,7 +388,7 @@ flags:
     Poll6F170();
 
     if ((*(int *)&((BrDriverCar *)(this))->fF7C) == 0) {
-        BrVec3Add(b, &(*(float *)&((BrDriverCar *)(this))->pos.x), this);
+        BrVec3Add(b, &((BrDriverCar *)(this))->pos.x, (const float *)this);
         BrVec3AddTo(b, (*(float (*)[3])&((BrDriverCar *)(this))->right));
         pB = (*(float (*)[3])&((BrDriverCar *)(this))->f1040[1]);
         pA = (*(float (*)[3])&((BrDriverCar *)(this))->f1038[0]);

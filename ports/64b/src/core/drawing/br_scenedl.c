@@ -1143,7 +1143,7 @@ void BrSceneDlBuild(struct BrViewRect *param_1, int param_2, unsigned char *para
     if (param_2 == 0) {
         i = 0;
         if (0 < (*(int *)&g_BrCarCount)) {
-            uint32_t *p = (uint32_t *)(param_4 + 0x2a00);
+            uint32_t *p = (uint32_t *)((char *)&((BrDriverCar *)param_4)->f29D8 + 0x28);   /* car+0x2A00 */
             do {
                 p[-1] = 0x44800000;
                 p[0] = 0x44800000;
@@ -1172,7 +1172,7 @@ void BrSceneDlBuild(struct BrViewRect *param_1, int param_2, unsigned char *para
             DAT_1035f7e0 = 0x800;
         }
         if ((*(int *)&g_brRaceRules.mode) != 1 && (*(int *)&g_brRaceRules.mode) != 6 &&
-            ((*(int *)&g_brRaceRules.mode) != 5 || *(char *)(*(int *)(param_4 + 0xe8c) + 4) != '\0')) {
+            ((*(int *)&g_brRaceRules.mode) != 5 || *((char *)((BrDriverCar *)param_4)->pEquip + 4) != '\0')) {
             DAT_1035f7e0 = DAT_1035f7e0 | 0x4000;
         }
         if ((*(int *)((char *)&g_aBrEntRecs + 0x78)) != 0 &&
@@ -1500,9 +1500,12 @@ draw:
         }
         iCar = 0;
         if (0 < (*(int *)&g_BrCarCount)) {
-            int negCar0;
-            pCar = (int *)(param_4 + 0x29e0);
-            negCar0 = -(param_4 + 0x29e0);
+            /* 64-bit core: the original walks the car records with one int
+             * pointer at car+0x29E0 (stride 0x2B68) and negative offsets back
+             * to the wheel bodies; here the record is named.  +0x29E0 is past
+             * the record's last pointer, so it is reached from f29D8. */
+            BrDriverCar *cars = (BrDriverCar *)param_4;
+            pCar = (int *)((char *)&cars[0].f29D8 + 8);
             do {
                 if (DAT_10396eb0 != 0 && pCar[-1] != 0 && pCar[0] != 0 &&
                     pCar[1] != 0 && pCar[2] != 0) {
@@ -1528,26 +1531,26 @@ draw:
                         int cls;
                         if (g_226e80 == 2 || g_226e80 == 3) {
                             if ((iWheel != 0 ||
-                                 (pCar[-0xa1e] == 0 || *(int *)(pCar[-0xa1e] + 0x1b4) == 0)) &&
+                                 (cars[iCar].aBody[0].rb.child[0] == 0 || *(int32_t *)&cars[iCar].aBody[0].rb.child[0]->f1B4 == 0)) &&
                                 (iWheel != 1 ||
-                                 (pCar[-0xa1c] == 0 || *(int *)(pCar[-0xa1c] + 0x1b4) == 0)) &&
+                                 (cars[iCar].aBody[0].rb.child[2] == 0 || *(int32_t *)&cars[iCar].aBody[0].rb.child[2]->f1B4 == 0)) &&
                                 (iWheel != 2 ||
-                                 (pCar[-0xa1d] == 0 || *(int *)(pCar[-0xa1d] + 0x1b4) == 0)) &&
+                                 (cars[iCar].aBody[0].rb.child[1] == 0 || *(int32_t *)&cars[iCar].aBody[0].rb.child[1]->f1B4 == 0)) &&
                                 (iWheel != 3 ||
-                                 (pCar[-0xa1b] == 0 || *(int *)(pCar[-0xa1b] + 0x1b4) == 0)))
+                                 (cars[iCar].aBody[0].rb.child[3] == 0 || *(int32_t *)&cars[iCar].aBody[0].rb.child[3]->f1B4 == 0)))
                                 goto no_mark;
                             cls = 1;
                         } else {
-                            int e;
-                            if ((iWheel == 0 && (e = pCar[-0xa1e]) != 0 &&
-                                 *(char *)(e + 0x1a0) == '\x03' && *(int *)(e + 0x1b4) != 0) ||
-                                (iWheel == 1 && (e = pCar[-0xa1c]) != 0 &&
-                                 *(char *)(e + 0x1a0) == '\x03' && *(int *)(e + 0x1b4) != 0) ||
-                                (iWheel == 2 && (e = pCar[-0xa1d]) != 0 &&
-                                 *(char *)(e + 0x1a0) == '\x03' && *(int *)(e + 0x1b4) != 0) ||
-                                (iWheel == 3 && (e = pCar[-0xa1b]) != 0 &&
-                                 *(char *)(e + 0x1a0) == '\x03' && *(int *)(e + 0x1b4) != 0)) {
-                                cls = *((uint8_t *)pCar + -0x2673);
+                            struct BrRbBody *e;
+                            if ((iWheel == 0 && (e = cars[iCar].aBody[0].rb.child[0]) != 0 &&
+                                 e->f01A0 == '\x03' && *(int32_t *)&e->f1B4 != 0) ||
+                                (iWheel == 1 && (e = cars[iCar].aBody[0].rb.child[2]) != 0 &&
+                                 e->f01A0 == '\x03' && *(int32_t *)&e->f1B4 != 0) ||
+                                (iWheel == 2 && (e = cars[iCar].aBody[0].rb.child[1]) != 0 &&
+                                 e->f01A0 == '\x03' && *(int32_t *)&e->f1B4 != 0) ||
+                                (iWheel == 3 && (e = cars[iCar].aBody[0].rb.child[3]) != 0 &&
+                                 e->f01A0 == '\x03' && *(int32_t *)&e->f1B4 != 0)) {
+                                cls = (uint8_t)cars[iCar].aBody[0].f0209;   /* car+0x36D */
                             } else {
 no_mark:
                                 cls = 0;
@@ -1556,9 +1559,10 @@ no_mark:
                         if (cls != 0) {
                             float dx, dy, len, ox, oy, x1, x2, y1, y2, z;
                             int iw = DAT_100a5d98[iWheel];
-                            unsigned char *wb = iw * 0x40 + param_4 + negCar0;
-                            BrWheelRec *pW = (BrWheelRec *)(wb + (int)pCar);
-                            float *pP = (float *)(wb + (int)pCar + 0x70);
+                            /* car + iw*0x40: the pointer-free head of the record */
+                            unsigned char *wb = (unsigned char *)&cars[iCar] + iw * 0x40;
+                            BrWheelRec *pW = (BrWheelRec *)wb;
+                            float *pP = (float *)(wb + 0x70);
                             dx = pW->vx;
                             dy = pW->vy;
                             len = (float)sqrt(dx * dx + dy * dy);
@@ -1626,7 +1630,7 @@ no_mark:
                             DAT_10273690[head + (iWheel + iCar * 4) * 500].z1 = z;
                             DAT_10273690[head + (iWheel + iCar * 4) * 500].z2 = z;
                             DAT_10273690[head + (iWheel + iCar * 4) * 500].flags =
-                                *(uint16_t *)(pCar + -0x24) | 0x8000000;
+                                cars[iCar].aFarIds[0] | 0x8000000;   /* car+0x2950 */
                             head = head + 1;
                             if (head >= 500) {
                                 head = 0;
@@ -1669,7 +1673,7 @@ no_mark:
                     } while (iWheel < 4);
                 }
                 iCar = iCar + 1;
-                pCar = pCar + 0xada;
+                pCar = (int *)((char *)&cars[iCar].f29D8 + 8);
             } while (iCar < (*(int *)&g_BrCarCount));
         }
         if (DAT_10b71b00 != 0) {

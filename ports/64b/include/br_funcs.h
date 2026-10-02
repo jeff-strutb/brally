@@ -1120,6 +1120,8 @@ int BrDllMain(void *, int, int);
 #undef BrDlsClipCodes
 int BrDlsClipCodes(const float *);
 const unsigned char * BrDlVtxNoZLit(const unsigned char *);
+struct BrDriverCar;
+void BrCarWheelFx(struct BrDriverCar *);
 struct BrTexRec;
 void BrTexInstallRecords(struct BrTexRec *, int);
 #pragma pop_macro("BrDlsClipCodes")
@@ -3325,7 +3327,7 @@ void BrPodWriteClose(void *);
 #pragma pop_macro("BrPodWriteClose")
 #pragma push_macro("BrPodWriteOpen")
 #undef BrPodWriteOpen
-int BrPodWriteOpen(void *, int, const char *);
+int BrPodWriteOpen(void *, const char *);
 #pragma pop_macro("BrPodWriteOpen")
 #pragma push_macro("BrPointDepthFrac")
 #undef BrPointDepthFrac

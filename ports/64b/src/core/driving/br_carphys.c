@@ -796,23 +796,19 @@ void __fastcall BrCarPhysStep(BrDriverCar *pCar)
 
     BrPodNop();
 
-    *(char * *)&pCar->aBody[0].rb.pForces = &pCar->f0BA0;
-    ((*(char **)(((((*(char * *)&pCar->aBody[0].rb.child[((0))])))) + 0x18))) = &pCar->f0D20;
-    ((*(char **)(((((*(char * *)&pCar->aBody[0].rb.child[((1))])))) + 0x18))) = &pCar->f0D60;
-    ((*(char **)(((((*(char * *)&pCar->aBody[0].rb.child[((2))])))) + 0x18))) = &pCar->f0D40;
-    ((*(char **)(((((*(char * *)&pCar->aBody[0].rb.child[((3))])))) + 0x18))) = &pCar->f0D80;
-    *(float *)(((*(char **)(((((*(char * *)&pCar->aBody[0].rb.child[((0))])))) + 0x18))) + 0x08) = 0.0f;
-    *(float *)(((*(char **)(((((*(char * *)&pCar->aBody[0].rb.child[((0))])))) + 0x18))) + 0x0c) = 0.0f;
-    *(float *)(((*(char **)(((((*(char * *)&pCar->aBody[0].rb.child[((0))])))) + 0x18))) + 0x10) = 0.0f;
-    *(float *)(((*(char **)(((((*(char * *)&pCar->aBody[0].rb.child[((1))])))) + 0x18))) + 0x08) = 0.0f;
-    *(float *)(((*(char **)(((((*(char * *)&pCar->aBody[0].rb.child[((1))])))) + 0x18))) + 0x0c) = 0.0f;
-    *(float *)(((*(char **)(((((*(char * *)&pCar->aBody[0].rb.child[((1))])))) + 0x18))) + 0x10) = 0.0f;
-    *(float *)(((*(char **)(((((*(char * *)&pCar->aBody[0].rb.child[((2))])))) + 0x18))) + 0x08) = 0.0f;
-    *(float *)(((*(char **)(((((*(char * *)&pCar->aBody[0].rb.child[((2))])))) + 0x18))) + 0x0c) = 0.0f;
-    *(float *)(((*(char **)(((((*(char * *)&pCar->aBody[0].rb.child[((2))])))) + 0x18))) + 0x10) = 0.0f;
-    *(float *)(((*(char **)(((((*(char * *)&pCar->aBody[0].rb.child[((3))])))) + 0x18))) + 0x08) = 0.0f;
-    *(float *)(((*(char **)(((((*(char * *)&pCar->aBody[0].rb.child[((3))])))) + 0x18))) + 0x0c) = 0.0f;
-    *(float *)(((*(char **)(((((*(char * *)&pCar->aBody[0].rb.child[((3))])))) + 0x18))) + 0x10) = 0.0f;
+    /* the body's force list starts at node 0; each wheel's at nodes 12,14,13,15
+     * (car +0xBA0, +0xD20, +0xD60, +0xD40, +0xD80), and the wheel nodes' force
+     * vectors are cleared */
+    pCar->aBody[0].rb.pForces = &pCar->aForce[0];
+    pCar->aBody[0].rb.child[0]->pForces = &pCar->aForce[12];
+    pCar->aBody[0].rb.child[1]->pForces = &pCar->aForce[14];
+    pCar->aBody[0].rb.child[2]->pForces = &pCar->aForce[13];
+    pCar->aBody[0].rb.child[3]->pForces = &pCar->aForce[15];
+    for (k = 0; k < 4; k++) {
+        pCar->aBody[0].rb.child[k]->pForces->f.x = 0.0f;
+        pCar->aBody[0].rb.child[k]->pForces->f.y = 0.0f;
+        pCar->aBody[0].rb.child[k]->pForces->f.z = 0.0f;
+    }
 
     pBody = (char *)&pCar->aBody[0].rb.f00;
     BrCarPhysSpring((BrRbBodyFull *)pBody);
@@ -845,12 +841,12 @@ void __fastcall BrCarPhysStep(BrDriverCar *pCar)
     BrCarPhysDriveMatch((int)pBody, BR_PHYS_DT, &pCar->f0E7C, &pCar->f0E74, (char *)&pCar->f0E80, (char *)&pCar->f0E78);
     BrRbQuatDerivative(pState);
 
-    *(char * *)&pCar->aBody[0].rb.pForces = &pCar->f0C20;
+    pCar->aBody[0].rb.pForces = &pCar->aForce[4];   /* car+0xC20 */
     ((*(char **)(((((*(char * *)&pCar->aBody[0].rb.child[((0))])))) + 0x18))) = 0;
     ((*(char **)(((((*(char * *)&pCar->aBody[0].rb.child[((2))])))) + 0x18))) = 0;
     ((*(char **)(((((*(char * *)&pCar->aBody[0].rb.child[((1))])))) + 0x18))) = 0;
     ((*(char **)(((((*(char * *)&pCar->aBody[0].rb.child[((3))])))) + 0x18))) = 0;
-    BrCarPhysDrag((BrRbBodyFull *)pBody, (BrRbForce *)&pCar->f0D00);
+    BrCarPhysDrag((BrRbBodyFull *)pBody, &pCar->aForce[11]);   /* car+0xD00 */
     BrCarPhysDamper((BrRbBodyFull *)pBody);
 
     pCar->aBody[0].rb.accel.x = 0.0f;
@@ -1068,10 +1064,10 @@ void BrCarPhysDrag(BrRbBodyFull *pBody, BrRbForce *pNode)
     vy = pBody->st.vel.y;
     vz = pBody->st.vel.z;
 
-    s0 = *(signed char *)&pBody->child[0]->pad1A0[0];
-    s1 = *(signed char *)&pBody->child[1]->pad1A0[0];
-    s2 = *(signed char *)&pBody->child[2]->pad1A0[0];
-    s3 = *(signed char *)&pBody->child[3]->pad1A0[0];
+    s0 = *(signed char *)&pBody->child[0]->f01A0;
+    s1 = *(signed char *)&pBody->child[1]->f01A0;
+    s2 = *(signed char *)&pBody->child[2]->f01A0;
+    s3 = *(signed char *)&pBody->child[3]->f01A0;
 
     if (BrSqrtF(vx * vx + vy * vy + vz * vz) > BR_CP_DRAG_SPEED
         && (*(int32_t *)&DAT_104b15e8) != 3

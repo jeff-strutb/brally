@@ -18,45 +18,16 @@
 #include <stdio.h>
 #include <string.h>
 
-/* One directory record: slice2_12.h's BrPodWriteEntry, 76 bytes. */
-struct BrPodWriteEntry {
-    unsigned int  offData;          /* +0x00 */
-    unsigned int  cbData;           /* +0x04 */
-    unsigned char b08, b09, b0A, b0B;
-    char          szName[64];       /* +0x0C */
-};
-
-/* The file-stream helper object at writer+4 (the same +4 subobject
- * 0x100087D0's CleanupName calls into). */
-class BrPodStream {
-public:
-    FILE *Open(const char *pszPath);                               /* 0x10008DC0 */
-    void  WriteChecked(FILE *pFile, const void *pv, unsigned cb);  /* 0x10008E90 */
-};
-
-class BrPodWriter {
-public:
-    char        pad[4];
-    BrPodStream m4;                 /* +0x04 */
-
-    int  Open(const char *pszPath);
-    void Close();
-};
-
-/* The three writer globals, defined in br_podwrite.c. */
-extern "C" {
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-}
-
-void BrPodWriter::Close()
+/* The writer object's only state is the three globals; its +4 helper's
+ * methods ignore `this`. */
+extern "C" void BrPodWriteClose(void *self)
 {
     unsigned int offDir;
     char         aHdr[16];
 
+    (void)self;
     offDir = (unsigned int)ftell(g_BrPodFile);
-    m4.WriteChecked(g_BrPodFile, g_BrPodDir, g_BrPodCount * sizeof(BrPodWriteEntry));
+    BrFileWriteChecked(g_BrPodFile, g_BrPodDir, g_BrPodCount * sizeof(BrPodWriteEntry));
 
     aHdr[0] = 'P';
     aHdr[1] = 'O';
@@ -65,6 +36,6 @@ void BrPodWriter::Close()
     *(unsigned int *)(aHdr + 8)  = g_BrPodCount;
     *(unsigned int *)(aHdr + 12) = offDir;
     fseek(g_BrPodFile, 0, 0);
-    m4.WriteChecked(g_BrPodFile, aHdr, 16);
+    BrFileWriteChecked(g_BrPodFile, aHdr, 16);
     fclose(g_BrPodFile);
 }
