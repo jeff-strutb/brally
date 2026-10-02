@@ -87,6 +87,15 @@
 /* (port-only BrSprGrid removed) */
 
 
+/* The sprite-sheet table entry i, or NULL outside it: the bounds check the
+ * original makes at each reader, gathered (the table is g_aBrUiSprite). */
+const BrUiSprite *BrUiSpriteAt(int32_t i)
+{
+    if (i < 0 || i >= BR_UI_SPR_COUNT)
+        return NULL;
+    return &g_aBrUiSprite[i];
+}
+
 /* WHAT IT DOES: works out, once at start-up, where every picture sits inside
  * four different sprite sheets -- the small letters, the large letters, and
  * two sheets of big square pictures -- by laying each sheet out as a fixed

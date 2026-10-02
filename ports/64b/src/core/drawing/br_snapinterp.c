@@ -82,7 +82,7 @@ typedef char br_assert_snapmtx[(sizeof(BrSnapMtx) == 0x44) ? 1 : -1];
 /* 64-bit core: declared once, in br_globals.h or its struct's header */                /* 0x100B2F04                         */
 
 /* BrSub10075020: prototype in br_funcs.h */
-void    BrFrameDrawView(int32_t iView);     /* 0x10011FA0  the frame driver       */
+/* BrFrameDraw (0x10011FA0), the frame driver: prototype in br_funcs.h */
 
 #define BR_SNAP_BLEND   5                   /* the slot the frame driver draws */
 
@@ -289,7 +289,7 @@ int32_t BrSnapInterpDraw(int32_t force)
             g_aBrSnap[BR_SNAP_BLEND].tailB = g_aBrSnap[(*(int32_t *)&g_brRbB4FC)].tailB;
             g_aBrSnap[BR_SNAP_BLEND].tailC = g_aBrSnap[(*(int32_t *)&g_brRbB4FC)].tailC;
 
-            BrFrameDrawView(BR_SNAP_BLEND);
+            BrFrameDraw(BR_SNAP_BLEND);
             (*(int32_t *)&g_brRbB4F0)++;
             ret = 1;
         }
