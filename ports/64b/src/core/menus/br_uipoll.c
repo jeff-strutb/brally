@@ -192,25 +192,14 @@ void BrUiFn1003E040(BrUiGlobals *pG)
  * ========================================================================== */
 
 /* `sel->f20(sel, v)` on the nested widget at +0x3838. */
-static int32_t br23_sel_offer(BrUiObj *pObj, int32_t v)
-{
-    BrUiObj              *pSel = pObj + BR_UI_OFF_SEL;
-    const BrUiWidgetVtbl *pVt  = (const BrUiWidgetVtbl *)
-                                     BrUiLdPtr(pObj, BR_UI_OFF_SEL);
-    return pVt->f20(pSel, v);
-}
+/* (port-only br23_sel_offer removed) */
+
 
 /* The bare "offer the global, keep the answer if it is not negative" body
  * shared by 0x1003EAE0 / 0x1003EB60 / 0x1003EB90 / 0x1003EC80 / 0x1003ED10 /
  * 0x1003EDF0. Returns the value the original leaves in eax. */
-static int32_t br23_poll_store(BrUiObj *pObj, int32_t *pVal)
-{
-    int32_t r = br23_sel_offer(pObj, *pVal);
-    if (r >= 0) {
-        *pVal = r;
-    }
-    return r;
-}
+/* (port-only br23_poll_store removed) */
+
 
 /* WHAT IT DOES: asks the row's list which entry the player has moved to and
  * remembers it as the current selection, leaving the selection alone if the

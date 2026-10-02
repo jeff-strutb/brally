@@ -83,23 +83,14 @@
  * is two host u32s.  Read them byte-wise anyway: CONVENTIONS.md forbids
  * overlaying a struct on a foreign buffer, and a display list is exactly
  * that. */
-static uint32_t br_dl_w(const uint8_t *p)
-{
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
-           ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
-}
+/* (port-only br_dl_w removed) */
 
-static uint32_t br_dl_be32(const uint8_t *p)
-{
-    return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) |
-           ((uint32_t)p[2] << 8) | (uint32_t)p[3];
-}
 
-static void br_dl_putw(uint8_t *p, uint32_t v)
-{
-    p[0] = (uint8_t)v;         p[1] = (uint8_t)(v >> 8);
-    p[2] = (uint8_t)(v >> 16); p[3] = (uint8_t)(v >> 24);
-}
+/* (port-only br_dl_be32 removed) */
+
+
+/* (port-only br_dl_putw removed) */
+
 
 /* 0x1001EC30's sign fold: a 12-bit field above 0x800 is negative.  0x1001E720
  * does the same thing with `shl 20 / sar 20` on all four of its corner fields;
@@ -109,11 +100,8 @@ static void br_dl_putw(uint8_t *p, uint32_t v)
  * the comment above opens with it.  0x1001EC30 is the 178-byte 0xF2
  * handler, which is br_dl_settilesize below; this is a six-line helper it
  * and 0x1001E720 both use. */
-static int32_t br_dl_s12(uint32_t v)
-{
-    int32_t x = (int32_t)(v & 0xFFFu);
-    return (x >= 0x800) ? x - 0x1000 : x;
-}
+/* (port-only br_dl_s12 removed) */
+
 
 /* `fistp dword ptr [0x105CE310]` under MSVC's startup control word: round to
  * NEAREST, TIES TO EVEN.  Out of range -- and NaN -- stores the x87 integer
@@ -131,23 +119,12 @@ static int32_t br_dl_s12(uint32_t v)
  * br_dlcmd.c's br_dlcmd_fistp is the identical helper for the same `fistp`;
  * the two files are separate translation units transcribing separate original
  * functions, so this is a duplicated LEAF, not a duplicated address. */
-static int32_t br_dl_fistp(double v)
-{
-    double r = rint(v);
-    /* Negated conjunction so NaN takes the indefinite side, as x87 does;
-     * `r < min || r > max` would let NaN through. */
-    if (!(r >= -2147483648.0 && r <= 2147483647.0))
-        return (int32_t)0x80000000;
-    return (int32_t)r;
-}
+/* (port-only br_dl_fistp removed) */
+
 
 /* Read a float out of a host-order 32-bit pattern without aliasing. */
-static float br_dl_f32(uint32_t v)
-{
-    float f;
-    memcpy(&f, &v, sizeof(f));
-    return f;
-}
+/* (port-only br_dl_f32 removed) */
+
 
 /* 0x10023B10's free-list threading; defined with the rest of the clipper. */
 void br_dl_clip_reset(BrDl *pDl);
@@ -156,98 +133,22 @@ void br_dl_clip_reset(BrDl *pDl);
 /* addressing -- see the header on why this is a table and not a cast    */
 /* ==================================================================== */
 
-int BrDlAddRegion(BrDl *pDl, uint32_t base, const void *pHost, size_t cb)
-{
-    if (pDl->cRegions >= BR_DL_REGIONS)
-        return 1;
-    pDl->aRegion[pDl->cRegions].base  = base;
-    pDl->aRegion[pDl->cRegions].pHost = (const uint8_t *)pHost;
-    pDl->aRegion[pDl->cRegions].cb    = cb;
-    pDl->cRegions++;
-    return 0;
-}
+/* (port-only BrDlAddRegion removed) */
 
-const uint8_t *BrDlResolve(const BrDl *pDl, uint32_t addr, size_t cbNeed)
-{
-    int i;
-    if (addr == 0u)
-        return NULL;
-    for (i = 0; i < pDl->cRegions; ++i) {
-        const BrDlRegion *pR = &pDl->aRegion[i];
-        uint32_t off;
-        if (addr < pR->base)
-            continue;
-        off = addr - pR->base;
-        if ((size_t)off > pR->cb || pR->cb - (size_t)off < cbNeed)
-            continue;
-        return pR->pHost + off;
-    }
-    return NULL;
-}
+
+/* (port-only BrDlResolve removed) */
+
 
 /* ==================================================================== */
 /* state                                                                */
 /* ==================================================================== */
 
-void BrDlInit(BrDl *pDl, int32_t cxScreen, int32_t cyScreen)
-{
-    int i;
+/* (port-only BrDlInit removed) */
 
-    memset(pDl, 0, sizeof(*pDl));
-
-    /* 0x10023B10 is the whole of this: it threads the clip-vertex pool into a
-     * free list (see br_dl_clip_reset), zeroes the display-list stack pointer
-     * 0x105CCFE8, sets iModel (0x100A9A50) to 1 and clears 0x105D17D4.  It
-     * does NOT touch the vertex array -- an earlier note here said it did.
-     *
-     * The `1` matters: a list that never issues G_MTX still has a live
-     * modelview slot, and `iModel == 0` is the sentinel meaning "none", which
-     * 0x10021080 turns into a NULL matrix pointer. */
-    pDl->iModel = 1;
-    br_dl_clip_reset(pDl);
-    for (i = 0; i < BR_DL_MTX_STACK; ++i)
-        BrMat4Identity(&pDl->aModel[i]);
-    BrMat4Identity(&pDl->proj);
-    BrMat4Identity(&pDl->combined);
-
-    /* 0x100A7514 / 0x100A7518 -- the grSstWinOpen dimensions the fill and
-     * scissor handlers flip Y against.  Latched because both 0x1001EB50 and
-     * 0x1001E720 read 0x100A7518 directly. */
-    pDl->cxScreen = cxScreen;
-    pDl->cyScreen = cyScreen;
-
-    /* The clip window as 0x1001E1E0 / 0x1001E200 leave it for a full-screen
-     * view, in the BOTTOM-UP min/max form the two scissor handlers write.
-     * Those writers are outside this file, so this is a starting value rather
-     * than a transcription and is stated as such. */
-    pDl->scisMinX = 0;
-    pDl->scisMinY = 0;
-    pDl->scisMaxX = cxScreen;
-    pDl->scisMaxY = cyScreen;
-
-    pDl->vpScaleX = (float)cxScreen * 0.5f;
-    pDl->vpTransX = (float)cxScreen * 0.5f;
-    pDl->vpScaleY = (float)cyScreen * -0.5f;
-    pDl->vpTransY = (float)cyScreen * 0.5f;
-
-    /* Both colour globals are zero-initialised in the original (they are past
-     * the end of .data's raw bytes).  This port has always started them at
-     * WHITE instead, so a list that draws before its first 0xFA/0xFB is not
-     * black; that is a port default and not a transcription, and it is kept.
-     * The number differs between the two because the UNITS differ: env is
-     * 0..1 (0xFB multiplies by 1/255) and prim is 0..255 (0xFA does not). */
-    pDl->env[0] = pDl->env[1] = pDl->env[2] = pDl->env[3] = 1.0f;
-    pDl->prim[0] = pDl->prim[1] = pDl->prim[2] = pDl->prim[3] =
-        BR_DL_COLOUR_MAX;
-}
 
 /* @n64 0x802244A8 located */
-void BrDlSetViewport(BrDl *pDl, float scaleX, float transX,
-                     float scaleY, float transY)
-{
-    pDl->vpScaleX = scaleX; pDl->vpTransX = transX;
-    pDl->vpScaleY = scaleY; pDl->vpTransY = transY;
-}
+/* (port-only BrDlSetViewport removed) */
+
 
 /* ==================================================================== */
 /* handlers                                                             */
@@ -275,118 +176,16 @@ const uint8_t *br_dl_skip(const uint8_t *p)
  * this two-arg wrapper does the same step (p + 8) so the 256-slot table is
  * type-uniform. Called as s_aTable[op](pDl, p): br_dl_skip's 1-arg form would
  * mis-read pDl as p, so the table must hold this version. */
-static const uint8_t *br_dl_skip_h(BrDl *pDl, const uint8_t *p)
-{
-    /* Every unmapped opcode routes here (handled opcodes use real handlers),
-     * so this is where the port's unhandled-command stat is counted.  Port-only
-     * -- the matching build uses the byte-exact br_dl_skip above, which cannot
-     * touch pDl. */
-    pDl->cUnhandled++;
-    return p + 8;
-}
+/* (port-only br_dl_skip_h removed) */
+
 
 /* ---- 0x01 G_MTX  (0x10021080, SHARED) ------------------------------- */
-static const uint8_t *br_dl_mtx(BrDl *pDl, const uint8_t *p)
-{
-    uint32_t w0 = br_dl_w(p);
-    const uint8_t *pSrcBytes = BrDlResolve(pDl, br_dl_w(p + 4), 64);
-    BrMat4 src, tmp;
-    BrMat4 *pCur;
-    int i;
+/* (port-only br_dl_mtx removed) */
 
-    /* An unresolvable payload means "identity" here.  The original would
-     * dereference whatever the loader left in the word; there is no host on
-     * which that is safe, so the port refuses.  DEVIATION. */
-    if (pSrcBytes == NULL) {
-        BrMat4Identity(&src);
-    } else {
-        for (i = 0; i < 16; ++i)
-            ((float *)src.m)[i] = br_dl_f32(br_dl_w(pSrcBytes + i * 4));
-    }
-
-    if (w0 & 0x10000u) {                 /* G_MTX_PROJECTION */
-        if (w0 & 0x20000u)               /* G_MTX_LOAD */
-            pDl->proj = src;
-        else
-            BrMat4Mul(&src, &pDl->proj, &pDl->proj);
-    } else if (w0 & 0x20000u) {          /* modelview, load */
-        if (w0 & 0x40000u) {             /* G_MTX_PUSH */
-            if (pDl->iModel == 10) pDl->iModel = 0;
-            pDl->iModel++;
-        }
-        pDl->aModel[pDl->iModel] = src;
-        /* 0x1002116E, reached from BOTH modelview arms (0x100210F7 and
-         * 0x10021107 both jump to the same rep movsd + store).  An earlier
-         * revision of this file cleared the flag only on the multiply arm,
-         * which left the derived light direction stale after a G_MTX LOAD --
-         * silently, because nothing read the flag at all then. */
-        pDl->fLightCached = 0;
-    } else {                             /* modelview, multiply */
-        pCur = pDl->iModel ? &pDl->aModel[pDl->iModel] : NULL;
-        BrMat4Identity(&tmp);
-        BrMat4Mul(&src, pCur, &tmp);
-        if (w0 & 0x40000u) {
-            if (pDl->iModel == 10) pDl->iModel = 0;
-            pDl->iModel++;
-        }
-        pDl->aModel[pDl->iModel] = tmp;
-        pDl->fLightCached = 0;
-    }
-    /* Note what does NOT clear it: the two PROJECTION arms jump straight to
-     * 0x10021174, past the store.  The light direction is transformed by the
-     * modelview alone, so that is correct and not an oversight. */
-
-    /* 0x1002118A: combined = model * projection, with a NULL model when the
-     * stack index is 0.  BrMat4Mul returns without writing on a NULL input,
-     * so the previous combined survives -- preserved, not "fixed". */
-    pCur = pDl->iModel ? &pDl->aModel[pDl->iModel] : NULL;
-    BrMat4Mul(pCur, &pDl->proj, &pDl->combined);
-    return p + 8;
-}
 
 /* ---- 0x03 G_MOVEMEM  (0x10023810, SHARED) --------------------------- */
-static const uint8_t *br_dl_movemem(BrDl *pDl, const uint8_t *p)
-{
-    uint32_t w0 = br_dl_w(p), w1 = br_dl_w(p + 4);
-    unsigned idx = (w0 >> 16) & 0xFFu;
+/* (port-only br_dl_movemem removed) */
 
-    if (idx < 0x80u || idx > 0x9Eu)
-        return p + 8;
-
-    if (idx == 0x80u) {
-        /* viewport (0x10023920, Glide-only, 156 bytes) -- not read. */
-        (void)w1;
-    } else if (idx == 0x82u || idx == 0x84u) {
-        /* lookat y / lookat x: the pointer is simply stored
-         * (0x105CE2D8 / 0x105CE2DC) and never dereferenced here. */
-    } else if (idx == 0x9Eu) {
-        /* G_MV_MATRIX_1 (0x10023900): sixteen dwords straight into the
-         * COMBINED matrix.  Not the stack -- 0x105D1760 itself. */
-    } else if (idx >= 0x86u && idx <= 0x94u) {
-        /* the light array: base + ((idx - 0x86) / 2) * 16, (w0 & 0xFFFF)
-         * bytes.  0x1002386E, a `rep movsd` + `rep movsb` pair. */
-        unsigned slot = (idx - 0x86u) >> 1;
-        unsigned cb   = w0 & 0xFFFFu;
-        if (slot < BR_DL_LIGHTS) {
-            const uint8_t *pSrc;
-            if (cb > 16u) cb = 16u;
-            /* The payload IS followed now -- through the region table, the
-             * same way G_VTX and G_DL follow theirs.  It used to be zeroed
-             * with a note that a 32-bit address could not be dereferenced on
-             * this host, which is true of a CAST and not of a lookup; the
-             * consequence was that every light was black. */
-            pSrc = BrDlResolve(pDl, w1, cb);
-            if (pSrc != NULL)
-                memcpy(pDl->aLight[slot], pSrc, cb);
-            else
-                memset(pDl->aLight[slot], 0, cb);
-            /* 0x10023898 -- and note it is unconditional in the original,
-             * outside the `slot` test, because there is no slot test. */
-            pDl->fLightCached = 0;
-        }
-    }
-    return p + 8;
-}
 
 /* ==================================================================== */
 /* PART 4 -- LIGHTING                                                   */
@@ -538,81 +337,8 @@ void br_dl_normalise(BrVec3 *pV)
  * shaded by (colour, direction pulled into model space, ambient) and caches
  * it.  In the original this is the prologue of 0x10021C70's single body,
  * which is transcribed whole in br_dlvtx_lit.c (BrDlVtxLit). */
-static void br_dl_light_setup(BrDl *pDl)
-{
-    const uint8_t *pL = pDl->aLight[BR_DL_LIGHT_DIFFUSE];   /* 0x105CCC78 */
-    const uint8_t *pA = pDl->aLight[BR_DL_LIGHT_AMBIENT];   /* 0x105CCC88 */
-    const float *m;
-    BrVec3 d;
-    float dx, dy, dz;
+/* (port-only br_dl_light_setup removed) */
 
-    if (pDl->fLightCached)                /* 0x10021C7E */
-        return;
-    pDl->cLightSetup++;
-
-    /* 0x10021C8B jumps straight to the `= 1` store, so the flag is latched
-     * even though nothing was computed.  Preserved: it means a list that
-     * sets numlights AFTER a G_MTX still rebuilds, because G_MOVEWORD
-     * clears the flag again. */
-    if (pDl->nLights == 0) {
-        pDl->fLightCached = 1;
-        return;
-    }
-
-    /* 0x10021C91: the MODELVIEW, not the combined matrix -- the direction is
-     * being pulled back into the space the normals live in. */
-    if (pDl->iModel != 0) {
-        m = (const float *)pDl->aModel[pDl->iModel].m;
-    } else {
-        /* 0x10021CA5 leaves esi == 0 and 0x10021D22 then dereferences it.
-         * The original faults.  BrDlInit sets iModel to 1 so it cannot
-         * happen through this port's front door; identity here, counted.
-         * DEVIATION. */
-        static const BrMat4 s_ident = { { { 1, 0, 0, 0 }, { 0, 1, 0, 0 },
-                                          { 0, 0, 1, 0 }, { 0, 0, 0, 1 } } };
-        m = (const float *)s_ident.m;
-        pDl->cLightNoMtx++;
-    }
-
-    /* The colour: three UNSIGNED bytes, `fild`ed and NOT scaled.  0..255 is
-     * the Glide iterated-colour range, so no division is wanted or present. */
-    pDl->lightScale[0] = (float)(unsigned)pL[BR_DL_LIGHT_COL + 0];
-    pDl->lightScale[1] = (float)(unsigned)pL[BR_DL_LIGHT_COL + 1];
-    pDl->lightScale[2] = (float)(unsigned)pL[BR_DL_LIGHT_COL + 2];
-
-    /* The direction: three SIGNED bytes (`movsx`, 0x10021CAE/CC5/CE6). */
-    dx = (float)(int)(int8_t)pL[BR_DL_LIGHT_DIR + 0];
-    dy = (float)(int)(int8_t)pL[BR_DL_LIGHT_DIR + 1];
-    dz = (float)(int)(int8_t)pL[BR_DL_LIGHT_DIR + 2];
-
-    /* Row i of the modelview dotted with the direction, i.e. M applied as a
-     * COLUMN-vector matrix -- which for a rotation is M's inverse under this
-     * file's row-vector convention, so the light lands in model space.  The
-     * grouping is the original's: (row[1]*dy + row[0]*dx) + row[2]*dz, then
-     * `fdiv [0x10077420]` with 0x10077420 == 128.0f -- written as the divide
-     * it is, not as a multiply by BR_DL_BYTE_SCALE, so the instruction and
-     * the line still read the same way. */
-    d.x = ((m[1] * dy + m[0] * dx) + m[2] * dz) / 128.0f;
-    d.y = ((m[5] * dy + m[4] * dx) + m[6] * dz) / 128.0f;
-    d.z = ((m[9] * dy + m[8] * dx) + m[10] * dz) / 128.0f;
-
-    /* 0x10021DB8.  The /128 above is arithmetically redundant in front of a
-     * normalise and is kept because the original does it -- it changes which
-     * inputs underflow to a zero-length vector, and a zero-length vector
-     * becomes (0, 0, 1) rather than staying zero. */
-    br_dl_normalise(&d);
-    pDl->lightDir[0] = d.x;
-    pDl->lightDir[1] = d.y;
-    pDl->lightDir[2] = d.z;
-
-    /* 0x10021DBD: the ambient, three unsigned bytes of SLOT 1 at a fixed
-     * address.  `numlights` never selects which slot -- see br_dl.h. */
-    pDl->lightAmb[0] = (float)(unsigned)pA[BR_DL_LIGHT_COL + 0];
-    pDl->lightAmb[1] = (float)(unsigned)pA[BR_DL_LIGHT_COL + 1];
-    pDl->lightAmb[2] = (float)(unsigned)pA[BR_DL_LIGHT_COL + 2];
-
-    pDl->fLightCached = 1;                /* 0x10021E05 */
-}
 
 /* --- 0x10022AC0 (== BRD3D 0x10022350 == slice2_16's BrGbiLightVertex) --
  * One vertex.  `pN` is the normal (source floats +0x14/+0x18/+0x1C), `pOut`
@@ -669,52 +395,8 @@ void br_dl_light_vertex(const BrDlLvIn *pIn, BrDlLvOut *pOut)
 /* The port helper below keeps its BrDl signature under another name. */
 #define br_dl_light_vertex br_dl_light_vertex_port
 /* Port form (BrDl state, 3-component loop, the two port-only counters). */
-static void br_dl_light_vertex(BrDl *pDl, const float *pN, float *pOut)
-{
-    float t;
-    int i;
+/* (port-only br_dl_light_vertex removed) */
 
-    /* 0x10022AC6 / 0x10022BCC.  Note this arm does NOT use the ambient -- it
-     * copies 0x105D17A4, 0x105D17B4 and 0x105CE2D0, which are exactly 0xFA's
-     * first three destinations.  There was a separate `lightOff[3]` here with
-     * no writer anywhere in the port, so this arm always produced (0,0,0);
-     * one original object had two host names and only one of them was ever
-     * assigned.  See br_dl.h on `prim`. */
-    if (pDl->nLights == 0) {
-        pOut[0] = pDl->prim[0];
-        pOut[1] = pDl->prim[1];
-        pOut[2] = pDl->prim[2];
-        pDl->cVtxLitOff++;
-        return;
-    }
-
-    /* n . L, grouped as the original groups it. */
-    t = (pN[1] * pDl->lightDir[1] + pN[2] * pDl->lightDir[2])
-        + pN[0] * pDl->lightDir[0];
-
-    /* 0x10022B01: `fcomp 0.0 / test ah,1`, i.e. C0 -- strictly less than,
-     * and an unordered compare sets C0 as well, so a NaN dot takes the
-     * ambient-only arm.  Negated form for exactly that reason
-     * (CONVENTIONS.md, comparison polarity). */
-    if (!(t >= 0.0f)) {
-        pOut[0] = pDl->lightAmb[0];
-        pOut[1] = pDl->lightAmb[1];
-        pOut[2] = pDl->lightAmb[2];
-        pDl->cVtxLitAmbient++;
-        return;
-    }
-
-    for (i = 0; i < 3; ++i) {
-        float v = t * pDl->lightScale[i] + pDl->lightAmb[i];
-        /* 0x10022B2A: `fcomp 255.0 / test ah,0x41`, i.e. C0|C3, and the
-         * literal 255.0f is taken only when the test is ZERO -- an ORDERED
-         * GREATER-THAN.  Unordered sets both bits, so a NaN is NOT clamped.
-         * Written in the POSITIVE form here, which is the rare case where
-         * that is the faithful one: C's `v > 255.0f` is also false for NaN.
-         * `!(v <= 255.0f)` would clamp NaN and be wrong. */
-        pOut[i] = (v > BR_DL_COLOUR_MAX) ? BR_DL_COLOUR_MAX : v;
-    }
-}
 
 /* --- 0x1001FD70's table write, as a query -----------------------------
  * See the section header for the transcription. */
@@ -859,10 +541,8 @@ side:
 /* Port-only: it asks BrDlVtxRoutine for a VALUE, and the original's form
  * installs rather than returns. Nothing in the matching build calls it. */
 
-float BrDlColourScale(const BrDl *pDl)
-{
-    return pDl->fVtxLit ? (1.0f / BR_DL_COLOUR_MAX) : 1.0f;
-}
+/* (port-only BrDlColourScale removed) */
+
 
 /* --- 0x10022120, and it is now ONE body -------------------------------
  * 0x10021A20 inlines these seven tests; 0x10021C70 calls them.  The tests
@@ -871,10 +551,8 @@ float BrDlColourScale(const BrDl *pDl)
  * long as both existed.  Both are gone; br_dlshared.c holds the one copy and
  * carries both addresses.  This is now nothing but the BrDlVtx field
  * ordering, which is this file's own business. */
-static int32_t br_dl_outcode(const BrDlVtx *pV)
-{
-    return BrDlsClipCodes(&pV->f40);
-}
+/* (port-only br_dl_outcode removed) */
+
 
 /* --- 0x10022070, and the identical tail 0x10021BAD..0x10021C48 ---------
  * Perspective divide, viewport, quarter-pixel snap, colour store.  The lit
@@ -891,197 +569,34 @@ static int32_t br_dl_outcode(const BrDlVtx *pV)
  * Both transforms, selected exactly as 0x1001FD70 selects them.  The unlit
  * body is 0x10021A20 (Glide-only; D3D 0x10021BD0); the lit body is
  * 0x10021C70 and its three equivalents. */
-static const uint8_t *br_dl_vtx(BrDl *pDl, const uint8_t *p)
-{
-    uint32_t w0 = br_dl_w(p);
-    int n  = (int)((w0 >> 10) & 0x3Fu);   /* bits[15:10] */
-    int v0 = (int)((w0 >> 16) & 0xFFu);   /* byte 2 of w0 -- see br_dl.h    */
-    const uint8_t *pSrc = BrDlResolve(pDl, br_dl_w(p + 4),
-                                      (size_t)(n > 0 ? n : 1) * 0x20u);
-    int fLit = BrDlIsLit(pDl);
-    int fTexGen = (pDl->geoMode & BR_DL_GEO_TEXTURE_GEN) != 0 &&
-                  (pDl->geoMode & BR_DL_GEO_ZBUFFER) != 0;
-    int i;
+/* (port-only br_dl_vtx removed) */
 
-    pDl->cVtxLoads++;
-    pDl->fVtxLit = fLit;
-
-    /* 0x10021C70 does its light setup ONCE, before the count test and before
-     * the source pointer is even loaded -- so a G_VTX with n == 0 still
-     * rebuilds the derived state.  Preserved. */
-    if (fLit)
-        br_dl_light_setup(pDl);
-
-    /* `jle` on the count: n == 0 is a no-op, and the ONLY bound in the
-     * original is that the destination index is a byte.  Nothing stops a
-     * malformed list writing past the 32-entry array; the port clamps.
-     * DEVIATION. */
-    if (n <= 0 || pSrc == NULL)
-        return p + 8;
-
-    for (i = 0; i < n; ++i) {
-        BrDlVtx *pV;
-        int k = v0 + i;
-
-        if (k < 0 || k >= BR_DL_VTX_COUNT)
-            break;
-        pV = &pDl->aVtx[k];
-
-        /* Source stride is 0x20: the eight floats BrVtxExpand (0x10018EF0
-         * Glide == 0x1002BE30 D3D, SHARED) writes -- x,y,z,s,t,n0,n1,n2.
-         * The last three are the trailing bytes scaled by 1/128
-         * (0x100773A0), i.e. a unit normal for lit geometry. */
-        {
-            float x = br_dl_f32(br_dl_w(pSrc + 0x00));
-            float y = br_dl_f32(br_dl_w(pSrc + 0x04));
-            float z = br_dl_f32(br_dl_w(pSrc + 0x08));
-            const float *m = (const float *)pDl->combined.m;
-
-            /* Row-vector: out = v * M, translation in row 3.  Read straight
-             * off 0x10021A55..0x10021AF0, which multiplies y by m[4..7] and
-             * z by m[8..11] and adds m[12..15]. */
-            pV->cx = x * m[0] + y * m[4] + z * m[8]  + m[12];
-            pV->cy = x * m[1] + y * m[5] + z * m[9]  + m[13];
-            pV->cz = x * m[2] + y * m[6] + z * m[10] + m[14];
-            pV->cw = x * m[3] + y * m[7] + z * m[11] + m[15];
-
-            pV->s  = br_dl_f32(br_dl_w(pSrc + 0x0C));
-            pV->t  = br_dl_f32(br_dl_w(pSrc + 0x10));
-
-            if (fLit) {
-                /* 0x10021F09.  The normal is read from the SOURCE and the
-                 * result written over the vertex's +0x5C/+0x60/+0x64 -- the
-                 * normal does not survive into the vertex record at all on
-                 * this path, which is the whole reason the clipper's nine
-                 * interpolated floats end up carrying a colour. */
-                float aN[3], aC[3];
-                aN[0] = br_dl_f32(br_dl_w(pSrc + 0x14));
-                aN[1] = br_dl_f32(br_dl_w(pSrc + 0x18));
-                aN[2] = br_dl_f32(br_dl_w(pSrc + 0x1C));
-                br_dl_light_vertex(pDl, aN, aC);
-                pV->n0 = aC[0];
-                pV->n1 = aC[1];
-                pV->n2 = aC[2];
-                pDl->cVtxLit++;
-                if (fTexGen)
-                    pDl->cVtxTexGen++;   /* s/t not derived -- see header */
-            } else {
-                pV->n0 = br_dl_f32(br_dl_w(pSrc + 0x14));
-                pV->n1 = br_dl_f32(br_dl_w(pSrc + 0x18));
-                pV->n2 = br_dl_f32(br_dl_w(pSrc + 0x1C));
-            }
-        }
-
-        pV->outcode = br_dl_outcode(pV);
-
-        if (pV->outcode == 0) {
-            br_dl_project(pDl, pV, pV->n0, pV->n1, pV->n2);
-            pDl->cVtxTransformed++;
-        }
-
-        pSrc += 0x20;
-    }
-    return p + 8;
-}
 
 /* ---- 0x06 G_DL  (0x10021020, Glide-only) ---------------------------- */
-static const uint8_t *br_dl_calldl(BrDl *pDl, const uint8_t *p)
-{
-    uint32_t w0 = br_dl_w(p), w1 = br_dl_w(p + 4);
+/* (port-only br_dl_calldl removed) */
 
-    if ((w0 & 0x00FF0000u) == 0u) {          /* branch-and-link, not a jump */
-        if (pDl->sp + 1 == BR_DL_DL_STACK) {
-            /* The original calls exit(1) here.  DEVIATION: refuse the push
-             * and count it, because a test suite must not terminate the
-             * process to report a defect. */
-            pDl->cStackOverflow++;
-            return NULL;
-        }
-        pDl->aStack[pDl->sp++] = p + 8;
-        pDl->cDlCalls++;
-    }
-    /* The callee address is a display-list address like any other; it goes
-     * through the region table rather than being cast. */
-    return BrDlResolve(pDl, w1, 8);
-}
 
 /* ---- 0xB8 G_ENDDL  (0x10021060, SHARED) ----------------------------- */
-static const uint8_t *br_dl_enddl(BrDl *pDl, const uint8_t *p)
-{
-    (void)p;
-    if (pDl->sp == 0)
-        return NULL;
-    pDl->sp--;
-    return pDl->aStack[pDl->sp];
-}
+/* (port-only br_dl_enddl removed) */
+
 
 /* ---- 0xB6 / 0xB7 geometry mode  (0x1001FD40 / 0x100211E0, SHARED) --- */
-static const uint8_t *br_dl_geoclear(BrDl *pDl, const uint8_t *p)
-{
-    pDl->geoModePrev = pDl->geoMode;
-    pDl->geoMode &= ~br_dl_w(p + 4);
-    return p + 8;
-}
-static const uint8_t *br_dl_geoset(BrDl *pDl, const uint8_t *p)
-{
-    pDl->geoModePrev = pDl->geoMode;
-    pDl->geoMode |= br_dl_w(p + 4);
-    return p + 8;
-}
+/* (port-only br_dl_geoclear removed) */
+
+/* (port-only br_dl_geoset removed) */
+
 
 /* ---- 0xB9 G_SETOTHERMODE_L  (0x10021210, SHARED) -------------------- */
-static const uint8_t *br_dl_othermodeL(BrDl *pDl, const uint8_t *p)
-{
-    /* `shl eax,0x10 / sar eax,0x18` -- sign-extend bits[15:8], the shift
-     * field.  Shift 0 (alpha compare) is explicitly a no-op; shift 3
-     * (render mode) is the only one honoured; everything else falls through
-     * to a plain p+8.  So SETOTHERMODE_H (0xBA) has no handler at all. */
-    int32_t shift = (int32_t)(int8_t)((br_dl_w(p) >> 8) & 0xFFu);
+/* (port-only br_dl_othermodeL removed) */
 
-    if (shift == 3) {
-        pDl->renderMode = br_dl_w(p + 4);
-        if (pDl->sink.pfnRenderMode)
-            pDl->sink.pfnRenderMode(pDl->sink.pUser, pDl->renderMode);
-    }
-    return p + 8;
-}
 
 /* ---- 0xBC G_MOVEWORD  (0x100239C0, SHARED) -------------------------- */
-static const uint8_t *br_dl_moveword(BrDl *pDl, const uint8_t *p)
-{
-    uint32_t w0 = br_dl_w(p), w1 = br_dl_w(p + 4);
-    int32_t  type = (int32_t)(int8_t)(w0 & 0xFFu);
+/* (port-only br_dl_moveword removed) */
 
-    /* The 13-entry index table at 0x10023A90 sends only types 2 and 10
-     * anywhere; every other type in 2..14 lands on the p+8 tail. */
-    if (type == 2) {                                   /* G_MW_NUMLIGHT */
-        pDl->nLights = (int32_t)((w1 >> 5) & 0xFu);
-    } else if (type == 10) {                           /* G_MW_LIGHTCOL */
-        uint32_t off = (w0 >> 8) & 0xFFFFu;
-        uint32_t slot = (off >> 5) & 0xFFu;
-        /* The low nibble picks between the light's two colour triples --
-         * +0 when zero, +4 otherwise (0x10023A15 vs 0x10023A4E). */
-        uint32_t at = ((off & 0xFu) == 0u) ? 0u : 4u;
-        if (slot < BR_DL_LIGHTS) {
-            pDl->aLight[slot][at + 0] = (uint8_t)(w1 >> 24);
-            pDl->aLight[slot][at + 1] = (uint8_t)(w1 >> 16);
-            pDl->aLight[slot][at + 2] = (uint8_t)(w1 >> 8);
-            pDl->fLightCached = 0;      /* 0x10023A33 / 0x10023A6C */
-        }
-    }
-    return p + 8;
-}
 
 /* ---- 0xBD G_POPMTX  (0x100211B0, SHARED) ---------------------------- */
-static const uint8_t *br_dl_popmtx(BrDl *pDl, const uint8_t *p)
-{
-    if (pDl->iModel != 0) {
-        pDl->iModel--;
-        if (pDl->iModel == 0)
-            pDl->iModel = 10;      /* wraps, it does not clamp */
-    }
-    return p + 8;
-}
+/* (port-only br_dl_popmtx removed) */
+
 
 /* ==================================================================== */
 /* PART 2 -- the clipper                                                */
@@ -1208,247 +723,43 @@ static const BrDlClipPlaneFn s_apClipPlane[7] = {
  * whole trimmer is one function as the original has it.  The tag used to sit
  * here and scored 288 bytes against the original's 607, which is the port's
  * factoring showing up as a permanent 246-diff row. */
-static void br_dl_clip_emit(BrDl *pDl, const BrClipVert *pN, BrDlVtx *pOut)
-{
-    float invW, sx, sy;
+/* (port-only br_dl_clip_emit removed) */
 
-    /* DEVIATION: the original leaves the frame's ooz (+0x18) and a (+0x1C)
-     * untouched, so they carry stack garbage into grDrawTriangle.  Zeroed
-     * here; nothing downstream of this port reads them. */
-    memset(pOut, 0, sizeof(*pOut));
-
-    invW = 1.0f / pN->f18;                      /* fld 1.0 / fdiv cw */
-    pOut->oow = invW;
-
-    sx = pDl->vpScaleX * invW * pN->f04 + pDl->vpTransX;
-    sy = pDl->vpScaleY * invW * pN->f08 + pDl->vpTransY;
-    /* The same fmul 4 / fistp / fild / fmul 0.25 as br_dl_project, written out
-     * again because 0x1001EFxx writes it out again.  Ties to even. */
-    sx = (float)((float)br_dl_fistp((double)(float)(sx * 4.0f)) * 0.25f);
-    sy = (float)((float)br_dl_fistp((double)(float)(sy * 4.0f)) * 0.25f);
-    pOut->x = sx;
-    pOut->y = sy;
-
-    pOut->r = pN->f1C;
-    pOut->g = pN->f20;
-    pOut->b = pN->f24;
-
-    pOut->cx = pN->f04; pOut->cy = pN->f08; pOut->cz = pN->f0C;
-    pOut->cw = pN->f18;
-    pOut->s  = pN->f10; pOut->t  = pN->f14;
-    pOut->n0 = pN->f1C; pOut->n1 = pN->f20; pOut->n2 = pN->f24;
-    pOut->outcode = 0;
-
-    /* 0x1001F038 / 0x1001F050: the same two texel-scale globals
-     * (0x118ED1A4 / 0x118ED1A8) br_dl_finish_vtx holds at 1.0. */
-    pOut->tmu0[2] = invW;          pOut->tmu1[2] = invW;
-    pOut->tmu0[0] = pN->f10 * invW; pOut->tmu1[0] = pOut->tmu0[0];
-    pOut->tmu0[1] = pN->f14 * invW; pOut->tmu1[1] = pOut->tmu0[1];
-}
 
 /* --- 0x1001EE70 ------------------------------------------------------- */
-static void br_dl_clip_tri(BrDl *pDl, const BrDlVtx *a, const BrDlVtx *b,
-                           const BrDlVtx *c)
-{
-    const BrDlVtx *aIn[3];
-    BrClipList list;
-    BrDlVtx out[BR_DL_CLIP_MAX];
-    int i, n;
+/* (port-only br_dl_clip_tri removed) */
 
-    aIn[0] = a; aIn[1] = b; aIn[2] = c;
-    for (i = 0; i < 3; ++i) {
-        BrClipVert *pS = &s_aClipSeed[i];
-        pS->f04 = aIn[i]->cx; pS->f08 = aIn[i]->cy; pS->f0C = aIn[i]->cz;
-        pS->f10 = aIn[i]->s;  pS->f14 = aIn[i]->t;
-        pS->f18 = aIn[i]->cw;
-        pS->f1C = aIn[i]->n0; pS->f20 = aIn[i]->n1; pS->f24 = aIn[i]->n2;
-    }
-    /* a -> b -> c -> a, with the head on a.  The original writes c->next
-     * twice: NULL first, then back to a.  The NULL is dead.  The seeds are
-     * NOT pool nodes, so BrClipPoolFree will refuse them -- which is the
-     * original's range test doing its job, not an omission. */
-    s_aClipSeed[0].pNext = &s_aClipSeed[1];
-    s_aClipSeed[1].pNext = &s_aClipSeed[2];
-    s_aClipSeed[2].pNext = &s_aClipSeed[0];
-    list.pHead  = &s_aClipSeed[0];
-    list.cVerts = 3;
-
-    /* Each call is followed by `cmp ecx,3 / jl` -- the chain stops the moment
-     * the polygon cannot be a polygon any more. */
-    for (i = 0; i < 7; ++i) {
-        s_apClipPlane[i](&list);
-        if (list.cVerts < 3)
-            break;
-    }
-
-    /* Pool starvation: slice1_03's BrClipLerpVert returns NULL where the
-     * original faults, and BrClipPlane then quietly leaves the polygon a
-     * vertex short.  There is no return value to see that through, so it is
-     * inferred here -- an empty free list at the end of the chain, before
-     * anything is given back.  A triangle can borrow at most seven nodes, so
-     * on a 64-node pool this cannot fire unless something has leaked. */
-    if (BrClipPoolCount() == 0)
-        pDl->cClipStarved++;
-
-    if (list.cVerts < 3) {
-        /* 0x1001EF30: walk exactly cVerts nodes from the head returning the
-         * pool ones, then give up. */
-        BrClipVert *p = list.pHead;
-        int k = list.cVerts;
-        while (k-- > 0 && p != NULL) {
-            BrClipVert *pN = p->pNext;
-            BrClipPoolFree(p);
-            p = pN;
-        }
-        pDl->cTriClipKilled++;
-        return;
-    }
-
-    n = list.cVerts;
-    if ((uint32_t)n > pDl->cClipVtxMax)
-        pDl->cClipVtxMax = (uint32_t)n;
-    if (n > BR_DL_CLIP_MAX) {
-        /* DEVIATION: the original writes past its 0x224-byte frame.  See the
-         * BR_DL_CLIP_MAX note in br_dl.h. */
-        pDl->cClipOverflow++;
-        n = BR_DL_CLIP_MAX;
-    }
-
-    /* 0x1001EF82: emit and free in one pass, walking the list from the head. */
-    {
-        BrClipVert *p = list.pHead;
-        for (i = 0; i < n && p != NULL; ++i) {
-            BrClipVert *pN = p->pNext;
-            br_dl_clip_emit(pDl, p, &out[i]);
-            BrClipPoolFree(p);
-            p = pN;
-        }
-        while (i < list.cVerts && p != NULL) {   /* the clamped tail, if any */
-            BrClipVert *pN = p->pNext;
-            BrClipPoolFree(p);
-            p = pN;
-            ++i;
-        }
-    }
-
-    /* 0x1001F095: exactly three vertices go to grDrawTriangle (0x100729EA),
-     * anything else to grDrawPolygonVertexList (0x100729FC), which takes the
-     * count and the base of the contiguous 0x3C-stride array.  BrDlSink has
-     * only pfnTri, so the polygon becomes a fan -- which is what a Glide
-     * convex-polygon call decomposes to anyway.  DEVIATION in form only. */
-    if (pDl->sink.pfnTri) {
-        for (i = 1; i + 1 < n; ++i)
-            pDl->sink.pfnTri(pDl->sink.pUser, &out[0], &out[i], &out[i + 1]);
-    }
-    pDl->cTriClipOut += (uint32_t)(n - 2);
-}
 
 /* ---- triangles  (0xBF 0x1001ECF0, 0xB1 0x1001FA30 -- both Glide-only) */
 
 /* 0x1001ED83: s and t are scaled by two globals (0x118ED1A4 / 0x118ED1A8 --
  * the tile's texel-to-Glide-unit factors, written by the texture binder,
  * which has not been read) and then by 1/w.  Held at 1.0 here. */
-static void br_dl_finish_vtx(BrDl *pDl, BrDlVtx *pV)
-{
-    (void)pDl;
-    pV->tmu0[2] = pV->oow;
-    pV->tmu1[2] = pV->oow;
-    pV->tmu0[0] = pV->s * pV->oow;
-    pV->tmu1[0] = pV->s * pV->oow;
-    pV->tmu0[1] = pV->t * pV->oow;
-    pV->tmu1[1] = pV->t * pV->oow;
-}
+/* (port-only br_dl_finish_vtx removed) */
 
-static void br_dl_tri(BrDl *pDl, int i0, int i1, int i2)
-{
-    BrDlVtx *a, *b, *c;
-    int32_t and3, or3;
 
-    pDl->cTriIn++;
-    if ((unsigned)i0 >= BR_DL_VTX_COUNT || (unsigned)i1 >= BR_DL_VTX_COUNT ||
-        (unsigned)i2 >= BR_DL_VTX_COUNT)
-        return;                       /* DEVIATION: the original indexes raw */
+/* (port-only br_dl_tri removed) */
 
-    a = &pDl->aVtx[i0]; b = &pDl->aVtx[i1]; c = &pDl->aVtx[i2];
 
-    /* 0x1001ED37: reject when all three share an outcode bit.  Note the
-     * order -- the AND is computed from b and c and only then tested against
-     * a, which is the same value but is worth preserving because the
-     * original's register pressure made it visible. */
-    and3 = (b->outcode & c->outcode);
-    if ((a->outcode & and3) != 0) {
-        pDl->cTriRejected++;
-        return;
-    }
-    or3 = a->outcode | b->outcode | c->outcode;
-    if (or3 != 0) {
-        /* 0x1001ED45: not trivially rejectable and not wholly inside, so the
-         * triangle goes to the clipper -- and note the ARGUMENT ORDER, which
-         * is the same (i0, i1, i2) the untouched path uses (0x1001ED53 pushes
-         * &v[i2], &v[i1], &v[i0]; cdecl reverses that back to i0 first). */
-        pDl->cTriClipped++;
-        br_dl_clip_tri(pDl, a, b, c);
-        return;
-    }
+/* (port-only br_dl_tri1 removed) */
 
-    br_dl_finish_vtx(pDl, a);
-    br_dl_finish_vtx(pDl, b);
-    br_dl_finish_vtx(pDl, c);
-    pDl->cTriDrawn++;
-    if (pDl->sink.pfnTri)
-        pDl->sink.pfnTri(pDl->sink.pUser, a, b, c);
-}
 
-static const uint8_t *br_dl_tri1(BrDl *pDl, const uint8_t *p)
-{
-    /* Bytes 6, 5, 4 in that order -- 0x1001ECFC reads [esi+6] first and the
-     * push order at 0x1001EE15 puts it first.  The patch pass has already
-     * halved them (0x10019250). */
-    br_dl_tri(pDl, p[6], p[5], p[4]);
-    return p + 8;
-}
+/* (port-only br_dl_tri2 removed) */
 
-static const uint8_t *br_dl_tri2(BrDl *pDl, const uint8_t *p)
-{
-    br_dl_tri(pDl, p[2], p[1], p[0]);
-    br_dl_tri(pDl, p[6], p[5], p[4]);
-    return p + 8;
-}
 
 /* ---- 0xDC bind texture  (0x1001E2E0 Glide, 30 B; D3D 0x1001BD70, 149) */
-static const uint8_t *br_dl_bindtex(BrDl *pDl, const uint8_t *p)
-{
-    uint32_t w0 = br_dl_w(p), w1 = br_dl_w(p + 4);
+/* (port-only br_dl_bindtex removed) */
 
-    pDl->hTexture = w0 & 0x00FFFFFFu;
-    if (pDl->sink.pfnBindTexture)
-        pDl->sink.pfnBindTexture(pDl->sink.pUser, pDl->hTexture);
-    /* `lea eax,[esi + ecx*8]` -- the command consumes w1 double-words, so
-     * one 0xDC can stand in for a whole texture-setup run.  br_font.c emits
-     * w1 == 1, i.e. just itself. */
-    return p + (size_t)8 * (size_t)w1;
-}
 
 /* ---- 0xDD re-aim texture  (0x1001E300, SHARED) ---------------------- */
-static const uint8_t *br_dl_retarget(BrDl *pDl, const uint8_t *p)
-{
-    if (pDl->sink.pfnRetarget)
-        pDl->sink.pfnRetarget(pDl->sink.pUser,
-                              br_dl_w(p) & 0x00FFFFFFu, br_dl_w(p + 4));
-    return p + 8;
-}
+/* (port-only br_dl_retarget removed) */
+
 
 /* ---- 0xDE / 0xDF  (0x1001EB10 SHARED / 0x1001EB30 Glide-only) ------- */
-static const uint8_t *br_dl_setDE(BrDl *pDl, const uint8_t *p)
-{
-    pDl->f0A9A54 = br_dl_f32(br_dl_w(p + 4));
-    return p + 8;
-}
-static const uint8_t *br_dl_setDF(BrDl *pDl, const uint8_t *p)
-{
-    pDl->f5D17C4 = br_dl_f32(br_dl_w(p + 4));
-    return p + 8;
-}
+/* (port-only br_dl_setDE removed) */
+
+/* (port-only br_dl_setDF removed) */
+
 
 /* ---- rectangles ------------------------------------------------------
  * Four opcodes, two coordinate conventions, and this is where the RDP
@@ -1494,72 +805,8 @@ static const uint8_t *br_dl_setDF(BrDl *pDl, const uint8_t *p)
  * (`inc edi` at 0x1001E74E / 0x1001E363, `dec edx` at 0x1001E753 /
  * 0x1001E368).  That window is recorded in pDl->rectMinX..rectMaxY. */
 
-static const uint8_t *br_dl_rect(BrDl *pDl, const uint8_t *p,
-                                 int fTextured, int fFixed)
-{
-    uint32_t w0 = br_dl_w(p), w1 = br_dl_w(p + 4);
-    int32_t ulx, uly, lrx, lry, tile = 0;
+/* (port-only br_dl_rect removed) */
 
-    if (fTextured) {
-        /* 0x10021570 (0xE4) and 0x100219D0 (0xE3) are br_dlshared.c's -- ONE
-         * body, both builds' addresses, and slice2_16.c's BrGbiTileRect /
-         * BrGbiTileRectS now go through the same one.
-         *
-         * CORRECTED HERE.  This file used to decode both forms itself, and it
-         * had the scaling BACKWARDS: it shifted 0xE4's corners RIGHT by two
-         * and left 0xE3's alone.  The bytes say the opposite -- 0xE4 shifts
-         * nothing (`and 0xFFF`, 0x1002157E onward) and 0xE3 shifts LEFT by
-         * two (`shl edx,2` at 0x100219EE, `shr ecx,0xA / and 0x3FFC` at
-         * 0x100219EB).  The comment that stood here even SAID "the integer
-         * form multiplies by four", and the code below it did neither.
-         *
-         * The two mistakes cancelled at the sink, because a right shift of
-         * the quarter-pixel form and no shift of the whole-pixel form both
-         * land on whole pixels -- so nothing downstream could see it.  The
-         * decode is now the original's, in quarter-pixels, and the
-         * conversion to the pixels this file's sink deals in is done once,
-         * below, where it is visible.
-         *
-         * DEVIATION: the sink is a port-level observer, not a transcription
-         * of 0x100215C0, and it takes whole pixels because 0xE1 and 0xF6
-         * deliver whole pixels.  The `>> 2` here is that adaptation and
-         * nothing else; it discards the sub-pixel bits, which the original
-         * keeps and passes on. */
-        BrDlsTileRect r;
-        BrDlsTileRectDecode(w0, w1, !fFixed, &r);
-        tile = r.tile;
-        ulx = r.ulx >> 2;
-        uly = r.uly >> 2;
-        lrx = r.lrx >> 2;
-        lry = r.lry >> 2;
-    } else if (fFixed) {
-        /* 0xF6, 0x1001E320.  Unsigned 10.2. */
-        lrx = (int32_t)((w0 >> 14) & 0x3FFu);
-        lry = (int32_t)((w0 >> 2) & 0x3FFu);
-        ulx = (int32_t)((w1 >> 14) & 0x3FFu);
-        uly = (int32_t)((w1 >> 2) & 0x3FFu);
-    } else {
-        /* 0xE1, 0x1001E720.  Signed 12-bit integer. */
-        lrx = br_dl_s12(w0 >> 12);
-        lry = br_dl_s12(w0);
-        ulx = br_dl_s12(w1 >> 12);
-        uly = br_dl_s12(w1);
-    }
-
-    if (!fTextured) {
-        pDl->rectMinX = ulx;
-        pDl->rectMinY = pDl->cyScreen - lry - 1;
-        pDl->rectMaxX = lrx + 1;
-        pDl->rectMaxY = pDl->cyScreen - uly;
-    }
-
-    pDl->cRects++;
-    if (pDl->sink.pfnRect)
-        pDl->sink.pfnRect(pDl->sink.pUser, fTextured, tile, ulx, uly, lrx, lry);
-    /* 0xE4 alone is three double-words. */
-    return p + ((fTextured && fFixed) ? BR_DLS_TILERECT_E4_BYTES
-                                      : BR_DLS_SKIP_BYTES);
-}
 
 /* WHAT IT DOES: draws a solid-colour rectangle whose corners were given in
  * quarter-pixel units. The corners are unsigned in this form. The port
@@ -1614,13 +861,13 @@ static const uint8_t *br_dl_fillE1(const uint8_t *p)
  * data, because the texture coordinates follow it. */
 /* The decode is br_dlshared.c's BrDlsTileRectDecode, which carries this
  * address and BRD3D's 0x10021510. */
-static const uint8_t *br_dl_texE4(BrDl *d, const uint8_t *p)
-{ return br_dl_rect(d, p, 1, 1); }
+/* (port-only br_dl_texE4 removed) */
+
 /* WHAT IT DOES: the same textured screen rectangle with its corners given as
  * whole pixels, scaled up to quarter-pixels on the way through. */
 /* Likewise 0x100219D0 / BRD3D 0x10021B80. */
-static const uint8_t *br_dl_texE3(BrDl *d, const uint8_t *p)
-{ return br_dl_rect(d, p, 1, 0); }
+/* (port-only br_dl_texE3 removed) */
+
 
 /* ---- 0xED / 0xE2 scissor  (0x1001EB50 / 0x1001EBC0, both Glide-only) --
  * TWO FUNCTIONS, TWO CONVENTIONS.  This file used to route both slots to one
@@ -1656,30 +903,8 @@ static const uint8_t *br_dl_texE3(BrDl *d, const uint8_t *p)
  * which is the part that was actively harmful, but the duplication is real
  * and outlives this pass.  Same for 0xE1 (BrDlGlFillRect), 0xDC, 0xDD and
  * 0xDF here, and for 0xF6/0xF7/0xFA/0xFB in br_dlcmd.c. */
-static const uint8_t *br_dl_scissor(BrDl *pDl, const uint8_t *p, int fFrac)
-{
-    uint32_t w0 = br_dl_w(p), w1 = br_dl_w(p + 4);
-    int32_t  H  = pDl->cyScreen;
-    int32_t  ulx, uly, lrx, lry;
+/* (port-only br_dl_scissor removed) */
 
-    if (fFrac) {                        /* 0xED, 0x1001EB50: 10.2 */
-        ulx = (int32_t)((w0 >> 14) & 0x3FFu);
-        uly = (int32_t)((w0 >> 2) & 0x3FFu);
-        lrx = (int32_t)((w1 >> 14) & 0x3FFu);
-        lry = (int32_t)((w1 >> 2) & 0x3FFu);
-    } else {                            /* 0xE2, 0x1001EBC0: integer */
-        ulx = (int32_t)((w0 >> 12) & 0xFFFu);
-        uly = (int32_t)(w0 & 0xFFFu);
-        lrx = (int32_t)((w1 >> 12) & 0xFFFu);
-        lry = (int32_t)(w1 & 0xFFFu);
-    }
-
-    pDl->scisMinX = ulx;                /* 0x105D17BC */
-    pDl->scisMaxY = H - uly;            /* 0x105CCFE0 */
-    pDl->scisMaxX = lrx;                /* 0x105D17B8 */
-    pDl->scisMinY = H - lry;            /* 0x105D17C0 */
-    return p + 8;
-}
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
@@ -1746,19 +971,8 @@ static const uint8_t *br_dl_scissorED(const uint8_t *p)
  * drawings will use, and works out that rectangle's width and height in
  * texture pixels. Sign is preserved throughout, so a negative span stays
  * negative. */
-static const uint8_t *br_dl_settilesize(BrDl *pDl, const uint8_t *p)
-{
-    BrDlsTileSize t;
+/* (port-only br_dl_settilesize removed) */
 
-    BrDlsTileSizeDecode(br_dl_w(p));
-    pDl->uls   = t.uls;
-    pDl->ult   = t.ult;
-    pDl->lrs   = t.lrs;
-    pDl->lrt   = t.lrt;
-    pDl->tileW = t.tileW;
-    pDl->tileH = t.tileH;
-    return p + BR_DLS_SKIP_BYTES;
-}
 
 /* ---- 0xF7 fill colour, 0xF8 fog colour ------------------------------
  * 0x1001E9F0 IS NOT A RAW STORE.  110 bytes, and every one of them is a
@@ -1821,11 +1035,8 @@ static const uint8_t *br_dl_fillcolour(const uint8_t *p)
     return p + 8;
 }
 
-static const uint8_t *br_dl_fogcolour(BrDl *pDl, const uint8_t *p)
-{
-    pDl->fogColour = br_dl_w(p + 4);
-    return p + 8;
-}
+/* (port-only br_dl_fogcolour removed) */
+
 
 /* ---- 0xFA prim colour, 0xFB env colour  (0x1001EA80 / 0x1001E930) ---
  * ONE UNPACK IS WRONG FOR ONE OF THEM.  Both take the same four bytes in the
@@ -1919,34 +1130,11 @@ static const struct { uint32_t w0, w1, w1b; BrDlCombine id; } s_aCombine[] = {
     { 0xFC127FFFu, 0xFFFFF838u, 0xFFFFF838u, BR_DL_CC_TEX_SHADE_C0 }
 };
 
-BrDlCombine BrDlClassifyCombine(uint32_t w0, uint32_t w1)
-{
-    size_t i;
-    for (i = 0; i < sizeof(s_aCombine) / sizeof(s_aCombine[0]); ++i)
-        if (s_aCombine[i].w0 == w0 &&
-            (s_aCombine[i].w1 == w1 || s_aCombine[i].w1b == w1))
-            return s_aCombine[i].id;
-    return BR_DL_CC_DEFAULT;
-}
+/* (port-only BrDlClassifyCombine removed) */
 
-static const uint8_t *br_dl_combine(BrDl *pDl, const uint8_t *p)
-{
-    uint32_t w0 = br_dl_w(p), w1 = br_dl_w(p + 4);
 
-    pDl->combineW0 = w0;
-    pDl->combineW1 = w1;
-    pDl->combine   = BrDlClassifyCombine(w0, w1);
-    /* 0x1001E8C0 sets 0x105CDA04 only on the DECAL row, and the tail at
-     * 0x1001E8FB uses it to swap dispatch-table slot 0x04 (0x100A9A68)
-     * between the two LIT VERTEX TRANSFORMS 0x10021C70 and 0x100221D0 -- and
-     * only ever between those two, so it can never install a lit transform
-     * over an unlit one.  BrDlVtxRoutine reads pDl->fDecal for exactly this.
-     * PART 4 has the rest. */
-    pDl->fDecal = (pDl->combine == BR_DL_CC_DECAL) ? 1 : 0;
-    if (pDl->sink.pfnCombine)
-        pDl->sink.pfnCombine(pDl->sink.pUser, pDl->combine, w0, w1);
-    return p + 8;
-}
+/* (port-only br_dl_combine removed) */
+
 
 /* ==================================================================== */
 /* the table -- 0x100A9A58                                              */
@@ -1955,251 +1143,35 @@ static const uint8_t *br_dl_combine(BrDl *pDl, const uint8_t *p)
 static BrDlHandler s_aTable[256];
 static int s_fTableReady;
 
-static void br_dl_build_table(void)
-{
-    int i;
-    if (s_fTableReady)
-        return;
-    for (i = 0; i < 256; ++i)
-        s_aTable[i] = br_dl_skip_h;
-    s_aTable[0x01] = br_dl_mtx;
-    s_aTable[0x03] = br_dl_movemem;
-    s_aTable[0x04] = br_dl_vtx;
-    s_aTable[0x06] = br_dl_calldl;
-    s_aTable[0xB1] = br_dl_tri2;
-    s_aTable[0xB6] = br_dl_geoclear;
-    s_aTable[0xB7] = br_dl_geoset;
-    s_aTable[0xB8] = br_dl_enddl;
-    s_aTable[0xB9] = br_dl_othermodeL;
-    s_aTable[0xBC] = br_dl_moveword;
-    s_aTable[0xBD] = br_dl_popmtx;
-    s_aTable[0xBF] = br_dl_tri1;
-    s_aTable[0xDC] = br_dl_bindtex;
-    s_aTable[0xDD] = br_dl_retarget;
-    s_aTable[0xDE] = br_dl_setDE;
-    s_aTable[0xDF] = br_dl_setDF;
-    s_aTable[0xE1] = (BrDlHandler)br_dl_fillE1;
-    s_aTable[0xE2] = (BrDlHandler)br_dl_scissorE2;
-    s_aTable[0xE3] = br_dl_texE3;
-    s_aTable[0xE4] = br_dl_texE4;
-    s_aTable[0xED] = (BrDlHandler)br_dl_scissorED;
-    s_aTable[0xF2] = br_dl_settilesize;
-    s_aTable[0xF6] = (BrDlHandler)br_dl_fillF6;
-    s_aTable[0xF7] = (BrDlHandler)br_dl_fillcolour;
-    s_aTable[0xF8] = br_dl_fogcolour;
-    s_aTable[0xFA] = br_dl_prim;
-    /* one-argument in this arm -- see the note on br_dl_env */
-    s_aTable[0xFB] = (void *)br_dl_env;
-    s_aTable[0xFC] = br_dl_combine;
-    s_fTableReady = 1;
-}
+/* (port-only br_dl_build_table removed) */
 
-int BrDlIsHandled(unsigned op)
-{
-    br_dl_build_table();
-    return (op < 256u) && (s_aTable[op] != br_dl_skip_h);
-}
+
+/* (port-only BrDlIsHandled removed) */
+
 
 /* ==================================================================== */
 /* 0x10023C90                                                           */
 /* ==================================================================== */
 
-size_t BrDlRun(BrDl *pDl, const uint8_t *pList, size_t cbMax)
-{
-    const uint8_t *p = pList;
-    const uint8_t *pEnd = pList + cbMax;
-    size_t n = 0;
+/* (port-only BrDlRun removed) */
 
-    br_dl_build_table();
-    if (pDl == NULL || pList == NULL)
-        return 0;
-
-    /* The original is exactly:
-     *     while (p) p = table[p[3]](p);
-     * with no bound at all.  The `pEnd` test is a DEVIATION; it can only
-     * fire on a list the original would have walked off the end of, and
-     * only for lists that stay inside [pList, pList+cbMax] -- a G_DL into
-     * another buffer legitimately leaves the range, so the bound is applied
-     * only while the cursor is still inside it.
-     *
-     * THE END OF THE RANGE IS INCLUSIVE, and it has to be.  This test used to
-     * read `p < pEnd`, which is FALSE at exactly the address the last
-     * in-range handler leaves the cursor at -- so the one position the guard
-     * exists for was the one position it skipped, and `p[3]` then read a
-     * fourth byte past the buffer.  Landing on pEnd is the ordinary way a
-     * well-formed list without a G_ENDDL runs out (a 0xE4 advances 0x18, so
-     * it is easy to step over a terminator and finish exactly on the end).
-     * ASan found it; `<= pEnd` is the whole fix, and it does not change the
-     * G_DL case at all, because a cursor in another buffer is either below
-     * pList or above pEnd and skips the guard either way. */
-    while (p != NULL) {
-        unsigned op;
-        if (p >= pList && p <= pEnd && (size_t)(pEnd - p) < 8u)
-            break;
-        op = p[3];
-        pDl->cCommands++;
-        n++;
-        p = s_aTable[op](pDl, p);
-        if (n > 1000000u)
-            break;                       /* DEVIATION: cycle guard */
-    }
-    return n;
-}
 
 /* ==================================================================== */
 /* 0x10019040 -- the load-time patch pass                               */
 /* ==================================================================== */
 
-size_t BrDlPatch(const BrSegMap *pMap, uint8_t *pList, size_t cbMax,
-                 void (*pfnResolve)(void *pUser, uint32_t *pw1, int nVerts),
-                 void *pUser)
-{
-    size_t off = 0, n = 0;
+/* (port-only BrDlPatch removed) */
 
-    if (pList == NULL)
-        return 0;
-
-    while (off + 8 <= cbMax) {
-        uint8_t *p = pList + off;
-        uint32_t w0, w1;
-        unsigned op;
-
-        /* The original byte-swaps IN PLACE and then reads the opcode out of
-         * the swapped word: `mov ah,[esi]` etc. assembles big-endian bytes
-         * into a host dword, stores it, and then takes bits 31:24.  So the
-         * opcode after the swap is byte 3, which is why the interpreter
-         * indexes [3] and not [0]. */
-        w0 = br_dl_be32(p);
-        w1 = br_dl_be32(p + 4);
-        br_dl_putw(p, w0);
-        br_dl_putw(p + 4, w1);
-        n++;
-
-        op = (w0 >> 24) & 0xFFu;
-        /* `add eax,-4 / cmp eax,0xF9 / ja skip` -- opcodes outside 0x04..0xFD
-         * are skipped without even a table lookup. */
-        if (op < 0x04u || op > 0xFDu) { off += 8; continue; }
-
-        switch (op) {
-        case 0x04: {                            /* G_VTX  (0x10019210) */
-            uint32_t v = pMap ? (pMap->n64Base ^ ((pMap->n64Base ^ w1) & 0x00FFFFFFu))
-                              : w1;
-            if (pMap) BrSegFixup(pMap, &v);
-            br_dl_putw(p + 4, v);
-            if (pfnResolve) {
-                uint32_t cur = br_dl_w(p + 4);
-                pfnResolve(pUser, &cur, (int)((w0 >> 10) & 0x3Fu));
-                br_dl_putw(p + 4, cur);
-            }
-            break;
-        }
-        case 0xBF:                              /* G_TRI1 (0x10019250) */
-            p[6] = (uint8_t)(p[6] >> 1);
-            p[5] = (uint8_t)(p[5] >> 1);
-            p[4] = (uint8_t)(p[4] >> 1);
-            break;
-        case 0xB1:                              /* G_TRI2 (0x10019270) */
-            p[2] = (uint8_t)(p[2] >> 1);
-            p[1] = (uint8_t)(p[1] >> 1);
-            p[0] = (uint8_t)(p[0] >> 1);
-            p[6] = (uint8_t)(p[6] >> 1);
-            p[5] = (uint8_t)(p[5] >> 1);
-            p[4] = (uint8_t)(p[4] >> 1);
-            break;
-        case 0xB8:                              /* G_ENDDL: stop        */
-            return n;
-        case 0xFD: {                            /* G_SETTIMG            */
-            uint32_t v = br_dl_w(p + 4);
-            if (pMap) BrSegFixup(pMap, &v);
-            br_dl_putw(p + 4, v);
-            break;
-        }
-        default:
-            break;
-        }
-        off += 8;
-    }
-    return n;
-}
 
 /* ==================================================================== */
 /* PART 3 -- reference rasteriser (NOT in the original)                 */
 /* ==================================================================== */
 
-static void br_ras_tri(void *pUser, const BrDlVtx *a, const BrDlVtx *b,
-                       const BrDlVtx *c)
-{
-    BrDlRaster *pR = (BrDlRaster *)pUser;
-    float minx, maxx, miny, maxy, area;
-    int32_t x0, x1, y0, y1, px, py;
-    int   fLit  = (pR->pDl != NULL) && pR->pDl->fVtxLit;
-    float scale = (pR->pDl != NULL) ? BrDlColourScale(pR->pDl) : 1.0f;
+/* (port-only br_ras_tri removed) */
 
-    minx = a->x; if (b->x < minx) minx = b->x; if (c->x < minx) minx = c->x;
-    maxx = a->x; if (b->x > maxx) maxx = b->x; if (c->x > maxx) maxx = c->x;
-    miny = a->y; if (b->y < miny) miny = b->y; if (c->y < miny) miny = c->y;
-    maxy = a->y; if (b->y > maxy) maxy = b->y; if (c->y > maxy) maxy = c->y;
 
-    area = (b->x - a->x) * (c->y - a->y) - (b->y - a->y) * (c->x - a->x);
-    if (area == 0.0f)
-        return;
+/* (port-only BrDlAttachRaster removed) */
 
-    x0 = (int32_t)minx; if (x0 < 0) x0 = 0;
-    y0 = (int32_t)miny; if (y0 < 0) y0 = 0;
-    x1 = (int32_t)maxx + 1; if (x1 > pR->cx) x1 = pR->cx;
-    y1 = (int32_t)maxy + 1; if (y1 > pR->cy) y1 = pR->cy;
-
-    for (py = y0; py < y1; ++py) {
-        for (px = x0; px < x1; ++px) {
-            float fx = (float)px + 0.5f, fy = (float)py + 0.5f;
-            float w0 = (b->x - a->x) * (fy - a->y) - (b->y - a->y) * (fx - a->x);
-            float w1 = (c->x - b->x) * (fy - b->y) - (c->y - b->y) * (fx - b->x);
-            float w2 = (a->x - c->x) * (fy - c->y) - (a->y - c->y) * (fx - c->x);
-            uint8_t *q;
-            float l0, l1, l2, r, g, bl;
-
-            if (area > 0.0f) { if (w0 < 0 || w1 < 0 || w2 < 0) continue; }
-            else             { if (w0 > 0 || w1 > 0 || w2 > 0) continue; }
-
-            l1 = w2 / area; l2 = w0 / area; l0 = 1.0f - l1 - l2;
-            r  = l0 * a->r + l1 * b->r + l2 * c->r;
-            g  = l0 * a->g + l1 * b->g + l2 * c->g;
-            bl = l0 * a->b + l1 * b->b + l2 * c->b;
-            if (fLit) {
-                /* A lighting transform ran: the slots are Glide iterated
-                 * colours, 0..255. */
-                r *= scale; g *= scale; bl *= scale;
-            } else {
-                /* Nothing lit these, so the slots hold the Vtx's trailing
-                 * bytes scaled by 1/128 and are in [-1, 1] -- a NORMAL, for
-                 * every model this port has (br_dl.h records the
-                 * measurement).  Fold to [0, 1] so the output is a picture
-                 * rather than a clamp artefact.  This is a property of the
-                 * reference rasteriser, not of the original: the original
-                 * would hand these to Glide as 0..255 and get black. */
-                r = r * 0.5f + 0.5f; g = g * 0.5f + 0.5f; bl = bl * 0.5f + 0.5f;
-            }
-            if (r < 0) r = 0; if (r > 1) r = 1;
-            if (g < 0) g = 0; if (g > 1) g = 1;
-            if (bl < 0) bl = 0; if (bl > 1) bl = 1;
-
-            q = pR->pRgba + ((size_t)py * (size_t)pR->cx + (size_t)px) * 4;
-            q[0] = (uint8_t)(r * 255.0f);
-            q[1] = (uint8_t)(g * 255.0f);
-            q[2] = (uint8_t)(bl * 255.0f);
-            q[3] = 255;
-            pR->cCovered++;
-        }
-    }
-}
-
-void BrDlAttachRaster(BrDl *pDl, BrDlRaster *pRas)
-{
-    memset(&pDl->sink, 0, sizeof(pDl->sink));
-    pRas->pDl        = pDl;
-    pDl->sink.pUser  = pRas;
-    pDl->sink.pfnTri = br_ras_tri;
-}
 
 /* -- Ghidra-matched functions --------------------------- */
 /* funcptr: br_coretypes.h */

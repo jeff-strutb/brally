@@ -36,12 +36,8 @@
 /* Byte access into an untyped car record, the slice2_17.h convention. */
 
 /* `mov ecx,8; cmp eax,2; je L; cmp eax,4; jne M; L: mov ecx,1` */
-static int BrReplayActiveCount(void)
-{
-    if ((*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 2 || (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ == 4)
-        return 1;
-    return 8;
-}
+/* (port-only BrReplayActiveCount removed) */
+
 
 /* 0x1006AAB0 */
 /* WHAT IT DOES: writes down where one car is and which way it is facing, into

@@ -33,109 +33,17 @@ static uint16_t    s_aCount[BR73_COLL_CELLS];
  * reachable key, so the cache cannot be invalidated by zeroing it; the stamps
  * are what make a cell a victim, so those are zeroed instead and the keys are
  * pushed somewhere the sign-extension mismatch guarantees a miss. */
-static void BrCollGridInvalidate(void)
-{
-    int i;
-    for (i = 0; i < BR73_COLL_CELLS; ++i) {
-        g_aBrCollGridKey[i]   = (int16_t)0x8000;
-        g_aBrCollGridStamp[i] = 0u;
-        s_aCount[i]           = 0u;
-    }
-    memset(s_aPlane, 0, sizeof s_aPlane);
-}
+/* (port-only BrCollGridInvalidate removed) */
 
-int BrCollGridBind(const BrTrack *pTrack)
-{
-    uint32_t offFaces, offVerts, offFlags, offItems, offStart;
-    uint32_t cFaces, cVerts;
 
-    BrCollGridRelease();
+/* (port-only BrCollGridBind removed) */
 
-    if (pTrack == NULL || pTrack->pbImage == NULL) {
-        return 1;
-    }
 
-    cFaces = BrTrackFaceCount(pTrack);
-    cVerts = BrTrackVertexCount(pTrack);
+/* (port-only BrCollGridRelease removed) */
 
-    offFaces = BrTrackHdrU32(pTrack, BR_TRK_H_FACES);
-    offVerts = BrTrackHdrU32(pTrack, BR_TRK_H_VERTICES);
-    offFlags = BrTrackHdrU32(pTrack, BR_TRK_H_FACESEND);
-    offItems = BrTrackHdrU32(pTrack, BR_TRK_H_GRIDITEMS);
-    offStart = BrTrackHdrU32(pTrack, BR_TRK_H_GRIDSTART);
 
-    /* Every one must address the image.  The face and vertex arrays are
-     * checked at their full extent; the grid start table is 0x1001 u16 (64x64
-     * cells plus the closing total, BR_TRK_GRID_STARTS); the item table and
-     * the flag array are checked for one element, because their lengths are
-     * data-dependent (the item count is gridStart[0x1000], and the flag array
-     * is indexed by triangle). */
-    if (!BrTrackFieldValid(pTrack, BR_TRK_H_FACES,
-                           cFaces * BR_TRK_FACE_STRIDE) ||
-        !BrTrackFieldValid(pTrack, BR_TRK_H_VERTICES,
-                           cVerts * BR_TRK_VERTEX_STRIDE) ||
-        !BrTrackFieldValid(pTrack, BR_TRK_H_FACESEND, cFaces) ||
-        !BrTrackFieldValid(pTrack, BR_TRK_H_GRIDITEMS, 2u) ||
-        !BrTrackFieldValid(pTrack, BR_TRK_H_GRIDSTART,
-                           2u * BR_TRK_GRID_STARTS)) {
-        return 1;
-    }
+/* (port-only BrCollGridLoaded removed) */
 
-    /* The vertex array is three host-order f32 on a 12-byte stride after
-     * br_track.c's pass 1, which is exactly BrVec3.  The cast is a rename,
-     * not a reinterpretation -- but the image is `unsigned char *`, so the
-     * alignment has to hold: BR_TRK_H_VERTICES is a relocated N64 address and
-     * every shipped track puts the array on a 4-byte boundary.  A misaligned
-     * one is rejected rather than trusted. */
-    if ((offVerts & 3u) != 0u || (offFaces & 1u) != 0u ||
-        (offItems & 1u) != 0u || (offStart & 1u) != 0u) {
-        return 1;
-    }
-
-    g_pBrCollTriIdx   = (const uint16_t *)(const void *)
-                        (pTrack->pbImage + offFaces);
-    g_pBrCollVerts    = (BrVec3 *)(void *)(pTrack->pbImage + offVerts);
-    g_pBrCollTriFlags = (const uint8_t *)(pTrack->pbImage + offFlags);
-    g_pBrTriTable     = (const uint16_t *)(const void *)
-                        (pTrack->pbImage + offItems);
-    g_pBrGrid64       = (const uint16_t *)(const void *)
-                        (pTrack->pbImage + offStart);
-
-    g_BrFx1750338      = s_aPlane;
-    g_pBrCollGridCount = s_aCount;
-
-    BrCollGridInvalidate();
-    return 0;
-}
-
-void BrCollGridRelease(void)
-{
-    g_pBrCollTriIdx   = NULL;
-    g_pBrCollVerts    = NULL;
-    g_pBrCollTriFlags = NULL;
-    g_pBrTriTable     = NULL;
-    g_pBrGrid64       = NULL;
-
-    g_BrFx1750338      = NULL;
-    g_pBrCollGridCount = NULL;
-
-    BrCollGridInvalidate();
-}
-
-int BrCollGridLoaded(int *pCells, int *pPlanes)
-{
-    int i, cells = 0, planes = 0;
-
-    for (i = 0; i < BR73_COLL_CELLS; ++i) {
-        if (s_aCount[i] != 0u) {
-            ++cells;
-            planes += (int)s_aCount[i];
-        }
-    }
-    if (pCells  != NULL) *pCells  = cells;
-    if (pPlanes != NULL) *pPlanes = planes;
-    return (g_BrFx1750338 != NULL);
-}
 
 /* 0x100686D0 (D3D twin 0x1006F720, port body in slice6_73.c) */
 /* Transcribed from the Glide bytes: four slots, keys (u16) at 0x11778838,

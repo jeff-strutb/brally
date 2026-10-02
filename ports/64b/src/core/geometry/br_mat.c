@@ -151,24 +151,14 @@ void BrVec3Project(BrVec3 *pOut, const BrVec3 *pV, const BrMat4 *pM)
 /* Source first -- see the warning in br_mat.h. The original copies 4 rows of
  * 4 dwords using a displacement trick (ecx = src - dst, then [ecx+eax]);
  * that is just how MSVC strength-reduced two pointers into one. */
-void BrMat4Copy(const BrMat4 *pSrc, BrMat4 *pDst)
-{
-    int i, k;
-    for (i = 0; i < 4; i++)
-        for (k = 0; k < 4; k++)
-            pDst->m[i][k] = pSrc->m[i][k];
-}
+/* (port-only BrMat4Copy removed) */
+
 
 /* 0x100307D0 -- stores 0x3F800000 (1.0f) on the diagonal and zero elsewhere,
  * fully unrolled in the original. */
 /* @n64 0x80260FD0 exact */
-void BrMat4Identity(BrMat4 *pM)
-{
-    int i, k;
-    for (i = 0; i < 4; i++)
-        for (k = 0; k < 4; k++)
-            pM->m[i][k] = (i == k) ? 1.0f : 0.0f;
-}
+/* (port-only BrMat4Identity removed) */
+
 
 /* 0x10030810 -- see br_mat.h. The original computes the three differences
  * once each and divides by them repeatedly (fdiv against stack scratch),
@@ -243,19 +233,8 @@ int BrMat4Frustum(BrMat4 *pM, float l, float r, float b, float t,
 /* 0x10030930 -- see br_mat.h. 0x1008F4A8 holds pi/360. */
 #define BR_PI_OVER_360 0.0087266462599716477
 
-int BrMat4Perspective(BrMat4 *pM, unsigned short *pPerspNorm,
-                      float fovyDegrees, float aspect, float n, float f)
-{
-    float ty = (float)tan((double)fovyDegrees * BR_PI_OVER_360);
-    float h  = n * ty;
-    float w  = h * aspect;
-    int rc;
+/* (port-only BrMat4Perspective removed) */
 
-    rc = BrMat4Frustum(pM, -w, w, -h, h, n, f);
-    if (pPerspNorm != NULL)
-        *pPerspNorm = 1;          /* hardcoded in the original */
-    return rc;
-}
 
 /* 0x100306C0 */
 /* WHAT IT DOES: multiplies two 4x4 transforms together, which is how the game
@@ -357,19 +336,11 @@ float BrFloat12MaxAbs(const float *pv)
 
 /* The three degenerate tests are `fcomp v, 0.0` reading C3 only, so an
  * unordered compare (NaN) also counts as "equal to zero". */
-static int s17_is_zero_or_nan(float v)
-{
-    return !(v < 0.0f) && !(v > 0.0f);
-}
+/* (port-only s17_is_zero_or_nan removed) */
 
-static void s17_identity(BrMat4 *pM)
-{
-    int i, j;
 
-    for (i = 0; i < 4; ++i)
-        for (j = 0; j < 4; ++j)
-            pM->m[i][j] = (i == j) ? 1.0f : 0.0f;
-}
+/* (port-only s17_identity removed) */
+
 
 /* 0x10030EE0 */
 /* WHAT IT DOES: builds the transform that turns things a given number of

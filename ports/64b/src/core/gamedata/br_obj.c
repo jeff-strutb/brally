@@ -15,28 +15,14 @@ void BR_THISCALL1 BrObjClear(BrObjHeader *pObj)
     pObj->f04 = 0;
 }
 
-int BrObjGetF10(const BrObjHeader *pObj)
-{
-    return pObj->f10;
-}
+/* (port-only BrObjGetF10 removed) */
+
 
 /* @n64 0x802607C0 located */
-void BrObjInitInline(BrObjInline *pObj)
-{
-    pObj->f08 = 0;
-    pObj->f0C = 0;
-    pObj->f00 = 0;
-    pObj->f04 = 0;
-    pObj->pBuf = pObj->inline_;      /* +0x10 = this + 0x14 */
-}
+/* (port-only BrObjInitInline removed) */
+
 
 /* 0x10073D20 -- reads the counter BEFORE clearing the flag, so the increment
  * happens exactly once per set flag. */
-void BrObjConsumeFlag(BrObjFlagCount *pObj)
-{
-    if (pObj->flag != 0) {
-        int n = pObj->count;
-        pObj->flag = 0;
-        pObj->count = n + 1;
-    }
-}
+/* (port-only BrObjConsumeFlag removed) */
+

@@ -96,109 +96,29 @@ typedef struct BrPeView {
     size_t         offSections;
 } BrPeView;
 
-static uint32_t br_u16le(const uint8_t *p)
-{
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8);
-}
+/* (port-only br_u16le removed) */
 
-static uint32_t br_u32le(const uint8_t *p)
-{
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
-           ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
-}
 
-static int br_pe_open(BrPeView *pv, const uint8_t *pFile, size_t cb)
-{
-    uint32_t lfanew, cbOpt;
+/* (port-only br_u32le removed) */
 
-    pv->pFile  = pFile;
-    pv->cbFile = cb;
 
-    if (cb < 0x40u || pFile[0] != 'M' || pFile[1] != 'Z')
-        return -1;
-    lfanew = br_u32le(pFile + 0x3C);
-    if ((size_t)lfanew + 24u > cb)
-        return -1;
-    if (memcmp(pFile + lfanew, "PE\0\0", 4) != 0)
-        return -1;
+/* (port-only br_pe_open removed) */
 
-    pv->nSections = br_u16le(pFile + lfanew + 6);
-    cbOpt         = br_u16le(pFile + lfanew + 20);
-    if (cbOpt < 32u)
-        return -1;
-    /* PE32 optional header: ImageBase is at +28.  (PE32+ puts it at +24 and
-     * is 64-bit, but this image is PE32 and the magic says so.) */
-    if (br_u16le(pFile + lfanew + 24) != 0x010Bu)
-        return -1;
-    pv->imageBase   = br_u32le(pFile + lfanew + 24 + 28);
-    pv->offSections = (size_t)lfanew + 24u + cbOpt;
-    if (pv->offSections + (size_t)pv->nSections * 40u > cb)
-        return -1;
-    return 0;
-}
 
 /* The bytes at `va`, or NULL if the image does not hold them (which is how
  * .bss is told from .data -- see br_data.c's note on the same test). */
-static const uint8_t *br_pe_at(const BrPeView *pv, uint32_t va, size_t n)
-{
-    uint32_t rva = va - pv->imageBase;
-    uint32_t i;
+/* (port-only br_pe_at removed) */
 
-    for (i = 0; i < pv->nSections; ++i) {
-        const uint8_t *pSec = pv->pFile + pv->offSections + (size_t)i * 40u;
-        uint32_t vsize   = br_u32le(pSec + 8);
-        uint32_t vaddr   = br_u32le(pSec + 12);
-        uint32_t rawSize = br_u32le(pSec + 16);
-        uint32_t rawPtr  = br_u32le(pSec + 20);
-        uint32_t span    = (vsize > rawSize) ? vsize : rawSize;
-        uint32_t off;
-
-        if (rva < vaddr || rva - vaddr >= span)
-            continue;
-        off = rva - vaddr;
-        if (off >= rawSize || (uint32_t)(rawSize - off) < (uint32_t)n)
-            return NULL;               /* past the raw data: .bss */
-        if ((size_t)rawPtr + off + n > pv->cbFile)
-            return NULL;
-        return pv->pFile + rawPtr + off;
-    }
-    return NULL;
-}
 
 /* `cb` is the whole block: pitch*height for a D3D strip, stride*54 for a
  * Glide block.  `height` stays the CELL height in both -- the rows a glyph
  * occupies -- because that is what BrFontGlyph reports and what the emitter's
  * G_SETTILESIZE bounds. */
-static int br_font_strip(const BrPeView *pv, BrFontStrip *pOut, uint32_t va,
-                         int32_t pitch, int32_t height, int32_t stride,
-                         size_t cb)
-{
-    const uint8_t *p = br_pe_at(pv, va, cb);
+/* (port-only br_font_strip removed) */
 
-    if (p == NULL)
-        return -1;
-    pOut->pTexels = (uint8_t *)malloc(cb);
-    if (pOut->pTexels == NULL)
-        return -1;
-    memcpy(pOut->pTexels, p, cb);
-    pOut->pitch  = pitch;
-    pOut->height = height;
-    pOut->stride = stride;
-    return 0;
-}
 
-void BrFontFree(BrFont *pFont)
-{
-    int s, k;
+/* (port-only BrFontFree removed) */
 
-    if (pFont == NULL)
-        return;
-    for (s = 0; s < 2; ++s)
-        for (k = 0; k < 2; ++k) {
-            free(pFont->aStrip[s][k].pTexels);
-            pFont->aStrip[s][k].pTexels = NULL;
-        }
-}
 
 /* Which build's addresses hold the font in this image, or -1.
  *
@@ -209,177 +129,11 @@ void BrFontFree(BrFont *pFont)
  * builds put their tables 0x6F8 bytes apart, so a probe that passes at one
  * address cannot also pass at the other by accident -- and the loader tries
  * both and requires exactly one to answer. */
-static int br_font_probe(const BrPeView *pv, uint32_t vaClassMap,
-                         uint32_t vaOffLarge, uint32_t vaOffSmall)
-{
-    const uint8_t *pc = br_pe_at(pv, vaClassMap + BR_FONT_CLASS_LO,
-                                (size_t)BR_FONT_CLASS_N);
-    const uint8_t *pl = br_pe_at(pv, vaOffLarge, (size_t)BR_FONT_CLASSES * 4u);
-    const uint8_t *ps = br_pe_at(pv, vaOffSmall, (size_t)BR_FONT_CLASSES * 4u);
+/* (port-only br_font_probe removed) */
 
-    if (pc == NULL || pl == NULL || ps == NULL)
-        return 0;
-    if ((signed char)pc['0' - BR_FONT_CLASS_LO] != 9 ||
-        (signed char)pc['A' - BR_FONT_CLASS_LO] != BR_FONT_CLASS_ALPHA ||
-        (signed char)pc['a' - BR_FONT_CLASS_LO] != BR_FONT_CLASS_ALPHA)
-        return 0;
-    /* Both runs open at column 0, and the table therefore DROPS at the run
-     * boundary -- the fact that makes class 27 unusable. */
-    if (br_u32le(pl) != 0u || br_u32le(ps) != 0u ||
-        br_u32le(pl + BR_FONT_CLASS_ALPHA * 4) != 0u ||
-        br_u32le(ps + BR_FONT_CLASS_ALPHA * 4) != 0u)
-        return 0;
-    return 1;
-}
 
-int BrFontLoad(BrFont *pFont, const char *pszDllPath)
-{
-    static const uint32_t aRampVaD3D[2][2] = {
-        { BR_FONT_VA_RAMP_LARGE_A, BR_FONT_VA_RAMP_LARGE_B },
-        { BR_FONT_VA_RAMP_SMALL_A, BR_FONT_VA_RAMP_SMALL_B }
-    };
-    static const uint32_t aRampVaGlide[2][2] = {
-        { BR_FONT_GVA_RAMP_LARGE_A, BR_FONT_GVA_RAMP_LARGE_B },
-        { BR_FONT_GVA_RAMP_SMALL_A, BR_FONT_GVA_RAMP_SMALL_B }
-    };
-    const uint32_t (*paRampVa)[2];
-    uint32_t       vaClassMap, vaOffLarge, vaOffSmall;
-    BrPeView       pv;
-    FILE          *f;
-    uint8_t       *pFile = NULL;
-    long           cb;
-    const uint8_t *p;
-    int            i, s, v, isD3D, isGlide, rc = -1;
+/* (port-only BrFontLoad removed) */
 
-    if (pFont == NULL || pszDllPath == NULL)
-        return -1;
-    memset(pFont, 0, sizeof(*pFont));
-
-    f = fopen(pszDllPath, "rb");
-    if (f == NULL)
-        return -1;
-    if (fseek(f, 0, SEEK_END) != 0)
-        goto done;
-    cb = ftell(f);
-    if (cb <= 0 || fseek(f, 0, SEEK_SET) != 0)
-        goto done;
-    pFile = (uint8_t *)malloc((size_t)cb);
-    if (pFile == NULL)
-        goto done;
-    if (fread(pFile, 1, (size_t)cb, f) != (size_t)cb)
-        goto done;
-    if (br_pe_open(&pv, pFile, (size_t)cb) != 0)
-        goto done;
-
-    /* Which build is this?  An image where BOTH probes answer, or neither, is
-     * refused: silently picking one would produce garbage glyphs, which is
-     * exactly the failure this check exists to prevent. */
-    isGlide = br_font_probe(&pv, BR_FONT_GVA_CLASSMAP,
-                            BR_FONT_GVA_OFF_LARGE, BR_FONT_GVA_OFF_SMALL);
-    isD3D   = br_font_probe(&pv, BR_FONT_VA_CLASSMAP,
-                            BR_FONT_VA_OFF_LARGE, BR_FONT_VA_OFF_SMALL);
-    if (isGlide == isD3D)
-        goto done;
-
-    if (isGlide) {
-        pFont->build = BR_FONT_BUILD_GLIDE;
-        vaClassMap   = BR_FONT_GVA_CLASSMAP;
-        vaOffLarge   = BR_FONT_GVA_OFF_LARGE;
-        vaOffSmall   = BR_FONT_GVA_OFF_SMALL;
-        paRampVa     = aRampVaGlide;
-    } else {
-        pFont->build = BR_FONT_BUILD_D3D;
-        vaClassMap   = BR_FONT_VA_CLASSMAP;
-        vaOffLarge   = BR_FONT_VA_OFF_LARGE;
-        vaOffSmall   = BR_FONT_VA_OFF_SMALL;
-        paRampVa     = aRampVaD3D;
-    }
-
-    /* Class map: chars BR_FONT_CLASS_LO..HI, i.e. the table base plus 0x21. */
-    p = br_pe_at(&pv, vaClassMap + BR_FONT_CLASS_LO, (size_t)BR_FONT_CLASS_N);
-    if (p == NULL)
-        goto done;
-    for (i = 0; i < BR_FONT_CLASS_N; ++i)
-        pFont->aClass[i] = (signed char)p[i];
-
-    p = br_pe_at(&pv, vaOffLarge, (size_t)BR_FONT_CLASSES * 4u);
-    if (p == NULL)
-        goto done;
-    for (i = 0; i < BR_FONT_CLASSES; ++i)
-        pFont->aOff[BR_FONT_LARGE][i] = (int32_t)br_u32le(p + i * 4);
-
-    p = br_pe_at(&pv, vaOffSmall, (size_t)BR_FONT_CLASSES * 4u);
-    if (p == NULL)
-        goto done;
-    for (i = 0; i < BR_FONT_CLASSES; ++i)
-        pFont->aOff[BR_FONT_SMALL][i] = (int32_t)br_u32le(p + i * 4);
-
-    if (pFont->build == BR_FONT_BUILD_GLIDE) {
-        /* Two blocks of 54 fixed-stride windows.  0x1006C790 copies exactly
-         * 0x21C00 and 0x8700 bytes, which is 54 * stride in each case -- the
-         * count is the original's, not an inference from the extents. */
-        if (br_font_strip(&pv, &pFont->aStrip[BR_FONT_LARGE][0],
-                          BR_FONT_GVA_BLOCK_LARGE, BR_FONT_G_LARGE_PITCH,
-                          BR_FONT_LARGE_CELL, BR_FONT_G_LARGE_STRIDE,
-                          (size_t)BR_FONT_G_LARGE_STRIDE * BR_FONT_G_CELLS)
-                != 0 ||
-            br_font_strip(&pv, &pFont->aStrip[BR_FONT_SMALL][0],
-                          BR_FONT_GVA_BLOCK_SMALL, BR_FONT_G_SMALL_PITCH,
-                          BR_FONT_SMALL_CELL, BR_FONT_G_SMALL_STRIDE,
-                          (size_t)BR_FONT_G_SMALL_STRIDE * BR_FONT_G_CELLS)
-                != 0)
-            goto done;
-        pFont->aBlockVa[BR_FONT_LARGE] = BR_FONT_GVA_BLOCK_LARGE;
-        pFont->aBlockVa[BR_FONT_SMALL] = BR_FONT_GVA_BLOCK_SMALL;
-    } else {
-        if (br_font_strip(&pv,
-                          &pFont->aStrip[BR_FONT_LARGE][BR_FONT_STRIP_PUNCT],
-                          BR_FONT_VA_LARGE_PUNCT, BR_FONT_LARGE_PITCH,
-                          BR_FONT_LARGE_CELL, 0,
-                          (size_t)BR_FONT_LARGE_PITCH * BR_FONT_LARGE_CELL)
-                != 0 ||
-            br_font_strip(&pv,
-                          &pFont->aStrip[BR_FONT_LARGE][BR_FONT_STRIP_ALPHA],
-                          BR_FONT_VA_LARGE_ALPHA, BR_FONT_LARGE_PITCH,
-                          BR_FONT_LARGE_CELL, 0,
-                          (size_t)BR_FONT_LARGE_PITCH * BR_FONT_LARGE_CELL)
-                != 0 ||
-            br_font_strip(&pv,
-                          &pFont->aStrip[BR_FONT_SMALL][BR_FONT_STRIP_PUNCT],
-                          BR_FONT_VA_SMALL_PUNCT, BR_FONT_SMALL_PITCH,
-                          BR_FONT_SMALL_CELL, 0,
-                          (size_t)BR_FONT_SMALL_PITCH * BR_FONT_SMALL_CELL)
-                != 0 ||
-            br_font_strip(&pv,
-                          &pFont->aStrip[BR_FONT_SMALL][BR_FONT_STRIP_ALPHA],
-                          BR_FONT_VA_SMALL_ALPHA, BR_FONT_SMALL_PITCH,
-                          BR_FONT_SMALL_CELL, 0,
-                          (size_t)BR_FONT_SMALL_PITCH * BR_FONT_SMALL_CELL)
-                != 0)
-            goto done;
-    }
-
-    for (s = 0; s < 2; ++s)
-        for (v = 0; v < 2; ++v) {
-            p = br_pe_at(&pv, paRampVa[s][v], (size_t)BR_FONT_RAMP_BYTES);
-            if (p == NULL)
-                goto done;
-            memcpy(pFont->aRamp[s][v], p, (size_t)BR_FONT_RAMP_BYTES);
-        }
-
-    if (pFont->build == BR_FONT_BUILD_GLIDE)
-        BrFontRegisterPages();
-    else
-        BrFontRegisterGlyphs(pFont);
-    rc = 0;
-
-done:
-    free(pFile);
-    fclose(f);
-    if (rc != 0)
-        BrFontFree(pFont);
-    return rc;
-}
 
 /* 0x1006C790 (Glide).  The whole function, and it is short enough to quote:
  *
@@ -427,80 +181,14 @@ void BrFontRegisterPages(void)
  * unused slot between the punctuation run and the alphabet run is deliberately
  * left blank. */
 /* @d3donly 0x10073820 BrFontRegisterGlyphs -- glide twin 0x1006C790 COMDAT-folded onto BrFontRegisterPages above */
-void BrFontRegisterGlyphs(BrFont *pFont)
-{
-    int i;
+/* (port-only BrFontRegisterGlyphs removed) */
 
-    for (i = 0; i < BR_FONT_N_PUNCT; ++i)
-        pFont->ahTex[BR_FONT_LARGE][i] = BR_FONT_TOK_GLYPH(BR_FONT_LARGE, i);
-    for (i = 0; i < BR_FONT_N_ALPHA; ++i)
-        pFont->ahTex[BR_FONT_LARGE][BR_FONT_CLASS_ALPHA + i] =
-            BR_FONT_TOK_GLYPH(BR_FONT_LARGE, BR_FONT_CLASS_ALPHA + i);
-    for (i = 0; i < BR_FONT_N_PUNCT; ++i)
-        pFont->ahTex[BR_FONT_SMALL][i] = BR_FONT_TOK_GLYPH(BR_FONT_SMALL, i);
-    for (i = 0; i < BR_FONT_N_ALPHA; ++i)
-        pFont->ahTex[BR_FONT_SMALL][BR_FONT_CLASS_ALPHA + i] =
-            BR_FONT_TOK_GLYPH(BR_FONT_SMALL, BR_FONT_CLASS_ALPHA + i);
-}
 
-int BrFontClassOf(const BrFont *pFont, int ch)
-{
-    /* The original compares AL SIGNED (`cmp al,0x21 / jl`, `cmp al,0x7f /
-     * jg`), so 0x80..0xFF land on the same side as a control character. */
-    signed char c = (signed char)(unsigned char)ch;
+/* (port-only BrFontClassOf removed) */
 
-    if (c < (signed char)BR_FONT_CLASS_LO || c > (signed char)BR_FONT_CLASS_HI)
-        return -1;
-    return pFont->aClass[(int)c - BR_FONT_CLASS_LO];
-}
 
-int BrFontGlyph(const BrFont *pFont, int cls, int size, BrGlyph *pOut)
-{
-    const BrFontStrip *pStrip;
-    int32_t left, w;
-    int     which;
+/* (port-only BrFontGlyph removed) */
 
-    if (pFont == NULL || pOut == NULL || size < 0 || size > 1)
-        return -1;
-    if (cls < 0 || cls >= BR_FONT_CLASSES - 1 || cls == BR_FONT_CLASS_GAP)
-        return -1;
-
-    /* Glide keeps every class in aStrip[size][0]; D3D splits the two runs. */
-    which  = (pFont->build == BR_FONT_BUILD_GLIDE) ? 0
-           : (cls < BR_FONT_CLASS_GAP)             ? BR_FONT_STRIP_PUNCT
-                                                   : BR_FONT_STRIP_ALPHA;
-    pStrip = &pFont->aStrip[size][which];
-    if (pStrip->pTexels == NULL)
-        return -1;
-
-    left = pFont->aOff[size][cls];
-    /* The `+1` is D3D 0x10018A21's / Glide 0x10015FB7's `inc ecx`: the tile
-     * the drawing routine binds is one column WIDER than the advance, so
-     * neighbouring glyphs overlap by a pixel.  NEITHER width routine adds it
-     * (0x100193C0, 0x10016980), which is why the measured width of a string
-     * is one pixel per glyph short of the ink drawn -- in both builds. */
-    w = pFont->aOff[size][cls + 1] - left + 1;
-    if (w <= 0)
-        return -1;
-
-    pOut->fAlphaHigh = (pFont->build == BR_FONT_BUILD_GLIDE);
-    pOut->pitch      = pStrip->pitch;
-    pOut->w          = w;
-    pOut->h          = pStrip->height;
-
-    if (pFont->build == BR_FONT_BUILD_GLIDE) {
-        /* Indexed by CLASS, not column: 0x10015FDC's `imul ebx, edx`.  `left`
-         * plays no part in addressing here -- it only supplied the width. */
-        if (w > pStrip->pitch)
-            return -1;
-        pOut->pTexels = pStrip->pTexels + (size_t)pStrip->stride * (size_t)cls;
-    } else {
-        if (left < 0 || left + w > pStrip->pitch)
-            return -1;
-        pOut->pTexels = pStrip->pTexels + left;
-    }
-    return 0;
-}
 
 /* ======================================================================
  * PART 2 -- 0x10018590
@@ -537,29 +225,13 @@ static const uint32_t s_aEnvColour[12] = {
     0xC800C8FFu, 0xC80000FFu, 0xFFFFFFFFu, 0xD2BE00FFu
 };
 
-static void br_emit(BrTextEmit *pSt, uint32_t w0, uint32_t w1)
-{
-    pSt->cWordsWanted += 2;
-    /* DEVIATION: the original never checks. */
-    if (pSt->pGfx != NULL && pSt->pGfx + 2 <= pSt->pGfxEnd) {
-        pSt->pGfx[0] = w0;
-        pSt->pGfx[1] = w1;
-        pSt->pGfx += 2;
-    }
-}
+/* (port-only br_emit removed) */
+
 
 /* The original's colour packer, verbatim: the FIRST component is not masked,
  * so a value above 255 bleeds into the bits above and is shifted out. */
-static uint32_t br_pack_rgb(int32_t r, int32_t g, int32_t b)
-{
-    uint32_t v = (uint32_t)r << 8;
+/* (port-only br_pack_rgb removed) */
 
-    v |= (uint32_t)g & 0xFFu;
-    v <<= 8;
-    v |= (uint32_t)b & 0xFFu;
-    v <<= 8;
-    return v | 0xFFu;                       /* `or cl, 0xff` */
-}
 
 /* 0x10018B68 / 0x10018B8A / 0x10018BB7 / 0x10018BCD, all the same shape:
  *
@@ -570,41 +242,11 @@ static uint32_t br_pack_rgb(int32_t r, int32_t g, int32_t b)
  * here.  The test is on AX SIGNED: a coordinate whose low word is negative or
  * zero collapses to 0, and one whose low word is positive survives
  * sign-extended -- so 0x10000 clamps to 0, not to 0x10000. */
-static int32_t br_clamp_lo16(int32_t v)
-{
-    int16_t lo = (int16_t)(uint16_t)((uint32_t)v & 0xFFFFu);
+/* (port-only br_clamp_lo16 removed) */
 
-    return (lo <= 0) ? 0 : (int32_t)lo;
-}
 
-void BrTextEmitInit(BrTextEmit *pSt, const BrFont *pFont,
-                    uint32_t *pGfx, size_t cWords)
-{
-    memset(pSt, 0, sizeof(*pSt));
-    pSt->pGfx    = pGfx;
-    pSt->pGfxEnd = (pGfx != NULL) ? pGfx + cWords : NULL;
-    pSt->detail  = 1;                       /* br_data.c: 0x100B8C90 == 1 */
-    pSt->scale   = BR_FONT_LARGE_CELL;
-    if (pFont != NULL) {
-        pSt->build      = pFont->build;
-        pSt->pClassMap  = pFont->aClass;
-        pSt->pOffLarge  = pFont->aOff[BR_FONT_LARGE];
-        pSt->pOffSmall  = pFont->aOff[BR_FONT_SMALL];
-        pSt->ahTexLarge = pFont->ahTex[BR_FONT_LARGE];
-        pSt->ahTexSmall = pFont->ahTex[BR_FONT_SMALL];
+/* (port-only BrTextEmitInit removed) */
 
-        pSt->hPageLarge   = pFont->ahPage[BR_FONT_LARGE];
-        pSt->hPageSmall   = pFont->ahPage[BR_FONT_SMALL];
-        pSt->vaBlockLarge = pFont->aBlockVa[BR_FONT_LARGE];
-        pSt->vaBlockSmall = pFont->aBlockVa[BR_FONT_SMALL];
-        pSt->strideLarge  = pFont->aStrip[BR_FONT_LARGE][0].stride;
-        pSt->strideSmall  = pFont->aStrip[BR_FONT_SMALL][0].stride;
-    }
-    pSt->hRampLargeA = BR_FONT_TOK_RAMP(BR_FONT_LARGE, 0);
-    pSt->hRampLargeB = BR_FONT_TOK_RAMP(BR_FONT_LARGE, 1);
-    pSt->hRampSmallA = BR_FONT_TOK_RAMP(BR_FONT_SMALL, 0);
-    pSt->hRampSmallB = BR_FONT_TOK_RAMP(BR_FONT_SMALL, 1);
-}
 
 /* 0x10018590 (D3D) and 0x10015B10 (Glide).
  *
@@ -1232,209 +874,17 @@ int32_t BrFontMeasure(const char *psz, int32_t scale)
 
 typedef struct BrFontRgba { int32_t r, g, b, a; } BrFontRgba;
 
-static BrFontRgba br_unpack(uint32_t v)
-{
-    BrFontRgba c;
-    c.r = (int32_t)((v >> 24) & 0xFFu);
-    c.g = (int32_t)((v >> 16) & 0xFFu);
-    c.b = (int32_t)((v >>  8) & 0xFFu);
-    c.a = (int32_t)( v        & 0xFFu);
-    return c;
-}
+/* (port-only br_unpack removed) */
+
 
 /* A 4-bit IA nibble spans 0..15; 17 maps it onto 0..255 exactly. */
 #define BR_FONT_N4(x)  ((int32_t)(x) * 17)
 
-static void br_blend(uint8_t *pPix, int32_t r, int32_t g, int32_t b, int32_t a)
-{
-    if (a <= 0)
-        return;
-    if (a >= 255) {
-        pPix[0] = (uint8_t)r; pPix[1] = (uint8_t)g;
-        pPix[2] = (uint8_t)b; pPix[3] = 255;
-        return;
-    }
-    pPix[0] = (uint8_t)((r * a + pPix[0] * (255 - a)) / 255);
-    pPix[1] = (uint8_t)((g * a + pPix[1] * (255 - a)) / 255);
-    pPix[2] = (uint8_t)((b * a + pPix[2] * (255 - a)) / 255);
-    pPix[3] = (uint8_t)(a + pPix[3] * (255 - a) / 255);
-}
+/* (port-only br_blend removed) */
 
-size_t BrFontRasteriseDL(const BrFont *pFont,
-                         const uint32_t *pDL, size_t cWords,
-                         uint8_t *pRgba, int32_t cx, int32_t cy)
-{
-    BrGlyph    glyph;
-    BrFontRgba prim = { 255, 255, 255, 255 };
-    BrFontRgba env  = { 255, 255, 255, 255 };
-    const uint8_t *pRamp = NULL;
-    uint32_t   hGlyph = 0;
-    int32_t    tileW = 0, tileH = 0;
-    size_t     i, cDrawn = 0;
-    int        fHaveGlyph = 0;
 
-    if (pFont == NULL || pDL == NULL || pRgba == NULL)
-        return 0;
+/* (port-only BrFontRasteriseDL removed) */
 
-    memset(&glyph, 0, sizeof(glyph));
-
-    for (i = 0; i + 1 < cWords; i += 2) {
-        uint32_t w0 = pDL[i], w1 = pDL[i + 1];
-
-        switch (w0 >> 24) {
-        case 0xDCu:
-            hGlyph = w0 & 0x00FFFFFFu;
-            /* D3D: the handle names the class.  Glide: the handle names only
-             * the SIZE, and the class came from the 0xDD just before -- so
-             * leave the glyph the 0xDD resolved and only reject a 0xDC that
-             * names neither. */
-            if (BR_FONT_TOK_IS_GLYPH(hGlyph))
-                fHaveGlyph = BrFontGlyph(pFont, BR_FONT_TOK_CLASS(hGlyph),
-                                         BR_FONT_TOK_SIZE(hGlyph),
-                                         &glyph) == 0;
-            else if (!BR_FONT_TOK_IS_PAGE(hGlyph))
-                fHaveGlyph = 0;
-            break;
-
-        case 0xDDu: {
-            /* GLIDE ONLY (0x10015FD0).  w1 is the ORIGINAL address of the
-             * class's window, so the class is (w1 - base) / stride.  The
-             * division must come out exact -- a payload that lands mid-window
-             * is not something the emitter can produce, and quietly rounding
-             * it would hide a real bug. */
-            int size = BR_FONT_TOK_PAGE_SIZE(w0 & 0x00FFFFFFu);
-
-            fHaveGlyph = 0;
-            if (BR_FONT_TOK_IS_PAGE(w0 & 0x00FFFFFFu) &&
-                size >= 0 && size < 2) {
-                uint32_t base   = pFont->aBlockVa[size];
-                uint32_t stride = (uint32_t)pFont->aStrip[size][0].stride;
-
-                if (base != 0u && stride != 0u && w1 >= base &&
-                    (w1 - base) % stride == 0u) {
-                    uint32_t cls = (w1 - base) / stride;
-                    fHaveGlyph = cls < (uint32_t)BR_FONT_G_CELLS &&
-                                 BrFontGlyph(pFont, (int)cls, size,
-                                             &glyph) == 0;
-                }
-            }
-            break;
-        }
-
-        case 0xFDu:
-            if (BR_FONT_TOK_IS_RAMP(w1)) {
-                int s = BR_FONT_TOK_RAMP_SIZE(w1);
-                int v = BR_FONT_TOK_RAMP_VAR(w1);
-                if (s >= 0 && s < 2 && v >= 0 && v < 2)
-                    pRamp = pFont->aRamp[s][v];
-            }
-            break;
-
-        case 0xF2u:
-            /* Tile 0 only; the preamble's is tile 1 (the ramp). */
-            if (((w1 >> 24) & 7u) == 0u) {
-                tileW = (int32_t)(((w1 >> 12) & 0xFFFu) + 2u) / 4;
-                tileH = (int32_t)((w1 & 0xFFFu) + 2u) / 4;
-            }
-            break;
-
-        case 0xFAu: prim = br_unpack(w1); break;
-        case 0xFBu: env  = br_unpack(w1); break;
-
-        case 0xE3u: {
-            int32_t lrx = (int32_t)((w0 >> 12) & 0xFFFu);
-            int32_t lry = (int32_t)( w0        & 0xFFFu);
-            int32_t ulx = (int32_t)((w1 >> 12) & 0xFFFu);
-            int32_t uly = (int32_t)( w1        & 0xFFFu);
-            int32_t dw  = lrx - ulx, dh = lry - uly;
-            int32_t px, py;
-
-            if (!fHaveGlyph || dw <= 0 || dh <= 0 || tileW <= 0 || tileH <= 0)
-                break;
-            if (tileW > glyph.w) tileW = glyph.w;
-            if (tileH > glyph.h) tileH = glyph.h;
-
-            for (py = 0; py < dh; ++py) {
-                int32_t dy = uly + py;
-                /* T IS SAMPLED BOTTOM-UP.
-                 *
-                 * The strips are stored with row 0 at the BOTTOM of the glyph:
-                 * dumping class 39 ('L') straight out of .data gives the foot
-                 * at row 6 and the stem below it -- an upside-down L. The
-                 * retail game plainly drew it the right way up, so the sampling
-                 * inverts T.
-                 *
-                 * It is not a dtdy sign: this build's 0xE3 is the TWO-word
-                 * integer-corner variant, so there are no step words in the
-                 * stream to carry one.
-                 *
-                 * The alternative explanation -- that the strip base addresses
-                 * are off by (rows-1)*pitch and we are reading from the wrong
-                 * end -- is ruled out by the extents being arithmetic: each
-                 * strip butts exactly against the next object in the image, so
-                 * the bases are pinned and cannot be shifted by a row.
-                 *
-                 * BOTH BUILDS.  The Glide blob is laid out differently and its
-                 * extents are pinned by their own arithmetic, yet it matches
-                 * the D3D strips in the SAME row order -- so two independent
-                 * layouts agree that row 0 is the bottom.  This is not a D3D
-                 * artefact. */
-                int32_t sy = tileH - 1 - ((py * tileH) / dh);
-                int32_t ramp = 255;
-
-                if (dy < 0 || dy >= cy)
-                    continue;
-                if (pRamp != NULL) {
-                    int32_t ry = (py * BR_FONT_RAMP_H) / dh;
-                    if (ry >= BR_FONT_RAMP_H) ry = BR_FONT_RAMP_H - 1;
-                    /* The ramp's columns differ only by the dither pattern;
-                     * column 0 is representative and avoids reproducing a
-                     * checkerboard at an unrelated scale. */
-                    ramp = BR_FONT_N4(pRamp[ry * BR_FONT_RAMP_W] >> 4);
-                }
-
-                for (px = 0; px < dw; ++px) {
-                    int32_t dx = ulx + px;
-                    int32_t sx = (px * tileW) / dw;
-                    uint8_t texel;
-                    int32_t inten, alpha, r, g, b;
-
-                    if (dx < 0 || dx >= cx)
-                        continue;
-                    texel = glyph.pTexels[sy * glyph.pitch + sx];
-                    /* D3D IA8 puts intensity high and alpha low; Glide AI44
-                     * is the other way round.  BrFontGlyph reports which. */
-                    alpha = BR_FONT_N4(BR_FONT_TEXEL_A(texel,
-                                                       glyph.fAlphaHigh));
-                    if (alpha == 0)
-                        continue;
-                    inten = BR_FONT_N4(BR_FONT_TEXEL_I(texel,
-                                                       glyph.fAlphaHigh));
-
-                    /* cycle 0: (PRIM - ENV) * ramp + ENV
-                     * cycle 1: COMBINED * glyph intensity
-                     * See the header for why the ramp and the glyph are
-                     * assigned to those two slots and not the other way. */
-                    r = env.r + ((prim.r - env.r) * ramp) / 255;
-                    g = env.g + ((prim.g - env.g) * ramp) / 255;
-                    b = env.b + ((prim.b - env.b) * ramp) / 255;
-
-                    br_blend(pRgba + ((size_t)dy * (size_t)cx + (size_t)dx) * 4,
-                             (r * inten) / 255, (g * inten) / 255,
-                             (b * inten) / 255, alpha);
-                }
-            }
-            ++cDrawn;
-            break;
-        }
-
-        default:
-            break;
-        }
-    }
-
-    return cDrawn;
-}
 
 
 /* 0x10073980

@@ -128,9 +128,12 @@ static BrSceneEnv   g_scene;
 static BrWeather    g_weather;
 static BrRdpRegs    g_regs;
 
-BrGfxOut     *BrGfxGetOut(void)   { return &g_BrGfxPtr; }
-BrScreenInfo *BrScreenGet(void)   { return &g_screen; }
-BrHudEnv     *BrHudGetEnv(void)   { return &g_hud; }
+/* (port-only BrGfxGetOut removed) */
+
+/* (port-only BrScreenGet removed) */
+
+/* (port-only BrHudGetEnv removed) */
+
 
 /* g_hud and g_screen are the port's gatherings of scattered originals.  The
  * byte-exact functions of this file read the fields as the separate globals
@@ -168,9 +171,12 @@ BrHudEnv     *BrHudGetEnv(void)   { return &g_hud; }
 #define SCR_cViews (*(int32_t *)&g_brMode0AA8B4)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 #define SCR_iView g_BrEnvSection
-BrSceneEnv   *BrSceneGetEnv(void) { return &g_scene; }
-BrWeather    *BrWeatherGet(void)  { return &g_weather; }
-BrRdpRegs    *BrRdpGetRegs(void)  { return &g_regs; }
+/* (port-only BrSceneGetEnv removed) */
+
+/* (port-only BrWeatherGet removed) */
+
+/* (port-only BrRdpGetRegs removed) */
+
 
 /* ---- per-frame scene accumulators -------------------------------------- *
  * A pair of float accumulators the per-frame race render maintains.  Their
@@ -1301,117 +1307,57 @@ void BrWeatherStepParticles(void)
  * chosen by number, plus two fixed globals, to another routine and does nothing
  * else. What that routine does with them is not established here. */
 /* @d3donly 0x1001A4B0 BrForward1001A4B0 -- absent from BRGlide (D3D-only / dynamically-imported CRT); no Glide twin exists */
-void BrForward1001A4B0(int i)
-{
-    BrSub_100290A0(&g_weather.f2554, &g_weather.f2558,
-                   g_weather.apTable[i]);
-}
+/* (port-only BrForward1001A4B0 removed) */
+
 
 /* =====================================================================
  * 0x1001BB80 .. 0x1001BC50
  * ===================================================================== */
-void BrRdpCacheScreenWidth(void)  { g_regs.f4C5164 = SCR_cx; }
-void BrRdpCacheScreenHeight(void) { g_regs.f4C01A0 = SCR_cy; }
-void BrRdpCacheHalfWidthA(void)   { g_regs.f4BBF08 = (float)(SCR_cx / 2); }
-void BrRdpCacheHalfWidthB(void)   { g_regs.f4C0BB0 = (float)(SCR_cx / 2); }
-void BrRdpCacheHalfHeight(void)   { g_regs.f4C0BB8 = (float)(SCR_cy / 2); }
+/* (port-only BrRdpCacheScreenWidth removed) */
+
+/* (port-only BrRdpCacheScreenHeight removed) */
+
+/* (port-only BrRdpCacheHalfWidthA removed) */
+
+/* (port-only BrRdpCacheHalfWidthB removed) */
+
+/* (port-only BrRdpCacheHalfHeight removed) */
+
 
 /* =====================================================================
  * Command handlers
  * ===================================================================== */
 
-const BrGfxCmd *BrCmdDispatchIndirect(const BrGfxCmd *pCmd)
-{
-    g_regs.pfn18AA0B8(pCmd->w0 & 0x00FFFFFFu, pCmd->w1);
-    return pCmd + 1;
-}
+/* (port-only BrCmdDispatchIndirect removed) */
+
 
 /* Sign-extend the low `bits` of v, arithmetically. */
-static int32_t BrSext(uint32_t v, int bits)
-{
-    uint32_t m = 1u << (bits - 1);
-    return (int32_t)((v & (m + m - 1u)) ^ m) - (int32_t)m;
-}
+/* (port-only BrSext removed) */
 
-const BrGfxCmd *BrCmdRectFixed(const BrGfxCmd *pCmd)
-{
-    /* 10.2 fixed point: sign-extend 12 bits, arithmetic >>2, mask to 10. */
-    int32_t y1 = (BrSext(pCmd->w1, 12)       >> 2) & 0x3FF;
-    int32_t x1 = (BrSext(pCmd->w1 >> 12, 12) >> 2) & 0x3FF;
-    int32_t y2 = (BrSext(pCmd->w0, 12)       >> 2) & 0x3FF;
-    int32_t x2 = (BrSext(pCmd->w0 >> 12, 12) >> 2) & 0x3FF;
 
-    BrSub_1001BE90(x1, SCR_cy - y2 - 1, x2 + 1, SCR_cy - y1);
-    return pCmd + 1;
-}
+/* (port-only BrCmdRectFixed removed) */
 
-const BrGfxCmd *BrCmdRectInt(const BrGfxCmd *pCmd)
-{
-    /* Same fields, but plain signed integers -- no >>2 and no mask. */
-    int32_t y1 = BrSext(pCmd->w1, 12);
-    int32_t x1 = BrSext(pCmd->w1 >> 12, 12);
-    int32_t y2 = BrSext(pCmd->w0, 12);
-    int32_t x2 = BrSext(pCmd->w0 >> 12, 12);
 
-    BrSub_1001BE90(x1, SCR_cy - y2 - 1, x2 + 1, SCR_cy - y1);
-    return pCmd + 1;
-}
+/* (port-only BrCmdRectInt removed) */
 
-const BrGfxCmd *BrCmdLatchPair(const BrGfxCmd *pCmd)
-{
-    g_regs.f4C5158 = pCmd->w0;
-    g_regs.f4C515C = pCmd->w1;
-    BrSub_1001C820(pCmd->w0, pCmd->w1);
-    return pCmd + 1;
-}
+
+/* (port-only BrCmdLatchPair removed) */
+
 
 /* The two colour handlers share this shape: four bytes of w1, high first,
  * each through a float32 store/reload and then scaled by 1/255. */
-static void BrCmdUnpackColor(uint32_t w1, float *pa, float *pb,
-                             float *pc, float *pd)
-{
-    *pa = (float)((double)(float)(int32_t)( w1 >> 24)          * (double)kF3C0);
-    *pb = (float)((double)(float)(int32_t)((w1 >> 16) & 0xFFu) * (double)kF3C0);
-    *pc = (float)((double)(float)(int32_t)((w1 >>  8) & 0xFFu) * (double)kF3C0);
-    *pd = (float)((double)(float)(int32_t)( w1        & 0xFFu) * (double)kF3C0);
-}
+/* (port-only BrCmdUnpackColor removed) */
+
 
 /* @n64 0x8026C5C0 located */
-const BrGfxCmd *BrCmdSetColorA(const BrGfxCmd *pCmd)
-{
-    BrCmdUnpackColor(pCmd->w1, &g_regs.f4BBF04, &g_regs.f4C0BAC,
-                     &g_regs.f4BBEB8, &g_regs.f4BBE2C);
-    return pCmd + 1;
-}
+/* (port-only BrCmdSetColorA removed) */
 
-const BrGfxCmd *BrCmdSetColorB(const BrGfxCmd *pCmd)
-{
-    BrCmdUnpackColor(pCmd->w1, &g_regs.f4C5154, &g_regs.f4C5160,
-                     &g_regs.f4C1690, &g_regs.f4C0BA8);
-    return pCmd + 1;
-}
 
-const BrGfxCmd *BrCmdUnpackModeBits(const BrGfxCmd *pCmd)
-{
-    uint32_t w1 = pCmd->w1;
-    uint8_t a, b;
+/* (port-only BrCmdSetColorB removed) */
 
-    /* xor/and 7/xor: splice the low three bits of one shift into another. */
-    a = (uint8_t)(w1 >> 8);
-    b = (uint8_t)(w1 >> 13);
-    g_regs.c4BBF00 = (uint8_t)(a ^ ((uint8_t)((b ^ a) & 7u)));
 
-    a = (uint8_t)(w1 >> 3);
-    b = (uint8_t)(w1 >> 8);
-    g_regs.c4BC194 = (uint8_t)(a ^ ((uint8_t)((b ^ a) & 7u)));
+/* (port-only BrCmdUnpackModeBits removed) */
 
-    /* The shift is 8-bit, so w1 bits 6 and 7 fall off before the or. */
-    g_regs.c4C5150 = (uint8_t)((uint8_t)((uint8_t)(w1 & 0xFEu) << 2)
-                               | (uint8_t)((w1 >> 3) & 7u));
-
-    g_regs.c4C15CC = (uint8_t)((w1 & 1u) ? 0xFFu : 0x00u);
-    return pCmd + 1;
-}
 
 /* -- Ghidra-matched functions --------------------------- */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */

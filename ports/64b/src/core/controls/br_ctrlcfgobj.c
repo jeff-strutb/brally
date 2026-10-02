@@ -53,13 +53,8 @@ typedef struct { uint32_t v; } BrCtrlKeyArg;
 /* The 1/2/3-else dispatch every one of these five routines shares.  Written
  * out as a helper because the original open-codes it four times with the
  * `dec eax; je` idiom and getting the fall-through wrong would be silent. */
-static int BrCtrlProfileIndex(int32_t sel)
-{
-    if (sel == 1) return 1;
-    if (sel == 2) return 2;
-    if (sel == 3) return 3;
-    return 0;
-}
+/* (port-only BrCtrlProfileIndex removed) */
+
 
 /* 0x10069C90 */
 /* WHAT IT DOES: puts the player's settings back to how the game ships -- all
@@ -115,51 +110,8 @@ void BR_THISCALL1 BrCtrlCfgInit(BrCtrlCfg *pThis)
 }
 
 /* 0x10069DE0 */
-BrCtrlCfg *BrCtrlCfgCopy(BrCtrlCfg *pThis, const BrCtrlCfg *pSrc)
-{
-    int i;
+/* (port-only BrCtrlCfgCopy removed) */
 
-    for (i = 0; i < BR_CTRL_PROFILES; ++i)
-        pThis->profile[i] = pSrc->profile[i];
-
-    pThis->active = pSrc->active;
-    /* Not a straight copy: the pointer is rebuilt from `active` so that it
-     * points into pThis.  Same 1/2/3-else dispatch. */
-    pThis->pActive = &pThis->profile[BrCtrlProfileIndex(pSrc->active)];
-
-    pThis->f2A8 = pSrc->f2A8;
-    pThis->f2AC = pSrc->f2AC;
-    pThis->f2B0 = pSrc->f2B0;
-    memcpy(pThis->f2B4, pSrc->f2B4, sizeof pThis->f2B4);
-    memcpy(pThis->f3B8, pSrc->f3B8, sizeof pThis->f3B8);
-
-    pThis->f7B8 = pSrc->f7B8;
-    pThis->f7BC = pSrc->f7BC;
-    pThis->f7C0 = pSrc->f7C0;
-    pThis->f7C4 = pSrc->f7C4;
-    memcpy(pThis->f7C8, pSrc->f7C8, sizeof pThis->f7C8);
-
-    pThis->f7D8 = pSrc->f7D8;
-    pThis->f7DC = pSrc->f7DC;
-    pThis->f7E0 = pSrc->f7E0;
-    pThis->f7E4 = pSrc->f7E4;
-    pThis->f7E8 = pSrc->f7E8;
-    pThis->f7EC = pSrc->f7EC;
-    pThis->f7F0 = pSrc->f7F0;
-    pThis->f7F4 = pSrc->f7F4;
-    pThis->f7F8 = pSrc->f7F8;
-    pThis->f7FC = pSrc->f7FC;
-    pThis->f800 = pSrc->f800;
-    pThis->f804 = pSrc->f804;
-    pThis->f808 = pSrc->f808;
-    pThis->f80C = pSrc->f80C;
-
-    memcpy(pThis->f810, pSrc->f810, sizeof pThis->f810);
-    memcpy(pThis->f830, pSrc->f830, sizeof pThis->f830);
-    pThis->f870 = pSrc->f870;
-
-    return pThis;
-}
 
 /* 0x10069B10 */
 /* WHAT IT DOES: binds one game action -- steer left, brake, look behind -- to

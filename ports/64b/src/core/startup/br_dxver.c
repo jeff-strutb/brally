@@ -143,18 +143,8 @@
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 
-int BrDxGuidEqual(const BrDxGuid *pA, const BrDxGuid *pB)
-{
-    int i;
-    if (pA == NULL || pB == NULL)
-        return pA == pB;
-    if (pA->d1 != pB->d1 || pA->d2 != pB->d2 || pA->d3 != pB->d3)
-        return 0;
-    for (i = 0; i < 8; i++)          /* bounded: a GUID's tail is always 8 */
-        if (pA->d4[i] != pB->d4[i])
-            return 0;
-    return 1;
-}
+/* (port-only BrDxGuidEqual removed) */
+
 
 /* ------------------------------------------------------------------ *
  * .data string literals, at the addresses the original pushes.
@@ -421,7 +411,5 @@ void BrDxDetect(uint32_t *pdwDXVersion, uint32_t *pdwDXPlatform)
 }
 
 /* RallyMain 0x1001CC5C `cmp eax,0x600` + 0x1001CC61 `jae`. Unsigned. */
-int BrDxVersionIsSufficient(uint32_t dwDXVersion)
-{
-    return dwDXVersion >= BR_DXVER_REQUIRED;
-}
+/* (port-only BrDxVersionIsSufficient removed) */
+

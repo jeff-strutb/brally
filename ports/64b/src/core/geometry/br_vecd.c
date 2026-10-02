@@ -107,13 +107,5 @@ BrVec3d *BrVec3dNormalise(BrVec3d *pV)
  * angles to both, which is how the game gets a surface's facing from two of
  * its edges. Note the answer goes into the third argument, not the first. */
 
-signed char BrPackNormalByte(double v)
-{
-    double t = floor(0.5 + 128.0 * v);
+/* (port-only BrPackNormalByte removed) */
 
-    if (t < -128.0)
-        return -128;
-    if (t > 127.0)
-        return 127;
-    return (signed char)t;
-}

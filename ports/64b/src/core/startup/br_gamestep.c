@@ -28,18 +28,8 @@ void BrGameStepSet(BrGameStepFn pfn)
     g_pfnStep = pfn;
 }
 
-void BrGameStepRegister(BrGameStepFn pfn, int id)
-{
-    int i;
-    for (i = 0; i < g_cKnown; ++i) {
-        if (g_apKnown[i] == pfn) { g_aKnownId[i] = id; return; }
-    }
-    if (g_cKnown < BR_GS_SLOTS) {
-        g_apKnown[g_cKnown]  = pfn;
-        g_aKnownId[g_cKnown] = id;
-        ++g_cKnown;
-    }
-}
+/* (port-only BrGameStepRegister removed) */
+
 
 /* 0x1002E302 -- `xor ecx,ecx; cmp eax,[0x106E79F4]; sete cl`. */
 /* WHAT IT DOES: answers "is this the activity the game is currently running?"
@@ -59,10 +49,8 @@ int BrGameStepIs(BrGameStepFn pfn)
  * having modelled one dword under two C types, and putting it anywhere else
  * would spread it. */
 /* @n64 0x8026B720 located */
-int BrGameStepIsAddr(const void *pv)
-{
-    return ((const void *)g_pfnStep == pv) ? 1 : 0;
-}
+/* (port-only BrGameStepIsAddr removed) */
+
 
 /* 0x1002E324 -- `call dword ptr [0x106E79F4]`.  The original does NOT test
  * for NULL; this does, because a null call is a crash rather than a
@@ -79,46 +67,17 @@ int BrGameStepInvoke(void)
     return ((int (*)(void))g_pfnStep)();
 }
 
-BrGameStepFn BrGameStepGet(void)
-{
-    return g_pfnStep;
-}
+/* (port-only BrGameStepGet removed) */
 
-int BrGameStepId(void)
-{
-    int i;
-    if (g_pfnStep == NULL) {
-        return BR_GAMESTEP_NONE;
-    }
-    for (i = 0; i < g_cKnown; ++i) {
-        if (g_apKnown[i] == g_pfnStep) {
-            return g_aKnownId[i];
-        }
-    }
-    return BR_GAMESTEP_OTHER;
-}
 
-const char *BrGameStepName(int id)
-{
-    switch (id) {
-    case BR_GAMESTEP_NONE:     return "(none installed)";
-    case BR_GAMESTEP_RACE:     return "0x10019A70 race";
-    case BR_GAMESTEP_FRONTEND: return "0x10032680 front end";
-    case BR_GAMESTEP_NULL:     return "0x10008D60 null step";
-    default:                   return "(not one of the original three)";
-    }
-}
+/* (port-only BrGameStepId removed) */
 
-int BrGameStepPump(int state)
-{
-    if (state != BR_GAMESTATE_STEP) {
-        /* Every other arm of the jump table is unported.  Saying so is the
-         * point: returning 0 here would be indistinguishable from "the step
-         * ran and did nothing". */
-        return -1;
-    }
-    return BrGameStepInvoke();
-}
+
+/* (port-only BrGameStepName removed) */
+
+
+/* (port-only BrGameStepPump removed) */
+
 
 /* -- Ghidra-matched functions --------------------------- */
 

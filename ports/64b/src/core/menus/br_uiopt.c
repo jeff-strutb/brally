@@ -46,11 +46,8 @@
  *
  * The original INLINES this in every announcing cycler: the 3-arg send,
  * then an intrinsic strcpy (repne scasb + rep movsd/movsb). */
-static __inline void BrOptFlushMessage(void)
-{
-    FUN_100368a0(g_brOwner5BC72C, g_brPA9D008, 1);
-    strcpy(g_szBrName4DB0, g_aBr39B720);        /* DEVIATION: rep movsb */
-}
+/* (port-only BrOptFlushMessage removed) */
+
 
 /* KERNEL32 IAT used verbatim by BrOpt3A00 (0x1003CF50) / BrOpt3810. */
 /* 64-bit core: GlobalHandle is declared by the platform headers */

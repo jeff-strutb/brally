@@ -57,80 +57,33 @@ int BrDPlayRawSend(void *pIface, uint32_t idFrom, uint32_t idTo,
  * 4. 0x1003D950..0x1003DB50 -- the senders
  * ========================================================================== */
 
-int BrDPlaySendPair(const BrDPlayLink *pLink, int32_t fGate,
-                    uint32_t tag, uint32_t value)
-{
-    uint32_t aPayload[2];
+/* (port-only BrDPlaySendPair removed) */
 
-    if (pLink == NULL)          return 0;
-    if (pLink->pIface == NULL)  return 0;
-    if (fGate != 0)             return 0;
 
-    aPayload[0] = tag;
-    aPayload[1] = value;
-    return BrDPlayRawSend(pLink->pIface, pLink->f08, 0, 1, aPayload,
-                          (uint32_t)sizeof aPayload);
-}
+/* (port-only BrDPlaySendTag2 removed) */
 
-int BrDPlaySendTag2(const BrDPlayLink *pLink, int32_t fGate, uint32_t value)
-{
-    return BrDPlaySendPair(pLink, fGate, BR_DPLAY_TAG2, value);
-}
 
-int BrDPlaySendTag5(const BrDPlayLink *pLink, int32_t fGate, uint32_t value)
-{
-    return BrDPlaySendPair(pLink, fGate, BR_DPLAY_TAG5, value);
-}
+/* (port-only BrDPlaySendTag5 removed) */
 
-int BrDPlaySendTag4(const BrDPlayLink *pLink, int32_t fGate, uint32_t value)
-{
-    return BrDPlaySendPair(pLink, fGate, BR_DPLAY_TAG4, value);
-}
 
-int BrDPlaySendTag3(const BrDPlayLink *pLink, int32_t fGate)
-{
-    /* DEVIATION: the original leaves the second dword uninitialised. */
-    return BrDPlaySendPair(pLink, fGate, BR_DPLAY_TAG3, 0u);
-}
+/* (port-only BrDPlaySendTag4 removed) */
+
+
+/* (port-only BrDPlaySendTag3 removed) */
+
 
 /* @n64 0x8026C654 located */
-int BrDPlaySendTag6(const BrDPlayLink *pLink, uint32_t value)
-{
-    /* No gate test -- that is the whole difference from the four above. */
-    return BrDPlaySendPair(pLink, 0, BR_DPLAY_TAG6, value);
-}
+/* (port-only BrDPlaySendTag6 removed) */
 
-int BrDPlaySendTag7(const BrDPlayLink *pLink, uint32_t value)
-{
-    return BrDPlaySendPair(pLink, 0, BR_DPLAY_TAG7, value);
-}
 
-void BrDPlaySendTag6Self(const BrDPlayLink *pLink)
-{
-    if (pLink == NULL)     return;
-    if (pLink->f08 == 0)   return;
-    (void)BrDPlaySendTag6(pLink, pLink->f08);
-}
+/* (port-only BrDPlaySendTag7 removed) */
 
-int BrDPlaySendTag8(const BrDPlayLink *pLink, uint32_t a, uint32_t b)
-{
-    uint32_t aPayload[3];
 
-    if (pLink == NULL)          return 0;
-    if (pLink->pIface == NULL)  return 0;
-    /* no 0x10AA288C gate here */
+/* (port-only BrDPlaySendTag6Self removed) */
 
-    aPayload[0] = BR_DPLAY_TAG8;
-    aPayload[1] = a;
-    aPayload[2] = b;
 
-    if (pLink->f0C != 0)
-        BrAppMsg107((void *)(uintptr_t)(const void *)pLink, aPayload,
-                    (uint32_t)sizeof aPayload, pLink->f08, 1);
+/* (port-only BrDPlaySendTag8 removed) */
 
-    return BrDPlayRawSend(pLink->pIface, pLink->f08, 0, 1, aPayload,
-                          (uint32_t)sizeof aPayload);
-}
 
 /* ==========================================================================
  * 5. 0x10004A40 / 0x10005140 -- the counted-state senders

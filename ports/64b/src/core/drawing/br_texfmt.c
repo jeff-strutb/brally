@@ -56,35 +56,8 @@ int BrTexShiftFromSize(int *pShift, int a, int b)
 }
 
 /* 0x10028200 */
-int BrTexAspectFromSize(int *pCode, int a, int b)
-{
-    int r;
+/* (port-only BrTexAspectFromSize removed) */
 
-    if (a > b) {
-        r = (a * 8) / b;
-        if (r == 0x40) { *pCode = 0; return 1; }
-        if (r == 0x20) { *pCode = 1; return 1; }
-        if (r == 0x10) { *pCode = 2; return 1; }
-        /* No exact rung for r == 8 here: that would mean a == b, which this
-         * branch has already excluded. */
-        if (r > 0x40)  { *pCode = 0; return 0; }
-        if (r > 0x20)  { *pCode = 1; return 0; }
-        if (r > 0x10)  { *pCode = 2; return 0; }
-        *pCode = 3;
-        return 0;
-    }
-
-    r = (b * 8) / a;
-    if (r == 0x40) { *pCode = 6; return 1; }
-    if (r == 0x20) { *pCode = 5; return 1; }
-    if (r == 0x10) { *pCode = 4; return 1; }
-    if (r == 0x08) { *pCode = 3; return 1; }
-    if (r > 0x40)  { *pCode = 6; return 0; }
-    if (r > 0x20)  { *pCode = 5; return 0; }
-    if (r > 0x10)  { *pCode = 4; return 0; }
-    *pCode = 3;
-    return 0;
-}
 
 
 /* 0x10027B90 */

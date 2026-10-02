@@ -41,13 +41,8 @@
  * here.  The handle is the original's two-field {FILE *, char *name} block
  * and is only ever passed straight back out; slice6_78.h explains why its
  * type is spelled `FILE **`. */
-static int32_t br_strres_measure(const char *pszPath)
-{
-    FILE **pFile = BrChkFReadOpen(pszPath);
-    int32_t cb   = (int32_t)BrChkFileSize(pFile);
-    BrChkFClose(pFile);
-    return cb;
-}
+/* (port-only br_strres_measure removed) */
+
 
 /* ==========================================================================
  * 0x1006D1A0 -- load the string resource
@@ -118,9 +113,5 @@ void BrStrResFree(void)
 }
 
 /* @n64 0x80255E64 located */
-void BrStrResResetForTest(void)
-{
-    g_pBrStrResBlob = NULL;
-    g_brStrResUsed  = 0;
-    g_brStrResSize  = 0;
-}
+/* (port-only BrStrResResetForTest removed) */
+

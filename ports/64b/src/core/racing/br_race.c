@@ -123,41 +123,11 @@ float BrRaceTruncHundredths(float t)
  * The car mirror, 0x1005FF22..0x1005FF8B and 0x100608A3..0x100608DC
  * ========================================================================== */
 
-void BrRaceLoadFromCar(BrDriver *pDrv)
-{
-    const BrDriverCar *pCar = pDrv->pCar;
+/* (port-only BrRaceLoadFromCar removed) */
 
-    if (pCar == NULL)
-        return;
 
-    pDrv->f00 = pCar->pos;          /* +0x30  -> +0x00 */
-    pDrv->f0C = pCar->posPrev;      /* +0xF80 -> +0x0C */
-    pDrv->f48 = pCar->gateHi;       /* +0xFA0 -> +0x48 */
-    pDrv->f4C = pCar->gate;         /* +0xFA4 -> +0x4C */
-    pDrv->f40 = pCar->lap;          /* +0xFA8 -> +0x40 */
-    pDrv->f44 = pCar->lapB;         /* +0xFAC -> +0x44 */
-    pDrv->f30 = pCar->tRun;         /* +0xFB0 -> +0x30 */
-    pDrv->f34 = pCar->tBest;        /* +0xFE4 -> +0x34 */
-    pDrv->f50 = pCar->fFF4;         /* +0xFF4 -> +0x50 */
-}
+/* (port-only BrRaceStoreToCar removed) */
 
-void BrRaceStoreToCar(BrDriver *pDrv)
-{
-    BrDriverCar *pCar = pDrv->pCar;
-
-    if (pCar == NULL)
-        return;
-
-    /* The positions are NOT sent back: they are inputs, owned by the physics
-     * pass. Seven fields out against nine in. */
-    pCar->gateHi = pDrv->f48;
-    pCar->gate   = pDrv->f4C;
-    pCar->lap    = pDrv->f40;
-    pCar->lapB   = pDrv->f44;
-    pCar->tRun   = pDrv->f30;
-    pCar->tBest  = pDrv->f34;
-    pCar->fFF4   = pDrv->f50;
-}
 
 /* ==========================================================================
  * The pieces the two lap arms share
@@ -180,61 +150,23 @@ void BrRaceStoreToCar(BrDriver *pDrv)
 /* `fcom`-class C3: set for EQUAL and for UNORDERED alike. Spelled out rather
  * than written as `a == b`, because C's == is FALSE for a NaN operand and the
  * x87 flag is SET -- the two disagree on exactly the case that matters. */
-static int BrRaceFcomEqualOrNan(float a, float b)
-{
-    return !(a < b) && !(a > b);
-}
+/* (port-only BrRaceFcomEqualOrNan removed) */
 
-static void BrRaceBestLap(BrDriver *pDrv, float tLap)
-{
-    /* 0x10060164 `test ah,0x40 / jne` -- C3 set jumps straight to the store,
-     * so a NaN incumbent is treated as "no best yet". */
-    if (!BrRaceFcomEqualOrNan(pDrv->f34, BR_RACE_KZERO)) {
-        /* 0x10060172 `test ah,1 / je` -- C0 is set for LESS and for
-         * UNORDERED; the skip is on C0 CLEAR. */
-        int fLessOrUnordered = !(tLap >= pDrv->f34);
-        if (!fLessOrUnordered)
-            return;
-    }
-    pDrv->f34 = tLap;
-    /* OMITTED (br_race.h, item 3): the per-track record table at 0x10AF2094
-     * and the two HUD message ids 0x109 / 0x10A that follow from it. Guarded
-     * by `pDrv->f64 < nCars`, and it writes no driver or car state. */
-}
+
+/* (port-only BrRaceBestLap removed) */
+
 
 /* The block both lap arms run once a lap is judged complete:
  * 0x100601EF..0x10060231 and 0x10060796..0x100607D4. */
-static void BrRaceRecordLap(BrDriver *pDrv, float tLap)
-{
-    BrDriverCar *pCar = pDrv->pCar;
+/* (port-only BrRaceRecordLap removed) */
 
-    if (pCar != NULL) {
-        /* "veh->lapTimeFinal[%d]=%f\n", pDrv->f40, tLap */
-        /* DEVIATION (memory safety): the original indexes +0xFB4 by the lap
-         * with no bound of any kind, and the array ends at +0xFE4 -- twelve
-         * entries. A race configured for more than twelve laps therefore
-         * walks into the best-lap and finish-time fields. The write is
-         * dropped here instead; nothing else about the lap changes. */
-        if ((uint32_t)pDrv->f40 < (uint32_t)BR_RACE_LAPTIME_MAX)
-            pCar->aLapTime[pDrv->f40] = tLap;
-    }
-    /* Unconditional -- not inside the `if (veh)`. */
-    pDrv->f30 -= tLap;
-}
 
 /* 0x10060252..0x10060294 and 0x10060860..0x1006089C -- the mode-3 unwind.
  * Two byte-identical blocks reached from the two lap arms; the only
  * difference between them is which debug string precedes them, "(a)" or
  * "(b)". */
-static void BrRaceModeWrapUnwind(const BrRaceRules *pRules, BrDriver *pDrv)
-{
-    pDrv->f40 -= 1;
-    pDrv->f44 -= 1;
-    pDrv->f48 -= pRules->nGates;
-    pDrv->f4C -= pRules->nGates;
-    if (pRules->pfLapLength != NULL)            /* 0x1006027F: 0x106EED48 */
-        pDrv->f50 -= *pRules->pfLapLength;
-}
+/* (port-only BrRaceModeWrapUnwind removed) */
+
 
 /* ==========================================================================
  * 0x1005FF00

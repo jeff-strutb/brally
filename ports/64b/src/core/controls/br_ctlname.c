@@ -40,29 +40,16 @@
  *
  * Both call sites are here: 0x10058B36 passes one integer argument and
  * 0x10058B94 passes none. */
-static void ctlname_sprintf(char *pszDst, const char *pszFmt, ...)
-{
-    va_list ap;
-    va_start(ap, pszFmt);
-    vsprintf(pszDst, pszFmt, ap);
-    va_end(ap);
-}
+/* (port-only ctlname_sprintf removed) */
+
 
 /* The tail shared by both arms of both loops.  `code` is the value already
  * stored in the record; the select is the original's
  *     add eax, -base ; cmp eax, 5 ; ja skip ; jmp [table + eax*4]
  * so it is UNSIGNED and a code below the base wraps to a huge number and is
  * skipped rather than indexing backwards. */
-static void ctlname_axis(BrCfgRec *pRec, uint32_t code, uint32_t base)
-{
-    uint32_t sel = code - base;
+/* (port-only ctlname_axis removed) */
 
-    if (sel <= (uint32_t)(BR_CTLNAME_STR_AXIS_COUNT - 1)) {
-        ctlname_sprintf(pRec->szText,
-                        BrStrGet((int)(BR_CTLNAME_STR_AXIS_FIRST + sel)));
-    }
-    /* else: the record keeps its key and whatever text the clear left. */
-}
 
 /* WHAT IT DOES: fills the mouse and joystick control-name tables used by the
  * controls menu: the first rows of each are "BUTTON n", the rest get the
@@ -122,15 +109,8 @@ void BrCtlNameInit(void)
  * The three tables as slice2_23.c wants them
  * ========================================================================== */
 
-const BrCfgTables *BrCtlNameTables(void)
-{
-    static const BrCfgTables T = {
-        (*(const BrCfgRec (*)[120])&g_aBrCtlNameKey),     /* kind 0     */
-        (*(BrCfgRec (*)[134])&g_aBrCtlNameJoy),     /* kinds 1, 2 */
-        (*(BrCfgRec (*)[10])&g_aBrCtlNameMouse)    /* kind 3     */
-    };
-    return &T;
-}
+/* (port-only BrCtlNameTables removed) */
+
 
 /* 0x10039580 BrCtlNameFind, the reader, lives in
  * BrCtlBindingToItem_10039620.cpp: it shares the original's C++ TU with its

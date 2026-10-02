@@ -28,24 +28,8 @@ BrFrameBank g_BrPool32 = { NULL, 32, 20, 21, 0, 0 };    /* 0x10069530 */
 
 BrPool *g_pBrPool64 = NULL;
 
-void *BrFrameBankAlloc(BrFrameBank *pBank)
-{
-    int32_t  slot;
-    uint8_t *p;
+/* (port-only BrFrameBankAlloc removed) */
 
-    /* Signed compare, as in the original (`jge`). */
-    if (pBank->count < pBank->nUsable)
-        slot = pBank->nBank * pBank->frame + pBank->count;
-    else
-        slot = pBank->nBank * pBank->frame + pBank->nUsable;
-
-    p = pBank->pBase + (ptrdiff_t)slot * pBank->cbSlot;
-
-    /* Incremented on BOTH paths, so the counter runs past the limit and
-     * every late request in the frame aliases the same overflow slot. */
-    pBank->count++;
-    return p;
-}
 
 /* 0x100694E0 */
 /* WHAT IT DOES: hands out one small scratch block that only has to last the

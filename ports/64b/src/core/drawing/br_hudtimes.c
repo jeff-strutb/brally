@@ -61,19 +61,11 @@
 /* DEVIATION: the three floats and the count are read with memcpy from a byte
  * pointer rather than through a struct, because no byte-exact struct for the
  * 0x106C2CF8 block exists in the port. */
-static float Br63RaceFloat(uint32_t off)
-{
-    float f;
-    memcpy(&f, (const unsigned char *)(*(void * *)&g_pBr63Race) + off, sizeof f);
-    return f;
-}
+/* (port-only Br63RaceFloat removed) */
 
-static int32_t Br63RaceInt(uint32_t off)
-{
-    int32_t v;
-    memcpy(&v, (const unsigned char *)(*(void * *)&g_pBr63Race) + off, sizeof v);
-    return v;
-}
+
+/* (port-only Br63RaceInt removed) */
+
 
 /* WHAT IT DOES: draws the lap and split times down the right-hand edge of the
  * screen -- which two times are shown depends on the game mode, and two of

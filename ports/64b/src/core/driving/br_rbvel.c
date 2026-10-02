@@ -42,56 +42,8 @@ typedef struct { uint32_t v; } BrCtrlKeyArg;
 
 /* The body of 0x1006B430 and 0x1006B510, which differ only in where the
  * point comes from. */
-static BrVec3 BrS42VelAt(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pP)
-{
-    BrVec3 r, sum;
-    double cx, cy, cz;
+/* (port-only BrS42VelAt removed) */
 
-    BrMat4MulVec3Transposed(&r, &pB->m, pP);
-
-    /* All three routines write pB->vel into *pOut and then read it back to
-     * form the sum.  In 0x1006B340 that intermediate is the FINAL content of
-     * pOut until the closing matrix multiply overwrites it, so the store is
-     * kept here rather than folded away. */
-    *pOut = pB->st.vel;
-
-    /* SPILL MAP, checked in all three callers -- 0x1006B510, 0x1006B430 and
-     * 0x1006B340 -- because a shared C body is only honest if the bodies it
-     * stands for agree:
-     *
-     *   r comes back from 0x10074770 through a stack BrVec3, so it IS
-     *   float-rounded, and reading it out of `r` here reproduces that.
-     *
-     *   The six products and three differences of the cross stay in x87
-     *   registers.  The ONLY store among them is `fst dword [esp+0x14]` at
-     *   1006B5C0 (0x1006B510) and 1006B4E4 (0x1006B430) -- and that slot is
-     *   never reloaded, so it rounds nothing; the add at 1006B5CB takes the
-     *   register copy `fst` left behind.  0x1006B340 has no such store at
-     *   all.  So all three cross components reach their add unrounded.
-     *
-     *   Each sum is stored exactly once -- straight into pOut for the first
-     *   two, into a stack BrVec3 for 0x1006B340 -- so it rounds to float
-     *   there and nowhere earlier.  Returning a BrVec3 by value is that
-     *   store.
-     *
-     * This is why the cross is written out here instead of calling
-     * BrS42Cross: that helper returns a BrVec3, which would round all three
-     * components a step early.  BrS42Cross is left alone because its other
-     * caller (BrRbAccumOwnForces, 0x1006AEB0) has not been traced for spill
-     * points, and widening it on the strength of this function's evidence
-     * would be assuming the answer for a function nobody has read. */
-    cx = (double)pB->st.angVel.y * (double)r.z
-       - (double)pB->st.angVel.z * (double)r.y;
-    cy = (double)pB->st.angVel.z * (double)r.x
-       - (double)pB->st.angVel.x * (double)r.z;
-    cz = (double)pB->st.angVel.x * (double)r.y
-       - (double)pB->st.angVel.y * (double)r.x;
-
-    sum.x = (float)(cx + (double)pOut->x);
-    sum.y = (float)(cy + (double)pOut->y);
-    sum.z = (float)(cz + (double)pOut->z);
-    return sum;
-}
 
 /* 0x1006B510 */
 /* WHAT IT DOES: answers how fast one particular spot on a moving, spinning

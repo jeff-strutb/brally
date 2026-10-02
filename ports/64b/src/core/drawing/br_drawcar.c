@@ -129,13 +129,12 @@
 static BrDrawCarHooks s_hooks;
 static int32_t        s_cFrontier;
 
-void BrDrawCarSetHooks(const BrDrawCarHooks *pHooks)
-{
-    if (pHooks) s_hooks = *pHooks;
-    else        memset(&s_hooks, 0, sizeof(s_hooks));
-}
-int32_t BrDrawCarFrontierHits(void) { return s_cFrontier; }
-void    BrDrawCarFrontierReset(void) { s_cFrontier = 0; }
+/* (port-only BrDrawCarSetHooks removed) */
+
+/* (port-only BrDrawCarFrontierHits removed) */
+
+/* (port-only BrDrawCarFrontierReset removed) */
+
 
 /* ------------------------------------------------------------------ *
  * The eight-byte append.
@@ -229,18 +228,8 @@ void BrGuMtxStore(const int pSrc[4][4], int pDst[4][4])
  * bridge from that module's host pointer to the 32-bit number the command
  * word carries.  With no hook installed it reports "no matrix" and counts
  * the reach -- it does not invent an address. */
-static BrMat4 *mtx_alloc(uint32_t *pAddr)
-{
-    BrMat4 *pM;
-    if (!s_hooks.pfnMtxAlloc || !s_hooks.pfnDlAddr) {
-        ++s_cFrontier;
-        *pAddr = 0;
-        return 0;
-    }
-    pM = s_hooks.pfnMtxAlloc();
-    *pAddr = pM ? s_hooks.pfnDlAddr(pM) : 0;
-    return pM;
-}
+/* (port-only mtx_alloc removed) */
+
 
 /* ==================================================================== *
  * 0x10009C10 -- the four wheels.
@@ -655,19 +644,8 @@ void BrCarDrawBody(void *pCar)
  * 0x10009C10 with the raw pointer; BrCarDrawWheels takes the view pair.
  * Only the fields BrCarDrawWheels actually reads are populated.
  * ------------------------------------------------------------------ */
-static void wheel_call(BrDriverCar *car)
-{
-    const unsigned char *mdl = (const unsigned char *)BrG_6C3308;
-    BrCarView   cv;
-    BrModelView mv;
-    memset(&cv, 0, sizeof(cv));
-    memset(&mv, 0, sizeof(mv));
-    memcpy(cv.aWheel, car + BR_CAR_OFF_AWHEEL, sizeof(cv.aWheel));
-    cv.bKind      = car->b29AF;
-    mv.dlWheel    = *(const uint32_t *)(mdl + 0x80BC);
-    mv.dlWheelAlt = *(const uint32_t *)(mdl + 0x80C4);
-    BrCarDrawWheels(&cv, &mv);
-}
+/* (port-only wheel_call removed) */
+
 
 /* ==================================================================== *
  * 0x1000A110 -- draw one vehicle: body, underside, glass, detail,

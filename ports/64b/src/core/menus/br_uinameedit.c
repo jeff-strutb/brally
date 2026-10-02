@@ -66,13 +66,8 @@
  * +0x44C from the same base, which is 0x14 bytes past the end of record n.
  * Reproduced, not corrected -- see slice5_61.h, which found the same thing on
  * the sibling array. */
-static unsigned char *Br73Rec(unsigned char *pBase, int32_t n)
-{
-    /* g_br0AB3F4 is signed and IS set to -1 by the name-reset paths; the
-     * original does not guard against it.  Same arithmetic slice5_61.c uses
-     * on the sibling array. */
-    return pBase + (ptrdiff_t)n * (ptrdiff_t)BR61_REC29D0_STRIDE;
-}
+/* (port-only Br73Rec removed) */
+
 
 /* WHAT IT DOES: cancels a name edit, putting the name that was set aside back
  * on the record and clearing the edit box. It looks at the flag the commit

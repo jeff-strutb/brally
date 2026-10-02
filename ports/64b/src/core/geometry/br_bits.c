@@ -127,9 +127,5 @@ void BrSwapU16Array(void *pv, int count)
     } while (--count);
 }
 
-void *BrHandleLookup(void *const *apTable, uint32_t handle)
-{
-    if (handle < BR_HANDLE_MIN || handle > BR_HANDLE_MAX)
-        return 0;
-    return apTable[handle];
-}
+/* (port-only BrHandleLookup removed) */
+

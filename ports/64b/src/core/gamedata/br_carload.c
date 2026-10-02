@@ -98,26 +98,14 @@ void BrSub10037740(void *pCar, void *pArg)
 
 /* Byte-swap the u32 that starts at p, byte-wise so the host's own endianness
  * never enters into it. */
-static void br16_swap_u32_at(uint8_t *p)
-{
-    uint8_t t;
-    t = p[0]; p[0] = p[3]; p[3] = t;
-    t = p[1]; p[1] = p[2]; p[2] = t;
-}
+/* (port-only br16_swap_u32_at removed) */
 
-static void br16_swap_u16_at(uint8_t *p)
-{
-    uint8_t t = p[0];
-    p[0] = p[1];
-    p[1] = t;
-}
 
-static uint16_t br16_ld16(const uint8_t *p)
-{
-    uint16_t v;
-    memcpy(&v, p, sizeof v);
-    return v;
-}
+/* (port-only br16_swap_u16_at removed) */
+
+
+/* (port-only br16_ld16 removed) */
+
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x104B16E4 */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */  /* 0x104B16E0 */

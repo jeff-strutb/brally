@@ -183,46 +183,28 @@ void BrMat4LookAt(BrMat4 *pM,
     pM->m[3][3] = 1.0f;
 }
 
-static void s17_pack_dirs(const BrMat4 *pM, BrLightPair *pLights)
-{
-    pLights->dir0[0] = FUN_1002a490((double)pM->m[0][0]);
-    pLights->dir0[1] = FUN_1002a490((double)pM->m[1][0]);
-    pLights->dir0[2] = FUN_1002a490((double)pM->m[2][0]);
-    pLights->dir1[0] = FUN_1002a490((double)pM->m[0][1]);
-    pLights->dir1[1] = FUN_1002a490((double)pM->m[1][1]);
-    pLights->dir1[2] = FUN_1002a490((double)pM->m[2][1]);
-}
+/* (port-only s17_pack_dirs removed) */
+
 
 /* dot(column c of pM, v), in the original's summation order:
  *      (m2*v.z + m1*v.y) + m0*v.x     for columns 0 and 2
  *      (m2*v.z + m0*v.x) + m1*v.y     for column 1
  * The two orders really are different in the original; column 1 is always
  * computed by the shorter three-term chain that starts with z and x. */
-static double s17_dot_col_zyx(const BrMat4 *pM, int c, const BrVec3d *v)
-{
-    double s = (double)pM->m[2][c] * v->z + (double)pM->m[1][c] * v->y;
-    return s + (double)pM->m[0][c] * v->x;
-}
+/* (port-only s17_dot_col_zyx removed) */
 
-static double s17_dot_col_zxy(const BrMat4 *pM, int c, const BrVec3d *v)
-{
-    double s = (double)pM->m[2][c] * v->z + (double)pM->m[0][c] * v->x;
-    return s + (double)pM->m[1][c] * v->y;
-}
+
+/* (port-only s17_dot_col_zxy removed) */
+
 
 /* dot(column 2, v) is built as (m1*v.y + m2*v.z) + m0*v.x -- note the pair
  * is (y, z) here where column 0 uses (z, y). Preserved. */
-static double s17_dot_col_yzx(const BrMat4 *pM, int c, const BrVec3d *v)
-{
-    double s = (double)pM->m[1][c] * v->y + (double)pM->m[2][c] * v->z;
-    return s + (double)pM->m[0][c] * v->x;
-}
+/* (port-only s17_dot_col_yzx removed) */
+
 
 /* 0x1007C8A0 __ftol: truncate toward zero, take the low dword. */
-static int32_t s17_ftol(double v)
-{
-    return (int32_t)v;
-}
+/* (port-only s17_ftol removed) */
+
 
 /* 0x10030B50 */
 /* WHAT IT DOES: does the lighting set-up of its neighbour above and then works

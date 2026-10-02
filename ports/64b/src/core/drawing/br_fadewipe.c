@@ -134,15 +134,8 @@
  * 64-bit result. DEVIATION: inputs outside the 64-bit range are undefined in
  * C, so they are turned into 0 rather than whatever the x87 indefinite
  * value would truncate to. */
-static int32_t br16_ftol(double x)
-{
-    int64_t v;
+/* (port-only br16_ftol removed) */
 
-    if (!(x > -9.2233720368547758e18 && x < 9.2233720368547758e18))
-        return 0;
-    v = (int64_t)x;
-    return (int32_t)(uint32_t)((uint64_t)v & 0xFFFFFFFFu);
-}
 
 /* ------------------------------------------------------------------ *
  * x87 COMPARISON POLARITY, SPELLED ONCE
@@ -180,57 +173,32 @@ static int32_t br16_ftol(double x)
  * br_dlshared.c with BrDlsTileSizeDecode, which is the only thing in this
  * file that wanted it. */
 
-static uint32_t br16_bswap32(uint32_t v)
-{
-    return ((v & 0x000000FFu) << 24) | ((v & 0x0000FF00u) << 8) |
-           ((v & 0x00FF0000u) >> 8)  | ((v & 0xFF000000u) >> 24);
-}
+/* (port-only br16_bswap32 removed) */
+
 
 /* Byte-swap the u32 that starts at p, byte-wise so the host's own endianness
  * never enters into it. */
-static void br16_swap_u32_at(uint8_t *p)
-{
-    uint8_t t;
-    t = p[0]; p[0] = p[3]; p[3] = t;
-    t = p[1]; p[1] = p[2]; p[2] = t;
-}
+/* (port-only br16_swap_u32_at removed) */
 
-static void br16_swap_u16_at(uint8_t *p)
-{
-    uint8_t t = p[0];
-    p[0] = p[1];
-    p[1] = t;
-}
+
+/* (port-only br16_swap_u16_at removed) */
+
 
 /* Read/write a u32 byte-wise in the host's order. The .rca payload has
  * already been swapped by the time these are read back. */
-static uint32_t br16_ld32(const uint8_t *p)
-{
-    uint32_t v;
-    memcpy(&v, p, sizeof v);
-    return v;
-}
+/* (port-only br16_ld32 removed) */
 
-static void br16_st32(uint8_t *p, uint32_t v)
-{
-    memcpy(p, &v, sizeof v);
-}
 
-static uint16_t br16_ld16(const uint8_t *p)
-{
-    uint16_t v;
-    memcpy(&v, p, sizeof v);
-    return v;
-}
+/* (port-only br16_st32 removed) */
+
+
+/* (port-only br16_ld16 removed) */
+
 
 /* Advance the fade emitter's cursor by one command and hand back the slot
  * that was reserved. Every emit site in 0x1002AF10 / 0x1002B340 is this. */
-static BrGfxWords *br16_fade_alloc(BrFadeState *pSt)
-{
-    BrGfxWords *p = pSt->pCmd;
-    pSt->pCmd = p + 1;
-    return p;
-}
+/* (port-only br16_fade_alloc removed) */
+
 
 /* ================================================================== */
 /* 3. Screen wipe / fade                                              */
@@ -282,26 +250,12 @@ void BrFadeLatch(void)
 /* The 0x3EB / 0x3E8 / 0 token soup both emit paths hand to
  * BrRdpSetCombineLERP; spelled out once so the two call sites stay readable
  * and identical to the original's push order. */
-static void br16_combine(BrGfxWords *pOut, int t13, int t9, int t5, int t1)
-{
-    BrRdpSetCombineLERP(pOut,
-                        0, 0, 0, t1,
-                        0, 0, 0, t5,
-                        0, 0, 0, t9,
-                        0, 0, 0, t13);
-}
+/* (port-only br16_combine removed) */
+
 
 /* The 0xE1 command both bar-emitting arms build. */
-static uint32_t br16_bar_w0(int32_t top, int32_t width, int32_t shift)
-{
-    uint32_t a = (uint32_t)((uint32_t)top << shift);
-    uint32_t b = (uint32_t)((uint32_t)width << shift);
+/* (port-only br16_bar_w0 removed) */
 
-    a = (uint32_t)(a + 0xFFFFFu);
-    a = (a << 12) & 0xFFF000u;
-    b = (b - 1u) & 0xFFFu;
-    return 0xE1000000u | a | b;
-}
 
 
 /* 0x1002B340 */
@@ -509,24 +463,8 @@ void BrFadeDrawBars(void)
  *               `!(*pCur <= tgt)` clamped a NaN; the original does not.
  *   0x1002B843  test ah,1 / je skip       -- clamp on C0, so unordered DOES
  *               clamp.  `*pCur < tgt` is false for NaN and did not. */
-static void br16_ramp_step(float *pCur, float tgt, float rate, float dt,
-                           int32_t *pKick, uint8_t *pOut)
-{
-    if (*pKick != 0) {
-        *pKick = 0;
-    } else if (BR16_FNEO(*pCur, tgt)) {
-        int forward = (rate >= 0.0f);
-        *pCur = rate * dt + *pCur;
-        if (forward) {
-            if (*pCur > tgt)
-                *pCur = tgt;
-        } else {
-            if (!(*pCur >= tgt))
-                *pCur = tgt;
-        }
-    }
-    *pOut = (uint8_t)br16_ftol((double)*pCur * 255.0);  /* 0x1008F438 */
-}
+/* (port-only br16_ramp_step removed) */
+
 
 /* 0x100186E0 */
 /* Matching-model globals for the fade/wipe module (glide addresses).  The

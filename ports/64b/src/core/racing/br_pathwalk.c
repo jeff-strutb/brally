@@ -55,25 +55,8 @@
 
 /* Shared tail of both walks: test the path segment against the next entry
  * of BrPathSegs and fold the result into the two counters. */
-static void BrPathCountCrossing(const BrVec3 *pA, const BrVec3 *pB)
-{
-    int32_t modulus = BrPathSegCount;
-    int32_t idx;
+/* (port-only BrPathCountCrossing removed) */
 
-    if (modulus == 0) {
-        return;          /* the original guards the idiv, not the table */
-    }
-    idx = ((*(int32_t *)((char *)&g_aBrRaceCar + 0x84B8)) /* BR_LP64_BYTE_VIEW */ + 1) % modulus;
-
-    /* GOTCHA: the record's SECOND point is the FIRST argument. */
-    if (BrSeg2Intersect(&BrPathSegs[idx].b, &BrPathSegs[idx].a,
-                        BR_XY(pA), BR_XY(pB)) != 0) {
-        ++(*(int32_t *)((char *)&g_aBrRaceCar + 0x84B8)) /* BR_LP64_BYTE_VIEW */;
-        if (idx == 0) {
-            ++(*(int32_t *)((char *)&g_aBrRaceCar + 0x893C)) /* BR_LP64_BYTE_VIEW */;
-        }
-    }
-}
 
 /* 0x10065B20 */
 /* WHAT IT DOES: walks along a path a given distance and works out where that

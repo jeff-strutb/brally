@@ -114,29 +114,17 @@ extern void  BrX10042AF0(void *p, int a1, int a2);
  * offsets recovered from the disassembly stay valid without relying on
  * pointer casts being aligned.                                         */
 
-static uint32_t s17_ld32(const unsigned char *p)
-{
-    uint32_t v;
-    memcpy(&v, p, sizeof v);
-    return v;
-}
+/* (port-only s17_ld32 removed) */
 
-static void s17_st32(unsigned char *p, uint32_t v)
-{
-    memcpy(p, &v, sizeof v);
-}
 
-static float s17_ldf(const unsigned char *p)
-{
-    float v;
-    memcpy(&v, p, sizeof v);
-    return v;
-}
+/* (port-only s17_st32 removed) */
 
-static void s17_stf(unsigned char *p, float v)
-{
-    memcpy(p, &v, sizeof v);
-}
+
+/* (port-only s17_ldf removed) */
+
+
+/* (port-only s17_stf removed) */
+
 
 /* g_6C0680 is advanced by 8 bytes and then the two words are written --
  * the original reads the cursor, bumps the global, and only then stores. */
@@ -155,16 +143,8 @@ static void s17_stf(unsigned char *p, float v)
  * stream in this port must not dereference these words. */
 #define s17_ptrword(p_)   ((uint32_t)(uintptr_t)(const void *)(p_))
 
-static uint32_t s17_rgba5551(int r, int g, int b)
-{
-    uint32_t v;
+/* (port-only s17_rgba5551 removed) */
 
-    v  = ((uint32_t)r << 8) & 0xF800u;
-    v |= ((uint32_t)g << 3) & 0x07C0u;
-    v |= ((uint32_t)(b >> 2)) & 0x003Eu;    /* arithmetic shift, as `sar` */
-    v |= 1u;                                /* `or al, 1` */
-    return v & 0xFFFFu;
-}
 
 /* 0x100314E8 */
 /* WHAT IT DOES: wipes the whole screen to one flat colour, switching the

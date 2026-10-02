@@ -27,50 +27,26 @@
  * loader 0x10019040 byte-swaps it), so a command is two host u32s.  Read them
  * byte-wise anyway: CONVENTIONS.md forbids overlaying a struct on a foreign
  * buffer, and a display list is exactly that. */
-static uint32_t br_dlgl_w(const uint8_t *p)
-{
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
-           ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
-}
+/* (port-only br_dlgl_w removed) */
+
 
 /* `shl 20 / sar 20` -- sign-extend the low twelve bits.  Written as the
  * explicit fold rather than as a signed right shift, which C99 leaves
  * implementation-defined.  0x1001E720 uses this on all four fields; the
  * scissor handlers do NOT (they use plain masks), and that difference is
  * load-bearing. */
-static int32_t br_dlgl_s12(uint32_t v)
-{
-    int32_t x = (int32_t)(v & 0xFFFu);
-    return (x >= 0x800) ? x - 0x1000 : x;
-}
+/* (port-only br_dlgl_s12 removed) */
+
 
 /* ==================================================================== */
 /* state                                                                */
 /* ==================================================================== */
 
-void BrDlGlInit(BrDlGl *pGl, int32_t cyScreen)
-{
-    if (pGl == NULL)
-        return;
-    memset(pGl, 0, sizeof(*pGl));
-    pGl->cyScreen = cyScreen;
-    /* The window as 0x1001E1E0 / 0x1001E200 leave it for a full-screen view:
-     * minimum at the origin, maximum at the window height.  Those two writers
-     * are outside this module's scope, so this is a starting value rather than
-     * a transcription, and it is stated as such. */
-    pGl->clipMinX = 0;
-    pGl->clipMinY = 0;
-    pGl->clipMaxX = 0;
-    pGl->clipMaxY = cyScreen;
-}
+/* (port-only BrDlGlInit removed) */
 
-float BrDlGlGet5D17C4(const BrDlGl *pGl)
-{
-    float f;
-    uint32_t v = pGl->w5D17C4;
-    memcpy(&f, &v, sizeof(f));
-    return f;
-}
+
+/* (port-only BrDlGlGet5D17C4 removed) */
+
 
 /* ==================================================================== */
 /* opcode 0xDC -- bind a texture                                        */
@@ -91,35 +67,8 @@ float BrDlGlGet5D17C4(const BrDlGl *pGl)
 /* 0x1001E2E0 -- G_DL opcode 0xDC, 30 bytes.  Bind the texture named by the
  * low 24 bits of w0, through the hook slot at 0x118ED1CC, and return
  * p + 8*w1.  Trace above. */
-const uint8_t *BrDlGlBindTexture(BrDlGl *pGl, const uint8_t *p)
-{
-    uint32_t w0 = br_dlgl_w(p);
-    uint32_t w1;
+/* (port-only BrDlGlBindTexture removed) */
 
-    pGl->hTexture = w0 & 0x00FFFFFFu;
-    pGl->cBind++;
-    if (pGl->hook.pfnTexSelect != NULL)
-        pGl->hook.pfnTexSelect(pGl->hook.pUser, pGl->hTexture);
-    else
-        pGl->cNullHook++;           /* frontier: 0x118ED1CC not installed */
-
-    w1 = br_dlgl_w(p + 4);
-    /* `lea eax,[esi + ecx*8]`.  One 0xDC stands in for the run of texture
-     * setup commands it was written over at load time (br_dl.h has that
-     * chain), so w1 is a length in COMMANDS and the step is 8*w1.
-     *
-     * Two properties preserved deliberately:
-     *   - w1 == 0 returns p unchanged.  The original then re-executes the same
-     *     command forever; this port reproduces the arithmetic and leaves the
-     *     loop bound to the caller.
-     *   - w1 == 1 returns p + 8, which is what the Glide font emitter emits.
-     *
-     * DEVIATION: the original's `lea` is 32-bit and wraps at 4 GiB; this is
-     * host pointer arithmetic and does not.  No shipped list can reach that --
-     * w1 is a run length of a handful of commands -- and wrapping a host
-     * pointer is not something a port can do meaningfully. */
-    return p + (size_t)8u * (size_t)w1;
-}
 
 /* ==================================================================== */
 /* opcode 0xDD -- re-aim that texture                                   */
@@ -138,18 +87,8 @@ const uint8_t *BrDlGlBindTexture(BrDlGl *pGl, const uint8_t *p)
  * WHOLE -- it is an address, and masking it would be a real defect. */
 /* 0x1001E300 -- opcode 0xDD, 32 bytes.  Re-aim that texture at a new source
  * address, through the hook slot at 0x118ED1D0, and return p + 8. */
-const uint8_t *BrDlGlRetarget(BrDlGl *pGl, const uint8_t *p)
-{
-    pGl->hRetarget    = br_dlgl_w(p) & 0x00FFFFFFu;
-    pGl->addrRetarget = br_dlgl_w(p + 4);
-    pGl->cRetarget++;
-    if (pGl->hook.pfnTexRetarget != NULL)
-        pGl->hook.pfnTexRetarget(pGl->hook.pUser,
-                                 pGl->hRetarget, pGl->addrRetarget);
-    else
-        pGl->cNullHook++;           /* frontier: 0x118ED1D0 not installed */
-    return p + 8;
-}
+/* (port-only BrDlGlRetarget removed) */
+
 
 /* ==================================================================== */
 /* opcode 0xDF -- park a scalar for the texture-rect helper             */
@@ -171,12 +110,8 @@ const uint8_t *BrDlGlRetarget(BrDlGl *pGl, const uint8_t *p)
  * BrDlGlGet5D17C4. */
 /* 0x1001EB30 -- opcode 0xDF, 17 bytes.  Store w1 in the global 0x105D17C4
  * and return p + 8. */
-const uint8_t *BrDlGlSet5D17C4(BrDlGl *pGl, const uint8_t *p)
-{
-    pGl->w5D17C4 = br_dlgl_w(p + 4);
-    pGl->cSet5D17C4++;
-    return p + 8;
-}
+/* (port-only BrDlGlSet5D17C4 removed) */
+
 
 /* ==================================================================== */
 /* opcode 0xE1 -- fill rectangle, integer corners                       */
@@ -229,23 +164,8 @@ const uint8_t *BrDlGlSet5D17C4(BrDlGl *pGl, const uint8_t *p)
 /* 0x1001E720 -- opcode 0xE1, 73 bytes.  Fill a screen rectangle whose four
  * corners are signed 12-bit INTEGERS, by calling the emitter 0x1001E380 with
  * (ulx, H - lry - 1, lrx + 1, H - uly); returns p + 8. */
-const uint8_t *BrDlGlFillRect(BrDlGl *pGl, const uint8_t *p)
-{
-    uint32_t w0 = br_dlgl_w(p), w1 = br_dlgl_w(p + 4);
-    int32_t  H  = pGl->cyScreen;
-    int32_t  lrx = br_dlgl_s12(w0 >> 12);
-    int32_t  lry = br_dlgl_s12(w0);
-    int32_t  ulx = br_dlgl_s12(w1 >> 12);
-    int32_t  uly = br_dlgl_s12(w1);
+/* (port-only BrDlGlFillRect removed) */
 
-    pGl->cFillRect++;
-    if (pGl->hook.pfnFillRect != NULL)
-        pGl->hook.pfnFillRect(pGl->hook.pUser,
-                              ulx, H - lry - 1, lrx + 1, H - uly);
-    else
-        pGl->cNullHook++;       /* frontier: 0x1001E380 is not transcribed */
-    return p + 8;
-}
 
 /* ==================================================================== */
 /* opcodes 0xE2 and 0xED -- set the clip window, two conventions        */
@@ -298,51 +218,20 @@ const uint8_t *BrDlGlFillRect(BrDlGl *pGl, const uint8_t *p)
  * either address -- 0x1001EBC0 and 0x1001EB50 are two functions in the
  * original, and each is claimed below by the wrapper that IS it.  They
  * differ only in the shift and mask applied to each of the four fields. */
-static const uint8_t *br_dlgl_scissor(BrDlGl *pGl, const uint8_t *p,
-                                      int fFrac)
-{
-    uint32_t w0 = br_dlgl_w(p), w1 = br_dlgl_w(p + 4);
-    int32_t  H  = pGl->cyScreen;
-    int32_t  ulx, uly, lrx, lry;
+/* (port-only br_dlgl_scissor removed) */
 
-    if (fFrac) {                        /* 0xED, 0x1001EB50: 10.2 */
-        ulx = (int32_t)((w0 >> 14) & 0x3FFu);
-        uly = (int32_t)((w0 >> 2) & 0x3FFu);
-        lrx = (int32_t)((w1 >> 14) & 0x3FFu);
-        lry = (int32_t)((w1 >> 2) & 0x3FFu);
-    } else {                            /* 0xE2, 0x1001EBC0: integer */
-        ulx = (int32_t)((w0 >> 12) & 0xFFFu);
-        uly = (int32_t)(w0 & 0xFFFu);
-        lrx = (int32_t)((w1 >> 12) & 0xFFFu);
-        lry = (int32_t)(w1 & 0xFFFu);
-    }
-
-    pGl->clipMinX = ulx;                /* 0x105D17BC */
-    pGl->clipMaxY = H - uly;            /* 0x105CCFE0 */
-    pGl->clipMaxX = lrx;                /* 0x105D17B8 */
-    pGl->clipMinY = H - lry;            /* 0x105D17C0 */
-
-    pGl->cScissor++;
-    if (pGl->hook.pfnClipWindow != NULL)
-        pGl->hook.pfnClipWindow(pGl->hook.pUser,
-                                pGl->clipMinX, pGl->clipMinY,
-                                pGl->clipMaxX, pGl->clipMaxY);
-    else
-        pGl->cNullHook++;               /* frontier: no grClipWindow here */
-    return p + 8;
-}
 
 /* 0x1001EBC0 -- opcode 0xE2, 97 bytes.  The scissor with plain 12-bit
  * integer fields: (w >> 12) & 0xFFF and w & 0xFFF. */
 /* @n64 0x80219A1C located */
-const uint8_t *BrDlGlScissorInt(BrDlGl *pGl, const uint8_t *p)
-{ return br_dlgl_scissor(pGl, p, 0); }
+/* (port-only BrDlGlScissorInt removed) */
+
 
 /* 0x1001EB50 -- opcode 0xED, 103 bytes.  The scissor with 10.2 fields:
  * (w >> 14) & 0x3FF and (w >> 2) & 0x3FF. */
 /* @n64 0x80219A3C located */
-const uint8_t *BrDlGlScissorFrac(BrDlGl *pGl, const uint8_t *p)
-{ return br_dlgl_scissor(pGl, p, 1); }
+/* (port-only BrDlGlScissorFrac removed) */
+
 
 /* ==================================================================== */
 /* opcode 0xF2 -- set tile size.  DELEGATED, and counted.               */
@@ -362,32 +251,15 @@ const uint8_t *BrDlGlScissorFrac(BrDlGl *pGl, const uint8_t *p)
  * counted frontier, not a port.  Opcode 0xF2 is 178 bytes at Glide
  * 0x1001EC30 and its transcription is br_dl.c's br_dl_settilesize; this
  * entry advances eight, counts itself, and decodes nothing. */
-const uint8_t *BrDlGlSetTileSize(BrDlGl *pGl, const uint8_t *p)
-{
-    pGl->cF2Delegated++;
-    /* 0x1001ECD3 `lea eax,[esi+8]` -- the advance is the one thing this entry
-     * may state on its own, because it is a property of the opcode's length
-     * and not of the decode it declines to do. */
-    return p + 8;
-}
+/* (port-only BrDlGlSetTileSize removed) */
+
 
 /* ==================================================================== */
 /* the seven slots of 0x100A9A58 this module owns                       */
 /* ==================================================================== */
 
-BrDlGlHandler BrDlGlDispatch(unsigned op)
-{
-    switch (op) {
-    case 0xDC: return BrDlGlBindTexture;    /* 0x1001E2E0 */
-    case 0xDD: return BrDlGlRetarget;       /* 0x1001E300 */
-    case 0xDF: return BrDlGlSet5D17C4;      /* 0x1001EB30 */
-    case 0xE1: return BrDlGlFillRect;       /* 0x1001E720 */
-    case 0xE2: return BrDlGlScissorInt;     /* 0x1001EBC0 */
-    case 0xED: return BrDlGlScissorFrac;    /* 0x1001EB50 */
-    case 0xF2: return BrDlGlSetTileSize;    /* 0x1001EC30 -- delegated */
-    default:   return NULL;
-    }
-}
+/* (port-only BrDlGlDispatch removed) */
+
 
 /* -- Ghidra-matched functions --------------------------- */
 /* grBufferNumPending: prototype in br_funcs.h */

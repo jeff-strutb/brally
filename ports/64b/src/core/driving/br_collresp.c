@@ -45,15 +45,8 @@ uint32_t g_cBrCollRespOverflow;
 uint32_t g_cBrCollRespResponded;
 
 /* @n64 0x8021C46C located */
-void BrCollRespCountersReset(void)
-{
-    g_cBrCollRespTipKick    = 0u;
-    g_cBrCollRespDegenerate = 0u;
-    g_cBrCollRespBroad      = 0u;
-    g_cBrCollRespGathered   = 0u;
-    g_cBrCollRespOverflow   = 0u;
-    g_cBrCollRespResponded  = 0u;
-}
+/* (port-only BrCollRespCountersReset removed) */
+
 
 /* ==================================================================== */
 /* The cube's plane constants, all read out of BRGlide.dll               */
@@ -87,101 +80,22 @@ void BrCollRespCountersReset(void)
 /* A NaN therefore lands on 0.0f at the first test and never reaches the  */
 /* second.                                                               */
 /* ==================================================================== */
-static float BrCrSign(float v)
-{
-    if (v == 0.0f || !(v == v)) {
-        return 0.0f;
-    }
-    if (v > 0.0f) {
-        return 1.0f;
-    }
-    return -1.0f;
-}
+/* (port-only BrCrSign removed) */
+
 
 /* ==================================================================== */
 /* The frame, and the correction to 0x1006DDD0                           */
 /* ==================================================================== */
 
 /* @n64 0x80229530 located */
-BrMat4 *BrCollRespFrameMat(BrCollRespFrame *pF)
-{
-    /* 0x10067C9A/0x10067C9E: `lea ecx,[esp+0x10]` and `lea edx,[esp+0x1c]`
-     * are 0xC apart, so the matrix begins three floats into the frame. */
-    return (BrMat4 *)(void *)&pF->a[3];
-}
+/* (port-only BrCollRespFrameMat removed) */
 
-void BrCollRespBuildBoxMatrix(BrCollRespFrame *pF, const BrMat4 *pBody,
-                              float sx, float sy, float sz)
-{
-    BrMat4 *pOut = BrCollRespFrameMat(pF);
-    BrVec3  t, r;
-    int     i, j;
 
-    pF->a[0] = sx;
-    pF->a[1] = sy;
-    pF->a[2] = sz;
+/* (port-only BrCollRespBuildBoxMatrix removed) */
 
-    /* THE ROTATION.  0x1006DDE B..0x1006DE26, exactly as slice3_44.c has it:
-     *      pOut->m[i][j] = pA->m[j][i] * scale[j],   pOut->m[i][3] = 0
-     * with the outer loop walking pOut's rows and the inner one walking the
-     * scale.  Reproduced here rather than called, for the reason below. */
-    for (i = 0; i < 3; ++i) {
-        for (j = 0; j < 3; ++j) {
-            pOut->m[i][j] = pBody->m[j][i] * pF->a[j];
-        }
-        pOut->m[i][3] = 0.0f;
-    }
-    pOut->m[3][3] = 1.0f;               /* 0x1006DE30 */
 
-    /* THE TRANSLATION, AND THE CORRECTION.  0x1006DE37 reads `[ecx+0x30]`
-     * with ecx set at 0x1006DE2C from `[esp+0x24]`.  At THAT point esp is
-     * R-0x20, so `[esp+0x24]` is R+4 -- ARG1, the body matrix.  Earlier, at
-     * 0x1006DDD9, the SAME displacement `[esp+0x24]` was read with esp at
-     * R-0x18, where it is R+0xC -- arg3, the scale.  Two reads, one
-     * displacement, two different arguments, because two pushes sit between
-     * them.  slice3_44.c takes the translation from pS (arg3), and
-     * br_collresp.h used to explain the resulting garbage as a deliberate
-     * frame OVERLAP in 0x10067C30.
-     *
-     * It is not an overlap and it is not deliberate.  Taken from pS the box
-     * matrix has no translation in it at all -- the transform is about the
-     * WORLD ORIGIN rather than about the car -- so a car anywhere but at
-     * (0, 0, 0) would classify every triangle on the track as hundreds of
-     * box-widths away and the OBB system could never fire.  That prediction
-     * requires the shipped game to have no car-versus-track collision, which
-     * it plainly has; a reading that needs the game to be broken is held to
-     * a higher standard than one that does not, and this one had less.
-     *
-     * Taken from pA (arg1) it is the ordinary world-to-box transform:
-     *      pOut->m[3][*] = (-pA->m[3][*]) * transpose(pOut)
-     *
-     * slice3_44.c is not this module's to edit, so the correction is FILED
-     * (see br_collresp.h) and this wrapper does the build itself.  Calling
-     * slice3_44's version and patching the row afterwards would leave a
-     * function in the tree that is wrong for its next caller and right only
-     * by accident here. */
-    t.x = -pBody->m[3][0];
-    t.y = -pBody->m[3][1];
-    t.z = -pBody->m[3][2];
-    BrMat4MulVec3Transposed(&r, pOut, &t);      /* 0x1006D9D0 */
-    pOut->m[3][0] = r.x;
-    pOut->m[3][1] = r.y;
-    pOut->m[3][2] = r.z;
-}
+/* (port-only BrCollRespBoxDegenerate removed) */
 
-int BrCollRespBoxDegenerate(float f1DC, float f1E0, float f1E4)
-{
-    /* 0x10067CEF/0x10067D10/0x10067D20: `fld [ebx+0x1dc]` then
-     * `fdivr [0x10077A7C]`, i.e. 1.0f / f1DC.  A zero extent gives an
-     * infinite scale and BrMat4BuildScaledTransposed then produces a matrix
-     * of infinities and NaNs. */
-    float rx = BR_CR_ONE / f1DC;
-    float ry = BR_CR_ONE / f1E0;
-    float rz = BR_CR_ONE / f1E4;
-
-    return !(isfinite((double)rx) && isfinite((double)ry)
-             && isfinite((double)rz));
-}
 
 /* ==================================================================== */
 /* 0x10066D70 -- the 1-or-2-wheel pitch kick                             */
@@ -423,16 +337,8 @@ int BrCollRespTipKick(BrTipView *pBody)
 /* ==================================================================== */
 
 /* One plane pair: bit 0 for "above hi", bit 1 for "below lo". */
-static unsigned BrCrSide(float v, double hi, double lo)
-{
-    if (!((double)v <= hi)) {          /* `test ah,0x41` NOT taken */
-        return 1u;
-    }
-    if (!((double)v >= lo)) {          /* `test ah,1` taken        */
-        return 2u;
-    }
-    return 0u;
-}
+/* (port-only BrCrSide removed) */
+
 
 /* 0x100664F0 -- stage 3, the eight corner planes.  Its argument is a
  * vertex and the mask still live; it returns the subset of that mask this
@@ -914,11 +820,8 @@ int BrCrTest(const float aV[9], const BrVec3 *pN)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */  /* 0x117781B0 */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */                  /* 0x11778844 */
 
-void BrCollRespListReset(void)
-{
-    g_pBrCollRespList = NULL;
-    g_pBrCrCursor           = 0;
-}
+/* (port-only BrCollRespListReset removed) */
+
 
 /* The original's allocator is a POINTER bump cursor (0x11778844), not the
  * port's index -- and it has no bound, which the header explains is safe. */

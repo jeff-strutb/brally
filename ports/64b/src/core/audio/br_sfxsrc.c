@@ -63,17 +63,8 @@ int32_t     g_brSfxSrcLast;
  * 0x10061362 -- the table initialiser
  * ========================================================================== */
 
-void BrSfxSrcTableInit(void)
-{
-    int i;
+/* (port-only BrSfxSrcTableInit removed) */
 
-    memcpy(g_aBrSfxSrc, s_aBrSfxSrcImage, sizeof(g_aBrSfxSrc));
-
-    /* 0x10061369: `mov [eax], ecx` with ecx counting from 0 and eax stepping
-     * 24 until it reaches 0x100B3508.  Source i's group is i. */
-    for (i = 0; i < BR_SFXSRC_COUNT; ++i)
-        g_aBrSfxSrc[i].group = (int32_t)i;
-}
 
 /* ==========================================================================
  * The channel layer
@@ -84,15 +75,11 @@ void BrSfxSrcTableInit(void)
  * without touching anything when any is zero.  slice1_08.h already names all
  * three; see its "is sound usable" note for why 1 is success here.
  */
-static int sfx_off(void)
-{
-    return ((*(int *)&DAT_100b51e4[1036]) == 0 || BrSndPDS == NULL || BrSndG18290FC == NULL);
-}
+/* (port-only sfx_off removed) */
 
-static int chan_ok(int ch)
-{
-    return (ch >= 0 && ch < BR_SFX_CHANNELS);
-}
+
+/* (port-only chan_ok removed) */
+
 
 /* BrSfxChanBind: the original function is BrSndChanBind */
 
@@ -132,13 +119,8 @@ int BrSfxChanStart(int group, int ch, int32_t loop)
     return 1;
 }
 
-void BrSfxSrcChannelsReset(void)
-{
-    memset((*(BrSndVoice * (*)[15])&g_apBrSfxChanVoice),  0, sizeof (*(BrSndVoice * (*)[15])&g_apBrSfxChanVoice));
-    memset(g_aBrSfxChanRate,    0, sizeof g_aBrSfxChanRate);
-    memset(g_aBrSfxChan,        0, sizeof g_aBrSfxChan);
-    memset(g_aBrSfxChanApplied, 0, sizeof g_aBrSfxChanApplied);
-}
+/* (port-only BrSfxSrcChannelsReset removed) */
+
 
 /* ==========================================================================
  * The source layer
@@ -204,15 +186,8 @@ void BrSfxSrcBeep(void)  { BrSfxBankPlay(BR_SFXSRC_BEEP);  }   /* push 0x0D */
 void BrSfxSrcBeep2(void) { BrSfxBankPlay(BR_SFXSRC_BEEP2); }   /* push 0x0E */
 
 /* @n64 0x80264E0C located */
-void BrSfxSrcRaceCountdown(int iStep)
-{
-    /* 0x1001AD93 `cmp ecx,4` / 0x1001AD9C `jne`.  The counter has already
-     * been incremented, so 4 is the fourth and last beep -- the GO. */
-    if (iStep == 4)
-        BrSfxSrcBeep2();
-    else
-        BrSfxSrcBeep();
-}
+/* (port-only BrSfxSrcRaceCountdown removed) */
+
 
 /* -- Ghidra-matched functions --------------------------- */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */

@@ -147,15 +147,8 @@
  * 64-bit result. DEVIATION: inputs outside the 64-bit range are undefined in
  * C, so they are turned into 0 rather than whatever the x87 indefinite
  * value would truncate to. */
-static int32_t br16_ftol(double x)
-{
-    int64_t v;
+/* (port-only br16_ftol removed) */
 
-    if (!(x > -9.2233720368547758e18 && x < 9.2233720368547758e18))
-        return 0;
-    v = (int64_t)x;
-    return (int32_t)(uint32_t)((uint64_t)v & 0xFFFFFFFFu);
-}
 
 /* ------------------------------------------------------------------ *
  * x87 COMPARISON POLARITY, SPELLED ONCE
@@ -193,57 +186,32 @@ static int32_t br16_ftol(double x)
  * br_dlshared.c with BrDlsTileSizeDecode, which is the only thing in this
  * file that wanted it. */
 
-static uint32_t br16_bswap32(uint32_t v)
-{
-    return ((v & 0x000000FFu) << 24) | ((v & 0x0000FF00u) << 8) |
-           ((v & 0x00FF0000u) >> 8)  | ((v & 0xFF000000u) >> 24);
-}
+/* (port-only br16_bswap32 removed) */
+
 
 /* Byte-swap the u32 that starts at p, byte-wise so the host's own endianness
  * never enters into it. */
-static void br16_swap_u32_at(uint8_t *p)
-{
-    uint8_t t;
-    t = p[0]; p[0] = p[3]; p[3] = t;
-    t = p[1]; p[1] = p[2]; p[2] = t;
-}
+/* (port-only br16_swap_u32_at removed) */
 
-static void br16_swap_u16_at(uint8_t *p)
-{
-    uint8_t t = p[0];
-    p[0] = p[1];
-    p[1] = t;
-}
+
+/* (port-only br16_swap_u16_at removed) */
+
 
 /* Read/write a u32 byte-wise in the host's order. The .rca payload has
  * already been swapped by the time these are read back. */
-static uint32_t br16_ld32(const uint8_t *p)
-{
-    uint32_t v;
-    memcpy(&v, p, sizeof v);
-    return v;
-}
+/* (port-only br16_ld32 removed) */
 
-static void br16_st32(uint8_t *p, uint32_t v)
-{
-    memcpy(p, &v, sizeof v);
-}
 
-static uint16_t br16_ld16(const uint8_t *p)
-{
-    uint16_t v;
-    memcpy(&v, p, sizeof v);
-    return v;
-}
+/* (port-only br16_st32 removed) */
+
+
+/* (port-only br16_ld16 removed) */
+
 
 /* Advance the fade emitter's cursor by one command and hand back the slot
  * that was reserved. Every emit site in 0x1002AF10 / 0x1002B340 is this. */
-static BrGfxWords *br16_fade_alloc(BrFadeState *pSt)
-{
-    BrGfxWords *p = pSt->pCmd;
-    pSt->pCmd = p + 1;
-    return p;
-}
+/* (port-only br16_fade_alloc removed) */
+
 
 /* ================================================================== */
 /* 1. F3D command handlers                                            */
@@ -262,49 +230,26 @@ static BrGfxWords *br16_fade_alloc(BrFadeState *pSt)
  * unpacked and sign-corrected here. Despite an earlier name of "set
  * scissor", this is the tile setter -- the real scissor commands are two
  * other, longer functions. */
-BrGfxWords *BrGbiSetTileSize(BrGbiState *pSt, BrGfxWords *pCmd)
-{
-    BrDlsTileSize t;
-
-    BrDlsTileSizeDecode(pCmd->w0);
-    pSt->tile.uls   = t.uls;
-    pSt->tile.ult   = t.ult;
-    pSt->tile.lrs   = t.lrs;
-    pSt->tile.lrt   = t.lrt;
-    pSt->tile.tileW = t.tileW;
-    pSt->tile.tileH = t.tileH;
-    return pCmd + 1;
-}
+/* (port-only BrGbiSetTileSize removed) */
 
 
-BrMat4 *BrGbiMtxProj(BrGbiMtxState *pSt)
-{
-    return (BrMat4 *)(void *)&pSt->aWords[0];
-}
+
+/* (port-only BrGbiMtxProj removed) */
+
 
 /* @n64 0x80242810 located */
-BrMat4 *BrGbiMtxSlot(BrGbiMtxState *pSt, int index)
-{
-    return (BrMat4 *)(void *)&pSt->aWords[BR_GBI_MTX_STACK_OFF + index * 16];
-}
+/* (port-only BrGbiMtxSlot removed) */
+
 
 /* The ring push used on both modelview paths: 10 wraps to 0 before the
  * increment, so `top` only ever takes 1..10. */
-static void br16_mtx_push(BrGbiMtxState *pSt)
-{
-    if (pSt->top == 10)
-        pSt->top = 0;
-    pSt->top += 1;
-}
+/* (port-only br16_mtx_push removed) */
+
 
 /* top == 0 means "no modelview matrix"; the two sites that build a pointer
  * from it substitute NULL. */
-static BrMat4 *br16_mtx_current(BrGbiMtxState *pSt)
-{
-    if (pSt->top == 0)
-        return NULL;
-    return BrGbiMtxSlot(pSt, pSt->top);
-}
+/* (port-only br16_mtx_current removed) */
+
 
 /* 0x10020DC0 */
 /* WHAT IT DOES: installs a transform matrix -- either the camera's
@@ -381,16 +326,8 @@ BrGfxWords *BrGbiMatrix(BrGfxWords *pCmd)
  * rectangle's texture coordinates follow it in the list. */
 /* The decode is br_dlshared.c's, which carries this address and BRGlide's
  * 0x10021570. */
-BrGfxWords *BrGbiTileRect(BrGbiState *pSt, BrGfxWords *pCmd)
-{
-    BrDlsTileRect r;
+/* (port-only BrGbiTileRect removed) */
 
-    (void)pSt;
-    BrDlsTileRectDecode(pCmd->w0, pCmd->w1, 0, &r);
-    BrGbiCall10021560(r.ulx, r.uly, r.lrx, r.lry, r.tile);
-    /* GOTCHA: three commands consumed, not one. */
-    return pCmd + 3;
-}
 
 /* 0x10021B80 */
 /* WHAT IT DOES: the same textured-rectangle draw as above but with the
@@ -398,15 +335,8 @@ BrGfxWords *BrGbiTileRect(BrGbiState *pSt, BrGfxWords *pCmd)
  * scales them up before handing them on, and it consumes only its own
  * command. */
 /* Likewise 0x10021B80 / BRGlide 0x100219D0. */
-BrGfxWords *BrGbiTileRectS(BrGbiState *pSt, BrGfxWords *pCmd)
-{
-    BrDlsTileRect r;
+/* (port-only BrGbiTileRectS removed) */
 
-    (void)pSt;
-    BrDlsTileRectDecode(pCmd->w0, pCmd->w1, 1, &r);
-    BrGbiCall10021560(r.ulx, r.uly, r.lrx, r.lry, r.tile);
-    return pCmd + 1;
-}
 
 /* 0x10022350 -- AND IT IS *NOT* A DUPLICATE OF br_dl.c's
  * br_dl_light_vertex, whatever the pairing table says.
@@ -434,58 +364,8 @@ BrGfxWords *BrGbiTileRectS(BrGbiState *pSt, BrGfxWords *pCmd)
  * get plain ambient light, and the rest get ambient plus a share of the
  * light's colour, capped so nothing goes brighter than white. */
 /* @d3donly 0x10022350 BrGbiLightVertex -- glide twin 0x10022AC0 claimed by br_dl.c:br_dl_light_vertex */
-void BrGbiLightVertex(const BrGbiLightState *pSt, const float *pSrc, float *pDst)
-{
-    float t;
-    int   i;
+/* (port-only BrGbiLightVertex removed) */
 
-    if (pSt->numLights == 0) {
-        pDst[7] = pSt->off[0];
-        pDst[8] = pSt->off[1];
-        pDst[9] = pSt->off[2];
-        return;
-    }
-
-    /* Add order as emitted: (src[5]*dir[0] + src[6]*dir[1]) + src[7]*dir[2],
-     * where src[5] is the float at +0x14. */
-    t = (pSrc[5] * pSt->dir[0] + pSrc[6] * pSt->dir[1]) + pSrc[7] * pSt->dir[2];
-
-    /* 0x10022375: `fcomp [0x1008F3C8] / fnstsw ax / test ah,1 / jne` --
-     * 0x1008F3C8 is 0.0f and bit 0 of ah is C0, which an UNORDERED compare
-     * sets as well.  So a NaN dot takes the ambient-only arm.
-     *
-     * THIS WAS `t < 0.0f`, WHICH IS FALSE FOR NaN and sent an unordered dot
-     * down the lit path instead. Same defect as 0x10022DC0's, in the same
-     * file, found the same way -- see the note there. */
-    if (!(t >= 0.0f)) {
-        pDst[7] = pSt->ambient[0];
-        pDst[8] = pSt->ambient[1];
-        pDst[9] = pSt->ambient[2];
-        return;
-    }
-
-    for (i = 0; i < 3; ++i) {
-        float v = t * pSt->scale[i] + pSt->ambient[i];
-        /* 0x100223A4 and its two repeats: `fcomp [0x1008F3C4] / test ah,0x41
-         * / mov eax,0x3F800000 / je`.  The ceiling is substituted only when
-         * the test is ZERO, i.e. C0 and C3 both clear, i.e. an ORDERED
-         * GREATER-THAN.  An unordered compare sets both, so a NaN is NOT
-         * clamped and passes through.
-         *
-         * THIS WAS `(v <= 1.0f) ? v : 1.0f`, which is false for NaN and
-         * therefore clamped it to 1.0f. The positive form is the faithful one
-         * here for the same reason it is in br_dl.c's copy: C's `v > 1.0f` is
-         * also false for NaN.
-         *
-         * The literal substituted is 0x3F800000, and the limit compared
-         * against at 0x1008F3C4 is also 1.0f. NOTE THAT BRGLIDE'S TWIN OF
-         * THIS FUNCTION USES 255.0f FOR BOTH (0x10022B35 `mov eax,0x437F0000`
-         * against 0x10077418 == 255.0f) -- these two are NOT the same
-         * function, whatever shared.csv's `shape` match suggests. See the
-         * banner above. */
-        pDst[7 + i] = (v > 1.0f) ? 1.0f : v;
-    }
-}
 
 /* 0x10022DC0 -- ONE BODY, in br_dlshared.c, which carries both builds'
  * addresses.  This is now only the float-array layout: +0x04 x, +0x08 y,
@@ -498,10 +378,8 @@ void BrGbiLightVertex(const BrGbiLightState *pSt, const float *pSrc, float *pDst
  * clipper. The original's `test ah,1` reads C0, which an unordered compare
  * sets, so a NaN is REJECTED. Making the two agree was not the fix; deleting
  * one of them was. */
-int BrGbiClipCodes(const float *pVert)
-{
-    return (int)BrDlsClipCodes(pVert);
-}
+/* (port-only BrGbiClipCodes removed) */
+
 
 /* 0x10024240 */
 /* WHAT IT DOES: handles the drawing command that hands the renderer a ready-
@@ -573,19 +451,12 @@ BrGfxWords *BrGbiMoveMemMatrix(BrGfxWords *pCmd)
 /* 2. Texture-load scanning pass                                      */
 /* ================================================================== */
 
-const void *BrGbiTexScanData(BrGbiTexScan *pSt, uint32_t addr)
-{
-    if (pSt->pfnData != NULL)
-        return pSt->pfnData(pSt->pUser, addr);
-    return (const void *)(uintptr_t)addr;
-}
+/* (port-only BrGbiTexScanData removed) */
+
 
 /* 0x10029E80  G_TEXTURE */
-void BrGbiTexScanTexture(const BrGfxWords *pCmd)
-{
-    g_brTex5553E8 = (int32_t)((pCmd->w0 >> 8)  & 7u);
-    g_brTex5553E0 = (int32_t)((pCmd->w0 >> 11) & 7u);
-}
+/* (port-only BrGbiTexScanTexture removed) */
+
 
 /* 0x10029EB0  G_SETTIMG */
 /* WHAT IT DOES: during the texture-load hunt, notes the address and pixel
@@ -881,14 +752,8 @@ uintptr_t BrGbiBlit(uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4,
 /* The 0x3EB / 0x3E8 / 0 token soup both emit paths hand to
  * BrRdpSetCombineLERP; spelled out once so the two call sites stay readable
  * and identical to the original's push order. */
-static void br16_combine(BrGfxWords *pOut, int t13, int t9, int t5, int t1)
-{
-    BrRdpSetCombineLERP(pOut,
-                        0, 0, 0, t1,
-                        0, 0, 0, t5,
-                        0, 0, 0, t9,
-                        0, 0, 0, t13);
-}
+/* (port-only br16_combine removed) */
+
 
 /* 0x1002AF10 */
 /* WHAT IT DOES: draws the translucent full-screen tint used during a

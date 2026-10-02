@@ -63,75 +63,33 @@ extern void BrErrorf(const char *pszFmt, ...);
 
 static BrLerpNode g_aBrPolyPool[BR_POLY_POOL_NODES];
 
-BrLerpNode *BrPolyPoolBase(void)
-{
-    return g_aBrPolyPool;
-}
+/* (port-only BrPolyPoolBase removed) */
 
-void BrPolyPoolInit(void)
-{
-    int i;
 
-    /* The original walks DOWN from the highest node, so the head ends up on
-     * the lowest one and next always points at the node above. */
-    g_aBrPolyPool[BR_POLY_POOL_NODES - 1].pNext = NULL;
-    for (i = BR_POLY_POOL_NODES - 2; i >= 0; --i)
-        g_aBrPolyPool[i].pNext = &g_aBrPolyPool[i + 1];
+/* (port-only BrPolyPoolInit removed) */
 
-    g_pBrLerpFree = &g_aBrPolyPool[0];
-}
 
-int BrPolyPoolCount(void)
-{
-    BrLerpNode *p = g_pBrLerpFree;
-    int         n = 0;
+/* (port-only BrPolyPoolCount removed) */
 
-    while (p != NULL) {
-        ++n;
-        p = p->pNext;
-    }
-    return n;
-}
 
-BrLerpNode *BrPolyPoolAlloc(void)
-{
-    BrLerpNode *p = g_pBrLerpFree;
+/* (port-only BrPolyPoolAlloc removed) */
 
-    if (p != NULL)
-        g_pBrLerpFree = p->pNext;
-
-    /* DEVIATION: the original returns the null head and every caller then
-     * dereferences it. NULL is returned here and every caller guards. */
-    return p;
-}
 
 /* The pool bounds test, spelled the way the original spells it:
  * 0x102E54C0 <= p < 0x102E5EC0. */
-static int BrPolyInPool(const BrLerpNode *p)
-{
-    return p >= &g_aBrPolyPool[0] && p < &g_aBrPolyPool[BR_POLY_POOL_NODES];
-}
+/* (port-only BrPolyInPool removed) */
+
 
 /* @n64 0x8026BA70 located */
-void BrPolyPoolFree(BrLerpNode *pNode)
-{
-    if (!BrPolyInPool(pNode))
-        return;   /* silently dropped -- this is the original's behaviour */
+/* (port-only BrPolyPoolFree removed) */
 
-    pNode->pNext  = g_pBrLerpFree;
-    g_pBrLerpFree = pNode;
-}
 
 /* @n64 0x80223470 located */
-float BrPolyDistMaxX(const BrScrPt *pPt)
-{
-    return BR_POLY_CLIP_MAX - pPt->f0C;
-}
+/* (port-only BrPolyDistMaxX removed) */
 
-float BrPolyDistMaxY(const BrScrPt *pPt)
-{
-    return BR_POLY_CLIP_MAX - pPt->f10;
-}
+
+/* (port-only BrPolyDistMaxY removed) */
+
 
 /* -- 0x100109A0 ---------------------------------------------------------- */
 
@@ -262,27 +220,7 @@ BR_STORE_CV:
 /* -- 0x100106A0 ---------------------------------------------------------- */
 
 /* One of the three identical vertex-setup blocks the original inlines. */
-static BrLerpNode *BrPolyMakeVert(const BrScrPt *pSrc)
-{
-    BrLerpNode *p = BrPolyPoolAlloc();
-    BrScrPt    *pDst;
+/* (port-only BrPolyMakeVert removed) */
 
-    if (p == NULL)
-        return NULL;   /* DEVIATION: see BrPolyPoolAlloc */
-
-    p->pData = &p->data[0];
-    pDst     = (BrScrPt *)(void *)p->pData;
-
-    /* f0C / f10 are deliberately NOT copied -- BrScrPtProject produces them. */
-    pDst->f00    = pSrc->f00;
-    pDst->f04    = pSrc->f04;
-    pDst->f08    = pSrc->f08;
-    pDst->pad[0] = pSrc->pad[0];
-    pDst->pad[1] = pSrc->pad[1];
-    pDst->pad[2] = pSrc->pad[2];
-
-    BrScrPtProject(pDst);
-    return p;
-}
 
 /* BrPolyClipTri: the placed body is br_polydist.c */

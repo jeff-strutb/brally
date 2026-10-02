@@ -7,25 +7,11 @@
  */
 #include "br_seg.h"
 
-void BrSegFixup(const BrSegMap *pMap, uint32_t *pPtr)
-{
-    uint32_t v = *pPtr;
+/* (port-only BrSegFixup removed) */
 
-    if (v == 0)
-        return;                        /* null stays null */
-    if (v < pMap->n64Base) {
-        *pPtr = 0;                     /* below the region: unresolvable */
-        return;
-    }
-    *pPtr = v - pMap->n64Base + pMap->hostBase;
-}
 
-uint32_t BrSegResolve(const BrSegMap *pMap, uint32_t n64Addr)
-{
-    if (n64Addr == 0 || n64Addr < pMap->n64Base)
-        return 0;
-    return n64Addr - pMap->n64Base + pMap->hostBase;
-}
+/* (port-only BrSegResolve removed) */
+
 
 /* 0x10018A10 (D3D twin 0x1002B9A0) -- calls 0x10018A30 BrRcaResetCounts
  * first, then stores the two args to the N64/host base globals. The port

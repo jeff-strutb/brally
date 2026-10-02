@@ -80,14 +80,8 @@
  * ========================================================================== */
 
 /* @n64 0x80260DB0 located */
-void *BrPodLoadInto(BrPod *pPod, int iEntry, void *pvBuffer)
-{
-    /* The original reports "LoadPod: %i >= m_cNumPods" and then calls ReadPod
-     * anyway; br_pod.c's BrPodRead applies the same bounds test and refuses,
-     * so the read does not happen. The buffer comes back either way. */
-    (void)BrPodRead(pPod, iEntry, pvBuffer);
-    return pvBuffer;
-}
+/* (port-only BrPodLoadInto removed) */
+
 
 /* ==========================================================================
  * Module state (DEVIATION 1)
@@ -96,11 +90,8 @@ void *BrPodLoadInto(BrPod *pPod, int iEntry, void *pvBuffer)
 static BrPhaseCtx   *g_pBase;
 static BrPhaseCtx31 *g_pExt;
 
-void BrPhase31SetCtx(BrPhaseCtx *pBase, BrPhaseCtx31 *pExt)
-{
-    g_pBase = pBase;
-    g_pExt  = pExt;
-}
+/* (port-only BrPhase31SetCtx removed) */
+
 
 /* --------------------------------------------------------------------------
  * MATCHING BUILD: the globals the original addresses absolutely.
@@ -212,11 +203,8 @@ typedef struct {
      */
 /* operator new(0xC8) -- NOT zeroed -- followed by the constructor, exactly as
  * every activate routine in this range and in slice2_26 spells it out. */
-static BrPhase *Br31NewPhase(void)
-{
-    BrPhase *p = (BrPhase *)BrOperatorNew(BR_PHASE_ALLOC_SIZE);
-    return (p != NULL) ? BrOptObjCtor(p) : NULL;
-}
+/* (port-only Br31NewPhase removed) */
+
 
 /* The body every activate routine shares once its prologue has run.
  *
@@ -235,97 +223,41 @@ static BrPhase *Br31NewPhase(void)
  * (already built or just built), 0 when the allocation failed. *pfBuilt is
  * set only on the just-built path, which is the path the per-phase epilogue
  * is allowed to run on. */
-static int Br31Activate(BrPhase **ppSlot, BrPhaseEnterFn pfnEnter, int *pfBuilt)
-{
-    BrActResult r = BrPhaseActivateSlot(g_pBase, ppSlot, pfnEnter);
+/* (port-only Br31Activate removed) */
 
-    *pfBuilt = (r == BR_ACT_CREATED) ? 1 : 0;
-    return (r == BR_ACT_FAILED) ? 0 : 1;   /* note: 0, not 1, on failure */
-}
 
 /* The second, flag-light object that 0x10045C90 and 0x10045F70 build after
  * their first one: f0C is set, f68 is NOT. Returns 0 on allocation failure. */
-static int Br31ActivateSecond(BrPhase **ppSlot, BrPhaseEnterFn pfnEnter)
-{
-    BrPhase *p = Br31NewPhase();
+/* (port-only Br31ActivateSecond removed) */
 
-    *ppSlot = p;
-    if (p == NULL)
-        return 0;
-
-    p->pfnEnter = pfnEnter;
-    (*ppSlot)->pfnEnter(*ppSlot);      /* re-read */
-    (*ppSlot)->f0C = 1;             /* re-read */
-    return 1;
-}
 
 /* The prologue every LEAVE routine shares: drive the game object's +0x2AE8
  * sub-object through vtable slot +0x1C, then notify the current phase through
  * ITS slot +0x00 with the argument 1. The NULL test is on the phase only --
  * the sub-object is dereferenced unguarded, as in the original. */
-static void Br31LeavePrologue(void *pEntity)
-{
-    BrGameObj *pObj = (BrGameObj *)pEntity;
-    BrPhase   *pCur;
+/* (port-only Br31LeavePrologue removed) */
 
-    pObj->pSub->pVtbl->pfnSlot7(pObj->pSub);
-
-    pCur = BR_PHASE_CUR;
-    if (pCur != NULL)
-        pCur->pVtbl->f00(pCur, 1);
-}
 
 /* DEVIATION 2: the original's copies are unbounded inline `rep movs` -- a
  * `repne scasb` measures the source and the length is then trusted. Here the
  * scan itself is bounded to BR_NAME31_LEN, so an unterminated source cannot
  * run away, and the destination is always NUL-terminated. */
-static void Br31CopyName(char *pszDst, const char *pszSrc)
-{
-    const char *pEnd = (const char *)memchr(pszSrc, '\0', (size_t)BR_NAME31_LEN);
-    size_t      n    = (pEnd != NULL) ? (size_t)(pEnd - pszSrc)
-                                      : (size_t)BR_NAME31_LEN - 1u;
+/* (port-only Br31CopyName removed) */
 
-    memcpy(pszDst, pszSrc, n);
-    pszDst[n] = '\0';
-}
 
 /* The block the eight "reset the name" LEAVE routines run between the
  * prologue and the repoint. 0x10046E10 uses a different set of globals and
  * so does not call this. */
-static void Br31ResetName(void)
-{
-    g_pExt->pAA2928 = NULL;
-    g_pExt->nAA29C0 = 0;
-    g_pExt->nAA29CC = 0;
-    g_pExt->nAA28E4 = 0;
-    g_pExt->n0AB3F4 = -1;
-    Br31CopyName(g_pExt->szAA2518, g_pExt->sz39B720);
-    Br31CopyName(g_pExt->szA9D618, g_pExt->sz39B720);
-}
+/* (port-only Br31ResetName removed) */
+
 
 /* Tear a phase down through vtable slot +0x1C and forget it. */
-static void Br31DestroyPhase(BrPhase **ppSlot)
-{
-    BrPhase *p = *ppSlot;
+/* (port-only Br31DestroyPhase removed) */
 
-    if (p != NULL) {
-        /* Slot +0x1C == 0x10048AA0. This used to go through a BrPhaseVtblExt
-         * cast because slice2_26.h's BrPhaseVtbl had only slot +0x00; the
-         * merged BrPhaseVtbl_ has all nine, so the cast is gone. */
-        p->pVtbl->f1C(p);
-        *ppSlot = NULL;
-    }
-}
 
 /* Notify a phase through slot +0x00 with 1 and forget it. */
-static void Br31NotifyAndClear(BrPhase **ppSlot)
-{
-    BrPhase *p = *ppSlot;
+/* (port-only Br31NotifyAndClear removed) */
 
-    if (p != NULL)
-        p->pVtbl->f00(p, 1);
-    *ppSlot = NULL;
-}
 
 /* DEVIATION 3: slice2_26's 0x10044CB0 wants a context as its first argument;
  * BrPhase.pfnHook can only pass one void*. */
@@ -844,34 +776,20 @@ int BrPhaseNameClear_10047340(void)
 
 /* --- byte-wise access to the game object beyond slice2_25.h's model ------- */
 
-static uint32_t Br31Ld32(const void *pObj, unsigned off)
-{
-    uint32_t v;
-    memcpy(&v, (const unsigned char *)pObj + off, sizeof(v));
-    return v;
-}
+/* (port-only Br31Ld32 removed) */
 
-static void Br31St32(void *pObj, unsigned off, uint32_t v)
-{
-    memcpy((unsigned char *)pObj + off, &v, sizeof(v));
-}
 
-static uint16_t Br31Ld16(const void *pObj, unsigned off)
-{
-    uint16_t v;
-    memcpy(&v, (const unsigned char *)pObj + off, sizeof(v));
-    return v;
-}
+/* (port-only Br31St32 removed) */
 
-static void Br31St16(void *pObj, unsigned off, uint16_t v)
-{
-    memcpy((unsigned char *)pObj + off, &v, sizeof(v));
-}
 
-static void Br31St8(void *pObj, unsigned off, uint8_t v)
-{
-    ((unsigned char *)pObj)[off] = v;
-}
+/* (port-only Br31Ld16 removed) */
+
+
+/* (port-only Br31St16 removed) */
+
+
+/* (port-only Br31St8 removed) */
+
 
 /* The index table at 0x10047470, read out of the DLL. It maps
  * (counter - 2) in [0,0x32] to one of the five arms of the jump table at
@@ -1008,22 +926,14 @@ void BrPhaseMode_100474D0(void)
 /* WHAT IT DOES: the same as the routine above for a different setting -- raise
  * its flag, play the confirmation sound. */
 /* @d3donly 0x10047500 BrPhaseMode_10047500 -- glide twin 0x10040900 COMDAT-folded onto BrPhaseMode_100474D0 */
-void BrPhaseMode_10047500(void)
-{
-    BR31_AA28F8 = 1;
-    BrSub10072AF0(2, 0x00200020u);
-    BR31_AA2854 = 2;
-}
+/* (port-only BrPhaseMode_10047500 removed) */
+
 
 /* WHAT IT DOES: the third of the six -- a third setting's flag, the same
  * confirmation sound. */
 /* @d3donly 0x10047530 BrPhaseMode_10047530 -- glide twin 0x10040900 COMDAT-folded onto BrPhaseMode_100474D0 */
-void BrPhaseMode_10047530(void)
-{
-    BR31_AA28FC = 1;
-    BrSub10072AF0(2, 0x00200020u);
-    BR31_AA2854 = 2;
-}
+/* (port-only BrPhaseMode_10047530 removed) */
+
 
 /* WHAT IT DOES: the odd one of the six: instead of raising a flag it sets a
  * value to its maximum, and it plays a different sound from its five
@@ -1039,22 +949,14 @@ void BrPhaseMode_10047560(void)
 /* WHAT IT DOES: the fifth of the six -- another setting's flag and the same
  * confirmation sound. */
 /* @d3donly 0x10047590 BrPhaseMode_10047590 -- glide twin 0x10040900 COMDAT-folded onto BrPhaseMode_100474D0 */
-void BrPhaseMode_10047590(void)
-{
-    BR31_AA2A40 = 1;
-    BrSub10072AF0(2, 0x00200020u);
-    BR31_AA2854 = 2;
-}
+/* (port-only BrPhaseMode_10047590 removed) */
+
 
 /* WHAT IT DOES: the last of the six -- one more setting's flag and the same
  * confirmation sound. */
 /* @d3donly 0x100475C0 BrPhaseMode_100475C0 -- glide twin 0x10040900 COMDAT-folded onto BrPhaseMode_100474D0 */
-void BrPhaseMode_100475C0(void)
-{
-    BR31_AA28F4 = 1;
-    BrSub10072AF0(2, 0x00200020u);
-    BR31_AA2854 = 2;
-}
+/* (port-only BrPhaseMode_100475C0 removed) */
+
 
 /* -- Ghidra-matched functions --------------------------- */
 /* FUN_10040040: prototype in br_funcs.h */

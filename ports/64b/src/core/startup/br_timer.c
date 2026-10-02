@@ -57,13 +57,8 @@ void __fastcall br86_timer_restart(int *param_1)
 
 #include "slice4_50.h"
 
-static int32_t BrPerfToMs(int64_t counter)
-{
-    if (g_br18AB120 == 0) {
-        return 0;               /* DEVIATION: the original divides by zero */
-    }
-    return (int32_t)((counter * 1000 + 500) / g_br18AB120);
-}
+/* (port-only BrPerfToMs removed) */
+
 
 /* 0x10075020 */
 /* WHAT IT DOES: tells the caller how many milliseconds have passed since the

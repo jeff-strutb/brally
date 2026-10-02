@@ -26,19 +26,12 @@
  * byte-swapped it at load), so a command is two host u32s.  Read them
  * byte-wise anyway: CONVENTIONS.md forbids overlaying a struct on a foreign
  * buffer, and a display list is exactly that. */
-static uint32_t br_dlcmd_w(const uint8_t *p)
-{
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
-           ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
-}
+/* (port-only br_dlcmd_w removed) */
+
 
 /* Read a float out of a host-order 32-bit pattern without aliasing. */
-static float br_dlcmd_f32(uint32_t v)
-{
-    float f;
-    memcpy(&f, &v, sizeof(f));
-    return f;
-}
+/* (port-only br_dlcmd_f32 removed) */
+
 
 /* `fistp dword ptr [...]` under MSVC's startup control word: round to
  * NEAREST, ties to EVEN.  Out of range -- and NaN -- stores the x87 integer
@@ -49,15 +42,8 @@ static float br_dlcmd_f32(uint32_t v)
  * is _ftol and is what 0x1001E380 uses) and confusing them has cost time
  * here before.  rint() honours the default rounding mode, which is the same
  * ties-to-even. */
-static int32_t br_dlcmd_fistp(double v)
-{
-    double r = rint(v);
-    /* Written as a negated conjunction so NaN takes the indefinite side --
-     * x87 does the same, and `r < min || r > max` would let NaN through. */
-    if (!(r >= -2147483648.0 && r <= 2147483647.0))
-        return (int32_t)0x80000000;
-    return (int32_t)r;
-}
+/* (port-only br_dlcmd_fistp removed) */
+
 
 /* ====================================================================
  * 0x10021A20 -- G_VTX, opcode 0x04.  584 bytes, Glide-only.
@@ -102,21 +88,8 @@ static int32_t br_dlcmd_fistp(double v)
  *
  * Both TMUs get the same values: the writes are paired (+0x38 then +0x2C,
  * +0x30 then +0x24, +0x34 then +0x28). */
-static void br_dlcmd_finish_vtx(BrDlCmd *pS, BrDlVtx *pV)
-{
-    float u;
+/* (port-only br_dlcmd_finish_vtx removed) */
 
-    pV->tmu1[2] = pV->oow;
-    pV->tmu0[2] = pV->oow;
-
-    u = (float)(((double)pV->s * pS->texScaleS) * pV->oow);
-    pV->tmu1[0] = u;
-    pV->tmu0[0] = u;
-
-    u = (float)(((double)pV->t * pS->texScaleT) * pV->oow);
-    pV->tmu1[1] = u;
-    pV->tmu0[1] = u;
-}
 
 /* The three-way decision both triangle handlers make, byte for byte the same
  * in each: 0x1001ED35..0x1001ED5C and 0x1001FA7A..0x1001FAB1 and again at
@@ -126,44 +99,8 @@ static void br_dlcmd_finish_vtx(BrDlCmd *pS, BrDlVtx *pV)
  * the SECOND and THIRD outcodes and only then tested against the first, while
  * the OR is formed the other way round.  Same value either way; the original's
  * register pressure made the order explicit and br_dl.c preserves it too. */
-static void br_dlcmd_tri(BrDlCmd *pS, int i0, int i1, int i2)
-{
-    BrDlVtx *a, *b, *c;
-    int32_t and3, or3;
+/* (port-only br_dlcmd_tri removed) */
 
-    pS->cTriIn++;
-
-    /* DEVIATION: the original indexes 0x105CE318 with raw command bytes and
-     * has no bound at all.  The indices come from the load-time pass, which
-     * halved them, so a well-formed list cannot exceed the array. */
-    if (i0 >= BR_DL_VTX_COUNT || i1 >= BR_DL_VTX_COUNT || i2 >= BR_DL_VTX_COUNT)
-        return;
-
-    a = &pS->aVtx[i0];
-    b = &pS->aVtx[i1];
-    c = &pS->aVtx[i2];
-
-    and3 = b->outcode & c->outcode;
-    if ((a->outcode & and3) != 0) {
-        pS->cTriRejected++;
-        return;                         /* 0x1001ED3B / 0x1001FA8C / 0x1001FBF6 */
-    }
-
-    or3 = b->outcode | c->outcode | a->outcode;
-    if (or3 != 0) {
-        pS->cTriClipped++;
-        if (pS->sink.pfnClipTri)
-            pS->sink.pfnClipTri(pS->sink.pUser, a, b, c);
-        return;
-    }
-
-    br_dlcmd_finish_vtx(pS, a);
-    br_dlcmd_finish_vtx(pS, b);
-    br_dlcmd_finish_vtx(pS, c);
-    pS->cTriDrawn++;
-    if (pS->sink.pfnDrawTri)
-        pS->sink.pfnDrawTri(pS->sink.pUser, a, b, c);
-}
 
 /* 0x1001ECF0 -- G_TRI1, opcode 0xBF.  378 bytes, Glide-only.
  *
@@ -834,23 +771,8 @@ unsigned char *BrDlCmdTri2Flat(unsigned char *p)
  * The X maximum gets `inc edi`, so it is exclusive; the Y pair gets the
  * `-1` on the minimum, which is the same exclusivity after the flip.  Both
  * spans are therefore (corner difference + 1) pixels. */
-const uint8_t *BrDlCmdFillRect(BrDlCmd *pS, const uint8_t *p)
-{
-    uint32_t w0 = br_dlcmd_w(p);
-    uint32_t w1 = br_dlcmd_w(p + 4);
-    int32_t  h  = pS->cyScreen;               /* 0x100A7518 */
-    int32_t  ulx, uly, lrx, lry;
+/* (port-only BrDlCmdFillRect removed) */
 
-    uly = (int32_t)((w1 >>  2) & 0x3FFu);     /* w1 bits 11:0, 10.2 */
-    ulx = (int32_t)((w1 >> 14) & 0x3FFu);     /* w1 bits 23:12      */
-    lry = (int32_t)((w0 >>  2) & 0x3FFu);     /* w0 bits 11:0       */
-    lrx = (int32_t)((w0 >> 14) & 0x3FFu);     /* w0 bits 23:12      */
-
-    pS->cRects++;
-    if (pS->sink.pfnFillRect)
-        pS->sink.pfnFillRect(pS->sink.pUser, ulx, h - lry - 1, lrx + 1, h - uly);
-    return p + 8;
-}
 
 /* ====================================================================
  * 0x1001E9F0 -- G_SETFILLCOLOR, opcode 0xF7.  110 bytes.
@@ -872,30 +794,8 @@ const uint8_t *BrDlCmdFillRect(BrDlCmd *pS, const uint8_t *p)
  * All four destinations are read by the rect drawer 0x1001E380 at 0x1001E441,
  * which is the arm taken whenever the latched combiner is NOT the prim-colour
  * row.  So 0xF7 is the colour 0xF6 fills with. */
-const uint8_t *BrDlCmdFillColour(BrDlCmd *pS, const uint8_t *p)
-{
-    uint32_t w1 = br_dlcmd_w(p + 4);
-    uint8_t  hi, lo;
+/* (port-only BrDlCmdFillColour removed) */
 
-    hi = (uint8_t)(w1 >> 8);          /* bits 15:8  -- carries R<<3 */
-    lo = (uint8_t)(w1 >> 13);         /* bits 15:13 -- carries R>>2 */
-    pS->fillR = (uint8_t)((hi & 0xF8u) | (lo & 0x07u));
-
-    hi = (uint8_t)(w1 >> 3);          /* bits 10:3  -- carries G<<3 */
-    lo = (uint8_t)(w1 >> 8);          /* bits 10:8  -- carries G>>2 */
-    pS->fillG = (uint8_t)((hi & 0xF8u) | (lo & 0x07u));
-
-    /* `and cl,0xFE / shl cl,2` is an EIGHT-BIT shift: bits 6 and 7 of the
-     * masked byte fall off the end, which is what leaves room for the low
-     * three.  Reproduced by truncating to uint8_t after the shift. */
-    hi = (uint8_t)((uint8_t)(w1 & 0xFEu) << 2);
-    lo = (uint8_t)(w1 >> 3);          /* bits 5:3   -- carries B>>2 */
-    pS->fillB = (uint8_t)(hi | (lo & 0x07u));
-
-    pS->fillA = (uint8_t)((w1 & 1u) ? 0xFFu : 0x00u);
-
-    return p + 8;                     /* 0x1001EA4E `add eax,8` */
-}
 
 /* ====================================================================
  * 0x1001EA60 -- G_SETFOGCOLOR, opcode 0xF8.  Glide-only.
@@ -956,19 +856,8 @@ int br_dl_prim(int param_1)
  * The tail is grConstantColorValue(w1) through thunk 0x10072996, passing the
  * RAW word.  port/src/gfx/metal/br_gfx_metal.m already records that Glide's
  * GrColor_t is R,G,B,A in byte order for this call. */
-const uint8_t *BrDlCmdPrimColour(BrDlCmd *pS, const uint8_t *p)
-{
-    uint32_t w1 = br_dlcmd_w(p + 4);
+/* (port-only BrDlCmdPrimColour removed) */
 
-    pS->primR = (float)(int32_t)((w1 >> 24) & 0xFFu);   /* 0x105D17A4 */
-    pS->primG = (float)(int32_t)((w1 >> 16) & 0xFFu);   /* 0x105D17B4 */
-    pS->primB = (float)(int32_t)((w1 >>  8) & 0xFFu);   /* 0x105CE2D0 */
-    pS->primA = (float)(int32_t)(w1 & 0xFFu);           /* 0x105CD9F0 */
-
-    if (pS->sink.pfnConstantColor)
-        pS->sink.pfnConstantColor(pS->sink.pUser, w1);
-    return p + 8;
-}
 
 /* ====================================================================
  * 0x1001E930 -- G_SETENVCOLOR, opcode 0xFB.  183 bytes.
@@ -986,18 +875,8 @@ const uint8_t *BrDlCmdPrimColour(BrDlCmd *pS, const uint8_t *p)
  * `add eax,8` sits at 0x1001E9C4, in the MIDDLE of the function -- before the
  * alpha channel is even converted.  The return value is still p + 8; the
  * scheduler simply hoisted it. */
-const uint8_t *BrDlCmdEnvColour(BrDlCmd *pS, const uint8_t *p)
-{
-    uint32_t w1 = br_dlcmd_w(p + 4);
-    const float k = 1.0f / 255.0f;    /* 0x10077400 == 0x3B808081 exactly */
+/* (port-only BrDlCmdEnvColour removed) */
 
-    pS->envR = (float)((double)(float)(int32_t)((w1 >> 24) & 0xFFu) * k);
-    pS->envG = (float)((double)(float)(int32_t)((w1 >> 16) & 0xFFu) * k);
-    pS->envB = (float)((double)(float)(int32_t)((w1 >>  8) & 0xFFu) * k);
-    pS->envA = (float)((double)(float)(int32_t)(w1 & 0xFFu) * k);
-
-    return p + 8;
-}
 
 /* ====================================================================
  * 0x1001E770 -- G_SETCOMBINE, opcode 0xFC.  36 bytes; the body is shared with
@@ -1035,35 +914,11 @@ const uint8_t *BrDlCmdSetCombine(BrDlCmd *pS, const uint8_t *p)
 /* wiring                                                               */
 /* ==================================================================== */
 
-void BrDlCmdInit(BrDlCmd *pS, int32_t cyScreen)
-{
-    int i;
+/* (port-only BrDlCmdInit removed) */
 
-    memset(pS, 0, sizeof(*pS));
-    for (i = 0; i < 4; ++i)
-        pS->combined.m[i][i] = 1.0f;
-    /* 0x118ED1A4 / 0x118ED1A8 are the texture binder's business; unity is
-     * what br_dl.c holds them at and what an unbound tile behaves as. */
-    pS->texScaleS = 1.0f;
-    pS->texScaleT = 1.0f;
-    pS->cyScreen  = cyScreen;
-}
 
 /* The nine slots this module owns, out of the 28 the table at 0x100A9A58
  * fills.  Everything else -- including the other nineteen -- answers NULL, so a
  * caller cannot silently get the wrong handler for a byte. */
-BrDlCmdFn BrDlCmdLookup(unsigned op)
-{
-    switch (op) {
-    /* One-argument in the matching arm; the table's type is the port's. */
-    case 0xB1: return (BrDlCmdFn)BrDlCmdTri2;
-    case 0xBF: return (BrDlCmdFn)BrDlCmdTri1;
-    case 0xF6: return BrDlCmdFillRect;
-    case 0xF7: return BrDlCmdFillColour;
-    case 0xF8: return BrDlCmdFogColour;
-    case 0xFA: return BrDlCmdPrimColour;
-    case 0xFB: return BrDlCmdEnvColour;
-    case 0xFC: return BrDlCmdSetCombine;
-    default:   return NULL;
-    }
-}
+/* (port-only BrDlCmdLookup removed) */
+

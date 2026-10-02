@@ -144,7 +144,7 @@ void FUN_1000c9e0(BrVisView *pView, const void *pPt, int n, short *pMin,
     if (pv[3] > 0.001f || pv[3] < -0.001f) {
         r = 1.0f / pv[3];
         sx = r * pv[0];
-        if (DAT_106ea3f4_106E8204 ^ DAT_106e8204_106EA3F4)
+        if (g_brRaceBeginDifficulty ^ BrG_6C1174)   /* 0x106EA3F4 ^ 0x106E8204 */
             pv[0] = -sx;
         else
             pv[0] = sx;

@@ -23,6 +23,10 @@
  */
 #include "slice2_16.h"   /* br_globals: its objects */
 #include <stdint.h>
+typedef void *(*BrTexCreateFn10073B00)(void *pSrc, void *pArg2,
+                                       int w, int h, int fmt, int siz,
+                                       int a7, int a8, int a9, int a10,
+                                       int a11, int a12, int a13, int a14);
 
 
 /* 0x118AA0B0 -- the backend texture constructor.  cdecl, last argument
@@ -46,7 +50,7 @@
 /* @implements 0x100739B0 d3d BrSub100739B0 */
 void BrSub100739B0(void)
 {
-    g_BrDrawReflectTexA = (*(void * (**)(void *, void *, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t))&(*(BrTexCreateFn10073B00 *)&g_pfn18AA0B0))(g_0B94A8, 0, 0x40, 0x40, 0, 4,
+    g_BrDrawReflectTexA = ((BrTexCreateFn10073B00)g_pfn18AA0B0)(g_0B94A8, 0, 0x40, 0x40, 0, 4,
                           0, 0, 0, 0, 0, 0, 1, 0);
 }
 
@@ -75,7 +79,7 @@ void BrSub100739B0(void)
 /* @implements 0x10073AC0 d3d BrSub10073AC0 */
 void BrSub10073AC0(void)
 {
-    (*(void * *)&g_BrDrawRefColors) = (*(void * (**)(void *, void *, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t))&(*(BrTexCreateFn10073B00 *)&g_pfn18AA0B0))((*(uint8_t (*)[])&DAT_118eda10), (*(uint8_t (*)[])&DAT_118ed1f0),
+    (*(void * *)&g_BrDrawRefColors) = ((BrTexCreateFn10073B00)g_pfn18AA0B0)((*(uint8_t (*)[])&DAT_118eda10), (*(uint8_t (*)[])&DAT_118ed1f0),
                          0x20u, 0x80u, 0u, 2u,
                          0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
 }
@@ -94,10 +98,6 @@ void BrSub10073AC0(void)
  * Matching-only: the constructor pointer and the two source objects have no
  * owner in the port tree, and inventing a size for the pixel buffers would
  * be a second view of storage this packet does not own. */
-typedef void *(*BrTexCreateFn10073B00)(void *pSrc, void *pArg2,
-                                       int w, int h, int fmt, int siz,
-                                       int a7, int a8, int a9, int a10,
-                                       int a11, int a12, int a13, int a14);
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */ /* 0x118AA0B0 */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */    /* 0x118AA0F8 */

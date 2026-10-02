@@ -51,10 +51,8 @@
 
 /* trunc-to-int, the x87 _ftol (0x10074560) the original calls; the store then
  * keeps the low byte. */
-static uint8_t br_cr_ftol_byte(float x)
-{
-    return (uint8_t)(int32_t)x;   /* C truncates toward zero, as _ftol does */
-}
+/* (port-only br_cr_ftol_byte removed) */
+
 
 /* ------------------------------------------------------------------ *
  * 0x10065950 -- signed distance of a point from a contact plane.

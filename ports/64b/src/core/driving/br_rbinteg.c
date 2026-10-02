@@ -26,8 +26,7 @@
 /* A bare `ret` in this build (see CONTRACT).  Name and prototype copied from
  * slice2_18.h so integration can wire it mechanically.  In the matching build
  * it is the tree's BrPodNop (glide 0x10008D60), so the call relocates. */
-#define BrStub8B80_1p BrPodNop
-extern void BrStub8B80_1p(const void *p0);
+#define BrStub8B80_1p(p) BrPodNop()   /* 0x10008D60, a bare ret */
 
 /* BrVec4Normalise (0x100741B0) and BrMat4MulVec3Transposed (0x10074770) come
  * in through slice1_09.h / br_mat.h. */
@@ -180,48 +179,8 @@ void BrMat3Solve(BrVec3 *pOut, const BrMat3 *pM, const BrVec3 *pV)
  * and spin -- the first half of the physics step, before anything has
  * actually moved. */
 /* @d3donly 0x100743A0 BrRbIntegrateVelocity -- glide twin 0x1006D600 claimed by br_carphys.c:BrCpIntegrateVelocity */
-void BrRbIntegrateVelocity(BrRbState *pS, const BrRbBody *pBody, float dt)
-{
-    /* SPILL MAP.  Six products, and exactly ONE of them is rounded:
-     *
-     *   100743EB  fstp dword [esp+8]   accel[2]*dt -- stored AND POPPED, then
-     *   100743F5  fld  dword [esp+8]   reloaded.  This one really is float.
-     *
-     *   100743FB  fst  dword [esp]     angAccel[0]*dt \  stored and KEPT, and
-     *   10074405  fst  dword [esp+4]   angAccel[1]*dt  > the three slots are
-     *   1007440B  fst  dword [esp+8]   angAccel[2]*dt /  NEVER RELOADED.
-     *
-     * Nothing between 1007440F and the epilogue reads [esp], [esp+4] or
-     * [esp+8].  Those three stores are dead -- register-allocator spill slots
-     * the compiler wrote and did not need -- so the adds at 1007441B,
-     * 10074420 and 10074425 all consume the unrounded register copies.  A
-     * spill that is never reloaded rounds nothing, and treating `fst` as
-     * evidence of rounding without checking for the matching `fld` would have
-     * put a float here on the strength of an instruction with no effect.
-     *
-     * accel[0]*dt and accel[1]*dt are never stored at all.
-     *
-     * All six results are `fstp dword` at 1007442F..10074442, so each sum
-     * rounds to float once, at the store. */
-    const double d = (double)dt;
+/* (port-only BrRbIntegrateVelocity removed) */
 
-    /* 0x0C <- 0xFC   product never spilled */
-    pS->vel.x    = (float)((double)pBody->accel.x * d + (double)pS->vel.x);
-    /* 0x10 <- 0x100  product never spilled */
-    pS->vel.y    = (float)((double)pBody->accel.y * d + (double)pS->vel.y);
-    /* 0x14 <- 0x104  product SPILLED and reloaded: rounded before the add */
-    pS->vel.z    = (float)((double)(float)((double)pBody->accel.z * d)
-                           + (double)pS->vel.z);
-    /* 0x28 <- 0x108  spill slot written but never read */
-    pS->angVel.x = (float)((double)pBody->angAccel.x * d
-                           + (double)pS->angVel.x);
-    /* 0x2C <- 0x10C  likewise */
-    pS->angVel.y = (float)((double)pBody->angAccel.y * d
-                           + (double)pS->angVel.y);
-    /* 0x30 <- 0x110  likewise */
-    pS->angVel.z = (float)((double)pBody->angAccel.z * d
-                           + (double)pS->angVel.z);
-}
 
 /* 0x100745F0 */
 /* WHAT IT DOES: advances a body one time step: moves it by its speed, turns
@@ -439,7 +398,7 @@ void BrRbInitInertia(BrRbBody *pB)
     pB->f14 = 0.0f;
 
     pB->f1B4 = 0.0f;
-    pB->pPlane = 0.0f;
+    pB->pPlane = 0;
     pB->f1C4 = 0.0f;
     pB->f1C0 = BR_K_1C0;
     pB->f1CC = 0.0f;

@@ -25,146 +25,36 @@ BrUiNav *g_pBrUiNav;
  * 0x100484F0 -- clamp the selection cursor against one page
  * ========================================================================== */
 
-int BrUiNavPageSelect_100484F0(BrUiNav *pNav, BrUiPage_ *pPage)
-{
-    BrScrGlobals *pG   = pNav->pG;
-    uint32_t      nMod = (uint32_t)pPage->cSel;         /* zero-extended     */
-    int32_t       nCur = (int32_t)(int16_t)pG->wAA286C; /* SIGN-extended     */
-    uint16_t      res;
+/* (port-only BrUiNavPageSelect_100484F0 removed) */
 
-    if (nCur >= (int32_t)nMod) {
-        res = 0;
-        pG->wAA286C = res;
-    } else if (nCur >= 0) {
-        res = (uint16_t)nCur;
-        /* GOTCHA: the global is deliberately NOT written on this arm. */
-    } else {
-        /* `lea eax,[edx-1]` on the FULL edx, of which only AX is stored --
-         * the high half of edx is indeterminate at this point in the
-         * original and cannot reach the result. */
-        res = (uint16_t)(nMod - 1u);
-        pG->wAA286C = res;
-    }
-    pPage->iSel = res;
-    return 1;
-}
 
 /* ==========================================================================
  * 0x100480A0 -- control vtable +0x04, the step timer
  * ========================================================================== */
 
-int32_t BrUiNavCtlTick_100480A0(BrUiCtl_ *pCtl)
-{
-    int32_t nNow, nDelta;
+/* (port-only BrUiNavCtlTick_100480A0 removed) */
 
-    if (pCtl->f2968 == 0)
-        return 1;
-
-    nNow   = BrSub10075020();
-    nDelta = (int32_t)((uint32_t)nNow - (uint32_t)pCtl->f2970);
-    pCtl->f2970 = nNow;
-    pCtl->f2974 = (int32_t)((uint32_t)pCtl->f2974 + (uint32_t)nDelta);
-
-    if (pCtl->f296C != 0) {
-        int32_t i = pCtl->wStep;
-
-        /* `jle` -- a step of length 0 can never elapse. */
-        if (pCtl->f2974 <= pCtl->aStepMs[i])
-            return 1;
-
-        pCtl->f2974   = 0;
-        pCtl->flags1C = (int32_t)((uint32_t)pCtl->flags1C | BR_SCR_BIT100);
-        pCtl->list.f18 |= BR_SCR_BIT100;
-        ++i;
-        pCtl->wStep = (int16_t)i;
-        i = pCtl->wStep;                 /* movsx of the store just made */
-        if (pCtl->aStepMs[i] > 0)
-            return 1;
-        pCtl->wStep = 0;
-        return 1;
-    }
-
-    /* `jle 0x3C` -- STRICTLY more than 60 ms. */
-    if (pCtl->f2974 > 0x3C) {
-        pCtl->f2974   = 0;
-        pCtl->flags1C = (int32_t)((uint32_t)pCtl->flags1C | BR_SCR_BIT100);
-        pCtl->list.f18 |= BR_SCR_BIT100;
-    }
-    return 1;
-}
 
 /* ==========================================================================
  * 0x10047A10 -- control vtable +0x10
  * ========================================================================== */
 
-int32_t BrUiNavCtlStepCode_10047A10(BrUiCtl_ *pCtl)
-{
-    if (pCtl->f296C == 0) {
-        pCtl->pVtbl->f1C(pCtl);
-        return 1;
-    }
-    {
-        int32_t        i = pCtl->wStep;
-        uint16_t       w = pCtl->aStepId[i];
-        unsigned char *pRec = (unsigned char *)pCtl->p1E210;
+/* (port-only BrUiNavCtlStepCode_10047A10 removed) */
 
-        pCtl->w1E20C = w;
-        /* The stride-0x10 array at +0x1E210; the original adds i*16. */
-        pCtl->pVtbl->f18(pCtl, pRec + (size_t)((uint32_t)i * 16u));
-    }
-    return 1;
-}
 
 /* ==========================================================================
  * 0x10048010 -- control vtable +0x08
  * ========================================================================== */
 
-int32_t BrUiNavCtlEnter_10048010(BrUiNav *pNav, BrUiCtl_ *pCtl)
-{
-    uint32_t f;
+/* (port-only BrUiNavCtlEnter_10048010 removed) */
 
-    (void)pNav;
-    if (((uint32_t)pCtl->flags28 & 1u) == 0)
-        return 1;
-
-    f = (uint32_t)pCtl->flags1C;
-    if (f & BR_SCR_F1C_100000) {
-        /* The original tests `&this->aText[0] != NULL` here -- the address of
-         * a member, so the branch is dead. Kept as this comment only. */
-        pCtl->aText[0].pVtbl->pfn10(&pCtl->aText[0]);
-        return 1;
-    }
-    if (f & BR_SCR_F1C_200000)
-        return 1;
-
-    if (pCtl->pVtbl->f10(pCtl) != 0)
-        return 1;
-    return 0;
-}
 
 /* ==========================================================================
  * 0x10048060 -- control vtable +0x3C
  * ========================================================================== */
 
-int32_t BrUiNavCtlOther_10048060(BrUiNav *pNav, const BrUiCtl_ *pCtl)
-{
-    BrUiCtl_ *pOther = pNav->pAA29C0;
-    BrPhase_ *pPhase;
+/* (port-only BrUiNavCtlOther_10048060 removed) */
 
-    if (pOther == NULL) {
-        pNav->pG->nAA2858 = 0;
-        return 0;
-    }
-    pPhase = pOther->pOwner;
-    if (pPhase->aFlags[1] != 1) {
-        pNav->pG->nAA2858 = 0;
-        return 0;
-    }
-    if (pCtl == pOther)
-        return 0;              /* nAA2858 left ALONE on this path */
-    pNav->pG->nAA2858 = 1;
-    return 1;
-}
 
 /* ==========================================================================
  * 0x10047A60 -- control vtable +0x20.
@@ -183,23 +73,11 @@ int32_t BrUiNavCtlOther_10048060(BrUiNav *pNav, const BrUiCtl_ *pCtl)
  * exclude equality on the far side (`jg` -> outside when edge > p), the RIGHT
  * comparison excludes when edge < p, and the BOTTOM one INCLUDES equality
  * (`jge` -> inside). So the box is closed on all four edges. */
-static int BrNavPtIn(int32_t l, int32_t t, int32_t r, int32_t b,
-                     int32_t x, int32_t y)
-{
-    if (l > x) return 0;
-    if (r < x) return 0;
-    if (t > y) return 0;
-    if (b < y) return 0;
-    return 1;
-}
+/* (port-only BrNavPtIn removed) */
 
-static int BrNavPtInStyle(const BrTextStyle *pRc, int32_t x, int32_t y)
-{
-    /* Port-only guard: the original always has all three rects. */
-    if (pRc == NULL)
-        return 0;
-    return BrNavPtIn(pRc->left, pRc->top, pRc->right, pRc->bottom, x, y);
-}
+
+/* (port-only BrNavPtInStyle removed) */
+
 
 /* WHAT IT DOES: test whether the mouse cursor is inside one menu control's
  * hot rectangle and, if so, make that control the active one. The hit test
@@ -325,225 +203,18 @@ int BR_THISCALL1 BrUiNavCtlHit_10047A60(BrUiCtl_ *pCtl)
 /* The child lookup the original performs six times over: the control's phase,
  * that phase's current page, then the page control named by the int16 at
  * +0x2AB6 + 2*i. */
-static BrUiCtl_ *BrNavChild(BrUiCtl_ *pCtl, int32_t i)
-{
-    BrPhase_ *pPhase = pCtl->pOwner;
-    int32_t   k = pCtl->aChild[i];
-    return pPhase->pCur->apCtl[k];
-}
+/* (port-only BrNavChild removed) */
 
-int BrUiNavCtlFrame_10048180(BrUiNav *pNav, BrUiCtl_ *pCtl)
-{
-    const BrUiCtlVtbl_ *pV;
-    int16_t   wSaved = pCtl->wStep;
-    uint32_t  f;
-    BrUiCtlHookFn_ pfn;
 
-    if ((uint32_t)pCtl->flags1C & BR_SCR_F1C_0010) {
-        pCtl->pVtbl->f08(pCtl);
-        return 1;
-    }
-    pV = pCtl->pVtbl;
-    if (pV->f3C(pCtl) != 0) {
-        pV->f08(pCtl);
-        return 1;
-    }
-    if (pCtl->twActive != 0)
-        pV->f30(pCtl);
-    pV->f04(pCtl);
+/* (port-only BrUiNavCtlFrame_10048180 removed) */
 
-    pfn = pCtl->pfn04;
-    if (pfn != NULL) {
-        int32_t r = pfn(pCtl);
-        if (r == -2) {
-            /* GOTCHA: -2 skips the whole body but still reports success --
-             * and, unlike every other exit, does NOT call vtable +0x08. */
-            return 1;
-        }
-        if (r == -1)
-            return 0;
-    }
-
-    if (pV->f20(pCtl) != 0 && pNav->pG->nAA28D8 == 0) {
-        f = (uint32_t)pCtl->flags1C;
-
-        if (f & BR_SCR_F1C_400000) {
-            const BrObjAA2E80 *p = pNav->pG->pAA2E80;
-            if (p->f2C != 0 || p->f30 != 0)
-                pCtl->w1E20C = pCtl->aStepId[1];   /* the old `f2A42` */
-        }
-
-        if (f & BR_SCR_F1C_0002) {
-            BrUiCtlHookFn_ p8 = pCtl->pfn08;
-            if (p8 != NULL) {
-                int32_t r;
-                if ((void *)p8 == pNav->pG->pfn10043760) {
-                    BrSub10072AF0(2, 0x200020);
-                    pNav->pG->nAA2854 = 2;
-                } else if ((void *)p8 != pNav->pG->pfn10042CF0) {
-                    BrSub10072AF0(1, 0x200020);
-                    pNav->pG->nAA2854 = 1;
-                }
-                /* the field is RE-READ for the call */
-                r = pCtl->pfn08(pCtl);
-                if (r == 0)
-                    return 0;
-                if ((void *)pCtl->pfn08 == pNav->pG->pfn10042CF0) {
-                    BrSub10072AF0(1, 0x200020);
-                    pNav->pG->nAA2854 = 1;
-                }
-                pNav->pG->nAA33E4 = 0;
-            }
-            pCtl->flags1C =
-                (int32_t)((uint32_t)pCtl->flags1C & ~BR_SCR_F1C_0002);
-        } else {
-            if (pCtl->pfn0C != NULL)
-                (void)pCtl->pfn0C(pCtl);
-        }
-
-        if (((uint32_t)pCtl->flags1C & BR_SCR_F1C_10000) != 0
-            && (int16_t)pCtl->cChild > 0) {
-            int32_t i = 0;
-            do {
-                /* The original repeats this lookup five times before the
-                 * dispatch; with no intervening call the results are
-                 * identical, so it is done once. It is repeated after the
-                 * dispatch, which the original also does. */
-                BrUiCtl_ *pKid = BrNavChild(pCtl, i);
-
-                pKid->flags1C =
-                    (int32_t)((uint32_t)pKid->flags1C | BR_SCR_F1C_20000);
-                pKid->wStep  = wSaved;
-                pKid->f2974  = 0;
-                pKid->f2970  = 0;
-                pCtl->rcRight += (int32_t)pKid->w48;
-                pKid->pVtbl->f0C(pKid);
-
-                pKid = BrNavChild(pCtl, i);
-                pKid->flags1C =
-                    (int32_t)((uint32_t)pKid->flags1C & ~BR_SCR_F1C_20000);
-                ++i;
-            } while (i < (int32_t)(int16_t)pCtl->cChild);
-
-            pV->f08(pCtl);
-            return 1;
-        }
-        pV->f08(pCtl);
-        return 1;
-    }
-
-    /* The "vtable +0x20 said no" tail. */
-    f = (uint32_t)pCtl->flags1C;
-    if (f & BR_SCR_F1C_400000)
-        pCtl->w1E20C = pCtl->aStepId[0];
-
-    if ((f & 0x00000004u) == 0 && (f & BR_SCR_F1C_20000) == 0) {
-        pCtl->wStep = 0;
-        if ((f & BR_SCR_F1C_100000) != 0
-            && (f & BR_SCR_F1C_0010) == 0
-            && pCtl->pfn0C != NULL) {
-            pCtl->w1E20C = 3;
-            pCtl->aText[0].f08 = 1;
-            pV->f08(pCtl);
-            return 1;
-        }
-    } else {
-        if (pCtl->pfn0C != NULL)
-            (void)pCtl->pfn0C(pCtl);
-    }
-    pV->f08(pCtl);
-    return 1;
-}
 
 /* ==========================================================================
  * 0x10048530 -- page vtable +0x04, one frame of one page
  * ========================================================================== */
 
-int BrUiNavPageFrame_10048530(BrUiNav *pNav, BrUiPage_ *pPage)
-{
-    BrScrGlobals *pG = pNav->pG;
-    int32_t i;
+/* (port-only BrUiNavPageFrame_10048530 removed) */
 
-    if (pPage->pfn04 != NULL)
-        pPage->pfn04();
-    if (pPage->pfn0C != NULL)
-        pPage->pfn0C();
-
-    pG->wAA2870 = 0;
-    (void)BrUiNavPageSelect_100484F0(pNav, pPage);
-
-    for (i = 0; i < (int32_t)pPage->cCtl; ++i) {
-        BrUiCtl_ *pCtl = pPage->apCtl[i];
-        uint32_t  f;
-
-        if (pCtl == NULL)
-            return 0;
-
-        if (pCtl->pfn14 != NULL && pCtl->pfn14(pCtl) == 0)
-            return 0;
-
-        f = (uint32_t)pCtl->flags1C;
-        if (f & BR_SCR_F1C_1000) {
-            pCtl->pVtbl->f04(pCtl);
-            if (pCtl->pfn04 != NULL)
-                (void)pCtl->pfn04(pCtl);
-
-            if ((uint32_t)pCtl->flags1C & BR_SCR_F1C_0010) {
-                if (pG->wAA286C == pG->wAA2870) {
-                    pG->wAA286C = (uint16_t)(pG->wAA286C + pG->w0AB3DC);
-                    (void)BrUiNavPageSelect_100484F0(pNav, pPage);
-                }
-                ++pG->wAA2870;
-            }
-            f = (uint32_t)pCtl->flags1C;      /* RE-READ */
-            if ((f & BR_SCR_F1C_0010) == 0)
-                continue;
-        }
-        if (f & BR_SCR_F1C_0800)
-            continue;
-
-        if (pCtl->pVtbl->f0C(pCtl) == 0) {
-            pG->bAA28A8 = 0;
-            return 0;
-        }
-
-        f = (uint32_t)pCtl->flags1C;
-        if (f & (BR_SCR_F1C_2000 | BR_SCR_F1C_4000)) {
-            uint32_t nSel = (uint32_t)pPage->pOwner->fBC;
-            if (nSel == (uint32_t)i || (f & BR_SCR_F1C_4000)) {
-                int16_t nKids = (int16_t)pCtl->cChild;
-                int32_t k = 0;
-                while (k < nKids) {
-                    BrUiCtl_ *pKid = pPage->apCtl[pCtl->aChild[k]];
-                    pKid->pVtbl->f0C(pKid);
-                    nKids = (int16_t)pCtl->cChild;     /* re-read */
-                    ++k;
-                }
-            }
-        }
-
-        if (pCtl->pfn18 != NULL && pCtl->pfn18(pCtl) == 0)
-            return 0;
-
-        f = (uint32_t)pCtl->flags1C;
-        if ((f & BR_SCR_F1C_0020) != 0
-            && pG->nAA28D8 == 0
-            && (f & BR_SCR_F1C_2000) != 0) {
-            BrPhase_ *pOwner = pPage->pOwner;
-            if ((uint32_t)pOwner->fBC != (uint32_t)i) {
-                int k;
-                pOwner->fBC = (uint16_t)(uint32_t)i;
-                for (k = 0; k < BR_PHASE_PAGES; ++k)
-                    pPage->pOwner->aFlags[k] = 0;
-                pPage->pOwner->aFlags[0] = 1;
-            }
-        }
-    }
-
-    if (pPage->pfn08 != NULL)
-        pPage->pfn08();
-    return 1;
-}
 
 /* ==========================================================================
  * 0x100489A0 -- phase vtable +0x0C, one frame of one phase.
@@ -560,105 +231,18 @@ int BrUiNavPageFrame_10048530(BrUiNav *pNav, BrUiPage_ *pPage)
  *
  * The vtable is passed in rather than re-read because the SECOND exit uses the
  * pointer loaded before the tick call, which is the original's `edi`. */
-static void BrNavPhaseBail(BrUiNav *pNav, BrPhase_ *pThis,
-                           const BrPhaseVtbl_ *pV)
-{
-    BrSub1003E310();
-    BrSub1006A4A0(pNav->pG->pB4DF30, pNav->pG->pB4FBE8);
-    pThis->iPage = 0;
-    pV->f18(pThis, NULL);
-}
+/* (port-only BrNavPhaseBail removed) */
 
-int BrUiNavPhaseRun_100489A0(BrUiNav *pNav, BrPhase_ *pThis)
-{
-    const BrPhaseVtbl_ *pV;
-    int32_t i;
 
-    if (pThis->f68 == 0) {
-        BrNavPhaseBail(pNav, pThis, pThis->pVtbl);
-        return 0;
-    }
+/* (port-only BrUiNavPhaseRun_100489A0 removed) */
 
-    (void)pThis->pVtbl->f04(pThis);
-
-    /* 0x10060260, with the current phase temporarily pointed at the root.
-     * The swap is the original's and is restored immediately; the callee is
-     * host-injected, for the reason br_uinav.h's BrUiNavPollFn banner gives. */
-    {
-        BrPhase_ *pPrev = pNav->pAA2904;
-        pNav->pAA2904 = pNav->pAA2908;
-        if (pNav->pfnPoll != NULL)
-            pNav->pfnPoll(pNav);
-        pNav->pAA2904 = pPrev;
-    }
-
-    /* 0x1005FFB0 -- OUTSIDE the swap, which is why it is a separate call and
-     * not folded into the seam above. */
-    BrDikPollAndEdge();
-
-    pNav->pG->nAA2868 = (pNav->pAA2904 == pNav->pAA2908) ? 1 : 0;
-
-    pThis->iPage = 0;
-    for (i = 0; i < (int32_t)pThis->nPages; ++i) {
-        BrUiPage_ *pPg = pThis->aPages[i];
-
-        /* GOTCHA: pCur is written BEFORE the NULL test. */
-        pThis->pCur = pPg;
-        if (pPg == NULL)
-            return 0;
-        pThis->iPage = (uint16_t)(uint32_t)i;
-        if (pThis->aFlags[i] != 0) {
-            BrUiPage_ *pCur = pThis->pCur;   /* the original re-reads +0x64 */
-            if (pCur->pVtbl->f04(pCur) == 0)
-                return 0;
-        }
-    }
-
-    pV = pThis->pVtbl;
-    (void)pV->f08(pThis);
-    if (pThis->f68 != 0)
-        return 1;
-    BrNavPhaseBail(pNav, pThis, pV);
-    return 0;
-}
 
 /* ==========================================================================
  * 0x10048AA0 -- phase vtable +0x1C
  * ========================================================================== */
 
-void BrUiNavPhaseRelease_10048AA0(BrUiNav *pNav, BrPhase_ *pPhase)
-{
-    int32_t i;
+/* (port-only BrUiNavPhaseRelease_10048AA0 removed) */
 
-    for (i = 0; i < (int32_t)pPhase->nPages; ++i) {
-        BrUiPage_ *pPg = pPhase->aPages[i];
-
-        /* DEVIATION: see br_uinav.h. The original null-checks the page only
-         * AFTER walking its 200 slots. */
-        if (pPg != NULL) {
-            int k;
-            for (k = 0; k < BR_UI_PAGE_CTL_MAX; ++k) {
-                BrUiCtl_ *pCtl = pPg->apCtl[k];
-                if (pCtl != NULL) {
-                    /* br_ui.h leaves control vtable +0x00 as `void *` on the
-                     * stated grounds that nothing had been seen to call it.
-                     * This calls it: 0x100478A0 is the MSVC scalar deleting
-                     * destructor, same shape as the page's and the phase's
-                     * (`this`, flags -> this). The cast is here rather than in
-                     * the header because ONE observed call site is thin
-                     * evidence for changing a published slot type. */
-                    void *(*pfnDel)(BrUiCtl_ *, int32_t) =
-                        (void *(*)(BrUiCtl_ *, int32_t))pCtl->pVtbl->f00;
-                    if (pfnDel != NULL)
-                        (void)pfnDel(pCtl, 1);
-                }
-                pPg->apCtl[k] = NULL;
-            }
-            (void)pPg->pVtbl->f00(pPg, 1);
-        }
-    }
-    pNav->pG->wAA286C = 0;
-}
 
 /* ==========================================================================
  * The two control hooks that move between screens
@@ -669,45 +253,8 @@ void BrUiNavPhaseRelease_10048AA0(BrUiNav *pNav, BrPhase_ *pPhase)
 /* XSLICE 0x1004F700 -- the enter hook 0x10045AF0 installs. A ported builder. */
 /* BrExt_1004F700: prototype in br_funcs.h */
 
-int32_t BrUiNavHook_10045AF0(BrUiCtl_ *pCtl)
-{
-    BrUiNav  *pNav = g_pBrUiNav;
-    BrPhase_ *p;
+/* (port-only BrUiNavHook_10045AF0 removed) */
 
-    (void)pCtl;   /* the original takes the control and never reads it */
-
-    if (pNav->pAA2924 != NULL) {
-        /* Already built: republish and return WITHOUT running the builder. */
-        pNav->pAA2904 = pNav->pAA2924;
-        return 1;
-    }
-
-    /* HARDENING (port): the original pushes 0xC8. See br_uinav.h. */
-    p = (BrPhase_ *)BrOperatorNew(BR_PHASE_ALLOC_SIZE);
-    p = (p != NULL) ? BrOptObjCtor(p) : NULL;
-
-    /* Both globals are written even when the allocation failed. */
-    pNav->pAA2924 = p;
-    pNav->pAA2904 = p;
-    if (p == NULL)
-        return 1;      /* `mov eax,1` is on this path too */
-
-    p->pfnEnter = BrExt_1004F700;
-
-    /* The original re-reads 0x10AA2924 and calls through THAT, not through
-     * the register holding the new object. */
-    p = pNav->pAA2924;
-    p->pfnEnter(p);
-
-    /* ...and re-reads 0x10AA2904 once per store, so an enter hook that
-     * re-pointed the current phase lands these two flags on ITS phase.
-     * DEVIATION: guarded against NULL, which the original would fault on. */
-    if (pNav->pAA2904 != NULL)
-        pNav->pAA2904->f0C = 1;
-    if (pNav->pAA2904 != NULL)
-        pNav->pAA2904->f68 = 1;
-    return 1;
-}
 
 /* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x100400E0.cpp */
 /* BrUiNavHook_10046C90: prototype in br_funcs.h */
@@ -716,66 +263,34 @@ int32_t BrUiNavHook_10045AF0(BrUiCtl_ *pCtl)
  * Vtable adapters and the input seam
  * ========================================================================== */
 
-static void      NavV_f04(BrUiCtl_ *p) { (void)BrUiNavCtlTick_100480A0(p); }
-static void      NavV_f08(BrUiCtl_ *p)
-{
-    (void)BrUiNavCtlEnter_10048010(g_pBrUiNav, p);
-}
-static int32_t   NavV_f0C(BrUiCtl_ *p)
-{
-    return BrUiNavCtlFrame_10048180(g_pBrUiNav, p);
-}
-static int32_t   NavV_f10(BrUiCtl_ *p)
-{
-    return BrUiNavCtlStepCode_10047A10(p);
-}
-static int32_t   NavV_f20(BrUiCtl_ *p)
-{
-    return BrUiNavCtlHit_10047A60(p);
-}
-static int32_t   NavV_f3C(BrUiCtl_ *p)
-{
-    return BrUiNavCtlOther_10048060(g_pBrUiNav, p);
-}
-static int32_t   NavV_page04(BrUiPage_ *p)
-{
-    return BrUiNavPageFrame_10048530(g_pBrUiNav, p);
-}
-static int32_t   NavV_phase0C(BrPhase_ *p)
-{
-    return (int32_t)BrUiNavPhaseRun_100489A0(g_pBrUiNav, p);
-}
-static void      NavV_phase1C(BrPhase_ *p)
-{
-    BrUiNavPhaseRelease_10048AA0(g_pBrUiNav, p);
-}
+/* (port-only NavV_f04 removed) */
 
-void BrUiNavInstallCtlVtbl(BrUiCtlVtbl_ *pVtbl)
-{
-    pVtbl->f04 = NavV_f04;
-    pVtbl->f08 = NavV_f08;
-    pVtbl->f0C = NavV_f0C;
-    pVtbl->f10 = NavV_f10;
-    pVtbl->f20 = NavV_f20;
-    pVtbl->f3C = NavV_f3C;
-    /* +0x14, +0x18, +0x1C, +0x24, +0x28, +0x2C, +0x30 are NOT touched: they
-     * are the draw and tween slots, which this module does not port. Leaving
-     * them as the caller had them keeps an unported method a fault. */
-}
+/* (port-only NavV_f08 removed) */
+
+/* (port-only NavV_f0C removed) */
+
+/* (port-only NavV_f10 removed) */
+
+/* (port-only NavV_f20 removed) */
+
+/* (port-only NavV_f3C removed) */
+
+/* (port-only NavV_page04 removed) */
+
+/* (port-only NavV_phase0C removed) */
+
+/* (port-only NavV_phase1C removed) */
+
+
+/* (port-only BrUiNavInstallCtlVtbl removed) */
+
 
 /* @n64 0x8020AD50 located */
-void BrUiNavInstallPageVtbl(BrUiPageVtbl_ *pVtbl)
-{
-    pVtbl->f04 = NavV_page04;
-}
+/* (port-only BrUiNavInstallPageVtbl removed) */
 
-void BrUiNavInstallPhaseVtbl(BrPhaseVtbl_ *pVtbl)
-{
-    pVtbl->f0C = NavV_phase0C;
-    pVtbl->f1C = NavV_phase1C;
-    /* +0x00, +0x04, +0x08, +0x10, +0x14, +0x18 and +0x20 are NOT touched --
-     * see br_uinav.h. Three of them are dispatched through by the frame. */
-}
+
+/* (port-only BrUiNavInstallPhaseVtbl removed) */
+
 
 /* 0x100603A0's two edges, and only those two. The step and the cursor are
  * written together because that function writes them together.
@@ -786,32 +301,18 @@ void BrUiNavInstallPhaseVtbl(BrPhaseVtbl_ *pVtbl)
  * below. Tagged @implements until 2026-09-03, which put two names on one
  * address and scored a 48-byte fragment against the whole function. Fragments
  * and thunks must not carry @implements -- docs/VC5-IDIOMS.md. */
-void BrUiNavMove(BrUiNav *pNav, int dir)
-{
-    if (dir < 0) {
-        pNav->pG->w0AB3DC = (uint16_t)(int16_t)-1;
-        --pNav->pG->wAA286C;            /* 0 -> 0xFFFF is the wrap, not a bug */
-    } else if (dir > 0) {
-        pNav->pG->w0AB3DC = 1;
-        ++pNav->pG->wAA286C;
-    }
-}
+/* (port-only BrUiNavMove removed) */
 
-void BrUiNavSetStep(BrUiNav *pNav, int step)
-{
-    pNav->pG->w0AB3DC = (uint16_t)(int16_t)step;
-}
 
-void BrUiNavSetActivate(BrUiNav *pNav, int fDown)
-{
-    pNav->pActive->a5 = fDown ? 1 : 0;
-}
+/* (port-only BrUiNavSetStep removed) */
+
+
+/* (port-only BrUiNavSetActivate removed) */
+
 
 /* @n64 0x8026B9F0 located */
-int BrUiNavSelection(const BrUiNav *pNav)
-{
-    return (int)(int16_t)pNav->pG->wAA286C;
-}
+/* (port-only BrUiNavSelection removed) */
+
 
 /* ====================================================================== *
  * 0x10059410 -- the GLIDE mouse poller (939 B).  thiscall on the nav

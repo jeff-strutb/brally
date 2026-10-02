@@ -26,25 +26,15 @@
  * Duplicating these is safe for the reason BrFtol is duplicated in
  * slice1_02.c and slice2_12.c: they hold no state, so two copies cannot
  * drift. */
-static uint32_t BrRd32(const void *pv)
-{
-    uint32_t v;
-    memcpy(&v, pv, sizeof v);
-    return v;
-}
+/* (port-only BrRd32 removed) */
 
-static uint16_t BrRd16(const void *pv)
-{
-    uint16_t v;
-    memcpy(&v, pv, sizeof v);
-    return v;
-}
+
+/* (port-only BrRd16 removed) */
+
 
 /* The dword at pv, already rebased, as a host pointer. */
-static void *BrPtrAt(const void *pv)
-{
-    return BrLoadResolve(BrRd32(pv));
-}
+/* (port-only BrPtrAt removed) */
+
 
 
 /* BrSegPtrFixup: prototype in br_funcs.h */

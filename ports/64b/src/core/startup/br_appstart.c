@@ -104,10 +104,8 @@ static const BrAppStartHost g_brAppStartHostDefault = {
 
 static const BrAppStartHost *g_pBrAppStartHost = &g_brAppStartHostDefault;
 
-void BrAppStartSetHost(const BrAppStartHost *pHost)
-{
-    g_pBrAppStartHost = (pHost != NULL) ? pHost : &g_brAppStartHostDefault;
-}
+/* (port-only BrAppStartSetHost removed) */
+
 
 /* ==========================================================================
  * 0x10007E80 -- CheckPreviousApp.  THE GATE: RallyMain aborts on 0.
@@ -147,20 +145,8 @@ void BrAppStartSetHost(const BrAppStartHost *pHost)
 #define BR_MEMSTATUS_LENGTH     0
 #define BR_MEMSTATUS_TOTALPHYS  2
 
-void BrAppQueryTotalPhys(void)
-{
-    uint32_t aStatus[8];
+/* (port-only BrAppQueryTotalPhys removed) */
 
-    memset(aStatus, 0, sizeof aStatus);
-    aStatus[BR_MEMSTATUS_LENGTH] = 0x20;    /* 0x10007F17: mov [esp],0x20 */
-
-    if (g_pBrAppStartHost->pfnGlobalMemoryStatus != NULL) {
-        g_pBrAppStartHost->pfnGlobalMemoryStatus(aStatus);
-    }
-
-    /* 0x10007F26/0x10007F2A: mov ecx,[esp+8] / mov [0x10226E78],ecx */
-    g_brTexSysMem = aStatus[BR_MEMSTATUS_TOTALPHYS];
-}
 
 /* ==========================================================================
  * 0x10003530 -- CHK_FReadLine.  Contract and the two preserved defects are in
@@ -176,52 +162,8 @@ void BrAppQueryTotalPhys(void)
  *   [esp+0x18] = E+8  -> cbMax  (0x10003569)
  *   [esp+0x1c] = E+0xC-> pFile  (0x10003542)
  * ========================================================================== */
-char *BrChkFReadLine(char *pszDst, int32_t cbMax, FILE *pFile)
-{
-    char   *p = pszDst;
-    int32_t n = 0;
-    int     c;
+/* (port-only BrChkFReadLine removed) */
 
-    if (cbMax <= 0) {
-        return pszDst;                  /* 0x100035CD..0x100035D7 */
-    }
-
-    for (;;) {
-        c = getc(pFile);
-
-        if (c == EOF) {                 /* 0x10003558 */
-            if (n == 0) {
-                return NULL;            /* 0x100035BB: the loop's only exit */
-            }
-            *p = '\0';                  /* 0x100035C2 */
-            return p + 1;
-        }
-
-        if (c == '\r') {                /* 0x1000355D */
-            *p++ = '\n';                /* 0x1000357A: CR is normalised to LF */
-            *p++ = '\0';                /* 0x1000357E, then inc esi again     */
-            c = getc(pFile);
-            if (c != EOF && c != '\n') {
-                ungetc(c, pFile);       /* 0x10003598: not a CRLF, put it back */
-            }
-            return p;
-        }
-
-        if (c == '\n') {                /* 0x10003562 */
-            *p++ = '\n';                /* 0x100035A8: the LF is KEPT         */
-            *p   = '\0';
-            return p + 1;               /* 0x100035AF: lea eax,[esi+1]        */
-        }
-
-        *p++ = (char)c;                 /* 0x10003567 */
-        n++;
-        if (n >= cbMax) {
-            /* 0x1000356F/0x10003573: `jl` back to the top, else return esi.
-             * PRESERVED DEFECT: no NUL is written on this path. */
-            return p;
-        }
-    }
-}
 
 /* ==========================================================================
  * 0x10007F40 -- the settings loader.
@@ -264,41 +206,17 @@ char *BrChkFReadLine(char *pszDst, int32_t cbMax, FILE *pFile)
 /* 0x10007F40..0x10007FA0: two MSVC inline string idioms, `repne scasb` to
  * measure followed by `rep movsd`/`rep movsb` to copy -- a strcpy then a
  * strcat, not two loops to transcribe literally. */
-void BrAppCfgBuildIniPath(void)
-{
-    size_t cch;
+/* (port-only BrAppCfgBuildIniPath removed) */
 
-    /* strcpy(0x10226A78, 0x10B73540) */
-    strncpy(g_aBrCfgIniPath, g_aBrCfgBaseDir, sizeof g_aBrCfgIniPath - 1);
-    g_aBrCfgIniPath[sizeof g_aBrCfgIniPath - 1] = '\0';
-
-    /* strcat(0x10226A78, "BossRally.ini") */
-    cch = strlen(g_aBrCfgIniPath);
-    if (cch + sizeof BR_APPCFG_INI_NAME <= sizeof g_aBrCfgIniPath) {
-        memcpy(g_aBrCfgIniPath + cch, BR_APPCFG_INI_NAME,
-               sizeof BR_APPCFG_INI_NAME);
-    }
-}
 
 /* 0x100080EA..0x1000812E (and its identical twin at 0x100085AD..0x100085E3).
  * `dec eax / je` three times: 1, 2, 3, then a default.  See br_appstart.h for
  * why index == value on 1..3 and 0 otherwise. */
-static void cfg_select_input_device(int32_t nJoystick)
-{
-    if (nJoystick >= 1 && nJoystick <= 3) {
-        g_BrPadModeBytes = nJoystick;
-    } else {
-        g_BrPadModeBytes = 0;
-    }
-}
+/* (port-only cfg_select_input_device removed) */
 
-uint32_t BrCfgInputDeviceAddr(int32_t i)
-{
-    if (i < 0 || i >= BR_CFG_INPUT_COUNT) {
-        return 0u;
-    }
-    return BR_CFG_INPUT_BASE + (uint32_t)i * BR_CFG_INPUT_STRIDE;
-}
+
+/* (port-only BrCfgInputDeviceAddr removed) */
+
 
 /* 0x100081F8..0x1000822B, 0x10008246..0x10008279, 0x10008294..0x100082C7 --
  * the three directory keys, byte-for-byte the same shape three times.
@@ -315,18 +233,8 @@ uint32_t BrCfgInputDeviceAddr(int32_t i)
  * store).  The port keeps the truncation -- which is real, and eats a
  * character from an unterminated last line -- and drops only the underflow,
  * because the byte it would corrupt belongs to another module. */
-static void cfg_set_dir(char *pszDst, size_t cbDst, const char *pszValue)
-{
-    size_t len;
+/* (port-only cfg_set_dir removed) */
 
-    strncpy(pszDst, pszValue, cbDst - 1);
-    pszDst[cbDst - 1] = '\0';
-
-    len = strlen(pszDst);
-    if (len > 0) {                       /* DEVIATION: the original does not test */
-        pszDst[len - 1] = '\0';
-    }
-}
 
 /* --------------------------------------------------------------------------
  * The .ini half, 0x10007F40..0x100083F5.
@@ -336,108 +244,8 @@ static void cfg_set_dir(char *pszDst, size_t cbDst, const char *pszValue)
  * do-while: 0x10007FCB reads the first line and 0x100083DD reads the rest,
  * with 0x100083ED (CHK_FClose) as the single exit for both.
  * -------------------------------------------------------------------------- */
-void BrAppCfgParseIni(void)
-{
-    char  aLine[BR_APPCFG_LINE_ALLOC];
-    FILE *pFile;
+/* (port-only BrAppCfgParseIni removed) */
 
-    BrAppCfgBuildIniPath();
-
-    /* 0x10007FA1: if CHK_FileExists says no, the whole half is skipped and
-     * no file is opened -- so CHK_FClose is not reached either.
-     *
-     * THIS TEST IS LOAD-BEARING IN THE ORIGINAL AND UNOBSERVABLE IN THE PORT,
-     * and the difference is worth stating rather than leaving as a puzzle.
-     * The original's next call is CHK_FReadOpen (0x10003320), which does not
-     * return on failure: it writes "CHK_FReadOpen(): error opening file %s"
-     * into c:\RallyError.txt and calls exit(1) at 0x1000840E.  So without this
-     * gate a missing .ini would KILL THE GAME.  This port does not transcribe
-     * that fatal path (see br_appstart.h), so a missing file merely produces a
-     * NULL FILE* three lines below and the gate looks redundant.
-     * Deleting it is mutation M38, and M38 SURVIVES the suite for exactly this
-     * reason -- not because the suite is weak.  Transcribing CHK_FReadOpen is
-     * what would make it killable; it is on the frontier. */
-    if (BrChkFileExists(g_aBrCfgIniPath) == 0) {
-        return;
-    }
-
-    /* The operative core of CHK_FReadOpen (0x10003320); see br_appstart.h for
-     * what of it is deliberately not here.  "rb" is the literal at
-     * 0x1007B0E0 -- the original opens the .ini in BINARY mode, which is why
-     * CHK_FReadLine has to handle CR itself. */
-    pFile = fopen(g_aBrCfgIniPath, "rb");
-    if (pFile == NULL) {
-        /* DEVIATION: the original cannot reach here -- CHK_FReadOpen exits. */
-        return;
-    }
-
-    while (BrChkFReadLine(aLine, BR_APPCFG_LINE, pFile) != NULL) {
-
-        if (strncmp(aLine, "NetworkPlay=", 12) == 0) {
-            g_brRaceNet = atoi(aLine + 12);                 /* 0x10226A48 */
-
-        } else if (strncmp(aLine, "chosenTrack=", 12) == 0) {
-            g_Br0B380C = atoi(aLine + 12);
-
-        } else if (strncmp(aLine, "chosenCar=", 10) == 0) {
-            (*(int32_t *)&g_226e7c) = atoi(aLine + 10);
-
-        } else if (strncmp(aLine, "chosenWeather=", 14) == 0) {
-            (*(int32_t *)&g_226e80) = atoi(aLine + 14);
-
-        } else if (strncmp(aLine, "gameMode=", 9) == 0) {
-            (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = atoi(aLine + 9);
-
-        } else if (strncmp(aLine, "ReadJoystick=", 13) == 0) {
-            (*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ = atoi(aLine + 13);
-            cfg_select_input_device((*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */);
-
-        } else if (strncmp(aLine, "HandlingType=", 13) == 0) {
-            (*(int32_t *)&g_7b320) = atoi(aLine + 13);
-
-        } else if (strncmp(aLine, "SuspensionType=", 15) == 0) {
-            (*(int32_t *)&g_7b328) = atoi(aLine + 15);
-
-        } else if (strncmp(aLine, "TireType=", 9) == 0) {
-            (*(int32_t *)&g_7b32c) = atoi(aLine + 9);
-
-        } else if (strncmp(aLine, "TransmissionType=", 17) == 0) {
-            (*(int32_t *)&g_7b324) = atoi(aLine + 17);
-
-        } else if (strncmp(aLine, "TrackDir=", 9) == 0) {
-            cfg_set_dir(g_aBrCfgTrackDir, sizeof g_aBrCfgTrackDir, aLine + 9);
-
-        } else if (strncmp(aLine, "CarDir=", 7) == 0) {
-            cfg_set_dir(g_aBrCfgCarDir, sizeof g_aBrCfgCarDir, aLine + 7);
-
-        } else if (strncmp(aLine, "SFXDir=", 7) == 0) {
-            cfg_set_dir(g_aBrCfgSfxDir, sizeof g_aBrCfgSfxDir, aLine + 7);
-
-        } else if (strncmp(aLine, "Interpolate=", 12) == 0) {
-            (*(int32_t *)&DAT_100a5eac) = atoi(aLine + 12);
-
-        } else if (strncmp(aLine, "SpeedSensitive=", 15) == 0) {
-            (*(int32_t *)&DAT_100b2e6c) = atoi(aLine + 15);
-
-        } else if (strncmp(aLine, "D3DDrawCarShadow=", 17) == 0) {
-            /* 0x1000834A neg / sbb / inc -- the flag is INVERTED. */
-            (*(int32_t *)&DAT_10396eb0) = (atoi(aLine + 17) == 0) ? 1 : 0;
-
-        } else if (strncmp(aLine, "RunBenchmark=", 13) == 0) {
-            (*(int32_t *)&g_demoFlag) = atoi(aLine + 13);
-
-        } else if (strncmp(aLine, "PlayMusic=", 10) == 0) {
-            (*(int32_t *)&DAT_1007b074) = atoi(aLine + 10);
-
-        } else if (strncmp(aLine, "PlaySFX=", 8) == 0) {
-            (*(int32_t *)&DAT_100b51e4[1036]) = atoi(aLine + 8);                 /* 0x100B55F0 */
-        }
-    }
-
-    /* 0x100083ED: CHK_FClose.  Its debug logging and its exit(1)-on-EOF path
-     * are that function's; see br_appstart.h. */
-    fclose(pFile);
-}
 
 /* --------------------------------------------------------------------------
  * The command-line half, 0x100083F6..0x10008756.
@@ -451,157 +259,16 @@ void BrAppCfgParseIni(void)
  * `not ecx` / `dec ecx` / `je`).  An empty command line does nothing at all --
  * not even the five command-line-only keys.
  * -------------------------------------------------------------------------- */
-void BrAppCfgParseCmdLine(const char *pszCmdLine)
-{
-    const char *p;
-    char       *q;
+/* (port-only BrAppCfgParseCmdLine removed) */
 
-    if (pszCmdLine == NULL) {
-        return;                                  /* 0x100083FF */
-    }
-    if (strlen(pszCmdLine) == 0) {
-        return;                                  /* 0x10008411 */
-    }
-
-    p = strstr(pszCmdLine, "NetworkPlay=");
-    if (p != NULL) {
-        g_brRaceNet = atoi(p + 12);
-    }
-
-    /* 0x10008458..0x100084CB -- the only non-integer key.
-     * PUSH ORDER TRAP: `push 0x20` (0x10008473) and `push 0x10B71648`
-     * (0x1000847A) are the two arguments of the strchr CALLED at 0x100084A7,
-     * pushed BEFORE the inline strcpy that fills the buffer.  They are not
-     * arguments to anything in between. */
-    p = strstr(pszCmdLine, "szPlayerName=");
-    if (p != NULL) {
-        strncpy(g_aBrCfgPlayerName, p + 13, sizeof g_aBrCfgPlayerName - 1);
-        g_aBrCfgPlayerName[sizeof g_aBrCfgPlayerName - 1] = '\0';
-
-        q = strchr(g_aBrCfgPlayerName, ' ');     /* 0x20 */
-        if (q != NULL) {
-            *q = '\0';
-        }
-        q = strchr(g_aBrCfgPlayerName, '\n');    /* 0x0A */
-        if (q != NULL) {
-            *q = '\0';
-        }
-    }
-
-    p = strstr(pszCmdLine, "chosenTrack=");
-    if (p != NULL) {
-        g_Br0B380C = atoi(p + 12);
-    }
-
-    p = strstr(pszCmdLine, "chosenCar=");
-    if (p != NULL) {
-        (*(int32_t *)&g_226e7c) = atoi(p + 10);
-    }
-
-    p = strstr(pszCmdLine, "chosenWeather=");
-    if (p != NULL) {
-        (*(int32_t *)&g_226e80) = atoi(p + 14);
-    }
-
-    p = strstr(pszCmdLine, "gameMode=");
-    if (p != NULL) {
-        (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */ = atoi(p + 9);
-    }
-
-    p = strstr(pszCmdLine, "ReadJoystick=");
-    if (p != NULL) {
-        (*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */ = atoi(p + 13);
-        cfg_select_input_device((*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */);
-    }
-
-    p = strstr(pszCmdLine, "HandlingType=");
-    if (p != NULL) {
-        (*(int32_t *)&g_7b320) = atoi(p + 13);
-    }
-
-    p = strstr(pszCmdLine, "SuspensionType=");
-    if (p != NULL) {
-        (*(int32_t *)&g_7b328) = atoi(p + 15);
-    }
-
-    p = strstr(pszCmdLine, "TireType=");
-    if (p != NULL) {
-        (*(int32_t *)&g_7b32c) = atoi(p + 9);
-    }
-
-    p = strstr(pszCmdLine, "TransmissionType=");
-    if (p != NULL) {
-        (*(int32_t *)&g_7b324) = atoi(p + 17);
-    }
-
-    p = strstr(pszCmdLine, "cPlayers=");
-    if (p != NULL) {
-        g_brCfgPlayers = atoi(p + 9);
-    }
-
-    p = strstr(pszCmdLine, "bcar=");
-    if (p != NULL) {
-        (*(int32_t *)&DAT_1021ce50) = atoi(p + 5);
-    }
-
-    p = strstr(pszCmdLine, "btire=");
-    if (p != NULL) {
-        (*(int32_t *)&DAT_10226a40) = atoi(p + 6);
-    }
-
-    p = strstr(pszCmdLine, "bsuspension=");
-    if (p != NULL) {
-        (*(int32_t *)&DAT_10226a3c) = atoi(p + 12);
-    }
-}
 
 /* @n64 0x8021DDFC located */
-void BrAppCfgParse(const char *pszCmdLine)
-{
-    BrAppCfgParseIni();
-    BrAppCfgParseCmdLine(pszCmdLine);
-}
+/* (port-only BrAppCfgParse removed) */
+
 
 /* Not in the original: the original gets fresh .data from the loader. */
-void BrAppCfgResetForTest(void)
-{
-    memset(g_aBrCfgBaseDir,    0, sizeof g_aBrCfgBaseDir);
-    memset(g_aBrCfgIniPath,    0, sizeof g_aBrCfgIniPath);
-    memset(g_aBrCfgPlayerName, 0, sizeof g_aBrCfgPlayerName);
+/* (port-only BrAppCfgResetForTest removed) */
 
-    memset(g_aBrCfgTrackDir, 0, sizeof g_aBrCfgTrackDir);
-    memset(g_aBrCfgCarDir,   0, sizeof g_aBrCfgCarDir);
-    memset(g_aBrCfgSfxDir,   0, sizeof g_aBrCfgSfxDir);
-    memcpy(g_aBrCfgTrackDir, "tracks/", sizeof "tracks/");
-    memcpy(g_aBrCfgCarDir,   "cars/",   sizeof "cars/");
-    memcpy(g_aBrCfgSfxDir,   "sfx/",    sizeof "sfx/");
-
-    g_Br0B380C     = 2;
-    (*(int32_t *)&g_226e7c)       = 0;
-    (*(int32_t *)&g_226e80)   = 0;
-    (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */        = 1;
-    (*(int32_t *)((char *)&g_BrCtrlCfg + 0x2A0)) /* BR_LP64_BYTE_VIEW */    = 0;
-    (*(int32_t *)&g_7b320)    = 1;
-    (*(int32_t *)&g_7b328)  = 1;
-    (*(int32_t *)&g_7b32c)        = 2;
-    (*(int32_t *)&g_7b324)    = 1;
-    (*(int32_t *)&DAT_100a5eac)     = 1;
-    (*(int32_t *)&DAT_100b2e6c)  = 1;
-    (*(int32_t *)&DAT_10396eb0)    = 0;
-    (*(int32_t *)&g_demoFlag)    = 0;
-    (*(int32_t *)&DAT_1007b074)       = 2;
-    g_brCfgPlayers         = 0;
-    (*(int32_t *)&DAT_1021ce50)        = 0;
-    (*(int32_t *)&DAT_10226a40)       = 0;
-    (*(int32_t *)&DAT_10226a3c) = 0;
-
-    g_BrPadModeBytes    = 0;
-    g_brTexSysMem  = 0;
-
-    /* The two this module writes but does not own. */
-    g_brRaceNet            = 0;
-    (*(int32_t *)&DAT_100b51e4[1036])           = 1;
-}
 
 /* -- Ghidra-matched functions --------------------------- */
 #include <windows.h>

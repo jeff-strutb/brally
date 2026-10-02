@@ -36,23 +36,20 @@ static int32_t s_iEarDllSelect;
 static int32_t s_cEarStartupCalls;
 static int32_t s_cEarStartupBodies;
 
-int32_t BrWindowAudioBackend(void)             { return s_iAudioBackend; }
-void    BrWindowSetAudioBackend(int32_t i)     { s_iAudioBackend = i; }
-int32_t BrWindowEarDllSelect(void)             { return s_iEarDllSelect; }
-void    BrWindowSetEarDllSelect(int32_t i)     { s_iEarDllSelect = i; }
-int32_t BrWindowEarStartupBodies(void)         { return s_cEarStartupBodies; }
+/* (port-only BrWindowAudioBackend removed) */
+
+/* (port-only BrWindowSetAudioBackend removed) */
+
+/* (port-only BrWindowEarDllSelect removed) */
+
+/* (port-only BrWindowSetEarDllSelect removed) */
+
+/* (port-only BrWindowEarStartupBodies removed) */
+
 
 /* @n64 0x8022F530 located */
-void BrWindowResetForTest(void)
-{
-    (*(void * *)&g_brOwner5BC72C)            = NULL;
-    (*(void * *)&s_args)       = NULL;
-    g_brhInstance2      = NULL;
-    s_iAudioBackend     = 0;
-    s_iEarDllSelect     = 0;
-    s_cEarStartupCalls  = 0;
-    s_cEarStartupBodies = 0;
-}
+/* (port-only BrWindowResetForTest removed) */
+
 
 /* ================================================================== *
  * 0x10019670 -- create the window. 187 bytes.
@@ -75,43 +72,8 @@ void BrWindowResetForTest(void)
  * gets.  The claim used to sit here, which made the address read as ported by
  * a function that makes no calls at all -- the shape claimcheck.py looks for
  * and, in this case, correctly found. */
-void BrWindowDescribe(BrWindowDesc *pDesc)
-{
-    if (pDesc == NULL)
-        return;
+/* (port-only BrWindowDescribe removed) */
 
-    /* WNDCLASSA, in the order the ESP trace establishes. */
-    pDesc->uClassStyle  = 3;                 /* S+0x00, 0x10019680 */
-                                             /* S+0x04 is BrWndProc, 0x10019688 */
-    pDesc->cbClsExtra   = 0;                 /* S+0x08, 0x10019690 */
-    pDesc->cbWndExtra   = 0;                 /* S+0x0C, 0x10019698 */
-    pDesc->hInstance    = (*(void * *)&s_args);     /* S+0x10, 0x100196A0 */
-    pDesc->idIcon       = 0x65;              /* S+0x14, LoadIconA */
-    pDesc->idCursor     = 0x7F00;            /* S+0x18, IDC_ARROW */
-    pDesc->idStockBrush = 4;                 /* S+0x1C, GetStockObject(4) */
-    /* S+0x20 and S+0x24 are the SAME pointer in the original -- 0x1007B378
-     * stored twice, at 0x100196D0 and 0x100196D8. The window has no menu
-     * resource called "BossRally"; this is kept because it is what the
-     * original asks for. */
-    pDesc->pszMenuName  = s_szClass;
-    pDesc->pszClassName = s_szClass;
-
-    /* CreateWindowExA's twelve arguments, unwound from the pushes at
-     * 0x100196F7..0x10019713 (last pushed == first argument). */
-    pDesc->dwExStyle      = 0x40000u;        /* WS_EX_APPWINDOW */
-    pDesc->pszWindowName  = s_szTitle;
-    pDesc->dwStyle        = 0x80C20000u;     /* POPUP|CAPTION|MINIMIZEBOX */
-    pDesc->x  = 0;
-    pDesc->y  = 0;
-    /* 0x100196EC reads [0x100A7518] into edx and 0x100196F2 reads [0x100A7514]
-     * into eax, then pushes edx BEFORE eax -- so cx is 0x100A7514 (width) and
-     * cy is 0x100A7518 (height), which is br_boot.c's g_brAppModeW/H. Reused,
-     * never redefined: one address, one owner. */
-    pDesc->cx = (*(int32_t *)&BrGbiRectG_A7514);
-    pDesc->cy = (*(int32_t *)&BrGbiRectG_A7518);
-    /* hWndParent, hMenu and lpParam are all 0 (0x100196F7, 0x100196FA,
-     * 0x100196FC) and hInstance is [0x105BC730] again (0x100196E6). */
-}
 
 /* 0x10019670 -- RegisterClassA + CreateWindowExA. Returns 1 if a window came
  * back, 0 if not. Does NOT store the handle; the window procedure does, from

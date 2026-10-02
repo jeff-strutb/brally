@@ -45,23 +45,8 @@
  * many commands" instruction, so the several commands the N64 needed to load
  * a texture collapse into one on the PC. */
 /* @d3donly 0x10029410 BrGbiTexScanFlush -- glide twin 0x10028B50 claimed by br_tex3d.c:br_tex3d_seam */
-void BrGbiTexScanFlush(BrGfxWords *pCmd)
-{
-    int id;
+/* (port-only BrGbiTexScanFlush removed) */
 
-    if (g_brTexScanState == 0)
-        return;
-    if (g_brTexScanRunEnd == NULL)
-        g_brTexScanRunEnd = pCmd;
-
-    id = BrGbiCall10029470(g_brTexScanStage);
-    if (id != -1) {
-        BrGfxWords *pRun = g_brTexScanRunStart;
-        pRun->w0 = ((uint32_t)id & 0x00FFFFFFu) | 0xDC000000u;
-        pRun->w1 = (uint32_t)(int32_t)(g_brTexScanRunEnd - g_brTexScanRunStart);
-    }
-    g_brTexScanState = 0;
-}
 
 /* 0x10029E60 */
 /* WHAT IT DOES: during the pre-pass that hunts for texture loads, notes
@@ -69,11 +54,8 @@ void BrGbiTexScanFlush(BrGfxWords *pCmd)
  * Later ends are ignored so the run keeps its original extent. */
 /* @d3donly 0x10029E60 BrGbiTexScanMark -- glide twin 0x100293D0 claimed by br_tex3d.c:br_tex3d_end */
 /* @n64 0x8026C040 located */
-void BrGbiTexScanMark(BrGfxWords *pCmd)
-{
-    if (g_brTexScanRunEnd == NULL)
-        g_brTexScanRunEnd = pCmd;
-}
+/* (port-only BrGbiTexScanMark removed) */
+
 
 /* 0x10029F80  G_RDPLOADSYNC */
 /* WHAT IT DOES: during the texture-load hunt, advances the state machine

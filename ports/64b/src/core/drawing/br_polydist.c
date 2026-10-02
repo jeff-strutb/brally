@@ -52,10 +52,8 @@ float BrPolyDistX(const struct BrScrPt *pPt)
     return ((const BrScrPt *)pPt)->f0C;
 }
 
-float BrPolyDistY(const struct BrScrPt *pPt)
-{
-    return ((const BrScrPt *)pPt)->f10;
-}
+/* (port-only BrPolyDistY removed) */
+
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */

@@ -50,10 +50,8 @@
 
 BrUiHook85Ctx g_brHook85;
 
-void BrUiHook85Reset(void)
-{
-    memset(&g_brHook85, 0, sizeof(g_brHook85));
-}
+/* (port-only BrUiHook85Reset removed) */
+
 
 /* ==========================================================================
  * Cross-slice declarations.
@@ -229,27 +227,8 @@ typedef int32_t (*Br85BoxAskFn)(BrTextBox *pThis);
 /* port-only body; Glide match is src/core/cpp/0x10037DC0.cpp */
 /* BrUiHook85_1003E7A0: the placed body is BrUiHook85_1003E7A0_10037DC0.cpp */
 
-int32_t BrUiHook85_1003E980(BrUiCtl_ *pCtl)
-{
-    /* Written out rather than routed through a shared helper: the original
-     * has this body inline in each of the two row hooks, which is why the
-     * factored form comes out 32 bytes against the original's 92. */
-    /* Plain casts, not BrFtolTrunc: the original leaves the value on the x87
-     * stack and calls MSVC's own __ftol helper, where the wrapper pushes it
-     * as an integer argument instead. */
-    int32_t  x = (int32_t)pCtl->x;
-    int32_t  y = (int32_t)pCtl->y + 0x13;
-    uint32_t i;
-    Br85MsgFn pfn = Br85MsgSlot(pCtl);
+/* (port-only BrUiHook85_1003E980 removed) */
 
-    Br85Msg(pfn, pCtl, 0x74, x, y);
-
-    for (i = 0u; i < (uint32_t)(*(int32_t *)&g_brItemIconCount); i++) {
-        Br85Msg(pfn, pCtl, 0x75, x, y);
-        x += 0x0C;
-    }
-    return 1;
-}
 
 /* WHAT IT DOES: draws the music volume bar. */
 /* port-only body; Glide match is src/core/cpp/0x10038000.cpp */
@@ -330,23 +309,8 @@ int32_t BrUiHook85_1003EA40(BrUiCtl_ *pCtl)
     return 1;
 }
 
-int32_t BrUiHook85_10040930(BrUiCtl_ *pCtl)
-{
-    /* 0x100AC62C, four bytes, read out of orig/BRD3D.dll.  slice2_24.c holds
-     * the same four as its file-static k_AC62C; they agree byte for byte.
-     * They are restated rather than shared because a `static const` in another
-     * translation unit is not linkable, and br_sprfont.c set the precedent
-     * when it restated 0x100408C0's 51-byte table for the same reason. */
-    static const int8_t k_AC62C[4] = { 0x45, 0x44, 0x43, 0x46 };
-    uint32_t i = (uint32_t)(*(int32_t *)&DAT_10ac5bd4);
+/* (port-only BrUiHook85_10040930 removed) */
 
-    /* DEVIATION: the original's `movsx cx,[eax+0x100AC62C]` is unbounded and a
-     * mode outside 0..3 reads whatever follows the table.  Bounded here, the
-     * same bound slice2_24.c applies. */
-    pCtl->w1E20C = (uint16_t)(int16_t)((i < 4u) ? (int16_t)k_AC62C[i]
-                                                : (int16_t)0);
-    return 1;
-}
 
 /* ==========================================================================
  * List-poll hooks -- ask the embedded list at +0x3838 for a new value
@@ -376,15 +340,8 @@ int32_t BrUiHook85_1003EB10(BrUiCtl_ *pCtl)
     return 1;
 }
 
-int32_t BrUiHook85_1003ED10(BrUiCtl_ *pCtl)
-{
-    int32_t v = Br85ListSel(&pCtl->list, g_brHook85.nAA2A2C);
+/* (port-only BrUiHook85_1003ED10 removed) */
 
-    if (v >= 0) {
-        g_brHook85.nAA2A2C = v;
-    }
-    return 1;
-}
 
 /* WHAT IT DOES: the same, for the twelve-entry car list -- it tells the list
  * where the cursor is, treating anything outside the twelve as "nowhere", and
@@ -422,17 +379,8 @@ int32_t BrUiHook85_1003ED10(BrUiCtl_ *pCtl)
  * retyped in different capitals counts as unchanged and the new
  * capitalisation is discarded. */
 /* @d3donly 0x1008C320 br_stricmp_1008C320 -- absent from BRGlide (D3D-only / dynamically-imported CRT); no Glide twin exists */
-static int br_stricmp_1008C320(const char *pA, const char *pB)
-{
-    for (;;) {
-        unsigned char a = (unsigned char)*pA++;
-        unsigned char b = (unsigned char)*pB++;
-        if (a >= 'A' && a <= 'Z') a = (unsigned char)(a + 0x20);
-        if (b >= 'A' && b <= 'Z') b = (unsigned char)(b + 0x20);
-        if (a != b)  return (int)a - (int)b;
-        if (a == 0)  return 0;
-    }
-}
+/* (port-only br_stricmp_1008C320 removed) */
+
 
 /* 0x1003F050 and 0x1003F0B0 are the same 81 bytes over two buffers. */
 /* WHAT IT DOES: takes what the player has typed into a menu box and copies it
@@ -442,10 +390,8 @@ static int br_stricmp_1008C320(const char *pA, const char *pB)
 /* port-only body; Glide match is src/core/generated/0x10038580.c */
 /* Br85TextReadBack: the placed body is br_uihook85.c */
 
-int32_t BrUiHook85_1003F050(BrUiCtl_ *pCtl)
-{
-    return Br85TextReadBack(pCtl);
-}
+/* (port-only BrUiHook85_1003F050 removed) */
+
 
 /* WHAT IT DOES: reads back what the player typed, into the second of the two
  * name stores. */
@@ -455,63 +401,21 @@ int32_t BrUiHook85_1003F050(BrUiCtl_ *pCtl)
 /* 0x10040A50 and 0x10040AC0: sprintf("%d", g + 1) into a scratch buffer, copy
  * it over aText[0]'s text, then the box's +0x08 and +0x2C.  The format string
  * is the literal at 0x100A73C4, read out of the image: "%d". */
-static int32_t Br85TextNumber(BrUiCtl_ *pCtl, int32_t n, char *pszScratch)
-{
-    BrTextBox           *pBox = &pCtl->aText[0];
-    const BrTextBoxVtbl *pV   = pBox->pVtbl;
+/* (port-only Br85TextNumber removed) */
 
-    /* DEVIATION: the original's sprintf is unbounded into a .data buffer whose
-     * extent this port declares, so snprintf is used against that extent.  A
-     * host that has not wired the buffer is skipped rather than faulted -- the
-     * builder-side code in slice6_73.c guards the same two pointers. */
-    if (pszScratch != NULL && g_br73.cbScratch != 0u) {
-        snprintf(pszScratch, g_br73.cbScratch, "%d", (int)(n + 1));
 
-        /* DEVIATION: unbounded `rep movs` in the original. */
-        {
-            size_t cb = strlen(pszScratch);
-            if (cb > (size_t)BR_TEXTBOX_MAX - 1u) {
-                cb = (size_t)BR_TEXTBOX_MAX - 1u;
-            }
-            memcpy(pBox->sz, pszScratch, cb);
-            pBox->sz[cb] = '\0';
-        }
-    }
+/* (port-only BrUiHook85_10040A50 removed) */
 
-    if (pV != NULL && pV->pfn08 != NULL) {
-        pV->pfn08(pBox);
-    }
-    /* GOTCHA: the original guards this with `test ebx,ebx` where ebx is the
-     * text buffer's ADDRESS -- never null -- so it always runs. */
-    if (pV != NULL && pV->pfn2C != NULL) {
-        pV->pfn2C(pBox);
-    }
-    return 1;
-}
 
-int32_t BrUiHook85_10040A50(BrUiCtl_ *pCtl)
-{
-    return Br85TextNumber(pCtl, g_br73.nAA28A0, g_br73.szAA2518);
-}
+/* (port-only BrUiHook85_10040AC0 removed) */
 
-int32_t BrUiHook85_10040AC0(BrUiCtl_ *pCtl)
-{
-    return Br85TextNumber(pCtl, g_br73.nAA28A4, g_br73.szA9D618);
-}
 
 /* ==========================================================================
  * Flag hooks
  * ========================================================================== */
 
-int32_t BrUiHook85_100418D0(BrUiCtl_ *pCtl)
-{
-    /* When the flag is CLEAR the routine does nothing at all -- it does not
-     * even load the control. */
-    if (g_brHook81.nAA28E4 != 0) {
-        pCtl->flags1C = (int32_t)((uint32_t)pCtl->flags1C & 0xFFFFEFEFu);
-    }
-    return 1;
-}
+/* (port-only BrUiHook85_100418D0 removed) */
+
 
 /* WHAT IT DOES: puts a menu box into edit mode -- or takes it out again,
  * since it toggles -- when the player picks it, and only the first time round:
@@ -532,65 +436,18 @@ int32_t BrUiHook85_10042AC0(BrUiCtl_ *pCtl)
  * control needs a handler that accepts and does no work -- the original does
  * not even look at the control it is passed. */
 /* @d3donly 0x10042AF0 BrUiHook85_10042AF0 -- exists in BRGlide only as folded/duplicated stubs; no unique twin locatable by bytes */
-int32_t BrUiHook85_10042AF0(BrUiCtl_ *pCtl)
-{
-    (void)pCtl;                 /* the original never even loads it */
-    return 1;
-}
+/* (port-only BrUiHook85_10042AF0 removed) */
+
 
 /* ==========================================================================
  * Phase-changing hooks
  * ========================================================================== */
 
-int32_t BrUiHook85_10043FA0(BrUiCtl_ *pCtl)
-{
-    BrPhase_ *pOwner = pCtl->pOwner;        /* +0x2AE8 */
+/* (port-only BrUiHook85_10043FA0 removed) */
 
-    /* CONFLICT 4: `push 1` into a slot br_phase.h types `void *`. */
-    if (pOwner != NULL && pOwner->pVtbl != NULL && pOwner->pVtbl->f18 != NULL) {
-        pOwner->pVtbl->f18(pOwner, (void *)(size_t)1);
-    }
-    g_pBrUiNav->pAA2904 = g_pBrUiNav->pAA2908;
-    return 0;                   /* 0, which stops the frame */
-}
 
-int32_t BrUiHook85_100466C0(BrUiCtl_ *pCtl)
-{
-    BrUiNav  *pNav   = g_pBrUiNav;
-    BrPhase_ *pOwner = pCtl->pOwner;
-    BrPhase_ *pCur;
-    BrPhase_ *pNext;
+/* (port-only BrUiHook85_100466C0 removed) */
 
-    /* The LEAVE prologue slice7_81.c's whole family shares:
-     *     mov ecx,[eax+0x2AE8] / mov edx,[ecx] / call [edx+0x1C]
-     * +0x2AE8 is the control's OWNING PHASE and phase vtable slot +0x1C is
-     * 0x10048AA0, "release every page".  Written out here rather than shared
-     * with slice7_81.c because that module's copy is file-static and this one
-     * is a different translation unit -- the duplication is three lines and is
-     * the reason this comment exists. */
-    if (pOwner != NULL && pOwner->pVtbl != NULL && pOwner->pVtbl->f1C != NULL) {
-        pOwner->pVtbl->f1C(pOwner);
-    }
-
-    /* The CURRENT phase is read AFTER +0x1C has run.  Its NULL test is the
-     * original's own. */
-    pCur = pNav->pAA2904;
-    if (pCur != NULL && pCur->pVtbl != NULL && pCur->pVtbl->f00 != NULL) {
-        (void)pCur->pVtbl->f00(pCur, 1);
-    }
-
-    /* GOTCHA, and it is the original's order: 0x10AA2918 is loaded BEFORE
-     * 0x10AA2984 is cleared, and only then stored into 0x10AA2904. */
-    pNext = g_brHook81.pAA2918;
-    g_brHook85.nAA2984  = 0;
-    pNav->pAA2904       = pNext;
-
-    /* The same two-call teardown br_uinav.c's BrNavPhaseBail runs, with the
-     * same two operands reached the same way. */
-    BrSub1003E310();
-    BrSub1006A4A0(pNav->pG->pB4DF30, pNav->pG->pB4FBE8);
-    return 0;
-}
 
 /* ==========================================================================
  * 0x10044010 .. 0x100440B0 -- six one-liners
@@ -607,12 +464,8 @@ int32_t BrUiHook85_100466C0(BrUiCtl_ *pCtl)
  * mode itself and passes its own pCtl to 0x10043E70, where the shared helper
  * loses the argument (it passes NULL) and hoists the store.  The callee never
  * reads the argument, so this is the same behaviour either way. */
-int32_t BrUiHook85_10044010(BrUiCtl_ *pCtl)
-{
-    (*(int32_t *)&DAT_10ac5bd4) = 0;
-    (void)Ctl3D3C0_fn(pCtl);
-    return 1;
-}
+/* (port-only BrUiHook85_10044010 removed) */
+
 /* WHAT IT DOES: chooses the second play mode and opens the next screen. */
 /* @implements 0x10044050 d3d BrUiHook85_10044050 */
 int32_t BrUiHook85_10044050(BrUiCtl_ *pCtl)
@@ -680,53 +533,8 @@ int32_t BrUiHook85_1004E810(void *pUnused, const int32_t *pRow)
  * Installation
  * ========================================================================== */
 
-void BrUiHook85Install(BrUi73Hooks *pHooks)
-{
-    if (pHooks == NULL) {
-        return;
-    }
+/* (port-only BrUiHook85Install removed) */
 
-    pHooks->p1003E7A0 = BrUiHook85_1003E7A0;
-    pHooks->p1003E950 = BrUiHook85_1003E950;
-    pHooks->p1003E980 = BrUiHook85_1003E980;
-    pHooks->p1003E9E0 = BrUiHook85_1003E9E0;
-    pHooks->p1003EA40 = BrUiHook85_1003EA40;
-    pHooks->p1003EB10 = BrUiHook85_1003EB10;
-    pHooks->p1003ED10 = BrUiHook85_1003ED10;
-    pHooks->p1003EE20 = BrUiHook85_1003EE20;
-    pHooks->p1003F050 = BrUiHook85_1003F050;
-    pHooks->p1003F0B0 = BrUiHook85_1003F0B0;
-
-    pHooks->p10040930 = BrUiHook85_10040930;
-    pHooks->p10040A50 = BrUiHook85_10040A50;
-    pHooks->p10040AC0 = BrUiHook85_10040AC0;
-    pHooks->p100418D0 = BrUiHook85_100418D0;
-
-    pHooks->p10042AC0 = BrUiHook85_10042AC0;
-    pHooks->p10042AF0 = BrUiHook85_10042AF0;
-
-    pHooks->p10043FA0 = BrUiHook85_10043FA0;
-    pHooks->p10044010 = BrUiHook85_10044010;
-    pHooks->p10044030 = BrUiHook85_10044030;
-    pHooks->p10044050 = BrUiHook85_10044050;
-    pHooks->p10044070 = BrUiHook85_10044070;
-    pHooks->p10044090 = BrUiHook85_10044090;
-    pHooks->p100440B0 = BrUiHook85_100440B0;
-
-    pHooks->p100466C0 = BrUiHook85_100466C0;
-
-    /* CONFLICT 3: the slot's declared type is `void (*)(void)` and the body
-     * takes two cdecl arguments.  The cast is here, at the one place that
-     * installs it, so retyping the slot deletes exactly this line's cast. */
-    pHooks->p1004E810 = (BrTextListCbFn)BrUiHook85_1004E810;
-
-    /* NOT INSTALLED, deliberately, and each is a visible hole rather than a
-     * silent one -- see the NOT PORTED section of slice8_85.h:
-     *   p1003ECB0  p1003FC40  p10041300  p100413B0  p10041670  p10041710
-     *   p100417B0  p10041DF0  p10042020  p10047210  p10047290
-     *   p100409F0  p10040A20   (the two PAGE hooks)
-     * and the eleven slots slice7_80.c / slice7_81.c / the host already own. */
-}
 
 /* -- Ghidra-matched functions --------------------------- */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */

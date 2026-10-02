@@ -148,65 +148,36 @@ extern void (*g_pfn18AA0CC)(void *pTable, int cRecords);
  * Endian / unaligned helpers
  * ========================================================================== */
 
-void BrSwap4(void *pv)
-{
-    uint8_t *p = (uint8_t *)pv;
-    uint8_t t;
-    t = p[0]; p[0] = p[3]; p[3] = t;
-    t = p[1]; p[1] = p[2]; p[2] = t;
-}
+/* (port-only BrSwap4 removed) */
+
 
 /* @n64 0x80252F50 located */
-void BrSwap2(void *pv)
-{
-    uint8_t *p = (uint8_t *)pv;
-    uint8_t t = p[0]; p[0] = p[1]; p[1] = t;
-}
+/* (port-only BrSwap2 removed) */
 
-uint32_t BrRead32BE(const void *pv)
-{
-    const uint8_t *p = (const uint8_t *)pv;
-    return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16)
-         | ((uint32_t)p[2] <<  8) |  (uint32_t)p[3];
-}
 
-static uint32_t BrRd32(const void *pv)
-{
-    uint32_t v;
-    memcpy(&v, pv, sizeof v);
-    return v;
-}
+/* (port-only BrRead32BE removed) */
 
-static void BrWr32(void *pv, uint32_t v)
-{
-    memcpy(pv, &v, sizeof v);
-}
 
-static uint16_t BrRd16(const void *pv)
-{
-    uint16_t v;
-    memcpy(&v, pv, sizeof v);
-    return v;
-}
+/* (port-only BrRd32 removed) */
 
-static void BrWr16(void *pv, uint16_t v)
-{
-    memcpy(pv, &v, sizeof v);
-}
+
+/* (port-only BrWr32 removed) */
+
+
+/* (port-only BrRd16 removed) */
+
+
+/* (port-only BrWr16 removed) */
+
 
 /* Big-endian u32 at pv, written back as a host dword.  This is the second of
  * the two swap idioms in the original; numerically identical to BrSwap4. */
-static void BrLoad32BE(void *pv)
-{
-    BrWr32(pv, BrRead32BE(pv));
-}
+/* (port-only BrLoad32BE removed) */
+
 
 /* Big-endian u16 at pv, written back as a host word. */
-static void BrLoad16BE(void *pv)
-{
-    const uint8_t *p = (const uint8_t *)pv;
-    BrWr16(pv, (uint16_t)(((uint16_t)p[0] << 8) | p[1]));
-}
+/* (port-only BrLoad16BE removed) */
+
 
 /* ==========================================================================
  * Load environment
@@ -217,37 +188,16 @@ BrLoadEnv g_BrLoad;
 /* The segment map the original kept at 0x1057553C / 0x10575538. */
 BrSegMap s_seg;   /* not static: slice2_20.c's remaining track fixups share it */
 
-void *BrLoadResolve(uint32_t uFixedUp)
-{
-    uint32_t off;
+/* (port-only BrLoadResolve removed) */
 
-    if (uFixedUp == 0 || g_BrLoad.pImage == NULL)
-        return NULL;
-    if (uFixedUp < g_BrLoad.uBase32)
-        return NULL;
-    off = uFixedUp - g_BrLoad.uBase32;
-    /* DEVIATION: the original dereferences whatever BrSegFixup produced. The
-     * port refuses anything outside the image so that a truncated or hostile
-     * file cannot walk off the end.  BrSegFixup already turns unresolvable
-     * values into 0, so a NULL here reaches the caller's existing null path. */
-    if (off >= g_BrLoad.cbImage)
-        return NULL;
-    return g_BrLoad.pImage + off;
-}
 
 /* Rebase the dword at pv in place, matching `push pv / call 0x1002B970`. */
-static void BrFixupAt(void *pv)
-{
-    uint32_t v = BrRd32(pv);
-    BrSegFixup(&s_seg, &v);
-    BrWr32(pv, v);
-}
+/* (port-only BrFixupAt removed) */
+
 
 /* The dword at pv, already rebased, as a host pointer. */
-static void *BrPtrAt(const void *pv)
-{
-    return BrLoadResolve(BrRd32(pv));
-}
+/* (port-only BrPtrAt removed) */
+
 
 /* ==========================================================================
  * 0x100370D0  BrRcaFixup
@@ -519,53 +469,8 @@ void BrRcaFixup(void *pvFile)
  * 0x10037740  BrRcaLoadCar
  * ========================================================================== */
 
-void BrRcaLoadCar(void *pvDest, size_t cbDest, int iCar)
-{
-    char szMsg[0x100];
-    char szPath[0x400];
-    int  fSaved = 0;
-    int  fPreview;
+/* (port-only BrRcaLoadCar removed) */
 
-    g_i10AA3444 = iCar;
-
-    /* Identity test against the static scratch buffer, not a content test. */
-    fPreview = ((uint8_t *)pvDest == (*(uint8_t (*)[])&g_ab0C12A0));
-    if (!fPreview) {
-        fSaved = (*(int *)&g_brTex0B8C90);
-        if (fSaved == 0)
-            (*(int *)&g_brTex0B8C90) = 1;
-    }
-    BrSub10061010(iCar, fPreview ? 1 : 0);
-
-    g_i10AA3460 = 0;
-
-    /* DEVIATION: the original builds this with inline strlen/movsd into a
-     * 0x400-byte frame slot and cannot overflow it for any shipped name.
-     * strcpy/strcat is the same operation; the length is not checked here
-     * either, matching the original. */
-    strcpy(szPath, "cars/");
-    strcat(szPath, g_apszCarFiles[iCar]);
-    strcat(szPath, ".rca");
-
-    BrFileReadInto(pvDest, szPath, -1);
-
-    if (memcmp(pvDest, "RCar", 4) != 0) {
-        /* DEVIATION: the original passes the destination buffer as its own
-         * %s argument -- both `lea`s produce esp+0x14 -- and that buffer is
-         * uninitialised at this point.  That is undefined behaviour with no
-         * portable equivalent; the port formats an empty string, which is
-         * what the original prints whenever the first stack byte is 0. */
-        BrSprintf(szMsg, "not a car file: %s", "");
-        BrFatal(szMsg);
-    }
-
-    /* DEVIATION: cbDest is a port addition (the original is two-argument);
-     * it exists only to give BrRcaFixup a bound for pointer resolution. */
-    BrRcaFixup(pvDest);
-
-    if (!fPreview)
-        (*(int *)&g_brTex0B8C90) = fSaved;
-}
 
 /* ==========================================================================
  * 0x10031140 (Glide) / 0x10037A90 (D3D)  BrTrackLoadHandling
@@ -616,59 +521,8 @@ void BrRcaLoadCar(void *pvDest, size_t cbDest, int iCar)
  * loops, 384 bytes. Tagged @implements until 2026-09-03, which put two names
  * on one address and made the factored-helper screen report a phantom
  * "-1165 bytes short" for a function that is actually size-exact. */
-void BrTrackHdrRead(void *pvHdr, FILE **ppFile)
-{
-    static const uint16_t s_aFixup[] = {
-        0x0C, 0x14, 0x1C, 0x20, 0x24, 0x50, 0x54, 0x58, 0x5C, 0x60,
-        0x68, 0x6C, 0x70, 0x74, 0x78, 0x84, 0x8C, 0x90, 0x94
-    };
-    uint8_t *h = (uint8_t *)pvHdr;
-    size_t   i;
-    int      k;
+/* (port-only BrTrackHdrRead removed) */
 
-    BrChkFRead(h, 1, 0x230, ppFile);
-
-    BrLoad32BE(h + 0x00);
-    BrLoad32BE(h + 0x04);
-    BrLoad32BE(h + 0x08);
-    BrSwap4   (h + 0x0C);
-    BrLoad32BE(h + 0x10);
-    BrSwap4   (h + 0x14);
-    BrLoad32BE(h + 0x18);
-    BrSwap4   (h + 0x1C);
-
-    for (k = 0x20; k < 0x50; k += 4)     /* +0x20 .. +0x4C */
-        BrSwap4(h + k);
-
-    for (k = 0x50; k < 0x64; k += 4)     /* +0x50 .. +0x60 */
-        BrSwap4(h + k);
-
-    BrLoad32BE(h + 0x64);
-
-    for (k = 0x68; k < 0x7C; k += 4)     /* +0x68 .. +0x78 */
-        BrSwap4(h + k);
-
-    BrLoad32BE(h + 0x7C);
-    /* GOTCHA: +0x80 is skipped -- the original jumps straight from +0x7C to
-     * +0x84.  It is the one untouched dword in +0x00..+0x164. */
-    BrSwap4   (h + 0x84);
-    BrLoad32BE(h + 0x88);
-    BrSwap4   (h + 0x8C);
-    BrSwap4   (h + 0x90);
-    BrSwap4   (h + 0x94);
-
-    /* Ten rows of five dwords: +0x98 .. +0x15F. */
-    for (k = 0; k < 10; ++k) {
-        int c;
-        for (c = 0; c < 5; ++c)
-            BrSwap4(h + 0x98 + k * 0x14 + c * 4);
-    }
-
-    BrLoad32BE(h + 0x160);
-
-    for (i = 0; i < sizeof s_aFixup / sizeof s_aFixup[0]; ++i)
-        BrFixupAt(h + s_aFixup[i]);
-}
 
 
 /* 0x10018D20-region helper the original calls 19 times at the tail --

@@ -13,21 +13,15 @@
 static BrBaseDirReadFn  s_pfnRead;
 static void            *s_pUser;
 
-void BrBaseDirSetHost(BrBaseDirReadFn pfnRead, void *pUser)
-{
-    s_pfnRead = pfnRead;
-    s_pUser   = pUser;
-}
+/* (port-only BrBaseDirSetHost removed) */
 
-const char *BrBaseDir(void) { return g_aBrCfgBaseDir; }
+
+/* (port-only BrBaseDir removed) */
+
 
 /* @n64 0x802005FC located */
-void BrBaseDirResetForTest(void)
-{
-    memset(g_aBrCfgBaseDir, 0, sizeof g_aBrCfgBaseDir);
-    s_pfnRead = NULL;
-    s_pUser   = NULL;
-}
+/* (port-only BrBaseDirResetForTest removed) */
+
 
 /* 0x10063860 */
 /* WHAT IT DOES: works out where the game's data files live, by reading the

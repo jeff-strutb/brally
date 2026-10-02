@@ -56,10 +56,8 @@ static const char g_szUnknown[] = "unknown";
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 
-BrDPlayState *BrDPlayGetState(void)
-{
-    return &g_BrDPlay;
-}
+/* (port-only BrDPlayGetState removed) */
+
 
 /* g_BrDPlay is the port's gathering of scattered originals; pSt is always
  * &g_BrDPlay.  The matching build reads these fields as the separate globals

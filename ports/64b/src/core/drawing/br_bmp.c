@@ -34,90 +34,21 @@
 #include <stdlib.h>
 #include <string.h>
 
-static uint32_t rd32(const uint8_t *p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
-           ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
-}
-static uint16_t rd16(const uint8_t *p) {
-    return (uint16_t)((uint16_t)p[0] | ((uint16_t)p[1] << 8));
-}
+/* (port-only rd32 removed) */
+
+/* (port-only rd16 removed) */
+
 
 /* ======================================================================
  * RECREATION -- LoadImageA(LR_LOADFROMFILE|LR_CREATEDIBSECTION) + GetObjectA
  *
  * No original address: the original is in USER32.DLL and GDI32.DLL.
  * ====================================================================== */
-int BrBmpGdiLoad(BrGdiBitmapMem *pOut, const char *pszPath)
-{
-    FILE    *fh;
-    uint8_t  hdr[54];
-    uint32_t off, dib, cb;
-    int32_t  w, h;
-    uint16_t planes, bpp;
-    size_t   stride, need;
+/* (port-only BrBmpGdiLoad removed) */
 
-    if (!pOut || !pszPath) return -1;
-    memset(pOut, 0, sizeof(*pOut));
 
-    fh = fopen(pszPath, "rb");
-    if (!fh) return -1;
-    if (fread(hdr, 1, sizeof hdr, fh) != sizeof hdr) { fclose(fh); return -1; }
-    if (hdr[0] != 'B' || hdr[1] != 'M')              { fclose(fh); return -1; }
+/* (port-only BrBmpGdiFree removed) */
 
-    off    = rd32(hdr + 10);
-    dib    = rd32(hdr + 14);
-    w      = (int32_t)rd32(hdr + 18);
-    h      = (int32_t)rd32(hdr + 22);
-    planes = rd16(hdr + 26);
-    bpp    = rd16(hdr + 28);
-
-    /* BITMAPINFOHEADER or later, and BI_RGB.  The bpp is NOT judged here --
-     * see the header: refusing it is the game's job, and it does it twice. */
-    if (dib < 40 || rd32(hdr + 30) != 0)            { fclose(fh); return -1; }
-    if (bpp == 0 || bpp > 32)                       { fclose(fh); return -1; }
-    if (w <= 0 || w > 4096 || h == 0 || h < -4096 || h > 4096) {
-        fclose(fh); return -1;
-    }
-
-    /* GDI's DIB stride: the row rounded up to a DWORD.  For 24bpp this is the
-     * same as the BMP file's own row padding, which is why the file image can
-     * be handed straight over as if it were a DIB section's bits. */
-    stride = (((size_t)w * bpp + 31u) / 32u) * 4u;
-    need   = stride * (size_t)(h < 0 ? -h : h);
-
-    if (fseek(fh, 0, SEEK_END) != 0)                { fclose(fh); return -1; }
-    cb = (uint32_t)ftell(fh);
-    if (cb < off || (size_t)(cb - off) < need)      { fclose(fh); return -1; }
-
-    pOut->pAlloc = (uint8_t *)malloc(need);
-    if (!pOut->pAlloc) { fclose(fh); return -1; }
-    if (fseek(fh, (long)off, SEEK_SET) != 0 ||
-        fread(pOut->pAlloc, 1, need, fh) != need) {
-        free(pOut->pAlloc); pOut->pAlloc = NULL; fclose(fh); return -1;
-    }
-    fclose(fh);
-
-    /* GetObjectA's view.  bmHeight is always positive; a top-down file simply
-     * has its first stored row at the top, and nothing here records which --
-     * which is exactly GDI's behaviour, and exactly why a top-down BMP would
-     * come out flipped.  Nothing on the disc is top-down. */
-    pOut->bm.type         = 0;
-    pOut->bm.cx           = w;
-    pOut->bm.cy           = (h < 0 ? -h : h);
-    pOut->bm.cbWidthBytes = (int32_t)stride;
-    pOut->bm.cPlanes      = (planes ? planes : 1);
-    pOut->bm.cBitsPixel   = bpp;
-    pOut->bm.pBits        = pOut->pAlloc;
-    return 0;
-}
-
-void BrBmpGdiFree(BrGdiBitmapMem *pMem)
-{
-    if (!pMem) return;
-    free(pMem->pAlloc);
-    pMem->pAlloc = NULL;
-    pMem->bm.pBits = NULL;
-}
 
 /* ======================================================================
  * 0x10001290 -- the UI sprite loader
@@ -213,59 +144,14 @@ uint8_t *BrBmpLoadRgba(const char *pszPath)
 /* ======================================================================
  * The host adaptor -- 0x10001290 then 565 -> RGBA8888
  * ====================================================================== */
-int BrBmpLoad(BrBmp *pOut, const char *pszPath)
-{
-    BrSurf  *pSurf;
-    size_t   n, i;
+/* (port-only BrBmpLoad removed) */
 
-    if (!pOut || !pszPath) return -1;
-    memset(pOut, 0, sizeof(*pOut));
 
-    pSurf = BrBmpLoadSurface(pszPath, 0, 0);
-    if (!pSurf) return -1;
+/* (port-only BrBmpApplyKey removed) */
 
-    pOut->w = (uint32_t)pSurf->cx;
-    pOut->h = (uint32_t)pSurf->cy;
-    n = (size_t)pOut->w * pOut->h;
 
-    pOut->pRgba = (uint8_t *)malloc(n * 4u);
-    if (!pOut->pRgba) { BrSurfFree(pSurf); pOut->w = pOut->h = 0; return -1; }
+/* (port-only BrBmpFree removed) */
 
-    for (i = 0; i < n; i++) {
-        /* DEVIATION: the original stops at 16 bits and blits them.  The host
-         * needs 8888, so the surface is widened by bit replication -- see
-         * br_surf.h for why replication rather than a shift is required for
-         * the colour key to keep working. */
-        uint32_t v = BrSurf565ToRgb(pSurf->pPix[i]);
-        pOut->pRgba[i * 4 + 0] = (uint8_t)(v >> 16);
-        pOut->pRgba[i * 4 + 1] = (uint8_t)(v >> 8);
-        pOut->pRgba[i * 4 + 2] = (uint8_t)(v);
-        pOut->pRgba[i * 4 + 3] = 0xFF;
-    }
-
-    BrSurfFree(pSurf);
-    return 0;
-}
-
-void BrBmpApplyKey(BrBmp *pBmp, uint32_t rgb)
-{
-    size_t n, i;
-    if (!pBmp || !pBmp->pRgba) return;
-    n = (size_t)pBmp->w * pBmp->h;
-    for (i = 0; i < n; i++) {
-        uint8_t *p = pBmp->pRgba + i * 4u;
-        uint32_t v = ((uint32_t)p[0] << 16) | ((uint32_t)p[1] << 8) | p[2];
-        if (v == rgb) p[3] = 0;
-    }
-}
-
-void BrBmpFree(BrBmp *pBmp)
-{
-    if (!pBmp) return;
-    free(pBmp->pRgba);
-    pBmp->pRgba = NULL;
-    pBmp->w = pBmp->h = 0;
-}
 
 /* -- Ghidra-matched functions --------------------------- */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */

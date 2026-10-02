@@ -161,16 +161,8 @@ const char *BrVolumeRoot(void)
     return BR_VOLUME_ROOT_DEFAULT;
 }
 
-void BrVolumeSetRoot(const char *pszRoot)
-{
-    if (pszRoot == NULL || pszRoot[0] == '\0') {
-        s_fRootSet   = 0;
-        s_szRoot[0]  = '\0';
-        return;
-    }
-    snprintf(s_szRoot, sizeof s_szRoot, "%s", pszRoot);
-    s_fRootSet = 1;
-}
+/* (port-only BrVolumeSetRoot removed) */
+
 
 static char *read_whole(const char *pszPath)
 {
@@ -262,40 +254,17 @@ static void scan(void)
 }
 
 /* @n64 0x8021C6F0 located */
-int BrVolumeCount(void)
-{
-    scan();
-    return s_cVol;
-}
+/* (port-only BrVolumeCount removed) */
 
-const char *BrVolumeLabel(int i)
-{
-    scan();
-    if (i < 0 || i >= s_cVol)
-        return NULL;
-    return s_aszLabel[i];
-}
 
-const char *BrVolumeWhy(void)
-{
-    return s_pszWhy;
-}
+/* (port-only BrVolumeLabel removed) */
 
-int BrVolumePresent(const char *pszLabel)
-{
-    int i;
 
-    if (pszLabel == NULL)
-        return 0;
-    scan();
-    for (i = 0; i < s_cVol; i++) {
-        /* 0x10037823..0x10037852. Case-sensitive, whole string, NUL-stopped.
-         * Not a prefix test and not a substring test. */
-        if (strcmp(s_aszLabel[i], pszLabel) == 0)
-            return 1;
-    }
-    return 0;
-}
+/* (port-only BrVolumeWhy removed) */
+
+
+/* (port-only BrVolumePresent removed) */
+
 
 /* ==========================================================================
  * The game's entry point
@@ -313,7 +282,5 @@ int BrVolumePresent(const char *pszLabel)
  * The 1/0 shape is theirs: 0x1003EE9A seeds the result with 0 and 0x1003EF0F
  * replaces it with 1 the moment a volume answers.
  */
-int32_t BrExt_10045A00(void)
-{
-    return BrVolumePresent(BR_VOLUME_WANT) ? 1 : 0;
-}
+/* (port-only BrExt_10045A00 removed) */
+

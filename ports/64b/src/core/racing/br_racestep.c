@@ -73,19 +73,11 @@ static const char *const g_aBrRaceStepHoleName[BR_RS_HOLE_COUNT] = {
     "0x1005ECF0 walked off the track image"
 };
 
-void BrRaceStepHoleReset(void)
-{
-    int i;
-    for (i = 0; i < BR_RS_HOLE_COUNT; ++i)
-        g_aBrRaceStepHole[i] = 0u;
-}
+/* (port-only BrRaceStepHoleReset removed) */
 
-const char *BrRaceStepHoleName(int i)
-{
-    if (i < 0 || i >= BR_RS_HOLE_COUNT)
-        return "(no such hole)";
-    return g_aBrRaceStepHoleName[i];
-}
+
+/* (port-only BrRaceStepHoleName removed) */
+
 
 BrRaceStepHooks g_brRaceStepHooks;
 
@@ -170,40 +162,8 @@ void        (*g_pfnBrRaceAiControl)(BrDriverCar *);
  * grid hole.  `dist` is metres past the path root; it must put the slot
  * PAST gate 0, or the slot's first act is a backwards crossing that takes
  * f44 to -1 while f50 stays where it was and breaks the invariant. */
-int BrRaceSeedPhantom(BrDriver *pDrv, float dist)
-{
-    BrAiNode root;
+/* (port-only BrRaceSeedPhantom removed) */
 
-    ++g_aBrRaceStepHole[BR_RS_HOLE_GRID];
-
-    if (g_pBrRaceTrack == NULL || BrAiRoot(g_pBrRaceTrack, &root) != 0)
-        return 1;
-
-    {
-        BrAiPoint p0;
-        if (BrAiPoint_(&root, 0u, &p0) != 0)
-            return 1;
-        /* The walk leaves the three globals alone when it runs out of ring,
-         * so seed them with the root first and the failure is visible. */
-        g_brRacePathNode  = 0u;
-        g_brRacePathIndex = 0u;
-        g_brRacePathPos   = p0.centre;
-    }
-    BrRacePathAdvance(root.off, 0u, 1.0f, dist);
-    if (g_brRacePathNode == 0u)
-        return 1;
-
-    (*(int32_t *)&pDrv->pPathNode) /* BR_LP64_SCALAR_IN_PTR */ = (int32_t)g_brRacePathNode;
-    pDrv->f2C = (int32_t)g_brRacePathIndex;
-    pDrv->f00 = g_brRacePathPos;
-    pDrv->f0C = g_brRacePathPos;
-    pDrv->f50 = dist;
-    pDrv->f40 = 0;
-    pDrv->f44 = 0;
-    pDrv->f48 = 0;
-    pDrv->f4C = 0;
-    return 0;
-}
 
 /* ==========================================================================
  * 0x10061430 -- eleven bytes, and all of them
@@ -228,187 +188,21 @@ void BR_THISCALL1 BrRaceCarPre(BrDriverCar *pCar)
 /* 0x10062046 / 0x1006212B / 0x100621E6 -- the same three dwords, three times.
  * car+0x30 is the position the physics wrote and car+0xF80 is last frame's;
  * 0x1005FF00 reads exactly this pair as its motion segment. */
-static void BrRaceMirrorPos(BrDriverCar *pCar)
-{
-    pCar->posPrev = pCar->pos;
-}
+/* (port-only BrRaceMirrorPos removed) */
+
 
 /* 0x10062064 / 0x1006214C / 0x10062204 -- `mov ecx,[eax+0xF08]; test; call`.
  * The original does NOT null-check on the frozen arm and DOES on the other
  * two; both spellings are kept by checking here and by the callers' order. */
-static void BrRaceControl(BrDriverCar *pCar)
-{
-    /* Counted whether or not a body is installed: the chain behind the
-     * pointer -- 0x1005C8B0 / 0x1005D770 and 0x1006F170 -- is unported in
-     * either case, and whatever the host puts here is standing in for it. */
-    ++g_aBrRaceStepHole[BR_RS_HOLE_CONTROL];
-    if (pCar->pfnControl != NULL)
-        pCar->pfnControl(pCar);
-    else if (g_brRaceStepHooks.pfnControl != NULL)
-        g_brRaceStepHooks.pfnControl(pCar);
-}
+/* (port-only BrRaceControl removed) */
+
 
 /* 0x10062238 -- THE PHANTOM ENTRANT */
-static void BrRaceDriverPhantom(BrDriver *pDrv)
-{
-    BrAiNode  node;
-    BrAiPoint a, b;
-    float     lapLen, remain, segLen, ratio, dist;
-    int32_t   iBorrow;
+/* (port-only BrRaceDriverPhantom removed) */
 
-    pDrv->f0C = pDrv->f00;                            /* 0x1006223D */
 
-    if (g_pBrRaceTrack == NULL)
-        return;
-    /* 0x10062256 `mov ecx,[0x106EED48]` then `fmul [ecx+0x64]` -- the path
-     * ring's root node, whose pts[0].arc is the lap length.  br_ai.h's
-     * BrAiLapLength is that read. */
-    lapLen = BrAiLapLength(g_pBrRaceTrack);
+/* (port-only BrRaceDriverStep removed) */
 
-    if (BrAiNodeAt(g_pBrRaceTrack, (uint32_t)(*(int32_t *)&pDrv->pPathNode) /* BR_LP64_SCALAR_IN_PTR */, &node) != 0 ||
-        BrAiPoint_(&node, (uint32_t)pDrv->f2C, &a) != 0 ||
-        BrAiPoint_(&node, (uint32_t)pDrv->f2C + 1u, &b) != 0) {
-        ++g_aBrRaceStepHole[BR_RS_HOLE_PATHEDGE];
-        return;
-    }
-
-    /* 0x1006225C..0x10062289.  `fild (f44 + 1)` -- the lap counter, not the
-     * gate -- then the two subtractions and the divide, in that order. */
-    remain = (float)(pDrv->f44 + 1) * lapLen - pDrv->f50 - b.arc;
-    segLen = a.arc - b.arc;
-    ratio  = remain / segLen;
-
-    /* 0x100622A0: the slot borrows the car at (entrantCount + f74) and asks
-     * whether that body is live.  A slot whose borrowed index is outside the
-     * array cannot be live, which is the .bss answer the original gets. */
-    iBorrow = g_brRaceNEntrant + pDrv->f74;
-    if (g_aBrRaceCar != NULL && iBorrow >= 0 && iBorrow < g_BrCarCount &&
-        g_aBrRaceCar[iBorrow].pProfile != 0) {
-        /* 0x100622AE: |car+0x1024| * dt, computed TWICE by the original --
-         * once for the walk and once for the progress -- from the same two
-         * inputs.  Kept as two multiplies for the same reason. */
-        dist = BrVec3Length(&g_aBrRaceCar[iBorrow].f1024) * g_brRaceFlyStep;
-        BrRacePathAdvance((uint32_t)(*(int32_t *)&pDrv->pPathNode) /* BR_LP64_SCALAR_IN_PTR */, (uint32_t)pDrv->f2C,
-                          ratio, dist);
-        pDrv->f50 += BrVec3Length(&g_aBrRaceCar[iBorrow].f1024)
-                     * g_brRaceFlyStep;                /* 0x1006230E */
-    } else {
-        /* 0x10062313: the flat step.  0x400E147B is pushed as the distance
-         * and 0x10077A14 (-2.22) is SUBTRACTED from the progress, so the two
-         * are the same number spelled twice. */
-        BrRacePathAdvance((uint32_t)(*(int32_t *)&pDrv->pPathNode) /* BR_LP64_SCALAR_IN_PTR */, (uint32_t)pDrv->f2C,
-                          ratio, BR_RS_PHANTOM_STEP);
-        pDrv->f50 -= -BR_RS_PHANTOM_STEP;             /* 0x10062327 */
-    }
-
-    /* 0x10062333: read the walk's three outputs back. */
-    (*(int32_t *)&pDrv->pPathNode) /* BR_LP64_SCALAR_IN_PTR */ = (int32_t)g_brRacePathNode;
-    pDrv->f2C = (int32_t)g_brRacePathIndex;
-    pDrv->f00 = g_brRacePathPos;
-
-    /* 0x10062363 / 0x1006237C: the slot's velocity, from the two positions
-     * and nothing else. */
-    BrVec3Sub(&pDrv->f18, &pDrv->f00, &pDrv->f0C);
-    BrVec3ScaleBy(&pDrv->f18, 1.0f / g_brRaceFlyStep);
-
-    (void)BrRaceGateStep(&g_brRaceRules);       /* 0x10062386 */
-}
-
-void BrRaceDriverStep(BrDriver *pDrv)
-{
-    BrDriverCar *pCar;
-
-    /* 0x10061F6B: a networked slot with no car is somebody else's. */
-    if (g_brRaceNet != 0 && pDrv->pCar == NULL)
-        return;
-
-    pCar = pDrv->pCar;
-    if (pCar != NULL) {
-        /* 0x10061F82: the AI controller's own command is cleared here, at
-         * the TOP of the frame, before anything runs -- so the value the
-         * controller writes survives exactly one frame. */
-        if (pCar->pfnControl != NULL &&
-            pCar->pfnControl == g_pfnBrRaceAiControl &&
-            g_brRaceRules.mode != 5) {
-            pCar->pCtl->ctl  &= 0x0F000000u;           /* 0x10061F9F */
-            pCar->pCtl->steer = 0.0f;                  /* 0x10061FB0 */
-        }
-    }
-
-    if (g_BrX06909B4 != 0) {
-        /* 0x10061FBB: fifteen render globals at 0x118EEF48 zeroed and an
-         * immediate return.  None of them is race state. */
-        return;
-    }
-
-    if ((pDrv->f68 & BR_RS_DRIVER_FROZEN) != 0) {     /* 0x1006201E */
-        pCar = pDrv->pCar;
-        if (pCar == NULL)                             /* 0x10062025 */
-            return;
-        pCar->pCtl->ctl |= BR_DRIVERCAR_CTL_BRAKE;     /* 0x10062035 */
-        pCar->fE70      = 0;                          /* 0x10062040 */
-        BrRaceMirrorPos(pCar);                        /* 0x10062049 */
-        BrRaceControl(pCar);                          /* 0x10062072 */
-        pCar->fE70      = 0;                          /* 0x1006207A */
-        return;                                       /* NO gate step */
-    }
-
-    if ((pDrv->f68 & BR_DRIVER_SKIP) != 0) {          /* 0x1006208B */
-        pCar = pDrv->pCar;
-        if (pCar == NULL)                             /* 0x10062096 */
-            return;
-        /* 0x1006209E: mode 0 leaves the leading `nEntrant` slots alone. */
-        if (!(g_brRaceRules.mode == 0 && pDrv->f64 >= g_brRaceNEntrant)) {
-            pCar->pCtl->ctl   = BR_DRIVERCAR_CTL_FIN;  /* 0x100620B9 */
-            pCar->pCtl->b24    = 0x81u;                 /* 0x100620C8 */
-            pCar->pCtl->steer = -1.0f;                 /* 0x100620D5 */
-        }
-        if (g_brRaceRules.mode == 0 && pDrv->f64 >= g_brRaceNEntrant) {
-            pCar->b29AF  = 2u;                        /* 0x100620F4 */
-            pCar->f29B0 -= g_brRaceFlyStep;            /* 0x100620FD */
-            /* 0x10062120 `test ah,1` + `je` -- C0 is set for LESS and for
-             * UNORDERED, and the zeroing is on C0 SET. */
-            if (pCar->f29B0 < 0.0f)
-                pCar->f29B0 = 0.0f;                   /* 0x10062125 */
-        }
-        BrRaceMirrorPos(pCar);                        /* 0x1006212E */
-        if (pCar->pfnControl == NULL)                 /* 0x10062152 */
-            return;
-        BrRaceControl(pCar);                          /* 0x1006215B */
-        return;                                       /* NO gate step */
-    }
-
-    pCar = pDrv->pCar;
-    if (pCar == NULL) {                               /* 0x10062168 */
-        BrRaceDriverPhantom(pDrv);
-        return;
-    }
-
-    /* --- the racing arm, 0x1006216E ---------------------------------- */
-    if (pCar->b29AF == 2u) {
-        /* 0x10062176: `dt * -1.6` SUBTRACTED FROM f29B0, i.e. added. */
-        pCar->f29B0 -= g_brRaceFlyStep * BR_RS_BLEED_K;
-        if (g_brRaceRules.mode == 2 && pDrv->f64 != 0) {
-            /* 0x100621A4 `test ah,0x41` + `jne <skip>`: the clamp is on an
-             * ordered GREATER-THAN, so a NaN is left alone. */
-            if (pCar->f29B0 > BR_RS_BLEED_LO)
-                pCar->f29B0 = BR_RS_BLEED_LO;         /* 0x100621B1 */
-        } else {
-            /* 0x100621CE `test ah,1` + `jne <skip>`: C0 is set for LESS and
-             * for UNORDERED, so a NaN takes the clamp. */
-            if (!(pCar->f29B0 < BR_RS_BLEED_HI)) {
-                pCar->f29B0 = BR_RS_BLEED_HI;         /* 0x100621D3 */
-                pCar->b29AF = 0u;                     /* 0x100621E0 */
-            }
-        }
-    }
-
-    BrRaceMirrorPos(pCar);                            /* 0x100621E9 */
-    BrRaceControl(pCar);                              /* 0x10062212 */
-    /* 0x1006221A -- slice3_41.h already cites this line for what car+0x1030
-     * and car+0x1034 are. */
-    pCar->f1034 += pCar->f1030 * g_brRaceFlyStep;
-}
 
 /* ==========================================================================
  * 0x100623A0 -- a pure hole, transcribed for its control flow only
@@ -467,172 +261,20 @@ void BR_THISCALL1 BrRaceDriverAnim(BrDriver *pDrv)
  * seeded to 1 at 0x1001AE4E and cleared at 0x1001B085 for every driver that
  * is NOT finished; the loop body it skips is the per-slot results bookkeeping,
  * which is HUD state.  What survives is the predicate. */
-int BrRaceStepAllFinished(void)
-{
-    int32_t i;
+/* (port-only BrRaceStepAllFinished removed) */
 
-    for (i = 0; i < g_brRaceNEntrant; ++i) {
-        if ((g_aBrRaceDriver[i].f68 & BR_DRIVER_SKIP) == 0)
-            return 0;                                 /* 0x1001B085 */
-    }
-    /* An empty field leaves the flag at 1, which is the original's answer
-     * too: 0x1001AEEC jumps straight past the loop. */
-    return 1;
-}
 
 /* 0x1001B0F8 -- the advance itself, reached from three places. */
-static void BrRaceStepAdvanceScript(void)
-{
-    if (g_brRaceTick == 0)                            /* 0x1001B0FE */
-        return;
-    ++g_brRaceScript;                                 /* 0x1001B105 */
-    if (g_brRaceScript < 0 || g_brRaceScript >= BR_RS_SCRIPT_LEN) {
-        /* DEVIATION: the original indexes 0x100A9578 without a bound.  The
-         * script's last entry is state 7, whose arm never advances, so the
-         * index cannot legally get here; clamping is what a portable build
-         * does instead of reading .rdata past the table. */
-        g_brRaceScript = BR_RS_SCRIPT_LEN - 1;
-        return;
-    }
-    g_brRaceLightT = g_aBrRaceLightScript[g_brRaceScript].dur;   /* 0x1001B119 */
-    g_brRaceLights = g_aBrRaceLightScript[g_brRaceScript].state; /* 0x1001B11F */
-}
+/* (port-only BrRaceStepAdvanceScript removed) */
+
 
 /* 0x1001B0CD -- the timer arm.  Shared by fallthrough from the state-6 case
  * and by explicit jumps from the two arms below 4. */
-static void BrRaceStepTimer(void)
-{
-    if (g_BrX06909B4 != 0)                          /* 0x1001B0D3 */
-        return;
-    g_brRaceLightT -= g_brRaceFlyStep;                 /* 0x1001B0DF */
-    /* 0x1001B0EB `fcomp 0.0f` + `test ah,1` + `je <return>`: C0 is set for
-     * LESS and for UNORDERED, and the advance is on C0 SET. */
-    if (!(g_brRaceLightT < BR_RS_TIMER_END))
-        return;
-    BrRaceStepAdvanceScript();
-}
+/* (port-only BrRaceStepTimer removed) */
 
-void BrRaceStepLights(void)
-{
-    int32_t i;
 
-    if (g_brRaceLights < BR_RS_LIGHTS_GO) {           /* 0x1001AC09 */
-        /* 0x1001AC0F..0x1001ACC2: three arms that differ only in which HUD
-         * string ("GET READY", id 0xED / 0xEE) they hang on each car. */
-        ++g_aBrRaceStepHole[BR_RS_HOLE_HUD];
+/* (port-only BrRaceStepLights removed) */
 
-        (DAT_105ccb68[4]) = 1;                             /* 0x1001ACCD */
-        for (i = 0; i < g_brRaceNDriver; ++i) {
-            BrDriver    *pDrv = &g_aBrRaceDriver[i];
-            BrDriverCar *pCar;
-
-            pDrv->f68 |= BR_RS_DRIVER_FROZEN;         /* 0x1001ACEC */
-
-            pCar = pDrv->pCar;
-            if (pCar == NULL)                         /* 0x1001ACF6 */
-                continue;
-            if (pCar->f140 >= g_brRaceNEntrant)       /* 0x1001AD02 */
-                continue;
-
-            /* 0x1001AD08..0x1001AD5A: the difficulty table lookup into
-             * 0x100BCAB0 that writes car+0xFF0, and car+0x1000 = 1.0f.
-             * Both feed the AI controller, which is already a hole. */
-            ++g_aBrRaceStepHole[BR_RS_HOLE_DIFFICULTY];
-
-            if (g_brRaceLights == 0) {                /* 0x1001AD67 */
-                g_brRaceHudA = -1;                    /* 0x1001ADAC */
-                (DAT_105ccb68[3]) = 0;                     /* 0x1001ADB2 */
-            } else if (g_brRaceLights == BR_RS_LIGHTS_COUNT) {  /* 0x1001AD6C */
-                int iBeep = (DAT_105ccb68[3]);
-
-                g_brRaceHudA = 1;                     /* 0x1001AD74 */
-                if (iBeep < 0)                    iBeep = 0;
-                if (iBeep >= BR_RS_BEEP_COUNT)    iBeep = BR_RS_BEEP_COUNT - 1;
-                /* 0x1001AD8D `test ah,0x41` + `jne <skip>`: the beep fires
-                 * only on an ordered greater-than, i.e. once the timer has
-                 * dropped past this threshold.
-                 *
-                 * THE WHOLE BLOCK IS INSIDE THE PER-DRIVER LOOP, which is
-                 * the original's own doing and is why the counter can step
-                 * more than once in a frame.  It is self-limiting: the next
-                 * threshold is smaller than the timer until the next frame. */
-                if (g_aBrRaceBeepT[iBeep] > g_brRaceLightT) {
-                    ++(DAT_105ccb68[3]);                   /* 0x1001AD92 */
-                    /* 0x1001AD9E is the GO horn (the counter has reached 4)
-                     * and 0x1001ADA5 a beep.  BOTH ARE NOW PORTED, in
-                     * port/src/br_sfxsrc.c: 0x10060E00 and 0x10060DF0 are
-                     * eleven bytes each over 0x10060DB0, which plays source
-                     * 0xE (group 14, beep2) or 0xD (group 13, beep) on
-                     * channel 3 at 0x00200020.  br_sfxsrc.c's
-                     * BrSfxSrcRaceCountdown is exactly this two-way branch
-                     * and port/src/br_wireaudio.c installs it as pfnSound.
-                     *
-                     * The hole COUNTER stays, and it stays incremented on
-                     * every fire whether or not a hook is installed: it is
-                     * how the four-per-race invariant is observed, and a
-                     * counter that stopped counting once the hook existed
-                     * would have removed the only evidence that the hook is
-                     * being reached the right number of times. */
-                    ++g_aBrRaceStepHole[BR_RS_HOLE_SOUND];
-                    if (g_brRaceStepHooks.pfnSound != NULL)
-                        g_brRaceStepHooks.pfnSound((DAT_105ccb68[3]));
-                }
-            }
-        }
-        g_brRaceFade = 0.0f;                          /* 0x1001ADCC */
-        BrRaceStepTimer();                            /* 0x1001ADD6 */
-        return;
-    }
-
-    if (g_brRaceLights == BR_RS_LIGHTS_GO) {          /* 0x1001ADDB */
-        float dur;
-
-        g_brRaceHudA = 1;                             /* 0x1001ADE3 */
-        (DAT_105ccb68[4]) = 1;                             /* 0x1001ADEB */
-        for (i = 0; i < g_brRaceNDriver; ++i)         /* 0x1001ADF8 */
-            g_aBrRaceDriver[i].f68 &= ~(uint32_t)BR_RS_DRIVER_FROZEN;
-
-        /* 0x1001AE0D: the fade curve, ((dur - t) / dur)^2 * 15. */
-        dur = (g_brRaceScript >= 0 && g_brRaceScript < BR_RS_SCRIPT_LEN)
-              ? g_aBrRaceLightScript[g_brRaceScript].dur : 0.0f;
-        {
-            float f = (dur - g_brRaceLightT) / dur;
-            g_brRaceFade = f * f * BR_RS_FADE_SCALE;
-        }
-        BrRaceStepTimer();                            /* 0x1001AE33 */
-        return;
-    }
-
-    if (g_brRaceLights == BR_RS_LIGHTS_RACE) {        /* 0x1001AE38 */
-        /* 0x1001AE41..0x1001AEDC: the time-limit tests on car[0]'s +0xFEC
-         * against 140.0 / 39.6 / 16.0 for modes 4 and 5, and the fade-out
-         * they trigger.  Neither mode is what a plain race is, and the block
-         * writes only screen state. */
-        ++g_aBrRaceStepHole[BR_RS_HOLE_HUD];
-
-        /* 0x1001B092: the ONLY exit from state 4 -- and it is not a timer. */
-        if (BrRaceStepAllFinished())
-            BrRaceStepAdvanceScript();
-        return;
-    }
-
-    if (g_brRaceLights == 5) {                        /* 0x1001B09D */
-        /* 0x1001B0A2: modes 0, 1, 2 and 6 run 0x1001C810 (the results
-         * screen) when not replaying; then the advance, with no timer. */
-        ++g_aBrRaceStepHole[BR_RS_HOLE_HUD];
-        BrRaceStepAdvanceScript();                    /* 0x1001B0C6 */
-        return;
-    }
-
-    if (g_brRaceLights == 6) {                        /* 0x1001B0C8 */
-        BrRaceStepTimer();                            /* falls into 0x1001B0CD */
-        return;
-    }
-
-    /* 0x1001B127: state 7, the fade out.  Three unported sound ramps and a
-     * latch on 0x105CCB98; no race state at all. */
-    ++g_aBrRaceStepHole[BR_RS_HOLE_HUD];
-}
 
 /* ==========================================================================
  * 0x10019A70
@@ -743,110 +385,14 @@ void BrRaceStepLights(void)
  * the original does: that is a separate 538-byte routine this module does not
  * own, so the per-driver loop below only counts how many times it would have
  * been called. */
-int BrRaceStepInit(void)
-{
-    int32_t i;
-    int32_t iScript;
+/* (port-only BrRaceStepInit removed) */
 
-    /* 0x1001A97C..0x1001A99C.  `xor eax,eax / cmp mode,5 / setne al / dec eax
-     * / and eax,4` is `(mode == 5) ? 4 : 0`, and a replay starts at 4
-     * outright. */
-    if ((DAT_105ccb68[8]) != 0)
-        iScript = 4;
-    else
-        iScript = (g_brRaceRules.mode == 5) ? 4 : 0;
 
-    g_brRaceScript = iScript;                         /* 0x1001A9AD */
-    g_brRaceLightT = g_aBrRaceLightScript[iScript].dur;   /* 0x1001A9B2 */
-    g_brRaceLights = g_aBrRaceLightScript[iScript].state; /* 0x1001A9BA */
+/* (port-only BrRaceStepFrame removed) */
 
-    if ((DAT_105ccb68[8]) == 0) {
-        g_brRaceRules.nFinished = 0;                  /* 0x1001A9CB, 0x118EE588 */
-        for (i = 0; i < g_brRaceNDriver; ++i) {
-            /* 0x1001A9DA: 0x1005F310, the driver-record constructor and the
-             * grid placement.  br_race.h already names it; it is 538 bytes
-             * of table-driven layout that this module does not own. */
-            ++g_aBrRaceStepHole[BR_RS_HOLE_GRID];
-        }
-    }
 
-    (DAT_105ccb68[3])     = 0;
-    g_brRaceFade     = 0.0f;
-    (DAT_105ccb68[11]) = 1;                             /* 0x1001AA5E */
-    return g_brRaceLights;
-}
+/* (port-only BrRaceStepInstall removed) */
 
-void BrRaceStepFrame(void)
-{
-    int32_t i;
-
-    /* 0x10019AF8: the substate branch.  The one-time arm is BrRaceStepInit
-     * and is not re-entered here; a caller that has not run it gets the
-     * frame the original would run with a zeroed script, which is state 0. */
-    if ((DAT_105ccb68[11]) == 0)
-        (void)BrRaceStepInit();
-
-    /* 0x1001AB9F: state 4 alone runs 0x10060A30 over the whole field. */
-    if (g_brRaceLights == BR_RS_LIGHTS_RACE) {
-        for (i = 0; i < g_brRaceNEntrant; ++i)
-            BR_RS_HOLE(BR_RS_HOLE_LAPINFO, pfnLapInfo, &g_aBrRaceCar[i]);
-    }
-
-    /* 0x1001ABD0..0x1001ABEA: the 0x11778848 toggle and 0x1002E186, both
-     * render-side, and counted with the HUD below. */
-
-    g_brRaceHudA = 0;                                 /* 0x1001ABF1 */
-    (DAT_105ccb68[4]) = 0;                                 /* 0x1001AC03 */
-
-    BrRaceStepLights();                               /* 0x1001ABFB */
-
-    /* 0x1001B186 */
-    ++g_aBrRaceStepHole[BR_RS_HOLE_SCRATCH];
-
-    /* 0x1001B18B */
-    for (i = 0; i < g_BrCarCount; ++i)
-        BrRaceCarPre(&g_aBrRaceCar[i]);
-
-    /* 0x1001B1B2 */
-    for (i = 0; i < g_brRaceNDriver; ++i)
-        BrRaceDriverStep(&g_aBrRaceDriver[i]);
-
-    /* 0x1001B1D9: `jne` then `je`, i.e. either flag runs the loop. */
-    if (g_brRaceNet != 0 || (DAT_105ccb68[8]) != 0) {
-        for (i = 0; i < g_brRaceNDriver; ++i)
-            BrRaceDriverAnim(&g_aBrRaceDriver[i]);
-    }
-
-    /* 0x1001B20B */
-    for (i = 0; i < g_brRaceNDriver; ++i)
-        BrRaceDriverPost(&g_aBrRaceDriver[i]);
-
-    /* 0x1001B22D */
-    if (g_brRaceRules.mode == 0) {
-        for (i = 0; i < g_brRaceNEntrant; ++i)
-            ++g_aBrRaceStepHole[BR_RS_HOLE_SAVELAP];
-    }
-
-    /* 0x1001B25C -- 0x1005F580.  Its g_226A48 arm is a per-car remote query
-     * and its other arm IS slice3_41.c's BrRankAssign, from the D3D twin
-     * 0x10066510.  See the banner in br_racestep.h. */
-    if (g_brRaceNet != 0) {
-        for (i = 0; i < g_BrCarCount; ++i)
-            ++g_aBrRaceStepHole[BR_RS_HOLE_HUD];
-    } else if (g_aBrRaceDriver != NULL) {
-        BrRankAssign();
-    }
-
-    /* 0x1001B261 to the end: the HUD, the rear-view mirror and the whole
-     * renderer.  About half the function by bytes and none of it state. */
-    ++g_aBrRaceStepHole[BR_RS_HOLE_HUD];
-}
-
-void BrRaceStepInstall(void)
-{
-    BrGameStepRegister(BrRaceStepFrame, BR_GAMESTEP_RACE);
-    BrGameStepSet(BrRaceStepFrame);
-}
 
 /* ==========================================================================
  * 0x1001B261..0x1001B364 -- the first block out of BR_RS_HOLE_HUD
@@ -904,72 +450,8 @@ void BrExt_10033BB0(void);           /* 0x10033BB0, the particle tick */
  * fly-past for the block that follows.  A paused race and a replay both skip
  * the whole thing.  Returns non-zero when the caller should go on to the
  * special-object arm, which is what the original's fall-through does. */
-int BrRaceStepEffects(void)
-{
-    int32_t nEnt;
-    int32_t iEnt;
-    int32_t scan;
+/* (port-only BrRaceStepEffects removed) */
 
-    if (g_BrX06909B4 != 0)                          /* 0x1001B261 */
-        return 0;
-    if ((DAT_105ccb68[8]) == 2)                          /* 0x1001B26D */
-        return 0;
-
-    BrExt_10008D60(0, 0x80, 0x80, 0, 0xFF);           /* 0x1001B27A */
-    BrExt_10033BB0();                                 /* 0x1001B293 */
-    BrExt_10008D60(0, 0, 0xFF, 0xFF, 0xFF);           /* 0x1001B298 */
-    BrWeatherStepParticles();                         /* 0x1001B2B1 */
-
-    /* 0x1001B2BB / 0x1001B2C8: the fly-past has to be enabled and not yet
-     * armed.  `mov eax,[0x100B3014]` at 0x1001B2BD is hoisted ABOVE both
-     * tests in the original and only used on the path that needs it. */
-    if (g_brRaceBeginAirplane == 0)                   /* 0x1001B2BB */
-        return 1;
-    if (g_brRaceBeginAirArmed != 0)                   /* 0x1001B2C8 */
-        return 1;
-
-    /* 0x1001B2D4..0x1001B2F4.  The track test is NOT unconditional: with all
-     * three suppressors clear the scan runs whatever the track is, and only
-     * when one of them is set do tracks 2 and 8 suppress it. */
-    scan = 1;
-    if ((*(int32_t *)((char *)&g_aBrEntRecs + 0x84)) != 0 ||                  /* 0x1001B2D4 */
-        (*(int32_t *)((char *)&g_aBrEntRecs + 0x80)) != 0 ||                  /* 0x1001B2DC */
-        (*(int32_t *)((char *)&g_aBrEntRecs + 0x7C)) != 0) {                  /* 0x1001B2E4 */
-        if (g_Br0B380C == 2 || g_Br0B380C == 8) /* 0x1001B2EC, 0x1001B2F1 */
-            scan = 0;
-    }
-    if (!scan)
-        return 1;
-
-    nEnt = g_brRaceNEntrant;                          /* 0x1001B2F6 */
-    if (nEnt <= 0)                                    /* 0x1001B2FD */
-        return 1;
-
-    /* 0x1001B2FF..0x1001B361.  One pass per entrant; the collision-object id
-     * is loop-invariant per entrant (`mov edi,[esi-0x19A4]` at 0x1001B316 is
-     * ABOVE the loop head at 0x1001B31C), so the inner loop only walks the
-     * id list.  The first match arms the fly-past and stops that entrant. */
-    for (iEnt = 0; iEnt < nEnt; ++iEnt) {
-        const uint8_t  *pEnt = (const uint8_t *)BR_RS_ENTRANT0
-                             + (size_t)iEnt * BR_RS_ENTRANT_SZ;
-        int32_t         cId  = *(const int32_t *)pEnt;             /* +0     */
-        const uint16_t *pId  = (const uint16_t *)(pEnt - 0x40);    /* -0x40  */
-        int32_t         i;
-
-        if (cId <= 0)                                 /* 0x1001B314 */
-            continue;
-        if (*(const int32_t *)(pEnt - 0x19A4) != g_brRaceBeginCamMinus1)
-            continue;                                 /* 0x1001B31C, invariant */
-
-        for (i = 0; i < cId; ++i) {                   /* 0x1001B33B */
-            if (pId[i] == (uint16_t)g_brRaceBeginAirTrigger) {
-                g_brRaceBeginAirArmed = 1;            /* 0x1001B342 */
-                break;
-            }
-        }
-    }
-    return 1;
-}
 
 /* ==========================================================================
  * 0x1001B365..0x1001B402 and 0x1001B870..0x1001B886 -- the specials loop
@@ -1024,20 +506,8 @@ int BrRaceStepEffects(void)
  * one before and the one after.  T1 is the frame's [esp+0x2C] BrVec3 and T2
  * its [esp+0x20]; the first call also leaves the leg's LENGTH behind in
  * 0x105BC7E8, which is the only reason it is not a plain helper. */
-static void BrRaceFlyDirAt(BrVec3 *pOut, int32_t iNode, int wantLen)
-{
-    BrVec3 mPrev;                                     /* [esp+0x2C] */
-    BrVec3 mCur;                                      /* [esp+0x20] */
+/* (port-only BrRaceFlyDirAt removed) */
 
-    BrVec3Midpoint(&mPrev, &g_pBrRaceFlyPos[iNode - 1],
-                           &g_pBrRaceFlyAim[iNode - 1]);   /* 0x1001B4AC */
-    BrVec3Midpoint(&mCur,  &g_pBrRaceFlyPos[iNode],
-                           &g_pBrRaceFlyAim[iNode]);       /* 0x1001B4D6 */
-    if (wantLen)
-        g_brRaceBeginPathSeg = BrVec3Dist(&mPrev, &mCur); /* 0x1001B4E8/0x1001B4ED */
-    BrVec3Sub(pOut, &mCur, &mPrev);                   /* 0x1001B505 */
-    br_dl_normalise(pOut);                            /* 0x1001B512 */
-}
 
 /* WHAT IT DOES: flies the fly-past camera one frame further along its rail.
  * It spends this frame's distance out of the leg it is on; each time a leg
@@ -1048,102 +518,8 @@ static void BrRaceFlyDirAt(BrVec3 *pOut, int32_t iNode, int wantLen)
  * blending the two node directions, crossing it twice into an orthonormal
  * basis and scaling all three rows.  Distances, not times, so the camera
  * moves at a constant speed whatever the frame rate. */
-static void BrRaceStepFlyPast(void)
-{
-    /* The two lerp outputs, named off the frame the listing actually uses:
-     * the POSITION lerp writes [esp+0x2C] (0x1001B670 is +0x38 with three
-     * pushes in flight) and the AIM lerp writes [esp+0x20] (0x1001B68F is
-     * +0x24 with one).  Getting these the wrong way round silently swaps the
-     * operands of the subtraction at 0x1001B774. */
-    BrVec3  vPos;                                     /* [esp+0x2C] */
-    BrVec3  vAim;                                     /* [esp+0x20] */
-    BrMat4 *pCam;
-    float   t;
+/* (port-only BrRaceStepFlyPast removed) */
 
-    if (g_brRaceBeginAirplane == 0)                   /* 0x1001B403 */
-        return;
-    if (g_brRaceBeginAirArmed == 0)                   /* 0x1001B40F */
-        return;
-
-    /* 0x1001B41B: `dec eax; je` then `sub eax,6; je` -- tracks 1 and 7 fly at
-     * the second speed, every other track at the first. */
-    if (g_Br0B380C == 1 || g_Br0B380C == 7)     /* 0x1001B420, 0x1001B423 */
-        g_brRaceBeginPathT -= g_brRaceFlyStep * g_brRaceFlySpeedB;  /* 0x1001B436 */
-    else
-        g_brRaceBeginPathT -= g_brRaceFlyStep * g_brRaceFlySpeedA;  /* 0x1001B428 */
-
-    /* 0x1001B44E: `fcomp` + `test ah,0x41` -- while the leg is used up, step
-     * a node.  A NaN remainder leaves the loop, which is the original's
-     * behaviour and not a guard to add. */
-    while (g_brRaceBeginPathT > g_brRaceBeginPathSeg) {    /* 0x1001B45F/0x1001B61F */
-        g_brRaceBeginPathT -= g_brRaceBeginPathSeg;       /* 0x1001B465 */
-
-        ++g_brRaceBeginPathIdx;                            /* 0x1001B476 */
-        if (g_brRaceBeginPathIdx >= g_brRaceBeginPathLen) {    /* 0x1001B485 */
-            g_brRaceBeginAirplane = 0;                /* 0x1001B632, the rail ends */
-            break;
-        }
-
-        /* 0x1001B48B: the current node, which also refreshes the leg length. */
-        BrRaceFlyDirAt(&g_brRaceFlyDirCur, g_brRaceBeginPathIdx, 1);
-
-        /* 0x1001B520: node 0 and node 1 have no node before them, so the
-         * previous direction is just a copy of the current one. */
-        if (g_brRaceBeginPathIdx < 2)                      /* 0x1001B523 */
-            g_brRaceFlyDirPrev = g_brRaceFlyDirCur;   /* 0x1001B525..0x1001B547 */
-        else
-            BrRaceFlyDirAt(&g_brRaceFlyDirPrev, g_brRaceBeginPathIdx - 1, 0);
-
-        /* 0x1001B59B: and the last node has none after it. */
-        if (g_brRaceBeginPathIdx + 1 == g_brRaceBeginPathLen)  /* 0x1001B5A6 */
-            g_brRaceFlyDirNext = g_brRaceFlyDirCur;   /* 0x1001B5A8..0x1001B5C8 */
-        else
-            BrRaceFlyDirAt(&g_brRaceFlyDirNext, g_brRaceBeginPathIdx + 1, 0);
-    }
-
-    if (g_brRaceBeginAirplane == 0)                   /* 0x1001B63E */
-        return;
-
-    /* 0x1001B64A: how far along this leg the camera sits, 0..1. */
-    t = g_brRaceBeginPathT / g_brRaceBeginPathSeg;
-
-    pCam = (BrMat4 *)((*(uint8_t * *)&g_BrDrawTrackFlags) + (size_t)g_brRaceBeginAirplane * 0x54);
-
-    BrVec3Lerp(&vPos, &g_pBrRaceFlyPos[g_brRaceBeginPathIdx],
-                      &g_pBrRaceFlyPos[g_brRaceBeginPathIdx - 1], t);   /* 0x1001B675 */
-    BrVec3Lerp(&vAim, &g_pBrRaceFlyAim[g_brRaceBeginPathIdx],
-                      &g_pBrRaceFlyAim[g_brRaceBeginPathIdx - 1], t);   /* 0x1001B699 */
-
-    /* 0x1001B6C1: the camera's own position is the midpoint of the two. */
-    BrVec3Midpoint((BrVec3 *)&pCam->m[3][0], &vPos, &vAim);
-
-    /* 0x1001B6CA: the blend between the node directions is piecewise -- past
-     * the first threshold it runs current->next, before it prev->current. */
-    if (t > g_brRaceFlyBlendA)                        /* 0x1001B6DC */
-        BrVec3Lerp((BrVec3 *)pCam, &g_brRaceFlyDirNext, &g_brRaceFlyDirCur,
-                   t - g_brRaceFlyBlendA);            /* 0x1001B6E4..0x1001B731 */
-    else
-        BrVec3Lerp((BrVec3 *)pCam, &g_brRaceFlyDirCur, &g_brRaceFlyDirPrev,
-                   t - g_brRaceFlyBlendB);            /* 0x1001B70E..0x1001B731 */
-    br_dl_normalise((BrVec3 *)pCam);                  /* 0x1001B74D */
-
-    /* 0x1001B755..0x1001B7F8: an orthonormal basis out of the forward row and
-     * the two lerped points -- up = aim - pos, right = fwd x up, up = right x
-     * fwd, both normalised. */
-    BrVec3Sub((BrVec3 *)&pCam->m[2][0], &vPos, &vAim);  /* 0x1001B774 */
-    BrVec3Cross((BrVec3 *)&pCam->m[1][0], (BrVec3 *)pCam,
-                (BrVec3 *)&pCam->m[2][0]);  /* 0x1001B799 */
-    br_dl_normalise((BrVec3 *)&pCam->m[1][0]);
-    BrVec3Cross((BrVec3 *)&pCam->m[2][0],
-                (BrVec3 *)&pCam->m[1][0], (BrVec3 *)pCam); /* 0x1001B7DB */
-    br_dl_normalise((BrVec3 *)&pCam->m[2][0]);
-
-    /* 0x1001B81B / 0x1001B845 / 0x1001B868: all three rows scaled, the middle
-     * one NEGATED (`fchs` at 0x1001B83B) -- the handedness flip. */
-    BrVec3ScaleBy((BrVec3 *)pCam, g_brRaceBeginPathScale);
-    BrVec3ScaleBy((BrVec3 *)&pCam->m[2][0], -g_brRaceBeginPathScale);
-    BrVec3ScaleBy((BrVec3 *)&pCam->m[1][0], g_brRaceBeginPathScale);
-}
 
 /* WHAT IT DOES: animates the track's special objects for one frame.  Each
  * entry names an object, an angle and one of four behaviours: spin it about
@@ -1151,50 +527,8 @@ static void BrRaceStepFlyPast(void)
  * multiplying it into the object's own and clearing the object's "hidden"
  * bit -- or, for the fourth, drive the fly-past camera along its spline.
  * An entry whose behaviour byte is out of range is skipped. */
-void BrRaceStepSpecials(void)
-{
-    int32_t i;
+/* (port-only BrRaceStepSpecials removed) */
 
-    /* 0x1001B36E: nothing to do with no specials.  The count is re-read from
-     * the global at the BOTTOM of every pass (0x1001B876), not cached. */
-    for (i = 0; i < g_brRaceBeginSpecialsN; ++i) {
-        BrRaceSpecial *pS = &g_aBrRaceSpecial[i];
-        BrMat4        *pM;
-        uint16_t      *pFlags;
-
-        if ((uint32_t)(int32_t)pS->axis > 3u)         /* 0x1001B383 `ja` */
-            continue;                                 /* -> 0x1001B876 */
-
-        if (pS->axis == 3) {
-            BrRaceStepFlyPast();                      /* 0x1001B403 */
-            continue;                                 /* -> 0x1001B870 */
-        }
-
-        /* 0x1001B393 / 0x1001B3A0 / 0x1001B3AD: the three arms differ only in
-         * which axis carries the 1.0f.  All three fall into 0x1001B3B8. */
-        switch (pS->axis) {
-        case 0:                                       /* 0x1001B393 */
-            BrMat4RotateAxis(&g_brRaceSpecialM, pS->angle, 0.0f, 0.0f, 1.0f);
-            break;
-        case 1:                                       /* 0x1001B3A0 */
-            BrMat4RotateAxis(&g_brRaceSpecialM, pS->angle, 1.0f, 0.0f, 0.0f);
-            break;
-        default:                                      /* 0x1001B3AD, axis 2 */
-            BrMat4RotateAxis(&g_brRaceSpecialM, pS->angle, 0.0f, 1.0f, 0.0f);
-            break;
-        }
-
-        /* 0x1001B3CD: the `lea` pair is x5 then x1+x4 == x21, scaled by 4 --
-         * a 0x54-byte record, not a shift. */
-        pM = (BrMat4 *)((*(uint8_t * *)&g_BrDrawTrackFlags) + (size_t)pS->iObj * 0x54);
-        BrMat4Mul(&g_brRaceSpecialM, pM, pM);         /* 0x1001B3DD */
-
-        /* 0x1001B3F3: clear bit 0x2000 in the WORD at +0x4C.  The `lea` that
-         * follows leaves that address live for 0x1001B870's tail. */
-        pFlags = (uint16_t *)((*(uint8_t * *)&g_BrDrawTrackFlags) + (size_t)pS->iObj * 0x54 + 0x4C);
-        *pFlags &= (uint16_t)0xDFFF;
-    }
-}
 
 /* -- Ghidra-matched functions --------------------------- */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */

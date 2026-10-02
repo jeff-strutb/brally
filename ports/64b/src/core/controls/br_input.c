@@ -56,65 +56,36 @@ static const char *const s_apszFrontier[BR_WF_COUNT] = {
     "0x10019A40 activate tail"
 };
 
-int32_t BrWndShadowGet(BrWndShadow which)
-{
-    return (which >= 0 && which < BR_SH_COUNT) ? s_aShadow[which] : 0;
-}
+/* (port-only BrWndShadowGet removed) */
+
 
 /* @n64 0x8021E998 located */
-void BrWndShadowSet(BrWndShadow which, int32_t value)
-{
-    if (which >= 0 && which < BR_SH_COUNT)
-        s_aShadow[which] = value;
-}
+/* (port-only BrWndShadowSet removed) */
 
-int32_t BrWndFrontierHits(BrWndFrontierId id)
-{
-    return (id >= 0 && id < BR_WF_COUNT) ? s_aFrontierHits[id] : 0;
-}
+
+/* (port-only BrWndFrontierHits removed) */
+
 
 /* @n64 0x8026CE20 located */
-const char *BrWndFrontierName(BrWndFrontierId id)
-{
-    return (id >= 0 && id < BR_WF_COUNT) ? s_apszFrontier[id] : "";
-}
+/* (port-only BrWndFrontierName removed) */
 
-void BrWndFrontierReport(void)
-{
-    int i, n = 0;
-    for (i = 0; i < BR_WF_COUNT; i++)
-        if (s_aFrontierHits[i] != 0) n++;
-    if (n == 0) {
-        printf("window-message frontier: nothing reached\n");
-        return;
-    }
-    printf("window-message frontier -- reached but NOT transcribed:\n");
-    for (i = 0; i < BR_WF_COUNT; i++)
-        if (s_aFrontierHits[i] != 0)
-            printf("    %-38s %6d\n", s_apszFrontier[i], (int)s_aFrontierHits[i]);
-}
 
-void BrWndSetModeResult(int32_t iResult) { s_iModeResult = iResult; }
+/* (port-only BrWndFrontierReport removed) */
 
-static void frontier(BrWndFrontierId id) { ++s_aFrontierHits[id]; }
 
-void BrInputResetForTest(void)
-{
-    int i;
-    for (i = 0; i < BR_SH_COUNT;    i++) s_aShadow[i]       = 0;
-    for (i = 0; i < BR_WF_COUNT;    i++) s_aFrontierHits[i] = 0;
-    s_iModeResult      = 0;
-    g_pfnBrWndMsgHookA = NULL;
-    g_pfnBrWndMsgHookB = NULL;
-}
+/* (port-only BrWndSetModeResult removed) */
+
+
+/* (port-only frontier removed) */
+
+
+/* (port-only BrInputResetForTest removed) */
+
 
 /* A NULL-safe string fetch. 0x1006D280 returns NULL for an out-of-range id and
  * MessageBoxA accepts a NULL lpText, so a NULL here is faithful, not a hole. */
-static const char *brstr(int32_t id)
-{
-    return (g_brWndPlatform.pfnString != NULL)
-         ? g_brWndPlatform.pfnString(id) : NULL;
-}
+/* (port-only brstr removed) */
+
 
 /* ================================================================== *
  * 0x10070370 -- WM_ACTIVATE. 45 bytes, __cdecl, one argument.

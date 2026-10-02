@@ -164,10 +164,8 @@ BrSegMap *g_BrSegMap;
 
 /* The original writes both halfwords byte-swapped (big-endian, for the RDP).
  * Transcribed as the same shift/mask pair it uses, not as a memory swap. */
-static uint16_t BrSwapHalf(uint16_t v)
-{
-    return (uint16_t)(((uint32_t)v << 8 & 0xFF00u) | ((uint32_t)v >> 8 & 0xFFu));
-}
+/* (port-only BrSwapHalf removed) */
+
 
 /* 0x10035CA0  __thiscall, ret 0xC. Only the low byte of each argument. */
 /* 0x100350EE */

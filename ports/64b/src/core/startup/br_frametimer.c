@@ -60,29 +60,17 @@
  * field it uses is an integer, so it survives LP64 as bytes. memcpy access
  * only -- no alignment or aliasing assumption, the same technique
  * slice3_32.c's BrScrLd32 family uses. */
-static int64_t br86_ld64(const void *p, size_t off)
-{
-    int64_t v;
-    memcpy(&v, (const unsigned char *)p + off, sizeof v);
-    return v;
-}
+/* (port-only br86_ld64 removed) */
 
-static void br86_st64(void *p, size_t off, int64_t v)
-{
-    memcpy((unsigned char *)p + off, &v, sizeof v);
-}
 
-static int32_t br86_ld32(const void *p, size_t off)
-{
-    int32_t v;
-    memcpy(&v, (const unsigned char *)p + off, sizeof v);
-    return v;
-}
+/* (port-only br86_st64 removed) */
 
-static void br86_st32(void *p, size_t off, int32_t v)
-{
-    memcpy((unsigned char *)p + off, &v, sizeof v);
-}
+
+/* (port-only br86_ld32 removed) */
+
+
+/* (port-only br86_st32 removed) */
+
 
 /* 0x10075190 -- (re)start the clock. Private to this pair: its only two
  * callers are 0x100751D0's two arms. */

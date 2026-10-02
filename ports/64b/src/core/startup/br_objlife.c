@@ -30,18 +30,21 @@ void BrExt_1003DA90(void *, void *);
 /* BrExt_10038EB0: prototype in br_funcs.h */
 /* BrExt_10069A80: prototype in br_funcs.h */
 void BrExt_10035585(void *, int, int);
-void BrExt_1001BAD0(void) {}
+/* (port-only BrExt_1001BAD0 removed) */
+
 /* BrExt_10008B80: the original function is BrPodNop */
 /* BrExt_10067880: the original function is BrVarSave */
 /* BrExt_10067900: the original function is BrVarLoad */
 /* BrExt_1007F560: the original function is BrEhVecDtor */
 /* BrExt_1007F680: the original function is BrEhVecCtor */
 /* BrExt_10073B40: the original function is FUN_1006cd80 */
-void BrExt_1003DA90(void *a, void *b) { (void)a; (void)b; }
+/* (port-only BrExt_1003DA90 removed) */
+
 /* BrExt_1007E8B0: the original function is BrCrtAtExit */
 /* BrExt_10038EB0: the original function is BrSub10032520 */
 /* BrExt_10069A80: the original function is BrSub10062AF0 */
-void BrExt_10035585(void *p, int a, int b) { (void)p; (void)a; (void)b; }
+/* (port-only BrExt_10035585 removed) */
+
 
 /* WHAT IT DOES: drop a live object pointer and retarget a function slot. */
 /* @implements 0x1002B950 d3d BrFlagInit_1002B950 */
@@ -71,20 +74,13 @@ void BrFlagInit_1002F690(void)
  * which put a 26-byte body against a 173-byte original in the report and had
  * two names claiming one address. */
 /* @n64 0x80200000 located */
-int BrInstall_1001BAE0(void)
-{
-    (*(uint32_t *)&g_aBrTexSlot[192996]) = (uint32_t)(uintptr_t)&BrExt_1001BAD0;
-    (*(uint32_t *)&g_aBrTexSlot[193000]) = (uint32_t)(uintptr_t)&BrPodNop;
-    return 1;
-}
+/* (port-only BrInstall_1001BAE0 removed) */
+
 
 /* WHAT IT DOES: select dispatch slot 2 for the next jump through that table. */
 /* @d3donly 0x1002F6E0 BrSet_1002F6E0 -- glide twin 0x1001CDA0 COMDAT-folded onto br_boot.c:BrAppStateEnterRun */
-int BrSet_1002F6E0(void)
-{
-    (*(uint32_t *)&DAT_105ccb68[21]) = 2;
-    return 1;
-}
+/* (port-only BrSet_1002F6E0 removed) */
+
 
 /* WHAT IT DOES: fill a 64-byte named buffer. */
 /* @implements 0x10067980 d3d BrWrap_10067980 */
@@ -271,25 +267,14 @@ void BrAtexit_10069A70(void)
 /* @implements 0x10062AF0 glide BrSub10062AF0 */
 void BrSub10062AF0(void){ BrPodNop(); }
 
-void BrWrap_1003DAE0(void)
-{
-    uint32_t *p = g_A9D008;
+/* (port-only BrWrap_1003DAE0 removed) */
 
-    if (p != 0 && p[2] != 0)
-        BrExt_1003DA90(p, (void *)(uintptr_t)p[2]);
-}
 
-void BrTableCopySlot_10024AB0(int dst, int src)
-{
-    struct Rec { char pad[696]; } *p = (struct Rec *)(*(uint32_t * *)&g_brTex57543C);
-    *(uint32_t *)&p[dst] = *(uint32_t *)&p[src];
-}
+/* (port-only BrTableCopySlot_10024AB0 removed) */
 
-void BrTableSetField_10025800(int idx, uint32_t v)
-{
-    struct Rec { char pad[696]; } *p = (struct Rec *)(*(uint32_t * *)&g_brTex57543C);
-    *(uint32_t *)((char *)&p[idx] + 0x27C) = v;
-}
+
+/* (port-only BrTableSetField_10025800 removed) */
+
 
 /* WHAT IT DOES: set a one-shot "this path has already run" flag. */
 /* @implements 0x100378A0 d3d BrArm_100378A0 */
@@ -300,16 +285,12 @@ void BrArm_100378A0(void)
 
 /* WHAT IT DOES: write a packed sentinel into a related status word. */
 /* @d3donly 0x10036020 BrSet_10036020 -- glide twin 0x1002F6C0 COMDAT-folded onto br_racestart.c:BrRaceSub1002F6C0 */
-void BrSet_10036020(void)
-{
-    g_6C7C38 = 0x80096400u;
-}
+/* (port-only BrSet_10036020 removed) */
 
 
-void BrWrap_10035610(void *p)
-{
-    BrExt_10035585(p, 1, 2);
-}
+
+/* (port-only BrWrap_10035610 removed) */
+
 
 /* -- Ghidra-matched functions --------------------------- */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */

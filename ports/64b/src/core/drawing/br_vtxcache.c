@@ -51,11 +51,8 @@
 /* Decode a little-endian signed 16-bit value byte-wise. The x86 original
  * reads these with `movsx word ptr`; doing it by hand rather than by struct
  * overlay makes the result identical on a big-endian host too. */
-static int br05_s16le(const unsigned char *p)
-{
-    unsigned v = (unsigned)p[0] | ((unsigned)p[1] << 8);
-    return (v & 0x8000u) ? (int)v - 0x10000 : (int)v;
-}
+/* (port-only br05_s16le removed) */
+
 
 /* ================================================================== */
 /* 1. N64 vertex cache                                                */

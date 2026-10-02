@@ -39,23 +39,15 @@
  * Instead, the function below uses the same inline cursor pattern. */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */         /* the DL cursor, slice2_18 */
 
-static void env_put(uint32_t w0, uint32_t w1)
-{
-    uint32_t *p = g_BrGfxPtr;
-    g_BrGfxPtr += 2;
-    p[0] = w0;
-    p[1] = w1;
-}
+/* (port-only env_put removed) */
 
-static BrGfxWords *env_put_slot(void)
-{
-    BrGfxWords *p = (BrGfxWords *)g_BrGfxPtr;
-    g_BrGfxPtr += 2;
-    return p;
-}
+
+/* (port-only env_put_slot removed) */
+
 
 /* 0x10008D60 -- 1-byte trace function (a nop in both builds). */
-static void env_trace(void) { }
+/* (port-only env_trace removed) */
+
 
 /* ==================================================================== *
  * 0x10017110 -- the track/environment emitter.  2,039 bytes.

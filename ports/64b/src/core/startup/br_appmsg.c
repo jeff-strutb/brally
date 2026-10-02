@@ -14,10 +14,8 @@
 
 static BrAppMsgHooks g_appMsg;
 
-BrAppMsgHooks *BrAppMsgGetHooks(void)
-{
-    return &g_appMsg;
-}
+/* (port-only BrAppMsgGetHooks removed) */
+
 
 /* 0x1000BEA0
  *

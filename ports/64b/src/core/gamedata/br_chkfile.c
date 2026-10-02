@@ -43,15 +43,11 @@ typedef struct BrChkFile {
 
 /* Pointer to a struct and pointer to its first member have the same value and
  * representation, so these two casts are the pun and not a reinterpretation. */
-static BrChkFile *ChkFromPun(FILE **ppFile)
-{
-    return (BrChkFile *)(void *)ppFile;
-}
+/* (port-only ChkFromPun removed) */
 
-static FILE **ChkToPun(BrChkFile *pf)
-{
-    return (FILE **)(void *)pf;
-}
+
+/* (port-only ChkToPun removed) */
+
 
 
 /* ==========================================================================

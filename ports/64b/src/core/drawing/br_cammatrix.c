@@ -33,12 +33,8 @@ typedef struct { void *p; } BrModelLoadArg;
 
 /* Both display-list emitters below inline this in the original: take the
  * write cursor, advance it by 8 bytes, and fill the two words. */
-static uint32_t *BrGfxTake2(void)
-{
-    uint32_t *p = g_BrGfxPtr;
-    g_BrGfxPtr += 2;
-    return p;
-}
+/* (port-only BrGfxTake2 removed) */
+
 
 /* WHAT IT DOES: points the camera at what it is looking at and sets the lens,
  * then combines the two into the single transform everything in the world is

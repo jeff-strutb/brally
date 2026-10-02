@@ -12,8 +12,10 @@
 void BrExt_10024460(void);
 void BrExt_1002A640(void);
 /* BrExt_10075020: prototype in br_funcs.h */
-void BrExt_10024460(void) {}
-void BrExt_1002A640(void) {}
+/* (port-only BrExt_10024460 removed) */
+
+/* (port-only BrExt_1002A640 removed) */
+
 /* BrExt_10075020: the original function is BrSub10075020 */
 
 /* WHAT IT DOES: turn replay recording on. */
@@ -26,23 +28,14 @@ void BrSet_1006AA90(void)
 
 /* WHAT IT DOES: is replay recording on? */
 /* @d3donly 0x1006AAA0 BrGet_1006AAA0 -- exists in BRGlide only as folded/duplicated stubs; no unique twin locatable by bytes */
-uint32_t BrGet_1006AAA0(void)
-{
-    return (*(uint32_t *)&(*(int *)&g_BrReplayOn));
-}
+/* (port-only BrGet_1006AAA0 removed) */
+
 
 /* WHAT IT DOES: remember how many players the replay should record.  If
  * the answer is one, install the three helpers that set that player up,
  * tear them down, and fix their state. */
-void BrMode_1006A990(uint32_t n)
-{
-    g_B502E4 = n;
-    if (--n == 0) {
-        (*(uint32_t *)&g_aBrTexSlot[192992]) = (uint32_t)(uintptr_t)&BrInstall_1001BAE0;
-        g_B501C8 = (uint32_t)(uintptr_t)&BrExt_10024460;
-        g_0B8C94 = (uint32_t)(uintptr_t)&BrExt_1002A640;
-    }
-}
+/* (port-only BrMode_1006A990 removed) */
+
 
 /* WHAT IT DOES: plant the seed the game's random-number generator uses. */
 /* @implements 0x1003BD40 d3d BrStore_1003BD40 */

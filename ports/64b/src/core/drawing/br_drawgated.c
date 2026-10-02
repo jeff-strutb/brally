@@ -112,29 +112,17 @@ extern void  BrX10042AF0(void *p, int a1, int a2);
  * offsets recovered from the disassembly stay valid without relying on
  * pointer casts being aligned.                                         */
 
-static uint32_t s17_ld32(const unsigned char *p)
-{
-    uint32_t v;
-    memcpy(&v, p, sizeof v);
-    return v;
-}
+/* (port-only s17_ld32 removed) */
 
-static void s17_st32(unsigned char *p, uint32_t v)
-{
-    memcpy(p, &v, sizeof v);
-}
 
-static float s17_ldf(const unsigned char *p)
-{
-    float v;
-    memcpy(&v, p, sizeof v);
-    return v;
-}
+/* (port-only s17_st32 removed) */
 
-static void s17_stf(unsigned char *p, float v)
-{
-    memcpy(p, &v, sizeof v);
-}
+
+/* (port-only s17_ldf removed) */
+
+
+/* (port-only s17_stf removed) */
+
 
 /* g_6C0680 is advanced by 8 bytes and then the two words are written --
  * the original reads the cursor, bumps the global, and only then stores. */

@@ -26,10 +26,8 @@
 
 static BrTextState g_text;
 
-BrTextState *BrTextGetState(void)
-{
-    return &g_text;
-}
+/* (port-only BrTextGetState removed) */
+
 
 /* 0x100192A0 */
 /* WHAT IT DOES: sets the two sets of three colour values that text is drawn
@@ -100,26 +98,8 @@ void BrTextDraw(const char *psz, int x, int y)
     BrTextEmitString(s);
 }
 
-void BrFormatTime(char *pszOut, size_t cbOut, const char *pszPrefix,
-                  float fSeconds)
-{
-    /* 0x1007C8A0 is __ftol: it forces the x87 rounding mode to chop, so the
-     * conversion truncates toward zero, matching a C cast. */
-    int total      = (int)(fSeconds * 100.0f);
-    int hundredths = total % 100;
-    int minutes;
-    int seconds;
+/* (port-only BrFormatTime removed) */
 
-    total  /= 100;
-    minutes = total / 60;
-    seconds = total % 60;
-
-    /* DEVIATION: the original sprintf()s into a 32-byte stack buffer with an
-     * unbounded "%s" prefix. snprintf here. */
-    snprintf(pszOut, cbOut, "%s%d:%02d.%02d",
-             (pszPrefix != NULL) ? pszPrefix : "",
-             minutes, seconds, hundredths);
-}
 
 /* 0x100171F0 */
 /* WHAT IT DOES: draws one labelled time on the heads-up display -- a lap

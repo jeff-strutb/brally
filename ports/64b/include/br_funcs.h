@@ -446,7 +446,7 @@ void BrCarPhysStep(struct BrDriverCar *);
 #pragma pop_macro("BrCarPhysStep")
 #pragma push_macro("BrCarPhysTyre")
 #undef BrCarPhysTyre
-void BrCarPhysTyre(struct BrTyreView *, int, float *, const unsigned char *, float);
+void BrCarPhysTyre(struct BrTyreView *, struct BrTyreView *, float *, const unsigned char *, float);
 #pragma pop_macro("BrCarPhysTyre")
 #pragma push_macro("BrCarPredictRemote")
 #undef BrCarPredictRemote
@@ -1120,6 +1120,8 @@ int BrDllMain(void *, int, int);
 #undef BrDlsClipCodes
 int BrDlsClipCodes(const float *);
 const unsigned char * BrDlVtxNoZLit(const unsigned char *);
+struct BrTexRec;
+void BrTexInstallRecords(struct BrTexRec *, int);
 #pragma pop_macro("BrDlsClipCodes")
 #pragma push_macro("BrDlsTileRectE3")
 #undef BrDlsTileRectE3
@@ -5957,4 +5959,5 @@ void br_tex3d_seam(struct BrGfxWords *);
 #ifdef __cplusplus
 }
 #endif
+#include "br_vec_cxx.h"
 #endif

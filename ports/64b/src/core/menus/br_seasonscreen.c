@@ -43,42 +43,8 @@
 extern void *FUN_10074572(uint32_t);   /* the EH-aware operator new the original calls */ /* the fatal error routine, as the original calls it */
 extern BrUiPage_ * BR_THISCALL1 FUN_100418c0(BrUiPage_ *);  /* page ctor */
 extern BrUiCtl_  * BR_THISCALL1 FUN_10040b10(BrUiCtl_ *);   /* ctl ctor  */
-BR72_HELPER BrUiPage_ *Br72ScreenNew(BrPhase_ *pPhase, float fX, float fY)
-{
-    Br72Env   *pE = g_pBr72Env;
-    BrUiPage_ *pScr;
-    uint16_t   i;
+/* (port-only Br72ScreenNew removed) */
 
-    i = pPhase->nPages;
-    pPhase->iPage = 0;
-    {
-        pPhase->aFlags[i] = 1;
-    }
-
-    pScr = (BrUiPage_ *)BR72_NEW_RAW(BR72_ALLOC(BrUiPage_,
-                                                 BR72_PAGE_ORIG_SIZE));
-    /* the original constructs DIRECT (`mov ecx,eax; call 0x100418c0`);
-     * the env's ctor pointer is port scaffolding nothing in the image
-     * initialises */
-    pScr = (pScr != NULL) ? FUN_100418c0(pScr) : NULL;
-
-    /* The original re-reads the counter here rather than reusing `i`. */
-    i = pPhase->nPages;
-    {
-        pPhase->aPages[i] = pScr;
-    }
-    if (pScr == NULL) {
-        FUN_100378c0(4);   /* one arg, as 0x100378C0 takes */
-    }
-    pPhase->nPages++;
-
-
-    pScr->pOwner = pPhase;
-    pScr->f10    = 0;
-    pScr->fX     = fX;
-    pScr->fY     = fY;
-    return pScr;
-}
 
 BR72_HELPER BrUiCtl_ *Br72CtlNew(BrUiPage_ *pScr)
 {

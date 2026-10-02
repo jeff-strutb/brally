@@ -93,12 +93,8 @@ static const char kBrErrProperty[]     = "Error: Failed to change device propert
  * them, is preserved exactly. */
 /* g_pBrDbgPrint itself stays defined in slice3_45.c (declared in slice3_45.h). */
 
-static void BrDbgPrint(const char *pMsg)
-{
-    if (g_pBrDbgPrint != NULL) {
-        g_pBrDbgPrint(pMsg);
-    }
-}
+/* (port-only BrDbgPrint removed) */
+
 
 /* BrFfbInit's original caches &KERNEL32!OutputDebugStringA in a register and
  * calls through it (`mov edi,[__imp__]; call edi`, stdcall). The matching arm

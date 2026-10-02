@@ -67,49 +67,34 @@ static const uint32_t s_aZeroTarget[5] = {
     0x10697A58, 0x10697A5C, 0x10697A50, 0x10697A48, 0x106B7A7C
 };
 
-uint32_t BrTexInitSlotAddr(int i)
-{
-    return (i >= 0 && i < BR_TEXINIT_NSLOTS) ? s_aSlot[i] : 0;
-}
-uint32_t BrTexInitSlotValue(int i)
-{
-    return (i >= 0 && i < BR_TEXINIT_NSLOTS) ? s_aValue[i] : 0;
-}
-uint32_t BrTexInitMemory(void)          { return s_texmem; }
-int32_t  BrTexInitLevel(void)           { return s_level; }
-int      BrTexInitInstalledCount(void)  { return s_cInstalled; }
-uint32_t BrTexInitInstalledAt(int n)
-{
-    return (n >= 0 && n < s_cInstalled) ? s_aInstalled[n] : 0;
-}
+/* (port-only BrTexInitSlotAddr removed) */
 
-int32_t  BrTexInitGlobal5E1820(void) { return s_g5E1820; }
-int32_t  BrTexInitGlobal5E1808(void) { return s_g5E1808; }
-int      BrTexInitZeroedCount(void)  { return s_cZeroed; }
-uint32_t BrTexInitZeroedAt(int n)
-{
-    return (n >= 0 && n < s_cZeroed) ? s_aZeroed[n] : 0;
-}
-int      BrTexInitFreeCalls(void)    { return s_cFree; }
-int      BrTexInitTailCalls(int w)
-{
-    return (w >= 0 && w < 3) ? s_aTail[w] : 0;
-}
+/* (port-only BrTexInitSlotValue removed) */
 
-void BrTexInitResetForTest(void)
-{
-    int i;
-    s_g5E1820 = s_g5E1808 = 0;
-    s_cZeroed = s_cFree = 0;
-    for (i = 0; i < 3; ++i) s_aTail[i] = 0;
-    for (i = 0; i < BR_TEXINIT_NSLOTS; ++i) s_aInstalled[i] = 0;
-    s_cInstalled = 0;
-    s_texmem = 0;
-    s_level  = -1;
-    (DAT_105ccb68[26]) = 0;
-    g_brTexLowThreshold = 0;
-    g_brTexSysMem = 0;
-}
+/* (port-only BrTexInitMemory removed) */
+
+/* (port-only BrTexInitLevel removed) */
+
+/* (port-only BrTexInitInstalledCount removed) */
+
+/* (port-only BrTexInitInstalledAt removed) */
+
+
+/* (port-only BrTexInitGlobal5E1820 removed) */
+
+/* (port-only BrTexInitGlobal5E1808 removed) */
+
+/* (port-only BrTexInitZeroedCount removed) */
+
+/* (port-only BrTexInitZeroedAt removed) */
+
+/* (port-only BrTexInitFreeCalls removed) */
+
+/* (port-only BrTexInitTailCalls removed) */
+
+
+/* (port-only BrTexInitResetForTest removed) */
+
 
 /* ------------------------------------------------------------------ *
  * 0x10029B10 -- texture memory to detail level.
@@ -287,7 +272,7 @@ void BrTexInit(void)
     (*(void (**)(void))&g_pfn18AA0C4) = BrGbiTexScanRun;
     (*(void (**)(void))&g_pfn18AA0C8) = BrGbiTexCreate;
     (*(void (**)(void))&g_pfn18AA084) = FUN_100298c0;
-    DAT_118ed1e4 = BrTexInstallRecords;
+    DAT_118ed1e4 = (void (*)(void))BrTexInstallRecords;
     (*(void (**)(void))&g_18ED1E8) = BrTex3dFreeAll;
 
     FUN_100281c0();

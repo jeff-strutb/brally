@@ -294,41 +294,14 @@ BR_CLIP_PLANE(BrClipPlaneWMinusF0C, BRCLIP_W_MINUS_Z, BRCLIP_W_MINUS_Z)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */    /* 0x104C01A8 */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */    /* (0x104C0BA8 - 0x104C01A8) / 0x28 = 64 */
 
-void BrClipPoolInit(BrClipVert *aNodes, int cNodes)
-{
-    int i;
+/* (port-only BrClipPoolInit removed) */
 
-    g_aClipPool = aNodes;
-    g_cClipPool = (aNodes != NULL && cNodes > 0) ? cNodes : 0;
-    g_pClipFree = NULL;
 
-    /* Thread lowest-index-first so the free list pops in ascending order,
-     * which is what a fresh static pool would do. */
-    for (i = g_cClipPool - 1; i >= 0; i--) {
-        aNodes[i].pNext = g_pClipFree;
-        g_pClipFree = &aNodes[i];
-    }
-}
+/* (port-only BrClipPoolCount removed) */
 
-int BrClipPoolCount(void)
-{
-    const BrClipVert *p;
-    int n = 0;
 
-    for (p = g_pClipFree; p != NULL; p = p->pNext)
-        n++;
-    return n;
-}
+/* (port-only BrClipPoolFree removed) */
 
-void BrClipPoolFree(BrClipVert *pNode)
-{
-    if (pNode == NULL || g_aClipPool == NULL)
-        return;
-    if (pNode < g_aClipPool || pNode >= g_aClipPool + g_cClipPool)
-        return;                    /* not ours -- silently dropped */
-    pNode->pNext = g_pClipFree;
-    g_pClipFree = pNode;
-}
 
 /* 0x1001D940 */
 /* WHAT IT DOES: makes a new vertex sitting part way between two existing

@@ -84,20 +84,8 @@
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x10AC4AD8 128x128,5 wide  */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x10AC4BC8 128x128,3 wide  */
 
-static void BrSprGrid(int32_t (*pTab)[4], int n, int cols, int cw, int ch)
-{
-    int i;
+/* (port-only BrSprGrid removed) */
 
-    for (i = 0; i < n; ++i) {
-        int32_t l = (int32_t)(i % cols) * cw;
-        int32_t t = (int32_t)(i / cols) * ch;
-
-        pTab[i][0] = l;
-        pTab[i][1] = t;
-        pTab[i][2] = l + cw;
-        pTab[i][3] = t + ch;
-    }
-}
 
 /* WHAT IT DOES: works out, once at start-up, where every picture sits inside
  * four different sprite sheets -- the small letters, the large letters, and
@@ -328,24 +316,8 @@ void BrSprFontGlyphB_1005B7A0_port(int32_t iGlyph, float x, float y,
  *    0  not a drawable character; only 0x20 does anything
  *    1  look the character up in the metric table
  */
-static int BrSprGlyphClassify(char c)
-{
-    /* `movsx cx, al / sub ecx,0x20 / test cx,cx / jl / cmp cx,0x7f / jle` --
-     * a SIGNED 16-bit test on the sign-extended byte, so 0x80..0xFF land
-     * negative. */
-    int16_t k = (int16_t)((int16_t)(signed char)c - 0x20);
+/* (port-only BrSprGlyphClassify removed) */
 
-    if (k < 0 || k > 0x7F) {
-        if (c != 0x20) {
-            return -1;
-        }
-    }
-    /* `cmp al,0x21 / jl` and `cmp al,0x7e / jg` -- signed BYTE compares. */
-    if ((signed char)c < 0x21 || (signed char)c > 0x7E) {
-        return 0;
-    }
-    return 1;
-}
 
 /* WHAT IT DOES: decides where the first letter of a line of text goes. Normally
  * that is just the text box's own left edge, but a box marked as centred is
@@ -402,78 +374,8 @@ static const unsigned char g_aBrSprKindArm[0x33] = {
     4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 3
 };
 
-int32_t BrSprFontKindHook_10047360(BrUiCtl_ *pCtl)
-{
-    uint32_t uFlags;
-    int32_t  iCase;
-    uint16_t uCount;
+/* (port-only BrSprFontKindHook_10047360 removed) */
 
-    if (pCtl == NULL) {
-        return 0;                   /* DEVIATION: the original faults. */
-    }
-
-    uFlags = (uint32_t)pCtl->flags1C;
-    if ((uFlags & 0x00000010u) != 0) {
-        return 0;                   /* disabled */
-    }
-    if ((uFlags & 0x01000000u) != 0) {
-        return 0;
-    }
-    /* `test dword [eax+0x3850], 0x1000000`.  br_ui.h's ADJ-6 puts +0x3850
-     * inside the embedded list, at list +0x18. */
-    if ((pCtl->list.f18 & 0x01000000u) != 0) {
-        return 0;
-    }
-
-    /* The MOUSE arm.  0x10AA284C was written by 0x10047A60 for THIS control,
-     * moments ago, in the same pass of 0x10048180. */
-    if (g_pBrUiNav != NULL && g_pBrUiNav->nAA284C != 0
-        && g_pBrUiNav->pG != NULL) {
-        const BrObjAA2E80 *q = g_pBrUiNav->pG->pAA2E80;
-
-        /* No NULL guard in the original; one here, because a host that has
-         * not wired the input object would otherwise fault on a path the
-         * original can never reach with it unset. */
-        if (q != NULL && (q->f2C != 0 || q->f30 != 0
-                          || q->f34 != 0 || q->f38 != 0)) {
-            pCtl->aText[0].f08 = 4;         /* images\type_yel.bmp */
-            /* and +0x1C is NOT stored back on this arm */
-            return 1;
-        }
-    }
-
-    /* `test dh,1` -- bit 0x100, which the step timer 0x100480A0 raises once
-     * every 60 ms.  Without it the kind byte is left exactly as it was, which
-     * is what makes the pulse a pulse and not a per-frame flicker. */
-    if ((uFlags & 0x00000100u) == 0) {
-        return 1;
-    }
-
-    /* `inc word [eax+0x1e20c]` then `movsx ecx, word [eax+0x1e20c]`. */
-    uCount = (uint16_t)(pCtl->w1E20C + 1u);
-    pCtl->w1E20C = uCount;
-
-    /* -2, then an UNSIGNED compare against 0x32: counts of 0 and 1 wrap
-     * negative and land in the default. */
-    iCase = (int32_t)(int16_t)uCount - 2;
-
-    uFlags &= ~0x00000100u;
-
-    if ((uint32_t)iCase <= 0x32u) {
-        switch (g_aBrSprKindArm[(uint32_t)iCase]) {
-        case 0:  pCtl->aText[0].f08 = 0; break;     /* type_gry */
-        case 1:  pCtl->aText[0].f08 = 1; break;     /* type_wit */
-        case 2:  pCtl->aText[0].f08 = 2; break;     /* type_mid */
-        case 3:  pCtl->aText[0].f08 = 4; break;     /* type_yel */
-        default: pCtl->w1E20C = 2;       break;
-        }
-    } else {
-        pCtl->w1E20C = 2;
-    }
-
-    pCtl->flags1C = (int32_t)uFlags;
-    return 1;
-}
 
 /* BrSprFontDraw (0x10058380) lives in ghidra_batch.c: the original binary
  * calls BrUiSprClip with 6 args, but the port header declares 7. */

@@ -36,53 +36,12 @@
  * including the non-terminating wrap in the car sweep, are on the helpers
  * themselves. */
 /* 0x1003CF3E..0x1003CF64 and 0x1003E543..0x1003E569, upper bound 0x1F. */
-static void Br61AdvanceTrack(void)
-{
-    int32_t start = (*(int32_t *)&g_brSel0ABDF4);
+/* (port-only Br61AdvanceTrack removed) */
 
-    if (BrOptAvailB(start) != 0)
-        return;                        /* the start index is tested FIRST */
-
-    for (;;) {
-        if (++(*(int32_t *)&g_brSel0ABDF4) > 0x1F)
-            (*(int32_t *)&g_brSel0ABDF4) = 0;
-        /* NOTE: unlike the car sweep below, the wrap FALLS INTO this test,
-         * so a full circle really does end the search. */
-        if ((*(int32_t *)&g_brSel0ABDF4) == start)       /* full circle: give up, no signal */
-            return;
-        if (BrOptAvailB((*(int32_t *)&g_brSel0ABDF4)) != 0)
-            return;
-    }
-}
 
 /* 0x1003E5D5..0x1003E60C. The bound is 14 when 0x10AA28FC is set, else 11. */
-static void Br61AdvanceCar(void)
-{
-    int32_t start = (*(int32_t *)&g_brIdx0ABDE8);
-    int32_t limit;
+/* (port-only Br61AdvanceCar removed) */
 
-    if (BrInputBitHeld(start) != 0)
-        return;
-
-    for (;;) {
-        /* `neg edx / sbb edx,edx / and edx,3 / add edx,0xB` */
-        limit = ((*(int32_t *)&DAT_10ac5c54) != 0 ? 3 : 0) + 0xB;
-
-        if (++(*(int32_t *)&g_brIdx0ABDE8) > limit) {
-            (*(int32_t *)&g_brIdx0ABDE8) = 0;
-            /* GOTCHA (reproduced, and slice2_25.c records the same thing for
-             * 0x10042EE0): the wrap path JUMPS PAST the full-circle test, so
-             * index 0 is probed twice -- and if the sweep STARTED at 0 with
-             * nothing selectable, the full-circle test is never reachable and
-             * the loop does not terminate. That hang is in the original. */
-        } else if ((*(int32_t *)&g_brIdx0ABDE8) == start) {
-            return;
-        }
-
-        if (BrInputBitHeld((*(int32_t *)&g_brIdx0ABDE8)) != 0)
-            return;
-    }
-}
 
 /* ==========================================================================
  * 0x1003E510  mode selection / derived-global refresh

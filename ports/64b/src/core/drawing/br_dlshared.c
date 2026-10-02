@@ -19,11 +19,8 @@
  *      and edx,0xFFF ; cmp edx,0x800 ; jl .. ; sub edx,0x1000
  * so 0x800 itself IS folded (the branch is `jl`, not `jle`) and the range is
  * -2048 .. 2047. */
-static int32_t br_dls_sext12(uint32_t v)
-{
-    int32_t x = (int32_t)(v & 0xFFFu);
-    return (x < 0x800) ? x : (x - 0x1000);
-}
+/* (port-only br_dls_sext12 removed) */
+
 
 /* WHAT IT DOES: reads the drawing command that says which rectangle of a
  * texture the next drawings will use, and works out that rectangle's width

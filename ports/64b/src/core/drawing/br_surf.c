@@ -262,16 +262,8 @@ void BrSurfSetColourKey(BrSurf *pSurf, uint32_t colorref)
  * See br_surf.h for why replication and not a shift. The short version: the
  * colour key has to survive the widening, and 63 must come back as 255.
  * ---------------------------------------------------------------------- */
-uint32_t BrSurf565ToRgb(uint16_t v)
-{
-    uint32_t r5 = (uint32_t)(v >> 11) & 0x1Fu;
-    uint32_t g6 = (uint32_t)(v >>  5) & 0x3Fu;
-    uint32_t b5 = (uint32_t)(v)       & 0x1Fu;
-    uint32_t r  = (r5 << 3) | (r5 >> 2);
-    uint32_t g  = (g6 << 2) | (g6 >> 4);
-    uint32_t b  = (b5 << 3) | (b5 >> 2);
-    return (r << 16) | (g << 8) | b;
-}
+/* (port-only BrSurf565ToRgb removed) */
+
 
 /* -- Ghidra-matched functions --------------------------- */
 /* grLfbWriteRegion: prototype in br_funcs.h */

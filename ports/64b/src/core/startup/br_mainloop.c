@@ -9,32 +9,25 @@ static int s_fReady1;
 static int s_fReady2;
 static int s_fSuspended;
 
-void BrMainLoopSetReady(int fReady1, int fReady2)
-{
-    s_fReady1 = (fReady1 != 0);
-    s_fReady2 = (fReady2 != 0);
-}
+/* (port-only BrMainLoopSetReady removed) */
+
 
 /* @n64 0x8022F5D0 located */
-void BrMainLoopSetSuspended(int fSuspended)
-{
-    s_fSuspended = (fSuspended != 0);
-}
+/* (port-only BrMainLoopSetSuspended removed) */
 
-int BrMainLoopReady1(void)    { return s_fReady1; }
-int BrMainLoopReady2(void)    { return s_fReady2; }
-int BrMainLoopSuspended(void) { return s_fSuspended; }
+
+/* (port-only BrMainLoopReady1 removed) */
+
+/* (port-only BrMainLoopReady2 removed) */
+
+/* (port-only BrMainLoopSuspended removed) */
+
 
 /* The gate, spelled out to match the original's three separate tests rather
  * than folded into one expression -- 0x105BC748 is tested with `jne` where the
  * other two use `je`, and that asymmetry is the whole content of the gate. */
-int BrMainLoopFrameAllowed(void)
-{
-    if (!s_fReady1)   return 0;   /* 0x100197C7 je  */
-    if (!s_fReady2)   return 0;   /* 0x100197D0 je  */
-    if (s_fSuspended) return 0;   /* 0x100197D9 jne -- INVERTED */
-    return 1;
-}
+/* (port-only BrMainLoopFrameAllowed removed) */
+
 
 /* WHAT IT DOES: the message loop: the outer loop the game sits in from
  * startup to shutdown. Windows messages are drained first and completely,

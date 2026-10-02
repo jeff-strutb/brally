@@ -39,13 +39,8 @@ typedef struct { char *p; }       BrPodDst;
 #include <string.h>
 
 /* Little-endian, byte-wise: the original's stores are plain x86 `mov`s. */
-static void BrPutU32(uint8_t *p, uint32_t v)
-{
-    p[0] = (uint8_t)(v & 0xFFu);
-    p[1] = (uint8_t)((v >> 8) & 0xFFu);
-    p[2] = (uint8_t)((v >> 16) & 0xFFu);
-    p[3] = (uint8_t)((v >> 24) & 0xFFu);
-}
+/* (port-only BrPutU32 removed) */
+
 
 /* =====================================================================
  * 8. POD archive writer

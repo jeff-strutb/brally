@@ -71,10 +71,8 @@ extern void *FUN_10074572(uint32_t);   /* the EH-aware operator new the original
  * two TUs never co-link these) */
 extern BrUiPage_ * BR_THISCALL1 FUN_100418c0(BrUiPage_ *);
 extern BrUiCtl_  * BR_THISCALL1 FUN_10040b10(BrUiCtl_ *);
-static __inline void Br73Err(int32_t idx)
-{
-    FUN_100378c0(idx);   /* one arg, as 0x100378C0 takes */
-}
+/* (port-only Br73Err removed) */
+
 
 /* The page prologue, identical in all six builders except for the flag value
  * (1 everywhere but 0x10050060's SECOND page) and the two extra hook stores
@@ -93,77 +91,25 @@ static __inline void Br73Err(int32_t idx)
  * DEVIATION (memory safety): on allocation failure the original reports error
  * index 4 and then dereferences NULL.  Index 4 is FATAL in g_aBrErrTable, so
  * BrErrShow does not return there in practice; the port returns NULL. */
-BR73_HELPER BrUiPage_ *Br73PageNew(BrPhase_ *pPhase, int32_t nFlag)
-{
-    BrUiPage_ *pPage;
-    uint16_t   i;
+/* (port-only Br73PageNew removed) */
 
-    i = pPhase->nPages;
-    {
-        pPhase->aFlags[i] = nFlag;
-    }
-
-    pPage = (BrUiPage_ *)BR73_NEW_RAW(BR73_ALLOC(BrUiPage_, BR73_PAGE_ORIG_SIZE));
-    pPage = (pPage != NULL) ? FUN_100418c0(pPage) : NULL;  /* direct, as orig */
-
-    i = pPhase->nPages;
-    {
-        pPhase->aPages[i] = pPage;
-    }
-    if (pPage == NULL) {
-        Br73Err(4);
-    }
-    pPhase->nPages++;
-
-
-    pPage->pOwner = pPhase;
-    pPage->f10    = 0;
-    pPage->fX     = 195.0f;     /* 0x43430000 -- the same in all six */
-    pPage->fY     = 130.0f;     /* 0x43020000 -- likewise            */
-    return pPage;
-}
 
 /* The control prologue, ~80 occurrences.
  *
  * GOTCHA reproduced: the slot is written BEFORE the NULL test, and cCtl is
  * NOT advanced here -- every block bumps it at its end, so a failed
  * allocation leaves a NULL in the array and still moves the cursor on. */
-BR73_HELPER BrUiCtl_ *Br73CtlNew(BrUiPage_ *pPage)
-{
-    BrUiCtl_ *pCtl;
+/* (port-only Br73CtlNew removed) */
 
-    pCtl = (BrUiCtl_ *)BR73_NEW_RAW(BR73_ALLOC(BrUiCtl_, BR73_CTL_ORIG_SIZE));
-    pCtl = (pCtl != NULL) ? FUN_10040b10(pCtl) : NULL;     /* direct, as orig */
-
-    pPage->apCtl[pPage->cCtl] = pCtl;      /* unchecked, as the original */
-    if (pCtl == NULL) {
-        Br73Err(4);
-    }
-    return pCtl;
-}
 
 /* Allocate, register and place one control.  a4/a5 are 2 and 5 at every call
  * site in this packet, so they are not parameters. */
-BR73_HELPER BrUiCtl_ *Br73Ctl(BrUiPage_ *pPage, BrPhase_ *pPhase,
-                         float x, float y, int32_t flags,
-                         int32_t a6, int32_t a7)
-{
-    BrUiCtl_ *pCtl = Br73CtlNew(pPage);
+/* (port-only Br73Ctl removed) */
 
-    {
-        /* matching: unconditional, as the original -- the error path above
-         * never returns in practice */
-        pCtl->pVtbl->f38(pCtl, pPhase, x, y, flags, 2, 5, a6, a7);
-    }
-    return pCtl;
-}
 
 /* The label tail: `BrStrGet(id)` then vtable +0x34. */
-BR73_HELPER void Br73Text(BrUiCtl_ *pCtl, int id, int32_t a2, int32_t a3,
-                     const void *pStyle)
-{
-    pCtl->pVtbl->f34(pCtl, BrStrGet(id), a2, a3, pStyle);
-}
+/* (port-only Br73Text removed) */
+
 
 /* Shorthand so the transcriptions stay readable.  Relies on the local names
  * pPage / pPhase / pCtl, which every builder declares. */

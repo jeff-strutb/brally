@@ -38,18 +38,8 @@ static const float kBrHalf = 0.5f;   /* initialised in the original source */
 
 /* Shared tail of 0x10076700 and 0x10076820: mirror st.quat into stB then
  * stA. Written out in the originals; identical instruction sequence in both. */
-static void BrEntMirrorQuat(BrEntCar *pE)
-{
-    pE->stB.quat.f00 = pE->st.quat.f00;
-    pE->stB.quat.f04 = pE->st.quat.f04;
-    pE->stB.quat.f08 = pE->st.quat.f08;
-    pE->stB.quat.f0C = pE->st.quat.f0C;
+/* (port-only BrEntMirrorQuat removed) */
 
-    pE->stA.quat.f00 = pE->st.quat.f00;
-    pE->stA.quat.f04 = pE->st.quat.f04;
-    pE->stA.quat.f08 = pE->st.quat.f08;
-    pE->stA.quat.f0C = pE->st.quat.f0C;
-}
 
 /* 0x10076700 */
 /* WHAT IT DOES: sets an object's position and facing wholesale from a

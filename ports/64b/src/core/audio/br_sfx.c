@@ -116,81 +116,31 @@ static const char *const s_aMenuName[BR_SFX_MENU_GROUPS] = {
 };
 
 /* group -> filename suffix, for the three per-car groups. */
-static const char *engine_suffix(int group)
-{
-    switch (group) {
-    case BR_SFX_GROUP_ENGINE:      return ".wav";    /* 0x100B64A8 */
-    case BR_SFX_GROUP_ENGINE_HIGH: return "h.wav";   /* 0x100B64A0 */
-    case BR_SFX_GROUP_ENGINE_REV:  return "r.wav";   /* 0x100B6498 */
-    default:                       return NULL;
-    }
-}
+/* (port-only engine_suffix removed) */
+
 
 /* ------------------------------------------------------------------ table */
 
-int BrSfxGroupCount(int set)
-{
-    /* 0x1006C290 stores 0x19 for the race set and 9 for the menu set into
-     * 0x1184C260, then loops `for (row = 1; row < count - 1; row++)`. */
-    if (set == BR_SFX_SET_RACE)
-        return 25;
-    if (set == BR_SFX_SET_MENU)
-        return BR_SFX_MENU_GROUPS;
-    return 0;
-}
+/* (port-only BrSfxGroupCount removed) */
 
-const char *BrSfxGroupName(int set, int group)
-{
-    if (group < 0)
-        return NULL;
-    if (set == BR_SFX_SET_RACE)
-        return (group < BR_SFX_GROUPS) ? s_aRaceName[group] : NULL;
-    if (set == BR_SFX_SET_MENU)
-        return (group < BR_SFX_MENU_GROUPS) ? s_aMenuName[group] : NULL;
-    return NULL;
-}
 
-double BrSfxGroupBaseRate(int group)
-{
-    if (group < 0 || group >= BR_SFX_GROUPS)
-        return 0.0;
-    return BrSfxGroups[group].baseRate;
-}
+/* (port-only BrSfxGroupName removed) */
 
-int BrSfxGroupSlotUsed(int group, int slot)
-{
-    if (group < 0 || group >= BR_SFX_GROUPS)
-        return 0;
-    if (slot < 0 || slot >= BR_SFX_SLOTS)
-        return 0;
-    return BrSfxGroups[group].aSlot[slot] != 0;
-}
+
+/* (port-only BrSfxGroupBaseRate removed) */
+
+
+/* (port-only BrSfxGroupSlotUsed removed) */
+
 
 /* ------------------------------------------------------------- addressing */
 
-int BrSfxVoiceIndex(int group, int slot)
-{
-    /* The original is `lea eax,[grp+grp*8]; lea idx,[slot+eax*2]` -- 18*group
-     * + slot, with no bounds check anywhere.  DEVIATION: bounds-checked here,
-     * matching what slice1_08.c already does at its own entry points. */
-    if (group < 0 || group >= BR_SFX_GROUPS)
-        return -1;
-    if (slot < 0 || slot >= BR_SFX_SLOTS)
-        return -1;
-    return group * BR_SFX_ROW_DWORDS + slot;
-}
+/* (port-only BrSfxVoiceIndex removed) */
+
 
 /* @n64 0x80260B98 located */
-int BrSfxCarChannel(int iCar)
-{
-    int ch;
-    if (iCar < 0)
-        return -1;
-    ch = iCar * 2;
-    if (ch >= BR_SFX_CHANNELS)
-        return -1;
-    return ch;
-}
+/* (port-only BrSfxCarChannel removed) */
+
 
 /* ------------------------------------------------------------- filenames */
 
@@ -198,63 +148,14 @@ int BrSfxCarChannel(int iCar)
  * piece did not fit.  The original builds these in a 0x400-byte stack buffer
  * with no bound at all; the buffer is large enough for every shipped name, so
  * the check is a DEVIATION that cannot change behaviour on real data. */
-static int join3(char *pszDst, size_t cbDst,
-                 const char *a, const char *b, const char *c)
-{
-    size_t la, lb, lc;
+/* (port-only join3 removed) */
 
-    if (pszDst == NULL || cbDst == 0)
-        return -1;
-    pszDst[0] = '\0';
 
-    la = strlen(a);
-    lb = strlen(b);
-    lc = strlen(c);
-    if (la + lb + lc + 1 > cbDst)
-        return -1;
+/* (port-only BrSfxCarFileName removed) */
 
-    memcpy(pszDst, a, la);
-    memcpy(pszDst + la, b, lb);
-    memcpy(pszDst + la + lb, c, lc + 1);
-    return (int)(la + lb + lc);
-}
 
-int BrSfxCarFileName(int group, int iName, const char *pszPrefix,
-                     char *pszDst, size_t cbDst)
-{
-    const char *pszSuffix = engine_suffix(group);
+/* (port-only BrSfxGroupFileName removed) */
 
-    if (pszDst != NULL && cbDst != 0)
-        pszDst[0] = '\0';
-    if (pszSuffix == NULL)
-        return -1;
-    /* 0x1006C010 tests the bank entry against zero and bails to "no sound"
-     * before it builds anything; index 0 of the code table is NULL, so a zero
-     * would dereference it. */
-    if (iName <= 0 || iName > BR_SFX_CARS)
-        return -1;
-    if (pszPrefix == NULL)
-        pszPrefix = BR_SFX_DIR_DEFAULT;
-
-    return join3(pszDst, cbDst, pszPrefix, BrSfxCarCode[iName], pszSuffix);
-}
-
-int BrSfxGroupFileName(int set, int group, const char *pszPrefix,
-                       char *pszDst, size_t cbDst)
-{
-    const char *pszName = BrSfxGroupName(set, group);
-
-    if (pszDst != NULL && cbDst != 0)
-        pszDst[0] = '\0';
-    if (pszName == NULL)
-        return -1;
-    if (pszPrefix == NULL)
-        pszPrefix = BR_SFX_DIR_DEFAULT;
-
-    /* No extension is appended: 0x1006C290 concatenates the prefix and the
-     * table entry and stops, and every table entry already ends in ".wav". */
-    return join3(pszDst, cbDst, pszPrefix, pszName, "");
-}
 
 /* ----------------------------------------------------------------- pitch */
 
@@ -280,13 +181,8 @@ int BrSfxGroupFileName(int set, int group, const char *pszPrefix,
  * uses is `call 0x10074560`, six bytes of `jmp [0x118F0560]` -- an IMPORT
  * thunk to MSVCRT's _ftol.  So the thing this helper models is not in this
  * binary's code at all and cannot be claimed by any address here. */
-static int64_t br_ftol64(double v)
-{
-    /* -2^63 is representable exactly and is in range; +2^63 is not. */
-    if (!(v >= -9223372036854775808.0 && v < 9223372036854775808.0))
-        return (int64_t)((uint64_t)1u << 63);
-    return (int64_t)v;
-}
+/* (port-only br_ftol64 removed) */
+
 
 /* The 32-bit flavour: the same fistp, of which only the low dword is kept.
  * The low dword of the indefinite value is zero, which is why an overflow
@@ -310,85 +206,28 @@ static int64_t br_ftol64(double v)
  * BrSndSetVolumePairF in slice6_77.c beside the FUN_1006b6e0 it tail-calls.
  * The address is claimed there, not here; this helper is still only the
  * truncation and carries no @implements. */
-static uint32_t br_ftol32(double v)
-{
-    return (uint32_t)((uint64_t)br_ftol64(v) & 0xFFFFFFFFu);
-}
+/* (port-only br_ftol32 removed) */
 
-int64_t BrSfxRatioFromHz(uint32_t hz, double baseRate)
-{
-    /* 0x1006B880: the frequency is stored into a 64-bit stack slot with the
-     * high dword zeroed and loaded with `fild qword`, so it is
-     * zero-extended, then multiplied by 0x10077C08 (2^32) and divided by the
-     * channel's base rate.  No guard on baseRate. */
-    return br_ftol64((double)(int64_t)(uint32_t)hz * 4294967296.0 / baseRate);
-}
 
-uint32_t BrSfxHzFromRatio(int64_t ratio, double baseRate)
-{
-    /* 0x1006B5F0: `fild qword` of the signed 64-bit ratio, `fmul` the base
-     * rate, then `fmul` 0x10077C00 (2^-32).  The order is preserved because
-     * floating-point multiplication is not associative. */
-    return br_ftol32((double)ratio * baseRate * 2.3283064365386963e-10);
-}
+/* (port-only BrSfxRatioFromHz removed) */
 
-uint32_t BrSfxHzFromFloat(float hz)
-{
-    /* PARTIAL, and labelled as such rather than as a transcription: this is
-     * 0x1006B6C0's first two instructions only (`fld dword [esp+0xc]` then
-     * `call 0x10074560`).  The other twenty-six bytes double the second
-     * argument and tail-call 0x1006B6E0, which is what actually reaches the
-     * voice -- see br_ftol32 above.  Do not attach 0x1006B6C0 to this. */
-    return br_ftol32((double)hz);
-}
+
+/* (port-only BrSfxHzFromRatio removed) */
+
+
+/* (port-only BrSfxHzFromFloat removed) */
+
 
 /* ------------------------------------------------------- the engine curve */
 
-double BrSfxEngineHz(float rpm, float doppler)
-{
-    /* 0x1006156A:
-     *      fld [esi+0xE24]; fcomp 0.0f; fld [esi+0xE24]
-     *      test ah,0x41; jne  -> fmul -0.5f   (rpm <= 0, or unordered)
-     *                     else -> fmul  0.5f
-     *      fmul 15.714285850524902f      (0x100779F8, the float nearest 110/7)
-     *      fmul [esi+0xF74]              (the doppler ratio)
-     *      fcom 100000.0f  -> above  -> 0
-     *      fcom 0.0f       -> below  -> 0
-     *
-     * The two magnitude branches are written out rather than folded into a
-     * fabs so that the NaN path stays visible: a NaN rpm fails `> 0` and so
-     * takes the -0.5 arm, then fails both clamp tests and comes back 0. */
-    double v = (rpm > 0.0f) ? (double)rpm * 0.5 : (double)rpm * -0.5;
+/* (port-only BrSfxEngineHz removed) */
 
-    v = v * 15.714285850524902;      /* 0x100779F8 */
-    v = v * (double)doppler;
 
-    if (v > 100000.0)                /* 0x100779FC */
-        return 0.0;
-    if (!(v >= 0.0))                 /* negatives AND NaN */
-        return 0.0;
-    return v;
-}
+/* (port-only BrSfxEngineRatio removed) */
 
-int64_t BrSfxEngineRatio(double hz)
-{
-    /* 0x10061601: `fmul dword 0x100779E4` then `fmul qword 0x100779E8`, then
-     * the same _ftol as everywhere else.  0x100779E4 is the float nearest
-     * 1/11000 -- a reciprocal MULTIPLY, where BrSfxRatioFromHz divides by the
-     * channel's rate.  See br_sfx.h: the rate it is derived against and the
-     * rate it is read back with are not the same number. */
-    static const float s_rcpRate = 9.09090886125341e-05f;
 
-    return br_ftol64(hz * (double)s_rcpRate * 4294967296.0);
-}
+/* (port-only BrSfxEngineHighHz removed) */
 
-uint32_t BrSfxEngineHighHz(float doppler)
-{
-    /* 0x10061995: `fld [esi+0xF74]; fmul dword 0x10077A00` (22050.0f), then
-     * 0x1006B6C0 -- which is BrSfxHzFromFloat.  The multiply is done in
-     * double for the same reason BrSfxEngineHz is. */
-    return br_ftol32((double)doppler * 22050.0);
-}
 
 /* BrSndBankCarSlot: br_coretypes.h */
 

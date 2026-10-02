@@ -142,51 +142,8 @@ static __inline void BrOptFlushMessage(void)
  * leaves behind on each path. The C++ exception frame the original sets up
  * (`push -1 / push <funclet> / fs:[0]`, and the state variable it keeps at
  * [esp+0xC]) has no observable effect and is not reproduced. */
-static int BrOptEnsureObj(BrOptObj **ppSlot, BrOptObjFn pfnEnter)
-{
-    BrOptObj *p = *ppSlot;
+/* (port-only BrOptEnsureObj removed) */
 
-    if (p != NULL) {
-        g_brPAA2904 = p;
-        return 1;
-    }
-
-    /* 0x1007DFE0 is operator new == _nh_malloc(size, 1): the storage is NOT
-     * zeroed. The constructor at 0x10048710 is what initialises it.
-     *
-     * HARDENING (port): BR_PHASE_ALLOC_SIZE, not sizeof(BrOptObj).
-     *
-     * This line used to read `malloc(sizeof(BrOptObj))`, with a DEVIATION note
-     * explaining that the literal 0xC8 was wrong on a 64-bit host because the
-     * leading pointers widen. That reasoning was right and the fix was one
-     * model short: BrOptObj was a five-field view padded to 0xC8, so it came
-     * to 216 bytes here, while BrOptObjCtor -- which resolves at the host link
-     * to slice6_73.c's faithful body -- writes the whole 304-byte BrPhase_,
-     * ending with stores to +0xC0 and +0xC4. That was an 88-byte heap
-     * overflow on every phase installation.
-     *
-     * BrOptObj is now an alias for BrPhase_ (see slice2_25.h), so sizeof()
-     * would in fact be correct today; BR_PHASE_ALLOC_SIZE is used anyway
-     * because it is also never smaller than the original's 0xC8, and because
-     * it is the one spelling every phase allocation site in the tree shares. */
-    p = (BrOptObj *)malloc(BR_PHASE_ALLOC_SIZE);
-    p = (p != NULL) ? BrOptObjCtor(p) : NULL;
-
-    *ppSlot     = p;
-    g_brPAA2904 = p;
-    if (p == NULL)
-        return 0;
-
-    p->pfnEnter = pfnEnter;
-    /* The original re-reads the global here rather than reusing the
-     * register; kept, because a constructor that publishes itself could make
-     * the two differ. */
-    p = *ppSlot;
-    p->pfnEnter(p);
-    g_brPAA2904->f0C = 1;
-    g_brPAA2904->f68 = 1;
-    return 1;
-}
 
 /* The plain wrapping cycler: up on 0x10AA33D4, down on 0x10AA33D0, no
  * validity filtering. `*pv` is the option, [0..max] inclusive. Returns the
@@ -194,27 +151,8 @@ static int BrOptEnsureObj(BrOptObj **ppSlot, BrOptObjFn pfnEnter)
  * edited paths and never writes it when neither input is set. */
 /* The original INLINES this body in every cycler (the 93-99 B siblings are
  * each three times the size of the un-inlined port build). */
-static __inline int32_t BrOptCycle(int32_t *pv, int32_t max)
-{
-    int32_t v;
+/* (port-only BrOptCycle removed) */
 
-    if (g_act1 != 0) {
-        v = *pv + 1;
-        *pv = v;
-        if (v > max)
-            *pv = 0;
-    } else if (g_act0 != 0) {
-        /* load / --v / store, NOT `v = *pv - 1`: that spelling emits
-         * lea/test/jge where the original has dec/jns (the store between
-         * them leaves flags intact). */
-        v = *pv;
-        --v;
-        *pv = v;
-        if (v < 0)
-            *pv = max;
-    }
-    return *pv;
-}
 
 /* ==========================================================================
  * 0x10042880
@@ -229,64 +167,8 @@ static __inline int32_t BrOptCycle(int32_t *pv, int32_t max)
  * name being assembled starts at frame+0x14, i.e. only four bytes later. The
  * original therefore only survives while the number is at most three digits.
  * Reproduced rather than fixed. */
-int BrOptBeginTimeAttack(void *pUnused, const int32_t *pIndex)
-{
-    char  aFrame[BR_OPT_2880_FRAME];
-    char *pszNum  = aFrame + BR_OPT_2880_NUM_OFF;   /* frame+0x10, 4 bytes! */
-    char *pszName = aFrame + BR_OPT_2880_STR_OFF;   /* frame+0x14 */
-    int32_t iSel;
+/* (port-only BrOptBeginTimeAttack removed) */
 
-    (void)pUnused;      /* the first argument is never read by the original */
-
-    (*(int32_t *)((char *)&g_brRaceRules + 0xC)) /* BR_LP64_BYTE_VIEW */  = 2;
-    g_brAA28E8  = 0;
-    (*(int32_t *)&g_aBrTexSlot[192984])  = 0;
-    BrSub1003E680();
-
-    strcpy(pszName, g_szBrTimeAttack);          /* DEVIATION: rep movsb */
-    BrItoa(*pIndex, pszNum, 10);
-    strcat(pszName, pszNum);                    /* DEVIATION: rep movsb */
-    strcat(pszName, g_szBrGrfExt);              /* DEVIATION: rep movsb */
-    strcpy(g_aBr1782BC8, pszName);              /* DEVIATION: rep movsb */
-
-    BrSub10071130(1, 1);
-
-    /* movsx + `jge`: the byte at 0x10680738 is SIGNED and a negative value
-     * aborts the whole restore. */
-    if ((*(signed char *)&g_aBrTexSlot[126712]) < 0)
-        return 0;
-
-    iSel = (int32_t)(*(signed char *)&g_aBrTexSlot[126712]);
-
-    (*(int32_t *)&DAT_100abdf0) = g_brAD0980;
-    (*(int32_t *)&DAT_100abdec) = g_brAD097C;
-    g_i0AC65C = g_brAD0988;
-    (*(int32_t *)&g_brSel0ABDF4) = g_brAD0984;
-    BrG_0B4050 = 1;
-    (*(int32_t *)&g_brIdx0ABDE8) = iSel;
-    (*(int32_t *)&DAT_10ac5d58) = (int32_t)(*(signed char *)&g_aBrTexSlot[126719]);   /* movsx: also SIGNED */
-    (*(int32_t *)&DAT_10ac5d60) = g_brAD0978;
-    (*(int32_t *)&DAT_100abdf8) = g_brAD098C;
-    (*(int32_t *)&g_CBE8) = g_brAD098C;
-
-    /* `rep movsd` of 0x53 dwords FROM the pointer held in 0x10ACED34. */
-    memcpy((*(int32_t (*)[83])&DAT_10ac5a48), g_brPACED34,
-           BR_OPT_AA26F0_COUNT * sizeof(int32_t));  /* DEVIATION: rep movsd */
-
-    g_Br0B380C = g_aBrAC4D8[iSel];
-    (*(int32_t *)&g_CBE8) = g_brAD098C;            /* stored twice by the original */
-    (*(int32_t *)&g_7b320) = g_brAD0988;
-    g_brAA28E8 = 1;
-    (*(int32_t *)&g_226e7c) = g_aBrAC420[g_brAD0984];
-    (*(int32_t *)&g_226e80) = g_aBrAC4C0[(int32_t)(*(signed char *)&g_aBrTexSlot[126719])];
-    (*(int32_t *)&g_7b32c) = g_aBrAC4A0[g_brAD097C];
-    (*(int32_t *)&g_7b328) = g_aBrAC4B0[g_brAD0980];
-    (*(int32_t *)&g_7b324) = g_aBrAC518[g_brAD0978];
-
-    BrSub1005FCF0();
-    g_brAA289C = 1;
-    return 1;
-}
 
 /* ==========================================================================
  * 0x10042A90 / 0x10042AC0 / 0x10042B00 -- three identical copies
@@ -295,18 +177,15 @@ int BrOptBeginTimeAttack(void *pUnused, const int32_t *pIndex)
 /* GOTCHA: 0x10AA28D8 is a latch, not a debounce -- nothing in this packet
  * ever clears it, so across all three entry points the field is toggled at
  * most once per clear of that global. The return value is 1 either way. */
-static int BrOptToggle2F7C(BrGameObj *pGame)
-{
-    if ((*(int32_t *)&g_5C30) == 0) {
-        (*(int32_t *)&g_5C30)   = 1;
-        pGame->f2F7C = (pGame->f2F7C == 0) ? 1 : 0;
-    }
-    return 1;
-}
+/* (port-only BrOptToggle2F7C removed) */
 
-int BrOptToggle2F7C_A(BrGameObj *pGame) { return BrOptToggle2F7C(pGame); }
-int BrOptToggle2F7C_B(BrGameObj *pGame) { return BrOptToggle2F7C(pGame); }
-int BrOptToggle2F7C_C(BrGameObj *pGame) { return BrOptToggle2F7C(pGame); }
+
+/* (port-only BrOptToggle2F7C_A removed) */
+
+/* (port-only BrOptToggle2F7C_B removed) */
+
+/* (port-only BrOptToggle2F7C_C removed) */
+
 
 /* ==========================================================================
  * 0x10042B30 -- track select
@@ -430,22 +309,12 @@ int BrOptCycleAC65C(void)
 
 /* 0x10042CF0. GOTCHA: 0x10060D90 is called on EVERY path, including the one
  * where neither input is set -- contrast 0x10044600. */
-int BrOptCycleB4E708(void)
-{
-    (*(int32_t *)((char *)&g_brBindAAAD4 + 0xA4)) = 1;
-    (void)BrOptCycle(&(*(int32_t *)&g_brItemIconCount), BR_OPT_B4E708_MAX);
-    BrSub10060D90();
-    return 1;
-}
+/* (port-only BrOptCycleB4E708 removed) */
+
 
 /* 0x10042D60. Same as above but clears 0x100AB3D8 instead of setting it. */
-int BrOptCycleB4E70C(void)
-{
-    (*(int32_t *)((char *)&g_brBindAAAD4 + 0xA4)) = 0;
-    (void)BrOptCycle(&g_brRaceB71A6C, BR_OPT_B4E70C_MAX);
-    BrSub10060D90();
-    return 1;
-}
+/* (port-only BrOptCycleB4E70C removed) */
+
 
 /* 0x10042DC0 */
 /* WHAT IT DOES: steps another settings row on to its next value, looking
@@ -539,86 +408,11 @@ int BrOptCycleAA2A08(void)
 /* `neg / sbb / and 3 / add 0xB`: 14 when 0x10AA28FC is non-zero, else 11.
  * The original recomputes this at every single step of the search, so it is
  * a function here rather than a value hoisted out of the loop. */
-static int32_t BrOptCarMax(void)
-{
-    return ((*(int32_t *)&DAT_10ac5c54) != 0) ? BR_OPT_AC648_MAX_EXTRA : BR_OPT_AC648_MAX_BASE;
-}
+/* (port-only BrOptCarMax removed) */
 
-int BrOptCycleCar(void)
-{
-    int32_t v, vStart, iVal;
-    const BrRec2A8 *pRec;
 
-    if (g_act1 != 0) {
-        v = (*(int32_t *)&g_brIdx0ABDE8) + 1;
-        (*(int32_t *)&g_brIdx0ABDE8) = v;
-        if (v > BrOptCarMax()) {
-            v = 0;
-            (*(int32_t *)&g_brIdx0ABDE8) = 0;
-        }
-        vStart = v;
-        if (BrSub1003F2B0(v) == 0) {
-            for (;;) {
-                v = (*(int32_t *)&g_brIdx0ABDE8) + 1;
-                (*(int32_t *)&g_brIdx0ABDE8) = v;
-                if (v > BrOptCarMax()) {
-                    v = 0;
-                    (*(int32_t *)&g_brIdx0ABDE8) = 0;
-                    /* GOTCHA: the wrap path JUMPS PAST the full-circle test
-                     * (0x10042F4A -> 0x10042F54), so an entry that is
-                     * rejected and sits at index 0 gets probed twice.
-                     * 0x10042B30's equivalent loop does not do this. */
-                } else if (v == vStart) {
-                    break;
-                }
-                if (BrSub1003F2B0(v) != 0)
-                    break;
-            }
-        }
-        v = (*(int32_t *)&g_brIdx0ABDE8);
-    } else if (g_act0 != 0) {
-        v = (*(int32_t *)&g_brIdx0ABDE8) - 1;
-        (*(int32_t *)&g_brIdx0ABDE8) = v;
-        if (v < 0) {
-            v = BrOptCarMax();
-            (*(int32_t *)&g_brIdx0ABDE8) = v;
-        }
-        vStart = v;
-        if (BrSub1003F2B0(v) == 0) {
-            for (;;) {
-                v = (*(int32_t *)&g_brIdx0ABDE8) - 1;
-                (*(int32_t *)&g_brIdx0ABDE8) = v;
-                if (v < 0) {
-                    v = BrOptCarMax();
-                    (*(int32_t *)&g_brIdx0ABDE8) = v;
-                    /* same asymmetry as the increment path */
-                } else if (v == vStart) {
-                    break;
-                }
-                if (BrSub1003F2B0(v) != 0)
-                    break;
-            }
-        }
-        v = (*(int32_t *)&g_brIdx0ABDE8);
-    } else {
-        v = (*(int32_t *)&g_brIdx0ABDE8);
-    }
+/* (port-only BrOptCycleCar removed) */
 
-    iVal = g_aBrAC4D8[v];
-    g_Br0B380C = iVal;
-
-    if (g_brP277B40 != NULL) {
-        /* NOTE the index: 0x100AC308 is indexed by the table VALUE, not by
-         * the option index. */
-        BrSprintf(g_szBrName4DB0, BrStrGet(BR_OPT_STR_CAR),
-                  BrStrGet((int)g_aBrAC308[iVal]));
-        pRec = g_aBrBD2A8[g_Br0B380C];
-        if ((pRec->f04 & 0x10) != 0)
-            strcat(g_szBrName4DB0, BrStrGet(BR_OPT_STR_LOCKED));  /* DEVIATION */
-        BrOptFlushMessage();
-    }
-    return 1;
-}
 
 /* ==========================================================================
  * 0x100430B0 -- the 1-based cycler
@@ -756,17 +550,11 @@ int BrOptOpen296C(BrGameObj *pUnused);
 
 /* WHAT IT DOES: opens another menu screen the same way. Which screen this
  * is was not established. */
-int BrOptOpen2970(BrGameObj *pUnused)
-{
-    (void)pUnused;
-    return BrOptEnsureObj(&g_brPAA2970, BrOptFn10051D30);
-}
+/* (port-only BrOptOpen2970 removed) */
 
-int BrOptOpen2998(BrGameObj *pUnused)
-{
-    (void)pUnused;
-    return BrOptEnsureObj(&g_brPAA2998, BrOptFn1004CAC0);
-}
+
+/* (port-only BrOptOpen2998 removed) */
+
 
 /* ==========================================================================
  * 0x10043400 -- the cycler that skips 1
@@ -829,29 +617,17 @@ int BrOptCycleAA2A0C(void)
  * 0x10043590, 0x100435F0, 0x10043650, 0x100436B0 -- two-state cyclers
  * ========================================================================== */
 
-int BrOptCycleAA2A1C(void)
-{
-    (*(int32_t *)&DAT_10b71540) = g_aBrAC530[BrOptCycle(&g_brAA2A1C, 1)];
-    return 1;
-}
+/* (port-only BrOptCycleAA2A1C removed) */
 
-int BrOptCycleAA2A28(void)
-{
-    g_brB4E7A0 = g_aBrAC548[BrOptCycle(&g_brAA2A28, 1)];
-    return 1;
-}
 
-int BrOptCycleAA2A20(void)
-{
-    g_brB4E1D8 = g_aBrAC538[BrOptCycle(&g_brAA2A20, 1)];
-    return 1;
-}
+/* (port-only BrOptCycleAA2A28 removed) */
 
-int BrOptCycleAA2A24(void)
-{
-    g_brB4E1DC = g_aBrAC540[BrOptCycle(&g_brAA2A24, 1)];
-    return 1;
-}
+
+/* (port-only BrOptCycleAA2A20 removed) */
+
+
+/* (port-only BrOptCycleAA2A24 removed) */
+
 
 /* ==========================================================================
  * 0x10043760 .. 0x10043A00 -- transitions and the lobby
@@ -891,11 +667,8 @@ int BrOptCycleAA2A24(void)
 
 /* WHAT IT DOES: opens another menu screen the same way. Which screen this
  * is was not established. */
-int BrOptOpen298C(BrGameObj *pUnused)
-{
-    (void)pUnused;
-    return BrOptEnsureObj(&g_brPAA298C, BrOptFn10056A10);
-}
+/* (port-only BrOptOpen298C removed) */
+
 
 /* 0x10043E70. Unlike its siblings the reuse path does NOT return early: it
  * falls into the same tail as the create path. */
@@ -922,16 +695,22 @@ int BrOptOpen298C(BrGameObj *pUnused)
  * two globals belonging to the screen being closed. */
 /* BrOpt3FC0: the placed body is BrOpt3FC0_1003D510.cpp */
 
-int BrOpt4010(BrGameObj *pGame) { (*(int32_t *)&DAT_10ac5bd4) = 0; BrOptOpen2948(pGame); return 1; }
+/* (port-only BrOpt4010 removed) */
+
 /* WHAT IT DOES: records the first play mode as the one under the cursor and
  * refreshes how that menu entry is drawn -- the highlight, not the choice. */
-int BrOpt4030(BrGameObj *pGame) { (*(int32_t *)&DAT_10ac5bd4) = 0; BrSub10047360(pGame); return 1; }
-int BrOpt4050(BrGameObj *pGame) { (*(int32_t *)&DAT_10ac5bd4) = 1; BrOptOpen2948(pGame); return 1; }
-int BrOpt4070(BrGameObj *pGame) { (*(int32_t *)&DAT_10ac5bd4) = 1; BrSub10047360(pGame); return 1; }
+/* (port-only BrOpt4030 removed) */
+
+/* (port-only BrOpt4050 removed) */
+
+/* (port-only BrOpt4070 removed) */
+
 /* WHAT IT DOES: chooses the third play mode and opens the screen that follows
  * it. */
-int BrOpt4090(BrGameObj *pGame) { (*(int32_t *)&DAT_10ac5bd4) = 2; BrOptOpen2948(pGame); return 1; }
-int BrOpt40B0(BrGameObj *pGame) { (*(int32_t *)&DAT_10ac5bd4) = 2; BrSub10047360(pGame); return 1; }
+/* (port-only BrOpt4090 removed) */
+
+/* (port-only BrOpt40B0 removed) */
+
 
 /* ==========================================================================
  * 0x100440D0 .. 0x100446D0

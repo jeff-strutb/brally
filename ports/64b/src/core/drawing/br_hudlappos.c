@@ -53,11 +53,8 @@
  * (slice3_33.h) and the original hands the result straight to sprintf or to a
  * "%s". Substituting "" keeps the call observable without the undefined
  * behaviour; with a populated string table neither substitution can fire. */
-static const char *Br70Str(int id)
-{
-    const char *psz = BrStrGet(id);
-    return (psz != NULL) ? psz : "";
-}
+/* (port-only Br70Str removed) */
+
 
 /* ==========================================================================
  * 6. 0x100173F0 -- lap counter and finishing-position readout

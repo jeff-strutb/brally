@@ -31,32 +31,17 @@ typedef char br_cfgfile_assert_profile
  * which is what portability means for a format.
  * ====================================================================== */
 
-static uint32_t BrCfgLoad32(const unsigned char *p)
-{
-    return (uint32_t)p[0]
-         | ((uint32_t)p[1] << 8)
-         | ((uint32_t)p[2] << 16)
-         | ((uint32_t)p[3] << 24);
-}
+/* (port-only BrCfgLoad32 removed) */
 
-static void BrCfgStore32(unsigned char *p, uint32_t v)
-{
-    p[0] = (unsigned char)(v & 0xFFu);
-    p[1] = (unsigned char)((v >> 8) & 0xFFu);
-    p[2] = (unsigned char)((v >> 16) & 0xFFu);
-    p[3] = (unsigned char)((v >> 24) & 0xFFu);
-}
 
-static uint16_t BrCfgLoad16(const unsigned char *p)
-{
-    return (uint16_t)((uint32_t)p[0] | ((uint32_t)p[1] << 8));
-}
+/* (port-only BrCfgStore32 removed) */
 
-static void BrCfgStore16(unsigned char *p, uint16_t v)
-{
-    p[0] = (unsigned char)(v & 0xFFu);
-    p[1] = (unsigned char)((v >> 8) & 0xFFu);
-}
+
+/* (port-only BrCfgLoad16 removed) */
+
+
+/* (port-only BrCfgStore16 removed) */
+
 
 /* ======================================================================
  * One field, one fread.
@@ -72,63 +57,24 @@ static void BrCfgStore16(unsigned char *p, uint16_t v)
 
 #define BR_CFG_MAX_FIELD  0x400
 
-static int BrCfgReadRaw(FILE *pFile, unsigned char *pBuf, size_t cb)
-{
-    return fread(pBuf, cb, 1, pFile) == 1;
-}
+/* (port-only BrCfgReadRaw removed) */
 
-static int BrCfgReadU32(FILE *pFile, uint32_t *pOut)
-{
-    unsigned char ab[4];
 
-    if (!BrCfgReadRaw(pFile, ab, sizeof ab))
-        return 0;
-    *pOut = BrCfgLoad32(ab);
-    return 1;
-}
+/* (port-only BrCfgReadU32 removed) */
 
-static int BrCfgReadI32(FILE *pFile, int32_t *pOut)
-{
-    uint32_t v;
 
-    if (!BrCfgReadU32(pFile, &v))
-        return 0;
-    /* The original stores the four bytes and the field is read back as a
-     * signed dword by its consumers; the round trip through uint32_t is the
-     * portable spelling of the same bit pattern. */
-    *pOut = (int32_t)v;
-    return 1;
-}
+/* (port-only BrCfgReadI32 removed) */
+
 
 /* n dwords in ONE fread of n*4 bytes -- the original's `fread(p, 0x104, 1,
  * fp)` and friends, not n separate reads. */
-static int BrCfgReadU32Array(FILE *pFile, uint32_t *pOut, size_t n)
-{
-    unsigned char ab[BR_CFG_MAX_FIELD];
-    size_t        i;
+/* (port-only BrCfgReadU32Array removed) */
 
-    if (!BrCfgReadRaw(pFile, ab, n * 4u))
-        return 0;
-    for (i = 0; i < n; ++i)
-        pOut[i] = BrCfgLoad32(ab + i * 4u);
-    return 1;
-}
 
 /* One 0xA8-byte profile: BR_CTRL_ACTIONS * 3 little-endian 16-bit entries,
  * in the order they sit in memory (action-major, slot-minor). */
-static int BrCfgReadProfile(FILE *pFile, BrCtrlProfile *pOut)
-{
-    unsigned char ab[sizeof(BrCtrlProfile)];
-    int           a, s;
+/* (port-only BrCfgReadProfile removed) */
 
-    if (!BrCfgReadRaw(pFile, ab, sizeof ab))
-        return 0;
-    for (a = 0; a < BR_CTRL_ACTIONS; ++a) {
-        for (s = 0; s < 3; ++s)
-            pOut->e[a][s] = BrCfgLoad16(ab + (size_t)(a * 3 + s) * 2u);
-    }
-    return 1;
-}
 
 /* ======================================================================
  * 0x10063060 -- load the settings file over an existing config object.
@@ -146,81 +92,17 @@ static int BrCfgReadProfile(FILE *pFile, BrCtrlProfile *pOut)
  * The layout, as bytes.  Not a decompilation -- see the header.
  * ====================================================================== */
 
-static void BrCfgPutU32Array(unsigned char **ppOut, const uint32_t *pIn,
-                             size_t n)
-{
-    size_t i;
+/* (port-only BrCfgPutU32Array removed) */
 
-    for (i = 0; i < n; ++i)
-        BrCfgStore32(*ppOut + i * 4u, pIn[i]);
-    *ppOut += n * 4u;
-}
 
-static void BrCfgPutI32(unsigned char **ppOut, int32_t v)
-{
-    BrCfgStore32(*ppOut, (uint32_t)v);
-    *ppOut += 4;
-}
+/* (port-only BrCfgPutI32 removed) */
 
-static void BrCfgPutProfile(unsigned char **ppOut, const BrCtrlProfile *pIn)
-{
-    int a, s;
 
-    for (a = 0; a < BR_CTRL_ACTIONS; ++a) {
-        for (s = 0; s < 3; ++s)
-            BrCfgStore16(*ppOut + (size_t)(a * 3 + s) * 2u, pIn->e[a][s]);
-    }
-    *ppOut += sizeof(BrCtrlProfile);
-}
+/* (port-only BrCfgPutProfile removed) */
 
-int BrCtrlCfgFileEncode(unsigned char *pOut, size_t cbOut,
-                        const BrCtrlCfg *pIn)
-{
-    unsigned char *p = pOut;
 
-    if (pOut == NULL || pIn == NULL || cbOut < (size_t)BR_CTRLCFG_FILE_SIZE)
-        return -1;
+/* (port-only BrCtrlCfgFileEncode removed) */
 
-    memcpy(p, BR_CTRLCFG_MAGIC, BR_CTRLCFG_MAGIC_SIZE);
-    p += BR_CTRLCFG_MAGIC_SIZE;
-    BrCfgStore32(p, BR_CTRLCFG_VERSION);
-    p += 4;
-
-    BrCfgPutI32(&p, pIn->f2A8);
-    BrCfgPutI32(&p, pIn->f2AC);
-    BrCfgPutI32(&p, pIn->f2B0);
-    BrCfgPutU32Array(&p, pIn->f2B4, sizeof pIn->f2B4 / sizeof pIn->f2B4[0]);
-    BrCfgPutU32Array(&p, pIn->f3B8, sizeof pIn->f3B8 / sizeof pIn->f3B8[0]);
-    BrCfgPutI32(&p, pIn->f7B8);
-    BrCfgPutI32(&p, pIn->f7BC);
-    BrCfgPutI32(&p, pIn->f7C0);
-    BrCfgPutI32(&p, pIn->f7C4);
-    BrCfgPutU32Array(&p, pIn->f7C8, sizeof pIn->f7C8 / sizeof pIn->f7C8[0]);
-    BrCfgPutI32(&p, pIn->f7D8);
-    BrCfgPutI32(&p, pIn->f7DC);
-    BrCfgPutI32(&p, pIn->f7E0);
-    BrCfgPutI32(&p, pIn->f7E4);
-    BrCfgPutI32(&p, pIn->f7E8);
-    BrCfgPutI32(&p, pIn->f7EC);
-    BrCfgPutI32(&p, pIn->f7F0);
-    BrCfgPutI32(&p, pIn->f7F4);
-    BrCfgPutI32(&p, pIn->f7F8);
-    BrCfgPutI32(&p, pIn->f7FC);
-    BrCfgPutI32(&p, pIn->f800);
-    BrCfgPutI32(&p, pIn->f804);
-    BrCfgPutI32(&p, pIn->f808);
-    BrCfgPutI32(&p, pIn->f80C);
-    BrCfgPutU32Array(&p, pIn->f810, sizeof pIn->f810 / sizeof pIn->f810[0]);
-    BrCfgPutU32Array(&p, pIn->f830, sizeof pIn->f830 / sizeof pIn->f830[0]);
-    BrCfgPutI32(&p, pIn->f870);
-    BrCfgPutI32(&p, pIn->active);
-    BrCfgPutProfile(&p, &pIn->profile[0]);
-    BrCfgPutProfile(&p, &pIn->profile[1]);
-    BrCfgPutProfile(&p, &pIn->profile[2]);
-    BrCfgPutProfile(&p, &pIn->profile[3]);
-
-    return (int)(p - pOut);
-}
 
 /* ======================================================================
  * The writer of this same file, 0x100634B0, filed out of the address batch

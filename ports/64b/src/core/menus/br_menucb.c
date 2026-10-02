@@ -50,42 +50,16 @@ static int32_t BrFtol(double d)
 
 /* The original sign-extends with `movsx`; spelled out so the result does not
  * depend on whether plain `char` is signed here. */
-static int32_t BrSext8(uint32_t v)
-{
-    int32_t x = (int32_t)(v & 0xFFu);
-    return (x & 0x80) ? x - 0x100 : x;
-}
+/* (port-only BrSext8 removed) */
+
 
 /* DEVIATION: the original strcpy()s / strcat()s into unbounded buffers.
  * These two truncate instead.  Everything else about them matches. */
-static void BrStrCopy(char *pszDst, size_t cbDst, const char *pszSrc)
-{
-    size_t n;
+/* (port-only BrStrCopy removed) */
 
-    if (pszDst == NULL || cbDst == 0)
-        return;
-    if (pszSrc == NULL) {              /* DEVIATION: the original would fault */
-        pszDst[0] = '\0';
-        return;
-    }
-    n = strlen(pszSrc);
-    if (n > cbDst - 1)
-        n = cbDst - 1;
-    memcpy(pszDst, pszSrc, n);
-    pszDst[n] = '\0';
-}
 
-static void BrStrCat(char *pszDst, size_t cbDst, const char *pszSrc)
-{
-    size_t used;
+/* (port-only BrStrCat removed) */
 
-    if (pszDst == NULL || cbDst == 0 || pszSrc == NULL)
-        return;
-    used = strlen(pszDst);
-    if (used >= cbDst - 1)
-        return;
-    BrStrCopy(pszDst + used, cbDst - used, pszSrc);
-}
 
 /* 0x1007F240 is MSVC's _strupr.  With a single-byte locale (the only path
  * this build ever takes -- 0x118AC360 is the multibyte flag and it is zero)
@@ -152,10 +126,8 @@ static BrMenuState g_menu = {
     1u                          /* g0AC650 */
 };
 
-BrMenuState *BrMenuGetState(void)
-{
-    return &g_menu;
-}
+/* (port-only BrMenuGetState removed) */
+
 
 /* g_menu is the port's gathering of the menu module's scattered originals.
  * The matching build reads the fields below as the separate globals they are,
@@ -266,23 +238,13 @@ static const uint16_t k_AC550[16] = {
  * 0x100B3820 + 2*(k + 12*e) + hi, and 0x100B3820 is the table base plus
  * 0x10, so the byte offset from the table base is 0x10 + 24*e + 2*k + hi.
  * e is SIGNED (it comes from a movsx), so it really can point backwards. */
-static uint32_t BrMenuStageByte(const BrMenuState *pSt, int32_t e, uint32_t k,
-                                int hi)
-{
-    const uint8_t *p   = (const uint8_t *)g_brStages;
-    ptrdiff_t      off = (ptrdiff_t)0x10 + (ptrdiff_t)24 * e
-                       + 2 * (ptrdiff_t)k + hi;
+/* (port-only BrMenuStageByte removed) */
 
-    (void)pSt;
-    return p[off];
-}
 
 /* The record index the whole "current stage" family derives.  0x10040730,
  * 0x100407E0 and 0x10040C00 all reach for it. */
-static int32_t BrMenuStageIndex(const BrMenuState *pSt)
-{
-    return BrSext8(MENU_gAA28B8);
-}
+/* (port-only BrMenuStageIndex removed) */
+
 
 /* =====================================================================
  * 3. Item plumbing
@@ -296,29 +258,11 @@ static int32_t BrMenuStageIndex(const BrMenuState *pSt)
  *
  * DEVIATION: pVtbl is checked for NULL.  The original dereferences it
  * unconditionally. */
-static int32_t BrMenuStoreCaption(BrMenuItem *pItem, const char *psz)
-{
-    BrMenuText *pText = &pItem->text;
+/* (port-only BrMenuStoreCaption removed) */
 
-    BrStrCopy(pText->sz, sizeof pText->sz, psz);
-    if (pText->pVtbl != NULL) {
-        pText->pVtbl->pfn04(pText);
-        pText->pVtbl->pfn10(pText);
-    }
-    return 1;
-}
 
-static int32_t BrMenuStoreValue(BrMenuItem *pItem, const char *psz)
-{
-    BrMenuText *pText = &pItem->text;
+/* (port-only BrMenuStoreValue removed) */
 
-    BrStrCopy(pText->sz, sizeof pText->sz, psz);
-    if (pText->pVtbl != NULL) {
-        pText->pVtbl->pfn08(pText);
-        pText->pVtbl->pfn2C(pText);
-    }
-    return 1;
-}
 
 /* =====================================================================
  * 4. The lap-time formatter
@@ -345,28 +289,8 @@ static int32_t BrMenuStoreValue(BrMenuItem *pItem, const char *psz)
  * The seconds value makes a round trip through a 32-bit float (`fst dword`)
  * before the minutes are taken off it, while the hundredths are taken from
  * the full-precision x87 copy; both are reproduced. */
-void BrMenuFormatLapTime(char *pszOut, size_t cbOut, float fTime)
-{
-    double  t = (double)fTime;
-    int32_t nCenti, nSec, nHund, nMin, nSecOfMin;
-    float   fSecStored;
+/* (port-only BrMenuFormatLapTime removed) */
 
-    if (!(t > 0.0)) {
-        BrStrCopy(pszOut, cbOut, "--:--");
-        return;
-    }
-
-    nCenti     = BrFtol(t * (double)100.0f);
-    nSec       = BrFtol((double)nCenti * (double)0.01f);
-    fSecStored = (float)nSec;
-    nHund      = BrFtol((double)nCenti - (double)nSec * (double)100.0f);
-    nMin       = BrFtol((double)fSecStored * (double)0.016666667f);
-    nSecOfMin  = BrFtol((double)fSecStored - (double)nMin * (double)60.0f);
-
-    /* DEVIATION: sprintf -> snprintf. */
-    snprintf(pszOut, cbOut, "%d:%02d.%02d",
-             (int)nMin, (int)nSecOfMin, (int)nHund);
-}
 
 /* The tail shared by all five time callbacks and by 0x100415A0 / 0x10041670 /
  * 0x10041710 / 0x100417B0: if the formatted text came out empty the callback
@@ -374,15 +298,8 @@ void BrMenuFormatLapTime(char *pszOut, size_t cbOut, float fTime)
  * is the only way any of these ever reports failure.  It cannot actually
  * happen -- both branches of the formatter write something -- but the test
  * is in the binary, so it is kept. */
-static int32_t BrMenuStoreFormatted(BrMenuItem *pItem, char *pszBuf,
-                                    int fCaption)
-{
-    if (pszBuf[0] == '\0')
-        return 0;
-    BrStrUpr(pszBuf);
-    return fCaption ? BrMenuStoreCaption(pItem, pszBuf)
-                    : BrMenuStoreValue(pItem, pszBuf);
-}
+/* (port-only BrMenuStoreFormatted removed) */
+
 
 /* =====================================================================
  * 5. Callbacks -- entry / exit
@@ -716,28 +633,14 @@ int32_t BrMenuCap1870(BrMenuItem *pItem)
  * ===================================================================== */
 
 /* 0x100409F0 */
-int32_t BrMenuSeedFrom25D4(void)
-{
-    BrMenuState *pSt = &g_menu;
+/* (port-only BrMenuSeedFrom25D4 removed) */
 
-    MENU_gAA28A0 = pSt->gAA25DC;
-    MENU_gAA28B8 = pSt->gAA25D4;
-    MENU_gAA28A4 = pSt->gAA25D8;
-    return 1;
-}
 
 /* 0x10040A20.  GOTCHA: this is 0x100409F0's twin but 0x10AA28A4 is filled
  * from a ZERO-EXTENDED BYTE here (`mov dl, byte [0x10AA26F5]` into a
  * pre-zeroed edx) where the other copies a whole dword. */
-int32_t BrMenuSeedFrom26F0(void)
-{
-    BrMenuState *pSt = &g_menu;
+/* (port-only BrMenuSeedFrom26F0 removed) */
 
-    MENU_gAA28A0 = pSt->gAA26F0;
-    MENU_gAA28B8 = pSt->gAA26F4;
-    MENU_gAA28A4 = (uint32_t)pSt->gAA26F5;
-    return 1;
-}
 
 /* WHAT IT DOES: use the primary caption column from now on, not the
  * backup.  Menu caption setters consult this byte.  Always reports
@@ -948,15 +851,8 @@ int32_t BrMenuText0B30(BrMenuItem *pItem)
 /* The stage-indexed best-time lookup 0x10040C00 and 0x10040D70 share.
  * GOTCHA: unlike 0x10040730 this pair always takes the column from
  * 0x10AA28AC; the 0x10AA28A8 selector is not consulted. */
-static float BrMenuStageTime(const BrMenuState *pSt, const float *pTimes)
-{
-    int32_t  e = BrMenuStageIndex(pSt);
-    uint32_t i = BrMenuStageByte(pSt, e, MENU_gAA28AC, 0);
+/* (port-only BrMenuStageTime removed) */
 
-    if (pTimes == NULL)                /* DEVIATION: the original would fault */
-        return 0.0f;
-    return pTimes[i];
-}
 
 /* WHAT IT DOES: put a lap time from one stored table onto this row, or
  * "--:--" if times are not available yet. */
@@ -1036,25 +932,8 @@ int32_t BrMenuTime0C00(BrMenuItem *pItem)
 /* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003A420.cpp */
 /* BrMenuTime0EE0: prototype in br_funcs.h */
 
-static __inline void
-BrMenuFillLapTime(char *pszOut, float fTime)
-{
-    char    *pszDash = "--:--";
-    int32_t  nCenti, nSec, nHund, nMin, nSecOfMin;
-    float    fSecStored;
+/* (port-only BrMenuFillLapTime removed) */
 
-    if (!(fTime > 0.0f)) {
-        strcpy(pszOut, pszDash);
-        return;
-    }
-    nCenti     = (int32_t)(fTime * 100.0f);
-    nSec       = (int32_t)((float)nCenti * 0.01f);
-    fSecStored = (float)nSec;
-    nHund      = (int32_t)((float)nCenti - fSecStored * 100.0f);
-    nMin       = (int32_t)(fSecStored * 0.016666667f);
-    nSecOfMin  = (int32_t)(fSecStored - (float)nMin * 60.0f);
-    sprintf(pszOut, "%d:%02d.%02d", (int)nMin, (int)nSecOfMin, (int)nHund);
-}
 
 /* WHAT IT DOES: format one stored lap time onto this row as m:ss.hh. */
 /* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003A580.cpp */

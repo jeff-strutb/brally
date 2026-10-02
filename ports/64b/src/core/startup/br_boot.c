@@ -243,28 +243,15 @@ int32_t BrAppFrame(void)
     return s_apfnAppState[(DAT_105ccb68[21])]();
 }
 
-void BrAppResetForTest(void)
-{
-    (DAT_105ccb68[21])    = BR_APP_COLD_INIT;
-    (DAT_105ccb68[20])    = 0;
-    (DAT_105ccb68[22]) = 0;
-    g_brAppContinue = 1;
-    (*(int32_t *)&BrGbiRectG_A7514)    = 0;
-    (*(int32_t *)&BrGbiRectG_A7518)    = 0;
-    /* 0x105BC730..73C too. They are module globals and this function's job is
-     * load-time state; without it, "CoInitialize failed so the argument stores
-     * never ran" is indistinguishable from "a previous test left them set",
-     * and the abort-path test silently passes on stale data. */
-    s_args.hInstance = NULL; s_args.hPrevInstance = NULL;
-    s_args.pszCmdLine = NULL; s_args.nCmdShow = 0;
-    BrBootFrontierReset();
-}
+/* (port-only BrAppResetForTest removed) */
+
 
 /* ==================================================================== *
  * RallyMain and the argument block. See br_boot.h for the full listing.
  * ==================================================================== */
 
-const BrBootArgs *BrAppArgs(void) { return &s_args; }
+/* (port-only BrAppArgs removed) */
+
 
 /* WHAT IT DOES: this is where Boss Rally starts. The launcher hands control
  * here, and it brings the game up in order -- check the machine has DirectX 6
