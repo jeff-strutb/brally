@@ -77,29 +77,32 @@ typedef struct BrStartupState {
  * ========================================================================== */
 
 typedef unsigned char BrUiObj;      /* byte-addressed; see the note above */
+#include "br_ui.h"
+#include "slice3_39.h"   /* BrTextBox */
 
-/* Offsets the original touches on the object itself. */
-#define BR_UI_OFF_VTBL      0x0000u /* const BrUiObjVtbl *                   */
-#define BR_UI_OFF_ONAPPLY   0x0010u /* void (*)(BrUiObj *), may be NULL      */
-#define BR_UI_OFF_FLAGS     0x001Cu /* int32 bitfield; bit 1 and bit 4 used  */
-#define BR_UI_OFF_F3C       0x003Cu /* float                                 */
-#define BR_UI_OFF_F40       0x0040u /* float                                 */
-#define BR_UI_OFF_W2A40     0x2A40u /* int16                                 */
-#define BR_UI_OFF_ITEM      0x2B5Cu /* item[0]                               */
-#define BR_UI_OFF_SEL       0x3838u /* nested widget dispatched through +0x20 */
-#define BR_UI_OFF_TBL3C98   0x3C98u /* void *[] , stride BR_UI_ITEM_STRIDE   */
-#define BR_UI_OFF_W1E20C    0x1E20Cu/* int16 -- the "code" every BrUiCode* writes */
+/* Offsets the original touches on the object itself: the 0x1E214-byte object
+ * is br_ui.h's BrUiCtl_, so they are its fields' (the comments keep the
+ * original's offsets). */
+#define BR_UI_OFF_VTBL      offsetof(BrUiCtl_, pVtbl)       /* 0x0000 */
+#define BR_UI_OFF_ONAPPLY   offsetof(BrUiCtl_, pfn10)       /* 0x0010 */
+#define BR_UI_OFF_FLAGS     offsetof(BrUiCtl_, flags1C)     /* 0x001C */
+#define BR_UI_OFF_F3C       offsetof(BrUiCtl_, x)           /* 0x003C */
+#define BR_UI_OFF_F40       offsetof(BrUiCtl_, y)           /* 0x0040 */
+#define BR_UI_OFF_W2A40     offsetof(BrUiCtl_, aStepId)     /* 0x2A40 */
+#define BR_UI_OFF_ITEM      offsetof(BrUiCtl_, aText)       /* 0x2B5C */
+#define BR_UI_OFF_SEL       offsetof(BrUiCtl_, list)        /* 0x3838 */
+#define BR_UI_OFF_W1E20C    offsetof(BrUiCtl_, w1E20C)      /* 0x1E20C */
 
-#define BR_UI_ITEM_STRIDE   0x0438u
+#define BR_UI_ITEM_STRIDE   sizeof(BrTextBox)               /* 0x438 */
 
-/* Offsets inside one item, relative to BR_UI_OFF_ITEM + stride*i. */
-#define BR_UI_ITEM_OFF_VTBL 0x0000u /* const BrUiWidgetVtbl *   (obj 0x2B5C) */
-#define BR_UI_ITEM_OFF_B08  0x0008u /* uint8                    (obj 0x2B64) */
-#define BR_UI_ITEM_OFF_TEXT 0x0009u /* NUL-terminated text      (obj 0x2B65) */
-#define BR_UI_ITEM_OFF_W40A 0x040Au /* int16                    (obj 0x2F66) */
-#define BR_UI_ITEM_OFF_F410 0x0410u /* float                    (obj 0x2F6C) */
-#define BR_UI_ITEM_OFF_F414 0x0414u /* float                    (obj 0x2F70) */
-#define BR_UI_ITEM_OFF_I420 0x0420u /* int32                    (obj 0x2F7C) */
+/* Offsets inside one item (a BrTextBox), relative to BR_UI_OFF_ITEM + stride*i. */
+#define BR_UI_ITEM_OFF_VTBL offsetof(BrTextBox, pVtbl)      /* 0x000 */
+#define BR_UI_ITEM_OFF_B08  offsetof(BrTextBox, f08)        /* 0x008 */
+#define BR_UI_ITEM_OFF_TEXT offsetof(BrTextBox, sz)         /* 0x009 */
+#define BR_UI_ITEM_OFF_W40A offsetof(BrTextBox, width)      /* 0x40A */
+#define BR_UI_ITEM_OFF_F410 offsetof(BrTextBox, x)          /* 0x410 */
+#define BR_UI_ITEM_OFF_F414 offsetof(BrTextBox, y)          /* 0x414 */
+#define BR_UI_ITEM_OFF_I420 offsetof(BrTextBox, f420)       /* 0x420 */
 
 /* The text buffer's true capacity is NOT established; 0x40A - 0x009 == 0x401
  * is merely the distance to the next field this range reads. Nothing here

@@ -1,3 +1,4 @@
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 /* WHAT IT DOES: the same highlight-sync as its siblings, and additionally
  * caches the selected row's record where the rest of the page can read it. */
 /* @implements 0x100381D0 glide BrUiPoll1003EBE0
@@ -50,14 +51,14 @@ extern "C" {
 
 int BrUiPoll1003EBE0(Obj381D0 *pObj)
 {
-    int row = (BR_VFN(&(pObj->m3838), 8, int (*)(void *, int)))(&(pObj->m3838), g_5BD8);
+    int row = (BR_VFN(&((*(class Sel381D0 *)&((BrUiCtl_ *)(pObj))->list)), 8, int (*)(void *, int)))(&((*(class Sel381D0 *)&((BrUiCtl_ *)(pObj))->list)), g_5BD8);
 
     if (row >= 0)
         g_5BD8 = row;
     else
         row = g_5BD8;
 
-    g_brRec0AAB80 = *(int *)&pObj->aRows[row];
+    g_brRec0AAB80 = *(int *)&(*(BrRec381D0 (*)[1])&((BrUiCtl_ *)(pObj))->list.aItems[0].f434)[row];
 
     return 1;
 }

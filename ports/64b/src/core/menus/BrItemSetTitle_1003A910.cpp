@@ -25,6 +25,7 @@
  */
 #define _CRTIMP __declspec(dllimport)
 #include <stdio.h>
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 #include <string.h>
 
 class Item438F {
@@ -87,12 +88,12 @@ int BrItemSetTitle_1003A910(Obj3A910 *pObj)
         break;
     }
 
-    pLabel = pObj->m2B5C.szName;
+    pLabel = (*(class Item438F *)&((BrUiCtl_ *)(pObj))->aText[0]).szName;
     strcpy(pLabel, szTmp);
 
-    (BR_VFN(&(pObj->m2B5C), 1, void (*)(void *)))(&(pObj->m2B5C));
+    (BR_VFN(&((*(class Item438F *)&((BrUiCtl_ *)(pObj))->aText[0])), 1, void (*)(void *)))(&((*(class Item438F *)&((BrUiCtl_ *)(pObj))->aText[0])));
     if (pLabel != 0)
-        (BR_VFN(&(pObj->m2B5C), 4, void (*)(void *)))(&(pObj->m2B5C));
+        (BR_VFN(&((*(class Item438F *)&((BrUiCtl_ *)(pObj))->aText[0])), 4, void (*)(void *)))(&((*(class Item438F *)&((BrUiCtl_ *)(pObj))->aText[0])));
 
     return 1;
 }

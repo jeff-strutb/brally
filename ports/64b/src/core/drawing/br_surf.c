@@ -271,10 +271,10 @@ void BrSurfSetColourKey(BrSurf *pSurf, uint32_t colorref)
 /* WHAT IT DOES: blit a surface's pixel data to the Glide linear frame buffer. */
 /* @implements 0x100014E0 glide BrGlideLfbWrite */
 
-void BrGlideLfbWrite(int *param_1)
+void BrGlideLfbWrite(BrSurf *param_1)
 
 {
-  grLfbWriteRegion(1, 0, 0, 0, param_1[1], param_1[2], param_1[1] * 2, *param_1);
+  grLfbWriteRegion(1, 0, 0, 0, param_1->cx, param_1->cy, param_1->cx * 2, param_1->pPix);
   return;
 }
 

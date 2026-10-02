@@ -7142,18 +7142,6 @@ extern double g_aBrSfxChanRate[15];  /* 0x1184C1E8 */
 #undef DAT_1184c260
 extern int DAT_1184c260;  /* 0x1184C260 */
 #pragma pop_macro("DAT_1184c260")
-#pragma push_macro("DAT_1184c2a8")
-#undef DAT_1184c2a8
-extern LPVOID DAT_1184c2a8;  /* 0x1184C2A8 */
-#pragma pop_macro("DAT_1184c2a8")
-#pragma push_macro("DAT_1184c2b0")
-#undef DAT_1184c2b0
-extern LPWAVEFORMATEX DAT_1184c2b0;  /* 0x1184C2B0 */
-#pragma pop_macro("DAT_1184c2b0")
-#pragma push_macro("DAT_1184c344")
-#undef DAT_1184c344
-extern LPDIRECTSOUNDBUFFER DAT_1184c344;  /* 0x1184C344 */
-#pragma pop_macro("DAT_1184c344")
 #pragma push_macro("g_184C454")
 #undef g_184C454
 extern int g_184C454;  /* 0x1184C454 */

@@ -1,4 +1,5 @@
 #include "slice2_25.h"   /* br_globals: its objects */
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 /* WHAT IT DOES: handle the private window messages the multiplayer layer
  * posts to itself -- each case selects the affected slot and runs the
  * matching update. */
@@ -52,7 +53,7 @@ int __stdcall BrWmAppHook35A30(char * hwnd, unsigned int msg, uintptr_t wp, intp
     case 0x501:
         p = g_pGame;
         if (p != 0) {
-            Sel *s = &p->sel;
+            Sel *s = &(*(class Sel *)&((BrUiCtl_ *)(p))->list);
             s->s4((int)lp, 0, 1, &g_selArg, 1);
         }
         GlobalUnlock(GlobalHandle((LPCVOID)lp));

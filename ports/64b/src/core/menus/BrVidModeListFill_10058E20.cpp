@@ -1,3 +1,4 @@
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 /* WHAT IT DOES: fills the video-mode dropdown. Walks the list of display
  * modes the driver reported, prints each as "width x height x depth" (with
  * the refresh rate when one is known) and adds it to the selector; the mode
@@ -130,8 +131,8 @@ take:
         }
 
         if ((*(Ctl58E20 * *)&DAT_10ac5d44) != 0) {
-            (BR_VFN(&((*(Ctl58E20 * *)&DAT_10ac5d44)->m3838), 4, void (*)(void *, char *, int, int, void *, int)))(&((*(Ctl58E20 * *)&DAT_10ac5d44)->m3838), sz, 0, 1, &DAT_100aacc8, 1);
-            (BR_VFN(&((*(Ctl58E20 * *)&DAT_10ac5d44)->m3838), 10, void (*)(void *, void *, int, int)))(&((*(Ctl58E20 * *)&DAT_10ac5d44)->m3838), pM, 0x14, idx);
+            (BR_VFN(&((BrUiCtl_ *)(*(Ctl58E20 * *)&DAT_10ac5d44))->list, 4, void (*)(void *, char *, int, int, void *, int)))(&((*(class Sel58E20 *)&((BrUiCtl_ *)((*(Ctl58E20 * *)&DAT_10ac5d44)))->list)), sz, 0, 1, &DAT_100aacc8, 1);
+            (BR_VFN(&((BrUiCtl_ *)(*(Ctl58E20 * *)&DAT_10ac5d44))->list, 10, void (*)(void *, void *, int, int)))(&((*(class Sel58E20 *)&((BrUiCtl_ *)((*(Ctl58E20 * *)&DAT_10ac5d44)))->list)), pM, 0x14, idx);
         }
         pM = pM->pNext;
         idx = idx + 1;

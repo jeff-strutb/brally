@@ -65,16 +65,16 @@ void FUN_10061310(void)
     (*(int *)((char *)&(*(int *)&g_BrCtrlCfg) + 0x2A0)) /* BR_LP64_BYTE_VIEW */ = v;
     switch (v) {
     case 1:
-      g_BrPadModeBytes = (int)&(*(int *)((char *)&(*(int *)&g_BrCtrlCfg) + 0xA8)) /* BR_LP64_BYTE_VIEW */;
+      g_BrPadModeBytes = (const unsigned char *)&g_BrCtrlCfg + 0xA8;
       break;
     case 2:
-      g_BrPadModeBytes = (int)&(*(int *)((char *)&(*(int *)&g_BrCtrlCfg) + 0x150)) /* BR_LP64_BYTE_VIEW */;
+      g_BrPadModeBytes = (const unsigned char *)&g_BrCtrlCfg + 0x150;
       break;
     case 3:
-      g_BrPadModeBytes = (int)&(*(int *)((char *)&(*(int *)&g_BrCtrlCfg) + 0x1F8)) /* BR_LP64_BYTE_VIEW */;
+      g_BrPadModeBytes = (const unsigned char *)&g_BrCtrlCfg + 0x1F8;
       break;
     default:
-      g_BrPadModeBytes = (int)&(*(int *)&g_BrCtrlCfg);
+      g_BrPadModeBytes = (const unsigned char *)&g_BrCtrlCfg;
       break;
     }
   }

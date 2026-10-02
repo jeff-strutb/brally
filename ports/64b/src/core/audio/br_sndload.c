@@ -78,7 +78,7 @@ BrSndLoadVoice *BrSndVoiceLoad(const char *pszPath)
      * them but threaded the NULL test past the guard).  Only a lone
      * `if (x != 0) F else S` gives `je S` with F falling through, and only
      * a goto lets the three earlier failures land on that same F. */
-    if (BrSndListAppend(&DAT_1184c2a8, pVoice) != 0) {
+    if (BrSndListAppend(&g_BrSndPrimary, (BrSndVoice *)pVoice) != 0) {
 fail:
         if (pVoice != NULL) {
             BrSndVoiceBufRelease(pVoice);

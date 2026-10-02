@@ -1931,7 +1931,7 @@ void BrGlideFlipWait(void);
 #pragma pop_macro("BrGlideFlipWait")
 #pragma push_macro("BrGlideLfbWrite")
 #undef BrGlideLfbWrite
-void BrGlideLfbWrite(int *);
+void BrGlideLfbWrite(struct BrSurf *);
 #pragma pop_macro("BrGlideLfbWrite")
 #pragma push_macro("BrGlideResOpen")
 #undef BrGlideResOpen
@@ -3991,7 +3991,7 @@ void BrSndBankSetCar(int, int);
 #pragma pop_macro("BrSndBankSetCar")
 #pragma push_macro("BrSndBufFreeAll")
 #undef BrSndBufFreeAll
-int BrSndBufFreeAll(int);
+int BrSndBufFreeAll(struct BrSndVoice *);
 #pragma pop_macro("BrSndBufFreeAll")
 #pragma push_macro("BrSndBufSetPan")
 #undef BrSndBufSetPan
@@ -4003,7 +4003,7 @@ int BrSndBufSetVolume(struct BrSndVoice *, int);
 #pragma pop_macro("BrSndBufSetVolume")
 #pragma push_macro("BrSndBufStopAll")
 #undef BrSndBufStopAll
-int BrSndBufStopAll(int);
+int BrSndBufStopAll(struct BrSndVoice *);
 #pragma pop_macro("BrSndBufStopAll")
 #pragma push_macro("BrSndCarStep")
 #undef BrSndCarStep
@@ -4027,7 +4027,7 @@ float BrSndDoppler(const struct BrVec3 *, const struct BrVec3 *, const struct Br
 #pragma pop_macro("BrSndDoppler")
 #pragma push_macro("BrSndListAppend")
 #undef BrSndListAppend
-int BrSndListAppend(void * *, struct BrSndVoice *);
+int BrSndListAppend(struct BrSndVoice *, struct BrSndVoice *);
 #pragma pop_macro("BrSndListAppend")
 #pragma push_macro("BrSndNearestCommit")
 #undef BrSndNearestCommit
@@ -5059,7 +5059,7 @@ int BrUiTweenBegin_10047CB0(void *, int);
 #pragma pop_macro("BrUiTweenBegin_10047CB0")
 #pragma push_macro("BrUiTweenCurve_10047CE0")
 #undef BrUiTweenCurve_10047CE0
-float BrUiTweenCurve_10047CE0(struct BrUiTwCurve *, int);
+float BrUiTweenCurve_10047CE0(struct BrUiCtl_ *, int);
 #pragma pop_macro("BrUiTweenCurve_10047CE0")
 #pragma push_macro("BrUiTweenReset_10047D10")
 #undef BrUiTweenReset_10047D10

@@ -97,50 +97,44 @@ int BrSndVoiceConfigure(int param_1,int param_2,int param_3,int param_4)
 /* WHAT IT DOES: walk the linked list of active sound buffers and stop each one. */
 /* @implements 0x1006BB60 glide BrSndBufStopAll */
 
-int BrSndBufStopAll(int param_1)
+int BrSndBufStopAll(BrSndVoice *param_1)
 
 {
-  struct BrSndVoice *iVar1;
-  int *piVar2;
-  
-  piVar2 = (int *)(param_1 + 0x1a8);
-  iVar1 = *(int *)(param_1 + 0x1a8);
-  while (iVar1 != 0) {
-    BrSndVoiceBufStop(iVar1);
-    piVar2 = (int *)(*piVar2 + 0x1a8);
-    iVar1 = *piVar2;
-  }
+  BrSndVoice *v;
+
+  for (v = param_1->pNext; v != 0; v = v->pNext)
+    BrSndVoiceBufStop(v);
   return 0;
 }
 
 /* WHAT IT DOES: walk the linked list of active sound buffers, stop each one, and free its GlobalAlloc memory. */
 /* @implements 0x1006BB90 glide BrSndBufFreeAll */
 
-int BrSndBufFreeAll(int param_1)
+int BrSndBufFreeAll(BrSndVoice *param_1)
 
 {
-  int *pMem;
-  int *puVar1;
+  BrSndVoice *pMem;
+  BrSndVoice *pNext;
   HGLOBAL pvVar2;
-  
-  pMem = *(int **)(param_1 + 0x1a8);
-  *(int *)(param_1 + 0x1a8) = 0;
-  while (pMem != (int *)0x0) {
+
+  pMem = param_1->pNext;
+  param_1->pNext = 0;
+  while (pMem != 0) {
     BrSndVoiceBufRelease(pMem);
-    pvVar2 = GlobalHandle((LPCVOID)pMem[2]);
+    pvVar2 = GlobalHandle(pMem->pFormat);
     GlobalUnlock(pvVar2);
-    pvVar2 = GlobalHandle((LPCVOID)pMem[2]);
+    pvVar2 = GlobalHandle(pMem->pFormat);
     GlobalFree(pvVar2);
-    pvVar2 = GlobalHandle((LPCVOID)*pMem);
+    pvVar2 = GlobalHandle(pMem->pData);
     GlobalUnlock(pvVar2);
-    pvVar2 = GlobalHandle((LPCVOID)*pMem);
+    pvVar2 = GlobalHandle(pMem->pData);
     GlobalFree(pvVar2);
-    puVar1 = (int *)pMem[0x6a];
+    pNext = pMem->pNext;
     pvVar2 = GlobalHandle(pMem);
     GlobalUnlock(pvVar2);
     pvVar2 = GlobalHandle(pMem);
     GlobalFree(pvVar2);
-    pMem = puVar1;
+    pMem = pNext;
   }
   return 0;
 }

@@ -46,6 +46,7 @@
  */
 #define _CRTIMP __declspec(dllimport)
 #include "br_race.h"   /* br_globals: its objects */
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 #include "slice3_39.h"   /* BrTextBox, the canonical record */
 #include "slice2_25.h"   /* br_globals: its objects */
 #include <string.h>
@@ -110,14 +111,14 @@ int BrItemSetModeLabel_100393C0(Obj393C0 *pObj)
     char *s;
 
     if (g_brPAA29B8 == DAT_10ac5cbc && DAT_10ac5c40 == 0) {
-        (*(float *)&((BrTextBox *)&(pObj->m2B5C))->y) = (*(float *)&((BrTextBox *)&(pObj->m2B5C))->y) - DAT_10077628;
+        (*(float *)&((BrTextBox *)&((*(class Item438K *)&((BrUiCtl_ *)(pObj))->aText[0])))->y) = (*(float *)&((BrTextBox *)&((*(class Item438K *)&((BrUiCtl_ *)(pObj))->aText[0])))->y) - DAT_10077628;
 
-        strcpy((*(char (*)[1025])&((BrTextBox *)&(pObj->m2B5C))->sz[0]), BrStrGet(0x1C));
+        strcpy((*(char (*)[1025])&((BrTextBox *)&((*(class Item438K *)&((BrUiCtl_ *)(pObj))->aText[0])))->sz[0]), BrStrGet(0x1C));
 
-        (BR_VFN(&(pObj->m2B5C), 1, void (*)(void *)))(&(pObj->m2B5C));
+        (BR_VFN(&((*(class Item438K *)&((BrUiCtl_ *)(pObj))->aText[0])), 1, void (*)(void *)))(&((*(class Item438K *)&((BrUiCtl_ *)(pObj))->aText[0])));
         Br85ItemApply((struct BrCtl85 *)(pObj), 0);
 
-        (*(float *)&((BrTextBox *)&(pObj->m2B5C))->y) = (*(float *)&((BrTextBox *)&(pObj->m2B5C))->y) - DAT_1007762c;
+        (*(float *)&((BrTextBox *)&((*(class Item438K *)&((BrUiCtl_ *)(pObj))->aText[0])))->y) = (*(float *)&((BrTextBox *)&((*(class Item438K *)&((BrUiCtl_ *)(pObj))->aText[0])))->y) - DAT_1007762c;
         return 1;
     }
 
@@ -139,9 +140,9 @@ int BrItemSetModeLabel_100393C0(Obj393C0 *pObj)
         s = BrStrGet((*(int (*)[])&g_aBrAC3B0)[k]);
     }
 have:
-    strcpy((*(char (*)[1025])&((BrTextBox *)&(pObj->m2B5C))->sz[0]), s);
+    strcpy((*(char (*)[1025])&((BrTextBox *)&((*(class Item438K *)&((BrUiCtl_ *)(pObj))->aText[0])))->sz[0]), s);
 
-    (BR_VFN(&(pObj->m2B5C), 1, void (*)(void *)))(&(pObj->m2B5C));
+    (BR_VFN(&((*(class Item438K *)&((BrUiCtl_ *)(pObj))->aText[0])), 1, void (*)(void *)))(&((*(class Item438K *)&((BrUiCtl_ *)(pObj))->aText[0])));
     Br85ItemApply((struct BrCtl85 *)(pObj), 0);
 
     return 1;

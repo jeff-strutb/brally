@@ -156,7 +156,7 @@ void BrFrameBeginDl(BrView *param_1,int param_2)
   BR_EMIT(0xba000602, DAT_106e79b0)
   BR_EMIT(0xba001402, 0)
   BR_EMIT(0xf9000000, 0)
-  BR_EMIT(0x1020040, (int)&(*(char *)&DAT_100a9ec0))
+  BR_EMIT(0x1020040, br_addr32(&DAT_100a9ec0))
   BR_EMIT(0xb6000000, 0x1f3204)
   BR_EMIT(0xb7000000, 0x2000)
   if (DAT_100aa014 != 0) {

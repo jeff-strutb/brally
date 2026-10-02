@@ -283,8 +283,8 @@ int BrSndBankFree(void)
   if (BrSndG18290FC == 0) {
     return 1;
   }
-  BrSndBufStopAll((int)&DAT_1184c2a8);
-  BrSndBufFreeAll((int)&DAT_1184c2a8);
+  BrSndBufStopAll(&g_BrSndPrimary);
+  BrSndBufFreeAll(&g_BrSndPrimary);
   cGroups = DAT_1184c260;
   if (0 < cGroups) {
     pRow = BrSndVoices;
@@ -520,14 +520,14 @@ int BrSndBufSetVolume(BrSndVoice *param_1,int param_2)
  * headed at `param_1`, clearing the new node's next and its +0x1C word. Returns 0. */
 /* @implements 0x1006B3C0 glide BrSndListAppend */
 
-int BrSndListAppend(LPVOID * param_1,BrSndVoice * param_2)
+int BrSndListAppend(BrSndVoice *param_1,BrSndVoice *param_2)
 {
   param_2->pNext = 0;
   param_2->f1C = 0;
-  while (*(int *)(param_1 + 0x1a8) != 0) {
-    param_1 = *(int *)(param_1 + 0x1a8);
+  while (param_1->pNext != 0) {
+    param_1 = param_1->pNext;
   }
-  *(int *)(param_1 + 0x1a8) = param_2;
+  param_1->pNext = param_2;
   return 0;
 }
 

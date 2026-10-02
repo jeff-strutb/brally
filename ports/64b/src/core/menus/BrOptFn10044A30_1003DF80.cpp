@@ -59,10 +59,10 @@ extern "C" int BrOptFn10044A30(void *pObj_)
     int v;
 
     if (g_guardB != 0) {
-        pObj->p2AE8->s6(0);
+        (*(Sub2AE8 * *)&((BrUiCtl_ *)(pObj))->pOwner)->s6(0);
         BrExt_10038F30(0);
     }
-    pObj->p2AE8->s7();
+    (*(Sub2AE8 * *)&((BrUiCtl_ *)(pObj))->pOwner)->s7();
 
     if ((*(CurPhase * *)&g_brPAA29B8) != 0)
         br_vdelete((*(CurPhase * *)&g_brPAA29B8));

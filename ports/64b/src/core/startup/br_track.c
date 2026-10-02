@@ -640,7 +640,7 @@ void BrTrackLoad(int param_1)
   FILE **uVar3;
   int iVar6;
   float fVar11;
-  struct { float x; float y; float z; } local_40c;
+  BrVec3 local_40c;
   char local_400 [1024];
 
   BrTrackLoadHandling(param_1);
@@ -678,7 +678,7 @@ void BrTrackLoad(int param_1)
       local_40c.x = 1.0f;
       local_40c.y = 0.0f;
       local_40c.z = 0.0f;
-      BrMtxXfmDir3((int *)&local_40c, (int *)&local_40c, (int)&((BrTrkInst *)BR_PTR32(void *, g_brTrkHdr.aInstances))[iVar6]);
+      BrMtxXfmDir3(&local_40c, &local_40c, (const struct BrMat4 *)&((BrTrkInst *)BR_PTR32(void *, g_brTrkHdr.aInstances))[iVar6]);
       fVar11 = BrVec3Length((int *)&local_40c);
       if (fVar11 != _DAT_10077528) {
         fVar11 = _DAT_10077524 / fVar11;

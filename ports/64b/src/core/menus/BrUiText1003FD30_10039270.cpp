@@ -18,6 +18,7 @@
  */
 #define _CRTIMP __declspec(dllimport)
 #include <string.h>
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 
 class Item39270 {
 public:
@@ -59,9 +60,9 @@ extern "C" {
 
 int BrUiText1003FD30(Obj39270 *pObj)
 {
-    strcpy(pObj->m2B5C.szName, BrStrGet(g_brTblABBB8[g_brSel5D80]));
+    strcpy((*(class Item39270 *)&((BrUiCtl_ *)(pObj))->aText[0]).szName, BrStrGet(g_brTblABBB8[g_brSel5D80]));
 
-    (BR_VFN(&(pObj->m2B5C), 1, void (*)(void *)))(&(pObj->m2B5C));
+    (BR_VFN(&((*(class Item39270 *)&((BrUiCtl_ *)(pObj))->aText[0])), 1, void (*)(void *)))(&((*(class Item39270 *)&((BrUiCtl_ *)(pObj))->aText[0])));
     Br85ItemApply((struct BrCtl85 *)(pObj), 0);
 
     return 1;

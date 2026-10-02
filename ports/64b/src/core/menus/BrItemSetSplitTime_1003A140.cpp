@@ -62,6 +62,7 @@
  */
 #define _CRTIMP __declspec(dllimport)
 #include <stdio.h>
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 #include <string.h>
 
 class Item438I {
@@ -147,12 +148,12 @@ int BrItemSetSplitTime_1003A140(Obj3A140 *pObj)
     if (strlen(szTime) == 0)
         return 0;
 
-    pLabel = pObj->m2B5C.szName;
+    pLabel = (*(class Item438I *)&((BrUiCtl_ *)(pObj))->aText[0]).szName;
     strcpy(pLabel, _strupr(szTime));
 
-    (BR_VFN(&(pObj->m2B5C), 1, void (*)(void *)))(&(pObj->m2B5C));
+    (BR_VFN(&((*(class Item438I *)&((BrUiCtl_ *)(pObj))->aText[0])), 1, void (*)(void *)))(&((*(class Item438I *)&((BrUiCtl_ *)(pObj))->aText[0])));
     if (pLabel != 0)
-        (BR_VFN(&(pObj->m2B5C), 4, void (*)(void *)))(&(pObj->m2B5C));
+        (BR_VFN(&((*(class Item438I *)&((BrUiCtl_ *)(pObj))->aText[0])), 4, void (*)(void *)))(&((*(class Item438I *)&((BrUiCtl_ *)(pObj))->aText[0])));
 
     return 1;
 }

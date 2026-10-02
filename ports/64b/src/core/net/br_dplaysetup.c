@@ -118,7 +118,7 @@ int BrDPlayCreate(void)
   g_brPA9D008 = (BrOptUi *)&g_BrDPlayCtx;
   if (iVar4 == 0) {
     (*(CC_std_5 *)&((void **)*(void ***)((*(int * *)&g_brP277B40)))[35])(
-        (*(int * *)&g_brP277B40), (int)&DAT_10077500, (int)BrNetSessionStore, g_brOwner5BC72C, 0);
+        (*(int * *)&g_brP277B40), (void *)&DAT_10077500, (void *)BrNetSessionStore, g_brOwner5BC72C, 0);
     iVar4 = BrDpCreateIface(&DAT_10ac3068);
     if (iVar4 < 0) {
       return 0;

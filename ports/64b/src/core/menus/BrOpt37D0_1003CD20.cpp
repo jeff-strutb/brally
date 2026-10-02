@@ -1,3 +1,4 @@
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 /* WHAT IT DOES: leave this page only when a session is actually live --
  * otherwise it does nothing, so the button is inert until there is something
  * to leave. */
@@ -41,8 +42,8 @@ extern "C" {
 int BrOpt37D0(BrGameObjCD *pObj)
 {
     if (DAT_10ac5bec != 0 && g_guardB != 0) {
-        pObj->pSub->f68 = 0;
-        pObj->pSub->f18(0);
+        (*(BrPhaseCD * *)&((BrUiCtl_ *)(pObj))->pOwner)->f68 = 0;
+        (*(BrPhaseCD * *)&((BrUiCtl_ *)(pObj))->pOwner)->f18(0);
         BrExt_10038F30(0);
     }
     return 1;

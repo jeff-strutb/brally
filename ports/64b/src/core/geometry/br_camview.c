@@ -319,7 +319,7 @@ void FUN_10011d20(void)
     m.m[3][2] = (*(float *)((char *)BR_PTR32(void *, g_brTrkHdr.aPathRoot) + 0x54) + g_brRaceFade) - _DAT_10077284;
     BrVec3MulAdd((BrVec3 *)m.m[3], (BrVec3 *)m.m[3], (BrVec3 *)m.m[0], -0.3f);
     BrVec3MulAdd((BrVec3 *)m.m[3], (BrVec3 *)m.m[3], (BrVec3 *)m.m[1], -0.6f);
-    { BrDlCmd *pEmit_ = (*(BrDlCmd * *)&g_BrGfxPtr)++; pEmit_->op = 0x1060040; pEmit_->arg = (int)&(DAT_100a9ec0[0]); }
+    { BrDlCmd *pEmit_ = (*(BrDlCmd * *)&g_BrGfxPtr)++; pEmit_->op = 0x1060040; pEmit_->arg = br_addr32(&DAT_100a9ec0[0]); }
     { BrDlCmd *pEmit_ = (*(BrDlCmd * *)&g_BrGfxPtr)++; pEmit_->op = 0x1030040; pEmit_->arg = br_addr32(g_BrMtxSlot); }
     BrMat4Scale(&g_BrDrawCombined, 0.0009765625f, 0.0009765625f, 0.0009765625f);
     BrMat4Mul(&g_BrDrawCombined, &m, &m);   /* m = view * m (slice1_05's A, B, out order) */

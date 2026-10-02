@@ -177,6 +177,14 @@ typedef struct BrSndVoice {
     struct BrSndVoice *pNext;                /* +0x01A8 */
 } BrSndVoice;
 
+/* 0x1184C2A8: the primary buffer's record, a voice like the others; its
+ * pNext heads the list of every loaded voice. The original also names its
+ * fields as globals. */
+extern BrSndVoice g_BrSndPrimary;
+#define DAT_1184c2a8 (g_BrSndPrimary.pData)                                    /* 0x1184C2A8 */
+#define DAT_1184c2b0 (*(LPWAVEFORMATEX *)&g_BrSndPrimary.pFormat)              /* 0x1184C2B0 */
+#define DAT_1184c344 (*(LPDIRECTSOUNDBUFFER *)&g_BrSndPrimary.pBuf)            /* 0x1184C344 */
+
 /* ------------------------------------------------------------------ */
 /* Module globals                                                      */
 /* ------------------------------------------------------------------ */

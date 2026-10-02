@@ -3,6 +3,7 @@
  * BrCtlBindingToItem (writes the bound key's name into a menu label). */
 #define _CRTIMP __declspec(dllimport)
 #include "br_coretypes.h"   /* br_globals: its objects */
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 #include "slice3_42.h"   /* br_globals: its objects */
 #include <string.h>
 
@@ -201,49 +202,49 @@ int BrCtlBindingToItem(Obj39620 *pObj)
         case 0:
             i = (unsigned char)(*(Cfg39620 *)&g_BrCtrlCfg).GetB(0, (*(BrBind39620 (*)[21])&g_brBindAAAD4)[g_brSel5B98].key);
             i = BrCtlNameFind(0, i);
-            strcpy(pObj->m2B5C.szName, g_aBrKeyName3B44[i]);
+            strcpy((*(class Item39620 *)&((BrUiCtl_ *)(pObj))->aText[0]).szName, g_aBrKeyName3B44[i]);
             break;
         case 1:
             c = (*(Cfg39620 *)&g_BrCtrlCfg).GetB(1, (*(BrBind39620 (*)[21])&g_brBindAAAD4)[g_brSel5B98].key);
             if ((*(Cfg39620 *)&g_BrCtrlCfg).GetA(1, (*(BrBind39620 (*)[21])&g_brBindAAAD4)[g_brSel5B98].key) != 0) {
                 i = BrCtlNameFind(1, c);
-                strcpy(pObj->m2B5C.szName, g_aBrDevName1C74[i]);
+                strcpy((*(class Item39620 *)&((BrUiCtl_ *)(pObj))->aText[0]).szName, g_aBrDevName1C74[i]);
             } else if (c != 0) {
                 i = BrCtlNameFind(0, c);
-                strcpy(pObj->m2B5C.szName, g_aBrKeyName3B44[i]);
+                strcpy((*(class Item39620 *)&((BrUiCtl_ *)(pObj))->aText[0]).szName, g_aBrKeyName3B44[i]);
             } else {
-                strcpy(pObj->m2B5C.szName, BrStrGet(0xB1));
+                strcpy((*(class Item39620 *)&((BrUiCtl_ *)(pObj))->aText[0]).szName, BrStrGet(0xB1));
             }
             break;
         case 2:
             c = (*(Cfg39620 *)&g_BrCtrlCfg).GetB(2, (*(BrBind39620 (*)[21])&g_brBindAAAD4)[g_brSel5B98].key);
             if ((*(Cfg39620 *)&g_BrCtrlCfg).GetA(2, (*(BrBind39620 (*)[21])&g_brBindAAAD4)[g_brSel5B98].key) != 0) {
                 i = BrCtlNameFind(2, c);
-                strcpy(pObj->m2B5C.szName, g_aBrDevName1C74[i]);
+                strcpy((*(class Item39620 *)&((BrUiCtl_ *)(pObj))->aText[0]).szName, g_aBrDevName1C74[i]);
             } else if (c != 0) {
                 i = BrCtlNameFind(0, c);
-                strcpy(pObj->m2B5C.szName, g_aBrKeyName3B44[i]);
+                strcpy((*(class Item39620 *)&((BrUiCtl_ *)(pObj))->aText[0]).szName, g_aBrKeyName3B44[i]);
             } else {
-                strcpy(pObj->m2B5C.szName, BrStrGet(0xB1));
+                strcpy((*(class Item39620 *)&((BrUiCtl_ *)(pObj))->aText[0]).szName, BrStrGet(0xB1));
             }
             break;
         case 3:
             c = (*(Cfg39620 *)&g_BrCtrlCfg).GetB(3, (*(BrBind39620 (*)[21])&g_brBindAAAD4)[g_brSel5B98].key);
             if ((*(Cfg39620 *)&g_BrCtrlCfg).GetA(3, (*(BrBind39620 (*)[21])&g_brBindAAAD4)[g_brSel5B98].key) != 0) {
                 i = BrCtlNameFind(3, c);
-                strcpy(pObj->m2B5C.szName, g_aBrDevName1B0C[i]);
+                strcpy((*(class Item39620 *)&((BrUiCtl_ *)(pObj))->aText[0]).szName, g_aBrDevName1B0C[i]);
             } else if (c != 0) {
                 i = BrCtlNameFind(0, c);
-                strcpy(pObj->m2B5C.szName, g_aBrKeyName3B44[i]);
+                strcpy((*(class Item39620 *)&((BrUiCtl_ *)(pObj))->aText[0]).szName, g_aBrKeyName3B44[i]);
             } else {
-                strcpy(pObj->m2B5C.szName, BrStrGet(0xB1));
+                strcpy((*(class Item39620 *)&((BrUiCtl_ *)(pObj))->aText[0]).szName, BrStrGet(0xB1));
             }
             break;
         }
     } else {
-        strcpy(pObj->m2B5C.szName, BrStrGet(0xB2));
+        strcpy((*(class Item39620 *)&((BrUiCtl_ *)(pObj))->aText[0]).szName, BrStrGet(0xB2));
     }
-    (BR_VFN(&(pObj->m2B5C), 1, void (*)(void *)))(&(pObj->m2B5C));
+    (BR_VFN(&((*(class Item39620 *)&((BrUiCtl_ *)(pObj))->aText[0])), 1, void (*)(void *)))(&((*(class Item39620 *)&((BrUiCtl_ *)(pObj))->aText[0])));
     Br85ItemApply((struct BrCtl85 *)(pObj), 0);
     return 1;
 }

@@ -146,7 +146,7 @@ void FUN_100119c0(struct BrHudView * param_1, short *param_2)
   (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2;
   BrRdpSetCombineLERP((BrGfxWords *)p_, 0, 0, 0, 0x3eb, 0x3e9, 0, 0x3eb, 0, 0, 0, 0, 0x3eb, 0x3e9, 0, 0x3eb, 0);
   { p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = (*(int *)&g_BrEnvTexDefault) & 0xffffff | 0xdc000000; p_[1] = 1; }
-  { p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xfd900000; p_[1] = (int)&DAT_100ba2d0; }
+  { p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xfd900000; p_[1] = br_addr32(&DAT_100ba2d0); }
   { p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xf5900000; p_[1] = 0x7018060; }
   { p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xe6000000; p_[1] = 0; }
   { p_ = (*(int * *)&g_BrGfxPtr); (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2; *p_ = 0xf3000000; p_[1] = 0x77ff100; }

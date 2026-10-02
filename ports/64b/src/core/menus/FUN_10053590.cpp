@@ -156,7 +156,7 @@ int FUN_10053590(GameUi *parent)
     BrCtl     *p;
     char       bad;
 
-    (*(Root053590 * *)&g_2908)->pTableC4->s1(&s_TimeAttack__GRF_100acb34);
+    (*(SlotTable053590 * *)&((BrPhase_ *)((*(Root053590 * *)&g_2908)))->fC4)->s1(&s_TimeAttack__GRF_100acb34);
     (*(short *)&((BrPhase_ *)(parent))->iPage) = 0;
     g_AB94 = 0xffffffff;
     DAT_10ac5c40 = 0;
@@ -202,7 +202,7 @@ int FUN_10053590(GameUi *parent)
         int off = 0;
 
         do {
-            char *psz = &(*(Root053590 * *)&g_2908)->pTableC4->aRecs[off];
+            char *psz = &(*(SlotTable053590 * *)&((BrPhase_ *)((*(Root053590 * *)&g_2908)))->fC4)->aRecs[off];
 
             if (psz != 0)
                 (*(class Sel3838 *)&((BrUiCtl_ *)(p))->list).s4(psz, 0, 1, &DAT_100aac78, 0);

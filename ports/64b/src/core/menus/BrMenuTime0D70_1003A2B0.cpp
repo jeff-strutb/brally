@@ -30,6 +30,7 @@
  */
 #define _CRTIMP __declspec(dllimport)
 #include <stdio.h>
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 #include "slice3_39.h"   /* BrTextBox, the canonical record */
 #include <string.h>
 
@@ -95,12 +96,12 @@ int BrMenuTime0D70_1003A2B0(Obj3A2B0 *pObj)
     if (strlen(szTime) == 0)
         return 0;
 
-    pLabel = (*(char (*)[1025])&((BrTextBox *)&(pObj->m2B5C))->sz[0]);
+    pLabel = (*(char (*)[1025])&((BrTextBox *)&((*(class Item438K *)&((BrUiCtl_ *)(pObj))->aText[0])))->sz[0]);
     strcpy(pLabel, _strupr(szTime));
 
-    (BR_VFN(&(pObj->m2B5C), 1, void (*)(void *)))(&(pObj->m2B5C));
+    (BR_VFN(&((*(class Item438K *)&((BrUiCtl_ *)(pObj))->aText[0])), 1, void (*)(void *)))(&((*(class Item438K *)&((BrUiCtl_ *)(pObj))->aText[0])));
     if (pLabel != 0)
-        (BR_VFN(&(pObj->m2B5C), 4, void (*)(void *)))(&(pObj->m2B5C));
+        (BR_VFN(&((*(class Item438K *)&((BrUiCtl_ *)(pObj))->aText[0])), 4, void (*)(void *)))(&((*(class Item438K *)&((BrUiCtl_ *)(pObj))->aText[0])));
 
     return 1;
 }

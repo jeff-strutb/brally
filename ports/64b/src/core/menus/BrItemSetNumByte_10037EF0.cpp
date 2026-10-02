@@ -23,6 +23,7 @@
  */
 #define _CRTIMP __declspec(dllimport)
 #include <stdlib.h>
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 
 class Item438 {
 public:
@@ -61,13 +62,13 @@ extern "C" {
 
 int BrItemSetNumByte_10037EF0(Obj37EF0 *pObj)
 {
-    char *s = pObj->m2B5C.szName;
+    char *s = (*(class Item438 *)&((BrUiCtl_ *)(pObj))->aText[0]).szName;
 
     _itoa(g_brVal5A40[g_brIdx5C04], s, 10);
 
-    (BR_VFN(&(pObj->m2B5C), 2, void (*)(void *)))(&(pObj->m2B5C));
+    (BR_VFN(&((*(class Item438 *)&((BrUiCtl_ *)(pObj))->aText[0])), 2, void (*)(void *)))(&((*(class Item438 *)&((BrUiCtl_ *)(pObj))->aText[0])));
     if (s != 0)
-        (BR_VFN(&(pObj->m2B5C), 11, void (*)(void *)))(&(pObj->m2B5C));
+        (BR_VFN(&((*(class Item438 *)&((BrUiCtl_ *)(pObj))->aText[0])), 11, void (*)(void *)))(&((*(class Item438 *)&((BrUiCtl_ *)(pObj))->aText[0])));
 
     return 1;
 }

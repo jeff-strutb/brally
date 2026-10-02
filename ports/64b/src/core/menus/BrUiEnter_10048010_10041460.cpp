@@ -1,3 +1,4 @@
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 /* WHAT IT DOES: enter a menu page, taking the shortcut path when the page is
  * flagged as already prepared rather than laying it out again. */
 /* @implements 0x10041460 glide BrUiEnter_10048010
@@ -46,14 +47,14 @@ public:
 
 int BrPhase41E::Enter()
 {
-    if (this->f28 & 1) {
-        if (this->f1C & 0x100000) {
-            if (this->item.name != 0) {
-                (BR_VFN(&(this->item), 4, int (*)(void *)))(&(this->item));
+    if ((*(int *)&((BrUiCtl_ *)(this))->flags28) & 1) {
+        if ((*(int *)&((BrUiCtl_ *)(this))->flags1C) & 0x100000) {
+            if ((*(class BrPhaseItem41E *)&((BrUiCtl_ *)(this))->aText[0]).name != 0) {
+                (BR_VFN(&((*(class BrPhaseItem41E *)&((BrUiCtl_ *)(this))->aText[0])), 4, int (*)(void *)))(&((*(class BrPhaseItem41E *)&((BrUiCtl_ *)(this))->aText[0])));
             }
             return 1;
         }
-        if ((this->f1C & 0x200000) == 0) {
+        if (((*(int *)&((BrUiCtl_ *)(this))->flags1C) & 0x200000) == 0) {
             if (this->s4() == 0) {
                 return 0;
             }

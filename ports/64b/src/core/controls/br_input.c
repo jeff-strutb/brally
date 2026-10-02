@@ -534,10 +534,10 @@ int BrInputLatchUpdate(void)
   
   iVar1 = 0;
   do {
-    *(unsigned int *)((int)&g_act0 + iVar1) = (unsigned int)(*(int *)((int)&DAT_10ac66e8 + iVar1) == 0);
-    *(unsigned int *)((int)&DAT_10ac66e8 + iVar1) = *(unsigned int *)((int)&BrGlNavEdge6720 + iVar1);
-    *(unsigned int *)((int)&g_act0 + iVar1) =
-         *(unsigned int *)((int)&g_act0 + iVar1) & *(unsigned int *)((int)&BrGlNavEdge6720 + iVar1);
+    *(unsigned int *)((char *)&g_act0 + iVar1) = (unsigned int)(*(int *)((char *)&DAT_10ac66e8 + iVar1) == 0);
+    *(unsigned int *)((char *)&DAT_10ac66e8 + iVar1) = *(unsigned int *)((char *)&BrGlNavEdge6720 + iVar1);
+    *(unsigned int *)((char *)&g_act0 + iVar1) =
+         *(unsigned int *)((char *)&g_act0 + iVar1) & *(unsigned int *)((char *)&BrGlNavEdge6720 + iVar1);
     iVar1 = iVar1 + 4;
   } while (iVar1 < 0x10);
   return;

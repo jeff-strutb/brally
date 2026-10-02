@@ -1,4 +1,5 @@
 #include "slice1_02.h"   /* br_globals: its objects */
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 /* WHAT IT DOES: handle a DirectPlay callback for one player record, ignoring
  * the notifications flagged as uninteresting and otherwise updating that
  * player's slot. */
@@ -63,10 +64,10 @@ int __stdcall BrWmHook36130(int a1, int a2, Rec36130 *a3, unsigned int a4, int a
     if (a4 & 0x200)
         return 1;
     {
-        Sel *s = &p->sel;
+        Sel *s = &(*(class Sel *)&((BrUiCtl_ *)(p))->list);
         s->s4(a3->f8, 0, 1, &g_selArg2, 1);
     }
-    (*(GameObjS * *)&g_brPAA29E4)->slots[(*(GameObjS * *)&g_brPAA29E4)->wIdx].f0 = a1;
+    (*(Slot36130 (*)[100])&((BrUiCtl_ *)((*(GameObjS * *)&g_brPAA29E4)))->list.f28)[(*(unsigned short *)&((BrUiCtl_ *)((*(GameObjS * *)&g_brPAA29E4)))->list.count)].f0 = a1;
     BrSlotMark(a1);
     return 1;
 }

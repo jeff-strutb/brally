@@ -62,6 +62,7 @@
 #define BrUiInit_10047FB0       BrUiInit_10047FB0_port
 #define BrUiItemInit_10047EB0   BrUiItemInit_10047EB0_port
 #include "slice3_32.h"
+#include "br_ui.h"
 #undef BrUiDrawIndex_100479D0
 #undef BrUiTweenCurve_10047CE0
 #undef BrUiTweenBegin_10047CB0
@@ -98,17 +99,14 @@ int BR_STDCALL BrUiDrawIndex_100479D0(int32_t code, int32_t x, int32_t y)
 /* @implements 0x10047CE0 d3d BrUiTweenCurve_10047CE0 */
 /* thiscall + one stack arg (`ret 4`). Sequential `x *= 0.5f; x *= 1e-3f`
  * keeps two `fmul dword [const]` -- a single expression folds them. */
-typedef struct BrUiTwCurve {
-    unsigned char pad[0x3824];
-    float twrate;
-} BrUiTwCurve;
+typedef BrUiCtl_ BrUiTwCurve;   /* twRate at 0x3824 */
 
 float __fastcall BrUiTweenCurve_10047CE0(BrUiTwCurve *p, int n)
 {
     float x;
     n = n * n;
     x = (float)n;
-    x *= p->twrate;
+    x *= p->twRate;
     x *= 0.5f;
     x *= 1.0e-3f;
     return x;
@@ -126,18 +124,18 @@ void __fastcall BrUiInit_10047FB0(BrUiObj *pObj,
                                    uint32_t nOr1C, uint32_t nOr24, uint32_t nOr28,
                                    uint32_t n2968, int16_t wCode)
 {
-    unsigned char *p = (unsigned char *)pObj;
-    *(BrPhaseFull **)(void *)(p + 0x2AE8) = pPhase;
-    *(uint32_t *)(void *)(p + 0x1C) |= nOr1C;
-    *(uint32_t *)(void *)(p + 0x24) |= nOr24;
-    *(uint32_t *)(void *)(p + 0x28) |= nOr28;
-    *(uint32_t *)(void *)(p + 0x2968) = n2968;
+    BrUiCtl_ *p = (BrUiCtl_ *)pObj;
+    *(BrPhaseFull **)&p->pOwner = pPhase;
+    p->flags1C |= nOr1C;
+    p->flags24 |= nOr24;
+    p->flags28 |= nOr28;
+    p->f2968 = n2968;
     /* Mention f3C first so it hoists into edx; the wCode load clobbers
      * eax, so f40 (eax) stores first and f3C (edx) after: orig order. */
-    *(float *)(void *)(p + 0x3C) = f3C;
-    *(float *)(void *)(p + 0x40) = f40;
-    *(uint16_t *)(void *)(p + 0x2A40) = (uint16_t)wCode;
-    *(uint16_t *)(void *)(p + 0x1E20C) = (uint16_t)wCode;
+    p->x = f3C;
+    p->y = f40;
+    p->aStepId[0] = (uint16_t)wCode;
+    p->w1E20C = (uint16_t)wCode;
 }
 
 /* WHAT IT DOES: tears a page down, and frees its memory too if the caller asks

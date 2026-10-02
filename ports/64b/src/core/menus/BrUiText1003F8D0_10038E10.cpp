@@ -19,6 +19,7 @@
  */
 #define _CRTIMP __declspec(dllimport)
 #include <string.h>
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 
 class Item38E10 {
 public:
@@ -63,17 +64,17 @@ extern "C" {
 int BrUiText1003F8D0(Obj38E10 *pObj)
 {
     if (DAT_10ac5ba8 != 0) {
-        strcpy(pObj->m2B5C.szName, BrStrGet(0xAF));
+        strcpy((*(class Item38E10 *)&((BrUiCtl_ *)(pObj))->aText[0]).szName, BrStrGet(0xAF));
 
         if (g_brTbl4648[g_brSel5B98] != 0)
-            pObj->m2B5C.b008 = 4;
+            (*(class Item38E10 *)&((BrUiCtl_ *)(pObj))->aText[0]).b008 = 4;
         else
-            pObj->m2B5C.b008 = 1;
+            (*(class Item38E10 *)&((BrUiCtl_ *)(pObj))->aText[0]).b008 = 1;
     } else {
-        strcpy(pObj->m2B5C.szName, g_strA);
+        strcpy((*(class Item38E10 *)&((BrUiCtl_ *)(pObj))->aText[0]).szName, g_strA);
     }
 
-    (BR_VFN(&(pObj->m2B5C), 1, void (*)(void *)))(&(pObj->m2B5C));
+    (BR_VFN(&((*(class Item38E10 *)&((BrUiCtl_ *)(pObj))->aText[0])), 1, void (*)(void *)))(&((*(class Item38E10 *)&((BrUiCtl_ *)(pObj))->aText[0])));
     Br85ItemApply((struct BrCtl85 *)(pObj), 0);
 
     return 1;

@@ -1,4 +1,5 @@
 #include "br_ui.h"
+#include "br_phase.h"   /* BrPhase_, the canonical record */
 /* br_saveprobe.c -- menus: "does this save slot already have a file?" probes
  * for the two record lists that own an in-place name edit.
  *
@@ -197,10 +198,10 @@ int __stdcall BrSaveSlotNameSet_10055C50(const char *pKey, const char *pName)
 
     if (g_brGate5BA0 != 0) {
         strcpy(szNum, pKey + strlen(s_RallySeason_100acb00));
-        pRec = (*(BrRoot55C50 * *)&g_2908)->pSeason[atoi(szNum)].szName;
+        pRec = (*(BrSaveRec55C50 * *)&((BrPhase_ *)((*(BrRoot55C50 * *)&g_2908)))->fC0)[atoi(szNum)].szName;
     } else {
         strcpy(szNum, pKey + strlen(s_TimeAttack_100acb14));
-        pRec = (*(BrRoot55C50 * *)&g_2908)->pTimeAttack[atoi(szNum)].szName;
+        pRec = (*(BrSaveRec55C50 * *)&((BrPhase_ *)((*(BrRoot55C50 * *)&g_2908)))->fC4)[atoi(szNum)].szName;
     }
 
     strcpy(pRec, pName);

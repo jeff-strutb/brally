@@ -1,3 +1,4 @@
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 /* WHAT IT DOES: advance the cheat-code entry one character: picks up the
  * next symbol, moves to its slot, and ends the sequence when there are no
  * more. */
@@ -50,12 +51,12 @@ int Ui47A10::StepCode()
     int idx;
     char *p;
 
-    if (f296C == 0) {
+    if ((*(int *)&((BrUiCtl_ *)(this))->f296C) == 0) {
         s7();
     } else {
-        idx = f128;
-        p = f1E210 + idx * 16;
-        f1E20C = aCode[idx];
+        idx = (*(short *)&((BrUiCtl_ *)(this))->wStep);
+        p = (*(char * *)&((BrUiCtl_ *)(this))->p1E210) + idx * 16;
+        (*(short *)&((BrUiCtl_ *)(this))->w1E20C) = (*(short (*)[256])&((BrUiCtl_ *)(this))->aStepId[0])[idx];
         s6(p);
     }
     return 1;

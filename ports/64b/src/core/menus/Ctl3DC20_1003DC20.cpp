@@ -70,7 +70,7 @@ int Ctl3DC20::Activate()
         if (p == 0)
             return 0;
         (*(PhaseEnterFn *)&((BrPhase_ *)(p))->pfnEnter) = EnterFn;
-        g_slot->pfnEnter(g_slot);
+        (*(PhaseEnterFn *)&((BrPhase_ *)(g_slot))->pfnEnter)(g_slot);
         (*(int *)&((BrPhase_ *)((*(Phase * *)&g_brPAA29B8)))->f0C) = 1;
         (*(int *)&((BrPhase_ *)((*(Phase * *)&g_brPAA29B8)))->f68) = 1;
     } else {

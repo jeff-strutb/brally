@@ -225,7 +225,7 @@ int BrExt_1004F700(GameUi *parent)
     (*(short *)&((BrPhase_ *)(parent))->iPage) = 0;
     g_AB94 = 0xffffffff;
     g_brGate5BA0 = 1;
-    (*(Root0485B0 * *)&g_2908)->pTable->s1(s_RallySeason_BRF);
+    (*(SlotTable0485B0 * *)&((BrPhase_ *)((*(Root0485B0 * *)&g_2908)))->fC0)->s1(s_RallySeason_BRF);
     g_brGate5BA0 = 0;
     (*(int (*)[1])&((BrPhase_ *)(parent))->aFlags[0])[(*(unsigned short *)&((BrPhase_ *)(parent))->nPages)] = 1;
     cont = ((Page0485B0 *)br_new_obj(sizeof(BrUiPage_), (void *(*)(void *))BrUiPageCtor_10048470));
@@ -268,7 +268,7 @@ int BrExt_1004F700(GameUi *parent)
         int off = 0;
 
         do {
-            char *psz = &(*(Root0485B0 * *)&g_2908)->pTable->aRecs[off];
+            char *psz = &(*(SlotTable0485B0 * *)&((BrPhase_ *)((*(Root0485B0 * *)&g_2908)))->fC0)->aRecs[off];
 
             if (psz != 0)
                 (*(class Sel3838 *)&((BrUiCtl_ *)(p))->list).s4(psz, 0, 1, &DAT_100aac78, 1);

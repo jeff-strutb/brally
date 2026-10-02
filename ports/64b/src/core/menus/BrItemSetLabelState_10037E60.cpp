@@ -16,6 +16,7 @@
  */
 #define _CRTIMP __declspec(dllimport)
 #include "br_coretypes.h"   /* br_globals: its objects */
+#include "br_ui.h"   /* BrUiCtl_, the canonical record */
 #include "br_race.h"   /* br_globals: its objects */
 #include <string.h>
 
@@ -64,9 +65,9 @@ int BrItemSetLabelState_10037E60(Obj37E60 *pObj)
     else
         pStr = BrStrGet(0x0C);
 
-    strcpy(pObj->m2B5C.szName, pStr);
+    strcpy((*(class Item438C *)&((BrUiCtl_ *)(pObj))->aText[0]).szName, pStr);
 
-    (BR_VFN(&(pObj->m2B5C), 1, void (*)(void *)))(&(pObj->m2B5C));
+    (BR_VFN(&((*(class Item438C *)&((BrUiCtl_ *)(pObj))->aText[0])), 1, void (*)(void *)))(&((*(class Item438C *)&((BrUiCtl_ *)(pObj))->aText[0])));
 
     return 1;
 }

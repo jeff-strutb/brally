@@ -509,10 +509,36 @@ class Lift:
             ents = []
             while va + 4 * len(ents) in self.relocs:
                 tgt = self.dword(va + 4 * len(ents))
-                ents.append(self.syms.sym(self.syms.fn[tgt]) if tgt in self.syms.fn else None)
+                ents.append(self.slot(self.syms.fn[tgt]) if tgt in self.syms.fn else None)
                 if ents[-1] is None:
                     self.notes.append('vtable 0x%s slot %d -> 0x%08X: no core function' % (h, len(ents) - 1, tgt))
             self.vt.append((h, ents))
+
+    def slot(self, fn):
+        """A vtable slot for fn. The callers are C++ virtual calls, which pass
+        the object first. The original's thiscall targets that never use
+        `this` are transcribed without it (stdcall, arguments only); on a
+        64-bit ABI `this` would land in their first argument, so those slots
+        get a thunk that drops it."""
+        if not hasattr(self, 'protos'):
+            self.protos, self.thunks = {}, {}
+            txt = open('ports/64b/include/br_funcs.h').read()
+            for m in re.finditer(r'^(?!#)([^;\n()]*?)\b(\w+)\s*\(([^;()]*)\);', txt, re.M):
+                self.protos[m.group(2)] = (m.group(1).strip(), m.group(3).strip())
+        p = self.protos.get(fn)
+        if p is None:
+            return self.syms.sym(fn)
+        ret, args = p
+        args = [a.strip() for a in args.split(',')] if args and args != 'void' else []
+        if not args or '*' in args[0] or '(' in args[0]:
+            return self.syms.sym(fn)
+        if fn not in self.thunks:
+            params = ', '.join('%s a%d' % (a, i) for i, a in enumerate(args))
+            call = '%s(%s)' % (fn, ', '.join('a%d' % i for i in range(len(args))))
+            body = ('%s;' % call) if ret == 'void' else ('return %s;' % call)
+            self.thunks[fn] = ('static %s br_vthunk_%s(void *self, %s)\n{\n    (void)self;\n    %s\n}\n'
+                               % (ret, fn, params, body))
+        return 'br_vthunk_%s' % fn
 
     def write(self, lifted):
         os.makedirs(OUT, exist_ok=True)
@@ -534,6 +560,8 @@ class Lift:
             for a, b in self.pool:
                 f.write('static unsigned char k_pool_%08X[%d];   /* 0x%08X..0x%08X, from the image */\n' % (a, b - a, a, b))
             f.write('\n')
+            for fn in sorted(getattr(self, 'thunks', {})):
+                f.write(self.thunks[fn] + '\n')
             for h, ents in self.vt:
                 f.write('void *const g_brVtbl_%s[%d] = {\n' % (h, max(len(ents), 1)))
                 for e in ents:

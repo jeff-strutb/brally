@@ -1,4 +1,5 @@
 #include "br_race.h"   /* br_globals: its objects */
+#include "br_phase.h"   /* BrPhase_, the canonical record */
 #include "slice2_25.h"   /* br_globals: its objects */
 #include "slice3_42.h"   /* br_globals: its objects */
 /* WHAT IT DOES: choose the screen resolution for the current situation,
@@ -91,14 +92,14 @@ int BrAppStateSetMode(void)
         (*(int *)&DAT_105ccb68[21]) = 3;
         return 1;
     }
-    if ((*(Phase * *)&g_brPAA29B8)->f0C == 0)
+    if ((*(int *)&((BrPhase_ *)((*(Phase * *)&g_brPAA29B8)))->f0C) == 0)
         (*(Phase * *)&g_brPAA29B8)->v4();
     else
         (*(Phase * *)&g_brPAA29B8)->v3();
     if ((*(Phase * *)&g_brPAA29B8) != 0 && (*(int *)&g_AC300) != 0) {
         if (g_bc0 != 0) {
             if ((*(int *)&BrGlNavLast6748) + 0x15f90 < BrSub10075020()) {
-                (*(Phase * *)&g_brPAA29B8)->f68 = 0;
+                (*(int *)&((BrPhase_ *)((*(Phase * *)&g_brPAA29B8)))->f68) = 0;
                 (*(Phase * *)&g_brPAA29B8)->v6(0);
                 (*(int *)&g_brRaceRules.mode) = 4;
                 g_5bc760 = 0;
