@@ -128,7 +128,7 @@ typedef char br_cfgfile_assert_profile
 /* @implements 0x100634B0 glide BrGlCfgSave */
 int __fastcall BrGlCfgSave(void *pThis, const char *pszPath)
 {
-    unsigned char *pBase = (unsigned char *)pThis;
+    BrCtrlCfg     *c = (BrCtrlCfg *)pThis;
     FILE          *pFile;
     pFile = fopen(pszPath, "wb");
     if (pFile == NULL)
@@ -136,38 +136,38 @@ int __fastcall BrGlCfgSave(void *pThis, const char *pszPath)
 
     if (fwrite(BrGlCfgMagic, strlen(BrGlCfgMagic), 1, pFile) != 1) goto fail;
     if (fwrite(BrGlCfgVersion, 4, 1, pFile) != 1) goto fail;
-    if (fwrite(pBase + 0x2A8, 4, 1, pFile) != 1) goto fail;
-    if (fwrite(pBase + 0x2AC, 4, 1, pFile) != 1) goto fail;
-    if (fwrite(pBase + 0x2B0, 4, 1, pFile) != 1) goto fail;
-    if (fwrite(pBase + 0x2B4, 0x104, 1, pFile) != 1) goto fail;
-    if (fwrite(pBase + 0x3B8, 0x400, 1, pFile) != 1) goto fail;
-    if (fwrite(pBase + 0x7B8, 4, 1, pFile) != 1) goto fail;
-    if (fwrite(pBase + 0x7BC, 4, 1, pFile) != 1) goto fail;
-    if (fwrite(pBase + 0x7C0, 4, 1, pFile) != 1) goto fail;
-    if (fwrite(pBase + 0x7C4, 4, 1, pFile) != 1) goto fail;
-    if (fwrite(pBase + 0x7C8, 0x10, 1, pFile) != 1) goto fail;
-    if (fwrite(pBase + 0x7D8, 4, 1, pFile) != 1) goto fail;
-    if (fwrite(pBase + 0x7DC, 4, 1, pFile) != 1) goto fail;
-    if (fwrite(pBase + 0x7E0, 4, 1, pFile) != 1) goto fail;
-    if (fwrite(pBase + 0x7E4, 4, 1, pFile) != 1) goto fail;
-    if (fwrite(pBase + 0x7E8, 4, 1, pFile) != 1) goto fail;
-    if (fwrite(pBase + 0x7EC, 4, 1, pFile) != 1) goto fail;
-    if (fwrite(pBase + 0x7F0, 4, 1, pFile) != 1) goto fail;
-    if (fwrite(pBase + 0x7F4, 4, 1, pFile) != 1) goto fail;
-    if (fwrite(pBase + 0x7F8, 4, 1, pFile) != 1) goto fail;
-    if (fwrite(pBase + 0x7FC, 4, 1, pFile) != 1) goto fail;
-    if (fwrite(pBase + 0x800, 4, 1, pFile) != 1) goto fail;
-    if (fwrite(pBase + 0x804, 4, 1, pFile) != 1) goto fail;
-    if (fwrite(pBase + 0x808, 4, 1, pFile) != 1) goto fail;
-    if (fwrite(pBase + 0x80C, 4, 1, pFile) != 1) goto fail;
-    if (fwrite(pBase + 0x810, 0x20, 1, pFile) != 1) goto fail;
-    if (fwrite(pBase + 0x830, 0x40, 1, pFile) != 1) goto fail;
-    if (fwrite(pBase + 0x870, 4, 1, pFile) != 1) goto fail;
-    if (fwrite(pBase + 0x2A0, 4, 1, pFile) != 1) goto fail;
-    if (fwrite(pBase, 0xA8, 1, pFile) != 1) goto fail;
-    if (fwrite(pBase + 0x0A8, 0xA8, 1, pFile) != 1) goto fail;
-    if (fwrite(pBase + 0x150, 0xA8, 1, pFile) != 1) goto fail;
-    if (fwrite(pBase + 0x1F8, 0xA8, 1, pFile) != 1) goto fail;
+    if (fwrite(&c->f2A8, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(&c->f2AC, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(&c->f2B0, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(c->f2B4, 0x104, 1, pFile) != 1) goto fail;
+    if (fwrite(c->f3B8, 0x400, 1, pFile) != 1) goto fail;
+    if (fwrite(&c->f7B8, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(&c->f7BC, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(&c->f7C0, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(&c->f7C4, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(c->f7C8, 0x10, 1, pFile) != 1) goto fail;
+    if (fwrite(&c->f7D8, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(&c->f7DC, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(&c->f7E0, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(&c->f7E4, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(&c->f7E8, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(&c->f7EC, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(&c->f7F0, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(&c->f7F4, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(&c->f7F8, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(&c->f7FC, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(&c->f800, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(&c->f804, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(&c->f808, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(&c->f80C, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(c->f810, 0x20, 1, pFile) != 1) goto fail;
+    if (fwrite(c->f830, 0x40, 1, pFile) != 1) goto fail;
+    if (fwrite(&c->f870, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(&c->active, 4, 1, pFile) != 1) goto fail;
+    if (fwrite(&c->profile[0], 0xA8, 1, pFile) != 1) goto fail;
+    if (fwrite(&c->profile[1], 0xA8, 1, pFile) != 1) goto fail;
+    if (fwrite(&c->profile[2], 0xA8, 1, pFile) != 1) goto fail;
+    if (fwrite(&c->profile[3], 0xA8, 1, pFile) != 1) goto fail;
 
     fclose(pFile);
     return 1;

@@ -13,6 +13,7 @@
  * VC5's register allocation (see br_rdpmode.c).
  */
 #include <math.h>
+#include "slice3_41.h"   /* BrDriverCar, the canonical record */
 #include <string.h>
 
 #include "br_match.h"
@@ -43,7 +44,7 @@
 /* @n64 0x80220398 located */
 void __fastcall BrEntRefreshColour(BrEntCar *pE)
 {
-    BrCarGfxSetColour(pE->pRec, pE->r >> 3, pE->g >> 3, pE->b >> 3);
+    BrCarGfxSetColour((*(BrCarGfx * *)&((BrDriverCar *)(pE))->pModel), (*(unsigned char *)&((BrDriverCar *)(pE))->f29AC) >> 3, (*(unsigned char *)&((BrDriverCar *)(pE))->f29AD) >> 3, (*(unsigned char *)&((BrDriverCar *)(pE))->f29AE) >> 3);
     BrSub10062C50(pE);
 }
 
@@ -67,6 +68,6 @@ void __fastcall BrEntSetRecord(BrEntCar *pE, void *_dummy, int32_t idx)
     d += t;
     d *= 8u;                      /* lea eax,[edx*8 + 0x100C12A0] */
 
-    pE->pRec = (BrCarGfx *)(void *)(g_aBrC12A0 + d);
+    (*(BrCarGfx * *)&((BrDriverCar *)(pE))->pModel) = (BrCarGfx *)(void *)(g_aBrC12A0 + d);
     BrEntRefreshColour(pE);
 }

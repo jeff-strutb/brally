@@ -111,7 +111,7 @@ void BrCamMatrixSetupFixed(float a1, float a2)
         uint32_t *p_ = g_BrGfxPtr;
         g_BrGfxPtr += 2;
         p_[0] = 0x01030040u;
-        p_[1] = (uint32_t)(uintptr_t)g_BrMtxSlot;
+        p_[1] = br_addr32(g_BrMtxSlot);
     }
 }
 
@@ -163,6 +163,6 @@ void BrCamMatrixSetupOrtho(float w, float h)
         uint32_t *p_ = g_BrGfxPtr;
         g_BrGfxPtr += 2;
         p_[0] = 0x01030040u;
-        p_[1] = (uint32_t)(uintptr_t)g_BrMtxSlot;
+        p_[1] = br_addr32(g_BrMtxSlot);
     }
 }

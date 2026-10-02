@@ -37,6 +37,7 @@ extern "C" {  /* BR_CLINK_BEGIN: every original function has C linkage */
 #include <stdint.h>
 
 #include "br_match.h"
+#include "br_ui.h"         /* BrUiCtl_: the object a BrMenuItem views */
 
 /* =====================================================================
  * 1. The menu item
@@ -91,30 +92,26 @@ typedef struct BrMenuText {
  * bearing to the matching build; it is not a guess about what lives in the
  * gaps, and nothing here reads it.  (It WAS a three-field compression; that
  * cost the caption family every match it could have had.) */
+/* The menu control, BrUiCtl_ (br_ui.h), seen through the three fields the
+ * caption setters touch. The padding comes from BrUiCtl_'s own layout so the
+ * fields land where the control's are at any pointer width (the original's
+ * offsets are in the comments). */
+#pragma pack(push, 4)     /* as BrUiCtl_ is */
 typedef struct BrMenuItem {
-    uint8_t    _pad00[0x1C];
+    uint8_t    _pad00[offsetof(BrUiCtl_, flags1C)];
     uint32_t   f1C;      /* +0x001C  -- bits 0x1010 are masked in and out */
-    uint8_t    _pad20[0x2B5C - 0x20];
+    uint8_t    _pad20[offsetof(BrUiCtl_, aText) - offsetof(BrUiCtl_, flags1C) - 4];
     BrMenuText text;     /* +0x2B5C */
-    uint8_t    _padText[0x1E20C - (0x2B5C + sizeof(BrMenuText))];
+    uint8_t    _padText[offsetof(BrUiCtl_, w1E20C) - (offsetof(BrUiCtl_, aText) + sizeof(BrMenuText))];
     int16_t    f1E20C;   /* +0x1E20C -- string id, written as a 16-bit word */
 } BrMenuItem;
+#pragma pack(pop)
 
-/* Compile-time proof, in the project's usual idiom: wrong padding is a
- * negative array size here rather than a store into the wrong field.
- *
- * Only asserted on a 32-bit target.  `text` leads with a pointer, and 0x2B5C
- * is 4-aligned but not 8-aligned, so an LP64 build legitimately slides it to
- * 0x2B60.  That is harmless -- the port never aliases one of these over a
- * BrUiCtl_, slice8_90.c's marshal copies field by field -- and the matching
- * build, which is the only one that needs the byte image, is 32-bit. */
-#if !defined(__LP64__) && !defined(_WIN64)
-#define BR_MI_AT(name, off) \
-    typedef char BrMenuItemAt_##name[(offsetof(BrMenuItem, name) == (off)) ? 1 : -1]
-BR_MI_AT(f1C,    0x0001C);
-BR_MI_AT(f1E20C, 0x1E20C);
-BR_MI_AT(text,   0x02B5C);
-#endif
+#define BR_MI_AT(name, canon) \
+    typedef char BrMenuItemAt_##name[(offsetof(BrMenuItem, name) == offsetof(BrUiCtl_, canon)) ? 1 : -1]
+BR_MI_AT(f1C,    flags1C);
+BR_MI_AT(f1E20C, w1E20C);
+BR_MI_AT(text,   aText);
 
 /* =====================================================================
  * 2. The stage table

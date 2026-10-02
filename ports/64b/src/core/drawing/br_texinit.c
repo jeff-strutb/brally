@@ -271,7 +271,7 @@ void BrTexInit(void)
     (*(void (**)(void))&g_BrGfxSubmit) = BrTex3dReconvert;
     (*(void (**)(void))&g_pfn18AA0C4) = BrGbiTexScanRun;
     (*(void (**)(void))&g_pfn18AA0C8) = BrGbiTexCreate;
-    (*(void (**)(void))&g_pfn18AA084) = FUN_100298c0;
+    g_pfn18AA084 = FUN_100298c0;
     DAT_118ed1e4 = BrTexInstallRecords;
     (*(void (**)(void))&g_18ED1E8) = BrTex3dFreeAll;
 

@@ -42,6 +42,7 @@
 
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
+#include "slice3_41.h"   /* BrDriverCar */
 #include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "br_coretypes.h"   /* br_globals: its objects */
 #include "br_mat.h"   /* br_globals: its objects */
@@ -212,13 +213,13 @@ void BrObjDlBuild(struct BrViewRect * pRects, int idx, uint32_t cls, int bLit, u
     pVtx = DAT_1035faec;
     pDL  = (*(uint32_t * *)&DAT_1035f7d8);
     pRec = (char *)(BR_PTR32(void *, g_brTrkHdr.aInstances) + idx * 0x54);
-    pCmd = *(uint32_t **)(pRec + 0x44);
+    pCmd = BR_AT32(uint32_t *, pRec + 0x44);
 
-    if (cls == 0 || g_BrCamera == g_pBr63Race + 0x2890 ||
+    if (cls == 0 || (void *)g_BrCamera == (void *)&((BrDriverCar *)g_pBr63Race)->aSnap[5] ||
         (pRec[0x4d] & 2) != 0 || DAT_10b71538 == 0) {
         EMIT(0xbb001001, 0xffffffff);
         EMIT(0xe8000000, 0);
-        EMIT(0x06000000, pCmd);
+        EMIT(0x06000000, br_addr32(pCmd));
         DAT_106e772c += *(uint16_t *)(pRec + 0x50);
         DAT_106e7734 += *(uint16_t *)(pRec + 0x4e);
         DAT_106e86a0 += *(uint16_t *)(pRec + 0x52);
@@ -227,7 +228,7 @@ void BrObjDlBuild(struct BrViewRect * pRects, int idx, uint32_t cls, int bLit, u
         EMIT(0xbb001001, 0xffffffff);
         EMIT(0xe8000000, 0);
         EMIT(0xfa001700, 0xff0000ff);
-        EMIT(0x06000000, pCmd);
+        EMIT(0x06000000, br_addr32(pCmd));
         EMIT(((*(uint32_t *)&DAT_1184c470) & 0xffffff) | 0xdc000000, 1);
         EMIT(0xba001001, 0);
         EMIT(0xfa001700, 0xff0000ff);
@@ -243,7 +244,7 @@ void BrObjDlBuild(struct BrViewRect * pRects, int idx, uint32_t cls, int bLit, u
                                 0x3ed, 0, 0x3f4, 0, 0, 0, 0, 0x3e9);
         EMIT(0xb6000000, 0x70004);
         EMIT(0xba000602, 0xc0);
-        EMIT(0x06000000, pDL);
+        EMIT(0x06000000, br_addr32(pDL));
         EMIT(0xe7000000, 0);
         if ((*(int *)((char *)&g_aBrEntRecs + 0x6C)) == 0) {
             pRect = (int *)((char *)pRects + g_BrEnvSection * 0x58);   /* 0x58-byte view rects, no pointers */
@@ -280,9 +281,9 @@ void BrObjDlBuild(struct BrViewRect * pRects, int idx, uint32_t cls, int bLit, u
              * drew nothing (live oracle, benchmark flythrough). */
             pCmd = pCmdStart;
             if ((cls & 1) != 0 &&
-                ((g_BrCamera != g_pBr63Race + 0x273c &&
-                  g_BrCamera != g_pBr63Race + 0x27c4) ||
-                 *(int *)(g_pBr63Race + 0x140) != i)) {
+                (((void *)g_BrCamera != (void *)&((BrDriverCar *)g_pBr63Race)->aSnap[0] &&
+                  (void *)g_BrCamera != (void *)&((BrDriverCar *)g_pBr63Race)->aSnap[2]) ||
+                 ((BrDriverCar *)g_pBr63Race)->f140 != i)) {
                 if (DAT_10396eb0 != 0) {
                     BrNodeChainReset_1000F460();
                 }
@@ -400,12 +401,12 @@ void BrObjDlBuild(struct BrViewRect * pRects, int idx, uint32_t cls, int bLit, u
                             BrLogSet(DAT_100a5da8);
                         }
                         c2 = *pCmd++;
-                        *pDL++ = (uint32_t)pVtx;
+                        *pDL++ = br_addr32(pVtx);
                         pDLMark  = pDL;
                         pVtxBase = pVtx;
                         pFlag    = clip;
                         while (n != 0) {
-                            BrCopy8Words(pVtx, (const void *)c2);
+                            BrCopy8Words(pVtx, br_ptr32(c2));
                             vx = pVtx[0];
                             vz = pVtx[2];
                             pVtx[3] = m00 * vx + m10 * pVtx[1] + m20 * vz + m30;

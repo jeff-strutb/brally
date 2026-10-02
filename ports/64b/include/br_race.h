@@ -212,10 +212,7 @@ typedef struct BrRaceRecords {
 
 /* 0x100BCAB0[track] -- the difficulty/award object.  Only its float array at
  * +0x2C is read here, with a computed index. */
-typedef struct BrRaceDiffRec {
-    uint8_t _pad00[0x2C];
-    float   aAward[1];                  /* +0x2C */
-} BrRaceDiffRec;
+/* BrRaceDiffRec: br_coretypes.h */
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */        /* 0x106EEE38                   */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */    /* 0x106EED70, stride 0x14      */

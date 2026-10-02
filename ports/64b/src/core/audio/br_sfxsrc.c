@@ -104,7 +104,7 @@ int BrSfxChanStart(int group, int ch, int32_t loop)
     BrSndVoice *pVoice;
 
     if ((*(int *)&DAT_100b51e4[1036]) != 0 && BrSndPDS != NULL && BrSndG18290FC != NULL) {
-        pVoice = BrSndVoices[group * 18 + ch];
+        pVoice = g_aBrSndRow[group].aSlot[ch];
         if (pVoice != NULL && BrSndBufSetPan(pVoice, loop) == 0) {
             /* f0C zero-extended to 64 bits, * 2^32, / the channel's rate */
             g_aBrSfxChan[ch].ratio =

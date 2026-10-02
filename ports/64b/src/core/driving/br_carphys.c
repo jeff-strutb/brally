@@ -838,7 +838,7 @@ void __fastcall BrCarPhysStep(BrDriverCar *pCar)
 
     pState = (char *)&pCar->aBody[0].rb.st.pos.x;
     BrCpIntegrateVelocity((BrRbState *)pState, (BrRbBodyFull *)pBody, BR_PHYS_DT);
-    BrCarPhysDriveMatch((int)pBody, BR_PHYS_DT, &pCar->f0E7C, &pCar->f0E74, (char *)&pCar->f0E80, (char *)&pCar->f0E78);
+    BrCarPhysDriveMatch((struct BrCarBody *)pBody, BR_PHYS_DT, &pCar->f0E7C, &pCar->f0E74, (char *)&pCar->f0E80, (char *)&pCar->f0E78);
     BrRbQuatDerivative(pState);
 
     pCar->aBody[0].rb.pForces = &pCar->aForce[4];   /* car+0xC20 */

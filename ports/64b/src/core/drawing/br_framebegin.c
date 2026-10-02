@@ -1,3 +1,4 @@
+#include "br_addr32.h"
 /* br_framebegin.c -- drawing: opening a frame.
  *
  * RESPONSIBILITY: drawing/ -- turn geometry and images into pixels.
@@ -165,7 +166,7 @@ void BrFrameBeginDl(BrView *param_1,int param_2)
   else {
     BR_EMIT(0xb6000000, 0x800000)
   }
-  BR_EMIT(0x6000000, (int)(&BrG_0AA770 + (*(int *)((char *)&g_aBrEntRecs + 0x5C)) * 0x28))
+  BR_EMIT(0x6000000, (int)br_addr32((char *)BrG_0AA770 + (*(int *)((char *)&g_aBrEntRecs + 0x5C)) * 0x28))
   BR_EMIT(0xbb000000, 0)
   BrPodNop();
   BrPodNop();
@@ -328,9 +329,9 @@ void BrFrameEnd(void)
     rec->f2C = DAT_100a9ebc - (*(int *)((char *)&g_aBrEntRecs + 0xC8)) * 8;
     rec->f14 = 0x1000;
     rec->f1C = 0x800;
-    rec->f20 = (int *)(((int)DAT_106e9d90 + 15) & ~15);
+    rec->f20 = (int *)(((uintptr_t)DAT_106e9d90 + 15) & ~(uintptr_t)15);
     rec->f24 = 0x400;
-    rec->f30 = DAT_106e79d4 + (*(int *)((char *)&g_aBrEntRecs + 0x4C)) * 0x17700 + 0x200;
+    rec->f30 = (char *)DAT_106e79d4 + (*(int *)((char *)&g_aBrEntRecs + 0x4C)) * 0x17700 + 0x200;
     rec->f34 = (((int)((char *)(*(BrDlCmd * *)&g_BrGfxPtr) - ((char *)DAT_106e79d4 + (*(int *)((char *)&g_aBrEntRecs + 0x4C)) * 0x17700 + 0x200))) >> 3) << 3;
 
     len = ((int)((char *)(*(BrDlCmd * *)&g_BrGfxPtr) - ((char *)DAT_106e79d4 + (*(int *)((char *)&g_aBrEntRecs + 0x4C)) * 0x17700 + 0x200))) >> 3;
@@ -401,7 +402,7 @@ void BrFrameEnd(void)
     DAT_106ec774 = DAT_106ed628;
     BrPodNop();
     BrPodNop();
-    (*(void (**)(int))&DAT_10b73530)(rec->f30);
+    DAT_10b73530(rec->f30);
     (*(int *)((char *)&g_aBrEntRecs + 0x4C)) = (*(int *)((char *)&g_aBrEntRecs + 0x4C)) ^ 1;
 }
 

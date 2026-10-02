@@ -271,7 +271,7 @@
 BrGfxWords *BrGbiMatrix(BrGfxWords *pCmd)
 {
     unsigned w0 = pCmd->w0;     /* unread; see below */
-    void *pIn = (void *)(uintptr_t)pCmd->w1;
+    void *pIn = br_ptr32(pCmd->w1);
     int top;
     BrMat4 *cur;
     BrMat4 *dst;
@@ -430,7 +430,7 @@ BrGfxWords *BrGbiMoveMem(BrGfxWords *pCmd)
     case 0x94:
         /* dest is 0x105CCC78 + ((idx-0x86)>>1)*16, length w0's low 16 */
         memcpy(DAT_105ccc78 + ((idx - 0x86) >> 1) * 16,
-               (void *)(uintptr_t)pCmd->w1, w0 & 0xFFFF);
+               br_ptr32(pCmd->w1), w0 & 0xFFFF);
         DAT_105d17d0 = 0;
         break;
     }
@@ -443,7 +443,7 @@ BrGfxWords *BrGbiMoveMem(BrGfxWords *pCmd)
 /* @implements 0x10023900 glide BrGbiMoveMemMatrix */
 BrGfxWords *BrGbiMoveMemMatrix(BrGfxWords *pCmd)
 {
-    memcpy(&(*(BrMat4 *)&DAT_105d1760), (const void *)pCmd->w1, 64);
+    memcpy(&(*(BrMat4 *)&DAT_105d1760), br_ptr32(pCmd->w1), 64);
     return pCmd + 1;
 }
 
@@ -484,8 +484,8 @@ void BrGbiTexScanSetImg(BrGfxWords *pCmd)
         return;
 
     g_brTexScanTimgSiz  = (int32_t)((pCmd->w0 >> 19) & 3u);
-    g_brTexScanTimgAddr = pCmd->w1;
-    g_brTexScanSrcSeen  = (uint32_t)z;
+    g_brTexScanTimgAddr = br_ptr32(pCmd->w1);   /* a 32-bit display-list address */
+    g_brTexScanSrcSeen  = (void *)(intptr_t)z;
     if (s == z) {
         g_brTexScanRunStart = pCmd;
         g_brTexScanRunEnd   = (BrGfxWords *)z;
@@ -533,7 +533,7 @@ void BrGbiTexScanLoadTlut(const BrGfxWords *pCmd)
      * done, and that order is what puts the copy's src/dst in the original's
      * registers. */
     src = (uint8_t *)g_brTexScanTimgAddr;
-    g_brTexScanSrcSeen = (uint32_t)src;
+    g_brTexScanSrcSeen = src;
     memcpy(DAT_100a9e58, src, len);
     g_brTexScanState = 7;
 }
@@ -574,7 +574,7 @@ void BrGbiTexScanLoadBlock(const BrGfxWords *pCmd)
     src = (uint8_t *)g_brTexScanTimgAddr;
     d = (int32_t)((pCmd->w1 >> 12) & 0xFFFu) -
         (int32_t)((pCmd->w0 >> 12) & 0xFFFu);
-    DAT_105d17f0 = (uint32_t)src;
+    DAT_105d17f0 = src;
     len = (uint32_t)(d + d + 2);
     DAT_10697a54 = (int32_t)len;
     memcpy(g_brTexScanStage, src, len);

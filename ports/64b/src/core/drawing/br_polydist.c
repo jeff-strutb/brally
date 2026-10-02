@@ -124,8 +124,9 @@ typedef struct BrPolyTriList {
  * Nodes are recycled only if their address lies inside the pool. */
 /* @implements 0x1000DC00 glide BrPolyClipTri */
 void BrPolyClipTri(float *pM, BrScrPt *aOut, int *aFlags, const BrScrPt *pV0,
-                   const BrScrPt *pV1, int iV2, BrDepthRef *pRef)
+                   const BrScrPt *pV1, const BrScrPt *pV2, BrDepthRef *pRef)
 {
+    int           iV2;
     BrPolyTriList list;
     BrLerpNode   *n0, *n1, *n2;
     const BrScrPt *pSrc;
@@ -135,7 +136,7 @@ void BrPolyClipTri(float *pM, BrScrPt *aOut, int *aFlags, const BrScrPt *pV0,
     n0 = g_pBrLerpFree;
     if (n0 != NULL)
         g_pBrLerpFree = n0->pNext;
-    pSrc = (const BrScrPt *)iV2;
+    pSrc = pV2;
     n0->pData = &n0->data[0];
     n0->pData[0] = pSrc->f00;
     n0->pData[1] = pSrc->f04;

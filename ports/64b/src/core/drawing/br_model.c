@@ -35,6 +35,7 @@
 /* @implements 0x1005EDC0 glide BrMakeEnemyCarColorPanels */
 void BrMakeEnemyCarColorPanels(unsigned char *pCar)
 {
+    BrDriver *drv = (BrDriver *)pCar;   /* the driver slot, 0x80 B in the original */
     BrDriverCar *pSlot;
     char *penm;
     char *pEnt;
@@ -45,15 +46,15 @@ void BrMakeEnemyCarColorPanels(unsigned char *pCar)
     unsigned short w;
     int i, cptex;
 
-    pSlot = ((char *)&g_aBrRaceCar[((*(int *)(pCar + 0x74) + (*(int *)&g_brRaceNEntrant)))].fwd.x);
-    BrImgTintSetScale(pCar[0x5c], pCar[0x5d], pCar[0x5e]);
-    r = pCar[0x5c] >> 3;
-    g = pCar[0x5d] >> 3;
-    b = pCar[0x5e] >> 3;
+    pSlot = &g_aBrRaceCar[drv->f74 + (*(int *)&g_brRaceNEntrant)];
+    BrImgTintSetScale(drv->f5C, drv->f5D, drv->f5E);
+    r = drv->f5C >> 3;
+    g = drv->f5D >> 3;
+    b = drv->f5E >> 3;
     for (i = 0; i < 12; i++) {
         penm = pSlot->pModel;
-        pEnt = *(char **)(penm + 0x8014) + *(unsigned char *)(penm + 0x8110 + i) * 0x24;
-        pPal = *(unsigned short **)(pEnt + 4);
+        pEnt = BR_AT32(char *, penm + 0x8014) + *(unsigned char *)(penm + 0x8110 + i) * 0x24;
+        pPal = BR_AT32(unsigned short *, pEnt + 4);
         if (pPal != 0 && (*(unsigned int *)(pEnt + 0x20) & 0xf000000) == 0x1000000) {
             w = ((r << 5 | g) << 5 | b) << 1 | (pPal[i] & 1);
             pPal[0] = (unsigned short)((unsigned char)(w >> 8) | ((unsigned char)w << 8));
@@ -62,16 +63,16 @@ void BrMakeEnemyCarColorPanels(unsigned char *pCar)
         }
     }
     cptex = *(int *)(((char *)pSlot->pModel) + 0x7c);
-    *(int *)(pCar + 0x7c) = cptex + 4;
-    *(void ***)(pCar + 0x78) = (void **)BrChkAlloc((cptex + 4) * 4, "MakeEnemyCarColorPanels: penm->aptex");
+    drv->cptex = cptex + 4;
+    drv->aptex = (void **)BrChkAlloc((cptex + 4) * sizeof(void *), "MakeEnemyCarColorPanels: penm->aptex");
     for (i = 0; i < cptex; i++) {
         pSrc = (*(void * (**)(int, unsigned int *))&DAT_118ed1d4)(*(int *)(((char *)pSlot->pModel) + 4 + i * 4), &size);
-        (*(void ***)(pCar + 0x78))[i] = BrChkAlloc(size, "MakeEnemyCarColorPanels: penm->aptex[i]");
-        memcpy((*(void ***)(pCar + 0x78))[i], pSrc, size);
+        drv->aptex[i] = BrChkAlloc(size, "MakeEnemyCarColorPanels: penm->aptex[i]");
+        memcpy(drv->aptex[i], pSrc, size);
     }
-    pEnt = *(char **)(((char *)pSlot->pModel) + 0x8014) +
+    pEnt = BR_AT32(char *, ((char *)pSlot->pModel) + 0x8014) +
            *(unsigned char *)(((char *)pSlot->pModel) + 0x811b) * 0x24;
-    pPal = *(unsigned short **)(pEnt + 4);
+    pPal = BR_AT32(unsigned short *, pEnt + 4);
     if (pPal != 0 && (*(int *)&g_AC300) == 0) {
         if (*(int *)(((char *)pSlot->pModel) + 0x84) != 0) {
             if ((*(int *)((char *)&g_aBrEntRecs + 0x7C)) == 0 && (*(int *)((char *)&g_aBrEntRecs + 0x84)) == 0) {
@@ -90,8 +91,8 @@ void BrMakeEnemyCarColorPanels(unsigned char *pCar)
             pPal[0xb] = 0x6bad;
             pPal[0x6] = 0x31c6;
             pSrc = (*(void * (**)(int, unsigned int *))&DAT_118ed1d4)(*(int *)(((char *)pSlot->pModel) + 0x84), &size);
-            (*(void ***)(pCar + 0x78))[cptex] = BrChkAlloc(size, "MakeEnemyCarColorPanels: penm->aptex[cptex+0]");
-            memcpy((*(void ***)(pCar + 0x78))[cptex], pSrc, size);
+            drv->aptex[cptex] = BrChkAlloc(size, "MakeEnemyCarColorPanels: penm->aptex[cptex+0]");
+            memcpy(drv->aptex[cptex], pSrc, size);
         }
         if (*(int *)(((char *)pSlot->pModel) + 0x88) != 0) {
             pPal[0xb] = 0x6bad;
@@ -101,8 +102,8 @@ void BrMakeEnemyCarColorPanels(unsigned char *pCar)
             pPal[0x9] = 0x4f9;
             pPal[0x8] = 0x4f9;
             (*(void * (**)(int, unsigned int *))&DAT_118ed1d4)(*(int *)(((char *)pSlot->pModel) + 0x88), &size);
-            (*(void ***)(pCar + 0x78))[cptex + 1] = BrChkAlloc(size, "MakeEnemyCarColorPanels: penm->aptex[cptex+1]");
-            memcpy((*(void ***)(pCar + 0x78))[cptex + 1], pSrc, size);
+            drv->aptex[cptex + 1] = BrChkAlloc(size, "MakeEnemyCarColorPanels: penm->aptex[cptex+1]");
+            memcpy(drv->aptex[cptex + 1], pSrc, size);
         }
         if (*(int *)(((char *)pSlot->pModel) + 0x8c) != 0) {
             pPal[0xe] = 400;
@@ -112,8 +113,8 @@ void BrMakeEnemyCarColorPanels(unsigned char *pCar)
             pPal[0xb] = 0x38e7;
             pPal[0x6] = 0xfeff;
             (*(void * (**)(int, unsigned int *))&DAT_118ed1d4)(*(int *)(((char *)pSlot->pModel) + 0x8c), &size);
-            (*(void ***)(pCar + 0x78))[cptex + 2] = BrChkAlloc(size, "MakeEnemyCarColorPanels: penm->aptex[cptex+2]");
-            memcpy((*(void ***)(pCar + 0x78))[cptex + 2], pSrc, size);
+            drv->aptex[cptex + 2] = BrChkAlloc(size, "MakeEnemyCarColorPanels: penm->aptex[cptex+2]");
+            memcpy(drv->aptex[cptex + 2], pSrc, size);
         }
         if (*(int *)(((char *)pSlot->pModel) + 0x90) != 0) {
             pPal[0xb] = 0x38e7;
@@ -123,8 +124,8 @@ void BrMakeEnemyCarColorPanels(unsigned char *pCar)
             pPal[0x9] = 0x4f9;
             pPal[0x8] = 0x4f9;
             (*(void * (**)(int, unsigned int *))&DAT_118ed1d4)(*(int *)(((char *)pSlot->pModel) + 0x90), &size);
-            (*(void ***)(pCar + 0x78))[cptex + 3] = BrChkAlloc(size, "MakeEnemyCarColorPanels: penm->aptex[cptex+3]");
-            memcpy((*(void ***)(pCar + 0x78))[cptex + 3], pSrc, size);
+            drv->aptex[cptex + 3] = BrChkAlloc(size, "MakeEnemyCarColorPanels: penm->aptex[cptex+3]");
+            memcpy(drv->aptex[cptex + 3], pSrc, size);
         }
     }
 }

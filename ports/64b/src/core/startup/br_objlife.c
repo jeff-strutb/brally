@@ -51,7 +51,7 @@ void BrExt_10035585(void *, int, int);
 void BrFlagInit_1002B950(void)
 {
     g_67D550 = 0;
-    DAT_100a751c = 0x104B16E8u;  /* Glide VA */
+    DAT_100a751c = g_afBrVtxOut;   /* 0x104B16E8 */
 }
 
 /* WHAT IT DOES: turn on the gate that skips "part 2", dispatch slot 4. */
@@ -86,21 +86,21 @@ void BrFlagInit_1002F690(void)
 /* @implements 0x10067980 d3d BrWrap_10067980 */
 void BrWrap_10067980(void)
 {
-    BrVarSave(&g_0B3A68, g_abBrVarBlock40, 0x40);
+    BrVarSave(g_0B3A68, g_abBrVarBlock40, 0x40);
 }
 
 /* WHAT IT DOES: bind that 64-byte buffer without filling it. */
 /* @implements 0x100679A0 d3d BrWrap_100679A0 */
 void BrWrap_100679A0(void)
 {
-    BrVarLoad(&g_0B3A68, g_abBrVarBlock40);
+    BrVarLoad(g_0B3A68, g_abBrVarBlock40);
 }
 
 /* WHAT IT DOES: bind the same kind of buffer inside the caller's object. */
 /* @implements 0x10067960 d3d BrWrap_10067960 */
 void BrWrap_10067960(void *p)
 {
-    BrVarLoad(&g_0B39B0, (char *)p + 0x7080);
+    BrVarLoad(g_0B39B0, (char *)p + 0x7080);
 }
 
 /* WHAT IT DOES: fill that per-object block (about 90 KB). */
@@ -108,7 +108,7 @@ void BrWrap_10067960(void *p)
 /* @n64 0x8022AED8 located */
 void BrWrap_10067940(void *p)
 {
-    BrVarSave(&g_0B39B0, (char *)p + 0x7080, 0x15F88);
+    BrVarSave(g_0B39B0, (char *)p + 0x7080, 0x15F88);
 }
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x105CCB88  suppresses the save while set   */
@@ -197,11 +197,11 @@ void __fastcall BrRaceSaveLastLapInfo(BrDriverCar *param_1)
             *(int *)(pRec[-0xada] + 0x3c + param_1->f140 * 4) = 0x3840;
             ++n;
             *(char **)(pRec[-0xada] + 0x2c + param_1->f140 * 4) =
-                &(*(char *)&g_2066C8) + off + param_1->f140 * -0x15f88;
+                (char *)&g_ab0C12A0[15 * 0x15F88] + off + param_1->f140 * -0x15f88;
             off += 0x3840;
         } while (n < (*(int *)&g_brRaceNEntrant));
     }
-    BrWrap_10067940(&(*(char *)&g_2066C8) + param_1->f140 * -0x15f88);
+    BrWrap_10067940((char *)&g_ab0C12A0[15 * 0x15F88] + param_1->f140 * -0x15f88);
 }
 
 /* WHAT IT DOES: destroy the array of 16 C++ objects that 0x100715E0

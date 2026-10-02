@@ -221,8 +221,8 @@ void Car5E7B0::StartInit()
         sVar1 = (short)DAT_104b15e8 - 1;
         if (sVar1 > 2 || sVar1 < 0)
             sVar1 = 0;
-        (*(float *)&((BrDriverCar *)(this))->fFF0) = *(float *)((*(char * (*)[])&g_apBrRaceDiff)[(*(int *)&g_Br0B380C)] +
-                           ((*(int *)&((BrDriverCar *)(this))->f0E64) * 3 + sVar1) * 0x1c + 0x44);
+        (*(float *)&((BrDriverCar *)(this))->fFF0) = g_apBrRaceDiff[(*(int *)&g_Br0B380C)]->aAward[
+                           ((*(int *)&((BrDriverCar *)(this))->f0E64) * 3 + sVar1) * 7 + 6];   /* +0x44 */
         ((BrDriverCar *)(this))->pNode.p = (struct BrAiPathNode *)BR_PTR32(BrAiPathNode *, g_brTrkHdr.aPathRoot);
         (*(int *)&((BrDriverCar *)(this))->iPt.v) = 0;
         BrVec3Direction((struct BrVec3 *)(&(*(float *)&((BrDriverCar *)(this))->f0F94)), (const struct BrVec3 *)((const float *)((char *)BR_PTR32(void *, g_brTrkHdr.aPathRoot) + 0x4c)),(const struct BrVec3 *)(

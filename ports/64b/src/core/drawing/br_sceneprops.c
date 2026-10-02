@@ -49,8 +49,6 @@
  * by address (config/reloc_overrides.csv, keyed by function and offset,
  * not by symbol), so the matching arm names a TU-static block of the same
  * layout.  The port has no #else arm to change: it uses the shared g_s17. */
-static BrS17State s17_tuState;
-#define g_s17 s17_tuState
 
 /* 0x100AA5D0, 0x106C08A0 and 0x106C0860 are fixed STORAGE in the original,
  * not pointers to storage: BrScenePropsDraw passes their addresses as
@@ -172,9 +170,9 @@ extern void  BrX10042AF0(void *p, int a1, int a2);
  * the original reads the cursor, bumps the global, and only then stores. */
 #define s17_emit(w0_, w1_)                                              \
     do {                                                                \
-        uint32_t *p_ = g_s17.pGfx;                                      \
+        uint32_t *p_ = (*(uint32_t **)&g_BrGfxPtr);                                      \
                                                                         \
-        g_s17.pGfx = p_ + 2;                                            \
+        (*(uint32_t **)&g_BrGfxPtr) = p_ + 2;                                            \
         p_[0] = (w0_);                                                  \
         p_[1] = (w1_);                                                  \
     } while (0)
@@ -183,7 +181,7 @@ extern void  BrX10042AF0(void *p, int a1, int a2);
  * (`mov [eax+4], esi`). On a 64-bit host that cannot round-trip, so the low
  * 32 bits are stored, exactly as the original would have. Consumers of the
  * stream in this port must not dereference these words. */
-#define s17_ptrword(p_)   ((uint32_t)(uintptr_t)(const void *)(p_))
+#define s17_ptrword(p_)   br_addr32((const void *)(p_))   /* a 32-bit display-list address */
 
 /* 0x1002FB20 */
 /* RESIDUE (12 masked diffs, T3a, instruction count and body length exact --
@@ -239,16 +237,16 @@ void BrScenePropsDraw(const BrPropList *pList, const BrMat4 *pViewMtx)
     s17_emit(0xE7000000u, 0);
     s17_emit(0xBA001402u, 0x00100000u);
 
-    if (g_s17.f690A1C != 0) {
+    if (DAT_105ccb68[24] != 0) {
         s17_emit(0xB900031Du, 0x0C192008u);
-        g_s17.f690A1C = 0;
+        DAT_105ccb68[24] = 0   /* 0x105CCBC8 */;
     } else {
         s17_emit(0xB900031Du, 0x0C192038u);
     }
 
     /* The combiner command is reserved first and filled in by 0x1002F900. */
-    pCombine = g_s17.pGfx;
-    g_s17.pGfx = pCombine + 2;
+    pCombine = (*(uint32_t **)&g_BrGfxPtr);
+    (*(uint32_t **)&g_BrGfxPtr) = pCombine + 2;
     BrRdpSetCombineLERP((BrGfxWords *)pCombine,
                         0x3EA, 0x3E9, 0x3F5, 0x3E9,
                         0x3EA, 0x3E9, 0x3F5, 0x3E9,
@@ -259,21 +257,21 @@ void BrScenePropsDraw(const BrPropList *pList, const BrMat4 *pViewMtx)
     s17_emit(0xBA001102u, 0);
     s17_emit(0xBA001001u, 0);
     s17_emit(0xBA000E02u, 0);
-    s17_emit(0xBA000C02u, g_s17.f6C0258);
-    s17_emit(0xBA000602u, g_s17.f6C0688);
-    s17_emit(0xBA000402u, g_s17.f6C0920);
+    s17_emit(0xBA000C02u, g_BrEnvOthermode);
+    s17_emit(0xBA000602u, BrG_6C0688);
+    s17_emit(0xBA000402u, DAT_106e79b0);
     s17_emit(0xB7000000u, 1);
     s17_emit(0xB9000002u, 1);
     s17_emit(0xBA001102u, 0);
     s17_emit(0xBA001001u, 0x00010000u);
     s17_emit(0xBA000E02u, 0);
-    s17_emit(0xBA000C02u, g_s17.f6C0258);
+    s17_emit(0xBA000C02u, g_BrEnvOthermode);
     s17_emit(0xB6000000u, 0x00853200u);
 
     /* `neg / sbb / and 0xFFFFF000 / add 0x2000` -- 0x1000 when the two
      * globals differ, 0x2000 when they are equal. */
     s17_emit(0xB7000000u,
-             (((g_s17.f6C3364 ^ g_s17.f6C1174) ? 0x1000u : 0x2000u)
+             ((((*(int32_t *)&g_brRaceBeginDifficulty) ^ BrG_6C1174) ? 0x1000u : 0x2000u)
               | 0x000A0205u));
 
     pLights = BrPool32Alloc();
@@ -316,7 +314,7 @@ void BrScenePropsDraw(const BrPropList *pList, const BrMat4 *pViewMtx)
             }
             if (it->flags & 4)
                 s17_emit(0xB6000000u, 0x3000u);
-            if ((it->flags & 0x80) && g_s17.f0AA880 != 0)
+            if ((it->flags & 0x80) && DAT_100aa010 != 0)
                 s17_emit(0xB6000000u, 0x200u);
 
             s17_emit(0xBB000001u, 0xFFFFFFFFu);
@@ -333,11 +331,11 @@ void BrScenePropsDraw(const BrPropList *pList, const BrMat4 *pViewMtx)
             s17_emit(0x06000000u, it->dl);
             s17_emit(0xBD000000u, 0);
 
-            if ((it->flags & 0x80) && g_s17.f0AA880 != 0)
+            if ((it->flags & 0x80) && DAT_100aa010 != 0)
                 s17_emit(0xB7000000u, 0x200u);
             if (it->flags & 4)
                 s17_emit(0xB7000000u,
-                         (g_s17.f6C3364 ^ g_s17.f6C1174) ? 0x1000u : 0x2000u);
+                         ((*(int32_t *)&g_brRaceBeginDifficulty) ^ BrG_6C1174) ? 0x1000u : 0x2000u);
             if (it->flags & 0x400) {
                 s17_emit(0xBC00000Au, 0xFFFFFF00u);
                 s17_emit(0xBC00040Au, 0xFFFFFF00u);

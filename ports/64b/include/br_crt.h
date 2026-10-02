@@ -81,7 +81,11 @@ int   br_access(const char *path, int mode);
  * CONVENTIONS.md and br_crt.c agree on 0; this header was the outlier. */
 /* BrFtolTrunc: prototype in br_funcs.h */
 
+/* the platform's per-frame hook (scripted input), BrAppFrame calls it */
+void plat_app_frame(void);
+
 #ifdef __cplusplus
 }  /* BR_CLINK_END */
 #endif
+
 #endif /* BR_CRT_H */

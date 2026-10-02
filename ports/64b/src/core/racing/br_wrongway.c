@@ -43,7 +43,7 @@ void __fastcall FUN_1006eb00(BrDriverCar *param_1)
         *(int *)&param_1->f1000 = 0x3e800000;
         return;
       }
-      if (BR_LP64_PTR_AS_INT(param_1->pszBanner) != iVar1) {
+      if (param_1->pszBanner != iVar1) {
         return;
       }
       param_1->psz1004 = 0;

@@ -1703,11 +1703,11 @@ extern void *g_0A64A0;  /* 0x100A5C60 */
 #pragma pop_macro("g_0A64A0")
 #pragma push_macro("g_BrDrawRefTbl")
 #undef g_BrDrawRefTbl
-extern int8_t *g_BrDrawRefTbl;  /* 0x100A5C78 */
+extern int8_t g_BrDrawRefTbl[16];  /* 0x100A5C78 */
 #pragma pop_macro("g_BrDrawRefTbl")
 #pragma push_macro("g_BrDrawTexBlob")
 #undef g_BrDrawTexBlob
-extern void *g_BrDrawTexBlob;  /* 0x100A5C88 */
+extern uint8_t g_BrDrawTexBlob[0x20];  /* 0x100A5C88 */
 #pragma pop_macro("g_BrDrawTexBlob")
 #pragma push_macro("DAT_100a5cb0")
 #undef DAT_100a5cb0
@@ -2211,11 +2211,11 @@ extern uint32_t DAT_100a9ec0[];  /* 0x100A9EC0 */
 #pragma pop_macro("DAT_100a9ec0")
 #pragma push_macro("BrG_0AA770")
 #undef BrG_0AA770
-extern uint8_t *BrG_0AA770;  /* 0x100A9F00 */
+extern uint32_t BrG_0AA770[50];  /* 0x100A9F00 */
 #pragma pop_macro("BrG_0AA770")
 #pragma push_macro("BrG_0AA838")
 #undef BrG_0AA838
-extern void *BrG_0AA838;  /* 0x100A9FC8 */
+extern uint32_t BrG_0AA838[10];  /* 0x100A9FC8 */
 #pragma pop_macro("BrG_0AA838")
 #pragma push_macro("DAT_100aa00c")
 #undef DAT_100aa00c
@@ -2383,7 +2383,7 @@ extern uint32_t BrG_0AA72C;  /* 0x100AA72C */
 #pragma pop_macro("BrG_0AA72C")
 #pragma push_macro("BrG_0AA730")
 #undef BrG_0AA730
-extern void *BrG_0AA730;  /* 0x100AA730 */
+extern uint8_t BrG_0AA730[0x154];  /* 0x100AA730 */
 #pragma pop_macro("BrG_0AA730")
 #pragma push_macro("BrG_0AA884")
 #undef BrG_0AA884
@@ -2499,7 +2499,7 @@ extern int DAT_100aacf8;  /* 0x100AACF8 */
 #pragma pop_macro("DAT_100aacf8")
 #pragma push_macro("g_p0AB3E0")
 #undef g_p0AB3E0
-extern void *g_p0AB3E0;  /* 0x100AB3E0 */
+extern int g_p0AB3E0;  /* 0x100AB3E0 */
 #pragma pop_macro("g_p0AB3E0")
 #pragma push_macro("g_br0AB3E4")
 #undef g_br0AB3E4
@@ -2871,11 +2871,11 @@ extern int32_t g_aBrRacePlaceMsg[];  /* 0x100B3168 */
 #pragma pop_macro("g_aBrRacePlaceMsg")
 #pragma push_macro("g_0B39B0")
 #undef g_0B39B0
-extern void *g_0B39B0;  /* 0x100B31B8 */
+extern struct BrVarBlock g_0B39B0[48];  /* 0x100B31B8 */
 #pragma pop_macro("g_0B39B0")
 #pragma push_macro("g_0B3A68")
 #undef g_0B3A68
-extern void *g_0B3A68;  /* 0x100B3270 */
+extern struct BrVarBlock g_0B3A68[16];  /* 0x100B3270 */
 #pragma pop_macro("g_0B3A68")
 #pragma push_macro("DAT_100b32b0")
 #undef DAT_100b32b0
@@ -2999,7 +2999,7 @@ extern char s_tracks__100b74c0[];  /* 0x100B74C0 */
 #pragma pop_macro("s_tracks__100b74c0")
 #pragma push_macro("PTR_s_desert_trk_100b78c0")
 #undef PTR_s_desert_trk_100b78c0
-extern char *PTR_s_desert_trk_100b78c0;  /* 0x100B78C0 */
+extern char *PTR_s_desert_trk_100b78c0[16];  /* 0x100B78C0 */
 #pragma pop_macro("PTR_s_desert_trk_100b78c0")
 #pragma push_macro("DAT_100b7900")
 #undef DAT_100b7900
@@ -3089,22 +3089,6 @@ extern uint8_t BrSndMasterVolume;  /* 0x100BB2E8 */
 #undef g_brFadeOutA
 extern uint8_t g_brFadeOutA;  /* 0x100BB2EC */
 #pragma pop_macro("g_brFadeOutA")
-#pragma push_macro("PTR_s_cargfx_skytexdesert_lut4_100bb30c")
-#undef PTR_s_cargfx_skytexdesert_lut4_100bb30c
-extern char *PTR_s_cargfx_skytexdesert_lut4_100bb30c;  /* 0x100BB30C */
-#pragma pop_macro("PTR_s_cargfx_skytexdesert_lut4_100bb30c")
-#pragma push_macro("PTR_s_cargfx_skytexdesertn_lut4_100bb314")
-#undef PTR_s_cargfx_skytexdesertn_lut4_100bb314
-extern char *PTR_s_cargfx_skytexdesertn_lut4_100bb314;  /* 0x100BB314 */
-#pragma pop_macro("PTR_s_cargfx_skytexdesertn_lut4_100bb314")
-#pragma push_macro("g_br0BBAD4")
-#undef g_br0BBAD4
-extern int32_t g_br0BBAD4;  /* 0x100BBAD4 */
-#pragma pop_macro("g_br0BBAD4")
-#pragma push_macro("BrG_0BBAD8")
-#undef BrG_0BBAD8
-extern uint8_t BrG_0BBAD8;  /* 0x100BBAD8 */
-#pragma pop_macro("BrG_0BBAD8")
 #pragma push_macro("g_CBE8")
 #undef g_CBE8
 extern int g_CBE8;  /* 0x100BCBE8 */
@@ -3163,20 +3147,8 @@ extern int32_t g_BrCamDemo;  /* 0x100BCDCC */
 #pragma pop_macro("g_BrCamDemo")
 #pragma push_macro("g_ab0C12A0")
 #undef g_ab0C12A0
-extern unsigned char g_ab0C12A0[];  /* 0x100BCDD0 */
+extern unsigned char g_ab0C12A0[16 * 0x15F88];  /* 0x100BCDD0 */
 #pragma pop_macro("g_ab0C12A0")
-#pragma push_macro("g_br0BD3EC")
-#undef g_br0BD3EC
-extern int32_t g_br0BD3EC;  /* 0x100BD3EC */
-#pragma pop_macro("g_br0BD3EC")
-#pragma push_macro("g_brCamCollided")
-#undef g_brCamCollided
-extern int g_brCamCollided;  /* 0x100C129C */
-#pragma pop_macro("g_brCamCollided")
-#pragma push_macro("g_2066C8")
-#undef g_2066C8
-extern int g_2066C8;  /* 0x102066C8 */
-#pragma pop_macro("g_2066C8")
 #pragma push_macro("g_brCdTrackLast")
 #undef g_brCdTrackLast
 extern int g_brCdTrackLast;  /* 0x1021C768 */
@@ -3875,48 +3847,10 @@ extern int16_t DAT_104add50[2][522][3];  /* 0x104ADD50 */
 #pragma pop_macro("DAT_104add50")
 #pragma push_macro("g_BrEnvBitmap")
 #undef g_BrEnvBitmap
-extern uint8_t *g_BrEnvBitmap;  /* 0x104AF5C8 */
+/* Environment-map bitmap: two 64x64 byte sections, one per view. */
+extern uint8_t g_BrEnvBitmap[2][0x1000];  /* 0x104AF5C8 */
 #pragma pop_macro("g_BrEnvBitmap")
-#pragma push_macro("DAT_104af606")
-#undef DAT_104af606
-extern unsigned char DAT_104af606;  /* 0x104AF606 */
-#pragma pop_macro("DAT_104af606")
-#pragma push_macro("DAT_104af607")
-#undef DAT_104af607
-extern unsigned char DAT_104af607;  /* 0x104AF607 */
-#pragma pop_macro("DAT_104af607")
-#pragma push_macro("DAT_104af608")
-#undef DAT_104af608
-extern unsigned char DAT_104af608;  /* 0x104AF608 */
-#pragma pop_macro("DAT_104af608")
-#pragma push_macro("DAT_104af609")
-#undef DAT_104af609
-extern unsigned char DAT_104af609;  /* 0x104AF609 */
-#pragma pop_macro("DAT_104af609")
-#pragma push_macro("DAT_104af60a")
-#undef DAT_104af60a
-extern unsigned char DAT_104af60a;  /* 0x104AF60A */
-#pragma pop_macro("DAT_104af60a")
-#pragma push_macro("DAT_104af647")
-#undef DAT_104af647
-extern unsigned char DAT_104af647;  /* 0x104AF647 */
-#pragma pop_macro("DAT_104af647")
-#pragma push_macro("DAT_104af648")
-#undef DAT_104af648
-extern unsigned char DAT_104af648;  /* 0x104AF648 */
-#pragma pop_macro("DAT_104af648")
-#pragma push_macro("DAT_104af649")
-#undef DAT_104af649
-extern unsigned char DAT_104af649;  /* 0x104AF649 */
-#pragma pop_macro("DAT_104af649")
-#pragma push_macro("g_br4B0348")
-#undef g_br4B0348
-extern int g_br4B0348;  /* 0x104B0348 */
-#pragma pop_macro("g_br4B0348")
-#pragma push_macro("DAT_104b05c8")
-#undef DAT_104b05c8
-extern int DAT_104b05c8;  /* 0x104B05C8 */
-#pragma pop_macro("DAT_104b05c8")
+#define DAT_104b05c8 (g_BrEnvBitmap[1])   /* 0x104B05C8: the second section */
 #pragma push_macro("DAT_104b15c8")
 #undef DAT_104b15c8
 extern float DAT_104b15c8;  /* 0x104B15C8 */
@@ -4141,74 +4075,7 @@ extern uint8_t *g_brSegHostBase;  /* 0x104B16E0 */
 #undef g_brSegN64Base
 extern int32_t g_brSegN64Base;  /* 0x104B16E4 */
 #pragma pop_macro("g_brSegN64Base")
-#pragma push_macro("g_i4BBE08")
-#undef g_i4BBE08
-extern int g_i4BBE08;  /* 0x104BBE08 */
-#pragma pop_macro("g_i4BBE08")
-#pragma push_macro("g_cClipPool")
-#undef g_cClipPool
-extern int g_cClipPool;  /* 0x104C0BA8 */
-#pragma pop_macro("g_cClipPool")
-#pragma push_macro("g_brTex4D51B8")
-#undef g_brTex4D51B8
-extern int32_t g_brTex4D51B8;  /* 0x104D51B8 */
-#pragma pop_macro("g_brTex4D51B8")
-#pragma push_macro("g_brTex5553E0")
-#undef g_brTex5553E0
-extern int32_t g_brTex5553E0;  /* 0x105553E0 */
-#pragma pop_macro("g_brTex5553E0")
-#pragma push_macro("g_brTex5553E8")
-#undef g_brTex5553E8
-extern int32_t g_brTex5553E8;  /* 0x105553E8 */
-#pragma pop_macro("g_brTex5553E8")
-#pragma push_macro("g_brTex5553F0")
-#undef g_brTex5553F0
-extern int32_t g_brTex5553F0;  /* 0x105553F0 */
-#pragma pop_macro("g_brTex5553F0")
-#pragma push_macro("g_brTex5553F4")
-#undef g_brTex5553F4
-extern int32_t g_brTex5553F4;  /* 0x105553F4 */
-#pragma pop_macro("g_brTex5553F4")
-#pragma push_macro("g_brTex575414")
-#undef g_brTex575414
-extern int32_t g_brTex575414;  /* 0x10575414 */
-#pragma pop_macro("g_brTex575414")
-#pragma push_macro("g_brTex575420")
-#undef g_brTex575420
-extern int32_t g_brTex575420;  /* 0x10575420 */
-#pragma pop_macro("g_brTex575420")
-#pragma push_macro("g_brTex575424")
-#undef g_brTex575424
-extern int32_t g_brTex575424;  /* 0x10575424 */
-#pragma pop_macro("g_brTex575424")
-#pragma push_macro("g_brTex575428")
-#undef g_brTex575428
-extern int32_t g_brTex575428;  /* 0x10575428 */
-#pragma pop_macro("g_brTex575428")
-#pragma push_macro("g_brTex57542C")
-#undef g_brTex57542C
-extern void *g_brTex57542C;  /* 0x1057542C */
-#pragma pop_macro("g_brTex57542C")
-#pragma push_macro("g_brTex57543C")
-#undef g_brTex57543C
-extern void *g_brTex57543C;  /* 0x1057543C */
-#pragma pop_macro("g_brTex57543C")
-#pragma push_macro("BrG_5754FC")
-#undef BrG_5754FC
-extern int32_t BrG_5754FC;  /* 0x105754FC */
-#pragma pop_macro("BrG_5754FC")
-#pragma push_macro("BrG_575500")
-#undef BrG_575500
-extern int32_t BrG_575500;  /* 0x10575500 */
-#pragma pop_macro("BrG_575500")
-#pragma push_macro("BrG_575508")
-#undef BrG_575508
-extern int32_t BrG_575508;  /* 0x10575508 */
-#pragma pop_macro("BrG_575508")
-#pragma push_macro("BrG_57550C")
-#undef BrG_57550C
-extern int32_t BrG_57550C;  /* 0x1057550C */
-#pragma pop_macro("BrG_57550C")
+extern float g_afBrVtxOut[0x100000 / 4];  /* 0x104B16E8 */
 #pragma push_macro("g_br675540")
 #undef g_br675540
 extern int32_t g_br675540;  /* 0x105B16E8 */
@@ -4593,10 +4460,9 @@ extern uint8_t *DAT_105ce2dc;  /* 0x105CE2DC */
 #undef BrGlDepthFuncShadow
 extern uint32_t BrGlDepthFuncShadow;  /* 0x105CE2E0 */
 #pragma pop_macro("BrGlDepthFuncShadow")
-#pragma push_macro("DAT_105ce2e8")
-#undef DAT_105ce2e8
-extern int DAT_105ce2e8[];  /* 0x105CE2E8 */
-#pragma pop_macro("DAT_105ce2e8")
+struct BrGfxWords;
+extern struct BrGfxWords *g_apBrGbiStack[10];  /* 0x105CE2E8: G_DL return addresses */
+extern int32_t g_iBrGbiSnap;  /* 0x105CE310: the fistp scratch the vertex snap reads back */
 #pragma push_macro("DAT_105d1718")
 #undef DAT_105d1718
 extern int DAT_105d1718;  /* 0x105D1718 */
@@ -6609,26 +6475,6 @@ extern int DAT_10ac6744;  /* 0x10AC6744 */
 #undef BrGlNavLast6748
 extern int32_t BrGlNavLast6748;  /* 0x10AC6748 */
 #pragma pop_macro("BrGlNavLast6748")
-#pragma push_macro("g_apBrImgTintTex")
-#undef g_apBrImgTintTex
-extern const uint8_t * g_apBrImgTintTex[];  /* 0x10AC67AC */
-#pragma pop_macro("g_apBrImgTintTex")
-#pragma push_macro("g_apBrDamageBmp")
-#undef g_apBrDamageBmp
-extern void * g_apBrDamageBmp[3];  /* 0x10AC67B0 */
-#pragma pop_macro("g_apBrDamageBmp")
-#pragma push_macro("DAT_10ac67c0")
-#undef DAT_10ac67c0
-extern int DAT_10ac67c0;  /* 0x10AC67C0 */
-#pragma pop_macro("DAT_10ac67c0")
-#pragma push_macro("DAT_10ac67c4")
-#undef DAT_10ac67c4
-extern int DAT_10ac67c4;  /* 0x10AC67C4 */
-#pragma pop_macro("DAT_10ac67c4")
-#pragma push_macro("DAT_10ac67c8")
-#undef DAT_10ac67c8
-extern int DAT_10ac67c8;  /* 0x10AC67C8 */
-#pragma pop_macro("DAT_10ac67c8")
 #pragma push_macro("DAT_10ac67cc")
 #undef DAT_10ac67cc
 extern short DAT_10ac67cc;  /* 0x10AC67CC */
@@ -6870,70 +6716,6 @@ extern uint32_t BrG_B502EC;  /* 0x10B502EC */
 #undef g_brRaceB71288
 extern int32_t g_brRaceB71288;  /* 0x10B71288 */
 #pragma pop_macro("g_brRaceB71288")
-#pragma push_macro("g_BrPadModeBytes")
-#undef g_BrPadModeBytes
-extern const unsigned char *g_BrPadModeBytes;  /* 0x10B71534 */
-#pragma pop_macro("g_BrPadModeBytes")
-#pragma push_macro("DAT_10b71538")
-#undef DAT_10b71538
-extern int DAT_10b71538;  /* 0x10B71538 */
-#pragma pop_macro("DAT_10b71538")
-#pragma push_macro("g_BrDrawReflectEnable")
-#undef g_BrDrawReflectEnable
-extern int32_t g_BrDrawReflectEnable;  /* 0x10B7153C */
-#pragma pop_macro("g_BrDrawReflectEnable")
-#pragma push_macro("DAT_10b71540")
-#undef DAT_10b71540
-extern int DAT_10b71540;  /* 0x10B71540 */
-#pragma pop_macro("DAT_10b71540")
-#pragma push_macro("DAT_10b71544")
-#undef DAT_10b71544
-extern char DAT_10b71544[];  /* 0x10B71544 */
-#pragma pop_macro("DAT_10b71544")
-#pragma push_macro("g_aBrCfgPlayerName")
-#undef g_aBrCfgPlayerName
-extern char g_aBrCfgPlayerName[1024];  /* 0x10B71648 */
-#pragma pop_macro("g_aBrCfgPlayerName")
-#pragma push_macro("DAT_10b71a48")
-#undef DAT_10b71a48
-extern int DAT_10b71a48;  /* 0x10B71A48 */
-#pragma pop_macro("DAT_10b71a48")
-#pragma push_macro("DAT_10b71a4c")
-#undef DAT_10b71a4c
-extern int DAT_10b71a4c;  /* 0x10B71A4C */
-#pragma pop_macro("DAT_10b71a4c")
-#pragma push_macro("DAT_10b71a50")
-#undef DAT_10b71a50
-extern int DAT_10b71a50;  /* 0x10B71A50 */
-#pragma pop_macro("DAT_10b71a50")
-#pragma push_macro("DAT_10b71a54")
-#undef DAT_10b71a54
-extern int DAT_10b71a54;  /* 0x10B71A54 */
-#pragma pop_macro("DAT_10b71a54")
-#pragma push_macro("g_brItemIconCount")
-#undef g_brItemIconCount
-extern unsigned int g_brItemIconCount;  /* 0x10B71A68 */
-#pragma pop_macro("g_brItemIconCount")
-#pragma push_macro("g_brRaceB71A6C")
-#undef g_brRaceB71A6C
-extern int32_t g_brRaceB71A6C;  /* 0x10B71A6C */
-#pragma pop_macro("g_brRaceB71A6C")
-#pragma push_macro("g_aBrB4E710")
-#undef g_aBrB4E710
-extern int32_t g_aBrB4E710[12];  /* 0x10B71A70 */
-#pragma pop_macro("g_aBrB4E710")
-#pragma push_macro("DAT_10b71aa0")
-#undef DAT_10b71aa0
-extern char DAT_10b71aa0[];  /* 0x10B71AA0 */
-#pragma pop_macro("DAT_10b71aa0")
-#pragma push_macro("DAT_10b71ac0")
-#undef DAT_10b71ac0
-extern char DAT_10b71ac0[];  /* 0x10B71AC0 */
-#pragma pop_macro("DAT_10b71ac0")
-#pragma push_macro("DAT_10b71b00")
-#undef DAT_10b71b00
-extern int DAT_10b71b00;  /* 0x10B71B00 */
-#pragma pop_macro("DAT_10b71b00")
 #pragma push_macro("g_aBrDevName1B0C")
 #undef g_aBrDevName1B0C
 extern char g_aBrDevName1B0C[][36];  /* 0x10B71B0C */
@@ -7315,7 +7097,7 @@ extern int BrGbiRectG_18ED198;  /* 0x118ED198 */
 #pragma pop_macro("BrGbiRectG_18ED198")
 #pragma push_macro("g_pfn18AA084")
 #undef g_pfn18AA084
-extern uint32_t (*g_pfn18AA084)(uint32_t, uint32_t, void *);  /* 0x118ED19C */
+extern int (*g_pfn18AA084)(int, const void *, const void *);  /* 0x118ED19C */
 #pragma pop_macro("g_pfn18AA084")
 #pragma push_macro("DAT_118ed1a0")
 #undef DAT_118ed1a0
@@ -7573,10 +7355,6 @@ extern int DAT_118ef17c;  /* 0x118EF17C */
 #undef DAT_118ef180
 extern int DAT_118ef180;  /* 0x118EF180 */
 #pragma pop_macro("DAT_118ef180")
-#pragma push_macro("_imp__memcmp")
-#undef _imp__memcmp
-extern int (*_imp__memcmp)(const void *, const void *, unsigned int);  /* 0x118F05AC */
-#pragma pop_macro("_imp__memcmp")
 #ifdef __cplusplus
 }
 #endif

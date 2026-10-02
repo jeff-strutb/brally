@@ -71,8 +71,8 @@ void BrCarGfxSetColour(BrCarGfx *pCar, int r, int g, int b)
     for (i = 0; i < 12; i++) {
         uint16_t v;
 
-        pSlot = &pCar->pSlots[pCar->aSlotIdx[i]];
-        pw    = pSlot->pWords;
+        pSlot = &BR_PTR32(BrGfxSlot *, pCar->aSlots)[pCar->aSlotIdx[i]];
+        pw    = BR_PTR32(uint16_t *, pSlot->aWords);
         /* Nested, not two `continue`s: the original's tests are two near
          * `je`/`jne` straight to the loop increment (0x1002E7FB and
          * 0x1002E810), and the early-exit spelling emits a short branch over
@@ -101,7 +101,7 @@ void BrCarGfxSetColour(BrCarGfx *pCar, int r, int g, int b)
     for (i = 0; i < pCar->cDl; i++)
         g_BrGfxSubmit(pCar->aDl[i]);
 
-    pwTail = pCar->pSlots[pCar->aSlotIdx[11]].pWords;
+    pwTail = BR_PTR32(uint16_t *, BR_PTR32(BrGfxSlot *, pCar->aSlots)[pCar->aSlotIdx[11]].aWords);
     /* Wrapped, not two early returns: the original's tests are near `je` and
      * `jne` straight to the function's own `mov esp,ebp` (0x1002EAFF), and
      * the return spelling emits a short branch over a jump instead. */
@@ -187,8 +187,8 @@ void BrCarGfxReadColour(BrRgbSink *pSink, const BrCarGfx *pCar)
     BrRgbArg b, y, z;          /* the three struct args ARE the three locals */
     const uint16_t  *pw;
 
-    a  = &pCar->pSlots[pCar->aSlotIdx[2]];
-    pw = a->pWords;
+    a  = &BR_PTR32(BrGfxSlot *, pCar->aSlots)[pCar->aSlotIdx[2]];
+    pw = BR_PTR32(uint16_t *, a->aWords);
 
     /* Nested ifs, no early returns: /Od emits ONE je-to-epilogue per
      * guard; `if (...) return;` costs a jne/jmp pair. */

@@ -14,12 +14,12 @@
  * on the left (jle / setge). */
 /* @implements 0x1000E2F0 glide BrQsortCmpS2 */
 
-int BrQsortCmpS2(int param_1,int param_2)
+int BrQsortCmpS2(const void *param_1,const void *param_2)
 
 {
-  if (*(short *)(param_1 + 2) > *(short *)(param_2 + 2)) {
+  if (*(const short *)((const char *)param_1 + 2) > *(const short *)((const char *)param_2 + 2)) {
     return 1;
   }
-  return (*(short *)(param_1 + 2) >= *(short *)(param_2 + 2)) - 1;
+  return (*(const short *)((const char *)param_1 + 2) >= *(const short *)((const char *)param_2 + 2)) - 1;
 }
 

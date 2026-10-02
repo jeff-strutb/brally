@@ -1191,14 +1191,14 @@ void BrSceneDlBuild(struct BrViewRect *param_1, int param_2, unsigned char *para
         DAT_1035fb84 = 0xc080000;
     }
     DAT_1035fb88 = 0x112038;
-    EMIT(0x1030040, g_BrMtxSlot);
-    EMIT(0x1060040, DAT_100a9ec0);
+    EMIT(0x1030040, br_addr32(g_BrMtxSlot));
+    EMIT(0x1060040, br_addr32(DAT_100a9ec0));
     EMIT(0xbc00000e, g_BrPerspNorm);
-    EMIT(0x3840010, g_BrVisLights);
-    EMIT(0x3820010, g_BrVisLights + 0x10);
+    EMIT(0x3840010, br_addr32(g_BrVisLights));
+    EMIT(0x3820010, br_addr32(g_BrVisLights + 0x10));
     EMIT(0xbc000002, 0x80000040);
-    EMIT(0x3860010, DAT_100a5cb0 + g_BrVisLightHistIdx * 0x18);
-    EMIT(0x3880010, (*(uint8_t (*)[])&g_BrVisLightHist) + g_BrVisLightHistIdx * 0x18);
+    EMIT(0x3860010, br_addr32(DAT_100a5cb0 + g_BrVisLightHistIdx * 0x18));
+    EMIT(0x3880010, br_addr32((*(uint8_t (*)[])&g_BrVisLightHist) + g_BrVisLightHistIdx * 0x18));
     EMIT(0xbc00000a, (*(uint32_t *)&DAT_106ecb40));
     EMIT(0xbc00040a, (*(uint32_t *)&DAT_106ecb40));
     EMIT(0xbc00200a, (*(uint32_t *)&DAT_106e9a78));
@@ -1229,12 +1229,12 @@ void BrSceneDlBuild(struct BrViewRect *param_1, int param_2, unsigned char *para
                      (DAT_100aa010 != 0 ? 0x200 : 0) |
                      ((*(int *)((char *)&g_aBrEntRecs + 0x78)) != 0 ? 0x10000 : 0) | 0xa0005);
     BrDlRectCmdFlush();
-    EMIT(0x1030040, g_BrMtxSlot);
+    EMIT(0x1030040, br_addr32(g_BrMtxSlot));
     EMIT(0xbc00000e, g_BrPerspNorm);
-    EMIT(0x1060040, DAT_100a9ec0);
+    EMIT(0x1060040, br_addr32(DAT_100a9ec0));
     EMIT(0xbc000002, 0x80000040);
-    EMIT(0x3860010, DAT_100a5cb0 + g_BrVisLightHistIdx * 0x18);
-    EMIT(0x3880010, (*(uint8_t (*)[])&g_BrVisLightHist) + g_BrVisLightHistIdx * 0x18);
+    EMIT(0x3860010, br_addr32(DAT_100a5cb0 + g_BrVisLightHistIdx * 0x18));
+    EMIT(0x3880010, br_addr32((*(uint8_t (*)[])&g_BrVisLightHist) + g_BrVisLightHistIdx * 0x18));
     EMIT(0xbc00000a, (*(uint32_t *)&DAT_106ecb40));
     EMIT(0xbc00040a, (*(uint32_t *)&DAT_106ecb40));
     EMIT(0xbc00200a, (*(uint32_t *)&DAT_106e9a78));
@@ -1343,7 +1343,7 @@ draw:
                     float *pTw = pObj + 0xf;
                     if (!bTexLoaded) {
                         bTexLoaded = 1;
-                        EMIT(0x1020040, DAT_100a9ec0);
+                        EMIT(0x1020040, br_addr32(DAT_100a9ec0));
                     }
                     OUTM(12) = ((pView[0] * pPos[0] + (*(float (*)[4])((char *)&g_BrCurMat + 0x30))[0] * pTw[0]) + (*(float (*)[4])((char *)&g_BrCurMat + 0x20))[0] * pTz[0]) + (*(float (*)[4])((char *)&g_BrCurMat + 0x10))[0] * pTy[0];
                     OUTM(13) = ((pView[1] * pPos[0] + (*(float (*)[4])((char *)&g_BrCurMat + 0x30))[1] * pTw[0]) + (*(float (*)[4])((char *)&g_BrCurMat + 0x20))[1] * pTz[0]) + (*(float (*)[4])((char *)&g_BrCurMat + 0x10))[1] * pTy[0];
@@ -1413,15 +1413,15 @@ draw:
                         OUTM(15) = scale * OUTM(15);
                     }
                     BrGuMtxStore((float *)&g_BrDrawCombined, pM);
-                    EMIT(0x39e0010, pM);
-                    EMIT(0x3980010, pM + 4);
-                    EMIT(0x39a0010, pM + 8);
-                    EMIT(0x39c0010, pM + 0xc);
+                    EMIT(0x39e0010, br_addr32(pM));
+                    EMIT(0x3980010, br_addr32(pM + 4));
+                    EMIT(0x39a0010, br_addr32(pM + 8));
+                    EMIT(0x39c0010, br_addr32(pM + 0xc));
                     }
                 } else {
                     float *pM = BrSub_10069490();
                     BrGuMtxStore(pObj, pM);
-                    EMIT(0x1020040, pM);
+                    EMIT(0x1020040, br_addr32(pM));
                     bTexLoaded = 0;
                 }
                 if ((*(uint16_t *)(pObj + 0x13) & 0x4a4) != 0) {
@@ -1481,8 +1481,8 @@ draw:
     }
     if (param_2 != 0) {
         pT = (*(uint32_t * *)&DAT_1035f7d8);
-        EMIT(0x6000000, pT);
-        TEMIT(0x1060040, DAT_100a9ec0);
+        EMIT(0x6000000, br_addr32(pT));
+        TEMIT(0x1060040, br_addr32(DAT_100a9ec0));
         TEMIT(((*(uint32_t *)&DAT_1184c470) & 0xffffff) | 0xdc000000, 1);
         if ((*(int *)((char *)&g_aBrEntRecs + 0x7C)) == 0 && (*(int *)((char *)&g_aBrEntRecs + 0x84)) == 0) {
             TEMIT(0xb900031d, 0x504b50);
@@ -1511,7 +1511,7 @@ draw:
                 if (DAT_10396eb0 != 0 && pCar[-1] != 0 && pCar[0] != 0 &&
                     pCar[1] != 0 && pCar[2] != 0) {
                     TEMIT(((*(uint32_t *)&DAT_1184c470) & 0xffffff) | 0xdc000000, 1);
-                    TEMIT(0x400107f, DAT_1035faec);
+                    TEMIT(0x400107f, br_addr32(DAT_1035faec));
                     {
                     int *pW = pCar + 4;
                     pDst = (uint16_t *)4;
@@ -1745,7 +1745,7 @@ no_mark:
                                             if (DAT_1035f7dc + 0x20 >=
                                                 (uint32_t *)(DAT_102e16ac + 0x3e800))
                                                 goto full;
-                                            TEMIT(0x400107f, DAT_1035f7dc);
+                                            TEMIT(0x400107f, br_addr32(DAT_1035f7dc));
                                             DAT_1035f7dc[0] =
                                                 *(uint32_t *)&DAT_10273690[ds + row].x2;
                                             DAT_1035f7dc[1] =
@@ -1835,7 +1835,7 @@ full:
         }
         DAT_102e0ca0 = (cHead + base) - DAT_102e0ca0;
     }
-    EMIT(0x1020040, DAT_100a9ec0);
+    EMIT(0x1020040, br_addr32(DAT_100a9ec0));
     EMIT(0xb6000000, 0x10000);
     EMIT(0xe7000000, 0);
     BrPodNop();

@@ -51,21 +51,21 @@ void BrTexAnimStep(void)
   for (f = 0; f < g_brTrkHdr.cSections; f = f + 1) {
     if (*(int *)REC(f) == 0) continue;
     if ((unsigned char)((*(unsigned int *)(REC(f) + 0x20) >> 0x14) & 1) != 0) {
-      b = *(int *)(((*(int *)(REC((f)) + 8))) + 8 + (*(unsigned short *)(((*(int *)(REC((f)) + 8))) + 2) - 1) * 0xc) - *(int *)(((*(int *)(REC((f)) + 8))) + 8);
+      b = *(int *)((((intptr_t)BR_AT32(uint8_t *, REC(f) + 8))   /* the key list, a 32-bit address */) + 8 + (*(unsigned short *)((((intptr_t)BR_AT32(uint8_t *, REC(f) + 8))   /* the key list, a 32-bit address */) + 2) - 1) * 0xc) - *(int *)((((intptr_t)BR_AT32(uint8_t *, REC(f) + 8))   /* the key list, a 32-bit address */) + 8);
       g = DAT_106ec768 - (DAT_106ec768 / b) * b;
-      if ((*(unsigned short *)(((*(int *)(REC((f)) + 8))) + 2) == 2) && (*(int *)(((*(int *)(REC((f)) + 8))) + 8) == -1)) continue;
+      if ((*(unsigned short *)((((intptr_t)BR_AT32(uint8_t *, REC(f) + 8))   /* the key list, a 32-bit address */) + 2) == 2) && (*(int *)((((intptr_t)BR_AT32(uint8_t *, REC(f) + 8))   /* the key list, a 32-bit address */) + 8) == -1)) continue;
       if (((*(int *)&g_BrX06909B4) != 0) || ((*(int *)&DAT_105ccb68[8]) == 2)) continue;
       if ((e) && (((*(unsigned int *)(REC(f) + 0x20) >> 0x18) & 0xf) == 0xb)) {
         c = 1;
       }
       else {
-        for (c = 1; c < *(unsigned short *)(((*(int *)(REC((f)) + 8))) + 2); c = c + 1) {
-          if (g < *(unsigned int *)(((*(int *)(REC((f)) + 8))) + 8 + c * 0xc)) break;
+        for (c = 1; c < *(unsigned short *)((((intptr_t)BR_AT32(uint8_t *, REC(f) + 8))   /* the key list, a 32-bit address */) + 2); c = c + 1) {
+          if (g < *(unsigned int *)((((intptr_t)BR_AT32(uint8_t *, REC(f) + 8))   /* the key list, a 32-bit address */) + 8 + c * 0xc)) break;
         }
       }
       c = c - 1;
-      d = *(int *)(((*(int *)(REC((f)) + 8))) + 0xc + c * 0xc);
-      a = *(int *)(((*(int *)(REC((f)) + 8))) + 0x10 + c * 0xc);
+      d = *(int *)((((intptr_t)BR_AT32(uint8_t *, REC(f) + 8))   /* the key list, a 32-bit address */) + 0xc + c * 0xc);
+      a = *(int *)((((intptr_t)BR_AT32(uint8_t *, REC(f) + 8))   /* the key list, a 32-bit address */) + 0x10 + c * 0xc);
       if (((*(unsigned int *)(REC(f) + 0x20) & 0x3ffff) != 0) && (d != -1)) {
         (*(*(int (**)())&g_BrDrawModelDlHook))((d >> 0x10) & 0xffff, d & 0xffff);
       }

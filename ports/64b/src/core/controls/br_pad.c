@@ -8,6 +8,7 @@
  * globals and prototypes they need all come from slice2_19.h.
  */
 #include "slice1_05.h"   /* br_globals: its objects */
+#include "br_cartypes.h"   /* BrRaceCtl, the canonical record */
 #include "slice2_19.h"
 
 /* 0x10019A70 is the (unclaimed, 11 KB) race step.  The original passes its
@@ -39,37 +40,37 @@ void BR_THISCALL1 BrPadTranslate(BrPad *pPad)
     uint32_t w;
 
     {
-        uint8_t st = pPad->pRaw->status;
+        uint8_t st = (*(BrPadRaw * *)&((BrRaceCtl *)(pPad))->f158)->status;
         if (st != 0) {
-            pPad->f28 = (st == 8) ? 1 : 0;
-            pPad->pRaw->stickX = 0;
-            pPad->pRaw->stickY = 0;
-            *(uint16_t *)(void *)&pPad->pRaw->b0 = 0;
+            (*(int32_t *)&((BrRaceCtl *)(pPad))->_pad0026[2]) = (st == 8) ? 1 : 0;
+            (*(BrPadRaw * *)&((BrRaceCtl *)(pPad))->f158)->stickX = 0;
+            (*(BrPadRaw * *)&((BrRaceCtl *)(pPad))->f158)->stickY = 0;
+            *(uint16_t *)(void *)&(*(BrPadRaw * *)&((BrRaceCtl *)(pPad))->f158)->b0 = 0;
         } else {
-            pPad->f28 = 0;
+            (*(int32_t *)&((BrRaceCtl *)(pPad))->_pad0026[2]) = 0;
         }
     }
 
-    w = *(const uint16_t *)(const void *)&pPad->pRaw->b0;
-    pPad->buttons = 0;
-    if (w & 0x0800u) pPad->buttons  = BR_PAD_DUP;
-    if (w & 0x0400u) pPad->buttons |= BR_PAD_DDOWN;
-    if (w & 0x0200u) pPad->buttons |= BR_PAD_DLEFT;
-    if (w & 0x0100u) pPad->buttons |= BR_PAD_DRIGHT;
-    if (w & 0x8000u) pPad->buttons |= BR_PAD_A;
-    if (w & 0x4000u) pPad->buttons |= BR_PAD_B;
-    if (w & 0x0020u) pPad->buttons |= BR_PAD_L;
-    if (w & 0x0010u) pPad->buttons |= BR_PAD_R;
-    if (w & 0x2000u) pPad->buttons |= BR_PAD_Z;
-    if (w & 0x1000u) pPad->buttons |= BR_PAD_START;
-    if (w & 0x0008u) pPad->buttons |= BR_PAD_CUP;
-    if (w & 0x0001u) pPad->buttons |= BR_PAD_CRIGHT;
-    if (w & 0x0004u) pPad->buttons |= BR_PAD_CDOWN;
-    if (w & 0x0002u) pPad->buttons |= BR_PAD_CLEFT;
+    w = *(const uint16_t *)(const void *)&(*(BrPadRaw * *)&((BrRaceCtl *)(pPad))->f158)->b0;
+    (*(uint32_t *)&((BrRaceCtl *)(pPad))->ctl) = 0;
+    if (w & 0x0800u) (*(uint32_t *)&((BrRaceCtl *)(pPad))->ctl)  = BR_PAD_DUP;
+    if (w & 0x0400u) (*(uint32_t *)&((BrRaceCtl *)(pPad))->ctl) |= BR_PAD_DDOWN;
+    if (w & 0x0200u) (*(uint32_t *)&((BrRaceCtl *)(pPad))->ctl) |= BR_PAD_DLEFT;
+    if (w & 0x0100u) (*(uint32_t *)&((BrRaceCtl *)(pPad))->ctl) |= BR_PAD_DRIGHT;
+    if (w & 0x8000u) (*(uint32_t *)&((BrRaceCtl *)(pPad))->ctl) |= BR_PAD_A;
+    if (w & 0x4000u) (*(uint32_t *)&((BrRaceCtl *)(pPad))->ctl) |= BR_PAD_B;
+    if (w & 0x0020u) (*(uint32_t *)&((BrRaceCtl *)(pPad))->ctl) |= BR_PAD_L;
+    if (w & 0x0010u) (*(uint32_t *)&((BrRaceCtl *)(pPad))->ctl) |= BR_PAD_R;
+    if (w & 0x2000u) (*(uint32_t *)&((BrRaceCtl *)(pPad))->ctl) |= BR_PAD_Z;
+    if (w & 0x1000u) (*(uint32_t *)&((BrRaceCtl *)(pPad))->ctl) |= BR_PAD_START;
+    if (w & 0x0008u) (*(uint32_t *)&((BrRaceCtl *)(pPad))->ctl) |= BR_PAD_CUP;
+    if (w & 0x0001u) (*(uint32_t *)&((BrRaceCtl *)(pPad))->ctl) |= BR_PAD_CRIGHT;
+    if (w & 0x0004u) (*(uint32_t *)&((BrRaceCtl *)(pPad))->ctl) |= BR_PAD_CDOWN;
+    if (w & 0x0002u) (*(uint32_t *)&((BrRaceCtl *)(pPad))->ctl) |= BR_PAD_CLEFT;
 
     if (BrGameStepIs(BR_PAD_RACE_STEP)) {
-        if (pPad->buttons & BR_PAD_L) pPad->buttons |= BR_PAD_L_ALT;
-        if (pPad->buttons & BR_PAD_R) pPad->buttons |= BR_PAD_R_ALT;
+        if ((*(uint32_t *)&((BrRaceCtl *)(pPad))->ctl) & BR_PAD_L) (*(uint32_t *)&((BrRaceCtl *)(pPad))->ctl) |= BR_PAD_L_ALT;
+        if ((*(uint32_t *)&((BrRaceCtl *)(pPad))->ctl) & BR_PAD_R) (*(uint32_t *)&((BrRaceCtl *)(pPad))->ctl) |= BR_PAD_R_ALT;
 
         /* Both probes are 16-BIT masks, not byte masks. Spelled as
          * `g_BrPadModeBytes[1] & 0x80` the two 0x80s are one constant in
@@ -80,48 +81,52 @@ void BR_THISCALL1 BrPadTranslate(BrPad *pPad)
         if (!(*(const unsigned short *)(const void *)g_BrPadModeBytes & 0x8000u)
             && !(*(const unsigned short *)(const void *)(g_BrPadModeBytes + 6)
                  & 0x8000u)) {
-            uint32_t a = pPad->buttons;
+            uint32_t a = (*(uint32_t *)&((BrRaceCtl *)(pPad))->ctl);
             if (a & BR_PAD_DLEFT) {
                 if (!(a & BR_PAD_DRIGHT))
-                    pPad->steer = (int8_t)0xB0;
+                    (*(int8_t *)&((BrRaceCtl *)(pPad))->b24) = (int8_t)0xB0;
                 else
-                    pPad->steer = 0;
+                    (*(int8_t *)&((BrRaceCtl *)(pPad))->b24) = 0;
             } else if (a & BR_PAD_DRIGHT) {
-                pPad->steer = 0x50;
+                (*(int8_t *)&((BrRaceCtl *)(pPad))->b24) = 0x50;
             } else {
-                pPad->steer = 0;
+                (*(int8_t *)&((BrRaceCtl *)(pPad))->b24) = 0;
             }
         } else {
-            pPad->steer = pPad->pRaw->stickX;
+            (*(int8_t *)&((BrRaceCtl *)(pPad))->b24) = (*(BrPadRaw * *)&((BrRaceCtl *)(pPad))->f158)->stickX;
         }
 
-        if (pPad->buttons & BR_PAD_A) {
-            if (pPad->pRaw->stickY < (int8_t)0xC0)    /* signed, -64 */
-                pPad->buttons |= BR_PAD_A_BACK;
-            pPad->buttons |= BR_PAD_A_D;
+        if ((*(uint32_t *)&((BrRaceCtl *)(pPad))->ctl) & BR_PAD_A) {
+            if ((*(BrPadRaw * *)&((BrRaceCtl *)(pPad))->f158)->stickY < (int8_t)0xC0)    /* signed, -64 */
+                (*(uint32_t *)&((BrRaceCtl *)(pPad))->ctl) |= BR_PAD_A_BACK;
+            (*(uint32_t *)&((BrRaceCtl *)(pPad))->ctl) |= BR_PAD_A_D;
         }
-        if (pPad->buttons & BR_PAD_B) {
-            if (pPad->buttons & BR_PAD_A_D)
-                pPad->buttons |= BR_PAD_B_A;
+        if ((*(uint32_t *)&((BrRaceCtl *)(pPad))->ctl) & BR_PAD_B) {
+            if ((*(uint32_t *)&((BrRaceCtl *)(pPad))->ctl) & BR_PAD_A_D)
+                (*(uint32_t *)&((BrRaceCtl *)(pPad))->ctl) |= BR_PAD_B_A;
             else
-                pPad->buttons |= BR_PAD_B_ALT;
+                (*(uint32_t *)&((BrRaceCtl *)(pPad))->ctl) |= BR_PAD_B_ALT;
         }
-        if (pPad->buttons & BR_PAD_CUP)   pPad->buttons |= BR_PAD_CUP2;
-        if (pPad->buttons & BR_PAD_CDOWN) pPad->buttons |= BR_PAD_CDOWN2;
-        if (pPad->buttons & BR_PAD_CLEFT) pPad->buttons |= BR_PAD_CLEFT2;
+        if ((*(uint32_t *)&((BrRaceCtl *)(pPad))->ctl) & BR_PAD_CUP)   (*(uint32_t *)&((BrRaceCtl *)(pPad))->ctl) |= BR_PAD_CUP2;
+        if ((*(uint32_t *)&((BrRaceCtl *)(pPad))->ctl) & BR_PAD_CDOWN) (*(uint32_t *)&((BrRaceCtl *)(pPad))->ctl) |= BR_PAD_CDOWN2;
+        if ((*(uint32_t *)&((BrRaceCtl *)(pPad))->ctl) & BR_PAD_CLEFT) (*(uint32_t *)&((BrRaceCtl *)(pPad))->ctl) |= BR_PAD_CLEFT2;
     }
 
-    if (pPad->f2C == 0 && pPad->f30 == 0) {
-        /* the original's dead load of f44: a volatile READ with no
-         * assignment is exactly one mov, no store */
-        (void)*(volatile int32_t *)&pPad->f44;
-    } else {
-        int32_t *p = &pPad->f34;
-        int      i;
-        for (i = 2; i > 0; --i, ++p) {
-            if (*(p - 2) != 0) {
-                if (*p < *(p + 2) && g_BrX06909B4 == 0)
-                    *p += 2;
+    {
+        BrRaceCtl *c = (BrRaceCtl *)pPad;
+        if (c->apRec[0] == 0 && c->apRec[1] == 0) {
+            /* the original's dead load of pHdr: a volatile READ with no
+             * assignment is exactly one mov, no store */
+            (void)*(void *volatile *)&c->pHdr;
+        } else {
+            /* the original walks aLen with an int cursor and reaches apRec
+             * at -2 and aCap at +2 */
+            int i;
+            for (i = 0; i < 2; i++) {
+                if (c->apRec[i] != 0) {
+                    if (c->aLen[i] < c->aCap[i] && g_BrX06909B4 == 0)
+                        c->aLen[i] += 2;
+                }
             }
         }
     }
@@ -129,25 +134,25 @@ void BR_THISCALL1 BrPadTranslate(BrPad *pPad)
     {
         float t;
 
-        pPad->axisX = (float)pPad->pRaw->stickX * g_BrK08F548;
-        t = (float)pPad->steer * g_BrK08F548;
-        pPad->axisY = (float)pPad->pRaw->stickY * g_BrK08F548;
-        pPad->axisSteer = t;
+        (*(float *)&((BrRaceCtl *)(pPad))->_pad0004[20]) = (float)(*(BrPadRaw * *)&((BrRaceCtl *)(pPad))->f158)->stickX * g_BrK08F548;
+        t = (float)(*(int8_t *)&((BrRaceCtl *)(pPad))->b24) * g_BrK08F548;
+        (*(float *)&((BrRaceCtl *)(pPad))->_pad0004[24]) = (float)(*(BrPadRaw * *)&((BrRaceCtl *)(pPad))->f158)->stickY * g_BrK08F548;
+        (*(float *)&((BrRaceCtl *)(pPad))->steer) = t;
 
-        if (pPad->axisX > 1.0f)
-            pPad->axisX = 1.0f;
-        else if (pPad->axisX < -1.0f)
-            pPad->axisX = -1.0f;
+        if ((*(float *)&((BrRaceCtl *)(pPad))->_pad0004[20]) > 1.0f)
+            (*(float *)&((BrRaceCtl *)(pPad))->_pad0004[20]) = 1.0f;
+        else if ((*(float *)&((BrRaceCtl *)(pPad))->_pad0004[20]) < -1.0f)
+            (*(float *)&((BrRaceCtl *)(pPad))->_pad0004[20]) = -1.0f;
 
-        if (pPad->axisY > 1.0f)
-            pPad->axisY = 1.0f;
-        else if (pPad->axisY < -1.0f)
-            pPad->axisY = -1.0f;
+        if ((*(float *)&((BrRaceCtl *)(pPad))->_pad0004[24]) > 1.0f)
+            (*(float *)&((BrRaceCtl *)(pPad))->_pad0004[24]) = 1.0f;
+        else if ((*(float *)&((BrRaceCtl *)(pPad))->_pad0004[24]) < -1.0f)
+            (*(float *)&((BrRaceCtl *)(pPad))->_pad0004[24]) = -1.0f;
 
         if (t > 1.0f)
-            pPad->axisSteer = 1.0f;
+            (*(float *)&((BrRaceCtl *)(pPad))->steer) = 1.0f;
         else if (t < -1.0f)
-            pPad->axisSteer = -1.0f;
+            (*(float *)&((BrRaceCtl *)(pPad))->steer) = -1.0f;
     }
 }
 

@@ -389,7 +389,10 @@ extern "C" {
 #endif
 #pragma push_macro("BrSndVoices")
 #undef BrSndVoices
-extern BrSndVoice * BrSndVoices[468];  /* 0x100B55F8 */
+/* 26 groups; a row is 16 voice slots (0..14 used) then the group's base
+ * rate, 72 bytes in the original, which indexes it as row*18 + slot. */
+typedef struct BrSndRow { BrSndVoice *aSlot[16]; double baseRate; } BrSndRow;
+extern BrSndRow g_aBrSndRow[26];  /* 0x100B55F8 */
 #pragma pop_macro("BrSndVoices")
 #pragma push_macro("DAT_11773698")
 #undef DAT_11773698

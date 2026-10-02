@@ -811,7 +811,7 @@ unsigned char *BrDlCmdTri2Flat(unsigned char *p)
 /* @n64 0x8023DF00 located */
 /* Literal: one stdcall into the driver with the raw dword at p+4. */
 /* grFogColorValue: prototype in br_funcs.h */
-const uint8_t *BrDlCmdFogColour(BrDlCmd *pS, const uint8_t *p)
+const uint8_t *BrDlCmdFogColour(const uint8_t *p)
 {
     grFogColorValue(*(const int *)(const void *)(p + 4));
     return p + 8;
@@ -829,15 +829,16 @@ const uint8_t *BrDlCmdFogColour(BrDlCmd *pS, const uint8_t *p)
  * the renderer keeps, and hands the packed form straight to the 3dfx
  * constant-colour register. Returns the pointer to the next command. */
 /* @implements 0x1001EA80 glide br_dl_prim */
-int br_dl_prim(int param_1)
+const uint8_t *br_dl_prim(const uint8_t *p)
 
 {
-  BrGbiRectG_5D17A4 = (float)(*(unsigned int *)(param_1 + 4) >> 0x18);
-  BrGbiRectG_5D17B4 = (float)(*(unsigned int *)(param_1 + 4) >> 0x10 & 0xff);
-  BrGbiRectG_5CE2D0 = (float)(*(unsigned int *)(param_1 + 4) >> 8 & 0xff);
-  BrGlPrimA = (float)(*(unsigned int *)(param_1 + 4) & 0xff);
-  grConstantColorValue(*(int *)(param_1 + 4));
-  return param_1 + 8;
+  unsigned int w1 = *(const unsigned int *)(const void *)(p + 4);
+  BrGbiRectG_5D17A4 = (float)(w1 >> 0x18);
+  BrGbiRectG_5D17B4 = (float)(w1 >> 0x10 & 0xff);
+  BrGbiRectG_5CE2D0 = (float)(w1 >> 8 & 0xff);
+  BrGlPrimA = (float)(w1 & 0xff);
+  grConstantColorValue((int)w1);
+  return p + 8;
 }
 
 /* ====================================================================
@@ -898,7 +899,7 @@ int br_dl_prim(int param_1)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* FUN_1001e7a0: prototype in br_funcs.h */
-const uint8_t *BrDlCmdSetCombine(BrDlCmd *pS, const uint8_t *p)
+const uint8_t *BrDlCmdSetCombine(const uint8_t *p)
 {
     int w0, w1;
 

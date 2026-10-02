@@ -10,6 +10,7 @@
  * See slice3_45.h for the per-function derivations and gotchas.
  */
 #include <string.h>
+#include "slice3_41.h"   /* BrDriverCar, the canonical record */
 
 #include "br_match.h"
 /* The entity setters are thiscall with three stack floats; hide the
@@ -58,21 +59,21 @@ void __fastcall BrEntSetMatrix(BrEntCar *pE, const BrMat4 *pSrc)
 {
 
     /* `rep movsd` of 16 dwords. */
-    memcpy(&pE->mat0, pSrc, sizeof(BrMat4));
+    memcpy(&(*(struct BrMat4 *)&((BrDriverCar *)(pE))->fwd), pSrc, sizeof(BrMat4));
 
-    BrQuatFromMatrix(pSrc, &pE->st.quat);
+    BrQuatFromMatrix(pSrc, &(*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).quat);
 
-    pE->stB.quat.f00 = pE->st.quat.f00;
-    pE->stB.quat.f04 = pE->st.quat.f04;
-    pE->stB.quat.f08 = pE->st.quat.f08;
-    pE->stB.quat.f0C = pE->st.quat.f0C;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st2).quat.f00 = (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).quat.f00;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st2).quat.f04 = (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).quat.f04;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st2).quat.f08 = (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).quat.f08;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st2).quat.f0C = (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).quat.f0C;
 
-    pE->stA.quat.f00 = pE->st.quat.f00;
-    pE->stA.quat.f04 = pE->st.quat.f04;
-    pE->stA.quat.f08 = pE->st.quat.f08;
-    pE->stA.quat.f0C = pE->st.quat.f0C;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st1).quat.f00 = (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).quat.f00;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st1).quat.f04 = (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).quat.f04;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st1).quat.f08 = (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).quat.f08;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st1).quat.f0C = (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).quat.f0C;
 
-    BrRbBuildMatrix(&pE->matrix, &pE->st);
+    BrRbBuildMatrix(&(*(struct BrMat4 *)&((BrDriverCar *)(pE))->aBody[0].rb.m), &(*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st));
 }
 
 /* 0x100767A0 */
@@ -85,21 +86,21 @@ void __fastcall BrEntSetVel(BrEntCar *pE, float x, float y,
                             float z)
 {
 
-    pE->st.vel.x = x;
-    pE->st.vel.y = y;
-    pE->st.vel.z = z;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).vel.x = x;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).vel.y = y;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).vel.z = z;
 
-    pE->stB.vel.x = x;
-    pE->stB.vel.y = y;
-    pE->stB.vel.z = z;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st2).vel.x = x;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st2).vel.y = y;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st2).vel.z = z;
 
-    pE->stA.vel.x = x;
-    pE->stA.vel.y = y;
-    pE->stA.vel.z = z;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st1).vel.x = x;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st1).vel.y = y;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st1).vel.z = z;
 
-    pE->f1024[0] = x;
-    pE->f1024[1] = y;
-    pE->f1024[2] = z;
+    (*(float (*)[3])&((BrDriverCar *)(pE))->f1024)[0] = x;
+    (*(float (*)[3])&((BrDriverCar *)(pE))->f1024)[1] = y;
+    (*(float (*)[3])&((BrDriverCar *)(pE))->f1024)[2] = z;
 }
 
 /* 0x10076820 */
@@ -128,7 +129,7 @@ void __fastcall BrEntSetOrientation(BrEntCar *pE,
         q.f08 = 0.0f;
         q.f0C = sn;
     }
-    BrQuatMul(&pE->st.quat, &pE->st.quat, &q);
+    BrQuatMul(&(*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).quat, &(*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).quat, &q);
 
     {
         float sn = BrSinF(h2);
@@ -137,7 +138,7 @@ void __fastcall BrEntSetOrientation(BrEntCar *pE,
         q.f08 = sn;
         q.f0C = 0.0f;
     }
-    BrQuatMul(&pE->st.quat, &pE->st.quat, &q);
+    BrQuatMul(&(*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).quat, &(*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).quat, &q);
 
     {
         float sn = BrSinF(h3);
@@ -146,18 +147,18 @@ void __fastcall BrEntSetOrientation(BrEntCar *pE,
         q.f08 = 0.0f;
         q.f0C = 0.0f;
     }
-    BrQuatMul(&pE->st.quat, &pE->st.quat, &q);
+    BrQuatMul(&(*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).quat, &(*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).quat, &q);
 
-    BrVec4Normalise(&pE->st.quat);
+    BrVec4Normalise(&(*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).quat);
 
-    pE->stB.quat.f00 = pE->st.quat.f00;
-    pE->stB.quat.f04 = pE->st.quat.f04;
-    pE->stB.quat.f08 = pE->st.quat.f08;
-    pE->stB.quat.f0C = pE->st.quat.f0C;
-    pE->stA.quat.f00 = pE->st.quat.f00;
-    pE->stA.quat.f04 = pE->st.quat.f04;
-    pE->stA.quat.f08 = pE->st.quat.f08;
-    pE->stA.quat.f0C = pE->st.quat.f0C;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st2).quat.f00 = (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).quat.f00;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st2).quat.f04 = (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).quat.f04;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st2).quat.f08 = (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).quat.f08;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st2).quat.f0C = (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).quat.f0C;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st1).quat.f00 = (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).quat.f00;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st1).quat.f04 = (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).quat.f04;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st1).quat.f08 = (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).quat.f08;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st1).quat.f0C = (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).quat.f0C;
 }
 
 /* 0x100769A0 */
@@ -169,15 +170,15 @@ void __fastcall BrEntSetAngVel(BrEntCar *pE, float x, float y,
                                float z)
 {
 
-    pE->st.angVel.x = x;
-    pE->st.angVel.y = y;
-    pE->st.angVel.z = z;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).angVel.x = x;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).angVel.y = y;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).angVel.z = z;
 
-    pE->stB.angVel.x = x;
-    pE->stB.angVel.y = y;
-    pE->stB.angVel.z = z;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st2).angVel.x = x;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st2).angVel.y = y;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st2).angVel.z = z;
 
-    pE->stA.angVel.x = x;
-    pE->stA.angVel.y = y;
-    pE->stA.angVel.z = z;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st1).angVel.x = x;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st1).angVel.y = y;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st1).angVel.z = z;
 }

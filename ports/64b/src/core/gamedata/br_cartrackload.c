@@ -116,7 +116,6 @@ extern int BrSprintf(char *pDst, const char *pszFmt, ...);
  * cdecl.  Handles are kept as uint32_t because the originals are 32-bit
  * values living inside the file image. */
 /* XSLICE 0x118AA084 */
-extern uint32_t (*g_pfn18AA084)(uint32_t hCtx, uint32_t hSrc, void *pDesc);
 /* XSLICE 0x118AA0C4 */
 extern void (*g_pfn18AA0C4)(void *pv);
 /* XSLICE 0x118AA0C8 */
@@ -402,7 +401,7 @@ void BrRcaFixup(void *pvFile)
             *(uint16_t *)(pDesc + 0x16) = 0x6BAD;
             *(uint16_t *)(pDesc + 0x0C) = 0x31C6;
             *(uint32_t *)(pFile + 0x84) =
-                g_pfn18AA084(*(uint32_t *)(pFile + 0x80), hOld, pDesc);
+                (uint32_t)g_pfn18AA084((int)*(uint32_t *)(pFile + 0x80), BR_PTR32(const void *, hOld), pDesc);
 
             *(uint16_t *)(pDesc + 0x1C) = 0x00C0;
             *(uint16_t *)(pDesc + 0x1A) = 0x00C0;
@@ -411,7 +410,7 @@ void BrRcaFixup(void *pvFile)
             *(uint16_t *)(pDesc + 0x16) = 0x6BAD;
             *(uint16_t *)(pDesc + 0x0C) = 0x31C6;
             *(uint32_t *)(pFile + 0x88) =
-                g_pfn18AA084(*(uint32_t *)(pFile + 0x80), hOld, pDesc);
+                (uint32_t)g_pfn18AA084((int)*(uint32_t *)(pFile + 0x80), BR_PTR32(const void *, hOld), pDesc);
 
             *(uint16_t *)(pDesc + 0x1C) = 0x0190;
             *(uint16_t *)(pDesc + 0x1A) = *(uint16_t *)(pDesc + 0x1E);
@@ -420,7 +419,7 @@ void BrRcaFixup(void *pvFile)
             *(uint16_t *)(pDesc + 0x16) = 0x38E7;
             *(uint16_t *)(pDesc + 0x0C) = 0xFEFF;
             *(uint32_t *)(pFile + 0x8C) =
-                g_pfn18AA084(*(uint32_t *)(pFile + 0x80), hOld, pDesc);
+                (uint32_t)g_pfn18AA084((int)*(uint32_t *)(pFile + 0x80), BR_PTR32(const void *, hOld), pDesc);
 
             *(uint16_t *)(pDesc + 0x12) = 0x04F9;
             *(uint16_t *)(pDesc + 0x1C) = 0x00C0;
@@ -429,7 +428,7 @@ void BrRcaFixup(void *pvFile)
             *(uint16_t *)(pDesc + 0x16) = 0x38E7;
             *(uint16_t *)(pDesc + 0x0C) = 0xFEFF;
             *(uint32_t *)(pFile + 0x90) =
-                g_pfn18AA084(*(uint32_t *)(pFile + 0x80), hOld, pDesc);
+                (uint32_t)g_pfn18AA084((int)*(uint32_t *)(pFile + 0x80), BR_PTR32(const void *, hOld), pDesc);
         } else {
             *(uint32_t *)(pFile + 0x90) = 0;
             *(uint32_t *)(pFile + 0x8C) = 0;

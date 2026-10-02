@@ -1,3 +1,4 @@
+#include "slice3_41.h"   /* BrDriverCar, BrDriver */
 #include "slice1_05.h"   /* br_globals: its objects */
 #include "br_addr32.h"
 /* br_paneldl.c -- the car body-panel texture display list (0x10010FB0).
@@ -64,7 +65,8 @@ void BrPanelDlBuild(short *param_1)
     unsigned int *q;
     short        *psVar4;
     int           iVar1;
-    int          *local_14;
+    BrDriver     *local_14;
+    BrDriverCar  *pCar;
     unsigned int  local_18;
     unsigned int  local_c;
     unsigned int  uVar5;
@@ -86,14 +88,14 @@ void BrPanelDlBuild(short *param_1)
         p = BrPanelDlAlloc(); p[0] = 0xbb000001; p[1] = 0xffffffff;
         local_4 = 0;
         if ((*(int *)&g_brRaceNDriver) > 0) {
-            local_14 = (int *)((int)param_1 + 0x60);
+            local_14 = (BrDriver *)param_1;
             do {
-                iVar1 = *local_14;
-                if (iVar1 != 0) {
+                pCar = local_14->pCar;
+                if (pCar != 0) {
                     local_8 = 4;
-                    p = BrPanelDlAlloc(); p[0] = 0x1060040; p[1] = iVar1 + 0x26d4;
-                    local_18 = iVar1 + 0x11a0;
-                    param_1 = (short *)(iVar1 + 0x2340);
+                    p = BrPanelDlAlloc(); p[0] = 0x1060040; p[1] = br_addr32(&pCar->f26D4[0]);                  /* car + 0x26D4 */
+                    local_18 = br_addr32(&pCar->aHist[4][0]);           /* car + 0x11A0 */
+                    param_1 = &pCar->aWHist[5][1];                      /* car + 0x2340 */
                     do {
                         p = BrPanelDlAlloc(); p[0] = 0x40083ff; p[1] = local_18;
                         uVar5 = 0;
@@ -120,7 +122,7 @@ void BrPanelDlBuild(short *param_1)
                     p = BrPanelDlAlloc(); p[0] = 0xbd000000; p[1] = 0;
                 }
                 local_4++;
-                local_14 += 0x20;
+                local_14++;
             } while (local_4 < (*(int *)&g_brRaceNDriver));
         }
         p = BrPanelDlAlloc(); p[0] = 0xb7000000; p[1] = 0x2000;

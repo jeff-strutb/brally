@@ -169,10 +169,6 @@ extern BrVec3 DAT_104abe70[2];  /* 0x104ABE70 */
 #undef g_vPfxDrift
 extern BrVec3 g_vPfxDrift;  /* 0x104ADD40 */
 #pragma pop_macro("g_vPfxDrift")
-#pragma push_macro("BrG_4B0378")
-#undef BrG_4B0378
-extern BrVec3 BrG_4B0378;  /* 0x104B0378 */
-#pragma pop_macro("BrG_4B0378")
 #pragma push_macro("DAT_104b15d0")
 #undef DAT_104b15d0
 extern BrVec3 DAT_104b15d0[2];  /* 0x104B15D0 */

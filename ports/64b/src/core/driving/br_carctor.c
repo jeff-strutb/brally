@@ -61,7 +61,7 @@ void BR_THISCALL1 BrSub10062C50(void *pCar)
     ((*(uint32_t *)&p->f0E20)) = 0;
     ((*(uint32_t *)&p->fE70)) = 0;
     ((*(uint32_t *)&p->f0E24)) = 0;
-    if (((BR_LP64_PTR_AS_INT(p->pModel))) != 0) {
+    if (p->pModel != 0) {
     uint32_t k2 = 0x40000000;           /* 2.0f, orig edi */
 
     ((*(uint32_t *)&p->aBody[0].rb.mode)) = 1;

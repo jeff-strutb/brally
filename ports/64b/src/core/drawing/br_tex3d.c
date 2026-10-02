@@ -643,26 +643,27 @@ int * BrTexSlotFetchPixels(int param_1,int *param_2)
 int FUN_10027710(int *param_1,int *param_2)
 
 {
-  int *piVar1;
+  BrTexReq272 *r = (BrTexReq272 *)param_1;
   int iVar2;
   int *puVar3;
+  int outB;
   struct {
   char local_24 [4];
   int local_20 [8];
   } _fr;
 
-  piVar1 = param_1;
   if ((g_18ED1B4 != 0) || (iVar2 = FUN_10027a70(param_1), iVar2 == -1)) {
-    iVar2 = FUN_10023d70(_fr.local_24,&param_1,piVar1);
+    /* the original hands its own parameter slot over as the second
+     * out-value; nothing reads it afterwards */
+    iVar2 = FUN_10023d70((int *)_fr.local_24,&outB,r);
     puVar3 = &(*(int *)&DAT_1186c988);
     if (iVar2 == 0) {
       puVar3 = param_2;
     }
-    iVar2 = FUN_10028200(*piVar1,*(unsigned char *)(piVar1 + 1),piVar1[2],
-                         piVar1[3],piVar1[4],piVar1[5],piVar1[6],piVar1[7],piVar1[8],piVar1[9],
-                         piVar1[10],piVar1[0xb],piVar1[0xc],piVar1[0xd],piVar1[0xe]);
+    iVar2 = FUN_10028200(r->fTmu2,r->lod,r->w,r->h,r->fmt,r->f14,r->aspect0,r->aspect1,r->f20,
+                         r->fClampS,r->fClampT,r->f2c,r->f30,*(float *)&r->f34,r->f38);
     while (iVar2 == -1) {
-      if (*piVar1 != 1) {
+      if (r->fTmu2 != 1) {
         puVar3 = _fr.local_20;
         for (iVar2 = 8; iVar2 != 0; iVar2 = iVar2 + -1) {
           *puVar3 = 0x800f800f;
@@ -672,13 +673,12 @@ int FUN_10027710(int *param_1,int *param_2)
         FUN_1006ff50(s_Out_of_tex_mem__100a9e5c);
         return DAT_10697a4c;
       }
-      *piVar1 = 0;
-      iVar2 = FUN_10028200(0,*(unsigned char *)(piVar1 + 1),piVar1[2],
-                           piVar1[3],piVar1[4],piVar1[5],piVar1[6],piVar1[7],piVar1[8],piVar1[9],
-                           piVar1[10],piVar1[0xb],piVar1[0xc],piVar1[0xd],piVar1[0xe]);
+      r->fTmu2 = 0;
+      iVar2 = FUN_10028200(0,r->lod,r->w,r->h,r->fmt,r->f14,r->aspect0,r->aspect1,r->f20,
+                           r->fClampS,r->fClampT,r->f2c,r->f30,*(float *)&r->f34,r->f38);
     }
     BrTex3dDownloadAt(iVar2,puVar3);
-    iVar2 = BrTex3dRecInstall(piVar1,iVar2);
+    iVar2 = BrTex3dRecInstall(param_1,iVar2);
   }
   return iVar2;
 }
@@ -1212,7 +1212,7 @@ int BrTex3dRegister(void)
  * make path skips dedup. Installed in hook slot 0x118ED19C. */
 /* @implements 0x100298C0 glide FUN_100298c0 */
 
-void FUN_100298c0(int param_1,const void *param_2,const void *param_3)
+int FUN_100298c0(int param_1,const void *param_2,const void *param_3)
 {
   unsigned short *uVar1;
   int w;
@@ -1240,9 +1240,11 @@ void FUN_100298c0(int param_1,const void *param_2,const void *param_3)
     r.f268 = z;
   }
   uVar1 = FUN_10027b60(&r);
-  FUN_10027710((int *)&r, (int *)uVar1);
-  g_18ED1B4 = z;
-  return;
+  {
+    int id = FUN_10027710((int *)&r, (int *)uVar1);   /* left in eax: the result */
+    g_18ED1B4 = z;
+    return id;
+  }
 }
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */

@@ -67,11 +67,11 @@ void __fastcall BrCarWheelSteerStep_1005ACE0(BrDriverCar *pCar)
         BrReplayApplyCar(pCar);
         BrCarBuildMatrices(pCar);
     } else if ((*(int *)&g_brRaceRules.mode) == 2 && ((pCar->f140)) == 1 &&
-               ((BR_LP64_PTR_AS_INT(pCar->pCtl->pHdr))) != 0) {
+               pCar->pCtl->pHdr != 0) {
         BrReplayApplyCar(pCar);
         BrCarBuildMatrices(pCar);
     } else if ((*(int *)&g_brRaceRules.mode) == 4 && ((pCar->f140)) == 0 &&
-               ((BR_LP64_PTR_AS_INT(pCar->pCtl->pHdr))) != 0) {
+               pCar->pCtl->pHdr != 0) {
         BrReplayApply(pCar, 1);
         BrCarBuildMatrices(pCar);
     } else {

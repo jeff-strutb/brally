@@ -870,7 +870,7 @@ int FUN_1003c430(void)
   (*(int *)&g_Br0B380C) = (&(g_aBrAC4D8[0]))[g_brIdx0ABDE8];
   if (g_brP277B40 != 0) {
     sprintf(g_szBrName4DB0, (char *)BrStrGet(0xb8), (char *)BrStrGet(g_brTblABAA8[(*(int *)&g_Br0B380C)]));
-    if (((*(char * (*)[])&g_apBrRaceDiff)[(*(int *)&g_Br0B380C)][4] & 0x10) != 0) {
+    if ((g_apBrRaceDiff[(*(int *)&g_Br0B380C)]->f04 & 0x10) != 0) {
       strcat(g_szBrName4DB0, (char *)BrStrGet(0xb0));
     }
     FUN_100368a0(g_brOwner5BC72C, g_brPA9D008, 1);

@@ -60,9 +60,9 @@ void FUN_10061310(void)
   int *puVar3;
   int v;
   
-  if (((*(int *)((char *)&(*(int *)&g_BrCtrlCfg) + 0x2A0)) /* BR_LP64_BYTE_VIEW */ == 1) || ((*(int *)((char *)&(*(int *)&g_BrCtrlCfg) + 0x2A0)) /* BR_LP64_BYTE_VIEW */ == 2)) {
+  if ((g_BrCtrlCfg.active == 1) || (g_BrCtrlCfg.active == 2)) {
     v = BrFfbInit();
-    (*(int *)((char *)&(*(int *)&g_BrCtrlCfg) + 0x2A0)) /* BR_LP64_BYTE_VIEW */ = v;
+    g_BrCtrlCfg.active = v;
     switch (v) {
     case 1:
       g_BrPadModeBytes = (const unsigned char *)&g_BrCtrlCfg + 0xA8;

@@ -271,7 +271,7 @@ void *memset(void *, int, size_t);
 int BrSndBankFree(void)
 
 {
-  int *pRow;
+  BrSndRow *pRow;
   int  cGroups;
 
   if ((*(int32_t *)&DAT_100b51e4[1036]) == 0) {
@@ -287,10 +287,10 @@ int BrSndBankFree(void)
   BrSndBufFreeAll(&g_BrSndPrimary);
   cGroups = DAT_1184c260;
   if (0 < cGroups) {
-    pRow = BrSndVoices;
+    pRow = g_aBrSndRow;
     do {
-      memset(pRow, 0, 60);
-      pRow = pRow + 0x12;
+      memset(pRow->aSlot, 0, 15 * sizeof pRow->aSlot[0]);   /* slots 0..14 */
+      pRow = pRow + 1;
     } while (--cGroups != 0);
   }
   memset(g_apBrSfxChanVoice, 0, sizeof(g_apBrSfxChanVoice));
@@ -313,11 +313,11 @@ int BrSndChanBind(int iGroup, int iSlot)
   BrSndVoice *pVoice;
 
   if ((((*(int32_t *)&DAT_100b51e4[1036]) != 0) && ((*(struct BrDSound * *)&BrSndPDS) != 0)) && (BrSndG18290FC != 0)) {
-    g_aBrSfxChanRate[iSlot] = ((double *)BrSndVoices)[iGroup * 9 + 8];
+    g_aBrSfxChanRate[iSlot] = g_aBrSndRow[iGroup].baseRate;
     if (g_apBrSfxChanVoice[iSlot] != 0) {
       BrX10072580(iSlot);
     }
-    pVoice = BrSndVoices[iGroup * 0x12 + iSlot];
+    pVoice = g_aBrSndRow[iGroup].aSlot[iSlot];
     g_apBrSfxChanVoice[iSlot] = (void *)pVoice;
     return pVoice != 0;
   }
@@ -448,11 +448,11 @@ int FUN_1006bdd0(void)
 
   z = 0;
   i = 0;
-  p = &(BrSndVoices[450]);
+  p = &g_aBrSndRow[25].aSlot[0];
   off = 0;
   do {
     if (g_184C454 != z) {
-      v = BrSndVoices[i];
+      v = g_aBrSndRow[0].aSlot[i];
       if (v != z && v == g_apBrSfxChanVoice[i]) {
         BrSndChanBind(0x19, i);
         BrSfxChanSetLoop(i, 1);
@@ -495,7 +495,7 @@ int FUN_1006bdd0(void)
     p = p + 1;
     i = i + 1;
     off = off + 0x18;
-  } while (p < &BrSndVoices[465]);
+  } while (p < &g_aBrSndRow[25].aSlot[15]);
   return 1;
 }
 

@@ -80,16 +80,16 @@
 void BR_THISCALL1 BrGhostPlaybackStep(BrDriver *param_1)
 {
   BrDriverCar *iVar1;
-  unsigned int *puVar2;
-  void (*pcVar3)(int);
+  void (*pcVar3)(struct BrDriverCar *);
+  BrAiPathPt *pt;
   float fVar4;
   float fVar5;
 
-  if (((*(int *)&g_brRaceNet) == 0) || (((intptr_t)(param_1->pCar)) != 0)) {
-    iVar1 = ((intptr_t)(param_1->pCar));
+  if (((*(int *)&g_brRaceNet) == 0) || (param_1->pCar != 0)) {
+    iVar1 = param_1->pCar;
     if ((iVar1 != 0) && ((*(void * *)&iVar1->pfnControl == (void *)BrCtlAi && ((*(int *)&g_brRaceRules.mode) != 5)))) {
-      **(unsigned int * *)&iVar1->pCtl = **(unsigned int * *)&iVar1->pCtl & 0xf000000;
-      *(int *)(*(int *)(((intptr_t)(param_1->pCar)) + 0x29c0) + 0x20) = 0;
+      iVar1->pCtl->ctl = iVar1->pCtl->ctl & 0xf000000;
+      param_1->pCar->pCtl->steer = 0.0f;
     }
     if ((*(int *)&g_BrX06909B4) != 0) {
       (*(int *)((char *)&g_aBrSfxChan + 0x8)) = 0;
@@ -110,29 +110,29 @@ void BR_THISCALL1 BrGhostPlaybackStep(BrDriver *param_1)
       return;
     }
     if ((param_1->f68 & 1) == 0) {
-      iVar1 = ((intptr_t)(param_1->pCar));
+      iVar1 = param_1->pCar;
       if ((param_1->f68 & 2) == 0) {
         if (iVar1 != 0) {
           if (*(char *)&iVar1->b29AF == '\x02') {
             iVar1->f29B0 = iVar1->f29B0 - g_brRaceFlyStep * DAT_10077a0c;
             if (((*(int *)&g_brRaceRules.mode) == 2) && (*(unsigned int *)&param_1->f64 != 0)) {
-              if (*(float *)(((intptr_t)(param_1->pCar)) + 0x29b0) > DAT_10077a10) {
-                *(int *)(((intptr_t)(param_1->pCar)) + 0x29b0) = 0x3ec00000;
+              if (param_1->pCar->f29B0 > DAT_10077a10) {
+                param_1->pCar->f29B0 = 0.375f;              /* 0x3EC00000 */
               }
-            } else if (*(float *)(((intptr_t)(param_1->pCar)) + 0x29b0) >= DAT_100778f8) {
-              *(int *)(((intptr_t)(param_1->pCar)) + 0x29b0) = 0x3f800000;
-              *(unsigned char *)(((intptr_t)(param_1->pCar)) + 0x29af) = 0;
+            } else if (param_1->pCar->f29B0 >= DAT_100778f8) {
+              param_1->pCar->f29B0 = 1.0f;
+              param_1->pCar->b29AF = 0;
             }
           }
-          iVar1 = ((intptr_t)(param_1->pCar));
+          iVar1 = param_1->pCar;
           *(int *)&iVar1->posPrev.x = *(int *)&iVar1->pos.x;
           *(int *)&iVar1->posPrev.y = *(int *)&iVar1->pos.y;
           *(int *)&iVar1->posPrev.z = *(int *)&iVar1->pos.z;
-          pcVar3 = *(void (**)(int))(((intptr_t)(param_1->pCar)) + 0xf08);
-          if (pcVar3 != (void (*)(int))0x0) {
-            (*pcVar3)(((intptr_t)(param_1->pCar)));
+          pcVar3 = param_1->pCar->pfnControl;
+          if (pcVar3 != 0) {
+            (*pcVar3)(param_1->pCar);
           }
-          iVar1 = ((intptr_t)(param_1->pCar));
+          iVar1 = param_1->pCar;
           iVar1->f1034 =
                iVar1->f1030 * g_brRaceFlyStep + iVar1->f1034;
           return;
@@ -140,24 +140,24 @@ void BR_THISCALL1 BrGhostPlaybackStep(BrDriver *param_1)
         *(unsigned int *)&param_1->f0C.x = *(unsigned int *)&param_1->f00.x;
         *(unsigned int *)&param_1->f0C.y = *(unsigned int *)&param_1->f00.y;
         *(unsigned int *)&param_1->f0C.z = *(unsigned int *)&param_1->f00.z;
-        iVar1 = *(unsigned int *)&(*(int32_t *)&param_1->pPathNode) /* BR_LP64_SCALAR_IN_PTR */ + *(unsigned int *)&param_1->f2C * 0x28;
+        pt = &((BrAiPathNode *)param_1->pPathNode)->aPt[param_1->f2C];   /* node + 0x40 + i*0x28 */
         fVar4 = (((float)((int)*(unsigned int *)&param_1->f44 + 1) * BR_PTR32(BrAiPathNode *, g_brTrkHdr.aPathRoot)->aPt[0].arc - param_1->f50) -
-                 iVar1->aWheel[1].m[0][3]) /
-                (iVar1->aWheel[0].m[2][1] - iVar1->aWheel[1].m[0][3]);
+                 pt[1].arc) /
+                (pt[0].arc - pt[1].arc);
         /* a dword per driver record (stride 0x2B68 = 0xADA ints): 0x100622A0
          * `cmp dword [eax+0x10AF2108]` -- read as a byte at a byte stride it
          * tested the wrong driver (whole-image run, championship frame 861) */
         if ((((intptr_t)(g_aBrRaceCar[(((*(int *)&g_brRaceNEntrant) + *(unsigned int *)&param_1->f74))].pProfile))) == 0) {
-          BrRacePathAdvance(*(unsigned int *)&(*(int32_t *)&param_1->pPathNode) /* BR_LP64_SCALAR_IN_PTR */, *(unsigned int *)&param_1->f2C, fVar4, 2.22f);
+          BrRacePathAdvance(param_1->pPathNode, *(unsigned int *)&param_1->f2C, fVar4, 2.22f);
           fVar5 = param_1->f50 - DAT_10077a14;
         } else {
           fVar5 = BrVec3Length(((unsigned char *)&g_aBrRaceCar[(((*(int *)&g_brRaceNEntrant) + *(unsigned int *)&param_1->f74))].f1024.x));
-          BrRacePathAdvance(*(unsigned int *)&(*(int32_t *)&param_1->pPathNode) /* BR_LP64_SCALAR_IN_PTR */, *(unsigned int *)&param_1->f2C, fVar4, fVar5 * g_brRaceFlyStep);
+          BrRacePathAdvance(param_1->pPathNode, *(unsigned int *)&param_1->f2C, fVar4, fVar5 * g_brRaceFlyStep);
           fVar5 = BrVec3Length(((unsigned char *)&g_aBrRaceCar[(((*(int *)&g_brRaceNEntrant) + *(unsigned int *)&param_1->f74))].f1024.x));
           fVar5 = fVar5 * g_brRaceFlyStep + param_1->f50;
         }
         param_1->f50 = fVar5;
-        *(unsigned int *)&(*(int32_t *)&param_1->pPathNode) /* BR_LP64_SCALAR_IN_PTR */ = g_brRacePathNode;
+        param_1->pPathNode = (struct BrAiPathNode *)g_brRacePathNode;
         *(unsigned int *)&param_1->f2C = (*(int *)&g_brRacePathIndex);
         *(unsigned int *)&param_1->f00.x = (*(int *)&g_brRacePathPos);
         *(unsigned int *)&param_1->f00.y = (*(int *)((char *)&g_brRacePathPos + 0x4));
@@ -167,40 +167,39 @@ void BR_THISCALL1 BrGhostPlaybackStep(BrDriver *param_1)
         BrRaceGateStep((BrDriver *)&param_1->f00.x);
       } else if (iVar1 != 0) {
         if (((*(int *)&g_brRaceRules.mode) != 0) || ((int)*(unsigned int *)&param_1->f64 < (*(int *)&g_brRaceNEntrant))) {
-          **(unsigned int * *)&iVar1->pCtl = 0xc0000;
-          *(unsigned char *)(*(int *)(((intptr_t)(param_1->pCar)) + 0x29c0) + 0x24) = 0x81;
-          *(int *)(*(int *)(((intptr_t)(param_1->pCar)) + 0x29c0) + 0x20) = 0xbf800000;
+          iVar1->pCtl->ctl = 0xc0000;
+          param_1->pCar->pCtl->b24 = 0x81;
+          param_1->pCar->pCtl->steer = -1.0f;
         }
         if (((*(int *)&g_brRaceRules.mode) == 0) && ((*(int *)&g_brRaceNEntrant) <= (int)*(unsigned int *)&param_1->f64)) {
-          *(unsigned char *)(((intptr_t)(param_1->pCar)) + 0x29af) = 2;
-          *(float *)(((intptr_t)(param_1->pCar)) + 0x29b0) = *(float *)(((intptr_t)(param_1->pCar)) + 0x29b0) - g_brRaceFlyStep;
-          if (*(float *)(((intptr_t)(param_1->pCar)) + 0x29b0) < DAT_100778d8) {
-            *(int *)(((intptr_t)(param_1->pCar)) + 0x29b0) = 0;
+          param_1->pCar->b29AF = 2;
+          param_1->pCar->f29B0 = param_1->pCar->f29B0 - g_brRaceFlyStep;
+          if (param_1->pCar->f29B0 < DAT_100778d8) {
+            param_1->pCar->f29B0 = 0.0f;
           }
         }
-        iVar1 = ((intptr_t)(param_1->pCar));
+        iVar1 = param_1->pCar;
         *(int *)&iVar1->posPrev.x = *(int *)&iVar1->pos.x;
         *(int *)&iVar1->posPrev.y = *(int *)&iVar1->pos.y;
         *(int *)&iVar1->posPrev.z = *(int *)&iVar1->pos.z;
-        pcVar3 = *(void (**)(int))(((intptr_t)(param_1->pCar)) + 0xf08);
-        if (pcVar3 != (void (*)(int))0x0) {
-          (*pcVar3)(((intptr_t)(param_1->pCar)));
+        pcVar3 = param_1->pCar->pfnControl;
+        if (pcVar3 != 0) {
+          (*pcVar3)(param_1->pCar);
           return;
         }
       }
-    } else if (((intptr_t)(param_1->pCar)) != 0) {
-      puVar2 = *(unsigned int **)(((intptr_t)(param_1->pCar)) + 0x29c0);
-      *puVar2 = *puVar2 | 0x40000;
-      *(int *)(((intptr_t)(param_1->pCar)) + 0xe70) = 0;
-      iVar1 = ((intptr_t)(param_1->pCar));
+    } else if (param_1->pCar != 0) {
+      param_1->pCar->pCtl->ctl = param_1->pCar->pCtl->ctl | 0x40000;
+      param_1->pCar->fE70 = 0;
+      iVar1 = param_1->pCar;
       *(int *)&iVar1->posPrev.x = *(int *)&iVar1->pos.x;
       *(int *)&iVar1->posPrev.y = *(int *)&iVar1->pos.y;
       *(int *)&iVar1->posPrev.z = *(int *)&iVar1->pos.z;
-      pcVar3 = *(void (**)(int))(((intptr_t)(param_1->pCar)) + 0xf08);
-      if (pcVar3 != (void (*)(int))0x0) {
-        (*pcVar3)(((intptr_t)(param_1->pCar)));
+      pcVar3 = param_1->pCar->pfnControl;
+      if (pcVar3 != 0) {
+        (*pcVar3)(param_1->pCar);
       }
-      *(int *)(((intptr_t)(param_1->pCar)) + 0xe70) = 0;
+      param_1->pCar->fE70 = 0;
       return;
     }
   }

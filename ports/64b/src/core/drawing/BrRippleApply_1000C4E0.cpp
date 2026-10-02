@@ -1,3 +1,4 @@
+#include "slice3_41.h"   /* BrDriverCar, the canonical record */
 /* WHAT IT DOES: pushes a ripple through the car's display lists.  It turns
  * the given direction into a compass bearing, picks one of eight octants and
  * that octant's screen-space box, bumps the octant's counter (and stops if it
@@ -97,16 +98,16 @@ void Rip0C4E0::Apply(const float *pDir, short mag)
 
     mag <<= 2;
 
-    BrImgTintSetScale(b29ac, b29ad, b29ae);
-    BrTexDetailBumpNeighbour(oct, a2a70, a2a90);
+    BrImgTintSetScale((*(unsigned char *)&((BrDriverCar *)(this))->f29AC), (*(unsigned char *)&((BrDriverCar *)(this))->f29AD), (*(unsigned char *)&((BrDriverCar *)(this))->f29AE));
+    BrTexDetailBumpNeighbour(oct, (*(int (*)[8])&((BrDriverCar *)(this))->f2A70), (*(int (*)[8])&((BrDriverCar *)(this))->f2A90[0]));
 
-    if (w29c8[oct] >= g_ABE44)
+    if ((*(short (*)[8])&((BrDriverCar *)(this))->f29C8[0])[oct] >= g_ABE44)
         return;
 
-    w29c8[oct] = (short)(mag + w29c8[oct]);
+    (*(short (*)[8])&((BrDriverCar *)(this))->f29C8[0])[oct] = (short)(mag + (*(short (*)[8])&((BrDriverCar *)(this))->f29C8[0])[oct]);
 
-    w29d8 = (short)(((((unsigned char)w29d8 - 3) & 7)) - 4);
-    phase = w29d8;
+    (*(short *)&((BrDriverCar *)(this))->f29D8) = (short)(((((unsigned char)(*(short *)&((BrDriverCar *)(this))->f29D8) - 3) & 7)) - 4);
+    phase = (*(short *)&((BrDriverCar *)(this))->f29D8);
     if (phase < 0)
         phase = phase + 1;
 
@@ -143,7 +144,7 @@ void Rip0C4E0::Apply(const float *pDir, short mag)
         for (iInner = 0; iInner < 0xA; iInner++) {
             if (iInner == 9)
                 continue;
-            pCmd = pp29c4[0x2006 + iOuter * 10 + iInner];
+            pCmd = (*(int ** *)&((BrDriverCar *)(this))->pModel)[0x2006 + iOuter * 10 + iInner];
             if (pCmd == 0)
                 continue;
 

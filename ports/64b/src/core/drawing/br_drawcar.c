@@ -323,16 +323,16 @@ void BrCarDrawWheels(const BrCarView *pCar)
 
         pSlot = BrSub_10069490();               /* 0x10062500, no arguments */
         BrGuMtxStore(&g_BrDrawWorld, pSlot);
-        put(0x01060040u, (uint32_t)pSlot);      /* gsSPMatrix, PUSH|LOAD */
+        put(0x01060040u, br_addr32(pSlot));      /* gsSPMatrix, PUSH|LOAD */
 
         BrMat4Mul(&g_BrDrawWorld, &g_BrCurMat, &g_BrDrawCombined);
 
         pSlot = BrSub_10069490();
         BrGuMtxStore(&g_BrDrawCombined, pSlot);
-        put(0x039E0010u, (uint32_t)pSlot);
-        put(0x03980010u, (uint32_t)pSlot + 0x10u);
-        put(0x039A0010u, (uint32_t)pSlot + 0x20u);
-        put(0x039C0010u, (uint32_t)pSlot + 0x30u);
+        put(0x039E0010u, br_addr32(pSlot));
+        put(0x03980010u, br_addr32(pSlot) + 0x10u);
+        put(0x039A0010u, br_addr32(pSlot) + 0x20u);
+        put(0x039C0010u, br_addr32(pSlot) + 0x30u);
 
         put(0xBB000001u, 0xFFFFFFFFu);          /* texture on            */
         put(0xB6000000u, 0x000C0000u);          /* clear both texgen bits*/
@@ -530,7 +530,7 @@ void BrCarDrawBody(void *pCar)
     /* 0x1000BF18 -- the two matrices: the car's pooled model matrix pushed as
      * the modelview, the shared projection slot loaded after it. */
     put(0x01060040u, g_BrCarMtxSlot[*(const int32_t *)(car + BR_CAR_OFF_ICAR)]);
-    put(0x01030040u, (uint32_t)(uintptr_t)g_BrMtxSlot);
+    put(0x01030040u, br_addr32(g_BrMtxSlot));
 
     /* 0x1000BF5F -- the four 16-byte blocks of the car's lighting matrix
      * (0x9E/0x98/0x9A/0x9C at +0/+0x10/+0x20/+0x30 of one pooled slot). */
@@ -540,7 +540,7 @@ void BrCarDrawBody(void *pCar)
     put(0x039C0010u, g_BrCarLightSlot[*(const int32_t *)(car + BR_CAR_OFF_ICAR)] + 0x30u);
 
     /* 0x1000C004 -- the canned setup list, then the model's texture command. */
-    put(0x06000000u, (uint32_t)(uintptr_t)&BrG_0AA838);
+    put(0x06000000u, br_addr32(&BrG_0AA838));
     BrGfxEmitTexCmd(5, *(const void *const *)((const unsigned char *)BrG_6C3308 +
                                                BR_MODEL_OFF_TEXRECS));
 
@@ -624,8 +624,8 @@ void BrCarDrawBody(void *pCar)
     put(0xBD000000u, 0);
     put(0xB6000000u, 0x00040000u);
     put(0xBC000002u, 0x80000040u);
-    put(0x03860010u, (uint32_t)(uintptr_t)&(*(void * *)((char *)&g_BrVisLightTemplate + 0x8)));
-    put(0x03880010u, (uint32_t)(uintptr_t)&(*(void * *)&g_BrVisLightTemplate));
+    put(0x03860010u, br_addr32(&(*(void * *)((char *)&g_BrVisLightTemplate + 0x8))));
+    put(0x03880010u, br_addr32(&(*(void * *)&g_BrVisLightTemplate)));
     put(0xBA000C02u, g_BrEnvOthermode);
     put(0xBA000E02u, 0);
 
@@ -1400,17 +1400,17 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
 
     /* 0x10062500 cannot fail; store the pointer itself (re-read iCar). */
     pSlot = BrSub_10069490();
-    g_BrCarMtxSlot[car->f140] = (uint32_t)pSlot;
+    g_BrCarMtxSlot[car->f140] = br_addr32(pSlot);
     BrGuMtxStore(&g_BrDrawWorld,
-        (int (*)[4])g_BrCarMtxSlot[car->f140]);
+        (int (*)[4])br_ptr32(g_BrCarMtxSlot[car->f140]));
 
     BrMat4Mul(&g_BrDrawWorld, &g_BrCurMat, &g_BrDrawCombined);
     BrGuMtxHookNop();
 
     pSlot = BrSub_10069490();
-    g_BrCarLightSlot[car->f140] = (uint32_t)pSlot;
+    g_BrCarLightSlot[car->f140] = br_addr32(pSlot);
     BrGuMtxStore(&g_BrDrawCombined,
-        (int (*)[4])g_BrCarLightSlot[car->f140]);
+        (int (*)[4])br_ptr32(g_BrCarLightSlot[car->f140]));
 
     /* 0xA354 -- player self-view guard. */
     if (&car->fwd.x == (*(void * *)&g_pBr63Race)) {
@@ -1502,12 +1502,12 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
 
     /* 0xA556 -- two G_MTX pushes: model and projection. */
     put(0x01060040u, g_BrCarMtxSlot[*(int32_t *)(car + BR_CAR_OFF_ICAR)]);
-    put(0x01030040u, (uint32_t)(uintptr_t)g_BrMtxSlot);
+    put(0x01030040u, br_addr32(g_BrMtxSlot));
 
     /* 0xA5A1 -- light-direction computation: build g_BrDrawDir0 and
      * g_BrDrawDir1 from camera, player, and car positions. */
     if ((*(int *)((char *)&g_aBrEntRecs + 0x7C)) != 0) {
-        if ((*(void * *)&g_BrCamera) == (void *)((unsigned char *)(*(void * *)&g_pBr63Race) + 0x2808))
+        if ((*(void * *)&g_BrCamera) == (void *)&((BrDriverCar *)(*(void * *)&g_pBr63Race))->aSnap[3])
             BrVec3Negate(&g_BrDrawDir0, (const BrVec3 *)(*(void * *)&g_BrCamera));
         else
             BrVec3Negate(&g_BrDrawDir0, (const BrVec3 *)(*(void * *)&g_pBr63Race));
@@ -1578,7 +1578,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         (void)BrSub_10069490();
         pSkyAng  = (BrSkyAngles *)BrPool16Alloc();
         pLights  = (BrLightPair *)BrPool32Alloc();
-        specMem  = (uint32_t)(uintptr_t)BrPool32Alloc();
+        specMem  = br_addr32(BrPool32Alloc());
 
         atOffset = 0.0f;
         eyeScale = 0.0f;
@@ -1621,15 +1621,15 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     /* 0xA820 -- dist-gated canned body-setup DL (0x100A9FC8 vs 0x100A9F00).
      * Orig stores the ADDRESS of the object as an immediate, not a load. */
     if (dist > 10.0f)
-        put(0x06000000u, (uint32_t)(uintptr_t)&BrG_0AA838);
+        put(0x06000000u, br_addr32(&BrG_0AA838));
     else
-        put(0x06000000u, (uint32_t)(uintptr_t)&BrG_0AA770);
+        put(0x06000000u, br_addr32(&BrG_0AA770));
 
     /* 0xA86A -- Lights1 emission: static or dynamic. */
     if ((*(int *)((char *)&g_aBrEntRecs + 0x7C)) == 0 && (*(int *)((char *)&g_aBrEntRecs + 0x84)) == 0) {
         put(0xBC000002u, 0x80000040u);
-        put(0x03860010u, (uint32_t)(uintptr_t)&(*(void * *)((char *)&g_BrVisLightTemplate + 0x8)));
-        put(0x03880010u, (uint32_t)(uintptr_t)&(*(void * *)&g_BrVisLightTemplate));
+        put(0x03860010u, br_addr32(&(*(void * *)((char *)&g_BrVisLightTemplate + 0x8))));
+        put(0x03880010u, br_addr32(&(*(void * *)&g_BrVisLightTemplate)));
     } else {
         /* icar is RE-READ from car+0x140 for the copy and for EVERY byte
          * store (bases 0x102733b0/b1/b2 fold the +0x10/11/12); only the
@@ -1647,10 +1647,8 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
         put(0xBC000002u, 0x80000040u);
         /* Both payloads recompute icar*24 from car+0x140 -- the original
          * does NOT reuse dst here (lea edx,[ecx+ecx*2]; lea [edx*8+base]). */
-        put(0x03860010u, (uint32_t)(uintptr_t)
-            &g_BrDrawLights[*(int32_t *)(car + BR_CAR_OFF_ICAR) * 24 + 8]);
-        put(0x03880010u, (uint32_t)(uintptr_t)
-            &g_BrDrawLights[*(int32_t *)(car + BR_CAR_OFF_ICAR) * 24]);
+        put(0x03860010u, br_addr32(&g_BrDrawLights[*(int32_t *)(car + BR_CAR_OFF_ICAR) * 24 + 8]));
+        put(0x03880010u, br_addr32(&g_BrDrawLights[*(int32_t *)(car + BR_CAR_OFF_ICAR) * 24]));
     }
 
     /* 0xA9CE -- post-lights header: sync, two-cycle, geom mode. */
@@ -1733,7 +1731,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
      * immediate (mov [eax+4], OFFSET g_BrDrawTexBlob), not the pointer's runtime
      * value.  &g_BrDrawTexBlob reproduces that store form for the matching build;
      * the port keeps the value-read semantics. */
-    put(0xFD100000u, (uint32_t)(uintptr_t)&g_BrDrawTexBlob);
+    put(0xFD100000u, br_addr32(&g_BrDrawTexBlob));
     put(0xE8000000u, 0);
     put(0xF50001E0u, 0x07000000u);
     put(0xE6000000u, 0);
@@ -2022,7 +2020,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
      * ecx = 0xFFFFFFDF - tile; lo = ecx+2; hi = ecx+0x7E. */
     {
         int32_t tile = (int32_t)(
-            *(const float *)((const unsigned char *)(*(void * *)&g_pBr63Race) + 0x2718) *
+            ((const BrDriverCar *)(*(void * *)&g_pBr63Race))->f2718 *
             -20.3718318939209f);
         int32_t adj = -33 - tile;
         int32_t lo = adj + 2;
@@ -2035,8 +2033,8 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
     put(0xE7000000u, 0);
     /* 0xBC3F -- the SECOND specular MOVEMEM pair, and it is pLights, NOT
      * specMem; see the declaration comment. */
-    put(0x03840010u, (uint32_t)(uintptr_t)pLights);
-    put(0x03820010u, (uint32_t)(uintptr_t)pLights + 0x10u);
+    put(0x03840010u, br_addr32(pLights));
+    put(0x03820010u, br_addr32(pLights) + 0x10u);
 
     /* 0xBC7B -- 2nd body DL at model + lodOff + 0x8028. */
     {

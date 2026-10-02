@@ -435,10 +435,7 @@ typedef struct BrDriver {
  * concatenates every block into one buffer; load scatters a buffer back.
  * ===================================================================== */
 
-typedef struct BrVarBlock {
-    void    *pData;     /* +0x00 -- NULL terminates the table              */
-    uint32_t cb;        /* +0x04                                           */
-} BrVarBlock;
+/* BrVarBlock: br_coretypes.h */
 
 /* 0x10067880  pack pTable into pDst; BrFatal if it needs more than cbAvail.
  * The check is `used > cbAvail` on SIGNED ints and happens only AFTER every

@@ -457,7 +457,7 @@ void BrCarPhysDrag(struct BrRbBody *, struct BrRbForce *);
 #pragma pop_macro("BrCarPhysDrag")
 #pragma push_macro("BrCarPhysDriveMatch")
 #undef BrCarPhysDriveMatch
-void BrCarPhysDriveMatch(struct BrRbBody *, float, float *, float *, char *, char *);
+void BrCarPhysDriveMatch(struct BrCarBody *, float, float *, float *, char *, char *);
 #pragma pop_macro("BrCarPhysDriveMatch")
 #pragma push_macro("BrCarPhysSpring")
 #undef BrCarPhysSpring
@@ -1021,11 +1021,11 @@ void BrDlClipTriZ(struct BrDlVtx *, struct BrDlVtx *, struct BrDlVtx *);
 #pragma pop_macro("BrDlClipTriZ")
 #pragma push_macro("BrDlCmdFogColour")
 #undef BrDlCmdFogColour
-const unsigned char * BrDlCmdFogColour(struct BrDlCmd *, const unsigned char *);
+const unsigned char * BrDlCmdFogColour(const unsigned char *);
 #pragma pop_macro("BrDlCmdFogColour")
 #pragma push_macro("BrDlCmdSetCombine")
 #undef BrDlCmdSetCombine
-const unsigned char * BrDlCmdSetCombine(struct BrDlCmd *, const unsigned char *);
+const unsigned char * BrDlCmdSetCombine(const unsigned char *);
 #pragma pop_macro("BrDlCmdSetCombine")
 #pragma push_macro("BrDlCmdTri1")
 #undef BrDlCmdTri1
@@ -3379,7 +3379,7 @@ void BrPolyClipPlane(struct BrPolyList *, float (*)(const struct BrScrPt *));
 #pragma pop_macro("BrPolyClipPlane")
 #pragma push_macro("BrPolyClipTri")
 #undef BrPolyClipTri
-void BrPolyClipTri(float *, struct BrScrPt *, int *, const struct BrScrPt *, const struct BrScrPt *, int, struct BrDepthRef *);
+void BrPolyClipTri(float *, struct BrScrPt *, int *, const struct BrScrPt *, const struct BrScrPt *, const struct BrScrPt *, struct BrDepthRef *);
 #pragma pop_macro("BrPolyClipTri")
 #pragma push_macro("BrPolyDistX")
 #undef BrPolyDistX
@@ -3403,7 +3403,7 @@ int BrPtrListContains(const void *);
 #pragma pop_macro("BrPtrListContains")
 #pragma push_macro("BrQsortCmpS2")
 #undef BrQsortCmpS2
-int BrQsortCmpS2(int, int);
+int BrQsortCmpS2(const void *, const void *);
 #pragma pop_macro("BrQsortCmpS2")
 #pragma push_macro("BrQuatFromMatrix")
 #undef BrQuatFromMatrix
@@ -5580,7 +5580,7 @@ void FUN_10023aa0(void);
 #pragma pop_macro("FUN_10023aa0")
 #pragma push_macro("FUN_10023d70")
 #undef FUN_10023d70
-int FUN_10023d70(int *, int *, int *);
+int FUN_10023d70(int *, int *, struct BrTexReq272 *);
 #pragma pop_macro("FUN_10023d70")
 #pragma push_macro("FUN_10024df0")
 #undef FUN_10024df0
@@ -5616,7 +5616,7 @@ void FUN_10028420(unsigned int);
 #pragma pop_macro("FUN_10028420")
 #pragma push_macro("FUN_100298c0")
 #undef FUN_100298c0
-void FUN_100298c0(int, const void *, const void *);
+int FUN_100298c0(int, const void *, const void *);
 #pragma pop_macro("FUN_100298c0")
 #pragma push_macro("FUN_1002a490")
 #undef FUN_1002a490
@@ -5976,7 +5976,7 @@ void br_dl_normalise(struct BrVec3 *);
 #pragma pop_macro("br_dl_normalise")
 #pragma push_macro("br_dl_prim")
 #undef br_dl_prim
-int br_dl_prim(int);
+const unsigned char *br_dl_prim(const unsigned char *);
 #pragma pop_macro("br_dl_prim")
 #pragma push_macro("br_dl_project")
 #undef br_dl_project

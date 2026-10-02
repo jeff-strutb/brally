@@ -227,7 +227,7 @@ done:
     g_BrVisFirstMid  = -1;
     r    = (int)(g_BrCamDist * g_BrVisRangeRecip);
     thr2 = (-3 - r) * (-3 - r);
-    thr = ((DAT_105ccb68[8]) != 0 && g_BrCamera == (BrCamera *)((unsigned char *)(*(BrPlayerCar * *)&g_pBr63Race) + 0x2808)) ? 9 : 1;
+    thr = ((DAT_105ccb68[8]) != 0 && g_BrCamera == (BrCamera *)&((BrDriverCar *)(*(BrPlayerCar * *)&g_pBr63Race))->aSnap[3]) ? 9 : 1;
 
     col = g_BrVisCells[0].col;
     if (col != 0xFF) {
@@ -329,7 +329,7 @@ done:
 
     /* Clamp every driver's projected box to the view rectangle. */
     for (i = 0; i < g_brRaceNDriver; i++) {
-        pDrv = *(unsigned char **)(pRace + 0x60 + i * 0x80);
+        pDrv = ((BrDriver *)pRace)[i].pCar;              /* driver i, +0x60 */
         if (pDrv != 0) {
             pt.h = pDrv->pos.z - pDrv->fHitDist;
             pt.x = *(int *)&pDrv->pos.x;

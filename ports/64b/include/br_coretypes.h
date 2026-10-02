@@ -204,6 +204,128 @@ extern BrDPlayCtx g_BrDPlayCtx;  /* 0x10273328 */
 #define g_br277B48   (*(int32_t *)&g_BrDPlayCtx.idPlayer)      /* 0x10273330 */
 #define DAT_10273334 (g_BrDPlayCtx.f0C)                        /* 0x10273334 */
 
+/* 0x100BB2F0, stride 0x17C, 16 of them, reached through the pointer table
+ * at 0x100BCAB0 (g_apBrRaceDiff): one per track (the six tracks, their
+ * mirrors, the load screen, the bonus tracks) plus the season reset. The
+ * name, buffers and sky palette paths, then the award/difficulty table read
+ * by computed index. The sky paths are slots of a table of 32-byte strings,
+ * and the loader reads the slot after each one too (path + 0x20). */
+typedef struct BrRaceDiffRec {
+    const char *pszName;       /* +0x00 */
+    int32_t     f04;           /* +0x04  bit 4: locked */
+    int32_t     f08;           /* +0x08 */
+    void       *ap0C[4];       /* +0x0C */
+    const char *pszSkyDay;     /* +0x1C */
+    void       *p20;           /* +0x20 */
+    const char *pszSkyNight;   /* +0x24 */
+    void       *p28;           /* +0x28 */
+    float       aAward[84];    /* +0x2C */
+} BrRaceDiffRec;               /* 0x17C */
+extern BrRaceDiffRec g_aBrRaceDiff[16];      /* 0x100BB2F0 */
+
+/* one entry of a variable table: what BrVarSave/BrVarLoad pack and unpack */
+typedef struct BrVarBlock {
+    void    *pData;     /* +0x00 -- NULL terminates the table              */
+    uint32_t cb;        /* +0x04                                           */
+} BrVarBlock;
+
+#define BR_CTRL_ACTIONS   28    /* the 0x1C in 0x10069B10 / 0x10069BC0 */
+#define BR_CTRL_PROFILES   4    /* four 0xA8-byte blocks at 0, A8, 150, 1F8 */
+
+/* One binding: three alternative sources for one action.  Each entry is
+ *
+ *     (deviceClass << 8) | code
+ *
+ * which is exactly what 0x10069B10 builds and what the two getters take
+ * apart.  Observed classes in the shipped defaults:
+ *
+ *     0x00xx   keyboard, xx is a DirectInput scancode (0xCB left, 0x39 space)
+ *     0x01xx   joystick button xx
+ *     0x80xx.. joystick axis; the axis id is the HIGH byte
+ *
+ * Slot 0 is the profile's primary source and is the only one the collision
+ * scan in 0x10069B10 looks at; slots 1 and 2 are alternates. */
+typedef struct BrCtrlProfile {
+    uint16_t e[BR_CTRL_ACTIONS][3];
+} BrCtrlProfile;                     /* 0xA8 */
+
+/* The shipped defaults, read out of .rdata at 0x100B4098 / 0x100B4140 /
+ * 0x100B41E8 / 0x100B4290.  Index == profile index. */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+
+/* The 0x874-byte object.  Everything past `f2B4` is initialised by
+ * 0x10069C90 and copied verbatim by 0x10069DE0 but is never read inside this
+ * packet, so the fields keep positional names.
+ *
+ * PORTABILITY: `pActive` is a pointer, so on a 64-bit host this struct is
+ * larger than the original's 0x874 -- the same trade slice2_12.h documents
+ * for BrNetSlot.  The offsets are kept in the field names. */
+typedef struct BrCtrlCfg {
+    BrCtrlProfile  profile[BR_CTRL_PROFILES];  /* 0x000                     */
+    int32_t        active;                     /* 0x2A0  profile index      */
+    BrCtrlProfile *pActive;                    /* 0x2A4  &profile[active]   */
+    int32_t        f2A8, f2AC, f2B0;           /* 0x2A8  ctor writes 1,1,1  */
+    uint32_t       f2B4[0x41];                 /* 0x2B4  ctor zeroes        */
+    uint32_t       f3B8[0x100];                /* 0x3B8  ctor zeroes        */
+    int32_t        f7B8;                       /* 0x7B8  ctor: 0x280 (640)  */
+    int32_t        f7BC;                       /* 0x7BC  ctor: 0x1E0 (480)  */
+    int32_t        f7C0;                       /* 0x7C0  ctor: 0x10         */
+    int32_t        f7C4;                       /* 0x7C4  ctor: 0           */
+    uint32_t       f7C8[4];                    /* 0x7C8  ctor zeroes        */
+    int32_t        f7D8, f7DC;                 /* 0x7D8  ctor: 9, 9         */
+    int32_t        f7E0;                       /* 0x7E0  ctor: 2            */
+    int32_t        f7E4, f7E8;                 /* 0x7E4  ctor: 0, 0         */
+    int32_t        f7EC, f7F0, f7F4;           /* 0x7EC  ctor: 1, 1, 1      */
+    int32_t        f7F8;                       /* 0x7F8  ctor: 0            */
+    int32_t        f7FC;                       /* 0x7FC  ctor: 3            */
+    int32_t        f800, f804;                 /* 0x800  ctor: 0, 0         */
+    int32_t        f808;                       /* 0x808  ctor: 4            */
+    int32_t        f80C;                       /* 0x80C  ctor: 0            */
+    uint32_t       f810[8];                    /* 0x810  ctor zeroes        */
+    uint32_t       f830[16];                   /* 0x830  ctor zeroes        */
+    int32_t        f870;                       /* 0x870  ctor: 1            */
+} BrCtrlCfg;                                   /* 0x874 */
+
+/* 0x10B71290, the settings block. The original also names most of its
+ * fields as globals of their own; here those names are its fields. */
+extern BrCtrlCfg g_BrCtrlCfg;  /* 0x10B71290 */
+#define g_BrPadModeBytes      (*(const unsigned char **)&g_BrCtrlCfg.pActive)  /* 0x10B71534 */
+#define DAT_10b71538          (*(int *)&g_BrCtrlCfg.f2A8)                       /* 0x10B71538 */
+#define g_BrDrawReflectEnable (g_BrCtrlCfg.f2AC)                                /* 0x10B7153C */
+#define DAT_10b71540          (*(int *)&g_BrCtrlCfg.f2B0)                       /* 0x10B71540 */
+#define DAT_10b71544          (*(char (*)[260])g_BrCtrlCfg.f2B4)                /* 0x10B71544 */
+#define g_aBrCfgPlayerName    (*(char (*)[1024])g_BrCtrlCfg.f3B8)               /* 0x10B71648 */
+#define DAT_10b71a48          (*(int *)&g_BrCtrlCfg.f7B8)                       /* 0x10B71A48 */
+#define DAT_10b71a4c          (*(int *)&g_BrCtrlCfg.f7BC)                       /* 0x10B71A4C */
+#define DAT_10b71a50          (*(int *)&g_BrCtrlCfg.f7C0)                       /* 0x10B71A50 */
+#define DAT_10b71a54          (*(int *)&g_BrCtrlCfg.f7C4)                       /* 0x10B71A54 */
+#define g_brItemIconCount     (*(unsigned int *)&g_BrCtrlCfg.f7D8)              /* 0x10B71A68 */
+#define g_brRaceB71A6C        (g_BrCtrlCfg.f7DC)                                /* 0x10B71A6C */
+#define g_aBrB4E710           (*(int32_t (*)[12])&g_BrCtrlCfg.f7E0)             /* 0x10B71A70 */
+#define DAT_10b71aa0          (*(char (*)[32])g_BrCtrlCfg.f810)                 /* 0x10B71AA0 */
+#define DAT_10b71ac0          (*(char (*)[64])g_BrCtrlCfg.f830)                 /* 0x10B71AC0 */
+#define DAT_10b71b00          (*(int *)&g_BrCtrlCfg.f870)                       /* 0x10B71B00 */
+
+/* 0x10AC67A0: the livery tint state. The three multipliers sit at +0x00,
+ * +0x08 and +0x1C; between them is the table of tint textures (entry 0, then
+ * the three damage bitmaps), which the original also names on its own. */
+typedef struct BrImgState {
+    int32_t        scaleR;     /* +0x00 -- multiplies dst byte 0 */
+    int32_t        f04;        /* +0x04  the livery being built */
+    int32_t        scaleG;     /* +0x08 -- multiplies dst byte 1 */
+    const uint8_t *apTex[4];   /* +0x0C  tint textures by copy; [1..3] the damage bitmaps */
+    int32_t        scaleB;     /* +0x1C -- multiplies dst byte 2 */
+    int32_t        f20;        /* +0x20 */
+    int32_t        width;      /* +0x24 */
+    int32_t        height;     /* +0x28 */
+} BrImgState;
+extern BrImgState BrImgTintState;  /* 0x10AC67A0 */
+#define g_apBrImgTintTex (BrImgTintState.apTex)                                /* 0x10AC67AC */
+#define g_apBrDamageBmp  (*(void *(*)[3])&BrImgTintState.apTex[1])             /* 0x10AC67B0 */
+#define DAT_10ac67c0     (BrImgTintState.f20)                                  /* 0x10AC67C0 */
+#define DAT_10ac67c4     (BrImgTintState.width)                                /* 0x10AC67C4 */
+#define DAT_10ac67c8     (BrImgTintState.height)                               /* 0x10AC67C8 */
+
 /* one entry of the error table at 0x100ABE00 */
 typedef struct BrErrEnt {
     int32_t  fFatal;   /* +0x00 -- non-zero: terminate with code 1 */
@@ -387,7 +509,7 @@ typedef struct {
     int   f24;
     int   f28;
     int   f2C;
-    int   f30;
+    void *f30;     /* the display list */
     int   f34;
     int   pad38[2];
 } BrFrameTask;

@@ -115,13 +115,37 @@ static HRESULT di_EnumDevices(pobj *o, DWORD type, void *cb, void *ref, DWORD fl
 
 static HRESULT di_ok(void) { return S_OK; }
 
+static int s_mdx, s_mdy, s_mbtn, s_mlatch;
+
+void plat_mouse_move(int dx, int dy)
+{
+    s_mdx += dx;
+    s_mdy += dy;
+}
+
+void plat_mouse_button(int down)
+{
+    s_mbtn = down;
+    s_mlatch |= down;
+}
+
 static HRESULT did_GetDeviceState(pobj *o, DWORD n, void *out)
 {
     plat_pump(0);
     if (o->kind == DEV_KEYBOARD) {
         memcpy(out, g_plat_dik, n < 256 ? n : 256);
     } else {
-        memset(out, 0, n);     /* the mouse: no movement, no buttons */
+        /* DIMOUSESTATE: lX, lY, lZ, rgbButtons[4] -- the movement since the
+         * last poll, and a press that came and went in between still counts */
+        int32_t xyz[3] = { s_mdx, s_mdy, 0 };
+        uint8_t b[4] = { 0, 0, 0, 0 };
+        memset(out, 0, n);
+        b[0] = (s_mbtn | s_mlatch) ? 0x80 : 0;
+        memcpy(out, xyz, n < 12 ? n : 12);
+        if (n >= 16)
+            memcpy((uint8_t *)out + 12, b, 4);
+        s_mdx = s_mdy = 0;
+        s_mlatch = 0;
     }
     return S_OK;
 }

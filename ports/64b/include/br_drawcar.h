@@ -230,33 +230,33 @@ void    BrDrawCarFrontierReset(void);
  * original does. These offsets are the access convention the cull/emit
  * functions share.
  * -------------------------------------------------------------------- */
-#define BR_CAR_OFF_MTX       0x0000u  /* BrMat4 world transform             */
-#define BR_CAR_OFF_ROW2      0x0020u  /* BrVec3 mtx.m[2]; the headlight basis */
-#define BR_CAR_OFF_POS       0x0030u  /* BrVec3 position == mtx.m[3]         */
-#define BR_CAR_OFF_AWHEEL    0x0040u  /* 4 x BrMat4 wheel transforms         */
-#define BR_CAR_OFF_ICAR      0x0140u  /* int32 car index, 0..BR_CAR_MAX-1    */
-#define BR_CAR_OFF_P0168     0x0168u  /* ptr; guard -- must be non-NULL       */
-#define BR_CAR_OFF_P016C     0x016Cu  /* ptr; guard                           */
-#define BR_CAR_OFF_P0170     0x0170u  /* ptr; guard                           */
-#define BR_CAR_OFF_P0174     0x0174u  /* ptr; guard                           */
-#define BR_CAR_OFF_F0E68     0x0E68u  /* float; sign selects model DL variant */
-#define BR_CAR_OFF_P0F00     0x0F00u  /* ptr; has int at own +0x64            */
-#define BR_CAR_OFF_GUARD     0x0F08u  /* ptr; NULL => the pass does nothing  */
-#define BR_CAR_OFF_I2714     0x2714u  /* int32; 0/1 written by +0x290C gate   */
-#define BR_CAR_OFF_F2718     0x2718u  /* float; G_SETTILESIZE scale factor    */
-#define BR_CAR_OFF_FOG       0x2730u  /* float; written = fog at the position */
-#define BR_CAR_OFF_ACTIVECAM 0x2734u  /* ptr; player: == +0x273C or +0x2890  */
-#define BR_CAR_OFF_CAMA      0x273Cu  /* a cam frame inside the record        */
-#define BR_CAR_OFF_CAMSLOT   0x27C4u  /* body pass: player culls if the active
+#define BR_CAR_OFF_MTX (offsetof(struct BrDriverCar, fwd.x))   /* 0x0000  BrMat4 world transform             */
+#define BR_CAR_OFF_ROW2 (offsetof(struct BrDriverCar, up.x))   /* 0x0020  BrVec3 mtx.m[2]; the headlight basis */
+#define BR_CAR_OFF_POS (offsetof(struct BrDriverCar, pos.x))   /* 0x0030  BrVec3 position == mtx.m[3]         */
+#define BR_CAR_OFF_AWHEEL (offsetof(struct BrDriverCar, aWheel[0].m[0][0]))   /* 0x0040  4 x BrMat4 wheel transforms         */
+#define BR_CAR_OFF_ICAR (offsetof(struct BrDriverCar, f140))   /* 0x0140  int32 car index, 0..BR_CAR_MAX-1    */
+#define BR_CAR_OFF_P0168 (offsetof(struct BrDriverCar, aBody[0].rb.child[0]))   /* 0x0168  ptr; guard -- must be non-NULL       */
+#define BR_CAR_OFF_P016C (offsetof(struct BrDriverCar, aBody[0].rb.child[1]))   /* 0x016C  ptr; guard                           */
+#define BR_CAR_OFF_P0170 (offsetof(struct BrDriverCar, aBody[0].rb.child[2]))   /* 0x0170  ptr; guard                           */
+#define BR_CAR_OFF_P0174 (offsetof(struct BrDriverCar, aBody[0].rb.child[3]))   /* 0x0174  ptr; guard                           */
+#define BR_CAR_OFF_F0E68 (offsetof(struct BrDriverCar, fE68))   /* 0x0E68  float; sign selects model DL variant */
+#define BR_CAR_OFF_P0F00 (offsetof(struct BrDriverCar, pProfile))   /* 0x0F00  ptr; has int at own +0x64            */
+#define BR_CAR_OFF_GUARD (offsetof(struct BrDriverCar, pfnControl))   /* 0x0F08  ptr; NULL => the pass does nothing  */
+#define BR_CAR_OFF_I2714 (offsetof(struct BrDriverCar, i2714))   /* 0x2714  int32; 0/1 written by +0x290C gate   */
+#define BR_CAR_OFF_F2718 (offsetof(struct BrDriverCar, f2718))   /* 0x2718  float; G_SETTILESIZE scale factor    */
+#define BR_CAR_OFF_FOG (offsetof(struct BrDriverCar, f2730))   /* 0x2730  float; written = fog at the position */
+#define BR_CAR_OFF_ACTIVECAM (offsetof(struct BrDriverCar, pMatA))   /* 0x2734  ptr; player: == +0x273C or +0x2890  */
+#define BR_CAR_OFF_CAMA (offsetof(struct BrDriverCar, aSnap[0].m[0][0]))   /* 0x273C  a cam frame inside the record        */
+#define BR_CAR_OFF_CAMSLOT (offsetof(struct BrDriverCar, aSnap[2].m[0][0]))   /* 0x27C4  body pass: player culls if the active
                                        * camera object equals record+0x27C4  */
-#define BR_CAR_OFF_CAMB      0x2890u  /* the other cam frame                  */
-#define BR_CAR_OFF_U290C     0x290Cu  /* uint16; index into 84-byte records   */
-#define BR_CAR_OFF_P294C     0x294Cu  /* ptr; non-NULL enables +0x290C test   */
-#define BR_CAR_OFF_KIND      0x29AFu  /* draw class; 2 == translucent pass    */
-#define BR_CAR_OFF_ALPHA     0x29B0u  /* float; 0..1 fog/prim alpha           */
-#define BR_CAR_OFF_I29B4     0x29B4u  /* int32; entity bank                   */
-#define BR_CAR_OFF_U29C0     0x29C0u  /* ptr; aux flags at target dword       */
-#define BR_CAR_OFF_MODEL     0x29C4u  /* ptr; the car's model record          */
+#define BR_CAR_OFF_CAMB (offsetof(struct BrDriverCar, aSnap[5].m[0][0]))   /* 0x2890  the other cam frame                  */
+#define BR_CAR_OFF_U290C (offsetof(struct BrDriverCar, aNearIds[0]))   /* 0x290C  uint16; index into 84-byte records   */
+#define BR_CAR_OFF_P294C (offsetof(struct BrDriverCar, gotHit))   /* 0x294C  ptr; non-NULL enables +0x290C test   */
+#define BR_CAR_OFF_KIND (offsetof(struct BrDriverCar, b29AF))   /* 0x29AF  draw class; 2 == translucent pass    */
+#define BR_CAR_OFF_ALPHA (offsetof(struct BrDriverCar, f29B0))   /* 0x29B0  float; 0..1 fog/prim alpha           */
+#define BR_CAR_OFF_I29B4 (offsetof(struct BrDriverCar, i29B4))   /* 0x29B4  int32; entity bank                   */
+#define BR_CAR_OFF_U29C0 (offsetof(struct BrDriverCar, pCtl))   /* 0x29C0  ptr; aux flags at target dword       */
+#define BR_CAR_OFF_MODEL (offsetof(struct BrDriverCar, pModel))   /* 0x29C4  ptr; the car's model record          */
 
 /* The model record, by raw offset (the body pass reaches it through the
  * scratch global BrG_6C3308, the same way 0x1000A110 does). */

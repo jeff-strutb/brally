@@ -107,7 +107,6 @@ extern int BrSprintf(char *pDst, const char *pszFmt, ...);
  * cdecl.  Handles are kept as uint32_t because the originals are 32-bit
  * values living inside the file image. */
 /* XSLICE 0x118AA084 */
-extern uint32_t (*g_pfn18AA084)(uint32_t hCtx, uint32_t hSrc, void *pDesc);
 /* XSLICE 0x118AA0C4 */
 extern void (*g_pfn18AA0C4)(void *pv);
 /* XSLICE 0x118AA0C8 */

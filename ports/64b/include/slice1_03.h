@@ -349,10 +349,6 @@ BrComLockHooks *BrComGetLockHooks(void);
 #ifdef __cplusplus
 extern "C" {
 #endif
-#pragma push_macro("g_aClipPool")
-#undef g_aClipPool
-extern BrClipVert *g_aClipPool;  /* 0x104C01A8 */
-#pragma pop_macro("g_aClipPool")
 #pragma push_macro("s_aClipPool")
 #undef s_aClipPool
 extern BrClipVert s_aClipPool[64];  /* 0x105CCFF0 */

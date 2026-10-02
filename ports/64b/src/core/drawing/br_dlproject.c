@@ -61,13 +61,13 @@ void br_dl_project(BrDlProjOut *pOut, const BrDlProjIn *pIn,
     pOut->b = b;
 
     t = pOut->x * 4.0f;
-    (DAT_105ce2e8[10]) = br_fistp(t);
-    t = (float)(DAT_105ce2e8[10]);
+    g_iBrGbiSnap = br_fistp(t);
+    t = (float)g_iBrGbiSnap;
     pOut->x = t * 0.25f;
 
     t = pOut->y * 4.0f;
-    (DAT_105ce2e8[10]) = br_fistp(t);
-    t = (float)(DAT_105ce2e8[10]);
+    g_iBrGbiSnap = br_fistp(t);
+    t = (float)g_iBrGbiSnap;
     pOut->y = t * 0.25f;
 }
 

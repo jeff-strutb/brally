@@ -282,7 +282,7 @@ extern BrPool   *g_BrPool;       /* the original's BrPoolAlloc globals    */
 /* The owner record 0x1003445A works on. Only three fields are touched. */
 typedef struct BrDlOwner {
     unsigned char pad00[0x44];
-    uint32_t     *pDl;        /* +0x44 */
+    uint32_t      aDl;        /* +0x44  the display list, a 32-bit address (br_addr32.h) */
     unsigned char pad48[4];
     uint16_t      flags;      /* +0x4C  bit 2 = suppress, bit 3 = done */
 } BrDlOwner;
@@ -312,7 +312,7 @@ typedef struct BrDlOwner {
 /* A 0x24-byte slot record. Only +0x04 and +0x20 are read here. */
 typedef struct BrGfxSlot {
     uint32_t  f00;
-    uint16_t *pWords;          /* +0x04 */
+    uint32_t  aWords;          /* +0x04  a 32-bit address (br_addr32.h) */
     unsigned char pad08[0x18];
     uint32_t  f20;             /* +0x20  bits[27:24] must be 1 */
 } BrGfxSlot;
@@ -325,7 +325,7 @@ typedef struct BrCarGfx {
     uint32_t   f80;                            /* +0x80          */
     uint32_t   aDlExtra[4];                    /* +0x84 +0x88 +0x8C +0x90 */
     unsigned char pad94[0x8014 - 0x94];
-    BrGfxSlot *pSlots;                         /* +0x8014        */
+    uint32_t   aSlots;                         /* +0x8014  BrGfxSlot[], a 32-bit address */
     unsigned char pad8018[0x8110 - 0x8018];
     unsigned char aSlotIdx[12];                /* +0x8110 .. +0x811B */
 } BrCarGfx;
@@ -421,7 +421,7 @@ typedef struct BrAnimKey {
  * in reverse (set and cleared by BrAnimUpdate itself). */
 typedef struct BrAnimTrack {
     uint32_t    cVerts;    /* +0x00 */
-    BrAnimVtx  *pOut;      /* +0x04 */
+    uint32_t    aOut;      /* +0x04  BrAnimVtx[], a 32-bit address (br_addr32.h) */
     uint32_t    f08;       /* +0x08 */
     int32_t     cKeys;     /* +0x0C */
     uint16_t    flags;     /* +0x10 */
@@ -429,17 +429,17 @@ typedef struct BrAnimTrack {
     float       tLo;       /* +0x14 */
     float       tHi;       /* +0x18 */
     float       t;         /* +0x1C */
-    BrAnimKey  *aKeys[1];  /* +0x20, cKeys of them */
+    uint32_t    aKeys[1];  /* +0x20, cKeys of them: BrAnimKey 32-bit addresses */
 } BrAnimTrack;
 
 typedef struct BrAnimList {
     int32_t      n;
-    BrAnimTrack *a[1];
+    uint32_t     a[1];     /* BrAnimTrack 32-bit addresses */
 } BrAnimList;
 
 typedef struct BrAnimSet {
     uint32_t     f00;
-    BrAnimList  *pList;    /* +0x04 */
+    uint32_t     aList;    /* +0x04  BrAnimList, a 32-bit address */
 } BrAnimSet;
 
 /* 0x106C2CFC -- ALIAS RESOLVED. slice2_20.c calls this g_f6C2CFC. Storage in

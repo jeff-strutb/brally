@@ -325,7 +325,7 @@ void BrFrameDraw(int iSlot)
         pV = &aViews[i];
         BrPodNop();
         (*(uint8_t * *)&g_pBr63Race) = (uint8_t *)((BrDriverCar *)pCars + pV->iCar);
-        (*(BrCamObj * *)&g_BrCamera) = ((*(BrCamObj **)((((*(uint8_t * *)&g_pBr63Race))) + 0x2734)));
+        (*(BrCamObj * *)&g_BrCamera) = ((*(BrCamObj **)((*(uint8_t * *)&g_pBr63Race) + offsetof(struct BrDriverCar, pMatA))));
         (*(int *)&g_BrEnvSection) = i;
         FUN_1006ec30(0, 0, (*(BrCamObj * *)&g_BrCamera)->pos, (*(uint8_t (*)[])&g_BrEnvFlagIndices), (*(uint8_t (*)[])&g_BrEnvFlagCount),
                      DAT_106ed590, DAT_106b7ac4, DAT_106e728c, DAT_106ec780);
@@ -356,7 +356,7 @@ void BrFrameDraw(int iSlot)
             BrFrameTintSetup();
             BrPodNop();
             for (k = 0; k < (*(int *)&g_brRaceNDriver); k++) {
-                pCar = ((*(BrDriverCar **)(((pHdr)) + 0x60 + ((k)) * 0x80)));
+                pCar = (((BrDriver *)pHdr)[k].pCar);
                 if (pCar != 0 && ((pCar->b29AF)) != 2)
                     BrCarDrawVehicle(pCar, 0);
             }
@@ -372,7 +372,7 @@ void BrFrameDraw(int iSlot)
             BrFrameTintSetup();
             BrPodNop();
             for (k = 0; k < (*(int *)&g_brRaceNDriver); k++) {
-                pCar = ((*(BrDriverCar **)(((pHdr)) + 0x60 + ((k)) * 0x80)));
+                pCar = (((BrDriver *)pHdr)[k].pCar);
                 if (pCar != 0 && ((pCar->b29AF)) != 2)
                     BrCarDrawVehicle(pCar, 0);
             }
@@ -382,13 +382,13 @@ void BrFrameDraw(int iSlot)
         }
         BrPodNop();
         for (k = 0; k < (*(int *)&g_brRaceNDriver); k++) {
-            pCar = ((*(BrDriverCar **)(((pHdr)) + 0x60 + ((k)) * 0x80)));
+            pCar = (((BrDriver *)pHdr)[k].pCar);
             if (pCar != 0)
                 BrCarDrawBody(pCar);
         }
         BrPodNop();
         for (k = 0; k < (*(int *)&g_brRaceNDriver); k++) {
-            pCar = ((*(BrDriverCar **)(((pHdr)) + 0x60 + ((k)) * 0x80)));
+            pCar = (((BrDriver *)pHdr)[k].pCar);
             if (pCar != 0 && ((pCar->b29AF)) == 2)
                 BrCarDrawVehicle(pCar, 0);
         }
@@ -404,7 +404,7 @@ void BrFrameDraw(int iSlot)
         /* The rear-view mirror: single view, the car's first camera active
          * and a mirror size selected.  The scene is drawn again into a
          * strip along the top through the car's second camera. */
-        if ((*(BrCamObj * *)&g_BrCamera) == (BrCamObj *)((*(uint8_t * *)&g_pBr63Race) + 0x27C4)
+        if ((*(BrCamObj * *)&g_BrCamera) == (BrCamObj *)(((*(uint8_t * *)&g_pBr63Race) + offsetof(struct BrDriverCar, aSnap[2].m[0][0])))
             && g_brMode0AA8B4 == 1 && DAT_100aa018 != 0) {
             if (DAT_100aa018 == 1)
                 wMir = pV->w / 4;
@@ -424,8 +424,8 @@ void BrFrameDraw(int iSlot)
             xMir = ((pV->w - wMir) >> 1) + pV->x;
             yMir = pV->h / 16 + pV->y;
             pCamSave = (*(BrCamObj * *)&g_BrCamera);
-            ((*(BrCamObj **)((((*(uint8_t * *)&g_pBr63Race))) + 0x2734))) = (BrCamObj *)((*(uint8_t * *)&g_pBr63Race) + 0x2890);
-            (*(BrCamObj * *)&g_BrCamera) = ((*(BrCamObj **)((((*(uint8_t * *)&g_pBr63Race))) + 0x2734)));
+            ((*(BrCamObj **)((*(uint8_t * *)&g_pBr63Race) + offsetof(struct BrDriverCar, pMatA)))) = (BrCamObj *)(((*(uint8_t * *)&g_pBr63Race) + offsetof(struct BrDriverCar, aSnap[5].m[0][0])));
+            (*(BrCamObj * *)&g_BrCamera) = ((*(BrCamObj **)((*(uint8_t * *)&g_pBr63Race) + offsetof(struct BrDriverCar, pMatA))));
             BrDlRectCmdEmit(xMir, yMir, -wMir, hMir, 1);
             BrNop_1002AB94();
             BrCamFrustumBuild((*(BrCamObj * *)&g_BrCamera), (*(BrCamObj * *)&g_BrCamera)->fov,
@@ -447,7 +447,7 @@ void BrFrameDraw(int iSlot)
                 BrFrameTintSetup();
                 BrPodNop();
                 for (k = 0; k < (*(int *)&g_brRaceNDriver); k++) {
-                    pCar = ((*(BrDriverCar **)(((pHdr)) + 0x60 + ((k)) * 0x80)));
+                    pCar = (((BrDriver *)pHdr)[k].pCar);
                     if (pCar != 0 && ((pCar->b29AF)) != 2)
                         BrCarDrawVehicle(pCar, 0);
                 }
@@ -461,26 +461,26 @@ void BrFrameDraw(int iSlot)
                 BrFrameTintSetup();
                 BrPodNop();
                 for (k = 0; k < (*(int *)&g_brRaceNDriver); k++) {
-                    pCar = ((*(BrDriverCar **)(((pHdr)) + 0x60 + ((k)) * 0x80)));
+                    pCar = (((BrDriver *)pHdr)[k].pCar);
                     if (pCar != 0 && ((pCar->b29AF)) != 2)
                         BrCarDrawVehicle(pCar, 0);
                 }
             }
             BrPodNop();
             for (k = 0; k < (*(int *)&g_brRaceNDriver); k++) {
-                pCar = ((*(BrDriverCar **)(((pHdr)) + 0x60 + ((k)) * 0x80)));
+                pCar = (((BrDriver *)pHdr)[k].pCar);
                 if (pCar != 0)
                     BrCarDrawBody(pCar);
             }
             BrPodNop();
             for (k = 0; k < (*(int *)&g_brRaceNDriver); k++) {
-                pCar = ((*(BrDriverCar **)(((pHdr)) + 0x60 + ((k)) * 0x80)));
+                pCar = (((BrDriver *)pHdr)[k].pCar);
                 if (pCar != 0 && ((pCar->b29AF)) == 2)
                     BrCarDrawVehicle(pCar, 0);
             }
             BrFadeDrawSprite(aViews, g_4B16A0 + g_4B16AC);
             BrPodNop();
-            ((*(BrCamObj **)((((*(uint8_t * *)&g_pBr63Race))) + 0x2734))) = pCamSave;
+            ((*(BrCamObj **)((*(uint8_t * *)&g_pBr63Race) + offsetof(struct BrDriverCar, pMatA)))) = pCamSave;
             (*(BrCamObj * *)&g_BrCamera) = pCamSave;
             BrDlRectCmdEmit(pV->x, pV->y, pV->w, pV->h, 1);
             BrDlBorderEmit(xMir, yMir, wMir, hMir);
@@ -508,7 +508,7 @@ void BrFrameDraw(int iSlot)
                 BrSub_10019290();
                 BrTextDraw(BrStrGet(0xF4), g_scrW4 - 0x1C,
                            (*(int *)&g_brRaceCueBase) - 0x18);
-            } else if ((*(BrCamObj * *)&g_BrCamera) != (BrCamObj *)((*(uint8_t * *)&g_pBr63Race) + 0x2808)) {
+            } else if ((*(BrCamObj * *)&g_BrCamera) != (BrCamObj *)(((*(uint8_t * *)&g_pBr63Race) + offsetof(struct BrDriverCar, aSnap[3].m[0][0])))) {
                 /* The original's branch is `je` into the message arm, so
                  * the HUD arm is the FALLTHROUGH: the test is `!=` and
                  * this arm comes first in the source. */
@@ -517,9 +517,9 @@ void BrFrameDraw(int iSlot)
                 BrHudDraw(aViews, pCars);
                 BrHudDrawEntrants(aViews, pCars);
                 BrPodNop();
-                if ((*(BrCamObj * *)&g_BrCamera) != (BrCamObj *)((*(uint8_t * *)&g_pBr63Race) + 0x27C4))
+                if ((*(BrCamObj * *)&g_BrCamera) != (BrCamObj *)(((*(uint8_t * *)&g_pBr63Race) + offsetof(struct BrDriverCar, aSnap[2].m[0][0]))))
                     BrPodNop();
-            } else if ((*(uint8_t **)((*(uint8_t * *)&g_pBr63Race) + 0xF00))[0x68] & 2) {
+            } else if ((*(uint8_t **)(((*(uint8_t * *)&g_pBr63Race) + offsetof(struct BrDriverCar, pProfile))))[0x68] & 2) {
                 BrHudDrawViewMessage(aViews);
             }
         /* Both conditions are COMPOUND and both name the same two globals:

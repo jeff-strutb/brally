@@ -66,11 +66,15 @@ static void canon(const char *p, char *out, size_t n)
         strncat(out, "\\", n - strlen(out) - 1);
 }
 
-/* the path under the drive root: C:\BOSSRALLY\x and D:\x both mean disc x */
+/* the path under the drive root: C:\BOSSRALLY\x and D:\x both mean disc x;
+ * anything else on C: (the settings files at C:\) lives in the save overlay
+ * under its own name */
 static const char *drive_rel(const char *c)
 {
-    if (c[0] == 'C' && !strncasecmp(c + 2, "\\BOSSRALLY", 10))
+    if (c[0] == 'C' && !strncasecmp(c + 2, "\\BOSSRALLY", 10) && (c[12] == '\\' || c[12] == 0))
         return c[12] == '\\' ? c + 13 : c + 12;
+    if (c[0] == 'C')
+        return c[2] == '\\' ? c + 3 : c + 2;
     if (c[0] == 'D')
         return c[2] == '\\' ? c + 3 : c + 2;
     return NULL;

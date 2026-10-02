@@ -124,8 +124,8 @@
 
 /* The node pool's bounds, as the original compares them: bare addresses in
  * `cmp reg, imm32`, not a symbol plus a length. */
-#define BR_CLIP_POOL_LO  0x105CCFF0uL
-#define BR_CLIP_POOL_HI  0x105CD9F0uL
+#define BR_CLIP_POOL_LO  ((unsigned long)&s_aClipPool[0])    /* 0x105CCFF0 */
+#define BR_CLIP_POOL_HI  ((unsigned long)&s_aClipPool[64])   /* 0x105CD9F0 */
 
 /* ---------------------------------------------------------------------
  * The body, once.

@@ -131,12 +131,12 @@ void BrAnimUpdate(BrAnimSet *pSet)
      * NO pList local: the original re-derefs pSet->pList at every use, which
      * is what /Od does with a member expression. Caching it costs a slot and
      * shifts every displacement. */
-    if (pSet->pList != NULL) {
+    if (pSet->aList != 0) {
 
-    nCount = pSet->pList->n;
+    nCount = BR_PTR32(BrAnimList *, pSet->aList)->n;
 
     for (ii = 0; ii < nCount; ii++) {
-        pTrk = pSet->pList->a[ii];
+        pTrk = BR_PTR32(BrAnimTrack *, BR_PTR32(BrAnimList *, pSet->aList)->a[ii]);
 
         if ((pTrk->flags & 4u) != 0) {
             /* ---- playing in reverse (0x1002ED4B) ---- */
@@ -151,24 +151,24 @@ void BrAnimUpdate(BrAnimSet *pSet)
                      * aKeys[cKeys]. */
                     nk = pTrk->cKeys;
                     for (k = pTrk->iKey; k < nk; k++) {
-                        if (pTrk->aKeys[k]->t > t)
+                        if (BR_PTR32(BrAnimKey *, pTrk->aKeys[k])->t > t)
                             break;
                     }
-                    pHigh = pTrk->aKeys[k];
+                    pHigh = BR_PTR32(BrAnimKey *, pTrk->aKeys[k]);
                     k--;
-                    pLow = pTrk->aKeys[k];
+                    pLow = BR_PTR32(BrAnimKey *, pTrk->aKeys[k]);
 
                     t = (t - pLow->t) / (pHigh->t - pLow->t);
                 interp:
                     weight = BrFtol(t * g_BrK08F52C);     /* 0x1007C8A0 */
 
                     nk  = (int32_t)pTrk->cVerts;
-                    pOut = pTrk->pOut;
+                    pOut = BR_PTR32(BrAnimVtx *, pTrk->aOut);
                     pVa = (const int16_t *)((const char *)pLow + 4);
                     pVb = (const int16_t *)((const char *)pHigh + 4);
                     pSrc8  = (const int8_t  *)(pVa + nk * 3);
                     pDst8  = (const int8_t  *)(pVb + nk * 3);
-                    pOut = pTrk->pOut;
+                    pOut = BR_PTR32(BrAnimVtx *, pTrk->aOut);
 
                     for (k = 0; k < nk; k++) {
                         pOut[k].x = (float)BrAnimLerp16(pVa[0], pVb[0], weight);
@@ -203,8 +203,8 @@ void BrAnimUpdate(BrAnimSet *pSet)
             if (t < pTrk->tLo) {
                 /* GOTCHA: both brackets become aKeys[0], so the interpolation
                  * above divides by zero. Original behaviour. */
-                pHigh = pTrk->aKeys[0];
-                pLow = pTrk->aKeys[0];
+                pHigh = BR_PTR32(BrAnimKey *, pTrk->aKeys[0]);
+                pLow = BR_PTR32(BrAnimKey *, pTrk->aKeys[0]);
                 t = 0.0f;
                 goto interp;
             }
@@ -248,8 +248,8 @@ void BrAnimUpdate(BrAnimSet *pSet)
                     /* GOTCHA: same degenerate bracket as above. The original
                      * indexes +0x1C + cKeys*4, ii.e. the LAST key; with
                      * cKeys == 0 it would read the `t` field as a pointer. */
-                    pHigh = pTrk->aKeys[pTrk->cKeys - 1];
-                    pLow = pTrk->aKeys[pTrk->cKeys - 1];
+                    pHigh = BR_PTR32(BrAnimKey *, pTrk->aKeys[pTrk->cKeys - 1]);
+                    pLow = BR_PTR32(BrAnimKey *, pTrk->aKeys[pTrk->cKeys - 1]);
                     t = 0.0f;
                     goto interp;
                 }

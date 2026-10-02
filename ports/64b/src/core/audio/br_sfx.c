@@ -412,9 +412,9 @@ int BrSfxBankLoad(int iSet)
                 if (v == 0)
                     ok = v;
             } else {
-                BrSndVoices[i] = 0;
-                (&BrSndVoices[432])[i] = 0;
-                (&BrSndVoices[450])[i] = 0;
+                g_aBrSndRow[0].aSlot[i] = 0;
+                g_aBrSndRow[24].aSlot[i] = 0;
+                g_aBrSndRow[25].aSlot[i] = 0;
             }
         }
     }
@@ -424,11 +424,11 @@ int BrSfxBankLoad(int iSet)
                 strcpy(buf, g_aBrCfgSfxDir);
                 strcat(buf, ppName[row]);
                 v = BrSndVoiceLoad(buf);
-                BrSndVoices[row * 18 + cLeft] = v;
+                g_aBrSndRow[row].aSlot[cLeft] = v;
                 if (v == 0)
                     ok = v;
             } else {
-                BrSndVoices[row * 18 + cLeft] = 0;
+                g_aBrSndRow[row].aSlot[cLeft] = 0;
             }
         }
     }
@@ -460,29 +460,29 @@ int BrSfxCarBankLoad(int iCar)
     ok = 1;
     if (((*(int *)&DAT_100b51e4[1036]) == 0) || ((((intptr_t)(BrSndPDS))) == 0) || (BrSndG18290FC == 0)
         || (code = ((int *)g_0B6540)[i2]) == 0) {
-        BrSndVoices[i2] = 0;
-        (&BrSndVoices[432])[i2] = 0;
-        (&BrSndVoices[450])[i2] = 0;
+        g_aBrSndRow[0].aSlot[i2] = 0;
+        g_aBrSndRow[24].aSlot[i2] = 0;
+        g_aBrSndRow[25].aSlot[i2] = 0;
     } else {
         strcpy(buf, g_aBrCfgSfxDir);
         strcat(buf, BrSfxCarCode[code]);
         strcat(buf, DAT_100b64a8);
         v = BrSndVoiceLoad(buf);
-        BrSndVoices[i2] = v;
+        g_aBrSndRow[0].aSlot[i2] = v;
         if (v == 0)
             ok = 0;
         strcpy(buf, g_aBrCfgSfxDir);
         strcat(buf, BrSfxCarCode[((int *)g_0B6C00)[i2]]);
         strcat(buf, DAT_100b64a0);
         v = BrSndVoiceLoad(buf);
-        (&BrSndVoices[432])[i2] = v;
+        g_aBrSndRow[24].aSlot[i2] = v;
         if (v == 0)
             ok = 0;
         strcpy(buf, g_aBrCfgSfxDir);
         strcat(buf, BrSfxCarCode[((int *)g_0B6C48)[i2]]);
         strcat(buf, DAT_100b6498);
         v = BrSndVoiceLoad(buf);
-        (&BrSndVoices[450])[i2] = v;
+        g_aBrSndRow[25].aSlot[i2] = v;
         if (v == 0)
             ok = 0;
     }

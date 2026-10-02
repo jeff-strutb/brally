@@ -74,7 +74,7 @@ typedef struct BrDevRec {
  * packet touches are modelled; the pads keep their true offsets. */
 typedef struct BrDevCtx {
     uint8_t   a0000[0x8014];
-    BrDevRec *pRecs;                        /* +0x8014 */
+    uint32_t  aRecs;                        /* +0x8014  the records, a 32-bit address (br_addr32.h) */
     uint8_t   a8018[0x8110 - 0x8018];
     uint8_t   abIndex[BR_DEVREC_SLOTS];     /* +0x8110 */
 } BrDevCtx;

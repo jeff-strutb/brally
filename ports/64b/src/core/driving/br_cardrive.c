@@ -76,8 +76,10 @@
  * both DIFF, correct code stays equivalent.  Do not reopen before the
  * end-grind. */
 /* @implements 0x100645A0 glide BrCarPhysDriveMatch */
-void BrCarPhysDriveMatch(struct BrRbBody *param_1, float param_2, float *param_3, float *param_4, char *param_5, char *param_6)
+void BrCarPhysDriveMatch(BrCarBody *param_1, float param_2, float *param_3, float *param_4, char *param_5, char *param_6)
 {
+  BrRbBody *pR_iVar5;
+  BrRbBody *pR_iVar9;
   float fVar1;
   float fVar2;
   float speed;
@@ -118,49 +120,49 @@ void BrCarPhysDriveMatch(struct BrRbBody *param_1, float param_2, float *param_3
 
   g.sideForce = 0.0f;
   g.ran = 0;
-  if (*(int *)(*(int *)(param_1 + 4) + 0x19c) == g.ran) {
-    *(int *)(*(int *)(param_1 + 4) + 0x1b4) = g.ran;
+  if ((param_1->rb.child[0]->pPlane) == g.ran) {
+    (*(int *)&param_1->rb.child[0]->f1B4) = g.ran;
   }
-  if (*(int *)(*(int *)(param_1 + 8) + 0x19c) == g.ran) {
-    *(int *)(*(int *)(param_1 + 8) + 0x1b4) = g.ran;
+  if ((param_1->rb.child[1]->pPlane) == g.ran) {
+    (*(int *)&param_1->rb.child[1]->f1B4) = g.ran;
   }
-  if (*(int *)(*(int *)(param_1 + 0xc) + 0x19c) == g.ran) {
-    *(int *)(*(int *)(param_1 + 0xc) + 0x1b4) = g.ran;
+  if ((param_1->rb.child[2]->pPlane) == g.ran) {
+    (*(int *)&param_1->rb.child[2]->f1B4) = g.ran;
   }
-  if (*(int *)(*(int *)(param_1 + 0x10) + 0x19c) == g.ran) {
-    *(int *)(*(int *)(param_1 + 0x10) + 0x1b4) = g.ran;
+  if ((param_1->rb.child[3]->pPlane) == g.ran) {
+    (*(int *)&param_1->rb.child[3]->f1B4) = g.ran;
   }
-  iVar5 = *(int *)(param_1 + 0xc);
-  if (*(float *)(iVar5 + 0x1d0) < BrCrK_Zero) {
-    fVar1 = -*(float *)(iVar5 + 0x1d0);
+  pR_iVar5 = param_1->rb.child[2];
+  if ((*(float *)&pR_iVar5->f1D0) < BrCrK_Zero) {
+    fVar1 = -(*(float *)&pR_iVar5->f1D0);
   } else {
-    fVar1 = *(float *)(iVar5 + 0x1d0);
+    fVar1 = (*(float *)&pR_iVar5->f1D0);
   }
-  if (*(float *)(iVar5 + 0x1c4) == BrCrK_Zero) {
+  if ((*(float *)&pR_iVar5->f1C4) == BrCrK_Zero) {
     fVar7 = BrCrK_Zero;
-  } else if (*(float *)(iVar5 + 0x1c4) > BrCrK_Zero) {
+  } else if ((*(float *)&pR_iVar5->f1C4) > BrCrK_Zero) {
     fVar7 = DAT_10077a7c;
   } else {
     fVar7 = DAT_10077a80;
   }
   fVar1 = fVar7 * fVar1 * DAT_10077a84;
-  fVar1 = fVar1 / *(float *)(iVar5 + 0x1c8);
-  iVar9 = *(int *)(param_1 + 4);
-  if (*(float *)(iVar9 + 0x1d0) < BrCrK_Zero) {
-    fVar2 = -*(float *)(iVar9 + 0x1d0);
+  fVar1 = fVar1 / (*(float *)&pR_iVar5->f1C8);
+  pR_iVar9 = param_1->rb.child[0];
+  if ((*(float *)&pR_iVar9->f1D0) < BrCrK_Zero) {
+    fVar2 = -(*(float *)&pR_iVar9->f1D0);
   } else {
-    fVar2 = *(float *)(iVar9 + 0x1d0);
+    fVar2 = (*(float *)&pR_iVar9->f1D0);
   }
-  if (*(float *)(iVar9 + 0x1c4) == BrCrK_Zero) {
+  if ((*(float *)&pR_iVar9->f1C4) == BrCrK_Zero) {
     fVar6 = BrCrK_Zero;
-  } else if (*(float *)(iVar9 + 0x1c4) > BrCrK_Zero) {
+  } else if ((*(float *)&pR_iVar9->f1C4) > BrCrK_Zero) {
     fVar6 = DAT_10077a7c;
   } else {
     fVar6 = DAT_10077a80;
   }
   fVar2 = fVar6 * fVar2 * DAT_10077a84;
-  fVar2 = fVar2 / *(float *)(iVar9 + 0x1c8);
-  fVar8 = *(float *)(param_1 + 0x2c) * _DAT_10077a88;
+  fVar2 = fVar2 / (*(float *)&pR_iVar9->f1C8);
+  fVar8 = (*(float *)&param_1->rb.mass) * _DAT_10077a88;
   local_88 = (fVar1 / fVar8) * param_2 * param_2;
   local_8c = (fVar2 / fVar8) * param_2 * param_2;
   if (local_88 < BrCrK_Zero) {
@@ -195,26 +197,26 @@ void BrCarPhysDriveMatch(struct BrRbBody *param_1, float param_2, float *param_3
   }
   pt[2] = 0.0f;
   pt[1] = 0.0f;
-  pt[0] = *(float *)(iVar9 + 0x78);
+  pt[0] = (*(float *)&pR_iVar9->st.pos.x);
   BrRbVelAtPoint(tmp, param_1, pt);
-  iVar5 = param_1 + 0xbc;
+  iVar5 = ((void *)&param_1->rb.m.m[0][0]);
   BrMat4MulVec3(vA, iVar5, tmp);
-  bVar3 = *(unsigned char *)(*(int *)(param_1 + 4) + 0x1a0);
+  bVar3 = (*(unsigned char *)&param_1->rb.child[0]->f01A0);
   *(unsigned char *)&local_3c = bVar3;
-  bVar4 = *(unsigned char *)(*(int *)(param_1 + 8) + 0x1a0);
+  bVar4 = (*(unsigned char *)&param_1->rb.child[1]->f01A0);
   *(unsigned char *)&local_80 = bVar4;
-  *(unsigned char *)&local_1c = *(unsigned char *)(*(int *)(param_1 + 0xc) + 0x1a0);
-  *(unsigned char *)&local_38 = *(unsigned char *)(*(int *)(param_1 + 0x10) + 0x1a0);
+  *(unsigned char *)&local_1c = (*(unsigned char *)&param_1->rb.child[2]->f01A0);
+  *(unsigned char *)&local_38 = (*(unsigned char *)&param_1->rb.child[3]->f01A0);
   iVar9 = DAT_104b15e8 + -1;
   if ((2 < (short)iVar9) || ((short)iVar9 < 0)) {
     iVar9 = 0;
   }
   local_6c = iVar9 << 3;
-  *(unsigned char *)(param_1 + 0x209) = 0;
-  if (((*(int *)(*(int *)(param_1 + 4) + 0x1b4) == 0) &&
-      (*(int *)(*(int *)(param_1 + 8) + 0x1b4) == 0)) ||
-     ((*(int *)(*(int *)(param_1 + 0xc) + 0x1b4) == 0 &&
-      (*(int *)(*(int *)(param_1 + 0x10) + 0x1b4) == 0)))) {
+  (*(unsigned char *)&param_1->f0209) = 0;
+  if ((((*(int *)&param_1->rb.child[0]->f1B4) == 0) &&
+      ((*(int *)&param_1->rb.child[1]->f1B4) == 0)) ||
+     (((*(int *)&param_1->rb.child[2]->f1B4) == 0 &&
+      ((*(int *)&param_1->rb.child[3]->f1B4) == 0)))) {
     *param_5 = '\0';
   }
   else {
@@ -253,7 +255,7 @@ void BrCarPhysDriveMatch(struct BrRbBody *param_1, float param_2, float *param_3
       local_84 = (fVar2 > _DAT_10077a98);
       fVar2 = (float)local_84 * _DAT_10077aa0;
     }
-    fVar8 = (*(float *)(param_1 + 0x2c) * fVar1) / param_2 + fVar7;
+    fVar8 = ((*(float *)&param_1->rb.mass) * fVar1) / param_2 + fVar7;
     fVar2 = fVar8 - fVar2;
     if (*param_5 != '\0') {
       hold = _DAT_10077aa8;
@@ -264,7 +266,7 @@ void BrCarPhysDriveMatch(struct BrRbBody *param_1, float param_2, float *param_3
     iVar10 = (iVar9 + (int)(short)local_6c) * 4;
     local_3c = *(float *)((const char *)g_brCrPlane.pDrvT1 +
                          ((int)(short)local_6c +
-                          (unsigned int)*(unsigned char *)(param_1 + 0x1fd) * 0x18 +
+                          (unsigned int)(*(unsigned char *)&param_1->_pad01FD[0]) * 0x18 +
                           iVar9) * 4);
     local_84 = *(int *)(&(*(char *)&g_aBrCarPhysDrvT3) + iVar10);
     fVar7 = *(float *)((const char *)g_brCrPlane.pDrvT2 + iVar10);
@@ -290,7 +292,7 @@ void BrCarPhysDriveMatch(struct BrRbBody *param_1, float param_2, float *param_3
       r = *(float *)&local_84 / r;
       r = r * local_3c * _DAT_10077aac;
       local_80 = (float)r;
-      if (*(float *)(*(int *)(param_1 + 0xc) + 0x1c0) == BrCrK_Zero) {
+      if ((*(float *)&param_1->rb.child[2]->f1C0) == BrCrK_Zero) {
         r = r * _DAT_10077ab0;
         local_80 = (float)r;
       }
@@ -303,9 +305,9 @@ void BrCarPhysDriveMatch(struct BrRbBody *param_1, float param_2, float *param_3
     if (!(speed < hold)) {
       /* orig: mov y-bits, mov x-bits, fld z: integer copies of x/y so the
        * squares go through stack slots, not fld [body+0x84]. */
-      local_84 = *(int *)(param_1 + 0x88);
-      local_x = *(int *)(param_1 + 0x84);
-      fVar11 = *(float *)(param_1 + 0x8c);
+      local_84 = (*(int *)&param_1->rb.st.vel.y);
+      local_x = (*(int *)&param_1->rb.st.vel.x);
+      fVar11 = (*(float *)&param_1->rb.st.vel.z);
       fVar11 = BrSqrtF((*(float *)&local_x * *(float *)&local_x
                         + *(float *)&local_84 * *(float *)&local_84)
                        + fVar11 * fVar11);
@@ -335,7 +337,7 @@ void BrCarPhysDriveMatch(struct BrRbBody *param_1, float param_2, float *param_3
         fVar1 = -fVar1;
       }
       if (fVar1 > _DAT_10077a88) {
-        *(unsigned char *)(param_1 + 0x209) = 0x80;
+        (*(unsigned char *)&param_1->f0209) = 0x80;
       }
     } else {
       if (vA[1] < BrCrK_Zero) {
@@ -344,9 +346,9 @@ void BrCarPhysDriveMatch(struct BrRbBody *param_1, float param_2, float *param_3
         fVar1 = vA[1];
       }
       if (fVar1 > DAT_10077a7c) {
-        *(unsigned char *)(param_1 + 0x209) = 0x80;
+        (*(unsigned char *)&param_1->f0209) = 0x80;
       } else {
-        *(unsigned char *)(param_1 + 0x209) = 0;
+        (*(unsigned char *)&param_1->f0209) = 0;
       }
     }
     fVar2 = vA[0];
@@ -376,19 +378,19 @@ void BrCarPhysDriveMatch(struct BrRbBody *param_1, float param_2, float *param_3
       }
     }
   }
-  pt[0] = *(float *)(*(int *)(param_1 + 0xc) + 0x78);
+  pt[0] = (*(float *)&param_1->rb.child[2]->st.pos.x);
   pt[1] = 0.0f;
   pt[2] = 0;
   BrRbVelAtPoint(tmpB, param_1, pt);
   BrMat4MulVec3(vB, iVar5, tmpB);
-  if (((*(int *)(*(int *)(param_1 + 0xc) + 0x1b4) != 0) ||
-      (*(int *)(*(int *)(param_1 + 0x10) + 0x1b4) != 0)) &&
-     ((*(int *)(*(int *)(param_1 + 4) + 0x1b4) != 0 ||
-      (*(int *)(*(int *)(param_1 + 8) + 0x1b4) != 0)))) {
+  if ((((*(int *)&param_1->rb.child[2]->f1B4) != 0) ||
+      ((*(int *)&param_1->rb.child[3]->f1B4) != 0)) &&
+     (((*(int *)&param_1->rb.child[0]->f1B4) != 0 ||
+      ((*(int *)&param_1->rb.child[1]->f1B4) != 0)))) {
     g.ran = 1;
-    pt[0] = BrCosF(*(float *)(*(int *)(param_1 + 0xc) + 0x1c0));
+    pt[0] = BrCosF((*(float *)&param_1->rb.child[2]->f1C0));
     lat[2] = vB[2];
-    pt[1] = BrSinF(*(float *)(*(int *)(param_1 + 0xc) + 0x1c0));
+    pt[1] = BrSinF((*(float *)&param_1->rb.child[2]->f1C0));
     svB[2] = vB[2];
     svB[0] = vB[0];
     /* The original `fst`s the dot product to a float slot and reloads it:
@@ -433,7 +435,7 @@ void BrCarPhysDriveMatch(struct BrRbBody *param_1, float param_2, float *param_3
      * and subtracts from the stored value; the int image forces that
      * rounding.  Whole-image run: 1 ulp in the speed, then in the grip
      * factor and the lateral velocity. */
-    fVar1 = (fVar11 * *(float *)(param_1 + 0x2c)) / param_2 + local_8c;
+    fVar1 = (fVar11 * (*(float *)&param_1->rb.mass)) / param_2 + local_8c;
     dotBits = *(int *)&fVar1;
     fVar1 = *(float *)&dotBits - local_88 * _DAT_10077aa0;
     fVar7 = _DAT_10077a90;
@@ -448,7 +450,7 @@ void BrCarPhysDriveMatch(struct BrRbBody *param_1, float param_2, float *param_3
       iVar9 = (int)((local_1c & 0xff) + 1 + (*(unsigned int *)&local_38 & 0xff)) >> 1;
       iVar10 = (iVar9 + (int)(short)local_6c) * 4;
       local_38 = *(float *)((const char *)g_brCrPlane.pDrvT1 +
-                           (iVar9 + (unsigned int)*(unsigned char *)(param_1 + 0x1fd) * 0x18 +
+                           (iVar9 + (unsigned int)(*(unsigned char *)&param_1->_pad01FD[0]) * 0x18 +
                             (int)(short)local_6c) * 4);
       local_84 = *(int *)(&(*(char *)&g_aBrCarPhysDrvT3) + iVar10);
       local_80 = *(float *)((const char *)g_brCrPlane.pDrvT2 + iVar10);
@@ -467,7 +469,7 @@ void BrCarPhysDriveMatch(struct BrRbBody *param_1, float param_2, float *param_3
         r = *(float *)&local_84 / r;
         r = r * local_38 * _DAT_10077aac;
         local_80 = (float)r;
-        if (*(float *)(*(int *)(param_1 + 0xc) + 0x1c0) == BrCrK_Zero) {
+        if ((*(float *)&param_1->rb.child[2]->f1C0) == BrCrK_Zero) {
           r = r * _DAT_10077ab0;
           local_80 = (float)r;
         }
@@ -477,9 +479,9 @@ void BrCarPhysDriveMatch(struct BrRbBody *param_1, float param_2, float *param_3
           local_80 = 1.0f;
         }
       }
-      local_84 = *(int *)(param_1 + 0x88);
-      local_x = *(int *)(param_1 + 0x84);
-      fVar11 = *(float *)(param_1 + 0x8c);
+      local_84 = (*(int *)&param_1->rb.st.vel.y);
+      local_x = (*(int *)&param_1->rb.st.vel.x);
+      fVar11 = (*(float *)&param_1->rb.st.vel.z);
       fVar11 = BrSqrtF((*(float *)&local_x * *(float *)&local_x
                         + *(float *)&local_84 * *(float *)&local_84)
                        + fVar11 * fVar11);
@@ -502,17 +504,17 @@ void BrCarPhysDriveMatch(struct BrRbBody *param_1, float param_2, float *param_3
      * float just stored.  The double models that register.  Live oracle,
      * 1-ulp difference in the lateral velocity handed back to the body. */
     q = ((double)vA[1] - (double)vB[1]) /
-        ((double)*(float *)(*(int *)(param_1 + 4) + 0x78) -
-         (double)*(float *)(*(int *)(param_1 + 0xc) + 0x78));
+        ((double)(*(float *)&param_1->rb.child[0]->st.pos.x) -
+         (double)(*(float *)&param_1->rb.child[2]->st.pos.x));
     svB[2] = (float)q;
-    svB[1] = (float)((double)vA[1] - q * (double)*(float *)(*(int *)(param_1 + 4) + 0x78));
-    BrMat4MulVec3(wld, iVar5, param_1 + 0xa0);
+    svB[1] = (float)((double)vA[1] - q * (double)(*(float *)&param_1->rb.child[0]->st.pos.x));
+    BrMat4MulVec3(wld, iVar5, ((void *)&param_1->rb.st.angVel.x));
     wld[2] = svB[2];
-    BrMat4MulVec3Transposed((void *)(param_1 + 0xa0), iVar5, wld);
-    BrMat4MulVec3(wld, iVar5, param_1 + 0x84);
+    BrMat4MulVec3Transposed((void *)(((void *)&param_1->rb.st.angVel.x)), iVar5, wld);
+    BrMat4MulVec3(wld, iVar5, ((void *)&param_1->rb.st.vel.x));
     wld[0] = svB[0];
     wld[1] = svB[1];
-    BrMat4MulVec3Transposed((void *)(param_1 + 0x84), iVar5, wld);
+    BrMat4MulVec3Transposed((void *)(((void *)&param_1->rb.st.vel.x)), iVar5, wld);
   }
   fVar1 = g.sideForce;
   if (g.sideForce < BrCrK_Zero) {
@@ -529,18 +531,18 @@ void BrCarPhysDriveMatch(struct BrRbBody *param_1, float param_2, float *param_3
     g.sideForce = fVar1 * BrCrK_Half;
   }
   fVar1 = (g.sideForce + g.sideForce) * DAT_10077ad0;
-  fVar7 = *(float *)(param_1 + 0x1d4) - fVar1;
+  fVar7 = (*(float *)&param_1->rb.f1D4) - fVar1;
   if (fVar7 < BrCrK_Zero) {
     fVar7 = -fVar7;
   }
   if (!(fVar7 < _DAT_10077ad4)) {
-    if (*(float *)(param_1 + 0x1d4) < fVar1) {
-      *(float *)(param_1 + 0x1d4) = *(float *)(param_1 + 0x1d4) - _DAT_10077ad8;
+    if ((*(float *)&param_1->rb.f1D4) < fVar1) {
+      (*(float *)&param_1->rb.f1D4) = (*(float *)&param_1->rb.f1D4) - _DAT_10077ad8;
       return;
     }
-    fVar1 = *(float *)(param_1 + 0x1d4) - _DAT_10077ad4;
+    fVar1 = (*(float *)&param_1->rb.f1D4) - _DAT_10077ad4;
   }
-  *(float *)(param_1 + 0x1d4) = fVar1;
+  (*(float *)&param_1->rb.f1D4) = fVar1;
   return;
 }
 

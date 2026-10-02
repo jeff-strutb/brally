@@ -10,6 +10,7 @@
  */
 
 #include <math.h>
+#include "slice3_41.h"   /* BrDriverCar, the canonical record */
 #include <string.h>
 
 #include "br_match.h"
@@ -91,33 +92,33 @@ void __fastcall BrEntSetHeading(BrEntCar *pE, float a)
     float h;
     uint32_t qw, qx, qy;
 
-    *(uint32_t *)&pE->mat0.m[0][0] = *(uint32_t *)&c;
-    *(uint32_t *)&pE->mat0.m[0][1] = *(uint32_t *)&s;
-    pE->mat0.m[0][2] = 0.0f;
-    pE->mat0.m[1][1] = sb;
+    *(uint32_t *)&(*(struct BrMat4 *)&((BrDriverCar *)(pE))->fwd).m[0][0] = *(uint32_t *)&c;
+    *(uint32_t *)&(*(struct BrMat4 *)&((BrDriverCar *)(pE))->fwd).m[0][1] = *(uint32_t *)&s;
+    (*(struct BrMat4 *)&((BrDriverCar *)(pE))->fwd).m[0][2] = 0.0f;
+    (*(struct BrMat4 *)&((BrDriverCar *)(pE))->fwd).m[1][1] = sb;
     h = a * kBrHalf;
-    *(uint32_t *)&pE->mat0.m[1][0] = *(uint32_t *)&cb;
-    pE->mat0.m[1][2] = 0.0f;
-    pE->mat0.m[2][0] = 0.0f;
-    pE->mat0.m[2][1] = 0.0f;
-    pE->mat0.m[2][2] = 1.0f;
+    *(uint32_t *)&(*(struct BrMat4 *)&((BrDriverCar *)(pE))->fwd).m[1][0] = *(uint32_t *)&cb;
+    (*(struct BrMat4 *)&((BrDriverCar *)(pE))->fwd).m[1][2] = 0.0f;
+    (*(struct BrMat4 *)&((BrDriverCar *)(pE))->fwd).m[2][0] = 0.0f;
+    (*(struct BrMat4 *)&((BrDriverCar *)(pE))->fwd).m[2][1] = 0.0f;
+    (*(struct BrMat4 *)&((BrDriverCar *)(pE))->fwd).m[2][2] = 1.0f;
 
-    pE->st.quat.f00 = BrCosF(h);
-    pE->st.quat.f04 = 0.0f;
-    pE->st.quat.f08 = 0.0f;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).quat.f00 = BrCosF(h);
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).quat.f04 = 0.0f;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).quat.f08 = 0.0f;
 
-    pE->stA.quat.f0C = pE->stB.quat.f0C = pE->st.quat.f0C = BrSinF(h);
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st1).quat.f0C = (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st2).quat.f0C = (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).quat.f0C = BrSinF(h);
 
-    qw = *(uint32_t *)&pE->st.quat.f00;
-    qx = *(uint32_t *)&pE->st.quat.f04;
-    qy = *(uint32_t *)&pE->st.quat.f08;
+    qw = *(uint32_t *)&(*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).quat.f00;
+    qx = *(uint32_t *)&(*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).quat.f04;
+    qy = *(uint32_t *)&(*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).quat.f08;
 
-    *(uint32_t *)&pE->stB.quat.f00 = qw;
-    *(uint32_t *)&pE->stA.quat.f00 = qw;
-    *(uint32_t *)&pE->stB.quat.f04 = qx;
-    *(uint32_t *)&pE->stB.quat.f08 = qy;
-    *(uint32_t *)&pE->stA.quat.f04 = qx;
-    *(uint32_t *)&pE->stA.quat.f08 = qy;
+    *(uint32_t *)&(*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st2).quat.f00 = qw;
+    *(uint32_t *)&(*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st1).quat.f00 = qw;
+    *(uint32_t *)&(*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st2).quat.f04 = qx;
+    *(uint32_t *)&(*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st2).quat.f08 = qy;
+    *(uint32_t *)&(*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st1).quat.f04 = qx;
+    *(uint32_t *)&(*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st1).quat.f08 = qy;
 
-    BrRbBuildMatrix(&pE->matrix, &pE->st);
+    BrRbBuildMatrix(&(*(struct BrMat4 *)&((BrDriverCar *)(pE))->aBody[0].rb.m), &(*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st));
 }

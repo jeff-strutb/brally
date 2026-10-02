@@ -1,3 +1,4 @@
+#include "br_addr32.h"
 /* br_dl.c -- the display-list machine.  See br_dl.h for what this is and how
  * it was established.  Every address literal is from orig/BRGlide.dll, which
  * CONVENTIONS.md names as the reference; where the D3D build's handler is a
@@ -1269,7 +1270,7 @@ void BrDlRectCmdEmit(int param_1,int param_2,int param_3,int param_4,int param_5
   puVar1 = (*(int * *)&g_BrGfxPtr);
   (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2;
   *puVar1 = 0x3800010;
-  puVar1[1] = (int)(&DAT_106e8818 + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10);
+  puVar1[1] = (int)br_addr32(&DAT_106e8818 + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10);
   DAT_106ed368 = (int)*(short *)(&DAT_106e881c + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10);
   (*(int *)((char *)&g_aBrEntRecs + 0x18)) = (int)*(short *)(&DAT_106e8824 + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10);
   return;
@@ -1338,7 +1339,7 @@ void BrDlScreenRectEmit(int param_1,int param_2,int param_3,int param_4,int para
   puVar1 = (*(int * *)&g_BrGfxPtr);
   (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2;
   *puVar1 = 0x3800010;
-  puVar1[1] = (int)(&DAT_106e8818 + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10);
+  puVar1[1] = (int)br_addr32(&DAT_106e8818 + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10);
   DAT_106ed368 = (int)*(short *)(&DAT_106e881c + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10);
   (*(int *)((char *)&g_aBrEntRecs + 0x18)) = (int)*(short *)(&DAT_106e8824 + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10);
   return;
@@ -1366,7 +1367,7 @@ void BrDlRectCmdFlush(void)
   puVar1 = (*(int * *)&g_BrGfxPtr);
   (*(int * *)&g_BrGfxPtr) = (*(int * *)&g_BrGfxPtr) + 2;
   *puVar1 = 0x3800010;
-  puVar1[1] = (int)(&DAT_106e8818 + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10);
+  puVar1[1] = (int)br_addr32(&DAT_106e8818 + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10);
   DAT_106ed368 = (int)*(short *)(&DAT_106e881c + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10);
   (*(int *)((char *)&g_aBrEntRecs + 0x18)) = (int)*(short *)(&DAT_106e8824 + (*(int *)((char *)&g_aBrEntRecs + 0xB4)) * 0x10);
   return;

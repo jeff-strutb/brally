@@ -52,10 +52,10 @@ void BrAnimFlagsApply(BrAnimSet *pSet, uint16_t orBits, uint32_t clearBits)
     /* Nested if (single je-to-epilogue), compound |=/&= (word ops end to
      * end: `or ax, word [ebp+0xc]` / `and ax, word [ebp+0x10]` -- the
      * value-cast spellings widen through eax with masks). */
-    if (pSet->pList != NULL) {
-        n = pSet->pList->n;
+    if (pSet->aList != 0) {
+        n = BR_PTR32(BrAnimList *, pSet->aList)->n;
         for (i = 0; i < n; i++) {
-            pT = pSet->pList->a[i];
+            pT = BR_PTR32(BrAnimTrack *, BR_PTR32(BrAnimList *, pSet->aList)->a[i]);
             pT->flags |= orBits;
             pT->flags &= (uint16_t)clearBits;
         }

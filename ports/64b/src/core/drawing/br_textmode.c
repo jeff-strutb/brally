@@ -53,14 +53,14 @@ void BR_THISCALL1 BrPairReset_10073B90(uint32_t *pThis)
 void BrNodeChainReset_1000F460(void)
 {
     /* prev is zeroed BEFORE the cursor is materialised (xor ecx,ecx first). */
-    uint32_t prev = 0;
-    uint32_t *p = &(*(uint32_t *)((char *)&(*(uint32_t *)&g_2E54C0) + 0x9D8)) /* BR_LP64_BYTE_VIEW */;
+    BrLerpNode *prev = 0;
+    BrLerpNode *p = &g_2E54C0[63];       /* base + 0x9D8, stepping back 0x28 */
 
     do {
-        *p = prev;
-        prev = (uint32_t)(uintptr_t)p;
-        p = (uint32_t *)((char *)p - 0x28);
-    } while ((int)(uintptr_t)p >= (int)(uintptr_t)&(*(uint32_t *)&g_2E54C0));
+        p->pNext = prev;
+        prev = p;
+        p--;
+    } while (p >= &g_2E54C0[0]);
     g_pBrLerpFree = prev;
 }
 

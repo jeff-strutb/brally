@@ -146,19 +146,7 @@ void BrErrorBox(void *hWnd, int32_t unusedCode, const char *pText);
  * multipliers live at 0x3440, 0x3448 and 0x345C, not at a uniform stride --
  * so the unused slots are kept as positional fields to preserve offsets.
  * width/height at 0x3464/0x3468 are written by BrBmp24ToRgba. */
-typedef struct BrImgState {
-    int32_t scaleR;   /* +0x00  0x10AA3440 -- multiplies dst byte 0 */
-    int32_t f04;      /* +0x04  0x10AA3444 */
-    int32_t scaleG;   /* +0x08  0x10AA3448 -- multiplies dst byte 1 */
-    int32_t f0C;      /* +0x0C  0x10AA344C */
-    int32_t f10;      /* +0x10  0x10AA3450 */
-    int32_t f14;      /* +0x14  0x10AA3454 */
-    int32_t f18;      /* +0x18  0x10AA3458 */
-    int32_t scaleB;   /* +0x1C  0x10AA345C -- multiplies dst byte 2 */
-    int32_t f20;      /* +0x20  0x10AA3460 */
-    int32_t width;    /* +0x24  0x10AA3464 */
-    int32_t height;   /* +0x28  0x10AA3468 */
-} BrImgState;
+/* BrImgState, BrImgTintState: br_coretypes.h */
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 
@@ -345,10 +333,6 @@ int16_t BrTriContainsPoint2D(const BrTri *pTri, const float *pPoint);
 #ifdef __cplusplus
 extern "C" {
 #endif
-#pragma push_macro("BrImgTintState")
-#undef BrImgTintState
-extern BrImgState BrImgTintState;  /* 0x10AC67A0 */
-#pragma pop_macro("BrImgTintState")
 #ifdef __cplusplus
 }
 #endif

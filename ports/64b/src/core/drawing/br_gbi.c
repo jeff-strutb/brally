@@ -209,10 +209,10 @@ BrGfxWords *BrGbiDList(BrGfxWords *pCmd)
         n = DAT_105ccfe8 + 1;
         if (n == 10)
             exit(1);
-        DAT_105ce2e8[DAT_105ccfe8] = (int)(pCmd + 1);
+        g_apBrGbiStack[DAT_105ccfe8] = pCmd + 1;
         DAT_105ccfe8 = DAT_105ccfe8 + 1;
     }
-    return (BrGfxWords *)(uintptr_t)pCmd->w1;
+    return (BrGfxWords *)br_ptr32(pCmd->w1);   /* a 32-bit display-list address */
 }
 
 /* 0x10020DA0 -- takes no argument in the original. */
@@ -234,7 +234,7 @@ BrGfxWords *BrGbiEndDList(void)
     if (n != 0) {
         n -= 1;
         DAT_105ccfe8 = n;
-        return (BrGfxWords *)DAT_105ce2e8[n];
+        return g_apBrGbiStack[n];
     }
     return (BrGfxWords *)0;
 }
@@ -453,7 +453,7 @@ BrGfxWords *BrGbiCall10024260(BrGfxWords *pCmd)
     float          cyScreen;
     float         *pH;
 
-    pVp = (const int16_t *)pCmd->w1;
+    pVp = (const int16_t *)br_ptr32(pCmd->w1);
     pCmd++;
     /* Address-taken so height occupies its own slot (`push ecx` / [esp])
      * and the last scale is `fsubr [esp]`, not `fsubp st(1)`. */

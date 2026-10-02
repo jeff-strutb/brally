@@ -8,6 +8,7 @@
  * Moved here out of src/core/slice3_45.c (an address batch, not a module).
  */
 #include "br_match.h"
+#include "slice3_41.h"   /* BrDriverCar, the canonical record */
 
 /* Header is cdecl (this, x, y, z). Original is thiscall with ret 0xC. */
 #define BrEntSetPos BrEntSetPos_hdr
@@ -25,25 +26,25 @@
 void BR_THISCALL1 BrEntSetPos(BrEntCar *pE, float x, float y, float z)
 {
     /* Store order is the original's: mat0.m[3], f26C8, st, stB, stA. */
-    pE->mat0.m[3][0] = x;
-    pE->mat0.m[3][1] = y;
-    pE->mat0.m[3][2] = z;
+    (*(struct BrMat4 *)&((BrDriverCar *)(pE))->fwd).m[3][0] = x;
+    (*(struct BrMat4 *)&((BrDriverCar *)(pE))->fwd).m[3][1] = y;
+    (*(struct BrMat4 *)&((BrDriverCar *)(pE))->fwd).m[3][2] = z;
 
-    pE->f26C8[0] = x;
-    pE->f26C8[1] = y;
-    pE->f26C8[2] = z;
+    (*(float (*)[3])&((BrDriverCar *)(pE))->f26C8)[0] = x;
+    (*(float (*)[3])&((BrDriverCar *)(pE))->f26C8)[1] = y;
+    (*(float (*)[3])&((BrDriverCar *)(pE))->f26C8)[2] = z;
 
-    pE->st.pos.x = x;
-    pE->st.pos.y = y;
-    pE->st.pos.z = z;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).pos.x = x;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).pos.y = y;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st).pos.z = z;
 
-    pE->stB.pos.x = x;
-    pE->stB.pos.y = y;
-    pE->stB.pos.z = z;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st2).pos.x = x;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st2).pos.y = y;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st2).pos.z = z;
 
-    pE->stA.pos.x = x;
-    pE->stA.pos.y = y;
-    pE->stA.pos.z = z;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st1).pos.x = x;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st1).pos.y = y;
+    (*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st1).pos.z = z;
 
-    BrRbBuildMatrix(&pE->matrix, &pE->st);
+    BrRbBuildMatrix(&(*(struct BrMat4 *)&((BrDriverCar *)(pE))->aBody[0].rb.m), &(*(struct BrRbState *)&((BrDriverCar *)(pE))->aBody[0].rb.st));
 }

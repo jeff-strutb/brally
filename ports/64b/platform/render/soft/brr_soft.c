@@ -20,7 +20,8 @@ typedef struct { float r, g, b, a; } rgba;
 typedef struct stex { int w, h; uint8_t *px; } stex;
 
 static int s_w, s_h;
-static uint32_t *s_col;          /* 0xAARRGGBB */
+static uint32_t *s_col;          /* 0xAARRGGBB, being drawn */
+static uint32_t *s_shown;        /* the frame last presented */
 static float *s_dep;
 static stex *s_tex;
 static uint32_t s_ntex;
@@ -487,8 +488,26 @@ void brr_lfb_write(int x, int y, int w, int h, const uint16_t *p, int stride)
     }
 }
 
+int brr_shot(const char *path)
+{
+    uint32_t *keep = s_col;
+    int ok;
+    if (!s_shown)
+        return 0;
+    s_col = s_shown;
+    ok = write_png(path);
+    s_col = keep;
+    if (ok)
+        fprintf(stderr, "brr: frame %lu -> %s\n", s_frame, path);
+    return ok;
+}
+
 void brr_present(void)
 {
+    if (!s_shown)
+        s_shown = (uint32_t *)malloc((size_t)s_w * (size_t)s_h * 4);
+    if (s_shown)
+        memcpy(s_shown, s_col, (size_t)s_w * (size_t)s_h * 4);
     s_frame++;
     if ((long)s_frame == s_shot_frame) {
         if (write_png(s_shot_path))

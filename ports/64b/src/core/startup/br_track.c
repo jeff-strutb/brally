@@ -650,7 +650,7 @@ void BrTrackLoad(int param_1)
   BrSegSetBases(0x80025c00, g_abBrTrkImage);
   BrSegSetFlag(1);
   strcpy(local_400, s_tracks__100b74c0);
-  strcat(local_400, (&PTR_s_desert_trk_100b78c0)[param_1]);
+  strcat(local_400, PTR_s_desert_trk_100b78c0[param_1]);
   uVar3 = BrChkFReadOpen(local_400);
   iVar6 = BrChkFileSize(uVar3);
   BrGlTrackHdrRead(&g_brTrkHdr, uVar3);
@@ -661,11 +661,11 @@ void BrTrackLoad(int param_1)
   BrChkFRead(g_abBrTrkImage + 0x230, 1, iVar6 + -0x230, uVar3);
   BrChkFClose(uVar3);
   BrGlTrackFixupCmds(&g_brTrkHdr);
-  BrFileReadInto(&DAT_118ed1f0, (&PTR_s_cargfx_skytexdesert_lut4_100bb30c)[param_1 * 0x5f], 0x20);
-  BrFileReadInto(&DAT_118eda10, (&PTR_s_cargfx_skytexdesert_lut4_100bb30c)[param_1 * 0x5f] + 0x20,
+  BrFileReadInto(&DAT_118ed1f0, g_aBrRaceDiff[param_1].pszSkyDay, 0x20);
+  BrFileReadInto(&DAT_118eda10, g_aBrRaceDiff[param_1].pszSkyDay + 0x20,
                -1);
-  BrFileReadInto(&DAT_118ee210, (&PTR_s_cargfx_skytexdesertn_lut4_100bb314)[param_1 * 0x5f], 0x20);
-  BrFileReadInto(&DAT_118ed210, (&PTR_s_cargfx_skytexdesertn_lut4_100bb314)[param_1 * 0x5f] + 0x20,
+  BrFileReadInto(&DAT_118ee210, g_aBrRaceDiff[param_1].pszSkyNight, 0x20);
+  BrFileReadInto(&DAT_118ed210, g_aBrRaceDiff[param_1].pszSkyNight + 0x20,
                -1);
   BrSub10073AC0();
   BrSub10073B00();
@@ -715,7 +715,7 @@ void BrTrackLoadHandling(int iTrack)
   char szPath[1024];
 
   sprintf(szPath, g_szBrFmtSS, s_tracks__100b74c0,
-          (&PTR_s_desert_trk_100b78c0)[iTrack]);
+          PTR_s_desert_trk_100b78c0[iTrack]);
   strcpy(strrchr(szPath, '.'), DAT_100aa338);
   FUN_10031030(szPath);
 }

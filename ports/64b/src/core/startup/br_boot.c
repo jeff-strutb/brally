@@ -240,6 +240,7 @@ int32_t BrAppStateLoading(void)
 
 int32_t BrAppFrame(void)
 {
+    plat_app_frame();
     return s_apfnAppState[(DAT_105ccb68[21])]();
 }
 

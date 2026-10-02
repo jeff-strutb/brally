@@ -16,21 +16,20 @@
  * the port's reader. */
 #define _CRTIMP __declspec(dllimport)
 #include <stdio.h>
+#include "slice3_42.h"   /* BrCtrlCfg */
 #include <string.h>
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 
 /* VA-encoded class name (ctor_dtor) + m_<VA> methods, so the oracle's reloc
  * resolver maps every thiscall to its real address. */
-class BrCtrlCfg_10062B00_10008D60 {
+class BrCtrlCfg_10062B00_10008D60 : public BrCtrlCfg {
 public:
     BrCtrlCfg_10062B00_10008D60();                  /* 0x10062B00 */
     ~BrCtrlCfg_10062B00_10008D60();                 /* 0x10008D60 (nop) */
     void m_10062E50(BrCtrlCfg_10062B00_10008D60 *pSrc);   /* copy from pSrc */
     void m_10062D00();                              /* apply */
     int  m_10063060(const char *pszPath);
-
-    unsigned char b[0x874];
 };
 
 int BrCtrlCfg_10062B00_10008D60::m_10063060(const char *pszPath)
@@ -50,38 +49,38 @@ int BrCtrlCfg_10062B00_10008D60::m_10063060(const char *pszPath)
     if (strncmp((char *)&magic, BrGlCfgMagic, strlen(BrGlCfgMagic)) != 0) goto fail;
     if (fread(&version, 4, 1, pFile) != 1) goto fail;
     if (version != 2) goto fail;
-    if (fread(b + 0x2a8, 4, 1, pFile) != 1) goto fail;
-    if (fread(b + 0x2ac, 4, 1, pFile) != 1) goto fail;
-    if (fread(b + 0x2b0, 4, 1, pFile) != 1) goto fail;
-    if (fread(b + 0x2b4, 0x104, 1, pFile) != 1) goto fail;
-    if (fread(b + 0x3b8, 0x400, 1, pFile) != 1) goto fail;
-    if (fread(b + 0x7b8, 4, 1, pFile) != 1) goto fail;
-    if (fread(b + 0x7bc, 4, 1, pFile) != 1) goto fail;
-    if (fread(b + 0x7c0, 4, 1, pFile) != 1) goto fail;
-    if (fread(b + 0x7c4, 4, 1, pFile) != 1) goto fail;
-    if (fread(b + 0x7c8, 0x10, 1, pFile) != 1) goto fail;
-    if (fread(b + 0x7d8, 4, 1, pFile) != 1) goto fail;
-    if (fread(b + 0x7dc, 4, 1, pFile) != 1) goto fail;
-    if (fread(b + 0x7e0, 4, 1, pFile) != 1) goto fail;
-    if (fread(b + 0x7e4, 4, 1, pFile) != 1) goto fail;
-    if (fread(b + 0x7e8, 4, 1, pFile) != 1) goto fail;
-    if (fread(b + 0x7ec, 4, 1, pFile) != 1) goto fail;
-    if (fread(b + 0x7f0, 4, 1, pFile) != 1) goto fail;
-    if (fread(b + 0x7f4, 4, 1, pFile) != 1) goto fail;
-    if (fread(b + 0x7f8, 4, 1, pFile) != 1) goto fail;
-    if (fread(b + 0x7fc, 4, 1, pFile) != 1) goto fail;
-    if (fread(b + 0x800, 4, 1, pFile) != 1) goto fail;
-    if (fread(b + 0x804, 4, 1, pFile) != 1) goto fail;
-    if (fread(b + 0x808, 4, 1, pFile) != 1) goto fail;
-    if (fread(b + 0x80c, 4, 1, pFile) != 1) goto fail;
-    if (fread(b + 0x810, 0x20, 1, pFile) != 1) goto fail;
-    if (fread(b + 0x830, 0x40, 1, pFile) != 1) goto fail;
-    if (fread(b + 0x870, 4, 1, pFile) != 1) goto fail;
-    if (fread(b + 0x2a0, 4, 1, pFile) != 1) goto fail;
-    if (fread(b + 0x000, 0xa8, 1, pFile) != 1) goto fail;
-    if (fread(b + 0x0a8, 0xa8, 1, pFile) != 1) goto fail;
-    if (fread(b + 0x150, 0xa8, 1, pFile) != 1) goto fail;
-    if (fread(b + 0x1f8, 0xa8, 1, pFile) != 1) goto fail;
+    if (fread(&f2A8, 4, 1, pFile) != 1) goto fail;
+    if (fread(&f2AC, 4, 1, pFile) != 1) goto fail;
+    if (fread(&f2B0, 4, 1, pFile) != 1) goto fail;
+    if (fread(f2B4, 0x104, 1, pFile) != 1) goto fail;
+    if (fread(f3B8, 0x400, 1, pFile) != 1) goto fail;
+    if (fread(&f7B8, 4, 1, pFile) != 1) goto fail;
+    if (fread(&f7BC, 4, 1, pFile) != 1) goto fail;
+    if (fread(&f7C0, 4, 1, pFile) != 1) goto fail;
+    if (fread(&f7C4, 4, 1, pFile) != 1) goto fail;
+    if (fread(f7C8, 0x10, 1, pFile) != 1) goto fail;
+    if (fread(&f7D8, 4, 1, pFile) != 1) goto fail;
+    if (fread(&f7DC, 4, 1, pFile) != 1) goto fail;
+    if (fread(&f7E0, 4, 1, pFile) != 1) goto fail;
+    if (fread(&f7E4, 4, 1, pFile) != 1) goto fail;
+    if (fread(&f7E8, 4, 1, pFile) != 1) goto fail;
+    if (fread(&f7EC, 4, 1, pFile) != 1) goto fail;
+    if (fread(&f7F0, 4, 1, pFile) != 1) goto fail;
+    if (fread(&f7F4, 4, 1, pFile) != 1) goto fail;
+    if (fread(&f7F8, 4, 1, pFile) != 1) goto fail;
+    if (fread(&f7FC, 4, 1, pFile) != 1) goto fail;
+    if (fread(&f800, 4, 1, pFile) != 1) goto fail;
+    if (fread(&f804, 4, 1, pFile) != 1) goto fail;
+    if (fread(&f808, 4, 1, pFile) != 1) goto fail;
+    if (fread(&f80C, 4, 1, pFile) != 1) goto fail;
+    if (fread(f810, 0x20, 1, pFile) != 1) goto fail;
+    if (fread(f830, 0x40, 1, pFile) != 1) goto fail;
+    if (fread(&f870, 4, 1, pFile) != 1) goto fail;
+    if (fread(&active, 4, 1, pFile) != 1) goto fail;
+    if (fread(&profile[0], 0xa8, 1, pFile) != 1) goto fail;
+    if (fread(&profile[1], 0xa8, 1, pFile) != 1) goto fail;
+    if (fread(&profile[2], 0xa8, 1, pFile) != 1) goto fail;
+    if (fread(&profile[3], 0xa8, 1, pFile) != 1) goto fail;
 
     fclose(pFile);
     return 1;

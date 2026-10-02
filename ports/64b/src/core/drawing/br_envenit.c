@@ -1,3 +1,4 @@
+#include "br_addr32.h"
 #include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "br_coretypes.h"   /* br_globals: its objects */
 #include "br_mat.h"   /* br_globals: its objects */
@@ -177,7 +178,7 @@ void BrEnvEmit(void)
     } else {
       (*(unsigned int * *)&g_BrGfxPtr) = (*(unsigned int * *)&g_BrGfxPtr) + 2;
       *puVar7 = *(unsigned int *)((char *)&g_BrEnvTexLookup + (*(int *)&g_BrEnvSection) * 4) & 0xffffff | 0xdd000000;
-      puVar7[1] = (unsigned int)(&g_BrEnvBitmap + (*(int *)&g_BrEnvSection) * 0x1000);
+      puVar7[1] = br_addr32(g_BrEnvBitmap[(*(int *)&g_BrEnvSection)]);
       puVar7 = (*(unsigned int * *)&g_BrGfxPtr);
       (*(unsigned int * *)&g_BrGfxPtr) = (*(unsigned int * *)&g_BrGfxPtr) + 2;
       *puVar7 = *(unsigned int *)((char *)&g_BrEnvTexLookup + (*(int *)&g_BrEnvSection) * 4) & 0xffffff | 0xdc000000;
@@ -223,7 +224,7 @@ void BrEnvEmit(void)
     g_BrDrawScale.m[3][3] = 1.0f;
     BrMtxMul(&g_BrDrawCombined, &g_BrDrawCombined, &g_BrDrawScale);
     if ((*(int *)((char *)&g_aBrEntRecs + 0x84))) {
-      FUN_100597f0(&g_BrEnvBitmap + (*(int *)&g_BrEnvSection) * 0x1000, 0x1000, 0);
+      FUN_100597f0(g_BrEnvBitmap[(*(int *)&g_BrEnvSection)], 0x1000, 0);
       BrVec3Project(local_c, &DAT_104b15d0[g_BrEnvSection].x, &g_BrDrawCombined);
       br_dl_normalise(local_c);
       fVar1 = local_c[0];
@@ -248,27 +249,22 @@ void BrEnvEmit(void)
           iVar9 = iVar12 * 0x40 + iVar9;
           iVar10 = iVar9 * 0x40 + iVar8;
           iVar8 = (iVar9 + -2) * 0x40 + iVar8;
-          (&(*(unsigned char *)((char *)&DAT_104add50 + 0x17F7)))[iVar10] = bVar13;
-          (&g_BrEnvBitmap)[iVar8] = bVar13;
-          (&(*(unsigned char *)((char *)&g_BrEnvBitmap + 0x1)))[iVar8] = bVar13;
-          (&(*(unsigned char *)((char *)&DAT_104add50 + 0x1836)))[iVar10] = bVar13;
-          (&(*(unsigned char *)((char *)&DAT_104add50 + 0x1837)))[iVar10] = bVar13;
-          (&(*(unsigned char *)((char *)&DAT_104add50 + 0x1838)))[iVar10] = bVar13;
-          (&(*(unsigned char *)((char *)&DAT_104add50 + 0x1839)))[iVar10] = bVar13;
-          (&(*(unsigned char *)((char *)&DAT_104add50 + 0x183A)))[iVar10] = bVar13;
-          (&(*(unsigned char *)((char *)&DAT_104add50 + 0x1876)))[iVar10] = bVar13;
-          (&(*(unsigned char *)((char *)&DAT_104add50 + 0x1877)))[iVar10] = bVar13;
-          (&g_BrEnvBitmap)[iVar10] = bVar13;
-          (&(*(unsigned char *)((char *)&g_BrEnvBitmap + 0x1)))[iVar10] = bVar13;
-          (&(*(unsigned char *)((char *)&g_BrEnvBitmap + 0x2)))[iVar10] = bVar13;
-          (&DAT_104af606)[iVar10] = bVar13;
-          (&DAT_104af607)[iVar10] = bVar13;
-          (&DAT_104af608)[iVar10] = bVar13;
-          (&DAT_104af609)[iVar10] = bVar13;
-          (&DAT_104af60a)[iVar10] = bVar13;
-          (&DAT_104af647)[iVar10] = bVar13;
-          (&DAT_104af648)[iVar10] = bVar13;
-          (&DAT_104af649)[iVar10] = bVar13;
+          /* The original addresses this stamp from the bitmap's base and
+           * from the particle table that ends where the bitmap starts; every
+           * offset below is relative to bitmap byte iVar10. */
+          {
+            unsigned char *pB = &g_BrEnvBitmap[0][0];
+            static const short aStamp[] = {
+              -0x81, -0x80, -0x7F,
+              -0x42, -0x41, -0x40, -0x3F, -0x3E,
+              -2, -1, 0, 1, 2,
+              0x3E, 0x3F, 0x40, 0x41, 0x42,
+              0x7F, 0x80, 0x81
+            };
+            int k;
+            for (k = 0; k < (int)(sizeof aStamp / sizeof aStamp[0]); k++)
+              pB[iVar10 + aStamp[k]] = bVar13;
+          }
         }
         iVar15 = iVar15 + 1;
       } while (iVar15 < 0x10);

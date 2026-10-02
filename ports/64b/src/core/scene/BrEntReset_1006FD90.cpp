@@ -1,3 +1,4 @@
+#include "slice3_41.h"   /* BrDriverCar, the canonical record */
 /* WHAT IT DOES: reset an entity to its starting state -- squares up its
  * matrices and reinitialises each animation frame. */
 /* @implements 0x1006FD90 glide BrEntReset
@@ -65,56 +66,56 @@ void Ent6FD90::Reset()
     EntFrame *f0;
     EntFrame *f;
 
-    mats[0].SetLastColumn();
+    (*(Mat4M (*)[5])&((BrDriverCar *)(this))->fwd.x)[0].SetLastColumn();
 
-    f0 = &aFrames[0];
+    f0 = &(*(EntFrame *)&((BrDriverCar *)(this))->aSnap[0]);
     f0->m.SetLastColumn();
     f0->f40 = 0.5235987901687622f;
-    f = &aFrames[1];
+    f = &(*(EntFrame *)&((BrDriverCar *)(this))->aSnap[1]);
     f->m.SetLastColumn();
     f->f40 = 0.5235987901687622f;
-    f = &aFrames[2];
+    f = &(*(EntFrame *)&((BrDriverCar *)(this))->aSnap[2]);
     f->m.SetLastColumn();
     f->f40 = 0.5235987901687622f;
-    f = &aFrames[3];
+    f = &(*(EntFrame *)&((BrDriverCar *)(this))->aSnap[3]);
     f->m.SetLastColumn();
     f->f40 = 0.5235987901687622f;
     /* aFrames[4] deliberately skipped */
-    f = &aFrames[5];
+    f = &(*(EntFrame *)&((BrDriverCar *)(this))->aSnap[5]);
     f->m.SetLastColumn();
     f->f40 = 0.5235987901687622f;
 
-    p2734 = f0;
+    (*(EntFrame * *)&((BrDriverCar *)(this))->pMatA) = f0;
 
-    mats[1].SetLastColumn();
-    mats[2].SetLastColumn();
-    mats[3].SetLastColumn();
-    mats[4].SetLastColumn();
+    (*(Mat4M (*)[5])&((BrDriverCar *)(this))->fwd.x)[1].SetLastColumn();
+    (*(Mat4M (*)[5])&((BrDriverCar *)(this))->fwd.x)[2].SetLastColumn();
+    (*(Mat4M (*)[5])&((BrDriverCar *)(this))->fwd.x)[3].SetLastColumn();
+    (*(Mat4M (*)[5])&((BrDriverCar *)(this))->fwd.x)[4].SetLastColumn();
 
     SetVel(0.0f, 0.0f, 0.0f);
 
-    fF8C  = 0;
-    fF90  = 0;
-    f2738 = 0;
+    ((BrDriverCar *)(this))->pNode.p = 0;
+    (*(int *)&((BrDriverCar *)(this))->iPt.v)  = 0;
+    ((BrDriverCar *)(this))->pMatB = 0;
 
-    r = pRec;
-    memcpy(fE28, r->a98, 0x1C);
-    fE44 = r->dB4;
-    fE48 = r->dB8;
-    fE4C = r->dBC;
-    fE50 = r->dC0;
-    fE54 = r->dC4;
-    fE58 = r->bD8;
-    fE60 = fE9C;
-    fE5C = r->b96;
-    f340[0] = r->dC8;
-    f340[1] = r->dCC;
-    f340[2] = r->dD0;
-    f340[3] = r->dD4;
+    r = (*(EntRec * *)&((BrDriverCar *)(this))->pModel);
+    memcpy((*(int (*)[7])&((BrDriverCar *)(this))->f0E28), r->a98, 0x1C);
+    (*(int *)&((BrDriverCar *)(this))->f0E44) = r->dB4;
+    (*(int *)&((BrDriverCar *)(this))->f0E48) = r->dB8;
+    (*(int *)&((BrDriverCar *)(this))->f0E4C) = r->dBC;
+    (*(int *)&((BrDriverCar *)(this))->f0E50) = r->dC0;
+    (*(int *)&((BrDriverCar *)(this))->f0E54) = r->dC4;
+    (*(int *)&((BrDriverCar *)(this))->f0E58) = r->bD8;
+    (*(int *)&((BrDriverCar *)(this))->f0E60) = (*(int *)&((BrDriverCar *)(this))->fE9C);
+    (*(int *)&((BrDriverCar *)(this))->f0E5C) = r->b96;
+    (*(int (*)[4])&((BrDriverCar *)(this))->aBody[0].f01DC)[0] = r->dC8;
+    (*(int (*)[4])&((BrDriverCar *)(this))->aBody[0].f01DC)[1] = r->dCC;
+    (*(int (*)[4])&((BrDriverCar *)(this))->aBody[0].f01DC)[2] = r->dD0;
+    (*(int (*)[4])&((BrDriverCar *)(this))->aBody[0].f01DC)[3] = r->dD4;
     {
         int v = r->b97;
-        pRec = 0;
-        fE64 = v;
+        (*(EntRec * *)&((BrDriverCar *)(this))->pModel) = 0;
+        (*(int *)&((BrDriverCar *)(this))->f0E64) = v;
     }
 }
 

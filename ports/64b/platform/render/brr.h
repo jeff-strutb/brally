@@ -64,6 +64,8 @@ void     brr_draw(const brr_state *st, const brr_vertex *v, int n);
 /* pixels written straight to the back buffer (16-bit RGB565, Glide's LFB) */
 void     brr_lfb_write(int x, int y, int w, int h, const uint16_t *rgb565, int stride);
 void     brr_present(void);
+/* the frame last presented, to a PNG; 0 when this backend cannot */
+int      brr_shot(const char *path);
 
 #ifdef __cplusplus
 }

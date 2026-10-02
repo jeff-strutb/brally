@@ -37,3 +37,4 @@ void brr_lfb_write(int x, int y, int w, int h, const uint16_t *p, int stride)
     (void)x; (void)y; (void)w; (void)h; (void)p; (void)stride;
 }
 void brr_present(void) { s_frames++; }
+int brr_shot(const char *path) { (void)path; return 0; }

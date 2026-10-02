@@ -306,7 +306,7 @@ extern "C" void BrRaceStep(void)
             (*(int *)&g_brRaceBeginDifficulty) = 0;
         } else {
             (*(int *)&g_brRaceBeginDifficulty) =
-                ((*(const int32_t *)((const char *)g_apBrRaceDiff[(*(int *)&g_Br0B380C)] + 4)) >> 4) & 1;
+                (g_apBrRaceDiff[(*(int *)&g_Br0B380C)]->f04 >> 4) & 1;
         }
         BrRaceDifficultySet(DAT_104b15e8);
         if (g_brRaceRules.mode != 4 && DAT_105ccb68[8] == 0) {

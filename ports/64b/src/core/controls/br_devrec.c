@@ -50,7 +50,7 @@ int BrDevRecMatch(uint32_t value)
     int32_t i;
 
     for (i = 0; i < BR_DEVREC_SLOTS; i++) {
-        const BrDevRec *pRec = &g_brP6EECCC->pRecs[g_brP6EECCC->abIndex[i]];
+        const BrDevRec *pRec = &BR_PTR32(const BrDevRec *, g_brP6EECCC->aRecs)[g_brP6EECCC->abIndex[i]];
 
         if (pRec->f04 == 0u) {
             continue;

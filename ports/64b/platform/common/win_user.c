@@ -250,12 +250,10 @@ SHORT WINAPI GetAsyncKeyState(int vk)
 uint8_t g_plat_dik[256];
 
 /* ---- host events -> messages ------------------------------------------------------------ */
-void plat_pump(uint32_t wait_ms)
+void plat_deliver(const host_event *e)
 {
-    host_event ev;
-    uint32_t w = wait_ms;
-    while (host_poll_event(&ev, w)) {
-        w = 0;
+    host_event ev = *e;
+    {
         switch (ev.type) {
         case HOST_EV_KEY:
             if (ev.vk > 0 && ev.vk < 256)
@@ -286,6 +284,16 @@ void plat_pump(uint32_t wait_ms)
                 qpush((HWND)s_main, WM_CLOSE, 0, 0);
             break;
         }
+    }
+}
+
+void plat_pump(uint32_t wait_ms)
+{
+    host_event ev;
+    uint32_t w = wait_ms;
+    while (host_poll_event(&ev, w)) {
+        w = 0;
+        plat_deliver(&ev);
     }
     timers();
 }

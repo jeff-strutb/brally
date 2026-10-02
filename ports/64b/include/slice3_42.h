@@ -93,62 +93,7 @@ extern "C" {  /* BR_CLINK_BEGIN: every original function has C linkage */
  * 2. The control-binding object at 0x10B4DF30
  * ===================================================================== */
 
-#define BR_CTRL_ACTIONS   28    /* the 0x1C in 0x10069B10 / 0x10069BC0 */
-#define BR_CTRL_PROFILES   4    /* four 0xA8-byte blocks at 0, A8, 150, 1F8 */
-
-/* One binding: three alternative sources for one action.  Each entry is
- *
- *     (deviceClass << 8) | code
- *
- * which is exactly what 0x10069B10 builds and what the two getters take
- * apart.  Observed classes in the shipped defaults:
- *
- *     0x00xx   keyboard, xx is a DirectInput scancode (0xCB left, 0x39 space)
- *     0x01xx   joystick button xx
- *     0x80xx.. joystick axis; the axis id is the HIGH byte
- *
- * Slot 0 is the profile's primary source and is the only one the collision
- * scan in 0x10069B10 looks at; slots 1 and 2 are alternates. */
-typedef struct BrCtrlProfile {
-    uint16_t e[BR_CTRL_ACTIONS][3];
-} BrCtrlProfile;                     /* 0xA8 */
-
-/* The shipped defaults, read out of .rdata at 0x100B4098 / 0x100B4140 /
- * 0x100B41E8 / 0x100B4290.  Index == profile index. */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-
-/* The 0x874-byte object.  Everything past `f2B4` is initialised by
- * 0x10069C90 and copied verbatim by 0x10069DE0 but is never read inside this
- * packet, so the fields keep positional names.
- *
- * PORTABILITY: `pActive` is a pointer, so on a 64-bit host this struct is
- * larger than the original's 0x874 -- the same trade slice2_12.h documents
- * for BrNetSlot.  The offsets are kept in the field names. */
-typedef struct BrCtrlCfg {
-    BrCtrlProfile  profile[BR_CTRL_PROFILES];  /* 0x000                     */
-    int32_t        active;                     /* 0x2A0  profile index      */
-    BrCtrlProfile *pActive;                    /* 0x2A4  &profile[active]   */
-    int32_t        f2A8, f2AC, f2B0;           /* 0x2A8  ctor writes 1,1,1  */
-    uint32_t       f2B4[0x41];                 /* 0x2B4  ctor zeroes        */
-    uint32_t       f3B8[0x100];                /* 0x3B8  ctor zeroes        */
-    int32_t        f7B8;                       /* 0x7B8  ctor: 0x280 (640)  */
-    int32_t        f7BC;                       /* 0x7BC  ctor: 0x1E0 (480)  */
-    int32_t        f7C0;                       /* 0x7C0  ctor: 0x10         */
-    int32_t        f7C4;                       /* 0x7C4  ctor: 0           */
-    uint32_t       f7C8[4];                    /* 0x7C8  ctor zeroes        */
-    int32_t        f7D8, f7DC;                 /* 0x7D8  ctor: 9, 9         */
-    int32_t        f7E0;                       /* 0x7E0  ctor: 2            */
-    int32_t        f7E4, f7E8;                 /* 0x7E4  ctor: 0, 0         */
-    int32_t        f7EC, f7F0, f7F4;           /* 0x7EC  ctor: 1, 1, 1      */
-    int32_t        f7F8;                       /* 0x7F8  ctor: 0            */
-    int32_t        f7FC;                       /* 0x7FC  ctor: 3            */
-    int32_t        f800, f804;                 /* 0x800  ctor: 0, 0         */
-    int32_t        f808;                       /* 0x808  ctor: 4            */
-    int32_t        f80C;                       /* 0x80C  ctor: 0            */
-    uint32_t       f810[8];                    /* 0x810  ctor zeroes        */
-    uint32_t       f830[16];                   /* 0x830  ctor zeroes        */
-    int32_t        f870;                       /* 0x870  ctor: 1            */
-} BrCtrlCfg;                                   /* 0x874 */
+/* BR_CTRL_*, BrCtrlProfile, BrCtrlCfg: br_coretypes.h */
 
 /* The single global instance at 0x10B4DF30 -- slice3_31.h's `pB4DF30`. */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
@@ -508,10 +453,6 @@ extern "C" {
 #undef g_BrCtrlDefaults
 extern BrCtrlProfile g_BrCtrlDefaults[4];  /* 0x100B38A0 */
 #pragma pop_macro("g_BrCtrlDefaults")
-#pragma push_macro("g_BrCtrlCfg")
-#undef g_BrCtrlCfg
-extern BrCtrlCfg g_BrCtrlCfg;  /* 0x10B71290 */
-#pragma pop_macro("g_BrCtrlCfg")
 #pragma push_macro("g_BrReplayBuf")
 #undef g_BrReplayBuf
 extern BrReplaySlot g_BrReplayBuf[524288];  /* 0x10B73668 */

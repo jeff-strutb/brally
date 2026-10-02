@@ -7,6 +7,8 @@
 /* The original is /MD: CRT calls go through the import
  * table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
+#include "br_vtables.h"
+#include "br_podarc.h"
 #include <stdint.h>
 #include <string.h>
 
@@ -50,14 +52,14 @@ void * __fastcall BrObj87A0DeleteDtor(void *param_1,unsigned char param_2)
 /* @implements 0x10008760 glide BrObj87Ctor */
 void * __fastcall BrObj87Ctor(void *pThis)
 {
-    unsigned char *p = (unsigned char *)pThis;
-    BrPodIdentity(p + 4);
-    *(void **)p = (void *)&BrObj87Vtbl;
-    *(int *)(p + 0x18)  = 0;
-    *(int *)(p + 0x1C)  = 0;
-    *(int *)(p + 0x420) = 0;
-    memset(p + 8, 0, 0x10);
-    memset(p + 0x20, 0, 0x400);
+    BrPodArc *p = (BrPodArc *)pThis;
+    BrPodIdentity((unsigned char *)&p->sub04);
+    p->pVtbl = g_brVtbl_10077150;
+    p->aEntries = 0;
+    p->pFile = 0;
+    p->cbDir = 0;
+    memset(p->magic, 0, 0x10);         /* magic, cEntries, offDir */
+    memset(p->szName, 0, 0x400);
     return pThis;
 }
 
@@ -67,8 +69,8 @@ void * __fastcall BrObj87Ctor(void *pThis)
 /* @implements 0x100087C0 glide BrObj87Dtor */
 void __fastcall BrObj87Dtor(void *pThis)
 {
-    int **p = (int **)pThis;
-    *p = (int *)&BrObj87Vtbl;
+    BrPodArc *p = (BrPodArc *)pThis;
+    p->pVtbl = g_brVtbl_10077150;
     BrPodNop();
 }
 

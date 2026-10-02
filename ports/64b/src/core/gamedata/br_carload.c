@@ -40,8 +40,7 @@
 /* BrLogPrint: prototype in br_funcs.h */
 /* The original calls the /MD import (FF 15) -- go through the import
  * slot explicitly; string.h's decl is not dllimport for the intrinsics. */
-extern int (__cdecl *_imp__memcmp)(const void *, const void *, unsigned int);
-#define BR_MEMCMP_IMP (*_imp__memcmp)
+#define BR_MEMCMP_IMP memcmp     /* through the import table in the original */
 
 void BrSub10037740(void *pCar, int iCar)
 {

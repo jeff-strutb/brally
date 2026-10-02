@@ -126,7 +126,7 @@ extern void  BrX10042AF0(void *p, int a1, int a2);
  * (`mov [eax+4], esi`). On a 64-bit host that cannot round-trip, so the low
  * 32 bits are stored, exactly as the original would have. Consumers of the
  * stream in this port must not dereference these words. */
-#define s17_ptrword(p_)   ((uint32_t)(uintptr_t)(const void *)(p_))
+#define s17_ptrword(p_)   br_addr32((const void *)(p_))   /* a 32-bit display-list address */
 
 /* 0x1002C210 */
 /* WHAT IT DOES: switch to the other of two buffer banks and wipe it ready for

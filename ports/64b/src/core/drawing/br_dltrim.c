@@ -68,8 +68,8 @@ typedef struct BrGrVtx {
 /* grDrawTriangle: prototype in br_funcs.h */
 /* grDrawPolygonVertexList: prototype in br_funcs.h */
 
-#define BR_TRIM_POOL_LO  0x105CCFF0uL
-#define BR_TRIM_POOL_HI  0x105CD9F0uL
+#define BR_TRIM_POOL_LO  ((unsigned long)&s_aClipPool[0])    /* 0x105CCFF0 */
+#define BR_TRIM_POOL_HI  ((unsigned long)&s_aClipPool[64])   /* 0x105CD9F0 */
 
 /* The quarter-pixel snap.  `fld tmp; fistp i; fild i; fstp tmp` round-trips
  * through the x87 with the startup control word, i.e. round to nearest,
@@ -257,7 +257,7 @@ BR_TRIM_BODY(BrDlClipTriNoZ, BR_TRIM_ARGS_VTX,
 /* @implements 0x10020190 glide BrDlClipTriFlatZ */
 BR_TRIM_BODY(BrDlClipTriFlatZ, BR_TRIM_ARGS_FLAT,
              BR_TRIM_COLDECL_FLAT, BR_TRIM_COLLOAD_FLAT, BR_TRIM_Z_KEEP,
-             (*(int32_t *)&DAT_105ce2e8[10]), BR_TRIM_GLOBAL_SNAP, BR_TRIM_GLOBAL_INIT, tmp)
+             g_iBrGbiSnap, BR_TRIM_GLOBAL_SNAP, BR_TRIM_GLOBAL_INIT, tmp)
 
 /* WHAT IT DOES: trims one Gouraud-coloured triangle against the screen edges
  * and the near/far planes with the depth buffer ON, carrying each corner's
@@ -266,5 +266,5 @@ BR_TRIM_BODY(BrDlClipTriFlatZ, BR_TRIM_ARGS_FLAT,
 /* @implements 0x1001EE70 glide BrDlClipTriZ */
 BR_TRIM_BODY(BrDlClipTriZ, BR_TRIM_ARGS_VTX,
              BR_TRIM_COLDECL_VTX, BR_TRIM_COLLOAD_VTX, BR_TRIM_Z_KEEP,
-             (*(int32_t *)&DAT_105ce2e8[10]), BR_TRIM_GLOBAL_SNAP, BR_TRIM_GLOBAL_INIT, tmp)
+             g_iBrGbiSnap, BR_TRIM_GLOBAL_SNAP, BR_TRIM_GLOBAL_INIT, tmp)
 

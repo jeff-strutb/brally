@@ -79,21 +79,21 @@ typedef struct BrCamFrame {
  * these routines touch are named, and they are reached by byte offset for
  * exactly the reason given there: no struct is invented for a record whose
  * layout is 99% unknown. */
-#define BR_CAR_OFF_FRAME      0x0000  /* BrCamFrame -- the car's own basis   */
-#define BR_CAR_OFF_V204       0x0204  /* BrVec3, magnitude read as a speed   */
-#define BR_CAR_OFF_MODE       0x0F78  /* int, set to 2 by 0x10001970         */
-#define BR_CAR_OFF_CAMFLAG    0x0F7C  /* int, selects "simple" camera paths  */
-#define BR_CAR_OFF_ACTIVECAM  0x2734  /* selected frame -- see below         */
-#define BR_CAR_OFF_ACTIVECAM2 0x2738  /* selected frame -- see below         */
-#define BR_CAR_OFF_CAM_A      0x273C  /* BrCamFrame                          */
-#define BR_CAR_OFF_CAM_B      0x2780  /* BrCamFrame                          */
-#define BR_CAR_OFF_CAM_C      0x27C4  /* BrCamFrame                          */
-#define BR_CAR_OFF_CAM_D      0x2808  /* BrCamFrame                          */
-#define BR_CAR_OFF_SLEW       0x28DC  /* float, slewed +-0.1f per tick       */
-#define BR_CAR_OFF_ANCHOR     0x28E0  /* BrVec3, the look-at anchor          */
-#define BR_CAR_OFF_PREVPOS    0x28EC  /* BrVec3                              */
-#define BR_CAR_OFF_SHAKE      0x28F8  /* float                               */
-#define BR_CAR_OFF_V2900      0x2900  /* BrVec3                              */
+#define BR_CAR_OFF_FRAME (offsetof(struct BrDriverCar, fwd.x))   /* 0x0000  BrCamFrame -- the car's own basis   */
+#define BR_CAR_OFF_V204 (offsetof(struct BrDriverCar, aBody[0].rb.st.angVel.x))   /* 0x0204  BrVec3, magnitude read as a speed   */
+#define BR_CAR_OFF_MODE (offsetof(struct BrDriverCar, fF78))   /* 0x0F78  int, set to 2 by 0x10001970         */
+#define BR_CAR_OFF_CAMFLAG (offsetof(struct BrDriverCar, fF7C))   /* 0x0F7C  int, selects "simple" camera paths  */
+#define BR_CAR_OFF_ACTIVECAM (offsetof(struct BrDriverCar, pMatA))   /* 0x2734  selected frame -- see below         */
+#define BR_CAR_OFF_ACTIVECAM2 (offsetof(struct BrDriverCar, pMatB))   /* 0x2738  selected frame -- see below         */
+#define BR_CAR_OFF_CAM_A (offsetof(struct BrDriverCar, aSnap[0].m[0][0]))   /* 0x273C  BrCamFrame                          */
+#define BR_CAR_OFF_CAM_B (offsetof(struct BrDriverCar, aSnap[1].m[0][0]))   /* 0x2780  BrCamFrame                          */
+#define BR_CAR_OFF_CAM_C (offsetof(struct BrDriverCar, aSnap[2].m[0][0]))   /* 0x27C4  BrCamFrame                          */
+#define BR_CAR_OFF_CAM_D (offsetof(struct BrDriverCar, aSnap[3].m[0][0]))   /* 0x2808  BrCamFrame                          */
+#define BR_CAR_OFF_SLEW (offsetof(struct BrDriverCar, f28DC))   /* 0x28DC  float, slewed +-0.1f per tick       */
+#define BR_CAR_OFF_ANCHOR (offsetof(struct BrDriverCar, f28E0))   /* 0x28E0  BrVec3, the look-at anchor          */
+#define BR_CAR_OFF_PREVPOS (offsetof(struct BrDriverCar, f28EC[0]))   /* 0x28EC  BrVec3                              */
+#define BR_CAR_OFF_SHAKE (offsetof(struct BrDriverCar, f28F8))   /* 0x28F8  float                               */
+#define BR_CAR_OFF_V2900 (offsetof(struct BrDriverCar, f2900))   /* 0x2900  BrVec3                              */
 
 /* DEVIATION -- the two "active camera" slots.
  *

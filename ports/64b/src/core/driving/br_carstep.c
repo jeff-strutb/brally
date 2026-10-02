@@ -157,13 +157,12 @@ void BR_THISCALL1 BrCarStep(BrDriverCar *pCar)
       pCar->aBody[0].rb.child[1]->f1D0 = -pCar->f0E6C;
       *(int *)&pCar->aBody[0].rb.child[0]->f1CC = 0;
       *(int *)&pCar->aBody[0].rb.child[1]->f1CC = 0;
-      iVar5 = BR_LP64_PTR_AS_INT(pCar->aBody[0].rb.child[2]);
-      fVar2 = *(float *)(iVar5 + 0x1cc);
-      if (*(float *)(iVar5 + 0x1cc) < DAT_10077c38) {
+      fVar2 = pCar->aBody[0].rb.child[2]->f1CC;
+      if (pCar->aBody[0].rb.child[2]->f1CC < DAT_10077c38) {
         fVar2 = -fVar2;
       }
       if (fVar2 < DAT_10077c74) {
-        *(float *)(iVar5 + 0x1d0) = -pCar->f0E6C;
+        pCar->aBody[0].rb.child[2]->f1D0 = -pCar->f0E6C;
         pCar->aBody[0].rb.child[3]->f1D0 = -pCar->f0E6C;
       }
     }

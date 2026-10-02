@@ -55,18 +55,18 @@ extern "C" {  /* BR_CLINK_BEGIN: every original function has C linkage */
  *   0x10AD0850 - 0x10ACDEA8 = 0x29A8
  *   0x10AD0854 - 0x10ACDEA8 = 0x29AC
  */
-#define BR_CAR_OFF_OWNER   0x0144
-#define BR_CAR_OFF_NAME    0x0148
-#define BR_CAR_OFF_CMDPTR  0x0E8C
-#define BR_CAR_OFF_ACTIVE  0x0F08
-#define BR_CAR_OFF_SAVE0   0x0FA8   /* <-> 0x106805B0[i]                 */
-#define BR_CAR_OFF_SAVEVEC 0x0FB4   /* <-> 0x10690950[i] (nSaveDwords)   */
-#define BR_CAR_OFF_SAVE1   0x0FE4   /* <-> 0x106909C0[i]  (save only!)   */
-#define BR_CAR_OFF_SAVE2   0x0FE8   /* <-> 0x10680748[i]                 */
-#define BR_CAR_OFF_SAVE3   0x0FEC   /* <-> 0x10680728[i]                 */
-#define BR_CAR_OFF_SAVE4   0x0FF8   /* <-> 0x106805C8[i]                 */
-#define BR_CAR_OFF_TAG     0x29A8
-#define BR_CAR_OFF_RGB     0x29AC   /* three bytes, +0x29AC/AD/AE        */
+#define BR_CAR_OFF_OWNER (offsetof(struct BrDriverCar, iNetPlayer))   /* 0x0144 */
+#define BR_CAR_OFF_NAME (offsetof(struct BrDriverCar, szName[0]))   /* 0x0148 */
+#define BR_CAR_OFF_CMDPTR (offsetof(struct BrDriverCar, pEquip))   /* 0x0E8C */
+#define BR_CAR_OFF_ACTIVE (offsetof(struct BrDriverCar, pfnControl))   /* 0x0F08 */
+#define BR_CAR_OFF_SAVE0 (offsetof(struct BrDriverCar, lap))   /* 0x0FA8  <-> 0x106805B0[i]                 */
+#define BR_CAR_OFF_SAVEVEC (offsetof(struct BrDriverCar, aLapTime[0]))   /* 0x0FB4  <-> 0x10690950[i] (nSaveDwords)   */
+#define BR_CAR_OFF_SAVE1 (offsetof(struct BrDriverCar, tBest))   /* 0x0FE4  <-> 0x106909C0[i]  (save only!)   */
+#define BR_CAR_OFF_SAVE2 (offsetof(struct BrDriverCar, lapBest))   /* 0x0FE8  <-> 0x10680748[i]                 */
+#define BR_CAR_OFF_SAVE3 (offsetof(struct BrDriverCar, tFinal))   /* 0x0FEC  <-> 0x10680728[i]                 */
+#define BR_CAR_OFF_SAVE4 (offsetof(struct BrDriverCar, fFF8))   /* 0x0FF8  <-> 0x106805C8[i]                 */
+#define BR_CAR_OFF_TAG (offsetof(struct BrDriverCar, f29A8))   /* 0x29A8 */
+#define BR_CAR_OFF_RGB (offsetof(struct BrDriverCar, f29AC))   /* 0x29AC  three bytes, +0x29AC/AD/AE        */
 
 /* Byte offset inside one 0x80 slot record (0x10ACD4F8 - 0x10ACD498). */
 #define BR_SLOT_OFF_CARPTR 0x60

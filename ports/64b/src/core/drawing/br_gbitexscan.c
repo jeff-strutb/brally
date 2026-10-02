@@ -229,8 +229,10 @@ void BrGbiTexCreate(BrGbiTexRec *pRec, uintptr_t a2)
         fmt = 2; siz = 0;
     }
 
-    *(void **)p = g_pfn18AA0B0((void *)*(uint32_t *)p,
-                     *(uint32_t *)(p + 4),
+    /* +0x00 and +0x04 are 32-bit addresses (br_addr32.h) of the pixels and
+     * the palette; the slot at +0x00 then takes the texture id */
+    *(uint32_t *)p = (uint32_t)(uintptr_t)g_pfn18AA0B0(BR_PTR32(void *, *(uint32_t *)p),
+                     (uintptr_t)BR_PTR32(void *, *(uint32_t *)(p + 4)),
                      (uint32_t)(1 << BrGbiSizeShift((int)*(uint16_t *)(p + 0x0C))),
                      (uint32_t)(1 << BrGbiSizeShift((int)*(uint16_t *)(p + 0x0E))),
                      fmt, siz,

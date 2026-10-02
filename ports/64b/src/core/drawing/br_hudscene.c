@@ -172,6 +172,8 @@ static BrRdpRegs    g_regs;
 #define SCR_cViews (*(int32_t *)&g_brMode0AA8B4)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 #define SCR_iView g_BrEnvSection
+#define HUD_f0ADF60 DAT_100ad768                              /* 0x100AD768 */
+#define HUD_szText  ((char *)DAT_104ab708 + 0x400)               /* 0x104ABB08 */
 /* (port-only BrSceneGetEnv removed) */
 
 /* (port-only BrWeatherGet removed) */
@@ -339,8 +341,8 @@ void BrHudDrawDial(BrHudView *aViews)
       + BrHudViewAt(aViews, SCR_iView)->h - pSpr->e5 - 4;  /* 10016BC6 */
 
     /* 10016BE9: NaN takes the zero path (C0 is set for unordered). */
-    if (HUD_pRace->f0E68 >= kF300)
-        iSeq = HUD_pRace->f0E70 + 1;
+    if ((*(float *)&((BrDriverCar *)(HUD_pRace))->fE68) >= kF300)
+        iSeq = (*(int32_t *)&((BrDriverCar *)(HUD_pRace))->fE70) + 1;
     else
         iSeq = 0;
 
@@ -381,7 +383,7 @@ void BrHudDrawDial(BrHudView *aViews)
              * first, loading it before the kF304 subtract (38 diff bytes,
              * size-exact).  A named temp for the first product is the same
              * bytes; naming (ea + 1) instead is inert. */
-            iFrame = (int32_t)((((float)v + HUD_pRace->f0E24 - kF304)
+            iFrame = (int32_t)((((float)v + (*(float *)&((BrDriverCar *)(HUD_pRace))->f0E24) - kF304)
                                * kF308) * (float)(pSpr->ea + 1) - kF30C);
 
             if (iFrame < 0)         iFrame = 0;
@@ -415,7 +417,7 @@ void BrHudDrawDial(BrHudView *aViews)
         else
             v = BrRandom() & 0x7F;
         /* Stored through a 32-bit slot, so the float32 rounding is real. */
-        t = (float)v + HUD_pRace->f0E24;
+        t = (float)v + (*(float *)&((BrDriverCar *)(HUD_pRace))->f0E24);
     }
 
     if (pSpr->mode != 0)                             /* 10016E7C */
@@ -612,18 +614,18 @@ void BrHudDrawViewMessage(const BrHudView *aViews)
 
     BrSet_10019270();
 
-    if (HUD_pRace->psz0FFC != NULL) {
+    if ((*(const char * *)&((BrDriverCar *)(HUD_pRace))->pszBanner) != NULL) {
         /* GOTCHA: this branch sizes the text with `big`, the other with
          * `small_`; they are not the same number. */
         BrSetGlobal_ABB30(big);
-        BrTextDraw(HUD_pRace->psz0FFC, x, yy + big / 4);
+        BrTextDraw((*(const char * *)&((BrDriverCar *)(HUD_pRace))->pszBanner), x, yy + big / 4);
         return;
     }
-    if (HUD_pRace->psz1004 == NULL)
+    if ((*(const char * *)&((BrDriverCar *)(HUD_pRace))->psz1004) == NULL)
         return;
 
     BrSetGlobal_ABB30(small_);
-    BrTextDraw(HUD_pRace->psz1004, x, yy + (big * 3) / 16);
+    BrTextDraw((*(const char * *)&((BrDriverCar *)(HUD_pRace))->psz1004), x, yy + (big * 3) / 16);
 }
 
 /* =====================================================================
@@ -763,10 +765,10 @@ void BrHudDraw(BrHudView *aViews, BrDriverCar * a2)
     /* speed FIRST: assigning it while the aViews arg slot is still unread
      * keeps VC5 from parking speed in the dead arg slot -- the original
      * gives it a real `push ecx` frame slot. */
-    speed = g_hud.pRace->f1030;
-    pView = &aViews[g_screen.iView];
+    speed = (*(float *)&((BrDriverCar *)(HUD_pRace))->f1030);
+    pView = &aViews[SCR_iView];
 
-    BrSub_1003289F(0, pView->y, g_screen.cx, pView->h);
+    BrSub_1003289F(0, pView->y, SCR_cx, pView->h);
 
     /* 10017DCF: negative (and NaN) speeds are pinned to zero.  Bare kF340:
      * the original is `fld dword [speed]; fcomp qword [kF340]` -- speed on
@@ -791,18 +793,18 @@ void BrHudDraw(BrHudView *aViews, BrDriverCar * a2)
      * snprintf): the original calls the /MD CRT import, and the extra size
      * argument reshapes the whole push sequence.  "%%yw" is a text-markup
      * escape BrTextDraw consumes, not a printf directive. */
-    if (g_hud.f0ADF60 != 0)
-        sprintf(g_hud.szText, "%%yw%.0f", speed * kF348);
+    if (HUD_f0ADF60 != 0)
+        sprintf(HUD_szText, "%%yw%.0f", speed * kF348);
     else
-        sprintf(g_hud.szText, "%%yw%.0f", speed);
+        sprintf(HUD_szText, "%%yw%.0f", speed);
 
-    pView = &aViews[g_screen.iView];
-    x = g_screen.cx - 0x10;
+    pView = &aViews[SCR_iView];
+    x = SCR_cx - 0x10;
     y = pView->h + pView->y - 4;
 
-    if (g_hud.f22AF1C != 0)
+    if (HUD_f22AF1C != 0)
         return;
-    if (g_hud.f0BD3F4 == 0)
+    if (HUD_f0BD3F4 == 0)
         return;
 
     pSpr = BrHudSpriteAt(pView->iSprite);
@@ -819,12 +821,12 @@ void BrHudDraw(BrHudView *aViews, BrDriverCar * a2)
      * Probed and failed: `+= -3`, `y = y - 3`, in-arg `y -= 3`, unsigned
      * x/y, hoisted common statement (regresses).  The RAW gap is the
      * esi/edi rotation downstream of the same two bytes. */
-    if (g_hud.f0ADF60 != 0) {
+    if (HUD_f0ADF60 != 0) {
         y -= 3;
-        BrTextDraw(g_hud.szText, x, y);
+        BrTextDraw(HUD_szText, x, y);
     } else {
         y -= 3;
-        BrTextDraw(g_hud.szText, x - 3, y);
+        BrTextDraw(HUD_szText, x - 3, y);
     }
 
     BrSetGlobal_ABB30(0x0F);
@@ -832,7 +834,7 @@ void BrHudDraw(BrHudView *aViews, BrDriverCar * a2)
 
     /* 10015462: the unit string comes from BrStrGet (the one-argument
      * bounds-checked table lookup), and only the km arm mutates x. */
-    if (g_hud.f0ADF60 != 0) {
+    if (HUD_f0ADF60 != 0) {
         BrTextDraw(BrStrGet(0xEB), x, y);
     } else {
         x -= 3;
@@ -944,8 +946,8 @@ void BrSceneSetupFrame(const BrHudView *aViews)
     pDst = BrSub_10069490();
     BrGuMtxStore(&g_BrDrawCombined, pDst);
 
-    BrSsfEmit(0x01030040u, g_BrMtxSlot);
-    BrSsfEmit(0x01040040u, (uint32_t)pDst);
+    BrSsfEmit(0x01030040u, br_addr32(g_BrMtxSlot));
+    BrSsfEmit(0x01040040u, br_addr32(pDst));
     BrSsfEmit(0xE7000000u, 0);
     BrSsfEmit(0xBA001402u, 0);
 
@@ -1405,7 +1407,7 @@ void BrHudDrawSplitTimes(const unsigned char *pLayout)
     BrSub_10019290();
     BrSetGlobal_ABB30(15);
     i = 0;
-    if (*(int *)((*(unsigned char * *)&g_pBr63Race) + 0xfa8) > 0) {
+    if (((BrDriverCar *)(*(unsigned char * *)&g_pBr63Race))->lap > 0) {
         /* Both per-line values are written as expressions of i, NOT as
          * named locals bumped each pass: VC5 strength-reduces them into
          * induction temps (edi = 0xFB4 + 4i, ebx = sel + y + 37 + 15i), and
@@ -1415,10 +1417,10 @@ void BrHudDrawSplitTimes(const unsigned char *pLayout)
          * off.  The rank is `i + 1` with i bumped after the call. */
         do {
             BrHudDrawSplitLine(g_aBr63Prefix, i + 1,
-                               ((float *)((*(unsigned char * *)&g_pBr63Race) + 0xfb4))[i], x,
+                               ((BrDriverCar *)(*(unsigned char * *)&g_pBr63Race))->aLapTime[i], x,
                                sel + y + 37 + i * 15);
             i++;
-        } while (i < *(int *)((*(unsigned char * *)&g_pBr63Race) + 0xfa8));
+        } while (i < ((BrDriverCar *)(*(unsigned char * *)&g_pBr63Race))->lap);
     }
 }
 

@@ -136,7 +136,7 @@ void BrDlOwnerFixup(BrDlOwner *pOwner)
      * (`mov cx,[eax+0x4c]; or cl,8`).  Spelling it as
      * `flags = (uint16_t)(flags | 8u)` adds the `xor edx,edx` zero-extension
      * the original does not have. */
-    if (BrDlRecolor(pOwner->pDl, g_BrDlTableA))
+    if (BrDlRecolor(BR_PTR32(uint32_t *, pOwner->aDl), g_BrDlTableA))
         pOwner->flags |= 8u;
 }
 

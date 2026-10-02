@@ -146,7 +146,7 @@ int BrItemSetPickLabel_10038F40(Obj38F40 *pObj)
             k = g_brIdx0ABDE8;
         }
 
-        if ((*(BrDesc38F40 * (*)[])&g_apBrRaceDiff)[k]->f04 & 0x10) {
+        if (g_apBrRaceDiff[k]->f04 & 0x10) {
             float save = (*(float *)&((BrUiCtl_ *)(pObj))->y);
 
             (*(float *)&((BrTextBox *)&((*(class Item438L *)&((BrUiCtl_ *)(pObj))->aText[0])))->y) = 130.0f;

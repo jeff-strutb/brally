@@ -239,6 +239,18 @@ class Syms:
         self.g.sort()
         self.keys = [x[0] for x in self.g]
 
+    def containing(self, va):
+        """the global whose original extent holds va (nearest start wins)"""
+        i = bisect.bisect_right(self.keys, va) - 1
+        while i >= 0:
+            gva, size, name, ty = self.g[i]
+            if gva <= va < gva + max(size, 1):
+                return self.g[i]
+            if gva < va - 0x100000:
+                break
+            i -= 1
+        return (0, 0, None, None)
+
     def expr(self, va):
         """C expression for the core address of original address va, or None."""
         if va in self.fn:
@@ -359,6 +371,12 @@ class Lift:
             self.bytes_stmt('&%s' % lhs if not t.split_array(ty)[1] else lhs, va, t.size(ty, False))
             return
         b, dims = t.split_array(ty)
+        if dims and t.rec(b) == 'BrVarBlock':
+            self.varblocks(lhs, va, dims[0])
+            return
+        if dims and t.rec(b) == 'BrZeroRegion':
+            self.varblocks(lhs, va, dims[0], 'p', 'size')
+            return
         if dims:
             inner = b + ''.join('[%d]' % d for d in dims[1:])
             es = t.size(inner, False)
@@ -396,6 +414,62 @@ class Lift:
         bits = [f for f in fields if f[3]]
         if bits:
             self.notes.append('0x%08X %s: bitfields in a record with pointers not lifted' % (va, lhs))
+
+    def end_expr(self, va):
+        """the core address that ends an original byte range at va: past the
+        last byte of the object containing va-1 when va is that object's end,
+        else the core address of va itself"""
+        g = self.syms
+        i = bisect.bisect_right(g.keys, va - 1) - 1
+        if i >= 0:
+            gva, size, name, ty = g.g[i]
+            s32 = self.types.size(ty, False)
+            if gva <= va - 1 < gva + max(size, 1) and va == gva + s32:
+                r = g.root(name)
+                if r is not None:
+                    return '(void *)((char *)&%s + sizeof(%s))' % (r, r)
+        return g.expr(va)
+
+    def addr_in(self, name, gva, s32, va):
+        """core address of original va inside global name (va may be its end,
+        or in the pad BR_GLOBAL_EXTENT keeps right after the 64-bit object)"""
+        r = self.syms.root(name)
+        if r is None:
+            return None
+        if va >= gva + s32:
+            return '(void *)((char *)&%s + sizeof(%s) + %d)' % (r, r, va - gva - s32)
+        if va == gva:
+            return '(void *)&%s' % r
+        return self.syms.expr(va)
+
+    def varblocks(self, lhs, va, cap, fp='pData', fn='cb'):
+        """a NULL-terminated table of BrVarBlock {pData, cb}: each entry names
+        a byte range of the original's memory. Here a range becomes one entry
+        per 64-bit object it covers (objects that were adjacent in the
+        original are separate here), each measured in the 64-bit layout."""
+        g, n = self.syms, 0
+        while True:
+            p, cb = self.dword(va), self.dword(va + 4)
+            va += 8
+            if p == 0:
+                break
+            a = p
+            while a < p + cb:
+                gva, size, name, ty = g.containing(a)
+                if name is None or not (gva <= a < gva + max(size, 1)):
+                    self.notes.append('%s: 0x%08X is in no object' % (lhs, a))
+                    break
+                s32 = self.types.size(ty, False)
+                end = min(p + cb, gva + max(size, s32))
+                s, e = self.addr_in(name, gva, s32, a), self.addr_in(name, gva, s32, end)
+                if s is None or e is None or end <= a or n + 1 >= cap:
+                    self.notes.append('%s: 0x%08X..0x%08X cannot be measured' % (lhs, a, end))
+                    break
+                self.out.append('    *(void **)&%s[%d].%s = %s;' % (lhs, n, fp, s))
+                self.out.append('    %s[%d].%s = (uint32_t)((char *)%s - (char *)%s);   /* 0x%08X+0x%X */'
+                                % (lhs, n, fn, e, s, a, end - a))
+                n += 1
+                a = end
 
     def run(self):
         os.chdir(ROOT)

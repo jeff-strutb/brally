@@ -84,7 +84,7 @@ int BrSndVoiceConfigure(int param_1,int param_2,int param_3,int param_4)
   int iVar2;
   
   if ((((*(int *)&DAT_100b51e4[1036]) != 0) && ((((intptr_t)(BrSndPDS))) != 0)) && (BrSndG18290FC != 0)) {
-    uVar1 = (&(BrSndVoices[0]))[param_2 + param_1 * 0x12];
+    uVar1 = g_aBrSndRow[param_1].aSlot[param_2];
     iVar2 = BrSndVoiceSetLR(uVar1,param_3);
     if ((iVar2 != 0) && (iVar2 = BrSndBufSetPan(uVar1,param_4), iVar2 == 0)) {
       return 1;

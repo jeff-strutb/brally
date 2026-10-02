@@ -72,15 +72,15 @@ void __fastcall BrCamFrameInitB(BrDriverCar *p)
      * moves each float through a GP register straight into the car
      * (`mov edx,[edi]; mov [esi+0x2838],edx`), while a BrVec3 assignment
      * makes VC5 form the destination address first (+3 lea, 8 B short). */
-    car->camDPos.x = pPos->x;
-    car->camDPos.y = pPos->y;
-    car->camDPos.z = pPos->z;
-    car->prevPos.x = pPos->x;
-    car->prevPos.y = pPos->y;
-    car->prevPos.z = pPos->z;
-    car->shake     = 0.0f;
-    car->v2900.x   = pPos->x;
-    car->v2900.y   = pPos->y;
-    car->v2900.z   = pPos->z;
-    car->slew      = 2.0f;
+    (*(struct BrVec3 *)&((BrDriverCar *)(car))->aSnap[3].m[3][0]).x = pPos->x;
+    (*(struct BrVec3 *)&((BrDriverCar *)(car))->aSnap[3].m[3][0]).y = pPos->y;
+    (*(struct BrVec3 *)&((BrDriverCar *)(car))->aSnap[3].m[3][0]).z = pPos->z;
+    (*(struct BrVec3 *)&((BrDriverCar *)(car))->f28EC[0]).x = pPos->x;
+    (*(struct BrVec3 *)&((BrDriverCar *)(car))->f28EC[0]).y = pPos->y;
+    (*(struct BrVec3 *)&((BrDriverCar *)(car))->f28EC[0]).z = pPos->z;
+    (*(float *)&((BrDriverCar *)(car))->f28F8)     = 0.0f;
+    (*(struct BrVec3 *)&((BrDriverCar *)(car))->f2900).x   = pPos->x;
+    (*(struct BrVec3 *)&((BrDriverCar *)(car))->f2900).y   = pPos->y;
+    (*(struct BrVec3 *)&((BrDriverCar *)(car))->f2900).z   = pPos->z;
+    (*(float *)&((BrDriverCar *)(car))->f28DC)      = 2.0f;
 }
