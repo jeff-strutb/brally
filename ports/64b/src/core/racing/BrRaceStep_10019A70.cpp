@@ -561,9 +561,9 @@ extern "C" void BrRaceStep(void)
             int v = (*(int *)&g_Br0B380C);
             if (v == 0 || v == 6) (*(int *)&g_brRaceBeginAirplane) = 0;
         }
-        BrFadeSetTarget(0x3f800000, 0x3e4ccccd);   /* 0x1001aa1c */
-        BrFadeSetTargetA(0x3f800000, 0x3e4ccccd);
-        BrFadeSetTargetB(0x3f800000, 0x3e4ccccd);
+        BrFadeSetTarget(1.0f, 0.2f);   /* 0x1001aa1c */
+        BrFadeSetTargetA(1.0f, 0.2f);
+        BrFadeSetTargetB(1.0f, 0.2f);
         DAT_105ccb68[11] = 1;                           /* 0x1001aa5e */
         if (DAT_105ccb68[8] == 0) {                    /* 0x1001aa66 */
             DAT_105bcaec = (void *)&g_5BCAF8;
@@ -703,8 +703,8 @@ extern "C" void BrRaceStep(void)
             if (!(g_aBrRaceCar[0].tFinal > g_0773C0)) goto Laee2;
         Lae_a1: /* 0x1001aea1 */
             if (BrFadeIsClosing() == 0) {
-                BrFadeSetTarget(0, 0x3e4ccccd);
-                BrFadeSetTargetA(0, 0x3e4ccccd);
+                BrFadeSetTarget(0, 0.2f);
+                BrFadeSetTargetA(0, 0.2f);
                 DAT_105ccb68[12] = 1; DAT_105ccb68[8] = 0; DAT_105ccb68[9] = 0;
                 loc14 = 0;
             }
@@ -773,9 +773,9 @@ extern "C" void BrRaceStep(void)
             goto Lb0cd;
         } else if ((*(int *)&g_brRaceLights) == 7) {           /* 0x1001b127 */
             if (DAT_105ccb68[12] == 0) {
-                BrFadeSetTargetA(0, 0x3e4ccccd);
-                if (DAT_105ccb68[9] == 0) BrFadeSetTargetB(0, 0x3e4ccccd);
-                BrFadeSetTarget(0, 0x3e4ccccd);
+                BrFadeSetTargetA(0, 0.2f);
+                if (DAT_105ccb68[9] == 0) BrFadeSetTargetB(0, 0.2f);
+                BrFadeSetTarget(0, 0.2f);
                 DAT_105ccb68[12] = 1;
             }
             goto Lb171;
@@ -1008,16 +1008,16 @@ Lb887:  /* 0x1001b887 */
             int f = (*(int *)&g_BrX18ABAD0);
             if (f & 0x8000) {
                 if (DAT_105bc8dc == 0) {              /* 0x1001bca5 */
-                    BrFadeSetTarget(0, 0x3e4ccccd);
-                    BrFadeSetTargetA(0, 0x3e4ccccd);
-                    BrFadeSetTargetB(0, 0x3e4ccccd);
+                    BrFadeSetTarget(0, 0.2f);
+                    BrFadeSetTargetA(0, 0.2f);
+                    BrFadeSetTargetB(0, 0.2f);
                     DAT_105ccb68[9] = 0; DAT_105ccb68[12] = 2;
                 } else if (DAT_105bc8dc == 1) {       /* 0x1001bc5e */
                     if ((*(int *)&g_brRaceNet) != 0 && (*(int *)&g_brRaceTick) != 0) {
                         BrNetLockSetIfZero221314();
                     } else {                      /* 0x1001bc75 */
-                        BrFadeSetTargetA(0x3f800000, 0x3e4ccccd);
-                        BrFadeSetTargetB(0x3f800000, 0x3e4ccccd);
+                        BrFadeSetTargetA(1.0f, 0.2f);
+                        BrFadeSetTargetB(1.0f, 0.2f);
                         g_5CCB64 = 2; loc10 = 0;
                     }
                 }
@@ -1027,8 +1027,8 @@ Lb887:  /* 0x1001b887 */
             if (f & 0x2000) DAT_105bc8dc = 1 - DAT_105bc8dc;
             if (DAT_105ccb68[6] == 0) goto Lc002;
             DAT_105ccb68[6] = 0;                          /* 0x1001bd1b */
-            BrFadeSetTargetA(0x3f800000, 0x3e4ccccd);
-            BrFadeSetTargetB(0x3f800000, 0x3e4ccccd);
+            BrFadeSetTargetA(1.0f, 0.2f);
+            BrFadeSetTargetB(1.0f, 0.2f);
             g_5CCB64 = 2; loc10 = 0;
             if ((*(int *)&g_brRaceNet) == 0 || (*(int *)&g_brRaceTick) == 0) goto Lc13d;
             BrNetSlotBroadcastTick();
@@ -1053,19 +1053,19 @@ Lb887:  /* 0x1001b887 */
                         switch (DAT_105bc8dc) {        /* jmp [.. 0x1001c688] */
                         case 0:  /* 0x1001bdec */
                             if ((*(int *)&g_brRaceNet) != 0 && (*(int *)&g_brRaceTick) != 0) BrNetLockSetIfZero221314();
-                            else { BrFadeSetTargetA(0x3f800000, 0x3e4ccccd);
-                                   BrFadeSetTargetB(0x3f800000, 0x3e4ccccd);
+                            else { BrFadeSetTargetA(1.0f, 0.2f);
+                                   BrFadeSetTargetB(1.0f, 0.2f);
                                    g_5CCB64 = 2; loc10 = 0; }
                             break;
                         case 1:  /* 0x1001be39 */
-                            BrFadeSetTarget(0, 0x3e4ccccd);
+                            BrFadeSetTarget(0, 0.2f);
                             DAT_105ccb68[12] = 0; DAT_105ccb68[9] = 0; DAT_105ccb68[11] = 0;
                             BrRaceDriverReset(); (*(int *)&g_brRaceTick) = 0; BrSndBankFree(); BrClearFlag_AB504();
                             break;
                         case 4:  /* 0x1001be73 */
-                            BrFadeSetTarget(0, 0x3e4ccccd);
-                            BrFadeSetTargetA(0, 0x3e4ccccd);
-                            BrFadeSetTargetB(0, 0x3e4ccccd);
+                            BrFadeSetTarget(0, 0.2f);
+                            BrFadeSetTargetA(0, 0.2f);
+                            BrFadeSetTargetB(0, 0.2f);
                             DAT_105ccb68[9] = 0; DAT_105ccb68[12] = 1;
                             if ((*(char *)&DAT_100bb2e0) != 0) { BrCdResume();
                                                  BrCdVolumeSet((unsigned char)(*(char *)&DAT_100bb2e0)); }
@@ -1081,8 +1081,8 @@ Lb887:  /* 0x1001b887 */
                 /* 0x1001befc tail */
                 if (DAT_105ccb68[6] != 0) {
                     DAT_105ccb68[6] = 0;
-                    BrFadeSetTargetA(0x3f800000, 0x3e4ccccd);
-                    BrFadeSetTargetB(0x3f800000, 0x3e4ccccd);
+                    BrFadeSetTargetA(1.0f, 0.2f);
+                    BrFadeSetTargetB(1.0f, 0.2f);
                     g_5CCB64 = 2; loc10 = 0;
                 }
                 f = (*(int *)&g_BrX18ABAD0);
@@ -1117,8 +1117,8 @@ Lb887:  /* 0x1001b887 */
                 if ((*(int *)&g_BrX18ABAD0) & 0x4000) {
                     BrBitLatchTake((BrBitLatch *)&g_aBrEnts[k], 0xc010);
                     (*(int *)&g_brRaceBeginMovieDone) = 1; DAT_105ccb68[12] = 1; DAT_105ccb68[9] = 0;
-                    BrFadeSetTargetA(0, 0x3e4ccccd);
-                    BrFadeSetTarget(0, 0x3e4ccccd);
+                    BrFadeSetTargetA(0, 0.2f);
+                    BrFadeSetTarget(0, 0.2f);
                 }
             }
             goto Lc13d;
@@ -1128,13 +1128,13 @@ Lb887:  /* 0x1001b887 */
                 int b88 = DAT_105ccb68[8];
                 DAT_10226a50 = 0;
                 if (b88 != 0) {
-                    BrFadeSetTarget(0, 0x3e4ccccd);
+                    BrFadeSetTarget(0, 0.2f);
                     DAT_105ccb68[9] = 0; DAT_105ccb68[12] = 1;
                 } else {                          /* 0x1001c08e */
                     loc10 = 1; DAT_105bc8dc = 0;
                 }
-                BrFadeSetTargetA(0, 0x3e4ccccd);      /* 0x1001c09c */
-                BrFadeSetTargetB(0, 0x3e4ccccd);
+                BrFadeSetTargetA(0, 0.2f);      /* 0x1001c09c */
+                BrFadeSetTargetB(0, 0.2f);
                 BrBitLatchTake((BrBitLatch *)g_aBrRaceCar[0].pCtl, 0x4000);
                 BrBitLatchTake((BrBitLatch *)g_aBrRaceCar[1].pCtl, 0x4000);
             }

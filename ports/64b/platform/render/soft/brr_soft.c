@@ -466,6 +466,24 @@ static void tri(const brr_state *st, const brr_vertex *a, const brr_vertex *b, c
 void brr_draw(const brr_state *st, const brr_vertex *v, int n)
 {
     int i;
+    {
+        /* BRR_DUMP=N: list every triangle of present N */
+        static long dump = -2;
+        if (dump == -2) {
+            const char *e = getenv("BRR_DUMP");
+            dump = e ? atol(e) : -1;
+        }
+        if (dump >= 0 && (long)s_frame == dump)
+            for (i = 0; i + 2 < n; i += 3)
+                fprintf(stderr, "brr: tri tex %u cc %d/%d/%d/%d ac %d/%d/%d/%d blend %d/%d const %08X clip %d,%d-%d,%d"
+                        " | %.1f,%.1f z%.3f w%.4f c%.0f/%.0f/%.0f/%.0f | %.1f,%.1f | %.1f,%.1f\n",
+                        st->texture, st->cc_fn, st->cc_factor, st->cc_local, st->cc_other,
+                        st->ac_fn, st->ac_factor, st->ac_local, st->ac_other,
+                        st->blend_rgb_src, st->blend_rgb_dst, st->constant,
+                        st->clip_x0, st->clip_y0, st->clip_x1, st->clip_y1,
+                        v[i].x, v[i].y, v[i].z, v[i].oow, v[i].r, v[i].g, v[i].b, v[i].a,
+                        v[i + 1].x, v[i + 1].y, v[i + 2].x, v[i + 2].y);
+    }
     for (i = 0; i + 2 < n; i += 3)
         tri(st, &v[i], &v[i + 1], &v[i + 2]);
     s_tris += (unsigned long)n / 3;
@@ -509,6 +527,19 @@ void brr_present(void)
     if (s_shown)
         memcpy(s_shown, s_col, (size_t)s_w * (size_t)s_h * 4);
     s_frame++;
+    {
+        /* BRR_STATS=N: every Nth present, the triangles submitted since the last line */
+        static long every = -1;
+        static unsigned long tris0;
+        if (every < 0) {
+            const char *e = getenv("BRR_STATS");
+            every = e ? atol(e) : 0;
+        }
+        if (every > 0 && s_frame % (unsigned long)every == 0) {
+            fprintf(stderr, "brr: present %lu: %lu triangles\n", s_frame, s_tris - tris0);
+            tris0 = s_tris;
+        }
+    }
     if ((long)s_frame == s_shot_frame) {
         if (write_png(s_shot_path))
             fprintf(stderr, "brr: frame %lu -> %s\n", s_frame, s_shot_path);
