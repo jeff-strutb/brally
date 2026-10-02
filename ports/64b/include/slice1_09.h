@@ -186,7 +186,8 @@ void          BrBitStreamWriteU32(BrBitStream *pBs, unsigned int v);
  *   index <  16  ->  bank = 0, stored index = index      (negatives included)
  * The comparison is SIGNED, so a negative index takes the bank-0 path and is
  * stored unchanged. */
-void BrEntitySetIndex(void *pEntity, int index);
+/* BrEntitySetIndex(car, index): defined in br_entityindex.c with a one-member
+ * struct for the index (it was matched as a thiscall); callers pass that. */
 
 /* 0x10076C90  recover the entity's own index from its address and point
  * +0x29C0 at the matching element of the auxiliary array, then set the

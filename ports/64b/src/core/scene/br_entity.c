@@ -36,9 +36,9 @@ void __fastcall BrEntInit(BrEnt *pEnt)
     long idx;
 
     /* Written in this order by the original: +0x30, +0x2C, +0x44. */
-    pEnt->f30 = 0;
-    pEnt->f2C = 0;
-    pEnt->f44 = 0;
+    pEnt->apRec[1] = 0;
+    pEnt->apRec[0] = 0;
+    pEnt->pHdr = 0;
 
     idx = (long)(pEnt - g_aBrEnts);
     pEnt->f154 = (int32_t)idx;
@@ -91,10 +91,9 @@ static void BrMat4IdentityLocal(BrMat4 *pM)
 void __fastcall BrEntityBindAux(void *pThis)
 {
     BrDriverCar *p  = (BrDriverCar *)pThis;
-    int  idx = (int)(p - &(*(char *)&g_aBrRaceCar));      /* the car's index in the car table */
-    p->pCtl =
-        &(*(char *)&g_aBrEnts) + idx * BR_ENTITY_AUX_STRIDE;
-    BrMat4IdentityLocal((BrMat4 *)(void *)(p + BR_ENTITY_OFF_MATRIX));
+    int  idx = (int)(p - g_aBrRaceCar);      /* the car's index in the car table */
+    p->pCtl = &g_aBrEnts[idx];
+    BrMat4IdentityLocal((BrMat4 *)(void *)&p->f26D4);   /* car+0x26D4, a matrix */
 }
 
 /* 0x10005470.  BR_ENTITY_STRIDE (0x2B68) comes from slice1_09.h.

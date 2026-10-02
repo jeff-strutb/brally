@@ -289,10 +289,12 @@ void BrFrameDraw(int iSlot)
     int        wMir, hMir, xMir, yMir;
 
     off    = iSlot * BR_SLOT_STRIDE;
-    pCars  = (*(uint8_t (*)[])&g_aBrSnap[0].car[0].fwd.x) + off;
-    pHdr   = (*(uint8_t (*)[])&g_aBrSnap[0].drv) + off;
-    aViews = (BrHudView *)((*(uint8_t (*)[])&g_aBrSnap[0].tailA.a[0]) + off);
-    BrRecHdrLatch_10010F80((*(uint8_t (*)[])&g_aBrSnap[0].tailC.a[0]) + off);
+    /* one snapshot slot (0x2E0F0 bytes in the original) per iSlot */
+    (void)off;
+    pCars  = g_aBrSnap[iSlot].car;
+    pHdr   = (uint8_t *)g_aBrSnap[iSlot].drv;
+    aViews = (BrHudView *)&g_aBrSnap[iSlot].tailA.a[0];
+    BrRecHdrLatch_10010F80((uint8_t *)&g_aBrSnap[iSlot].tailC.a[0]);
     BrFadeTick();
     BrFrameBeginRec(aViews);
     BrPodNop();
@@ -322,7 +324,7 @@ void BrFrameDraw(int iSlot)
          * 4501 -> 4500 B, regnorm 1+1 -> 0+0. */
         pV = &aViews[i];
         BrPodNop();
-        (*(uint8_t * *)&g_pBr63Race) = pCars + pV->iCar * BR_CAR_STRIDE;
+        (*(uint8_t * *)&g_pBr63Race) = (uint8_t *)((BrDriverCar *)pCars + pV->iCar);
         (*(BrCamObj * *)&g_BrCamera) = ((*(BrCamObj **)((((*(uint8_t * *)&g_pBr63Race))) + 0x2734)));
         (*(int *)&g_BrEnvSection) = i;
         FUN_1006ec30(0, 0, (*(BrCamObj * *)&g_BrCamera)->pos, (*(uint8_t (*)[])&g_BrEnvFlagIndices), (*(uint8_t (*)[])&g_BrEnvFlagCount),
@@ -347,7 +349,7 @@ void BrFrameDraw(int iSlot)
         BrSpanBuildHull();
         (*(int *)&g_BrDrawRefIndex) = ((*(int *)((char *)&g_aBrEntRecs + 0x7C)) != 0) + 1;
         for (k = 0; k < (*(int *)&g_BrCarCount); k++)
-            BrCarVisibilityUpdate(pCars + k * BR_CAR_STRIDE);
+            BrCarVisibilityUpdate((uint8_t *)((BrDriverCar *)pCars + k));
         BrSceneDlBuild(aViews, 0, pHdr, pCars);
         if ((*(int *)((char *)&g_aBrEntRecs + 0x80)) == 0 || (*(int *)&g_Br0B380C) == 2 || (*(int *)&g_Br0B380C) == 8) {
             BrFrameFogEmit();
@@ -438,7 +440,7 @@ void BrFrameDraw(int iSlot)
             BrSpanBuildHull();
             BrPodNop();
             for (k = 0; k < (*(int *)&g_BrCarCount); k++)
-                BrCarVisibilityUpdate(pCars + k * BR_CAR_STRIDE);
+                BrCarVisibilityUpdate((uint8_t *)((BrDriverCar *)pCars + k));
             BrSceneDlBuild(aViews, 0, pHdr, pCars);
             if ((*(int *)((char *)&g_aBrEntRecs + 0x80)) == 0 || (*(int *)&g_Br0B380C) == 2 || (*(int *)&g_Br0B380C) == 8) {
                 BrFrameFogEmit();

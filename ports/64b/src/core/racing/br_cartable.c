@@ -151,24 +151,18 @@ extern void  BrX10042AF0(void *p, int a1, int a2);
  * the base in a register instead.  0x1006FD50 is __thiscall with one stack
  * argument: a __fastcall whose second parameter is a one-int struct passes
  * ecx = car and leaves edx alone, exactly as BrEntitySetIndex is defined. */
-typedef struct BrS17CarRec { unsigned char b[BR_CAR_STRIDE]; } BrS17CarRec;
-typedef struct { int n; } BrS17EntArg;
-typedef void (__fastcall *BrS17EntSetFn)(void *pThis, BrS17EntArg a0);
-#define BR_S17_CARS ((BrS17CarRec *)(*(unsigned char (*)[])&g_aBrRaceCar))
-void BrCarTableAdd(void *pOwner)
+/* 64-bit core: the owner is the network slot index (the original passes it
+ * as a pointer-sized word); the car's fields are named. */
+void BrCarTableAdd(intptr_t owner)
 {
-    BrS17EntArg a;
+    BrDriverCar *car = &g_aBrRaceCar[g_BrCarCount];
+    int n;
 
-    a.n = BrNetSlotGetF030(pOwner,
-                      &BR_S17_CARS[g_BrCarCount].b[BR_CAR_OFF_RGB + 0],
-                      &BR_S17_CARS[g_BrCarCount].b[BR_CAR_OFF_RGB + 1],
-                      &BR_S17_CARS[g_BrCarCount].b[BR_CAR_OFF_RGB + 2]);
-    ((BrS17EntSetFn)BrEntitySetIndex)(&BR_S17_CARS[g_BrCarCount], a);
-    strcpy((char *)&BR_S17_CARS[g_BrCarCount].b[BR_CAR_OFF_NAME],
-           BrNetSlotName(pOwner));
-    BrSfxCarBankInit(g_BrCarCount,
-                *(uint32_t *)&BR_S17_CARS[g_BrCarCount].b[BR_CAR_OFF_TAG]);
-    *(void **)&BR_S17_CARS[g_BrCarCount++].b[BR_CAR_OFF_OWNER] = pOwner;
+    n = BrNetSlotGetF030((int)owner, &car->f29AC, &car->f29AD, &car->f29AE);
+    BrEntitySetIndex(car, n);
+    strcpy(car->szName, BrNetSlotName((int)owner));
+    BrSfxCarBankInit(g_BrCarCount, car->f29A8);
+    g_aBrRaceCar[g_BrCarCount++].iNetPlayer = (int32_t)owner;
     g_brRaceNDriver++;
 }
 
@@ -186,45 +180,30 @@ void BrCarTableAdd(void *pOwner)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */           /* nEntA */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* car0.active */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* slots */
-void BrCarTableRemove(const void *pOwner)
+void BrCarTableRemove(intptr_t owner)
 {
     int i = 0;
-    unsigned char *esi;
+    int arg = 0;
 
-    /* xor ebx,ebx is before the jle: i must be live on the early-out. */
     if (g_BrCarCount <= 0)
         return;
-
-    {
-    int arg = 0;
-    esi = (*(unsigned char (*)[])&g_aBrRaceCar[0].pfnControl);
     do {
-        if (*(uint32_t *)(esi - 0xDC4) == (uint32_t)pOwner) {
-            int n;
-            unsigned char *slot;
-            unsigned char *car;
+        BrDriverCar *car = &g_aBrRaceCar[i];
 
-            *(uint32_t *)esi = 0;
+        if ((uint32_t)car->iNetPlayer == (uint32_t)owner) {
+            int n, d;
+
+            car->pfnControl = 0;          /* the car's active word (+0xF08) */
             BrX10072580(arg);
-
             n = g_brRaceNDriver;
-            if (n > 0) {
-                car = esi - 0xF08;
-                slot = (*(unsigned char (*)[])&g_aBrRaceDriver[0].pCar);
-                do {
-                    if (*(uint32_t *)slot == (uint32_t)car)
-                        *(uint32_t *)slot = 0;
-                    slot += BR_SLOT_STRIDE;
-                    --n;
-                } while (n != 0);
+            for (d = 0; d < n; d++) {
+                if (g_aBrRaceDriver[d].pCar == car)
+                    g_aBrRaceDriver[d].pCar = 0;
             }
         }
-
         ++i;
         arg += 2;
-        esi += BR_CAR_STRIDE;
     } while (i < g_BrCarCount);
-    }
 }
 
 /* 0x1002F2A0 */

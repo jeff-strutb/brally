@@ -71,15 +71,15 @@ typedef struct { int n; } BrEntityIndexArg;
  * decrement, a 16-bit-typed subtraction whose result stays live narrow, and a
  * pointer difference feeding further arithmetic -- this function fits none of
  * them, so the answer is still open.  It is NOT the operator. */
-void __fastcall BrEntitySetIndex(BrDriverCar *pEntity, BrEntityIndexArg index)
+void __fastcall BrEntitySetIndex(BrDriverCar *pEntity, int index)
 {
-    int i = index.n;
+    int i = index;
     if (i >= 16) {
         i -= 16;
-        *(int *)((unsigned char *)&pEntity->fwd.x + BR_ENTITY_OFF_BANK)  = 1;
-        *(int *)((unsigned char *)&pEntity->fwd.x + BR_ENTITY_OFF_INDEX) = i;
+        pEntity->i29B4  = 1;
+        pEntity->f29A8 = i;
     } else {
-        *(int *)((unsigned char *)&pEntity->fwd.x + BR_ENTITY_OFF_BANK)  = 0;
-        *(int *)((unsigned char *)&pEntity->fwd.x + BR_ENTITY_OFF_INDEX) = i;
+        pEntity->i29B4  = 0;
+        pEntity->f29A8 = i;
     }
 }

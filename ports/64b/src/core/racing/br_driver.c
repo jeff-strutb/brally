@@ -1,3 +1,4 @@
+#include "slice3_41.h"
 /* br_driver.c -- racing.
  *
  * Per-driver bookkeeping filed out of the address batches: the copy of a
@@ -28,22 +29,22 @@ int BrRacePosCopy(float *param_1,float *param_2)
  * then the array itself, and zero both fields. thiscall via BR_THISCALL1 (__fastcall). */
 /* @implements 0x1005F530 glide BrDriverAssetsFree */
 
-void __fastcall BrDriverAssetsFree(BrDriver * param_1)
+void __fastcall BrDriverAssetsFree(struct BrDriver *param_1)
 
 {
   int iVar1;
-  
+
   iVar1 = 0;
-  if (0 < *(int *)(param_1 + 0x7c)) {
+  if (0 < param_1->cptex) {
     do {
-      free(*(void **)(*(int *)(param_1 + 0x78) + iVar1 * 4));
-      *(int *)(*(int *)(param_1 + 0x78) + iVar1 * 4) = 0;
+      free(param_1->aptex[iVar1]);
+      param_1->aptex[iVar1] = 0;
       iVar1 = iVar1 + 1;
-    } while (iVar1 < *(int *)(param_1 + 0x7c));
+    } while (iVar1 < param_1->cptex);
   }
-  free(*(void **)(param_1 + 0x78));
-  *(int *)(param_1 + 0x78) = 0;
-  *(int *)(param_1 + 0x7c) = 0;
+  free(param_1->aptex);
+  param_1->aptex = 0;
+  param_1->cptex = 0;
   return;
 }
 

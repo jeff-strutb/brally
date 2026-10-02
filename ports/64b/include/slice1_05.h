@@ -407,16 +407,10 @@ typedef struct BrPeer {
  * struct below does not have to be exactly 348 bytes on a 64-bit host. */
 typedef struct BrEntRec { unsigned char b[6]; } BrEntRec;  /* 0x106C65A0 */
 
-typedef struct BrEnt {
-    unsigned char pad000[0x2C];
-    uint8_t      *f2C;       /* a replay/ghost buffer (measured: holds addresses) */
-    uint32_t      f30;
-    unsigned char pad034[0x10];
-    uint8_t      *f44;       /* the race-begin record buffer (measured) */
-    unsigned char pad048[0x10C];
-    int32_t       f154;      /* own index */
-    BrEntRec     *f158;      /* &pRecs[f154] */
-} BrEnt;
+#include "br_cartypes.h"
+/* The per-car control record (0x15C bytes, the array at 0x106ED708): one
+ * layout, br_cartypes.h's BrRaceCtl. */
+typedef BrRaceCtl BrEnt;
 
 /* Glide storage: pad blocks at 0x106ED708 (stride 0x15C), records at
  * 0x106ED630 (stride 6).  The original passes only the entity -- in ECX,

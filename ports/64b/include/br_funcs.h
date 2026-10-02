@@ -8,6 +8,8 @@
 #ifndef __cplusplus
 #include <stdbool.h>
 #endif
+struct BrRaceCtl;
+struct BrUiPage_;
 struct BoundsNode;
 struct BrAiPathNode;
 struct BrAnimSet;
@@ -514,11 +516,11 @@ void BrCarSub9020(struct BrDriverCar *);
 #pragma pop_macro("BrCarSub9020")
 #pragma push_macro("BrCarTableAdd")
 #undef BrCarTableAdd
-void BrCarTableAdd(void *);
+void BrCarTableAdd(intptr_t);
 #pragma pop_macro("BrCarTableAdd")
 #pragma push_macro("BrCarTableRemove")
 #undef BrCarTableRemove
-void BrCarTableRemove(const void *);
+void BrCarTableRemove(intptr_t);
 #pragma pop_macro("BrCarTableRemove")
 #pragma push_macro("BrCarTickClocks")
 #undef BrCarTickClocks
@@ -1123,6 +1125,7 @@ const unsigned char * BrDlVtxNoZLit(const unsigned char *);
 struct BrDriverCar;
 void BrCarWheelFx(struct BrDriverCar *);
 int BrPhaseLeave_10044970(void *);
+void BrEntitySetIndex(struct BrDriverCar *, int);
 unsigned BrAiScanCorridor(void *, int, int, void *);
 int BrUiHook89_10046CD0(void *);
 int BrOptFn10044A30(void *);
@@ -1199,7 +1202,7 @@ void BrEntGfxRebindAll(void);
 #pragma pop_macro("BrEntGfxRebindAll")
 #pragma push_macro("BrEntInit")
 #undef BrEntInit
-void BrEntInit(struct BrEnt *);
+void BrEntInit(struct BrRaceCtl *);
 #pragma pop_macro("BrEntInit")
 #pragma push_macro("BrEntRefreshColour")
 #undef BrEntRefreshColour
@@ -3315,7 +3318,11 @@ int BrPodIdentity(unsigned char *);
 #pragma pop_macro("BrPodIdentity")
 #pragma push_macro("BrPodNop")
 #undef BrPodNop
+#ifdef __cplusplus
 int BrPodNop(void);
+#else
+int BrPodNop();   /* the original's empty stub: callers pass whatever they had */
+#endif
 #pragma pop_macro("BrPodNop")
 #pragma push_macro("BrPodOpen")
 #undef BrPodOpen

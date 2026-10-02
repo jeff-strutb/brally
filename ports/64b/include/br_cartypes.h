@@ -79,7 +79,10 @@ typedef struct BrRaceCtl {
     uint8_t *pHdr;                           /* +0x0044  the 8-byte replay header */
     int32_t f48;                             /* +0x0048 */
     int32_t f4C;                             /* +0x004C */
-} BrRaceCtl;
+    uint8_t _pad0050[0x104];
+    int32_t f154;                            /* +0x0154  own index */
+    struct BrEntRec *f158;                   /* +0x0158  &g_aBrEntRecs[f154] */
+} BrRaceCtl;                                 /* 0x15C: also slice1_05.h's BrEnt */
 
 #ifdef __cplusplus
 }  /* BR_CLINK_END */

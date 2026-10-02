@@ -1,4 +1,6 @@
-/) == D3D 0x10066E90 (2534 B), transcribed from the
+/* br_race.c -- lap, gate and finish bookkeeping.
+ *
+ * Glide 0x1005FF00 (2538 B) == D3D 0x10066E90 (2534 B), transcribed from the
  * Glide build. See br_race.h for the mechanism and the address pairs.
  *
  * TWO ARMS. The port arm leaves out four blocks of the original (br_race.h

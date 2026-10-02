@@ -104,7 +104,7 @@ void __fastcall BrRaceCarPickIndex(BrDriverCar *pCar)
   if (pos < (*(int *)&g_brRaceNEntrant)) {
     if ((*(int *)&g_brRaceRules.mode) == 0) {
       arg.n = (*(char (*)[2])&g_brStages[lvl].f0C)[0];
-      BrEntitySetIndex(pCar, arg);
+      BrEntitySetIndex(pCar, arg.n);
     }
   } else if ((*(int *)&g_brRaceRules.mode) == 1 || (*(int *)&g_brRaceRules.mode) == 6) {
     pCar->f29A8 = (*(int *)&g_aBrRaceCar[0].f29A8);
@@ -117,10 +117,10 @@ void __fastcall BrRaceCarPickIndex(BrDriverCar *pCar)
     if (i == 16) i = 5;
     if (pos > (*(int *)&g_brRaceNEntrant)) {
       arg.n = i;
-      BrEntitySetIndex(pCar, arg);
+      BrEntitySetIndex(pCar, arg.n);
     } else {
       arg.n = (*(char (*)[2])&g_brStages[lvl].f0C)[pos - (*(int *)&g_brRaceNEntrant)];
-      BrEntitySetIndex(pCar, arg);
+      BrEntitySetIndex(pCar, arg.n);
     }
   }
 }
@@ -155,7 +155,7 @@ void __fastcall BrRaceCarReset(BrDriverCar *pCar)
     int i;
 
     BrEntityBindAux(&pCar->fwd.x);
-    idx = (int)(pCar - (*(unsigned char (*)[])&g_aBrRaceCar)) / (int)BR_CAR_STRIDE;
+    idx = (int)(pCar - g_aBrRaceCar);
     pCar->f140 = idx;
 
     if ((*(int *)&g_brRaceRules.mode) != 6) {
