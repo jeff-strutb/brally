@@ -16,7 +16,9 @@
  * followed by `fstp dword [tmp]; fld dword [tmp]`, which /O2 alone never
  * emits; /Op also keeps `/ 2.0f` and `/ 4.0f` as divides.
  */
+#include <stddef.h>
 #include "slice4_51.h"
+#include "br_dl.h"
 
 #define BR_GBI_RECT_C_ONE    1.0f    /* 0x10077404 -- becomes w           */
 #define BR_GBI_RECT_C_UVSCL  8.0f    /* 0x1007741C -- scissor -> texcoord */
@@ -63,6 +65,10 @@
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
+
+_Static_assert(sizeof(BrGbiRectVert) == sizeof(BrDlVtx), "rect corner is a BrDlVtx");
+_Static_assert(offsetof(BrGbiRectVert, node.f04) == offsetof(BrDlVtx, cx), "cx");
+_Static_assert(offsetof(BrGbiRectVert, node.f24) == offsetof(BrDlVtx, n2), "n2");
 
 void BrGbiCall10021560(int lrs, int lrt, int uls, int ult)
 {

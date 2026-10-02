@@ -106,9 +106,19 @@ struct BrDPlay4Obj;
  * only the BrClipVert at +0x40 carries anything; the 0x40 bytes in front of
  * it are neither read nor written by either function.  The original's stack
  * stride is 0x6C. */
+/* The rect corner is handed to the trimmer as a BrDlVtx, so it has that
+ * layout exactly: the 4-byte link slot at +0x40, then the nine attributes
+ * cx cy cz s t cw n0 n1 n2 at +0x44..+0x64 (a BrClipVert there would put
+ * them 4 bytes later in a 64-bit build, after its 8-byte pNext). */
 typedef struct BrGbiRectVert {
     uint8_t    abUnused[0x40];   /* +0x00..+0x3F -- never touched */
-    BrClipVert node;             /* +0x40 -- pNext, then f04..f24 */
+    struct {
+        float f00;               /* +0x40  the link slot             */
+        float f04, f08, f0C;     /* +0x44  x y z  (BrDlVtx cx cy cz) */
+        float f10, f14;          /* +0x50  u v    (s t)              */
+        float f18;               /* +0x58  w      (cw)               */
+        float f1C, f20, f24;     /* +0x5C  r g b  (n0 n1 n2)         */
+    } node;
 } BrGbiRectVert;
 
 /* The clip-node float slots, as slice2_16.h already documents them for
