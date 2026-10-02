@@ -3089,7 +3089,7 @@ void BrPadTranslateAll(void);
 #pragma pop_macro("BrPadTranslateAll")
 #pragma push_macro("BrPairBufReset")
 #undef BrPairBufReset
-int BrPairBufReset(struct BrPairBuf *);
+int BrPairBufReset(void);
 #pragma pop_macro("BrPairBufReset")
 #pragma push_macro("BrPairReset_10073B90")
 #undef BrPairReset_10073B90
@@ -3101,7 +3101,7 @@ void BrPairSlotReset(struct BrPairSlot *, unsigned int);
 #pragma pop_macro("BrPairSlotReset")
 #pragma push_macro("BrPalFetch")
 #undef BrPalFetch
-void BrPalFetch(const unsigned char *, int, unsigned char *);
+void BrPalFetch(void);
 #pragma pop_macro("BrPalFetch")
 #pragma push_macro("BrPanelDlBuild")
 #undef BrPanelDlBuild
@@ -3433,7 +3433,7 @@ void BrRaceEnterOutro(void);
 #pragma pop_macro("BrRaceEnterOutro")
 #pragma push_macro("BrRaceEntrantCountSet")
 #undef BrRaceEntrantCountSet
-void BrRaceEntrantCountSet(int, void (*)(void));
+void BrRaceEntrantCountSet(int);
 #pragma pop_macro("BrRaceEntrantCountSet")
 #pragma push_macro("BrRaceGridPlace")
 #undef BrRaceGridPlace
@@ -4589,7 +4589,7 @@ long long BrTickAdd_10078C10(void);
 #pragma pop_macro("BrTickAdd_10078C10")
 #pragma push_macro("BrTicks30FromMs")
 #undef BrTicks30FromMs
-unsigned int BrTicks30FromMs(unsigned int);
+unsigned int BrTicks30FromMs(void);
 #pragma pop_macro("BrTicks30FromMs")
 #pragma push_macro("BrTimeFormat")
 #undef BrTimeFormat
@@ -5261,7 +5261,7 @@ int BrWindowCreate(const struct BrWindowOps *);
 #pragma pop_macro("BrWindowCreate")
 #pragma push_macro("BrWindowEarStartup")
 #undef BrWindowEarStartup
-int BrWindowEarStartup(void *, const struct BrEarOps *);
+int BrWindowEarStartup(void *);
 #pragma pop_macro("BrWindowEarStartup")
 #pragma push_macro("BrWmAppHook35A30")
 #undef BrWmAppHook35A30

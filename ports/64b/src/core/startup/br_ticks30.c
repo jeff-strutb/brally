@@ -96,10 +96,9 @@
 /* The declared elapsedMs argument is vestigial: the original reads the clock
  * itself (BrGetTimerState) and subtracts the run's start tick (DAT_1021c908),
  * so the parameter is ignored and generates no code. */
-uint32_t BrTicks30FromMs(uint32_t elapsedMs)
+uint32_t BrTicks30FromMs(void)
 {
     uint32_t elapsed = (uint32_t)BrGetTimerState() - (uint32_t)DAT_1021c908;
-    (void)elapsedMs;
     return 3u * (elapsed / 100u) + (elapsed % 100u) / 33u;
 }
 

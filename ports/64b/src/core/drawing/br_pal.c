@@ -47,7 +47,7 @@
 /* 64-bit core: declared once, in br_globals.h or its struct's header */       /* 0x100B37D0 */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */       /* 0x10AD0854 */
 
-void BrPalFetch(const uint8_t *pTable, int32_t index, uint8_t aOut[3])
+void BrPalFetch(void)
 {
     int i0, i1, i2, b0, b1, b2;
 

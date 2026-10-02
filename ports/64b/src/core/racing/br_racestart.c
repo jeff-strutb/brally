@@ -110,9 +110,8 @@ void BrRaceSub1002F6C0(void)
  * moment later. */
 /* @implements 0x10062850 glide BrRaceEntrantCountSet */
 /* @n64 0x80210F4C located */
-void BrRaceEntrantCountSet(int32_t n, BrGameStepFn pfnNullStep)
+void BrRaceEntrantCountSet(int32_t n)
 {
-    (void)pfnNullStep;
     g_brRaceNEntrant = n;
     BrGameStepSet(BrPodNop);
 }

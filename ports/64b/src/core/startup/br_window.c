@@ -95,7 +95,6 @@ int BrWindowCreate(const BrWindowOps *pOps)
     void     *hInst = (*(void * *)&s_args);
     HWND      hWnd;
 
-    (void)pOps;
 
     g_brhInstance2 = hInst;
 
@@ -162,9 +161,8 @@ extern int (__stdcall *(*(int (**)(void))&DAT_104b1650))(void);      /* ShowLast
  * orig homes hWnd in esi, MessageBoxA in edi, exit in ebx; we get the
  * same shape with the homes rotated (a local copy of hWnd dissolves).
  * Size, instruction shape and the shrink-wrapped guard are exact. */
-int32_t BrWindowEarStartup(void *hWnd, const BrEarOps *pOps)
+int32_t BrWindowEarStartup(void *hWnd)
 {
-    (void)pOps;
 
     if (++s_cEarStartupCalls != 1)
         return 1;

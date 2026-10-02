@@ -54,7 +54,7 @@ typedef char br06_assert_namelist[
 /* WHAT IT DOES: wipe a pair of scratch buffers back to zeros, pointing
  * each at its own built-in storage first if it has nowhere else to live. */
 /* @implements 0x1003E1D0 d3d BrPairBufReset */
-int BrPairBufReset(BrPairBuf *pBuf)
+int BrPairBufReset(void)
 {
     uint32_t *p;
 

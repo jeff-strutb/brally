@@ -82,7 +82,7 @@ int BrNetSendCarStateDelta(void *pState, float * ref)
         h[0] = g_hBrNetMutex;
         h[1] = (*(void * *)&((BrNetSlot *)(pSlot))->hMutex);
         WaitForMultipleObjects(2, h, 1, 0xFFFFFFFF);
-        g_brNetPktTick = BrTicks30FromMs((struct BrBitStream *)());
+        g_brNetPktTick = BrTicks30FromMs();
         if (++(*(int *)&((BrNetSlot *)(pSlot))->f55C) >= 8)
             (*(int *)&((BrNetSlot *)(pSlot))->f55C) = 0;
         (*(int (*)[8])&((BrNetSlot *)(pSlot))->f00C)[(*(int *)&((BrNetSlot *)(pSlot))->f55C)] = g_brNetPktTick;
