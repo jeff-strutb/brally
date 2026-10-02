@@ -117,11 +117,11 @@ void __fastcall BrCarSub9020(struct BrDriverCar *pCar)
             BrVec3MulAdd(&local, &local, &p->right.x, 0.2f);
 
             g = (float)(BrRandom() & 0xFFFF) * 1.5259021893143654e-05f;
-            BrVec3Sub(&(*(char *)&g_aPfxRec) + off, p + 0x1060, &local);
+            BrVec3Sub(&(*(char *)&g_aPfxRec) + off, (BrVec3 *)&p->f1060, &local);
             BrVec3MulAdd(&(*(char *)&g_aPfxRec) + off, &local,
                           &(*(char *)&g_aPfxRec) + off, g * g);
 
-            *(BrVec3 *)(p + 0x1060) = local;
+            *(BrVec3 *)&p->f1060 = local;   /* car +0x1060..+0x106B */
 
             t = f2 * 0.1f - (-1.0f);
             *(float *)(&(*(char *)((char *)&g_aPfxRec + 0x18)) + off) = t * 0.15f;

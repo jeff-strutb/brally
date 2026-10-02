@@ -287,7 +287,7 @@ int __fastcall BrVec3Predict(BrDriverCar *param_1)
 {
   BrVec3 *iVar1;
   
-  iVar1 = param_1 + 0x2838;
+  iVar1 = (BrVec3 *)&param_1->aSnap[3].m[3][0];   /* car +0x2838 */
   param_1->pMatA = &param_1->aSnap[3];
   BrVec3MulAdd(iVar1,&param_1->pos,param_1,6.0f);
   BrVec3MulAddTo(iVar1,&param_1->right,2.0f);

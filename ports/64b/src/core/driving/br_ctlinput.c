@@ -502,7 +502,7 @@ LAB_have_x:
   local[4] = (float)dAcc;
   local[5] = (float)dM;
   pCar->fE68 = (float)(dM * dAcc);
-  if ((*(unsigned char *)(*(unsigned char * *)&pCar->pProfile + 0x68) & 1) == 0) {
+  if ((((BrDriver *)pCar->pProfile)->f68 & 1) == 0) {
     if (pCar->fE70 == 0) {
       pCar->fE70 = 1;
     }
@@ -525,7 +525,7 @@ LAB_have_x:
     double prod;
     if ((*puVar5 & 0x20000) == 0) {
       local[4] = pCar->aBody[2].rb.f1C4;
-      prod = (double)*(float *)(pCar + 0xe28 + iVar9 * 4) * pCar->f0E54;
+      prod = (double)((float *)&pCar->f0E28)[iVar9] * pCar->f0E54;   /* car +0xE28 + gear*4 */
     }
     else {
       local[4] = pCar->aBody[2].rb.f1C4;

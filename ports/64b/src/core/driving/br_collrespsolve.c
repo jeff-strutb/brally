@@ -379,7 +379,7 @@ int BrCrImpulseSolve(BrCarBody *pBody, const BrVec3 *pNormal, const void *pPlane
  * N x (N.y, N.z, N.x), row2 = N x row1, pushed through
  * BrMat4MulVec3Transposed twice and BrMat4MulVec3 once.  The cross products'
  * operand roles are TU state -- see the <windows.h> note at the top. */
-#define BR_KB_VEL    ((BrVec3 *)(pBody + 0x164))
+#define BR_KB_VEL    (&pBody->rb.st2.vel)          /* body +0x164 in the original */
 int BrCrContactKick(BrCarBody *pBody, const BrVec3 *pN, int dampFlag, int spinFlag)
 {
     float  d;
@@ -707,8 +707,8 @@ typedef int (*BrCrContactKickFn)(char *, const BrCollPlane *, int, int);
 #define BR_CR_IMPULSE(b, n, p, f, r) (((BrCrImpulseSolveFn)BrCrImpulseSolve)((b), (n), (p), (f), (r)))
 #define BR_CR_KICK(b, p, f, s)       (((BrCrContactKickFn)BrCrContactKick)((b), (p), (f), (s)))
 
-#define BR_CR_NEXT     ((BrRbState *)(pBody + 0x158))
-#define BR_CR_ORIENT   ((BrMat4 *)(pBody + 0xbc))
+#define BR_CR_NEXT     (&pBody->rb.st2)               /* body +0x158 */
+#define BR_CR_ORIENT   (&pBody->rb.m)                 /* body +0xBC */
 
 int BrCrRespWalk(BrCarBody *pBody, const BrMat4 *pMatBox)
 {

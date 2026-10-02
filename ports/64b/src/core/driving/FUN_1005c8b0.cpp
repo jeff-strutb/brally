@@ -230,7 +230,7 @@ void Car5C8B0::Step()
         *(int *)&(*(float *)&((BrDriverCar *)(this))->f2720) = 0;
     }
 
-    if (((*(Drv5C8B0 * *)&((BrDriverCar *)(this))->pProfile)->b68 & 2) && MINE) {
+    if ((((BrDriver *)((BrDriverCar *)(this))->pProfile)->f68 & 2) && MINE) {
         if ((*(int *)&g_BrCamHold2) == 0)
             goto scan;
         goto flags;
@@ -415,7 +415,7 @@ flags:
     }
 
     if (DAT_118eeee4 != 0) {
-        if (!((*(Drv5C8B0 * *)&((BrDriverCar *)(this))->pProfile)->b68 & 3) && (*(int *)&DAT_105ccb68[8]) == 0)
+        if (!(((BrDriver *)((BrDriverCar *)(this))->pProfile)->f68 & 3) && (*(int *)&DAT_105ccb68[8]) == 0)
             (*(int *)&((BrDriverCar *)(this))->aBody[0].f01F8) = -1;
         DAT_118eeee4 = 0;
     }

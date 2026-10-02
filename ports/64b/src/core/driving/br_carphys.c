@@ -860,10 +860,10 @@ void __fastcall BrCarPhysStep(BrDriverCar *pCar)
     BrRbQuatDerivative(pState);
 
     pCar->aBody[0].rb.pForces = &pCar->aForce[4];   /* car+0xC20 */
-    ((*(char **)(((((*(char * *)&pCar->aBody[0].rb.child[((0))])))) + 0x18))) = 0;
-    ((*(char **)(((((*(char * *)&pCar->aBody[0].rb.child[((2))])))) + 0x18))) = 0;
-    ((*(char **)(((((*(char * *)&pCar->aBody[0].rb.child[((1))])))) + 0x18))) = 0;
-    ((*(char **)(((((*(char * *)&pCar->aBody[0].rb.child[((3))])))) + 0x18))) = 0;
+    pCar->aBody[0].rb.child[0]->pForces = 0;   /* wheel +0x18 */
+    pCar->aBody[0].rb.child[2]->pForces = 0;   /* wheel +0x18 */
+    pCar->aBody[0].rb.child[1]->pForces = 0;   /* wheel +0x18 */
+    pCar->aBody[0].rb.child[3]->pForces = 0;   /* wheel +0x18 */
     BrCarPhysDrag((BrRbBodyFull *)pBody, &pCar->aForce[11]);   /* car+0xD00 */
     BrCarPhysDamper((BrRbBodyFull *)pBody);
 
