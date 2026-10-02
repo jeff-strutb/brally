@@ -55,7 +55,7 @@ class GameUi;
 /* EmptyFn was a stand-in; the original calls C function BrPodNop.  Declared under
  * its real symbol so the relocation resolves by name. */
 /* BrPodNop: prototype in br_funcs.h */
-#define EmptyFn ((void (*)(void))BrPodNop)
+#define EmptyFn() BrPodNop()
 /* SetupA: prototype in br_funcs.h */
 /* SetupB: prototype in br_funcs.h */
 

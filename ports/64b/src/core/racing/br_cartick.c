@@ -25,7 +25,7 @@
 /* @implements 0x1006E9E0 glide BrCarTickClocks */
 void __fastcall BrCarTickClocks(BrDriverCar *pCar)
 {
-    if ((((*(unsigned char *)(((((((char *)pCar->pProfile))))) + ((0x68))))) & 3) == 0) {
+    if ((((*(unsigned char *)(((char *)&((BrDriver *)(pCar->pProfile))->f68)))) & 3) == 0) {
         if ((*(int *)&g_brRaceRules.mode) == 3) {
             ((pCar->tRun)) += g_brRaceFlyStep;
             return;

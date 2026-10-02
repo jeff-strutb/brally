@@ -162,15 +162,15 @@ void BrReplayApply(BrDriverCar *pCar, int32_t iPlayer)
         /* orig `xor al,al` then nine `mov [esi+off],al`. 0x364/0x365 skipped;
          * 0x36C is written third. */
         z = 0;
-        ((*((unsigned char *)((pCar)) + ((0x362))))) = z;
-        ((*((unsigned char *)((pCar)) + ((0x363))))) = z;
-        ((*((unsigned char *)((pCar)) + ((0x36C))))) = z;
-        ((*((unsigned char *)((pCar)) + ((0x366))))) = z;
-        ((*((unsigned char *)((pCar)) + ((0x367))))) = z;
-        ((*((unsigned char *)((pCar)) + ((0x368))))) = z;
-        ((*((unsigned char *)((pCar)) + ((0x369))))) = z;
-        ((*((unsigned char *)((pCar)) + ((0x36A))))) = z;
-        ((*((unsigned char *)((pCar)) + ((0x36B))))) = z;
+        ((*(((unsigned char *)&((BrDriverCar *)(((pCar))))->aBody[0].f01FE)))) = z;
+        ((*(((unsigned char *)&((BrDriverCar *)(((pCar))))->aBody[0].f01FF)))) = z;
+        ((*(((unsigned char *)&((BrDriverCar *)(((pCar))))->aBody[0].f0208)))) = z;
+        ((*(((unsigned char *)&((BrDriverCar *)(((pCar))))->aBody[0].f0202)))) = z;
+        ((*(((unsigned char *)&((BrDriverCar *)(((pCar))))->aBody[0].f0203)))) = z;
+        ((*(((unsigned char *)&((BrDriverCar *)(((pCar))))->aBody[0].f0204)))) = z;
+        ((*(((unsigned char *)&((BrDriverCar *)(((pCar))))->aBody[0].f0205)))) = z;
+        ((*(((unsigned char *)&((BrDriverCar *)(((pCar))))->aBody[0].f0206)))) = z;
+        ((*(((unsigned char *)&((BrDriverCar *)(((pCar))))->aBody[0].f0207)))) = z;
     }
 
     /* orig reloads both cursor and count from [iPlayer*4+disp], then
@@ -193,15 +193,15 @@ void BrReplayApply(BrDriverCar *pCar, int32_t iPlayer)
     if (g_BrReplayCursor[iPlayer] < g_BrReplayCount[iPlayer] - 2) {
         BrFixDecodeRecord_10007AA0(&state, &pSlot[1].rec);
 
-        ((*(float *)(void *)((unsigned char *)((pCar)) + ((BR_S42_CAR_OFF_VEL + 0))))) =
+        ((*(float *)(void *)(((unsigned char *)&((BrDriverCar *)(((pCar))))->aBody[0].rb.st.vel.x + 0)))) =
             (state.f10
              - ((const BrVec3 *)((char *)&pCar->fwd.x + BR_S42_CAR_OFF_POS))->x)
             * BR_K_0008FAA8;
-        ((*(float *)(void *)((unsigned char *)((pCar)) + ((BR_S42_CAR_OFF_VEL + 4))))) =
+        ((*(float *)(void *)(((unsigned char *)&((BrDriverCar *)(((pCar))))->aBody[0].rb.st.vel.x + 4)))) =
             (state.f14
              - ((const BrVec3 *)((char *)&pCar->fwd.x + BR_S42_CAR_OFF_POS))->y)
             * BR_K_0008FAA8;
-        ((*(float *)(void *)((unsigned char *)((pCar)) + ((BR_S42_CAR_OFF_VEL + 8))))) =
+        ((*(float *)(void *)(((unsigned char *)&((BrDriverCar *)(((pCar))))->aBody[0].rb.st.vel.x + 8)))) =
             (state.f18
              - ((const BrVec3 *)((char *)&pCar->fwd.x + BR_S42_CAR_OFF_POS))->z)
             * BR_K_0008FAA8;

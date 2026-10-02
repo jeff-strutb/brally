@@ -33,8 +33,7 @@ public:
 extern "C" {
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 #define g_idx DAT_10ac5d60
-extern "C" char *DAT_100abb48[1];   /* the original global; was a per-file stand-in definition */
-#define g_tab DAT_100abb48
+#define g_tab (DAT_100abae8 + 24)   /* 0x100ABB48 */
 /* BrStrGet: prototype in br_funcs.h */
 /* Br85ItemApply: prototype in br_funcs.h */
 }

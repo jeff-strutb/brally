@@ -246,10 +246,10 @@ void BR_THISCALL1 BrSub10062C50(void *pCar)
     p->aForce[7].pNext = &p->aForce[11];
     p->aForce[11].pNext = 0;
 
-    ((*(uint8_t *)((uint8_t *)((p)) + ((0xe81))))) = 0;
+    ((*(uint8_t *)(((uint8_t *)&((BrDriverCar *)(((p))))->f0E81)))) = 0;
     ((*(uint32_t *)&p->f0E7C)) = 0;
     ((*(uint32_t *)&p->f0E74)) = 0;
-    ((*(uint8_t *)((uint8_t *)((p)) + ((0x361))))) = ((*(uint8_t *)((uint8_t *)((p)) + ((0xe90)))));
+    ((*(uint8_t *)(((uint8_t *)&((BrDriverCar *)(((p))))->aBody[0]._pad01FD[0])))) = ((*(uint8_t *)(((uint8_t *)&((BrDriverCar *)(((p))))->fE90))));
 
     BrPodNop();
     BrPodNop();
@@ -257,7 +257,7 @@ void BR_THISCALL1 BrSub10062C50(void *pCar)
     BrPodNop();
     }
 
-    ((*(uint8_t *)((uint8_t *)((p)) + ((0xe80))))) = 0;
-    ((*(uint8_t *)((uint8_t *)((p)) + ((0xe78))))) = 0;
+    ((*(uint8_t *)(((uint8_t *)&((BrDriverCar *)(((p))))->f0E80)))) = 0;
+    ((*(uint8_t *)(((uint8_t *)&((BrDriverCar *)(((p))))->f0E78)))) = 0;
 }
 

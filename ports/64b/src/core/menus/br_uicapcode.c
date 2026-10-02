@@ -56,12 +56,12 @@
 int32_t BrUiHook87_1003F5E0(BrUiCtl_ *pCtl)
 {
     switch ((*(unsigned int *)&DAT_10ac5d70)) {
-    case 0u: ((*(unsigned short *)((char *)((pCtl)) + 0x1E20C))) = 0x56u; return 1;
-    case 1u: ((*(unsigned short *)((char *)((pCtl)) + 0x1E20C))) = 0x57u; return 1;
-    case 2u: ((*(unsigned short *)((char *)((pCtl)) + 0x1E20C))) = 0x59u; return 1;
-    case 3u: ((*(unsigned short *)((char *)((pCtl)) + 0x1E20C))) = 0x5Bu; return 1;
-    case 4u: ((*(unsigned short *)((char *)((pCtl)) + 0x1E20C))) = 0x5Du; return 1;
-    default: ((*(unsigned short *)((char *)((pCtl)) + 0x1E20C))) = 0x56u; return 1;
+    case 0u: ((*(unsigned short *)(((char *)&((BrUiCtl_ *)(((pCtl))))->w1E20C)))) = 0x56u; return 1;
+    case 1u: ((*(unsigned short *)(((char *)&((BrUiCtl_ *)(((pCtl))))->w1E20C)))) = 0x57u; return 1;
+    case 2u: ((*(unsigned short *)(((char *)&((BrUiCtl_ *)(((pCtl))))->w1E20C)))) = 0x59u; return 1;
+    case 3u: ((*(unsigned short *)(((char *)&((BrUiCtl_ *)(((pCtl))))->w1E20C)))) = 0x5Bu; return 1;
+    case 4u: ((*(unsigned short *)(((char *)&((BrUiCtl_ *)(((pCtl))))->w1E20C)))) = 0x5Du; return 1;
+    default: ((*(unsigned short *)(((char *)&((BrUiCtl_ *)(((pCtl))))->w1E20C)))) = 0x56u; return 1;
     }
 }
 
@@ -73,11 +73,11 @@ int32_t BrUiHook87_1003F5E0(BrUiCtl_ *pCtl)
 int32_t BrUiHook87_1003F680(BrUiCtl_ *pCtl)
 {
     switch ((*(unsigned int *)&DAT_10ac5d70)) {
-    case 0u: ((*(unsigned short *)((char *)((pCtl)) + 0x1E20C))) = 0xFFFFu; return 1;
-    case 1u: ((*(unsigned short *)((char *)((pCtl)) + 0x1E20C))) = 0x58u; return 1;
-    case 2u: ((*(unsigned short *)((char *)((pCtl)) + 0x1E20C))) = 0x5Au; return 1;
-    case 3u: ((*(unsigned short *)((char *)((pCtl)) + 0x1E20C))) = 0x5Cu; return 1;
-    case 4u: ((*(unsigned short *)((char *)((pCtl)) + 0x1E20C))) = 0x5Eu; return 1;
-    default: ((*(unsigned short *)((char *)((pCtl)) + 0x1E20C))) = 0xFFFFu; return 1;
+    case 0u: ((*(unsigned short *)(((char *)&((BrUiCtl_ *)(((pCtl))))->w1E20C)))) = 0xFFFFu; return 1;
+    case 1u: ((*(unsigned short *)(((char *)&((BrUiCtl_ *)(((pCtl))))->w1E20C)))) = 0x58u; return 1;
+    case 2u: ((*(unsigned short *)(((char *)&((BrUiCtl_ *)(((pCtl))))->w1E20C)))) = 0x5Au; return 1;
+    case 3u: ((*(unsigned short *)(((char *)&((BrUiCtl_ *)(((pCtl))))->w1E20C)))) = 0x5Cu; return 1;
+    case 4u: ((*(unsigned short *)(((char *)&((BrUiCtl_ *)(((pCtl))))->w1E20C)))) = 0x5Eu; return 1;
+    default: ((*(unsigned short *)(((char *)&((BrUiCtl_ *)(((pCtl))))->w1E20C)))) = 0xFFFFu; return 1;
     }
 }

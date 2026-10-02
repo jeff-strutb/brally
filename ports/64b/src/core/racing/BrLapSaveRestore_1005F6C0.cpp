@@ -144,7 +144,7 @@ void BrCar::LapSaveRestore()
         }
         else if ((((*(int *)&g_brRaceRules.mode) == 0) &&
                  (iVar10->f140 >= (*(int *)&g_brRaceNEntrant))) &&
-                (((*(unsigned char *)(((char *)iVar10->pProfile) + 0x68) & 2) != 0 &&
+                (((*(unsigned char *)(((char *)&((BrDriver *)(iVar10->pProfile))->f68)) & 2) != 0 &&
                  ((iVar10->b29AF == 2 &&
                   (iVar10->f29B0 == 0.0f)))))) {
           *pfVar12 = 1e+09f;
@@ -327,7 +327,7 @@ LAB_save:
           br_dl_normalise(pfVar1);
           V3Copy(&pfVar7->f0F94, &pfVar7->fwd.x);
           ((BrCar *)&pfVar7->fwd.x)->SetMatrix(&pfVar7->fwd.x);
-          if ((*(unsigned char *)(((char *)pfVar7->pProfile) + 0x68) & 1) != 0) {
+          if ((*(unsigned char *)(((char *)&((BrDriver *)(pfVar7->pProfile))->f68)) & 1) != 0) {
             ((BrCar *)&pfVar7->fwd.x)->SetVel( 0.0f, 0.0f, 0.0f);
           }
           else {

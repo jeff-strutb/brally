@@ -100,7 +100,7 @@ void BrHudDrawEntrants(int *pScr, BrDriverCar *cars)
                             if (isLocal != 0) {
                                 sprintf(buf, s___11_s__dms__c_c_100a6c18, ((void *)&car->szName[0]),
                                         BrNetSlotGetF974(car->iNetPlayer), c1, c2);
-                            } else if ((*(unsigned char *)(((char *)car->pProfile) + 0x68) & 1) == 0
+                            } else if ((*(unsigned char *)(((char *)&((BrDriver *)(car->pProfile))->f68)) & 1) == 0
                                        && (*(int *)&DAT_105ccb68[8]) == 0) {
                                 sprintf(buf, s___x_02x_02x_02x_s__s__dms__c_c_100a6bf8,
                                         (unsigned)car->f29AC,
@@ -121,7 +121,7 @@ void BrHudDrawEntrants(int *pScr, BrDriverCar *cars)
                         } else {
                             if (isLocal != 0) {
                                 sprintf(buf, s___11_s_100a6bd4, ((void *)&car->szName[0]));
-                            } else if ((*(unsigned char *)(((char *)car->pProfile) + 0x68) & 1) == 0
+                            } else if ((*(unsigned char *)(((char *)&((BrDriver *)(car->pProfile))->f68)) & 1) == 0
                                        && (*(int *)&DAT_105ccb68[8]) == 0) {
                                 sprintf(buf, s___x_02x_02x_02x_s__s_100a6bbc,
                                         (unsigned)car->f29AC,

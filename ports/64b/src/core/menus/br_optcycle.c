@@ -247,10 +247,17 @@ int BrOptCycleTrack(void)
     } else if (g_act0 != 0) {
         v = BrOptTrackStepDown();
         vStart = v;
+        if (BrOptAvailB(v) == 0) {
+            for (;;) {
+                v = BrOptTrackStepDown();
+                if (v == vStart)
+                    break;
                 if (BrOptAvailB(v) != 0) {
                     v = (*(int32_t *)&g_brSel0ABDF4);
                     break;
-                } else {
+                }
+            }
+        } else {
             v = (*(int32_t *)&g_brSel0ABDF4);
         }
     } else {

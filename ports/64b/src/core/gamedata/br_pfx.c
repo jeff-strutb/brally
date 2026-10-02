@@ -103,7 +103,7 @@ void __fastcall BrCarPfxSpawn(struct BrDriverCar *pCar)
     float rate, kFwd, kSide, s;
     int i;
 
-    if ((((unsigned char *)((pCar)) + ((0x36D))))[0] == 0)
+    if (((unsigned char *)&pCar->aBody[0].f0209)[0] == 0)
         return;
     if (((pCar->f1030)) <= 40.0f)    /* 0x100775B0 */
         return;
@@ -118,18 +118,18 @@ void __fastcall BrCarPfxSpawn(struct BrDriverCar *pCar)
         unsigned iRec;
         float acc;
 
-        acc = ((float)(int)(((unsigned char *)((pCar)) + ((0x36D))))[0] * 0.029999999329447746f) * rate
-            + ((*(float *)   (((unsigned char *)((pCar)) + ((0x106C + 4u * (unsigned)i))))));
-        ((*(float *)   (((unsigned char *)((pCar)) + ((0x106C + 4u * (unsigned)i)))))) = acc;
+        acc = ((float)(int)((unsigned char *)&pCar->aBody[0].f0209)[0] * 0.029999999329447746f) * rate
+            + ((*(float *)   ((unsigned char *)&pCar->f106C[0] + 4u * (unsigned)i)));
+        ((*(float *)   ((unsigned char *)&pCar->f106C[0] + 4u * (unsigned)i))) = acc;
         if (acc <= 0.75f)
             continue;
 
-        aW[0] = (((unsigned char *)((pCar)) + ((0x994))));
-        aW[1] = (((unsigned char *)((pCar)) + ((0x57C))));
-        aW[2] = (((unsigned char *)((pCar)) + ((0x370))));
-        aW[3] = (((unsigned char *)((pCar)) + ((0x788))));
+        aW[0] = ((unsigned char *)&pCar->aBody[4]);
+        aW[1] = ((unsigned char *)&pCar->aBody[2]);
+        aW[2] = ((unsigned char *)&pCar->aBody[1]);
+        aW[3] = ((unsigned char *)&pCar->aBody[3]);
         pW = aW[i];
-        ((*(float *)   (((unsigned char *)((pCar)) + ((0x106C + 4u * (unsigned)i)))))) = 0.0f;
+        ((*(float *)   ((unsigned char *)&pCar->f106C[0] + 4u * (unsigned)i))) = 0.0f;
 
         if (*(int32_t *)&pW->rb.f1B4 == 0)
             continue;
@@ -160,16 +160,16 @@ void __fastcall BrCarPfxSpawn(struct BrDriverCar *pCar)
                 kSide = 0.5f;
             BrVec3MulAddTo(pVel, ((&pCar->right)), kSide);
         }
-        BrVec3SubFrom(pVel, (((BrVec3 *)   (((unsigned char *)((pCar)) + ((0x00)))))));
+        BrVec3SubFrom(pVel, (((BrVec3 *)   ((unsigned char *)&pCar->fwd))));
         s = 1.0f - 50.0f / (((pCar->f1030)) - -50.0f);
         BrVec3ScaleBy(pVel, s);
 
         pPos = &g_aPfxRec[iRec].pos;
-        BrVec3Sub(pPos, (((BrVec3 *)   (((unsigned char *)((pCar)) + ((0x70 + 0x40u * (unsigned)i)))))), (((BrVec3 *)   (((unsigned char *)((pCar)) + ((0x00)))))));
+        BrVec3Sub(pPos, (((BrVec3 *)   ((unsigned char *)&pCar->aWheel[i].m[3][0]))), (((BrVec3 *)   ((unsigned char *)&pCar->fwd))));
         g_aPfxRec[iRec].pos.z = g_aPfxRec[iRec].pos.z - ((pCar->fHitDist)) * -0.5f;
 
         saved.x = pPos->x; saved.y = pPos->y; saved.z = pPos->z;
-        pPrev = (((BrVec3 *)   (((unsigned char *)((pCar)) + ((0x107C + 12u * (unsigned)i))))));
+        pPrev = (((BrVec3 *)   ((unsigned char *)&pCar->f107C + 12u * (unsigned)i)));
         if (BrVec3DistSq(pPos, pPrev) < 256.0f) {
             float u = (float)(BrRandom() & 0xFFFF) * 1.5259021893143654e-05f;
 

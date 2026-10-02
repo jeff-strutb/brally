@@ -11,9 +11,9 @@
  * @cpp_symbol ?Activate@Ctl3ED90@@QAEHXZ
  *
  * CD-gated installer (slice3_31 BrPhaseActivate_10045900). Polarity is
-/* CdCheck: the original function is FUN_1003ee90 */ fail; return 0` so the large
+ * `if (CdCheck() != 0) { success; return 1; } fail; return 0` so the large
  * path is fall-through (orig `je` far to the fail block at the end).
-/* CdCheck: the original function is FUN_1003ee90 */ success` inverts to a short jne.
+ * `if (CdCheck() == 0) { fail; return 0; } success` inverts to a short jne.
  */
 #define _CRTIMP __declspec(dllimport)
 

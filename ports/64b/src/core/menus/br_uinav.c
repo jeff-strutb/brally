@@ -143,6 +143,9 @@ int BR_THISCALL1 BrUiNavCtlHit_10047A60(BrUiCtl_ *pCtl)
 
         if ((pCtl->flags1C & 0x80000) && BrInputAnyActive() == 0) {
             pCtl->flags1C &= 0xFFF7FFFD;
+        } else if ((pCtl->flags1C & 0x80000) && BrInputAnyActive() != 0) {
+            pCtl->flags1C |= 0x22;
+            return 1;
         }
 
         pCur = (*(int32_t * *)&BrGlNavThis5DD8);

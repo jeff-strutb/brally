@@ -82,7 +82,7 @@ int Ctl3D930::Activate()
     } else {
         (*(Phase * *)&g_brPAA29B8) = (Phase *)((BrOptObj *)(p));
     }
-    (*(void * *)&((BrPhase_ *)(g_29B8))->pfnHook) = HookFn;
+    (*(void * *)&((BrPhase_ *)(g_29B8))->pfnHook) = (void *)HookFn;
     return 1;
 }
 

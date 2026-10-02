@@ -143,6 +143,6 @@ after_host:
     ;
 
     if ((*(Obj * *)&g_brPA9D008) != 0 && (*(Obj * *)&g_brPA9D008)->f08 != 0)
-        BrExt_1003DB00((struct BrObjA9D008 *)((*(Obj * *)&g_brPA9D008)), (*(Obj * *)&g_brPA9D008)->f08);
+        BrExt_1003DB00((struct BrObjA9D008 *)((*(Obj * *)&g_brPA9D008)), (void *)(intptr_t)(*(Obj * *)&g_brPA9D008)->f08);
     return one;
 }
