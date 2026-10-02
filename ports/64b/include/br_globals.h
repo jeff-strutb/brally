@@ -1945,22 +1945,10 @@ extern char s__EAR_DLL_RegisterChannel_16_100a739c[];  /* 0x100A739C */
 #undef s__EAR_DLL_RegisterBank_8_100a73b8
 extern char s__EAR_DLL_RegisterBank_8_100a73b8[];  /* 0x100A73B8 */
 #pragma pop_macro("s__EAR_DLL_RegisterBank_8_100a73b8")
-#pragma push_macro("g_pszBr0A73C4")
-#undef g_pszBr0A73C4
-extern char *g_pszBr0A73C4;  /* 0x100A73C4 */
-#pragma pop_macro("g_pszBr0A73C4")
-#pragma push_macro("g_pszBr0A73C8")
-#undef g_pszBr0A73C8
-extern char *g_pszBr0A73C8;  /* 0x100A73C8 */
-#pragma pop_macro("g_pszBr0A73C8")
 #pragma push_macro("s__EAR_DLL_MoveEvent_4_100a73d0")
 #undef s__EAR_DLL_MoveEvent_4_100a73d0
 extern char s__EAR_DLL_MoveEvent_4_100a73d0[];  /* 0x100A73D0 */
 #pragma pop_macro("s__EAR_DLL_MoveEvent_4_100a73d0")
-#pragma push_macro("g_pszBr0A73D4")
-#undef g_pszBr0A73D4
-extern char *g_pszBr0A73D4;  /* 0x100A73D4 */
-#pragma pop_macro("g_pszBr0A73D4")
 #pragma push_macro("s__EAR_DLL_MixEvent_4_100a73e8")
 #undef s__EAR_DLL_MixEvent_4_100a73e8
 extern char s__EAR_DLL_MixEvent_4_100a73e8[];  /* 0x100A73E8 */
@@ -3059,7 +3047,7 @@ extern int DAT_100b84a8;  /* 0x100B84A8 */
 #pragma pop_macro("DAT_100b84a8")
 #pragma push_macro("g_apszCarFiles")
 #undef g_apszCarFiles
-extern char *g_apszCarFiles[];  /* 0x100B84F8 */
+extern uint8_t g_apszCarFiles[];  /* 0x100B84F8 */
 #pragma pop_macro("g_apszCarFiles")
 #pragma push_macro("g_brTex0B8C90")
 #undef g_brTex0B8C90

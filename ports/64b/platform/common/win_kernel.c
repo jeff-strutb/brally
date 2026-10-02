@@ -126,6 +126,12 @@ DWORD WINAPI WaitForMultipleObjects(DWORD n, const HANDLE *h, BOOL all, DWORD ms
     uint64_t end = ms == INFINITE ? 0 : host_ticks_ns() + (uint64_t)ms * 1000000u;
     DWORD i, r = WAIT_TIMEOUT;
     kinit();
+    /* an invalid handle fails the wait at once, as on Windows */
+    for (i = 0; i < n; i++) {
+        kobj *o = (kobj *)h[i];
+        if (!o || (o->type != K_EVENT && o->type != K_MUTEX && o->type != K_THREAD))
+            return WAIT_FAILED;
+    }
     host_mutex_lock(s_k);
     for (;;) {
         if (all) {
@@ -286,6 +292,7 @@ typedef struct pmod {
     const plat_export *ex;
     int n;
     void *pe;                /* a resource DLL from disc */
+    int loaded;              /* LoadLibraryA has been called for it */
 } pmod;
 static pmod s_mod[16];
 static int s_nmod;
@@ -312,8 +319,14 @@ static const char *base_name(const char *p)
 
 HMODULE WINAPI GetModuleHandleA(LPCSTR name)
 {
-    (void)name;
-    return (HMODULE)&s_instance;
+    int i;
+    /* the process itself, or a module already loaded */
+    if (!name || !strcasecmp(base_name(name), "BRally.exe") || !strcasecmp(base_name(name), "BRGlide.dll"))
+        return (HMODULE)&s_instance;
+    for (i = 0; i < s_nmod; i++)
+        if (s_mod[i].loaded && !strcasecmp(s_mod[i].name, base_name(name)))
+            return (HMODULE)&s_mod[i];
+    return NULL;
 }
 
 HMODULE WINAPI LoadLibraryA(LPCSTR name)
@@ -323,14 +336,18 @@ HMODULE WINAPI LoadLibraryA(LPCSTR name)
     if (!name)
         return NULL;
     for (i = 0; i < s_nmod; i++)
-        if (!strcasecmp(s_mod[i].name, base_name(name)))
+        if (!strcasecmp(s_mod[i].name, base_name(name))) {
+            s_mod[i].loaded = 1;
+            PLOG("LoadLibraryA(%s): the platform's\n", name);
             return (HMODULE)&s_mod[i];
+        }
     /* a resource-only DLL the game reads strings from */
     if (plat_path(name, host, sizeof host)) {
         void *pe = plat_pe_open(host);
         if (pe && s_nmod < 16) {
             snprintf(s_mod[s_nmod].name, sizeof s_mod[0].name, "%s", base_name(name));
             s_mod[s_nmod].pe = pe;
+            s_mod[s_nmod].loaded = 1;
             return (HMODULE)&s_mod[s_nmod++];
         }
     }
@@ -349,6 +366,7 @@ FARPROC WINAPI GetProcAddress(HMODULE h, LPCSTR name)
     for (i = 0; i < m->n; i++)
         if (!strcmp(m->ex[i].name, name))
             return (FARPROC)m->ex[i].fn;
+    PLOG("GetProcAddress(%s, %s): not exported\n", m->name, name);
     return NULL;
 }
 

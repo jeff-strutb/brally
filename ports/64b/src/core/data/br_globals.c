@@ -555,11 +555,8 @@ char s__EAR_DLL_RegisterPreset_8_100a7344[28];  /* 0x100A7344 */
 char s__EAR_DLL_RegisterMatrix_4_100a7360[28];  /* 0x100A7360 */
 char s__EAR_DLL_RegisterEnvironment_4_100a737c[32];  /* 0x100A737C */
 char s__EAR_DLL_RegisterChannel_16_100a739c[28];  /* 0x100A739C */
-char s__EAR_DLL_RegisterBank_8_100a73b8[12];  /* 0x100A73B8 */
-char *g_pszBr0A73C4;  /* 0x100A73C4 */
-BR_GLOBAL_EXTENT(char *, g_pszBr0A73C8, , 0x4);  /* 0x100A73C8 */
-char s__EAR_DLL_MoveEvent_4_100a73d0[4];  /* 0x100A73D0 */
-BR_GLOBAL_EXTENT(char *, g_pszBr0A73D4, , 0x10);  /* 0x100A73D4 */
+BR_GLOBAL_EXTENT(char, s__EAR_DLL_RegisterBank_8_100a73b8, [12], 0xC);  /* 0x100A73B8 */
+BR_GLOBAL_EXTENT(char, s__EAR_DLL_MoveEvent_4_100a73d0, [4], 0x14);  /* 0x100A73D0 */
 char s__EAR_DLL_MixEvent_4_100a73e8[20];  /* 0x100A73E8 */
 char s__EAR_DLL_InitializeEar_4_100a73fc[28];  /* 0x100A73FC */
 char s__EAR_DLL_GetVersion_0_100a7418[24];  /* 0x100A7418 */
@@ -588,8 +585,8 @@ int32_t g_brTex0A7E04;  /* 0x100A7E04 */
 BR_GLOBAL_EXTENT(int32_t, g_brTex0A7E08, , 0x3B4);  /* 0x100A7E08 */
 int32_t BrG_0A81C0;  /* 0x100A81C0 */
 BR_GLOBAL_EXTENT(int32_t, BrG_0A81C4, , 0x118C);  /* 0x100A81C4 */
-BrRaceRules g_brRaceRules;  /* 0x100A9354 */
-signed char g_tblBrA9560[24];  /* 0x100A9560 */
+BR_GLOBAL_EXTENT(BrRaceRules, g_brRaceRules, , 0x18);  /* 0x100A9354 */
+BR_GLOBAL_EXTENT(signed char, g_tblBrA9560, [24], 0x40);  /* 0x100A9560 */
 int g_0A95B8[108];  /* 0x100A95B8 */
 char g_0A9768[36];  /* 0x100A9768 */
 char g_0A978C[28];  /* 0x100A978C */
@@ -663,7 +660,7 @@ char g_szBrFmtSS[8];  /* 0x100AA340 */
 char DAT_100aa348[48];  /* 0x100AA348 */
 char DAT_100aa378[44];  /* 0x100AA378 */
 char DAT_100aa3a4[68];  /* 0x100AA3A4 */
-char * PTR_s_First__100aa3e8[60];  /* 0x100AA3E8 */
+BR_GLOBAL_EXTENT(char *, PTR_s_First__100aa3e8, [20], 0xA0);  /* 0x100AA3E8 */
 char s_Could_not_create_DirectPlay_obje_100aa4d8[60];  /* 0x100AA4D8 */
 char s_DirectPlay_interface_final_insta_100aa514[48];  /* 0x100AA514 */
 char s_Could_not_select_service_provide_100aa544[60];  /* 0x100AA544 */
@@ -827,7 +824,7 @@ char s_sizeof_Vehicle___d_100b3870[20];  /* 0x100B3870 */
 char s_sizeof_UltraCarHeader___d_100b3884[28];  /* 0x100B3884 */
 BrCtrlProfile g_BrCtrlDefaults[4];  /* 0x100B38A0 */
 BrCfgRec39580 g_aBrCtlNameKey[120];  /* 0x100B3B40 */
-char g_aBrKeyName3B44[35][36];  /* 0x100B3B44 */
+BR_GLOBAL_EXTENT(char, g_aBrKeyName3B44, [35][36], 0x20);  /* 0x100B3B44 */
 BR_GLOBAL_EXTENT(int32_t, BrG_0B4050, , 0xBCC);  /* 0x100B4050 */
 char BrGlCfgMagic[8];  /* 0x100B4C20 */
 int32_t g_BrFpsCountB;  /* 0x100B4C28 */
@@ -863,7 +860,7 @@ BR_GLOBAL_EXTENT(char *, g_aBrNames0B81D0, [12], 0x298);  /* 0x100B81D0 */
 int32_t s_level;  /* 0x100B8498 */
 BR_GLOBAL_EXTENT(funcptr, PTR_FUN_100b849c, , 0x8);  /* 0x100B849C */
 BR_GLOBAL_EXTENT(int, DAT_100b84a8, , 0x4C);  /* 0x100B84A8 */
-char *g_apszCarFiles[486];  /* 0x100B84F8 */
+uint8_t g_apszCarFiles[486 * 4];  /* 0x100B84F8  byte flags, not pointers */
 int32_t g_brTex0B8C90;  /* 0x100B8C90 */
 BR_GLOBAL_EXTENT(uint32_t, g_0B8C94, , 0x18);  /* 0x100B8C94 */
 unsigned char g_0B94A8[2056];  /* 0x100B8CB0 */
@@ -1968,9 +1965,9 @@ char DAT_10b71aa0[32];  /* 0x10B71AA0 */
 char DAT_10b71ac0[64];  /* 0x10B71AC0 */
 BR_GLOBAL_EXTENT(int, DAT_10b71b00, , 0x4);  /* 0x10B71B00 */
 BrCfgRec39580 g_aBrCtlNameMouse[10];  /* 0x10B71B08 */
-char g_aBrDevName1B0C[9][36];  /* 0x10B71B0C */
+BR_GLOBAL_EXTENT(char, g_aBrDevName1B0C, [9][36], 0x20);  /* 0x10B71B0C */
 BrCfgRec39580 g_aBrCtlNameJoy[134];  /* 0x10B71C70 */
-char g_aBrDevName1C74[133][36];  /* 0x10B71C74 */
+BR_GLOBAL_EXTENT(char, g_aBrDevName1C74, [133][36], 0x20);  /* 0x10B71C74 */
 BR_GLOBAL_EXTENT(int, g_navArg, , 0x3FC);  /* 0x10B72F48 */
 int32_t g_aBrFpsSamplesB[120];  /* 0x10B73348 */
 funcptr DAT_10b73528;  /* 0x10B73528 */
