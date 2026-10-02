@@ -66,7 +66,7 @@ int __stdcall FUN_10035ac0(int, int, int, int, int, int);
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 
-typedef int (__stdcall *CC_std_5)(void *, int, int, int, int);
+typedef int (__stdcall *CC_std_5)(void *, void *, void *, void *, intptr_t);
 
 /* WHAT IT DOES: initialise the multiplayer subsystem from cold -- clears the
  * session name and password buffers, zeroes every entry in the player table,
@@ -117,7 +117,7 @@ int BrDPlayCreate(void)
   iVar4 = g_guardB;
   g_brPA9D008 = (int)&(*(int * *)&g_brP277B40);
   if (iVar4 == 0) {
-    (*(CC_std_5 *)(*(int *)(*(int * *)&g_brP277B40) + 0x8c))(
+    (*(CC_std_5 *)&((void **)*(void ***)((*(int * *)&g_brP277B40)))[35])(
         (*(int * *)&g_brP277B40), (int)&DAT_10077500, (int)FUN_10035ac0, g_brOwner5BC72C, 0);
     iVar4 = FUN_10036e50(&DAT_10ac3068);
     if (iVar4 < 0) {
@@ -203,7 +203,7 @@ void FUN_10035660(void)
   sprintf(local_104,s_DirectPlay_interface_final_insta_100aa514,DAT_10ac4094);
   OutputDebugStringA(local_104);
   if (DAT_10ac3068 != (int *)0x0) {
-    (*(CC_std_1 *)(*(int *)(DAT_10ac3068) + 8))(DAT_10ac3068);
+    (*(CC_std_1 *)&((void **)*(void ***)((DAT_10ac3068)))[2])(DAT_10ac3068);
   }
   return;
 }
@@ -241,7 +241,7 @@ void FUN_100356b0(void)
     iVar1 = BrComCreateInstance(&(*(int * *)&g_brP277B40));
     DAT_10ac4094 = DAT_10ac4094 + 1;
     if ((((iVar1 >= 0)) && ((*(int * *)&g_brP277B40) != (int *)0x0)) &&
-       (iVar1 = (*(CC_std_3 *)(*(int *)((*(int * *)&g_brP277B40)) + 152))((*(int * *)&g_brP277B40),local_408[0],0), (iVar1 >= 0))) {
+       (iVar1 = (*(CC_std_3 *)&((void **)*(void ***)(((*(int * *)&g_brP277B40))))[38])((*(int * *)&g_brP277B40),local_408[0],0), (iVar1 >= 0))) {
       if ((DAT_10ac5bd4 != 2) && (DAT_10ac5bd4 != 3)) {
         if ((g_brPAA29D4 != 0) && (iVar1 = BrNetEnumSessionsStart((*(int * *)&g_brP277B40)), iVar1 < 0))
         goto LAB_100357b5;
@@ -338,7 +338,7 @@ int BrTimerStart1003C230(void)
  * Returns the DirectPlay result, or a generic failure code when no
  * DirectPlay object exists. */
 /* @implements 0x100361A0 glide FUN_100361a0 */
-int FUN_100361a0(int * param_1,char * param_2,char * param_3,int param_4)
+int FUN_100361a0(void *param_1, void *param_2, void *param_3, int param_4)   /* IDirectPlay::EnumPlayers (slot 12) */
 
 {
   int i;
@@ -353,7 +353,7 @@ int FUN_100361a0(int * param_1,char * param_2,char * param_3,int param_4)
     g_aBrAA2538[i].b = 0;
   }
   if ((*(int * *)&g_brP277B40) != (int *)0x0) {
-    uVar3 = (*(CC_std_5 *)(*(int *)((*(int * *)&g_brP277B40)) + 48))((*(int * *)&g_brP277B40),param_1,param_2,param_3,param_4);
+    uVar3 = (*(CC_std_5 *)&((void **)*(void ***)(((*(int * *)&g_brP277B40))))[12])((*(int * *)&g_brP277B40),param_1,param_2,param_3,param_4);
   }
   BrSlotsResetIfBZero();
   uVar2 = BrSlotsFindById(*(int *)(g_brPA9D008 + 8));
@@ -617,7 +617,7 @@ int FUN_10036f40(HWND param_1, void *param_2)
       vt = *(int **)pObj;
       hr = (*(COM4 *)((char *)vt + 0x48))(pObj, 0, pMem, &size);
       if (hr >= 0) {
-        hr = (*(COM5 *)(*(int *)param_2 + 0x14))(param_2, (void *)BrSub1003D850, pMem, size, param_1);
+        hr = (*(COM5 *)&((void **)*(void ***)(param_2))[5])(param_2, (void *)BrSub1003D850, pMem, size, param_1);
       }
     }
   }

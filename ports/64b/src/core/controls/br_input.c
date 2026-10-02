@@ -195,20 +195,20 @@ int FUN_100703d0(void)
     (*(int *)&g_brInJoyPrev) = 0;
     DAT_118eebd0 = 1;
     BrSub100770C0();
-    iVar1 = (*(CC_std_4 *)(*(int *)((*(int * *)&g_pBr18ABD70)) + 12))((*(int * *)&g_pBr18ABD70),&DAT_10078718,&(*(int * *)&g_pBrDik18ABDD0),0);
+    iVar1 = (*(CC_std_4 *)&((void **)*(void ***)(((*(int * *)&g_pBr18ABD70))))[3])((*(int * *)&g_pBr18ABD70),&DAT_10078718,&(*(int * *)&g_pBrDik18ABDD0),0);
     if (iVar1 < 0) {
       return 0;
     }
-    iVar1 = (*(CC_std_2 *)(*(int *)((*(int * *)&g_pBrDik18ABDD0)) + 44))((*(int * *)&g_pBrDik18ABDD0),&DAT_10073ae0);
+    iVar1 = (*(CC_std_2 *)&((void **)*(void ***)(((*(int * *)&g_pBrDik18ABDD0))))[11])((*(int * *)&g_pBrDik18ABDD0),&DAT_10073ae0);
     if (iVar1 < 0) {
       return 0;
     }
-    iVar1 = (*(CC_std_3 *)(*(int *)((*(int * *)&g_pBrDik18ABDD0)) + 52))((*(int * *)&g_pBrDik18ABDD0),g_brOwner5BC72C,6);
+    iVar1 = (*(CC_std_3 *)&((void **)*(void ***)(((*(int * *)&g_pBrDik18ABDD0))))[13])((*(int * *)&g_pBrDik18ABDD0),g_brOwner5BC72C,6);
     if (iVar1 < 0) {
       return 0;
     }
     if ((*(int * *)&g_pBrDik18ABDD0) != (int *)0x0) {
-      (*(CC_std_1 *)(*(int *)((*(int * *)&g_pBrDik18ABDD0)) + 28))((*(int * *)&g_pBrDik18ABDD0));
+      (*(CC_std_1 *)&((void **)*(void ***)(((*(int * *)&g_pBrDik18ABDD0))))[7])((*(int * *)&g_pBrDik18ABDD0));
     }
   }
   return 1;
@@ -776,7 +776,7 @@ int BrDiAcquire(void)
   int iVar1;
   
   if ((*(int * *)&g_brFfb) != (int *)0x0) {
-    iVar1 = (*(CC_std_1 *)(*(int *)((*(int * *)&g_brFfb)) + 28))((*(int * *)&g_brFfb));
+    iVar1 = (*(CC_std_1 *)&((void **)*(void ***)(((*(int * *)&g_brFfb))))[7])((*(int * *)&g_brFfb));
     return (iVar1 >= 0);
   }
   return 0;

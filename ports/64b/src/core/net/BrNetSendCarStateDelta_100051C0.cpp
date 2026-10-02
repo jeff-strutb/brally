@@ -96,7 +96,7 @@ int BrNetSendCarStateDelta(void *pState, float * ref)
 
         BrNetPktStamp(&pkt);
         pkt.PutByte((unsigned char)(g_id | 0x80));
-        BrCarStateEncodeDelta((struct BrBitStream *)(&pkt), pState, ref);
+        BrCarStateEncodeDelta((struct BrBitStream *)(&pkt), (const struct BrCarState *)pState, (const struct BrCarState *)ref);
         if (SendPkt(&g_brP277B40, &pkt) == -1)
             return 0;
         return 1;

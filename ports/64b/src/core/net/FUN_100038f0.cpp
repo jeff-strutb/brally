@@ -337,7 +337,7 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
                 ((g_aBrNetSlot[slot].f004)) = id;
                 if (nName)
                     strcpy((&g_aBrNetSlot[slot].szName[0]), szName);
-                FUN_10004ad0(pNet, slot, b1, c2, c3, c4, id, szName, b0, 0x10);
+                BrNetSend4AD0(pNet, slot, b1, c2, c3, c4, id, szName, b0, 0x10);
                 ReleaseMutex(((g_aBrNetSlot[slot].hMutex)));
                 break;
 
@@ -596,7 +596,7 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
                 if (nMode != 1)
                     goto done;
                 g_id = slot;
-                FUN_10004d30();
+                BrPalFetch();
                 (*(int *)&g_brCfgPlayers) = pkt.m_1006CE00();
                 (*(int *)&g_Br0B380C) = pkt.m_1006CE00();
                 g_226e80 = pkt.m_1006CE00();
@@ -604,7 +604,7 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
                 DAT_1021cdb0 = pkt.m_1006CE00();
                 DAT_10226a40 = pkt.m_1006CE00();
                 DAT_10226a3c = pkt.m_1006CE00();
-                FUN_10004900(pNet, slot, (*(char *)&g_aBrRaceCar[0].f29AC), (*(char *)&g_aBrRaceCar[0].f29AD), (*(char *)&g_aBrRaceCar[0].f29AE), &(g_aBrCfgPlayerName[0]), 0x10);
+                BrNetSend4900(pNet, slot, (*(char *)&g_aBrRaceCar[0].f29AC), (*(char *)&g_aBrRaceCar[0].f29AD), (*(char *)&g_aBrRaceCar[0].f29AE), &(g_aBrCfgPlayerName[0]), 0x10);
                 FUN_10004dc0(slot, 2);
                 break;
 

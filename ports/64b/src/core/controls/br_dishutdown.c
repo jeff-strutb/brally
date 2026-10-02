@@ -92,16 +92,16 @@ void BrExt_10079550(void)
   }
   if (DAT_118eef18 == 0) {
     if (DAT_118eef14 != (int *)0x0) {
-      (*(CC_std_1 *)(*(int *)(DAT_118eef14) + 8))(DAT_118eef14);
+      (*(CC_std_1 *)&((void **)*(void ***)((DAT_118eef14)))[2])(DAT_118eef14);
       DAT_118eef14 = (int *)0x0;
     }
     if (DAT_118eef04 != (int *)0x0) {
-      (*(CC_std_1 *)(*(int *)(DAT_118eef04) + 8))(DAT_118eef04);
+      (*(CC_std_1 *)&((void **)*(void ***)((DAT_118eef04)))[2])(DAT_118eef04);
       DAT_118eef04 = (int *)0x0;
     }
     if ((*(int * *)&g_brFfb) != (int *)0x0) {
-      (*(CC_std_1 *)(*(int *)((*(int * *)&g_brFfb)) + 32))((*(int * *)&g_brFfb));
-      (*(CC_std_1 *)(*(int *)((*(int * *)&g_brFfb)) + 8))((*(int * *)&g_brFfb));
+      (*(CC_std_1 *)&((void **)*(void ***)(((*(int * *)&g_brFfb))))[8])((*(int * *)&g_brFfb));
+      (*(CC_std_1 *)&((void **)*(void ***)(((*(int * *)&g_brFfb))))[2])((*(int * *)&g_brFfb));
       (*(int * *)&g_brFfb) = (int *)0x0;
     }
   }

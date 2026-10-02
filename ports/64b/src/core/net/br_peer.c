@@ -44,7 +44,7 @@ void FUN_1006a650(void)
   int i;
 
   for (i = 0; i < 16; i++) {
-    pPeer = &(*(int *)&g_aBrPeer71)[i];
+    pPeer = &g_aBrPeer71[i];
     h1[0] = (HANDLE)g_hBrSndWake86;
     h1[1] = pPeer->hMutex;
     wr = WaitForMultipleObjects(2, h1, 0, 0xffffffff);
@@ -66,8 +66,8 @@ void FUN_1006a650(void)
 
   /* each peer, and the diagonal of the history grid beside it */
   for (i = 0; ; i++) {
-    pPeer = &(*(int *)&g_aBrPeer71)[i];
-    pAlt = &(*(int *)&g_aBr178FEF8)[i][i];
+    pPeer = &g_aBrPeer71[i];
+    pAlt = &g_aBr178FEF8[i][i];
     h1[0] = (HANDLE)g_hBrSndWake86;
     h1[1] = pPeer->hMutex;
     wr = WaitForMultipleObjects(2, h1, 0, 0xffffffff);
@@ -94,7 +94,7 @@ void FUN_1006a650(void)
     if (i + 1 >= 16) {
       t = 4;
       for (i = 0; i < 16; i++) {
-        pPeer = &(*(int *)&g_aBrPeer71)[i];
+        pPeer = &g_aBrPeer71[i];
         h2[0] = (HANDLE)g_hBrSndWake86;
         h2[1] = pPeer->hMutex;
         wr = WaitForMultipleObjects(2, h2, 0, 0xffffffff);
@@ -131,9 +131,9 @@ int BrNetPeerMutexInit(void)
   g_178FEE8 = BrSub10075020();
   DAT_117b324c = BrDelta_100713A0();
   for (i = 0; i < 16; i++) {
-    (*(int *)&g_aBrPeer71)[i].hMutex = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+    g_aBrPeer71[i].hMutex = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
     for (j = 0; j < 16; j++) {
-      (*(int *)&g_aBr178FEF8)[j][i].hMutex = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+      g_aBr178FEF8[j][i].hMutex = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
     }
   }
   FUN_1006a330();
@@ -152,11 +152,11 @@ int BrNetPeerMsgCancel(int id)
   int i;
 
   for (i = 0; i < 16; i++) {
-    WaitForSingleObject((*(int *)&g_aBrPeer71)[i].hMutex,0xffffffff);
-    if (((*(int *)&g_aBrPeer71)[i].f004 == id) && (((*(int *)&g_aBrPeer71)[i].f02C & 0x3f) < 5)) {
-      (*(int *)&g_aBrPeer71)[i].f02C = 0;
+    WaitForSingleObject(g_aBrPeer71[i].hMutex,0xffffffff);
+    if ((g_aBrPeer71[i].f004 == id) && ((g_aBrPeer71[i].f02C & 0x3f) < 5)) {
+      g_aBrPeer71[i].f02C = 0;
     }
-    ReleaseMutex((*(int *)&g_aBrPeer71)[i].hMutex);
+    ReleaseMutex(g_aBrPeer71[i].hMutex);
   }
   return;
 }
@@ -208,12 +208,12 @@ void BrNetPeerMsgReset(void)
 
   for (i = 0; i < 16; i++) {
     h[0] = (HANDLE)g_hBrSndWake86;
-    h[1] = (*(int *)&g_aBrPeer71)[i].hMutex;
+    h[1] = g_aBrPeer71[i].hMutex;
     if (WaitForMultipleObjects(2, h, 0, 0xffffffff) == 0) {
       ExitThread(0);
     }
     BrObjResetMsgHdr(&g_aBrPeerMsg[i].bs);
-    ReleaseMutex((*(int *)&g_aBrPeer71)[i].hMutex);
+    ReleaseMutex(g_aBrPeer71[i].hMutex);
   }
 }
 

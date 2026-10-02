@@ -100,7 +100,7 @@ int BrNetEnumSessionsStart(void *pIface)
     desc[8] = DAT_10077508;
     DAT_10ac5bcc = 1;
     if (DAT_10ac5bf0 != 0) {
-        r = (*(BrDpEnumSessionsFn *)(*(int *)p + 0x34))
+        r = (*(BrDpEnumSessionsFn *)&((void **)*(void ***)(p))[13])
                 (p, desc, 0, (void *)BrNetEnumSessionCb,
                  (*(void * *)&g_brOwner5BC72C), 0x91);
     } else {

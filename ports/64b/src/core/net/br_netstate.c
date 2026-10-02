@@ -654,7 +654,7 @@ void BrNetDropMatching(int key)
 
         BrNetSlotSetF02C(i, 0);
 
-        sprintf(szMsg, "%%15%s left the game.", (*(BrNetSlot978 (*)[])&g_aBrNetSlot)[i].name);
+        sprintf(szMsg, "%%15%s left the game.", g_aBrNetSlot[i].szName);
         FUN_100038a0(szMsg);
     }
 }

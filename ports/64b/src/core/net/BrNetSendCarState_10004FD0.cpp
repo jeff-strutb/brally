@@ -97,7 +97,7 @@ int BrNetSendCarState(void *pState)
 
         BrNetPktStamp(&pkt);
         pkt.PutByte((unsigned char)(g_id | 0x40));
-        BrCarStateEncode((struct BrBitStream *)(&pkt), pState);
+        BrCarStateEncode((struct BrBitStream *)(&pkt), (const struct BrCarState *)pState);
         if (SendPkt(&g_brP277B40, &pkt) == -1)
             return 0;
         return 1;

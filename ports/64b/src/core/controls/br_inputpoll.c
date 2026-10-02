@@ -843,8 +843,8 @@ void BrDiKeyboardShutdown(void)
     return;
   }
   if (((((intptr_t)(g_brFfb.pEffectSpring))) == 0) && ((*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0)) != (int *)0x0)) {
-    (*(CC_std_1 *)(*(int *)((*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0))) + 32))((*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0)));
-    (*(CC_std_1 *)(*(int *)((*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0))) + 8))((*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0)));
+    (*(CC_std_1 *)&((void **)*(void ***)(((*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0)))))[8])((*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0)));
+    (*(CC_std_1 *)&((void **)*(void ***)(((*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0)))))[2])((*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0)));
     (*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0)) = (int *)0x0;
   }
   return;

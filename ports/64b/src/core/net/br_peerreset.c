@@ -12,20 +12,7 @@
 
 #include <windows.h>
 
-/* One networking record: 0x96C bytes, its own mutex at +0, the payload
- * buffer in the middle, and the four-word queue header at the tail. */
-typedef struct BrPeerRec {
-    HANDLE hMutex;          /* +0x000 */
-    int    f04;             /* +0x004 -- the id BrNetPeerMsgCancel matches */
-    int    f08;             /* +0x008 -- stamped with the current tick */
-    char   pad0c[0x20];     /* +0x00C */
-    int    f2c;             /* +0x02C -- state, low 6 bits */
-    char   pad30[0x92c];    /* +0x030 */
-    int    f95c;            /* +0x95C -- queue header, four words */
-    int    f960;
-    int    f964;
-    int    f968;
-} BrPeerRec;
+/* BrPeerRec: br_coretypes.h */
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
@@ -50,20 +37,20 @@ void FUN_1006a330(void)
     DAT_11849e58 = 0;
     for (i = 0; i < 16; i++) {
         WaitForSingleObject(g_aBrPeer71[i].hMutex, 0xffffffff);
-        g_aBrPeer71[i].f95c = 0;
+        g_aBrPeer71[i].f95C = 0;
         g_aBrPeer71[i].f960 = 0;
         g_aBrPeer71[i].f964 = 0;
         g_aBrPeer71[i].f968 = 0;
-        g_aBrPeer71[i].f2c = 0;
+        g_aBrPeer71[i].f02C = 0;
         ReleaseMutex(g_aBrPeer71[i].hMutex);
         for (j = 0; j < 16; j++) {
             WaitForSingleObject(g_aBr178FEF8[j][i].hMutex, 0xffffffff);
-            g_aBr178FEF8[j][i].f08 = DAT_117b324c;
-            g_aBr178FEF8[j][i].f95c = 0;
+            g_aBr178FEF8[j][i].f008 = DAT_117b324c;
+            g_aBr178FEF8[j][i].f95C = 0;
             g_aBr178FEF8[j][i].f960 = 0;
             g_aBr178FEF8[j][i].f964 = 0;
             g_aBr178FEF8[j][i].f968 = 0;
-            g_aBr178FEF8[j][i].f2c = 0;
+            g_aBr178FEF8[j][i].f02C = 0;
             ReleaseMutex(g_aBr178FEF8[j][i].hMutex);
         }
     }

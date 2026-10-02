@@ -5612,7 +5612,7 @@ void FUN_100356b0(void);
 #pragma pop_macro("FUN_100356b0")
 #pragma push_macro("FUN_100361a0")
 #undef FUN_100361a0
-int FUN_100361a0(int *, char *, char *, int);
+int FUN_100361a0(void *, void *, void *, int);
 #pragma pop_macro("FUN_100361a0")
 #pragma push_macro("FUN_10036740")
 #undef FUN_10036740

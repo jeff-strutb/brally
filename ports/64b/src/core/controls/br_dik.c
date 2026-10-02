@@ -227,8 +227,8 @@ int BrJoyScanAny(int *param_1)
       return 1;
     }
   }
-  (*(CC_std_1 *)(*(int *)((*(int * *)&g_brFfb)) + 100))((int)(*(int * *)&g_brFfb));
-  iVar1 = (*(CC_std_3 *)(*(int *)((*(int * *)&g_brFfb)) + 36))((int)(*(int * *)&g_brFfb),0x110,(int)auStack_110);
+  (*(CC_std_1 *)&((void **)*(void ***)(((*(int * *)&g_brFfb))))[25])(*(int * *)&g_brFfb);
+  iVar1 = (*(CC_std_3 *)&((void **)*(void ***)(((*(int * *)&g_brFfb))))[9])((*(int * *)&g_brFfb),0x110,(int)auStack_110);
   if ((iVar1 != 0) && (iVar1 == -0x7ff8ffe2)) {
     BrDiAcquire();
   }

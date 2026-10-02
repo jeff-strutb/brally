@@ -198,7 +198,8 @@ typedef struct BrPeerSub {
 typedef struct BrPeerRec {
     void *hMutex;                            /* +0x0000 */
     int f004;                                /* +0x0004 */
-    uint8_t _pad0008[0x24];
+    int f008;                                /* +0x0008  stamped with the current tick */
+    uint8_t _pad000C[0x20];
     int f02C;                                /* +0x002C */
     int f030;                                /* +0x0030 */
     unsigned char f034;                      /* +0x0034 */
