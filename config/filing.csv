@@ -597,6 +597,7 @@ glide_va,name,module,basis,file
 0x10035AC0,BrNetSessionStore,net,manual,src/core/net/br_dplaysession.c
 0x10035BB0,BrComCreateInstance,net,neighbour-1,src/core/net/br_dplayjoin.c
 0x10035BE0,BrDpShutdown,net,filed,src/core/net/br_dplayjoin.c
+0x10035C50,BrNetSessionHost,net,manual,src/core/net/BrNetSessionHost_10035C50.cpp
 0x10036040,BrSub1003C9B0,menus,manual,src/core/menus/br_uilistwalk.c
 0x10036080,BrSlotMark,net,manual,src/core/net/br_slottable.c
 0x10036100,BrSlotsResetIfBZero,gamedata,filed,src/core/gamedata/br_slots.c

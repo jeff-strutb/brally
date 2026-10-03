@@ -32,8 +32,7 @@
 @drop type:BrDpDesc2
 @drop type:BrDpOpenFn
 @drop type:BrDpCreatePlayerFn
-@drop fn:BrNetSessionHost
-@after fn:BrNetSessionHost
+@after type:BrDpCreatePlayerFn
 /* g_br73 is the port's gathering of separate originals.  The matching build
  * names the ones used here as the globals they are (config/globals_glide.csv),
  * so each relocation resolves to its own variable. */
