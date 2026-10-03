@@ -26,9 +26,9 @@ typedef struct BrMixVoice {     /* one mixer voice, 0x18 bytes */
   int baseVol;                  /* 0x14 */
 } BrMixVoice;
 typedef struct BrModState {
-  short x0;                     /* 0x00  ticks per row */
-  short x2;                     /* 0x02  ticks left in the row */
-  short x4;                     /* 0x04  rows left in the pattern */
+  unsigned short x0;                   /* 0x00  ticks per row */
+  unsigned short x2;                   /* 0x02  ticks left in the row */
+  unsigned short x4;                   /* 0x04  rows left in the pattern */
   char pad06[2];
   unsigned char *order;         /* 0x08  the order list */
   unsigned char *row;           /* 0x0C  the next packed row */
@@ -93,7 +93,7 @@ void osRecvMesg(void *mq, void *msg, int flag);
 int osAiGetStatus(void);
 int osAiGetLength(void);
 void BrMusicLoopSamples(void);
-void func_8025721C(void);
+void BrModTick(void);
 void BrMixMusicVoice(short *buf, int bytes, int voice);
 void BrMixSfx(short *buf, unsigned int bytes);
 void BrSfxLoopSamples(void);
@@ -247,6 +247,89 @@ unsigned char *BrModRowRead(unsigned char *p)
     }
   }
   return p;
+}
+
+/* -- declarations: BrModTick -- */
+extern unsigned char *D_803789D0[];     /* the module's patterns (row count at +5, rows at +9) */
+extern int D_802A4A04;
+/* -- end declarations -- */
+
+/* WHAT IT DOES: One tick of the module player: when the row's ticks run
+ * out, start the next row (moving to the next order's pattern when the
+ * pattern ends, wrapping to the restart order) and read it; then for every
+ * channel step the arpeggio through its three notes, slide the rate by
+ * the portamento in period space (period = K / rate, clamped at 1; a tone
+ * portamento stops at its target), and slide the volume within 0..64.
+ * The arpeggio index is bumped and masked in two stores; the target test
+ * puts the clamping arm first.
+ * RESIDUE (81): temp-register numbering only (register-blind gap 2); 96
+ * declaration orders and 394 permuter compiles leave it. */
+/* @implements 0x8025721C tgr BrModTick */
+void BrModTick(void)
+{
+  int i;
+  unsigned char *pat;
+  int idx;
+  long long per;
+  short v;
+  unsigned int smp;
+  long long r;
+
+  if (--D_80378FA0.x2 == 0) {
+    D_80378FA0.x2 = D_80378FA0.x0;
+    if (D_80378FA0.x4 == 0) {
+      D_802A4A04 = 0;
+      if (++D_80378FA0.x10 == D_80378FA0.len) {
+        D_80378FA0.x10 = D_80378FA0.restart;
+      }
+      pat = D_803789D0[D_80378FA0.order[D_80378FA0.x10]];
+      D_80378FA0.row = pat + 9;
+      D_80378FA0.x4 = pat[5];
+    }
+    D_80378FA0.x4--;
+    D_80378FA0.row = BrModRowRead(D_80378FA0.row);
+  }
+  for (i = 0; i < D_802A49C0; i++) {
+    smp = D_80378DD0[i].smp;
+    if (D_80378DD0[i].arpOn != 0 && smp != 0 && D_802A4798[i].rate != 0) {
+      idx = D_80378DD0[i].arpIdx;
+      D_802A4798[i].rate = (&D_80379568[0][0])[(D_803787D0[smp - 1]->relNote + D_80378DD0[i].arp[idx]) & 0xffff];
+      D_80378DD0[i].arpIdx++;
+      D_80378DD0[i].arpIdx &= 3;
+    }
+    if (D_80378DD0[i].porta != 0 && D_802A4798[i].rate != 0) {
+      per = 0xEE9FCFF0B5ULL / D_802A4798[i].rate;
+      per -= D_80378DD0[i].porta;
+      if (per < 1) {
+        per = 1;
+      }
+      if (D_80378DD0[i].target != 0) {
+        r = 0xEE9FCFF0B5LL / per;
+        if (D_80378DD0[i].porta < 0) {
+          if (r < D_80378DD0[i].target) {
+            r = D_80378DD0[i].target;
+          }
+        } else if (r > D_80378DD0[i].target) {
+          r = D_80378DD0[i].target;
+        }
+        D_802A4798[i].rate = r;
+      } else {
+        D_802A4798[i].rate = 0xEE9FCFF0B5LL / per;
+      }
+    }
+    if (D_80378DD0[i].slide != 0) {
+      v = D_80378DD0[i].slide + D_80378DD0[i].vol;
+      if (v < 0) {
+        v = 0;
+      } else if (v > 64) {
+        v = 64;
+      }
+      D_80378DD0[i].vol = v;
+      if (smp != 0) {
+        D_802A4798[i].baseVol = (D_80378DD0[i].vol * D_803787D0[smp - 1]->vol) >> 6;
+      }
+    }
+  }
 }
 
 /* WHAT IT DOES: Reset the module player: playback state flags, and every
@@ -497,7 +580,7 @@ void BrMusicThread(void *arg)
     readPos = aiPos;
     BrMusicLoopSamples();
     if (odd != 0 && D_80378F98 != 0) {
-      func_8025721C();
+      BrModTick();
     }
     save = D_802A4790;
     BrMixMusic(D_803747D0, bytes);

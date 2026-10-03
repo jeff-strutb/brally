@@ -512,6 +512,7 @@ va,name,kind
 80256D3C,BrMusicLoopSamples,func
 80256DEC,BrModRowRead,func
 802571AC,BrModReset,func
+8025721C,BrModTick,func
 802575C4,BrMusicInit,func
 802578F4,BrMusicStop,func
 80257964,BrMusicStart,func
