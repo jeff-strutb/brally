@@ -96,8 +96,8 @@ BrHudEnv     *BrHudGetEnv(void)   { return &g_hud; }
 
 /* g_hud and g_screen are the port's gatherings of scattered originals.  The
  * byte-exact functions of this file read the fields as the separate globals
- * they are, by their DAT_ names; the two T3 bodies keep the structs and
- * their pinned relocation rows. */
+ * they are, by their DAT_ names; the T3 body (BrGfxDrawTexRect) keeps the
+ * structs and its pinned relocation rows. */
 extern int32_t DAT_100bcbfc;
 #define HUD_f0BD3F4 DAT_100bcbfc
 extern int32_t DAT_10226a4c;
@@ -122,6 +122,10 @@ extern const char *DAT_104abb20;
 #define HUD_pszCentre DAT_104abb20
 extern char DAT_104ab708[32];
 #define HUD_szGap DAT_104ab708
+extern int32_t DAT_100ad768;
+#define HUD_f0ADF60 DAT_100ad768
+extern char DAT_104abb08[64];
+#define HUD_szText DAT_104abb08
 extern int32_t DAT_100a7514;
 #define SCR_cx DAT_100a7514
 extern int32_t DAT_100a7518;
@@ -738,10 +742,10 @@ void BrHudDraw(BrHudView *aViews, int a2)
     /* speed FIRST: assigning it while the aViews arg slot is still unread
      * keeps VC5 from parking speed in the dead arg slot -- the original
      * gives it a real `push ecx` frame slot. */
-    speed = g_hud.pRace->f1030;
-    pView = &aViews[g_screen.iView];
+    speed = HUD_pRace->f1030;
+    pView = &aViews[SCR_iView];
 
-    BrSub_1003289F(0, pView->y, g_screen.cx, pView->h);
+    BrSub_1003289F(0, pView->y, SCR_cx, pView->h);
 
     /* 10017DCF: negative (and NaN) speeds are pinned to zero.  Bare kF340:
      * the original is `fld dword [speed]; fcomp qword [kF340]` -- speed on
@@ -766,20 +770,20 @@ void BrHudDraw(BrHudView *aViews, int a2)
      * snprintf): the original calls the /MD CRT import, and the extra size
      * argument reshapes the whole push sequence.  "%%yw" is a text-markup
      * escape BrTextDraw consumes, not a printf directive. */
-    if (g_hud.f0ADF60 != 0)
-        sprintf(g_hud.szText, "%%yw%.0f", speed * kF348);
+    if (HUD_f0ADF60 != 0)
+        sprintf(HUD_szText, "%%yw%.0f", speed * kF348);
     else
-        sprintf(g_hud.szText, "%%yw%.0f", speed);
+        sprintf(HUD_szText, "%%yw%.0f", speed);
 
     /* x first, y read straight out of the array, the view pointer formed
      * last: the original loads h, forms the pointer, then loads y. */
-    x = g_screen.cx - 0x10;
-    y = aViews[g_screen.iView].h + aViews[g_screen.iView].y - 4;
-    pView = &aViews[g_screen.iView];
+    x = SCR_cx - 0x10;
+    y = aViews[SCR_iView].h + aViews[SCR_iView].y - 4;
+    pView = &aViews[SCR_iView];
 
-    if (g_hud.f22AF1C != 0)
+    if (HUD_f22AF1C != 0)
         return;
-    if (g_hud.f0BD3F4 == 0)
+    if (HUD_f0BD3F4 == 0)
         return;
 
     pSpr = BrHudSpriteAt(pView->iSprite);
@@ -793,12 +797,12 @@ void BrHudDraw(BrHudView *aViews, int a2)
      * is `add r,-3`, an in-place `y -= 3` would be `sub r,3`.  The km arm
      * passes `x - 3` as an EXPRESSION (`lea ecx,[esi-3]`) without touching
      * x. */
-    if (g_hud.f0ADF60 != 0) {
+    if (HUD_f0ADF60 != 0) {
         yt = y - 3;
-        BrTextDraw(g_hud.szText, x, yt);
+        BrTextDraw(HUD_szText, x, yt);
     } else {
         yt = y - 3;
-        BrTextDraw(g_hud.szText, x - 3, yt);
+        BrTextDraw(HUD_szText, x - 3, yt);
     }
 
     BrSub_100192F0(0x0F);
@@ -806,7 +810,7 @@ void BrHudDraw(BrHudView *aViews, int a2)
 
     /* 10015462: the unit string comes from BrStrGet (the one-argument
      * bounds-checked table lookup), and only the km arm mutates x. */
-    if (g_hud.f0ADF60 != 0) {
+    if (HUD_f0ADF60 != 0) {
         BrTextDraw(BrStrGet(0xEB), x, yt);
     } else {
         x -= 3;

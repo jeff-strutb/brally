@@ -26,6 +26,10 @@
 @drop define:HUD_pszCentre
 @drop var:DAT_104ab708
 @drop define:HUD_szGap
+@drop var:DAT_100ad768
+@drop define:HUD_f0ADF60
+@drop var:DAT_104abb08
+@drop define:HUD_szText
 @drop var:DAT_100a7514
 @drop define:SCR_cx
 @drop var:DAT_100a7518
@@ -38,8 +42,8 @@
 
 /* g_hud and g_screen are the port's gatherings of scattered originals.  The
  * byte-exact functions of this file read the fields as the separate globals
- * they are, by their DAT_ names; the two T3 bodies keep the structs and
- * their pinned relocation rows. */
+ * they are, by their DAT_ names; the T3 body (BrGfxDrawTexRect) keeps the
+ * structs and its pinned relocation rows. */
 #define HUD_f0BD3F4 g_hud.f0BD3F4
 #define HUD_f22AF1C g_hud.f22AF1C
 #define HUD_f6909B4 g_hud.f6909B4
@@ -52,6 +56,8 @@
 #define HUD_aLastSeq g_hud.aLastSeq
 #define HUD_pszCentre g_hud.pszCentre
 #define HUD_szGap g_hud.szGap
+#define HUD_f0ADF60 g_hud.f0ADF60
+#define HUD_szText g_hud.szText
 #define SCR_cx g_screen.cx
 #define SCR_cy g_screen.cy
 #define SCR_cViews g_screen.cViews
