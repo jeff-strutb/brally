@@ -229,6 +229,7 @@ glide_va,name,module,basis,file
 0x10016AA0,BrWeatherStepWind,drawing,filed,src/core/drawing/br_hudscene.c
 0x10016BE0,BrWeatherStepLightning,drawing,description,src/core/drawing/br_hudscene.c
 0x10016C90,BrWeatherStepParticles,drawing,description,src/core/drawing/br_hudscene.c
+0x10017910,BrEarLoad,audio,filed,src/core/audio/br_earload.c
 0x10017F10,BrFadeRelease,drawing,filed,src/core/drawing/br_fadewipe.c
 0x10017F30,BrFadeLatch,drawing,filed,src/core/drawing/br_fadewipe.c
 0x10017F60,BrSceneAccumReset,drawing,neighbour-1,src/core/drawing/br_clear.c
@@ -327,6 +328,7 @@ glide_va,name,module,basis,file
 0x1001EE70,BrDlClipTriZ,drawing,filed,src/core/drawing/br_dltrim.c
 0x1001F0D0,BrClipPlaneW,drawing,filed,src/core/drawing/br_dlclip.c
 0x1001F200,BrClipLerpVert,drawing,neighbour,src/core/drawing/br_dlclip.c
+0x1001F2B0,BrClipPlaneWPlusF04,drawing,filed,src/core/drawing/br_dlclip.c
 0x1001F3F0,BrClipPlaneWMinusF04,drawing,filed,src/core/drawing/br_dlclip.c
 0x1001F530,BrClipPlaneWPlusF08,drawing,filed,src/core/drawing/br_dlclip.c
 0x1001F670,BrClipPlaneWMinusF08,drawing,filed,src/core/drawing/br_dlclip.c

@@ -26,12 +26,10 @@
  *     0x1001F8F0   d = w - z            311 B   FAR
  *     0x1001F530   d = y + w            311 B   BOTTOM
  *
- * !! RESIDUE.  SIX of the seven are byte-exact.  Only LEFT (0x1001F2B0) is
- * still out, by 2 bytes, and both are the field displacement in ONE
- * `fld`/`fadd` pair -- the dPrev site:
- *
- *     LEFT   orig  fld [w] ; fadd [x]      ours  fld [x] ; fadd [w]
- *                                          (the dCur site now matches)
+ * LEFT (0x1001F2B0) was the last one out, by its dPrev `fld [w] ; fadd [x]`
+ * pair (ours had x first).  No spelling moved it: it is the commutative-
+ * operand key sort, a hash of symbol indices, and the br_drawcar.h include at
+ * the top supplies the symbol count that orders it (all seven stay exact).
  *
  * !! THE DISTANCE EXPRESSION IS PER-SITE, NOT PER-PLANE.  This is what the
  * earlier pass got wrong, and it cost NEAR several sessions.  The macro body
@@ -115,6 +113,10 @@
  * compared unsigned, and there is no "is the pool installed" test either.
  */
 #include "slice1_03.h"
+/* br_drawcar.h's declarations (its drawing-module neighbour).  The count of symbols declared ahead of the
+ * code is load-bearing: VC5's sort of commutative operands hashes symbol
+ * indices, and this count puts 0x1001F2B0's operands in the original's order. */
+#include "br_drawcar.h"
 
 
 /* 0x105CDA00 -- head of the spare-vertex free list, as the seven planes
@@ -244,13 +246,6 @@ BR_CLIP_PLANE(BrClipPlaneW, BRCLIP_W, BRCLIP_W)
 /* WHAT IT DOES: cuts a polygon against the left edge of the screen. */
 /* @t4-pass 0x1001F2B0 1 2026-09-09 probes 10 bytes 307 insns 119 regions 1 rows 3 census yes  (hand, fn.py variants: LEAD/plain DIST pairing, wrong-plane DIST; corpus HIT 5 at +0x30) */
 /* @t4-pass 0x1001F2B0 2 2026-09-09 probes 10 bytes 307 insns 119 regions 1 rows 3 census yes  (hand, fn.py variants: lead/plain macro parens and operand swap; zero movement on the current numbers) */
-/* @t3 0x1001F2B0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 307/311 insns 119/120 rows 2+1 regions 1 oracle UNCLASSIFIED
- * @t3-effort passes 2 zero-movement 1 2
- * residue is the dPrev-site commutative fadd operand order (fld w; fadd x
- * vs fld x; fadd w) plus fst vs fstp+fld keep-reload; the LEAD paren that
- * flips dCur also sinks dPrev, so no spelling reaches both.  Dossier in the
- * file header.  Do not reopen before the end-grind. */
 /* @implements 0x1001F2B0 glide BrClipPlaneWPlusF04 */
 BR_CLIP_PLANE(BrClipPlaneWPlusF04, BRCLIP_W_PLUS_X_LEAD, BRCLIP_W_PLUS_X)
 
