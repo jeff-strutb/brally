@@ -16,17 +16,6 @@
  * failure unwinds the lock and the buffer and reports the error. */
 /* @t4-pass 0x1006B240 1 2026-09-12 probes 10 bytes 370 insns 152 regions 2 rows 4 census no  (hand: memset literal/sizeof, truthiness, !=0 flags, hr decl position, negated caps arms (15, worse), desc field order (16, worse), memcpy casts, comment strip, (int32_t)1 -- all inert or worse) */
 /* @t4-pass 0x1006B240 2 2026-09-12 probes 10 bytes 370 insns 152 regions 2 rows 4 census yes  (hand: cast return, SetVolume/Create/Unlock zero spellings, 0-vs-NULL x2, unsigned zeros, early-return arm, f28 truthy, sizeof(desc/caps) -- all inert; census push 33 jcc 10 call 8 rep 2 ret 3 IDENTICAL both streams) */
-/* @t3 0x1006B240 2026-09-12 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 370/370 insns 152/152 rows 2+2 regions 2 oracle UNCLASSIFIED
- * @t3-effort passes 2 zero-movement 1 2
- * Residue is ONE fold at the two caps-arm returns: the original returns the
- * hr web (`mov eax,esi`); ours proves hr==0 through the GetCaps branch and
- * rematerialises (`xor eax,eax`) -- the tritest/netopen constant-return
- * class, cancelled as the mov/xor singleton quad. Size equal at 370/370 in
- * the placed image instructions equal,
- * census identical. Everything else -- the memset'd desc, the arg-slot
- * nLock2, the label-inside-the-failure-arm cleanup, the per-call pBuf
- * re-reads -- is byte-exact. Do not reopen before the end-grind. */
 /* @implements 0x1006B240 glide BrSndVoiceCreate */
 int32_t BrSndVoiceCreate(BrSndVoice *pVoice)
 {
@@ -95,12 +84,15 @@ fail:
             pVoice->pBuf->pVtbl->Release(pVoice->pBuf);
             pVoice->pBuf = NULL;
         }
-        return hr;
-    }
-    if (caps.dwFlags & BR_DSBCAPS_LOCHARDWARE) {
+    } else if (caps.dwFlags & BR_DSBCAPS_LOCHARDWARE) {
         pVoice->f24 = 1;
     } else {
         pVoice->f24 = 0;
     }
+    /* ONE return after the join: hr is then not a known 0 on the caps
+     * arms, so both return the hr register (`mov eax,esi`) and VC5 copies
+     * the epilogue into each arm -- the failure path's Release-skip jumps
+     * straight into the second copy.  A `return hr` inside each arm lets
+     * VC5 prove hr == 0 on the caps side and fold it to `xor eax,eax`. */
     return hr;
 }

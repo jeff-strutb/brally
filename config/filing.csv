@@ -1200,6 +1200,7 @@ glide_va,name,module,basis,file
 0x1006AFF0,BrNetWriteRaceOpts,net,prefix,src/core/net/BrNetWriteRaceOpts_1006AFF0.cpp
 0x1006B080,BrNetWriteTag20,net,prefix,src/core/net/BrNetWriteTag20_1006B080.cpp
 0x1006B1E0,BrSndThreadStop,audio,description,src/core/audio/br_sndvoice.c
+0x1006B240,BrSndVoiceCreate,audio,filed,src/core/audio/br_sndbuf.c
 0x1006B3C0,BrSndListAppend,audio,neighbour-1,src/core/audio/br_sndvoice.c
 0x1006B400,BrSndVoiceApplyPan,audio,description,src/core/audio/br_sndvoice.c
 0x1006B420,BrSndVoiceApplyFreq,audio,description,src/core/audio/br_sndvoice.c
