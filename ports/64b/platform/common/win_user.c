@@ -221,6 +221,17 @@ BOOL WINAPI KillTimer(HWND h, UINT_PTR id)
     return FALSE;
 }
 
+/* A scripted run owns the input: the desktop pointer passing over the window
+ * would steer the game's cursor away from the script's, and another window
+ * taking the focus would park the game in WaitMessage. */
+static int scripted(void)
+{
+    static int on = -1;
+    if (on < 0)
+        on = getenv("BR_SCRIPT") != NULL;
+    return on;
+}
+
 static void timers(void)
 {
     DWORD now = plat_time_ms();
@@ -269,6 +280,8 @@ void plat_deliver(const host_event *e)
                 qpush((HWND)s_main, WM_CHAR, (WPARAM)ev.ch, 1);
             break;
         case HOST_EV_MOUSE: {
+            if (scripted())
+                break;
             /* the game reads the mouse through DirectInput: its cursor is
              * steered to the pointer (dx.c plat_mouse_abs), and the left button */
             plat_mouse_abs(ev.x, ev.y);
@@ -278,6 +291,8 @@ void plat_deliver(const host_event *e)
             break;
         }
         case HOST_EV_FOCUS:
+            if (scripted())
+                break;
             s_active = ev.down;
             if (s_main) {
                 qpush((HWND)s_main, WM_ACTIVATEAPP, (WPARAM)ev.down, 0);

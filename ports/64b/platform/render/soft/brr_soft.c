@@ -356,6 +356,32 @@ static float fog_table(const brr_state *st, float w)
     return st->fog_table[63] / 255.0f;
 }
 
+/* The Voodoo's 16-bit W-buffer word: 4-bit exponent, 12-bit mantissa of 1/w
+ * as a .32 fraction. Depth is stored and compared at this precision, which is
+ * what lets a second pass over the same polygon (the car shadow is drawn with
+ * grDepthBufferFunction(EQUAL)) hit every pixel the first one wrote; the
+ * Z-buffer keeps ooz's 16 integer bits. */
+static float voodoo_depth(int mode, float z, float oow)
+{
+    uint32_t t, m, w;
+    int e;
+    if (mode != 2 && mode != 4) {
+        float q = z * 65535.0f;
+        return floorf(q < 0 ? 0 : q > 65535.0f ? 65535.0f : q) / 65536.0f;
+    }
+    if (oow >= 1.0f)
+        return 0;
+    if (oow <= 0.0f)
+        return 65535.0f / 65536.0f;
+    t = (uint32_t)fminf(oow * 4294967296.0f, 4294967040.0f);
+    if (t == 0)
+        return 65535.0f / 65536.0f;
+    e = __builtin_clz(t);
+    m = e <= 19 ? (~t >> (19 - e)) : (~t << (e - 19));
+    w = ((uint32_t)e << 12) | (m & 0xFFF);
+    return (float)(w < 0xFFFF ? w + 1 : w) / 65536.0f;
+}
+
 static void shade(const brr_state *st, int px, float z, float oow, rgba it, float s, float t)
 {
     rgba tex = { 0, 0, 0, 0 }, cc_l, cc_o, out, dst;
@@ -363,7 +389,9 @@ static void shade(const brr_state *st, int px, float z, float oow, rgba it, floa
     uint32_t d;
     int o = px;
 
-    if (st->depth_mode && !cmp(st->depth_fn, z, s_dep[o]))
+    float dz = voodoo_depth(st->depth_mode, z, oow);
+
+    if (st->depth_mode && !cmp(st->depth_fn, dz, s_dep[o]))
         return;
     if (st->texture) {
         rgba tx = sample(st, s, t);
@@ -412,7 +440,7 @@ static void shade(const brr_state *st, int px, float z, float oow, rgba it, floa
     s_col[o] = 0xFF000000u | (uint32_t)(out.r * 255.0f + 0.5f) << 16 | (uint32_t)(out.g * 255.0f + 0.5f) << 8
              | (uint32_t)(out.b * 255.0f + 0.5f);
     if (st->depth_mode && st->depth_mask)
-        s_dep[o] = z;
+        s_dep[o] = dz;
 }
 
 static void tri(const brr_state *st, const brr_vertex *a, const brr_vertex *b, const brr_vertex *c)

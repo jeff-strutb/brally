@@ -67,7 +67,7 @@ typedef struct U {
     int32_t cc_fn, cc_factor, cc_local, cc_other, cc_invert;
     int32_t ac_fn, ac_factor, ac_local, ac_other, ac_invert;
     int32_t tc_rgb_fn, tc_rgb_factor, tc_alpha_fn, tc_alpha_factor, tc_rgb_invert, tc_alpha_invert;
-    int32_t has_tex, atest_fn, fog_mode, pad;
+    int32_t has_tex, atest_fn, fog_mode, depth_mode;
     float atest_ref, vw, vh, pad2;
     float konst[4], fog_color[4];
     float fog[64];
@@ -667,6 +667,7 @@ void brr_draw(const brr_state *st, const brr_vertex *v, int n)
     u->atest_fn = st->atest_fn;
     u->atest_ref = st->atest_ref;
     u->fog_mode = st->fog_mode & 0xFF;
+    u->depth_mode = st->depth_mode;
     u->vw = (float)s_w;
     u->vh = (float)s_h;
     u->konst[0] = ((st->constant >> 16) & 0xFF) / 255.0f;

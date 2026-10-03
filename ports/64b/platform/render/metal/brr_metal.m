@@ -39,7 +39,7 @@ static NSString *const k_src = @
 "  int cc_fn, cc_factor, cc_local, cc_other, cc_invert;\n"
 "  int ac_fn, ac_factor, ac_local, ac_other, ac_invert;\n"
 "  int tc_rgb_fn, tc_rgb_factor, tc_alpha_fn, tc_alpha_factor, tc_rgb_invert, tc_alpha_invert;\n"
-"  int has_tex, atest_fn, fog_mode, pad;\n"
+"  int has_tex, atest_fn, fog_mode, depth_mode;\n"
 "  float atest_ref, vw, vh, pad2;\n"
 "  float4 konst, fog_color;\n"
 "  float fog[64];\n"
@@ -83,7 +83,23 @@ static NSString *const k_src = @
 "    if (w < w1) { float k = (w - w0) / (w1 - w0); return u.fog[i] * (1 - k) + u.fog[i + 1] * k; } }\n"
 "  return u.fog[63];\n"
 "}\n"
-"fragment float4 fs(O in [[stage_in]], constant U &u [[buffer(0)]], texture2d<float> t [[texture(0)]], sampler sm [[sampler(0)]]) {\n"
+"/* The Voodoo's 16-bit W-buffer word: 4-bit exponent, 12-bit mantissa of\n"
+"   1/w as a .32 fraction.  Depth is stored and compared at this precision,\n"
+"   which is what lets a second pass over the same polygon (the car shadow\n"
+"   is drawn with grDepthBufferFunction(EQUAL)) hit every pixel the first\n"
+"   one wrote; the Z-buffer keeps ooz's 16 integer bits. */\n"
+"static uint wfloat(float oow) {\n"
+"  if (oow >= 1.0) return 0;\n"
+"  if (oow <= 0.0) return 0xFFFF;\n"
+"  uint t = uint(min(oow * 4294967296.0, 4294967040.0));\n"
+"  if (t == 0) return 0xFFFF;\n"
+"  int e = int(clz(t));\n"
+"  uint m = e <= 19 ? (~t >> uint(19 - e)) : (~t << uint(e - 19));\n"
+"  uint w = (uint(e) << 12) | (m & 0xFFF);\n"
+"  return w < 0xFFFF ? w + 1 : w;\n"
+"}\n"
+"struct FO { float4 c [[color(0)]]; float d [[depth(any)]]; };\n"
+"fragment FO fs(O in [[stage_in]], constant U &u [[buffer(0)]], texture2d<float> t [[texture(0)]], sampler sm [[sampler(0)]]) {\n"
 "  float4 tex = float4(0);\n"
 "  if (u.has_tex) {\n"
 "    float4 tx = t.sample(sm, in.st);\n"
@@ -108,7 +124,9 @@ static NSString *const k_src = @
 "  else if (u.fog_mode == 2) f = fogt(u, in.oow > 0 ? 1.0 / in.oow : 65536.0);\n"
 "  else if (u.fog_mode == 3) f = clamp(in.z, 0.0, 1.0);\n"
 "  if (f > 0) o.rgb += (u.fog_color.rgb - o.rgb) * f;\n"
-"  return o;\n"
+"  FO r; r.c = o;\n"
+"  r.d = (u.depth_mode == 2 || u.depth_mode == 4) ? float(wfloat(in.oow)) / 65536.0 : floor(clamp(in.z * 65535.0, 0.0, 65535.0)) / 65536.0;\n"
+"  return r;\n"
 "}\n"
 /* the clear: a colour and a depth over a rectangle */
 "struct CO { float4 pos [[position]]; };\n"
@@ -125,7 +143,7 @@ typedef struct U {
     int32_t cc_fn, cc_factor, cc_local, cc_other, cc_invert;
     int32_t ac_fn, ac_factor, ac_local, ac_other, ac_invert;
     int32_t tc_rgb_fn, tc_rgb_factor, tc_alpha_fn, tc_alpha_factor, tc_rgb_invert, tc_alpha_invert;
-    int32_t has_tex, atest_fn, fog_mode, pad;
+    int32_t has_tex, atest_fn, fog_mode, depth_mode;
     float atest_ref, vw, vh, pad2;
     float konst[4], fog_color[4];
     float fog[64];
@@ -500,6 +518,7 @@ void brr_draw(const brr_state *st, const brr_vertex *v, int n)
         u.atest_fn = st->atest_fn;
         u.atest_ref = st->atest_ref;
         u.fog_mode = st->fog_mode & 0xFF;
+        u.depth_mode = st->depth_mode;
         u.vw = (float)s_w;
         u.vh = (float)s_h;
         u.konst[0] = ((st->constant >> 16) & 0xFF) / 255.0f;

@@ -142,7 +142,7 @@ void grBufferClear(GrColor_t color, GrAlpha_t alpha, FxU16 depth)
 { plat_vclock_import();
     uint32_t c = (argb(color) & 0x00FFFFFFu) | (uint32_t)alpha << 24;
     gllog("grBufferClear %08X %u %u", color, alpha, depth);
-    brr_clear(c, depth / 65535.0f, 1, s_st.depth_mode != 0, &s_st);
+    brr_clear(c, depth / 65536.0f, 1, s_st.depth_mode != 0, &s_st);
 }
 
 void plat_text_swap(void);         /* script_game.c */
@@ -174,14 +174,14 @@ void grAlphaBlendFunction(GrAlphaBlendFnc_t rs, GrAlphaBlendFnc_t rd, GrAlphaBle
     gllog("grAlphaBlendFunction %u %u %u %u", rs, rd, as, ad);
     s_st.blend_rgb_src = rs; s_st.blend_rgb_dst = rd; s_st.blend_a_src = as; s_st.blend_a_dst = ad;
 }
-void grAlphaTestFunction(GrCmpFnc_t f) { plat_vclock_import(); s_st.atest_fn = f; }
-void grAlphaTestReferenceValue(GrAlpha_t v) { plat_vclock_import(); s_st.atest_ref = v; }
+void grAlphaTestFunction(GrCmpFnc_t f) { plat_vclock_import(); gllog("grAlphaTestFunction %d", f); s_st.atest_fn = f; }
+void grAlphaTestReferenceValue(GrAlpha_t v) { plat_vclock_import(); gllog("grAlphaTestReferenceValue %u", v); s_st.atest_ref = v; }
 void grConstantColorValue(GrColor_t v) { plat_vclock_import(); gllog("grConstantColorValue %08X", v); s_st.constant = argb(v); }
-void grCullMode(GrCullMode_t m) { plat_vclock_import(); s_st.cull = m; }
+void grCullMode(GrCullMode_t m) { plat_vclock_import(); gllog("grCullMode %d", m); s_st.cull = m; }
 void grDepthBufferMode(GrDepthBufferMode_t m) { plat_vclock_import(); gllog("grDepthBufferMode %u", m); s_depth_mode = m; s_st.depth_mode = m; }
-void grDepthBufferFunction(GrCmpFnc_t f) { plat_vclock_import(); s_st.depth_fn = f; }
-void grDepthMask(FxBool m) { plat_vclock_import(); s_st.depth_mask = m; }
-void grFogMode(GrFogMode_t m) { plat_vclock_import(); s_st.fog_mode = m; }
+void grDepthBufferFunction(GrCmpFnc_t f) { plat_vclock_import(); gllog("grDepthBufferFunction %d", f); s_st.depth_fn = f; }
+void grDepthMask(FxBool m) { plat_vclock_import(); gllog("grDepthMask %d", m); s_st.depth_mask = m; }
+void grFogMode(GrFogMode_t m) { plat_vclock_import(); gllog("grFogMode %d", m); s_st.fog_mode = m; }
 void grFogColorValue(GrColor_t c) { plat_vclock_import(); s_st.fog_color = argb(c); }
 void grFogTable(const GrFog_t ft[GR_FOG_TABLE_SIZE]) { plat_vclock_import(); memcpy(s_st.fog_table, ft, GR_FOG_TABLE_SIZE); }
 
@@ -427,6 +427,20 @@ static void vert(brr_vertex *o, const GrVertex *v)
     o->t = v->tmuvtx[0].tow * w / sv;
 }
 
+/* Glide's triangle setup drops a triangle with no area, and with culling on
+ * drops the one facing away: the sign of its area in the coordinates the
+ * application passed (before the lower-left origin turns y over).  The
+ * start banners, the shadows and every other two-sided model depend on it;
+ * drawing both faces left them to fight in the depth buffer. */
+static int culled(const GrVertex *a, const GrVertex *b, const GrVertex *c)
+{
+    float area = (b->x - a->x) * (c->y - a->y) - (c->x - a->x) * (b->y - a->y);
+    if (area == 0.0f)
+        return 1;
+    return (s_st.cull == 1 /* GR_CULL_NEGATIVE */ && area < 0.0f)
+        || (s_st.cull == 2 /* GR_CULL_POSITIVE */ && area > 0.0f);
+}
+
 void grDrawTriangle(const GrVertex *a, const GrVertex *b, const GrVertex *c)
 { plat_vclock_import();
     brr_vertex v[3];
@@ -434,6 +448,8 @@ void grDrawTriangle(const GrVertex *a, const GrVertex *b, const GrVertex *c)
     gllog_vtx(a);
     gllog_vtx(b);
     gllog_vtx(c);
+    if (culled(a, b, c))
+        return;
     vert(&v[0], a);
     vert(&v[1], b);
     vert(&v[2], c);
@@ -452,6 +468,8 @@ void grDrawPolygonVertexList(int n, const GrVertex vl[])
     if (s_src_dirty && s_src_set)
         tex_resolve();
     for (i = 1; i + 1 < n; i++) {
+        if (culled(&vl[0], &vl[i], &vl[i + 1]))
+            continue;
         if (k == 3 * 64) {
             brr_draw(&s_st, v, k);
             k = 0;

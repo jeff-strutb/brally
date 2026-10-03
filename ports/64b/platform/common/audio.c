@@ -251,6 +251,7 @@ void plat_cd_stop(void)
     s_ended = 0;
     s_rd = s_wr = 0;
     cdunlock();
+    PLOG("cd: stop\n");
 }
 
 void plat_cd_pause(int on)
@@ -259,6 +260,7 @@ void plat_cd_pause(int on)
     s_paused = on;
     host_cond_broadcast(s_cdc);
     cdunlock();
+    PLOG("cd: %s\n", on ? "pause" : "resume");
 }
 
 /* 0..1 */

@@ -21,6 +21,7 @@
 #include "br_input.h"
 #include "br_window.h"
 #include "br_mainloop.h"
+#include "br_gamestep.h"    /* g_pfnStep */
 #include "br_boot.h"        /* g_brAppModeW / g_brAppModeH == 0x100A7514/18 */
 
 #include <stddef.h>
@@ -299,6 +300,20 @@ BrWndResult BrOnActivateApp(void *hWnd, BrWParam wParam, BrLParam lParam)
         }
         BrPodNop();
         BrRaceClockReset();
+        /* Port: the deactivate half paused the music and set the pause flag,
+         * and only the race loop takes them back (BrRaceStep's resume arm,
+         * 0x1001C4BB).  In the front end nothing did, so the music stayed
+         * off until the next race; the original's full-screen display seldom
+         * lost focus, a window does all the time.  Outside a race, resume
+         * here as that arm does. */
+        if (g_pfnStep != (BrGameStepFn)BrRaceStep && (*(int *)&g_BrX06909B4) == 1) {
+            (*(int *)&g_BrX06909B4) = 0;
+            BrWrap_100679A0();
+            if ((*(char *)&DAT_100bb2e0) != 0) {
+                BrCdResume();
+                BrCdVolumeSet((unsigned char)(*(char *)&DAT_100bb2e0));
+            }
+        }
     }
     return DefWindowProcA(hWnd, 0x1C, (uint32_t)wParam, (int32_t)lParam);
 }

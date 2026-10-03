@@ -78,6 +78,25 @@ float fogt(float w) {
     return fogv(63);
 }
 
+// The Voodoo's 16-bit W-buffer word: 4-bit exponent, 12-bit mantissa of 1/w
+// as a .32 fraction. Depth is stored and compared at this precision, which
+// is what lets a second pass over the same polygon (the car shadow is drawn
+// with grDepthBufferFunction(EQUAL)) hit every pixel the first one wrote;
+// the Z-buffer keeps ooz's 16 integer bits.
+uint wfloat(float oow) {
+    if (oow >= 1.0)
+        return 0u;
+    if (oow <= 0.0)
+        return 0xFFFFu;
+    uint t = uint(min(oow * 4294967296.0, 4294967040.0));
+    if (t == 0u)
+        return 0xFFFFu;
+    int e = 31 - findMSB(t);
+    uint m = e <= 19 ? (~t >> uint(19 - e)) : (~t << uint(e - 19));
+    uint w = (uint(e) << 12) | (m & 0xFFFu);
+    return w < 0xFFFFu ? w + 1u : w;
+}
+
 void main() {
     vec4 tex = vec4(0.0);
     if (u.has_tex != 0) {
@@ -109,4 +128,6 @@ void main() {
     if (f > 0.0)
         o.rgb += (u.fog_color.rgb - o.rgb) * f;
     o_col = o;
+    gl_FragDepth = (u.depth_mode == 2 || u.depth_mode == 4) ? float(wfloat(v_oow)) / 65536.0
+                                     : floor(clamp(v_z * 65535.0, 0.0, 65535.0)) / 65536.0;
 }
