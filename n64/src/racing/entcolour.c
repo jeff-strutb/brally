@@ -128,6 +128,8 @@ void BrEntPaintTexture(int param_1,unsigned int param_2,unsigned int param_3,int
 /* WHAT IT DOES: Take a car's body colour from its model: the first
  * palette entry of the paint part (when that part is paletted), widened
  * from RGBA5551 to 8 bits a channel. */
+/* @t4-pass 0x8021D2A0 1 2026-10-03 compiles 120 best 29 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021D2A0 2 2026-10-03 compiles 117 best 29 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8021D2A0 tgr BrCarColourFromModel */
 void BrCarColourFromModel(BrCar *car, BrCarModel *m)
 {
@@ -151,6 +153,8 @@ void BrCarColourFromModel(BrCar *car, BrCarModel *m)
 /* WHAT IT DOES: Fix up a car model just loaded into its slot: every part's
  * address and display list is moved from the loading area to the slot's own
  * copy. */
+/* @t4-pass 0x8021D32C 1 2026-10-03 compiles 121 best 2 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021D32C 2 2026-10-03 compiles 121 best 2 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8021D32C tgr BrEntRebaseModel */
 void BrEntRebaseModel(BrCarModel *m)
 {

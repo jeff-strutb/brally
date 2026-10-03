@@ -184,6 +184,8 @@ float BrFogAmount(float v[3])
  * the whole tint block (one fewer constant load), has a 0x50 frame (0x40
  * here) and spills the ramp shifts one slot higher; everything after the
  * first branch is shifted by that one instruction. */
+/* @t4-pass 0x80218D5C 1 2026-10-03 compiles 121 best 102 moved 159  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80218D5C 2 2026-10-03 compiles 120 best 97 moved 5  (n64/tools/n64permute.py) */
 /* @implements 0x80218D5C tgr BrFrameTintSetup */
 void BrFrameTintSetup(void)
 {
@@ -213,8 +215,8 @@ void BrFrameTintSetup(void)
     D_8028AB40 = (((D_8028AB20 + 0xFF) >> 1) * D_8028AB2C + (0xFF - D_8028AB2C) * 0xFF) / 0xFF;
     D_8028AB44 = (((D_8028AB24 + 0xFF) >> 1) * D_8028AB2C + (0xFF - D_8028AB2C) * 0xFF) / 0xFF;
     D_8028AB48 = (((D_8028AB28 + 0xCC) >> 1) * D_8028AB2C + (0xFF - D_8028AB2C) * 0xCC) / 0xFF;
-    D_8028AB4C = (((D_8028AB20 << 2) / 5) * D_8028AB2C + (0xFF - D_8028AB2C) * 0x66) / 0xFF;
     D_8028AB50 = (((D_8028AB24 << 2) / 5) * D_8028AB2C + (0xFF - D_8028AB2C) * 0x66) / 0xFF;
+    D_8028AB4C = (((D_8028AB20 << 2) / 5) * D_8028AB2C + (0xFF - D_8028AB2C) * 0x66) / 0xFF;
     D_8028AB54 = (((D_8028AB28 << 2) / 5) * D_8028AB2C + (0xFF - D_8028AB2C) * 0x77) / 0xFF;
   } else {
     D_8028AB40 = 0xFF;

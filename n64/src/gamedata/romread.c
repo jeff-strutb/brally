@@ -327,6 +327,8 @@ void BrStreamInit(int param_1,int param_2)
  * inflated from the other.  Without a stream it runs to the end; with one
  * it does one chunk per call, keeping its place in the stream.  Returns the
  * unpacked length. */
+/* @t4-pass 0x8021CD30 1 2026-10-03 compiles 121 best 195 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021CD30 2 2026-10-03 compiles 120 best 195 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8021CD30 tgr BrRomUnpack */
 unsigned int BrRomUnpack(unsigned char *dst, unsigned int rom, BrUnpack *s)
 {

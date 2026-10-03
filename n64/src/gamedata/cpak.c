@@ -125,6 +125,8 @@ int BrRumbleInsertPrompt(int anyPad)
  * before the stop call and keeps the sum in s2; ours keeps the base in s2 and
  * adds after the call.  A named pfs pointer and an integer-cast table address
  * (which stops IDO hoisting the base out of the loop) took it from 51. */
+/* @t4-pass 0x80214BEC 1 2026-10-03 compiles 121 best 5 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80214BEC 2 2026-10-03 compiles 121 best 5 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80214BEC tgr BrRumbleProbe */
 void BrRumbleProbe(void)
 {

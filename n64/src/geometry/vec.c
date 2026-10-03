@@ -357,6 +357,8 @@ float BrVec3LenXY(BrVec3 *pV)
  * RESIDUE (63): float colouring -- the ROM holds t, kx, ky, kz in f18,
  * f16, f12, f14 and spills its common products in a different slot order
  * (and recomputes t * ky where ours keeps it); same operations. */
+/* @t4-pass 0x80224B7C 1 2026-10-03 compiles 119 best 63 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80224B7C 2 2026-10-03 compiles 116 best 63 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80224B7C tgr BrVec3RotateAxis */
 void BrVec3RotateAxis(BrVec3 *pV, float a, BrVec3 *pK)
 {

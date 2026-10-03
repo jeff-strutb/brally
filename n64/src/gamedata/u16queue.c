@@ -51,6 +51,8 @@ unsigned int BrGridCellRange(int x, int y)
  * the registers breaks the stores.  Local types, declaration order, named
  * vs CSE'd vs embedded packing, the PC twin's 0xFFFF spelling and 786
  * permuter compiles leave 4. */
+/* @t4-pass 0x8021EA90 1 2026-10-03 compiles 117 best 4 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021EA90 2 2026-10-03 compiles 113 best 4 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8021EA90 tgr BrU16QueuePop */
 unsigned short BrU16QueuePop(unsigned short *q)
 {
@@ -73,6 +75,8 @@ unsigned short BrU16QueuePop(unsigned short *q)
  * read the next entry through a cursor (position, entries left) and move it
  * on by one; nothing left answers zero.
  * RESIDUE (4): as BrU16QueuePop. */
+/* @t4-pass 0x8021EADC 1 2026-10-03 compiles 117 best 4 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021EADC 2 2026-10-03 compiles 113 best 4 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8021EADC tgr BrU16QueuePopB */
 unsigned short BrU16QueuePopB(unsigned short *q)
 {

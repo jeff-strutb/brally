@@ -141,6 +141,8 @@ void BrFrontSetMenuFlag(int param_1)
  * 92-byte buffer give 0x100.
  * RESIDUE: the named slots are not the ROM's (off 0xFC, result 0xF4, buf
  * 0x84, row 0x78) and the register choices follow. */
+/* @t4-pass 0x8020AD5C 1 2026-10-03 compiles 115 best 985 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8020AD5C 2 2026-10-03 compiles 112 best 953 moved 32  (n64/tools/n64permute.py) */
 /* @implements 0x8020AD5C tgr BrMenu */
 int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r1, int g1, int b1, int r2,
            int g2, int b2)
@@ -434,7 +436,7 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
     }
   }
   if (D_80271FC4 != 0 && result == 0) {
-    D_80316240 += D_8028AAD8;
+    D_80316240 = D_8028AAD8 + D_80316240;
     if (D_80271FC4 <= D_80316240 && BrFadeIsOut() == 0) {
       D_8031622C = 0;
       BrFadeTo(0.0f, 0.2f);

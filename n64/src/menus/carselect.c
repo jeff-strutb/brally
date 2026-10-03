@@ -17,6 +17,8 @@ int sprintf(char *buf, char *fmt, ...);
 /* WHAT IT DOES: Draw one of the car-select screen's stat bars at (x, y),
  * w by h, in fill mode: a dark frame, the empty bar inset by 3 pixels, and
  * the filled part as the given fraction of its width. */
+/* @t4-pass 0x8020C460 1 2026-10-03 compiles 114 best 121 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8020C460 2 2026-10-03 compiles 114 best 121 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8020C460 tgr BrCarStatBarDraw */
 void BrCarStatBarDraw(int x, int y, int w, int h, float frac)
 {
@@ -421,6 +423,8 @@ void BrLoadSaveScreen(void);
  * C buttons, step through the setup choices (A on, B back, START to be
  * ready), and when everyone is ready fades out to the race, the paint shop,
  * the menus, the season screens or the Controller Pak save. */
+/* @t4-pass 0x8020D004 1 2026-10-03 compiles 120 best 4007 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8020D004 2 2026-10-03 compiles 121 best 4007 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8020D004 tgr BrCarSelect */
 void BrCarSelect(void)
 {

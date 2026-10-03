@@ -357,6 +357,8 @@ void BrTextSetFont(int param_1)
  * RESIDUE (1): the ROM multiplies y * height with y as the first operand;
  * every spelling here (operand order, casts, locals, 80 permuter compiles)
  * puts the converted height first. */
+/* @t4-pass 0x8022F694 1 2026-10-03 compiles 121 best 1 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8022F694 2 2026-10-03 compiles 121 best 1 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8022F694 tgr BrTextPrintAt */
 void BrTextPrintAt(char *str, float x, float y, float unused)
 {

@@ -155,6 +155,8 @@ void BrTexSizeBits(unsigned int v, int *mask, int *bits)
  * RESIDUE (~230 raw, 24 aligned ops): one stack slot sits above the palette
  * in the ROM and below it here, and the TMEM/tile globals load at other
  * points.  Not yet matched. */
+/* @t4-pass 0x80217734 1 2026-10-03 compiles 119 best 232 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80217734 2 2026-10-03 compiles 120 best 232 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80217734 tgr BrTexLoad */
 void BrTexLoad(int n, BrTex *tbl)
 {

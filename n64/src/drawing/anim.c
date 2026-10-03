@@ -79,6 +79,8 @@ void BrAnimSetPingPong(int param_1)
  * RESIDUE (243): the loop count spills to the stack where the ROM keeps it
  * in a register (one fewer saved register), so 4096.0f is not hoisted and
  * the temporaries shift.  Not yet matched. */
+/* @t4-pass 0x8021D84C 1 2026-10-03 compiles 120 best 243 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021D84C 2 2026-10-03 compiles 119 best 243 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8021D84C tgr BrAnimUpdate */
 void BrAnimUpdate(BrAnimSet *set)
 {

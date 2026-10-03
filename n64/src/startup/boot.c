@@ -77,6 +77,8 @@ void BrFatal(int param_1)
  * RESIDUE (4 nops): every infinite-loop epilogue in the ROM sits at 16 mod
  * 32; ours is aligned to 32 from this object's start (0x8021E1C0), so the
  * dead epilogue lands 16 bytes early. */
+/* @t4-pass 0x8021E21C 1 2026-10-03 compiles 113 best 10 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021E21C 2 2026-10-03 compiles 109 best 10 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8021E21C tgr BrFaultThread */
 void BrFaultThread(void *arg)
 {
@@ -104,6 +106,8 @@ void BrFaultThread(void *arg)
  * RESIDUE (34): IDO unrolls the second stack fill and not the third (the
  * ROM the other way round); and the final for (;;) has the same dead-
  * epilogue padding limit as BrFaultThread. */
+/* @t4-pass 0x8021E2C8 1 2026-10-03 compiles 119 best 34 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021E2C8 2 2026-10-03 compiles 117 best 34 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8021E2C8 tgr BrIdleThread */
 void BrIdleThread(void *arg)
 {

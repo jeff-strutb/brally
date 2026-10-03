@@ -531,19 +531,21 @@ void BrCarSetPos(BrCar *car, float x, float y, float z)
  * RESIDUE (46): scheduling only -- the ROM loads the saved sin/cos just
  * before each store and the quaternion copies use f18/f16; same
  * instructions and store order. */
+/* @t4-pass 0x8021FE80 1 2026-10-03 compiles 119 best 22 moved 24  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021FE80 2 2026-10-03 compiles 120 best 22 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8021FE80 tgr BrCarSetHeading */
 void BrCarSetHeading(BrCar *car, float a)
 {
   float c;
   float s;
-  float c2;
   float s2;
+  float c2;
   float m[10];                   /* unused: holds the frame size */
 
   c = cosf(a);
   s = sinf(a);
-  c2 = cosf(a + 1.5707964f);
   s2 = sinf(a + 1.5707964f);
+  c2 = cosf(a + 1.5707964f);
   car->mtx0[0][0] = c;
   car->mtx0[0][2] = 0.0f;
   car->mtx0[0][1] = s;
@@ -629,6 +631,8 @@ void BrCarSetVel(BrCar *car, float x, float y, float z)
  * takes a padded slot), so the argument homes shift; the final copy loads
  * into f18..f12 where the ROM uses f0..f14, and the epilogue restores in
  * the opposite order.  Declaration orders and -O2 flag variants swept. */
+/* @t4-pass 0x8022021C 1 2026-10-03 compiles 117 best 26 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8022021C 2 2026-10-03 compiles 117 best 26 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8022021C tgr BrCarRotate */
 void BrCarRotate(BrCar *car, float az, float ay, float ax)
 {

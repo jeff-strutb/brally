@@ -130,6 +130,8 @@ void osSpTaskStartGo(BrTask *t);
  * ROM's with registers ignored; every temporary is one number later from
  * the first block on, and the view table base lands in v1, not v0.  200
  * permuter compiles do not move it. */
+/* @t4-pass 0x80219470 1 2026-10-03 compiles 121 best 198 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80219470 2 2026-10-03 compiles 116 best 198 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80219470 tgr BrFrameBegin */
 void BrFrameBegin(int hires)
 {
@@ -249,6 +251,8 @@ void BrFrameBegin(int hires)
  * RESIDUE (~210): instruction scheduling -- the task's stores, the counter
  * loads and the debug copy's multiply are ordered differently; the
  * instruction multiset matches except about 30 moved ops. */
+/* @t4-pass 0x8021AA08 1 2026-10-03 compiles 120 best 209 moved 1  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021AA08 2 2026-10-03 compiles 120 best 209 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8021AA08 tgr BrFrameEnd */
 void BrFrameEnd(void)
 {
@@ -270,8 +274,8 @@ void BrFrameEnd(void)
   t->ucode = gspF3DEX_fifoTextStart;
   t->ucode_data = gspF3DEX_fifoDataStart;
   t->flags = 6;
-  t->output_buff = D_8028A860[0];
   t->ucode_size = 0x1000;
+  t->output_buff = D_8028A860[0];
   t->output_buff_size = D_8028A860[1] - D_8028AB84;
   t->ucode_data_size = 0x800;
   t->dram_stack = (void *)(((unsigned int)D_8031A598 + 0xf) & ~0xf);

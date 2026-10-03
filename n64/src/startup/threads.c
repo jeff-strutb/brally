@@ -243,6 +243,8 @@ void BrRaceFlagsApply(void)
 /* WHAT IT DOES: The RSP event thread: every time the RSP finishes a task,
  * mark the performance meter's first bar and pass the event on to the
  * scheduler's RSP queue. Never returns. */
+/* @t4-pass 0x8021BBDC 1 2026-10-03 compiles 121 best 7 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021BBDC 2 2026-10-03 compiles 121 best 7 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8021BBDC tgr BrSpEventThread */
 void BrSpEventThread(void *arg)
 {
@@ -293,6 +295,8 @@ void BrRetraceThread(void *arg)
  * with a pak that answers as a rumble pak, mark it and stop its motor.
  * RESIDUE (14): IDO gives the last callee-saved register to the flag value
  * 1; the ROM gives it to the loop bound 4 and loads the 1 at the store. */
+/* @t4-pass 0x8021BE88 1 2026-10-03 compiles 116 best 14 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021BE88 2 2026-10-03 compiles 116 best 14 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8021BE88 tgr BrSchedInit */
 void BrSchedInit(void)
 {
@@ -345,6 +349,8 @@ void BrSchedInit(void)
  * RESIDUE (47): ours computes pad 1's address once for the B test and the
  * consume call; the ROM loads the word through lui/lw and builds the
  * address again in the branch. */
+/* @t4-pass 0x8021C188 1 2026-10-03 compiles 119 best 47 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021C188 2 2026-10-03 compiles 118 best 47 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8021C188 tgr BrBootCheck */
 void BrBootCheck(void)
 {
