@@ -611,6 +611,7 @@ glide_va,name,module,basis,file
 0x10036700,BrSub1003D070,net,neighbour-1,src/core/net/br_sessionlist.c
 0x10036740,FUN_10036740,net,filed,src/core/net/br_dplaysetup.c
 0x100367C0,FUN_100367c0,net,description,src/core/net/br_dplaymsg.c
+0x10036810,BrComGetAlloc,net,manual,src/core/net/BrComGetAlloc_10036810.cpp
 0x100368A0,FUN_100368a0,net,description,src/core/net/br_dplaymsg.c
 0x10036B20,BrDpAddressBuild,net,filed,src/core/net/br_dplaysetup.c
 0x10036E50,BrDpCreateIface,net,filed,src/core/net/br_dplay.c

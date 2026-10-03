@@ -14,8 +14,7 @@
 @drop var:pMem
 @drop var:hMem#2
 @drop var:hMem#3
-@drop fn:BrComGetAlloc
-@after fn:BrComGetAlloc
+@after var:hMem#3
 
 /* ==========================================================================
  * 0x1003D180
@@ -28,7 +27,7 @@
  * reports the error instead. */
 /* WHAT IT DOES: the same two-step fetch, using calloc instead of a
  * Windows global heap block. */
-/* port-only variant of BrComGetAlloc (matching build uses the #ifdef branch above) */
+/* port copy of BrComGetAlloc (the matching body is src/core/net/BrComGetAlloc_10036810.cpp) */
 int32_t BrComGetAlloc(BrDPlayObj *pObj, void *pParam, void **ppvOut)
 {
     BrComGetFn pfn = pObj->pVtbl->pfnGet;
