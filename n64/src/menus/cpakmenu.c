@@ -480,7 +480,11 @@ void BrStub80254870(void)
  * anything else unprintable as a space.  The frame buffer, fonts and colour
  * are shorts (the ROM re-reads the first store of each block with lh).
  * RESIDUE (308): the ROM keeps the column in a stack home and orders the
- * block stores row by row; ours holds more in saved registers. */
+ * block stores row by row; ours holds more in saved registers.
+ *
+ * NEVER RUN IN THE RETAIL GAME: nothing in the ROM refers to 0x80254878 -- no
+ * jal to it, no lui/addiu pair forming its address (n64rom xref: none), and
+ * no data word holding it (the whole ROM searched for the value). */
 /* @implements 0x80254878 tgr BrDebugPrint */
 void BrDebugPrint(unsigned char *s)
 {
