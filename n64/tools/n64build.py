@@ -270,6 +270,25 @@ def grade(obj, rom, name, start, end, va, rom_size, syms, fnvas):
         lo = theirs[lo_i] & 0xffff if lo_i < len(theirs) else 0
         return ((hi << 16) + sext16(lo)) & 0xffffffff
 
+    def section_base(secname):
+        """ROM VA of this object's section secname, from the first of this
+        function's %hi/%lo pairs against it whose ROM pair decodes into the
+        image; None when the function has none."""
+        for (o, t, sj) in rels:
+            ss = obj.syms[sj]
+            if t != 5 or ss['type'] != 3 or obj.secs[ss['shndx']]['name'] != secname:
+                continue
+            lo_o = next((o2 for (o2, t2, s2) in allrels if o2 > o and t2 == 6 and s2 == sj), None)
+            if lo_o is None:
+                continue
+            hw = words(text[o:o + 4])[0]
+            lw = words(text[lo_o:lo_o + 4])[0]
+            add = ((hw & 0xffff) << 16) + sext16(lw & 0xffff)
+            rv = rom_pair_addr((o - start) // 4, (lo_o - start) // 4)
+            if rom.in_image(rv):
+                return (rv - add) & 0xffffffff
+        return None
+
     LOAD_WIDTH = {0x20: 1, 0x24: 1, 0x28: 1, 0x21: 2, 0x25: 2, 0x29: 2, 0x23: 4, 0x2B: 4,
                   0x31: 4, 0x39: 4, 0x35: 8, 0x3D: 8}
 
@@ -323,6 +342,12 @@ def grade(obj, rom, name, start, end, va, rom_size, syms, fnvas):
                     # addend stored in place
                     v = fnvas.get(ss['name'], resolve(ss['name'], syms))
                     want = None if v is None else (v + tgt) & 0xffffffff
+                elif ss['type'] == 3:
+                    # a pointer initialiser into another section of this
+                    # object (a string in .rodata): that section's ROM base,
+                    # as this function's own %hi/%lo pairs against it place it
+                    b = section_base(obj.secs[ss['shndx']]['name'])
+                    want = None if b is None else (b + tgt) & 0xffffffff
                 else:
                     want = None
                 got = struct.unpack_from('>I', rom.bytes(rom_va + k, 4), 0)[0]

@@ -426,6 +426,7 @@ va,name,kind
 80246BCC,BrFillFrame,func
 80246E10,BrFillRect,func
 80246F90,BrBevelPanel,func
+8024843C,BrPaintMirrorMenu,func
 80248B80,BrPaintMirrorSide,func
 80248DB4,BrPaintFlipApply,func
 80248F38,BrDecalMemInit,func
