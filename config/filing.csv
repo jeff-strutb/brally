@@ -1238,6 +1238,7 @@ glide_va,name,module,basis,file
 0x1006C950,BrSub10073B00,drawing,description,src/core/drawing/br_texbaked.c
 0x1006C990,BrImgShowFullScreen,drawing,filed,src/core/drawing/br_imgshow.c
 0x1006CD80,FUN_1006cd80,net,filed,src/core/net/br_netpkt.c
+0x1006CDA0,BrBitStreamInit,gamedata,filed,src/core/gamedata/br_bitstream.c
 0x1006CDC0,BrObjClear,gamedata,filed,src/core/gamedata/br_obj.c
 0x1006CDD0,BrPairReset_10073B90,drawing,filed,src/core/drawing/br_textmode.c
 0x1006CDE0,BrBitStreamSkipBytes,gamedata,description,src/core/gamedata/br_bitstream.c

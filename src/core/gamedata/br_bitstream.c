@@ -82,15 +82,6 @@ void BR_THISCALL1 BrBitStreamAlignWrite(BrBitStream *pBs)
 /* @t4-pass 0x1006CDA0 1 2026-09-09 probes 9 bytes 29 insns 10 regions 1 rows 0 census no  (hand, fn.py variants) */
 /* @t4-pass 0x1006CDA0 2 2026-09-09 probes 10 bytes 29 insns 10 regions 1 rows 0 census yes  (hand, fn.py variants) */
 /* @t4-pass 0x1006CDA0 3 2026-09-09 probes 22 bytes 29 insns 10 regions 1 rows 0 census yes  (hand, fn.py variants) */
-/* @t3 0x1006CDA0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 29/29 insns 10/10 rows 0+0 regions 1 oracle EQUIVALENT
- * @t3-effort passes 2 zero-movement 2 3
- * residue is register colouring only: identical register-blind instruction
- * multiset (rows 0+0), 1 masked region;
- * every row pairs under t3.py's canonical classes.  Effort: 2 counted
- * @t4-pass passes (ledger lines above, zero movement on passes 2 and 3);
- * hand passes (tools/fnmatch/fn.py variants); the dead-probe list is in the
- * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x10073B60 d3d BrBitStreamInit */
 /* thiscall, two stack args.  Both extra arguments are structs so neither
  * claims edx.  The original RETURNS this: `mov eax,ecx` at the top and every
@@ -111,10 +102,12 @@ typedef struct { int n; }   BrBitStreamInitLen;
 BrBitStream * __fastcall BrBitStreamInit(BrBitStream *pBs, BrBitStreamInitBuf pBuf,
                                          BrBitStreamInitLen nBytes)
 {
+    /* writeByte between the zero stores: that is what loads nBytes into
+     * edx ahead of them and pBuf late, as the original does. */
     pBs->writeBit  = 0;
     pBs->readBit   = 0;
-    pBs->readByte  = 0;
     pBs->writeByte = nBytes.n;
+    pBs->readByte  = 0;
     pBs->pBuf      = (unsigned char *)pBuf.p;
     return pBs;
 }
