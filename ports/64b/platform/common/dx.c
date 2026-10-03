@@ -218,6 +218,21 @@ static void pad_now(host_pad *g)
 }
 
 static int s_mdx, s_mdy, s_mbtn, s_mlatch;
+static int s_ax, s_ay, s_alive;               /* the window pointer the cursor follows */
+
+/* The game keeps its own cursor and moves it only by the deltas it polls,
+ * so the window pointer's own movement, fed as deltas, drifts from it (the
+ * game clamps at its edges; the pointer leaves the window and comes back).
+ * Instead, for a short while after the pointer moved, each poll hands the
+ * game exactly the step from its cursor to the pointer; then it stops, so a
+ * still mouse reads as still (the race reads the mouse as an axis). The
+ * wasm lane does the same (host_dx.c abs_step). */
+void plat_mouse_abs(int x, int y)
+{
+    s_ax = x;
+    s_ay = y;
+    s_alive = 30;
+}
 
 void plat_mouse_move(int dx, int dy)
 {
@@ -266,7 +281,18 @@ static HRESULT did_GetDeviceState(pobj *o, DWORD n, void *out)
     } else {
         /* DIMOUSESTATE: lX, lY, lZ, rgbButtons[4] -- the movement since the
          * last poll, and a press that came and went in between still counts */
-        int32_t xyz[3] = { s_mdx, s_mdy, 0 };
+        int32_t xyz[3];
+        if (s_alive > 0) {
+            int cx, cy;
+            s_alive--;
+            if (plat_game_cursor(&cx, &cy)) {
+                s_mdx += s_ax - cx;
+                s_mdy += s_ay - cy;
+            }
+        }
+        xyz[0] = s_mdx;
+        xyz[1] = s_mdy;
+        xyz[2] = 0;
         uint8_t b[4] = { 0, 0, 0, 0 };
         memset(out, 0, n);
         b[0] = (s_mbtn | s_mlatch) ? 0x80 : 0;

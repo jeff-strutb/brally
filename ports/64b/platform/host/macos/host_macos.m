@@ -176,6 +176,16 @@ static CGColorSpaceRef s_rgb;
 
 @implementation BrView
 - (BOOL)acceptsFirstResponder { return YES; }
+/* the game draws its own cursor: the system's is hidden over the view */
+- (void)resetCursorRects
+{
+    static NSCursor *blank;
+    if (!blank) {
+        NSImage *img = [[NSImage alloc] initWithSize:NSMakeSize(1, 1)];
+        blank = [[NSCursor alloc] initWithImage:img hotSpot:NSZeroPoint];
+    }
+    [self addCursorRect:[self bounds] cursor:blank];
+}
 - (BOOL)wantsUpdateLayer { return YES; }
 - (void)keyDown:(NSEvent *)ev
 {

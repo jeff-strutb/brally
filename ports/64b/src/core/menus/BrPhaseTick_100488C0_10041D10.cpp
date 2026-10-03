@@ -83,8 +83,10 @@ int Phase32T::Tick()
     PhaseHolder *pCur   = (*(PhaseHolder * *)&g_2908);
     (*(PhaseHolder * *)&g_brPAA29B8) = (PhaseHolder *)((BrOptObj *)(pCur));
     PhaseInner *p = (*(PhaseInner * *)&((BrUiPage_ *)((*(PhaseHolder2 * *)&((BrPhase_ *)(pCur))->aPages[0])))->apCtl[199]);
-    p->f3C = (float)(*(BrTickPair * *)&g_pBrAA2E80)->i0;
-    p->f40 = (float)(*(BrTickPair * *)&g_pBrAA2E80)->i4;
+    /* the cursor control follows the mouse: its x and y (+0x3C/+0x40 on
+     * i386; 64-bit core: the canonical record's fields, which sit further in) */
+    ((BrUiCtl_ *)(void *)p)->x = (float)(*(BrTickPair * *)&g_pBrAA2E80)->i0;
+    ((BrUiCtl_ *)(void *)p)->y = (float)(*(BrTickPair * *)&g_pBrAA2E80)->i4;
     p->s3();
     (*(PhaseHolder * *)&g_brPAA29B8) = (PhaseHolder *)((BrOptObj *)(pSaved));
     if (DAT_10ac5bcc == 0)

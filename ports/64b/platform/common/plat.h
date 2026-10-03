@@ -49,6 +49,11 @@ void  plat_cd_poll(void);
 void  plat_deliver(const host_event *ev); /* one host event -> window messages, key state */
 void  plat_mouse_move(int dx, int dy);    /* dx.c: DirectInput mouse */
 void  plat_mouse_button(int down);
+/* the window's pointer at x,y (the game's 640x480): the next polls steer the
+ * game's own cursor there (dx.c) */
+void  plat_mouse_abs(int x, int y);
+/* script_game.c: where the game's menu cursor is (0 before it exists) */
+int   plat_game_cursor(int *x, int *y);
 void  plat_app_frame(void);               /* script.c: BrAppFrame's entry */
 HWND  plat_main_window(void);
 

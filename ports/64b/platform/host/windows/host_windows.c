@@ -217,6 +217,12 @@ static LRESULT CALLBACK wnd_proc(HWND h, UINT m, WPARAM wp, LPARAM lp)
         return 0;                     /* the game decides, through WM_CLOSE */
     case WM_ERASEBKGND:
         return 1;
+    case WM_SETCURSOR:
+        if (LOWORD(lp) == HTCLIENT) {     /* the game draws its own cursor */
+            SetCursor(NULL);
+            return TRUE;
+        }
+        break;
     }
     return DefWindowProcA(h, m, wp, lp);
 }

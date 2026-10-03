@@ -269,13 +269,9 @@ void plat_deliver(const host_event *e)
                 qpush((HWND)s_main, WM_CHAR, (WPARAM)ev.ch, 1);
             break;
         case HOST_EV_MOUSE: {
-            /* the game reads the mouse through DirectInput: movement as the
-             * change since the last position, and the left button */
-            static int lx = -1, ly;
-            if (lx >= 0)
-                plat_mouse_move(ev.x - lx, ev.y - ly);
-            lx = ev.x;
-            ly = ev.y;
+            /* the game reads the mouse through DirectInput: its cursor is
+             * steered to the pointer (dx.c plat_mouse_abs), and the left button */
+            plat_mouse_abs(ev.x, ev.y);
             plat_mouse_button(ev.buttons & 1);
             if (s_main)
                 qpush((HWND)s_main, WM_MOUSEMOVE, (WPARAM)ev.buttons, (LPARAM)MAKELONG(ev.x, ev.y));

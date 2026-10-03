@@ -32,6 +32,7 @@ void        host_dir_close(host_dir *d);
 #include "br_coretypes.h"
 #include "br_cartypes.h"
 #include "slice3_41.h"     /* BrDriverCar */
+#include "slice3_39.h"     /* g_pBrAA2E80: the menu navigation record */
 
 extern const struct { unsigned va; const void *p; unsigned n; } g_brDumpMap[];
 extern BrDriver g_aBrRaceDriver[];
@@ -265,4 +266,16 @@ void plat_script_files(void)
         }
     }
     fclose(f);
+}
+
+/* where the game's menu cursor is: the navigation record's x and y
+ * (0x10AC61E0 points at it; 0 before it exists) */
+int plat_game_cursor(int *x, int *y)
+{
+    const int32_t *p = (const int32_t *)(const void *)g_pBrAA2E80;
+    if (!p)
+        return 0;
+    *x = p[0];
+    *y = p[1];
+    return 1;
 }
