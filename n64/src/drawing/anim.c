@@ -81,6 +81,7 @@ void BrAnimSetPingPong(int param_1)
  * the temporaries shift.  Not yet matched. */
 /* @t4-pass 0x8021D84C 1 2026-10-03 compiles 120 best 243 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8021D84C 2 2026-10-03 compiles 119 best 243 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8021D84C */
 /* @implements 0x8021D84C tgr BrAnimUpdate */
 void BrAnimUpdate(BrAnimSet *set)
 {

@@ -175,6 +175,7 @@ void BrSndNearestOffer(int f8C, int f84, int f9C, float hz, void *pPos, void *pL
  * own absolute symbol, the Doppler result assigned before the multiply. */
 /* @t4-pass 0x8022B534 1 2026-10-03 compiles 119 best 128 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8022B534 2 2026-10-03 compiles 118 best 128 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8022B534 */
 /* @implements 0x8022B534 tgr BrSndNearestCommit */
 void BrSndNearestCommit(void)
 {
@@ -365,6 +366,7 @@ void BrSndNearestOfferDefault(int f8C, void *pPos, void *pListener)
  * s0 across the calls. */
 /* @t4-pass 0x8022BAA0 1 2026-10-03 compiles 116 best 44 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8022BAA0 2 2026-10-03 compiles 116 best 44 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8022BAA0 */
 /* @implements 0x8022BAA0 tgr BrCarSfxLoad */
 void BrCarSfxLoad(void)
 {

@@ -147,6 +147,7 @@ void BrCarPlaceWheels(int n)
  * move it. */
 /* @t4-pass 0x8022FFB4 1 2026-10-03 compiles 118 best 20 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8022FFB4 2 2026-10-03 compiles 117 best 20 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8022FFB4 */
 /* @implements 0x8022FFB4 tgr BrCarDrawWheels */
 void BrCarDrawWheels(BrCar *car)
 {

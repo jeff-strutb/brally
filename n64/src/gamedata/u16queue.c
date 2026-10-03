@@ -53,6 +53,7 @@ unsigned int BrGridCellRange(int x, int y)
  * permuter compiles leave 4. */
 /* @t4-pass 0x8021EA90 1 2026-10-03 compiles 117 best 4 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8021EA90 2 2026-10-03 compiles 113 best 4 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8021EA90 */
 /* @implements 0x8021EA90 tgr BrU16QueuePop */
 unsigned short BrU16QueuePop(unsigned short *q)
 {
@@ -77,6 +78,7 @@ unsigned short BrU16QueuePop(unsigned short *q)
  * RESIDUE (4): as BrU16QueuePop. */
 /* @t4-pass 0x8021EADC 1 2026-10-03 compiles 117 best 4 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8021EADC 2 2026-10-03 compiles 113 best 4 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8021EADC */
 /* @implements 0x8021EADC tgr BrU16QueuePopB */
 unsigned short BrU16QueuePopB(unsigned short *q)
 {

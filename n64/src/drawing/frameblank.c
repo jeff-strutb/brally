@@ -132,6 +132,7 @@ void osSpTaskStartGo(BrTask *t);
  * permuter compiles do not move it. */
 /* @t4-pass 0x80219470 1 2026-10-03 compiles 121 best 198 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80219470 2 2026-10-03 compiles 116 best 198 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80219470 */
 /* @implements 0x80219470 tgr BrFrameBegin */
 void BrFrameBegin(int hires)
 {
@@ -253,6 +254,7 @@ void BrFrameBegin(int hires)
  * instruction multiset matches except about 30 moved ops. */
 /* @t4-pass 0x8021AA08 1 2026-10-03 compiles 120 best 209 moved 1  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8021AA08 2 2026-10-03 compiles 120 best 209 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8021AA08 */
 /* @implements 0x8021AA08 tgr BrFrameEnd */
 void BrFrameEnd(void)
 {

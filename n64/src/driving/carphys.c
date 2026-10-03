@@ -232,6 +232,7 @@ void BrPadConsume(BrDrivePad *pad, unsigned int bit);
  * flow. */
 /* @t4-pass 0x80222050 1 2026-09-29 compiles 121 best 753 moved 13  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80222050 2 2026-09-29 compiles 121 best 753 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80222050 */
 /* @implements 0x80222050 tgr BrCarDriveInput */
 void BrCarDriveInput(BrCar *car)
 {

@@ -297,6 +297,7 @@ void BrRetraceThread(void *arg)
  * 1; the ROM gives it to the loop bound 4 and loads the 1 at the store. */
 /* @t4-pass 0x8021BE88 1 2026-10-03 compiles 116 best 14 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8021BE88 2 2026-10-03 compiles 116 best 14 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8021BE88 */
 /* @implements 0x8021BE88 tgr BrSchedInit */
 void BrSchedInit(void)
 {
@@ -351,6 +352,7 @@ void BrSchedInit(void)
  * address again in the branch. */
 /* @t4-pass 0x8021C188 1 2026-10-03 compiles 119 best 47 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8021C188 2 2026-10-03 compiles 118 best 47 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8021C188 */
 /* @implements 0x8021C188 tgr BrBootCheck */
 void BrBootCheck(void)
 {

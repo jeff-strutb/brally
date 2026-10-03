@@ -345,6 +345,7 @@ void BrCarEntInit(BrCarEnt *e)
  * Landed: gate 0 as its own symbol (D_80025C98), the gate by index k. */
 /* @t4-pass 0x80228E4C 1 2026-10-03 compiles 117 best 74 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80228E4C 2 2026-10-03 compiles 118 best 74 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80228E4C */
 /* @implements 0x80228E4C tgr BrPathGates */
 void BrPathGates(BrPathSeg *seg, float d)
 {
@@ -1134,6 +1135,7 @@ void BrAiInputClear(short *car)
  * spellings and goto/while loop shapes leave it. */
 /* @t4-pass 0x802290C4 1 2026-10-03 compiles 119 best 77 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x802290C4 2 2026-10-03 compiles 119 best 77 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x802290C4 */
 /* @implements 0x802290C4 tgr BrPathWalk */
 void BrPathWalk(BrPathSeg *seg, int i, float frac, float d)
 {

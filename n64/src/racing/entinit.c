@@ -533,6 +533,7 @@ void BrCarSetPos(BrCar *car, float x, float y, float z)
  * instructions and store order. */
 /* @t4-pass 0x8021FE80 1 2026-10-03 compiles 119 best 22 moved 24  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8021FE80 2 2026-10-03 compiles 120 best 22 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8021FE80 */
 /* @implements 0x8021FE80 tgr BrCarSetHeading */
 void BrCarSetHeading(BrCar *car, float a)
 {

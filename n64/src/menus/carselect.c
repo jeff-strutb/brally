@@ -19,6 +19,7 @@ int sprintf(char *buf, char *fmt, ...);
  * the filled part as the given fraction of its width. */
 /* @t4-pass 0x8020C460 1 2026-10-03 compiles 114 best 121 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8020C460 2 2026-10-03 compiles 114 best 121 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8020C460 */
 /* @implements 0x8020C460 tgr BrCarStatBarDraw */
 void BrCarStatBarDraw(int x, int y, int w, int h, float frac)
 {

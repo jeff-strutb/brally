@@ -126,6 +126,7 @@ int BrRumbleInsertPrompt(int anyPad)
  * (which stops IDO hoisting the base out of the loop) took it from 51. */
 /* @t4-pass 0x80214BEC 1 2026-10-03 compiles 121 best 5 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80214BEC 2 2026-10-03 compiles 121 best 5 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80214BEC */
 /* @implements 0x80214BEC tgr BrRumbleProbe */
 void BrRumbleProbe(void)
 {

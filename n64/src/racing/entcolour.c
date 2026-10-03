@@ -156,6 +156,7 @@ void BrCarColourFromModel(BrCar *car, BrCarModel *m)
  * copy. */
 /* @t4-pass 0x8021D32C 1 2026-10-03 compiles 121 best 2 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8021D32C 2 2026-10-03 compiles 121 best 2 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8021D32C */
 /* @implements 0x8021D32C tgr BrEntRebaseModel */
 void BrEntRebaseModel(BrCarModel *m)
 {
