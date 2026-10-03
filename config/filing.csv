@@ -1331,6 +1331,8 @@ glide_va,name,module,basis,file
 0x1006FF50,FUN_1006ff50,drawing,manual,src/core/drawing/br_log.c
 0x1006FFC0,FUN_1006ffc0,audio,filed,src/core/audio/br_sndload.c
 0x10070170,BrWaveSeekData,controls,filed,src/core/controls/br_input.c
+0x100701B0,BrWavReadData,audio,filed,src/core/audio/br_sndload.c
+0x10070280,BrWavLoad,audio,filed,src/core/audio/br_sndload.c
 0x10070370,BrOnActivate,controls,filed,src/core/controls/br_input.c
 0x100703A0,BrSub100770C0,controls,neighbour-1,src/core/controls/br_dik.c
 0x100703D0,FUN_100703d0,controls,filed,src/core/controls/br_input.c

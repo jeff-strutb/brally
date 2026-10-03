@@ -140,75 +140,56 @@ fail:
 /* @t4-pass 0x100701B0 3 2026-09-07 probes 93 bytes 207 insns 85 regions 3 rows 1 census yes  (tools/crank.py) */
 /* @t4-pass 0x100701B0 4 2026-09-09 probes 10 bytes 213 insns 86 regions 5 rows 4 census no  (hand, fn.py variants: copy/loop/guard/decl spellings, all inert or worse) */
 /* @t4-pass 0x100701B0 5 2026-09-09 probes 10 bytes 213 insns 86 regions 5 rows 4 census yes  (hand, fn.py variants: operand orders, casts, index forms, all inert; corpus query at +0xb0) */
-/* @t3 0x100701B0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 213/205 insns 86/84 rows 1+3 regions 5 oracle UNCLASSIFIED
- * @t3-effort passes 5 zero-movement 4 5
- * residue is the EOF-block layout fork: the original lays the end-of-file
- * exit last and closes the loop with a bottom jb into mmioSetInfo; VC5
- * places it after the loop, turning the exit into jae/jmp (cancelled as
- * the either-or layout triple) and rematerialising the success zero
- * (xor singleton).  Dead list in the RESIDUE block below.
- * Do not reopen before the end-grind. */
 /* @implements 0x100701B0 glide BrWavReadData */
 unsigned int BrWavReadData(HMMIO hmmio, unsigned int n, char *pDst,
                            MMCKINFO *pCk, unsigned int *pnRead)
 {
     MMIOINFO     info;
-    unsigned int rc;
-    unsigned int left;
-    unsigned int i;
+    int          rc;
+    unsigned int i, nIn;
 
-    /* RESIDUE (T2, 8 B long, RAW 9+7, REGNORM 3+1): the end-of-file exit.
-     * The original lays that block LAST (0x100702B6) and closes the loop
-     * with a bottom `jb` falling into mmioSetInfo; VC5 puts it right after
-     * the loop, so the loop exit becomes `jae`/`jmp`, and it materialises
-     * the success return with `xor eax,eax` where the original returns
-     * mmioSetInfo's eax untouched.  PROBED AND DEAD, do not re-run: the EOF
-     * return inline in the loop, as a `goto` to a trailing label, the
-     * success `return rc` vs `return 0`, the fail arm as then-arm of the
-     * last test vs a trailing label, `if (rc == 0) {success}` first.
-     * What IS settled: the two unsigned tests are `n > left` and `n > 0`
-     * (`left < n` / `n != 0` encode `jae`/`jne` for the original's
-     * `jbe`/`jbe`); the fail arm is the THEN arm of the mmioSetInfo test
-     * with the two earlier failures jumping into it. */
-    rc = (mmioGetInfo(hmmio, &info, 0) != 0);
-    if (rc != 0) {
+    /* The DirectX SDK sample's WaveReadFile (wave.c), as the game linked it,
+     * including its precedence slip: `rc = mmioGetInfo(...) != 0` stores
+     * the comparison, not the result.  0xE103 is the sample's
+     * ER_CORRUPTWAVEFILE.  The ERROR_CANNOT_READ / FINISHED_READING label
+     * pair is what puts the end-of-file exit last and returns
+     * mmioSetInfo's own zero on success. */
+
+    if (rc = mmioGetInfo(hmmio, &info, 0) != 0) {
         goto fail;
     }
-    left = pCk->cksize;
-    if (n > left) {
-        n = left;
-    }
-    i = 0;
-    pCk->cksize = left - n;
-    if (n > 0) {
-        do {
-            if (info.pchNext == info.pchEndRead) {
-                rc = mmioAdvance(hmmio, &info, 0);
-                if (rc != 0) {
-                    goto fail;
-                }
-                if (info.pchNext == info.pchEndRead) {
-                    /* inline: VC5 hoists a `return` inside a loop to the
-                     * END of the function, which is where the original has
-                     * it; spelled as a `goto` to a trailing label the block
-                     * lands right after the loop instead */
-                    *pnRead = 0;
-                    return 0xe103;
-                }
+
+    nIn = n;
+    if (nIn > pCk->cksize)
+        nIn = pCk->cksize;
+
+    pCk->cksize -= nIn;
+
+    for (i = 0; i < nIn; i++) {
+        if (info.pchNext == info.pchEndRead) {
+            if ((rc = mmioAdvance(hmmio, &info, 0)) != 0) {
+                goto fail;
             }
-            pDst[i] = *info.pchNext++;
-            i++;
-        } while (i < n);
+            if (info.pchNext == info.pchEndRead) {
+                rc = 0xe103;
+                goto fail;
+            }
+        }
+        pDst[i] = *info.pchNext++;
     }
-    rc = mmioSetInfo(hmmio, &info, 0);
-    if (rc != 0) {
+
+    if ((rc = mmioSetInfo(hmmio, &info, 0)) != 0) {
+        goto fail;
+    }
+
+    *pnRead = nIn;
+    goto done;
+
 fail:
-        *pnRead = 0;
-        return rc;
-    }
-    *pnRead = n;
-    return rc;          /* the zero mmioSetInfo left in eax, not a fresh 0 */
+    *pnRead = 0;
+
+done:
+    return rc;
 }
 
 /* ==========================================================================
@@ -225,77 +206,64 @@ extern int BrWaveSeekData(int *, MMCKINFO *, MMCKINFO *);               /* 0x100
  * 0xE000 when the allocation itself failed.
  *
  * Two argument SLOTS are reused as locals, exactly as the original does:
- * the voice argument's slot holds the file handle once the voice pointer
- * has been copied out, and the format argument's slot receives the byte
- * count the reader hands back. */
+ * the voice argument's slot holds the file handle and the format
+ * argument's slot receives the byte count the reader hands back -- VC5's
+ * own packing once both parameters live in registers. */
 /* @t4-pass 0x10070280 1 2026-09-07 probes 89 bytes 227 insns 86 regions 4 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10070280 2 2026-09-07 probes 100 bytes 227 insns 86 regions 4 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10070280 3 2026-09-07 probes 84 bytes 227 insns 86 regions 4 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10070280 4 2026-09-09 probes 10 bytes 229 insns 86 regions 4 rows 0 census no  (hand, fn.py variants: copy-init order/statement forms, decl orders, literal spellings, all inert or worse) */
 /* @t4-pass 0x10070280 5 2026-09-09 probes 10 bytes 229 insns 86 regions 4 rows 0 census yes  (hand, fn.py variants: TU position sweep -- both other slots inert -- plus name-swap allocation-hint and cast respellings, all inert) */
-/* @t3 0x10070280 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 229/229 insns 86/86 rows 0+0 regions 4 oracle UNCLASSIFIED
- * @t3-effort passes 5 zero-movement 4 5
- * residue is register colouring only: the whole-body ebx/esi transposition
- * of the two argument copies (RAW 14+14, REGNORM 0+0, size-exact); the
- * dead list is in the RESIDUE block below plus the position/name-swap
- * sweep in pass 5.  Three crank census passes at the pre-fix numbers and
- * two hand passes at the current ones.
- * Do not reopen before the end-grind. */
 /* @implements 0x10070280 glide BrWavLoad */
 int32_t BrWavLoad(const char *pszPath, uint32_t *pnDataBytes,
                   int32_t *pInfo, uint32_t **ppFormat, BrSndLoadVoice *pVoice)
 {
-    BrSndLoadVoice *pv    = pVoice;
-    uint32_t      **ppFmt = ppFormat;
-    int32_t         rc;
-    MMCKINFO        ckData;
-    MMCKINFO        ckRiff;
+    HMMIO    hmmio;
+    MMCKINFO ckRiff;
+    MMCKINFO ckData;
+    int32_t  rc;
+    uint32_t nRead;
 
-    (void)pInfo;
-    /* RESIDUE (T2, 43 masked B, RAW 14+14, REGNORM 0+0, size-exact): the
-     * two register copies come out swapped -- the original holds the
-     * format pointer in ebx and the voice in esi, VC5 the reverse.  Every
-     * instruction is otherwise identical.  PROBED AND DEAD, do not re-run:
-     * declaration order of the two copies, the order of the two zeroing
-     * stores (+2 B), an allocation temp in place of re-reading pv->pData.
-     * What IS settled: every value read goes through the copies (taking
-     * `&pVoice`/`&ppFormat` pins the arguments to their slots, a parameter
-     * read is a reload); the cleanup is `if (rc != 0) {free} else {store
-     * count}` after ONE joined test, not a goto past it (that moves the
-     * count store to the end and the read arm out of line); the alloc
-     * failure threads straight to the cleanup. */
-    pv->pData    = 0;
-    *ppFmt       = 0;
+    /* The DirectX SDK sample's WaveLoadFile (wave.c), as the game linked it:
+     * the voice's pData is the sample's ppbData, and the cleanup is the
+     * sample's ERROR_LOADING / DONE_LOADING label pair.  VC5 enregisters the
+     * parameters and parks hmmio and nRead in their dead argument slots. */
+
+    pVoice->pData = NULL;
+    *ppFormat = NULL;
     *pnDataBytes = 0;
-    rc = FUN_1006ffc0(pszPath, (int *)&pVoice, (int *)ppFmt, &ckRiff);
-    if (rc == 0) {
-        rc = BrWaveSeekData((int *)&pVoice, &ckData, &ckRiff);
-        if (rc == 0) {
-            pv->pData = GlobalAlloc(0, ckData.cksize);
-            if (pv->pData == 0) {
-                rc = 0xe000;
-            } else {
-                rc = BrWavReadData((HMMIO)pVoice, ckData.cksize,
-                                   (char *)pv->pData, &ckData,
-                                   (unsigned int *)&ppFormat);
-            }
-        }
+
+    if ((rc = FUN_1006ffc0(pszPath, (int *)&hmmio, (int *)ppFormat, &ckRiff)) != 0) {
+        goto fail;
     }
-    if (rc != 0) {
-        if (pv->pData != 0) {
-            GlobalFree(pv->pData);
-            pv->pData = 0;
-        }
-        if (*ppFmt != 0) {
-            GlobalFree(*ppFmt);
-            *ppFmt = 0;
-        }
-    } else {
-        *pnDataBytes = *(uint32_t *)&ppFormat;
+    if ((rc = BrWaveSeekData((int *)&hmmio, &ckData, &ckRiff)) != 0) {
+        goto fail;
     }
-    if ((HMMIO)pVoice != 0) {
-        mmioClose((HMMIO)pVoice, 0);
+    if ((pVoice->pData = GlobalAlloc(0, ckData.cksize)) == NULL) {
+        rc = 0xe000;
+        goto fail;
+    }
+    if ((rc = BrWavReadData(hmmio, ckData.cksize, (char *)pVoice->pData, &ckData,
+                            (unsigned int *)&nRead)) != 0) {
+        goto fail;
+    }
+    *pnDataBytes = nRead;
+    goto done;
+
+fail:
+    if (pVoice->pData != NULL) {
+        GlobalFree(pVoice->pData);
+        pVoice->pData = NULL;
+    }
+    if (*ppFormat != NULL) {
+        GlobalFree(*ppFormat);
+        *ppFormat = NULL;
+    }
+
+done:
+    if (hmmio != NULL) {
+        mmioClose(hmmio, 0);
+        hmmio = NULL;
     }
     return rc;
 }
