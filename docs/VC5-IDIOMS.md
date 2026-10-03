@@ -8614,3 +8614,10 @@ with the target's flags, diff one function against original bytes
   load(k) ^ sym(f) ^ 0x143.  Hence the band structure: symbol indices shift
   with every file-scope declaration and the XOR wraps non-monotonically.
   Local declaration order and gaps move individual leaf hashes.
+- **A lone commutative `fmul` with the SCALAR on the fld side (`fld s; fmul
+  [p]`) where the plain product gives `fld [p]; fmul s`: write the scalar as
+  an assignment expression, `(t = s) * c`.**  On a component read through a
+  pointer, name the component first (`float vx = pV->x; ... (t = s) * vx`) or
+  the `fld s` is hoisted above the pointer loads.  The dead `t` costs nothing.
+  BrVec3Scale/ScaleBy/MulAdd/MulAddTo (0x10034360..0x100346A0); in ScaleBy
+  every component takes it, which also gives the three hoisted `fld s`.
