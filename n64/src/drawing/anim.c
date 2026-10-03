@@ -76,9 +76,10 @@ void BrAnimSetPingPong(int param_1)
  * start).  Written in the ROM's block order: the search and blend sit inside
  * the backwards branch; the time doubles as the blend fraction; `* 2` is an
  * integer so IDO keeps the multiply (a float 2.0f becomes x + x).
- * RESIDUE (243): the loop count spills to the stack where the ROM keeps it
- * in a register (one fewer saved register), so 4096.0f is not hoisted and
- * the temporaries shift.  Not yet matched. */
+ * The loop bound is read through the set each pass (no count local), which
+ * gives the ROM's 0x28 frame and hoists 4096.0f.
+ * RESIDUE (238): the ROM reloads the set pointer from its home for every
+ * entry where ours keeps the list in a register, and is 8 bytes shorter. */
 /* @t4-pass 0x8021D84C 1 2026-10-03 compiles 120 best 243 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8021D84C 2 2026-10-03 compiles 119 best 243 moved 0  (n64/tools/n64permute.py) */
 /* @t3 0x8021D84C */
@@ -105,8 +106,7 @@ void BrAnimUpdate(BrAnimSet *set)
   int nv;
 
   if (set->list != 0) {
-    n = set->list->n;
-    for (i = 0; i < n; i++) {
+    for (i = 0; i < set->list->n; i++) {
       a = set->list->anim[i];
       if (a->flags & 4) {
         a->time -= D_8028AAD8;
