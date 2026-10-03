@@ -113,8 +113,8 @@ void BrCreditsDrawCars(void)
  * animates three of them), the clock, sound banks and flags function statics
  * (the ROM addresses each afresh and keeps the clock in f16 with stores
  * back); ROM file offsets are link-time symbols.
- * RESIDUE (1461, same size): the ROM frame is 0xB0 against 0xA0 here,
- * and each model load reloads the stored pointer where the ROM passes v0
+ * RESIDUE (1459, same size): the shorts passed to the sound calls sit in
+ * other temporaries, and each model load reloads the stored pointer where the ROM passes v0
  * on. */
 /* @t4-pass 0x8020686C 1 2026-09-29 compiles 101 best 1461 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8020686C 2 2026-09-29 compiles 101 best 1461 moved 0  (n64/tools/n64permute.py) */
@@ -138,6 +138,7 @@ void BrIntroScreen(void)
   static int D_80315ED4;                  /* a button was pressed: go to the main menu */
   Mtx *mtx;
   float z;
+  int unused[4];                 /* holds the ROM's 0xB0 frame: zlib reads below it */
   int a;
   int v;
   int i;
