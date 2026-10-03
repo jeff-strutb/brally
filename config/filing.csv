@@ -1082,6 +1082,7 @@ glide_va,name,module,basis,file
 0x1005F6C0,BrLapSaveRestore,racing,filed,src/core/racing/BrLapSaveRestore_1005F6C0.cpp
 0x1005FF00,BrRaceGateStep,racing,filed,src/core/racing/br_race.c
 0x100608F0,BrVarSave,gamedata,filed,src/core/gamedata/br_varblock.c
+0x10060970,BrVarLoad,gamedata,filed,src/core/gamedata/br_varblock.c
 0x100609B0,BrWrap_10067940,startup,filed,src/core/startup/br_objlife.c
 0x100609D0,BrWrap_10067960,startup,filed,src/core/startup/br_objlife.c
 0x100609F0,BrWrap_10067980,startup,filed,src/core/startup/br_objlife.c

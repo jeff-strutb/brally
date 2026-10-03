@@ -8645,3 +8645,8 @@ with the target's flags, diff one function against original bytes
   loop INDEXED over the global array, `g[i].p` / `g[i].size`.**  VC5's
   strength reduction of the index makes the split live range.  0x1005C450
   BrZeroRegions.
+- **A cursor that starts as a parameter: advance the PARAMETER itself
+  (`p = (uint8_t *)p + n`), not a local copy.**  The local copy is loaded
+  up front; the parameter is loaded where first used (inside the guard), and
+  a saved start pointer gets homed in the parameter's own stack slot
+  (`mov [esp+arg],eax`).  0x100608F0 BrVarSave, 0x10060970 BrVarLoad.
