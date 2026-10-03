@@ -1264,6 +1264,7 @@ glide_va,name,module,basis,file
 0x1006CE00,BrBitStreamReadU8,gamedata,description,src/core/gamedata/br_bitstream.c
 0x1006CE20,BrBitStreamReadU16,gamedata,filed,src/core/gamedata/br_bitstream.c
 0x1006CE50,BrBitStreamReadU24,gamedata,filed,src/core/gamedata/br_bitstream.c
+0x1006CE80,BrBitStreamReadS32,gamedata,filed,src/core/gamedata/br_bitstream.c
 0x1006CED0,BrBitStreamReadBits,gamedata,filed,src/core/gamedata/BrBitStreamReadBits_1006CED0.cpp
 0x1006CF60,BrBitStreamAlignRead,gamedata,description,src/core/gamedata/br_bitstream.c
 0x1006CF80,BrBitStreamAtEnd,gamedata,neighbour-1,src/core/gamedata/br_bitstream.c

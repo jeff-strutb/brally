@@ -35,6 +35,14 @@
 #include <math.h>
 #include <stddef.h>
 
+/* The physics declarations (the streams pack car physics state for replays
+ * and the network).  VC5's allocation tie-breaks follow the number of
+ * symbols declared ahead of the functions: BrBitStreamReadS32 only takes
+ * the original's register and load order with a header this size in front
+ * of it, and of the headers that give it, this one also keeps
+ * BrBitStreamReadU24 and BrBitStreamWriteU24 exact. */
+#include "br_phys.h"
+
 /* ================================================================== */
 /* Bit/byte stream                                                     */
 /* ================================================================== */
@@ -201,45 +209,27 @@ unsigned int BR_THISCALL1 BrBitStreamReadU24(BrBitStream *pBs)
  * significant byte first. */
 /* @t4-pass 0x1006CE80 1 2026-09-13 probes 66 bytes 61 insns 26 regions 1 rows 11 census yes  (tools/crank.py) */
 /* @t4-pass 0x1006ce80 2 2026-09-20 probes 66 bytes 61 insns 26 regions 1 rows 11 census yes  (tools/crank.py) */
-/* @t3 0x1006CE80 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 61/73 insns 26/25 rows 5+6 regions 1 oracle EQUIVALENT
- * @t3-effort passes 2 zero-movement 1 2
- * RESIDUE: register colouring / instruction-encoding only -- every divergence
- * row pairs (0 unpaired), recompile is a few bytes shorter, A5 EQUIVALENT
- * (crank census yes). Do not reopen before the end-grind. */
 /* @implements 0x10073C40 d3d BrBitStreamReadS32 */
 int BR_THISCALL1 BrBitStreamReadS32(BrBitStream *pBs)
 {
     const unsigned char *p;
-    int i, v;
+    int i;
+    unsigned int v;
     BrBitStreamAlignRead(pBs);
     i = pBs->readByte;
-    /* p[1] is read through the two-part sum BEFORE p is bound (the
-     * lea-late idiom); the chain seeds from a SIGNED char read of p[0]. */
-    /* RESIDUE (12 B): orig reads p[1] through the unbound two-part sum,
-     * binds p with a late lea, and widens p[1..3] in dirty regs
-     * (mov dl / and 0xff); VC5 binds p first and zero-widens (xor + mov)
-     * from every probed spelling -- the register-byte analogue of the
-     * byte-slot wall. The signed-char Horner seed IS proven right.
-     * DEAD 2026-09-13 (fn.py, 12 probes): uchar locals b1/b2/b3 loaded
-     * in the original's order (VC5 hoists b3 to the top and homes it in
-     * a byte slot, 75 B), the same with the second shift split, a
-     * signed `const char *p` with (unsigned char) casts at every use, and
-     * a `static __inline unsigned char` reader for the three bytes --
-     * all fold back to xor+mov zero-widening (61 B).  End-of-TU
-     * placement inert.  Also DEAD 2026-09-13 (fn.py crtmask): signed
-     * `const char *p` masked at use (`p[2] & 0xff`) after the CRT corpus
-     * proved `and r32,0xff` spells an unfoldable uchar narrowing
-     * (ISMBBYTE.C) -- VC5 canonicalises the mask back to xor+mov.  All 9
-     * CRT dirty-widen sites anchor the byte with an 8-bit test first
-     * (docs/VC5-IDIOMS.md tail); no anchor-free form exists in 690
-     * proven CRT functions. */
-    v = pBs->pBuf[i + 1];
+    /* Each low byte is read SIGNED and masked back as its own `v |=`
+     * statement on an unsigned accumulator -- that is what keeps the
+     * original's dirty widening (`mov dl,[..]; and edx,0xff`); masking
+     * inside one expression folds back to xor+mov. */
+    v = (int)(signed char)pBs->pBuf[i + 1] & 0xff;
     p = pBs->pBuf + i;
     v |= (int)*(const signed char *)p << 8;
-    v = ((v << 8) | p[2]) << 8;
+    v <<= 8;
+    v |= (int)(signed char)p[2] & 0xff;
+    v <<= 8;
+    v |= (int)(signed char)p[3] & 0xff;
     pBs->readByte = i + 4;
-    return v | p[3];
+    return v;
 }
 
 /* 0x10073C90  __thiscall, ret 4.
