@@ -8677,3 +8677,18 @@ with the target's flags, diff one function against original bytes
     order by displacement.  The original's adjacent globals were one object.
   0x10011FA0 BrFrameDraw (also 630-658 extra symbols, a window that opens
   far above the first hundred).
+- **A register rotation from the first instruction (ours loads the global
+  into eax, the original into ecx with the 6-byte form) can mean the
+  function RETURNS a value: the return web claims eax.**  Read what eax
+  holds at each `ret` in the original.  0x100306D0 BrPendListAdd returns the
+  slot it filled (or the new count when full); `void` could not reach it.
+  BrSurfSetColourKey moves the same way when it returns its surface.
+- **Copy/mask order inside one difference (`w1 & m` - `w0 & m`, original
+  works w0's half first): put the subtrahend in its own statement before
+  the neighbouring computation, then finish the difference from it**
+  (`ds = w0 & m; dt = ...; ds = (w1 & m) - ds;`).  0x10029480
+  BrGbiTexScanLoadTlut.
+- **A relocated base the original ADDS (`add r,offset sym`) where ours folds
+  it into `lea r,[r+sym]`: build the cursor in place** (`p = &base; p +=
+  i * size;`).  An absolute integer constant reproduces the add but drops
+  the relocation.  0x1000CB20 BrViewBuffersRebase.
