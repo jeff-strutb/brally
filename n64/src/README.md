@@ -18,8 +18,9 @@ One folder per area; a file per responsibility.  Every function carries a
 | [`driving/`](driving/README.md) | car physics, collision, tyres, the computer drivers |
 | [`gamedata/`](gamedata/README.md) | ROM loading, memory pools, saves, random numbers |
 | [`geometry/`](geometry/README.md) | vector and matrix maths |
+| [`libultra/`](libultra/README.md) |  |
 | [`menus/`](menus/README.md) | the front-end screens |
 | [`racing/`](racing/README.md) | race state, the race display, car artwork, the camera |
 | [`startup/`](startup/README.md) | boot, the main loop's game modes, fatal errors |
 
-Tagged functions: T2 59, T3 4, T4 409.
+Tagged functions: EXCLUDED (T2) 1, FENCED 163, T2 48, T3 65, T4 446.

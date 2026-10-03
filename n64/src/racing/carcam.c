@@ -83,20 +83,6 @@ void BrStub8022BA98(int arg0)
 {
 }
 
-/* WHAT IT DOES: Add to the camera shake for view n: at most 2.5 per call,
- * and the total never goes above 5. */
-/* @implements 0x8021BE28 tgr BrCamShakeAdd */
-void BrCamShakeAdd(int cam, float amount)
-{
-  if (amount > 2.5f) {
-    amount = 2.5f;
-  }
-  D_8031B1D8[cam] += amount;
-  if (D_8031B1D8[cam] > 5.0f) {
-    D_8031B1D8[cam] = 5.0f;
-  }
-}
-
 
 /* WHAT IT DOES: Switch a car to its fourth camera and place it 6 units along
  * the body's first axis, 2 along its second and 1 along its third from the

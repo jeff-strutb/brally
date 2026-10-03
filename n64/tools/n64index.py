@@ -35,7 +35,8 @@ def main():
     src = os.path.join(N64, 'src')
     folders = {}
     for f in B.all_sources():
-        folders.setdefault(os.path.basename(os.path.dirname(f)), []).append(f)
+        # the top-level folder (library trees nest deeper)
+        folders.setdefault(os.path.relpath(f, src).split(os.sep)[0], []).append(f)
     total = {}
     for area, files in sorted(folders.items()):
         lines = ['# %s: %s' % (area, AREAS.get(area, '')), '',

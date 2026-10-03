@@ -29,18 +29,6 @@ void BrPadEdges(unsigned int *param_1);
 extern unsigned int D_8036A8E0[4][0x57];
 /* -- end declarations -- */
 
-/* WHAT IT DOES: Start the next controller read, unless one is already in
- * flight: the result arrives on the controller message queue. */
-/* @implements 0x8021A920 tgr BrPadStartRead */
-void BrPadStartRead(void)
-{
-  if (D_8028AB6C == 0) {
-    D_8028AB6C = 1;
-    D_802A4BE8 = 0;
-    osContStartReadData(&D_80272D48);
-  }
-}
-
 /* WHAT IT DOES: One stick direction's menu auto-repeat, for the positive
  * side of an axis: pushing past the threshold presses the bit and starts a
  * 500 ms delay; held, it presses again each time the timer runs out (then
@@ -118,34 +106,6 @@ void BrPadStickToButtons(int param_1)
   BrPadStickRepeatNeg(param_1,param_1 + 0xc,param_1 + 0x1c,2);
   BrPadStickRepeatNeg(param_1,param_1 + 0x10,param_1 + 0x18,4);
   BrPadStickRepeatPos(param_1,param_1 + 0x14,param_1 + 0x18,1);
-}
-
-/* WHAT IT DOES: Finish a controller read: start one if none is in flight,
- * wait for it to complete, copy the results into the pad state, and mark
- * fresh input as ready. */
-/* @implements 0x8021A964 tgr BrPadRead */
-void BrPadRead(void)
-{
-  BrPadStartRead();
-  osRecvMesg(&D_80272D48,0,1);
-  osContGetReadData(D_8031A3E0);
-  D_802A4BE8 = 1;
-  D_8028AB6C = 0;
-}
-
-/* WHAT IT DOES: Poll all four controllers: wait for the pending read, then
- * update each pad record (0x15C bytes apiece) and derive this frame's fresh
- * presses from its raw buttons. */
-/* @implements 0x8021A9B4 tgr BrPadPollAll */
-void BrPadPollAll(void)
-{
-  int i;
-
-  BrPadRead();
-  for (i = 0; i < 4; i++) {
-    func_80255120(D_8036A8E0[i]);
-    BrPadEdges(D_8036A8E0[i]);
-  }
 }
 
 /* WHAT IT DOES: Mark buttons as handled: moves the given bits from the
