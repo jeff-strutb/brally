@@ -70,8 +70,7 @@ int BrSndBufSetPan(BrSndVoice *param_1,int param_2)
 
 {
   param_1->f18 = param_2;
-  BrSndVoiceBufStart(param_1);
-  return;
+  return BrSndVoiceBufStart(param_1);   /* the original returns the callee's EAX */
 }
 
 /* WHAT IT DOES: set frequency and pan on a voice within a bank, checking that DirectSound is ready. */

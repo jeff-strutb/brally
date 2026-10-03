@@ -4091,7 +4091,7 @@ int BrSndVoiceBufRelease(struct BrSndVoice *);
 #pragma pop_macro("BrSndVoiceBufRelease")
 #pragma push_macro("BrSndVoiceBufStart")
 #undef BrSndVoiceBufStart
-void BrSndVoiceBufStart(struct BrSndVoice *);
+int BrSndVoiceBufStart(struct BrSndVoice *);
 #pragma pop_macro("BrSndVoiceBufStart")
 #pragma push_macro("BrSndVoiceBufStop")
 #undef BrSndVoiceBufStop

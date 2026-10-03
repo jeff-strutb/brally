@@ -2949,14 +2949,8 @@ extern float g_aBrCarPhysDrvT3[24];  /* 0x100B5178 */
 #undef DAT_100b51e4
 extern char DAT_100b51e4[];  /* 0x100B51E4 */
 #pragma pop_macro("DAT_100b51e4")
-#pragma push_macro("BrG_0B5D90")
-#undef BrG_0B5D90
-extern uint16_t BrG_0B5D90;  /* 0x100B5D90 */
-#pragma pop_macro("BrG_0B5D90")
-#pragma push_macro("g_brB5D94")
-#undef g_brB5D94
-extern char g_brB5D94[];  /* 0x100B5D94 */
-#pragma pop_macro("g_brB5D94")
+#define BrG_0B5D90 (*(uint16_t *)&g_0B6540[9])        /* 0x100B5D90: row 1 of the sound bank (br_coretypes.h) */
+#define g_brB5D94 ((char *)&g_0B6540[9] + 4)           /* 0x100B5D94 */
 #pragma push_macro("DAT_100b6498")
 #undef DAT_100b6498
 extern char DAT_100b6498[];  /* 0x100B6498 */

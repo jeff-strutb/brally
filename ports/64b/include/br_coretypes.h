@@ -701,14 +701,8 @@ extern BrCfgRec39580 g_aBrCtlNameKey[120];  /* 0x100B3B40 */
 #undef g_0B6540
 extern BrSndBankCarSlot g_0B6540[];  /* 0x100B5D48 */
 #pragma pop_macro("g_0B6540")
-#pragma push_macro("g_0B6C00")
-#undef g_0B6C00
-extern BrSndBankCarSlot g_0B6C00[];  /* 0x100B6408 */
-#pragma pop_macro("g_0B6C00")
-#pragma push_macro("g_0B6C48")
-#undef g_0B6C48
-extern BrSndBankCarSlot g_0B6C48[];  /* 0x100B6450 */
-#pragma pop_macro("g_0B6C48")
+#define g_0B6C00 (&g_0B6540[24 * 9])   /* 0x100B6408: row 24 of the sound bank */
+#define g_0B6C48 (&g_0B6540[25 * 9])   /* 0x100B6450: row 25 */
 #pragma push_macro("g_a220B20")
 #undef g_a220B20
 extern BrRaceSel g_a220B20;  /* 0x1021C650 */

@@ -832,11 +832,7 @@ BR_GLOBAL_EXTENT(float, DAT_100b5170, , 0x4);  /* 0x100B5170 */
 BR_GLOBAL_EXTENT(float, g_aBrCarPhysDrvT3, [24], 0xC);  /* 0x100B5178 */
 char DAT_100b51e4[19200];  /* 0x100B51E4 */
 BrSndRow g_aBrSndRow[26];  /* 0x100B55F8 */
-BrSndBankCarSlot g_0B6540[9];  /* 0x100B5D48 */
-BR_GLOBAL_EXTENT(uint16_t, BrG_0B5D90, , 0x2);  /* 0x100B5D90 */
-char g_brB5D94[1652];  /* 0x100B5D94 */
-BrSndBankCarSlot g_0B6C00[9];  /* 0x100B6408 */
-BrSndBankCarSlot g_0B6C48[9];  /* 0x100B6450 */
+BrSndBankCarSlot g_0B6540[26 * 9];  /* 0x100B5D48: the sound bank, 26 rows of 18 ints to 0x100B6498 (one object: rows 1, 24, 25 were split off as globals of their own) */
 char DAT_100b6498[8];  /* 0x100B6498 */
 char DAT_100b64a0[8];  /* 0x100B64A0 */
 char DAT_100b64a8[8];  /* 0x100B64A8 */

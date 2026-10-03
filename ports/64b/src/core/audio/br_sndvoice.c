@@ -355,11 +355,12 @@ typedef int (__stdcall *dsbuf_fn4i)(void *, int, int, int);
  * voice's "playing" flag at +0x1c is raised only when Play returns S_OK. */
 /* @implements 0x1006B970 glide BrSndVoiceBufStart */
 
-void BrSndVoiceBufStart(BrSndVoice *param_1)
+int BrSndVoiceBufStart(BrSndVoice *param_1)
 
 {
   unsigned int status;
   int          bLoop;
+  int          hr;
 
   status = 0;
   bLoop  = 0;
@@ -368,15 +369,16 @@ void BrSndVoiceBufStart(BrSndVoice *param_1)
   }
   if (((((dsbuf_getstatus)(*(void ***)(param_1->pBuf))[0x24 / 4]))
          (param_1->pBuf, &status) == 0) && ((status & 1) == 1)) {
-    (((dsbuf_fn2i)(*(void ***)(param_1->pBuf))[0x34 / 4]))
+    /* the original returns each call's result (EAX) */
+    return (((dsbuf_fn2i)(*(void ***)(param_1->pBuf))[0x34 / 4]))
       (param_1->pBuf, 0);
-    return;
   }
-  if ((((dsbuf_fn4i)(*(void ***)(param_1->pBuf))[0x30 / 4]))
-        (param_1->pBuf, 0, 0, bLoop) == 0) {
+  hr = (((dsbuf_fn4i)(*(void ***)(param_1->pBuf))[0x30 / 4]))
+        (param_1->pBuf, 0, 0, bLoop);
+  if (hr == 0) {
     param_1->f1C = 1;
   }
-  return;
+  return hr;
 }
 
 /* WHAT IT DOES: silence the whole sound bank -- for every occupied voice slot
