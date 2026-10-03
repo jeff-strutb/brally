@@ -1,8 +1,11 @@
 # The portable 64-bit core
 
-Status: planned. Decided 2026-09-30. The macOS 32-bit lane
-(`ports/macos/wasm/`) stays the shipping app, and the reference the new
-core is checked against, until the core matches it.
+Status: done as planned (2026-10-03). The core builds and plays on macOS
+(Metal or Vulkan) and builds for Windows (Vulkan), and matches the macOS
+32-bit lane (`ports/macos/wasm/`) tick for tick under `BR_VCLOCK`. That lane
+stays the home of the Remastered lighting, car, skies and music until they
+move over. The README's "Native port" section describes the result; this
+file is the design it was built to.
 
 ## Goal
 
@@ -11,9 +14,9 @@ thin platform layer under it:
 
 | OS | renderer | status |
 |---|---|---|
-| macOS | Metal | first |
-| Linux | OpenGL | later |
-| Windows | Vulkan, OpenGL or D3D, chosen when that port starts | later |
+| macOS | Metal (or Vulkan on MoltenVK) | plays |
+| Windows | Vulkan | builds |
+| Linux | Vulkan | not started (a window host is what is missing) |
 
 Game logic is built once, for every OS. Each OS supplies only the platform
 backends (window, input, audio out, timing, files, CD audio, renderer).

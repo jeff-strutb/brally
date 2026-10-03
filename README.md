@@ -7,7 +7,9 @@
 
 *Left: the main menu, running natively on an Apple Silicon Mac ([Mac port](#mac-port)).
 Right: Coastline with [Remastered lighting](#remastered-lighting) and the
-[Remastered car](#remastered-car) on (press ~ to switch back to the original look).*
+[Remastered car](#remastered-car) on (press ~ to switch back to the original look).
+The game also builds as a true 64-bit program for macOS, Windows and headless
+use: see [Native port](#native-port-64-bit-cross-platform).*
 
 **Maintainer:** Jeffrey Wilbur, Strut B, LLC\
 **Contact:** [retro@strutb.com](mailto:retro@strutb.com)
@@ -278,7 +280,9 @@ The repo root is the decomp. `ports/` is derived platform code, not byte-matched
     tools/                    matching pipeline + staged MSVC 5.0
     config/                   function maps, globals, binaries.csv, fenced.csv
     build/match/              extracted reference bytes, per-function report
-    ports/macos/              macOS/Metal port: NEW code, no `@implements`
+    ports/64b/                the native 64-bit port: a retyped fork of the core
+                              plus a cross-platform layer (macOS, Windows)
+    ports/macos/              macOS/Metal 32-bit lane: NEW code, no `@implements`
     n64/                      Top Gear Rally (IDO/MIPS); writes only build/n64/
 
 `@implements <addr>` is a hard claim: MSVC 5.0 emits those original bytes.
@@ -326,8 +330,111 @@ builds and the suites that need retail data skip with a reason.
   patches matches back into the DLL for drop-in testing.
 - **`./build.sh`**: builds the portable core natively with clang, with its unit
   tests and the older partial harness `build/brally`. Modules and tests are
-  auto-discovered. `./tools/regress.sh` runs every suite. The playable Mac
-  build is separate: see below.
+  auto-discovered. `./tools/regress.sh` runs every suite. The playable
+  builds are separate: the [native port](#native-port-64-bit-cross-platform)
+  (macOS, Windows, headless) and the [Mac port](#mac-port)'s 32-bit lane.
+
+## Native port (64-bit, cross-platform)
+
+`ports/64b/` is the game as a real 64-bit program: native pointers, typed
+structures, no emulated address space and no image of the original DLL mapped
+at its old addresses. One portable core is built once for every OS, with a
+thin platform layer under it, and it plays the whole game: the front end,
+every race mode and weather, saves, the championship, replays, music and
+sound, controllers and network multiplayer.
+
+| OS | window and input | renderer | status |
+|---|---|---|---|
+| macOS (arm64) | Cocoa, GameController | Metal (or Vulkan on MoltenVK) | plays; `Boss Rally 64.app` |
+| Windows (x64) | Win32, XInput | Vulkan | builds (cross-compiled); a `.exe` |
+| any (headless) | scripted input | software reference rasteriser, or none | the test suites |
+
+**How the core is made.** `ports/64b/src` and `ports/64b/include` are a
+one-time copy of the decomp (the commit in `src/FORKED-FROM`), edited
+directly. Every function is certified to behave as the original does, so the
+copy is retyped for 64 bits rather than regenerated: raw 32-bit offsets and
+strides became named fields, pointers kept in `int` became pointers, every
+original address became one definition with the original's other names for
+it as views of that one object, and N64-format disc data keeps its 4-byte
+address slots through one accessor. The initial data is lifted from your
+`BRGlide.dll` at build time (`tools/datalift.py`); the core never includes the
+MSVC 5.0 SDK headers. `src/` and `include/` stay exactly what MSVC 5.0
+compiles, and later byte-matching there never has to flow into the copy.
+`ports/64b/PORTABLE-CORE.md` has the design.
+
+**Verified against the original.** Under `BR_VCLOCK` the native build and the
+32-bit lane run the same input scripts on one virtual clock, and the car
+state is compared tick for tick: they are identical across quick races, every
+weather, the cheat tracks, time attack, the championship and season saves.
+Network races are checked against brbox, the original DLL run in an
+emulator, frame for frame. Rendering is checked the same way, renderer
+against renderer and against the reference.
+
+**The platform layer** (`ports/64b/platform/`) answers what the game asks of
+Windows, by API, not by OS:
+
+| Directory | What it is |
+|---|---|
+| `common/` | Win32 (windows, messages, files, threads, timers), DirectInput, DirectSound (mixed natively), MCI and EAR CD audio, DirectPlay over UDP, Glide 2, the C runtime with the game's DOS paths |
+| `render/` | one renderer interface, neutral between graphics APIs: Metal, Vulkan, a software reference rasteriser, and a null one |
+| `host/` | per OS: the window, keys, mouse, pads, audio out, files (`macos`, `windows`, `win32`, `posix`, `null`) |
+| `include/` | the Win32, DirectX and Glide surface the core compiles against, in fixed-width types |
+
+Glide is modelled on the Voodoo: 16-bit W-buffer depth (which the car shadows
+depend on), back-face culling, its combiners, fog and texture formats. Every
+renderer draws at the window's own resolution, one pixel per window pixel,
+as the original drew at the resolution the player chose, and LFB images are
+scaled with sharp bilinear.
+
+**Original and Remastered.** Every place where the port can either behave as
+the 1999 game did or improve on it is one flag, and two profiles set them
+all (`platform/include/br_flags.h`):
+
+| Flag | Original | Remastered |
+|---|---|---|
+| `ANY_ASPECT` | the game's 4:3 picture, letterboxed or pillarboxed | any window shape: the race fills it, its camera widened (Hor+ in a wide window, Vert+ in a tall one), the mirror and HUD kept at their own shape at their edges |
+| `MENU_MUSIC_RESUME` | music paused by a focus change stays paused in the menus | it resumes |
+
+Tab switches between the two in play. It is the game's own 29th control,
+**REMASTER** on the Game Key Configuration page, so it can be rebound like
+any other; its binding is saved after the original's settings in
+`BossRally.cfg`, which the original game still reads. `BR_PROFILE=original`
+starts in Original, and `BR_FLAG_<NAME>=0|1` overrides one flag. The 32-bit
+lane's Remastered lighting, car, skies and music have not moved over yet.
+
+**Multiplayer** is DirectPlay over UDP: a host advertises on the LAN by
+multicast and relays the session; any copy on the network can join from the
+game's own lobby. `BR_NETPORT` picks the port (47624 by default).
+
+**Building.** `ports/64b/link64.sh` builds the core and links one host and
+one renderer, chosen by environment:
+
+```sh
+# macOS, Metal: build/portable_metal/brally64
+OUT=build/portable_metal HOST=macos RENDER=metal ports/64b/link64.sh
+
+# macOS app: build/app64/Boss Rally 64.app, with the disc's data and CD audio
+# inside (needs reference/brally/ and ffmpeg)
+ports/64b/package_app.sh
+
+# Windows x64, Vulkan, cross-compiled (Homebrew's mingw-w64, vulkan-headers,
+# vulkan-loader, glslang): build/portable_winvk/brally64.exe
+OUT=build/portable_winvk HOST=windows RENDER=vulkan CC=ports/64b/tools/wincc.sh ports/64b/link64.sh
+
+# headless, the software reference renderer: build/portable/brally64
+RENDER=soft ports/64b/link64.sh
+```
+
+The build reads the game data from your disc: `BR_CDROOT` is the CD's files
+(default `testdata/disc`, else beside the program or inside the app),
+`BR_SAVEDIR` the saves and settings (default `~/Library/Application
+Support/Boss Rally 64` on macOS, `%APPDATA%\Boss Rally 64` on Windows). On
+Windows, put the disc's files in `disc\` beside `brally64.exe`.
+
+**Testing.** `ports/64b/tools/suite.sh` runs every `tools/brbox_scripts/`
+scenario headless and reports each script's outcome, network pairs included
+(two copies on one virtual clock); `BR_SHOT` and the scripts' `shot` lines
+save named frames.
 
 ## Mac port
 
@@ -338,6 +445,12 @@ builds and the suites that need retail data skip with a reason.
 
 *The same moment of a Quick Race on Coastline, Original (left) and
 Remastered (right): press ~ to switch between them live.*
+
+This is the 32-bit lane: the first way the game ran on a Mac, and where the
+Remastered lighting, car, skies and music were built. The
+[native port](#native-port-64-bit-cross-platform) replaces it as the game
+itself; this lane remains the home of those Remastered extras until they move
+over, and the reference the native port was checked against.
 
 The game runs natively on macOS: an arm64 Mac app with a window, Metal
 rendering, and the Mac's keyboard, mouse and game controllers. It is rough but
@@ -443,7 +556,8 @@ not in the verified placement. That is how the Mac-native parts plug in:
 | `native/varblock.c` | the four state-snapshot wrappers (0x100609B0 to 0x10060A10) the translation inlined away, and BrRaceSaveLastLapInfo (0x10060A30): the last-lap snapshot the instant replay starts from, and the pause block's save and restore |
 
 `ports/macos/NATIVE_RENDERER.md` is the design and records what each piece
-measured. This 32-bit lane is interim; a native 64-bit port comes later.
+measured. This 32-bit lane is interim; the
+[native port](#native-port-64-bit-cross-platform) is its successor.
 
 ### Remastered lighting
 
