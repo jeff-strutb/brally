@@ -255,7 +255,23 @@ typedef struct BrCarModelRec {
     int rom;                    /* 0x14  ROM address of the model file */
     int present;                /* 0x18  non-zero when the car is in this build */
     unsigned int size;          /* 0x1C  bytes, set when it is loaded */
-    char pad20[0x58 - 0x20];
+    int dialRom;                /* 0x20  ROM address of the dashboard art: the dial
+                                   face, then its 0x200-byte palettes (one per
+                                   weather) from +0x400... */
+    char pad24[4];
+    unsigned char dialW;        /* 0x28  the rev counter's size */
+    unsigned char dialH;        /* 0x29 */
+    signed char lampX;          /* 0x2A  the rev lamps' offset in the dial */
+    signed char lampY;          /* 0x2B */
+    unsigned char lampW;        /* 0x2C  and size (frames follow the dial face) */
+    unsigned char lampH;        /* 0x2D */
+    unsigned char dialMode;     /* 0x2E  0 a needle; 1, 2 a palette rev bar */
+    unsigned char needleX;      /* 0x2F  the needle's centre in the dial; for a */
+    unsigned char needleY;      /* 0x30  bar, needleX is its length in colours */
+    char pad31[3];
+    float needleMax;            /* 0x34  needle angle at full revs */
+    float needleRest;           /* 0x38  needle angle at rest */
+    char pad3c[0x58 - 0x3C];
     float len;                  /* 0x58  body length, 1/256 units */
     float wid;                  /* 0x5C  body half-width */
 } BrCarModelRec;
