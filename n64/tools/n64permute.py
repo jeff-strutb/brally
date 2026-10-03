@@ -9,6 +9,8 @@ the function's body, recompiles its file with IDO and grades the function
 with the T4 gate.  The best spelling is kept as the next starting point.
 
 Respellings: swap the operands of a commutative operator (+ * == != & | ^);
+move the last term of an assignment's single-operator * or + chain to the
+front (the rest kept grouped);
 x op= y <-> x = x op y; swap two adjacent declarations; swap two adjacent
 assignments to plain variables that do not read or write each other's names,
 or to two different fields of the same pointer.  None of them changes what the
@@ -37,6 +39,41 @@ COMM = r'\+|\*|==|!=|&|\||\^'
 OPERAND = r'[\w\.\->\[\]]+|\([^()]*\)'
 
 
+def top_terms(expr, op):
+    """expr split on the binary operator op at paren depth 0, or None when
+    another binary operator also sits at depth 0 (a single-operator chain
+    only, so rotating its terms re-associates nothing)."""
+    terms, depth, cur, prev = [], 0, '', ''
+    i = 0
+    while i < len(expr):
+        c = expr[i]
+        two = expr[i:i + 2]
+        if c in '([':
+            depth += 1
+        elif c in ')]':
+            depth -= 1
+        elif depth == 0:
+            binary = bool(prev) and (prev.isalnum() or prev in '_)].')
+            if two in ('->', '++', '--'):
+                cur += two
+                i += 2
+                prev = two[-1]
+                continue
+            if c in '+-*/%<>&|^?:=,!' and binary:
+                if c != op or two in ('&&', '||', '<<', '>>'):
+                    return None
+                terms.append(cur.strip())
+                cur, prev = '', ''
+                i += 1
+                continue
+        cur += c
+        if not c.isspace():
+            prev = c
+        i += 1
+    terms.append(cur.strip())
+    return terms if len(terms) >= 2 and all(terms) else None
+
+
 def mutate(body, rng):
     ops = []
     for m in re.finditer(r'(?<![\w\)\]])(%s)\s*(%s)\s*(%s)(?![\w\(\[])' % (OPERAND, COMM, OPERAND), body):
@@ -60,6 +97,15 @@ def mutate(body, rng):
     for m in re.finditer(r'(\b[\w\.\->\[\]]+)\s*=\s*\1\s*([+*&|^-])\s*([^;]+);', body):
         if single.match(m.group(3)):
             ops.append(('contract', m))
+    # (t1 op ... op tn-1) op tn -> tn op (t1 op ... op tn-1): the last term
+    # commuted to the front of a single-operator * or + chain; the grouping of
+    # the rest is kept, so nothing re-associates
+    for m in re.finditer(r'(?<![=!<>+*/%&|^-])=(?!=)\s*([^;{}]+);', body):
+        for op in '*+':
+            t = top_terms(m.group(1), op)
+            # calls and ++/-- would move side effects past each other
+            if t and not re.search(r'\w\s*\(|\+\+|--', m.group(1)):
+                ops.append(('rotate', (m, op, t)))
     lines = body.split('\n')
     decl = [i for i, l in enumerate(lines)
             if re.match(r'\s+(unsigned |signed )?(int|short|char|float|double|u8|u16|s16|u32|s32|f32|BrVec3)\b[^;(]*;\s*$', l)]
@@ -95,6 +141,11 @@ def mutate(body, rng):
         return body[:m.start()] + '%s = %s %s %s;' % (m.group(1), m.group(1), m.group(2), m.group(3)) + body[m.end():]
     if kind == 'contract':
         return body[:m.start()] + '%s %s= %s;' % (m.group(1), m.group(2), m.group(3)) + body[m.end():]
+    if kind == 'rotate':
+        mm, op, t = m
+        rest = t[0] if len(t) == 2 else '(%s)' % (' %s ' % op).join(t[:-1])
+        last = t[-1]
+        return body[:mm.start(1)] + '%s %s %s' % (last, op, rest) + body[mm.end(1):]
     if kind in ('decl', 'stmt'):
         lines[m], lines[m + 1] = lines[m + 1], lines[m]
         return '\n'.join(lines)
