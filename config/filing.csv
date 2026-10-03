@@ -202,6 +202,7 @@ glide_va,name,module,basis,file
 0x100140B0,BrHudDrawDial,drawing,filed,src/core/drawing/br_hudscene.c
 0x10014760,BrHudDrawTimeEntry,drawing,neighbour,src/core/drawing/br_text.c
 0x10014800,BrSub_10017290,drawing,neighbour,src/core/drawing/br_hudtimes.c
+0x10014960,BrSub_100173F0,drawing,filed,src/core/drawing/br_hudlappos.c
 0x10014C00,BrHudDrawViewCentreText,drawing,neighbour,src/core/drawing/br_hudscene.c
 0x10014CB0,FUN_10014cb0,drawing,neighbour,src/core/drawing/br_fade.c
 0x10014D00,BrHudDrawViewMessage,drawing,neighbour,src/core/drawing/br_hudscene.c

@@ -69,23 +69,8 @@ static const char *Br70Str(int id)
  * separately. Note it takes its horizontal position from the first view
  * rather than from the view being drawn, which is the original's own
  * asymmetry. */
-/* RESIDUE (25 masked diffs, T3a, REGNORM 0+0 -- instruction shapes are
- * identical after register normalisation). Both suffix-x expressions
- * associate their three terms differently from the original: it pairs the
- * SPILLED local first (`mov edx,[esp+0x14]; add edx,ebx`), we pair the two
- * registers. DO NOT RE-PROBE the term order -- all six permutations of
- * `w + nudge + x + 3` compile byte-identically; VC5 reassociates integer
- * sums freely, so the pairing is the allocator's, not the source's. */
 /* @t4-pass 0x10014960 1 2026-09-09 probes 10 bytes 664 insns 202 regions 2 rows 0 census no  (hand, fn.py variants: literal/order/amp spellings, all inert or worse) */
 /* @t4-pass 0x10014960 2 2026-09-09 probes 10 bytes 664 insns 202 regions 2 rows 0 census yes  (hand, fn.py variants: decl orders, comparison flips, format-arg forms, all inert; corpus MISS at +0x220 len 10 -- the association site is proven nowhere) */
-/* @t3 0x10014960 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 664/664 insns 202/202 rows 0+0 regions 2 oracle UNCLASSIFIED
- * @t3-effort passes 2 zero-movement 1 2
- * residue is the three-term-sum association fork at the two BrTextDraw
- * x-argument sites (proven source-unreachable in the RESIDUE block above:
- * VC5 reassociates the chain unconditionally); size- and insn-exact,
- * identical register-blind multiset.
- * Do not reopen before the end-grind. */
 /* @implements 0x100173F0 d3d BrSub_100173F0 */
 /* Orig reads cViews / iView / the race object / the suppress flag as
  * standalone globals (no BrScreenGet / BrHudGetEnv), sprintf via the IAT
@@ -93,22 +78,9 @@ static const char *Br70Str(int id)
  * 3rd-place leaves nudge at 0. Position is a field at +0xFF8 of the same
  * object as cSplits, not a NULL-checked pointer.
  *
- * RESIDUE 25 bytes, T3a, FIRSTDIV +0x220. Size, instruction count and the
- * register-blind multiset are exact (664/664, REGNORM 0+0) and every register
- * holds the same value as the original's; the whole gap is HOW THE THREE-TERM
- * SUM IN EACH BrTextDraw x-argument IS ASSOCIATED, at the two sites below.
- * The original pairs the two non-x terms first and folds x with the +3 into
- * the lea:
- *     add edx,ebx            ; w + nudge          (edx = w, reloaded)
- *     lea eax,[edx+esi+3]    ; + x + 3            (esi = x)
- * and, in the other arm, `add edx,edi` (the /3 quotient + w) then
- * `lea ecx,[edx+esi+3]`. The recompile pairs nudge with x instead
- * (`add ebx,esi` / `lea eax,[ebx+edx+3]`), which is the same value by a
- * different grouping. VC5 reassociates the chain unconditionally, so the
- * SOURCE CANNOT REACH IT: probed and dead, do not re-run -- writing the pair
- * first (already the case at both sites), hoisting `w + nudge` into a named
- * int temp, and the in-place `w += nudge;` form that makes w the natural
- * destination. All three are byte-identical to what is here. */
+ * The two three-term x sums (`w + nudge + x + 3`) pair w with nudge first,
+ * as the original does, only under the local declaration order below; term
+ * order in the source is canonicalised and does not reach it. */
 typedef struct Br70Race {
     char    _a[0xFA8];
     int32_t cSplits;
@@ -122,13 +94,15 @@ extern Br70Race *g_pBrHudRace;   /* 0x106E9D88 */
 
 void BrSub_100173F0(BrHudView *aViews, int a2)
 {
-    char    szBuf[BR70_173F0_BUF];
-    int     w;
+    /* Declaration order is load-bearing here: it is the tie-break VC5 uses
+     * for which locals share registers (found by permuting the list). */
     int     x;
-    int     y;
-    int32_t nudge;
-    int32_t pos;
     const char *pszSuffix;
+    int32_t nudge;
+    int     w;
+    int32_t pos;
+    char    szBuf[BR70_173F0_BUF];
+    int     y;
 
     (void)a2;
 
