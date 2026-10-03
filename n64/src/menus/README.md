@@ -139,6 +139,12 @@ Functions: T2 21, T3 11, T4 80.
 | `80247B0C` | `BrPaintClearMenu` | T2 |
 | `8024843C` | `BrPaintMirrorMenu` | T4 |
 
+## `paintscreen.c`: the paint shop screen
+
+| address | function | tier |
+|---|---|---|
+| `80243260` | `BrPaintShopScreen` | T2 |
+
 ## `paintshop.c`: the paint shop
 
 | address | function | tier |

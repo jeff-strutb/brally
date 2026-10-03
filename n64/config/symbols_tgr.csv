@@ -418,6 +418,7 @@ va,name,kind
 80242A7C,BrScreenFlush3Layout0,func
 80242B10,BrAllocPaintShopGfxMem,func
 80242BDC,BrPaintCarView,func
+80243260,BrPaintShopScreen,func
 80244BA8,BrPaintReset,func
 80244CA8,BrPaintDecalCommit,func
 80244D04,BrPaintDecalApply,func
