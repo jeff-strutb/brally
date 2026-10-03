@@ -59,7 +59,7 @@ extern int D_80238EBC;
 extern int D_80238F10;
 extern int D_80025C70;
 void BrScissorSet(int x0, int y0, int x1, int y1);
-void func_80237980(void);
+void BrHudDialDraw(void);
 extern int D_802723D8;                 /* speed in mph (else kph) */
 extern char D_80361C30[];              /* the speed text */
 typedef struct BrHudPanel {     /* one per view, 0x14 bytes */
@@ -72,6 +72,34 @@ extern Gfx *D_8028A858;
 extern int D_8028A850;
 extern int D_8028A898;                 /* the texture filter mode */
 void BrTexSizeBits(int n, int *shift, int *mask);
+typedef struct BrHudImg {       /* an image record for the image drawer (0x14 bytes) */
+  char pad00[8];
+  unsigned short *data;         /* 0x08 */
+  unsigned short w;             /* 0x0C */
+  unsigned short h;             /* 0x0E */
+  char pad10[4];
+} BrHudImg;
+extern BrHudImg D_8028C7A8[2];         /* each view's rev counter face */
+extern BrHudImg D_8028C7D0[2];         /* and its rev-lamp frame */
+extern unsigned int D_8028C790[2];     /* the face loaded for each view: car | night << 8 */
+extern int D_8028C798[2];              /* the lamp frame loaded for each view */
+extern unsigned short D_80361530[2][0x100];  /* each view's dial palette */
+extern unsigned short D_80361930[0x100];     /* a dial palette as read from ROM */
+typedef struct BrHudVtx {       /* a Vtx */
+  short x, y, z;
+  short flag;
+  short s, t;
+  unsigned char r, g, b, a;
+} BrHudVtx;
+extern BrHudVtx D_80361B30[2][2][4];   /* the needle quad, per frame buffer and view */
+extern int D_8028A85C;                 /* the frame buffer being built */
+extern int D_8028AA80;                 /* night */
+void BrRomRead(void *dst, int rom, int size);
+void func_8023DF9C(BrHudImg *img, int x, int y, int w, int h, int a, int b, int c, int d,
+                   int e, int f, int g, int k, int l);
+unsigned int BrRandStep(void);
+float cosf(float a);
+float sinf(float a);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: The race's frame hook: unless the race has switched the
@@ -86,6 +114,186 @@ void BrRaceDrawLayers(void)
     func_8022D7E0(0,0,0,0xc0,0xff);
     BrSkidAge();
     func_8022D7E0(0,0,0x82,0,0xff);
+  }
+}
+
+/* WHAT IT DOES: Draw the rev counter: the car's dashboard dial (its face and
+ * night or day palette loaded from ROM when the car or the light changes), the
+ * rev-lamp frame for the gear (lamps lit with the throttle open), both scaled
+ * to three quarters with two views; then by the dial's kind either the needle,
+ * a quad swept from the rest angle towards the full-revs angle by the RPM
+ * (with a little random shake), or a palette bar whose colours light up to
+ * the revs, the unlit ones dimmed or ghosted.  PC twin: BrHudDrawDial.
+ * RESIDUE (813, 864 of the ROM's 866 instructions): the ROM's frame is 0xF0
+ * with x, y, the key and the frame at 0xEC..0xD8 and the needle pointer and
+ * radii at 0x7C..0x74 (wide unused gaps between), where ours is 0xD8 with
+ * register choices following. */
+/* @implements 0x80237980 tgr BrHudDialDraw */
+void BrHudDialDraw(void)
+{
+  int x;
+  int y;
+  unsigned int key;
+  int frame;
+  unsigned int v;
+  float rev;
+  float a;
+  float tip;
+  float base;
+  float fx;
+  float fy;
+  BrHudVtx *q;
+  int first;
+  int lit;
+  int end;
+  unsigned short *src;
+  unsigned short *dst;
+
+  x = 296 - D_8028C7A8[D_8028AAEC].w;
+  y = D_8031B2C8[D_8028AAEC].y + D_8031B2C8[D_8028AAEC].h - D_8028C7A8[D_8028AAEC].h - 4;
+  frame = 0;
+  if (0.0f <= D_8028AAF0->xe38) {
+    frame = D_8028AAF0->xe40 + 1;
+  }
+  key = D_8028AAF0->kind | D_8028AA80 << 8;
+  if (key != D_8028C790[D_8028AAEC]) {
+    D_8028C7A8[D_8028AAEC].w = D_8028AE0C[D_8028AAF0->kind].dialW;
+    D_8028C7A8[D_8028AAEC].h = D_8028AE0C[D_8028AAF0->kind].dialH;
+    BrRomRead(D_8028C7A8[D_8028AAEC].data, D_8028AE0C[D_8028AAF0->kind].dialRom + 0x400,
+              D_8028C7A8[D_8028AAEC].h * D_8028C7A8[D_8028AAEC].w);
+    BrRomRead(D_80361530[D_8028AAEC], D_8028AE0C[D_8028AAF0->kind].dialRom + D_8028AA80 * 0x200,
+              0x200);
+    D_8028C7D0[D_8028AAEC].w = D_8028AE0C[D_8028AAF0->kind].lampW;
+    D_8028C7D0[D_8028AAEC].h = D_8028AE0C[D_8028AAF0->kind].lampH;
+    D_8028C790[D_8028AAEC] = key;
+  } else if (frame == D_8028C798[D_8028AAEC]) {
+    goto draw;
+  }
+  BrRomRead(D_8028C7D0[D_8028AAEC].data,
+            D_8028C7A8[D_8028AAEC].h * D_8028C7A8[D_8028AAEC].w + D_8028AE0C[D_8028AAF0->kind].dialRom +
+                D_8028C7D0[D_8028AAEC].h * D_8028C7D0[D_8028AAEC].w * frame + 0x400,
+            D_8028C7D0[D_8028AAEC].h * D_8028C7D0[D_8028AAEC].w);
+  D_8028C798[D_8028AAEC] = frame;
+draw:
+  gRaw(D_8028A858++, 0xE7000000, 0);
+  gRaw(D_8028A858++, 0xFD100000, D_80361530[D_8028AAEC]);
+  gRaw(D_8028A858++, 0xE8000000, 0);
+  gRaw(D_8028A858++, 0xF5000100, 0x07000000);
+  gRaw(D_8028A858++, 0xE6000000, 0);
+  gRaw(D_8028A858++, 0xF0000000, 0x073FC000);
+  gRaw(D_8028A858++, 0xE7000000, 0);
+  if (D_8028AB0C == 1) {
+    func_8023DF9C(&D_8028C7A8[D_8028AAEC], x, y, D_8028C7A8[D_8028AAEC].w, D_8028C7A8[D_8028AAEC].h,
+                  0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0);
+    func_8023DF9C(&D_8028C7D0[D_8028AAEC], D_8028AE0C[D_8028AAF0->kind].lampX + x,
+                  D_8028AE0C[D_8028AAF0->kind].lampY + y, D_8028C7D0[D_8028AAEC].w,
+                  D_8028C7D0[D_8028AAEC].h, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0);
+  } else {
+    x += D_8028C7A8[D_8028AAEC].w / 4;
+    y += D_8028C7A8[D_8028AAEC].h / 4;
+    func_8023DF9C(&D_8028C7A8[D_8028AAEC], x, y, D_8028C7A8[D_8028AAEC].w * 3 / 4,
+                  D_8028C7A8[D_8028AAEC].h * 3 / 4, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0);
+    func_8023DF9C(&D_8028C7D0[D_8028AAEC], D_8028AE0C[D_8028AAF0->kind].lampX * 3 / 4 + x,
+                  D_8028AE0C[D_8028AAF0->kind].lampY * 3 / 4 + y, D_8028C7D0[D_8028AAEC].w * 3 / 4,
+                  D_8028C7D0[D_8028AAEC].h * 3 / 4, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0);
+  }
+  if (D_8026FF10 == 0) {
+    v = BrRandStep() & 0x7F;
+  } else {
+    v = 0x40;
+  }
+  rev = (float)v + D_8028AAF0->xdf4;
+  if (D_8028AE0C[D_8028AAF0->kind].dialMode == 0) {
+    q = D_80361B30[D_8028A85C][D_8028AAEC];
+    if (D_8028AB0C == 2) {
+      x += D_8028AE0C[D_8028AAF0->kind].needleX * 3 / 4;
+      y += D_8028AE0C[D_8028AAF0->kind].needleY * 3 / 4;
+      tip = 15.0f;
+      base = 5.0f;
+    } else {
+      x += D_8028AE0C[D_8028AAF0->kind].needleX;
+      y += D_8028AE0C[D_8028AAF0->kind].needleY;
+      tip = 20.0f;
+      base = 7.0f;
+    }
+    a = D_8028AE0C[D_8028AAF0->kind].needleRest;
+    if (0.0f < rev) {
+      a = a - rev * (a - D_8028AE0C[D_8028AAF0->kind].needleMax) / 8000.0f;
+    }
+    fx = (float)x;
+    fy = (float)(240 - y);
+    q[0].x = cosf(a - 0.05f) * tip + fx;
+    q[0].z = 0;
+    q[0].y = sinf(a - 0.05f) * tip + fy;
+    q[1].x = cosf(a + 0.05f) * tip + fx;
+    q[1].z = 0;
+    q[1].y = sinf(a + 0.05f) * tip + fy;
+    q[2].x = cosf(a + 0.3f) * base + fx;
+    q[2].z = 0;
+    q[2].y = sinf(a + 0.3f) * base + fy;
+    q[3].x = cosf(a - 0.3f) * base + fx;
+    q[3].z = 0;
+    q[0].r = 0;
+    q[0].g = 0xFF;
+    q[0].b = 0;
+    q[0].a = 0xFF;
+    q[1].r = 0;
+    q[1].g = 0xFF;
+    q[1].b = 0;
+    q[1].a = 0xFF;
+    q[2].r = 0;
+    q[2].g = 0xFF;
+    q[2].b = 0;
+    q[2].a = 0xFF;
+    q[3].r = 0;
+    q[3].g = 0xFF;
+    q[3].b = 0;
+    q[3].a = 0xFF;
+    q[3].y = sinf(a - 0.3f) * base + fy;
+    gRaw(D_8028A858++, 0xE7000000, 0);
+    gRaw(D_8028A858++, 0xBA001402, 0);
+    gRaw(D_8028A858++, 0xFCFFFFFF, 0xFFFE793C);
+    gRaw(D_8028A858++, 0xB900031D, 0x00552048);
+    gRaw(D_8028A858++, 0xB6000000, 0x00033000);
+    gRaw(D_8028A858++, 0xB7000000, 4);
+    gRaw(D_8028A858++, 0x0400103F, q);
+    gRaw(D_8028A858++, 0xB1000204, 0x0406);
+    gRaw(D_8028A858++, 0xE7000000, 0);
+  } else if (D_8028AE0C[D_8028AAF0->kind].dialMode == 1 || D_8028AE0C[D_8028AAF0->kind].dialMode == 2) {
+    first = (0x100 - D_8028AE0C[D_8028AAF0->kind].needleX) & ~3;
+    BrRomRead(&D_80361930[first], D_8028AE0C[D_8028AAF0->kind].dialRom + D_8028AA80 * 0x200 + first * 2,
+              (0x100 - first) * 2);
+    first = 0x100 - D_8028AE0C[D_8028AAF0->kind].needleX;
+    lit = rev / 8000.0 * (D_8028AE0C[D_8028AAF0->kind].needleX + 1) - 0.5f;
+    end = first;
+    if (lit >= 0) {
+      end = lit + first;
+    }
+    if (end > 0x100) {
+      end = 0x100;
+    }
+    if (first < end) {
+      src = &D_80361930[first];
+      dst = &D_80361530[D_8028AAEC][first];
+      do {
+        *dst++ = *src++;
+      } while (src < &D_80361930[end]);
+    }
+    if (D_8028AE0C[D_8028AAF0->kind].dialMode == 1) {
+      if (end < 0x100) {
+        src = &D_80361930[end];
+        dst = &D_80361530[D_8028AAEC][end];
+        do {
+          *dst++ = (*src++ >> 3) & 0x18C6 | 1;
+        } while (src < &D_80361930[0x100]);
+      }
+    } else if (end < 0x100) {
+      src = &D_80361930[end];
+      dst = &D_80361530[D_8028AAEC][end];
+      do {
+        *dst++ = *src++ & 0xFFFE;
+      } while (src < &D_80361930[0x100]);
+    }
   }
 }
 
@@ -541,7 +749,7 @@ void BrHudDraw(void)
     speed = 0.0f;
   }
   if (D_8028AAF4 != &D_8028AAF0->cams[2]) {
-    func_80237980();
+    BrHudDialDraw();
     BrHudTimesDraw();
   }
   BrHudLapDraw();
