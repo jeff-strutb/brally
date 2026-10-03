@@ -39,7 +39,7 @@ void func_8023B418(int e);
 void BrWheelSprayEmit();
 void func_8023CD60(void);
 void BrSkidDraw(void);
-void func_8023D134(unsigned int param_1,int param_2,unsigned int param_3,unsigned int param_4);
+void BrParticleListDraw(int n, int r, int g, int b);
 extern Gfx *D_8028A858;
 extern int D_8028A898;
 extern int D_8028A89C;
@@ -477,12 +477,100 @@ void BrParticleFrame(void)
   }
 }
 
+/* -- declarations: BrParticleListDraw -- */
+typedef struct BrView { int x; int y; int w; int h; int car; } BrView;
+extern BrView D_8031B2C8[2];
+extern int D_8028AAEC;                  /* the view being drawn */
+extern int D_8028A8A8;
+extern int D_8028A8AC;
+void BrMat4TransformPoint4(float out[4], float v[3], float m[4][4]);
+extern float D_80368A80[4][4];          /* the falling particles' billboard */
+/* -- end declarations -- */
+
+/* WHAT IT DOES: Draw one particle list as screen-facing sprites in colour
+ * r, g, b: each particle is carried through the billboard matrix and, when
+ * in front of the camera and inside the view (allowing for its size), drawn
+ * as a scissored texture rectangle at its projected depth, 3/4 as wide as
+ * high, its alpha the product of its two strength bytes.  The x axis flips
+ * with the mirrored view.  The ROM's float tests are <=/>= early-outs
+ * (continue); the view's centre is precomputed.
+ * RESIDUE (352): register allocation -- the ROM keeps the list index in
+ * v0 (dead across the transform call) and p in s1 with only s0/s1 saved;
+ * ours keeps the index and a copy of p in saved registers, which moves
+ * every spill slot.  Loop forms (for/while/do, a local index, a ushort
+ * parameter) and 120 declaration orders leave it. */
+/* @implements 0x8023D134 tgr BrParticleListDraw */
+void BrParticleListDraw(int n, int r, int g, int b)
+{
+  float v[4];
+  int x;
+  int y;
+  int w;
+  int h;
+  float sw;
+  float sx;
+  BrParticle *p;
+  float inv;
+  float size;
+  float lim;
+  int hw;
+  int hh;
+  int cx;
+  int cy;
+
+  w = D_8031B2C8[D_8028AAEC].w;
+  h = D_8031B2C8[D_8028AAEC].h;
+  x = (D_8031B2C8[D_8028AAEC].x * 2 + w) * 2;
+  y = (D_8031B2C8[D_8028AAEC].y * 2 + h) * 2;
+  sw = (float)(w * 2);
+  sx = sw;
+  if (D_8028A8A8 != D_8028A8AC) {
+    sx = -sw;
+  }
+  for (; n != 0; n = p->next) {
+    p = &D_80366A80[n];
+    BrMat4TransformPoint4(v, p->pos, D_80368A80);
+    if (v[3] <= 0.001f && v[3] >= -0.001f) {
+      continue;
+    }
+    inv = 1.0f / v[3];
+    v[2] *= inv;
+    if (v[2] >= 1.0f || v[2] <= -0.3f) {
+      continue;
+    }
+    v[0] *= inv;
+    size = p->size * inv * 4.0f;
+    lim = 1.0f + size;
+    if (v[0] <= -lim || v[0] >= lim) {
+      continue;
+    }
+    v[1] *= inv;
+    if (v[1] <= -lim || v[1] >= lim) {
+      continue;
+    }
+    hw = sw * 0.75f * size;
+    if (hw <= 0) {
+      continue;
+    }
+    hh = sw * size;
+    if (hh <= 0) {
+      continue;
+    }
+    cx = (int)(v[0] * sx) + x;
+    cy = (int)(v[1] * (float)(h * 2)) + y;
+    gDPPipeSync(D_8028A858++);
+    gDPSetPrimColor(D_8028A858++, 0xff, 0xff, r, g, b, (p->x1f * p->x1e) >> 8);
+    gRaw(D_8028A858++, 0xee000000, ((int)(v[2] * 16352.0f) + 0x3fe0) << 16);
+    gSPScisTextureRectangle(D_8028A858++, cx - hw, cy - hh, cx + hw, cy + hh, 0, 0, 0x7e0,
+                            0x1f800 / hw, -0x1f800 / hh);
+  }
+}
+
 /* -- declarations: BrParticleFallDraw -- */
 extern BrCar *D_8028AAF4;               /* the camera's car */
 extern float D_8031AB10[4][4];
 extern float D_8031AB50[4][4];
 extern float D_8031AA90[4][4];
-extern float D_80368A80[4][4];          /* the falling particles' billboard */
 int BrMat4Inverse(float out[4][4], float in[4][4]);
 void BrMat4Mul(float r[4][4], float a[4][4], float b[4][4]);
 void *memcpy(void *dst, void *src, unsigned int n);
@@ -585,17 +673,17 @@ void BrParticleFallDraw(void)
     switch (D_8028B940) {
     case 4:
     case 9:
-      func_8023D134(D_8028C838, 0x70, 0x58, 0x38);
-      func_8023D134(D_8028C83C, 0x70, 0x68, 0x58);
+      BrParticleListDraw(D_8028C838, 0x70, 0x58, 0x38);
+      BrParticleListDraw(D_8028C83C, 0x70, 0x68, 0x58);
       break;
     case 1:
     case 6:
-      func_8023D134(D_8028C838, 0x60, 0x54, 0x38);
-      func_8023D134(D_8028C83C, 0x60, 0x5c, 0x50);
+      BrParticleListDraw(D_8028C838, 0x60, 0x54, 0x38);
+      BrParticleListDraw(D_8028C83C, 0x60, 0x5c, 0x50);
       break;
     default:
-      func_8023D134(D_8028C838, 0xa0, 0x88, 0x60);
-      func_8023D134(D_8028C83C, 0x70, 0x68, 0x58);
+      BrParticleListDraw(D_8028C838, 0xa0, 0x88, 0x60);
+      BrParticleListDraw(D_8028C83C, 0x70, 0x68, 0x58);
       break;
     }
   }
@@ -677,7 +765,7 @@ void BrParticleDraw(void)
   if (D_8028AA84 != 0) {
     gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 4, 2, 0x80);
     gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_L, 3, 29, 0x504b50);
-    func_8023D134(D_8028C834, 0xe0, 0xe0, 0xff);
+    BrParticleListDraw(D_8028C834, 0xe0, 0xe0, 0xff);
   }
   gDPPipeSync(D_8028A858++);
   gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 19, 1, 0x80000);

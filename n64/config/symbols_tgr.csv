@@ -369,6 +369,7 @@ va,name,kind
 8023CD60,BrParticleFallStep,func
 8023CF30,BrParticleReset,func
 8023CFC4,BrParticleFrame,func
+8023D134,BrParticleListDraw,func
 8023D714,BrParticleFallDraw,func
 8023DBC0,BrParticleDraw,func
 8023DF00,BrRomFileLoad,func
