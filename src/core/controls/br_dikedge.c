@@ -31,12 +31,6 @@
  * registers once, not every frame. */
 /* @t4-pass 0x10058FD0 1 2026-09-10 probes 57 bytes 66 insns 17 regions 1 rows 2 census yes  (tools/crank.py) */
 /* @t4-pass 0x10058FD0 2 2026-09-10 probes 57 bytes 66 insns 17 regions 1 rows 2 census yes  (tools/crank.py) */
-/* @t3 0x10058FD0 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 66/67 insns 17/17 rows 1+1 regions 1 oracle EQUIVALENT
- * @t3-effort passes 2 zero-movement 1 2
- * residue after tools/crank.py: 57 compiles this pass, levers accepted: none;
- * every candidate and score is in build/match/crank.log.
- * Do not reopen before the end-grind. */
 /* @implements 0x1005FF60 d3d BrMenuSub1005FF60 */
 void BrMenuSub1005FF60(void)
 {
@@ -51,7 +45,10 @@ void BrMenuSub1005FF60(void)
         int32_t down;
 
         g_BrDikEdge[i] = (g_BrDikPrev[i] == 0) ? 1 : 0;
-        down = (int32_t)((g_BrDikState[i] >> 7) & 1u);
+        /* Through a SIGNED byte, widened unsigned: VC5 then loads only
+         * `mov cl,byte` over the live zero-test register (the shift and
+         * mask need bit 7 alone) where an unsigned byte gets xor+mov. */
+        down = (int32_t)(((uint32_t)(int8_t)g_BrDikState[i] >> 7) & 1);
         g_BrDikPrev[i] = down;
         g_BrDikEdge[i] &= down;
     }

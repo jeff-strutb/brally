@@ -8625,3 +8625,8 @@ with the target's flags, diff one function against original bytes
   the `fld s` is hoisted above the pointer loads.  The dead `t` costs nothing.
   BrVec3Scale/ScaleBy/MulAdd/MulAddTo (0x10034360..0x100346A0); in ScaleBy
   every component takes it, which also gives the three hoisted `fld s`.
+- **`mov cl,byte [x]` with NO zero-extension, then `shr ecx,7; and ecx,1`:
+  the byte is read SIGNED and widened unsigned, `((uint32_t)(int8_t)b >> 7)
+  & 1`.**  VC5 sees only bit 7 survives and loads the low byte over whatever
+  the register held; an unsigned byte gets `xor ecx,ecx; mov cl,..` and a
+  plain signed one gets `sar`.  0x10058FD0 BrMenuSub1005FF60.

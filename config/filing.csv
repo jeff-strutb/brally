@@ -1013,6 +1013,7 @@ glide_va,name,module,basis,file
 0x10058E20,BrVidModeListFill,menus,neighbour,src/core/menus/BrVidModeListFill_10058E20.cpp
 0x10058F90,BrExt_1007AC00,menus,neighbour-1,src/core/menus/br_uibounds.c
 0x10058FA0,BrMenuSub1005FF30,menus,prefix,src/core/menus/br_keyclear.c
+0x10058FD0,BrMenuSub1005FF60,controls,filed,src/core/controls/br_dikedge.c
 0x10059020,BrDikPollAndEdge,controls,description,src/core/controls/br_dik.c
 0x10059040,BrFn1005FFD0,controls,neighbour-1,src/core/controls/br_dik.c
 0x10059060,BrInputLatchUpdate,controls,description,src/core/controls/br_input.c
