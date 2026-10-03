@@ -140,8 +140,8 @@ static __inline const BrDiEffVtbl *BrDiEff(BrDiObj *p)
     return (const BrDiEffVtbl *)(const void *)p->pVtbl;
 }
 
-typedef long (__stdcall *BrDiSetParamsFn)(BrDiObj *, const BrDiEffect *, uint32_t);
-typedef long (__stdcall *BrDiSetPropFn)(BrDiObj *, uint32_t, const void *);
+typedef int32_t (__stdcall *BrDiSetParamsFn)(BrDiObj *, const BrDiEffect *, uint32_t);
+typedef int32_t (__stdcall *BrDiSetPropFn)(BrDiObj *, uint32_t, const void *);
 #define BR_DI_SETPARAMS(p, eff, flags) \
     ((BrDiSetParamsFn)(((const BrDiEffVtbl *)(const void *)(p)->pVtbl)->pfnSetParameters))((p), (eff), (flags))
 #define BR_DI_SETPROP(p, prop, pdiph) \
@@ -318,7 +318,7 @@ void BrFfbUpdateSpring(int32_t up, int32_t enable, int32_t decay)
 /* @implements 0x10079390 d3d BrFfbSetup */
 void BrFfbSetup(int32_t springCoeff, int32_t springCoeff2)
 {
-    long hr;
+    int32_t hr;
     uint32_t rgAxes[2];            /* original: the axis buffer is a stack local */
 
     rgAxes[0] = 0u;   /* lX */
@@ -403,7 +403,7 @@ int32_t BR_STDCALL BrFfbEnumDevice(const void *pDevInst, void *pvRef)
 {
     unsigned char guid[16];
     BrDiObj *pDev;
-    long hr;
+    int32_t hr;
 
     memcpy(guid, (const unsigned char *)pDevInst + 4, sizeof guid);
 

@@ -52,7 +52,7 @@ typedef struct BrDiObj BrDiObj;
  * NOTE: what is preserved from the original is the vtable SLOT INDEX, not the
  * byte offset -- on a 64-bit host these fields are 8 bytes apart, so slot 8 is
  * at +0x40, not +0x20. Every comment below gives the original x86 offset. */
-typedef long (*BrDiMethod0)(BrDiObj *pThis);
+typedef int32_t (*BrDiMethod0)(BrDiObj *pThis);
 
 /* Only the two slots this translation unit calls are typed. The rest are
  * deliberately left as `void *` rather than given plausible-looking

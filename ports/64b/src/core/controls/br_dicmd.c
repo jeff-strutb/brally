@@ -41,8 +41,8 @@
 #undef BrEntSetPos
 
 
-typedef long (__stdcall *BrDiSetParamsFn)(BrDiObj *, const BrDiEffect *, uint32_t);
-typedef long (__stdcall *BrDiSetPropFn)(BrDiObj *, uint32_t, const void *);
+typedef int32_t (__stdcall *BrDiSetParamsFn)(BrDiObj *, const BrDiEffect *, uint32_t);
+typedef int32_t (__stdcall *BrDiSetPropFn)(BrDiObj *, uint32_t, const void *);
 #define BR_DI_SETPARAMS(p, eff, flags) \
     ((BrDiSetParamsFn)(((const BrDiEffVtbl *)(const void *)(p)->pVtbl)->pfnSetParameters))((p), (eff), (flags))
 #define BR_DI_SETPROP(p, prop, pdiph) \

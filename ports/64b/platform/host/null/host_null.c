@@ -46,6 +46,7 @@ int host_window_open(int width, int height, const char *title)
 }
 
 void host_window_close(void) {}
+int host_window_visible(void) { return 0; }
 
 void host_present(const uint32_t *argb, int w, int h)
 {
@@ -79,6 +80,13 @@ void host_audio_close(void) {}
 
 /* no decoder: the CD plays silently and no track ever ends */
 const char *host_music_dir(void) { return NULL; }
+
+int host_pad_read(host_pad *p)
+{
+    memset(p, 0, sizeof *p);
+    p->pov = -1;
+    return 0;
+}
 host_stream *host_stream_open(const char *path, int rate)
 {
     (void)path;

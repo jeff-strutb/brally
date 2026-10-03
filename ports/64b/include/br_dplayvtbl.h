@@ -13,7 +13,7 @@ typedef struct BrDPlayVtbl {
     void      *aSlots0[21];                 /* slots 0..20 */
     BrComGetFn pfnGet;                      /* slot 21, +0x54 */
     void      *aSlots22[9];                 /* slots 22..30 */
-    long     (*pfnSetSessionDesc)(struct BrDPlay *pThis, struct BrDPSessionDesc *pDesc,
+    int32_t     (*pfnSetSessionDesc)(struct BrDPlay *pThis, struct BrDPSessionDesc *pDesc,
                                   uint32_t dwFlags);   /* slot 31, +0x7C */
 } BrDPlayVtbl;
 #ifdef __cplusplus

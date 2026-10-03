@@ -73,6 +73,8 @@ typedef struct host_event {
 
 int  host_window_open(int width, int height, const char *title);
 void host_window_close(void);
+/* 1 while any of the window can be seen (not minimised, hidden or covered) */
+int  host_window_visible(void);
 /* the next event, waiting up to wait_ms for one; 1 if *ev was filled */
 int  host_poll_event(host_event *ev, uint32_t wait_ms);
 void host_message_box(const char *text, const char *caption);
@@ -95,6 +97,21 @@ host_stream *host_stream_open(const char *path, int rate);
 /* up to frames frames into lr; the number read, 0 at the end */
 int          host_stream_read(host_stream *s, float *lr, int frames);
 void         host_stream_close(host_stream *s);
+
+/* ---- game controllers ------------------------------------------------------------- */
+/* the first game controller, in the layout DirectInput gives an XInput pad:
+ *   x, y     left stick, -1..1, y positive downward
+ *   z        right trigger minus left trigger
+ *   buttons  0 A  1 B  2 X  3 Y  4 LB  5 RB  6 view  7 menu  8 L3  9 R3
+ *            10 LT  11 RT (past half)  12-15 d-pad up/right/down/left
+ *   pov      the d-pad in hundredths of a degree clockwise from up, -1 centred
+ * 0 when none is connected (the state then reads centred) */
+typedef struct host_pad {
+    float    x, y, z;
+    unsigned buttons;
+    int      pov;
+} host_pad;
+int host_pad_read(host_pad *p);
 
 /* ---- process ---------------------------------------------------------------------- */
 void host_init(int argc, char **argv);

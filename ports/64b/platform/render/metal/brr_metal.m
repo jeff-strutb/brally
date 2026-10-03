@@ -28,6 +28,7 @@
 #include "brr.h"
 
 CAMetalLayer *host_macos_metal_layer(void);      /* host_macos.m */
+#include "host.h"
 
 /* ---- the shader -------------------------------------------------------------------- */
 static NSString *const k_src = @
@@ -158,6 +159,7 @@ static uint8_t *s_shot_rgba;
 static long s_shot_frame = -1;
 static char s_shot_path[1024];
 static dispatch_semaphore_t s_inflight;
+static int s_offscreen;            /* BR_VCLOCK: frames never wait for the display */
 
 static MTLBlendFactor bf(int k, int src)
 {
@@ -314,6 +316,7 @@ int brr_open(int width, int height)
             [s_white replaceRegion:MTLRegionMake2D(0, 0, 1, 1) mipmapLevel:0 withBytes:&one bytesPerRow:4];
         }
         s_inflight = dispatch_semaphore_create(3);
+        s_offscreen = getenv("BR_VCLOCK") != NULL;
         ml = host_macos_metal_layer();
         if (ml) {
             /* presents keep to the display's refresh, as the board's
@@ -617,7 +620,10 @@ static int write_shot(const char *path)
 void brr_present(void)
 {
     @autoreleasepool {
-        CAMetalLayer *ml = host_macos_metal_layer();
+        /* a window that cannot be seen gets no refresh, and its next
+         * drawable would hold the game up to a second: the frame is drawn
+         * offscreen as always but not shown */
+        CAMetalLayer *ml = s_offscreen || !host_window_visible() ? nil : host_macos_metal_layer();
         id<CAMetalDrawable> dr;
         int want_shot = (long)(s_frame + 1) == s_shot_frame;
         enc();                                 /* a frame with nothing drawn still presents */

@@ -1,11 +1,12 @@
 /* host_macos.m: the macOS host -- a Cocoa window that shows the frames, the
- * keyboard and mouse, and Core Audio out.
+ * keyboard, mouse and game controllers, Core Audio out and decoded music.
  *
  * The game keeps its own loop on the main thread (it pumps messages through
  * PeekMessage / GetMessage), so this host never runs [NSApp run]: each
- * host_poll_event drains Cocoa's queue itself. Frames arrive as ARGB pixels
- * through host_present (the software renderer) and are shown scaled to the
- * window with nearest-neighbour filtering.
+ * host_poll_event drains Cocoa's queue itself. Frames arrive either as ARGB
+ * pixels through host_present (the software renderer), shown scaled to the
+ * window with nearest-neighbour filtering, or drawn by the Metal renderer
+ * into the window's CAMetalLayer (host_macos_metal_layer).
  *
  * Directories (environment, else the defaults):
  *   BR_CDROOT   the CD's files       (default testdata/disc, then the app's Resources/disc)
@@ -16,6 +17,7 @@
 #import <QuartzCore/QuartzCore.h>
 #import <Metal/Metal.h>
 #import <AudioToolbox/AudioToolbox.h>
+#import <GameController/GameController.h>
 #include <sys/stat.h>
 
 #include "host.h"
@@ -304,6 +306,11 @@ void host_window_close(void)
     }
 }
 
+int host_window_visible(void)
+{
+    return s_win && ([s_win occlusionState] & NSWindowOcclusionStateVisible) != 0;
+}
+
 /* the window's CAMetalLayer, for a renderer that draws with Metal (macOS
  * only: render/metal asks for it; the view's layer becomes a Metal layer) */
 CAMetalLayer *host_macos_metal_layer(void)
@@ -500,5 +507,56 @@ void host_stream_close(host_stream *s)
     if (s) {
         ExtAudioFileDispose(s->f);
         free(s);
+    }
+}
+
+/* ---- game controllers ------------------------------------------------------------- */
+/* any controller macOS knows (Xbox, PlayStation, MFi, Switch Pro) through
+ * GameController.framework; the current one, else the first with a full
+ * gamepad profile. One plugged in while the game runs is picked up at the
+ * next read. */
+int host_pad_read(host_pad *o)
+{
+    @autoreleasepool {
+        GCController *c = GCController.current;
+        GCExtendedGamepad *g;
+        unsigned b = 0;
+        int u, r, d, l;
+        memset(o, 0, sizeof *o);
+        o->pov = -1;
+        if (!c || !c.extendedGamepad)
+            for (GCController *k in GCController.controllers)
+                if (k.extendedGamepad) {
+                    c = k;
+                    break;
+                }
+        if (!c || !(g = c.extendedGamepad))
+            return 0;
+        o->x = g.leftThumbstick.xAxis.value;
+        o->y = -g.leftThumbstick.yAxis.value;
+        o->z = g.rightTrigger.value - g.leftTrigger.value;
+        if (g.buttonA.pressed) b |= 1u << 0;
+        if (g.buttonB.pressed) b |= 1u << 1;
+        if (g.buttonX.pressed) b |= 1u << 2;
+        if (g.buttonY.pressed) b |= 1u << 3;
+        if (g.leftShoulder.pressed) b |= 1u << 4;
+        if (g.rightShoulder.pressed) b |= 1u << 5;
+        if (g.buttonOptions.pressed) b |= 1u << 6;
+        if (g.buttonMenu.pressed) b |= 1u << 7;
+        if (g.leftThumbstickButton.pressed) b |= 1u << 8;
+        if (g.rightThumbstickButton.pressed) b |= 1u << 9;
+        if (g.leftTrigger.value > 0.5f) b |= 1u << 10;
+        if (g.rightTrigger.value > 0.5f) b |= 1u << 11;
+        u = g.dpad.up.pressed;
+        r = g.dpad.right.pressed;
+        d = g.dpad.down.pressed;
+        l = g.dpad.left.pressed;
+        b |= (unsigned)u << 12 | (unsigned)r << 13 | (unsigned)d << 14 | (unsigned)l << 15;
+        o->buttons = b;
+        if (u || r || d || l) {
+            static const int ang[3][3] = { { 22500, 27000, 31500 }, { 18000, -1, 0 }, { 13500, 9000, 4500 } };
+            o->pov = ang[r - l + 1][u - d + 1];
+        }
+        return 1;
     }
 }

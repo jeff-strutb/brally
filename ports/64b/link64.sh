@@ -33,7 +33,7 @@ SRCS="$P/common/main.c $P/common/crt.c $P/common/win_kernel.c $P/common/win_user
 case "$HOST" in
   null)  SRCS="$SRCS $P/host/posix/host_posix.c $P/host/null/host_null.c";;
   macos) SRCS="$SRCS $P/host/posix/host_posix.c $P/host/macos/host_macos.m"
-         LIBS="-framework Cocoa -framework Metal -framework QuartzCore -framework ImageIO -framework AudioToolbox";;
+         LIBS="-framework Cocoa -framework Metal -framework QuartzCore -framework ImageIO -framework AudioToolbox -framework GameController";;
 esac
 OBJS=""
 for s in $SRCS; do

@@ -81,7 +81,7 @@ int BrOpt3A00(void)
     BrDPSessionDesc *pDesc;
     int              fAllReady;
     BrSlot          *pSlot;
-    typedef long (__stdcall *FnSetDesc)(BrDPlay *, BrDPSessionDesc *, uint32_t);
+    typedef int32_t (__stdcall *FnSetDesc)(BrDPlay *, BrDPSessionDesc *, uint32_t);
 
     pDesc = NULL;
     FUN_10036740(g_brP277B40, &pDesc);
@@ -171,7 +171,7 @@ void BrOpt41A0(void)
     BrDPSessionDesc *pDesc;
     /* Header types the slot cdecl; IDirectPlay4::SetSessionDesc is stdcall
      * (`call [ecx+0x7C]` with no `add esp`). Local vtable view only. */
-    typedef long (__stdcall *BrOptSetSessFn)(BrDPlay *, BrDPSessionDesc *, uint32_t);
+    typedef int32_t (__stdcall *BrOptSetSessFn)(BrDPlay *, BrDPSessionDesc *, uint32_t);
     typedef struct { void *aSlots[31]; BrOptSetSessFn pfnSetSessionDesc; } BrOptDPlayVtblStd;
 
     DAT_10ac5bd4 = 1;
