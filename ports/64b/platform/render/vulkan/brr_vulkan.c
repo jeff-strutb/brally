@@ -42,6 +42,7 @@
 
 #if defined(__APPLE__)
 void *host_macos_metal_layer(void);              /* host_macos.m: the view's CAMetalLayer */
+void host_macos_layer_fit(int *w, int *h);       /* host_macos.m: drawable = the view in pixels */
 #elif defined(_WIN32)
 /* the Windows host's window and module (host/windows), as plain pointers:
  * this file never includes windows.h (in the platform build that name is
@@ -112,7 +113,8 @@ static VkImageView      s_col_view, s_dep_view;
 static VkFormat         s_dep_fmt;
 static VkRenderPass     s_pass;
 static VkFramebuffer    s_fb;
-static int              s_w, s_h, s_col_fresh;
+static int              s_w, s_h, s_col_fresh;    /* s_w x s_h: the game's frame, Glide's coordinates */
+static int              s_rw, s_rh;              /* the targets: the window's pixels, letterboxed */
 
 static VkDescriptorSetLayout s_lay_ubo, s_lay_tex, s_lay_smp;
 static VkPipelineLayout s_playout;
@@ -143,7 +145,7 @@ static VkImageView      s_up_view;
 static VkFramebuffer    s_up_fb;
 static uint32_t         s_up_w, s_up_h;
 static VkRenderPass     s_up_pass;
-static VkPipeline       s_sharp;
+static VkPipeline       s_sharp, s_sharp_lfb;     /* into s_up; into the frame (LFB writes) */
 static VkDescriptorSet  s_col_set;
 static int              s_offscreen;             /* BR_VCLOCK: never wait for the display */
 
@@ -533,13 +535,13 @@ static void pass_begin(void)
         return;
     rb.renderPass = s_pass;
     rb.framebuffer = s_fb;
-    rb.renderArea.extent.width = (uint32_t)s_w;
-    rb.renderArea.extent.height = (uint32_t)s_h;
+    rb.renderArea.extent.width = (uint32_t)s_rw;
+    rb.renderArea.extent.height = (uint32_t)s_rh;
     vkCmdBeginRenderPass(s_cmd, &rb, VK_SUBPASS_CONTENTS_INLINE);
     v.x = 0;
     v.y = 0;
-    v.width = (float)s_w;
-    v.height = (float)s_h;
+    v.width = (float)s_rw;
+    v.height = (float)s_rh;
     v.minDepth = 0;
     v.maxDepth = 1;
     vkCmdSetViewport(s_cmd, 0, 1, &v);
@@ -594,6 +596,10 @@ static void scissor(int x0, int y0, int x1, int y1)
         x0 = y0 = 0;
         x1 = y1 = 0;
     }
+    x0 = (int)lround((double)x0 * s_rw / s_w);
+    x1 = (int)lround((double)x1 * s_rw / s_w);
+    y0 = (int)lround((double)y0 * s_rh / s_h);
+    y1 = (int)lround((double)y1 * s_rh / s_h);
     r.offset.x = x0;
     r.offset.y = y0;
     r.extent.width = (uint32_t)(x1 - x0);
@@ -633,6 +639,10 @@ void brr_clear(uint32_t argb, float depth, int colour, int depthbuf, const brr_s
         a[n].clearValue.depthStencil.depth = depth < 0 ? 0 : depth > 1 ? 1 : depth;
         n++;
     }
+    x0 = (int)lround((double)x0 * s_rw / s_w);
+    x1 = (int)lround((double)x1 * s_rw / s_w);
+    y0 = (int)lround((double)y0 * s_rh / s_h);
+    y1 = (int)lround((double)y1 * s_rh / s_h);
     r.rect.offset.x = x0;
     r.rect.offset.y = y0;
     r.rect.extent.width = (uint32_t)(x1 - x0);
@@ -716,6 +726,62 @@ void brr_draw(const brr_state *st, const brr_vertex *v, int n)
     vkCmdDraw(s_cmd, (uint32_t)n, 1, 0, 0);
 }
 
+static int sharp_make(void);
+
+/* an LFB write into targets larger than the game's frame: the region as a
+ * texture, drawn over its rectangle scaled, sharp bilinear (as the Metal
+ * renderer and the wasm lane) */
+static void lfb_scaled(int x, int y, int w, int h, const uint16_t *p, int stride)
+{
+    uint8_t *px = (uint8_t *)malloc((size_t)w * (size_t)h * 4);
+    vtex t;
+    VkViewport v;
+    VkRect2D sc;
+    VkDescriptorSet sets[2];
+    int i, j;
+    if (!px)
+        return;
+    for (j = 0; j < h; j++) {
+        const uint16_t *r = (const uint16_t *)((const uint8_t *)p + (size_t)j * (size_t)stride);
+        for (i = 0; i < w; i++) {
+            uint32_t c = r[i];
+            uint8_t *o = px + ((size_t)j * (size_t)w + (size_t)i) * 4;
+            o[0] = (uint8_t)((c >> 11) * 255 / 31);
+            o[1] = (uint8_t)(((c >> 5) & 63) * 255 / 63);
+            o[2] = (uint8_t)((c & 31) * 255 / 31);
+            o[3] = 255;
+        }
+    }
+    i = sharp_make() && tex_make(&t, px, w, h);
+    free(px);
+    if (!i)
+        return;
+    frame_begin();
+    pass_begin();
+    v.x = (float)((double)x * s_rw / s_w);
+    v.y = (float)((double)y * s_rh / s_h);
+    v.width = (float)((double)w * s_rw / s_w);
+    v.height = (float)((double)h * s_rh / s_h);
+    v.minDepth = 0;
+    v.maxDepth = 1;
+    vkCmdSetViewport(s_cmd, 0, 1, &v);
+    sc.offset.x = (int32_t)floor(v.x);
+    sc.offset.y = (int32_t)floor(v.y);
+    sc.extent.width = (uint32_t)ceil(v.x + v.width) - (uint32_t)sc.offset.x;
+    sc.extent.height = (uint32_t)ceil(v.y + v.height) - (uint32_t)sc.offset.y;
+    vkCmdSetScissor(s_cmd, 0, 1, &sc);
+    vkCmdBindPipeline(s_cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, s_sharp_lfb);
+    sets[0] = t.set;
+    sets[1] = s_set_smp[1][1][1];
+    vkCmdBindDescriptorSets(s_cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, s_playout, 1, 2, sets, 0, NULL);
+    vkCmdDraw(s_cmd, 3, 1, 0, 0);
+    v.x = v.y = 0;                                  /* back to the frame's viewport */
+    v.width = (float)s_rw;
+    v.height = (float)s_rh;
+    vkCmdSetViewport(s_cmd, 0, 1, &v);
+    tex_retire(&t);                                 /* freed once this frame is done */
+}
+
 /* LFB writes: the pixels copied straight into the frame */
 void brr_lfb_write(int x, int y, int w, int h, const uint16_t *p, int stride)
 {
@@ -725,6 +791,10 @@ void brr_lfb_write(int x, int y, int w, int h, const uint16_t *p, int stride)
     VkBufferImageCopy cp;
     if (w <= 0 || h <= 0 || x < 0 || y < 0 || x + w > s_w || y + h > s_h)
         return;
+    if (s_rw != s_w || s_rh != s_h) {
+        lfb_scaled(x, y, w, h, p, stride);
+        return;
+    }
     frame_begin();
     so = ring_take(&s_stage, (VkDeviceSize)w * (VkDeviceSize)h * 4, 16);
     if (so < 0)
@@ -956,8 +1026,8 @@ static int make_targets(void)
 
     ii.imageType = VK_IMAGE_TYPE_2D;
     ii.format = FMT;
-    ii.extent.width = (uint32_t)s_w;
-    ii.extent.height = (uint32_t)s_h;
+    ii.extent.width = (uint32_t)s_rw;
+    ii.extent.height = (uint32_t)s_rh;
     ii.extent.depth = 1;
     ii.mipLevels = 1;
     ii.arrayLayers = 1;
@@ -1015,20 +1085,74 @@ static int make_targets(void)
     rp.pAttachments = at;
     rp.subpassCount = 1;
     rp.pSubpasses = &sp;
-    if (!VK_OK(vkCreateRenderPass(s_dev, &rp, NULL, &s_pass)))
+    if (!s_pass && !VK_OK(vkCreateRenderPass(s_dev, &rp, NULL, &s_pass)))
         return 0;
     views[0] = s_col_view;
     views[1] = s_dep_view;
     fi.renderPass = s_pass;
     fi.attachmentCount = 2;
     fi.pAttachments = views;
-    fi.width = (uint32_t)s_w;
-    fi.height = (uint32_t)s_h;
+    fi.width = (uint32_t)s_rw;
+    fi.height = (uint32_t)s_rh;
     fi.layers = 1;
     if (!VK_OK(vkCreateFramebuffer(s_dev, &fi, NULL, &s_fb)))
         return 0;
     s_col_fresh = 1;
+    if (s_col_set) {                                /* the present reads the new frame */
+        VkDescriptorImageInfo di;
+        VkWriteDescriptorSet wr = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+        di.sampler = VK_NULL_HANDLE;
+        di.imageView = s_col_view;
+        di.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        wr.dstSet = s_col_set;
+        wr.descriptorCount = 1;
+        wr.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        wr.pImageInfo = &di;
+        vkUpdateDescriptorSets(s_dev, 1, &wr, 0, NULL);
+    }
+    if (s_read_buf) {
+        vkDestroyBuffer(s_dev, s_read_buf, NULL);
+        vkFreeMemory(s_dev, s_read_mem, NULL);
+        s_read_buf = VK_NULL_HANDLE;
+    }
+    {
+        void *m = NULL;
+        if (!make_buffer((VkDeviceSize)s_rw * (VkDeviceSize)s_rh * 4, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                         &s_read_buf, &s_read_mem, &m))
+            return 0;
+        s_read_map = (uint8_t *)m;
+    }
     return 1;
+}
+
+/* the targets at the window's size: the game draws in the resolution it
+ * opened, and geometry, text and textures are rasterised and filtered
+ * at the window's resolution rather than drawn at that size and enlarged (as
+ * the wasm lane draws); one target pixel per window pixel, as the original
+ * drew at the resolution the player chose */
+static void target_size(double dw, double dh, int *w, int *h)
+{
+    double k = fmin(dw / s_w, dh / s_h);
+    *w = (int)lround(s_w * k);
+    *h = (int)lround(s_h * k);
+    if (*w < 1) *w = 1;
+    if (*h < 1) *h = 1;
+}
+
+static void targets_resize(int w, int h)
+{
+    vkDeviceWaitIdle(s_dev);
+    vkDestroyFramebuffer(s_dev, s_fb, NULL);
+    vkDestroyImageView(s_dev, s_col_view, NULL);
+    vkDestroyImageView(s_dev, s_dep_view, NULL);
+    vkDestroyImage(s_dev, s_col, NULL);
+    vkDestroyImage(s_dev, s_dep, NULL);
+    vkFreeMemory(s_dev, s_col_mem, NULL);
+    vkFreeMemory(s_dev, s_dep_mem, NULL);
+    s_rw = w;
+    s_rh = h;
+    if (!make_targets())
+        fprintf(stderr, "brr: vulkan targets %dx%d failed\n", w, h);
 }
 
 static int make_layouts(void)
@@ -1147,8 +1271,8 @@ int brr_open(int width, int height)
     void *m = NULL;
     const char *e;
 
-    s_w = width;
-    s_h = height;
+    s_w = s_rw = width;
+    s_h = s_rh = height;
     s_offscreen = getenv("BR_VCLOCK") != NULL;
     if (!make_instance())
         return 0;
@@ -1174,10 +1298,7 @@ int brr_open(int width, int height)
         !make_ring(&s_stage, VK_BUFFER_USAGE_TRANSFER_SRC_BIT) ||
         !make_sets())
         return 0;
-    if (!make_buffer((VkDeviceSize)s_w * (VkDeviceSize)s_h * 4, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                     &s_read_buf, &s_read_mem, &m))
-        return 0;
-    s_read_map = (uint8_t *)m;
+    (void)m;
     if (s_surface)
         swap_make();
     e = getenv("BR_SHOT");
@@ -1283,6 +1404,14 @@ static int sharp_make(void)
     gi.layout = s_playout;
     gi.renderPass = s_up_pass;
     ok = VK_OK(vkCreateGraphicsPipelines(s_dev, VK_NULL_HANDLE, 1, &gi, NULL, &s_sharp));
+    if (ok) {                                           /* the same into the frame: LFB writes */
+        VkPipelineDepthStencilStateCreateInfo ds = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
+        ds.depthCompareOp = VK_COMPARE_OP_ALWAYS;
+        ba.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT;
+        gi.pDepthStencilState = &ds;
+        gi.renderPass = s_pass;
+        ok = VK_OK(vkCreateGraphicsPipelines(s_dev, VK_NULL_HANDLE, 1, &gi, NULL, &s_sharp_lfb));
+    }
     vkDestroyShaderModule(s_dev, vs, NULL);
     vkDestroyShaderModule(s_dev, fs, NULL);
     if (!ok) {
@@ -1431,6 +1560,14 @@ void brr_present(void)
     frame_begin();                                  /* a frame with nothing drawn still presents */
     pass_end();
     if (s_surface && !s_offscreen && host_window_visible()) {
+#ifdef __APPLE__
+        {                                           /* the swapchain follows the window's pixels */
+            int fw, fh;
+            host_macos_layer_fit(&fw, &fh);
+            if (s_swap && fw > 0 && ((uint32_t)fw != s_swap_w || (uint32_t)fh != s_swap_h))
+                swap_destroy();
+        }
+#endif
         if (!s_swap)
             swap_make();
         if (s_swap) {
@@ -1451,8 +1588,8 @@ void brr_present(void)
         memset(&cp, 0, sizeof cp);
         cp.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         cp.imageSubresource.layerCount = 1;
-        cp.imageExtent.width = (uint32_t)s_w;
-        cp.imageExtent.height = (uint32_t)s_h;
+        cp.imageExtent.width = (uint32_t)s_rw;
+        cp.imageExtent.height = (uint32_t)s_rh;
         cp.imageExtent.depth = 1;
         vkCmdCopyImageToBuffer(s_cmd, s_col, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, s_read_buf, 1, &cp);
     }
@@ -1492,10 +1629,16 @@ void brr_present(void)
         vkWaitForFences(s_dev, 1, &s_fence, VK_TRUE, UINT64_MAX);
         s_submitted = 0;
         if ((long)(s_frame + 1) == s_shot_frame &&
-            brr_png_write(s_shot_path, s_read_map, s_w, s_h, s_w * 4, BRR_PNG_BGRA))
+            brr_png_write(s_shot_path, s_read_map, s_rw, s_rh, s_rw * 4, BRR_PNG_BGRA))
             fprintf(stderr, "brr: frame %ld -> %s\n", s_shot_frame, s_shot_path);
     }
     s_frame++;
+    if (s_swap) {                                   /* the next frame at the window's size */
+        int w, h;
+        target_size(s_swap_w, s_swap_h, &w, &h);
+        if (w != s_rw || h != s_rh)
+            targets_resize(w, h);
+    }
 }
 
 int brr_shot(const char *path)
@@ -1522,8 +1665,8 @@ int brr_shot(const char *path)
         memset(&cp, 0, sizeof cp);
         cp.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         cp.imageSubresource.layerCount = 1;
-        cp.imageExtent.width = (uint32_t)s_w;
-        cp.imageExtent.height = (uint32_t)s_h;
+        cp.imageExtent.width = (uint32_t)s_rw;
+        cp.imageExtent.height = (uint32_t)s_rh;
         cp.imageExtent.depth = 1;
         vkCmdCopyImageToBuffer(c, s_col, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, s_read_buf, 1, &cp);
         barrier(c, s_col, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
@@ -1532,5 +1675,5 @@ int brr_shot(const char *path)
         once_end(c);
         s_col_fresh = 0;
     }
-    return brr_png_write(path, s_read_map, s_w, s_h, s_w * 4, BRR_PNG_BGRA);
+    return brr_png_write(path, s_read_map, s_rw, s_rh, s_rw * 4, BRR_PNG_BGRA);
 }

@@ -358,6 +358,27 @@ CAMetalLayer *host_macos_metal_layer(void)
     return ml;
 }
 
+/* the Metal layer's drawable kept at the view's size in pixels, so a
+ * renderer draws one pixel per window pixel; *w x *h is that size */
+void host_macos_layer_fit(int *w, int *h)
+{
+    CAMetalLayer *ml = host_macos_metal_layer();
+    CGFloat sc;
+    CGSize b, want;
+    *w = *h = 0;
+    if (!ml)
+        return;
+    sc = [s_win backingScaleFactor];
+    b = [s_view bounds].size;
+    want = CGSizeMake(floor(b.width * sc + 0.5), floor(b.height * sc + 0.5));
+    if ([ml contentsScale] != sc)
+        [ml setContentsScale:sc];
+    if (!CGSizeEqualToSize([ml drawableSize], want) && want.width >= 1 && want.height >= 1)
+        [ml setDrawableSize:want];
+    *w = (int)want.width;
+    *h = (int)want.height;
+}
+
 /* a frame of ARGB pixels (0xAARRGGBB, top row first) onto the window */
 void host_present(const uint32_t *argb, int w, int h)
 {

@@ -27,7 +27,8 @@
 
 #include "brr.h"
 
-CAMetalLayer *host_macos_metal_layer(void);      /* host_macos.m */
+CAMetalLayer *host_macos_metal_layer(void);
+void host_macos_layer_fit(int *w, int *h);   /* host_macos.m: drawable = the view in pixels */      /* host_macos.m */
 #include "host.h"
 
 /* ---- the shader -------------------------------------------------------------------- */
@@ -163,7 +164,7 @@ static id<MTLCommandQueue> s_q;
 static id<MTLLibrary> s_lib;
 static id<MTLTexture> s_col, s_dep, s_lfb;
 static id<MTLRenderPipelineState> s_pipes[16][16];     /* by blend src, dst */
-static id<MTLRenderPipelineState> s_clear[2], s_blit, s_sharp, s_lfbpipe;
+static id<MTLRenderPipelineState> s_clear[2], s_blit, s_sharp, s_lfbpipe, s_lfbsharp;
 static id<MTLDepthStencilState> s_ds[2][8][2];         /* depth on, function, write */
 static id<MTLDepthStencilState> s_clear_ds[2];
 static id<MTLSamplerState> s_samp[2][2][2];            /* filter, clamp s, clamp t */
@@ -175,7 +176,8 @@ static id<MTLBuffer> s_vb[3];
 static int s_vbi;
 static size_t s_vused;
 #define VB_SIZE (8u << 20)
-static int s_w, s_h;
+static int s_w, s_h;                /* the game's frame: Glide's coordinates */
+static int s_rw, s_rh;              /* the targets drawn into: the window's pixels, letterboxed */
 
 #define TEX_MAX 4096
 static id<MTLTexture> s_tex[TEX_MAX];
@@ -285,6 +287,42 @@ static id<MTLRenderPipelineState> simple_pipe(NSString *vs, NSString *fs, int co
     return p;
 }
 
+/* the colour and depth targets at w x h pixels.  The game draws in the
+ * resolution it opened (its Glide coordinates); the targets take the
+ * window's size, so geometry, text and textures are rasterised and filtered
+ * at the window's resolution rather than drawn at that size and enlarged
+ * (as the wasm lane draws) */
+static void targets(int w, int h)
+{
+    MTLTextureDescriptor *td;
+    td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatBGRA8Unorm
+                                                            width:(NSUInteger)w height:(NSUInteger)h mipmapped:NO];
+    td.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
+    td.storageMode = MTLStorageModeShared;
+    s_col = [s_dev newTextureWithDescriptor:td];
+    td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float
+                                                            width:(NSUInteger)w height:(NSUInteger)h mipmapped:NO];
+    td.usage = MTLTextureUsageRenderTarget;
+    td.storageMode = MTLStorageModePrivate;
+    s_dep = [s_dev newTextureWithDescriptor:td];
+    s_rw = w;
+    s_rh = h;
+    free(s_shot_rgba);
+    s_shot_rgba = NULL;
+}
+
+/* the target size for a drawable of dw x dh: the frame's shape scaled to
+ * fit, one target pixel per window pixel, as the original drew at the
+ * resolution the player chose */
+static void target_size(double dw, double dh, int *w, int *h)
+{
+    double k = fmin(dw / s_w, dh / s_h);
+    *w = (int)lround(s_w * k);
+    *h = (int)lround(s_h * k);
+    if (*w < 1) *w = 1;
+    if (*h < 1) *h = 1;
+}
+
 int brr_open(int width, int height)
 {
     @autoreleasepool {
@@ -303,16 +341,7 @@ int brr_open(int width, int height)
             fprintf(stderr, "brr: metal shader: %s\n", [[err description] UTF8String]);
             return 0;
         }
-        td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatBGRA8Unorm
-                                                                width:width height:height mipmapped:NO];
-        td.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
-        td.storageMode = MTLStorageModeShared;
-        s_col = [s_dev newTextureWithDescriptor:td];
-        td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float
-                                                                width:width height:height mipmapped:NO];
-        td.usage = MTLTextureUsageRenderTarget;
-        td.storageMode = MTLStorageModePrivate;
-        s_dep = [s_dev newTextureWithDescriptor:td];
+        targets(width, height);
         td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatBGRA8Unorm
                                                                 width:width height:height mipmapped:NO];
         td.usage = MTLTextureUsageShaderRead;
@@ -322,6 +351,7 @@ int brr_open(int width, int height)
         s_clear[0] = simple_pipe(@"cvs", @"cfs", 0, 1);
         s_clear[1] = simple_pipe(@"cvs", @"cfs", 1, 1);
         s_lfbpipe = simple_pipe(@"bvs", @"bfs", 1, 1);
+        s_lfbsharp = simple_pipe(@"bvs", @"sfs", 1, 1);
         s_blit = simple_pipe(@"bvs", @"bfs", 1, 0);
         s_sharp = simple_pipe(@"bvs", @"sfs", 1, 0);
         for (i = 0; i < 2; i++) {
@@ -437,6 +467,11 @@ static void scissor(id<MTLRenderCommandEncoder> e, const brr_state *st)
     if (x1 <= x0 || y1 <= y0) {
         x0 = y0 = 0;
         x1 = y1 = 1;                    /* Metal wants a non-empty rectangle; nothing should draw */
+    } else if (s_rw != s_w || s_rh != s_h) {
+        x0 = (int)lround((double)x0 * s_rw / s_w);
+        x1 = (int)lround((double)x1 * s_rw / s_w);
+        y0 = (int)lround((double)y0 * s_rh / s_h);
+        y1 = (int)lround((double)y1 * s_rh / s_h);
     }
     r.x = (NSUInteger)x0;
     r.y = (NSUInteger)y0;
@@ -480,7 +515,7 @@ void brr_clear(uint32_t argb, float depth, int colour, int depthbuf, const brr_s
         memcpy((char *)[s_vb[s_vbi] contents] + off, q, sizeof q);
         [e setRenderPipelineState:s_clear[colour ? 1 : 0]];
         [e setDepthStencilState:s_clear_ds[depthbuf ? 1 : 0]];
-        [e setScissorRect:(MTLScissorRect){ 0, 0, (NSUInteger)s_w, (NSUInteger)s_h }];
+        [e setScissorRect:(MTLScissorRect){ 0, 0, (NSUInteger)s_rw, (NSUInteger)s_rh }];
         [e setVertexBuffer:s_vb[s_vbi] offset:(NSUInteger)off atIndex:0];
         [e setFragmentBytes:c length:sizeof c atIndex:0];
         [e setFragmentBytes:&depth length:sizeof depth atIndex:1];
@@ -606,9 +641,9 @@ void brr_lfb_write(int x, int y, int w, int h, const uint16_t *p, int stride)
         if ((off = vb_take(sizeof q)) < 0)
             return;
         memcpy((char *)[s_vb[s_vbi] contents] + off, q, sizeof q);
-        [e setRenderPipelineState:s_lfbpipe];
+        [e setRenderPipelineState:s_rw == s_w && s_rh == s_h ? s_lfbpipe : s_lfbsharp];
         [e setDepthStencilState:s_clear_ds[0]];
-        [e setScissorRect:(MTLScissorRect){ 0, 0, (NSUInteger)s_w, (NSUInteger)s_h }];
+        [e setScissorRect:(MTLScissorRect){ 0, 0, (NSUInteger)s_rw, (NSUInteger)s_rh }];
         [e setVertexBuffer:s_vb[s_vbi] offset:(NSUInteger)off atIndex:0];
         [e setFragmentTexture:s_lfb atIndex:0];
         [e setFragmentSamplerState:s_near atIndex:0];
@@ -628,7 +663,7 @@ static int write_shot(const char *path)
     if (!s_shot_rgba)
         return 0;
     cs = CGColorSpaceCreateDeviceRGB();
-    cg = CGBitmapContextCreate(s_shot_rgba, (size_t)s_w, (size_t)s_h, 8, (size_t)s_w * 4, cs,
+    cg = CGBitmapContextCreate(s_shot_rgba, (size_t)s_rw, (size_t)s_rh, 8, (size_t)s_rw * 4, cs,
                                kCGImageAlphaNoneSkipFirst | kCGBitmapByteOrder32Little);
     img = CGBitmapContextCreateImage(cg);
     url = CFURLCreateFromFileSystemRepresentation(NULL, (const UInt8 *)path, (CFIndex)strlen(path), false);
@@ -658,10 +693,8 @@ void brr_present(void)
         [s_enc endEncoding];
         s_enc = nil;
         if (ml) {
-            CGSize sz = [ml bounds].size, ds = [ml drawableSize];
-            CGFloat sc = [ml contentsScale];
-            if (ds.width != sz.width * sc || ds.height != sz.height * sc)
-                [ml setDrawableSize:CGSizeMake(sz.width * sc, sz.height * sc)];
+            int fw, fh;
+            host_macos_layer_fit(&fw, &fh);
             dr = [ml nextDrawable];
             if (dr) {
                 MTLRenderPassDescriptor *rp = [MTLRenderPassDescriptor renderPassDescriptor];
@@ -696,14 +729,21 @@ void brr_present(void)
         if (want_shot) {
             [s_cmd waitUntilCompleted];
             if (!s_shot_rgba)
-                s_shot_rgba = (uint8_t *)malloc((size_t)s_w * (size_t)s_h * 4);
-            [s_col getBytes:s_shot_rgba bytesPerRow:(NSUInteger)s_w * 4
-                 fromRegion:MTLRegionMake2D(0, 0, (NSUInteger)s_w, (NSUInteger)s_h) mipmapLevel:0];
+                s_shot_rgba = (uint8_t *)malloc((size_t)s_rw * (size_t)s_rh * 4);
+            [s_col getBytes:s_shot_rgba bytesPerRow:(NSUInteger)s_rw * 4
+                 fromRegion:MTLRegionMake2D(0, 0, (NSUInteger)s_rw, (NSUInteger)s_rh) mipmapLevel:0];
             if (write_shot(s_shot_path))
                 fprintf(stderr, "brr: frame %ld -> %s\n", s_shot_frame, s_shot_path);
         }
         s_cmd = nil;
         s_frame++;
+        if (ml) {                              /* the next frame at the window's size */
+            int w, h;
+            CGSize ds = [ml drawableSize];
+            target_size(ds.width, ds.height, &w, &h);
+            if (w != s_rw || h != s_rh)
+                targets(w, h);
+        }
     }
 }
 
@@ -714,9 +754,9 @@ int brr_shot(const char *path)
         [c commit];
         [c waitUntilCompleted];                /* everything queued before it is done */
         if (!s_shot_rgba)
-            s_shot_rgba = (uint8_t *)malloc((size_t)s_w * (size_t)s_h * 4);
-        [s_col getBytes:s_shot_rgba bytesPerRow:(NSUInteger)s_w * 4
-             fromRegion:MTLRegionMake2D(0, 0, (NSUInteger)s_w, (NSUInteger)s_h) mipmapLevel:0];
+            s_shot_rgba = (uint8_t *)malloc((size_t)s_rw * (size_t)s_rh * 4);
+        [s_col getBytes:s_shot_rgba bytesPerRow:(NSUInteger)s_rw * 4
+             fromRegion:MTLRegionMake2D(0, 0, (NSUInteger)s_rw, (NSUInteger)s_rh) mipmapLevel:0];
         return write_shot(path);
     }
 }
