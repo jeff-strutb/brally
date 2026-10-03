@@ -439,6 +439,20 @@ def compile_c(path, extra=()):
     return obj, None
 
 
+def _align_map(ours, theirs):
+    """our instruction index -> the ROM's, over the equal runs of an opcode
+    alignment (opcode field plus SPECIAL function, registers ignored)."""
+    import difflib
+    key = lambda w: (w >> 26, w & 0x3f if w >> 26 == 0 else 0)
+    sm = difflib.SequenceMatcher(None, [key(w) for w in ours], [key(w) for w in theirs],
+                                 autojunk=False)
+    out = {}
+    for a, b, n in sm.get_matching_blocks():
+        for k in range(n):
+            out[a + k] = b + k
+    return out
+
+
 def static_bases(obj, fnvas, rom=None, fmap=None):
     """-> {section: ROM VA} for this object's .data/.bss (its file statics).
 
@@ -460,6 +474,7 @@ def static_bases(obj, fnvas, rom=None, fmap=None):
         if va is None or va not in fmap:
             continue
         theirs = rom_body(rom, va, fmap[va])
+        amap = _align_map(words(text[s:e]), theirs)
         for o, typ, si in allrels:
             if not (s <= o < e) or typ != 5:
                 continue
@@ -473,11 +488,24 @@ def static_bases(obj, fnvas, rom=None, fmap=None):
             if lo_o is None:
                 continue
             i, li = (o - s) // 4, (lo_o - s) // 4
-            if li >= len(theirs):
-                continue
             hw, lw = words(text[o:o + 4])[0], words(text[lo_o:lo_o + 4])[0]
-            rh, rl = theirs[i], theirs[li]
-            if rh >> 16 != hw >> 16 or (rl >> 21) != (lw >> 21):
+            ok = False
+            # the pair at the same index, else where the opcode alignment
+            # puts it (a T2 body whose code has shifted)
+            for k, (ri, rli) in enumerate(((i, li), (amap.get(i), amap.get(li)))):
+                if ri is None or rli is None or rli >= len(theirs):
+                    continue
+                rh, rl = theirs[ri], theirs[rli]
+                if k == 0 and rh >> 16 == hw >> 16 and (rl >> 21) == (lw >> 21):
+                    ok = True
+                    break
+                # aligned: same opcodes, the ROM's low half based on its own
+                # lui's register (the registers themselves may differ)
+                if k == 1 and rh >> 26 == hw >> 26 == 0x0F and rl >> 26 == lw >> 26 \
+                        and (rl >> 21) & 31 == (rh >> 16) & 31:
+                    ok = True
+                    break
+            if not ok:
                 continue
             addend = ((hw & 0xffff) << 16) + sext16(lw & 0xffff)
             rom_va = (((rh & 0xffff) << 16) + sext16(rl & 0xffff)) & 0xffffffff
