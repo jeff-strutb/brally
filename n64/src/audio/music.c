@@ -46,11 +46,12 @@ typedef struct BrSampleLoop {   /* 0x0C bytes */
 } BrSampleLoop;
 extern BrSampleLoop D_80378F50[];
 extern BrMixVoice D_802A4920[6];
-void func_80256720(int param_1,char *param_2);
+void BrModLoad(unsigned char *xm, unsigned char *buf);
 unsigned char *BrModRowRead(unsigned char *p);
 void BrModReset(void);
 void osSyncPrintf();
 extern int D_802A49C0;
+extern unsigned char *D_803789D0[];     /* the module's patterns (row count at +5, rows at +9) */
 extern int D_80378F98;
 extern float D_802A49D4[12];
 typedef struct BrSample {       /* a module instrument's sample header; 8-bit data follows at +0x28 */
@@ -99,6 +100,109 @@ void BrMixSfx(short *buf, unsigned int bytes);
 void BrSfxLoopSamples(void);
 void BrRumbleUpdate(int);
 /* -- end declarations -- */
+
+#define LE16(p) ((p)[0] + (p)[1] * 0x100)
+#define LE32(p) ((p)[0] + (p)[1] * 0x100 + (p)[2] * 0x10000 + (p)[3] * 0x1000000)
+
+/* WHAT IT DOES: Load a FastTracker II module into the player: song
+ * length, restart, channels and speed from the header, the order list
+ * copied to the front of buf, then every pattern (header and packed rows)
+ * copied word-aligned behind it with its address in the pattern table,
+ * then every instrument's first sample: its 0x28-byte header copied, its
+ * delta-coded 8-bit data decoded, and 0x4B0 bytes appended -- silence for
+ * a one-shot sample, the loop repeated for a forward loop (16-bit and
+ * ping-pong samples are refused).  Prints its progress.
+ * RESIDUE (340): the ROM re-reads every little-endian field at each use
+ * (its sums ordered byte 3, 0, 1, 2) and holds only s0-s3; ours keeps the
+ * pattern length's bytes live across the copy loop.  The ROM also stores
+ * the restart order through an absolute address but reads it back through
+ * the state struct. */
+/* @implements 0x80256720 tgr BrModLoad */
+void BrModLoad(unsigned char *xm, unsigned char *buf)
+{
+  unsigned char *src;
+  unsigned char *dst;
+  unsigned int i;
+  unsigned int j;
+  unsigned int npat;
+  unsigned int ninst;
+  unsigned int len;
+  unsigned int hdr;
+  unsigned char *p;
+  unsigned char *q;
+  unsigned char acc;
+  unsigned char type;
+
+  D_80378FA0.order = buf;
+  D_80378FA0.len = xm[0x40];
+  src = xm + 0x50;
+  D_80378FA0.x0 = xm[0x4c];
+  dst = buf;
+  D_802A49C0 = xm[0x44];
+  for (i = 0; i < D_80378FA0.len; i++) {
+    *dst++ = *src++;
+  }
+  dst = (unsigned char *)((unsigned int)(dst + 3) & ~3);
+  osSyncPrintf("Length = %d\n", D_80378FA0.len);
+  D_80378FA0.restart = xm[0x42];
+  osSyncPrintf("Restartfrom = %d\n", D_80378FA0.restart);
+  npat = xm[0x46];
+  osSyncPrintf("%d Patterns found\n", npat);
+  ninst = xm[0x48];
+  osSyncPrintf("%d Instruments found\n", ninst);
+  hdr = *(unsigned int *)(xm + 0x3c);
+  p = xm + (hdr >> 24) + ((hdr >> 16) & 0xff) * 0x100 + ((hdr >> 8) & 0xff) * 0x10000 + (hdr << 24) + 0x3c;
+  for (i = 0; i < npat; i++) {
+    D_803789D0[i] = dst;
+    len = LE32(p) + LE16(p + 7);
+    src = p;
+    for (j = 0; j < len; j++) {
+      *dst++ = *src++;
+    }
+    p += LE32(p) + LE16(p + 7);
+  }
+  dst = (unsigned char *)((unsigned int)(dst + 3) & ~3);
+  osSyncPrintf("Now doSamples");
+  for (i = 0; i < ninst; i++) {
+    osSyncPrintf(".");
+    j = 0;
+    acc = 0;
+    q = p + LE32(p);
+    if (p[0x1b] > 0) {
+      len = LE32(q);
+      D_803787D0[i] = (BrSample *)dst;
+      for (src = q; j < 0x28; j++) {
+        *dst++ = *src++;
+      }
+      D_803787D0[i]->len = LE32(q);
+      D_803787D0[i]->loopLen = LE32(q + 8);
+      src = q + 0x28;
+      for (j = 0; j < len; j++) {
+        acc += *src++;
+        *dst++ = acc;
+      }
+      type = q[0xe];
+      if (type == 0) {
+        for (j = 0; j < 0x4b0; j++) {
+          *dst++ = 0;
+        }
+      } else if (type == 1) {
+        src = dst - LE32(q + 8);
+        for (j = 0; j < 0x4b0; j++) {
+          *dst++ = *src++;
+        }
+      } else {
+        osSyncPrintf("WANKER fuck off no 16bit, no Ping fucking pong\n");
+      }
+      dst = (unsigned char *)((unsigned int)(dst + 3) & ~3);
+      p = q + len + 0x28;
+    } else {
+      D_803787D0[i] = 0;
+      p = q;
+    }
+  }
+  osSyncPrintf("\n\nSample Space used = %d bytes\n", dst - buf);
+}
 
 /* WHAT IT DOES: Build the mixer's note-rate table: for ten octaves of the
  * twelve note frequencies, the 32.32 fixed-point sample step relative to
@@ -250,7 +354,6 @@ unsigned char *BrModRowRead(unsigned char *p)
 }
 
 /* -- declarations: BrModTick -- */
-extern unsigned char *D_803789D0[];     /* the module's patterns (row count at +5, rows at +9) */
 extern int D_802A4A04;
 /* -- end declarations -- */
 
@@ -392,7 +495,7 @@ void BrMusicInit(int param_1, char *param_2)
   t += osGetCount();
   osSyncPrintf("%1.7f", (double)t / 46875500.0);
   osSyncPrintf("Creating I entries\n");
-  func_80256720(param_1, param_2);
+  BrModLoad(param_1, param_2);
   osSyncPrintf("Creating Note Frequency entries\n");
   BrNoteRatesInit();
   osSyncPrintf("Starting Mod\n");
@@ -427,7 +530,7 @@ void BrMusicStart(int param_1,int param_2)
   int i;
 
   osSyncPrintf("Creating I entries\n");
-  func_80256720(param_1,param_2);
+  BrModLoad(param_1,param_2);
   osSyncPrintf("Starting Mod\n");
   BrModReset();
   D_80378F98 = 1;

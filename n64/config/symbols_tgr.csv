@@ -508,6 +508,7 @@ va,name,kind
 802562F0,BrMixMusic,func
 8025649C,BrMixMusicVoice,func
 8025658C,BrMixSfx,func
+80256720,BrModLoad,func
 80256C2C,BrNoteRatesInit,func
 80256D3C,BrMusicLoopSamples,func
 80256DEC,BrModRowRead,func
