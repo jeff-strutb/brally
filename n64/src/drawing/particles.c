@@ -477,6 +477,146 @@ void BrParticleFrame(void)
   }
 }
 
+/* -- declarations: BrParticleFallDraw -- */
+extern BrCar *D_8028AAF4;               /* the camera's car */
+extern float D_8031AB10[4][4];
+extern float D_8031AB50[4][4];
+extern float D_8031AA90[4][4];
+extern float D_80368A80[4][4];          /* the falling particles' billboard */
+int BrMat4Inverse(float out[4][4], float in[4][4]);
+void BrMat4Mul(float r[4][4], float a[4][4], float b[4][4]);
+void *memcpy(void *dst, void *src, unsigned int n);
+/* -- end declarations -- */
+
+/* WHAT IT DOES: Draw the two falling-particle lists: the particle sprite
+ * as a texture block, then the billboard matrix -- the inverse of the
+ * camera car's matrix turned into screen axes (x' = -y, y' = -z, z' = -x)
+ * and carried through D_8031AA90; with the race kind that has no falling
+ * particles nothing is drawn; otherwise in the track's colours (tracks 1
+ * and 6 one pair, 4 and 9 another, the rest a third).  The render state
+ * is restored after.  The camera car is copied to a local first: read
+ * inline, IDO loads the pointer's %hi after the matrix's. */
+/* @implements 0x8023D714 tgr BrParticleFallDraw */
+void BrParticleFallDraw(void)
+{
+  BrCar *cam;
+
+  gDPPipeSync(D_8028A858++);
+  gRaw(D_8028A858++, 0xba001402, 0);
+  {
+    Gfx *_g = D_8028A858++;
+
+    _g->words.w0 = 0xbb000001;
+    _g->words.w1 = 0xffffffff;
+  }
+  {
+    Gfx *_g = D_8028A858++;
+
+    _g->words.w0 = 0xba000c02;
+    _g->words.w1 = D_8028A898;
+  }
+  gDPSetCombine(D_8028A858++, 0xff97ff, 0xff2dfeff);
+  {
+    Gfx *_g = D_8028A858++;
+
+    _g->words.w0 = 0xfd900000;
+    _g->words.w1 = (unsigned int)&D_802A3790;
+  }
+  {
+    Gfx *_g = D_8028A858++;
+
+    _g->words.w0 = 0xf5900000;
+    _g->words.w1 = 0x07018060;
+  }
+  gDPLoadSync(D_8028A858++);
+  {
+    Gfx *_g = D_8028A858++;
+
+    _g->words.w0 = 0xf3000000;
+    _g->words.w1 = 0x077ff100;
+  }
+  gDPPipeSync(D_8028A858++);
+  {
+    Gfx *_g = D_8028A858++;
+
+    _g->words.w0 = 0xf5881000;
+    _g->words.w1 = 0x00018060;
+  }
+  {
+    Gfx *_g = D_8028A858++;
+
+    _g->words.w0 = 0xf2000000;
+    _g->words.w1 = 0x000fc0fc;
+  }
+  gRaw(D_8028A858++, 0xba000e02, 0);
+  gRaw(D_8028A858++, 0xba001301, 0);
+  cam = D_8028AAF4;
+  BrMat4Inverse(D_8031AB10, cam->mtx0);
+  D_8031AB50[0][0] = 0.0f;
+  D_8031AB50[0][1] = 0.0f;
+  D_8031AB50[0][3] = 0.0f;
+  D_8031AB50[1][1] = 0.0f;
+  D_8031AB50[1][2] = 0.0f;
+  D_8031AB50[1][3] = 0.0f;
+  D_8031AB50[2][0] = 0.0f;
+  D_8031AB50[2][2] = 0.0f;
+  D_8031AB50[2][3] = 0.0f;
+  D_8031AB50[3][0] = 0.0f;
+  D_8031AB50[3][1] = 0.0f;
+  D_8031AB50[3][2] = 0.0f;
+  D_8031AB50[0][2] = -1.0f;
+  D_8031AB50[1][0] = -1.0f;
+  D_8031AB50[2][1] = -1.0f;
+  D_8031AB50[3][3] = 1.0f;
+  BrMat4Mul(D_8031AB10, D_8031AB10, D_8031AB50);
+  memcpy(D_8031AB50, D_8031AB10, 0x40);
+  BrMat4Mul(D_80368A80, D_8031AB10, D_8031AA90);
+  gRaw(D_8028A858++, 0xb9000201, 4);
+  {
+    Gfx *_g = D_8028A858++;
+
+    _g->words.w0 = 0xba000602;
+    _g->words.w1 = 0xc0;
+  }
+  if (D_8028AA80 == 0) {
+    gRaw(D_8028A858++, 0xba000402, 0xc0);
+    gRaw(D_8028A858++, 0xb900031d, 0xf0a0233);
+    gRaw(D_8028A858++, 0xf9000000, 0);
+    switch (D_8028B940) {
+    case 4:
+    case 9:
+      func_8023D134(D_8028C838, 0x70, 0x58, 0x38);
+      func_8023D134(D_8028C83C, 0x70, 0x68, 0x58);
+      break;
+    case 1:
+    case 6:
+      func_8023D134(D_8028C838, 0x60, 0x54, 0x38);
+      func_8023D134(D_8028C83C, 0x60, 0x5c, 0x50);
+      break;
+    default:
+      func_8023D134(D_8028C838, 0xa0, 0x88, 0x60);
+      func_8023D134(D_8028C83C, 0x70, 0x68, 0x58);
+      break;
+    }
+  }
+  gDPPipeSync(D_8028A858++);
+  gRaw(D_8028A858++, 0xba001301, 0x80000);
+  gRaw(D_8028A858++, 0xb9000201, 0);
+  {
+    Gfx *_g = D_8028A858++;
+
+    _g->words.w0 = 0xba000602;
+    _g->words.w1 = D_8028A8A0;
+  }
+  {
+    Gfx *_g = D_8028A858++;
+
+    _g->words.w0 = 0xba000402;
+    _g->words.w1 = D_8028A89C;
+  }
+  gRaw(D_8028A858++, 0xb9000002, 1);
+}
+
 /* WHAT IT DOES: Draw the particles: one-cycle mode with the 64x64 I8
  * particle sprite (0x802A3790) loaded as a texture block, texture filter from
  * its setting, no LUT or perspective, primitive depth, no dither; for the
