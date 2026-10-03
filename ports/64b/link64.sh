@@ -3,7 +3,9 @@
 # the user's BRGlide.dll (tools/datalift.py, generated under build/), and
 # the platform layer for one host.
 #   env: HOST   null (default, headless) | macos
-#        RENDER null (default) | soft | metal (metal needs HOST=macos)
+#        RENDER null (default) | soft | metal (metal needs HOST=macos) | vulkan
+#               (Vulkan headers and loader: VULKAN_SDK, else Homebrew's;
+#               on macOS it runs on MoltenVK)
 #        DLL    the user's BRGlide.dll (default orig/BRGlide.dll)
 #        CC     a compiler targeting Windows (x86_64-w64-mingw32) builds
 #               brally64.exe: host/win32 replaces host/posix, LDCXX links
@@ -33,7 +35,12 @@ ports/64b/build64.sh ports/64b/platform/common/script_game.c | grep -v "^OK" >&2
 
 SRCS="$P/common/main.c $P/common/crt.c $P/common/win_kernel.c $P/common/win_user.c \
       $P/common/win_mm.c $P/common/win_rsrc.c $P/common/dx.c $P/common/dsound.c $P/common/audio.c $P/common/dplay.c $P/common/peersync.c $P/common/script.c $P/common/ear.c $P/common/glide.c \
-      $P/render/$RENDER/brr_$RENDER.*"
+      $P/render/$RENDER/brr_$RENDER.* $P/render/brr_png.c"
+if [ "$RENDER" = vulkan ]; then
+  VK=${VULKAN_SDK:-$(brew --prefix 2>/dev/null)}
+  PFLAGS="$PFLAGS -I$VK/include"
+  VKLIBS="-L$VK/lib -lvulkan"
+fi
 # the OS layer under the host: Windows or POSIX
 case "$($CC -dumpmachine 2>/dev/null)" in
   *mingw*|*windows*) OSHOST=$P/host/win32/host_win32.c; EXE=.exe
@@ -57,5 +64,5 @@ for s in $SRCS; do
   fi
   OBJS="$OBJS $o"
 done
-$LDCXX ${LDFLAGS64} -o $OUT/brally64$EXE $OUT/obj/*.o $OBJS $LIBS $OSLIBS
+$LDCXX ${LDFLAGS64} -o $OUT/brally64$EXE $OUT/obj/*.o $OBJS $LIBS $VKLIBS $OSLIBS
 echo "linked $OUT/brally64$EXE (host $HOST, renderer $RENDER)"
