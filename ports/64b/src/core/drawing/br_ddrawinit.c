@@ -75,16 +75,14 @@ int FUN_100583c0(void)
   if (DAT_10ac5d84 == 0) {
     DAT_10ac5d84 = BrSurfNew(BrGbiRectG_A7514, BrGbiRectG_A7518);
     if (DAT_10ac5d84 == 0) {
-      BrFontFreeAndExit();
-      return;
+      return BrFontFreeAndExit();
     }
   }
   if (DAT_10ac5dc4 != 0) {
     g_img[0].surf = BrBmpLoadSurface(s_images_loading_bmp_100ad71c, 0, 0);
     if (g_img[0].path != 0 && g_img[0].surf == 0) {
       sprintf(buf, s_DDraw_DoInit__loading_bmp_failed_100ad6f0);
-      BrFontFreeAndExit();
-      return;
+      return BrFontFreeAndExit();
     }
     BR_VFN(g_brPAA29B8, 8, BrVt0)(g_brPAA29B8);
     BrSprFontDraw(0, 0, 0, g_aBrUiSprite[0].rect, g_aBrUiSprite[0].fBlit);
@@ -102,8 +100,7 @@ int FUN_100583c0(void)
       h = (struct BrSurf *)(p->surf = BrBmpLoadSurface(p->path, 0, 0));
       if (p->path != 0 && h == 0) {
         sprintf(buf, s_DDraw_DoInit__Bitmap__d_failed_t_100ad6c8, i);
-        BrFontFreeAndExit();
-        return;
+        return BrFontFreeAndExit();
       }
       *(short *)&DAT_10ac5c2c = (short)(*(short *)&DAT_10ac5c2c + 1);
       BrSurfSetColourKey(h, 0xff00);

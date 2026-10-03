@@ -19,7 +19,6 @@
 int BrSub69DC0(int param_1)
 
 {
-  BrGhostLoad(&(*(int *)&DAT_117a5f28),param_1);
-  return;
+  return BrGhostLoad(&(*(int *)&DAT_117a5f28),param_1);
 }
 

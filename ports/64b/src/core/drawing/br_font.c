@@ -1030,8 +1030,7 @@ int BrFontTexInitAll(void)
   BrSub10073980();
   BrSub100739B0();
   BrFontTexCreateFlat();
-  BrFontTexCreatePair();
-  return;
+  return BrFontTexCreatePair();
 }
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */

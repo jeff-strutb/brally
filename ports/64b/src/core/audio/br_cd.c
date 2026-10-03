@@ -1,3 +1,4 @@
+#include <string.h>
 /* br_cd.c -- audio.
  *
  * Filed out of the address batches: these functions were
@@ -163,11 +164,9 @@ int BrCdTrackGet(void)
 
 {
   if (DAT_1007b074 == 1) {
-    FUN_100027e0();
-    return;
+    return FUN_100027e0();
   }
-  BrCdTrackGetEar();
-  return;
+  return BrCdTrackGetEar();
 }
 
 
@@ -178,11 +177,9 @@ int BrCdVolumeSet(int param_1)
 
 {
   if (DAT_1007b074 == 1) {
-    BrCdEnableApply(param_1);
-    return;
+    return BrCdEnableApply(param_1);
   }
-  BrCdVolumeScale(param_1);
-  return;
+  return BrCdVolumeScale(param_1);
 }
 
 /* WHAT IT DOES: resume the current CD track if the disc is ready and playback is enabled. */
@@ -600,19 +597,19 @@ int FUN_10002980(char * param_1)
     g_220CD8 = 0;
     g_220C3C = 0;
     open.lpstrDeviceType = s_cdaudio_1007b094;
-    MVar1 = mciSendCommandA(0, MCI_OPEN, MCI_OPEN_TYPE, (DWORD)&open);
+    MVar1 = mciSendCommandA(0, MCI_OPEN, MCI_OPEN_TYPE, (DWORD_PTR)&open);
     if (MVar1 != 0) {
       return 0;
     }
     g_220C40 = open.wDeviceID;
     setp.dwTimeFormat = MCI_FORMAT_TMSF;
-    MVar1 = mciSendCommandA(open.wDeviceID, MCI_SET, MCI_SET_TIME_FORMAT, (DWORD)&setp);
+    MVar1 = mciSendCommandA(open.wDeviceID, MCI_SET, MCI_SET_TIME_FORMAT, (DWORD_PTR)&setp);
     if (MVar1 != 0) {
       mciSendCommandA(g_220C40, MCI_CLOSE, 0, 0);
       return 0;
     }
     status.dwItem = MCI_STATUS_NUMBER_OF_TRACKS;
-    MVar1 = mciSendCommandA(g_220C40, MCI_STATUS, MCI_STATUS_ITEM | MCI_WAIT, (DWORD)&status);
+    MVar1 = mciSendCommandA(g_220C40, MCI_STATUS, MCI_STATUS_ITEM | MCI_WAIT, (DWORD_PTR)&status);
     if (MVar1 != 0) {
       wsprintfA(buf, s_MCI_STATUS_returned__d_1007b07c, MVar1);
       OutputDebugStringA(buf);
@@ -641,18 +638,15 @@ int FUN_10002980(char * param_1)
 int FUN_100027e0(void)
 
 {
-  struct {
-  char local_10 [4];
-  int local_c;
-  int local_8;
-  int _pad_0;
-  } _fr;
-
+  /* the original's stack block is an MCI_STATUS_PARMS: item 8 is
+   * MCI_STATUS_CURRENT_TRACK, the answer comes back in dwReturn */
+  MCI_STATUS_PARMS st;
 
   if (((DAT_1007b074 != 0) && (g_220CD0 != 0)) && (g_220C3C != 0)) {
-    _fr.local_8 = 8;
-    mciSendCommandA(g_220C40,0x814,0x100,(unsigned long)_fr.local_10);
-    return _fr.local_c;
+    memset(&st, 0, sizeof st);
+    st.dwItem = 8;
+    mciSendCommandA(g_220C40,0x814,0x100,(DWORD_PTR)&st);
+    return (int)st.dwReturn;
   }
   return 0;
 }
@@ -670,17 +664,13 @@ MCIERROR FUN_10002870(HWND param_1,unsigned char param_2)
 
 {
   MCIERROR MVar1;
-  struct {
-  int local_c;
-  unsigned int local_8;
-  unsigned int local_4;
-  } _fr;
+  /* an MCI_PLAY_PARMS: notify the window, from the track, to the last */
+  MCI_PLAY_PARMS play;
 
-
-  _fr.local_8 = param_2 & 0xff;
-  _fr.local_4 = g_brCdTrackLast & 0xff;
-  _fr.local_c = param_1;
-  MVar1 = mciSendCommandA(g_220C40,0x806,0xd,(unsigned long)&_fr.local_c);
+  play.dwFrom = param_2 & 0xff;
+  play.dwTo = g_brCdTrackLast & 0xff;
+  play.dwCallback = (DWORD_PTR)param_1;
+  MVar1 = mciSendCommandA(g_220C40,0x806,0xd,(DWORD_PTR)&play);
   if (MVar1 != 0) {
     mciSendCommandA(g_220C40,0x804,0,0);
     return MVar1;

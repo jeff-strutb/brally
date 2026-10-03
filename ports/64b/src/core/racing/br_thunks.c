@@ -12,7 +12,6 @@
 int BrThunk5C440(void)
 
 {
-  BrNop6E590();
-  return;
+  return BrNop6E590();
 }
 

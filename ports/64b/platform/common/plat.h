@@ -31,6 +31,15 @@ int   plat_vclock(void);                /* BR_VCLOCK set */
 int   plat_vclock_main(void);           /* ... and this is the main thread */
 void  plat_vclock_advance(uint64_t us);
 DWORD plat_time_ms(void);              /* timeGetTime's value, not spending a BR_VCLOCK tick */
+int   plat_audio_start(void);           /* audio.c: the output; 1 when a device mixes */
+void  plat_cd_tracks(int *first, int *last);
+int   plat_cd_play(int from, int to, void (*end_fn)(void *), void *user);
+void  plat_cd_stop(void);
+void  plat_cd_pause(int on);
+void  plat_cd_volume(float v);
+int   plat_cd_current(void);
+int   plat_cd_playing(void);
+void  plat_cd_poll(void);
 void  plat_deliver(const host_event *ev); /* one host event -> window messages, key state */
 void  plat_mouse_move(int dx, int dy);    /* dx.c: DirectInput mouse */
 void  plat_mouse_button(int down);

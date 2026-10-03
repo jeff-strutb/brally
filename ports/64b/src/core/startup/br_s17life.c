@@ -61,7 +61,6 @@ int BrS17Init(void)
 
 {
   BrS17Release();
-  BrS17RegisterAtExit();
-  return;
+  return BrS17RegisterAtExit();
 }
 

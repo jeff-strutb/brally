@@ -464,8 +464,7 @@ int BrWaveSeekData(HMMIO *param_1,LPMMCKINFO param_2,MMCKINFO *param_3)
 {
   mmioSeek(*param_1,param_3->dwDataOffset + 4,0);
   param_2->ckid = 0x61746164;
-  mmioDescend(*param_1,param_2,param_3,0x10);
-  return;
+  return mmioDescend(*param_1,param_2,param_3,0x10);
 }
 
 /* ------------------------------------------------------------------ */

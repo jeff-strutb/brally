@@ -262,9 +262,17 @@ typedef struct BrSfxDSBufVtbl {
     int32_t (BR_STDCALL *GetStatus)(BrSfxDSBuf *, uint32_t *);   /* +0x24 */
 } BrSfxDSBufVtbl;
 struct BrSfxDSBuf { const BrSfxDSBufVtbl *pVtbl; };
+/* slice1_08.h's BrSndVoice up to pBuf, field for field (its header cannot
+ * be included here, see above): the head holds pointers, so pBuf is not at
+ * the original's +0x9C on a 64-bit host */
 typedef struct BrSfxVoice {
-    char        aHead[0x9C];
-    BrSfxDSBuf *pBuf;                                /* +0x9C */
+    void       *pData;
+    uint32_t    nDataBytes;
+    void       *pFormat;
+    uint32_t    f0C;
+    int32_t     f10, f14, f18, f1C, f20, f24, f28;
+    uint8_t     pad2C[0x70];
+    BrSfxDSBuf *pBuf;                                /* +0x9C in the original */
 } BrSfxVoice;
 
 /* BrSndVoiceBufIsPlaying: prototype in br_funcs.h */
@@ -336,8 +344,7 @@ int BrSfxCarBankInit(int param_1,int param_2)
 {
   BrSndBankSetCar(param_1,param_2);
   BrSfxCarBankLoad(param_1);
-  BrSfxSrcPlaySilent(param_1 * 2,(DAT_100b32b0[0]),(DAT_100b32bc[0]),(DAT_100b32c0[0]));
-  return;
+  return BrSfxSrcPlaySilent(param_1 * 2,(DAT_100b32b0[0]),(DAT_100b32bc[0]),(DAT_100b32c0[0]));
 }
 
 /* -- the bank loader ---------------------------------------------------- */

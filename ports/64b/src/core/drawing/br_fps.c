@@ -101,8 +101,7 @@ void BrFpsReadout(void)
 int BrThunk11D10(void)
 
 {
-  BrNop6E590();
-  return;
+  return BrNop6E590();
 }
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */

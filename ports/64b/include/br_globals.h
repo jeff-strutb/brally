@@ -3151,7 +3151,7 @@ extern int DAT_1021c778;  /* 0x1021C778 */
 #pragma pop_macro("DAT_1021c778")
 #pragma push_macro("DAT_1021c77c")
 #undef DAT_1021c77c
-extern int DAT_1021c77c;  /* 0x1021C77C */
+extern void *DAT_1021c77c;  /* 0x1021C77C: the window the CD code notifies */
 #pragma pop_macro("DAT_1021c77c")
 #pragma push_macro("DAT_1021c7c4")
 #undef DAT_1021c7c4

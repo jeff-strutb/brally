@@ -4,8 +4,7 @@
  *                draws through Glide. Enough for it to find DirectX 6.
  *   DirectInput  the keyboard and the mouse, from host events. No joysticks
  *                yet (EnumDevices finds none).
- *   DirectSound  not yet: creation fails and the game runs silent, as it
- *                does on a machine with no sound card.
+ *   DirectSound  dsound.c.
  *   DirectPlay   not available: no network play.
  *
  * Each object is a COM object with the SDK's vtable order. Slots the game
@@ -192,13 +191,7 @@ HRESULT WINAPI DirectInputCreateA(HINSTANCE h, DWORD v, LPVOID *out, LPUNKNOWN o
 const GUID CLSID_DirectSound = { 0x47D4D946, 0x62E8, 0x11CF, { 0x93, 0xBC, 0x44, 0x45, 0x53, 0x54, 0x00, 0x00 } };
 const GUID IID_IDirectSound  = { 0x279AFA83, 0x4981, 0x11CE, { 0xA5, 0x21, 0x00, 0x20, 0xAF, 0x0B, 0xE5, 0x60 } };
 
-HRESULT plat_dsound_create(REFIID iid, LPVOID *out)
-{
-    (void)iid;
-    *out = NULL;
-    PLOG("DirectSound: not available yet\n");
-    return E_FAIL;
-}
+/* plat_dsound_create: dsound.c */
 
 /* ---- the DLLs the game loads by name ------------------------------------------------------ */
 static const plat_export k_ddraw[] = { { "DirectDrawCreate", (void *)plat_DirectDrawCreate } };

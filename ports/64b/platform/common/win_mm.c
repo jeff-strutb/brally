@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <strings.h>
 #include "plat.h"
 
 typedef struct pmmio {
@@ -176,17 +177,94 @@ MMRESULT WINAPI mmioAscend(HMMIO h, LPMMCKINFO ck, UINT flags)
 }
 
 /* ---- MCI: CD audio ------------------------------------------------------------- */
+/* The "cdaudio" device, over audio.c's CD: open, the TMSF time format,
+ * status (track count, mode, current track), play from a track to a track
+ * with an MM_MCINOTIFY to the callback window when it ends, stop, pause,
+ * resume and close. Positions are tracks (TMSF's low byte). */
 #define MCIERR_DEVICE_NOT_INSTALLED 0x0144
+#define MCIERR_UNRECOGNIZED_COMMAND 0x0105
+#define MCIERR_INVALID_DEVICE_ID    0x0101
+#define MCI_CD_ID 1
+#define MM_MCINOTIFY_ 0x3B9
+
+static int  s_mci_open;
+static HWND s_mci_notify;
+
+static void mci_end(void *user)
+{
+    (void)user;
+    if (s_mci_notify)
+        PostMessageA(s_mci_notify, MM_MCINOTIFY_, 1 /* MCI_NOTIFY_SUCCESSFUL */, MCI_CD_ID);
+}
+
 MCIERROR WINAPI mciSendCommandA(MCIDEVICEID id, UINT msg, DWORD_PTR flags, DWORD_PTR parms)
 {
-    (void)id; (void)flags; (void)parms;
-    PLOG("mciSendCommandA(%u): no CD audio device\n", msg);
-    return MCIERR_DEVICE_NOT_INSTALLED;
+    int first, last;
+    if (msg == MCI_OPEN) {
+        MCI_OPEN_PARMS *o = (MCI_OPEN_PARMS *)parms;
+        if (!o || !(flags & MCI_OPEN_TYPE) || !o->lpstrDeviceType ||
+            (!(flags & MCI_OPEN_TYPE_ID) && strcasecmp(o->lpstrDeviceType, "cdaudio") != 0))
+            return MCIERR_DEVICE_NOT_INSTALLED;
+        s_mci_open = 1;
+        o->wDeviceID = MCI_CD_ID;
+        return 0;
+    }
+    if (id != MCI_CD_ID || !s_mci_open)
+        return MCIERR_INVALID_DEVICE_ID;
+    plat_cd_tracks(&first, &last);
+    switch (msg) {
+    case MCI_CLOSE:
+        plat_cd_stop();
+        s_mci_open = 0;
+        return 0;
+    case MCI_SET:
+        return 0;                       /* the time format: always tracks */
+    case MCI_STATUS: {
+        MCI_STATUS_PARMS *st = (MCI_STATUS_PARMS *)parms;
+        if (!st)
+            return 0;
+        switch (st->dwItem) {
+        case MCI_STATUS_NUMBER_OF_TRACKS: st->dwReturn = (DWORD_PTR)last; break;
+        case MCI_STATUS_CURRENT_TRACK:    st->dwReturn = (DWORD_PTR)plat_cd_current(); break;
+        case MCI_STATUS_MODE:             st->dwReturn = plat_cd_playing() ? MCI_MODE_PLAY : MCI_MODE_STOP; break;
+        case MCI_STATUS_MEDIA_PRESENT:    st->dwReturn = 1; break;
+        case MCI_STATUS_POSITION:         st->dwReturn = (DWORD_PTR)plat_cd_current(); break;
+        default:                          st->dwReturn = 0; break;
+        }
+        return 0;
+    }
+    case MCI_PLAY: {
+        MCI_PLAY_PARMS *pp = (MCI_PLAY_PARMS *)parms;
+        int from = (pp && (flags & MCI_FROM)) ? (int)(pp->dwFrom & 0xFF) : first;
+        int to = (pp && (flags & MCI_TO)) ? (int)(pp->dwTo & 0xFF) : last;
+        s_mci_notify = (pp && (flags & MCI_NOTIFY)) ? (HWND)pp->dwCallback : NULL;
+        plat_cd_play(from, to, mci_end, NULL);
+        return 0;
+    }
+    case MCI_STOP:
+        plat_cd_stop();
+        return 0;
+    case MCI_PAUSE:
+        plat_cd_pause(1);
+        return 0;
+    case MCI_RESUME:
+        plat_cd_pause(0);
+        return 0;
+    case MCI_SEEK:
+        return 0;
+    }
+    PLOG("mciSendCommandA(%u): not handled\n", msg);
+    return MCIERR_UNRECOGNIZED_COMMAND;
 }
 
 /* ---- msacm ------------------------------------------------------------------------- */
+/* the game asks only for the largest format block, to allocate the
+ * WAVEFORMATEX it then fills in: PCM needs no more than that */
 MMRESULT WINAPI acmMetrics(HACMOBJ h, UINT metric, LPVOID out)
 {
-    (void)h; (void)metric; (void)out;
-    return 8;      /* MMSYSERR_NOTSUPPORTED */
+    (void)h;
+    (void)metric;
+    if (out)
+        *(DWORD *)out = (DWORD)sizeof(WAVEFORMATEX);
+    return MMSYSERR_NOERROR;
 }

@@ -399,6 +399,8 @@ typedef struct tagWNDCLASSA {
 #define E_FAIL        ((HRESULT)0x80004005)
 #define E_NOINTERFACE ((HRESULT)0x80004002)
 #define E_OUTOFMEMORY ((HRESULT)0x8007000E)
+#define E_INVALIDARG  ((HRESULT)0x80070057)
+#define E_NOTIMPL     ((HRESULT)0x80004001)
 #define SUCCEEDED(hr) (((HRESULT)(hr)) >= 0)
 #define FAILED(hr)    (((HRESULT)(hr)) < 0)
 #define CLSCTX_INPROC_SERVER 0x1

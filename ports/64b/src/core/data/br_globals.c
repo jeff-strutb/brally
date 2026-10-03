@@ -888,7 +888,7 @@ int g_220C3C;  /* 0x1021C76C */
 int g_220C40;  /* 0x1021C770 */
 int g_brCdTrackFirst;  /* 0x1021C774 */
 int DAT_1021c778;  /* 0x1021C778 */
-int DAT_1021c77c;  /* 0x1021C77C */
+void *DAT_1021c77c;  /* 0x1021C77C */
 BrEarMixEvent g_brEarEvent;  /* 0x1021C780 */
 uint16_t DAT_1021c7c4;  /* 0x1021C7C4 */
 uint16_t DAT_1021c7c6;  /* 0x1021C7C6 */

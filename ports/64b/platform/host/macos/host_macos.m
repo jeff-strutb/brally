@@ -14,12 +14,13 @@
  */
 #import <Cocoa/Cocoa.h>
 #import <QuartzCore/QuartzCore.h>
+#import <Metal/Metal.h>
 #import <AudioToolbox/AudioToolbox.h>
 #include <sys/stat.h>
 
 #include "host.h"
 
-static char s_cd[1024], s_game[1024], s_save[1024];
+static char s_cd[1024], s_game[1024], s_save[1024], s_music[1024];
 
 /* ---- process -------------------------------------------------------------------- */
 static int is_dir(const char *p)
@@ -66,8 +67,21 @@ void host_init(int argc, char **argv)
             snprintf(s_save, sizeof s_save, "%s/Boss Rally 64", base ? [base fileSystemRepresentation] : ".");
         }
         host_mkdir(s_save);
+        /* the CD's audio tracks: BR_MUSICDIR, the extracted ones in the tree,
+         * or the app's Resources/music/cd */
+        e = getenv("BR_MUSICDIR");
+        if (e) {
+            snprintf(s_music, sizeof s_music, "%s", e);
+        } else if (is_dir("build/app/extract/music/cd")) {
+            snprintf(s_music, sizeof s_music, "build/app/extract/music/cd");
+        } else {
+            NSString *r = [[NSBundle mainBundle] resourcePath];
+            snprintf(s_music, sizeof s_music, "%s/music/cd", r ? [r fileSystemRepresentation] : ".");
+        }
     }
 }
+
+const char *host_music_dir(void) { return is_dir(s_music) ? s_music : NULL; }
 
 void host_shutdown(void)
 {
@@ -290,6 +304,27 @@ void host_window_close(void)
     }
 }
 
+/* the window's CAMetalLayer, for a renderer that draws with Metal (macOS
+ * only: render/metal asks for it; the view's layer becomes a Metal layer) */
+CAMetalLayer *host_macos_metal_layer(void)
+{
+    static CAMetalLayer *ml;
+    if (!s_view)
+        return nil;
+    if (!ml) {
+        ml = [CAMetalLayer layer];
+        [ml setPixelFormat:MTLPixelFormatBGRA8Unorm];
+        [ml setFramebufferOnly:YES];
+        [ml setMagnificationFilter:kCAFilterNearest];
+        [s_view setLayer:ml];
+        [s_view setWantsLayer:YES];
+        [ml setContentsScale:[s_win backingScaleFactor]];
+        [ml setDrawableSize:CGSizeMake([s_view bounds].size.width * [s_win backingScaleFactor],
+                                       [s_view bounds].size.height * [s_win backingScaleFactor])];
+    }
+    return ml;
+}
+
 /* a frame of ARGB pixels (0xAARRGGBB, top row first) onto the window */
 void host_present(const uint32_t *argb, int w, int h)
 {
@@ -403,5 +438,67 @@ void host_audio_close(void)
         AudioUnitUninitialize(s_unit);
         AudioComponentInstanceDispose(s_unit);
         s_unit = NULL;
+    }
+}
+
+/* ---- decoded audio files: Core Audio reads FLAC, WAV, AIFF, MP3, AAC ----------- */
+struct host_stream {
+    ExtAudioFileRef f;
+};
+
+host_stream *host_stream_open(const char *path, int rate)
+{
+    @autoreleasepool {
+        CFURLRef url = CFURLCreateFromFileSystemRepresentation(NULL, (const UInt8 *)path,
+                                                               (CFIndex)strlen(path), false);
+        ExtAudioFileRef f = NULL;
+        AudioStreamBasicDescription fmt;
+        host_stream *s;
+        OSStatus st;
+        if (!url)
+            return NULL;
+        st = ExtAudioFileOpenURL(url, &f);
+        CFRelease(url);
+        if (st != noErr || !f)
+            return NULL;
+        memset(&fmt, 0, sizeof fmt);
+        fmt.mSampleRate = rate;
+        fmt.mFormatID = kAudioFormatLinearPCM;
+        fmt.mFormatFlags = kAudioFormatFlagIsFloat | kAudioFormatFlagIsPacked;
+        fmt.mFramesPerPacket = 1;
+        fmt.mChannelsPerFrame = 2;
+        fmt.mBitsPerChannel = 32;
+        fmt.mBytesPerFrame = 8;
+        fmt.mBytesPerPacket = 8;
+        if (ExtAudioFileSetProperty(f, kExtAudioFileProperty_ClientDataFormat, sizeof fmt, &fmt) != noErr) {
+            ExtAudioFileDispose(f);
+            return NULL;
+        }
+        s = (host_stream *)calloc(1, sizeof *s);
+        s->f = f;
+        return s;
+    }
+}
+
+int host_stream_read(host_stream *s, float *lr, int frames)
+{
+    AudioBufferList bl;
+    UInt32 n = (UInt32)frames;
+    if (!s)
+        return 0;
+    bl.mNumberBuffers = 1;
+    bl.mBuffers[0].mNumberChannels = 2;
+    bl.mBuffers[0].mDataByteSize = (UInt32)frames * 8;
+    bl.mBuffers[0].mData = lr;
+    if (ExtAudioFileRead(s->f, &n, &bl) != noErr)
+        return 0;
+    return (int)n;
+}
+
+void host_stream_close(host_stream *s)
+{
+    if (s) {
+        ExtAudioFileDispose(s->f);
+        free(s);
     }
 }

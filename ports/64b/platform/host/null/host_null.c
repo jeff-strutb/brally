@@ -76,3 +76,20 @@ int host_audio_open(int rate, host_audio_fn fn, void *user)
 }
 
 void host_audio_close(void) {}
+
+/* no decoder: the CD plays silently and no track ever ends */
+const char *host_music_dir(void) { return NULL; }
+host_stream *host_stream_open(const char *path, int rate)
+{
+    (void)path;
+    (void)rate;
+    return NULL;
+}
+int host_stream_read(host_stream *s, float *lr, int frames)
+{
+    (void)s;
+    (void)lr;
+    (void)frames;
+    return 0;
+}
+void host_stream_close(host_stream *s) { (void)s; }

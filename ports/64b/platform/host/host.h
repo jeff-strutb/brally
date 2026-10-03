@@ -85,6 +85,17 @@ typedef void (*host_audio_fn)(float *lr, int frames, void *user);
 int  host_audio_open(int rate, host_audio_fn fn, void *user);
 void host_audio_close(void);
 
+/* ---- decoded audio files (the CD's music) ------------------------------------------ */
+/* where the CD audio tracks are, as track02.flac .. trackNN.* (NULL: none) */
+const char *host_music_dir(void);
+/* a file decoded to interleaved stereo float at rate; NULL when this host
+ * cannot decode it */
+typedef struct host_stream host_stream;
+host_stream *host_stream_open(const char *path, int rate);
+/* up to frames frames into lr; the number read, 0 at the end */
+int          host_stream_read(host_stream *s, float *lr, int frames);
+void         host_stream_close(host_stream *s);
+
 /* ---- process ---------------------------------------------------------------------- */
 void host_init(int argc, char **argv);
 void host_shutdown(void);

@@ -309,6 +309,7 @@ void plat_pump(uint32_t wait_ms)
         plat_deliver(&ev);
     }
     timers();
+    plat_cd_poll();
 }
 
 static BOOL take(LPMSG m, UINT remove)

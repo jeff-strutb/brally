@@ -236,8 +236,7 @@ int BrSndVoiceSetFreq(int param_1,int param_2)
 int BrThunk6E580(void)
 
 {
-  BrNop6E590();
-  return;
+  return BrNop6E590();
 }
 
 
