@@ -8662,3 +8662,18 @@ with the target's flags, diff one function against original bytes
   the includes), then fill it with a real header.  Unused `extern int`s add
   nothing; prototypes and header contents do.  0x10018A50 BrSwapU16Array
   (136-143 extra symbols; br_pod.h).
+- **`fild; fmulp` where the original fuses `fimul`: cast the integer to
+  `float`, not `double`.**  VC5 fuses a float-converted int operand into the
+  multiply; a (double) conversion is a separate load.  Same value whenever
+  the integer fits a float's mantissa.  0x1002A200 BrLightDirsAndAngles.
+- **A masked-exact body can still load the wrong global in each slot: read
+  `objdump -r` against the original or run the image gate.**  Two orders the
+  masked score never shows:
+  - a named `static const float k` loads FIRST in a commutative product,
+    a pooled literal (`g * -0.5f`) loads SECOND;
+  - two globals in one commutative add follow neither their names, their
+    declaration order nor the symbol count, but as two elements of ONE
+    object (`extern float a[4]; #define gA a[0]`, `#define gB a[3]`) they
+    order by displacement.  The original's adjacent globals were one object.
+  0x10011FA0 BrFrameDraw (also 630-658 extra symbols, a window that opens
+  far above the first hundred).
