@@ -197,6 +197,12 @@ Functions: T2 21, T3 11, T4 80.
 | `80208CF0` | `BrSeasonDraw` | T3 |
 | `80209434` | `BrTrackSelectScreen` | T3 |
 
+## `textstyle.c`: the paint shop's text-style popup
+
+| address | function | tier |
+|---|---|---|
+| `8024E128` | `BrPaintTextStyleMenu` | T2 |
+
 ## `trackselect.c`: the track-select screen
 
 | address | function | tier |
