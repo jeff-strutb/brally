@@ -243,11 +243,12 @@ void BrSkidDraw(void)
  * pulled toward the wheel's last spot when that is near, and fades from
  * the speed.  Declared without a prototype: BrParticleFrame passes the
  * emitter as an int, and a prototyped pointer call recolours its loops.
- * RESIDUE (15): the rate's two products -- the ROM loads the frame time
- * first; ours the literal (register-blind the same).  Written as two
- * statements the load order is the ROM's but the sum lands in the saved
- * register and every later temp rotates; s5/s6 (the timer cursor and
- * car+0x20) are swapped. */
+ * The speed is a local assigned in the test (the rate's frame-time product
+ * is then evaluated first); the unusable wheel is a `continue` (that
+ * numbers the timer cursor s6 and car+0x20 s5 as in the ROM).
+ * RESIDUE (1): the surface chain's last test -- the ROM emits bne v0,a0
+ * (byte, 3), ours bne a0,v0.  Spellings of the chain, a local byte, splits
+ * and 562 permuter compiles leave it. */
 /* @implements 0x8023C800 tgr BrWheelSprayEmit */
 void BrWheelSprayEmit(car)
 BrCar *car;
@@ -261,9 +262,10 @@ BrCar *car;
   int n;
   BrParticle *p;
   float keep;
+  float speed;
 
-  if (car->sndImpact != 0 && car->xfe4[0] > 40.0f) {
-    rate = D_8028AAD8 * 0.5f + car->xfe4[0] * 0.00066006603f;
+  if (car->sndImpact != 0 && (speed = car->xfe4[0]) > 40.0f) {
+    rate = D_8028AAD8 * 0.5f + speed * 0.00066006603f;
     for (i = 0; i < 4; i++) {
       car->sprayTime[i] += rate * ((float)(unsigned int)car->sndImpact * 0.03f);
       if (car->sprayTime[i] > 0.75f) {
@@ -273,8 +275,11 @@ BrCar *car;
         w[2] = (BrSprayWheel *)((char *)car + 0x350);
         w[3] = (BrSprayWheel *)((char *)car + 0x760);
         wh = w[i];
-        if (wh->contact != 0 && (wh->surface == 1 || wh->surface == 2 || wh->surface == 3)
-            && (n = D_8028C830) != 0) {
+        if (wh->contact == 0 || (wh->surface != 1 && wh->surface != 2 && wh->surface != 3)
+            || (n = D_8028C830) == 0) {
+          continue;
+        }
+        {
           p = &D_80366A80[n];
           D_8028C830 = p->next;
           if (wh->surface == 3) {
