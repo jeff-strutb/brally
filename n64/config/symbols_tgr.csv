@@ -363,6 +363,7 @@ va,name,kind
 8023A1C8,BrWeatherStep,func
 8023B130,BrViewportDepthZ,func
 8023B178,BrCarSmokeEmit,func
+8023B418,BrSkidStep,func
 8023BB50,BrSkidDraw,func
 8023C800,BrWheelSprayEmit,func
 8023CBFC,BrParticleStep,func

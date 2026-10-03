@@ -35,7 +35,7 @@ typedef struct BrWeatherObj {           /* 0x78 bytes */
 extern BrWeatherObj D_803239A0[];
 extern int D_8028B7F0;                  /* entries in D_803239A0 */
 void func_8023B178(int e);
-void func_8023B418(int e);
+void BrSkidStep();
 void BrWheelSprayEmit();
 void func_8023CD60(void);
 void BrSkidDraw(void);
@@ -100,7 +100,11 @@ void BrCarSmokeEmit(BrCar *car)
 }
 
 /* -- declarations: BrWheelSprayEmit -- */
-/* A wheel's ground contact as the spray reads it (0x208 bytes, four from
+/* -- end declarations -- */
+
+/* -- declarations: BrSkidStep -- */
+extern int D_8028B940;          /* the track */
+/* A wheel's ground contact as the spray and skid marks read it (0x208 bytes, four from
  * car+0x350). */
 typedef struct BrSprayWheel {
     char pad000[0x1A0];
@@ -114,17 +118,181 @@ void BrVec3SubFrom(BrVec3 *pA, BrVec3 *pB);
 void BrVec3ScaleBy(BrVec3 *pV, float s);
 float BrVec3DistSq(BrVec3 *pA, BrVec3 *pB);
 void BrVec3Lerp(BrVec3 *pOut, BrVec3 *pA, BrVec3 *pB, float t);
+typedef struct BrTrackObj {             /* a track object (0x54 bytes) */
+    float m[4][4];
+    int x40;
+    unsigned int dl;
+    unsigned short hide;
+    unsigned short x4a;
+    unsigned short flags;               /* 0x4C  0x10: no skid marks on snow */
+    unsigned short tris;
+    unsigned short vtxs;
+    unsigned short x52;
+} BrTrackObj;
+extern BrTrackObj *D_80025C60;          /* the track's objects */
+float BrVec3Dot(BrVec3 *a, BrVec3 *b);
+void BrVec3Zero(BrVec3 *v);
 /* -- end declarations -- */
 
+/* WHAT IT DOES: Lay a car's skid marks for one frame (when the race kind
+ * draws them): per wheel a clock runs at four per second and past 0.75
+ * lays a point; a grounded wheel keeps its mark alive for three frames on
+ * its surface.  A live mark on loose ground (1.5 wide, 2.5 on surface 4,
+ * snow only on the snow tracks off the trigger) is spread across the car,
+ * scaled by speed (on snow by the sideways slip instead, wider at the
+ * rear) and swept by the velocity; the point sits a quarter behind the
+ * wheel, a little in from the side, jittered toward the last point.  The
+ * new point's width and the trail's newest vertex (relative to the car)
+ * are written at the head of the wheel's trail.  The frame is the ROM's
+ * with the unused one-int arrays; stores of 0 and the decrements by 1 are
+ * integer literals (the 0.0f compares keep their own zero register).
+ * RESIDUE (6): two lui's of the mark width scheduled one slot later than
+ * the ROM's, and the scale's spill slot 0x64 (ROM 0x70).  500 permuter
+ * compiles leave it. */
+/* @implements 0x8023B418 tgr BrSkidStep */
+void BrSkidStep(car)
+BrCar *car;
+{
+  BrVec3 save;
+  BrVec3 d;
+  BrVec3 at;
+  int u0[1];
+  float fade;
+  int u1[1];
+  float s;
+  int u2[1];
+  int hold;
+  int u3[1];
+  int onSnow;
+  BrSprayWheel *w[4];
+  int u4[1];
+  float slip;
+  int u5[1];
+  float f;
+  int k;
+  int surf;
+  float g;
+  int u6[1];
+
+  onSnow = 0;
+  if (car->x2000 != 0 && (D_80025C60[car->x1fc0[0]].flags & 0x10)) {
+    onSnow = 1;
+  }
+  if (D_8028AA84 == 0 || D_8028B940 == 2 || D_8028B940 == 7) {
+    w[0] = (BrSprayWheel *)((char *)car + 0x968);
+    w[1] = (BrSprayWheel *)((char *)car + 0x558);
+    w[2] = (BrSprayWheel *)((char *)car + 0x350);
+    w[3] = (BrSprayWheel *)((char *)car + 0x760);
+    fade = (1.0f - 50.0f / (car->xfe4[0] + 50.0f)) * 3.0f;
+    f = BrVec3Dot((BrVec3 *)car, &car->velfd8);
+    if (f < 0) {
+      slip = -f;
+    } else {
+      slip = f;
+    }
+    for (k = 0; k < 4; k++) {
+      car->skidClock[k] += D_8028AAD8 * 4.0f;
+      if (car->skidClock[k] > 0.75f) {
+        hold = 0;
+        if (car->skidClock[k] >= 1.7f) {
+          car->skidClock[k] -= 1;
+        } else {
+          car->skidClock[k] = 0;
+        }
+        car->skidEmit[k] = 1;
+      } else {
+        hold = 1;
+        car->skidEmit[k] = 0;
+      }
+      if (w[k]->contact != 0) {
+        car->skidLife[k] = 3.0f;
+        car->skidSurf[k] = w[k]->surface;
+      } else if (car->skidLife[k] != 0.0f) {
+        car->skidLife[k] -= 1;
+      }
+      surf = car->skidSurf[k];
+      if (car->skidLife[k] != 0.0f) {
+        if (hold) {
+          s = 1.5f;
+        } else if (surf == 4) {
+          s = 2.5f;
+        } else if (surf == 3 && D_8028AA8C != 0 && !onSnow) {
+          s = 1.5f;
+          if (!hold) {
+            car->skidClock[k] = 7.75f;
+          }
+        } else {
+          goto flat;
+        }
+        if (!hold) {
+          BrVec3Scale(&d, (BrVec3 *)car->mtx0[2], s);
+          if (surf != 3) {
+            BrVec3MulAddTo(&d, (BrVec3 *)car->mtx0[1], k != 0 && k < 3 ? -s : s);
+          }
+          if (surf != 3) {
+            BrVec3ScaleBy(&d, fade);
+            BrVec3MulAddTo(&d, &car->velfd8, 0.3f);
+            BrVec3MulAddTo(&d, (BrVec3 *)car->mtx0[1], BrVec3Dot((BrVec3 *)car->mtx0[1], &car->velfd8) * 0.5f);
+          } else {
+            f = (1.0f - 25.0f / (2.24f * slip + 25.0f)) * 3.0f;
+            BrVec3ScaleBy(&d, f);
+            if (f != 0.0f) {
+              if (k >= 2) {
+                d.z += d.z;
+              }
+              BrVec3MulAddTo(&d, (BrVec3 *)car->mtx0[1], BrVec3Dot((BrVec3 *)car->mtx0[1], &car->velfd8) * 0.3f);
+            }
+          }
+        }
+        BrVec3MulAdd(&at, (BrVec3 *)car->wheelMtx[k][3], (BrVec3 *)car->mtx0[2], -0.25f);
+        if (surf != 3 || k < 2) {
+          BrVec3MulAddTo(&at, (BrVec3 *)car->mtx0[1], k != 0 && k < 3 ? -0.15f : 0.15f);
+        }
+        save.x = at.x;
+        save.y = at.y;
+        save.z = at.z;
+        if (!hold) {
+          if (BrVec3DistSq(&at, &car->skidAt[k]) < 256.0f) {
+            g = (float)(BrRandStep() & 0xffff) * 1.5259021893143654e-05f;
+            BrVec3Lerp(&at, &car->skidAt[k], &at, g * g);
+          }
+        }
+        car->skidAt[k].x = save.x;
+        car->skidAt[k].y = save.y;
+        car->skidAt[k].z = save.z;
+      } else {
+      flat:
+        BrVec3Zero(&d);
+        at.x = car->wheelMtx[k][3][0];
+        at.y = car->wheelMtx[k][3][1];
+        at.z = car->wheelMtx[k][3][2];
+      }
+      if (!hold) {
+        car->skidPt[k][0].half[0] = d.x * 127.0f;
+        car->skidPt[k][0].half[1] = d.y * 127.0f;
+        car->skidPt[k][0].half[2] = d.z * 127.0f;
+        if (surf == 3 && D_8028AA8C != 0) {
+          car->skidPt[k][0].pos[2] = 0;
+          car->skidPt[k][0].pos[0] = car->skidPt[k][0].half[0];
+          car->skidPt[k][0].pos[1] = car->skidPt[k][0].half[1];
+        } else {
+          car->skidPt[k][0].pos[2] = 0;
+          car->skidPt[k][0].pos[0] = car->skidPt[k][0].half[0] >> 1;
+          car->skidPt[k][0].pos[1] = car->skidPt[k][0].half[1] >> 1;
+        }
+      }
+      car->skidKind[k][0] = surf;
+      car->skidVtx[k][1].ob[0] = (at.x - car->pos1d78.x) * 127.0f;
+      car->skidVtx[k][1].ob[1] = (at.y - car->pos1d78.y) * 127.0f;
+      car->skidVtx[k][1].ob[2] = (at.z - car->pos1d78.z) * 127.0f;
+      car->skidVtx[k][0].ob[0] = car->skidVtx[k][1].ob[0];
+      car->skidVtx[k][0].ob[1] = car->skidVtx[k][1].ob[1];
+      car->skidVtx[k][0].ob[2] = car->skidVtx[k][1].ob[2];
+    }
+  }
+}
+
 /* -- declarations: BrSkidDraw -- */
-/* A skid-mark point (0x18 bytes, nine per wheel from car+0x19E8): the
- * mark is drawn between two points while either has a non-zero half. */
-typedef struct BrSkidPt {
-    short pos[3];
-    short half[3];              /* 0x06 */
-    char pad0c[0x18 - 0x0C];
-} BrSkidPt;
-extern int D_8028B940;          /* the track */
 extern Mtx *D_8028A878;
 extern char D_802A2978[];       /* the skid-mark texture */
 #define gSP2Triangles(pkt, v00, v01, v02, f0, v10, v11, v12, f1)        \
@@ -457,7 +625,7 @@ void BrParticleFrame(void)
     for (i = 0, o = D_803239A0; i < D_8028B7F0; i++, o++) {
       if (o->x60 != 0) {
         func_8023B178(o->x60);
-        func_8023B418(o->x60);
+        BrSkidStep(o->x60);
       }
     }
   } else if (D_8028AA80 == 0 && D_8028AA8C == 0) {
@@ -465,13 +633,13 @@ void BrParticleFrame(void)
     for (i = 0, o = D_803239A0; i < D_8028B7F0; i++, o++) {
       if (o->x60 != 0) {
         BrWheelSprayEmit(o->x60);
-        func_8023B418(o->x60);
+        BrSkidStep(o->x60);
       }
     }
   } else {
     for (i = 0, o = D_803239A0; i < D_8028B7F0; i++, o++) {
       if (o->x60 != 0) {
-        func_8023B418(o->x60);
+        BrSkidStep(o->x60);
       }
     }
   }

@@ -58,6 +58,20 @@ typedef struct BrCarBody {
     char pad160[0x208 - 0x160];
 } BrCarBody;
 
+/* A skid-mark vertex (an F3DEX Vtx, 16 bytes) and point (0x18 bytes):
+ * a point's half-width is drawn while non-zero. */
+typedef struct BrSkidVtx {
+    short ob[3];
+    unsigned short flag;
+    short tc[2];
+    unsigned char cn[4];
+} BrSkidVtx;
+typedef struct BrSkidPt {
+    short pos[3];
+    short half[3];              /* 0x06 */
+    char pad0c[0x18 - 0x0C];
+} BrSkidPt;
+
 typedef struct BrCar {
     float mtx0[4][4];           /* 0x000  body matrix */
     float wheelMtx[4][4][4];    /* 0x040  one per wheel: the body's rotation, the wheel's position */
@@ -155,7 +169,14 @@ typedef struct BrCar {
     BrVec3 smokeAt;             /* 0x1014  where the last smoke particle started */
     float sprayTime[4];         /* 0x1020  per wheel: the spray emit timer */
     BrVec3 sprayAt[4];          /* 0x1030  per wheel: where its last spray particle started */
-    char pad1060[0x1D78 - 0x1060];
+    float skidLife[4];          /* 0x1060  per wheel: frames the mark lasts off the ground */
+    int skidSurf[4];            /* 0x1070  the surface it was last on */
+    float skidClock[4];         /* 0x1080  lays a mark point past 0.75 */
+    int skidEmit[4];            /* 0x1090  a point was laid this frame */
+    BrVec3 skidAt[4];           /* 0x10A0  where the last point went */
+    BrSkidVtx skidVtx[4][36];   /* 0x10D0  each wheel's trail, newest first */
+    BrSkidPt skidPt[4][9];      /* 0x19D0 */
+    short skidKind[4][9];       /* 0x1D30  each point's surface */
     BrVec3 pos1d78;             /* 0x1D78  another position copy */
     char pad1d84[0x1D88 - 0x1D84];
     int mtx[16];                /* 0x1D88 */
