@@ -7,7 +7,7 @@
 /* -- declarations -- */
 void func_8020037C(void);
 void func_8022D7E0(int param_1,unsigned int param_2,unsigned int param_3,int param_4,int param_5);
-void func_8023BF60(void);
+void BrSkidAge(void);
 extern int D_8026FF10;
 float func_80224404();
 extern int D_8028B304;                /* laps in the race */
@@ -84,7 +84,7 @@ void BrRaceDrawLayers(void)
     func_8022D7E0(0,0x80,0x80,0xf0,0xff);
     func_8020037C();
     func_8022D7E0(0,0,0,0xc0,0xff);
-    func_8023BF60();
+    BrSkidAge();
     func_8022D7E0(0,0,0x82,0,0xff);
   }
 }

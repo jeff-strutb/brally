@@ -99,9 +99,6 @@ void BrCarSmokeEmit(BrCar *car)
   }
 }
 
-/* -- declarations: BrWheelSprayEmit -- */
-/* -- end declarations -- */
-
 /* -- declarations: BrSkidStep -- */
 extern int D_8028B940;          /* the track */
 /* A wheel's ground contact as the spray and skid marks read it (0x208 bytes, four from
@@ -400,6 +397,202 @@ void BrSkidDraw(void)
     gRaw(D_8028A858++, 0xb7000000, 0x2000);
   }
 }
+
+/* -- declarations: BrSkidAge -- */
+extern int D_8026FF10;                  /* the race is paused */
+void guTranslate(void *m, float x, float y, float z);
+void guScale(void *m, float x, float y, float z);
+void guMtxCatL(void *a, void *b, void *r);
+void *memcpy(void *dst, void *src, unsigned int n);
+/* -- end declarations -- */
+
+/* WHAT IT DOES: Age every car's skid trails one frame (not while paused):
+ * the trail origin follows the car in whole 1/127 steps and the trails'
+ * matrix is rebuilt (translate, then 1/127 scale); per wheel a newly laid
+ * point takes its surface's colours (dark earth, grey snow on the snow
+ * tracks, tarmac by track, halved or lightened by race kind; an unknown
+ * surface ends the mark) and shifts in at the head; then each of the
+ * eight older quads shifts back when a point was laid, fades out over the
+ * last four, takes its texture column and row, and moves with the origin
+ * (older points also spread by their width and sink by gravity).  The
+ * surface switch is in the ROM's body order (4, 0, 3, unknown); the frame
+ * has two unused ints above the drop.
+ * RESIDUE (3): the low quad's z for the sink test sits in a0, the ROM's
+ * in v0; compare/assignment spellings and 400 permuter compiles leave it. */
+/* @implements 0x8023BF60 tgr BrSkidAge */
+void BrSkidAge(void)
+{
+  int dt;
+  int i;
+  short dx;
+  short dy;
+  short dz;
+  int j;
+  int k;
+  int kind;
+  BrSkidVtx *v0;
+  BrSkidVtx *v1;
+  BrCar *car;
+  short *h;
+  int a;
+  int u[1];
+  short drop;
+  Mtx m;
+
+  dt = D_8028AAD8 * 4096.0f;
+  drop = 9.81f * D_8028AAD8 * 127.0f;
+  if (D_8026FF10 != 0) {
+    return;
+  }
+  for (i = 0; i < D_8028B7F0; i++) {
+    if ((car = (BrCar *)D_803239A0[i].x60) == 0) {
+      continue;
+    }
+    dx = (car->pos1d78.x - car->mtx0[3][0]) * 127.0f;
+    dy = (car->pos1d78.y - car->mtx0[3][1]) * 127.0f;
+    dz = (car->pos1d78.z - car->mtx0[3][2]) * 127.0f;
+    car->pos1d78.x -= dx * 0.007874016f;
+    car->pos1d78.y -= dy * 0.007874016f;
+    car->pos1d78.z -= dz * 0.007874016f;
+    guTranslate(car->mtx, car->pos1d78.x, car->pos1d78.y, car->pos1d78.z);
+    guScale(&m, 0.007874016f, 0.007874016f, 0.007874016f);
+    guMtxCatL(&m, car->mtx, car->mtx);
+    for (k = 0; k < 4; k++) {
+      if (car->skidEmit[k] != 0) {
+        v0 = &car->skidVtx[k][0];
+        v1 = &car->skidVtx[k][1];
+        switch (car->skidKind[k][0]) {
+        case 4:
+          if (D_8028B940 == 2 || D_8028B940 == 7) {
+            if (D_8028AA84 != 0) {
+              v0->cn[0] = 70;
+              v0->cn[1] = 100;
+              v0->cn[2] = 100;
+              v1->cn[0] = 215;
+              v1->cn[1] = 235;
+              v1->cn[2] = 195;
+            } else {
+              v0->cn[0] = 50;
+              v0->cn[1] = 100;
+              v0->cn[2] = 95;
+              v1->cn[0] = 210;
+              v1->cn[1] = 240;
+              v1->cn[2] = 190;
+            }
+          } else if (D_8028B940 == 3 || D_8028B940 == 8) {
+            v0->cn[0] = 16;
+            v0->cn[1] = 16;
+            v0->cn[2] = 0;
+            v1->cn[0] = 64;
+            v1->cn[1] = 64;
+            v1->cn[2] = 16;
+          } else {
+            v0->cn[0] = 48;
+            v0->cn[1] = 24;
+            v0->cn[2] = 8;
+            v1->cn[0] = 128;
+            v1->cn[1] = 96;
+            v1->cn[2] = 64;
+          }
+          if (D_8028AA8C != 0) {
+            v0->cn[0] = v0->cn[0] / 2 + 32;
+            v0->cn[1] = v0->cn[1] / 2 + 32;
+            v0->cn[2] = v0->cn[2] / 2 + 32;
+            v1->cn[0] = v1->cn[0] / 2 + 32;
+            v1->cn[1] = v1->cn[1] / 2 + 32;
+            v1->cn[2] = v1->cn[2] / 2 + 32;
+          } else if (D_8028AA80 != 0) {
+            v0->cn[0] >>= 1;
+            v0->cn[1] >>= 1;
+            v0->cn[2] >>= 1;
+            v1->cn[0] >>= 1;
+            v1->cn[1] >>= 1;
+            v1->cn[2] >>= 1;
+          }
+          break;
+        case 0:
+          v0->cn[0] = v1->cn[0] = 0x30;
+          v0->cn[1] = v1->cn[1] = 0x20;
+          v0->cn[2] = v1->cn[2] = 0x10;
+          break;
+        case 3:
+          if (D_8028AA8C == 0) {
+            goto none;
+          }
+          v0->cn[0] = 100;
+          v0->cn[1] = 104;
+          v0->cn[2] = 108;
+          v1->cn[0] = 160;
+          v1->cn[1] = 168;
+          v1->cn[2] = 176;
+          break;
+        default:
+        none:
+          car->skidKind[k][0] = -1;
+          v1->cn[0] = car->skidVtx[k][5].cn[0];
+          v1->cn[1] = car->skidVtx[k][5].cn[1];
+          v1->cn[2] = car->skidVtx[k][5].cn[2];
+          v0->cn[0] = car->skidVtx[k][4].cn[0];
+          v0->cn[1] = car->skidVtx[k][4].cn[1];
+          v0->cn[2] = car->skidVtx[k][4].cn[2];
+          break;
+        }
+        memcpy(&car->skidVtx[k][4], &car->skidVtx[k][0], 0x40);
+        memcpy(&car->skidPt[k][1], &car->skidPt[k][0], 0x18);
+        car->skidKind[k][1] = car->skidKind[k][0];
+      }
+      for (j = 8; j != 0; j--) {
+        v0 = &car->skidVtx[k][j * 4];
+        v1 = &car->skidVtx[k][j * 4 + 1];
+        if (j == 1 || car->skidEmit[k] != 0) {
+          memcpy(v0, &car->skidVtx[k][j * 4 - 4], 0x40);
+          memcpy(&car->skidPt[k][j], &car->skidPt[k][j - 1], 0x18);
+          car->skidKind[k][j] = car->skidKind[k][j - 1];
+        }
+        kind = car->skidKind[k][j];
+        if (kind == -1) {
+          v1->cn[3] = v0->cn[3] = 0;
+        } else if (j >= 5) {
+          v1->cn[3] = v0->cn[3] = (8 - j) * 0xff / 4;
+        } else {
+          v1->cn[3] = v0->cn[3] = 0xff;
+        }
+        if (kind == 3) {
+          v0->tc[0] = 0x410;
+          v1->tc[0] = 0x10;
+        } else {
+          v0->tc[0] = 0x10;
+          v1->tc[0] = 0x410;
+        }
+        v1->tc[1] = v0->tc[1] = j << 11;
+        if (kind == -1 || j == 1 || (j == 2 && car->skidEmit[k] != 0)) {
+          v0->ob[0] += dx;
+          v0->ob[1] += dy;
+          v0->ob[2] += dz;
+          v1->ob[0] += dx;
+          v1->ob[1] += dy;
+          v1->ob[2] += dz;
+        } else if (j != 8) {
+          v0->ob[0] += ((car->skidPt[k][j].pos[0] * dt) >> 12) + dx;
+          v0->ob[1] += ((car->skidPt[k][j].pos[1] * dt) >> 12) + dy;
+          v0->ob[2] += dz;
+          h = car->skidPt[k][j].half;
+          v1->ob[0] += ((car->skidPt[k][j].half[0] * dt) >> 12) + dx;
+          v1->ob[1] += ((h[1] * dt) >> 12) + dy;
+          v1->ob[2] += ((h[2] * dt) >> 12) + dz;
+          if (v1->ob[2] < v0->ob[2]) {
+            v1->ob[2] = v0->ob[2];
+          } else {
+            h[2] -= drop;
+          }
+        }
+      }
+    }
+  }
+}
+
+/* -- declarations: BrWheelSprayEmit -- */
+/* -- end declarations -- */
 
 /* WHAT IT DOES: A car's wheel spray for one frame, when it has a surface
  * impact level and goes faster than 40: each wheel's timer counts up by
@@ -741,7 +934,6 @@ extern float D_8031AB50[4][4];
 extern float D_8031AA90[4][4];
 int BrMat4Inverse(float out[4][4], float in[4][4]);
 void BrMat4Mul(float r[4][4], float a[4][4], float b[4][4]);
-void *memcpy(void *dst, void *src, unsigned int n);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Draw the two falling-particle lists: the particle sprite

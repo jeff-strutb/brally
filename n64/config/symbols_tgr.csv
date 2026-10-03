@@ -365,6 +365,7 @@ va,name,kind
 8023B178,BrCarSmokeEmit,func
 8023B418,BrSkidStep,func
 8023BB50,BrSkidDraw,func
+8023BF60,BrSkidAge,func
 8023C800,BrWheelSprayEmit,func
 8023CBFC,BrParticleStep,func
 8023CD60,BrParticleFallStep,func
