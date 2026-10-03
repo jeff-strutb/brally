@@ -393,43 +393,26 @@ static int BrCdStopReleaseMsg(void)
  * closes the device.  Reports whether both commands were accepted. */
 /* @t4-pass 0x100030B0 3 2026-09-07 probes 51 bytes 105 insns 43 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x100030B0 4 2026-09-07 probes 51 bytes 105 insns 43 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t3 0x100030B0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 105/105 insns 43/43 rows 0+0 regions 1 oracle EQUIVALENT
- * @t3-effort passes 2 zero-movement 3 4
- * residue is register colouring only: identical register-blind instruction
- * multiset (rows 0+0), 1 masked region;
- * every row pairs under t3.py's canonical classes.  Effort: 2 counted
- * @t4-pass passes (ledger lines above, zero movement on passes 3 and 4);
- * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x100030B0 glide BrCdStopReleaseMci */
-/* RESIDUE (2026-09-07): body complete and correct; REGNORM 0+0, +0 bytes.
- * The boolean codegen is now byte-for-byte: the borrow trick is the TERNARY's
- * codegen, and the operator picks the tail op.  `r = (e1 ? -1 : 0) + 1` gives
- * `neg; sbb; inc` (single-constant ternary + `+1` folds to `inc`); the mask
- * `~(e2 ? -1 : 0)` gives `neg; sbb; not` (the `~` maps straight to `not`,
- * where `~-(e2 != 0)` and `(e2 ? 0 : -1)` instead emit setne / `neg; dec`).
- * The play-count `if` is inverted (`!= 0` returns r, `== 0` falls through to
- * the second call) so the fall-through arm is `return r` -- that reproduces
- * the original's `je` polarity.  Sole residue: a 3-instruction SCHEDULE gap --
- * the original hoists the `mov eax,[playing]` reload into the slot after
- * `mov esi,eax` (e1 -> r's home) and does the borrow on esi in place, while
- * VC5 on this source does the borrow in eax, copies to esi, then reloads.
- * Same instruction multiset, identical ops, three reordered; declaration
- * order (all 12 perms) and every expression form are inert on the reorder.
+/* The boolean codegen is the comparison's: `r = call(...) == 0` copies the
+ * call result into r's home (esi) and runs neg/sbb/inc there, with the
+ * play-count reload scheduled between.  The mask `~(e2 ? -1 : 0)` gives
+ * `neg; sbb; not`.  The play-count `if` is inverted (`!= 0` returns r) so
+ * the fall-through arm is `return r`, the original's `je` polarity.
  * @t4-pass 0x100030B0 1 2026-09-06 probes 4 bytes 105 insns 43 regions 1 rows 4 census yes
  * @t4-pass 0x100030B0 2 2026-09-07 probes 9 bytes 105 insns 43 regions 1 rows 1 census no */
 static int BrCdStopReleaseMci(void)
 {
-  MCIERROR e1, e2;
+  MCIERROR e2;
   int r;
 
   if (g_brCdEnabled == 0) {
     return 1;
   }
   g_brCdPlaying = g_brCdPlaying - 1;
-  e1 = mciSendCommandA((unsigned long)g_220C40, 0x808u, 0, 0);
-  r = (e1 ? -1 : 0) + 1;
+  /* The stop result is tested straight into r (`== 0`): the call's eax
+   * is copied to esi before the neg/sbb/inc, as in the original. */
+  r = mciSendCommandA((unsigned long)g_220C40, 0x808u, 0, 0) == 0;
   if (g_brCdPlaying != 0) {
     return r;
   }
