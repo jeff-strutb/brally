@@ -49,12 +49,9 @@ float BrVec3DistXY(float *pA, float *pB);
  * between the track's two fog altitudes and, on the first track, washed
  * towards white with the camera's height above 1024.  Then the fog factor
  * and offset the RSP uses and the fog colour go into the display list.
- * The colours are converted as unsigned (the ROM's cvt checks).
- * RESIDUE (6): in the first track's washout the ROM loads both constants
- * before the camera's x; ours loads x first (300 permuter compiles). */
-/* @t4-pass 0x802182A8 1 2026-09-29 compiles 150 best 6 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x802182A8 2 2026-09-29 compiles 150 best 6 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x802182A8 */
+ * The colours are converted as unsigned (the ROM's cvt checks).  The
+ * washout multiplies the x term by the height term (that operand order puts
+ * the height's constant first in the pool). */
 /* @implements 0x802182A8 tgr BrFogSetup */
 void BrFogSetup(void)
 {
@@ -113,7 +110,7 @@ void BrFogSetup(void)
     }
     if (D_8028B940 == 0) {
       if (1024.0f < D_8028AAF4->mtx[3][1]) {
-        t = (D_8028AAF4->mtx[3][1] - 1024.0f) * 0.0008789062267169356f * (D_8028AAF4->mtx[3][0] * 0.0004394531133584678f);
+        t = D_8028AAF4->mtx[3][0] * 0.0004394531133584678f * ((D_8028AAF4->mtx[3][1] - 1024.0f) * 0.0008789062267169356f);
       } else {
         t = 0.0f;
       }
