@@ -1,6 +1,12 @@
 /* br_bits.c -- see br_bits.h. */
 #include "br_bits.h"
 #include "br_match.h"
+/* The POD reader's declarations come in ahead of the swap helpers.  Beyond
+ * the types, the count of symbols declared before BrSwapU16Array is what
+ * orders the two byte loads of each halfword swap (low byte first, as the
+ * original reads them): VC5 sorts those commutative operands by a key that
+ * hashes symbol indices. */
+#include "br_pod.h"
 
 /* 0x10035FA0 -- note it reads pending once and writes both fields, so a bit
  * present in pending and already set in latched stays set (OR, not XOR). */
@@ -77,23 +83,12 @@ void BrSwapVec3(void *pv)
  * source pointer is loaded ONCE before the loop label at 0x10018A5C -- the
  * jump target is the `xor edx,edx`, not the `mov eax,[esp+4]` above it.
  * Word-compose `lo=p[1]; hi=p[0]; *(u16*)p = lo|(hi<<8)` is the orig shape
- * (xor edx; mov dl/dh; mov [eax],dx). Remaining 4B is dh-then-dl vs
- * dl-then-dh -- same bag, TU-local schedule, do not grind.  DEAD probes
- * 2026-09-03, all still 4: writing the compose as `(hi << 8) | lo`
- * (VC5 canonicalises `|` operand order), swapping the two local
- * assignments to hi-then-lo, dropping the locals for one direct
- * `(p[0] << 8) | p[1]` expression, and a two-lane union written low lane
- * first (that one costs a stack slot: 42 B, 5+3).  VC5 always fills the
- * HIGH half of the word register first for this compose.
- *
- * DEAD probes 2026-09-07, all still 4 (register-blind multiset 0+0 -- the two
- * byte-loads are the SAME bag, only their order flips): char-typed locals
- * (`unsigned char lo, hi`) emit dh-first identically; moving the whole
- * function to the END of the TU (after BrHandleLookup) moved nothing.  Corpus
- * find --from 0x10018A50 --at 0xe --len 8 is a MISS: the low-then-high word
- * compose (mov dl,[r+1]; mov dh,[r]) is not proven anywhere in the solved
- * tree, so there is no spelling to copy -- this needs a SOURCE fact, not
- * another permutation.
+ * (xor edx; mov dl/dh; mov [eax],dx).  Which byte loads first (dl, the
+ * original, or dh) is VC5's key sort over the two `|` operands, a hash of
+ * symbol indices: it follows the symbol count ahead of this function, which
+ * the br_pod.h include at the top supplies (any count in the original's
+ * window works; padding sweeps found the window, a real header fills it).
+ * Every spelling of the compose is canonicalised; only the count moves it.
  * @t4-pass 0x10018A50 1 2026-09-07 probes 2 bytes 29 insns 12 regions 1 rows 4 census yes */
 /* WHAT IT DOES: reverses the byte order of a run of 16-bit numbers in place.
  * Boss Rally's data files came from the N64 and store their numbers the other
@@ -101,15 +96,6 @@ void BrSwapVec3(void *pv)
  * for nothing, or for a negative number of them, does nothing. */
 /* @t4-pass 0x10018A50 2 2026-09-07 probes 25 bytes 29 insns 12 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10018A50 3 2026-09-07 probes 39 bytes 29 insns 12 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t3 0x10018A50 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 29/29 insns 12/12 rows 0+0 regions 1 oracle EQUIVALENT
- * @t3-effort passes 2 zero-movement 2 3
- * residue is register colouring only: identical register-blind instruction
- * multiset (rows 0+0), 1 masked region;
- * every row pairs under t3.py's canonical classes.  Effort: 2 counted
- * @t4-pass passes (ledger lines above, zero movement on passes 2 and 3);
- * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x10018A50 glide BrSwapU16Array */
 void BrSwapU16Array(void *pv, int count)
 {

@@ -8655,3 +8655,10 @@ with the target's flags, diff one function against original bytes
   place (`y -= 3`), when the value crosses a join.**  The 0x1006FD50 rule
   from the other side; together they decide add/sub at any join.  0x10015300
   BrHudDraw (plus: x before the view pointer, y read through the array).
+- **Operand order that every spelling canonicalises (the two byte loads of a
+  halfword compose, `mov dl,[r+1]` before `mov dh,[r]`) is VC5's key sort,
+  which hashes SYMBOL INDICES: change the number of symbols declared ahead of
+  the function.**  Find the window with a padding sweep (K prototypes after
+  the includes), then fill it with a real header.  Unused `extern int`s add
+  nothing; prototypes and header contents do.  0x10018A50 BrSwapU16Array
+  (136-143 extra symbols; br_pod.h).
