@@ -726,13 +726,6 @@ extern const char *BrStrGet(int id);   /* slice4_52.c, Glide 0x1006D280 */
 
 /* @t4-pass 0x10015300 1 2026-09-09 probes 10 bytes 402 insns 123 regions 6 rows 4 census no  (hand, fn.py variants: literal/order/operand spellings, all inert) */
 /* @t4-pass 0x10015300 2 2026-09-09 probes 10 bytes 402 insns 123 regions 6 rows 4 census yes  (hand, fn.py variants: decl split, amp/index call args, casts, all inert; corpus MISS at +0x20 len 10) */
-/* @t3 0x10015300 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 402/402 insns 123/123 rows 2+2 regions 6 oracle UNCLASSIFIED
- * @t3-effort passes 2 zero-movement 1 2
- * residue is allocation/scheduling only: size- and insn-exact, rows 2+2
- * all canon-paired, 6 masked regions; the sub/add and sprintf tail-merge
- * shapes are already proven in the inline notes.  Dead probes in the two
- * ledger lines.  Do not reopen before the end-grind. */
 /* @implements 0x10017D90 d3d BrHudDraw */
 void BrHudDraw(BrHudView *aViews, int a2)
 {
@@ -740,6 +733,7 @@ void BrHudDraw(BrHudView *aViews, int a2)
     const BrHudSprite *pSpr;
     float speed;
     int32_t x, y;
+    int32_t yt;
 
     /* speed FIRST: assigning it while the aViews arg slot is still unread
      * keeps VC5 from parking speed in the dead arg slot -- the original
@@ -777,9 +771,11 @@ void BrHudDraw(BrHudView *aViews, int a2)
     else
         sprintf(g_hud.szText, "%%yw%.0f", speed);
 
-    pView = &aViews[g_screen.iView];
+    /* x first, y read straight out of the array, the view pointer formed
+     * last: the original loads h, forms the pointer, then loads y. */
     x = g_screen.cx - 0x10;
-    y = pView->h + pView->y - 4;
+    y = aViews[g_screen.iView].h + aViews[g_screen.iView].y - 4;
+    pView = &aViews[g_screen.iView];
 
     if (g_hud.f22AF1C != 0)
         return;
@@ -792,20 +788,17 @@ void BrHudDraw(BrHudView *aViews, int a2)
 
     BrSub_100192F0(0x14);
 
-    /* 10015433: `y -= 3` sits in BOTH arms (hoisting it above the if merges
-     * the two into one pre-branch sub, -2 insns), and the km arm passes
-     * `x - 3` as an EXPRESSION (`lea ecx,[esi-3]`) without touching x.
-     * RESIDUE (2+2 regnorm, T3a-encoding): the original spells these two
-     * mutations `add r,-3` where we emit `sub r,3` -- same length, same op.
-     * Probed and failed: `+= -3`, `y = y - 3`, in-arg `y -= 3`, unsigned
-     * x/y, hoisted common statement (regresses).  The RAW gap is the
-     * esi/edi rotation downstream of the same two bytes. */
+    /* 10015433: the text row `y - 3` is computed in BOTH arms into a FRESH
+     * local (hoisting it merges the two into one pre-branch op): a new value
+     * is `add r,-3`, an in-place `y -= 3` would be `sub r,3`.  The km arm
+     * passes `x - 3` as an EXPRESSION (`lea ecx,[esi-3]`) without touching
+     * x. */
     if (g_hud.f0ADF60 != 0) {
-        y -= 3;
-        BrTextDraw(g_hud.szText, x, y);
+        yt = y - 3;
+        BrTextDraw(g_hud.szText, x, yt);
     } else {
-        y -= 3;
-        BrTextDraw(g_hud.szText, x - 3, y);
+        yt = y - 3;
+        BrTextDraw(g_hud.szText, x - 3, yt);
     }
 
     BrSub_100192F0(0x0F);
@@ -814,10 +807,10 @@ void BrHudDraw(BrHudView *aViews, int a2)
     /* 10015462: the unit string comes from BrStrGet (the one-argument
      * bounds-checked table lookup), and only the km arm mutates x. */
     if (g_hud.f0ADF60 != 0) {
-        BrTextDraw(BrStrGet(0xEB), x, y);
+        BrTextDraw(BrStrGet(0xEB), x, yt);
     } else {
         x -= 3;
-        BrTextDraw(BrStrGet(0xEC), x, y);
+        BrTextDraw(BrStrGet(0xEC), x, yt);
     }
 }
 

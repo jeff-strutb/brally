@@ -8650,3 +8650,8 @@ with the target's flags, diff one function against original bytes
   up front; the parameter is loaded where first used (inside the guard), and
   a saved start pointer gets homed in the parameter's own stack slot
   (`mov [esp+arg],eax`).  0x100608F0 BrVarSave, 0x10060970 BrVarLoad.
+- **`add r,-K` where the original writes the result into a variable that
+  was not the operand (`yt = y - 3`), `sub r,K` where a variable is bumped in
+  place (`y -= 3`), when the value crosses a join.**  The 0x1006FD50 rule
+  from the other side; together they decide add/sub at any join.  0x10015300
+  BrHudDraw (plus: x before the view pointer, y read through the array).

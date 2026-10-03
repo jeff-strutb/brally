@@ -210,6 +210,7 @@ glide_va,name,module,basis,file
 0x10014E00,BrHudDrawEntrants,drawing,filed,src/core/drawing/br_hudentrants.c
 0x100151F0,BrHudFormatGapString,drawing,neighbour,src/core/drawing/br_hudscene.c
 0x10015240,BrHudGapSeconds,drawing,neighbour,src/core/drawing/br_hudscene.c
+0x10015300,BrHudDraw,drawing,filed,src/core/drawing/br_hudscene.c
 0x100154A0,BrHudDrawSplitTimes,drawing,filed,src/core/drawing/br_hudscene.c
 0x10015550,BrHudDrawSplitLine,drawing,filed,src/core/drawing/br_hudscene.c
 0x100155F0,BrSceneUsePlainClear,drawing,neighbour,src/core/drawing/br_hudscene.c
