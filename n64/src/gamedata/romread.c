@@ -331,6 +331,12 @@ void BrStreamInit(int param_1,int param_2)
  * as the ROM still makes its 64-bit multiply and divide calls. */
 /* @t4-pass 0x8021CD30 1 2026-10-03 compiles 121 best 195 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8021CD30 2 2026-10-03 compiles 120 best 195 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8021CD30 */
+/* @t4-pass 0x8021CD30 3 2026-10-03 compiles 61 best 171 moved 4  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021CD30 4 2026-10-03 compiles 60 best 167 moved 4  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021CD30 5 2026-10-03 compiles 81 best 167 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021CD30 6 2026-10-03 compiles 79 best 167 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021CD30 7 2026-10-03 compiles 81 best 167 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8021CD30 tgr BrRomUnpack */
 unsigned int BrRomUnpack(unsigned char *dst, unsigned int rom, BrUnpack *s)
 {
@@ -346,14 +352,14 @@ unsigned int BrRomUnpack(unsigned char *dst, unsigned int rom, BrUnpack *s)
   unsigned int t0;
 
   if (s != 0 && s->dst != 0) {
-    dst = s->dst;
     rom = s->pos;
-    total = s->total;
+    dst = s->dst;
     left = s->left;
+    total = s->total;
     size = s->size;
     buf = s->buf;
-    len = s->len;
     half = s->half;
+    len = s->len;
     first = 0;
   } else {
     BrRomRead(&len, rom, 4);
@@ -392,7 +398,7 @@ unsigned int BrRomUnpack(unsigned char *dst, unsigned int rom, BrUnpack *s)
       first = 0;
     } else {
       out = 16000;
-      if (s != 0) {
+      if (0 != s) {
         D_80368AC0 = D_80324550;
         D_80368AC4 = D_8033CBF0;
       }

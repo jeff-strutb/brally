@@ -426,6 +426,9 @@ void BrLoadSaveScreen(void);
  * the menus, the season screens or the Controller Pak save. */
 /* @t4-pass 0x8020D004 1 2026-10-03 compiles 120 best 4007 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8020D004 2 2026-10-03 compiles 121 best 4007 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8020D004 */
+/* @t4-pass 0x8020D004 3 2026-10-03 compiles 60 best 3903 moved 2  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8020D004 4 2026-10-03 compiles 60 best 3903 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8020D004 tgr BrCarSelect */
 void BrCarSelect(void)
 {
@@ -457,8 +460,8 @@ void BrCarSelect(void)
     BrMusicFadeTo(1.0f, 0.2f);
     D_803162FC = CAR(0)->season->round;
     D_80316300 = CAR(0)->season->race;
-    D_80316304 = CAR(0)->season->state;
     D_8031630C = D_8028C800;
+    D_80316304 = CAR(0)->season->state;
     D_80316310 = 0;
     D_8028C328 = 0;
     D_80316268[0] = 0.0f;
