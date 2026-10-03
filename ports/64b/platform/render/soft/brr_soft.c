@@ -14,6 +14,7 @@
 #include <string.h>
 
 #include "brr.h"
+#include "host.h"
 
 typedef struct { float r, g, b, a; } rgba;
 
@@ -564,6 +565,7 @@ void brr_present(void)
         s_shown = (uint32_t *)malloc((size_t)s_w * (size_t)s_h * 4);
     if (s_shown)
         memcpy(s_shown, s_col, (size_t)s_w * (size_t)s_h * 4);
+    host_present(s_shown, s_w, s_h);
     s_frame++;
     {
         /* BRR_STATS=N: every Nth present, the triangles submitted since the last line */

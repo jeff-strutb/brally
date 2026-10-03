@@ -47,6 +47,13 @@ int host_window_open(int width, int height, const char *title)
 
 void host_window_close(void) {}
 
+void host_present(const uint32_t *argb, int w, int h)
+{
+    (void)argb;
+    (void)w;
+    (void)h;
+}
+
 int host_poll_event(host_event *ev, uint32_t wait_ms)
 {
     (void)ev;
