@@ -24,22 +24,17 @@
 /* @t4-pass 0x100271F0 2 2026-09-13 probes 11 bytes 39 insns 14 regions 1 rows 1 census no  (hand, fn.py: uchar lo local + ushort hi, ushort parameter, (uchar)u<<8 | (ushort)(u>>8), a SWAP16 macro, lo reused for the alpha bit (50 B, 2+2), w built as uchar then <<= 8, (uchar)v from the int, int lo/u masks, a byte-lane union (54 B), *0x100, (uchar)(u&0xff) -- the `and eax,0xff` never survives; end-of-TU placement inert) */
 /* @t4-pass 0x100271F0 2 2026-09-13 probes 38 bytes 39 insns 14 regions 1 rows 1 census yes  (tools/crank.py) */
 /* @t4-pass 0x100271F0 3 2026-09-13 probes 54 bytes 39 insns 14 regions 1 rows 1 census yes  (tools/crank.py) */
-/* @t3 0x100271F0 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 39/44 insns 14/15 rows 1+0 regions 1 oracle EQUIVALENT
- * @t3-effort passes 4 zero-movement 2 3
- * RESIDUE: the original carries one dead `and eax,0xff` (byte-widening of the
- * low half before `mov dh,al`), a value MSVC 5.0 never re-emits because the
- * only consumer is al; every spelling folds it (dossier + dead list above).
- * Behaviourally identical (the AND is dead). Do not reopen before the
- * end-grind. */
 /* @implements 0x100271F0 glide BrTex3dTexel */
 uint16_t BrTex3dTexel(int v)
 {
     unsigned int u = (unsigned short)v;
-    unsigned int w;
+    unsigned short w;
 
-    w  = (u & 0xffu) << 8;
-    w |= u >> 8;
-    w &= 0xffffu;
+    /* The high byte first from a copy, then the low byte masked IN PLACE
+     * (the original's otherwise dead `and eax,0xff` before `mov dh,al`),
+     * into a 16-bit accumulator so the swap is masked once after the OR. */
+    w  = u >> 8;
+    u &= 0xffu;
+    w |= u << 8;
     return (uint16_t)((w >> 1) | ((w & 1u) << 15));
 }
