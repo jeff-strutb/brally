@@ -32,13 +32,19 @@ Functions: T2 21, T3 11, T4 80.
 | `80255030` | `BrCheatToggleAA68` | T4 |
 | `80255048` | `BrCheatInput` | T3 |
 
+## `colourmix.c`: the paint shop's colour mixer popup
+
+| address | function | tier |
+|---|---|---|
+| `8024B144` | `BrPaintColourMix` | T2 |
+
 ## `cpakmenu.c`: the Controller Pak menu
 
 | address | function | tier |
 |---|---|---|
 | `802534DC` | `BrPakManager` | T2 |
 | `80254870` | `BrStub80254870` | T4 |
-| `80254878` | `BrDebugPrint` | T2 |
+| `80254878` | `BrDebugPrint` | EXCLUDED (T2) |
 | `80254F2C` | `BrStub80254F2C` | T4 |
 
 ## `credits.c`: the credits sequence
