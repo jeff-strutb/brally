@@ -103,9 +103,9 @@ void BrFaultThread(void *arg)
  * managers (MPAL or NTSC, 320x240), start the fault thread, paint the
  * thread stacks with a marker pattern, start the main game thread and drop
  * to the lowest priority for good.
- * RESIDUE (34): IDO unrolls the second stack fill and not the third (the
- * ROM the other way round); and the final for (;;) has the same dead-
- * epilogue padding limit as BrFaultThread. */
+ * The first two stack fills walk a pointer alongside the counter (which
+ * keeps IDO from unrolling them) and the third indexes the array (which it
+ * unrolls by four), as the ROM has them. */
 /* @t4-pass 0x8021E2C8 1 2026-10-03 compiles 119 best 34 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8021E2C8 2 2026-10-03 compiles 117 best 34 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8021E2C8 tgr BrIdleThread */
@@ -148,16 +148,14 @@ void BrIdleThread(void *arg)
   osCreateMesgQueue(D_8031B1B0, D_8031B1C8, 1);
   osCreateThread(D_8031AC00, 5, BrFaultThread, args.argv, D_8031ADB0 + 0x80, 50);
   osStartThread(D_8031AC00);
-  s = D_80316CD0;
-  for (i = 0; i < 0x400; i++) {
-    *s++ = 0x5015A1DBFED15C00ULL;
-  }
-  s = D_80318ED0;
-  for (i = 0; i < 0x100; i++) {
-    *s++ = 0x5015A1DBFED15C00ULL;
-  }
-  for (s = D_803196D0; s != D_803196D0 + 0x100; s++) {
+  for (i = 0, s = D_80316CD0; i < 0x400; i++, s++) {
     *s = 0x5015A1DBFED15C00ULL;
+  }
+  for (i = 0, s = D_80318ED0; i < 0x100; i++, s++) {
+    *s = 0x5015A1DBFED15C00ULL;
+  }
+  for (i = 0; i < 0x100; i++) {
+    D_803196D0[i] = 0x5015A1DBFED15C00ULL;
   }
   osCreateThread(D_80272830, 3, BrMainThread, arg, D_80318CD0, 10);
   osStartThread(D_80272830);
