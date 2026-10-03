@@ -573,6 +573,7 @@ glide_va,name,module,basis,file
 0x10034870,BrVec3TransformDivW,geometry,filed,src/core/geometry/br_mat4.c
 0x10034920,BrMat4TransformPoint4,geometry,filed,src/core/geometry/br_mat4.c
 0x100349C0,BrVec3Project,geometry,filed,src/core/geometry/br_mat.c
+0x10034A70,BrMtxXfmDir3,geometry,filed,src/core/geometry/br_mat4.c
 0x10034AF0,BrMtxMul,geometry,description,src/core/geometry/br_mat.c
 0x10034B70,BrMtxInvert,geometry,filed,src/core/geometry/BrMtxInvert_10034B70.cpp
 0x10034E30,BrAtan2,geometry,manual,src/core/geometry/br_atan2.c

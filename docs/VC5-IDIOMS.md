@@ -8634,3 +8634,9 @@ with the target's flags, diff one function against original bytes
   pointer register, widened by a mask): `(int)(signed char)p[K] & 0xff`.**
   The unsigned read zeroes a fresh register (`xor ecx,ecx; mov cl,..`) and
   is free to sink below later stores.  0x1006CE50 BrBitStreamReadU24.
+- **An x87 row that loads its terms in a rotated order (`[m+0x14]`,
+  `[m+0x24]`, then `[m+4]`) with an identical register-blind multiset is a
+  different ASSOCIATION, not a schedule: `a*x + (b*y + c*z)`.**  VC5 keeps
+  float sums in source grouping, so the parenthesised pair is evaluated
+  first.  It also changes the rounding, which is why it matters beyond the
+  bytes.  0x10034A70 BrMtxXfmDir3 (rows y and z; row x is left-to-right).

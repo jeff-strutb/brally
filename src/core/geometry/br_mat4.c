@@ -43,30 +43,21 @@
 /* WHAT IT DOES: puts a direction through a transform. Unlike a point, a
  * direction is only rotated and scaled and never moved, so the transform's
  * position part is deliberately left out.
- * RESIDUE (8 bytes, RAW/REGNORM 0+0): pV->x/y/z read once each into locals
- * closes 85 diffs to 8 (the original keeps each component live across its
- * three uses instead of reloading from memory); what remains is a pure
- * fxch/store-order permutation at +0x32. Probed and inert (declaration
- * order/type qualifiers/register hint/parenthesization/pointer-vs-array
- * matrix access/statement order, 20 variants, all byte-identical). Corpus
- * MISS at +0x32 len 12: not proven anywhere in the solved tree. */
+ * pV->x/y/z are read once each into locals (the original keeps each
+ * component live across its three uses instead of reloading from memory). */
 /* @t4-pass 0x10034A70 1 2026-09-13 probes 10 bytes 115 insns 49 regions 1 rows 0 census yes  (hand, fn.py variants: x/y/z declaration order and type, register/const qualifiers, parenthesization, pointer-vs-array m[][] access; corpus MISS at +0x32 len 12) */
 /* @t4-pass 0x10034A70 2 2026-09-13 probes 10 bytes 115 insns 49 regions 1 rows 0 census no  (hand, fn.py variants: term order per row, output-statement order, (*pOut).x spelling, all inert) */
-/* @t3 0x10034A70 2026-09-13 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 115/115 insns 49/49 rows 0+0 regions 1 oracle EQUIVALENT
- * @t3-effort passes 2 zero-movement 1 2
- * Pure fxch/store-order permutation at +0x32, register-blind gap 0+0 --
- * VC5 keeps x/y/z live across their three uses in a different schedule than
- * the original; 20 spellings tried, none move it. Do not reopen before the
- * end-grind. */
 /* @implements 0x1003B3F0 d3d BrMtxXfmDir3 */
 /* @implements 0x10034A70 glide BrMtxXfmDir3 */
 void BrMtxXfmDir3(BrVec3 *pOut, const BrVec3 *pV, const BrMat4 *pM)
 {
     float x = pV->x, y = pV->y, z = pV->z;
     pOut->x = pM->m[0][0] * x + pM->m[1][0] * y + pM->m[2][0] * z;
-    pOut->y = pM->m[0][1] * x + pM->m[1][1] * y + pM->m[2][1] * z;
-    pOut->z = pM->m[0][2] * x + pM->m[1][2] * y + pM->m[2][2] * z;
+    /* Rows y and z sum the y and z terms first, then add the x term: that
+     * is the original's load order ([m+0x14], [m+0x24], then [m+4]) and its
+     * rounding.  Row x is the plain left-to-right sum. */
+    pOut->y = pM->m[0][1] * x + (pM->m[1][1] * y + pM->m[2][1] * z);
+    pOut->z = pM->m[0][2] * x + (pM->m[1][2] * y + pM->m[2][2] * z);
 }
 
 /* 0x1003B2A0 -- signature deliberately matches slice2_18.h's XSLICE
