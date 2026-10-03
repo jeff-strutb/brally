@@ -93,6 +93,7 @@
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
 #include "br_coretypes.h"   /* br_globals: its objects */
+#include "br_ctrltoggle.h"   /* port: the Toggle Remaster action */
 #include "br_race.h"   /* br_globals: its objects */
 #include "slice1_10.h"   /* br_globals: its objects */
 #include "slice3_39.h"   /* br_globals: its objects */
@@ -670,7 +671,8 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
 uint8_t BrInputIsDown(int32_t action)
 {
     uint8_t r = 0;
-    const uint8_t *b = g_BrPadModeBytes + 6 * action;
+    const uint8_t *b = action == BR_ACT_TOGGLE_REMASTER ? (const uint8_t *)BrToggleBindRec(-1)   /* port */
+                                                        : g_BrPadModeBytes + 6 * action;
     switch (*(const uint16_t *)(const void *)b & 0xFF00) {
     case 0x0000:
         r = (uint8_t)(g_brInKeys[g_brInKeyCur][b[0]] & 0x80u);
@@ -755,7 +757,8 @@ uint8_t BrInputJustPressed(int32_t action)
     /* r before b: the `xor al,al` lands ahead of the binding address and
      * pushes the argument into ecx (b first puts it in eax). */
     uint8_t r = 0;
-    const unsigned char *b = g_BrPadModeBytes + action * 6;
+    const unsigned char *b = action == BR_ACT_TOGGLE_REMASTER ? (const unsigned char *)BrToggleBindRec(-1)   /* port */
+                                                              : g_BrPadModeBytes + action * 6;
 
     switch (*(const uint16_t *)(const void *)b & 0xFF00) {
     case 0x0000:

@@ -667,8 +667,8 @@ uint8_t BrG_0AA730[0x154];  /* 0x100AA730 */
 BR_GLOBAL_EXTENT(int32_t, BrG_0AA884, , 0x8);  /* 0x100AA884 */
 BR_GLOBAL_EXTENT(int32_t, BrG_0AA890, , 0x20);  /* 0x100AA890 */
 BR_GLOBAL_EXTENT(int32_t, BrG_0AA8B4, , 0x218);  /* 0x100AA8B4 */
-KeyEnt g_aKeyEnt0AAAD0[21];  /* 0x100AAAD0 */
-BrBind39870 g_brBindAAAD4[21];  /* 0x100AAAD4 */
+KeyEnt g_aKeyEnt0AAAD0[22];  /* 0x100AAAD0; [21] is the port's Toggle Remaster */
+BrBind39870 g_brBindAAAD4[22];  /* 0x100AAAD4; [21] likewise */
 BR_GLOBAL_EXTENT(int16_t, BrGlNavStepAB7C, , 0x2);  /* 0x100AAB7C */
 int g_brRec0AAB80;  /* 0x100AAB80 */
 BR_GLOBAL_EXTENT(unsigned short, DAT_100aab84, , 0x2);  /* 0x100AAB84 */
@@ -817,7 +817,6 @@ char s_sizeof_Vehicle___d_100b3870[20];  /* 0x100B3870 */
 char s_sizeof_UltraCarHeader___d_100b3884[28];  /* 0x100B3884 */
 BrCtrlProfile g_BrCtrlDefaults[4];  /* 0x100B38A0 */
 BrCfgRec39580 g_aBrCtlNameKey[120];  /* 0x100B3B40 */
-BR_GLOBAL_EXTENT(char, g_aBrKeyName3B44, [35][36], 0x20);  /* 0x100B3B44 */
 BR_GLOBAL_EXTENT(int32_t, BrG_0B4050, , 0xBCC);  /* 0x100B4050 */
 char BrGlCfgMagic[8];  /* 0x100B4C20 */
 int32_t g_BrFpsCountB;  /* 0x100B4C28 */
@@ -1784,18 +1783,12 @@ int32_t g_BrDikEdge[256];  /* 0x10AC5DE0 */
 BR_GLOBAL_EXTENT(BrPointI *, g_pBrAA2E80, , 0x4);  /* 0x10AC61E0 */
 int32_t g_BrDikPrev[256];  /* 0x10AC61E8 */
 uint8_t g_BrDikState[256];  /* 0x10AC65E8 */
-BR_GLOBAL_EXTENT(int *, DAT_10ac66e8, , 0xC);  /* 0x10AC66E8 */
+int32_t g_aBrNavPrev[4];  /* 0x10AC66E8: last poll's mouse buttons (DAT_10ac66e8) */
 int32_t g_BrAA3398[7];  /* 0x10AC66F8 */
 int32_t BrGlNavMaxY;  /* 0x10AC6714 */
 BR_GLOBAL_EXTENT(int32_t, BrGlNavMaxX, , 0x4);  /* 0x10AC6718 */
-int32_t BrGlNavEdge6720;  /* 0x10AC6720 */
-int32_t BrGlNavEdge6724;  /* 0x10AC6724 */
-int32_t BrGlNavEdge6728;  /* 0x10AC6728 */
-int32_t BrGlNavEdge672C;  /* 0x10AC672C */
-int32_t g_act0;  /* 0x10AC6730 */
-int32_t g_act1;  /* 0x10AC6734 */
-int32_t g_act2;  /* 0x10AC6738 */
-int32_t g_act3;  /* 0x10AC673C */
+int32_t g_aBrNavEdge[4];  /* 0x10AC6720: mouse buttons down (BrGlNavEdge6720..672C) */
+int32_t g_aBrNavAct[4];   /* 0x10AC6730: ... newly pressed (g_act0..3) */
 uint32_t g_BrAA33E0;  /* 0x10AC6740 */
 int DAT_10ac6744;  /* 0x10AC6744 */
 BR_GLOBAL_EXTENT(int32_t, BrGlNavLast6748, , 0x54);  /* 0x10AC6748 */
@@ -1877,9 +1870,7 @@ BR_GLOBAL_EXTENT(uint32_t, BrG_B502EC, , 0x20F98);  /* 0x10B502EC */
 BR_GLOBAL_EXTENT(int32_t, g_brRaceB71288, , 0x4);  /* 0x10B71288 */
 BrCtrlCfg g_BrCtrlCfg;  /* 0x10B71290 */
 BrCfgRec39580 g_aBrCtlNameMouse[10];  /* 0x10B71B08 */
-BR_GLOBAL_EXTENT(char, g_aBrDevName1B0C, [9][36], 0x20);  /* 0x10B71B0C */
 BrCfgRec39580 g_aBrCtlNameJoy[134];  /* 0x10B71C70 */
-BR_GLOBAL_EXTENT(char, g_aBrDevName1C74, [133][36], 0x20);  /* 0x10B71C74 */
 BR_GLOBAL_EXTENT(int, g_navArg, , 0x3FC);  /* 0x10B72F48 */
 int32_t g_aBrFpsSamplesB[120];  /* 0x10B73348 */
 funcptr DAT_10b73528;  /* 0x10B73528 */

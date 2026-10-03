@@ -16,6 +16,7 @@
 #define BrFn10069BC0          BrFn10069BC0_cdecl
 #define BrFn10069C30          BrFn10069C30_cdecl
 #include "slice3_42.h"
+#include "br_ctrltoggle.h"   /* port: the Toggle Remaster action */
 #undef BrFn10069BC0
 #undef BrFn10069C30
 /* BOTH stack arguments are struct-wrapped. __fastcall skips a struct when it
@@ -46,6 +47,9 @@ int32_t BR_THISCALL1 BrFn10069BC0(void *pThis, int32_t kind, uint32_t key)
 {
     const BrCtrlCfg *pCfg = (const BrCtrlCfg *)pThis;
 
+    if (key == BR_ACT_TOGGLE_REMASTER)          /* port: its own record */
+        return kind >= 1 && kind <= 3 ? (int32_t)(BrToggleBindRec(kind)[0] & 0xFF00u)
+                                      : (int32_t)(BrToggleBindRec(0)[0] & 0xFF00u);
     switch (kind) {
     case 1:
         return (int32_t)(pCfg->profile[0].e[key + 0x1C][0] & 0xFF00u);
@@ -77,6 +81,11 @@ uint8_t BR_THISCALL1 BrFn10069C30(void *pThis, int32_t kind, uint32_t key)
 {
     const BrCtrlCfg *pCfg = (const BrCtrlCfg *)pThis;
 
+    if (key == BR_ACT_TOGGLE_REMASTER) {        /* port: its own record */
+        const uint16_t v = BrToggleBindRec(kind >= 1 && kind <= 3 ? kind : 0)[0];
+        if (kind >= 1 && kind <= 3 && v >= 0x8000u) return (uint8_t)(v >> 8);
+        return (uint8_t)v;
+    }
     switch (kind) {
     case 1: {
         const uint16_t v = pCfg->profile[0].e[key + 0x1C][0];

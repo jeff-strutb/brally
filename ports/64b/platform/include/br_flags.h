@@ -8,8 +8,11 @@
  *               behaviour where it differs
  *   remastered  the port's improvements on
  *
- * BR_PROFILE=original|remastered picks the profile (remastered when unset);
- * BR_FLAG_<NAME>=0|1 then overrides one flag, e.g. BR_FLAG_ANY_ASPECT=0.
+ * BR_PROFILE=original|remastered picks the profile to start in (remastered
+ * when unset); BR_FLAG_<NAME>=0|1 then overrides one flag, e.g.
+ * BR_FLAG_ANY_ASPECT=0.  In play the Toggle Remaster control (Tab unless
+ * rebound on the Game Key Configuration page, br_ctrltoggle.h) switches
+ * between the two.
  * flags.c holds the table; add a flag there and here together. */
 #ifndef BR_FLAGS_H
 #define BR_FLAGS_H
@@ -32,6 +35,7 @@ enum br_flag {
 
 int plat_flag(int flag);                /* flags.c: 1 when on */
 const char *plat_profile(void);         /* "original" or "remastered" */
+void plat_profile_toggle(void);         /* the other profile, now (Toggle Remaster) */
 
 #ifdef __cplusplus
 }

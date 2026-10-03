@@ -7,6 +7,7 @@
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
 #include "br_cfgfile.h"
+#include "br_ctrltoggle.h"   /* port: the Toggle Remaster action */
 
 #include <stdio.h>
 #include <string.h>
@@ -168,6 +169,7 @@ int __fastcall BrGlCfgSave(void *pThis, const char *pszPath)
     if (fwrite(&c->profile[1], 0xA8, 1, pFile) != 1) goto fail;
     if (fwrite(&c->profile[2], 0xA8, 1, pFile) != 1) goto fail;
     if (fwrite(&c->profile[3], 0xA8, 1, pFile) != 1) goto fail;
+    if (!BrToggleBindWrite(pFile)) goto fail;   /* port: after the original's fields */
 
     fclose(pFile);
     return 1;

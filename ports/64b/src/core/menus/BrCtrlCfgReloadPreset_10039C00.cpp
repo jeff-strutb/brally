@@ -20,6 +20,7 @@
  * constant directly.  Same tell as BrVt8A70CallPair (src/core/cpp/0x10008A70).
  */
 #define _CRTIMP __declspec(dllimport)
+#include "br_ctrltoggle.h"   /* port: the Toggle Remaster action */
 
 /* 0x10062B10 -- __thiscall member, one int arg: `push n; mov ecx,obj; call`. */
 class CtrlCfg {
@@ -49,4 +50,5 @@ int BrCtrlCfgReloadPreset(void)
 inline void CtrlCfg::LoadPreset(int a1)
 {
     BrCtrlCfgLoadDefaults((struct BrCtrlCfg *)this, (int32_t)a1);
+    BrToggleBindDefaults(a1);   /* port: Toggle Remaster's binding too */
 }

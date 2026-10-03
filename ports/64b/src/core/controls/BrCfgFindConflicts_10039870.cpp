@@ -56,7 +56,7 @@ int BrCfgFindConflicts(int kind)
     int found = 0;
     int i;
 
-    for (i = 0; i < 21; i++) {
+    for (i = 0; i < 22; i++) {   /* port: 22 with Toggle Remaster (21) */
         int  aI;
         char bI;
         int  j;
@@ -66,10 +66,10 @@ int BrCfgFindConflicts(int kind)
         aI = (*(Cfg39870 *)&g_BrCtrlCfg).GetA(kind, g_brBindAAAD4[i].key);
         bI = (*(Cfg39870 *)&g_BrCtrlCfg).GetB(kind, g_brBindAAAD4[i].key);
 
-        if (i + 1 >= 21)
+        if (i + 1 >= 22)
             continue;
 
-        for (j = i + 1; j < 21; j++) {
+        for (j = i + 1; j < 22; j++) {
             int  aJ;
             char bJ;
 

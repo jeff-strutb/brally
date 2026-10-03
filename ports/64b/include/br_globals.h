@@ -2893,10 +2893,9 @@ extern char s_sizeof_Vehicle___d_100b3870[];  /* 0x100B3870 */
 #undef s_sizeof_UltraCarHeader___d_100b3884
 extern char s_sizeof_UltraCarHeader___d_100b3884[];  /* 0x100B3884 */
 #pragma pop_macro("s_sizeof_UltraCarHeader___d_100b3884")
-#pragma push_macro("g_aBrKeyName3B44")
-#undef g_aBrKeyName3B44
-extern char g_aBrKeyName3B44[][36];  /* 0x100B3B44 */
-#pragma pop_macro("g_aBrKeyName3B44")
+/* 0x100B3B44: the name field of the key-name records at 0x100B3B40, read
+ * by the original as an array of its own (stride 36); one storage */
+#define g_aBrKeyName3B44 (*(char (*)[120][36])(void *)((char *)g_aBrCtlNameKey + 4))
 #pragma push_macro("BrG_0B4050")
 #undef BrG_0B4050
 extern int32_t BrG_0B4050;  /* 0x100B4050 */
@@ -6358,10 +6357,11 @@ extern int32_t g_BrDikPrev[256];  /* 0x10AC61E8 */
 #undef g_BrDikState
 extern uint8_t g_BrDikState[256];  /* 0x10AC65E8 */
 #pragma pop_macro("g_BrDikState")
-#pragma push_macro("DAT_10ac66e8")
-#undef DAT_10ac66e8
-extern int *DAT_10ac66e8;  /* 0x10AC66E8 */
-#pragma pop_macro("DAT_10ac66e8")
+/* 0x10AC66E8, 0x10AC6720, 0x10AC6730: three groups of four mouse-button
+ * words the original walks by byte offset; one array each, the original's
+ * names for their elements */
+extern int32_t g_aBrNavPrev[4], g_aBrNavEdge[4], g_aBrNavAct[4];
+#define DAT_10ac66e8 (g_aBrNavPrev[0])
 #pragma push_macro("g_BrAA3398")
 #undef g_BrAA3398
 extern int32_t g_BrAA3398[7];  /* 0x10AC66F8 */
@@ -6374,38 +6374,14 @@ extern int32_t BrGlNavMaxY;  /* 0x10AC6714 */
 #undef BrGlNavMaxX
 extern int32_t BrGlNavMaxX;  /* 0x10AC6718 */
 #pragma pop_macro("BrGlNavMaxX")
-#pragma push_macro("BrGlNavEdge6720")
-#undef BrGlNavEdge6720
-extern int32_t BrGlNavEdge6720;  /* 0x10AC6720 */
-#pragma pop_macro("BrGlNavEdge6720")
-#pragma push_macro("BrGlNavEdge6724")
-#undef BrGlNavEdge6724
-extern int32_t BrGlNavEdge6724;  /* 0x10AC6724 */
-#pragma pop_macro("BrGlNavEdge6724")
-#pragma push_macro("BrGlNavEdge6728")
-#undef BrGlNavEdge6728
-extern int32_t BrGlNavEdge6728;  /* 0x10AC6728 */
-#pragma pop_macro("BrGlNavEdge6728")
-#pragma push_macro("BrGlNavEdge672C")
-#undef BrGlNavEdge672C
-extern int32_t BrGlNavEdge672C;  /* 0x10AC672C */
-#pragma pop_macro("BrGlNavEdge672C")
-#pragma push_macro("g_act0")
-#undef g_act0
-extern int32_t g_act0;  /* 0x10AC6730 */
-#pragma pop_macro("g_act0")
-#pragma push_macro("g_act1")
-#undef g_act1
-extern int32_t g_act1;  /* 0x10AC6734 */
-#pragma pop_macro("g_act1")
-#pragma push_macro("g_act2")
-#undef g_act2
-extern int32_t g_act2;  /* 0x10AC6738 */
-#pragma pop_macro("g_act2")
-#pragma push_macro("g_act3")
-#undef g_act3
-extern int32_t g_act3;  /* 0x10AC673C */
-#pragma pop_macro("g_act3")
+#define BrGlNavEdge6720 (g_aBrNavEdge[0])
+#define BrGlNavEdge6724 (g_aBrNavEdge[1])
+#define BrGlNavEdge6728 (g_aBrNavEdge[2])
+#define BrGlNavEdge672C (g_aBrNavEdge[3])
+#define g_act0 (g_aBrNavAct[0])
+#define g_act1 (g_aBrNavAct[1])
+#define g_act2 (g_aBrNavAct[2])
+#define g_act3 (g_aBrNavAct[3])
 #pragma push_macro("g_BrAA33E0")
 #undef g_BrAA33E0
 extern uint32_t g_BrAA33E0;  /* 0x10AC6740 */
@@ -6659,14 +6635,12 @@ extern uint32_t BrG_B502EC;  /* 0x10B502EC */
 #undef g_brRaceB71288
 extern int32_t g_brRaceB71288;  /* 0x10B71288 */
 #pragma pop_macro("g_brRaceB71288")
-#pragma push_macro("g_aBrDevName1B0C")
-#undef g_aBrDevName1B0C
-extern char g_aBrDevName1B0C[][36];  /* 0x10B71B0C */
-#pragma pop_macro("g_aBrDevName1B0C")
-#pragma push_macro("g_aBrDevName1C74")
-#undef g_aBrDevName1C74
-extern char g_aBrDevName1C74[][36];  /* 0x10B71C74 */
-#pragma pop_macro("g_aBrDevName1C74")
+/* 0x10B71B0C: the name field of the records at g_aBrCtlNameMouse (4 bytes in), read by the
+ * original as an array of its own (stride 36); one storage */
+#define g_aBrDevName1B0C (*(char (*)[10][36])(void *)((char *)g_aBrCtlNameMouse + 4))
+/* 0x10B71C74: the name field of the records at g_aBrCtlNameJoy (4 bytes in), read by the
+ * original as an array of its own (stride 36); one storage */
+#define g_aBrDevName1C74 (*(char (*)[134][36])(void *)((char *)g_aBrCtlNameJoy + 4))
 #pragma push_macro("g_navArg")
 #undef g_navArg
 extern int g_navArg;  /* 0x10B72F48 */

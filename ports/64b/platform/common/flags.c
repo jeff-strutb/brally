@@ -20,14 +20,10 @@ static const char *const k_profiles[PROFILE_COUNT] = { "original", "remastered" 
 static int s_profile = -1;
 static unsigned char s_value[BR_FLAG_COUNT];
 
-static void load(void)
+static void apply(void)
 {
-    const char *p = getenv("BR_PROFILE");
     char name[64];
     int i;
-    s_profile = PROFILE_REMASTERED;
-    if (p && strcmp(p, "original") == 0)
-        s_profile = PROFILE_ORIGINAL;
     for (i = 0; i < BR_FLAG_COUNT; i++) {
         const char *e;
         snprintf(name, sizeof name, "BR_FLAG_%s", k_flags[i].name);
@@ -36,6 +32,25 @@ static void load(void)
         PLOG("flags: %s %s\n", k_flags[i].name, s_value[i] ? "on" : "off");
     }
     PLOG("flags: profile %s\n", k_profiles[s_profile]);
+}
+
+static void load(void)
+{
+    const char *p = getenv("BR_PROFILE");
+    s_profile = PROFILE_REMASTERED;
+    if (p && strcmp(p, "original") == 0)
+        s_profile = PROFILE_ORIGINAL;
+    apply();
+}
+
+void plat_profile_toggle(void)
+{
+    if (s_profile < 0)
+        load();
+    s_profile = s_profile == PROFILE_ORIGINAL ? PROFILE_REMASTERED : PROFILE_ORIGINAL;
+    apply();                            /* a BR_FLAG_<NAME> override still holds */
+    host_window_lock_aspect(!s_value[BR_FLAG_ANY_ASPECT]);
+    fprintf(stderr, "profile: %s\n", k_profiles[s_profile]);
 }
 
 int plat_flag(int flag)

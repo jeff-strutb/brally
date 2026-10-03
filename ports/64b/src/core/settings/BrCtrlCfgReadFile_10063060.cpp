@@ -16,6 +16,7 @@
  * the port's reader. */
 #define _CRTIMP __declspec(dllimport)
 #include <stdio.h>
+#include "br_ctrltoggle.h"   /* port: the Toggle Remaster action */
 #include "slice3_42.h"   /* BrCtrlCfg */
 #include <string.h>
 
@@ -81,6 +82,7 @@ int BrCtrlCfg_10062B00_10008D60::m_10063060(const char *pszPath)
     if (fread(&profile[1], 0xa8, 1, pFile) != 1) goto fail;
     if (fread(&profile[2], 0xa8, 1, pFile) != 1) goto fail;
     if (fread(&profile[3], 0xa8, 1, pFile) != 1) goto fail;
+    BrToggleBindRead(pFile);   /* port: optional, after the original's fields */
 
     fclose(pFile);
     return 1;

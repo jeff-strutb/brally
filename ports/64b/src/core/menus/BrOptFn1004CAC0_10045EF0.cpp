@@ -25,6 +25,7 @@
  */
 #define _CRTIMP __declspec(dllimport)
 #include "br_coretypes.h"   /* br_globals: its objects */
+#include "br_ctrltoggle.h"   /* port: the Toggle Remaster action */
 #include "br_phase.h"   /* BrPhase_, the canonical record */
 #include "br_ui.h"   /* br_globals: its objects */
 #include <string.h>
@@ -258,14 +259,20 @@ int BrOptFn1004CAC0(GameUi *parent)
     (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn04) = (CtlFn)BrUiPoll1003EC80;
     (*(int *)&((BrUiCtl_ *)(p))->list.f1A99C[8]) = 1;
     (*(class Sel3838 *)&((BrUiCtl_ *)(p))->list).s5(0x40001, &DAT_100aac78, 5, 0, -1);
-    for (pe = g_aKeyEnt0AAAD0; (char *)pe < (char *)(g_aKeyEnt0AAAD0 + 21); pe++) {
+    /* port: a 22nd entry, Toggle Remaster (br_ctrltoggle.h) */
+    g_aKeyEnt0AAAD0[21].id = BR_STR_TOGGLE_REMASTER;
+    g_aKeyEnt0AAAD0[21].f04 = BR_ACT_TOGGLE_REMASTER;
+    g_brBindAAAD4[21].key = BR_ACT_TOGGLE_REMASTER;
+    for (pe = g_aKeyEnt0AAAD0; (char *)pe < (char *)(g_aKeyEnt0AAAD0 + 22); pe++) {
         flags = 0;
         if (g_brKind5D64 == 3
             && (pe == &g_aKeyEnt0AAAD0[0] || pe == &g_aKeyEnt0AAAD0[1])) {
             flags = 0x10;
             g_brSel5B98 = 2;
         }
-        if (BrStrGet(pe->id) != 0)
+        if (pe->id == BR_STR_TOGGLE_REMASTER)
+            (*(class Sel3838 *)&((BrUiCtl_ *)(p))->list).s4((char *)BrToggleLabel(), flags, 1, &DAT_100aac78, 0);
+        else if (BrStrGet(pe->id) != 0)
             (*(class Sel3838 *)&((BrUiCtl_ *)(p))->list).s4((char *)(BrStrGet(pe->id)), flags, 1, &DAT_100aac78, 0);
     }
     (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;

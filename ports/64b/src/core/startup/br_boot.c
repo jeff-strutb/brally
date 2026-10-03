@@ -7,6 +7,7 @@
  * subject of the banner in br_boot.h.
  */
 #include "slice3_42.h"   /* br_globals: its objects */
+#include "br_ctrltoggle.h"   /* port: the Toggle Remaster action */
 #include "br_boot.h"
 #include "br_bootfrontier.h"
 #include "br_gamestep.h"   /* 0x1002E324 was ALREADY ported -- see below */
@@ -241,6 +242,7 @@ int32_t BrAppStateLoading(void)
 int32_t BrAppFrame(void)
 {
     plat_app_frame();
+    BrTogglePoll();   /* port: Toggle Remaster */
     return s_apfnAppState[(DAT_105ccb68[21])]();
 }
 

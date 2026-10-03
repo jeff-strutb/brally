@@ -602,7 +602,7 @@ int BrInputPollPressed(void)
      * local; four `= 0` stores make VC5 keep 0 in esi for the whole body),
      * and the first-press scan walks an address compared SIGNED (`jl`). */
     struct {
-        long          lX, lY, lZ;
+        int32_t       lX, lY, lZ;         /* LONG: 32-bit in DIMOUSESTATE */
         unsigned char rgbButtons[4];      /* +0x0C */
     } st;
     BrDIPollDev *pDev;

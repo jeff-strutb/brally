@@ -647,11 +647,11 @@ extern BrLightHist g_BrVisLightTemplate;  /* 0x100A9FF0 */
 #pragma pop_macro("g_BrVisLightTemplate")
 #pragma push_macro("g_aKeyEnt0AAAD0")
 #undef g_aKeyEnt0AAAD0
-extern KeyEnt g_aKeyEnt0AAAD0[21];  /* 0x100AAAD0 */
+extern KeyEnt g_aKeyEnt0AAAD0[22];  /* 0x100AAAD0 */
 #pragma pop_macro("g_aKeyEnt0AAAD0")
 #pragma push_macro("g_brBindAAAD4")
 #undef g_brBindAAAD4
-extern BrBind39870 g_brBindAAAD4[21];  /* 0x100AAAD4 */
+extern BrBind39870 g_brBindAAAD4[22];  /* 0x100AAAD4 */
 #pragma pop_macro("g_brBindAAAD4")
 #pragma push_macro("g_hot1")
 #undef g_hot1
