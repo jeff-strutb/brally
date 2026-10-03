@@ -21,8 +21,22 @@ typedef struct BrRbBody {       /* a rigid body with up to four attached */
   float m[4][4];                /* 0xBC  orientation */
   float force[3];               /* 0xFC  accumulated this step */
   float torque[3];              /* 0x108 */
-  char pad114[0x1b4 - 0x114];
+  char pad114[0x19c - 0x114];
+  int x19c;                     /* 0x19C  on a wheel: its contact record */
+  unsigned char surface;        /* 0x1A0  on a wheel: the surface under it */
+  char pad1a1[0x1b4 - 0x1a1];
   int x1b4;                     /* 0x1B4  on a wheel: it is on the ground */
+  char pad1b8[0x1c0 - 0x1b8];
+  float steer;                  /* 0x1C0  on a wheel: steering angle */
+  float drive;                  /* 0x1C4  on a wheel: drive torque (its sign) */
+  float radius;                 /* 0x1C8  on a wheel */
+  char pad1cc[0x1d0 - 0x1cc];
+  float spin;                   /* 0x1D0  on a wheel: spin rate */
+  float roll;                   /* 0x1D4  on the car: the visual roll */
+  char pad1d8[0x1fd - 0x1d8];
+  unsigned char tyres;          /* 0x1FD  on the car: the tyre compound, 1-3 */
+  char pad1fe[0x204 - 0x1fe];
+  unsigned char slide;          /* 0x204  on the car: 0x80 while sliding */
 } BrRbBody;
 void BrRbAddWheelForces(BrRbBody *b, BrRbBody *w);
 void BrRbSolveAccel(BrRbBody *b);
@@ -220,6 +234,258 @@ void BrRbVelAtPoint(float out[3], BrRbBody *b, float *pt)
   out[0] = out[0] + c[0];
   out[1] = out[1] + c[1];
   out[2] = out[2] + c[2];
+}
+
+/* -- declarations: BrCarAxleGrip -- */
+extern int D_8028C800;                  /* the weather (difficulty row + 1) */
+extern float D_802A4A38[24];            /* grip by weather row and surface */
+extern float D_802A4A98[24];            /* the lateral speed above which grip falls */
+extern float D_802A4AF8[24];            /* and below which it is full */
+float sqrtf(float x);
+float sinf(float x);
+float cosf(float x);
+#define ABS(x) ((x) < 0 ? -(x) : (x))
+#define SIGN(x) ((x) == 0 ? 0.0 : ((x) > 0 ? 1.0 : -1.0))
+/* -- end declarations -- */
+
+/* WHAT IT DOES: The axle constraint on a car body: each axle's drive slip
+ * from its driven wheel (spin over radius, against the mass, clamped to
+ * 1.5); then, for the front axle with a wheel down, the axle's sideways
+ * velocity is cut by a grip factor -- from the surface pair and weather
+ * row's table, falling off between two lateral speeds, less on worn tyres,
+ * more when steering straight, more at low speed -- once the lateral load
+ * passes a hold threshold (lower while already sliding), flagging the
+ * slide; then the same for the rear axle along its steered heading; the
+ * two axle velocities set the body's forward, lateral and yaw velocity
+ * (when either axle ran), and the visual roll eases toward the side
+ * force.  The PC twin is BrCarPhysDriveMatch (br_cardrive.c).
+ * RESIDUE (976): the ROM keeps the body pointer and most locals in its
+ * 0x158 frame (reloading the parameter after every store) while still
+ * allocating some floats across blocks; ours allocates normally.  It is
+ * not the -Olimit fallback (that gives 1282 instructions to the ROM's 993)
+ * nor -O1.  The frame has a dead {1, 0, 0} initialised array (at 0x98,
+ * from .data 0x802A4B58) in the slide-flag block. */
+/* @implements 0x80259D14 tgr BrCarAxleGrip */
+void BrCarAxleGrip(BrRbBody *b, float dt, float *gripF, float *gripR, unsigned char *slipFp,
+                   unsigned char *slipRp)
+{
+  float tmpB[3];
+  float tmpA[3];
+  float pt[3];
+  float vB[3];
+  float vA[3];
+  float w[3];
+  float sv[3];
+  float side;
+  int ran;
+  unsigned char sC;
+  unsigned char sD;
+  unsigned char sA;
+  unsigned char sB;
+  float slipF;
+  float slipR;
+  float g;
+  short row;
+  float hold;
+  float s;
+  float v;
+  float m4;
+  float sp;
+  float t;
+  int idx;
+  float save[3];
+  float lat[3];
+
+  ran = 0;
+  side = 0.0f;
+  if (b->sub[0]->x19c == 0) {
+    b->sub[0]->x1b4 = 0;
+  }
+  if (b->sub[1]->x19c == 0) {
+    b->sub[1]->x1b4 = 0;
+  }
+  if (b->sub[2]->x19c == 0) {
+    b->sub[2]->x1b4 = 0;
+  }
+  if (b->sub[3]->x19c == 0) {
+    b->sub[3]->x1b4 = 0;
+  }
+  slipF = SIGN(b->sub[2]->drive) * -ABS(b->sub[2]->spin) * 2.0;
+  slipF /= b->sub[2]->radius;
+  slipR = SIGN(b->sub[0]->drive) * -ABS(b->sub[0]->spin) * 2.0;
+  slipR /= b->sub[0]->radius;
+  m4 = b->mass / 4.0f;
+  slipF /= m4;
+  slipR /= m4;
+  slipF *= dt * dt;
+  slipR *= dt * dt;
+  if (ABS(slipF) > 1.0f) {
+    slipF = SIGN(slipF) * 1.5;
+  }
+  if (ABS(slipR) > 1.0f) {
+    slipR = SIGN(slipR) * 1.5;
+  }
+  pt[2] = 0.0f;
+  pt[1] = 0.0f;
+  pt[0] = b->sub[0]->f78[0];
+  BrRbVelAtPoint(tmpA, b, pt);
+  func_802586C0(vA, b->m, tmpA);
+  sA = b->sub[0]->surface;
+  sB = b->sub[1]->surface;
+  sC = b->sub[2]->surface;
+  sD = b->sub[3]->surface;
+  row = D_8028C800 - 1;
+  if (row >= 3 || row < 0) {
+    row = 0;
+  }
+  b->slide = 0;
+  row <<= 3;
+  if ((b->sub[0]->x1b4 == 0 && b->sub[1]->x1b4 == 0) || (b->sub[2]->x1b4 == 0 && b->sub[3]->x1b4 == 0)) {
+    *slipFp = 0;
+  } else {
+    ran = 1;
+    hold = 8000.0f;
+    s = ABS(*gripF) + ABS(vA[1]) * b->mass / dt;
+    if (ABS(slipF) > 0.0001) {
+      s += 10000.0f * (ABS(slipR) > 0.0001);
+    } else {
+      s += 100000.0f * (ABS(slipR) > 0.0001);
+    }
+    if (*slipFp != 0) {
+      hold = 5600.0f;
+    }
+    *slipFp = 0;
+    idx = ((sA + sB + 1) >> 1) + row;
+    v = s;
+    if (D_802A4A98[idx] < s) {
+      v = D_802A4A98[idx];
+    }
+    if (v < D_802A4AF8[idx]) {
+      v = D_802A4AF8[idx];
+    }
+    g = D_802A4AF8[idx] / v * 20.0f * (float)(D_802A4A38[idx] - 0.002 * (b->tyres - 1));
+    if (b->sub[2]->steer == 0) {
+      g = g * 1.5;
+    }
+    if (ABS(g) > 1.0f) {
+      g = 1.0f;
+    }
+    if (s < hold) {
+      side = 0.0f;
+      vA[1] = 0.0f;
+    } else {
+      sp = sqrtf(b->vel[0] * b->vel[0] + b->vel[1] * b->vel[1] + b->vel[2] * b->vel[2]);
+      if (sp < 27.0f) {
+        t = (27.0f - sp) * 0.1f / 27.0f;
+        if (g < t) {
+          g = t;
+        }
+      }
+      vA[1] = vA[1] - vA[1] * g;
+      side = vA[1] * g;
+      *slipFp = 1;
+    }
+    {
+      float fwd[3] = { 1.0f, 0.0f, 0.0f };
+
+      if (ABS(vA[0]) > 1.0f) {
+        if (ABS(vA[1] / vA[0]) > 0.25f) {
+          b->slide = 0x80;
+        }
+      } else if (ABS(vA[1]) > 1.0f) {
+        b->slide = 0x80;
+      } else {
+        b->slide = 0;
+      }
+    }
+    t = vA[0];
+    vA[0] = vA[0] - slipR;
+    if (ABS(vA[0]) > 1e-05f) {
+      if (SIGN(vA[0]) != SIGN(t)) {
+        vA[0] = 0.0f;
+      }
+    }
+  }
+  pt[0] = b->sub[2]->f78[0];
+  BrRbVelAtPoint(tmpB, b, pt);
+  func_802586C0(vB, b->m, tmpB);
+  if ((b->sub[2]->x1b4 != 0 || b->sub[3]->x1b4 != 0) && (b->sub[0]->x1b4 != 0 || b->sub[1]->x1b4 != 0)) {
+    ran = 1;
+    pt[0] = cosf(b->sub[2]->steer);
+    pt[1] = sinf(b->sub[2]->steer);
+    pt[2] = 0.0f;
+    save[0] = vB[0];
+    save[1] = vB[1];
+    save[2] = vB[2];
+    t = pt[0] * vB[0] + pt[1] * vB[1] + pt[2] * vB[2];
+    vB[0] = pt[0] * t;
+    vB[1] = pt[1] * t;
+    vB[2] = pt[2] * t;
+    lat[0] = save[0] - vB[0];
+    lat[1] = save[1] - vB[1];
+    lat[2] = save[2] - vB[2];
+    sp = sqrtf(lat[0] * lat[0] + lat[1] * lat[1] + lat[2] * lat[2]);
+    s = ABS(*gripR) + sp * b->mass / dt + 10000.0f * (ABS(slipF) > 0.0001);
+    hold = 8000.0f;
+    if (*slipRp != 0) {
+      hold = hold * 0.7;
+    }
+    *slipRp = 0;
+    if (hold < s) {
+      idx = ((sC + sD + 1) >> 1) + row;
+      v = s;
+      if (D_802A4A98[idx] < s) {
+        v = D_802A4A98[idx];
+      }
+      if (v < D_802A4AF8[idx]) {
+        v = D_802A4AF8[idx];
+      }
+      g = D_802A4AF8[idx] / v * 20.0f * (D_802A4A38[idx] - 0.002f * (b->tyres - 1));
+      if (b->sub[2]->steer == 0) {
+        g = g * 1.5;
+      }
+      if (ABS(g) > 1.0f) {
+        g = 1.0f;
+      }
+      sp = sqrtf(b->vel[0] * b->vel[0] + b->vel[1] * b->vel[1] + b->vel[2] * b->vel[2]);
+      if (sp < 27.0f) {
+        t = (27.0f - sp) * 0.1f / 27.0f;
+        if (g < t) {
+          g = t;
+        }
+      }
+      lat[0] = lat[0] * g;
+      lat[1] = lat[1] * g;
+      lat[2] = lat[2] * g;
+      vB[0] = save[0] - lat[0];
+      vB[1] = save[1] - lat[1];
+      vB[2] = save[2] - lat[2];
+      *slipRp = 1;
+    }
+  }
+  if (ran != 0) {
+    sv[0] = (vA[0] + vB[0]) / 2.0f;
+    sv[2] = (vA[1] - vB[1]) / (b->sub[0]->f78[0] - b->sub[2]->f78[0]);
+    sv[1] = vA[1] - sv[2] * b->sub[0]->f78[0];
+    func_802586C0(w, b->m, b->angVel);
+    w[2] = sv[2];
+    func_80258758(b->angVel, b->m, w);
+    func_802586C0(w, b->m, b->vel);
+    w[0] = sv[0];
+    w[1] = sv[1];
+    func_80258758(b->vel, b->m, w);
+  }
+  if (ABS(side) > 0.5f) {
+    side = SIGN(side) * 0.5;
+  }
+  t = side / 0.5f * -4.0f;
+  if (ABS(b->roll - t) < 0.26666668f) {
+    b->roll = t;
+  } else if (b->roll < t) {
+    b->roll = b->roll + 0.26666668f;
+  } else {
+    b->roll = b->roll - 0.26666668f;
+  }
 }
 
 /* WHAT IT DOES: Turn a car body's summed force and torque into

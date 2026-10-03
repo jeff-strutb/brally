@@ -557,6 +557,7 @@ va,name,kind
 80259A18,BrRbVelAtFlatPoint,func
 80259B1C,BrRbVelAtBodyPoint,func
 80259C18,BrRbVelAtPoint,func
+80259D14,BrCarAxleGrip,func
 8025B3B0,BrCrTriContainsPoint,func
 8025B704,BrCrPlaneDist,func
 8025B73C,BrCrContactKick,func
