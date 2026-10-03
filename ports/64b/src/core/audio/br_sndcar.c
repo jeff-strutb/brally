@@ -466,8 +466,7 @@ LAB_10061dc3:
       local_28 = 0.0f;
     }
     if ((iVar6 != local_20) && (iVar9 == 0)) {
-      BrSfxSrcPlaySilent(1, (*(int *)&g_brStages[27 + iVar6].f10[0]), g_brStages[28 + iVar6].f04,
-                         g_brStages[28 + iVar6].f08);
+      BrSfxSrcPlaySilent(1, g_aBrSfxSrc[iVar6].group, g_aBrSfxSrc[iVar6].f0C, g_aBrSfxSrc[iVar6].loop);
     }
     if ((local_24 == 0) && (iVar9 == 0)) {
       iVar4 = pCar->f0F6C * local_1c >> 7;

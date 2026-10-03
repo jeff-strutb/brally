@@ -170,8 +170,10 @@ typedef struct BrSfxSrcDef {
 } BrSfxSrcDef;
 
 /* The live table.  `group` is ZERO in the image for every record; it is not
- * a constant, it is written at init.  See BrSfxSrcTableInit. */
-extern BrSfxSrcDef g_aBrSfxSrc[BR_SFXSRC_COUNT];
+ * a constant, it is written at init.  See BrSfxSrcTableInit.  It is the
+ * object at 0x100B32B0 (DAT_100b32b0, which the init writes), viewed as its
+ * records; the original reaches it under several names, one storage. */
+#define g_aBrSfxSrc (*(BrSfxSrcDef (*)[BR_SFXSRC_COUNT])(void *)DAT_100b32b0)
 
 /* 0x118EEF40, stride 24, one per channel.  0x1006E4C0 writes +0x00, +0x10
  * and +0x14; 0x1006B880 writes the 64-bit +0x08. */

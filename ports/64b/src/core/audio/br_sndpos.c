@@ -428,9 +428,9 @@ void BrSndNearestCommit(void)
 
         if (g_BrSndNearest.fA0 == 0) {
             g_BrSndNearest.fA0 = 1;
-            BrSfxSrcPlaySilent(3, (*(int32_t *)&g_brStages[27 + (g_BrSndNearest.f84)].f10[0]),
-                               g_brStages[28 + (g_BrSndNearest.f84)].f04,
-                               g_brStages[28 + (g_BrSndNearest.f84)].f08);
+            BrSfxSrcPlaySilent(3, g_aBrSfxSrc[g_BrSndNearest.f84].group,
+                               g_aBrSfxSrc[g_BrSndNearest.f84].f0C,
+                               g_aBrSfxSrc[g_BrSndNearest.f84].loop);
         }
 
         if (g_aBrRaceCar[g_aBrView[0].iCar].fF78 == 0 &&

@@ -50,7 +50,7 @@ static const BrSfxSrcDef s_aBrSfxSrcImage[BR_SFXSRC_COUNT] = {
     /* 24 */ { 0, 0, 0, 0, 0, 0 }
 };
 
-BrSfxSrcDef g_aBrSfxSrc[BR_SFXSRC_COUNT];
+/* g_aBrSfxSrc: a view of DAT_100b32b0 (br_sfxsrc.h) */
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */        /* 0x118EEF40, stride 24 */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */ /* 0x1184C080, stride 24 */
@@ -205,8 +205,7 @@ void BrSfxSrcBeep2(void) { BrSfxBankPlay(BR_SFXSRC_BEEP2); }   /* push 0x0E */
 int BrSfxBankPlay(int param_1)
 
 {
-  BrSfxSrcPlay(3,(*(int *)&g_brStages[27 + param_1].f10[0]),g_brStages[28 + param_1].f04,
-               g_brStages[28 + param_1].f08);
+  BrSfxSrcPlay(3, g_aBrSfxSrc[param_1].group, g_aBrSfxSrc[param_1].f0C, g_aBrSfxSrc[param_1].loop);
   g_BrSndAA3470 = param_1;
   return;
 }
