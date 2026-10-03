@@ -27,18 +27,15 @@
 /* @t4-pass 0x100608F0 1 2026-09-10 probes 40 bytes 114 insns 48 regions 2 rows 1 census yes  (tools/crank.py) */
 /* @t4-pass 0x100608F0 2 2026-09-10 probes 40 bytes 114 insns 48 regions 2 rows 1 census yes  (tools/crank.py) */
 /* @t4-pass 0x100608F0 3 2026-09-10 probes 40 bytes 114 insns 48 regions 2 rows 1 census yes  (tools/crank.py) */
-/* @t3 0x100608F0 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 114/118 insns 48/49 rows 1+0 regions 2 oracle UNCLASSIFIED
- * @t3-effort passes 4 zero-movement 3 4
- * residue after tools/crank.py: 40 compiles this pass, levers accepted: mut:addr_taken:i;
- * every candidate and score is in build/match/crank.log.
- * Do not reopen before the end-grind. */
 /* @t4-pass 0x100608F0 4 2026-09-10 probes 12 bytes 114 insns 48 regions 2 rows 1 census yes  (tools/crank.py) */
 /* @implements 0x10067880 d3d BrVarSave */
 /* @n64 0x8022ADCC located */
 void BrVarSave(const BrVarBlock *pTable, void *pDst, int32_t cbAvail)
 {
-    uint8_t *pOut = (uint8_t *)pDst;
+    /* The PARAMETER is the cursor and the start is saved in a local: VC5
+     * homes the start in pDst's own (dead) argument slot, the original's
+     * `mov [esp+0x68],eax`, and reads it back for the length. */
+    uint8_t *pStart = (uint8_t *)pDst;
     int32_t  cbUsed;
     int      i;
 
@@ -51,11 +48,11 @@ void BrVarSave(const BrVarBlock *pTable, void *pDst, int32_t cbAvail)
      * six loop shapes probed, this is the only one that lands
      * (register-blind residue 4+1 -> 0+1). */
     for (i = 0; pTable[i].pData != NULL; i++) {
-        memcpy(pOut, pTable[i].pData, (size_t)pTable[i].cb);
-        pOut += pTable[i].cb;
+        memcpy(pDst, pTable[i].pData, (size_t)pTable[i].cb);
+        pDst = (uint8_t *)pDst + pTable[i].cb;
     }
 
-    cbUsed = (int32_t)(pOut - (uint8_t *)pDst);
+    cbUsed = (int32_t)((uint8_t *)pDst - pStart);
     if (cbUsed > cbAvail) {
         /* sprintf into an 80-byte stack buffer, as the original does --
          * confirmed against the N64 build (TGR USA 0x8022adcc), which
