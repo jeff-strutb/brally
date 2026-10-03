@@ -120,29 +120,25 @@ void BrFrontSetMenuFlag(int param_1)
 
 
 /* WHAT IT DOES: One frame of the generic menu screen: a carousel of rows,
- * one shown at a time (its icon spinning, or its label), turned left and
- * right by the pads. The first frame loads the background, the button
- * prompts, the panel and the two sound banks and fades in. A row can be
- * forced from outside (BrFrontSetMenuFlag). ok, when given, says which rows
- * may be stopped on. Returns 0 while the screen runs; 1 when a row that
- * leaves at once is chosen (the row goes to *sel), 3 or 4 for the two side
- * buttons on a row that takes them; once the fade out after a choice (or B,
- * or the idle time running out) ends, 1 when going on and 2 when backing
- * out. r1..b2 tint the background.
- * Source facts: the screen state is function static (the ROM addresses
- * each afresh, and IDO keeps the selection in a register with stores back);
- * the sound banks' ROM addresses are link-time symbols; the equality tests
- * are against the integer 0 (a fresh 0.0 each, where the ordering tests
- * share f20); the turn is eased on the static itself.
- * The frame must be the ROM's 0x100: the first frame's zlib unpacks read
- * uninitialised stack at a fixed depth below this frame, so a deeper frame
- * builds different (still valid) inflate tables and A5 sees the difference.
- * Plain expressions for the pad word and row flags (not locals) and a
- * 92-byte buffer give 0x100.
- * RESIDUE: the named slots are not the ROM's (off 0xFC, result 0xF4, buf
- * 0x84, row 0x78) and the register choices follow. */
+ * one shown at a time (its icon spinning, or its label), turned by the pads.
+ * The first frame loads the background, prompts, panel and two sound banks
+ * and fades in. A row can be forced from outside (BrFrontSetMenuFlag); ok,
+ * when given, says which rows may be stopped on. Returns 0 while running; 1
+ * for a row that leaves at once (the row goes to *sel), 3 or 4 for the side
+ * buttons on a row that takes them; after the fade out that follows a
+ * choice (or B, or idling out), 1 going on and 2 backing out. r1..b2 tint
+ * the background.
+ * Source facts: function-static screen state (the selection kept in a
+ * register with stores back); link-time sound bank symbols; equality tests
+ * against integer 0; the turn eased on the static. The frame must be the
+ * ROM's 0x100 (zlib reads uninitialised stack below it on the first frame).
+ * RESIDUE: named slots differ (off 0xFC, result 0xF4, buf 0x84, row 0x78)
+ * and the register choices follow. */
 /* @t4-pass 0x8020AD5C 1 2026-10-03 compiles 115 best 985 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8020AD5C 2 2026-10-03 compiles 112 best 953 moved 32  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8020AD5C 3 2026-10-03 compiles 110 best 953 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8020AD5C 4 2026-10-03 compiles 117 best 953 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8020AD5C */
 /* @implements 0x8020AD5C tgr BrMenu */
 int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r1, int g1, int b1, int r2,
            int g2, int b2)

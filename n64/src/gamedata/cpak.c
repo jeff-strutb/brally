@@ -196,10 +196,9 @@ fail:
  * RESIDUE (30): three temporaries numbered the other way round -- the fade
  * counter's v0/v1, the error code's v0/v1 for the message switch, and the
  * text row's a2/a3 in the "loaded" box. */
-/* @t4-pass 0x80214E0C 1 2026-09-26 compiles 17 best 1632 moved 7  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80214E0C 2 2026-09-26 compiles 17 best 1639 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80214E0C 3 2026-09-26 compiles 17 best 1637 moved 2  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80214E0C 4 2026-09-26 compiles 41 best 1637 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80214E0C 5 2026-10-03 compiles 121 best 30 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80214E0C 6 2026-10-03 compiles 119 best 30 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80214E0C */
 /* @implements 0x80214E0C tgr BrCpakCheck */
 int BrCpakCheck(int kind, unsigned char quiet)
 {

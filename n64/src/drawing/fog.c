@@ -183,6 +183,9 @@ float BrFogAmount(float v[3])
  * first branch is shifted by that one instruction. */
 /* @t4-pass 0x80218D5C 1 2026-10-03 compiles 121 best 102 moved 159  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80218D5C 2 2026-10-03 compiles 120 best 97 moved 5  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80218D5C 3 2026-10-03 compiles 118 best 97 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80218D5C 4 2026-10-03 compiles 120 best 97 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80218D5C */
 /* @implements 0x80218D5C tgr BrFrameTintSetup */
 void BrFrameTintSetup(void)
 {
