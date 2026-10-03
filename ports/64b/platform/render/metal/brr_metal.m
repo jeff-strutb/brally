@@ -716,7 +716,9 @@ void brr_present(void)
                 MTLRenderPassDescriptor *rp = [MTLRenderPassDescriptor renderPassDescriptor];
                 id<MTLRenderCommandEncoder> e;
                 double dw = (double)[dr texture].width, dh = (double)[dr texture].height;
-                double k = fmin(dw / s_w, dh / s_h), qw = s_w * k / dw, qh = s_h * k / dh;
+                /* the target, at its own shape (the screen map already placed
+                 * the game's picture on it), fitted to the drawable */
+                double k = fmin(dw / s_rw, dh / s_rh), qw = s_rw * k / dw, qh = s_rh * k / dh;
                 float q[6][4];
                 static const int ix[6] = { 0, 1, 2, 2, 1, 3 };
                 float c4[4][4] = { { (float)-qw, (float)qh, 0, 0 }, { (float)qw, (float)qh, 1, 0 },
