@@ -3,3 +3,4 @@ va,name,reason
 0x80224B7C,BrVec3RotateAxis,"never run in the retail game: no call, no address formation and no data word refers to it anywhere in the ROM; proof in n64/src/geometry/vec.c"
 0x8022F694,BrTextPrintAt,"never run in the retail game: no call, no address formation and no data word refers to it anywhere in the ROM; proof in n64/src/drawing/textstate.c"
 0x80254878,BrDebugPrint,"never run in the retail game: no call, no address formation and no data word refers to it anywhere in the ROM; proof in n64/src/menus/cpakmenu.c"
+0x8022021C,BrCarRotate,"never run in the retail game: called only while car->xf4c is non-zero; no instruction stores to offset 0xF4C and a write watch on all four cars over all 64 box scripts saw no store; proof in n64/src/racing/entinit.c"

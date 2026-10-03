@@ -158,6 +158,7 @@ void BrTexSizeBits(unsigned int v, int *mask, int *bits)
  * the TMEM/tile globals load at other points. */
 /* @t4-pass 0x80217734 1 2026-10-03 compiles 119 best 232 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80217734 2 2026-10-03 compiles 120 best 232 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80217734 */
 /* @implements 0x80217734 tgr BrTexLoad */
 void BrTexLoad(int n, BrTex *tbl)
 {

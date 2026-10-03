@@ -631,7 +631,12 @@ void BrCarSetVel(BrCar *car, float x, float y, float z)
  * RESIDUE (26): the frame is 8 bytes larger than the ROM's (the named sine
  * takes a padded slot), so the argument homes shift; the final copy loads
  * into f18..f12 where the ROM uses f0..f14, and the epilogue restores in
- * the opposite order.  Declaration orders and -O2 flag variants swept. */
+ * the opposite order.  Declaration orders and -O2 flag variants swept.
+ *
+ * NEVER RUN IN THE RETAIL GAME: its one caller, BrCarPhysTick, reaches it
+ * only while car->xf4c (0xF4C) is non-zero; no instruction in the ROM
+ * stores to offset 0xF4C, and a write watch on all four cars' 0xF4C over
+ * all 64 box scripts saw no store. */
 /* @t4-pass 0x8022021C 1 2026-10-03 compiles 117 best 26 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8022021C 2 2026-10-03 compiles 117 best 26 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8022021C tgr BrCarRotate */
