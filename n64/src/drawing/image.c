@@ -17,6 +17,7 @@ typedef struct BrImage {
   int y;                        /* 0x20 */
   int drawW;                    /* 0x24  drawn size */
   int drawH;                    /* 0x28 */
+  char kind;                    /* 0x2C  'c': drawn with the car-select combiner */
 } BrImage;
 void BrImageStrip(BrImage *img, unsigned char *data, int w, int h, int x, int y, int dw, int dh,
                   unsigned char r, unsigned char g, unsigned char b);
@@ -24,6 +25,13 @@ extern Gfx *D_8028A858;
 extern int D_8028A850;
 extern int D_8028A898;                  /* the texture filter mode */
 void BrSwapBytes(unsigned char *a, unsigned char *b);
+extern BrImage D_8028CB40;               /* the 4-bit image drawn with its own combiner */
+extern BrImage D_8028CB70;               /* the 16-bit image loaded as IA */
+void BrTexSizeBits(unsigned int v, int *mask, int *bits);
+#define TXL2WORDS(txls, b_txl)  MAX(1, ((txls) * (b_txl) / 8))
+#define CALC_DXT(width, b_txl)  (((1 << 11) + TXL2WORDS(width, b_txl) - 1) / TXL2WORDS(width, b_txl))
+#define TXL2WORDS_4b(txls)      MAX(1, ((txls) / 16))
+#define CALC_DXT_4b(width)      (((1 << 11) + TXL2WORDS_4b(width) - 1) / TXL2WORDS_4b(width))
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Draw the part (s, t, sw by th texels) of a 4-bit image as a
@@ -194,6 +202,103 @@ void BrImageDrawRect(BrImage *img, int x, int y, int w, int h, unsigned char r, 
     BrImageStrip(img, img->data + total - strip * i, img->w, img->stripH, x, y + step * (i - 1),
                  w, step, r, g, b);
   }
+}
+
+/* WHAT IT DOES: Draw one strip of an image: load its w by h texels (4-bit
+ * intensity, 8-bit intensity-alpha or 16-bit RGBA, the last as IA for
+ * D_8028CB70) as a texture block with the image's combiner, then draw it
+ * as a dw by dh textured rectangle at (x, y) tinted r, g, b -- mirrored
+ * left to right when dw is negative, upside down always.  Coordinates are
+ * halved on a low-res screen.  The loads are libultra's LoadTextureBlock
+ * sequences written out (the DXT and line arithmetic as in its macros).
+ * RESIDUE (693): the ROM keeps no saved register (frame 0xF8) and reloads
+ * w from its home at every use; ours holds w in s0. */
+/* @implements 0x80245B00 tgr BrImageStrip */
+void BrImageStrip(BrImage *img, unsigned char *data, int w, int h, int x, int y, int dw, int dh,
+                  unsigned char r, unsigned char g, unsigned char b)
+{
+  int bitsS;
+  int bitsT;
+  int maskS;
+  int maskT;
+  int flip;
+  int fmt;
+
+  flip = 0;
+  if (dw < 0) {
+    flip = 1;
+    dw = -dw;
+  }
+  BrTexSizeBits(w, &maskS, &bitsS);
+  BrTexSizeBits(h, &maskT, &bitsT);
+  gDPPipeSync(D_8028A858++);
+  gDPSetCycleType(D_8028A858++, G_CYC_1CYCLE);
+  gSPTexture(D_8028A858++, maskS, maskT, 0, 0, 1);
+  gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 12, 2, D_8028A898);
+  switch (img->siz) {
+  case 4:
+    if (img == &D_8028CB40) {
+      gDPSetCombine(D_8028A858++, 0x309861, 0x5532ff7f);
+      gDPSetRenderMode(D_8028A858++, 0x0f0a4000, 0);
+    } else {
+      gDPSetCombine(D_8028A858++, 0xffffff, 0xfffdf2f9);
+      gDPSetRenderMode(D_8028A858++, 0x00504240, 0);
+    }
+    gDPSetTextureImage(D_8028A858++, 4, 2, 1, data);
+    gDPSetTile(D_8028A858++, 4, 2, 0, 0, 7, 0, 0, bitsT, 0, 0, bitsS, 0);
+    gDPLoadSync(D_8028A858++);
+    gDPLoadBlock(D_8028A858++, 7, 0, 0, ((w * h + 3) >> 2) - 1, CALC_DXT_4b(w));
+    gDPPipeSync(D_8028A858++);
+    gDPSetTile(D_8028A858++, 4, 0, ((w >> 1) + 7) >> 3, 0, 0, 0, 0, bitsT, 0, 0, bitsS, 0);
+    gDPSetTileSize(D_8028A858++, 0, 0, 0, (w - 1) << 2, (h - 1) << 2);
+    break;
+  case 8:
+    if (img->kind == 'c') {
+      gDPSetCombine(D_8028A858++, 0x11fe23, 0xfffff3f9);
+    } else {
+      gDPSetCombine(D_8028A858++, 0xffffff, 0xfffcf279);
+    }
+    gDPSetRenderMode(D_8028A858++, 0x00504240, 0);
+    gDPSetTextureImage(D_8028A858++, 3, 2, 1, data);
+    gDPSetTile(D_8028A858++, 3, 2, 0, 0, 7, 0, 0, bitsT, 0, 0, bitsS, 0);
+    gDPLoadSync(D_8028A858++);
+    gDPLoadBlock(D_8028A858++, 7, 0, 0, ((w * h + 1) >> 1) - 1, CALC_DXT(w, 1));
+    gDPPipeSync(D_8028A858++);
+    gDPSetTile(D_8028A858++, 3, 1, (w + 7) >> 3, 0, 0, 0, 0, bitsT, 0, 0, bitsS, 0);
+    gDPSetTileSize(D_8028A858++, 0, 0, 0, (w - 1) << 2, (h - 1) << 2);
+    break;
+  case 16:
+    if (img == &D_8028CB70) {
+      fmt = 3;
+    } else {
+      fmt = 0;
+    }
+    gDPSetCombine(D_8028A858++, 0xffffff, 0xfffcf279);
+    gDPSetRenderMode(D_8028A858++, 0x00504240, 0);
+    gDPSetTextureImage(D_8028A858++, fmt, 2, 1, data);
+    gDPSetTile(D_8028A858++, fmt, 2, 0, 0, 7, 0, 0, bitsT, 0, 0, bitsS, 0);
+    gDPLoadSync(D_8028A858++);
+    gDPLoadBlock(D_8028A858++, 7, 0, 0, w * h - 1, CALC_DXT(w, 2));
+    gDPPipeSync(D_8028A858++);
+    gDPSetTile(D_8028A858++, fmt, 2, (w * 2 + 7) >> 3, 0, 0, 0, 0, bitsT, 0, 0, bitsS, 0);
+    gDPSetTileSize(D_8028A858++, 0, 0, 0, (w - 1) << 2, (h - 1) << 2);
+    break;
+  }
+  gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 14, 2, 0);
+  gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 19, 1, 0);
+  if (D_8028A850 == 0) {
+    x >>= 1;
+    y >>= 1;
+    dh >>= 1;
+    dw >>= 1;
+  }
+  gDPSetPrimColor(D_8028A858++, 0xff, 0xff, r, g, b, 0xff);
+  gDPSetEnvColor(D_8028A858++, 0, 0, 0, 0xff);
+  gSPTextureRectangle(D_8028A858++, x << 2, y << 2, (x + dw) << 2, (y + dh) << 2, 0,
+                      flip ? (w - 1) << 5 : 0, (h - 1) << 5,
+                      flip ? ((1 - w) << 10) / dw : ((w - 1) << 10) / dw, ((1 - h) << 10) / dh);
+  gDPPipeSync(D_8028A858++);
+  gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 19, 1, 0x80000);
 }
 
 /* WHAT IT DOES: Plot one grey pixel at (x, y) (fill mode, RGBA5551), in
