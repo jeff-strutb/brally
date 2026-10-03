@@ -228,13 +228,6 @@ static int32_t s17_ftol(double v)
  * vertical angles each, which is how the sky texture is scrolled to follow the
  * camera. The first pair is measured against a fixed scale and the second
  * against one the caller supplies. */
-/* @t3 0x1002A200 2026-09-26 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 647/645 insns 203/202 rows 1+2 regions 1 oracle EQUIVALENT
- * @t3-effort passes 2 zero-movement 1 2
- * Residue: t1's (double)(n * 4) factor is `fild; fmulp` where the original
- * fuses `fimul` (same value, same rounding); the spellings that fuse also
- * CSE n*4 into esi.  Dossier and dead list in the matching arm below.  Do
- * not reopen before the end-grind. */
 /* @implements 0x10030B50 d3d BrLightDirsAndAngles */
 /* The original inlines every port helper: the packs, the three column dots
  * (as macros, in the original's term orders), atan2 as fpatan and __ftol as
@@ -243,11 +236,12 @@ static int32_t s17_ftol(double v)
  * The frame is ONE 0x30-byte block: a four-double vector (the w slot
  * unused) followed by the t spill and one more double, which is what puts
  * t at +0x20; separate locals put t at +0 whatever their order or names.
- * Each count is written n * 4 for the integer and (double)(n << 2) for the
+ * Each count is written n * 4 for the integer and (n << 2) for the
  * factor, so VC5 keeps n in a callee-saved register and forms n*4 twice.
- * RESIDUE (22 B): t1's factor is `fild; fmulp` where the original fuses
- * `fimul`; the (double)(n * 4) spelling fuses but CSEs n*4 with the
- * integer and keeps the product, not n, in esi.
+ * t1's factor is cast to float, not double: VC5 fuses a float-converted
+ * int into `fimul` where a (double) conversion is a separate `fild;
+ * fmulp` (the value is the same, n*4 is exact in a float).  s1's factor
+ * is not on top of the stack when it is used, so it stays (double).
  * @t4-pass 0x1002A200 1 2026-09-26 probes 117 bytes 647 insns 203 regions 1 rows 3 census no  (t1 factor spellings: (double) of n*4 / n<<2 / 4*n / unsigned forms, int temp m in three placements, factor-first and paren orders)
  * @t4-pass 0x1002A200 2 2026-09-26 probes 85 bytes 647 insns 203 regions 1 rows 3 census yes  (int-part respellings x factor forms; mechanism: int/double pad functions 1..80, extern counts 20..3000, four CRT headers -- all inert, the fimul fork is instruction selection) */
 #define L_ZYX(c, v) ((double)pM->m[2][c] * (v).z + (double)pM->m[1][c] * (v).y + (double)pM->m[0][c] * (v).x)
@@ -285,7 +279,7 @@ void BrLightDirsAndAngles(BrMat4 *pM, BrLightPair *pLights,
     pAngles->s1 = nS1 * 4
         - (int32_t)(atan2(L_ZYX(0, v), L_YZX(2, v)) * (double)(nS1 << 2) * BR_ANG_K1);
     pAngles->t1 = nT1 * 4
-        - (int32_t)(asin(L.t) * (double)(nT1 << 2) * BR_ANG_K1);
+        - (int32_t)(asin(L.t) * (float)(nT1 << 2) * BR_ANG_K1);
 #undef v
 
 }
