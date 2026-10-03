@@ -47,24 +47,12 @@ typedef char br06_assert_namelist[
  * answers the same question for the other family of options. */
 /* @t4-pass 0x10038860 1 2026-09-09 probes 10 bytes 284 insns 99 regions 2 rows 2 census no  (hand, fn.py variants: fixup spellings minus/hex/neg-add/unsigned, guard forms, remap and mask spellings, all inert or worse) */
 /* @t4-pass 0x10038860 2 2026-09-09 probes 10 bytes 284 insns 99 regions 2 rows 2 census yes  (hand, fn.py variants: keep-sub mechanism experiment -- pointer difference, loop-carried, split constant, nested ifs, named subtrahend -- all still emit add-negative) */
-/* @t3 0x10038860 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 284/285 insns 99/99 rows 1+1 regions 2 oracle UNCLASSIFIED
- * @t3-effort passes 2 zero-movement 1 2
- * residue is the sub/add-negative instruction-selection fork on the first
- * `idx -= 16` (paired by t3.py canon, a326268) plus its 1-byte encoding
- * shadow; same fork proven on 0x1006FD50 with the keep-sub mechanisms all
- * inert.  Dossier in the block below; dead probes in the two ledger lines.
- * Do not reopen before the end-grind. */
 /* @implements 0x1003F320 d3d BrOptAvailB */
 /* One argument; every input is a loose global (fAlt and maskPair are each
  * loaded ONCE and live in registers across the whole function).  Raw
  * `1u << idx` (x86 masks the count in hardware; BR06_BIT's explicit &31
  * emits four real ANDs).
- * RESIDUE (1+1 regnorm, T3a-encoding): the FIRST `idx -= 16` emits
- * add ecx,-0x10 where the original has sub ecx,0x10 -- the same
- * context-dependent add/sub fork proven on BrHudDraw and BrOptCycleTrack;
- * `idx = idx - 16` identical.  The
- * mode-0 arm splits on fAlt FIRST and duplicates the idx-fixup and
+ * The mode-0 arm splits on fAlt FIRST and duplicates the idx-fixup and
  * fLowAlways test into both sub-arms -- the shared-logic form is 45 bytes
  * short. */
 extern int32_t g_br6EE1DC_fRebaseB;      /* 0x10AC5C4C */
@@ -77,9 +65,12 @@ extern int32_t g_brAAB88_maskB6;         /* 0x100AAB88 */
 extern int32_t g_brAF3CE4_nAlwaysB;      /* 0x10AF3CE4 */
 extern int16_t g_brAAB84_maskBDef;       /* 0x100AAB84 */
 
-int32_t BrOptAvailB(uint32_t n)
+/* The option number is decremented IN PLACE in its own parameter (that is
+ * what keeps `sub ecx,0x10` rather than `add ecx,-0x10`), and the alt mask
+ * is the low half of the pair read as a 16-bit value (`and esi,0xFFFF` on
+ * the dword already loaded for the 0x8000 test, ahead of the shift). */
+int32_t BrOptAvailB(int32_t idx)
 {
-    int32_t idx = (int32_t)n;
 
     if (g_br6EE1DC_fRebaseB != 0 && idx > 15)
         idx -= 16;
@@ -93,9 +84,7 @@ int32_t BrOptAvailB(uint32_t n)
                 idx = 11;
             if (g_br6EE1D8_fLowAlways != 0 && idx <= 15)
                 return 1;
-            /* `and esi,0xFFFF` -- the LOW half of the same dword */
-            return (int32_t)((1u << idx)
-                             & ((uint32_t)g_br6EE0C8_maskPair & 0xFFFFu));
+            return (int32_t)((1u << idx) & (uint16_t)g_br6EE0C8_maskPair);
         }
         if (idx == 15)
             idx = 11;

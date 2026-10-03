@@ -670,6 +670,7 @@ glide_va,name,module,basis,file
 0x10038750,BrUiFn1003F210,menus,filed,src/core/menus/br_uihook85.c
 0x100387C0,BrUiFn1003F280,menus,filed,src/core/menus/br_uihook85.c
 0x100387F0,BrInputBitHeld,menus,filed,src/core/menus/br_uictlhook.c
+0x10038860,BrOptAvailB,menus,filed,src/core/menus/br_optavail.c
 0x10038980,BrRacePosIconSet,menus,filed,src/core/menus/br_race.c
 0x10038A80,BrMenuSetTrackLetter,menus,filed,src/core/menus/br_trackletter.c
 0x10038B20,BrUiHook87_1003F5E0,menus,neighbour,src/core/menus/br_uicapcode.c
