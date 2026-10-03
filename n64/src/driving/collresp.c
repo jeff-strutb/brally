@@ -1,6 +1,7 @@
 /* collresp.c -- collision response: contact planes and the list they are kept on
  */
 #include "tgr/common.h"
+#include "tgr/car.h"
 
 /* -- declarations -- */
 typedef struct BrCrNode {       /* a contact-list node */
@@ -1042,4 +1043,142 @@ int BrObbOverlap(float *m, float *t, float *a, float *b)
   c = c < 0 ? -c : c;
   ok &= c <= a[0] * am[5] + a[1] * am[2] + b[0] * am[7] + b[1] * am[6];
   return ok;
+}
+
+/* -- declarations: BrCarCarCollide -- */
+typedef struct BrWeatherObj {           /* 0x78 bytes */
+  char pad00[0x60];
+  BrCar *car;                           /* 0x60 */
+  char pad64[0x78 - 0x64];
+} BrWeatherObj;
+extern BrWeatherObj D_803239A0[];
+extern int D_8028B7F0;                  /* entries in D_803239A0 */
+void BrMat3FromMat4T(float out[3][3], float m[4][4]);
+void BrMat3FromMat4(float out[3][3], float m[4][4]);
+void func_802586C0(float out[3], float m[4][4], float v[3]);
+float sqrtf(float x);
+/* -- end declarations -- */
+
+/* WHAT IT DOES: Car-against-car collisions: each live car ages its hit
+ * counter and is tested against every later car within 5 units by the
+ * oriented-box overlap (a 2.5 x 1 x 1 box each, the second's matrix and
+ * offset taken into the first's frame); the first separated pair ends the
+ * pass.  On overlap the offset is normalised, an impulse along it sized
+ * from the closing speed, the hit's loudness (clamped at 27) given to both
+ * cars when the last hit was more than 40 frames ago, and each car in turn
+ * has the impulse taken off its velocity, the impulse solver run at the
+ * contact on a saved state, the impulse put back and copied to its other
+ * velocity.  The PC twin is BrCarCarCollide (br_carcol.c).  The 2.5 x 1 x 1
+ * box is an initialised array (from .data 0x802A4BA0).
+ * RESIDUE (432): the ROM keeps the outer index in its frame slot (0x148,
+ * under the offset) and has four more named words there; the
+ * car-missing/out tests branch straight to the loop end. */
+/* @implements 0x8025FDE4 tgr BrCarCarCollide */
+void BrCarCarCollide(void)
+{
+  float d[3];
+  int i;
+  int j;
+  BrRbState *pa;
+  BrRbState *pb;
+  float dotA;
+  float s;
+  float x;
+  float mA[3][3];
+  float mB[3][3];
+  float mR[3][3];
+  float dd[3];
+  float t[3];
+  float imp[3];
+  float sd[3];
+
+  for (i = 0; i < D_8028B7F0; i++) {
+    if (D_803239A0[i].car == 0 || D_803239A0[i].car->colour[3] == 2) {
+      continue;
+    }
+    D_803239A0[i].car->hitAge++;
+    pa = &D_803239A0[i].car->st;
+    for (j = i + 1; j < D_8028B7F0; j++) {
+      if (D_803239A0[j].car == 0 || D_803239A0[j].car->colour[3] == 2) {
+        continue;
+      }
+      pb = &D_803239A0[j].car->st;
+      d[0] = pa->pos.x - pb->pos.x;
+      d[1] = pa->pos.y - pb->pos.y;
+      d[2] = pa->pos.z - pb->pos.z;
+      if (sqrtf(d[2] * d[2] + d[0] * d[0] + d[1] * d[1]) < 5.0f) {
+        float ext[3] = { 2.5f, 1.0f, 1.0f };
+
+        BrMat3FromMat4T(mB, D_803239A0[j].car->stMtx);
+        BrMat3FromMat4(mA, D_803239A0[i].car->stMtx);
+        BrMat3Mul(mR, mB, mA);
+        dd[0] = pa->pos.x - pb->pos.x;
+        dd[1] = pa->pos.y - pb->pos.y;
+        dd[2] = pa->pos.z - pb->pos.z;
+        BrMat3MulVec(t, mA, dd);
+        if (BrObbOverlap((float *)mR, t, ext, ext) == 0) {
+          return;
+        }
+        BrVec3NormaliseF(d);
+        dotA = d[2] * pa->vel.z + pa->vel.x * d[0] + pa->vel.y * d[1];
+        s = (dotA + pb->vel.x * d[0] + pb->vel.y * d[1] + pb->vel.z * d[2]) * 0.5f;
+        imp[0] = d[0] * s;
+        imp[1] = d[1] * s;
+        imp[2] = d[2] * s;
+        if (s < dotA) {
+          x = -(s - dotA);
+        } else {
+          x = s - dotA;
+        }
+        if (x > 27.0f) {
+          x = 27.0f;
+        }
+        if (D_803239A0[i].car->hitAge > 40) {
+          D_803239A0[i].car->sndHitA = D_803239A0[j].car->sndHitA = 127.0f * x / 27.0f + 128.0f;
+        }
+        D_803239A0[i].car->hitAge = 0;
+        sd[0] = d[0] * -1.0f;
+        sd[1] = d[1] * -1.0f;
+        sd[2] = d[2] * -1.0f;
+        t[0] = sd[0] * 2.5f;
+        t[1] = sd[1] * 2.5f;
+        t[2] = sd[2] * 2.5f;
+        func_802586C0(dd, D_803239A0[i].car->stMtx, t);
+        pa->vel.x = pa->vel.x - imp[0];
+        pa->vel.y = pa->vel.y - imp[1];
+        pa->vel.z = pa->vel.z - imp[2];
+        memcpy(&D_803239A0[i].car->stB, &D_803239A0[i].car->st, sizeof(BrRbState));
+        BrCrImpulseSolve((BrTipBody *)((char *)D_803239A0[i].car + 0x148), dd, d, 0, 0.45f);
+        memcpy(&D_803239A0[i].car->st, &D_803239A0[i].car->stB, sizeof(BrRbState));
+        D_803239A0[i].car->stB.vel.x = imp[0] + D_803239A0[i].car->stB.vel.x;
+        D_803239A0[i].car->stB.vel.y = imp[1] + D_803239A0[i].car->stB.vel.y;
+        D_803239A0[i].car->stB.vel.z = imp[2] + D_803239A0[i].car->stB.vel.z;
+        D_803239A0[i].car->stA.vel.x = D_803239A0[i].car->stB.vel.x;
+        D_803239A0[i].car->stA.vel.y = D_803239A0[i].car->stB.vel.y;
+        D_803239A0[i].car->stA.vel.z = D_803239A0[i].car->stB.vel.z;
+        pa->vel.x = imp[0] + pa->vel.x;
+        pa->vel.y = imp[1] + pa->vel.y;
+        pa->vel.z = imp[2] + pa->vel.z;
+        t[0] = d[0] * 2.5f;
+        t[1] = d[1] * 2.5f;
+        t[2] = d[2] * 2.5f;
+        func_802586C0(dd, D_803239A0[j].car->stMtx, t);
+        pb->vel.x = pb->vel.x - imp[0];
+        pb->vel.y = pb->vel.y - imp[1];
+        pb->vel.z = pb->vel.z - imp[2];
+        memcpy(&D_803239A0[j].car->stB, &D_803239A0[j].car->st, sizeof(BrRbState));
+        BrCrImpulseSolve((BrTipBody *)((char *)D_803239A0[j].car + 0x148), dd, sd, 0, 0.45f);
+        memcpy(&D_803239A0[j].car->st, &D_803239A0[j].car->stB, sizeof(BrRbState));
+        D_803239A0[j].car->stB.vel.x = imp[0] + D_803239A0[j].car->stB.vel.x;
+        D_803239A0[j].car->stB.vel.y = imp[1] + D_803239A0[j].car->stB.vel.y;
+        D_803239A0[j].car->stB.vel.z = imp[2] + D_803239A0[j].car->stB.vel.z;
+        D_803239A0[j].car->stA.vel.x = D_803239A0[j].car->stB.vel.x;
+        D_803239A0[j].car->stA.vel.y = D_803239A0[j].car->stB.vel.y;
+        D_803239A0[j].car->stA.vel.z = D_803239A0[j].car->stB.vel.z;
+        pb->vel.x = imp[0] + pb->vel.x;
+        pb->vel.y = imp[1] + pb->vel.y;
+        pb->vel.z = imp[2] + pb->vel.z;
+      }
+    }
+  }
 }

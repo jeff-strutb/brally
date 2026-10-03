@@ -95,7 +95,8 @@ typedef struct BrCar {
     unsigned char x345;         /* 0x345 */
     unsigned char sndHitA;      /* 0x346  pending one-shot sounds: loudness, 0 none */
     unsigned char sndHitB;      /* 0x347 */
-    char pad348[0x34A - 0x348];
+    char pad348;
+    unsigned char hitAge;       /* 0x349  frames since the last car-to-car hit */
     unsigned char x34a;         /* 0x34A */
     unsigned char sndHitC;      /* 0x34B */
     unsigned char sndImpact;    /* 0x34C  the surface impact level */
