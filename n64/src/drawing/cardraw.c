@@ -250,6 +250,519 @@ void BrVec3Scale(BrVec3 *out, BrVec3 *v, float s);
 void BrVec3MulAddTo(BrVec3 *out, BrVec3 *v, float s);
 /* -- end declarations -- */
 
+/* -- declarations: BrCarDraw -- */
+#include "tgr/pad.h"
+typedef struct BrTrackObjFl {  /* a track object, as far as the car draw reads it (0x54 bytes) */
+  char pad00[0x4C];
+  unsigned short flags;         /* 0x4C  0x10: a tunnel */
+  char pad4e[0x54 - 0x4E];
+} BrTrackObjFl;
+void BrVec3Normalise(BrVec3 *v);
+#define G(a, b) { Gfx *g_ = D_8028A858++; g_->words.w0 = (unsigned int)(a); g_->words.w1 = (unsigned int)(b); }
+extern unsigned int D_80351C90[];       /* per slot: the level of detail drawn */
+extern int D_8028AA9C;                  /* the least detail to draw */
+extern int D_8028AB0C;                  /* views on screen */
+extern int D_8028AA78;                  /* fog */
+extern int D_8028A8A8;
+extern int D_8028A8AC;                  /* the track is mirrored */
+extern int D_8028C304;                  /* the body render-mode bits */
+extern int D_8028C334;
+extern int D_8028DDC8;
+extern int D_8028DDCC;
+extern int D_8028AA3C;                  /* polygons drawn */
+extern unsigned char D_8028AB40, D_8028AB44, D_8028AB48;  /* the light colours */
+extern unsigned char D_8028AB4C, D_8028AB50, D_8028AB54;
+extern float D_8031B338[3];             /* the sun's direction */
+extern BrVec3 D_80351D08;               /* the light direction for this car */
+extern BrVec3 D_80351D18;               /* the highlight direction */
+extern char D_8028A900[];               /* the car setup display lists: near, */
+extern unsigned char D_80351C10[];      /* per slot: two lights, 0x18 bytes each */
+extern int D_8028C340;                  /* the environment-map palette */
+extern int D_802A1968;                  /* the highlight textures: day, */
+extern int D_802A2170;                  /* and wet */
+extern int D_8028C308[];                /* the chrome textures per class, */
+extern int D_8028C318[];                /* and their palettes */
+extern unsigned char D_8028C32C[];      /* the class per car kind and tunnel */
+extern int D_8028C328;                  /* the car kind (paint scheme) */
+extern float D_802A9ED4;                /* 1/255 */
+extern float D_802A9ED8;
+extern float D_802A9EDC;
+extern float D_802A9EE0;
+extern int D_80025C60;
+int BrVpAlloc(void);
+void *BrLightAlloc(void);
+void BrVec3Negate(BrVec3 *out, void *v);
+void BrVec3Midpoint(BrVec3 *out, BrVec3 *a, BrVec3 *b);
+float BrVec3Length(BrVec3 *v);
+void guLookAtReflectF(float mf[4][4], int l, float xEye, float yEye, float zEye, float xAt,
+                      float yAt, float zAt, float xUp, float yUp, float zUp);
+void guLookAtHiliteF(float mf[4][4], int l, void *h, float xEye, float yEye, float zEye,
+                     float xAt, float yAt, float zAt, float xUp, float yUp, float zUp,
+                     float xl1, float yl1, float zl1, float xl2, float yl2, float zl2, int twidth,
+                     int theight);
+/* -- end declarations -- */
+
+/* WHAT IT DOES: Draw one car (lod added to the detail level): the ghost's
+ * alpha, the tunnel flag from the trigger it last passed, the level of detail
+ * from the view setting (by distance with two views), the model matrix and
+ * the lighting matrix, nothing more for the player's own car seen from its
+ * in-car views; the light colours (dimmed in tunnels, faded with distance in
+ * rain); the light direction (the sun, or the camera's at night) and the
+ * highlight halfway to the camera; the reflection and highlight look-ats; the
+ * near or far setup list; the lights (a per-car copy pointing back along the
+ * player's heading at night); the render modes; then the body (with the
+ * wheels for a ghost), the brake lamps' and the indicators' colours patched
+ * into their palettes, the near details, the shadow decal when the light is
+ * right, the chrome pass with its scrolling environment map, the windows, and
+ * the wheels.  PC twin: BrCarDrawVehicle. */
+/* @implements 0x80230554 tgr BrCarDraw */
+void BrCarDraw(BrCar *car, int lodBias)
+{
+  int tunnel;
+  int lod;
+  float dist;
+  int near;
+  unsigned int colA;
+  unsigned int colB;
+  unsigned char rB;
+  unsigned char gB;
+  unsigned char bB;
+  float div;
+  int r;
+  int g;
+  int b;
+  void *hilite;
+  int reflect;
+  int look;
+  float atZ;
+  float atX;
+  float eyeX;
+  float eyeY;
+  float eyeZ;
+  BrVec3 toCam;
+  BrVec3 rel;
+  unsigned short *pal;
+  int scroll;
+
+  tunnel = 0;
+  if (D_80351C80[car->slot] == 0) {
+    return;
+  }
+  dist = BrVec3Dist((BrVec3 *)car->mtx0[3], (BrVec3 *)D_8028AAF4->mtx0[3]);
+  if (car->colour[3] == 2) {
+    D_80351D00 = car->x2064 * 255.0;
+    G(0xF8000000, D_8028AB20 << 24 | D_8028AB24 << 16 | D_8028AB28 << 8 | D_80351D00 & 0xFF);
+  }
+  *(int *)car->pad1dc8 = 0;
+  if (car->x2000 != 0 && (((BrTrackObjFl *)D_80025C60)[car->x1fc0[0]].flags & 0x10) != 0) {
+    *(int *)car->pad1dc8 = 1;
+    tunnel = 1;
+  }
+  D_8028AB08 = (BrCarModel *)car->model;
+  lod = D_8028AA9C;
+  if (D_8028AB0C == 2) {
+    if (dist < 40.0) {
+      r = 0;
+    } else {
+      r = 2;
+      if (dist < 80.0) {
+        r = 1;
+      }
+    }
+    if (D_8028AA9C <= r) {
+      lod = r;
+    }
+  }
+  lod += lodBias;
+  if (lod > 2) {
+    lod = 2;
+  }
+  guScaleF(D_8031AB50, D_802A9ED4, D_802A9ED4, D_802A9ED4);
+  guMtxCatF(D_8031AB50, car->mtx0, D_80351CC0);
+  D_80351CA0[car->slot] = (unsigned int)BrMtxAlloc();
+  guMtxF2L(D_80351CC0, (void *)D_80351CA0[car->slot]);
+  guMtxCatF(D_80351CC0, D_8031AA50, D_8031AB10);
+  BrMat4FitRange(D_8031AB10);
+  D_80351CB0[car->slot] = (unsigned int)BrMtxAlloc();
+  guMtxF2L(D_8031AB10, (void *)D_80351CB0[car->slot]);
+  if (car == D_8028AAF0 && (car->cam == &car->cams[0] || car->cam == &car->cam4) && D_8028AA70 == 0) {
+    return;
+  }
+  D_80351C90[car->slot] = lod;
+  if (D_8028AA80 == 0) {
+    if (tunnel == 0) {
+      colA = D_8028AB48 << 8 | D_8028AB40 << 24 | D_8028AB44 << 16;
+      colB = D_8028AB54 << 8 | D_8028AB4C << 24 | D_8028AB50 << 16;
+      rB = D_8028AB4C;
+      bB = D_8028AB54;
+      gB = D_8028AB50;
+    } else {
+      r = (D_8028AB4C << 2) / 5;
+      colA = 0;
+      g = (D_8028AB50 << 2) / 5;
+      b = (D_8028AB54 << 2) / 5;
+      colB = b << 8 | r << 24 | g << 16;
+      bB = b;
+      gB = g;
+      rB = r;
+    }
+  } else {
+    div = dist / 10.0;
+    if (div < 1.0) {
+      div = 1.0;
+    }
+    r = D_8028AB40 / div;
+    if (r < 0) {
+      r = -1;
+    }
+    g = D_8028AB44 / div;
+    if (g < 0) {
+      g = -1;
+    }
+    b = D_8028AB48 / div;
+    if (b < 0) {
+      b = -1;
+    }
+    colA = (b & 0xFF) << 8 | r << 24 | (g & 0xFF) << 16;
+    colB = D_8028AB54 << 8 | D_8028AB4C << 24 | D_8028AB50 << 16;
+    rB = D_8028AB4C;
+    bB = D_8028AB54;
+    gB = D_8028AB50;
+  }
+  G(0x01060040, D_80351CA0[car->slot]);
+  G(0x01030040, D_8028A878);
+  if (D_8028AA80 == 0) {
+    D_80351D08.x = D_8031B338[0];
+    D_80351D08.y = D_8031B338[1];
+    D_80351D08.z = D_8031B338[2];
+  } else if ((BrCarCam *)D_8028AAF4 == &D_8028AAF0->cams[3]) {
+    BrVec3Negate(&D_80351D08, D_8028AAF4);
+  } else {
+    BrVec3Negate(&D_80351D08, D_8028AAF0);
+  }
+  BrVec3Normalise(&D_80351D08);
+  D_80351D18.x = D_80351D08.x;
+  D_80351D18.y = D_80351D08.y;
+  D_80351D18.z = D_80351D08.z;
+  BrVec3Sub(&toCam, (BrVec3 *)D_8028AAF4->mtx0[3], (BrVec3 *)car->mtx0[3]);
+  div = BrVec3Length(&toCam);
+  if (div == 0.0) {
+    BrVec3Negate(&toCam, D_8028AAF4);
+  } else {
+    BrVec3DivBy(&toCam, div);
+  }
+  BrVec3Midpoint(&D_80351D18, &toCam, &D_80351D18);
+  div = BrVec3Length(&D_80351D18);
+  if (div == 0.0) {
+    D_80351D18.x = D_8028AAF4->mtx0[2][0];
+    D_80351D18.y = D_8028AAF4->mtx0[2][1];
+    D_80351D18.z = D_8028AAF4->mtx0[2][2];
+  } else {
+    BrVec3DivBy(&D_80351D18, div);
+  }
+  BrMtxAlloc();
+  hilite = BrLightAlloc();
+  reflect = BrVpAlloc();
+  look = BrVpAlloc();
+  atZ = 0.0;
+  atX = 0.0;
+  if (D_8028AAF4->mtx0[3][0] == car->mtx0[3][0] && D_8028AAF4->mtx0[3][1] == car->mtx0[3][1]) {
+    if (D_8028AAF4->mtx0[3][2] == car->mtx0[3][2]) {
+      atZ = 1.0;
+    } else {
+      atX = D_802A9ED8;
+    }
+  }
+  eyeX = D_8028AAF4->mtx0[0][0];
+  eyeY = D_8028AAF4->mtx0[0][1];
+  eyeZ = D_8028AAF4->mtx0[0][2];
+  if (eyeX == 0.0 && eyeY == 0.0) {
+    eyeX = D_802A9EDC;
+  }
+  guLookAtReflectF(D_8031AB10, reflect, eyeX, eyeY, 0, 0, 0, 0, 0, 0, 1.0f);
+  guLookAtHiliteF(D_8031AB10, look, hilite, D_8028AAF4->mtx0[3][0], D_8028AAF4->mtx0[3][1],
+                  D_8028AAF4->mtx0[3][2], car->mtx0[3][0] + atX, car->mtx0[3][1], car->mtx0[3][2] + atZ,
+                  0, 0, 1.0f, D_80351D18.x, D_80351D18.y, D_80351D18.z, D_80351D18.x, D_80351D18.y,
+                  D_80351D18.z, 64, 64);
+  if (10.0 < dist) {
+    G(0x06000000, D_8028A9C8);
+  } else {
+    G(0x06000000, D_8028A900);
+  }
+  if (D_8028AA80 == 0 && D_8028AA8C == 0) {
+    G(0xBC000002, 0x80000040);
+    G(0x03860010, D_8028A9F8);
+    G(0x03880010, D_8028A9F0);
+  } else {
+    memcpy(&D_80351C10[car->slot * 0x18], D_8028A9F0, 0x18);
+    D_80351C10[car->slot * 0x18 + 0x10] = -(int)(D_8028AAF0->mtx0[0][0] * 120.0);
+    D_80351C10[car->slot * 0x18 + 0x11] = -(int)(D_8028AAF0->mtx0[0][1] * 120.0);
+    D_80351C10[car->slot * 0x18 + 0x12] = -(int)(D_8028AAF0->mtx0[0][2] * 120.0);
+    G(0xBC000002, 0x80000040);
+    G(0x03860010, &D_80351C10[car->slot * 0x18 + 8]);
+    G(0x03880010, &D_80351C10[car->slot * 0x18]);
+  }
+  G(0xE7000000, 0);
+  G(0xBA001001, 0x10000);
+  G(0xB7000000, 0x20205);
+  if (D_8028AA78 != 0) {
+    G(0xB7000000, 0x10000);
+    if (car->colour[3] == 2) {
+      D_8028C300 = 0x0C080000;
+    } else {
+      D_8028C300 = 0xC8000000;
+    }
+  } else {
+    D_8028C300 = 0x0C080000;
+  }
+  G(0xB7000000, D_8028A8AC == D_8028A8A8 ? 0x2000 : 0x1000);
+  G(0xB6000000, D_8028A8AC == D_8028A8A8 ? 0x1000 : 0x2000);
+  if (car->colour[3] == 2) {
+    D_8028C304 = 0x011049D8;
+  } else if (dist < 100.0) {
+    if (car == D_8028AAF0) {
+      D_8028C304 = 0x00112078;
+    } else {
+      D_8028C304 = 0x00112038;
+    }
+  } else {
+    D_8028C304 = 0x00112230;
+  }
+  G(0xBA001402, 0x100000);
+  G(0xB900031D, D_8028C300 | D_8028C304);
+  G(0xFC127FFF, 0xFFFFF238);
+  G(0xBA000C02, D_8028A898);
+  G(0xBA001001, 0);
+  G(0xB6000000, 0xC0000);
+  G(0xBC00000A, colA);
+  G(0xBC00040A, colA);
+  G(0xBC00200A, colB);
+  G(0xBC00240A, colB);
+  if (car->colour[3] == 2) {
+    BrCarDrawWheels(car);
+  }
+  G(0x039E0010, D_80351CB0[car->slot]);
+  G(0x03980010, D_80351CB0[car->slot] + 0x10);
+  G(0x039A0010, D_80351CB0[car->slot] + 0x20);
+  G(0x039C0010, D_80351CB0[car->slot] + 0x30);
+  G(0xFD100000, &D_8028C340);
+  G(0xE8000000, 0);
+  G(0xF50001E0, 0x07000000);
+  G(0xE6000000, 0);
+  G(0xF0000000, 0x0703C000);
+  G(0xE7000000, 0);
+  G(0x03840010, look);
+  G(0x03820010, look + 0x10);
+  if (D_8028DDC8 == 0 && car->x2068 == 0) {
+    G(0xBB000001, 0xFFFFFFFF);
+    G(0xB6000000, 0xC0000);
+    G(0xE8000000, 0);
+    G(0xF5100000, 0x07000000);
+    G(0xF50001F0, 0x06000000);
+    G(0xF5000100, 0x05000000);
+    G(0xB900031D, D_8028C300 | D_8028C304);
+    G(0xFC127FFF, 0xFFFFF238);
+    G(0xBA000E02, 0);
+    G(0xFC1219FF, 0xFFFFFE38);
+    G(0xB6000000, 0x40000);
+    G(0xBC00000A, colA);
+    G(0xBC00040A, colA);
+    G(0xBC00200A, colB);
+    G(0xBC00240A, colB);
+    G(0xBA000C02, D_8028A898);
+    if (D_8028AB08->dl[lod][8] != 0) {
+      G(0x06000000, D_8028AB08->dl[lod][8]);
+    }
+    G(0xBB000001, 0xFFFFFFFF);
+    G(0xB6000000, 0xC0000);
+    G(0xE8000000, 0);
+    G(0xF5100000, 0x07000000);
+    G(0xF50001F0, 0x06000000);
+    G(0xF5000100, 0x05000000);
+  }
+  pal = D_8028AB08->parts[((unsigned char *)D_8028AB08)[0x11A]].b;
+  if (pal != 0) {
+    if (D_8028AA80 == 0 && D_8028AA8C == 0) {
+      pal[12] |= 1;
+      pal[13] |= 1;
+      pal[14] |= 1;
+      pal[15] |= 1;
+    } else {
+      pal[12] &= 0xFFFE;
+      pal[13] &= 0xFFFE;
+      pal[14] &= 0xFFFE;
+      pal[15] &= 0xFFFE;
+    }
+  }
+  pal = D_8028AB08->parts[((unsigned char *)D_8028AB08)[0x11B]].b;
+  if (pal != 0) {
+    if (D_8028AA80 == 0 && D_8028AA8C == 0) {
+      pal[15] = 0x9001;
+      pal[10] = 0xA001;
+    } else {
+      pal[15] = 0x7000;
+      pal[10] = 0x9082;
+    }
+    if ((*car->pad & 0xC0000) == 0) {
+      pal[14] = 0x9001;
+      pal[9] = 0xA001;
+      pal[13] = pal[15];
+      pal[8] = pal[10];
+    } else {
+      pal[14] = 0xC000;
+      pal[13] = 0xC000;
+      pal[9] = 0xF904;
+      pal[8] = 0xF904;
+    }
+    pal[12] = 0x7981;
+    pal[7] = 0x9241;
+    if (car->xe38 < 0.0) {
+      pal[11] = 0xB5AC;
+      pal[6] = 0xFFFE;
+    } else {
+      pal[11] = 0xAD6B;
+      pal[6] = 0xC631;
+    }
+  }
+  G(0xBA001001, 0x10000);
+  G(0xBB000001, 0xFFFFFFFF);
+  G(0xF5100000, 0x07000000);
+  G(0xF50001F0, 0x06000000);
+  G(0xF5000100, 0x05000000);
+  BrVec3Sub(&rel, (BrVec3 *)car->mtx0[3], (BrVec3 *)D_8028AAF4->mtx0[3]);
+  if (0.0 < BrVec3Dot((BrVec3 *)car->mtx0[2], &rel)) {
+    BrTexLoad(6, D_8028AB08->parts);
+    G(0xE7000000, 0);
+    G(0xBA001402, 0x100000);
+    G(0xB900031D, D_8028C300 | D_8028C304);
+    G(0xFC127FFF, 0xFFFFF838);
+    G(0xBC00000A, colA);
+    G(0xBC00040A, colA);
+    G(0xBC00200A, colB);
+    G(0xBC00240A, colB);
+    G(0xBB000001, 0xFFFFFFFF);
+    G(0xF5100000, 0x07000000);
+    G(0xF50001F0, 0x06000000);
+    G(0xF5000100, 0x05000000);
+    if (D_8028AB08->dl[lod][6] != 0) {
+      G(0x06000000, D_8028AB08->dl[lod][6]);
+    }
+  }
+  if (((BrPadRec *)D_8028AAF0->pad)->ghost == 0 || (BrCarCam *)D_8028AAF4 != &D_8028AAF0->cams[3]) {
+    near = dist < 50.0;
+  } else {
+    near = dist < 120.0;
+  }
+  if (D_8028A8A8 == 0 && near && car->colour[3] != 2 && lod * 10 < 10) {
+    BrTexLoad(3, D_8028AB08->parts);
+    G(0xE7000000, 0);
+    G(0xBA001402, 0x100000);
+    G(0xB900031D, D_8028C300 | D_8028C304);
+    G(0xFC127FFF, 0xFFFFF838);
+    G(0xBC00000A, colA);
+    G(0xBC00040A, colA);
+    G(0xBC00200A, colB);
+    G(0xBC00240A, colB);
+    G(0xBB000001, 0xFFFFFFFF);
+    G(0xF5100000, 0x07000000);
+    G(0xF50001F0, 0x06000000);
+    G(0xF5000100, 0x05000000);
+    if (D_8028AB08->dl[lod][3] != 0) {
+      G(0x06000000, D_8028AB08->dl[lod][3]);
+    }
+  }
+  if (D_8028AB0C == 1 && D_8028C334 == 0 && D_8028A8A8 == 0 && D_8028AA84 == 0 && D_8028AA8C == 0 &&
+      (tunnel == 0 || D_8028AA80 != 0) && near && (D_8028AA80 == 0 || car != D_8028AAF0) &&
+      D_8028DDC8 == 0 && car->x2068 == 0) {
+    G(0xE7000000, 0);
+    G(0xBA001402, 0);
+    G(0xB7000000, 0x40000);
+    G(0xBB000001, 0x0F800F80);
+    G(0xBA000C02, D_8028A898);
+    G(0xFA000000, 0xFFFFCCFF);
+    G(0xFCFFFFFF, 0xFFFDF2F9);
+    G(0xB900031D, 0x00504F50);
+    G(0xE8000000, 0);
+    G(0xBA000E02, 0);
+    G(0xFD900000, D_8028AA80 == 0 ? (unsigned int)&D_802A1968 : (unsigned int)&D_802A2170);
+    G(0xF5900000, 0x07018060);
+    G(0xE6000000, 0);
+    G(0xF3000000, 0x073FF200);
+    G(0xE7000000, 0);
+    G(0xF5800800, 0x00018060);
+    G(0xF2000000, 0x000FC0FC);
+    G(0xBA000602, 0xC0);
+    G(0xF2000000 | (((unsigned int *)hilite)[0] & 0xFFF) << 12 | ((unsigned int *)hilite)[1] & 0xFFF,
+      (((unsigned int *)hilite)[0] + 0xFC & 0xFFF) << 12 | ((unsigned int *)hilite)[1] + 0xFC & 0xFFF);
+    if (D_8028AB08->dl[lod][9] != 0) {
+      G(0x06000000, D_8028AB08->dl[lod][9]);
+    }
+    G(0xBA000602, D_8028A8A0);
+  }
+  G(0xE7000000, 0);
+  G(0xBA001402, 0x100000);
+  G(0xB7000000, (D_8028DDCC == 0 ? 0 : 0x80000) | 0x40000);
+  G(0xBB000001, 0x08001000);
+  G(0xBA000C02, D_8028A898);
+  G(0xFC167E2C, 0x55FEF379);
+  if (D_8028AA78 == 0) {
+    G(0xFB000000, D_8028AB20 << 24 | D_8028AB24 << 16 | D_8028AB28 << 8 | 0xFF);
+  } else if (tunnel == 0) {
+    G(0xFB000000, D_8028AB20 << 24 | D_8028AB24 << 16 | D_8028AB28 << 8 | (D_8028AB2C >> 1) + 0x7FU);
+  } else {
+    G(0xFB000000, D_8028AB20 << 24 | D_8028AB24 << 16 | D_8028AB28 << 8 | (D_8028AB2C >> 3) + 0xDFU & 0xFF);
+  }
+  G(0xB900031D, D_8028C300 | D_8028C304);
+  G(0xE8000000, 0);
+  G(0xBA000E02, 0);
+  G(0xFD500000, D_8028C308[D_8028C32C[D_8028C328 * 2 + *(int *)car->pad1dc8]]);
+  G(0xF5500000, 0x0701FC5F);
+  G(0xE6000000, 0);
+  G(0xF3000000, 0x073FF400);
+  G(0xE7000000, 0);
+  G(0xF5400400, 0x0001FC5F);
+  G(0xF2000000, 0x0007C1FC);
+  G(0xE6000000, 0);
+  G(0xFD100000, D_8028C318[D_8028C32C[D_8028C328 * 2 + *(int *)car->pad1dc8]]);
+  G(0xE8000000, 0);
+  G(0xF5000100, 0x07000000);
+  G(0xE6000000, 0);
+  G(0xF0000000, 0x0703C000);
+  G(0xE7000000, 0);
+  G(0xBA000E02, 0x8000);
+  scroll = -(0x40 - (int)(D_8028AAF0->heading * 64.0 * D_802A9EE0));
+  G((scroll + 0x21U & 0xFFF) << 12 | 0xF2000002, (scroll + 0x9DU & 0xFFF) << 12 | 0x1FE);
+  G(0xE7000000, 0);
+  G(0xBC00000A, 0);
+  G(0xBC00040A, 0);
+  G(0xBC00200A, 0);
+  G(0xBC00240A, 0);
+  G(0x03840010, reflect);
+  G(0x03820010, reflect + 0x10);
+  if (D_8028AB08->dl[lod][4] != 0) {
+    G(0x06000000, D_8028AB08->dl[lod][4]);
+  }
+  if ((D_8028DDC8 != 0 || car->x2068 != 0) && D_8028AB08->dl[lod][9] != 0) {
+    G(0x06000000, D_8028AB08->dl[lod][9]);
+  }
+  G(0xBD000000, 0);
+  G(0xB6000000, 0x40000);
+  G(0xBC00000A, colA);
+  G(0xBC00040A, colA);
+  G(0xBC00200A, colB);
+  G(0xBC00240A, colB);
+  G(0xBA000C02, D_8028A898);
+  G(0xBA000E02, 0);
+  if (car->colour[3] != 2) {
+    BrCarDrawWheels(car);
+  }
+  G(0xE7000000, 0);
+  G(0xBA001402, 0);
+  G(0xFC121824, 0xFF33FFFF);
+  D_8028AA3C += *(int *)D_8028AB08;
+}
+
+
 /* WHAT IT DOES: Draw a car's body, when the frame draws cars and the
  * visibility pass marked its body: not the player's own car seen from its
  * third camera, nor a ghost.  Loads the car's model and lighting matrices,

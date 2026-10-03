@@ -338,6 +338,7 @@ va,name,kind
 8022FEF0,BrCarPlaceWheels,func
 8022FFB4,BrCarDrawWheels,func
 802303D4,BrCarVisibility,func
+80230554,BrCarDraw,func
 80232ED4,BrCarDrawBody,func
 80233494,BrMenuBackdropBegin,func
 80233668,BrMenu3DBegin,func
