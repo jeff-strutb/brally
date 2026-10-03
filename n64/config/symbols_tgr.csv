@@ -345,6 +345,7 @@ va,name,kind
 80233880,BrHudArrowDraw,func
 80233E10,BrProjectExtent,func
 80233FDC,BrVtxPoolsReset,func
+80234050,BrTrackShadowDraw,func
 80234FC0,BrDrawSortCmp,func
 80234FF8,BrTrackDrawSetup,func
 80235BAC,BrTrackDraw,func
@@ -754,8 +755,8 @@ va,name,kind
 8026E7D0,__osSetGlobalIntMask,func
 8026E820,osYieldThread,func
 8026EA00,rspbootTextStart,data
-8026EAD0,rspbootTextEnd,data
 8026EAD0,gspF3DEX_fifoTextStart,data
+8026EAD0,rspbootTextEnd,data
 8028CAC0,inflate_mask,data
 802A6130,__osContinitialized,data
 802A6140,osClockRate,data
