@@ -174,31 +174,29 @@ extern int DAT_106ed67c;
 /* @t4-pass 0x1000CB20 2 2026-09-07 probes 38 bytes 96 insns 24 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x1000CB20 3 2026-09-09 probes 10 bytes 96 insns 24 regions 1 rows 2 census no  (hand, fn.py variants: addend order, constant spellings, product/sum locals, store order, all inert or worse) */
 /* @t4-pass 0x1000CB20 4 2026-09-09 probes 10 bytes 96 insns 24 regions 1 rows 2 census yes  (hand, fn.py variants: pair temps, typed/paren/minus forms, shl decompositions, all inert or worse; corpus MISS at +0x33 len 12) */
-/* @t3 0x1000CB20 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 96/96 insns 24/24 rows 1+1 regions 1 oracle EQUIVALENT
- * @t3-effort passes 4 zero-movement 3 4
- * residue is one coalescing fork: the 32000-product chain lands in edx and
- * folds the absolute base into `lea ecx,[edx+A]` where the original keeps
- * ecx and `add ecx,A` (paired by t3.py canon's reloc'd-base lea/add class,
- * ff83432).  Dead probes in the RESIDUE note and the two ledger lines.
- * Do not reopen before the end-grind. */
 /* @implements 0x1000CB20 glide BrViewBuffersRebase */
 
 void BrViewBuffersRebase(void)
 
 {
-  /* ABSOLUTE base addresses (add ecx,imm32, no reloc) -- the same
-   * absolute-address spelling br_scenedl.c proved for its row transforms;
-   * a symbol base emits lea reg,[reg+disp32] instead. */
-  DAT_1035f7d8 = 0x1035fba8 + DAT_106ed67c * 80000;
-  DAT_102e16b0 = 0x1035fba8 + DAT_106ed67c * 80000;
-  /* RESIDUE (4B): the 32000 product's last lea lands in edx and folds the
-   * base add into a lea (orig keeps ecx and a plain add) -- coalescing
-   * residue; temp-binding and addend order probed, both no better. */
-  DAT_1035faec = 0x103874a8 + DAT_106ed67c * 32000;
-  DAT_1035fba4 = 0x103874a8 + DAT_106ed67c * 32000;
-  DAT_102e16ac = 0x102e1710 + DAT_106ed67c * 0x3e800;
-  DAT_1035f7dc = 0x102e1710 + DAT_106ed67c * 0x3e800;
+  char *p;
+
+  /* Each view's buffers are base + slot * size, the base a relocated
+   * symbol.  Built in place (`p = &base; p += ...`) VC5 forms the product
+   * first and adds the base as `add r,offset sym`; written as one
+   * expression it folds the base into `lea r,[r+sym]`. */
+  p = &DAT_1035fba8;
+  p += DAT_106ed67c * 80000;
+  DAT_1035f7d8 = (int)p;
+  DAT_102e16b0 = (int)p;
+  p = &DAT_103874a8;
+  p += DAT_106ed67c * 32000;
+  DAT_1035faec = (int)p;
+  DAT_1035fba4 = (int)p;
+  p = &DAT_102e1710;
+  p += DAT_106ed67c * 0x3e800;
+  DAT_102e16ac = (int)p;
+  DAT_1035f7dc = (int)p;
   return;
 }
 extern uint8_t g_br4B0358;
