@@ -50,7 +50,7 @@ typedef struct BrPendList {
 } BrPendList;
 
 /* pcDropped is the global at 0x106C7C40; may be NULL (see the .c). */
-void BrPendListAdd(BrPendList *pList, void *pItem, uint32_t *pcDropped);
+int  BrPendListAdd(BrPendList *pList, void *pItem, uint32_t *pcDropped);
 
 /* 0x10037070. Record array at ctx+0x8014, indexed indirectly through the
  * 12-byte index table at ctx+0x8110. Stride is 36 bytes: the original does

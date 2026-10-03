@@ -27,23 +27,25 @@
 /* WHAT IT DOES: queue a piece of work to run later.  If the queue is
  * already full the item is dropped, but the counter still moves on. */
 /* port-only variant of BrPendListAdd (matching build uses the #ifdef branch above) */
-void BrPendListAdd(BrPendList *pList, void *pItem, uint32_t *pcDropped)
+int BrPendListAdd(BrPendList *pList, void *pItem, uint32_t *pcDropped)
 {
-    if (pList->count < BR_PENDLIST_MAX) {
-        pList->apItems[pList->count] = pItem;
+    int32_t n = pList->count;
+
+    if (n < BR_PENDLIST_MAX) {
+        pList->apItems[n] = pItem;
         /* The original re-loads the context pointer from 0x106C7C3C here
          * before incrementing -- irrelevant unless the callee moved it, and
          * there is no callee. */
         pList->count++;
-        return;
+        return n;               /* the slot it filled */
     }
 
     /* Over capacity: drop the item, bump the global at 0x106C7C40, and STILL
-     * increment the counter. */
+     * increment the counter; the new count is returned. */
     if (pcDropped != NULL) {          /* DEVIATION: the original's counter is
                                        * a fixed global and is never NULL. */
         (*pcDropped)++;
     }
-    pList->count++;
+    return ++pList->count;
 }
 @end

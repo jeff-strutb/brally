@@ -522,6 +522,7 @@ glide_va,name,module,basis,file
 0x1002F6D0,BrPeerFind,net,manual,src/core/net/br_peerfind.c
 0x1002F790,FUN_1002f790,net,manual,src/core/net/FUN_1002f790.cpp
 0x10030270,BrModelLoad,drawing,description,src/core/drawing/br_model.c
+0x100306D0,BrPendListAdd,gamedata,filed,src/core/gamedata/br_pendlist.c
 0x10030710,BrDevRecMatch,controls,manual,src/core/controls/br_devrec.c
 0x10030DE0,BrSub10037740,gamedata,description,src/core/gamedata/br_carload.c
 0x10030F40,BrArm_100378A0,startup,filed,src/core/startup/br_objlife.c

@@ -57,28 +57,23 @@ uint32_t   g_brPendDropped; /* 0x106C7C40 */
  * already full the item is dropped, but the counter still moves on. */
 /* @t4-pass 0x100306D0 1 2026-09-10 probes 30 bytes 51 insns 16 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x100306D0 2 2026-09-10 probes 30 bytes 51 insns 16 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t3 0x100306D0 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 51/51 insns 16/16 rows 0+0 regions 1 oracle UNCLASSIFIED
- * @t3-effort passes 2 zero-movement 1 2
- * residue after tools/crank.py: 30 compiles this pass, levers accepted: none;
- * every candidate and score is in build/match/crank.log.
- * Do not reopen before the end-grind. */
 /* @implements 0x10037030 d3d BrPendListAdd */
-void BrPendListAdd(BrPendList *pList, void *pItem, uint32_t *pcDropped)
+int BrPendListAdd(BrPendList *pList, void *pItem, uint32_t *pcDropped)
 {
     BrPendCtx *p = g_brPendCtx;
     int32_t n = p->count;
 
+    /* It returns the slot it filled, or the new count (>= the capacity) when
+     * the item is dropped: that return value in eax is what puts the context
+     * pointer in ecx (the 6-byte load) and the count in eax.  The context
+     * pointer is reloaded before the increment, as the original does. */
     if (n < BR_PENDLIST_MAX) {
         p->apItems[n] = pList;
-        /* Reload 0x106C7C3C before incrementing -- the original does.
-         * RESIDUE (0+0 regnorm, T3a): pure eax/ecx rotation from the first
-         * instruction -- the original loads the ctx into ecx (6-byte form)
-         * and the count into eax; every spelling probed (direct derefs, CSE
-         * count, cached p) loads ctx into eax.  30 masked diff bytes. */
         g_brPendCtx->count++;
-    } else {
-        g_brPendDropped++;
-        p->count++;
+        return n;
     }
+    ++g_brPendDropped;
+    n = p->count + 1;
+    p->count = n;
+    return n;
 }
