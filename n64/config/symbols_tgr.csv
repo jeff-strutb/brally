@@ -510,6 +510,7 @@ va,name,kind
 8025658C,BrMixSfx,func
 80256C2C,BrNoteRatesInit,func
 80256D3C,BrMusicLoopSamples,func
+80256DEC,BrModRowRead,func
 802571AC,BrModReset,func
 802575C4,BrMusicInit,func
 802578F4,BrMusicStop,func

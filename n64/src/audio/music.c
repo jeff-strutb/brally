@@ -4,11 +4,19 @@
 
 /* -- declarations -- */
 typedef struct BrModChan {      /* one module channel, 0x18 bytes */
-  unsigned long long pos;       /* 0x00 */
-  char pad08[5];
-  unsigned char xd;             /* 0x0D */
-  unsigned char xe;             /* 0x0E */
-  char pad0f[9];
+  unsigned long long target;    /* 0x00  the tone portamento's target rate */
+  short porta;                  /* 0x08  rate step per tick */
+  short slide;                  /* 0x0A  volume step per tick */
+  unsigned char note;           /* 0x0C */
+  unsigned char smp;            /* 0x0D  the playing instrument, 0 none */
+  unsigned char vol;            /* 0x0E  0..64 */
+  unsigned char fx;             /* 0x0F */
+  unsigned char param;          /* 0x10 */
+  unsigned char inst;           /* 0x11  the row's instrument */
+  unsigned char arp[3];         /* 0x12  arpeggio notes */
+  unsigned char arpIdx;         /* 0x15 */
+  unsigned char arpOn;          /* 0x16 */
+  char pad17;
 } BrModChan;
 typedef struct BrMixVoice {     /* one mixer voice, 0x18 bytes */
   unsigned int pos;             /* 0x00 */
@@ -18,11 +26,15 @@ typedef struct BrMixVoice {     /* one mixer voice, 0x18 bytes */
   int baseVol;                  /* 0x14 */
 } BrMixVoice;
 typedef struct BrModState {
-  short x0;
-  short x2;                     /* 0x02 */
-  short x4;                     /* 0x04 */
-  char pad06[10];
-  unsigned char x10;            /* 0x10 */
+  short x0;                     /* 0x00  ticks per row */
+  short x2;                     /* 0x02  ticks left in the row */
+  short x4;                     /* 0x04  rows left in the pattern */
+  char pad06[2];
+  unsigned char *order;         /* 0x08  the order list */
+  unsigned char *row;           /* 0x0C  the next packed row */
+  unsigned char x10;            /* 0x10  order position */
+  unsigned char len;            /* 0x11  orders in the song */
+  unsigned char restart;        /* 0x12 */
 } BrModState;
 extern BrModChan D_80378DD0[];
 extern BrModState D_80378FA0;
@@ -35,6 +47,7 @@ typedef struct BrSampleLoop {   /* 0x0C bytes */
 extern BrSampleLoop D_80378F50[];
 extern BrMixVoice D_802A4920[6];
 void func_80256720(int param_1,char *param_2);
+unsigned char *BrModRowRead(unsigned char *p);
 void BrModReset(void);
 void osSyncPrintf();
 extern int D_802A49C0;
@@ -44,8 +57,11 @@ typedef struct BrSample {       /* a module instrument's sample header; 8-bit da
   unsigned int len;             /* 0x00 */
   int x4;
   unsigned int loopLen;         /* 0x08 */
-  char pad0c[2];
+  unsigned char vol;            /* 0x0C  0..64 */
+  char pad0d;
   unsigned char loops;          /* 0x0E */
+  char pad0f;
+  signed char relNote;          /* 0x10 */
 } BrSample;
 extern BrSample *D_803787D0[];  /* by instrument number - 1 */
 extern unsigned long long D_80379568[10][12];
@@ -103,6 +119,136 @@ void BrNoteRatesInit(void)
 }
 
 
+/* WHAT IT DOES: Read one packed pattern row (FastTracker II packing: a
+ * byte with the top bit set says which of note, instrument, volume, effect
+ * and parameter follow; otherwise all five are there) into every channel:
+ * a note restarts its instrument's sample at the note's rate (relative
+ * note added), a new instrument without a volume plays at 64; then set up
+ * the row's effect -- arpeggio, portamento up/down, tone portamento toward
+ * the note (no restart), volume slide, set volume, pattern break, speed --
+ * and the voice's volume from the channel's and the instrument's.
+ * Returns the next row.  The bytes are chained into the channel first and
+ * sign-extended into the locals (lbu, then sll/sra); the channel is
+ * indexed, not a pointer, so the count is read once.
+ * RESIDUE (241): register allocation -- the ROM holds the four table
+ * bases in s0-s3 (frame 0x48), ours the row values; the code is otherwise
+ * in the ROM's order (register-blind gap 72). */
+/* @implements 0x80256DEC tgr BrModRowRead */
+unsigned char *BrModRowRead(unsigned char *p)
+{
+  int i;
+  signed char flags;
+  signed char note;
+  unsigned char inst;
+  signed char fx;
+  signed char param;
+  unsigned int smp;
+  unsigned long long target;
+
+  for (i = 0; i < D_802A49C0; i++) {
+    flags = *p++;
+    note = 0;
+    inst = 0;
+    if (flags < 0) {
+      if (flags & 1) {
+        note = D_80378DD0[i].note = *p++;
+      }
+      if (flags & 2) {
+        inst = D_80378DD0[i].inst = *p++;
+      }
+      if (flags & 4) {
+        D_80378DD0[i].vol = *p++;
+      } else if (note != 0) {
+        D_80378DD0[i].vol = 64;
+      }
+      if (flags & 8) {
+        fx = D_80378DD0[i].fx = *p++;
+      } else {
+        fx = 0;
+      }
+      if (flags & 0x10) {
+        param = D_80378DD0[i].param = *p++;
+      } else {
+        param = 0;
+      }
+    } else {
+      note = D_80378DD0[i].note = flags;
+      inst = D_80378DD0[i].inst = *p++;
+      D_80378DD0[i].vol = *p++;
+      fx = D_80378DD0[i].fx = *p++;
+      param = D_80378DD0[i].param = *p++;
+    }
+    if (note != 0) {
+      D_80378DD0[i].note--;
+    }
+    if (inst != 0 && D_80378DD0[i].vol == 0) {
+      D_80378DD0[i].vol = 64;
+    }
+    D_80378DD0[i].porta = 0;
+    D_80378DD0[i].slide = 0;
+    smp = D_80378DD0[i].smp;
+    D_80378DD0[i].arpOn = 0;
+    switch (fx) {
+    case 0:
+      if (param != 0) {
+        D_80378DD0[i].arp[1] = D_80378DD0[i].note + (param >> 4 & 0xf);
+        D_80378DD0[i].arp[2] = D_80378DD0[i].note + (param & 0xf);
+        D_80378DD0[i].arpOn = 1;
+        D_80378DD0[i].arp[0] = D_80378DD0[i].note;
+      }
+      break;
+    case 1:
+      D_80378DD0[i].target = 0;
+      D_80378DD0[i].porta = D_80378DD0[i].param;
+      break;
+    case 2:
+      D_80378DD0[i].porta = -D_80378DD0[i].param;
+      D_80378DD0[i].target = 0;
+      break;
+    case 3:
+      if (smp != 0) {
+        D_80378DD0[i].porta = D_80378DD0[i].param;
+        note = 0;
+        target = (&D_80379568[0][0])[(D_803787D0[smp - 1]->relNote + D_80378DD0[i].note) & 0xffff];
+        D_80378DD0[i].target = target;
+        if (D_802A4798[i].rate > target) {
+          D_80378DD0[i].porta = -D_80378DD0[i].porta;
+        }
+      }
+      break;
+    case 6:
+    case 10:
+      if (D_80378DD0[i].param & 0xf0) {
+        D_80378DD0[i].slide = D_80378DD0[i].param >> 4 & 0xf;
+      } else {
+        D_80378DD0[i].slide = -(D_80378DD0[i].param & 0xf);
+      }
+      break;
+    case 12:
+      D_80378DD0[i].vol = param;
+      break;
+    case 13:
+      D_80378FA0.x4 = 0;
+      break;
+    case 15:
+      D_80378FA0.x0 = D_80378FA0.x2 = D_80378DD0[i].param;
+      break;
+    }
+    if (note != 0) {
+      smp = D_80378DD0[i].inst;
+      D_80378DD0[i].arpIdx = 0;
+      D_802A4798[i].x4 = 0;
+      D_80378DD0[i].smp = smp;
+      D_802A4798[i].pos = (unsigned int)D_803787D0[smp - 1] + 0x28;
+      D_802A4798[i].rate = (&D_80379568[0][0])[(D_803787D0[smp - 1]->relNote + D_80378DD0[i].note) & 0xffff];
+    }
+    if (smp != 0) {
+      D_802A4798[i].baseVol = (D_80378DD0[i].vol * D_803787D0[smp - 1]->vol) >> 6;
+    }
+  }
+  return p;
+}
+
 /* WHAT IT DOES: Reset the module player: playback state flags, and every
  * channel's position, two per-channel bytes (0 and 64, a centred pan or
  * volume). */
@@ -115,9 +261,9 @@ void BrModReset(void)
   D_80378FA0.x4 = 0;
   D_80378FA0.x10 = 0xff;
   for (i = 0; i < D_802A49C0; i++) {
-    D_80378DD0[i].xd = 0;
-    D_80378DD0[i].xe = 0x40;
-    D_80378DD0[i].pos = 0;
+    D_80378DD0[i].smp = 0;
+    D_80378DD0[i].vol = 0x40;
+    D_80378DD0[i].target = 0;
   }
 }
 
@@ -186,7 +332,7 @@ void BrMusicStop(void)
     D_802A4798[i].pos = (unsigned int)D_802A4A08;
     D_802A4798[i].rate = 0;
     D_802A4798[i].baseVol = 0;
-    D_80378DD0[i].xd = 0;
+    D_80378DD0[i].smp = 0;
   }
 }
 
@@ -257,7 +403,7 @@ void BrMusicLoopSamples(void)
   BrSample *smp;
 
   for (i = 0; i < D_802A49C0; i++) {
-    n = D_80378DD0[i].xd;
+    n = D_80378DD0[i].smp;
     if (n != 0) {
       smp = D_803787D0[n - 1];
       if (smp->len + (unsigned int)smp + 0x28 < D_802A4798[i].pos) {
