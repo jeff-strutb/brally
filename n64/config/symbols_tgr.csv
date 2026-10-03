@@ -498,6 +498,7 @@ va,name,kind
 80255018,BrCheatToggleFF20,func
 80255030,BrCheatToggleAA68,func
 80255048,BrCheatInput,func
+80255120,BrPadMapRead,func
 80255910,BrPadConsume,func
 80255934,BrPadEdges,func
 80255954,BrPadStickRepeatPos,func
