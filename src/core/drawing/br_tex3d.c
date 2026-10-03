@@ -980,15 +980,6 @@ int FUN_10024490();
  * level's byte size; returns the source bytes consumed. */
 /* @t4-pass 0x10027E10 2 2026-09-07 probes 150 bytes 227 insns 83 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10027E10 3 2026-09-07 probes 150 bytes 227 insns 83 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t3 0x10027E10 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 227/227 insns 83/83 rows 0+0 regions 1 oracle UNCLASSIFIED
- * @t3-effort passes 2 zero-movement 2 3
- * residue is register colouring only: identical register-blind instruction
- * multiset (rows 0+0), 1 masked region;
- * every row pairs under t3.py's canonical classes.  Effort: 2 counted
- * @t4-pass passes (ledger lines above, zero movement on passes 2 and 3);
- * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x10027E10 glide BrTex3dMipChainLoad */
 
 int BrTex3dMipChainLoad(int param_1,int param_2,int param_3)
@@ -996,10 +987,12 @@ int BrTex3dMipChainLoad(int param_1,int param_2,int param_3)
 {
   int iVar1;
   int iVar2;
-  int iVar3;
-  int iVar4;
+  /* Declared aspect (5, 6) before dimension (3, 4): VC5 makes the later-
+   * declared factor the imul destination, so the dimension lands in eax. */
   int iVar5;
   int iVar6;
+  int iVar3;
+  int iVar4;
   int local_c;
   int local_8;
 
@@ -1009,16 +1002,7 @@ int BrTex3dMipChainLoad(int param_1,int param_2,int param_3)
   iVar6 = *(int *)(param_3 + 0x2a4);
   iVar3 = *(int *)(param_3 + 8);
   iVar4 = *(int *)(param_3 + 0xc);
-  /* RESIDUE (4B): the original's imul copies the DIMENSION into eax
-   * (mov eax,ebx / mov eax,ebp); every probed spelling copies the aspect --
-   * commutative-mult canonicalization, structure exact.  Register-blind
-   * multiset is 0: `mov eax,R`/`imul eax,R` mask to the same bag, so the whole
-   * residue is which register VC5 assigns to eax.  DEAD 2026-09-07: swapping
-   * BOTH written multiply orders (iVar6*iVar3 / iVar5*iVar4) moved nothing --
-   * VC5 canonicalises the integer imul regardless of source order, exactly as
-   * for the commutative FADD.  No N64 twin located (not in build/n64/report.csv),
-   * so the operand-order oracle is unavailable here.
-   * @t4-pass 0x10027E10 1 2026-09-07 probes 1 bytes 227 insns 71 regions 2 rows 4 census no */
+  /* @t4-pass 0x10027E10 1 2026-09-07 probes 1 bytes 227 insns 71 regions 2 rows 4 census no */
   if (iVar5 >= iVar6) {
     *(int *)(param_3 + 0x44) = (iVar3 * iVar6) / iVar4;
   }
