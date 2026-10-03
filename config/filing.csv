@@ -1011,6 +1011,7 @@ glide_va,name,module,basis,file
 0x10058300,BrFontTexFreeAll,drawing,filed,src/core/drawing/br_font.c
 0x10058360,BrFontFreeAndExit,drawing,filed,src/core/drawing/br_font.c
 0x10058380,BrSprFontDraw,drawing,filed,src/core/drawing/br_font.c
+0x100583C0,FUN_100583c0,drawing,filed,src/core/drawing/br_ddrawinit.c
 0x10058540,BrSprFontRectInit_1005F800,drawing,filed,src/core/drawing/br_sprfont.c
 0x10058680,BrSeasonApply,settings,manual,src/core/settings/BrSeasonApply_10058680.cpp
 0x10058900,BrExt_1005FBC0,settings,manual,src/core/settings/br_setupcommit.c

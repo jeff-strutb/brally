@@ -31,8 +31,10 @@ int BrSurfSetColourKey(int, int);
 
 extern int DAT_10ac5d84;
 extern int DAT_10ac5dc4;
-extern int DAT_10ac53e8;
-extern int DAT_10ac53ec;
+/* The image table: 145 {surface, path} records from 0x10AC53E8 (the C++
+ * lane's g_img); slot 0 is the loading screen. */
+typedef struct BrImg { int surf; char *path; } BrImg;
+extern BrImg g_brImg[145];
 extern int DAT_10ac5c5c;
 extern int DAT_10ac5c2c;
 extern int DAT_100a7514;
@@ -54,18 +56,10 @@ typedef void (__fastcall *BrVt0)(int this);
  * 0xFF00. A failed load of a still-named slot is fatal. Returns 1. */
 /* @t4-pass 0x100583C0 2 2026-09-07 probes 88 bytes 381 insns 119 regions 2 rows 3 census yes  (tools/crank.py) */
 /* @t4-pass 0x100583C0 3 2026-09-07 probes 89 bytes 381 insns 119 regions 2 rows 3 census yes  (tools/crank.py) */
-/* @t3 0x100583C0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 381/379 insns 119/118 rows 1+2 regions 2 oracle UNCLASSIFIED
- * @t3-effort passes 2 zero-movement 2 3
- * residue is the either-or layout fork on the bitmap-load loop's exit
- * (jl against jge+jmp, cancelled as the branch triple) -- do-while and
- * top-test respellings probed worse 2026-09-09; two crank census passes.
- * Do not reopen before the end-grind. */
 /* @implements 0x100583C0 glide FUN_100583c0 */
 int FUN_100583c0(void)
 {
   char buf[0x100];
-  int *p;
   int i;
   int h;
   BrVt0 pfn;
@@ -78,8 +72,8 @@ int FUN_100583c0(void)
     }
   }
   if (DAT_10ac5dc4 != 0) {
-    DAT_10ac53e8 = BrBmpLoadSurface(s_images_loading_bmp_100ad71c, 0, 0);
-    if (DAT_10ac53ec != 0 && DAT_10ac53e8 == 0) {
+    g_brImg[0].surf = BrBmpLoadSurface(s_images_loading_bmp_100ad71c, 0, 0);
+    if (g_brImg[0].path != 0 && g_brImg[0].surf == 0) {
       sprintf(buf, s_DDraw_DoInit__loading_bmp_failed_100ad6f0);
       BrFontFreeAndExit(DAT_105bc72c);
       return;
@@ -89,29 +83,25 @@ int FUN_100583c0(void)
     BrSprFontDraw(0, 0, 0, (int)&DAT_100aad0c, DAT_100aad1c);
     pfn = *(BrVt0 *)(*(int *)DAT_10ac5c5c + 0x14);
     pfn(DAT_10ac5c5c);
-    if (DAT_10ac53e8 != 0) {
-      BrSurfFree(DAT_10ac53e8);
-      DAT_10ac53e8 = 0;
+    if (g_brImg[0].surf != 0) {
+      BrSurfFree(g_brImg[0].surf);
+      g_brImg[0].surf = 0;
     }
   }
-  p = &DAT_10ac53ec;
   DAT_10ac5dc4 = DAT_10ac5dc4 + 1;
-  i = 0;
-  for (;;) {
-    if (*p != 0) {
-      h = (p[-1] = BrBmpLoadSurface((char *)*p, 0, 0));
-      if (*p != 0 && h == 0) {
+  /* An indexed loop over a real 145-record array: VC5 rotates it to a
+   * bottom test and, with the array's bound known, tests the record
+   * pointer instead of i -- the original's `cmp esi,end; jl`. */
+  for (i = 0; i < 145; i++) {
+    if (g_brImg[i].path != 0) {
+      g_brImg[i].surf = BrBmpLoadSurface(g_brImg[i].path, 0, 0);
+      if (g_brImg[i].path != 0 && g_brImg[i].surf == 0) {
         sprintf(buf, s_DDraw_DoInit__Bitmap__d_failed_t_100ad6c8, i);
         BrFontFreeAndExit(DAT_105bc72c);
         return;
       }
       *(short *)&DAT_10ac5c2c = (short)(*(short *)&DAT_10ac5c2c + 1);
-      BrSurfSetColourKey(h, 0xff00);
-    }
-    p = p + 2;
-    i = i + 1;
-    if ((int)p >= 0x10ac5874) {
-      break;
+      BrSurfSetColourKey(g_brImg[i].surf, 0xff00);
     }
   }
   return 1;
