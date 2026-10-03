@@ -61,12 +61,13 @@ Functions: FENCED 28, T2 1, T3 4, T4 45.
 | `8021EA80` | `BrRecHalf1` | T4 |
 | `8021EA88` | `BrRecHalf1Dup` | T4 |
 
-## `romfile.c`: loading a ROM file into memory someone else allocates
+## `romfile.c`: loading ROM files into memory someone else allocates; drawing image files
 
 | address | function | tier |
 |---|---|---|
 | `8023DF00` | `BrRomFileLoad` | T4 |
 | `8023DF4C` | `BrRomFileUnpack` | T4 |
+| `8023DF9C` | `BrRomImageDraw` | T2 |
 
 ## `romread.c`: reading words and packed assets out of cartridge ROM, and fixing up models loaded from it
 

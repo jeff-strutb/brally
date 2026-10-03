@@ -10,7 +10,7 @@ void BrTextHighlightOff(void);
 void BrTextAlignLeft(void);
 void BrTextSetFont(int param_1);
 void BrTextPrint(char *s, int x, int y);
-int func_8023DF9C();
+int BrRomImageDraw();
 typedef struct BrRomFile { int start; int end; void *data; } BrRomFile;
 extern BrRomFile D_80271D70;           /* the A and B button images */
 extern BrRomFile D_80271D84;
@@ -88,8 +88,8 @@ void BrFrontPromptSelect(void)
 {
   BrTextHighlightOff();
   BrTextAlignLeft();
-  func_8023DF9C(&D_80271D70,100,0xd8,0xc,0xc,0,0,0,0xff,0,0,0,0xff,0);
-  func_8023DF9C(&D_80271D84,0xa0,0xd8,0xc,0xc,0,0,0,0xff,0,0,0,0xff,0);
+  BrRomImageDraw(&D_80271D70,100,0xd8,0xc,0xc,0,0,0,0xff,0,0,0,0xff,0);
+  BrRomImageDraw(&D_80271D84,0xa0,0xd8,0xc,0xc,0,0,0,0xff,0,0,0,0xff,0);
   BrTextSetFont(0xb);
   BrTextPrint("%wwSelect",0x73,(D_8028AAB4 * 0x13) / 0x14 + -3);
   BrTextPrint("%wwGo Back",0xaf,(D_8028AAB4 * 0x13) / 0x14 + -3);
@@ -102,8 +102,8 @@ void BrFrontPromptContinue(void)
 {
   BrTextHighlightOff();
   BrTextAlignLeft();
-  func_8023DF9C(&D_80271D70,0x66,0xd8,0xc,0xc,0,0,0,0xff,0,0,0,0xff,0);
-  func_8023DF9C(&D_80271D84,0xb2,0xd8,0xc,0xc,0,0,0,0xff,0,0,0,0xff,0);
+  BrRomImageDraw(&D_80271D70,0x66,0xd8,0xc,0xc,0,0,0,0xff,0,0,0,0xff,0);
+  BrRomImageDraw(&D_80271D84,0xb2,0xd8,0xc,0xc,0,0,0,0xff,0,0,0,0xff,0);
   BrTextSetFont(0xb);
   BrTextPrint("%wwContinue",0x76,(D_8028AAB4 * 0x13) / 0x14 + -3);
   BrTextPrint("%wwExit",0xc1,(D_8028AAB4 * 0x13) / 0x14 + -3);
@@ -205,7 +205,7 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
   BrFrameBeginLayout1();
   BrPerfMark(0, 0, 0, 200, 0xFF);
   BrZBufferClear();
-  func_8023DF9C(&D_80272048, 0, 0, 320, 240, r1, g1, b1, 0xFF, r2, g2, b2, 0xFF, 4);
+  BrRomImageDraw(&D_80272048, 0, 0, 320, 240, r1, g1, b1, 0xFF, r2, g2, b2, 0xFF, 4);
   D_80316228 += D_8028AAD8 + D_8028AAD8;
   while (D_80316228 > 6.2831855f) {
     D_80316228 -= 6.2831855f;
@@ -233,7 +233,7 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
   gSPLight(D_8028A858++, D_80271F88, 2);
   gSPClipRatio(D_8028A858++, 6);
   if (D_80271FB0 != 0) {
-    func_8023DF9C(D_80271FB0, D_80271FB4, D_80271FB8, D_80271FBC, D_80271FC0, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF,
+    BrRomImageDraw(D_80271FB0, D_80271FB4, D_80271FB8, D_80271FBC, D_80271FC0, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF,
                   0xFF, 2);
   }
   BrTextSetFont(30);

@@ -381,6 +381,7 @@ va,name,kind
 8023DBC0,BrParticleDraw,func
 8023DF00,BrRomFileLoad,func
 8023DF4C,BrRomFileUnpack,func
+8023DF9C,BrRomImageDraw,func
 8023EDB0,inflate_blocks_reset,func
 8023EE84,inflate_blocks_new,func
 8023EF4C,inflate_blocks,func
