@@ -356,7 +356,11 @@ void BrTextSetFont(int param_1)
  * screen (y measured up from the bottom), nudged in from the edges.
  * RESIDUE (1): the ROM multiplies y * height with y as the first operand;
  * every spelling here (operand order, casts, locals, 80 permuter compiles)
- * puts the converted height first. */
+ * puts the converted height first.
+ *
+ * NEVER RUN IN THE RETAIL GAME: nothing in the ROM refers to 0x8022F694 -- no
+ * jal to it, no lui/addiu pair forming its address (n64rom xref: none), and
+ * no data word holding it (the whole ROM searched for the value). */
 /* @t4-pass 0x8022F694 1 2026-10-03 compiles 121 best 1 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8022F694 2 2026-10-03 compiles 121 best 1 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8022F694 tgr BrTextPrintAt */
