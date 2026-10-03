@@ -347,6 +347,7 @@ va,name,kind
 80233FDC,BrVtxPoolsReset,func
 80234FC0,BrDrawSortCmp,func
 80235BAC,BrTrackDraw,func
+80237980,BrHudDialDraw,func
 8023870C,BrStub8023870C,func
 80238714,BrHudTimeDraw,func
 8023880C,BrHudTimesDraw,func
@@ -361,6 +362,7 @@ va,name,kind
 8023A0BC,BrLightningStep,func
 8023A1C0,BrStub8023A1C0,func
 8023A1C8,BrWeatherStep,func
+8023A784,BrWeatherDraw,func
 8023B130,BrViewportDepthZ,func
 8023B178,BrCarSmokeEmit,func
 8023B418,BrSkidStep,func

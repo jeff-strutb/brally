@@ -141,9 +141,10 @@ Functions: T2 5, T3 12, T4 57.
 | `8021E7DC` | `BrTrackGridCellAt` | T4 |
 | `8021EA0C` | `BrTrackGridCell` | T4 |
 
-## `weather.c`: rain, snow and fog particles
+## `weather.c`: rain, snow and fog particles: their step and their drawing
 
 | address | function | tier |
 |---|---|---|
 | `8023A1C0` | `BrStub8023A1C0` | T4 |
 | `8023A1C8` | `BrWeatherStep` | T2 |
+| `8023A784` | `BrWeatherDraw` | T2 |
