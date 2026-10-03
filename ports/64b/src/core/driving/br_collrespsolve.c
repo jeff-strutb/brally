@@ -554,9 +554,9 @@ void BrCrPlaneResolve(const BrVec3 *pExt, const BrVec3 *pA, float planeD,
         g_brCrPlane.normal.z = (float)sgn * BrCrK_Half;
     face:
         s = (g_brCrPlane.normal.z * pA->z + g_brCrPlane.normal.y * pA->y + pA->x * g_brCrPlane.normal.x) - planeD;
-        g_brCrPlane.normal.x = ((*(const float *)((const char *)pExt + ((0x1dc))))) * g_brCrPlane.normal.x;
-        g_brCrPlane.normal.x = ((*(const float *)((const char *)pExt + ((0x1e0))))) * g_brCrPlane.normal.x;
-        *(float *)&g_brCrPlane.modeFC = ((*(const float *)((const char *)pExt + ((0x1e4))))) * *(float *)&g_brCrPlane.modeFC;
+        g_brCrPlane.normal.x = (((const BrCarBody *)(const void *)pExt)->f01DC) * g_brCrPlane.normal.x;
+        g_brCrPlane.normal.x = (((const BrCarBody *)(const void *)pExt)->f01E0) * g_brCrPlane.normal.x;
+        *(float *)&g_brCrPlane.modeFC = (((const BrCarBody *)(const void *)pExt)->f01E4) * *(float *)&g_brCrPlane.modeFC;
         g_brCrPlaneOut.x = pA->x * (0.0f - s);
         g_brCrPlaneOut.y = (0.0f - s) * pA->y;
         g_brCrPlaneOut.z = (0.0f - s) * pA->z;

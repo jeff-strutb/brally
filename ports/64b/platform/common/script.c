@@ -299,10 +299,33 @@ static void dump_window(void)
     }
 }
 
+/* BR_TRACE_FRAMES=A:B -- the frames BR_GLLOG (glide.c) logs, counted at
+ * BrAppFrame entry from boot as the wasm lane counts them */
+extern int g_plat_tracing;
+
+static void trace_window(void)
+{
+    static int init, a = -1, b = -1;
+    static unsigned n;
+    n++;
+    if (!init) {
+        const char *e = getenv("BR_TRACE_FRAMES");
+        init = 1;
+        if (e)
+            sscanf(e, "%d:%d", &a, &b);
+    }
+    if (a >= 0) {
+        g_plat_tracing = (int)n >= a && (int)n <= b;
+        if ((int)n == a || (int)n == b + 1)
+            fprintf(stderr, "== frame %u\n", n);
+    }
+}
+
 /* BrAppFrame's entry: one script frame */
 void plat_app_frame(void)
 {
     int i;
+    trace_window();
     dump_window();
     if (!s_loaded)
         load();

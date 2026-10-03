@@ -638,12 +638,7 @@ BR_GLOBAL_EXTENT(int, DAT_100aa030, , 0x8);  /* 0x100AA030 */
 float g_BrCamScale;  /* 0x100AA03C */
 float DAT_100aa040;  /* 0x100AA040 */
 int g_brMode0AA8B4;  /* 0x100AA044 */
-BR_GLOBAL_EXTENT(char, DAT_100aa048, , 0x3);  /* 0x100AA048 */
-BR_GLOBAL_EXTENT(char, DAT_100aa04c, , 0x3);  /* 0x100AA04C */
-BR_GLOBAL_EXTENT(char, DAT_100aa050, , 0x3);  /* 0x100AA050 */
-BR_GLOBAL_EXTENT(char, DAT_100aa054, , 0x3);  /* 0x100AA054 */
-BR_GLOBAL_EXTENT(char, DAT_100aa058, , 0x3);  /* 0x100AA058 */
-BR_GLOBAL_EXTENT(char, DAT_100aa05c, , 0xB);  /* 0x100AA05C */
+uint32_t DAT_100aa048[8];  /* 0x100AA048: BrDlRecolor's 0xFC row and its two match pairs */
 unsigned char g_BrDlTableA[192];  /* 0x100AA068 */
 BR_GLOBAL_EXTENT(int, DAT_100aa128, , 0xBC);  /* 0x100AA128 */
 BR_GLOBAL_EXTENT(int, DAT_100aa1e8, , 0xBC);  /* 0x100AA1E8 */

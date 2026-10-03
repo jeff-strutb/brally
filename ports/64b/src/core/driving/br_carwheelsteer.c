@@ -51,9 +51,10 @@ typedef struct BrVec3_ { float x, y, z; } BrVec3_;
 /* Retranscribed from the bytes once both callees were matched: the anchor
  * transforms read the CAR's combined matrix (+0x220), not the rotation
  * temp; BrMat4Mul takes its output last; three matrix locals (0xC0 frame);
- * the replay flag is tested first; float fields read through a float
- * pointer (a char-offset cast moves them through the x87 instead of
- * integer registers).  The closing decay subtracts a LITERAL 0.254f (the
+ * the replay flag is tested first.  The original reads the body fields
+ * through a float pointer at byte offsets from the record; here they are
+ * the named fields (the record is laid out differently on a 64-bit host).
+ * The closing decay subtracts a LITERAL 0.254f (the
  * original's 0x10077794): an extern could alias the car fields, so VC5 kept
  * each subtract behind the previous store; a literal lets all four loads
  * and subtracts run ahead of the stores, as the original does. */
@@ -61,7 +62,6 @@ typedef struct BrVec3_ { float x, y, z; } BrVec3_;
 void __fastcall BrCarWheelSteerStep_1005ACE0(BrDriverCar *pCar)
 {
     BrMat4_ rot, rot2, rot3;
-    float  *pf = &pCar->fwd.x;
 
     if ((*(int *)&DAT_105ccb68[8]) != 0) {
         BrReplayApplyCar(pCar);
@@ -78,36 +78,36 @@ void __fastcall BrCarWheelSteerStep_1005ACE0(BrDriverCar *pCar)
         BrReplayRecord(pCar);
     }
 
-    BrMat4RotateAxis(&rot, pf[0x338 / 4], 1.0f, 0.0f, 0.0f);
+    BrMat4RotateAxis(&rot, pCar->aBody[0].rb.f1D4, 1.0f, 0.0f, 0.0f);
     BrMat4Mul(&rot, (const BrMat4_ *)&pCar->aBody[0].rb.m.m[0], (BrMat4_ *)&pCar->fwd.x);
-    pf[0x464 / 4] = pf[0x464 / 4] - DAT_1007778c;
-    pf[0x670 / 4] = pf[0x670 / 4] - DAT_1007778c;
-    pf[0x87c / 4] = pf[0x87c / 4] - DAT_1007778c;
-    pf[0xa88 / 4] = pf[0xa88 / 4] - DAT_1007778c;
+    pCar->aBody[1].rb.m.m[3][2] = pCar->aBody[1].rb.m.m[3][2] - DAT_1007778c;
+    pCar->aBody[2].rb.m.m[3][2] = pCar->aBody[2].rb.m.m[3][2] - DAT_1007778c;
+    pCar->aBody[3].rb.m.m[3][2] = pCar->aBody[3].rb.m.m[3][2] - DAT_1007778c;
+    pCar->aBody[4].rb.m.m[3][2] = pCar->aBody[4].rb.m.m[3][2] - DAT_1007778c;
 
-    BrMat4RotateAxis(&rot, pf[0x544 / 4], 0.0f, 1.0f, 0.0f);
+    BrMat4RotateAxis(&rot, pCar->aBody[1].rb.f1D4, 0.0f, 1.0f, 0.0f);
     BrMat4Mul(&rot, (const BrMat4_ *)&pCar->aBody[0].rb.m.m[0], (BrMat4_ *)&pCar->aWheel[2].m[0]);
     BrMat4TransformPoint((BrVec3_ *)&pCar->aWheel[2].m[3], (const BrMat4_ *)&pCar->aBody[0].rb.m.m[0], (const BrVec3_ *)&pCar->aBody[1].rb.m.m[3]);
 
-    BrMat4RotateAxis(&rot, pf[0x95c / 4], 0.0f, 1.0f, 0.0f);
+    BrMat4RotateAxis(&rot, pCar->aBody[3].rb.f1D4, 0.0f, 1.0f, 0.0f);
     BrMat4Mul(&rot, (const BrMat4_ *)&pCar->aBody[0].rb.m.m[0], (BrMat4_ *)&pCar->aWheel[3].m[0]);
     BrMat4TransformPoint((BrVec3_ *)&pCar->aWheel[3].m[3], (const BrMat4_ *)&pCar->aBody[0].rb.m.m[0], (const BrVec3_ *)&pCar->aBody[3].rb.m.m[3]);
 
-    BrMat4RotateAxis(&rot3, pf[0x750 / 4], 0.0f, 1.0f, 0.0f);
-    BrMat4RotateAxis(&rot2, pf[0x73c / 4] * DAT_10077790, 0.0f, 0.0f, 1.0f);
+    BrMat4RotateAxis(&rot3, pCar->aBody[2].rb.f1D4, 0.0f, 1.0f, 0.0f);
+    BrMat4RotateAxis(&rot2, pCar->aBody[2].rb.f1C0 * DAT_10077790, 0.0f, 0.0f, 1.0f);
     BrMat4Mul(&rot3, &rot2, &rot);
     BrMat4Mul(&rot, (const BrMat4_ *)&pCar->aBody[0].rb.m.m[0], (BrMat4_ *)&pCar->aWheel[1].m[0]);
     BrMat4TransformPoint((BrVec3_ *)&pCar->aWheel[1].m[3], (const BrMat4_ *)&pCar->aBody[0].rb.m.m[0], (const BrVec3_ *)&pCar->aBody[2].rb.m.m[3]);
 
-    BrMat4RotateAxis(&rot3, pf[0xb68 / 4], 0.0f, 1.0f, 0.0f);
-    BrMat4RotateAxis(&rot2, pf[0xb54 / 4] * DAT_10077790, 0.0f, 0.0f, 1.0f);
+    BrMat4RotateAxis(&rot3, pCar->aBody[4].rb.f1D4, 0.0f, 1.0f, 0.0f);
+    BrMat4RotateAxis(&rot2, pCar->aBody[4].rb.f1C0 * DAT_10077790, 0.0f, 0.0f, 1.0f);
     BrMat4Mul(&rot3, &rot2, &rot);
     BrMat4Mul(&rot, (const BrMat4_ *)&pCar->aBody[0].rb.m.m[0], (BrMat4_ *)&pCar->aWheel[0].m[0]);
     BrMat4TransformPoint((BrVec3_ *)&pCar->aWheel[0].m[3], (const BrMat4_ *)&pCar->aBody[0].rb.m.m[0], (const BrVec3_ *)&pCar->aBody[4].rb.m.m[3]);
 
-    pf[0x464 / 4] = pf[0x464 / 4] - 0.254f;
-    pf[0x670 / 4] = pf[0x670 / 4] - 0.254f;
-    pf[0x87c / 4] = pf[0x87c / 4] - 0.254f;
-    pf[0xa88 / 4] = pf[0xa88 / 4] - 0.254f;
+    pCar->aBody[1].rb.m.m[3][2] = pCar->aBody[1].rb.m.m[3][2] - 0.254f;
+    pCar->aBody[2].rb.m.m[3][2] = pCar->aBody[2].rb.m.m[3][2] - 0.254f;
+    pCar->aBody[3].rb.m.m[3][2] = pCar->aBody[3].rb.m.m[3][2] - 0.254f;
+    pCar->aBody[4].rb.m.m[3][2] = pCar->aBody[4].rb.m.m[3][2] - 0.254f;
 }
 

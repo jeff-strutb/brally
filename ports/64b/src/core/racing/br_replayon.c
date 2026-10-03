@@ -114,7 +114,7 @@ int BrSetMode5(void)
 char * BrReplayGetBuf(void)
 
 {
-  return &(*(int *)&g_BrReplayBuf);
+  return (char *)&g_BrReplayBuf[0];
 }
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
@@ -125,7 +125,8 @@ char * BrReplayGetBuf(void)
 char * BrReplayGetBuf2(void)
 
 {
-  return &(*(int *)&g_BrReplayBuf[1572864]);
+  /* the original's +0x180000 BYTES: player 1's frames, record 1 << 16 */
+  return (char *)&g_BrReplayBuf[1 << 16];
 }
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */

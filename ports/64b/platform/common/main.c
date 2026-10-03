@@ -18,6 +18,7 @@ int main(int argc, char **argv)
 {
     char cmd[1024] = "";
     int i, r;
+    plat_mark_main_thread();
     g_plat_log = getenv("BR_LOG") != NULL;
     host_init(argc, argv);
     plat_script_files();            /* script_game.c: save fixtures, before the game reads them */

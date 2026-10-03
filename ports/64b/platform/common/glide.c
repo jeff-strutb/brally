@@ -8,6 +8,8 @@
  * page). A decoded RGBA8 copy is cached per (address, format, size) and
  * dropped when a download overwrites its bytes. */
 #include <math.h>
+#include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -20,6 +22,41 @@
 static brr_state s_st;
 static int s_w = 640, s_h = 480, s_lower_left, s_cformat;
 static int s_depth_mode;
+
+/* ---- the call log ------------------------------------------------------------- */
+/* BR_GLLOG=PATH: during the frames BR_TRACE_FRAMES=A:B selects (script.c),
+ * the Glide calls one per line with the vertices expanded, in the wasm
+ * lane's text (ports/macos/wasm/host/host_glide.m), so the two streams diff
+ * call by call. */
+int g_plat_tracing;
+static FILE *s_gllog;
+
+static void gllog(const char *fmt, ...)
+{
+    static int init;
+    va_list ap;
+    if (!g_plat_tracing)
+        return;
+    if (!init) {
+        const char *p = getenv("BR_GLLOG");
+        init = 1;
+        if (p && (s_gllog = fopen(p, "w")) != NULL)
+            setvbuf(s_gllog, NULL, _IONBF, 0);
+    }
+    if (!s_gllog)
+        return;
+    va_start(ap, fmt);
+    vfprintf(s_gllog, fmt, ap);
+    va_end(ap);
+    fputc('\n', s_gllog);
+}
+
+static void gllog_vtx(const GrVertex *v)
+{
+    if (g_plat_tracing && s_gllog)
+        fprintf(s_gllog, "  v %.4g %.4g z%.4g w%.4g st %.4g %.4g rgba %.4g %.4g %.4g %.4g\n",
+                v->x, v->y, v->ooz, v->oow, v->tmuvtx[0].sow, v->tmuvtx[0].tow, v->r, v->g, v->b, v->a);
+}
 
 /* ---- colours: GrColor_t in the format grSstWinOpen chose, to ARGB ----------- */
 static uint32_t argb(GrColor_t c)
@@ -89,6 +126,7 @@ void grSstWinClose(void) {}
 /* ---- frame ------------------------------------------------------------------------- */
 void grClipWindow(FxU32 x0, FxU32 y0, FxU32 x1, FxU32 y1)
 {
+    gllog("grClipWindow %u %u %u %u", x0, y0, x1, y1);
     s_st.clip_x0 = (int32_t)x0;
     s_st.clip_x1 = (int32_t)x1;
     if (s_lower_left) {
@@ -103,6 +141,7 @@ void grClipWindow(FxU32 x0, FxU32 y0, FxU32 x1, FxU32 y1)
 void grBufferClear(GrColor_t color, GrAlpha_t alpha, FxU16 depth)
 {
     uint32_t c = (argb(color) & 0x00FFFFFFu) | (uint32_t)alpha << 24;
+    gllog("grBufferClear %08X %u %u", color, alpha, depth);
     brr_clear(c, depth / 65535.0f, 1, s_st.depth_mode != 0, &s_st);
 }
 
@@ -111,6 +150,7 @@ void plat_text_swap(void);         /* script_game.c */
 void grBufferSwap(int interval)
 {
     (void)interval;
+    gllog("grBufferSwap");
     plat_text_swap();
     brr_present();
     plat_pump(0);
@@ -121,21 +161,24 @@ int grBufferNumPending(void) { return 0; }
 /* ---- state ----------------------------------------------------------------------------- */
 void grColorCombine(GrCombineFunction_t f, GrCombineFactor_t fa, GrCombineLocal_t l, GrCombineOther_t o, FxBool inv)
 {
+    gllog("grColorCombine %u %u %u %u %u", f, fa, l, o, inv);
     s_st.cc_fn = f; s_st.cc_factor = fa; s_st.cc_local = l; s_st.cc_other = o; s_st.cc_invert = inv;
 }
 void grAlphaCombine(GrCombineFunction_t f, GrCombineFactor_t fa, GrCombineLocal_t l, GrCombineOther_t o, FxBool inv)
 {
+    gllog("grAlphaCombine %u %u %u %u %u", f, fa, l, o, inv);
     s_st.ac_fn = f; s_st.ac_factor = fa; s_st.ac_local = l; s_st.ac_other = o; s_st.ac_invert = inv;
 }
 void grAlphaBlendFunction(GrAlphaBlendFnc_t rs, GrAlphaBlendFnc_t rd, GrAlphaBlendFnc_t as, GrAlphaBlendFnc_t ad)
 {
+    gllog("grAlphaBlendFunction %u %u %u %u", rs, rd, as, ad);
     s_st.blend_rgb_src = rs; s_st.blend_rgb_dst = rd; s_st.blend_a_src = as; s_st.blend_a_dst = ad;
 }
 void grAlphaTestFunction(GrCmpFnc_t f) { s_st.atest_fn = f; }
 void grAlphaTestReferenceValue(GrAlpha_t v) { s_st.atest_ref = v; }
-void grConstantColorValue(GrColor_t v) { s_st.constant = argb(v); }
+void grConstantColorValue(GrColor_t v) { gllog("grConstantColorValue %08X", v); s_st.constant = argb(v); }
 void grCullMode(GrCullMode_t m) { s_st.cull = m; }
-void grDepthBufferMode(GrDepthBufferMode_t m) { s_depth_mode = m; s_st.depth_mode = m; }
+void grDepthBufferMode(GrDepthBufferMode_t m) { gllog("grDepthBufferMode %u", m); s_depth_mode = m; s_st.depth_mode = m; }
 void grDepthBufferFunction(GrCmpFnc_t f) { s_st.depth_fn = f; }
 void grDepthMask(FxBool m) { s_st.depth_mask = m; }
 void grFogMode(GrFogMode_t m) { s_st.fog_mode = m; }
@@ -157,6 +200,7 @@ void guFogGenerateLinear(GrFog_t ft[GR_FOG_TABLE_SIZE], float nearZ, float farZ)
 void grTexCombine(GrChipID_t tmu, GrCombineFunction_t rf, GrCombineFactor_t rfa, GrCombineFunction_t af,
                   GrCombineFactor_t afa, FxBool ri, FxBool ai)
 {
+    gllog("grTexCombine %u %u %u %u %u %u", rf, rfa, af, afa, ri, ai);
     if (tmu != 0)
         return;
     s_st.tc_rgb_fn = rf; s_st.tc_rgb_factor = rfa; s_st.tc_alpha_fn = af;
@@ -293,6 +337,12 @@ void grTexDownloadMipMap(GrChipID_t tmu, FxU32 start, FxU32 evenOdd, GrTexInfo *
     n = mem_required(info->smallLod, info->largeLod, info->aspectRatio, info->format);
     if (start + n > TMU_RAM)
         n = TMU_RAM - start;
+    if (g_plat_tracing && s_gllog) {
+        uint32_t hsh = 2166136261u, k;
+        for (k = 0; k < n; k++)
+            hsh = (hsh ^ ((const uint8_t *)info->data)[k]) * 16777619u;
+        gllog("grTexDownloadMipMap start %u n %u fmt %u hash %08X", start, n, info->format, hsh);
+    }
     memcpy(s_tmem + start, info->data, n);
     end = start + n;
     /* anything decoded from the bytes just overwritten is stale */
@@ -309,6 +359,8 @@ void grTexDownloadMipMap(GrChipID_t tmu, FxU32 start, FxU32 evenOdd, GrTexInfo *
 void grTexSource(GrChipID_t tmu, FxU32 start, FxU32 evenOdd, GrTexInfo *info)
 {
     (void)evenOdd;
+    if (info)
+        gllog("grTexSource start %u fmt %u large %u aspect %u", start, info->format, info->largeLod, info->aspectRatio);
     if (tmu != 0)
         return;
     s_st.texture = 0;
@@ -378,6 +430,10 @@ static void vert(brr_vertex *o, const GrVertex *v)
 void grDrawTriangle(const GrVertex *a, const GrVertex *b, const GrVertex *c)
 {
     brr_vertex v[3];
+    gllog("grDrawTriangle");
+    gllog_vtx(a);
+    gllog_vtx(b);
+    gllog_vtx(c);
     vert(&v[0], a);
     vert(&v[1], b);
     vert(&v[2], c);
@@ -390,13 +446,14 @@ void grDrawPolygonVertexList(int n, const GrVertex vl[])
 {
     brr_vertex v[3 * 64];
     int i, k = 0;
+    gllog("grDrawPolygonVertexList %d", n);
+    for (i = 0; i < n && i < 16; i++)
+        gllog_vtx(&vl[i]);
+    if (s_src_dirty && s_src_set)
+        tex_resolve();
     for (i = 1; i + 1 < n; i++) {
         if (k == 3 * 64) {
-            if (s_src_dirty && s_src_set)
-                tex_resolve();
-            if (s_src_dirty && s_src_set)
-            tex_resolve();
-        brr_draw(&s_st, v, k);
+            brr_draw(&s_st, v, k);
             k = 0;
         }
         vert(&v[k++], &vl[0]);
@@ -411,6 +468,7 @@ FxBool grLfbWriteRegion(GrBuffer_t dst, FxU32 x, FxU32 y, GrLfbSrcFmt_t fmt, FxU
                         FxI32 stride, void *data)
 {
     (void)dst;
+    gllog("grLfbWriteRegion buf %u x %u y %u fmt %u w %u h %u stride %d", dst, x, y, fmt, w, h, stride);
     if (fmt == 0) {              /* GR_LFB_SRC_FMT_565 */
         brr_lfb_write((int)x, s_lower_left ? s_h - (int)y - (int)h : (int)y, (int)w, (int)h,
                       (const uint16_t *)data, stride);

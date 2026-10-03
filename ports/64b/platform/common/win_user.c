@@ -172,7 +172,7 @@ static void qpush(HWND h, UINT m, WPARAM wp, LPARAM lp)
     s_q[s_qt].message = m;
     s_q[s_qt].wParam = wp;
     s_q[s_qt].lParam = lp;
-    s_q[s_qt].time = timeGetTime();
+    s_q[s_qt].time = plat_time_ms();
     s_qt = n;
 }
 
@@ -205,7 +205,7 @@ UINT_PTR WINAPI SetTimer(HWND h, UINT_PTR id, UINT ms, TIMERPROC fn)
     s_timer[i].id = id ? id : (UINT_PTR)(i + 1);
     s_timer[i].ms = ms;
     s_timer[i].fn = fn;
-    s_timer[i].due = timeGetTime() + ms;
+    s_timer[i].due = plat_time_ms() + ms;
     s_timer[i].live = 1;
     return s_timer[i].id;
 }
@@ -223,7 +223,7 @@ BOOL WINAPI KillTimer(HWND h, UINT_PTR id)
 
 static void timers(void)
 {
-    DWORD now = timeGetTime();
+    DWORD now = plat_time_ms();
     int i;
     for (i = 0; i < 16; i++) {
         ptimer *t = &s_timer[i];
@@ -291,6 +291,10 @@ void plat_pump(uint32_t wait_ms)
 {
     host_event ev;
     uint32_t w = wait_ms;
+    if (w && plat_vclock_main()) {       /* virtual time: the wait costs its length */
+        plat_vclock_advance((uint64_t)w * 1000u);
+        w = 0;
+    }
     while (host_poll_event(&ev, w)) {
         w = 0;
         plat_deliver(&ev);
@@ -363,7 +367,7 @@ BOOL WINAPI TranslateMessage(const MSG *m) { (void)m; return FALSE; }
 LRESULT WINAPI DispatchMessageA(const MSG *m)
 {
     if (m->message == WM_TIMER && m->lParam) {
-        ((TIMERPROC)m->lParam)(m->hwnd, WM_TIMER, m->wParam, timeGetTime());
+        ((TIMERPROC)m->lParam)(m->hwnd, WM_TIMER, m->wParam, plat_time_ms());
         return 0;
     }
     return send(W(m->hwnd), m->message, m->wParam, m->lParam);

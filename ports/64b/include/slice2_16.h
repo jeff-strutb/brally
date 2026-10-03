@@ -534,22 +534,23 @@ void BrGbiTexScanTexture(const BrGfxWords *pCmd);
  * code a5. DEVIATION: the function pointer is a parameter (the original
  * reads the global) and the machine words are typed uintptr_t so that any
  * of them that is really a pointer survives on a 64-bit host. */
-typedef uintptr_t (*BrGbiBlitFn)(uintptr_t a1, uintptr_t a2, uintptr_t a3,
-                            uintptr_t a4, uintptr_t pitch, uintptr_t a5,
-                            uintptr_t a6, uintptr_t a7, uintptr_t a8,
-                            uintptr_t a9, uintptr_t a10, uintptr_t a11,
-                            uintptr_t a12, uintptr_t a13, uintptr_t a14);
+/* The slot holds BrTex3dCreate (0x100272F0): the source and palette, then
+ * thirteen ints with the row pitch fifth, and the texture's slot index back.
+ * The hook's type is the target's own: past the eighth argument a 64-bit
+ * ABI passes them in memory at their own width (4-byte slots on Apple
+ * arm64), so a caller with wider argument types than the callee reads its
+ * arguments from the wrong places. */
+typedef int (*BrGbiBlitFn)(const void *pSrc, const void *pPal, int w, int h,
+                           int pitch, int fmt, int siz, int a7, int a8,
+                           int a9, int a10, int a11, int a12, int a13, int a14);
 /* BrGbiBlit: prototype in br_funcs.h */
 
 /* The backend texture constructor at 0x118AA0B0, shared by 0x1002A280 and
  * 0x1002A740. Fourteen arguments; the port makes it a parameter. */
-typedef void *(*BrGbiTexCreateFn)(void *pSrc, uintptr_t a2,
-                                  uint32_t w, uint32_t h,
-                                  uint32_t fmt, uint32_t siz,
-                                  uint32_t b31, uint32_t b30,
-                                  uint32_t b29, uint32_t b28,
-                                  uint32_t a11, uint32_t a12,
-                                  uint32_t a13, uintptr_t a14);
+typedef int (*BrGbiTexCreateFn)(const void *pSrc, const void *pPal,
+                                int w, int h, int fmt, int siz,
+                                int b31, int b30, int b29, int b28,
+                                int a11, int a12, int a13, int a14);
 
 /* The record 0x1002A280 works on. Field offsets in the original are quoted;
  * they are not reproduced literally because pTex widens on a 64-bit host. */

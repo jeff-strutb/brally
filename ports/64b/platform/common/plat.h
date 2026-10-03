@@ -26,6 +26,11 @@ extern int g_plat_log;
 
 /* ---- windows and input (win_user.c) --------------------------------------- */
 void  plat_pump(uint32_t wait_ms);       /* host events -> window messages */
+void  plat_mark_main_thread(void);      /* win_kernel.c: BR_VCLOCK's clock moves on this thread */
+int   plat_vclock(void);                /* BR_VCLOCK set */
+int   plat_vclock_main(void);           /* ... and this is the main thread */
+void  plat_vclock_advance(uint64_t us);
+DWORD plat_time_ms(void);              /* timeGetTime's value, not spending a BR_VCLOCK tick */
 void  plat_deliver(const host_event *ev); /* one host event -> window messages, key state */
 void  plat_mouse_move(int dx, int dy);    /* dx.c: DirectInput mouse */
 void  plat_mouse_button(int down);

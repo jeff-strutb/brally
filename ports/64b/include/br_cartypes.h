@@ -45,7 +45,7 @@ typedef struct BrCarBody {
     float f01F4;                             /* +0x01F4 */
     int f01F8;                               /* +0x01F8 */
     uint8_t f01FC;                           /* +0x01FC */
-    uint8_t _pad01FD[0x1];
+    uint8_t gripClass;                       /* +0x01FD  row of the grip table (br_carphys.c) */
     char f01FE;                              /* +0x01FE */
     uint8_t f01FF;                           /* +0x01FF */
     uint8_t f0200;                           /* +0x0200 */

@@ -263,8 +263,8 @@ void BrTexInit(void)
 
     (*(void (**)(void))&g_BrDrawModelDlHook) = BrTex3dRecCopyHead;
     g_18ED1C0 = BrTex3dExpandInto;
-    (*(void (**)(void))&g_pfn18ED1C4) = BrTex3dCreate;
-    (*(void (**)(void))&g_pfn18AA0B0) = BrGbiBlit;
+    g_pfn18ED1C4 = BrTex3dCreate;
+    g_pfn18AA0B0 = BrGbiBlit;
     (*(void (**)(void))&DAT_118ed1cc) = BrTex3dMakeCurrent;
     DAT_118ed1d0 = BrTex3dReDownload;
     DAT_118ed1d4 = BrTexSlotFetchPixels;

@@ -249,7 +249,7 @@ void BrCarPhysSpring(BrRbBodyFull *pBody)
         contact = *(int32_t *)&pWheel->f1B4;
         pNode   = pNode->pNext;
         if (contact != 0 && wasLo == 0) {
-            ((unsigned char *)pBody)[0x208] = (unsigned char)BR_CP_TOUCHDOWN;
+            ((BrCarBody *)(void *)pBody)->f0208 = (char)BR_CP_TOUCHDOWN;
         }
     }
 }
@@ -651,7 +651,7 @@ void BrCarPhysTyre(BrTyreView *pBody, BrTyreView *pWheel, float *pA,
             if (row > 2 || row < 0)
                 row = 0;
             row = row * 8;
-            idx = row + ((unsigned char *)pBody)[0x1FD] * 24
+            idx = row + ((const BrCarBody *)(const void *)pBody)->gripClass * 24
                 + ((pWheel->hit.surface + pWheel->hit.surface + 1) >> 1);
             q = g_pBrCarPhysGrip[idx] * q;
         }
@@ -899,10 +899,10 @@ void __fastcall BrCarPhysStep(BrDriverCar *pCar)
     *(BrCpStateImage *)&pCar->aBody[0].rb.st.pos.x = *(BrCpStateImage *)&pCar->aBody[0].rb.st2.pos.x;
     BrWheelSuspensionSetZ((BrRbBodyFull *)pBody);
 
-    BrRbBuildMatrix((BrMat4 *)(((*(char * *)&pCar->aBody[0].rb.child[((0))])) + 0xbc), (BrRbState *)(((*(char * *)&pCar->aBody[0].rb.child[((0))])) + 0x78));
-    BrRbBuildMatrix((BrMat4 *)(((*(char * *)&pCar->aBody[0].rb.child[((1))])) + 0xbc), (BrRbState *)(((*(char * *)&pCar->aBody[0].rb.child[((1))])) + 0x78));
-    BrRbBuildMatrix((BrMat4 *)(((*(char * *)&pCar->aBody[0].rb.child[((2))])) + 0xbc), (BrRbState *)(((*(char * *)&pCar->aBody[0].rb.child[((2))])) + 0x78));
-    BrRbBuildMatrix((BrMat4 *)(((*(char * *)&pCar->aBody[0].rb.child[((3))])) + 0xbc), (BrRbState *)(((*(char * *)&pCar->aBody[0].rb.child[((3))])) + 0x78));
+    BrRbBuildMatrix((BrMat4 *)&pCar->aBody[0].rb.child[0]->m, (BrRbState *)&pCar->aBody[0].rb.child[0]->st);
+    BrRbBuildMatrix((BrMat4 *)&pCar->aBody[0].rb.child[1]->m, (BrRbState *)&pCar->aBody[0].rb.child[1]->st);
+    BrRbBuildMatrix((BrMat4 *)&pCar->aBody[0].rb.child[2]->m, (BrRbState *)&pCar->aBody[0].rb.child[2]->st);
+    BrRbBuildMatrix((BrMat4 *)&pCar->aBody[0].rb.child[3]->m, (BrRbState *)&pCar->aBody[0].rb.child[3]->st);
 
     BrPodNop();
 }

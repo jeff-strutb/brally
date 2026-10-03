@@ -143,10 +143,11 @@ int BrOpt3FA0(BrGameObj *pGame)
 {
     /* 64-bit core: declared once, in br_globals.h or its struct's header */
     /* 64-bit core: declared once, in br_globals.h or its struct's header */
-    typedef void (__fastcall *Slot6)(BrGameSub *pThis, void *edx_slot, int arg);
     BrOptObj *p;
 
-    ((Slot6)pGame->pSub->pVtbl->pfnSlot6)(pGame->pSub, pGame->pSub->pVtbl, 1);
+    /* the original's __fastcall with a dead edx slot is a thiscall of one
+     * argument: the method takes the object and the 1 */
+    pGame->pSub->pVtbl->pfnSlot6(pGame->pSub, 1);
     p = g_2908;
     g_brPAA29B8 = p;
     return 0;

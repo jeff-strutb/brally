@@ -266,7 +266,7 @@ void BrCarPhysDriveMatch(BrCarBody *param_1, float param_2, float *param_3, floa
     iVar10 = (iVar9 + (int)(short)local_6c) * 4;
     local_3c = *(float *)((const char *)g_brCrPlane.pDrvT1 +
                          ((int)(short)local_6c +
-                          (unsigned int)(*(unsigned char *)&param_1->_pad01FD[0]) * 0x18 +
+                          (unsigned int)(*(unsigned char *)&param_1->gripClass) * 0x18 +
                           iVar9) * 4);
     local_84 = *(int *)(&(*(char *)&g_aBrCarPhysDrvT3) + iVar10);
     fVar7 = *(float *)((const char *)g_brCrPlane.pDrvT2 + iVar10);
@@ -450,7 +450,7 @@ void BrCarPhysDriveMatch(BrCarBody *param_1, float param_2, float *param_3, floa
       iVar9 = (int)((local_1c & 0xff) + 1 + (*(unsigned int *)&local_38 & 0xff)) >> 1;
       iVar10 = (iVar9 + (int)(short)local_6c) * 4;
       local_38 = *(float *)((const char *)g_brCrPlane.pDrvT1 +
-                           (iVar9 + (unsigned int)(*(unsigned char *)&param_1->_pad01FD[0]) * 0x18 +
+                           (iVar9 + (unsigned int)(*(unsigned char *)&param_1->gripClass) * 0x18 +
                             (int)(short)local_6c) * 4);
       local_84 = *(int *)(&(*(char *)&g_aBrCarPhysDrvT3) + iVar10);
       local_80 = *(float *)((const char *)g_brCrPlane.pDrvT2 + iVar10);

@@ -207,7 +207,7 @@ int BrGbiTexelsPerWord(int siz)
 /* @implements 0x1002A280 d3d BrGbiTexCreate */
 /* @implements 0x100297F0 glide BrGbiTexCreate */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x118ED1C8 */
-void BrGbiTexCreate(BrGbiTexRec *pRec, uintptr_t a2)
+void BrGbiTexCreate(BrGbiTexRec *pRec, int a2)
 {
     uint8_t *p = (uint8_t *)pRec;
     uint32_t flags, sel, fmt, siz;
@@ -231,14 +231,14 @@ void BrGbiTexCreate(BrGbiTexRec *pRec, uintptr_t a2)
 
     /* +0x00 and +0x04 are 32-bit addresses (br_addr32.h) of the pixels and
      * the palette; the slot at +0x00 then takes the texture id */
-    *(uint32_t *)p = (uint32_t)(uintptr_t)g_pfn18AA0B0(BR_PTR32(void *, *(uint32_t *)p),
-                     (uintptr_t)BR_PTR32(void *, *(uint32_t *)(p + 4)),
-                     (uint32_t)(1 << BrGbiSizeShift((int)*(uint16_t *)(p + 0x0C))),
-                     (uint32_t)(1 << BrGbiSizeShift((int)*(uint16_t *)(p + 0x0E))),
-                     fmt, siz,
-                     (flags >> 31) & 1u, (flags >> 30) & 1u,
-                     (flags >> 29) & 1u, (flags >> 28) & 1u,
-                     0u, 0u, 1u, a2);
+    *(uint32_t *)p = (uint32_t)g_pfn18AA0B0(BR_PTR32(void *, *(uint32_t *)p),
+                     BR_PTR32(void *, *(uint32_t *)(p + 4)),
+                     1 << BrGbiSizeShift((int)*(uint16_t *)(p + 0x0C)),
+                     1 << BrGbiSizeShift((int)*(uint16_t *)(p + 0x0E)),
+                     (int)fmt, (int)siz,
+                     (int)((flags >> 31) & 1u), (int)((flags >> 30) & 1u),
+                     (int)((flags >> 29) & 1u), (int)((flags >> 28) & 1u),
+                     0, 0, 1, a2);
 }
 
 /* 0x1002A740 */
@@ -268,8 +268,8 @@ void BrGbiSolidTexBuild(void)
         p += 4;
     } while ((char *)p < (char *)(DAT_105e1810 + 0x11));
 
-    DAT_10697a4c = (int)g_pfn18AA0B0(DAT_105e1810, 0u, 4u, 4u, 1u, 4u,
-                                    0u, 0u, 1u, 1u, 0u, 0u, 1u, 0u);
+    DAT_10697a4c = g_pfn18AA0B0(DAT_105e1810, 0, 4, 4, 1, 4,
+                                    0, 0, 1, 1, 0, 0, 1, 0);
 }
 
 /* 0x10028820 (D3D twin 0x100290E0, port body in slice2_16.c) */

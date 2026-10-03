@@ -150,8 +150,8 @@ int Hud54730::Layout(int a1, int *r, short a3, short a4, short a5)
     (*(short *)&((BrTextList *)(this))->f1A934) = '.';
     (*(short *)&((BrTextList *)(this))->f1A938) = ':';
 
-    dx = (*(int *)&g_aBrUiSprite[1164]) - (*(int *)&g_aBrUiSprite[1156]);
-    dy = (*(int *)&g_aBrUiSprite[1168]) - (*(int *)&g_aBrUiSprite[1160]);
+    dx = g_aBrUiSprite[48].rect[2] - g_aBrUiSprite[48].rect[0];
+    dy = g_aBrUiSprite[48].rect[3] - g_aBrUiSprite[48].rect[1];
     if (dx < 0)
         dx = 0;
     if (dy < 0)
@@ -175,11 +175,11 @@ int Hud54730::Layout(int a1, int *r, short a3, short a4, short a5)
     } else if ((*(int *)&((BrTextList *)(this))->f1A99C[8]) != 0) {
         (*(int *)&((BrTextList *)(this))->f1A94C) = r[2] + 3;
         (*(int *)&((BrTextList *)(this))->f1A950) = r[1];
-        (*(int *)&((BrTextList *)(this))->f1A954) = (*(int *)&g_aBrUiSprite[1164]) + (*(int *)&((BrTextList *)(this))->f1A94C);
-        (*(int *)&((BrTextList *)(this))->f1A958) = (*(int *)&g_aBrUiSprite[1168]) + (*(int *)&((BrTextList *)(this))->f1A950);
+        (*(int *)&((BrTextList *)(this))->f1A954) = g_aBrUiSprite[48].rect[2] + (*(int *)&((BrTextList *)(this))->f1A94C);
+        (*(int *)&((BrTextList *)(this))->f1A958) = g_aBrUiSprite[48].rect[3] + (*(int *)&((BrTextList *)(this))->f1A950);
         (*(int *)&((BrTextList *)(this))->f1A95C) = r[2] + 3;
-        (*(int *)&((BrTextList *)(this))->f1A960) = r[3] - (*(int *)&g_aBrUiSprite[1120]);
-        (*(int *)&((BrTextList *)(this))->f1A964) = (*(int *)&g_aBrUiSprite[1116]) + (*(int *)&((BrTextList *)(this))->f1A94C);
+        (*(int *)&((BrTextList *)(this))->f1A960) = r[3] - g_aBrUiSprite[46].rect[3];
+        (*(int *)&((BrTextList *)(this))->f1A964) = g_aBrUiSprite[46].rect[2] + (*(int *)&((BrTextList *)(this))->f1A94C);
         (*(int *)&((BrTextList *)(this))->f1A968) = r[3];
 
         (*(float *)&((BrTextList *)(this))->f1A99C[4]) = (float)(*(int *)&((BrTextList *)(this))->f1A94C);

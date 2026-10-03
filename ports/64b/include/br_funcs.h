@@ -1691,7 +1691,7 @@ void BrGameStepSet(void (*)(void));
 #pragma pop_macro("BrGameStepSet")
 #pragma push_macro("BrGbiBlit")
 #undef BrGbiBlit
-unsigned long BrGbiBlit(unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long);
+int BrGbiBlit(const void *, const void *, int, int, int, int, int, int, int, int, int, int, int, int);
 #pragma pop_macro("BrGbiBlit")
 #pragma push_macro("BrGbiCall10021560")
 #undef BrGbiCall10021560
@@ -1767,7 +1767,7 @@ void BrGbiSolidTexBuild(void);
 #pragma pop_macro("BrGbiSolidTexBuild")
 #pragma push_macro("BrGbiTexCreate")
 #undef BrGbiTexCreate
-void BrGbiTexCreate(struct BrGbiTexRec *, unsigned long);
+void BrGbiTexCreate(struct BrGbiTexRec *, int);
 #pragma pop_macro("BrGbiTexCreate")
 #pragma push_macro("BrGbiTexScanLoadBlock")
 #undef BrGbiTexScanLoadBlock
@@ -2875,11 +2875,11 @@ void BrOnActivate(unsigned long);
 #pragma pop_macro("BrOnActivate")
 #pragma push_macro("BrOnActivateApp")
 #undef BrOnActivateApp
-int BrOnActivateApp(void *, unsigned long, long);
+intptr_t BrOnActivateApp(void *, uintptr_t, intptr_t);
 #pragma pop_macro("BrOnActivateApp")
 #pragma push_macro("BrOnSysCommand")
 #undef BrOnSysCommand
-int BrOnSysCommand(void *, unsigned long, long);
+intptr_t BrOnSysCommand(void *, uintptr_t, intptr_t);
 #pragma pop_macro("BrOnSysCommand")
 #pragma push_macro("BrOpt3710")
 #undef BrOpt3710
@@ -5315,7 +5315,7 @@ int BrWmHook36130(int, int, struct Rec36130 *, unsigned int, int);
 #pragma pop_macro("BrWmHook36130")
 #pragma push_macro("BrWndProc")
 #undef BrWndProc
-int BrWndProc(void *, unsigned int, unsigned long, long);
+intptr_t BrWndProc(void *, unsigned int, uintptr_t, intptr_t);
 #pragma pop_macro("BrWndProc")
 #pragma push_macro("BrWrap_10067940")
 #undef BrWrap_10067940

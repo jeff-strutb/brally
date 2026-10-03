@@ -897,10 +897,7 @@ typedef struct BrFontRgba { int32_t r, g, b, a; } BrFontRgba;
  * the game can draw with, and remembers the handle the graphics backend
  * returns. */
 /* @implements 0x10073980 d3d BrSub10073980 */
-typedef uint32_t (*BrSub10073980Fn)(void *pSrc, int a2, int w, int h,
-                                 int fmt, int siz, int b31, int b30,
-                                 int b29, int b28, int a11, int a12,
-                                 int a13, int a14);
+
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */     /* 0x118AA0B0 */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */     /* 0x11829108 */
@@ -908,7 +905,7 @@ typedef uint32_t (*BrSub10073980Fn)(void *pSrc, int a2, int w, int h,
 
 void BrSub10073980(void)
 {
-    DAT_1184c468 = (*(BrSub10073980Fn *)&(*(funcptr *)&g_pfn18AA0B0))(g_0B9CB0, 0, 0x20, 0x40, 0, 4,
+    DAT_1184c468 = (uint32_t)g_pfn18AA0B0(g_0B9CB0, 0, 0x20, 0x40, 0, 4,
                           0, 0, 0, 0, 0, 0, 1, 0);
 }
 
@@ -932,7 +929,7 @@ void BrSub10073980(void)
 int BrFontTexCreate(void)
 
 {
-  DAT_1184c470 = (*(*(funcptr *)&g_pfn18AA0B0))(&DAT_100ba2d0,0,0x40,0x40,1,4,0,0,1,1,0xf,0xf,1,0);
+  DAT_1184c470 = g_pfn18AA0B0(&DAT_100ba2d0,0,0x40,0x40,1,4,0,0,1,1,0xf,0xf,1,0);
   (*(int *)&g_BrEnvTexDefault) = DAT_1184c470;
   return;
 }
@@ -1049,8 +1046,8 @@ int BrFontTexInitAll(void)
 int BrFontTexCreatePair(void)
 
 {
-  g_BrEnvTexLookup[0] = (uint32_t)(*(*(funcptr *)&g_pfn18AA0B0))(&g_BrEnvBitmap,0,0x40,0x40,1,4,0,0,1,1,0,0,1,0);
-  _DAT_1184c464 = (uint32_t)(*(*(funcptr *)&g_pfn18AA0B0))(&DAT_104b05c8,0,0x40,0x40,1,4,0,0,1,1,0,0,1,0);
+  g_BrEnvTexLookup[0] = (uint32_t)g_pfn18AA0B0(&g_BrEnvBitmap,0,0x40,0x40,1,4,0,0,1,1,0,0,1,0);
+  _DAT_1184c464 = (uint32_t)g_pfn18AA0B0(&DAT_104b05c8,0,0x40,0x40,1,4,0,0,1,1,0,0,1,0);
   return;
 }
 
@@ -1064,7 +1061,7 @@ int BrFontTexCreatePair(void)
 int BrFontTexCreateFlat(void)
 
 {
-  (*(int *)&g_BrDrawReflectTexB) = (*(*(funcptr *)&g_pfn18AA0B0))(&DAT_100b84a8,0,0x40,0x40,0,4,0,0,0,0,0,0,0,0);
+  (*(int *)&g_BrDrawReflectTexB) = g_pfn18AA0B0(&DAT_100b84a8,0,0x40,0x40,0,4,0,0,0,0,0,0,0,0);
   return;
 }
 

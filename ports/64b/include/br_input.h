@@ -220,7 +220,7 @@ enum {
  * ------------------------------------------------------------------ */
 /* Original returns LRESULT in EAX. A struct return adds a hidden pointer
  * argument and wrecks the prologue (`ret 0x10` / bare `ret`). */
-typedef int32_t BrWndResult;
+typedef intptr_t BrWndResult;   /* LRESULT: pointer-sized, like WPARAM and LPARAM */
 
 /* ------------------------------------------------------------------ *
  * The platform calls the window procedure makes. A host fills these in; a

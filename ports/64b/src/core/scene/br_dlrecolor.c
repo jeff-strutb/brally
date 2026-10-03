@@ -59,10 +59,12 @@ int BrDlRecolor(unsigned int *param_1,int * param_2)
       switch ((unsigned char)(*param_1 >> 0x18)) {
       case 0xb9:
         for (d = 0; d < 6; d = d + 1) {
-          if ((*param_1 == *(unsigned int *)(((int *)((char *)(param_2) + (d * 0x20))))) &&
-             (param_1[1] == *(unsigned int *)(((int *)((char *)(param_2) + (4))) + d * 0x20))) {
-            *param_1 = *(unsigned int *)(((int *)((char *)(param_2) + (d * 0x20))) + a * 8);
-            param_1[1] = *(unsigned int *)(((int *)((char *)(param_2) + (d * 0x20))) + 4 + a * 8);
+          /* row d is 0x20 bytes: the match pair, then a replacement pair
+           * per difficulty at +a*8 */
+          const unsigned int *row = (const unsigned int *)((const char *)param_2 + d * 0x20);
+          if ((*param_1 == row[0]) && (param_1[1] == row[1])) {
+            *param_1 = row[a * 2];
+            param_1[1] = row[a * 2 + 1];
             if (d >= 3) {
               e = 1;
             }
@@ -73,18 +75,18 @@ int BrDlRecolor(unsigned int *param_1,int * param_2)
       case 0xfc:
         if (c) {
           for (d = 0; d < 1; d = d + 1) {
-            if ((*param_1 == *(unsigned int *)(&DAT_100aa048 + d * 0x10)) &&
-               (param_1[1] == *(unsigned int *)(&DAT_100aa04c + d * 0x10))) {
-              *param_1 = *(unsigned int *)(&DAT_100aa050 + d * 0x10);
-              param_1[1] = *(unsigned int *)(&DAT_100aa054 + d * 0x10);
+            if ((*param_1 == DAT_100aa048[d * 4]) &&
+               (param_1[1] == DAT_100aa048[d * 4 + 1])) {
+              *param_1 = DAT_100aa048[d * 4 + 2];
+              param_1[1] = DAT_100aa048[d * 4 + 3];
               break;
             }
           }
         }
         if (((*(int *)((char *)&g_aBrEntRecs + 0x80)) != 0) && ((*(int *)((char *)&g_aBrEntRecs + 0xCC)) != 0)) {
           for (d = 0; d < 2; d = d + 1) {
-            if ((*param_1 == *(unsigned int *)(&DAT_100aa058 + d * 8)) &&
-               (param_1[1] == *(unsigned int *)(&DAT_100aa05c + d * 8))) {
+            if ((*param_1 == DAT_100aa048[4 + d * 2]) &&
+               (param_1[1] == DAT_100aa048[5 + d * 2])) {
               break;
             }
           }

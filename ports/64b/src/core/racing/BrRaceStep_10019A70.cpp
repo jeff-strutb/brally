@@ -470,7 +470,7 @@ extern "C" void BrRaceStep(void)
                 int      a  = (signed char)s[0xe4];
                 int      d  = (signed char)s[0xe5];
                 char     kind;
-                pv->ahTex[0] = (int32_t)g_pfn18ED1C4((uintptr_t)(s + 0x500), (uintptr_t)b, a, d, a,
+                pv->ahTex[0] = (int32_t)g_pfn18ED1C4(s + 0x500, b, a, d, a,
                                                      1, 2, 0, 0, 1, 1, 0, 0, 0, 0);
                 kind = (char)s[0xdb];
                 if (kind == 1 || kind == 2) {          /* 0x1001a743 */
@@ -496,7 +496,7 @@ extern "C" void BrRaceStep(void)
                         }
                         a2 = (signed char)s[0xe4];
                         d2 = (signed char)s[0xe5];
-                        pv->ahTex[k] = (int32_t)g_pfn18ED1C4((uintptr_t)(s + 0x500), (uintptr_t)b, a2, d2, a2,
+                        pv->ahTex[k] = (int32_t)g_pfn18ED1C4(s + 0x500, b, a2, d2, a2,
                                                              1, 2, 0, 0, 1, 1, 0, 0, 0, 0);
                         w -= 2;
                     }
@@ -509,7 +509,7 @@ extern "C" void BrRaceStep(void)
                     int e3 = (signed char)s[0xe5];
                     uint8_t *dst;
                     int      sz;
-                    pv->hTexB = (int32_t)g_pfn18ED1C4((uintptr_t)(s + d3 * e3 + 0x500), (uintptr_t)b,
+                    pv->hTexB = (int32_t)g_pfn18ED1C4(s + d3 * e3 + 0x500, b,
                                                       a3, c3, a3, 1, 2, 0, 0, 1, 1,
                                                       0, 0, 1, 0);
                     /* 0x1001a847: memmove of the emitted span */

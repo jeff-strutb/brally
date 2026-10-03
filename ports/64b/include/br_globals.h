@@ -2263,28 +2263,8 @@ extern int g_brMode0AA8B4;  /* 0x100AA044 */
 #pragma pop_macro("g_brMode0AA8B4")
 #pragma push_macro("DAT_100aa048")
 #undef DAT_100aa048
-extern char DAT_100aa048;  /* 0x100AA048 */
+extern uint32_t DAT_100aa048[8];  /* 0x100AA048: 0xFC row (match pair, replacement pair) then two match pairs */
 #pragma pop_macro("DAT_100aa048")
-#pragma push_macro("DAT_100aa04c")
-#undef DAT_100aa04c
-extern char DAT_100aa04c;  /* 0x100AA04C */
-#pragma pop_macro("DAT_100aa04c")
-#pragma push_macro("DAT_100aa050")
-#undef DAT_100aa050
-extern char DAT_100aa050;  /* 0x100AA050 */
-#pragma pop_macro("DAT_100aa050")
-#pragma push_macro("DAT_100aa054")
-#undef DAT_100aa054
-extern char DAT_100aa054;  /* 0x100AA054 */
-#pragma pop_macro("DAT_100aa054")
-#pragma push_macro("DAT_100aa058")
-#undef DAT_100aa058
-extern char DAT_100aa058;  /* 0x100AA058 */
-#pragma pop_macro("DAT_100aa058")
-#pragma push_macro("DAT_100aa05c")
-#undef DAT_100aa05c
-extern char DAT_100aa05c;  /* 0x100AA05C */
-#pragma pop_macro("DAT_100aa05c")
 #pragma push_macro("g_BrDlTableA")
 #undef g_BrDlTableA
 extern unsigned char g_BrDlTableA[];  /* 0x100AA068 */

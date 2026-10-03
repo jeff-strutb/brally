@@ -259,7 +259,10 @@ BOOL WINAPI CloseHandle(HANDLE h)
 void WINAPI Sleep(DWORD ms)
 {
     plat_pump(0);
-    host_sleep_ms(ms);
+    if (plat_vclock_main())
+        plat_vclock_advance((uint64_t)ms * 1000u);
+    else
+        host_sleep_ms(ms);
 }
 
 /* ---- critical sections ------------------------------------------------------------ */
@@ -273,6 +276,41 @@ void WINAPI EnterCriticalSection(LPCRITICAL_SECTION cs) { host_mutex_lock((host_
 void WINAPI LeaveCriticalSection(LPCRITICAL_SECTION cs) { host_mutex_unlock((host_mutex *)cs->opaque[0]); }
 
 /* ---- time ------------------------------------------------------------------------------ */
+/* BR_VCLOCK=ms: virtual time, kept the way the wasm lane keeps it
+ * (ports/macos/wasm/host/host_win.c) so the two lanes run a script frame for
+ * frame: a clock read on the main thread costs ms, Sleep(n) there costs n
+ * instead of sleeping, a message wait costs its wait; other threads read the
+ * clock without moving it. The counter then runs at the wasm lane's 1 MHz
+ * from its base, so a dump or a Glide log compares exactly. */
+static _Thread_local int s_main_thread;
+static int64_t  s_vtick = -1;
+static uint64_t s_vus;
+
+void plat_mark_main_thread(void) { s_main_thread = 1; }
+
+int plat_vclock(void)
+{
+    if (s_vtick < 0) {
+        const char *e = getenv("BR_VCLOCK");
+        s_vtick = e ? (int64_t)(atof(e) * 1000.0) : 0;
+    }
+    return s_vtick != 0;
+}
+
+int plat_vclock_main(void) { return plat_vclock() && s_main_thread; }
+
+void plat_vclock_advance(uint64_t us)
+{
+    if (plat_vclock_main())
+        s_vus += us;
+}
+
+static uint64_t vclock_read_us(void)
+{
+    plat_vclock_advance((uint64_t)s_vtick);
+    return s_vus;
+}
+
 static uint64_t s_t0;
 static uint64_t since_start(void)
 {
@@ -286,18 +324,41 @@ static uint64_t since_start(void)
 #define PERF_HZ 1193182u
 BOOL WINAPI QueryPerformanceFrequency(LARGE_INTEGER *f)
 {
+    if (plat_vclock()) {
+        f->QuadPart = 1000000;
+        return TRUE;
+    }
     f->QuadPart = PERF_HZ;
     return TRUE;
 }
 
 BOOL WINAPI QueryPerformanceCounter(LARGE_INTEGER *c)
 {
-    uint64_t ns = since_start();
+    uint64_t ns;
+    if (plat_vclock()) {
+        c->QuadPart = (LONGLONG)(vclock_read_us() + 1000000u);
+        return TRUE;
+    }
+    ns = since_start();
     c->QuadPart = (LONGLONG)(ns / 1000000000u * PERF_HZ + ns % 1000000000u * PERF_HZ / 1000000000u);
     return TRUE;
 }
 
-DWORD WINAPI timeGetTime(void) { return (DWORD)(since_start() / 1000000u); }
+/* the clock as timeGetTime reads it, without spending a virtual tick: the
+ * platform's own bookkeeping (timers, message stamps) is not a game read */
+DWORD plat_time_ms(void)
+{
+    if (plat_vclock())
+        return (DWORD)(s_vus / 1000u) + 1000u;
+    return (DWORD)(since_start() / 1000000u);
+}
+
+DWORD WINAPI timeGetTime(void)
+{
+    if (plat_vclock())
+        return (DWORD)(vclock_read_us() / 1000u) + 1000u;
+    return (DWORD)(since_start() / 1000000u);
+}
 MMRESULT WINAPI timeBeginPeriod(UINT p) { (void)p; return TIMERR_NOERROR; }
 MMRESULT WINAPI timeEndPeriod(UINT p)   { (void)p; return TIMERR_NOERROR; }
 

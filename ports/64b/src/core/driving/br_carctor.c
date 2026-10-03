@@ -249,7 +249,7 @@ void BR_THISCALL1 BrSub10062C50(void *pCar)
     ((*(uint8_t *)(((uint8_t *)&((BrDriverCar *)(((p))))->f0E81)))) = 0;
     ((*(uint32_t *)&p->f0E7C)) = 0;
     ((*(uint32_t *)&p->f0E74)) = 0;
-    ((*(uint8_t *)(((uint8_t *)&((BrDriverCar *)(((p))))->aBody[0]._pad01FD[0])))) = ((*(uint8_t *)(((uint8_t *)&((BrDriverCar *)(((p))))->fE90))));
+    ((*(uint8_t *)(((uint8_t *)&((BrDriverCar *)(((p))))->aBody[0].gripClass)))) = ((*(uint8_t *)(((uint8_t *)&((BrDriverCar *)(((p))))->fE90))));
 
     BrPodNop();
     BrPodNop();

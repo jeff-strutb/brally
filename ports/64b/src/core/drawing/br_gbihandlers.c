@@ -737,15 +737,13 @@ int BrGbiSizeShift(int n)
  * pfn parameter is a port convenience. */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */    /* 0x118ED1C4 */
 
-uintptr_t BrGbiBlit(uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4,
-                    uintptr_t a5, uintptr_t a6, uintptr_t a7, uintptr_t a8,
-                    uintptr_t a9, uintptr_t a10, uintptr_t a11, uintptr_t a12,
-                    uintptr_t a13, uintptr_t a14)
+int BrGbiBlit(const void *a1, const void *a2, int a3, int a4, int a5, int a6,
+              int a7, int a8, int a9, int a10, int a11, int a12, int a13, int a14)
 {
-    int32_t   rounded = (int32_t)(1 << BrGbiSizeShift((int)a3));
-    int32_t   pitch   = (rounded / BrGbiTexelsPerWord((int)a5)) * 8;
+    int32_t   rounded = (int32_t)(1 << BrGbiSizeShift(a3));
+    int32_t   pitch   = (rounded / BrGbiTexelsPerWord(a5)) * 8;
 
-    return g_pfn18ED1C4(a1, a2, a3, a4, (uintptr_t)(intptr_t)pitch,
+    return g_pfn18ED1C4(a1, a2, a3, a4, pitch,
                         a5, a6, a7, a8, a9, a10, a11, a12, a13, a14);
 }
 
