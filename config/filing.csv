@@ -1351,6 +1351,8 @@ glide_va,name,module,basis,file
 0x10072180,BrFfbSetDurationShort,controls,neighbour-1,src/core/controls/br_ffb.c
 0x100721C0,BrFfbCommitDuration,controls,neighbour-1,src/core/controls/br_dicmd.c
 0x100723A0,BrFfbSetSpringCoeff,controls,description,src/core/controls/br_dicmd.c
+0x100724C0,BrFfbInit,controls,manual,src/core/controls/BrFfbInit_100724C0.cpp
+0x10072680,BrFfbSetup,controls,manual,src/core/controls/BrFfbSetup_10072680.cpp
 0x10072840,BrExt_10079550,controls,filed,src/core/controls/br_dishutdown.c
 0x100728C0,BrFfbReprobe,controls,description,src/core/controls/br_ffb.c
 0x100745B0,BrCrtOnExit,startup,description,src/core/startup/br_dllentry.c

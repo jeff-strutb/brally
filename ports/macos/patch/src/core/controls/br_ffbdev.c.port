@@ -93,8 +93,7 @@ void BrDiKeyboardShutdown(void)
     g_pBr18ABDD0 = NULL;
 }
 @end
-@drop fn:BrFfbSetup
-@after fn:BrFfbSetup
+@after fn:BrFfbUpdateSpring
 
 /* In the original both DIEFFECTs' rgdwAxes point at a two-dword STACK local of
  * 0x10079390 -- the `sub esp,8` frame and the two `lea` writes into the axis
@@ -110,33 +109,8 @@ static uint32_t g_brFfbAxes[2];
  * constant centring pull that gives the steering its weight, and the shake
  * used for bumps and impacts -- and hands both to the wheel ready to be
  * started. The centring effect is created but deliberately left stopped. */
-/*
- * SIZE-EXACT (80/80 insns, 440/440 B), REGNORM 6+6, from four source facts:
- *   1. the axis buffer is a STACK local, not a file-scope global -- that is
- *      the `sub esp,8` frame and the two `lea` writes (matching arm only;
- *      the port keeps it static because it dangles after return);
- *   2. g_brFfb.pDevice is re-read at each CreateEffect site, not hoisted into
- *      a local -- hoisting pins it in a callee-saved reg and costs a push ebp;
- *   3. BrDiRoot/BrDiDev/BrDiEff must be __inline or VC5 emits an out-of-line
- *      call for each vtable cast (an extra call + `add esp,4` per use);
- *   4. the COM vtable pointers are BR_STDCALL -- callee-cleaned, so no
- *      `add esp,0x14` after each CreateEffect.
- * RESIDUE (2026-09-26, register-blind rows 0+0, 4 masked regions): the
- * original hoists each CreateEffect's argument pushes (and the pDevice load)
- * above the effect-structure fills; ours pushes them just before the call.
- * Pure scheduling -- every instruction is the same.  (The older note here
- * blamed unmapped d3d globals; the image gate resolves those through
- * reloc_overrides, and the classifier's `push 4` phantom was a msetdiff
- * masking bug, fixed 15e794ac.)
- * @t4-pass 0x10072680 1 2026-09-26 probes 12 bytes 440 insns 80 regions 4 rows 0 census no  (hand: pDevice local early/late, hr int/init/!hr, call as the if condition, axes/direction/condition store order, void* effect pointer, GUID cast -- none moves the push hoist)
- * @t4-pass 0x10072680 2 2026-09-26 probes 67 bytes 440 insns 80 regions 4 rows 0 census yes  (mechanism: TU symbol count 5..4600 externs and nine system-header combinations, all 151 diffs) */
-/* @t3 0x10072680 2026-09-26 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 440/440 insns 80/80 rows 0+0 regions 4 oracle EQUIVALENT
- * @t3-effort passes 2 zero-movement 1 2
- * Residue: the CreateEffect argument pushes are hoisted above the effect
- * structure fills in the original (pure scheduling, rows 0+0); see the
- * header above.  Do not reopen before the end-grind. */
-/* @implements 0x10079390 d3d BrFfbSetup */
+/* Port copy of src/core/controls/BrFfbSetup_10072680.cpp, in C with the
+ * axis buffer static (see above). */
 void BrFfbSetup(int32_t springCoeff, int32_t springCoeff2)
 {
     long hr;
@@ -203,4 +177,118 @@ void BrFfbSetup(int32_t springCoeff, int32_t springCoeff2)
                                          &g_brFfb.pEffectSquare, NULL);
 }
 #undef rgAxes
+@end
+@after fn:BrFfbEnumDevice
+
+/* 0x100791D0 */
+/* WHAT IT DOES: finds the player's wheel or joystick and gets it ready. It
+ * looks first for one that can do force feedback, and if it finds one it
+ * turns off the wheel's own self-centring (the game supplies its own) and
+ * builds the effects; failing that it settles for any controller at all. Then
+ * it sets both axes to the range the game expects with no dead zone. It only
+ * does the work once no matter how many times it is called. */
+/* Port copy of src/core/controls/BrFfbInit_100724C0.cpp, in C. */
+int32_t BrFfbInit(void)
+{
+    BrDiObj *pDev;
+    BrDbgSink pfnDbg;
+    int32_t ret;
+
+    ret = g_brB4E1D0;
+    if (ret != 0) {
+        g_brFfb.initCount += 1;
+        if (g_brFfb.initCount == 1) {
+            pfnDbg = BR_DBG_SINK;
+
+            if (g_brB4E1E0 != 0 &&
+                BrDiRoot(g_pBr18ABD70)->pfnEnumDevices(g_pBr18ABD70, 4u,
+                    BrFfbEnumDevice, (void *)(uintptr_t)5u, 0x101u) == 0 &&
+                g_brFfb.pDevice != NULL) {
+
+                /* pvRef 5 = DISCL_EXCLUSIVE|DISCL_FOREGROUND,
+                 * flags 0x101 = DIEDFL_ATTACHEDONLY|DIEDFL_FORCEFEEDBACK. */
+                BrDiPropDword d;
+                const BrDiDevVtbl *pVtbl;
+
+                /* The vtable pointer is a NAMED local loaded before the
+                 * struct fill -- that hoist is what makes VC5 push the three
+                 * arguments first and sink every store past them, as the
+                 * original does. Residue: the original creates the &d temp
+                 * before this load (ecx/edx swapped on three instructions);
+                 * pHdr hoists, call-embedded assignment, decl order all
+                 * probed dead 2026-09-12. */
+                pDev = g_brFfb.pDevice;
+                pVtbl = BrDiDev(pDev);
+
+                g_br18ABDBC = 1;
+
+                d.dwSize       = 0x14u;
+                d.dwHeaderSize = 0x10u;
+                d.dwObj        = 0u;
+                d.dwHow        = 0u;    /* DIPH_DEVICE */
+                d.dwData       = 0u;    /* autocentre OFF */
+
+                /* property 9 = DIPROP_AUTOCENTER */
+                if (pVtbl->pfnSetProperty(pDev, 9u, &d) < 0) {
+                    pfnDbg(kBrErrProperty);
+                }
+                (void)BrDiAcquire();
+                BrFfbSetup(0x3E8, 0x1F40);
+            } else {
+                /* pvRef 6 = DISCL_NONEXCLUSIVE|DISCL_FOREGROUND, flags 1. */
+                (void)BrDiRoot(g_pBr18ABD70)->pfnEnumDevices(g_pBr18ABD70, 4u,
+                         BrFfbEnumDevice, (void *)(uintptr_t)6u, 1u);
+                (void)BrDiAcquire();
+                g_br18ABDBC = 0;
+            }
+
+            pDev = g_brFfb.pDevice;
+            if (pDev == NULL) {
+                return 0;
+            }
+
+            /* Axis 0 (lX): range +-0x80, no dead zone. Then axis 4 (lY), the
+             * same. dwHow 1 = DIPH_BYOFFSET; prop 4 = DIPROP_RANGE,
+             * 5 = DIPROP_DEADZONE.
+             *
+             * The failure blocks sit INLINE after the third and fourth calls
+             * (each ends in its own return, which is why the original carries
+             * TWO copies of the teardown); the first two calls goto INTO
+             * them. That is the original's layout -- do not re-share. */
+            if (BrDiSetPropRange(pDev, 4u, 0u, 1u, -0x80, 0x80) < 0) {
+                goto failRange;
+            }
+            pDev = g_brFfb.pDevice;
+            if (BrDiSetPropDword(pDev, 5u, 0u, 1u, 0u) < 0) {
+                goto failDword;
+            }
+            pDev = g_brFfb.pDevice;
+            if (BrDiSetPropRange(pDev, 4u, 4u, 1u, -0x80, 0x80) < 0) {
+failRange:
+                pfnDbg(kBrErrPropRange);
+                pDev = g_brFfb.pDevice;
+                BrDiDev(pDev)->pfnUnacquire(pDev);
+                pDev = g_brFfb.pDevice;
+                BrDiDev(pDev)->pfnRelease(pDev);
+                g_brFfb.pDevice = NULL;
+                /* NOTE: initCount stays raised. See slice1_10.h. */
+                return 0;
+            }
+            pDev = g_brFfb.pDevice;
+            if (BrDiSetPropDword(pDev, 5u, 4u, 1u, 0u) < 0) {
+failDword:
+                pfnDbg(kBrErrPropWord);
+                pDev = g_brFfb.pDevice;
+                BrDiDev(pDev)->pfnUnacquire(pDev);
+                pDev = g_brFfb.pDevice;
+                BrDiDev(pDev)->pfnRelease(pDev);
+                g_brFfb.pDevice = NULL;
+                /* NOTE: initCount stays raised. See slice1_10.h. */
+                return 0;
+            }
+            ret = g_brB4E1D0;
+        }
+    }
+    return ret;
+}
 @end

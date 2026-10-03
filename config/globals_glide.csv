@@ -5,6 +5,8 @@ _DAT_10077c1c,0x10077C1C,"float 1.0 of tu_055 shared by BrMat3Solve and BrRbInit
 g_BrCharMapImage,0x100AC5F8,"the character-map region BrCharMapLookup scans (784 records)"
 g_brFfbEffectSpring,0x118EEF04,"FFB spring effect (the port gathers it into g_brFfb)"
 g_brFfbEffectSquare,0x118EEF14,"FFB square effect (the port gathers it into g_brFfb)"
+g_brFfbDevice,0x118EEEEC,"FFB IDirectInputDevice2 (the port gathers it into g_brFfb)"
+g_brFfbInitCount,0x118EEF18,"FFB nested-init depth (the port gathers it into g_brFfb)"
 g_brLoadTexBase,0x106B7C7C,"track texture/TLUT byte base (port: g_BrLoad.pTexBase)"
 g_brLoadTexFlags,0x106EECF4,"texture record flag array (port: g_BrLoad.pTexFlags)"
 g_brUiapJoinBlob,0x10AC5D2C,"menu/session global (port: g_br73.apJoinBlob)"
