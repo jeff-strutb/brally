@@ -8,6 +8,7 @@ g_brFfbEffectSquare,0x118EEF14,"FFB square effect (the port gathers it into g_br
 g_brFfbDevice,0x118EEEEC,"FFB IDirectInputDevice2 (the port gathers it into g_brFfb)"
 g_brFfbInitCount,0x118EEF18,"FFB nested-init depth (the port gathers it into g_brFfb)"
 g_brImg,0x10AC53E8,"image table, 145 {surface, path} records (the C++ lane's g_img)"
+g_brDamageBmp,0x10AC67B0,"the three damage-decal bitmap slots"
 g_brLoadTexBase,0x106B7C7C,"track texture/TLUT byte base (port: g_BrLoad.pTexBase)"
 g_brLoadTexFlags,0x106EECF4,"texture record flag array (port: g_BrLoad.pTexFlags)"
 g_brUiapJoinBlob,0x10AC5D2C,"menu/session global (port: g_br73.apJoinBlob)"

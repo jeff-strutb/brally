@@ -45,7 +45,8 @@ int FUN_10059fe0(int param_1,int param_2,int param_3)
   return ((int *)((char *)&DAT_100ad7d8 + param_1 * 1200 + param_2 * 40))[param_3];
 }
 
-extern int DAT_10ac67b0;
+/* The three damage-decal slots at 0x10AC67B0..0x10AC67BB. */
+extern int g_brDamageBmp[3];
 __declspec(dllimport) void __cdecl free(void *);
 void FUN_1005a420(void);
 void FUN_1005a6b0(void);
@@ -67,22 +68,19 @@ void FUN_1005a6a0(void)
 /* WHAT IT DOES: free the three shared livery buffers and null the slots, so
  * a second call is harmless. */
 /* @implements 0x1005A6B0 glide FUN_1005a6b0 */
-/* Frees and zeroes the three pointer slots at DAT_10ac67b0..bc; the
- * dllimport free is hoisted into edi across the loop. */
+/* Frees and zeroes the three damage slots; the dllimport free is hoisted
+ * into edi across the loop. */
 
 void FUN_1005a6b0(void)
 {
-  int *puVar1;
+  int i;
 
-  puVar1 = &DAT_10ac67b0;
-  do {
-    if (*puVar1 != 0) {
-      free((void *)*puVar1);
-      *puVar1 = 0;
+  for (i = 0; i < 3; i++) {
+    if (g_brDamageBmp[i] != 0) {
+      free((void *)g_brDamageBmp[i]);
+      g_brDamageBmp[i] = 0;
     }
-    puVar1 = puVar1 + 1;
-  } while ((int)puVar1 < 0x10ac67bc);
-  return;
+  }
 }
 
 
@@ -110,30 +108,20 @@ int BrBmpLoadRgba(char *);
  * The dllimport sprintf is hoisted into ebx across the loop. */
 /* @t4-pass 0x1005A490 1 2026-09-07 probes 68 bytes 75 insns 27 regions 2 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x1005A490 2 2026-09-07 probes 68 bytes 75 insns 27 regions 2 rows 0 census yes  (tools/crank.py) */
-/* @t3 0x1005A490 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 75/75 insns 27/27 rows 0+0 regions 2 oracle UNCLASSIFIED
- * @t3-effort passes 2 zero-movement 1 2
- * residue is register colouring only: identical register-blind instruction
- * multiset (rows 0+0), 2 masked regions;
- * every row pairs under t3.py's canonical classes.  Effort: 2 counted
- * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
- * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x1005A490 glide BrLiveryLoadDamageBmps */
 void BrLiveryLoadDamageBmps(void)
 {
   int i;
-  int *p;
   char buf[0x400];
 
-  i = 0;
-  p = &DAT_10ac67b0;
-  do {
-    i = i + 1;
-    sprintf(buf, s_Paint_damage_d_bmp_100b2e58, i);
-    *p = BrBmpLoadRgba(buf);
-    p = p + 1;
-  } while ((int)p < 0x10ac67bc);
+  /* An indexed loop over the real 3-slot array: VC5 strength-reduces it to
+   * a slot pointer (edi) with the counter in esi and tests the pointer --
+   * the cast-pointer walk transcribed earlier gave the two registers the
+   * other way round. */
+  for (i = 0; i < 3; i++) {
+    sprintf(buf, s_Paint_damage_d_bmp_100b2e58, i + 1);
+    g_brDamageBmp[i] = BrBmpLoadRgba(buf);
+  }
 }
 
 /* WHAT IT DOES: the public entry that loads the damage decals -- it does
