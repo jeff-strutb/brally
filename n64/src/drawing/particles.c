@@ -38,7 +38,7 @@ void func_8023B178(int e);
 void func_8023B418(int e);
 void BrWheelSprayEmit();
 void func_8023CD60(void);
-int func_8023BB50();
+void BrSkidDraw(void);
 void func_8023D134(unsigned int param_1,int param_2,unsigned int param_3,unsigned int param_4);
 extern Gfx *D_8028A858;
 extern int D_8028A898;
@@ -115,6 +115,123 @@ void BrVec3ScaleBy(BrVec3 *pV, float s);
 float BrVec3DistSq(BrVec3 *pA, BrVec3 *pB);
 void BrVec3Lerp(BrVec3 *pOut, BrVec3 *pA, BrVec3 *pB, float t);
 /* -- end declarations -- */
+
+/* -- declarations: BrSkidDraw -- */
+/* A skid-mark point (0x18 bytes, nine per wheel from car+0x19E8): the
+ * mark is drawn between two points while either has a non-zero half. */
+typedef struct BrSkidPt {
+    short pos[3];
+    short half[3];              /* 0x06 */
+    char pad0c[0x18 - 0x0C];
+} BrSkidPt;
+extern int D_8028B940;          /* the track */
+extern Mtx *D_8028A878;
+extern char D_802A2978[];       /* the skid-mark texture */
+#define gSP2Triangles(pkt, v00, v01, v02, f0, v10, v11, v12, f1)        \
+{                                                                       \
+    Gfx *_g = (Gfx *)(pkt);                                             \
+                                                                        \
+    _g->words.w0 = (_SHIFTL((v00) * 2, 16, 8) | _SHIFTL((v01) * 2, 8, 8) | \
+                    _SHIFTL((v02) * 2, 0, 8) | _SHIFTL(0xb1, 24, 8));   \
+    _g->words.w1 = (_SHIFTL((v10) * 2, 16, 8) | _SHIFTL((v11) * 2, 8, 8) | \
+                    _SHIFTL((v12) * 2, 0, 8));                          \
+}
+/* -- end declarations -- */
+
+/* WHAT IT DOES: Draw the skid marks, unless the race kind steps the
+ * particle pool (tracks 2 and 7 draw them anyway): textured, decal render
+ * mode, culling off, the projection loaded; then for every car its matrix
+ * and, per wheel, its 32 mark vertices, with a quad between each pair of
+ * the wheel's eight marked points that has some width; culling back on.
+ * An empty slot is skipped with `continue`: that is what makes IDO turn
+ * the index loop into the ROM's pointer walk with its count > 0 guard. */
+/* @implements 0x8023BB50 tgr BrSkidDraw */
+void BrSkidDraw(void)
+{
+  int i;
+  char *car;
+  int g;
+  int v;
+  BrSkidPt *pt;
+
+  if (D_8028AA84 == 0 || D_8028B940 == 2 || D_8028B940 == 7) {
+    gDPPipeSync(D_8028A858++);
+    gRaw(D_8028A858++, 0xba001402, 0x100000);
+    gRaw(D_8028A858++, 0xfcff99ff, 0xfffe7e38);
+    gRaw(D_8028A858++, 0xb900031d, 0xc184a50);
+    gRaw(D_8028A858++, 0xb7000000, 4);
+    gSPClearGeometryMode(D_8028A858++, 0x23000);
+    {
+      Gfx *_g = D_8028A858++;
+
+      _g->words.w0 = 0x1030040;
+      _g->words.w1 = D_8028A878;
+    }
+    {
+      Gfx *_g = D_8028A858++;
+
+      _g->words.w0 = 0xfd900000;
+      _g->words.w1 = D_802A2978;
+    }
+    {
+      Gfx *_g = D_8028A858++;
+
+      _g->words.w0 = 0xf5900000;
+      _g->words.w1 = 0x7018050;
+    }
+    gDPLoadSync(D_8028A858++);
+    {
+      Gfx *_g = D_8028A858++;
+
+      _g->words.w0 = 0xf3000000;
+      _g->words.w1 = 0x71ff400;
+    }
+    gDPPipeSync(D_8028A858++);
+    {
+      Gfx *_g = D_8028A858++;
+
+      _g->words.w0 = 0xf5800400;
+      _g->words.w1 = 0x18050;
+    }
+    {
+      Gfx *_g = D_8028A858++;
+
+      _g->words.w0 = 0xf2000000;
+      _g->words.w1 = 0x7c0fc;
+    }
+    {
+      Gfx *_g = D_8028A858++;
+
+      _g->words.w0 = 0xf2002002;
+      _g->words.w1 = 0x7e0fe;
+    }
+    {
+      Gfx *_g = D_8028A858++;
+
+      _g->words.w0 = 0xbb000001;
+      _g->words.w1 = 0xffffffff;
+    }
+    for (i = 0; i < D_8028B7F0; i++) {
+      if ((car = (char *)D_803239A0[i].x60) == 0) {
+        continue;
+      }
+      gRaw(D_8028A858++, 0x1060040, car + 0x1D88);
+      for (g = 0; g < 4; g++) {
+        pt = (BrSkidPt *)(car + 0x19E8 + g * 0xD8);
+        gRaw(D_8028A858++, 0x40081ff, car + 0x1110 + g * 0x240);
+        for (v = 0; v < 28; v += 4) {
+          if (pt[0].half[0] != 0 || pt[0].half[1] != 0 || pt[0].half[2] != 0
+              || pt[1].half[0] != 0 || pt[1].half[1] != 0 || pt[1].half[2] != 0) {
+            gSP2Triangles(D_8028A858++, v, v + 4, v + 1, 0, v + 1, v + 4, v + 5, 0);
+          }
+          pt++;
+        }
+      }
+      gSPPopMatrix(D_8028A858++, 0);
+    }
+    gRaw(D_8028A858++, 0xb7000000, 0x2000);
+  }
+}
 
 /* WHAT IT DOES: A car's wheel spray for one frame, when it has a surface
  * impact level and goes faster than 40: each wheel's timer counts up by
@@ -423,5 +540,5 @@ void BrParticleDraw(void)
   gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 6, 2, D_8028A8A0);
   gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 4, 2, D_8028A89C);
   gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_L, 0, 2, 1);
-  func_8023BB50();
+  BrSkidDraw();
 }
