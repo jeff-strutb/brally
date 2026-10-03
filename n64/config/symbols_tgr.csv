@@ -346,6 +346,7 @@ va,name,kind
 80233E10,BrProjectExtent,func
 80233FDC,BrVtxPoolsReset,func
 80234FC0,BrDrawSortCmp,func
+80234FF8,BrTrackDrawSetup,func
 80235BAC,BrTrackDraw,func
 80237980,BrHudDialDraw,func
 8023870C,BrStub8023870C,func

@@ -101,6 +101,267 @@ void guMtxF2L(float *mf, BrMtx *m);
 void osSyncPrintf(char *fmt, ...);
 /* -- end declarations -- */
 
+/* -- declarations: BrTrackDrawSetup -- */
+#include "tgr/car.h"
+#include "tgr/pad.h"
+typedef struct BrDrawCell {     /* a grid cell near the camera (4 bytes) */
+  unsigned char col;
+  unsigned char row;
+  short dist;                   /* 0x02  squared distance in cells */
+} BrDrawCell;
+typedef struct BrTrackHdr {     /* the loaded track's header (part) */
+  char pad00[0x60];
+  struct BrTrackObjPos {        /* a track object, as far as the setup reads it */
+    char pad00[0x30];
+    int x;                      /* 0x30  its grid position */
+    int y;                      /* 0x34 */
+    char pad38[0x54 - 0x38];
+  } *objs;                      /* 0x60 */
+  int nObjs;                    /* 0x64 */
+} BrTrackHdr;
+typedef struct BrRaceEnt {      /* a race entity (0x78 bytes), as rank.c */
+  char pad00[0x60];
+  BrCar *car;                   /* 0x60 */
+  char pad64[0x78 - 0x64];
+} BrRaceEnt;
+extern BrTrackHdr D_80025C00;
+extern int D_8028BD94;          /* the rows the view's grid span covers */
+extern int D_8028BD9C;
+extern int D_8034E5B0[64];      /* per row: its first and last column */
+extern int D_8034E6B0[64];
+extern BrDrawCell D_8035D1D0[0xC1];  /* the cells to draw, nearest first */
+extern int D_8028C76C;          /* the cell list overflowed */
+extern int D_8026FF64;          /* the object the camera sits in, 0 for none */
+extern float D_8028AACC;        /* the view's depth */
+extern BrCarCam *D_8028AAF4;    /* the camera being drawn from */
+extern BrCar *D_8028AAF0;       /* the car of the view being drawn */
+extern int D_8028AAEC;
+extern int D_8028B7F4;          /* cars racing */
+extern int D_8028B7F0;          /* entities */
+extern int D_80351C70[];        /* per car: draw it */
+extern BrVec3 D_8035D500;
+extern float D_8035D4D8[4];     /* the nearest cars ahead: distance, */
+extern int D_8035D4E8[5];       /* and slot (one spare for the insertion) */
+extern int D_8035D4FC;          /* and how many */
+extern unsigned short D_8031B248[];  /* the objects around the camera */
+extern int D_8028AB00;          /* and how many */
+extern float D_802AA00C;
+extern float D_8031B338[3];     /* the sun's direction */
+extern BrVec3 D_8035D510;       /* the light direction this frame */
+extern int D_8028A9F0[6];       /* the light template */
+extern BrRaceEnt D_803239A0[];
+typedef struct BrViewRect { int x; int y; int w; int h; int x10; } BrViewRect;
+extern BrViewRect D_8031B2C8[2];
+unsigned int BrTrackGridCell(int col, int row);
+unsigned short BrU16QueuePopB(unsigned short *q);
+int BrGridSpanHasPoint(int x, int y);
+void BrQsort(void *base, int n, int size, int (*cmp)());
+void BrFill64(void *dst, int n, int value);
+void BrVec3Sub(BrVec3 *out, BrVec3 *a, BrVec3 *b);
+float BrVec3Dot(void *a, void *b);
+void BrVec3Normalise(BrVec3 *v);
+void BrVec3ScaleBy(BrVec3 *v, float s);
+int BrVpAlloc(void);
+void guLookAtReflectF(float mf[4][4], int l, float xEye, float yEye, float zEye, float xAt,
+                      float yAt, float zAt, float xUp, float yUp, float zUp);
+void BrProjectExtent(BrVec3 *v, int n, short *min, short *max);
+/* -- end declarations -- */
+
+/* WHAT IT DOES: Set up a view's track drawing: list the grid cells the view's
+ * span covers (at most 192), each with its squared distance in cells from the
+ * camera, and sort them nearest first; then walk them collecting the track
+ * objects to draw (the object the camera is inside first, when it shows),
+ * noting where the list passes 8 cells, the close-camera range and the view
+ * depth; mark the objects near the four nearest cars ahead of the camera
+ * (their shadows), gather the hide flags of the objects around the camera,
+ * build the reflection look-at and the light (the sun, or at night a light
+ * hung in front of the car), and clamp each car's screen extent to the
+ * view. */
+/* @implements 0x80234FF8 tgr BrTrackDrawSetup */
+void BrTrackDrawSetup(void)
+{
+  int n;
+  int r;
+  int c;
+  int cx;
+  int cy;
+  int i;
+  int k;
+  int d;
+  int lim;
+  int near2;
+  int slot;
+  unsigned int cell;
+  unsigned short q[2];
+  unsigned short o;
+  float dot;
+  float lx;
+  float ly;
+  BrCar *car;
+  BrVec3 v;
+  BrDrawCell *p;
+
+  D_8028C76C = 0;
+  n = 0;
+  for (r = D_8028BD94; r <= D_8028BD9C; r++) {
+    for (c = D_8034E5B0[r]; c <= D_8034E6B0[r]; c++) {
+      if (n == 0xC0) {
+        D_8028C76C = 1;
+        goto full;
+      }
+      D_8035D1D0[n].col = c;
+      D_8035D1D0[n].row = r;
+      n++;
+    }
+  }
+full:
+  D_8035D1D0[n].col = 0xFF;
+  D_8035D1D0[n].row = 0xFF;
+  cx = D_8028AAF4->mtx[3][0] / 32.0f;
+  if (cx == 64) {
+    cx = 63;
+  }
+  cy = D_8028AAF4->mtx[3][1] / 32.0f;
+  if (cy == 64) {
+    cy = 63;
+  }
+  for (i = 0; i < n; i++) {
+    D_8035D1D0[i].dist = (D_8035D1D0[i].col - cx) * (D_8035D1D0[i].col - cx) +
+                         (D_8035D1D0[i].row - cy) * (D_8035D1D0[i].row - cy);
+  }
+  BrQsort(D_8035D1D0, n, 4, BrDrawSortCmp);
+  BrFill64(D_80351D80, D_80025C00.nObjs, -1);
+  D_8028C740 = 0;
+  D_8028C778 = -1;
+  D_8028C780 = -1;
+  D_8028C788 = -1;
+  near2 = (int)(D_8028AACC / (float)32) - 3;
+  near2 = near2 * near2;
+  if (((BrPadRec *)D_8028AAF0->pad)->ghost == 0 || D_8028AAF4 != &D_8028AAF0->cams[3]) {
+    lim = 1;
+  } else {
+    lim = 9;
+  }
+  for (p = D_8035D1D0; p->col != 0xFF; p++) {
+    d = p->dist;
+    if (8 < d && D_8028C778 == -1) {
+      D_8028C778 = D_8028C740;
+    }
+    if (lim < d && D_8028C788 == -1) {
+      D_8028C788 = D_8028C740;
+    }
+    if (near2 < d && D_8028C780 == -1) {
+      D_8028C780 = D_8028C740;
+    }
+    if (D_8026FF64 != 0 && D_80351D80[D_8026FF64] != 0 &&
+        BrGridSpanHasPoint(D_80025C00.objs[D_8026FF64].x, D_80025C00.objs[D_8026FF64].y)) {
+      D_80352580[D_8028C740++] = D_8026FF64;
+      D_80351D80[D_8026FF64] = 0;
+    }
+    cell = BrTrackGridCell(p->col, p->row);
+    q[1] = cell >> 16;
+    q[0] = cell;
+    if (cell != 0) {
+      while ((o = BrU16QueuePopB(q)) != 0) {
+        if (D_80351D80[o] != 0 && D_8026FF64 != o) {
+          D_80352580[D_8028C740++] = o;
+          D_80351D80[o] = 0;
+        }
+      }
+    }
+  }
+  D_8035D4FC = 0;
+  for (i = 0; i < D_8028B7F4; i++) {
+    if (D_80351C70[i] != 0) {
+      BrVec3Sub(&D_8035D500, (BrVec3 *)D_8031B760[i].mtx0[3], (BrVec3 *)D_8028AAF4->mtx[3]);
+      dot = BrVec3Dot(D_8028AAF4, &D_8035D500);
+      if (dot >= 2.0f) {
+        for (k = D_8035D4FC - 1; k >= 0 && dot < D_8035D4D8[k]; k--) {
+          D_8035D4D8[k + 1] = D_8035D4D8[k];
+          D_8035D4E8[k + 1] = D_8035D4E8[k];
+        }
+        D_8035D4D8[k + 1] = dot;
+        D_8035D4E8[k + 1] = i;
+        D_8035D4FC++;
+      }
+    }
+  }
+  if (D_8035D4FC > 4) {
+    D_8035D4FC = 4;
+  }
+  for (i = 0; i < D_8035D4FC; i++) {
+    slot = D_8035D4E8[i];
+    for (k = 0; k < D_8031B760[slot].x2044; k++) {
+      D_80351D80[((unsigned short *)D_8031B760[slot].x2004)[k]] |= 1 << slot;
+    }
+  }
+  D_8028C770 = 0;
+  for (i = 0; i < D_8028AB00; i++) {
+    D_8028C770 |= ((BrTrackObj *)D_80025C60)[D_8031B248[i]].x4a;
+  }
+  lx = D_8028AAF4->mtx[0][0];
+  ly = D_8028AAF4->mtx[0][1];
+  if (lx == 0.0f && ly == 0.0f) {
+    lx = D_802AA00C;
+  }
+  D_8028C774 = BrVpAlloc();
+  guLookAtReflectF((float (*)[4])D_8031AB10, D_8028C774, lx * 50.0f, ly * 50.0f, 0, 0, 0, 0, 0, 0, 1.0f);
+  if (D_8028AA80 != 0) {
+    D_8035D510.x = D_8028AAF0->mtx0[0][0] * -4.0f + D_8028AAF0->mtx0[2][0];
+    D_8035D510.y = D_8028AAF0->mtx0[0][1] * -4.0f + D_8028AAF0->mtx0[2][1];
+    D_8035D510.z = D_8028AAF0->mtx0[0][2] * -4.0f + D_8028AAF0->mtx0[2][2];
+  } else {
+    D_8035D510.x = D_8031B338[0];
+    D_8035D510.y = D_8031B338[1];
+    D_8035D510.z = D_8031B338[2];
+  }
+  BrVec3Normalise(&D_8035D510);
+  BrVec3ScaleBy(&D_8035D510, 120.0f);
+  D_8028C6A0 = (D_8028C6A0 + 1) % 4;
+  ((int *)(D_8028C640 + D_8028C6A0 * 0x18))[0] = D_8028A9F0[0];
+  ((int *)(D_8028C640 + D_8028C6A0 * 0x18))[1] = D_8028A9F0[1];
+  ((int *)(D_8028C640 + D_8028C6A0 * 0x18))[2] = D_8028A9F0[2];
+  ((int *)(D_8028C640 + D_8028C6A0 * 0x18))[3] = D_8028A9F0[3];
+  ((int *)(D_8028C640 + D_8028C6A0 * 0x18))[4] = D_8028A9F0[4];
+  ((int *)(D_8028C640 + D_8028C6A0 * 0x18))[5] = D_8028A9F0[5];
+  D_8028C640[D_8028C6A0 * 0x18 + 0x10] = (int)D_8035D510.x;
+  D_8028C640[D_8028C6A0 * 0x18 + 0x11] = (int)D_8035D510.y;
+  D_8028C640[D_8028C6A0 * 0x18 + 0x12] = (int)D_8035D510.z;
+  for (i = 0; i < D_8028B7F0; i++) {
+    car = D_803239A0[i].car;
+    if (car != 0) {
+      v.x = car->mtx0[3][0];
+      v.y = car->mtx0[3][1];
+      v.z = car->mtx0[3][2] - car->x2048;
+      BrProjectExtent(&v, 8, (short *)car->pad2050, (short *)car->pad2050 + 2);
+      if (((short *)car->pad2050)[0] < D_8031B2C8[D_8028AAEC].x) {
+        ((short *)car->pad2050)[0] = D_8031B2C8[D_8028AAEC].x;
+      }
+      if (((short *)car->pad2050)[2] < D_8031B2C8[D_8028AAEC].x) {
+        ((short *)car->pad2050)[2] = D_8031B2C8[D_8028AAEC].x;
+      }
+      if (((short *)car->pad2050)[1] < D_8031B2C8[D_8028AAEC].y) {
+        ((short *)car->pad2050)[1] = D_8031B2C8[D_8028AAEC].y;
+      }
+      if (((short *)car->pad2050)[3] < D_8031B2C8[D_8028AAEC].y) {
+        ((short *)car->pad2050)[3] = D_8031B2C8[D_8028AAEC].y;
+      }
+      if (D_8031B2C8[D_8028AAEC].w + D_8031B2C8[D_8028AAEC].x < ((short *)car->pad2050)[0]) {
+        ((short *)car->pad2050)[0] = D_8031B2C8[D_8028AAEC].w + D_8031B2C8[D_8028AAEC].x;
+      }
+      if (D_8031B2C8[D_8028AAEC].w + D_8031B2C8[D_8028AAEC].x < ((short *)car->pad2050)[2]) {
+        ((short *)car->pad2050)[2] = D_8031B2C8[D_8028AAEC].w + D_8031B2C8[D_8028AAEC].x;
+      }
+      if (D_8031B2C8[D_8028AAEC].h + D_8031B2C8[D_8028AAEC].y < ((short *)car->pad2050)[1]) {
+        ((short *)car->pad2050)[1] = D_8031B2C8[D_8028AAEC].h + D_8031B2C8[D_8028AAEC].y;
+      }
+      if (D_8031B2C8[D_8028AAEC].h + D_8031B2C8[D_8028AAEC].y < ((short *)car->pad2050)[3]) {
+        ((short *)car->pad2050)[3] = D_8031B2C8[D_8028AAEC].h + D_8031B2C8[D_8028AAEC].y;
+      }
+    }
+  }
+}
+
 #define G(a, b) { Gfx *g_ = D_8028A858++; g_->words.w0 = (a); g_->words.w1 = (b); }
 
 /* WHAT IT DOES: Draw the track's objects for one view, in two passes (the
