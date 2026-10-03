@@ -136,7 +136,15 @@ static NSString *const k_src = @
 /* textured rectangles: the LFB writes into the frame, the frame into the window */
 "struct BO { float4 pos [[position]]; float2 uv; };\n"
 "vertex BO bvs(uint i [[vertex_id]], const device float4 *v [[buffer(0)]]) { BO o; o.pos = float4(v[i].xy, 0, 1); o.uv = v[i].zw; return o; }\n"
-"fragment float4 bfs(BO in [[stage_in]], texture2d<float> t [[texture(0)]], sampler sm [[sampler(0)]]) { return float4(t.sample(sm, in.uv).rgb, 1); }\n";
+"fragment float4 bfs(BO in [[stage_in]], texture2d<float> t [[texture(0)]], sampler sm [[sampler(0)]]) { return float4(t.sample(sm, in.uv).rgb, 1); }\n"
+/* the frame into the window, sharp bilinear: whole texels at any scale,
+   blended only across the one window pixel a texel edge falls in */
+"fragment float4 sfs(BO in [[stage_in]], texture2d<float> t [[texture(0)]]) {\n"
+"  constexpr sampler s(filter::linear, address::clamp_to_edge);\n"
+"  float2 ts = float2(t.get_width(), t.get_height()), px = in.uv * ts - 0.5;\n"
+"  float2 i = floor(px), f = px - i, d = max(fwidth(px), float2(1e-5));\n"
+"  f = clamp((f - 0.5) / d + 0.5, 0.0, 1.0);\n"
+"  return float4(t.sample(s, (i + 0.5 + f) / ts).rgb, 1); }\n";
 
 typedef struct V { float pos[2]; float z, oow; float col[4]; float st[2]; } V;
 typedef struct U {
@@ -155,7 +163,7 @@ static id<MTLCommandQueue> s_q;
 static id<MTLLibrary> s_lib;
 static id<MTLTexture> s_col, s_dep, s_lfb;
 static id<MTLRenderPipelineState> s_pipes[16][16];     /* by blend src, dst */
-static id<MTLRenderPipelineState> s_clear[2], s_blit, s_lfbpipe;
+static id<MTLRenderPipelineState> s_clear[2], s_blit, s_sharp, s_lfbpipe;
 static id<MTLDepthStencilState> s_ds[2][8][2];         /* depth on, function, write */
 static id<MTLDepthStencilState> s_clear_ds[2];
 static id<MTLSamplerState> s_samp[2][2][2];            /* filter, clamp s, clamp t */
@@ -315,6 +323,7 @@ int brr_open(int width, int height)
         s_clear[1] = simple_pipe(@"cvs", @"cfs", 1, 1);
         s_lfbpipe = simple_pipe(@"bvs", @"bfs", 1, 1);
         s_blit = simple_pipe(@"bvs", @"bfs", 1, 0);
+        s_sharp = simple_pipe(@"bvs", @"sfs", 1, 0);
         for (i = 0; i < 2; i++) {
             MTLDepthStencilDescriptor *d = [MTLDepthStencilDescriptor new];
             d.depthCompareFunction = MTLCompareFunctionAlways;
@@ -674,10 +683,9 @@ void brr_present(void)
                 e = [s_cmd renderCommandEncoderWithDescriptor:rp];
                 if ((off = vb_take(sizeof q)) >= 0) {
                     memcpy((char *)[s_vb[s_vbi] contents] + off, q, sizeof q);
-                    [e setRenderPipelineState:s_blit];
+                    [e setRenderPipelineState:s_sharp];
                     [e setVertexBuffer:s_vb[s_vbi] offset:(NSUInteger)off atIndex:0];
                     [e setFragmentTexture:s_col atIndex:0];
-                    [e setFragmentSamplerState:s_near atIndex:0];
                     [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
                 }
                 [e endEncoding];
