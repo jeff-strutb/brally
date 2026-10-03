@@ -389,25 +389,31 @@ void BrCarSlotSwap(BrCar *me)
  * adds the checkpoint's time to each player and shows the time left or the
  * gap; re-crossing the line after backing over it grants the lap it had
  * already earned.  The PC twin is BrRaceGateStep.
- * RESIDUE (622): frame 0x70 vs 0x80 (the ROM's spill slots sit 0x10
- * higher), the ROM keeps &D_8026FF08 in a register through the lap block,
- * and the iNext test branches straight to the standings where ours goes
- * through a jump. */
+ * Frame: the ROM's 0x80 with every named slot in place (iCur 0x68, iNext
+ * 0x64, tLap 0x60, ratio 0x54, i 0x4C); the checkpoint loop indexes the
+ * entities (no pointer local) and unused ints hold the other slots.
+ * RESIDUE (626): compiler temporaries (0x34/0x40 for the ROM's 0x30/0x3C),
+ * &D_8026FF08 kept in a register through the lap block in the ROM, and the
+ * iNext test's branch.  A5 equivalent, but A7 differs on a checkpoint frame
+ * (views_coast_manual 4521): the register choice changes what callees save
+ * on the stack, which survives to the retrace -- not T3 until it matches. */
 /* @t4-pass 0x8022A0E0 1 2026-09-29 compiles 120 best 622 moved 9  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8022A0E0 2 2026-09-29 compiles 120 best 622 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x8022A0E0 */
 /* @implements 0x8022A0E0 tgr BrRaceGateStep */
 void BrRaceGateStep(BrRaceEnt *drv)
 {
   BrCar *car;
   BrCar *c;
-  BrRaceEnt *ent;
-  float tLap;
   char *msg;
-  float ratio;
-  float d;
+  int unused74;                  /* frame slots, as the ROM's */
+  int unused70;
   int iCur;
   int iNext;
+  float tLap;
+  float d;
+  int unused58;
+  float ratio;
+  int unused50;
   int i;
   short w;
 
@@ -550,8 +556,8 @@ void BrRaceGateStep(BrRaceEnt *drv)
       } else {
         ratio = 1000.0f;
       }
-      for (i = 0, ent = D_803239A0; i < D_8026FF08; i++, ent++) {
-        c = ent->car;
+      for (i = 0; i < D_8026FF08; i++) {
+        c = D_803239A0[i].car;
         c->msgA = (int)"%ryCheck Point!";
         c->msgATime = 0.4f;
         w = D_8028C800 - 1;
