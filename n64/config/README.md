@@ -3,6 +3,7 @@
 | file | what it is |
 |---|---|
 | `symbols_tgr.csv` | name -> address for every named function or data symbol the N64 sources reference. Names of the form `func_80XXXXXX` / `D_80XXXXXX` resolve without an entry. |
+| `excluded_tgr.csv` | game code the retail game provably never runs (outside the target, proof in each function's source header). |
 | `fenced_tgr.csv` | library code linked into the ROM, outside the target (the N64 counterpart of the PC lane's static CRT). |
 | `functions_tgr.csv` | the older cross-compile survey (`n64/tools/manifest.py`); not the tier record. |
 

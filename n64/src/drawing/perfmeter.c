@@ -70,7 +70,12 @@ void BrPerfFrameStart(void)
  * inner loops by four as the ROM has them.
  * RESIDUE (717): the ROM keeps the first loop's counters and row pointer in
  * s4/s6/s7/fp (it saves two more registers, frame 0x40) where ours uses
- * temporaries, which renames everything after. */
+ * temporaries, which renames everything after.
+ * NEVER RUN IN THE RETAIL GAME: its five callers (BrRaceTick, BrIntroScreen,
+ * BrMenu, BrCarSelect, 0x80243260) draw it only while D_8028AA98 >= 2.
+ * That word is 0 in the ROM's .data, no instruction forms its address
+ * (n64rom xref: reads only, at those five sites), no data word points at
+ * it, and a write watch over all 64 box scripts saw no store to it. */
 /* @t4-pass 0x8022D97C 1 2026-09-29 compiles 119 best 717 moved 5  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8022D97C 2 2026-09-29 compiles 119 best 717 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8022D97C tgr BrPerfMeterDraw */

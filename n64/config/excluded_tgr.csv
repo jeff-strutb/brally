@@ -1,0 +1,2 @@
+va,name,reason
+0x8022D97C,BrPerfMeterDraw,"never run in the retail game: drawn only while D_8028AA98 >= 2; the word is 0 in the ROM, only read (five call sites), never pointed at, and a write watch over all 64 box scripts saw no store; proof in n64/src/drawing/perfmeter.c"
