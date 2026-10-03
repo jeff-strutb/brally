@@ -234,6 +234,166 @@ void BrPaintDecalApply(void)
   }
 }
 
+/* WHAT IT DOES: The Controller Pak decal message box: a framed panel (lower
+ * down in the pause layout, mode 1) with the message for code msg, worded
+ * for loading (op 9) or saving -- no pak, unreadable or unwritable pak,
+ * decals not found or a save error, not enough pages or notes, bad data,
+ * a controller error, a nonfunctional pak, or (99999) a general error.
+ * The cases are in the source order the strings' .rodata order gives
+ * (1/11, 7/8, 3, 5, 99999, 6, 4, 10).
+ * RESIDUE (435): register allocation (the ROM keeps mode in s0 and reuses
+ * msg's s1 for y; frame 0x68 vs ours 0x50) and this file's .rodata (the
+ * jump table) not mapping onto the ROM's. */
+/* @implements 0x80244D84 tgr BrPakMessage */
+void BrPakMessage(int msg, char op, char mode)
+{
+  int x;
+  int y;
+  int w;
+
+  BrTextSetFont(12);
+  if (mode == 1) {
+    BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
+  } else {
+    BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xca, 0);
+  }
+  BrTextAlignLeft();
+  BrTextHighlightOff();
+  switch (msg) {
+  case 1:
+  case 11:
+    y = 0xcc;
+    if (mode == 1) {
+      y = 0xea;
+    }
+    func_80246F90(0xd5, y, 0xd5, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
+    y = (y + 30) >> 1;
+    BrTextPrint("CONTROLLER PAK", 0x72, y);
+    BrTextPrint("IS NOT INSERTED", 0x72, y + 14);
+    break;
+  case 7:
+  case 8:
+    y = 0x97;
+    if (mode == 1) {
+      y = 0xc3;
+    }
+    func_80246F90(0xa5, y, 0x135, 0xb2, 3, 0, 0, 0x80, 0x80, 0x80);
+    y = (y + 30) >> 1;
+    BrTextPrint("INSUFFICIENT FREE PAGES", 0x5a, y);
+    BrTextPrint("OR FREE NOTES IN THE", 0x5a, y + 12);
+    BrTextPrint("CONTROLLER PAK.", 0x5a, y + 24);
+    BrTextPrint("62 PAGES AND ONE NOTE", 0x5a, y + 42);
+    BrTextPrint("ARE NEEDED TO SAVE THE", 0x5a, y + 54);
+    BrTextPrint("CUSTOM DECALS.", 0x5a, y + 66);
+    break;
+  case 3:
+    w = 0x116;
+    if (op == 10) {
+      w = 0x106;
+    }
+    y = 0xcc;
+    if (mode == 1) {
+      y = 0xe2;
+    }
+    x = (0x280 - w) >> 1;
+    func_80246F90(x, y, w, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
+    if (op == 9) {
+      y = (y + 30) >> 1;
+      x = (x + 16) >> 1;
+      BrTextPrint("UNABLE TO READ FROM", x, y);
+    } else {
+      y = (y + 30) >> 1;
+      x = (x + 16) >> 1;
+      BrTextPrint("UNABLE TO WRITE TO", x, y);
+    }
+    BrTextPrint("THE CONTROLLER PAK", x, y + 14);
+    break;
+  case 5:
+    w = 0xf2;
+    if (op == 10) {
+      w = 0x10c;
+    }
+    y = 0xcc;
+    if (mode == 1) {
+      y = 0xe2;
+    }
+    x = (0x280 - w) >> 1;
+    func_80246F90(x, y, w, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
+    if (op == 9) {
+      y = (y + 30) >> 1;
+      x = (x + 16) >> 1;
+      BrTextPrint("DECALS NOT FOUND", x, y);
+      BrTextPrint("IN CONTROLLER PAK", x, y + 14);
+    } else {
+      y = (y + 30) >> 1;
+      x = (x + 16) >> 1;
+      BrTextPrint("ERROR ENCOUNTERED", x, y);
+      BrTextPrint("WHILE SAVING DECALS", x, y + 14);
+    }
+    break;
+  case 99999:
+    w = 0x114;
+    if (op == 10) {
+      w = 0x10b;
+    }
+    y = 0xcc;
+    if (mode == 1) {
+      y = 0xe2;
+    }
+    x = (0x280 - w) >> 1;
+    func_80246F90(x, y, w, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
+    y = (y + 30) >> 1;
+    x = (x + 15) >> 1;
+    BrTextPrint("ERROR ENCOUNTERED", x, y);
+    if (op == 9) {
+      BrTextPrint("WHILE LOADING DECALS", x, y + 14);
+    } else {
+      BrTextPrint("WHILE SAVING DECALS", x, y + 14);
+    }
+    break;
+  case 6:
+    y = 0xcc;
+    if (mode == 1) {
+      y = 0xe4;
+    }
+    func_80246F90(0xad, y, 0x126, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
+    y = (y + 30) >> 1;
+    BrTextPrint("BAD DATA ENCOUNTERED", 0x5d, y);
+    if (op == 9) {
+      BrTextPrint("WHILE LOADING DECALS", 0x5d, y + 14);
+    } else {
+      BrTextPrint("WHILE SAVING DECALS", 0x5d, y + 14);
+    }
+    break;
+  case 4:
+    y = 0xb0;
+    if (mode == 1) {
+      y = 0xdc;
+    }
+    func_80246F90(0xae, y, 0x124, 0x80, 3, 0, 0, 0x80, 0x80, 0x80);
+    y = (y + 30) >> 1;
+    BrTextPrint("CONTROLLER ERROR HAS", 0x5e, y);
+    BrTextPrint("BEEN DETECTED.", 0x5e, y + 12);
+    BrTextPrint("CUSTOM DECALS CANNOT", 0x5e, y + 30);
+    if (op == 9) {
+      BrTextPrint("BE LOADED.", 0x5e, y + 42);
+    } else {
+      BrTextPrint("BE SAVED.", 0x5e, y + 42);
+    }
+    break;
+  case 10:
+    y = 0xcc;
+    if (mode == 1) {
+      y = 0xf8;
+    }
+    func_80246F90(0xcd, y, 0xe6, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
+    y = (y + 30) >> 1;
+    BrTextPrint("CONTROLLER PAK", 0x6e, y);
+    BrTextPrint("IS NONFUNCTIONAL", 0x6e, y + 14);
+    break;
+  }
+}
+
 /* WHAT IT DOES: The character for index i of the name-entry character set
  * (a NUL, blanks, digits, capitals, punctuation; 66 entries, no
  * terminator); a space past its end. */

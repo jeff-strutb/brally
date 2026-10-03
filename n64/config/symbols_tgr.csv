@@ -415,6 +415,7 @@ va,name,kind
 80244BA8,BrPaintReset,func
 80244CA8,BrPaintDecalCommit,func
 80244D04,BrPaintDecalApply,func
+80244D84,BrPakMessage,func
 80245470,BrImageDraw,func
 80245604,BrImageDrawAt,func
 80245798,BrImageDrawTinted,func
