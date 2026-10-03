@@ -345,7 +345,8 @@ unsigned int BrRomUnpack(unsigned char *dst, unsigned int rom, BrUnpack *s)
   unsigned char *buf;
   unsigned int t0;
 
-  if (s != 0 && (dst = s->dst) != 0) {
+  if (s != 0 && s->dst != 0) {
+    dst = s->dst;
     rom = s->pos;
     total = s->total;
     left = s->left;
