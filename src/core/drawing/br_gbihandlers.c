@@ -626,12 +626,6 @@ void BrGbiTexScanSetImg(BrGfxWords *pCmd)
 /* @t4-pass 0x10029480 1 2026-09-07 probes 25 bytes 109 insns 34 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10029480 2 2026-09-07 probes 62 bytes 109 insns 34 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10029480 3 2026-09-07 probes 62 bytes 109 insns 34 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t3 0x10029480 2026-09-07 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 109/109 insns 34/34 rows 0+0 regions 1 oracle UNCLASSIFIED
- * @t3-effort passes 3 zero-movement 2 3
- * residue after tools/crank.py: 62 compiles this pass, levers accepted: none;
- * every candidate and score is in build/match/crank.log.
- * Do not reopen before the end-grind. */
 /* @implements 0x10029480 glide BrGbiTexScanLoadTlut */
 extern uint8_t *DAT_100a9e58;          /* tlut dest, 0x100A9E58 */
 void BrGbiTexScanLoadTlut(const BrGfxWords *pCmd)
@@ -643,14 +637,13 @@ void BrGbiTexScanLoadTlut(const BrGfxWords *pCmd)
     if (g_brTexScanState != 1)
         return;
 
-    /* dt BEFORE ds: the original shifts w0 before w1 in each pair, which only
-     * comes out of computing the shifted difference first (19 -> 4 diffs).
-     * RESIDUE 4: inside `ds` the original still copies and masks w0's half
-     * before w1's, and nothing in the source moves that -- a w0 temp, and a
-     * negated subtraction, both leave it. */
+    /* w0's low half goes into ds FIRST, as its own statement, then dt, then
+     * ds is finished from w1: the original copies and masks w0's half before
+     * w1's, and shifts w0 before w1 in the dt pair. */
+    ds = (int32_t)(pCmd->w0 & 0xFFFu);
     dt = (int32_t)((pCmd->w1 >> 12) & 0xFFFu) -
          (int32_t)((pCmd->w0 >> 12) & 0xFFFu);
-    ds = (int32_t)(pCmd->w1 & 0xFFFu) - (int32_t)(pCmd->w0 & 0xFFFu);
+    ds = (int32_t)(pCmd->w1 & 0xFFFu) - ds;
     len = (uint32_t)((ds + 1) * (dt + 1)) << 1;
 
     /* The source pointer is read HERE, not at the top: the original loads the

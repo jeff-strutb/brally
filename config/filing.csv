@@ -406,6 +406,7 @@ glide_va,name,module,basis,file
 0x10029290,BrTexSizeFromShiftAspect,drawing,filed,src/core/drawing/br_tex3d.c
 0x100293D0,br_tex3d_end,drawing,filed,src/core/drawing/br_tex3d.c
 0x100293F0,BrTexTileUnpack,drawing,filed,src/core/drawing/br_tex3d.c
+0x10029480,BrGbiTexScanLoadTlut,drawing,filed,src/core/drawing/br_gbihandlers.c
 0x100294F0,BrGbiTexScanLoadSync,drawing,filed,src/core/drawing/br_gbitexscan.c
 0x10029570,BrGbiTexScanPipeSync,drawing,filed,src/core/drawing/br_gbitexscan.c
 0x10029590,BrGbiTexScanTileSync,drawing,filed,src/core/drawing/br_gbitexscan.c
