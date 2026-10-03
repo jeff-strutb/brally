@@ -338,6 +338,7 @@ va,name,kind
 8022FEF0,BrCarPlaceWheels,func
 8022FFB4,BrCarDrawWheels,func
 802303D4,BrCarVisibility,func
+80232ED4,BrCarDrawBody,func
 80233494,BrMenuBackdropBegin,func
 80233668,BrMenu3DBegin,func
 802336E0,BrMenuCarDraw,func
@@ -550,8 +551,8 @@ va,name,kind
 8025B3B0,BrCrTriContainsPoint,func
 8025B704,BrCrPlaneDist,func
 8025B73C,BrCrContactKick,func
-8025BBB8,BrCrImpulseSolve,func
 8025BBA4,BrStub8025BBA4,func
+8025BBB8,BrCrImpulseSolve,func
 8025C24C,BrCrListPush,func
 8025C27C,BrCrListPrintCount,func
 8025C2C8,BrTriCubeTrivial,func

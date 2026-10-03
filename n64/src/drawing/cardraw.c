@@ -227,3 +227,102 @@ void BrCarVisibility(BrCar *car)
   }
   D_80351C80[car->slot] = 1;
 }
+
+/* -- declarations: BrCarDrawBody -- */
+extern unsigned int D_80351CA0[];       /* per slot: the car's model matrix */
+extern unsigned int D_80351CB0[];       /* per slot: the car's lighting matrix */
+extern Gfx D_8028A9C8[];                /* the car setup display list */
+extern char D_8028A9F0[];               /* the two lights */
+extern char D_8028A9F8[];
+extern unsigned int D_8028A8A0;
+extern float D_8028B750;                /* the screen flash level */
+void BrTexLoad(int tile, void *parts);
+void BrVec3Add(BrVec3 *out, BrVec3 *a, BrVec3 *b);
+void BrVec3Sub(BrVec3 *out, BrVec3 *a, BrVec3 *b);
+float BrVec3Length(BrVec3 *v);
+void BrVec3DivBy(BrVec3 *v, float s);
+float BrVec3Dot(BrVec3 *a, BrVec3 *b);
+void BrVec3Scale(BrVec3 *out, BrVec3 *v, float s);
+void BrVec3MulAddTo(BrVec3 *out, BrVec3 *v, float s);
+/* -- end declarations -- */
+
+/* WHAT IT DOES: Draw a car's body, when the frame draws cars and the
+ * visibility pass marked its body: not the player's own car seen from its
+ * third camera, nor a ghost.  Loads the car's model and lighting matrices,
+ * the setup list, the model's textures, the body render state and the body
+ * display list; for another car whose headlights face the camera, adds to
+ * the screen flash by how squarely they point (above 0.95) over the squared
+ * distance; then restores the state the track draw expects. */
+/* @implements 0x80232ED4 tgr BrCarDrawBody */
+void BrCarDrawBody(BrCar *car)
+{
+  if ((D_8028AA80 != 0 || D_8028AA8C != 0) && D_80351C70[car->slot] != 0) {
+    if (car == D_8028AAF0 && D_8028AAF4 == (BrCar *)&D_8028AAF0->cams[2]) {
+      return;
+    }
+    if (car->colour[3] == 2) {
+      return;
+    }
+    D_8028AB08 = (BrCarModel *)car->model;
+    gRaw(D_8028A858++, 0x1060040, D_80351CA0[car->slot]);
+    gRaw(D_8028A858++, 0x1030040, D_8028A878);
+    gRaw(D_8028A858++, 0x39e0010, D_80351CB0[car->slot]);
+    gRaw(D_8028A858++, 0x3980010, D_80351CB0[car->slot] + 0x10);
+    gRaw(D_8028A858++, 0x39a0010, D_80351CB0[car->slot] + 0x20);
+    gRaw(D_8028A858++, 0x39c0010, D_80351CB0[car->slot] + 0x30);
+    gSPDisplayList(D_8028A858++, D_8028A9C8);
+    BrTexLoad(5, D_8028AB08->parts);
+    gDPPipeSync(D_8028A858++);
+    gRaw(D_8028A858++, 0xba001402, 0);
+    gRaw(D_8028A858++, 0xbc00000a, 0);
+    gRaw(D_8028A858++, 0xbc00040a, 0);
+    gRaw(D_8028A858++, 0xbc00200a, 0xffffff00);
+    gRaw(D_8028A858++, 0xbc00240a, 0xffffff00);
+    gRaw(D_8028A858++, 0xfcffffff, 0xffff73b9);
+    {
+      Gfx *_g = D_8028A858++;
+
+      _g->words.w0 = 0xb900031d;
+      _g->words.w1 = 0x4049d8;
+    }
+    gRaw(D_8028A858++, 0xba000602, 0x80);
+    if (D_8028AB08->dl[0][5] != 0) {
+      gSPDisplayList(D_8028A858++, D_8028AB08->dl[0][5]);
+    }
+    gDPPipeSync(D_8028A858++);
+    gRaw(D_8028A858++, 0xba000602, D_8028A8A0);
+    if (car != D_8028AAF0) {
+      int unused;
+      BrVec3 dir;
+      BrVec3 ahead;
+      float d;
+      float len;
+
+      BrVec3Add(&dir, (BrVec3 *)car->mtx0[3], (BrVec3 *)car->mtx0[0]);
+      BrVec3Sub(&dir, (BrVec3 *)D_8028AAF4->mtx0[3], &dir);
+      len = BrVec3Length(&dir);
+      if (len != 0.0f) {
+        BrVec3DivBy(&dir, len);
+        if (BrVec3Dot(&dir, (BrVec3 *)D_8028AAF4->mtx0[0]) < 0.0f) {
+          BrVec3Scale(&ahead, (BrVec3 *)car->mtx0[0], 1.0f);
+          BrVec3MulAddTo(&ahead, (BrVec3 *)car->mtx0[2], -0.0f);
+          d = BrVec3Dot(&dir, &ahead) * -BrVec3Dot(&dir, (BrVec3 *)D_8028AAF4->mtx0[0]);
+          if (d > 0.95f) {
+            len = len * len;
+            D_8028B750 += 750.0f * (d - 0.95f) / len;
+          }
+        }
+      }
+    }
+    gDPPipeSync(D_8028A858++);
+    gRaw(D_8028A858++, 0xba001402, 0);
+    gRaw(D_8028A858++, 0xbd000000, 0);
+    gRaw(D_8028A858++, 0xb6000000, 0x40000);
+    gRaw(D_8028A858++, 0xbc000002, 0x80000040);
+    gRaw(D_8028A858++, 0x3860010, D_8028A9F8);
+    gRaw(D_8028A858++, 0x3880010, D_8028A9F0);
+    gRaw(D_8028A858++, 0xba000c02, D_8028A898);
+    gRaw(D_8028A858++, 0xba000e02, 0);
+    gRaw(D_8028A858++, 0xfc121824, 0xff33ffff);
+  }
+}
