@@ -152,9 +152,10 @@ void BrTexSizeBits(unsigned int v, int *mask, int *bits)
  * one; mask sizes from the texture's width and height, and texturing on
  * with the full scale.  Built from libultra's texture macros (their MIN and
  * block pointers are in the ROM); the wrap flags are bitfields.
- * RESIDUE (~230 raw, 24 aligned ops): one stack slot sits above the palette
- * in the ROM and below it here, and the TMEM/tile globals load at other
- * points.  Not yet matched. */
+ * Every declared local takes a frame slot in order; pal after tmem puts it at
+ * the ROM's 0x84, which matters because only the palette texture sets it.
+ * RESIDUE (~230 raw): a compiler temporary at 0x24 for the ROM's 0x28, and
+ * the TMEM/tile globals load at other points. */
 /* @t4-pass 0x80217734 1 2026-10-03 compiles 119 best 232 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80217734 2 2026-10-03 compiles 120 best 232 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80217734 tgr BrTexLoad */
@@ -171,8 +172,9 @@ void BrTexLoad(int n, BrTex *tbl)
   int h;
   int fmt;
   int siz;
-  int pal;
   int tmem;
+  int pal;                      /* set only for the palette texture: the others
+                                   pass the slot's old contents, as the ROM does */
 
   tx = &tbl[n];
   w = tx->w;
