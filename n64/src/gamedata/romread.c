@@ -326,7 +326,9 @@ void BrStreamInit(int param_1,int param_2)
  * chunk is DMA'd into one half of a 32000-byte buffer while the previous is
  * inflated from the other.  Without a stream it runs to the end; with one
  * it does one chunk per call, keeping its place in the stream.  Returns the
- * unpacked length. */
+ * unpacked length.  The ROM's 0x88 frame holds every declared local in
+ * declaration order (register ones too); the timing is computed and dropped,
+ * as the ROM still makes its 64-bit multiply and divide calls. */
 /* @t4-pass 0x8021CD30 1 2026-10-03 compiles 121 best 195 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8021CD30 2 2026-10-03 compiles 120 best 195 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8021CD30 tgr BrRomUnpack */
@@ -336,14 +338,12 @@ unsigned int BrRomUnpack(unsigned char *dst, unsigned int rom, BrUnpack *s)
   unsigned int total;
   unsigned int size;
   unsigned int left;
-  unsigned char *buf;
+  int out;
   unsigned int half;
   int first;
   unsigned int prev;
-  unsigned char *chunk;
-  int out;
+  unsigned char *buf;
   unsigned int t0;
-  unsigned long long us;
 
   if (s != 0 && (dst = s->dst) != 0) {
     rom = s->pos;
@@ -374,19 +374,18 @@ unsigned int BrRomUnpack(unsigned char *dst, unsigned int rom, BrUnpack *s)
   t0 = osGetCount();
   do {
     prev = len;
-    chunk = buf + half;
     if (((len + 5) & ~1) < left) {
       if (rom & 1) {
         rom++;
       }
       BrRomRead(&len, rom, 4);
-      osInvalDCache(chunk, 16000);
-      osPiStartDma(BrRomDmaSlot(), 0, 0, rom + 4, chunk, (len + 1) & ~1, &D_80319F88);
+      osInvalDCache(buf + half, 16000);
+      osPiStartDma(BrRomDmaSlot(), 0, 0, rom + 4, buf + half, (len + 1) & ~1, &D_80319F88);
       rom += 4 + ((len + 1) & ~1);
     } else {
       BrRomWaitAll();
     }
-    osInvalDCache(chunk, 16000);
+    osInvalDCache(buf + half, 16000);
     half ^= 16000;
     if (first) {
       first = 0;
@@ -408,7 +407,7 @@ unsigned int BrRomUnpack(unsigned char *dst, unsigned int rom, BrUnpack *s)
       }
     }
   } while (s == 0);
-  us = (unsigned long long)(osGetCount() - t0) * 1000000 / osClockRate;
+  (unsigned long long)(osGetCount() - t0) * 1000000 / osClockRate;
   if (s != 0) {
     s->pos = rom;
     s->left = left;
