@@ -147,7 +147,7 @@ Functions: EXCLUDED (T2) 1, T2 8, T3 15, T4 108.
 | `8023B418` | `BrSkidStep` | T2 |
 | `8023BB50` | `BrSkidDraw` | T4 |
 | `8023BF60` | `BrSkidAge` | T2 |
-| `8023C800` | `BrWheelSprayEmit` | T2 |
+| `8023C800` | `BrWheelSprayEmit` | T4 |
 | `8023CBFC` | `BrParticleStep` | T3 |
 | `8023CD60` | `BrParticleFallStep` | T3 |
 | `8023CF30` | `BrParticleReset` | T4 |

@@ -607,9 +607,9 @@ void BrSkidAge(void)
  * The speed is a local assigned in the test (the rate's frame-time product
  * is then evaluated first); the unusable wheel is a `continue` (that
  * numbers the timer cursor s6 and car+0x20 s5 as in the ROM).
- * RESIDUE (1): the surface chain's last test -- the ROM emits bne v0,a0
- * (byte, 3), ours bne a0,v0.  Spellings of the chain, a local byte, splits
- * and 562 permuter compiles leave it. */
+ * The surface chain's last test assigns 3 to n (n is reassigned from the
+ * free list before any use): the ROM compares the byte against a register
+ * holding 3 as a variable (bne v0,a0), not as a hoisted constant. */
 /* @implements 0x8023C800 tgr BrWheelSprayEmit */
 void BrWheelSprayEmit(car)
 BrCar *car;
@@ -636,7 +636,7 @@ BrCar *car;
         w[2] = (BrSprayWheel *)((char *)car + 0x350);
         w[3] = (BrSprayWheel *)((char *)car + 0x760);
         wh = w[i];
-        if (wh->contact == 0 || (wh->surface != 1 && wh->surface != 2 && wh->surface != 3)
+        if (wh->contact == 0 || (wh->surface != 1 && wh->surface != 2 && wh->surface != (n = 3))
             || (n = D_8028C830) == 0) {
           continue;
         }
