@@ -538,14 +538,14 @@ void BrCarSetHeading(BrCar *car, float a)
 {
   float c;
   float s;
-  float s2;
   float c2;
+  float s2;
   float m[10];                   /* unused: holds the frame size */
 
   c = cosf(a);
   s = sinf(a);
-  s2 = sinf(a + 1.5707964f);
   c2 = cosf(a + 1.5707964f);
+  s2 = sinf(a + 1.5707964f);
   car->mtx0[0][0] = c;
   car->mtx0[0][2] = 0.0f;
   car->mtx0[0][1] = s;
