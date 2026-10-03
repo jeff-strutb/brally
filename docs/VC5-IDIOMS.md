@@ -8640,3 +8640,8 @@ with the target's flags, diff one function against original bytes
   float sums in source grouping, so the parenthesised pair is evaluated
   first.  It also changes the rounding, which is why it matters beyond the
   bytes.  0x10034A70 BrMtxXfmDir3 (rows y and z; row x is left-to-right).
+- **A loop cursor kept in TWO registers (`mov edx,eax` at the top, `mov
+  eax,edx` before the back edge) where a pointer cursor gives one: write the
+  loop INDEXED over the global array, `g[i].p` / `g[i].size`.**  VC5's
+  strength reduction of the index makes the split live range.  0x1005C450
+  BrZeroRegions.

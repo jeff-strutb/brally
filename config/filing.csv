@@ -1062,6 +1062,7 @@ glide_va,name,module,basis,file
 0x1005AC60,BrCarBuildMatrices,racing,description,src/core/racing/br_carinit.c
 0x1005ACE0,BrCarWheelSteerStep_1005ACE0,driving,filed,src/core/driving/br_carwheelsteer.c
 0x1005C440,BrThunk5C440,racing,neighbour-1,src/core/racing/br_thunks.c
+0x1005C450,BrZeroRegions,gamedata,filed,src/core/gamedata/br_zeroregions.c
 0x1005C490,BrRaceCarPickIndex,racing,filed,src/core/racing/br_racecar.c
 0x1005C560,BrRaceCarReset,racing,filed,src/core/racing/br_racecar.c
 0x1005C6D0,BrCarRespawn_1005C6D0,racing,manual,src/core/racing/BrCarRespawn_1005C6D0.cpp

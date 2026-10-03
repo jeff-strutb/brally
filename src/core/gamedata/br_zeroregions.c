@@ -42,40 +42,22 @@ void BrZeroRegions(void);
 /* WHAT IT DOES: zeroes each block of memory in a list of address-and-size
  * pairs, stopping at the first entry with no address. A block of size zero
  * is stepped over rather than cleared. */
-/* Residue: two `mov R,R` copies of the loop cursor the original keeps live
- * across the back edge (reads ->p via one register, ->size/next via the
- * other) -- the VARIABLE-IDENTITY-IS-INERT live-range class.  DEAD
- * 2026-09-09: guard on the global directly (moves the address materialise
- * below the test, FIRSTDIV +0x5 -> +0x8, bytes unchanged); do-while; a
- * lookahead pNext local read before/after ++; a second cursor local q in
- * four shapes (z7 reaches 28/28 insns but misplaces both copies); a size
- * local; every slot in the TU (10).  Corpus MISS on the loop tail at +0x2d.
+/* An INDEXED loop over the global array, not a cursor pointer: VC5 then
+ * strength-reduces the index into the original's two cursor copies (one
+ * reads ->p, the other ->size and the next entry) across the back edge.
  * @t4-pass 0x1005C450 1 2026-09-09 probes 11 bytes 58 insns 26 regions 2 rows 2 census yes  (hand, fn.py variants)
  * @t4-pass 0x1005C450 2 2026-09-09 probes 10 bytes 58 insns 26 regions 2 rows 2 census yes  (position sweep) */
-/* @t3 0x1005C450 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 58/62 insns 26/28 rows 2+0 regions 2 oracle EQUIVALENT
- * @t3-effort passes 2 zero-movement 1 2
- * residue is allocation/scheduling: 2+0 classified rows, 2 masked regions, 4 B short;
- * every row pairs under t3.py's canonical classes.  Effort: 2 counted
- * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
- * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x100633E0 d3d BrZeroRegions */
 extern BrZeroRegion DAT_100b2f08[];    /* list head, 0x100B2F08 */
 void BrZeroRegions(void)
 {
-    BrZeroRegion *pList = DAT_100b2f08;
+    int i;
 
-    if (pList->p == NULL)
-        return;
-    for (;;) {
-        uint8_t *pBeg = (uint8_t *)pList->p;
-        uint8_t *pEnd = pBeg + pList->size;
+    for (i = 0; DAT_100b2f08[i].p != NULL; i++) {
+        uint8_t *pBeg = (uint8_t *)DAT_100b2f08[i].p;
+        uint8_t *pEnd = pBeg + DAT_100b2f08[i].size;
 
         if (pBeg < pEnd)
             memset(pBeg, 0, (size_t)(pEnd - pBeg));
-        ++pList;
-        if (pList->p == NULL)
-            break;
     }
 }
