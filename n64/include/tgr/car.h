@@ -153,7 +153,9 @@ typedef struct BrCar {
     float xfe4[11];             /* 0xFE4 */
     float x1010;                /* 0x1010  zeroed when the particle pool is reset */
     BrVec3 smokeAt;             /* 0x1014  where the last smoke particle started */
-    char pad1020[0x1D78 - 0x1020];
+    float sprayTime[4];         /* 0x1020  per wheel: the spray emit timer */
+    BrVec3 sprayAt[4];          /* 0x1030  per wheel: where its last spray particle started */
+    char pad1060[0x1D78 - 0x1060];
     BrVec3 pos1d78;             /* 0x1D78  another position copy */
     char pad1d84[0x1D88 - 0x1D84];
     int mtx[16];                /* 0x1D88 */
@@ -182,7 +184,7 @@ typedef struct BrCar {
     int x2000;                  /* 0x2000  entries in x1fc0 */
     int x2004[16];              /* 0x2004 */
     int x2044;                  /* 0x2044 */
-    int x2048;                  /* 0x2048 */
+    float x2048;                /* 0x2048  lifts the spray particles (half of it) */
     int x204c;                  /* 0x204C */
     char pad2050[0x2058 - 0x2050];
     int x2058;                  /* 0x2058  the kind it was given (copied to kind) */

@@ -36,7 +36,7 @@ extern BrWeatherObj D_803239A0[];
 extern int D_8028B7F0;                  /* entries in D_803239A0 */
 void func_8023B178(int e);
 void func_8023B418(int e);
-void func_8023C800(int e);
+void BrWheelSprayEmit();
 void func_8023CD60(void);
 int func_8023BB50();
 void func_8023D134(unsigned int param_1,int param_2,unsigned int param_3,unsigned int param_4);
@@ -96,6 +96,104 @@ void BrCarSmokeEmit(BrCar *car)
     p->size = t * 0.15f;
     p->x1e = 1.0f / (BrVec3Length(&car->velfd8) + t) * 255.0f;
     p->x1f = 0xff;
+  }
+}
+
+/* -- declarations: BrWheelSprayEmit -- */
+/* A wheel's ground contact as the spray reads it (0x208 bytes, four from
+ * car+0x350). */
+typedef struct BrSprayWheel {
+    char pad000[0x1A0];
+    unsigned char surface;      /* 0x1A0  1-3 throw spray (3 onto the second list) */
+    char pad1a1[0x1B4 - 0x1A1];
+    int contact;                /* 0x1B4  non-zero on the ground */
+    char pad1b8[0x208 - 0x1B8];
+} BrSprayWheel;
+void BrVec3MulAddTo(BrVec3 *pOut, BrVec3 *pV, float s);
+void BrVec3SubFrom(BrVec3 *pA, BrVec3 *pB);
+void BrVec3ScaleBy(BrVec3 *pV, float s);
+float BrVec3DistSq(BrVec3 *pA, BrVec3 *pB);
+void BrVec3Lerp(BrVec3 *pOut, BrVec3 *pA, BrVec3 *pB, float t);
+/* -- end declarations -- */
+
+/* WHAT IT DOES: A car's wheel spray for one frame, when it has a surface
+ * impact level and goes faster than 40: each wheel's timer counts up by
+ * the frame rate and the impact level, and past 0.75 a wheel on the ground
+ * on surface 1-3 takes a particle off the free list onto one of the two
+ * falling lists (surface 3 the second), thrown along the car's velocity,
+ * up (the rear pair more), out to its side (the front pair), less of it
+ * the faster the car goes; it starts at the wheel, lifted by half 0x2048,
+ * pulled toward the wheel's last spot when that is near, and fades from
+ * the speed.  Declared without a prototype: BrParticleFrame passes the
+ * emitter as an int, and a prototyped pointer call recolours its loops.
+ * RESIDUE (15): the rate's two products -- the ROM loads the frame time
+ * first; ours the literal (register-blind the same).  Written as two
+ * statements the load order is the ROM's but the sum lands in the saved
+ * register and every later temp rotates; s5/s6 (the timer cursor and
+ * car+0x20) are swapped. */
+/* @implements 0x8023C800 tgr BrWheelSprayEmit */
+void BrWheelSprayEmit(car)
+BrCar *car;
+{
+  float at[3];
+  int unused[3];
+  int i;
+  float rate;
+  BrSprayWheel *w[4];
+  BrSprayWheel *wh;
+  int n;
+  BrParticle *p;
+  float keep;
+
+  if (car->sndImpact != 0 && car->xfe4[0] > 40.0f) {
+    rate = D_8028AAD8 * 0.5f + car->xfe4[0] * 0.00066006603f;
+    for (i = 0; i < 4; i++) {
+      car->sprayTime[i] += rate * ((float)(unsigned int)car->sndImpact * 0.03f);
+      if (car->sprayTime[i] > 0.75f) {
+        car->sprayTime[i] = 0.0f;
+        w[0] = (BrSprayWheel *)((char *)car + 0x968);
+        w[1] = (BrSprayWheel *)((char *)car + 0x558);
+        w[2] = (BrSprayWheel *)((char *)car + 0x350);
+        w[3] = (BrSprayWheel *)((char *)car + 0x760);
+        wh = w[i];
+        if (wh->contact != 0 && (wh->surface == 1 || wh->surface == 2 || wh->surface == 3)
+            && (n = D_8028C830) != 0) {
+          p = &D_80366A80[n];
+          D_8028C830 = p->next;
+          if (wh->surface == 3) {
+            p->next = D_8028C83C;
+            D_8028C83C = n;
+          } else {
+            p->next = D_8028C838;
+            D_8028C838 = n;
+          }
+          BrVec3Scale((BrVec3 *)p->vel, &car->velfd8, 0.2f);
+          BrVec3MulAddTo((BrVec3 *)p->vel, (BrVec3 *)car->mtx0[2], i < 2 ? 0.25f : 2.0f);
+          if (i < 2) {
+            BrVec3MulAddTo((BrVec3 *)p->vel, (BrVec3 *)car->mtx0[1], i != 0 ? -0.5f : 0.5f);
+          }
+          BrVec3SubFrom((BrVec3 *)p->vel, (BrVec3 *)car);
+          keep = 1.0f - 50.0f / (car->xfe4[0] + 50.0f);
+          BrVec3ScaleBy((BrVec3 *)p->vel, keep);
+          BrVec3Sub((BrVec3 *)p->pos, (BrVec3 *)car->wheelMtx[i][3], (BrVec3 *)car);
+          p->pos[2] += car->x2048 * 0.5f;
+          at[0] = p->pos[0];
+          at[1] = p->pos[1];
+          at[2] = p->pos[2];
+          if (BrVec3DistSq((BrVec3 *)p->pos, &car->sprayAt[i]) < 256.0f) {
+            float g = (float)(BrRandStep() & 0xffff) * 1.5259021893143654e-05f;
+
+            BrVec3Lerp((BrVec3 *)p->pos, &car->sprayAt[i], (BrVec3 *)p->pos, g * g);
+          }
+          car->sprayAt[i].x = at[0];
+          car->sprayAt[i].y = at[1];
+          car->sprayAt[i].z = at[2];
+          p->size = 0.4f;
+          p->x1e = 25;
+          p->x1f = (int)(239.0f * keep * 0.7f + 16.0f);
+        }
+      }
+    }
   }
 }
 
@@ -244,7 +342,7 @@ void BrParticleFrame(void)
     func_8023CD60();
     for (i = 0, o = D_803239A0; i < D_8028B7F0; i++, o++) {
       if (o->x60 != 0) {
-        func_8023C800(o->x60);
+        BrWheelSprayEmit(o->x60);
         func_8023B418(o->x60);
       }
     }
