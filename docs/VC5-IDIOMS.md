@@ -1237,8 +1237,12 @@ the caller AND flipped a helper to match for free.
   difference feeding a divide. So when an original shows `sub reg, imm` where
   your C has `add reg, -imm`, the lever is the VALUE'S TYPE OR LIFETIME (a
   loop step, a narrower type, a difference that feeds further arithmetic)
-  never the spelling of the minus sign. OPEN: 0x1006FD50 BrEntitySetIndex is
-  2 bytes from exact on precisely this and fits none of the three keys.
+  never the spelling of the minus sign. A fourth key (2026-10-03, closed
+  0x1006FD50 BrEntitySetIndex): a variable decremented IN PLACE that stays
+  live across a join keeps `sub`, even straight-line -- `if (x >= 16) x -= 16;
+  ... *o = x;`.  It has to be the variable itself (a parameter or its struct
+  member); `int i = param` then `i -= 16` gets the add form.  The store after
+  the join is tail-duplicated into both arms.
 - **Repeated constant stores are a LEADING GROUP, and the group runs
   DESCENDING.** A function that writes the same constant into several fields
   of a struct writes them all up front, not interleaved in field order. VC5
