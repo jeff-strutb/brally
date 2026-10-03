@@ -118,6 +118,9 @@ void BrCreditsDrawCars(void)
  * on. */
 /* @t4-pass 0x8020686C 1 2026-09-29 compiles 101 best 1461 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8020686C 2 2026-09-29 compiles 101 best 1461 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8020686C 3 2026-10-03 compiles 41 best 1459 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8020686C 4 2026-10-03 compiles 41 best 1459 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8020686C */
 /* @implements 0x8020686C tgr BrIntroScreen */
 void BrIntroScreen(void)
 {
