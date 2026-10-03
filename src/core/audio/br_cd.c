@@ -353,21 +353,8 @@ int BrFadeRelease(void);     /* 0x10017F10 */
 /* @t4-pass 0x10003050 6 2026-09-10 probes 60 bytes 83 insns 29 regions 1 rows 1 census yes  (tools/crank.py) */
 /* @t4-pass 0x10003050 7 2026-09-10 probes 40 bytes 84 insns 29 regions 3 rows 1 census yes  (tools/crank.py) */
 /* @t4-pass 0x10003050 8 2026-09-10 probes 40 bytes 84 insns 29 regions 3 rows 1 census yes  (tools/crank.py) */
-/* @t3 0x10003050 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 84/96 insns 29/30 rows 1+0 regions 3 oracle EQUIVALENT
- * @t3-effort passes 7 zero-movement 7 8
- * residue after tools/crank.py: 40 compiles this pass, levers accepted: mut:split_add:g_brCdPlaying > mut:hoist_sink:-1;
- * every candidate and score is in build/match/crank.log.
- * Do not reopen before the end-grind. */
 /* @implements 0x10003050 glide BrCdStopReleaseMsg */
-/* RESIDUE (2026-09-06): body complete and correct; ignoring the 11 trailing
- * alignment nops (which the sweep tolerates, as it does for BrCdStop's matched
- * bodies) the only residue is PUSH PLACEMENT. The original pushes esi (holding
- * r) unconditionally in the prologue -- scheduled into the load/test gap of the
- * `enabled==0` guard -- so the early return pops it too; VC5 on this source
- * sinks the push past the guard, leaving the early return with no pop. The
- * hoist/sink lever (docs/VC5-IDIOMS: a `return` inside an if-arm hoists) does
- * not apply -- the guard path needs no callee-saved register, so VC5 sinks.
+/* The trailing alignment nops are the sweep-tolerated padding.
  * @t4-pass 0x10003050 1 2026-09-06 probes 3 bytes 96 insns 41 regions 1 rows 1 census no */
 static int BrCdStopReleaseMsg(void)
 {
@@ -382,9 +369,14 @@ static int BrCdStopReleaseMsg(void)
   } else {
     r = (*DAT_104b1628)(g_br0940A8, 0) == 0;
   }
-  if (g_brCdPlaying == 0) {
-    BrFadeRelease();
+  /* An early `return r` for the still-playing case, as BrCdStopReleaseMci
+   * spells it: a return inside the body keeps esi's push in the prologue
+   * (the guard's return pops it); a single fall-through exit lets VC5 sink
+   * the push past the guard. */
+  if (g_brCdPlaying != 0) {
+    return r;
   }
+  BrFadeRelease();
   return r;
 }
 
