@@ -456,38 +456,29 @@ extern int DAT_104ab500;
  * match -- the eax/ebx transposition is unchanged (157/157, 30+30 raw). */
 /* @t4-pass 0x10013F20 3 2026-09-20 probes 84 bytes 157 insns 56 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10013F20 4 2026-09-20 probes 84 bytes 157 insns 56 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t3 0x10013F20 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 157/157 insns 56/56 rows 0+0 regions 1 oracle EQUIVALENT
- * @t3-effort passes 4 zero-movement 3 4
- * residue after tools/crank.py: 84 compiles this pass, levers accepted: mut:reorder_stmts;
- * every candidate and score is in build/match/crank.log.
- * Do not reopen before the end-grind. */
 /* @implements 0x10013F20 glide BrSnapPickSlot */
 int BrSnapPickSlot(void)
 {
     int chosen;
     unsigned int best;
     int i;
-    unsigned int *cost;
-    int *flag;
     int cur;
     int prev;
 
     chosen = -1;
     best = 0xffffffffu;
-    i = 0;
-    cost = (unsigned int *)&DAT_10396f48;
-    flag = &DAT_10396f10;
+    /* An INDEXED loop over the two real arrays (the five per-car flags and
+     * the five car records), not Ghidra's pointer walk: with the bound known
+     * VC5 rotates the loop, strength-reduces both and tests the flag
+     * pointer, in the original's registers. */
     cur = DAT_104ab4e8;
-    do {
-        if (*flag == 0 && i != cur && best >= *cost) {
+    for (i = 0; i < 5; i++) {
+        if (g_aBrRbPerCar[i] == 0 && i != cur
+            && best >= *(unsigned int *)&g_aBrRbCar[i].f0) {
             chosen = i;
-            best = *cost;
+            best = *(unsigned int *)&g_aBrRbCar[i].f0;
         }
-        flag++;
-        i++;
-        cost += 0xb83c;
-    } while ((int)flag < 0x10396f24);
+    }
     if (cur >= 0) {
         prev = *(int *)((char *)&DAT_10396f48 + cur * 0x2e0f0);
     } else {
