@@ -1,6 +1,8 @@
 /* cpak.c -- the Controller Pak save data
  */
 #include "tgr/common.h"
+#include "tgr/car.h"
+#include "tgr/pad.h"
 
 /* -- declarations -- */
 void BrVolumesApply(void);
@@ -19,18 +21,14 @@ void BrImageDrawAt(int *param_1,int param_2,int param_3);
 int func_80246F90();
 void BrPadConsume(unsigned int *param_1,unsigned int param_2);
 void osSyncPrintf();
-char * memcpy(char *param_1,char *param_2,int param_3);
+void *memcpy(void *dst, void *src, int n);
 int func_80261940(void *param_1,unsigned char *param_2);
 int func_80261CB0();
 int func_80261F20(int param_1);
 int func_80262370();
-int func_80262540();
+int bcmp(void *a, void *b, unsigned int n);
 int func_80262660();
-int func_802628C0(int param_1,short param_2,int param_3,int param_4,int param_5,int *param_6);
 int func_80262A80();
-int func_802635DC(unsigned int *param_1,int param_2,char param_3,unsigned int param_4,unsigned int param_5,int param_6);
-int func_802639E0(unsigned int *param_1,int *param_2);
-int func_80263B30();
 extern int D_80216398;
 extern int D_80270784;
 extern int D_80271FA8;
@@ -39,7 +37,7 @@ extern int D_802724F0;
 extern unsigned char D_802724F4;
 extern unsigned char D_802724F8;
 extern unsigned char D_802724FC;
-extern int D_80272500;
+extern unsigned char *D_80272500;   /* the transfer buffer */
 extern int D_80272558;
 extern int D_8027255C;
 extern int D_80272560;
@@ -66,13 +64,7 @@ extern float D_802A901C;
 extern unsigned char D_80307F00;
 extern int D_80307F01;
 extern char D_80316420;
-extern int D_8031642C;
-extern unsigned char D_80316430;
-extern unsigned char D_80316431;
 extern char D_8031B1E8;
-extern int D_8031C5BC;
-extern int D_8031E64C;
-extern int D_8036A8E0;
 typedef struct { char raw[0x68]; } BrPfs;              /* an OSPfs */
 typedef struct BrPfsState {    /* an OSPfsState, 0x20 bytes */
   unsigned int size;
@@ -87,6 +79,13 @@ extern BrPfs D_80369EC0[2];
 extern BrPfs D_8031A3F8[4];
 extern char D_803163E0[];
 extern int D_8026FF08;
+int osPfsFindFile(BrPfs *pfs, unsigned short company, unsigned int game, char *name,
+                  unsigned char *ext, int *file);
+int osPfsReadWriteFile(BrPfs *pfs, int file, unsigned char flag, int offset, int size,
+                       unsigned char *buf);
+int osPfsFreeBlocks(BrPfs *pfs, int *bytes);
+int osPfsAllocateFile(BrPfs *pfs, unsigned short company, unsigned int game, char *name,
+                      unsigned char *ext, int size, int *file);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Ask the player to swap the Controller Pak for the Rumble
@@ -180,583 +179,447 @@ fail:
   return 1;
 }
 
-/* WHAT IT DOES: Check the Controller Pak for the save screens: initialise
- * it, and report when a different pak has been inserted, asking the player
- * to confirm before carrying on. */
+/* WHAT IT DOES: One step of the Controller Pak check a screen runs before it
+ * loads the season (kind 0), the ghost (1) or the configuration (2), or saves
+ * the configuration (3); quiet skips the fades and messages.  A state machine
+ * kept in function statics: fade the sound, probe the pak (a Rumble Pak in
+ * the way asks to swap it; a new pak's id is remembered, a changed one is
+ * announced), find the file (and on a save allocate it), read or write it --
+ * the season keeping the other player's options, the ghost unlocking its
+ * track and car, the configuration with the player's car settings -- show
+ * the result or the error and wait for a button, offer to put the Rumble Pak
+ * back.  Answers 1 on the frame it finishes, else 0.  The frame is the ROM's
+ * 0xB8: the unused ints hold the slots of h and y, and hBase is a byte the
+ * ROM reads without ever setting (the "loaded" box's height when the screen
+ * was not entered from a save).
+ * RESIDUE (30): three temporaries numbered the other way round -- the fade
+ * counter's v0/v1, the error code's v0/v1 for the message switch, and the
+ * text row's a2/a3 in the "loaded" box. */
 /* @t4-pass 0x80214E0C 1 2026-09-26 compiles 17 best 1632 moved 7  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80214E0C 2 2026-09-26 compiles 17 best 1639 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80214E0C 3 2026-09-26 compiles 17 best 1637 moved 2  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80214E0C 4 2026-09-26 compiles 41 best 1637 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80214E0C tgr BrCpakCheck */
-int BrCpakCheck(int param_1,char param_2)
+int BrCpakCheck(int kind, unsigned char quiet)
 {
-  int bVar1;
-  unsigned int uVar2;
-  unsigned int *puVar3;
-  int iVar4;
-  char cVar5;
-  int local_7c;
-  int local_78;
-  int local_70;
-  int local_74;
-  int local_6c;
-  int local_68;
-  int local_64;
-  int local_60;
-  int local_5c;
-  int local_58;
-  int local_54;
-  int local_50;
-  int local_4c;
-  int local_48;
-  int local_44;
-  int local_40;
-  int local_3c;
-  int local_38;
-  int local_34;
-  unsigned char local_2e;
-  int local_2c;
-  unsigned char local_2d;
-  int *local_28;
-  int local_20;
-  int local_8;
-  
-  local_58 = D_80272558;
-  local_54 = D_8027255C;
-  local_50 = D_80272560;
-  local_4c = D_80272564;
-  local_68 = D_80272568;
-  local_64 = D_8027256C;
-  local_60 = D_80272570;
-  local_5c = D_80272574;
-  local_78 = D_80272578;
-  local_74 = D_8027257C;
-  local_70 = D_80272580;
-  local_6c = D_80272584;
+  static int file;               /* 0x8031642C: the open file */
+  static unsigned char state;    /* 0x80316430 */
+  static unsigned char wait;     /* 0x80316431: frames the fade has been done */
+  int unusedB4;
+  int h;
+  int unused9C[5];
+  int y;
+  int unused94;
+  char *name;
+  int freeBytes;
+  unsigned char pakBits;
+  unsigned char hBase;           /* never set */
+  int size;
+  int opts[5];
+  unsigned char nameSeason[16] = {
+    0x2D, 0x28, 0x29, 0x0F, 0x20, 0x1E, 0x1A, 0x2B, 0x0F, 0x2C, 0x1E, 0x1A, 0x2C, 0x28, 0x27, 0x00
+  };
+  unsigned char nameGhost[16] = {
+    0x2D, 0x28, 0x29, 0x0F, 0x20, 0x1E, 0x1A, 0x2B, 0x0F, 0x20, 0x21, 0x28, 0x2C, 0x2D, 0x00, 0x00
+  };
+  unsigned char nameOptions[16] = {
+    0x2D, 0x28, 0x29, 0x0F, 0x20, 0x1E, 0x1A, 0x2B, 0x0F, 0x28, 0x29, 0x2D, 0x22, 0x28, 0x27, 0x2C
+  };
+  unsigned char ext[4] = { 0, 0, 0, 0 };
+
   D_802A4BE8 = 0;
-  local_7c = D_80272588;
-  if (D_802724F8 == '\0') {
-    D_802724F8 = '\x01';
+  if (D_802724F8 == 0) {
+    D_802724F8 = 1;
     D_802724F0 = 0;
-    D_80316430 = '\0';
-    D_80316431 = '\0';
+    state = 0;
+    wait = 0;
   }
-  if (param_1 == 0) {
-    local_34 = 0x200;
-    local_28 = &local_58;
+  if (kind == 0) {
+    name = (char *)nameSeason;
+    size = 0x200;
+  } else if (kind == 1) {
+    name = (char *)nameGhost;
+    size = 0x3A00;
+  } else if (kind == 2 || kind == 3) {
+    name = (char *)nameOptions;
+    size = 0x100;
   }
-  else if (param_1 == 1) {
-    local_34 = 0x3a00;
-    local_28 = &local_68;
-  }
-  else if ((param_1 == 2) || (param_1 == 3)) {
-    local_34 = 0x100;
-    local_28 = &local_78;
-  }
-  switch(D_80316430) {
-  case '\0':
-    if (param_2 == '\0') {
-      func_80223750(0,D_802A8FE4);
-      func_802237D0(0,D_802A8FE8);
-      D_80316430 = '\x01';
-    }
-    else {
-      D_80316430 = '\x02';
+  switch (state) {
+  case 0:                       /* fade the sound */
+    if (quiet == 0) {
+      func_80223750(0.0f, 0.2f);
+      func_802237D0(0.0f, 0.2f);
+      state = 1;
+    } else {
+      state = 2;
     }
     break;
-  case '\x01':
-    iVar4 = BrSfxFadeDone();
-    if ((iVar4 != 0) &&
-       (cVar5 = D_80316431 + '\x01', bVar1 = D_80316431 == '\x03', D_80316431 = cVar5, bVar1))
-    {
-      D_80316430 = '\x02';
+  case 1:                       /* wait for it to go */
+    if (BrSfxFadeDone() != 0 && wait++ == 3) {
+      state = 2;
     }
     break;
-  case '\x02':
-    func_80261940(&D_80272D48,&local_2d);
-    if (((unsigned int)local_2d & 1 << (D_80271FA8 & 0x1f)) == 0) {
+  case 2:                       /* probe the pak */
+    func_80261940(&D_80272D48, &pakBits);
+    if ((pakBits & (1 << D_80271FA8)) == 0) {
       D_802724F0 = 1;
-      D_80316430 = '\t';
-    }
-    else {
+      state = 9;
+    } else {
       osSyncPrintf("\nInitializing controller pak...\n");
-      D_802724F0 = func_80261CB0(&D_80272D48,D_80271FA8 * 0x68 + -0x7fc96140,D_80271FA8);
-      uVar2 = D_80271FA8;
-      if (D_802724F0 == 0) {
-        (&D_8031B1E8)[D_80271FA8] = 0;
-        if ((&D_80316420)[uVar2] == '\0') {
-          (&D_80316420)[uVar2] = '\x01';
-          memcpy(uVar2 * 0x20 + -0x7fce9c20,uVar2 * 0x68 + -0x7fc96134,0x20);
-          D_80316430 = '\x05';
-        }
-        else {
-          iVar4 = func_80262540(uVar2 * 0x20 + -0x7fce9c20,uVar2 * 0x68 + -0x7fc96134,0x20);
-          if (iVar4 == 0) {
-            D_80316430 = '\x05';
+      D_802724F0 = func_80261CB0(&D_80272D48, &D_80369EC0[D_80271FA8], D_80271FA8);
+      if (D_802724F0 != 0) {
+        if (D_802724F0 == 10) {         /* a Rumble Pak */
+          if (func_80262370(&D_80272D48, &D_8031A3F8[D_80271FA8], D_80271FA8) == 0) {
+            func_80261F20((int)&D_8031A3F8[D_80271FA8]);
+            D_802724F0 = 9999;
+            D_802724FC = 1;
+            state = 9;
+          } else {
+            D_802724F0 = 0;
+            state = 3;
           }
-          else {
-            memcpy(D_80271FA8 * 0x20 + -0x7fce9c20,D_80271FA8 * 0x68 + -0x7fc96134,0x20);
-            D_80316430 = '\x04';
-          }
+        } else {
+          (&D_8031B1E8)[D_80271FA8] = 0;
+          state = 9;
         }
-      }
-      else if (D_802724F0 == 10) {
-        iVar4 = func_80262370(&D_80272D48,D_80271FA8 * 0x68 + -0x7fce5c08,D_80271FA8);
-        if (iVar4 == 0) {
-          func_80261F20(D_80271FA8 * 0x68 + -0x7fce5c08);
-          D_802724F0 = 9999;
-          D_802724FC = '\x01';
-          D_80316430 = '\t';
-        }
-        else {
-          D_802724F0 = 0;
-          D_80316430 = '\x03';
-        }
-      }
-      else {
+      } else if (D_802724F0 == 0) {
         (&D_8031B1E8)[D_80271FA8] = 0;
-        D_80316430 = '\t';
+        if ((&D_80316420)[D_80271FA8] == 0) {
+          (&D_80316420)[D_80271FA8] = 1;
+          memcpy(&D_803163E0[D_80271FA8 * 32], D_80369EC0[D_80271FA8].raw + 0xc, 32);
+          state = 5;
+        } else if (bcmp(&D_803163E0[D_80271FA8 * 32], D_80369EC0[D_80271FA8].raw + 0xc, 32) != 0) {
+          memcpy(&D_803163E0[D_80271FA8 * 32], D_80369EC0[D_80271FA8].raw + 0xc, 32);
+          state = 4;
+        } else {
+          state = 5;
+        }
       }
     }
     break;
-  case '\x03':
-    D_802724F0 = func_80262660(D_80271FA8 * 0x68 + -0x7fc96140);
-    if (D_802724F0 == 0) {
-      D_80316430 = '\x02';
-    }
-    else {
-      D_80316430 = '\t';
+  case 3:
+    D_802724F0 = func_80262660(&D_80369EC0[D_80271FA8]);
+    if (D_802724F0 != 0) {
+      state = 9;
+    } else {
+      state = 2;
     }
     break;
-  case '\x04':
-    if (param_2 == '\0') {
+  case 4:                       /* a different pak */
+    if (quiet != 0) {
+      state = 5;
+    } else {
       BrTextHighlightOff();
       BrTextAlignLeft();
-      BrTextSetFont(0xc);
-      BrTextSetColours(0xff,0xff,0xff,0xff,0xf5,0);
-      func_80246F90(0xaf,0xc3,0x122,0x89,3,0,0,0x80,0x80,0x80);
-      BrTextPrint("A NEW CONTROLLER PAK",0x5f,0x71);
-      BrTextPrint("WAS INSERTED.",0x5f,0x7e);
-      BrTextPrint("THIS CONTROLLER PAK",0x5f,0x91);
-      BrTextPrint("WILL BE USED.",0x5f,0x9e);
-      if ((*(unsigned int *)(&D_8036A8E0 + D_80271FA8 * 0x15c) & 0x8030) != 0) {
-        BrPadConsume(&D_8036A8E0 + D_80271FA8 * 0x15c,0x8030);
-        D_80316430 = '\x05';
+      BrTextSetFont(12);
+      BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
+      func_80246F90(0xAF, 0xC3, 0x122, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrTextPrint("A NEW CONTROLLER PAK", 95, 113);
+      BrTextPrint("WAS INSERTED.", 95, 126);
+      BrTextPrint("THIS CONTROLLER PAK", 95, 145);
+      BrTextPrint("WILL BE USED.", 95, 158);
+      if (D_8036A8E0[D_80271FA8].pressed & 0x8030) {
+        BrPadConsume(&D_8036A8E0[D_80271FA8].pressed, 0x8030);
+        state = 5;
       }
     }
-    else {
-      D_80316430 = '\x05';
-    }
     break;
-  case '\x05':
+  case 5:                       /* find the file */
     osSyncPrintf("Finding file...\n");
-    D_802724F0 = func_802628C0(D_80271FA8 * 0x68 + -0x7fc96140,0x3544,0x4e475245,local_28,
-                                &local_7c,&D_8031642C);
+    D_802724F0 = osPfsFindFile(&D_80369EC0[D_80271FA8], 0x3544, 0x4E475245, name, ext, &file);
     if (D_802724F0 == 3) {
-      func_80262A80(D_80271FA8 * 0x68 + -0x7fc96140);
-      D_802724F0 = func_802628C0(D_80271FA8 * 0x68 + -0x7fc96140,0x3544,0x4e475245,local_28,
-                                  &local_7c,&D_8031642C);
+      func_80262A80(&D_80369EC0[D_80271FA8]);
+      D_802724F0 = osPfsFindFile(&D_80369EC0[D_80271FA8], 0x3544, 0x4E475245, name, ext, &file);
     }
     if (D_802724F0 == 0) {
-      if (param_1 == 3) {
-        D_80316430 = '\b';
+      if (kind == 3) {
+        state = 8;
+      } else {
+        state = 6;
       }
-      else {
-        D_80316430 = '\x06';
-      }
-    }
-    else if (param_1 == 3) {
-      D_80316430 = '\a';
-    }
-    else if (param_2 == '\0') {
-      D_80316430 = '\t';
-    }
-    else {
-      D_80316430 = '\f';
+    } else if (kind == 3) {
+      state = 7;
+    } else if (quiet != 0) {
+      state = 12;
+    } else {
+      state = 9;
     }
     break;
-  case '\x06':
-    if (param_1 == 0) {
+  case 6:                       /* load */
+    if (kind == 0) {
       osSyncPrintf("Loading season data...\n");
-    }
-    else if (1 == param_1) {
+    } else if (kind == 1) {
       osSyncPrintf("Loading ghost data...\n");
-    }
-    else if (param_1 == 2) {
+    } else if (kind == 2) {
       osSyncPrintf("Loading configuration...\n");
     }
-    if (param_1 == 2) {
-      D_802724F0 = func_802635DC(D_80271FA8 * 0x68 + -0x7fc96140,D_8031642C,0,0,0x80,
-                                  D_80272500);
-    }
-    else {
-      D_802724F0 = func_802635DC(D_80271FA8 * 0x68 + -0x7fc96140,D_8031642C,0,0,local_34,
-                                  D_80272500);
+    if (kind != 2) {
+      D_802724F0 = osPfsReadWriteFile(&D_80369EC0[D_80271FA8], file, 0, 0, size, D_80272500);
+    } else {
+      D_802724F0 = osPfsReadWriteFile(&D_80369EC0[D_80271FA8], file, 0, 0, 0x80, D_80272500);
     }
     if (D_802724F0 == 0) {
-      if (param_1 == 0) {
-        iVar4 = *(int *)(&D_8031C5BC + (D_80271FA8 ^ 1) * 0x2090);
-        local_48 = *(int *)(iVar4 + 0xd4);
-        local_44 = *(int *)(iVar4 + 0xd8);
-        local_40 = *(int *)(iVar4 + 0xdc);
-        local_3c = *(int *)(iVar4 + 0xe0);
-        local_38 = *(int *)(iVar4 + 0xe4);
-        memcpy(D_8031C5BC,D_80272500,0x128);
-        memcpy(D_8031E64C,D_80272500,0x128);
-        *(int *)(*(int *)(&D_8031C5BC + (D_80271FA8 ^ 1) * 0x2090) + 0xd4) = local_48;
-        *(int *)(*(int *)(&D_8031C5BC + (D_80271FA8 ^ 1) * 0x2090) + 0xd8) = local_44;
-        *(int *)(*(int *)(&D_8031C5BC + (D_80271FA8 ^ 1) * 0x2090) + 0xdc) = local_40;
-        *(int *)(*(int *)(&D_8031C5BC + (D_80271FA8 ^ 1) * 0x2090) + 0xe0) = local_3c;
-        *(int *)(*(int *)(&D_8031C5BC + (D_80271FA8 ^ 1) * 0x2090) + 0xe4) = local_38;
+      if (kind == 0) {
+        opts[0] = D_8031B760[D_80271FA8 ^ 1].season->xd4;
+        opts[1] = D_8031B760[D_80271FA8 ^ 1].season->xd8;
+        opts[2] = D_8031B760[D_80271FA8 ^ 1].season->xdc;
+        opts[3] = D_8031B760[D_80271FA8 ^ 1].season->xe0;
+        opts[4] = D_8031B760[D_80271FA8 ^ 1].season->xe4;
+        memcpy(D_8031B760[0].season, D_80272500, 0x128);
+        memcpy(D_8031B760[1].season, D_80272500, 0x128);
+        D_8031B760[D_80271FA8 ^ 1].season->xd4 = opts[0];
+        D_8031B760[D_80271FA8 ^ 1].season->xd8 = opts[1];
+        D_8031B760[D_80271FA8 ^ 1].season->xdc = opts[2];
+        D_8031B760[D_80271FA8 ^ 1].season->xe0 = opts[3];
+        D_8031B760[D_80271FA8 ^ 1].season->xe4 = opts[4];
         osSyncPrintf("Done!\n");
-      }
-      else if (param_1 == 1) {
+      } else if (kind == 1) {
         osSyncPrintf("Extracting ghost data...\n");
-        D_80270784 = func_8021CB4C(&D_80307F00,0xde5c,D_80272500,2);
-        *(short *)(D_8031C5BC + 0xce) =
-             *(short *)(D_8031C5BC + 0xce) | (short)(1 << (D_80307F00 & 0x1f));
-        *(short *)(D_8031C5BC + 0xcc) =
-             *(short *)(D_8031C5BC + 0xcc) | (short)(1 << (D_80307F01 & 0x1f));
+        D_80270784 = func_8021CB4C(&D_80307F00, 0xDE5C, D_80272500, 2);
+        D_8031B760[0].season->xce |= 1 << (&D_80307F00)[0];
+        D_8031B760[0].season->unlocked |= 1 << (&D_80307F00)[1];
         osSyncPrintf("Done!\n");
-      }
-      else if (param_1 == 2) {
-        memcpy(&D_802723D0,D_80272500,0xc);
+      } else if (kind == 2) {
+        memcpy(&D_802723D0, D_80272500, 12);
         osSyncPrintf("Loading car equipment settings...\n");
-        D_802724F0 = func_802635DC(D_80271FA8 * 0x68 + -0x7fc96140,D_8031642C,0,0x80,0x80,
-                                    D_80272500);
+        D_802724F0 = osPfsReadWriteFile(&D_80369EC0[D_80271FA8], file, 0, 0x80, 0x80, D_80272500);
         if (D_802724F0 == 0) {
-          memcpy(&local_48,D_80272500,0x14);
-          *(int *)(*(int *)(&D_8031C5BC + D_80271FA8 * 0x2090) + 0xd4) = local_48;
-          *(int *)(*(int *)(&D_8031C5BC + D_80271FA8 * 0x2090) + 0xd8) = local_44;
-          *(int *)(*(int *)(&D_8031C5BC + D_80271FA8 * 0x2090) + 0xdc) = local_40;
-          *(int *)(*(int *)(&D_8031C5BC + D_80271FA8 * 0x2090) + 0xe0) = local_3c;
-          *(int *)(*(int *)(&D_8031C5BC + D_80271FA8 * 0x2090) + 0xe4) = local_38;
+          memcpy(opts, D_80272500, 20);
+          D_8031B760[D_80271FA8].season->xd4 = opts[0];
+          D_8031B760[D_80271FA8].season->xd8 = opts[1];
+          D_8031B760[D_80271FA8].season->xdc = opts[2];
+          D_8031B760[D_80271FA8].season->xe0 = opts[3];
+          D_8031B760[D_80271FA8].season->xe4 = opts[4];
           osSyncPrintf("Done!\n");
-        }
-        else {
-          D_80316430 = '\t';
-        }
-      }
-      if (D_80316430 != '\t') {
-        if (param_1 == 2) {
-          D_80316430 = '\v';
-        }
-        else if (D_802724FC == '\0') {
-          D_80316430 = '\f';
-        }
-        else {
-          D_80316430 = '\v';
+        } else {
+          state = 9;
         }
       }
-    }
-    else {
-      D_80316430 = '\t';
+      if (state != 9) {
+        if (kind == 2) {
+          state = 11;
+        } else if (D_802724FC == 0) {
+          state = 12;
+        } else {
+          state = 11;
+        }
+      }
+    } else {
+      state = 9;
     }
     break;
-  case '\a':
-    D_802724F0 = func_802639E0(D_80271FA8 * 0x68 + -0x7fc96140,&local_2c);
+  case 7:                       /* make room for the configuration */
+    D_802724F0 = osPfsFreeBlocks(&D_80369EC0[D_80271FA8], &freeBytes);
     if (D_802724F0 == 0) {
-      if (local_2c < 0x100) {
+      if (freeBytes < 0x100) {
         D_802724F0 = 7;
-        D_80316430 = '\t';
-      }
-      else {
-        osSyncPrintf("Allocating %d bytes for configuration...\n",0x100);
-        D_802724F0 = func_80263B30(D_80271FA8 * 0x68 + -0x7fc96140,0x3544,0x4e475245,local_28,
-                                    &local_7c,0x100,&D_8031642C);
+        state = 9;
+      } else {
+        osSyncPrintf("Allocating %d bytes for configuration...\n", 0x100);
+        D_802724F0 = osPfsAllocateFile(&D_80369EC0[D_80271FA8], 0x3544, 0x4E475245, name, ext, 0x100, &file);
         if (D_802724F0 == 3) {
-          func_80262A80(D_80271FA8 * 0x68 + -0x7fc96140);
-          D_802724F0 = func_80263B30(D_80271FA8 * 0x68 + -0x7fc96140,0x3544,0x4e475245,local_28,
-                                      &local_7c,0x100,&D_8031642C);
+          func_80262A80(&D_80369EC0[D_80271FA8]);
+          D_802724F0 = osPfsAllocateFile(&D_80369EC0[D_80271FA8], 0x3544, 0x4E475245, name, ext, 0x100, &file);
         }
         if (D_802724F0 == 0) {
-          D_80316430 = '\b';
-        }
-        else {
-          D_80316430 = '\t';
+          state = 8;
+        } else {
+          state = 9;
         }
       }
-    }
-    else {
-      D_80316430 = '\t';
+    } else {
+      state = 9;
     }
     break;
-  case '\b':
+  case 8:                       /* save the configuration */
     osSyncPrintf("Saving configuration...\n");
-    memcpy(D_80272500,&D_802723D0,0xc);
-    D_802724F0 = func_802635DC(D_80271FA8 * 0x68 + -0x7fc96140,D_8031642C,1,0,0x80,
-                                D_80272500);
-    if (D_802724F0 == 0) {
-      iVar4 = *(int *)(&D_8031C5BC + D_80271FA8 * 0x2090);
-      local_48 = *(int *)(iVar4 + 0xd4);
-      local_44 = *(int *)(iVar4 + 0xd8);
-      local_40 = *(int *)(iVar4 + 0xdc);
-      local_3c = *(int *)(iVar4 + 0xe0);
-      local_38 = *(int *)(iVar4 + 0xe4);
-      memcpy(D_80272500,&local_48,0x14);
-      D_802724F0 = func_802635DC(D_80271FA8 * 0x68 + -0x7fc96140,D_8031642C,1,0x80,0x80,
-                                  D_80272500);
+    memcpy(D_80272500, &D_802723D0, 12);
+    D_802724F0 = osPfsReadWriteFile(&D_80369EC0[D_80271FA8], file, 1, 0, 0x80, D_80272500);
+    if (D_802724F0 != 0) {
+      state = 9;
+    } else {
+      opts[0] = D_8031B760[D_80271FA8].season->xd4;
+      opts[1] = D_8031B760[D_80271FA8].season->xd8;
+      opts[2] = D_8031B760[D_80271FA8].season->xdc;
+      opts[3] = D_8031B760[D_80271FA8].season->xe0;
+      opts[4] = D_8031B760[D_80271FA8].season->xe4;
+      memcpy(D_80272500, opts, 20);
+      D_802724F0 = osPfsReadWriteFile(&D_80369EC0[D_80271FA8], file, 1, 0x80, 0x80, D_80272500);
       if (D_802724F0 == 0) {
         osSyncPrintf("Done!\n");
-        D_80316430 = '\v';
+        state = 11;
+      } else {
+        state = 9;
       }
-      else {
-        D_80316430 = '\t';
-      }
-    }
-    else {
-      D_80316430 = '\t';
     }
     break;
-  case '\t':
-    if (param_2 != '\0') {
-      D_802A4BE8 = 1;
-      D_80316430 = 0xc;
-      return 0;
+  case 9:                       /* an error, or the Rumble Pak is in the way */
+    if (quiet != 0) {
+      state = 12;
+      break;
     }
     BrTextHighlightOff();
     BrTextAlignLeft();
-    BrTextSetFont(0xc);
-    BrTextSetColours(0xff,0xff,0xff,0xff,0xf5,0);
-    if (D_802724F0 < 0xc) {
-      switch(D_802724F0) {
-      case 1:
-      case 0xb:
-        func_80246F90(0x94,0xd8,0x158,0x4c,3,0,0,0x80,0x80,0x80);
-        BrTextPrint("CONTROLLER PAK NOT FOUND.",0x52,0x7c);
-        if (param_1 == 3) {
-          BrTextPrint("DATA CANNOT BE SAVED.",0x52,0x8a);
-        }
-        else {
-          BrTextPrint("DATA CANNOT BE LOADED.",0x52,0x8a);
-        }
-        break;
-      case 2:
-        func_80246F90(0xaf,0xb9,0x122,0x89,3,0,0,0x80,0x80,0x80);
-        BrTextPrint("A NEW CONTROLLER PAK",0x5f,0x6c);
-        BrTextPrint("WAS INSERTED.",0x5f,0x79);
-        BrTextPrint("THIS CONTROLLER PAK",0x5f,0x8c);
-        BrTextPrint("WILL BE USED.",0x5f,0x99);
-        break;
-      default:
-        goto LAB_802162c8;
-      case 4:
-        func_80246F90(0xbf,0xd9,0x102,0x4a,3,0,0,0x80,0x80,0x80);
-        BrTextPrint("CONTROLLER ERROR",0x67,0x7c);
-        BrTextPrint("HAS BEEN DETECTED!",0x67,0x8a);
-        break;
-      case 5:
-        func_80246F90(0xaf,0xd9,0x122,0x4a,3,0,0,0x80,0x80,0x80);
-        if (param_1 == 3) {
-          BrTextPrint("CONTROLLER PAK ERROR",0x5f,0x7c);
-          BrTextPrint("HAS BEEN DETECTED!",0x5f,0x8a);
-        }
-        else {
-          BrTextPrint("SAVED DATA NOT FOUND",0x5f,0x7c);
-          BrTextPrint("IN CONTROLLER PAK.",0x5f,0x8a);
-        }
-        break;
-      case 7:
-      case 8:
-        func_80246F90(0xa5,0xa5,0x136,0xbd,3,0,0,0x80,0x80,0x80);
-        BrTextPrint("INSUFFICIENT FREE PAGES",0x5a,0x62);
-        BrTextPrint("OR FREE NOTES IN THE",0x5a,0x6f);
-        BrTextPrint("CONTROLLER PAK.",0x5a,0x7c);
-        BrTextPrint("ONE PAGE AND ONE NOTE",0x5a,0x8f);
-        BrTextPrint("ARE NEEDED TO SAVE THE",0x5a,0x9c);
-        BrTextPrint("OPTIONS.",0x5a,0xa9);
-        break;
-      case 10:
-        func_80246F90(0xbd,0xd9,0x106,0x4a,3,0,0,0x80,0x80,0x80);
-        BrTextPrint("THE CONTROLLER PAK",0x66,0x7c);
-        BrTextPrint("IS NONFUNCTIONAL!",0x66,0x8a);
+    BrTextSetFont(12);
+    BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
+    switch (D_802724F0) {
+    case 10:
+      func_80246F90(0xBD, 0xD9, 0x106, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrTextPrint("THE CONTROLLER PAK", 102, 124);
+      BrTextPrint("IS NONFUNCTIONAL!", 102, 138);
+      break;
+    case 1:
+    case 11:
+      func_80246F90(0x94, 0xD8, 0x158, 0x4C, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrTextPrint("CONTROLLER PAK NOT FOUND.", 82, 124);
+      if (kind == 3) {
+        BrTextPrint("DATA CANNOT BE SAVED.", 82, 138);
+      } else {
+        BrTextPrint("DATA CANNOT BE LOADED.", 82, 138);
       }
-    }
-    else if (D_802724F0 == 9999) {
-      local_20 = 0x148 - D_8028D0C0;
-      func_80246F90(0x79,0xb0,0x18d,0xa0,3,0,0,0x80,0x80,0x80);
-      BrTextPrint("PLEASE REMOVE THE RUMBLE PAK",0x44,0x68);
-      BrTextPrint("AND INSERT THE CONTROLLER PAK",0x44,0x75);
-      BrTextPrint("INTO THE CONTROLLER.  PRESS",0x44,0x82);
-      BrTextPrint("THE A BUTTON WHEN READY.",0x44,0x8f);
+      break;
+    case 9999:
+      y = 0x148 - D_8028D0C0;
+      func_80246F90(0x79, 0xB0, 0x18D, 0xA0, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrTextPrint("PLEASE REMOVE THE RUMBLE PAK", 68, 104);
+      BrTextPrint("AND INSERT THE CONTROLLER PAK", 68, 117);
+      BrTextPrint("INTO THE CONTROLLER.  PRESS", 68, 130);
+      BrTextPrint("THE A BUTTON WHEN READY.", 68, 143);
       BrTextAlignLeft();
       BrTextSetFont(10);
-      iVar4 = local_20 + 0x12 >> 1;
-      BrTextPrint("%wwOK",D_8028D0C0 + 0xe3U >> 1,iVar4);
-      BrTextPrint("%wwCANCEL",D_8028D0F0 + 0x144U >> 1,iVar4);
-      BrImageDrawAt(&D_8028D0B0,0xdd,local_20);
-      BrImageDrawAt(&D_8028D0E0,0x13e,local_20);
+      BrTextPrint("%wwOK", (D_8028D0C0 + 0xE3U) >> 1, (y + 18) >> 1);
+      BrTextPrint("%wwCANCEL", (D_8028D0F0 + 0x144U) >> 1, (y + 18) >> 1);
+      BrImageDrawAt(&D_8028D0B0, 0xDD, y);
+      BrImageDrawAt(&D_8028D0E0, 0x13E, y);
+      break;
+    case 7:
+    case 8:
+      func_80246F90(0xA5, 0xA5, 0x136, 0xBD, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrTextPrint("INSUFFICIENT FREE PAGES", 90, 98);
+      BrTextPrint("OR FREE NOTES IN THE", 90, 111);
+      BrTextPrint("CONTROLLER PAK.", 90, 124);
+      BrTextPrint("ONE PAGE AND ONE NOTE", 90, 143);
+      BrTextPrint("ARE NEEDED TO SAVE THE", 90, 156);
+      BrTextPrint("OPTIONS.", 90, 169);
+      break;
+    case 4:
+      func_80246F90(0xBF, 0xD9, 0x102, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrTextPrint("CONTROLLER ERROR", 103, 124);
+      BrTextPrint("HAS BEEN DETECTED!", 103, 138);
+      break;
+    case 5:
+      func_80246F90(0xAF, 0xD9, 0x122, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+      if (kind == 3) {
+        BrTextPrint("CONTROLLER PAK ERROR", 95, 124);
+        BrTextPrint("HAS BEEN DETECTED!", 95, 138);
+      } else {
+        BrTextPrint("SAVED DATA NOT FOUND", 95, 124);
+        BrTextPrint("IN CONTROLLER PAK.", 95, 138);
+      }
+      break;
+    case 2:
+      func_80246F90(0xAF, 0xB9, 0x122, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrTextPrint("A NEW CONTROLLER PAK", 95, 108);
+      BrTextPrint("WAS INSERTED.", 95, 121);
+      BrTextPrint("THIS CONTROLLER PAK", 95, 140);
+      BrTextPrint("WILL BE USED.", 95, 153);
+      break;
+    default:
+      func_80246F90(0xAF, 0xD9, 0x122, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrTextPrint("CONTROLLER PAK ERROR", 95, 124);
+      BrTextPrint("HAS BEEN DETECTED.", 95, 138);
+      break;
     }
-    else {
-LAB_802162c8:
-      func_80246F90(0xaf,0xd9,0x122,0x4a,3,0,0,0x80,0x80,0x80);
-      BrTextPrint("CONTROLLER PAK ERROR",0x5f,0x7c);
-      BrTextPrint("HAS BEEN DETECTED.",0x5f,0x8a);
-    }
-    if (D_802724F0 == 9999) {
-      puVar3 = (unsigned int *)(&D_8036A8E0 + D_80271FA8 * 0x15c);
-      if ((*puVar3 & 0x10) == 0) {
-        if ((*puVar3 & 0x20) != 0) {
-          BrPadConsume(puVar3,0x20);
-          D_80316430 = '\f';
+    if (D_802724F0 != 9999) {
+      if (D_8036A8E0[D_80271FA8].pressed & 0x8030) {
+        BrPadConsume(&D_8036A8E0[D_80271FA8].pressed, 0x8030);
+        D_802724F0 = 0;
+        if (D_802724F0 == 2) {
+          state = 2;
+        } else {
+          state = 12;
         }
       }
-      else {
-        BrPadConsume(puVar3,0x10);
-        D_802724F0 = 0;
-        D_80316430 = '\x02';
-      }
-    }
-    else if ((*(unsigned int *)(&D_80271FA8 + D_8036A8E0 * 0x15c) & 0x8030) != 0) {
-      BrPadConsume(&D_8036A8E0 + D_80271FA8 * 0x15c,0x8030);
+    } else if (D_8036A8E0[D_80271FA8].pressed & 0x10) {
+      BrPadConsume(&D_8036A8E0[D_80271FA8].pressed, 0x10);
       D_802724F0 = 0;
-      D_80316430 = '\f';
+      state = 2;
+    } else if (D_8036A8E0[D_80271FA8].pressed & 0x20) {
+      BrPadConsume(&D_8036A8E0[D_80271FA8].pressed, 0x20);
+      state = 12;
     }
     break;
-  case '\n':
-    iVar4 = BrRumbleInsertPrompt(0);
-    if (iVar4 != 0) {
-      D_802724FC = '\0';
-      iVar4 = func_80262370(&D_80272D48,D_80271FA8 * 0x68 + -0x7fce5c08,D_80271FA8);
-      if (iVar4 == 0) {
+  case 11:                      /* done: say so and wait for a button */
+    if (quiet != 0) {
+      state = 12;
+      break;
+    }
+    BrTextAlignCentre();
+    BrTextHighlightOff();
+    BrTextSetFont(12);
+    switch (kind) {
+    case 0:
+      if (D_802724F4 == 0) {
+        h = hBase + 0xCB;
+      } else {
+        h = 0xCE;
+      }
+      func_80246F90(0xE2, h, 0xBC, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrTextPrint("%ywSEASON DATA", 159, (h + 32) >> 1, (h + 32) >> 1);
+      BrTextPrint("%ywLOADED OK!", 159, ((h + 32) >> 1) + 14);
+      break;
+    case 1:
+      if (D_802724F4 == 0) {
+        h = hBase + 0xCB;
+      } else {
+        h = 0xCE;
+      }
+      func_80246F90(0xE2, h, 0xBC, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrTextPrint("%ywGHOST DATA", 159, (h + 32) >> 1, (h + 32) >> 1);
+      BrTextPrint("%ywLOADED OK!", 159, ((h + 32) >> 1) + 14);
+      break;
+    case 2:
+    case 3:
+      func_80246F90(0xD8, 0xD9, 0xD0, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrTextPrint("%ywCONFIGURATION", 159, 124);
+      if (kind == 2) {
+        BrTextPrint("%ywLOADED OK!", 159, 138);
+      } else {
+        BrTextPrint("%ywSAVED OK!", 159, 138);
+      }
+      break;
+    }
+    if (D_8036A8E0[D_80271FA8].pressed & 0x8030) {
+      BrPadConsume(&D_8036A8E0[D_80271FA8].pressed, 0x8030);
+      if (kind == 2) {
+        BrVolumesApply();
+      }
+      if (D_802724FC != 0) {
+        state = 10;
+      } else {
+        state = 12;
+      }
+    }
+    break;
+  case 10:                      /* offer to put the Rumble Pak back */
+    if (BrRumbleInsertPrompt(0) != 0) {
+      D_802724FC = 0;
+      if (func_80262370(&D_80272D48, &D_8031A3F8[D_80271FA8], D_80271FA8) == 0) {
         (&D_8031B1E8)[D_80271FA8] = 1;
       }
-      D_80316430 = '\f';
+      state = 12;
     }
     break;
-  case '\v':
-    if (param_2 == '\0') {
-      BrTextAlignCentre();
-      BrTextHighlightOff();
-      BrTextSetFont(0xc);
-      if (param_1 == 0) {
-        if (D_802724F4 == '\0') {
-          local_8 = local_2e + 0xcb;
-        }
-        else {
-          local_8 = 0xce;
-        }
-        func_80246F90(0xe2,local_8,0xbc,0x4a,3,0,0,0x80,0x80,0x80);
-        iVar4 = local_8 + 0x20 >> 1;
-        BrTextPrint("%ywSEASON DATA",0x9f,iVar4,iVar4);
-        BrTextPrint("%ywLOADED OK!",0x9f,iVar4 + 0xe);
-      }
-      else if (param_1 == 1) {
-        if (D_802724F4 == '\0') {
-          local_8 = local_2e + 0xcb;
-        }
-        else {
-          local_8 = 0xce;
-        }
-        func_80246F90(0xe2,local_8,0xbc,0x4a,3,0,0,0x80,0x80,0x80);
-        iVar4 = local_8 + 0x20 >> 1;
-        BrTextPrint("%ywGHOST DATA",0x9f,iVar4,iVar4);
-        BrTextPrint("%ywLOADED OK!",0x9f,iVar4 + 0xe);
-      }
-      else if ((param_1 == 2) || (param_1 == 3)) {
-        func_80246F90(0xd8,0xd9,0xd0,0x4a,3,0,0,0x80,0x80,0x80);
-        BrTextPrint("%ywCONFIGURATION",0x9f,0x7c);
-        if (param_1 == 2) {
-          BrTextPrint("%ywLOADED OK!",0x9f,0x8a);
-        }
-        else {
-          BrTextPrint("%ywSAVED OK!",0x9f,0x8a);
-        }
-      }
-      if ((*(unsigned int *)(&D_8036A8E0 + D_80271FA8 * 0x15c) & 0x8030) != 0) {
-        BrPadConsume(&D_8036A8E0 + D_80271FA8 * 0x15c,0x8030);
-        if (param_1 == 2) {
-          BrVolumesApply();
-        }
-        if (D_802724FC == '\0') {
-          D_80316430 = '\f';
-        }
-        else {
-          D_80316430 = '\n';
-        }
-      }
-    }
-    else {
-      D_80316430 = '\f';
-    }
-    break;
-  case '\f':
+  case 12:                      /* done */
     D_802724F0 = 0;
     D_802724F8 = 0;
-    if (param_2 == '\0') {
-      func_80223750(0x3f800000,D_802A9018);
-      func_802237D0(0x3f800000,D_802A901C);
+    if (quiet == 0) {
+      func_80223750(1.0f, 0.2f);
+      func_802237D0(1.0f, 0.2f);
     }
     D_802A4BE8 = 1;
     return 1;
   }
   D_802A4BE8 = 1;
   return 0;
-}
-
-/* WHAT IT DOES: Check the controller pak in port 1 before the game uses it:
- * initialise it (a rumble pak, or a pak with a damaged id that repairs,
- * is taken as fine), put the saved pak id back, count its files (checking
- * a pak reported inconsistent), then read every file's state and fail if
- * a readable one belongs to another game (not company NGRE, game 5D).
- * Returns 1 when the pak can be used.
- * The ROM's frame is 0x80 with the file-count word at sp+0x64: two
- * declared, never-used buffers around it (24 bytes above, 40 below) hold
- * their slots under IDO. */
-/* @implements 0x80254620 tgr BrPakCheckFiles */
-int BrPakCheckFiles(void)
-{
-  static unsigned short bad = 0;          /* 0x8028DDA0: files whose state would not read */
-  static int used;                        /* 0x8036A278 */
-  static BrPfsState states[16];           /* 0x8036A280 */
-  char unusedA[24];
-  int maxFiles;
-  char unusedB[40];
-  int i;
-
-  D_802A4BE8 = 0;
-  D_802724F0 = func_80261CB0(&D_80272D48, &D_80369EC0[0], 0);
-  if (D_802724F0 != 0 && D_802724F0 == 10) {
-    if (func_80262370(&D_80272D48, &D_8031A3F8[0], 0) == 0) {
-      D_802A4BE8 = 1;
-      return 1;
-    }
-    D_802724F0 = func_80262660(&D_80369EC0[0]);
-    if (D_802724F0 == 0) {
-      func_80261CB0(&D_80272D48, &D_80369EC0[0], 0);
-    }
-  }
-  if (D_802724F0 != 0) {
-    D_802A4BE8 = 1;
-    return 1;
-  }
-  func_802674D0(D_80369EC0[0].raw + 0xc, D_803163E0, 0x20);
-  D_802724F0 = func_802677E0(&D_80369EC0[0], &maxFiles, &used);
-  if (D_802724F0 != 0) {
-    if (D_802724F0 == 3) {
-      if (func_80262A80(&D_80369EC0[0]) != 0) {
-        D_802A4BE8 = 1;
-        return 1;
-      }
-    } else {
-      D_802A4BE8 = 1;
-      return 1;
-    }
-  }
-  for (i = 0; i < 16; i++) {
-    if (func_80267930(&D_80369EC0[0], i, &states[i]) != 0) {
-      bad |= 1 << i;
-    }
-  }
-  for (i = 0; i < 16; i++) {
-    if (!(bad & (1 << i))) {
-      osSyncPrintf("%d: %08x %04x\n", i, states[i].company, states[i].game);
-      if (states[i].company != 0x4e475245 || states[i].game != 0x3544) {
-        D_802A4BE8 = 1;
-        return 0;
-      }
-    }
-  }
-  D_802A4BE8 = 1;
-  return 1;
 }
