@@ -28,9 +28,6 @@
  * nothing is shown. */
 #if defined(__APPLE__)
 #define VK_USE_PLATFORM_METAL_EXT
-#elif defined(_WIN32)
-#define VK_USE_PLATFORM_WIN32_KHR
-#include <windows.h>
 #endif
 #include <vulkan/vulkan.h>
 #include <math.h>
@@ -46,7 +43,23 @@
 #if defined(__APPLE__)
 void *host_macos_metal_layer(void);              /* host_macos.m: the view's CAMetalLayer */
 #elif defined(_WIN32)
-HWND host_win32_window(void);                    /* the Windows host's window */
+/* the Windows host's window and module (host/windows), as plain pointers:
+ * this file never includes windows.h (in the platform build that name is
+ * the game's own Win32 surface), so the surface call is looked up and its
+ * create-info spelled here, field for field VkWin32SurfaceCreateInfoKHR */
+void *host_win32_window(void);
+void *host_win32_instance(void);
+typedef struct br_win32_surface_info {
+    VkStructureType sType;
+    const void     *pNext;
+    VkFlags         flags;
+    void           *hinstance;
+    void           *hwnd;
+} br_win32_surface_info;
+typedef VkResult (VKAPI_PTR *br_create_win32_surface)(VkInstance, const br_win32_surface_info *,
+                                                     const VkAllocationCallbacks *, VkSurfaceKHR *);
+#define BR_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR ((VkStructureType)1000009000)
+#define BR_KHR_WIN32_SURFACE_EXTENSION_NAME "VK_KHR_win32_surface"
 #endif
 
 /* the shader's uniform block, std140: see shaders/glide_u.glsl */
@@ -805,10 +818,13 @@ static int surface_make(void)
     si.pLayer = host_macos_metal_layer();
     return si.pLayer && vkCreateMetalSurfaceEXT(s_inst, &si, NULL, &s_surface) == VK_SUCCESS;
 #elif defined(_WIN32)
-    VkWin32SurfaceCreateInfoKHR si = { VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR };
-    si.hinstance = GetModuleHandleA(NULL);
+    br_win32_surface_info si;
+    br_create_win32_surface fn = (br_create_win32_surface)vkGetInstanceProcAddr(s_inst, "vkCreateWin32SurfaceKHR");
+    memset(&si, 0, sizeof si);
+    si.sType = BR_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+    si.hinstance = host_win32_instance();
     si.hwnd = host_win32_window();
-    return si.hwnd && vkCreateWin32SurfaceKHR(s_inst, &si, NULL, &s_surface) == VK_SUCCESS;
+    return fn && si.hwnd && fn(s_inst, &si, NULL, &s_surface) == VK_SUCCESS;
 #else
     return 0;
 #endif
@@ -839,9 +855,9 @@ static int make_instance(void)
         want[nw++] = VK_EXT_METAL_SURFACE_EXTENSION_NAME;
     }
 #elif defined(_WIN32)
-    if (has_ext(ext, n, VK_KHR_SURFACE_EXTENSION_NAME) && has_ext(ext, n, VK_KHR_WIN32_SURFACE_EXTENSION_NAME)) {
+    if (has_ext(ext, n, VK_KHR_SURFACE_EXTENSION_NAME) && has_ext(ext, n, BR_KHR_WIN32_SURFACE_EXTENSION_NAME)) {
         want[nw++] = VK_KHR_SURFACE_EXTENSION_NAME;
-        want[nw++] = VK_KHR_WIN32_SURFACE_EXTENSION_NAME;
+        want[nw++] = BR_KHR_WIN32_SURFACE_EXTENSION_NAME;
     }
 #endif
     /* a layered implementation (MoltenVK) is listed only when asked for */

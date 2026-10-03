@@ -8,6 +8,7 @@
  *   host/win32    the same on Windows
  *   host/null     a headless window, input and audio (tests, lockstep)
  *   host/macos    a Cocoa window and input, Core Audio
+ *   host/windows  a Win32 window and input, WASAPI, Media Foundation, XInput
  *
  * and a renderer backend behind platform/render/brr.h. On Windows the
  * game's Win32 emulation takes private names (platform/include/br_winemu.h)
