@@ -271,7 +271,7 @@ extern MenuItem *D_802722A4[];  /* the weathers */
 extern int D_80272238;          /* the screen has been set up */
 extern int D_80272074;          /* the screen shows the race results */
 extern int D_80272070;          /* the screen is the paint shop's car select */
-extern float D_80316250;
+extern int D_80316250;
 extern int D_80316258[2];       /* each player's model slot (0-3; slot ^ 2 is the other) */
 extern float D_80316260[2];     /* each player's car sliding in (-1..1, 0 at rest) */
 extern float D_80316268[2];     /* each player's turntable angle */
@@ -604,7 +604,7 @@ void BrCarSelect(void)
   }
   for (p = 0; p < D_8026FF08; p++) {
     if (D_80316260[p] < 0.0f) {
-      D_80316260[p] = D_80316260[p] + dt + dt;
+      D_80316260[p] = D_80316260[p] + (dt + dt);
       if (0.0f < D_80316260[p]) {
         D_80316260[p] = 0.0f;
       }
