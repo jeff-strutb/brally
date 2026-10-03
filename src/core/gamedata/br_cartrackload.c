@@ -35,6 +35,11 @@
 #include "br_seg.h"
 #include "br_bits.h"
 #include "br_vec.h"
+/* windows.h is not used here: the original TU declared over a thousand
+ * symbols ahead of BrGlTrackHdrRead, and VC5's order for the two byte loads
+ * that compose each big-endian halfword follows that count (see the
+ * function's dossier). */
+#include <windows.h>
 
 /* ==========================================================================
  * Cross-slice dependencies
@@ -712,13 +717,13 @@ extern void BrGlFixupAt(uint8_t *p);
  * 0x14-stride rows as real loops, and NINETEEN pointer locals (one per
  * fixup site) handed to the fixup helper at the tail in list order.
  *
- * STATE 2026-09-09: 1549/1549 B, 495/495 insns, register-blind 0+0,
- * 4 masked regions / 16 raw diff bytes (was 13 / 231 at the start of the
- * day).  Everything left is ONE shape at four big-endian dword loads
- * (+0x64, +0x7C, +0x88, +0x160): the original loads the low half of the
- * pair before the high half (`mov dl,[esi+0x65]` then `mov dh,[esi+0x64]`),
- * ours the reverse.  The other five sites match with the SAME spelling,
- * so it is the scheduler's slot filling, not the expression.
+ * BYTE-EXACT 2026-10-03.  The last shape -- the original loads the low
+ * byte of a big-endian pair before the high byte at +0x64, +0x7C, +0x88
+ * and +0x160 -- is not in the expression (every spelling below
+ * canonicalises) but in the SYMBOL COUNT ahead of the function: VC5's key
+ * sort for the two loads hashes symbol indices, each site flips in its
+ * own window, and from about 1,020 extra symbols on all of them match
+ * (windows.h at the top of the file).  The dead list below is spellings.
  *
  * THREE LEVERS PAID (2026-09-09), each a source fact, none a spelling:
  *   1. 13 -> 10 regions: the fixup pointer is assigned AFTER its dword's
@@ -765,17 +770,6 @@ extern void BrGlFixupAt(uint8_t *p);
 /* @t4-pass 0x10031B80 4 2026-09-09 probes 18 bytes 1549 insns 495 regions 4 rows 0 census yes  (hand: counter-expression loops + parameter-expression h -- levers 2 and 3 landed) */
 /* @t4-pass 0x10031B80 5 2026-09-09 probes 17 bytes 1549 insns 495 regions 4 rows 0 census yes  (hand: the four BE-pair sites, casts/temps/accumulators/store forms/declaration order -- zero movement) */
 /* @t4-pass 0x10031B80 6 2026-09-09 probes 10 bytes 1549 insns 495 regions 4 rows 0 census yes  (hand: parameter typing, fresh temps, statement moves around the four sites, k-loop -- zero movement) */
-/* @t3 0x10031B80 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 1549/1549 insns 495/495 rows 0+0 regions 4 oracle UNCLASSIFIED
- * @t3-effort passes 6 zero-movement 5 6
- * Residue: ONE scheduling shape at four of the nine big-endian dword loads
- * (+0x64, +0x7C, +0x88, +0x160) -- the original loads the pair's low byte
- * before its high byte, ours the reverse; the other five sites match with
- * the same spelling, so the expression is not the lever.  Size, count,
- * multiset and the corpus (no witness for the construct) all agree.
- * Dossier, three landed levers and the 55-compile dead list: the comment
- * block above; ledger lines 3-6 above.  Do not reopen before the end-grind.
- */
 /* @implements 0x10031B80 glide BrGlTrackHdrRead */
 void BrGlTrackHdrRead(void *pvHdr, FILE **ppFile)
 {

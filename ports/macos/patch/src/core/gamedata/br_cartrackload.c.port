@@ -4,4 +4,5 @@
 @drop define:_CRTIMP
 @drop proto:BrGlFixupAt
 @drop fn:BrGlTrackHdrRead
+@drop include:<windows.h>
 @drop undef:h
