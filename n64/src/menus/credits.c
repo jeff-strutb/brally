@@ -99,25 +99,18 @@ void BrCreditsDrawCars(void)
 
 /* WHAT IT DOES: One frame of the boot sequence before the main menu. The
  * first frame loads the three publisher logos, the four title-card models
- * and the two sound banks and fades in. Each logo in turn (at 0, 4 and 8
- * seconds) spins in from the left with a whoosh and a hit, holds, then
- * slides off right with a fading whoosh; the second and third have a
- * caption (Produced by, Developed by) fading in and out. From 12 seconds the
- * title card's four models fly in under their own lights and matrices,
- * and from 17.2 the legal text fades in (the build date too, with the four
- * C buttons held). A or Start skips ahead to the legal text, and a second
- * press (or 24.2 seconds) fades out; the faded-out frame silences the
- * channels and goes to the main menu after a press, else to the attract
- * race.
- * Source facts: the logo and model pointers are file statics (BrCreditsDrawCars
- * animates three of them), the clock, sound banks and flags function statics
- * (the ROM addresses each afresh and keeps the clock in f16 with stores
- * back); ROM file offsets are link-time symbols.
- * RESIDUE (1459, same size): the shorts passed to the sound calls sit in
- * other temporaries, and each model load reloads the stored pointer where the ROM passes v0
- * on. */
-/* @t4-pass 0x8020686C 1 2026-09-29 compiles 101 best 1461 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8020686C 2 2026-09-29 compiles 101 best 1461 moved 0  (n64/tools/n64permute.py) */
+ * and two sound banks and fades in. Each logo (at 0, 4 and 8 seconds) spins
+ * in from the left with a whoosh and a hit, holds, and slides off right with
+ * a fading whoosh; the second and third have a caption fading in and out.
+ * From 12 seconds the title card's models fly in under their own lights,
+ * from 17.2 the legal text fades in (the build date too with the four C
+ * buttons held). A or Start skips to the legal text, a second press (or
+ * 24.2 s) fades out, then the main menu after a press, else the attract race.
+ * Source facts: logo and model pointers are file statics, the clock, banks
+ * and flags function statics; ROM file offsets are link-time symbols; the
+ * 0xB0 frame matters (zlib reads below it on the first frame).
+ * RESIDUE (1459, same size): the sound calls' short arguments sit in other
+ * temporaries, and each model load reloads the stored pointer. */
 /* @t4-pass 0x8020686C 3 2026-10-03 compiles 41 best 1459 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8020686C 4 2026-10-03 compiles 41 best 1459 moved 0  (n64/tools/n64permute.py) */
 /* @t3 0x8020686C */
