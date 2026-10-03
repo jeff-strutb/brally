@@ -126,6 +126,12 @@ Functions: T2 21, T3 11, T4 80.
 | `8021196C` | `BrOptionsDrawHelp` | T4 |
 | `80211A3C` | `BrOptionsScreen` | T4 |
 
+## `paintclick.c`: the paint shop's click handling
+
+| address | function | tier |
+|---|---|---|
+| `8024C184` | `BrPaintClick` | T2 |
+
 ## `paintmenus.c`: the paint shop's clear and mirror/flip popups (one
 
 | address | function | tier |

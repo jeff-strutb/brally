@@ -435,6 +435,7 @@ va,name,kind
 8024AC70,BrPaintKeyboard,func
 8024B144,BrPaintColourMix,func
 8024BE78,BrPaintStickMove,func
+8024C184,BrPaintClick,func
 8024D374,BrPaintCursorInBox,func
 8024D3F0,BrPaintCursorInRect,func
 8024D45C,BrPaintCursorInRect2,func
