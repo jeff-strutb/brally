@@ -196,6 +196,7 @@ glide_va,name,module,basis,file
 0x10011D10,BrThunk11D10,drawing,neighbour,src/core/drawing/br_fps.c
 0x10011D20,FUN_10011d20,geometry,filed,src/core/geometry/br_camview.c
 0x10011EA0,BrFpsReadout,drawing,neighbour,src/core/drawing/br_fps.c
+0x10011FA0,BrFrameDraw,drawing,filed,src/core/drawing/br_framedrive.c
 0x10013140,BrHudTextListDraw,drawing,filed,src/core/drawing/br_hud.c
 0x10013E80,BrRaceBeginResetOnce,drawing,filed,src/core/drawing/br_snapinterp.c
 0x10013F00,BrClearFlag_AB504,drawing,filed,src/core/drawing/br_clear.c

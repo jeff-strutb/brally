@@ -40,70 +40,33 @@
  *  - 0x100A6B60 = "%ry" and 0x100A6B64 = "%y1": text-markup colour
  *    escapes, the pause menu's "selected / not selected" prefixes.
  *
- * STATE (2026-09-09): 4501/4500 B, 1376/1376 instructions, register-blind
- * 1+1, RAW 6+6, two masked regions.  The lever that got here from 4503 B /
- * 4+3 was STATEMENT ORDER in the mirror block: `hMir = wMir >> 2` FIRST,
- * straight after the wMir switch.  Placed after yMir, VC5 keeps the car
- * record global (DAT_106e9d88) in ebx from the `if` condition to the store
- * (`lea ecx,[ebx+0x27c4]` where the original has `add ecx,0x27c4` and a
- * fresh `mov eax,[g]` later) AND spills the view counter through a
- * top-of-loop reload behind a `jmp`; with hMir first, ebx is taken from
- * the switch on and both artefacts disappear.  Register OCCUPANCY decides
- * a cross-block global-load CSE; the crank's line-level levers never move
- * a statement inside the block, so this class needs a hand.
+ * BYTE-EXACT (2026-10-03).  What the earlier passes could not see:
+ *  - SYMBOL COUNT.  The +0xaf add's destination and the loop-top schedule
+ *    are VC5 tie-breaks that follow how many symbols precede the function.
+ *    Anything from 630 to 658 extra symbols reproduces both; the two
+ *    project headers after stdio.h supply them.
+ *  - `pV = &aViews[i]` AFTER the trace call.  Below that symbol count the
+ *    first read folds into `[ebp+eax*8+0x10]`; inside it, it reads through
+ *    esi like the original, and the lea schedules below the call.
+ *  - RELOCATED operand order, which the reloc-masked score never showed:
+ *    the far-plane and fade products take LITERAL constants (a named
+ *    static loads first, a pooled literal second), and the two glare
+ *    accumulators are one object (see g_aBrSceneAccum).
  *
- * RESIDUE -- 2026-09-09b: site 1 CLOSED, one site left plus its shadow:
- *
- *  (1) CLOSED (probe X7): `pV = &aViews[i]` moved ABOVE the BrPodNop
- *      trace call.  The call clobbers the scratch register holding 11*i,
- *      so the fold is no longer free and VC5 re-derives the read through
- *      esi exactly as the original: 4501 -> 4500 B (size exact), regnorm
- *      1+1 -> 0+0.  The dead list below is the record of every spelling
- *      tried BELOW the call; the lever was the statement's position, not
- *      its spelling.  Shadow: our lea for pV now schedules above the
- *      call's five constant pushes where the original has it below --
- *      2 masked regions, 5+5 raw, register-blind 0+0, +0 B.  DEAD on the
- *      shadow (2026-09-09b): `g_brIView = i` between (worse, +6 B);
- *      volatile pV (+70 B); the index via a `k = i` copy; pV in the for
- *      condition (+3 B); the read spelled `aViews[i].iCar` beside it;
- *      declaration order `y, x`; the sum through `y`.
- *
- *  (1-old) orig+0x131, the loop top, AS IT STOOD.  The original forms
- *      `pV` (`lea esi,[ebp+ecx*8]`) and reads the car index through it
- *      (`mov ecx,[esi+0x10]`) after all six constant pushes; we folded
- *      the first read into `mov ecx,[ebp+eax*8+0x10]` and formed esi
- *      after.  DEAD
- *      (all byte-identical to what is here): `aViews + i`; the byte-cast
- *      `(BrHudView *)((uint8_t *)aViews + i * 0x58)`; `pV = aViews;
- *      pV += i`; `(BrHudView *)(DAT_103c2fd0 + off) + i` (worse, +17 B);
- *      a macro for aViews (worse, +24 B); the read as
- *      `*(int32_t *)((uint8_t *)pV + 0x10)`, as a volatile read, as
- *      `aViews[i].iCar` beside the pointer in either order; the
- *      assignment embedded `(pV = &aViews[i])->iCar` or comma-joined;
- *      the three global stores comma-joined into FUN_1006ec30's third
- *      argument with or without the pointer; a dead `pV = aViews` /
- *      `pV = 0` before the loop; `const BrHudView *pV`; `pV` declared
- *      first, last, before pCars; `g_brIView = i` before the read (worse);
- *      `register int i`; `i` first/last among the ints, `k` first.
- *      `pV = &aViews[i]` BEFORE the trace call reads through esi but
- *      schedules the lea ahead of the call (4502 B, 3+2) -- so the
- *      original's definition sits after the call.
- *  (2) orig+0xaf, the first block: `add edx,eax` / `push edx` where we
- *      emit `add eax,edx` / `push eax` -- the two-address destination of
- *      `aViews->x + aViews->w`, both operands dead after.  DEAD: operand
- *      order (canonicalised); the sum through the `x` local; `aViews->w`
- *      through the `n` local; both.  The lever that closed 0x1005FF00's
- *      twin of this (name BOTH operands, later-declared symbol is the
- *      destination) is INERT here: `(n = aViews->w)` / `(x = aViews->x)
- *      + n` as statements or inside the expressions, with `n` before `x`
- *      or after, and with fresh names `wv`/`xv` in both orders -- all
- *      byte-identical to what is here.  The difference from the race
- *      site: `w` has a second use (`0x130 - w`) before the add.
+ * Earlier levers that still hold: `hMir = wMir >> 2` FIRST, straight after
+ * the wMir switch (placed after yMir, VC5 keeps the car record global in
+ * ebx across the block and spills the view counter).
  */
 
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
 #include <stdio.h>
+/* The two project headers are not used by this function: the original TU
+ * declared about 640 more symbols ahead of it than stdio.h alone, and VC5's
+ * tie-breaks (the +0xaf add's destination, the loop-top schedule) follow
+ * the symbol count.  Anything from 630 to 658 extra symbols reproduces it. */
+#include "br_carphys.h"
+#include "br_audio.h"
 
 typedef unsigned int   uint32_t;
 typedef unsigned short uint16_t;
@@ -221,8 +184,14 @@ extern int       g_BrCarCount;      /* 0x100B2F04 */
 extern int       DAT_106ed6b0;
 extern int       DAT_100b3014;
 extern int       g_brRaceNDriver;   /* 0x100B2F00 */
-extern float     g_4B16A0;          /* 0x104B16A0 */
-extern float     g_4B16AC;          /* 0x104B16AC */
+/* 0x104B16A0: the two per-frame glare accumulators are ONE object in the
+ * original, the back-facing sum at +0 (g_4B16A0) and the front-facing sum
+ * at +0xC (g_4B16AC).  Their sum below loads +0 first: VC5 orders the
+ * operands of a commutative add by displacement within one symbol, which
+ * two separate globals do not reproduce whatever their names or order. */
+extern float     g_aBrSceneAccum[4];
+#define g_4B16A0 (g_aBrSceneAccum[0])
+#define g_4B16AC (g_aBrSceneAccum[3])
 extern int       DAT_100aa018;      /* mirror size selector 1/2/3               */
 extern int       DAT_100a9360;      /* game mode                                */
 extern int       DAT_106e9a2c;      /* screen height                            */
@@ -243,11 +212,7 @@ extern const char *DAT_100a9368[][8]; /* credits: title, 4.0f, six lines        
 extern float     DAT_105bc884;      /* credits page timer                       */
 extern int       DAT_106ed6bc;
 
-static const float kF728C = 0.6499999761581421f;   /* 0x1007728C */
 static const float kF7290 = 0.699999988079071f;    /* 0x10077290 */
-static const float kF7294 = -0.5f;                 /* 0x10077294 */
-static const float kF7298 = 0.20000000298023224f;  /* 0x10077298 */
-static const float kF729C = 0.30000001192092896f;  /* 0x1007729C */
 static const float kF72A0 = 0.5f;                  /* 0x100772A0 */
 
 /* WHAT IT DOES: draws one whole frame for a slot of the split screen.  For
@@ -266,15 +231,6 @@ static const float kF72A0 = 0.5f;                  /* 0x100772A0 */
 /* @t4-pass 0x10011FA0 3 2026-09-09 probes 35 bytes 4501 insns 1376 regions 2 rows 2 census no  (hand: hMir first) */
 /* @t4-pass 0x10011FA0 4 2026-09-09 probes 11 bytes 4500 insns 1376 regions 2 rows 0 census yes  (hand: corpus MISS at +0x131/+0xaf; site-1 fresh angles -- X7 pV-before-call landed, size exact) */
 /* @t4-pass 0x10011FA0 5 2026-09-09 probes 11 bytes 4500 insns 1376 regions 2 rows 0 census yes  (hand: shadow-lea and site-2 fresh angles -- zero movement) */
-/* @t3 0x10011FA0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 4500/4500 insns 1376/1376 rows 0+0 regions 2 oracle UNCLASSIFIED
- * @t3-effort passes 5 zero-movement 4 5
- * Two regions, both scheduler/allocator picks between equal operands: the
- * loop-top lea for pV scheduled above the trace call's constant pushes
- * (original: below), and the +0xaf two-address add destination
- * (`add edx,eax` vs `add eax,edx`, both operands dead after).  The full
- * dead lists live in this header (sites 1, 1-old, 2 and the shadow).
- * Do not reopen before the end-grind. */
 /* @implements 0x10011FA0 glide BrFrameDraw */
 void BrFrameDraw(int iSlot)
 {
@@ -311,14 +267,11 @@ void BrFrameDraw(int iSlot)
     }
 
     for (i = 0; i < g_brCViews; i++) {
-        /* pV BEFORE the trace call: assigned after it (any spelling, see
-         * the site-1 dead list) VC5 folds the first read into
-         * `[ebp+eax*8+0x10]`; assigned before, the call clobbers the
-         * scratch that held 11*i, the read is re-derived through esi and
-         * matches.  This is what closed site 1 (2026-09-09, probe X7):
-         * 4501 -> 4500 B, regnorm 1+1 -> 0+0. */
-        pV = &aViews[i];
+        /* pV after the trace call reads the car index through esi only
+         * at the file's symbol count (see the header); below it VC5 folds
+         * the first read into the address. */
         BrPodNop(0, 0, 0, 0, 0xff);
+        pV = &aViews[i];
         DAT_106e9d88 = pCars + pV->iCar * BR_CAR_STRIDE;
         DAT_106ed520 = CAR_PCAM(DAT_106e9d88);
         g_brIView = i;
@@ -327,9 +280,9 @@ void BrFrameDraw(int iSlot)
         BrDlRectCmdEmit(pV->x, pV->y, pV->w, pV->h, 1);
         if (g_brCViews > 1) {
             BrCamFrustumBuild(DAT_106ed520, DAT_106ed520->fov * kF7290,
-                              DAT_100aa040 * kF728C, (float)pV->w, (float)pV->h);
+                              DAT_100aa040 * 0.65f, (float)pV->w, (float)pV->h);
             BrCamMatrixSetup(DAT_106ed520, DAT_106ed520->fov * kF7290,
-                             DAT_100aa040 * kF728C, (float)pV->w, (float)pV->h);
+                             DAT_100aa040 * 0.65f, (float)pV->w, (float)pV->h);
         } else {
             BrCamFrustumBuild(DAT_106ed520, DAT_106ed520->fov, DAT_100aa040,
                               (float)pV->w, (float)pV->h);
@@ -392,7 +345,7 @@ void BrFrameDraw(int iSlot)
         BrPodNop(0, 0, 0xff, 0xff, 0xff);
         BrEnvEmit();
         BrPodNop(0, 0, 0x82, 0, 0xff);
-        BrFadeDrawSprite(aViews, g_4B16AC - g_4B16A0 * kF7294);
+        BrFadeDrawSprite(aViews, g_4B16AC - g_4B16A0 * -0.5f);
         BrCamMatrixSetupOrtho((float)pV->w, (float)pV->h);
         BrDlScreenRectEmit(pV->x, pV->y, pV->w, pV->h, 1);
 
@@ -424,9 +377,9 @@ void BrFrameDraw(int iSlot)
             BrDlRectCmdEmit(xMir, yMir, -wMir, hMir, 1);
             BrNop_1002AB94(xMir, yMir, wMir, hMir);
             BrCamFrustumBuild(DAT_106ed520, DAT_106ed520->fov,
-                              DAT_100aa040 * kF7298, (float)wMir, (float)hMir);
+                              DAT_100aa040 * 0.2f, (float)wMir, (float)hMir);
             BrCamMatrixSetup(DAT_106ed520, DAT_106ed520->fov,
-                             DAT_100aa040 * kF729C, (float)wMir, (float)hMir);
+                             DAT_100aa040 * 0.3f, (float)wMir, (float)hMir);
             FUN_1002af17();
             FUN_1002b480();
             BrPodNop(0, 0, 0x82, 0, 0xff);

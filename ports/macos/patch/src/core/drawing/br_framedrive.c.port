@@ -3,6 +3,8 @@
 # Mac port drops, and the port bodies it compiles in their place.
 @drop define:_CRTIMP
 @drop include:<stdio.h>
+@drop include:"br_carphys.h"
+@drop include:"br_audio.h"
 @drop type:uint32_t
 @drop type:uint16_t
 @drop type:uint8_t
@@ -84,8 +86,9 @@
 @drop var:DAT_106ed6b0
 @drop var:DAT_100b3014
 @drop var:g_brRaceNDriver
-@drop var:g_4B16A0
-@drop var:g_4B16AC
+@drop var:g_aBrSceneAccum
+@drop define:g_4B16A0
+@drop define:g_4B16AC
 @drop var:DAT_100aa018
 @drop var:DAT_100a9360
 @drop var:DAT_106e9a2c
@@ -105,10 +108,6 @@
 @drop var:DAT_100a9368
 @drop var:DAT_105bc884
 @drop var:DAT_106ed6bc
-@drop var:kF728C
 @drop var:kF7290
-@drop var:kF7294
-@drop var:kF7298
-@drop var:kF729C
 @drop var:kF72A0
 @drop fn:BrFrameDraw
