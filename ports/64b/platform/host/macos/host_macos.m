@@ -176,6 +176,22 @@ static CGColorSpaceRef s_rgb;
 
 @implementation BrView
 - (BOOL)acceptsFirstResponder { return YES; }
+/* the first click on the window reaches the game too, not only activation */
+- (BOOL)acceptsFirstMouse:(NSEvent *)ev { (void)ev; return YES; }
+/* pointer movement over the view whether or not the window is key, so the
+ * game's cursor is already under the pointer when it comes back in; the
+ * pointer is never captured or confined */
+- (void)updateTrackingAreas
+{
+    NSArray *old = [[self trackingAreas] copy];
+    for (NSTrackingArea *t in old)
+        [self removeTrackingArea:t];
+    [self addTrackingArea:[[NSTrackingArea alloc] initWithRect:NSZeroRect
+                                                       options:NSTrackingMouseMoved | NSTrackingActiveAlways |
+                                                               NSTrackingInVisibleRect
+                                                         owner:self userInfo:nil]];
+    [super updateTrackingAreas];
+}
 /* the game draws its own cursor: the system's is hidden over the view */
 - (void)resetCursorRects
 {
