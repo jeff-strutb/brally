@@ -8630,3 +8630,7 @@ with the target's flags, diff one function against original bytes
   & 1`.**  VC5 sees only bit 7 survives and loads the low byte over whatever
   the register held; an unsigned byte gets `xor ecx,ecx; mov cl,..` and a
   plain signed one gets `sar`.  0x10058FD0 BrMenuSub1005FF60.
+- **`mov al,byte [eax+K]; ... and eax,0xff` (a byte loaded OVER its own
+  pointer register, widened by a mask): `(int)(signed char)p[K] & 0xff`.**
+  The unsigned read zeroes a fresh register (`xor ecx,ecx; mov cl,..`) and
+  is free to sink below later stores.  0x1006CE50 BrBitStreamReadU24.
