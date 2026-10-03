@@ -23,6 +23,7 @@ void BrImageStrip(BrImage *img, unsigned char *data, int w, int h, int x, int y,
 extern Gfx *D_8028A858;
 extern int D_8028A850;
 extern int D_8028A898;                  /* the texture filter mode */
+void BrSwapBytes(unsigned char *a, unsigned char *b);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Draw the part (s, t, sw by th texels) of a 4-bit image as a
@@ -264,6 +265,62 @@ void BrFillRect(int x, int y, int w, int h, unsigned char r, unsigned char g, un
   gDPSetRenderMode(D_8028A858++, G_RM_OPA_SURF, G_RM_OPA_SURF2);
   gDPSetFillColor(D_8028A858++, GPACK_RGBA5551(r, g, b, 1) << 16 | GPACK_RGBA5551(r, g, b, 1));
   gDPFillRectangle(D_8028A858++, x, y, x + w, y + h);
+  gDPPipeSync(D_8028A858++);
+  gDPSetCycleType(D_8028A858++, G_CYC_1CYCLE);
+}
+
+/* WHAT IT DOES: Draw a bevelled panel: unless asked not to, a w by h fill
+ * in r, g, b; then a bevel `bevel` pixels deep around it -- the left and
+ * top edges light grey (0xE0), the right and bottom dark (0x30), the two
+ * swapped for a sunken panel (sunken == 1).  In 640-wide coordinates,
+ * halved on a low-res screen.  The loop index is declared first (its slot
+ * sits above the two shades). */
+/* @implements 0x80246F90 tgr BrBevelPanel */
+void BrBevelPanel(int x, int y, int w, int h, int bevel, char noFill, char sunken, unsigned char r,
+                  unsigned char g, unsigned char b)
+{
+  int i;
+  unsigned char hi;
+  unsigned char lo;
+
+  hi = 0xe0;
+  lo = 0x30;
+  if (D_8028A850 == 0) {
+    x >>= 1;
+    y >>= 1;
+    w >>= 1;
+    h >>= 1;
+    bevel >>= 1;
+  }
+  if (bevel < 2) {
+    bevel = 1;
+  }
+  gDPPipeSync(D_8028A858++);
+  gDPSetCycleType(D_8028A858++, G_CYC_FILL);
+  gDPSetRenderMode(D_8028A858++, G_RM_OPA_SURF, G_RM_OPA_SURF2);
+  if (noFill == 0) {
+    gDPSetFillColor(D_8028A858++, GPACK_RGBA5551(r, g, b, 1) << 16 | GPACK_RGBA5551(r, g, b, 1));
+    gDPFillRectangle(D_8028A858++, x, y, x + w, y + h);
+    gDPPipeSync(D_8028A858++);
+  }
+  if (sunken == 1) {
+    BrSwapBytes(&hi, &lo);
+  }
+  gDPSetFillColor(D_8028A858++, GPACK_RGBA5551(hi, hi, hi, 1) << 16 | GPACK_RGBA5551(hi, hi, hi, 1));
+  for (i = 1; i <= bevel; i++) {
+    gDPFillRectangle(D_8028A858++, x - i, y - i, x - i + 1, y + h + i);
+  }
+  for (i = 1; i <= bevel; i++) {
+    gDPFillRectangle(D_8028A858++, x - i, y - i, x + w + i, y - i + 1);
+  }
+  gDPPipeSync(D_8028A858++);
+  gDPSetFillColor(D_8028A858++, GPACK_RGBA5551(lo, lo, lo, 1) << 16 | GPACK_RGBA5551(lo, lo, lo, 1));
+  for (i = 1; i <= bevel; i++) {
+    gDPFillRectangle(D_8028A858++, x + w + i - 1, y - i, x + w + i, y + h + i);
+  }
+  for (i = 1; i <= bevel; i++) {
+    gDPFillRectangle(D_8028A858++, x - i, y + h + i - 1, x + w + i, y + h + i);
+  }
   gDPPipeSync(D_8028A858++);
   gDPSetCycleType(D_8028A858++, G_CYC_1CYCLE);
 }

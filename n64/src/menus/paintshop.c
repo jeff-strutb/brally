@@ -150,7 +150,7 @@ extern unsigned char D_8028DBA8;
 extern unsigned char D_8028DBAC;
 extern BrGlyph *D_80369E68[];
 void BrFadeTo(float dir, float speed);
-void func_80246F90();
+void BrBevelPanel();
 void BrTextSetFont(int size);
 void BrTextAlignLeft(void);
 void BrTextHighlightOff(void);
@@ -266,7 +266,7 @@ void BrPakMessage(int msg, char op, char mode)
     if (mode == 1) {
       y = 0xea;
     }
-    func_80246F90(0xd5, y, 0xd5, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
+    BrBevelPanel(0xd5, y, 0xd5, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
     y = (y + 30) >> 1;
     BrTextPrint("CONTROLLER PAK", 0x72, y);
     BrTextPrint("IS NOT INSERTED", 0x72, y + 14);
@@ -277,7 +277,7 @@ void BrPakMessage(int msg, char op, char mode)
     if (mode == 1) {
       y = 0xc3;
     }
-    func_80246F90(0xa5, y, 0x135, 0xb2, 3, 0, 0, 0x80, 0x80, 0x80);
+    BrBevelPanel(0xa5, y, 0x135, 0xb2, 3, 0, 0, 0x80, 0x80, 0x80);
     y = (y + 30) >> 1;
     BrTextPrint("INSUFFICIENT FREE PAGES", 0x5a, y);
     BrTextPrint("OR FREE NOTES IN THE", 0x5a, y + 12);
@@ -296,7 +296,7 @@ void BrPakMessage(int msg, char op, char mode)
       y = 0xe2;
     }
     x = (0x280 - w) >> 1;
-    func_80246F90(x, y, w, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
+    BrBevelPanel(x, y, w, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
     if (op == 9) {
       y = (y + 30) >> 1;
       x = (x + 16) >> 1;
@@ -318,7 +318,7 @@ void BrPakMessage(int msg, char op, char mode)
       y = 0xe2;
     }
     x = (0x280 - w) >> 1;
-    func_80246F90(x, y, w, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
+    BrBevelPanel(x, y, w, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
     if (op == 9) {
       y = (y + 30) >> 1;
       x = (x + 16) >> 1;
@@ -341,7 +341,7 @@ void BrPakMessage(int msg, char op, char mode)
       y = 0xe2;
     }
     x = (0x280 - w) >> 1;
-    func_80246F90(x, y, w, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
+    BrBevelPanel(x, y, w, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
     y = (y + 30) >> 1;
     x = (x + 15) >> 1;
     BrTextPrint("ERROR ENCOUNTERED", x, y);
@@ -356,7 +356,7 @@ void BrPakMessage(int msg, char op, char mode)
     if (mode == 1) {
       y = 0xe4;
     }
-    func_80246F90(0xad, y, 0x126, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
+    BrBevelPanel(0xad, y, 0x126, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
     y = (y + 30) >> 1;
     BrTextPrint("BAD DATA ENCOUNTERED", 0x5d, y);
     if (op == 9) {
@@ -370,7 +370,7 @@ void BrPakMessage(int msg, char op, char mode)
     if (mode == 1) {
       y = 0xdc;
     }
-    func_80246F90(0xae, y, 0x124, 0x80, 3, 0, 0, 0x80, 0x80, 0x80);
+    BrBevelPanel(0xae, y, 0x124, 0x80, 3, 0, 0, 0x80, 0x80, 0x80);
     y = (y + 30) >> 1;
     BrTextPrint("CONTROLLER ERROR HAS", 0x5e, y);
     BrTextPrint("BEEN DETECTED.", 0x5e, y + 12);
@@ -386,7 +386,7 @@ void BrPakMessage(int msg, char op, char mode)
     if (mode == 1) {
       y = 0xf8;
     }
-    func_80246F90(0xcd, y, 0xe6, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
+    BrBevelPanel(0xcd, y, 0xe6, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
     y = (y + 30) >> 1;
     BrTextPrint("CONTROLLER PAK", 0x6e, y);
     BrTextPrint("IS NONFUNCTIONAL", 0x6e, y + 14);
@@ -519,7 +519,7 @@ void BrPaintExitPrompt(void)
     } else {
       y = 285 - D_8028D0B0.w;
       bx = 361 - D_8028D0E0.w;
-      func_80246F90(0xbf, 0xbb, 0x102, 0x6a, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrBevelPanel(0xbf, 0xbb, 0x102, 0x6a, 3, 0, 0, 0x80, 0x80, 0x80);
       BrTextSetFont(12);
       BrTextAlignLeft();
       BrTextHighlightOff();
@@ -821,7 +821,7 @@ void BrPaintBrushSelect(void)
   names = D_8028DCE4;
   y = 322 - D_8028D0B0.w;
   bx = 349 - D_8028D0E0.w;
-  func_80246F90(200, 0x96, 0xf0, 0xb4, 3, 0, 0, 0x80, 0x80, 0x80);
+  BrBevelPanel(200, 0x96, 0xf0, 0xb4, 3, 0, 0, 0x80, 0x80, 0x80);
   if (D_8028DBC0 != 0) {
     D_8028DBB8 = D_8028CE9C;
     D_8028DBC0 = 0;
@@ -840,7 +840,7 @@ void BrPaintBrushSelect(void)
   } else {
     BrFillRect(D_8028D410.drawW + 276, 202, 38, 38, 0, 0, 0);
   }
-  func_80246F90(0xe0, 0xff, 0xc0, 0x1e, 1, 1, 1, 0x80, 0x80, 0x80);
+  BrBevelPanel(0xe0, 0xff, 0xc0, 0x1e, 1, 1, 1, 0x80, 0x80, 0x80);
   BrTextSetFont(11);
   BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
   BrTextPrint(names.n[D_8028DBB8], 159, 138);
@@ -1063,7 +1063,7 @@ void BrPaintStyleSelect(void)
   names = D_8028DCF4;
   y = 323 - D_8028D0B0.w;
   bx = 353 - D_8028D0E0.w;
-  func_80246F90(0x9f, 0x95, 0x142, 0xb6, 3, 0, 0, 0x80, 0x80, 0x80);
+  BrBevelPanel(0x9f, 0x95, 0x142, 0xb6, 3, 0, 0, 0x80, 0x80, 0x80);
   BrTextSetFont(16);
   BrTextAlignCentre();
   BrTextHighlightOff();
@@ -1079,7 +1079,7 @@ void BrPaintStyleSelect(void)
       BrImageDrawAt(D_8028DB34[i], x, 203);
     }
   }
-  func_80246F90(0xb1, 0x103, 0x11e, 0x1e, 1, 1, 1, 0x80, 0x80, 0x80);
+  BrBevelPanel(0xb1, 0x103, 0x11e, 0x1e, 1, 1, 1, 0x80, 0x80, 0x80);
   BrTextSetFont(11);
   BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
   BrTextPrint(names.n[D_8028DBB8], 159, 140);
@@ -1596,7 +1596,7 @@ void BrPaintOvalStyleSelect(void)
   names = D_8028DD04;
   y = 323 - D_8028D0B0.w;
   bx = 352 - D_8028D0E0.w;
-  func_80246F90(0xb8, 0x95, 0x110, 0xb6, 3, 0, 0, 0x80, 0x80, 0x80);
+  BrBevelPanel(0xb8, 0x95, 0x110, 0xb6, 3, 0, 0, 0x80, 0x80, 0x80);
   BrTextSetFont(16);
   BrTextAlignCentre();
   BrTextHighlightOff();
@@ -1621,7 +1621,7 @@ void BrPaintOvalStyleSelect(void)
       BrImageDraw(D_8028DB44[i]);
     }
   }
-  func_80246F90(0xce, 0x101, 0xe4, 0x1e, 1, 1, 1, 0x80, 0x80, 0x80);
+  BrBevelPanel(0xce, 0x101, 0xe4, 0x1e, 1, 1, 1, 0x80, 0x80, 0x80);
   BrTextSetFont(11);
   BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
   BrTextPrint(names.n[D_8028DBB8], 159, 139);
