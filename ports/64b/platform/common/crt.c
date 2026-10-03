@@ -427,7 +427,16 @@ char *_ltoa(long v, char *out, int radix)
 
 char *_itoa(int v, char *out, int radix) { return _ltoa(v, out, radix); }
 int _finite(double d) { return isfinite(d); }
+#ifdef _WIN32
+/* errno is (*_errno()) in the Windows CRT, and _errno here is the renamed
+ * emulation (br_winemu.h): forward to the system's own */
+#undef _errno
+__declspec(dllimport) int *_errno(void);
+int *brw__errno(void) { return _errno(); }
+#define _errno brw__errno
+#else
 int *_errno(void) { return &errno; }
+#endif
 
 /* MSVC's rand/srand (one sequence for the process; the game seeds and draws
  * from one thread) */
@@ -470,6 +479,12 @@ BrCrtOnExitFn dllonexit(BrCrtOnExitFn fn, void *begin, void *end)
 /* MSVC's structured-exception frame handler, named by the decompiled
  * frames; nothing raises a structured exception here */
 int _except_handler3(void) { return 1; }
+
+#ifdef _WIN32
+/* mingw's float.h declares _finite dllimport; the import slot it then asks
+ * for points at the emulation's (br_winemu.h renamed it) */
+void *__imp_brw__finite = (void *)&_finite;
+#endif
 
 void *BrOperatorNew(size_t cb) { return malloc(cb ? cb : 1); }
 void  BrOperatorDelete(void *p) { free(p); }

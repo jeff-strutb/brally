@@ -677,7 +677,7 @@ void BrCheatCodeScan(void);
 #pragma pop_macro("BrCheatCodeScan")
 #pragma push_macro("BrChkAlloc")
 #undef BrChkAlloc
-void * BrChkAlloc(unsigned long, const char *);
+void * BrChkAlloc(size_t, const char *);
 #pragma pop_macro("BrChkAlloc")
 #pragma push_macro("BrChkFClose")
 #undef BrChkFClose
@@ -685,7 +685,7 @@ void BrChkFClose(FILE **);
 #pragma pop_macro("BrChkFClose")
 #pragma push_macro("BrChkFRead")
 #undef BrChkFRead
-void * BrChkFRead(void *, unsigned long, unsigned long, FILE **);
+void * BrChkFRead(void *, size_t, size_t, FILE **);
 #pragma pop_macro("BrChkFRead")
 #pragma push_macro("BrChkFReadLine")
 #undef BrChkFReadLine
@@ -705,7 +705,7 @@ int BrChkFileSize(FILE **);
 #pragma pop_macro("BrChkFileSize")
 #pragma push_macro("BrChkRealloc")
 #undef BrChkRealloc
-void * BrChkRealloc(void *, unsigned long, const char *);
+void * BrChkRealloc(void *, size_t, const char *);
 #pragma pop_macro("BrChkRealloc")
 #pragma push_macro("BrCleanupName_100087D0")
 #undef BrCleanupName_100087D0
@@ -1371,7 +1371,7 @@ void BrF3DVtxFixup(struct BrGfxWords *);
 #pragma pop_macro("BrF3DVtxFixup")
 #pragma push_macro("BrFChkFRead")
 #undef BrFChkFRead
-int BrFChkFRead(void *, unsigned long, unsigned long, FILE **);
+int BrFChkFRead(void *, size_t, size_t, FILE **);
 #pragma pop_macro("BrFChkFRead")
 #pragma push_macro("BrFadeDrawBars")
 #undef BrFadeDrawBars
@@ -2871,7 +2871,7 @@ void BrObjSelCycle(void);
 #pragma pop_macro("BrObjSelCycle")
 #pragma push_macro("BrOnActivate")
 #undef BrOnActivate
-void BrOnActivate(unsigned long);
+void BrOnActivate(uintptr_t);
 #pragma pop_macro("BrOnActivate")
 #pragma push_macro("BrOnActivateApp")
 #undef BrOnActivateApp
@@ -3743,7 +3743,7 @@ int BrSaveBeginTimeAttack(int, int *);
 #pragma pop_macro("BrSaveBeginTimeAttack")
 #pragma push_macro("BrSaveLoad")
 #undef BrSaveLoad
-char BrSaveLoad(int, int);
+char BrSaveLoad(int, intptr_t);
 #pragma pop_macro("BrSaveLoad")
 #pragma push_macro("BrSaveNameCommitRallySeason")
 #undef BrSaveNameCommitRallySeason
@@ -3831,7 +3831,7 @@ int BrSeasonApply(void);
 #pragma pop_macro("BrSeasonApply")
 #pragma push_macro("BrSeasonLoad")
 #undef BrSeasonLoad
-char BrSeasonLoad(int, int);
+char BrSeasonLoad(int, intptr_t);
 #pragma pop_macro("BrSeasonLoad")
 #pragma push_macro("BrSecondTickLoop")
 #undef BrSecondTickLoop

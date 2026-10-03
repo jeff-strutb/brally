@@ -85,7 +85,7 @@
  * oracle EQUIVALENT is the completeness proof (rule 12).  Do not reopen
  * before the end-grind. */
 /* @implements 0x100695C0 glide BrSeasonLoad */
-char BrSeasonLoad(int mode, int arg)
+char BrSeasonLoad(int mode, intptr_t arg)
 {
     FILE *fp;
 

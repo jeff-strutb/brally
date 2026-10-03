@@ -89,7 +89,7 @@
  * EQUIVALENT is the completeness proof (rule 12).  Do not reopen before the
  * end-grind. */
 /* @implements 0x1006A080 glide BrSaveLoad */
-char BrSaveLoad(int mode, int arg)
+char BrSaveLoad(int mode, intptr_t arg)
 {
     FILE  *fp;
     char  *path;

@@ -258,7 +258,7 @@ void BrDPlaySysMsgLog(BrDPlayCtx *pCtx, const BrDPlaySysMsg *pMsg,
         }
         if (pszB != NULL) {
             if (g_BrDPlay.pWnd != NULL) {
-                PostMessageA(g_BrDPlay.pWnd, 0x501u, 0u, (long)pszB);
+                PostMessageA(g_BrDPlay.pWnd, 0x501u, 0u, (LPARAM)pszB);
                 return;
             }
             GlobalUnlock(GlobalHandle(pszB));

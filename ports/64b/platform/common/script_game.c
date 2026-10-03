@@ -14,18 +14,20 @@
  * Semantics follow ports/macos/wasm/host/host_script.c so both lanes run
  * the same scenarios. */
 #include <ctype.h>
-#include <dirent.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
 
 /* built with the core's flags for its types, but these are host paths:
  * the real fopen, not br_crt.h's game-directory one */
 #undef fopen
 
 const char *host_save_dir(void);   /* host.h */
+typedef struct host_dir host_dir;  /* host.h */
+host_dir   *host_dir_open(const char *path);
+const char *host_dir_next(host_dir *d, int *is_dir, uint64_t *size);
+void        host_dir_close(host_dir *d);
 #include "br_addr32.h"
 #include "br_coretypes.h"
 #include "br_cartypes.h"
@@ -212,20 +214,18 @@ void plat_script_autopilot(void)
  * the path below the game directory, backslashes as `_`, lower case). */
 static void copy_tree(const char *dir, const char *rel, const char *save)
 {
-    DIR *d = opendir(dir);
-    struct dirent *e;
+    host_dir *d = host_dir_open(dir);
+    const char *name;
+    int is_dir;
     if (!d)
         return;
-    while ((e = readdir(d))) {
+    while ((name = host_dir_next(d, &is_dir, NULL)) != NULL) {
         char p[1200], r[600], q[1300], *k;
-        struct stat st;
-        if (e->d_name[0] == '.')
+        if (name[0] == '.')
             continue;
-        snprintf(p, sizeof p, "%s/%s", dir, e->d_name);
-        snprintf(r, sizeof r, "%s%s%s", rel, *rel ? "_" : "", e->d_name);
-        if (stat(p, &st) != 0)
-            continue;
-        if (S_ISDIR(st.st_mode)) {
+        snprintf(p, sizeof p, "%s/%s", dir, name);
+        snprintf(r, sizeof r, "%s%s%s", rel, *rel ? "_" : "", name);
+        if (is_dir) {
             copy_tree(p, r, save);
             continue;
         }
@@ -247,7 +247,7 @@ static void copy_tree(const char *dir, const char *rel, const char *save)
                 fclose(out);
         }
     }
-    closedir(d);
+    host_dir_close(d);
 }
 
 void plat_script_files(void)

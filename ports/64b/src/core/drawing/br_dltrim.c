@@ -68,8 +68,8 @@ typedef struct BrGrVtx {
 /* grDrawTriangle: prototype in br_funcs.h */
 /* grDrawPolygonVertexList: prototype in br_funcs.h */
 
-#define BR_TRIM_POOL_LO  ((unsigned long)&s_aClipPool[0])    /* 0x105CCFF0 */
-#define BR_TRIM_POOL_HI  ((unsigned long)&s_aClipPool[64])   /* 0x105CD9F0 */
+#define BR_TRIM_POOL_LO  ((uintptr_t)&s_aClipPool[0])    /* 0x105CCFF0 */
+#define BR_TRIM_POOL_HI  ((uintptr_t)&s_aClipPool[64])   /* 0x105CD9F0 */
 
 /* The quarter-pixel snap.  `fld tmp; fistp i; fild i; fstp tmp` round-trips
  * through the x87 with the startup control word, i.e. round to nearest,
@@ -145,8 +145,8 @@ void NAME ARGS                                                              \
         for (n = list.cVerts; n > 0; n--) {                                 \
             pN = list.pHead;                                                \
             list.pHead = pN->pNext;                                         \
-            if ((unsigned long)pN >= BR_TRIM_POOL_LO &&                     \
-                (unsigned long)pN <  BR_TRIM_POOL_HI) {                     \
+            if ((uintptr_t)pN >= BR_TRIM_POOL_LO &&                     \
+                (uintptr_t)pN <  BR_TRIM_POOL_HI) {                     \
                 pN->pNext = g_pClipFree;                                   \
                 g_pClipFree = pN;                                          \
             }                                                               \
@@ -176,8 +176,8 @@ void NAME ARGS                                                              \
             invW = ((pN->f14) * DAT_118ed1a8) * pV->oow;                 \
             pV->tmu1[1] = invW;                                             \
             pV->tmu0[1] = invW;                                             \
-            if ((unsigned long)pN >= BR_TRIM_POOL_LO &&                     \
-                (unsigned long)pN <  BR_TRIM_POOL_HI) {                     \
+            if ((uintptr_t)pN >= BR_TRIM_POOL_LO &&                     \
+                (uintptr_t)pN <  BR_TRIM_POOL_HI) {                     \
                 pN->pNext = g_pClipFree;                                   \
                 g_pClipFree = pN;                                          \
             }                                                               \

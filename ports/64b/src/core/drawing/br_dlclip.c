@@ -124,8 +124,8 @@
 
 /* The node pool's bounds, as the original compares them: bare addresses in
  * `cmp reg, imm32`, not a symbol plus a length. */
-#define BR_CLIP_POOL_LO  ((unsigned long)&s_aClipPool[0])    /* 0x105CCFF0 */
-#define BR_CLIP_POOL_HI  ((unsigned long)&s_aClipPool[64])   /* 0x105CD9F0 */
+#define BR_CLIP_POOL_LO  ((uintptr_t)&s_aClipPool[0])    /* 0x105CCFF0 */
+#define BR_CLIP_POOL_HI  ((uintptr_t)&s_aClipPool[64])   /* 0x105CD9F0 */
 
 /* ---------------------------------------------------------------------
  * The body, once.
@@ -208,8 +208,8 @@ void NAME(BrClipList *pList)                                                  \
     if (pDead != NULL)                                                        \
         pDead = pDead->pNext;                                                 \
     while (pTmp != NULL) {                                                    \
-        if ((unsigned long)pTmp >= BR_CLIP_POOL_LO &&                         \
-            (unsigned long)pTmp <  BR_CLIP_POOL_HI) {                         \
+        if ((uintptr_t)pTmp >= BR_CLIP_POOL_LO &&                         \
+            (uintptr_t)pTmp <  BR_CLIP_POOL_HI) {                         \
             pTmp->pNext = g_pClipFree;                                       \
             g_pClipFree = pTmp;                                              \
         }                                                                     \

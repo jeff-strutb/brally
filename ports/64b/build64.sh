@@ -10,6 +10,10 @@ CC=${CC:-clang}
 export CC OUT
 CFLAGS="-O2 ${GFLAG:--g} -Wno-everything -Wimplicit-function-declaration -Wimplicit-int -D_FORTIFY_SOURCE=0 -fms-extensions -fdeclspec -fno-strict-aliasing -fwrapv -ffp-contract=off -Wno-return-mismatch -Wno-error=incompatible-pointer-types -Wno-error=incompatible-function-pointer-types -Werror=implicit-function-declaration -Werror=implicit-int ${WARN}
   -Iports/64b/platform/include -Iports/64b/include -include ports/64b/platform/include/win32.h -include ports/64b/platform/include/glide.h -include ports/64b/platform/include/br_x87.h -include ports/64b/include/br_crt.h -include ports/64b/include/br_addr32.h -include ports/64b/platform/include/br_lp64.h -include ports/64b/include/br_globals.h -include ports/64b/include/br_funcs.h"
+# a Windows target links nothing from a DLL: the dllimport the sources
+# spell (as the original's link did) must not ask the system's CRT for one
+# ... and the Win32 emulation takes private names (tools/winnames.py)
+case "$($CC -dumpmachine 2>/dev/null)" in *mingw*|*windows*) CFLAGS="-include ports/64b/platform/include/br_winemu.h $CFLAGS -Ddllimport=";; esac
 export CFLAGS
 # one file: build64.sh FILE...  (prints OK/FAIL and the errors)
 if [ $# -gt 0 ]; then
