@@ -49,8 +49,13 @@ typedef struct brr_state {
     uint32_t texture;
     int32_t  tex_w, tex_h;
     int32_t  min_filter, mag_filter, clamp_s, clamp_t;
-    /* scissor: grClipWindow */
+    /* scissor: grClipWindow, in the game's pixels (the software renderer) */
     int32_t clip_x0, clip_y0, clip_x1, clip_y1;
+    /* where the draw goes on the target (glide.c's screen map): the entry of
+     * this frame's map table its vertices go through, and the scissor in
+     * target pixels */
+    int32_t xf;
+    int32_t sx0, sy0, sx1, sy1;
 } brr_state;
 
 int      brr_open(int width, int height);
@@ -58,11 +63,20 @@ void     brr_close(void);
 /* a texture of RGBA8 pixels; replaces id's contents when id != 0 */
 uint32_t brr_texture(uint32_t id, const uint8_t *rgba, int w, int h);
 void     brr_texture_free(uint32_t id);
+/* a clear over clip's scissor (sx0..sy1; clip_x0.. for a target the game's size) */
 void     brr_clear(uint32_t argb, float depth, int colour, int depthbuf, const brr_state *clip);
 /* triangles: n vertices, n a multiple of 3 */
 void     brr_draw(const brr_state *st, const brr_vertex *v, int n);
-/* pixels written straight to the back buffer (16-bit RGB565, Glide's LFB) */
-void     brr_lfb_write(int x, int y, int w, int h, const uint16_t *rgb565, int stride);
+/* pixels written straight to the back buffer (16-bit RGB565, Glide's LFB):
+ * the game's rectangle x,y,w,h, drawn over target pixels d[0..3] (x0 y0 x1 y1) */
+void     brr_lfb_write(int x, int y, int w, int h, const uint16_t *rgb565, int stride, const int d[4]);
+/* the target's size in pixels (the game's when it draws at the game's size) */
+void     brr_target(int *w, int *h);
+/* this frame's map table, set before brr_present: entry i takes the game's
+ * pixels (y down) to normalised device coordinates (y up),
+ * ndc.x = x * t[i][0] + t[i][1], ndc.y = y * t[i][2] + t[i][3] */
+#define BRR_XF_MAX 8192
+void     brr_xf(const float (*t)[4], int n);
 void     brr_present(void);
 /* the frame last presented, to a PNG; 0 when this backend cannot */
 int      brr_shot(const char *path);

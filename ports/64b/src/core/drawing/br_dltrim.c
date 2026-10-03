@@ -36,6 +36,7 @@
 #include "br_x87.h"
 #include "br_dl.h"       /* BrDlVtx -- the 0x68-byte pool record             */
 #include "slice1_03.h"   /* BrClipVert, BrClipList, the seven planes         */
+#include "br_dlview.h"   /* port: the view a triangle belongs to             */
 
 
 /* The Glide 2.x GrVertex, two TMUs: 0x3C bytes.  BrDlVtx's first 0x3C bytes
@@ -182,6 +183,7 @@ void NAME ARGS                                                              \
                 g_pClipFree = pN;                                          \
             }                                                               \
         }                                                                   \
+        plat_glide_view(br_dl_view());   /* port: br_dlview.h */           \
         if (list.cVerts == 3) {                                             \
             grDrawTriangle(&out[0], &out[1], &out[2]);                      \
             return;                                                         \

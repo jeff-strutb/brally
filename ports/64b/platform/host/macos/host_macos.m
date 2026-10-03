@@ -332,6 +332,16 @@ void host_window_close(void)
     }
 }
 
+void host_window_lock_aspect(int lock)
+{
+    if (!s_win)
+        return;
+    if (lock)
+        [s_win setContentAspectRatio:NSMakeSize(s_w, s_h)];
+    else
+        [s_win setContentResizeIncrements:NSMakeSize(1, 1)];   /* clears the ratio */
+}
+
 int host_window_visible(void)
 {
     return s_win && ([s_win occlusionState] & NSWindowOcclusionStateVisible) != 0;

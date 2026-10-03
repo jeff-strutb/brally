@@ -556,9 +556,15 @@ void brr_draw(const brr_state *st, const brr_vertex *v, int n)
     s_tris += (unsigned long)n / 3;
 }
 
-void brr_lfb_write(int x, int y, int w, int h, const uint16_t *p, int stride)
+/* the target is the game's size: the screen map is the identity, so the
+ * map table and the target rectangle have nothing to change */
+void brr_target(int *w, int *h) { *w = s_w; *h = s_h; }
+void brr_xf(const float (*t)[4], int n) { (void)t; (void)n; }
+
+void brr_lfb_write(int x, int y, int w, int h, const uint16_t *p, int stride, const int d[4])
 {
     int i, j;
+    (void)d;
     for (j = 0; j < h; j++) {
         const uint16_t *r = (const uint16_t *)((const uint8_t *)p + (size_t)j * (size_t)stride);
         if (y + j < 0 || y + j >= s_h)

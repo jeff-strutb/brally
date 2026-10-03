@@ -108,6 +108,8 @@
 #include "slice1_05.h"   /* br_globals: its objects */
 #include <stdio.h>
 #include "slice3_41.h"
+#include "br_camwide.h"
+#include "br_platview.h"
 /* initialised in the original source (restored: the 64-bit core keeps them
  * private to this file; no Glide relocation places them elsewhere) */
 static const float kF728C = 0.6499999761581421f;
@@ -294,6 +296,7 @@ void BrFrameDraw(int iSlot)
     pCars  = g_aBrSnap[iSlot].car;
     pHdr   = (uint8_t *)g_aBrSnap[iSlot].drv;
     aViews = (BrHudView *)&g_aBrSnap[iSlot].tailA.a[0];
+    plat_glide_wide();   /* port: a race frame fills the window (br_platview.h) */
     BrRecHdrLatch_10010F80((uint8_t *)&g_aBrSnap[iSlot].tailC.a[0]);
     BrFadeTick();
     BrFrameBeginRec(aViews);
@@ -330,16 +333,20 @@ void BrFrameDraw(int iSlot)
         FUN_1006ec30(0, 0, (*(BrCamObj * *)&g_BrCamera)->pos, (*(uint8_t (*)[])&g_BrEnvFlagIndices), (*(uint8_t (*)[])&g_BrEnvFlagCount),
                      DAT_106ed590, DAT_106b7ac4, DAT_106e728c, DAT_106ec780);
         BrDlRectCmdEmit(pV->x, pV->y, pV->w, pV->h, 1);
+        /* port: the view's lens and culling wedge widened to fill a window
+         * of any shape (br_camwide.h); the mirror below keeps the game's */
         if (g_brMode0AA8B4 > 1) {
             BrCamFrustumBuild((*(BrCamObj * *)&g_BrCamera), (*(BrCamObj * *)&g_BrCamera)->fov * kF7290,
                               DAT_100aa040 * kF728C, (float)pV->w, (float)pV->h);
-            BrCamMatrixSetup((*(BrCamObj * *)&g_BrCamera), (*(BrCamObj * *)&g_BrCamera)->fov * kF7290,
-                             DAT_100aa040 * kF728C, (float)pV->w, (float)pV->h);
+            BrCamFrustumWiden();
+            BrCamMatrixSetupWide((*(BrCamObj * *)&g_BrCamera), (*(BrCamObj * *)&g_BrCamera)->fov * kF7290,
+                                 DAT_100aa040 * kF728C, (float)pV->w, (float)pV->h);
         } else {
             BrCamFrustumBuild((*(BrCamObj * *)&g_BrCamera), (*(BrCamObj * *)&g_BrCamera)->fov, DAT_100aa040,
                               (float)pV->w, (float)pV->h);
-            BrCamMatrixSetup((*(BrCamObj * *)&g_BrCamera), (*(BrCamObj * *)&g_BrCamera)->fov, DAT_100aa040,
-                             (float)pV->w, (float)pV->h);
+            BrCamFrustumWiden();
+            BrCamMatrixSetupWide((*(BrCamObj * *)&g_BrCamera), (*(BrCamObj * *)&g_BrCamera)->fov, DAT_100aa040,
+                                 (float)pV->w, (float)pV->h);
         }
         BrFrameFogEmit();
         BrFrameTintSetup();

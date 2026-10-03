@@ -8,6 +8,7 @@
  */
 #include "br_vec.h"   /* br_globals: its objects */
 #include "slice2_19.h"
+#include "br_camwide.h"
 
 /* 0x10033CB1 */
 /* WHAT IT DOES: works out the wedge of the world the camera can currently
@@ -58,4 +59,32 @@ void BrCamFrustumBuild(const BrCamBasis *pCam, float a2, float a3,
 
     g_BrCamDist  = a3;
     g_BrCamFovIn = a2;
+}
+
+/* Port: the culling wedge for a race view widened to fill the window
+ * (br_camwide.h, as the wasm lane's native/aspect.m): BrCamFrustumBuild's,
+ * its half-width grown by kx and half-height by ky, the four corners rebuilt
+ * as it builds them (centre +- right +- up, pulled three-quarters of the way
+ * back toward the eye). */
+void BrCamFrustumWiden(void)
+{
+    static const float sr[4] = { 1, -1, -1, 1 }, su[4] = { 1, 1, -1, -1 };
+    BrVec3 *corner[4] = { &g_BrCamCorner0, &g_BrCamCorner1, &g_BrCamCorner2, &g_BrCamCorner3 };
+    const BrVec3 *eye = (const BrVec3 *)&g_aBrSpanPt[0];
+    float kx, ky;
+    int i;
+    plat_view_scale(&kx, &ky);
+    if (kx <= 1.0f && ky <= 1.0f)
+        return;
+    g_BrCamExtentR.x *= kx; g_BrCamExtentR.y *= kx; g_BrCamExtentR.z *= kx;
+    g_BrCamExtentU.x *= ky; g_BrCamExtentU.y *= ky; g_BrCamExtentU.z *= ky;
+    for (i = 0; i < 4; i++) {
+        BrVec3 v;
+        v.x = g_BrCamCentre.x + sr[i] * g_BrCamExtentR.x + su[i] * g_BrCamExtentU.x;
+        v.y = g_BrCamCentre.y + sr[i] * g_BrCamExtentR.y + su[i] * g_BrCamExtentU.y;
+        v.z = g_BrCamCentre.z + sr[i] * g_BrCamExtentR.z + su[i] * g_BrCamExtentU.z;
+        corner[i]->x = (v.x - eye->x) * 0.75f + eye->x;
+        corner[i]->y = (v.y - eye->y) * 0.75f + eye->y;
+        corner[i]->z = (v.z - eye->z) * 0.75f + eye->z;
+    }
 }

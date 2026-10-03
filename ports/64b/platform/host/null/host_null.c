@@ -47,6 +47,7 @@ int host_window_open(int width, int height, const char *title)
 
 void host_window_close(void) {}
 int host_window_visible(void) { return 0; }
+void host_window_lock_aspect(int lock) { (void)lock; }
 
 void host_present(const uint32_t *argb, int w, int h)
 {

@@ -52,6 +52,9 @@ void  plat_mouse_button(int down);
 /* the window's pointer at x,y (the game's 640x480): the next polls steer the
  * game's own cursor there (dx.c) */
 void  plat_mouse_abs(int x, int y);
+/* glide.c: a pointer position the host reports stretched over the window,
+ * to the game's pixels through the picture as it is drawn there */
+void  plat_pointer_to_game(int *x, int *y);
 /* script_game.c: where the game's menu cursor is (0 before it exists) */
 int   plat_game_cursor(int *x, int *y);
 void  plat_app_frame(void);               /* script.c: BrAppFrame's entry */

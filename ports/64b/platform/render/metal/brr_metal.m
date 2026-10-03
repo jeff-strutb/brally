@@ -41,15 +41,18 @@ static NSString *const k_src = @
 "  int ac_fn, ac_factor, ac_local, ac_other, ac_invert;\n"
 "  int tc_rgb_fn, tc_rgb_factor, tc_alpha_fn, tc_alpha_factor, tc_rgb_invert, tc_alpha_invert;\n"
 "  int has_tex, atest_fn, fog_mode, depth_mode;\n"
-"  float atest_ref, vw, vh, pad2;\n"
+"  float atest_ref, vw, vh, xf;\n"
 "  float4 konst, fog_color;\n"
 "  float fog[64];\n"
 "};\n"
 "struct O { float4 pos [[position]]; float4 col [[center_no_perspective]]; float2 st; float oow [[center_no_perspective]]; float z [[center_no_perspective]]; };\n"
-"vertex O vs(uint i [[vertex_id]], const device V *v [[buffer(0)]], constant U &u [[buffer(1)]]) {\n"
-"  O o; V a = v[i];\n"
+/* the screen map (glide.c): the game's pixels to the target through entry
+   u.xf of this frame's table */
+"vertex O vs(uint i [[vertex_id]], const device V *v [[buffer(0)]], constant U &u [[buffer(1)]],\n"
+"            const device float4 *xt [[buffer(2)]]) {\n"
+"  O o; V a = v[i]; float4 T = xt[int(u.xf)];\n"
 "  float w = a.oow > 0 ? 1.0 / a.oow : 1.0;\n"
-"  float2 ndc = float2(a.pos.x / u.vw * 2.0 - 1.0, 1.0 - a.pos.y / u.vh * 2.0);\n"
+"  float2 ndc = float2(a.pos.x * T.x + T.y, a.pos.y * T.z + T.w);\n"
 "  o.pos = float4(ndc * w, clamp(a.z, 0.0, 1.0) * w, w);\n"
 "  o.col = clamp(a.col / 255.0, 0.0, 1.0); o.st = a.st; o.oow = a.oow; o.z = a.z;\n"
 "  return o;\n"
@@ -153,7 +156,7 @@ typedef struct U {
     int32_t ac_fn, ac_factor, ac_local, ac_other, ac_invert;
     int32_t tc_rgb_fn, tc_rgb_factor, tc_alpha_fn, tc_alpha_factor, tc_rgb_invert, tc_alpha_invert;
     int32_t has_tex, atest_fn, fog_mode, depth_mode;
-    float atest_ref, vw, vh, pad2;
+    float atest_ref, vw, vh, xf;
     float konst[4], fog_color[4];
     float fog[64];
 } U;
@@ -162,9 +165,11 @@ typedef struct U {
 static id<MTLDevice> s_dev;
 static id<MTLCommandQueue> s_q;
 static id<MTLLibrary> s_lib;
-static id<MTLTexture> s_col, s_dep, s_lfb;
+static id<MTLTexture> s_col, s_dep;
+static int s_fresh;                 /* the targets are new: the next pass clears them */
 static id<MTLRenderPipelineState> s_pipes[16][16];     /* by blend src, dst */
 static id<MTLRenderPipelineState> s_clear[2], s_blit, s_sharp, s_lfbpipe, s_lfbsharp;
+static id<MTLBuffer> s_xt[3];           /* each frame's map table (glide.c), with its vertex buffer */
 static id<MTLDepthStencilState> s_ds[2][8][2];         /* depth on, function, write */
 static id<MTLDepthStencilState> s_clear_ds[2];
 static id<MTLSamplerState> s_samp[2][2][2];            /* filter, clamp s, clamp t */
@@ -307,18 +312,18 @@ static void targets(int w, int h)
     s_dep = [s_dev newTextureWithDescriptor:td];
     s_rw = w;
     s_rh = h;
+    s_fresh = 1;
     free(s_shot_rgba);
     s_shot_rgba = NULL;
 }
 
-/* the target size for a drawable of dw x dh: the frame's shape scaled to
- * fit, one target pixel per window pixel, as the original drew at the
- * resolution the player chose */
+/* the target size for a drawable of dw x dh: the drawable's, one target
+ * pixel per window pixel, as the original drew at the resolution the player
+ * chose; glide.c's screen map places the game's picture on it */
 static void target_size(double dw, double dh, int *w, int *h)
 {
-    double k = fmin(dw / s_w, dh / s_h);
-    *w = (int)lround(s_w * k);
-    *h = (int)lround(s_h * k);
+    *w = (int)lround(dw);
+    *h = (int)lround(dh);
     if (*w < 1) *w = 1;
     if (*h < 1) *h = 1;
 }
@@ -342,12 +347,18 @@ int brr_open(int width, int height)
             return 0;
         }
         targets(width, height);
-        td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatBGRA8Unorm
-                                                                width:width height:height mipmapped:NO];
-        td.usage = MTLTextureUsageShaderRead;
-        s_lfb = [s_dev newTextureWithDescriptor:td];
-        for (i = 0; i < 3; i++)
+        for (i = 0; i < 3; i++) {
             s_vb[i] = [s_dev newBufferWithLength:VB_SIZE options:MTLResourceStorageModeShared];
+            s_xt[i] = [s_dev newBufferWithLength:BRR_XF_MAX * 16 options:MTLResourceStorageModeShared];
+            {                                   /* until a frame sets it: the identity */
+                float *t = (float *)[s_xt[i] contents];
+                int k;
+                for (k = 0; k < BRR_XF_MAX; k++) {
+                    t[4 * k + 0] = 2.0f / width;  t[4 * k + 1] = -1;
+                    t[4 * k + 2] = -2.0f / height; t[4 * k + 3] = 1;
+                }
+            }
+        }
         s_clear[0] = simple_pipe(@"cvs", @"cfs", 0, 1);
         s_clear[1] = simple_pipe(@"cvs", @"cfs", 1, 1);
         s_lfbpipe = simple_pipe(@"bvs", @"bfs", 1, 1);
@@ -445,39 +456,28 @@ static id<MTLRenderCommandEncoder> enc(void)
             s_vused = 0;
         }
         rp.colorAttachments[0].texture = s_col;
-        rp.colorAttachments[0].loadAction = MTLLoadActionLoad;
+        rp.colorAttachments[0].loadAction = s_fresh ? MTLLoadActionClear : MTLLoadActionLoad;
+        rp.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 1);
         rp.colorAttachments[0].storeAction = MTLStoreActionStore;
         rp.depthAttachment.texture = s_dep;
-        rp.depthAttachment.loadAction = MTLLoadActionLoad;
+        rp.depthAttachment.loadAction = s_fresh ? MTLLoadActionClear : MTLLoadActionLoad;
+        rp.depthAttachment.clearDepth = 1.0;
+        s_fresh = 0;
         rp.depthAttachment.storeAction = MTLStoreActionStore;
         s_enc = [s_cmd renderCommandEncoderWithDescriptor:rp];
     }
     return s_enc;
 }
 
-static void scissor(id<MTLRenderCommandEncoder> e, const brr_state *st)
+/* the draw's scissor, in target pixels (glide.c); 0 when it is empty */
+static int scissor(id<MTLRenderCommandEncoder> e, const brr_state *st)
 {
-    int x0 = st ? st->clip_x0 : 0, y0 = st ? st->clip_y0 : 0;
-    int x1 = st ? st->clip_x1 : s_w, y1 = st ? st->clip_y1 : s_h;
-    MTLScissorRect r;
-    if (x0 < 0) x0 = 0;
-    if (y0 < 0) y0 = 0;
-    if (x1 > s_w) x1 = s_w;
-    if (y1 > s_h) y1 = s_h;
-    if (x1 <= x0 || y1 <= y0) {
-        x0 = y0 = 0;
-        x1 = y1 = 1;                    /* Metal wants a non-empty rectangle; nothing should draw */
-    } else if (s_rw != s_w || s_rh != s_h) {
-        x0 = (int)lround((double)x0 * s_rw / s_w);
-        x1 = (int)lround((double)x1 * s_rw / s_w);
-        y0 = (int)lround((double)y0 * s_rh / s_h);
-        y1 = (int)lround((double)y1 * s_rh / s_h);
-    }
-    r.x = (NSUInteger)x0;
-    r.y = (NSUInteger)y0;
-    r.width = (NSUInteger)(x1 - x0);
-    r.height = (NSUInteger)(y1 - y0);
-    [e setScissorRect:r];
+    int x0 = st->sx0 < 0 ? 0 : st->sx0, y0 = st->sy0 < 0 ? 0 : st->sy0;
+    int x1 = st->sx1 > s_rw ? s_rw : st->sx1, y1 = st->sy1 > s_rh ? s_rh : st->sy1;
+    if (x1 <= x0 || y1 <= y0)
+        return 0;
+    [e setScissorRect:(MTLScissorRect){ (NSUInteger)x0, (NSUInteger)y0, (NSUInteger)(x1 - x0), (NSUInteger)(y1 - y0) }];
+    return 1;
 }
 
 /* room for n bytes in this frame's vertex buffer: the offset, or -1 */
@@ -494,19 +494,19 @@ void brr_clear(uint32_t argb, float depth, int colour, int depthbuf, const brr_s
 {
     @autoreleasepool {
         id<MTLRenderCommandEncoder> e = enc();
-        float x0 = clip ? (float)clip->clip_x0 : 0, y0 = clip ? (float)clip->clip_y0 : 0;
-        float x1 = clip ? (float)clip->clip_x1 : (float)s_w, y1 = clip ? (float)clip->clip_y1 : (float)s_h;
+        float x0 = (float)(clip->sx0 < 0 ? 0 : clip->sx0), y0 = (float)(clip->sy0 < 0 ? 0 : clip->sy0);
+        float x1 = (float)(clip->sx1 > s_rw ? s_rw : clip->sx1), y1 = (float)(clip->sy1 > s_rh ? s_rh : clip->sy1);
         float c[4] = { ((argb >> 16) & 0xFF) / 255.0f, ((argb >> 8) & 0xFF) / 255.0f, (argb & 0xFF) / 255.0f, 1 };
         float q[6][4];
         long off;
         int i;
         static const int ix[6] = { 0, 1, 2, 2, 1, 3 };
         float px[4][2] = { { x0, y0 }, { x1, y0 }, { x0, y1 }, { x1, y1 } };
-        if (!colour && !depthbuf)
+        if ((!colour && !depthbuf) || x1 <= x0 || y1 <= y0)
             return;
         for (i = 0; i < 6; i++) {
-            q[i][0] = px[ix[i]][0] / s_w * 2 - 1;
-            q[i][1] = 1 - px[ix[i]][1] / s_h * 2;
+            q[i][0] = px[ix[i]][0] / s_rw * 2 - 1;
+            q[i][1] = 1 - px[ix[i]][1] / s_rh * 2;
             q[i][2] = 0;
             q[i][3] = 1;
         }
@@ -565,6 +565,7 @@ void brr_draw(const brr_state *st, const brr_vertex *v, int n)
         u.depth_mode = st->depth_mode;
         u.vw = (float)s_w;
         u.vh = (float)s_h;
+        u.xf = (float)(st->xf >= 0 && st->xf < BRR_XF_MAX ? st->xf : 0);
         u.konst[0] = ((st->constant >> 16) & 0xFF) / 255.0f;
         u.konst[1] = ((st->constant >> 8) & 0xFF) / 255.0f;
         u.konst[2] = (st->constant & 0xFF) / 255.0f;
@@ -576,7 +577,9 @@ void brr_draw(const brr_state *st, const brr_vertex *v, int n)
             u.fog[i] = st->fog_table[i] / 255.0f;
         [e setRenderPipelineState:pipe_for(st->blend_rgb_src, st->blend_rgb_dst)];
         [e setDepthStencilState:ds_for(st->depth_mode, st->depth_fn, st->depth_mask)];
-        scissor(e, st);
+        if (!scissor(e, st))
+            return;
+        [e setVertexBuffer:s_xt[s_vbi] offset:0 atIndex:2];
         [e setVertexBuffer:s_vb[s_vbi] offset:(NSUInteger)off atIndex:0];
         [e setVertexBytes:&u length:sizeof u atIndex:1];
         [e setFragmentBytes:&u length:sizeof u atIndex:0];
@@ -589,8 +592,9 @@ void brr_draw(const brr_state *st, const brr_vertex *v, int n)
     }
 }
 
-/* LFB writes: the pixels into a texture, drawn over that rectangle */
-void brr_lfb_write(int x, int y, int w, int h, const uint16_t *p, int stride)
+/* LFB writes: the pixels into a texture of their own, drawn over target
+ * rectangle d (glide.c's screen map), sharp bilinear when scaled */
+void brr_lfb_write(int x, int y, int w, int h, const uint16_t *p, int stride, const int d[4])
 {
     @autoreleasepool {
         uint32_t *px;
@@ -599,7 +603,10 @@ void brr_lfb_write(int x, int y, int w, int h, const uint16_t *p, int stride)
         int i, j;
         static const int ix[6] = { 0, 1, 2, 2, 1, 3 };
         id<MTLRenderCommandEncoder> e;
-        if (w <= 0 || h <= 0 || x < 0 || y < 0 || x + w > s_w || y + h > s_h)
+        MTLTextureDescriptor *td;
+        id<MTLTexture> t;
+        (void)x; (void)y;
+        if (w <= 0 || h <= 0 || d[2] <= d[0] || d[3] <= d[1])
             return;
         px = (uint32_t *)malloc((size_t)w * (size_t)h * 4);
         if (!px)
@@ -612,28 +619,20 @@ void brr_lfb_write(int x, int y, int w, int h, const uint16_t *p, int stride)
                 px[(size_t)j * (size_t)w + (size_t)i] = 0xFF000000u | R << 16 | G << 8 | B;
             }
         }
-        /* the previous frame's draws must have read the texture first: finish them */
-        if (s_enc) {
-            [s_enc endEncoding];
-            s_enc = nil;
-        }
-        if (s_cmd) {
-            [s_cmd commit];
-            [s_cmd waitUntilCompleted];
-            s_cmd = nil;
-        }
-        [s_lfb replaceRegion:MTLRegionMake2D((NSUInteger)x, (NSUInteger)y, (NSUInteger)w, (NSUInteger)h)
-                 mipmapLevel:0 withBytes:px bytesPerRow:(NSUInteger)w * 4];
+        td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatBGRA8Unorm
+                                                                width:(NSUInteger)w height:(NSUInteger)h mipmapped:NO];
+        td.usage = MTLTextureUsageShaderRead;
+        t = [s_dev newTextureWithDescriptor:td];
+        [t replaceRegion:MTLRegionMake2D(0, 0, (NSUInteger)w, (NSUInteger)h) mipmapLevel:0
+               withBytes:px bytesPerRow:(NSUInteger)w * 4];
         free(px);
         e = enc();
         {
-            float px4[4][4] = { { (float)x, (float)y, (float)x / s_w, (float)y / s_h },
-                                { (float)(x + w), (float)y, (float)(x + w) / s_w, (float)y / s_h },
-                                { (float)x, (float)(y + h), (float)x / s_w, (float)(y + h) / s_h },
-                                { (float)(x + w), (float)(y + h), (float)(x + w) / s_w, (float)(y + h) / s_h } };
+            float px4[4][4] = { { (float)d[0], (float)d[1], 0, 0 }, { (float)d[2], (float)d[1], 1, 0 },
+                                { (float)d[0], (float)d[3], 0, 1 }, { (float)d[2], (float)d[3], 1, 1 } };
             for (i = 0; i < 6; i++) {
-                q[i][0] = px4[ix[i]][0] / s_w * 2 - 1;
-                q[i][1] = 1 - px4[ix[i]][1] / s_h * 2;
+                q[i][0] = px4[ix[i]][0] / s_rw * 2 - 1;
+                q[i][1] = 1 - px4[ix[i]][1] / s_rh * 2;
                 q[i][2] = px4[ix[i]][2];
                 q[i][3] = px4[ix[i]][3];
             }
@@ -641,13 +640,30 @@ void brr_lfb_write(int x, int y, int w, int h, const uint16_t *p, int stride)
         if ((off = vb_take(sizeof q)) < 0)
             return;
         memcpy((char *)[s_vb[s_vbi] contents] + off, q, sizeof q);
-        [e setRenderPipelineState:s_rw == s_w && s_rh == s_h ? s_lfbpipe : s_lfbsharp];
+        [e setRenderPipelineState:d[2] - d[0] == w && d[3] - d[1] == h ? s_lfbpipe : s_lfbsharp];
         [e setDepthStencilState:s_clear_ds[0]];
         [e setScissorRect:(MTLScissorRect){ 0, 0, (NSUInteger)s_rw, (NSUInteger)s_rh }];
         [e setVertexBuffer:s_vb[s_vbi] offset:(NSUInteger)off atIndex:0];
-        [e setFragmentTexture:s_lfb atIndex:0];
+        [e setFragmentTexture:t atIndex:0];
         [e setFragmentSamplerState:s_near atIndex:0];
         [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
+    }
+}
+
+void brr_target(int *w, int *h)
+{
+    *w = s_rw;
+    *h = s_rh;
+}
+
+/* this frame's map table: into the buffer its draws read, before it is committed */
+void brr_xf(const float (*t)[4], int n)
+{
+    @autoreleasepool {
+        if (n > BRR_XF_MAX)
+            n = BRR_XF_MAX;
+        enc();                                  /* the frame's command buffer, and so its slot */
+        memcpy([s_xt[s_vbi] contents], t, (size_t)n * 16);
     }
 }
 

@@ -8,6 +8,7 @@
 #include <strings.h>
 
 #include "plat.h"
+#include "br_flags.h"
 
 /* ---- classes and windows ------------------------------------------------------- */
 typedef struct pclass { char name[64]; WNDPROC proc; } pclass;
@@ -77,6 +78,7 @@ HWND WINAPI CreateWindowExA(DWORD ex, LPCSTR cls, LPCSTR title, DWORD style, int
     if (!s_main) {
         s_main = w;
         host_window_open(cx > 0 ? cx : 640, cy > 0 ? cy : 480, title);
+        host_window_lock_aspect(!plat_flag(BR_FLAG_ANY_ASPECT));
     }
     memset(&cs, 0, sizeof cs);
     cs.lpCreateParams = param;
@@ -284,6 +286,7 @@ void plat_deliver(const host_event *e)
                 break;
             /* the game reads the mouse through DirectInput: its cursor is
              * steered to the pointer (dx.c plat_mouse_abs), and the left button */
+            plat_pointer_to_game(&ev.x, &ev.y);
             plat_mouse_abs(ev.x, ev.y);
             plat_mouse_button(ev.buttons & 1);
             if (s_main)

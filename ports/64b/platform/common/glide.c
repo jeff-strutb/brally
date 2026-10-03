@@ -16,11 +16,14 @@
 #include "plat.h"
 #include "glide.h"
 #include "brr.h"
+#include "br_flags.h"
+#include "br_platview.h"
 
 #define TMU_RAM   (4u << 20)
 
 static brr_state s_st;
 static int s_w = 640, s_h = 480, s_lower_left, s_cformat;
+static int s_rw = 640, s_rh = 480;      /* the target (the screen map below) */
 static int s_depth_mode;
 
 /* ---- the call log ------------------------------------------------------------- */
@@ -118,7 +121,10 @@ FxBool grSstWinOpen(void *hwnd, GrScreenResolution_t res, GrScreenRefresh_t ref,
     s_st.atest_fn = 7;          /* GR_CMP_ALWAYS */
     s_st.depth_fn = 1;          /* GR_CMP_LESS */
     s_st.depth_mask = 1;
-    return brr_open(s_w, s_h);
+    if (!brr_open(s_w, s_h))
+        return 0;
+    brr_target(&s_rw, &s_rh);
+    return 1;
 }
 
 void grSstWinClose(void) { plat_vclock_import();}
@@ -138,10 +144,329 @@ void grClipWindow(FxU32 x0, FxU32 y0, FxU32 x1, FxU32 y1)
     }
 }
 
+/* ---- the screen map ---------------------------------------------------------------- */
+/* Where each draw goes on a target of any shape, as the wasm lane places it
+ * (ports/macos/wasm/host/host_glide.m).  Outside a race frame, and always
+ * with BR_FLAG_ANY_ASPECT off, the game's picture is drawn at its own shape,
+ * as large as fits, centred (XF_BOX*).  A race frame fills the target: the
+ * camera's view is stretched over it (its lens widened to match, br_cammatrix
+ * and br_camera), the rear-view mirror keeps its shape, centred along the
+ * top, and every piece of 2D -- the HUD, text, gauges -- keeps its shape too,
+ * stretched only when it spans its clip window, else held at the distance
+ * from the edge (or the centre) it sat nearest.  2D triangles are grouped
+ * per frame into the elements they make up (touching boxes, or words on one
+ * line), so a gauge or a line of text moves as one; their places are worked
+ * out at the swap and handed to the renderer as this frame's map table. */
+enum { XF_BOX3D, XF_WIDE3D, XF_MIRROR, XF_STRETCH, XF_BOX2D, XF_FIRST };
+typedef struct { double ax, bx, ay, by; } xmap;     /* target pixels = a * game pixels + b */
+typedef struct { float x0, y0, x1, y1; float r[4]; } xel;   /* a 2D triangle's box, and its clip window */
+static float s_xt[BRR_XF_MAX][4];
+static xel   s_el[BRR_XF_MAX];
+static int   s_nel;
+static int   s_wide;                 /* this frame fills the target */
+static int   s_black;                /* the last one did: this one starts from black */
+static int   s_view = 1;             /* the next draw's view (br_platview.h) */
+static float s_mirror_r[4];          /* the mirror's clip window this frame */
+static int   s_mirror_ok;
+
+/* a race frame on a target of another shape than the game's is widened;
+ * on one of the same shape the maps are the box and nothing changes */
+void plat_glide_wide(void)
+{
+    s_wide = plat_flag(BR_FLAG_ANY_ASPECT) && (long)s_rw * s_h != (long)s_rh * s_w;
+}
+void plat_glide_view(int view) { s_view = view; }
+
+static xmap map_of(int which);
+
+void plat_pointer_to_game(int *x, int *y)
+{
+    /* the menus, where the pointer is used, are drawn boxed (XF_BOX2D) */
+    xmap m = map_of(XF_BOX2D);
+    double tx = (double)*x * s_rw / s_w, ty = (double)*y * s_rh / s_h;
+    *x = (int)floor((tx - m.bx) / m.ax);
+    *y = (int)floor((ty - m.by) / m.ay);
+}
+
+void plat_view_scale(float *kx, float *ky)
+{
+    double a = (double)s_rw / s_rh, g = (double)s_w / s_h;
+    if (!s_wide) {
+        *kx = *ky = 1.0f;
+        return;
+    }
+    *kx = (float)fmax(1.0, a / g);
+    *ky = (float)fmax(1.0, g / a);
+}
+
+/* the clip window, clamped to the screen (all of it when empty) */
+static void clip_rect(float *r)
+{
+    r[0] = fmaxf((float)s_st.clip_x0, 0);
+    r[1] = fmaxf((float)s_st.clip_y0, 0);
+    r[2] = fminf((float)s_st.clip_x1, (float)s_w);
+    r[3] = fminf((float)s_st.clip_y1, (float)s_h);
+    if (r[2] <= r[0] || r[3] <= r[1]) {
+        r[0] = 0; r[1] = 0;
+        r[2] = (float)s_w; r[3] = (float)s_h;
+    }
+}
+
+static xmap map_of(int which)
+{
+    double s = (double)s_rw / s_w, t = (double)s_rh / s_h, u = fmin(s, t);
+    switch (which) {
+    case XF_WIDE3D: case XF_STRETCH: return (xmap){ s, 0, t, 0 };
+    case XF_MIRROR: return (xmap){ u, s_rw * 0.5 - s_w * 0.5 * u, u, 0 };   /* its own shape, centred, from the top */
+    default: return (xmap){ u, (s_rw - s_w * u) * 0.5, u, (s_rh - s_h * u) * 0.5 };
+    }
+}
+
+static void map_ndc(xmap m, float *T)
+{
+    T[0] = (float)(2.0 * m.ax / s_rw);
+    T[1] = (float)(2.0 * m.bx / s_rw - 1.0);
+    T[2] = (float)(-2.0 * m.ay / s_rh);
+    T[3] = (float)(1.0 - 2.0 * m.by / s_rh);
+}
+
+/* One axis of an element's placement: stretched with the window when it
+ * spans its clip window, else its own size, kept at the distance from the
+ * edge (or the centre) it sat nearest. */
+static void place(double lo, double hi, double r0, double r1, double k, double u, double *a, double *b)
+{
+    double rw = r1 - r0;
+    if (hi - lo >= 0.9 * rw) { *a = k; *b = 0; return; }
+    *a = u;
+    if (hi <= r0 + 0.42 * rw) *b = r0 * k - r0 * u;
+    else if (lo >= r0 + 0.58 * rw) *b = r1 * k - r1 * u;
+    else *b = (r0 + r1) * 0.5 * (k - u);
+}
+
+/* a 2D draw with this box: its entry, placed at the swap */
+static int xf_2d(float x0, float y0, float x1, float y1)
+{
+    xel *e;
+    float r[4];
+    if (!s_wide)
+        return XF_BOX2D;
+    clip_rect(r);
+    /* 2D in the mirror's window (its frame) goes where the mirror does */
+    if (s_mirror_ok && !memcmp(r, s_mirror_r, sizeof r))
+        return XF_MIRROR;
+    if (s_nel >= BRR_XF_MAX - XF_FIRST)
+        return XF_BOX2D;
+    e = &s_el[s_nel];
+    e->x0 = fminf(x0, x1); e->x1 = fmaxf(x0, x1);
+    e->y0 = fminf(y0, y1); e->y1 = fmaxf(y0, y1);
+    memcpy(e->r, r, sizeof r);
+    return XF_FIRST + s_nel++;
+}
+
+/* a rectangle placed on its own, now (a clear over part of the screen, an
+ * LFB write): target pixels d[0..3] */
+static void place_now(const float *b, const float *r, int *d)
+{
+    double s = (double)s_rw / s_w, t = (double)s_rh / s_h, u = fmin(s, t);
+    xmap m;
+    if (!s_wide) {
+        m = map_of(XF_BOX2D);
+    } else {
+        place(b[0], b[2], r[0], r[2], s, u, &m.ax, &m.bx);
+        place(b[1], b[3], r[1], r[3], t, u, &m.ay, &m.by);
+    }
+    d[0] = (int)lround(m.ax * b[0] + m.bx);
+    d[1] = (int)lround(m.ay * b[1] + m.by);
+    d[2] = (int)lround(m.ax * b[2] + m.bx);
+    d[3] = (int)lround(m.ay * b[3] + m.by);
+}
+
+static int el_root(int *p, int i) { while (p[i] != i) i = p[i] = p[p[i]]; return i; }
+
+/* This frame's table: the fixed entries, and every 2D element placed by the
+ * group it belongs to -- the 2D triangles of one clip window whose boxes
+ * touch (within 6 game pixels), or that sit on one row a few spaces apart,
+ * which is what a gauge or a line of text is.  A triangle that spans its
+ * window (a fade, a panel) joins none. */
+static void resolve(void)
+{
+    static int par[BRR_XF_MAX];
+    static float gb[BRR_XF_MAX][4];
+    double s = (double)s_rw / s_w, t = (double)s_rh / s_h, u = fmin(s, t);
+    int i, j, n = s_nel;
+    for (i = XF_BOX3D; i < XF_FIRST; i++)
+        map_ndc(map_of(i), s_xt[i]);
+    for (i = 0; i < n; i++)
+        par[i] = i;
+    if (n <= 3000)
+        for (i = 0; i < n; i++) {
+            const xel *a = &s_el[i];
+            if (a->x1 - a->x0 >= 0.9f * (a->r[2] - a->r[0]) || a->y1 - a->y0 >= 0.9f * (a->r[3] - a->r[1]))
+                continue;
+            for (j = i + 1; j < n; j++) {
+                const xel *b = &s_el[j];
+                if (memcmp(a->r, b->r, sizeof a->r))
+                    continue;
+                if (b->x1 - b->x0 >= 0.9f * (b->r[2] - b->r[0]) || b->y1 - b->y0 >= 0.9f * (b->r[3] - b->r[1]))
+                    continue;
+                if ((a->x0 - 6 <= b->x1 && b->x0 - 6 <= a->x1 && a->y0 - 6 <= b->y1 && b->y0 - 6 <= a->y1) ||
+                    /* words of one line of text: the same row, a few spaces apart */
+                    (fabsf(a->y0 - b->y0) < 2 && fabsf(a->y1 - b->y1) < 2 && a->x0 - 40 <= b->x1 && b->x0 - 40 <= a->x1)) {
+                    int ra = el_root(par, i), rb = el_root(par, j);
+                    if (ra != rb)
+                        par[rb] = ra;
+                }
+            }
+        }
+    for (i = 0; i < n; i++) {
+        gb[i][0] = 1e9f; gb[i][1] = 1e9f;
+        gb[i][2] = -1e9f; gb[i][3] = -1e9f;
+    }
+    for (i = 0; i < n; i++) {
+        int r = el_root(par, i);
+        gb[r][0] = fminf(gb[r][0], s_el[i].x0); gb[r][1] = fminf(gb[r][1], s_el[i].y0);
+        gb[r][2] = fmaxf(gb[r][2], s_el[i].x1); gb[r][3] = fmaxf(gb[r][3], s_el[i].y1);
+    }
+    for (i = 0; i < n; i++) {
+        const float *g = gb[el_root(par, i)], *r = s_el[i].r;
+        xmap m;
+        place(g[0], g[2], r[0], r[2], s, u, &m.ax, &m.bx);
+        place(g[1], g[3], r[1], r[3], t, u, &m.ay, &m.by);
+        map_ndc(m, s_xt[XF_FIRST + i]);
+    }
+    brr_xf((const float (*)[4])s_xt, XF_FIRST + n);
+}
+
+/* the clip window as a scissor in target pixels, for a draw through `which` */
+static void scissor(int which)
+{
+    int x0 = s_st.clip_x0 < 0 ? 0 : s_st.clip_x0, y0 = s_st.clip_y0 < 0 ? 0 : s_st.clip_y0;
+    int x1 = s_st.clip_x1 > s_w ? s_w : s_st.clip_x1, y1 = s_st.clip_y1 > s_h ? s_h : s_st.clip_y1;
+    long px0, py0, px1, py1;
+    xmap m;
+    s_st.xf = which;
+    if (x1 <= x0 || y1 <= y0) {
+        s_st.sx0 = s_st.sy0 = s_st.sx1 = s_st.sy1 = 0;
+        return;
+    }
+    if (s_wide && x0 == 0 && y0 == 0 && x1 == s_w && y1 == s_h) {
+        s_st.sx0 = s_st.sy0 = 0;
+        s_st.sx1 = s_rw;
+        s_st.sy1 = s_rh;
+        return;
+    }
+    /* 2D elements move within their window as it is stretched */
+    m = map_of(which >= XF_FIRST || which == XF_STRETCH ? XF_STRETCH : which);
+    px0 = lround(m.ax * x0 + m.bx); px1 = lround(m.ax * x1 + m.bx);
+    py0 = lround(m.ay * y0 + m.by); py1 = lround(m.ay * y1 + m.by);
+    if (px0 < 0) px0 = 0;
+    if (py0 < 0) py0 = 0;
+    if (px1 > s_rw) px1 = s_rw;
+    if (py1 > s_rh) py1 = s_rh;
+    if (px1 <= px0 || py1 <= py0)
+        px0 = py0 = px1 = py1 = 0;
+    s_st.sx0 = (int32_t)px0; s_st.sy0 = (int32_t)py0;
+    s_st.sx1 = (int32_t)px1; s_st.sy1 = (int32_t)py1;
+}
+
+/* after a race frame, which fills the target, a menu's picture at the
+ * game's shape must not leave the race showing beside it */
+static void frame_start(void)
+{
+    if (s_black) {
+        brr_state b = s_st;
+        s_black = 0;
+        b.sx0 = b.sy0 = 0;
+        b.sx1 = s_rw;
+        b.sy1 = s_rh;
+        b.clip_x0 = b.clip_y0 = 0;
+        b.clip_x1 = s_w;
+        b.clip_y1 = s_h;
+        brr_clear(0xFF000000u, 1.0f, 1, 0, &b);
+    }
+}
+
+/* a draw's entry and scissor, from its view and the box of its vertices */
+static void route(const brr_vertex *v, int n)
+{
+    int view = s_view, which, i;
+    s_view = 1;
+    frame_start();
+    if (!s_wide) {
+        which = view == 1 ? XF_BOX2D : XF_BOX3D;
+    } else if (view == 0) {
+        which = XF_WIDE3D;
+    } else if (view == 2) {
+        which = XF_MIRROR;
+        clip_rect(s_mirror_r);
+        s_mirror_ok = 1;
+    } else {
+        float x0 = 1e9f, y0 = 1e9f, x1 = -1e9f, y1 = -1e9f, r[4];
+        for (i = 0; i < n; i++) {
+            x0 = fminf(x0, v[i].x); x1 = fmaxf(x1, v[i].x);
+            y0 = fminf(y0, v[i].y); y1 = fmaxf(y1, v[i].y);
+        }
+        clip_rect(r);
+        if ((r[0] > 0 || r[1] > 0 || r[2] < s_w || r[3] < s_h) &&
+            x1 - x0 >= 0.9f * (r[2] - r[0]) && y1 - y0 >= 0.9f * (r[3] - r[1])) {
+            /* a fill rectangle (triangles clipped to their own box: the
+             * mirror's frame, a panel): an element of the whole screen, so
+             * it groups with what it borders and moves with it */
+            int c0 = s_st.clip_x0, c1 = s_st.clip_y0, c2 = s_st.clip_x1, c3 = s_st.clip_y1;
+            s_st.clip_x0 = 0; s_st.clip_y0 = 0; s_st.clip_x1 = s_w; s_st.clip_y1 = s_h;
+            which = xf_2d(fmaxf(x0, r[0]), fmaxf(y0, r[1]), fminf(x1, r[2]), fminf(y1, r[3]));
+            scissor(which);
+            s_st.clip_x0 = c0; s_st.clip_y0 = c1; s_st.clip_x1 = c2; s_st.clip_y1 = c3;
+            return;
+        }
+        which = xf_2d(x0, y0, x1, y1);
+    }
+    scissor(which);
+}
+
 void grBufferClear(GrColor_t color, GrAlpha_t alpha, FxU16 depth)
 { plat_vclock_import();
     uint32_t c = (argb(color) & 0x00FFFFFFu) | (uint32_t)alpha << 24;
+    float r[4];
     gllog("grBufferClear %08X %u %u", color, alpha, depth);
+    frame_start();
+    clip_rect(r);
+    if (s_wide && (r[0] > 0 || r[1] > 0 || r[2] < s_w || r[3] < s_h) && depth == 0xFFFF) {
+        /* a race frame: a clear over part of the screen (a fill rectangle:
+         * the mirror's frame, a panel) is a 2D element like any other, drawn
+         * as its own rectangle, grouped and placed at the swap.  Drawn, not
+         * cleared: its place is only known then.  1/w = 0 is the far W-buffer
+         * word 0xFFFF, the depth such a clear writes. */
+        brr_state save = s_st;
+        brr_vertex q[6];
+        static const int ix[6] = { 0, 1, 2, 2, 1, 3 };
+        float px[4][2] = { { r[0], r[1] }, { r[2], r[1] }, { r[0], r[3] }, { r[2], r[3] } };
+        int i;
+        memset(q, 0, sizeof q);
+        for (i = 0; i < 6; i++) {
+            q[i].x = px[ix[i]][0];
+            q[i].y = px[ix[i]][1];
+            q[i].z = 1.0f;
+            q[i].oow = 0.0f;
+        }
+        s_st.cc_fn = 1; s_st.cc_local = 1; s_st.cc_invert = 0;   /* the constant colour */
+        s_st.ac_fn = 1; s_st.ac_local = 1; s_st.ac_invert = 0;
+        s_st.constant = c;
+        s_st.texture = 0;
+        s_st.blend_rgb_src = 4; s_st.blend_rgb_dst = 0;          /* one, zero */
+        s_st.atest_fn = 7;
+        s_st.depth_fn = 7;
+        s_st.depth_mask = 1;
+        s_st.fog_mode = 0;
+        s_st.clip_x0 = 0; s_st.clip_y0 = 0; s_st.clip_x1 = s_w; s_st.clip_y1 = s_h;
+        s_view = 1;
+        route(q, 6);
+        brr_draw(&s_st, q, 6);
+        s_st = save;
+        return;
+    }
+    s_st.xf = s_wide ? XF_STRETCH : XF_BOX2D;
+    scissor(s_st.xf);
     brr_clear(c, depth / 65536.0f, 1, s_st.depth_mode != 0, &s_st);
 }
 
@@ -152,7 +477,14 @@ void grBufferSwap(int interval)
     (void)interval;
     gllog("grBufferSwap");
     plat_text_swap();
+    frame_start();
+    resolve();
     brr_present();
+    brr_target(&s_rw, &s_rh);           /* the next frame's target */
+    s_black = s_wide;
+    s_wide = 0;
+    s_nel = 0;
+    s_mirror_ok = 0;
     plat_pump(0);
 }
 
@@ -448,20 +780,23 @@ void grDrawTriangle(const GrVertex *a, const GrVertex *b, const GrVertex *c)
     gllog_vtx(a);
     gllog_vtx(b);
     gllog_vtx(c);
-    if (culled(a, b, c))
+    if (culled(a, b, c)) {
+        s_view = 1;
         return;
+    }
     vert(&v[0], a);
     vert(&v[1], b);
     vert(&v[2], c);
     if (s_src_dirty && s_src_set)
         tex_resolve();
+    route(v, 3);
     brr_draw(&s_st, v, 3);
 }
 
 void grDrawPolygonVertexList(int n, const GrVertex vl[])
 { plat_vclock_import();
     brr_vertex v[3 * 64];
-    int i, k = 0;
+    int i, k = 0, routed = 0;
     gllog("grDrawPolygonVertexList %d", n);
     for (i = 0; i < n && i < 16; i++)
         gllog_vtx(&vl[i]);
@@ -471,6 +806,8 @@ void grDrawPolygonVertexList(int n, const GrVertex vl[])
         if (culled(&vl[0], &vl[i], &vl[i + 1]))
             continue;
         if (k == 3 * 64) {
+            if (!routed++)
+                route(v, k);
             brr_draw(&s_st, v, k);
             k = 0;
         }
@@ -478,8 +815,12 @@ void grDrawPolygonVertexList(int n, const GrVertex vl[])
         vert(&v[k++], &vl[i]);
         vert(&v[k++], &vl[i + 1]);
     }
-    if (k)
+    if (k) {
+        if (!routed++)
+            route(v, k);
         brr_draw(&s_st, v, k);
+    }
+    s_view = 1;
 }
 
 FxBool grLfbWriteRegion(GrBuffer_t dst, FxU32 x, FxU32 y, GrLfbSrcFmt_t fmt, FxU32 w, FxU32 h,
@@ -488,8 +829,12 @@ FxBool grLfbWriteRegion(GrBuffer_t dst, FxU32 x, FxU32 y, GrLfbSrcFmt_t fmt, FxU
     (void)dst;
     gllog("grLfbWriteRegion buf %u x %u y %u fmt %u w %u h %u stride %d", dst, x, y, fmt, w, h, stride);
     if (fmt == 0) {              /* GR_LFB_SRC_FMT_565 */
-        brr_lfb_write((int)x, s_lower_left ? s_h - (int)y - (int)h : (int)y, (int)w, (int)h,
-                      (const uint16_t *)data, stride);
+        int gy = s_lower_left ? s_h - (int)y - (int)h : (int)y, d[4];
+        float b[4] = { (float)x, (float)gy, (float)(x + w), (float)(gy + (int)h) }, r[4];
+        frame_start();
+        clip_rect(r);
+        place_now(b, r, d);     /* in a race frame a 2D element, placed on its own */
+        brr_lfb_write((int)x, gy, (int)w, (int)h, (const uint16_t *)data, stride, d);
         return 1;
     }
     PLOG("grLfbWriteRegion: format %d not handled\n", fmt);

@@ -30,6 +30,8 @@ typedef struct { void *p; } BrModelLoadArg;
 #undef BrRgbSinkSet
 
 #include <string.h>
+#include <math.h>
+#include "br_camwide.h"
 
 /* Both display-list emitters below inline this in the original: take the
  * write cursor, advance it by 8 bytes, and fill the two words. */
@@ -71,6 +73,29 @@ void BrCamMatrixSetup(const BrCamBasis *pCam, float a2, float a3,
 
     g_BrMtxSlot = BrSub_10069490();
     BrGuMtxStore((const int (*)[4])&g_BrCurMat, (int (*)[4])g_BrMtxSlot);
+}
+
+/* Port: the lens for a race view stretched over a window wider (or taller)
+ * than the game's shape (br_camwide.h, as the wasm lane's native/aspect.m).
+ * The game makes fovy = angle * K518 * (h / w) * K51C and aspect = w / h
+ * from the view's rectangle; the view is given the rectangle it fills on the
+ * target and the angle that keeps fovy (Hor+), or the fovy that keeps the
+ * horizontal angle (Vert+). */
+void BrCamMatrixSetupWide(const BrCamBasis *pCam, float angle, float far_, float w, float h)
+{
+    float kx, ky;
+    double k, fovy, fovy2, w2, h2;
+    plat_view_scale(&kx, &ky);
+    if ((kx <= 1.0f && ky <= 1.0f) || w <= 0 || h <= 0) {
+        BrCamMatrixSetup(pCam, angle, far_, w, h);
+        return;
+    }
+    k = (double)g_BrK08F518 * g_BrK08F51C;
+    fovy = angle * k * (h / w);
+    w2 = w * kx;
+    h2 = h * ky;
+    fovy2 = ky > 1.0f ? 2.0 * atan(ky * tan(fovy * M_PI / 360.0)) * 180.0 / M_PI : fovy;
+    BrCamMatrixSetup(pCam, (float)(fovy2 / (k * (h2 / w2))), far_, (float)w2, (float)h2);
 }
 
 /* WHAT IT DOES: sets up a fixed camera looking straight at a flat scene at a

@@ -269,6 +269,9 @@ void host_window_close(void)
 void *host_win32_window(void) { return s_win; }
 void *host_win32_instance(void) { return GetModuleHandleA(NULL); }
 
+/* the window can be any shape; the renderer letterboxes what does not fill it */
+void host_window_lock_aspect(int lock) { (void)lock; }
+
 int host_window_visible(void)
 {
     return s_win && IsWindowVisible(s_win) && !IsIconic(s_win);

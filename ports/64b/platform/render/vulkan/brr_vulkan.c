@@ -69,7 +69,7 @@ typedef struct U {
     int32_t ac_fn, ac_factor, ac_local, ac_other, ac_invert;
     int32_t tc_rgb_fn, tc_rgb_factor, tc_alpha_fn, tc_alpha_factor, tc_rgb_invert, tc_alpha_invert;
     int32_t has_tex, atest_fn, fog_mode, depth_mode;
-    float atest_ref, vw, vh, pad2;
+    float atest_ref, vw, vh, xf;
     float konst[4], fog_color[4];
     float fog[64];
 } U;
@@ -116,10 +116,13 @@ static VkFramebuffer    s_fb;
 static int              s_w, s_h, s_col_fresh;    /* s_w x s_h: the game's frame, Glide's coordinates */
 static int              s_rw, s_rh;              /* the targets: the window's pixels, letterboxed */
 
-static VkDescriptorSetLayout s_lay_ubo, s_lay_tex, s_lay_smp;
+static VkDescriptorSetLayout s_lay_ubo, s_lay_tex, s_lay_smp, s_lay_xt;
 static VkPipelineLayout s_playout;
 static VkDescriptorPool s_dpool;
-static VkDescriptorSet  s_set_ubo, s_set_smp[2][2][2];
+static VkDescriptorSet  s_set_ubo, s_set_smp[2][2][2], s_set_xt;
+static VkBuffer         s_xt_buf;                /* the frame's map table (glide.c): one frame in flight */
+static VkDeviceMemory   s_xt_mem;
+static float           *s_xt_map;
 static VkSampler        s_smp[2][2][2];
 static VkShaderModule   s_vs, s_fs;
 static VkPipeline       s_pipes[16][16][2][8][2];
@@ -575,9 +578,17 @@ static void frame_begin(void)
     s_recording = 1;
     if (s_col_fresh) {
         /* the targets' first frame: from UNDEFINED to what the pass expects */
+        VkClearColorValue black;
+        VkImageSubresourceRange all = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+        memset(&black, 0, sizeof black);
+        black.float32[3] = 1.0f;
         barrier(s_cmd, s_col, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
-                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, VK_ACCESS_TRANSFER_WRITE_BIT,
+                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+        vkCmdClearColorImage(s_cmd, s_col, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &black, 1, &all);
+        barrier(s_cmd, s_col, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
         barrier(s_cmd, s_dep, VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
                 VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 0, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
                 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
@@ -585,26 +596,22 @@ static void frame_begin(void)
     }
 }
 
-static void scissor(int x0, int y0, int x1, int y1)
+/* a scissor in target pixels (glide.c); 0 when it is empty */
+static int scissor(int x0, int y0, int x1, int y1)
 {
     VkRect2D r;
     if (x0 < 0) x0 = 0;
     if (y0 < 0) y0 = 0;
-    if (x1 > s_w) x1 = s_w;
-    if (y1 > s_h) y1 = s_h;
-    if (x1 <= x0 || y1 <= y0) {
-        x0 = y0 = 0;
-        x1 = y1 = 0;
-    }
-    x0 = (int)lround((double)x0 * s_rw / s_w);
-    x1 = (int)lround((double)x1 * s_rw / s_w);
-    y0 = (int)lround((double)y0 * s_rh / s_h);
-    y1 = (int)lround((double)y1 * s_rh / s_h);
+    if (x1 > s_rw) x1 = s_rw;
+    if (y1 > s_rh) y1 = s_rh;
+    if (x1 <= x0 || y1 <= y0)
+        return 0;
     r.offset.x = x0;
     r.offset.y = y0;
     r.extent.width = (uint32_t)(x1 - x0);
     r.extent.height = (uint32_t)(y1 - y0);
     vkCmdSetScissor(s_cmd, 0, 1, &r);
+    return 1;
 }
 
 void brr_clear(uint32_t argb, float depth, int colour, int depthbuf, const brr_state *clip)
@@ -612,14 +619,13 @@ void brr_clear(uint32_t argb, float depth, int colour, int depthbuf, const brr_s
     VkClearAttachment a[2];
     VkClearRect r;
     uint32_t n = 0;
-    int x0 = clip ? clip->clip_x0 : 0, y0 = clip ? clip->clip_y0 : 0;
-    int x1 = clip ? clip->clip_x1 : s_w, y1 = clip ? clip->clip_y1 : s_h;
+    int x0 = clip->sx0, y0 = clip->sy0, x1 = clip->sx1, y1 = clip->sy1;   /* target pixels */
     if (!colour && !depthbuf)
         return;
     if (x0 < 0) x0 = 0;
     if (y0 < 0) y0 = 0;
-    if (x1 > s_w) x1 = s_w;
-    if (y1 > s_h) y1 = s_h;
+    if (x1 > s_rw) x1 = s_rw;
+    if (y1 > s_rh) y1 = s_rh;
     if (x1 <= x0 || y1 <= y0)
         return;
     frame_begin();
@@ -639,10 +645,6 @@ void brr_clear(uint32_t argb, float depth, int colour, int depthbuf, const brr_s
         a[n].clearValue.depthStencil.depth = depth < 0 ? 0 : depth > 1 ? 1 : depth;
         n++;
     }
-    x0 = (int)lround((double)x0 * s_rw / s_w);
-    x1 = (int)lround((double)x1 * s_rw / s_w);
-    y0 = (int)lround((double)y0 * s_rh / s_h);
-    y1 = (int)lround((double)y1 * s_rh / s_h);
     r.rect.offset.x = x0;
     r.rect.offset.y = y0;
     r.rect.extent.width = (uint32_t)(x1 - x0);
@@ -659,7 +661,7 @@ void brr_draw(const brr_state *st, const brr_vertex *v, int n)
     V *o;
     long uo, vo;
     int i;
-    VkDescriptorSet sets[3];
+    VkDescriptorSet sets[4];
     uint32_t dyn;
     VkDeviceSize voff;
     const vtex *t;
@@ -690,6 +692,7 @@ void brr_draw(const brr_state *st, const brr_vertex *v, int n)
     u->depth_mode = st->depth_mode;
     u->vw = (float)s_w;
     u->vh = (float)s_h;
+    u->xf = (float)(st->xf >= 0 && st->xf < BRR_XF_MAX ? st->xf : 0);
     u->konst[0] = ((st->constant >> 16) & 0xFF) / 255.0f;
     u->konst[1] = ((st->constant >> 8) & 0xFF) / 255.0f;
     u->konst[2] = (st->constant & 0xFF) / 255.0f;
@@ -719,19 +722,20 @@ void brr_draw(const brr_state *st, const brr_vertex *v, int n)
     sets[1] = t->set;
     sets[2] = s_set_smp[(st->mag_filter || st->min_filter) ? 1 : 0][st->clamp_s ? 1 : 0][st->clamp_t ? 1 : 0];
     dyn = (uint32_t)uo;
-    vkCmdBindDescriptorSets(s_cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, s_playout, 0, 3, sets, 1, &dyn);
+    sets[3] = s_set_xt;
+    vkCmdBindDescriptorSets(s_cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, s_playout, 0, 4, sets, 1, &dyn);
     voff = (VkDeviceSize)vo;
     vkCmdBindVertexBuffers(s_cmd, 0, 1, &s_vtx.buf, &voff);
-    scissor(st->clip_x0, st->clip_y0, st->clip_x1, st->clip_y1);
-    vkCmdDraw(s_cmd, (uint32_t)n, 1, 0, 0);
+    if (scissor(st->sx0, st->sy0, st->sx1, st->sy1))
+        vkCmdDraw(s_cmd, (uint32_t)n, 1, 0, 0);
 }
 
 static int sharp_make(void);
 
-/* an LFB write into targets larger than the game's frame: the region as a
- * texture, drawn over its rectangle scaled, sharp bilinear (as the Metal
- * renderer and the wasm lane) */
-static void lfb_scaled(int x, int y, int w, int h, const uint16_t *p, int stride)
+/* an LFB write placed anywhere but its own pixels: the region as a texture,
+ * drawn over target rectangle d, sharp bilinear (as the Metal renderer and
+ * the wasm lane) */
+static void lfb_scaled(const int d[4], int w, int h, const uint16_t *p, int stride)
 {
     uint8_t *px = (uint8_t *)malloc((size_t)w * (size_t)h * 4);
     vtex t;
@@ -758,10 +762,10 @@ static void lfb_scaled(int x, int y, int w, int h, const uint16_t *p, int stride
         return;
     frame_begin();
     pass_begin();
-    v.x = (float)((double)x * s_rw / s_w);
-    v.y = (float)((double)y * s_rh / s_h);
-    v.width = (float)((double)w * s_rw / s_w);
-    v.height = (float)((double)h * s_rh / s_h);
+    v.x = (float)d[0];
+    v.y = (float)d[1];
+    v.width = (float)(d[2] - d[0]);
+    v.height = (float)(d[3] - d[1]);
     v.minDepth = 0;
     v.maxDepth = 1;
     vkCmdSetViewport(s_cmd, 0, 1, &v);
@@ -783,7 +787,7 @@ static void lfb_scaled(int x, int y, int w, int h, const uint16_t *p, int stride
 }
 
 /* LFB writes: the pixels copied straight into the frame */
-void brr_lfb_write(int x, int y, int w, int h, const uint16_t *p, int stride)
+void brr_lfb_write(int x, int y, int w, int h, const uint16_t *p, int stride, const int d[4])
 {
     long so;
     uint32_t *px;
@@ -791,8 +795,8 @@ void brr_lfb_write(int x, int y, int w, int h, const uint16_t *p, int stride)
     VkBufferImageCopy cp;
     if (w <= 0 || h <= 0 || x < 0 || y < 0 || x + w > s_w || y + h > s_h)
         return;
-    if (s_rw != s_w || s_rh != s_h) {
-        lfb_scaled(x, y, w, h, p, stride);
+    if (d[0] != x || d[1] != y || d[2] != x + w || d[3] != y + h) {
+        lfb_scaled(d, w, h, p, stride);
         return;
     }
     frame_begin();
@@ -1132,9 +1136,8 @@ static int make_targets(void)
  * drew at the resolution the player chose */
 static void target_size(double dw, double dh, int *w, int *h)
 {
-    double k = fmin(dw / s_w, dh / s_h);
-    *w = (int)lround(s_w * k);
-    *h = (int)lround(s_h * k);
+    *w = (int)lround(dw);
+    *h = (int)lround(dh);
     if (*w < 1) *w = 1;
     if (*h < 1) *h = 1;
 }
@@ -1159,9 +1162,9 @@ static int make_layouts(void)
 {
     VkDescriptorSetLayoutBinding b;
     VkDescriptorSetLayoutCreateInfo li = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
-    VkDescriptorSetLayout lays[3];
+    VkDescriptorSetLayout lays[4];
     VkPipelineLayoutCreateInfo pl = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-    VkDescriptorPoolSize ps[3];
+    VkDescriptorPoolSize ps[4];
     VkDescriptorPoolCreateInfo pi = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
     VkShaderModuleCreateInfo mi = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
 
@@ -1181,10 +1184,15 @@ static int make_layouts(void)
     b.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
     if (!VK_OK(vkCreateDescriptorSetLayout(s_dev, &li, NULL, &s_lay_smp)))
         return 0;
+    b.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    b.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    if (!VK_OK(vkCreateDescriptorSetLayout(s_dev, &li, NULL, &s_lay_xt)))
+        return 0;
     lays[0] = s_lay_ubo;
     lays[1] = s_lay_tex;
     lays[2] = s_lay_smp;
-    pl.setLayoutCount = 3;
+    lays[3] = s_lay_xt;
+    pl.setLayoutCount = 4;
     pl.pSetLayouts = lays;
     if (!VK_OK(vkCreatePipelineLayout(s_dev, &pl, NULL, &s_playout)))
         return 0;
@@ -1195,9 +1203,11 @@ static int make_layouts(void)
     ps[1].descriptorCount = TEX_MAX * 2 + 8;
     ps[2].type = VK_DESCRIPTOR_TYPE_SAMPLER;
     ps[2].descriptorCount = 8;
+    ps[3].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    ps[3].descriptorCount = 1;
     pi.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
     pi.maxSets = TEX_MAX * 2 + 32;
-    pi.poolSizeCount = 3;
+    pi.poolSizeCount = 4;
     pi.pPoolSizes = ps;
     if (!VK_OK(vkCreateDescriptorPool(s_dev, &pi, NULL, &s_dpool)))
         return 0;
@@ -1259,6 +1269,30 @@ static int make_sets(void)
                 sw.pImageInfo = &ii;
                 vkUpdateDescriptorSets(s_dev, 1, &sw, 0, NULL);
             }
+    {                                               /* the map table */
+        VkDescriptorBufferInfo xi;
+        VkWriteDescriptorSet xw = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+        void *m = NULL;
+        int k;
+        if (!make_buffer((VkDeviceSize)BRR_XF_MAX * 16, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s_xt_buf, &s_xt_mem, &m))
+            return 0;
+        s_xt_map = (float *)m;
+        for (k = 0; k < BRR_XF_MAX; k++) {          /* until a frame sets it: the identity */
+            s_xt_map[4 * k + 0] = 2.0f / s_w;  s_xt_map[4 * k + 1] = -1;
+            s_xt_map[4 * k + 2] = -2.0f / s_h; s_xt_map[4 * k + 3] = 1;
+        }
+        da.pSetLayouts = &s_lay_xt;
+        if (!VK_OK(vkAllocateDescriptorSets(s_dev, &da, &s_set_xt)))
+            return 0;
+        xi.buffer = s_xt_buf;
+        xi.offset = 0;
+        xi.range = VK_WHOLE_SIZE;
+        xw.dstSet = s_set_xt;
+        xw.descriptorCount = 1;
+        xw.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        xw.pBufferInfo = &xi;
+        vkUpdateDescriptorSets(s_dev, 1, &xw, 0, NULL);
+    }
     return tex_make(&s_white, white, 1, 1);
 }
 
@@ -1496,8 +1530,8 @@ static int sharp_to_window(uint32_t img)
     VkRect2D sc;
     VkImageBlit b;
     VkDescriptorSet sets[2];
-    double k = fmin((double)s_swap_w / s_w, (double)s_swap_h / s_h);
-    float dw = (float)(s_w * k), dh = (float)(s_h * k);
+    double k = fmin((double)s_swap_w / s_rw, (double)s_swap_h / s_rh);
+    float dw = (float)(s_rw * k), dh = (float)(s_rh * k);
     VkImage dst = s_swap_img[img];
 
     if (!sharp_make() || !up_make())
@@ -1547,6 +1581,23 @@ static int sharp_to_window(uint32_t img)
     barrier(s_cmd, dst, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
             VK_ACCESS_TRANSFER_WRITE_BIT, 0, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
     return 1;
+}
+
+void brr_target(int *w, int *h)
+{
+    *w = s_rw;
+    *h = s_rh;
+}
+
+/* this frame's map table: the one frame in flight reads it when submitted */
+void brr_xf(const float (*t)[4], int n)
+{
+    if (!s_xt_map)
+        return;
+    if (n > BRR_XF_MAX)
+        n = BRR_XF_MAX;
+    frame_begin();                                  /* the last frame is done with it */
+    memcpy(s_xt_map, t, (size_t)n * 16);
 }
 
 void brr_present(void)

@@ -22,7 +22,8 @@
 /* BrDlClipTri: prototype in br_funcs.h */
 /* 0x100729EA is the glide2x grDrawTriangle import thunk; Glide is __stdcall. */
 /* grDrawTriangle: prototype in br_funcs.h */
-#define BrDlDrawTri grDrawTriangle
+#include "br_dlview.h"
+#define BrDlDrawTri BR_DL_TRI   /* grDrawTriangle, its view first (br_dlview.h) */
 
 /* The clip node overlaid on a vertex at +0x40 -- see br_dlcmd.c. */
 typedef struct BrDlClipSt {
