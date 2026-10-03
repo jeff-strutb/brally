@@ -200,13 +200,6 @@ extern float  DAT_10077a7c;   /*  1.0f */
 extern float  DAT_10077a80;   /* -1.0f */
 /* @t4-pass 0x100684F0 1 2026-09-24 probes 10 bytes 265 insns 87 regions 1 rows 0 census no  (hand, after the in-place square reached 265/265: five in-place scale spellings and five forms keeping s live past the f1B8 multiply; the dead-s pop order never moved) */
 /* @t4-pass 0x100684F0 2 2026-09-24 probes 34 bytes 265 insns 87 regions 1 rows 0 census yes  (hand, slot census: every top-level slot of br_carphys.c; residue identical in all 34) */
-/* @t3 0x100684F0 2026-09-24 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 265/265 insns 87/87 rows 0+0 regions 1 oracle EQUIVALENT
- * @t3-effort passes 2 zero-movement 1 2
- * residue is one x87 pop order: the dead sign `s` is popped before the
- * f1B8 multiply instead of after it (same instructions, same size).  Dead
- * list in the body comment.
- * Do not reopen before the end-grind. */
 /* @implements 0x100684F0 glide BrCarPhysSpring */
 void BrCarPhysSpring(BrRbBodyFull *pBody)
 {
@@ -279,13 +272,13 @@ void BrCarPhysSpring(BrRbBodyFull *pBody)
         /* DEAD 2026-09-13: `v *= v` and `v = v * v` before the product,
          * with s first or v first, and the pair scoped in an inner block
          * with the store outside -- all byte-identical (v stays live). */
-        /* 2026-09-24: squared IN PLACE, then scaled in place -- the
-         * original's `fld st(1); fmulp st(2)` is `v *= v` on v's own
-         * register.  Residue: the dead `s` is popped before the f1B8
-         * multiply instead of after (same size, regnorm 0+0). */
+        /* Squared IN PLACE -- the original's `fld st(1); fmulp st(2)` is
+         * `v *= v` on v's own register -- then both scale factors in ONE
+         * assignment back into v, which keeps the dead `s` on the stack
+         * until after the f1B8 multiply, as the original pops it. */
         v *= v;
-        v *= s;
-        pNode->f.z = v * pBody->f1B8;
+        v = v * s * pBody->f1B8;
+        pNode->f.z = v;
 
         /* Touchdown edge: f1B4 is RE-READ (a wheel just reset above does not
          * trip it), the node advances between the read and the test, and the

@@ -1160,6 +1160,7 @@ glide_va,name,module,basis,file
 0x10068070,BrWheelGroundProbe,driving,neighbour,src/core/driving/br_carphys.c
 0x100682C0,BrGroundProbeZ,driving,neighbour,src/core/driving/br_carphys.c
 0x10068450,BrWheelSuspensionSetZ,driving,description,src/core/driving/br_wheelvel.c
+0x100684F0,BrCarPhysSpring,driving,filed,src/core/driving/br_carphys.c
 0x10068600,BrCarPhysDamper,driving,filed,src/core/driving/br_carphys.c
 0x100686D0,BrCollGridCellAcquire,scene,manual,src/core/scene/br_collgrid.c
 0x10069530,BrTrackSurfaceSet,startup,filed,src/core/startup/br_track.c
