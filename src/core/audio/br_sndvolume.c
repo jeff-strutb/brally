@@ -140,7 +140,9 @@ typedef int (__stdcall *dsbuf_fn1)(int);
  *       +0x9c, fields instead of `param_1 + N` arithmetic) -- byte-identical
  *       too, so the operand-kind lever that closed 0x1000EAF0's wheel
  *       pointer does not reach a single-use parameter.
- * The next lever has to come from outside the statement spelling. */
+ * The next lever has to come from outside the statement spelling.
+ * 2026-10-03: it did -- the call belongs AFTER the if/else join, see the
+ * body. */
 /* @t4-pass 0x1006B440 1 2026-09-07 probes 58 bytes 81 insns 30 regions 1 rows 3 census yes  (tools/crank.py) */
 /* @t4-pass 0x1006B440 2 2026-09-07 probes 59 bytes 81 insns 30 regions 1 rows 3 census yes  (tools/crank.py) */
 /* @t4-pass 0x1006B440 3 2026-09-10 probes 60 bytes 81 insns 30 regions 1 rows 3 census yes  (tools/crank.py) */
@@ -152,14 +154,6 @@ typedef int (__stdcall *dsbuf_fn1)(int);
 /* WHAT IT DOES: sets how loud one playing sound is, by handing DirectSound
  * the voice's own level scaled by the game's master volume -- and jumping
  * straight to full silence when the master volume is zero. */
-/* @t3 0x1006B440 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 84/79 insns 31/29 rows 1+3 regions 2 oracle UNCLASSIFIED
- * @t3-effort passes 8 zero-movement 7 8
- * Residue and dead list in the dossier above: the -10000 constant reaches the
- * stack through a register on one side and an immediate on the other, and the
- * rest is the argument-home allocation.  Eight counted passes, the last two
- * zero-movement, corpus a MISS at the first divergence.  Do not reopen before
- * the end-grind. */
 /* @implements 0x1006B440 glide BrSndVoiceApplyVolume */
 
 void BrSndVoiceApplyVolume(int param_1)
@@ -168,15 +162,15 @@ void BrSndVoiceApplyVolume(int param_1)
   int       vol;
   dsbuf_fn2 fn;
 
-  if (BrSndMasterVolume != 0) {
+  /* ONE SetVolume call after the if/else join: VC5 duplicates the call
+   * tail into both arms itself, with the parameter loaded once above the
+   * test and the -10000 passed through eax -- a call written in each arm
+   * reloads the parameter per arm and pushes the immediate. */
+  if (BrSndMasterVolume != 0)
     vol = ((*(unsigned int *)(param_1 + 0x14) * BrSndMasterVolume) / 0xff - 400) * 10;
-    fn = *(dsbuf_fn2 *)(**(int **)(param_1 + 0x9c) + 0x3c);
-    fn(*(int *)(param_1 + 0x9c), vol);
-    return;
-  }
-  vol = -10000;
+  else
+    vol = -10000;
   fn = *(dsbuf_fn2 *)(**(int **)(param_1 + 0x9c) + 0x3c);
   fn(*(int *)(param_1 + 0x9c), vol);
-  return;
 }
 
