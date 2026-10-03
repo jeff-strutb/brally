@@ -139,40 +139,20 @@ void BrVec3Sub(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
 /* @t4-pass 0x10034360 3 2026-09-07 probes 27 bytes 37 insns 12 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10034360 4 2026-09-09 probes 10 bytes 37 insns 12 regions 1 rows 4 census yes  (hand, fn.py variants: s-first/temps/elem-ptr/mul-eq; zyx worse; corpus MISS at +0x8) */
 /* @t4-pass 0x10034360 5 2026-09-09 probes 10 bytes 37 insns 12 regions 1 rows 4 census yes  (hand, fn.py variants: statement order, out-temp, splits, parens; out-temp and y-first worse) */
-/* @t3 0x10034360 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 37/37 insns 12/12 rows 2+2 regions 1 oracle EQUIVALENT
- * @t3-effort passes 5 zero-movement 4 5
- * residue is the commutative-fold fork on the x component only: orig
- * fld s / fmul pV->x, ours fld pV->x / fmul s; y and z already match.
- * VC5 canonicalises a lone fmul.  Dead list in the dossier below plus
- * ledger lines 4 and 5.  Do not reopen before the end-grind. */
 /* @implements 0x10034360 glide BrVec3Scale */
 /* @implements 0x1003ACE0 d3d BrVec3Scale */
 /* @n64 0x802244FC exact */
-/* FP SCHEDULING WALL: orig emits FLD [esp+0xC](s) / FMUL [eax](pV->x) for
- * the x component, but FLD component / FMUL s for y and z.  VC5 canonicalises
- * commutative FMUL regardless of source operand order, so no source form
- * changes the FLD operand for x.  5 diffs remain. */
-/* SIX MORE DEAD PROBES, 2026-09-03, all identical at 37 B / 12 insns / 5 diffs:
- * the x product written scalar-first; all three written scalar-first; the x
- * product through a named temp with either operand order; a named temp for the
- * scalar itself; and a `const float *p = &pV->x` element pointer. These were
- * run because a NAMED TEMP had just broken the sum-of-products canonicaliser
- * on 0x10060C30 BrSndPan -- it does not carry over, and the reason is the
- * boundary now recorded in docs/VC5-IDIOMS.md: the temp lever needs a flat SUM
- * to lift a term OUT of. Each component here is a lone two-operand multiply,
- * and a lone commutative fmul is genuinely out of reach from source. */
-/* N64 CANNOT SETTLE THIS ONE -- a negative result, recorded so it is not
- * mistaken for a gap. The twin at 0x802244FC is byte-exact, but BOTH
- * `pV->x * s` and `s * pV->x` produce those same bytes under IDO, because the
- * scalar arrives already in a register and only the vector component is
- * loaded. So unlike BrVec3AddTo and BrVec3MulAddTo below, the oracle is blind
- * to the operand order here and the original spelling is not recovered. That
- * does not weaken the note above: the VC5 residue is still a codegen wall, it
- * is just not independently confirmed for this function. */
+/* The original puts s on the fld side for x only (fld s / fmul [pV]) and the
+ * component on the fld side for y and z.  Operand order is canonicalised;
+ * what reaches it is the scalar as an ASSIGNMENT EXPRESSION, `(t = s)`,
+ * multiplied by a named copy of the component.  The N64 twin is blind to
+ * the operand order here, so it neither confirms nor refutes the spelling. */
 void BrVec3Scale(BrVec3 *pOut, const BrVec3 *pV, float s)
 {
-    pOut->x = pV->x * s;
+    float t;
+    float vx = pV->x;
+
+    pOut->x = (t = s) * vx;
     pOut->y = pV->y * s;
     pOut->z = pV->z * s;
 }
@@ -181,22 +161,18 @@ void BrVec3Scale(BrVec3 *pOut, const BrVec3 *pV, float s)
  * BrVec3Scale. */
 /* @t4-pass 0x10034390 1 2026-09-09 probes 10 bytes 43 insns 16 regions 2 rows 4 census no  (hand, fn.py variants: *=/explicit/reversed/temps/named scalar/element ptr/zyx order, all inert) */
 /* @t4-pass 0x10034390 2 2026-09-09 probes 10 bytes 43 insns 16 regions 2 rows 4 census yes  (hand, fn.py variants: ptr walks/vec local/const arg/mid temps, all inert or worse; corpus MISS at +0x0 len 12) */
-/* @t3 0x10034390 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 43/43 insns 16/16 rows 2+2 regions 2 oracle EQUIVALENT
- * @t3-effort passes 2 zero-movement 1 2
- * residue is the commutative-fold fork only: VC5 canonicalises the fmul
- * operand order per component (fld [M+8]/fmul [M] vs fld [M]/fmul [M+8]),
- * cancelled as the crossed quad by t3.py classify (7dd2eb1); the N64 twin
- * at 0x80224528 is blind to the order (see BrVec3Scale note above).  The
- * dead-probe list is in the BrVec3Scale dossier and the two ledger lines.
- * Do not reopen before the end-grind. */
 /* @implements 0x1003AD10 d3d BrVec3ScaleBy */
 /* @n64 0x80224528 located */
+/* All three products are s-first with the three loads of s hoisted ahead
+ * of the pointer: `(t = s) * component` on every component gives that
+ * schedule, where `*= s` puts the component on the fld side for x. */
 void BrVec3ScaleBy(BrVec3 *pV, float s)
 {
-    pV->x *= s;
-    pV->y *= s;
-    pV->z *= s;
+    float t;
+
+    pV->x = (t = s) * pV->x;
+    pV->y = (t = s) * pV->y;
+    pV->z = (t = s) * pV->z;
 }
 
 /* WHAT IT DOES: scale one vector and add it to another, into a separate
@@ -204,15 +180,6 @@ void BrVec3ScaleBy(BrVec3 *pV, float s)
  * everyday 'move this far in that direction' step. */
 /* @t4-pass 0x10034660 1 2026-09-09 probes 10 bytes 49 insns 16 regions 1 rows 4 census no  (hand, fn.py variants: sum/product order, s-position, temps, named scalar, elem ptrs, mixed/zyx orders, all inert or worse) */
 /* @t4-pass 0x10034660 2 2026-09-09 probes 10 bytes 49 insns 16 regions 1 rows 4 census yes  (hand, fn.py variants: three-temp spill, casts, per-arg elem ptrs, const s, yzx, plus-assign split, all inert or worse; corpus MISS at +0x0 len 12) */
-/* @t3 0x10034660 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 49/49 insns 16/16 rows 2+2 regions 1 oracle EQUIVALENT
- * @t3-effort passes 2 zero-movement 1 2
- * residue is the commutative-fold fork only: VC5 canonicalises the fmul
- * operand order (fld R scalar vs fld [M] component crossed with the fmul),
- * cancelled as the crossed quad by t3.py classify (7dd2eb1).  Argument
- * order itself is proven by the original's stack layout (note above).
- * Dead probes: the two ledger lines.
- * Do not reopen before the end-grind. */
 /* @implements 0x1003AFE0 d3d BrVec3MulAdd */
 /* @n64 0x8022494C located */
 /* pOut = pA + pB*s.  The original scales the SECOND vector arg ([esp+0xc]) and
@@ -221,7 +188,11 @@ void BrVec3ScaleBy(BrVec3 *pV, float s)
  * two roundings as the x87, so this is exact, not just close. */
 void BrVec3MulAdd(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB, float s)
 {
-    pOut->x = pA->x + pB->x * s;
+    /* x: fld s / fmul [pB], the same lever as BrVec3Scale. */
+    float t;
+    float bx = pB->x;
+
+    pOut->x = pA->x + (t = s) * bx;
     pOut->y = pA->y + pB->y * s;
     pOut->z = pA->z + pB->z * s;
 }
@@ -230,15 +201,6 @@ void BrVec3MulAdd(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB, float s)
  * what integrates a velocity into a position each frame. */
 /* @t4-pass 0x100346A0 1 2026-09-09 probes 10 bytes 45 insns 15 regions 1 rows 4 census no  (hand, fn.py variants: explicit/product-first/s-first, temps, named scalar, elem ptrs, mixed/zyx, const arg, all inert or worse) */
 /* @t4-pass 0x100346A0 2 2026-09-09 probes 10 bytes 45 insns 15 regions 1 rows 4 census yes  (hand, fn.py variants: three-temp spill, casts, per-arg elem ptrs, both-swap, yzx, k local, split stmt, all inert or worse; corpus MISS at +0x0 len 12; N64 twin 0x80224990 confirms the pB->x*s spelling) */
-/* @t3 0x100346A0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 45/45 insns 15/15 rows 2+2 regions 1 oracle EQUIVALENT
- * @t3-effort passes 2 zero-movement 1 2
- * residue is the commutative-fold fork only: VC5 canonicalises the fmul
- * operand order (scalar-in-register vs component-in-memory crossed pair),
- * cancelled as the crossed quad by t3.py classify (7dd2eb1).  The source
- * spelling is independently confirmed by the byte-exact N64 twin (note
- * above) -- the residue is VC5's fold, not the source.  Dead probes: the
- * two ledger lines.  Do not reopen before the end-grind. */
 /* @implements 0x1003B020 d3d BrVec3MulAddTo */
 /* @n64 0x80224990 exact */
 /* pA += pB*s, in place.  The x87 forms s*pB.x then adds pA.x; float add
@@ -251,7 +213,11 @@ void BrVec3MulAdd(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB, float s)
  * same MIPS and the oracle proves nothing. Method: n64/tools/n64match.py. */
 void BrVec3MulAddTo(BrVec3 *pA, const BrVec3 *pB, float s)
 {
-    pA->x += pB->x * s;
+    /* x: fld s / fmul [pB], the same lever as BrVec3Scale. */
+    float t;
+    float bx = pB->x;
+
+    pA->x += (t = s) * bx;
     pA->y += pB->y * s;
     pA->z += pB->z * s;
 }
@@ -288,7 +254,7 @@ void BrVec3Add(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
 {
     /* Glide byte-exact: a named copy of one operand steers which pointer
      * VC5 loads first and which side of each fadd it fetches (x: pA copy,
-     * y: pB copy, z: plain). Operand order alone is canonicalised. */
+     * y: pB copy, z: pB copy). Operand order alone is canonicalised. */
     {
         float ax = pA->x;
         pOut->x = ax + pB->x;
@@ -297,7 +263,10 @@ void BrVec3Add(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
         float by = pB->y;
         pOut->y = by + pA->y;
     }
-    pOut->z = pB->z + pA->z;
+    {
+        float bz = pB->z;
+        pOut->z = bz + pA->z;
+    }
 }
 
 /* WHAT IT DOES: subtract one vector from another IN PLACE -- pA becomes

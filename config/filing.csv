@@ -547,6 +547,8 @@ glide_va,name,module,basis,file
 0x100342B0,BrVec3Cross,geometry,filed,src/core/geometry/br_vec.c
 0x10034310,BrVec3Dot,geometry,filed,src/core/geometry/br_vec.c
 0x10034340,BrVec3Negate,geometry,filed,src/core/geometry/br_vec.c
+0x10034360,BrVec3Scale,geometry,filed,src/core/geometry/br_vec.c
+0x10034390,BrVec3ScaleBy,geometry,filed,src/core/geometry/br_vec.c
 0x100343C0,BrVec3Div,geometry,filed,src/core/geometry/br_vec.c
 0x100343F0,BrVec3DivBy,geometry,filed,src/core/geometry/br_vec.c
 0x10034420,BrVec3Direction,geometry,neighbour,src/core/geometry/br_vec.c
@@ -556,6 +558,8 @@ glide_va,name,module,basis,file
 0x100345C0,BrVec3Add,geometry,filed,src/core/geometry/br_vec.c
 0x100345F0,BrVec3AddTo,geometry,filed,src/core/geometry/br_vec.c
 0x10034620,BrVec3Lerp,geometry,filed,src/core/geometry/br_vec.c
+0x10034660,BrVec3MulAdd,geometry,filed,src/core/geometry/br_vec.c
+0x100346A0,BrVec3MulAddTo,geometry,filed,src/core/geometry/br_vec.c
 0x100346D0,BrVec3Midpoint,geometry,filed,src/core/geometry/br_vec.c
 0x10034710,BrVec3Zero,geometry,filed,src/core/geometry/br_vec.c
 0x10034720,BrVec3DistXY,geometry,neighbour,src/core/geometry/br_vec.c
