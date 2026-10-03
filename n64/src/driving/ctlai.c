@@ -613,6 +613,7 @@ void BrCarLineFit(BrCar *car)
  * the car is ticked and respawned if need be. PC twin: BrCtlAiBody. */
 /* @t4-pass 0x8022762C 1 2026-09-29 compiles 100 best 1064 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8022762C 2 2026-09-29 compiles 100 best 1064 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8022762C */
 /* @implements 0x8022762C tgr BrCtlAiBody */
 void BrCtlAiBody(BrCar *car)
 {
@@ -1061,6 +1062,7 @@ void BrStub80228E44(int arg0)
 /* @t4-pass 0x802288D4 1 2026-09-26 compiles 17 best 144 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x802288D4 2 2026-09-26 compiles 17 best 144 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x802288D4 3 2026-09-26 compiles 16 best 144 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x802288D4 */
 /* @implements 0x802288D4 tgr BrAiLaneSetup */
 void BrAiLaneSetup(BrAiCar *a)
 {

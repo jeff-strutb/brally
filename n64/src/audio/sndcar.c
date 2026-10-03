@@ -55,26 +55,25 @@ float BrVec3Length(BrVec3 *v);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: One frame of a car's sounds. Silenced (or carless), its
- * engine channel is zeroed. The listener is the viewed car's camera with
- * one view on screen, else this car's own; a car or view in the close
- * camera plays nothing to the engine channels. The Doppler factor is kept on
- * the car; the engine pitch folds the RPM about zero into Hz, times Doppler,
- * cleared outside [0, 100000], as a 32.32 ratio of 11000 Hz, with the panned
- * level pair. Car 0 sets the 11000 Hz override on tracks that ask for it.
- * Three pending knocks (hit A, B and C) take over the surface state with
- * their own priority and rumble pulse; otherwise the surface impact picks
- * the surface loop and its rumble by the ground under wheel 1 (snow has its
- * own), the level building over up to 16 hits; with neither, the rolling
- * loop from the ground, loud as the car's speed. Car 0 starts the loop when
- * it changes and writes its pitch and level. The listener's position is kept
- * on the car for next frame's Doppler. PC twin: BrSndCarStep.
- * Source facts: the knock bytes read once into n; the state range tests
- * written as the skip condition (the ROM tests 0, <4, <8, <8, <13 in turn);
- * an unused int first sizes the 0x78 frame.
+ * engine channel is zeroed. The listener is the viewed car's camera with one
+ * view on screen, else this car's own; a car or view in the close camera
+ * plays nothing. The engine pitch folds the RPM into Hz times the car's
+ * Doppler factor (cleared outside [0, 100000]) as a 32.32 ratio of 11000 Hz,
+ * with the panned level pair; car 0 sets the 11000 Hz override where the
+ * track asks. Three pending knocks take over the surface state with their own
+ * priority and rumble pulse; otherwise the surface impact picks the loop and
+ * rumble by the ground under wheel 1 (snow has its own), building over up to
+ * 16 hits; with neither, the rolling loop, loud as the speed. Car 0 starts
+ * the loop when it changes and writes its pitch and level; the listener is
+ * kept for next frame's Doppler. PC twin: BrSndCarStep.
+ * Source facts: the knock bytes read once into n; the state range tests as
+ * the skip condition (0, <4, <8, <8, <13 in turn); an unused int first sizes
+ * the 0x78 frame.
  * RESIDUE (838): the impact compare keeps n in v0 with a copy in v1 where
  * ours uses one register, and the temporaries rotate after it. */
 /* @t4-pass 0x8022BCB4 1 2026-09-29 compiles 100 best 837 moved 1  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8022BCB4 2 2026-09-29 compiles 100 best 837 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8022BCB4 */
 /* @implements 0x8022BCB4 tgr BrSndCarStep */
 void BrSndCarStep(BrCar *car)
 {

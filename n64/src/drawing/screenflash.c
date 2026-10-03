@@ -279,6 +279,7 @@ void BrScreenDim(float level)
  * pending turns it round at the top. */
 /* @t4-pass 0x80223F54 1 2026-09-26 compiles 21 best 228 moved 2  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80223F54 2 2026-09-26 compiles 21 best 228 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80223F54 */
 /* @implements 0x80223F54 tgr BrFadeStep */
 void BrFadeStep(void)
 {

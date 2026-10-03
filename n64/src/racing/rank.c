@@ -395,6 +395,7 @@ void BrCarSlotSwap(BrCar *me)
  * through a jump. */
 /* @t4-pass 0x8022A0E0 1 2026-09-29 compiles 120 best 622 moved 9  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8022A0E0 2 2026-09-29 compiles 120 best 622 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8022A0E0 */
 /* @implements 0x8022A0E0 tgr BrRaceGateStep */
 void BrRaceGateStep(BrRaceEnt *drv)
 {

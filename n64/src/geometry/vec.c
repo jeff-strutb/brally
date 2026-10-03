@@ -45,6 +45,7 @@ float BrPowf(float a, float b)
 /* @t4-pass 0x8022439C 1 2026-09-26 compiles 17 best 24 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8022439C 2 2026-09-26 compiles 17 best 24 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8022439C 3 2026-09-26 compiles 17 best 24 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8022439C */
 /* @implements 0x8022439C tgr BrVec3Cross */
 void BrVec3Cross(BrVec3 *pOut, BrVec3 *pA, BrVec3 *pB)
 {

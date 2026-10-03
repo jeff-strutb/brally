@@ -13,6 +13,7 @@
 /* @t4-pass 0x80225B64 2 2026-09-26 compiles 17 best 174 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80225B64 3 2026-09-26 compiles 17 best 173 moved 1  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80225B64 4 2026-09-26 compiles 41 best 173 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80225B64 */
 /* @implements 0x80225B64 tgr BrSegmentsOverlapXY */
 int BrSegmentsOverlapXY(float *param_1,float *param_2,float *param_3,float *param_4)
 {
