@@ -404,6 +404,8 @@ void BrCarDriveInput(BrCar *car)
     BrPadConsume((BrDrivePad *)car->pad, 0x100000);
     car->xe40++;
     flags = ((BrDrivePad *)car->pad)->flags;
+  } else {
+    flags = ((BrDrivePad *)car->pad)->flags;
   }
   bonus = 0.0f;
   if (D_8026FF18 == 1 && car->xfac == 1) {

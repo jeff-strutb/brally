@@ -25,7 +25,7 @@ extern float D_8028A86C;
 extern float D_8028A870;
 extern float D_8031AB10[4][4];
 extern char D_001B5440[];               /* the sound banks (link-time ROM addresses) */
-extern char D_001BF3C0[];
+extern char D_001B93C0[];
 extern char D_001DA030[];               /* the models */
 extern char D_001DBA40[];
 extern char D_001DCD70[];
@@ -169,9 +169,9 @@ void BrIntroScreen(void)
     D_80315EA0 = BrRomReadSize((int)D_001B5440);
     D_80315EA4 = BrIfaceMemAlloc(D_80315EA0 + 0x100);
     BrRomUnpack(D_80315EA4, (int)D_001B5440, 0);
-    D_80315EA8 = BrRomReadSize((int)D_001BF3C0);
+    D_80315EA8 = BrRomReadSize((int)D_001B93C0);
     D_80315EAC = BrIfaceMemAlloc(D_80315EA8 + 0x100);
-    BrRomUnpack(D_80315EAC, (int)D_001BF3C0, 0);
+    BrRomUnpack(D_80315EAC, (int)D_001B93C0, 0);
     for (i = 0; i != 0x100; i++) {
       D_80315EA4[D_80315EA0 + i] = 0;
       D_80315EAC[D_80315EA8 + i] = 0;
