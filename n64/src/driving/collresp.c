@@ -967,3 +967,79 @@ short BrCollGridCellAcquire(float x, float y)
   D_8037EA88[victim] = n;
   return victim;
 }
+
+/* WHAT IT DOES: Whether two oriented boxes overlap (the separating-axis
+ * test): m takes the second box into the first's frame, t is the offset
+ * between their centres in that frame, a and b the half-extents.  Each of
+ * the fifteen axes -- three faces of each box and the nine edge cross
+ * products -- must not separate them: the offset's projection may not
+ * exceed both boxes' projected half-extents.  All fifteen are evaluated
+ * and ANDed.  The PC twin is BrObbOverlap (br_obb.c).
+ * RESIDUE (516): register pressure -- the ROM (frame 0x80, 571
+ * instructions) spills copies of the parameter elements (b[0], b[1],
+ * a[0], b[2], t[0], m[...]) to the stack and reloads them per test; ours
+ * keeps more in registers (544).  The fifteen tests and their sums are in
+ * the ROM's order. */
+/* @implements 0x8025F4F8 tgr BrObbOverlap */
+int BrObbOverlap(float *m, float *t, float *a, float *b)
+{
+  float am[9];
+  float c;
+  int ok;
+
+  am[0] = m[0] < 0 ? -m[0] : m[0];
+  am[1] = m[1] < 0 ? -m[1] : m[1];
+  am[2] = m[2] < 0 ? -m[2] : m[2];
+  am[3] = m[3] < 0 ? -m[3] : m[3];
+  am[4] = m[4] < 0 ? -m[4] : m[4];
+  am[5] = m[5] < 0 ? -m[5] : m[5];
+  am[6] = m[6] < 0 ? -m[6] : m[6];
+  am[7] = m[7] < 0 ? -m[7] : m[7];
+  am[8] = m[8] < 0 ? -m[8] : m[8];
+  ok = 1;
+
+  c = t[0] < 0 ? -t[0] : t[0];
+  ok &= c <= a[0] + b[0] * am[0] + b[1] * am[1] + b[2] * am[2];
+  c = t[0] * m[0] + t[1] * m[3] + t[2] * m[6];
+  c = c < 0 ? -c : c;
+  ok &= c <= b[0] + a[0] * am[0] + a[1] * am[3] + a[2] * am[6];
+  c = t[1] < 0 ? -t[1] : t[1];
+  ok &= c <= a[1] + b[0] * am[3] + b[1] * am[4] + b[2] * am[5];
+  c = t[2] < 0 ? -t[2] : t[2];
+  ok &= c <= a[2] + b[0] * am[6] + b[1] * am[7] + b[2] * am[8];
+  c = t[0] * m[1] + t[1] * m[4] + t[2] * m[7];
+  c = c < 0 ? -c : c;
+  ok &= c <= b[1] + a[0] * am[1] + a[1] * am[4] + a[2] * am[7];
+  c = t[0] * m[2] + t[1] * m[5] + t[2] * m[8];
+  c = c < 0 ? -c : c;
+  ok &= c <= b[2] + a[0] * am[2] + a[1] * am[5] + a[2] * am[8];
+
+  c = t[2] * m[3] - t[1] * m[6];
+  c = c < 0 ? -c : c;
+  ok &= c <= a[1] * am[6] + a[2] * am[3] + b[1] * am[2] + b[2] * am[1];
+  c = t[2] * m[4] - t[1] * m[7];
+  c = c < 0 ? -c : c;
+  ok &= c <= a[1] * am[7] + a[2] * am[4] + b[0] * am[2] + b[2] * am[0];
+  c = t[2] * m[5] - t[1] * m[8];
+  c = c < 0 ? -c : c;
+  ok &= c <= a[1] * am[8] + a[2] * am[5] + b[0] * am[1] + b[1] * am[0];
+  c = t[0] * m[6] - t[2] * m[0];
+  c = c < 0 ? -c : c;
+  ok &= c <= a[0] * am[6] + a[2] * am[0] + b[1] * am[5] + b[2] * am[4];
+  c = t[0] * m[7] - t[2] * m[1];
+  c = c < 0 ? -c : c;
+  ok &= c <= a[0] * am[7] + a[2] * am[1] + b[0] * am[5] + b[2] * am[3];
+  c = t[0] * m[8] - t[2] * m[2];
+  c = c < 0 ? -c : c;
+  ok &= c <= a[0] * am[8] + a[2] * am[2] + b[0] * am[4] + b[1] * am[3];
+  c = t[1] * m[0] - t[0] * m[3];
+  c = c < 0 ? -c : c;
+  ok &= c <= a[0] * am[3] + a[1] * am[0] + b[1] * am[8] + b[2] * am[7];
+  c = t[1] * m[1] - t[0] * m[4];
+  c = c < 0 ? -c : c;
+  ok &= c <= a[0] * am[4] + a[1] * am[1] + b[0] * am[8] + b[2] * am[6];
+  c = t[1] * m[2] - t[0] * m[5];
+  c = c < 0 ? -c : c;
+  ok &= c <= a[0] * am[5] + a[1] * am[2] + b[0] * am[7] + b[1] * am[6];
+  return ok;
+}

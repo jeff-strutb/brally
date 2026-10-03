@@ -584,6 +584,7 @@ va,name,kind
 8025EF70,BrTyreLoads,func
 8025F0A4,BrTriCacheDrop,func
 8025F18C,BrCollGridCellAcquire,func
+8025F4F8,BrObbOverlap,func
 80260490,BrRumbleUpdate,func
 802607AC,BrStub802607AC,func
 802607C0,BrStub802607C0,func
