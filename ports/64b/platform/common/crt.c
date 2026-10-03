@@ -253,9 +253,14 @@ char *_getcwd(char *buf, int n)
 }
 
 /* ---- _findfirst / _findnext ---------------------------------------------------- */
+/* A listing is the save overlay's entries for the directory first, then the
+ * disc's, skipping a disc name the overlay already gave: the files the game
+ * wrote (saved races, seasons) live only in the overlay. */
 typedef struct pfind {
-    char dir[1024];
+    char dir[1024];            /* the disc directory, host path ("" = none) */
     char pat[260];
+    char flat[520];            /* the overlay's prefix for the directory */
+    int  phase;                /* 0 overlay, 1 disc */
     host_dir *d;
 } pfind;
 
@@ -270,29 +275,76 @@ static int wild(const char *p, const char *s)
     return 0;
 }
 
+static void find_hit(struct _finddata_t *fd, const char *nm, int is_dir, uint64_t size)
+{
+    memset(fd, 0, sizeof *fd);
+    fd->attrib = is_dir ? _A_SUBDIR : _A_ARCH;
+    fd->size = (_fsize_t)size;
+    snprintf(fd->name, sizeof fd->name, "%s", nm);
+}
+
+/* an overlay name under the listed directory: the part after its prefix,
+ * provided that part is not itself in a subdirectory of the disc's */
+static const char *overlay_leaf(const pfind *f, const char *nm)
+{
+    size_t l = strlen(f->flat);
+    const char *u;
+    if (strncmp(nm, f->flat, l))
+        return NULL;
+    nm += l;
+    if ((u = strchr(nm, '_')) != NULL && f->dir[0]) {
+        char sub[1024], h[1024];
+        snprintf(sub, sizeof sub, "%.*s", (int)(u - nm), nm);
+        if (ci_find(f->dir, sub, h, sizeof h))
+            return NULL;
+    }
+    return nm;
+}
+
 static int find_next(pfind *f, struct _finddata_t *fd)
 {
-    const char *nm;
+    const char *nm, *leaf;
     int is_dir;
     uint64_t size;
-    while ((nm = host_dir_next(f->d, &is_dir, &size)) != NULL) {
-        if (!strcmp(nm, ".") || !strcmp(nm, ".."))
-            continue;
-        if (wild(f->pat, nm)) {
-            memset(fd, 0, sizeof *fd);
-            fd->attrib = is_dir ? _A_SUBDIR : _A_ARCH;
-            fd->size = (_fsize_t)size;
-            snprintf(fd->name, sizeof fd->name, "%s", nm);
-            return 0;
+    for (;;) {
+        if (!f->d) {
+            if (f->phase++ != 0 || !f->dir[0] || !(f->d = host_dir_open(f->dir)))
+                return -1;
         }
+        while ((nm = host_dir_next(f->d, &is_dir, &size)) != NULL) {
+            if (!strcmp(nm, ".") || !strcmp(nm, ".."))
+                continue;
+            if (f->phase == 0) {
+                if ((leaf = overlay_leaf(f, nm)) != NULL && !is_dir && wild(f->pat, leaf)) {
+                    find_hit(fd, leaf, 0, size);
+                    return 0;
+                }
+                continue;
+            }
+            if (wild(f->pat, nm)) {
+                char o[1100], *k;
+                size_t l;
+                snprintf(o, sizeof o, "%s/", host_save_dir());
+                l = strlen(o);
+                snprintf(o + l, sizeof o - l, "%s%s", f->flat, nm);
+                for (k = o + l; *k; k++)
+                    *k = (char)tolower((unsigned char)*k);
+                if (!is_dir && exists(o))        /* the overlay gave it already */
+                    continue;
+                find_hit(fd, nm, is_dir, size);
+                return 0;
+            }
+        }
+        host_dir_close(f->d);
+        f->d = NULL;
     }
-    return -1;
 }
 
 intptr_t _findfirst(const char *spec, struct _finddata_t *fd)
 {
     char c[520], dir[520], host[1024];
-    char *slash;
+    char *slash, *q;
+    const char *rel;
     pfind *f;
     canon(spec, c, sizeof c);
     snprintf(dir, sizeof dir, "%s", c);
@@ -300,13 +352,19 @@ intptr_t _findfirst(const char *spec, struct _finddata_t *fd)
     if (!slash)
         return -1;
     *slash = 0;
-    if (!plat_path(dir, host, sizeof host))
+    if (!(rel = drive_rel(dir)))
         return -1;
     f = (pfind *)calloc(1, sizeof *f);
     snprintf(f->pat, sizeof f->pat, "%s", slash + 1);
-    /* the save overlay is flattened; a listing reads the disc's directory */
-    f->d = host_dir_open(host);
-    if (!f->d || find_next(f, fd) != 0) {
+    snprintf(f->flat, sizeof f->flat, "%s%s", rel, *rel ? "\\" : "");
+    for (q = f->flat; *q; q++)
+        *q = *q == '\\' ? '_' : (char)tolower((unsigned char)*q);
+    if (!*rel)
+        snprintf(f->dir, sizeof f->dir, "%s", host_cd_dir());
+    else if (ci_find(host_cd_dir(), rel, host, sizeof host))
+        snprintf(f->dir, sizeof f->dir, "%s", host);
+    f->d = host_dir_open(host_save_dir());
+    if (find_next(f, fd) != 0) {
         if (f->d)
             host_dir_close(f->d);
         free(f);
@@ -323,7 +381,8 @@ int _findnext(intptr_t h, struct _finddata_t *fd)
 int _findclose(intptr_t h)
 {
     if (h != -1) {
-        host_dir_close(((pfind *)h)->d);
+        if (((pfind *)h)->d)
+            host_dir_close(((pfind *)h)->d);
         free((void *)h);
     }
     return 0;

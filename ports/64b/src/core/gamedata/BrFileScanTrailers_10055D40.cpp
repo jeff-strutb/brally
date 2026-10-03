@@ -47,7 +47,7 @@ int Scan55D40::ScanTrailers(char *pszPattern)
 {
     char trailer[260];
     struct _finddata_t fd;
-    long h;
+    intptr_t h;
     long n;
     FILE *fp;
     int i;

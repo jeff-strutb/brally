@@ -420,7 +420,7 @@ typedef int (__fastcall *VT1)(void *this);
  * +0x41C, is appended to the text at +0x09.  An unmapped code returns 1 and
  * is left pending; every other path clears it. */
 /* @implements 0x10054390 glide FUN_10054390 */
-char __fastcall FUN_10054390(int *param_1)
+char __fastcall FUN_10054390(BrTextBox *param_1)
 
 {
   char cVar1;
@@ -453,15 +453,15 @@ char __fastcall FUN_10054390(int *param_1)
   }
   if (((*(int *)&g_BrDikEdge[28]) != 0) || ((*(int *)&g_BrDikEdge[156]) != 0) ||
       (BrInputAnyActive() != 0 && g_5BB4 == 0)) {
-    if (strlen((char *)param_1 + 9) != 0) {
+    if (strlen(param_1->sz) != 0) {
       DAT_10ac6744 = 0;
       return 0;
     }
   }
   if (DAT_10ac6744 != 0) {
     if (DAT_10ac6744 == 8) {
-      if (strlen((char *)param_1 + 9) != 0) {
-        ((char *)param_1)[8 + strlen((char *)param_1 + 9)] = 0;
+      if (strlen(param_1->sz) != 0) {
+        param_1->sz[strlen(param_1->sz) - 1] = 0;   /* box +8 + strlen(box +9) */
         DAT_10ac6744 = 0;
         return 1;
       }
@@ -471,9 +471,9 @@ char __fastcall FUN_10054390(int *param_1)
       if (cVar1 == 0) {
         return 1;
       }
-      (*(VT1 *)(*param_1 + 4))(param_1);
-      if (*(short *)((char *)param_1 + 0x40a) < *(short *)((char *)param_1 + 0x41c)) {
-        sprintf((char *)param_1 + 9, DAT_100acb44, (char *)param_1 + 9, (int)cVar1);
+      ((void (*)(BrTextBox *))((void *const *)param_1->pVtbl)[1])(param_1);   /* vtbl +4 */
+      if (param_1->width < param_1->f41C) {
+        sprintf(param_1->sz, DAT_100acb44, param_1->sz, (int)cVar1);
       }
     }
   }

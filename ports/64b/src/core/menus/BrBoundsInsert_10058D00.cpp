@@ -52,5 +52,5 @@ extern "C" void BrBoundsInsert_10058D00(void *self, BoundsNode * pNode)
 /* 0x10058CC0: the original calls BrBoundsFits_10058CC0 by address */
 inline int BoundsNode::Fits(BoundsNode * a1)
 {
-    return (int)BrBoundsFits_10058CC0((int)this, (int *)a1);
+    return (int)BrBoundsFits_10058CC0((void *)this, (int *)a1);
 }

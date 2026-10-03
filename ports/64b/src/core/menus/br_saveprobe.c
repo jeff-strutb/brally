@@ -1,5 +1,6 @@
 #include "br_ui.h"
-#include "br_phase.h"   /* BrPhase_, the canonical record */
+#include "br_phase.h"
+#include "slice1_06.h"   /* BrNameList */   /* BrPhase_, the canonical record */
 /* br_saveprobe.c -- menus: "does this save slot already have a file?" probes
  * for the two record lists that own an in-place name edit.
  *
@@ -93,7 +94,7 @@ int BrSaveProbeRallySeason(int pList, int *pIdx)
     if (missing)
         BrExt_10041A00(DAT_10ac5d18);
     else
-        *(int *)(*(int *)(DAT_10ac5d18 + 0x2ae8) + 0x70) = 1;
+        ((BrUiCtl_ *)DAT_10ac5d18)->pOwner->aFlags[1] = 1;
     return 1;
 }
 
@@ -166,16 +167,8 @@ int BrSaveProbeTimeAttack(int pList, int *pIdx)
  * instruction. Returns 1 unconditionally.
  */
 
-typedef struct BrSaveRec55C50 {
-    int  f00;               /* +0x000 */
-    char szName[0x100];     /* +0x004 */
-} BrSaveRec55C50;           /* 0x104 */
-
-typedef struct BrRoot55C50 {
-    char             pad[0xC0];
-    BrSaveRec55C50  *pSeason;       /* +0xC0 */
-    BrSaveRec55C50  *pTimeAttack;   /* +0xC4 */
-} BrRoot55C50;
+/* The two tables are BrNameList (slice1_06.h): the original's +4 is its
+ * vtable pointer, so `tbl + n*0x104 + 4` is asz[n]. */
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */     /* 0x10AC5BA0 */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */      /* 0x10AC5C60 */
@@ -198,10 +191,10 @@ int __stdcall BrSaveSlotNameSet_10055C50(const char *pKey, const char *pName)
 
     if (g_brGate5BA0 != 0) {
         strcpy(szNum, pKey + strlen(s_RallySeason_100acb00));
-        pRec = (*(BrSaveRec55C50 * *)&((BrPhase_ *)((*(BrRoot55C50 * *)&g_2908)))->fC0)[atoi(szNum)].szName;
+        pRec = ((BrNameList *)((BrPhase_ *)g_2908)->fC0)->asz[atoi(szNum)];
     } else {
         strcpy(szNum, pKey + strlen(s_TimeAttack_100acb14));
-        pRec = (*(BrSaveRec55C50 * *)&((BrPhase_ *)((*(BrRoot55C50 * *)&g_2908)))->fC4)[atoi(szNum)].szName;
+        pRec = ((BrNameList *)((BrPhase_ *)g_2908)->fC4)->asz[atoi(szNum)];
     }
 
     strcpy(pRec, pName);
@@ -217,7 +210,7 @@ int __stdcall BrSaveSlotNameSet_10055C50(const char *pKey, const char *pName)
 int __stdcall BrFileCountMatching(const char *pszPattern)
 {
   struct _finddata_t fd;
-  long h;
+  intptr_t h;
   int n;
   int i;
 

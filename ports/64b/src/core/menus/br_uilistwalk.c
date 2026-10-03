@@ -1,3 +1,4 @@
+#include "br_ui.h"
 /* br_uilistwalk.c -- menus: walk every row of the on-screen list the global
  * 0x10AA29E4 points at, asking the nested list object at +0x3838 to do slot
  * +0x2C for each row (0x1003C9B0 d3d / 0x10036040 glide).
@@ -55,12 +56,12 @@ void BrSub1003C9B0(void)
     if (pObj == NULL) {
         return;
     }
-    n = *(uint16_t *)(pObj + 0x1E164);
+    n = (uint16_t)((BrUiCtl_ *)pObj)->list.count;
     for (i = 0; i < n; i++) {
         uint8_t *pSub;
         BrC9B0Arg a;
         pObj = (*(uint8_t * *)&g_brPAA29E4);
-        pSub = pObj + 0x3838;
+        pSub = (uint8_t *)&((BrUiCtl_ *)pObj)->list;
         a.i = (int)i;
         (*(BrC9B0Vtbl **)pSub)->f2C(pSub, a);
     }

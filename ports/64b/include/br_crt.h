@@ -94,6 +94,7 @@ void br_srand(unsigned int seed);
 
 /* the platform's per-frame hook (scripted input), BrAppFrame calls it */
 void plat_app_frame(void);
+void plat_text_emit(const char *psz);   /* script_game.c: what the frame drew */
 
 #ifdef __cplusplus
 }  /* BR_CLINK_END */

@@ -58,7 +58,7 @@ int BrUiPoll1003EBE0(Obj381D0 *pObj)
     else
         row = g_5BD8;
 
-    g_brRec0AAB80 = *(int *)&(*(BrRec381D0 (*)[1])&((BrUiCtl_ *)(pObj))->list.aItems[0].f434)[row];
+    g_brRec0AAB80 = ((BrUiCtl_ *)(pObj))->list.aItems[row].f434;   /* ctl +0x3C98 + row*0x438 */
 
     return 1;
 }

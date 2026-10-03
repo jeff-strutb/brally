@@ -105,35 +105,35 @@ int Slots54A30::Add(const char *pszName, int flags, char kind,
     }
 
     if (bPlain != 0) {
-        strcpy((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x35, pszName);
+        strcpy(((BrTextList *)(this))->aItems[(*(unsigned short *)&((BrTextList *)(this))->count)].sz, pszName);
     } else {
-        strncpy((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x35, pszName, 10);
-        strcat((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x35, g_szBrAC5DD0);
+        strncpy(((BrTextList *)(this))->aItems[(*(unsigned short *)&((BrTextList *)(this))->count)].sz, pszName, 10);
+        strcat(((BrTextList *)(this))->aItems[(*(unsigned short *)&((BrTextList *)(this))->count)].sz, g_szBrAC5DD0);
     }
 
-    *(int *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x30) |= flags;
-    *((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x34) = kind;
-    *(short *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x448) = 0;
-    *(short *)(((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count) + 1)) * BR_SLOT)) = 0;
-    *(short *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x436) = 0;
-    *(int *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x450) = pRect[0];
-    *(int *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x458) = pRect[2];
-    *(int *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x454) = (int)(*(float *)&((BrTextList *)(this))->f20) + 19 * (*(unsigned short *)&((BrTextList *)(this))->count);
-    *(int *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x45C) = *(int *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x454) + 0x12;
-    *(float *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x43C) = (float)pRect[0];
-    *(float *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x440) =
-        (float)*(int *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x454);
-    *(int *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x444) = 0;
-    *(int *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x44C) = 0;
+    *(int *)(&((BrTextList *)(this))->aItems[(*(unsigned short *)&((BrTextList *)(this))->count)].f04) |= flags;
+    ((BrTextList *)(this))->aItems[(*(unsigned short *)&((BrTextList *)(this))->count)].f08 = kind;
+    *(short *)(&((BrTextList *)(this))->aItems[(*(unsigned short *)&((BrTextList *)(this))->count)].f41C) = 0;
+    ((BrTextList *)(this))->aItems[(*(unsigned short *)&((BrTextList *)(this))->count)].height = 0;   /* list +(n+1)*0x438 */
+    *(short *)(&((BrTextList *)(this))->aItems[(*(unsigned short *)&((BrTextList *)(this))->count)].width) = 0;
+    *(int *)(&((BrTextList *)(this))->aItems[(*(unsigned short *)&((BrTextList *)(this))->count)].left) = pRect[0];
+    *(int *)(&((BrTextList *)(this))->aItems[(*(unsigned short *)&((BrTextList *)(this))->count)].right) = pRect[2];
+    *(int *)(&((BrTextList *)(this))->aItems[(*(unsigned short *)&((BrTextList *)(this))->count)].f428) = (int)(*(float *)&((BrTextList *)(this))->f20) + 19 * (*(unsigned short *)&((BrTextList *)(this))->count);
+    *(int *)(&((BrTextList *)(this))->aItems[(*(unsigned short *)&((BrTextList *)(this))->count)].f430) = *(int *)(&((BrTextList *)(this))->aItems[(*(unsigned short *)&((BrTextList *)(this))->count)].f428) + 0x12;
+    *(float *)(&((BrTextList *)(this))->aItems[(*(unsigned short *)&((BrTextList *)(this))->count)].x) = (float)pRect[0];
+    *(float *)(&((BrTextList *)(this))->aItems[(*(unsigned short *)&((BrTextList *)(this))->count)].y) =
+        (float)*(int *)(&((BrTextList *)(this))->aItems[(*(unsigned short *)&((BrTextList *)(this))->count)].f428);
+    *(int *)(&((BrTextList *)(this))->aItems[(*(unsigned short *)&((BrTextList *)(this))->count)].f418) = 0;
+    *(int *)(&((BrTextList *)(this))->aItems[(*(unsigned short *)&((BrTextList *)(this))->count)].f420) = 0;
 
     if (kind == 3)
-        ((Item54A30 *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x2C))->s2();
+        ((Item54A30 *)&((BrTextList *)(this))->aItems[(*(unsigned short *)&((BrTextList *)(this))->count)])->s2();
     else
-        ((Item54A30 *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x2C))->s1();
+        ((Item54A30 *)&((BrTextList *)(this))->aItems[(*(unsigned short *)&((BrTextList *)(this))->count)])->s1();
 
-    *(short *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x448) =
-        (short)(*(int *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x458)
-                - *(int *)((((char *)this + (((*(unsigned short *)&((BrTextList *)(this))->count))) * BR_SLOT)) + 0x450) - 0x10);
+    *(short *)(&((BrTextList *)(this))->aItems[(*(unsigned short *)&((BrTextList *)(this))->count)].f41C) =
+        (short)(*(int *)(&((BrTextList *)(this))->aItems[(*(unsigned short *)&((BrTextList *)(this))->count)].right)
+                - *(int *)(&((BrTextList *)(this))->aItems[(*(unsigned short *)&((BrTextList *)(this))->count)].left) - 0x10);
 
     (*(unsigned short *)&((BrTextList *)(this))->count)++;
 
@@ -142,7 +142,7 @@ int Slots54A30::Add(const char *pszName, int flags, char kind,
         if (row >= 100)
             row = (short)((*(unsigned short *)&((BrTextList *)(this))->count) - 1);
 
-        if (_stricmp((((char *)this + ((row)) * BR_SLOT)) + 0x35, g_aBr39B720) == 0)
+        if (_stricmp(((BrTextList *)(this))->aItems[row].sz, g_aBr39B720) == 0)
             return 0;
 
         (*(short *)&((BrTextList *)(this))->f1A92E)++;

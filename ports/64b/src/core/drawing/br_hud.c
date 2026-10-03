@@ -35,16 +35,15 @@ void BrHudTextListDraw(int *param_1)
   BrTextFlag358Clear();
   BrSet_10019270();
   BrSub_1003289F(*param_1,param_1[1],param_1[2],param_1[3]);
-  if ((*(int *)((char *)&g_aBrRaceCue + 0xC)) != 0) {
-    piVar2 = &(*(int *)&g_aBrRaceCue);
+  if (g_aBrRaceCue[0].text != 0) {
+    const BrRaceCue *pc = g_aBrRaceCue;
     do {
-      if ((*piVar2 > -0x50) && (*piVar2 < (*(int *)&g_brRaceCueBase) + 0x28)) {
-        BrSetGlobal_ABB30(piVar2[1]);
-        BrTextDraw((const char *)piVar2[3],g_scrW4 / 2,*piVar2);
+      if ((pc->start > -0x50) && (pc->start < (*(int *)&g_brRaceCueBase) + 0x28)) {
+        BrSetGlobal_ABB30(pc->len);
+        BrTextDraw(pc->text,g_scrW4 / 2,pc->start);
       }
-      iVar1 = piVar2[7];
-      piVar2 = piVar2 + 4;
-    } while (iVar1 != 0);
+      pc++;
+    } while (pc->text != 0);
   }
   return;
 }

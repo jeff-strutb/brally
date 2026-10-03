@@ -473,6 +473,7 @@ void BrTextEmitString(const char *psz)
     int32_t        penX, top, cell, scale;
     uint32_t       r, b;        /* `g` is scoped INSIDE the %x arm */
 
+    plat_text_emit(psz);   /* the script player's waittext (not in the original) */
     scale = (*(int32_t *)&DAT_104abb30);                          /* 0x10015B16 */
     penX  = (*(int32_t *)&DAT_104abb28);                              /* 0x10015B1D */
     top   = (*(int32_t *)&DAT_104abb2c) - (30 * (*(int32_t *)&DAT_104abb30)) / 40;  /* 0x10015B23 */

@@ -1,3 +1,4 @@
+#include "br_ui.h"
 /* br_dplaysession.c -- net.
  *
  * Picking a session to join: the provider GUID the player selected, the
@@ -42,8 +43,7 @@ int32_t BrSub1003D030(void *pBlob)
     }
     /* Orig `mov eax,[eax+ecx*8+0x1de48]`: the pointer at 0x10AA29D4 is a
      * base, not a pointer-to-pointer table.  Each slot is 8 bytes. */
-    pSrc = *(void *const *)((const char *)BR73_APJOINBLOB
-                            + 0x1DE48 + (size_t)BR73_NAA2880 * 8);
+    pSrc = ((const BrUiCtl_ *)BR73_APJOINBLOB)->list.aBlobs[BR73_NAA2880].p;
     if (pSrc == NULL) {
         return 0;
     }

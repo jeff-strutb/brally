@@ -3553,10 +3553,6 @@ extern int32_t g_BrCarVisOpaque[16];  /* 0x10273648 */
 #undef g_BrDrawRefIndex
 extern int32_t g_BrDrawRefIndex;  /* 0x10273688 */
 #pragma pop_macro("g_BrDrawRefIndex")
-#pragma push_macro("g_br277B44")
-#undef g_br277B44
-extern void *g_br277B44;  /* 0x10277B44 */
-#pragma pop_macro("g_br277B44")
 #pragma push_macro("DAT_102e0c9c")
 #undef DAT_102e0c9c
 extern int DAT_102e0c9c;  /* 0x102E0C9C */

@@ -5,6 +5,7 @@
 #   env: HOST   null (default, headless) | macos
 #        RENDER null (default) | metal
 #        DLL    the user's BRGlide.dll (default orig/BRGlide.dll)
+#        WARN / LDFLAGS64  extra compile / link flags (an ASan build: WARN="-fsanitize=address -fsanitize-recover=address" LDFLAGS64=-fsanitize=address OUT=build/portable_asan)
 set -e
 cd "$(dirname "$0")/../.."
 OUT=${OUT:-build/portable}
@@ -23,6 +24,8 @@ if grep -q '^FAIL' $OUT/compile.txt; then
 fi
 python3 ports/64b/tools/datalift.py ${DLL:+--dll "$DLL"} >/dev/null
 ports/64b/build64.sh $OUT/gen/br_data.c >/dev/null
+# the script commands that read the game (core types, so core flags)
+ports/64b/build64.sh ports/64b/platform/common/script_game.c | grep -v "^OK" >&2 || true
 
 SRCS="$P/common/main.c $P/common/crt.c $P/common/win_kernel.c $P/common/win_user.c \
       $P/common/win_mm.c $P/common/win_rsrc.c $P/common/dx.c $P/common/dplay.c $P/common/script.c $P/common/ear.c $P/common/glide.c \
@@ -39,5 +42,5 @@ for s in $SRCS; do
   $CC $PFLAGS $X -c "$s" -o "$o"
   OBJS="$OBJS $o"
 done
-clang++ -o $OUT/brally64 $OUT/obj/*.o $OBJS $LIBS
+clang++ ${LDFLAGS64} -o $OUT/brally64 $OUT/obj/*.o $OBJS $LIBS
 echo "linked $OUT/brally64 (host $HOST, renderer $RENDER)"

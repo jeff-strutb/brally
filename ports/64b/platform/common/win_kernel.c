@@ -200,15 +200,24 @@ DWORD WINAPI WaitForSingleObject(HANDLE h, DWORD ms)
     return WaitForMultipleObjects(1, &h, FALSE, ms);
 }
 
-static void *kthread_main(void *p)
+/* the thread object of the calling thread, for ExitThread */
+static _Thread_local kobj *s_kself;
+
+/* a thread finishing, by returning or by ExitThread: its handle signals */
+static void kthread_done(kobj *o, DWORD code)
 {
-    kobj *o = (kobj *)p;
-    DWORD code = o->fn(o->arg);
     host_mutex_lock(s_k);
     o->code = code;
     o->signaled = 1;
     host_cond_broadcast(s_kc);
     host_mutex_unlock(s_k);
+}
+
+static void *kthread_main(void *p)
+{
+    kobj *o = (kobj *)p;
+    s_kself = o;
+    kthread_done(o, o->fn(o->arg));
     return NULL;
 }
 
@@ -235,7 +244,8 @@ HANDLE WINAPI CreateThread(LPSECURITY_ATTRIBUTES sa, SIZE_T stack, LPTHREAD_STAR
 
 void WINAPI ExitThread(DWORD code)
 {
-    (void)code;
+    if (s_kself)
+        kthread_done(s_kself, code);
     host_thread_exit();
 }
 

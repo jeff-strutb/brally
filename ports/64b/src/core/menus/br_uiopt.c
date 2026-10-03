@@ -92,7 +92,7 @@ int BrOpt3A00(void)
         /* orig does Unlock/Free HERE and returns -- not a jump to the
          * shared tail (that tail is only the players>1 arms). */
         strcpy(g_szBrName4DB0, BrStrGet(BR_OPT_STR_TOOFEW));
-        FUN_100368a0(g_brOwner5BC72C, g_brPA9D008, 1);
+        FUN_100368a0(g_brOwner5BC72C, (BrDPlayCtx *)g_brPA9D008, 1);
         strcpy(g_szBrName4DB0, g_aBr39B720);
         GlobalUnlock(GlobalHandle(pDesc));
         GlobalFree(GlobalHandle(pDesc));
@@ -118,7 +118,7 @@ int BrOpt3A00(void)
                 g_brP277B40, pDesc, 0);
         } else {
             strcpy(g_szBrName4DB0, BrStrGet(BR_OPT_STR_NOTREADY));
-            FUN_100368a0(g_brOwner5BC72C, g_brPA9D008, 1);
+            FUN_100368a0(g_brOwner5BC72C, (BrDPlayCtx *)g_brPA9D008, 1);
             strcpy(g_szBrName4DB0, g_aBr39B720);
         }
     } else {

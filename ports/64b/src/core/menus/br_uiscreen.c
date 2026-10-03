@@ -1,3 +1,4 @@
+#include "br_vtables.h"
 /* br_uiscreen.c -- menus: screen and element plumbing -- draw a numbered
  * picture at a position, the slide curve, element placement, the page and
  * screen deleting destructors, a screen's own behaviour slot, and two small
@@ -198,7 +199,7 @@ typedef int (*funcptr)();
 int __fastcall BrVtInit41930(const void **param_1)
 
 {
-  *param_1 = &PTR_FUN_100776c0;
+  *param_1 = g_brVtbl_100776C0;
   return;
 }
 

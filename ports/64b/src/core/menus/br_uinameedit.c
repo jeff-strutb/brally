@@ -31,6 +31,7 @@
 #include <stddef.h>
 
 #include "slice6_73.h"
+#include "br_ui.h"
 
 /* g_br73 is the port's gathering of separate originals.  The matching build
  * names the ones used here as the globals they are (config/globals_glide.csv),
@@ -78,11 +79,10 @@ int32_t BrExt_100424D0(void *pArg)
 {
     /* Orig pushes esi/edi only on the strcpy path (after the two early
      * returns), so do not keep named locals that force a prologue save. */
-    *(int32_t *)(*(char **)((char *)pArg + 0x2ae8) + 0x70) = 0;
+    ((BrUiCtl_ *)pArg)->pOwner->aFlags[1] = 0;
     BR73_NAA28EC = 0;
     if (g_5C30 != 0 && g_aBrA9D078 != 0) {
-        strcpy((char *)g_brPAA29D0 + (*(int32_t *)&g_AB94) * (int32_t)BR61_REC29D0_STRIDE
-               + (int32_t)BR61_REC29D0_OFF_NAME, g_aBrA9D078);
+        strcpy(((BrTextList *)g_brPAA29D0)->aItems[*(int32_t *)&g_AB94].sz, g_aBrA9D078);
         strcpy(g_aBrA9D078, g_aBr39B720);
     }
     return 1;

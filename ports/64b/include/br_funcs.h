@@ -337,7 +337,7 @@ void BrBootColdInitRun(void);
 #pragma pop_macro("BrBootColdInitRun")
 #pragma push_macro("BrBoundsFits_10058CC0")
 #undef BrBoundsFits_10058CC0
-int BrBoundsFits_10058CC0(int, int *);
+int BrBoundsFits_10058CC0(void *, int *);
 #pragma pop_macro("BrBoundsFits_10058CC0")
 #pragma push_macro("BrBoundsInsert_10058D00")
 #undef BrBoundsInsert_10058D00
@@ -665,7 +665,7 @@ int BrCfgFindConflicts(int);
 #pragma pop_macro("BrCfgFindConflicts")
 #pragma push_macro("BrChainFreeRec_10058C90")
 #undef BrChainFreeRec_10058C90
-void BrChainFreeRec_10058C90(int);
+void BrChainFreeRec_10058C90(void *);
 #pragma pop_macro("BrChainFreeRec_10058C90")
 #pragma push_macro("BrCharMapLookup")
 #undef BrCharMapLookup
@@ -805,7 +805,7 @@ double BrCosF(float);
 #pragma pop_macro("BrCosF")
 #pragma push_macro("BrCountedNetSend")
 #undef BrCountedNetSend
-int BrCountedNetSend(int *, void *);
+int BrCountedNetSend(struct BrDPlayCtx *, void *);
 #pragma pop_macro("BrCountedNetSend")
 #pragma push_macro("BrCountedTotal")
 #undef BrCountedTotal
@@ -1295,11 +1295,11 @@ void BrExt_100419D0(const char *);
 #pragma pop_macro("BrExt_100419D0")
 #pragma push_macro("BrExt_10041A00")
 #undef BrExt_10041A00
-int BrExt_10041A00(char *);
+int BrExt_10041A00(struct BrUiCtl_ *);
 #pragma pop_macro("BrExt_10041A00")
 #pragma push_macro("BrExt_10042410")
 #undef BrExt_10042410
-int BrExt_10042410(char *);
+int BrExt_10042410(struct BrUiCtl_ *);
 #pragma pop_macro("BrExt_10042410")
 #pragma push_macro("BrExt_100424D0")
 #undef BrExt_100424D0
@@ -1823,15 +1823,15 @@ int BrGbiTexelsPerWord(int);
 #pragma pop_macro("BrGbiTexelsPerWord")
 #pragma push_macro("BrGetFieldFloat")
 #undef BrGetFieldFloat
-double BrGetFieldFloat(int);
+float BrGetFieldFloat(const struct BrScrPt *);
 #pragma pop_macro("BrGetFieldFloat")
 #pragma push_macro("BrGetFieldFloatSub10")
 #undef BrGetFieldFloatSub10
-double BrGetFieldFloatSub10(int);
+float BrGetFieldFloatSub10(const struct BrScrPt *);
 #pragma pop_macro("BrGetFieldFloatSub10")
 #pragma push_macro("BrGetFieldFloatSubC")
 #undef BrGetFieldFloatSubC
-double BrGetFieldFloatSubC(int);
+float BrGetFieldFloatSubC(const struct BrScrPt *);
 #pragma pop_macro("BrGetFieldFloatSubC")
 #pragma push_macro("BrGetFlag_AB4F0")
 #undef BrGetFlag_AB4F0
@@ -2391,7 +2391,7 @@ int BrMenuClearAA28A8(void);
 #pragma pop_macro("BrMenuClearAA28A8")
 #pragma push_macro("BrMenuCopyTrackName")
 #undef BrMenuCopyTrackName
-int BrMenuCopyTrackName(char *);
+int BrMenuCopyTrackName(struct BrUiCtl_ *);
 #pragma pop_macro("BrMenuCopyTrackName")
 #pragma push_macro("BrMenuEnter")
 #undef BrMenuEnter
@@ -2463,7 +2463,7 @@ int BrMenuSetAA28D0_3(void);
 #pragma pop_macro("BrMenuSetAA28D0_3")
 #pragma push_macro("BrMenuSetTrackLetter")
 #undef BrMenuSetTrackLetter
-int BrMenuSetTrackLetter(int);
+int BrMenuSetTrackLetter(struct BrUiCtl_ *);
 #pragma pop_macro("BrMenuSetTrackLetter")
 #pragma push_macro("BrMenuSub1005FF30")
 #undef BrMenuSub1005FF30
@@ -2731,7 +2731,7 @@ int BrNetStackPop221288(void);
 #pragma pop_macro("BrNetStackPop221288")
 #pragma push_macro("BrNetTrySend")
 #undef BrNetTrySend
-int BrNetTrySend(int *, void *);
+int BrNetTrySend(struct BrDPlayCtx *, void *);
 #pragma pop_macro("BrNetTrySend")
 #pragma push_macro("BrNetWritePlayerRec")
 #undef BrNetWritePlayerRec
@@ -4651,11 +4651,11 @@ int BrTimerStart1003C230(void);
 #pragma pop_macro("BrTimerStart1003C230")
 #pragma push_macro("BrToggleOnce_BFF0")
 #undef BrToggleOnce_BFF0
-int BrToggleOnce_BFF0(int);
+int BrToggleOnce_BFF0(struct BrUiCtl_ *);
 #pragma pop_macro("BrToggleOnce_BFF0")
 #pragma push_macro("BrToggleOnce_C050")
 #undef BrToggleOnce_C050
-int BrToggleOnce_C050(int);
+int BrToggleOnce_C050(struct BrUiCtl_ *);
 #pragma pop_macro("BrToggleOnce_C050")
 #pragma push_macro("BrTrackFixupAllRec54")
 #undef BrTrackFixupAllRec54
@@ -4763,11 +4763,11 @@ int BrUiFn1003EEF0(struct BrCtl85 *);
 #pragma pop_macro("BrUiFn1003EEF0")
 #pragma push_macro("BrUiFn1003EF60")
 #undef BrUiFn1003EF60
-int BrUiFn1003EF60(int);
+int BrUiFn1003EF60(struct BrUiCtl_ *);
 #pragma pop_macro("BrUiFn1003EF60")
 #pragma push_macro("BrUiFn1003F020")
 #undef BrUiFn1003F020
-int BrUiFn1003F020(int);
+int BrUiFn1003F020(struct BrUiCtl_ *);
 #pragma pop_macro("BrUiFn1003F020")
 #pragma push_macro("BrUiFn1003F110")
 #undef BrUiFn1003F110
@@ -4775,7 +4775,7 @@ int BrUiFn1003F110(struct BrCtl85 *);
 #pragma pop_macro("BrUiFn1003F110")
 #pragma push_macro("BrUiFn1003F170")
 #undef BrUiFn1003F170
-int BrUiFn1003F170(int);
+int BrUiFn1003F170(struct BrUiCtl_ *);
 #pragma pop_macro("BrUiFn1003F170")
 #pragma push_macro("BrUiFn1003F210")
 #undef BrUiFn1003F210
@@ -4783,7 +4783,7 @@ int BrUiFn1003F210(struct BrCtl85 *);
 #pragma pop_macro("BrUiFn1003F210")
 #pragma push_macro("BrUiFn1003F280")
 #undef BrUiFn1003F280
-int BrUiFn1003F280(int);
+int BrUiFn1003F280(struct BrUiCtl_ *);
 #pragma pop_macro("BrUiFn1003F280")
 #pragma push_macro("BrUiFrame_10048180")
 #undef BrUiFrame_10048180
@@ -5660,7 +5660,7 @@ void FUN_100367c0(char *);
 #pragma pop_macro("FUN_100367c0")
 #pragma push_macro("FUN_100368a0")
 #undef FUN_100368a0
-int FUN_100368a0(struct HWND__ *, int *, int);
+int FUN_100368a0(struct HWND__ *, struct BrDPlayCtx *, int);
 #pragma pop_macro("FUN_100368a0")
 #pragma push_macro("FUN_10036a30")
 #undef FUN_10036a30
@@ -5672,7 +5672,7 @@ int FUN_10036f40(struct HWND__ *, void *);
 #pragma pop_macro("FUN_10036f40")
 #pragma push_macro("FUN_100371f0")
 #undef FUN_100371f0
-int FUN_100371f0(int *, int, int);
+int FUN_100371f0(struct BrDPlayCtx *, int, int);
 #pragma pop_macro("FUN_100371f0")
 #pragma push_macro("FUN_100372b0")
 #undef FUN_100372b0
@@ -5784,7 +5784,7 @@ int FUN_10053590(struct GameUi *);
 #pragma pop_macro("FUN_10053590")
 #pragma push_macro("FUN_10054390")
 #undef FUN_10054390
-char FUN_10054390(int *);
+char FUN_10054390(struct BrTextBox *);
 #pragma pop_macro("FUN_10054390")
 #pragma push_macro("FUN_10055a40")
 #undef FUN_10055a40

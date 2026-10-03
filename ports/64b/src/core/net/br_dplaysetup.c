@@ -1,3 +1,4 @@
+#include "br_ui.h"
 /* br_dplaysetup.c -- net: the DirectPlay object and session lifecycle.
  *
  * Creating the DirectPlay object at boot, connecting it to the transport the
@@ -168,8 +169,8 @@ void BrExt_1003BF60(void)
   }
   BrDpShutdown();
   if (((DAT_10ac5bd4 != 2) && (DAT_10ac5bd4 != 3)) && (g_brPAA29D8 != 0)) {
-    *(char *)(g_brPAA29D8 + 0x2b64) = 0;
-    *(unsigned int *)(g_brPAA29D8 + 0x1c) = *(unsigned int *)(g_brPAA29D8 + 0x1c) & 0xffffffef;
+    ((BrUiCtl_ *)g_brPAA29D8)->aText[0].f08 = 0;
+    ((BrUiCtl_ *)g_brPAA29D8)->flags1C &= 0xffffffef;
   }
   g_guardA = 0;
   g_host = 0;
@@ -382,7 +383,7 @@ int FUN_10036740(void *param_1, void **param_2)
   unsigned int size;
   
   pMem = 0;
-  fn = *(COM3 *)(*(int *)param_1 + 0x58);
+  fn = (COM3)(*(void ***)param_1)[0x58 / 4];   /* slot 22, GetSessionDesc */
   hr = fn(param_1, 0, &size);
   if (hr == (int)0x8877001e) {
     hMem = GlobalAlloc(0x42, size);

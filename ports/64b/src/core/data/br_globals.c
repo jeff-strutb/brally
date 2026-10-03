@@ -503,7 +503,7 @@ char DAT_100a5db4[236];  /* 0x100A5DB4 */
 char DAT_100a5ea0[8];  /* 0x100A5EA0 */
 int32_t g_brRaceBeginLimitOn;  /* 0x100A5EA8 */
 int DAT_100a5eac;  /* 0x100A5EAC */
-BR_GLOBAL_EXTENT(BrRaceCue, g_aBrRaceCue, [8], 0x140);  /* 0x100A5EB0 */
+BrRaceCue g_aBrRaceCue[96];  /* 0x100A5EB0: 95 lines and the terminator */
 BR_GLOBAL_EXTENT(int32_t, BrTextWidthLarge, [55], 0x4);  /* 0x100A6070 */
 BR_GLOBAL_EXTENT(int32_t, BrTextWidthSmall, [55], 0x284);  /* 0x100A6150 */
 float g_BrFpsValueA;  /* 0x100A64B0 */
@@ -998,8 +998,7 @@ uint32_t g_BrDrawModeBase;  /* 0x10273640 */
 uint32_t g_BrDrawRenderMode;  /* 0x10273644 */
 int32_t g_BrCarVisOpaque[16];  /* 0x10273648 */
 BR_GLOBAL_EXTENT(int32_t, g_BrDrawRefIndex, , 0x4);  /* 0x10273688 */
-BR_GLOBAL_EXTENT(BrTrailSeg, DAT_10273690, [628], 0x4);  /* 0x10273690 */
-BR_GLOBAL_EXTENT(void *, g_br277B44, , 0x69148);  /* 0x10277B44 */
+BrTrailSeg DAT_10273690[8 * 4 * 500];  /* 0x10273690: 500 skid segments per wheel, 4 wheels, 8 cars -- to 0x102E0C90 */
 BrVec3 g_BrVisCarDelta;  /* 0x102E0C90 */
 int DAT_102e0c9c;  /* 0x102E0C9C */
 BR_GLOBAL_EXTENT(int, DAT_102e0ca0, , 0x4);  /* 0x102E0CA0 */

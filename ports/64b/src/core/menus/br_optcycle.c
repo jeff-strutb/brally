@@ -129,7 +129,7 @@ static const char g_szBrGrfExt[]     = ".grf";
  * then an intrinsic strcpy (repne scasb + rep movsd/movsb). */
 static __inline void BrOptFlushMessage(void)
 {
-    FUN_100368a0((*(void * *)&g_brOwner5BC72C), g_brPA9D008, 1);
+    FUN_100368a0((*(void * *)&g_brOwner5BC72C), (BrDPlayCtx *)g_brPA9D008, 1);
     strcpy(g_szBrName4DB0, g_aBr39B720);        /* DEVIATION: rep movsb */
 }
 

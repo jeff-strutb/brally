@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """Find struct-pointer arithmetic with byte-sized literals in the 64-bit core.
 
-    ptrarith.py [TU ...]        (default: every core TU)
+    ptrarith.py [--i2p] [TU ...]        (default: every core TU)
+
+--i2p instead lists every cast of a 32-bit integer to a pointer: on a
+64-bit host that is a truncated pointer whenever the integer was holding
+one (the decompiled bodies keep pointers in `int` locals and fields).
 
 The decompiled bodies often add an original BYTE offset to a pointer that,
 in this tree, is typed as a record (`pCar + 0xE28`). C scales that by the
@@ -30,6 +34,10 @@ OP = re.compile(r"(BinaryOperator|CompoundAssignOperator) 0x[0-9a-f]+ <([^>]*)> 
 LIT = re.compile(r"IntegerLiteral 0x[0-9a-f]+ <[^>]*> '[^']+' (\d+)")
 
 
+I2P = re.compile(r"CStyleCastExpr 0x[0-9a-f]+ <([^>]*)> '([^']+)' <IntegralToPointer>")
+SRC32 = re.compile(r"ImplicitCastExpr 0x[0-9a-f]+ <[^>]*> '(int|unsigned int|int32_t|uint32_t|DWORD|LONG|ULONG|undefined4|uint|long)'|DeclRefExpr 0x[0-9a-f]+ <[^>]*> '(int|unsigned int|int32_t|uint32_t)'|BinaryOperator 0x[0-9a-f]+ <[^>]*> '(int|unsigned int|int32_t|uint32_t)'|ParenExpr 0x[0-9a-f]+ <[^>]*> '(int|unsigned int|int32_t|uint32_t)'")
+
+
 def scan(tu):
     cc = ['clang++', '-std=c++17'] if tu.endswith('.cpp') else ['clang', '-std=gnu11']
     try:
@@ -47,6 +55,12 @@ def scan(tu):
             elif m.group(3):
                 cur_line = int(m.group(3))
         in_main = cur_file is not None and cur_file.endswith(base)
+        if MODE == 'i2p':
+            m = I2P.search(ln)
+            if m and in_main and i + 1 < len(lines) and SRC32.search(lines[i + 1]) \
+                    and 'IntegerLiteral' not in lines[i + 1]:
+                out.append('%s:%d  (%s) of a 32-bit integer' % (tu, cur_line, m.group(2)))
+            continue
         m = OP.search(ln)
         if not m or not in_main or BYTE.search("'" + m.group(3) + "'"):
             continue
@@ -63,8 +77,15 @@ def scan(tu):
     return out
 
 
+MODE = 'arith'
+
+
 def main():
+    global MODE
     os.chdir(ROOT)
+    if sys.argv[1:2] == ['--i2p']:
+        MODE = 'i2p'
+        del sys.argv[1]
     tus = sys.argv[1:] or sorted(
         os.path.join(dp, f) for dp, _, fs in os.walk('ports/64b/src/core') for f in fs if f.endswith(('.c', '.cpp')))
     with ThreadPoolExecutor(max_workers=int(os.environ.get('JOBS', '12'))) as ex:

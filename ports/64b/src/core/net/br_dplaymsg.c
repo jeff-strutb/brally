@@ -33,19 +33,19 @@
 /* @implements 0x100371F0 glide FUN_100371f0 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
-int FUN_100371f0(int *param_1,int param_2,int param_3)
+int FUN_100371f0(BrDPlayCtx *param_1,int param_2,int param_3)
 
 {
   struct { int cmd; int a; int b; } msg;
   
-  if ((param_1 != (int *)0x0) && (*param_1 != 0)) {
+  if ((param_1 != 0) && (param_1->pDP != 0)) {
     msg.a = param_2;
     msg.cmd = 0x60000008;
     msg.b = param_3;
-    if (param_1[3] != 0) {
-      FUN_100038f0(param_1,&msg,0xc,param_1[2]);
+    if (param_1->f0C != 0) {
+      FUN_100038f0(param_1,&msg,0xc,param_1->idPlayer);
     }
-    return BrDPlayRawSend(*param_1,param_1[2],0,1,&msg,0xc);
+    return BrDPlayRawSend((void *)param_1->pDP,param_1->idPlayer,0,1,&msg,0xc);
   }
   return 0;
 }
@@ -65,7 +65,7 @@ int FUN_100371f0(int *param_1,int param_2,int param_3)
 /* @implements 0x100368A0 glide FUN_100368a0 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
-int FUN_100368a0(HWND param_1, int *param_2, int param_3)
+int FUN_100368a0(HWND param_1, BrDPlayCtx *param_2, int param_3)
 {
   HGLOBAL hMem;
   LPCSTR lpString;
@@ -75,7 +75,7 @@ int FUN_100368a0(HWND param_1, int *param_2, int param_3)
 
   pMem = 0;
   local_4 = 0;
-  if (param_2 == 0 || *param_2 == 0 || DAT_10ac5be4 != 0) {
+  if (param_2 == 0 || param_2->pDP == 0 || DAT_10ac5be4 != 0) {
     return 0;
   }
   hMem = GlobalAlloc(0x42, 0xc9);
@@ -85,7 +85,7 @@ int FUN_100368a0(HWND param_1, int *param_2, int param_3)
   }
   else {
     strcpy((char *)lpString, g_szBrName4DB0);
-    result = FUN_10036a30(*param_2, param_2[2], lpString, &local_4, param_3);
+    result = FUN_10036a30((struct BrDPlayObj *)param_2->pDP, (int)param_2->idPlayer, lpString, &local_4, param_3);
     if (result >= 0) {
       PostMessageA(param_1, 0x501, 0, (LPARAM)local_4);
       local_4 = 0;
@@ -100,7 +100,7 @@ int FUN_100368a0(HWND param_1, int *param_2, int param_3)
         else {
           *pMem = (param_3 != 0) + 0x60000000;
           lstrcpyA((LPSTR)(pMem + 1), lpString);
-          result = BrDPlayRawSend(*param_2, param_2[2], 0, 1, pMem, n);
+          result = BrDPlayRawSend((void *)param_2->pDP, (int)param_2->idPlayer, 0, 1, pMem, n);
         }
       }
     }

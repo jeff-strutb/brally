@@ -178,17 +178,17 @@ void BrExt_100419D0(const char *pszText)
  * blanks the field, so the player can type a replacement. The undo half of
  * an in-place rename. */
 /* @implements 0x1003AF60 glide BrExt_10041A00 */
-int BrExt_10041A00(char * param_1)
+int BrExt_10041A00(BrUiCtl_ *param_1)
 
 {
   char *pcVar6;
 
-  *(int *)(*(int *)(param_1 + 0x2ae8) + 0x70) = 0;
-  *(unsigned int *)(g_5D24 + 0x44c + g_AB94 * 0x438) =
-       (unsigned int)(*(int *)(g_5D24 + 0x44c + g_AB94 * 0x438) == 0);
-  g_5C30 = *(int *)(g_5D24 + 0x44c + g_AB94 * 0x438);
+  (*(int *)&param_1->pOwner->aFlags[1]) = 0;
+  *(unsigned int *)&((BrTextList *)g_5D24)->aItems[g_AB94].f420 =
+       (unsigned int)((int)((BrTextList *)g_5D24)->aItems[g_AB94].f420 == 0);
+  g_5C30 = (int)((BrTextList *)g_5D24)->aItems[g_AB94].f420;
   if (g_5C30 != 0) {
-    pcVar6 = (char *)(g_5D24 + g_AB94 * 0x438 + 0x35);
+    pcVar6 = ((BrTextList *)g_5D24)->aItems[g_AB94].sz;
     strcpy(&(g_aBrA9D078[0]), pcVar6);
     strcpy(pcVar6, &(g_aBr39B720[0]));
   }
@@ -209,12 +209,12 @@ int BrExt_10041A00(char * param_1)
 /* WHAT IT DOES: copies the current track name into the selected driver's
  * slot, then copies the default name back over the working buffer. */
 /* @implements 0x1003B020 glide BrMenuCopyTrackName */
-int BrMenuCopyTrackName(char * param_1)
+int BrMenuCopyTrackName(BrUiCtl_ *param_1)
 {
-    *(int *)(*(int *)(param_1 + 0x2ae8) + 0x70) = 0;
+    (*(int *)&param_1->pOwner->aFlags[1]) = 0;
     g_5C3C = 0;
     if (g_5C30 != 0 && &(g_aBrA9D078[0]) != 0) {
-        strcpy((char *)(g_5D24 + 0x35 + g_AB94 * 0x438),
+        strcpy(((BrTextList *)g_5D24)->aItems[g_AB94].sz,
                &(g_aBrA9D078[0]));
         strcpy(&(g_aBrA9D078[0]), &(g_aBr39B720[0]));
     }
@@ -311,17 +311,17 @@ int BrMenuOpt409F0(void)
 /* WHAT IT DOES: the same in-place rename toggle as BrExt_10041A00, acting on
  * the list at 0x10AC5D28 instead. */
 /* @implements 0x1003B970 glide BrExt_10042410 */
-int BrExt_10042410(char * param_1)
+int BrExt_10042410(BrUiCtl_ *param_1)
 
 {
   char *pcVar6;
   
-  *(int *)(*(int *)(param_1 + 0x2ae8) + 0x70) = 0;
-  *(unsigned int *)(g_brPAA29D0 + 0x44c + g_AB94 * 0x438) =
-       (unsigned int)(*(int *)(g_brPAA29D0 + 0x44c + g_AB94 * 0x438) == 0);
-  g_5C30 = *(int *)(g_brPAA29D0 + 0x44c + g_AB94 * 0x438);
+  (*(int *)&param_1->pOwner->aFlags[1]) = 0;
+  *(unsigned int *)&((BrTextList *)g_brPAA29D0)->aItems[g_AB94].f420 =
+       (unsigned int)((int)((BrTextList *)g_brPAA29D0)->aItems[g_AB94].f420 == 0);
+  g_5C30 = (int)((BrTextList *)g_brPAA29D0)->aItems[g_AB94].f420;
   if (g_5C30 != 0) {
-    pcVar6 = (char *)(g_brPAA29D0 + g_AB94 * 0x438 + 0x35);
+    pcVar6 = ((BrTextList *)g_brPAA29D0)->aItems[g_AB94].sz;
     strcpy(&(g_aBrA9D078[0]), pcVar6);
     strcpy(pcVar6, &(g_aBr39B720[0]));
   }

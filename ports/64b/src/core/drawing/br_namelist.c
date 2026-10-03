@@ -1,3 +1,4 @@
+#include "br_vtables.h"
 /* br_namelist.c -- drawing: the hundred-slot name list and its vtable.
  *
  * RESPONSIBILITY: drawing/ -- turn geometry and images into pixels.
@@ -61,7 +62,7 @@ BrNameList *__fastcall BrNameListInit(BrNameList *pThis)
 {
     char *d = (char *)pThis->asz;
     int   n;
-    pThis->pVtbl = (const void *)&PTR_FUN_10077750;
+    pThis->pVtbl = (const void *)g_brVtbl_10077750;
     memset(d, 0, sizeof(pThis->asz));
 
     n = BR_NAMELIST_COUNT;
@@ -150,7 +151,7 @@ typedef int (*funcptr)();
 int __fastcall BrVtInit55A30(const void **param_1)
 
 {
-  *param_1 = &PTR_FUN_10077750;
+  *param_1 = g_brVtbl_10077750;
   return;
 }
 

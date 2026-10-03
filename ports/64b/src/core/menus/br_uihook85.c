@@ -66,7 +66,7 @@ int BrUiFn1003EEF0(struct BrCtl85 *param_1)
  * the enable bit on its page when the field is non-empty and copies nothing.
  * Always reports success. */
 /* @implements 0x10038490 glide BrUiFn1003EF60 */
-int BrUiFn1003EF60(int param_1)
+int BrUiFn1003EF60(BrUiCtl_ *param_1)
 
 {
   
@@ -85,7 +85,7 @@ int BrUiFn1003EF60(int param_1)
 /* WHAT IT DOES: same flag-only text-field callback as BrUiFn1003EF60, acting
  * on a different page's enable bit (0x10AC5D40). */
 /* @implements 0x10038550 glide BrUiFn1003F020 */
-int BrUiFn1003F020(int param_1)
+int BrUiFn1003F020(BrUiCtl_ *param_1)
 
 {
   
@@ -193,13 +193,13 @@ int BrUiFn1003F110(struct BrCtl85 *param_1)
 /* BrFn1003D210_glide: prototype in br_funcs.h */
 
 /* @implements 0x100386B0 glide BrUiFn1003F170 */
-int BrUiFn1003F170(int param_1)
+int BrUiFn1003F170(BrUiCtl_ *param_1)
 {
     char *pText = ((BrUiCtl_ *)param_1)->aText[0].sz;
 
     strcpy(g_szBrName4DB0, pText);
 
-    FUN_100368a0(g_brOwner5BC72C, g_brPA9D008, 0);
+    FUN_100368a0(g_brOwner5BC72C, (BrDPlayCtx *)g_brPA9D008, 0);
 
     strcpy(g_szBrName4DB0, g_aBr39B720);
     strcpy(pText, g_aBr39B720);
@@ -242,7 +242,7 @@ int BrUiFn1003F210(struct BrCtl85 *param_1)
 /* WHAT IT DOES: the flag-only partner of BrUiFn1003F210 -- clears the same
  * 0x10AC5D14 page bit when the field is non-empty, and copies nothing. */
 /* @implements 0x100387C0 glide BrUiFn1003F280 */
-int BrUiFn1003F280(int param_1)
+int BrUiFn1003F280(BrUiCtl_ *param_1)
 
 {
   

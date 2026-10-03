@@ -873,7 +873,7 @@ int FUN_1003c430(void)
     if ((g_apBrRaceDiff[(*(int *)&g_Br0B380C)]->f04 & 0x10) != 0) {
       strcat(g_szBrName4DB0, (char *)BrStrGet(0xb0));
     }
-    FUN_100368a0(g_brOwner5BC72C, g_brPA9D008, 1);
+    FUN_100368a0(g_brOwner5BC72C, (BrDPlayCtx *)g_brPA9D008, 1);
     strcpy(g_szBrName4DB0, g_aBr39B720);
   }
   return 1;

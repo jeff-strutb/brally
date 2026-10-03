@@ -15,12 +15,14 @@
 
 class DiDev {
 public:
-    char _[0x54];
+    char  _[0x50];
+    void *pDev;          /* +0x50  the DirectInput device (Input59350, BrInDiRoot) */
     DiDev();
     void Init(void *);
 };
 
-typedef char chk_sz[sizeof(DiDev) == 0x54 ? 1 : -1];
+/* 0x54 bytes in the original: 0x50 of state and the device pointer */
+typedef char chk_sz[sizeof(DiDev) == 0x50 + sizeof(void *) ? 1 : -1];
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */

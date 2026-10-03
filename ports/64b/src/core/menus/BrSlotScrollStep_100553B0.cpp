@@ -164,8 +164,6 @@ extern "C" {
 /* BrFn1006BA60: prototype in br_funcs.h */
 }
 
-#define BR_SLOT 0x438
-
 /* 2026-09-21: insn gap 0, rows 4+4, oracle EQUIVALENT. The 2026-09-13
  * "cross-jumping wall" was a layout artefact of writing `return 0` last:
  * the final `if (bAny == 0) { ...; return 0; } return 1;` below puts the
@@ -181,7 +179,7 @@ int Ctl553B0::Step(int *pArg)
     unsigned short d;
     int            i;
     int            iEnd;
-    char          *p;
+    BrTextBox     *p;
 
     bWrapped = 0;
 
@@ -309,14 +307,17 @@ int Ctl553B0::Step(int *pArg)
         iEnd = 100;
 
     for (i = (*(short *)&((BrTextList *)(this))->f1A92E); i < iEnd; i++) {
-        p = (((char *)this + ((i)) * BR_SLOT)) + 0x34;
+        /* row i: the list's aItems[i]; the original's `this + i*0x438 + 0x34`
+         * is its +0x08 state byte, -4 its flags, +1 its text, +0x41C its
+         * hit rectangle */
+        p = &((BrTextList *)this)->aItems[i];
 
-        if ((p[-4] & 0x10) != 0) {
-            p[0] = 0;
+        if ((p->f04 & 0x10) != 0) {
+            p->f08 = 0;
             continue;
         }
-        if (s6((int *)(p + 1 + 0x41B)) == 0 || strlen(p + 1) == 0) {
-            p[0] = 1;
+        if (s6((int *)&p->left) == 0 || strlen(p->sz) == 0) {
+            p->f08 = 1;
             continue;
         }
 
@@ -325,18 +326,18 @@ int Ctl553B0::Step(int *pArg)
             continue;
 
         if (((*(int *)&((BrTextList *)(this))->f18) & 0x100) != 0) {
-            switch (p[0]) {
+            switch (p->f08) {
             case 0:
-                p[0] = 1;
+                p->f08 = 1;
                 break;
             case 1:
-                p[0] = 2;
+                p->f08 = 2;
                 break;
             case 2:
-                p[0] = 1;
+                p->f08 = 1;
                 break;
             default:
-                p[0] = 0;
+                p->f08 = 0;
                 break;
             }
             (*(int *)&((BrTextList *)(this))->f18) = (*(int *)&((BrTextList *)(this))->f18) & 0xFFFFFEFF;
@@ -345,7 +346,7 @@ int Ctl553B0::Step(int *pArg)
         if (BrInputAnyActive() == 0)
             continue;
         BrFn1003E070();
-        if ((p[-4] & 0x10) != 0)
+        if ((p->f04 & 0x10) != 0)
             continue;
 
         *pArg = i;

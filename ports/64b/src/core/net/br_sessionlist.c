@@ -1,3 +1,4 @@
+#include "br_ui.h"
 /* br_sessionlist.c -- net.
  *
  * The lobby's session list: walk every row of the widget at 0x10AA29D4 and
@@ -36,13 +37,13 @@ void BrSub1003D070(void)
     if (p != NULL) {
         n = 0;
         i = 0;
-        n = *(unsigned short *)(p + 0x1E164);
+        n = (uint16_t)((BrUiCtl_ *)p)->list.count;
         if (n > 0) {
             do {
                 BrC9B0Arg a;
                 unsigned char *pSub;
 
-                pSub = (unsigned char *)g_brPAA29D4 + 0x3838;
+                pSub = (unsigned char *)&((BrUiCtl_ *)g_brPAA29D4)->list;
                 a.i = (int)i;
                 (*(BrC9B0Vtbl **)pSub)->f2C(pSub, a);
                 i++;

@@ -63,28 +63,34 @@ int FUN_10069A80();
 /* WHAT IT DOES: return the float at offset +0x10 in a struct, cast to double. */
 /* @implements 0x1000DEE0 glide BrGetFieldFloat */
 
-double BrGetFieldFloat(int param_1)
+float BrGetFieldFloat(const BrScrPt *param_1)
 
 {
-  return (double)*(float *)(param_1 + 0x10);
+  /* called through BrPolyDistFn (float): on x87 the double in st(0)
+   * served either way, on a 64-bit ABI the return type must match */
+  return ((const float *)param_1)[4];
 }
 
 /* WHAT IT DOES: return (constant at 0x1007720C) minus the float at +0xC, as double. */
 /* @implements 0x1000DED0 glide BrGetFieldFloatSubC */
 
-double BrGetFieldFloatSubC(int param_1)
+float BrGetFieldFloatSubC(const BrScrPt *param_1)
 
 {
-  return (double)DAT_1007720c - (double)*(float *)(param_1 + 0xc);
+  /* called through BrPolyDistFn (float): on x87 the double in st(0)
+   * served either way, on a 64-bit ABI the return type must match */
+  return (float)((double)DAT_1007720c - (double)((const float *)param_1)[3]);
 }
 
 /* WHAT IT DOES: return (constant at 0x1007720C) minus the float at +0x10, as double. */
 /* @implements 0x1000DEF0 glide BrGetFieldFloatSub10 */
 
-double BrGetFieldFloatSub10(int param_1)
+float BrGetFieldFloatSub10(const BrScrPt *param_1)
 
 {
-  return (double)DAT_1007720c - (double)*(float *)(param_1 + 0x10);
+  /* called through BrPolyDistFn (float): on x87 the double in st(0)
+   * served either way, on a 64-bit ABI the return type must match */
+  return (float)((double)DAT_1007720c - (double)((const float *)param_1)[4]);
 }
 
 /* ==========================================================================

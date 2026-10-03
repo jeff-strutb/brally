@@ -90,7 +90,7 @@ void BrNetPeerRank(void)
                 if (WaitForMultipleObjects(2, ah, 0, INFINITE) == 0)
                     ExitThread(0);
                 if ((p->f02C & 0x3f) >= 2 && (p->f02C & 0x3f) < 5 && p->f968 != 0) {
-                    FUN_100371f0((*(int * *)&g_brPA9D008), p->f004, DAT_11849e58);
+                    FUN_100371f0((BrDPlayCtx *)g_brPA9D008, p->f004, DAT_11849e58);
                     p->f02C = DAT_11849e58 + 5;
                     DAT_11849e58 = DAT_11849e58 + 1;
                 }
@@ -113,7 +113,7 @@ void BrNetPeerRank(void)
                 ExitThread(0);
             if ((p->f02C & 0x3f) >= 2 && (p->f02C & 0x3f) < 5 &&
                 p->aSub[p->f558].time >= BR_K_00077BF0) {
-                FUN_100371f0((*(int * *)&g_brPA9D008), p->f004, DAT_11849e58);
+                FUN_100371f0((BrDPlayCtx *)g_brPA9D008, p->f004, DAT_11849e58);
                 p->f02C = DAT_11849e58 + 5;
                 DAT_11849e58 = DAT_11849e58 + 1;
             }

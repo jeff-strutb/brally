@@ -287,30 +287,24 @@ void BrRaceEnterOutro(void)
 /* @n64 0x802006C8 located */
 void BrRaceCueLayout(void)
 {
-    int32_t *p;
+    BrRaceCue *p;
     int32_t  t, len, three;
 
+    /* The original walks the records with an int cursor at record.len
+     * (start [esi-4], gap [esi+4], next record's text [esi+0x18]); the
+     * text is a pointer here, so the walk is by record. */
     t = g_brRaceCueBase;
-    if ((*(int32_t *)((char *)&g_aBrRaceCue + 0xC)) == 0)
+    if (g_aBrRaceCue[0].text == 0)
         return;
-    /* esi walks from record[0].len, not the record base: start is [esi-4],
-     * gap [esi+4], and after +0x10 the terminator is [esi+8] = next.next. */
-    p = &g_aBrRaceCue[0].len;
+    p = g_aBrRaceCue;
     do {
-        len   = p[0];
+        len   = p->len;
         three = (len * 3) / 4;
         t += three;
-        p[-1] = t;
-        /* The cursor bump sits BETWEEN the start store and the reload:
-         * that is what keeps the original's second `mov ecx,[esi-0x10]`
-         * (a bump-at-the-end spelling lets VC5 CSE the two p[0] reads
-         * and drop it; bump-first moves the reload to [esi]).  Found
-         * 2026-09-09; size- and insn-exact after it. */
-        p += 4;
-        len   = p[-4];
-        three = (len * 3) / 4;
-        t += (len - three) + p[-3];
-    } while (p[2] != 0);
+        p->start = t;
+        t += (len - three) + p->gap;
+        p++;
+    } while (p->text != 0);
 }
 
 /* WHAT IT DOES: moves every cue in the list one step earlier. */
@@ -320,13 +314,13 @@ void BrRaceCueRewind(void)
 {
     BrRaceCue *p;
 
-    if ((*(int32_t *)((char *)&g_aBrRaceCue + 0xC)) == 0)
+    if (g_aBrRaceCue[0].text == 0)
         return;
     p = g_aBrRaceCue;
     do {
         p->start--;
         p++;
-    } while (p->next != 0);
+    } while (p->text != 0);
 }
 
 /* ==========================================================================

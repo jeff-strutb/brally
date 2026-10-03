@@ -162,6 +162,7 @@ void BR_THISCALL1 BrCarPathEval(BrDriverCar *pCar)
     bits = *(int *)&fVar8;
     fVar8 = *(float *)&bits;                         /* 2t^3 term as stored */
   }
+  pPos = &param_1->pathPos;                        /* lea edi,[esi+0xF18] */
   BrVec3Scale(&pPos->x, l30, DAT_100778f8 - (fVar8 - fVar3 * DAT_100778f4));
   BrVec3MulAddTo(&pPos->x, l24, fVar8 - fVar3 * DAT_100778f4);
   BrVec3MulAddTo(&pPos->x, a48, (fVar7 - (fVar3 + fVar3)) + fVar2);

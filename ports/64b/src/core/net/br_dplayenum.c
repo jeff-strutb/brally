@@ -1,3 +1,4 @@
+#include "br_ui.h"
 /* br_dplayenum.c -- net.
  *
  * DirectPlay EnumSessions callback: the lobby hears about one advertised
@@ -115,14 +116,13 @@ int BrNetEnumSessionsStart(void *pIface)
     DAT_10ac5bcc = 0;
 
     if (g_brPAA29D8 != 0
-        && *(unsigned short *)(g_brPAA29D4 + 0x1e164) > 0u
-        && (*(unsigned char *)(g_brPAA29D4 + g_5BD8 * 0x438
-                               + 0x3868) & 0x10) == 0) {
-        *(unsigned int *)(g_brPAA29D8 + 0x1c) &= 0xffffffef;
-        *(unsigned char *)(g_brPAA29D8 + 0x2b64) = 1;
+        && (uint16_t)((BrUiCtl_ *)g_brPAA29D4)->list.count > 0u
+        && (((BrUiCtl_ *)g_brPAA29D4)->list.aItems[g_5BD8].f04 & 0x10) == 0) {
+        ((BrUiCtl_ *)g_brPAA29D8)->flags1C &= 0xffffffef;
+        ((BrUiCtl_ *)g_brPAA29D8)->aText[0].f08 = 1;
         return r;
     }
-    *(unsigned int *)(g_brPAA29D8 + 0x1c) |= 0x10;
-    *(unsigned char *)(g_brPAA29D8 + 0x2b64) = 0;
+    ((BrUiCtl_ *)g_brPAA29D8)->flags1C |= 0x10;
+    ((BrUiCtl_ *)g_brPAA29D8)->aText[0].f08 = 0;
     return r;
 }

@@ -103,21 +103,21 @@ int BrDPlayRawSend(void *pIface, uint32_t idFrom, uint32_t idTo,
  * or send it with DirectPlay (flags 1, guaranteed) and return the total on
  * success, -1 on failure. */
 /* @implements 0x10004A40 glide BrCountedNetSend */
-int BrCountedNetSend(int *param_1, void *param_2)
+int BrCountedNetSend(BrDPlayCtx *param_1, void *param_2)
 {
     int iVar2;
 
     if (DAT_10ac5bec != 0) {
         return BrCountedTotal(param_2);
     }
-    if (param_1[3] != 0) {
-        FUN_1002f790(param_1,
+    if (param_1->f0C != 0) {
+        FUN_1002f790((int *)param_1,
                      BrStateGetField10(param_2),
                      BrCountedTotal(param_2),
                      1, 1);
         return BrCountedTotal(param_2);
     }
-    iVar2 = BrDPlayRawSend((void *)param_1[0], param_1[2], 1, 0,
+    iVar2 = BrDPlayRawSend((void *)param_1->pDP, param_1->idPlayer, 1, 0,
                            (void *)BrStateGetField10(param_2),
                            BrCountedTotal(param_2));
     if (iVar2 == 0) {
@@ -130,18 +130,18 @@ int BrCountedNetSend(int *param_1, void *param_2)
  * counted total when the net lock is set or the send succeeds, -1 when it
  * fails; the local echo does not short-circuit here. */
 /* @implements 0x10005140 glide BrNetTrySend */
-int BrNetTrySend(int *param_1, void *param_2)
+int BrNetTrySend(BrDPlayCtx *param_1, void *param_2)
 {
     int n;
 
     if (DAT_10ac5bec != 0)
         return BrCountedTotal(param_2);
-    if (param_1[3] != 0)
-        FUN_1002f790(param_1,
+    if (param_1->f0C != 0)
+        FUN_1002f790((int *)param_1,
                      BrStateGetField10(param_2),
                      BrCountedTotal(param_2),
                      1, 1);
-    n = BrDPlayRawSend((void *)param_1[0], param_1[2], 0, 0,
+    n = BrDPlayRawSend((void *)param_1->pDP, param_1->idPlayer, 0, 0,
                        (void *)BrStateGetField10(param_2),
                        BrCountedTotal(param_2));
     if (n == 0)

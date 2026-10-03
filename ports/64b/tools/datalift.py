@@ -43,7 +43,7 @@ import globext  # noqa: E402
 ROOT = vm.ROOT
 LO, HI = 0x10077000, 0x100BCE00
 GLOBALS_C = 'ports/64b/src/core/data/br_globals.c'
-OUT = 'build/portable/gen'
+OUT = os.environ.get('OUT', 'build/portable') + '/gen'
 
 SCALAR = {'char': 1, 'signed char': 1, 'unsigned char': 1, '_Bool': 1, 'bool': 1,
           'short': 2, 'unsigned short': 2, 'int': 4, 'unsigned int': 4,
@@ -258,9 +258,9 @@ class Syms:
         self.g = []          # (va, size32, name, type)
         self.fn = {}
         defined = set()
-        for o in os.listdir('build/portable/obj'):
+        for o in os.listdir(os.path.dirname(OUT) + '/obj'):
             if o.endswith('.o'):
-                out = subprocess.run(['nm', '-g', '-U', 'build/portable/obj/' + o], capture_output=True, text=True).stdout
+                out = subprocess.run(['nm', '-g', '-U', os.path.dirname(OUT) + '/obj/' + o], capture_output=True, text=True).stdout
                 for line in out.splitlines():
                     p = line.split()
                     if len(p) == 3:
@@ -415,6 +415,12 @@ class Lift:
         blob = self.read(va, n)
         if blob.count(0) == n:
             return
+        # an address the loader relocates, copied as four raw bytes: the
+        # declaration does not hold a pointer where the original does
+        rel = [a for a in range(va & ~3, va + n, 4) if a in self.relocs and va <= a and a + 4 <= va + n]
+        if rel:
+            self.notes.append('RAWPTR %s: %d relocated dword(s) copied raw, first at 0x%08X -> 0x%08X'
+                              % (lhs_addr, len(rel), rel[0], self.dword(rel[0])))
         self.out.append('    memcpy(%s, k_img + 0x%X, %d);' % (lhs_addr, va - LO, n))
 
     def walk(self, lhs, ty, va):
@@ -645,18 +651,27 @@ class Lift:
         the object first. The original's thiscall targets that never use
         `this` are transcribed without it (stdcall, arguments only); on a
         64-bit ABI `this` would land in their first argument, so those slots
-        get a thunk that drops it."""
+        get a thunk that drops it. Such a target is spelled `__stdcall` at its
+        definition (br_funcs.h drops the convention), whatever its first
+        argument; failing that, a first argument that is not a pointer
+        cannot be the object either."""
         if not hasattr(self, 'protos'):
-            self.protos, self.thunks = {}, {}
+            self.protos, self.thunks, self.stdcall = {}, {}, set()
             txt = open('ports/64b/include/br_funcs.h').read()
             for m in re.finditer(r'^(?!#)([^;\n()]*?)\b(\w+)\s*\(([^;()]*)\);', txt, re.M):
                 self.protos[m.group(2)] = (m.group(1).strip(), m.group(3).strip())
+            for dp, _, fs in os.walk('ports/64b/src/core'):
+                for f in fs:
+                    if f.endswith(('.c', '.cpp')):
+                        src = open(os.path.join(dp, f), errors='replace').read()
+                        self.stdcall |= set(re.findall(
+                            r'^[\w *]*\b(?:__stdcall|WINAPI|CALLBACK)\s+\**\s*(\w+)\s*\([^;{]*\)\s*\{?\s*$', src, re.M))
         p = self.protos.get(fn)
         if p is None:
             return self.syms.sym(fn)
         ret, args = p
         args = [a.strip() for a in args.split(',')] if args and args != 'void' else []
-        if not args or '*' in args[0] or '(' in args[0]:
+        if not args or (fn not in self.stdcall and ('*' in args[0] or '(' in args[0])):
             return self.syms.sym(fn)
         if fn not in self.thunks:
             params = ', '.join('%s a%d' % (a, i) for i, a in enumerate(args))
@@ -721,6 +736,28 @@ class Lift:
             for gva, name, o32, o64, n in dump:
                 f.write('    { 0x%08Xu, br_sym_%s + %d, %du },   /* %s+0x%X */\n' % (gva + o32, name, o64, n, name, o32))
             f.write('    { 0, 0, 0 }\n};\n\n')
+            # BR_SCRIPT's `wait` on a pointer global: where each pointer-typed
+            # global lives, and the original address of every core function
+            ptrs = [(gva, name) for gva, size, name, ty in self.syms.g
+                    if ty is not None and name is not None and self.types.is_ptr(ty)
+                    and not self.types.split_array(ty)[1]]
+            for gva, name in ptrs:
+                if name not in self.syms.used:
+                    f.write('extern char br_sym_%s[] BR_SYM("%s");\n' % (name, name))
+                    self.syms.used.add(name)
+            f.write('const struct { unsigned va; const void *p; } g_brPtrMap[] = {\n')
+            for gva, name in ptrs:
+                f.write('    { 0x%08Xu, br_sym_%s },\n' % (gva, name))
+            f.write('    { 0, 0 }\n};\n')
+            fns = sorted(self.syms.fn.items())
+            for va, name in fns:
+                if name not in self.syms.used:
+                    f.write('extern char br_sym_%s[] BR_SYM("%s");\n' % (name, name))
+                    self.syms.used.add(name)
+            f.write('const struct { unsigned va; const void *p; } g_brFnMap[] = {\n')
+            for va, name in fns:
+                f.write('    { 0x%08Xu, br_sym_%s },\n' % (va, name))
+            f.write('    { 0, 0 }\n};\n\n')
             f.write('void br_data_initterm(void)\n{\n')
             for fn in self.init:
                 f.write('    ((void (*)(void))%s)();\n' % fn)

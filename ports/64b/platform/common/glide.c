@@ -106,9 +106,12 @@ void grBufferClear(GrColor_t color, GrAlpha_t alpha, FxU16 depth)
     brr_clear(c, depth / 65535.0f, 1, s_st.depth_mode != 0, &s_st);
 }
 
+void plat_text_swap(void);         /* script_game.c */
+
 void grBufferSwap(int interval)
 {
     (void)interval;
+    plat_text_swap();
     brr_present();
     plat_pump(0);
 }

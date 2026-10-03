@@ -16,15 +16,17 @@
  * child's own chain first, delete the child, clear the link. */
 /* @implements 0x10058C90 glide BrChainFreeRec_10058C90 */
 
-void __fastcall BrChainFreeRec_10058C90(int param_1)
+void __fastcall BrChainFreeRec_10058C90(void *param_1)
 {
-  int pvVar1;
+  /* the bounds-tree node: 0x10 bytes of extent, then the chain link (a
+   * pointer at any width -- BoundsNode, BrBoundsInsert_10058D00.cpp) */
+  void *pvVar1;
 
-  pvVar1 = *(int *)(param_1 + 0x10);
+  pvVar1 = *(void **)((char *)param_1 + 0x10);
   if (pvVar1 != 0) {
     BrChainFreeRec_10058C90(pvVar1);
-    BrOperatorDelete((void *)pvVar1);
-    *(int *)(param_1 + 0x10) = 0;
+    BrOperatorDelete(pvVar1);
+    *(void **)((char *)param_1 + 0x10) = 0;
   }
   return;
 }

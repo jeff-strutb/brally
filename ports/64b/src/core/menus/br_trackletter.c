@@ -1,3 +1,4 @@
+#include "br_ui.h"
 /* br_trackletter.c -- the track/car-class letter id on the player record
  * (0x10038A80).  Refiled from ghidra_batch.c 2026-09-13; matching arm only.
  */
@@ -17,14 +18,14 @@
  * destination's signedness decides the constant's representation.
  * Byte-exact 2026-09-13. */
 /* @implements 0x10038A80 glide BrMenuSetTrackLetter */
-int BrMenuSetTrackLetter(int param_1)
+int BrMenuSetTrackLetter(BrUiCtl_ *param_1)
 {
     int sel;
     int none;
     short *slot;
 
     sel = (DAT_10ac5a48[0]);
-    slot = (short *)(param_1 + 0x1e20c);
+    slot = (short *)(((void *)&param_1->w1E20C));
     none = -1;
     if (sel > 0) {
         switch (sel) {

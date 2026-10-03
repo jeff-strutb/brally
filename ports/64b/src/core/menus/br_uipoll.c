@@ -1,3 +1,4 @@
+#include "br_ui.h"
 /* br_uipoll.c -- menus: the per-row menu hooks the front end installs -- the
  * slide-to-setting hook at 0x1003E920 and the "ask the row's list where the
  * player moved to" poll family.
@@ -301,7 +302,7 @@ int FUN_100382d0(struct GameObj *param_1)
   int idx;
 
   idx = (*(int *)&g_iAA2A30);
-  puVar1 = *(int **)(DAT_10ac5d44 + 0x1de48 + idx * 8);
+  puVar1 = (int *)((BrUiCtl_ *)DAT_10ac5d44)->list.aBlobs[idx].p;   /* ctl +0x1DE48 + 8*i */
   b = puVar1[1];
   c = puVar1[2];
   d = puVar1[3];

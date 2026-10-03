@@ -1,4 +1,4 @@
-/* script.c: replay a brbox scenario script (tools/brbox_scripts/*.txt), for
+/* script.c: replay a brbox scenario script (a .txt in tools/brbox_scripts), for
  * any host.
  *
  *   BR_SCRIPT=<file>   the script
@@ -11,8 +11,11 @@
  *
  * Supported: sleep N, press KEY [N], hold KEY, release KEY, mouse X Y (slam
  * to the top-left, then move by X,Y), point X Y (the same, as a position),
- * click [N], mark NAME, shot NAME, end, quit. Anything else stops the run
- * (exit 2) rather than silently diverging from the other lane. */
+ * click [N], mark NAME, shot NAME, end, quit; and, from script_game.c,
+ * wait/waitb, autopilot, waittext, text and files. savefiles, joystick and
+ * tmu are accepted and do nothing here. Anything else (peer: a second
+ * machine) stops the run (exit 2) rather than silently diverging from the
+ * other lane. */
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -118,6 +121,38 @@ static void load(void)
     host_mkdir(s_shots);
 }
 
+void plat_script_key(int vk, int dik, int down);
+const void *plat_script_orig(unsigned va, unsigned n);
+int  plat_script_orig_ptr(unsigned va, unsigned *out);
+int  plat_script_text_seen(const char *want);
+void plat_script_text_log(unsigned long frame);
+void plat_script_autopilot(void);
+void plat_script_autopilot_off(void);
+
+static int s_ap, s_waiting;
+static unsigned long s_wait_since;
+
+static int wait_test(const char *op, char a[][64])
+{
+    unsigned va = (unsigned)strtoul(a[0], 0, 0), v = (unsigned)strtoul(a[2], 0, 0), x;
+    const void *p = plat_script_orig(va, !strcmp(op, "waitb") ? 1 : 4);
+    const char *o = a[1];
+    if (!p && strcmp(op, "waitb") && plat_script_orig_ptr(va, &x))
+        goto have;
+    if (!p) {
+        fprintf(stderr, "script: 0x%08X is not an address this build can read\n", va);
+        exit(2);
+    }
+    x = !strcmp(op, "waitb") ? *(const unsigned char *)p : *(const unsigned *)p;
+have:
+    return !strcmp(o, "==") ? x == v : !strcmp(o, "!=") ? x != v :
+           !strcmp(o, ">") ? x > v : !strcmp(o, ">=") ? x >= v :
+           !strcmp(o, "<") ? x < v : !strcmp(o, "<=") ? x <= v : 0;
+}
+
+static void key(int vk, int dik, int down);
+void plat_script_key(int vk, int dik, int down) { key(vk, dik, down); }
+
 static void key(int vk, int dik, int down)
 {
     host_event ev;
@@ -170,6 +205,43 @@ static void step(void)
                 s_nrel++;
             }
             s_sleep_until = s_frame + n + 1;
+        } else if (!strcmp(s->op, "wait") || !strcmp(s->op, "waitb")) {
+            if (!wait_test(s->op, s->a)) {
+                unsigned long lim = s->na > 3 ? (unsigned long)atoi(s->a[3]) : 1800;
+                if (!s_waiting) {
+                    s_waiting = 1;
+                    s_wait_since = s_frame;
+                }
+                if (s_frame - s_wait_since > lim) {
+                    fprintf(stderr, "script line %d timed out\n", s->line);
+                    exit(3);
+                }
+                return;
+            }
+            s_waiting = 0;
+        } else if (!strcmp(s->op, "waittext")) {
+            if (!plat_script_text_seen(s->a[0])) {
+                unsigned long lim = s->na > 1 ? (unsigned long)atoi(s->a[1]) : 1800;
+                if (!s_waiting) {
+                    s_waiting = 1;
+                    s_wait_since = s_frame;
+                }
+                if (s_frame - s_wait_since > lim) {
+                    fprintf(stderr, "script line %d: text '%s' never drawn\n", s->line, s->a[0]);
+                    exit(3);
+                }
+                return;
+            }
+            s_waiting = 0;
+        } else if (!strcmp(s->op, "text")) {
+            plat_script_text_log(s_frame);
+        } else if (!strcmp(s->op, "autopilot")) {
+            s_ap = !strcmp(s->a[0], "on");
+            if (!s_ap)
+                plat_script_autopilot_off();
+        } else if (!strcmp(s->op, "files") || !strcmp(s->op, "savefiles") ||
+                   !strcmp(s->op, "joystick") || !strcmp(s->op, "tmu")) {
+            /* setup only (files: applied before the game starts) */
         } else if (!strcmp(s->op, "mark")) {
             /* a checkpoint: logged above */
         } else if (!strcmp(s->op, "shot")) {
@@ -246,5 +318,7 @@ void plat_app_frame(void)
             s_rel[i--] = s_rel[--s_nrel];
         }
     }
+    if (s_ap)
+        plat_script_autopilot();
     step();
 }

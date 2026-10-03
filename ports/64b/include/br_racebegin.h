@@ -374,8 +374,8 @@ typedef struct BrRaceCue {
                       *        0x10019980                                 */
     int32_t len;     /* +0x04                                             */
     int32_t gap;     /* +0x08                                             */
-    int32_t next;    /* +0x0C, non-zero == there is another record after
-                      *        this one; the list terminator              */
+    const char *text; /* +0x0C, the line's text; NULL ends the list (the
+                       *        95 credit/cue lines, 0x100A5EB0..0x100A64A0) */
 } BrRaceCue;
 /* 64-bit core: declared once, in br_globals.h or its struct's header */  /* 0x100A5EB0       */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */                    /* 0x100A5EBC       */
@@ -732,7 +732,7 @@ extern "C" {
 #endif
 #pragma push_macro("g_aBrRaceCue")
 #undef g_aBrRaceCue
-extern BrRaceCue g_aBrRaceCue[8];  /* 0x100A5EB0 */
+extern BrRaceCue g_aBrRaceCue[96];  /* 0x100A5EB0 */
 #pragma pop_macro("g_aBrRaceCue")
 #ifdef __cplusplus
 }

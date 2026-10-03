@@ -50,21 +50,22 @@ extern "C" {
 
 int Br85ItemApply(BrCtl85 *pCtl, short index)
 {
-    BrCtl85 *pRow = (BrCtl85 *)((char *)pCtl + index * 1080);
+    /* the original's `pCtl + index*0x438` row is the control's aText[index] */
+    BrTextBox *pBox = &((BrUiCtl_ *)pCtl)->aText[index];
 
-    (*(class BrBox85 *)&((BrUiCtl_ *)(pRow))->aText[0]).b1();
+    (*(class BrBox85 *)pBox).b1();
 
-    if ((*(int *)&((BrUiCtl_ *)(pRow))->aText[0].f420) == 0) {
-        if ((*(class BrBox85 *)&((BrUiCtl_ *)(pRow))->aText[0]).name != 0) {
-            (*(class BrBox85 *)&((BrUiCtl_ *)(pRow))->aText[0]).b4();
+    if ((*(int *)&pBox->f420) == 0) {
+        if ((*(class BrBox85 *)pBox).name != 0) {
+            (*(class BrBox85 *)pBox).b4();
         }
         return 0;
     }
 
-    if ((char)(*(class BrBox85 *)&((BrUiCtl_ *)(pRow))->aText[0]).b5() <= 0 || ((*(int *)&((BrUiCtl_ *)(pCtl))->flags1C) & 2) != 0) {
+    if ((char)(*(class BrBox85 *)pBox).b5() <= 0 || ((*(int *)&((BrUiCtl_ *)(pCtl))->flags1C) & 2) != 0) {
         if (g_5BB4 == 0) {
             g_5C30     = 0;
-            (*(int *)&((BrUiCtl_ *)(pRow))->aText[0].f420)  = 0;
+            (*(int *)&pBox->f420)  = 0;
             (*(int *)&((BrUiCtl_ *)(pCtl))->flags1C) &= ~2;
         }
         BrFn1003E070();
@@ -73,7 +74,7 @@ int Br85ItemApply(BrCtl85 *pCtl, short index)
         }
     }
 
-    (*(class BrBox85 *)&((BrUiCtl_ *)(pRow))->aText[0]).b4();
+    (*(class BrBox85 *)pBox).b4();
     return 1;
 }
 }

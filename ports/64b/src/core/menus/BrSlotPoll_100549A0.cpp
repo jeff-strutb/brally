@@ -19,6 +19,7 @@
  * reads `cmp eax,edx` and not `test eax,eax`.
  */
 #define _CRTIMP __declspec(dllimport)
+#include "slice3_39.h"   /* BrTextList */
 
 class Rec549A0 {
 public:
@@ -34,9 +35,6 @@ typedef int (*BrFn549A0)(void *pObj, int idx);
 
 class Slots549A0 {
 public:
-    char       pad000[0x14];
-    BrFn549A0  pfn;             /* +0x14 */
-
     int Poll(int idx);
 };
 
@@ -46,24 +44,25 @@ extern "C" {
 /* 64-bit core: g_brAA28D8 is defined once, in br_globals.c */
 }
 
-#define BR_SLOT 0x438
-
+/* the 0x438-stride rows at +0x2C are the list's aItems; +0x14 is its f14 */
 int Slots549A0::Poll(int idx)
 {
-    char *p = (char *)this + idx * BR_SLOT;
-    Rec549A0 *pRec = (Rec549A0 *)(p + 0x2C);
+    BrTextList *pList = (BrTextList *)this;
+    BrTextBox *pBox = &pList->aItems[idx];
+    Rec549A0 *pRec = (Rec549A0 *)pBox;
+    BrFn549A0 pfn = (BrFn549A0)pList->f14;
     int c;
 
     pRec->s1();
 
-    if (*(int *)(p + 0x44C) == 0)
+    if (pBox->f420 == 0)
         return 0;
 
     c = pRec->s5();
 
     if (c <= 0) {
         g_5C30 = 0;
-        *(int *)(p + 0x44C) = 0;
+        pBox->f420 = 0;
 
         if (pfn != 0) {
             if (c >= 0)
