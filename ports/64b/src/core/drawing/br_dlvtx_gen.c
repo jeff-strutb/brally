@@ -89,7 +89,7 @@ const uint8_t *BrDlVtxGenLin(const uint8_t *p)
             float dx, dy, dz;
 
             if (DAT_100a9a50 != 0)
-                m = (float *)((char *)&DAT_105ccd10 + (DAT_100a9a50 << 6));
+                m = (float *)DAT_105ccd50[DAT_100a9a50 - 1].m;   /* 0x105CCD10 + n*64 */
             else
                 m = NULL;
 
@@ -141,7 +141,7 @@ const uint8_t *BrDlVtxGenLin(const uint8_t *p)
                 pV->cw = DAT_105d178c * pSrc->z + DAT_105d177c * pSrc->y + pSrc->x * DAT_105d176c + DAT_105d179c;
 
                 if (DAT_100a9a50 != 0)
-                    m = (float *)((char *)&DAT_105ccd10 + (DAT_100a9a50 << 6));
+                    m = (float *)DAT_105ccd50[DAT_100a9a50 - 1].m;   /* 0x105CCD10 + n*64 */
                 else
                     m = NULL;
 

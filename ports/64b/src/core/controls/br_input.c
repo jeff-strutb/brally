@@ -1,3 +1,4 @@
+#include "br_phase.h"
 /* br_input.c -- see br_input.h.
  *
  * ARCHITECTURAL CONCERN: input (window messages). 0x100194C0 and its three
@@ -384,9 +385,10 @@ BrWndResult BrOnSysCommand(void *hWnd, BrWParam wParam, BrLParam lParam)
 BrWndResult __stdcall BrWndProc(void *hWnd, uint32_t uMsg, BrWParam wParam, BrLParam lParam)
 {
     int32_t iMode;
-    int32_t *pHook = (int32_t *)g_brPAA29B8;
+    /* the current phase; its f68 (phase +0x68 in the original) arms the hook */
+    BrPhase_ *pHook = (BrPhase_ *)g_brPAA29B8;
 
-    if (pHook != 0 && pHook[0x68 / 4] != 0) {
+    if (pHook != 0 && pHook->f68 != 0) {
         BrSub100590D0(g_obj400, hWnd, uMsg, (uint32_t)wParam, (int32_t)lParam);
         if ((*(int32_t *)&g_guardA) != 0)
             BrWmAppHook35A30(hWnd, uMsg, (uintptr_t)wParam, (intptr_t)lParam);
@@ -457,12 +459,12 @@ defwnd:
 /* WHAT IT DOES: seek a RIFF WAVE file to the start of its "data" chunk via mmioDescend. */
 /* @implements 0x10070170 glide BrWaveSeekData */
 
-int BrWaveSeekData(int *param_1,LPMMCKINFO param_2,MMCKINFO *param_3)
+int BrWaveSeekData(HMMIO *param_1,LPMMCKINFO param_2,MMCKINFO *param_3)
 
 {
-  mmioSeek((HMMIO)*param_1,param_3->dwDataOffset + 4,0);
+  mmioSeek(*param_1,param_3->dwDataOffset + 4,0);
   param_2->ckid = 0x61746164;
-  mmioDescend((HMMIO)*param_1,param_2,param_3,0x10);
+  mmioDescend(*param_1,param_2,param_3,0x10);
   return;
 }
 

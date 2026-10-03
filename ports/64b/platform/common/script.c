@@ -153,6 +153,9 @@ have:
 static void key(int vk, int dik, int down);
 void plat_script_key(int vk, int dik, int down) { key(vk, dik, down); }
 
+/* a key, and on a press of a typing key the character a keyboard would
+ * send with it (lower case), as the wasm lane's script does -- a real host
+ * gets the character from its own text input */
 static void key(int vk, int dik, int down)
 {
     host_event ev;
@@ -162,6 +165,13 @@ static void key(int vk, int dik, int down)
     ev.scan = dik;
     ev.down = down;
     plat_deliver(&ev);
+    if (down && ((vk >= 'A' && vk <= 'Z') || (vk >= '0' && vk <= '9') ||
+                 vk == 0x20 || vk == 0x0D || vk == 0x08 || vk == 0x1B)) {
+        memset(&ev, 0, sizeof ev);
+        ev.type = HOST_EV_CHAR;
+        ev.ch = (vk >= 'A' && vk <= 'Z') ? vk + 32 : vk;
+        plat_deliver(&ev);
+    }
 }
 
 static void step(void)

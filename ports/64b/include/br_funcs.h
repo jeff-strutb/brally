@@ -3759,11 +3759,11 @@ void BrSaveNextName_10055F40(void *, unsigned char *, char **);
 #pragma pop_macro("BrSaveNextName_10055F40")
 #pragma push_macro("BrSaveProbeRallySeason")
 #undef BrSaveProbeRallySeason
-int BrSaveProbeRallySeason(int, int *);
+int BrSaveProbeRallySeason(void *, int *);
 #pragma pop_macro("BrSaveProbeRallySeason")
 #pragma push_macro("BrSaveProbeTimeAttack")
 #undef BrSaveProbeTimeAttack
-int BrSaveProbeTimeAttack(int, int *);
+int BrSaveProbeTimeAttack(void *, int *);
 #pragma pop_macro("BrSaveProbeTimeAttack")
 #pragma push_macro("BrSaveResumeAutoSave")
 #undef BrSaveResumeAutoSave
@@ -5271,7 +5271,7 @@ unsigned int BrWavReadData(struct HMMIO__ *, unsigned int, char *, struct _MMCKI
 #pragma pop_macro("BrWavReadData")
 #pragma push_macro("BrWaveSeekData")
 #undef BrWaveSeekData
-int BrWaveSeekData(int *, struct _MMCKINFO *, struct _MMCKINFO *);
+int BrWaveSeekData(struct HMMIO__ **, struct _MMCKINFO *, struct _MMCKINFO *);
 #pragma pop_macro("BrWaveSeekData")
 #pragma push_macro("BrWeatherRandomiseParticles")
 #undef BrWeatherRandomiseParticles
@@ -5628,7 +5628,7 @@ void FUN_1002dec3(void);
 #pragma pop_macro("FUN_1002dec3")
 #pragma push_macro("FUN_1002e5b9")
 #undef FUN_1002e5b9
-int FUN_1002e5b9(int, int, int, int);
+int FUN_1002e5b9(char *, int, const char *, int);
 #pragma pop_macro("FUN_1002e5b9")
 #pragma push_macro("FUN_1002f790")
 #undef FUN_1002f790
@@ -5896,7 +5896,7 @@ void FUN_1006ff50(char *);
 #pragma pop_macro("FUN_1006ff50")
 #pragma push_macro("FUN_1006ffc0")
 #undef FUN_1006ffc0
-unsigned int FUN_1006ffc0(const char *, int *, int *, struct _MMCKINFO *);
+unsigned int FUN_1006ffc0(const char *, struct HMMIO__ **, void **, struct _MMCKINFO *);
 #pragma pop_macro("FUN_1006ffc0")
 #pragma push_macro("FUN_100703d0")
 #undef FUN_100703d0

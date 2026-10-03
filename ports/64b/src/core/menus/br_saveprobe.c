@@ -62,7 +62,7 @@
  * page's sub-object for an overwrite confirm (file exists) or starts the
  * in-place rename of the empty slot.  Reports 1. */
 /* @implements 0x1003B580 glide BrSaveProbeRallySeason */
-int BrSaveProbeRallySeason(int pList, int *pIdx)
+int BrSaveProbeRallySeason(void *pList, int *pIdx)
 {
     char  szNum[4];
     char  szPath[260];
@@ -105,7 +105,7 @@ int BrSaveProbeRallySeason(int pList, int *pIdx)
  * overwrite confirm (file exists) or starts the in-place rename of the
  * empty slot.  Reports 1. */
 /* @implements 0x1003BCA0 glide BrSaveProbeTimeAttack */
-int BrSaveProbeTimeAttack(int pList, int *pIdx)
+int BrSaveProbeTimeAttack(void *pList, int *pIdx)
 {
     char  szNum[4];
     char  szPath[260];
@@ -113,7 +113,7 @@ int BrSaveProbeTimeAttack(int pList, int *pIdx)
     int   n = *pIdx;
     FILE *fp;
 
-    g_brPAA29D0 = pList;
+    g_brPAA29D0 = (unsigned char *)pList;
     g_AB94 = n;
     if ((char *)pList + n * 0x438 + 0x35 != NULL) {
         strcpy(szPath, s_TimeAttack_100acb14);

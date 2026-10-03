@@ -1,3 +1,4 @@
+#include "slice1_06.h"   /* g_aBrKeyEnts */
 /* br_texlevels.c -- drawing: load the texture-detail threshold file.
  *
  * 0x10031030 reads a text file of "%u" then "%u %x %d %d" rows into the
@@ -49,12 +50,18 @@ void FUN_10031030(char *pszPath)
       scan(buf, DAT_100aa334, &(*(int *)&g_brTexLowThreshold));
       ok = BrChkFReadLine(buf, 0x400, fp);
       while (ok != 0) {
-        off = (*(int *)&g_brKeyCount) * 0x10;
-        scan(buf, s__u__x__d__d_100aa328,
-               &DAT_106eef08 + off,
-               &DAT_106eef08 + off + 4,
-               &DAT_106eef08 + off + 8,
-               &DAT_106eef08 + off + 12);
+        /* row n is 16 bytes at 0x106EEF08 + n*16: the key table
+         * (g_aBrKeyEnts, 0x106EEF0C) shifted back one word, so the %u lands
+         * in the word before entry n (DAT_106eef08 for the first row) and
+         * the rest in entry n's key, a and b.  The table's storage runs to
+         * 0x106EFF08 (its extent), so all 256 rows fit. */
+        off = (*(int *)&g_brKeyCount) * 4;
+        {
+          uint32_t *T = (uint32_t *)(void *)g_aBrKeyEnts;
+          scan(buf, s__u__x__d__d_100aa328,
+               off ? &T[off - 1] : (uint32_t *)(void *)&DAT_106eef08,
+               &T[off], &T[off + 1], &T[off + 2]);
+        }
         s30 = (*(int *)&g_brKeyCount); (*(int *)&g_brKeyCount) = s30 + 1;
         if ((*(int *)&g_brKeyCount) >= 0x100) {
           break;

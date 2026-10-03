@@ -1416,9 +1416,7 @@ BrMat4 g_BrDrawCombined;  /* 0x106E78F0 */
 BrMat4 g_BrDrawScale;  /* 0x106E7930 */
 BrMat4 g_brRaceSpecialM;  /* 0x106E7970 */
 BR_GLOBAL_EXTENT(int, DAT_106e79b0, , 0x4);  /* 0x106E79B0 */
-BR_GLOBAL_EXTENT(char, DAT_106e79b8, , 0x1);  /* 0x106E79B8 */
-unsigned char DAT_106e79ba;  /* 0x106E79BA */
-BR_GLOBAL_EXTENT(unsigned char, DAT_106e79bb, , 0xC);  /* 0x106E79BB */
+BR_GLOBAL_EXTENT(char, DAT_106e79b8, , 0xF);  /* 0x106E79B8: four 4-byte rows to 0x106E79C8 */
 BR_GLOBAL_EXTENT(uint32_t, DAT_106e79c8, , 0x4);  /* 0x106E79C8 */
 int DAT_106e79d0;  /* 0x106E79D0 */
 BR_GLOBAL_EXTENT(void *, DAT_106e79d4, , 0x8);  /* 0x106E79D4 */
@@ -1439,14 +1437,7 @@ int DAT_106e86a8;  /* 0x106E86A8 */
 int32_t g_6C161C;  /* 0x106E86AC */
 BR_GLOBAL_EXTENT(int, DAT_106e86b0, , 0x4);  /* 0x106E86B0 */
 BR_GLOBAL_EXTENT(BrView, g_aBrView, [2], 0xB0);  /* 0x106E86B8 */
-BR_GLOBAL_EXTENT(char, DAT_106e8818, , 0x1);  /* 0x106E8818 */
-BR_GLOBAL_EXTENT(char, DAT_106e881a, , 0x1);  /* 0x106E881A */
-BR_GLOBAL_EXTENT(char, DAT_106e881c, , 0x1);  /* 0x106E881C */
-BR_GLOBAL_EXTENT(char, DAT_106e881e, , 0x1);  /* 0x106E881E */
-BR_GLOBAL_EXTENT(char, DAT_106e8820, , 0x1);  /* 0x106E8820 */
-BR_GLOBAL_EXTENT(char, DAT_106e8822, , 0x1);  /* 0x106E8822 */
-BR_GLOBAL_EXTENT(char, DAT_106e8824, , 0x1);  /* 0x106E8824 */
-BR_GLOBAL_EXTENT(char, DAT_106e8826, , 0x1F1);  /* 0x106E8826 */
+BR_GLOBAL_EXTENT(char, DAT_106e8818, , 0x1FF);  /* 0x106E8818: 16-byte viewport rows to 0x106E8A18, fields named by their first row's address */
 int32_t g_BrEnvFlagCount;  /* 0x106E8A18 */
 void (*DAT_106e8a1c)(void);  /* 0x106E8A1C */
 BrVec3 g_BrCamCentre;  /* 0x106E9A20 */

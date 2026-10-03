@@ -22,55 +22,18 @@
 /* @implements 0x1000E060 glide BrVertLerp8 */
 void *BrVertLerp8(void *pA, void *pB, float t)
 {
-  float *pNode;
-  float *pDst;
-  float *a;
-  float *b;
+  /* The node is BrLerpNode (slice2_14.h): the link, the data pointer, eight
+   * floats.  The original addresses it at the i386 offsets (+0 / +4 / +8)
+   * and re-reads the two source data pointers before every component. */
+  BrLerpNode *pNode = (BrLerpNode *)g_pBrLerpFree;
+  const BrLerpNode *a = (const BrLerpNode *)pA, *b = (const BrLerpNode *)pB;
+  int k;
 
-  pNode = (*(void * *)&g_pBrLerpFree);
   if (pNode != 0)
-    (*(void * *)&g_pBrLerpFree) = *(void **)pNode;
-  pDst = pNode + 2;
-  *(float **)((char *)pNode + 4) = pDst;
-
-  b = *(float **)((char *)pB + 4);
-  a = *(float **)((char *)pA + 4);
-  pDst[0] = (b[0] - a[0]) * t + a[0];
-
-  b = *(float **)((char *)pB + 4);
-  a = *(float **)((char *)pA + 4);
-  pDst = *(float **)((char *)pNode + 4);
-  pDst[1] = (b[1] - a[1]) * t + a[1];
-
-  b = *(float **)((char *)pB + 4);
-  a = *(float **)((char *)pA + 4);
-  pDst = *(float **)((char *)pNode + 4);
-  pDst[2] = (b[2] - a[2]) * t + a[2];
-
-  b = *(float **)((char *)pB + 4);
-  a = *(float **)((char *)pA + 4);
-  pDst = *(float **)((char *)pNode + 4);
-  pDst[3] = (b[3] - a[3]) * t + a[3];
-
-  b = *(float **)((char *)pB + 4);
-  a = *(float **)((char *)pA + 4);
-  pDst = *(float **)((char *)pNode + 4);
-  pDst[4] = (b[4] - a[4]) * t + a[4];
-
-  b = *(float **)((char *)pB + 4);
-  a = *(float **)((char *)pA + 4);
-  pDst = *(float **)((char *)pNode + 4);
-  pDst[5] = (b[5] - a[5]) * t + a[5];
-
-  b = *(float **)((char *)pB + 4);
-  a = *(float **)((char *)pA + 4);
-  pDst = *(float **)((char *)pNode + 4);
-  pDst[6] = (b[6] - a[6]) * t + a[6];
-
-  pB = *(void **)((char *)pB + 4);
-  pA = *(void **)((char *)pA + 4);
-  pDst = *(float **)((char *)pNode + 4);
-  pDst[7] = (((float *)pB)[7] - ((float *)pA)[7]) * t + ((float *)pA)[7];
+    g_pBrLerpFree = pNode->pNext;
+  pNode->pData = pNode->data;
+  for (k = 0; k < 8; k++)
+    pNode->pData[k] = (b->pData[k] - a->pData[k]) * t + a->pData[k];
   /* the node stays in eax to the end and the clipper uses it (live
    * oracle, software-clipped shadows) */
   return pNode;

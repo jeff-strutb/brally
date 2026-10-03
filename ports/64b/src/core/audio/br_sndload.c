@@ -236,6 +236,11 @@ int32_t BrWavLoad(const char *pszPath, uint32_t *pnDataBytes,
     int32_t         rc;
     MMCKINFO        ckData;
     MMCKINFO        ckRiff;
+    /* The original keeps the open file in pVoice's argument slot and the
+     * byte count in ppFormat's: a pointer-sized slot that a 32-bit handle
+     * or count only half fills here, so each gets a local of its own. */
+    HMMIO           hmmio = 0;
+    unsigned int    nRead = 0;
 
     (void)pInfo;
     /* RESIDUE (T2, 43 masked B, RAW 14+14, REGNORM 0+0, size-exact): the
@@ -253,17 +258,16 @@ int32_t BrWavLoad(const char *pszPath, uint32_t *pnDataBytes,
     pv->pData    = 0;
     *ppFmt       = 0;
     *pnDataBytes = 0;
-    rc = FUN_1006ffc0(pszPath, (int *)&pVoice, (int *)ppFmt, &ckRiff);
+    rc = FUN_1006ffc0(pszPath, &hmmio, (void **)ppFmt, &ckRiff);
     if (rc == 0) {
-        rc = BrWaveSeekData((int *)&pVoice, &ckData, &ckRiff);
+        rc = BrWaveSeekData(&hmmio, &ckData, &ckRiff);
         if (rc == 0) {
             pv->pData = GlobalAlloc(0, ckData.cksize);
             if (pv->pData == 0) {
                 rc = 0xe000;
             } else {
-                rc = BrWavReadData((HMMIO)pVoice, ckData.cksize,
-                                   (char *)pv->pData, &ckData,
-                                   (unsigned int *)&ppFormat);
+                rc = BrWavReadData(hmmio, ckData.cksize,
+                                   (char *)pv->pData, &ckData, &nRead);
             }
         }
     }
@@ -277,10 +281,10 @@ int32_t BrWavLoad(const char *pszPath, uint32_t *pnDataBytes,
             *ppFmt = 0;
         }
     } else {
-        *pnDataBytes = ((intptr_t)(ppFormat));
+        *pnDataBytes = nRead;
     }
-    if ((HMMIO)pVoice != 0) {
-        mmioClose((HMMIO)pVoice, 0);
+    if (hmmio != 0) {
+        mmioClose(hmmio, 0);
     }
     return rc;
 }
@@ -297,10 +301,10 @@ int32_t BrWavLoad(const char *pszPath, uint32_t *pnDataBytes,
  * chunks, checks it really is PCM audio, hands back the format description
  * and leaves the file positioned at the start of the samples. */
 /* @implements 0x1006FFC0 glide FUN_1006ffc0 */
-MMRESULT FUN_1006ffc0(const char *param_1,int *param_2,int *param_3,LPMMCKINFO param_4)
+MMRESULT FUN_1006ffc0(const char *param_1,HMMIO *param_2,void **param_3,LPMMCKINFO param_4)
 
 {
-  int *piVar1;
+  void **piVar1;
   LPMMCKINFO pmmckiParent;
   HMMIO hmmio;
   LONG LVar2;
@@ -341,15 +345,15 @@ MMRESULT FUN_1006ffc0(const char *param_1,int *param_2,int *param_3,LPMMCKINFO p
             }
           }
           puVar3 = GlobalAlloc(0,((unsigned int)param_1 & 0xffff) + sizeof(WAVEFORMATEX));
-          *param_3 = (int)puVar3;
+          *param_3 = puVar3;
           if (puVar3 == (int *)0x0) {
             MVar5 = 0xe000;
             goto LAB_10070133;
           }
           *(PCMWAVEFORMAT *)puVar3 = pcmWaveFormat;
-          *(short *)(*param_3 + 0x10) = (short)param_1;
+          *(short *)((char *)*param_3 + 0x10) = (short)param_1;
           if (((short)param_1 == 0) ||
-             (uVar4 = mmioRead(hmmio,(HPSTR)(*param_3 + 0x12),(unsigned int)param_1 & 0xffff),
+             (uVar4 = mmioRead(hmmio,(HPSTR)((char *)*param_3 + 0x12),(unsigned int)param_1 & 0xffff),
              uVar4 == ((unsigned int)param_1 & 0xffff))) {
             MVar5 = mmioAscend(hmmio,&local_14,0);
             if (MVar5 != 0) goto LAB_10070133;
@@ -372,6 +376,6 @@ LAB_10070133: ;
     hmmio = (HMMIO)0x0;
   }
 TEMPCLEANUP:
-  *param_2 = (int)hmmio;
+  *param_2 = hmmio;
   return MVar5;
 }

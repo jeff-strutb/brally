@@ -5039,14 +5039,8 @@ extern int DAT_106e79b0;  /* 0x106E79B0 */
 #undef DAT_106e79b8
 extern char DAT_106e79b8;  /* 0x106E79B8 */
 #pragma pop_macro("DAT_106e79b8")
-#pragma push_macro("DAT_106e79ba")
-#undef DAT_106e79ba
-extern unsigned char DAT_106e79ba;  /* 0x106E79BA */
-#pragma pop_macro("DAT_106e79ba")
-#pragma push_macro("DAT_106e79bb")
-#undef DAT_106e79bb
-extern unsigned char DAT_106e79bb;  /* 0x106E79BB */
-#pragma pop_macro("DAT_106e79bb")
+#define DAT_106e79ba (((unsigned char *)&DAT_106e79b8)[0x79ba - 0x79b8])   /* one object with 0x106E79B8 */
+#define DAT_106e79bb (((unsigned char *)&DAT_106e79b8)[0x79bb - 0x79b8])   /* one object with 0x106E79B8 */
 #pragma push_macro("DAT_106e79c8")
 #undef DAT_106e79c8
 extern uint32_t DAT_106e79c8;  /* 0x106E79C8 */
@@ -5123,34 +5117,13 @@ extern BrView g_aBrView[2];  /* 0x106E86B8 */
 #undef DAT_106e8818
 extern char DAT_106e8818;  /* 0x106E8818 */
 #pragma pop_macro("DAT_106e8818")
-#pragma push_macro("DAT_106e881a")
-#undef DAT_106e881a
-extern char DAT_106e881a;  /* 0x106E881A */
-#pragma pop_macro("DAT_106e881a")
-#pragma push_macro("DAT_106e881c")
-#undef DAT_106e881c
-extern char DAT_106e881c;  /* 0x106E881C */
-#pragma pop_macro("DAT_106e881c")
-#pragma push_macro("DAT_106e881e")
-#undef DAT_106e881e
-extern char DAT_106e881e;  /* 0x106E881E */
-#pragma pop_macro("DAT_106e881e")
-#pragma push_macro("DAT_106e8820")
-#undef DAT_106e8820
-extern char DAT_106e8820;  /* 0x106E8820 */
-#pragma pop_macro("DAT_106e8820")
-#pragma push_macro("DAT_106e8822")
-#undef DAT_106e8822
-extern char DAT_106e8822;  /* 0x106E8822 */
-#pragma pop_macro("DAT_106e8822")
-#pragma push_macro("DAT_106e8824")
-#undef DAT_106e8824
-extern char DAT_106e8824;  /* 0x106E8824 */
-#pragma pop_macro("DAT_106e8824")
-#pragma push_macro("DAT_106e8826")
-#undef DAT_106e8826
-extern char DAT_106e8826;  /* 0x106E8826 */
-#pragma pop_macro("DAT_106e8826")
+#define DAT_106e881a (((char *)&DAT_106e8818)[0x881a - 0x8818])   /* one object with 0x106E8818 */
+#define DAT_106e881c (((char *)&DAT_106e8818)[0x881c - 0x8818])   /* one object with 0x106E8818 */
+#define DAT_106e881e (((char *)&DAT_106e8818)[0x881e - 0x8818])   /* one object with 0x106E8818 */
+#define DAT_106e8820 (((char *)&DAT_106e8818)[0x8820 - 0x8818])   /* one object with 0x106E8818 */
+#define DAT_106e8822 (((char *)&DAT_106e8818)[0x8822 - 0x8818])   /* one object with 0x106E8818 */
+#define DAT_106e8824 (((char *)&DAT_106e8818)[0x8824 - 0x8818])   /* one object with 0x106E8818 */
+#define DAT_106e8826 (((char *)&DAT_106e8818)[0x8826 - 0x8818])   /* one object with 0x106E8818 */
 #pragma push_macro("g_BrEnvFlagCount")
 #undef g_BrEnvFlagCount
 extern int32_t g_BrEnvFlagCount;  /* 0x106E8A18 */
