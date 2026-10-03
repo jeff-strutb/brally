@@ -30,6 +30,12 @@ void  plat_mark_main_thread(void);      /* win_kernel.c: BR_VCLOCK's clock moves
 int   plat_vclock(void);                /* BR_VCLOCK set */
 int   plat_vclock_main(void);           /* ... and this is the main thread */
 void  plat_vclock_advance(uint64_t us);
+void  plat_vclock_import(void);         /* BR_VCLOCK_IMPORTS: an import costs a tick */
+void  plat_vclock_imports(int on);
+void  plat_vclock_frame(void);          /* ... and a frame costs 1/30 s */
+uint16_t plat_peersync_listen(void);    /* peersync.c: a port for a scripted peer */
+void  plat_peersync(uint64_t us);       /* ... keep the two virtual clocks together */
+void  plat_peersync_end(void);          /* ... and let the other run on alone */
 DWORD plat_time_ms(void);              /* timeGetTime's value, not spending a BR_VCLOCK tick */
 int   plat_audio_start(void);           /* audio.c: the output; 1 when a device mixes */
 void  plat_cd_tracks(int *first, int *last);

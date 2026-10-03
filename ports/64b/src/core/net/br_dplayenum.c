@@ -1,3 +1,4 @@
+#include "dplay.h"   /* DPSESSIONDESC2 */
 #include "br_ui.h"
 /* br_dplayenum.c -- net.
  *
@@ -86,33 +87,36 @@ int BrNetEnumSessionsStart(void *pIface)
     void *p = pIface;                /* the working copy; the else arm below
                                       * reads the PARAMETER, which is why the
                                       * original reloads [esp+arg] there */
-    int   desc[20];
+    DPSESSIONDESC2 desc;
     int   r;
 
     if (p == NULL) {
         return (int)0x88770082;
     }
     BrSub1003D070();
-    memset(desc, 0, 0x50);
-    desc[6] = DAT_10077500;
-    desc[9] = DAT_1007750c;
-    desc[0] = 0x50;
-    desc[7] = DAT_10077504;
-    desc[8] = DAT_10077508;
+    memset(&desc, 0, sizeof desc);
+    memcpy((char *)&desc.guidApplication + 0, &DAT_10077500, 4);
+    memcpy((char *)&desc.guidApplication + 12, &DAT_1007750c, 4);
+    desc.dwSize = sizeof desc;
+    memcpy((char *)&desc.guidApplication + 4, &DAT_10077504, 4);
+    memcpy((char *)&desc.guidApplication + 8, &DAT_10077508, 4);
     DAT_10ac5bcc = 1;
     if (DAT_10ac5bf0 != 0) {
         r = (*(BrDpEnumSessionsFn *)&((void **)*(void ***)(p))[13])
-                (p, desc, 0, (void *)BrNetEnumSessionCb,
+                (p, &desc, 0, (void *)BrNetEnumSessionCb,
                  (*(void * *)&g_brOwner5BC72C), 0x91);
     } else {
         /* The bytes prove a real reload of the argument slot here; a plain
          * read is value-numbered back to the register copy (as VC5 always
          * does -- see 0x100540D0's park note), so the load is pinned the
          * same way the dead-store class is: through a volatile view. */
-        r = (int)*(void *volatile *)&pIface;
+        /* the original returns the interface pointer itself as the status:
+         * a user-space address, so never negative. 64-bit core: its
+         * low 32 bits could read negative, so it is reduced to that sign */
+        r = *(void *volatile *)&pIface != NULL;
     }
     /* The join helper gets the enumerated session id -- desc+8. */
-    FUN_100361a0(&desc[2], (void *)BrWmHook36130, (*(void * *)&g_brOwner5BC72C), 0);
+    FUN_100361a0(&desc.guidInstance, (void *)BrWmHook36130, (*(void * *)&g_brOwner5BC72C), 0);
     DAT_10ac5bcc = 0;
 
     if (g_brPAA29D8 != 0

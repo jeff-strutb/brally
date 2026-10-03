@@ -1,3 +1,4 @@
+#include "slice1_09.h"   /* BrPeerMsg */
 #include "slice1_02.h"   /* br_globals: its objects */
 #include "slice2_25.h"   /* br_globals: its objects */
 /* WHAT IT DOES: sends this car's full state to the other players: it stamps the
@@ -23,14 +24,14 @@
 #define _CRTIMP __declspec(dllimport)
 
 class Pkt {
-    char b[0x214];
+    BrPeerMsg b;                    /* 0x214 bytes on i386 */
 public:
     Pkt();
     ~Pkt();
     void PutByte(unsigned char);
 };
 
-typedef char chk_pkt[sizeof(Pkt) == 0x214 ? 1 : -1];
+typedef char chk_pkt[sizeof(Pkt) == sizeof(BrPeerMsg) ? 1 : -1];
 
 struct CarStateBlob {
     int w[0x28];                    /* 0xA0 bytes */
@@ -77,9 +78,9 @@ int BrNetSendCarState(void *pState)
     {
         int      id = g_id;
         void    *h[2];
-        NetSlot *pSlot;
+        BrNetSlot *pSlot;
 
-        pSlot = &(*(NetSlot (*)[])&g_aBrNetSlot)[id];
+        pSlot = &g_aBrNetSlot[id];
         h[0] = g_hBrNetMutex;
         h[1] = (*(void * *)&((BrNetSlot *)(pSlot))->hMutex);
         WaitForMultipleObjects(2, h, 1, 0xFFFFFFFF);
@@ -88,7 +89,7 @@ int BrNetSendCarState(void *pState)
             (*(int *)&((BrNetSlot *)(pSlot))->f55C) = 0;
         (*(int (*)[8])&((BrNetSlot *)(pSlot))->f00C)[(*(int *)&((BrNetSlot *)(pSlot))->f55C)] = g_brNetPktTick;
         (*(int (*)[8])&((BrNetSlot *)(pSlot))->f038)[(*(int *)&((BrNetSlot *)(pSlot))->f55C)] = 0x40;
-        (*(CarStateBlob *)&((BrNetSlot *)(pSlot))->cars[pSlot->idx]) = *(const CarStateBlob *)pState;
+        (*(CarStateBlob *)&((BrNetSlot *)(pSlot))->cars[pSlot->f55C]) = *(const CarStateBlob *)pState;
         ReleaseMutex((*(void * *)&((BrNetSlot *)(pSlot))->hMutex));
         ReleaseMutex(g_hBrNetMutex);
     }

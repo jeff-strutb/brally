@@ -31,13 +31,13 @@ int32_t BrSub1003D950(BrOptUi *pUi, int a)
      * not truncate them; see the header. */
     void *const *aSlot = (void *const *)pUi;
     void        *pObj;
-    void        *pArg;
+    uint32_t     pArg;
     int32_t      aPacket[2];
 
     if (pUi == NULL || (pObj = aSlot[0]) == NULL || DAT_10ac5be4 != 0) {
         return 0;
     }
-    pArg = aSlot[2];
+    pArg = (uint32_t)((const BrOptUi *)aSlot)->f08;   /* the DPID, +0x08 on i386 */
 
     aPacket[0] = (int32_t)0x60000002u;
     aPacket[1] = (int32_t)a;
@@ -46,10 +46,10 @@ int32_t BrSub1003D950(BrOptUi *pUi, int a)
      * slice1_03.h's critical-section wrapper. The original discards the
      * HRESULT. */
     return BrDPlayRawSend((BrComObj *)pObj, pArg,
-                             (void *)(uintptr_t)0u,
-                             (void *)(uintptr_t)1u,
+                             0u,
+                             1u,
                              aPacket,
-                             (void *)(uintptr_t)8u);
+                             8u);
 }
 
 /* 0x1003D9A0 */
@@ -69,11 +69,11 @@ int32_t BrSub1003D9A0(BrOptUi *pUi, int a)
     }
     aPacket[0] = (int32_t)0x60000005u;
     aPacket[1] = (int32_t)a;
-    return BrDPlayRawSend((BrComObj *)pObj, aSlot[2],
-                             (void *)(uintptr_t)0u,
-                             (void *)(uintptr_t)1u,
+    return BrDPlayRawSend((BrComObj *)pObj, (uint32_t)((const BrOptUi *)aSlot)->f08,
+                             0u,
+                             1u,
                              aPacket,
-                             (void *)(uintptr_t)8u);
+                             8u);
 }
 
 /* 0x1003DA90 */
@@ -90,11 +90,11 @@ int32_t BrSub1003DA90(BrOptUi *pUi, int a)
     }
     aPacket[0] = (int32_t)0x60000006u;
     aPacket[1] = (int32_t)a;
-    return BrDPlayRawSend((BrComObj *)pObj, aSlot[2],
-                             (void *)(uintptr_t)0u,
-                             (void *)(uintptr_t)1u,
+    return BrDPlayRawSend((BrComObj *)pObj, (uint32_t)((const BrOptUi *)aSlot)->f08,
+                             0u,
+                             1u,
                              aPacket,
-                             (void *)(uintptr_t)8u);
+                             8u);
 }
 
 /* WHAT IT DOES: sends one particular kind of tagged message to the other
@@ -115,11 +115,11 @@ int32_t BrSub1003D9F0(struct BrOptUi *pUi)
         return 0;
     }
     aPacket[0] = (int32_t)0x60000003u;
-    return BrDPlayRawSend((BrComObj *)pObj, aSlot[2],
-                             (void *)(uintptr_t)0u,
-                             (void *)(uintptr_t)1u,
+    return BrDPlayRawSend((BrComObj *)pObj, (uint32_t)((const BrOptUi *)aSlot)->f08,
+                             0u,
+                             1u,
                              aPacket,
-                             (void *)(uintptr_t)8u);
+                             8u);
 }
 
 /* 0x1003DA40 */
@@ -140,11 +140,11 @@ int32_t BrSub1003DA40(BrOptUi *pUi, int a)
     }
     aPacket[0] = (int32_t)0x60000004u;
     aPacket[1] = (int32_t)a;
-    return BrDPlayRawSend((BrComObj *)pObj, aSlot[2],
-                             (void *)(uintptr_t)0u,
-                             (void *)(uintptr_t)1u,
+    return BrDPlayRawSend((BrComObj *)pObj, (uint32_t)((const BrOptUi *)aSlot)->f08,
+                             0u,
+                             1u,
                              aPacket,
-                             (void *)(uintptr_t)8u);
+                             8u);
 }
 
 /* 0x1003DB00 */
@@ -167,11 +167,11 @@ int32_t BrExt_1003DB00(struct BrObjA9D008 *pObj, void *p)
     }
     aPacket[0] = (int32_t)0x60000007u;
     aPacket[1] = (int32_t)(uintptr_t)p;
-    return BrDPlayRawSend((struct BrComObj *)pIface, aSlot[2],
-                             (void *)(uintptr_t)0u,
-                             (void *)(uintptr_t)1u,
+    return BrDPlayRawSend((struct BrComObj *)pIface, (uint32_t)((const BrOptUi *)aSlot)->f08,
+                             0u,
+                             1u,
                              aPacket,
-                             (void *)(uintptr_t)8u);
+                             8u);
 }
 
 

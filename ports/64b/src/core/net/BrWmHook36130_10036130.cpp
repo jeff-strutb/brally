@@ -1,5 +1,6 @@
 #include "slice1_02.h"   /* br_globals: its objects */
-#include "br_ui.h"   /* BrUiCtl_, the canonical record */
+#include "br_ui.h"
+#include "dplay.h"   /* DPNAME */   /* BrUiCtl_, the canonical record */
 /* WHAT IT DOES: handle a DirectPlay callback for one player record, ignoring
  * the notifications flagged as uninteresting and otherwise updating that
  * player's slot. */
@@ -54,20 +55,31 @@ extern "C" {
 /* BrTick36080: prototype in br_funcs.h */
 }
 
-int __stdcall BrWmHook36130(int a1, int a2, Rec36130 *a3, unsigned int a4, int a5)
+int __stdcall BrWmHook36130(int a1, int a2, const DPNAME *a3, unsigned int a4, void *a5)
 {
     GameObjS *p;
 
     p = (GameObjS *)((*(GameObjS * *)&g_brPAA29E4));
     if (p == 0)
-        return (int)p;
+        return 0;
     if (a4 & 0x200)
         return 1;
     {
-        Sel *s = &(*(class Sel *)&((BrUiCtl_ *)(p))->list);
-        s->s4(a3->f8, 0, 1, &g_selArg2, 1);
+        /* append the player's short name: the list's slot 4 */
+        BrTextList *pl = &((BrUiCtl_ *)(p))->list;
+        pl->pVtbl->f10(pl, a3->lpszShortNameA, 0, 1, &g_selArg2, 1);
     }
-    (*(Slot36130 (*)[100])&((BrUiCtl_ *)((*(GameObjS * *)&g_brPAA29E4)))->list.f28)[(*(unsigned short *)&((BrUiCtl_ *)((*(GameObjS * *)&g_brPAA29E4)))->list.count)].f0 = a1;
+    {
+        /* the original stores into a 0x438-stride int walk that starts at
+         * list+0x28: element 0 is list.f28, element c the f434 word of
+         * text box c-1 */
+        BrTextList *pl = &((BrUiCtl_ *)((*(GameObjS * *)&g_brPAA29E4)))->list;
+        unsigned short c = (unsigned short)pl->count;
+        if (c == 0)
+            pl->f28 = (uint32_t)a1;
+        else
+            pl->aItems[c - 1].f434 = a1;
+    }
     BrSlotMark(a1);
     return 1;
 }

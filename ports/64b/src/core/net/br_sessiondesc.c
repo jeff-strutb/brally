@@ -45,14 +45,10 @@ extern void BrExt_1003CDA0(void);
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 
 /* The session description GlobalAlloc'd by 0x10036740; only the four user
- * dwords at +0x40..+0x4C are touched here. */
-typedef struct BrDpSessionDesc {
-    int32_t aHead[16];          /* +0x00..+0x3F, untouched */
-    int32_t dwUser1;            /* +0x40 */
-    int32_t dwUser2;            /* +0x44 */
-    int32_t dwUser3;            /* +0x48 */
-    int32_t dwUser4;            /* +0x4C */
-} BrDpSessionDesc;
+ * dwords (+0x40..+0x4C on i386) are touched here. 64-bit core: the SDK
+ * record at the native layout, where they follow two pointers. */
+#include "dplay.h"
+typedef DPSESSIONDESC2 BrDpSessionDesc;
 
 typedef struct BrDpObj BrDpObj;
 typedef struct BrDpVtbl {

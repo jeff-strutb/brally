@@ -58,30 +58,30 @@ int BrPeerFind(uint32_t id)
         return 0;
 
     for (i = 1; i < BR_PEER_COUNT; ++i) {
-        const BrPeer *p = &(*(BrPeer (*)[16])&g_aBrPeer71)[i];
+        const BrPeerRec *p = &g_aBrPeer71[i];
         uint32_t idv, st;
 
-        WaitForSingleObject((void *)(uintptr_t)p->hMutex, 0xFFFFFFFFu);
-        idv = p->f04;
-        st  = p->f2C;
-        ReleaseMutex((void *)(uintptr_t)p->hMutex);
+        WaitForSingleObject(p->hMutex, 0xFFFFFFFFu);
+        idv = p->f004;
+        st  = p->f02C;
+        ReleaseMutex(p->hMutex);
 
         if ((st & BR_PEER_STATE_MASK) >= 1u && idv == id)
             return i;
     }
 
     for (i = 1; i < BR_PEER_COUNT; ++i) {
-        const BrPeer *p = &(*(BrPeer (*)[16])&g_aBrPeer71)[i];
+        const BrPeerRec *p = &g_aBrPeer71[i];
         uint32_t st;
 
-        WaitForSingleObject((void *)(uintptr_t)p->hMutex, 0xFFFFFFFFu);
+        WaitForSingleObject(p->hMutex, 0xFFFFFFFFu);
         /* The AND is DWORD-width in source; the byte-cast-then-mask spelling
          * made VC5 compute in eax and copy to ebx (+1 insn) -- the dword
          * mask births the load in ebx and computes in place (cracked
          * 2026-09-09).  The byte cast in the `if` still gives `test bl,bl`. */
-        st = p->f2C;
+        st = p->f02C;
         st = (uint32_t)((st & (uint32_t)BR_PEER_STATE_MASK) == 0u);
-        ReleaseMutex((void *)(uintptr_t)p->hMutex);
+        ReleaseMutex(p->hMutex);
 
         if ((uint8_t)st)
             return i;

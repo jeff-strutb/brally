@@ -53,8 +53,9 @@ int __stdcall BrWmAppHook35A30(char * hwnd, unsigned int msg, uintptr_t wp, intp
     case 0x501:
         p = g_pGame;
         if (p != 0) {
-            Sel *s = &(*(class Sel *)&((BrUiCtl_ *)(p))->list);
-            s->s4((int)lp, 0, 1, &g_selArg, 1);
+            /* append the chat line: the list's slot 4 */
+            BrTextList *pl = &((BrUiCtl_ *)(p))->list;
+            pl->pVtbl->f10(pl, (const void *)lp, 0, 1, &g_selArg, 1);
         }
         GlobalUnlock(GlobalHandle((LPCVOID)lp));
         GlobalFree(GlobalHandle((LPCVOID)lp));

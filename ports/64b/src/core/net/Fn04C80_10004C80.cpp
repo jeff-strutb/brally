@@ -4,24 +4,26 @@
  * @cpp_kind method
  * @cpp_symbol ?Fn04C80@@YAHPAX0@Z
  *
- * Stack-dtor (maxState=1): named local of class type, sizeof 0x214.
+ * Stack-dtor (maxState=1): named local of
+class type, sizeof 0x214.
  * Ctor and dtor DECLARED, not defined (dtor orig is a 1-byte ret).
  * Unwind: lea ecx,[ebp-0x220]; jmp dtor. Free cdecl, not thiscall
  * (no unused-this push ecx). g_id is volatile int so the load is
  * `mov ecx,[g]` (8b 0d) not `mov cl,[g]` (8a 0d) before and cl / or cl.
  */
 #define _CRTIMP __declspec(dllimport)
+#include "slice1_09.h"   /* BrPeerMsg */
 
 class Buf {
 public:
-    char _[0x214];
+    BrPeerMsg _;                    /* 0x214 bytes on i386 */
     Buf();
     ~Buf();
     void PutByte(unsigned char);
     void PutVal(unsigned);
 };
 
-typedef char chk_sz[sizeof(Buf) == 0x214 ? 1 : -1];
+typedef char chk_sz[sizeof(Buf) == sizeof(BrPeerMsg) ? 1 : -1];
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 

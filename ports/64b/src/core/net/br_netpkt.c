@@ -10,6 +10,7 @@
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
 #include <stdint.h>
+#include "slice1_09.h"   /* BrPeerMsg */
 
 /* 0x100048D0 */
 /* WHAT IT DOES: starts a fresh outgoing network packet. It clears the packet
@@ -114,10 +115,13 @@ typedef struct { unsigned int v; } BrU32Arg;
 /* @implements 0x1006CD80 glide FUN_1006cd80 */
 int *__fastcall FUN_1006cd80(int *p)
 {
-  p[2] = 0;   /* 0x08 */
-  p[3] = 0;   /* 0x0c */
-  p[0] = 0;
-  p[1] = 0;   /* 0x04 */
-  p[4] = (int)(p + 5);   /* [0x10] = p + 0x14 */
+  /* 64-bit core: a bit stream over its own buffer (BrPeerMsg: the header,
+   * then the 0x200 bytes; pBuf at +0x10, the buffer at +0x14 on i386) */
+  BrPeerMsg *m = (BrPeerMsg *)p;
+  m->bs.writeBit = 0;
+  m->bs.writeByte = 0;
+  m->bs.readBit = 0;
+  m->bs.readByte = 0;
+  m->bs.pBuf = m->buf;
   return p;
 }

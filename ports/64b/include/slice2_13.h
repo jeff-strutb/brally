@@ -174,17 +174,35 @@ typedef struct BrDPlay4Obj {
  * and 0x24 are the DPNAME.lpszShortNameA of DPMSG_CREATEPLAYERORGROUP and
  * DPMSG_DESTROYPLAYERORGROUP respectively, which is what fixes dwType 3 and
  * 5 as "player created" and "player destroyed". */
-typedef struct BrDPlaySysMsg {
-    uint32_t dwType;      /* +0x00 */
-    uint32_t f04;
-    uint32_t f08;         /* +0x08 -- the DPID for dwType 5 */
-    uint32_t f0C;
-    uint32_t f10;
-    uint32_t f14;
-    uint32_t f18;
-    uint32_t f1C;
-    char    *pszName20;   /* +0x20 -- read only when dwType == 3 */
-    char    *pszName24;   /* +0x24 -- read only when dwType == 5 */
+/* 64-bit core: a DirectPlay system message, as the SDK's records at the
+ * build's native layout (dplay.h). The leading dwords are shared: dwType,
+ * then (CREATE/DESTROYPLAYERORGROUP) the player type and DPID at +0x08, or
+ * (CHAT) flags, the sender, the addressee and the group. */
+#include "dplay.h"
+typedef union BrDPlaySysMsg {
+    struct {
+        uint32_t dwType;      /* +0x00 */
+        uint32_t f04;
+        uint32_t f08;         /* +0x08 -- the DPID for dwType 3 and 5 */
+        uint32_t f0C;
+        uint32_t f10;
+    };
+    struct {                  /* DPMSG_CREATEPLAYERORGROUP (dwType 3) */
+        uint32_t dwType, dwPlayerType, dpId, dwCurrentPlayers;
+        void    *lpData;
+        uint32_t dwDataSize;
+        DPNAME   dpnName;
+        uint32_t dpIdParent, dwFlags;
+    } create;
+    struct {                  /* DPMSG_DESTROYPLAYERORGROUP (dwType 5) */
+        uint32_t dwType, dwPlayerType, dpId;
+        void    *lpLocalData;
+        uint32_t dwLocalDataSize;
+        void    *lpRemoteData;
+        uint32_t dwRemoteDataSize;
+        DPNAME   dpnName;
+        uint32_t dpIdParent, dwFlags;
+    } destroy;
 } BrDPlaySysMsg;
 
 /* The OS primitives the originals reach through the import table. Every one

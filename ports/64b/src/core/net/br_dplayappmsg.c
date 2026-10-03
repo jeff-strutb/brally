@@ -108,7 +108,7 @@
 /* @t4-pass 0x10009010 2 2026-09-27 probes 720 bytes 952 insns 289 regions 12 rows 19 census yes  (hand: every declaration order of the six locals with the float-zero entry store) */
 /* @t4-pass 0x10009010 3 2026-09-27 probes 28 bytes 952 insns 289 regions 12 rows 19 census no  (hand: pMsg copy, idFrom for the literal 1s, tail test spellings, /TP /Gi /Ox /Ob2) */
 /* @implements 0x10009010 glide BrDpAppMsgHandle */
-void BrDpAppMsgHandle(int *pNet, int *pMsg, int a3, int idFrom, int a5)
+void BrDpAppMsgHandle(BrDPlayCtx *pNet, int *pMsg, int a3, int idFrom, int a5)
 {
     LPARAM  pText;
     char    szDbg[260];
@@ -121,10 +121,10 @@ void BrDpAppMsgHandle(int *pNet, int *pMsg, int a3, int idFrom, int a5)
     if (DAT_10ac5be4 == 0) {
         switch (*pMsg) {
         case 0x60000000:
-            FUN_10036a30(*pNet, idFrom, (LPCSTR)(pMsg + 1), (LPCVOID *)&pText, 0);
+            FUN_10036a30((struct BrDPlayObj *)pNet->pDP, idFrom, (LPCSTR)(pMsg + 1), (LPCVOID *)&pText, 0);
             break;
         case 0x60000001:
-            FUN_10036a30(*pNet, idFrom, (LPCSTR)(pMsg + 1), (LPCVOID *)&pText, 1);
+            FUN_10036a30((struct BrDPlayObj *)pNet->pDP, idFrom, (LPCSTR)(pMsg + 1), (LPCVOID *)&pText, 1);
             break;
         case 0x60000002:
             if (idFrom == 1) {
@@ -175,7 +175,7 @@ void BrDpAppMsgHandle(int *pNet, int *pMsg, int a3, int idFrom, int a5)
             OutputDebugStringA(szDbg);
             return;
         case 0x60000004:
-            if (pNet[2] == pMsg[1]) {
+            if ((int)pNet->idPlayer == pMsg[1]) {
                 DAT_10ac5bec = 1;
             }
             sprintf(szDbg, s_APPMSG_BOOTPLAYER__received_100a5b60);
@@ -183,12 +183,12 @@ void BrDpAppMsgHandle(int *pNet, int *pMsg, int a3, int idFrom, int a5)
             break;
         case 0x60000006:
             if (idFrom == pMsg[1]) {
-                FUN_10036a30(*pNet, idFrom, s_left_the_race__1007b2d8, (LPCVOID *)&pText, 1);
+                FUN_10036a30((struct BrDPlayObj *)pNet->pDP, idFrom, s_left_the_race__1007b2d8, (LPCVOID *)&pText, 1);
             }
             break;
         case 0x60000007:
             if (idFrom == pMsg[1]) {
-                FUN_10036a30(*pNet, idFrom, s_returned_to_race_lobby__1007b2bc, (LPCVOID *)&pText, 1);
+                FUN_10036a30((struct BrDPlayObj *)pNet->pDP, idFrom, s_returned_to_race_lobby__1007b2bc, (LPCVOID *)&pText, 1);
             }
             break;
         case 0x60000008:
@@ -196,7 +196,7 @@ void BrDpAppMsgHandle(int *pNet, int *pMsg, int a3, int idFrom, int a5)
                 v = pMsg[2];
                 if (v >= 0 && v < 8) {
                     sprintf(szLine, s_finished__s_100a5b50, PTR_s_First__100aa3e8[v]);
-                    FUN_10036a30(*pNet, pMsg[1], szLine, (LPCVOID *)&pText, 1);
+                    FUN_10036a30((struct BrDPlayObj *)pNet->pDP, pMsg[1], szLine, (LPCVOID *)&pText, 1);
                 }
             }
             break;
@@ -210,8 +210,8 @@ void BrDpAppMsgHandle(int *pNet, int *pMsg, int a3, int idFrom, int a5)
             GlobalFree(GlobalHandle((LPCVOID)pText));
             return;
         }
-    } else if (((void **)pNet)[4] == 0) {
-        if (((void **)pNet)[3] != 0) {
+    } else if (pNet->f10 == 0) {
+        if (pNet->f0C != 0) {
             FUN_1002f790(pNet, pMsg, a3, idFrom, a5);
             return;
         }

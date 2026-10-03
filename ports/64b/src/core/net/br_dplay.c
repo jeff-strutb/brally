@@ -11,6 +11,8 @@
 
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
+#include "br_slots.h"   /* g_aBrAA2538 */
+#include "dplay.h"   /* DPSESSIONDESC2 */
 #include "slice2_25.h"   /* br_globals: its objects */
 #include <stdint.h>
 #include <stdio.h>
@@ -220,7 +222,7 @@ void BrDPlaySysMsgLog(BrDPlayCtx *pCtx, const BrDPlaySysMsg *pMsg,
         pszB = NULL;
         switch (pMsg->dwType) {
         case 3:
-            pszName = (const char *)pMsg->pszName20;
+            pszName = (const char *)pMsg->create.dpnName.lpszShortNameA;
             if (pszName == NULL)
                 pszName = g_szUnknown;
             cch1 = lstrlenA(g_szJoined);
@@ -231,7 +233,7 @@ void BrDPlaySysMsgLog(BrDPlayCtx *pCtx, const BrDPlaySysMsg *pMsg,
             wsprintfA(pszB, g_szJoined, pszName);
             break;
         case 5:
-            pszName = (const char *)pMsg->pszName24;
+            pszName = (const char *)pMsg->destroy.dpnName.lpszShortNameA;
             if (pszName == NULL)
                 pszName = g_szUnknown;
             cch1 = lstrlenA(g_szLeft);
@@ -241,9 +243,9 @@ void BrDPlaySysMsgLog(BrDPlayCtx *pCtx, const BrDPlaySysMsg *pMsg,
                 return;
             wsprintfA(pszB, g_szLeft, pszName);
             for (i = 0; i < BR_DP_SLOTS; i++) {
-                if (g_BrDPlay.aSlots[i][0] == (int)pMsg->f08) {
-                    g_BrDPlay.aSlots[i][0] = -1;
-                    g_BrDPlay.aSlots[i][1] = 0;
+                if (g_aBrAA2538[i].id == (int)pMsg->f08) {     /* 0x10AA2538 */
+                    g_aBrAA2538[i].id = -1;
+                    g_aBrAA2538[i].a = 0;
                     sprintf(szDbg, g_szDestroy, pMsg->f08);
                     OutputDebugStringA(szDbg);
                     break;
@@ -277,7 +279,7 @@ int32_t BrDPlayPump(BrDPlayCtx *pCtx)
 {
     void    *pvBuf = NULL;
     uint32_t cbBuf = 0;    /* zeroed ONCE -- see the GOTCHA in the header */
-    char *idFrom;
+    uint32_t idFrom;
     uint32_t idTo;
     int32_t  hr;
 
@@ -332,9 +334,10 @@ int32_t BrDPlayPump(BrDPlayCtx *pCtx)
 uint32_t __stdcall BrDPlayThreadProc(void *pvCtx)
 {
     BrDPlayCtx *pCtx  = (BrDPlayCtx *)pvCtx;
-    /* Read through the port's struct, not DAT_10273344: as a separate global
-     * the load schedules differently and the function stops matching. */
-    void       *hQuit = g_BrDPlay.hQuit;
+    /* 64-bit core: the quit event BrDPlayStartup created (0x10273344); the
+     * port struct's hQuit is a separate, never-set copy, and a NULL handle
+     * ends the wait at once */
+    void       *hQuit = DPS_hQuit;
     void       *ah[2];
 
     ah[0] = pCtx->hRecvEvent;
@@ -498,7 +501,7 @@ uint32_t BrDPlayGetCurrentPlayers(void)
     if (FUN_10036740(DPS_pDPGlobal, &pv) < 0)
         return 0xFFFFu;
 
-    n = *(uint32_t *)((char *)pv + 0x2C);
+    n = ((DPSESSIONDESC2 *)pv)->dwCurrentPlayers;
     GlobalUnlock(GlobalHandle(pv));
     GlobalFree(GlobalHandle(pv));
     return n;
@@ -607,12 +610,12 @@ int BrNetSessionApply(void)
         }
         return r;
     }
-    g_brIdx0ABDE8 = *(int *)((char *)pDesc + 0x40);
+    g_brIdx0ABDE8 = (int)((DPSESSIONDESC2 *)pDesc)->dwUser1;
     (*(int *)&g_Br0B380C) = g_brIdx0ABDE8;
-    DAT_10ac5d58 = *(int *)((char *)pDesc + 0x44);
+    DAT_10ac5d58 = (int)((DPSESSIONDESC2 *)pDesc)->dwUser2;
     g_226e80 = DAT_10ac5d58;
-    DAT_10ac5d70 = *(int *)((char *)pDesc + 0x48);
-    g_CBE8 = *(int *)((char *)pDesc + 0x4c);
+    DAT_10ac5d70 = (int)((DPSESSIONDESC2 *)pDesc)->dwUser3;
+    g_CBE8 = (int)((DPSESSIONDESC2 *)pDesc)->dwUser4;
     DAT_100abdf8 = g_CBE8;
     BrSub10044540();
     start = g_brSel0ABDF4;
@@ -630,7 +633,7 @@ int BrNetSessionApply(void)
             }
         }
     }
-    pszName = *(char **)((char *)pDesc + 0x30);
+    pszName = ((DPSESSIONDESC2 *)pDesc)->lpszSessionNameA;
     if (pszName != 0) {
         strcpy((*(char (*)[])&DAT_10ac40a8), pszName);
     }

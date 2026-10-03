@@ -113,6 +113,30 @@ typedef struct host_pad {
 } host_pad;
 int host_pad_read(host_pad *p);
 
+/* ---- network: IPv4 UDP ---------------------------------------------------------- */
+typedef struct host_addr {
+    uint32_t ip;          /* host byte order */
+    uint16_t port;
+} host_addr;
+typedef struct host_sock host_sock;
+/* a datagram socket on port (0: any free one); group != 0 also joins that
+ * multicast group, with the port shared among the processes on this machine */
+host_sock *host_udp_open(uint16_t port, uint32_t group);
+/* the port it was given */
+uint16_t   host_udp_port(host_sock *s);
+int        host_udp_send(host_sock *s, const host_addr *to, const void *p, int n);
+/* one datagram into p: its size, or -1 when none arrives within wait_ms */
+int        host_udp_recv(host_sock *s, host_addr *from, void *p, int cap, uint32_t wait_ms);
+void       host_udp_close(host_sock *s);
+
+/* ---- processes ------------------------------------------------------------------- */
+/* run this program again with the environment changed by env ("NAME=value"
+ * entries, NULL-terminated) and its output to log; an id for host_kill, 0
+ * when it cannot */
+intptr_t host_spawn_self(const char *const *env, const char *log);
+/* stop it: let it finish on its own for up to grace_ms, then end it */
+void     host_kill(intptr_t id, uint32_t grace_ms);
+
 /* ---- process ---------------------------------------------------------------------- */
 void host_init(int argc, char **argv);
 void host_shutdown(void);

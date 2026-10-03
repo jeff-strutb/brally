@@ -219,7 +219,7 @@ void FUN_10035660(void)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* BrComCreateInstance: prototype in br_funcs.h */
-typedef int (__stdcall *CC_std_3)(void *, int, int);
+typedef int (__stdcall *CC_std_3)(void *, void *, uint32_t);   /* InitializeConnection */
 
 /* WHAT IT DOES: connect to a chosen network transport -- tears down whatever
  * was running, asks the user's selection for its service provider, creates a
@@ -230,19 +230,20 @@ void FUN_100356b0(void)
 
 {
   int iVar1;
-  int local_408 [2];
+  void *pAddr;                 /* the connection's DirectPlay address */
+  unsigned int cbAddr;
   char local_400 [1024];
   
-  local_408[0] = 0;
-  local_408[1] = 0;
+  pAddr = 0;
+  cbAddr = 0;
   KillTimer(g_brOwner5BC72C,DAT_10ac306c);
   BrDpShutdown();
-  iVar1 = BrDpAddressBuild(local_408,local_408 + 1);
-  if (local_408[0] != 0) {
+  iVar1 = BrDpAddressBuild(&pAddr,&cbAddr);
+  if (pAddr != 0) {
     iVar1 = BrComCreateInstance((void **)&g_brP277B40);
     DAT_10ac4094 = DAT_10ac4094 + 1;
     if ((((iVar1 >= 0)) && ((*(int * *)&g_brP277B40) != (int *)0x0)) &&
-       (iVar1 = (*(CC_std_3 *)&((void **)*(void ***)(((*(int * *)&g_brP277B40))))[38])((*(int * *)&g_brP277B40),local_408[0],0), (iVar1 >= 0))) {
+       (iVar1 = (*(CC_std_3 *)&((void **)*(void ***)(((*(int * *)&g_brP277B40))))[38])((*(int * *)&g_brP277B40),pAddr,0), (iVar1 >= 0))) {
       if ((DAT_10ac5bd4 != 2) && (DAT_10ac5bd4 != 3)) {
         if ((g_brPAA29D4 != 0) && (iVar1 = BrNetEnumSessionsStart((*(int * *)&g_brP277B40)), iVar1 < 0))
         goto LAB_100357b5;
@@ -475,7 +476,7 @@ typedef int (__stdcall *BrDpCreateAddr5)(void *, BrDpAddrElem *, int,
  * both in the certified layout class; dead lists in the T2 RESIDUE note
  * above.  Do not reopen before the end-grind. */
 /* @implements 0x10036B20 glide BrDpAddressBuild */
-int BrDpAddressBuild(int *param_1, unsigned int *param_2)
+int BrDpAddressBuild(void **param_1, unsigned int *param_2)
 
 {
   int iVar2;
@@ -549,7 +550,7 @@ int BrDpAddressBuild(int *param_1, unsigned int *param_2)
     }
     pObj = DAT_10ac3068;
     vt = *(int **)pObj;
-    iVar2 = (*(BrDpCreateAddr5 *)((char *)vt + 0x38))
+    iVar2 = (*(BrDpCreateAddr5 *)(&((void **)vt)[0x38 / 4]))
                 (pObj, aElem, iVar6, 0, &local_50);
     if (iVar2 == (int)0x8877001e) {
       pvVar4 = GlobalAlloc(0x42, local_50);
@@ -560,10 +561,10 @@ int BrDpAddressBuild(int *param_1, unsigned int *param_2)
       else {
         pObj = DAT_10ac3068;
         vt = *(int **)pObj;
-        iVar2 = (*(BrDpCreateAddr5 *)((char *)vt + 0x38))
+        iVar2 = (*(BrDpCreateAddr5 *)(&((void **)vt)[0x38 / 4]))
                     (pObj, aElem, iVar6, pMem, &local_50);
         if (0 <= iVar2) {
-          *param_1 = (int)pMem;
+          *param_1 = pMem;
           *param_2 = local_50;
           return 0;
         }
@@ -586,7 +587,7 @@ int BrDpAddressBuild(int *param_1, unsigned int *param_2)
 /* BrSub1003D850: prototype in br_funcs.h */
 
 typedef int (__stdcall *COM4)(void *this, int a, void *b, int *c);
-typedef int (__stdcall *COM5)(void *this, void *cb, void *buf, int n, int cookie);
+typedef int (__stdcall *COM5)(void *this, void *cb, void *buf, int n, void *cookie);   /* EnumAddress */
 
 /* WHAT IT DOES: the same ask-then-allocate-then-ask-again dance for a
  * different DirectPlay method -- one that takes an extra argument and
@@ -606,7 +607,7 @@ int FUN_10036f40(HWND param_1, void *param_2)
   vt = *(int **)pObj;
   pMem = 0;
   size = 0;
-  hr = (*(COM4 *)((char *)vt + 0x48))(pObj, 0, 0, &size);
+  hr = (*(COM4 *)(&((void **)vt)[0x48 / 4]))(pObj, 0, 0, &size);
   if (hr == (int)0x8877001e) {
     hMem = GlobalAlloc(0x42, (unsigned int)size);
     pMem = GlobalLock(hMem);
@@ -616,7 +617,7 @@ int FUN_10036f40(HWND param_1, void *param_2)
     else {
       pObj = (*(int * *)&g_brP277B40);
       vt = *(int **)pObj;
-      hr = (*(COM4 *)((char *)vt + 0x48))(pObj, 0, pMem, &size);
+      hr = (*(COM4 *)(&((void **)vt)[0x48 / 4]))(pObj, 0, pMem, &size);
       if (hr >= 0) {
         hr = (*(COM5 *)&((void **)*(void ***)(param_2))[5])(param_2, (void *)BrSub1003D850, pMem, size, param_1);
       }

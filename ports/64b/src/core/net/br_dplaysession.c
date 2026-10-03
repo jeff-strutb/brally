@@ -163,19 +163,12 @@ int __stdcall BrNetSessionStore(char *pGuid, void *pPayload, unsigned int cbPayl
 /* 64-bit core: declared once, in br_globals.h or its struct's header */           /* -> desc.dwUser4                  */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */         /* the player name                  */
 
-typedef struct BrDpDesc2 {
-    int size, flags;
-    int guidI[4];
-    int guidA[4];
-    int maxPlayers, curPlayers;
-    int pszName, pszPassword;
-    int reserved1, reserved2;
-    int user1, user2, user3, user4;
-} BrDpDesc2;
-
-typedef int (__stdcall *BrDpOpenFn)(void *, void *, int, int, int);
-typedef int (__stdcall *BrDpCreatePlayerFn)(void *, int *, void *, int,
-                                            int, int, int);
+/* 64-bit core: the session description, player name and player record are
+ * the SDK's records at the build's native layout (dplay.h). */
+#include "dplay.h"
+typedef HRESULT (__stdcall *BrDpOpenFn)(void *, DPSESSIONDESC2 *, uint32_t, void *, void *);
+typedef HRESULT (__stdcall *BrDpCreatePlayerFn)(void *, DPID *, DPNAME *, void *,
+                                                void *, uint32_t, uint32_t);
 
 /* WHAT IT DOES: hosts a brand-new game on the network. Builds the session
  * description -- our application id, room for eight players, the caller's
@@ -201,58 +194,57 @@ typedef int (__stdcall *BrDpCreatePlayerFn)(void *, int *, void *, int,
  * full natural field order are all recorded dead above this line's
  * history. Do not reopen before the end-grind. */
 /* @implements 0x10035C50 glide BrNetSessionHost */
-int BrNetSessionHost(void *pIface, char *pHost, int *pRec)
+int BrNetSessionHost(void *pIface, char *pHost, BrOptUi *rec)
 {
-    BrDpDesc2 desc;
-    int  saved[3];
-    int  name[6];
-    int  id;
-    int *rec;
-    int  vt;
-    int  hr;
+    DPSESSIONDESC2 desc;
+    DPNAME         name;
+    DPID           id;
+    void         **vt;
+    void          *saved0;
+    int32_t        saved3, saved4;
+    HRESULT        hr;
 
     if (g_guardB == 0) {
         if (pIface == 0) {
             return (int)0x88770082;
         }
-        memset(&desc, 0, 0x50);
-        desc.guidA[0] = DAT_10077500;
-        desc.guidA[1] = DAT_10077504;
-        vt       = *(int *)pIface;        /* ONE vptr hoist, both calls */
-        desc.guidA[2] = DAT_10077508;
-        desc.guidA[3] = DAT_1007750c;
-        desc.flags = (*(int *)(pHost + 0xc8) != 0 ? 0x100 : 0) + 0x40;
-        desc.user1 = (*(int *)&g_Br0B380C);
-        desc.user2 = g_226e80;
-        desc.size = 0x50;
-        desc.maxPlayers = 8;
-        desc.pszName = (int)pHost;
-        desc.user3 = (int)DAT_10ac5d70;
-        desc.user4 = DAT_100abdf8;
-        hr = (*(BrDpOpenFn *)(vt + 0x9c))(pIface, &desc, 0x82, 0, 0);
+        memset(&desc, 0, sizeof desc);
+        memcpy((char *)&desc.guidApplication + 0, &DAT_10077500, 4);
+        memcpy((char *)&desc.guidApplication + 4, &DAT_10077504, 4);
+        vt = *(void ***)pIface;           /* ONE vptr hoist, both calls */
+        memcpy((char *)&desc.guidApplication + 8, &DAT_10077508, 4);
+        memcpy((char *)&desc.guidApplication + 12, &DAT_1007750c, 4);
+        desc.dwFlags = (*(int *)(pHost + 0xc8) != 0 ? 0x100 : 0) + 0x40;
+        desc.dwUser1 = (*(int *)&g_Br0B380C);
+        desc.dwUser2 = g_226e80;
+        desc.dwSize = sizeof desc;
+        desc.dwMaxPlayers = 8;
+        desc.lpszSessionNameA = pHost;
+        desc.dwUser3 = (DWORD)DAT_10ac5d70;
+        desc.dwUser4 = DAT_100abdf8;
+        hr = ((BrDpOpenFn)vt[0x9c / 4])(pIface, &desc, 0x82, NULL, NULL);   /* SecureOpen */
         if (hr < 0) {
             return hr;
         }
-        rec = pRec;
-        memset(name, 0, 0x10);
+        memset(&name, 0, sizeof name);
         id  = 0;
-        saved[0] = rec[0];
-        saved[1] = rec[3];
-        saved[2] = rec[4];
-        rec[0] = (int)pIface;
-        rec[3] = 1;
-        rec[4] = *(int *)(pHost + 0xc8);
-        name[0] = 0x10;
-        name[2] = (int)g_aBrCfgPlayerName;
-        hr = (*(BrDpCreatePlayerFn *)(vt + 0x18))
-                 (pIface, &id, name, rec[1], 0, 0, 0x100);
+        saved0 = rec->f00;
+        saved3 = rec->f0C;
+        saved4 = rec->f10;
+        rec->f00 = pIface;
+        rec->f0C = 1;
+        rec->f10 = *(int *)(pHost + 0xc8);
+        name.dwSize = sizeof name;
+        name.lpszShortNameA = g_aBrCfgPlayerName;
+        hr = ((BrDpCreatePlayerFn)vt[0x18 / 4])                       /* CreatePlayer */
+                 (pIface, &id, &name, rec->f04, NULL, 0, 0x100);
         if (hr < 0) {
-            rec[0] = saved[0];
-            rec[3] = saved[1];
-            rec[4] = saved[2];
+            rec->f00 = saved0;
+            rec->f0C = saved3;
+            rec->f10 = saved4;
             return hr;
         }
-        rec[2] = id;
+        rec->f08 = (int32_t)id;
     }
     return 0;
 }

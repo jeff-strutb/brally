@@ -85,6 +85,59 @@ static rel s_rel[64];
 static unsigned long s_frame, s_sleep_until;
 static char s_shots[1024];
 
+/* `peer SCRIPT`: a second copy of the game, driven by SCRIPT (beside this
+ * one), as the other machine on the network -- its own saves and shots
+ * under ours, its output in peer.log there. A copy that is itself the peer
+ * ignores the line. It is stopped when this one exits. */
+static intptr_t s_peer;
+
+static void stop_peer(void)
+{
+    /* the other copy finishes its own script, as the oracle lets its peer */
+    plat_peersync_end();
+    if (s_peer)
+        host_kill(s_peer, 30000);
+    s_peer = 0;
+}
+
+static void start_peer(const char *path)
+{
+    static char e_script[1200], e_save[1200], e_shots[1200], e_sync[64], log[1200];
+    const char *env[8];
+    uint16_t sync;
+    const char *slash;
+    int i;
+    if (getenv("BR_PEER"))
+        return;
+    for (i = 0; i < s_n; i++)
+        if (!strcmp(s_prog[i].op, "peer") && s_prog[i].na >= 1)
+            break;
+    if (i == s_n)
+        return;
+    slash = strrchr(path, '/');
+    snprintf(e_script, sizeof e_script, "BR_SCRIPT=%.*s%s", slash ? (int)(slash - path + 1) : 0, path, s_prog[i].a[0]);
+    snprintf(e_save, sizeof e_save, "BR_SAVEDIR=%s/peer", host_save_dir());
+    host_mkdir(e_save + strlen("BR_SAVEDIR="));
+    snprintf(e_shots, sizeof e_shots, "BR_SHOTS=%s/peer", s_shots);
+    snprintf(log, sizeof log, "%s/peer/peer.log", host_save_dir());
+    env[0] = e_script;
+    env[1] = e_save;
+    env[2] = e_shots;
+    env[3] = "BR_PEER=1";
+    env[4] = "BR_VCLOCK_IMPORTS=1";     /* the oracle's clock: both copies */
+    env[5] = NULL;
+    plat_vclock_imports(1);
+    if ((sync = plat_peersync_listen()) != 0) {      /* BR_VCLOCK: one timeline */
+        snprintf(e_sync, sizeof e_sync, "BR_PEERSYNC=%u", sync);
+        env[5] = e_sync;
+        env[6] = NULL;
+    }
+    s_peer = host_spawn_self(env, log);
+    fprintf(stderr, "script: peer %s %s\n", s_prog[i].a[0], s_peer ? "started" : "could not start");
+    if (s_peer)
+        atexit(stop_peer);
+}
+
 static void load(void)
 {
     const char *path = getenv("BR_SCRIPT"), *d = getenv("BR_SHOTS");
@@ -119,6 +172,7 @@ static void load(void)
     fclose(f);
     s_active = 1;
     host_mkdir(s_shots);
+    start_peer(path);
 }
 
 void plat_script_key(int vk, int dik, int down);
@@ -249,7 +303,7 @@ static void step(void)
             s_ap = !strcmp(s->a[0], "on");
             if (!s_ap)
                 plat_script_autopilot_off();
-        } else if (!strcmp(s->op, "files") || !strcmp(s->op, "savefiles") ||
+        } else if (!strcmp(s->op, "files") || !strcmp(s->op, "savefiles") || !strcmp(s->op, "peer") ||
                    !strcmp(s->op, "joystick") || !strcmp(s->op, "tmu")) {
             /* setup only (files: applied before the game starts) */
         } else if (!strcmp(s->op, "mark")) {
@@ -341,6 +395,7 @@ void plat_app_frame(void)
         load();
     if (!s_active)
         return;
+    plat_vclock_frame();
     s_frame++;
     for (i = 0; i < s_nrel; i++) {
         if (s_rel[i].frame <= s_frame) {

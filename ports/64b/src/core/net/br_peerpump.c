@@ -83,7 +83,7 @@ void BrNetPeerPump(void)
         if (st >= 1) {
             didAny = 1;
             if (st == 1) {
-                BrNetWriteRaceOpts((*(unsigned char (*)[16][532])&g_aBrPeerMsg)[i], i);
+                BrNetWriteRaceOpts((unsigned char *)&g_aBrPeerMsg[i], i);
             }
             else {
                 for (j = 0; j < BR_PEERS; j++) {
@@ -114,14 +114,14 @@ void BrNetPeerPump(void)
                     }
                     ReleaseMutex(g_aBr178FEF8[i][j].hMutex);
                     if (changed) {
-                        BrNetWritePlayerRec((*(unsigned char (*)[16][532])&g_aBrPeerMsg)[i], j, st2, id,
+                        BrNetWritePlayerRec((unsigned char *)&g_aBrPeerMsg[i], j, st2, id,
                                             b4, b5, b6, name,
                                             pj->f004);
                     }
                     ReleaseMutex(pj->hMutex);
                 }
             }
-            BrNetWriteTag20((*(unsigned char (*)[16][532])&g_aBrPeerMsg)[i], i);
+            BrNetWriteTag20((unsigned char *)&g_aBrPeerMsg[i], i);
             {
             /* Tested and passed by index, stored through p: all-pointer
              * moves the outer walker's anchor to +0x95C, all-index to +0x964. */
@@ -129,7 +129,7 @@ void BrNetPeerPump(void)
             if ((unsigned int)(*(int *)&DAT_1184c070) >
                     (unsigned int)(g_aBrPeer71[i].f95C + 1000) &&
                 DAT_117b3250 == 0 &&
-                BrNetWriteTagC0((*(unsigned char (*)[16][532])&g_aBrPeerMsg)[i], i, g_aBrPeer71[i].f960, g_aBrPeer71[i].f964) != 0) {
+                BrNetWriteTagC0((unsigned char *)&g_aBrPeerMsg[i], i, g_aBrPeer71[i].f960, g_aBrPeer71[i].f964) != 0) {
                 p->f95C = (*(int *)&DAT_1184c070);
                 for (k = 0; k < BR_PEERS; k++) {
                     if (i != k) {
@@ -140,7 +140,7 @@ void BrNetPeerPump(void)
                             ExitThread(0);
                         }
                         if ((g_aBrPeer71[k].f02C & 0x3f) >= 1 &&
-                            BrNetWriteTagC0((*(unsigned char (*)[16][532])&g_aBrPeerMsg)[i], k,
+                            BrNetWriteTagC0((unsigned char *)&g_aBrPeerMsg[i], k,
                                           g_aBrPeer71[k].f960,
                                           g_aBrPeer71[k].f964) == 0) {
                             k = BR_PEERS;

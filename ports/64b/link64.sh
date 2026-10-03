@@ -28,7 +28,7 @@ ports/64b/build64.sh $OUT/gen/br_data.c >/dev/null
 ports/64b/build64.sh ports/64b/platform/common/script_game.c | grep -v "^OK" >&2 || true
 
 SRCS="$P/common/main.c $P/common/crt.c $P/common/win_kernel.c $P/common/win_user.c \
-      $P/common/win_mm.c $P/common/win_rsrc.c $P/common/dx.c $P/common/dsound.c $P/common/audio.c $P/common/dplay.c $P/common/script.c $P/common/ear.c $P/common/glide.c \
+      $P/common/win_mm.c $P/common/win_rsrc.c $P/common/dx.c $P/common/dsound.c $P/common/audio.c $P/common/dplay.c $P/common/peersync.c $P/common/script.c $P/common/ear.c $P/common/glide.c \
       $P/render/$RENDER/brr_$RENDER.*"
 case "$HOST" in
   null)  SRCS="$SRCS $P/host/posix/host_posix.c $P/host/null/host_null.c";;

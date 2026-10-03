@@ -358,27 +358,24 @@ typedef struct Dim Dim;
 typedef struct BrAiPathPt RcPoint;   /* the same object as BrAiPathPt */
 typedef void (*BrCheatFn)(void);
 /* One entry of a peer record's +0xD0 table: only its leading time is read. */
-typedef struct BrPeerSub {
-    float time;                              /* +0x0000 */
-    uint8_t _pad0004[0x9C];
-} BrPeerSub;
-
-/* One networking peer record, 0x96C bytes: the union of what br_peerpump.c
- * and br_peerrank.c read of it. */
+/* One networking peer record (0x96C bytes on i386). The mutex is its only
+ * pointer; the rest is what br_peer*.c and the race-message parser
+ * (0x1002F790) read and write: eight received car states with the tick each
+ * was stamped with and what kind of packet produced it. */
+#include "slice1_02.h"       /* BrCarState */
 typedef struct BrPeerRec {
     void *hMutex;                            /* +0x0000 */
-    int f004;                                /* +0x0004 */
+    int f004;                                /* +0x0004  the peer's DPID */
     int f008;                                /* +0x0008  stamped with the current tick */
-    uint8_t _pad000C[0x20];
+    unsigned int aTs[8];                     /* +0x000C  tick of each state */
     int f02C;                                /* +0x002C */
     int f030;                                /* +0x0030 */
     unsigned char f034;                      /* +0x0034 */
     unsigned char f035;                      /* +0x0035 */
     unsigned char f036;                      /* +0x0036 */
     unsigned char f037;                      /* +0x0037 */
-    uint8_t _pad0038[0x98];
-    BrPeerSub aSub[7];                       /* +0x00D0 */
-    uint8_t _pad0530[0x28];
+    int aKind[8];                            /* +0x0038  0x40 full, 0x80 delta */
+    BrCarState aState[8];                    /* +0x0058 */
     int f558;                                /* +0x0558 */
     char szName[1024];                       /* +0x055C */
     int f95C;                                /* +0x095C */

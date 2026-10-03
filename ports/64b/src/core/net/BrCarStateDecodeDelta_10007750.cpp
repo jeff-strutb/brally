@@ -58,17 +58,7 @@ extern "C" {
 /* BrFixPackS24Q1: prototype in br_funcs.h */
 }
 
-struct BrCarState {
-    float f00, f04, f08, f0C;
-    float f10, f14, f18, f1C, f20;
-    float f24;
-    float f28, f2C, f30, f34, f38, f3C;
-    float f40, f44, f48;
-    float f4C, f50, f54, f58;
-    float f5C, f60, f64, f68;
-    float f6C, f70, f74, f78, f7C, f80, f84;
-    float f88, f8C, f90, f94, f98, f9C;
-};
+/* BrCarState: slice1_02.h (via br_coretypes.h) */
 
 #define BR_ONE_128  128.0f
 

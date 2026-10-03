@@ -26,9 +26,10 @@ int BR_THISCALL1 BrCountedTotal(const BrCounted *pObj)
 /* WHAT IT DOES: return the int at offset +0x10 in a state object (fastcall). */
 /* @implements 0x1006D190 glide BrStateGetField10 */
 
-int __fastcall BrStateGetField10(char * param_1)
+void * __fastcall BrStateGetField10(char * param_1)
 
 {
-  return *(int *)(param_1 + 0x10);
+  /* 64-bit core: a bit stream's buffer pointer (BrBitStream.pBuf, +0x10) */
+  return *(void **)(param_1 + 0x10);
 }
 

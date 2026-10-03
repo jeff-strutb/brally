@@ -11,6 +11,7 @@
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
 #include "dplay.h"
+#include "br_ui.h"     /* BrUiCtl_ */
 #include "slice2_25.h"   /* br_globals: its objects */
 #include <stdio.h>
 #include <string.h>
@@ -67,7 +68,7 @@ int BrSub1003C260(void)
 
     if (g_brPAA29D8 == 0)
         return 1;
-    if (*(unsigned short *)((*(char * *)&g_brPAA29D4) + 0x1E164) <= 0u)
+    if ((unsigned short)((BrUiCtl_ *)g_brPAA29D4)->list.count <= 0u)
         return 1;
 
     if (g_guardB == 0) {
@@ -313,7 +314,7 @@ int BrDpSessionJoin(void *pDp, DWORD *pGuidInstance, BrDpLogin *pLogin,
     }
 
     pVt = *(char **)pDp;
-    hr = (*(BrDpSecureOpen *)(pVt + 0x9C))(pDp, &desc, 0x81, NULL, pCred);
+    hr = (*(BrDpSecureOpen *)(&((void **)pVt)[0x9C / 4]))(pDp, &desc, 0x81, NULL, pCred);
     if (hr >= 0) {
         memset(&name, 0, sizeof(name));
         name.dwSize        = sizeof(name);
@@ -333,7 +334,7 @@ int BrDpSessionJoin(void *pDp, DWORD *pGuidInstance, BrDpLogin *pLogin,
                 pSess->f0C = 0;
                 save.f10 = pSess->f10;
                 pSess->f10 = (pDesc->dwFlags >> 8) & 1;
-                hr = (*(BrDpCreatePlayer *)(pVt + 0x18))(pDp, &id, &name,
+                hr = (*(BrDpCreatePlayer *)(&((void **)pVt)[0x18 / 4]))(pDp, &id, &name,
                                                          pSess->hEvent,
                                                          NULL, 0, dwFlags);
                 if (hr < 0) {

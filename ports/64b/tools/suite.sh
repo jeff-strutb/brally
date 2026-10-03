@@ -20,14 +20,27 @@ run_one() {
     n=$(basename "$s" .txt)
     d=$OUT/$n
     rm -rf "$d"; mkdir -p "$d/save" "$d/shots"
-    if grep -q '^peer' "$s"; then echo "$n: skipped (needs a second machine)" > "$d/result.txt"; return; fi
+    # a script another one runs as its `peer` is only half of a pair
+    if ! grep -q '^peer' "$s" && grep -lq "^peer $n.txt" "$(dirname "$s")"/*.txt 2>/dev/null; then
+        echo "$n: skipped (runs as the peer of $(grep -l "^peer $n.txt" "$(dirname "$s")"/*.txt | head -1 | xargs basename))" > "$d/result.txt"
+        return
+    fi
     sed 's/^mark \(.*\)$/mark \1\nshot \1/' "$s" > "$d/script.txt"
-    BR_SAVEDIR=$d/save BR_SHOTS=$d/shots BR_SCRIPT=$d/script.txt timeout_run "$d" &
+    VCLOCK=
+    p=$(sed -n 's/^peer \([^ ]*\).*/\1/p' "$s" | head -1)
+    if [ -n "$p" ]; then
+        # a pair: the other copy's script beside this one, both on one
+        # virtual timeline (peersync.c)
+        sed 's/^mark \(.*\)$/mark \1\nshot \1/' "$(dirname "$s")/$p" > "$d/$p"
+        VCLOCK=0.25
+    fi
+    BR_VCLOCK=$VCLOCK BR_SAVEDIR=$d/save BR_SHOTS=$d/shots BR_SCRIPT=$d/script.txt timeout_run "$d" &
     wait $!
 }
 
 timeout_run() {
     d=$1
+    if [ -n "$BR_VCLOCK" ]; then export BR_VCLOCK; else unset BR_VCLOCK; fi
     BR_SAVEDIR=$d/save BR_SHOTS=$d/shots BR_SCRIPT=$d/script.txt $BIN > "$d/log.txt" 2>&1 &
     pid=$!
     i=0
@@ -40,8 +53,12 @@ timeout_run() {
     n=$(basename "$d")
     exec > "$d/result.txt" 2>&1
     last=$(grep 'script: frame' "$d/log.txt" | tail -1 | cut -c1-80)
+    peer=
+    if [ -f "$d/save/peer/peer.log" ]; then
+        peer="; peer: $(grep -E 'script: end at|timed out' "$d/save/peer/peer.log" | tail -1)"
+    fi
     if grep -q 'script: end at' "$d/log.txt"; then
-        echo "$n: ok ($(grep 'script: end at' "$d/log.txt"))"
+        echo "$n: ok ($(grep 'script: end at' "$d/log.txt")$peer)"
     elif [ $rc -eq 0 ]; then
         echo "$n: ok (the game quit with 0 after $last)"
     else

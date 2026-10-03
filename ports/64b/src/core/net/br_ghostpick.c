@@ -53,7 +53,7 @@
 unsigned int BrGhostPickBlend(float *param_1, int param_2)
 {
   float *pfVar1;
-  unsigned int *puVar2;
+  BrNetSlot *pSlot;
   float *pfVar3;
   int iVar4;
   int iVar5;
@@ -72,19 +72,19 @@ unsigned int BrGhostPickBlend(float *param_1, int param_2)
   pfVar3 = param_1;
   ahWait[0] = (*(HANDLE *)&g_hBrNetMutex);
   ahWait[1] = (HANDLE)g_aBrNetSlot[param_2].hMutex;
-  puVar2 = (&g_aBrNetSlot[param_2].hMutex);
+  pSlot = &g_aBrNetSlot[param_2];
   WaitForMultipleObjects(2, ahWait, 1, 0xffffffff);
   if (param_2 != g_id) {
-    if ((int)((int *)puVar2)[0x156] < 2) {
+    if ((int)pSlot->f558 < 2) {
       param_1[0x1f] = 400.0f;
-      ReleaseMutex((HANDLE)*puVar2);
+      ReleaseMutex(pSlot->hMutex);
       ReleaseMutex((*(HANDLE *)&g_hBrNetMutex));
       return 0;
     }
     iVar5 = 0;
     iVar9 = 0;
     param_1 = (float *)0x0;
-    puVar8 = puVar2 + 3;
+    puVar8 = pSlot->f00C;   /* f038 is 0x2C bytes on: puVar8[0xb] */
     do {
       if ((puVar8[0xb] != 0) && (param_1 < (float *)*puVar8)) {
         iVar9 = iVar5;
@@ -97,7 +97,7 @@ unsigned int BrGhostPickBlend(float *param_1, int param_2)
     iVar5 = 0;
     param_2 = 0;
     param_1 = (float *)0x0;
-    puVar8 = puVar2 + 3;
+    puVar8 = pSlot->f00C;   /* f038 is 0x2C bytes on: puVar8[0xb] */
     do {
       if (((puVar8[0xb] != 0) && (iVar5 = param_2, param_1 < (float *)*puVar8)) && (iVar6 != iVar9)) {
         iVar5 = iVar6;
@@ -107,14 +107,14 @@ unsigned int BrGhostPickBlend(float *param_1, int param_2)
       iVar6 = iVar6 + 1;
       puVar8 = puVar8 + 1;
     } while (iVar6 < 8);
-    iVar6 = ((int *)puVar2)[3 + iVar9] - ((int *)puVar2)[3 + iVar5];
-    if (((int *)puVar2)[0x158] == iVar9) {
-      if ((int)((int *)puVar2)[0x15a] < 0xf) {
-        ((int *)puVar2)[0x15a] = ((int *)puVar2)[0x15a] + 1;
-        ((int *)puVar2)[0x159] = ((int *)puVar2)[0x159] + 1;
+    iVar6 = (int)pSlot->f00C[iVar9] - (int)pSlot->f00C[iVar5];
+    if (pSlot->f560 == iVar9) {
+      if ((int)pSlot->f568 < 0xf) {
+        pSlot->f568 = pSlot->f568 + 1;
+        pSlot->f564 = pSlot->f564 + 1;
       }
       if (iVar6 == 0) {
-        pfVar10 = (float *)(puVar2 + ((int *)puVar2)[0x158] * 0x28 + 0x16);
+        pfVar10 = (float *)&pSlot->cars[pSlot->f560];
         pfVar11 = pfVar3;
         for (iVar9 = 0x28; iVar9 != 0; iVar9 = iVar9 + -1) {
           *pfVar11 = *pfVar10;
@@ -124,56 +124,56 @@ unsigned int BrGhostPickBlend(float *param_1, int param_2)
         goto LAB_done;
       }
       iVar7 = BrTicks30FromMs();
-      iVar7 = iVar7 - ((int *)puVar2)[3 + iVar9];
+      iVar7 = iVar7 - (int)pSlot->f00C[iVar9];
       if (6 < iVar7) {
         iVar7 = 6;
       }
-      BrCarStateLerp(pfVar3, (float)(iVar7 + iVar6) / (float)iVar6, puVar2 + iVar5 * 0x28 + 0x16,
-                     puVar2 + iVar9 * 0x28 + 0x16);
-      v3[0] = *(float *)&puVar2[iVar9 * 0x28 + 0x1a];   /* the stored float, copied as a dword */
-      v3[1] = *(float *)&puVar2[iVar9 * 0x28 + 0x1b];   /* the stored float, copied as a dword */
-      v3[2] = *(float *)&puVar2[iVar9 * 0x28 + 0x1c];   /* the stored float, copied as a dword */
+      BrCarStateLerp(pfVar3, (float)(iVar7 + iVar6) / (float)iVar6, &pSlot->cars[iVar5],
+                     &pSlot->cars[iVar9]);
+      v3[0] = pSlot->cars[iVar9].f10;   /* the stored float, copied as a dword */
+      v3[1] = pSlot->cars[iVar9].f14;   /* the stored float, copied as a dword */
+      v3[2] = pSlot->cars[iVar9].f18;   /* the stored float, copied as a dword */
       fVar12 = BrGroundProbeZ(v3);
       v3[0] = pfVar3[4];
       v3[1] = pfVar3[5];
       v3[2] = pfVar3[6];
       fVar13 = BrGroundProbeZ(v3);
     } else {
-      ((int *)puVar2)[0x158] = iVar9;
-      if ((((unsigned int)((int *)puVar2)[3 + iVar9] < (unsigned int)(((int *)puVar2)[0x159] + 1)) &&
-           ((int)((int *)puVar2)[0x15b] < 0x14)) && (iVar6 != 0)) {
-        ((int *)puVar2)[0x15a] = 1;
-        ((int *)puVar2)[0x15b] = ((int *)puVar2)[0x15b] + 1;
-        ((int *)puVar2)[0x159] = ((int *)puVar2)[0x159] + 1;
+      pSlot->f560 = iVar9;
+      if ((((unsigned int)(int)pSlot->f00C[iVar9] < (unsigned int)(pSlot->f564 + 1)) &&
+           ((int)pSlot->f56C < 0x14)) && (iVar6 != 0)) {
+        pSlot->f568 = 1;
+        pSlot->f56C = pSlot->f56C + 1;
+        pSlot->f564 = pSlot->f564 + 1;
         iVar7 = BrTicks30FromMs();
-        iVar7 = iVar7 - ((int *)puVar2)[3 + iVar9];
+        iVar7 = iVar7 - (int)pSlot->f00C[iVar9];
         if (6 < iVar7) {
           iVar7 = 6;
         }
-        BrCarStateLerp(pfVar3, (float)(iVar7 + iVar6) / (float)iVar6, puVar2 + iVar5 * 0x28 + 0x16,
-                       puVar2 + iVar9 * 0x28 + 0x16);
-        v3[0] = *(float *)&puVar2[iVar9 * 0x28 + 0x1a];   /* the stored float, copied as a dword */
-        v3[1] = *(float *)&puVar2[iVar9 * 0x28 + 0x1b];   /* the stored float, copied as a dword */
-        v3[2] = *(float *)&puVar2[iVar9 * 0x28 + 0x1c];   /* the stored float, copied as a dword */
+        BrCarStateLerp(pfVar3, (float)(iVar7 + iVar6) / (float)iVar6, &pSlot->cars[iVar5],
+                       &pSlot->cars[iVar9]);
+        v3[0] = pSlot->cars[iVar9].f10;   /* the stored float, copied as a dword */
+        v3[1] = pSlot->cars[iVar9].f14;   /* the stored float, copied as a dword */
+        v3[2] = pSlot->cars[iVar9].f18;   /* the stored float, copied as a dword */
         fVar12 = BrGroundProbeZ(v3);
         v3[0] = pfVar3[4];
         v3[1] = pfVar3[5];
         v3[2] = pfVar3[6];
         fVar13 = BrGroundProbeZ(v3);
       } else {
-        ((int *)puVar2)[0x15a] = 0;
-        ((int *)puVar2)[0x15b] = 0;
-        ((int *)puVar2)[0x159] = ((int *)puVar2)[3 + iVar9];
+        pSlot->f568 = 0;
+        pSlot->f56C = 0;
+        pSlot->f564 = (int)pSlot->f00C[iVar9];
         iVar7 = BrTicks30FromMs();
-        iVar7 = iVar7 - ((int *)puVar2)[3 + iVar9];
+        iVar7 = iVar7 - (int)pSlot->f00C[iVar9];
         if (6 < iVar7) {
           iVar7 = 6;
         }
-        BrCarStateLerp(pfVar3, (float)(iVar7 + iVar6) / (float)iVar6, puVar2 + iVar5 * 0x28 + 0x16,
-                       puVar2 + iVar9 * 0x28 + 0x16);
-        v3[0] = *(float *)&puVar2[iVar9 * 0x28 + 0x1a];   /* the stored float, copied as a dword */
-        v3[1] = *(float *)&puVar2[iVar9 * 0x28 + 0x1b];   /* the stored float, copied as a dword */
-        v3[2] = *(float *)&puVar2[iVar9 * 0x28 + 0x1c];   /* the stored float, copied as a dword */
+        BrCarStateLerp(pfVar3, (float)(iVar7 + iVar6) / (float)iVar6, &pSlot->cars[iVar5],
+                       &pSlot->cars[iVar9]);
+        v3[0] = pSlot->cars[iVar9].f10;   /* the stored float, copied as a dword */
+        v3[1] = pSlot->cars[iVar9].f14;   /* the stored float, copied as a dword */
+        v3[2] = pSlot->cars[iVar9].f18;   /* the stored float, copied as a dword */
         fVar12 = BrGroundProbeZ(v3);
         v3[0] = pfVar3[4];
         v3[1] = pfVar3[5];
@@ -184,7 +184,7 @@ unsigned int BrGhostPickBlend(float *param_1, int param_2)
     pfVar3[6] = (fVar12 - fVar13) + pfVar3[6];
   }
 LAB_done:
-  ReleaseMutex((HANDLE)*puVar2);
+  ReleaseMutex(pSlot->hMutex);
   ReleaseMutex((*(HANDLE *)&g_hBrNetMutex));
   BrCarClampUnit(pfVar3);
   pfVar10 = pfVar3 + 1;

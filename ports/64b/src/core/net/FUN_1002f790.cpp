@@ -69,9 +69,6 @@ struct BrNetHdr {
     int f08;
 };
 
-struct BrCarState {
-    char raw[0xA0];
-};
 
 /* The packet reader.  Methods and the ctor/dtor are named by their VA so the
  * A5 oracle's reloc resolver can map each thiscall to its address (the
@@ -171,7 +168,7 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int
         cmd  = pkt.m_1006CE00();
         b10  = cmd & 0x10;
         slot = cmd & 0xf;
-        soff = slot * 0x96c;
+        soff = slot;
         switch (cmd & 0xe0) {
         case 0x00: {
             unsigned      b0    = pkt.m_1006CE00() & 0xff;
@@ -192,37 +189,37 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int
             if ((flags & 0x3f) == 4)
                 pkt.m_1006CE50();
 
-            WaitForSingleObject(((*(void * *)((char *)&(g_aBrPeer71) + soff))), 0xffffffff);
-            if ((((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x2C))) + soff))) & 0x3f) == 0)
+            WaitForSingleObject(((*(void * *)((char *)&g_aBrPeer71[soff]))), 0xffffffff);
+            if ((((*(int *)((char *)&g_aBrPeer71[soff].f02C))) & 0x3f) == 0)
                 goto c0_rel;
-            if (idFrom != ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x4))) + soff))))
+            if (idFrom != ((*(int *)((char *)&g_aBrPeer71[soff].f004))))
                 goto c0_rel;
             if (b10 != 0) {
-                roff = (slot * 0x10 + b0) * 0x96c;
-                WaitForSingleObject(((*(void * *)((char *)&(g_aBr178FEF8) + roff))), 0xffffffff);
-                if (ts >= ((*(unsigned *)((char *)&((*(unsigned int *)((char *)&g_aBr178FEF8 + 0x8))) + roff)))) {
+                roff = slot * 0x10 + b0;
+                WaitForSingleObject(((*(void * *)((char *)&(&g_aBr178FEF8[0][0])[roff]))), 0xffffffff);
+                if (ts >= ((*(unsigned *)((char *)&(&g_aBr178FEF8[0][0])[roff].f008)))) {
                     if (slot == b0) {
                         if (flags & 0x40) {
                             flags &= 0x3f;
-                            ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x2C))) + soff))) &= 0xffffff3f;
+                            ((*(int *)((char *)&g_aBrPeer71[soff].f02C))) &= 0xffffff3f;
                         }
                         if (slot == b0 && (flags & 0x80)) {
                             flags &= 0x3f;
-                            ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x2C))) + soff))) &= 0xffffff3f;
+                            ((*(int *)((char *)&g_aBrPeer71[soff].f02C))) &= 0xffffff3f;
                         }
                     }
-                    ((*(unsigned *)((char *)&((*(unsigned int *)((char *)&g_aBr178FEF8 + 0x8))) + roff))) = ts;
-                    ((*(int *)((char *)&((*(int *)((char *)&g_aBr178FEF8 + 0x2C))) + roff)))      = flags;
-                    ((*(int *)((char *)&((*(int *)((char *)&g_aBr178FEF8 + 0x30))) + roff)))      = nib;
-                    (((char *)((char *)&((*(char *)((char *)&g_aBr178FEF8 + 0x34))) + roff)))[0]  = ca;
-                    (((char *)((char *)&((*(char *)((char *)&g_aBr178FEF8 + 0x35))) + roff)))[0]  = cb;
-                    (((char *)((char *)&((*(char *)((char *)&g_aBr178FEF8 + 0x36))) + roff)))[0]  = cc;
-                    ((*(int *)((char *)&((*(int *)((char *)&g_aBr178FEF8 + 0x4))) + roff)))      = id;
+                    ((*(unsigned *)((char *)&(&g_aBr178FEF8[0][0])[roff].f008))) = ts;
+                    ((*(int *)((char *)&(&g_aBr178FEF8[0][0])[roff].f02C)))      = flags;
+                    ((*(int *)((char *)&(&g_aBr178FEF8[0][0])[roff].f030)))      = nib;
+                    (((char *)((char *)&(&g_aBr178FEF8[0][0])[roff].f034)))[0]  = ca;
+                    (((char *)((char *)&(&g_aBr178FEF8[0][0])[roff].f035)))[0]  = cb;
+                    (((char *)((char *)&(&g_aBr178FEF8[0][0])[roff].f036)))[0]  = cc;
+                    ((*(int *)((char *)&(&g_aBr178FEF8[0][0])[roff].f004)))      = id;
                     if (hasName)
-                        strcpy((((char *)((char *)&((*(char *)((char *)&g_aBr178FEF8 + 0x55C))) + roff))), name);
+                        strcpy((((char *)((char *)&(&g_aBr178FEF8[0][0])[roff].szName))), name);
                 }
-                ReleaseMutex(((*(void * *)((char *)&(g_aBr178FEF8) + roff))));
-                ReleaseMutex(((*(void * *)((char *)&(g_aBrPeer71) + soff))));
+                ReleaseMutex(((*(void * *)((char *)&(&g_aBr178FEF8[0][0])[roff]))));
+                ReleaseMutex(((*(void * *)((char *)&g_aBrPeer71[soff]))));
                 break;
             }
             if (slot == b0) {
@@ -230,10 +227,10 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int
                     bStart = 1;
                 if (flags & 0x80)
                     bReturn = 1;
-                ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x2C))) + soff))) = flags;
+                ((*(int *)((char *)&g_aBrPeer71[soff].f02C))) = flags;
             }
         c0_rel:
-            ReleaseMutex(((*(void * *)((char *)&(g_aBrPeer71) + soff))));
+            ReleaseMutex(((*(void * *)((char *)&g_aBrPeer71[soff]))));
             break;
         }
 
@@ -241,37 +238,37 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int
             int      best, cur;
             unsigned bestT;
 
-            WaitForSingleObject(((*(void * *)((char *)&(g_aBrPeer71) + soff))), 0xffffffff);
-            if ((((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x2C))) + soff))) & 0x3f) < 2)
+            WaitForSingleObject(((*(void * *)((char *)&g_aBrPeer71[soff]))), 0xffffffff);
+            if ((((*(int *)((char *)&g_aBrPeer71[soff].f02C))) & 0x3f) < 2)
                 goto c4_rel;
-            if (idFrom != ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x4))) + soff))))
+            if (idFrom != ((*(int *)((char *)&g_aBrPeer71[soff].f004))))
                 goto c4_rel;
-            cur = ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff)));
-            if (ts <= (((unsigned *)((char *)&((*(unsigned int (*)[])((char *)&g_aBrPeer71 + 0xC))) + soff)))[cur]) {
+            cur = ((*(int *)((char *)&g_aBrPeer71[soff].f558)));
+            if (ts <= (((unsigned *)((char *)&g_aBrPeer71[soff].aTs)))[cur]) {
                 BrCarStateDecode(&scratch, (struct BrBitReader *)&pkt);
-                ReleaseMutex(((*(void * *)((char *)&(g_aBrPeer71) + soff))));
+                ReleaseMutex(((*(void * *)((char *)&g_aBrPeer71[soff]))));
                 break;
             }
             best  = 0;
             bestT = 0xffffffff;
             for (i = 0; i < 8; i++) {
-                if ((((unsigned *)((char *)&((*(unsigned int (*)[])((char *)&g_aBrPeer71 + 0xC))) + soff)))[i] <= bestT) {
+                if ((((unsigned *)((char *)&g_aBrPeer71[soff].aTs)))[i] <= bestT) {
                     best  = i;
-                    bestT = (((unsigned *)((char *)&((*(unsigned int (*)[])((char *)&g_aBrPeer71 + 0xC))) + soff)))[i];
+                    bestT = (((unsigned *)((char *)&g_aBrPeer71[soff].aTs)))[i];
                 }
             }
-            ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff))) = best;
-            (((unsigned *)((char *)&((*(unsigned int (*)[])((char *)&g_aBrPeer71 + 0xC))) + soff)))[best] = ts;
-            (((int *)((char *)&((*(int (*)[])((char *)&g_aBrPeer71 + 0x38))) + soff)))[((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff)))] = 0x40;
-            BrCarStateDecode(&(((BrCarState *)((char *)&((*(BrCarState (*)[])((char *)&g_aBrPeer71 + 0x58))) + soff)))[((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff)))], (struct BrBitReader *)&pkt);
-            if (((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x968))) + soff))) != 0)
+            ((*(int *)((char *)&g_aBrPeer71[soff].f558))) = best;
+            (((unsigned *)((char *)&g_aBrPeer71[soff].aTs)))[best] = ts;
+            (((int *)((char *)&g_aBrPeer71[soff].aKind)))[((*(int *)((char *)&g_aBrPeer71[soff].f558)))] = 0x40;
+            BrCarStateDecode(&(((BrCarState *)((char *)&g_aBrPeer71[soff].aState)))[((*(int *)((char *)&g_aBrPeer71[soff].f558)))], (struct BrBitReader *)&pkt);
+            if (((*(int *)((char *)&g_aBrPeer71[soff].f968))) != 0)
                 goto c4_rel;
-            if (*(float *)((char *)&(((BrCarState *)((char *)&((*(BrCarState (*)[])((char *)&g_aBrPeer71 + 0x58))) + soff)))[((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff)))] + 0x78)
+            if (*(float *)((char *)&(((BrCarState *)((char *)&g_aBrPeer71[soff].aState)))[((*(int *)((char *)&g_aBrPeer71[soff].f558)))] + 0x78)
                     < DAT_1007751c)
                 goto c4_rel;
-            ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x968))) + soff))) = BrDelta_100713A0();
+            ((*(int *)((char *)&g_aBrPeer71[soff].f968))) = BrDelta_100713A0();
         c4_rel:
-            ReleaseMutex(((*(void * *)((char *)&(g_aBrPeer71) + soff))));
+            ReleaseMutex(((*(void * *)((char *)&g_aBrPeer71[soff]))));
             break;
         }
 
@@ -289,56 +286,56 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int
             unsigned bestT, tNew, tPrev;
             float    frac;
 
-            WaitForSingleObject(((*(void * *)((char *)&(g_aBrPeer71) + soff))), 0xffffffff);
-            if ((((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x2C))) + soff))) & 0x3f) < 2)
+            WaitForSingleObject(((*(void * *)((char *)&g_aBrPeer71[soff]))), 0xffffffff);
+            if ((((*(int *)((char *)&g_aBrPeer71[soff].f02C))) & 0x3f) < 2)
                 goto c8_rel;
-            if (idFrom != ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x4))) + soff))))
+            if (idFrom != ((*(int *)((char *)&g_aBrPeer71[soff].f004))))
                 goto c8_rel;
-            cur = ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff)));
-            if (ts <= (((unsigned *)((char *)&((*(unsigned int (*)[])((char *)&g_aBrPeer71 + 0xC))) + soff)))[cur]) {
+            cur = ((*(int *)((char *)&g_aBrPeer71[soff].f558)));
+            if (ts <= (((unsigned *)((char *)&g_aBrPeer71[soff].aTs)))[cur]) {
                 BrCarStateDecodeDelta(&scratch2, &scratch2, (struct BrBitReader *)&pkt);
                 goto c8_rel;
             }
             best  = 0;
             bestT = 0xffffffff;
             for (i = 0; i < 8; i++) {
-                if ((((unsigned *)((char *)&((*(unsigned int (*)[])((char *)&g_aBrPeer71 + 0xC))) + soff)))[i] <= bestT) {
-                    bestT = (((unsigned *)((char *)&((*(unsigned int (*)[])((char *)&g_aBrPeer71 + 0xC))) + soff)))[i];
+                if ((((unsigned *)((char *)&g_aBrPeer71[soff].aTs)))[i] <= bestT) {
+                    bestT = (((unsigned *)((char *)&g_aBrPeer71[soff].aTs)))[i];
                     best  = i;
                 }
             }
             iNew = 0;
             tNew = 0;
             for (i = 0; i < 8; i++) {
-                if ((((int *)((char *)&((*(int (*)[])((char *)&g_aBrPeer71 + 0x38))) + soff)))[i] == 0x40 && tNew < (((unsigned *)((char *)&((*(unsigned int (*)[])((char *)&g_aBrPeer71 + 0xC))) + soff)))[i]) {
+                if ((((int *)((char *)&g_aBrPeer71[soff].aKind)))[i] == 0x40 && tNew < (((unsigned *)((char *)&g_aBrPeer71[soff].aTs)))[i]) {
                     iNew = i;
-                    tNew = (((unsigned *)((char *)&((*(unsigned int (*)[])((char *)&g_aBrPeer71 + 0xC))) + soff)))[i];
+                    tNew = (((unsigned *)((char *)&g_aBrPeer71[soff].aTs)))[i];
                 }
             }
             iPrev = 0;
             tPrev = 0;
             for (i = 0; i < 8; i++) {
-                if ((((int *)((char *)&((*(int (*)[])((char *)&g_aBrPeer71 + 0x38))) + soff)))[i] == 0x40 && tPrev < (((unsigned *)((char *)&((*(unsigned int (*)[])((char *)&g_aBrPeer71 + 0xC))) + soff)))[i]
+                if ((((int *)((char *)&g_aBrPeer71[soff].aKind)))[i] == 0x40 && tPrev < (((unsigned *)((char *)&g_aBrPeer71[soff].aTs)))[i]
                         && i != iNew) {
                     iPrev = i;
-                    tPrev = (((unsigned *)((char *)&((*(unsigned int (*)[])((char *)&g_aBrPeer71 + 0xC))) + soff)))[i];
+                    tPrev = (((unsigned *)((char *)&g_aBrPeer71[soff].aTs)))[i];
                 }
             }
-            d = (((unsigned *)((char *)&((*(unsigned int (*)[])((char *)&g_aBrPeer71 + 0xC))) + soff)))[iNew] - (((unsigned *)((char *)&((*(unsigned int (*)[])((char *)&g_aBrPeer71 + 0xC))) + soff)))[iPrev];
+            d = (((unsigned *)((char *)&g_aBrPeer71[soff].aTs)))[iNew] - (((unsigned *)((char *)&g_aBrPeer71[soff].aTs)))[iPrev];
             if (d == 0)
                 frac = 1.0f;
             else
-                frac = (float)(unsigned)(ts - (((unsigned *)((char *)&((*(unsigned int (*)[])((char *)&g_aBrPeer71 + 0xC))) + soff)))[iPrev]) / d;
-            ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff))) = best;
-            (((unsigned *)((char *)&((*(unsigned int (*)[])((char *)&g_aBrPeer71 + 0xC))) + soff)))[best] = ts;
-            (((int *)((char *)&((*(int (*)[])((char *)&g_aBrPeer71 + 0x38))) + soff)))[((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff)))] = 0x80;
-            BrCarStateLerp(&(((BrCarState *)((char *)&((*(BrCarState (*)[])((char *)&g_aBrPeer71 + 0x58))) + soff)))[((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff)))], frac,
-                           &(((BrCarState *)((char *)&((*(BrCarState (*)[])((char *)&g_aBrPeer71 + 0x58))) + soff)))[iPrev],
-                           &(((BrCarState *)((char *)&((*(BrCarState (*)[])((char *)&g_aBrPeer71 + 0x58))) + soff)))[iNew]);
-            BrCarStateDecodeDelta(&(((BrCarState *)((char *)&((*(BrCarState (*)[])((char *)&g_aBrPeer71 + 0x58))) + soff)))[((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff)))],
-                                  &(((BrCarState *)((char *)&((*(BrCarState (*)[])((char *)&g_aBrPeer71 + 0x58))) + soff)))[iNew], (struct BrBitReader *)&pkt);
+                frac = (float)(unsigned)(ts - (((unsigned *)((char *)&g_aBrPeer71[soff].aTs)))[iPrev]) / d;
+            ((*(int *)((char *)&g_aBrPeer71[soff].f558))) = best;
+            (((unsigned *)((char *)&g_aBrPeer71[soff].aTs)))[best] = ts;
+            (((int *)((char *)&g_aBrPeer71[soff].aKind)))[((*(int *)((char *)&g_aBrPeer71[soff].f558)))] = 0x80;
+            BrCarStateLerp(&(((BrCarState *)((char *)&g_aBrPeer71[soff].aState)))[((*(int *)((char *)&g_aBrPeer71[soff].f558)))], frac,
+                           &(((BrCarState *)((char *)&g_aBrPeer71[soff].aState)))[iPrev],
+                           &(((BrCarState *)((char *)&g_aBrPeer71[soff].aState)))[iNew]);
+            BrCarStateDecodeDelta(&(((BrCarState *)((char *)&g_aBrPeer71[soff].aState)))[((*(int *)((char *)&g_aBrPeer71[soff].f558)))],
+                                  &(((BrCarState *)((char *)&g_aBrPeer71[soff].aState)))[iNew], (struct BrBitReader *)&pkt);
         c8_rel:
-            ReleaseMutex(((*(void * *)((char *)&(g_aBrPeer71) + soff))));
+            ReleaseMutex(((*(void * *)((char *)&g_aBrPeer71[soff]))));
             break;
         }
 
@@ -346,13 +343,13 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int
             int b   = pkt.m_1006CE50();
             int now = BrDelta_100713A0();
 
-            WaitForSingleObject(((*(void * *)((char *)&(g_aBrPeer71) + soff))), 0xffffffff);
-            if ((((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x2C))) + soff))) & 0x3f) != 0 && idFrom == ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x4))) + soff)))
+            WaitForSingleObject(((*(void * *)((char *)&g_aBrPeer71[soff]))), 0xffffffff);
+            if ((((*(int *)((char *)&g_aBrPeer71[soff].f02C))) & 0x3f) != 0 && idFrom == ((*(int *)((char *)&g_aBrPeer71[soff].f004)))
                     && b10 != 0) {
-                ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x960))) + soff))) = b;
-                ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x964))) + soff))) = now - b;
+                ((*(int *)((char *)&g_aBrPeer71[soff].f960))) = b;
+                ((*(int *)((char *)&g_aBrPeer71[soff].f964))) = now - b;
             }
-            ReleaseMutex(((*(void * *)((char *)&(g_aBrPeer71) + soff))));
+            ReleaseMutex(((*(void * *)((char *)&g_aBrPeer71[soff]))));
             break;
         }
 
@@ -377,46 +374,40 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int
                 j = BrPeerFind(idFrom);
                 if (j == -1)
                     break;
-                soff = j * 0x96c;
-                WaitForSingleObject(((*(void * *)((char *)&(g_aBrPeer71) + soff))), 0xffffffff);
-                ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x4))) + soff))) = idFrom;
-                pRing = (((int *)((char *)&((*(int (*)[])((char *)&g_aBrPeer71 + 0x38))) + soff)));
-                pCar  = (((BrCarState *)((char *)&((*(BrCarState (*)[])((char *)&g_aBrPeer71 + 0x58))) + soff)));
-                k = 8;
-                do {
-                    pRing[-0xb] = 0;    /* timestamp ring entry (kind ring - 0x2c) */
-                    *pRing = 0;         /* kind ring entry */
-                    pRing++;
-                    memset(pCar, 0, sizeof(BrCarState));
-                    pCar++;
-                    k--;
-                } while (k != 0);
-                ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x2C))) + soff))) = 1;
-                ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x558))) + soff))) = 0;
-                ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x95C))) + soff))) = BrDelta_100713A0();
-                roff = j * 0x10 * 0x96c;
+                soff = j;
+                WaitForSingleObject(((*(void * *)((char *)&g_aBrPeer71[soff]))), 0xffffffff);
+                ((*(int *)((char *)&g_aBrPeer71[soff].f004))) = idFrom;
+                for (k = 0; k < 8; k++) {
+                    g_aBrPeer71[soff].aTs[k] = 0;      /* timestamp ring entry */
+                    g_aBrPeer71[soff].aKind[k] = 0;    /* kind ring entry */
+                    memset(&g_aBrPeer71[soff].aState[k], 0, sizeof(BrCarState));
+                }
+                ((*(int *)((char *)&g_aBrPeer71[soff].f02C))) = 1;
+                ((*(int *)((char *)&g_aBrPeer71[soff].f558))) = 0;
+                ((*(int *)((char *)&g_aBrPeer71[soff].f95C))) = BrDelta_100713A0();
+                roff = j * 0x10;
                 m = 0x10;
                 do {
-                    WaitForSingleObject(((*(void * *)((char *)&(g_aBr178FEF8) + roff))), 0xffffffff);
-                    ((*(unsigned *)((char *)&((*(unsigned int *)((char *)&g_aBr178FEF8 + 0x8))) + roff))) = 0;
-                    ((*(int *)((char *)&((*(int *)((char *)&g_aBr178FEF8 + 0x2C))) + roff)))      = 0;
-                    ReleaseMutex(((*(void * *)((char *)&(g_aBr178FEF8) + roff))));
-                    roff += 0x96c;
+                    WaitForSingleObject(((*(void * *)((char *)&(&g_aBr178FEF8[0][0])[roff]))), 0xffffffff);
+                    ((*(unsigned *)((char *)&(&g_aBr178FEF8[0][0])[roff].f008))) = 0;
+                    ((*(int *)((char *)&(&g_aBr178FEF8[0][0])[roff].f02C)))      = 0;
+                    ReleaseMutex(((*(void * *)((char *)&(&g_aBr178FEF8[0][0])[roff]))));
+                    roff += 1;
                     m--;
                 } while (m != 0);
-                ReleaseMutex(((*(void * *)((char *)&(g_aBrPeer71) + soff))));
+                ReleaseMutex(((*(void * *)((char *)&g_aBrPeer71[soff]))));
             } else {
-                WaitForSingleObject(((*(void * *)((char *)&(g_aBrPeer71) + soff))), 0xffffffff);
-                if ((((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x2C))) + soff))) & 0x3f) != 0 && idFrom == ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x4))) + soff)))
+                WaitForSingleObject(((*(void * *)((char *)&g_aBrPeer71[soff]))), 0xffffffff);
+                if ((((*(int *)((char *)&g_aBrPeer71[soff].f02C))) & 0x3f) != 0 && idFrom == ((*(int *)((char *)&g_aBrPeer71[soff].f004)))
                         && slot == b0) {
-                    ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x30))) + soff)))     = nib;
-                    (((char *)((char *)&((*(char *)((char *)&g_aBrPeer71 + 0x34))) + soff)))[0] = ca;
-                    (((char *)((char *)&((*(char *)((char *)&g_aBrPeer71 + 0x35))) + soff)))[0] = cb;
-                    (((char *)((char *)&((*(char *)((char *)&g_aBrPeer71 + 0x36))) + soff)))[0] = cc;
-                    strcpy((((char *)((char *)&((*(char *)((char *)&g_aBrPeer71 + 0x55C))) + soff))), name);
-                    ((*(int *)((char *)&((*(int *)((char *)&g_aBrPeer71 + 0x2C))) + soff))) = 2;
+                    ((*(int *)((char *)&g_aBrPeer71[soff].f030)))     = nib;
+                    (((char *)((char *)&g_aBrPeer71[soff].f034)))[0] = ca;
+                    (((char *)((char *)&g_aBrPeer71[soff].f035)))[0] = cb;
+                    (((char *)((char *)&g_aBrPeer71[soff].f036)))[0] = cc;
+                    strcpy((((char *)((char *)&g_aBrPeer71[soff].szName))), name);
+                    ((*(int *)((char *)&g_aBrPeer71[soff].f02C))) = 2;
                 }
-                ReleaseMutex(((*(void * *)((char *)&(g_aBrPeer71) + soff))));
+                ReleaseMutex(((*(void * *)((char *)&g_aBrPeer71[soff]))));
             }
             break;
         }
@@ -427,10 +418,10 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int
     }
 
     if (bReturn) {
-        int *pst;
-        for (pst = &(*(int *)((char *)&g_aBrPeer71 + 0x2C)); (char *)pst < (char *)&(*(int *)((char *)&g_aBrPeer71 + 0x2C)) + 0x10 * 0x96c;
-                pst = (int *)((char *)pst + 0x96c)) {
-            void    *h = *(void **)((char *)pst - 0x2c);
+        int ip;
+        for (ip = 0; ip < 0x10; ip++) {
+            int     *pst = &g_aBrPeer71[ip].f02C;
+            void    *h = g_aBrPeer71[ip].hMutex;
             unsigned s;
 
             WaitForSingleObject(h, 0xffffffff);
@@ -441,10 +432,10 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int
         }
     }
     if (bStart) {
-        int *pst;
-        for (pst = &(*(int *)((char *)&g_aBrPeer71 + 0x2C)); (char *)pst < (char *)&(*(int *)((char *)&g_aBrPeer71 + 0x2C)) + 0x10 * 0x96c;
-                pst = (int *)((char *)pst + 0x96c)) {
-            void    *h = *(void **)((char *)pst - 0x2c);
+        int ip;
+        for (ip = 0; ip < 0x10; ip++) {
+            int     *pst = &g_aBrPeer71[ip].f02C;
+            void    *h = g_aBrPeer71[ip].hMutex;
             unsigned s;
 
             WaitForSingleObject(h, 0xffffffff);

@@ -115,19 +115,13 @@ uint32_t BrEntityCountActive(void)
 {
     int32_t n = g_BrCarCount;
     uint32_t c = 0;
-    unsigned char *p;
+    int32_t i;
 
-    /* Orig `test edx,edx; jle ret`: skip the countdown, do not early-return
-     * (that duplicates `ret`). */
-    if (n > 0) {
-        p = (*(unsigned char (*)[])&g_aBrRaceCar[0].pfnControl);
-        do {
-            if (*(int32_t *)p != 0)
-                ++c;
-            p += BR_ENTITY_STRIDE;
-            --n;
-        } while (n != 0);
-    }
+    /* the cars with a controller; 64-bit core: indexed on the native record,
+     * not stepped by the i386 stride (BR_ENTITY_STRIDE) */
+    for (i = 0; i < n; i++)
+        if (g_aBrRaceCar[i].pfnControl != 0)
+            ++c;
     return c;
 }
 

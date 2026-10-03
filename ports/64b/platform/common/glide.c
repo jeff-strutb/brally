@@ -72,11 +72,11 @@ static uint32_t argb(GrColor_t c)
 }
 
 /* ---- start-up ------------------------------------------------------------------- */
-void grGlideInit(void) {}
-void grGlideShutdown(void) { brr_close(); }
+void grGlideInit(void) { plat_vclock_import();}
+void grGlideShutdown(void) { plat_vclock_import(); brr_close(); }
 
 FxBool grSstQueryHardware(GrHwConfiguration *hw)
-{
+{ plat_vclock_import();
     memset(hw, 0, sizeof *hw);
     hw->num_sst = 1;
     hw->SSTs[0].type = GR_SSTTYPE_VOODOO;
@@ -89,7 +89,7 @@ FxBool grSstQueryHardware(GrHwConfiguration *hw)
     return 1;
 }
 
-void grSstSelect(int which) { (void)which; }
+void grSstSelect(int which) { plat_vclock_import(); (void)which; }
 
 static const short k_res[16][2] = {
     { 320, 200 }, { 320, 240 }, { 400, 256 }, { 512, 384 }, { 640, 200 }, { 640, 350 },
@@ -99,7 +99,7 @@ static const short k_res[16][2] = {
 
 FxBool grSstWinOpen(void *hwnd, GrScreenResolution_t res, GrScreenRefresh_t ref,
                     GrColorFormat_t cformat, GrOriginLocation_t org, int ncol, int naux)
-{
+{ plat_vclock_import();
     (void)hwnd; (void)ref; (void)ncol; (void)naux;
     if (res >= 0 && res < 16) {
         s_w = k_res[res][0];
@@ -121,11 +121,11 @@ FxBool grSstWinOpen(void *hwnd, GrScreenResolution_t res, GrScreenRefresh_t ref,
     return brr_open(s_w, s_h);
 }
 
-void grSstWinClose(void) {}
+void grSstWinClose(void) { plat_vclock_import();}
 
 /* ---- frame ------------------------------------------------------------------------- */
 void grClipWindow(FxU32 x0, FxU32 y0, FxU32 x1, FxU32 y1)
-{
+{ plat_vclock_import();
     gllog("grClipWindow %u %u %u %u", x0, y0, x1, y1);
     s_st.clip_x0 = (int32_t)x0;
     s_st.clip_x1 = (int32_t)x1;
@@ -139,7 +139,7 @@ void grClipWindow(FxU32 x0, FxU32 y0, FxU32 x1, FxU32 y1)
 }
 
 void grBufferClear(GrColor_t color, GrAlpha_t alpha, FxU16 depth)
-{
+{ plat_vclock_import();
     uint32_t c = (argb(color) & 0x00FFFFFFu) | (uint32_t)alpha << 24;
     gllog("grBufferClear %08X %u %u", color, alpha, depth);
     brr_clear(c, depth / 65535.0f, 1, s_st.depth_mode != 0, &s_st);
@@ -148,7 +148,7 @@ void grBufferClear(GrColor_t color, GrAlpha_t alpha, FxU16 depth)
 void plat_text_swap(void);         /* script_game.c */
 
 void grBufferSwap(int interval)
-{
+{ plat_vclock_import();
     (void)interval;
     gllog("grBufferSwap");
     plat_text_swap();
@@ -156,40 +156,40 @@ void grBufferSwap(int interval)
     plat_pump(0);
 }
 
-int grBufferNumPending(void) { return 0; }
+int grBufferNumPending(void) { plat_vclock_import(); return 0; }
 
 /* ---- state ----------------------------------------------------------------------------- */
 void grColorCombine(GrCombineFunction_t f, GrCombineFactor_t fa, GrCombineLocal_t l, GrCombineOther_t o, FxBool inv)
-{
+{ plat_vclock_import();
     gllog("grColorCombine %u %u %u %u %u", f, fa, l, o, inv);
     s_st.cc_fn = f; s_st.cc_factor = fa; s_st.cc_local = l; s_st.cc_other = o; s_st.cc_invert = inv;
 }
 void grAlphaCombine(GrCombineFunction_t f, GrCombineFactor_t fa, GrCombineLocal_t l, GrCombineOther_t o, FxBool inv)
-{
+{ plat_vclock_import();
     gllog("grAlphaCombine %u %u %u %u %u", f, fa, l, o, inv);
     s_st.ac_fn = f; s_st.ac_factor = fa; s_st.ac_local = l; s_st.ac_other = o; s_st.ac_invert = inv;
 }
 void grAlphaBlendFunction(GrAlphaBlendFnc_t rs, GrAlphaBlendFnc_t rd, GrAlphaBlendFnc_t as, GrAlphaBlendFnc_t ad)
-{
+{ plat_vclock_import();
     gllog("grAlphaBlendFunction %u %u %u %u", rs, rd, as, ad);
     s_st.blend_rgb_src = rs; s_st.blend_rgb_dst = rd; s_st.blend_a_src = as; s_st.blend_a_dst = ad;
 }
-void grAlphaTestFunction(GrCmpFnc_t f) { s_st.atest_fn = f; }
-void grAlphaTestReferenceValue(GrAlpha_t v) { s_st.atest_ref = v; }
-void grConstantColorValue(GrColor_t v) { gllog("grConstantColorValue %08X", v); s_st.constant = argb(v); }
-void grCullMode(GrCullMode_t m) { s_st.cull = m; }
-void grDepthBufferMode(GrDepthBufferMode_t m) { gllog("grDepthBufferMode %u", m); s_depth_mode = m; s_st.depth_mode = m; }
-void grDepthBufferFunction(GrCmpFnc_t f) { s_st.depth_fn = f; }
-void grDepthMask(FxBool m) { s_st.depth_mask = m; }
-void grFogMode(GrFogMode_t m) { s_st.fog_mode = m; }
-void grFogColorValue(GrColor_t c) { s_st.fog_color = argb(c); }
-void grFogTable(const GrFog_t ft[GR_FOG_TABLE_SIZE]) { memcpy(s_st.fog_table, ft, GR_FOG_TABLE_SIZE); }
+void grAlphaTestFunction(GrCmpFnc_t f) { plat_vclock_import(); s_st.atest_fn = f; }
+void grAlphaTestReferenceValue(GrAlpha_t v) { plat_vclock_import(); s_st.atest_ref = v; }
+void grConstantColorValue(GrColor_t v) { plat_vclock_import(); gllog("grConstantColorValue %08X", v); s_st.constant = argb(v); }
+void grCullMode(GrCullMode_t m) { plat_vclock_import(); s_st.cull = m; }
+void grDepthBufferMode(GrDepthBufferMode_t m) { plat_vclock_import(); gllog("grDepthBufferMode %u", m); s_depth_mode = m; s_st.depth_mode = m; }
+void grDepthBufferFunction(GrCmpFnc_t f) { plat_vclock_import(); s_st.depth_fn = f; }
+void grDepthMask(FxBool m) { plat_vclock_import(); s_st.depth_mask = m; }
+void grFogMode(GrFogMode_t m) { plat_vclock_import(); s_st.fog_mode = m; }
+void grFogColorValue(GrColor_t c) { plat_vclock_import(); s_st.fog_color = argb(c); }
+void grFogTable(const GrFog_t ft[GR_FOG_TABLE_SIZE]) { plat_vclock_import(); memcpy(s_st.fog_table, ft, GR_FOG_TABLE_SIZE); }
 
 /* Glide's table entry i covers w = 2^(3 + i/4) / (8 - i%4) */
 static float fog_w(int i) { return (float)(pow(2.0, 3.0 + (double)(i >> 2)) / (8 - (i & 3))); }
 
 void guFogGenerateLinear(GrFog_t ft[GR_FOG_TABLE_SIZE], float nearZ, float farZ)
-{
+{ plat_vclock_import();
     int i;
     for (i = 0; i < GR_FOG_TABLE_SIZE; i++) {
         float f = (fog_w(i) - nearZ) / (farZ - nearZ);
@@ -199,7 +199,7 @@ void guFogGenerateLinear(GrFog_t ft[GR_FOG_TABLE_SIZE], float nearZ, float farZ)
 
 void grTexCombine(GrChipID_t tmu, GrCombineFunction_t rf, GrCombineFactor_t rfa, GrCombineFunction_t af,
                   GrCombineFactor_t afa, FxBool ri, FxBool ai)
-{
+{ plat_vclock_import();
     gllog("grTexCombine %u %u %u %u %u %u", rf, rfa, af, afa, ri, ai);
     if (tmu != 0)
         return;
@@ -207,15 +207,15 @@ void grTexCombine(GrChipID_t tmu, GrCombineFunction_t rf, GrCombineFactor_t rfa,
     s_st.tc_alpha_factor = afa; s_st.tc_rgb_invert = ri; s_st.tc_alpha_invert = ai;
 }
 void grTexFilterMode(GrChipID_t tmu, GrTextureFilterMode_t mn, GrTextureFilterMode_t mg)
-{
+{ plat_vclock_import();
     if (tmu == 0) { s_st.min_filter = mn; s_st.mag_filter = mg; }
 }
 void grTexClampMode(GrChipID_t tmu, GrTextureClampMode_t s, GrTextureClampMode_t t)
-{
+{ plat_vclock_import();
     if (tmu == 0) { s_st.clamp_s = s; s_st.clamp_t = t; }
 }
-void grTexMipMapMode(GrChipID_t tmu, GrMipMapMode_t m, FxBool b) { (void)tmu; (void)m; (void)b; }
-void grTexLodBiasValue(GrChipID_t tmu, float bias) { (void)tmu; (void)bias; }
+void grTexMipMapMode(GrChipID_t tmu, GrMipMapMode_t m, FxBool b) { plat_vclock_import(); (void)tmu; (void)m; (void)b; }
+void grTexLodBiasValue(GrChipID_t tmu, float bias) { plat_vclock_import(); (void)tmu; (void)bias; }
 
 /* ---- textures ----------------------------------------------------------------------------- */
 static int lod_side(GrLOD_t l) { return 256 >> l; }
@@ -247,18 +247,18 @@ static FxU32 mem_required(GrLOD_t small, GrLOD_t large, GrAspectRatio_t ar, GrTe
 }
 
 FxU32 grTexCalcMemRequired(GrLOD_t small, GrLOD_t large, GrAspectRatio_t ar, GrTextureFormat_t f)
-{
+{ plat_vclock_import();
     return mem_required(small, large, ar, f);
 }
 
 FxU32 grTexTextureMemRequired(FxU32 evenOdd, GrTexInfo *info)
-{
+{ plat_vclock_import();
     (void)evenOdd;
     return mem_required(info->smallLod, info->largeLod, info->aspectRatio, info->format);
 }
 
-FxU32 grTexMinAddress(GrChipID_t tmu) { (void)tmu; return 0; }
-FxU32 grTexMaxAddress(GrChipID_t tmu) { (void)tmu; return TMU_RAM - 8; }
+FxU32 grTexMinAddress(GrChipID_t tmu) { plat_vclock_import(); (void)tmu; return 0; }
+FxU32 grTexMaxAddress(GrChipID_t tmu) { plat_vclock_import(); (void)tmu; return TMU_RAM - 8; }
 
 static uint8_t s_tmem[TMU_RAM];
 
@@ -328,7 +328,7 @@ static int s_src_set, s_src_dirty;
 static void tex_resolve(void);
 
 void grTexDownloadMipMap(GrChipID_t tmu, FxU32 start, FxU32 evenOdd, GrTexInfo *info)
-{
+{ plat_vclock_import();
     FxU32 n, end;
     int i;
     (void)evenOdd;
@@ -357,7 +357,7 @@ void grTexDownloadMipMap(GrChipID_t tmu, FxU32 start, FxU32 evenOdd, GrTexInfo *
 }
 
 void grTexSource(GrChipID_t tmu, FxU32 start, FxU32 evenOdd, GrTexInfo *info)
-{
+{ plat_vclock_import();
     (void)evenOdd;
     if (info)
         gllog("grTexSource start %u fmt %u large %u aspect %u", start, info->format, info->largeLod, info->aspectRatio);
@@ -428,7 +428,7 @@ static void vert(brr_vertex *o, const GrVertex *v)
 }
 
 void grDrawTriangle(const GrVertex *a, const GrVertex *b, const GrVertex *c)
-{
+{ plat_vclock_import();
     brr_vertex v[3];
     gllog("grDrawTriangle");
     gllog_vtx(a);
@@ -443,7 +443,7 @@ void grDrawTriangle(const GrVertex *a, const GrVertex *b, const GrVertex *c)
 }
 
 void grDrawPolygonVertexList(int n, const GrVertex vl[])
-{
+{ plat_vclock_import();
     brr_vertex v[3 * 64];
     int i, k = 0;
     gllog("grDrawPolygonVertexList %d", n);
@@ -466,7 +466,7 @@ void grDrawPolygonVertexList(int n, const GrVertex vl[])
 
 FxBool grLfbWriteRegion(GrBuffer_t dst, FxU32 x, FxU32 y, GrLfbSrcFmt_t fmt, FxU32 w, FxU32 h,
                         FxI32 stride, void *data)
-{
+{ plat_vclock_import();
     (void)dst;
     gllog("grLfbWriteRegion buf %u x %u y %u fmt %u w %u h %u stride %d", dst, x, y, fmt, w, h, stride);
     if (fmt == 0) {              /* GR_LFB_SRC_FMT_565 */

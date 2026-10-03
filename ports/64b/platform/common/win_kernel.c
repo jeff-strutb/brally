@@ -95,6 +95,7 @@ HANDLE WINAPI CreateMutexA(LPSECURITY_ATTRIBUTES sa, BOOL owned, LPCSTR name)
 
 BOOL WINAPI SetEvent(HANDLE h)
 {
+    plat_vclock_import();
     kobj *o = kget(h);
     if (!o || o->type != K_EVENT)
         return FALSE;
@@ -107,6 +108,7 @@ BOOL WINAPI SetEvent(HANDLE h)
 
 BOOL WINAPI ReleaseMutex(HANDLE h)
 {
+    plat_vclock_import();
     kobj *o = kget(h);
     BOOL ok = FALSE;
     if (!o || o->type != K_MUTEX)
@@ -149,6 +151,7 @@ static int ktake(kobj *o, int take)
 
 DWORD WINAPI WaitForMultipleObjects(DWORD n, const HANDLE *h, BOOL all, DWORD ms)
 {
+    plat_vclock_import();
     uint64_t end = ms == INFINITE ? 0 : host_ticks_ns() + (uint64_t)ms * 1000000u;
     DWORD i, r = WAIT_TIMEOUT;
     kinit();
@@ -195,6 +198,7 @@ DWORD WINAPI WaitForMultipleObjects(DWORD n, const HANDLE *h, BOOL all, DWORD ms
 
 DWORD WINAPI WaitForSingleObject(HANDLE h, DWORD ms)
 {
+    plat_vclock_import();
     if (!h)
         return WAIT_FAILED;
     return WaitForMultipleObjects(1, &h, FALSE, ms);
@@ -301,8 +305,39 @@ int plat_vclock_main(void) { return plat_vclock() && s_main_thread; }
 
 void plat_vclock_advance(uint64_t us)
 {
-    if (plat_vclock_main())
+    if (plat_vclock_main()) {
         s_vus += us;
+        plat_peersync(s_vus);
+    }
+}
+
+/* BR_VCLOCK_IMPORTS: every call into the platform costs a tick too, as in
+ * the brbox oracle (each import advances its clock 0.25 ms). Scripts
+ * written against it -- the multiplayer pairs -- are timed by that clock; a
+ * `peer` pair turns it on (script.c). Off, time moves only when read. */
+static int s_vimports = -1;
+
+void plat_vclock_imports(int on) { s_vimports = on; }
+
+void plat_vclock_import(void)
+{
+    if (s_vimports < 0)
+        s_vimports = getenv("BR_VCLOCK_IMPORTS") != NULL;
+    if (s_vimports && plat_vclock_main())
+        plat_vclock_advance((uint64_t)s_vtick);
+}
+
+/* ... and, as there, each frame costs 1/30 s on top: a machine that presents
+ * exactly 30 frames a second (brbox_drive.py FRAME_MS) */
+void plat_vclock_frame(void)
+{
+    static uint64_t frames;
+    if (s_vimports < 0)
+        s_vimports = getenv("BR_VCLOCK_IMPORTS") != NULL;
+    if (s_vimports && plat_vclock_main()) {
+        frames++;
+        plat_vclock_advance(frames * 1000000u / 30u - (frames - 1) * 1000000u / 30u);
+    }
 }
 
 static uint64_t vclock_read_us(void)

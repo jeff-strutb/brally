@@ -37,7 +37,7 @@ struct BrCtl85;
 struct BrCtrlCfg;
 struct BrDPlayCtx;
 struct BrDPlayObj;
-struct BrDPlaySysMsg;
+union BrDPlaySysMsg;
 struct BrDepthRef;
 struct BrDiObj;
 struct BrDlClipSt;
@@ -953,11 +953,11 @@ int BrDPlayStartup(void *, struct BrDPlayCtx *);
 #pragma pop_macro("BrDPlayStartup")
 #pragma push_macro("BrDPlaySysMsgDispatch")
 #undef BrDPlaySysMsgDispatch
-void BrDPlaySysMsgDispatch(void *, const struct BrDPlaySysMsg *, unsigned int, unsigned int, unsigned int);
+void BrDPlaySysMsgDispatch(void *, const union BrDPlaySysMsg *, unsigned int, unsigned int, unsigned int);
 #pragma pop_macro("BrDPlaySysMsgDispatch")
 #pragma push_macro("BrDPlaySysMsgLog")
 #undef BrDPlaySysMsgLog
-void BrDPlaySysMsgLog(struct BrDPlayCtx *, const struct BrDPlaySysMsg *, unsigned int, unsigned int, unsigned int);
+void BrDPlaySysMsgLog(struct BrDPlayCtx *, const union BrDPlaySysMsg *, unsigned int, unsigned int, unsigned int);
 #pragma pop_macro("BrDPlaySysMsgLog")
 #pragma push_macro("BrDPlayThreadProc")
 #undef BrDPlayThreadProc
@@ -1171,11 +1171,11 @@ unsigned char * BrDlsTileSizeDecode(unsigned char *);
 #pragma pop_macro("BrDlsTileSizeDecode")
 #pragma push_macro("BrDpAddressBuild")
 #undef BrDpAddressBuild
-int BrDpAddressBuild(int *, unsigned int *);
+int BrDpAddressBuild(void **, unsigned int *);
 #pragma pop_macro("BrDpAddressBuild")
 #pragma push_macro("BrDpAppMsgHandle")
 #undef BrDpAppMsgHandle
-void BrDpAppMsgHandle(int *, int *, int, int, int);
+void BrDpAppMsgHandle(struct BrDPlayCtx *, int *, int, int, int);
 #pragma pop_macro("BrDpAppMsgHandle")
 #pragma push_macro("BrDpCreateIface")
 #undef BrDpCreateIface
@@ -2671,7 +2671,7 @@ int BrNetSessionApply(void);
 #pragma pop_macro("BrNetSessionApply")
 #pragma push_macro("BrNetSessionHost")
 #undef BrNetSessionHost
-int BrNetSessionHost(void *, char *, int *);
+int BrNetSessionHost(void *, char *, struct BrOptUi *);
 #pragma pop_macro("BrNetSessionHost")
 #pragma push_macro("BrNetSessionStore")
 #undef BrNetSessionStore
@@ -4171,7 +4171,7 @@ float BrSqrtF(float);
 #pragma pop_macro("BrSqrtF")
 #pragma push_macro("BrStateGetField10")
 #undef BrStateGetField10
-int BrStateGetField10(char *);
+void *BrStateGetField10(char *);
 #pragma pop_macro("BrStateGetField10")
 #pragma push_macro("BrStore_1003BD40")
 #undef BrStore_1003BD40
@@ -5311,7 +5311,7 @@ int BrWmAppHook35A30(char *, unsigned int, uintptr_t, intptr_t);
 #pragma pop_macro("BrWmAppHook35A30")
 #pragma push_macro("BrWmHook36130")
 #undef BrWmHook36130
-int BrWmHook36130(int, int, struct Rec36130 *, unsigned int, int);
+int BrWmHook36130(int, int, const struct DPNAME *, unsigned int, void *);
 #pragma pop_macro("BrWmHook36130")
 #pragma push_macro("BrWndProc")
 #undef BrWndProc

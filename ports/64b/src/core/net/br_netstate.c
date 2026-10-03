@@ -230,19 +230,19 @@ int BrNetMutexInit(void)
     pvVar1 = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
     g_aBrNetSlot[i].hMutex = pvVar1;
   }
-  DAT_10226a54 = (int)CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
-  DAT_10226a58 = (int)CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
-  DAT_10226a5c = (int)CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
-  g_h1022AF30 = (int)CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+  DAT_10226a54 = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+  DAT_10226a58 = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+  DAT_10226a5c = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+  g_h1022AF30 = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
   g_brNetPktTick = 0;
   DAT_1021c908 = 0;
   BrTimeUpdate();
-  g_hBrNetMutex = (int)CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+  g_hBrNetMutex = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
   g_brH221324 = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
   g_brH22AF04 = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
-  g_brH220DDC = (int)CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
-  DAT_1021ce4c = (int)CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
-  DAT_1021c81c = (int)CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+  g_brH220DDC = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+  DAT_1021ce4c = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+  DAT_1021c81c = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
   ((int (*)())BrNetReset)();
   return 1;
 }
@@ -507,15 +507,13 @@ int BrNetSlotGetF030(int i, unsigned char *pb34, unsigned char *pb35,
                      unsigned char *pb36)
 {
     int v;
-    int off = i * 0x978;
 
-    WaitForSingleObject(*(HANDLE *)((char *)&(*(int *)&g_aBrNetSlot) + off),
-                        0xffffffff);
-    v     = *(int *)((char *)&(*(int *)&g_aBrNetSlot) + off + 0x30);
-    *pb34 = *(unsigned char *)((char *)&(*(int *)&g_aBrNetSlot) + off + 0x34);
-    *pb35 = *(unsigned char *)((char *)&(*(int *)&g_aBrNetSlot) + off + 0x35);
-    *pb36 = *(unsigned char *)((char *)&(*(int *)&g_aBrNetSlot) + off + 0x36);
-    ReleaseMutex(*(HANDLE *)((char *)&(*(int *)&g_aBrNetSlot) + off));
+    WaitForSingleObject(g_aBrNetSlot[i].hMutex, 0xffffffff);
+    v     = g_aBrNetSlot[i].f030;
+    *pb34 = (unsigned char)g_aBrNetSlot[i].f034[0];
+    *pb35 = (unsigned char)g_aBrNetSlot[i].f034[1];
+    *pb36 = (unsigned char)g_aBrNetSlot[i].f034[2];
+    ReleaseMutex(g_aBrNetSlot[i].hMutex);
     return v;
 }
 
@@ -549,9 +547,9 @@ int BrNetGetA102212D0(int param_1)
 char *BrNetSlotName(int param_1)
 
 {
-  WaitForSingleObject((HANDLE)(&(*(int *)&g_aBrNetSlot))[param_1 * 0x25e],0xffffffff);
-  strcpy(DAT_10226628, &(*(char *)&g_aBrNetSlot[0].szName[0]) + param_1 * 0x978);
-  ReleaseMutex((HANDLE)(&(*(int *)&g_aBrNetSlot))[param_1 * 0x25e]);
+  WaitForSingleObject(g_aBrNetSlot[param_1].hMutex,0xffffffff);
+  strcpy(DAT_10226628, g_aBrNetSlot[param_1].szName);
+  ReleaseMutex(g_aBrNetSlot[param_1].hMutex);
   return DAT_10226628;
 }
 

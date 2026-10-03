@@ -18,52 +18,35 @@
 #include "slice2_25.h"   /* br_globals: its objects */
 #include <stdint.h>
 
-class BrDpList {
-public:
-    virtual void v0();
-    virtual void v1();
-    virtual void v2();
-    virtual void v3();
-    virtual long AddRow(long name, long kind, long live, const void *pCol,
-                        long one);                      /* +0x10 */
-    virtual void v5();
-    virtual void v6();
-    virtual void v7();
-    virtual void v8();
-    virtual void v9();
-    virtual long SetRowData(void *pData, long cb, long who);   /* +0x28 */
-};
+#include "br_ui.h"   /* BrUiCtl_, BrTextList */
+#include "dplay.h"   /* DPSESSIONDESC2 */
 
-extern "C" {
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* 64-bit core: declared once, in br_globals.h or its struct's header */
-/* FUN_100361a0: prototype in br_funcs.h */
-/* FUN_10036130: prototype in br_funcs.h */
-/* 64-bit core: GlobalAlloc is declared by the platform headers */
-/* 64-bit core: GlobalLock is declared by the platform headers */
-}
-
-struct BrGuid16 { long a, b, c, d; };
+/* 64-bit core: the session list is the control's canonical BrTextList (+0x3838
+ * on i386), called through its own vtable: slot 4 appends a row
+ * (BrSlotAdd_10054A30), slot 10 attaches a blob to it (BrTextListSetBlob). */
+typedef int32_t (*BrListSetBlobFn)(BrTextList *pThis, const void *pData,
+                                   int32_t cb, int32_t index);
 
 extern "C"
-int __stdcall BrNetEnumSessionCb(void *pDesc, void *pUnused, unsigned flags,
+int __stdcall BrNetEnumSessionCb(void *pv, void *pUnused, unsigned flags,
                                  void *pCtx)
 {
+    const DPSESSIONDESC2 *pDesc = (const DPSESSIONDESC2 *)pv;
     void *pMem;
-    long kind;
-    unsigned char *pBase;
+    int32_t kind;
+    BrUiCtl_ *pCtl;
+    BrTextList *pList;
 
     (void)pUnused;
-    pBase = (unsigned char *)(uintptr_t)(unsigned)g_brPAA29D4;
-    if (pBase == 0)
+    pCtl = (BrUiCtl_ *)g_brPAA29D4;
+    if (pCtl == 0)
         return 0;
     if ((flags & 1) != 0)
         return 0;
 
     if (DAT_10ac5bf0 != 0) {
-        if (*(unsigned *)((char *)pDesc + 0x2c) < 8u
-            && (*(unsigned char *)((char *)pDesc + 4) & 0x20) == 0) {
+        if (pDesc->dwCurrentPlayers < 8u
+            && (pDesc->dwFlags & 0x20) == 0) {
             kind = 1;
             *(unsigned char *)&flags = (unsigned char)kind;
         } else {
@@ -71,17 +54,17 @@ int __stdcall BrNetEnumSessionCb(void *pDesc, void *pUnused, unsigned flags,
             *(unsigned char *)&flags = 0;
         }
 
-        ((BrDpList *)(pBase + 0x3838))->AddRow(
-            *(long *)((char *)pDesc + 0x30), kind, (long)flags,
-            &(*(int *)&g_hot0), 1);
+        pList = &pCtl->list;
+        pList->pVtbl->f10(pList, pDesc->lpszSessionNameA, kind, (int32_t)flags,
+                          &(*(int *)&g_hot0), 1);
 
         pMem = GlobalLock(GlobalAlloc(0x42u, 0x10u));
         if (pMem == 0)
             return 1;
-        *(BrGuid16 *)pMem = *(const BrGuid16 *)((const char *)pDesc + 8);
+        memcpy(pMem, &pDesc->guidInstance, 0x10);
 
-        ((BrDpList *)((unsigned char *)(uintptr_t)(unsigned)g_brPAA29D4
-                      + 0x3838))->SetRowData(pMem, 0x10, -1);
+        pList = &((BrUiCtl_ *)g_brPAA29D4)->list;
+        ((BrListSetBlobFn)pList->pVtbl->f28)(pList, pMem, 0x10, -1);
     } else {
         /* The original materialises this only on the skip path. */
         pMem = (void *)(uintptr_t)flags;

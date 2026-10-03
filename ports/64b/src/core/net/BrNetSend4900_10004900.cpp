@@ -13,8 +13,9 @@
  */
 #define _CRTIMP __declspec(dllimport)
 
+#include "slice1_09.h"   /* BrPeerMsg */
 class Pkt {
-    char b[0x214];
+    BrPeerMsg b;                    /* 0x214 bytes on i386 */
 public:
     Pkt();
     ~Pkt();
@@ -23,7 +24,7 @@ public:
     void Put24(unsigned);
 };
 
-typedef char chk_pkt[sizeof(Pkt) == 0x214 ? 1 : -1];
+typedef char chk_pkt[sizeof(Pkt) == sizeof(BrPeerMsg) ? 1 : -1];
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
