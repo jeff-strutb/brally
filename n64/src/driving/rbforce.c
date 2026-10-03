@@ -24,15 +24,17 @@ typedef struct BrRbBody {       /* a rigid body with up to four attached */
   char pad114[0x19c - 0x114];
   int x19c;                     /* 0x19C  on a wheel: its contact record */
   unsigned char surface;        /* 0x1A0  on a wheel: the surface under it */
-  char pad1a1[0x1b4 - 0x1a1];
+  char pad1a1[0x1a4 - 0x1a1];
+  float n[3];                   /* 0x1A4  on a wheel: the ground normal */
+  char pad1b0[0x1b4 - 0x1b0];
   int x1b4;                     /* 0x1B4  on a wheel: it is on the ground */
   char pad1b8[0x1c0 - 0x1b8];
   float steer;                  /* 0x1C0  on a wheel: steering angle */
-  float drive;                  /* 0x1C4  on a wheel: drive torque (its sign) */
-  float radius;                 /* 0x1C8  on a wheel */
-  char pad1cc[0x1d0 - 0x1cc];
-  float spin;                   /* 0x1D0  on a wheel: spin rate */
-  float roll;                   /* 0x1D4  on the car: the visual roll */
+  float spin;                   /* 0x1C4  on a wheel: spin rate */
+  float inertia;                /* 0x1C8  on a wheel */
+  float drive;                  /* 0x1CC  on a wheel: drive torque */
+  float brake;                  /* 0x1D0  on a wheel: brake torque */
+  float angle;                  /* 0x1D4  on a wheel: display angle, degrees; on the car: the visual roll */
   char pad1d8[0x1fd - 0x1d8];
   unsigned char tyres;          /* 0x1FD  on the car: the tyre compound, 1-3 */
   char pad1fe[0x204 - 0x1fe];
@@ -310,10 +312,10 @@ void BrCarAxleGrip(BrRbBody *b, float dt, float *gripF, float *gripR, unsigned c
   if (b->sub[3]->x19c == 0) {
     b->sub[3]->x1b4 = 0;
   }
-  slipF = SIGN(b->sub[2]->drive) * -ABS(b->sub[2]->spin) * 2.0;
-  slipF /= b->sub[2]->radius;
-  slipR = SIGN(b->sub[0]->drive) * -ABS(b->sub[0]->spin) * 2.0;
-  slipR /= b->sub[0]->radius;
+  slipF = SIGN(b->sub[2]->spin) * -ABS(b->sub[2]->brake) * 2.0;
+  slipF /= b->sub[2]->inertia;
+  slipR = SIGN(b->sub[0]->spin) * -ABS(b->sub[0]->brake) * 2.0;
+  slipR /= b->sub[0]->inertia;
   m4 = b->mass / 4.0f;
   slipF /= m4;
   slipR /= m4;
@@ -479,12 +481,124 @@ void BrCarAxleGrip(BrRbBody *b, float dt, float *gripF, float *gripR, unsigned c
     side = SIGN(side) * 0.5;
   }
   t = side / 0.5f * -4.0f;
-  if (ABS(b->roll - t) < 0.26666668f) {
-    b->roll = t;
-  } else if (b->roll < t) {
-    b->roll = b->roll + 0.26666668f;
+  if (ABS(b->angle - t) < 0.26666668f) {
+    b->angle = t;
+  } else if (b->angle < t) {
+    b->angle = b->angle + 0.26666668f;
   } else {
-    b->roll = b->roll - 0.26666668f;
+    b->angle = b->angle - 0.26666668f;
+  }
+}
+
+/* WHAT IT DOES: The tyre of one wheel on the ground (its normal within 45
+ * degrees or so of up): the rolling direction is the car's sideways axis
+ * crossed into the contact plane and turned by the steer angle.  With all
+ * four wheels down the drive torque becomes a force along it, capped by
+ * the wheel's load (falling to a tenth past the cap) and weaker while the
+ * slide flag is set; half the raw force is reported through pA, the force
+ * is added to the wheel's force list, and the reaction and the ground
+ * speed slow the wheel's spin; otherwise the wheel free-spins on its
+ * torque.  The spin is clamped to +-300 and the display angle advanced and
+ * wrapped into a turn.  The PC twin is BrCarPhysTyre (br_carphys.c).  The
+ * locals follow the ROM frame (the {0, 1, 0} axis is initialised from
+ * .data right after BrCarAxleGrip's).
+ * RESIDUE (423): the cross products' load order and the spill temps (the
+ * ROM uses two, 0x20/0x24); the axis sits at 0x50, the ROM's 0x58. */
+/* @implements 0x8025AC9C tgr BrWheelTyre */
+void BrWheelTyre(BrRbBody *b, BrRbBody *w, float *pA, unsigned char *pB, float dt)
+{
+  float a[3];
+  float c[3];
+  float d[3];
+  float e[3];
+  float side[3];
+  float fwd[3];
+  float v[3];
+  float dot;
+  float sn;
+  float cs;
+  float load;
+  int u0;
+  float q;
+  int u1[2];
+  float tq;
+  int u2[3];
+  float axis[3] = { 0.0f, 1.0f, 0.0f };
+
+  if (w->x19c == 0) {
+    return;
+  }
+  if (w->n[2] < 0.7) {
+    return;
+  }
+  func_80258758(a, b->m, axis);
+  c[0] = a[1] * w->n[2] - w->n[1] * a[2];
+  c[1] = a[2] * w->n[0] - w->n[2] * a[0];
+  c[2] = a[0] * w->n[1] - w->n[0] * a[1];
+  d[0] = w->n[1] * c[2] - c[1] * w->n[2];
+  d[1] = w->n[2] * c[0] - c[2] * w->n[0];
+  d[2] = w->n[0] * c[1] - c[0] * w->n[1];
+  cs = cosf(w->steer);
+  sn = sinf(w->steer);
+  side[0] = c[0] * -sn;
+  side[1] = c[1] * -sn;
+  side[2] = c[2] * -sn;
+  fwd[0] = d[0] * sn + c[0] * cs;
+  fwd[1] = d[1] * sn + c[1] * cs;
+  fwd[2] = d[2] * sn + c[2] * cs;
+  c[0] = d[0] * cs;
+  c[1] = d[1] * cs;
+  c[2] = d[2] * cs;
+  side[0] = c[0] + side[0];
+  side[1] = c[1] + side[1];
+  side[2] = c[2] + side[2];
+  if (b->sub[0]->x1b4 != 0 && b->sub[2]->x1b4 != 0 && b->sub[1]->x1b4 != 0 && b->sub[3]->x1b4 != 0) {
+    BrRbVelAtBodyPoint(v, b, w);
+    dot = fwd[2] * v[2] + v[0] * fwd[0] + v[1] * fwd[1];
+    a[1] = 0.0f;
+    a[0] = 0.0f;
+    a[2] = (b->mass + w->mass * 4.0f) * 2.943f + (w->f78[2] - -0.97) * 0;
+    tq = w->drive;
+    q = tq / w->inertia;
+    load = (w->n[2] * a[2] + w->n[0] * a[0] + w->n[1] * a[1]) * 3.5f;
+    *pA = *pA + q / 2.0f;
+    if (*pB != 0) {
+      q = q * 0.9;
+    }
+    if (ABS(load) < ABS(q)) {
+      load = load / q;
+      if (load < 0) {
+        load = -load;
+      }
+      q = q * load * 0.1;
+    }
+    e[2] = -q;
+    e[0] = fwd[0] * e[2];
+    e[1] = fwd[1] * e[2];
+    e[2] = fwd[2] * e[2];
+    func_802586C0(a, b->m, e);
+    w->forces->f[0] = a[0] + w->forces->f[0];
+    w->forces->f[1] = a[1] + w->forces->f[1];
+    w->forces->f[2] = a[2] + w->forces->f[2];
+    w->spin = w->spin + (tq - w->inertia * q) * dt;
+    w->spin = w->spin - (w->spin * w->inertia + dot) * 0.4;
+    if (ABS(w->spin) > 300.0f) {
+      w->spin = SIGN(w->spin) * 300.0;
+    }
+  } else {
+    w->spin = w->spin + w->drive * dt;
+    if (ABS(w->spin) > 300.0f) {
+      w->spin = SIGN(w->spin) * 300.0;
+    }
+  }
+  w->angle = w->angle - w->spin * 57.29578f * dt;
+  while (w->angle > 360.0) {
+    w->angle = w->angle - 360.0;
+  }
+  if (w->angle < 0.0) {
+    do {
+      w->angle = w->angle + 360.0f;
+    } while (w->angle < 0.0f);
   }
 }
 
