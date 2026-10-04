@@ -557,6 +557,8 @@ void BrPaintExitPrompt(void)
  * RESIDUE (205): saved-register choice in the key loop (the key pointer and
  * the constant 1 swap s3/s4, the text-length and width globals s0/s1) and
  * the pad address kept in a0 for the consume. */
+/* @t4-pass 0x8024AC70 1 2026-10-03 compiles 31 best 205 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8024AC70 2 2026-10-03 compiles 30 best 205 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8024AC70 tgr BrPaintKeyboard */
 void BrPaintKeyboard(void)
 {
@@ -873,6 +875,8 @@ void BrPaintBrushSelect(void)
  * RESIDUE (~260): the ROM keeps the stack count in its stack home and
  * recomputes each segment's address from it (dy and x1 homed too); ours
  * walks a pointer. */
+/* @t4-pass 0x8024DCA0 1 2026-10-03 compiles 30 best 262 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8024DCA0 2 2026-10-03 compiles 30 best 262 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8024DCA0 tgr BrPaintFloodFill */
 void BrPaintFloodFill(int sx, int sy)
 {
@@ -1330,6 +1334,8 @@ void BrPaintFrameRect(int sx0, int sy0, int sx1, int sy1)
  * RESIDUE (122): the ROM keeps the half steps in fp/s6 and the right edge in
  * s7; ours homes the half steps on the stack, which moves the span bounds'
  * registers. */
+/* @t4-pass 0x8024FBC8 1 2026-10-03 compiles 30 best 122 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8024FBC8 2 2026-10-03 compiles 30 best 122 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8024FBC8 tgr BrPaintFillRoundRect */
 void BrPaintFillRoundRect(int sx0, int sy0, int sx1, int sy1)
 {
@@ -1404,6 +1410,8 @@ void BrPaintFillRoundRect(int sx0, int sy0, int sx1, int sy1)
  * RESIDUE (496): the ROM holds the radius twice in its frame and keeps the
  * corners in their stack homes; ours keeps more in saved registers, which
  * reorders the edge loops' setup. */
+/* @t4-pass 0x8024FEB8 1 2026-10-03 compiles 31 best 494 moved 2  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8024FEB8 2 2026-10-03 compiles 31 best 494 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8024FEB8 tgr BrPaintFrameRoundRect */
 void BrPaintFrameRoundRect(int sx0, int sy0, int sx1, int sy1)
 {
@@ -1423,8 +1431,8 @@ void BrPaintFrameRoundRect(int sx0, int sy0, int sx1, int sy1)
   int k;
 
   sx0 = (sx0 - D_8028DB94.x) >> 2;
-  x1 = (sx1 - D_8028DB94.x) >> 2;
   sy0 = (D_8028DB94.y + D_8028DB94.h - sy0) >> 2;
+  x1 = (sx1 - D_8028DB94.x) >> 2;
   sy1 = (D_8028DB94.y + D_8028DB94.h - sy1) >> 2;
   if (x1 < sx0) {
     t = sx0;
@@ -1650,6 +1658,8 @@ void BrPaintOvalStyleSelect(void)
  * RESIDUE (250): register priority -- the ROM keeps the corners, the radii
  * and the walk's running sums in their stack homes; ours holds more of them
  * in saved registers. */
+/* @t4-pass 0x80250B58 1 2026-10-03 compiles 28 best 250 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80250B58 2 2026-10-03 compiles 31 best 250 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80250B58 tgr BrPaintFillOval */
 void BrPaintFillOval(int sx0, int sy0, int sx1, int sy1)
 {
@@ -1752,6 +1762,8 @@ void BrPaintFillOval(int sx0, int sy0, int sx1, int sy1)
  * size inward (up/down in the first region, across in the second).
  * RESIDUE (371): the ROM's frame is 8 smaller and keeps the corners and
  * radii in their stack homes; ours holds them in saved registers first. */
+/* @t4-pass 0x80250FCC 1 2026-10-03 compiles 31 best 371 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80250FCC 2 2026-10-03 compiles 31 best 371 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80250FCC tgr BrPaintFrameOval */
 void BrPaintFrameOval(int sx0, int sy0, int sx1, int sy1)
 {
@@ -1866,6 +1878,8 @@ void BrPaintFrameOval(int sx0, int sy0, int sx1, int sy1)
  * midpoint circle walk.
  * RESIDUE (131): the ROM keeps x and the walk state in stack homes and
  * reuses the span bounds; ours holds x in a saved register. */
+/* @t4-pass 0x8025159C 1 2026-10-03 compiles 31 best 131 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8025159C 2 2026-10-03 compiles 30 best 131 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8025159C tgr BrPaintDisc */
 void BrPaintDisc(int x, int y, int r, unsigned char screen)
 {
@@ -1982,6 +1996,8 @@ void BrPaintCircle(int sx, int sy, int r)
  * pointer (both one load each, as in the ROM).
  * RESIDUE (127, same length): the vector copies and interpolation are
  * scheduled differently (the view-counter store, float registers). */
+/* @t4-pass 0x80242BDC 1 2026-10-03 compiles 30 best 125 moved 2  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80242BDC 2 2026-10-03 compiles 29 best 125 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80242BDC tgr BrPaintCarView */
 void BrPaintCarView(void)
 {
@@ -2019,8 +2035,8 @@ void BrPaintCarView(void)
       }
     }
     dx = (to.x - from.x) / 16;
-    dy = (to.y - from.y) / 16;
     dz = (to.z - from.z) / 16;
+    dy = (to.y - from.y) / 16;
     ((BrVec3 *)D_8028AAF0->mtx0[0])->x = from.x + D_8028DBB0 * dx;
     ((BrVec3 *)D_8028AAF0->mtx0[0])->y = from.y + D_8028DBB0 * dy;
     ((BrVec3 *)D_8028AAF0->mtx0[0])->z = from.z + D_8028DBB0 * dz;
@@ -2066,8 +2082,8 @@ void BrPaintCarView(void)
     BrVec3 *s;
     BrVec3 *d;
 
-    s = &D_8028DC08[D_8028DB68];
     d = (BrVec3 *)D_8028AAF0->mtx0[0];
+    s = &D_8028DC08[D_8028DB68];
     d->x = s->x;
     d->y = s->y;
     d->z = s->z;
@@ -2326,6 +2342,8 @@ void BrPaintDashRect(int x0, int y0, int x1, int y1)
  * the eight octant points on odd pixels only, in dashes of four points.
  * RESIDUE (~270): the ROM keeps the corners in their parameter homes and
  * the radius twice (s6, s7); ours holds the corners in saved registers. */
+/* @t4-pass 0x80251F68 1 2026-10-03 compiles 31 best 268 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80251F68 2 2026-10-03 compiles 31 best 268 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80251F68 tgr BrPaintDashRoundRect */
 void BrPaintDashRoundRect(int x0, int y0, int x1, int y1)
 {
@@ -2430,6 +2448,8 @@ void BrPaintDashRoundRect(int x0, int y0, int x1, int y1)
  * resolution, and on every other step the four quadrant points at odd
  * coordinates only, in dashes of four points of the two dash colours (swapped
  * every 8 frames). */
+/* @t4-pass 0x802523CC 1 2026-10-03 compiles 29 best 308 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802523CC 2 2026-10-03 compiles 31 best 308 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x802523CC tgr BrPaintDashOval */
 void BrPaintDashOval(int x0, int y0, int x1, int y1)
 {
@@ -2538,6 +2558,8 @@ void BrPaintDashOval(int x0, int y0, int x1, int y1)
  * RESIDUE (~200): the ROM keeps the dash counter n in a temp register
  * (spilled to its home around the calls) and x in memory; ours keeps both
  * in memory, which shifts every temp after. */
+/* @t4-pass 0x802528F8 1 2026-10-03 compiles 31 best 206 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802528F8 2 2026-10-03 compiles 31 best 206 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x802528F8 tgr BrPaintDashCircle */
 void BrPaintDashCircle(int cx, int cy, int r)
 {

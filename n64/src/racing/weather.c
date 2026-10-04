@@ -83,6 +83,8 @@ void BrStub8023A1C0(void)
  * RESIDUE (~320): the ROM's frame is 8 larger with the car pointer and view
  * index in stack homes and the view point re-read from its home; ours keeps
  * the point in saved FP registers, which moves every register after. */
+/* @t4-pass 0x8023A1C8 1 2026-10-03 compiles 31 best 317 moved 5  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8023A1C8 2 2026-10-03 compiles 31 best 317 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8023A1C8 tgr BrWeatherStep */
 void BrWeatherStep(void)
 {
@@ -132,14 +134,14 @@ void BrWeatherStep(void)
       D_8028C810 = D_8028C810 * D_8028C814;
       dx = dx * D_8028C814;
       dy = dy * D_8028C814;
-      dz = dz * D_8028C814;
+      dz = D_8028C814 * dz;
     } else {
       D_8028C814 = 1.0f;
     }
     if (D_8028AA84 == 0) {
       w = D_803634E0[n];
       w[0] = cosf(D_8028C808) * (D_8028AAD8 * D_8028C80C);
-      w[1] = sinf(D_8028C808) * (D_8028AAD8 * D_8028C80C);
+      w[1] = sinf(D_8028C808) * (D_8028C80C * D_8028AAD8);
       w[2] = D_8028AAD8 + D_8028AAD8;
       v[0] = dx;
       v[1] = dy;
@@ -150,7 +152,7 @@ void BrWeatherStep(void)
       BrVec3ScaleBy(v, D_8028C814 * 0.5f);
       BrVec3AddTo(w, v);
     } else {
-      dz += D_8028AAD8 * 0.5f;
+      dz += 0.5f * D_8028AAD8;
     }
     if (D_8028AA84 == 0) {
       jx = 0.0f;
@@ -179,7 +181,7 @@ void BrWeatherStep(void)
         cx--;
         p[0] += sdx;
       }
-      if (cy == 0) {
+      if (0 == cy) {
         p[1] = p[1] + sdy + sjy;
         sjy = -sjy;
         cy = BrRandStep() & 0xf;
