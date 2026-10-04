@@ -463,59 +463,35 @@ void BrMenuAutoSaveName(void)
 /* WHAT IT DOES: put the right piece of wording on a stage-dependent
  * caption -- championship vs the backup column, or a fixed options
  * index when that mode is on. */
-/* DEAD 2026-09-09 (adds to the parked list below, all at 98 B RAW 3+3
- * REGNORM 0+0): a return local defined before the store (with and without
- * a word temp); a block-scoped word temp; a byte-offset pun store; a
- * pItem copy; a table-pointer local; the sibling's (int16_t)(uint16_t)
- * cast; a uint32 temp (+2); explicit __cdecl; register i; every slot in
- * the TU (47 of 59 compile).  Corpus: the byte-exact sibling
- * BrMenuCap0990 (+0x5, same file) spells the tail on a GLOBAL index --
- * the cx pairing needs the index load fused into the tail, unreachable
- * from a join-carried local.
- * @t4-pass 0x10039C70 1 2026-09-09 probes 10 bytes 98 insns 24 regions 1 rows 0 census yes  (hand, fn.py variants + corpus)
+/* @t4-pass 0x10039C70 1 2026-09-09 probes 10 bytes 98 insns 24 regions 1 rows 0 census yes  (hand, fn.py variants + corpus)
  * @t4-pass 0x10039C70 2 2026-09-09 probes 47 bytes 98 insns 24 regions 1 rows 0 census yes  (position sweep) */
-/* @t3 0x10039C70 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 98/98 insns 24/24 rows 0+0 regions 1 oracle UNCLASSIFIED
- * @t3-effort passes 2 zero-movement 1 2
- * residue is register colouring only: identical register-blind instruction
- * multiset (rows 0+0), 1 masked region;
- * every row pairs under t3.py's canonical classes.  Effort: 2 counted
- * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
- * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x10040730 d3d BrMenuCap0730 */
 int32_t BrMenuCap0730(BrMenuItem *pItem)
 {
-    uint32_t i;
-
-    /* Written out.  The original tests 0x100AA010 with jne to g0AC648 and
-     * falls into the stage path; the selector byte is tested before the
-     * movsx so the flags survive lea.  Arms are duplicated so VC5 does not
-     * hoist the movsx above that test. */
+    /* The caption store is written in each arm, not once after a join on
+     * a stage-number local: VC5 cross-jumps the three identical tails into
+     * the original's shared block, and with the index a fresh temp it
+     * allocates as the one-line setters below do (pItem in edx, the word in
+     * cx, `mov eax,1` between load and store).  With a local carried across
+     * the join it loads the word into ax.  The selector byte is tested
+     * before the movsx so the flags survive lea, and the stage arms stay
+     * duplicated so VC5 does not hoist the movsx above that test. */
     if (MENU_g0AA010 == 0) {
         if (MENU_gAA28A8 != 0) {
             int32_t e3 = (int32_t)(int8_t)MENU_gAA28B8;
             e3 = e3 + e3 * 2;
-            i = *((const uint8_t *)g_brStages
-                  + 0x10 + 2 * (MENU_gAA28AC + (uint32_t)e3 * 4u));
+            pItem->f1E20C = (int16_t)k_AC550[*((const uint8_t *)g_brStages
+                  + 0x10 + 2 * (MENU_gAA28AC + (uint32_t)e3 * 4u))];
+            return 1;
         } else {
             int32_t e3 = (int32_t)(int8_t)MENU_gAA28B8;
             e3 = e3 + e3 * 2;
-            i = *((const uint8_t *)g_brStages
-                  + 0x10 + 2 * (MENU_gAA28A4 + (uint32_t)e3 * 4u));
+            pItem->f1E20C = (int16_t)k_AC550[*((const uint8_t *)g_brStages
+                  + 0x10 + 2 * (MENU_gAA28A4 + (uint32_t)e3 * 4u))];
+            return 1;
         }
-    } else {
-        i = MENU_g0AC648;
     }
-    /* RESIDUE (glide 0x10039C70, 13 masked byte-diffs, T3a): the original
-     * loads the word into CX with pItem in EDX and `mov eax,1` scheduled
-     * into the load/store gap; every probed spelling here loads into AX
-     * (pItem in ECX, eax freed by the load).  Probed and dead: an early
-     * return-value temp, a uint16 temp, a dword-pun store, and an
-     * __inline set-caption helper (the inliner dissolves it).  The arms
-     * and everything up to +0x4A are byte-exact.  Pure register pairing;
-     * parked. */
-    pItem->f1E20C = (int16_t)k_AC550[i];
+    pItem->f1E20C = (int16_t)k_AC550[MENU_g0AC648];
     return 1;
 }
 

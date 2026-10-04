@@ -712,6 +712,7 @@ glide_va,name,module,basis,file
 0x10039990,BrCtrlBindPoll_10039990,controls,manual,src/core/controls/BrCtrlBindPoll_10039990.cpp
 0x10039BC0,BrMenuEnter,menus,neighbour,src/core/menus/br_menucb.c
 0x10039C00,BrCtrlCfgReloadPreset,menus,neighbour,src/core/menus/BrCtrlCfgReloadPreset_10039C00.cpp
+0x10039C70,BrMenuCap0730,menus,filed,src/core/menus/br_menucb.c
 0x10039CE0,BrMenuCap07A0,menus,neighbour,src/core/menus/br_menucb.c
 0x10039D20,BrMenuCap07E0,menus,neighbour,src/core/menus/br_menucb.c
 0x10039DB0,BrMenuCap0870,menus,neighbour,src/core/menus/br_menucb.c
