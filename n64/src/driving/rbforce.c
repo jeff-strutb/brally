@@ -269,6 +269,8 @@ float cosf(float x);
  * from .data 0x802A4B58) in the slide-flag block. */
 /* @t4-pass 0x80259D14 1 2026-10-03 compiles 26 best 966 moved 10  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80259D14 2 2026-10-03 compiles 26 best 965 moved 1  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80259D14 3 2026-10-03 compiles 31 best 965 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80259D14 */
 /* @implements 0x80259D14 tgr BrCarAxleGrip */
 void BrCarAxleGrip(BrRbBody *b, float dt, float *gripF, float *gripR, unsigned char *slipFp,
                    unsigned char *slipRp)
