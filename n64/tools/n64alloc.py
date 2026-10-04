@@ -78,7 +78,8 @@ def compile_traced(path, env_extra):
     text = open(log).read()
     os.unlink(log)
     if p.returncode:
-        os.unlink(o)
+        if os.path.exists(o):
+            os.unlink(o)
         return None, text + p.stderr
     obj = B.Obj(o)
     os.unlink(o)

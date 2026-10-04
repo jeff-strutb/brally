@@ -527,13 +527,7 @@ void BrCarSetPos(BrCar *car, float x, float y, float z)
 
 /* WHAT IT DOES: Turn a car to face heading a (radians, about z): the body
  * matrix gets the z rotation, and all three rigid-body states get the
- * matching half-angle quaternion.  m only holds the ROM's frame size.
- * RESIDUE (46): scheduling only -- the ROM loads the saved sin/cos just
- * before each store and the quaternion copies use f18/f16; same
- * instructions and store order. */
-/* @t4-pass 0x8021FE80 1 2026-10-03 compiles 119 best 22 moved 24  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8021FE80 2 2026-10-03 compiles 120 best 22 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x8021FE80 */
+ * matching half-angle quaternion.  m only holds the ROM's frame size. */
 /* @implements 0x8021FE80 tgr BrCarSetHeading */
 void BrCarSetHeading(BrCar *car, float a)
 {
@@ -548,21 +542,24 @@ void BrCarSetHeading(BrCar *car, float a)
   c2 = cosf(a + 1.5707964f);
   s2 = sinf(a + 1.5707964f);
   car->mtx0[0][0] = c;
-  car->mtx0[0][2] = 0.0f;
   car->mtx0[0][1] = s;
-  car->mtx0[1][1] = s2;
+  car->mtx0[0][2] = 0.0f;
+  car->mtx0[1][0] = c2;
   car->mtx0[1][2] = 0.0f;
   car->mtx0[2][1] = 0.0f;
   car->mtx0[2][0] = 0.0f;
+  car->mtx0[1][1] = s2;
   car->mtx0[2][2] = 1.0f;
-  car->mtx0[1][0] = c2;
   car->st.q[0] = cosf(a * 0.5f);
   car->st.q[2] = 0.0f;
   car->st.q[1] = 0.0f;
   car->stA.q[3] = car->stB.q[3] = car->st.q[3] = sinf(a * 0.5f);
-  car->stA.q[0] = car->stB.q[0] = car->st.q[0];
-  car->stA.q[1] = car->stB.q[1] = car->st.q[1];
-  car->stA.q[2] = car->stB.q[2] = car->st.q[2];
+  car->stB.q[0] = car->st.q[0];
+  car->stB.q[1] = car->st.q[1];
+  car->stB.q[2] = car->st.q[2];
+  car->stA.q[0] = car->st.q[0];
+  car->stA.q[1] = car->st.q[1];
+  car->stA.q[2] = car->st.q[2];
   BrQuatToMat(car->stMtx, &car->st);
 }
 
@@ -628,51 +625,47 @@ void BrCarSetVel(BrCar *car, float x, float y, float z)
 /* WHAT IT DOES: Turn a car by angles about z, y and x in that order (each
  * as a half-angle quaternion multiplied onto its orientation), renormalise,
  * and copy the orientation into the two spare states.
- * RESIDUE (26): the frame is 8 bytes larger than the ROM's (the named sine
- * takes a padded slot), so the argument homes shift; the final copy loads
- * into f18..f12 where the ROM uses f0..f14, and the epilogue restores in
- * the opposite order.  Declaration orders and -O2 flag variants swept.
  *
  * NEVER RUN IN THE RETAIL GAME: its one caller, BrCarPhysTick, reaches it
  * only while car->xf4c (0xF4C) is non-zero; no instruction in the ROM
  * stores to offset 0xF4C, and a write watch on all four cars' 0xF4C over
  * all 64 box scripts saw no store. */
-/* @t4-pass 0x8022021C 1 2026-10-03 compiles 117 best 26 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8022021C 2 2026-10-03 compiles 117 best 26 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8022021C tgr BrCarRotate */
 void BrCarRotate(BrCar *car, float az, float ay, float ax)
 {
-  float zero;
-  float s;
   float q[4];
+  float s;
 
   az *= 0.5f;
   ay *= 0.5f;
   ax *= 0.5f;
   s = sinf(az);
-  zero = 0.0f;
   q[0] = cosf(az);
-  q[1] = zero;
-  q[2] = zero;
+  q[1] = 0.0f;
+  q[2] = 0.0f;
   q[3] = s;
   BrQuatMul(car->st.q, car->st.q, q);
   s = sinf(ay);
   q[0] = cosf(ay);
-  q[1] = zero;
+  q[1] = 0.0f;
   q[2] = s;
-  q[3] = zero;
+  q[3] = 0.0f;
   BrQuatMul(car->st.q, car->st.q, q);
   s = sinf(ax);
   q[0] = cosf(ax);
   q[1] = s;
-  q[2] = zero;
-  q[3] = zero;
+  q[2] = 0.0f;
+  q[3] = 0.0f;
   BrQuatMul(car->st.q, car->st.q, q);
   BrVec4Normalise(car->st.q);
-  car->stA.q[0] = car->stB.q[0] = car->st.q[0];
-  car->stA.q[1] = car->stB.q[1] = car->st.q[1];
-  car->stA.q[2] = car->stB.q[2] = car->st.q[2];
-  car->stA.q[3] = car->stB.q[3] = car->st.q[3];
+  car->stB.q[0] = car->st.q[0];
+  car->stB.q[1] = car->st.q[1];
+  car->stB.q[2] = car->st.q[2];
+  car->stB.q[3] = car->st.q[3];
+  car->stA.q[0] = car->st.q[0];
+  car->stA.q[1] = car->st.q[1];
+  car->stA.q[2] = car->st.q[2];
+  car->stA.q[3] = car->st.q[3];
 }
 
 /* WHAT IT DOES: Set a car's angular velocity in all three rigid-body
