@@ -108,12 +108,6 @@ check:
  * lap-count hint in Arcade, and in a Championship how many points are still
  * needed to advance (or that the player already has enough), with the
  * points table. */
-/* @t4-pass 0x80208A58 1 2026-09-26 compiles 17 best 84 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80208A58 2 2026-09-26 compiles 17 best 84 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80208A58 3 2026-09-26 compiles 17 best 84 moved 0  (n64/tools/n64permute.py) */
-/* RESIDUE (5): in the time-attack track bit test the ROM loads the season
- * into t1 and the 1 into t0; ours swaps the two temporaries. */
-/* @t3 0x80208A58 */
 /* @implements 0x80208A58 tgr BrSeasonDrawHelp */
 void BrSeasonDrawHelp(int row)
 {
@@ -154,7 +148,7 @@ void BrSeasonDrawHelp(int row)
         D_80315EE0 = 1;
       } else if (D_8026FF18 == 2) {
         BrTimeAttackStart();
-        if (D_8031B760[0].season->xce & (1 << D_80307F00)) {
+        if ((1 << D_80307F00) & D_8031B760->season->xce) {
           D_8028B940 = D_80307F00;
         }
       }
