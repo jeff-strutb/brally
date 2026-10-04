@@ -38,7 +38,8 @@ def link_function(obj, name, place_va, data_va, fnvas, syms, self_va=None, stati
     self_va   where calls to the function itself should go (default place_va)
     static_va section -> ROM VA for sections that hold the file's statics
               (n64build.static_bases): references go to the statics' ROM
-              homes, and those sections are not placed at data_va
+              homes, and those sections are not placed at data_va; a
+              (section, addend) key gives one static its own home
     """
     ti, text = obj.sec('.text')
     pieces = {n: (s, e) for n, s, e in B.carve(obj) if n}
@@ -138,6 +139,8 @@ def link_function(obj, name, place_va, data_va, fnvas, syms, self_va=None, stati
                     tgt = text_va(addend)
                 elif val == '.rodata' and val in secbase:
                     tgt = rodata_va(addend)
+                elif (val, addend) in static_va:
+                    tgt = static_va[(val, addend)]
                 elif val in secbase:
                     tgt = secbase[val] + addend
                 else:
@@ -164,6 +167,8 @@ def link_function(obj, name, place_va, data_va, fnvas, syms, self_va=None, stati
                     v = text_va(add)
                 elif val == '.rodata' and val in secbase:
                     v = rodata_va(add)
+                elif (val, add) in static_va:
+                    v = static_va[(val, add)]
                 elif val in secbase:
                     v = secbase[val] + add
                 else:

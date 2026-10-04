@@ -903,10 +903,12 @@ void BrPadPollAll(void)
  * second symbol at the F3DEX text start.
  * RESIDUE (~210): instruction scheduling -- the task's stores, the counter
  * loads and the debug copy's multiply are ordered differently; the
- * instruction multiset matches except about 30 moved ops. */
+ * instruction multiset matches except about 30 moved ops.  A5 is
+ * equivalent but the whole image is not: the different temporaries
+ * outlive the call in a thread's saved registers (0x80318A30 swaps two
+ * words), so the body stays out of the image until it is exact. */
 /* @t4-pass 0x8021AA08 1 2026-10-03 compiles 120 best 209 moved 1  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8021AA08 2 2026-10-03 compiles 120 best 209 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x8021AA08 */
 /* @implements 0x8021AA08 tgr BrFrameEnd */
 void BrFrameEnd(void)
 {

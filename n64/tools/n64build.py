@@ -479,7 +479,8 @@ def _align_map(ours, theirs):
 
 
 def static_bases(obj, fnvas, rom=None, fmap=None):
-    """-> {section: ROM VA} for this object's .data/.bss (its file statics).
+    """-> {section: ROM VA} for this object's .data/.bss (its file statics),
+    plus {(section, addend): ROM VA} for a static that sits apart.
 
     A static is referenced through its section symbol plus an addend, so its
     ROM home is the section's base plus that addend.  Every %hi/%lo pair
@@ -493,7 +494,7 @@ def static_bases(obj, fnvas, rom=None, fmap=None):
     fmap = fmap or function_map()
     ti, text = obj.sec('.text')
     allrels = obj.rels.get(ti, [])
-    votes = {}
+    votes, own = {}, {}
     for fname, s, e in carve(obj):
         va = fnvas.get(fname)
         if va is None or va not in fmap:
@@ -536,9 +537,20 @@ def static_bases(obj, fnvas, rom=None, fmap=None):
             rom_va = (((rh & 0xffff) << 16) + sext16(rl & 0xffff)) & 0xffffffff
             key = (sec, (rom_va - addend) & 0xffffffff)
             votes[key] = votes.get(key, 0) + 1
+            per = own.setdefault((sec, addend), {})
+            per[rom_va] = per.get(rom_va, 0) + 1
     out = {}
     for (sec, base), n in sorted(votes.items(), key=lambda kv: -kv[1]):
         out.setdefault(sec, base)
+    # a static whose own references all agree on a home off the section's
+    # base: the ROM's object interleaves it with data this file only
+    # declares (globals defined in another file of ours), so the statics are
+    # not one contiguous block there.  Its references go to its own home.
+    for (sec, addend), homes in own.items():
+        if len(homes) == 1:
+            va, = homes
+            if (va - addend) & 0xffffffff != out[sec]:
+                out[(sec, addend)] = va
     return out
 
 
