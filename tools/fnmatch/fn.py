@@ -21,6 +21,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 sys.path.insert(0, os.path.join(ROOT, 'tools'))
 from match_diff import parse_coff_obj
 from capstone import Cs, CS_ARCH_X86, CS_MODE_32
+import winerun
 md = Cs(CS_ARCH_X86, CS_MODE_32); md.skipdata = True
 R32=r'\b(eax|ebx|ecx|edx|esi|edi|ebp)\b'; R16=r'\b(ax|bx|cx|dx|si|di|bp)\b'
 R8=r'\b(al|bl|cl|dl|ah|bh|ch|dh)\b'
@@ -51,7 +52,10 @@ def compile_file(src, tag):
            '/I', 'tools/msvc5/include', '/DBR_MATCHING_BUILD', '/c',
            os.path.relpath(src, ROOT),
            '/Fo' + os.path.relpath(obj, ROOT).replace('/', '\\')]
-    p = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=180)
+    try:
+        p = winerun.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=180)
+    except subprocess.TimeoutExpired:
+        return None, ['cl.exe timed out']
     if not os.path.exists(obj):
         errs = [l.strip() for l in (p.stdout + p.stderr).splitlines()
                 if 'error' in l.lower()]

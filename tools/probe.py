@@ -53,6 +53,7 @@ a = ap.parse_args()
 
 from match_diff import parse_coff_obj
 from capstone import Cs, CS_ARCH_X86, CS_MODE_32
+import winerun
 md = Cs(CS_ARCH_X86, CS_MODE_32); md.skipdata = True
 
 # cl.exe under wine wants paths RELATIVE to ROOT; the variant is copied into
@@ -71,7 +72,7 @@ cmd = ['sh', 'tools/wine.sh', 'tools/msvc5/bin/cl.exe', '/nologo', '/O2', '/W3',
        '/I', 'include', '/I', 'tools/msvc5-compat', '/I', 'tools/msvc5/include',
        '/DBR_MATCHING_BUILD', '/c', '/FAcs', '/Fa' + relcod.replace('/', '\\'),
        relc, '/Fo' + relo.replace('/', '\\')]
-p = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=300)
+p = winerun.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=300)
 if not os.path.exists(obj):
     print('COMPILE FAILED'); print(p.stdout[-3000:]); print(p.stderr[-2000:]); sys.exit(1)
 warn = [l for l in (p.stdout + p.stderr).splitlines() if 'warning' in l or 'error' in l]

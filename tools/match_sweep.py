@@ -35,6 +35,7 @@ import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from match_diff import parse_implements, parse_coff_obj  # noqa: E402
+import winerun  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Go through the wrapper so this uses the repo-local Wine and prefix, exactly
@@ -246,7 +247,7 @@ def compile_variant(src, tag, opt):
     # Wine occasionally wedges on a prefix lock; a stuck cl.exe must not stall
     # the whole sweep, so cap it and report the file as a compile failure.
     try:
-        p = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
+        p = winerun.run(cmd, cwd=ROOT, capture_output=True, text=True,
                            timeout=120)
         out = p.stdout + p.stderr
     except subprocess.TimeoutExpired:

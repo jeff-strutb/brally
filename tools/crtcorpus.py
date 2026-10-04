@@ -43,6 +43,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from crtlib import members  # noqa: E402
 from match_diff import parse_coff_obj  # noqa: E402
+import winerun  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WINE = os.path.join(ROOT, 'tools', 'wine.sh')
@@ -90,7 +91,7 @@ def compile_one(src_rel, flags, tag):
         '-I', os.path.join(os.path.relpath(MSVC_DIR, ROOT), 'include'),
         '-Fo' + rel_obj, src_rel]
     try:
-        p = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
+        p = winerun.run(cmd, cwd=ROOT, capture_output=True, text=True,
                            timeout=180)
         out = p.stdout + p.stderr
     except subprocess.TimeoutExpired:

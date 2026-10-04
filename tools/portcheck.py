@@ -121,6 +121,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import match_sweep as ms  # noqa: E402  -- ROOT, WINE, CL, MSVC_DIR
+import winerun  # noqa: E402
 
 ROOT = ms.ROOT
 WORK = os.path.join(ROOT, 'build', 'portcheck')
@@ -188,7 +189,7 @@ def compile_port(rel_src, objdir, tag):
            '/c', rel_src,
            '/Fo' + os.path.relpath(obj, ROOT).replace('/', '\\')]
     try:
-        p = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
+        p = winerun.run(cmd, cwd=ROOT, capture_output=True, text=True,
                            timeout=240)
         out = p.stdout + p.stderr
     except subprocess.TimeoutExpired:

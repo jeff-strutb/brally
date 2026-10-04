@@ -75,6 +75,7 @@ import permute as P                       # noqa: E402
 from match_diff import parse_coff_obj     # noqa: E402
 from triage import _bag, _strip_pad       # noqa: E402
 from capstone import Cs, CS_ARCH_X86, CS_MODE_32  # noqa: E402
+import winerun  # noqa: E402
 md = Cs(CS_ARCH_X86, CS_MODE_32); md.skipdata = True
 
 SEEDS = int(os.environ.get('CRANK_SEEDS', '6'))
@@ -102,7 +103,7 @@ def compile_tu(text, tag):
            '/I', 'include', '/I', 'tools/msvc5-compat', '/I', 'tools/msvc5/include',
            '/DBR_MATCHING_BUILD', '/c', relc, '/Fo' + relo.replace('/', '\\')]
     try:
-        subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=180)
+        winerun.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=180)
     except subprocess.TimeoutExpired:
         return None
     return obj if os.path.exists(obj) else None

@@ -46,6 +46,7 @@ sys.path.insert(0, os.path.join(ROOT, 'tools'))
 import match_diff  # noqa: E402
 import match_sweep  # noqa: E402
 import pe as pelib  # noqa: E402
+import winerun  # noqa: E402
 
 ORIG_DIR = os.path.join(ROOT, 'build', 'match', 'orig')
 CPP_WORK = os.path.join(ROOT, 'build', 'cpp_work')
@@ -108,7 +109,7 @@ def compile_cpp(src_path, tag, opt):
               '/I', 'tools/msvc5-compat', '/I', 'tools/msvc5/include',
               '/DBR_MATCHING_BUILD', '/c', rel_src, '/Fo' + rel_obj])
     try:
-        p = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
+        p = winerun.run(cmd, cwd=ROOT, capture_output=True, text=True,
                            timeout=180)
         out = (p.stdout or '') + (p.stderr or '')
     except subprocess.TimeoutExpired:

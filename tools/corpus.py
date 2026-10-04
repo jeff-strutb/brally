@@ -50,6 +50,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from capstone import Cs, CS_ARCH_X86, CS_MODE_32  # noqa: E402
 import msetdiff  # noqa: E402
+import winerun  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ORIG_DIR = os.path.join(ROOT, 'build', 'match', 'orig')
@@ -396,7 +397,7 @@ def _cod_lines(tmp, src, va, at, length):
            '/DBR_MATCHING_BUILD', '/c', '/FAcs',
            '/Fa' + rel_tmp + os.sep, '/Fo' + rel_tmp + os.sep, rel_src]
     try:
-        subprocess.run(cmd, cwd=ROOT, capture_output=True, timeout=180)
+        winerun.run(cmd, cwd=ROOT, capture_output=True, timeout=180)
     except Exception as exc:
         return ['(listing failed: %s)' % exc]
     return _scan_listing(tmp, FN_NAME.get(va.lower(), ''), at, length)
@@ -469,7 +470,7 @@ def crt_cod_lines(entry, at, length):
                '/FAcs', '/Fa' + rel_tmp + os.sep, '/Fo' + rel_tmp + os.sep,
                entry['file']]
         try:
-            subprocess.run(cmd, cwd=ROOT, capture_output=True, timeout=180)
+            winerun.run(cmd, cwd=ROOT, capture_output=True, timeout=180)
         except Exception as exc:
             return ['(listing failed: %s)' % exc]
         return _scan_listing(tmp, entry['name'], at, length)
@@ -503,7 +504,7 @@ def ext_cod_lines(entry, at, length, corpus='ext'):
                ['/FAcs', '/Fa' + rel_tmp + os.sep, '/Fo' + rel_tmp + os.sep,
                 os.path.relpath(os.path.join(ext_root, entry['file']), ROOT)])
         try:
-            subprocess.run(cmd, cwd=ROOT, capture_output=True, timeout=240)
+            winerun.run(cmd, cwd=ROOT, capture_output=True, timeout=240)
         except Exception as exc:
             return ['(listing failed: %s)' % exc]
         return _scan_listing(tmp, entry['name'], at, length)

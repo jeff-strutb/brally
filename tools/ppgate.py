@@ -32,6 +32,7 @@ from concurrent.futures import ThreadPoolExecutor
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, 'tools'))
 import match_sweep  # noqa: E402  (WINE, CL, MSVC_DIR)
+import winerun  # noqa: E402
 
 DEFAULT = os.path.join(ROOT, 'build', 'ppgate.json')
 
@@ -52,7 +53,7 @@ def pp(rel):
                               'include'),
            '/DBR_MATCHING_BUILD', rel]
     try:
-        p = subprocess.run(cmd, cwd=ROOT, capture_output=True, timeout=300)
+        p = winerun.run(cmd, cwd=ROOT, capture_output=True, timeout=300)
     except subprocess.TimeoutExpired:
         return rel, None, 'timeout'
     text = p.stdout.decode('latin-1')
