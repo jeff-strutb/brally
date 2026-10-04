@@ -1,124 +1,89 @@
 /* rumble.c -- Rumble Pak output
  */
+#include "tgr/car.h"
 #include "tgr/common.h"
 
 /* -- declarations -- */
-int func_8020082C();
-int BrModeIs(int param_1);
-int func_80261F20();
-int func_80262088(int param_1);
-int func_80262370(int param_1,int *param_2,int param_3);
-extern int D_802604FC;
-extern int D_80260500;
-extern int D_8026FF10;
+typedef struct { char raw[0x68]; } BrPfs;   /* an OSPfs */
+void BrRaceTick(void);
+int BrModeIs(void (*mode)(void));
+int func_80262370(int *mq, BrPfs *pfs, int channel);   /* osMotorInit */
+void func_80261F20(BrPfs *pfs);                          /* osMotorStop */
+void func_80262088(BrPfs *pfs);                          /* osMotorStart */
+extern int D_8026FF10;                  /* the race is paused */
 extern int D_8026FF18;
-extern int D_80272D48;
-extern short D_802A4BE8;
-extern int D_802A4BEC;
-extern int D_802A4BF0;
-extern short D_802A4BF4;
-extern short D_802A4BF8;
-extern int D_802A4BFC;
-extern int D_802A4C00;
+extern int D_80272D48[6];               /* the controller message queue */
+extern short D_802A4BE8;                /* rumble is on */
+extern short D_802A4BEC[2];             /* each player's effect is running */
+extern short D_802A4BF0[2];             /* the motor is on */
+extern short D_802A4BF4[2];             /* frames on */
+extern short D_802A4BF8[2];             /* frames off */
+extern short D_802A4BFC[2];             /* frames left in this phase */
+extern short D_802A4C00[2];             /* frames left in the effect */
 extern short D_802A4C04;
-extern int D_802A4C08;
-extern char D_8031B1E8;
-extern int D_8031D7D4;
+extern int D_802A4C08;                  /* frame count for the re-detect */
+extern char D_8031B1E8[2];              /* a Rumble Pak is in */
+extern BrPfs D_8031A3F8[4];
 /* -- end declarations -- */
 
-/* WHAT IT DOES: Run the Rumble Paks: re-detect them outside a race, and in
- * a race pulse each player's motor on and off at the rates the current
- * effect asks for, stopping it when the effect ends. */
-/* @t4-pass 0x80260490 1 2026-09-26 compiles 17 best 173 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80260490 2 2026-09-26 compiles 17 best 173 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80260490 3 2026-09-26 compiles 17 best 173 moved 0  (n64/tools/n64permute.py) */
+/* WHAT IT DOES: Run the Rumble Paks: re-detect them outside a race (or
+ * paused, or when an effect is held off), and in a race pulse each player's
+ * motor on and off at the rates the current effect asks for, while the
+ * player's pad is live, stopping it when the effect runs out; every 64
+ * frames look for paks again. */
+/* @t4-pass 0x80260490 1 2026-10-03 compiles 30 best 170 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80260490 2 2026-10-03 compiles 30 best 170 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80260490 */
 /* @implements 0x80260490 tgr BrRumbleUpdate */
 void BrRumbleUpdate(int arg0)
 {
-  short sVar1;
-  int iVar2;
-  int iVar3;
-  unsigned short uVar4;
-  unsigned short *puVar5;
-  char *puVar6;
-  int iVar7;
-  short *psVar8;
-  char *pcVar9;
-  
-  iVar2 = BrModeIs(func_8020082C);
-  if ((((iVar2 == 0) || (D_8026FF18 == 5)) || (D_802A4C04 != 0)) || (D_8026FF10 != 0)) {
-    iVar2 = 0;
-    do {
+  int i;
+
+  if (!BrModeIs(BrRaceTick) || D_8026FF18 == 5 || D_802A4C04 != 0 || D_8026FF10 != 0) {
+    for (i = 0; i != 2; i++) {
       if (D_802A4BE8 != 0) {
-        (&D_802A4BEC)[iVar2] = 0;
-        iVar7 = iVar2 * 0x68 + -0x7fce5c08;
-        (&D_8031B1E8)[iVar2] = 0;
-        iVar3 = func_80262370(&D_80272D48,iVar7,iVar2);
-        if (iVar3 == 0) {
-          (&D_8031B1E8)[iVar2] = 1;
-          func_80261F20(iVar7);
+        D_802A4BEC[i] = 0;
+        D_8031B1E8[i] = 0;
+        if (func_80262370(D_80272D48, &D_8031A3F8[i], i) == 0) {
+          D_8031B1E8[i] = 1;
+          func_80261F20(&D_8031A3F8[i]);
         }
       }
-      iVar2 = iVar2 + 1;
-    } while (iVar2 != 2);
-  }
-  if ((D_802A4BE8 != 0) && (D_802A4C04 == 0)) {
-    pcVar9 = &D_8031B1E8;
-    iVar2 = 0;
-    if (D_8026FF10 == 0) {
-      do {
-        if (((*pcVar9 != '\0') && ((&D_802A4BEC)[iVar2] != 0)) &&
-           (psVar8 = &D_802A4BFC + iVar2,
-           *(int *)(*(int *)(&D_8031D7D4 + iVar2 * 0x2090) + 0x44) == 0)) {
-          if (*psVar8 == 0) {
-            puVar5 = &D_802A4BF0 + iVar2;
-            if (*puVar5 == 0) {
-              *psVar8 = (&D_802A4BF4)[iVar2];
-              func_80262088(iVar2 * 0x68 + -0x7fce5c08);
-              uVar4 = *puVar5;
-            }
-            else {
-              *psVar8 = (&D_802A4BF8)[iVar2];
-              func_80261F20();
-              uVar4 = *puVar5;
-            }
-            *puVar5 = uVar4 ^ 1;
-          }
-          else {
-            *psVar8 = *psVar8 + -1;
-          }
-          sVar1 = (&D_802A4C00)[iVar2];
-          if (sVar1 == 0) {
-            func_80261F20(iVar2 * 0x68 + -0x7fce5c08);
-            (&D_802A4BF0)[iVar2] = 0;
-            *psVar8 = 0;
-            (&D_802A4BEC)[iVar2] = 0;
-          }
-          else {
-            (&D_802A4C00)[iVar2] = sVar1 + -1;
-          }
-        }
-        iVar2 = iVar2 + 1;
-        pcVar9 = pcVar9 + 1;
-      } while (iVar2 != 2);
     }
   }
-  D_802A4C08 = D_802A4C08 + 1 & 0x3f;
-  if (D_802A4C08 == 0) {
-    puVar6 = &D_8031B1E8;
-    iVar2 = 0;
-    if (D_802A4BE8 != 0) {
-      iVar3 = -0x7fce5c08;
-      do {
-        *puVar6 = 0;
-        iVar7 = func_80262370(&D_80272D48,iVar3,iVar2);
-        iVar2 = iVar2 + 1;
-        if (iVar7 == 0) {
-          *puVar6 = 1;
+  if (D_802A4BE8 != 0 && D_802A4C04 == 0 && D_8026FF10 == 0) {
+    for (i = 0; i != 2; i++) {
+      if (D_8031B1E8[i] != 0 && D_802A4BEC[i] != 0 && D_8031B760[i].pad[0x11] == 0) {
+        if (D_802A4BFC[i] == 0) {
+          if (D_802A4BF0[i] != 0) {
+            D_802A4BFC[i] = D_802A4BF8[i];
+            func_80261F20(&D_8031A3F8[i]);
+          } else {
+            D_802A4BFC[i] = D_802A4BF4[i];
+            func_80262088(&D_8031A3F8[i]);
+          }
+          D_802A4BF0[i] ^= 1;
+        } else {
+          D_802A4BFC[i]--;
         }
-        puVar6 = puVar6 + 1;
-        iVar3 = iVar3 + 0x68;
-      } while (iVar2 != 2);
+        if (D_802A4C00[i] == 0) {
+          func_80261F20(&D_8031A3F8[i]);
+          D_802A4BF0[i] = 0;
+          D_802A4BFC[i] = 0;
+          D_802A4BEC[i] = 0;
+        } else {
+          D_802A4C00[i]--;
+        }
+      }
+    }
+  }
+  D_802A4C08 = (D_802A4C08 + 1) & 0x3f;
+  if (D_802A4C08 == 0 && D_802A4BE8 != 0) {
+    for (i = 0; i != 2; i++) {
+      D_8031B1E8[i] = 0;
+      if (func_80262370(D_80272D48, &D_8031A3F8[i], i) == 0) {
+        D_8031B1E8[i] = 1;
+      }
     }
   }
 }
