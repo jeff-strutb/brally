@@ -80,10 +80,10 @@ void BrRbAccel(BrRbBody *b)
 /* WHAT IT DOES: Add one applied force into a body's accumulators: the force
  * (given in world or body axes) into the force sum and, unless the body
  * does not rotate, its moment about the body's centre into the torque sum;
- * then two debug prints: the force record, and the body's sums.
- * RESIDUE (32): FP registers one off from the case-0 copy on (the ROM's
- * join loads f[0] first; ours loads the force sum first) -- the class of
- * BrRbAddForces; add spellings, if/switch and a struct-typed f leave it. */
+ * then two debug prints: the force record, and the body's sums.  Its only
+ * caller, BrRbApplyForces, is never called, so A5 cannot reach it; every sum
+ * is spelled `x = x + y` and every cross-product term `r * f` (a search of
+ * all 4096 orders: only this one is byte-exact). */
 /* @implements 0x802589F4 tgr BrRbAddForce */
 void BrRbAddForce(BrRbBody *b, BrRbForce *a)
 {
@@ -101,15 +101,15 @@ void BrRbAddForce(BrRbBody *b, BrRbForce *a)
     func_80258758(f, b->m, a->f);
     break;
   }
-  b->force[0] = f[0] + b->force[0];
+  b->force[0] = b->force[0] + f[0];
   b->force[1] = b->force[1] + f[1];
-  b->force[2] = f[2] + b->force[2];
+  b->force[2] = b->force[2] + f[2];
   if (b->kind != 2) {
     func_80258758(r, b->m, a->at);
-    t[0] = r[1] * f[2] - f[1] * r[2];
+    t[0] = r[1] * f[2] - r[2] * f[1];
     t[1] = r[2] * f[0] - r[0] * f[2];
     t[2] = r[0] * f[1] - r[1] * f[0];
-    b->torque[0] = t[0] + b->torque[0];
+    b->torque[0] = b->torque[0] + t[0];
     b->torque[1] = b->torque[1] + t[1];
     b->torque[2] = b->torque[2] + t[2];
   }
