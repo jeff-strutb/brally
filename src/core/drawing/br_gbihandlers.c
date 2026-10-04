@@ -590,21 +590,16 @@ void BrGbiTexScanTexture(const BrGfxWords *pCmd)
 /* @implements 0x10029EB0 d3d BrGbiTexScanSetImg */
 /* @t4-pass 0x10029420 1 2026-09-07 probes 53 bytes 83 insns 24 regions 2 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10029420 2 2026-09-07 probes 53 bytes 83 insns 24 regions 2 rows 0 census yes  (tools/crank.py) */
-/* @t3 0x10029420 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 83/83 insns 24/24 rows 0+0 regions 2 oracle UNCLASSIFIED
- * @t3-effort passes 2 zero-movement 1 2
- * residue is register colouring only: identical register-blind instruction
- * multiset (rows 0+0), 2 masked regions;
- * every row pairs under t3.py's canonical classes.  Effort: 2 counted
- * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
- * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x10029420 glide BrGbiTexScanSetImg */
-void BrGbiTexScanSetImg(BrGfxWords *pCmd)
+BrGfxWords *BrGbiTexScanSetImg(BrGfxWords *pCmd)
 {
     int32_t s = g_brTexScanState;
     int32_t z = 0;
 
+    /* Like the other display-list handlers it returns the command pointer,
+     * on the path that consumes the command.  The skip path returns no value
+     * (the original leaves eax untouched there); the return value is what
+     * puts pCmd in eax and the state in ecx as the original has them. */
     if (s != z && s != 3 && s != 6)
         return;
 
@@ -616,6 +611,7 @@ void BrGbiTexScanSetImg(BrGfxWords *pCmd)
         g_brTexScanRunEnd   = (BrGfxWords *)z;
     }
     g_brTexScanState = 1;
+    return pCmd;
 }
 
 /* 0x10029F10  G_LOADTLUT */

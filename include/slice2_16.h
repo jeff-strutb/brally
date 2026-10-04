@@ -469,7 +469,7 @@ void BrGbiTexScanMark(BrGfxWords *pCmd);
 /* 0x10029E80  G_TEXTURE. */
 void BrGbiTexScanTexture(const BrGfxWords *pCmd);
 /* 0x10029EB0  G_SETTIMG. */
-void BrGbiTexScanSetImg(BrGfxWords *pCmd);
+BrGfxWords *BrGbiTexScanSetImg(BrGfxWords *pCmd);
 /* 0x10029F10  G_LOADTLUT: copies ((lrs-uls)+1) * ((lrt-ult)+1) * 2 bytes
  * from timgAddr to pTlutDst. DEVIATION: the length is entirely data-driven
  * and, exactly as in the original, unchecked -- pTlutDst must be big enough.
