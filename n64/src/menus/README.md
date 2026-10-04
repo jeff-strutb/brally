@@ -171,7 +171,7 @@ Functions: T2 21, T3 11, T4 80.
 | `8024EC30` | `BrPaintTextStamp` | T4 |
 | `8024F000` | `BrPaintLine` | T3 |
 | `8024F25C` | `BrPaintPlot` | T3 |
-| `8024F39C` | `BrPaintStyleSelect` | T2 |
+| `8024F39C` | `BrPaintStyleSelect` | T4 |
 | `8024F7D4` | `BrPaintFillRect` | T4 |
 | `8024F8CC` | `BrPaintFrameRect` | T4 |
 | `8024FBC8` | `BrPaintFillRoundRect` | T2 |

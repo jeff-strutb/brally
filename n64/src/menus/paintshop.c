@@ -1038,20 +1038,18 @@ void BrPaintTextStamp(int sx, int sy)
  * A (select) and B (cancel) buttons under it; left and right move the
  * choice round, A keeps it and B restores the previous one, both closing
  * the box.  The four names are a local copy of the table at 0x8028DCF4.
- * RESIDUE (100): the loop's picture pointer and x sit in s2/s1 where the ROM
- * has s1/s2, and after a left or right move the ROM rebuilds the pad's
- * address with shifts instead of reusing the saved base, index and 0x15C. */
+ * The pictures' x is written out per call (i * 76 + 175), and the pad
+ * record is re-addressed at every test with an unsigned (sizeof) multiply:
+ * the ROM keeps 0x15C in a saved register for multu. */
 /* @implements 0x8024F39C tgr BrPaintStyleSelect */
 void BrPaintStyleSelect(void)
 {
   char spare[24];               /* declared, never used: the frame holds it */
-  int x;
+  int x;                        /* likewise */
   int i;
   int y;
   int bx;
   BrPaintNames names;
-  BrPadRec *pad;
-  unsigned int pressed;
 
   names = D_8028DCF4;
   y = 323 - D_8028D0B0.w;
@@ -1062,14 +1060,14 @@ void BrPaintStyleSelect(void)
   BrTextHighlightOff();
   BrTextPrint("%rySELECT STYLE", 159, 92);
   if (D_8028DBC0 != 0) {
-    D_8028DBC0 = 0;
     D_8028DBB8 = D_8028CF5C;
+    D_8028DBC0 = 0;
   }
-  for (i = 0, x = 175; i < 4; i++, x += 76) {
+  for (i = 0; i < 4; i++) {
     if (i == D_8028DBB8) {
-      BrImageDrawRect(D_8028DB34[i], x, 203, D_8028DB34[i]->drawW, D_8028DB34[i]->drawH, 0x20, 200, 0xff);
+      BrImageDrawRect(D_8028DB34[i], i * 76 + 175, 203, D_8028DB34[i]->drawW, D_8028DB34[i]->drawH, 0x20, 200, 0xff);
     } else {
-      BrImageDrawAt(D_8028DB34[i], x, 203);
+      BrImageDrawAt(D_8028DB34[i], i * 76 + 175, 203);
     }
   }
   BrBevelPanel(0xb1, 0x103, 0x11e, 0x1e, 1, 1, 1, 0x80, 0x80, 0x80);
@@ -1083,33 +1081,27 @@ void BrPaintStyleSelect(void)
   BrImageDrawAt(&D_8028D0B0, 213, y);
   BrImageDrawAt(&D_8028D0E0, bx, y);
   BrPadStickToButtons(&PADS[D_8028DBBC]);
-  pad = &PADS[D_8028DBBC];
-  pressed = pad->pressed;
-  if (pressed & 4) {
-    BrPadConsume((unsigned int *)pad, 4);
+  if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)) & 4) {
+    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)), 4);
     if (D_8028DBB8 == 0) {
       D_8028DBB8 = 3;
     } else {
       D_8028DBB8--;
     }
-    pad = &PADS[D_8028DBBC];
-    pressed = pad->pressed;
-  } else if (pressed & 1) {
-    BrPadConsume((unsigned int *)pad, 1);
+  } else if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)) & 1) {
+    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)), 1);
     if (D_8028DBB8 == 3) {
       D_8028DBB8 = 0;
     } else {
       D_8028DBB8++;
     }
-    pad = &PADS[D_8028DBBC];
-    pressed = pad->pressed;
   }
-  if (pressed & 0x10) {
-    BrPadConsume((unsigned int *)pad, 0x10);
+  if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)) & 0x10) {
+    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)), 0x10);
     D_8028CF5C = D_8028DBB8;
     D_8028DBE0 = 0;
-  } else if (pressed & 0x20) {
-    BrPadConsume((unsigned int *)pad, 0x20);
+  } else if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)) & 0x20) {
+    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)), 0x20);
     D_8028DBE0 = 0;
   }
 }
