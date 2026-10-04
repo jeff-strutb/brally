@@ -341,6 +341,7 @@ void BrWrongWayCheck(BrCar *car)
 /* @t4-pass 0x80233880 1 2026-09-26 compiles 17 best 348 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80233880 2 2026-09-26 compiles 17 best 348 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80233880 3 2026-09-26 compiles 17 best 348 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80233880 */
 /* @implements 0x80233880 tgr BrHudArrowDraw */
 void BrHudArrowDraw(int param_1,float *param_2,short param_3)
 {

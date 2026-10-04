@@ -328,10 +328,11 @@ void BrStreamInit(int param_1,int param_2)
  * it does one chunk per call, keeping its place in the stream.  Returns the
  * unpacked length.  The ROM's 0x88 frame holds every declared local in
  * declaration order (register ones too); the timing is computed and dropped,
- * as the ROM still makes its 64-bit multiply and divide calls. */
+ * as the ROM still makes its 64-bit multiply and divide calls.  Out of the
+ * image until exact: its callees' dead stack words differ (main thread
+ * stack, from frame 2917 of the races). */
 /* @t4-pass 0x8021CD30 1 2026-10-03 compiles 121 best 195 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8021CD30 2 2026-10-03 compiles 120 best 195 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x8021CD30 */
 /* @t4-pass 0x8021CD30 3 2026-10-03 compiles 61 best 171 moved 4  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8021CD30 4 2026-10-03 compiles 60 best 167 moved 4  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8021CD30 5 2026-10-03 compiles 81 best 167 moved 0  (n64/tools/n64permute.py) */
