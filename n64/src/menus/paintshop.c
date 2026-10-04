@@ -241,9 +241,11 @@ void BrPaintDecalApply(void)
  * a controller error, a nonfunctional pak, or (99999) a general error.
  * The cases are in the source order the strings' .rodata order gives
  * (1/11, 7/8, 3, 5, 99999, 6, 4, 10).
- * RESIDUE (435): register allocation (the ROM keeps mode in s0 and reuses
- * msg's s1 for y; frame 0x68 vs ours 0x50) and this file's .rodata (the
- * jump table) not mapping onto the ROM's. */
+ * RESIDUE (229): the ROM keeps mode in s0 and msg (then y) in s1; ours
+ * reloads mode from its home and keeps msg/y in s0, so a callee spills a
+ * different word (A7: paint_walk frame 13355, 0x80318948 holds 0xCC in the
+ * ROM); and this file's .rodata (the jump table) not mapping onto the
+ * ROM's.  The unused pad[5] gives the ROM's 0x68 frame. */
 /* @t4-pass 0x80244D84 1 2026-10-03 compiles 26 best 434 moved 1  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80244D84 2 2026-10-03 compiles 26 best 434 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80244D84 tgr BrPakMessage */
@@ -252,9 +254,12 @@ void BrPakMessage(int msg, char op, char mode)
   int x;
   int y;
   int w;
+  int pad[5];                   /* declared, never used: the frame is the ROM's 0x68 */
+  unsigned int m;
 
+  m = mode;
   BrTextSetFont(12);
-  if (1 == mode) {
+  if (1 == m) {
     BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
   } else {
     BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xca, 0);
@@ -265,7 +270,7 @@ void BrPakMessage(int msg, char op, char mode)
   case 1:
   case 11:
     y = 0xcc;
-    if (mode == 1) {
+    if (m == 1) {
       y = 0xea;
     }
     BrBevelPanel(0xd5, y, 0xd5, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
@@ -276,7 +281,7 @@ void BrPakMessage(int msg, char op, char mode)
   case 7:
   case 8:
     y = 0x97;
-    if (mode == 1) {
+    if (m == 1) {
       y = 0xc3;
     }
     BrBevelPanel(0xa5, y, 0x135, 0xb2, 3, 0, 0, 0x80, 0x80, 0x80);
@@ -294,7 +299,7 @@ void BrPakMessage(int msg, char op, char mode)
       w = 0x106;
     }
     y = 0xcc;
-    if (mode == 1) {
+    if (m == 1) {
       y = 0xe2;
     }
     x = (0x280 - w) >> 1;
@@ -316,7 +321,7 @@ void BrPakMessage(int msg, char op, char mode)
       w = 0x10c;
     }
     y = 0xcc;
-    if (mode == 1) {
+    if (m == 1) {
       y = 0xe2;
     }
     x = (0x280 - w) >> 1;
@@ -339,7 +344,7 @@ void BrPakMessage(int msg, char op, char mode)
       w = 0x10b;
     }
     y = 0xcc;
-    if (mode == 1) {
+    if (m == 1) {
       y = 0xe2;
     }
     x = (0x280 - w) >> 1;
@@ -355,7 +360,7 @@ void BrPakMessage(int msg, char op, char mode)
     break;
   case 6:
     y = 0xcc;
-    if (mode == 1) {
+    if (m == 1) {
       y = 0xe4;
     }
     BrBevelPanel(0xad, y, 0x126, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
@@ -369,7 +374,7 @@ void BrPakMessage(int msg, char op, char mode)
     break;
   case 4:
     y = 0xb0;
-    if (mode == 1) {
+    if (m == 1) {
       y = 0xdc;
     }
     BrBevelPanel(0xae, y, 0x124, 0x80, 3, 0, 0, 0x80, 0x80, 0x80);
@@ -385,7 +390,7 @@ void BrPakMessage(int msg, char op, char mode)
     break;
   case 10:
     y = 0xcc;
-    if (mode == 1) {
+    if (m == 1) {
       y = 0xf8;
     }
     BrBevelPanel(0xcd, y, 0xe6, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
