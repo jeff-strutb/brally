@@ -501,7 +501,6 @@ int BrDrawSortCmp(BrDrawSortItem *a, BrDrawSortItem *b)
  * view. */
 /* @t4-pass 0x80234FF8 1 2026-10-03 compiles 116 best 689 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80234FF8 2 2026-10-03 compiles 116 best 689 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x80234FF8 */
 /* @implements 0x80234FF8 tgr BrTrackDrawSetup */
 void BrTrackDrawSetup(void)
 {
