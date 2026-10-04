@@ -53,17 +53,10 @@ static int BrReplayActiveCount(void)
 /* @t4-pass 0x10063A60 2 2026-09-10 probes 48 bytes 105 insns 32 regions 2 rows 4 census yes  (tools/crank.py) */
 /* @t4-pass 0x10063A60 3 2026-09-10 probes 48 bytes 105 insns 32 regions 2 rows 2 census yes  (tools/crank.py) */
 /* @t4-pass 0x10063A60 4 2026-09-10 probes 48 bytes 105 insns 32 regions 2 rows 2 census yes  (tools/crank.py) */
-/* @t3 0x10063A60 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 105/103 insns 32/30 rows 0+2 regions 2 oracle EQUIVALENT
- * @t3-effort passes 4 zero-movement 3 4
- * residue after tools/crank.py: 48 compiles this pass, levers accepted: none;
- * every candidate and score is in build/match/crank.log.
- * Do not reopen before the end-grind. */
 /* @implements 0x1006AAB0 d3d BrReplayRecord */
 void BrReplayRecord(void *pCar)
 {
     int32_t iPlayer;
-    int32_t frame;
 
     iPlayer = BR_CAR_I32(pCar, BR_S42_CAR_OFF_INDEX);
 
@@ -72,19 +65,22 @@ void BrReplayRecord(void *pCar)
     if (g_BrX06909B4 != 0)
         return;
 
-    frame = g_BrReplayCount[iPlayer];
-    if (frame >= (int32_t)BR_REPLAY_FRAMES)
+    if (g_BrReplayCount[iPlayer] >= (int32_t)BR_REPLAY_FRAMES)
         return;
 
-    /* orig pushes esi only on this path (`lea esi,[eax*8+g_BrReplayBuf]`
-     * must survive RecordToState). Nested so the 0xa0 state is the slow
-     * path's frame, not a prologue that also saves esi. */
+    /* The slot pointer is taken BEFORE BrCarRecordToState and reads the
+     * frame count from the global again: VC5 cannot move that read past the
+     * call, so the pointer is formed into esi ahead of it (the original's
+     * `lea esi,[eax*8+g_BrReplayBuf]` among the call's pushes).  With the
+     * count in a local, VC5 sinks the address math past the call and keeps
+     * iPlayer and the frame in two callee-saved registers instead.  Nested
+     * so the 0xa0 state and the esi save belong to this path only. */
     {
         BrCarState state;
+        void *pRec = &g_BrReplayBuf[((uint32_t)iPlayer << 16)
+                                    + (uint32_t)g_BrReplayCount[iPlayer]].rec;
         BrCarRecordToState(&state, pCar);
-        BrCarStatePack(
-            &g_BrReplayBuf[((uint32_t)iPlayer << 16) + (uint32_t)frame].rec,
-            &state);
+        BrCarStatePack(pRec, &state);
     }
 }
 

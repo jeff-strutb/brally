@@ -1155,6 +1155,7 @@ glide_va,name,module,basis,file
 0x10063A00,BrReplayReset,racing,description,src/core/racing/br_replay.c
 0x10063A40,BrSet_1006AA90,racing,filed,src/core/racing/br_replayon.c
 0x10063A50,BrReplayIsOn,racing,filed,src/core/racing/br_replayon.c
+0x10063A60,BrReplayRecord,racing,filed,src/core/racing/br_replay.c
 0x10063AD0,BrReplayAdvance,racing,neighbour,src/core/racing/br_replay.c
 0x10063B40,BrReplayGetBuf,racing,description,src/core/racing/br_replayon.c
 0x10063B50,BrReplayGetSize,racing,description,src/core/racing/br_replay.c
