@@ -423,10 +423,11 @@ void BrLoadSaveScreen(void);
  * car (left/right, loading its model and playing a sound), tint it with the
  * C buttons, step through the setup choices (A on, B back, START to be
  * ready), and when everyone is ready fades out to the race, the paint shop,
- * the menus, the season screens or the Controller Pak save. */
+ * the menus, the season screens or the Controller Pak save.  Out of the
+ * image until exact: its callees leave different dead words on the race
+ * thread's stack (0x80318880-0x80318C07 at frame 699). */
 /* @t4-pass 0x8020D004 1 2026-10-03 compiles 120 best 4007 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8020D004 2 2026-10-03 compiles 121 best 4007 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x8020D004 */
 /* @t4-pass 0x8020D004 3 2026-10-03 compiles 60 best 3903 moved 2  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8020D004 4 2026-10-03 compiles 60 best 3903 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8020D004 tgr BrCarSelect */
