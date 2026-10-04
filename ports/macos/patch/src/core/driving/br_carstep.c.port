@@ -33,4 +33,3 @@
 @drop var:DAT_100aa044
 @drop var:DAT_106e86c8
 @drop proto:BrCtlHuman
-@drop fn:BrCarStep
