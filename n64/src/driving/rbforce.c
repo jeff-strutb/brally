@@ -102,16 +102,16 @@ void BrRbAddForce(BrRbBody *b, BrRbForce *a)
     break;
   }
   b->force[0] = f[0] + b->force[0];
-  b->force[1] = f[1] + b->force[1];
+  b->force[1] = b->force[1] + f[1];
   b->force[2] = f[2] + b->force[2];
   if (b->kind != 2) {
     func_80258758(r, b->m, a->at);
     t[0] = r[1] * f[2] - f[1] * r[2];
-    t[1] = r[2] * f[0] - f[2] * r[0];
-    t[2] = r[0] * f[1] - f[0] * r[1];
+    t[1] = r[2] * f[0] - r[0] * f[2];
+    t[2] = r[0] * f[1] - r[1] * f[0];
     b->torque[0] = t[0] + b->torque[0];
-    b->torque[1] = t[1] + b->torque[1];
-    b->torque[2] = t[2] + b->torque[2];
+    b->torque[1] = b->torque[1] + t[1];
+    b->torque[2] = b->torque[2] + t[2];
   }
   func_802607DC("Force = %10.4f, %10.4f, %10.4f, %10.4f, %10.4f, %10.4f\n",
                 a->f[0], a->f[1], a->f[2], a->at[0], a->at[1], a->at[2]);
