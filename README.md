@@ -1,4 +1,4 @@
-# Boss Rally: bit-exact decompilation
+# Boss Rally / Top Gear Rally: byte-exact decompilation
 
 <p>
 <img src="docs/mac-port-main-menu.png" width="49%" alt="Boss Rally's main menu, running natively on macOS through the Mac port">
