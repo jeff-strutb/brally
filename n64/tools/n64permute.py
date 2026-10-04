@@ -123,6 +123,9 @@ def mutate(body, rng):
         m1, m2 = simple.match(lines[i]), simple.match(lines[i + 1])
         if not (m1 and m2):
             continue
+        # a call can read or write anything, so it never moves past a store
+        if re.search(r'\w\s*\(', m1.group(2) + ' ' + m2.group(2)):
+            continue
         n1 = set(re.findall(r'\w+', m1.group(1) + ' ' + m1.group(2)))
         n2 = set(re.findall(r'\w+', m2.group(1) + ' ' + m2.group(2)))
         w1, w2 = set(re.findall(r'\w+', m1.group(1))), set(re.findall(r'\w+', m2.group(1)))

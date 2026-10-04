@@ -109,6 +109,8 @@ extern BrImage D_8028D260;              /* the text box under it */
 extern BrImage D_8028D290;              /* the keyboard cursor */
 extern BrImage D_8028D2C0;              /* the font sheet */
 extern BrImage *D_8028DAD8[12];         /* the tool button pictures */
+extern BrImage *D_8028DAD4[13];
+extern BrImage D_8028CE70;
 extern BrImage *D_8028DB0C[10];         /* each decal slot's preview image */
 extern BrImage *D_8028DB08;             /* the slot's preview image */
 extern BrImage *D_8028DB34[4];          /* the four style pictures */
@@ -122,9 +124,6 @@ extern BrPaintRect D_8028DB94;          /* the paint area on screen */
 extern BrPaintRect D_80369CD8[13];      /* the tool buttons */
 extern BrPaintRect D_80369DB0[10];      /* the decal slot buttons */
 extern BrPaintSwatch D_80369B98[16];    /* the palette */
-extern float D_802AB0D0;
-extern float D_802AB0FC;
-extern unsigned char D_8028CE9C;        /* the brush shape: 0 round */
 extern unsigned char D_8028DAC0;        /* the chosen brush size */
 extern unsigned char D_8028DB58;        /* the chosen palette colour */
 extern unsigned char D_8028DB60;        /* the tool */
@@ -207,7 +206,7 @@ void BrPaintExitPrompt(void);
 
 /* WHAT IT DOES: The paint shop screen, one frame.  The first time in: put
  * the player's car on the stand facing the camera (body colours, the
- * close camera at 6.5, 6.5, 2 looking at it, 4.5 out for the kind 10 car),
+ * close camera at 6.5, 6.5, 2 looking at it, 7.3 out for the kind 10 car),
  * reset the interface memory and take two 2 KB decal buffers from it, load
  * every picture, and lay out the decal slots, the paint area, the palette,
  * the twelve tool buttons, the brush sizes and the on-screen keyboard; then
@@ -220,23 +219,30 @@ void BrPaintExitPrompt(void);
  * picks up the colour under the cursor (an eyedropper) or cancels a stroke
  * or the keyboard.  Once the exit fade is done, clear both screens, reset
  * the paint shop and go back to the front end.
- * RESIDUE (gap 545, 2 short): the ROM indexes the car array with multu by
- * 0x2090 held in s2, where ours gets shift sequences, and keeps the tool
- * grid's inner loop rolled with its index in s0, where ours unrolls it;
- * the other differences follow from those registers. */
-/* @t4-pass 0x80243260 1 2026-10-03 compiles 26 best 1546 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80243260 2 2026-10-03 compiles 26 best 1546 moved 0  (n64/tools/n64permute.py) */
+ * The car's rows are set through a row pointer and the grid index goes
+ * through an unsigned temporary, as the ROM's register use shows; i and r
+ * are the counters of every loop, and the empty test of them after the
+ * first-time block keeps them in s0/s1, so the saved registers at each call
+ * hold what the ROM's do (a callee's dead stack is read later on).
+ * RESIDUE: the picture loop keeps its bound where the ROM keeps 0xe, and
+ * the frame's last block stores i where the ROM does not (4 more words). */
+/* @t4-pass 0x80243260 1 2026-10-04 compiles 120 best 1544 moved 4  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80243260 2 2026-10-04 compiles 120 best 1544 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80243260 */
 /* @implements 0x80243260 tgr BrPaintShopScreen */
 void BrPaintShopScreen(void)
 {
   int u0[5];                    /* u0, u1: unused; they place done at sp+0xF3 as in */
   unsigned char done;           /* the ROM (the Pak transfer keeps a pointer to it) */
-  int u1[24];
+  int u1[20];
   int i;
   int k;
   int r;
   int x;
   int y;
+  float *v;
+  BrCar *car;
+  unsigned int n;
 
   done = 0;
   D_802A4BE8 = 0;
@@ -245,29 +251,35 @@ void BrPaintShopScreen(void)
     D_8028DBBC = D_80271FA8;
     D_8028B7F4 = 1;
     BrCarDefaultColour(&D_8031B760[D_8028DBBC]);
-    D_8031B760[D_8028DBBC].xed8 = (int)BrCarCamStep;
+    car = &D_8031B760[D_8028DBBC];
+    car->xed8 = (int)BrCarCamStep;
     BrEntLoadRecord(&D_8031B760[D_8028DBBC], D_8028DBBC, D_8031B760[D_8028DBBC].kind = D_8031B760[0].kind);
     D_8028AB08 = (BrPaintModel *)D_8031B760[D_8028DBBC].model;
-    D_8031B760[D_8028DBBC].mtx0[3][0] = D_8031B760[D_8028DBBC].mtx0[3][1] = D_8031B760[D_8028DBBC].mtx0[3][2] = 0.0f;
-    D_8031B760[D_8028DBBC].mtx0[2][2] = 1.0f;
-    D_8031B760[D_8028DBBC].mtx0[2][0] = D_8031B760[D_8028DBBC].mtx0[2][1] = 0.0f;
-    D_8031B760[D_8028DBBC].mtx0[0][1] = 1.0f;
-    D_8031B760[D_8028DBBC].mtx0[0][2] = D_8031B760[D_8028DBBC].mtx0[0][0] = 0.0f;
-    D_8031B760[D_8028DBBC].mtx0[1][1] = D_8031B760[D_8028DBBC].mtx0[1][2] = 0.0f;
-    D_8031B760[D_8028DBBC].mtx0[1][0] = -1.0f;
+    v = D_8031B760[D_8028DBBC].mtx0[3];
+    v[2] = v[1] = v[0] = 0.0f;
+    v = D_8031B760[D_8028DBBC].mtx0[2];
+    v[2] = 1.0f;
+    v[1] = v[0] = 0.0f;
+    v = D_8031B760[D_8028DBBC].mtx0[0];
+    v[1] = 1.0f;
+    v[2] = v[0] = 0.0f;
+    v = D_8031B760[D_8028DBBC].mtx0[1];
+    v[2] = v[1] = 0.0f;
+    v[0] = -1.0f;
     if (D_8031B760[D_8028DBBC].kind == 10) {
-      D_8031B760[D_8028DBBC].cams[3].mtx[3][0] = D_802AB0D0;
-      D_8031B760[D_8028DBBC].cams[3].mtx[3][1] = D_802AB0D0;
-      D_8031B760[D_8028DBBC].cams[3].mtx[3][2] = 2.0f;
+      v = D_8031B760[D_8028DBBC].cams[3].mtx[3];
+      v[1] = v[0] = 7.3f;
+      v[2] = 2.0f;
     } else {
-      D_8031B760[D_8028DBBC].cams[3].mtx[3][0] = 6.5f;
-      D_8031B760[D_8028DBBC].cams[3].mtx[3][1] = 6.5f;
-      D_8031B760[D_8028DBBC].cams[3].mtx[3][2] = 2.0f;
+      v = D_8031B760[D_8028DBBC].cams[3].mtx[3];
+      v[1] = v[0] = 6.5f;
+      v[2] = 2.0f;
     }
     BrVec3Negate((BrVec3 *)D_8031B760[D_8028DBBC].cams[3].mtx[0], (BrVec3 *)D_8031B760[D_8028DBBC].cams[3].mtx[3]);
     BrVec3Normalise((BrVec3 *)D_8031B760[D_8028DBBC].cams[3].mtx[0]);
-    D_8031B760[D_8028DBBC].cams[3].mtx[2][1] = D_8031B760[D_8028DBBC].cams[3].mtx[2][0] = 0.0f;
-    D_8031B760[D_8028DBBC].cams[3].mtx[2][2] = 1.0f;
+    v = D_8031B760[D_8028DBBC].cams[3].mtx[2];
+    v[1] = v[0] = 0.0f;
+    v[2] = 1.0f;
     BrVec3Cross((BrVec3 *)D_8031B760[D_8028DBBC].cams[3].mtx[1], (BrVec3 *)D_8031B760[D_8028DBBC].cams[3].mtx[2],
                 (BrVec3 *)D_8031B760[D_8028DBBC].cams[3].mtx[0]);
     BrVec3Cross((BrVec3 *)D_8031B760[D_8028DBBC].cams[3].mtx[2], (BrVec3 *)D_8031B760[D_8028DBBC].cams[3].mtx[0],
@@ -345,13 +357,15 @@ void BrPaintShopScreen(void)
         D_80369DB0[i].w = D_8028DB0C[i]->w - 8;
         D_80369DB0[i].h = D_8028DB0C[i]->h - 4;
         break;
+      default:
+        break;
       }
       D_8028DB0C[i]->kind = 99;
     }
     D_80369CD8[0].x = D_8028D470.x;
     D_80369CD8[0].y = D_8028D470.y + D_8028D470.h + 6;
     D_80369CD8[0].w = 0x20;
-    D_8028D480.x = D_80369CD8[0].x + D_80369CD8[0].w + 2;
+    D_8028D480.x = D_80369CD8[0].w + D_80369CD8[0].x + 2;
     D_80369CD8[0].h = 0x5e;
     D_8028D490.x = D_8028D480.x + D_8028D480.w + 0xe;
     D_8028D480.y = D_80369CD8[0].y;
@@ -359,12 +373,13 @@ void BrPaintShopScreen(void)
     y = D_80369CD8[0].y + D_8028D480.h + 2;
     for (r = 0; r < 3; r++) {
       x = D_8028D480.x;
-      for (k = 0; k < 4; k++) {
-        D_80369CD8[r * 4 + k + 1].x = x;
+      for (i = 0; i < 4; i++) {
+        n = (r << 2) + i;
+        D_80369CD8[n + 1].x = x;
         x += 0x4a;
-        D_80369CD8[r * 4 + k + 1].w = 0x48;
-        D_80369CD8[r * 4 + k + 1].h = 0x16;
-        D_80369CD8[r * 4 + k + 1].y = y;
+        D_80369CD8[n + 1].w = 0x48;
+        D_80369CD8[n + 1].h = 0x16;
+        D_80369CD8[n + 1].y = y;
       }
       y += 0x18;
     }
@@ -372,16 +387,16 @@ void BrPaintShopScreen(void)
     D_8028CE40.x = D_8028CE10.x = D_80369CD8[0].x;
     BrAllocPaintShopGfxMem(&D_8028CE10);
     BrAllocPaintShopGfxMem(&D_8028CE40);
-    for (i = 0; i < 12; i++) {
-      D_8028DAD8[i]->w = 0x40;
-      D_8028DAD8[i]->h = 0xe;
-      D_8028DAD8[i]->stripH = D_8028DAD8[i]->h;
-      D_8028DAD8[i]->drawW = D_8028DAD8[i]->w;
-      D_8028DAD8[i]->drawH = D_8028DAD8[i]->h;
-      D_8028DAD8[i]->x = D_80369CD8[1 + i].x + 4;
-      D_8028DAD8[i]->y = D_80369CD8[1 + i].y + 4;
-      D_8028DAD8[i]->kind = 0;
-      BrAllocPaintShopGfxMem(D_8028DAD8[i]);
+    for (i = 1; i < 13; i++) {
+      D_8028DAD4[i]->w = 0x40;
+      D_8028DAD4[i]->h = 0xe;
+      D_8028DAD4[i]->stripH = D_8028DAD4[i]->h;
+      D_8028DAD4[i]->drawW = D_8028DAD4[i]->w;
+      D_8028DAD4[i]->drawH = D_8028DAD4[i]->h;
+      D_8028DAD4[i]->x = D_80369CD8[i].x + 4;
+      D_8028DAD4[i]->y = D_80369CD8[i].y + 4;
+      D_8028DAD4[i]->kind = 0;
+      BrAllocPaintShopGfxMem(D_8028DAD4[i]);
     }
     BrAllocPaintShopGfxMem(&D_8028D110);
     BrAllocPaintShopGfxMem(&D_8028D140);
@@ -409,9 +424,9 @@ void BrPaintShopScreen(void)
       BrAllocPaintShopGfxMem(D_8028DB34[i]);
       BrAllocPaintShopGfxMem(D_8028DB44[i]);
     }
-    D_8028DB78 = D_8028AB08->parts[D_8028AB08->decal[D_8028DB68]].tex;
     D_8028DB7C = D_8028AB08->mask[D_8028DB68];
     D_8028DB88 = D_8028AB08->parts[D_8028AB08->decal[D_8028DB68]].w;
+    D_8028DB78 = D_8028AB08->parts[D_8028AB08->decal[D_8028DB68]].tex;
     D_8028DB8C = D_8028AB08->parts[D_8028AB08->decal[D_8028DB68]].h;
     D_8028DB08 = D_8028DB0C[D_8028DB68];
     D_8028DB90 = D_8028AB08->parts[D_8028AB08->decal[D_8028DB68]].tlut;
@@ -427,27 +442,18 @@ void BrPaintShopScreen(void)
       D_80369B98[i].h = 0xe;
       D_80369B98[i].y = D_8028D480.y + 4;
     }
-    D_80369B98[2].w = 0x10;
-    D_80369B98[2].h = 0xe;
-    D_80369B98[2].x = D_8028D490.x + 4;
-    D_80369B98[3].w = 0x10;
-    D_80369B98[3].h = 0xe;
-    D_80369B98[3].x = D_8028D490.x + 0x14;
-    D_80369B98[2].y = D_80369B98[3].y = D_8028D490.y + 4;
-    for (i = 4; i < 16; i++) {
-      D_80369B98[i].x = D_8028D490.x + 0x24 + (i - 4) * 0x10;
+    for (i = 2; i < 16; i++) {
+      D_80369B98[i].x = D_8028D490.x + 4 + (i - 2) * 0x10;
       D_80369B98[i].w = 0x10;
       D_80369B98[i].h = 0xe;
       D_80369B98[i].y = D_8028D490.y + 4;
     }
     BrPaintPaletteLoad();
-    y = D_8028D260.y;
     for (r = 0; r < 5; r++) {
-      for (k = 0; k < 10; k++) {
-        D_8028D540[r * 10 + k].x0 = D_8028D260.x + (D_8028D290.drawW + 4) * k;
-        D_8028D540[r * 10 + k].x4 = y;
+      for (i = 0; i < 10; i++) {
+        D_8028D540[i + r * 10].x0 = D_8028D260.x + (D_8028D290.drawW + 4) * i;
+        D_8028D540[i + r * 10].x4 = D_8028D260.y + (D_8028D290.drawH + 4) * r;
       }
-      y += D_8028D290.drawH + 4;
     }
     D_8028DB94.w = D_8028DB88 * 4;
     D_8028DB94.h = D_8028DB8C * 4;
@@ -455,7 +461,9 @@ void BrPaintShopScreen(void)
     D_8028DB94.y = D_8028D470.y + ((D_8028D470.h - D_8028DB8C * 4) >> 1);
     D_8028DC80 = 1;
     D_802724F0 = 0;
-    BrFadeTo(1.0f, D_802AB0FC);
+    BrFadeTo(1.0f, 0.2f);
+  }
+  if (i || r) {
   }
   BrClockTick();
   BrFadeStep();
@@ -485,14 +493,14 @@ void BrPaintShopScreen(void)
   BrPaintPaletteDraw();
   BrFillRect(D_80369CD8[0].x, D_80369CD8[0].y, D_80369CD8[0].w, D_80369CD8[0].h, 0, 0, 0);
   BrFillRect(D_80369CD8[0].x + 4, D_80369CD8[0].y + 4, D_80369CD8[0].w - 8, D_80369CD8[0].h - 8, 0xff, 0xca, 0);
-  if (D_8028CE9C == 0) {
+  if (D_8028CE70.kind == 0) {
     BrImageDraw(&D_8028CE10);
   } else {
     BrImageDraw(&D_8028CE40);
   }
   BrFillRect(D_8028D4F0[D_8028DAC0].x, D_8028D4F0[D_8028DAC0].y, D_8028D4F0[D_8028DAC0].w,
              D_8028D4F0[D_8028DAC0].h, 0, 0, 0);
-  if (D_8028CE9C == 0) {
+  if (D_8028CE70.kind == 0) {
     BrImageDrawPart(&D_8028CE10, 0,
                     D_8028CE10.y + D_8028CE10.h - D_8028D4F0[D_8028DAC0].y - D_8028D4F0[D_8028DAC0].h,
                     D_8028CE10.w, D_8028D4F0[D_8028DAC0].h, D_8028CE10.x - 1, D_8028D4F0[D_8028DAC0].y,
@@ -510,7 +518,7 @@ void BrPaintShopScreen(void)
       BrFillRect(D_80369CD8[i].x, D_80369CD8[i].y, D_80369CD8[i].w, D_80369CD8[i].h, 0, 0, 0);
     }
     BrFillRect(D_80369CD8[i].x + 4, D_80369CD8[i].y + 4, D_80369CD8[i].w - 8, D_80369CD8[i].h - 8, 0xff, 0xca, 0);
-    BrImageDraw(D_8028DAD8[i - 1]);
+    BrImageDraw(D_8028DAD4[i]);
   }
   if (D_8028DBD8 != 0) {
     D_8028AA80 = 0;
@@ -545,7 +553,7 @@ void BrPaintShopScreen(void)
         if (D_8028DBEC != 0) {
           BrImageDrawAt(&D_8028D200, D_8028D110.x, D_8028D110.y - 0x18);
         } else {
-          BrImageDrawAt(&D_8028D1D0, D_8028D110.x - (D_8028D1D0.w >> 1), D_8028D110.y - D_8028D1D0.h);
+          BrImageDrawAt(&D_8028D1D0, D_8028D110.x - (D_8028D1D0.drawW >> 1), D_8028D110.y - D_8028D1D0.drawH);
         }
       } else {
         BrImageDraw(&D_8028D110);
@@ -627,7 +635,9 @@ void BrPaintShopScreen(void)
   BrFrameEnd();
   if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 0x20) {
     if (BrPaintCursorInRect(&D_8028DB94) && D_8028DBC0 == 0 && D_8028DBC4 == 0) {
-      D_8028DB58 = BrPaintGet((D_8028D110.x - D_8028DB94.x) >> 2, (D_8028DB94.y + D_8028DB94.h - D_8028D110.y) >> 2);
+      i = D_8028D110.x - D_8028DB94.x;
+      r = D_8028DB94.y + D_8028DB94.h - D_8028D110.y;
+      D_8028DB58 = BrPaintGet(i >> 2, r >> 2);
       D_8028DBEC = 1;
     } else if (D_8028DBC0 != 0 || D_8028DBC4 != 0) {
       BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 0x20);
