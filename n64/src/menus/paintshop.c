@@ -244,6 +244,8 @@ void BrPaintDecalApply(void)
  * RESIDUE (435): register allocation (the ROM keeps mode in s0 and reuses
  * msg's s1 for y; frame 0x68 vs ours 0x50) and this file's .rodata (the
  * jump table) not mapping onto the ROM's. */
+/* @t4-pass 0x80244D84 1 2026-10-03 compiles 26 best 434 moved 1  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80244D84 2 2026-10-03 compiles 26 best 434 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80244D84 tgr BrPakMessage */
 void BrPakMessage(int msg, char op, char mode)
 {
@@ -252,7 +254,7 @@ void BrPakMessage(int msg, char op, char mode)
   int w;
 
   BrTextSetFont(12);
-  if (mode == 1) {
+  if (1 == mode) {
     BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
   } else {
     BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xca, 0);
@@ -342,8 +344,8 @@ void BrPakMessage(int msg, char op, char mode)
     }
     x = (0x280 - w) >> 1;
     BrBevelPanel(x, y, w, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
-    y = (y + 30) >> 1;
     x = (x + 15) >> 1;
+    y = (y + 30) >> 1;
     BrTextPrint("ERROR ENCOUNTERED", x, y);
     if (op == 9) {
       BrTextPrint("WHILE LOADING DECALS", x, y + 14);

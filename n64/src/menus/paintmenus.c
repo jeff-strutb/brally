@@ -99,6 +99,8 @@ void BrPaintPlot(int x, int y, unsigned char c);
  * RESIDUE (383, 7 short): saved-register allocation of the preview offsets
  * (the ROM keeps the unshifted differences in s3/s6/s7 and shifts at each
  * use), and its locals sit 0x1C lower in the frame. */
+/* @t4-pass 0x80247B0C 1 2026-10-03 compiles 26 best 325 moved 57  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80247B0C 2 2026-10-03 compiles 26 best 325 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80247B0C tgr BrPaintClearMenu */
 void BrPaintClearMenu(void)
 {
@@ -135,8 +137,8 @@ void BrPaintClearMenu(void)
   }
   dx2 = (unsigned int)(r[2][2] - D_8028CBA0.w) >> 1;
   dy1 = (r[0][3] - (D_8028DB0C[D_8028DB68]->h >> 1)) >> 1;
-  dx1 = (r[0][2] - ((unsigned int)D_8028DB0C[D_8028DB68]->w >> 1)) >> 1;
   dy2 = (r[2][3] - D_8028CBA0.h) >> 1;
+  dx1 = (r[0][2] - ((unsigned int)D_8028DB0C[D_8028DB68]->w >> 1)) >> 1;
   BrImageDrawRect(D_8028DB0C[D_8028DB68], r[0][0] + dx1, r[0][1] + dy1, D_8028DB0C[D_8028DB68]->drawW >> 1,
                   D_8028DB0C[D_8028DB68]->drawH >> 1, D_80369B98[D_8028DB58].r, D_80369B98[D_8028DB58].g,
                   D_80369B98[D_8028DB58].b);

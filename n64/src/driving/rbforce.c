@@ -267,6 +267,8 @@ float cosf(float x);
  * not the -Olimit fallback (that gives 1282 instructions to the ROM's 993)
  * nor -O1.  The frame has a dead {1, 0, 0} initialised array (at 0x98,
  * from .data 0x802A4B58) in the slide-flag block. */
+/* @t4-pass 0x80259D14 1 2026-10-03 compiles 26 best 966 moved 10  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80259D14 2 2026-10-03 compiles 26 best 965 moved 1  (n64/tools/n64permute.py) */
 /* @implements 0x80259D14 tgr BrCarAxleGrip */
 void BrCarAxleGrip(BrRbBody *b, float dt, float *gripF, float *gripR, unsigned char *slipFp,
                    unsigned char *slipRp)
@@ -294,8 +296,8 @@ void BrCarAxleGrip(BrRbBody *b, float dt, float *gripF, float *gripR, unsigned c
   float m4;
   float sp;
   float t;
-  int idx;
   float save[3];
+  int idx;
   float lat[3];
 
   ran = 0;
@@ -345,9 +347,9 @@ void BrCarAxleGrip(BrRbBody *b, float dt, float *gripF, float *gripR, unsigned c
   if ((b->sub[0]->x1b4 == 0 && b->sub[1]->x1b4 == 0) || (b->sub[2]->x1b4 == 0 && b->sub[3]->x1b4 == 0)) {
     *slipFp = 0;
   } else {
+    s = ABS(*gripF) + ABS(vA[1]) * b->mass / dt;
     ran = 1;
     hold = 8000.0f;
-    s = ABS(*gripF) + ABS(vA[1]) * b->mass / dt;
     if (ABS(slipF) > 0.0001) {
       s += 10000.0f * (ABS(slipR) > 0.0001);
     } else {
@@ -367,7 +369,7 @@ void BrCarAxleGrip(BrRbBody *b, float dt, float *gripF, float *gripR, unsigned c
     }
     g = D_802A4AF8[idx] / v * 20.0f * (float)(D_802A4A38[idx] - 0.002 * (b->tyres - 1));
     if (b->sub[2]->steer == 0) {
-      g = g * 1.5;
+      g = 1.5 * g;
     }
     if (ABS(g) > 1.0f) {
       g = 1.0f;
@@ -504,6 +506,8 @@ void BrCarAxleGrip(BrRbBody *b, float dt, float *gripF, float *gripR, unsigned c
  * .data right after BrCarAxleGrip's).
  * RESIDUE (423): the cross products' load order and the spill temps (the
  * ROM uses two, 0x20/0x24); the axis sits at 0x50, the ROM's 0x58. */
+/* @t4-pass 0x8025AC9C 1 2026-10-03 compiles 26 best 390 moved 16  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8025AC9C 2 2026-10-03 compiles 26 best 390 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8025AC9C tgr BrWheelTyre */
 void BrWheelTyre(BrRbBody *b, BrRbBody *w, float *pA, unsigned char *pB, float dt)
 {
@@ -511,8 +515,8 @@ void BrWheelTyre(BrRbBody *b, BrRbBody *w, float *pA, unsigned char *pB, float d
   float c[3];
   float d[3];
   float e[3];
-  float side[3];
   float fwd[3];
+  float side[3];
   float v[3];
   float dot;
   float sn;
@@ -555,9 +559,9 @@ void BrWheelTyre(BrRbBody *b, BrRbBody *w, float *pA, unsigned char *pB, float d
   c[0] = d[0] * cs;
   c[1] = d[1] * cs;
   c[2] = d[2] * cs;
-  side[0] = c[0] + side[0];
+  side[0] = side[0] + c[0];
   side[1] = c[1] + side[1];
-  side[2] = c[2] + side[2];
+  side[2] = side[2] + c[2];
   if (b->sub[0]->x1b4 != 0 && b->sub[2]->x1b4 != 0 && b->sub[1]->x1b4 != 0 && b->sub[3]->x1b4 != 0) {
     BrRbVelAtBodyPoint(v, b, w);
     dot = fwd[2] * v[2] + (v[0] * fwd[0] + v[1] * fwd[1]);
@@ -581,7 +585,7 @@ void BrWheelTyre(BrRbBody *b, BrRbBody *w, float *pA, unsigned char *pB, float d
     e[2] = -q;
     e[0] = fwd[0] * e[2];
     e[1] = fwd[1] * e[2];
-    e[2] = fwd[2] * e[2];
+    e[2] = e[2] * fwd[2];
     func_802586C0(a, b->m, e);
     w->forces->f[0] = a[0] + w->forces->f[0];
     w->forces->f[1] = a[1] + w->forces->f[1];
