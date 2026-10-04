@@ -44,7 +44,7 @@
 <rect x="131.6" y="668.5" width="80.9" height="86.2" fill="#58a6ff"><title>(unnamed)  0x80247B0C  2352B  [unfiled 0x8024xxxx]</title></rect>
 <rect x="131.6" y="755.4" width="80.9" height="73.8" fill="#58a6ff"><title>(unnamed)  0x8024FEB8  2016B  [unfiled 0x8024xxxx]</title></rect>
 <rect x="131.6" y="829.8" width="80.9" height="68.1" fill="#3fb950"><title>(unnamed)  0x8024843C  1860B  [unfiled 0x8024xxxx]</title></rect>
-<rect x="213.1" y="578.5" width="67.9" height="77.2" fill="#d29922"><title>(unnamed)  0x80244D84  1772B  0 diff bytes  [unfiled 0x8024xxxx]</title></rect>
+<rect x="213.1" y="578.5" width="67.9" height="77.2" fill="#3fb950"><title>(unnamed)  0x80244D84  1772B  [unfiled 0x8024xxxx]</title></rect>
 <rect x="281.6" y="578.5" width="65.6" height="77.2" fill="#6e5494"><title>(unnamed)  0x80240A30  1712B  [unfiled 0x8024xxxx]</title></rect>
 <rect x="347.8" y="578.5" width="63.9" height="77.2" fill="#58a6ff"><title>(unnamed)  0x80242BDC  1668B  [unfiled 0x8024xxxx]</title></rect>
 <rect x="412.3" y="578.5" width="55.2" height="77.2" fill="#6e5494"><title>(unnamed)  0x8024026C  1444B  [unfiled 0x8024xxxx]</title></rect>
@@ -166,7 +166,7 @@
 <rect x="618.9" y="614.7" width="53.4" height="51.3" fill="#58a6ff"><title>(unnamed)  0x802528F8  932B  [unfiled 0x8025xxxx]</title></rect>
 <rect x="618.9" y="666.7" width="53.4" height="48.2" fill="#58a6ff"><title>(unnamed)  0x8025F18C  876B  [unfiled 0x8025xxxx]</title></rect>
 <rect x="618.9" y="715.5" width="53.4" height="46.9" fill="#58a6ff"><title>(unnamed)  0x8025B3B0  852B  [unfiled 0x8025xxxx]</title></rect>
-<rect x="618.9" y="763.0" width="53.4" height="45.1" fill="#d29922"><title>(unnamed)  0x80257D3C  820B  0 diff bytes  [unfiled 0x8025xxxx]</title></rect>
+<rect x="618.9" y="763.0" width="53.4" height="45.1" fill="#58a6ff"><title>(unnamed)  0x80257D3C  820B  [unfiled 0x8025xxxx]</title></rect>
 <rect x="618.9" y="808.7" width="53.4" height="44.9" fill="#58a6ff"><title>(unnamed)  0x802575C4  816B  [unfiled 0x8025xxxx]</title></rect>
 <rect x="618.9" y="854.1" width="53.4" height="43.8" fill="#3fb950"><title>(unnamed)  0x8025C8DC  796B  [unfiled 0x8025xxxx]</title></rect>
 <rect x="672.8" y="614.7" width="49.6" height="46.6" fill="#58a6ff"><title>(unnamed)  0x8025DCB8  788B  [unfiled 0x8025xxxx]</title></rect>
@@ -519,7 +519,7 @@
 <rect x="1139.4" y="643.9" width="52.0" height="56.0" fill="#58a6ff"><title>(unnamed)  0x8021D84C  1000B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1139.4" y="700.5" width="52.0" height="54.6" fill="#3fb950"><title>(unnamed)  0x8021A0F8  976B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1139.4" y="755.7" width="52.0" height="48.7" fill="#3fb950"><title>(unnamed)  0x8021A5B8  872B  [unfiled 0x8021xxxx]</title></rect>
-<rect x="1139.4" y="805.0" width="52.0" height="46.5" fill="#d29922"><title>(unnamed)  0x8021CD30  832B  0 diff bytes  [unfiled 0x8021xxxx]</title></rect>
+<rect x="1139.4" y="805.0" width="52.0" height="46.5" fill="#58a6ff"><title>(unnamed)  0x8021CD30  832B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1139.4" y="852.1" width="52.0" height="45.8" fill="#3fb950"><title>(unnamed)  0x80211A3C  820B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1192.0" y="643.9" width="53.1" height="43.9" fill="#3fb950"><title>(unnamed)  0x8021DE5C  804B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1245.8" y="643.9" width="50.7" height="43.9" fill="#3fb950"><title>(unnamed)  0x802111E0  768B  [unfiled 0x8021xxxx]</title></rect>
@@ -559,7 +559,7 @@
 <rect x="1329.1" y="825.3" width="24.3" height="23.8" fill="#3fb950"><title>(unnamed)  0x8021C748  204B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1354.0" y="825.3" width="23.3" height="23.8" fill="#58a6ff"><title>(unnamed)  0x80214BEC  196B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1378.0" y="825.3" width="20.9" height="23.8" fill="#3fb950"><title>(unnamed)  0x8021D534  176B  [unfiled 0x8021xxxx]</title></rect>
-<rect x="1329.1" y="849.6" width="20.1" height="24.1" fill="#d29922"><title>(unnamed)  0x8021E21C  172B  0 diff bytes  [unfiled 0x8021xxxx]</title></rect>
+<rect x="1329.1" y="849.6" width="20.1" height="24.1" fill="#3fb950"><title>(unnamed)  0x8021E21C  172B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1329.1" y="874.3" width="20.1" height="23.6" fill="#3fb950"><title>(unnamed)  0x8021F2D8  168B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1349.8" y="849.6" width="21.1" height="15.9" fill="#3fb950"><title>(unnamed)  0x8021A4C8  120B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1349.8" y="866.1" width="21.1" height="15.9" fill="#3fb950"><title>(unnamed)  0x8021A540  120B  [unfiled 0x8021xxxx]</title></rect>
@@ -813,4 +813,4 @@
 <rect x="1588.1" y="893.1" width="0.9" height="4.8" fill="#3fb950"><title>SetCommentChar  0x8022F4EC  12B  [exe/brally/0x004016C0]</title></rect>
 <rect x="1592.6" y="893.1" width="0.9" height="4.8" fill="#6e5494"><title>BrGbiMtxSlot  0x80242810  12B  [core/drawing/br_gbihandlers]</title></rect>
 <rect x="1597.0" y="893.1" width="0.9" height="4.8" fill="#3fb950"><title>BrRet0Std3_10054600  0x8025D35C  12B  [core/menus/br_textlist]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 455 &#183; T3 codegen-only 107 &#183; 124,244/457,392 bytes exact (27.2%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 457 &#183; T3 codegen-only 109 &#183; 126,188/457,392 bytes exact (27.6%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
