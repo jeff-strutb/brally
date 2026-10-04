@@ -522,11 +522,17 @@ void BrRaceGateStep(BrRaceEnt *drv)
     if (drv->laps == D_8028B304) {
       drv->flags |= 2;
       if (car != 0) {
+        static char *places[20] = {
+          "%ryFirst!", "%rySecond!", "%ryThird!", "%ryFourth", "%ryFifth", "%rySixth",
+          "%ry7th", "%ry8th", "%ry9th", "%ry10th", "%ry11th", "%ry12th", "%ry13th",
+          "%ry14th", "%ry15th", "%ry16th", "%ry17th", "%ry18th", "%ry19th", "%ry20th",
+        };
+
         car->x2064 = 0.9f;
         car->lapTime = car->lapTime - drv->raceTime;
         drv->raceTime = 0.0f;
         car->xfac = D_8028B300;
-        car->msgA = (int)D_8028BABC[D_8028B300];
+        car->msgA = (int)places[D_8028B300];
         car->msgATime = 5.0f;
         if (drv->x64 < D_8026FF08 && D_8028B304 == 3) {
           if (D_8031B760[0].season->xe8[D_8028B940] == 0.0f ||

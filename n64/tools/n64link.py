@@ -108,7 +108,7 @@ def link_function(obj, name, place_va, data_va, fnvas, syms, self_va=None, stati
 
     rels = obj.rels.get(ti, [])
     out = list(ws)
-    for o, typ, si in rels:
+    for k, (o, typ, si) in enumerate(rels):
         if not (start <= o < end):
             continue
         i = (o - start) // 4
@@ -125,13 +125,17 @@ def link_function(obj, name, place_va, data_va, fnvas, syms, self_va=None, stati
                 tgt = val + ((w & 0x03FFFFFF) << 2)
             out[i] = (w & 0xFC000000) | ((tgt >> 2) & 0x03FFFFFF)
         elif typ in (5, 6):
+            # pairs go by relocation-table order, not by offset: a HI16 takes
+            # the next LO16 entry, and a LO16 the last HI16 entry before it
+            # (IDO can schedule another literal's addiu between a lui and its
+            # own addiu, and every .rodata literal shares one section symbol)
             if typ == 5:
-                lo = next((o2 for (o2, t2, s2) in rels if o2 > o and t2 == 6 and s2 == si), None)
+                lo = next((o2 for (o2, t2, s2) in rels[k + 1:] if t2 == 6 and s2 == si), None)
                 if lo is None:
                     raise LinkError('HI16 without LO16')
                 addend = ((w & 0xffff) << 16) + sext16(B.words(text[lo:lo + 4])[0] & 0xffff)
             else:
-                hi = max((o2 for (o2, t2, s2) in rels if o2 < o and t2 == 5 and s2 == si), default=None)
+                hi = next((o2 for (o2, t2, s2) in reversed(rels[:k]) if t2 == 5 and s2 == si), None)
                 hw = B.words(text[hi:hi + 4])[0] if hi is not None else 0
                 addend = ((hw & 0xffff) << 16) + sext16(w & 0xffff)
             if kind == 'sec':
