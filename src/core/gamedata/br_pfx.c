@@ -333,11 +333,9 @@ extern int32_t  g_iPfxHeadB4;   /* 0x10AC0C44 -- dword read, low word is
                                  * the head */
 extern int32_t  g_iPfxHeadAC;   /* 0x10AC0C3C */
 extern uint16_t g_iPfxFree;     /* 0x10AC0C38 */
-extern const float kPfx0_7;     /* 0x100775D4  0.7     */
 extern const float kPfxRecip;   /* 0x100775C4  1/65280 */
 extern const float kPfxNeg0_8;  /* 0x100775C8  -0.8    */
 extern const float kPfxCell;    /* 0x100775D0  0.03125 */
-extern const float kPfx19_62;   /* 0x100775D8  19.62   */
 extern const float kPfx102;     /* 0x100775DC  102.0   */
 extern const float kPfxNeg30;   /* 0x100775E0  -30.0   */
 
@@ -346,18 +344,13 @@ extern const float kPfxNeg30;   /* 0x100775E0  -30.0   */
  * two passes are two separate lists sharing one loop. */
 /* @t4-pass 0x100339C0 1 2026-09-07 probes 116 bytes 396 insns 96 regions 2 rows 1 census yes  (tools/crank.py) */
 /* @t4-pass 0x100339C0 2 2026-09-07 probes 121 bytes 396 insns 96 regions 2 rows 1 census yes  (tools/crank.py) */
-/* @t3 0x100339C0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 396/398 insns 96/97 rows 1+0 regions 2 oracle UNCLASSIFIED
- * @t3-effort passes 2 zero-movement 1 2
- * residue is allocation/scheduling: 1+0 classified rows, 2 masked regions, 2 B short;
- * every row pairs under t3.py's canonical classes.  Effort: 2 counted
- * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
- * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x100339C0 glide BrPfxUpdateB4AC */
 void BrPfxUpdateB4AC(void)
 {
-    float k = g_fPfxDt * kPfx0_7;
+    /* The two dt products take LITERALS (0x100775D4 0.7, 0x100775D8 19.62):
+     * a named constant loads first in a commutative product, a pooled
+     * literal second, and the original loads dt first. */
+    float k = g_fPfxDt * 0.7f;
     int pass;
 
     for (pass = 0; pass < 2; pass++) {
@@ -365,14 +358,19 @@ void BrPfxUpdateB4AC(void)
         unsigned iRec;
         int iNext;
 
+        /* The mask is written in EACH arm: VC5 merges the identical tails
+         * into the join only after its flag peephole has run, so the
+         * `and; test; je` survives as in the original.  One mask after the
+         * join fuses into `and; je`. */
         if (pass != 0) {
             iRec   = (unsigned)g_iPfxHeadAC;
             piLink = (uint16_t *)&g_iPfxHeadAC;
+            iRec &= 0xFFFFu;
         } else {
             iRec   = (unsigned)g_iPfxHeadB4;
             piLink = (uint16_t *)&g_iPfxHeadB4;
+            iRec &= 0xFFFFu;
         }
-        iRec &= 0xFFFFu;
 
         while (iRec != 0) {
             float scale;
@@ -391,7 +389,7 @@ void BrPfxUpdateB4AC(void)
                                   + g_aPfxRec[iRec].pos.z;
 
             g_aPfxRec[iRec].vel.z = g_aPfxRec[iRec].vel.z
-                                  - g_fPfxDt * kPfx19_62;
+                                  - g_fPfxDt * 19.62f;
 
             g_aPfxRec[iRec].f1E =
                 (uint8_t)(int32_t)(kPfx102 / g_aPfxRec[iRec].age);

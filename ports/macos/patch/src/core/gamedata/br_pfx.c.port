@@ -49,11 +49,9 @@
 @drop var:g_iPfxHeadB4
 @drop var:g_iPfxHeadAC
 @drop var:g_iPfxFree#3
-@drop var:kPfx0_7
 @drop var:kPfxRecip#2
 @drop var:kPfxNeg0_8#2
 @drop var:kPfxCell#2
-@drop var:kPfx19_62
 @drop var:kPfx102
 @drop var:kPfxNeg30
 @drop fn:BrPfxUpdateB4AC
