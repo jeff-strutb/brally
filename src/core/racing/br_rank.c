@@ -4,25 +4,10 @@
  * matched first and grouped by what they are afterwards.
  * Every function carries its original address.
  *
- * BrRankAssign 0x1005F580 -- Gate B ledger.  The residue is described at the
- * function; these are the counted attempts at byte-exactness.
+ * BrRankAssign 0x1005F580 -- the Gate B ledger from its T3 days.
  * @t4-pass 0x1005F580 1 2026-09-09 probes 6 bytes 259 insns 92 regions 1 rows 0 census no
  * @t4-pass 0x1005F580 2 2026-09-10 probes 12 bytes 259 insns 92 regions 1 rows 0 census no
  * @t4-pass 0x1005F580 3 2026-09-10 probes 11 bytes 259 insns 92 regions 1 rows 0 census yes
- * Pass 2 attacked the cyclic shift where the 2026-09-09 list had not: the
- * four locals' DECLARATION order (key cursor first, last, and after the
- * array), the two cursors' init order, the key as a ternary, the index store
- * moved below the key store, compound increments, a pre-advanced cursor
- * written through [-2], the key read hoisted above the flag test, and a
- * separate named key temp.  Pass 3 permuted the tail loop and the network
- * loop (hoisted slot pointer, hoisted rank expression, two re-associations
- * of `n - i - 1`, swapped increments, indexed vs dereferenced cursor, `!= 0`
- * vs `> 0` on the qsort guard, and the call result stored directly).  Every
- * one of the 23 compiles left the rotation exactly where it was; the only
- * movers made it worse (pre-advanced cursor 1+1, hoisted rank 0+2).
- * `corpus.py find --from 0x1005F580 --at 0x5c --len 12` is a MISS -- loop 1's
- * construct is not proven anywhere in the solved tree, so there is no
- * spelling to copy.  That MISS is pass 3's census.
  */
 /* The original is /MD: CRT calls go through the import
  * table (FF 15). */
@@ -53,8 +38,24 @@ int BrRankCmpKey(const void *pA, const void *pB)
 extern volatile int DAT_10226a48;
 extern int DAT_100b2f00;
 extern int DAT_100b2f04;
-extern int DAT_10af0858;
-extern char DAT_10af084c;
+/* 0x10AF0848 -- the driver slots, 0x80 bytes each. */
+typedef struct BrRankSlot {
+    int           key;            /* +0x00 progress key when no car */
+    int           rank;           /* +0x04 */
+    int           f08[2];
+    int           pCar;           /* +0x10 car record, or 0 */
+    int           f14;
+    unsigned char flags;          /* +0x18 bit 2: not ranked */
+    unsigned char pad[0x80 - 0x19];
+} BrRankSlot;
+typedef char br_rank_assert_slot[(sizeof(BrRankSlot) == 0x80) ? 1 : -1];
+extern BrRankSlot DAT_10af0848[];
+
+/* One sort record: the key BrRankCmpKey compares, then the slot index. */
+typedef struct BrRankPair {
+    int key;
+    int idx;
+} BrRankPair;
 extern int DAT_10af2200;
 int BrNetGetA102212D0(int param_1);
 
@@ -65,93 +66,39 @@ int BrNetGetA102212D0(int param_1);
  * +0xFF4, or from the slot's own field when no car is attached), sorts the
  * pairs with BrRankCmpKey, then walks the sorted order writing rank =
  * count-1-position into the car (+0xFF8) or back into the empty slot. */
-/* RESIDUE (colouring only): size- and insn-exact 259/259 B, 92/92 insns,
- * regnorm rows 0+0, 1 masked region.  Loop 1's four registers sit one
- * cyclic shift off (orig key-cursor/eax, key/ecx, slot/edx, i/edi; recomp
- * edi/eax/ecx/edx): the derived key cursor is allocated FIRST in the
- * original and LAST here.  DEAD 2026-09-09: twin explicit cursors (fold to
- * one + cached bl,2), fully indexed pair stores (same fold), char-vs-int
- * cursor type split (same), cursor-idx + indexed-key (multiset exact,
- * rotation), function order swap to address order (no movement),
- * cursor-key + indexed-idx (kept: positional DIFFS 22 -> 16).  Gate 0+A
- * PASS; parked for Gate B's counted ledger.
- * PASS; the counted ledger and its dead list are in this file's header. */
+/* The pair index is stored first and the key in each arm as pairs[n++]:
+ * one store after the join allocated the key cursor last, a cyclic shift
+ * of the collection loop's four registers against the original. */
 /* @t4-pass 0x1005F580 4 2026-09-10 probes 250 bytes 259 insns 92 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t3 0x1005F580 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 259/259 insns 92/92 rows 0+0 regions 1 oracle EQUIVALENT
- * @t3-effort passes 3 zero-movement 3 4
- * residue after tools/crank.py: 250 compiles this pass, levers accepted: none;
- * every candidate and score is in build/match/crank.log.
- * Do not reopen before the end-grind. */
 /* @implements 0x1005F580 glide BrRankAssign */
 
 void BrRankAssign(void)
-
 {
-  int uVar1;
-  int *piVar2;
-  int iVar3;
-  int *piVar4;
-  int _NumOfElements;
-  int *puVar5;
-  int iVar7;
-  int local_a0 [40];
+  int i, n;
+  BrRankPair pairs[20];
 
   if (DAT_10226a48 != 0) {
-    iVar7 = 0;
-    if (0 < DAT_100b2f04) {
-      puVar5 = &DAT_10af2200;
-      do {
-        uVar1 = BrNetGetA102212D0(puVar5[-0x3ad]);
-        *puVar5 = uVar1;
-        iVar7 = iVar7 + 1;
-        puVar5 = puVar5 + 0xada;
-      } while (iVar7 < DAT_100b2f04);
-      return;
+    for (i = 0; i < DAT_100b2f04; i++)
+      (&DAT_10af2200)[i * 0xada] = BrNetGetA102212D0((&DAT_10af2200)[i * 0xada - 0x3ad]);
+    return;
+  }
+  n = 0;
+  for (i = 0; i < DAT_100b2f00; i++) {
+    if (!(DAT_10af0848[i].flags & 2)) {
+      pairs[n].idx = i;
+      if (DAT_10af0848[i].pCar != 0)
+        pairs[n++].key = *(int *)(DAT_10af0848[i].pCar + 0xff4);
+      else
+        pairs[n++].key = DAT_10af0848[i].key;
     }
   }
-  else {
-    _NumOfElements = 0;
-    iVar7 = 0;
-    if (0 < DAT_100b2f00) {
-      piVar2 = local_a0;
-      piVar4 = &DAT_10af0858;
-      do {
-        if ((*(unsigned char *)(piVar4 + 2) & 2) == 0) {
-          iVar3 = *piVar4;
-          local_a0[_NumOfElements * 2 + 1] = iVar7;
-          if (iVar3 != 0) {
-            iVar3 = *(int *)(iVar3 + 0xff4);
-          }
-          else {
-            iVar3 = piVar4[-4];
-          }
-          *piVar2 = iVar3;
-          _NumOfElements = _NumOfElements + 1;
-          piVar2 = piVar2 + 2;
-        }
-        iVar7 = iVar7 + 1;
-        piVar4 = piVar4 + 0x20;
-      } while (iVar7 < DAT_100b2f00);
-    }
-    if (_NumOfElements != 0) {
-      qsort(local_a0,_NumOfElements,8,BrRankCmpKey);
-    }
-    iVar7 = 0;
-    if (0 < _NumOfElements) {
-      piVar2 = local_a0 + 1;
-      do {
-        if ((&DAT_10af0858)[*piVar2 * 0x20] != 0) {
-          *(int *)((&DAT_10af0858)[*piVar2 * 0x20] + 0xff8) = DAT_100b2f00 - iVar7 - 1;
-        }
-        else {
-          *(int *)(&DAT_10af084c + *piVar2 * 0x80) = DAT_100b2f00 - iVar7 - 1;
-        }
-        iVar7 = iVar7 + 1;
-        piVar2 = piVar2 + 2;
-      } while (iVar7 < _NumOfElements);
-    }
+  if (n != 0)
+    qsort(pairs, n, 8, BrRankCmpKey);
+  for (i = 0; i < n; i++) {
+    if (DAT_10af0848[pairs[i].idx].pCar != 0)
+      *(int *)(DAT_10af0848[pairs[i].idx].pCar + 0xff8) = DAT_100b2f00 - i - 1;
+    else
+      DAT_10af0848[pairs[i].idx].rank = DAT_100b2f00 - i - 1;
   }
-  return;
 }
 
