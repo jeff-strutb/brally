@@ -1106,7 +1106,7 @@ void BrCarCarCollide(void)
       d[0] = pa->pos.x - pb->pos.x;
       d[1] = pa->pos.y - pb->pos.y;
       d[2] = pa->pos.z - pb->pos.z;
-      if (sqrtf(d[2] * d[2] + d[0] * d[0] + d[1] * d[1]) < 5.0f) {
+      if (sqrtf(d[2] * d[2] + (d[0] * d[0] + d[1] * d[1])) < 5.0f) {
         float ext[3] = { 2.5f, 1.0f, 1.0f };
 
         BrMat3FromMat4T(mB, D_803239A0[j].car->stMtx);
@@ -1120,8 +1120,8 @@ void BrCarCarCollide(void)
           return;
         }
         BrVec3NormaliseF(d);
-        dotA = d[2] * pa->vel.z + pa->vel.x * d[0] + pa->vel.y * d[1];
-        s = (dotA + pb->vel.x * d[0] + pb->vel.y * d[1] + pb->vel.z * d[2]) * 0.5f;
+        dotA = d[2] * pa->vel.z + (pa->vel.x * d[0] + pa->vel.y * d[1]);
+        s = (dotA + (pb->vel.x * d[0] + pb->vel.y * d[1] + pb->vel.z * d[2])) * 0.5f;
         imp[0] = d[0] * s;
         imp[1] = d[1] * s;
         imp[2] = d[2] * s;
