@@ -171,15 +171,6 @@ int BrWindowCreate(const BrWindowOps *pOps)
  * decremented, so a second call does nothing at all. */
 /* @t4-pass 0x10017E30 1 2026-09-07 probes 68 bytes 211 insns 72 regions 4 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10017E30 2 2026-09-07 probes 68 bytes 211 insns 72 regions 4 rows 0 census yes  (tools/crank.py) */
-/* @t3 0x10017E30 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 211/211 insns 72/72 rows 0+0 regions 4 oracle UNCLASSIFIED
- * @t3-effort passes 2 zero-movement 1 2
- * residue is register colouring only: identical register-blind instruction
- * multiset (rows 0+0), 4 masked regions;
- * every row pairs under t3.py's canonical classes.  Effort: 2 counted
- * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
- * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x10017E30 glide BrWindowEarStartup */
 #include <stdlib.h>
 extern int32_t DAT_100a74fc;                 /* 0x100A74FC, the DLL selector */
@@ -213,14 +204,15 @@ int32_t BrWindowEarStartup(void *hWnd, const BrEarOps *pOps)
     DAT_104b1658(0x9BE9C9);
     DAT_104b1634(hWnd);
     if (DAT_104b1668(0) == 0) {
-        if (DAT_104b166c() == 3) {
+        /* ONE exit after the if/else: VC5 duplicates it into both arms, and
+         * written once it weights the callee-saved registers as the original
+         * (hWnd esi, MessageBoxA edi, exit ebx); an exit per arm rotates them. */
+        if (DAT_104b166c() == 3)
             MessageBoxA((HWND)hWnd, FUN_1006d280(0x12E), FUN_1006d280(0xFD),
                         0x10);
-            exit(1);
-        } else {
+        else
             DAT_104b1650();
-            exit(1);
-        }
+        exit(1);
     }
     return 1;
 }
