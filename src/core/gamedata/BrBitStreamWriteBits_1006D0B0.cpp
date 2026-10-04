@@ -1,13 +1,6 @@
 /* WHAT IT DOES: write a number into a packed bit stream n bits at a time,
  * splitting across byte boundaries as needed. The write side of the bit
  * stream reader. */
-/* @t3 0x1006D0B0 2026-09-13 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 164/164 insns 63/63 rows 0+0 regions 2 oracle UNCLASSIFIED
- * @t3-effort passes 2 zero-movement 1 2
- * Residue: one register plan -- n and the byte pointer swapped between edi
- * and edx, and the byteIdx load hoisted a few instructions.  The dossier
- * and dead list are in this header (PARKED paragraph and the two ledger
- * passes).  Do not reopen before the end-grind. */
 /* @implements 0x1006D0B0 glide BrBitStreamWriteBits_1006D0B0
  * @t4-pass 0x1006D0B0 1 2026-09-13 probes 12 bytes 164 insns 63 regions 2 rows 0 census yes  (hand, cpp_score variants: n/sh as ternaries, nbits decrement after the store, a room local, do-while with guard, compound bit test, byteIdx before bit, ~(~0<<n) mask, 0xff<<(8-bit) keep, reversed compare, 8-(bit+nbits), int n/sh, implicit narrowing)
  * @t4-pass 0x1006D0B0 2 2026-09-13 probes 11 bytes 164 insns 63 regions 2 rows 0 census yes  (hand, cpp_score variants: sh/n declaration order, p before keep, for-loop, keep&*p, OR operand order, bit>7, unsigned mask literals, unsigned bit/byteIdx members, nbits=nbits-n, byteIdx+=1, named field local -- best 40 every time)
@@ -38,21 +31,17 @@
  *   - no `(unsigned char)` cast inside the expression; one cast on the
  *     whole `(field << sh) | (*p & keep)` result. An inner cast lets the
  *     narrowing reach the field mask, which then builds in `bl`.
- *   - the byte pointer in its own `unsigned char *p` local. Writing
- *     `pBuf[byteIdx]` on both sides re-associates the field extraction
- *     into `(value >> nbits) & mask` and costs the 32-bit field mask.
+ *   - `pBuf[byteIdx]` on both sides of the store, with nbits debited
+ *     after the keep mask (the 2026-09 spelling used a `p` local and
+ *     debited first, which hoisted the byteIdx load).
  *   - `keep` in its own `unsigned int` local. Inline, the narrowing runs
  *     into the keep mask and builds THAT in `bl` instead.
  * Locals are otherwise scarce on purpose: a fourth one (holding the
  * extracted field) makes VC5 set up an ebp frame, and the original is
  * frameless with ebp as a general register and one spill slot for `sh`.
  *
- * PARKED at 40 diffs, T3a register pairing: `n` and the byte pointer are
- * swapped between edi and edx (orig n=edi p=edx, recomp n=edx p=edi), and
- * recomp hoists the byteIdx load a few instructions earlier. Register-blind
- * the bodies are the same. DO NOT RE-PROBE -- declaring p before keep (42),
- * swapping the n/sh declarations (40), and `&pBuf[byteIdx]` (40) all leave
- * the pairing alone.
+ * The register plan (n in edi, the byte pointer in edx) follows from
+ * forming the room into n before the fit test; see the loop body.
  */
 #define _CRTIMP __declspec(dllimport)
 
@@ -76,23 +65,26 @@ void BitStream6D0B0::WriteBits(unsigned int value, unsigned int nbits)
         unsigned int n;
         unsigned int sh;
 
-        if (8 - bit > (int)nbits) {
-            sh = 8 - bit - nbits;
+        /* The room `8 - bit` is formed into n first and overwritten by
+         * nbits when the field fits; nbits is debited after the keep mask,
+         * where the original schedules it, and the byte is addressed as
+         * pBuf[byteIdx] on both sides of the store. */
+        n = 8 - bit;
+        if ((int)n > (int)nbits) {
+            sh = n - nbits;
             n  = nbits;
         } else {
             sh = 0;
-            n  = 8 - bit;
         }
 
-        nbits -= n;
-
         {
-            unsigned int   keep = ((1 << bit) - 1) << (8 - bit);
-            unsigned char *p    = pBuf + byteIdx;
+            unsigned int keep = ((1 << bit) - 1) << (8 - bit);
 
-            *p = (unsigned char)
+            nbits -= n;
+
+            pBuf[byteIdx] = (unsigned char)
                 ((((value & (((1 << n) - 1) << nbits)) >> nbits) << sh)
-                 | (*p & keep));
+                 | (pBuf[byteIdx] & keep));
         }
 
         bit += n;
