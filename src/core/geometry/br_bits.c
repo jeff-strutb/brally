@@ -15,15 +15,6 @@
  * taken, because the merge is an OR and not a flip. */
 /* @t4-pass 0x1002F640 1 2026-09-09 probes 13 bytes 31 insns 15 regions 1 rows 0 census yes  (hand, fn.py variants) */
 /* @t4-pass 0x1002F640 2 2026-09-09 probes 13 bytes 31 insns 15 regions 1 rows 0 census yes  (hand, fn.py variants) */
-/* @t3 0x1002F640 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 31/31 insns 15/15 rows 0+0 regions 1 oracle EQUIVALENT
- * @t3-effort passes 2 zero-movement 1 2
- * residue is register colouring only: identical register-blind instruction
- * multiset (rows 0+0), 1 masked region;
- * every row pairs under t3.py's canonical classes.  Effort: 2 counted
- * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
- * hand passes (tools/fnmatch/fn.py variants); the dead-probe list is in the
- * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x10035FA0 d3d BrBitLatchTake */
 /* @n64 0x80255910 located */
 /* Register-allocation wall, 31/31 B, 15/15 insns, RAW 2+2, REGNORM 0+0: the
@@ -41,10 +32,11 @@
  * `mov R,R; push; mov R,[R+4]; and; or; not` run is proven nowhere. */
 void __fastcall BrBitLatchTake(BrBitLatch *pLatch, void *_dummy, uint32_t mask)
 {
-    uint32_t pending = pLatch->pending;
-
-    pLatch->latched |= (mask & pending);
-    pLatch->pending  = (~mask) & pending;
+    /* Two compound assignments read straight from the record: the original
+     * loads the mask before the pending word, which a `pending` local
+     * (read first) reverses. */
+    pLatch->latched |= mask & pLatch->pending;
+    pLatch->pending &= ~mask;
 }
 
 /* 0x100383C0 -- unrolled swap of three u32s. */
