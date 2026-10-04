@@ -13,8 +13,9 @@
 @drop undef:BrSelLookup
 @drop undef:BrPtrListAdd
 @drop undef:BrF3DVtxFixup
-@drop var:g_brCursor575510
-@drop var:g_brCursor575518
+@drop define:BrCursorPairSet
+@drop undef:BrCursorPairSet
+@drop var:g_brFadeValue
 @drop fn:BrCursorPairSet
 @after fn:BrCursorPairSet
 

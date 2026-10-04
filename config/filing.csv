@@ -239,6 +239,7 @@ glide_va,name,module,basis,file
 0x100181A0,BrFadeSetTarget,drawing,description,src/core/drawing/br_fade.c
 0x10018230,BrFadeSetTargetA,drawing,description,src/core/drawing/br_fade.c
 0x10018290,BrFadeSetTargetB,drawing,neighbour-1,src/core/drawing/br_fade.c
+0x100182F0,BrCursorPairSet,drawing,filed,src/core/drawing/br_cursorpair.c
 0x10018310,BrFadeIsClosing,drawing,description,src/core/drawing/br_fade.c
 0x10018340,BrFadeIsSettled,drawing,description,src/core/drawing/br_fade.c
 0x10018370,BrFadeIsShut,drawing,manual,src/core/drawing/br_fade.c
