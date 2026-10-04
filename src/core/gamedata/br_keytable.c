@@ -47,44 +47,23 @@ uint32_t g_brKeyBias;                    /* 0x10AC080C */
  * MISS on the 5-insn opening.
  * @t4-pass 0x10030FD0 1 2026-09-09 probes 19 bytes 84 insns 29 regions 1 rows 0 census yes  (hand, fn.py variants; k-battery found the -1 B spelling, m-battery zero movement)
  * @t4-pass 0x10030FD0 2 2026-09-09 probes 12 bytes 84 insns 29 regions 1 rows 0 census yes  (position sweep) */
-/* @t3 0x10030FD0 2026-09-19 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 81/83 insns 28/29 rows 2+1 regions 1 oracle EQUIVALENT
- * @t3-effort passes 4 zero-movement 3 4
- * 2026-09-19 respell (81 B, FITS the 83 B image slot): the volatile count
- * read keeps the original's bias-then-count order so both globals share
- * eax's 5-byte form; the dec's flags then feed js directly, eliding the
- * original's test+jl (the one `test R,R` singleton and the 28/29 insn gap).
- * A5 oracle EQUIVALENT on 64 seeds under the 0x10030FD0 profile in
- * tools/oracle_profiles.py (count pinned 0..3 -- a random count is a 2^31
- * runaway -- hit and miss paths both driven).  Dossier and dead list: the
- * comment blocks above.  Do not reopen before the end-grind.
- */
 /* @t4-pass 0x10030FD0 3 2026-09-19 probes 43 bytes 81 insns 28 regions 1 rows 3 census yes  (tools/crank.py) */
 /* @t4-pass 0x10030FD0 4 2026-09-19 probes 43 bytes 81 insns 28 regions 1 rows 3 census yes  (tools/crank.py) */
 /* @implements 0x10037930 d3d BrKeyTableFind */
 int BrKeyTableFind(uint32_t key, uint32_t *pA, uint32_t *pB)
 {
-    /* Declaring the count FIRST and biasing the key destructively keeps the
-     * key out of eax (count claims it), which turns the old lea back into
-     * the original's `add` and frees a register-form global load: 85->84 B,
-     * REGNORM 1+1 -> 0+0 (2026-09-09).  RESIDUE (1 B, RAW 2+2): the
-     * original loads the BIAS through eax too (5-byte a1 form, between the
-     * key load and the add); here the count holds eax at that point so the
-     * bias takes the 6-byte ecx form.  One byte, pure assignment. */
+    /* A plain for loop: its entry test is the original's unfused `dec eax /
+     * test eax,eax / jl` (count == 0 skips the loop); a while loop over a
+     * precomputed i fuses it into `dec / js`. */
     int32_t  i;
 
     key += g_brKeyBias;
-    i = *(volatile int32_t *)&g_brKeyCount - 1;
-
-    /* `dec eax / test eax,eax / jl` -- count == 0 leaves i == -1 and the
-     * whole loop is skipped. */
-    while (i >= 0) {
+    for (i = g_brKeyCount - 1; i >= 0; i--) {
         if (key == g_aBrKeyEnts[i].key) {
             *pA = g_aBrKeyEnts[i].a;
             *pB = g_aBrKeyEnts[i].b;
             return 1;
         }
-        i--;
     }
     return 0;
 }
