@@ -343,3 +343,72 @@ int32_t BrMenuTime1180(BrMenuItem *pItem)
 @drop var:DAT_10ac5bf8#2
 @drop var:DAT_10ac5c10#3
 @drop var:g_brAA28A4
+@drop proto:BrMenuText15A0
+@after proto:BrMenuText15A0
+
+/* WHAT IT DOES: show how many of something this stage still has left
+ * (a count minus what the player has used), never below zero, as a
+ * capitalised number. */
+/* port-only body; Glide match is src/core/menus/BrItemSetRemaining_1003AB00.cpp */
+int32_t BrMenuText15A0(BrMenuItem *pItem)
+{
+    BrMenuState *pSt = &g_menu;
+    char         sz[32];
+    char        *psz;
+    int32_t      v;
+
+    /* Everything the original inlines is inlined: the record index (a plain
+     * movsx of the signed byte at 0x10AA28B8, not a call to BrMenuStageIndex),
+     * the clamp, and BrMenuStoreFormatted's whole body.  See BrMenuText1670
+     * for the strlen test and the BrStrUpr return value, and BrMenuText0A50
+     * for why the vtable loads live in an inner block.
+     *
+     * The branches yield the FIELD, not the index.  Written as
+     * `e = cond ? 0 : idx;` followed by one `g_brStages[e].f08`, VC5 keeps a
+     * generic index and does the load once at the join.  The original
+     * specialises the zero case into an absolute `mov eax, [0x100B3818]` --
+     * the table base plus 8 -- and only the indexed branch pays for the lea,
+     * so each branch has to name the field itself. */
+    memset(sz, 0, sizeof sz);
+
+    if (MENU_gAA289C == 0)
+        v = g_brStages[0].f08;
+    else
+        v = g_brStages[(int32_t)(int8_t)MENU_gAA28B8].f08;
+
+    v -= MENU_gAA28C4;
+    if (v < 0)
+        v = 0;
+
+    /* THE ONE REMAINING DIVERGENCE, and it is a single instruction.  The
+     * original clamps with `sub eax, mem` / `test eax, eax` / `jge`; VC5
+     * emits `sub` / `jns` here and drops the redundant `test`, because the
+     * subtract already set the flags.  Everything either side of it is
+     * byte-identical, sizes included.  Tried and did NOT move it: the ternary
+     * form `v = (v >= 0) ? v : 0`.  Do not spend a third attempt on this
+     * without a new idea -- it is scheduling, not shape.
+     * DEAD 2026-09-09 (10 more, all identical): a tested copy local; an
+     * (int32_t) cast; 0 > v; empty-then else; non-compound sub; negation;
+     * braces; v-v and v^=v zero forms; `v != 0 && v < 0` gets test+jge
+     * but pays an extra je (+2 B) -- the pair is reachable, the guard is
+     * not; every slot in the TU; corpus MISS on sub/test/jge/xor. */
+
+    BrItoa(v, sz, 10);
+
+    if (strlen(sz) == 0)
+        return 0;
+
+    psz = pItem->text.sz;
+    strcpy(psz, BrStrUpr(sz));
+
+    {
+        const BrMenuTextVtbl *pVtbl = pItem->text.pVtbl;
+        BrMenuText           *pText = &pItem->text;
+
+        pVtbl->pfn08(pText);
+        if (psz != NULL)
+            pVtbl->pfn2C(pText);
+    }
+    return 1;
+}
+@end
