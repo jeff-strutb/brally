@@ -247,7 +247,7 @@ def _paint_popups(d):
 
 
 def _paint_shapes(d):
-    """Every rectangle and oval style drawn on the decal, with the dashed
+    """Every rectangle and oval style drawn three times on the decal, with the dashed
     outline that follows the cursor between the two clicks: each tool
     double-clicked for its style chooser, the style stepped to with the
     d-pad, a first click on the canvas, a slow drag, a second click.  Then
@@ -281,16 +281,17 @@ def _paint_shapes(d):
                     break
                 yield from d.tap('DR', hold=2, gap=8)
             yield from d.tap('A', hold=2, gap=20)
-            a, b = spots[k % 8], spots[(k + 3) % 8]
-            k += 1
-            yield from d.cursor_to(*a)
-            yield from click()
-            yield from d.cursor_to((a[0] + b[0]) // 2, (a[1] + b[1]) // 2)
-            yield from d.idle(10)
-            yield from d.cursor_to(*b)
-            yield from d.idle(10)
-            yield from click()
-            yield from d.idle(20)
+            for _ in range(3):                  # three sizes, corners in either order
+                a, b = spots[k % 8], spots[(k * 3 + 1) % 8]
+                k += 1
+                yield from d.cursor_to(*a)
+                yield from click()
+                yield from d.cursor_to((a[0] + b[0]) // 2, (a[1] + b[1]) // 2)
+                yield from d.idle(10)
+                yield from d.cursor_to(*b)
+                yield from d.idle(10)
+                yield from click()
+                yield from d.idle(20)
     text = rect(0x80369CD8 + 16 * 4)
     yield from d.cursor_to(*centre(text))
     yield from click()
@@ -316,7 +317,7 @@ plan('paint_shapes', 'Paint shop, car 1: the rectangle tool in its four styles (
      'typed into, closed and the text stamped.',
      [('boot',), ('title',), ('menu', 'TOP GEAR', MAIN['paintshop']), ('wait', 120),
       ('tap', 'A', 0, 4, 90), ('until_mode', 0x80243260, 900), ('wait', 60),
-      ('gen', _paint_shapes), ('wait', 60)], 6000)
+      ('gen', _paint_shapes), ('wait', 60)], 14000)
 
 
 plan('paint_popups', 'Paint shop, car 1: the text tool double-clicked (the text-style chooser and '
