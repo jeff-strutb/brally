@@ -353,7 +353,7 @@ void func_802182A8(void);
 void func_80218D5C(void);
 void BrPerfMark(int bar, int r, int g, int b, int a);
 void BrZBufferClear(void);
-void func_8023DF9C(BrRomFile *f, int x, int y, int w, int h, int a, int b, int c, int d,
+void BrRomImageDraw(BrRomFile *f, int x, int y, int w, int h, int a, int b, int c, int d,
                    int r, int g, int bl, int e, int f2);
 int BrFadeAtTarget(void);
 int BrFadeIsOut(void);
@@ -590,9 +590,9 @@ void BrCarSelect(void)
   D_803162AC = 2;
   BrZBufferClear();
   if (D_80272074 == 0) {
-    func_8023DF9C(&D_80272048, 0, 0, 320, 240, 0, 0, 0, 0xFF, 0x50, 0, 0, 0xFF, 4);
+    BrRomImageDraw(&D_80272048, 0, 0, 320, 240, 0, 0, 0, 0xFF, 0x50, 0, 0, 0xFF, 4);
   } else {
-    func_8023DF9C(&D_80272048, 0, 0, 320, 240, 0, 0, 0, 0xFF, 0, 0x82, 0x8C, 0xFF, 4);
+    BrRomImageDraw(&D_80272048, 0, 0, 320, 240, 0, 0, 0, 0xFF, 0, 0x82, 0x8C, 0xFF, 4);
   }
   if (D_803162AC == 0 && BrFadeAtTarget() != 0) {
     BrScissorSet(0, 0, D_8028AAB0, D_8028AAB4);
@@ -665,7 +665,7 @@ void BrCarSelect(void)
 
   /* ---- the title ---- */
   if (D_803162AC != 0 || BrFadeAtTarget() == 0) {
-    func_8023DF9C(&D_8027205C, 0x16, 9, 0x118, 0x2A, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 2);
+    BrRomImageDraw(&D_8027205C, 0x16, 9, 0x118, 0x2A, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 2);
     BrTextHighlightOff();
     BrTextAlignCentre();
     BrTextSetFont(30);
