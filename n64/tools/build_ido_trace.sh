@@ -37,6 +37,7 @@ mkdir -p ../instr
 rm -f ../instr/uopt.c ../instr/ugen.c
 ../wbvenv/bin/decomp-workbench instrument-uopt build/5.3/uopt.c ../instr/uopt.c --profile alias --profile globalcolor
 ../wbvenv/bin/decomp-workbench instrument-ugen --emit-provenance build/5.3/ugen.c ../instr/ugen.c
+python3 "$ROOT/n64/tools/patches/uopt_saveocc.py" ../instr/uopt.c     # per-occurrence save records
 
 # the libc shim with ecvt/fcvt, built aside so the stock build stays stock
 cp libc_impl.c ../instr/libc_impl.c

@@ -182,6 +182,15 @@ def cmd_trace(g, a):
         print('%-5s %5s %10.3f %5s %-8s %-6s %s' % (d['phase'], d['web'], float(d['save']), d['nocs'],
                                                   d['decision'], regname(c) if c > 0 else '-',
                                                   d.get('regsleft', '')))
+    for w in a.occ or []:
+        print('occurrences of web %s (uses defs x block weight - charges = contrib):' % w)
+        for line in log.splitlines():
+            m = REC.search(line)
+            if m and m.group(1) == 'saveocc':
+                d = dict(kv.split('=', 1) for kv in m.group(2).split() if '=' in kv)
+                if d['sym'] == w:
+                    print('  bb %s  uses %s defs %s  weight %s  nl %s  -> %s' % (
+                        d['bb'], d['uses'], d['defs'], d['weight'], d['nl'], d['contrib']))
 
 
 def cmd_force(g, a):
@@ -263,6 +272,8 @@ def main():
                        help='count differing words by position (the T4 grade) instead of aligned')
         if name == 'trace':
             p.add_argument('--saved', action='store_true', help='only webs in saved registers or not coloured')
+            p.add_argument('--occ', action='append', metavar='WEB',
+                           help='list a web\'s occurrences and what each adds to its saving')
         if name == 'force':
             p.add_argument('keys', help='p1:wN=cK[,p2:wM=s...]')
             p.add_argument('--diff', action='store_true')
