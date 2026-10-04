@@ -826,15 +826,6 @@ int BrGbiSizeShift(int n)
  * one row of the texture occupies, given the width rounded up to a power of
  * two and the pixel size -- and hands back the texture handle the backend
  * returns (the font, shadow and panel textures are kept by that handle). */
-/* @t3 0x10027F00 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 124/124 insns 52/52 rows 0+0 regions 2 oracle UNCLASSIFIED
- * @t3-effort passes 4 zero-movement 3 4
- * residue is register colouring only: identical register-blind instruction
- * multiset (rows 0+0), 2 masked regions;
- * every row pairs under t3.py's canonical classes.  Effort: 4 counted
- * @t4-pass passes (ledger lines above, zero movement on passes 3 and 4);
- * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x10028BF0 d3d BrGbiBlit */
 /* @t4-pass 0x10027F00 1 2026-09-07 probes 18 bytes 124 insns 52 regions 3 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10027F00 2 2026-09-07 probes 18 bytes 124 insns 52 regions 3 rows 0 census yes  (tools/crank.py) */
@@ -856,8 +847,10 @@ uintptr_t BrGbiBlit(uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4,
                     uintptr_t a9, uintptr_t a10, uintptr_t a11, uintptr_t a12,
                     uintptr_t a13, uintptr_t a14)
 {
-    int32_t   rounded = (int32_t)(1 << BrGbiSizeShift((int)a3));
-    int32_t   pitch   = (rounded / BrGbiTexelsPerWord((int)a5)) * 8;
+    /* One expression, no named power-of-two: as a local it takes a
+     * callee-saved register ahead of a3 and a5 and rotates all three. */
+    int32_t   pitch   = (((int32_t)(1 << BrGbiSizeShift((int)a3)))
+                         / BrGbiTexelsPerWord((int)a5)) * 8;
 
     return g_pfn18ED1C4(a1, a2, a3, a4, (uintptr_t)(intptr_t)pitch,
                         a5, a6, a7, a8, a9, a10, a11, a12, a13, a14);
