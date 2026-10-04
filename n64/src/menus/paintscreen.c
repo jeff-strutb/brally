@@ -225,6 +225,8 @@ void BrPaintExitPrompt(void);
  * 0x2090 held in s2, where ours gets shift sequences, and keeps the tool
  * grid's inner loop rolled with its index in s0, where ours unrolls it;
  * the other differences follow from those registers. */
+/* @t4-pass 0x80243260 1 2026-10-03 compiles 26 best 1546 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80243260 2 2026-10-03 compiles 26 best 1546 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80243260 tgr BrPaintShopScreen */
 void BrPaintShopScreen(void)
 {

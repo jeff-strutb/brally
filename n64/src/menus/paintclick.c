@@ -146,6 +146,8 @@ void BrPaintDashCircle(int x, int y, int r);
  * flags without keeping their addresses in v0, tests the palette loop with
  * slti where ours gets bne, and its loop pointer temporaries sit one word
  * higher (0x1C/0x20). */
+/* @t4-pass 0x8024C184 1 2026-10-03 compiles 26 best 525 moved 1  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8024C184 2 2026-10-03 compiles 26 best 525 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8024C184 tgr BrPaintClick */
 void BrPaintClick(void)
 {
@@ -176,8 +178,8 @@ void BrPaintClick(void)
       if (BrPaintCursorInRect(&D_80369DB0[i])) {
         BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 0x8010);
         D_8028DB6C = D_8028DB68;
-        D_8028DB08 = D_8028DB0C[i];
         D_8028DB68 = i;
+        D_8028DB08 = D_8028DB0C[i];
         if (D_8028DB68 != D_8028DB6C) {
           D_8028DBD0 = 1;
           D_8028DBB0 = 0;
@@ -378,7 +380,7 @@ void BrPaintClick(void)
       BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 0x8010);
       return;
     case 6:
-      if (D_8028DBC0 == 0) {
+      if (0 == D_8028DBC0) {
         D_80369B80 = D_8028D110.x;
         D_80369B84 = D_8028D110.y;
         D_8028DBC0 = 1;

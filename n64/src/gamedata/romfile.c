@@ -61,6 +61,8 @@ void BrRomFileUnpack(BrRomFile *f, void *(*alloc)(int size))
  * RESIDUE (gap 36, same length): the ROM holds w in s4, the strip row in s2
  * and the rectangle's bottom in s3 (ours: s3, s4, s2), and stores the
  * texture command's first word before its second. */
+/* @t4-pass 0x8023DF9C 1 2026-10-03 compiles 26 best 62 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8023DF9C 2 2026-10-03 compiles 26 best 62 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8023DF9C tgr BrRomImageDraw */
 void BrRomImageDraw(BrRomImage *img, int x, int y, int w, int h, int pr, int pg, int pb, int pa,
                     int er, int eg, int eb, int ea, int mode)

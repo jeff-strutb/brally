@@ -204,6 +204,8 @@ void BrWeatherStep(void)
  * s0 and 28.0 in f20 across the calls, where the ROM re-forms the address
  * at each use and holds only 1.0; the rain direction sits at sp+0x60 in
  * the ROM's frame. */
+/* @t4-pass 0x8023A784 1 2026-10-03 compiles 26 best 584 moved 1  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8023A784 2 2026-10-03 compiles 26 best 584 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8023A784 tgr BrWeatherDraw */
 void BrWeatherDraw(void)
 {
@@ -298,8 +300,8 @@ void BrWeatherDraw(void)
     if (D_8028A8A8 != D_8028A8AC) {
       d[0] = -d[0];
     }
-    x = 32.0f - d[0] * 28.0f;
     y = d[1] * 28.0f + 32.0f;
+    x = 32.0f - d[0] * 28.0f;
     for (k = 0; k < 16; k++) {
       y += -d[1] * 3.5f;
       x += d[0] * 3.5f;
