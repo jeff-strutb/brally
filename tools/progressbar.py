@@ -6,7 +6,9 @@ The two milestone bars in README.md used to be transcribed by hand off
 tools/tiers.py every time progress moved -- four times in one afternoon once the
 other sessions started landing matches.  This mints that chore: it reads the T3
 and T4 byte/function totals straight from tiers.py, rewrites everything between
-the `<!-- PROGRESS:BEGIN -->` and `<!-- PROGRESS:END -->` markers in README.md,
+the `<!-- PROGRESS:BEGIN -->` and `<!-- PROGRESS:END -->` markers in README.md
+(Current Status: the bars and the per-binary table) and between the
+`<!-- PROGRESS-DETAIL:... -->` markers (the PC section: what the bars measure),
 and regenerates docs/progress-map.svg.  Nothing outside the markers is touched.
 
     M1  contract-valid  = T3 (certified, not byte-exact) + T4 (byte-exact)
@@ -44,6 +46,8 @@ BRGLIDE_TEXT = 480853
 BAR_W = 40
 BEGIN = '<!-- PROGRESS:BEGIN'
 END = '<!-- PROGRESS:END -->'
+DETAIL_BEGIN = '<!-- PROGRESS-DETAIL:BEGIN'
+DETAIL_END = '<!-- PROGRESS-DETAIL:END -->'
 N64_BEGIN = '<!-- N64-PROGRESS:BEGIN'
 N64_END = '<!-- N64-PROGRESS:END -->'
 
@@ -197,17 +201,12 @@ def _table(t3_fns, t3_b, t4_fns, t4_b, exes, target_b):
     return '\n'.join(rows)
 
 
-def block(t3_fns, t3_b, t4_fns, t4_b, target, target_b, t2_fns, t2_b,
-          ex_fns, ex_b, fenced_b, mapped_b, exes):
+def block(t3_fns, t3_b, t4_fns, t4_b, target, target_b, exes):
+    """Current Status: the two milestone bars and the per-binary table."""
     m1_b, m1_fns = t3_b + t4_b, t3_fns + t4_fns
     m2_b, m2_fns = t4_b, t4_fns
     m1_pct, m2_pct = 100 * m1_b / target_b, 100 * m2_b / target_b
-    left_b = target_b - m1_b
-    pad_b = BRGLIDE_TEXT - mapped_b
     today = datetime.date.today().isoformat()
-    open_fns = target - m1_fns
-    left = ('%d function%s still open' % (open_fns, '' if open_fns == 1 else 's')
-            if open_fns else 'complete')
     return (
         '_Snapshot %s._\n\n'
         '```\n'
@@ -216,6 +215,24 @@ def block(t3_fns, t3_b, t4_fns, t4_b, target, target_b, t2_fns, t2_b,
         'M2  Byte-exact (T4)\n'
         '    %s  %.1f%%   %s / %s B   %s / %s fns\n'
         '```\n\n'
+        '%s\n'
+        % (today,
+           bar(m1_pct), m1_pct, f'{m1_b:,}', f'{target_b:,}',
+           f'{m1_fns:,}', f'{target:,}',
+           bar(m2_pct), m2_pct, f'{m2_b:,}', f'{target_b:,}',
+           f'{m2_fns:,}', f'{target:,}',
+           _table(t3_fns, t3_b, t4_fns, t4_b, exes, target_b)))
+
+
+def detail_block(t3_fns, t3_b, t4_fns, t4_b, target, target_b,
+                 ex_fns, ex_b, fenced_b, mapped_b):
+    """PC section: what the bars measure and the rest of the DLL."""
+    m1_b, m1_fns = t3_b + t4_b, t3_fns + t4_fns
+    pad_b = BRGLIDE_TEXT - mapped_b
+    open_fns = target - m1_fns
+    left = ('%d function%s still open' % (open_fns, '' if open_fns == 1 else 's')
+            if open_fns else 'complete')
+    return (
         '**What the bars measure.** Both bars count the game\'s own functions in\n'
         'BRGlide.dll: the code that has to be written by hand. M1 has %s.\n'
         'M2 trails it by %d functions (%s B) that are certified to behave exactly like\n'
@@ -232,17 +249,10 @@ def block(t3_fns, t3_b, t4_fns, t4_b, target, target_b, t2_fns, t2_b,
         'code is fully\n'
         'byte-exact; the static CRT filling out each image is reproduced by '
         'linking, not\n'
-        'decompiled, and is out of scope). All remaining work is in BRGlide.dll.\n\n'
-        '%s\n'
-        % (today,
-           bar(m1_pct), m1_pct, f'{m1_b:,}', f'{target_b:,}',
-           f'{m1_fns:,}', f'{target:,}',
-           bar(m2_pct), m2_pct, f'{m2_b:,}', f'{target_b:,}',
-           f'{m2_fns:,}', f'{target:,}',
-           left, t3_fns, f'{t3_b:,}',
+        'decompiled, and is out of scope). All remaining work is in BRGlide.dll.\n'
+        % (left, t3_fns, f'{t3_b:,}',
            f'{BRGLIDE_TEXT:,}', f'{BRGLIDE_TEXT - target_b:,}',
-           f'{pad_b:,}', f'{fenced_b:,}', f'{ex_b:,}', ex_fns,
-           _table(t3_fns, t3_b, t4_fns, t4_b, exes, target_b)))
+           f'{pad_b:,}', f'{fenced_b:,}', f'{ex_b:,}', ex_fns))
 
 
 def splice(text, new_block, begin=BEGIN, end=END):
@@ -261,8 +271,11 @@ def main():
     fenced_b, mapped_b = text_breakdown()
     old = open(README, encoding='utf-8').read()
     updated = splice(old, block(t3_fns, t3_b, t4_fns, t4_b, target, target_b,
-                                t2_fns, t2_b, ex_fns, ex_b, fenced_b, mapped_b,
                                 exe_counts()))
+    updated = splice(updated,
+                     detail_block(t3_fns, t3_b, t4_fns, t4_b, target, target_b,
+                                  ex_fns, ex_b, fenced_b, mapped_b),
+                     DETAIL_BEGIN, DETAIL_END)
 
     # N64 (Top Gear Rally) lane -- its own markers, same rendering.
     n3f, n3b, n4f, n4b, ntf, ntb = n64_counts()
