@@ -682,7 +682,7 @@ int  __stdcall grSstQueryHardware(void *);
 void __stdcall grSstSelect(int);
 
 void BrGl_1001DD70(void);
-void BrGl_1001DD80(int32_t w, int32_t h);
+int  BrGl_1001DD80(int32_t w, int32_t h);   /* the mode set; 0 == failed */
 
 extern void   *BrGlFlipHook;        /* 0x106B7AB8 -> 0x1001DD50 */
 extern void   *BrGlFlipHook2;       /* 0x106B7ABC -> 0x1001DD70 */
@@ -726,21 +726,18 @@ extern int32_t BrGlScreenH;         /* 0x100A7518 */
 /* @t4-pass 0x1001E080 3 2026-09-10 probes 23 bytes 176 insns 40 regions 1 rows 3 census yes  (tools/crank.py) */
 /* @t4-pass 0x1001E080 4 2026-09-10 probes 23 bytes 176 insns 40 regions 1 rows 3 census yes  (tools/crank.py) */
 /* @t4-pass 0x1001E080 5 2026-09-10 probes 43 bytes 176 insns 40 regions 1 rows 3 census yes  (tools/crank.py) */
-/* @t3 0x1001E080 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 176/173 insns 40/41 rows 2+1 regions 1 oracle UNCLASSIFIED
- * @t3-effort passes 5 zero-movement 4 5
- * residue after tools/crank.py: 43 compiles this pass, levers accepted: none;
- * every candidate and score is in build/match/crank.log.
- * Do not reopen before the end-grind. */
 /* @t4-pass 0x1001E080 6 2026-09-19 probes 23 bytes 176 insns 40 regions 1 rows 3 census yes  (tools/crank.py) */
 /* @implements 0x1001E080 glide BrGlInstall */
-void BrGlInstall(void)
+int BrGlInstall(void)
 {
     BrGlFlipHook  = (void *)BrGlideFlipWait;
     BrGlFlipHook2 = (void *)BrGl_1001DD70;
     grGlideInit();
+    /* It returns the outcome: 0 when no hardware answers, else the mode
+     * set's own answer.  Written void, the early exit jumped to the shared
+     * tail instead of the original's inline `ret`. */
     if (grSstQueryHardware(BrGlHwConfig) == 0)
-        return;
+        return 0;
     grSstSelect(0);
     switch (BrGlHwType) {
     default:
@@ -759,8 +756,7 @@ void BrGlInstall(void)
             BrGlHwParamB = BrGlHwCfgE0 + BrGlHwCfgE0;
         break;
     }
-    BrGl_1001DD80(BrGlScreenW, BrGlScreenH);
-    return;
+    return BrGl_1001DD80(BrGlScreenW, BrGlScreenH);
 }
 
 /* 0x1001E7A0 -- the G_SETCOMBINE classifier behind 0x1001E770 (br_dlcmd.c).
