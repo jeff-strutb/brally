@@ -368,17 +368,14 @@ void BrCarDraw(BrCar *car, int lodBias)
   int th;
   int cw;
   int ch;
-  unsigned char aB;
-  unsigned char bB;
-  unsigned char gB;
-  unsigned char rB;
+  unsigned char c[4];
   unsigned short *pal;
   int unused344[8];
   BrVec3 toCam;
   int unused32C[3];
   float atZ;
   float atX;
-  BrVec3 eye;
+  float eye[3];
 
   tw = 64;
   th = 64;
@@ -433,32 +430,32 @@ void BrCarDraw(BrCar *car, int lodBias)
     if (div < 1.0f) {
       div = 1.0f;
     }
-    rB = (unsigned int)D_8028AB40 / div;
-    gB = (unsigned int)D_8028AB44 / div;
-    bB = (unsigned int)D_8028AB48 / div;
-    colA = bB << 8 | rB << 24 | gB << 16;
-    rB = D_8028AB4C;
-    bB = D_8028AB54;
-    gB = D_8028AB50;
-    colB = bB << 8 | rB << 24 | gB << 16;
+    c[0] = (unsigned int)D_8028AB40 / div;
+    c[1] = (unsigned int)D_8028AB44 / div;
+    c[2] = (unsigned int)D_8028AB48 / div;
+    colA = c[2] << 8 | c[0] << 24 | c[1] << 16;
+    c[0] = D_8028AB4C;
+    c[2] = D_8028AB54;
+    c[1] = D_8028AB50;
+    colB = c[2] << 8 | c[0] << 24 | c[1] << 16;
   } else if (tunnel != 0) {
-    rB = 0;
-    gB = 0;
-    bB = 0;
-    colA = bB << 8 | rB << 24 | gB << 16;
-    rB = (D_8028AB4C << 2) / 5;
-    gB = (D_8028AB50 << 2) / 5;
-    bB = (D_8028AB54 << 2) / 5;
-    colB = bB << 8 | rB << 24 | gB << 16;
+    c[0] = 0;
+    c[1] = 0;
+    c[2] = 0;
+    colA = c[2] << 8 | c[0] << 24 | c[1] << 16;
+    c[0] = (D_8028AB4C << 2) / 5;
+    c[1] = (D_8028AB50 << 2) / 5;
+    c[2] = (D_8028AB54 << 2) / 5;
+    colB = c[2] << 8 | c[0] << 24 | c[1] << 16;
   } else {
-    rB = D_8028AB40;
-    bB = D_8028AB48;
-    gB = D_8028AB44;
-    colA = bB << 8 | rB << 24 | gB << 16;
-    rB = D_8028AB4C;
-    bB = D_8028AB54;
-    gB = D_8028AB50;
-    colB = bB << 8 | rB << 24 | gB << 16;
+    c[0] = D_8028AB40;
+    c[2] = D_8028AB48;
+    c[1] = D_8028AB44;
+    colA = c[2] << 8 | c[0] << 24 | c[1] << 16;
+    c[0] = D_8028AB4C;
+    c[2] = D_8028AB54;
+    c[1] = D_8028AB50;
+    colB = c[2] << 8 | c[0] << 24 | c[1] << 16;
   }
   G(0x01060040, D_80351CA0[car->slot]);
   G(0x01030040, D_8028A878);
@@ -506,13 +503,13 @@ void BrCarDraw(BrCar *car, int lodBias)
       atX = D_802A9ED8;
     }
   }
-  eye.x = D_8028AAF4->mtx0[0][0];
-  eye.y = D_8028AAF4->mtx0[0][1];
-  eye.z = D_8028AAF4->mtx0[0][2];
-  if (eye.x == 0.0f && eye.y == 0.0f) {
-    eye.x = D_802A9EDC;
+  eye[0] = D_8028AAF4->mtx0[0][0];
+  eye[1] = D_8028AAF4->mtx0[0][1];
+  eye[2] = D_8028AAF4->mtx0[0][2];
+  if (eye[0] == 0.0f && eye[1] == 0.0f) {
+    eye[0] = D_802A9EDC;
   }
-  guLookAtReflectF(D_8031AB10, reflect, eye.x, eye.y, 0, 0, 0, 0, 0, 0, 1.0f);
+  guLookAtReflectF(D_8031AB10, reflect, eye[0], eye[1], 0, 0, 0, 0, 0, 0, 1.0f);
   guLookAtHiliteF(D_8031AB10, look, hilite, D_8028AAF4->mtx0[3][0], D_8028AAF4->mtx0[3][1],
                   D_8028AAF4->mtx0[3][2], car->mtx0[3][0] + atX, car->mtx0[3][1], car->mtx0[3][2] + atZ,
                   0, 0, 1.0f, D_80351D18.x, D_80351D18.y, D_80351D18.z, D_80351D18.x, D_80351D18.y,
