@@ -82,11 +82,9 @@ void BrRaceResultRestore(void)
  * before the next season starts.  The round's points are cleared for the
  * new round, and the track and weather just raced are marked seen.  The
  * messages go to the results screen's lines, a blank line between groups.
- * RESIDUE (38): register colouring only -- the ROM puts the message address
- * in a0 and the last round's race count in a1; ours swaps them. */
-/* @t4-pass 0x802063A4 1 2026-09-29 compiles 13 best 38 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x802063A4 2 2026-09-29 compiles 13 best 38 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x802063A4 */
+ * Each message line is stored with its own n++ (two in a row for the
+ * bonus-track pair), which keeps the message pointer ahead of the last
+ * round's race count in the ROM's register order. */
 /* @implements 0x802063A4 tgr BrSeasonRaceDone */
 void BrSeasonRaceDone(void)
 {
@@ -116,9 +114,8 @@ void BrSeasonRaceDone(void)
                 if (n) {
                   D_80315DB0[n++] = "";
                 }
-                D_80315DB0[n] = "You Won all races this season!";
-                D_80315DB0[n + 1] = "Bonus: Mirror Mine Track Added!";
-                n += 2;
+                D_80315DB0[n++] = "You Won all races this season!";
+                D_80315DB0[n++] = "Bonus: Mirror Mine Track Added!";
                 D_8031B760[i].season->xce |= 0x100;
               }
             } else {
@@ -126,9 +123,8 @@ void BrSeasonRaceDone(void)
                 if (n) {
                   D_80315DB0[n++] = "";
                 }
-                D_80315DB0[n] = "You Won all races this season!";
-                D_80315DB0[n + 1] = "Bonus: Mine Track Added!";
-                n += 2;
+                D_80315DB0[n++] = "You Won all races this season!";
+                D_80315DB0[n++] = "Bonus: Mine Track Added!";
                 D_8031B760[i].season->xce |= 8;
               }
             }
