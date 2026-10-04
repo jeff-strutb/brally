@@ -18,6 +18,14 @@ result is kept and the run goes on, so every later call sees real game state.
 OS calls the tested call makes (message waits, pads, DMA, video) are
 recorded in the live run and replayed in both sandboxes; the candidate must
 make the same ones in the same order (see RecBox).
+A thread entry that never returns (THREAD_LOOPS) is compared one loop
+iteration at a time instead: each arrival of the live thread at the ROM
+body's outer loop head starts a recording and the next arrival ends it; the
+original runs from that head to its next head, and the candidate runs from
+its own entry (its prologue sets up its own registers; an OS call before its
+loop head ends the run) through one iteration to its second head arrival.
+All memory outside the thread's frame and every OS call must agree;
+registers are not compared, since the loop carries nothing in them.
 Verdicts: EQUIVALENT (compared >= 1, no divergence), DIVERGENT, UNCOVERED.
 They land in n64/config/t3_live.csv with the source's hash.
 
@@ -71,6 +79,36 @@ CODE_LO, CODE_HI = 0x80200000, 0x8026FAB0
 DEAD_STACK = 0x4000
 ARG_HOME = 0x20
 MAX_CALLS = 150
+# Thread entries that never return: compared one loop iteration at a time
+# (see Lockstep.on_head).  The iteration runs from the outer loop head to the
+# next arrival there.
+THREAD_LOOPS = {0x80257D3C}       # BrMusicThread
+
+
+def loop_head(words, base):
+    """The outer loop head of a body: the lowest target of a backward
+    unconditional branch (b = beq $0,$0)."""
+    heads = []
+    for i, w in enumerate(words):
+        if w >> 16 == 0x1000:
+            off = w & 0xffff
+            if off & 0x8000:
+                heads.append(base + 4 * (i + 1) + ((off - 0x10000) << 2))
+    return min(heads) if heads else None
+
+
+def rom_frame(va):
+    """The frame size the ROM body's prologue allocates (addiu sp,sp,-N)."""
+    rom = open(NB.ROM_PATH, 'rb').read()
+    w = struct.unpack('>I', rom[va - NB.ENTRY + 0x1000:va - NB.ENTRY + 0x1004])[0]
+    return 0x10000 - (w & 0xffff) if w >> 16 == 0x27BD else 0
+
+
+def rom_words(va):
+    size = B.function_map()[va]
+    rom = open(NB.ROM_PATH, 'rb').read()
+    off = va - NB.ENTRY + 0x1000
+    return list(struct.unpack('>%dI' % (size // 4), rom[off:off + size]))
 
 
 def scripts():
@@ -333,6 +371,10 @@ class Sandbox:
         self.uc.reg_write(M.UC_MIPS_REG_PC, NB.sx(self.reg(31)))
 
     def on_os(self, uc, addr, size, name):
+        if getattr(self, 'heads', 0) < getattr(self, 'os_from', 0):
+            self.stop = 'calls %s before its loop head' % name
+            uc.emu_stop()
+            return
         if name in NATIVE_OS:
             self.ret()
         elif name == 'osGetCount':
@@ -404,9 +446,29 @@ class Sandbox:
         self.stop = 'returned'
         uc.emu_stop()
 
-    def run(self, ram, regs, pc, count, events=()):
+    def run(self, ram, regs, pc, count, events=(), stop_pc=None, os_from=0):
+        """stop_pc: a loop run -- stop at the second arrival there (the start
+        counts as the first for a run that begins at it); os_from: an OS call
+        before that many arrivals ends the run (a thread's pre-loop code)."""
         uc = self.uc
         self.events, self.ev = events, 0
+        self.heads, self.os_from = 0, os_from
+        hook = None
+        if stop_pc is not None:
+            def at_head(uc_, addr, size, data):
+                self.heads += 1
+                if self.heads == 2:
+                    self.stop = 'looped'
+                    uc_.emu_stop()
+            hook = uc.hook_add(UC_HOOK_CODE, at_head, begin=NB.sx(stop_pc), end=NB.sx(stop_pc))
+        try:
+            return self._run(ram, regs, pc, count)
+        finally:
+            if hook is not None:
+                uc.hook_del(hook)
+
+    def _run(self, ram, regs, pc, count):
+        uc = self.uc
         self.entry_sp = regs['gpr'][29] & 0xffffffff
         uc.mem_write(0, ram)
         for r, v in zip(NB.GPR[1:], regs['gpr'][1:]):
@@ -417,7 +479,8 @@ class Sandbox:
         uc.reg_write(M.UC_MIPS_REG_LO, regs['lo'])
         uc.reg_write(M.UC_MIPS_REG_FCSR, regs['fcsr'])
         uc.reg_write(NB.GPR[31], NB.sx(SENTINEL))
-        self.stop, self.count = None, count
+        self.count = count
+        self.stop = None
         try:
             uc.emu_start(NB.sx(pc), NB.sx(SENTINEL), count=BUDGET)
         except Exception as e:
@@ -440,7 +503,7 @@ def regs_of(uc):
                 fcsr=uc.reg_read(M.UC_MIPS_REG_FCSR))
 
 
-def compare(a, b, sp, kind='int'):
+def compare(a, b, sp, kind='int', regs=True):
     """-> None if the two end states agree, else a description."""
     ram_a, regs_a = a
     ram_b, regs_b = b
@@ -464,6 +527,8 @@ def compare(a, b, sp, kind='int'):
                 pa = off + i
                 if x[i] != y[i] and not (dlo <= pa < dhi) and pa >= (DEAD_LO & 0x1FFFFFFF):
                     return 'memory %08X: original %02X, candidate %02X' % (0x80000000 | pa, x[i], y[i])
+    if not regs:
+        return None
     ret_gpr = {'int': (2,), 'llong': (2, 3)}.get(kind, ())
     ret_fpr = {'float': (0,), 'double': (0, 1)}.get(kind, ())
     for r in ret_gpr + (16, 17, 18, 19, 20, 21, 22, 23, 29, 30):
@@ -492,6 +557,26 @@ def _sandbox_worker(conn, hle_names):
         job = conn.recv()
         if job is None:
             return
+        if job[0] == 'loop':
+            _, va, code_va, head_a, head_b, top, regs, count, ram, events = job
+            ra_ = a.run(ram, regs, head_a, count, events, stop_pc=head_a)
+            if ra_ == 'looped' and a.ev != len(events):
+                ra_ = 'replayed %d of %d recorded OS calls' % (a.ev, len(events))
+            if ra_ != 'looped':
+                conn.send((va, 'blocked', ra_))
+                continue
+            sa = a.state()
+            rb = dict(regs, gpr=list(regs['gpr']))
+            rb['gpr'][29] = NB.sx(top)
+            rb_ = b.run(ram, rb, code_va, count, events, stop_pc=head_b, os_from=1)
+            if rb_ == 'looped' and b.ev != len(events):
+                rb_ = 'made %d of the %d OS calls' % (b.ev, len(events))
+            if rb_ != 'looped':
+                conn.send((va, 'divergent', 'candidate %s' % rb_))
+                continue
+            why = compare(sa, b.state(), top, 'void', regs=False)
+            conn.send((va, 'divergent' if why else 'equal', why))
+            continue
         va, code_va, kind, sp, regs, count, ram, events = job
         ra_ = a.run(ram, regs, va, count, events)
         if ra_ == 'returned' and a.ev != len(events):
@@ -529,12 +614,20 @@ class Lockstep:
             box.uc.mem_write(code & 0x1FFFFFFF, cblob)
             for dva, blob in dblocks:
                 box.uc.mem_write(dva & 0x1FFFFFFF, blob)
-            box.uc.hook_add(UC_HOOK_CODE, self.on_entry, begin=NB.sx(va), end=NB.sx(va),
-                            user_data=va)
-            # the call is sent when it returns, with the OS calls it made
-            for pc in returns_of(va):
-                box.uc.hook_add(UC_HOOK_CODE, self.on_return, begin=NB.sx(pc), end=NB.sx(pc),
+            if va in THREAD_LOOPS:
+                t = self.t[va]
+                t['head'] = loop_head(rom_words(va), va)
+                t['chead'] = loop_head(list(struct.unpack('>%dI' % (len(cblob) // 4), cblob)), code)
+                t['fsize'] = rom_frame(va)
+                box.uc.hook_add(UC_HOOK_CODE, self.on_head, begin=NB.sx(t['head']),
+                                end=NB.sx(t['head']), user_data=va)
+            else:
+                box.uc.hook_add(UC_HOOK_CODE, self.on_entry, begin=NB.sx(va), end=NB.sx(va),
                                 user_data=va)
+                # the call is sent when it returns, with the OS calls it made
+                for pc in returns_of(va):
+                    box.uc.hook_add(UC_HOOK_CODE, self.on_return, begin=NB.sx(pc), end=NB.sx(pc),
+                                    user_data=va)
             code += (len(cblob) + 15) & ~15
 
     def spawn(self):
@@ -561,6 +654,28 @@ class Lockstep:
                              ra=uc.reg_read(NB.GPR[31]) & 0xffffffff, events=[], job=job,
                              frame=box.frame))
 
+    def on_head(self, uc, addr, size, va):
+        """A thread loop arrives at its head: the iteration being recorded
+        (if any) ends and is sent; the next one starts."""
+        box, t = self.box, self.t[va]
+        for r in box.recs:
+            if r['va'] == va and r['thread'] is box.cur:
+                box.recs.remove(r)
+                self.send(tuple(r['job']) + (r['events'],), r['frame'])
+                break
+        t['calls'] += 1
+        if t['sent'] >= self.cap and t['calls'] % 97:
+            return
+        if t['sent'] >= self.cap * 4:
+            return
+        t['sent'] += 1
+        sp = uc.reg_read(NB.GPR[29]) & 0xffffffff
+        top = sp + t['fsize']
+        job = ['loop', va, t['code'], t['head'], t['chead'], top, regs_of(uc), box.count,
+               bytes(uc.mem_read(0, NB.RDRAM))]
+        box.recs.append(dict(va=va, thread=box.cur, sp=top, ra=None, events=[], job=job,
+                             frame=box.frame))
+
     def on_return(self, uc, addr, size, va):
         box = self.box
         ra = uc.reg_read(NB.GPR[31]) & 0xffffffff
@@ -573,7 +688,7 @@ class Lockstep:
     def send(self, job, frame):
         try:
             self.conn.send(job)
-            self.inflight.append((job[0], frame))
+            self.inflight.append((job[1] if job[0] == 'loop' else job[0], frame))
         except (BrokenPipeError, EOFError, OSError):
             self.crashed()
             return

@@ -96,7 +96,7 @@ int osAiGetLength(void);
 void BrMusicLoopSamples(void);
 void BrModTick(void);
 void BrMixMusicVoice(short *buf, int bytes, int voice);
-void BrMixSfx(short *buf, unsigned int bytes);
+void BrMixSfx(short *buf, unsigned int bytes, unsigned int pos);   /* pos: the effects write position */
 void BrSfxLoopSamples(void);
 void BrRumbleUpdate(int);
 /* -- end declarations -- */
@@ -651,6 +651,9 @@ void BrSfxLoopSamples(void)
  * RESIDUE: ours hoists more loop-invariant addresses and constants into
  * saved registers (frame 0x40 vs 0x30); the volume loop keeps a counter
  * and a pointer in the ROM.  Not yet matched. */
+/* @t4-pass 0x80257D3C 1 2026-10-04 compiles 31 best 209 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80257D3C 2 2026-10-04 compiles 31 best 209 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80257D3C */
 /* @implements 0x80257D3C tgr BrMusicThread */
 void BrMusicThread(void *arg)
 {
@@ -704,7 +707,7 @@ void BrMusicThread(void *arg)
     if (n > 0x4000) {
       n -= 0x4000;
     }
-    BrMixSfx(D_803747D0, n);
+    BrMixSfx(D_803747D0, n, sfxPos);
     BrSfxLoopSamples();
     sfxPos += n;
     if (sfxPos > 0x4000) {
