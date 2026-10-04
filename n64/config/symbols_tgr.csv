@@ -692,6 +692,7 @@ va,name,kind
 80266B5C,__ll_to_f,func
 80266B74,__ull_to_d,func
 80266BA8,__ull_to_f,func
+80266BE0,guLookAtHiliteF,func
 80267410,guMtxXFML,func
 80267470,guMtxCatL,func
 802674D0,bcopy,func
