@@ -76,75 +76,55 @@ int BrEntIsFree(int param_1)
   return *(int *)(param_1 + 0x18) == 0;
 }
 
-/* WHAT IT DOES: Paint a car's colourable texture in the given colour: every
- * texel of the paint layer gets the 5-bit red, green and blue, keeping its
- * own alpha bit. */
-/* @t4-pass 0x8021D140 1 2026-09-26 compiles 17 best 74 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8021D140 2 2026-09-26 compiles 17 best 74 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8021D140 3 2026-09-26 compiles 16 best 74 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x8021D140 */
+/* WHAT IT DOES: Paint a car model in a colour (5 bits a channel): each of
+ * the six paint slots names two parts, and every one of those parts with a
+ * paletted texture gets its first two palette entries rewritten, entry 0
+ * to the colour and entry 1 to its half-bright shade.  Both keep the alpha
+ * bit of a palette entry picked by the slot (entry 2k for the slot's first
+ * part, 2k + 1 for its second), as the ROM does. */
 /* @implements 0x8021D140 tgr BrEntPaintTexture */
-void BrEntPaintTexture(int param_1,unsigned int param_2,unsigned int param_3,int param_4)
+void BrEntPaintTexture(BrCarModel *m, unsigned int r, unsigned int g, int b)
 {
-  int iVar1;
-  int iVar2;
-  int iVar3;
-  short *puVar4;
-  int iVar5;
-  unsigned int uVar6;
-  
-  iVar1 = 0;
-  iVar5 = param_1;
-  do {
-    iVar2 = *(int *)(param_1 + 0x14);
-    iVar3 = (unsigned int)*(unsigned char *)(iVar5 + 0x110) * 0x24 + iVar2;
-    puVar4 = *(short **)(iVar3 + 4);
-    if (puVar4 == (short *)0x0) {
-      uVar6 = (unsigned int)*(unsigned char *)(iVar5 + 0x111);
+  int i;
+  BrCarModelPart *parts;
+  BrCarModelPart *p;
+  BrCarModelPart *p2;
+  unsigned short *pal;
+
+  for (i = 0; i < 12; i += 2) {
+    parts = m->parts;
+    p = &parts[m->decalPart[i]];
+    pal = p->b;
+    if (pal != 0 && (p->fmt & 0xf) == 1) {
+      pal[0] = (pal[i] & 1) | (r << 11) | (g << 6) | (b << 1);
+      pal[1] = (pal[i] & 1) | ((r & 0x1e) << 10) | ((g & 0x1e) << 5) | (b & 0x1e);
     }
-    else if ((*(unsigned char *)(iVar3 + 0x20) & 0xf) == 1) {
-      *puVar4 = puVar4[iVar1] & 1 | (short)(param_2 << 0xb) | (short)(param_3 << 6) |
-                (short)(param_4 << 1);
-      puVar4[1] = puVar4[iVar1] & 1 | (short)((param_2 & 0x1e) << 10) |
-                  (short)((param_3 & 0x1e) << 5) | (short)param_4 & 0x1e;
-      iVar2 = *(int *)(param_1 + 0x14);
-      uVar6 = (unsigned int)*(unsigned char *)(iVar5 + 0x111);
+    p2 = &m->parts[m->decalPart[i + 1]];
+    pal = p2->b;
+    if (pal != 0 && (p2->fmt & 0xf) == 1) {
+      pal[0] = (pal[i + 1] & 1) | (r << 11) | (g << 6) | (b << 1);
+      pal[1] = (pal[i + 1] & 1) | ((r & 0x1e) << 10) | ((g & 0x1e) << 5) | (b & 0x1e);
     }
-    else {
-      uVar6 = (unsigned int)*(unsigned char *)(iVar5 + 0x111);
-    }
-    iVar2 = uVar6 * 0x24 + iVar2;
-    puVar4 = *(short **)(iVar2 + 4);
-    if ((puVar4 != (short *)0x0) && ((*(unsigned char *)(iVar2 + 0x20) & 0xf) == 1)) {
-      *puVar4 = puVar4[iVar1 + 1] & 1 | (short)(param_2 << 0xb) | (short)(param_3 << 6) |
-                (short)(param_4 << 1);
-      puVar4[1] = puVar4[iVar1 + 1] & 1 | (short)((param_2 & 0x1e) << 10) |
-                  (short)((param_3 & 0x1e) << 5) | (short)param_4 & 0x1e;
-    }
-    iVar1 = iVar1 + 2;
-    iVar5 = iVar5 + 2;
-  } while (iVar1 != 0xc);
+  }
 }
 
 /* WHAT IT DOES: Take a car's body colour from its model: the first
  * palette entry of the paint part (when that part is paletted), widened
- * from RGBA5551 to 8 bits a channel. */
-/* @t4-pass 0x8021D2A0 1 2026-10-03 compiles 120 best 29 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8021D2A0 2 2026-10-03 compiles 117 best 29 moved 0  (n64/tools/n64permute.py) */
+ * from RGBA5551 to 8 bits a channel (each 5-bit value shifted up and its
+ * top 3 bits repeated below).  Each channel reads the entry afresh, which
+ * puts all three ahead of the stores, as in the ROM. */
 /* @implements 0x8021D2A0 tgr BrCarColourFromModel */
 void BrCarColourFromModel(BrCar *car, BrCarModel *m)
 {
-  BrCarModelPart *p = &m->parts[m->paintPart];
-  unsigned short c;
-  unsigned char r;
-  unsigned char g;
-  unsigned char b;
+  BrCarModelPart *p = m->decalPart[2] + m->parts;
+  int r;
+  int g;
+  int b;
 
   if (p->b != 0 && (p->fmt & 0xf) == 1) {
-    c = p->b[0];
-    r = ((c >> 13) & 7) | ((c >> 8) & 0xf8);
-    g = ((c >> 8) & 7) | ((c >> 3) & 0xf8);
-    b = ((c >> 3) & 7) | ((c << 2) & 0xf8);
+    r = ((p->b[0] >> 8) & 0xf8) | ((p->b[0] >> 13) & 7);
+    g = ((p->b[0] >> 3) & 0xf8) | ((p->b[0] >> 8) & 7);
+    b = ((p->b[0] << 2) & 0xf8) | ((p->b[0] >> 3) & 7);
     car->colour[2] = b;
     car->colour[1] = g;
     car->colour[0] = r;

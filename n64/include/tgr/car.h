@@ -243,9 +243,7 @@ typedef struct BrCarModel {
     char pad98[0xbc - 0x98];
     unsigned int *dl2[3][3];    /* 0xBC  wheel display lists (0 when the model has none) */
     float wheel[4][3];          /* 0xE0  wheel positions in the body's frame */
-    unsigned char decalPart[2]; /* 0x110  the parts carrying decals 0 and 1 (indexed up to 2) */
-    unsigned char paintPart;    /* 0x112  the part carrying the paint texture */
-    char pad113[0x11c - 0x113];
+    unsigned char decalPart[12]; /* 0x110  six paint slots, two parts each; [2] carries the body paint */
     void **x11c;                /* 0x11C */
 } BrCarModel;
 
