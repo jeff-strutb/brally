@@ -1,0 +1,44 @@
+diff --git a/libc_impl.c b/libc_impl.c
+index a13307d..113facb 100644
+--- a/libc_impl.c
++++ b/libc_impl.c
+@@ -1131,12 +1131,37 @@ int wrapper_umask(int mode) {
+     return umask(mode);
+ }
+ 
++/* ecvt/fcvt: one static result buffer in emulated memory, as the IRIX
++   functions return (uopt's -zdbug listings print floats through these) */
++static uint32_t cvt_result(uint8_t* mem, const char* s, int decpt, int sign, uint32_t decpt_addr,
++                           uint32_t sign_addr) {
++    static uint32_t buf_addr;
++    if (buf_addr == 0) {
++        buf_addr = wrapper_malloc(mem, 512);
++    }
++    size_t n = strlen(s);
++    if (n > 511) {
++        n = 511;
++    }
++    for (size_t i = 0; i < n; i++) {
++        MEM_S8(buf_addr + i) = s[i];
++    }
++    MEM_S8(buf_addr + n) = 0;
++    MEM_S32(decpt_addr) = decpt;
++    MEM_S32(sign_addr) = sign;
++    return buf_addr;
++}
++
+ uint32_t wrapper_ecvt(uint8_t* mem, double number, int ndigits, uint32_t decpt_addr, uint32_t sign_addr) {
+-    assert(0);
++    int decpt, sign;
++    char* s = ecvt(number, ndigits, &decpt, &sign);
++    return cvt_result(mem, s, decpt, sign, decpt_addr, sign_addr);
+ }
+ 
+ uint32_t wrapper_fcvt(uint8_t* mem, double number, int ndigits, uint32_t decpt_addr, uint32_t sign_addr) {
+-    assert(0);
++    int decpt, sign;
++    char* s = fcvt(number, ndigits, &decpt, &sign);
++    return cvt_result(mem, s, decpt, sign, decpt_addr, sign_addr);
+ }
+ 
+ double wrapper_sqrt(double v) {
