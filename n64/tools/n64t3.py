@@ -87,7 +87,8 @@ def source_of(va):
 
 
 def function_text(src, name):
-    m = re.search(r'^[^\n;{}]*\b%s\s*\([^;{]*\)\s*\{' % re.escape(name), src, re.M)
+    # a K&R definition has its parameter declarations between ) and {
+    m = re.search(r'^[^\n;{}]*\b%s\s*\([^;{]*\)(?:\s*[^;{}()]+;)*\s*\{' % re.escape(name), src, re.M)
     if not m:
         return ''
     depth, i = 0, m.end() - 1
