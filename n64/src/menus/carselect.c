@@ -231,14 +231,6 @@ void BrTimeFormat(char *psz, float t)
   sprintf(psz, "%d'%02d\"%02d", minutes, whole, total);
 }
 
-/* WHAT IT DOES: Tell whether car n has a model record loaded (its entry in
- * the car model table is non-zero). */
-/* @implements 0x8021D6B8 tgr BrCarModelPresent */
-int BrCarModelPresent(int param_1)
-{
-  return *(int *)(&D_8028AE24 + param_1 * 0x60) != 0;
-}
-
 /* -- declarations: BrCarSelect -- */
 #include "tgr/car.h"
 #include "tgr/pad.h"

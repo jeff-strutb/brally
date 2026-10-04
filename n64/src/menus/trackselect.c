@@ -32,12 +32,3 @@ int BrTrackSelectable(int n)
   return (D_8031B760[0].season->xce & (1 << n)) && BrTrackIsPresent(n);
 }
 
-
-/* WHAT IT DOES: Tell whether track number n exists in this build's track
- * table (below the track count and with a record present). */
-/* @implements 0x8021E180 tgr BrTrackIsPresent */
-int BrTrackIsPresent(int n)
-{
-  return n < D_8028AE04 && D_80270854[n].present != 0;
-}
-

@@ -4,7 +4,7 @@
 
 /* -- declarations -- */
 typedef struct BrIoMesg { int words[6]; } BrIoMesg;   /* an OSIoMesg */
-void func_8021C748(int param_1,int param_2,int param_3);
+void func_8021C748(void *dst, unsigned int rom, unsigned int n);
 extern int D_8031B328;
 extern int D_8031B330;
 int func_8021DC34();
@@ -70,7 +70,7 @@ void *memcpy(void *d, const void *s, int n);
 int BrRomReadSize(int param_1)
 
 {
-  func_8021C748(&D_8031B328,param_1 + 4,4);
+  func_8021C748((void *)&D_8031B328,param_1 + 4,4);
   return D_8031B328;
 }
 
@@ -79,7 +79,7 @@ int BrRomReadSize(int param_1)
 int BrRomReadWord(int param_1)
 
 {
-  func_8021C748(&D_8031B330,param_1,4);
+  func_8021C748((void *)&D_8031B330,param_1,4);
   return D_8031B330;
 }
 
@@ -244,44 +244,6 @@ int BrRlePlanesUnpack(unsigned char *dst, int max, signed char *data, int n)
   return out;
 }
 
-/* WHAT IT DOES: Correct one address inside data just loaded from ROM: if it
- * points into the old block [lo, hi) it is moved to the same offset from
- * the new base, otherwise it is left alone. */
-/* @implements 0x8021D070 tgr BrDlRebaseWord */
-void BrDlRebaseWord(unsigned int *param_1,unsigned int param_2,unsigned int param_3,int param_4)
-
-{
-  unsigned int uVar1;
-  
-  uVar1 = *param_1;
-  if ((param_2 <= uVar1) && (uVar1 < param_3)) {
-    *param_1 = (uVar1 - param_2) + param_4;
-  }
-}
-
-/* WHAT IT DOES: Copy an unpacked model straight out of ROM, from start to
- * end, into buf and turn its stored offsets into real addresses. Returns
- * buf. */
-/* @implements 0x8021DDFC tgr BrModelReadRaw */
-int BrModelReadRaw(int param_1,int param_2,int param_3)
-
-{
-  func_8021C748(param_1,param_2,param_3 - param_2);
-  func_8021DC34(param_1);
-  return param_1;
-}
-
-/* WHAT IT DOES: Unpack a packed model from ROM into buf and turn its stored
- * offsets into real addresses. Returns buf. */
-/* @implements 0x8021DE2C tgr BrModelLoad */
-int BrModelLoad(int param_1,int param_2)
-
-{
-  BrRomUnpack(param_1,param_2,0);
-  func_8021DC34(param_1);
-  return param_1;
-}
-
 /* WHAT IT DOES: Copy len bytes from cartridge ROM into RAM: invalidate the
  * data cache over the destination, then DMA it across in 4 KB pieces, each
  * queued on the ROM message queue. */
@@ -328,16 +290,16 @@ void BrStreamInit(int param_1,int param_2)
  * it does one chunk per call, keeping its place in the stream.  Returns the
  * unpacked length.  The ROM's 0x88 frame holds every declared local in
  * declaration order (register ones too); the timing is computed and dropped,
- * as the ROM still makes its 64-bit multiply and divide calls.  Out of the
- * image until exact: its callees' dead stack words differ (main thread
- * stack, from frame 2917 of the races). */
-/* @t4-pass 0x8021CD30 1 2026-10-03 compiles 121 best 195 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8021CD30 2 2026-10-03 compiles 120 best 195 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8021CD30 3 2026-10-03 compiles 61 best 171 moved 4  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8021CD30 4 2026-10-03 compiles 60 best 167 moved 4  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8021CD30 5 2026-10-03 compiles 81 best 167 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8021CD30 6 2026-10-03 compiles 79 best 167 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8021CD30 7 2026-10-03 compiles 81 best 167 moved 0  (n64/tools/n64permute.py) */
+ * as the ROM still makes its 64-bit multiply and divide calls.  The length
+ * reads go through a `void *` prototype so the static length can live in a
+ * register, and the read position steps past each length word before its
+ * DMA, as the ROM does; the size matches, which keeps the car-sound unpack
+ * at frame 2917 of the races in step with the ROM.
+ * RESIDUE: the ROM keeps the heap-end address in s4 where ours holds the
+ * constant ~1 there. */
+/* @t4-pass 0x8021CD30 1 2026-10-04 compiles 120 best 136 moved 2  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021CD30 2 2026-10-04 compiles 120 best 136 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8021CD30 */
 /* @implements 0x8021CD30 tgr BrRomUnpack */
 unsigned int BrRomUnpack(unsigned char *dst, unsigned int rom, BrUnpack *s)
 {
@@ -363,13 +325,14 @@ unsigned int BrRomUnpack(unsigned char *dst, unsigned int rom, BrUnpack *s)
     len = s->len;
     first = 0;
   } else {
-    BrRomRead(&len, rom, 4);
+    func_8021C748(&len, rom, 4);
     total = len;
+    left = total;
     rom += 4;
-    BrRomRead(&len, rom, 4);
+    func_8021C748(&len, rom, 4);
+    rom += 4;
     size = len;
-    rom += 4;
-    left = total - 8;
+    left -= 8;
     if (s != 0) {
       buf = s->buf;
     } else {
@@ -386,7 +349,7 @@ unsigned int BrRomUnpack(unsigned char *dst, unsigned int rom, BrUnpack *s)
       if (rom & 1) {
         rom++;
       }
-      BrRomRead(&len, rom, 4);
+      func_8021C748(&len, rom, 4);
       rom += 4;
       osInvalDCache(buf + half, 16000);
       osPiStartDma(BrRomDmaSlot(), 0, 0, rom, buf + half, (len + 1) & ~1, &D_80319F88);
@@ -402,7 +365,7 @@ unsigned int BrRomUnpack(unsigned char *dst, unsigned int rom, BrUnpack *s)
       out = 16000;
       if (0 != s) {
         D_80368AC0 = D_80324550;
-        D_80368AC4 = (char *)D_80368AC0 + 100000;
+        D_80368AC4 = 100000 + (char *)D_80368AC0;
       }
       BrInflate(dst, &out, buf + half, prev);
       if (s != 0) {
@@ -424,11 +387,11 @@ unsigned int BrRomUnpack(unsigned char *dst, unsigned int rom, BrUnpack *s)
   if (s != 0) {
     s->pos = rom;
     s->left = left;
-    s->dst = dst;
     s->total = total;
+    s->dst = dst;
     s->half = half;
-    s->size = size;
     s->buf = buf;
+    s->size = size;
     s->len = len;
   }
   return size;
@@ -448,57 +411,3 @@ BrIoMesg *BrRomDmaSlot(void)
   D_80272D40 = (D_80272D40 + 1) % 32;
   return &D_8031A020[D_80272D40];
 }
-
-
-/* WHAT IT DOES: Walk a display list loaded from ROM and correct every
- * address in it that pointed into the old block (vertex and texture-image
- * commands) so it points at the new copy; stops at the end of the list. */
-/* @implements 0x8021D098 tgr BrDlRebase */
-void BrDlRebase(unsigned int *dl, unsigned int lo, unsigned int hi, int base)
-{
-  if (dl == 0) {
-    return;
-  }
-  for (;;) {
-    switch ((unsigned char)(dl[0] >> 24)) {
-    case 0x04:
-    case 0xfd:
-      func_8021D070(dl + 1, lo, hi, base);
-      break;
-    case 0xb8:
-      return;
-    }
-    dl += 2;
-  }
-}
-
-
-/* WHAT IT DOES: Turn the offsets stored in a model just loaded from ROM
- * into real addresses: its part table, each part's geometry and each part's
- * display list. */
-/* @implements 0x8021DC34 tgr BrModelRebase */
-void BrModelRebase(BrModel *m)
-{
-  int i;
-  int j;
-
-  if (m->parts != 0) {
-    func_8021D070((unsigned int *)&m->parts, 0, 0x7fffffff, (int)m);
-    for (i = 0; i < m->parts->count; i++) {
-      func_8021D070((unsigned int *)&m->parts->part[i], 0, 0x7fffffff, (int)m);
-      func_8021D070((unsigned int *)&m->parts->part[i]->a, 0, 0x7fffffff, (int)m);
-      func_8021D070((unsigned int *)&m->parts->part[i]->b, 0, 0x7fffffff, (int)m);
-      for (j = 0; j < m->parts->part[i]->n; j++) {
-        func_8021D070((unsigned int *)&m->parts->part[i]->v[j], 0, 0x7fffffff, (int)m);
-      }
-    }
-  }
-  for (i = 0; i < m->nDl; i++) {
-    func_8021D070((unsigned int *)&m->dls[i].dl, 0, 0x7fffffff, (int)m);
-    if (m->dls[i].dl != 0) {
-      func_8021D070((unsigned int *)&m->dls[i].dl, 0, 0x7fffffff, (int)m);
-      BrDlRebase(m->dls[i].dl, 0, 0x7fffffff, (int)m);
-    }
-  }
-}
-
