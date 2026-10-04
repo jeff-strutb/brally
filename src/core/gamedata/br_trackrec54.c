@@ -29,6 +29,11 @@
 #include "br_seg.h"
 #include "br_bits.h"
 #include "br_vec.h"
+/* windows.h is not used here: the original TU declared over a thousand
+ * symbols ahead of BrTrackFixupRec54, and VC5's order for the two byte loads
+ * of each big-endian halfword follows that count (the u16 window at
+ * +0x1C0..0x1F0 loads each pair's low byte first only past it). */
+#include <windows.h>
 
 /* ==========================================================================
  * Cross-slice dependencies
@@ -149,19 +154,11 @@ extern void (*g_pfn18AA0CC)(void *pTable, int cRecords);
  * inline -- no loop, no helper -- and re-reads the +0x44 slot for both the
  * register call and the texture scan (re-deref idiom, docs/VC5-IDIOMS.md).
  *
- * NOT MATCHING by 24 bytes in the u16 window +0x1C0..0x1F0: the original
- * loads each pair's LOW byte first, VC5 here loads the highs first.  Three
- * spellings (or-order, statement split) compile byte-identical, so the load
- * order is scheduler-canonical -- allocator-residue class, do not grind. */
+ * The u16 window +0x1C0..0x1F0 loads each pair's LOW byte first: every
+ * spelling canonicalises to one order, and the order follows the symbol
+ * count ahead of the function (windows.h at the top of the file). */
 /* @t4-pass 0x100316D0 1 2026-09-07 probes 107 bytes 563 insns 192 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x100316D0 2 2026-09-07 probes 107 bytes 563 insns 192 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t3 0x100316D0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 563/563 insns 192/192 rows 0+0 regions 1 oracle UNCLASSIFIED
- * @t3-effort passes 2 zero-movement 1 2
- * residue is scheduler-canonical u16 pair load order (see the NOT MATCHING
- * note above: three spellings compile byte-identical); identical multiset,
- * size-exact; two crank census passes at these numbers.
- * Do not reopen before the end-grind. */
 /* @implements 0x100316D0 glide BrTrackFixupRec54 */
 void BrTrackFixupRec54(void *pvRec)
 {

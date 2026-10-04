@@ -538,6 +538,7 @@ glide_va,name,module,basis,file
 0x100314D0,BrGlTrackFixupAll,startup,filed,src/core/startup/br_track.c
 0x10031660,BrTrackSetF08FromMax,startup,neighbour,src/core/startup/br_track.c
 0x100316A0,BrTrackFixupAllRec54,startup,neighbour,src/core/startup/br_track.c
+0x100316D0,BrTrackFixupRec54,gamedata,filed,src/core/gamedata/br_trackrec54.c
 0x10031910,BrTrackFixupSegList,startup,filed,src/core/startup/br_track.c
 0x10031960,BrTrackFixupSegRec,startup,filed,src/core/startup/br_track.c
 0x10031A40,BrTrackSwapRec28,startup,filed,src/core/startup/br_track.c
