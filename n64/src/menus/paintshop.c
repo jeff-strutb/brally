@@ -1976,9 +1976,11 @@ void BrPaintCircle(int sx, int sy, int r)
  * camera and a viewport placed by car kind, and draw the car.  The x1/x2/x3
  * arrays are unused locals that reproduce the ROM's frame (0xD8); `/ 16` is
  * an integer so IDO keeps the divide.
- * RESIDUE (~400 raw, ~97 aligned ops): the vector copies and interpolation
- * are scheduled differently and the three pointer stores at the top come in
- * another order.  Not yet matched. */
+ * The car pointer goes into D_8028AAF0 first and the camera pointer is
+ * chained off it; the preset copy goes through a source and a destination
+ * pointer (both one load each, as in the ROM).
+ * RESIDUE (127, same length): the vector copies and interpolation are
+ * scheduled differently (the view-counter store, float registers). */
 /* @implements 0x80242BDC tgr BrPaintCarView */
 void BrPaintCarView(void)
 {
@@ -1993,8 +1995,7 @@ void BrPaintCarView(void)
   float x2[3];
 
   D_8028AAF0 = &D_8031B760[D_8028DBBC];
-  D_8028AAF4 = &D_8031B760[D_8028DBBC].cams[3];
-  D_8031B760[D_8028DBBC].cam = D_8028AAF4;
+  D_8028AAF4 = D_8028AAF0->cam = &D_8028AAF0->cams[3];
   if (D_8028DBD0 != 0) {
     from.x = D_8028DC08[D_8028DB6C].x;
     from.y = D_8028DC08[D_8028DB6C].y;
@@ -2060,11 +2061,15 @@ void BrPaintCarView(void)
       D_8028DBD0 = 0;
     }
   } else {
-    float x3[14];
+    float x3[12];
+    BrVec3 *s;
+    BrVec3 *d;
 
-    ((BrVec3 *)D_8028AAF0->mtx0[0])->x = D_8028DC08[D_8028DB68].x;
-    ((BrVec3 *)D_8028AAF0->mtx0[0])->y = D_8028DC08[D_8028DB68].y;
-    ((BrVec3 *)D_8028AAF0->mtx0[0])->z = D_8028DC08[D_8028DB68].z;
+    s = &D_8028DC08[D_8028DB68];
+    d = (BrVec3 *)D_8028AAF0->mtx0[0];
+    d->x = s->x;
+    d->y = s->y;
+    d->z = s->z;
     BrVec3Normalise((BrVec3 *)D_8028AAF0->mtx0[0]);
   }
   BrVec3Cross((BrVec3 *)D_8028AAF0->mtx0[1], (BrVec3 *)D_8028AAF0->mtx0[2], (BrVec3 *)D_8028AAF0->mtx0[0]);
