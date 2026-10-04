@@ -1,3 +1,0 @@
-file,name,note
-ports/64b/src/core/menus/br_uiscreen.c,g_aBrUiSprite,indexed by sprite: the 24-byte stride is the record
-ports/64b/src/core/menus/br_textlist.c,g_aBrUiSprite,indexed by sprite: the 24-byte stride is the record

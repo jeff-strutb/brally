@@ -1,0 +1,10 @@
+# size 0x4C
+# header ports/brally/include/slice2_12.h
+# headers slice2_12.h
+0x0000  uint32_t                      offData             
+0x0004  uint32_t                      cbData              
+0x0008  uint8_t                       b08                 
+0x0009  uint8_t                       b09                 
+0x000A  uint8_t                       b0A                 
+0x000B  uint8_t                       b0B                 
+0x000C  char[64]                      szName              

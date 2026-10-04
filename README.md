@@ -237,7 +237,7 @@ The repo root is the decomp. `ports/` is derived platform code, not byte-matched
     tools/                    matching pipeline + staged MSVC 5.0
     config/                   function maps, globals, binaries.csv, fenced.csv
     build/match/              extracted reference bytes, per-function report
-    ports/64b/                the native 64-bit port: a retyped fork of the core
+    ports/brally/                the native 64-bit port: a retyped fork of the core
                               plus a cross-platform layer (macOS, Windows)
     ports/macos/              macOS/Metal 32-bit lane: NEW code, no `@implements`
     n64/                      Top Gear Rally (IDO/MIPS); writes only build/n64/
@@ -357,7 +357,7 @@ modules for the N64 soundtrack.
 
 ## Native port (64-bit, cross-platform)
 
-`ports/64b/` is the game as a real 64-bit program: native pointers, typed
+`ports/brally/` is the game as a real 64-bit program: native pointers, typed
 structures, no emulated address space and no image of the original DLL mapped
 at its old addresses. One portable core is built once for every OS, with a
 thin platform layer under it, and it plays the whole game: the front end,
@@ -370,7 +370,7 @@ sound, controllers and network multiplayer.
 | Windows (x64) | Win32, XInput | Vulkan | builds (cross-compiled); a `.exe` |
 | any (headless) | scripted input | software reference rasteriser, or none | the test suites |
 
-**How the core is made.** `ports/64b/src` and `ports/64b/include` are a
+**How the core is made.** `ports/brally/src` and `ports/brally/include` are a
 one-time copy of the decomp (the commit in `src/FORKED-FROM`), edited
 directly. Every function is certified to behave as the original does, so the
 copy is retyped for 64 bits rather than regenerated: raw 32-bit offsets and
@@ -381,7 +381,7 @@ address slots through one accessor. The initial data is lifted from your
 `BRGlide.dll` at build time (`tools/datalift.py`); the core never includes the
 MSVC 5.0 SDK headers. `src/` and `include/` stay exactly what MSVC 5.0
 compiles, and later byte-matching there never has to flow into the copy.
-`ports/64b/PORTABLE-CORE.md` has the design.
+`ports/brally/PORTABLE-CORE.md` has the design.
 
 **Verified against the original.** Under `BR_VCLOCK` the native build and the
 32-bit lane run the same input scripts on one virtual clock, and the car
@@ -391,7 +391,7 @@ Network races are checked against brbox, the original DLL run in an
 emulator, frame for frame. Rendering is checked the same way, renderer
 against renderer and against the reference.
 
-**The platform layer** (`ports/64b/platform/`) answers what the game asks of
+**The platform layer** (`ports/brally/platform/`) answers what the game asks of
 Windows, by API, not by OS:
 
 | Directory | What it is |
@@ -428,23 +428,23 @@ lane's Remastered lighting, car, skies and music
 multicast and relays the session; any copy on the network can join from the
 game's own lobby. `BR_NETPORT` picks the port (47624 by default).
 
-**Building.** `ports/64b/link64.sh` builds the core and links one host and
+**Building.** `ports/brally/link64.sh` builds the core and links one host and
 one renderer, chosen by environment:
 
 ```sh
 # macOS, Metal: build/portable_metal/brally64
-OUT=build/portable_metal HOST=macos RENDER=metal ports/64b/link64.sh
+OUT=build/portable_metal HOST=macos RENDER=metal ports/brally/link64.sh
 
 # macOS app: build/app64/Boss Rally 64.app, with the disc's data and CD audio
 # inside (needs reference/brally/ and ffmpeg)
-ports/64b/package_app.sh
+ports/brally/package_app.sh
 
 # Windows x64, Vulkan, cross-compiled (Homebrew's mingw-w64, vulkan-headers,
 # vulkan-loader, glslang): build/portable_winvk/brally64.exe
-OUT=build/portable_winvk HOST=windows RENDER=vulkan CC=ports/64b/tools/wincc.sh ports/64b/link64.sh
+OUT=build/portable_winvk HOST=windows RENDER=vulkan CC=ports/brally/tools/wincc.sh ports/brally/link64.sh
 
 # headless, the software reference renderer: build/portable/brally64
-RENDER=soft ports/64b/link64.sh
+RENDER=soft ports/brally/link64.sh
 ```
 
 The build reads the game data from your disc: `BR_CDROOT` is the CD's files
@@ -453,7 +453,7 @@ The build reads the game data from your disc: `BR_CDROOT` is the CD's files
 Support/Boss Rally 64` on macOS, `%APPDATA%\Boss Rally 64` on Windows). On
 Windows, put the disc's files in `disc\` beside `brally64.exe`.
 
-**Testing.** `ports/64b/tools/suite.sh` runs every `tools/brbox_scripts/`
+**Testing.** `ports/brally/tools/suite.sh` runs every `tools/brbox_scripts/`
 scenario headless and reports each script's outcome, network pairs included
 (two copies on one virtual clock); `BR_SHOT` and the scripts' `shot` lines
 save named frames.

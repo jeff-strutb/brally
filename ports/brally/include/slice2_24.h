@@ -1,0 +1,402 @@
+/* slice2_24.h -- decompiled from BRD3D.dll, pass-24 packet
+ * (address range 0x10040450 - 0x10042740).
+ *
+ * The packet is one module: the front-end menu.  Every function in it is a
+ * per-menu-item callback with one of two shapes
+ *
+ *     int32_t cb(BrMenuItem *pItem);
+ *     int32_t cb(BrMenuItem *pItem, int32_t *pArg);
+ *
+ * and almost all of them return 1.  They come in three families:
+ *
+ *   1. "caption setters" -- look a small integer up in a table and store it,
+ *      as a 16-bit value, at pItem + 0x1E20C.  That field is a string id;
+ *      0x10074030 (outside this packet) turns ids into strings.
+ *
+ *   2. "text setters" -- format a string into pItem + 0x2B65 and then poke
+ *      the embedded sub-object at pItem + 0x2B5C through two of its vtable
+ *      slots.  Which two depends on whether the text is a caption
+ *      (slots +0x04 then +0x10) or a value (slots +0x08 then +0x2C).
+ *
+ *   3. "flag pokers" -- mask bits 0x1010 in and out of pItem + 0x1C.
+ *
+ * Everything the original reached through fixed addresses lives in a single
+ * file-static state block reachable through BrMenuGetState(), so the ported
+ * functions keep the original's argument lists exactly.  State fields are
+ * named for their original address (gAA28C8 is 0x10AA28C8) because this
+ * packet does not establish what most of them mean, and guessing was
+ * explicitly out of scope.
+ */
+#ifndef SLICE2_24_H
+#define SLICE2_24_H
+#ifdef __cplusplus
+extern "C" {  /* BR_CLINK_BEGIN: every original function has C linkage */
+#endif
+
+#include <stddef.h>
+#include <stdint.h>
+
+#include "br_match.h"
+#include "br_ui.h"         /* BrUiCtl_: the object a BrMenuItem views */
+
+/* =====================================================================
+ * 1. The menu item
+ * ===================================================================== */
+
+struct BrMenuText;
+
+/* The vtable of the sub-object embedded at pItem + 0x2B5C.  Only four slots
+ * are reached from this packet; the rest are here so the reached ones keep
+ * their original indices.  No slot's meaning is established, so they are
+ * named for their byte offset. */
+/* The slots are BR_THISCALL1, not cdecl.  The original calls them
+ * `mov ecx, esi; call dword ptr [edi+8]` -- `this` in ecx, callee cleanup --
+ * which is thiscall, and a one-argument thiscall is exactly __fastcall on
+ * VC5 (see br_match.h).  A cdecl declaration here pushes `this` and misses
+ * every text setter in the packet by four instructions. */
+typedef struct BrMenuTextVtbl {
+    void (BR_THISCALL1 *pfn00)(struct BrMenuText *pThis);
+    void (BR_THISCALL1 *pfn04)(struct BrMenuText *pThis);  /* after a CAPTION assignment */
+    void (BR_THISCALL1 *pfn08)(struct BrMenuText *pThis);  /* after a VALUE assignment   */
+    void (BR_THISCALL1 *pfn0C)(struct BrMenuText *pThis);
+    void (BR_THISCALL1 *pfn10)(struct BrMenuText *pThis);  /* follows pfn04 */
+    void (BR_THISCALL1 *pfn14)(struct BrMenuText *pThis);
+    void (BR_THISCALL1 *pfn18)(struct BrMenuText *pThis);
+    void (BR_THISCALL1 *pfn1C)(struct BrMenuText *pThis);
+    void (BR_THISCALL1 *pfn20)(struct BrMenuText *pThis);
+    void (BR_THISCALL1 *pfn24)(struct BrMenuText *pThis);
+    void (BR_THISCALL1 *pfn28)(struct BrMenuText *pThis);
+    void (BR_THISCALL1 *pfn2C)(struct BrMenuText *pThis);  /* follows pfn08 */
+} BrMenuTextVtbl;
+
+/* DEVIATION: the original's text buffer is unbounded -- it strcpy()s and
+ * strcat()s into pItem + 0x2B65 with no limit at all.  A fixed size is given
+ * here and every write is bounded. 256 is a choice, not a fact. */
+#define BR_MENUTEXT_MAX 256
+
+/* The sub-object at pItem + 0x2B5C.  Its layout is forced by the code: the
+ * vtable pointer is at its +0x00 (item +0x2B5C), the byte item +0x2B64 is at
+ * its +0x08, and the text buffer item +0x2B65 is at its +0x09. */
+typedef struct BrMenuText {
+    const BrMenuTextVtbl *pVtbl;   /* +0x00  (item +0x2B5C) */
+    uint32_t              f04;     /* +0x04  (item +0x2B60) -- untouched here */
+    uint8_t               f08;     /* +0x08  (item +0x2B64) */
+    char                  sz[BR_MENUTEXT_MAX]; /* +0x09 (item +0x2B65) */
+} BrMenuText;
+
+/* TRUE OFFSETS, not a compression.  The three reached fields sit at the
+ * displacements the original encodes into the instruction stream --
+ * `mov word ptr [edx + 0x1E20C], cx` is the store every caption setter ends
+ * with -- so the struct has to be a byte image or those functions can never
+ * come out bit-identical.  The padding is dead weight to the port and load
+ * bearing to the matching build; it is not a guess about what lives in the
+ * gaps, and nothing here reads it.  (It WAS a three-field compression; that
+ * cost the caption family every match it could have had.) */
+/* The menu control, BrUiCtl_ (br_ui.h), seen through the three fields the
+ * caption setters touch. The padding comes from BrUiCtl_'s own layout so the
+ * fields land where the control's are at any pointer width (the original's
+ * offsets are in the comments). */
+#pragma pack(push, 4)     /* as BrUiCtl_ is */
+typedef struct BrMenuItem {
+    uint8_t    _pad00[offsetof(BrUiCtl_, flags1C)];
+    uint32_t   f1C;      /* +0x001C  -- bits 0x1010 are masked in and out */
+    uint8_t    _pad20[offsetof(BrUiCtl_, aText) - offsetof(BrUiCtl_, flags1C) - 4];
+    BrMenuText text;     /* +0x2B5C */
+    uint8_t    _padText[offsetof(BrUiCtl_, w1E20C) - (offsetof(BrUiCtl_, aText) + sizeof(BrMenuText))];
+    int16_t    f1E20C;   /* +0x1E20C -- string id, written as a 16-bit word */
+} BrMenuItem;
+#pragma pack(pop)
+
+#define BR_MI_AT(name, canon) \
+    typedef char BrMenuItemAt_##name[(offsetof(BrMenuItem, name) == offsetof(BrUiCtl_, canon)) ? 1 : -1]
+BR_MI_AT(f1C,    flags1C);
+BR_MI_AT(f1E20C, w1E20C);
+BR_MI_AT(text,   aText);
+
+/* =====================================================================
+ * 2. The stage table
+ * ===================================================================== */
+
+/* The array based at 0x100B3810.  Stride 0x18 is proved by three independent
+ * access patterns in this packet: `[esi*8 + 0x100B3810]` with esi = 3*i,
+ * `[eax*8 + 0x100B3818]` with eax = 3*i, and `[edx*2 + 0x100B3820]` with
+ * edx = k + 12*i.  Nothing here says what the fields mean.
+ *
+ * f10 is read one byte at a time: the low byte of f10[k] indexes the caption
+ * table used by BrMenuCap0730 and the two best-time float arrays, and the
+ * high byte of f10[k] indexes the one used by BrMenuCap07E0. */
+typedef struct BrMenuStage {
+    int32_t  f00;      /* +0x00 -- a string id, fed to 0x10074030 */
+    int32_t  f04;      /* +0x04 -- not read by this packet */
+    int32_t  f08;      /* +0x08 */
+    int32_t  f0C;      /* +0x0C -- not read by this packet */
+    uint16_t f10[4];   /* +0x10 */
+} BrMenuStage;
+
+/* =====================================================================
+ * 3. Module state
+ * ===================================================================== */
+
+/* 0x100B3810 -- the stage table, as a real array rather than a pointer.
+ *
+ * It used to be BrMenuState::pStages, supplied by the host.  That cost every
+ * stage reader its match: the original indexes fixed .data, encoding
+ * `[edx*2 + 0x100B3820]` straight into the instruction, where a pointer field
+ * forces a load and an extra register.  It is an ARRAY here for the same
+ * reason BrMenuItem is a byte image.
+ *
+ * The EXTENT is a port choice and nothing in this packet fixes it -- the
+ * record index arrives sign-extended from a byte, so the original can and
+ * does index this backwards.  128 records is chosen to be comfortably past
+ * anything the menus reach; reads outside it are the port's problem, not a
+ * fact about the image. */
+#define BR_MENU_STAGES 128
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+
+typedef struct BrMenuState {
+    /* The three float arrays are supplied by the host.  The original's are
+     * fixed arrays at 0x10AA25A0, 0x10AA27A0 and 0x10AA27FC; their extents
+     * are not determinable from this packet, so they are pointers rather
+     * than guessed-at arrays.  (The stage table used to be here too; see
+     * g_brStages above for why it is not.) */
+    const float       *pTimes25A0; /* 0x10AA25A0 */
+    const float       *pTimes27A0; /* 0x10AA27A0 */
+    const float       *pTimes27FC; /* 0x10AA27FC */
+
+    /* .data globals, shown with the value the image ships them with. */
+    uint32_t g0AA010;    /* 0x100AA010  init 0 */
+    uint32_t g0AC648;    /* 0x100AC648  init 2 */
+    uint32_t g0AC64C;    /* 0x100AC64C  init 1 */
+    uint32_t g0AC650;    /* 0x100AC650  init 1 */
+    int32_t  g0AC6A0;    /* 0x100AC6A0 */
+    int32_t  g0BD3E0;    /* 0x100BD3E0 */
+    uint32_t g220B24;    /* 0x10220B24 */
+    uint32_t g18ABDBC;   /* 0x118ABDBC */
+    int32_t  gACEE50;    /* 0x10ACEE50 */
+    uint32_t gACED34_present; /* 0x10ACED34 != 0 -- see BrMenuAutoSaveName */
+
+    uint32_t gAA2840;    /* 0x10AA2840 */
+    uint32_t gAA2844;    /* 0x10AA2844 */
+    uint32_t gAA2850;    /* 0x10AA2850 */
+    uint32_t gAA287C;    /* 0x10AA287C */
+    uint32_t gAA289C;    /* 0x10AA289C */
+    uint32_t gAA28A0;    /* 0x10AA28A0 */
+    uint32_t gAA28A4;    /* 0x10AA28A4 */
+    uint8_t  gAA28A8;    /* 0x10AA28A8 -- read as a byte */
+    uint32_t gAA28AC;    /* 0x10AA28AC */
+    uint8_t  gAA28B8;    /* 0x10AA28B8 -- read with movsx, so SIGNED */
+    int32_t  gAA28C4;    /* 0x10AA28C4 */
+    float    gAA28C8;    /* 0x10AA28C8 */
+    float    gAA28CC;    /* 0x10AA28CC */
+    uint32_t gAA28D0;    /* 0x10AA28D0 */
+    uint32_t gAA28D8;    /* 0x10AA28D8 */
+    uint32_t gAA28E0;    /* 0x10AA28E0 */
+    uint32_t gAA28E4;    /* 0x10AA28E4 */
+    uint32_t gAA28E8;    /* 0x10AA28E8 */
+    uint32_t gAA2904;    /* 0x10AA2904 */
+    uint32_t gAA2964;    /* 0x10AA2964 */
+    uint32_t gAA2A00;    /* 0x10AA2A00 */
+    uint32_t gAA2A08;    /* 0x10AA2A08 */
+    uint32_t gAA2A0C;    /* 0x10AA2A0C -- 0..3 selects the branch in 0x10040450 */
+    uint32_t gAA2A1C;    /* 0x10AA2A1C */
+    uint32_t gAA2A20;    /* 0x10AA2A20 */
+    uint32_t gAA2A24;    /* 0x10AA2A24 */
+    uint32_t gAA2A28;    /* 0x10AA2A28 */
+    uint32_t gAA2A38;    /* 0x10AA2A38 */
+    uint32_t gAA2A3C;    /* 0x10AA2A3C */
+    uint32_t gAA33C0[4]; /* 0x10AA33C0 .. 0x10AA33CC, scanned as a group */
+    uint32_t gAA33E4;    /* 0x10AA33E4 */
+
+    /* source globals copied by BrMenuSeedFrom25D4 / BrMenuSeedFrom26F0 */
+    uint8_t  gAA25D4;    /* 0x10AA25D4 */
+    uint32_t gAA25D8;    /* 0x10AA25D8 */
+    uint32_t gAA25DC;    /* 0x10AA25DC */
+    uint32_t gAA26F0;    /* 0x10AA26F0 */
+    uint8_t  gAA26F4;    /* 0x10AA26F4 */
+    uint8_t  gAA26F5;    /* 0x10AA26F5 */
+
+    /* global scratch buffers the original sprintf()s into.
+     * DEVIATION: their real sizes are unknown; 32 is a choice. */
+    char     gAA2518[32];  /* 0x10AA2518 */
+    char     gA9D618[32];  /* 0x10A9D618 */
+
+    /* 0x11782CD0 -- where BrMenuAutoSaveName drops "AutoSave.brf". */
+    char     g1782CD0[64];
+} BrMenuState;
+
+BrMenuState *BrMenuGetState(void);
+
+/* =====================================================================
+ * 4. Cross-slice imports
+ * ===================================================================== */
+
+/* 0x10074030: id in [1, 0x12F) ? g_StringTable[id] : NULL. */
+/* XSLICE 0x10074030 */
+/* BrStringById: prototype in br_funcs.h */
+
+/* XSLICE 0x1005FF30 */
+/* BrMenuSub1005FF30: prototype in br_funcs.h */
+/* XSLICE 0x1005FF60 */
+/* BrMenuSub1005FF60: prototype in br_funcs.h */
+/* XSLICE 0x1005FFF0 */
+/* BrMenuSub1005FFF0: prototype in br_funcs.h */
+/* XSLICE 0x100709A0 */
+/* BrMenuSub100709A0: prototype in br_funcs.h */
+/* XSLICE 0x10044B90 */
+/* BrMenuSub10044B90: prototype in br_funcs.h */
+/* XSLICE 0x10044E20 */
+/* BrMenuSub10044E20: prototype in br_funcs.h */
+
+/* The record at 0x10ACED34 that BrMenuAutoSaveName clears.  Its layout is not
+ * established beyond the offsets touched (bytes +4 and +5, then three runs of
+ * zeroes at +6, +0x1E and +0x50), so it is a byte pointer. */
+/* 64-bit core: declared once, in br_globals.h or its struct's header */
+
+/* =====================================================================
+ * 5. Shared helpers
+ * ===================================================================== */
+
+/* The MM:SS.hh formatter that 0x10040C00, 0x10040D70, 0x10040EE0,
+ * 0x10041040 and 0x10041180 each inline verbatim.  Writes "--:--" when
+ * fTime is not strictly greater than zero (NaN lands there too, because the
+ * original tests the x87 C3|C0 pair).  See the comment at the definition for
+ * the two float multiplies that make this NOT equal to integer division. */
+void BrMenuFormatLapTime(char *pszOut, size_t cbOut, float fTime);
+
+/* =====================================================================
+ * 6. Callbacks
+ * ===================================================================== */
+
+/* -- 0x10040680 ------------------------------------------------------- */
+/* BrMenuEnter: prototype in br_funcs.h */
+
+/* -- caption setters, family 1 ---------------------------------------- */
+/* BrMenuCap0730: prototype in br_funcs.h */
+/* BrMenuCap07A0: prototype in br_funcs.h */
+/* BrMenuCap07E0: prototype in br_funcs.h */
+/* BrMenuCap0870: prototype in br_funcs.h */
+/* BrMenuCap0890: prototype in br_funcs.h */
+/* BrMenuCap08B0: prototype in br_funcs.h */
+/* BrMenuCap0930: prototype in br_funcs.h */
+/* BrMenuCap0950: prototype in br_funcs.h */
+/* BrMenuCap0990: prototype in br_funcs.h */
+/* BrMenuCap09B0: prototype in br_funcs.h */
+/* BrMenuCap09D0: prototype in br_funcs.h */
+/* BrMenuCap1870: prototype in br_funcs.h */
+
+/* -- state seeding ---------------------------------------------------- */
+int32_t BrMenuSeedFrom25D4(void);   /* 0x100409F0 */
+int32_t BrMenuSeedFrom26F0(void);   /* 0x10040A20 */
+
+/* Caption-column switch.  Caption setters later in this file read a byte
+ * at 0x10AA28A8: 0 = primary wording, non-zero = backup wording.
+ * Always report success. */
+/* BrMenuClearAA28A8: prototype in br_funcs.h */
+/* BrMenuSetAA28A8: prototype in br_funcs.h */
+
+/* Which stored lap-time the next time-caption (BrMenuTime0EE0) reads.
+ * 0, 1, 2 index a times array; 3 means "use the live time instead".
+ * Always report success. */
+/* BrMenuSetAA28D0_0: prototype in br_funcs.h */
+/* BrMenuSetAA28D0_1: prototype in br_funcs.h */
+/* BrMenuSetAA28D0_2: prototype in br_funcs.h */
+/* BrMenuSetAA28D0_3: prototype in br_funcs.h */
+
+/* -- text setters, family 2 ------------------------------------------- */
+/* BrMenuText08D0: prototype in br_funcs.h */
+/* BrMenuText0A50: prototype in br_funcs.h */
+/* BrMenuText0AC0: prototype in br_funcs.h */
+/* BrMenuText0B30: prototype in br_funcs.h */
+/* BrMenuTime0C00: prototype in br_funcs.h */
+/* BrMenuTime0D70: prototype in br_funcs.h */
+/* BrMenuTime0EE0: prototype in br_funcs.h */
+/* BrMenuTime1040: prototype in br_funcs.h */
+/* BrMenuTime1180: prototype in br_funcs.h */
+/* BrMenuText1300: prototype in br_funcs.h */
+/* BrMenuText15A0: prototype in br_funcs.h */
+/* BrMenuText1670: prototype in br_funcs.h */
+/* BrMenuText1710: prototype in br_funcs.h */
+/* BrMenuText17B0: prototype in br_funcs.h */
+
+/* -- flag pokers, family 3 -------------------------------------------- */
+/* BrMenuFlags1890: prototype in br_funcs.h */
+/* BrMenuFlags18D0: prototype in br_funcs.h */
+/* BrMenuFlags18F0: prototype in br_funcs.h */
+
+/* -- misc ------------------------------------------------------------- */
+/* BrMenuLeaveTo2: prototype in br_funcs.h */
+/* BrMenuAutoSaveName: prototype in br_funcs.h */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#ifdef __cplusplus
+}  /* BR_CLINK_END */
+#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* BR_GLOBALS_BEGIN: generated by ports/brally/tools/unify.py */
+#ifdef __cplusplus
+extern "C" {
+#endif
+#pragma push_macro("g_brStages")
+#undef g_brStages
+extern BrMenuStage g_brStages[128];  /* 0x100B3018 */
+#pragma pop_macro("g_brStages")
+#ifdef __cplusplus
+}
+#endif
+/* BR_GLOBALS_END */
+#endif /* SLICE2_24_H */

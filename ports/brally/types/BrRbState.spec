@@ -1,0 +1,9 @@
+# size 0x44
+# header ports/brally/include/slice3_44.h
+# headers slice3_44.h
+# noemit 1
+0x0000  BrVec3                        pos
+0x000C  BrVec3                        vel
+0x0018  BrVec4                        quat
+0x0028  BrVec3                        angVel
+0x0034  BrVec4                        qDot
