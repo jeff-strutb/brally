@@ -423,24 +423,29 @@ void BrLoadSaveScreen(void);
  * car (left/right, loading its model and playing a sound), tint it with the
  * C buttons, step through the setup choices (A on, B back, START to be
  * ready), and when everyone is ready fades out to the race, the paint shop,
- * the menus, the season screens or the Controller Pak save.  Out of the
- * image until exact: its callees leave different dead words on the race
- * thread's stack (0x80318880-0x80318C07 at frame 699). */
+ * the menus, the season screens or the Controller Pak save.  The branches
+ * run in the order the file's string literals sit in the ROM (results
+ * before panels, two players before one, the paint shop before the normal
+ * panel), so the stored title and message pointers are the ROM's; six
+ * scalars declared above buf put buf and time at the ROM's 0xE8/0xC4. */
 /* @t4-pass 0x8020D004 1 2026-10-03 compiles 120 best 4007 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8020D004 2 2026-10-03 compiles 121 best 4007 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8020D004 3 2026-10-03 compiles 60 best 3903 moved 2  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8020D004 4 2026-10-03 compiles 60 best 3903 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8020D004 5 2026-10-04 compiles 15 best 3872 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8020D004 6 2026-10-04 compiles 15 best 3872 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8020D004 */
 /* @implements 0x8020D004 tgr BrCarSelect */
 void BrCarSelect(void)
 {
-  char buf[256];
-  char time[36];
   int p;
   int n;
   int i;
   int k;
   int y;
   BrCar *car;
+  char buf[256];
+  char time[36];
   BrPadRec *pad;
   unsigned int round;
   unsigned int race;
@@ -669,26 +674,20 @@ void BrCarSelect(void)
     BrTextHighlightOff();
     BrTextAlignCentre();
     BrTextSetFont(30);
-    if (D_80272074 == 0) {
-      if (D_80272070 == 0) {
-        BrTextPrint("%ryCar Select", D_8028AAB0 / 2, D_8028AAB4 / 6 - 2);
+    if (D_80272074 != 0) {
+      if (D_80316314 == 0 || D_80316314 == 1) {
+        tr = D_80316308 < 5 ? D_80316308 : D_80316308 - 5;
+        sprintf(buf, "%%ry%s%s/%s", D_80316308 >= 5 ? "M-" : "", D_80271D1C[tr]->item.label,
+                D_802722A4[D_8031630C]->label);
+        BrTextPrint(buf, D_8028AAB0 / 2, D_8028AAB4 / 6 - 2);
       } else {
-        BrTextPrint("%ryPaint car select", D_8028AAB0 / 2, D_8028AAB4 / 6 - 2);
+        sprintf(buf, "%%ry%s", *(char **)&D_8028B944[D_803162FC]);
+        BrTextPrint(buf, D_8028AAB0 / 2, D_8028AAB4 / 6 - 2);
       }
-    } else if (D_80316314 == 0 || D_80316314 == 1) {
-      if (D_80316308 < 5) {
-        mirror = "";
-        tr = D_80316308;
-      } else {
-        mirror = "M-";
-        tr = D_80316308 - 5;
-      }
-      sprintf(buf, "%%ry%s%s/%s", mirror, D_80271D1C[tr]->item.label,
-              D_802722A4[D_8031630C]->label);
-      BrTextPrint(buf, D_8028AAB0 / 2, D_8028AAB4 / 6 - 2);
+    } else if (D_80272070 != 0) {
+      BrTextPrint("%ryPaint car select", D_8028AAB0 / 2, D_8028AAB4 / 6 - 2);
     } else {
-      sprintf(buf, "%%ry%s", *(char **)&D_8028B944[D_803162FC]);
-      BrTextPrint(buf, D_8028AAB0 / 2, D_8028AAB4 / 6 - 2);
+      BrTextPrint("%ryCar Select", D_8028AAB0 / 2, D_8028AAB4 / 6 - 2);
     }
     if (BrFadeAtTarget() != 0) {
       D_803162AC--;
@@ -698,116 +697,7 @@ void BrCarSelect(void)
   /* ---- each player's panel, or the results ---- */
   race = D_80316300;
   round = D_803162FC;
-  if (D_80272074 == 0) {
-    if (D_8026FF08 == 2) {
-      BrTextSetFont(17);
-      if (D_803162B0[0] == 0) {
-        sprintf(buf, "%%ry%%i%s", *(char **)&D_8028AE0C[CAR(0)->x2058]);
-      } else if (D_803162B0[0] == 6) {
-        sprintf(buf, "%%ryREADY!");
-      } else {
-        sprintf(buf, "%%ry%s: %%i%s", D_80316290[0], D_80316270[0][D_80316278[0]]->label);
-      }
-      BrTextPrint(buf, D_8028AAB0 / 2, D_8028AAB4 / 4);
-      if (D_803162B0[1] == 0) {
-        sprintf(buf, "%%ry%%i%s", *(char **)&D_8028AE0C[CAR(1)->x2058]);
-      } else if (D_803162B0[1] == 6) {
-        sprintf(buf, "%%ryREADY!");
-      } else {
-        sprintf(buf, "%%ry%s: %%i%s", D_80316290[1], D_80316270[1][D_80316278[1]]->label);
-      }
-      BrTextPrint(buf, D_8028AAB0 / 2, D_8028AAB4 * 3 / 5);
-      BrTextSetFont(8);
-      BrTextAlignLeft();
-      if (D_803162B0[0] == 5 && D_80316278[0] != 1 && D_80316260[0] == 0.0f) {
-        BrTextPrint("%wwIf you wish to use", D_8028AAB0 * 11 / 16, D_8028AAB4 / 4 + 19);
-        BrTextPrint("%wwthe Rumble Pak, you", D_8028AAB0 * 11 / 16, D_8028AAB4 / 4 + 28);
-        BrTextPrint("%wwshould ensure that it", D_8028AAB0 * 11 / 16, D_8028AAB4 / 4 + 37);
-        BrTextPrint("%wwis plugged in before", D_8028AAB0 * 11 / 16, D_8028AAB4 / 4 + 45);
-        BrTextPrint("%wwpressing A.", D_8028AAB0 * 11 / 16, D_8028AAB4 / 4 + 54);
-      }
-      if (D_803162B0[1] == 5 && D_80316278[1] != 1 && D_80316260[1] == 0.0f) {
-        BrTextPrint("%wwIf you wish to use", D_8028AAB0 * 11 / 16, D_8028AAB4 * 3 / 5 + 19);
-        BrTextPrint("%wwthe Rumble Pak, you", D_8028AAB0 * 11 / 16, D_8028AAB4 * 3 / 5 + 28);
-        BrTextPrint("%wwshould ensure that it", D_8028AAB0 * 11 / 16, D_8028AAB4 * 3 / 5 + 37);
-        BrTextPrint("%wwis plugged in before", D_8028AAB0 * 11 / 16, D_8028AAB4 * 3 / 5 + 45);
-        BrTextPrint("%wwpressing A.", D_8028AAB0 * 11 / 16, D_8028AAB4 * 3 / 5 + 54);
-      }
-      BrTextAlignRight();
-      if (D_803162B0[0] == 0) {
-        car = CAR(0);
-        BrTextAlignRight();
-        BrTextPrint("%wwAcceleration", D_8028AAB0 / 4 - 5, D_8028AAB4 / 4 + 2);
-        BrTextPrint("%wwMax Speed", D_8028AAB0 / 4 - 5, D_8028AAB4 / 4 - 6);
-        BrTextAlignCentre();
-        BrTextPrint(D_80272030[*(int *)((char *)&D_8028AE0C[car->x2058] + 0x40)],
-                    D_8028AAB0 * 3 / 4, D_8028AAB4 / 4 + 2);
-        sprintf(buf, "%%ww%d-Speed %s", *(int *)((char *)&D_8028AE0C[car->x2058] + 0x54),
-                D_8027203C[*(int *)((char *)&D_8028AE0C[car->x2058] + 0x3C)]);
-        BrTextPrint(buf, D_8028AAB0 * 3 / 4, D_8028AAB4 / 4 - 6);
-        BrCarStatBarDraw(D_8028AAB0 / 2, D_8028AAB4 / 2 - 23, 80, 11,
-                         *(float *)((char *)&D_8028AE0C[car->x2058] + 0x44) / 500.0);
-        BrCarStatBarDraw(D_8028AAB0 / 2, D_8028AAB4 / 2 - 6, 80, 11,
-                         *(float *)((char *)&D_8028AE0C[car->x2058] + 0x48) / 10.0);
-      }
-      if (D_803162B0[1] == 0) {
-        car = CAR(1);
-        BrTextAlignRight();
-        BrTextPrint("%wwAcceleration", D_8028AAB0 / 4 - 5, D_8028AAB4 * 3 / 5 + 2);
-        BrTextPrint("%wwMax Speed", D_8028AAB0 / 4 - 5, D_8028AAB4 * 3 / 5 - 6);
-        BrTextAlignCentre();
-        BrTextPrint(D_80272030[*(int *)((char *)&D_8028AE0C[car->x2058] + 0x40)],
-                    D_8028AAB0 * 3 / 4, D_8028AAB4 * 3 / 5 + 2);
-        sprintf(buf, "%%ww%d-Speed %s", *(int *)((char *)&D_8028AE0C[car->x2058] + 0x54),
-                D_8027203C[*(int *)((char *)&D_8028AE0C[car->x2058] + 0x3C)]);
-        BrTextPrint(buf, D_8028AAB0 * 3 / 4, D_8028AAB4 * 3 / 5 - 6);
-        BrCarStatBarDraw(D_8028AAB0 / 2, D_8028AAB4 * 6 / 5 - 23, 80, 11,
-                         *(float *)((char *)&D_8028AE0C[car->x2058] + 0x44) / 500.0);
-        BrCarStatBarDraw(D_8028AAB0 / 2, D_8028AAB4 * 6 / 5 - 6, 80, 11,
-                         *(float *)((char *)&D_8028AE0C[car->x2058] + 0x48) / 10.0);
-      }
-    } else {
-      BrTextSetFont(20);
-      if (D_80272070 == 0) {
-        if (D_803162B0[0] == 0) {
-          sprintf(buf, "%%ry%%i%s", *(char **)&D_8028AE0C[CAR(0)->x2058]);
-        } else if (D_803162B0[0] == 6) {
-          sprintf(buf, "%%ryLET'S GO!");
-        } else {
-          sprintf(buf, "%%ry%s: %%i%s", D_80316290[0], D_80316270[0][D_80316278[0]]->label);
-        }
-        BrTextPrint(buf, D_8028AAB0 / 2, D_8028AAB4 * 20 / 64);
-        BrTextSetFont(8);
-        BrTextAlignCentre();
-        if (D_803162B0[0] == 5 && D_80316278[0] != 1 && D_80316260[0] == 0.0f) {
-          BrTextPrint("%wwIf you wish to use the Rumble Pak, you should", D_8028AAB0 / 2,
-                      D_8028AAB4 * 3 / 8 - 6);
-          BrTextPrint("%wwensure that it is plugged in before pressing A.", D_8028AAB0 / 2,
-                      D_8028AAB4 * 3 / 8 + 2);
-        }
-        if (D_803162B0[0] == 0) {
-          car = CAR(0);
-          BrTextAlignRight();
-          BrTextSetFont(8);
-          BrTextPrint("%wwMax Speed", D_8028AAB0 * 3 / 8, D_8028AAB4 * 3 / 8 - 6);
-          BrTextPrint("%wwAcceleration", D_8028AAB0 * 3 / 8, D_8028AAB4 * 3 / 8 + 2);
-          BrTextAlignCentre();
-          BrTextPrint(D_80272030[*(int *)((char *)&D_8028AE0C[car->x2058] + 0x40)],
-                      D_8028AAB0 * 11 / 16, D_8028AAB4 * 3 / 8 - 6);
-          sprintf(buf, "%%ww%d-Speed %s", *(int *)((char *)&D_8028AE0C[car->x2058] + 0x54),
-                  D_8027203C[*(int *)((char *)&D_8028AE0C[car->x2058] + 0x3C)]);
-          BrTextPrint(buf, D_8028AAB0 * 11 / 16, D_8028AAB4 * 3 / 8 + 2);
-          BrCarStatBarDraw(D_8028AAB0 * 3 / 4 + 10, D_8028AAB4 * 3 / 4 - 23, 80, 11,
-                           *(float *)((char *)&D_8028AE0C[car->x2058] + 0x44) / 500.0);
-          BrCarStatBarDraw(D_8028AAB0 * 3 / 4 + 10, D_8028AAB4 * 3 / 4 - 6, 80, 11,
-                           *(float *)((char *)&D_8028AE0C[car->x2058] + 0x48) / 10.0);
-        }
-      } else {
-        sprintf(buf, "%%ry%%i%s", *(char **)&D_8028AE0C[CAR(0)->x2058]);
-        BrTextPrint(buf, D_8028AAB0 / 2, D_8028AAB4 * 22 / 64);
-      }
-    }
-  } else {
+  if (D_80272074 != 0) {
     y = 0x4F;
     i = 0;
     BrTextHighlightOff();
@@ -816,7 +706,14 @@ void BrCarSelect(void)
     if (D_80316314 == 0 || D_80316314 == 1) {
       /* a player's race: the place, then each lap and the race time */
       pl = D_80316314 != 0;
-      if (D_8026FF08 < 2) {
+      if (D_8026FF08 >= 2) {
+        car = CAR(pl);
+        if (car->laps < D_8028B304) {
+          sprintf(D_80316318, "%%ryP%d: Did not finish", pl + 1);
+        } else {
+          sprintf(D_80316318, "%%ryP%d: %s Place", pl + 1, D_80271FE0[car->xfac]);
+        }
+      } else {
         if (D_8026FF18 == 0) {
           car = CAR(pl);
           k = *(unsigned char *)((char *)CAR(pl)->season + round * 4 + race + 6);
@@ -829,13 +726,6 @@ void BrCarSelect(void)
           } else {
             sprintf(D_80316318, "%%ry%s Place", D_80271FE0[car->xfac]);
           }
-        }
-      } else {
-        car = CAR(pl);
-        if (car->laps < D_8028B304) {
-          sprintf(D_80316318, "%%ryP%d: Did not finish", pl + 1);
-        } else {
-          sprintf(D_80316318, "%%ryP%d: %s Place", pl + 1, D_80271FE0[car->xfac]);
         }
       }
       BrTextPrint(D_80316318, D_8028AAB0 / 2, D_8028AAB4 * 19 / 64 - 4);
@@ -933,6 +823,115 @@ void BrCarSelect(void)
       }
       sprintf(D_80316318, "TOTAL:    %d PTS ", total);
       BrTextPrint(D_80316318, D_8028AAB0 * 13 / 16 + x, y + 2);
+    }
+  } else {
+    if (D_8026FF08 == 2) {
+      BrTextSetFont(17);
+      if (D_803162B0[0] == 0) {
+        sprintf(buf, "%%ry%%i%s", *(char **)&D_8028AE0C[CAR(0)->x2058]);
+      } else if (D_803162B0[0] == 6) {
+        sprintf(buf, "%%ryREADY!");
+      } else {
+        sprintf(buf, "%%ry%s: %%i%s", D_80316290[0], D_80316270[0][D_80316278[0]]->label);
+      }
+      BrTextPrint(buf, D_8028AAB0 / 2, D_8028AAB4 / 4);
+      if (D_803162B0[1] == 0) {
+        sprintf(buf, "%%ry%%i%s", *(char **)&D_8028AE0C[CAR(1)->x2058]);
+      } else if (D_803162B0[1] == 6) {
+        sprintf(buf, "%%ryREADY!");
+      } else {
+        sprintf(buf, "%%ry%s: %%i%s", D_80316290[1], D_80316270[1][D_80316278[1]]->label);
+      }
+      BrTextPrint(buf, D_8028AAB0 / 2, D_8028AAB4 * 3 / 5);
+      BrTextSetFont(8);
+      BrTextAlignLeft();
+      if (D_803162B0[0] == 5 && D_80316278[0] != 1 && D_80316260[0] == 0.0f) {
+        BrTextPrint("%wwIf you wish to use", D_8028AAB0 * 11 / 16, D_8028AAB4 / 4 + 19);
+        BrTextPrint("%wwthe Rumble Pak, you", D_8028AAB0 * 11 / 16, D_8028AAB4 / 4 + 28);
+        BrTextPrint("%wwshould ensure that it", D_8028AAB0 * 11 / 16, D_8028AAB4 / 4 + 37);
+        BrTextPrint("%wwis plugged in before", D_8028AAB0 * 11 / 16, D_8028AAB4 / 4 + 45);
+        BrTextPrint("%wwpressing A.", D_8028AAB0 * 11 / 16, D_8028AAB4 / 4 + 54);
+      }
+      if (D_803162B0[1] == 5 && D_80316278[1] != 1 && D_80316260[1] == 0.0f) {
+        BrTextPrint("%wwIf you wish to use", D_8028AAB0 * 11 / 16, D_8028AAB4 * 3 / 5 + 19);
+        BrTextPrint("%wwthe Rumble Pak, you", D_8028AAB0 * 11 / 16, D_8028AAB4 * 3 / 5 + 28);
+        BrTextPrint("%wwshould ensure that it", D_8028AAB0 * 11 / 16, D_8028AAB4 * 3 / 5 + 37);
+        BrTextPrint("%wwis plugged in before", D_8028AAB0 * 11 / 16, D_8028AAB4 * 3 / 5 + 45);
+        BrTextPrint("%wwpressing A.", D_8028AAB0 * 11 / 16, D_8028AAB4 * 3 / 5 + 54);
+      }
+      BrTextAlignRight();
+      if (D_803162B0[0] == 0) {
+        car = CAR(0);
+        BrTextAlignRight();
+        BrTextPrint("%wwAcceleration", D_8028AAB0 / 4 - 5, D_8028AAB4 / 4 + 2);
+        BrTextPrint("%wwMax Speed", D_8028AAB0 / 4 - 5, D_8028AAB4 / 4 - 6);
+        BrTextAlignCentre();
+        BrTextPrint(D_80272030[*(int *)((char *)&D_8028AE0C[car->x2058] + 0x40)],
+                    D_8028AAB0 * 3 / 4, D_8028AAB4 / 4 + 2);
+        sprintf(buf, "%%ww%d-Speed %s", *(int *)((char *)&D_8028AE0C[car->x2058] + 0x54),
+                D_8027203C[*(int *)((char *)&D_8028AE0C[car->x2058] + 0x3C)]);
+        BrTextPrint(buf, D_8028AAB0 * 3 / 4, D_8028AAB4 / 4 - 6);
+        BrCarStatBarDraw(D_8028AAB0 / 2, D_8028AAB4 / 2 - 23, 80, 11,
+                         *(float *)((char *)&D_8028AE0C[car->x2058] + 0x44) / 500.0);
+        BrCarStatBarDraw(D_8028AAB0 / 2, D_8028AAB4 / 2 - 6, 80, 11,
+                         *(float *)((char *)&D_8028AE0C[car->x2058] + 0x48) / 10.0);
+      }
+      if (D_803162B0[1] == 0) {
+        car = CAR(1);
+        BrTextAlignRight();
+        BrTextPrint("%wwAcceleration", D_8028AAB0 / 4 - 5, D_8028AAB4 * 3 / 5 + 2);
+        BrTextPrint("%wwMax Speed", D_8028AAB0 / 4 - 5, D_8028AAB4 * 3 / 5 - 6);
+        BrTextAlignCentre();
+        BrTextPrint(D_80272030[*(int *)((char *)&D_8028AE0C[car->x2058] + 0x40)],
+                    D_8028AAB0 * 3 / 4, D_8028AAB4 * 3 / 5 + 2);
+        sprintf(buf, "%%ww%d-Speed %s", *(int *)((char *)&D_8028AE0C[car->x2058] + 0x54),
+                D_8027203C[*(int *)((char *)&D_8028AE0C[car->x2058] + 0x3C)]);
+        BrTextPrint(buf, D_8028AAB0 * 3 / 4, D_8028AAB4 * 3 / 5 - 6);
+        BrCarStatBarDraw(D_8028AAB0 / 2, D_8028AAB4 * 6 / 5 - 23, 80, 11,
+                         *(float *)((char *)&D_8028AE0C[car->x2058] + 0x44) / 500.0);
+        BrCarStatBarDraw(D_8028AAB0 / 2, D_8028AAB4 * 6 / 5 - 6, 80, 11,
+                         *(float *)((char *)&D_8028AE0C[car->x2058] + 0x48) / 10.0);
+      }
+    } else {
+      BrTextSetFont(20);
+      if (D_80272070 != 0) {
+        sprintf(buf, "%%ry%%i%s", *(char **)&D_8028AE0C[CAR(0)->x2058]);
+        BrTextPrint(buf, D_8028AAB0 / 2, D_8028AAB4 * 22 / 64);
+      } else {
+        if (D_803162B0[0] == 0) {
+          sprintf(buf, "%%ry%%i%s", *(char **)&D_8028AE0C[CAR(0)->x2058]);
+        } else if (D_803162B0[0] == 6) {
+          sprintf(buf, "%%ryLET'S GO!");
+        } else {
+          sprintf(buf, "%%ry%s: %%i%s", D_80316290[0], D_80316270[0][D_80316278[0]]->label);
+        }
+        BrTextPrint(buf, D_8028AAB0 / 2, D_8028AAB4 * 20 / 64);
+        BrTextSetFont(8);
+        BrTextAlignCentre();
+        if (D_803162B0[0] == 5 && D_80316278[0] != 1 && D_80316260[0] == 0.0f) {
+          BrTextPrint("%wwIf you wish to use the Rumble Pak, you should", D_8028AAB0 / 2,
+                      D_8028AAB4 * 3 / 8 - 6);
+          BrTextPrint("%wwensure that it is plugged in before pressing A.", D_8028AAB0 / 2,
+                      D_8028AAB4 * 3 / 8 + 2);
+        }
+        if (D_803162B0[0] == 0) {
+          car = CAR(0);
+          BrTextAlignRight();
+          BrTextSetFont(8);
+          BrTextPrint("%wwMax Speed", D_8028AAB0 * 3 / 8, D_8028AAB4 * 3 / 8 - 6);
+          BrTextPrint("%wwAcceleration", D_8028AAB0 * 3 / 8, D_8028AAB4 * 3 / 8 + 2);
+          BrTextAlignCentre();
+          BrTextPrint(D_80272030[*(int *)((char *)&D_8028AE0C[car->x2058] + 0x40)],
+                      D_8028AAB0 * 11 / 16, D_8028AAB4 * 3 / 8 - 6);
+          sprintf(buf, "%%ww%d-Speed %s", *(int *)((char *)&D_8028AE0C[car->x2058] + 0x54),
+                  D_8027203C[*(int *)((char *)&D_8028AE0C[car->x2058] + 0x3C)]);
+          BrTextPrint(buf, D_8028AAB0 * 11 / 16, D_8028AAB4 * 3 / 8 + 2);
+          BrCarStatBarDraw(D_8028AAB0 * 3 / 4 + 10, D_8028AAB4 * 3 / 4 - 23, 80, 11,
+                           *(float *)((char *)&D_8028AE0C[car->x2058] + 0x44) / 500.0);
+          BrCarStatBarDraw(D_8028AAB0 * 3 / 4 + 10, D_8028AAB4 * 3 / 4 - 6, 80, 11,
+                           *(float *)((char *)&D_8028AE0C[car->x2058] + 0x48) / 10.0);
+        }
+      }
     }
   }
   if (D_803162AC != 0 || BrFadeIsOut() != 0 || BrFadeIsIn() != 0) {
