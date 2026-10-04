@@ -1389,3 +1389,4 @@ glide_va,name,module,basis,file
 0x10074AE6,FUN_10074ae6,startup,neighbour-1,src/core/startup/br_stubs.c
 0x10074B00,BrDllMain,startup,description,src/core/startup/br_dllentry.c
 0x10003430,BrFChkFRead,gamedata,filed,src/core/gamedata/br_fchkread.c
+0x10027A70,FUN_10027a70,drawing,filed,src/core/drawing/br_tex3dfind.c

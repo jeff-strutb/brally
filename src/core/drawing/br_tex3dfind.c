@@ -24,15 +24,6 @@ extern int DAT_106b7aa0;
 /* @t4-pass 0x10027A70 2 2026-09-07 probes 87 bytes 228 insns 63 regions 2 rows 9 census yes  (tools/crank.py) */
 /* @t4-pass 0x10027A70 3 2026-09-13 probes 10 bytes 235 insns 68 regions 1 rows 0 census no  (hand, fn.py variants: const one, no q, int n, int i, one-first, ++i, increment order, n>i, unsigned char compares, single-expression p init; all 235/68/0+0 except n>i and p-init 1+1) */
 /* @t4-pass 0x10027A70 4 2026-09-13 probes 10 bytes 235 insns 68 regions 1 rows 0 census yes  (slot census: one slot, the pReq read; fn.py variants around it: const q, byte-stride walker, merged one-tests, declaration order, +0x50 byte init, q-before-n, merged head test, uncast return, q inside the loop, p[0]; all 235/68/0+0 except the +0x50 init 1+1) */
-/* @t3 0x10027A70 2026-09-13 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 235/235 insns 68/68 rows 0+0 regions 1 oracle UNCLASSIFIED
- * @t3-effort passes 4 zero-movement 3 4
- * residue is scheduling only: the loop preheader's global load and its
- * +0x50 bias sit above the pushes and the entry test, where the original
- * has them after the test (register-blind multiset identical, 25 positional
- * bytes in one region).  Dossier and dead list are in the comment inside
- * the function; ledger lines above.  Do not reopen before the end-grind.
- */
 /* @implements 0x10027A70 glide FUN_10027a70 */
 int FUN_10027a70(int *pReq)
 {
@@ -42,24 +33,19 @@ int FUN_10027a70(int *pReq)
   int *p;
   int one;
 
-  /* A `for` over i, not a guarded do-while with an in-loop `return -1`:
-   * the entry test is shrink-wrapped with its OWN duplicated epilogue
-   * (`pop; pop; pop; or eax,-1; pop; ret` at the tail) while the loop's
-   * fall-through `return -1` keeps a second, `or`-first epilogue, and the
-   * three found-returns share the third.  The old shape cross-jumped the
-   * in-loop exit into the guard's tail (2+7 rows); this one is register-
-   * blind exact (0+0).  RESIDUE (25 positional bytes, scheduling): VC5
-   * hoists `p`'s global load and `add ecx,0x50` above the pushes and the
-   * entry test, where the original loads them in the loop preheader; an
-   * i-indexed `p` inside the loop LICMs them into the preheader but moves
-   * the IV anchor to the byte-compare block (+0x294), and the for-init
-   * form is the same as statements before the loop.  2026-09-13. */
+  /* The loop is written with its entry test made explicit (`i = 0; if
+   * (i < n)`) and the table pointer formed inside it: VC5 then loads the
+   * pointer and adds 0x50 in the loop preheader, after the pushes and the
+   * entry test, as the original does.  Formed before a plain `for`, the
+   * load is hoisted above the pushes. */
   n = DAT_10697a58;
   q = pReq;
+  one = 1;
+  i = 0;
+  if (i < n) {
   p = (int *)DAT_106b7aa0;
   p += 0x14;
-  one = 1;
-  for (i = 0; i < n; i++, p += 0xad) {
+  for (; i < n; i++, p += 0xad) {
     if (p[-1] == q[0x12]) {
       if (*p == q[0x13]) {
         if (p[0x86] != one) {
@@ -80,6 +66,7 @@ int FUN_10027a70(int *pReq)
         }
       }
     }
+  }
   }
   return -1;
 }
