@@ -386,7 +386,7 @@ void BrCarDraw(BrCar *car, int lodBias)
   dist = BrVec3Dist((BrVec3 *)car->mtx0[3], (BrVec3 *)D_8028AAF4->mtx0[3]);
   if (car->colour[3] == 2) {
     D_80351D00 = car->x2064 * 255.0f;
-    G(0xF8000000, D_8028AB20 << 24 | D_8028AB24 << 16 | D_8028AB28 << 8 | D_80351D00 & 0xFF);
+    gDPSetFogColor(D_8028A858++, D_8028AB20, D_8028AB24, D_8028AB28, D_80351D00);
   }
   *(int *)car->pad1dc8 = 0;
   if (car->x2000 != 0 && (((BrTrackObjFl *)D_80025C60)[car->x1fc0[0]].flags & 0x10) != 0) {
@@ -457,8 +457,8 @@ void BrCarDraw(BrCar *car, int lodBias)
     c[1] = D_8028AB50;
     colB = c[2] << 8 | c[0] << 24 | c[1] << 16;
   }
-  G(0x01060040, D_80351CA0[car->slot]);
-  G(0x01030040, D_8028A878);
+  gSPMatrix(D_8028A858++, D_80351CA0[car->slot], 6);
+  gSPMatrix(D_8028A858++, D_8028A878, 3);
   if (D_8028AA80 != 0) {
     if ((BrCarCam *)D_8028AAF4 == &D_8028AAF0->cams[3]) {
       BrVec3Negate(&D_80351D08, D_8028AAF4);
@@ -515,28 +515,28 @@ void BrCarDraw(BrCar *car, int lodBias)
                   0, 0, 1.0f, D_80351D18.x, D_80351D18.y, D_80351D18.z, D_80351D18.x, D_80351D18.y,
                   D_80351D18.z, 64, 64);
   if (10.0f < dist) {
-    G(0x06000000, D_8028A9C8);
+    gSPDisplayList(D_8028A858++, D_8028A9C8);
   } else {
-    G(0x06000000, D_8028A900);
+    gSPDisplayList(D_8028A858++, D_8028A900);
   }
   if (D_8028AA80 != 0 || D_8028AA8C != 0) {
     ((BrLights1 *)D_80351C10)[car->slot] = *(BrLights1 *)D_8028A9F0;
     ((BrLights1 *)D_80351C10)[car->slot].dir[0] = -(int)(D_8028AAF0->mtx0[0][0] * 120.0f);
     ((BrLights1 *)D_80351C10)[car->slot].dir[1] = -(int)(D_8028AAF0->mtx0[0][1] * 120.0f);
     ((BrLights1 *)D_80351C10)[car->slot].dir[2] = -(int)(D_8028AAF0->mtx0[0][2] * 120.0f);
-    G(0xBC000002, 0x80000040);
-    G(0x03860010, ((BrLights1 *)D_80351C10)[car->slot].col);
-    G(0x03880010, &D_80351C10[car->slot * 0x18]);
+    gSPNumLights(D_8028A858++, 1);
+    gSPLight(D_8028A858++, ((BrLights1 *)D_80351C10)[car->slot].col, 1);
+    gSPLight(D_8028A858++, &D_80351C10[car->slot * 0x18], 2);
   } else {
-    G(0xBC000002, 0x80000040);
-    G(0x03860010, D_8028A9F8);
-    G(0x03880010, D_8028A9F0);
+    gSPNumLights(D_8028A858++, 1);
+    gSPLight(D_8028A858++, D_8028A9F8, 1);
+    gSPLight(D_8028A858++, D_8028A9F0, 2);
   }
-  G(0xE7000000, 0);
-  G(0xBA001001, 0x10000);
-  G(0xB7000000, 0x20205);
+  gDPPipeSync(D_8028A858++);
+  gDPSetTextureLOD(D_8028A858++, 0x10000);
+  gSPSetGeometryMode(D_8028A858++, 0x20205);
   if (D_8028AA78 != 0) {
-    G(0xB7000000, 0x10000);
+    gSPSetGeometryMode(D_8028A858++, 0x10000);
     if (car->colour[3] == 2) {
       D_8028C300 = 0x0C080000;
     } else {
@@ -545,11 +545,11 @@ void BrCarDraw(BrCar *car, int lodBias)
   } else {
     D_8028C300 = 0x0C080000;
   }
-  G(0xB7000000, D_8028A8AC == D_8028A8A8 ? 0x2000 : 0x1000);
-  G(0xB6000000, D_8028A8AC == D_8028A8A8 ? 0x1000 : 0x2000);
+  gSPSetGeometryMode(D_8028A858++, D_8028A8AC != D_8028A8A8 ? 0x1000 : 0x2000);
+  gSPClearGeometryMode(D_8028A858++, D_8028A8AC != D_8028A8A8 ? 0x2000 : 0x1000);
   if (car->colour[3] == 2) {
     D_8028C304 = 0x011049D8;
-  } else if (dist < 100.0f) {
+  } else if ((dist < 100.0f) != 0) {
     if (car == D_8028AAF0) {
       D_8028C304 = 0x00112078;
     } else {
@@ -558,57 +558,57 @@ void BrCarDraw(BrCar *car, int lodBias)
   } else {
     D_8028C304 = 0x00112230;
   }
-  G(0xBA001402, 0x100000);
-  G(0xB900031D, D_8028C300 | D_8028C304);
-  G(0xFC127FFF, 0xFFFFF238);
-  G(0xBA000C02, D_8028A898);
-  G(0xBA001001, 0);
-  G(0xB6000000, 0xC0000);
-  G(0xBC00000A, colA);
-  G(0xBC00040A, colA);
-  G(0xBC00200A, colB);
-  G(0xBC00240A, colB);
+  gDPSetCycleType(D_8028A858++, 0x100000);
+  gDPSetRenderMode(D_8028A858++, D_8028C300, D_8028C304);
+  gDPSetCombine(D_8028A858++, 0x127FFF, 0xFFFFF238);
+  gDPSetTextureFilter(D_8028A858++, D_8028A898);
+  gDPSetTextureLOD(D_8028A858++, 0);
+  gSPClearGeometryMode(D_8028A858++, 0xC0000);
+  gMoveWd(D_8028A858++, 0x0A, 0x00, colA);
+  gMoveWd(D_8028A858++, 0x0A, 0x04, colA);
+  gMoveWd(D_8028A858++, 0x0A, 0x20, colB);
+  gMoveWd(D_8028A858++, 0x0A, 0x24, colB);
   if (car->colour[3] == 2) {
     BrCarDrawWheels(car);
   }
-  G(0x039E0010, D_80351CB0[car->slot]);
-  G(0x03980010, D_80351CB0[car->slot] + 0x10);
-  G(0x039A0010, D_80351CB0[car->slot] + 0x20);
-  G(0x039C0010, D_80351CB0[car->slot] + 0x30);
-  G(0xFD100000, &D_8028C340);
-  G(0xE8000000, 0);
-  G(0xF50001E0, 0x07000000);
-  G(0xE6000000, 0);
-  G(0xF0000000, 0x0703C000);
-  G(0xE7000000, 0);
-  G(0x03840010, look);
-  G(0x03820010, look + 0x10);
+  gDma1p(D_8028A858++, 0x03, D_80351CB0[car->slot], 0x10, 0x9E);
+  gDma1p(D_8028A858++, 0x03, D_80351CB0[car->slot] + 0x10, 0x10, 0x98);
+  gDma1p(D_8028A858++, 0x03, D_80351CB0[car->slot] + 0x20, 0x10, 0x9A);
+  gDma1p(D_8028A858++, 0x03, D_80351CB0[car->slot] + 0x30, 0x10, 0x9C);
+  gDPSetTextureImage(D_8028A858++, 0, 2, 1, &D_8028C340);
+  gDPTileSync(D_8028A858++);
+  gDPSetTile(D_8028A858++, 0, 0, 0, 0x1E0, 7, 0, 0, 0, 0, 0, 0, 0);
+  gDPLoadSync(D_8028A858++);
+  gDPLoadTLUTCmd(D_8028A858++, 7, 15);
+  gDPPipeSync(D_8028A858++);
+  gSPLookAtX(D_8028A858++, look);
+  gSPLookAtY(D_8028A858++, look + 0x10);
   if (D_8028DDC8 == 0 && car->x2068 == 0) {
-    G(0xBB000001, 0xFFFFFFFF);
-    G(0xB6000000, 0xC0000);
-    G(0xE8000000, 0);
-    G(0xF5100000, 0x07000000);
-    G(0xF50001F0, 0x06000000);
-    G(0xF5000100, 0x05000000);
-    G(0xB900031D, D_8028C300 | D_8028C304);
-    G(0xFC127FFF, 0xFFFFF238);
-    G(0xBA000E02, 0);
-    G(0xFC1219FF, 0xFFFFFE38);
-    G(0xB6000000, 0x40000);
-    G(0xBC00000A, colA);
-    G(0xBC00040A, colA);
-    G(0xBC00200A, colB);
-    G(0xBC00240A, colB);
-    G(0xBA000C02, D_8028A898);
+    gSPTexture(D_8028A858++, 0xFFFF, 0xFFFF, 0, 0, 1);
+    gSPClearGeometryMode(D_8028A858++, 0xC0000);
+    gDPTileSync(D_8028A858++);
+    gDPSetTile(D_8028A858++, 0, 2, 0, 0x0, 7, 0, 0, 0, 0, 0, 0, 0);
+    gDPSetTile(D_8028A858++, 0, 0, 0, 0x1F0, 6, 0, 0, 0, 0, 0, 0, 0);
+    gDPSetTile(D_8028A858++, 0, 0, 0, 0x100, 5, 0, 0, 0, 0, 0, 0, 0);
+    gDPSetRenderMode(D_8028A858++, D_8028C300, D_8028C304);
+    gDPSetCombine(D_8028A858++, 0x127FFF, 0xFFFFF238);
+    gDPSetTextureLUT(D_8028A858++, 0);
+    gDPSetCombine(D_8028A858++, 0x1219FF, 0xFFFFFE38);
+    gSPClearGeometryMode(D_8028A858++, 0x40000);
+    gMoveWd(D_8028A858++, 0x0A, 0x00, colA);
+    gMoveWd(D_8028A858++, 0x0A, 0x04, colA);
+    gMoveWd(D_8028A858++, 0x0A, 0x20, colB);
+    gMoveWd(D_8028A858++, 0x0A, 0x24, colB);
+    gDPSetTextureFilter(D_8028A858++, D_8028A898);
     if (D_8028AB08->dl[lod][8] != 0) {
-      G(0x06000000, D_8028AB08->dl[lod][8]);
+      gSPDisplayList(D_8028A858++, D_8028AB08->dl[lod][8]);
     }
-    G(0xBB000001, 0xFFFFFFFF);
-    G(0xB6000000, 0xC0000);
-    G(0xE8000000, 0);
-    G(0xF5100000, 0x07000000);
-    G(0xF50001F0, 0x06000000);
-    G(0xF5000100, 0x05000000);
+    gSPTexture(D_8028A858++, 0xFFFF, 0xFFFF, 0, 0, 1);
+    gSPClearGeometryMode(D_8028A858++, 0xC0000);
+    gDPTileSync(D_8028A858++);
+    gDPSetTile(D_8028A858++, 0, 2, 0, 0x0, 7, 0, 0, 0, 0, 0, 0, 0);
+    gDPSetTile(D_8028A858++, 0, 0, 0, 0x1F0, 6, 0, 0, 0, 0, 0, 0, 0);
+    gDPSetTile(D_8028A858++, 0, 0, 0, 0x100, 5, 0, 0, 0, 0, 0, 0, 0);
   }
   lights = D_8028AA80 != 0 || D_8028AA8C != 0;
   pal = D_8028AB08->parts[D_8028AB08->decalPart[10]].b;
@@ -651,31 +651,31 @@ void BrCarDraw(BrCar *car, int lodBias)
       pal[6] = 0xC631;
     }
   }
-  G(0xBA001001, 0x10000);
-  G(0xBB000001, 0xFFFFFFFF);
-  G(0xF5100000, 0x07000000);
-  G(0xF50001F0, 0x06000000);
-  G(0xF5000100, 0x05000000);
+  gDPSetTextureLOD(D_8028A858++, 0x10000);
+  gSPTexture(D_8028A858++, 0xFFFF, 0xFFFF, 0, 0, 1);
+  gDPSetTile(D_8028A858++, 0, 2, 0, 0x0, 7, 0, 0, 0, 0, 0, 0, 0);
+  gDPSetTile(D_8028A858++, 0, 0, 0, 0x1F0, 6, 0, 0, 0, 0, 0, 0, 0);
+  gDPSetTile(D_8028A858++, 0, 0, 0, 0x100, 5, 0, 0, 0, 0, 0, 0, 0);
   {
     BrVec3 rel;
 
     BrVec3Sub(&rel, (BrVec3 *)car->mtx0[3], (BrVec3 *)D_8028AAF4->mtx0[3]);
     if (0.0 < BrVec3Dot((BrVec3 *)car->mtx0[2], &rel)) {
       BrTexLoad(6, D_8028AB08->parts);
-      G(0xE7000000, 0);
-      G(0xBA001402, 0x100000);
-      G(0xB900031D, D_8028C300 | D_8028C304);
-      G(0xFC127FFF, 0xFFFFF838);
-      G(0xBC00000A, colA);
-      G(0xBC00040A, colA);
-      G(0xBC00200A, colB);
-      G(0xBC00240A, colB);
-      G(0xBB000001, 0xFFFFFFFF);
-      G(0xF5100000, 0x07000000);
-      G(0xF50001F0, 0x06000000);
-      G(0xF5000100, 0x05000000);
+      gDPPipeSync(D_8028A858++);
+      gDPSetCycleType(D_8028A858++, 0x100000);
+      gDPSetRenderMode(D_8028A858++, D_8028C300, D_8028C304);
+      gDPSetCombine(D_8028A858++, 0x127FFF, 0xFFFFF838);
+      gMoveWd(D_8028A858++, 0x0A, 0x00, colA);
+      gMoveWd(D_8028A858++, 0x0A, 0x04, colA);
+      gMoveWd(D_8028A858++, 0x0A, 0x20, colB);
+      gMoveWd(D_8028A858++, 0x0A, 0x24, colB);
+      gSPTexture(D_8028A858++, 0xFFFF, 0xFFFF, 0, 0, 1);
+      gDPSetTile(D_8028A858++, 0, 2, 0, 0x0, 7, 0, 0, 0, 0, 0, 0, 0);
+      gDPSetTile(D_8028A858++, 0, 0, 0, 0x1F0, 6, 0, 0, 0, 0, 0, 0, 0);
+      gDPSetTile(D_8028A858++, 0, 0, 0, 0x100, 5, 0, 0, 0, 0, 0, 0, 0);
       if (D_8028AB08->dl[lod][6] != 0) {
-        G(0x06000000, D_8028AB08->dl[lod][6]);
+        gSPDisplayList(D_8028A858++, D_8028AB08->dl[lod][6]);
       }
     }
   }
@@ -686,20 +686,20 @@ void BrCarDraw(BrCar *car, int lodBias)
   }
   if (D_8028A8A8 == 0 && near && car->colour[3] != 2 && lod * 10 < 10) {
     BrTexLoad(3, D_8028AB08->parts);
-    G(0xE7000000, 0);
-    G(0xBA001402, 0x100000);
-    G(0xB900031D, D_8028C300 | D_8028C304);
-    G(0xFC127FFF, 0xFFFFF838);
-    G(0xBC00000A, colA);
-    G(0xBC00040A, colA);
-    G(0xBC00200A, colB);
-    G(0xBC00240A, colB);
-    G(0xBB000001, 0xFFFFFFFF);
-    G(0xF5100000, 0x07000000);
-    G(0xF50001F0, 0x06000000);
-    G(0xF5000100, 0x05000000);
+    gDPPipeSync(D_8028A858++);
+    gDPSetCycleType(D_8028A858++, 0x100000);
+    gDPSetRenderMode(D_8028A858++, D_8028C300, D_8028C304);
+    gDPSetCombine(D_8028A858++, 0x127FFF, 0xFFFFF838);
+    gMoveWd(D_8028A858++, 0x0A, 0x00, colA);
+    gMoveWd(D_8028A858++, 0x0A, 0x04, colA);
+    gMoveWd(D_8028A858++, 0x0A, 0x20, colB);
+    gMoveWd(D_8028A858++, 0x0A, 0x24, colB);
+    gSPTexture(D_8028A858++, 0xFFFF, 0xFFFF, 0, 0, 1);
+    gDPSetTile(D_8028A858++, 0, 2, 0, 0x0, 7, 0, 0, 0, 0, 0, 0, 0);
+    gDPSetTile(D_8028A858++, 0, 0, 0, 0x1F0, 6, 0, 0, 0, 0, 0, 0, 0);
+    gDPSetTile(D_8028A858++, 0, 0, 0, 0x100, 5, 0, 0, 0, 0, 0, 0, 0);
     if (D_8028AB08->dl[lod][3] != 0) {
-      G(0x06000000, D_8028AB08->dl[lod][3]);
+      gSPDisplayList(D_8028A858++, D_8028AB08->dl[lod][3]);
     }
   }
   if (D_8028AB0C == 1 && D_8028C334 == 0 && D_8028A8A8 == 0 && D_8028AA84 == 0 && D_8028AA8C == 0 &&
@@ -719,16 +719,16 @@ void BrCarDraw(BrCar *car, int lodBias)
     gDPSetColorDither(D_8028A858++, 0xC0);
     gDPSetHilite1Tile(D_8028A858++, 0, (BrHilite *)hilite, 64, 64);
     if (D_8028AB08->dl[lod][9] != 0) {
-      G(0x06000000, D_8028AB08->dl[lod][9]);
+      gSPDisplayList(D_8028A858++, D_8028AB08->dl[lod][9]);
     }
-    G(0xBA000602, D_8028A8A0);
+    gDPSetColorDither(D_8028A858++, D_8028A8A0);
   }
-  G(0xE7000000, 0);
-  G(0xBA001402, 0x100000);
-  G(0xB7000000, (D_8028DDCC == 0 ? 0 : 0x80000) | 0x40000);
-  G(0xBB000001, 0x08001000);
-  G(0xBA000C02, D_8028A898);
-  G(0xFC167E2C, 0x55FEF379);
+  gDPPipeSync(D_8028A858++);
+  gDPSetCycleType(D_8028A858++, 0x100000);
+  gSPSetGeometryMode(D_8028A858++, (D_8028DDCC == 0 ? 0 : 0x80000) | 0x40000);
+  gSPTexture(D_8028A858++, 0x0800, 0x1000, 0, 0, 1);
+  gDPSetTextureFilter(D_8028A858++, D_8028A898);
+  gDPSetCombine(D_8028A858++, 0x167E2C, 0x55FEF379);
   if (D_8028AA78 != 0) {
     if (tunnel != 0) {
       gDPSetEnvColor(D_8028A858++, D_8028AB20, D_8028AB24, D_8028AB28, (D_8028AB2C >> 3) + 0xDF);
@@ -747,37 +747,36 @@ void BrCarDraw(BrCar *car, int lodBias)
                          0, 0, 5, 7, 15, 15);
   gDPLoadSync(D_8028A858++);
   gDPLoadTLUT_pal16(D_8028A858++, 0, D_8028C318[D_8028C32C[D_8028C328 * 2 + *(int *)car->pad1dc8]]);
-  G(0xE7000000, 0);
-  G(0xBA000E02, 0x8000);
+  gDPSetTextureLUT(D_8028A858++, 0x8000);
   scroll = 0x1F - (0x40 - (int)(D_8028AAF0->heading * tw * D_802A9EE0));
   gDPSetTileSize(D_8028A858++, 0, scroll + 2, 2, scroll + 0x7E, 0x1FE);
-  G(0xE7000000, 0);
-  G(0xBC00000A, 0);
-  G(0xBC00040A, 0);
-  G(0xBC00200A, 0);
-  G(0xBC00240A, 0);
-  G(0x03840010, reflect);
-  G(0x03820010, reflect + 0x10);
+  gDPPipeSync(D_8028A858++);
+  gMoveWd(D_8028A858++, 0x0A, 0x00, 0);
+  gMoveWd(D_8028A858++, 0x0A, 0x04, 0);
+  gMoveWd(D_8028A858++, 0x0A, 0x20, 0);
+  gMoveWd(D_8028A858++, 0x0A, 0x24, 0);
+  gSPLookAtX(D_8028A858++, reflect);
+  gSPLookAtY(D_8028A858++, reflect + 0x10);
   if (D_8028AB08->dl[lod][4] != 0) {
-    G(0x06000000, D_8028AB08->dl[lod][4]);
+    gSPDisplayList(D_8028A858++, D_8028AB08->dl[lod][4]);
   }
   if ((D_8028DDC8 != 0 || car->x2068 != 0) && D_8028AB08->dl[lod][9] != 0) {
-    G(0x06000000, D_8028AB08->dl[lod][9]);
+    gSPDisplayList(D_8028A858++, D_8028AB08->dl[lod][9]);
   }
-  G(0xBD000000, 0);
-  G(0xB6000000, 0x40000);
-  G(0xBC00000A, colA);
-  G(0xBC00040A, colA);
-  G(0xBC00200A, colB);
-  G(0xBC00240A, colB);
-  G(0xBA000C02, D_8028A898);
-  G(0xBA000E02, 0);
+  gSPPopMatrix(D_8028A858++, 0);
+  gSPClearGeometryMode(D_8028A858++, 0x40000);
+  gMoveWd(D_8028A858++, 0x0A, 0x00, colA);
+  gMoveWd(D_8028A858++, 0x0A, 0x04, colA);
+  gMoveWd(D_8028A858++, 0x0A, 0x20, colB);
+  gMoveWd(D_8028A858++, 0x0A, 0x24, colB);
+  gDPSetTextureFilter(D_8028A858++, D_8028A898);
+  gDPSetTextureLUT(D_8028A858++, 0);
   if (car->colour[3] != 2) {
     BrCarDrawWheels(car);
   }
-  G(0xE7000000, 0);
-  G(0xBA001402, 0);
-  G(0xFC121824, 0xFF33FFFF);
+  gDPPipeSync(D_8028A858++);
+  gDPSetCycleType(D_8028A858++, 0);
+  gDPSetCombine(D_8028A858++, 0x121824, 0xFF33FFFF);
   D_8028AA3C += *(int *)D_8028AB08;
 }
 
