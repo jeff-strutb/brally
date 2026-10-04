@@ -16,37 +16,41 @@ extern int     _DAT_104b167c;       /* had to LoadLibrary */
 extern int     _DAT_104b1680;       /* fell back to earpds */
 extern UINT    DAT_104b1620;        /* the registered window message */
 
-extern FARPROC DAT_104b15f8;
-extern FARPROC DAT_104b15fc;
-extern FARPROC DAT_104b1600;
-extern FARPROC DAT_104b1604;
-extern FARPROC DAT_104b1608;
-extern FARPROC DAT_104b1610;
-extern FARPROC DAT_104b1614;
-extern FARPROC DAT_104b1618;
-extern FARPROC DAT_104b161c;
-extern FARPROC DAT_104b1624;
-extern FARPROC DAT_104b1628;
-extern FARPROC DAT_104b162c;
-extern FARPROC DAT_104b1630;
-extern FARPROC DAT_104b1634;
-extern FARPROC DAT_104b1638;
-extern FARPROC DAT_104b163c;
-extern FARPROC DAT_104b1640;
-extern FARPROC DAT_104b1644;
-extern FARPROC DAT_104b1648;
-extern FARPROC DAT_104b164c;
-extern FARPROC DAT_104b1650;
-extern FARPROC DAT_104b1654;
+/* The order of these declarations is load-bearing: VC5 reassociates the
+ * thirty-one-term `|` null-test chain at the end of BrEarLoad and lays the
+ * terms out by symbol order, not by source order, so this sequence is what
+ * reproduces the original's test order (and its register plan). */
 extern FARPROC DAT_104b1658;
+extern FARPROC DAT_104b162c;
+extern FARPROC DAT_104b1628;
+extern FARPROC DAT_104b1608;
 extern FARPROC DAT_104b165c;
-extern FARPROC DAT_104b1660;
-extern FARPROC DAT_104b1664;
-extern FARPROC DAT_104b1668;
+extern FARPROC DAT_104b1614;
 extern FARPROC DAT_104b166c;
-extern FARPROC DAT_104b1670;
 extern FARPROC DAT_104b1674;
+extern FARPROC DAT_104b1668;
+extern FARPROC DAT_104b1654;
+extern FARPROC DAT_104b1630;
+extern FARPROC DAT_104b1670;
+extern FARPROC DAT_104b1648;
+extern FARPROC DAT_104b15fc;
 extern FARPROC DAT_104b1678;
+extern FARPROC DAT_104b1650;
+extern FARPROC DAT_104b163c;
+extern FARPROC DAT_104b1618;
+extern FARPROC DAT_104b1660;
+extern FARPROC DAT_104b1634;
+extern FARPROC DAT_104b1600;
+extern FARPROC DAT_104b161c;
+extern FARPROC DAT_104b164c;
+extern FARPROC DAT_104b1640;
+extern FARPROC DAT_104b1604;
+extern FARPROC DAT_104b1638;
+extern FARPROC DAT_104b1610;
+extern FARPROC DAT_104b1624;
+extern FARPROC DAT_104b1644;
+extern FARPROC DAT_104b15f8;
+extern FARPROC DAT_104b1664;
 extern char s_earias_dll_100a74e4[];
 extern char s_earpds_dll_100a74f0[];
 extern char s_EAR_Interactive_Around_Sound_100a7190[];
@@ -94,20 +98,11 @@ extern char s__EAR_DLL_UpdateEar_0_100a71b0[];
  * lea is duplicated into both arms and VC5 cross-jumps the copy body), the
  * pds arm is the if body; the thirty-one null tests are one bitwise `|`
  * chain in the order the draft prints them (`||` branches; VC5 keeps the
- * `|` chain branchless with sete/or).  RESIDUE: the chain's register plan --
- * the original loads its first two terms into edx/ebx and tests the
- * register-resident last-lookup value ninth; ours loads into ebx/edi and
- * tests it sixth.  Dead: the resident term at positions 10..16, a
- * right-associated chain, `== 0` / `!x` / `== NULL` terms, pairwise
- * grouping, a module-handle local (drops 29 insns), swapped arm order. */
+ * `|` chain branchless with sete/or).  The chain's emitted order follows
+ * the extern declaration order above, not the order the terms are written
+ * in (source-order and term-spelling probes were all inert). */
 /* @t4-pass 0x10017910 1 2026-09-13 probes 10 bytes 1306 insns 406 regions 3 rows 0 census no  (hand, fn.py variants: resident-term positions 10/11/12/14/16, right-assoc chain, == 0 / !x / == NULL terms, pairwise groups) */
 /* @t4-pass 0x10017910 2 2026-09-13 probes 14 bytes 1306 insns 406 regions 3 rows 0 census yes  (slot census: szName is the only frame object, usePds read once; fn.py variants: guard spellings, szName sizing, assignment-in-condition forms, arm order, return forms, chain indentation) */
-/* @t3 0x10017910 2026-09-13 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 1306/1306 insns 406/406 rows 0+0 regions 3 oracle EQUIVALENT
- * @t3-effort passes 2 zero-movement 1 2
- * residue is register colouring in the null-test chain (register-blind
- * multiset identical, 8+8 raw rows); dossier and dead list in the comment
- * above.  Do not reopen before the end-grind. */
 /* @implements 0x10017910 glide BrEarLoad */
 int BrEarLoad(int usePds)
 {
