@@ -64,7 +64,7 @@ extern float D_802A901C;
 extern unsigned char D_80307F00;
 extern int D_80307F01;
 extern char D_80316420;
-extern char D_8031B1E8;
+extern char D_8031B1E8[];
 typedef struct { char raw[0x68]; } BrPfs;              /* an OSPfs */
 typedef struct BrPfsState {    /* an OSPfsState, 0x20 bytes */
   unsigned int size;
@@ -119,14 +119,9 @@ int BrRumbleInsertPrompt(int anyPad)
 
 /* WHAT IT DOES: Probe every connected controller for a Rumble Pak: each one
  * that answers is marked present and its motor stopped.  Pak access is
- * flagged busy meanwhile.
- * RESIDUE (5): the flag slot's address.  The ROM adds i to the table base
- * before the stop call and keeps the sum in s2; ours keeps the base in s2 and
- * adds after the call.  A named pfs pointer and an integer-cast table address
- * (which stops IDO hoisting the base out of the loop) took it from 51. */
-/* @t4-pass 0x80214BEC 1 2026-10-03 compiles 121 best 5 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80214BEC 2 2026-10-03 compiles 121 best 5 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x80214BEC */
+ * flagged busy meanwhile.  The presence flags are a byte array: the flag's
+ * address is formed as &D_8031B1E8[i] before the stop call and held across
+ * it, as the ROM does. */
 /* @implements 0x80214BEC tgr BrRumbleProbe */
 void BrRumbleProbe(void)
 {
@@ -138,7 +133,7 @@ void BrRumbleProbe(void)
   for (i = 0; i < D_8026FF08; i++) {
     pfs = &D_8031A3F8[i];
     if (func_80262370(&D_80272D48, (int)pfs, i) == 0) {
-      flag = (char *)((int)&D_8031B1E8 + i);
+      flag = &D_8031B1E8[i];
       func_80261F20((int)pfs);
       *flag = 1;
     }
@@ -279,11 +274,11 @@ int BrCpakCheck(int kind, unsigned char quiet)
             state = 3;
           }
         } else {
-          (&D_8031B1E8)[D_80271FA8] = 0;
+          D_8031B1E8[D_80271FA8] = 0;
           state = 9;
         }
       } else if (D_802724F0 == 0) {
-        (&D_8031B1E8)[D_80271FA8] = 0;
+        D_8031B1E8[D_80271FA8] = 0;
         if ((&D_80316420)[D_80271FA8] == 0) {
           (&D_80316420)[D_80271FA8] = 1;
           memcpy(&D_803163E0[D_80271FA8 * 32], D_80369EC0[D_80271FA8].raw + 0xc, 32);
@@ -605,7 +600,7 @@ int BrCpakCheck(int kind, unsigned char quiet)
     if (BrRumbleInsertPrompt(0) != 0) {
       D_802724FC = 0;
       if (func_80262370(&D_80272D48, &D_8031A3F8[D_80271FA8], D_80271FA8) == 0) {
-        (&D_8031B1E8)[D_80271FA8] = 1;
+        D_8031B1E8[D_80271FA8] = 1;
       }
       state = 12;
     }
