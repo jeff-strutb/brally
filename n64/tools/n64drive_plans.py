@@ -175,6 +175,16 @@ plan('rumble_loadsave', 'A Rumble Pak in controller 1: Load/Save, every row trie
      [('tap', 'B', 0, 4, 120)], 3000, rumble=True)
 
 
+# The Controller Pak manager: START held at power-on with a pak in (the
+# game's pad bit 0x4000 is START).
+plan('pak_manager', 'An empty Controller Pak in controller 1 and START held at power-on: the pak '
+     'manager (the sixteen note slots, the pages line), the cursor tried, A and B pressed, then '
+     'START back to the title and on into the main menu.',
+     [('hold', 0, 'START', 0, 0, 30), ('wait', 240), ('tap', 'DD', 0, 4, 30), ('tap', 'DU', 0, 4, 30),
+      ('tap', 'A', 0, 4, 60), ('tap', 'B', 0, 4, 60), ('tap', 'A', 0, 4, 60), ('wait', 120),
+      ('tap', 'START', 0, 4, 240), ('wait', 300), ('tap', 'START', 0, 4, 200)], 2000, pak=True)
+
+
 # The paint shop explored by a seeded random walk of the cursor: strokes with
 # A held, presses at each stop, the other buttons now and then.
 plan('paint_walk', 'Paint shop, car 1: the cursor walked at random over the screen (seed 1), '
@@ -234,6 +244,79 @@ def _paint_popups(d):
         yield from d.tap('CR', hold=2, gap=6)
         yield from d.tap('CD', hold=2, gap=6)
         yield from d.tap('B' if n == 2 else 'A', hold=2, gap=20)
+
+
+def _paint_shapes(d):
+    """Every rectangle and oval style drawn on the decal, with the dashed
+    outline that follows the cursor between the two clicks: each tool
+    double-clicked for its style chooser, the style stepped to with the
+    d-pad, a first click on the canvas, a slow drag, a second click.  Then
+    the text tool: a click on the canvas opens the keyboard, three keys, a
+    delete, the close key, and a click stamps the text."""
+    def rect(va):
+        return [d.s32(va + 4 * k) for k in range(4)]
+
+    def centre(r):
+        return r[0] + r[2] // 2, r[1] + r[3] // 2
+
+    def click():
+        yield from d.idle(2)
+        yield from d.tap('A', hold=2, gap=8)
+
+    def double_click(r):
+        yield from d.cursor_to(*centre(r))
+        yield from d.idle(2)
+        yield from d.tap('A', hold=2, gap=2)
+        yield from d.tap('A', hold=2, gap=20)
+
+    cx, cy, cw, ch = rect(0x8028DB94)          # the decal canvas on screen
+    spots = [(cx + cw * a // 8, cy + ch * b // 8) for a, b in
+             ((1, 1), (4, 3), (5, 1), (7, 4), (1, 4), (3, 7), (5, 5), (7, 7))]
+    k = 0
+    for tool in (5, 6):
+        for style in range(4):
+            yield from double_click(rect(0x80369CD8 + 16 * tool))
+            for _ in range(8):
+                if d.s32(0x8028DBB8) == style:
+                    break
+                yield from d.tap('DR', hold=2, gap=8)
+            yield from d.tap('A', hold=2, gap=20)
+            a, b = spots[k % 8], spots[(k + 3) % 8]
+            k += 1
+            yield from d.cursor_to(*a)
+            yield from click()
+            yield from d.cursor_to((a[0] + b[0]) // 2, (a[1] + b[1]) // 2)
+            yield from d.idle(10)
+            yield from d.cursor_to(*b)
+            yield from d.idle(10)
+            yield from click()
+            yield from d.idle(20)
+    text = rect(0x80369CD8 + 16 * 4)
+    yield from d.cursor_to(*centre(text))
+    yield from click()
+    yield from d.idle(20)
+    yield from d.cursor_to(cx + cw // 2, cy + ch // 2)
+    yield from click()
+    yield from d.idle(20)
+    for key in (10, 11, 12, 47, 13, 49):
+        kx, ky = d.s32(0x8028D540 + 0x1C * key), d.s32(0x8028D540 + 0x1C * key + 4)
+        yield from d.cursor_to(kx + 6, ky + 6)
+        yield from d.idle(6)
+        yield from click()
+        yield from d.idle(10)
+    yield from d.cursor_to(cx + cw // 3, cy + ch // 3)
+    yield from d.idle(20)
+    yield from click()
+    yield from d.idle(30)
+
+
+plan('paint_shapes', 'Paint shop, car 1: the rectangle tool in its four styles (filled, frame, '
+     'rounded filled, rounded frame) and the oval tool in its four (filled, frame, disc, circle), '
+     'each with the dashed outline dragged between the two clicks, then the text tool\'s keyboard '
+     'typed into, closed and the text stamped.',
+     [('boot',), ('title',), ('menu', 'TOP GEAR', MAIN['paintshop']), ('wait', 120),
+      ('tap', 'A', 0, 4, 90), ('until_mode', 0x80243260, 900), ('wait', 60),
+      ('gen', _paint_shapes), ('wait', 60)], 6000)
 
 
 plan('paint_popups', 'Paint shop, car 1: the text tool double-clicked (the text-style chooser and '

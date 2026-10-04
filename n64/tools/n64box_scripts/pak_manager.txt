@@ -1,0 +1,19 @@
+# An empty Controller Pak in controller 1 and START held at power-on: the pak manager (the sixteen note slots, the pages line), the cursor tried, A and B pressed, then START back to the title and on into the main menu.
+#
+# Written by n64/tools/n64drive.py (plan 'pak_manager'); the driver saw:
+frames 2001
+pak
+0 START
+60 -
+540 DD
+548 -
+608 DU
+616 -
+676 A
+684 -
+804 B
+812 -
+932 A
+940 -
+1300 START
+1308 -

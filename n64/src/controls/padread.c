@@ -53,8 +53,8 @@ void BrCheatInput(BrPadMap *p);
 /* WHAT IT DOES: Turn a controller's read into the game's pad record.  A
  * controller that does not answer reads as nothing (and as absent when the
  * error is "no controller").  The buttons map to the game's own bits
- * (d-pad 1/2/4/8, A 0x10, B 0x20, C 0x100-0x800, Z 0x1000, R 0x2000,
- * L 0x4000, start 0x8000); in a race the control layout (0-4) then adds the
+ * (d-pad 1/2/4/8, A 0x10, B 0x20, C 0x100-0x800, L 0x1000, R 0x2000,
+ * start 0x4000, Z 0x8000); in a race the control layout (0-4) then adds the
  * driving bits (accelerate 0x10000, brake 0x20000, the gears, the look-back
  * and the horn) and sets the steering from the stick, or from the d-pad in
  * layout 2.  A lap being recorded stores the steering and driving bits two
