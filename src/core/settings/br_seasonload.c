@@ -28,7 +28,7 @@
  *    install block are block-scoped and share frame slots;
  *  - fread's import address is loaded once, in the prologue, for both paths.
  *
- * PARKED 2026-09-05 at 879/877 B (multiset: 1 push imm vs push reg, one
+ * (Matched 2026-10-03 in BrSeasonLoad_100695C0.cpp.)  PARKED 2026-09-05 at 879/877 B (multiset: 1 push imm vs push reg, one
  * epilogue merged, +1 xor).  Two residues, both pointing at the C++ front
  * end: (1) BLOCK LAYOUT -- the original lays the open block AFTER the
  * install path's epilogue and enters install by a backward `je`; every C
@@ -65,98 +65,7 @@ extern int  DAT_10af3cd8, DAT_10af3cdc, DAT_10af3ce0, DAT_10af3ce4, DAT_10af3ce8
 extern char DAT_10af3cf0[];                   /* the save's display name   */
 extern char DAT_10af6858[];                   /* its mirror                */
 
-/* WHAT IT DOES: loads a season save (or, in mode 0, the current in-game
- * options handed over on an open file) into the staging buffer, then either
- * installs it on both players and reads the file's trailing option words and
- * display name (mode 4), or installs it while preserving the other player's
- * five standing words (any other mode).  Returns 1 on success; when the file
- * cannot be opened or fails its magic/checksum checks it returns whether the
- * second argument was non-zero. */
-/* @t4-pass 0x100695C0 1 2026-09-07 probes 61 bytes 871 insns 288 regions 3 rows 5 census yes  (tools/crank.py) */
-/* @t4-pass 0x100695C0 2 2026-09-07 probes 61 bytes 871 insns 288 regions 3 rows 5 census yes  (tools/crank.py) */
-/* @t4-pass 0x100695C0 3 2026-09-13 probes 61 bytes 879 insns 280 regions 2 rows 13 census yes  (tools/crank.py) */
-/* @t4-pass 0x100695C0 4 2026-09-20 probes 12 bytes 879 insns 280 regions 2 rows 13 census yes  (failure-return respelling arg&0xff?1:0 scores worse 3+10->6+13; C `(char)arg!=0` stays) */
-/* @t4-pass 0x100695C0 5 2026-09-20 probes 10 bytes 879 insns 280 regions 2 rows 13 census no   (baseline reconfirm; the two residues are C++-front-end block layout + bool-return, per header) */
-/* @t3 0x100695C0 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 879/877 insns 280/287 rows 10+3 regions 2 oracle EQUIVALENT
- * @t3-effort passes 5 zero-movement 4 5
- * Residue is C++-front-end codegen only: the original lays the open block
- * after the install epilogue and enters by a backward je (every C spelling
- * lays it inline), and the failure path is a C++ bool return with no eax
- * zeroing where C zeros eax first (a .cpp of this body scores worse).  A5
- * oracle EQUIVALENT is the completeness proof (rule 12).  Do not reopen
- * before the end-grind. */
-/* @implements 0x100695C0 glide BrSeasonLoad */
-char BrSeasonLoad(int mode, int arg)
-{
-    FILE *fp;
-
-    /* The open block is the ELSE arm and never falls through -- every path
-     * in it returns or `goto install`s -- so VC5 defers it past the epilogue
-     * and reaches the install path by a backward `je`, as the original does.
-     * As a then-arm with the mode-0 code as fallthrough, or as `goto open` to
-     * a label after the return, it is laid inline instead. */
-    if (mode == 0) {
-        fp = (FILE *)arg;
-        memcpy(DAT_117a6188, DAT_10ac5a48, 0x53 * 4);
-    } else {
-        unsigned int sum;
-
-        fp = fopen(DAT_117a6030, DAT_1007b0e0);
-        if (fp == NULL)
-            return (char)arg != 0;
-        if (fread(DAT_117a6188, 1, 4, fp) == 4
-            && strncmp((char *)DAT_117a6188, DAT_100b559c, 4) == 0
-            && fread(&sum, 1, 4, fp) == 4
-            && fread(DAT_117a6188, 1, 0x200, fp) == 0x200
-            && sum == FUN_10001000(FUN_10001000(0, 0, 0), DAT_117a6188, 0x200))
-            goto install;
-        fclose(fp);
-        return (char)arg != 0;
-    }
-install:
-    if (mode == 4) {
-        long n;
-
-        if (BrPairBufReset() == 0)
-            return 0;
-        if (DAT_10af2094[0].pBlock == NULL || DAT_10af4bfc == NULL)
-            return 0;
-        memcpy(DAT_10af2094[0].pBlock, DAT_117a6188, 0x53 * 4);
-        memcpy(DAT_10af4bfc, DAT_117a6188, 0x53 * 4);
-        fseek(fp, 0, 2);
-        n = ftell(fp);
-        fseek(fp, n - 0x94, 0);
-        fread(&DAT_10af3cd8, 4, 1, fp);
-        fread(&DAT_10af3cdc, 4, 1, fp);
-        fread(&DAT_10af3ce0, 4, 1, fp);
-        fread(&DAT_10af3ce4, 4, 1, fp);
-        fread(&DAT_10af3ce8, 4, 1, fp);
-        fseek(fp, 0, 2);
-        n = ftell(fp);
-        fseek(fp, n - 0x80, 0);
-        fread(DAT_10af3cf0, 1, 0x80, fp);
-        memcpy(DAT_10af6858, DAT_10af3cf0, 0x80);
-    } else {
-        int  save[5];
-        int *p;
-
-        p = DAT_10af2094[DAT_105ccbc4 ^ 1].pBlock;
-        save[0] = p[0x3e];
-        save[1] = p[0x3f];
-        save[2] = p[0x40];
-        save[3] = p[0x41];
-        save[4] = p[0x42];
-        memcpy(DAT_10af2094[0].pBlock, DAT_117a6188, 0x53 * 4);
-        memcpy(DAT_10af4bfc, DAT_117a6188, 0x53 * 4);
-        DAT_10af2094[DAT_105ccbc4 ^ 1].pBlock[0x3e] = save[0];
-        DAT_10af2094[DAT_105ccbc4 ^ 1].pBlock[0x3f] = save[1];
-        DAT_10af2094[DAT_105ccbc4 ^ 1].pBlock[0x40] = save[2];
-        DAT_10af2094[DAT_105ccbc4 ^ 1].pBlock[0x41] = save[3];
-        DAT_10af2094[DAT_105ccbc4 ^ 1].pBlock[0x42] = save[4];
-    }
-    if (mode != 0)
-        fclose(fp);
-    return 1;
-}
+/* BrSeasonLoad (0x100695C0) is matched in the C++ lane, for its bool return:
+ * src/core/settings/BrSeasonLoad_100695C0.cpp.  The declarations above stay
+ * for the Mac port spec, which supplies its own body. */
 
