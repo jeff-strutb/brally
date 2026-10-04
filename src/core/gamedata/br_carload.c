@@ -88,6 +88,11 @@ void BrSub10037740(void *pCar, void *pArg)
  * were certified at (probed across every gamedata module, 2026-09-25).
  * ========================================================================== */
 #include <stdint.h>
+/* br_race.h is not used here: the byte order VC5 gives the halfword loads
+ * of BrRcaSwapMesh's records follows the number of symbols declared ahead
+ * of it (214 or more extra reproduce the original), and this header supplies
+ * them. */
+#include "br_race.h"
 #include <string.h>
 void BrSegPtrFixup(uint32_t *p);
 extern int32_t g_br675540;                 /* 0x10675540 */
@@ -237,15 +242,6 @@ void BrRcaFixupRecord(void *pRec)
  * processed. */
 /* @t4-pass 0x10018D50 1 2026-09-07 probes 58 bytes 180 insns 71 regions 5 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10018D50 2 2026-09-07 probes 58 bytes 180 insns 71 regions 5 rows 0 census yes  (tools/crank.py) */
-/* @t3 0x10018D50 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 180/180 insns 71/71 rows 0+0 regions 5 oracle UNCLASSIFIED
- * @t3-effort passes 2 zero-movement 1 2
- * residue is register colouring only: identical register-blind instruction
- * multiset (rows 0+0), 5 masked regions;
- * every row pairs under t3.py's canonical classes.  Effort: 2 counted
- * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
- * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x10018D50 glide BrRcaSwapMesh */
 void BrRcaSwapMesh(void *pv)
 {
@@ -256,6 +252,7 @@ void BrRcaSwapMesh(void *pv)
 
     if (p == NULL)
         return;
+    i = 0;
 
     *(uint16_t *)(p + 2) = (uint16_t)(p[3] | (p[2] << 8));
     v = (((((uint32_t)p[4] << 8) | p[5]) << 8) | p[6]) << 8 | p[7];
@@ -264,14 +261,13 @@ void BrRcaSwapMesh(void *pv)
         return;
 
     e = p + 0xA;
-    i = 0;
     do {
-        v = (((((uint32_t)e[-2] << 8) | e[-1]) << 8) | e[0]) << 8 | e[1];
-        *(uint32_t *)(e - 2) = v;
-        v = (((((uint32_t)e[2] << 8) | e[3]) << 8) | e[4]) << 8 | e[5];
-        *(uint32_t *)(e + 2) = v;
-        v = (((((uint32_t)e[6] << 8) | e[7]) << 8) | e[8]) << 8 | e[9];
-        *(uint32_t *)(e + 6) = v;
+        {
+            uint32_t *q = (uint32_t *)(e - 2);
+            q[0] = (((((uint32_t)e[-2] << 8) | e[-1]) << 8) | e[0]) << 8 | e[1];
+            q[1] = (((((uint32_t)e[2] << 8) | e[3]) << 8) | e[4]) << 8 | e[5];
+            q[2] = (((((uint32_t)e[6] << 8) | e[7]) << 8) | e[8]) << 8 | e[9];
+        }
         e += 0xC;
         i += 1;
     } while (i < (int)*(unsigned short *)(p + 2));

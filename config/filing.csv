@@ -1396,3 +1396,4 @@ glide_va,name,module,basis,file
 0x1001E080,BrGlInstall,drawing,filed,src/core/drawing/br_dlglide.c
 0x10029420,BrGbiTexScanSetImg,drawing,filed,src/core/drawing/br_gbihandlers.c
 0x1001C9D0,BrSelLookup,gamedata,filed,src/core/gamedata/br_sellookup.c
+0x10018D50,BrRcaSwapMesh,gamedata,filed,src/core/gamedata/br_carload.c
