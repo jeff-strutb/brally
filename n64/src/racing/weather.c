@@ -128,7 +128,7 @@ void BrWeatherStep(void)
     dz = cur[2] - D_803634B8[n][2];
     D_8028C810 = sqrtf(dx * dx + dy * dy + dz * dz) / D_8028AAD8;
     if (D_8028C810 > 0.27777777f) {
-      D_8028C814 = sqrtf(D_8028C810 * 3.6f) * 0.27777777f / D_8028C810;
+      D_8028C814 = sqrtf(D_8028C810 * 3.6000001f) * 0.27777777f / D_8028C810;
       D_8028C810 = D_8028C810 * D_8028C814;
       dx = dx * D_8028C814;
       dy = dy * D_8028C814;
