@@ -79,6 +79,11 @@ def mutate(body, rng):
     for m in re.finditer(r'(?<![\w\)\]])(%s)\s*(%s)\s*(%s)(?![\w\(\[])' % (OPERAND, COMM, OPERAND), body):
         if m.group(2) in ('&', '|') and (m.group(1).startswith('&') or m.group(3).startswith('&')):
             continue
+        # an operand must be a whole one: not the tail of an index or member
+        # (`a[i].f + 4` must not become `a[4 + i].f`), brackets balanced
+        if body[:m.start()].rstrip()[-1:] in ('[', '.', '>') or any(
+                g.count('[') != g.count(']') for g in (m.group(1), m.group(3))):
+            continue
         # only a whole operation: with another arithmetic operator on either
         # side, swapping would re-associate (a + b + c -> a + c + b), which
         # changes float rounding
