@@ -30,7 +30,7 @@ BrVec3d *BrVec3dNormalise(BrVec3d *pV);
  * WARNING: the OUTPUT IS THE THIRD ARGUMENT here, unlike BrVec3Cross in
  * br_vec.h which takes the destination first. Verified from the original:
  * edx=arg1=a, ecx=arg2=b, eax=arg3=out. Do not "harmonise" these. */
-void BrVec3dCross(const BrVec3d *pA, const BrVec3d *pB, BrVec3d *pOut);
+BrVec3d *BrVec3dCross(const BrVec3d *pA, const BrVec3d *pB, BrVec3d *pOut);
 
 /* 0x10030DE0  pack a normalised value into a signed byte.
  *

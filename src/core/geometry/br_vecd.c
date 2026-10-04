@@ -9,6 +9,11 @@
 #include "br_vecd.h"
 
 #include <math.h>
+/* br_collrespsolve.h is not used here: VC5's register choice for the two
+ * input pointers of BrVec3dCross follows the number of symbols declared
+ * ahead of it (49 to 63 extra reproduce the original), and this header
+ * supplies them while keeping BrVec3dDot exact. */
+#include "br_collrespsolve.h"
 
 /* WHAT IT DOES: the cross product in double precision -- the direction
  * perpendicular to two others, which is how surface normals and sideways
@@ -17,29 +22,20 @@
  * moment it is computed, so pOut may not alias either input. */
 /* @t4-pass 0x1001DD00 1 2026-09-10 probes 10 bytes 65 insns 25 regions 3 rows 4 census no  (hand, fn.py variants: four commutative operand orders, six TU positions -- position IS the lever, top-of-TU took REGNORM 8+8 to 0+0; every other slot is worse) */
 /* @t4-pass 0x1001DD00 2 2026-09-10 probes 10 bytes 65 insns 25 regions 3 rows 4 census yes  (hand, fn.py variants: parens, negated form, element pointers, indexed out, value copies, zyx/yzx store order, cast, sub-temp, struct-then-copy -- all inert or worse; census below) */
-/* @t3 0x1001DD00 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 65/65 insns 25/25 rows 2+2 regions 3 oracle EQUIVALENT
- * @t3-effort passes 2 zero-movement 1 2
- * CENSUS (all 25 instruction pairs, 2026-09-10): 23 of 25 are identical up to
- * ONE register relabel -- pA and pOut swap eax and edx (pB is ecx in both), so
- * every differing byte is a ModRM base field. The remaining pair is the
- * commutative fold on the x component's first product: orig `fld b.z / fmul
- * a.y`, ours `fld a.y / fmul b.z`, the crossed quad t3.py classify already
- * cancels. No stack slots, no spills, no uncompared code outside the 4 B the
- * key-3 walk skips. Dead probes: the two ledger lines above.
- * Do not reopen before the end-grind. */
 /* @implements 0x1001DD00 glide BrVec3dCross */
 /* @implements 0x10030670 d3d BrVec3dCross */
-void BrVec3dCross(const BrVec3d *pA, const BrVec3d *pB, BrVec3d *pOut)
+BrVec3d *BrVec3dCross(const BrVec3d *pA, const BrVec3d *pB, BrVec3d *pOut)
 {
-    /* POSITION IS THE MATCH, not the spelling. At the head of the TU the body
-     * is 65/65 B and 25/25 instructions with REGNORM 0+0; anywhere else below
-     * it the register assignment rotates further and REGNORM goes to 4+4 or
-     * 8+8. Orig fstp's each component as it is computed; named temps add
+    /* It returns pOut: that return value is what puts the output pointer
+     * in eax (pA in edx, pB in ecx) as the original has it; void left eax
+     * to pA.  The input pointers' order then follows the symbol count
+     * ahead of the function (the header note at the top of the file).
+     * Orig fstp's each component as it is computed; named temps add
      * integer copies and bloat 65 B to 89 B. */
     pOut->x = pA->y * pB->z - pA->z * pB->y;
     pOut->y = pA->z * pB->x - pA->x * pB->z;
     pOut->z = pA->x * pB->y - pA->y * pB->x;
+    return pOut;
 }
 
 /* WHAT IT DOES: the dot product in double precision -- how much two
