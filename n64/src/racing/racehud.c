@@ -128,6 +128,9 @@ void BrRaceDrawLayers(void)
  * with x, y, the key and the frame at 0xEC..0xD8 and the needle pointer and
  * radii at 0x7C..0x74 (wide unused gaps between), where ours is 0xD8 with
  * register choices following. */
+/* @t4-pass 0x80237980 1 2026-10-03 compiles 120 best 811 moved 2  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80237980 2 2026-10-03 compiles 120 best 811 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80237980 */
 /* @implements 0x80237980 tgr BrHudDialDraw */
 void BrHudDialDraw(void)
 {
@@ -149,8 +152,8 @@ void BrHudDialDraw(void)
   unsigned short *src;
   unsigned short *dst;
 
-  x = 296 - D_8028C7A8[D_8028AAEC].w;
   y = D_8031B2C8[D_8028AAEC].y + D_8031B2C8[D_8028AAEC].h - D_8028C7A8[D_8028AAEC].h - 4;
+  x = 296 - D_8028C7A8[D_8028AAEC].w;
   frame = 0;
   if (0.0f <= D_8028AAF0->xe38) {
     frame = D_8028AAF0->xe40 + 1;
@@ -205,7 +208,7 @@ draw:
   rev = (float)v + D_8028AAF0->xdf4;
   if (D_8028AE0C[D_8028AAF0->kind].dialMode == 0) {
     q = D_80361B30[D_8028A85C][D_8028AAEC];
-    if (D_8028AB0C == 2) {
+    if (2 == D_8028AB0C) {
       x += D_8028AE0C[D_8028AAF0->kind].needleX * 3 / 4;
       y += D_8028AE0C[D_8028AAF0->kind].needleY * 3 / 4;
       tip = 15.0f;
@@ -263,8 +266,8 @@ draw:
     first = (0x100 - D_8028AE0C[D_8028AAF0->kind].needleX) & ~3;
     BrRomRead(&D_80361930[first], D_8028AE0C[D_8028AAF0->kind].dialRom + D_8028AA80 * 0x200 + first * 2,
               (0x100 - first) * 2);
-    first = 0x100 - D_8028AE0C[D_8028AAF0->kind].needleX;
     lit = rev / 8000.0 * (D_8028AE0C[D_8028AAF0->kind].needleX + 1) - 0.5f;
+    first = 0x100 - D_8028AE0C[D_8028AAF0->kind].needleX;
     end = first;
     if (lit >= 0) {
       end = lit + first;

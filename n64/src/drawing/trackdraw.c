@@ -190,6 +190,9 @@ void BrCopy16(void *dst, unsigned int src);
  * triangles wholly off one edge dropped -- until the shadow buffers run out.
  * pass picks the second render mode (no lit fog on the first pass, in rain
  * or at night).  PC twin: BrObjDlBuild. */
+/* @t4-pass 0x80234050 1 2026-10-03 compiles 120 best 950 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80234050 2 2026-10-03 compiles 120 best 950 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80234050 */
 /* @implements 0x80234050 tgr BrTrackShadowDraw */
 void BrTrackShadowDraw(int idx, unsigned int cars, int pass)
 {
@@ -496,6 +499,9 @@ int BrDrawSortCmp(BrDrawSortItem *a, BrDrawSortItem *b)
  * build the reflection look-at and the light (the sun, or at night a light
  * hung in front of the car), and clamp each car's screen extent to the
  * view. */
+/* @t4-pass 0x80234FF8 1 2026-10-03 compiles 116 best 689 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80234FF8 2 2026-10-03 compiles 116 best 689 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80234FF8 */
 /* @implements 0x80234FF8 tgr BrTrackDrawSetup */
 void BrTrackDrawSetup(void)
 {
