@@ -348,6 +348,9 @@ void guLookAtHiliteF(float mf[4][4], int l, void *h, float xEye, float yEye, flo
  * into their palettes, the near details, the shadow decal when the light is
  * right, the chrome pass with its scrolling environment map, the windows, and
  * the wheels.  PC twin: BrCarDrawVehicle. */
+/* @t4-pass 0x80230554 1 2026-10-03 compiles 120 best 2266 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80230554 2 2026-10-03 compiles 120 best 2266 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80230554 */
 /* @implements 0x80230554 tgr BrCarDraw */
 void BrCarDraw(BrCar *car, int lodBias)
 {
