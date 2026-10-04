@@ -261,12 +261,9 @@ float cosf(float x);
  * two axle velocities set the body's forward, lateral and yaw velocity
  * (when either axle ran), and the visual roll eases toward the side
  * force.  The PC twin is BrCarPhysDriveMatch (br_cardrive.c).
- * RESIDUE (976): the ROM keeps the body pointer and most locals in its
- * 0x158 frame (reloading the parameter after every store) while still
- * allocating some floats across blocks; ours allocates normally.  It is
- * not the -Olimit fallback (that gives 1282 instructions to the ROM's 993)
- * nor -O1.  The frame has a dead {1, 0, 0} initialised array (at 0x98,
- * from .data 0x802A4B58) in the slide-flag block. */
+ * RESIDUE (965): the ROM keeps the body pointer and most locals in its
+ * 0x158 frame, reloading after every store; not -Olimit, not -O1.  A dead
+ * {1, 0, 0} array (frame 0x98) sits in the slide-flag block. */
 /* @t4-pass 0x80259D14 1 2026-10-03 compiles 26 best 966 moved 10  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80259D14 2 2026-10-03 compiles 26 best 965 moved 1  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80259D14 3 2026-10-03 compiles 31 best 965 moved 0  (n64/tools/n64permute.py) */
