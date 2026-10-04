@@ -1570,10 +1570,8 @@ void BrPaintFrameRoundRect(int sx0, int sy0, int sx1, int sy1)
  * two 72 apart, the last two each after its partner's right edge, 52 apart)
  * and the chosen style's name, A (select) and B (cancel) under it; left and
  * right move the choice round, A keeps it and B restores the previous one,
- * both closing the box.
- * RESIDUE (84): after a left or right move the ROM rebuilds the pad's
- * address from fresh lui pairs (as in BrPaintStyleSelect); ours reuses the
- * saved base and index registers. */
+ * both closing the box.  The pad record is re-addressed at every test
+ * (no pad or pressed local), as the ROM rebuilds its address each time. */
 /* @implements 0x80250698 tgr BrPaintOvalStyleSelect */
 void BrPaintOvalStyleSelect(void)
 {
@@ -1583,8 +1581,6 @@ void BrPaintOvalStyleSelect(void)
   int y;
   int bx;
   BrPaintNames names;
-  BrPadRec *pad;
-  unsigned int pressed;
 
   names = D_8028DD04;
   y = 323 - D_8028D0B0.w;
@@ -1625,33 +1621,27 @@ void BrPaintOvalStyleSelect(void)
   BrImageDrawAt(&D_8028D0B0, 214, y);
   BrImageDrawAt(&D_8028D0E0, bx, y);
   BrPadStickToButtons(&PADS[D_8028DBBC]);
-  pad = &PADS[D_8028DBBC];
-  pressed = pad->pressed;
-  if (pressed & 4) {
-    BrPadConsume((unsigned int *)pad, 4);
+  if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 4) {
+    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 4);
     if (D_8028DBB8 == 0) {
       D_8028DBB8 = 3;
     } else {
       D_8028DBB8--;
     }
-    pad = &PADS[D_8028DBBC];
-    pressed = pad->pressed;
-  } else if (pressed & 1) {
-    BrPadConsume((unsigned int *)pad, 1);
+  } else if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 1) {
+    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 1);
     if (D_8028DBB8 == 3) {
       D_8028DBB8 = 0;
     } else {
       D_8028DBB8++;
     }
-    pad = &PADS[D_8028DBBC];
-    pressed = pad->pressed;
   }
-  if (pressed & 0x10) {
-    BrPadConsume((unsigned int *)pad, 0x10);
+  if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 0x10) {
+    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 0x10);
     D_8028CF8C = D_8028DBB8;
     D_8028DBE0 = 0;
-  } else if (pressed & 0x20) {
-    BrPadConsume((unsigned int *)pad, 0x20);
+  } else if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 0x20) {
+    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 0x20);
     D_8028DBE0 = 0;
   }
 }

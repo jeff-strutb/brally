@@ -176,7 +176,7 @@ Functions: T2 21, T3 11, T4 80.
 | `8024F8CC` | `BrPaintFrameRect` | T4 |
 | `8024FBC8` | `BrPaintFillRoundRect` | T2 |
 | `8024FEB8` | `BrPaintFrameRoundRect` | T2 |
-| `80250698` | `BrPaintOvalStyleSelect` | T2 |
+| `80250698` | `BrPaintOvalStyleSelect` | T4 |
 | `80250B58` | `BrPaintFillOval` | T2 |
 | `80250FCC` | `BrPaintFrameOval` | T2 |
 | `8025159C` | `BrPaintDisc` | T2 |
