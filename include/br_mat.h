@@ -55,8 +55,9 @@ void BrMat4Identity(BrMat4 *pM);
  * store, and every zero slot is an explicit store, so the layout below is
  * read directly off the original rather than inferred.
  *
- * Returns 0 on success, non-zero if the frustum is degenerate (in which case
- * the matrix is left untouched, exactly as the original does). */
+ * A degenerate frustum leaves the matrix untouched and returns printf's
+ * result.  The success path returns no value at all: the original falls off
+ * the end with the matrix pointer in eax. */
 int BrMat4Frustum(BrMat4 *pM, float l, float r, float b, float t,
                   float n, float f);
 

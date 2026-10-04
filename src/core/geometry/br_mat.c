@@ -179,17 +179,6 @@ void BrMat4Identity(BrMat4 *pM)
  * untouched and reports failure rather than producing nonsense. */
 /* @t4-pass 0x10029EC0 1 2026-09-10 probes 12 bytes 288 insns 91 regions 2 rows 0 census no  (hand, fn.py variants: difference-temp order, no temps, guard operand order, -1.0f store position, an (n+n) temp, a BrMat4 * local, a zero local, float * and float (*)[4] element pointers, a goto-chained guard; all inert or worse) */
 /* @t4-pass 0x10029EC0 2 2026-09-10 probes 11 bytes 288 insns 91 regions 2 rows 0 census yes  (hand, position sweep over every slot in br_mat.c plus end-of-TU -- position is completely inert here, unlike BrVec3dCross; census below) */
-/* @t3 0x10029EC0 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 288/288 insns 91/91 rows 0+0 regions 2 oracle UNCLASSIFIED
- * @t3-effort passes 2 zero-movement 1 2
- * CENSUS (all 91 instruction pairs, 2026-09-10): 71 are byte-identical, 18
- * differ only by the eax/ecx relabel -- the original holds the matrix pointer
- * in eax and its zero in ecx, we hold them the other way round, so every
- * differing byte is a ModRM register field -- and the last 2 are the
- * reloc-masked printf string and import slot. Nothing unexplained. The
- * instruction stream is positionally identical register-blind, all 91 rows.
- * Dead probes: the two ledger lines above.
- * Do not reopen before the end-grind. */
 /* @implements 0x10030810 d3d BrMat4Frustum */
 int BrMat4Frustum(BrMat4 *pM, float l, float r, float b, float t,
                   float n, float f)
@@ -237,7 +226,9 @@ int BrMat4Frustum(BrMat4 *pM, float l, float r, float b, float t,
     pM->m[1][3] = 0.0f;
     pM->m[2][3] = -1.0f;
     pM->m[3][3] = 0.0f;
-    return 0;
+    /* No return value on this path: the original falls off the end with the
+     * matrix pointer still in eax.  A `return 0` claims eax for the zero and
+     * moves the pointer to ecx, relabelling every store. */
 }
 
 /* 0x10030930 -- see br_mat.h. 0x1008F4A8 holds pi/360. */

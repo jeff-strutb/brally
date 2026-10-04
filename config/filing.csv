@@ -424,6 +424,7 @@ glide_va,name,module,basis,file
 0x10029D70,BrMat4Mul,geometry,filed,src/core/geometry/br_mat.c
 0x10029E50,BrGuMtxStore,drawing,filed,src/core/drawing/br_drawcar.c
 0x10029E80,BrMat4IdentityLocal,scene,manual,src/core/scene/br_entity.c
+0x10029EC0,BrMat4Frustum,geometry,filed,src/core/geometry/br_mat.c
 0x10029FE0,BrMat4Perspective7,geometry,manual,src/core/geometry/br_mat4persp7.c
 0x1002A050,BrMat4LookAt,geometry,filed,src/core/geometry/br_camview.c
 0x1002A200,BrLightDirsAndAngles,geometry,filed,src/core/geometry/br_camview.c
