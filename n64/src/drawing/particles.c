@@ -423,6 +423,7 @@ void *memcpy(void *dst, void *src, unsigned int n);
  * in v0; compare/assignment spellings and 400 permuter compiles leave it. */
 /* @t4-pass 0x8023BF60 1 2026-10-03 compiles 26 best 3 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8023BF60 2 2026-10-03 compiles 26 best 3 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8023BF60 */
 /* @implements 0x8023BF60 tgr BrSkidAge */
 void BrSkidAge(void)
 {
@@ -866,6 +867,7 @@ extern float D_80368A80[4][4];          /* the falling particles' billboard */
  * parameter) and 120 declaration orders leave it. */
 /* @t4-pass 0x8023D134 1 2026-10-03 compiles 25 best 352 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8023D134 2 2026-10-03 compiles 25 best 352 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8023D134 */
 /* @implements 0x8023D134 tgr BrParticleListDraw */
 void BrParticleListDraw(int n, int r, int g, int b)
 {

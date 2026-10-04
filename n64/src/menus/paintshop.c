@@ -246,6 +246,7 @@ void BrPaintDecalApply(void)
  * jump table) not mapping onto the ROM's. */
 /* @t4-pass 0x80244D84 1 2026-10-03 compiles 26 best 434 moved 1  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80244D84 2 2026-10-03 compiles 26 best 434 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80244D84 */
 /* @implements 0x80244D84 tgr BrPakMessage */
 void BrPakMessage(int msg, char op, char mode)
 {

@@ -148,6 +148,7 @@ void BrPaintDashCircle(int x, int y, int r);
  * higher (0x1C/0x20). */
 /* @t4-pass 0x8024C184 1 2026-10-03 compiles 26 best 525 moved 1  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8024C184 2 2026-10-03 compiles 26 best 525 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8024C184 */
 /* @implements 0x8024C184 tgr BrPaintClick */
 void BrPaintClick(void)
 {

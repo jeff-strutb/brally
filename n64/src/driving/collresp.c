@@ -983,6 +983,7 @@ short BrCollGridCellAcquire(float x, float y)
  * the ROM's order. */
 /* @t4-pass 0x8025F4F8 1 2026-10-03 compiles 26 best 516 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8025F4F8 2 2026-10-03 compiles 26 best 516 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8025F4F8 */
 /* @implements 0x8025F4F8 tgr BrObbOverlap */
 int BrObbOverlap(float *m, float *t, float *a, float *b)
 {
@@ -1077,6 +1078,7 @@ float sqrtf(float x);
  * car-missing/out tests branch straight to the loop end. */
 /* @t4-pass 0x8025FDE4 1 2026-10-03 compiles 26 best 432 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8025FDE4 2 2026-10-03 compiles 26 best 432 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8025FDE4 */
 /* @implements 0x8025FDE4 tgr BrCarCarCollide */
 void BrCarCarCollide(void)
 {

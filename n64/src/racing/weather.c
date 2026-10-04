@@ -206,6 +206,7 @@ void BrWeatherStep(void)
  * the ROM's frame. */
 /* @t4-pass 0x8023A784 1 2026-10-03 compiles 26 best 584 moved 1  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8023A784 2 2026-10-03 compiles 26 best 584 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8023A784 */
 /* @implements 0x8023A784 tgr BrWeatherDraw */
 void BrWeatherDraw(void)
 {

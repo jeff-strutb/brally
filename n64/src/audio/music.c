@@ -119,6 +119,7 @@ void BrRumbleUpdate(int);
  * the state struct. */
 /* @t4-pass 0x80256720 1 2026-10-03 compiles 25 best 340 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80256720 2 2026-10-03 compiles 25 best 340 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80256720 */
 /* @implements 0x80256720 tgr BrModLoad */
 void BrModLoad(unsigned char *xm, unsigned char *buf)
 {
@@ -241,6 +242,7 @@ void BrNoteRatesInit(void)
  * in the ROM's order (register-blind gap 72). */
 /* @t4-pass 0x80256DEC 1 2026-10-03 compiles 25 best 240 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80256DEC 2 2026-10-03 compiles 25 best 240 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80256DEC */
 /* @implements 0x80256DEC tgr BrModRowRead */
 unsigned char *BrModRowRead(unsigned char *p)
 {
@@ -373,6 +375,7 @@ extern int D_802A4A04;
  * declaration orders and 394 permuter compiles leave it. */
 /* @t4-pass 0x8025721C 1 2026-10-03 compiles 26 best 81 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8025721C 2 2026-10-03 compiles 26 best 81 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8025721C */
 /* @implements 0x8025721C tgr BrModTick */
 void BrModTick(void)
 {

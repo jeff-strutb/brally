@@ -74,6 +74,7 @@ void BrPadStickToButtons(BrPadRec *pad);
  * it rename. */
 /* @t4-pass 0x8024E128 1 2026-10-03 compiles 26 best 144 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8024E128 2 2026-10-03 compiles 26 best 144 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8024E128 */
 /* @implements 0x8024E128 tgr BrPaintTextStyleMenu */
 void BrPaintTextStyleMenu(void)
 {

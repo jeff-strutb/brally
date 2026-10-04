@@ -86,6 +86,7 @@ int sprintf(char *s, const char *fmt, ...);
  * it up or down; the locals sit 0x10 lower in the frame. */
 /* @t4-pass 0x8024B144 1 2026-10-03 compiles 26 best 527 moved 1  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8024B144 2 2026-10-03 compiles 26 best 527 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8024B144 */
 /* @implements 0x8024B144 tgr BrPaintColourMix */
 void BrPaintColourMix(void)
 {

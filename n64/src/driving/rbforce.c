@@ -508,6 +508,7 @@ void BrCarAxleGrip(BrRbBody *b, float dt, float *gripF, float *gripR, unsigned c
  * ROM uses two, 0x20/0x24); the axis sits at 0x50, the ROM's 0x58. */
 /* @t4-pass 0x8025AC9C 1 2026-10-03 compiles 26 best 390 moved 16  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8025AC9C 2 2026-10-03 compiles 26 best 390 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8025AC9C */
 /* @implements 0x8025AC9C tgr BrWheelTyre */
 void BrWheelTyre(BrRbBody *b, BrRbBody *w, float *pA, unsigned char *pB, float dt)
 {
