@@ -241,11 +241,10 @@ void BrPaintDecalApply(void)
  * a controller error, a nonfunctional pak, or (99999) a general error.
  * The cases are in the source order the strings' .rodata order gives
  * (1/11, 7/8, 3, 5, 99999, 6, 4, 10).
- * RESIDUE (229): the ROM keeps mode in s0 and msg (then y) in s1; ours
- * reloads mode from its home and keeps msg/y in s0, so a callee spills a
- * different word (A7: paint_walk frame 13355, 0x80318948 holds 0xCC in the
- * ROM); and this file's .rodata (the jump table) not mapping onto the
- * ROM's.  The unused pad[5] gives the ROM's 0x68 frame. */
+ * Each arm's text line uses its own variable (ty) for the panel's y, and
+ * the text x is written inline as (x + 16) >> 1, so mode and ty share s0
+ * and msg and y share s1 as in the ROM; the unused pad[2] gives its 0x68
+ * frame. */
 /* @t4-pass 0x80244D84 1 2026-10-03 compiles 26 best 434 moved 1  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80244D84 2 2026-10-03 compiles 26 best 434 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x80244D84 tgr BrPakMessage */
@@ -254,12 +253,11 @@ void BrPakMessage(int msg, char op, char mode)
   int x;
   int y;
   int w;
-  int pad[5];                   /* declared, never used: the frame is the ROM's 0x68 */
-  unsigned int m;
+  int ty;
+  int pad[2];                   /* declared, never used: the frame is the ROM's 0x68 */
 
-  m = mode;
   BrTextSetFont(12);
-  if (1 == m) {
+  if (1 == mode) {
     BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
   } else {
     BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xca, 0);
@@ -270,28 +268,28 @@ void BrPakMessage(int msg, char op, char mode)
   case 1:
   case 11:
     y = 0xcc;
-    if (m == 1) {
+    if (mode == 1) {
       y = 0xea;
     }
     BrBevelPanel(0xd5, y, 0xd5, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
-    y = (y + 30) >> 1;
-    BrTextPrint("CONTROLLER PAK", 0x72, y);
-    BrTextPrint("IS NOT INSERTED", 0x72, y + 14);
+    ty = (y + 30) >> 1;
+    BrTextPrint("CONTROLLER PAK", 0x72, ty);
+    BrTextPrint("IS NOT INSERTED", 0x72, ty + 14);
     break;
   case 7:
   case 8:
     y = 0x97;
-    if (m == 1) {
+    if (mode == 1) {
       y = 0xc3;
     }
     BrBevelPanel(0xa5, y, 0x135, 0xb2, 3, 0, 0, 0x80, 0x80, 0x80);
-    y = (y + 30) >> 1;
-    BrTextPrint("INSUFFICIENT FREE PAGES", 0x5a, y);
-    BrTextPrint("OR FREE NOTES IN THE", 0x5a, y + 12);
-    BrTextPrint("CONTROLLER PAK.", 0x5a, y + 24);
-    BrTextPrint("62 PAGES AND ONE NOTE", 0x5a, y + 42);
-    BrTextPrint("ARE NEEDED TO SAVE THE", 0x5a, y + 54);
-    BrTextPrint("CUSTOM DECALS.", 0x5a, y + 66);
+    ty = (y + 30) >> 1;
+    BrTextPrint("INSUFFICIENT FREE PAGES", 0x5a, ty);
+    BrTextPrint("OR FREE NOTES IN THE", 0x5a, ty + 12);
+    BrTextPrint("CONTROLLER PAK.", 0x5a, ty + 24);
+    BrTextPrint("62 PAGES AND ONE NOTE", 0x5a, ty + 42);
+    BrTextPrint("ARE NEEDED TO SAVE THE", 0x5a, ty + 54);
+    BrTextPrint("CUSTOM DECALS.", 0x5a, ty + 66);
     break;
   case 3:
     w = 0x116;
@@ -299,21 +297,19 @@ void BrPakMessage(int msg, char op, char mode)
       w = 0x106;
     }
     y = 0xcc;
-    if (m == 1) {
+    if (mode == 1) {
       y = 0xe2;
     }
     x = (0x280 - w) >> 1;
     BrBevelPanel(x, y, w, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
     if (op == 9) {
-      y = (y + 30) >> 1;
-      x = (x + 16) >> 1;
-      BrTextPrint("UNABLE TO READ FROM", x, y);
+      ty = (y + 30) >> 1;
+      BrTextPrint("UNABLE TO READ FROM", (x + 16) >> 1, ty);
     } else {
-      y = (y + 30) >> 1;
-      x = (x + 16) >> 1;
-      BrTextPrint("UNABLE TO WRITE TO", x, y);
+      ty = (y + 30) >> 1;
+      BrTextPrint("UNABLE TO WRITE TO", (x + 16) >> 1, ty);
     }
-    BrTextPrint("THE CONTROLLER PAK", x, y + 14);
+    BrTextPrint("THE CONTROLLER PAK", (x + 16) >> 1, ty + 14);
     break;
   case 5:
     w = 0xf2;
@@ -321,21 +317,19 @@ void BrPakMessage(int msg, char op, char mode)
       w = 0x10c;
     }
     y = 0xcc;
-    if (m == 1) {
+    if (mode == 1) {
       y = 0xe2;
     }
     x = (0x280 - w) >> 1;
     BrBevelPanel(x, y, w, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
     if (op == 9) {
-      y = (y + 30) >> 1;
-      x = (x + 16) >> 1;
-      BrTextPrint("DECALS NOT FOUND", x, y);
-      BrTextPrint("IN CONTROLLER PAK", x, y + 14);
+      ty = (y + 30) >> 1;
+      BrTextPrint("DECALS NOT FOUND", (x + 16) >> 1, ty);
+      BrTextPrint("IN CONTROLLER PAK", (x + 16) >> 1, ty + 14);
     } else {
-      y = (y + 30) >> 1;
-      x = (x + 16) >> 1;
-      BrTextPrint("ERROR ENCOUNTERED", x, y);
-      BrTextPrint("WHILE SAVING DECALS", x, y + 14);
+      ty = (y + 30) >> 1;
+      BrTextPrint("ERROR ENCOUNTERED", (x + 16) >> 1, ty);
+      BrTextPrint("WHILE SAVING DECALS", (x + 16) >> 1, ty + 14);
     }
     break;
   case 99999:
@@ -344,59 +338,58 @@ void BrPakMessage(int msg, char op, char mode)
       w = 0x10b;
     }
     y = 0xcc;
-    if (m == 1) {
+    if (mode == 1) {
       y = 0xe2;
     }
     x = (0x280 - w) >> 1;
     BrBevelPanel(x, y, w, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
-    x = (x + 15) >> 1;
-    y = (y + 30) >> 1;
-    BrTextPrint("ERROR ENCOUNTERED", x, y);
+    ty = (y + 30) >> 1;
+    BrTextPrint("ERROR ENCOUNTERED", (x + 15) >> 1, ty);
     if (op == 9) {
-      BrTextPrint("WHILE LOADING DECALS", x, y + 14);
+      BrTextPrint("WHILE LOADING DECALS", (x + 15) >> 1, ty + 14);
     } else {
-      BrTextPrint("WHILE SAVING DECALS", x, y + 14);
+      BrTextPrint("WHILE SAVING DECALS", (x + 15) >> 1, ty + 14);
     }
     break;
   case 6:
     y = 0xcc;
-    if (m == 1) {
+    if (mode == 1) {
       y = 0xe4;
     }
     BrBevelPanel(0xad, y, 0x126, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
-    y = (y + 30) >> 1;
-    BrTextPrint("BAD DATA ENCOUNTERED", 0x5d, y);
+    ty = (y + 30) >> 1;
+    BrTextPrint("BAD DATA ENCOUNTERED", 0x5d, ty);
     if (op == 9) {
-      BrTextPrint("WHILE LOADING DECALS", 0x5d, y + 14);
+      BrTextPrint("WHILE LOADING DECALS", 0x5d, ty + 14);
     } else {
-      BrTextPrint("WHILE SAVING DECALS", 0x5d, y + 14);
+      BrTextPrint("WHILE SAVING DECALS", 0x5d, ty + 14);
     }
     break;
   case 4:
     y = 0xb0;
-    if (m == 1) {
+    if (mode == 1) {
       y = 0xdc;
     }
     BrBevelPanel(0xae, y, 0x124, 0x80, 3, 0, 0, 0x80, 0x80, 0x80);
-    y = (y + 30) >> 1;
-    BrTextPrint("CONTROLLER ERROR HAS", 0x5e, y);
-    BrTextPrint("BEEN DETECTED.", 0x5e, y + 12);
-    BrTextPrint("CUSTOM DECALS CANNOT", 0x5e, y + 30);
+    ty = (y + 30) >> 1;
+    BrTextPrint("CONTROLLER ERROR HAS", 0x5e, ty);
+    BrTextPrint("BEEN DETECTED.", 0x5e, ty + 12);
+    BrTextPrint("CUSTOM DECALS CANNOT", 0x5e, ty + 30);
     if (op == 9) {
-      BrTextPrint("BE LOADED.", 0x5e, y + 42);
+      BrTextPrint("BE LOADED.", 0x5e, ty + 42);
     } else {
-      BrTextPrint("BE SAVED.", 0x5e, y + 42);
+      BrTextPrint("BE SAVED.", 0x5e, ty + 42);
     }
     break;
   case 10:
     y = 0xcc;
-    if (m == 1) {
+    if (mode == 1) {
       y = 0xf8;
     }
     BrBevelPanel(0xcd, y, 0xe6, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
-    y = (y + 30) >> 1;
-    BrTextPrint("CONTROLLER PAK", 0x6e, y);
-    BrTextPrint("IS NONFUNCTIONAL", 0x6e, y + 14);
+    ty = (y + 30) >> 1;
+    BrTextPrint("CONTROLLER PAK", 0x6e, ty);
+    BrTextPrint("IS NONFUNCTIONAL", 0x6e, ty + 14);
     break;
   }
 }
