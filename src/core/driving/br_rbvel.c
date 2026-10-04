@@ -100,64 +100,22 @@ static BrVec3 BrS42VelAt(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pP)
  * middle. The spot is given directly. */
 /* @t4-pass 0x100644C0 1 2026-09-24 probes 15 bytes 214 insns 68 regions 0 rows 0 census no  (hand, after the field-wise copy + block-temps retranscription reached 214/214: spill-slot probes -- declaration order, float[3] locals, parameter copy -- and the six temp/add orders; none moved the spill) */
 /* @t4-pass 0x100644C0 2 2026-09-24 probes 12 bytes 214 insns 68 regions 0 rows 0 census yes  (hand, slot census: the function moved to every top-level slot of slice3_42.c; residue identical in all 12 that compile) */
-/* @t3 0x100644C0 2026-09-24 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 214/214 insns 68/68 rows 0+0 regions 0 oracle EQUIVALENT
- * @t3-effort passes 2 zero-movement 1 2
- * residue is ONE spill-slot choice: the single x87 spill goes to the dead
- * pPoint parameter slot ([esp+0x24]) where the original uses p.z's slot
- * ([esp+0x14]); every instruction is otherwise identical.  Dossier and dead
- * list are in the body comment below.
- * Do not reopen before the end-grind. */
 /* @implements 0x1006B510 d3d BrRbVelAtPoint */
-/* BrS42VelAt RETURNS A BrVec3, so MSVC will not inline it and the original
- * has no call there -- the whole 137-byte gap is one factored helper. The
- * body is spelled out here; the spill map in BrS42VelAt's banner above is
- * what says the six products and three differences stay in x87 registers.
- *
- * RESIDUE (22 regnorm, -32 bytes, x87 SCHEDULING): the original loads all
- * SIX r components onto the x87 stack up front and interleaves the three
- * cross terms through them -- 16 `fxch` and one `fst` that is never reloaded.
- * Ours evaluates the three in sequence. Was 137 bytes short and 43 regnorm
- * before the helper came inline.
- *
- * DEAD PROBES, do not re-run:
- *  - assigning the three sums straight into *pOut with no temps (worse, -40);
- *  - reordering the three cross terms AND the three adds to y, z, x, which is
- *    the order the original's `fsubp`s complete in and the order its six
- *    `fld`s pair up in -- 5+22 regnorm becomes 7+24, slightly WORSE
- *    (2026-09-03).
- *
- * !! AND THE REASON THE ORDER DOES NOT HELP IS NOW UNDERSTOOD. The six `fld`s
- * are hoisted above the `add esp,0xC` that cleans the call's three arguments:
- * once esp moves, every `[esp+N]` displacement for `r` changes, so MSVC loads
- * all six uses of r BEFORE adjusting the stack and then shuffles them with 16
- * `fxch` -- plus one `fld st(2)` duplicate and one dead `fst`. That is a
- * consequence of where the CALL's cleanup sits, not of how the arithmetic is
- * spelled, which is why every term ordering leaves it unchanged. A source
- * lever here would have to move the stack cleanup, not the expressions.
- *
- * !! CONFIRMED EXHAUSTIVELY 2026-09-05: all SIX permutations of the three
- * cross-term statements x each of the two add orders (x,y,z and the
- * original's completion order y,z,x) -- thirteen builds -- land between
- * 4+23 and 5+24 register-blind, none better than the 5+22 here, and none
- * closer than 32 bytes.  The original's six `fld`s read r.x, r.z, r.y,
- * r.x, r.z, r.y, which is exactly the use order of `cy, cz, cx`; spelling
- * that order changes nothing, which is the proof that the load block is
- * emitted by the stack-cleanup hoist and not by the statement order.
- * DO NOT PROBE TERM ORDER ON THIS FUNCTION AGAIN. */
+/* BrS42VelAt returns a BrVec3, so MSVC will not inline it and the original
+ * has no call there: the body is spelled out here.  The spill map in
+ * BrS42VelAt's banner above says why the products and differences stay in
+ * x87 registers. */
 void BrRbVelAtPoint(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pPoint)
 {
-    /* 2026-09-24 re-transcription.  Two source facts took this from
-     * 5+22 regnorm to 0+0 (1 byte):
+    /* Three source facts give the original's bytes:
      *   - the point is copied FIELD-WISE (all three loads, then all three
      *     stores); `p = *pPoint` interleaves them;
-     *   - the cross terms are three block-scoped float temps x, y, z in that
-     *     order.  That alone gives the original's six hoisted `fld`s in its
-     *     r.x, r.z, r.y order and its fxch ladder -- the "stack-cleanup hoist"
-     *     notes above were chasing the spelling of `p`, not the arithmetic.
-     * RESIDUE 1 byte: the one x87 spill goes to the dead pPoint parameter
-     * slot ([esp+0x24]); the original puts it in p.z's slot ([esp+0x14]).
-     * Declaration order, array locals and a parameter copy do not move it. */
+     *   - the cross product is a block-local BrVec3 c.  That gives the six
+     *     hoisted `fld`s in r.x, r.z, r.y order and the fxch ladder, and c
+     *     takes p's frame bytes once p is dead (VC5 packs locals whose
+     *     lifetimes do not overlap), so the one homed component, c.y, lands
+     *     at [esp+0x14].  Three float temps put it in the dead pPoint
+     *     parameter slot instead. */
     BrVec3 p;
     BrVec3 r;
 
@@ -173,13 +131,13 @@ void BrRbVelAtPoint(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pPoint)
 
     /* v + w x r, r first with angVel as the memory operand */
     {
-        float x = r.z * pB->angVel.y - r.y * pB->angVel.z;
-        float y = r.x * pB->angVel.z - r.z * pB->angVel.x;
-        float z = r.y * pB->angVel.x - r.x * pB->angVel.y;
-
-        pOut->x = x + pOut->x;
-        pOut->y = y + pOut->y;
-        pOut->z = z + pOut->z;
+        BrVec3 c;
+        c.x = r.z * pB->angVel.y - r.y * pB->angVel.z;
+        c.y = r.x * pB->angVel.z - r.z * pB->angVel.x;
+        c.z = r.y * pB->angVel.x - r.x * pB->angVel.y;
+        pOut->x = c.x + pOut->x;
+        pOut->y = c.y + pOut->y;
+        pOut->z = c.z + pOut->z;
     }
 }
 
@@ -203,30 +161,16 @@ void BrRbVelAtPoint(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pPoint)
  * one declarator per line), the sum statements reversed and written
  * destination-first, a spare float local for frame pressure, and a
  * volatile int to hold a slot.  Slot assignment only. */
-/* @t3 0x100643E0 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 218/218 insns 68/68 rows 0+0 regions 0 oracle UNCLASSIFIED
- * @t3-effort passes 5 zero-movement 4 5
- * Residue: ONE byte, the stack slot of the rounding spill at +0xb4 --
- * `fst [esp+0x14]` in the original against `fst [esp+0x24]` here, VC5
- * placing cy in the dead incoming-argument slot instead of the frame.
- * Dead list and the byte census are in the @t4-pass 5 line above.
- * Do not reopen before the end-grind. */
 /* @implements 0x1006B430 d3d BrRbVelAtBodyPoint */
 /* @n64 0x80267410 located */
 /* Same inlining and the same three float facts as BrRbVelAtPoint above --
  * BrS42VelAt returns a BrVec3 and so is never inlined; the velocity copy is
- * field-wise; the products put the rotated point first and stay float.
- *
- * RESIDUE (23 regnorm, -33 bytes): the same x87 scheduling as
- * BrRbVelAtPoint -- the original holds all six products on the stack at once
- * and interleaves the three terms through them; ours evaluates in sequence.
- * Was 138 bytes short before the helper came inline. */
+ * field-wise; the products put the rotated point first and stay float. */
 void BrRbVelAtBodyPoint(BrVec3 *pOut, const BrRbBodyFull *pB,
                         const BrRbBodyFull *pAt)
 {
     BrVec3 r;
     BrVec3 p;
-    float cx, cy, cz;
 
     /* FIELD-WISE, not a struct copy: the original reads [pAt+0x78/0x7c/0x80]
      * directly, where `p = pAt->f78` makes VC5 build the address first
@@ -242,13 +186,17 @@ void BrRbVelAtBodyPoint(BrVec3 *pOut, const BrRbBodyFull *pB,
     pOut->y = pB->vel.y;
     pOut->z = pB->vel.z;
 
-    cx = r.z * pB->angVel.y - r.y * pB->angVel.z;
-    cy = r.x * pB->angVel.z - r.z * pB->angVel.x;
-    cz = r.y * pB->angVel.x - r.x * pB->angVel.y;
-
-    pOut->x = cx + pOut->x;
-    pOut->y = cy + pOut->y;
-    pOut->z = cz + pOut->z;
+    /* A block-local BrVec3, as in BrRbVelAtPoint: c reuses p's dead frame
+     * bytes, so the homed c.y goes to [esp+0x14], not the pAt slot. */
+    {
+        BrVec3 c;
+        c.x = r.z * pB->angVel.y - r.y * pB->angVel.z;
+        c.y = r.x * pB->angVel.z - r.z * pB->angVel.x;
+        c.z = r.y * pB->angVel.x - r.x * pB->angVel.y;
+        pOut->x = c.x + pOut->x;
+        pOut->y = c.y + pOut->y;
+        pOut->z = c.z + pOut->z;
+    }
 }
 
 /* 0x1006B340 */
