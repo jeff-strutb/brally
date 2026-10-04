@@ -89,40 +89,27 @@ extern char DAT_100b3844[];
  * byte, a 12-frame fade of the impact byte at +0x36D, and -- on car 0 --
  * a silent-start of the new group plus the packed surface pair.  The
  * listener's last position is copied back onto the car for next frame. */
-/* Residue: extra 4-byte frame (sub esp,0x30 vs 0x2c) plus jump-table dwords
- * after the last ret (outside the orig span). Packed-pair x87 is
- * fld-mem/fmul-st at three sites and fld-st/fmul-mem at two. DAT_117a5f08
- * stores as [M] vs [A]. f68=7 from a register vs immediate. Colouring of
- * the live zero and car*2 (lea vs shl). Do not reopen for permutation.
+/* Source shapes that decide the bytes:
+ *  - each one-shot's two gains and its packed level are block locals; VC5
+ *    gives every block's pair the same two slots at the top of the frame and
+ *    the level a slot shared with the late Doppler float;
+ *  - the remote-listener flag is set by one `local_24 = 1` after a goto
+ *    join, so it has fewer references than the shared level slot;
+ *  - the packed-pair temp is a double: with a float temp VC5 converts the
+ *    shifted half first;
+ *  - the impact-byte test widens the byte once (uVar7) and re-reads the
+ *    byte for the char tests, and the three disjuncts are written flat;
+ *  - the two ==3 mode branches are switches (`cmp ebx,3 / jle`);
+ *  - the engine ratio multiplies by 1/11000 in its own statement;
+ *  - the taunt level is stored as (v * 0x10001) and re-read for the call.
+ *
  * @t4-pass 0x10061470 1 2026-09-09 probes 11 bytes 2796 insns 765 regions 23 rows 101 census yes  (decl order, corpus at pack)
  * @t4-pass 0x10061470 2 2026-09-09 probes 11 bytes 2796 insns 765 regions 23 rows 101 census yes  (locals + comment probes) */
-/* @t3 0x10061470 2026-09-19 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 2796/2757 insns 765/742 rows 35+58 regions 23 oracle EQUIVALENT
- * @t3-effort passes 2 zero-movement 1 2
- * A5 EQUIVALENT on 48 seeds (return + globals + side effects); byte residue is
- * the +4 frame and x87 packed-pair scheduling colouring in the header above.
- * Behaviourally verified with a seeded valid world: the cockpit-camera table
- * (DAT_10af393c -> a scratch transform) so BrSndDoppler reads a real listener
- * position, and g_BrAnimDt (glide copy 0x106e9d8c) nonzero so its per-frame
- * velocity divide is finite -- both unseeded gave a NaN Doppler that poisoned
- * fVar10 and zeroed every engine-hertz write (a masked false EQUIVALENT).  The
- * fixed-point outputs (eef48/54/60/6c, 1184c454) are exact regions so a scale
- * bug is not waved through as rounding.  BrSndPlayEx's mixer stays gated OFF:
- * seeding its voice gates on drives its real path, whose stdcall voice
- * callbacks fire through NULL-voice slots that the emulator black-boxes with
- * esp UNCHANGED, leaking arg bytes into a 0x20 esp drift that moved only the
- * ORIGINAL's esp-relative Doppler-copyback target out of the compared buffer
- * (the recompile's ebp-relative locals were immune) -- a pure emulator/seeding
- * artifact, not a code diff.  Negative-controlled: a copyback-offset mutation
- * (0xf5c->0xf58) and an engine-scale mutation (110/7 -> the 100000 clamp) both
- * DIFF; correct code stays EQUIVALENT.  Do not reopen before the end-grind.
- */
 /* @implements 0x10061470 glide BrSndCarStep */
 
 void BR_THISCALL1 BrSndCarStep(uint8_t *pCar)
 
 {
-  unsigned char bVar1;
   short sVar2;
   int iVar3;
   int iVar4;
@@ -132,6 +119,7 @@ void BR_THISCALL1 BrSndCarStep(uint8_t *pCar)
   int iVar8;
   int iVar9;
   float fVar10;
+  double dVar11;
   float local_28;
   int local_24;
   int local_20;
@@ -139,36 +127,30 @@ void BR_THISCALL1 BrSndCarStep(uint8_t *pCar)
   float local_18;
   float local_14;
   int *local_10;
-  float local_c;
-  float local_8;
   int local_4;
 
-  iVar6 = *(int *)(pCar + 0x140);
-  iVar9 = iVar6 << 1;
+  iVar9 = *(int *)(pCar + 0x140) * 2;
   local_4 = DAT_106e86c8 * 0x2b68;
   if ((DAT_105ccb5c != 0) || (*(int *)(pCar + 0xf00) == 0)) {
-    (&DAT_118eef54)[iVar6 * 0xc] = 0;
-    (&DAT_118eef48)[iVar6 * 0xc] = 0;
-    (&DAT_118eef4c)[iVar6 * 0xc] = 0;
+    (&DAT_118eef54)[iVar9 * 6] = 0;
+    (&DAT_118eef48)[iVar9 * 6] = 0;
+    (&DAT_118eef4c)[iVar9 * 6] = 0;
     return;
   }
   local_24 = 0;
   if (DAT_100aa044 == 1) {
     iVar8 = *(int *)((char *)&DAT_10af393c + local_4);
-    if (*(int *)(pCar + 0xf78) != 0) goto LAB_10061526;
-    iVar3 = *(int *)((char *)&DAT_10af2180 + local_4);
-LAB_j10061524:
-    if (iVar3 != 0) goto LAB_10061526;
+    if (*(int *)(pCar + 0xf78) == 0 && *(int *)((char *)&DAT_10af2180 + local_4) == 0)
+      goto LAB_quiet;
   }
   else {
     iVar8 = *(int *)(pCar + 0x2734);
-    if ((*(int *)(pCar + 0xf78) == 0) && (*(int *)((char *)&DAT_10af2180 + local_4) == 0)) {
-      iVar3 = *(int *)((char *)&DAT_10af2180 + DAT_106e8720 * 0x2b68);
-      goto LAB_j10061524;
-    }
-LAB_10061526:
-    local_24 = 1;
+    if (*(int *)(pCar + 0xf78) == 0 && *(int *)((char *)&DAT_10af2180 + local_4) == 0 &&
+        *(int *)((char *)&DAT_10af2180 + DAT_106e8720 * 0x2b68) == 0)
+      goto LAB_quiet;
   }
+  local_24 = 1;
+LAB_quiet:
   local_10 = (int *)(pCar + 0xf5c);
   iVar3 = (int)(pCar + 0x30);
   *(float *)(pCar + 0xf74) =
@@ -194,125 +176,128 @@ LAB_10061526:
                     ? 11000 : 0;
   }
   if (local_24 == 0) {
-    local_20 = iVar9 * 24;
-    *(__int64 *)((char *)&DAT_118eef48 + local_20) =
-        (__int64)(fVar10 * BR_K_00779E4 * BR_K_00779E8);
-    local_8 = (float)local_1c;
-    iVar4 = (int)(local_8 * local_14);
-    iVar5 = (int)(local_8 * local_18);
-    *(int *)((char *)&DAT_118eef54 + local_20) = iVar4 + iVar5 * 0x10000;
+    fVar10 = fVar10 * BR_K_00779E4;
+    *(__int64 *)(&DAT_118eef48 + iVar9 * 6) = (__int64)(fVar10 * BR_K_00779E8);
+    dVar11 = (double)local_1c;
+    iVar4 = (int)(dVar11 * local_14);
+    iVar5 = (int)(dVar11 * local_18);
+    (&DAT_118eef54)[iVar9 * 6] = iVar4 + iVar5 * 0x10000;
   }
   local_20 = *(int *)(pCar + 0xf68);
-  if ((((&DAT_118eef60)[iVar9 * 6] | (&DAT_118eef64)[iVar9 * 6]) == 0) ||
+  if ((((__int64 *)&DAT_118eef60)[iVar9 * 3] == 0) ||
      ((*(char *)(pCar + 0x36d) == '\0' && (local_20 >= 4) && (local_20 <= 7)))) {
     *(int *)(pCar + 0xf68) = 0;
     *(int *)(pCar + 0xf6c) = 0;
     *(int *)(pCar + 0xf70) = 0;
   }
   if (0x7f < *(unsigned char *)(pCar + 0x362)) {
-    BrSndPan((void *)iVar3, (void *)iVar8, &local_8, &local_c, (int *)&local_28, 0);
-    fVar10 = (float)*(int *)&local_28;
-    iVar6 = (int)(fVar10 * local_c);
-    iVar4 = (int)(fVar10 * local_8);
-    *(int *)&local_28 = iVar6 + iVar4 * 0x10000;
+    float pl, pr; int pv;
+    BrSndPan((void *)iVar3, (void *)iVar8, &pl, &pr, &pv, 0);
+    dVar11 = (double)pv;
+    iVar6 = (int)(dVar11 * pr);
+    iVar4 = (int)(dVar11 * pl);
+    pv = iVar6 + iVar4 * 0x10000;
     if (*(unsigned char *)(pCar + 0x362) < 0xab) {
-      BrSndPlaySimple(0x11, *(int *)&local_28);
+      BrSndPlaySimple(0x11, pv);
     }
     else if (*(unsigned char *)(pCar + 0x362) < 0xd5) {
-      BrSndPlaySimple(0x10, *(int *)&local_28);
+      BrSndPlaySimple(0x10, pv);
     }
     else {
-      BrSndPlaySimple(1, *(int *)&local_28);
+      BrSndPlaySimple(1, pv);
     }
     BrFfbSetDurationShort();
     BrFfbCommitDuration();
   }
   *(char *)(pCar + 0x362) = 0;
   if (0x7f < *(unsigned char *)(pCar + 0x363)) {
-    BrSndPan((void *)iVar3, (void *)iVar8, &local_c, &local_8, (int *)&local_28, 0);
-    fVar10 = (float)*(int *)&local_28;
-    iVar6 = (int)(fVar10 * local_8);
-    iVar4 = (int)(fVar10 * local_c);
-    *(int *)&local_28 = iVar6 + iVar4 * 0x10000;
+    float pl, pr; int pv;
+    BrSndPan((void *)iVar3, (void *)iVar8, &pr, &pl, &pv, 0);
+    dVar11 = (double)pv;
+    iVar6 = (int)(dVar11 * pl);
+    iVar4 = (int)(dVar11 * pr);
+    pv = iVar6 + iVar4 * 0x10000;
     if (*(unsigned char *)(pCar + 0x363) < 0xab) {
-      BrSndPlaySimple(0x13, *(int *)&local_28);
+      BrSndPlaySimple(0x13, pv);
     }
     else if (*(unsigned char *)(pCar + 0x363) < 0xd5) {
-      BrSndPlaySimple(0x12, *(int *)&local_28);
+      BrSndPlaySimple(0x12, pv);
     }
     else {
-      BrSndPlaySimple(2, *(int *)&local_28);
+      BrSndPlaySimple(2, pv);
     }
     BrFfbCommitDuration();
     BrFfbSetDurationShort();
   }
   *(char *)(pCar + 0x363) = 0;
   if (0x7f < *(unsigned char *)(pCar + 0x36c)) {
-    BrSndPan((void *)iVar3, (void *)iVar8, &local_c, &local_8, (int *)&local_28, 0);
-    fVar10 = (float)*(int *)&local_28;
-    iVar6 = (int)(fVar10 * local_8);
-    iVar4 = (int)(fVar10 * local_c);
-    *(int *)&local_28 = iVar6 + iVar4 * 0x10000;
-    BrSndPlaySimple(3, *(int *)&local_28);
+    float pl, pr; int pv;
+    BrSndPan((void *)iVar3, (void *)iVar8, &pr, &pl, &pv, 0);
+    dVar11 = (double)pv;
+    iVar6 = (int)(dVar11 * pl);
+    iVar4 = (int)(dVar11 * pr);
+    pv = iVar6 + iVar4 * 0x10000;
+    BrSndPlaySimple(3, pv);
   }
   *(char *)(pCar + 0x36c) = 0;
   if (0x7f < *(unsigned char *)(pCar + 0x366)) {
-    BrSndPan((void *)iVar3, (void *)iVar8, &local_c, &local_8, (int *)&local_28, 0);
-    iVar4 = *(int *)&local_28;
+    float pl, pr; int pv;
+    BrSndPan((void *)iVar3, (void *)iVar8, &pr, &pl, &pv, 0);
+    iVar4 = pv;
     if (2 < iVar4) {
       iVar4 = 0x20;
     }
-    iVar4 = iVar4 * 0x10001;
-    *(int *)&local_28 = iVar4;
-    BrSndPlaySimple(0x14, iVar4);
+    pv = iVar4 * 0x10001;
+    BrSndPlaySimple(0x14, pv);
   }
   *(char *)(pCar + 0x366) = 0;
   if (0x7f < *(unsigned char *)(pCar + 0x367)) {
-    BrSndPan((void *)iVar3, (void *)iVar8, &local_c, &local_8, (int *)&local_28, 0);
-    iVar4 = *(int *)&local_28;
+    float pl, pr; int pv;
+    BrSndPan((void *)iVar3, (void *)iVar8, &pr, &pl, &pv, 0);
+    iVar4 = pv;
     if (2 < iVar4) {
       iVar4 = 0x20;
     }
-    iVar4 = iVar4 * 0x10001;
-    *(int *)&local_28 = iVar4;
-    BrSndPlaySimple(0x15, iVar4);
+    pv = iVar4 * 0x10001;
+    BrSndPlaySimple(0x15, pv);
   }
   *(char *)(pCar + 0x367) = 0;
   if (0x7f < *(unsigned char *)(pCar + 0x368)) {
-    BrSndPan((void *)iVar3, (void *)iVar8, &local_c, &local_8, (int *)&local_28, 0);
-    iVar4 = *(int *)&local_28;
+    float pl, pr; int pv;
+    BrSndPan((void *)iVar3, (void *)iVar8, &pr, &pl, &pv, 0);
+    iVar4 = pv;
     if (2 < iVar4) {
       iVar4 = 0x20;
     }
-    iVar4 = iVar4 * 0x10001;
-    *(int *)&local_28 = iVar4;
-    BrSndPlaySimple(0x16, iVar4);
+    pv = iVar4 * 0x10001;
+    BrSndPlaySimple(0x16, pv);
   }
   *(char *)(pCar + 0x368) = 0;
   if (0x7f < *(unsigned char *)(pCar + 0x369)) {
-    BrSndPan((void *)iVar3, (void *)iVar8, &local_c, &local_8, (int *)&local_28, 0);
-    iVar4 = *(int *)&local_28;
+    float pl, pr; int pv;
+    BrSndPan((void *)iVar3, (void *)iVar8, &pr, &pl, &pv, 0);
+    iVar4 = pv;
     if (2 < iVar4) {
       iVar4 = 0x20;
     }
-    iVar4 = iVar4 * 0x10001;
-    *(int *)&local_28 = iVar4;
-    BrSndPlaySimple(0x17, iVar4);
+    pv = iVar4 * 0x10001;
+    BrSndPlaySimple(0x17, pv);
   }
   *(char *)(pCar + 0x369) = 0;
   if (0x7f < *(unsigned char *)(pCar + 0x36a)) {
-    BrSndPan((void *)iVar3, (void *)iVar8, &local_c, &local_8, (int *)&local_28, 0);
-    *(int *)&local_28 = *(int *)&local_28 * 0x10001;
+    float pl, pr; int pv;
+    BrSndPan((void *)iVar3, (void *)iVar8, &pr, &pl, &pv, 0);
+    pv = pv * 0x10001;
     if (*(float *)(pCar + 0xf74) >= BR_K_00778D8) {
       BrSndSetVolumePairF(0x18, *(int *)(pCar + 0x140),
                           *(float *)(pCar + 0xf74) * BR_K_0077A00);
       BrPodNop(DAT_100b3844, *(float *)(pCar + 0xf74));
     }
-    if (0x7f < *(unsigned char *)(pCar + 0x36b)) {
-      FUN_1006baf0(0x18, *(int *)(pCar + 0x140), *(int *)&local_28);
+    if (*(unsigned char *)(pCar + 0x36b) <= 0x7f) {
+      FUN_1006ba80(0x18, *(int *)(pCar + 0x140), pv);
     }
     else {
-      FUN_1006ba80(0x18, *(int *)(pCar + 0x140), *(int *)&local_28);
+      FUN_1006baf0(0x18, *(int *)(pCar + 0x140), pv);
     }
   }
   else if (0x7f < *(unsigned char *)(pCar + 0x36b)) {
@@ -327,24 +312,22 @@ LAB_10061526:
   if (*(int *)(pCar + 0x730) != 0) {
     iVar6 = (int)*(char *)(pCar + 0x71c);
   }
-  bVar1 = *(unsigned char *)(pCar + 0x36d);
-  uVar7 = (unsigned int)bVar1;
-  if ((*(int *)(pCar + 0xf6c) < (int)uVar7) ||
-     ((bVar1 != 0 &&
-      ((*(int *)(pCar + 0xf70) < 0x28 ||
-       (((bVar1 != 0 && (*(int *)(pCar + 0xf70) == 0x28)) && ((local_20 >= 4 && (local_20 <= 7)))))
-       ))))) {
+  uVar7 = (unsigned int)*(unsigned char *)(pCar + 0x36d);
+  if (((int)uVar7 > *(int *)(pCar + 0xf6c)) ||
+      (*(char *)(pCar + 0x36d) != 0 && *(int *)(pCar + 0xf70) < 0x28) ||
+      (*(char *)(pCar + 0x36d) != 0 && *(int *)(pCar + 0xf70) == 0x28 && local_20 >= 4 && local_20 <= 7)) {
     *(unsigned int *)(pCar + 0xf6c) = uVar7;
     if (DAT_104b15e8 == 3) {
-      if (iVar6 >= 0) {
-        if (iVar6 < 4) {
-          *(int *)(pCar + 0xf68) = 7;
-          goto LAB_10061cb3;
-        }
-        if (iVar6 == 4) {
-          *(int *)(pCar + 0xf68) = 7;
-          *(int *)(pCar + 0xf6c) = 0;
-        }
+      switch (iVar6) {
+      case 0:
+      case 1:
+      case 2:
+      case 3:
+        *(int *)(pCar + 0xf68) = 7;
+        goto LAB_10061cb3;
+      case 4:
+        *(int *)(pCar + 0xf68) = 7;
+        *(int *)(pCar + 0xf6c) = 0;
       }
     }
     else {
@@ -393,9 +376,8 @@ LAB_10061526:
 LAB_10061cb3:
       *(unsigned int *)(pCar + 0xf6c) = uVar7 >> 1;
     }
-    sVar2 = *(short *)(pCar + 0x162);
+    sVar2 = (*(short *)(pCar + 0x162))++;
     *(int *)(pCar + 0xf70) = 0x28;
-    *(short *)(pCar + 0x162) = sVar2 + 1;
     if (0x10 < sVar2) {
       *(short *)(pCar + 0x162) = 0x10;
     }
@@ -407,16 +389,18 @@ LAB_10061cb3:
   iVar8 = *(int *)(pCar + 0xf68);
   if ((iVar8 != 0) && ((iVar8 < 8 || (0xc < iVar8)))) goto LAB_10061dc3;
   if (DAT_104b15e8 == 3) {
-    if (iVar6 < 0) {
-switchD_10061d51_default:
-      *(int *)(pCar + 0xf68) = 0;
-    }
-    else if (iVar6 < 4) {
+    switch (iVar6) {
+    case 0:
+    case 1:
+    case 2:
+    case 3:
       *(int *)(pCar + 0xf68) = 0xb;
-    }
-    else {
-      if (iVar6 != 4) goto switchD_10061d51_default;
+      break;
+    case 4:
       *(int *)(pCar + 0xf68) = 10;
+      break;
+    default:
+      *(int *)(pCar + 0xf68) = 0;
     }
   }
   else {
@@ -435,7 +419,7 @@ switchD_10061d51_default:
       *(int *)(pCar + 0xf68) = 0xc;
       break;
     default:
-      goto switchD_10061d51_default;
+      *(int *)(pCar + 0xf68) = 0;
     }
   }
   *(int *)(pCar + 0xf70) = 1;
@@ -455,7 +439,7 @@ LAB_10061dc3:
   }
   else {
     local_28 = *(float *)(pCar + 0xf74) * BR_K_00779F0;
-    if ((BR_K_0077A08 < local_28) || (local_28 < BR_K_00778D8)) {
+    if ((local_28 > BR_K_0077A08) || (local_28 < BR_K_00778D8)) {
       local_28 = 0.0f;
     }
     if ((iVar6 != local_20) && (iVar9 == 0)) {

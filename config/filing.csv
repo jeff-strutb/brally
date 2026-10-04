@@ -1122,6 +1122,7 @@ glide_va,name,module,basis,file
 0x10061310,FUN_10061310,audio,manual,src/core/audio/br_sndrace.c
 0x10061430,BrRaceCarPre,racing,filed,src/core/racing/br_racestep.c
 0x10061440,BrSndTableClear,racing,filed,src/core/racing/br_racestep.c
+0x10061470,BrSndCarStep,audio,filed,src/core/audio/br_sndcar.c
 0x100623A0,BrRaceDriverAnim,racing,filed,src/core/racing/br_racestep.c
 0x100623E0,BrRaceDriverPost,racing,filed,src/core/racing/BrRaceDriverPost_100623E0.cpp
 0x10062500,BrSub_10069490,gamedata,manual,src/core/gamedata/br_framepool.c
