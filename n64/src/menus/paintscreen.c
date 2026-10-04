@@ -25,16 +25,15 @@ typedef struct BrImage {        /* as drawing/image.c (0x30 bytes) */
   char pad2d[3];
 } BrImage;
 typedef struct BrPaintRect { int x, y, w, h; } BrPaintRect;
-typedef struct BrGlyph {        /* a keyboard key (0x20) */
+typedef struct BrGlyph {        /* a keyboard key (0x1C) */
   int x0;
   int x4;
   unsigned char c;
   char pad9[3];
   int off;
   int w;
-  int x14;
-  int x18;
-  int x1c;
+  int kernL;
+  int kernR;
 } BrGlyph;
 typedef struct BrPaintSwatch {  /* a palette entry (0x14) */
   int x, y, w, h;
@@ -230,7 +229,9 @@ void BrPaintExitPrompt(void);
 /* @implements 0x80243260 tgr BrPaintShopScreen */
 void BrPaintShopScreen(void)
 {
-  unsigned char done;
+  int u0[5];                    /* u0, u1: unused; they place done at sp+0xF3 as in */
+  unsigned char done;           /* the ROM (the Pak transfer keeps a pointer to it) */
+  int u1[24];
   int i;
   int k;
   int r;

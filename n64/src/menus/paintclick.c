@@ -31,10 +31,10 @@ typedef struct BrPaintBrush {   /* 0x8028D290 */
   int w;                        /* 0x24 */
   int h;                        /* 0x28 */
 } BrPaintBrush;
-typedef struct BrGlyph {        /* a keyboard key (0x20) */
+typedef struct BrGlyph {        /* a keyboard key (0x1C) */
   int x0;
   int x4;
-  char pad08[0x20 - 8];
+  char pad08[0x1c - 8];
 } BrGlyph;
 typedef struct BrClickSwatch {  /* a palette entry (0x14) */
   int x, y, w, h;
@@ -292,8 +292,8 @@ void BrPaintClick(void)
     }
     if (D_8028DBC4 != 0 && D_8028DBC0 == 0) {
       if (clicked) {
-        D_8028D110.x = D_8028D540[21].x0 + (D_8028D290.w >> 1);
-        D_8028D110.y = D_8028D540[21].x4 + (D_8028D290.h >> 1);
+        D_8028D110.x = D_8028D540[24].x0 + (D_8028D290.w >> 1);
+        D_8028D110.y = D_8028D540[24].x4 + (D_8028D290.h >> 1);
         D_8028DBB0 = 0;
       }
       BrPaintKeyboard();
