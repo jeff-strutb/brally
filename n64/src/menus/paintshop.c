@@ -804,10 +804,9 @@ unsigned char BrPaintPeek(unsigned char *tex, int x, int y)
 /* WHAT IT DOES: The paint shop's brush-shape chooser: a box with the round
  * brush picture and a square, the chosen one outlined, and its name, with
  * A (select) and B (cancel) buttons; left or right swaps the choice, A
- * keeps it and B restores the previous one, both closing the box.
- * RESIDUE (5): the button row's y spills to sp+0x30 where the ROM uses
- * sp+0x38 (the ROM's frame holds no slots for pad and pressed), and one
- * lui is scheduled a slot later. */
+ * keeps it and B restores the previous one, both closing the box.  The
+ * pad record is re-addressed at every test (no pad or pressed local: the
+ * ROM's frame has no slots for them). */
 /* @implements 0x8024D89C tgr BrPaintBrushSelect */
 void BrPaintBrushSelect(void)
 {
@@ -815,8 +814,6 @@ void BrPaintBrushSelect(void)
   int y;
   int bx;
   BrPaintNames2 names;
-  BrPadRec *pad;
-  unsigned int pressed;
 
   names = D_8028DCE4;
   y = 322 - D_8028D0B0.w;
@@ -851,20 +848,16 @@ void BrPaintBrushSelect(void)
   BrTextPrint("%wwSELECT", (unsigned int)(D_8028D0B0.w + 222) >> 1, (y + 18) >> 1);
   BrTextPrint("%wwCANCEL", (unsigned int)(bx + D_8028D0E0.w + 6) >> 1, (y + 18) >> 1);
   BrPadStickToButtons(&PADS[D_8028DBBC]);
-  pad = &PADS[D_8028DBBC];
-  pressed = pad->pressed;
-  if (pressed & 5) {
-    BrPadConsume((unsigned int *)pad, 5);
+  if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 5) {
+    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 5);
     D_8028DBB8 ^= 1;
-    pad = &PADS[D_8028DBBC];
-    pressed = pad->pressed;
   }
-  if (pressed & 0x10) {
-    BrPadConsume((unsigned int *)pad, 0x10);
+  if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 0x10) {
+    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 0x10);
     D_8028CE9C = D_8028DBB8;
     D_8028DBE0 = 0;
-  } else if (pressed & 0x20) {
-    BrPadConsume((unsigned int *)pad, 0x20);
+  } else if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 0x20) {
+    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 0x20);
     D_8028DBE0 = 0;
   }
 }

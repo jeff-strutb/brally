@@ -166,7 +166,7 @@ Functions: T2 21, T3 11, T4 80.
 | `8024D6B8` | `BrPaintPaletteDraw` | T4 |
 | `8024D7D8` | `BrPaintGet` | T4 |
 | `8024D844` | `BrPaintPeek` | T4 |
-| `8024D89C` | `BrPaintBrushSelect` | T2 |
+| `8024D89C` | `BrPaintBrushSelect` | T4 |
 | `8024DCA0` | `BrPaintFloodFill` | T2 |
 | `8024EC30` | `BrPaintTextStamp` | T4 |
 | `8024F000` | `BrPaintLine` | T3 |
