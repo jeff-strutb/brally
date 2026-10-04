@@ -44,15 +44,6 @@
  * the 6-insn opening.
  * @t4-pass 0x1001C9D0 1 2026-09-09 probes 10 bytes 95 insns 30 regions 1 rows 0 census yes  (hand, fn.py variants + corpus)
  * @t4-pass 0x1001C9D0 2 2026-09-09 probes 12 bytes 95 insns 30 regions 1 rows 0 census yes  (position sweep + const p, explicit !=0, column-base alias) */
-/* @t3 0x1001C9D0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 95/96 insns 30/30 rows 0+0 regions 1 oracle EQUIVALENT
- * @t3-effort passes 2 zero-movement 1 2
- * residue is register colouring only: identical register-blind instruction
- * multiset (rows 0+0), 1 masked region, 1 B short on encoding;
- * every row pairs under t3.py's canonical classes.  Effort: 2 counted
- * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
- * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x1002F460 d3d BrSelLookup */
 /* Original: no parameters. The input record comes through a pointer
  * global, the table is two interleaved pinned byte columns (0x100B3028 /
@@ -72,7 +63,7 @@ extern unsigned char DAT_100b3029[];
 extern int           DAT_100b3014;
 extern int           DAT_104b15e8;
 
-void BrSelLookup(void)
+int BrSelLookup(void)
 {
     BrSelInM *p = DAT_10af2094;
     int idx = p->f04 * 12 + p->f05;
@@ -95,4 +86,8 @@ void BrSelLookup(void)
     /* recomputed, so the fold above cannot leak into the second lookup */
     idx = p->f04 * 12 + p->f05;
     DAT_104b15e8 = DAT_100b3029[idx * 2];
+    /* The original leaves the table index in eax; returning it is what puts
+     * the record pointer in eax and the setting in ecx through the body
+     * (void swaps them).  Callers go through a pointer and ignore it. */
+    return idx;
 }
