@@ -16,4 +16,3 @@
 @drop var:DAT_100b55d8
 @drop var:DAT_100b55b4
 @drop var:DAT_100b55ac
-@drop fn:BrSaveLoad
