@@ -226,7 +226,6 @@ void BrPaintExitPrompt(void);
  * the other differences follow from those registers. */
 /* @t4-pass 0x80243260 1 2026-10-03 compiles 26 best 1546 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80243260 2 2026-10-03 compiles 26 best 1546 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x80243260 */
 /* @implements 0x80243260 tgr BrPaintShopScreen */
 void BrPaintShopScreen(void)
 {
