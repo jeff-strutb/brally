@@ -71,83 +71,8 @@ void BrSurfFree(BrSurf *pSurf)
     free(pSurf);
 }
 
-/* ----------------------------------------------------------------------
- * 0x100011C0 -- 24bpp bottom-up BGR to RGB565, top-down
- *
- * The source pointer starts at the LAST stored row and the stride is
- * SUBTRACTED; the destination advances continuously and is never re-based per
- * row, so the destination pitch is cx with no padding. Both facts are
- * load-bearing for 0x10001320, which addresses the surface as
- * `pPix[y*cx + x]`.
- *
- * The zero tests are the original's and are kept: `test eax, eax / je` on the
- * row count before the loop, and `test edi, edi / je` on the column count
- * inside it, so a 0-wide or 0-tall bitmap writes nothing rather than
- * underflowing a do/while.
- * ---------------------------------------------------------------------- */
-/* WHAT IT DOES: copies a loaded Windows bitmap's pixels into the game's own
- * image format, converting full-colour pixels down to the 16-bit colour the
- * renderer uses and flipping the picture the right way up, since Windows
- * stores bitmaps bottom row first. A zero-width or zero-height picture copies
- * nothing rather than running away. */
-/* @t4-pass 0x100011C0 1 2026-09-07 probes 53 bytes 121 insns 48 regions 3 rows 6 census yes  (tools/crank.py) */
-/* @t4-pass 0x100011C0 2 2026-09-07 probes 52 bytes 121 insns 48 regions 3 rows 6 census yes  (tools/crank.py) */
-/* @t4-pass 0x100011C0 3 2026-09-13 probes 14 bytes 117 insns 48 regions 3 rows 0 census no  (hand, fn.py variants: acc-first OR, 32-bit acc, single-expression acc, rows after the guard, rows before the guard, guard on rows, named hi term, declaration order, masked reads, x/loop spellings; all 117/48/0+0) */
-/* @t4-pass 0x100011C0 4 2026-09-13 probes 10 bytes 117 insns 48 regions 3 rows 0 census yes  (slot census: one written slot, cy's spent slot holding the row counter; fn.py variants around it: int rows, rows-- statement, != 0 test, stride-first product, explicit pBits sums, !cy / x guards, *pDst++ store, indexed first read; all 117/48/0+0) */
-/* @t3 0x100011C0 2026-09-13 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 117/117 insns 48/48 rows 0+0 regions 3 oracle UNCLASSIFIED
- * @t3-effort passes 4 zero-movement 3 4
- * residue is register colouring: the 565 accumulator lands in the red term's
- * register (`or ebx,edx` for the original's `or edx,ebx`) and the row-counter
- * copy is stored in the prologue instead of after the pushes; the multiset
- * is identical.  Ledger lines above, dead list in the loop comment.  Do not
- * reopen before the end-grind. */
-/* @implements 0x100011C0 glide BrSurfBlt24 */
 void BrSurfBlt24(uint16_t *pDst, const uint8_t *pBits,
-                 int32_t cx, int32_t cy, int32_t cbWidthBytes)
-{
-    int32_t rows = cy;
-
-    pBits += (cy - 1) * cbWidthBytes;
-    if (cy == 0) return;
-
-    do {
-        const uint8_t *pSrc = pBits;
-        int32_t        x = cx;
-
-        if (x != 0) {
-            do {
-                /* Byte loads, byte masks, 16-bit movzx.  The THREE `inc`s on
-                 * the source come from three post-increment reads
-                 * (`*pSrc++`): with the increments as separate statements
-                 * VC5 merges two into `add eax,2` and hoists the red load.
-                 * The row pointer is the pBits PARAMETER advanced in place
-                 * (`pBits += (cy-1)*stride`: pBits is the accumulator of the
-                 * imul, ebp) and the row counter is a fresh local homed in
-                 * cy's spent slot.  2026-09-13: 117/117 B, 48/48 insns,
-                 * register-blind 0+0; residue is the accumulator's register
-                 * (`or edx,ebx` vs ours `or ebx,edx`) and where the counter
-                 * copy is stored (after the pushes vs in the prologue). */
-                unsigned char  b, g, r;
-                unsigned short acc, rs;
-
-                b = *pSrc++;
-                g = *pSrc++;
-                g &= 0xFCu;
-                pDst++;
-                acc = (unsigned short)g;
-                r = *pSrc++;
-                r &= 0xF8u;
-                rs = (unsigned short)r;
-                acc |= (unsigned short)(rs << 5);
-                acc <<= 3;
-                acc |= (unsigned short)((unsigned char)(b >> 3));
-                pDst[-1] = acc;
-            } while (--x);
-        }
-        pBits -= cbWidthBytes;
-    } while (--rows);
-}
+                 int32_t cx, int32_t cy, int32_t cbWidthBytes);
 
 /* ----------------------------------------------------------------------
  * 0x10001240 -- the 24bpp gate, then allocate and convert
@@ -176,6 +101,81 @@ BrSurf *BrSurfFromBitmap(const BrGdiBitmap *pbm)
     BrSurfBlt24(pSurf->pPix, pbm->pBits, pbm->cx, pbm->cy, pbm->cbWidthBytes);
     return pSurf;
 }
+
+/* ----------------------------------------------------------------------
+ * 0x100011C0 -- 24bpp bottom-up BGR to RGB565, top-down
+ *
+ * The source pointer starts at the LAST stored row and the stride is
+ * SUBTRACTED; the destination advances continuously and is never re-based per
+ * row, so the destination pitch is cx with no padding. Both facts are
+ * load-bearing for 0x10001320, which addresses the surface as
+ * `pPix[y*cx + x]`.
+ *
+ * The zero tests are the original's and are kept: `test eax, eax / je` on the
+ * row count before the loop, and `test edi, edi / je` on the column count
+ * inside it, so a 0-wide or 0-tall bitmap writes nothing rather than
+ * underflowing a do/while.
+ * ---------------------------------------------------------------------- */
+/* WHAT IT DOES: copies a loaded Windows bitmap's pixels into the game's own
+ * image format, converting full-colour pixels down to the 16-bit colour the
+ * renderer uses and flipping the picture the right way up, since Windows
+ * stores bitmaps bottom row first. A zero-width or zero-height picture copies
+ * nothing rather than running away. */
+/* @t4-pass 0x100011C0 1 2026-09-07 probes 53 bytes 121 insns 48 regions 3 rows 6 census yes  (tools/crank.py) */
+/* @t4-pass 0x100011C0 2 2026-09-07 probes 52 bytes 121 insns 48 regions 3 rows 6 census yes  (tools/crank.py) */
+/* @t4-pass 0x100011C0 3 2026-09-13 probes 14 bytes 117 insns 48 regions 3 rows 0 census no  (hand, fn.py variants: acc-first OR, 32-bit acc, single-expression acc, rows after the guard, rows before the guard, guard on rows, named hi term, declaration order, masked reads, x/loop spellings; all 117/48/0+0) */
+/* @t4-pass 0x100011C0 4 2026-09-13 probes 10 bytes 117 insns 48 regions 3 rows 0 census yes  (slot census: one written slot, cy's spent slot holding the row counter; fn.py variants around it: int rows, rows-- statement, != 0 test, stride-first product, explicit pBits sums, !cy / x guards, *pDst++ store, indexed first read; all 117/48/0+0) */
+/* Placed after its caller BrSurfFromBitmap: with the same text ahead of the
+ * caller VC5 gives the 565 accumulator the red term's register (`or ebx,edx`
+ * for the original's `or edx,ebx`).  The row counter is assigned after the
+ * guard and the column counter inside its own test; both put the counter
+ * store after the pushes as the original has it. */
+/* @implements 0x100011C0 glide BrSurfBlt24 */
+void BrSurfBlt24(uint16_t *pDst, const uint8_t *pBits,
+                 int32_t cx, int32_t cy, int32_t cbWidthBytes)
+{
+    int32_t rows;
+
+    pBits += (cy - 1) * cbWidthBytes;
+    if (cy == 0) return;
+    rows = cy;
+
+    do {
+        const uint8_t *pSrc = pBits;
+        int32_t        x;
+
+        if (cx != 0) {
+            x = cx;
+            do {
+                /* Byte loads, byte masks, 16-bit movzx.  The THREE `inc`s on
+                 * the source come from three post-increment reads
+                 * (`*pSrc++`): with the increments as separate statements
+                 * VC5 merges two into `add eax,2` and hoists the red load.
+                 * The row pointer is the pBits PARAMETER advanced in place
+                 * (`pBits += (cy-1)*stride`: pBits is the accumulator of the
+                 * imul, ebp) and the row counter is a fresh local homed in
+                 * cy's spent slot. */
+                unsigned char  b, g, r;
+                unsigned short acc, rs;
+
+                b = *pSrc++;
+                g = *pSrc++;
+                g &= 0xFCu;
+                pDst++;
+                acc = (unsigned short)g;
+                r = *pSrc++;
+                r &= 0xF8u;
+                rs = (unsigned short)r;
+                acc |= (unsigned short)(rs << 5);
+                acc <<= 3;
+                acc |= (unsigned short)((unsigned char)(b >> 3));
+                pDst[-1] = acc;
+            } while (--x);
+        }
+        pBits -= cbWidthBytes;
+    } while (--rows);
+}
+
 
 /* ----------------------------------------------------------------------
  * 0x100014A0 -- COLORREF (0x00BBGGRR) to the surface's 16-bit key

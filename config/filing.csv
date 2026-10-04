@@ -1412,3 +1412,4 @@ glide_va,name,module,basis,file
 0x1005F580,BrRankAssign,racing,filed,src/core/racing/br_rank.c
 0x10036A30,FUN_10036a30,net,filed,src/core/net/br_dplaymsg.c
 0x10018EF0,BrVtxExpand,drawing,filed,src/core/drawing/br_vtxcache.c
+0x100011C0,BrSurfBlt24,drawing,filed,src/core/drawing/br_surf.c
