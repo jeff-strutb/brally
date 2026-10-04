@@ -122,6 +122,43 @@ def aligned_diff(ours, theirs):
     return sum(max(i2 - i1, j2 - j1) for t, i1, i2, j1, j2 in sm.get_opcodes() if t != 'equal')
 
 
+def objdump_text(name, va, words):
+    """GNU-objdump-shaped text of a linked body (what the workbench's
+    *-dumps commands read); offsets are function-relative."""
+    import struct
+    from capstone import Cs, CS_ARCH_MIPS, CS_MODE_MIPS32, CS_MODE_BIG_ENDIAN
+    md = Cs(CS_ARCH_MIPS, CS_MODE_MIPS32 | CS_MODE_BIG_ENDIAN)
+    out = ['%08x <%s>:' % (0, name)]
+    for k, w in enumerate(words):
+        txt = '.word 0x%08x' % w
+        for i in md.disasm(struct.pack('>I', w), va + 4 * k):
+            txt = '%s %s' % (i.mnemonic, i.op_str.replace(', ', ','))
+        out.append('%4x:\t%08x \t%s' % (4 * k, w, txt))
+    return '\n'.join(out) + '\n'
+
+
+def cmd_diagnose(g, a):
+    """Write ROM and candidate dumps and run the workbench's diagnosis on them
+    (uopt webs vs ugen temp ring, first divergence, hunks)."""
+    obj, log = compile_traced(g.f, {})
+    have = {p[0]: p for p in B.carve(obj)}
+    _, s, e = have[g.name]
+    st, nd, notes, ours, theirs = B.grade(obj, g.rom, g.name, s, e, g.va, g.fmap[g.va], g.syms, g.fnvas)
+    os.makedirs(a.out, exist_ok=True)
+    t = os.path.join(a.out, '%08X.target.objdump' % g.va)
+    c = os.path.join(a.out, '%08X.candidate.objdump' % g.va)
+    open(t, 'w').write(objdump_text(g.name, g.va, theirs))
+    open(c, 'w').write(objdump_text(g.name, g.va, ours))
+    wb = os.path.join(B.ROOT, 'build/ext/wbvenv/bin/decomp-workbench')
+    cmd = [wb, 'diagnose-dumps', t, c, '--color', 'never', '--pager', 'never']
+    if a.trace:
+        nd2, tlog, _ = g.grade({'CDX_LOG': '1', 'CDX_DETAIL_WEB': 'all'})
+        tp = os.path.join(a.out, '%08X.cdx.log' % g.va)
+        open(tp, 'w').write(tlog)
+        cmd += ['--trace', tp, '--trace-proc', str(g.proc)]
+    subprocess.run(cmd)
+
+
 def decisions(log):
     out = []
     for line in log.splitlines():
@@ -215,9 +252,12 @@ def cmd_sweep(g, a):
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     sub = ap.add_subparsers(dest='cmd', required=True)
-    for name in ('trace', 'force', 'sweep'):
+    for name in ('trace', 'force', 'sweep', 'diagnose'):
         p = sub.add_parser(name)
         p.add_argument('va')
+        if name == 'diagnose':
+            p.add_argument('--out', default=os.path.join(B.OUT, 'alloc'))
+            p.add_argument('--trace', action='store_true', help='join the allocator trace')
         p.add_argument('--file', help='a draft to compile instead of the tagged tree source')
         p.add_argument('--positional', action='store_true',
                        help='count differing words by position (the T4 grade) instead of aligned')
@@ -237,7 +277,7 @@ def main():
     if not os.path.exists(TRACE_CC):
         sys.exit('no instrumented compiler at %s: run n64/tools/build_ido_trace.sh' % TRACE_CC)
     g = Grader(int(a.va, 16), a.file, aligned=not a.positional)
-    {'trace': cmd_trace, 'force': cmd_force, 'sweep': cmd_sweep}[a.cmd](g, a)
+    {'trace': cmd_trace, 'force': cmd_force, 'sweep': cmd_sweep, 'diagnose': cmd_diagnose}[a.cmd](g, a)
 
 
 if __name__ == '__main__':
