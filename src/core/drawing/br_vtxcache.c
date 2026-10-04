@@ -100,17 +100,13 @@ void BrVtxSwap(BrVtxSrc16 *v, int count)
 /* @t4-pass 0x10018EF0 1 2026-09-10 probes 60 bytes 203 insns 55 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10018EF0 2 2026-09-10 probes 60 bytes 203 insns 55 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10018EF0 3 2026-09-10 probes 228 bytes 203 insns 55 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t3 0x10018EF0 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 203/203 insns 55/55 rows 0+0 regions 1 oracle UNCLASSIFIED
- * @t3-effort passes 3 zero-movement 2 3
- * residue after tools/crank.py: 228 compiles this pass, levers accepted: none;
- * every candidate and score is in build/match/crank.log.
- * Do not reopen before the end-grind. */
 /* @implements 0x1002BE30 d3d BrVtxExpand */
 /* Original: 2 args, state in globals. Each conversion is a direct
  * short/char load with an inline (float) cast -- one shared int home
  * slot, fild, fstp. Cursor and vertex count are re-read from the globals
- * at the loop tail (the fstps could alias them). */
+ * at the loop tail (the fstps could alias them).  The loop runs on its
+ * own down-counter copied from count: counting count itself down gives
+ * the cursor ecx and the source pointer edx, the original's opposite. */
 extern float *DAT_100a751c;     /* output cursor       */
 extern int    DAT_105b96f8;     /* running vertex count */
 extern float  DAT_100773a0;     /* normal scale, 1/128  */
@@ -119,9 +115,11 @@ float *BrVtxExpand(const void *pVerts, int count)
 {
     float *pStart = DAT_100a751c;
     const char *p;
+    int i;
 
     if (count > 0) {
         p = (const char *)pVerts;
+        i = count;
         do {
             float *o = DAT_100a751c;
             o[0] = (float)*(const short *)p;
@@ -138,7 +136,7 @@ float *BrVtxExpand(const void *pVerts, int count)
 
             DAT_100a751c = DAT_100a751c + 8;
             DAT_105b96f8 = DAT_105b96f8 + 1;
-        } while (--count != 0);
+        } while (--i != 0);
     }
     return pStart;
 }
