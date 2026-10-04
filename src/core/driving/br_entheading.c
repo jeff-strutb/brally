@@ -52,29 +52,17 @@ static const float kBrHalf = 0.5f;
  * object's state the physics keeps, so nothing is left pointing the old way. */
 /* @t4-pass 0x1006F720 1 2026-09-09 probes 10 bytes 279 insns 74 regions 1 rows 0 census no  (hand, fn.py variants: decl/store orders, dword-pun zeros, chain forms, h placement, all inert or worse) */
 /* @t4-pass 0x1006F720 2 2026-09-09 probes 10 bytes 279 insns 74 regions 1 rows 0 census yes  (hand, fn.py variants: store-order swaps, temps, mul order, q-decl forms, all inert or worse; corpus MISS at +0x30 len 12 -- the stores-before-fstp schedule is proven nowhere) */
-/* @t3 0x1006F720 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 279/279 insns 74/74 rows 0+0 regions 1 oracle UNCLASSIFIED
- * @t3-effort passes 2 zero-movement 1 2
- * residue is one scheduling fork: the original emits the c/s/0 stores
- * before popping the pending sin result, every spelling here pops at the
- * call return (identical multiset, 0+0).  Dead list in the RESIDUE block
- * above plus the two ledger lines.
- * Do not reopen before the end-grind. */
 /* @implements 0x100764C0 d3d BrEntSetHeading */
 /* thiscall + one stack float (ret 4); sin/cos are the float-arg tree
  * wrappers, as in BrEntSetOrientation below.
  *
- * RESIDUE (glide 0x1006F720, 25 masked byte-diffs, multiset 0+0): one
- * scheduling fork only.  The original emits the c/s/0 stores BEFORE
- * popping the pending sin result (`fstp [esi+0x14]` after the three
- * movs); every probed spelling here pops it right at the call return.
- * Probed and dead: statement-order permutations of the m11/h statements,
- * a volatile-pinned m11 store, direct-call-in-statement (moves the call),
- * qw reads after the chain (drags the tail onto the FPU).  Everything
- * else is byte-exact: the dword-pun copies below reproduce the
- * original's integer-mov float copies (fld/fstp batching otherwise),
- * the z triple-store is a chained assignment (fst/fst/fstp), and qw/qx/
- * qy reload as dword puns after the second half-angle call. */
+ * The original keeps sb on the FPU stack across the c/s/0 stores and pops
+ * it into m[1][1] after them: m[1][1] is written through a pointer of its
+ * own, which VC5 will not schedule ahead of the stores through pE (written
+ * through pE, the pop lands at the call return).  The plain float copies
+ * become integer movs, the z triple-store is a chained assignment
+ * (fst/fst/fstp), and qw/qx/qy reload as dword puns after the second
+ * half-angle call. */
 extern float BrSinF(float a);      /* glide 0x10002560 */
 extern float BrCosF(float a);      /* glide 0x100023E0 */
 
@@ -86,14 +74,15 @@ void __fastcall BrEntSetHeading(BrEnt *pE, float a)
     float cb = BrCosF(b);
     float sb = BrSinF(b);
     float h;
+    float *m = &pE->mat0.m[1][1];
     uint32_t qw, qx, qy;
 
-    *(uint32_t *)&pE->mat0.m[0][0] = *(uint32_t *)&c;
-    *(uint32_t *)&pE->mat0.m[0][1] = *(uint32_t *)&s;
+    pE->mat0.m[0][0] = c;
+    pE->mat0.m[0][1] = s;
     pE->mat0.m[0][2] = 0.0f;
-    pE->mat0.m[1][1] = sb;
+    *m = sb;
     h = a * kBrHalf;
-    *(uint32_t *)&pE->mat0.m[1][0] = *(uint32_t *)&cb;
+    pE->mat0.m[1][0] = cb;
     pE->mat0.m[1][2] = 0.0f;
     pE->mat0.m[2][0] = 0.0f;
     pE->mat0.m[2][1] = 0.0f;
