@@ -132,30 +132,11 @@ int FUN_100368a0(HWND param_1, int *param_2, int param_3)
 /* @t4-pass 0x10036A30 3 2026-09-07 probes 77 bytes 231 insns 87 regions 2 rows 1 census yes  (tools/crank.py) */
 /* @t4-pass 0x10036A30 4 2026-09-09 probes 10 bytes 231 insns 87 regions 1 rows 1 census yes  (hand, fn.py variants: null/format/length-sum/decl; corpus MISS at +0x1a -- frame-pointer fork) */
 /* @t4-pass 0x10036A30 5 2026-09-09 probes 10 bytes 231 insns 87 regions 1 rows 1 census yes  (hand, fn.py variants: decl order, format polarity, string concat; decl-order -2 B but not current) */
-/* @t3 0x10036A30 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 231/227 insns 87/86 rows 0+1 regions 1 oracle UNCLASSIFIED
- * @t3-effort passes 4 zero-movement 4 5
- * residue is the frame-pointer decision: orig is frameless (ebp holds
- * lpFormat, one spill into a dead incoming-arg slot); VC5 emits an ebp
- * frame and a dedicated local.  One xor-zero remat.  Dossier in the
- * RESIDUE block below.  Do not reopen before the end-grind. */
 /* @implements 0x10036A30 glide FUN_10036a30 */
-/* RESIDUE (2026-09-06): +4 B / +1 insn, REGNORM 1+0. Body is complete and
- * correct -- instruction-for-instruction identical to the original except the
- * FRAME-POINTER decision. The original omits the frame (`push ecx` for the one
- * addressed local, ebp used as a general register holding lpFormat), and spills
- * that format across the length-sum into a DEAD incoming-parameter slot
- * ([esp+0x24], param_5's home); VC5 on this source instead keeps an ebp frame
- * (`push ebp; mov ebp,esp; sub esp,8`) and homes the same spill in a dedicated
- * local ([ebp-8]), which cascades every local's addressing esp->ebp. Five values
- * (hr, lpFormat, lpName, param_3, the length accumulator) are live across the
- * three lstrlenA calls against four callee-saved registers, so exactly one spill
- * is unavoidable on both sides -- only its LOCATION differs (arg-scratch vs frame
- * local). The matched sibling FUN_100368a0 in this file is frameless with 3
- * params; this one has 5. PROBED AND DEAD (all hold at +4 B): size summed into a
- * named `int n` local before GlobalAlloc; local declaration order permuted
- * (hMem-first vs hr-first). Spill LOCATION is a VC5 allocator choice not seen to
- * move from C source here.
+/* The format is picked with a conditional expression: VC5 keeps it in
+ * ebp and spills it once, into param_1's dead home, ahead of the
+ * BrComGetAlloc call.  Assigned and then overwritten under an if, it was
+ * stored to that home at each assignment.
  * @t4-pass 0x10036A30 1 2026-09-06 probes 4 bytes 227 insns 86 regions 1 rows 1 census no */
 int FUN_10036a30(int param_1, int param_2, LPCSTR param_3, LPCVOID *param_4, int param_5)
 {
@@ -170,10 +151,7 @@ int FUN_10036a30(int param_1, int param_2, LPCSTR param_3, LPCVOID *param_4, int
     if (param_1 == 0) {
         return 0;
     }
-    lpFormat = "%s%s\r\n";
-    if (param_5 == 0) {
-        lpFormat = "%s: %s\r\n";
-    }
+    lpFormat = param_5 ? "%s%s\r\n" : "%s: %s\r\n";
     hr = BrComGetAlloc(param_1, param_2, &local_4);
     if (hr >= 0) {
         lpName = *(LPCSTR *)((char *)local_4 + 8);
