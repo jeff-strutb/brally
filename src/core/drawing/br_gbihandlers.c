@@ -778,23 +778,8 @@ void BrGbiTexScanOtherModeL(const BrGfxWords *pCmd)
  * gives zero. */
 /* @t4-pass 0x10027290 1 2026-09-07 probes 50 bytes 97 insns 34 regions 8 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10027290 2 2026-09-07 probes 50 bytes 97 insns 34 regions 8 rows 0 census yes  (tools/crank.py) */
-/* DEAD 2026-09-09: branchy-tail respellings (returns adjacent/reversed,
- * r=8-first, r initialised at declaration, ternary, reversed compare, a
- * copy local for the whole chain, unsigned param with per-site casts, K&R
- * declaration) -- the setg lowering (-2 B) or n in ecx (+1 B) every time;
- * every slot in the TU (51 of 64 compile).
- * @t4-pass 0x10027290 3 2026-09-09 probes 10 bytes 97 insns 34 regions 1 rows 0 census yes  (hand, fn.py variants)
+/* @t4-pass 0x10027290 3 2026-09-09 probes 10 bytes 97 insns 34 regions 1 rows 0 census yes  (hand, fn.py variants)
  * @t4-pass 0x10027290 4 2026-09-09 probes 51 bytes 97 insns 34 regions 1 rows 0 census yes  (position sweep) */
-/* @t3 0x10027290 2026-09-19 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 94/96 insns 35/34 rows 3+4 regions 1 oracle EQUIVALENT
- * @t3-effort passes 6 zero-movement 5 6
- * 2026-09-19 respell (94 B, FITS the 96 B image slot): reassigning the
- * PARAMETER for the final pair keeps operand and result in eax (the old
- * named-r/volatile spellings cost the byte), at the price of the setg
- * lowering in the tail (the 7 rows / +1 insn vs the original's branchy
- * cmp/mov/jle).  A5 oracle EQUIVALENT on 64 inputs; behavioural verdict
- * outranks the byte residue.  Dead probes: the comment block above.
- * Do not reopen before the end-grind. */
 /* @t4-pass 0x10027290 5 2026-09-19 probes 26 bytes 94 insns 35 regions 1 rows 7 census yes  (tools/crank.py) */
 /* @t4-pass 0x10027290 6 2026-09-19 probes 26 bytes 94 insns 35 regions 1 rows 7 census yes  (tools/crank.py) */
 /* @implements 0x10027290 glide BrGbiSizeShift */
@@ -807,17 +792,14 @@ int BrGbiSizeShift(int n)
     if (n <= 0x10) return 4;
     if (n <= 0x20) return 5;
     if (n <= 0x40) return 6;
-    /* Last pair is one ret: cmp 0x80; mov 7; jle; mov 8.  Adjacent
-     * `return 7; return 8` lowers to setg+add; a named r gives the branchy
-     * form but claims eax, pushing n into ecx -- and the eax-specific
-     * `cmp eax,imm32` is 1 byte shorter, which is exactly the byte that
-     * decides whether the body FITS its slot.  Reassigning the PARAMETER
-     * keeps result and operand in one register. */
-    if (n > 0x80)
-        n = 8;
-    else
-        n = 7;
-    return n;
+    /* The ladder has one more rung than it needs: the 0x100 test and the
+     * final return both give 8, so VC5 folds them into one `mov eax,8`.
+     * That leaves a three-way tail it will not if-convert, hence the
+     * original's branchy cmp 0x80; mov 7; jle; mov 8.  A plain two-way
+     * 7-or-8 tail always lowers to setg+add. */
+    if (n <= 0x80)  return 7;
+    if (n <= 0x100) return 8;
+    return 8;
 }
 
 /* 0x10028BF0 */

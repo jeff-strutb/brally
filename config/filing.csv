@@ -1402,3 +1402,4 @@ glide_va,name,module,basis,file
 0x1001C9D0,BrSelLookup,gamedata,filed,src/core/gamedata/br_sellookup.c
 0x10018D50,BrRcaSwapMesh,gamedata,filed,src/core/gamedata/br_carload.c
 0x10027F00,BrGbiBlit,drawing,filed,src/core/drawing/br_gbihandlers.c
+0x10027290,BrGbiSizeShift,drawing,filed,src/core/drawing/br_gbihandlers.c
