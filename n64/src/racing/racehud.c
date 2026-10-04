@@ -95,7 +95,7 @@ extern BrHudVtx D_80361B30[2][2][4];   /* the needle quad, per frame buffer and 
 extern int D_8028A85C;                 /* the frame buffer being built */
 extern int D_8028AA80;                 /* night */
 void BrRomRead(void *dst, int rom, int size);
-void func_8023DF9C(BrHudImg *img, int x, int y, int w, int h, int a, int b, int c, int d,
+void BrRomImageDraw(BrHudImg *img, int x, int y, int w, int h, int a, int b, int c, int d,
                    int e, int f, int g, int k, int l);
 unsigned int BrRandStep(void);
 float cosf(float a);
@@ -186,17 +186,17 @@ draw:
   gRaw(D_8028A858++, 0xF0000000, 0x073FC000);
   gRaw(D_8028A858++, 0xE7000000, 0);
   if (D_8028AB0C == 1) {
-    func_8023DF9C(&D_8028C7A8[D_8028AAEC], x, y, D_8028C7A8[D_8028AAEC].w, D_8028C7A8[D_8028AAEC].h,
+    BrRomImageDraw(&D_8028C7A8[D_8028AAEC], x, y, D_8028C7A8[D_8028AAEC].w, D_8028C7A8[D_8028AAEC].h,
                   0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0);
-    func_8023DF9C(&D_8028C7D0[D_8028AAEC], D_8028AE0C[D_8028AAF0->kind].lampX + x,
+    BrRomImageDraw(&D_8028C7D0[D_8028AAEC], D_8028AE0C[D_8028AAF0->kind].lampX + x,
                   D_8028AE0C[D_8028AAF0->kind].lampY + y, D_8028C7D0[D_8028AAEC].w,
                   D_8028C7D0[D_8028AAEC].h, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0);
   } else {
     x += D_8028C7A8[D_8028AAEC].w / 4;
     y += D_8028C7A8[D_8028AAEC].h / 4;
-    func_8023DF9C(&D_8028C7A8[D_8028AAEC], x, y, D_8028C7A8[D_8028AAEC].w * 3 / 4,
+    BrRomImageDraw(&D_8028C7A8[D_8028AAEC], x, y, D_8028C7A8[D_8028AAEC].w * 3 / 4,
                   D_8028C7A8[D_8028AAEC].h * 3 / 4, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0);
-    func_8023DF9C(&D_8028C7D0[D_8028AAEC], D_8028AE0C[D_8028AAF0->kind].lampX * 3 / 4 + x,
+    BrRomImageDraw(&D_8028C7D0[D_8028AAEC], D_8028AE0C[D_8028AAF0->kind].lampX * 3 / 4 + x,
                   D_8028AE0C[D_8028AAF0->kind].lampY * 3 / 4 + y, D_8028C7D0[D_8028AAEC].w * 3 / 4,
                   D_8028C7D0[D_8028AAEC].h * 3 / 4, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0);
   }
