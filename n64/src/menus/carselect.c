@@ -410,24 +410,17 @@ void BrLoadSaveScreen(void);
 #define SETUP(p, list, count, title) \
   { D_80316270[p] = (list); D_80316288[p] = (count); D_80316290[p] = (title); }
 
-/* WHAT IT DOES: One frame of the car-select screen, which also shows the
- * race results (D_80272074) and is the paint shop's car select
- * (D_80272070).  The first frame sets it up: fades, the season's state kept
- * for the results, each player's car (its default colour, camera control,
- * a selectable kind and its model record), the turntable camera, the setup
- * lists, the artwork and the two sound banks.  Every frame turns the
- * turntables and slides the cars, draws each player's car and setup choice
- * with its title, stats or rumble hint -- or the results pages: the race's
- * place and lap times, the season news, the season's races and points --
- * runs the decal load from the Controller Pak, then reads each pad: pick a
- * car (left/right, loading its model and playing a sound), tint it with the
- * C buttons, step through the setup choices (A on, B back, START to be
- * ready), and when everyone is ready fades out to the race, the paint shop,
- * the menus, the season screens or the Controller Pak save.  The branches
- * run in the order the file's string literals sit in the ROM (results
- * before panels, two players before one, the paint shop before the normal
- * panel), so the stored title and message pointers are the ROM's; six
- * scalars declared above buf put buf and time at the ROM's 0xE8/0xC4. */
+/* WHAT IT DOES: One frame of the car-select screen, which is also the race
+ * results (D_80272074) and the paint shop's car select (D_80272070).  The
+ * first frame sets up fades, the season state, each player's car, the
+ * turntable camera, the setup lists, artwork and sound banks.  Every frame
+ * turns the turntables, draws each player's car and setup choice (or the
+ * results pages), runs the Controller Pak decal load, then reads the pads:
+ * pick a car, tint it, step the setup choices, and when all are ready fade
+ * out to the race, paint shop, menus, season screens or pak save.  The
+ * branches run in the order of the file's literals in the ROM, so stored
+ * title and message pointers are the ROM's; six scalars declared above buf
+ * put buf/time at the ROM's 0xE8/0xC4. */
 /* @t4-pass 0x8020D004 1 2026-10-03 compiles 120 best 4007 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8020D004 2 2026-10-03 compiles 121 best 4007 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8020D004 3 2026-10-03 compiles 60 best 3903 moved 2  (n64/tools/n64permute.py) */
