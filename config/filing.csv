@@ -1408,3 +1408,4 @@ glide_va,name,module,basis,file
 0x100723D0,BrFfbEnumDevice,controls,filed,src/core/controls/br_ffbdev.c
 0x10005810,BrGhostPickBlend,net,filed,src/core/net/br_ghostpick.c
 0x1006F720,BrEntSetHeading,driving,filed,src/core/driving/br_entheading.c
+0x1006C290,BrSfxBankLoad,audio,filed,src/core/audio/br_sfx.c

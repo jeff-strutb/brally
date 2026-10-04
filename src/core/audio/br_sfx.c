@@ -525,30 +525,13 @@ int BrSndVoiceLoad();           /* 0x1006BC10, br_sndload.c                     
  * zeroing the rest.  Returns 1 when everything loaded (or sound is off), 0
  * when any load failed.
  *
- * RESIDUE (size-exact 459/459, insn-exact 138/138): the engine loop's `i`
- * and its row-24 induction pointer are transposed, esi<->edi, orig i=edi /
- * IV24=esi vs ours i=esi / IV24=edi; every instruction otherwise identical
- * (regnorm 2+2 is the normaliser tripping on reloc'd displacements, the rows
- * sit outside the divergence region).  Whole-loop register transposition,
- * the BrSelLookup / 0x10060F40 class.
- * DEAD (probes w1-w6): rows 24/25 as lockstep ++pointers with the zero arm
- * laid first re-triggers a constant-cache (0 in a reg, 1 in ebx, ppName
- * spilled, 463 B) -- the load arm MUST be the fall-through (`!= 0` first)
- * and the engine loop MUST init i before any row pointer (pV24-first
- * re-triggers the same 463 B shape, w6); i/v declaration order both ways
- * (w2, w3) and head-of-TU placement (w4) are inert; pointer spelling vs
- * indexed spelling of rows 24/25 is codegen-identical once the polarity is
- * right (w5).
- * (thin pre-ledger pass, 7 probes, not counted: w1-w6 above) */
+ * The engine loop tests the per-car loader's result directly and clears
+ * ok with a constant: through a result local, VC5 gave the loop counter
+ * esi and the row-24 pointer edi, the reverse of the original.  In the menu
+ * arm the name table is chosen before the group count is stored.
+ */
 /* @t4-pass 0x1006C290 1 2026-09-09 probes 10 bytes 459 insns 138 regions 2 rows 0 census no  (hand, fn.py variants: literal/guard/index spellings, div-vs-shift, all inert or worse) */
 /* @t4-pass 0x1006C290 2 2026-09-09 probes 10 bytes 459 insns 138 regions 2 rows 0 census yes  (hand, fn.py variants: name/decl swaps, store fusion, loop-bound forms, all inert; corpus query at +0x40) */
-/* @t3 0x1006C290 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 459/459 insns 138/138 rows 0+0 regions 2 oracle UNCLASSIFIED
- * @t3-effort passes 2 zero-movement 1 2
- * residue is the engine loop's i/IV24 esi-edi transposition only (the
- * BrSelLookup class); size- and insn-exact, identical register-blind
- * multiset.  Dead list w1-w6 in the RESIDUE block above plus the two
- * ledger lines.  Do not reopen before the end-grind. */
 /* @implements 0x1006C290 glide BrSfxBankLoad */
 
 int BrSfxBankLoad(int iSet)
@@ -566,16 +549,15 @@ int BrSfxBankLoad(int iSet)
         return 1;
     }
     if (iSet == 0) {
-        DAT_1184c260 = 9;
         ppName = DAT_100b81a8;
+        DAT_1184c260 = 9;
     } else if (iSet == 1) {
         ppName = DAT_100b8140;
         DAT_1184c260 = 0x19;
         for (i = 0; i < 15; i++) {
             if (((int *)g_0B6540)[i] != 0) {
-                v = BrSfxCarBankLoad(i / 2);
-                if (v == 0)
-                    ok = v;
+                if (BrSfxCarBankLoad(i / 2) == 0)
+                    ok = 0;
             } else {
                 DAT_100b55f8[i] = 0;
                 DAT_100b5cb8[i] = 0;
