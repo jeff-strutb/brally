@@ -188,3 +188,57 @@ plan('paint_walk2', 'Paint shop, car 7 (the second car in the list): the same ra
      [('boot',), ('title',), ('menu', 'TOP GEAR', MAIN['paintshop']), ('wait', 120),
       ('tap', '-', 0, 4, 60, 80, 0), ('tap', 'A', 0, 4, 90), ('until_mode', 0x80243260, 900),
       ('wait', 60), ('paint', 2, 700, 30000)], 34000)
+
+
+def _paint_popups(d):
+    """The paint shop's two double-click popups: the text tool clicked twice
+    within 350 ms opens the text-style chooser (normal / drop shadow, then the
+    shadow colour picker walked round its two rows), and a palette swatch
+    clicked twice opens the colour mixer (channels stepped by the d-pad, the
+    stick and the C buttons; the body colour, the shadow and a plain swatch;
+    B restores, A keeps)."""
+    def rect(va):
+        return [d.s32(va + 4 * k) for k in range(4)]
+
+    def centre(r):
+        return r[0] + r[2] // 2, r[1] + r[3] // 2
+
+    def double_click(r):
+        yield from d.cursor_to(*centre(r))
+        yield from d.idle(2)
+        yield from d.tap('A', hold=2, gap=2)
+        yield from d.tap('A', hold=2, gap=20)
+
+    text = rect(0x80369CD8 + 4 * 16)            # tool 4: text
+    yield from double_click(text)
+    for k in ('DR', 'DL', 'DR'):
+        yield from d.tap(k, hold=2, gap=8)
+    yield from d.tap('A', hold=2, gap=12)      # drop shadow: the colour picker
+    for k in ('DR', 'DR', 'DD', 'DL', 'DU', 'DL', 'DL'):
+        yield from d.tap(k, hold=2, gap=8)
+    yield from d.tap('A', hold=2, gap=20)
+    yield from double_click(text)
+    yield from d.tap('DR', hold=2, gap=8)
+    yield from d.tap('A', hold=2, gap=12)
+    yield from d.tap('B', hold=2, gap=12)
+    yield from d.tap('B', hold=2, gap=20)
+    for n, moves in ((2, 'mixer'), (0, 'body'), (1, 'shadow')):
+        yield from double_click(rect(0x80369B98 + 0x14 * n))
+        for k in ('DD', 'DD', 'DU'):
+            yield from d.tap(k, hold=2, gap=8)
+        for _ in range(30):
+            yield {0: (0, 60 if n != 0 else -60, 0)}
+        for _ in range(10):
+            yield {0: (d.btn('DR'), 0, 0)}
+        yield from d.idle(6)
+        yield from d.tap('CR', hold=2, gap=6)
+        yield from d.tap('CD', hold=2, gap=6)
+        yield from d.tap('B' if n == 2 else 'A', hold=2, gap=20)
+
+
+plan('paint_popups', 'Paint shop, car 1: the text tool double-clicked (the text-style chooser and '
+     'its shadow colour picker), then three palette swatches double-clicked (the colour mixer on '
+     'a plain swatch, the body colour and the shadow).',
+     [('boot',), ('title',), ('menu', 'TOP GEAR', MAIN['paintshop']), ('wait', 120),
+      ('tap', 'A', 0, 4, 90), ('until_mode', 0x80243260, 900), ('wait', 60),
+      ('gen', _paint_popups), ('wait', 60)], 4000)
