@@ -94,9 +94,11 @@ void BrPaintPlot(int x, int y, unsigned char c);
  * chosen one framed in cyan, its description below, and A (select) and B
  * (cancel) buttons.  Left/right move the choice; A fills the current decal
  * or all ten decals with the colour, B cancels.
- * RESIDUE (424): saved-register allocation of the preview offsets (the
- * ROM keeps the unshifted differences in s3/s6/s7 and shifts at each use)
- * and the frame (0x100 vs ours 0xE0). */
+ * The pad record's index is multiplied unsigned (sizeof), as the ROM keeps
+ * 0x15C in a saved register for multu.
+ * RESIDUE (383, 7 short): saved-register allocation of the preview offsets
+ * (the ROM keeps the unshifted differences in s3/s6/s7 and shifts at each
+ * use), and its locals sit 0x1C lower in the frame. */
 /* @implements 0x80247B0C tgr BrPaintClearMenu */
 void BrPaintClearMenu(void)
 {
@@ -160,23 +162,23 @@ void BrPaintClearMenu(void)
   BrImageDrawAt(&D_8028D0B0, 0xd3, y);
   BrImageDrawAt(&D_8028D0E0, bx, y);
   BrPadStickToButtons(&PADS[D_8028DBBC]);
-  if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 4) {
-    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 4);
+  if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)) & 4) {
+    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)), 4);
     if (D_8028CFC0.x2c == 0) {
       D_8028CFC0.x2c = 3;
     } else {
       D_8028CFC0.x2c--;
     }
-  } else if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 1) {
-    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 1);
+  } else if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)) & 1) {
+    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)), 1);
     if (D_8028CFC0.x2c == 3) {
       D_8028CFC0.x2c = 0;
     } else {
       D_8028CFC0.x2c++;
     }
   }
-  if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 0x10) {
-    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 0x10);
+  if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)) & 0x10) {
+    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)), 0x10);
     if (D_8028CFC0.x2c == 0 || D_8028CFC0.x2c == 1) {
       BrPaintDecalCommit();
       for (py = 0; py < D_8028DB8C; py++) {
@@ -216,8 +218,8 @@ void BrPaintClearMenu(void)
       D_8028CFC0.x2c = 0;
     }
     D_8028DB60 = D_8028DB64;
-  } else if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 0x20) {
-    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 0x20);
+  } else if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)) & 0x20) {
+    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)), 0x20);
     D_8028CFC0.x2c = 0;
     D_8028DB60 = D_8028DB64;
   }
