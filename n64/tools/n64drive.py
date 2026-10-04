@@ -37,6 +37,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import n64box as NB  # noqa: E402
 import n64probe as P  # noqa: E402
+import orphanguard  # noqa: E402
 
 SCRIPTS = os.path.join(HERE, 'n64box_scripts')
 # generated scripts land here until `gen --install` puts them in the suite
@@ -689,11 +690,11 @@ def main():
             print('notes: ' + '; '.join(d.notes))
         return
     if a.cmd == 'gen':
-        with ProcessPoolExecutor(min(14, max(1, len(names)))) as ex:
+        with ProcessPoolExecutor(min(14, max(1, len(names))), initializer=orphanguard.watch_parent) as ex:
             for n, r in ex.map(_gen, [(n, a.install) for n in names]):
                 print('%-32s %s' % (n, r))
     else:
-        with ProcessPoolExecutor(min(14, max(1, len(names)))) as ex:
+        with ProcessPoolExecutor(min(14, max(1, len(names))), initializer=orphanguard.watch_parent) as ex:
             for n, r in zip(names, ex.map(verify, names)):
                 print('%-32s %s' % (n, r))
 

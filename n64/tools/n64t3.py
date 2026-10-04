@@ -51,6 +51,7 @@ import n64build as B  # noqa: E402
 import n64link as L  # noqa: E402
 import n64box as NB  # noqa: E402
 import n64image as IMG  # noqa: E402
+import orphanguard  # noqa: E402
 from unicorn import UC_HOOK_CODE  # noqa: E402
 from unicorn import mips_const as M  # noqa: E402
 
@@ -666,7 +667,7 @@ def run_live(vas):
     from concurrent.futures import ProcessPoolExecutor
     agg = {va: dict(compared=0, divergent=0, blocked=0, first=None, sha=None, scripts=[])
            for va in vas}
-    with ProcessPoolExecutor(min(14, len(scripts()))) as ex:
+    with ProcessPoolExecutor(min(14, len(scripts())), initializer=orphanguard.watch_parent) as ex:
         for sc, r, res in ex.map(_live_worker, [(sc, vas, CAND_DIR, CAP) for sc in scripts()]):
             if r != 'frames':
                 print('  %s: run ended early: %s' % (sc, r))
@@ -730,7 +731,7 @@ def run_image(with_vas=()):
     cert = (IMG.t3_certified() & t3_tagged()) | set(with_vas)
     img, extra, rep = _build_only(cert)
     results = []
-    with ProcessPoolExecutor(min(14, len(scripts()))) as ex:
+    with ProcessPoolExecutor(min(14, len(scripts())), initializer=orphanguard.watch_parent) as ex:
         for sc, first, frames, ra in ex.map(_image_worker, [(sc, img, extra) for sc in scripts()]):
             results.append((sc, first, frames))
             print('%s: %s over %d frames%s' % (sc, 'IDENTICAL' if first is None else 'DIFFERS at ' + first,
