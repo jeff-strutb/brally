@@ -515,36 +515,35 @@ void BrCarEntTick(BrCarEnt *e)
  * it, the rear pair braked only while it is nearly still), and the body is
  * stepped.  Then the draw matrices, the speed for the gauges, and the view's
  * camera step for a car that has a view.  u0/u1 are declared and unused
- * (the ROM frame keeps their slots).
- * RESIDUE (48): FP register colouring only -- the ROM gives the float zero
- * f0 and the frame time f2 throughout; ours swaps them. */
-/* @t4-pass 0x8021F998 1 2026-09-29 compiles 12 best 48 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8021F998 2 2026-09-29 compiles 12 best 48 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x8021F998 */
+ * (the ROM frame keeps their slots). */
 /* @implements 0x8021F998 tgr BrCarPhysTick */
 void BrCarPhysTick(BrCar *car)
 {
   int u0[4];
   BrVec3 v;
-  int u1[4];
+  int u1[2];
   int i;
+  BrVec3 *y;
+  BrVec3 *z;
 
   if (car->xf4c != 0) {
     BrVec3Scale(&v, (BrVec3 *)car->mtx0[0], car->x1ddc * D_8028AAD8 * 100.0f);
     BrVec3AddTo((BrVec3 *)car->mtx0[3], &v);
     BrCarSetPos(car, car->mtx0[3][0], car->mtx0[3][1], car->mtx0[3][2]);
-    BrCarSetVel(car, 0, 0, 0);
-    BrCarSetAngVel(car, 0, 0, 0);
+    BrCarSetVel(car, 0.0f, 0.0f, 0.0f);
+    BrCarSetAngVel(car, 0.0f, 0.0f, 0.0f);
     car->xdf4 = 0.0f;
     BrCarRotate(car, car->x1dd4 * 3.1415927f * 0.4f * D_8028AAD8,
                 car->x1dd8 * 3.1415927f * 0.4f * D_8028AAD8,
                 car->x1de0 * 3.1415927f * 0.4f * D_8028AAD8);
     if (*car->pad & 0x10) {
-      car->mtx0[2][0] = 0.0f;
-      car->mtx0[2][1] = 0.0f;
-      car->mtx0[2][2] = 1.0f;
-      BrVec3Cross((BrVec3 *)car->mtx0[1], (BrVec3 *)car->mtx0[2], (BrVec3 *)car->mtx0[0]);
-      BrVec3Cross((BrVec3 *)car->mtx0[2], (BrVec3 *)car->mtx0[0], (BrVec3 *)car->mtx0[1]);
+      z = (BrVec3 *)car->mtx0[2];
+      y = (BrVec3 *)car->mtx0[1];
+      z->x = 0.0f;
+      z->y = 0.0f;
+      z->z = 1.0f;
+      BrVec3Cross(y, z, (BrVec3 *)car->mtx0[0]);
+      BrVec3Cross(z, (BrVec3 *)car->mtx0[0], y);
       BrPadConsume(car->pad, 0x10);
     }
   } else {
