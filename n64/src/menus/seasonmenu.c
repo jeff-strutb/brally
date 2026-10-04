@@ -286,11 +286,9 @@ void BrSeasonDraw(void)
 /* The TU's statics say how it was written: the menu state is function
  * static (a global would keep its address in a register), and the unused
  * 100-byte buffer is what the ROM frame holds above the two named slots.
- * RESIDUE (6): the hoisted BrCarCamStep address spills to 0x58 where the ROM
- * uses 0x5C, and the highlighted row's item sits in v0 for the ROM's v1. */
-/* @t4-pass 0x80209434 1 2026-09-29 compiles 199 best 6 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80209434 2 2026-09-29 compiles 199 best 6 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x80209434 */
+ * The menu's result reuses the loop counter i (one declared local fewer
+ * puts the hoisted BrCarCamStep spill at the ROM's 0x5C), and the label is
+ * read through pp, so the row's item takes v1 as in the ROM. */
 /* @implements 0x80209434 tgr BrTrackSelectScreen */
 void BrTrackSelectScreen(void)
 {
@@ -305,7 +303,6 @@ void BrTrackSelectScreen(void)
   const char *label;
   int idx;
   int i;
-  int r;
 
   if (entered <= 0) {
     BrFrontMenuEnter(D_80271D1C, &count);
@@ -373,7 +370,7 @@ void BrTrackSelectScreen(void)
     idx = D_8028B940;
     pp = &D_80271D1C[idx];
     item = *pp;
-    label = item->label;
+    label = (*pp)->label;
     if (D_80315EE0) {
       D_80271FCC = BrSeasonDraw;
       item->flags |= 2;
@@ -383,7 +380,7 @@ void BrTrackSelectScreen(void)
               D_802722A4[D_8028C800]->label);
       (*pp)->label = text;
     }
-    r = BrMenu((char *)D_8028B944[D_8031B760[0].season->round].x0, count, D_80271D1C, &sel,
+    i = BrMenu((char *)D_8028B944[D_8031B760[0].season->round].x0, count, D_80271D1C, &sel,
                BrTrackSelectable, 0, 0, 0, 0, 0x78, 0x82);
     if (D_80315EE0) {
       (*pp)->flags &= ~2;
@@ -396,9 +393,9 @@ void BrTrackSelectScreen(void)
       sprintf(text, "%s: %d laps", label, D_8028B304);
       (*pp)->label = text;
     }
-    r = BrMenu("TRACK SELECT", count, D_80271D1C, &sel, BrTrackSelectable, 0, 0, 0, 0x80, 0, 0x80);
+    i = BrMenu("TRACK SELECT", count, D_80271D1C, &sel, BrTrackSelectable, 0, 0, 0, 0x80, 0, 0x80);
   }
-  switch (r) {
+  switch (i) {
   case 3:
     if (D_8026FF18 == 1 && D_8028B304 < 5) {
       D_8028B304++;
