@@ -567,7 +567,7 @@ void BrWheelTyre(BrRbBody *b, BrRbBody *w, float *pA, unsigned char *pB, float d
     dot = fwd[2] * v[2] + (v[0] * fwd[0] + v[1] * fwd[1]);
     a[1] = 0.0f;
     a[0] = 0.0f;
-    a[2] = (b->mass + 4.0f * w->mass) * 2.943f + (float)(w->f78[2] - -0.97) * 0.0f;
+    a[2] = (b->mass + 4.0f * w->mass) * 2.9430003f + (float)(w->f78[2] - -0.97) * 0.0f;
     tq = w->drive;
     q = tq / w->inertia;
     load = (w->n[2] * a[2] + (a[0] * w->n[0] + a[1] * w->n[1])) * 3.5f;
