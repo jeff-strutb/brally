@@ -66,8 +66,8 @@ typedef struct BrSample {       /* a module instrument's sample header; 8-bit da
 } BrSample;
 extern BrSample *D_803787D0[];  /* by instrument number - 1 */
 extern unsigned long long D_80379568[10][12];
-extern int D_802A4918;
-extern int D_802A491C;
+extern int D_802A4918;                 /* the mixer's state block (mixer.s): */
+extern unsigned int D_802A491C;        /* its first two words differ in type */
 extern char D_803746F0[];               /* the music timer's message queue */
 extern char D_80374708[];               /* its two messages */
 extern char D_80374710[];               /* the music timer */
@@ -467,14 +467,10 @@ void BrModReset(void)
  * 21998 Hz, start a 10 ms timer on the music queue, silence every music and
  * sound voice, time one test mix, build the instrument and note-rate
  * tables, reset the module player, queue the first buffer and start the
- * mixer thread.
- * RESIDUE (39): IDO unrolls the six-voice loop with its stores in another
- * order and one temp register later, and keeps 0xFFFEFFFE in v0 where the
- * ROM uses t6.  Loop tests, store order in the body and the constant's
- * spelling (chained, comma, one line) do not reach it. */
-/* @t4-pass 0x802575C4 1 2026-09-29 compiles 26 best 39 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x802575C4 2 2026-09-29 compiles 26 best 39 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x802575C4 */
+ * mixer thread.  The two 0xFFFEFFFE stores go to globals of different
+ * types, so they are two constants: one int and one unsigned.  If they were
+ * one constant, IDO would hold it in v0 across the entry block, which shifts
+ * every register in the voice loop below. */
 /* @implements 0x802575C4 tgr BrMusicInit */
 void BrMusicInit(int param_1, char *param_2)
 {
