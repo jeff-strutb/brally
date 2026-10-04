@@ -11,6 +11,7 @@
 #include "slice1_01.h"
 
 #include <stdlib.h>
+#include <stdio.h>
 
 /* 0x100030E0  FCHK_FRead.
  *
@@ -28,24 +29,13 @@
  * and kills the game with a message. */
 /* @t4-pass 0x10003430 1 2026-09-09 probes 11 bytes 140 insns 48 regions 3 rows 0 census yes  (fn.py variants: multiply operand order, outer/inner casts, local caching, check reorder) */
 /* @t4-pass 0x10003430 2 2026-09-09 probes 12 bytes 140 insns 48 regions 3 rows 0 census yes  (fn.py variants: paren grouping, size/count temps, alternate zero tests, fail-product spellings) */
-/* @t3 0x10003430 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 140/140 insns 48/48 rows 0+0 regions 3 oracle UNCLASSIFIED
- * @t3-effort passes 4 zero-movement 3 4
- * Residue is register allocation: the original homes `size` in ebx and
- * `count` in edi; this build homes them the other way round, which flips the
- * two pushes and the imul operands (8 masked diffs).  Every instruction is
- * the original's; the dossier is the RESIDUE comment below.  Passes 1-2
- * (ledger above) moved nothing at 140/48/3/0 -- operand order, casts, local
- * caching and check reorder are all codegen-identical; only `wanted <= 0u`
- * went worse.  Do not reopen before the end-grind. */
 /* @implements 0x100030E0 d3d BrFChkFRead */
 #include <windows.h>
-/* RESIDUE (8 masked diffs, REGNORM 0+0): the original homes `size` in
- * ebx and `count` in edi; this build homes them the other way round, which
- * flips the two `push`es and the `imul` operands. Every instruction is the
- * original's. Writing the product `count * size` instead of `size * count`
- * changes nothing -- VC5 canonicalises the multiply the same way it does a
- * commutative add.
+/* The short-read report is a guarded arm and all the successes share one
+ * `return 1`; that is what homes `size` in ebx and `count` in edi as the
+ * original does (an early `return 1` for got == count swapped them, and no
+ * operand order moved it).  The message goes through the CRT's sprintf
+ * (import 0x118F0570), not user32's wsprintfA.
  * DEAD 2026-09-09, all identical: named uint32 locals in both orders;
  * wanted after got; a single (uint32_t) cast on the product; uint32
  * params; casts at the fread site; a FILE* local; !wanted; reversed
@@ -62,24 +52,20 @@ int BrFChkFRead(void *pDst, size_t size, size_t count, FILE **ppFile)
     uint32_t wanted = (uint32_t)size * (uint32_t)count;
     size_t   got;
 
-    if (wanted == 0u) {
+    if (wanted == 0u)
         return 1;
-    }
-
     got = fread(pDst, size, count, *ppFile);
-
-    if (got == 0u) {
+    if (got == 0u)
         return 0;
+    /* The short-read report is the guarded arm and every success falls to
+     * ONE `return 1`: an early `return 1` for got == count weights the
+     * callee-saved registers the other way (size in ebx, count in edi). */
+    if (got != count) {
+        sprintf(buf,
+                  "FCHK_FRead(): trying to read %d bytes, but got only %d bytes.\n",
+                  (int)wanted, (int)((uint32_t)got * (uint32_t)size));
+        OutputDebugStringA(buf);
+        exit(1);
     }
-    if (got == count) {
-        return 1;
-    }
-
-    wsprintfA(buf,
-              "FCHK_FRead(): trying to read %d bytes, but got only %d bytes.\n",
-              (int)wanted, (int)((uint32_t)got * (uint32_t)size));
-    OutputDebugStringA(buf);
-    exit(1);
-
-    return 1;   /* the original falls through to the `mov eax,1` tail */
+    return 1;
 }
