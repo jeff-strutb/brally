@@ -565,7 +565,7 @@
 <rect x="1349.8" y="866.1" width="21.1" height="15.9" fill="#3fb950"><title>(unnamed)  0x8021A540  120B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1349.8" y="882.6" width="21.1" height="15.3" fill="#3fb950"><title>(unnamed)  0x8021E998  116B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1371.5" y="849.6" width="15.6" height="20.7" fill="#3fb950"><title>(unnamed)  0x8021EA0C  116B  [unfiled 0x8021xxxx]</title></rect>
-<rect x="1387.7" y="849.6" width="11.2" height="20.7" fill="#58a6ff"><title>(unnamed)  0x8021EADC  84B  [unfiled 0x8021xxxx]</title></rect>
+<rect x="1387.7" y="849.6" width="11.2" height="20.7" fill="#3fb950"><title>(unnamed)  0x8021EADC  84B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1371.5" y="870.9" width="14.5" height="13.6" fill="#3fb950"><title>(unnamed)  0x80210F80  72B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1371.5" y="885.1" width="14.5" height="12.8" fill="#3fb950"><title>(unnamed)  0x802118B4  68B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1386.5" y="870.9" width="12.3" height="14.1" fill="#3fb950"><title>(unnamed)  0x8021E180  64B  [unfiled 0x8021xxxx]</title></rect>
@@ -748,7 +748,7 @@
 <rect x="1496.7" y="873.0" width="14.1" height="10.6" fill="#6e5494"><title>BrGfxClearCounters  0x80269410  80B  [core/slice2_13]</title></rect>
 <rect x="1496.7" y="887.3" width="14.1" height="10.6" fill="#6e5494"><title>BrUiOptAddress  0x8026BA20  80B  [core/slice7_80]</title></rect>
 <rect x="1514.4" y="811.2" width="11.6" height="13.0" fill="#6e5494"><title>BrPolyPoolFree  0x8026BA70  80B  [core/drawing/br_polyclip]</title></rect>
-<rect x="1529.5" y="811.2" width="10.8" height="13.0" fill="#58a6ff"><title>BrU16QueuePop  0x8021EA90  76B  [core/gamedata/br_u16cursor]</title></rect>
+<rect x="1529.5" y="811.2" width="10.8" height="13.0" fill="#3fb950"><title>BrU16QueuePop  0x8021EA90  76B  [core/gamedata/br_u16cursor]</title></rect>
 <rect x="1543.9" y="811.2" width="10.8" height="13.0" fill="#3fb950"><title>BrDPlayRandStep  0x80225EE4  76B  [core/slice2_22]</title></rect>
 <rect x="1558.3" y="811.2" width="10.8" height="13.0" fill="#3fb950"><title>BrDlCmdFogColour  0x8023DF00  76B  [core/drawing/br_dlcmd]</title></rect>
 <rect x="1572.7" y="811.2" width="10.8" height="13.0" fill="#6e5494"><title>BrBitStreamSkipBytes  0x8023FF34  76B  [core/gamedata/br_bitstream]</title></rect>
@@ -813,4 +813,4 @@
 <rect x="1588.1" y="893.1" width="0.9" height="4.8" fill="#3fb950"><title>SetCommentChar  0x8022F4EC  12B  [exe/brally/0x004016C0]</title></rect>
 <rect x="1592.6" y="893.1" width="0.9" height="4.8" fill="#6e5494"><title>BrGbiMtxSlot  0x80242810  12B  [core/drawing/br_gbihandlers]</title></rect>
 <rect x="1597.0" y="893.1" width="0.9" height="4.8" fill="#3fb950"><title>BrRet0Std3_10054600  0x8025D35C  12B  [core/menus/br_textlist]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 463 &#183; T3 codegen-only 104 &#183; 132,132/457,392 bytes exact (28.9%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 465 &#183; T3 codegen-only 102 &#183; 132,292/457,392 bytes exact (28.9%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
