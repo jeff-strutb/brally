@@ -559,6 +559,7 @@ void BrPaintExitPrompt(void)
  * the pad address kept in a0 for the consume. */
 /* @t4-pass 0x8024AC70 1 2026-10-03 compiles 31 best 205 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8024AC70 2 2026-10-03 compiles 30 best 205 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8024AC70 */
 /* @implements 0x8024AC70 tgr BrPaintKeyboard */
 void BrPaintKeyboard(void)
 {
@@ -663,6 +664,7 @@ void BrPaintKeyboard(void)
 /* @t4-pass 0x8024BE78 1 2026-09-26 compiles 17 best 219 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8024BE78 2 2026-09-26 compiles 17 best 219 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8024BE78 3 2026-09-26 compiles 16 best 219 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8024BE78 */
 /* @implements 0x8024BE78 tgr BrPaintStickMove */
 void BrPaintStickMove(void)
 {
@@ -877,6 +879,7 @@ void BrPaintBrushSelect(void)
  * walks a pointer. */
 /* @t4-pass 0x8024DCA0 1 2026-10-03 compiles 30 best 262 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8024DCA0 2 2026-10-03 compiles 30 best 262 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8024DCA0 */
 /* @implements 0x8024DCA0 tgr BrPaintFloodFill */
 void BrPaintFloodFill(int sx, int sy)
 {
@@ -1336,6 +1339,7 @@ void BrPaintFrameRect(int sx0, int sy0, int sx1, int sy1)
  * registers. */
 /* @t4-pass 0x8024FBC8 1 2026-10-03 compiles 30 best 122 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8024FBC8 2 2026-10-03 compiles 30 best 122 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8024FBC8 */
 /* @implements 0x8024FBC8 tgr BrPaintFillRoundRect */
 void BrPaintFillRoundRect(int sx0, int sy0, int sx1, int sy1)
 {
@@ -1412,6 +1416,7 @@ void BrPaintFillRoundRect(int sx0, int sy0, int sx1, int sy1)
  * reorders the edge loops' setup. */
 /* @t4-pass 0x8024FEB8 1 2026-10-03 compiles 31 best 494 moved 2  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8024FEB8 2 2026-10-03 compiles 31 best 494 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8024FEB8 */
 /* @implements 0x8024FEB8 tgr BrPaintFrameRoundRect */
 void BrPaintFrameRoundRect(int sx0, int sy0, int sx1, int sy1)
 {
@@ -1660,6 +1665,7 @@ void BrPaintOvalStyleSelect(void)
  * in saved registers. */
 /* @t4-pass 0x80250B58 1 2026-10-03 compiles 28 best 250 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80250B58 2 2026-10-03 compiles 31 best 250 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80250B58 */
 /* @implements 0x80250B58 tgr BrPaintFillOval */
 void BrPaintFillOval(int sx0, int sy0, int sx1, int sy1)
 {
@@ -1764,6 +1770,7 @@ void BrPaintFillOval(int sx0, int sy0, int sx1, int sy1)
  * radii in their stack homes; ours holds them in saved registers first. */
 /* @t4-pass 0x80250FCC 1 2026-10-03 compiles 31 best 371 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80250FCC 2 2026-10-03 compiles 31 best 371 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80250FCC */
 /* @implements 0x80250FCC tgr BrPaintFrameOval */
 void BrPaintFrameOval(int sx0, int sy0, int sx1, int sy1)
 {
@@ -1880,6 +1887,7 @@ void BrPaintFrameOval(int sx0, int sy0, int sx1, int sy1)
  * reuses the span bounds; ours holds x in a saved register. */
 /* @t4-pass 0x8025159C 1 2026-10-03 compiles 31 best 131 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8025159C 2 2026-10-03 compiles 30 best 131 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8025159C */
 /* @implements 0x8025159C tgr BrPaintDisc */
 void BrPaintDisc(int x, int y, int r, unsigned char screen)
 {
@@ -1998,6 +2006,7 @@ void BrPaintCircle(int sx, int sy, int r)
  * scheduled differently (the view-counter store, float registers). */
 /* @t4-pass 0x80242BDC 1 2026-10-03 compiles 30 best 125 moved 2  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80242BDC 2 2026-10-03 compiles 29 best 125 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80242BDC */
 /* @implements 0x80242BDC tgr BrPaintCarView */
 void BrPaintCarView(void)
 {
@@ -2344,6 +2353,7 @@ void BrPaintDashRect(int x0, int y0, int x1, int y1)
  * the radius twice (s6, s7); ours holds the corners in saved registers. */
 /* @t4-pass 0x80251F68 1 2026-10-03 compiles 31 best 268 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80251F68 2 2026-10-03 compiles 31 best 268 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80251F68 */
 /* @implements 0x80251F68 tgr BrPaintDashRoundRect */
 void BrPaintDashRoundRect(int x0, int y0, int x1, int y1)
 {
@@ -2450,6 +2460,7 @@ void BrPaintDashRoundRect(int x0, int y0, int x1, int y1)
  * every 8 frames). */
 /* @t4-pass 0x802523CC 1 2026-10-03 compiles 29 best 308 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x802523CC 2 2026-10-03 compiles 31 best 308 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x802523CC */
 /* @implements 0x802523CC tgr BrPaintDashOval */
 void BrPaintDashOval(int x0, int y0, int x1, int y1)
 {
@@ -2560,6 +2571,7 @@ void BrPaintDashOval(int x0, int y0, int x1, int y1)
  * in memory, which shifts every temp after. */
 /* @t4-pass 0x802528F8 1 2026-10-03 compiles 31 best 206 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x802528F8 2 2026-10-03 compiles 31 best 206 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x802528F8 */
 /* @implements 0x802528F8 tgr BrPaintDashCircle */
 void BrPaintDashCircle(int cx, int cy, int r)
 {

@@ -60,6 +60,7 @@ extern int D_8028A8AC;
  * first load.  The unused float[4] reproduces the 16-byte hole above cx. */
 /* @t4-pass 0x80233E10 1 2026-10-03 compiles 30 best 28 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80233E10 2 2026-10-03 compiles 30 best 28 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80233E10 */
 /* @implements 0x80233E10 tgr BrProjectExtent */
 void BrProjectExtent(float pos[3], int r, short *lo, short *hi)
 {

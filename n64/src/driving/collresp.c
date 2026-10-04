@@ -295,6 +295,7 @@ int BrCrContactKick(BrTipBody *b, float *pN, int dampFlag, int spinFlag)
  * slots) and the FP schedule of the lever cross product differs. */
 /* @t4-pass 0x8025BBB8 1 2026-10-03 compiles 31 best 302 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8025BBB8 2 2026-10-03 compiles 31 best 302 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8025BBB8 */
 /* @implements 0x8025BBB8 tgr BrCrImpulseSolve */
 int BrCrImpulseSolve(BrTipBody *b, float *pN, float *pDir, int flag, float rest)
 {

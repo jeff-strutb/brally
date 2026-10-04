@@ -150,6 +150,7 @@ void BrVec3Zero(BrVec3 *v);
 /* @t4-pass 0x8023B418 2 2026-10-03 compiles 1 best 6 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8023B418 3 2026-10-03 compiles 30 best 6 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8023B418 4 2026-10-03 compiles 31 best 6 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8023B418 */
 /* @implements 0x8023B418 tgr BrSkidStep */
 void BrSkidStep(car)
 BrCar *car;

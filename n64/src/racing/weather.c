@@ -85,6 +85,7 @@ void BrStub8023A1C0(void)
  * the point in saved FP registers, which moves every register after. */
 /* @t4-pass 0x8023A1C8 1 2026-10-03 compiles 31 best 317 moved 5  (n64/tools/n64permute.py) */
 /* @t4-pass 0x8023A1C8 2 2026-10-03 compiles 31 best 317 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x8023A1C8 */
 /* @implements 0x8023A1C8 tgr BrWeatherStep */
 void BrWeatherStep(void)
 {

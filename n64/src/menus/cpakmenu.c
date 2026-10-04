@@ -128,6 +128,7 @@ extern short D_8028F2A0[][7][3];   /* the 3 by 7 font, its own colours */
  * ours hoists those addresses into saved registers. */
 /* @t4-pass 0x802534DC 1 2026-10-03 compiles 31 best 1055 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x802534DC 2 2026-10-03 compiles 30 best 1055 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x802534DC */
 /* @implements 0x802534DC tgr BrPakManager */
 void BrPakManager(void)
 {
