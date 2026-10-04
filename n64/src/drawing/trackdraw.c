@@ -97,8 +97,8 @@ typedef struct BrTrackHdr {     /* the loaded track's header (part) */
   char pad00[0x60];
   struct BrTrackObjPos {        /* a track object, as far as the setup reads it */
     char pad00[0x30];
-    int x;                      /* 0x30  its grid position */
-    int y;                      /* 0x34 */
+    float x;                    /* 0x30  its position (matrix translation) */
+    float y;                    /* 0x34 */
     char pad38[0x54 - 0x38];
   } *objs;                      /* 0x60 */
   int nObjs;                    /* 0x64 */
@@ -138,7 +138,7 @@ typedef struct BrViewRect { int x; int y; int w; int h; int x10; } BrViewRect;
 extern BrViewRect D_8031B2C8[2];
 unsigned int BrTrackGridCell(int col, int row);
 unsigned short BrU16QueuePopB(unsigned short *q);
-int BrGridSpanHasPoint(int x, int y);
+int BrGridSpanHasPoint(float x, float z);
 void BrQsort(void *base, int n, int size, int (*cmp)());
 void BrFill64(void *dst, int n, int value);
 void BrVec3Sub(BrVec3 *out, BrVec3 *a, BrVec3 *b);
@@ -501,6 +501,7 @@ int BrDrawSortCmp(BrDrawSortItem *a, BrDrawSortItem *b)
  * view. */
 /* @t4-pass 0x80234FF8 1 2026-10-03 compiles 116 best 689 moved 0  (n64/tools/n64permute.py) */
 /* @t4-pass 0x80234FF8 2 2026-10-03 compiles 116 best 689 moved 0  (n64/tools/n64permute.py) */
+/* @t3 0x80234FF8 */
 /* @implements 0x80234FF8 tgr BrTrackDrawSetup */
 void BrTrackDrawSetup(void)
 {
