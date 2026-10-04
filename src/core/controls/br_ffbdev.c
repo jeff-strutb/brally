@@ -288,14 +288,6 @@ void BrFfbUpdateSpring(int32_t up, int32_t enable, int32_t decay)
  * gives the device back. */
 /* @t4-pass 0x100723D0 1 2026-09-12 probes 10 bytes 239 insns 78 regions 2 rows 0 census no  (hand: CreateDevice out pointer through the spent pDevInst arg slot, no pTmp local, frame 0x10; direct per-site OutputDebugStringA import calls; create-failure as the ELSE of nesting the rest in the success arm, landing at the tail -- a goto spelling gets pulled inline. fn.py variants on the last residue: dataformat pVtbl local, hr temp, decl order, arg cast, EOF position, void-cast release all inert. Residue = one vtable temp ecx-vs-edx at SetDataFormat, 2 instructions / 4 B, plus the unmapped d3d-global reloc regions.) */
 /* @t4-pass 0x100723D0 2 2026-09-12 probes 10 bytes 239 insns 78 regions 2 rows 0 census yes  (hand, fn.py variants: cast spellings, decl orders, !(hr>=0), pDev re-read drop, coop pVtbl local, else-arm inversion, EOF position, void-cast release, hr for CreateDevice, IID via local -- all inert or worse; slotcensus orig vs recomp byte-identical including the reused arg slot's 0-write/2-read shape) */
-/* @t3 0x100723D0 2026-09-12 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 239/239 insns 78/78 rows 0+0 regions 2 oracle UNCLASSIFIED
- * @t3-effort passes 2 zero-movement 1 2
- * residue is one vtable-temp register at the SetDataFormat call (ours ecx,
- * original edx; 2 instructions, 4 bytes) -- the same creation-order class as
- * BrFfbInit's. Dead lists in the two ledger lines. Byte-exact additionally
- * gated on the unmapped d3d-global reloc regions.
- * Do not reopen before the end-grind. */
 /* @implements 0x100790E0 d3d BrFfbEnumDevice */
 int32_t BR_STDCALL BrFfbEnumDevice(void *pDevInst, void *pvRef)
 {
@@ -327,23 +319,29 @@ int32_t BR_STDCALL BrFfbEnumDevice(void *pDevInst, void *pvRef)
             return 0;
         }
 
+        /* Each failure arm releases the device itself; VC5 cross-jumps
+         * the two identical tails into one block. Written once after a
+         * join, the release's vtable temp is created after SetDataFormat's
+         * and the two swap ecx/edx. */
         pDev = g_brFfb.pDevice;
         /* pvRef is an integer cooperative level, not a pointer. */
         if (BrDiDev(pDev)->pfnSetCooperativeLevel(pDev, g_brP680584,
                 (uint32_t)(uintptr_t)pvRef) < 0) {
             BR_DBG_OUT(kBrErrCoopLevel);
-        } else {
             pDev = g_brFfb.pDevice;
-            if (BrDiDev(pDev)->pfnSetDataFormat(pDev, kBrDataFormatJoystick2) >= 0) {
-                return 0;                   /* success -- DIENUM_STOP */
-            }
-            BR_DBG_OUT(kBrErrDataFormat);
+            BrDiDev(pDev)->pfnRelease(pDev);
+            g_brFfb.pDevice = NULL;
+            return 0;
         }
-
         pDev = g_brFfb.pDevice;
-        BrDiDev(pDev)->pfnRelease(pDev);
-        g_brFfb.pDevice = NULL;
-        return 0;
+        if (BrDiDev(pDev)->pfnSetDataFormat(pDev, kBrDataFormatJoystick2) < 0) {
+            BR_DBG_OUT(kBrErrDataFormat);
+            pDev = g_brFfb.pDevice;
+            BrDiDev(pDev)->pfnRelease(pDev);
+            g_brFfb.pDevice = NULL;
+            return 0;
+        }
+        return 0;                           /* success -- DIENUM_STOP */
     }
 
     BR_DBG_OUT(kBrErrCreateDevice);
