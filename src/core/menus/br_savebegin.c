@@ -266,29 +266,9 @@ extern char s_AutoSave_brf_100acae8[];   /* "AutoSave.brf" */
  * play, publish race number / entrant count / class, refresh the option
  * globals, total the class's points, make the packed positions 1-based and
  * print the two labels.  Returns nothing.
- *
- * PARKED 2026-09-05 at 536/536 B, 7 diff bytes, multiset 0: the original
- * loads BOTH row dwords (`mov eax,[edi] / mov ecx,[edi+4]`) and the sprintf
- * import before `inc edx` and the first store; ours stores the first dword
- * before loading the second.  The identical tail text is byte-exact in
- * BrSaveBeginRallySeason above, so the difference is this function's
- * context (void, whole body nested under the fopen test), not the
- * statement.  Dead: two int temps for the pair; an `int *` view of the row;
- * indexed `*(int *)&DAT_10ac5a66[k*4]` loads (recomputes the row, -3
- * insns); `if (fp == NULL) return;` instead of the nested block. */
+ */
 /* @t4-pass 0x1003B130 1 2026-09-07 probes 86 bytes 536 insns 162 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x1003B130 2 2026-09-07 probes 87 bytes 536 insns 162 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t3 0x1003B130 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 536/536 insns 162/162 rows 0+0 regions 1 oracle EQUIVALENT
- * @t3-effort passes 2 zero-movement 1 2
- * Residue is scheduling (7 masked diffs at +0x1d7, RAW/REGNORM 0+0): the
- * original folds an import load before the `inc edx`/first store where this
- * build stores the first dword before loading the second.  The identical tail
- * is byte-exact in BrSaveBeginRallySeason above, so it is this function's
- * context (void body nested under the fopen test), not the statement; the
- * dead-probe list is in the RESIDUE comment above.  Passes 1-2 (crank.py,
- * ledger above) moved nothing at 536/162/1/0.  Do not reopen before the
- * end-grind. */
 /* @implements 0x1003B130 glide BrSaveResumeAutoSave */
 void BrSaveResumeAutoSave(void)
 {
@@ -340,8 +320,10 @@ void BrSaveResumeAutoSave(void)
         DAT_10ac5a40 = DAT_10ac5a4e[k];
         for (i = 0; i < DAT_10ac5bfc; i++)
             ((char *)&DAT_10ac5a40)[i] += 1;
-        DAT_10ac40f8 = *(int *)pw;
-        DAT_10ac40fc = *(int *)(pw + 2);
+        /* The 8-byte gear pair is copied as one double: VC5 moves it
+         * through eax/ecx, both loads ahead of both stores, as the original
+         * does; two dword assignments interleave the loads and stores. */
+        *(double *)&DAT_10ac40f8 = *(double *)pw;
         sprintf(DAT_10ac5870, DAT_100a6b84, nRace + 1);
         sprintf(DAT_10ac46a0, DAT_100a6b84, cnt + 1);
     }

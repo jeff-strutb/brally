@@ -754,6 +754,7 @@ glide_va,name,module,basis,file
 0x1003AF60,BrExt_10041A00,menus,filed,src/core/menus/br_menuact.c
 0x1003B020,BrMenuCopyTrackName,menus,filed,src/core/menus/br_menuact.c
 0x1003B0B0,BrMenuAutoSaveName,menus,neighbour,src/core/menus/br_menucb.c
+0x1003B130,BrSaveResumeAutoSave,menus,filed,src/core/menus/br_savebegin.c
 0x1003B350,BrSaveNameCommitRallySeason,menus,filed,src/core/menus/br_savename.c
 0x1003B580,BrSaveProbeRallySeason,menus,filed,src/core/menus/br_saveprobe.c
 0x1003B970,BrExt_10042410,menus,filed,src/core/menus/br_menuact.c
