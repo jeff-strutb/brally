@@ -981,6 +981,8 @@ short BrCollGridCellAcquire(float x, float y)
  * a[0], b[2], t[0], m[...]) to the stack and reloads them per test; ours
  * keeps more in registers (544).  The fifteen tests and their sums are in
  * the ROM's order. */
+/* @t4-pass 0x8025F4F8 1 2026-10-03 compiles 26 best 516 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8025F4F8 2 2026-10-03 compiles 26 best 516 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8025F4F8 tgr BrObbOverlap */
 int BrObbOverlap(float *m, float *t, float *a, float *b)
 {
@@ -1073,6 +1075,8 @@ float sqrtf(float x);
  * RESIDUE (432): the ROM keeps the outer index in its frame slot (0x148,
  * under the offset) and has four more named words there; the
  * car-missing/out tests branch straight to the loop end. */
+/* @t4-pass 0x8025FDE4 1 2026-10-03 compiles 26 best 432 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8025FDE4 2 2026-10-03 compiles 26 best 432 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8025FDE4 tgr BrCarCarCollide */
 void BrCarCarCollide(void)
 {
