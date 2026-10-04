@@ -1826,30 +1826,18 @@ int FUN_10028BB0(int *);
  * the old index. */
 /* @t4-pass 0x10027A10 1 2026-09-07 probes 58 bytes 83 insns 25 regions 1 rows 0 census yes  (tools/crank.py) */
 /* @t4-pass 0x10027A10 2 2026-09-07 probes 58 bytes 83 insns 25 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t3 0x10027A10 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 83/85 insns 25/25 rows 0+0 regions 1 oracle EQUIVALENT
- * @t3-effort passes 2 zero-movement 1 2
- * residue is register colouring only: identical register-blind instruction
- * multiset (rows 0+0), 1 masked region, 2 B short on encoding;
- * every row pairs under t3.py's canonical classes.  Effort: 2 counted
- * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
- * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x10027A10 glide br_tex3d_append */
 
 int br_tex3d_append(void)
 
 {
-  unsigned int max;
-  unsigned int nmax;
-
-  /* max loaded first (ecx), count compared in eax (`cmp eax,ecx; jb`).
-   * Grow uses a separate nmax so max does not steal eax for `add eax,0x100`. */
-  max = DAT_10697a5c;
-  if (DAT_10697a58 >= max) {
-    nmax = max + 0x100;
-    DAT_10697a5c = nmax;
-    DAT_106b7aa0 = (int)BrChkRealloc((void *)DAT_106b7aa0, nmax * 0x2b4,
+  /* No locals: both counters read straight from the globals.  A named copy
+   * of the capacity takes eax and the grow lands in it (`add eax,0x100`, two
+   * bytes short); the original grows the capacity in ecx. */
+  if (DAT_10697a58 >= DAT_10697a5c) {
+    DAT_10697a5c += 0x100;
+    DAT_106b7aa0 = (int)BrChkRealloc((void *)DAT_106b7aa0,
+                                     DAT_10697a5c * 0x2b4,
                                      (int)s_AppendTexture__atdb_100a9e6c);
   }
   DAT_10697a58++;
