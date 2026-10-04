@@ -1230,7 +1230,7 @@
 <rect x="333.6" y="742.9" width="17.0" height="19.8" fill="#58a6ff"><title>BrTex3dFreeAll  0x10029CD0  153B  [core/drawing/br_tex3d]</title></rect>
 <rect x="333.6" y="763.3" width="17.0" height="14.3" fill="#3fb950"><title>BrTexRgbaToArgb1555  0x10023CB0  112B  [core/drawing/br_tex3d]</title></rect>
 <rect x="351.2" y="742.9" width="11.9" height="16.7" fill="#3fb950"><title>br_tex3d_seam  0x10028B50  92B  [core/drawing/br_tex3d]</title></rect>
-<rect x="363.6" y="742.9" width="10.9" height="16.7" fill="#58a6ff"><title>br_tex3d_append  0x10027A10  85B  [core/drawing/br_tex3d]</title></rect>
+<rect x="363.6" y="742.9" width="10.9" height="16.7" fill="#3fb950"><title>br_tex3d_append  0x10027A10  85B  [core/drawing/br_tex3d]</title></rect>
 <rect x="375.2" y="742.9" width="10.7" height="16.7" fill="#3fb950"><title>BrTex3dDownloadAt  0x100283C0  83B  [core/drawing/br_tex3d]</title></rect>
 <rect x="351.2" y="760.1" width="9.1" height="17.5" fill="#3fb950"><title>BrTex3dRecCopyHead  0x10023D20  75B  [core/drawing/br_tex3d]</title></rect>
 <rect x="360.9" y="760.1" width="13.3" height="8.7" fill="#3fb950"><title>BrTex3dReDownload  0x100285E0  55B  [core/drawing/br_tex3d]</title></rect>
@@ -1819,7 +1819,7 @@
 <rect x="957.5" y="328.6" width="9.1" height="5.8" fill="#3fb950"><title>BrGbiTexScanPipeSync  0x10029570  25B  [core/drawing/br_gbitexscan]</title></rect>
 <rect x="967.3" y="321.9" width="3.2" height="12.4" fill="#3fb950"><title>BrGbiTexScanLoadSync  0x100294F0  20B  [core/drawing/br_gbitexscan]</title></rect>
 <rect x="913.0" y="338.0" width="57.5" height="55.5" fill="#58a6ff"><title>BrDlVtxGenLin  0x10022BF0  1307B  [core/drawing/br_dlvtx_gen]</title></rect>
-<rect x="913.0" y="397.0" width="57.5" height="55.4" fill="#58a6ff"><title>BrEarLoad  0x10017910  1306B  [core/audio/br_earload]</title></rect>
+<rect x="913.0" y="397.0" width="57.5" height="55.4" fill="#3fb950"><title>BrEarLoad  0x10017910  1306B  [core/audio/br_earload]</title></rect>
 <rect x="913.0" y="456.0" width="57.5" height="54.9" fill="#3fb950"><title>(unnamed)  0x1006F170  1295B  [core/driving/BrCarStep_1006F170]</title></rect>
 <rect x="913.0" y="514.6" width="57.5" height="52.7" fill="#3fb950"><title>(unnamed)  0x1000C4E0  1246B  [core/drawing/BrRippleApply_1000C4E0]</title></rect>
 <rect x="913.0" y="570.8" width="22.0" height="35.0" fill="#3fb950"><title>BrSub10047360  0x100407B0  323B  [core/menus/br_phasenav]</title></rect>
@@ -1971,7 +1971,7 @@
 <rect x="1023.2" y="375.8" width="45.9" height="46.6" fill="#3fb950"><title>(unnamed)  0x10007230  901B  [core/net/BrCarStateDecode_10007230]</title></rect>
 <rect x="1023.2" y="426.0" width="45.9" height="29.7" fill="#3fb950"><title>BrRleEncode  0x1002E376  579B  [core/drawing/br_texblit]</title></rect>
 <rect x="1023.2" y="456.3" width="45.9" height="15.8" fill="#3fb950"><title>FUN_1002e5b9  0x1002E5B9  313B  [core/drawing/br_texblit]</title></rect>
-<rect x="1023.2" y="475.7" width="23.9" height="19.6" fill="#58a6ff"><title>BrVtxExpand  0x10018EF0  203B  [core/drawing/br_vtxcache]</title></rect>
+<rect x="1023.2" y="475.7" width="23.9" height="19.6" fill="#3fb950"><title>BrVtxExpand  0x10018EF0  203B  [core/drawing/br_vtxcache]</title></rect>
 <rect x="1047.8" y="475.7" width="21.4" height="19.6" fill="#3fb950"><title>BrF3DListFixup  0x10019040  182B  [core/drawing/br_vtxcache]</title></rect>
 <rect x="1023.2" y="495.9" width="18.1" height="14.2" fill="#3fb950"><title>BrVtxCacheResolve  0x10018E10  114B  [core/drawing/br_vtxcache]</title></rect>
 <rect x="1023.2" y="510.7" width="18.1" height="11.0" fill="#3fb950"><title>BrVtxSwap  0x10018E90  89B  [core/drawing/br_vtxcache]</title></rect>
@@ -2205,7 +2205,7 @@
 <rect x="1182.4" y="513.8" width="5.9" height="10.1" fill="#3fb950"><title>BrTextBoxDeleteDtor  0x10053EC0  30B  [core/menus/br_textbox]</title></rect>
 <rect x="1182.4" y="524.5" width="4.0" height="3.0" fill="#3fb950"><title>BrVtInit53EE0  0x10053EE0  7B  [core/menus/br_textbox]</title></rect>
 <rect x="1186.9" y="524.5" width="1.4" height="3.0" fill="#3fb950"><title>BrStubFalse  0x10053E60  3B  [core/menus/br_textbox]</title></rect>
-<rect x="1156.8" y="531.1" width="18.0" height="14.1" fill="#58a6ff"><title>BrSurfBlt24  0x100011C0  117B  [core/drawing/br_surf]</title></rect>
+<rect x="1156.8" y="531.1" width="18.0" height="14.1" fill="#3fb950"><title>BrSurfBlt24  0x100011C0  117B  [core/drawing/br_surf]</title></rect>
 <rect x="1175.4" y="531.1" width="12.9" height="14.1" fill="#3fb950"><title>BrVec3Predict  0x10001C90  85B  [core/drawing/br_surf]</title></rect>
 <rect x="1156.8" y="545.8" width="17.4" height="9.8" fill="#3fb950"><title>BrSurfNew  0x10001130  81B  [core/drawing/br_surf]</title></rect>
 <rect x="1156.8" y="556.2" width="17.4" height="9.1" fill="#3fb950"><title>BrSurfFromBitmap  0x10001240  75B  [core/drawing/br_surf]</title></rect>
@@ -2807,4 +2807,4 @@
 <rect x="1591.5" y="897.4" width="2.5" height="0.5" fill="#3fb950"><title>BrFtolArg  0x10018990  9B  [core/geometry/br_ftol]</title></rect>
 <rect x="1597.6" y="892.9" width="0.4" height="1.4" fill="#3fb950"><title>BrCosF  0x100023E0  7B  [core/geometry/br_cos]</title></rect>
 <rect x="1597.6" y="897.9" width="0.4" height="0.4" fill="#3fb950"><title>BrThunk5C440  0x1005C440  5B  [core/racing/br_thunks]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1489 &#183; T3 codegen-only 112 &#183; 312,750/521,753 bytes exact (59.9%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1493 &#183; T3 codegen-only 108 &#183; 314,461/521,753 bytes exact (60.3%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
