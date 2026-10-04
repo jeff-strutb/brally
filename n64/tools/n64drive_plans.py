@@ -277,7 +277,7 @@ def _paint_shapes(d):
         for style in range(4):
             yield from double_click(rect(0x80369CD8 + 16 * tool))
             for _ in range(8):
-                if d.s32(0x8028DBB8) == style:
+                if (d.s32(0x8028DBB8) >> 24) & 0xff == style:    # a byte
                     break
                 yield from d.tap('DR', hold=2, gap=8)
             yield from d.tap('A', hold=2, gap=20)
