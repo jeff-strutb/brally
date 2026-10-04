@@ -380,16 +380,17 @@ unsigned int BrRomUnpack(unsigned char *dst, unsigned int rom, BrUnpack *s)
     len = 0;
   }
   t0 = osGetCount();
-  do {
+  for (;;) {
     prev = len;
     if (((len + 5) & ~1) < left) {
       if (rom & 1) {
         rom++;
       }
       BrRomRead(&len, rom, 4);
+      rom += 4;
       osInvalDCache(buf + half, 16000);
-      osPiStartDma(BrRomDmaSlot(), 0, 0, rom + 4, buf + half, (len + 1) & ~1, &D_80319F88);
-      rom += 4 + ((len + 1) & ~1);
+      osPiStartDma(BrRomDmaSlot(), 0, 0, rom, buf + half, (len + 1) & ~1, &D_80319F88);
+      rom += (len + 1) & ~1;
     } else {
       BrRomWaitAll();
     }
@@ -401,7 +402,7 @@ unsigned int BrRomUnpack(unsigned char *dst, unsigned int rom, BrUnpack *s)
       out = 16000;
       if (0 != s) {
         D_80368AC0 = D_80324550;
-        D_80368AC4 = D_8033CBF0;
+        D_80368AC4 = (char *)D_80368AC0 + 100000;
       }
       BrInflate(dst, &out, buf + half, prev);
       if (s != 0) {
@@ -414,8 +415,12 @@ unsigned int BrRomUnpack(unsigned char *dst, unsigned int rom, BrUnpack *s)
         break;
       }
     }
-  } while (s == 0);
-  (unsigned long long)(osGetCount() - t0) * 1000000 / osClockRate;
+    if (s != 0) {
+      break;
+    }
+  }
+  t0 = osGetCount() - t0;
+  (unsigned long long)t0 * 1000000 / osClockRate;
   if (s != 0) {
     s->pos = rom;
     s->left = left;
