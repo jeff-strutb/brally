@@ -1,14 +1,5 @@
 /* WHAT IT DOES: show how many are left -- the entry's allowance minus what
  * has been used -- in this item's label. */
-/* @t3 0x1003AB00 2026-09-14 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 198/200 insns 74/75 rows 2+1 regions 1 oracle UNCLASSIFIED
- * @t3-effort passes 2 zero-movement 1 2
- * Residue is ONE flag-test row: the original's unfused
- * `sub eax,[used]; test eax,eax; jge` where our cl fuses to `sub; jns` --
- * unproven in all three source corpora and under VC4.2 (see the passes
- * above); everything after is byte-identical shifted 2.  Dossier and
- * dead list live in this header.
- * Do not reopen before the end-grind. */
 /* @implements 0x1003AB00 glide BrItemSetRemaining_1003AB00
  * @cpp_kind free
  * @cpp_symbol ?BrItemSetRemaining_1003AB00@@YAHPAVObj3AB00@@@Z
@@ -42,6 +33,9 @@
  * result local, the ternary form, `!(v >= 0)`, the CSE form
  * `if (v - x < 0) v = 0; else v = v - x;`, an empty else, and making v
  * unsigned with an `(int)` cast in the comparison. All 130.
+ *
+ * BYTE-EXACT 2026-10-03: the unfused sub/test/jge comes from writing the
+ * subtract in each arm (see the body); the passes below predate that.
  *
  * 2026-09-13 certification passes.  The sub/test/jge triple is UNPROVEN in
  * all three source corpora (--corpus ext 1588, ext2 1515, crt 690 -- zero
@@ -112,12 +106,15 @@ int BrItemSetRemaining_1003AB00(Obj3AB00 *pObj)
 
     memset(szNum, 0, sizeof(szNum));
 
+    /* The subtract is written in EACH arm.  VC5 folds the two identical
+     * `sub eax,[used]` tails into the join only after its flag peephole
+     * has run, so the clamp keeps its own `test eax,eax; jge`; one shared
+     * subtract after the join fuses to `sub; jns`. */
     if (g_brMode5BF4 == 0)
-        v = g_brTbl0B3020[0].f00;
+        v = g_brTbl0B3020[0].f00 - g_brUsed5C1C;
     else
-        v = g_brTbl0B3020[g_brSel5C10].f00;
+        v = g_brTbl0B3020[g_brSel5C10].f00 - g_brUsed5C1C;
 
-    v -= g_brUsed5C1C;
     if (v < 0)
         v = 0;
 
