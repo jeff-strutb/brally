@@ -540,12 +540,18 @@ void BrWheelTyre(BrRbBody *b, BrRbBody *w, float *pA, unsigned char *pB, float d
   d[2] = w->n[0] * c[1] - c[0] * w->n[1];
   cs = cosf(w->steer);
   sn = sinf(w->steer);
+  fwd[0] = c[0] * cs;
+  fwd[1] = c[1] * cs;
+  fwd[2] = c[2] * cs;
   side[0] = c[0] * -sn;
   side[1] = c[1] * -sn;
   side[2] = c[2] * -sn;
-  fwd[0] = d[0] * sn + c[0] * cs;
-  fwd[1] = d[1] * sn + c[1] * cs;
-  fwd[2] = d[2] * sn + c[2] * cs;
+  c[0] = d[0] * sn;
+  c[1] = d[1] * sn;
+  c[2] = d[2] * sn;
+  fwd[0] = c[0] + fwd[0];
+  fwd[1] = c[1] + fwd[1];
+  fwd[2] = c[2] + fwd[2];
   c[0] = d[0] * cs;
   c[1] = d[1] * cs;
   c[2] = d[2] * cs;
@@ -554,13 +560,13 @@ void BrWheelTyre(BrRbBody *b, BrRbBody *w, float *pA, unsigned char *pB, float d
   side[2] = c[2] + side[2];
   if (b->sub[0]->x1b4 != 0 && b->sub[2]->x1b4 != 0 && b->sub[1]->x1b4 != 0 && b->sub[3]->x1b4 != 0) {
     BrRbVelAtBodyPoint(v, b, w);
-    dot = fwd[2] * v[2] + v[0] * fwd[0] + v[1] * fwd[1];
+    dot = fwd[2] * v[2] + (v[0] * fwd[0] + v[1] * fwd[1]);
     a[1] = 0.0f;
     a[0] = 0.0f;
-    a[2] = (b->mass + w->mass * 4.0f) * 2.943f + (w->f78[2] - -0.97) * 0;
+    a[2] = (b->mass + 4.0f * w->mass) * 2.943f + (float)(w->f78[2] - -0.97) * 0.0f;
     tq = w->drive;
     q = tq / w->inertia;
-    load = (w->n[2] * a[2] + w->n[0] * a[0] + w->n[1] * a[1]) * 3.5f;
+    load = (w->n[2] * a[2] + (a[0] * w->n[0] + a[1] * w->n[1])) * 3.5f;
     *pA = *pA + q / 2.0f;
     if (*pB != 0) {
       q = q * 0.9;
@@ -570,7 +576,7 @@ void BrWheelTyre(BrRbBody *b, BrRbBody *w, float *pA, unsigned char *pB, float d
       if (load < 0) {
         load = -load;
       }
-      q = q * load * 0.1;
+      q = q * (load * 0.1);
     }
     e[2] = -q;
     e[0] = fwd[0] * e[2];
@@ -591,7 +597,7 @@ void BrWheelTyre(BrRbBody *b, BrRbBody *w, float *pA, unsigned char *pB, float d
       w->spin = SIGN(w->spin) * 300.0;
     }
   }
-  w->angle = w->angle - w->spin * 57.29578f * dt;
+  w->angle = w->angle - w->spin * 57.295776f * dt;
   while (w->angle > 360.0) {
     w->angle = w->angle - 360.0;
   }
