@@ -354,11 +354,6 @@ void BrTriCacheReset(void);
  * screen has faded out picks the next game mode: the replay, results, the
  * next race or the menus.
  */
-/* @t3 0x8020082C */
-/* @t4-pass 0x8020082C 1 2026-09-28 compiles 16 best 5248 moved 28  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8020082C 2 2026-09-28 compiles 31 best 5247 moved 1  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8020082C 3 2026-09-28 compiles 31 best 5245 moved 2  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8020082C 4 2026-09-28 compiles 31 best 5245 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8020082C tgr BrRaceTick */
 void BrRaceTick(void)
 {
