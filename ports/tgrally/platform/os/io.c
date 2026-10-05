@@ -67,6 +67,18 @@ void *osViGetCurrentFramebuffer(void)
 }
 
 /* ---- the PI: the cartridge -------------------------------------------------- */
+void tgr_rom_read(uint32_t off, void *dst, uint32_t n)
+{
+    uint64_t lo = TGR_ROMDATA_BASE, hi = lo + (uint64_t)(tgr_romdata_end - tgr_romdata), a = off, b = a + n;
+    memset(dst, 0, n);
+    if (a < lo)
+        a = lo;
+    if (b > hi)
+        b = hi;
+    if (a < b)
+        memcpy((uint8_t *)dst + (a - off), tgr_romdata + (a - lo), (size_t)(b - a));
+}
+
 int32_t osPiStartDma(OSIoMesg *mb, int32_t pri, int32_t direction, uint32_t devAddr, void *vAddr,
                      uint32_t nbytes, OSMesgQueue *mq)
 {
@@ -76,13 +88,7 @@ int32_t osPiStartDma(OSIoMesg *mb, int32_t pri, int32_t direction, uint32_t devA
         fprintf(stderr, "tgr: a DMA to the cartridge\n");
         abort();
     }
-    if (src + nbytes <= g_romlen) {
-        memcpy(vAddr, g_rom + src, nbytes);
-    } else {
-        size_t have = src < g_romlen ? g_romlen - src : 0;
-        memcpy(vAddr, g_rom + src, have);
-        memset((uint8_t *)vAddr + have, 0, nbytes - have);
-    }
+    tgr_rom_read(src, vAddr, nbytes);
     if (mb)
         mb->hdr.retQueue = tgr_addr32(mq);
     tgr_os_lock();
@@ -94,8 +100,9 @@ int32_t osPiStartDma(OSIoMesg *mb, int32_t pri, int32_t direction, uint32_t devA
 int32_t osPiReadIo(uint32_t devAddr, uint32_t *data)
 {
     uint32_t off = devAddr & 0x0FFFFFFF;
-    *data = off + 4 <= g_romlen ? (uint32_t)g_rom[off] << 24 | (uint32_t)g_rom[off + 1] << 16 |
-                                  (uint32_t)g_rom[off + 2] << 8 | g_rom[off + 3] : 0;
+    uint8_t b[4];
+    tgr_rom_read(off, b, 4);
+    *data = (uint32_t)b[0] << 24 | (uint32_t)b[1] << 16 | (uint32_t)b[2] << 8 | b[3];
     return 0;
 }
 

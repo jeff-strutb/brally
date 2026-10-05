@@ -1,4 +1,4 @@
-/* lift.c: the game's initialised data, from the user's ROM.
+/* lift.c: the game's initialised data, from the cartridge's (tgr_romdata).
  *
  * What the N64's boot code did: the ROM's .data/.rodata (ROM 0x70AB0..
  * 0xAD400) lands at 0x8026FAB0 and .bss after it is zero.  Here it lands in
@@ -53,15 +53,12 @@ static void swap_runs(uint32_t addr, uint32_t run0, uint32_t nruns)
     }
 }
 
-void tgr_lift(const uint8_t *rom, size_t romlen)
+void tgr_lift(void)
 {
     int i;
     uint32_t k;
-    if (romlen < DATA_END) {
-        fprintf(stderr, "tgr: the ROM is too short\n");
-        return;
-    }
-    memcpy(tgr_rdram + (DATA_VA & 0x7FFFFF), rom + DATA_ROM, DATA_END - DATA_ROM);
+    const uint8_t *data = tgr_romdata + (DATA_ROM - TGR_ROMDATA_BASE);   /* ROM DATA_ROM on */
+    memcpy(tgr_rdram + (DATA_VA & 0x7FFFFF), data, DATA_END - DATA_ROM);
     memset(s_done, 0, sizeof s_done);
     for (i = 0; i < tgr_nsyms; i++)
         swap_runs(tgr_syms[i].addr, tgr_syms[i].run0, tgr_syms[i].nruns);
@@ -70,7 +67,7 @@ void tgr_lift(const uint8_t *rom, size_t romlen)
         if (!n->lifted)
             continue;
         for (k = 0; k < n->count; k++) {
-            const uint8_t *b = rom + DATA_ROM + (n->addr - DATA_VA) + 4 * k;
+            const uint8_t *b = data + (n->addr - DATA_VA) + 4 * k;
             uint32_t a = (uint32_t)b[0] << 24 | (uint32_t)b[1] << 16 | (uint32_t)b[2] << 8 | b[3];
             if (a >= TEXT_LO && a < DATA_VA) {
                 n->nat[k] = tgr_fn(a);

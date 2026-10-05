@@ -5,6 +5,9 @@
 #   env: HOST    null (default, headless) | macos
 #        RENDER  null (default) | soft | metal (needs HOST=macos)
 #        OUT     build directory (default build/tgrally)
+#        TGR_ROM your cartridge's ROM (default reference/tgrally/Top Gear Rally (USA).z64):
+#                its data is built into the executable (tools/assets.py); the game
+#                needs no ROM once built
 set -e
 cd "$(dirname "$0")/../.."
 OUT=${OUT:-build/tgrally}
@@ -25,6 +28,8 @@ if grep -q '^FAIL' $OUT/compile.txt; then
 fi
 $CC -c $PFLAGS -fno-builtin -w $OUT/gen/tgr_syms.c -o $OUT/plat/tgr_syms.o
 $CC -c $OUT/gen/arena.s -o $OUT/plat/arena.o
+${PYTHON:-.venv/bin/python} ports/tgrally/tools/assets.py $OUT/assets
+[ $OUT/plat/romdata.o -nt $OUT/assets/romdata.bin ] || $CC -c $OUT/assets/romdata.S -o $OUT/plat/romdata.o
 
 SRCS="$P/os/addr.c $P/os/lift.c $P/os/thread.c $P/os/io.c $P/os/si.c $P/os/main.c $P/os/trace.c $P/os/sha1.c \
       $P/audio/mixer.c $P/audio/out.c $P/gfx/gfx.c $P/gfx/rcp.c $P/libc/xprintf.c \
@@ -49,5 +54,5 @@ for s in $SRCS; do
   $CC -c $PFLAGS $XF "$s" -o "$o"
   OBJS="$OBJS $o"
 done
-$CC ${LDFLAGS_TGR} -o $OUT/tgrally $OUT/obj/*.o $OUT/plat/tgr_syms.o $OUT/plat/arena.o $OBJS $LIBS
+$CC ${LDFLAGS_TGR} -o $OUT/tgrally $OUT/obj/*.o $OUT/plat/tgr_syms.o $OUT/plat/arena.o $OUT/plat/romdata.o $OBJS $LIBS
 echo "linked $OUT/tgrally (host $HOST, renderer $RENDER)"

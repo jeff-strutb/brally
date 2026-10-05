@@ -13,9 +13,12 @@ principles as the Boss Rally port (`ports/brally/PORTABLE-CORE.md`):
    (the Boss Rally port's `platform/host/host.h`, shared). Rendering goes
    through an interface neutral between graphics APIs.
 3. **macOS first** (Metal). Windows and Linux follow on the same core.
-4. **The user's own ROM.** Nothing derived from the cartridge is committed or
-   compiled in. The game's initial data and every asset are read from the
-   user's `Top Gear Rally (USA).z64` at run time.
+4. **The user's own ROM, at build time.** Nothing derived from the cartridge is
+   committed. The build takes what the port needs from the builder's
+   `Top Gear Rally (USA)` ROM (`tools/assets.py`: the initialised data and
+   every asset, ROM 0x70AB0 to the end; the header, boot and compiled code are
+   left behind) and assembles it into the executable. A built game needs no
+   ROM.
 
 ## How the core is made
 
@@ -78,7 +81,7 @@ its definition exactly (`tools/abicheck.py`, `tools/protofix.py`).
 
 | | |
 |---|---|
-| `platform/os/` | libultra's API, natively: threads (one runs at a time, scheduled at OS calls, as the VR4300 ran them), message queues and events, the video retrace, PI DMA from the ROM file, the controllers and Controller Pak, timers, the audio interface, RCP tasks |
+| `platform/os/` | libultra's API, natively: threads (one runs at a time, scheduled at OS calls, as the VR4300 ran them), message queues and events, the video retrace, PI DMA from the cartridge's data built into the executable, the controllers and Controller Pak, timers, the audio interface, RCP tasks |
 | `platform/gfx/` | the RSP and RDP: an F3DEX 1.21 display-list interpreter (transform, lighting, clipping, the texture loads into TMEM) feeding a renderer with the RDP's combiner and blender state |
 | `platform/render/` | renderers behind `rdr.h`: Metal (draws at the window's resolution: the N64's frame scaled to the window's 4:3 area, `TGR_SCALE` without a window; 4x multisampling stands in for the RDP's coverage, alpha to coverage for texture edges, the VI's gamma), soft (the N64's own resolution, the reference: 8-sample coverage kept per pixel, 5-bit colour dithered as the RDP dithers, and the VI's anti-aliasing, dither filter, divot filter and gamma on each finished frame), null (headless) |
 | `platform/audio/` | the game's software mixer (`mixer.s` in the decomp) in C, and the audio interface's buffers out to the host |
@@ -86,7 +89,10 @@ its definition exactly (`tools/abicheck.py`, `tools/protofix.py`).
 
 ## Playing
 
-`package_app.sh` builds `Top Gear Rally.app` (Metal, the builder's ROM inside).
+`package_app.sh [--rom FILE]` builds `Top Gear Rally.app` (Metal). The ROM
+(`--rom`, else `$TGR_ROM`, else `reference/tgrally/Top Gear Rally (USA).z64`;
+any byte order, checked by its SHA-1) is read only while building; the app is
+one executable with the game's data inside and runs anywhere without it.
 Saves are a Controller Pak in port 1, kept in
 `~/Library/Application Support/Top Gear Rally/controller-pak-1.bin`.
 
