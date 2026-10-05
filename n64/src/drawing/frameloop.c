@@ -1371,14 +1371,10 @@ void BrSchedInit(void)
  * save, run the message screen until it is dismissed (its reason in
  * 0x80270840); a pak in port 2 is initialised too; holding B at boot runs
  * the debug screen first.
- * The consume call takes pad 1's record through an int cast, which keeps
- * IDO from sharing the test's load with it.
- * RESIDUE (4): ours still forms the pad's address before the test and loads
- * through it; the ROM loads the word with lui/lw and builds the address in
- * the branch. */
-/* @t4-pass 0x8021C188 1 2026-10-03 compiles 119 best 47 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8021C188 2 2026-10-03 compiles 118 best 47 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x8021C188 */
+ * The B test reads pad 1's pressed word through its absent field
+ * (0x8036A908, 0x28 further on), so the load has its own base: the ROM
+ * loads the word with lui/lw and builds the record's address for the
+ * consume call separately, where one symbol for both lets IDO share them. */
 /* @implements 0x8021C188 tgr BrBootCheck */
 void BrBootCheck(void)
 {
@@ -1432,8 +1428,8 @@ void BrBootCheck(void)
       D_80316421 = 1;
     }
   }
-  if (D_8036A8E0[0][0] & 0x4000) {
-    BrPadConsume((void *)(int)D_8036A8E0, 0x4000);
+  if (((unsigned int *)&D_8036A908)[-10] & 0x4000) {
+    BrPadConsume(D_8036A8E0, 0x4000);
     BrModeSet(func_802534DC);
     while (D_8031B318 == func_802534DC) {
       func_802534DC();
