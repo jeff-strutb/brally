@@ -551,7 +551,7 @@
 <text x="3.0" y="664.7" font-size="10" fill="#8b949e">BrRaceStep_10019A70</text>
 <rect x="1.5" y="669.7" width="239.8" height="109.6" fill="#3fb950"><title>(unnamed)  0x10019A70  11223B  [core/racing/BrRaceStep_10019A70]</title></rect>
 <text x="3.0" y="791.9" font-size="10" fill="#8b949e">br_drawcar</text>
-<rect x="1.5" y="796.9" width="173.6" height="101.0" fill="#58a6ff"><title>BrCarDrawVehicle  0x1000A110  7577B  [core/drawing/br_drawcar]</title></rect>
+<rect x="1.5" y="796.9" width="173.6" height="101.0" fill="#3fb950"><title>BrCarDrawVehicle  0x1000A110  7577B  [core/drawing/br_drawcar]</title></rect>
 <rect x="175.7" y="796.9" width="65.6" height="55.0" fill="#3fb950"><title>BrCarDrawBody  0x1000BEB0  1576B  [core/drawing/br_drawcar]</title></rect>
 <rect x="175.7" y="852.5" width="46.7" height="45.4" fill="#3fb950"><title>BrCarDrawWheels  0x10009C10  932B  [core/drawing/br_drawcar]</title></rect>
 <rect x="222.9" y="852.5" width="18.4" height="39.0" fill="#3fb950"><title>BrCarVisibilityUpdate  0x10009FC0  322B  [core/drawing/br_drawcar]</title></rect>
@@ -2807,4 +2807,4 @@
 <rect x="1591.5" y="897.4" width="2.5" height="0.5" fill="#3fb950"><title>BrFtolArg  0x10018990  9B  [core/geometry/br_ftol]</title></rect>
 <rect x="1597.6" y="892.9" width="0.4" height="1.4" fill="#3fb950"><title>BrCosF  0x100023E0  7B  [core/geometry/br_cos]</title></rect>
 <rect x="1597.6" y="897.9" width="0.4" height="0.4" fill="#3fb950"><title>BrThunk5C440  0x1005C440  5B  [core/racing/br_thunks]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1499 &#183; T3 codegen-only 102 &#183; 328,854/521,753 bytes exact (63.0%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1500 &#183; T3 codegen-only 101 &#183; 336,431/521,753 bytes exact (64.5%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
