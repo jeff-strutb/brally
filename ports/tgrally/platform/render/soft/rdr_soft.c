@@ -74,18 +74,16 @@ void rdr_clear_depth(void)
 /* ---- per-pixel colour ----------------------------------------------------- */
 typedef struct { float c[4]; } V4;
 
-static int wrap(int i, int n, int clamp, int mirror, int mask)
+static int wrap(int i, int n, int clamp, int mirror, int mask, int cw)
 {
+    if (clamp && cw > 0)                    /* the RDP clamps to the tile first */
+        i = i < 0 ? 0 : i >= cw ? cw - 1 : i;
     if (mask > 0) {
-        if (mirror && ((i / mask) & 1) ^ (i < 0))
-            i = mask - 1 - (((i % mask) + mask) % mask);
-        else
-            i = ((i % mask) + mask) % mask;
-        if (i >= n)
-            i = n - 1;
-        return i;
+        int m = ((i % mask) + mask) % mask;
+        if (mirror && (((i < 0 ? -i - 1 : i) / mask) & 1))
+            m = mask - 1 - m;
+        return m >= n ? n - 1 : m;
     }
-    (void)clamp;
     return i < 0 ? 0 : i >= n ? n - 1 : i;
 }
 
@@ -102,8 +100,8 @@ static void sample(const RdrTile *t, int filter, float s, float u, float out[4])
     x = s * t->sscale - t->s0;
     y = u * t->tscale - t->t0;
     if (!filter) {
-        int ix = wrap((int)floorf(x), tx->w, t->clamp_s, t->mirror_s, t->mask_s);
-        int iy = wrap((int)floorf(y), tx->h, t->clamp_t, t->mirror_t, t->mask_t);
+        int ix = wrap((int)floorf(x), tx->w, t->clamp_s, t->mirror_s, t->mask_s, t->clamp_w);
+        int iy = wrap((int)floorf(y), tx->h, t->clamp_t, t->mirror_t, t->mask_t, t->clamp_h);
         const uint8_t *p = tx->px + (iy * tx->w + ix) * 4;
         for (k = 0; k < 4; k++)
             out[k] = p[k] / 255.0f;
@@ -116,10 +114,10 @@ static void sample(const RdrTile *t, int filter, float s, float u, float out[4])
     fx = x - x0;
     fy = y - y0;
     {
-        int xa = wrap(x0, tx->w, t->clamp_s, t->mirror_s, t->mask_s);
-        int xb = wrap(x0 + 1, tx->w, t->clamp_s, t->mirror_s, t->mask_s);
-        int ya = wrap(y0, tx->h, t->clamp_t, t->mirror_t, t->mask_t);
-        int yb = wrap(y0 + 1, tx->h, t->clamp_t, t->mirror_t, t->mask_t);
+        int xa = wrap(x0, tx->w, t->clamp_s, t->mirror_s, t->mask_s, t->clamp_w);
+        int xb = wrap(x0 + 1, tx->w, t->clamp_s, t->mirror_s, t->mask_s, t->clamp_w);
+        int ya = wrap(y0, tx->h, t->clamp_t, t->mirror_t, t->mask_t, t->clamp_h);
+        int yb = wrap(y0 + 1, tx->h, t->clamp_t, t->mirror_t, t->mask_t, t->clamp_h);
         const uint8_t *p00 = tx->px + (ya * tx->w + xa) * 4, *p10 = tx->px + (ya * tx->w + xb) * 4;
         const uint8_t *p01 = tx->px + (yb * tx->w + xa) * 4, *p11 = tx->px + (yb * tx->w + xb) * 4;
         for (k = 0; k < 4; k++)
@@ -197,7 +195,7 @@ static void write_px(const RdrState *st, int i, const float c[4], float fog)
 {
     uint32_t d = s_col[i];
     float dr = ((d >> 16) & 255) / 255.0f, dg = ((d >> 8) & 255) / 255.0f, db = (d & 255) / 255.0f;
-    float r = c[0], g = c[1], b = c[2], a = c[3];
+    float r = c[0], g = c[1], b = c[2], a = st->blend_alpha == 1 ? st->fog[3] : st->blend_alpha == 2 ? fog : c[3];
     if (st->fog_blend) {
         r = r * (1 - fog) + st->fog[0] * fog;
         g = g * (1 - fog) + st->fog[1] * fog;

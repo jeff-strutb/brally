@@ -43,6 +43,8 @@ typedef struct RdrTile {    /* one texture tile, decoded */
     float sscale, tscale;   /* the tile's shift as a scale on the coordinates */
     uint8_t clamp_s, clamp_t, mirror_s, mirror_t;
     int16_t mask_s, mask_t; /* wrap period, texels (0: clamp to the image) */
+    int16_t clamp_w, clamp_h; /* a clamped axis clamps to 0..clamp_w-1 (the tile's size) first,
+                                 then masks and mirrors, as the RDP does */
 } RdrTile;
 
 typedef struct RdrState {
@@ -53,6 +55,8 @@ typedef struct RdrState {
     RdrTile tile[2];        /* texel 0 and texel 1 */
     int filter;             /* 0 point, 1 bilinear */
     int blend_mode;         /* RDR_BLEND_* */
+    int blend_alpha;        /* the blend's alpha: 0 the combined alpha, 1 the fog colour's,
+                               2 the shade's (the blender's A input) */
     int fog_blend;          /* the blender mixes in the fog colour by shade alpha */
     int alpha_compare;      /* 0 none, 1 against blend alpha, 2 dither */
     int z_test, z_write, z_decal;

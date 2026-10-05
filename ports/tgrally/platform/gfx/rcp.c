@@ -342,7 +342,8 @@ static uint64_t fnv(const uint8_t *p, int n, uint64_t h)
 
 static void tile_dims(int t, int *w, int *h)
 {
-    int ww = ((s_tile[t].lrs - s_tile[t].uls) >> 2) + 1, hh = ((s_tile[t].lrt - s_tile[t].ult) >> 2) + 1;
+    /* the RDP's tile coordinates are 12-bit 10.2: the size is the wrapped difference */
+    int ww = (((s_tile[t].lrs - s_tile[t].uls) & 0xFFF) >> 2) + 1, hh = (((s_tile[t].lrt - s_tile[t].ult) & 0xFFF) >> 2) + 1;
     if (s_tile[t].masks && (1 << s_tile[t].masks) < ww)
         ww = 1 << s_tile[t].masks;
     if (s_tile[t].maskt && (1 << s_tile[t].maskt) < hh)
@@ -445,8 +446,9 @@ static void fill_tile(RdrTile *rt, int t)
     rt->tex = tile_texture(t, &w, &h);
     rt->w = w;
     rt->h = h;
-    rt->s0 = s_tile[t].uls / 4.0f;
-    rt->t0 = s_tile[t].ult / 4.0f;
+    /* an upper left past the lower right is negative (it wrapped round 1024 texels) */
+    rt->s0 = (s_tile[t].uls > s_tile[t].lrs ? s_tile[t].uls - 4096 : s_tile[t].uls) / 4.0f;
+    rt->t0 = (s_tile[t].ult > s_tile[t].lrt ? s_tile[t].ult - 4096 : s_tile[t].ult) / 4.0f;
     rt->sscale = s_tile[t].shifts <= 10 ? 1.0f / (1 << s_tile[t].shifts) : (float)(1 << (16 - s_tile[t].shifts));
     rt->tscale = s_tile[t].shiftt <= 10 ? 1.0f / (1 << s_tile[t].shiftt) : (float)(1 << (16 - s_tile[t].shiftt));
     rt->clamp_s = (s_tile[t].cms & 2) != 0 || s_tile[t].masks == 0;
@@ -454,6 +456,8 @@ static void fill_tile(RdrTile *rt, int t)
     rt->mirror_s = (s_tile[t].cms & 1) != 0;
     rt->mirror_t = (s_tile[t].cmt & 1) != 0;
     rt->mask_s = (int16_t)(s_tile[t].masks ? 1 << s_tile[t].masks : 0);
+    rt->clamp_w = (int16_t)((((s_tile[t].lrs - s_tile[t].uls) & 0xFFF) >> 2) + 1);
+    rt->clamp_h = (int16_t)((((s_tile[t].lrt - s_tile[t].ult) & 0xFFF) >> 2) + 1);
     rt->mask_t = (int16_t)(s_tile[t].maskt ? 1 << s_tile[t].maskt : 0);
 }
 
@@ -518,10 +522,13 @@ static void state(RdrState *st, int tile0)
             m = (bl >> 4) & 3;
             b = bl & 3;
         }
-        if (p == 0 && m == 1 && a == 0 && b == 0 && force)
-            st->blend_mode = RDR_BLEND_ALPHA;
-        else if (p == 0 && m == 1 && b == 2)
+        if (p == 0 && m == 1 && a != 3 && b == 0 && force) {
+            st->blend_mode = RDR_BLEND_ALPHA;         /* IN * A + MEM * (1 - A) */
+            st->blend_alpha = a;                      /* A: 0 IN, 1 FOG, 2 SHADE */
+        } else if (p == 0 && m == 1 && b == 2) {
             st->blend_mode = RDR_BLEND_ADD;
+            st->blend_alpha = a == 3 ? 0 : a;
+        }
         else if (p == 1 && m == 1)
             st->blend_mode = RDR_BLEND_MEM;
         else
@@ -581,7 +588,12 @@ static void triangle(int a, int b, int c)
                 s_tex.tile, s_tile[s_tex.tile].fmt, s_tile[s_tex.tile].siz, s_tile[s_tex.tile].line,
                 s_tile[s_tex.tile].tmem, s_tile[s_tex.tile].pal, s_tile[s_tex.tile].uls, s_tile[s_tex.tile].ult,
                 s_tile[s_tex.tile].lrs, s_tile[s_tex.tile].lrt, s_tile[s_tex.tile].masks, s_tile[s_tex.tile].maskt,
-                s_tile[s_tex.tile].shifts, s_tile[s_tex.tile].shiftt, v[0]->v.s, v[0]->v.t, s_timg);
+                s_tile[s_tex.tile].shifts, s_tile[s_tex.tile].shiftt, v[0]->v.s, v[0]->v.t, s_timg),
+        fprintf(stderr, "    fog %.2f %.2f %.2f %.2f blend %.2f\n", s_fogc[0], s_fogc[1], s_fogc[2], s_fogc[3], s_blendc[3]),
+        fprintf(stderr, "    prim %.2f %.2f %.2f %.2f env %.2f %.2f %.2f %.2f texscale %04X %04X st %.1f,%.1f %.1f,%.1f %.1f,%.1f lookat %d %d %d / %d %d %d\n",
+                s_prim[0], s_prim[1], s_prim[2], s_prim[3], s_env[0], s_env[1], s_env[2], s_env[3], s_tex.ss, s_tex.ts,
+                v[0]->v.s, v[0]->v.t, v[1]->v.s, v[1]->v.t, v[2]->v.s, v[2]->v.t, s_lookat[0][0], s_lookat[0][1], s_lookat[0][2],
+                s_lookat[1][0], s_lookat[1][1], s_lookat[1][2]);
     for (k = 0; k < 3; k++) {
         out[k] = v[k]->v;
         if (!(s_geom & G_SHADING_SMOOTH)) {           /* flat: the first vertex's colour */

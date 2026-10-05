@@ -22,14 +22,15 @@ static const char *k_shader =
 "using namespace metal;\n"
 "struct VIn { float4 pos [[attribute(0)]]; float2 st [[attribute(1)]]; float4 rgba [[attribute(2)]]; };\n"
 "struct VOut { float4 pos [[position]]; float2 st; float4 rgba; };\n"
-"struct Tile { float4 org; int4 size; int4 wrap; };\n"
+"struct Tile { float4 org; int4 size; int4 wrap; int4 cl; };\n"
 "struct U { int4 cc[4]; float4 prim, env, fog, blendc; float plod; int cycle, filter, fog_blend;\n"
-"           int alpha_cmp, ntex, pad0, pad1; float2 fb; Tile tile[2]; };\n"
+"           int alpha_cmp, ntex, balpha, pad1; float2 fb; Tile tile[2]; };\n"
 "vertex VOut vs(VIn v [[stage_in]], constant U &u [[buffer(1)]]) {\n"
 "  VOut o; float w = v.pos.w;\n"
 "  o.pos = float4(v.pos.x / u.fb.x * 2.0 - w, w - v.pos.y / u.fb.y * 2.0, (v.pos.z + w) * 0.5, w);\n"
 "  o.st = v.st; o.rgba = v.rgba; return o; }\n"
-"int wrapi(int i, int n, int clampv, int mirror, int mask) {\n"
+"int wrapi(int i, int n, int clampv, int mirror, int mask, int cw) {\n"
+"  if (clampv != 0 && cw > 0) i = clamp(i, 0, cw - 1);\n"
 "  if (mask > 0) { int m = ((i % mask) + mask) % mask;\n"
 "    if (mirror != 0 && (((i < 0 ? -i - 1 : i) / mask) & 1) != 0) m = mask - 1 - m;\n"
 "    return min(m, n - 1); }\n"
@@ -38,12 +39,12 @@ static const char *k_shader =
 "  float x = st.x * tl.org.z - tl.org.x, y = st.y * tl.org.w - tl.org.y;\n"
 "  int w = tl.size.x, h = tl.size.y;\n"
 "  if (filter == 0) {\n"
-"    int ix = wrapi(int(floor(x)), w, tl.wrap.x, tl.wrap.z, tl.size.z);\n"
-"    int iy = wrapi(int(floor(y)), h, tl.wrap.y, tl.wrap.w, tl.size.w);\n"
+"    int ix = wrapi(int(floor(x)), w, tl.wrap.x, tl.wrap.z, tl.size.z, tl.cl.x);\n"
+"    int iy = wrapi(int(floor(y)), h, tl.wrap.y, tl.wrap.w, tl.size.w, tl.cl.y);\n"
 "    return t.read(uint2(ix, iy)); }\n"
 "  x -= 0.5; y -= 0.5; float fx = x - floor(x), fy = y - floor(y); int x0 = int(floor(x)), y0 = int(floor(y));\n"
-"  int xa = wrapi(x0, w, tl.wrap.x, tl.wrap.z, tl.size.z), xb = wrapi(x0 + 1, w, tl.wrap.x, tl.wrap.z, tl.size.z);\n"
-"  int ya = wrapi(y0, h, tl.wrap.y, tl.wrap.w, tl.size.w), yb = wrapi(y0 + 1, h, tl.wrap.y, tl.wrap.w, tl.size.w);\n"
+"  int xa = wrapi(x0, w, tl.wrap.x, tl.wrap.z, tl.size.z, tl.cl.x), xb = wrapi(x0 + 1, w, tl.wrap.x, tl.wrap.z, tl.size.z, tl.cl.x);\n"
+"  int ya = wrapi(y0, h, tl.wrap.y, tl.wrap.w, tl.size.w, tl.cl.y), yb = wrapi(y0 + 1, h, tl.wrap.y, tl.wrap.w, tl.size.w, tl.cl.y);\n"
 "  float4 a = mix(t.read(uint2(xa, ya)), t.read(uint2(xb, ya)), fx);\n"
 "  float4 b = mix(t.read(uint2(xa, yb)), t.read(uint2(xb, yb)), fx);\n"
 "  return mix(a, b, fy); }\n"
@@ -70,6 +71,7 @@ static const char *k_shader =
 "  if (u.alpha_cmp == 1 && comb.a < u.blendc.a) discard_fragment();\n"
 "  if (u.alpha_cmp == 3 && comb.a < 0.5) discard_fragment();\n"
 "  if (u.fog_blend != 0) comb.rgb = mix(comb.rgb, u.fog.rgb, i.rgba.a);\n"
+"  if (u.balpha == 1) comb.a = u.fog.a; else if (u.balpha == 2) comb.a = i.rgba.a;\n"
 "  return comb; }\n"
 "struct BOut { float4 pos [[position]]; float2 uv; };\n"
 "vertex BOut bvs(uint vid [[vertex_id]], constant float4 &r [[buffer(0)]]) {\n"
@@ -78,13 +80,13 @@ static const char *k_shader =
 "fragment float4 bfs(BOut i [[stage_in]], texture2d<float> t [[texture(0)]]) {\n"
 "  constexpr sampler s(filter::linear); return t.sample(s, i.uv); }\n";
 
-typedef struct { simd_float4 org; simd_int4 size; simd_int4 wrap; } TileU;
+typedef struct { simd_float4 org; simd_int4 size; simd_int4 wrap; simd_int4 cl; } TileU;
 typedef struct {
     simd_int4 cc[4];
     simd_float4 prim, env, fog, blendc;
     float plod;
     int cycle, filter, fog_blend;
-    int alpha_cmp, ntex, pad0, pad1;
+    int alpha_cmp, ntex, balpha, pad1;
     simd_float2 fb;
     TileU tile[2];
 } Uniforms;
@@ -269,6 +271,7 @@ static void uniforms(const RdrState *st, Uniforms *u)
     u->filter = st->filter;
     u->fog_blend = st->fog_blend;
     u->alpha_cmp = st->alpha_compare;
+    u->balpha = st->blend_alpha;
     u->fb = (simd_float2){ (float)s_fb_w, (float)s_fb_h };
     for (k = 0; k < 2; k++) {
         const RdrTile *t = &st->tile[k];
@@ -278,6 +281,7 @@ static void uniforms(const RdrState *st, Uniforms *u)
         u->tile[k].org = (simd_float4){ t->s0, t->t0, t->sscale, t->tscale };
         u->tile[k].size = (simd_int4){ t->w, t->h, t->mask_s, t->mask_t };
         u->tile[k].wrap = (simd_int4){ t->clamp_s, t->clamp_t, t->mirror_s, t->mirror_t };
+        u->tile[k].cl = (simd_int4){ t->clamp_w, t->clamp_h, 0, 0 };
     }
 }
 
