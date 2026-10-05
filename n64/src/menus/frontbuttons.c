@@ -48,8 +48,8 @@ extern BrCar D_8031B760[];
 extern float D_8031AB10[4][4];
 void BrRomFileUnpack(BrRomFile *f, void *(*alloc)(int size));
 void *BrIfaceMemAlloc(int size);
-int BrRomReadSize(int rom);
-void BrRomUnpack(unsigned char *dst, int rom, int s);
+int BrRomReadSize(char *rom);
+unsigned int BrRomUnpack(unsigned char *dst, char *rom, int s);
 void BrFadeTo(float level, float seconds);
 void BrSfxFadeTo(float level, float seconds);
 void BrMusicFadeTo(float level, float seconds);
@@ -129,16 +129,14 @@ void BrFrontSetMenuFlag(int param_1)
  * choice (or B, or idling out), 1 going on and 2 backing out. r1..b2 tint
  * the background.
  * Source facts: function-static screen state (the selection kept in a
- * register with stores back); link-time sound bank symbols; equality tests
- * against integer 0; the turn eased on the static. The frame must be the
- * ROM's 0x100 (zlib reads uninitialised stack below it on the first frame).
- * RESIDUE: named slots differ (off 0xFC, result 0xF4, buf 0x84, row 0x78)
- * and the register choices follow. */
-/* @t4-pass 0x8020AD5C 1 2026-10-03 compiles 115 best 985 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8020AD5C 2 2026-10-03 compiles 112 best 953 moved 32  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8020AD5C 3 2026-10-03 compiles 110 best 953 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8020AD5C 4 2026-10-03 compiles 117 best 953 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x8020AD5C */
+ * register with stores back); the sound banks passed as link-time
+ * addresses (char *, not int); equality tests against integer 0; the turn
+ * eased on the static. The frame is the ROM's 0x100 (zlib reads
+ * uninitialised stack below it on the first frame): buf is declared in the
+ * block after the lighting commands, so their gbi slots sit above it, and
+ * the turning icon, the carousel step and the sound channels each have
+ * their own block variable. BrRomUnpack returns its length (v0 live after
+ * the call). The choice codes are set after BrPadConsume. */
 /* @implements 0x8020AD5C tgr BrMenu */
 int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r1, int g1, int b1, int r2,
            int g2, int b2)
@@ -153,12 +151,9 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
   static int D_8031623C;
   static float D_80316240;                /* seconds since the last button */
   static int D_80316244;                  /* the selected row */
-  char buf[92];
-  int i;
-  int row;
-  int result;
   float off;
-  short v;
+  int i;
+  int result;
 
   result = 0;
   if (D_80271FD4 == 0) {
@@ -171,12 +166,12 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
     BrRomFileUnpack(&D_80271D70, BrIfaceMemAlloc);
     BrRomFileUnpack(&D_80271D84, BrIfaceMemAlloc);
     BrRomFileUnpack(&D_80272048, BrIfaceMemAlloc);
-    D_80316234 = BrRomReadSize((int)D_001BF480);
+    D_80316234 = BrRomReadSize(D_001BF480);
     D_80316230 = BrIfaceMemAlloc(D_80316234 + D_80316234);
-    BrRomUnpack(D_80316230, (int)D_001BF480, 0);
-    D_8031623C = BrRomReadSize((int)D_001BFEC0);
+    BrRomUnpack(D_80316230, D_001BF480, 0);
+    D_8031623C = BrRomReadSize(D_001BFEC0);
     D_80316238 = BrIfaceMemAlloc(D_8031623C + D_8031623C);
-    BrRomUnpack(D_80316238, (int)D_001BFEC0, 0);
+    BrRomUnpack(D_80316238, D_001BFEC0, 0);
     for (i = 0; i != 0x100; i++) {
       D_80316230[D_80316234 + i] = 0;
       D_80316238[D_8031623C + i] = 0;
@@ -189,9 +184,11 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
     D_80271FD4 = 1;
   }
   if (D_80271FD0 >= 0) {
+    short v;
+
     D_80316220 = D_80316244;
     D_80316244 = D_80271FD0;
-    if (D_80271FD0 != D_80316220) {
+    if (D_80316244 != D_80316220) {
       D_80316224 = -1.0f;
       v = BrSfxFreeVoice();
       if (v != -1) {
@@ -236,207 +233,217 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
     BrRomImageDraw(D_80271FB0, D_80271FB4, D_80271FB8, D_80271FBC, D_80271FC0, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF,
                   0xFF, 2);
   }
-  BrTextSetFont(30);
-  BrTextAlignCentre();
-  sprintf(buf, "%%ry%s", title);
-  BrTextPrint(buf, D_8028AAB0 / 2, D_8028AAB4 / 6 - 2);
-  if (D_80271FCC != 0) {
-    D_80271FCC();
-  } else {
-    Mtx *mtx = BrMtxAlloc();
+  {
+    char buf[80];
+    short v;
 
-    guRotateF(D_8031AB10, 12.0f, 1.0f, 0.0f, 0.0f);
-    guMtxF2L(D_8031AB10, mtx);
-    gSPMatrix(D_8028A858++, mtx, G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
-    BrMenuRingDraw();
-    row = D_80316244;
-    do {
-      row = (row + n - 1) % n;
-    } while (ok != 0 && ok(row) == 0);
-    if (row != D_80316244) {
-      BrMenuBackdropDraw();
+    BrTextSetFont(30);
+    BrTextAlignCentre();
+    sprintf(buf, "%%ry%s", title);
+    BrTextPrint(buf, D_8028AAB0 / 2, D_8028AAB4 / 6 - 2);
+    if (D_80271FCC != 0) {
+      D_80271FCC();
+    } else {
+      Mtx *mtx = BrMtxAlloc();
+      int row;
+
+      guRotateF(D_8031AB10, 12.0f, 1.0f, 0.0f, 0.0f);
+      guMtxF2L(D_8031AB10, mtx);
+      gSPMatrix(D_8028A858++, mtx, G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
+      BrMenuRingDraw();
+      row = D_80316244;
+      do {
+        row = (row + n - 1) % n;
+      } while (ok != 0 && ok(row) == 0);
+      if (row != D_80316244) {
+        BrMenuBackdropDraw();
+      }
+      if (items[D_80316244]->flags & 4) {
+        int shown;
+
+        if (D_80316224 > 0.75f || D_80316224 < -0.75f) {
+          shown = D_80316220;
+        } else {
+          shown = D_80316244;
+        }
+        BrAnimUpdate(items[shown]->icon);
+        if (items[shown]->flags & 0x10) {
+          D_8028A8A8 = 1;
+        }
+        BrMenuIconDraw(items[shown]->icon, D_8028AAB0 / 2, (D_8028AAB4 * 6) / 16, 0.0f,
+                       -1.5707964f - D_80316224 * 6.2831855f);
+        D_8028A8A8 = 0;
+        if (D_80316224 == 0) {
+          goto label;
+        }
+      } else if (off != 0) {
+        if (items[D_80316244]->icon != 0) {
+          BrAnimUpdate(items[D_80316244]->icon);
+          if (items[D_80316244]->flags & 0x10) {
+            D_8028A8A8 = 1;
+          }
+          BrMenuIconDraw(items[D_80316244]->icon, D_8028AAB0 / 2 - off * D_8028AAB0 / 6.0f,
+                         (D_8028AAB4 * 6) / 16, 0.0f, D_80316228);
+          D_8028A8A8 = 0;
+        } else {
+          sprintf(buf, "%%ww%s", items[D_80316244]->label);
+          BrTextHighlightOff();
+          BrTextAlignCentre();
+          BrTextPrint(buf, D_8028AAB0 / 2 - (int)(off * D_8028AAB0 / 6.0f), (D_8028AAB4 * 9) / 16);
+        }
+        if (items[D_80316220]->icon != 0) {
+          BrAnimUpdate(items[D_80316220]->icon);
+          if (items[D_80316220]->flags & 0x10) {
+            D_8028A8A8 = 1;
+          }
+          BrMenuIconDraw(items[D_80316220]->icon,
+                         D_8028AAB0 / 2 - ((off < 0.0f ? 5.0f : -5.0f) + off) * D_8028AAB0 / 6.0f,
+                         (D_8028AAB4 * 6) / 16, 0.0f, D_80316228);
+          D_8028A8A8 = 0;
+        } else {
+          sprintf(buf, "%%ww%s", items[D_80316220]->label);
+          BrTextHighlightOff();
+          BrTextAlignCentre();
+          BrTextPrint(buf, D_8028AAB0 / 2 - (int)(((off < 0.0f ? 5.0f : -5.0f) + off) * D_8028AAB0 / 6.0f),
+                      (D_8028AAB4 * 9) / 16);
+        }
+      } else {
+        BrTextHighlightOff();
+        BrTextAlignCentre();
+        if (items[D_80316244]->icon != 0) {
+          BrAnimUpdate(items[D_80316244]->icon);
+          if (items[D_80316244]->flags & 0x10) {
+            D_8028A8A8 = 1;
+          }
+          BrMenuIconDraw(items[D_80316244]->icon, D_8028AAB0 / 2, (D_8028AAB4 * 6) / 16, 0.0f, D_80316228);
+          D_8028A8A8 = 0;
+        } else {
+          sprintf(buf, "%%ww%s", items[D_80316244]->label);
+          BrTextPrint(buf, D_8028AAB0 / 2, (D_8028AAB4 * 9) / 16);
+        }
+      label:
+        BrTextSetFont(20);
+        sprintf(buf, "%%ry%s", items[D_80316244]->label);
+        BrTextPrint(buf, D_8028AAB0 / 2, (D_8028AAB4 * 20) / 64);
+        if (D_80271FC8 != 0) {
+          D_80271FC8(D_80316244);
+        }
+      }
+      gSPPopMatrix(D_8028A858++, 0);
     }
-    if (items[D_80316244]->flags & 4) {
-      if (D_80316224 > 0.75f || D_80316224 < -0.75f) {
-        row = D_80316220;
-      } else {
-        row = D_80316244;
-      }
-      BrAnimUpdate(items[row]->icon);
-      if (items[row]->flags & 0x10) {
-        D_8028A8A8 = 1;
-      }
-      BrMenuIconDraw(items[row]->icon, D_8028AAB0 / 2, (D_8028AAB4 * 6) / 16, 0.0f,
-                     -1.5707964f - D_80316224 * 6.2831855f);
-      D_8028A8A8 = 0;
-      if (D_80316224 == 0) {
-        goto label;
-      }
-    } else if (off != 0) {
-      if (items[D_80316244]->icon != 0) {
-        BrAnimUpdate(items[D_80316244]->icon);
-        if (items[D_80316244]->flags & 0x10) {
-          D_8028A8A8 = 1;
+    BrFrontPromptSelect();
+    BrFadeBarsDraw();
+    if (D_8028AA98 >= 2) {
+      BrViewportSet(0, 0, D_8028AAB0, D_8028AAB4, 1);
+      BrPerfMeterDraw();
+    }
+    BrFrameEnd();
+    if (BrFadeIsOut() != 0) {
+      if (BrFadeAtTarget() != 0) {
+        int ch;
+
+        D_80271FD4 = 0;
+        *sel = D_80316244;
+        BrScreenFlush3Layout1();
+        for (ch = 0; ch < 6; ch++) {
+          D_802A4920[ch].x14 = 0;
+          D_802A4920[ch].x10 = 0;
+          D_802A4920[ch].x8 = 0;
+          D_802A4920[ch].p = D_802A4A08;
         }
-        BrMenuIconDraw(items[D_80316244]->icon, D_8028AAB0 / 2 - off * D_8028AAB0 / 6.0f,
-                       (D_8028AAB4 * 6) / 16, 0.0f, D_80316228);
-        D_8028A8A8 = 0;
-      } else {
-        sprintf(buf, "%%ww%s", items[D_80316244]->label);
-        BrTextHighlightOff();
-        BrTextAlignCentre();
-        BrTextPrint(buf, D_8028AAB0 / 2 - (int)(off * D_8028AAB0 / 6.0f), (D_8028AAB4 * 9) / 16);
-      }
-      if (items[D_80316220]->icon != 0) {
-        BrAnimUpdate(items[D_80316220]->icon);
-        if (items[D_80316220]->flags & 0x10) {
-          D_8028A8A8 = 1;
+        if (D_8031622C != 0) {
+          return 1;
         }
-        BrMenuIconDraw(items[D_80316220]->icon,
-                       D_8028AAB0 / 2 - ((off < 0.0f ? 5.0f : -5.0f) + off) * D_8028AAB0 / 6.0f,
-                       (D_8028AAB4 * 6) / 16, 0.0f, D_80316228);
-        D_8028A8A8 = 0;
-      } else {
-        sprintf(buf, "%%ww%s", items[D_80316220]->label);
-        BrTextHighlightOff();
-        BrTextAlignCentre();
-        BrTextPrint(buf, D_8028AAB0 / 2 - (int)(((off < 0.0f ? 5.0f : -5.0f) + off) * D_8028AAB0 / 6.0f),
-                    (D_8028AAB4 * 9) / 16);
+        return 2;
       }
     } else {
-      BrTextHighlightOff();
-      BrTextAlignCentre();
-      if (items[D_80316244]->icon != 0) {
-        BrAnimUpdate(items[D_80316244]->icon);
-        if (items[D_80316244]->flags & 0x10) {
-          D_8028A8A8 = 1;
+      for (i = 0; i < D_8026FF08; i++) {
+        if (D_80271FA0 != -1 && ((1 << i) & D_80271FA4) == 0) {
+          continue;
         }
-        BrMenuIconDraw(items[D_80316244]->icon, D_8028AAB0 / 2, (D_8028AAB4 * 6) / 16, 0.0f, D_80316228);
-        D_8028A8A8 = 0;
-      } else {
-        sprintf(buf, "%%ww%s", items[D_80316244]->label);
-        BrTextPrint(buf, D_8028AAB0 / 2, (D_8028AAB4 * 9) / 16);
-      }
-    label:
-      BrTextSetFont(20);
-      sprintf(buf, "%%ry%s", items[D_80316244]->label);
-      BrTextPrint(buf, D_8028AAB0 / 2, (D_8028AAB4 * 20) / 64);
-      if (D_80271FC8 != 0) {
-        D_80271FC8(D_80316244);
-      }
-    }
-    gSPPopMatrix(D_8028A858++, 0);
-  }
-  BrFrontPromptSelect();
-  BrFadeBarsDraw();
-  if (D_8028AA98 >= 2) {
-    BrViewportSet(0, 0, D_8028AAB0, D_8028AAB4, 1);
-    BrPerfMeterDraw();
-  }
-  BrFrameEnd();
-  if (BrFadeIsOut() != 0) {
-    if (BrFadeAtTarget() != 0) {
-      *sel = D_80316244;
-      D_80271FD4 = 0;
-      BrScreenFlush3Layout1();
-      for (i = 0; i < 6; i++) {
-        D_802A4920[i].x14 = 0;
-        D_802A4920[i].x10 = 0;
-        D_802A4920[i].x8 = 0;
-        D_802A4920[i].p = D_802A4A08;
-      }
-      if (D_8031622C != 0) {
-        return 1;
-      }
-      return 2;
-    }
-  } else {
-    for (i = 0; i < D_8026FF08; i++) {
-      if (D_80271FA0 != -1 && ((1 << i) & D_80271FA4) == 0) {
-        continue;
-      }
-      BrPadStickToButtons(D_8031B760[i].pad);
-      if (*D_8031B760[i].pad != 0) {
-        D_80316240 = 0.0f;
-      }
-      if (D_80316224 == 0) {
-        if (*D_8031B760[i].pad & 4) {
-          BrPadConsume(D_8031B760[i].pad, 10);
-          *D_8031B760[i].pad &= ~10;
-          D_80316220 = D_80316244;
-          do {
-            D_80316244 = (D_80316244 + n - 1) % n;
-          } while (ok != 0 && ok(D_80316244) == 0);
-          if (D_80316244 != D_80316220) {
-            D_80316224 = 1.0f;
-            goto move;
+        BrPadStickToButtons(D_8031B760[i].pad);
+        if (*D_8031B760[i].pad != 0) {
+          D_80316240 = 0.0f;
+        }
+        if (D_80316224 == 0) {
+          if (*D_8031B760[i].pad & 4) {
+            BrPadConsume(D_8031B760[i].pad, 10);
+            *D_8031B760[i].pad &= ~10;
+            D_80316220 = D_80316244;
+            do {
+              D_80316244 = (D_80316244 + n - 1) % n;
+            } while (ok != 0 && ok(D_80316244) == 0);
+            if (D_80316244 != D_80316220) {
+              D_80316224 = 1.0f;
+              goto move;
+            }
+          }
+          if (*D_8031B760[i].pad & 1) {
+            BrPadConsume(D_8031B760[i].pad, 10);
+            *D_8031B760[i].pad &= ~10;
+            D_80316220 = D_80316244;
+            do {
+              D_80316244 = (D_80316244 + 1) % n;
+            } while (ok != 0 && ok(D_80316244) == 0);
+            if (D_80316244 != D_80316220) {
+              D_80316224 = -1.0f;
+            move:
+              v = BrSfxFreeVoice();
+              if (v != -1) {
+                BrSfxVoiceStart(v, D_80316230, D_80316234, 0);
+              }
+            }
+          }
+          if (items[D_80316244]->flags & 1) {
+            if (*D_8031B760[i].pad & 8) {
+              *sel = D_80316244;
+              BrPadConsume(D_8031B760[i].pad, 8);
+              result = 3;
+              goto choose;
+            }
+            if (*D_8031B760[i].pad & 2) {
+              *sel = D_80316244;
+              BrPadConsume(D_8031B760[i].pad, 2);
+              result = 4;
+              goto choose;
+            }
+          }
+          if (*D_8031B760[i].pad & 0x20) {
+            BrPadConsume(D_8031B760[i].pad, 0x20);
+            D_8031622C = 0;
+            BrFadeTo(0.0f, 0.2f);
+            BrSfxFadeTo(0.0f, 0.2f);
+            goto choose;
           }
         }
-        if (*D_8031B760[i].pad & 1) {
-          BrPadConsume(D_8031B760[i].pad, 10);
-          *D_8031B760[i].pad &= ~10;
-          D_80316220 = D_80316244;
-          do {
-            D_80316244 = (D_80316244 + 1) % n;
-          } while (ok != 0 && ok(D_80316244) == 0);
-          if (D_80316244 != D_80316220) {
-            D_80316224 = -1.0f;
-          move:
+        if (!(items[D_80316244]->flags & 8) && !(items[D_80316244]->flags & 0x40) && (*D_8031B760[i].pad & 0xC010)) {
+          BrPadConsume(D_8031B760[i].pad, 0xC010);
+          if (i == 0 || !(items[D_80316244]->flags & 0x20)) {
+            D_80271FA8 = i;
+            if ((items[D_80316244]->flags & 2) == 0) {
+              D_8031622C = 1;
+              BrSfxFadeTo(0.0f, 0.2f);
+              BrFadeTo(0.0f, 0.2f);
+            } else {
+              *sel = D_80316244;
+              result = 1;
+            }
+          choose:
             v = BrSfxFreeVoice();
             if (v != -1) {
-              BrSfxVoiceStart(v, D_80316230, D_80316234, 0);
+              BrSfxVoiceStart(v, D_80316238, D_8031623C, 0);
             }
           }
         }
-        if (items[D_80316244]->flags & 1) {
-          if (*D_8031B760[i].pad & 8) {
-            *sel = D_80316244;
-            result = 3;
-            BrPadConsume(D_8031B760[i].pad, 8);
-            goto choose;
-          }
-          if (*D_8031B760[i].pad & 2) {
-            *sel = D_80316244;
-            result = 4;
-            BrPadConsume(D_8031B760[i].pad, 2);
-            goto choose;
-          }
-        }
-        if (*D_8031B760[i].pad & 0x20) {
-          BrPadConsume(D_8031B760[i].pad, 0x20);
-          D_8031622C = 0;
-          BrFadeTo(0.0f, 0.2f);
-          BrSfxFadeTo(0.0f, 0.2f);
-          goto choose;
-        }
-      }
-      if (!(items[D_80316244]->flags & 8) && !(items[D_80316244]->flags & 0x40) && (*D_8031B760[i].pad & 0xC010)) {
-        BrPadConsume(D_8031B760[i].pad, 0xC010);
-        if (i == 0 || !(items[D_80316244]->flags & 0x20)) {
-          D_80271FA8 = i;
-          if ((items[D_80316244]->flags & 2) == 0) {
-            D_8031622C = 1;
-            BrSfxFadeTo(0.0f, 0.2f);
-            BrFadeTo(0.0f, 0.2f);
-          } else {
-            *sel = D_80316244;
-            result = 1;
-          }
-        choose:
-          v = BrSfxFreeVoice();
-          if (v != -1) {
-            BrSfxVoiceStart(v, D_80316238, D_8031623C, 0);
-          }
-        }
       }
     }
-  }
-  if (D_80271FC4 != 0 && result == 0) {
-    D_80316240 = D_8028AAD8 + D_80316240;
-    if (D_80271FC4 <= D_80316240 && BrFadeIsOut() == 0) {
-      D_8031622C = 0;
-      BrFadeTo(0.0f, 0.2f);
-      BrSfxFadeTo(0.0f, 0.2f);
+    if (D_80271FC4 != 0 && result == 0) {
+      D_80316240 = D_80316240 + D_8028AAD8;
+      if (D_80271FC4 <= D_80316240 && BrFadeIsOut() == 0) {
+        D_8031622C = 0;
+        BrFadeTo(0.0f, 0.2f);
+        BrSfxFadeTo(0.0f, 0.2f);
+      }
     }
   }
   D_80271FAC = D_80316244;
