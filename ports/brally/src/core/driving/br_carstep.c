@@ -189,9 +189,9 @@ LAB_net:
   }
   if (*(int *)&pCar->aBody[2].rb.f1B4 != 0) {
     pCar->f1030 =
-        BrSqrtF(pCar->aBody[0].rb.st.vel.z * pCar->aBody[0].rb.st.vel.z +
-                pCar->aBody[0].rb.st.vel.y * pCar->aBody[0].rb.st.vel.y +
-                pCar->aBody[0].rb.st.vel.x * pCar->aBody[0].rb.st.vel.x) * DAT_10077c78;
+        BrSqrtF(pCar->aBody[0].rb.st.vel.x * pCar->aBody[0].rb.st.vel.x +   /* x, y, z: the */
+                pCar->aBody[0].rb.st.vel.y * pCar->aBody[0].rb.st.vel.y +   /* original's order */
+                pCar->aBody[0].rb.st.vel.z * pCar->aBody[0].rb.st.vel.z) * DAT_10077c78;
   }
   if (((*(int *)&g_brRaceNet) == 0) && (iVar5 = 0, 0 < g_brMode0AA8B4)) {
     piVar6 = &g_aBrView[0].iCar;

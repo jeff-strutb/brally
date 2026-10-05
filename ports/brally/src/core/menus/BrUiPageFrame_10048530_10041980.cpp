@@ -100,7 +100,7 @@ int Phase32F::Frame()
             goto fail;
         }
         if (((*(unsigned int *)&((BrUiCtl_ *)(p))->flags1C) & 0x6000)
-            && ((*(UiCtx * *)&((BrUiPage_ *)(this))->pOwner)->fBC == i || ((*(unsigned int *)&((BrUiCtl_ *)(p))->flags1C) & 0x4000))) {
+            && (((BrUiPage_ *)(this))->pOwner->fBC == i || ((*(unsigned int *)&((BrUiCtl_ *)(p))->flags1C) & 0x4000))) {
             if ((*(short *)&((BrUiCtl_ *)(p))->cChild) > 0) {
                 int j;
                 for (j = 0; j < (*(short *)&((BrUiCtl_ *)(p))->cChild); ++j)
@@ -112,11 +112,11 @@ int Phase32F::Frame()
                 goto fail;
         }
         if (((*(unsigned int *)&((BrUiCtl_ *)(p))->flags1C) & 0x20) && g_5C30 == 0 && ((*(unsigned int *)&((BrUiCtl_ *)(p))->flags1C) & 0x2000)) {
-            UiCtx *c = (*(UiCtx * *)&((BrUiPage_ *)(this))->pOwner);
+            BrPhase_ *c = ((BrUiPage_ *)(this))->pOwner;
             if (c->fBC != i) {
                 c->fBC = (unsigned short)i;
-                memset((char *)(*(UiCtx * *)&((BrUiPage_ *)(this))->pOwner) + 0x6C, 0, 0x50);
-                (*(UiCtx * *)&((BrUiPage_ *)(this))->pOwner)->f6C = 1;
+                memset(((BrUiPage_ *)(this))->pOwner->aFlags, 0, sizeof ((BrUiPage_ *)(this))->pOwner->aFlags);   /* +0x6C, 0x50 bytes */
+                ((BrUiPage_ *)(this))->pOwner->aFlags[0] = 1;
             }
         }
     latch:;

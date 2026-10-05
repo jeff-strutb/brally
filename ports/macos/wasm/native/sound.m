@@ -226,6 +226,20 @@ void n_BrWrap_10072B80(u32 group, u32 slot, u32 packed)
     w_icall_iii_i(F_SLOTLEVELS, group, slot + slot, packed);
 }
 
+/* WHY: BrSndBufSetPan ends in a bare `return;` after BrSndVoiceBufStart,
+ * relying on MSVC leaving that call's eax -- the last DirectSound call's
+ * result -- as its own.  The translation returns whatever the register
+ * held, so BrSfxChanStart took every one-shot start as a failure: the
+ * channel never got its rate and was never polled or retuned.  Here those
+ * calls (GetStatus, Play, SetCurrentPosition) always return S_OK. */
+/* @replaces 0x1006B950 BrSndBufSetPan */
+u32 n_BrSndBufSetPan(u32 voice, u32 loop)
+{
+    W_TRACE("n_BrSndBufSetPan");
+    W_ORIG_BrSndBufSetPan(voice, loop);
+    return 0;
+}
+
 /* WHY: seek a WAV to its sample data and descend into the "data" chunk.
  * The source (br_input.c) ends in a bare `return;` after mmioDescend,
  * relying on MSVC leaving that call's eax as the result; the translation

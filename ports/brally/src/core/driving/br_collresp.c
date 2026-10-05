@@ -302,8 +302,9 @@ int BrCollRespTipKick(BrTipView *pBody)
     BrPodNop();
     if (BR_TIP_ABS(vn) > DAT_10077af4)
         return 0;
-    s = (*(struct BrGroundHit *)&((BrCarBody *)(pBody))->rb.pPlane).nx * pM->m[0][0] + (*(struct BrGroundHit *)&((BrCarBody *)(pBody))->rb.pPlane).nz * (*(struct BrMat4 *)&((BrCarBody *)(pBody))->rb.m).m[0][2]
-      + (*(struct BrGroundHit *)&((BrCarBody *)(pBody))->rb.pPlane).ny * (*(struct BrMat4 *)&((BrCarBody *)(pBody))->rb.m).m[0][1];
+    /* x, y, z: the original's order (the decomp's byte-exact body) */
+    s = pM->m[0][0] * (*(struct BrGroundHit *)&((BrCarBody *)(pBody))->rb.pPlane).nx + (*(struct BrMat4 *)&((BrCarBody *)(pBody))->rb.m).m[0][1] * (*(struct BrGroundHit *)&((BrCarBody *)(pBody))->rb.pPlane).ny
+      + (*(struct BrMat4 *)&((BrCarBody *)(pBody))->rb.m).m[0][2] * (*(struct BrGroundHit *)&((BrCarBody *)(pBody))->rb.pPlane).nz;
     p.x = 0.0f;
     p.y = 0.1f;
     if (s <= BrCrK_Zero)

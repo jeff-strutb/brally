@@ -33,6 +33,10 @@
 #include <string.h>
 #include "slice3_39.h"   /* BrTextBox, the canonical record */
 
+/* vtable slot 10 of the list: attach a blob to a row (BrTextListSetBlob) */
+typedef int32_t (*BrListSetBlobFn)(BrTextList *pThis, const void *pData,
+                                   int32_t cb, int32_t index);
+
 struct BrEnt54E20 {
     int a;
     int b;
@@ -99,14 +103,16 @@ int Slots54E20::Delete(int idx)
         (*(int *)&((BrTextBox *)&((*(BrSlot54E20 *)&((BrTextList *)(this))->aItems[idx])))->f418) = 0;
         (*(int *)&((BrTextBox *)&((*(BrSlot54E20 *)&((BrTextList *)(this))->aItems[idx])))->f420) = 0;
         (*(int *)&((BrTextBox *)&((*(BrSlot54E20 *)&((BrTextList *)(this))->aItems[idx])))->f434) = 0;
-        memset(&(*(BrEnt54E20 *)&((BrTextList *)(this))->aBlobs[idx]), 0, sizeof((*(BrEnt54E20 *)&((BrTextList *)(this))->aBlobs[idx])));
+        memset(&((BrTextList *)(this))->aBlobs[idx], 0, sizeof(((BrTextList *)(this))->aBlobs[idx]));
     }
 
     if (idx + 1 != (*(unsigned short *)&((BrTextList *)(this))->count)) {
         for (i = idx + 1; i <= (*(unsigned short *)&((BrTextList *)(this))->count) - 1; i++) {
-            (*(BrSlot54E20 *)&((BrTextList *)(this))->aItems[i - 1]) = (*(BrSlot54E20 *)&((BrTextList *)(this))->aItems[i]);
-            if ((*(BrEnt54E20 *)&((BrTextList *)(this))->aBlobs[i]).b != 0 && (*(BrEnt54E20 *)&((BrTextList *)(this))->aBlobs[i]).a > 0)
-                s10((*(BrEnt54E20 *)&((BrTextList *)(this))->aBlobs[i]).b, (*(BrEnt54E20 *)&((BrTextList *)(this))->aBlobs[i]).a, i - 1);
+            /* the whole item and its blob {size, p}, in the core's layout */
+            ((BrTextList *)(this))->aItems[i - 1] = ((BrTextList *)(this))->aItems[i];
+            if (((BrTextList *)(this))->aBlobs[i].p != 0 && (int32_t)((BrTextList *)(this))->aBlobs[i].size > 0)
+                ((BrListSetBlobFn)((BrTextList *)(this))->pVtbl->f28)((BrTextList *)(this),
+                    ((BrTextList *)(this))->aBlobs[i].p, (int32_t)((BrTextList *)(this))->aBlobs[i].size, i - 1);
         }
     }
 
@@ -122,7 +128,7 @@ int Slots54E20::Delete(int idx)
         (*(int *)&((BrTextBox *)&((*(BrSlot54E20 *)&((BrTextList *)(this))->aItems[idx])))->y) = 0;
         (*(int *)&((BrTextBox *)&((*(BrSlot54E20 *)&((BrTextList *)(this))->aItems[idx])))->f418) = 0;
         (*(int *)&((BrTextBox *)&((*(BrSlot54E20 *)&((BrTextList *)(this))->aItems[idx])))->f420) = 0;
-        memset(&(*(BrEnt54E20 *)&((BrTextList *)(this))->aBlobs[idx]), 0, sizeof((*(BrEnt54E20 *)&((BrTextList *)(this))->aBlobs[idx])));
+        memset(&((BrTextList *)(this))->aBlobs[idx], 0, sizeof(((BrTextList *)(this))->aBlobs[idx]));
     }
 
     (*(unsigned short *)&((BrTextList *)(this))->count)--;

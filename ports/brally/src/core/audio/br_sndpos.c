@@ -390,7 +390,7 @@ void BrSndNearestCommit(void)
 
     if (g_BrCarCount == 0)
         return;
-    if ((*(uint8_t * *)&g_aBrRaceCar[0].pProfile)[0x68] & 1)
+    if (*(uint8_t *)&g_aBrRaceCar[0].pProfile->f68 & 1)    /* profile +0x68 in the original */
         return;
 
     if ((*(int32_t *)&g_BrSndAA3470) != -1) {

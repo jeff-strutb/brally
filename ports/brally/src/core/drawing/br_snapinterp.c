@@ -396,7 +396,7 @@ void BrRaceBeginResetOnce(void)
         g_brRbB500 = -1;
         g_brRbB4F0 = g_brRbB4F4 = g_brRb6F24 = 0;
         for (i = 0; i < 5; i++)
-            (*(BrRbCar (*)[5])&g_aBrSnap)[i].f0 = 0.0f;
+            *(float *)&g_aBrSnap[i].stamp = 0.0f;   /* record +0 of each, at the core's stride */
         g_brRbInited = 1;
     }
 }

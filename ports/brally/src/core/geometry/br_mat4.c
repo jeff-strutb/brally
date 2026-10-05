@@ -65,8 +65,10 @@ void BrMtxXfmDir3(BrVec3 *pOut, const BrVec3 *pV, const BrMat4 *pM)
 {
     float x = pV->x, y = pV->y, z = pV->z;
     pOut->x = pM->m[0][0] * x + pM->m[1][0] * y + pM->m[2][0] * z;
-    pOut->y = pM->m[0][1] * x + pM->m[1][1] * y + pM->m[2][1] * z;
-    pOut->z = pM->m[0][2] * x + pM->m[1][2] * y + pM->m[2][2] * z;
+    /* rows y and z sum the y and z terms first, then add the x term: the
+     * original's order and rounding (the decomp's byte-exact body) */
+    pOut->y = pM->m[0][1] * x + (pM->m[1][1] * y + pM->m[2][1] * z);
+    pOut->z = pM->m[0][2] * x + (pM->m[1][2] * y + pM->m[2][2] * z);
 }
 
 /* 0x1003B2A0 -- signature deliberately matches slice2_18.h's XSLICE

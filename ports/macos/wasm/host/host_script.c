@@ -202,6 +202,25 @@ static void trace_window(void)
     }
 }
 
+/* BR_DUMP_EVERY=N:DIR -- the same data area every N frames, to
+ * DIR/<frame>.bin: one run gives every frame a lockstep search needs */
+static void dump_every(unsigned n)
+{
+    static int init, every;
+    static char dir[1024];
+    char path[1100];
+    FILE *f;
+    if (!init) {
+        const char *e = getenv("BR_DUMP_EVERY");
+        init = 1;
+        if (e) sscanf(e, "%d:%1023s", &every, dir);
+    }
+    if (every <= 0 || n % (unsigned)every)
+        return;
+    snprintf(path, sizeof path, "%s/%06u.bin", dir, n);
+    if ((f = fopen(path, "wb"))) { fwrite(W_P(0x10077000u), 1, 0x118F0000u - 0x10077000u, f); fclose(f); }
+}
+
 /* BR_DUMP=F:PATH -- at main-loop frame F, write the image's data area
  * (0x10077000..0x118F0000, the addresses brbox's run shares) to PATH. */
 static void dump_window(void)
@@ -220,6 +239,7 @@ static void dump_window(void)
         if (f) { fwrite(W_P(0x10077000u), 1, 0x118F0000u - 0x10077000u, f); fclose(f); }
         fprintf(stderr, "dump: frame %u -> %s\n", n, path);
     }
+    dump_every(n);
 }
 
 /* what the engine drew: BrTextEmitString (0x10015B10) calls htext_emit; a

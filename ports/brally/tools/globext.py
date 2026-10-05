@@ -85,6 +85,9 @@ def main():
     # every address the core defines anywhere bounds the one before it
     vas = set(va for va, _, _ in here)
     vas |= set(int(m.group('va'), 16) for m in PADDED.finditer(text))
+    # blocks of neighbouring globals (globfold.py) and the names in them
+    vas |= set(int(m.group('first'), 16) for m in re.finditer(r'^BR_BLOCK\((?P<first>[0-9A-F]{8}),', text, re.M))
+    vas |= set(int(m.group(1), 16) for m in re.finditer(r'^BR_BLOCK_AT\([^\n]*/\*\s*0x([0-9A-Fa-f]{8})', text, re.M))
     for dp, _, fs in os.walk('ports/brally/src/core'):
         for f in fs:
             if f.endswith(('.c', '.cpp')) and os.path.join(dp, f) != GLOBALS_C:

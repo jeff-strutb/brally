@@ -386,9 +386,13 @@ the few changes that matter to behaviour are carried over by hand.
 `ports/brally/PORTABLE-CORE.md` has the design.
 
 **Verified against the original.** Under `BR_VCLOCK` the native build and the
-32-bit lane run the same input scripts on one virtual clock, and the car
-state is compared tick for tick: they are identical across quick races, every
-weather, the cheat tracks, time attack, the championship and season saves.
+32-bit lane run the same input scripts on one virtual clock, and
+`ports/brally/tools/lockstep.sh` compares the game state every 100 frames
+(dumpdiff.py `--state`: pointers, and what the 32-bit lane draws and plays
+natively, left out). Quick races, every weather, the fog and desert tracks,
+the attract demo and the credits are identical frame for frame; the options,
+cheat, force-feedback, software-shadow, race-finish and season-load scripts
+still differ and are open.
 Network races are checked against brbox, the original DLL run in an
 emulator, frame for frame. Rendering is checked the same way, renderer
 against renderer and against the reference.

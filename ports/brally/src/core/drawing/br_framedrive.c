@@ -526,7 +526,7 @@ void BrFrameDraw(int iSlot)
                 BrPodNop();
                 if ((*(BrCamObj * *)&g_BrCamera) != (BrCamObj *)(((*(uint8_t * *)&g_pBr63Race) + offsetof(struct BrDriverCar, aSnap[2].m[0][0]))))
                     BrPodNop();
-            } else if ((*(uint8_t **)(((*(uint8_t * *)&g_pBr63Race) + offsetof(struct BrDriverCar, pProfile))))[0x68] & 2) {
+            } else if (*(uint8_t *)&((struct BrDriverCar *)(*(uint8_t * *)&g_pBr63Race))->pProfile->f68 & 2) {
                 BrHudDrawViewMessage(aViews);
             }
         /* Both conditions are COMPOUND and both name the same two globals:

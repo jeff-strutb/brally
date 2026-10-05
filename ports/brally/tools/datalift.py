@@ -38,7 +38,8 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import pe32  # noqa: E402
 import viewmerge as vm  # noqa: E402
-import globext  # noqa: E402
+import globext
+import globfold  # noqa: E402
 
 ROOT = vm.ROOT
 LO, HI = 0x10077000, 0x100BCE00
@@ -410,6 +411,7 @@ class Lift:
         self.out.append('    *(void **)&%s = %s;' % (lhs, e))
 
     def bytes_stmt(self, lhs_addr, va, n):
+        n = min(n, HI - va)     # past the image is .bss: zero already
         if n <= 0:
             return
         blob = self.read(va, n)
@@ -498,6 +500,10 @@ class Lift:
             return '(void *)((char *)&%s + sizeof(%s) + %d)' % (r, r, va - gva - s32)
         if va == gva:
             return '(void *)&%s' % r
+        if name.startswith('br_blockdata_'):
+            # a block holds the original's bytes: an offset into it is the
+            # same offset here, even where another object starts at va
+            return '(void *)((char *)&%s + %d)' % (r, va - gva)
         return self.syms.expr(va)
 
     def varblocks(self, lhs, va, cap, fp='pData', fn='cb'):
@@ -551,6 +557,10 @@ class Lift:
         padded = [(int(m.group('va'), 16), m.group('name'), int(m.group('pad'), 16)) for m in globext.PADDED.finditer(text)]
         pad = {n: p for _, n, p in padded}
         names = [(va, n) for va, n, _ in here] + [(va, n) for va, n, _ in padded]
+        # a block of neighbouring globals (globfold.py): its bytes from its
+        # first global on, under br_blockdata_<first>
+        names += [(int(m.group('first'), 16), 'br_blockdata_' + m.group('first'))
+                  for m in globfold.BLOCK.finditer(text)]
         for va, n in names:
             ty = decl_ty.get(n)
             if ty is None:

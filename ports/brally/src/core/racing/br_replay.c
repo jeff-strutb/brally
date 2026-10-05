@@ -151,6 +151,10 @@ void BrReplayApply(BrDriverCar *pCar, int32_t iPlayer)
     pSlot = &g_BrReplayBuf[((uint32_t)iPlayer << 16)
                            + (uint32_t)g_BrReplayCursor[iPlayer]];
 
+    /* The decoder leaves the velocity and spin words (7..12) alone and
+     * BrCarGhostApply copies them onto the car, so the original applied
+     * whatever its stack held there.  The core starts the record at 0. */
+    memset(&state, 0, sizeof state);
     BrFixDecodeRecord_10007AA0(&state, &pSlot->rec);
 
     /* orig `mov edx,[car+0xFF4]; mov [state.f78],edx` -- dword copy, not
@@ -195,15 +199,15 @@ void BrReplayApply(BrDriverCar *pCar, int32_t iPlayer)
 
         ((*(float *)(void *)(((unsigned char *)&((BrDriverCar *)(((pCar))))->aBody[0].rb.st.vel.x + 0)))) =
             (state.f10
-             - ((const BrVec3 *)((char *)&pCar->fwd.x + BR_S42_CAR_OFF_POS))->x)
+             - (&pCar->aBody[0].rb.st.pos)->x)
             * BR_K_0008FAA8;
         ((*(float *)(void *)(((unsigned char *)&((BrDriverCar *)(((pCar))))->aBody[0].rb.st.vel.x + 4)))) =
             (state.f14
-             - ((const BrVec3 *)((char *)&pCar->fwd.x + BR_S42_CAR_OFF_POS))->y)
+             - (&pCar->aBody[0].rb.st.pos)->y)
             * BR_K_0008FAA8;
         ((*(float *)(void *)(((unsigned char *)&((BrDriverCar *)(((pCar))))->aBody[0].rb.st.vel.x + 8)))) =
             (state.f18
-             - ((const BrVec3 *)((char *)&pCar->fwd.x + BR_S42_CAR_OFF_POS))->z)
+             - (&pCar->aBody[0].rb.st.pos)->z)
             * BR_K_0008FAA8;
     }
 }

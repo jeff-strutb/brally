@@ -2010,7 +2010,11 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
          * fixed link address (folded as a displacement), not pointer vars,
          * so &g_-cast to the pinned base.  The *2 scales refIndex. */
         int8_t tblIdx = ((const int8_t *)&g_BrDrawRefTbl)[idx2714 + g_BrDrawRefIndex * 2];
-        uint32_t texVal = ((const uint32_t *)&g_BrDrawRefColors)[tblIdx];
+        /* the original's three dwords at 0x100A5C58 are three pointer-sized
+         * globals here (they hold texture handles); g_BrDrawRefIndex is 1
+         * or 2, so the table only ever selects 0..2 */
+        uint32_t texVal = (uint32_t)(uintptr_t)(tblIdx == 0 ? (void *)g_BrDrawRefColors
+                                                : tblIdx == 1 ? g_0A649C : g_0A64A0);
         put((texVal & 0x00FFFFFFu) | 0xDC000000u, 1);
     }
 

@@ -590,7 +590,9 @@ FxU32 grTexTextureMemRequired(FxU32 evenOdd, GrTexInfo *info)
 }
 
 FxU32 grTexMinAddress(GrChipID_t tmu) { plat_vclock_import(); (void)tmu; return 0; }
-FxU32 grTexMaxAddress(GrChipID_t tmu) { plat_vclock_import(); (void)tmu; return TMU_RAM - 8; }
+/* the top of texture memory as brbox and the 32-bit lane report it: 128 KB
+ * below the end of the TMU's 4 MB (tools/brbox_imports.py) */
+FxU32 grTexMaxAddress(GrChipID_t tmu) { plat_vclock_import(); (void)tmu; return TMU_RAM - 0x20000; }
 
 static uint8_t s_tmem[TMU_RAM];
 

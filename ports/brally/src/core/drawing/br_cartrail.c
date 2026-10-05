@@ -164,59 +164,59 @@ void BrCarTrailStep(void)
         BrMat4Scale(&m, 1.0f / 127.0f, 1.0f / 127.0f, 1.0f / 127.0f);
         BrMat4Mul(&m, &(*(struct BrMat4 *)&((BrDriverCar *)(car))->f26D4[0]), &(*(struct BrMat4 *)&((BrDriverCar *)(car))->f26D4[0]));
 
-        pq = &(*(BrTrailOfs *)&((BrDriverCar *)(car))->aWHist[1]);
+        pq = &((BrTrailOfs *)((BrDriverCar *)(car))->aWHist)[1];
         pl = (*(int (*)[4])&((BrDriverCar *)(car))->a10DC);
         ps = (*(short (*)[36])&((BrDriverCar *)(car))->a2680);
-        c0 = &(*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[0]).v[0].c.x;
+        c0 = &((BrTrailRec *)((BrDriverCar *)(car))->aHist)[0].v[0].c.x;
         for (kk = 0; kk < 36; kk += 9) {
             if (*pl != 0) {
                 switch (*ps) {
                 case 4:
                     if (g_Br0B380C == 2 || g_Br0B380C == 8) {
                         if ((*(int32_t *)((char *)&g_aBrEntRecs + 0x80)) == 0) {
-                            (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk]).v[0].c.x = 50.0f;
-                            (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk]).v[0].c.y = 100.0f;
-                            (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk]).v[0].c.z = 95.0f;
+                            ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk].v[0].c.x = 50.0f;
+                            ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk].v[0].c.y = 100.0f;
+                            ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk].v[0].c.z = 95.0f;
                             c0[8] = 210.0f;
                             c0[9] = 240.0f;
                             c0[10] = 190.0f;
                         } else {
-                            (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk]).v[0].c.x = 70.0f;
-                            (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk]).v[0].c.y = 100.0f;
-                            (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk]).v[0].c.z = 100.0f;
+                            ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk].v[0].c.x = 70.0f;
+                            ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk].v[0].c.y = 100.0f;
+                            ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk].v[0].c.z = 100.0f;
                             c0[8] = 215.0f;
                             c0[9] = 235.0f;
                             c0[10] = 195.0f;
                         }
                     } else if (g_Br0B380C == 3 || g_Br0B380C == 9) {
-                        (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk]).v[0].c.x = 16.0f;
-                        (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk]).v[0].c.y = 16.0f;
-                        (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk]).v[0].c.z = 0.0f;
+                        ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk].v[0].c.x = 16.0f;
+                        ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk].v[0].c.y = 16.0f;
+                        ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk].v[0].c.z = 0.0f;
                         c0[8] = 64.0f;
                         c0[9] = 64.0f;
                         c0[10] = 16.0f;
                     } else {
-                        (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk]).v[0].c.x = 48.0f;
-                        (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk]).v[0].c.y = 24.0f;
-                        (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk]).v[0].c.z = 8.0f;
+                        ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk].v[0].c.x = 48.0f;
+                        ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk].v[0].c.y = 24.0f;
+                        ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk].v[0].c.z = 8.0f;
                         c0[8] = 128.0f;
                         c0[9] = 96.0f;
                         c0[10] = 64.0f;
                     }
                     if ((*(int32_t *)((char *)&g_aBrEntRecs + 0x84)) != 0) {
-                        x = (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk]).v[0].c.x; y = (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk]).v[0].c.y; z = (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk]).v[0].c.z;
-                        (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk]).v[0].c.x = g_BrTrailNightBaseK - x * g_BrTrailNightMulK;
-                        (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk]).v[0].c.y = g_BrTrailNightBaseK - y * g_BrTrailNightMulK;
-                        (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk]).v[0].c.z = g_BrTrailNightBaseK - z * g_BrTrailNightMulK;
+                        x = ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk].v[0].c.x; y = ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk].v[0].c.y; z = ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk].v[0].c.z;
+                        ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk].v[0].c.x = g_BrTrailNightBaseK - x * g_BrTrailNightMulK;
+                        ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk].v[0].c.y = g_BrTrailNightBaseK - y * g_BrTrailNightMulK;
+                        ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk].v[0].c.z = g_BrTrailNightBaseK - z * g_BrTrailNightMulK;
                         x = c0[8]; y = c0[9]; z = c0[10];
                         c0[8]  = g_BrTrailNightBaseK - x * g_BrTrailNightMulK;
                         c0[9]  = g_BrTrailNightBaseK - y * g_BrTrailNightMulK;
                         c0[10] = g_BrTrailNightBaseK - z * g_BrTrailNightMulK;
                     } else if ((*(int32_t *)((char *)&g_aBrEntRecs + 0x7C)) != 0) {
-                        x = (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk]).v[0].c.x; y = (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk]).v[0].c.y; z = (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk]).v[0].c.z;
-                        (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk]).v[0].c.x = x * g_BrTrailDimK;
-                        (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk]).v[0].c.y = y * g_BrTrailDimK;
-                        (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk]).v[0].c.z = z * g_BrTrailDimK;
+                        x = ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk].v[0].c.x; y = ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk].v[0].c.y; z = ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk].v[0].c.z;
+                        ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk].v[0].c.x = x * g_BrTrailDimK;
+                        ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk].v[0].c.y = y * g_BrTrailDimK;
+                        ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk].v[0].c.z = z * g_BrTrailDimK;
                         x = c0[8]; y = c0[9]; z = c0[10];
                         c0[8]  = x * g_BrTrailDimK;
                         c0[9]  = y * g_BrTrailDimK;
@@ -225,9 +225,9 @@ void BrCarTrailStep(void)
                     break;
                 case 3:
                     if ((*(int32_t *)((char *)&g_aBrEntRecs + 0x84)) != 0) {
-                        (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk]).v[0].c.x = 100.0f;
-                        (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk]).v[0].c.y = 104.0f;
-                        (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk]).v[0].c.z = 108.0f;
+                        ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk].v[0].c.x = 100.0f;
+                        ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk].v[0].c.y = 104.0f;
+                        ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk].v[0].c.z = 108.0f;
                         c0[8] = 160.0f;
                         c0[9] = 168.0f;
                         c0[10] = 176.0f;
@@ -239,17 +239,17 @@ void BrCarTrailStep(void)
                     c0[8] = c0[0x28];
                     c0[9] = c0[0x29];
                     c0[10] = c0[0x2A];
-                    (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk]).v[0].c.x = (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk + 1]).v[0].c.x;
-                    (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk]).v[0].c.y = (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk + 1]).v[0].c.y;
-                    (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk]).v[0].c.z = (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk + 1]).v[0].c.z;
+                    ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk].v[0].c.x = ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk + 1].v[0].c.x;
+                    ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk].v[0].c.y = ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk + 1].v[0].c.y;
+                    ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk].v[0].c.z = ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk + 1].v[0].c.z;
                     break;
                 case 0:
                     c0[8] = 48.0f;
-                    (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk]).v[0].c.x = 48.0f;
+                    ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk].v[0].c.x = 48.0f;
                     c0[9] = 32.0f;
-                    (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk]).v[0].c.y = 32.0f;
+                    ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk].v[0].c.y = 32.0f;
                     c0[10] = 16.0f;
-                    (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[kk]).v[0].c.z = 16.0f;
+                    ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[kk].v[0].c.z = 16.0f;
                     break;
                 }
                 *(BrTrailRec *)(c0 + 0x1B) = *(BrTrailRec *)(c0 - 5);
@@ -259,39 +259,39 @@ void BrCarTrailStep(void)
             for (j = 8; j > 0; j--) {
                 idx = kk + j;
                 if (j == 1 || *pl != 0) {
-                    (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[idx]) = (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[idx - 1]);
-                    (*(BrTrailOfs *)&((BrDriverCar *)(car))->aWHist[idx]) = (*(BrTrailOfs *)&((BrDriverCar *)(car))->aWHist[idx - 1]);
+                    ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[idx] = ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[idx - 1];
+                    ((BrTrailOfs *)((BrDriverCar *)(car))->aWHist)[idx] = ((BrTrailOfs *)((BrDriverCar *)(car))->aWHist)[idx - 1];
                     (*(short (*)[36])&((BrDriverCar *)(car))->a2680)[kk + j] = (*(short (*)[36])&((BrDriverCar *)(car))->a2680)[kk + j - 1];
                 }
                 t = (*(short (*)[36])&((BrDriverCar *)(car))->a2680)[kk + j];
                 if (t == 3) {
-                    (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[idx]).v[0].w = 1040.0f;
-                    (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[idx]).v[1].w = 16.0f;
+                    ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[idx].v[0].w = 1040.0f;
+                    ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[idx].v[1].w = 16.0f;
                 } else {
-                    (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[idx]).v[0].w = 16.0f;
-                    (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[idx]).v[1].w = 1040.0f;
+                    ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[idx].v[0].w = 16.0f;
+                    ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[idx].v[1].w = 1040.0f;
                 }
-                (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[idx]).v[0].u = (float)(j << 11);
-                (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[idx]).v[1].u = (float)(j << 11);
+                ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[idx].v[0].u = (float)(j << 11);
+                ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[idx].v[1].u = (float)(j << 11);
                 if (t == -1 || j == 1 || (j == 2 && *pl != 0)) {
-                    (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[idx]).v[0].p.x = (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[idx]).v[0].p.x + (float)dx;
-                    (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[idx]).v[0].p.y = (float)dy + (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[idx]).v[0].p.y;
-                    (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[idx]).v[0].p.z = (float)dz + (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[idx]).v[0].p.z;
-                    (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[idx]).v[1].p.x = (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[idx]).v[1].p.x + (float)dx;
-                    (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[idx]).v[1].p.y = (float)dy + (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[idx]).v[1].p.y;
-                    (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[idx]).v[1].p.z = (float)dz + (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[idx]).v[1].p.z;
+                    ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[idx].v[0].p.x = ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[idx].v[0].p.x + (float)dx;
+                    ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[idx].v[0].p.y = (float)dy + ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[idx].v[0].p.y;
+                    ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[idx].v[0].p.z = (float)dz + ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[idx].v[0].p.z;
+                    ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[idx].v[1].p.x = ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[idx].v[1].p.x + (float)dx;
+                    ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[idx].v[1].p.y = (float)dy + ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[idx].v[1].p.y;
+                    ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[idx].v[1].p.z = (float)dz + ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[idx].v[1].p.z;
                 } else if (j != 8) {
-                    (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[idx]).v[0].p.x = (float)((iScale * (*(BrTrailOfs *)&((BrDriverCar *)(car))->aWHist[idx]).s[0] >> 12) + dx) + (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[idx]).v[0].p.x;
-                    (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[idx]).v[0].p.y = (float)(((*(BrTrailOfs *)&((BrDriverCar *)(car))->aWHist[idx]).s[1] * iScale >> 12) + dy) + (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[idx]).v[0].p.y;
-                    (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[idx]).v[0].p.z = (float)dz + (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[idx]).v[0].p.z;
-                    (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[idx]).v[1].p.x = (float)((iScale * (*(BrTrailOfs *)&((BrDriverCar *)(car))->aWHist[idx]).s[3] >> 12) + dx) + (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[idx]).v[1].p.x;
-                    (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[idx]).v[1].p.y = (float)(((*(BrTrailOfs *)&((BrDriverCar *)(car))->aWHist[idx]).s[4] * iScale >> 12) + dy) + (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[idx]).v[1].p.y;
-                    v = (float)((iScale * (*(BrTrailOfs *)&((BrDriverCar *)(car))->aWHist[idx]).s[5] >> 12) + dz) + (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[idx]).v[1].p.z;
-                    (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[idx]).v[1].p.z = v;
-                    if (v < (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[idx]).v[0].p.z)
-                        (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[idx]).v[1].p.z = (*(BrTrailRec *)&((BrDriverCar *)(car))->aHist[idx]).v[0].p.z;
+                    ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[idx].v[0].p.x = (float)((iScale * ((BrTrailOfs *)((BrDriverCar *)(car))->aWHist)[idx].s[0] >> 12) + dx) + ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[idx].v[0].p.x;
+                    ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[idx].v[0].p.y = (float)((((BrTrailOfs *)((BrDriverCar *)(car))->aWHist)[idx].s[1] * iScale >> 12) + dy) + ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[idx].v[0].p.y;
+                    ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[idx].v[0].p.z = (float)dz + ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[idx].v[0].p.z;
+                    ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[idx].v[1].p.x = (float)((iScale * ((BrTrailOfs *)((BrDriverCar *)(car))->aWHist)[idx].s[3] >> 12) + dx) + ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[idx].v[1].p.x;
+                    ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[idx].v[1].p.y = (float)((((BrTrailOfs *)((BrDriverCar *)(car))->aWHist)[idx].s[4] * iScale >> 12) + dy) + ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[idx].v[1].p.y;
+                    v = (float)((iScale * ((BrTrailOfs *)((BrDriverCar *)(car))->aWHist)[idx].s[5] >> 12) + dz) + ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[idx].v[1].p.z;
+                    ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[idx].v[1].p.z = v;
+                    if (v < ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[idx].v[0].p.z)
+                        ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[idx].v[1].p.z = ((BrTrailRec *)((BrDriverCar *)(car))->aHist)[idx].v[0].p.z;
                     else
-                        (*(BrTrailOfs *)&((BrDriverCar *)(car))->aWHist[idx]).s[5] -= step;
+                        ((BrTrailOfs *)((BrDriverCar *)(car))->aWHist)[idx].s[5] -= step;
                 }
             }
             pq += 9;

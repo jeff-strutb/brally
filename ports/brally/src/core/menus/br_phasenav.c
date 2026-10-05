@@ -307,7 +307,7 @@ int BrPhaseHook_10045AA0(void *pArg)
     BrSub1003E680();
     (*(void * *)&g_aBrRaceCar[0].pEquip) = 0;
     Ctl3F130_fn(pArg);
-    *(void **)((*(char * *)&DAT_10ac5d08) + 8) = (void *)BrOpt6D70;
+    (*(BrPhase * *)&DAT_10ac5d08)->pfnHook = (BrPhaseHookFn_)BrOpt6D70;     /* +0x08 in the original */
     (*(int *)&g_brRaceRules.mode) = 0;
     BrSub1003E510();
     return 1;

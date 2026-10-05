@@ -38,9 +38,16 @@ static int vclock(void)
 }
 static void vclock_advance(u64 us) { if (vclock() && pthread_main_np()) g_vclock_us += us; }
 static u64 now_us(void) { return vclock() ? g_vclock_us : real_us(); }
-static u64 clock_read_us(void) { vclock_advance(g_vclock_tick); return now_us(); }
+/* vclock() first: it sets g_vclock_tick, which is still the ~0 sentinel on
+ * the very first read (that read moved the clock back 1 us instead of on a
+ * tick, and left this lane 251 us behind brbox and the 64-bit core) */
+static u64 clock_read_us(void) { if (vclock()) vclock_advance(g_vclock_tick); return now_us(); }
 
 u32 h_timeGetTime(void) { return (u32)(clock_read_us() / 1000) + 1000; }
+/* the clock as timeGetTime reads it, without spending a virtual tick: the
+ * host's own bookkeeping (message and timer stamps) is not a game read --
+ * as the 64-bit core's plat_time_ms keeps it */
+static u32 host_time_ms(void) { vclock(); return (u32)(now_us() / 1000) + 1000; }
 u32 h_timeBeginPeriod(u32 p) { (void)p; return 0; }
 void h_timeEndPeriod(u32 p) { (void)p; }
 u32 h_QueryPerformanceFrequency(u32 p) { W_ST(u64, p, 0, 1000000ULL); return 1; }
@@ -488,7 +495,7 @@ void hwin_post(u32 hwnd, u32 msg, u32 wp, u32 lp)
 {
     pthread_mutex_lock(&g_ql);
     if (((g_qt + 1) & 1023) != g_qh) {
-        g_q[g_qt] = (hmsg){ hwnd, msg, wp, lp, h_timeGetTime() };
+        g_q[g_qt] = (hmsg){ hwnd, msg, wp, lp, host_time_ms() };
         g_qt = (g_qt + 1) & 1023;
     }
     pthread_mutex_unlock(&g_ql);
@@ -684,7 +691,7 @@ u32 h_DispatchMessageA(u32 p)
 {
     u32 hwnd = H32(p), msg = H32(p + 4), wp = H32(p + 8), lp = H32(p + 12);
     if (msg == 0x113 && lp)                      /* WM_TIMER with a TIMERPROC */
-        return w_icall_iiii_i(lp, hwnd, msg, wp, h_timeGetTime()), 0;
+        return w_icall_iiii_i(lp, hwnd, msg, wp, host_time_ms()), 0;
     return send(hwnd, msg, wp, lp);
 }
 u32 h_MessageBoxA(u32 hwnd, u32 text, u32 cap, u32 type)

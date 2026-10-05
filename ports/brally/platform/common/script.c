@@ -331,10 +331,32 @@ static void step(void)
  * two files compare byte for byte (ports/brally/tools/dumpdiff.py). */
 extern const struct { unsigned va; const void *p; unsigned n; } g_brDumpMap[];
 
+/* the data area as the original lays it out, written to PATH */
+static void dump_image(const char *path)
+{
+    const unsigned lo = 0x10077000u, hi = 0x118F0000u;
+    unsigned char *img = (unsigned char *)calloc(1, hi - lo);
+    FILE *f;
+    int i;
+    if (!img)
+        return;
+    for (i = 0; g_brDumpMap[i].p; i++)
+        if (g_brDumpMap[i].va >= lo && g_brDumpMap[i].va + g_brDumpMap[i].n <= hi)
+            memcpy(img + (g_brDumpMap[i].va - lo), g_brDumpMap[i].p, g_brDumpMap[i].n);
+    f = fopen(path, "wb");
+    if (f) {
+        fwrite(img, 1, hi - lo, f);
+        fclose(f);
+    }
+    free(img);
+}
+
+/* BR_DUMP_EVERY=N:DIR -- the same every N frames, to DIR/<frame>.bin: one
+ * run gives every frame a lockstep search needs (the wasm lane matches) */
 static void dump_window(void)
 {
-    static int init, at = -1;
-    static char path[1024];
+    static int init, at = -1, every;
+    static char path[1024], dir[1024];
     static unsigned n;
     n++;
     if (!init) {
@@ -342,24 +364,17 @@ static void dump_window(void)
         init = 1;
         if (e)
             sscanf(e, "%d:%1023s", &at, path);
+        if ((e = getenv("BR_DUMP_EVERY")))
+            sscanf(e, "%d:%1023s", &every, dir);
     }
     if (at >= 0 && (int)n == at) {
-        const unsigned lo = 0x10077000u, hi = 0x118F0000u;
-        unsigned char *img = (unsigned char *)calloc(1, hi - lo);
-        FILE *f;
-        int i;
-        if (!img)
-            return;
-        for (i = 0; g_brDumpMap[i].p; i++)
-            if (g_brDumpMap[i].va >= lo && g_brDumpMap[i].va + g_brDumpMap[i].n <= hi)
-                memcpy(img + (g_brDumpMap[i].va - lo), g_brDumpMap[i].p, g_brDumpMap[i].n);
-        f = fopen(path, "wb");
-        if (f) {
-            fwrite(img, 1, hi - lo, f);
-            fclose(f);
-        }
-        free(img);
+        dump_image(path);
         fprintf(stderr, "dump: frame %u -> %s\n", n, path);
+    }
+    if (every > 0 && n % (unsigned)every == 0) {
+        char p[1100];
+        snprintf(p, sizeof p, "%s/%06u.bin", dir, n);
+        dump_image(p);
     }
 }
 

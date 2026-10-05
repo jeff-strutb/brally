@@ -649,7 +649,8 @@ extern "C" void BrRaceStep(void)
                         int   e;
                         if (dx > 2 || dx < 0) dx = 0;
                         e = c->f0E64 * 3 + dx;
-                        *(int32_t *)&c->fFF0 = *(const int32_t *)((const char *)g_apBrRaceDiff[(*(int *)&g_Br0B380C)] + (e * 7) * 4 + 0x44);
+                        /* record + 0x44 + e*0x1C in the original: award e*7+6 */
+                        *(int32_t *)&c->fFF0 = *(const int32_t *)&g_apBrRaceDiff[(*(int *)&g_Br0B380C)]->aAward[e * 7 + 6];
                     }
                     c->f1000 = 1.0f;                       /* 0x1001ad56 */
                     if ((*(int *)&g_brRaceLights) == 0) {            /* 0x1001adac */
